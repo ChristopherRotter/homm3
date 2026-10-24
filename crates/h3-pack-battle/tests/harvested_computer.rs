@@ -41,7 +41,7 @@ fn details(r: &BattleRuleset, rng: &mut Rng) -> HeroDetails {
         offered: Default::default(),
         primary: [0; 4].map(|_| u8::try_from(rng.below(21)).unwrap()),
         skills: vec![],
-        worn: vec![],
+        worn: h3_heroes::wearing(r, &[]),
         backpack: vec![],
         spells: vec![],
         mana: [0, 20, 100][pick(rng, 3)],
@@ -59,8 +59,9 @@ fn details(r: &BattleRuleset, rng: &mut Rng) -> HeroDetails {
     }
     for artifact in ["base:spell_book", "base:ballista", "base:first_aid_tent"] {
         if rng.below(2) == 0 {
-            d.worn
-                .push(ArtifactInstance::from(r.artifact_by_key(artifact).unwrap()));
+            let id = r.artifact_by_key(artifact).unwrap();
+            let at = h3_heroes::first_position(&d, r, id).unwrap();
+            d.worn[at.0] = Some(ArtifactInstance::from(id));
         }
     }
     d.spells = (0..r.spells().len())
@@ -516,9 +517,12 @@ fn fire_mage(r: &BattleRuleset) -> BattleHero {
         offered: Default::default(),
         primary: [0, 0, 5, 10],
         skills: vec![],
-        worn: vec![ArtifactInstance::from(
-            r.artifact_by_key("base:spell_book").unwrap(),
-        )],
+        worn: h3_heroes::wearing(
+            r,
+            &[ArtifactInstance::from(
+                r.artifact_by_key("base:spell_book").unwrap(),
+            )],
+        ),
         backpack: vec![],
         spells: vec![r.spell_by_key("base:fire_wall").unwrap()],
         mana: 100,

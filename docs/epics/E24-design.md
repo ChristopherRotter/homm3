@@ -168,6 +168,23 @@ The table, mask = 16 × row + column:
   42 035 pixels of water differed by that step). The screen's water and lava change at the
   redraws, each showing the ticks before it (the redraw's own tick at its start included): M2's
   animation follows the redraws, not the ticks.
+- **The rivers can trail the terrains by a step** (T6a, the inbox's half tick: about one still
+  in seven found `lavatl` and `watrtl` one step ahead of the rivers for as long as it read). The
+  manager loads the DEFs kind by kind (adventure_manager_start 0x406FD0: the terrains, then the
+  rivers, the roads, …) with a step of the loading screen's progress bar between the kinds
+  (load_progress_step 0x4ED2A0), which shows the bar through screen_show_rect 0x602BD0, and that
+  runs the tick before and after. The map's load runs in real time, so when a tick falls due at
+  the step after the terrains, it rotates their palettes alone (the rivers' fields are still
+  empty, which the tick skips), and the rivers start one step behind for the whole game; within a
+  kind there is no step, so all terrains share one k and all rivers one, k or k − 1. The screen
+  draws each DEF with its own palette: water and lava at k, the rivers at k − 1. So a still has
+  two steps, the terrains' and the rivers' (`h3_map_view::live::Moment`'s `cycles` and
+  `river_cycles`); the harness reads each kind's k from memory (`h3map.py`'s `cycle_step`, which
+  refuses any other difference) and `live.toml` gives both. The viewer's own clock keeps them
+  together (`Moment::at`): the split is an accident of the original's load time (MCL-Q5, answered
+  (a): in step, the comparisons alone take the two). The captures (T6a): three stills of 56 with
+  the rivers behind (`rivers-lava`, `rivers-mud`; T6a's sandbox loaded faster than T4b's), each
+  exact; drawn in step, the first differs in 3 655 pixels of its lava river.
 
 ### 1.7 VCMI 1.7.5 compared
 
@@ -253,8 +270,8 @@ Path read: the placement of an object on its tiles (place_object_tiles 0x505B20,
 0x505060, the insertion 0x505230), passes 4 to 9 of §1.1, the hero and boat pieces (0x40FB30,
 0x40FE30, 0x410760, 0x4102C0, 0x4109B0), the drawers' wrappers. Not read: the moving hero's own
 pieces (0x47F860, 0x47FB40, pass 9) and the attacking monster's substitute (§2.2, both M2), the
-puzzle's class filter, the owners' tables (T5). The frames that confirm it: T4a (§2.6), T4b
-(§2.7) and T5.
+puzzle's class filter; the owners' tables in T5b1 (§2.9). The frames that confirm it: T4a
+(§2.6), T4b (§2.7), T5a (§2.8) and T5b1 (§2.9).
 
 ### 2.1 A tile's draw list
 
@@ -323,10 +340,11 @@ stack differently on different tiles.
   k = 0 … 5.
 - **Pass 8** (0x4120B0): the arrows: `adag.def` frame a − 1, raw pixels (def_draw_raw 0x47BF50).
 - **Pass 9** (0x47FC80): steps the moving hero's frame (manager +0x200) and plays its sounds.
-- **The owner** (0x40FD20, of the tile 0x4FEC30 gives: inferred, the object's entrance): the
-  dwelling's, garrison's, lighthouse's, mine's, shipyard's or town's owner from its table or word
-  (a hero standing there: the object under the hero), −1 none; the colour is game_palette16 entry
-  78 + owner (77 for none). The colours and the eight classes: T5.
+- **The owner** (0x40FD20, of the entrance tile 0x4FEC30 gives): the dwelling's, garrison's,
+  lighthouse's, mine's, shipyard's or town's owner from its table or word (a hero standing there:
+  the object under the hero), −1 none; the colour is game_palette16's entry 64 + owner (63 for
+  none; the palette's colours start at +0x1C, the code reads +0x9C + 2 × owner). The colours,
+  the classes and the entrance: §2.9.
 - **Substitutes, never in a still** (M2): the object whose index is manager +0x218 (a monster
   attacking a hero: monster_attacks_guarded 0x4A79D2, visit_object 0x4A97B9) is drawn in passes 5
   and 7 from the DEF at manager +0xE0, frame +0x220 + 2 × +0x21C. While a hero moves (manager
@@ -420,8 +438,9 @@ Each a map of the writer (T3a: objects of any template) or a shipped map's view:
 9. Flat objects (Cursed Ground, Magic Plains, …) under another object's shadow; objects cut by
    the map's left and top edges and anchored past its right and bottom edges.
 
-Open points: 0x4FEC30 as the entrance (T5b's owned objects); which classes have flag pixels
-outside the eight (T5b, D10; an `MCL-Q` if a drawn object loses its colours). Settled by T5a
+Open points: none. Settled by T5b2 (§2.10): point 8 (D9) in `path-objects`. Settled by T5b1
+(§2.9): 0x4FEC30 is the entrance; the flag pixels outside the eight classes are in pictures the
+map never draws (D10). Settled by T5a
 (§2.8): the coast test for the waves; points 4, 5 and 6 in its captures; point 8 (D9) moved to
 T5b with the path. Settled by T4a (§2.6): +0x40 as the priority byte, +0x14 and +0x24 as the
 `.msk`'s masks; points 1 to 3 and 9 are in the copies of §2.6, so their own maps were not built;
@@ -503,11 +522,9 @@ points 4, 5, 6 and 8 moved to T5 with the heroes and the path, point 7 to T4b. S
   that screen's probes hold the level button greyed, as a map without an underground shows it);
   the human player's explored bits written; `live.toml` gains the viewer and every object's
   template in memory (its DEF, class and subclass), which `render --live` compares with the map's:
-  a differing one is what a random object became. **Not read:** the random dwellings (216–218,
-  resolved outside 0x4C9990's copy): in one start of four Tale of two lands' had moved a tile
-  from the map's anchor (as an Angel Portal; at a Hydra Pond it had not), so `render --live`
-  accepts a random object's moved anchor and draws it at the map's until T5 reads them (an owned
-  class: no T4b view holds one).
+  a differing one is what a random object became. The random dwellings (216–218) are resolved
+  apart, when the map loads (T5b1, §2.9): in one start of four Tale of two lands' had moved a
+  tile from the map's anchor (as an Angel Portal; at a Hydra Pond it had not).
 - **The captures** (`clients/map/situations/shipped-*`): five views of four shipped maps (72, 108
   and 144 tiles) without heroes, boats or owned objects near them, one underground, with 3 to 6
   random artifacts, 4 to 9 random monsters and 2 to 8 random resources each among 110 to 217
@@ -569,3 +586,102 @@ points 4, 5, 6 and 8 moved to T5 with the heroes and the path, point 7 to T4b. S
 - **Not captured:** the boats' flags of other colours than Red's (a computer player's hero would
   have to board; the gate checks their names and groups); a moving hero (M2).
 
+### 2.9 The owners' colours, the towns' pictures, the random dwellings (M1 T5b1, 2026-10-24)
+
+- **Which bodies take a colour** (passes 4 and 7: the jump tables at 0x41153C and in 0x412470, on
+  the drawn template's class +0x38): the dwellings 17 and 20, a garrison 33, a lighthouse 42, a
+  mine 53, the towns 77 and 98, a shipyard 87 draw their flag pixels (a frame's runs of index 5)
+  through def_draw_flagged 0x47BE10 in their owner's colour; every other body through 0x47BDC0
+  with colour 0, which the flagged drawer takes as none (its runs of 5 skipped). The map's classes
+  are loaded as the game's (object_class_values 0x63A6E4 into the template's +0x38, 0x503BA3):
+  the vertical garrison 219 as 33 and the AB mine 220 as 53 (and decorations 165–205, 221, 223,
+  230 as others), so both are owned classes (the tables list them). The gate lists the object
+  pictures with flag pixels by class: outside these, only `default.def`, a hero template's
+  (`ah05_e`; heroes are drawn from their own DEFs, §2.8) and the random dwellings' (never drawn:
+  resolved at the load, below), so no drawn object loses its colours (D10).
+- **The owner** (tile_object_owner 0x40FD20) of the object on the entrance tile:
+  object_entrance_tile 0x4FEC30 walks the template's cells, rows from the anchor's upwards within
+  its height (+0x11), each from the anchor's column leftwards within its width (+0x10), and gives
+  the first visitable one (+0x2C) on the map. Without one on the map the passes take tile (0, 0) of the
+  surface's owner (0x410FC8, 0x4126B9): **MCL-Q4** (answered: none of the shipped maps has such
+  an owned object, the gate counts them; the client takes the object's own owner, `--bugs
+  original` the tile's). The tile's class and word name the record: the dwellings' (game +0x4E39C, 0x5C bytes,
+  owner +0x57), the garrisons' (+0x4E3AC, 0x40 bytes, +0x0), the mines' and lighthouses'
+  (+0x4E38C, 0x40 bytes, +0x0), the towns' (+0x21614, 0x168 bytes, +0x1), a shipyard's the
+  word's low byte; a hero on the tile stands for the object under it (the hero record's +0xC,
+  +0x14).
+- **The colour**: game_palette16's entry 64 + the owner, 63 without one (`game.pal`: grey 63, then
+  Red, Blue, Tan, Green, Orange, Purple, Teal, Pink; startup's 0x4EE430 converts it to 5-6-5), so
+  a neutral object's flags are grey.
+- **A town's picture** (object_template_redraw 0x4C9990, its town branch 0x4C9ADE): a Capitol
+  (13) gives the faction's picture of 0x677A54 (`AVCcasz0` …), else a Fort, Citadel or Castle (7,
+  8, 9) that of 0x677A30 (`AVCcasx0` …, the editor's), else that of 0x677A0C (`AVCcast0` …).
+  setup_towns 0x4CAA70 redraws every town so at a new game, after its buildings (0x5C08C0): the
+  standard set has a Fort when the map gives one (0x5C0C0F); the chosen buildings are the map's
+  bits through 0x6888C0 (bits 2–5: Capitol, Fort, Citadel, Castle for every faction). A random
+  town (77) first becomes a town of its faction (98). The copy keeps the template's masks (§2.7);
+  the gate draws every faction's three pictures with each town template's masks and finds none
+  that loses a pixel. `Live::at_start` gives each town its picture so (`[map.towns]`), and
+  `render --live` refuses a town the original drew otherwise.
+- **The random dwellings** (random_dwellings_resolve 0x502B60, from map_objects_place_all before
+  the objects are placed on their tiles): each gets a faction (its linked town's, else one of its
+  faction bits, 0x5132D0) and a level between its body's two, so a creature (0x6747B4); a Stone
+  Golem makes the Golem Factory (20, 1), any other the last dwelling of class 17 that 0x63D570
+  lists for it; 0x505F20 gives the object that class's last template of the subclass (appended
+  to the map's templates). Its anchor's x then grows by the new template's bottom-row cells, from
+  the anchor leftwards, that are passable and not visitable (of the class 17 and 20 templates only
+  the Angel Portal's moves, by one); its dwelling record takes the body's owner. So its entries
+  are the new template's at the new anchor; `render --live` takes the template (`Objects.txt`'s
+  last with the original's DEF, class and subclass) and the anchor from memory.
+- **The viewer**: the tables' `[map.owners]` (the palette, the neutral entry, the classes) and
+  `[map.towns]` (the three lists by faction); `Draw::Piece`'s `flag` (an entry of the scene's
+  `flags` palette) for the owned classes' flat and body pieces, the compose's flagged drawer in its
+  colour; `objects::entrance`, `objects::flag_owner`; the live part's owners from the map at the
+  start, from memory in the comparisons (`Mem.map_owners`, by the original's walk and records).
+- **The captures:** `owners-objects` (the seven mines and an abandoned one, a dwelling, the Golem
+  Factory and the Elemental Conflux, the garrisons, both vertical ones, a lighthouse, a shipyard:
+  every colour and neutral), `owners-random-dwellings` (random dwellings of any kind, of level 7
+  and of Castle: the Angel Portal's moved anchor in about one run of two, seen exact),
+  `towns-0` to `-2` (the nine factions' villages, forts, citadels and castles, capitols, every
+  colour and neutral), `towns-random`, and the shipped maps `shipped-hoard` and
+  `shipped-too-many-monsters` (owned towns, neutral mines and dwellings, heroes): each exact on
+  its first run, the whole set (35) again.
+
+### 2.10 The path's arrows and the explored tiles (M1 T5b2, 2026-10-24)
+
+- **The arrows** (view_path_shadows_pass 0x411F50, view_path_arrows_pass 0x4120B0, read): while
+  the manager's +0x4C is set, each pass takes the tile's u16 from the array at manager +0x48, at
+  (level × height + y) × width + x (every level, `structs.toml`), skips 0 and draws `adag.def`
+  (+0xB0) frame a − 1 of group 0 at the tile's place, clipped to the tile inside the view's clip
+  as every tile pass (§1.2): pass 6 through def_draw_run_shadows 0x47BFA0 into 0x47E820 (the
+  frame's runs 1–2 as the border shadow and 3–4 as the body shadow, its pixels not drawn), pass 8
+  through def_draw_raw 0x47BF50 (its pixels, the runs skipped). `adag.def` holds 50 frames of a
+  32 × 32 canvas in encoding 2 (`PackedRows`, the shroud's layout): 1–25 green (a move today),
+  26–50 the same arrows red (`h3mem.GREEN_FRAMES`, observed); arrow 26 (frame 25) the red cross
+  at a path's end (both captures), frame 0 its green twin by its size. So an arrow's shadow lies under every body and over every other shadow, and the
+  arrow over every body, under the shroud (§2.2). How a path's arrows are chosen from its steps
+  and the hero's points is not read: M2's (the hero's walk), the engine's path from M4; in M1
+  the live part takes them from memory.
+- **The explored tiles** (§1.5): the unexplored pass reads only the viewer's bit of each tile's
+  vision word; a new game sets it around the human player's heroes and towns (the reveal is the
+  engine's, ADR-0016). The live part takes every level's bits from memory (`Mem.explored_rows`);
+  `Live::at_start` keeps every tile explored.
+- **The viewer**: the tables' `[map] path` (the gate checks its 50 frames); `Live::path`, one
+  `Arrow` (tile, arrow) per tile; `Pass::PathShadow` (pass 6, the compose's `draw::shadows`
+  alone) and `Pass::Path` (pass 8, `draw::raw`), each over the whole view between the shadows and
+  the bodies and between the bodies and the shroud; an arrow 0, off the map or on another level
+  is not drawn.
+- **The harness** (`h3map.py`, `h3mem`): a situation's Red hero with a `path` is selected (the
+  hero list centres the view on it), the view set again, the path's tile clicked once (as
+  `h3adv.walk`'s first click) and its arrow there awaited; `explored = "start"` (a shipped map)
+  leaves the new game's explored bits as they are; a boat's `colour` is written into the record
+  of the boat its hero boarded (+0x1C, a still's staging as the facings, §2.8). `live.toml`
+  gains `explored` (a row string of `0` and `1` per row of each level) and `path` (`[x, y,
+  level, arrow]` while +0x4C is set, `Mem.path_arrows`).
+- **The captures:** `path-objects` (objects-mandate's copy, a Red hero's path along a row the
+  decorations' upper parts cover, D9: the arrows over their bodies, their shadows under them, the
+  last arrow over the hero; green and red), `path-edge` (a path from a hero right of the view,
+  cut by the view's right and left columns), `start-dwarven-tunnels` and `start-hoard` (shipped
+  maps as a new game starts them, the shroud's edges around the explored circles, one reaching
+  the map's right column beside the edge), `boats-colours` (seven boarded boats of the three
+  types, Blue to Pink): each exact on its first run, the whole set (40) again.

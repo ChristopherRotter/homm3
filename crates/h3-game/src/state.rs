@@ -758,11 +758,12 @@ impl CanonicalHash for GameState {
     }
 }
 
-/// A hero's details in the game state's hash (v5; v9: the offers' levels after the experience):
-/// hero type, level, experience, the levels at which Wisdom and a school were last offered, the
-/// primary skills, the secondary skills (length, then skill and level), the worn artifacts and the
-/// backpack (each length, then artifact and spell, 0 for none, else 1 and the spell), the
-/// learned spells (length, then spell), the spell points.
+/// A hero's details in the game state's hash (v5; v9: the offers' levels after the experience;
+/// v12: the worn artifacts by position): hero type, level, experience, the levels at which
+/// Wisdom and a school were last offered, the primary skills, the secondary skills (length, then
+/// skill and level), the worn positions (length, then per position 0 for empty, else 1 and the
+/// artifact), the backpack (length, then the artifacts), the learned spells (length, then spell),
+/// the spell points; an artifact is its type and spell, 0 for none, else 1 and the spell.
 fn hash_details(details: &HeroDetails, h: &mut StateHasher) {
     details.hero_type.hash_into(h);
     h.write_u8(details.level);
@@ -775,24 +776,37 @@ fn hash_details(details: &HeroDetails, h: &mut StateHasher) {
         skill.hash_into(h);
         h.write_u8(*level);
     }
-    for artifacts in [&details.worn, &details.backpack] {
-        h.write_len(artifacts.len());
-        for ArtifactInstance { artifact, spell } in artifacts {
-            artifact.hash_into(h);
-            match spell {
-                None => h.write_u8(0),
-                Some(spell) => {
-                    h.write_u8(1);
-                    spell.hash_into(h);
-                }
+    h.write_len(details.worn.len());
+    for item in &details.worn {
+        match item {
+            None => h.write_u8(0),
+            Some(item) => {
+                h.write_u8(1);
+                hash_artifact(item, h);
             }
         }
+    }
+    h.write_len(details.backpack.len());
+    for item in &details.backpack {
+        hash_artifact(item, h);
     }
     h.write_len(details.spells.len());
     for spell in &details.spells {
         spell.hash_into(h);
     }
     h.write_u16(details.mana);
+}
+
+/// An artifact in a hero's details' hash: its type, then 0 for no spell, else 1 and the spell.
+fn hash_artifact(&ArtifactInstance { artifact, spell }: &ArtifactInstance, h: &mut StateHasher) {
+    artifact.hash_into(h);
+    match spell {
+        None => h.write_u8(0),
+        Some(spell) => {
+            h.write_u8(1);
+            spell.hash_into(h);
+        }
+    }
 }
 
 #[cfg(test)]

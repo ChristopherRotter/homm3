@@ -1,7 +1,7 @@
 # E24 — The adventure map client
 
 Status: **refined** (2026-10-23, T0, with the user); M1 running (T1a, T1b, T2, T3a, T3b1, T3b2,
-T4a, T4b, T5a done; next T5b, `docs/lanes/map-client/QUEUE.md`).
+T4a, T4b, T5a, T5b1, T5b2, T6a done; next T6b, M1's closure, `docs/lanes/map-client/QUEUE.md`).
 Lane: map-client (`docs/lanes/map-client/HANDOFF.md`: the autonomy contract, the user's asset
 notes). Opened 2026-10-23 when the user split the client lane at E17 M3's closure (CLT-Q18).
 Decisions so far live here (no ADR of its own yet; ADR-0020 and ADR-0024 bind it as they bind
@@ -123,7 +123,23 @@ autonomy contract (lane HANDOFF) says what the agent decides alone in between. T
   by facing, frames, flags, the coast's waves, a hero's boat; `E24-design.md` §2.8) and drawn as
   two-row objects among the layers (passes 5 and 7), taken from memory with their facings; the
   situations' heroes of any colour and class, Red's walks by play, boats; five situations (the
-  18 classes × 8 facings, heroes among objects: D4, D5; boats: D7), exact.
+  18 classes × 8 facings, heroes among objects: D4, D5; boats: D7), exact. T5b1 (2026-10-24; T5b
+  split with the user into T5b1 and T5b2; MCL-Q4 asked and answered): the owners' colours read (the owned
+  classes, the vertical garrison and the AB mine loaded as two of them, the entrance's owner,
+  `game.pal`'s entries 63 to 71; D10 settled: no drawn picture loses its colours), the towns'
+  pictures by their buildings and the random dwellings resolved at the load (`E24-design.md`
+  §2.9); drawn (`Draw::Piece`'s flag), taken from the start and from memory; eight situations
+  (owned objects of every colour, random dwellings, the nine factions' towns by their buildings,
+  random towns, two shipped maps' views), exact. T5b2 (2026-10-24): the path's arrows read (passes
+  6 and 8: `adag.def` by the manager's +0x48 per tile; `E24-design.md` §2.10) and drawn, taken
+  from memory with the explored tiles; five situations (a path under the objects' upper parts,
+  D9; a path cut by the view; two shipped maps' starts with their unexplored tiles; boats' flags
+  of the seven other colours), exact, the set (40) again. T6a (2026-10-24; T6 split with the user
+  into T6a and T6b; MCL-Q5 asked and answered): the half tick read (a tick at the load's progress
+  step between the terrains' DEFs and the rivers' leaves the rivers a step behind for the whole
+  game, `E24-design.md` §1.6), each kind's step read and drawn (`Moment::river_cycles`); `h3map.py
+  drawn` (ours from each situation's kept live part, the digests in
+  `map/situations/kept/drawn.txt`), the whole set (40) captured, exact, and recorded.
 - **Exit:** the capture set's stills match the original pixel for pixel outside the masks of
   what M1 does not draw (the panels, the mouse), or list each difference as an M2 item; the
   review list accepted; research item 9 closed by the reading and its frames.
@@ -185,8 +201,8 @@ The M1 review list starts here (the autonomy contract's "queue for the milestone
   converted in the pure library, so its tests use the writer; the purity test is a copy of
   `h3-view`'s for this crate.
 - **M1 T2, the live part at a map's start:** heroes and boats facing right (T5a: as the
-  original's new game) and every tile explored until T5b reads the original's start; phases 0
-  (the original's are random).
+  original's new game) and every tile explored (T5b2: what a start reveals is the engine's, the
+  comparisons read the original's); phases 0 (the original's are random).
 - **M1 T3a, the writer's additions** (the adventure lane's crate): a second entry point
   (`write_with(&Map, &Extras)`) instead of new `Map` fields and `MapObject` variants, which would
   have changed struct literals and matches in four other lanes' crates; the editor's bodies taken
@@ -211,7 +227,7 @@ The M1 review list starts here (the autonomy contract's "queue for the milestone
   (the harness's `live.toml`: the palette step, the frame step the screen shows, every object's
   anchor, checked, and phase); the situations' objects (`copy`'s `objects = true`, neutral,
   without the hero classes; `objects` given by DEF through the game's `Objects.txt`); the eight
-  owned classes' flag runs skipped until T5 colours them (no situation has them yet).
+  owned classes' flag runs skipped until T5b1 coloured them.
 - **M1 T4b, random objects and shipped maps** (*provisional*): a situation names a shipped map
   whole (`map`), loaded with the scenario list's setup (its first human player) and its first
   day's messages closed; `live.toml`'s `viewer`, `defs` and `classes` (every object's template
@@ -228,3 +244,26 @@ The M1 review list starts here (the autonomy contract's "queue for the milestone
   day); the boats' flags of colours other than Red's not captured (the gate checks them);
   `[map.heroes]`'s format; `Shapes` holding the frames of pictures without a `.msk`;
   `Draw::Piece`'s group.
+- **M1 T5b1, the owners** (*provisional*): `[map.owners]` (the palette, the neutral entry, the
+  classes with 219 and 220 as loaded) and `[map.towns]` (three lists by faction); `Draw::Piece`'s
+  `flag` and `Scene::flags` (an entry of a named palette rather than a colour, the scene staying
+  free of assets); the owner per object in the live part (the original's per entrance tile: the
+  same but for MCL-Q4's case); `Live::at_start` taking the towns' pictures; `render --live`'s town
+  check and its own picture only for an artifact (a class the game loads as another kept its DEF:
+  the vertical garrison would have drawn a horizontal one); the situations' `towns` (a faction,
+  an owner and `village`, `fort`, `citadel`, `castle` or `capitol`) and objects' `owner`, every
+  owning colour given a hero outside the view; the random dwellings' situation drawing the Angel
+  Portal's moved anchor only in about one run of two.
+- **M1 T5b2, the path and the explored tiles** (*provisional*): `Live::path` as arrows by tile
+  (the original's frame numbers, read from memory; choosing them from a path is M2's) and
+  `Pass::PathShadow`, `Pass::Path`; `[map] path`; `live.toml`'s `explored` (a string of `0` and
+  `1` per row of each level) and `path`, always written, so every comparison draws the explored
+  tiles memory holds; the situations' hero `path` (one, Red's) and boat `colour` (written into the
+  boarded boat's record: a still's staging, since a computer player's hero would have to board),
+  a shipped map's `explored = "start"`.
+- **M1 T6a, the digests and the rivers' step** (*provisional*): the kept live parts as copies of
+  the stills' `live.toml` (`map/situations/kept/<id>.toml`: numbers and the DEFs' names, 1.6 MB
+  for the 40, a shipped map's up to 0.3 MB), one digest per situation (its one still) in
+  `kept/drawn.txt`, `drawn` in `h3map.py` beside E17's `h3drive.py drawn` rather than in it;
+  `Moment::river_cycles` and `live.toml`'s `river_cycles` (the rivers' step, MCL-Q5), `render
+  --cycles` setting both.

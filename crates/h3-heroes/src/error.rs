@@ -1,4 +1,5 @@
-//! Why hero details are invalid, and why a change does not fit them.
+//! Why hero details are invalid, why a change does not fit them, and why an artifact does not
+//! move, assemble or disassemble (E08 T49b).
 
 use core::fmt;
 
@@ -6,6 +7,7 @@ use h3_content::{ArtifactSlotId, ArtifactTypeId, SkillId, SpellId};
 
 use crate::change::ArtifactPlace;
 use crate::details::PrimarySkill;
+use crate::positions::Position;
 
 /// A reason why hero details do not fit a ruleset ([`crate::validate`]).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -34,8 +36,13 @@ pub enum DetailsError {
     SkillLevel(SkillId),
     /// An artifact is not in the ruleset.
     UnknownArtifact(ArtifactTypeId),
+    /// The worn artifacts do not have one entry per position of the ruleset's slots
+    /// ([`crate::positions`], HER-ART-001).
+    Positions,
     /// A worn artifact has no slot (it is carried in the backpack only, like the Grail).
     NotWearable(ArtifactTypeId),
+    /// A worn artifact is on a position of another slot than its own (HER-ART-001).
+    WrongPosition(ArtifactTypeId),
     /// The worn artifacts and their locks need more positions of a slot than it has.
     SlotFull(ArtifactSlotId),
     /// More artifacts in the backpack than it holds.
@@ -75,7 +82,11 @@ impl fmt::Display for DetailsError {
             Self::DuplicateSkill(id) => write!(f, "secondary skill {} listed twice", id.raw()),
             Self::SkillLevel(id) => write!(f, "secondary skill {} needs level 1..=3", id.raw()),
             Self::UnknownArtifact(id) => write!(f, "unknown artifact {}", id.raw()),
+            Self::Positions => f.write_str("the worn artifacts do not match the positions"),
             Self::NotWearable(id) => write!(f, "artifact {} has no slot", id.raw()),
+            Self::WrongPosition(id) => {
+                write!(f, "artifact {} is on another slot's position", id.raw())
+            }
             Self::SlotFull(id) => write!(f, "artifact slot {} has too few positions", id.raw()),
             Self::BackpackFull => f.write_str("too many artifacts in the backpack"),
             Self::NotForBackpack(id) => {
@@ -104,6 +115,9 @@ pub enum ChangeError {
     NoRoom(ArtifactTypeId),
     /// There is no artifact at the place.
     NoArtifact(ArtifactPlace),
+    /// The placed artifact cannot go to the place (E08 T49a): the position is not empty or of
+    /// another slot, the locks would not fit, or the backpack index, slot or room refuses it.
+    CannotPlace(ArtifactPlace),
     /// The learned spell is not a hero spell of the ruleset (HER-SPL-001).
     Spell(DetailsError),
     /// The hero has learned the spell already.
@@ -126,6 +140,12 @@ impl fmt::Display for ChangeError {
             Self::NoArtifact(ArtifactPlace::Backpack(i)) => {
                 write!(f, "no artifact in the backpack at {i}")
             }
+            Self::CannotPlace(ArtifactPlace::Worn(i)) => {
+                write!(f, "the artifact cannot be worn at {i}")
+            }
+            Self::CannotPlace(ArtifactPlace::Backpack(i)) => {
+                write!(f, "the artifact cannot go into the backpack at {i}")
+            }
             Self::Spell(error) => write!(f, "the spell does not fit the ruleset: {error}"),
             Self::KnownSpell(id) => write!(f, "spell {} is learned already", id.raw()),
             Self::NoLevelPending => f.write_str("no level is pending"),
@@ -136,3 +156,78 @@ impl fmt::Display for ChangeError {
 }
 
 impl core::error::Error for ChangeError {}
+
+/// A reason why an artifact does not move ([`crate::check_move`], HER-ART-005).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum MoveError {
+    /// There is no artifact at the source.
+    NoArtifact(ArtifactPlace),
+    /// The artifact at the source or at the target never moves: the Spell Book, the Catapult.
+    Unmovable(ArtifactTypeId),
+    /// The target is the source: the move would change nothing.
+    SamePlace,
+    /// The target refuses the artifact: a position of another slot, or where the locks do not
+    /// fit (HER-ART-001); a backpack index past its end, a backpack that does not carry the
+    /// artifact or is full (HER-ART-002).
+    CannotPlace(ArtifactPlace),
+    /// The target's artifact cannot go back to the source's position: the locks there do not fit.
+    CannotReturn(ArtifactPlace),
+}
+
+impl fmt::Display for MoveError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::NoArtifact(place) => write!(f, "no artifact {}", PlaceName(*place)),
+            Self::Unmovable(id) => write!(f, "artifact {} never moves", id.raw()),
+            Self::SamePlace => f.write_str("the artifact is there already"),
+            Self::CannotPlace(place) => {
+                write!(f, "the artifact cannot go {}", PlaceName(*place))
+            }
+            Self::CannotReturn(place) => {
+                write!(
+                    f,
+                    "the target's artifact cannot go back {}",
+                    PlaceName(*place)
+                )
+            }
+        }
+    }
+}
+
+impl core::error::Error for MoveError {}
+
+/// A reason why a worn artifact does not assemble or disassemble ([`crate::check_assemble`],
+/// [`crate::check_disassemble`]; HER-ART-006).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CombineError {
+    /// No artifact is worn at the position.
+    NoArtifact(Position),
+    /// The artifact there is a part of no combination whose every part the hero wears.
+    Incomplete(Position),
+    /// The artifact there is not a combination.
+    NotCombination(Position),
+}
+
+impl fmt::Display for CombineError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::NoArtifact(at) => write!(f, "no artifact worn at {at}"),
+            Self::Incomplete(at) => write!(f, "the artifact at {at} completes no combination"),
+            Self::NotCombination(at) => write!(f, "the artifact at {at} is no combination"),
+        }
+    }
+}
+
+impl core::error::Error for CombineError {}
+
+/// A place as text: "at position p" or "in the backpack at i".
+struct PlaceName(ArtifactPlace);
+
+impl fmt::Display for PlaceName {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self.0 {
+            ArtifactPlace::Worn(at) => write!(f, "at position {at}"),
+            ArtifactPlace::Backpack(i) => write!(f, "in the backpack at {i}"),
+        }
+    }
+}

@@ -45,6 +45,7 @@ fn piece(pass: Pass, def: &str, frame: u32, x: i32, y: i32, clip: [i32; 4]) -> D
         mirror_x: false,
         mirror_y: false,
         clip,
+        flag: None,
     }
 }
 
@@ -83,6 +84,7 @@ fn scene(draws: Vec<Draw>) -> Scene {
     Scene {
         draws,
         cycles: vec![],
+        flags: "flags.pal".to_string(),
     }
 }
 
@@ -143,6 +145,21 @@ fn the_pieces_through_the_raw_drawer_and_the_shroud_twice() {
 }
 
 #[test]
+fn the_paths_shadow_alone_then_its_pixels_alone() {
+    // E24 M1 T5b2: pass 6 draws an arrow's runs as shadows only, pass 8 its pixels only.
+    let terrain = piece(Pass::Terrain, "terrain.def", 1, 0, 0, [0, 0, 2, 2]);
+    let shadow = piece(Pass::PathShadow, "shroud.def", 0, 0, 0, ALL);
+    let screen = compose(&scene(vec![terrain.clone(), shadow]), &batch(), [2, 2]).unwrap();
+    let f = FORMAT;
+    // The literal 9 and the run of 0 leave frame 1's pixels; the runs of 3 halve the row below.
+    assert_eq!(screen.pixels(), [5, 6, f.shadow_body(7), f.shadow_body(8)]);
+    let arrow = piece(Pass::Path, "shroud.def", 0, 0, 0, ALL);
+    let screen = compose(&scene(vec![terrain, arrow]), &batch(), [2, 2]).unwrap();
+    // The literal 9 alone.
+    assert_eq!(screen.pixels(), [9, 6, 7, 8]);
+}
+
+#[test]
 fn the_objects_through_the_flagged_drawer_and_the_shadow_pass() {
     // An object's 2 × 2 frame: a literal 9, a flag's run of 5, a shadow's runs of 1 and 4.
     let mut b = batch();
@@ -164,6 +181,72 @@ fn the_objects_through_the_flagged_drawer_and_the_shadow_pass() {
         screen.pixels(),
         [9, 2, 9, 0, f.shadow_border(3), f.shadow_body(4), 0, 0]
     );
+}
+
+#[test]
+fn an_owned_objects_flag_pixels_in_its_entry_of_the_flag_palette() {
+    // The object's frame as above; the flag palette's entry 64 is the 565 pixel 64, entry 0 is 0.
+    let mut b = batch();
+    let mut object = raw_frame(2, 2, &[9, 5, 1, 4]);
+    object.encoding = Encoding::PackedRows;
+    object.runs = vec![false, true, true, true];
+    b.add("object.def", &def(&pixels(), &[object])).unwrap();
+    b.add("flags.pal", &build::pal(&pixels(), &[0; 256], 0, &[]))
+        .unwrap();
+    let flagged = |flag: Option<u8>, pass: Pass| with_flag(pass, 0, flag);
+    let list = vec![
+        piece(Pass::Terrain, "terrain.def", 0, 0, 0, [0, 0, 2, 2]),
+        piece(Pass::Terrain, "terrain.def", 0, 2, 0, [2, 0, 4, 2]),
+        flagged(Some(64), Pass::Body),
+        with_flag(Pass::Flat, 2, Some(64)),
+    ];
+    let screen = compose(&scene(list), &b, [4, 2]).unwrap();
+    // The flag's run takes the entry's colour in both passes; the shadow's runs are skipped.
+    assert_eq!(screen.pixels(), [9, 64, 9, 64, 3, 4, 3, 4]);
+    // An entry whose colour is 0 is none: the run is skipped (0x47D0A0).
+    let list = vec![
+        piece(Pass::Terrain, "terrain.def", 0, 0, 0, [0, 0, 2, 2]),
+        flagged(Some(0), Pass::Body),
+    ];
+    let screen = compose(&scene(list), &b, [4, 2]).unwrap();
+    assert_eq!(&screen.pixels()[..2], [9, 2]);
+    // Without the flag palette in the batch, a piece with an entry does not compose.
+    assert_eq!(
+        compose(
+            &scene(vec![flagged(Some(64), Pass::Flat)]),
+            &batch_with_object(),
+            [4, 2]
+        )
+        .unwrap_err()
+        .to_string(),
+        "not in the batch: flags.pal"
+    );
+}
+
+/// The object's piece of `pass` at (`x`, 0), clipped to its 2 × 2, with the flag entry `flag`.
+fn with_flag(pass: Pass, x: i32, flag: Option<u8>) -> Draw {
+    Draw::Piece {
+        pass,
+        def: "object.def".to_string(),
+        group: 0,
+        frame: 0,
+        x,
+        y: 0,
+        mirror_x: false,
+        mirror_y: false,
+        clip: [x, 0, x + 2, 2],
+        flag,
+    }
+}
+
+/// The test batch with the object of the flag test and no flag palette.
+fn batch_with_object() -> Batch {
+    let mut b = batch();
+    let mut object = raw_frame(2, 2, &[9, 5, 1, 4]);
+    object.encoding = Encoding::PackedRows;
+    object.runs = vec![false, true, true, true];
+    b.add("object.def", &def(&pixels(), &[object])).unwrap();
+    b
 }
 
 #[test]

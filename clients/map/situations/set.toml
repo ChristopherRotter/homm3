@@ -1,12 +1,15 @@
-# The map's capture set (E24 M1 T3b2, T4a, T4b, T5a, *provisional*; clients/capture/README.md, "The
-# map's stills"): the situations beside this file, each a still the harness shows the original
-# and compares with ours (`python3 capture/h3map.py set`, from clients/): its map built with the
-# writer (`h3-map-view situation`) or a shipped map loaded whole (`map`, T4b), the human
-# player's explored tiles written (all but the situation's `hidden`), the view by the minimap,
-# the clock frozen; ours drawn with the original's drawing bugs (`render --bugs original`) at the
-# palette step the original's memory shows, a shipped map's random objects as its memory holds
-# them. Masked: the panels (M3) and the parked cursor over them. Per situation the pixels that
-# differ outside the masks, with why; a run that counts another number fails.
+# The map's capture set (E24 M1 T3b2, T4a, T4b, T5a, T5b1, T5b2, T6a, *provisional*;
+# clients/capture/README.md, "The map's stills"): the situations beside this file, each a still the
+# harness shows the original and compares with ours (`python3 capture/h3map.py set`, from clients/):
+# its map built with the writer (`h3-map-view situation`) or a shipped map loaded whole (`map`,
+# T4b), the human player's explored tiles written (all but the situation's `hidden`) or, with
+# `explored = "start"`, as the new game left them (T5b2), the view by the minimap, a hero's path
+# shown (T5b2), the clock frozen; ours drawn with the original's drawing bugs (`render --bugs
+# original`) at the palette steps the original's memory shows (the terrains' and the rivers', T6a),
+# a shipped map's random objects, the explored tiles and the path as its memory holds them; each
+# capture as recorded keeps its live part in `kept/` for `h3map.py drawn` (T6a). Masked: the panels
+# (M3) and the parked cursor over them. Per situation the pixels that differ outside the masks, with
+# why; a run that counts another number fails.
 
 [[situation]]
 id = "deluge-coast"
@@ -143,3 +146,70 @@ why = "exact: heroes on objects' passable cells between layers 1 and 2 (D4), sid
 id = "boats"
 differing = 0
 why = "exact: empty boats in open water and on the coast, Red's heroes boarded (D7)"
+
+# The owners' colours, the towns by their buildings, the random dwellings (E24 M1 T5b1; design
+# §2.9).
+[[situation]]
+id = "owners-objects"
+differing = 0
+why = "exact: owned mines, dwellings, garrisons (the vertical ones loaded as 33), a lighthouse and a shipyard in their owners' colours, neutral ones grey (D10)"
+
+[[situation]]
+id = "owners-random-dwellings"
+differing = 0
+why = "exact: random dwellings as the map's load made them, the Angel Portal's anchor moved (when one is drawn), in their owners' colours"
+
+[[situation]]
+id = "towns-0"
+differing = 0
+why = "exact: the nine factions' villages (no Fort) in their owners' colours"
+
+[[situation]]
+id = "towns-1"
+differing = 0
+why = "exact: the nine factions with a Fort, a Citadel or a Castle"
+
+[[situation]]
+id = "towns-2"
+differing = 0
+why = "exact: the nine factions with a Capitol"
+
+[[situation]]
+id = "towns-random"
+differing = 0
+why = "exact: random towns made towns of a faction with a Fort, a village beside them"
+
+[[situation]]
+id = "shipped-hoard"
+differing = 0
+why = "exact: a 72-tile shipped map whole, an owned town, neutral mines and dwellings, a hero"
+
+[[situation]]
+id = "shipped-too-many-monsters"
+differing = 0
+why = "exact: a 36-tile shipped map whole, an owned town, neutral mines and dwellings"
+
+[[situation]]
+id = "path-objects"
+differing = 0
+why = "exact: a path's arrows over the bodies of the objects whose upper parts cover it, their shadows under them (D9), green and red"
+
+[[situation]]
+id = "path-edge"
+differing = 0
+why = "exact: a path from a hero right of the view, its arrows cut by the view's right and left columns"
+
+[[situation]]
+id = "start-dwarven-tunnels"
+differing = 0
+why = "exact: a shipped map's start, the explored tiles as the game left them, the shroud's edge on every side"
+
+[[situation]]
+id = "start-hoard"
+differing = 0
+why = "exact: a shipped map's start, an explored circle at the map's right column, the edge beside it"
+
+[[situation]]
+id = "boats-colours"
+differing = 0
+why = "exact: seven boarded boats of the three types, their flags in the seven colours but Red's (written)"

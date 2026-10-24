@@ -126,7 +126,7 @@ every one reads to its padding, and every body kind but the hero placeholder occ
 Versions the reader rejects: Heroes Chronicles (`0x1D`), HotA (`0x20`), WoG (`0x33`) and every
 other code.
 
-## Import (E08 T5a, T6a, T12a, T13a, T18b, T19a, T20a2a, T21a, T29; `MAP_IMPORT_VERSION` 8)
+## Import (E08 T5a, T6a, T12a, T13a, T18b, T19a, T20a2a, T21a, T29, T49a, T49b; `MAP_IMPORT_VERSION` 10)
 
 `h3_map::import` turns a raw map and the game's rules into `h3_game::GameSetup`, which the game
 then validates (ADR-0015 point 4); `import_map` is its static layer. The import maps codes to
@@ -190,7 +190,9 @@ content and draws nothing; it rejects what the current increment cannot represen
 - **Placed heroes** (class 34): owner colour → player (a colour nobody plays is an error), hero
   type by original id → its key (the packs' `# original id`), the tile its template marks
   visitable (the editor's one column left of the position), the army's stacks by slot (creature by
-  original id, the count) or, when the map gives no stack, the hero type's starting army as a
+  original id, the count: its 16 bits whole, where the original loads 32 768 or more as no
+  creature, ADV-QUIRK-19; above the ruleset's most creatures in a stack the setup is invalid,
+  ADV-ARM-007, E08 T50) or, when the map gives no stack, the hero type's starting army as a
   placeholder that the game draws when it is built (E08 T6b; VCMI `CGHeroInstance::initHero`).
   Unsupported: a random hero (class 70), a campaign placeholder (214), a random stack (the 14 codes
   below the format's "none"), a hero standing on a town's blocked tile (VCMI moves it to its own
@@ -206,9 +208,21 @@ content and draws nothing; it rejects what the current increment cannot represen
   Spell Power and Knowledge at least 1, as the original's carried-over hero's setup 0x486590;
   the placed hero's, `placed_hero_setup` 0x4D8B30, copies them as they are, and no shipped map has
   one above 9: survey `E08-progression.md` §3.1, §6.1),
-  secondary skills (skill code by `SSTRAITS.TXT` order, the level as stored, 1–3), artifacts (each
-  worn slot's code, the position not kept, ADR-0013; the backpack in order; codes by the packs'
-  `# original id`, 141–143 unused), spells (SoD's 9-byte set, spell `i` at bit `i mod 8` of byte
+  secondary skills (skill code by `SSTRAITS.TXT` order, the level as stored, 1–3), artifacts (since
+  v9, E08 T49a, each worn entry at its position, ADR-0013 point 1: the map's entries 0–12 (head
+  to the fourth misc) are the content's 0–12, its 13–17 (the four war machines, the spell book)
+  the content's 14–18 and SoD's 18 (the fifth misc) the content's 13, each the entry's slot and
+  rank among that slot's positions (`codes::WORN`), equipped in the map's order only where the
+  position takes it (`h3_heroes::equip`: empty, of the artifact's slot, the locks fitting), else
+  left out, as the original's loader (`placed_hero_setup` 0x4D8D63, `hero_equip_artifact`
+  0x4E2A00 refusing what `hero_can_place_artifact` 0x4E2550 refuses, the fifth misc before SoD)
+  and VCMI's (`loadArtifactToSlot`): the Tutorial's second hero's Shackles of War, stored on the
+  left hand, is dropped; with RoE's rules, which have four misc positions, so is an artifact on
+  the fifth; since v10 (E08 T49b, HER-ART-007) an equipped Titan's Thunder adds a Spell Book on
+  the empty book position, as the original's equip (0x4E2A64), so the map's own book entry,
+  later in its order, finds the position taken (no shipped map's hero wears or carries the
+  Thunder); the backpack in order as before; codes by the packs' `# original id`, 141–143
+  unused), spells (SoD's 9-byte set, spell `i` at bit `i mod 8` of byte
   `i / 8`; AB's one byte: `0xFF` none, `0xFE` the type's own, else that spell beside the type's).
   The validation (`h3_heroes::validate`) checks the rest, so a war machine in the backpack or a
   scroll without its spell fails it (no shipped map that imports has one). Until v8 an experience
@@ -254,7 +268,9 @@ the 39 guards records as T21a's. E08 T29's run (import v8): 5 import and validat
 `Tutorial.tut`; survey `E08-progression.md` §6.5), their 9 heroes levelled at load with 41 levels;
 128 are unsupported for a hero generated at a main town, 18 for a random hero, 8 for a monster with
 an artifact, 1 for a hero in a town. No map has a level limit; 19 ban skills, none past the 28
-codes.
+codes. E08 T49a's run (import v9): the same 5 import and validate whole with the same levels
+at load; the Tutorial's second hero leaves its Shackles of War out (stored on the left hand,
+which the first version of v9 refused to validate); the other outcomes as T29's.
 
 ## The subset we write (E04a T2)
 

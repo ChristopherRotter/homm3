@@ -65,7 +65,8 @@ pub struct HeroDetailsSetup {
     pub primary: Option<[u8; 4]>,
     /// Secondary skills with their levels; `None`: the hero type's.
     pub skills: Option<Vec<(SkillId, u8)>>,
-    /// Worn artifacts and the backpack; `None`: the spell book if the hero type starts with one.
+    /// Worn artifacts by position and the backpack; `None`: the spell book if the hero type starts
+    /// with one.
     pub artifacts: Option<HeroArtifactsSetup>,
     /// Learned spells; `None`: the hero type's.
     pub spells: Option<Vec<SpellId>>,
@@ -74,8 +75,9 @@ pub struct HeroDetailsSetup {
 /// A hero's artifacts as a setup gives them.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct HeroArtifactsSetup {
-    /// Worn artifacts, in any order.
-    pub worn: Vec<ArtifactInstance>,
+    /// Worn artifacts by position (E08 T49a; [`h3_heroes::positions`], one entry per position;
+    /// a map's import keeps the map's positions). [`h3_heroes::wearing`] places a list.
+    pub worn: Vec<Option<ArtifactInstance>>,
     /// The backpack, in order.
     pub backpack: Vec<ArtifactInstance>,
 }
@@ -264,9 +266,9 @@ const DEFAULT_EXPERIENCE: (u32, u32) = (40, 50);
 /// from the setup stream, or 0 with a custom experience, which the levels at load give later
 /// (GAM-SET-002, E08 T29); the class's primary skills; the hero type's secondary skills and
 /// spells; worn, the spell book when the type starts with one (the first artifact type with the
-/// `spell_book` effect); then the artifact of each war machine its starting army gave
-/// (GAM-SET-001), where no worn artifact takes that slot; the maximum spell points
-/// (HER-MAN-001).
+/// `spell_book` effect, at its first position); then the artifact of each war machine its
+/// starting army gave (GAM-SET-001) at the first position that takes it, where one does (no worn
+/// artifact takes that slot); the maximum spell points (HER-MAN-001).
 // rule: GAM-HER-001
 fn hero_details(
     core: &Ruleset,
@@ -284,10 +286,8 @@ fn hero_details(
                 .position(|a| a.effects.contains(&HeroEffect::SpellBook))
                 .and_then(h3_content::ArtifactTypeId::from_index)
                 .filter(|_| hero_type.spell_book);
-            (
-                book.into_iter().map(ArtifactInstance::from).collect(),
-                Vec::new(),
-            )
+            let book: Vec<ArtifactInstance> = book.into_iter().map(Into::into).collect();
+            (h3_heroes::wearing(core, &book), Vec::new())
         },
         |a| (a.worn.clone(), a.backpack.clone()),
     );
@@ -324,17 +324,12 @@ fn hero_details(
             .iter()
             .position(|a| a.war_machine == Some(machine))
             .and_then(h3_content::ArtifactTypeId::from_index);
-        let slot = artifact
-            .and_then(|id| core.artifact(id))
-            .and_then(|a| a.slot);
-        let taken = details
-            .worn
-            .iter()
-            .filter_map(|item| core.artifact(item.artifact))
-            .any(|a| a.slot == slot);
-        if let Some(id) = artifact.filter(|_| !taken) {
-            details.worn.push(id.into());
-        }
+        let at = artifact.and_then(|id| {
+            h3_heroes::first_position(&details, core, id).map(|at| (at, ArtifactInstance::from(id)))
+        });
+        at.and_then(|(at, item)| details.worn.get_mut(at.0).map(|place| (place, item)))
+            .into_iter()
+            .for_each(|(place, item)| *place = Some(item));
     }
     details.mana = h3_heroes::max_mana(&details, core);
     details

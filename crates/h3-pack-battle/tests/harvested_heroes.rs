@@ -39,7 +39,7 @@ fn details(r: &BattleRuleset, rng: &mut Rng) -> HeroDetails {
         offered: Default::default(),
         primary: [0; 4].map(|_| u8::try_from(rng.below(100)).unwrap()),
         skills: vec![],
-        worn: vec![],
+        worn: h3_heroes::wearing(r, &[]),
         backpack: vec![],
         spells: vec![],
         mana: 0,
@@ -63,13 +63,17 @@ fn details(r: &BattleRuleset, rng: &mut Rng) -> HeroDetails {
             .effects
             .iter()
             .any(|e| matches!(e, HeroEffect::Scroll));
-        d.worn.push(if scroll {
+        let item = if scroll {
             ArtifactInstance::scroll(artifact, hero_spells[pick(rng, hero_spells.len())])
         } else {
             artifact.into()
-        });
-        if validate(&d, r).is_err() {
-            d.worn.pop();
+        };
+        // E08 T49a: at the first position that takes it, kept if the details stay valid.
+        if let Some(at) = h3_heroes::first_position(&d, r, artifact) {
+            d.worn[at.0] = Some(item);
+            if validate(&d, r).is_err() {
+                d.worn[at.0] = None;
+            }
         }
     }
     for _ in 0..pick(rng, 9) {
@@ -178,8 +182,8 @@ fn random_legal_sod_heroes_derive_and_play() {
 fn casting_details(r: &BattleRuleset, rng: &mut Rng) -> HeroDetails {
     let mut d = details(r, rng);
     let book = ArtifactInstance::from(r.artifact_by_key("base:spell_book").unwrap());
-    if !d.worn.contains(&book) {
-        d.worn.push(book);
+    if let Some(at) = h3_heroes::first_position(&d, r, book.artifact) {
+        d.worn[at.0] = Some(book);
     }
     for spell in (0..r.spells().len()).filter_map(SpellId::from_index) {
         let learnable = r.spell(spell).unwrap().category != SpellCategory::Ability;
@@ -431,7 +435,7 @@ fn wearing(sod: &BattleRuleset, worn: &[ArtifactInstance], skills: &[(&str, u8)]
             .iter()
             .map(|&(k, l)| (sod.skill_by_key(k).unwrap(), l))
             .collect(),
-        worn: worn.to_vec(),
+        worn: h3_heroes::wearing(sod, worn),
         backpack: vec![],
         spells: vec![sod.spell_by_key("base:magic_arrow").unwrap()],
         mana: 0,

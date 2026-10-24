@@ -14,47 +14,77 @@ use h3_heroes::HeroDetails;
 use super::AdventureState;
 use crate::answer::{Answer, Temper, Wanderer};
 use crate::command::{
-    AdventureEvent, AdventureEventKind, AdventureOutcome, BattleStart, Combatant, Defender, Offer,
-    OfferKind, Sink, Viewers,
+    AdventureEvent, AdventureEventKind, AdventureOutcome, BattleStart, Combatant, Defender, NoRoom,
+    Offer, OfferKind, Sink, Viewers,
 };
 use crate::ruleset::{AdventureRuleset, ObjectKind, ObjectTypeId};
 use crate::setup::Pos;
 
-/// Whether `army` has room for a group of `creature`: a stack of it, or one of `slots` slots
-/// free (the original's `army_add_stack`, 0x44ACE0).
-fn has_room(army: &[ArmyStack], slots: u8, creature: CreatureTypeId) -> bool {
-    army.iter().any(|stack| stack.creature == creature) || army.len() < usize::from(slots)
+/// The room `army` has for a group of `count` `creature`s, as the original's `army_add_stack`
+/// (0x44ACE0) finds it, with a stack's most creatures (ADV-ARM-007, E08 decision 115): its first
+/// stack of the creature that takes the group whole within `most` (the original's first stack,
+/// which takes any), else its first free slot of `slots` if the group fits a stack, else none.
+// rule: ADV-ARM-007
+fn room(
+    army: &[ArmyStack],
+    (slots, most): (u8, u32),
+    creature: CreatureTypeId,
+    count: u32,
+) -> Option<Room> {
+    let fits = |s: &ArmyStack| s.creature == creature && count <= most.saturating_sub(s.count);
+    if let Some(index) = army.iter().position(fits) {
+        return Some(Room::Stack(index));
+    }
+    (0..slots)
+        .find(|&slot| count <= most && army.iter().all(|s| s.slot != slot))
+        .map(Room::Slot)
 }
 
-/// Adds `count` of `creature` to `army` as the original's `army_add_stack` (0x44ACE0): to its
-/// first stack of the creature, else as a stack in its first free slot of `slots`. Returns
-/// whether they were added; counts saturate.
+/// Where a group goes in an army ([`room`]): onto the stack at this index, or into this free slot.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Room {
+    Stack(usize),
+    Slot(u8),
+}
+
+/// Whether `army` has room for a group of `count` `creature`s ([`room`]).
+fn has_room(army: &[ArmyStack], rules: (u8, u32), creature: CreatureTypeId, count: u32) -> bool {
+    room(army, rules, creature, count).is_some()
+}
+
+/// Adds `count` of `creature` to `army` as the original's `army_add_stack` (0x44ACE0), where
+/// [`room`] finds room (`rules`: the army's slots and a stack's most creatures, ADV-ARM-007):
+/// to its first stack of the creature that takes them within the most, else as a stack in its
+/// first free slot. Returns whether they were added.
+// rule: ADV-ARM-007
 pub(super) fn add_stack(
     army: &mut Vec<ArmyStack>,
-    slots: u8,
+    rules: (u8, u32),
     creature: CreatureTypeId,
     count: u32,
 ) -> bool {
-    if let Some(stack) = army.iter_mut().find(|s| s.creature == creature) {
-        stack.count = stack.count.saturating_add(count);
-        return true;
+    match room(army, rules, creature, count) {
+        None => false,
+        Some(Room::Stack(index)) => {
+            army[index].count += count;
+            true
+        }
+        Some(Room::Slot(slot)) => {
+            let at = army
+                .iter()
+                .position(|s| s.slot > slot)
+                .unwrap_or(army.len());
+            army.insert(
+                at,
+                ArmyStack {
+                    slot,
+                    creature,
+                    count,
+                },
+            );
+            true
+        }
     }
-    let free = (0..slots).find(|&slot| army.iter().all(|s| s.slot != slot));
-    free.is_some_and(|slot| {
-        let at = army
-            .iter()
-            .position(|s| s.slot > slot)
-            .unwrap_or(army.len());
-        army.insert(
-            at,
-            ArmyStack {
-                slot,
-                creature,
-                count,
-            },
-        );
-        true
-    })
 }
 
 /// A group's price to join for gold (ADV-MON-008; the original's `monster_join_for_gold`,
@@ -125,10 +155,10 @@ impl AdventureState {
             .get(usize::from(hero.raw()))
             .map(|details| &**details);
         let temper = Temper::new(core, (&visitor.army, details), monster, self.difficulty);
-        let slots = part.params().army_slots();
+        let rules = (part.params().army_slots(), part.params().max_stack_count());
         let answer = match step(temper) {
             Answer::Join | Answer::JoinForGold
-                if !has_room(&visitor.army, slots, monster.creature) =>
+                if !has_room(&visitor.army, rules, monster.creature, monster.count) =>
             {
                 temper.after_join()
             }
@@ -317,9 +347,11 @@ impl AdventureState {
     /// 0x4A7000 and `monster_join_for_gold` 0x4A7250, the price paid by the game): the whole
     /// group joins the hero's army as one stack ([`add_stack`]), told to the player; its
     /// treasure's resources are the player's gains; the monster leaves the map, told to the
-    /// players that see it there. Nothing happens when the group finds no room after all (the
-    /// offer is made only while it does) or the monster or the hero is gone.
-    // rule: ADV-MON-008
+    /// players that see it there. A group that finds no room ([`room`]: the offer is made only
+    /// while it does until the game opens the army dialog, `ADV-STUB-2`) joins nothing and is
+    /// reported as [`AdventureOutcome::no_room`] (E08 T50), the rest as for a join. Nothing
+    /// happens when the monster or the hero is gone.
+    // rule: ADV-MON-008, ADV-ARM-007
     pub(super) fn join<S: Sink>(
         &mut self,
         (core, part): (&Ruleset, &AdventureRuleset),
@@ -333,23 +365,21 @@ impl AdventureState {
         else {
             return AdventureOutcome::default();
         };
-        let slots = part.params().army_slots();
-        let joined = self
-            .heroes
-            .iter_mut()
-            .find(|h| h.id == offer.hero)
-            .is_some_and(|h| add_stack(&mut h.army, slots, monster.creature, monster.count));
-        if !joined {
+        let rules = (part.params().army_slots(), part.params().max_stack_count());
+        let Some(visitor) = self.heroes.iter_mut().find(|h| h.id == offer.hero) else {
             return AdventureOutcome::default();
+        };
+        let joined = add_stack(&mut visitor.army, rules, monster.creature, monster.count);
+        if joined {
+            sink.emit(AdventureEvent {
+                kind: AdventureEventKind::CreaturesJoined {
+                    hero: offer.hero,
+                    creature: monster.creature,
+                    count: monster.count,
+                },
+                seen_by: Viewers::NONE.with(player),
+            });
         }
-        sink.emit(AdventureEvent {
-            kind: AdventureEventKind::CreaturesJoined {
-                hero: offer.hero,
-                creature: monster.creature,
-                count: monster.count,
-            },
-            seen_by: Viewers::NONE.with(player),
-        });
         let gains = self.map.objects()[index]
             .monster
             .as_ref()
@@ -358,6 +388,11 @@ impl AdventureState {
         self.take_object(core, (index, offer.object_type), sink);
         AdventureOutcome {
             gains,
+            no_room: (!joined).then_some(NoRoom {
+                hero: offer.hero,
+                creature: monster.creature,
+                count: monster.count,
+            }),
             ..AdventureOutcome::default()
         }
     }

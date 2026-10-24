@@ -2,10 +2,12 @@
 //! the executable uses for it, from a [`Batch`], into a screen in the original's 16-bit format
 //! (`docs/epics/E17-design.md` §3.2). The one place that decides how a named thing is drawn, as
 //! `h3-view`'s compose is for the battle: the frame's picture opaque in the viewer's colours
-//! (design §1.9), the view's tiles through `draw_frame_raw` ([`crate::draw::raw`]) and the
-//! unexplored tiles' second time through 0x47E820 ([`crate::draw::shadows`]), the objects' bodies
+//! (design §1.9), the view's tiles and the path's arrows through `draw_frame_raw`
+//! ([`crate::draw::raw`]), the unexplored tiles' second time and the arrows' shadows through
+//! 0x47E820 ([`crate::draw::shadows`]; E24 M1 T5b2, §2.2), the objects' bodies
 //! and flat objects and the heroes' and boats' pictures through the flagged drawer
-//! ([`crate::draw::flagged`]), their shadows through
+//! ([`crate::draw::flagged`]; an owned object's flag pixels in its entry of the flag palette,
+//! E24 M1 T5b1, design §2.9), their shadows through
 //! the shadow pass ([`crate::draw::shadow_pass`], §2.2), the gems through the plain drawer with
 //! runs skipped (`h3_render::blit`). A DEF's palette is cycled once per scene
 //! (design §1.6).
@@ -83,6 +85,7 @@ pub fn compose(scene: &Scene, batch: &Batch, frame: [u32; 2]) -> Result<Screen, 
                 mirror_x,
                 mirror_y,
                 clip,
+                flag,
             } => {
                 let (sprite, f) = frame_of(batch, def, *group, *frame)?;
                 let palette = palettes
@@ -96,9 +99,11 @@ pub fn compose(scene: &Scene, batch: &Batch, frame: [u32; 2]) -> Result<Screen, 
                 };
                 match pass {
                     Pass::Flat | Pass::Body => {
-                        draw::flagged(&mut screen, f, palette, at, *clip, None)
+                        let colour = flag_colour(batch, &scene.flags, *flag)?;
+                        draw::flagged(&mut screen, f, palette, at, *clip, colour);
                     }
                     Pass::Shadow => draw::shadow_pass(&mut screen, f, at, *clip),
+                    Pass::PathShadow => draw::shadows(&mut screen, f, at, *clip),
                     _ => draw::raw(&mut screen, f, palette, at, *clip),
                 }
                 if *pass == Pass::Shroud {
@@ -122,6 +127,19 @@ pub fn compose(scene: &Scene, batch: &Batch, frame: [u32; 2]) -> Result<Screen, 
         }
     }
     Ok(screen)
+}
+
+/// The screen colour of entry `flag` of the flag palette `flags`, `None` without an entry or for
+/// a colour of 0, which the flagged drawer takes as none (0x47D0A0; design §2.9).
+fn flag_colour(batch: &Batch, flags: &str, flag: Option<u8>) -> Result<Option<u16>, ComposeError> {
+    let Some(entry) = flag else {
+        return Ok(None);
+    };
+    let palette = batch
+        .palette(flags)
+        .ok_or_else(|| ComposeError::Missing(String::from(flags)))?;
+    let colour = ScreenPalette::new(palette, FORMAT).get(entry);
+    Ok((colour != 0).then_some(colour))
 }
 
 /// A picture in a viewer's colours: an 8-bit one's entries 224–255 its 32 colours of the players'

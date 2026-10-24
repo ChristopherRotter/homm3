@@ -4,6 +4,15 @@ use h3_map::model::{RandomDwelling, Template, Text};
 
 use crate::art::tests::{map, raw};
 
+/// The committed tables' towns' pictures (`clients/map/`).
+fn towns() -> TownArt {
+    let text = include_str!("../../../../map/assets/base.toml");
+    tables::load(&[tables::parse(text).unwrap()], "base")
+        .unwrap()
+        .map
+        .towns
+}
+
 fn pos(x: u8, y: u8) -> Pos {
     Pos { x, y, z: 0 }
 }
@@ -12,12 +21,13 @@ fn pos(x: u8, y: u8) -> Pos {
 fn a_maps_start_its_objects_owners_and_heroes() {
     let raw = raw(&map());
     let art = MapArt::from_raw(&raw).unwrap();
-    let live = Live::at_start(&raw, &art, 1);
+    let live = Live::at_start(&raw, &art, 1, &towns());
     assert_eq!(live.viewer, 1);
     let owners: Vec<Option<u8>> = live.objects.iter().map(|o| o.owner).collect();
     assert_eq!(owners, [Some(0), None, Some(1)]);
+    // Nothing random drawn (the town's picture by its buildings: below).
     assert!(
-        live.objects
+        live.objects[..2]
             .iter()
             .all(|o| o.standing && o.drawn.is_none() && o.phase == 0)
     );
@@ -58,7 +68,7 @@ fn a_maps_boats_and_the_heroes_it_leaves_out() {
     raw.objects[1].template = 3;
     raw.objects[2].template = 4;
     let art = MapArt::from_raw(&raw).unwrap();
-    let live = Live::at_start(&raw, &art, 0);
+    let live = Live::at_start(&raw, &art, 0, &towns());
     assert_eq!(
         live.boats,
         [LiveBoat {
@@ -74,7 +84,7 @@ fn a_maps_boats_and_the_heroes_it_leaves_out() {
     };
     hero.owner = 0xFF;
     let art = MapArt::from_raw(&raw).unwrap();
-    assert!(Live::at_start(&raw, &art, 0).heroes.is_empty());
+    assert!(Live::at_start(&raw, &art, 0, &towns()).heroes.is_empty());
     let mut big = raw.clone();
     let Body::Hero(hero) = &mut big.objects[0].body else {
         panic!("object 0 is the hero");
@@ -82,22 +92,22 @@ fn a_maps_boats_and_the_heroes_it_leaves_out() {
     hero.owner = 3;
     big.templates[0].subclass = 256;
     let art = MapArt::from_raw(&big).unwrap();
-    assert!(Live::at_start(&big, &art, 0).heroes.is_empty());
+    assert!(Live::at_start(&big, &art, 0, &towns()).heroes.is_empty());
     big.templates[0].subclass = 5;
     big.objects[0].pos.x = 0;
     let art = MapArt::from_raw(&big).unwrap();
-    assert!(Live::at_start(&big, &art, 0).heroes.is_empty());
+    assert!(Live::at_start(&big, &art, 0, &towns()).heroes.is_empty());
     big.objects[0].pos = pos(5, 0);
     big.templates[0].visitable = [0; 6];
     let art = MapArt::from_raw(&big).unwrap();
-    assert!(Live::at_start(&big, &art, 0).heroes.is_empty());
+    assert!(Live::at_start(&big, &art, 0, &towns()).heroes.is_empty());
     big.templates[0].visitable = [0, 0, 0, 0, 0x40, 0];
     big.objects[0].pos = pos(5, 0);
     let art = MapArt::from_raw(&big).unwrap();
-    assert!(Live::at_start(&big, &art, 0).heroes.is_empty());
+    assert!(Live::at_start(&big, &art, 0, &towns()).heroes.is_empty());
     big.objects[0].pos = pos(5, 3);
     let art = MapArt::from_raw(&big).unwrap();
-    let heroes = Live::at_start(&big, &art, 0).heroes;
+    let heroes = Live::at_start(&big, &art, 0, &towns()).heroes;
     assert_eq!(
         heroes
             .iter()
@@ -144,7 +154,7 @@ fn the_owners_every_body_gives() {
     let art = MapArt::from_raw(&raw).unwrap();
     for (body, owner) in bodies {
         raw.objects[1].body = body.clone();
-        let live = Live::at_start(&raw, &art, 0);
+        let live = Live::at_start(&raw, &art, 0, &towns());
         assert_eq!(live.objects[1].owner, owner, "{body:?}");
     }
 }
@@ -183,6 +193,7 @@ fn the_moment_at_a_time() {
         Moment::at(1000, 200, 180),
         Moment {
             cycles: 5,
+            river_cycles: 5,
             frames: 5
         }
     );
@@ -190,10 +201,79 @@ fn the_moment_at_a_time() {
         Moment::at(1079, 200, 180),
         Moment {
             cycles: 5,
+            river_cycles: 5,
             frames: 5
         }
     );
     assert_eq!(Moment::at(0, 200, 180), Moment::default());
     // A step of 0 never comes.
     assert_eq!(Moment::at(5000, 0, 0), Moment::default());
+}
+
+#[test]
+fn every_town_its_picture_by_its_buildings_at_the_start() {
+    use h3_map::model::TownBody;
+    // The art map's Blue town of Castle (its template `avccast0.def`) has the standard set with a
+    // Fort: the fort's picture.
+    let mut raw = raw(&map());
+    let art = MapArt::from_raw(&raw).unwrap();
+    let town = 2;
+    let drawn = |raw: &RawMap| {
+        Live::at_start(raw, &art, 0, &towns()).objects[town]
+            .drawn
+            .clone()
+    };
+    assert_eq!(
+        drawn(&raw),
+        Some(Drawn {
+            def: "AVCcasx0.def".into(),
+            own: None,
+            class: TOWN_CLASS,
+            subclass: 0,
+        })
+    );
+    let Body::Town(body) = &raw.objects[town].body else {
+        panic!("the art map's third object is its town");
+    };
+    let body: TownBody = (**body).clone();
+    let with = |buildings: Buildings| {
+        Body::Town(alloc::boxed::Box::new(TownBody {
+            buildings,
+            ..body.clone()
+        }))
+    };
+    let custom = |byte: u8| Buildings::Custom {
+        built: [byte, 0, 0, 0, 0, 0],
+        forbidden: [0; 6],
+    };
+    // Without a Fort: the village's picture, the template's own (no copy drawn differently).
+    raw.objects[town].body = with(Buildings::Standard { fort: false });
+    assert_eq!(drawn(&raw), None);
+    // The map's buildings 3, 4, 5 (Fort, Citadel, Castle): the fort's; 2 (Capitol): the
+    // capitol's; the rest (Town Hall, 0) the village's.
+    for (byte, def) in [
+        (1 << 3, Some("AVCcasx0.def")),
+        (1 << 4, Some("AVCcasx0.def")),
+        (1 << 5, Some("AVCcasx0.def")),
+        (1 << 2 | 1 << 3, Some("AVCcasz0.def")),
+        (1, None),
+    ] {
+        raw.objects[town].body = with(custom(byte));
+        assert_eq!(
+            drawn(&raw).map(|d| d.def),
+            def.map(String::from),
+            "{byte:#x}"
+        );
+    }
+    // A random town (class 77) waits for its draw; a body that is not a town's draws none.
+    let mut random = raw.clone();
+    random.templates[usize::try_from(random.objects[town].template).unwrap()].class = 77;
+    random.objects[town].body = with(custom(1 << 3));
+    let art77 = MapArt::from_raw(&random).unwrap();
+    assert_eq!(
+        Live::at_start(&random, &art77, 0, &towns()).objects[town].drawn,
+        None
+    );
+    raw.objects[town].body = Body::None;
+    assert_eq!(drawn(&raw), None);
 }

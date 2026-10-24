@@ -72,7 +72,12 @@ left open whether objects are a closed enum or data-driven primitives. No logic 
    last stack never merges away nor moves to an empty slot (it may swap). The armies are the
    hero's own, the two heroes of a meeting, or the hero and the group of an army dialog (a small
    army of the decision, seven slots, no hero, none of whose stacks is protected); counts keep
-   their full width (A-15 fixed). The formation and the flag change at no cost. The adventure
+   their full width (A-15 fixed). A stack's count never passes the ruleset's cap (an adventure
+   parameter, 1 000 000; E08 decisions 109, 114): a merge past it is refused, a split's count
+   keeps both stacks within it, a group that joins or is raised takes a free slot when its
+   creature's stack cannot take it whole, else finds no room (E08 decision 115); a setup's
+   stacks and groups above it are invalid, and later rules that add creatures keep it. The
+   formation and the flag change at no cost. The adventure
    validates and applies these commands; the game routes them and checks the turn and the
    decision (ADR-0017 points 1 and 6).
 4. **Map objects are closed behaviour kinds with data parameters** (as abilities, ADR-0012;
@@ -284,3 +289,7 @@ left open whether objects are a closed enum or data-driven primitives. No logic 
   stack, the split's bounds with A-16 by E08 decision 98, A-15 fixed); an own hero met by a step
   toward it, a join without room offered and held as the army dialog; management, meetings and
   the group's army told to the owner alone. Drafted in E08 T44b (#412; survey `E08-army.md` §1–§4).
+- 2026-10-24 (E08 T50's shared part; the user at T50's start, E08 decisions 109, 114, 115):
+  point 3: a stack's count cap, a ruleset parameter of 1 000 000 (the original's 16-bit limits
+  do not bind): merges refused past it, the split's count within it, a joining or raised group
+  to a free slot else no room, setups above it invalid.

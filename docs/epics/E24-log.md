@@ -368,3 +368,111 @@ One session, the user present at its start; branch `map-client/e24-t4a`.
   `Draw::Piece`'s group; the boats' flags of other colours not captured.
 - **Questions:** none (the shadow pass's owner check differs from the body's only for a hero
   without an owner, which the map never has).
+
+### M1 T5b1 — the owners' colours, the towns' pictures, the random dwellings (2026-10-24)
+
+- **The seam** (asked): T5b split into T5b1 (the owners: colours, towns by their buildings, random
+  dwellings) and T5b2 (the path's arrows, the explored tiles), the user's choice of three.
+- **Session:** no GitHub in this session (no linked account in the cloud, no credentials on the
+  user's computer); the user chose to work without it: the sandbox cloned from a bundle of the
+  user's repo (its `origin/master` held #444's merge), the branch handed back as a bundle for the
+  user to push and open the pull request.
+- **Read** (§2.9): tile_object_owner 0x40FD20 and object_entrance_tile 0x4FEC30 (read now), the
+  passes' colour (game_palette16's +0x9C + 2 × owner: entry 64 + owner, 63 none; §2.2 said 78,
+  forgetting the palette's +0x1C header), the passes' jump tables on the drawn class, the
+  template's class as loaded (map_template_read 0x503780 through object_class_values 0x63A6E4:
+  219 as 33, 220 as 53, decorations as others; found when the original's memory showed the
+  vertical garrisons as class 33), the towns' pictures (0x4C9990's town branch, the three tables,
+  setup_towns 0x4CAA70 redrawing every town after town_buildings_setup 0x5C08C0, the map's
+  building bits 0x6888C0), the random dwellings (random_dwellings_resolve 0x502B60 and
+  object_set_class_template 0x505F20, from map_objects_place_all before the placement).
+- **Built** (`clients/crates/h3-map-view`): the tables' `[map.owners]` (`OwnerArt::entry`) and
+  `[map.towns]` (`TownArt::picture`, `FACTIONS`, the building ids); `Draw::Piece`'s `flag`,
+  `Scene::flags`, the batch naming the palette, the compose's flag colour (0 none);
+  `objects::{class, entrance, flag_owner}` (MCL-Q4's tile (0, 0) with `Bugs::Original`);
+  `Live::at_start` gives the towns their pictures (`built_at_start`); the situations' `towns`
+  (`TownSpec`, `TownBuilt`) and objects' `owner`; `render --live` reads `owners`, checks the
+  towns' pictures, takes a random dwelling's template and moved anchor from memory, keeps an own
+  picture for artifacts only; the gate lists the owners' palette, the pictures with flag pixels
+  by class, the towns' pictures with each town template's masks (none loses a pixel) and the
+  shipped maps' owned objects without an entrance on the map (none). 100 % covered.
+- **The harness** (common path, additive): `h3mem.Mem.map_owners` (the original's walk and
+  records); `h3map.py still` writes `owners` into `live.toml`.
+- **Captures:** `owners-objects`, `owners-random-dwellings` (run until an Angel Portal came: its
+  anchor one right of the map's, exact), `towns-0`, `-1`, `-2`, `towns-random`, `shipped-hoard`,
+  `shipped-too-many-monsters`: each exact on its first run. The full set (35) after: every one as
+  recorded, three shown again for the palettes' half tick (the inbox's T6 item).
+- **Agent decisions (provisional, on the review list):** the tables' formats, the scene's flag as
+  a palette entry, the owner per object, the situations' formats, the heroes outside the view
+  making the owning colours players, `own` for artifacts only.
+- **Questions:** MCL-Q4 (an owned object without an entrance on the map takes tile (0, 0)'s
+  owner; none in the shipped maps): answered by the user at the task's end, (a) as built (the
+  client the object's own, the comparisons the original's).
+
+### M1 T5b2 — the path's arrows and the explored tiles (2026-10-24)
+
+- **The seam:** T5b2 taken whole (the path's arrows, the explored tiles from memory, and the
+  boats' flags of other colours, which proved cheap by a staging write).
+- **Session:** GitHub reachable from the cloud session again (the repository attached); the
+  starting point's clients check (master `d0d7bb8`, its clients code not verified since E08
+  T49a) passed in full in a worktree.
+- **Read** (§2.10): view_path_shadows_pass 0x411F50 and view_path_arrows_pass 0x4120B0 in detail:
+  the u16 per tile at the manager's +0x48 by (level × height + y) × width + x (`structs.toml`'s
+  `path_arrows` now read), skipped at 0, `adag.def` frame a − 1, pass 6 the shadows alone
+  (0x47BFA0 into 0x47E820), pass 8 the pixels (0x47BF50), the tile passes' clip. `adag.def`: 50
+  frames, 32 × 32, encoding 2. How the arrows are chosen is M2's.
+- **Built** (`clients/crates/h3-map-view`): the tables' `[map] path` (`PATH_FRAMES`, the gate
+  checks it); `live::Arrow`, `Live::path`; `Pass::PathShadow` and `Pass::Path` in the scene
+  (between the shadows and the bodies, between the bodies and the shroud), the compose's
+  shadows-alone drawer for pass 6; the situations' hero `path` (Red's, one) and boat `colour`;
+  `render --live` reads `explored` and `path`. 100 % covered.
+- **The harness** (common path, additive): `h3mem.Mem.path_arrows`, `explored_rows`,
+  `write_boat_colour`; `h3map.py still` sets the view by `set_view`, shows a hero's path
+  (`show_path`), leaves a shipped map's start explored with `explored = "start"`, writes the
+  boats' colours, and puts `explored` and `path` into every `live.toml`.
+- **Captures:** `path-objects` (D9: the arrows over the decorations' upper parts at (8, 3) to
+  (11, 3), their shadows under them, the first arrow over the hero; arrows 8, 16, 17, 25, 26,
+  41), `path-edge` (cut at the view's columns 18 and 0), `start-dwarven-tunnels`, `start-hoard`
+  (an explored circle at the map's right column beside the edge), `boats-colours` (Blue to Pink,
+  the three types): each exact on its first run. The full set (40) after: every one as recorded,
+  `shipped-good-witch` shown again for the palettes' half tick (the inbox's T6 item).
+- **Agent decisions (provisional, on the review list):** the arrows from memory as frame numbers,
+  the two passes, `live.toml`'s `explored` and `path` always written, the situations' `path`,
+  `colour` and `explored = "start"`, the boats' colours staged.
+- **Questions:** none (no oddity of the original found).
+
+### M1 T6a — the capture set's digests and the half tick (2026-10-24)
+
+- **The seam:** T6 split with the user into T6a (the set's digests, the inbox's half tick, the
+  whole set captured) and T6b (the fresh reviewer agent, the review list, the checkpoint).
+- **Session:** GitHub reachable from the cloud session (the repository attached); the starting
+  point's clients check (master `f89aa89`, its clients code not verified since E08 T49b) passed
+  in full, its coverage step built with this task's first change (the rivers' step, below) already
+  in place.
+- **Read** (§1.6): adventure_manager_start 0x406FD0 loads the DEFs kind by kind with a progress
+  step between the kinds (load_progress_step 0x4ED2A0, read now: the loading bar's count, its
+  pieces, the bar's rectangle shown through screen_show_rect 0x602BD0, read now: the tick before
+  and after); the tick (0x4ED490) skips a DEF field still empty. A tick due at the step after the
+  terrains rotates water and lava alone, and the rivers trail by one step for the whole game;
+  within a kind no step, so the terrains share one k and the rivers one.
+- **Built:** `h3_map_view::live::Moment::river_cycles` (the scene's rivers drawn with it;
+  `Moment::at` keeps it with `cycles`), `render --live`'s `river_cycles`, `--cycles` setting
+  both. 100 % covered.
+- **The harness** (common path, additive): `h3map.py`'s `cycle_step` reads each kind's step
+  (refusing any difference but the rivers one behind) and `still` writes `river_cycles`; `set`
+  keeps each capture's `live.toml` as recorded or new in `map/situations/kept/<id>.toml`; `drawn
+  [--only] [--record]` draws ours from the kept ones and compares the digests of the pixels
+  outside the masks with `kept/drawn.txt` (`h3drive.png_digest`); the runbook's rule for the map.
+- **Captures:** the whole set (40), every one as recorded on its first run (one game started again
+  after the tavern rumour's crash), none with the rivers behind; then `rivers-mud` and
+  `rivers-lava` shown again and again until the rivers trailed three times: 56 stills, the
+  rivers a step behind in three (`rivers-lava` twice, `rivers-mud` once), every one exact (in
+  this sandbox about one game in 30, T4b's about one in seven: the load's speed). Drawn with
+  the rivers in step, the first such still of `rivers-lava` differs in 3 655 pixels of its lava
+  river; with the rivers' own step it is exact. `drawn --record` (40), `drawn`: every one the
+  same.
+- **Agent decisions (provisional, on the review list):** the kept live parts as copies of
+  `live.toml`, one digest per situation, `drawn` in `h3map.py`, `river_cycles`.
+- **Questions:** MCL-Q5 (the rivers' cycle a step behind the terrains' for a whole game, about one
+  game in seven): answered by the user in the task, (a) as built (the viewer in step, the
+  comparisons the original's two steps).

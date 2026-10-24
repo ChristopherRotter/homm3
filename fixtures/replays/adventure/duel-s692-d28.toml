@@ -772,36 +772,36 @@ commands = [
     "1 end-turn",
 ]
 checkpoints = [
-    "0x699bc88cb91c038e",
-    "0x3d1cb8bca27936eb",
-    "0x02f57842a8a3f1ef",
-    "0xbc1e0bf642d8e4fb",
-    "0xadc22ca608642c57",
-    "0x325b48ac42deedb6",
-    "0xd33b2b9eac5a4cc3",
-    "0x42a580202e4e0d79",
-    "0x5eabe23f24c54d1c",
-    "0x6a5ca772a0aab163",
-    "0xd757067467b14a2a",
-    "0x7a5fb101a285a98c",
-    "0xe4b519c2ea687535",
-    "0x1c6dfdaaef96d200",
-    "0xca8b679c7e7a4c9c",
-    "0xa27a448f7501e1c5",
-    "0x4871ad6354a32258",
-    "0xd27cd4d553e2ab0b",
-    "0xb4141e299ade6fe3",
-    "0xbab70279a72936b1",
-    "0x079d1f6beb5d847c",
-    "0xc20206a42e8085e8",
-    "0xf34b1bf77f9335e3",
-    "0x131bfaac0f4ae12e",
-    "0x0f92bf88495f3695",
-    "0x992c6eea8bae3ce2",
-    "0x069879e3e3bb2e3d",
-    "0xdf9382923d1c1979",
-    "0x9b122fd1fe03176f",
-    "0xe6d816147b3ae9d6",
+    "0xec66aa51bdee3117",
+    "0x56deed6538db0063",
+    "0x67bfb17ec29c1d43",
+    "0x3813bba0253bc2bf",
+    "0x3e0c47d57e034b57",
+    "0x2fc721235f699aa2",
+    "0xd9e42b407014cfbb",
+    "0xe4125f654c854645",
+    "0x6961a7e06412d804",
+    "0x6b6e8d75cfc24b8b",
+    "0xfc4637a57aebe79a",
+    "0xa3368f15ee8661c4",
+    "0xca22ad4e3ae4bb8d",
+    "0xdf1ea2b6d9418cec",
+    "0xb2828b293b5074b0",
+    "0xfbd3fd4f3d8b716d",
+    "0xc56d7eb727523c5a",
+    "0xf8068218ce1f5811",
+    "0xdcb9bb8761bbbfa6",
+    "0x1dd7bc21c544b108",
+    "0x0270688d694acbe9",
+    "0xb948999ce76623f5",
+    "0x81fd7a89c32da7a9",
+    "0xb643dc57565e38a4",
+    "0x503243ce82ea56c7",
+    "0x46c1037fa06663ec",
+    "0x35bc1c45fa93cf6b",
+    "0x999356ffd68795c7",
+    "0xe48ba39ae4a80d1d",
+    "0xc03a9560fe063f90",
 ]
 
 [replay]
@@ -825,20 +825,20 @@ packs = [
 ]
 profile = "base:faithful"
 ruleset_hash = "0x0c7e01b4dffeba0c"
-adventure_ruleset_hash = "0x483fb763b1a0ebbf"
+adventure_ruleset_hash = "0xf9dc9fcea4630571"
 rng = "xoshiro256starstar+splitmix64"
 rng_version = 1
 hash = "fnv1a64-le"
 hash_version = 1
-game_state_hash_version = 11
-adventure_state_hash_version = 10
+game_state_hash_version = 12
+adventure_state_hash_version = 11
 checkpoint_every = 25
 
 [map]
 path = "fixtures/maps/e08-duel-36.h3m"
-hash = "0xb519ff4e974286e9"
-import_version = 8
+hash = "0x37d348cff2785a01"
+import_version = 10
 
 [result]
 day = 29
-final_hash = "0x8cc30dec2000d661"
+final_hash = "0x3092817da9ed0f88"

@@ -614,23 +614,42 @@ fn details(
     })
 }
 
-/// A hero's stored artifacts: every worn slot's artifact (its position is not kept: positions of
-/// one slot are interchangeable, ADR-0013) and the backpack in order.
+/// A hero's stored artifacts (since v9, E08 T49a): each worn entry's artifact equipped at its
+/// position (ADR-0013 point 1: the map's entry `i` is [`codes::WORN`]'s slot and rank, the
+/// content's position the rank-th of that slot's in `h3_game::positions`), in the map's order and
+/// only where the position takes it (`h3_game::equip`: empty, of the artifact's slot, the locks
+/// fitting), else left out: the original's loader equips entry by entry and drops what its
+/// position refuses (`placed_hero_setup` 0x4D8D63 through `hero_equip_artifact` 0x4E2A00 and
+/// `hero_can_place_artifact` 0x4E2550; the fifth misc refused before SoD), as VCMI's
+/// (`loadArtifactToSlot`; the Tutorial's second hero's Shackles of War on the left hand). Since
+/// v10 (E08 T49b) an equipped Titan's Thunder adds a Spell Book on the empty book position, as
+/// the original's equip does (0x4E2A64, HER-ART-007): the map's own book entry, later in its
+/// order, then finds the position taken. The backpack in order.
 fn hero_artifacts(
     rules: &GameRuleset,
     stored: &Artifacts,
 ) -> Result<HeroArtifactsSetup, ImportError> {
-    let list = |codes: &[Option<u16>]| {
-        codes
-            .iter()
-            .flatten()
-            .map(|&code| artifact(rules, code).map(Into::into))
-            .collect::<Result<Vec<_>, ImportError>>()
-    };
-    Ok(HeroArtifactsSetup {
-        worn: list(&stored.worn)?,
-        backpack: list(&stored.backpack)?,
-    })
+    let core = rules.core();
+    let positions = h3_game::positions(core);
+    let mut worn = vec![None; positions.len()];
+    for (&(key, rank), code) in codes::WORN.iter().zip(&stored.worn) {
+        let Some(&code) = code.as_ref() else { continue };
+        let id = artifact(rules, code)?;
+        let slot = core.artifact_slot_by_key(key);
+        let at = (0..positions.len())
+            .filter(|&p| slot == positions.get(p).copied())
+            .nth(rank);
+        if let Some(at) = at {
+            h3_game::equip(&mut worn, core, id.into(), h3_game::Position(at));
+        }
+    }
+    let backpack = stored
+        .backpack
+        .iter()
+        .flatten()
+        .map(|&code| artifact(rules, code).map(Into::into))
+        .collect::<Result<Vec<_>, ImportError>>()?;
+    Ok(HeroArtifactsSetup { worn, backpack })
 }
 
 /// The spells of a stored set: bit `i` of byte `i / 8` is spell `i`.

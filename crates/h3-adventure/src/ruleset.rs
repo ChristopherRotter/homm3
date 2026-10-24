@@ -18,7 +18,7 @@ use alloc::format;
 use alloc::string::String;
 use alloc::vec::Vec;
 use core::fmt;
-use core::num::{NonZeroU8, NonZeroU16};
+use core::num::{NonZeroU8, NonZeroU16, NonZeroU32};
 
 use h3_content::{ContentKey, CreatureTypeId, PackManifest, ResourceId, Ruleset, TerrainId};
 use h3_kernel::hash::hash_of;
@@ -132,6 +132,11 @@ pub struct AdventureParamsDef {
     pub max_players: NonZeroU8,
     /// The slots of a hero's army.
     pub army_slots: NonZeroU8,
+    /// The most creatures a stack holds (ADV-ARM-007, E08 decisions 109, 114): a merge past it is
+    /// refused, a split keeps both stacks within it, a joining or raised group its creature's
+    /// stack cannot take whole goes to a free slot. At least [`MAX_MONSTER_COUNT`], so that any
+    /// wandering monster's group fits a slot.
+    pub max_stack_count: NonZeroU32,
     /// The chance in percent that a hero's starting army gets the stack of its second, third, …
     /// starting slot; the first slot's stack always comes, slots past the list never
     /// (GAM-SET-001). Each at most 100.
@@ -321,6 +326,7 @@ pub struct AdventureParams {
     max_levels: NonZeroU8,
     max_players: NonZeroU8,
     army_slots: NonZeroU8,
+    max_stack_count: NonZeroU32,
     starting_stack_chances: Vec<u8>,
     battle: Option<BattleTerrains>,
     monsters: Option<MonsterParams>,
@@ -381,6 +387,11 @@ impl AdventureParams {
     /// The slots of a hero's army.
     pub const fn army_slots(&self) -> u8 {
         self.army_slots.get()
+    }
+
+    /// The most creatures a stack holds (ADV-ARM-007).
+    pub const fn max_stack_count(&self) -> u32 {
+        self.max_stack_count.get()
     }
 
     /// The chance in percent of each starting slot after the first (GAM-SET-001).
@@ -756,8 +767,8 @@ impl AdventureRuleset {
 }
 
 impl CanonicalHash for AdventureRuleset {
-    /// Encoding v10 (E08 T40; v1 was T4's, v2 T5a's, v3 T6b's, v4 T12a's, v5 T13a's, v6 T19a's,
-    /// v7 T20a2a's, v8 T20b1's, v9 T29's): version; the terrains in the
+    /// Encoding v11 (E08 T50; v1 was T4's, v2 T5a's, v3 T6b's, v4 T12a's, v5 T13a's, v6 T19a's,
+    /// v7 T20a2a's, v8 T20b1's, v9 T29's, v10 T40's): version; the terrains in the
     /// core's order (key, passage: 0 land, 1 water with the cost, 2 impassable; since v9 the
     /// costs by Pathfinding level, 0 for none, else 1 and the three costs); the road kinds
     /// (key, name, cost); the river kinds (key, name); the parameters (native cost, the land
@@ -772,7 +783,8 @@ impl CanonicalHash for AdventureRuleset {
     /// random monster becomes, as length and handles in order; since v10 (E08 T40) the fly and
     /// the water-walk prices (four each) and the terrain walkers as length and each one's
     /// creature, terrain and the terrain it counts as (a ground's `no_native` in
-    /// [`ObjectType`]'s). The core's hash is not part of it: replays record both.
+    /// [`ObjectType`]'s); since v11 (E08 T50) a stack's most creatures after the army slots. The
+    /// core's hash is not part of it: replays record both.
     fn hash_into(&self, h: &mut StateHasher) {
         h.write_u32(ADVENTURE_RULESET_HASH_VERSION);
         h.write_len(self.terrains.len());
@@ -805,6 +817,7 @@ impl CanonicalHash for AdventureRuleset {
         h.write_u8(self.params.max_levels.get());
         h.write_u8(self.params.max_players.get());
         h.write_u8(self.params.army_slots.get());
+        h.write_u32(self.params.max_stack_count.get());
         self.params.starting_stack_chances.hash_into(h);
         h.write_len(self.object_types.len());
         for ty in &self.object_types {
@@ -1094,6 +1107,8 @@ fn validate_params(
         Some("a starting_stack_chances entry is above 100")
     } else if def.max_players.get() > MAX_PLAYERS {
         Some("max_players is above MAX_PLAYERS")
+    } else if def.max_stack_count.get() < MAX_MONSTER_COUNT {
+        Some("max_stack_count is below MAX_MONSTER_COUNT")
     } else if let Some(monsters) = &def.monsters {
         check_monster_params(monsters)
     } else {
@@ -1109,6 +1124,7 @@ fn validate_params(
             max_levels: def.max_levels,
             max_players: def.max_players,
             army_slots: def.army_slots,
+            max_stack_count: def.max_stack_count,
             starting_stack_chances: def.starting_stack_chances,
             battle,
             monsters: def.monsters.zip(price).map(|(m, price)| MonsterParams {

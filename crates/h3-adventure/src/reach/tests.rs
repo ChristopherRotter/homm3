@@ -281,7 +281,8 @@ proptest! {
     /// along reported paths: every reported path is accepted and ends with the reported points,
     /// on its last tile (a chart's, a tower's or a tent's entered, E08 T14a, T15a; a gate's
     /// crossed or stopped on by a holder of its key, T15b) or, for a pile's, a guard's or (without
-    /// the key) a gate's visit or another player's hero's (E08 T19a), on the tile before; a
+    /// the key) a gate's visit or another hero's (a battle, E08 T19a; a meeting, T50), on the
+    /// tile before; a
     /// monster's tile never, a tile it guards as the path's last (E08 T20a2b); one event per step
     /// and at most one for the
     /// visit; the tile of an accepted one-step move is reported with at least the points it
@@ -349,8 +350,11 @@ proptest! {
                     .count();
                 // A visit from the tile before steps one tile less; a gate the owner holds the
                 // key of is no visit.
-                let enemy = state.heroes().iter().any(|h| h.pos == pos && h.owner != RED);
-                let visit = enemy
+                let other = state
+                    .heroes()
+                    .iter()
+                    .any(|h| h.pos == pos && h.id != HeroId::new(1));
+                let visit = other
                     || state
                         .visit_at(&rules.1, RED, pos)
                         .is_some_and(|v| !v.pass && v.mode == crate::ruleset::Visit::Neighbour);

@@ -21,7 +21,7 @@ use alloc::vec::Vec;
 use h3_map::RawMap;
 use h3_map::writer::{
     AnyObject, Extras, GivenTile, Hero, Map, MapObject, ObjectTemplate, Patch, Player, RiverKind,
-    Road, RoadKind, Terrain,
+    Road, RoadKind, Terrain, Town, TownBuildings,
 };
 use serde::Deserialize;
 
@@ -48,6 +48,9 @@ pub struct Situation {
     /// Objects given one by one, after the copies' (in this order: the map's order).
     #[serde(default)]
     pub objects: Vec<ObjectSpec>,
+    /// The towns (E24 M1 T5b1), after the heroes and before the objects in the map's order.
+    #[serde(default)]
+    pub towns: Vec<TownSpec>,
     /// The heroes (E24 M1 T5a), the map's first objects in this order: Red's (the human player)
     /// and another colour's at least, at most eight of a colour; every colour with a hero a
     /// player.
@@ -179,7 +182,66 @@ pub struct ObjectSpec {
     /// Its anchor (the bottom-right corner of its picture), which may lie past the map's right
     /// and bottom edges (the writer's limits).
     pub at: [u8; 2],
+    /// Its owner's colour (0 Red … 7 Pink; E24 M1 T5b1), for a class whose body names one (the
+    /// writer's `AnyObject`): a colour with a hero, which makes it a player. None is neutral.
+    #[serde(default)]
+    pub owner: Option<u8>,
 }
+
+/// A town (E24 M1 T5b1): its faction's template (`Objects.txt`'s first of class 98 and the
+/// faction), its owner and buildings.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct TownSpec {
+    /// Its anchor; its entrance is two columns left of it.
+    pub at: [u8; 2],
+    /// Its faction (0 Castle … 8 Conflux).
+    pub faction: u32,
+    /// Its owner's colour (a colour with a hero), none for a neutral town.
+    #[serde(default)]
+    pub owner: Option<u8>,
+    /// Its buildings, which give its picture (design §2.9).
+    pub buildings: TownBuilt,
+}
+
+/// A town's buildings as a situation names them: the editor's standard set without or with a
+/// Fort, or chosen ones up to a Citadel, a Castle or a Capitol (with the Town and City Halls).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum TownBuilt {
+    /// The standard set without a Fort.
+    Village,
+    /// The standard set with a Fort.
+    Fort,
+    /// A Fort and a Citadel.
+    Citadel,
+    /// A Fort, a Citadel and a Castle.
+    Castle,
+    /// The Town, City Hall and Capitol, a Fort, a Citadel and a Castle.
+    Capitol,
+}
+
+impl TownBuilt {
+    /// The writer's buildings (the map's bits: 0 Town Hall, 1 City Hall, 2 Capitol, 3 Fort,
+    /// 4 Citadel, 5 Castle; `docs/formats/h3m.md`).
+    #[must_use]
+    pub fn writer(self) -> TownBuildings {
+        let custom = |byte: u8| TownBuildings::Custom {
+            built: [byte, 0, 0, 0, 0, 0],
+            forbidden: [0; 6],
+        };
+        match self {
+            Self::Village => TownBuildings::Standard { fort: false },
+            Self::Fort => TownBuildings::Standard { fort: true },
+            Self::Citadel => custom(0b1_1000),
+            Self::Castle => custom(0b11_1000),
+            Self::Capitol => custom(0b11_1111),
+        }
+    }
+}
+
+/// The towns' class.
+const TOWN_CLASS: u32 = 98;
 
 /// A hero (E24 M1 T5a).
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
@@ -202,6 +264,11 @@ pub struct HeroSpec {
     /// design §2.8): a new game faces every hero right (2).
     #[serde(default)]
     pub facing: Option<u8>,
+    /// The tile its path leads to, shown by the harness after the view is set: the hero selected
+    /// and the tile clicked once (E24 M1 T5b2; design §2.10, passes 6 and 8). Red's heroes only,
+    /// one at most (the selected hero's path is the one shown).
+    #[serde(default)]
+    pub path: Option<[u8; 2]>,
 }
 
 /// A boat without a hero (E24 M1 T5a).
@@ -215,6 +282,11 @@ pub struct BoatSpec {
     /// Where the harness turns it before the still (0–7, the boat record's +0x1B; design §2.8).
     #[serde(default)]
     pub facing: Option<u8>,
+    /// The flag's colour the harness writes into its record once a Red hero boarded it (0–7, the
+    /// boat record's +0x1C; E24 M1 T5b2): a still's staging, as the facings (boarding gives the
+    /// boat its hero's owner, design §2.8), so that the boats' flags of every colour are drawn.
+    #[serde(default)]
+    pub colour: Option<u8>,
 }
 
 /// The boats' class.
@@ -280,20 +352,20 @@ impl Situation {
     /// game's templates).
     #[must_use]
     pub fn needs_templates(&self) -> bool {
-        !self.objects.is_empty() || !self.boats.is_empty()
+        !self.objects.is_empty() || !self.boats.is_empty() || !self.towns.is_empty()
     }
 
     /// The map, its given tiles and its objects, the copies read from `sources` (the shipped maps
     /// by file name; [`Situation::sources`]), the given objects' and boats' templates from
     /// `templates` (the game's `Objects.txt`, in its order). Every colour with a hero is a player
     /// that may be human or computer (the scenario list makes Red the human one); the heroes come
-    /// first, then the objects, then the boats.
+    /// first, then the towns, the objects, the boats.
     ///
     /// # Errors
     /// A source missing, a copied rectangle outside its map or the situation's, a code with no
-    /// name, a given object's or boat's template not among `templates`; no hero of Red's or of
+    /// name, a given object's, town's or boat's template not among `templates`; no hero of Red's or of
     /// another colour, an owner past 7, more than eight heroes of a colour or of a class, a
-    /// facing past 7, a walk of a hero not Red's.
+    /// facing or a boat's colour past 7, a walk or a path of a hero not Red's, a second path.
     pub fn build(
         &self,
         sources: &BTreeMap<String, RawMap>,
@@ -325,7 +397,7 @@ impl Situation {
                 level: 0,
                 tile: (o.at[0], o.at[1]),
                 template: template.clone(),
-                owner: None,
+                owner: o.owner,
             });
         }
         for t in &self.tiles {
@@ -341,7 +413,23 @@ impl Situation {
             given.insert(tile.tile, tile);
         }
         objects.extend(self.boats(templates)?);
-        let (players, heroes) = self.heroes()?;
+        let (players, mut heroes) = self.heroes()?;
+        for t in &self.towns {
+            let template = templates
+                .iter()
+                .find(|o| (o.class, o.subclass) == (TOWN_CLASS, t.faction))
+                .ok_or_else(|| {
+                    format!("town at {:?}: no template of faction {}", t.at, t.faction)
+                })?;
+            heroes.push(MapObject::Town(Town {
+                tile: (t.at[0], t.at[1]),
+                template: template.clone(),
+                owner: t.owner,
+                garrison: None,
+                tight_formation: false,
+                buildings: t.buildings.writer(),
+            }));
+        }
         let map = Map {
             name: "situation".into(),
             description: String::new(),
@@ -385,6 +473,7 @@ impl Situation {
         let mut players: [Option<Player>; 8] = Default::default();
         let mut of_owner = [0usize; 8];
         let mut of_class = [0usize; 18];
+        let mut paths = None;
         let mut heroes = Vec::new();
         for h in &self.heroes {
             let facing = h.facing.unwrap_or(0);
@@ -395,8 +484,14 @@ impl Situation {
                     h.at, h.owner
                 ));
             };
-            if h.owner != 0 && !h.walk.is_empty() {
-                return Err(format!("hero at {:?}: only Red's heroes walk", h.at));
+            if h.owner != 0 && (!h.walk.is_empty() || h.path.is_some()) {
+                return Err(format!(
+                    "hero at {:?}: only Red's heroes walk or show a path",
+                    h.at
+                ));
+            }
+            if h.path.is_some() && paths.replace(h.at).is_some() {
+                return Err(format!("hero at {:?}: a second path shown", h.at));
             }
             *count += 1;
             let nth = of_class.get(usize::from(h.class)).copied().unwrap_or(0);
@@ -443,10 +538,10 @@ impl Situation {
                 let template = templates
                     .iter()
                     .find(|t| (t.class, t.subclass) == (BOAT_CLASS, u32::from(b.kind)))
-                    .filter(|_| b.facing.unwrap_or(0) < 8)
+                    .filter(|_| b.facing.unwrap_or(0) < 8 && b.colour.unwrap_or(0) < 8)
                     .ok_or_else(|| {
                         format!(
-                            "boat at {:?}: no template of type {} or a facing past 7",
+                            "boat at {:?}: no template of type {} or a facing or colour past 7",
                             b.at, b.kind
                         )
                     })?;

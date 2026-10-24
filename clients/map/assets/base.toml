@@ -12,6 +12,7 @@ depends = []
 
 [map]
 edge = "edg.def"
+path = "adag.def"
 road_offset = 16
 cycle_ms = 200
 frame_ms = 180
@@ -61,6 +62,29 @@ boat_flags = [
     "abf03b.def", "abf03p.def", "abf03w.def", "abf03k.def",
 ]
 groups = [0, 1, 2, 3, 4, 3, 2, 1]
+
+# The owned objects' colours (E24 M1 T5b1; design §2.9): the bodies of these classes (the
+# dwellings 17 and 20, a garrison 33, a lighthouse 42, a mine 53, the towns 77 and 98, a shipyard
+# 87: the view passes' jump tables 0x41153C and 0x412470's; and the map's classes the game loads
+# as two of them, the vertical garrison 219 as 33 and the AB mine 220 as 53: object_class_values
+# 0x63A6E4) draw their flag pixels in game.pal's entry 63 without an owner, 64 + the owner's
+# colour else (game_palette16's +0x9C, tile_object_owner 0x40FD20); every other class's are
+# skipped.
+[map.owners]
+palette = "game.pal"
+neutral = 63
+classes = [17, 20, 33, 42, 53, 77, 87, 98, 219, 220]
+
+# The towns' pictures by faction (0 Castle ... 8 Conflux) and buildings (object_template_redraw
+# 0x4C9990 at every new game, after the town's buildings: 0x677A0C without a Fort, Citadel or
+# Castle, 0x677A30 with one, 0x677A54 with a Capitol).
+[map.towns]
+village = ["AVCcast0.def", "AVCramp0.def", "AVCtowr0.def", "AVCinft0.def", "AVCnecr0.def",
+           "AVCdung0.def", "AVCstro0.def", "AVCftrt0.def", "AVChfor0.def"]
+fort = ["AVCcasx0.def", "AVCramx0.def", "AVCtowx0.def", "AVCinfx0.def", "AVCnecx0.def",
+        "AVCdunx0.def", "AVCstrx0.def", "AVCftrx0.def", "AVChforx.def"]
+capitol = ["AVCcasz0.def", "AVCramz0.def", "AVCtowz0.def", "AVCinfz0.def", "AVCnecz0.def",
+           "AVCdunz0.def", "AVCstrz0.def", "AVCforz0.def", "AVChforz.def"]
 
 # The terrains by the .h3m's codes (the packs' [[terrain]] in this order); `cycles`: the palette
 # ranges the tick rotates (design §1.6).

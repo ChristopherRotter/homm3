@@ -180,6 +180,8 @@ pub struct OwnHeroView {
     pub movement: u32,
     /// Its army's formation in battle (E08 T18b).
     pub formation: Formation,
+    /// Its tactics flag (ADV-ARM-006, E08 T50).
+    pub tactics: bool,
 }
 
 impl AdventureState {
@@ -263,6 +265,7 @@ impl AdventureState {
                     army: hero.army.clone(),
                     movement: hero.movement,
                     formation: hero.formation,
+                    tactics: hero.tactics,
                 }),
             })
             .collect();

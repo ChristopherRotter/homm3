@@ -46,7 +46,7 @@ fn details(
         offered: Default::default(),
         primary: [0, 0, power, knowledge],
         skills,
-        worn: vec![r.artifact_by_key("base:spell_book").unwrap().into()],
+        worn: h3_heroes::wearing(r, &[r.artifact_by_key("base:spell_book").unwrap().into()]),
         backpack: vec![],
         spells: spells.iter().map(|k| spell(r, k)).collect(),
         mana: u16::from(knowledge) * 10,

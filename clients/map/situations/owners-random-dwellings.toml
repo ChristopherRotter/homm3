@@ -1,0 +1,30 @@
+# Random dwellings (E24 M1 T5b1; design §2.9): any (216), of level 7 (217) and of Castle (218),
+# owned and neutral. The map's load makes each a dwelling of its own template (0x502B60), its
+# anchor moved right past the bottom row's passable cells before its entrance: only the Angel
+# Portal's moves (by one), which a level 7 one of a random faction becomes with 1/9, a Castle one
+# of a random level with 1/7 (about one run in two draws one). The harness reads what each
+# became, its anchor and its owner. The eight colours' heroes stand outside the view.
+size = 36
+terrain = "grass"
+heroes = [
+    { at = [30, 30] },
+    { at = [32, 30], owner = 1 },
+    { at = [34, 30], owner = 2 },
+    { at = [30, 32], owner = 3 },
+    { at = [32, 32], owner = 4 },
+    { at = [34, 32], owner = 5 },
+    { at = [30, 34], owner = 6 },
+    { at = [32, 34], owner = 7 },
+]
+objects = [
+    { def = "avrcgen0.def", at = [3, 4], owner = 0 },
+    { def = "avrcgen0.def", at = [9, 4], owner = 1 },
+    { def = "avrcgen0.def", at = [15, 4] },
+    { def = "avrcgen7.def", at = [3, 9], owner = 2 },
+    { def = "avrcgen7.def", at = [9, 9], owner = 3 },
+    { def = "avrcgen7.def", at = [15, 9], owner = 4 },
+    { def = "avrcgn00.def", at = [3, 14], owner = 5 },
+    { def = "avrcgn00.def", at = [9, 14], owner = 6 },
+    { def = "avrcgn00.def", at = [15, 14], owner = 7 },
+]
+view = [0, 0, 0]

@@ -81,7 +81,14 @@
 //! the tenth added. E23 T5b2b (battle state hash v52, `cross-lane`) re-recorded all ten with their
 //! options, their commands unchanged: nine moved checkpoint hashes taken inside a battle,
 //! `duel-s2-d7` none; so did E23 T6 twice (battle state hash v53: the tactics phase's rounds,
-//! then the retreat facts and the attacking hero's own ground).
+//! then the retreat facts and the attacking hero's own ground). E08 T49a (the worn artifacts by
+//! position: game state hash v12, map import v9, the duel regenerated with its heroes' Spell Books
+//! on the map's book entry) re-recorded all ten with their options, their commands unchanged:
+//! every checkpoint moved. E08 T49b (map import v10: an equipped Titan's Thunder adds a Spell
+//! Book, which the duel's heroes do not wear) moved only the header's import version; every hash
+//! stayed. E08 T50 (adventure state hash v11: the tactics flag; adventure ruleset part v11: a
+//! stack's most creatures) re-recorded all ten with their options, their commands unchanged:
+//! every hash moved.
 
 use std::path::PathBuf;
 

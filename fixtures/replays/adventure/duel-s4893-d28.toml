@@ -603,30 +603,30 @@ commands = [
     "1 end-turn",
 ]
 checkpoints = [
-    "0xe157d8c1f5a20b00",
-    "0x8ee7ce5c492dbcc1",
-    "0x48b67ab858a2e363",
-    "0x0ef3b956d09d12f3",
-    "0x7cb9f485c2007a9c",
-    "0xe7191c899c18a87b",
-    "0x07be9e40e02bee82",
-    "0x48adc22ee6aef50b",
-    "0x105f1d92a63d3747",
-    "0xf4df0e17276907a7",
-    "0x97d97ba0b4941881",
-    "0x67ead132ebd97b1a",
-    "0x481a2320d24e13d2",
-    "0xe058b0406d1677fd",
-    "0x35faff74c2587ed0",
-    "0x0e605dbc2f503005",
-    "0xe8c30db2f4df637d",
-    "0xe8477c0c8bee5683",
-    "0x008dd5cab1ec146d",
-    "0xe15ae70379d0001c",
-    "0x23b32c5113b4bbd2",
-    "0x6c96bc72e03921b2",
-    "0xd977bed6e8c5107b",
-    "0x88755fd1bb095602",
+    "0x794e7fe89114547d",
+    "0xfde0b92d5d6f348c",
+    "0x5d45d816c5fb62ee",
+    "0x463a686da7707722",
+    "0x3c038c7efd88bb89",
+    "0xd5b30451a0aecd5a",
+    "0x9887f0cbe881a74f",
+    "0x01d74c024c3737c2",
+    "0x407d3a6f77434762",
+    "0x524e90036c6883b2",
+    "0xca42818e2ce6e041",
+    "0xb1e25c43dfa979ba",
+    "0xc7d996c846bf07be",
+    "0x6631e549ffa44e9d",
+    "0x2deed2b27c690c0c",
+    "0x61eb41305e9e54e9",
+    "0x6f444e531664d449",
+    "0x497860d55a31a1a3",
+    "0xbd3136e9fb2725f1",
+    "0xf8ef83f3474665ab",
+    "0xc28c2d2f0746c637",
+    "0xcb61734ecc04dcf8",
+    "0x4526885f507ea903",
+    "0x140a356f2d9438db",
 ]
 
 [replay]
@@ -650,20 +650,20 @@ packs = [
 ]
 profile = "base:faithful"
 ruleset_hash = "0x0c7e01b4dffeba0c"
-adventure_ruleset_hash = "0x483fb763b1a0ebbf"
+adventure_ruleset_hash = "0xf9dc9fcea4630571"
 rng = "xoshiro256starstar+splitmix64"
 rng_version = 1
 hash = "fnv1a64-le"
 hash_version = 1
-game_state_hash_version = 11
-adventure_state_hash_version = 10
+game_state_hash_version = 12
+adventure_state_hash_version = 11
 checkpoint_every = 25
 
 [map]
 path = "fixtures/maps/e08-duel-36.h3m"
-hash = "0xb519ff4e974286e9"
-import_version = 8
+hash = "0x37d348cff2785a01"
+import_version = 10
 
 [result]
 day = 29
-final_hash = "0xd6a5c310f5adaa99"
+final_hash = "0xe2731a4b6eaaf1ba"

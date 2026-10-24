@@ -9,7 +9,7 @@ use h3_map::Limits;
 use h3_map::writer::{self, AnyObject, Extras, GivenTile, RiverKind, RoadKind, Terrain};
 
 use crate::art::tests::{map, raw, template};
-use crate::live::{Boat, Moment};
+use crate::live::{Arrow, Boat, Moment};
 use crate::objects::Shape;
 use crate::tables;
 
@@ -33,7 +33,7 @@ fn art_with(tiles: Vec<GivenTile>) -> (MapArt, Live) {
     let bytes = writer::write_with(&map(), &extras).unwrap();
     let raw = h3_map::parse(&bytes, &Limits::default()).unwrap();
     let art = MapArt::from_raw(&raw).unwrap();
-    let mut live = Live::at_start(&raw, &art, 0);
+    let mut live = Live::at_start(&raw, &art, 0, &tables().map.towns);
     // The map's heroes are the heroes' tests' (below), which give their own.
     live.heroes.clear();
     (art, live)
@@ -82,6 +82,7 @@ fn pieces(scene: &Scene, of: Pass) -> Vec<Seen> {
                 mirror_x,
                 mirror_y,
                 clip,
+                flag: _,
             } if *pass == of => {
                 Some((def.clone(), *frame, [*x, *y], [*mirror_x, *mirror_y], *clip))
             }
@@ -414,6 +415,7 @@ fn the_cycles_at_the_moment_and_the_viewers_colour() {
     let (art, mut live) = art_with(vec![]);
     live.moment = Moment {
         cycles: 7,
+        river_cycles: 6,
         frames: 3,
     };
     live.viewer = 5;
@@ -428,9 +430,10 @@ fn the_cycles_at_the_moment_and_the_viewers_colour() {
         [
             ("lavatl.def", 7),
             ("watrtl.def", 7),
-            ("clrrvr.def", 7),
-            ("mudrvr.def", 7),
-            ("lavrvr.def", 7)
+            // The rivers' own step (a tick between the loads in the original, design §1.6).
+            ("clrrvr.def", 6),
+            ("mudrvr.def", 6),
+            ("lavrvr.def", 6)
         ]
     );
     assert_eq!(scene.cycles[1].ranges, [[229, 240], [242, 253]]);
@@ -535,7 +538,7 @@ fn art_with_objects(objects: Vec<AnyObject>) -> (MapArt, Live) {
     let bytes = writer::write_with(&map(), &extras).unwrap();
     let raw = h3_map::parse(&bytes, &Limits::default()).unwrap();
     let art = MapArt::from_raw(&raw).unwrap();
-    let mut live = Live::at_start(&raw, &art, 0);
+    let mut live = Live::at_start(&raw, &art, 0, &tables().map.towns);
     // The map's heroes are the heroes' tests' (below), which give their own.
     live.heroes.clear();
     (art, live)
@@ -620,6 +623,104 @@ fn an_objects_shadow_and_body_pieces_in_their_masks_cells() {
     let (shadows, last_shadow) = span(&s, Pass::Shadow);
     let (bodies, _) = span(&s, Pass::Body);
     assert!(roads < shadows && last_shadow < bodies);
+}
+
+/// The flag entries of one pass's pieces of `def`, in order.
+fn flags(scene: &Scene, of: Pass, of_def: &str) -> Vec<Option<u8>> {
+    scene
+        .draws
+        .iter()
+        .filter_map(|d| match d {
+            Draw::Piece {
+                pass, def, flag, ..
+            } if *pass == of && def == of_def => Some(*flag),
+            _ => None,
+        })
+        .collect()
+}
+
+/// An object of class `class` owned by `owner` (`def`, the art test's template) at (x, y).
+fn owned(def: &str, class: u32, x: u8, y: u8, owner: Option<u8>) -> AnyObject {
+    AnyObject {
+        owner,
+        template: template(def, class, 0, 0),
+        ..object(def, x, y, 0)
+    }
+}
+
+#[test]
+fn an_owned_objects_flag_pixels_take_its_owners_entry() {
+    // A mine of Blue's, made Tan's (the map's players are Red and Blue), a neutral dwelling, a
+    // tree: the first two of the owned classes.
+    let (art, mut live) = art_with_objects(vec![
+        owned("mine.def", 53, 5, 5, Some(1)),
+        owned("dwelling.def", 17, 8, 5, None),
+        object("tree.def", 11, 5, 0),
+    ]);
+    let mine = art.objects.len() - 3;
+    assert_eq!(live.objects[mine].owner, Some(1));
+    live.objects[mine].owner = Some(2);
+    let s = still(&art, &live, at(0, 0), Bugs::Fixed);
+    // game.pal's entry 64 + the colour, 63 without an owner; a tree's flag runs are skipped.
+    assert_eq!(flags(&s, Pass::Body, "mine.def"), [Some(66)]);
+    assert_eq!(flags(&s, Pass::Body, "dwelling.def"), [Some(63)]);
+    assert_eq!(flags(&s, Pass::Body, "tree.def"), [None]);
+    // Shadows never take one.
+    assert_eq!(flags(&s, Pass::Shadow, "mine.def"), [None]);
+    assert_eq!(s.flags, "game.pal");
+    // A flat object of an owned class takes it in pass 4.
+    let (art, live) = art_with_objects(vec![AnyObject {
+        template: template("ground.def", 53, 0, 1),
+        ..owned("ground.def", 53, 5, 5, Some(0))
+    }]);
+    let s = still(&art, &live, at(0, 0), Bugs::Fixed);
+    assert_eq!(flags(&s, Pass::Flat, "ground.def"), [Some(64)]);
+}
+
+#[test]
+fn an_object_without_an_entrance_on_the_map_takes_tile_zeros_owner_with_the_bugs() {
+    // Green's mine anchored two columns past the right edge, its entrance (one left of the
+    // anchor) off the map, its body's third column on it (x 35); Purple's mine at (1, 0), whose
+    // entrance is tile (0, 0); Red's mine below it.
+    let (art, mut live) = art_with_objects(vec![
+        owned("far.def", 53, 37, 5, Some(1)),
+        owned("corner.def", 53, 1, 0, Some(1)),
+        owned("mine.def", 53, 5, 8, Some(0)),
+    ]);
+    let far = art.objects.len() - 3;
+    live.objects[far].owner = Some(3);
+    live.objects[far + 1].owner = Some(5);
+    assert_eq!(objects::entrance(&art, far), None);
+    assert_eq!(objects::entrance(&art, far + 1), Some((0, 0)));
+    assert_eq!(objects::entrance(&art, far + 2), Some((4, 8)));
+    let mut shapes = shapes_of(&art);
+    let wide = Shape {
+        width: 3,
+        height: 1,
+        colour: [0, 0, 0, 0, 0, 0x20],
+        shadow: [0; 6],
+        frames: 1,
+    };
+    shapes.insert("far.def", wide);
+    let view = |bugs| scene(&art, &live, &tables(), &layout(), &shapes, at(20, 0), bugs).unwrap();
+    assert_eq!(flags(&view(Bugs::Fixed), Pass::Body, "far.def"), [Some(67)]);
+    assert_eq!(
+        flags(&view(Bugs::Original), Pass::Body, "far.def"),
+        [Some(69)]
+    );
+    assert_eq!(
+        objects::flag_owner(&art, &live, far + 2, Bugs::Original),
+        Some(0)
+    );
+    // Without an object whose entrance is tile (0, 0), none.
+    let (art, mut live) = art_with_objects(vec![owned("far.def", 53, 37, 5, None)]);
+    let far = art.objects.len() - 1;
+    live.objects[far].owner = Some(3);
+    assert_eq!(objects::flag_owner(&art, &live, far, Bugs::Original), None);
+    assert_eq!(objects::flag_owner(&art, &live, far, Bugs::Fixed), Some(3));
+    // An object not in the map has no class, entrance or owner.
+    assert_eq!(objects::class(&art, &live, art.objects.len()), None);
+    assert_eq!(objects::entrance(&art, art.objects.len()), None);
 }
 
 #[test]
@@ -950,4 +1051,52 @@ fn heroes_off_the_map_another_level_or_a_second_on_a_tile_are_left() {
     // column 2 is the map's 0).
     let first = body.iter().filter(|p| p.0 == "ah00_.def").count();
     assert_eq!(first, 4);
+}
+
+#[test]
+fn the_paths_shadows_under_the_bodies_its_arrows_over_them() {
+    // The 2 × 2 tree anchored at (6, 6) covers (5, 5) to (6, 6); a path through (5, 5) and (6, 5)
+    // ends at (7, 5) (E24 M1 T5b2, design §2.2: passes 6 and 8).
+    let (art, mut live) = art_with_objects(vec![object("tree.def", 6, 6, 0)]);
+    let shapes = with_shape(&art, "tree.def", [0xff; 6], [0xff; 6], 1);
+    let arrow = |x, y, z, arrow| Arrow {
+        at: Pos { x, y, z },
+        arrow,
+    };
+    live.path = vec![
+        arrow(5, 5, 0, 3),
+        arrow(6, 5, 0, 29),
+        arrow(7, 5, 0, 1),
+        // Not drawn: an arrow 0 (none), one off the view, one underground.
+        arrow(8, 5, 0, 0),
+        arrow(30, 30, 0, 2),
+        arrow(5, 6, 1, 2),
+    ];
+    let s = drawn(&art, &live, &shapes, at(0, 0));
+    let tile = |x: i32, y: i32| [32 * x, 8 + 32 * y];
+    let clip = |x: i32, y: i32| [32 * x, 8 + 32 * y, 32 * x + 32, 40 + 32 * y];
+    let expected: Vec<Seen> = [(5, 5, 2), (6, 5, 28), (7, 5, 0)]
+        .into_iter()
+        .map(|(x, y, frame)| {
+            (
+                "adag.def".to_string(),
+                frame,
+                tile(x, y),
+                [false; 2],
+                clip(x, y),
+            )
+        })
+        .collect();
+    assert_eq!(pieces(&s, Pass::PathShadow), expected);
+    assert_eq!(pieces(&s, Pass::Path), expected);
+    // Each pass over the whole view: every shadow, the arrows' shadows, the bodies, the arrows.
+    let order = [Pass::Shadow, Pass::PathShadow, Pass::Body, Pass::Path].map(|p| span(&s, p));
+    assert!(order.windows(2).all(|w| w[0].1 < w[1].0), "{order:?}");
+    // An arrow on a tile off the map is left.
+    live.path = vec![arrow(190, 5, 0, 3)];
+    let left = drawn(&art, &live, &shapes, at(180, 0));
+    assert!(pieces(&left, Pass::Path).is_empty());
+    // No path shown: neither pass draws.
+    live.path.clear();
+    assert!(pieces(&drawn(&art, &live, &shapes, at(0, 0)), Pass::PathShadow).is_empty());
 }

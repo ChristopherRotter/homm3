@@ -1,9 +1,10 @@
 //! `render`: a still of the adventure screen (E24 M1 T3b1): a map's static art from its `.h3m`,
 //! the live part at the map's start (every tile explored but a chosen rectangle, the moment from
 //! a time), the objects' shapes and the scene at a view, its assets from the installation copy's
-//! archives, composed and written as a PNG. The comparisons with the original (T3b2, T4a, T4b)
+//! archives, composed and written as a PNG. The comparisons with the original (T3b2 to T5b2)
 //! give the live part read from its memory (`--live`: the palette step, the frame step, the
-//! viewer, the objects' phases and what the random ones became).
+//! viewer, the objects' phases and what the random ones became, the heroes and boats, the owners,
+//! the explored tiles and the path's arrows).
 
 use std::fs;
 use std::path::PathBuf;
@@ -12,12 +13,15 @@ use std::process::ExitCode;
 use h3_map::Limits;
 use h3_map::model::Pos;
 use h3_map::writer::ObjectTemplate;
-use h3_map_view::art::{MapArt, ObjectArt};
+use h3_map_view::art::{MapArt, TemplateArt};
 use h3_map_view::batch::{self, Batch};
 use h3_map_view::compose::compose;
-use h3_map_view::live::{Boat, Drawn, Facing, Live, LiveBoat, LiveHero, Moment};
+use h3_map_view::live::{
+    Arrow, Boat, Drawn, Explored, Facing, Live, LiveBoat, LiveHero, Moment, TOWN_CLASS,
+};
 use h3_map_view::objects;
 use h3_map_view::scene::{self, Draw, ViewAt};
+use h3_map_view::tables::PATH_FRAMES;
 use h3_render::Bugs;
 
 use crate::files;
@@ -179,16 +183,17 @@ fn render(options: &Options) -> Result<PathBuf, String> {
         h3_map::parse(&bytes, &Limits::default())
     }
     .map_err(|e| format!("{}: {e}", path.display()))?;
-    let art = MapArt::from_raw(&raw).map_err(|e| format!("{}: {e}", path.display()))?;
-    let mut live = Live::at_start(&raw, &art, options.viewer);
+    let mut art = MapArt::from_raw(&raw).map_err(|e| format!("{}: {e}", path.display()))?;
+    let mut live = Live::at_start(&raw, &art, options.viewer, &tables.map.towns);
     live.moment = Moment::at(options.at, tables.map.cycle_ms, tables.map.frame_ms);
     if let Some(cycles) = options.cycles {
         live.moment.cycles = cycles;
+        live.moment.river_cycles = cycles;
     }
     let archive_bytes = files::read_archives(&options.install)?;
     let archives = files::parse_archives(&archive_bytes)?;
     if let Some(path) = &options.live {
-        read_live(path, &art, &mut live, &files::templates(&archives)?)?;
+        read_live(path, &mut art, &mut live, &files::templates(&archives)?)?;
     }
     for &[x0, y0, x1, y1] in &options.hidden {
         for y in y0.min(y1)..=y0.max(y1) {
@@ -234,8 +239,16 @@ fn render(options: &Options) -> Result<PathBuf, String> {
     Ok(out)
 }
 
+/// The artifacts' class.
+const ARTIFACT_CLASS: u32 = 5;
+
+/// The random dwellings' classes (216 any, 217 of a level, 218 of a faction).
+const RANDOM_DWELLINGS: [u32; 3] = [216, 217, 218];
+
 /// The original's live part as the harness read it (`h3map.py still`'s `live.toml`): `cycles`,
-/// the palette step; `frames`, the objects' frame step the screen shows; `viewer`, the viewing
+/// the palette step, and `river_cycles` the rivers' when it differs (E24 M1 T6a: one fewer when
+/// the original's load ran a tick between the terrains' DEFs and the rivers', design §1.6;
+/// otherwise `cycles`); `frames`, the objects' frame step the screen shows; `viewer`, the viewing
 /// player's colour; `phases`, every object's animation phase in the map's order; `anchors`, every
 /// object's anchor in that order, which must be the map's (so the phases are the objects' own; a
 /// random object's may differ, T5);
@@ -244,13 +257,17 @@ fn render(options: &Options) -> Result<PathBuf, String> {
 /// (E24 M1 T4b, design §2.7), its own picture the last of the game's `templates` of that class and
 /// subclass (MCL-Q3); `heroes` and `boats` (E24 M1 T5a), the heroes and empty boats the view
 /// draws, each `[x, y, level, class, facing, owner, boat type, boat colour]` (the boat's -1 -1 on
-/// land) and `[x, y, level, type, facing]`. Each key is optional; other keys are left.
+/// land) and `[x, y, level, type, facing]`; `explored` (E24 M1 T5b2), the viewer's explored
+/// tiles, a string per row of every level in turn (level by level, rows top to bottom), `1` a tile
+/// explored and `0` not; `path` (T5b2), the path shown, each arrow `[x, y, level, arrow]`. Each key
+/// is optional; other keys are left.
 fn read_live(
     path: &PathBuf,
-    art: &MapArt,
+    art: &mut MapArt,
     live: &mut Live,
     templates: &[ObjectTemplate],
 ) -> Result<(), String> {
+    let mut resolved = vec![false; art.objects.len()];
     let failed = |why: &str| format!("{}: {why}", path.display());
     let text = fs::read_to_string(path).map_err(|e| failed(&e.to_string()))?;
     let table: toml::Table = text
@@ -266,6 +283,10 @@ fn read_live(
     };
     if let Some(cycles) = number("cycles")? {
         live.moment.cycles = cycles;
+        live.moment.river_cycles = cycles;
+    }
+    if let Some(cycles) = number("river_cycles")? {
+        live.moment.river_cycles = cycles;
     }
     if let Some(frames) = number("frames")? {
         live.moment.frames = frames;
@@ -293,16 +314,58 @@ fn read_live(
             .filter(|(d, c)| d.len() == art.objects.len() && c.len() == art.objects.len())
             .ok_or_else(|| failed("`defs` and `classes` are not one template per object"))?;
         for (index, (def, [class, subclass])) in defs.into_iter().zip(classes).enumerate() {
-            let Some(template) = objects::template(art, index) else {
+            let Some(template) = objects::template(art, index).cloned() else {
                 continue;
             };
+            // A town's picture by its buildings: the start's (`Live::at_start`) must be the
+            // original's (E24 M1 T5b1, design §2.9).
+            if template.class == TOWN_CLASS {
+                let ours = live.objects[index]
+                    .drawn
+                    .as_ref()
+                    .map_or(template.def.as_str(), |d| d.def.as_str());
+                if !ours.eq_ignore_ascii_case(def) {
+                    return Err(failed(&format!(
+                        "object {index}: the original drew the town as {def}, its buildings give {ours}"
+                    )));
+                }
+            }
             let same = template.def.eq_ignore_ascii_case(def)
                 && (template.class, template.subclass) == (class, subclass);
-            if !same {
-                let own = templates
+            let own = templates
+                .iter()
+                .rev()
+                .find(|t| (t.class, t.subclass) == (class, subclass) && !same);
+            if let Some(t) = own.filter(|_| RANDOM_DWELLINGS.contains(&template.class)) {
+                // A random dwelling became a dwelling when the map loaded, before its objects
+                // were placed (0x502B60, design §2.9): its template is the game's (the last of its
+                // class and subclass, 0x505F20), the anchor the original's (`anchors`).
+                let dwelling = templates
                     .iter()
                     .rev()
-                    .find(|t| (t.class, t.subclass) == (class, subclass));
+                    .find(|o| {
+                        (o.class, o.subclass) == (class, subclass)
+                            && o.def.eq_ignore_ascii_case(def)
+                    })
+                    .unwrap_or(t);
+                art.templates.push(TemplateArt {
+                    def: dwelling.def.clone(),
+                    passable: dwelling.passable,
+                    visitable: dwelling.visitable,
+                    class,
+                    subclass,
+                    priority: dwelling.priority,
+                });
+                art.objects[index].template = art.templates.len() - 1;
+                resolved[index] = true;
+                continue;
+            }
+            if !same {
+                // Only an artifact's copy names a wrong picture (MCL-Q3); a town's is named by its
+                // buildings, and a class the game loads as another (object_class_values
+                // 0x63A6E4: the vertical garrison 219 as 33, the decorations 165-205) keeps its
+                // DEF.
+                let own = own.filter(|_| class == ARTIFACT_CLASS);
                 live.objects[index].drawn = Some(Drawn {
                     def: def.to_string(),
                     own: own.map(|t| t.def.clone()),
@@ -310,6 +373,18 @@ fn read_live(
                     subclass,
                 });
             }
+        }
+    }
+    if let Some(owners) = table.get("owners") {
+        // Every object's owner as the view passes find it (`-1` none; E24 M1 T5b1).
+        let owners: Option<Vec<i64>> = owners
+            .as_array()
+            .and_then(|a| a.iter().map(toml::Value::as_integer).collect());
+        let owners = owners
+            .filter(|o| o.len() == live.objects.len())
+            .ok_or_else(|| failed("`owners` is not one owner per object"))?;
+        for (object, owner) in live.objects.iter_mut().zip(owners) {
+            object.owner = byte(owner).filter(|&c| c < 8);
         }
     }
     if let Some(heroes) = table.get("heroes") {
@@ -326,22 +401,41 @@ fn read_live(
             .and_then(|rows| rows.into_iter().map(boat).collect())
             .ok_or_else(|| failed("`boats` is not a list of [x, y, level, type, facing]"))?;
     }
+    if let Some(rows) = table.get("explored") {
+        live.explored = explored(rows, art.size, art.levels).ok_or_else(|| {
+            failed(&format!(
+                "`explored` is not {} rows of {} tiles of 0 and 1",
+                art.size * art.levels,
+                art.size
+            ))
+        })?;
+    }
+    if let Some(path) = table.get("path") {
+        live.path = rows::<4>(path)
+            .and_then(|rows| rows.into_iter().map(arrow).collect())
+            .ok_or_else(|| failed("`path` is not a list of [x, y, level, arrow 1-50]"))?;
+    }
     if let Some(anchors) = table.get("anchors") {
-        // A random object the original drew may stand elsewhere: a random dwelling's anchor
-        // moved by a tile in a shipped map (E24 M1 T4b). Drawn at the map's until T5 reads the
-        // random dwellings (design §2.7, the queue's T5); any other object must be where the map
-        // has it.
-        let theirs = anchors.as_array().filter(|a| a.len() == art.objects.len());
-        let moved = |(index, (object, theirs)): (usize, (&ObjectArt, &toml::Value))| {
+        // A random dwelling stands where its dwelling's template put it when the map loaded
+        // (0x502B60, design §2.9: its anchor moved right past the bottom row's passable cells
+        // before its entrance); every other object must be where the map has it.
+        let theirs: Option<Vec<[i64; 3]>> =
+            rows::<3>(anchors).filter(|a| a.len() == art.objects.len());
+        let theirs = theirs.ok_or_else(|| failed("`anchors` is not one anchor per object"))?;
+        for (index, (object, [x, y, z])) in art.objects.iter_mut().zip(theirs).enumerate() {
             let a = object.anchor;
-            let ours = toml::Value::Array([a.x, a.y, a.z].map(|v| i64::from(v).into()).to_vec());
-            ours != *theirs && live.objects[index].drawn.is_none()
-        };
-        let same = theirs.is_some_and(|t| !art.objects.iter().zip(t).enumerate().any(moved));
-        if !same {
-            return Err(failed(
-                "the original's objects are not the map's (`anchors`)",
-            ));
+            if [a.x, a.y, a.z].map(i64::from) == [x, y, z] {
+                continue;
+            }
+            let at = (byte(x), byte(y), byte(z));
+            match at {
+                (Some(x), Some(y), Some(z)) if resolved[index] => object.anchor = Pos { x, y, z },
+                _ => {
+                    return Err(failed(&format!(
+                        "the original's objects are not the map's (`anchors`: object {index})"
+                    )));
+                }
+            }
         }
     }
     if let Some(phases) = table.get("phases") {
@@ -408,6 +502,48 @@ fn hero([x, y, z, class, facing, owner, kind, colour]: [i64; 8]) -> Option<LiveH
     })
 }
 
+/// `live.toml`'s `explored`: `levels` × `size` rows of `size` tiles each.
+fn explored(value: &toml::Value, size: usize, levels: usize) -> Option<Explored> {
+    let rows: Vec<&str> = value
+        .as_array()?
+        .iter()
+        .map(toml::Value::as_str)
+        .collect::<Option<_>>()?;
+    if rows.len() != size * levels || rows.iter().any(|r| r.len() != size) {
+        return None;
+    }
+    let mut explored = Explored::all(size, levels, false);
+    for (index, row) in rows.into_iter().enumerate() {
+        let (z, y) = (
+            u8::try_from(index / size).ok()?,
+            i32::try_from(index % size).ok()?,
+        );
+        for (x, tile) in row.bytes().enumerate() {
+            let seen = match tile {
+                b'0' => false,
+                b'1' => true,
+                _ => return None,
+            };
+            explored.set(i32::try_from(x).ok()?, y, z, seen);
+        }
+    }
+    Some(explored)
+}
+
+/// An arrow of `live.toml`'s `path` (1 to 50: the path DEF's frames).
+fn arrow([x, y, z, arrow]: [i64; 4]) -> Option<Arrow> {
+    Some(Arrow {
+        at: Pos {
+            x: byte(x)?,
+            y: byte(y)?,
+            z: byte(z)?,
+        },
+        arrow: u16::try_from(arrow)
+            .ok()
+            .filter(|&a| a > 0 && usize::from(a) <= PATH_FRAMES)?,
+    })
+}
+
 /// A boat of `live.toml`'s `boats`.
 fn boat([x, y, z, kind, facing]: [i64; 5]) -> Option<LiveBoat> {
     Some(LiveBoat {
@@ -445,6 +581,7 @@ fn print_list(scene: &scene::Scene) {
                 mirror_x,
                 mirror_y,
                 clip,
+                flag,
             } => {
                 let mirrors = match (mirror_x, mirror_y) {
                     (false, false) => "",
@@ -452,8 +589,9 @@ fn print_list(scene: &scene::Scene) {
                     (false, true) => " flipped",
                     (true, true) => " mirrored flipped",
                 };
+                let flag = flag.map_or_else(String::new, |e| format!(" flag {e}"));
                 println!(
-                    "{pass:?} {def} {group}/{frame} at {x},{y}{mirrors} clip {},{}-{},{}",
+                    "{pass:?} {def} {group}/{frame} at {x},{y}{mirrors} clip {},{}-{},{}{flag}",
                     clip[0], clip[1], clip[2], clip[3]
                 );
             }

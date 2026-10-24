@@ -27,8 +27,8 @@ pub enum AdventureCommand {
     /// does not leave (E08 T13b, T15a, T15b); a step onto a Cartographer's, an observatory's or a
     /// Keymaster's tent's enters it (T14a, T15a). A border gate whose key the player holds is
     /// crossed as any tile, anywhere on the path (ADV-VIS-005, T15b). A step toward another
-    /// player's hero visits it from the tile before, as a neighbour-visited object, and starts a
-    /// battle (GAM-BAT-004, E08 T19a); an own hero's tile blocks.
+    /// hero visits it from the tile before, as a neighbour-visited object: another player's
+    /// starts a battle (GAM-BAT-004, E08 T19a), an own one makes a meeting (GAM-MET-001, T50).
     MoveHero {
         /// The hero.
         hero: HeroId,
@@ -154,6 +154,35 @@ pub struct AdventureOutcome {
     /// [`crate::AdventureState::visit_guard`] once the offer is answered, or when it does not
     /// open.
     pub guard_after: bool,
+    /// The meeting the command's step toward an own hero makes (GAM-MET-001, E08 T50): the game
+    /// opens it as the owner's decision (T51).
+    pub meeting: Option<Meeting>,
+    /// The group of an accepted join that found no room in its hero's army (ADV-MON-008, E08
+    /// T50): its treasure was given and the monster left the map as for any join; the game opens
+    /// the army dialog with it (GAM-DEC-004, T51).
+    pub no_room: Option<NoRoom>,
+}
+
+/// Two heroes of one player met by a step (GAM-MET-001, E08 T50): the visitor's move ended on the
+/// tile beside the visited hero, at the step's price (ADR-0016 point 4).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Meeting {
+    /// The hero whose move made the visit.
+    pub visitor: HeroId,
+    /// The hero it visited.
+    pub visited: HeroId,
+}
+
+/// A joining group its hero's army had no room for (ADV-MON-008, ADV-ARM-007; E08 T50): no stack
+/// of its creature takes it whole within a stack's most and no slot is free.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct NoRoom {
+    /// The hero it joined.
+    pub hero: HeroId,
+    /// Its creature.
+    pub creature: CreatureTypeId,
+    /// How many.
+    pub count: u32,
 }
 
 /// A battle a visit starts (ADR-0017 points 10 and 11; GAM-BAT-001, E08 T19a): its two sides as

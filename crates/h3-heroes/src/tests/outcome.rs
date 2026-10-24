@@ -95,7 +95,7 @@ fn outcome_ruleset() -> Ruleset {
 fn bare(r: &Ruleset) -> HeroDetails {
     HeroDetails {
         skills: vec![],
-        worn: vec![],
+        worn: wearing(r, &[]),
         backpack: vec![],
         spells: vec![],
         ..details(r)
@@ -122,14 +122,14 @@ fn the_necromancy_share_adds_the_skill_and_the_artifacts() {
     }
     // The parts add with the skill, worn alone or through the combination; the combination's own
     // 30 % does not count with the skill.
-    d.worn = vec![art(&r, "t:band"), art(&r, "t:loop")];
+    d.worn = wearing(&r, &[art(&r, "t:band"), art(&r, "t:loop")]);
     assert_eq!(share(&d, &r), Some(4500));
-    d.worn = vec![art(&r, "t:circle")];
+    d.worn = wearing(&r, &[art(&r, "t:circle")]);
     assert_eq!(share(&d, &r), Some(6000));
     // Without the skill the parts give nothing and the combination its own 30 %.
     d.skills.clear();
     assert_eq!(share(&d, &r), Some(3000));
-    d.worn = vec![art(&r, "t:band"), art(&r, "t:helm")];
+    d.worn = wearing(&r, &[art(&r, "t:band"), art(&r, "t:helm")]);
     assert_eq!(necromancy(&d, &r), None);
     // A specialist's skill share grows by 5 % of itself per level; the share is at most 100 %.
     let mut p = outcome_pack();
@@ -139,7 +139,7 @@ fn the_necromancy_share_adds_the_skill_and_the_artifacts() {
     }];
     let r = compile(p).unwrap();
     d.skills = vec![(skill_id, 3)];
-    d.worn = vec![art(&r, "t:circle")];
+    d.worn = wearing(&r, &[art(&r, "t:circle")]);
     d.level = 10;
     assert_eq!(share(&d, &r), Some(3000 + 1500 + 3000));
     d.level = 40;
@@ -152,7 +152,7 @@ fn with_quirk_q0005_the_share_is_the_originals_single_precision_sum() {
     let r = Ruleset::compile(&[outcome_pack()], "t:original").unwrap();
     let mut d = bare(&r);
     d.skills = vec![(skill(&r, "t:first_aid"), 3)];
-    d.worn = vec![art(&r, "t:circle")];
+    d.worn = wearing(&r, &[art(&r, "t:circle")]);
     // 0.3 + 0.05 + 0.10 + 0.15 in single precision, each sum stored: f32(0.6) again.
     let n = necromancy(&d, &r).unwrap();
     assert_eq!(n.share.bp, 6000);
@@ -176,7 +176,7 @@ fn the_creature_raised_is_the_highest_priority_by_level() {
     d.skills = vec![(necro, 1)];
     assert_eq!(raised(&d, &r), Some(creature_id(&r, "t:bones")));
     // The combination's priority 1 wins: by the skill's level, none to Expert.
-    d.worn = vec![art(&r, "t:circle")];
+    d.worn = wearing(&r, &[art(&r, "t:circle")]);
     for (level, k) in [(1, "t:ghoul"), (2, "t:wraith"), (3, "t:lich")] {
         d.skills = vec![(necro, level)];
         assert_eq!(raised(&d, &r), Some(creature_id(&r, k)), "{level}");
@@ -193,7 +193,7 @@ fn the_creature_raised_is_the_highest_priority_by_level() {
         }
     }
     let r = compile(p).unwrap();
-    d.worn.clear();
+    d.worn.fill(None);
     d.skills = vec![(necro, 1)];
     assert_eq!(necromancy(&d, &r), None);
 }
@@ -228,7 +228,7 @@ fn equal_priorities_pick_the_lowest_artifact_then_the_lowest_creature() {
     let r = pack_with(false);
     let mut d = bare(&r);
     d.skills = vec![(skill(&r, "t:first_aid"), 1)];
-    d.worn = vec![art(&r, "t:hook"), art(&r, "t:eye")];
+    d.worn = wearing(&r, &[art(&r, "t:hook"), art(&r, "t:eye")]);
     // Only artifacts at the top: the lowest artifact id, whatever the creatures' ids.
     assert_eq!(
         necromancy(&d, &r).map(|n| n.creature),
@@ -276,7 +276,7 @@ fn a_pick_is_learned_with_a_spell_book_up_to_the_learnable_level() {
     d.backpack = vec![art(&r, "t:book")];
     assert!(!learns_spell(&d, &r, bolt));
     d.backpack.clear();
-    d.worn = vec![art(&r, "t:book")];
+    d.worn = wearing(&r, &[art(&r, "t:book")]);
     assert!(learns_spell(&d, &r, bolt));
     // Level 3 needs Basic Wisdom, level 5 Expert.
     assert!(!learns_spell(&d, &r, shield));

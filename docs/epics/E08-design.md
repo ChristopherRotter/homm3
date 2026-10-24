@@ -23,92 +23,26 @@ the draft). When the game applies them is part B's.
 
 **Built in T45:** the kinds `meeting_spells { level }` (Scholar: 2, 3, 4) and `gives_spell_book`
 (Titan's Thunder) in `h3-content` and `h3-pack` (codes 51, 52), their data in the packs; pack
-format v47, core ruleset hash v48. §4 and §5 read them (T49): `gives_spell_book` puts the
-ruleset's artifact with the `spell_book` effect into the empty spell book position.
+format v47, core ruleset hash v48. T49b reads them (built: §3).
 
-**No data for the positions**: they follow from the slots' order and counts (§2). **The expansions**
+**No data for the positions**: they follow from the slots' order and counts (§2, built). **The expansions**
 are the game's configuration (part B §10; decision 104).
 
-### 2. Positions (HER-ART-001 amended; HER-CHG-002, HER-ART-004, HER-WAR-002 restated)
+### 2. Positions (built in T49a)
 
-- `HeroDetails.worn` becomes `Vec<Option<ArtifactInstance>>`, one entry per position:
-  `h3_heroes::positions(ruleset)` lists each position's slot, the ruleset's slots in their order,
-  each `count` times (19 in SoD: head 0, shoulders 1, neck 2, right hand 3, left hand 4, torso 5,
-  rings 6–7, feet 8, misc 9–13, war machines 14–17, spell book 18; the original numbers the fifth
-  misc 18 after the book, which no walk can tell apart, ADR-0013 point 1 of the draft). A
-  `Position` is an index into it; validation checks the length, each artifact's slot against its
-  position's, and that every slot's free positions less the worn combinations' locks stay ≥ 0
-  (today's check, counted the same way).
-- **The first position that takes it** (`first_position(details, ruleset, artifact)`): the lowest
-  empty position of the artifact's slot whose lock check passes with the artifact there (the
-  original's `hero_equip_artifact` with -1). HER-CHG-002's received artifact uses it (else the
-  backpack's end, as today).
-- **The capture** (HER-ART-004): the worn artifacts in position order, then the backpack from its
-  end (unchanged in words; the order is now the original's). **A lost war machine** (HER-WAR-002):
-  the first position holding the artifact that places it.
-- `ArtifactPlace::Worn(Position)` names a position; `HeroChange::AddArtifact` keeps its meaning;
-  a new `HeroChange::PlaceArtifact { artifact, at: ArtifactPlace }` puts one at a given empty
-  position or backpack index (a move's target), and `RemoveArtifact` at a position leaves it
-  empty (the backpack's later entries still move up).
-- **The import** (`h3-map`): the map's worn array is by position (`docs/formats/h3m.md`): position
-  i of the map's 18 (before SoD) or 19 entries maps to the content's position (the fifth misc,
-  the map's 18, to 13). Today's import keeps them as a list in that order: the order is kept, the
-  places become positions.
-- **A constructor for callers that list artifacts** (`HeroDetails::wearing(ruleset, list)`, each
-  placed at its first position): every test and experiment that builds details today (the battle
-  lane's `h3-pack-battle` tests and `h3-experiment`, the AI lane's `h3-sim` encounters, the client
-  lane's `h3-view` situations; §6) changes one line.
+Built in T49a (`E08-log.md`, "T49a"): `HeroDetails.worn` by position (`h3_heroes::positions`,
+`Position`), the validation with the locks counted per slot, `first_position` (HER-CHG-002),
+the capture and a lost machine's artifact in position order, `ArtifactPlace::Worn(Position)`,
+`HeroChange::PlaceArtifact`, `wearing` for callers that list artifacts, the import v9.
 
-### 3. Moves (HER-ART-005)
+### 3. Moves, combinations, Titan's book, Scholar (built in T49b)
 
-`h3_heroes::check_move(from: (&HeroDetails, ArtifactPlace), to: (&HeroDetails, Target), same,
-ruleset)` and `move_changes` give the hero changes of a move for one hero (`same`) or two. A target
-is a position or a backpack index (0 to the backpack's length; an insertion). The rules (survey
-§5.1, §5.2):
-- the source holds an artifact; never the Spell Book's position nor the Catapult's;
-- a position target: of the artifact's slot, the locks fitting with the artifact there and the
-  target's artifact gone; an occupied target's artifact goes back to the source's place (a
-  position: the same lock check; a backpack index: inserted there). The original's swap through
-  the cursor, as one command;
-- a backpack target: the artifact's slot is carried (`backpack = true`: not the war machines, the
-  Catapult, the spell book) or it has none (the Grail); the receiving backpack holds fewer than
-  the ruleset's 64 (a move within one backpack does not count itself);
-- the war machines therefore move between machine positions only (their own slot), the Grail
-  between backpacks only;
-- a move into a position applies `gives_spell_book` (§1) when the hero has no book; so does every
-  other equip (`AddArtifact`, an assembly);
-- a scroll keeps its spell (HER-ART-003).
-
-The backpack's arrows rotate the stored array in the original (survey §5.1): a rotation is a set of
-moves within the backpack; no command of its own.
-
-### 4. Combinations and Titan's Thunder (HER-ART-006, HER-ART-007)
-
-- **Assembly** at a worn part's position p (`check_assemble`, `assemble_changes`): the artifact at p is a part of combination c (the ruleset's
-  `parts`); every part of c is worn (each type once at least). Changes: remove p, then for each
-  other part one copy from the positions in descending order (the original walks 18 down to 0;
-  within a slot that is the descending index, and parts of one slot are different types), then
-  add c at its first position (§2). Its effects are its own and its parts' (as today's
-  derivations read a worn combination).
-- **Disassembly** of the worn combination at p: remove it; each part in the ruleset's artifact
-  order to its first position (the locks freed make room; a part that found none would be lost:
-  none can). Never in the backpack (D-28).
-- **Titan's Thunder's book** (HER-ART-007): `gives_spell_book` on equip, kept on removal; the book
-  never moves (§3), so a hero keeps it. Every hero that equips the Thunder gains one (a meeting
-  passes it on): the original's rule (survey §5.4), not a quirk.
-- The original's questions (once per player after an equip, at a received part) are the
-  assembly command, legal whenever its check passes (part B §10); a computer player's build at
-  once is E10's.
-
-### 5. Scholar (HER-SPL-007)
-
-`h3_heroes::meeting_spells(a, b, ruleset) -> (Vec<SpellId>, Vec<SpellId>)`: the spells a and b
-learn. s = the greater `meeting_spells` level of the two (§1; none: nothing); either without a
-worn spell book (HER-BAT-011's book: the Spell Book worn, or an effect that gives one): nothing;
-else a's limit = min(`learn_level(a)`, s) (HER-SPL-005: 2 + Wisdom, at most 5), b's alike; a learns
-each spell of b's learned spells (`HeroDetails.spells`) it has not learned, of a level at most a's
-limit, in spell order; b alike. The game applies them as `LearnSpell` changes (part B §8). The
-original's order (the 70 spells by id, each direction checked per spell) gives the same sets.
+Built in T49b (`E08-log.md`, "T49b"): `h3_heroes::{ArtifactMove, check_move, move_changes}`
+(HER-ART-005), `check_assemble`, `assemble_changes`, `check_disassemble`, `disassemble_changes`
+(HER-ART-006), `equip` and the equip in `apply_change` (HER-ART-007), `meeting_spells`
+(HER-SPL-007), the import v10 (an equipped Thunder's book). Part B applies them: a move's
+changes on both heroes (§8, §10's `Manage`), the assembly and disassembly as commands (§10),
+Scholar's spells at the meeting (§8).
 
 ### 6. Rule ids and quirks (the hero side); its shared and `cross-lane` needs
 
@@ -117,54 +51,28 @@ original's order (the 70 spells by id, each direction checked per spell) gives t
 | HER-ART-001 (amended) | worn artifacts on positions; the locks counted per slot | 2 |
 | HER-CHG-002 (amended) | a received artifact at its first position, else the backpack's end | 2 |
 | HER-ART-004, HER-WAR-002 (restated) | the capture and a lost machine's artifact by position | 2 |
-| HER-ART-005 | moves within a hero and between two | 3 |
-| HER-ART-006 | assembly and disassembly (the combinations the ruleset has) | 4 |
-| HER-ART-007 | Titan's Thunder's Spell Book | 4 |
-| HER-SPL-007 | Scholar at a meeting | 5 |
+| HER-ART-005 | moves within a hero and between two (built) | 3 |
+| HER-ART-006 | assembly and disassembly (the combinations the ruleset has; built) | 3 |
+| HER-ART-007 | Titan's Thunder's Spell Book (built) | 3 |
+| HER-SPL-007 | Scholar at a meeting (built) | 3 |
 
 No quirk on the hero side (D-28 the original's; Titan's book a rule). The shared part (the two
 kinds, the packs, the replay headers) was T45's. **`cross-lane` in the positions task:** the call sites of the battle, AI and client
-lanes that build `HeroDetails` (§2's constructor), as their lanes' inbox notes say.
+lanes that build `HeroDetails` (§2's `wearing`), done in T49a with their inboxes told.
 
 ## Part B — the map, the game, the batch and the cut
 
-### 7. A hero's army, formation and flag (ADV-ARM-001 to -006; ADR-0016 point 3 of the draft)
+### 7. A hero's army, formation and flag (built in T50)
 
-`h3-adventure` gains the army commands, validated against the trusted player and applied
-whole or not at all:
-- **The armies**: `ArmyRef::Hero(HeroId)` or `ArmyRef::Group` (the army dialog's, §9); a command
-  names a source (army, slot) and a target (army, slot); both armies the player's: the same hero,
-  the two heroes of its open meeting, or the hero and the group of its open army dialog.
-- **Move** (ADV-ARM-001, -002): the target of the source's creature takes the stack whole (the
-  counts added; decision 109: a merge past a stack's count cap is refused, the cap's value and
-  its other uses settled at T50's start with ADR-0016 point 3's amendment, §16); an empty target
-  takes it; any other swaps.
-  Between two armies the source's last stack never merges away nor goes to an empty slot (a swap
-  is allowed); the group has no protected stack. Counts keep their width (A-15 fixed: the
-  original's `army_swap_slots` moves one through 16 bits; ADR-0016 point 3 of the draft).
-- **Split** (ADV-ARM-003): `count`, the target's new count, the target empty or of the source's
-  creature, t the two counts: any count in [1, t − 1], so both stacks stay. The original's dialog
-  (survey §3.3) allows [m₂, t − m₁]; its m₁ and m₂ only ever refuse 0 or t, which leave one of the
-  two slots empty: a move (or a merge back), which the engine's move allows exactly where the
-  original's click does (§7's move; A-16's refused full split is the click's allowed move, survey
-  §3.2). So [1, t − 1] with the move gives the original's outcomes, A-16's included (decision 98:
-  the original's bounds, no flag). `h3_adventure::split_range` gives the range for a source and a
-  target (the query of §10).
-- **Dismiss** (ADV-ARM-004): the stack leaves; refused for a hero's last stack; the group's are
-  always allowed.
-- **Formation and flag** (ADV-ARM-006): `SetFormation { hero, formation }`, `SetTactics { hero,
-  on }`; `HeroOnMap.tactics: bool`, true at the build (the original's 2), in the state hash
-  (adventure state hash v11). The map's formation stays the setup's (`ADV-QUIRK-8` as is).
-- **ADV-ARM-005**: a move or swap keeps both counts whole (the A-15 regression test).
+Built: `E08-log.md`, T50 (ADV-ARM-001 to -007; the cap, decisions 109, 114, 115; adventure state
+hash v11, ruleset part v11). For T51: `h3_adventure::{ArmyCommand, ArmyRef, ArmySlot}` and
+`AdventureState::{manage_army, split_range, set_formation, set_tactics}` (the group passed in as
+`Option<&mut Vec<ArmyStack>>`, by slot like a hero's army); they emit no event: the game tells the
+owner (§10).
 
 ### 8. The meeting (GAM-MET-001; GAM-DEC-003)
 
-- **The visit** (GAM-MET-001; ADR-0016 point 4 of the draft): `MoveHero`'s last step toward a hero
-  of the same player visits it from the neighbouring tile at the step's price (ADV-OBJ-003's
-  neighbour visit, as GAM-BAT-004's): the move ends there, the outcome reports
-  `Meeting { visitor, visited }` (today's refusal goes: `a_hero_visit_ends_the_move_and_an_own_
-  hero_blocks` changes). The objects under the visited hero and the tops not visited from above
-  stay GAM-BAT-004's cases. An own hero's tile is still never entered or passed.
+- **The visit** (GAM-MET-001): built in T50 (`AdventureOutcome::meeting`, log); T51 opens it.
 - **Scholar** (HER-SPL-007): the game applies both heroes' learned spells as `LearnSpell`
   changes, visitor first, then opens the decision.
 - **The decision** (GAM-DEC-003): `Decision::Meeting { owner, heroes: [HeroId; 2] }`; while open
@@ -174,13 +82,14 @@ whole or not at all:
 
 ### 9. The army dialog (ADV-MON-008 amended; GAM-DEC-004; `ADV-STUB-2` closed)
 
-- **The offer**: `answer_to` no longer skips a join without room (the stub's `has_room` test goes):
-  the offer to join (free or for gold) is made as for any join.
-- **Accepted**: the price paid, the treasure given and the monster removed as today; when
-  `army_add_stack`'s rule (a stack of the creature, else a free slot) finds no room, the outcome
-  reports `NoRoom { hero, stack }` instead of `CreaturesJoined`, and the game opens
-  `Decision::ArmyDialog { owner, hero, group: [Option<ArmyStack>; 7] }` with the whole group in the
-  group's first slot (the original's local army).
+- **The offer** (T51, moved from T50 so that no build loses a group): `answer_to` no longer skips
+  a join without room (the stub's `has_room` test goes): the offer to join (free or for gold) is
+  made as for any join.
+- **Accepted**: the price paid, the treasure given and the monster removed as today; when the room
+  rule (a stack of the creature that takes it within the cap, else a free slot; decision 115)
+  finds none, the outcome reports `AdventureOutcome::no_room` (`NoRoom { hero, creature, count }`,
+  built in T50) instead of `CreaturesJoined`, and the game opens `Decision::ArmyDialog { owner,
+  hero, group }` with the whole group in the group's first slot (the original's local army).
 - **Open**: its owner's legal commands are the army commands between the hero and the group and on
   the hero alone, the hero's formation, flag and artifact commands (the original's portrait opens
   the hero screen), and `Decline`, which closes it: the group's rest is gone (an event to the owner
@@ -255,10 +164,11 @@ battle's observation shows both levels as 0 in such a battle.
 | Version | Change | Task |
 |---|---|---|
 | core ruleset hash v48, pack format v47 | two effect kinds, the packs' data | T45 (done) |
-| details (in the game state hash) | positions | T49 |
-| adventure state hash v11 | the tactics flag | T50 |
-| game state hash v12 | the meeting and army dialog decisions | T51 |
-| map import v9 | positions | T49 |
+| game state hash v12 | the details' positions | T49a (done) |
+| adventure state hash v11, adventure ruleset part v11 | the tactics flag; a stack's most creatures | T50 (done) |
+| game state hash v13 | the meeting and army dialog decisions | T51 |
+| map import v9 | positions | T49a (done) |
+| map import v10 | Titan's Thunder's book at load | T49b (done) |
 | adventure replay format v6 | `Manage` | T52 |
 | action encoding | unchanged (v4); the AI lane's from the move on | — |
 
@@ -290,8 +200,8 @@ flag) land once:
 |---|---|---|
 | 1 | **T45** + **T46** | T45 (done): the shared groundwork (`shared/`, `cross-lane`): ADR-0013, -0016, -0017 amended; `meeting_spells`, `gives_spell_book`; the packs; core ruleset hash v48; the encoding's move to the AI lane (`lanes.toml`, the versions table, the global HANDOFF, the AI lane's inbox). T46: batch E6's spec and results template (§14; `h3-experiment` `cross-lane`) |
 | 2 | **T47** + **T48** | T47: the harness's clicks and reads (the hero, exchange, split, creature and army dialogs; the spells, backpack, flags and tactics reads), the recipes and the run. T48: scored; the survey's §8 and the rules' sources; an ADV-Q if a row contradicts the reading |
-| 3 | **T49** | `h3-heroes`: positions (§2: the model, validation, the first position, the capture, the import v9, the constructor and the other lanes' call sites, `cross-lane`), moves (§3), combinations and Titan's book (§4), Scholar (§5). The largest task: cut in T49a (positions, §2) and T49b (§3 to §5; decision 111) |
-| 4 | **T50** + **T51** | T50: `h3-adventure`: the army commands, the split's bounds, dismissal, the formation and the flag, the meeting's visit, the join without room's report (§7, §8 visit, §9 offer); adventure state hash v11. T51: `h3-game`: `Manage`, the meeting and army dialog decisions, Scholar's application, `legal_commands` and `split_range`, events, the observation, the tactics flag in battle (§8–§11); game state hash v12; `ADV-STUB-2` closed |
+| 3 | **T49** | `h3-heroes`: positions (§2: the model, validation, the first position, the capture, the import v9, the constructor and the other lanes' call sites, `cross-lane`), moves, combinations and Titan's book, Scholar (§3). The largest task: cut in T49a (positions, §2; done) and T49b (§3; decision 111; done) |
+| 4 | **T50** + **T51** | T50 (done whole, decision 113): `h3-adventure`: the army commands, the split's bounds, dismissal, the formation and the flag, the cap, the meeting's visit, the join without room's report (§7, §8 visit, §9); adventure state hash v11, ruleset part v11. T51: `h3-game`: `Manage`, the meeting and army dialog decisions, Scholar's application, `legal_commands` and `split_range`, events, the observation, the tactics flag in battle (§8–§11), the join offered without room (§9); game state hash v13; `ADV-STUB-2` closed |
 | 5 | **T52** + **T53** | T52: the env's masks (if still this lane's), replays v6 and the two new goldens, fixtures, plans, properties, benchmarks, `--with-original-data` (§12). T53: the audit against the exit criteria, increment 6 closed, increment 7 refined |
 
 **Increment 6's exit criteria:**
@@ -318,22 +228,14 @@ flag) land once:
 
 ### 16. Risks and open points
 
-- **The positions' ripple**: `HeroDetails.worn` is built in about forty files, a dozen of them
-  other lanes' (the battle lane's `h3-pack-battle` tests and `h3-experiment`, the AI lane's
-  `h3-sim` encounter, the client lane's `h3-view`). The constructor keeps each one line; T49 is
-  `cross-lane` for them and tells their inboxes. The details' hash changes every replay's
-  checkpoints (re-recorded with their options, as before).
 - **`legal_commands`' size** during a meeting (§10): bounded, but a few thousand entries per call
   would slow a client that lists them every step; T52 measures it, and a per-hero query (the
   original's screens are per hero) replaces the flat list if it hurts.
 - **The handover of the env**: the AI lane takes an env whose encoding lacks increment 6's
   commands; agents trained before E13's macro-actions manage nothing. The masks' `Decline` keeps
   the env playable; the encoding's growth is the AI lane's call (its inbox).
-- **A stack's count cap** (decision 109): the original's 16-bit limits (the map's count, A-15's
-  moves) do not bind the engine; it supports a reasonable count and handles saturation
-  gracefully, a merge past the cap refused. Open until T50's start: the cap's value (data, ADR-0006),
-  and what else meets it (a join onto a stack, the split's target, the import's 16-bit count,
-  later recruiting and growth), with ADR-0016 point 3's amendment.
+- **A stack's count cap**: settled at T50's start (decisions 109, 114, 115; ADR-0016 point 3) and
+  built (ADV-ARM-007); recruiting and growth keep it when they come.
 - **A-16 and the split's bounds** rest on the code reading; E6-4 confirmed them (T48: 1 and 9). The engine's
   [1, t − 1] with the move reproduces the original's reachable outcomes (§7): a row that showed
   the dialog allowing what the click refuses would reopen it.

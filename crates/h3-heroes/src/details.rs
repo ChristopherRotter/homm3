@@ -2,16 +2,16 @@
 //! and the war machines a hero brings to a battle (HER-WAR-001).
 
 use alloc::collections::BTreeSet;
-use alloc::vec;
 use alloc::vec::Vec;
 
 use h3_content::{
-    ArtifactSlotId, ArtifactType, ArtifactTypeId, CreatureTypeId, HeroEffect, HeroParams,
-    HeroTypeId, MAX_HERO_SKILLS, MAX_SKILL_LEVEL, Ruleset, SkillId, SpellCategory, SpellId,
+    ArtifactType, ArtifactTypeId, CreatureTypeId, HeroEffect, HeroParams, HeroTypeId,
+    MAX_HERO_SKILLS, MAX_SKILL_LEVEL, Ruleset, SkillId, SpellCategory, SpellId,
 };
 
 use crate::error::DetailsError;
 use crate::level::{experience_bound, level_of};
+use crate::positions::{full_slot, positions};
 
 /// The four primary skills, in the order of every `[u8; 4]` of primary skills.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -91,9 +91,9 @@ pub struct OfferLevels {
 /// from its army. Values are *base* values; what artifacts and the specialty add is derived
 /// ([`crate::derive_battle_hero`]).
 ///
-/// Artifacts are worn by kind of slot: an artifact occupies a position of its own slot, and a
-/// combination one more position of each slot in its `locks` (HER-ART-001). Positions of one
-/// slot are interchangeable, so `worn` lists artifacts, not positions.
+/// Artifacts are worn on positions (E08 T49a; ADR-0013 point 1): one per position of the
+/// ruleset's slots ([`crate::positions`]), an artifact on a position of its own slot, and a
+/// combination's locks counted per slot (HER-ART-001).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct HeroDetails {
     /// The hero type: class, specialty and identity.
@@ -112,8 +112,10 @@ pub struct HeroDetails {
     pub primary: [u8; 4],
     /// Secondary skills with their levels (1 Basic to 3 Expert), in display order.
     pub skills: Vec<(SkillId, u8)>,
-    /// Worn artifacts, in any order; the same type may appear more than once.
-    pub worn: Vec<ArtifactInstance>,
+    /// Worn artifacts by position ([`crate::Position`]): one entry per position of
+    /// [`crate::positions`], empty or holding an artifact of that position's slot; the same type
+    /// may appear more than once. [`crate::wearing`] places a list.
+    pub worn: Vec<Option<ArtifactInstance>>,
     /// Artifacts carried in the backpack, in backpack order.
     pub backpack: Vec<ArtifactInstance>,
     /// Spells the hero has learned (the original's `+0x3EA`): kept whatever it wears. The spells
@@ -206,32 +208,29 @@ fn validate_skills(skills: &[(SkillId, u8)], ruleset: &Ruleset) -> Result<(), De
     Ok(())
 }
 
-/// Every worn artifact has a slot, and the positions they and their locks occupy fit every
-/// slot's count.
-fn validate_worn(worn: &[ArtifactInstance], ruleset: &Ruleset) -> Result<(), DetailsError> {
+/// One entry per position; every worn artifact on a position of its own slot; the positions
+/// they and their locks occupy fit every slot's count (HER-ART-001).
+fn validate_worn(worn: &[Option<ArtifactInstance>], ruleset: &Ruleset) -> Result<(), DetailsError> {
     // rule: HER-ART-001
-    let slots = ruleset.artifact_slots();
-    let mut used: Vec<u16> = vec![0; slots.len()];
-    for &item in worn {
+    let slots = positions(ruleset);
+    if worn.len() != slots.len() {
+        return Err(DetailsError::Positions);
+    }
+    let mut types = Vec::new();
+    for (&slot, &item) in slots.iter().zip(worn) {
+        let Some(item) = item else { continue };
         let id = item.artifact;
         let artifact = ruleset
             .artifact(id)
             .ok_or(DetailsError::UnknownArtifact(id))?;
-        let slot = artifact.slot.ok_or(DetailsError::NotWearable(id))?;
-        validate_scroll(item, ruleset)?;
-        // The compiler resolved every slot and lock against the ruleset's slots.
-        for s in core::iter::once(slot).chain(artifact.locks.iter().copied()) {
-            used.get_mut(s.index())
-                .into_iter()
-                .for_each(|n| *n = n.saturating_add(1));
+        let own = artifact.slot.ok_or(DetailsError::NotWearable(id))?;
+        if own != slot {
+            return Err(DetailsError::WrongPosition(id));
         }
+        validate_scroll(item, ruleset)?;
+        types.push(artifact);
     }
-    match used
-        .iter()
-        .zip(slots)
-        .position(|(&n, slot)| n > u16::from(slot.count))
-        .and_then(ArtifactSlotId::from_index)
-    {
+    match full_slot(ruleset, types.into_iter()) {
         Some(full) => Err(DetailsError::SlotFull(full)),
         None => Ok(()),
     }
@@ -289,7 +288,7 @@ fn validate_spells(spells: &[SpellId], ruleset: &Ruleset) -> Result<(), DetailsE
 }
 
 /// The war machines a hero brings to a battle (`BattleSetup.war_machines`): the war machine of
-/// every worn artifact that places one, in the order worn. The Catapult's artifact places none:
+/// every worn artifact that places one, in position order. The Catapult's artifact places none:
 /// the battle sets the Catapult up itself (BAT-SIE-009). Artifacts the ruleset does not know are
 /// skipped; validate first.
 pub fn war_machines(details: &HeroDetails, ruleset: &Ruleset) -> Vec<CreatureTypeId> {
@@ -297,6 +296,7 @@ pub fn war_machines(details: &HeroDetails, ruleset: &Ruleset) -> Vec<CreatureTyp
     details
         .worn
         .iter()
+        .flatten()
         .filter_map(|item| ruleset.artifact(item.artifact).and_then(|a| a.war_machine))
         .collect()
 }

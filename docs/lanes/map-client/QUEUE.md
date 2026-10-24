@@ -11,47 +11,24 @@ detail in `docs/epics/E24-design.md`; captures by the harness (`clients/capture/
 in git. Every oddity of the original a reading or a capture finds is an `MCL-Q<n>` in the same
 task (the HANDOFF's autonomy contract).
 
-T5 split with the user (2026-10-23) into T5a (heroes and boats, done) and T5b (owners, the path,
-the explored tiles).
+T5 split with the user (2026-10-23) into T5a (heroes and boats, done) and T5b; T5b split with
+the user (2026-10-24) into T5b1 (the owners, done) and T5b2 (the path, the explored tiles, done).
+T6 split with the user (2026-10-24) into T6a (the set's digests, the half tick, done) and T6b
+(the closure).
 
-### E24 M1 T5b — owners' colours, the path's arrows and the explored tiles
+### E24 M1 T6b — M1's closure
 
-- **Scope:** an owned object's colours (mines, dwellings, towns, the eight classes' flag pixels,
-  D10; the owner's tile 0x4FEC30 as the entrance), the tables' entries; a town's picture by its
-  buildings (the same copy as a random object's, 0x4C9990, `E24-design.md` §2.7); a random
-  dwelling's anchor at a new game (§2.7, not read: `render --live` draws it at the map's
-  meanwhile); the path's arrows and their shadows (passes 6 and 8, D9); the unexplored tiles from
-  the original's explored tiles (`h3mem.py`) in the live part; situations of a path under an
-  object, of owned objects of every colour, and shipped maps' views with heroes and owned objects;
-  if cheap, a boat's flag of a colour other than Red's (T5a captured Red's only: another colour's
-  hero must board, hot seat).
-- **Acceptance:** those situations match pixel for pixel outside the panels' masks.
-- **Depends on:** T5a (done). **Status:** ready. Since T5a the situations give heroes of any
-  colour and boats, Red's heroes walk by play and the harness turns heroes and boats
-  (`E24-design.md` §2.8); a path is shown by a hero's first click on a tile (`h3adv.walk`'s
-  first click; `setup.sh` sets Show Route).
-
-### E24 M1 T6 — the capture set and M1's closure
-
-- **Scope:** the map's capture set (`clients/map/situations/`, started by T3b2 with `set.toml`
-  and `h3map.py set`: every situation of T3b2 to T5b with
-  its masks) and its digests, so a later task captures only what it changes (as E17's `drawn`,
-  the runbook's "Which captures a change needs"); M1's closure: a fresh reviewer agent, its
-  findings fixed or queued, the review list (the epic's), the user's checkpoint; M2 T0 queued.
-- **Acceptance:** the whole set matches as recorded; the review list accepted by the user.
-- **Depends on:** T5b. **Status:** waiting (T5b).
+- **Scope:** M1's closure: a fresh reviewer agent, its findings fixed or queued, the review list
+  (the epic's), the user's checkpoint; M2 T0 queued.
+- **Acceptance:** the review list accepted by the user; the whole set as recorded (`h3map.py
+  set`, 40, captured whole at T6a: a change since then captures what `drawn` lists).
+- **Depends on:** T6a (done). **Status:** ready. `h3map.py drawn` gives the set's state without
+  the original; the review list is the epic's (T2 to T6a).
 
 ## Inbox
 
 Other lanes add entries here. The map client lane turns each into a task, or keeps one line here
 while the work waits.
-
-- 2026-10-23 (this lane, E24 M1 T4b; for T6, the capture set): **the palettes at the frozen clock
-  can be half a tick apart.** In about one still of seven `h3map.py`'s palette read found the
-  terrains' cycling palettes (`lavatl`, `watrtl`) one step ahead of the rivers' for the whole 2 s
-  it reads (its error names each range's fits); `set` shows the situation again and it is exact.
-  Read whether the tick (0x4ED490) rotates the rivers apart from the terrains, what such a
-  screen shows, and either step the clock past it or give `render` a step per DEF.
 
 - 2026-10-23 (the adventure lane, E08 T47a; for information, nothing to do): the harness's
   clicks and reads for batch E6 (`clients/capture/README.md`, "Screens and their items"): the

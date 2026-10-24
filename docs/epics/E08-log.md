@@ -5126,3 +5126,168 @@ on"; a scoring of docs only).
   `cross-lane` with the user's consent, battle's path); the queue: T49a and T49b (round 3).
 - **Verify:** docs only (no fingerprinted path). `verify --scope adventure` (below, in the pull
   request).
+
+### Increment 6, round 3: T49a, the artifact positions (2026-10-24, `adventure/e08-t49a`, `cross-lane`)
+
+**Baseline:** `master` a5fbe80 (#446 merged); its engine code (c4721d3e) was verified on 3a21abe,
+so the sandbox ran only the light gates: all passed. T49a whole (the user's choice at its start,
+`AskUserQuestion`: recommended was two parts, the model with every caller first and the import
+v9 with `PlaceArtifact` after; not chosen either: a cross-lane constructor first).
+
+- **The model** (`h3_heroes`, design §2, ADR-0013 point 1): `HeroDetails.worn` is
+  `Vec<Option<ArtifactInstance>>`, one entry per position of `positions(ruleset)` (the slots in
+  their order, each `count` times; SoD's 19, the test packs' 9 and 4); `Position(usize)`.
+  `validate` checks the length (`DetailsError::Positions`), an artifact's slot against its
+  position's (`WrongPosition`, `NotWearable` for the Grail) and the locks per slot (`SlotFull`,
+  counted as before: `positions::full_slot`, shared with the first position and a placement).
+- **The first position** (`first_position`, HER-CHG-002): the lowest empty position of the
+  artifact's slot when the counts fit with it; `AddArtifact` wears it there, else the backpack's
+  end as before. `wearing(ruleset, list)` places a list at first positions, one that finds none
+  left out (the callers that list artifacts; a caller needing an invalid placement writes
+  positions). The capture (HER-ART-004) and a lost machine (HER-WAR-002) walk the positions;
+  `RemoveArtifact` at a position leaves it empty; `PlaceArtifact { artifact, at }` puts one at an
+  empty position of its slot with the locks fitting, or at a backpack index up to the length
+  while the backpack carries it and has room (`ChangeError::CannotPlace`); a battle never tells
+  one (the plans' property).
+- **The game** (`h3-game`): `HeroArtifactsSetup.worn` by position; the defaults' book and the
+  starting army's machines at their first positions; the details' hash writes each position (0
+  empty, 1 and the artifact): **game state hash v12** (T51's decisions become v13, design §13).
+  `h3_game` re-exports `positions`, `takes`, `wearing`, `Position` (`h3-map` has no
+  `h3-heroes` dependency, `arch.toml`).
+- **The import v9** (`h3-map`): the map's worn entry `i` is `codes::WORN`'s slot and rank, placed
+  at that rank of the slot's content positions (the map's 13 to 17 to 14 to 18, SoD's 18, the
+  fifth misc, to 13), entry by entry in the map's order and only where the position takes it
+  (`h3_heroes::takes`), else left out. Found by the full verify's shipped maps: the Tutorial's
+  second hero stores the Shackles of War (125, misc) on its left hand, which the first version
+  (each entry placed as stored) refused to validate. The original's loader drops such an entry
+  (`placed_hero_setup` equips entry by entry through `hero_equip_artifact`, which returns
+  without placing what `hero_can_place_artifact` refuses; 0x4D8D63, read this session) and
+  VCMI's skips it (`loadArtifactToSlot`, its comment naming a campaign hero's Shackles on a left
+  hand): two sources agreeing, built (HER-ART-001's sources). With RoE's rules an artifact on the
+  fifth misc is dropped too (the original refuses position 18 before SoD). The backpack is as
+  before (the original's 0x4E2F90 also refuses a war machine there, which validation refuses
+  here; no shipped map has one). `MAP_IMPORT_VERSION` 9; `h3m.md`'s import paragraph. The plans put a hero's Spell
+  Book on the map's book entry (17), until now the head's (0, "any slot"): the fixture maps
+  regenerated (`H3_WRITE_FIXTURES`), both changed only there.
+- **The other lanes' call sites** (`cross-lane`, ADR-0013's consequences): the battle lane's
+  `h3-pack-battle` tests (`src/tests.rs`, eleven `tests/harvested_*.rs`: `wearing`, the random
+  details through `first_position`; the Alliance's locked head and AB's four misc positions
+  restated by position), the AI lane's `h3-sim` encounter (`wearing` before its `AddArtifact`s).
+  The client lane's `h3-view` and the battle lane's `h3-experiment` build maps through the
+  writer's 19-entry array, not details: nothing to change (the design note named them). Their
+  inboxes told.
+- **Replays:** the ten re-recorded with their options (`adventure_replays.rs`' history), their
+  commands unchanged, every checkpoint moved (the version, the map's hash, the positions).
+- **Catalog:** HER-ART-001 amended (positions; batch E6's source kept, `verified`), HER-CHG-002,
+  HER-ART-004, HER-WAR-001, HER-WAR-002 restated by position. Design note §2 reduced to a pointer
+  here, §13's versions and §16's ripple risk updated.
+
+### Increment 6, round 3: T49b, moves, combinations, Titan's book, Scholar (2026-10-24, `adventure/e08-t49b`)
+
+**Baseline:** `master` d0d7bb8 (#450 merged); its engine code (85f9c044) was verified on d0d7bb8,
+so the sandbox ran only the light gates: all passed. T49b whole and the import's Titan's book in it
+(decision 112, the user's choices at its start).
+
+- **Titan's book** (HER-ART-007, design §3): `h3_heroes::equip(worn, ruleset, item, at)` wears an
+  artifact where `takes` allows it and, for one with `gives_spell_book`, puts the ruleset's first
+  artifact with the `spell_book` effect at its first position when one takes it; whether it
+  wore it. `apply_change` equips every worn placement (`AddArtifact` at its first position,
+  `PlaceArtifact` at a position), so a capture, a move and an assembly give the book; into the
+  backpack nothing; a removal takes nothing back. `wearing` still only places (no book): its
+  callers list artifacts. The original tests the artifact's id (135) at 0x4E2A64; the engine reads
+  the effect of the artifact itself (a combination's parts' effects do not equip).
+- **Moves** (HER-ART-005): `ArtifactMove { from, to }` (two `ArtifactPlace`s), `check_move(from,
+  to: Option<&HeroDetails>, ruleset, move)` (`None`: within one hero) and `move_changes` →
+  `MoveChanges { from, to }` (within one hero all in `from`): the removal, the target's removal,
+  the placement, the target's artifact back at the source's place. The order of the checks: the
+  source holds an artifact (`NoArtifact`); it moves (`Unmovable`: a slot not carried and no war
+  machine or the Catapult's, so the Spell Book and the Catapult; the packs' Catapult places none,
+  the test pack's places one with the `catapult` flag); not the same place within one hero
+  (`SamePlace`, an engine choice: a pick-up dropped back changes nothing, the env's masks need no
+  no-op); a position target of the artifact's slot (`CannotPlace`; a position past the last, which
+  the property found taking the Grail as `None == None`, refused), the target's artifact movable
+  (`Unmovable`), the locks with the target's artifact gone (within one hero a worn source's
+  artifact gone and the target's back on it: a swap keeps the set); between two heroes the
+  moving hero's locks with the returned artifact (`CannotReturn`); a backpack target carried, at an
+  index up to the length (without the moved one within one backpack) and below the most. The
+  property `a_checked_move_applies_change_by_change`: every move it accepts applies change by
+  change (`check_change` passing each), validates and keeps both heroes' artifacts but the book.
+- **Combinations** (HER-ART-006): `check_assemble(details, ruleset, at)` → the first combination
+  in artifact order listing the part at `at` whose every part is worn on a position;
+  `assemble_changes`: the removal at `at`, then for each other part (pack order) the highest
+  position of its type not taken, emitted in descending position order, then `AddArtifact` of the
+  combination (its first position: the test's Well lands on misc 4 when assembled from misc 5).
+  `check_disassemble` / `disassemble_changes`: a worn combination's removal, then `AddArtifact` of
+  each part in artifact order (no sort: logic crates have none). `CombineError::{NoArtifact,
+  Incomplete, NotCombination}`. A part listed twice would take two copies after a check of one
+  (the original's test is per part too); no pack has one.
+- **Scholar** (HER-SPL-007): `meeting_spells(a, b, ruleset) -> (Vec, Vec)` in `spells.rs`, the
+  spells by the ruleset's order; `wears_book` shared with `learns_spell`. VCMI's
+  `useScholarSkill` read this session agrees (the greater level, both books, each limit).
+- **The import v10** (`h3-map`, decision 112): each worn entry equipped through `h3_game::equip`
+  (re-exported beside `takes`); the original's `placed_hero_setup` equips entry by entry through
+  `hero_equip_artifact` (0x4D8D63), which adds the book (0x4E2A64), so the map's own book entry
+  then finds the position taken. VCMI's `checkSpellbookIsNeeded` gives the book only on a move to
+  the right hand or an assembly; its comment leaves a pickup and the game's start open
+  (HER-ART-007's sources). A scratch scan (not committed) of the 160 shipped maps: no hero wears
+  or carries the Thunder, so no import changes; the ten golden replays moved only their header's
+  `import_version` (every hash the same; `adventure_replays.rs`' history).
+- **Catalog:** HER-ART-005, -006, -007 and HER-SPL-007 `verified` (batch E6's E6-10, E6-8, E6-9,
+  E6-7; VCMI 1.7.5 read for the three code links); HER-CHG-001, -002 and HER-ART-001 amended.
+  Design note §3 to §5 reduced to a pointer here (§3), §13's versions. Coverage of `h3-heroes`
+  100 % with and without its proptests.
+
+### Increment 6, round 4: T50, the adventure's army management, the meeting's visit, the join without room (2026-10-24, `shared/e08-t50-cap` #455, `adventure/e08-t50`)
+
+**Baseline:** `master` f89aa89 (#454 merged); its engine code (808b7ac3) was verified on f89aa89, so
+the sandbox ran only the light gates: all passed. At its start the user chose T50 whole (decision
+113), a cap of 1 000 000 (decision 114) and, for a group its stack cannot take, a free slot, else
+the army dialog (decision 115). ADR-0016 point 3 amended first in `shared/e08-t50-cap` (#455,
+docs only).
+
+- **The cap** (ADV-ARM-007): `AdventureParamsDef::max_stack_count` (`NonZeroU32`; the pack format's
+  `[params] max_stack_count`, base 1 000 000, synthetic 9 999; the compiler refuses a value below
+  `MAX_MONSTER_COUNT`, so any monster's group fits a slot; the tests' rulesets use exactly that,
+  `testing::MAX_STACK`), adventure ruleset part v11. A setup's hero or guards' stack above it:
+  `ArmyError::TooManyCreatures`. `monsters::room` finds the army's first stack of the creature
+  that takes the group within the cap (the original's first stack, which takes any), else the
+  first free slot; `add_stack` (joins) and `raise` (Necromancy: at most the cap raised, the
+  upgrade's stack likewise within it) use it; `has_room` (the join's offer) too.
+- **The army commands** (`army.rs`, ADV-ARM-001 to -005): `ArmyRef::{Hero, Group}`, `ArmySlot`,
+  `ArmyCommand::{Move, Split, Dismiss}`, `ArmyCommandError`; `plan` works on copies of the one or
+  two armies and returns their new stacks (slot order kept by insertion: logic crates do not
+  sort). Checks in order: the slots, the source's stack, the same slot (refused, as T49b's no-op
+  artifact move), then the rule: a merge past the cap (`TooManyCreatures`), a hero's last stack
+  leaving its army (`LastStack`: moved to an empty slot or merged into another army, dismissed),
+  a split's other creature or count outside `split_range` (max(1, t − most) to min(t − 1, most)).
+  A split that leaves the counts as they were is allowed (the original's OK does the same). The
+  group has no protected stack. `state/manage.rs`: `manage_army(part, player, command, group:
+  Option<&mut Vec<ArmyStack>>)` finds the heroes (the player's on the map: `NotYourHero`) and the
+  group (`NoGroup` when none is given), plans and writes; `split_range` (the query, `None` when no
+  split is possible); `set_formation`, `set_tactics` (ADV-ARM-006, any number of times). No
+  events: the game tells the owner in T51.
+- **The tactics flag**: `HeroOnMap::tactics`, true at the build (the original's 2), in the hash
+  after the formation (adventure state hash v11) and `OwnHeroView::tactics`.
+- **The meeting's visit** (GAM-MET-001): `check_step` and `passage` treat every other hero alike
+  (another player's a battle, an own one a meeting, from a stop; a flight passes both), and the
+  walking query's occupancy is one bit (the own-hero block gone); `move_hero` reports
+  `AdventureOutcome::meeting` (`Meeting { visitor, visited }`). The game ignores it until T51.
+- **The join without room**: `join` reports an accepted group that finds no room as
+  `AdventureOutcome::no_room` (`NoRoom { hero, creature, count }`), its treasure given and the
+  monster removed. **Moved to T51** (an agent's call, told in the summary): dropping the offer's
+  `has_room` skip, so that no build between the two loses a group the game cannot hold yet
+  (`ADV-STUB-2` updated).
+- **Rules and ledger:** ADV-ARM-001 to -007 and GAM-MET-001 written (ADV-ARM-002, -003, -004,
+  -006 `verified` by batch E6's E6-3, E6-4, E6-2, E6-6; GAM-MET-001 `implemented`, its decision in
+  T51); ADV-MON-007, -008 and GAM-BAT-006 amended; ADV-QUIRK-19 (A-15, exploit-fix) and -20 (A-16,
+  the original's bounds, no flag) in the ledger; `h3m.md`'s import: a count kept whole.
+- **Tests:** `army/tests.rs` (the plan within one army, between two, with the group, the split's
+  range, the errors, the state's command and query, the formation and flag; the property
+  `commands_keep_the_armies_whole`: random commands keep every invariant and each creature's
+  total, and a move that is no merge undone by the move back restores both armies); the room and
+  the cap in the join's and the raise's tests; the meeting in the walk's, the flight's and the
+  query's tests and properties; `h3-map`'s step property counts an own hero's visit.
+- **Replays:** the ten re-recorded with their options, their commands unchanged (no game of the
+  duel meets an own hero: each player's two heroes start on different levels); every hash moved.
+- **Found and fixed:** the epic held decision 112's block five times (T49b's edit had put it
+  before every increment's task list); the four extra copies removed.

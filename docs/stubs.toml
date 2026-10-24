@@ -54,7 +54,7 @@ epic   = "E23"
 [[stub]]
 id     = "ADV-STUB-2"
 where  = "crates/h3-adventure/src/state/monsters.rs::AdventureState::answer_to"
-reason = "A wandering monster's offer to join is skipped, as declined, when the hero's army has neither a stack of the group's creature nor a free slot (E08 decision 22); the original shows its army dialog (0x5D11D0, not read) so the player can make room (dismiss or merge stacks) and then accept. A feature to-do for army management (E08 decision 48: increment 5's sketch): read 0x5D11D0, build the dialog as a pending decision"
+reason = "A wandering monster's offer to join is skipped, as declined, when the hero's army has neither a stack of the group's creature that takes it within a stack's most nor a free slot (E08 decisions 22, 115); the original shows its army dialog (0x5D11D0, survey E08-army.md section 1) so the player can make room (dismiss or merge stacks). E08 T50 built the adventure's part (the army commands with the group, an accepted join without room reported as `AdventureOutcome::no_room`); T51 opens the dialog as the game's decision (GAM-DEC-004) and drops the skip"
 epic   = "E08"
 
 [[stub]]

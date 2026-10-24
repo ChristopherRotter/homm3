@@ -29,6 +29,16 @@ fn heroes() -> String {
     )
 }
 
+/// The `[map.owners]` and `[map.towns]` sections: a list of every faction's town pictures each.
+fn owners_and_towns() -> String {
+    format!(
+        "[map.owners]\npalette = \"game.pal\"\nneutral = 63\nclasses = [17, 53, 98]\n\n[map.towns]\nvillage = [{}]\nfort = [{}]\ncapitol = [{}]\n",
+        names("tv", FACTIONS),
+        names("tf", FACTIONS),
+        names("tc", FACTIONS),
+    )
+}
+
 /// A table with `[map]`.
 fn base(extra: &str) -> String {
     format!(
@@ -39,6 +49,7 @@ depends = []
 
 [map]
 edge = "edg.def"
+path = "adag.def"
 road_offset = 16
 cycle_ms = 200
 frame_ms = 180
@@ -47,6 +58,8 @@ frame_ms = 180
 full = "tshrc.def"
 edge = "tshre.def"
 pieces = [{}]
+
+{}
 
 {}
 
@@ -69,6 +82,7 @@ def = "cobbrd.def"
 {extra}"#,
         pieces(&[(0, 34), (1, 133), (2, 0)]),
         heroes(),
+        owners_and_towns(),
     )
 }
 
@@ -143,10 +157,27 @@ fn every_def_with_the_frames_the_view_draws() {
         .collect();
     // The heroes' and boats' DEFs after the rest, each drawn in the facings' five groups.
     let heroes = HERO_CLASSES + COLOURS + 2 * BOAT_TYPES + BOAT_TYPES * COLOURS;
-    assert_eq!(needs.len(), 7 + heroes);
-    assert!(defs[..7].iter().all(|n| n.groups == 1));
-    assert!(defs[7..].iter().all(|n| n.groups == 5 && n.frames == 1));
-    let ends = [&needs[7], &needs[6 + heroes]];
+    // Then the towns' pictures, one frame of one group each (E24 M1 T5b1).
+    assert_eq!(needs.len(), 8 + heroes + 3 * FACTIONS);
+    assert!(defs[..8].iter().all(|n| n.groups == 1));
+    assert!(
+        defs[8..8 + heroes]
+            .iter()
+            .all(|n| n.groups == 5 && n.frames == 1)
+    );
+    assert!(
+        defs[8 + heroes..]
+            .iter()
+            .all(|n| n.groups == 1 && n.frames == 1)
+    );
+    assert_eq!(
+        [&needs[8 + heroes], needs.last().unwrap()],
+        [
+            &("tv0.def", "town village 0", None, 1),
+            &("tc8.def", "town capitol 8", None, 1)
+        ]
+    );
+    let ends = [&needs[8], &needs[7 + heroes]];
     assert_eq!(
         ends,
         [
@@ -154,9 +185,9 @@ fn every_def_with_the_frames_the_view_draws() {
             &("abf23.def", "boat flag 23", None, 1)
         ]
     );
-    assert_eq!(needs[7 + HERO_CLASSES].1, "hero flag 0");
+    assert_eq!(needs[8 + HERO_CLASSES].1, "hero flag 0");
     assert_eq!(
-        needs[..7],
+        needs[..8],
         [
             ("dirttl.def", "terrain 0", Some((Layer::Terrain, 0)), 1),
             ("watrtl.def", "terrain 8", Some((Layer::Terrain, 8)), 1),
@@ -165,12 +196,13 @@ fn every_def_with_the_frames_the_view_draws() {
             ("edg.def", "edge", None, EDGE_FRAMES),
             ("tshrc.def", "full shroud", None, FULL_FRAMES),
             ("tshre.def", "edge shroud", None, 34),
+            ("adag.def", "path", None, PATH_FRAMES),
         ]
     );
     let names: Vec<String> = tables
         .names()
         .into_iter()
-        .filter(|n| !n.starts_with('A'))
+        .filter(|n| !n.starts_with('A') && !n.starts_with('T'))
         .collect();
     assert_eq!(
         names,
@@ -179,8 +211,6 @@ fn every_def_with_the_frames_the_view_draws() {
             "COBBRD.DEF",
             "DIRTTL.DEF",
             "EDG.DEF",
-            "TSHRC.DEF",
-            "TSHRE.DEF",
             "WATRTL.DEF"
         ]
     );
@@ -320,6 +350,7 @@ fn refuses_what_breaks_the_format() {
         ("edge = \"edg.def\"", "edge"),
         ("full = \"tshrc.def\"", "full shroud"),
         ("edge = \"tshre.def\"", "edge shroud"),
+        ("path = \"adag.def\"", "path"),
     ] {
         let bad = base("").replacen(field, &field.replace(".def", ".pcx"), 1);
         let err = load(&files(&[bad]), "base").unwrap_err();
@@ -358,6 +389,35 @@ fn refuses_what_breaks_the_format() {
             &format!("`{what}`: {rule}"),
         );
     }
+    // The owners' palette and the towns' lists (E24 M1 T5b1): one picture per faction.
+    let def = base("").replacen("\"game.pal\"", "\"game.def\"", 1);
+    check(
+        &[def],
+        "base",
+        entry("owners' palette", "`game.def` is not a .PAL name"),
+        "`owners' palette`: `game.def` is not a .PAL name",
+    );
+    for (list, what) in [
+        ("village = [", "villages"),
+        ("fort = [", "forts"),
+        ("capitol = [", "capitols"),
+    ] {
+        let long = base("").replacen(&format!("\n{list}"), &format!("\n{list}\"x.def\", "), 1);
+        let rule = format!("{} entries, not {FACTIONS}", FACTIONS + 1);
+        check(
+            &[long],
+            "base",
+            entry(what, &rule),
+            &format!("`{what}`: {rule}"),
+        );
+    }
+    let town = base("").replacen("\"tf2.def\"", "\"tf2.pcx\"", 1);
+    check(
+        &[town],
+        "base",
+        entry("town fort 2", "`tf2.pcx` is not a .DEF name"),
+        "`town fort 2`: `tf2.pcx` is not a .DEF name",
+    );
     let pcx = base("").replacen("\"ab1.def\"", "\"ab1.pcx\"", 1);
     check(
         &[pcx],
@@ -389,4 +449,28 @@ fn refuses_what_is_not_a_table() {
         assert!(matches!(err, TableError::Syntax(_)), "{text}");
         assert!(err.to_string().starts_with("not a table: "));
     }
+}
+
+#[test]
+fn the_owners_entries_and_the_towns_pictures() {
+    let tables = load(&files(&[base("")]), "base").unwrap();
+    let owners = &tables.map.owners;
+    // An owned class's flag pixels: entry 63 without an owner, 64 + the colour with one.
+    assert_eq!(owners.entry(53, None), Some(63));
+    assert_eq!(owners.entry(17, Some(0)), Some(64));
+    assert_eq!(owners.entry(98, Some(7)), Some(71));
+    // Every other class's are skipped.
+    assert_eq!(owners.entry(54, Some(2)), None);
+    let towns = &tables.map.towns;
+    let bit = |id: u32| 1u64 << id;
+    assert_eq!(towns.picture(0, 0), Some("tv0.def"));
+    assert_eq!(towns.picture(8, bit(10) | bit(5)), Some("tv8.def"));
+    for building in [FORT, CITADEL, CASTLE] {
+        assert_eq!(towns.picture(3, bit(building)), Some("tf3.def"));
+    }
+    assert_eq!(towns.picture(4, bit(FORT) | bit(CAPITOL)), Some("tc4.def"));
+    assert_eq!(towns.picture(4, bit(CAPITOL)), Some("tc4.def"));
+    // A faction past the lists has none.
+    assert_eq!(towns.picture(9, 0), None);
+    assert_eq!(towns.picture(u32::MAX, bit(FORT)), None);
 }

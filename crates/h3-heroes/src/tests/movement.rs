@@ -88,7 +88,7 @@ fn hero(r: &Ruleset, level: u8, skills: &[(&str, u8)], worn: &[&str]) -> HeroDet
         experience: 0,
         primary: [0, 0, 1, 1],
         skills: skills.iter().map(|&(k, l)| (skill(r, k), l)).collect(),
-        worn: worn.iter().map(|k| art(r, k)).collect(),
+        worn: wearing(r, &worn.iter().map(|k| art(r, k)).collect::<Vec<_>>()),
         backpack: vec![art(r, "t:helm")],
         spells: vec![],
         ..details(r)

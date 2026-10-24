@@ -428,6 +428,7 @@ fn part_with(core: &Ruleset, chances: Vec<u8>, slots: u8) -> AdventureRuleset {
             max_levels: NonZeroU8::new(1).unwrap(),
             max_players: NonZeroU8::new(3).unwrap(),
             army_slots: NonZeroU8::new(slots).unwrap(),
+            max_stack_count: NonZeroU32::new(1_000_000).unwrap(),
             starting_stack_chances: chances,
             // E08 T19a: a battle on a coast tile is fought on rock and the shore.
             battle: Some(BattleTerrainsDef {

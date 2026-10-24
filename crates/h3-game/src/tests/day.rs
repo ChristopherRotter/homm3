@@ -57,7 +57,7 @@ fn game(rules: &GameRuleset, experience: u32) -> GameState {
     hero.army = HeroArmy::Starting;
     hero.details.skills = Some(vec![(roads, 1)]);
     hero.details.artifacts = Some(HeroArtifactsSetup {
-        worn: vec![boots],
+        worn: wearing(rules.core(), &[boots]),
         backpack: vec![],
     });
     hero.details.experience = Some(experience);

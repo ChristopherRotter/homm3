@@ -1,0 +1,7 @@
+# The path's arrows among objects (E24 M1 T5b2; design §2.2, §2.10: D9): objects-mandate's copy of
+# The Mandate of Heaven's (24, 24)-(45, 43), a Red hero's path shown across it.
+size = 36
+terrain = "grass"
+copy = [{ map = "The Mandate of Heaven.h3m", from = [24, 24], to = [45, 43], at = [0, 0], objects = true }]
+heroes = [{ at = [16, 7], class = 2, path = [6, 3] }, { at = [33, 33], owner = 1 }]
+view = [0, 0, 0]

@@ -34,11 +34,14 @@ fn details(r: &BattleRuleset, hero: &str, primary: [u8; 4], spells: &[&str]) -> 
         offered: Default::default(),
         primary,
         skills: vec![],
-        worn: spells
-            .iter()
-            .take(1)
-            .map(|_| r.artifact_by_key("base:spell_book").unwrap().into())
-            .collect(),
+        worn: h3_heroes::wearing(
+            r,
+            &spells
+                .iter()
+                .take(1)
+                .map(|_| r.artifact_by_key("base:spell_book").unwrap().into())
+                .collect::<Vec<_>>(),
+        ),
         backpack: vec![],
         spells: spells.iter().map(|k| r.spell_by_key(k).unwrap()).collect(),
         mana: u16::from(primary[3]) * 10,

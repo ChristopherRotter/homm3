@@ -15,6 +15,17 @@ E23, the original's battle AI, is **closed** (2026-10-24; `docs/epics/E23-origin
 
 Consolidated on 2026-10-19 (the user): the entries from E01 to E04c's closure are merged below by kind, done and duplicate parts dropped; the origin stays in brackets (an epic and task, a review report such as r3 or F-r2b-2). History: git. Items for other lanes went into their inboxes; the First Aid Tent became BAT-Q51. The addresses are readings of the executable, the reviews' not read a second time. Where the readings stand: `installation.md` §7.8–§7.33; the reviews' reports stay on `battle/e04b-t11b-review-reports` and `battle/e04c-t10b-review-reports`; their experiment candidates are in `docs/experiments/README.md` ("From the battle queue's inbox", "From the E04b review", "From E04c").
 
+- 2026-10-24 (the adventure lane, E08 T49a, `adventure/e08-t49a`, `cross-lane` with the user's
+  consent; for your information, done in your paths): **`HeroDetails.worn` is by position**
+  (`Vec<Option<ArtifactInstance>>`, one entry per position of `h3_heroes::positions`: SoD's 19,
+  AB's 18; ADR-0013 point 1). `h3_heroes::wearing(ruleset, list)` places a list at the first
+  positions that take its artifacts (one that finds none is left out), `first_position` gives one;
+  `validate` refuses a wrong length or an artifact on another slot's position. Your
+  `h3-pack-battle` tests (`src/tests.rs`, eleven `tests/harvested_*.rs`) build details with
+  `wearing`; the random details place each draw at its first position (the same draws, the same
+  kept artifacts); `hero_details_fit_the_harvested_slots` states the Alliance's locked head and
+  AB's four misc positions by position. `war_machines` lists them in position order. Nothing else
+  of yours changed; `h3-experiment` builds maps through the writer, untouched.
 - 2026-10-24 (the E11 refinement, `shared/e11-refinement`, Q58): **E11 is yours to lead**
   (`docs/epics/E11-historical-rules.md`): the historical rules of RoE and AB from the user's own
   original media. **The order (the user, 2026-10-24):** E23 closed first (`battle/e23-closure`),

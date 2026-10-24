@@ -940,9 +940,13 @@ fn a_placed_heros_customisations_and_formation_carry_over() {
         h.experience = Some(999);
         h.primary_skills = Some([120, 0, 0, 3]);
         h.secondary_skills = Some(vec![(1, 2), (12, 3)]);
+        // By position (E08 T49a): the axe in the right hand (3), the Ballista on the first
+        // machine's (13), the book (17) and the Clover on SoD's fifth misc (18).
         let mut worn = vec![None; 19];
-        worn[0] = Some(7); // a slot's position is not kept
+        worn[3] = Some(7);
+        worn[13] = Some(4);
         worn[17] = Some(0);
+        worn[18] = Some(46);
         h.artifacts = Some(Artifacts {
             worn,
             backpack: vec![Some(8), None],
@@ -969,16 +973,20 @@ fn a_placed_heros_customisations_and_formation_carry_over() {
         ])
     );
     let artifacts = d.artifacts.as_ref().unwrap();
-    let worn: Vec<_> = artifacts
-        .worn
-        .iter()
-        .map(|a| (a.artifact, a.spell))
+    // The content's positions: the fifth misc (13) before the machines (14 to 17) and the book
+    // (18).
+    assert_eq!(artifacts.worn.len(), 19);
+    let worn: Vec<_> = (0..)
+        .zip(&artifacts.worn)
+        .filter_map(|(at, a)| a.map(|a| (at, a.artifact, a.spell)))
         .collect();
     assert_eq!(
         worn,
         [
-            (artifact("base:centaurs_axe"), None),
-            (artifact("base:spell_book"), None)
+            (3, artifact("base:centaurs_axe"), None),
+            (13, artifact("base:clover_of_fortune"), None),
+            (14, artifact("base:ballista"), None),
+            (18, artifact("base:spell_book"), None),
         ]
     );
     let backpack: Vec<_> = artifacts.backpack.iter().map(|a| a.artifact).collect();
@@ -991,6 +999,92 @@ fn a_placed_heros_customisations_and_formation_carry_over() {
         ])
     );
     assert_eq!(setup.validate(&SOD), Ok(()));
+}
+
+/// The test map's hero wearing these (map entry, artifact code) pairs.
+fn wearing(m: &mut RawMap, entries: &[(usize, u16)]) {
+    let mut worn = vec![None; 19];
+    for &(at, code) in entries {
+        worn[at] = Some(code);
+    }
+    body(m).artifacts = Some(Artifacts {
+        worn,
+        backpack: vec![],
+    });
+}
+
+// covers: HER-ART-001, HER-ART-007
+#[test]
+fn a_placed_heros_artifacts_keep_the_maps_positions() {
+    // Every entry to its position: the head to the feet, misc 1 to 4, the machines and the book
+    // in the map's order; SoD's fifth misc (the map's 18) before the machines (the content's 13).
+    let map_codes: [u16; 19] = [
+        19, 42, 33, 7, 13, 25, 37, 45, 32, 46, 47, 48, 49, 4, 5, 6, 3, 0, 50,
+    ];
+    let entries: Vec<(usize, u16)> = (0..).zip(map_codes).collect();
+    let artifacts = customised(|m| wearing(m, &entries)).artifacts.unwrap();
+    let core = SOD.core();
+    let keys: Vec<Option<String>> = artifacts
+        .worn
+        .iter()
+        .map(|a| a.map(|a| core.artifact(a.artifact).unwrap().key.to_string()))
+        .collect();
+    let content: [u16; 19] = [
+        19, 42, 33, 7, 13, 25, 37, 45, 32, 46, 47, 48, 49, 50, 4, 5, 6, 3, 0,
+    ];
+    let expected: Vec<Option<String>> = content
+        .iter()
+        .map(|&code| Some(codes::ARTIFACTS[usize::from(code)].to_string()))
+        .collect();
+    assert_eq!(keys, expected);
+    let mut m = map();
+    wearing(&mut m, &entries);
+    assert_eq!(import(&m, &SOD).unwrap().validate(&SOD), Ok(()));
+    // An entry its position does not take is left out, in the map's order, as the original's
+    // loader: a misc artifact on the left hand (the Tutorial's second hero's Shackles of War, 125),
+    // Angelic Alliance (129) on the right hand after a helm on the head it locks; RoE's rules have
+    // no fifth misc position (the original refuses it before SoD).
+    let left = |entries: &[(usize, u16)], rules: &GameRuleset| {
+        let mut m = map();
+        wearing(&mut m, entries);
+        let setup = import(&m, rules).unwrap();
+        assert_eq!(setup.validate(rules), Ok(()));
+        let artifacts = setup.heroes[0].details.artifacts.clone().unwrap();
+        (0..)
+            .zip(artifacts.worn)
+            .filter_map(|(at, a)| a.map(|a| (at, a.artifact)))
+            .collect::<Vec<(usize, _)>>()
+    };
+    assert_eq!(
+        left(&[(4, 125), (9, 125)], &SOD),
+        [(9, artifact(core, 125))]
+    );
+    assert_eq!(left(&[(0, 19), (3, 129)], &SOD), [(0, artifact(core, 19))]);
+    assert_eq!(left(&[(3, 129), (5, 25)], &SOD), [(3, artifact(core, 129))]);
+    // Titan's Thunder (135) on the right hand equips a Spell Book (0) on the empty book position
+    // (E08 T49b, HER-ART-007): the map's own book entry, later in its order, finds it taken; a
+    // hero wearing the Thunder without a book entry gets one all the same.
+    let book = artifact(core, 0);
+    let thunder = artifact(core, 135);
+    assert_eq!(left(&[(3, 135)], &SOD), [(3, thunder), (18, book)]);
+    assert_eq!(left(&[(3, 135), (17, 0)], &SOD), [(3, thunder), (18, book)]);
+    let roe = rules(1);
+    assert_eq!(left(&[(18, 46)], &roe), []);
+    assert_eq!(left(&[(17, 0)], &roe), [(17, artifact(roe.core(), 0))]);
+    assert_eq!(
+        roe.core()
+            .artifact_slots()
+            .iter()
+            .map(|s| usize::from(s.count))
+            .sum::<usize>(),
+        18
+    );
+}
+
+/// An artifact of `core` by its map code.
+fn artifact(core: &h3_content::Ruleset, code: u16) -> h3_content::ArtifactTypeId {
+    core.artifact_by_key(codes::ARTIFACTS[usize::from(code)])
+        .unwrap()
 }
 
 #[test]
