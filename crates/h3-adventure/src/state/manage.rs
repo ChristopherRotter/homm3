@@ -1,7 +1,7 @@
 //! A player's management of its heroes on the map (ADR-0016 point 3; E08 T50, `E08-design.md`
 //! §7): the army commands ([`crate::ArmyCommand`], planned by `crate::army`), the split's range,
 //! the formation and the tactics flag. The game routes them and checks the turn and the decision
-//! that allows two armies together (a meeting's, an army dialog's; ADR-0017 points 1 and 6, T51);
+//! that allows two armies together (a meeting's, an army dialog's; ADR-0017 points 1 and 6, T51b);
 //! here each hero named must be the player's on the map, and the group must be given.
 
 use alloc::vec::Vec;
@@ -44,7 +44,7 @@ impl AdventureState {
     /// must be the player's on the map, and the group, if named, is `group`, the open army
     /// dialog's (the game holds it, GAM-DEC-004); the plan ([`crate::army`]) is checked whole,
     /// then the armies change. The game checks that the armies may meet (one hero's, a meeting's
-    /// two, a hero's and its army dialog's group) and tells the owner (T51). Emits nothing.
+    /// two, a hero's and its army dialog's group: T51b) and tells the owner (T51a). Emits nothing.
     ///
     /// # Errors
     ///
@@ -136,7 +136,7 @@ impl AdventureState {
     /// ADV-ARM-007; [`army::split_range`]), `group` being the open army dialog's: none when no
     /// split is possible (a hero not the player's, the group not open, a slot beyond the army's
     /// or holding no stack at `from`, the same slot, another creature at `to`, a single
-    /// creature). The game's query for a client (T51).
+    /// creature). The game's query for a client (`h3_game::split_range`, E08 T51a).
     pub fn split_range(
         &self,
         part: &AdventureRuleset,
@@ -185,7 +185,7 @@ impl AdventureState {
 
     /// Sets `player`'s hero `hero`'s tactics flag (ADV-ARM-006; E08 T50): on, the hero takes the
     /// tactics phase its Tactics gives it; off, it denies the phase in the battles where it would
-    /// get it (GAM-BAT-009, the game's, T51). At no cost.
+    /// get it (GAM-BAT-009, the game's, T51a). At no cost.
     ///
     /// # Errors
     ///

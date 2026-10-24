@@ -155,11 +155,11 @@ pub struct AdventureOutcome {
     /// open.
     pub guard_after: bool,
     /// The meeting the command's step toward an own hero makes (GAM-MET-001, E08 T50): the game
-    /// opens it as the owner's decision (T51).
+    /// opens it as the owner's decision (T51b).
     pub meeting: Option<Meeting>,
     /// The group of an accepted join that found no room in its hero's army (ADV-MON-008, E08
     /// T50): its treasure was given and the monster left the map as for any join; the game opens
-    /// the army dialog with it (GAM-DEC-004, T51).
+    /// the army dialog with it (GAM-DEC-004, T51b).
     pub no_room: Option<NoRoom>,
 }
 
