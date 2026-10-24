@@ -2,7 +2,7 @@
   "schema": 2,
   "set": "report-v1",
   "max_steps": 2000,
-  "engine": {"encounters": 1, "core": "0c7e01b4dffeba0c", "battle": "c14c573e9d2ee26f", "adventure": "483fb763b1a0ebbf", "system_policy": 19},
+  "engine": {"encounters": 1, "core": "f253d2fdb8f18e30", "battle": "c14c573e9d2ee26f", "adventure": "f9dc9fcea4630571", "system_policy": 19},
   "policies": ["random", "aggressor", "greedy", "system"],
   "defender": null,
   "strata": [

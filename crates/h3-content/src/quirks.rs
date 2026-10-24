@@ -121,6 +121,9 @@ pub const REGISTRY: QuirkRegistry = QuirkRegistry::new(&[
     "quirk.adventure.drop_ignores_artifacts",
     "quirk.adventure.radius_waits_for_a_step",
     "quirk.battle.computer_morale_let_off",
+    "quirk.battle.breath_skips_side_columns",
+    "quirk.battle.retaliation_at_a_dead_striker",
+    "quirk.battle.raise_by_rear_hex",
 ]);
 
 /// Q-0003: creatures of a side without a hero never get lucky strikes (BAT-LCK-002).
@@ -281,6 +284,25 @@ pub const RADIUS_WAITS_FOR_A_STEP: QuirkFlag = QuirkFlag(32);
 /// (BAT-MOR-004). Read by the battle from E23 T7.
 pub const COMPUTER_MORALE_LET_OFF: QuirkFlag = QuirkFlag(33);
 
+/// BAT-QUIRK-28 (BAT-Q62, batch 2g BR, BC): a breath attack's second hex is found through the
+/// original's neighbour table, which has no neighbour in the side columns (0x4640A0, melee_strike
+/// 0x441739), so a breath never reaches a hex there: a war machine's rear hex in column 0 or 16
+/// is not struck. Off: the stack behind the attacked hex anywhere (BAT-ATK-003, VCMI's pattern).
+/// Read by the battle from the inbox session's batch 2g.
+pub const BREATH_SKIPS_SIDE_COLUMNS: QuirkFlag = QuirkFlag(34);
+
+/// BAT-QUIRK-29 (survey S-23, BAT-Q28 row 4, batch 2g FS): the struck stack retaliates at a
+/// striker its Fire Shield's reflection killed and spends its retaliation, which strikes nothing
+/// (0x441DD4 to 0x441E01; fixed in HotA 1.7.1): the round's next attacker is not struck back. Off:
+/// no retaliation at a dead striker, none spent (BAT-RET-001). Read by the battle from batch 2g.
+pub const RETALIATION_AT_A_DEAD_STRIKER: QuirkFlag = QuirkFlag(35);
+
+/// BAT-QUIRK-30 (survey S-24, BAT-Q28 row 10, batch 2g RS): a hero's raising spell aimed at a
+/// two-hex corpse raises the top corpse on that corpse's rear hex (0x5A1917; fixed in HotA
+/// 1.5.4), so a two-hex corpse is found by its rear hex alone and a later corpse there hides it.
+/// Off: by either hex (BAT-MAG-035). Read by the battle from batch 2g.
+pub const RAISE_BY_REAR_HEX: QuirkFlag = QuirkFlag(36);
+
 /// The prefix of the flags of data quirks: a gated override names one of them (`fixes`), and
 /// rule code never reads them (ADR-0007, amendment E04b T8e).
 pub const DATA_QUIRK_PREFIX: &str = "quirk.content.";
@@ -323,10 +345,22 @@ mod tests {
 
     #[test]
     fn registry_lookup_and_bitset() {
-        assert_eq!(REGISTRY.len(), 34);
+        assert_eq!(REGISTRY.len(), 37);
         assert_eq!(
             REGISTRY.lookup("quirk.battle.computer_morale_let_off"),
             Some(COMPUTER_MORALE_LET_OFF)
+        );
+        assert_eq!(
+            [
+                REGISTRY.lookup("quirk.battle.breath_skips_side_columns"),
+                REGISTRY.lookup("quirk.battle.retaliation_at_a_dead_striker"),
+                REGISTRY.lookup("quirk.battle.raise_by_rear_hex"),
+            ],
+            [
+                Some(BREATH_SKIPS_SIDE_COLUMNS),
+                Some(RETALIATION_AT_A_DEAD_STRIKER),
+                Some(RAISE_BY_REAR_HEX)
+            ]
         );
         assert_eq!(
             REGISTRY.lookup("quirk.adventure.drop_ignores_artifacts"),
@@ -480,7 +514,7 @@ mod tests {
         }
         // The positions stay taken, so the flags after them keep their indices
         // (`registry_lookup_and_bitset`), and the flags that exist are every other position.
-        assert_eq!(REGISTRY.len(), 34);
+        assert_eq!(REGISTRY.len(), 37);
         assert_eq!(
             [
                 REGISTRY.names[9],
@@ -494,7 +528,7 @@ mod tests {
             REGISTRY
                 .flags()
                 .map(QuirkFlag::index)
-                .eq((0..34).filter(|i| ![9, 10, 14, 30].contains(i)))
+                .eq((0..37).filter(|i| ![9, 10, 14, 30].contains(i)))
         );
         // A registry without retired flags has them all.
         assert!(TEST.flags().map(QuirkFlag::index).eq(0..2));
