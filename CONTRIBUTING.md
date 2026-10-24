@@ -56,8 +56,7 @@ cargo xtask verify                            # every gate, before you open a pu
 cargo xtask check-lane --base origin/master   # your pull request only touches its lane's paths
 ```
 
-A full verify takes a while (roughly twenty minutes warm on two cores, much longer from a cold
-build). Tool requirements are in the [README](README.md#quick-start); the gates are described in
+A full verify takes a while (about twenty minutes on two cores). Tool requirements are in the [README](README.md#quick-start); the gates are described in
 [docs/05-testing.md](docs/05-testing.md). Formatting is `cargo fmt`, lints are `cargo clippy` with
 the workspace policy (`clippy.toml`).
 
@@ -88,8 +87,8 @@ them deliberately, in the same pull request, with the reason in the commit messa
   an observation in the original game is the strongest evidence. A staged experiment can settle it
   ([docs/experiments/README.md](docs/experiments/README.md)).
 - **Security issues** (a command that bypasses validation, a hidden-information leak, a server
-  vulnerability): please do not open a public issue; contact the maintainer privately via the
-  GitHub profile of the repository owner.
+  vulnerability): please do not open a public issue; report them privately as
+  [SECURITY.md](SECURITY.md) says.
 - Anything else: an issue with the command you ran, the output and your platform.
 
 Be kind and assume good faith; harassment is not tolerated, and the maintainer may remove comments

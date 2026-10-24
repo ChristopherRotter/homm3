@@ -93,6 +93,7 @@ the capture harness) read your installation from a copy in `original-data/`
 | `crates/h3-formats`, `h3-harvest`, `h3-experiment` | readers for the original's files; the pack harvester; experiment compiler (staged battles to confirm rules in the original) |
 | `crates/h3-cli` | the `h3` command-line tool (runs, replays, benchmarks, evaluation) |
 | `xtask` | `cargo xtask verify` and the individual gates (`check-arch`, `check-rules`, `check-lane`, …) |
+| `lanes.toml` | which paths each work lane owns ([docs/08-work-process.md](docs/08-work-process.md), "Lanes") |
 | `python/` | `h3env`: the batch environment from Python and the training pipeline |
 | `clients/` | playable clients, a separate workspace outside the core |
 | `packs/`, `fixtures/`, `benches/`, `experiments/` | content packs, golden replays and maps, benchmark baselines, experiment specs and results |
@@ -114,7 +115,8 @@ Most of the code is written by AI coding agents working in parallel *lanes* (bat
 AI, server, client, map-client) under a human maintainer who confirms seams, ADRs and rule
 decisions. The agents' entry point is [AGENTS.md](AGENTS.md); the process is described in
 [docs/08-work-process.md](docs/08-work-process.md). Human contributors are welcome too: see
-**[CONTRIBUTING.md](CONTRIBUTING.md)**.
+**[CONTRIBUTING.md](CONTRIBUTING.md)**; security issues are reported privately
+([SECURITY.md](SECURITY.md)).
 
 ## Acknowledgements
 

@@ -200,9 +200,14 @@ jobs:
           cargo xtask check-docs
 
       # Also after the cheap gates, so that the fingerprint follows the commits that carry it; not
-      # after a pull request without code of its own whose fingerprint no run has verified.
+      # after a pull request without code of its own whose fingerprint no run has verified. Not for
+      # a pull request from a fork either: its token is read-only whatever `permissions` says, so
+      # the write would fail the job; `master`'s run after the merge records the code instead.
       - name: Record the verified code
-        if: steps.plan.outputs.record == 'true'
+        if: >-
+          steps.plan.outputs.record == 'true'
+          && (github.event_name != 'pull_request'
+              || github.event.pull_request.head.repo.full_name == github.repository)
         env:
           GH_TOKEN: ${{ github.token }}
           SHA: ${{ github.event.pull_request.head.sha || github.sha }}
