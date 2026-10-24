@@ -52,7 +52,7 @@ id       = "HER-ART-001"
 title    = "Worn artifacts on positions and combination locks"
 context  = "heroes"
 status   = "verified"
-summary  = "A hero's worn artifacts sit on positions (E08 T49a, ADR-0013 point 1): one per position of the ruleset's slots, in the slots' order and each slot's `count` (two rings; four misc positions before SoD, five in SoD; one of every other kind): SoD's 19 are head 0, shoulders 1, neck 2, right hand 3, left hand 4, torso 5, rings 6 and 7, feet 8, misc 9 to 13, the war machines 14 to 17, the spell book 18 (the original numbers its fifth misc 18, after the book; no rule tells the two apart). Each position is empty or holds an artifact of its slot. A combination artifact also takes one position of every slot in its locks (its parts' slots minus one position of its own; Angelic Alliance in the right hand also takes torso, feet, neck, left hand and head), counted per slot, not on given positions: the free positions of every slot less the worn combinations' locks never go below zero. An artifact without a slot (the Grail) cannot be worn. The same artifact type may be worn more than once while positions remain (two Quiet Eyes of the Dragon), and one war machine of each kind fits its own slot. A map's import keeps the map's positions, entry by entry in the map's order, and leaves out an artifact its position does not take (another slot's position, a locked one, the fifth misc before SoD), as the original's loader and VCMI's: the Tutorial's second hero loses the Shackles of War the map stores on its left hand. E08 T49a: `h3_heroes::positions`, `takes`, `validate`; `h3_map`'s import."
+summary  = "A hero's worn artifacts sit on positions (E08 T49a, ADR-0013 point 1): one per position of the ruleset's slots, in the slots' order and each slot's `count` (two rings; four misc positions before SoD, five in SoD; one of every other kind): SoD's 19 are head 0, shoulders 1, neck 2, right hand 3, left hand 4, torso 5, rings 6 and 7, feet 8, misc 9 to 13, the war machines 14 to 17, the spell book 18 (the original numbers its fifth misc 18, after the book; no rule tells the two apart). Each position is empty or holds an artifact of its slot. A combination artifact also takes one position of every slot in its locks (its parts' slots minus one position of its own; Angelic Alliance in the right hand also takes torso, feet, neck, left hand and head), counted per slot, not on given positions: the free positions of every slot less the worn combinations' locks never go below zero. An artifact without a slot (the Grail) cannot be worn. The same artifact type may be worn more than once while positions remain (two Quiet Eyes of the Dragon), and one war machine of each kind fits its own slot. A map's import keeps the map's positions, entry by entry in the map's order, and leaves out an artifact its position does not take (another slot's position, a locked one, the fifth misc before SoD), as the original's loader and VCMI's: the Tutorial's second hero loses the Shackles of War the map stores on its left hand; each entry is equipped (E08 T49b: Titan's Thunder adds a Spell Book, HER-ART-007). E08 T49a: `h3_heroes::positions`, `takes`, `validate`; `h3_map`'s import."
 numeric  = "integer"
 
   [[rule.source]]
@@ -920,7 +920,7 @@ id       = "HER-CHG-001"
 title    = "A change to a hero's details is checked before it applies"
 context  = "heroes"
 status   = "implemented"
-summary  = "A context changes a hero only through typed changes the game applies to its store (ADR-0013 point 2, E08 decision 25): gain experience (the sum, at most the bound or the scenario's level limit's cap: HER-EXP-002, HER-EXP-003), set the spell points, receive an artifact (HER-CHG-002), lose the artifact at a worn or backpack position (the later ones move up), learn a spell (E08 T19a2b: added at the end; it must be a hero spell of the ruleset the hero has not learned). Each is checked against the hero's details first, so that they stay valid (HER-DET-001 to HER-SPL-001): a received artifact must be of the ruleset, holding a spell exactly when it is a scroll (HER-ART-003), and find room; a lost one must be there; a level (E08 T27, HER-LVL-005) must be pending. Applying a change the check refuses changes nothing. E08 T19a2a, T19a2b, T27: `h3_heroes::{HeroChange, check_change, apply_change, apply_change_limited}`."
+summary  = "A context changes a hero only through typed changes the game applies to its store (ADR-0013 point 2, E08 decision 25): gain experience (the sum, at most the bound or the scenario's level limit's cap: HER-EXP-002, HER-EXP-003), set the spell points, receive an artifact (HER-CHG-002), lose the artifact at a worn or backpack position (the later ones move up), learn a spell (E08 T19a2b: added at the end; it must be a hero spell of the ruleset the hero has not learned), place an artifact at a given position or backpack index (E08 T49a: a move's target), gain a level (E08 T27). A worn placement or a received artifact worn is equipped (E08 T49b, HER-ART-007). A move (HER-ART-005), an assembly and a disassembly (HER-ART-006) are given as such changes, each checked in turn. Each is checked against the hero's details first, so that they stay valid (HER-DET-001 to HER-SPL-001): a received artifact must be of the ruleset, holding a spell exactly when it is a scroll (HER-ART-003), and find room; a lost one must be there; a level (E08 T27, HER-LVL-005) must be pending. Applying a change the check refuses changes nothing. E08 T19a2a, T19a2b, T27: `h3_heroes::{HeroChange, check_change, apply_change, apply_change_limited}`."
 numeric  = "integer"
 
   [[rule.source]]
@@ -933,7 +933,7 @@ id       = "HER-CHG-002"
 title    = "Where a received artifact goes"
 context  = "heroes"
 status   = "implemented"
-summary  = "A hero that receives an artifact wears it at the first position that takes it: the lowest empty position of its slot when, with it there, HER-ART-001 holds (each slot it locks keeps a free position); else it goes to the end of the backpack if its slot's artifacts may be carried (HER-ART-002: not the war machines, the Catapult or the spell book) and the backpack holds fewer than the ruleset's backpack size (64); else there is no room. The same first position places a hero's spell book and war machines at a game's start. A combination's assembly when a received part completes it (SoD) and the spell book that equipping Titan's Thunder adds come with T49b (HER-ART-006, -007). E08 T19a2a: `h3_heroes::check_change`, `apply_change`; T49a: by position, `h3_heroes::first_position`."
+summary  = "A hero that receives an artifact wears it at the first position that takes it: the lowest empty position of its slot when, with it there, HER-ART-001 holds (each slot it locks keeps a free position); else it goes to the end of the backpack if its slot's artifacts may be carried (HER-ART-002: not the war machines, the Catapult or the spell book) and the backpack holds fewer than the ruleset's backpack size (64); else there is no room. The same first position places a hero's spell book and war machines at a game's start, an assembled combination and a disassembled combination's parts (HER-ART-006). Worn, it is equipped: Titan's Thunder adds a Spell Book (HER-ART-007, E08 T49b). The original's question (or a computer player's build) when a received part completes a combination is the assembly offered as a command (HER-ART-006; E08 T50/T51, E10). E08 T19a2a: `h3_heroes::check_change`, `apply_change`; T49a: by position, `h3_heroes::first_position`."
 numeric  = "integer"
 
   [[rule.source]]
@@ -973,6 +973,105 @@ numeric  = "integer"
   ref        = "Spell Book: a spell book cannot be traded nor lost after a defeat; Combat: retreating preserves the artifacts that would otherwise fall into the enemy hero's hands (survey E04-battle.md R4.3a)"
   url        = "https://heroes.thelazy.net/index.php/Spell_Book"
   retrieved  = "2026-10-03"
+  confidence = "high"
+
+[[rule]]
+id       = "HER-ART-005"
+title    = "Moving an artifact"
+context  = "heroes"
+status   = "verified"
+summary  = "A hero's artifact moves from its position or backpack place to a place of the same hero or of the hero it meets (ADR-0013 point 14.1): to a position of its slot where, the target's artifact gone, the locks fit (HER-ART-001), the target's artifact then going back to the source's place (a position, where the moving hero's locks must take it; or the backpack index, inserted there): the original's swap through the held artifact, as one move; or into a backpack at an index up to its length (within one backpack its length without the moved artifact), refused at the ruleset's most (64) and for the slots not carried (HER-ART-002). The Spell Book and the Catapult never move (an artifact of a slot the backpack does not carry that places no war machine or the Catapult); the war machines move only between machine positions (their own slot), the Grail only between backpacks. A move to the place it comes from within one hero is refused (it would change nothing). The backpack's arrows rotate its order (the first to the end, the last to the front), a move within the backpack. A move into a position equips (HER-ART-007). The move is checked on both heroes before either changes and given as each hero's changes (HER-CHG-001): the removal, the target's removal, the placement, the return. E08 T49b: `h3_heroes::{ArtifactMove, check_move, move_changes}`; the commands come with E08 T50/T51."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey docs/rules/surveys/E08-army.md §5.1, §5.2): in the hero screen (hero_screen_proc 0x4DD2D0) a click picks a worn artifact up (removed) but the Spell Book (the click opens it) and the Catapult ('The Catapult must be equipped.', GENRLTXT 313); a worn position takes a held artifact when hero_can_replace_artifact 0x4E2840 allows it, an artifact there going onto the cursor; a backpack place takes it by insertion (hero_give_backpack_artifact 0x4E2F90: refused at 64 and for the war machines 3 to 6); the exchange (swap_worn_click 0x5AF590) is the same between two heroes, positions 16 and 17 never picked up ('This item can't be traded.', GENRLTXT 22); the backpack's arrows rotate the array (items 77 and 78)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "server/CGameHandler.cpp moveArtifact: a swap on an occupied slot; lib/entities/artifact/ArtifactUtils.cpp unmovableSlots: SPELLBOOK and MACH4; CArtifact.cpp canBePutAt: no war machine in the backpack; the backpack unlimited (backpackSize -1, D7) and its arrows only scroll a view"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/server/CGameHandler.cpp#L2641"
+  retrieved  = "2026-10-24"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Artifact: 64 artifacts in the backpack; the four war machine slots and the spell book slot reserved for theirs; the manual: a hero may carry only one of each war machine type (survey E08-army.md §5.2)"
+  url        = "https://heroes.thelazy.net/index.php/Artifact"
+  retrieved  = "2026-10-23"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-6.md E6-10 (the capture harness, SoD 4.0 Complete under Wine, E08 T47b2): the backpack's right arrow put the first entry at the end, the five shown the array's first five: the original rotates the stored order, VCMI only scrolls (survey E08-army.md §13)"
+  retrieved  = "2026-10-23"
+  confidence = "high"
+
+[[rule]]
+id       = "HER-ART-006"
+title    = "Assembling and disassembling a combination"
+context  = "heroes"
+status   = "verified"
+summary  = "A worn part assembles its combination when the hero wears every part of it on positions (each part's type once at least; a part in the backpack or inside a worn combination does not count; the first combination in the ruleset's artifact order that lists the part and is complete): the part leaves, then one copy of each other part from the positions in descending order, and the combination is received at its first position (HER-CHG-002), not necessarily the part's; its effects are its own and its parts'. A worn combination disassembles: it leaves, and each part, in the ruleset's artifact order, is received at its first position (the locks freed make room). A combination in the backpack does neither (D-28, the original's; VCMI disassembles there). Combinations exist where the ruleset holds them (SoD's; ADR-0017 point 1: the game's configuration). The original's questions (after an equip, once per player and combination; at a right-click) are the assembly offered as a command (E08 T50/T51); a computer player's build at once is E10's. E08 T49b: `h3_heroes::{check_assemble, assemble_changes, check_disassemble, disassemble_changes}`."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey docs/rules/surveys/E08-army.md §5.3): every path tests SoD (+0x1F698 >= 2); 0x4DBE80 tests that every part is worn; hero_build_combination 0x4DBF30 removes the part at the clicked position, then one copy of each other part walking the positions 18 down to 0, and equips the combination through hero_equip_artifact 0x4E2A00 at the first position that takes it; hero_disassemble_combination 0x4DC070 removes it and equips each part at the first position that takes it; a combination in the backpack only shows its window"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "server/CGameHandler.cpp assembleArtifacts: the combination at the clicked slot, assemblyPossibilities; disassembly also in the backpack when it has room for the parts (D-28)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/server/CGameHandler.cpp#L3017"
+  retrieved  = "2026-10-24"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Combination artifact: 'Combining is performed by equipping all the required artifacts, and right-clicking one of them'; it reserves the same slots as its parts; 'Original artifacts still give their regular bonuses' (survey E08-army.md §5.3)"
+  url        = "https://heroes.thelazy.net/index.php/Combination_artifact"
+  retrieved  = "2026-10-23"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-6.md E6-8 (the capture harness, SoD 4.0 Complete under Wine, E08 T47b2): Wizard's Well assembled from its three misc parts on misc 1 (the original's 9) with 10 to 12 empty, as the reading; VCMI puts it on 12; in the backpack its right click shows only the artifact's window, no disassembly (survey E08-army.md §13)"
+  retrieved  = "2026-10-23"
+  confidence = "high"
+
+[[rule]]
+id       = "HER-ART-007"
+title    = "Titan's Thunder's Spell Book"
+context  = "heroes"
+status   = "verified"
+summary  = "Equipping an artifact with the `gives_spell_book` effect (Titan's Thunder) puts the ruleset's spell book artifact (the first with the `spell_book` effect) on its first position when one takes it (the empty spell book position); on every equip: a received artifact worn (HER-CHG-002), a placement at a position (a move, HER-ART-005), a built combination (HER-ART-006), a map's import (each entry equipped in the map's order, so the map's own book entry then finds the position taken). Removing the artifact takes nothing back: the book stays, and since it never moves, every hero that equips the Thunder gains one. Not equipped (into the backpack): nothing. The original's rule, not a quirk. E08 T49b: `h3_heroes::equip`, `apply_change`; `h3_map`'s import (MAP_IMPORT_VERSION 10)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading: hero_equip_artifact 0x4E2A00 equips a Spell Book (0) at position 17 when it equips Titan's Thunder (135) and 17 is empty (0x4E2A64); every equip passes through it (hero_give_artifact 0x4E3070, the hero screen and the exchange, hero_build_combination 0x4DBF30, the map's loader placed_hero_setup 0x4D8D63); hero_remove_artifact takes nothing back (survey E08-army.md §5.4)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "lib/entities/artifact/ArtifactUtils.cpp checkSpellbookIsNeeded: a new spell book when Titan's Thunder goes to the right hand of a hero without one, on a move or an assembly (server/CGameHandler.cpp); kept on removal. Its comment leaves a pickup and the game's start open ('what'll happen if Titan's thunder is equipped by pickin git up or the start of game?'): the original's code gives the book there too"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/entities/artifact/ArtifactUtils.cpp#L167-L179"
+  retrieved  = "2026-10-24"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Titan's Thunder: 'Gain a Spell Book' (survey E08-army.md §5.4)"
+  url        = "https://heroes.thelazy.net/index.php/Titan%27s_Thunder"
+  retrieved  = "2026-10-23"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-6.md E6-9 (the capture harness, SoD 4.0 Complete under Wine, E08 T47b2): Titan's Thunder moved from the backpack to the right hand of a hero without a book put a Spell Book on 17 (locks on the head, torso and left hand); taken off into the backpack's first place, the book stayed (survey E08-army.md §13)"
+  retrieved  = "2026-10-23"
   confidence = "high"
 
 [[rule]]
@@ -1066,6 +1165,39 @@ numeric  = "integer"
   url        = "https://github.com/vcmi/vcmi/blob/1.7.5/server/battles/BattleResultProcessor.cpp#L466-L483"
   retrieved  = "2026-10-14"
   confidence = "medium"
+
+[[rule]]
+id       = "HER-SPL-007"
+title    = "Scholar at a meeting"
+context  = "heroes"
+status   = "verified"
+summary  = "When two heroes of one player meet, s is the greater `meeting_spells` level of the two (Scholar: 2, 3, 4 at Basic, Advanced, Expert; an artifact's counts; each hero's highest source). With none, or either hero without a worn spell book (an effect gives one, HER-BAT-011), nothing; else each learns every spell the other has learned (the details' spells, not an artifact's or a scroll's) that it has not, of a level at most the lesser of its learnable level (HER-SPL-005) and s, in spell order. The game applies them as `LearnSpell` changes at the meeting (E08 T50/T51). E08 T49b: `h3_heroes::meeting_spells`."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey docs/rules/surveys/E08-army.md §2.2): 0x4A2940, at every meeting before the exchange screen: s the greater Scholar level (+0xDB, skill 18), nothing with s = 0; both must wear the Spell Book; each limit the lesser of the hero's Wisdom level + 2 and s + 1; for the spells 0 to 69 one learned (+0x3EA) by one hero and not the other is learned by the other (hero_learn_spell 0x4D9330) within its limit"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "server/CGameHandler.cpp useScholarSkill: LEARN_MEETING_SPELL_LIMIT the greater of the two; nothing without it or either spell book; each hero's limit the lesser of it and maxSpellLevel; each learns the other's"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/server/CGameHandler.cpp#L1435-L1470"
+  retrieved  = "2026-10-24"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Scholar: Basic heroes 'teach each other 1st and 2nd level spells', Advanced to the 3rd, Expert to the 4th; 'both gathering heroes learn' (survey E08-army.md §2.2)"
+  url        = "https://heroes.thelazy.net/index.php/Scholar"
+  retrieved  = "2026-10-23"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-6.md E6-7 (the capture harness, SoD 4.0 Complete under Wine, E08 T47b2): with the limits 4 and 2 one hero learned Bless and Chain Lightning (not Implosion), the other Precision only (not Fireball nor Prayer); the message named them (survey E08-army.md §13)"
+  retrieved  = "2026-10-23"
+  confidence = "high"
 
 [[rule]]
 id       = "HER-NEC-001"

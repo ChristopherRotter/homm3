@@ -717,6 +717,7 @@ proptest! {
     }
 }
 
+mod artifacts;
 mod change;
 mod choice;
 mod derive;

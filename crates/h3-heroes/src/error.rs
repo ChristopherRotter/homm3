@@ -1,4 +1,5 @@
-//! Why hero details are invalid, and why a change does not fit them.
+//! Why hero details are invalid, why a change does not fit them, and why an artifact does not
+//! move, assemble or disassemble (E08 T49b).
 
 use core::fmt;
 
@@ -6,6 +7,7 @@ use h3_content::{ArtifactSlotId, ArtifactTypeId, SkillId, SpellId};
 
 use crate::change::ArtifactPlace;
 use crate::details::PrimarySkill;
+use crate::positions::Position;
 
 /// A reason why hero details do not fit a ruleset ([`crate::validate`]).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -154,3 +156,78 @@ impl fmt::Display for ChangeError {
 }
 
 impl core::error::Error for ChangeError {}
+
+/// A reason why an artifact does not move ([`crate::check_move`], HER-ART-005).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum MoveError {
+    /// There is no artifact at the source.
+    NoArtifact(ArtifactPlace),
+    /// The artifact at the source or at the target never moves: the Spell Book, the Catapult.
+    Unmovable(ArtifactTypeId),
+    /// The target is the source: the move would change nothing.
+    SamePlace,
+    /// The target refuses the artifact: a position of another slot, or where the locks do not
+    /// fit (HER-ART-001); a backpack index past its end, a backpack that does not carry the
+    /// artifact or is full (HER-ART-002).
+    CannotPlace(ArtifactPlace),
+    /// The target's artifact cannot go back to the source's position: the locks there do not fit.
+    CannotReturn(ArtifactPlace),
+}
+
+impl fmt::Display for MoveError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::NoArtifact(place) => write!(f, "no artifact {}", PlaceName(*place)),
+            Self::Unmovable(id) => write!(f, "artifact {} never moves", id.raw()),
+            Self::SamePlace => f.write_str("the artifact is there already"),
+            Self::CannotPlace(place) => {
+                write!(f, "the artifact cannot go {}", PlaceName(*place))
+            }
+            Self::CannotReturn(place) => {
+                write!(
+                    f,
+                    "the target's artifact cannot go back {}",
+                    PlaceName(*place)
+                )
+            }
+        }
+    }
+}
+
+impl core::error::Error for MoveError {}
+
+/// A reason why a worn artifact does not assemble or disassemble ([`crate::check_assemble`],
+/// [`crate::check_disassemble`]; HER-ART-006).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CombineError {
+    /// No artifact is worn at the position.
+    NoArtifact(Position),
+    /// The artifact there is a part of no combination whose every part the hero wears.
+    Incomplete(Position),
+    /// The artifact there is not a combination.
+    NotCombination(Position),
+}
+
+impl fmt::Display for CombineError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::NoArtifact(at) => write!(f, "no artifact worn at {at}"),
+            Self::Incomplete(at) => write!(f, "the artifact at {at} completes no combination"),
+            Self::NotCombination(at) => write!(f, "the artifact at {at} is no combination"),
+        }
+    }
+}
+
+impl core::error::Error for CombineError {}
+
+/// A place as text: "at position p" or "in the backpack at i".
+struct PlaceName(ArtifactPlace);
+
+impl fmt::Display for PlaceName {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self.0 {
+            ArtifactPlace::Worn(at) => write!(f, "at position {at}"),
+            ArtifactPlace::Backpack(i) => write!(f, "in the backpack at {i}"),
+        }
+    }
+}

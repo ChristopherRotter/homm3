@@ -42,8 +42,8 @@ pub use parse::parse;
 /// piles' guards (guarded piles supported; a random stack among them unsupported). v8 (E08 T29):
 /// the scenario's level limit and banned skills; a hero with an experience of 1 000 or more
 /// supported (its levels at load are the game's). v9 (E08 T49a): a placed hero's worn artifacts
-/// at the map's positions.
-pub const MAP_IMPORT_VERSION: u32 = 9;
+/// at the map's positions. v10 (E08 T49b): an equipped Titan's Thunder adds a Spell Book.
+pub const MAP_IMPORT_VERSION: u32 = 10;
 
 /// Reads a map file as the game stores it (gzip-compressed) within `limits`.
 ///

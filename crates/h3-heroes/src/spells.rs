@@ -44,11 +44,56 @@ pub fn learn_level(details: &HeroDetails, ruleset: &Ruleset) -> u8 {
 /// nothing; one without Wisdom learned a level 1 spell, not a level 3 one).
 pub fn learns_spell(details: &HeroDetails, ruleset: &Ruleset, spell: SpellId) -> bool {
     // rule: HER-SPL-006
-    let book = effects(details, ruleset, Count::OncePerType)
-        .any(|effect| matches!(effect, HeroEffect::SpellBook));
     let level = ruleset.spell(spell).map(|s| s.level);
-    book && level.is_some_and(|level| level <= learn_level(details, ruleset))
+    wears_book(details, ruleset)
+        && level.is_some_and(|level| level <= learn_level(details, ruleset))
         && check_change(details, ruleset, HeroChange::LearnSpell(spell)).is_ok()
+}
+
+/// The spells two meeting heroes teach each other (HER-SPL-007, E08 T49b; Scholar): `s` is the
+/// greater `meeting_spells` level of the two (each hero's highest source; none: nothing); either
+/// without a worn spell book (an effect gives one, HER-BAT-011): nothing; else `a` learns each
+/// spell `b` has learned (its learned spells, not an artifact's or a scroll's) that it has not,
+/// of a level at most the lesser of its learnable level ([`learn_level`], HER-SPL-005) and `s`,
+/// in spell order; `b` alike from `a`. The game applies them as
+/// [`HeroChange::LearnSpell`] changes. The original's 0x4A2940, at every meeting of two heroes of
+/// one player before the exchange screen: each limit the lesser of Wisdom + 2 and the Scholar
+/// level + 1, both Spell Books worn, the 70 spells walked by id (the same sets).
+pub fn meeting_spells(
+    a: &HeroDetails,
+    b: &HeroDetails,
+    ruleset: &Ruleset,
+) -> (Vec<SpellId>, Vec<SpellId>) {
+    // rule: HER-SPL-007
+    let level = |details: &HeroDetails| {
+        effects(details, ruleset, Count::OncePerType)
+            .filter_map(|effect| match *effect {
+                HeroEffect::MeetingSpells { level } => Some(level),
+                _ => None,
+            })
+            .max()
+            .unwrap_or(0)
+    };
+    let s = level(a).max(level(b));
+    let teach = s > 0 && wears_book(a, ruleset) && wears_book(b, ruleset);
+    let learns = |learner: &HeroDetails, teacher: &HeroDetails| -> Vec<SpellId> {
+        let limit = learn_level(learner, ruleset).min(s);
+        (0_u16..)
+            .zip(ruleset.spells())
+            .filter(|_| teach)
+            .filter(|(_, spell)| spell.level <= limit)
+            .map(|(raw, _)| SpellId::from_raw(raw))
+            .filter(|id| teacher.spells.contains(id) && !learner.spells.contains(id))
+            .collect()
+    };
+    (learns(a, b), learns(b, a))
+}
+
+/// Whether the hero wears a spell book: one of its effects gives one (HER-BAT-011; in the
+/// original the Spell Book worn, not in the backpack).
+fn wears_book(details: &HeroDetails, ruleset: &Ruleset) -> bool {
+    effects(details, ruleset, Count::OncePerType)
+        .any(|effect| matches!(effect, HeroEffect::SpellBook))
 }
 
 /// The hero's available spells, in spell order (HER-SPL-002): the learned spells, the spell of

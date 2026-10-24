@@ -55,9 +55,9 @@ pub use h3_heroes::{ArtifactPlace, HeroChange};
 /// water (E08 T42, for the adventure's benchmarks; `h3_heroes`' derivation, HER-ADV-005).
 pub use h3_heroes::{Movement, movement};
 /// The worn artifacts' positions (E08 T49a, ADR-0013 point 1): a [`HeroArtifactsSetup`]'s are
-/// `h3_heroes`' (the map's import places a map's entries where they are taken; `wearing` places
-/// a list).
-pub use h3_heroes::{Position, positions, takes, wearing};
+/// `h3_heroes`' (the map's import equips a map's entries where they are taken, since E08 T49b
+/// with Titan's Thunder's Spell Book; `wearing` places a list).
+pub use h3_heroes::{Position, equip, positions, takes, wearing};
 pub use legal::{default_answer, legal_commands, legal_moves};
 pub use observe::{
     DecisionView, GameObservation, HeroInfo, LevelUpView, PlayerView, Viewer, observe, project,

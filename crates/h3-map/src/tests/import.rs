@@ -1013,7 +1013,7 @@ fn wearing(m: &mut RawMap, entries: &[(usize, u16)]) {
     });
 }
 
-// covers: HER-ART-001
+// covers: HER-ART-001, HER-ART-007
 #[test]
 fn a_placed_heros_artifacts_keep_the_maps_positions() {
     // Every entry to its position: the head to the feet, misc 1 to 4, the machines and the book
@@ -1061,6 +1061,13 @@ fn a_placed_heros_artifacts_keep_the_maps_positions() {
     );
     assert_eq!(left(&[(0, 19), (3, 129)], &SOD), [(0, artifact(core, 19))]);
     assert_eq!(left(&[(3, 129), (5, 25)], &SOD), [(3, artifact(core, 129))]);
+    // Titan's Thunder (135) on the right hand equips a Spell Book (0) on the empty book position
+    // (E08 T49b, HER-ART-007): the map's own book entry, later in its order, finds it taken; a
+    // hero wearing the Thunder without a book entry gets one all the same.
+    let book = artifact(core, 0);
+    let thunder = artifact(core, 135);
+    assert_eq!(left(&[(3, 135)], &SOD), [(3, thunder), (18, book)]);
+    assert_eq!(left(&[(3, 135), (17, 0)], &SOD), [(3, thunder), (18, book)]);
     let roe = rules(1);
     assert_eq!(left(&[(18, 46)], &roe), []);
     assert_eq!(left(&[(17, 0)], &roe), [(17, artifact(roe.core(), 0))]);
