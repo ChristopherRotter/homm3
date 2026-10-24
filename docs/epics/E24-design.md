@@ -585,9 +585,9 @@ points 4, 5, 6 and 8 moved to T5 with the heroes and the path, point 7 to T4b. S
   object_entrance_tile 0x4FEC30 walks the template's cells, rows from the anchor's upwards within
   its height (+0x11), each from the anchor's column leftwards within its width (+0x10), and gives
   the first visitable one (+0x2C) on the map. Without one on the map the passes take tile (0, 0) of the
-  surface's owner (0x410FC8, 0x4126B9): **MCL-Q4** (none of the shipped maps has such an owned
-  object, the gate counts them; the client takes the object's own owner, `--bugs original` the
-  tile's). The tile's class and word name the record: the dwellings' (game +0x4E39C, 0x5C bytes,
+  surface's owner (0x410FC8, 0x4126B9): **MCL-Q4** (answered: none of the shipped maps has such
+  an owned object, the gate counts them; the client takes the object's own owner, `--bugs
+  original` the tile's). The tile's class and word name the record: the dwellings' (game +0x4E39C, 0x5C bytes,
   owner +0x57), the garrisons' (+0x4E3AC, 0x40 bytes, +0x0), the mines' and lighthouses'
   (+0x4E38C, 0x40 bytes, +0x0), the towns' (+0x21614, 0x168 bytes, +0x1), a shipyard's the
   word's low byte; a hero on the tile stands for the object under it (the hero record's +0xC,

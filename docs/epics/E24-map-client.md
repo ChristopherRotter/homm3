@@ -124,7 +124,7 @@ autonomy contract (lane HANDOFF) says what the agent decides alone in between. T
   two-row objects among the layers (passes 5 and 7), taken from memory with their facings; the
   situations' heroes of any colour and class, Red's walks by play, boats; five situations (the
   18 classes × 8 facings, heroes among objects: D4, D5; boats: D7), exact. T5b1 (2026-10-24; T5b
-  split with the user into T5b1 and T5b2; MCL-Q4 asked): the owners' colours read (the owned
+  split with the user into T5b1 and T5b2; MCL-Q4 asked and answered): the owners' colours read (the owned
   classes, the vertical garrison and the AB mine loaded as two of them, the entrance's owner,
   `game.pal`'s entries 63 to 71; D10 settled: no drawn picture loses its colours), the towns'
   pictures by their buildings and the random dwellings resolved at the load (`E24-design.md`

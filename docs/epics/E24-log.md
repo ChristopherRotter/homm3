@@ -406,5 +406,5 @@ One session, the user present at its start; branch `map-client/e24-t4a`.
   a palette entry, the owner per object, the situations' formats, the heroes outside the view
   making the owning colours players, `own` for artifacts only.
 - **Questions:** MCL-Q4 (an owned object without an entrance on the map takes tile (0, 0)'s
-  owner; none in the shipped maps; built as recommended: the client the object's own, the
-  comparisons the original's).
+  owner; none in the shipped maps): answered by the user at the task's end, (a) as built (the
+  client the object's own, the comparisons the original's).
