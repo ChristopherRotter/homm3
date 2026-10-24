@@ -40,6 +40,7 @@
 extern crate alloc;
 
 mod answer;
+mod army;
 mod command;
 mod fog;
 mod movement;
@@ -54,6 +55,7 @@ mod state;
 #[cfg(test)]
 mod testing;
 
+pub use army::{ArmyCommand, ArmyCommandError, ArmyRef, ArmySlot, split_range};
 pub use command::{
     AdventureCommand, AdventureCommandError, AdventureEvent, AdventureEventKind, AdventureOutcome,
     BattleStart, Combatant, Defender, Meeting, NoRoom, Offer, OfferKind, Sink, Viewers,
@@ -85,8 +87,9 @@ pub use state::{AdventureState, HeroOnMap, MapObject, Monster, StaticMap, Static
 /// T15a): the keys each player holds. v7 (E08 T18b): a hero's formation. v8 (E08 T19a): whether a
 /// tile of the static map is on the coast. v9 (E08 T20a2a): the tiles each object lies on, each
 /// monster's creature, count, aggression, flags and treasure, the armies battles left on objects
-/// and the game's difficulty. v10 (E08 T21a): each guarded pile's guards.
-pub const ADVENTURE_STATE_HASH_VERSION: u32 = 10;
+/// and the game's difficulty. v10 (E08 T21a): each guarded pile's guards. v11 (E08 T50): each
+/// hero's tactics flag.
+pub const ADVENTURE_STATE_HASH_VERSION: u32 = 11;
 
 /// Version of the adventure ruleset part's canonical hash encoding (ADR-0015 point 2; owned by the
 /// adventure lane). v2 (E08 T5a): the setup bounds and the army slots. v3 (E08 T6b): the starting

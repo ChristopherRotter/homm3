@@ -70,6 +70,7 @@ impl StaticTile {
 }
 
 mod flags;
+mod manage;
 mod monsters;
 mod occupancy;
 mod passage;
@@ -790,6 +791,9 @@ pub struct HeroOnMap {
     pub army: Vec<ArmyStack>,
     /// Its army's formation in battle (ADR-0016 point 1, E08 T18b).
     pub formation: Formation,
+    /// Its tactics flag (ADR-0016 point 3, ADV-ARM-006; E08 T50): on at the start (the
+    /// original's +0x48 = 2); off, it denies the tactics phase it would get (GAM-BAT-009).
+    pub tactics: bool,
     /// The movement points it has left today.
     pub movement: u32,
 }
@@ -948,6 +952,7 @@ impl AdventureState {
                 pos: hero.pos,
                 army,
                 formation: hero.formation,
+                tactics: true,
                 movement: 0,
             },
         );
@@ -1851,12 +1856,12 @@ impl AdventureState {
 }
 
 impl CanonicalHash for AdventureState {
-    /// Encoding v9 (E08 T20a2a; v1 was T5a's, v2 T6b's, v3 T8a's, v4 T12's, v5 T14b's, v6 T15a's,
-    /// v7 T18b's, v8 T19a's):
+    /// Encoding v11 (E08 T50; v1 was T5a's, v2 T6b's, v3 T8a's, v4 T12's, v5 T14b's, v6 T15a's,
+    /// v7 T18b's, v8 T19a's, v9 T20a2a's, v10 T21a's):
     /// version; the static map's content hash (since v4 with the objects' types and contents); the
     /// number of players; the heroes by id (id, owner, tile, the army's stacks by slot: slot,
-    /// creature, count; since v7 the formation, 0 loose, 1 tight; since v2 the movement points
-    /// left); since v3 each player's explored tiles, by player id
+    /// creature, count; since v7 the formation, 0 loose, 1 tight; since v11 the tactics flag;
+    /// since v2 the movement points left); since v3 each player's explored tiles, by player id
     /// ([`BitGrid`]'s encoding); since v4 the objects that left the map (0 for none, else 1 and
     /// [`Occupancy`]'s encoding; there is an occupancy only once an object has left); since v5 the
     /// Cartographer types bought, as length and entries in type order (the type, then its byte of
@@ -1880,6 +1885,7 @@ impl CanonicalHash for AdventureState {
                 h.write_u32(stack.count);
             }
             h.write_bool(hero.formation == Formation::Tight);
+            h.write_bool(hero.tactics);
             h.write_u32(hero.movement);
         }
         h.write_len(self.explored.len());
