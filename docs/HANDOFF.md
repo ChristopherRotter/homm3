@@ -15,7 +15,7 @@ Read first, then your lane's HANDOFF: the lane index and the few traps that cros
 
 Shared (own PR, merged first): `h3-kernel`, `h3-contracts`, the core `h3-content`, `h3-pack` (R01), workspace and gate files (`Cargo.toml`, `arch.toml`, `lanes.toml`, `xtask`, CI), ADRs, process docs, `BACKLOG.md`, this file. Common: `OPEN-QUESTIONS.md`, `docs/stubs.toml` (a block per lane), both `Cargo.lock`s, `docs/exe/map.toml`, `structs.toml` (a line per entry), the client foundation and harness, each lane's `QUEUE.md` inbox.
 
-- **GitHub and CI:** `ChristopherRotter/homm3` (private, free plan: without minutes or billing runs fail unstarted, the full local verify stands in, `05-testing.md` "CI"). `ci.yml` runs `check-lane` and the full verify for pull requests and `master` (once per code, not for docs only), weekly `cargo deny check advisories`. Changes reach `master` by pull request only, **opened when its branch is ready to merge**; each push to an open one runs CI: merge `master` into it after `master`'s latest run finished.
+- **GitHub and CI:** `ChristopherRotter/homm3` (private, free plan: without minutes or billing runs fail unstarted, the full local verify stands in, `05-testing.md` "CI"). `ci.yml` runs `check-lane` and the full verify for pull requests and `master` (once per code, not for docs only), weekly `cargo deny check advisories`. Changes reach `master` by pull request only, **opened when its branch is ready to merge**; each push to an open one runs CI: merge `master` into it after `master`'s latest run finished. **Going public** is prepared and decided (Q59, `adr/answered-questions.md`): once the user switches the visibility, a `shared/` change does that answer's "after the switch" list (CI then runs free).
 
 ## Traps for every lane
 
