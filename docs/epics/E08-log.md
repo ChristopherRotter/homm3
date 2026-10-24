@@ -5181,3 +5181,58 @@ v9 with `PlaceArtifact` after; not chosen either: a cross-lane constructor first
 - **Catalog:** HER-ART-001 amended (positions; batch E6's source kept, `verified`), HER-CHG-002,
   HER-ART-004, HER-WAR-001, HER-WAR-002 restated by position. Design note §2 reduced to a pointer
   here, §13's versions and §16's ripple risk updated.
+
+### Increment 6, round 3: T49b, moves, combinations, Titan's book, Scholar (2026-10-24, `adventure/e08-t49b`)
+
+**Baseline:** `master` d0d7bb8 (#450 merged); its engine code (85f9c044) was verified on d0d7bb8,
+so the sandbox ran only the light gates: all passed. T49b whole and the import's Titan's book in it
+(decision 112, the user's choices at its start).
+
+- **Titan's book** (HER-ART-007, design §3): `h3_heroes::equip(worn, ruleset, item, at)` wears an
+  artifact where `takes` allows it and, for one with `gives_spell_book`, puts the ruleset's first
+  artifact with the `spell_book` effect at its first position when one takes it; whether it
+  wore it. `apply_change` equips every worn placement (`AddArtifact` at its first position,
+  `PlaceArtifact` at a position), so a capture, a move and an assembly give the book; into the
+  backpack nothing; a removal takes nothing back. `wearing` still only places (no book): its
+  callers list artifacts. The original tests the artifact's id (135) at 0x4E2A64; the engine reads
+  the effect of the artifact itself (a combination's parts' effects do not equip).
+- **Moves** (HER-ART-005): `ArtifactMove { from, to }` (two `ArtifactPlace`s), `check_move(from,
+  to: Option<&HeroDetails>, ruleset, move)` (`None`: within one hero) and `move_changes` →
+  `MoveChanges { from, to }` (within one hero all in `from`): the removal, the target's removal,
+  the placement, the target's artifact back at the source's place. The order of the checks: the
+  source holds an artifact (`NoArtifact`); it moves (`Unmovable`: a slot not carried and no war
+  machine or the Catapult's, so the Spell Book and the Catapult; the packs' Catapult places none,
+  the test pack's places one with the `catapult` flag); not the same place within one hero
+  (`SamePlace`, an engine choice: a pick-up dropped back changes nothing, the env's masks need no
+  no-op); a position target of the artifact's slot (`CannotPlace`; a position past the last, which
+  the property found taking the Grail as `None == None`, refused), the target's artifact movable
+  (`Unmovable`), the locks with the target's artifact gone (within one hero a worn source's
+  artifact gone and the target's back on it: a swap keeps the set); between two heroes the
+  moving hero's locks with the returned artifact (`CannotReturn`); a backpack target carried, at an
+  index up to the length (without the moved one within one backpack) and below the most. The
+  property `a_checked_move_applies_change_by_change`: every move it accepts applies change by
+  change (`check_change` passing each), validates and keeps both heroes' artifacts but the book.
+- **Combinations** (HER-ART-006): `check_assemble(details, ruleset, at)` → the first combination
+  in artifact order listing the part at `at` whose every part is worn on a position;
+  `assemble_changes`: the removal at `at`, then for each other part (pack order) the highest
+  position of its type not taken, emitted in descending position order, then `AddArtifact` of the
+  combination (its first position: the test's Well lands on misc 4 when assembled from misc 5).
+  `check_disassemble` / `disassemble_changes`: a worn combination's removal, then `AddArtifact` of
+  each part in artifact order (no sort: logic crates have none). `CombineError::{NoArtifact,
+  Incomplete, NotCombination}`. A part listed twice would take two copies after a check of one
+  (the original's test is per part too); no pack has one.
+- **Scholar** (HER-SPL-007): `meeting_spells(a, b, ruleset) -> (Vec, Vec)` in `spells.rs`, the
+  spells by the ruleset's order; `wears_book` shared with `learns_spell`. VCMI's
+  `useScholarSkill` read this session agrees (the greater level, both books, each limit).
+- **The import v10** (`h3-map`, decision 112): each worn entry equipped through `h3_game::equip`
+  (re-exported beside `takes`); the original's `placed_hero_setup` equips entry by entry through
+  `hero_equip_artifact` (0x4D8D63), which adds the book (0x4E2A64), so the map's own book entry
+  then finds the position taken. VCMI's `checkSpellbookIsNeeded` gives the book only on a move to
+  the right hand or an assembly; its comment leaves a pickup and the game's start open
+  (HER-ART-007's sources). A scratch scan (not committed) of the 160 shipped maps: no hero wears
+  or carries the Thunder, so no import changes; the ten golden replays moved only their header's
+  `import_version` (every hash the same; `adventure_replays.rs`' history).
+- **Catalog:** HER-ART-005, -006, -007 and HER-SPL-007 `verified` (batch E6's E6-10, E6-8, E6-9,
+  E6-7; VCMI 1.7.5 read for the three code links); HER-CHG-001, -002 and HER-ART-001 amended.
+  Design note §3 to §5 reduced to a pointer here (§3), §13's versions. Coverage of `h3-heroes`
+  100 % with and without its proptests.

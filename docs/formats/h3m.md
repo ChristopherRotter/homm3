@@ -126,7 +126,7 @@ every one reads to its padding, and every body kind but the hero placeholder occ
 Versions the reader rejects: Heroes Chronicles (`0x1D`), HotA (`0x20`), WoG (`0x33`) and every
 other code.
 
-## Import (E08 T5a, T6a, T12a, T13a, T18b, T19a, T20a2a, T21a, T29; `MAP_IMPORT_VERSION` 8)
+## Import (E08 T5a, T6a, T12a, T13a, T18b, T19a, T20a2a, T21a, T29, T49a, T49b; `MAP_IMPORT_VERSION` 10)
 
 `h3_map::import` turns a raw map and the game's rules into `h3_game::GameSetup`, which the game
 then validates (ADR-0015 point 4); `import_map` is its static layer. The import maps codes to
@@ -210,13 +210,16 @@ content and draws nothing; it rejects what the current increment cannot represen
   v9, E08 T49a, each worn entry at its position, ADR-0013 point 1: the map's entries 0–12 (head
   to the fourth misc) are the content's 0–12, its 13–17 (the four war machines, the spell book)
   the content's 14–18 and SoD's 18 (the fifth misc) the content's 13, each the entry's slot and
-  rank among that slot's positions (`codes::WORN`), placed in the map's order only where the
-  position takes it (`h3_heroes::takes`: empty, of the artifact's slot, the locks fitting), else
+  rank among that slot's positions (`codes::WORN`), equipped in the map's order only where the
+  position takes it (`h3_heroes::equip`: empty, of the artifact's slot, the locks fitting), else
   left out, as the original's loader (`placed_hero_setup` 0x4D8D63, `hero_equip_artifact`
   0x4E2A00 refusing what `hero_can_place_artifact` 0x4E2550 refuses, the fifth misc before SoD)
   and VCMI's (`loadArtifactToSlot`): the Tutorial's second hero's Shackles of War, stored on the
   left hand, is dropped; with RoE's rules, which have four misc positions, so is an artifact on
-  the fifth; the backpack in order as before; codes by the packs' `# original id`, 141–143
+  the fifth; since v10 (E08 T49b, HER-ART-007) an equipped Titan's Thunder adds a Spell Book on
+  the empty book position, as the original's equip (0x4E2A64), so the map's own book entry,
+  later in its order, finds the position taken (no shipped map's hero wears or carries the
+  Thunder); the backpack in order as before; codes by the packs' `# original id`, 141–143
   unused), spells (SoD's 9-byte set, spell `i` at bit `i mod 8` of byte
   `i / 8`; AB's one byte: `0xFF` none, `0xFE` the type's own, else that spell beside the type's).
   The validation (`h3_heroes::validate`) checks the rest, so a war machine in the backpack or a

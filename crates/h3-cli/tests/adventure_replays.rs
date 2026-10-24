@@ -84,7 +84,9 @@
 //! then the retreat facts and the attacking hero's own ground). E08 T49a (the worn artifacts by
 //! position: game state hash v12, map import v9, the duel regenerated with its heroes' Spell Books
 //! on the map's book entry) re-recorded all ten with their options, their commands unchanged:
-//! every checkpoint moved.
+//! every checkpoint moved. E08 T49b (map import v10: an equipped Titan's Thunder adds a Spell
+//! Book, which the duel's heroes do not wear) moved only the header's import version; every hash
+//! stayed.
 
 use std::path::PathBuf;
 
