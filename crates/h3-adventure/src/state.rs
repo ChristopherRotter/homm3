@@ -23,7 +23,7 @@ use h3_kernel::{CanonicalHash, Rng, StateHasher};
 use crate::ADVENTURE_STATE_HASH_VERSION;
 use crate::command::{
     AdventureCommand, AdventureCommandError, AdventureEvent, AdventureEventKind, AdventureOutcome,
-    BattleStart, Combatant, Defender, Offer, OfferKind, Sink, Viewers,
+    BattleStart, Combatant, Defender, Meeting, Offer, OfferKind, Sink, Viewers,
 };
 use crate::fog::{on_fringe, reveal};
 use crate::movement::{
@@ -70,6 +70,7 @@ impl StaticTile {
 }
 
 mod flags;
+mod manage;
 mod monsters;
 mod occupancy;
 mod passage;
@@ -759,9 +760,9 @@ pub(crate) struct StepVisit<'p> {
     pub(crate) effect: Effect<'p>,
 }
 
-/// What a step meets that ends the move (ADV-OBJ-003): an object's visit, or another player's
-/// hero, by index among the heroes on the map, visited from the tile before (GAM-BAT-004, E08
-/// T19a).
+/// What a step meets that ends the move (ADV-OBJ-003): an object's visit, or another hero, by
+/// index among the heroes on the map, visited from the tile before: another player's in a battle
+/// (GAM-BAT-004, E08 T19a), an own one in a meeting (GAM-MET-001, T50).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum Meets<'p> {
     Object(StepVisit<'p>),
@@ -790,6 +791,9 @@ pub struct HeroOnMap {
     pub army: Vec<ArmyStack>,
     /// Its army's formation in battle (ADR-0016 point 1, E08 T18b).
     pub formation: Formation,
+    /// Its tactics flag (ADR-0016 point 3, ADV-ARM-006; E08 T50): on at the start (the
+    /// original's +0x48 = 2); off, it denies the tactics phase it would get (GAM-BAT-009).
+    pub tactics: bool,
     /// The movement points it has left today.
     pub movement: u32,
 }
@@ -948,6 +952,7 @@ impl AdventureState {
                 pos: hero.pos,
                 army,
                 formation: hero.formation,
+                tactics: true,
                 movement: 0,
             },
         );
@@ -1057,7 +1062,10 @@ impl AdventureState {
     /// after any visit of the tile's own object ([`Self::visit_guard`], ADV-MON-006, E08 T20a2b);
     /// the hero's own tile may be guarded: it leaves it. A step that does not enter (toward a
     /// neighbour-visited object or a hero) tests no guard, even from a guarded tile: the original
-    /// tests the hero's tile only after a step that changed it (E08 T20b3a).
+    /// tests the hero's tile only after a step that changed it (E08 T20b3a). A step toward another
+    /// hero visits it from the tile before as well: another player's starts a battle (GAM-BAT-004),
+    /// an own one makes a meeting ([`AdventureOutcome::meeting`], GAM-MET-001, E08 T50), which the
+    /// game opens.
     ///
     /// A flying or water-walking hero (E08 T41; ADV-MOV-009, ADV-MOV-010) moves by
     /// [`Self::passage`]'s table, each step from the node the step before left it on (the start a
@@ -1068,7 +1076,7 @@ impl AdventureState {
     /// original's move, 0x48147D to 0x4814E1). Each step, a pass included, reveals and emits its
     /// event.
     // rule: ADV-MOV-006, ADV-MOV-007, ADV-MOV-009, ADV-MOV-010, ADV-FOG-003
-    // rule: ADV-OBJ-003, ADV-MON-006
+    // rule: ADV-OBJ-003, ADV-MON-006, GAM-MET-001
     fn move_hero<S: Sink>(
         &mut self,
         core: &Ruleset,
@@ -1158,6 +1166,13 @@ impl AdventureState {
         let outcome = match visit {
             None => AdventureOutcome::default(),
             Some(Meets::Object(visit)) => self.visit(rules, (player, id), visit, sink),
+            Some(Meets::Hero(other)) if self.heroes[other].owner == player => AdventureOutcome {
+                meeting: Some(Meeting {
+                    visitor: id,
+                    visited: self.heroes[other].id,
+                }),
+                ..AdventureOutcome::default()
+            },
             Some(Meets::Hero(defender)) => AdventureOutcome {
                 battle: Some(self.battle_start(part, index, defender)),
                 ..AdventureOutcome::default()
@@ -1323,15 +1338,16 @@ impl AdventureState {
     }
 
     /// Adds creatures a battle raised to a hero's army (GAM-BAT-006, E08 T19a2b; a hero's
-    /// Necromancy after its side won): `count` of `creature` join its stack of that creature,
-    /// else a new stack in its first free slot; if neither is possible (a full army without the
-    /// creature), ⌈2 · `count` / 3⌉ of the creature's first upgrade join its stack of the
-    /// upgrade, if it has one; else none join. Returns the creature and the count that joined,
-    /// `None` when none did, `count` was 0 or the hero is not on the map. Counts saturate. The
+    /// Necromancy after its side won): `count` of `creature`, at most a stack's most (ADV-ARM-007,
+    /// E08 T50), join its first stack of that creature that takes them within the most, else a
+    /// new stack in its first free slot; if neither is possible (a full army without such a
+    /// stack), ⌈2 · that count / 3⌉ of the creature's first upgrade join its first stack of the
+    /// upgrade, if it takes them within the most; else none join. Returns the creature and the
+    /// count that joined, `None` when none did, `count` was 0 or the hero is not on the map. The
     /// original's `necromancy_add_raised` (0x469F20): `army_add_stack` (0x44ACE0), then once the
     /// upgrade (0x47B1A0) at (2c + 2) / 3; its exception for the four elementals (112 to 115, no
     /// upgrade while a game flag is off) is not modelled, as no hero raises them.
-    // rule: GAM-BAT-006
+    // rule: GAM-BAT-006, ADV-ARM-007
     pub fn raise(
         &mut self,
         core: &Ruleset,
@@ -1339,19 +1355,23 @@ impl AdventureState {
         hero: HeroId,
         (creature, count): (CreatureTypeId, u32),
     ) -> Option<(CreatureTypeId, u32)> {
-        let slots = part.params().army_slots();
+        let most = part.params().max_stack_count();
+        let rules = (part.params().army_slots(), most);
         let army = &mut self.heroes.iter_mut().find(|h| h.id == hero)?.army;
+        let count = count.min(most);
         if count == 0 {
             return None;
         }
-        if monsters::add_stack(army, slots, creature, count) {
+        if monsters::add_stack(army, rules, creature, count) {
             return Some((creature, count));
         }
         let upgrade = core.upgrades(creature).first().copied()?;
-        let stack = army.iter_mut().find(|s| s.creature == upgrade)?;
         // ⌈2c / 3⌉ = (2c + 2) / 3, exact in 64 bits and below 2^32 again.
         let fewer = u32::try_from((u64::from(count) * 2).div_ceil(3)).unwrap_or(u32::MAX);
-        stack.count = stack.count.saturating_add(fewer);
+        let stack = army
+            .iter_mut()
+            .find(|s| s.creature == upgrade && fewer <= most.saturating_sub(s.count))?;
+        stack.count += fewer;
         Some((upgrade, fewer))
     }
 
@@ -1716,14 +1736,14 @@ impl AdventureState {
             _ => None,
         };
         let closed = || across.is_some_and(|at| self.closed_above(part, at));
-        // ADR-0016 point 4: another player's hero is visited from the neighbouring tile, and the
-        // visit is a battle at once (E08 T19a); not across the top of an object's tile it stands
-        // on or the visitor stands on.
-        // rule: GAM-BAT-004
+        // ADR-0016 point 4: another hero is visited from the neighbouring tile: another player's
+        // in a battle at once (E08 T19a), an own one in a meeting (T50); not across the top of an
+        // object's tile it stands on or the visitor stands on.
+        // rule: GAM-BAT-004, GAM-MET-001
         if let Some(other) = self
             .heroes
             .iter()
-            .position(|h| h.pos == pos && h.owner != player)
+            .position(|h| h.pos == pos && h.id != mover)
         {
             if closed() {
                 return Err(AdventureCommandError::FromAbove { step });
@@ -1846,12 +1866,12 @@ impl AdventureState {
 }
 
 impl CanonicalHash for AdventureState {
-    /// Encoding v9 (E08 T20a2a; v1 was T5a's, v2 T6b's, v3 T8a's, v4 T12's, v5 T14b's, v6 T15a's,
-    /// v7 T18b's, v8 T19a's):
+    /// Encoding v11 (E08 T50; v1 was T5a's, v2 T6b's, v3 T8a's, v4 T12's, v5 T14b's, v6 T15a's,
+    /// v7 T18b's, v8 T19a's, v9 T20a2a's, v10 T21a's):
     /// version; the static map's content hash (since v4 with the objects' types and contents); the
     /// number of players; the heroes by id (id, owner, tile, the army's stacks by slot: slot,
-    /// creature, count; since v7 the formation, 0 loose, 1 tight; since v2 the movement points
-    /// left); since v3 each player's explored tiles, by player id
+    /// creature, count; since v7 the formation, 0 loose, 1 tight; since v11 the tactics flag;
+    /// since v2 the movement points left); since v3 each player's explored tiles, by player id
     /// ([`BitGrid`]'s encoding); since v4 the objects that left the map (0 for none, else 1 and
     /// [`Occupancy`]'s encoding; there is an occupancy only once an object has left); since v5 the
     /// Cartographer types bought, as length and entries in type order (the type, then its byte of
@@ -1875,6 +1895,7 @@ impl CanonicalHash for AdventureState {
                 h.write_u32(stack.count);
             }
             h.write_bool(hero.formation == Formation::Tight);
+            h.write_bool(hero.tactics);
             h.write_u32(hero.movement);
         }
         h.write_len(self.explored.len());
@@ -1905,7 +1926,9 @@ impl CanonicalHash for AdventureState {
 }
 
 /// Checks an army against the ruleset (one or more stacks of known creatures with at least one
-/// creature each, in distinct slots below the army slots) and returns its stacks by slot.
+/// creature each and at most a stack's most (ADV-ARM-007, E08 T50), in distinct slots below the
+/// army slots) and returns its stacks by slot.
+// rule: ADV-ARM-007
 fn check_army(
     core: &Ruleset,
     part: &AdventureRuleset,
@@ -1924,6 +1947,9 @@ fn check_army(
         }
         if stack.count == 0 {
             return Err(ArmyError::EmptyStack(stack.slot));
+        }
+        if stack.count > part.params().max_stack_count() {
+            return Err(ArmyError::TooManyCreatures(stack.slot));
         }
         if core.creature(stack.creature).is_none() {
             return Err(ArmyError::UnknownCreature(stack.slot));

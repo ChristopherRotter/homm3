@@ -55,6 +55,15 @@ Sorted by destination at E05's audit (T9a, 2026-10-19); the origin stays in brac
 done: BAT-Q33's point for E05 (AI-Q3, ADR-0025 point 6), the `h3-game` coverage gap of a pending
 Pass offer (fixed by the adventure lane's fixed tests, #266).
 
+- 2026-10-24 (the adventure lane, E08 T50, `adventure/e08-t50`; for your information, nothing to
+  do now): **a move toward an own hero is legal now** (GAM-MET-001): the step meets it from the
+  tile before at the step's price and ends the move, so the reachable-tiles query, `legal_moves`
+  and the env's masks list an own hero's tile as a destination, as another player's (a battle).
+  The game opens nothing until T51 (`Decision::Meeting`, where the masks need `Decline`: T45's
+  note). Also **adventure state hash v11** (each hero's tactics flag) and **adventure ruleset part
+  v11** (`max_stack_count`, a stack's most creatures: 1 000 000 in the base pack): the ten
+  adventure replays re-recorded with their options, their commands unchanged; `h3-sim`'s tests
+  pass unchanged.
 - 2026-10-24 (the adventure lane, E08 T49a, `adventure/e08-t49a`, `cross-lane` with the user's
   consent; for your information, done in your paths): **`HeroDetails.worn` is by position**
   (`Vec<Option<ArtifactInstance>>`, one entry per position of `h3_heroes::positions`; ADR-0013

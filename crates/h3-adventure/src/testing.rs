@@ -73,6 +73,9 @@ fn starting_resources() -> Vec<StartingResourcesDef> {
 }
 
 /// The object types of [`rules`] and [`movement_rules`] (E08 T12a), in handle order.
+/// The test rulesets' most creatures in a stack (ADV-ARM-007): the least a part may set.
+pub(crate) const MAX_STACK: u32 = crate::MAX_MONSTER_COUNT;
+
 pub(crate) const WOOD_PILE: ObjectTypeId = ObjectTypeId::from_raw(0);
 pub(crate) const GOLD_PILE: ObjectTypeId = ObjectTypeId::from_raw(1);
 pub(crate) const ANY_PILE: ObjectTypeId = ObjectTypeId::from_raw(2);
@@ -258,6 +261,7 @@ pub(crate) fn rules() -> (Ruleset, AdventureRuleset) {
             max_levels: NonZeroU8::new(2).unwrap(),
             max_players: NonZeroU8::new(2).unwrap(),
             army_slots: NonZeroU8::new(3).unwrap(),
+            max_stack_count: NonZeroU32::new(MAX_STACK).unwrap(),
             starting_stack_chances: vec![88, 25],
             battle: None,
             monsters: Some(monster_params()),
@@ -492,6 +496,7 @@ fn movement_rules_with(
             max_levels: NonZeroU8::new(2).unwrap(),
             max_players: NonZeroU8::new(2).unwrap(),
             army_slots: NonZeroU8::new(7).unwrap(),
+            max_stack_count: NonZeroU32::new(MAX_STACK).unwrap(),
             starting_stack_chances: vec![88, 25],
             // E08 T19a: battles underground on swamp, on the coast on sand and the shore.
             battle: Some(BattleTerrainsDef {

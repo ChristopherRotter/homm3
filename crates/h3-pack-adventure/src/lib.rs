@@ -16,6 +16,8 @@
 //! max_levels = 2                   # its levels and the players of a game
 //! max_players = 8
 //! army_slots = 7                   # the slots of a hero's army
+//! max_stack_count = 1000000        # E08 T50: a stack's most creatures (ADV-ARM-007), at least
+//!                                  # MAX_MONSTER_COUNT
 //! starting_stack_chances = [88, 25] # percent for the 2nd, 3rd... starting slot of a hero's
 //!                                  # starting army; the 1st always (GAM-SET-001, E08 T6b)
 //! fly_cost = [140, 140, 120, 100]  # E08 T40: a flying hero's straight step by its flying level
@@ -216,6 +218,7 @@ struct ParamsDto {
     max_levels: NonZeroU8,
     max_players: NonZeroU8,
     army_slots: NonZeroU8,
+    max_stack_count: NonZeroU32,
     starting_stack_chances: Vec<u8>,
     #[serde(default)]
     battle: Option<BattleDto>,
@@ -551,6 +554,7 @@ pub fn parse_adventure(
                     max_levels: p.max_levels,
                     max_players: p.max_players,
                     army_slots: p.army_slots,
+                    max_stack_count: p.max_stack_count,
                     starting_stack_chances: p.starting_stack_chances,
                     battle,
                     monsters,

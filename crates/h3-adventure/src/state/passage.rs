@@ -76,8 +76,9 @@ impl AdventureState {
     ///   visited from above (never): rejected; a step up off such a tile is a flight's pass only
     ///   (ADV-OBJ-004);
     /// - rock: never; water: a flight passes; a water walk passes plain water (no object, no hero);
-    /// - land: an own hero's tile a flight passes; another player's hero is visited from a stop
-    ///   node (a battle, GAM-BAT-004) and a flight passes it; a tile an object blocks a flight
+    /// - land: another hero is visited from a stop node (another player's in a battle,
+    ///   GAM-BAT-004; an own one in a meeting, GAM-MET-001, E08 T50) and a flight passes it; a
+    ///   tile an object blocks a flight
     ///   passes; an object's visitable tile whose visit is not built a flight passes; a border
     ///   gate whose key the owner holds is a free tile (ADV-VIS-005); an entered object is visited
     ///   from any node, a neighbour's from a stop node (ADV-OBJ-003), and a flight passes both; a
@@ -151,14 +152,7 @@ impl AdventureState {
             })
         };
         if let Some(other) = hero {
-            if self.heroes[other].owner == player {
-                return if fly {
-                    Ok(pass)
-                } else {
-                    Err(blocked(StandError::Occupied))
-                };
-            }
-            // A battle, from a stop node only (GAM-BAT-004).
+            // A battle or a meeting, from a stop node only (GAM-BAT-004, GAM-MET-001).
             return visit((node == Node::Stop).then_some(Meets::Hero(other)));
         }
         if !tile.visitable {

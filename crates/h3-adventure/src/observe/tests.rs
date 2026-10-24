@@ -217,6 +217,7 @@ fn a_player_sees_where_other_heroes_stand_and_its_own_in_full() {
                     army: own.army.clone(),
                     movement: own.movement,
                     formation: own.formation,
+                    tactics: true,
                 }),
             })
         );

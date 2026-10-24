@@ -92,6 +92,7 @@ fn params() -> AdventureParamsDef {
         max_levels: NonZeroU8::new(2).unwrap(),
         max_players: NonZeroU8::new(8).unwrap(),
         army_slots: NonZeroU8::new(7).unwrap(),
+        max_stack_count: NonZeroU32::new(1_000_000).unwrap(),
         starting_stack_chances: vec![88, 25],
         battle: None,
         monsters: None,
@@ -339,6 +340,9 @@ fn the_hash_is_stable_and_sees_every_part() {
         edit(|p| pack(p, "t").params.as_mut().unwrap().max_levels = NonZeroU8::MIN),
         edit(|p| pack(p, "t").params.as_mut().unwrap().max_players = NonZeroU8::MIN),
         edit(|p| pack(p, "t").params.as_mut().unwrap().army_slots = NonZeroU8::MIN),
+        edit(|p| {
+            pack(p, "t").params.as_mut().unwrap().max_stack_count = NonZeroU32::new(5000).unwrap();
+        }),
         edit(|p| pack(p, "t").object_types[1].name = "Other".into()),
         edit(|p| pack(p, "t").object_types[1].visit = Visit::Enter),
         edit(|p| pack(p, "t").object_types[1].from_above = false),
@@ -1039,6 +1043,24 @@ fn one_pack_provides_valid_parameters() {
         ))
     );
     assert_eq!(players(MAX_PLAYERS), Ok(MAX_PLAYERS));
+    // A stack holds at least any wandering monster's group (ADV-ARM-007).
+    let most = |most: u32| {
+        AdventureRuleset::compile(
+            &core(),
+            &edit(|p| {
+                pack(p, "t").params.as_mut().unwrap().max_stack_count =
+                    NonZeroU32::new(most).unwrap();
+            }),
+        )
+        .map(|part| part.params().max_stack_count())
+    };
+    assert_eq!(
+        most(MAX_MONSTER_COUNT - 1),
+        Err(AdventureCompileError::InvalidParams(
+            "max_stack_count is below MAX_MONSTER_COUNT"
+        ))
+    );
+    assert_eq!(most(MAX_MONSTER_COUNT), Ok(MAX_MONSTER_COUNT));
     // Any chance up to 100 compiles, and no chances at all: only the first stack comes.
     assert_eq!(chances(vec![0, 100]), Ok(vec![0, 100]));
     assert_eq!(chances(vec![]), Ok(vec![]));

@@ -1068,9 +1068,12 @@ fn landing(
             .map()
             .tile(to)
             .is_some_and(|tile| tile.visitable);
-        let mover = before.adventure().heroes().iter().find(|h| h.pos == start);
-        let foe = mover.is_some_and(|h| foe_at(before, h.owner, to));
-        prop_assert!(visitable || foe);
+        // Another hero is visited from the tile before: a battle or, an own one, a meeting
+        // (GAM-MET-001, E08 T50).
+        let heroes = before.adventure().heroes();
+        let mover = heroes.iter().find(|h| h.pos == start);
+        let other = mover.is_some_and(|m| heroes.iter().any(|h| h.pos == to && h.id != m.id));
+        prop_assert!(visitable || other);
     }
     let walked = &path[..steps];
     Ok((walked.last().copied().unwrap_or(start), stays))
