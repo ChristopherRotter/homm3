@@ -99,3 +99,10 @@ See `docs/rules/quirks-ledger.md`.
 
 - The installation is the GOG Complete edition 4.0 (Q8, answered; `docs/formats/installation.md`). RoE, AB and SoD are all supported as packs `base`, `ab`, `sod`.
 - Content tables are harvested once and the clean packs are committed (Q13, revising Q9).
+
+## 7. Looking things up (practical)
+
+- **The wiki** is reachable only through WebFetch (summarised) and needs the user's approval per session: ask for verbatim quotes, use `index.php?title=<Page>&action=raw` and `index.php?search=<term>&fulltext=1`; ask for the `swh` template's SoD argument (else the summary is HotA's).
+- **VCMI 1.7.5:** `git clone --depth 1 --branch 1.7.5 https://github.com/vcmi/vcmi.git` works through the proxy.
+- **Experiments:** agents play batches on the capture harness (`docs/experiments/README.md`).
+- **Code reading** (Q29, Q57) happens in the sandbox, not on the user's PC: stage `Heroes3.exe`, then `scripts/exe.py lookup|fn|switch|callers|refs|grep` (`docs/exe/README.md`). Every address cited in docs or code needs a map entry (`check-exe-map`; `scripts/exe.py cited`). `fn` prints a long function only sliced (`--around`, `--from/--to`): never read `map.toml` or `h3api.toml` whole. It prints each float constant's width; the x87 runs at 53 bits (`docs/formats/installation.md` §7.10).

@@ -1,6 +1,6 @@
 # HANDOFF
 
-Read first, then your lane's HANDOFF: the lane index and every lane's traps (a lane's state: its own HANDOFF). Rules: `docs/08-work-process.md` ("Lanes", "Keeping the start-of-session reading small"); under 6 000 bytes (`check-docs`); changed by `shared/` PRs.
+Read first, then your lane's HANDOFF: the lane index and the few traps that cross lanes (a lane's state and traps: its own HANDOFF and `TRAPS.md`). Rules: `docs/08-work-process.md` ("Lanes", "Keeping the start-of-session reading small"); under 6 000 bytes (`check-docs`; aim for 3 000); changed by `shared/` PRs.
 
 ## Lanes
 
@@ -15,31 +15,20 @@ Read first, then your lane's HANDOFF: the lane index and every lane's traps (a l
 
 Shared (own PR, merged first): `h3-kernel`, `h3-contracts`, the core `h3-content`, `h3-pack` (R01), workspace and gate files (`Cargo.toml`, `arch.toml`, `lanes.toml`, `xtask`, CI), ADRs, process docs, `BACKLOG.md`, this file. Common: `OPEN-QUESTIONS.md`, `docs/stubs.toml` (a block per lane), both `Cargo.lock`s, `docs/exe/map.toml`, `structs.toml` (a line per entry), the client foundation and harness, each lane's `QUEUE.md` inbox.
 
-- **GitHub and CI:** `ChristopherRotter/homm3` (private, free plan: without minutes or billing runs fail unstarted, the full local verify stands in, `05-testing.md` "CI"). `ci.yml` runs `check-lane` and the full verify for pull requests and `master` (once per code, not for docs only), weekly `cargo deny check advisories`. Changes reach `master` by pull request only, **opened when its branch is ready to merge**; each push to an open one runs CI: merge `master` into it after `master`'s latest run finished.
+- **GitHub and CI:** `ChristopherRotter/homm3` (private, free plan: without minutes or billing runs fail unstarted, the full local verify stands in, `05-testing.md` "CI"). `ci.yml` runs `check-lane` and the full verify for pull requests and `master` (once per code, not for docs only), weekly `cargo deny check advisories`. Changes reach `master` by pull request only, **opened when its branch is ready to merge**; each push to an open one runs CI: merge `master` into it after `master`'s latest run finished. **Going public** is prepared and decided (Q59, `adr/answered-questions.md`): once the user switches the visibility, a `shared/` change does that answer's "after the switch" list (CI then runs free).
 
 ## Traps for every lane
 
 - **Battle types on the wire** (ADR-0018 point 5): a new `Command`, `EventKind`, `CommandError`, `CastTarget`, `DamageRoll` or `ObstacleKind` variant, or a field of `Observation`'s structs, breaks `h3-protocol`'s build until mapped (same PR, `cross-lane`, or server lane first).
 - **Hero-level properties** (a hero's available spells, a spell's mastery) are derived once in `h3-heroes` (ADR-0013 point 2, BAT-Q19): the adventure map calls them, never a copy.
 
-**Sandbox and sync**
-- Original files: stage the user's `original-data/` through the device link (`08-work-process.md` "Cloud sandbox"; one LOD per call), then `scripts/sandbox-setup.sh`; without the link a session only prepares (Q48). Fetch `master` before a push (a thin pack).
-- **Stop hook "… no remote branch"** after a push: nothing lost, don't report it (`08-work-process.md` "Cloud sandbox" 1).
-- Git on the user's machine: delete permission for the repo folder before *any* git command (even `git status` leaves `.git/index.lock`), `-c user.name -c user.email`; no GitHub credentials there. Cloud sessions open pull requests by the REST API (GraphQL is blocked).
-- The VM can restart (files stay, jobs die): check `ps` first. A build's `Bus error` or `No space`: the disk allowance is spent (`08-work-process.md` "Cloud sandbox" 5).
-- `cargo xtask verify` outlasts a tool call: run `scripts/sandbox-verify.sh` in the background (the coverage tools: `scripts/llvm-tools.sh`) and poll its log; the inner loop is `verify --scope <lane> --quick`.
-- The background verify tests whatever is in the clone: try ad-hoc tests in a `git worktree` with a `CARGO_TARGET_DIR` of its own (never shared: `xtask` roots at its build; remove it after). Kill by pid: `pkill -f` matches the tool's own shell.
-- bench-check at 0 Ir: valgrind 3.22 found no symbols in the lld-linked `h3` (the gate links with `-z norelro`).
+**Where the other traps live** (open the one your task meets, not all):
 
-**Sources**
-- The wiki is reachable only through WebFetch (summarised) and needs the user's approval per session: ask for verbatim quotes, use `index.php?title=<Page>&action=raw` and `index.php?search=<term>&fulltext=1`; ask for the `swh` template's SoD argument (else the summary is HotA's).
-- VCMI 1.7.5: `git clone --depth 1 --branch 1.7.5 https://github.com/vcmi/vcmi.git` works through the proxy.
-- Experiments: agents play batches on the capture harness (`experiments/README.md`).
-- Code reading (Q29, Q57) in the sandbox, not on the user's PC: stage `Heroes3.exe`, then `scripts/exe.py lookup|fn|switch|callers|refs|grep` (`docs/exe/README.md`); every address cited in docs or code needs a map entry (`check-exe-map`; `scripts/exe.py cited`). `fn` prints a long function only sliced (`--around`, `--from/--to`): never read `map.toml` or `h3api.toml` whole. It prints each float constant's width; the x87 runs at 53 bits (§7.10).
+| Topic | Read |
+|---|---|
+| Cloud sandbox, sync, staging original data, disk, background verify, pull requests by REST, killing jobs | `docs/08-work-process.md`, "Cloud sandbox" (steps 1–6) |
+| Coverage, clippy, fmt, serde, layers | `docs/05-testing.md`, "Traps in the gates" |
+| Wiki, VCMI, experiments, code reading of `Heroes3.exe` | `docs/04-rules-and-sources.md` §7, `docs/exe/README.md` |
+| A lane's own area | `docs/lanes/<lane>/TRAPS.md` |
 
-**Coverage, lints, formatting**
-- LLVM counts the implicit `else` of `if let`, the error arm of `?` and rare closures: no defensive dead branches; use infallible accessors and combinators; saturate, do not return `Option`. Lines only proptests reach make the gate flaky: give each a fixed test (`cargo llvm-cov -p <crate> -- --skip <proptest>`).
-- Misses on non-code lines: stale binaries (`cargo llvm-cov clean --workspace`).
-- clippy: `should_implement_trait` rejects methods named `div`/`shr`/`mul`/`add`/`sub`; `type_complexity` fires on arrays of fn pointers in tests (use a type alias). `cargo fmt` reflows code: match scripted patches against the formatted text.
-- Dev-dependencies obey the layers too (`check-arch`): domain crates build test rulesets in code.
-- serde ignores unknown keys of a unit variant in an internally tagged enum (use struct variants); TOML serialization needs table fields after plain values.
+A trap goes where it is used, once: the topic doc above, or the lane's `TRAPS.md`. Never copy it into a HANDOFF or a session entry; this file holds only what breaks a lane other than the one that made the change.

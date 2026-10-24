@@ -37,15 +37,6 @@ while the work waits.
   the map: one too generous, its comment off by one (6 and 4, or the comment). The adventure
   lane's crate: a `cross-lane` change, so it waits for the next addition the situations need.
 
-- 2026-10-23 (the adventure lane, E08 T47a; for information, nothing to do): the harness's
-  clicks and reads for batch E6 (`clients/capture/README.md`, "Screens and their items"): the
-  screen showing is the topmost dialog's kind by its vtable (`h3mem.dialog`), and a click finds
-  its item by id among the dialog's items in memory, which now carry their boxes, states and texts
-  (`h3mem.dialog_items`; `dialog_text` shares `item_text`); the hero screen, exchange, army,
-  creature and split dialogs' items by name (`h3adv.SCREEN_ITEMS`); a step's `screen = "hero"`
-  and `actions`; a battle's tactics phase ended at once in `fight` (its message's OK, then Start).
-  The harness check gained Kit and Full (Blue's eight heroes): passed under Wine.
-
 - 2026-10-23 (the client lane, E17 M3 T9c, at the split): moved here from the client lane's
   inbox, the adventure lane's entry of 2026-10-21 (E08 T30, decision 65, ADR-0017 point 6 amended
   in #353; for the hot-seat client, E24 M5): **a level-up holds the game.**
@@ -57,3 +48,5 @@ while the work waits.
   show a handover screen that hides everything (map, hero list, the dialog) until that player
   confirms it is in control, then the level-up dialog alone, and hand back to the player whose
   turn runs the same way, so no one sees another player's view.
+
+Archive of the lane's finished and informational entries: `QUEUE-ARCHIVE.md` (grep it for an id or a task a doc cites). Keep this file to what is open: a done task leaves it, a notice nobody has to act on goes to the archive at once (`docs/08-work-process.md`, "Keeping the start-of-session reading small").

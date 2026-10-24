@@ -46,6 +46,8 @@ paths = [
     "AGENTS.md",
     "CLAUDE.md",
     "README.md",
+    "CONTRIBUTING.md",
+    "SECURITY.md",
     "LICENSE",
     "docs/README.md",
     "docs/01-vision.md",
