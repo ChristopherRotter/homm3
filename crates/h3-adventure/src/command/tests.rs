@@ -231,7 +231,7 @@ fn a_move_is_rejected_whole_and_changes_nothing() {
         E::NotNeighbour { step: 1 }
     );
     let blocked = |step, error| E::Blocked { step, error };
-    // Rock and sea, an object's blocked tile, another hero, off the map.
+    // Rock and sea, an object's blocked tile, off the map; past another hero's tile, visited.
     assert_eq!(
         rejected(&mut state, &rules, RED, 1, &[p(1, 0), p(2, 0)]),
         blocked(1, StandError::Terrain)
@@ -245,8 +245,8 @@ fn a_move_is_rejected_whole_and_changes_nothing() {
         blocked(0, StandError::Blocked)
     );
     assert_eq!(
-        rejected(&mut state, &rules, RED, 3, &[p(5, 1), p(5, 2)]),
-        blocked(1, StandError::Occupied)
+        rejected(&mut state, &rules, RED, 3, &[p(5, 1), p(5, 2), p(4, 2)]),
+        E::PastVisit { step: 2 }
     );
     assert_eq!(
         rejected(&mut state, &rules, RED, 3, &[p(6, 0)]),
@@ -1424,7 +1424,8 @@ fn a_step_toward_another_players_hero_visits_it_and_starts_a_battle() {
             ..AdventureOutcome::default()
         }
     );
-    // The query lists the hero's tile with the points the visit leaves, its own hero's not.
+    // The query lists the hero's tile with the points the visit leaves, its own hero's too (a
+    // meeting, E08 T50), whatever object lies under them.
     let reach = state
         .reach(&rules.0, &rules.1, &[], HeroId::new(3))
         .unwrap();
@@ -1434,12 +1435,12 @@ fn a_step_toward_another_players_hero_visits_it_and_starts_a_battle() {
         .reach(&rules.0, &rules.1, &[], HeroId::new(1))
         .unwrap();
     assert_eq!(reach.points_left(p(3, 0)), Some(900));
-    assert_eq!(reach.points_left(p(1, 2)), None);
+    assert_eq!(reach.points_left(p(1, 2)), Some(1000 - 100 - 141));
 }
 
-// covers: GAM-BAT-004, ADV-OBJ-003, ADV-OBJ-004
+// covers: GAM-BAT-004, GAM-MET-001, ADV-OBJ-003, ADV-OBJ-004
 #[test]
-fn a_hero_visit_ends_the_move_and_an_own_hero_blocks() {
+fn a_hero_visit_ends_the_move_and_an_own_hero_is_met() {
     let rules = movement_rules(false);
     let mut state = heroes_world(&rules);
     use AdventureCommandError as E;
@@ -1453,13 +1454,38 @@ fn a_hero_visit_ends_the_move_and_an_own_hero_blocks() {
         ),
         E::PastVisit { step: 3 }
     );
+    // A step toward an own hero meets it from the tile before at the step's price (E08 T50);
+    // nothing goes on past it.
     assert_eq!(
-        rejected(&mut state, &rules, RED, 1, &[p(0, 1), p(1, 2)]),
-        E::Blocked {
-            step: 1,
-            error: StandError::Occupied
+        rejected(&mut state, &rules, RED, 1, &[p(0, 1), p(1, 2), p(2, 2)]),
+        E::PastVisit { step: 2 }
+    );
+    let mut met = state.clone();
+    let mut events = Vec::new();
+    let path = vec![p(0, 1), p(1, 2)];
+    let command = AdventureCommand::MoveHero {
+        hero: HeroId::new(1),
+        path,
+    };
+    let outcome = met
+        .apply(&rules.0, &rules.1, &[], RED, &command, &mut events)
+        .unwrap();
+    let meeting = Meeting {
+        visitor: HeroId::new(1),
+        visited: HeroId::new(3),
+    };
+    assert_eq!(
+        outcome,
+        AdventureOutcome {
+            meeting: Some(meeting),
+            ..AdventureOutcome::default()
         }
     );
+    assert_eq!(events.len(), 1);
+    let points = state.hero(HeroId::new(1)).unwrap().movement;
+    // A straight step and a diagonal one (141), the meeting's paid as if taken.
+    assert_eq!(hero(&met, 1), (p(0, 1), points - 100 - 141));
+    assert_eq!(met.hero(HeroId::new(3)), state.hero(HeroId::new(3)));
     // Blue's hero 4 stands on the Cartographer's tile, not visited from above: no step down onto
     // it from the three tiles above, the visit a hero's or not (ADV-OBJ-004; batch E4's E4-10:
     // the original finds no path and starts no battle, E08 T33). Straight down, down-right,

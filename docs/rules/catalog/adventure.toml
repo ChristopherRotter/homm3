@@ -1144,7 +1144,7 @@ id       = "ADV-MON-007"
 title    = "A wandering monster's answer"
 context  = "adventure"
 status   = "verified"
-summary  = "A hero's visit of a monster (from a neighbouring tile, also from above; or the guard's visit, ADV-MON-006) gets the monster's answer. Inputs: the hero's power, its army's value (each stack's creature's AI value times its count, summed) stored as a float, times the float factor sqrt((1 + 0.05 D)(1 + 0.05 A)) of its Attack and Defense (h3_heroes::attack_defense, 0 to 99; each term in double precision, the root stored as a float), truncated; the monster's strength, its creature's AI value times its count as it stands; their ratio r, both stored as floats and divided in single precision. The strength step St: 11 from r >= 7, trunc(2r - 2) from r >= 1, -1 above 0.5, -2 above 0.333, else -3 (D-8: -2 at exactly 0.5; a strength of 0 counts as r >= 7). The sympathy Sy: 0 without a stack of the monster's creature or its related type (its first upgrade, else the creature it is the first upgrade of with its faction and level; none for a neutral creature, so under BAT-QUIRK-19 the Ice, Magma and Energy Elementals have none), 2 when such stacks hold more than half of the army's creatures by count, else 1 (D-9: the monster's own type counts). Diplomacy L: the hero's join bonus (h3_heroes::join_bonus), one higher on Easy, at most 3 (D-10: every player's). The monster's aggression M (ADV-MON-002) and whether it never flees. With C = St + Sy + L: M > C fights; else M <= Sy + L + 1 offers to join for free, M <= Sy + 2L + 1 to join for its price (ADV-MON-008); else, as after a declined offer to join, M = C (insulted) or a monster that never flees fights, any other offers to flee. An offer to join is made only while the hero's army has room for the group (a stack of its creature or a free slot); without room it counts as declined (E08 decision 22; the original's army dialog, 0x5D11D0, is ADV-STUB-2). Every player is asked, as increment 2's offers (the original asks only humans; its computer decides at once). A fight is a battle the game opens at once (ADV-MON-009, -010, E08 T20b2). Not modelled: the original's 32-bit army value, which would wrap above 2^31 (no army reaches it). E08 T20b1: `answer.rs` (Temper, power, sympathy), `AdventureState::decline_offer`."
+summary  = "A hero's visit of a monster (from a neighbouring tile, also from above; or the guard's visit, ADV-MON-006) gets the monster's answer. Inputs: the hero's power, its army's value (each stack's creature's AI value times its count, summed) stored as a float, times the float factor sqrt((1 + 0.05 D)(1 + 0.05 A)) of its Attack and Defense (h3_heroes::attack_defense, 0 to 99; each term in double precision, the root stored as a float), truncated; the monster's strength, its creature's AI value times its count as it stands; their ratio r, both stored as floats and divided in single precision. The strength step St: 11 from r >= 7, trunc(2r - 2) from r >= 1, -1 above 0.5, -2 above 0.333, else -3 (D-8: -2 at exactly 0.5; a strength of 0 counts as r >= 7). The sympathy Sy: 0 without a stack of the monster's creature or its related type (its first upgrade, else the creature it is the first upgrade of with its faction and level; none for a neutral creature, so under BAT-QUIRK-19 the Ice, Magma and Energy Elementals have none), 2 when such stacks hold more than half of the army's creatures by count, else 1 (D-9: the monster's own type counts). Diplomacy L: the hero's join bonus (h3_heroes::join_bonus), one higher on Easy, at most 3 (D-10: every player's). The monster's aggression M (ADV-MON-002) and whether it never flees. With C = St + Sy + L: M > C fights; else M <= Sy + L + 1 offers to join for free, M <= Sy + 2L + 1 to join for its price (ADV-MON-008); else, as after a declined offer to join, M = C (insulted) or a monster that never flees fights, any other offers to flee. An offer to join is made only while the hero's army has room for the group (a stack of its creature that takes it within a stack's most, or a free slot: ADV-ARM-007, E08 T50); without room it counts as declined (E08 decision 22; the original's army dialog, 0x5D11D0, is ADV-STUB-2 until the game opens it, T51). Every player is asked, as increment 2's offers (the original asks only humans; its computer decides at once). A fight is a battle the game opens at once (ADV-MON-009, -010, E08 T20b2). Not modelled: the original's 32-bit army value, which would wrap above 2^31 (no army reaches it). E08 T20b1: `answer.rs` (Temper, power, sympathy), `AdventureState::decline_offer`."
 numeric  = "integer"
 
   [[rule.source]]
@@ -1178,7 +1178,7 @@ id       = "ADV-MON-008"
 title    = "Joining and fleeing"
 context  = "adventure"
 status   = "implemented"
-summary  = "A monster's offers (ADV-MON-007) are yes or no decisions of the visiting hero's owner (GAM-DEC-001), named by the monster's type and anchor. The offer to join for free: accepted, the whole group joins the hero's army as one stack (into its first stack of the creature, else its first free slot; the original's army_add_stack), told to the owner; the treasure's resources are the owner's gains; the monster leaves the map, told to the players that see it there. The offer to join for its price (the creature's cost in the monsters' price resource, the original's gold, times its count): opened only when the treasury can pay, then as the free offer with the price paid; otherwise it counts as declined, without an event. A declined offer to join goes on in the same command to the monster's answer after a declined join (a fight, or the offer to flee). The offer to flee: accepted, the hero pursues the monster and fights it (ADV-MON-009, E08 T20b2); declined, the monster leaves the map without its treasure. An offer whose monster left the map does nothing. E08 T20b1: `OfferKind::{Join, JoinForGold, Pursue}`, `AdventureState::{accept_offer, decline_offer}`, the base pack's params.monsters.price_resource."
+summary  = "A monster's offers (ADV-MON-007) are yes or no decisions of the visiting hero's owner (GAM-DEC-001), named by the monster's type and anchor. The offer to join for free: accepted, the whole group joins the hero's army as one stack (into its first stack of the creature, else its first free slot; the original's army_add_stack; since E08 T50 its first stack of the creature that takes it within a stack's most, ADV-ARM-007), told to the owner; a group that finds no room joins nothing and is reported to the game (`AdventureOutcome::no_room`, E08 T50: the army dialog's group, GAM-DEC-004, T51), the treasure and the monster's leaving as for any join; the treasure's resources are the owner's gains; the monster leaves the map, told to the players that see it there. The offer to join for its price (the creature's cost in the monsters' price resource, the original's gold, times its count): opened only when the treasury can pay, then as the free offer with the price paid; otherwise it counts as declined, without an event. A declined offer to join goes on in the same command to the monster's answer after a declined join (a fight, or the offer to flee). The offer to flee: accepted, the hero pursues the monster and fights it (ADV-MON-009, E08 T20b2); declined, the monster leaves the map without its treasure. An offer whose monster left the map does nothing. E08 T20b1: `OfferKind::{Join, JoinForGold, Pursue}`, `AdventureState::{accept_offer, decline_offer}`, the base pack's params.monsters.price_resource."
 numeric  = "integer"
 
   [[rule.source]]
@@ -1267,3 +1267,162 @@ numeric  = "integer"
   retrieved  = "2026-10-20"
   confidence = "high"
   note       = "The original's A-6 observed: the upgraded stack's survivors vanish. The engine keeps them on purpose (ADV-QUIRK-7, decision 23; the user at T22a3's end, decision 46), so it keeps 30. E08 T22b."
+
+[[rule]]
+id       = "ADV-ARM-001"
+title    = "A hero's army: moving a stack within it"
+context  = "adventure"
+status   = "implemented"
+summary  = "A hero's army holds one to seven stacks (the ruleset's army slots), each of one creature with at least one and at most a stack's most creatures (ADV-ARM-007). Its owner moves a stack onto another slot of the army at no cost: onto a stack of the same creature it merges (the counts added, the source slot emptied; refused past the most), into an empty slot it moves, onto another creature the two swap. A move onto its own slot is refused (it changes nothing). Within one army nothing else is refused: the army keeps a stack. Validated against the trusted player (the hero its own on the map) and applied whole or not at all. E08 T50: `h3_adventure::{ArmyCommand::Move, ArmyRef, ArmySlot}`, `AdventureState::manage_army`; the game's command and its events come in T51."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey E08-army.md section 3.1): hero_screen_proc 0x4DD2D0, 0x4DD962 to 0x4DDBCD: a target of the same creature takes the selected stack whole (0x4DDB07), else army_swap_slots 0x44AD60 (a move into an empty slot or a swap); nothing refused within one army"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "server/CGameHandler.cpp arrangeStacks, moveStack, swapStacks, behind the owner's and the active player's checks (survey E08-army.md section 3.6): the same merge, move and swap"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/server/CGameHandler.cpp"
+  retrieved  = "2026-10-23"
+  confidence = "high"
+
+[[rule]]
+id       = "ADV-ARM-002"
+title    = "Moving a stack between two armies; a hero's last stack stays"
+context  = "adventure"
+status   = "verified"
+summary  = "Between two armies of one player (the two heroes of a meeting, GAM-MET-001; a hero and its army dialog's group, GAM-DEC-004) a move goes as within one (ADV-ARM-001: merge within the most, move to an empty slot, else swap), except that a hero's last stack never merges away nor moves to an empty slot of the other army: it may swap. The group has no protected stack (its last moves out, merges or is dismissed). Which armies may meet is the game's check (T51); here both heroes must be the player's on the map and the group must be open. E08 T50: `ArmyCommand::Move` between two `ArmyRef`s, `ArmyCommandError::LastStack`."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey E08-army.md section 3.2): swap_army_click 0x5AF2B0, swap_army_move 0x5B0DA0: the merge refused when the source army has a single stack; the move of a single stack into an empty slot refused; a swap allowed; army_full_dialog 0x5D11D0 for the group (section 1.1)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "server/CGameHandler.cpp arrangeStacks, moveStack (survey E08-army.md section 3.6): a hero's last stack does not leave it"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/server/CGameHandler.cpp"
+  retrieved  = "2026-10-23"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-6.md E6-3 (stamp e17cb77c, the capture harness, Complete 4.0 Heroes3.exe under Wine, hot seat, Easy, 2026-10-23, three runs alike): A's single stack to B's empty slot and onto B's stack of its creature changed nothing; onto B's other stack it swapped"
+  retrieved  = "2026-10-23"
+  confidence = "high"
+
+[[rule]]
+id       = "ADV-ARM-003"
+title    = "Splitting a stack"
+context  = "adventure"
+status   = "verified"
+summary  = "Its owner splits a stack with another slot (of the same army or of the other met army or the group) that is empty or holds the same creature: the command names the target's new count; with t the two stacks' counts together, any count that leaves both stacks at least one and at most a stack's most creatures, from max(1, t - most) to min(t - 1, most) (`h3_adventure::split_range`; none when t is 1). Another creature on the target, its own slot or a count outside the range is refused. The original's dialog allows the target [m2, t - m1] (m1, m2 one when a single-stack hero would lose its stack), whose bounds refuse only the 0 or the full count; a move covers those where the original's click allows it (ADV-ARM-001, -002), so the engine's range with the move gives the original's outcomes, A-16 included (ADV-QUIRK-20, E08 decision 98: the original's bounds, no flag). A split that leaves the counts as they were is allowed. E08 T50: `ArmyCommand::Split`, `split_range`, `AdventureState::split_range` (the game's query, T51)."
+numeric  = "integer"
+quirks   = ["ADV-QUIRK-20"]
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey E08-army.md section 3.3): the split dialog 0x449E90 with the flags (0, 0) from the hero screen and (1, 1) from the exchange; at OK the target's count held to [m2, t - m1] (0x44A0E2), the source's t minus it"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "client/widgets/CGarrisonInt.cpp CGarrisonSlot::split (minLeft, minRight; survey E08-army.md section 3.6): any count leaving a hero's last stack a creature (D-27: the whole stack into a single-stack target hero is allowed there)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/client/widgets/CGarrisonInt.cpp"
+  retrieved  = "2026-10-23"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-6.md E6-4 (stamp e17cb77c, the capture harness, hot seat, Easy, 2026-10-23): the exchange's split of 10 Pikemen into the single-stack hero's empty slot at the slider's maximum left 1 and gave 9 (the reading's bounds; VCMI's 10 whole not taken)"
+  retrieved  = "2026-10-23"
+  confidence = "high"
+
+[[rule]]
+id       = "ADV-ARM-004"
+title    = "Dismissing a stack"
+context  = "adventure"
+status   = "verified"
+summary  = "Its owner dismisses a stack: it leaves the army, nothing given back. A hero's last stack is never dismissed; the group's always may be. E08 T50: `ArmyCommand::Dismiss`."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey E08-army.md section 3.4): the creature dialog 0x4C6C50 offers the dismissal while the army has more than one stack (0x4DDA0E, 0x5AF43A), its button (item 0x7803, 0x5F4850) asks GENRLTXT 13 and clears the slot (H3Army::Clear 0x44AB60)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "server/CGameHandler.cpp disbandCreature, eraseStack (survey E08-army.md section 3.4): refused for a hero's last stack"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/server/CGameHandler.cpp"
+  retrieved  = "2026-10-23"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-6.md E6-2 (stamp e17cb77c, the capture harness, hot seat, Easy, 2026-10-23): the dismissal asked (GENRLTXT 13), the Swordsmen gone, the other six stacks as before"
+  retrieved  = "2026-10-23"
+  confidence = "high"
+
+[[rule]]
+id       = "ADV-ARM-005"
+title    = "A move or a swap keeps the counts whole"
+context  = "adventure"
+status   = "implemented"
+summary  = "A moved or swapped stack keeps its count in full, whatever its size up to a stack's most (ADV-ARM-007). The original's army_swap_slots moves one of the two counts through a 16-bit register, so a count of 32 768 or more arrives sign-extended (40 000 as -25 536): state-corrupting, fixed in every profile (A-15, ADV-QUIRK-19). E08 T50: the counts are 32-bit throughout (`crate::army`'s plan)."
+numeric  = "integer"
+quirks   = ["ADV-QUIRK-19"]
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey E08-army.md section 3.5): army_swap_slots 0x44AD60 (mov di, word ptr, then movsx) from the hero screen (0x4DDB53) and the exchange (0x5B0ED5); the merge and the split keep 32 bits"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "server/CGameHandler.cpp arrangeStacks, swapStacks (survey E08-army.md sections 3.5, 3.6): 32-bit counts moved whole"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/server/CGameHandler.cpp"
+  retrieved  = "2026-10-23"
+  confidence = "high"
+
+[[rule]]
+id       = "ADV-ARM-006"
+title    = "The formation and the tactics flag"
+context  = "adventure"
+status   = "verified"
+summary  = "Each hero on the map has a formation (loose or tight, the setup's: the map's, ADV-QUIRK-8 fixed, where the original starts every hero loose) and a tactics flag, on at the build (the original's flags 2). Its owner sets either at no cost, any number of times, nothing else changing; another player's hero is refused. The owner sees both (ADV-FOG-006). The flag off denies the tactics phase the hero's side would get (GAM-BAT-009, the game's, T51). E08 T50: `HeroOnMap::tactics`, `AdventureState::{set_formation, set_tactics}`, `OwnHeroView::tactics`; adventure state hash v11."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey E08-army.md section 4): hero_screen_proc's items 122 and 124 clear and set bit 0 of the hero's +0x48 (0x4DD577, 0x4DD587), item 126 toggles bit 1 (0x4DD5AD); a hero's flags start at 2 (0x4D8ADD)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "server/CGameHandler.cpp setFormation, setTactics; the hero's tacticFormationEnabled, true at creation (survey E08-army.md section 4)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/server/CGameHandler.cpp"
+  retrieved  = "2026-10-23"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-6.md E6-6 (stamp e17cb77c, the capture harness, hot seat, Easy, 2026-10-23): a new hero's flags 2; with the tactics button off no tactics phase, the control with it on one"
+  retrieved  = "2026-10-23"
+  confidence = "high"
+
+[[rule]]
+id       = "ADV-ARM-007"
+title    = "A stack's most creatures"
+context  = "adventure"
+status   = "implemented"
+summary  = "A stack holds at most the adventure parameter max_stack_count creatures (base pack 1 000 000; a part's value at least MAX_MONSTER_COUNT, so any wandering monster's group fits a slot). A setup's hero or guards' stack above it is invalid. A merge past it is refused (ADV-ARM-001, -002); a split keeps both stacks within it (ADV-ARM-003). A group that joins (ADV-MON-008) or is raised (GAM-BAT-006) goes onto the army's first stack of its creature that takes it whole within the most, else into its first free slot, else finds no room (E08 decision 115: a join's no room is the army dialog, GAM-DEC-004, T51); a raise counts at most the most. Later rules that add creatures (recruiting, growth) keep it. Not the original's (32-bit counts, the map's 16-bit ones, A-15): E08 decisions 109 and 114, ADR-0016 point 3. E08 T50: `AdventureParams::max_stack_count`, `ArmyError::TooManyCreatures`, `ArmyCommandError::TooManyCreatures`; adventure ruleset part v11."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "design"
+  ref        = "the user at T47b's E6-5 (E08 decision 109: 'We should just support a reasonable amount and handle saturation gracefully, e.g. by not allowing stack merges to exceed that number') and at T50's start (decisions 114, 115: 1 000 000; a joining group to a free slot, else the army dialog); ADR-0016 point 3"
+  confidence = "high"

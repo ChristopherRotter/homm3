@@ -220,3 +220,29 @@ A candidate becomes an entry here only once it is confirmed for SoD (by an exper
 - Defaults: faithful = on (no start-of-day reveal), strict-fixed = off (`AdventureState::start_day` reveals around every hero at each new day's start, after the calendar; on day 1 it adds nothing)
 - Regression test: `crates/h3-adventure/src/state/tests/day.rs`, `a_gain_in_the_day_shows_at_the_next_turn_start_and_step`
 - Decided by / date: the user 2026-10-22 (the epic's decision 77; confirmed by batch E5's E5-10, T38); built by E08 T40
+
+### ADV-QUIRK-19 — A count of 32 768 or more passes through 16 bits
+- Class: exploit-fix (no flag: state-corrupting, fixed in every profile as AGENTS.md requires; A-15, E08 decision 98; the user's cap, decisions 109, 114)
+- Context / rules affected: adventure, ADV-ARM-005 and ADV-ARM-007 (E08 T50); the import's counts (`docs/formats/h3m.md`, "Import")
+- Original behavior: `army_swap_slots` (0x44AD60) swaps two slots' creatures and counts but moves one of the two counts through a 16-bit register (`mov di, word ptr`, then `movsx`): from the hero screen (0x4DDB53) the emptied slot's 0, from the exchange (0x5B0ED5) the moved or the clicked stack's count, which arrives sign-extended at 32 768 or more (40 000 as −25 536). The map's 16-bit count of 32 768 or more loads as an empty slot (batch E6's T47a). Merges and splits keep 32 bits, so a long game can grow such a stack (Necromancy, joins).
+- Intended/expected behavior: every count keeps its full width up to a stack's most (1 000 000 in the base pack, ADV-ARM-007): a move, a swap and the import keep it whole.
+- Impact: state-corrupting (a negative or wrong count); no shipped map places such a stack (survey `E08-army.md` §7).
+- Community status: not documented (the wiki's Troop stack: "unlimited quantity in game before overflow"); VCMI keeps 32-bit counts.
+- Sources: code reading (E08 T44a, survey `E08-army.md` §3.5; T46's correction of the roles); batch E6's E6-5 dropped (decision 109) after T47a found the map's count of 40 000 loading as no creature.
+- Flag: none (always fixed)
+- Defaults: fixed in every profile
+- Regression test: `crates/h3-adventure/src/army/tests.rs`, `between_two_armies_a_hero_keeps_its_last_stack_and_counts_stay_whole`
+- Decided by / date: AGENTS.md (state-corrupting bugs are always fixed); the user 2026-10-23 and 2026-10-24 (decisions 98, 109, 114); built by E08 T50
+
+### ADV-QUIRK-20 — The exchange's split keeps a creature for a single-stack hero
+- Class: preserve, no flag (the user, 2026-10-23, ADV-Q24: the original's bounds in every profile; the epic's decision 98)
+- Context / rules affected: adventure, ADV-ARM-003 (E08 T50)
+- Original behavior: the split dialog (0x449E90) from the exchange (both flags 1) holds the target's new count to [m₂, t − m₁], m₁ = 1 when the source hero or the target hero has a single stack, m₂ = 1 when the target hero has one: so when the target hero has a single stack the source keeps one creature even if the source hero has other stacks (A-16), though a plain click moves that stack whole (survey `E08-army.md` §3.2, §3.3).
+- Intended/expected behavior: as the original's outcomes: the engine's split takes the target's count from 1 to t − 1 (within a stack's most) and never empties a slot, the move covering the whole stack where the original's click allows it, so every outcome the original reaches and only those are reached. VCMI's split allows the whole stack into a single-stack target hero (D-27).
+- Impact: none beyond the original's: a split never empties a slot in either.
+- Community status: not documented; VCMI differs (D-27).
+- Sources: code reading (E08 T44a, survey §3.3); batch E6's E6-4 (`experiments/results/E08-batch-6.md`: at the slider's maximum 1 left and 9 given, not VCMI's 10; survey §13).
+- Flag: none (the original's bounds in every profile)
+- Defaults: faithful = the original's, strict-fixed = the original's
+- Regression test: `crates/h3-adventure/src/army/tests.rs`, `a_split_leaves_both_stacks_within_one_and_the_most`
+- Decided by / date: the user 2026-10-23 (ADV-Q24; decision 98); confirmed by batch E6's E6-4 (T48); built by E08 T50

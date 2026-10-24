@@ -27,8 +27,8 @@ pub enum AdventureCommand {
     /// does not leave (E08 T13b, T15a, T15b); a step onto a Cartographer's, an observatory's or a
     /// Keymaster's tent's enters it (T14a, T15a). A border gate whose key the player holds is
     /// crossed as any tile, anywhere on the path (ADV-VIS-005, T15b). A step toward another
-    /// player's hero visits it from the tile before, as a neighbour-visited object, and starts a
-    /// battle (GAM-BAT-004, E08 T19a); an own hero's tile blocks.
+    /// hero visits it from the tile before, as a neighbour-visited object: another player's
+    /// starts a battle (GAM-BAT-004, E08 T19a), an own one makes a meeting (GAM-MET-001, T50).
     MoveHero {
         /// The hero.
         hero: HeroId,

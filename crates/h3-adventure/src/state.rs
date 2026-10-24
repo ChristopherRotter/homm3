@@ -23,7 +23,7 @@ use h3_kernel::{CanonicalHash, Rng, StateHasher};
 use crate::ADVENTURE_STATE_HASH_VERSION;
 use crate::command::{
     AdventureCommand, AdventureCommandError, AdventureEvent, AdventureEventKind, AdventureOutcome,
-    BattleStart, Combatant, Defender, Offer, OfferKind, Sink, Viewers,
+    BattleStart, Combatant, Defender, Meeting, Offer, OfferKind, Sink, Viewers,
 };
 use crate::fog::{on_fringe, reveal};
 use crate::movement::{
@@ -760,9 +760,9 @@ pub(crate) struct StepVisit<'p> {
     pub(crate) effect: Effect<'p>,
 }
 
-/// What a step meets that ends the move (ADV-OBJ-003): an object's visit, or another player's
-/// hero, by index among the heroes on the map, visited from the tile before (GAM-BAT-004, E08
-/// T19a).
+/// What a step meets that ends the move (ADV-OBJ-003): an object's visit, or another hero, by
+/// index among the heroes on the map, visited from the tile before: another player's in a battle
+/// (GAM-BAT-004, E08 T19a), an own one in a meeting (GAM-MET-001, T50).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum Meets<'p> {
     Object(StepVisit<'p>),
@@ -1062,7 +1062,10 @@ impl AdventureState {
     /// after any visit of the tile's own object ([`Self::visit_guard`], ADV-MON-006, E08 T20a2b);
     /// the hero's own tile may be guarded: it leaves it. A step that does not enter (toward a
     /// neighbour-visited object or a hero) tests no guard, even from a guarded tile: the original
-    /// tests the hero's tile only after a step that changed it (E08 T20b3a).
+    /// tests the hero's tile only after a step that changed it (E08 T20b3a). A step toward another
+    /// hero visits it from the tile before as well: another player's starts a battle (GAM-BAT-004),
+    /// an own one makes a meeting ([`AdventureOutcome::meeting`], GAM-MET-001, E08 T50), which the
+    /// game opens.
     ///
     /// A flying or water-walking hero (E08 T41; ADV-MOV-009, ADV-MOV-010) moves by
     /// [`Self::passage`]'s table, each step from the node the step before left it on (the start a
@@ -1073,7 +1076,7 @@ impl AdventureState {
     /// original's move, 0x48147D to 0x4814E1). Each step, a pass included, reveals and emits its
     /// event.
     // rule: ADV-MOV-006, ADV-MOV-007, ADV-MOV-009, ADV-MOV-010, ADV-FOG-003
-    // rule: ADV-OBJ-003, ADV-MON-006
+    // rule: ADV-OBJ-003, ADV-MON-006, GAM-MET-001
     fn move_hero<S: Sink>(
         &mut self,
         core: &Ruleset,
@@ -1163,6 +1166,13 @@ impl AdventureState {
         let outcome = match visit {
             None => AdventureOutcome::default(),
             Some(Meets::Object(visit)) => self.visit(rules, (player, id), visit, sink),
+            Some(Meets::Hero(other)) if self.heroes[other].owner == player => AdventureOutcome {
+                meeting: Some(Meeting {
+                    visitor: id,
+                    visited: self.heroes[other].id,
+                }),
+                ..AdventureOutcome::default()
+            },
             Some(Meets::Hero(defender)) => AdventureOutcome {
                 battle: Some(self.battle_start(part, index, defender)),
                 ..AdventureOutcome::default()
@@ -1726,14 +1736,14 @@ impl AdventureState {
             _ => None,
         };
         let closed = || across.is_some_and(|at| self.closed_above(part, at));
-        // ADR-0016 point 4: another player's hero is visited from the neighbouring tile, and the
-        // visit is a battle at once (E08 T19a); not across the top of an object's tile it stands
-        // on or the visitor stands on.
-        // rule: GAM-BAT-004
+        // ADR-0016 point 4: another hero is visited from the neighbouring tile: another player's
+        // in a battle at once (E08 T19a), an own one in a meeting (T50); not across the top of an
+        // object's tile it stands on or the visitor stands on.
+        // rule: GAM-BAT-004, GAM-MET-001
         if let Some(other) = self
             .heroes
             .iter()
-            .position(|h| h.pos == pos && h.owner != player)
+            .position(|h| h.pos == pos && h.id != mover)
         {
             if closed() {
                 return Err(AdventureCommandError::FromAbove { step });

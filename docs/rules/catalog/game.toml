@@ -502,7 +502,7 @@ id       = "GAM-BAT-006"
 title    = "Necromancy after a battle: the creatures raised join the winner's army"
 context  = "game"
 status   = "verified"
-summary  = "When a battle on the map ends with a winner whose hero stays on the map (GAM-BAT-002; after a victory, a retreat or a surrender of the loser, not a draw), its hero's Necromancy (HER-NEC-001, HER-NEC-002, taken before the experience is given, as the original's) raises, after the experience: for each record of the loser that lost creatures (start - end; every record: army stacks, raised and summoned stacks, clones and war machines), killed x min(its type's hit points, the raised creature's) x the share / the raised creature's hit points, rounded down, at most the record's killed (hit points without artifacts); the sum, at least 1 if anything was killed. Under quirk Q-0005 the original's arithmetic: per record trunc(f32(min(hp, raised hp) x killed) x share / f32(raised hp)) in its x87 arithmetic, with the share in single precision (10 imps at 70 %: 6, not 7); its 32-bit product, which wraps above 2^31, is not modelled. They join the hero's stack of that creature, else a new stack in its first free slot; in a full army without one, (2c + 2) / 3 of the creature's first upgrade join its stack of the upgrade, if it has one, else none join. Told to the hero's owner only (`CreaturesRaised`: the creature and the count that joined). The original's elementals exception (no upgrade for 112 to 115 while a game flag is off) is not modelled: no hero raises them. E08 T19a2b: `GameState::heroes_after_battle`, `AdventureState::raise`."
+summary  = "When a battle on the map ends with a winner whose hero stays on the map (GAM-BAT-002; after a victory, a retreat or a surrender of the loser, not a draw), its hero's Necromancy (HER-NEC-001, HER-NEC-002, taken before the experience is given, as the original's) raises, after the experience: for each record of the loser that lost creatures (start - end; every record: army stacks, raised and summoned stacks, clones and war machines), killed x min(its type's hit points, the raised creature's) x the share / the raised creature's hit points, rounded down, at most the record's killed (hit points without artifacts); the sum, at least 1 if anything was killed. Under quirk Q-0005 the original's arithmetic: per record trunc(f32(min(hp, raised hp) x killed) x share / f32(raised hp)) in its x87 arithmetic, with the share in single precision (10 imps at 70 %: 6, not 7); its 32-bit product, which wraps above 2^31, is not modelled. They join the hero's stack of that creature, else a new stack in its first free slot; in a full army without one, (2c + 2) / 3 of the creature's first upgrade join its stack of the upgrade, if it has one, else none join. Since E08 T50 with a stack's most (ADV-ARM-007): at most the most are raised, the first stack of the creature (or of the upgrade) that takes them within it does. Told to the hero's owner only (`CreaturesRaised`: the creature and the count that joined). The original's elementals exception (no upgrade for 112 to 115 while a game flag is off) is not modelled: no hero raises them. E08 T19a2b: `GameState::heroes_after_battle`, `AdventureState::raise`."
 numeric  = "float"
 quirks   = ["Q-0005"]
 
@@ -578,4 +578,30 @@ numeric  = "integer"
   kind       = "observation"
   ref        = "experiments/results/E08-batch-4a.md and its runs 2 to 4 (-run2.md to -run4.md), each with e4_score's report beside it (stamp e9f2ca7f, the capture harness, Complete 4.0 Heroes3.exe under Wine without HD, hot seat, Easy, 2026-10-21; the seed bytes read from the game's memory) E4-2 to E4-5, experiments/results/E08-batch-4b.md with its report (stamp 8d4a4c2d, the capture harness, Complete 4.0 Heroes3.exe under Wine without HD, hot seat, Easy, 2026-10-21) E4-6 and experiments/results/E08-batch-4c.md (stamp 6fbb8f2b, the capture harness, Complete 4.0 Heroes3.exe under Wine without HD, hot seat, Easy, 2026-10-21) E4-9: each battle's winner levelled after the battle, one dialog per level in order, each drawn after the previous answer (E4-4); at the level limit's cap none (E4-6a)"
   retrieved  = "2026-10-21"
+  confidence = "high"
+
+[[rule]]
+id       = "GAM-MET-001"
+title    = "A step toward an own hero meets it"
+context  = "game"
+status   = "implemented"
+summary  = "A step of a move toward a hero of the same player visits it from the neighbouring tile at the step's price, as a neighbour-visited object (ADV-OBJ-003) and as another player's hero (GAM-BAT-004): the move ends, the visitor stays on the tile before, nothing goes on past it; the visited hero's object is what the step meets, whatever lies under it, but not across the top of a tile not visited from above (ADV-OBJ-004); a flight passes over the hero and meets it only from a stop (ADV-MOV-009, -010). The reachable-tiles query lists the hero's tile as a destination with the points the visit leaves. The outcome reports the meeting (visitor, visited); the game opens it as the owner's decision with Scholar (HER-SPL-007) and the exchange (GAM-DEC-003) in T51; until then nothing follows. Not modelled yet: allied heroes (teams, E10), an own hero in a town (E09), the computer player's meeting (E10). E08 T50: `check_step`, `passage` and the query treat every other hero alike, `AdventureOutcome::meeting`."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey E08-army.md section 2.1): visit_hero 0x4A2800 stops the move (0x417680) and compares the teams (game +0x1F879 + player, 0x4A287C): a hero of the visitor's team is met, an enemy attacked; the hero is a neighbour-visited object (class 34)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "lib/mapObjects/CGHeroInstance.cpp onHeroVisit, server/CGameHandler.cpp heroExchange: an exchange between any two non-enemy heroes, Scholar first (survey E08-army.md sections 2, 2.3)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/mapObjects/CGHeroInstance.cpp"
+  retrieved  = "2026-10-23"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-6.md E6-11 (stamp e17cb77c, the capture harness, Complete 4.0 Heroes3.exe under Wine, hot seat, Easy, 2026-10-23): A met B from a straight grass step, 1 560 to 1 460 points, A on its tile, B unchanged"
+  retrieved  = "2026-10-23"
   confidence = "high"
