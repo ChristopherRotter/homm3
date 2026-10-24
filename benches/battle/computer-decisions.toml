@@ -8,7 +8,7 @@ toolchain = "rustc 1.97.0 (2d8144b78 2026-07-07)"
 target = "x86_64-unknown-linux-gnu"
 
 [workload]
-description = "the original's battle AI's decisions (ADR-0027 point 11, E23 T2b): 40 battles of random armies of the harvested SoD creatures (base:faithful, no heroes, every difficulty), on the open field the defender the computer against random legal commands, at a Fort both sides the computer, at most 300 steps each; counts only inside h3_battle_ai::choose (re-set on purpose at each part of E23 T3, the budget: T3a's walkers fight, so the battles are shorter and each decision costs more; T3b's hex scores search each enemy's reach, and the battles run longer again; T3c's last retaliation's gain searches the side's maps on Hard and its walkers hold back, guard their shooters and walk to the walls, and the battles run twice as long; E23 T4a's casters cast, the Faerie Dragons at every activation with a cast left, and the battles run shorter: 1 151 decisions, about 8 % more instructions each; re-set in E23 T7: the original's neighbour table without the side columns, the let-off of a side without a human player (BAT-QUIRK-27) and the tent's patient change the battles, 1 482 decisions, about a third fewer instructions each)"
+description = "the original's battle AI's decisions (ADR-0027 point 11, E23 T2b): 40 battles of random armies of the harvested SoD creatures (base:faithful, no heroes, every difficulty), on the open field the defender the computer against random legal commands, at a Fort both sides the computer, at most 300 steps each; counts only inside h3_battle_ai::choose (re-set on purpose at each part of E23 T3, the budget: T3a's walkers fight, so the battles are shorter and each decision costs more; T3b's hex scores search each enemy's reach, and the battles run longer again; T3c's last retaliation's gain searches the side's maps on Hard and its walkers hold back, guard their shooters and walk to the walls, and the battles run twice as long; E23 T4a's casters cast, the Faerie Dragons at every activation with a cast left, and the battles run shorter: 1 151 decisions, about 8 % more instructions each; re-set in E23 T7: the original's neighbour table without the side columns, the let-off of a side without a human player (BAT-QUIRK-27) and the tent's patient change the battles, 1 482 decisions, about a third fewer instructions each; re-set in battle batch 2g: the wait phase's order, the freeze's tie-break and the breath without the side columns (BAT-TRN-001, BAT-TRN-002, BAT-QUIRK-28) change the battles, 1 404 decisions, about a fifth more instructions each in the walker's searches, none in the changed rules)"
 args = [
     "bench-computer",
     "--games",
@@ -17,5 +17,5 @@ args = [
     "1",
 ]
 collect = "*h3_battle_ai::choose*"
-instructions = 466761188
+instructions = 540703163
 threshold_percent = 2
