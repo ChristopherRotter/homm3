@@ -1,11 +1,11 @@
 //! Library side of the `h3` tool: loading packs and scenarios from disk, running random battles,
 //! and the replay file format (TOML). The binary (`main.rs`) only parses arguments.
 //!
-//! Replay file format v30 (`fixtures/replays/*.toml` are examples):
+//! Replay file format v31 (`fixtures/replays/*.toml` are examples):
 //!
 //! ```toml
 //! [replay]
-//! format = 30
+//! format = 31
 //! engine = "0.1.0"
 //! scenario = "skirmish"
 //! seed = "7"                      # u64 as a decimal string
@@ -33,6 +33,10 @@
 //!                                 #   none)
 //! attacker_ground = "base:shore"  # the attacking hero's own special ground (format 30; omitted
 //!                                 #   when none)
+//! background = 1                  # the battlefield picture's variant, 0 to 2, for viewers
+//!                                 #   (format 31, CLT-Q4; omitted when not known)
+//! attacker_colour = 0             # each side's player colour, 0 red to 7 pink, for viewers
+//!                                 #   (format 31, CLT-Q6; omitted when not known)
 //!
 //! [setup.attacker_retreat]        # what the side's hero would lose by a retreat (format 30;
 //! experience = 5000               #   omitted when nothing is known): `RetreatEntry`, each
@@ -65,6 +69,8 @@
 //! max_mana = 10
 //! melee_bp = 1000                 # damage bonuses (format 5; each omitted when 0)
 //! surrender_discount_bp = 4000    # surrender discount (format 10; omitted when 0)
+//! sex = "female"                  # where its map gave it one, for viewers (format 31, CLT-Q6;
+//!                                 #   omitted when the hero type's own)
 //!
 //! [setup.attacker_hero.ballista]  # the side commands its Ballista (format 6; omitted when not):
 //! level = 1                       #   `h3_pack_battle::BallistaEntry` (the Artillery level:
@@ -253,6 +259,12 @@ struct SetupEntry {
     human: Vec<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     attacker_ground: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    background: Option<u8>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    attacker_colour: Option<u8>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    defender_colour: Option<u8>,
     // Tables last: TOML writes values before tables.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     siege: Option<SiegeEntry>,
@@ -542,6 +554,9 @@ pub fn replay_to_toml(
                 .attacker_ground
                 .as_ref()
                 .map(|k| k.as_str().to_owned()),
+            background: replay.setup.background,
+            attacker_colour: replay.setup.colours[0],
+            defender_colour: replay.setup.colours[1],
             attacker_hero: hero(&replay.setup.heroes[0])?,
             defender_hero: hero(&replay.setup.heroes[1])?,
             attacker_retreat: RetreatEntry::of(replay.setup.retreat[0]),
@@ -711,9 +726,8 @@ impl ReplayDoc {
                     .map(ContentKey::parse)
                     .transpose()
                     .map_err(|e| CliError::Format(e.to_string()))?,
-                // The viewers' facts (CLT-Q4, CLT-Q6): not in the replay format yet.
-                background: None,
-                colours: [None; 2],
+                background: f.setup.background,
+                colours: [f.setup.attacker_colour, f.setup.defender_colour],
             },
             commands: f
                 .commands
@@ -984,6 +998,21 @@ mod tests {
             ReplayDoc::parse(&bad).unwrap().into_replay(&ruleset),
             Err(CliError::Format(_))
         ));
+        // The viewers' facts (format 31, CLT-Q4, CLT-Q6) round-trip; none is written while not
+        // known.
+        assert!(!text.contains("background") && !text.contains("colour"));
+        game.setup.background = Some(1);
+        game.setup.colours = [None, Some(5)];
+        let text = replay_to_toml(&game, "skirmish", &ruleset).unwrap();
+        assert!(text.contains("defender_colour = 5") && !text.contains("attacker_colour"));
+        let back = ReplayDoc::parse(&text)
+            .unwrap()
+            .into_replay(&ruleset)
+            .unwrap();
+        assert_eq!(
+            (back.setup.background, back.setup.colours),
+            (Some(1), [None, Some(5)])
+        );
     }
 
     #[test]

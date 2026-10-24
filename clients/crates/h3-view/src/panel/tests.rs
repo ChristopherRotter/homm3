@@ -28,6 +28,7 @@ fn hero(spell_book: bool, casts: u8) -> Option<Hero> {
         commands_tent: false,
         commands_catapult: false,
         spell_book,
+        sex: None,
     })
 }
 

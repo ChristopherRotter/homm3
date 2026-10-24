@@ -134,6 +134,7 @@ pub(crate) mod tests {
             summoned: None,
             cost_change: 0,
             human: false,
+            colour: None,
             hero: None,
         };
         Observation {
@@ -150,6 +151,7 @@ pub(crate) mod tests {
             battlefield: None,
             anti_magic: false,
             difficulty: 0,
+            background: None,
             siege: None,
             sides: [side, side],
             own_hero: None,

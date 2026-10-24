@@ -11,7 +11,7 @@ use h3_content::{
 };
 use h3_contracts::{
     ArmyStack, BallistaControl, BattleEffect, BattleHero, BattleSide, DamageBonuses, EagleEye,
-    FactionGroup, FortLevel, Moat, Obstacle, Rate, RetreatFacts, StatOp, TentControl,
+    FactionGroup, FortLevel, HeroSex, Moat, Obstacle, Rate, RetreatFacts, StatOp, TentControl,
 };
 
 /// A pack's `core.toml` and `battle.toml`, patched together (R01b3).
@@ -471,6 +471,51 @@ fn scenario_errors() {
 }
 
 // covers: BAT-HER-001
+/// The viewers' facts (CLT-Q4, CLT-Q6): a scenario names the battlefield picture's variant, each
+/// side's colour and a hero's sex; a hero's entry writes its sex back only when set.
+#[test]
+fn scenarios_name_the_viewers_facts() {
+    let text = SYNTHETIC_FULL
+        .replacen(
+            "[scenario]\n",
+            "[scenario]\nbackground = 0\nattacker_colour = 7\ndefender_colour = 1\n",
+            1,
+        )
+        .replacen(
+            "[scenario.attacker_hero]\n",
+            "[scenario.attacker_hero]\nsex = \"female\"\n",
+            1,
+        )
+        .replacen(
+            "[scenario.defender_hero]\n",
+            "[scenario.defender_hero]\nsex = \"male\"\n",
+            1,
+        );
+    assert_ne!(text, SYNTHETIC_FULL);
+    let (ruleset, setup) = synthetic(&text).unwrap();
+    assert_eq!(
+        (setup.background, setup.colours),
+        (Some(0), [Some(7), Some(1)])
+    );
+    let sexes = setup
+        .heroes
+        .each_ref()
+        .map(|h| h.as_ref().and_then(|h| h.sex));
+    assert_eq!(sexes, [Some(HeroSex::Female), Some(HeroSex::Male)]);
+    for hero in setup.heroes.iter().flatten() {
+        let entry = HeroEntry::of(hero, &ruleset).unwrap();
+        assert_eq!(entry.resolve(&ruleset).as_ref(), Ok(hero));
+    }
+    let written = |h: &BattleHero| toml::to_string(&HeroEntry::of(h, &ruleset).unwrap()).unwrap();
+    let her = setup.heroes[0].clone().unwrap();
+    assert!(written(&her).contains("sex = \"female\""));
+    let plain = BattleHero { sex: None, ..her };
+    assert!(!written(&plain).contains("sex"));
+    // Unset, they stay unknown.
+    let (_, plain) = synthetic(SYNTHETIC_FULL).unwrap();
+    assert_eq!((plain.background, plain.colours), (None, [None; 2]));
+}
+
 #[test]
 fn scenario_heroes() {
     let (ruleset, setup) = synthetic(SYNTHETIC_FULL).unwrap();

@@ -59,6 +59,7 @@ fn hero() -> Option<Hero> {
         commands_tent: false,
         commands_catapult: false,
         spell_book: false,
+        sex: None,
     })
 }
 

@@ -147,15 +147,15 @@ commands = [
     "A move 111",
 ]
 checkpoints = [
-    "0xc9cc29608cae269d",
-    "0xf65002a4942a7fce",
-    "0x86ce962f5f467394",
-    "0x12da028c716409a9",
-    "0x981635d16eb471de",
+    "0x6f06cf88a3da75da",
+    "0x799fb9e9081a61f1",
+    "0xcf24b91ee72b95e7",
+    "0xebd561326024d186",
+    "0x659a67680db55809",
 ]
 
 [replay]
-format = 30
+format = 31
 engine = "0.1.0"
 scenario = "siege"
 seed = "7"
@@ -170,7 +170,7 @@ rng = "xoshiro256starstar+splitmix64"
 rng_version = 1
 hash = "fnv1a64-le"
 hash_version = 1
-battle_state_hash_version = 53
+battle_state_hash_version = 54
 checkpoint_every = 25
 
 [setup]
@@ -238,4 +238,4 @@ count = 15
 
 [result]
 winner = "defender"
-final_hash = "0x4f1dbe475940287a"
+final_hash = "0x4f266807242b5aa5"

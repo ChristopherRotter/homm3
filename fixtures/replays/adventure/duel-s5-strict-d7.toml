@@ -179,12 +179,12 @@ commands = [
     "1 end-turn",
 ]
 checkpoints = [
-    "0x306f1e60a5474ba9",
-    "0x7dec4dc779a0935b",
-    "0x89a686a17e853192",
-    "0x84e85681e0e644fe",
-    "0xacf9d7a17f2491f4",
-    "0xa366bf4bf13e65c6",
+    "0x493e452ed735bf81",
+    "0x65e755b317287d03",
+    "0xcda432748e9e4f0b",
+    "0xa61f23eb9339e43c",
+    "0xdc78ffecf6e819e7",
+    "0x4c7730d22104d86f",
     "0xf59d67996e9bcc8f",
 ]
 

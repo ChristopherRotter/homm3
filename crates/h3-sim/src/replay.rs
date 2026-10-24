@@ -26,8 +26,9 @@ use h3_kernel::{Rng, StreamId};
 /// the setup names the game's difficulty and the human players (E04c T7d, ADR-0023 point 7). 29:
 /// a hero's Ballista control names its Artillery level (E04c T7e, ADR-0013 point 4). 30: the
 /// setup names each side's retreat facts and the attacking hero's own ground (E23 T6, ADR-0027
-/// point 14).
-pub const REPLAY_FORMAT_VERSION: u32 = 30;
+/// point 14). 31: for viewers, the setup names the battlefield picture's variant and each side's
+/// player colour, a hero its sex where its map gave it one (CLT-Q4, CLT-Q6).
+pub const REPLAY_FORMAT_VERSION: u32 = 31;
 
 /// Identity of everything a replay depends on.
 #[derive(Debug, Clone, PartialEq, Eq)]

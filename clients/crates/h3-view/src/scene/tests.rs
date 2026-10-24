@@ -825,6 +825,7 @@ fn led(hero_type: u16) -> Option<h3_protocol::wire::Hero> {
         commands_tent: false,
         commands_catapult: false,
         spell_book: false,
+        sex: None,
     })
 }
 

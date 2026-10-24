@@ -468,9 +468,24 @@ fn the_observation_carries_the_viewers_battle() {
         anchor: None,
         kind: key("synthetic:ridge"),
     });
+    // The viewers' facts (v35, CLT-Q4, CLT-Q6): the picture's variant, the colours, the sexes.
+    setup.background = Some(1);
+    setup.colours = [Some(0), Some(5)];
+    let sexes = [h3_contracts::HeroSex::Male, h3_contracts::HeroSex::Female];
+    for (hero, sex) in setup.heroes.iter_mut().zip(sexes) {
+        hero.as_mut().unwrap().sex = Some(sex);
+    }
     let state = BattleState::new(&ruleset, &setup, 7).unwrap();
     let engine = h3_battle::observe(&state, &ruleset, BattleSide::Defender);
     let o = map::observe(&state, &ruleset, BattleSide::Defender);
+    assert_eq!(o.background, Some(1));
+    assert_eq!(
+        o.sides
+            .iter()
+            .map(|s| (s.colour, s.hero.as_ref().and_then(|h| h.sex)))
+            .collect::<Vec<_>>(),
+        vec![(Some(0), Some(Sex::Male)), (Some(5), Some(Sex::Female))]
+    );
     assert_eq!(o.viewer, Side::Defender);
     assert_eq!(o.round, engine.round);
     assert_eq!(o.active, engine.active.map(|a| a.0));
