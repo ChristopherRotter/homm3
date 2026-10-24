@@ -399,7 +399,8 @@ const fn tileless_entry(command: &GameCommand) -> Option<usize> {
         GameCommand::Answer(Answer::Decline) => Some(DECLINE),
         GameCommand::Answer(Answer::First) => Some(FIRST),
         GameCommand::Answer(Answer::Second) => Some(SECOND),
-        GameCommand::Adventure(_) | GameCommand::Battle(_) => None,
+        // E08 T51a: the management commands have no entry (decision 99: the AI lane's call).
+        GameCommand::Adventure(_) | GameCommand::Battle(_) | GameCommand::Manage(_) => None,
     }
 }
 

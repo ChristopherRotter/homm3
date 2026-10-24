@@ -1396,27 +1396,30 @@ fn a_step_toward_another_players_hero_visits_it_and_starts_a_battle() {
         hero: HeroId::new(1),
         path: vec![p(1, 0), p(2, 0), p(3, 0)],
     };
+    // The defender's tactics flag off goes with its side (GAM-BAT-009, E08 T51a).
+    state.set_tactics(BLUE, HeroId::new(2), false).unwrap();
     let outcome = state
         .apply(&rules.0, &rules.1, &[], RED, &command, &mut events)
         .unwrap();
     // Two steps, then the visit from (2, 0) at the step's price: 1300 - 3 × 100.
     assert_eq!(events.len(), 2);
     assert_eq!(hero(&state, 1), (p(2, 0), 1000));
-    let side = |id: u16, owner, formation| {
+    let side = |id: u16, owner, formation, tactics| {
         let hero = state.hero(HeroId::new(id)).unwrap();
         Combatant {
             hero: hero.id,
             owner,
             army: hero.army.clone(),
             formation,
+            tactics,
         }
     };
     assert_eq!(
         outcome,
         AdventureOutcome {
             battle: Some(BattleStart {
-                attacker: side(1, RED, Formation::Loose),
-                defender: Defender::Hero(side(2, BLUE, Formation::Tight)),
+                attacker: side(1, RED, Formation::Loose, true),
+                defender: Defender::Hero(side(2, BLUE, Formation::Tight, false)),
                 tile: p(3, 0),
                 terrain: crate::testing::SAND,
                 battlefield: Some(ContentKey::parse("t:shore").unwrap()),

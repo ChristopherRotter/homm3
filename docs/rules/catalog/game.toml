@@ -605,3 +605,78 @@ numeric  = "integer"
   ref        = "experiments/results/E08-batch-6.md E6-11 (stamp e17cb77c, the capture harness, Complete 4.0 Heroes3.exe under Wine, hot seat, Easy, 2026-10-23): A met B from a straight grass step, 1 560 to 1 460 points, A on its tile, B unchanged"
   retrieved  = "2026-10-23"
   confidence = "high"
+
+[[rule]]
+id       = "GAM-MAN-001"
+title    = "A player manages its heroes on the map in its turn"
+context  = "game"
+status   = "implemented"
+summary  = "In its turn, with no decision open, a player gives management commands on its heroes on the map, at no cost, any number of times: an army command (a stack moved, merged, swapped, split or dismissed; ADV-ARM-001 to -005, -007), the formation and the tactics flag (ADV-ARM-006), an artifact's move (HER-ART-005), an assembly or a disassembly (HER-ART-006). The game checks the actor, its turn and its decision, that each hero named is its own on the map, and that a command between two armies (two heroes, or a hero and an army dialog's group) has them together (a meeting's, GAM-DEC-003; an army dialog's, GAM-DEC-004: E08 T51b; outside them refused), then the adventure's or the hero model's rules, before anything changes; a refusal is typed and changes nothing. Each slot an army command names is told with what it holds after it, the formation and the flag when set, each artifact change as the hero change it is; to the owner alone (ADR-0016 point 6). E08 T51a: `GameCommand::Manage`, `Manage`, `ManageError`, `GameEvent::{StackChanged, FormationSet, TacticsSet}`."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey E08-army.md sections 3 to 6): the hero screen (hero_screen_proc 0x4DD2D0) moves, swaps, merges, splits (0x449E90) and dismisses (0x4C6C50) stacks, sets the formation and the tactics formation (items 122, 124, 126), moves artifacts between positions and the backpack and assembles and disassembles combinations, at no cost, whenever the player's turn lets it open the screen; nothing of it shows to another player"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "server/CGameHandler.cpp arrangeStacks, bulkSplitStack, disbandCreature, setFormation, setTactics, moveArtifact, assembleArtifacts: each checked against the player's hero, the moves between two heroes only for heroes that may exchange (survey E08-army.md sections 3.6, 5)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/server/CGameHandler.cpp"
+  retrieved  = "2026-10-23"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-6.md E6-1 to E6-4, E6-6, E6-8 to E6-10 (stamp e17cb77c, the capture harness, Complete 4.0 Heroes3.exe under Wine, hot seat, Easy, 2026-10-23): the hero screen's army, formation, flag and artifact commands as survey E08-army.md section 9 predicted (scored in T48, section 13)"
+  retrieved  = "2026-10-23"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "design"
+  ref        = "ADR-0017 points 1 and 6 (E08 decisions 93, 94: two armies together only in a meeting or an army dialog); E08-design.md section 10; the events per slot an agent's call at T51a"
+  confidence = "high"
+
+[[rule]]
+id       = "GAM-MAN-002"
+title    = "The management commands are listed per hero"
+context  = "game"
+status   = "implemented"
+summary  = "The legal management commands are not in the flat list of legal commands (which keeps the end of the turn and the answers) but listed per hero, as its moves are (the reachable-tiles query): for the actor's hero on the map, in its turn without an open decision, every command `apply` accepts but the splits: its army's moves onto every other slot and its dismissals, both formations and both values of the flag, each artifact's moves onto every place the hero model takes it to, the assemblies and the disassemblies; none for another player's hero, a hero not on the map, the system actor or outside the turn. A split's counts come from a query per source and target slot of one army (ADV-ARM-003, -007): none where `apply` refuses every split. With a meeting or an army dialog open, the listing also gives the commands toward the other hero or the group (E08 T51b). E08 T51a: `legal_management`, `split_range`, `AdventureState::army_commands`."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "design"
+  ref        = "ADR-0017 point 6 as amended at T51's start (E08 decision 117: a flat list would grow every call in a player's turn by up to a few thousand commands, and the env's random rollout picks among its entries); E08-design.md section 16's fallback"
+  confidence = "high"
+
+[[rule]]
+id       = "GAM-BAT-009"
+title    = "A hero's tactics flag off denies its side the tactics phase"
+context  = "game"
+status   = "verified"
+summary  = "When the game builds a battle's setup (GAM-BAT-001), each hero's Tactics is the hero model's (BAT-TAC-001: the side whose hero has the greater level places its army, equal levels cancel), unless the side with the greater level is a hero on the map whose tactics flag is off (ADV-ARM-006): then both heroes' Tactics go as 0, so neither side gets the phase. A side without a hero on the map (a monster, guards) has no flag. Every player's hero's flag counts (the engine has no computer player; the original reads a human side's only). The battle's observation shows both levels as 0 in such a battle. E08 T51a: `deny_tactics` in `state/battle.rs`, `Combatant::tactics`."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey E08-army.md section 4): battle_start (0x462C2C to 0x462D0D) opens the tactics phase for the side whose hero's Tactics (+0xDC) is the higher, then clears it again when that side's player is human and its hero's flag bit 1 (+0x48) is clear (0x462D07)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "lib/mapObjects/CGHeroInstance.h tacticFormationEnabled, lib/BattleInfo.cpp: a hero with it off gets no reposition but still blocks the enemy's, in SoD the original's outcomes (survey E08-army.md section 4)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/BattleInfo.cpp"
+  retrieved  = "2026-10-23"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-6.md E6-6 (stamp e17cb77c, the capture harness, Complete 4.0 Heroes3.exe under Wine, hot seat, Easy, 2026-10-23): with the tactics button off no tactics phase, the control with it on one"
+  retrieved  = "2026-10-23"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "design"
+  ref        = "the user at ADV-Q24 (E08 decision 96): the flag passed to the battle as Tactics 0 'as long as it doesn't change the behavior regarding how two heroes' tactics skill influence each other', so both levels go as 0, never the flagged hero's alone; ADR-0017 point 11"
+  confidence = "high"

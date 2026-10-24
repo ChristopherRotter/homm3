@@ -578,6 +578,95 @@ fn the_split_query_gives_the_range_of_a_possible_split() {
     );
 }
 
+/// Every move from `armies[0]`'s slots onto the slots of `armies`, then every dismissal of
+/// `armies[0]`'s, as the state accepts them on a copy (with `group` as the open dialog's).
+fn accepted(
+    state: &AdventureState,
+    part: &AdventureRuleset,
+    armies: &[ArmyRef],
+    group: Option<&[ArmyStack]>,
+) -> Vec<ArmyCommand> {
+    let slots = part.params().army_slots();
+    let slot = |army, slot| ArmySlot { army, slot };
+    let mut all = Vec::new();
+    for source in 0..slots {
+        for &army in armies {
+            for target in 0..slots {
+                all.push(moved(slot(armies[0], source), slot(army, target)));
+            }
+        }
+    }
+    all.extend((0..slots).map(|at| ArmyCommand::Dismiss {
+        at: slot(armies[0], at),
+    }));
+    all.retain(|command| {
+        let mut copy = state.clone();
+        let mut found = group.map(<[ArmyStack]>::to_vec);
+        copy.manage_army(part, RED, command, found.as_mut()).is_ok()
+    });
+    all
+}
+
+// covers: ADV-ARM-001, ADV-ARM-002, ADV-ARM-004, GAM-MAN-002
+#[test]
+fn the_listing_gives_every_move_and_dismissal_the_state_accepts() {
+    let (rules, state) = heroes();
+    let part = &rules.1;
+    let (one, three) = (ArmyRef::Hero(HeroId::new(1)), ArmyRef::Hero(HeroId::new(3)));
+    // Hero 1's two stacks: each onto the six other slots (an empty one, or the other stack's,
+    // a swap), and each dismissed.
+    let within = state.army_commands(part, RED, (one, None), None);
+    assert_eq!(within.len(), 2 * 6 + 2);
+    assert_eq!(within[0], moved(hero(1, 0), hero(1, 1)));
+    assert_eq!(within[12], ArmyCommand::Dismiss { at: hero(1, 0) });
+    assert_eq!(within, accepted(&state, part, &[one], None));
+    // With hero 3: onto its seven slots too.
+    let met = state.army_commands(part, RED, (one, Some(three)), None);
+    assert_eq!(met.len(), 2 * (6 + 7) + 2);
+    assert_eq!(met, accepted(&state, part, &[one, three], None));
+    // Hero 3's last stack: moved within its army or swapped with hero 1's stacks, never
+    // dismissed nor moved to an empty slot of hero 1.
+    let last = state.army_commands(part, RED, (three, Some(one)), None);
+    assert_eq!(last.len(), 6 + 2);
+    assert_eq!(last, accepted(&state, part, &[three, one], None));
+    // The group: its stacks onto its own slots and the hero's, each dismissed.
+    let found = [stack(0, WOLF, 7), stack(2, PIKEMAN, 4)];
+    let from_group = state.army_commands(part, RED, (ArmyRef::Group, Some(one)), Some(&found));
+    assert_eq!(from_group.len(), 2 * (6 + 7) + 2);
+    assert_eq!(
+        from_group,
+        accepted(&state, part, &[ArmyRef::Group, one], Some(&found))
+    );
+    // None for another player's hero, a hero not on the map or the group without a dialog;
+    // toward such an army, the army's own commands alone.
+    for armies in [
+        (ArmyRef::Hero(HeroId::new(2)), None),
+        (ArmyRef::Hero(HeroId::new(9)), None),
+        (ArmyRef::Group, None),
+    ] {
+        assert_eq!(state.army_commands(part, RED, armies, None), []);
+    }
+    for to in [ArmyRef::Hero(HeroId::new(2)), ArmyRef::Group] {
+        assert_eq!(
+            state.army_commands(part, RED, (one, Some(to)), None),
+            within
+        );
+    }
+    // The slots a command changes.
+    assert_eq!(
+        moved(hero(1, 0), hero(3, 2)).slots(),
+        (hero(1, 0), Some(hero(3, 2)))
+    );
+    assert_eq!(
+        split(group(0), hero(1, 1), 2).slots(),
+        (group(0), Some(hero(1, 1)))
+    );
+    assert_eq!(
+        ArmyCommand::Dismiss { at: hero(1, 4) }.slots(),
+        (hero(1, 4), None)
+    );
+}
+
 // covers: ADV-ARM-006
 #[test]
 fn the_formation_and_the_tactics_flag_are_set_at_no_cost_and_hashed() {

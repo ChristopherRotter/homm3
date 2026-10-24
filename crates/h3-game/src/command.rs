@@ -3,17 +3,19 @@
 //! checks turn and phase, the context its rules (E08 T6b: `EndTurn`; T7b: the adventure's
 //! `MoveHero`; `observe` and `project` are in `observe.rs`, T8b1; `legal_commands` in
 //! `legal.rs`, T8b2a; T14b: the pending decisions and their answers, in `state.rs`; T19a: battles,
-//! in `state/battle.rs`; T30: the level-ups, in `state/levels.rs`).
+//! in `state/battle.rs`; T30: the level-ups, in `state/levels.rs`; T51a: the management commands,
+//! [`Manage`], in `state/manage.rs`).
 
 use core::fmt;
 
 use h3_adventure::{
-    AdventureCommand, AdventureCommandError, AdventureEvent, ObjectTypeId, Pos, Viewers,
+    AdventureCommand, AdventureCommandError, AdventureEvent, ArmySlot, ObjectTypeId, Pos, Viewers,
 };
-use h3_content::{CreatureTypeId, ResourceId, SkillId};
-use h3_contracts::{BattleResult, HeroId, PlayerId};
+use h3_content::{CreatureTypeId, Formation, ResourceId, SkillId};
+use h3_contracts::{ArmyStack, BattleResult, HeroId, PlayerId};
 use h3_heroes::{Choice, HeroChange, PrimarySkill};
 
+use crate::manage::{Manage, ManageError};
 use crate::{GameRuleset, GameState};
 
 /// Who issues a command (ADR-0017 point 2).
@@ -42,6 +44,9 @@ pub enum GameCommand {
     /// A command to the battle of the actor's first open decision, for the side it owns while that
     /// side is to act, in its turn or not (ADR-0017 point 6, GAM-BAT-001; E08 T19a).
     Battle(h3_battle::Command),
+    /// A management command on the actor's heroes on the map, in its turn (ADR-0017 points 1 and
+    /// 6, GAM-MAN-001; E08 T51a).
+    Manage(Manage),
 }
 
 /// An answer to a pending decision (ADR-0017 point 6): increments 2's and 3's decisions are
@@ -114,6 +119,8 @@ pub enum GameCommandError {
     /// The game waits for this player's answer to its level-up (ADR-0017 point 6, GAM-DEC-002;
     /// E08 T30): until it answers, no other actor's command is accepted.
     WaitingForLevelUp(PlayerId),
+    /// The management command was refused (GAM-MAN-001; E08 T51a).
+    Manage(ManageError),
 }
 
 impl fmt::Display for GameCommandError {
@@ -136,6 +143,7 @@ impl fmt::Display for GameCommandError {
             Self::WaitingForLevelUp(p) => {
                 write!(f, "the game waits for player {}'s level-up", p.raw())
             }
+            Self::Manage(error) => write!(f, "{error}"),
         }
     }
 }
@@ -302,6 +310,35 @@ pub enum GameEvent {
         /// The amount paid.
         amount: u32,
     },
+    /// A slot of a player's army changed by an army command (GAM-MAN-001, E08 T51a): one event per
+    /// slot the command names, the stack's, then its target's, with what it holds now. Seen by
+    /// the owner.
+    StackChanged {
+        /// The army's owner.
+        player: PlayerId,
+        /// The slot.
+        at: ArmySlot,
+        /// The stack there now (at `at.slot`); none: the slot is empty.
+        stack: Option<ArmyStack>,
+    },
+    /// A hero's formation was set (GAM-MAN-001, ADV-ARM-006; E08 T51a). Seen by the owner.
+    FormationSet {
+        /// The hero's owner.
+        player: PlayerId,
+        /// The hero.
+        hero: HeroId,
+        /// The formation.
+        formation: Formation,
+    },
+    /// A hero's tactics flag was set (GAM-MAN-001, ADV-ARM-006; E08 T51a). Seen by the owner.
+    TacticsSet {
+        /// The hero's owner.
+        player: PlayerId,
+        /// The hero.
+        hero: HeroId,
+        /// Whether the flag is on.
+        on: bool,
+    },
 }
 
 /// Receiver of the game's events.
@@ -369,6 +406,7 @@ pub fn apply<S: Sink>(
         GameCommand::EndTurn => state.end_turn(rules, player, sink),
         GameCommand::Answer(answer) => state.answer(rules, player, answer, sink),
         GameCommand::Battle(command) => state.battle_command(rules, player, command, sink),
+        GameCommand::Manage(command) => state.manage(rules, player, command, sink),
         GameCommand::Adventure(command) => {
             state.check_ready(player)?;
             let (adventure, heroes) = state.adventure_with_heroes();

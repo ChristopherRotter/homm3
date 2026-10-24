@@ -219,6 +219,7 @@ fn an_accepted_question_or_no_question_fights_the_unsplit_guards_at_the_piles_ti
                 owner: RED,
                 army: vec![stack(0, PEASANT, 100)],
                 formation: Formation::Loose,
+                tactics: true,
             }
         );
         assert_eq!(battle.defender, Defender::Guards { army: the_guards() });

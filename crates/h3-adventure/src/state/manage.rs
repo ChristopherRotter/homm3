@@ -1,7 +1,7 @@
 //! A player's management of its heroes on the map (ADR-0016 point 3; E08 T50, `E08-design.md`
 //! §7): the army commands ([`crate::ArmyCommand`], planned by `crate::army`), the split's range,
 //! the formation and the tactics flag. The game routes them and checks the turn and the decision
-//! that allows two armies together (a meeting's, an army dialog's; ADR-0017 points 1 and 6, T51);
+//! that allows two armies together (a meeting's, an army dialog's; ADR-0017 points 1 and 6, T51b);
 //! here each hero named must be the player's on the map, and the group must be given.
 
 use alloc::vec::Vec;
@@ -44,7 +44,7 @@ impl AdventureState {
     /// must be the player's on the map, and the group, if named, is `group`, the open army
     /// dialog's (the game holds it, GAM-DEC-004); the plan ([`crate::army`]) is checked whole,
     /// then the armies change. The game checks that the armies may meet (one hero's, a meeting's
-    /// two, a hero's and its army dialog's group) and tells the owner (T51). Emits nothing.
+    /// two, a hero's and its army dialog's group: T51b) and tells the owner (T51a). Emits nothing.
     ///
     /// # Errors
     ///
@@ -60,20 +60,8 @@ impl AdventureState {
         let open = group.is_some();
         let mut none = Vec::new();
         let group = group.unwrap_or(&mut none);
-        let (from, to) = command.armies();
-        let source = self.held(player, from, open)?;
-        let target = to.map(|to| self.held(player, to, open)).transpose()?;
-        let rules = (part.params().army_slots(), part.params().max_stack_count());
-        let read = |held: Held| match held {
-            Held::Hero(index) => &self.heroes[index].army[..],
-            Held::Group => &group[..],
-        };
-        let (source_army, target_army) = army::plan(
-            command,
-            (read(source), source != Held::Group),
-            target.map(read),
-            rules,
-        )?;
+        let ((source, target), (source_army, target_army)) =
+            self.plan_army(part, player, command, open.then_some(&group[..]))?;
         for (held, stacks) in core::iter::once((source, source_army)).chain(target.zip(target_army))
         {
             match held {
@@ -84,11 +72,71 @@ impl AdventureState {
         Ok(())
     }
 
+    /// The armies `command` names, found, and its plan ([`crate::army`]), checked whole; nothing
+    /// changes.
+    fn plan_army(
+        &self,
+        part: &AdventureRuleset,
+        player: PlayerId,
+        command: &ArmyCommand,
+        group: Option<&[ArmyStack]>,
+    ) -> Result<((Held, Option<Held>), army::Plan), ArmyCommandError> {
+        let open = group.is_some();
+        let (from, to) = command.armies();
+        let source = self.held(player, from, open)?;
+        let target = to.map(|to| self.held(player, to, open)).transpose()?;
+        let rules = (part.params().army_slots(), part.params().max_stack_count());
+        let read = |held: Held| match held {
+            Held::Hero(index) => &self.heroes[index].army[..],
+            Held::Group => group.unwrap_or_default(),
+        };
+        let plan = army::plan(
+            command,
+            (read(source), source != Held::Group),
+            target.map(read),
+            rules,
+        )?;
+        Ok(((source, target), plan))
+    }
+
+    /// The army commands `player` may give on its army `from` but the splits (GAM-MAN-002; E08
+    /// T51a, ADR-0017 point 6: listed per army, as a hero's moves are): each stack's moves, in
+    /// slot order, onto every other slot of `from`, then, with `to`, onto every slot of `to` (a
+    /// meeting's other hero, an army dialog's group: the game names them), then the dismissals,
+    /// each as [`Self::manage_army`] would accept it with `group` as the open army dialog's. None
+    /// when `from` is not the player's or the group is not given. A split's counts are
+    /// [`Self::split_range`]'s.
+    // rule: ADV-ARM-001, ADV-ARM-002, ADV-ARM-004
+    pub fn army_commands(
+        &self,
+        part: &AdventureRuleset,
+        player: PlayerId,
+        (from, to): (ArmyRef, Option<ArmyRef>),
+        group: Option<&[ArmyStack]>,
+    ) -> Vec<ArmyCommand> {
+        let slots = part.params().army_slots();
+        let slot = |army, slot| ArmySlot { army, slot };
+        let targets = core::iter::once(from).chain(to);
+        let moves = (0..slots).flat_map(|source| {
+            targets.clone().flat_map(move |army| {
+                (0..slots).map(move |target| ArmyCommand::Move {
+                    from: slot(from, source),
+                    to: slot(army, target),
+                })
+            })
+        });
+        let dismissals = (0..slots).map(|at| ArmyCommand::Dismiss { at: slot(from, at) });
+        moves
+            .chain(dismissals)
+            .filter(|command| self.plan_army(part, player, command, group).is_ok())
+            .collect()
+    }
+
     /// The counts a split of `player`'s stack at `from` with `to` may leave in `to` (ADV-ARM-003,
     /// ADV-ARM-007; [`army::split_range`]), `group` being the open army dialog's: none when no
     /// split is possible (a hero not the player's, the group not open, a slot beyond the army's
     /// or holding no stack at `from`, the same slot, another creature at `to`, a single
-    /// creature). The game's query for a client (T51).
+    /// creature). The game's query for a client (`h3_game::split_range`, E08 T51a).
     pub fn split_range(
         &self,
         part: &AdventureRuleset,
@@ -137,7 +185,7 @@ impl AdventureState {
 
     /// Sets `player`'s hero `hero`'s tactics flag (ADV-ARM-006; E08 T50): on, the hero takes the
     /// tactics phase its Tactics gives it; off, it denies the phase in the battles where it would
-    /// get it (GAM-BAT-009, the game's, T51). At no cost.
+    /// get it (GAM-BAT-009, the game's, T51a). At no cost.
     ///
     /// # Errors
     ///

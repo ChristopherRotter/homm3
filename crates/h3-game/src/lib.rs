@@ -14,7 +14,8 @@
 //! decisions, the Cartographer's offer, and their answers ([`Answer`], T14b); the border guard's
 //! offer, whose acceptance checks that it still stands (T15a); battles (T19a); the heroes'
 //! progression (T29) and the level-ups as decisions ([`Answer::First`], [`Answer::Second`],
-//! [`default_answer`]; T30).
+//! [`default_answer`]; T30); the management commands ([`Manage`]) with their per-hero listing
+//! ([`legal_management`], [`split_range`]) and the tactics flag in battle (T51a).
 //!
 //! Logic crate: pure, deterministic, `no_std` + `alloc` (ADR-0003, ADR-0005). The lint header
 //! below is required and checked by `cargo xtask check-arch`.
@@ -38,6 +39,7 @@ extern crate alloc;
 
 mod command;
 mod legal;
+mod manage;
 mod observe;
 mod ruleset;
 mod setup;
@@ -48,6 +50,8 @@ mod treasury;
 mod tests;
 
 pub use command::{Actor, Answer, GameCommand, GameCommandError, GameEvent, NoopSink, Sink, apply};
+/// The army commands a [`Manage::Army`] carries (E08 T51a; `h3_adventure`'s, ADR-0016 point 3).
+pub use h3_adventure::{ArmyCommand, ArmyCommandError, ArmyRef, ArmySlot};
 /// The hero changes a battle's outcome applies, which [`GameEvent::HeroChanged`] carries (E08
 /// T19a2a; `h3_heroes`' types).
 pub use h3_heroes::{ArtifactPlace, HeroChange};
@@ -58,7 +62,8 @@ pub use h3_heroes::{Movement, movement};
 /// `h3_heroes`' (the map's import equips a map's entries where they are taken, since E08 T49b
 /// with Titan's Thunder's Spell Book; `wearing` places a list).
 pub use h3_heroes::{Position, equip, positions, takes, wearing};
-pub use legal::{default_answer, legal_commands, legal_moves};
+pub use legal::{default_answer, legal_commands, legal_management, legal_moves, split_range};
+pub use manage::{Manage, ManageError};
 pub use observe::{
     DecisionView, GameObservation, HeroInfo, LevelUpView, PlayerView, Viewer, observe, project,
 };

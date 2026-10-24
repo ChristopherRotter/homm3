@@ -169,7 +169,7 @@ pub fn observe(state: &GameState, rules: &GameRuleset, viewer: Viewer) -> GameOb
 
 /// The event as `viewer` may see it, or `None` if it is hidden from it: the game's own events are
 /// public but a treasury's change, an offer's, a hero's change and its level-ups, which show to
-/// their owner only (E08 T13b, T14b, T19a2a, T30), and a battle's, which show to the owners that see them (E08 T19a); an adventure or a
+/// their owner only (E08 T13b, T14b, T19a2a, T30; a management command's since T51a), and a battle's, which show to the owners that see them (E08 T19a); an adventure or a
 /// battle event shows to the players who see it, naming the viewer alone among them
 /// ([`h3_adventure::AdventureEvent::project`]).
 pub fn project(event: &GameEvent, viewer: Viewer) -> Option<GameEvent> {
@@ -211,7 +211,10 @@ pub fn project(event: &GameEvent, viewer: Viewer) -> Option<GameEvent> {
         | GameEvent::OfferRefused { player: owner, .. }
         | GameEvent::OfferAnswered { player: owner, .. }
         | GameEvent::LevelUpOpened { player: owner, .. }
-        | GameEvent::LevelGained { player: owner, .. } => (owner == player).then_some(*event),
+        | GameEvent::LevelGained { player: owner, .. }
+        | GameEvent::StackChanged { player: owner, .. }
+        | GameEvent::FormationSet { player: owner, .. }
+        | GameEvent::TacticsSet { player: owner, .. } => (owner == player).then_some(*event),
         GameEvent::TurnEnded { .. }
         | GameEvent::DayStarted { .. }
         | GameEvent::TurnStarted { .. } => Some(*event),

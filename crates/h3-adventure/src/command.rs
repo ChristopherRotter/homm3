@@ -155,11 +155,11 @@ pub struct AdventureOutcome {
     /// open.
     pub guard_after: bool,
     /// The meeting the command's step toward an own hero makes (GAM-MET-001, E08 T50): the game
-    /// opens it as the owner's decision (T51).
+    /// opens it as the owner's decision (T51b).
     pub meeting: Option<Meeting>,
     /// The group of an accepted join that found no room in its hero's army (ADV-MON-008, E08
     /// T50): its treasure was given and the monster left the map as for any join; the game opens
-    /// the army dialog with it (GAM-DEC-004, T51).
+    /// the army dialog with it (GAM-DEC-004, T51b).
     pub no_room: Option<NoRoom>,
 }
 
@@ -228,7 +228,7 @@ pub enum Defender {
 }
 
 /// A side of a battle on the map as the adventure has it: a hero on the map, its owner, its army
-/// by slot and the army's formation.
+/// by slot, the army's formation and the hero's tactics flag.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Combatant {
     /// The hero.
@@ -239,6 +239,9 @@ pub struct Combatant {
     pub army: Vec<ArmyStack>,
     /// The army's formation.
     pub formation: Formation,
+    /// The hero's tactics flag (ADV-ARM-006): off, the game denies the tactics phase the side
+    /// would get (GAM-BAT-009; E08 T51a).
+    pub tactics: bool,
 }
 
 /// An offer a visit makes to its visitor's owner, answered yes or no (ADR-0017 points 6 and 10;

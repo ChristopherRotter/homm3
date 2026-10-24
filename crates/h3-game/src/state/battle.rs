@@ -7,6 +7,7 @@
 
 use alloc::sync::Arc;
 use alloc::vec::Vec;
+use core::cmp::Ordering;
 
 use h3_adventure::{BattleStart, Combatant, Defender, Pos, TileRand, Viewers, split};
 use h3_battle::{BattleState, Command, Event, Visibility, generate_setup_obstacles};
@@ -202,7 +203,11 @@ impl GameState {
                 .and_then(|(resource, held)| held.get(usize::from(resource.raw())).copied())
                 .unwrap_or(0)
         };
-        let heroes = sides.map(|side| side.and_then(|side| self.battle_hero(core, side.hero)));
+        let mut heroes = sides.map(|side| side.and_then(|side| self.battle_hero(core, side.hero)));
+        deny_tactics(
+            &mut heroes,
+            sides.map(|side| side.is_none_or(|side| side.tactics)),
+        );
         let war_machines = sides.map(|side| {
             side.and_then(|side| self.hero(side.hero))
                 .map(|details| war_machines(details, core))
@@ -588,8 +593,9 @@ impl GameState {
     }
 
     /// Applies `change`, checked, to the details of `hero` in the store (copied on its first
-    /// write when a fork shares it) and tells it to the hero's owner (`HeroChanged`; E08 T19a2a).
-    fn change_hero<S: Sink>(
+    /// write when a fork shares it) and tells it to the hero's owner (`HeroChanged`; E08 T19a2a;
+    /// a management command's since T51a).
+    pub(super) fn change_hero<S: Sink>(
         &mut self,
         core: &Ruleset,
         hero: HeroId,
@@ -606,6 +612,30 @@ impl GameState {
                 change,
             });
         });
+    }
+}
+
+/// The tactics flag in battle (GAM-BAT-009; ADR-0017 point 11, E08 T51a): when the side whose hero
+/// has the greater Tactics level (the side that gets the tactics phase, BAT-TAC-001) has its flag
+/// off (`flags`, by side; a side without a hero on the map has none, on), both heroes' Tactics go
+/// as 0, so no side gets the phase; equal levels cancel as before. The original clears the phase
+/// a human side's flag denies (survey `E08-army.md` §4); zeroing only the flagged hero's level
+/// would hand the other side a phase the original never gives (the user's condition at ADV-Q24).
+// rule: GAM-BAT-009
+fn deny_tactics(heroes: &mut [Option<BattleHero>; 2], flags: [bool; 2]) {
+    let [attacker, defender] = heroes
+        .each_ref()
+        .map(|hero| hero.as_ref().map_or(0, |hero| hero.tactics));
+    let denied = match attacker.cmp(&defender) {
+        Ordering::Greater => !flags[0],
+        Ordering::Less => !flags[1],
+        Ordering::Equal => false,
+    };
+    if denied {
+        heroes
+            .iter_mut()
+            .flatten()
+            .for_each(|hero| hero.tactics = 0);
     }
 }
 
