@@ -193,10 +193,13 @@ def select(game, mem, name):
 
 
 def wait_for(test, what, limit=3.0):
+    """Waits until `test()` holds; a timeout raises with `what`, or with `what()` when it is a
+    function (E24 M1 T6b, the reviewer's R3-9: a message naming the state at the timeout, not at
+    the start)."""
     end = time.monotonic() + limit
     while not test():
         if time.monotonic() > end:
-            raise TimeoutError(what)
+            raise TimeoutError(what() if callable(what) else what)
         time.sleep(0.05)
 
 
@@ -221,7 +224,7 @@ def centre(game, mem, x, y, level=0):
     game.click(left + int((x + 0.5) * scale), top + int((y + 0.5) * scale), 0.5)
     game.move(*PARK)
     want = (x - CENTRE[0], y - CENTRE[1])
-    wait_for(lambda: mem.view() == want, f"the view at {want} (it is at {mem.view()})")
+    wait_for(lambda: mem.view() == want, lambda: f"the view at {want} (it is at {mem.view()})")
 
 
 def tile_point(mem, x, y):

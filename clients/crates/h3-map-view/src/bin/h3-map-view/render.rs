@@ -193,11 +193,22 @@ fn render(options: &Options) -> Result<PathBuf, String> {
     let archive_bytes = files::read_archives(&options.install)?;
     let archives = files::parse_archives(&archive_bytes)?;
     if let Some(path) = &options.live {
-        read_live(path, &mut art, &mut live, &files::templates(&archives)?)?;
+        read_live(
+            path,
+            options.view,
+            &mut art,
+            &mut live,
+            &files::templates(&archives)?,
+        )?;
     }
+    // Each rectangle clamped to the map (E24 M1 T6b, the reviewer's R2-13: a huge one took long).
+    let last = i32::try_from(art.size)
+        .unwrap_or(i32::MAX)
+        .saturating_sub(1);
+    let on_map = |v: i32| v.clamp(0, last);
     for &[x0, y0, x1, y1] in &options.hidden {
-        for y in y0.min(y1)..=y0.max(y1) {
-            for x in x0.min(x1)..=x0.max(x1) {
+        for y in on_map(y0.min(y1))..=on_map(y0.max(y1)) {
+            for x in on_map(x0.min(x1))..=on_map(x0.max(x1)) {
                 live.explored.set(x, y, options.view.z, false);
             }
         }
@@ -259,10 +270,14 @@ const RANDOM_DWELLINGS: [u32; 3] = [216, 217, 218];
 /// draws, each `[x, y, level, class, facing, owner, boat type, boat colour]` (the boat's -1 -1 on
 /// land) and `[x, y, level, type, facing]`; `explored` (E24 M1 T5b2), the viewer's explored
 /// tiles, a string per row of every level in turn (level by level, rows top to bottom), `1` a tile
-/// explored and `0` not; `path` (T5b2), the path shown, each arrow `[x, y, level, arrow]`. Each key
-/// is optional; other keys are left.
+/// explored and `0` not; `path` (T5b2), the path shown, each arrow `[x, y, level, arrow]`; `view`,
+/// the view's top-left and level the original showed, which must be `--view` (E24 M1 T6b, the
+/// reviewer's R2-3). Each key is optional (`defs` and `classes` together); other keys are left.
+/// The file's `cycles`, `frames` and `viewer` override `--cycles`, `--at` and `--viewer`: the
+/// comparisons draw the original's.
 fn read_live(
     path: &PathBuf,
+    view: ViewAt,
     art: &mut MapArt,
     live: &mut Live,
     templates: &[ObjectTemplate],
@@ -281,6 +296,17 @@ fn read_live(
                 .ok_or_else(|| failed(&format!("`{key}` is not a count")))
         })
     };
+    if let Some(theirs) = table.get("view") {
+        let ours = [i64::from(view.x), i64::from(view.y), i64::from(view.z)];
+        let theirs: Option<Vec<i64>> = theirs
+            .as_array()
+            .and_then(|a| a.iter().map(toml::Value::as_integer).collect());
+        if theirs.as_deref() != Some(&ours[..]) {
+            return Err(failed(&format!(
+                "the original showed the view at {theirs:?}, not --view {ours:?}"
+            )));
+        }
+    }
     if let Some(cycles) = number("cycles")? {
         live.moment.cycles = cycles;
         live.moment.river_cycles = cycles;
@@ -297,7 +323,12 @@ fn read_live(
             .filter(|&c| c < 8)
             .ok_or_else(|| failed("`viewer` is not a colour, 0-7"))?;
     }
-    if let (Some(defs), Some(classes)) = (table.get("defs"), table.get("classes")) {
+    let templates_read = match (table.get("defs"), table.get("classes")) {
+        (Some(defs), Some(classes)) => Some((defs, classes)),
+        (None, None) => None,
+        _ => return Err(failed("`defs` and `classes` go together")),
+    };
+    if let Some((defs, classes)) = templates_read {
         let defs: Option<Vec<&str>> = defs
             .as_array()
             .and_then(|a| a.iter().map(toml::Value::as_str).collect());
@@ -336,7 +367,7 @@ fn read_live(
                 .iter()
                 .rev()
                 .find(|t| (t.class, t.subclass) == (class, subclass) && !same);
-            if let Some(t) = own.filter(|_| RANDOM_DWELLINGS.contains(&template.class)) {
+            if own.is_some() && RANDOM_DWELLINGS.contains(&template.class) {
                 // A random dwelling became a dwelling when the map loaded, before its objects
                 // were placed (0x502B60, design §2.9): its template is the game's (the last of its
                 // class and subclass, 0x505F20), the anchor the original's (`anchors`).
@@ -347,7 +378,12 @@ fn read_live(
                         (o.class, o.subclass) == (class, subclass)
                             && o.def.eq_ignore_ascii_case(def)
                     })
-                    .unwrap_or(t);
+                    .ok_or_else(|| {
+                        failed(&format!(
+                            "object {index}: no template of the game's for the {def} the original \
+                             drew"
+                        ))
+                    })?;
                 art.templates.push(TemplateArt {
                     def: dwelling.def.clone(),
                     passable: dwelling.passable,
@@ -383,8 +419,16 @@ fn read_live(
         let owners = owners
             .filter(|o| o.len() == live.objects.len())
             .ok_or_else(|| failed("`owners` is not one owner per object"))?;
-        for (object, owner) in live.objects.iter_mut().zip(owners) {
-            object.owner = byte(owner).filter(|&c| c < 8);
+        // -1 none, 0-7 a colour, anything else refused (E24 M1 T6b, the reviewer's R2-4).
+        for (index, (object, owner)) in live.objects.iter_mut().zip(owners).enumerate() {
+            object.owner = match owner {
+                -1 => None,
+                _ => Some(byte(owner).filter(|&c| c < 8).ok_or_else(|| {
+                    failed(&format!(
+                        "`owners`: object {index}'s {owner} is not -1 or 0-7"
+                    ))
+                })?),
+            };
         }
     }
     if let Some(heroes) = table.get("heroes") {
@@ -418,7 +462,8 @@ fn read_live(
     if let Some(anchors) = table.get("anchors") {
         // A random dwelling stands where its dwelling's template put it when the map loaded
         // (0x502B60, design §2.9: its anchor moved right past the bottom row's passable cells
-        // before its entrance); every other object must be where the map has it.
+        // before its entrance, on its row and level: E24 M1 T6b, the reviewer's R2-5); every
+        // other object must be where the map has it.
         let theirs: Option<Vec<[i64; 3]>> =
             rows::<3>(anchors).filter(|a| a.len() == art.objects.len());
         let theirs = theirs.ok_or_else(|| failed("`anchors` is not one anchor per object"))?;
@@ -429,7 +474,11 @@ fn read_live(
             }
             let at = (byte(x), byte(y), byte(z));
             match at {
-                (Some(x), Some(y), Some(z)) if resolved[index] => object.anchor = Pos { x, y, z },
+                (Some(x), Some(y), Some(z))
+                    if resolved[index] && x > a.x && (y, z) == (a.y, a.z) =>
+                {
+                    object.anchor = Pos { x, y, z };
+                }
                 _ => {
                     return Err(failed(&format!(
                         "the original's objects are not the map's (`anchors`: object {index})"
@@ -602,3 +651,6 @@ fn print_list(scene: &scene::Scene) {
         println!("cycle {} {:?} by {}", cycle.def, cycle.ranges, cycle.steps);
     }
 }
+
+#[cfg(test)]
+mod tests;

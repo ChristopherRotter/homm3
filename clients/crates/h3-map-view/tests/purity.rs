@@ -26,6 +26,10 @@ const BINARY_ONLY: [(&str, &[&str]); 1] = [("h3-map-view", &["h3-formats"])];
 /// Attributes every pure crate root carries.
 const REQUIRED: [&str; 2] = ["#![no_std]", "#![forbid(unsafe_code)]"];
 
+/// The lint groups that hold a denied lint: relaxing one relaxes them (every lint of `DENIED` is
+/// one of clippy's restriction lints; E24 M1 T6b, the reviewer's R2-15).
+const GROUPS: [&str; 1] = ["clippy::restriction"];
+
 /// Lints every pure crate root denies (the engine's logic header, `arch.toml` `logic_deny`).
 const DENIED: [&str; 10] = [
     "clippy::unwrap_used",
@@ -44,18 +48,43 @@ fn crate_dir(name: &str) -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("..").join(name)
 }
 
-/// The `.rs` files under `dir`, `bin/` left out.
-fn sources(dir: &Path, out: &mut Vec<PathBuf>) {
+/// The `.rs` files under `src`, the binary's `src/bin/` left out (only that one: a module folder
+/// named `bin` deeper down is the library's; E24 M1 T6b, the reviewer's R2-15).
+fn sources(src: &Path, out: &mut Vec<PathBuf>) {
+    walk(src, &src.join("bin"), out);
+}
+
+fn walk(dir: &Path, binary: &Path, out: &mut Vec<PathBuf>) {
     for entry in fs::read_dir(dir).unwrap() {
         let path = entry.unwrap().path();
         if path.is_dir() {
-            if path.file_name().is_some_and(|n| n != "bin") {
-                sources(&path, out);
+            if path != binary {
+                walk(&path, binary, out);
             }
         } else if path.extension().is_some_and(|e| e == "rs") {
             out.push(path);
         }
     }
+}
+
+/// Each attribute of a source (`#[...]` or `#![...]`, over as many lines as it takes) with its
+/// first line's number.
+fn attributes(lines: &[&str]) -> Vec<(usize, String)> {
+    let mut found = Vec::new();
+    let mut open: Option<(usize, String)> = None;
+    for (i, line) in lines.iter().enumerate() {
+        if open.is_none() && line.starts_with('#') {
+            open = Some((i + 1, String::new()));
+        }
+        if let Some((_, text)) = &mut open {
+            text.push_str(line);
+            if line.ends_with(']') {
+                found.extend(open.take());
+            }
+        }
+    }
+    found.extend(open);
+    found
 }
 
 /// The text of the root's `#![deny(...)]` attribute, or an empty string.
@@ -84,9 +113,11 @@ fn dependencies(manifest: &str) -> Vec<String> {
 /// What is wrong with one source file of a pure crate.
 fn violations(source: &str, root: bool) -> Vec<String> {
     let mut found = Vec::new();
+    let lines: Vec<&str> = source.lines().map(str::trim).collect();
     if root {
+        // A line of its own each (a commented-out one is no attribute).
         for attribute in REQUIRED {
-            if !source.contains(attribute) {
+            if !lines.contains(&attribute) {
                 found.push(format!("missing `{attribute}`"));
             }
         }
@@ -97,14 +128,16 @@ fn violations(source: &str, root: bool) -> Vec<String> {
             }
         }
     }
-    let lines: Vec<&str> = source.lines().map(str::trim).collect();
-    for (i, line) in lines.iter().enumerate() {
+    for (line, attribute) in attributes(&lines) {
         let relaxes = ["allow(", "expect(", "warn("]
             .iter()
-            .any(|a| line.contains(a));
-        if line.starts_with("#") && relaxes && DENIED.iter().any(|l| line.contains(l)) {
-            found.push(format!("line {}: relaxes a denied lint", i + 1));
+            .any(|a| attribute.contains(a));
+        let names = DENIED.iter().chain(&GROUPS).any(|l| attribute.contains(l));
+        if relaxes && names {
+            found.push(format!("line {line}: relaxes a denied lint"));
         }
+    }
+    for (i, line) in lines.iter().enumerate() {
         if line.starts_with("extern crate std") && (i == 0 || lines[i - 1] != "#[cfg(test)]") {
             found.push(format!("line {}: `std` outside the tests", i + 1));
         }
@@ -179,6 +212,25 @@ fn the_checks_catch_what_they_should() {
     assert_eq!(
         violations("#[allow(dead_code)]", false),
         Vec::<String>::new()
+    );
+    // Over several lines, a group, a header commented out (E24 M1 T6b, R2-15).
+    assert_eq!(
+        violations(
+            "#[allow(\n    dead_code,\n    clippy::panic\n)]\nfn f() {}",
+            false
+        ),
+        ["line 1: relaxes a denied lint"]
+    );
+    assert_eq!(violations("#![allow(clippy::restriction)]", false).len(), 1);
+    assert_eq!(
+        violations("#[allow(\n  dead_code", false),
+        Vec::<String>::new()
+    );
+    let commented = "// #![no_std]\n#![forbid(unsafe_code)]\n";
+    assert!(
+        violations(commented, true)
+            .iter()
+            .any(|v| v == "missing `#![no_std]`")
     );
     assert_eq!(violations("extern crate std;", false).len(), 1);
     assert!(violations("#[cfg(test)]\nextern crate std;", false).is_empty());

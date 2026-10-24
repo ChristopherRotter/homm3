@@ -230,6 +230,8 @@ fn the_shrouds_pieces() {
                 4 => 0,
                 5 => 34,
                 6 => 133,
+                8 => 100,
+                255 => 0,
                 _ => 2,
             })
             .collect(),
@@ -243,7 +245,9 @@ fn the_shrouds_pieces() {
     assert_eq!(shroud.piece(2, 1, 0), edge(2, false));
     assert_eq!(shroud.piece(2, 0, 1), edge(3, false));
     assert_eq!(shroud.piece(3, 0, 1), edge(3, true));
-    assert_eq!(shroud.piece(4, 0, 0), ShroudPiece::None);
+    // An entry 0 is the full piece (the original's table: the mask 255 only); 100 no frame.
+    assert_eq!(shroud.piece(4, 1, 0), ShroudPiece::Full(1));
+    assert_eq!(shroud.piece(8, 0, 0), ShroudPiece::None);
     assert_eq!(shroud.piece(5, 0, 0), edge(33, false));
     assert_eq!(shroud.piece(6, 1, 1), edge(32, true));
     assert_eq!(shroud.piece(7, 0, 0), edge(1, false));
@@ -346,6 +350,14 @@ fn refuses_what_breaks_the_format() {
         entry("terrain 7", "a cycle's first entry is after its last"),
         "`terrain 7`: a cycle's first entry is after its last",
     );
+    check(
+        &[base(
+            "[[road]]\ncode = 1\ndef = \"dirtrd.def\"\ncycles = [[1, 2]]\n",
+        )],
+        "base",
+        entry("road 1", "a road's palette does not cycle"),
+        "`road 1`: a road's palette does not cycle",
+    );
     for (field, what) in [
         ("edge = \"edg.def\"", "edge"),
         ("full = \"tshrc.def\"", "full shroud"),
@@ -411,6 +423,16 @@ fn refuses_what_breaks_the_format() {
             &format!("`{what}`: {rule}"),
         );
     }
+    let neutral = base("").replacen("neutral = 63", "neutral = 248", 1);
+    check(
+        &[neutral],
+        "base",
+        entry(
+            "owners",
+            "the neutral entry 248 leaves no room for 8 colours",
+        ),
+        "`owners`: the neutral entry 248 leaves no room for 8 colours",
+    );
     let town = base("").replacen("\"tf2.def\"", "\"tf2.pcx\"", 1);
     check(
         &[town],

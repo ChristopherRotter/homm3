@@ -79,8 +79,9 @@ capture/h3map.py drawn` (no Wine; about a minute) draws each situation of
 `map/situations/set.toml` with the live part its last capture kept (`map/situations/kept/<id>.toml`,
 the still's `live.toml`: numbers and the DEFs' names) and compares the digest of its pixels
 outside the masks with `map/situations/kept/drawn.txt`; 2. `h3map.py set --only <id>` for each
-`CHANGED` or `new` one and each situation whose file or entry the task adds or changes (its
-count recorded with why); 3. `h3map.py drawn --record`, `kept/` and `drawn.txt` committed with
+`CHANGED`, `new` or `STALE` one (a kept live part records the digest of the situation it showed,
+since T6b: a situation whose staging changed is stale) and each situation whose entry the task
+adds or changes (its count recorded with why); 3. `h3map.py drawn --record`, `kept/` and `drawn.txt` committed with
 the task (`set` keeps a capture's live part only when it is as recorded or new); 4. the whole
 set at a milestone's closure and after a harness change that can alter the original's side.
 
@@ -513,7 +514,12 @@ it once); so is one whose Wine exits before the main menu with an empty log (T4b
 right after the game before it stopped). Before counting the redraws, `still` waits until the
 frozen clock lies before both deadlines (one already passed is met at the main loop's next idle
 step: T4b saw the extra redraw once), and `set` shows a situation the harness fails to show
-(the game, the clock or a read gave up) once more, saying so on stderr. A capture run alone:
+(the game, the clock or a read gave up) once more, saying so on stderr; a second failure, any
+other, or the viewer's refusal of the live part (`REFUSED`) fails that situation alone, and the
+set goes on (E24 M1 T6b). Before any write into the game's memory `still` checks that xdd.dll
+redirected every roll's call (the executable read) and that the process it reads is the game it
+started; after the dump it checks that the facings and boats' colours it staged are what memory
+holds, and that `still.xwd` is the screen compared (T6b). A capture run alone:
 T4b's runs beside a build failed so. Masked (`h3map.MASKS`): the panels right of x 608 and below y 552 (M3 draws them)
 and the cursor parked over the right panel. Every situation of T3b2 is exact; `set.toml` records
 the counts. The menus run in real time, so each run's k and frame steps differ: they are read,
@@ -649,7 +655,7 @@ resources, every hero's name, tile and points, the view's top-left tile, the til
 mouse and the selected hero's path (design §6.3); for the map's stills (E24 M1 T3b2) the cycling
 DEFs' 16-bit palettes and the objects' frame steps. It only reads, but for the mouse poll's timer
 a sequence's opening sets (M3 T6c-2), a siege's wall states (M4 T1b) and a map still's explored
-tiles (E24 M1 T3b2). `python3 capture/h3mem.py`
+tiles (E24 M1 T3b2), heroes' and boats' facings (T5a) and boarded boats' colours (T5b2). `python3 capture/h3mem.py`
 prints the battle's state as JSON while a battle runs, `h3mem.py adventure` the adventure map's;
 `Mem` is the library. How to read a battle's state (drawn now, shown at the next deadline):
 design §7.1.
@@ -677,8 +683,8 @@ design §7.1.
   §9.8, §9.10): the viewer follows the harness's mouse since M3 T6c-2.
 - The game reads the mouse on a 33 ms grid of its clock and draws a new cursor frame where it
   last read it (design §9.10): the harness sets the grid's next time at a sequence's opening
-  (`h3mem.Mem.align_mouse_poll`, its only write into the game's memory, a timer of the mouse
-  manager); without it the frames kept where the cursor moves change their times between runs.
+  (`h3mem.Mem.align_mouse_poll`, a sequence's only write into the game's memory, a timer of the
+  mouse manager); without it the frames kept where the cursor moves change their times between runs.
 - Entering a stack redraws only its new frame's rectangle: the old frame's pixels outside it
   stay until the next idle step (`hover`'s four frames of 1 and 13 pixels, design §9.10).
 - The game draws its cursor at an even x (0x50CE04): at an odd point the canvas is a pixel

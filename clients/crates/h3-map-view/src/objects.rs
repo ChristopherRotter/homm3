@@ -244,9 +244,13 @@ pub struct DrawLists {
 }
 
 impl DrawLists {
-    /// The lists of level `z`: every standing object of the level in the map's order put on the
-    /// tiles of its footprint on the map, by its template in the map (a random object too: the
-    /// original places it before the draw, which keeps the template's size and masks, §2.7).
+    /// The lists of level `z`: every object of the level in the map's order put on the tiles of
+    /// its footprint on the map, by its template in the map (a random object too: the original
+    /// places it before the draw, which keeps the template's size and masks, §2.7); then the
+    /// fallen objects' entries taken out, the others keeping their order, as the original takes
+    /// an object off the map (remove_map_object 0x4AABB0: its entry deleted from each tile's
+    /// list, the later ones moved down, 0x4AACE2; E24 M1 T6b, the reviewer's R1-1), so that the
+    /// standing objects are ordered as they were among the fallen ones.
     ///
     /// # Errors
     /// [`ObjectsError::Shape`]: an object of the level with entries whose DEF has no shape.
@@ -256,9 +260,7 @@ impl DrawLists {
         let mut placed: Vec<Option<Placed>> = Vec::with_capacity(art.objects.len());
         for (index, object) in art.objects.iter().enumerate() {
             let template = template(art, index);
-            let alive = live.objects.get(index).is_none_or(|o| o.standing);
-            let drawn = template
-                .filter(|t| alive && object.anchor.z == z && !NO_ENTRIES.contains(&t.class));
+            let drawn = template.filter(|t| object.anchor.z == z && !NO_ENTRIES.contains(&t.class));
             let Some(template) = drawn else {
                 placed.push(None);
                 continue;
@@ -273,8 +275,9 @@ impl DrawLists {
                 height: i32::from(shape.height),
                 layers: layers(template, shape),
             };
-            for dx in 0..shape.width {
-                for dy in 0..shape.height {
+            // A shape is at most the template's 8 × 6 cells (`Shape::new`; its fields are public).
+            for dx in 0..shape.width.min(CELLS.0) {
+                for dy in 0..shape.height.min(CELLS.1) {
                     let (x, y) = (new.x - i32::from(dx), new.y - i32::from(dy));
                     let Some(list) = tile_index(size, x, y).and_then(|t| lists.get_mut(t)) else {
                         continue;
@@ -289,6 +292,10 @@ impl DrawLists {
                 }
             }
             placed.push(Some(new));
+        }
+        let fallen = |e: &Entry| live.objects.get(e.object).is_some_and(|o| !o.standing);
+        for list in &mut lists {
+            list.retain(|e| !fallen(e));
         }
         Ok(Self { size, lists })
     }
@@ -323,7 +330,10 @@ pub fn class(art: &MapArt, live: &Live, index: usize) -> Option<u32> {
 
 /// The tile of object `index`'s entrance as the original finds it (object_entrance_tile
 /// 0x4FEC30; design §2.9): its template's first visitable cell on the map, by row from the
-/// anchor's upwards, each row from the anchor's column leftwards.
+/// anchor's upwards, each row from the anchor's column leftwards. The original looks only within
+/// its picture's `.msk` (width +0x10, height +0x11), this in all 8 × 6 cells: the same, since no
+/// template of `Objects.txt` or the shipped maps has a visitable cell outside it (the gate checks
+/// it; E24 M1 T6b, the reviewer's R1-5).
 #[must_use]
 pub fn entrance(art: &MapArt, index: usize) -> Option<(i32, i32)> {
     let (object, template) = art.objects.get(index).zip(template(art, index))?;
@@ -346,7 +356,10 @@ pub fn entrance(art: &MapArt, index: usize) -> Option<(i32, i32)> {
 /// 0x40FD20 of the tile object_entrance_tile 0x4FEC30 gives; design §2.9): its own. The original
 /// takes it from the object on its entrance tile, and from tile (0, 0) of the surface for an
 /// object without an entrance on the map (MCL-Q4): with its bugs, that tile's object's owner (the
-/// last object whose entrance it is), none without one.
+/// last object whose entrance it is), none without one. *Provisional*: the original's tile object
+/// is the topmost entry of the tile's draw list whose cell is visitable (tile_refresh_object
+/// 0x505610), a hero there standing for it; no shipped map has an owned object without an
+/// entrance (the gate counts them), so this approximation is not compared (the reviewer's R1-5).
 #[must_use]
 pub fn flag_owner(art: &MapArt, live: &Live, index: usize, bugs: Bugs) -> Option<u8> {
     let own = |i: usize| live.objects.get(i).and_then(|o| o.owner);

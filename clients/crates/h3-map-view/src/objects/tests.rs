@@ -308,6 +308,58 @@ fn heroes_boats_events_the_fallen_and_the_other_level_have_no_entries() {
 }
 
 #[test]
+fn a_fallen_object_leaves_the_others_in_the_order_it_gave_them() {
+    // E24 M1 T6b (the reviewer's R1-1): B, A, C on (5, 5); B 1 x 2 blocked, A 1 x 1 blocked, C 1 x 2
+    // with its anchor passable. The original builds the lists with every object and takes a
+    // fallen one's entries out (0x4AABB0): C stays over B, where lists built without A put it
+    // under B.
+    let templates = vec![
+        tmpl("b.def", 1, passable_except(&[(0, 0), (0, 1)]), 0),
+        tmpl("a.def", 1, passable_except(&[(0, 0)]), 0),
+        tmpl("c.def", 1, passable_except(&[(0, 1)]), 0),
+    ];
+    let s = shapes(&[
+        ("b.def", shape(1, 2, 1)),
+        ("a.def", shape(1, 1, 1)),
+        ("c.def", shape(1, 2, 1)),
+    ]);
+    let all = art(
+        templates.clone(),
+        &[(5, 5, 0, 0), (5, 5, 0, 1), (5, 5, 0, 2)],
+    );
+    let mut l = live(3);
+    let standing = DrawLists::build(&all, &l, &s, 0).unwrap();
+    l.objects[1].standing = false;
+    let fallen = DrawLists::build(&all, &l, &s, 0).unwrap();
+    let objects =
+        |lists: &DrawLists| -> Vec<usize> { lists.at(5, 5).iter().map(|e| e.object).collect() };
+    assert_eq!(objects(&standing), [0, 1, 2]);
+    assert_eq!(objects(&fallen), [0, 2]);
+    assert_eq!(list(&fallen, 5, 4), list(&standing, 5, 4));
+    // Without A from the start: C (now object 1) under B.
+    let never = art(templates, &[(5, 5, 0, 0), (5, 5, 0, 2)]);
+    assert_eq!(
+        objects(&DrawLists::build(&never, &live(2), &s, 0).unwrap()),
+        [1, 0]
+    );
+}
+
+#[test]
+fn a_shape_wider_than_a_template_is_cut_to_its_cells() {
+    // `Shape`'s fields are public: one of 9 x 7 cells draws only the template's 8 x 6.
+    let a = art(
+        vec![tmpl("a.def", 1, passable_except(&[]), 0)],
+        &[(9, 9, 0, 0)],
+    );
+    let lists = DrawLists::build(&a, &live(1), &shapes(&[("a.def", shape(9, 7, 1))]), 0).unwrap();
+    let all: usize = (0..10)
+        .flat_map(|y| (0..10).map(move |x| (x, y)))
+        .map(|(x, y)| lists.at(x, y).len())
+        .sum();
+    assert_eq!(all, 48);
+}
+
+#[test]
 fn a_random_object_keeps_its_templates_place_and_masks() {
     // The map's template is one cell, its shadow mask empty; the drawn picture's two cells high,
     // with three frames.

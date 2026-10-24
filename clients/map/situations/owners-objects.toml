@@ -1,8 +1,9 @@
 # Owned objects of every colour (E24 M1 T5b1; design §2.9: D10): the mines of the seven
 # resources and an abandoned one (no owner), a dwelling, the Golem Factory and the Elemental
 # Conflux (class 20), the garrisons (33), a lighthouse (42), a shipyard (87), each colour's and
-# neutral ones; and the vertical garrisons (219), owned and neutral, whose flag pixels the original
-# skips (MCL-Q5). The eight colours' heroes stand outside the view, so that each colour is a player.
+# neutral ones; and the vertical garrisons (219), owned and neutral, which the load makes
+# garrisons (33) and so colours. The eight colours' heroes stand outside the view, so that each
+# colour is a player.
 size = 36
 terrain = "grass"
 heroes = [

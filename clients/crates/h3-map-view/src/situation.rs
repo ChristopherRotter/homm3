@@ -335,6 +335,11 @@ impl Situation {
     /// # Errors
     /// The parser's message, or a view on another level.
     pub fn parse(text: &str) -> Result<Self, String> {
+        // A shipped map loaded whole (`map`, E24 M1 T4b) is the harness's (E24 M1 T6b, R2-12).
+        let table: toml::Table = toml::from_str(text).map_err(|e| e.to_string())?;
+        if table.contains_key("map") {
+            return Err("it names a shipped map whole (`map`): the harness loads it".into());
+        }
         let situation: Self = toml::from_str(text).map_err(|e| e.to_string())?;
         if situation.view[2] != 0 {
             return Err("a situation's view is on the surface (level 0)".into());
@@ -494,15 +499,20 @@ impl Situation {
                 return Err(format!("hero at {:?}: a second path shown", h.at));
             }
             *count += 1;
+            if *count > 8 {
+                return Err(format!("hero at {:?}: a ninth of colour {owner}", h.at));
+            }
             let nth = of_class.get(usize::from(h.class)).copied().unwrap_or(0);
-            let hero_type = hero_type(h.class, nth)
-                .filter(|_| *count <= 8)
-                .ok_or_else(|| {
+            let hero_type = hero_type(h.class, nth).ok_or_else(|| {
+                if h.class < 18 {
+                    format!("hero at {:?}: a ninth of class {}", h.at, h.class)
+                } else {
                     format!(
-                        "hero at {:?}: a ninth of its colour or class {}",
+                        "hero at {:?}: class {} is no hero class (0-17)",
                         h.at, h.class
                     )
-                })?;
+                }
+            })?;
             of_class[usize::from(h.class)] += 1;
             players[owner] = Some(Player {
                 human: true,

@@ -17,7 +17,7 @@ use h3_assets::palette::decode_pal;
 use h3_assets::pcx::{Pcx, decode_pcx};
 use h3_map::Limits;
 use h3_map::writer::ObjectTemplate;
-use h3_map_view::art::{Layer, MapArt};
+use h3_map_view::art::{CELLS, Layer, MapArt, TemplateArt};
 use h3_map_view::check::{self, DefSummary};
 use h3_map_view::layout::GEM_FRAMES;
 use h3_map_view::objects::{self, Shape};
@@ -44,6 +44,9 @@ const RANDOM: [(u32, u32); 14] = [
     (164, 54),
     (76, 79),
 ];
+
+/// The artifacts' class.
+const ARTIFACT: u32 = 5;
 
 /// Object pictures by DEF name upper-cased: the name as first met and its template's class and
 /// subclass.
@@ -113,11 +116,15 @@ fn gate(options: &Options) -> Result<usize, String> {
     let find = |name: &str| files::find(&archives, name);
     let mut problems = Vec::new();
 
-    let (highest, shipped) = match &options.maps {
+    // The shipped maps' checks need their directory (E24 M1 T6b, the reviewer's R2-1).
+    let (highest, shipped, visits) = match &options.maps {
         Some(dir) if dir.is_dir() => shipped_maps(dir, &tables, &mut problems)?,
-        _ => {
-            println!("maps: none (no maps directory)");
-            (Highest::new(), Pictures::new())
+        dir => {
+            let dir = dir
+                .as_deref()
+                .map_or_else(String::new, |d| d.display().to_string());
+            problems.push(format!("maps: {dir} is no directory"));
+            (Highest::new(), Pictures::new(), Vec::new())
         }
     };
 
@@ -193,7 +200,17 @@ fn gate(options: &Options) -> Result<usize, String> {
     }
 
     let templates = files::templates(&archives)?;
-    let pictures = object_pictures(&archives, &templates, &shipped, &mut problems)?;
+    let (pictures, shapes) = object_pictures(&archives, &templates, &shipped, &mut problems)?;
+    let mut visits = visits;
+    visits.extend(templates.iter().map(|t| TemplateArt {
+        def: t.def.clone(),
+        passable: t.passable,
+        visitable: t.visitable,
+        class: t.class,
+        subclass: t.subclass,
+        priority: t.priority,
+    }));
+    entrances_outside(&visits, &shapes, &mut problems);
     owners_and_towns(&archives, &tables, &pictures, &mut problems)?;
 
     if !problems.is_empty() {
@@ -231,14 +248,14 @@ fn line(summary: &DefSummary, frames: usize) -> String {
     )
 }
 
-/// Reads every shipped map: the highest picture of each layer's code and the templates' pictures;
-/// a code the tables lack and a map without art are problems; a map the reader refuses is
-/// reported and skipped.
+/// Reads every shipped map: the highest picture of each layer's code, the templates' pictures and
+/// the templates; a code the tables lack, a map without art, a map the reader refuses and a
+/// directory without a map it reads are problems (E24 M1 T6b, the reviewer's R2-1).
 fn shipped_maps(
     dir: &Path,
     tables: &Tables,
     problems: &mut Vec<String>,
-) -> Result<(Highest, Pictures), String> {
+) -> Result<(Highest, Pictures, Vec<TemplateArt>), String> {
     let mut paths: Vec<PathBuf> = fs::read_dir(dir)
         .map_err(|e| format!("{}: {e}", dir.display()))?
         .filter_map(|e| e.ok().map(|e| e.path()))
@@ -247,6 +264,7 @@ fn shipped_maps(
     paths.sort();
     let mut highest = Highest::new();
     let mut pictures = Pictures::new();
+    let mut templates: BTreeMap<(String, [u8; 6]), TemplateArt> = BTreeMap::new();
     let (mut read, mut refused) = (0, Vec::new());
     // The owned objects without an entrance on the map (MCL-Q4: their flags take tile (0, 0)'s
     // owner in the original).
@@ -282,6 +300,9 @@ fn shipped_maps(
             pictures
                 .entry(t.def.to_ascii_uppercase())
                 .or_insert_with(|| (t.def.clone(), t.class, t.subclass));
+            templates
+                .entry((t.def.to_ascii_uppercase(), t.visitable))
+                .or_insert_with(|| t.clone());
         }
         for layer in [Layer::Terrain, Layer::River, Layer::Road] {
             for (code, picture) in art.pictures(layer) {
@@ -305,7 +326,10 @@ fn shipped_maps(
         dir.display()
     );
     for r in &refused {
-        println!("  the reader refuses {r}");
+        problems.push(format!("the reader refuses {r}"));
+    }
+    if read == 0 {
+        problems.push(format!("maps: none read from {}", dir.display()));
     }
     println!(
         "owned objects without an entrance on the map: {}",
@@ -318,7 +342,39 @@ fn shipped_maps(
     for ((layer, code), (picture, map)) in &highest {
         println!("  {layer:?} {code}: {picture} ({map})");
     }
-    Ok((highest, pictures))
+    Ok((highest, pictures, templates.into_values().collect()))
+}
+
+/// The templates with a visitable cell outside their picture's `.msk` (E24 M1 T6b, the
+/// reviewer's R1-5): the original looks for an entrance only within the `.msk`'s width and height
+/// (object_entrance_tile 0x4FEC30), `objects::entrance` in all 8 × 6 cells, the same while no
+/// template has one: each a problem.
+fn entrances_outside(
+    templates: &[TemplateArt],
+    shapes: &BTreeMap<String, Shape>,
+    problems: &mut Vec<String>,
+) {
+    let mut outside = 0;
+    for t in templates {
+        let Some(shape) = shapes.get(&t.def.to_ascii_uppercase()) else {
+            continue;
+        };
+        let beyond = (0..CELLS.0)
+            .flat_map(|dx| (0..CELLS.1).map(move |dy| (dx, dy)))
+            .any(|(dx, dy)| (dx >= shape.width || dy >= shape.height) && t.visitable(dx, dy));
+        if beyond {
+            outside += 1;
+            problems.push(format!(
+                "template {} (class {}): a visitable cell outside its .msk's {} x {} cells",
+                t.def, t.class, shape.width, shape.height
+            ));
+        }
+    }
+    println!(
+        "the templates (Objects.txt and the shipped maps') with a visitable cell outside their \
+         .msk: {outside} of {}",
+        templates.len()
+    );
 }
 
 /// The objects' pictures (E24 M1 T4b): every template's DEF of `Objects.txt` and of the shipped
@@ -330,7 +386,7 @@ fn object_pictures(
     templates: &[ObjectTemplate],
     shipped: &Pictures,
     problems: &mut Vec<String>,
-) -> Result<Pictures, String> {
+) -> Result<(Pictures, BTreeMap<String, Shape>), String> {
     let mut pictures = Pictures::new();
     for t in templates {
         pictures
@@ -352,13 +408,27 @@ fn object_pictures(
                 continue;
             }
         };
-        let undrawn = undrawn(archives, name, &shape)?;
-        if undrawn.any() {
-            lose += 1;
+        // D8 checks group 0, the passes draw the first group (0x410EA1): the same group
+        // (E24 M1 T6b, the reviewer's R2-9).
+        let first = files::find(archives, name)?
+            .and_then(|(_, data)| check::summarize(&data).ok())
+            .and_then(|summary| summary.groups.first().map(|g| g.0));
+        if first != Some(0) {
             problems.push(format!(
-                "object picture {name}: {} body and {} shadow pixels outside its .msk's masks",
-                undrawn.body, undrawn.shadow
+                "object picture {name}: its first group is not group 0"
             ));
+        }
+        match undrawn(archives, name, &shape) {
+            Ok(undrawn) if undrawn.any() => {
+                lose += 1;
+                problems.push(format!(
+                    "object picture {name}: {} body and {} shadow pixels outside its .msk's \
+                     masks",
+                    undrawn.body, undrawn.shadow
+                ));
+            }
+            Ok(_) => {}
+            Err(e) => problems.push(format!("object picture {e}")),
         }
         shapes.insert(key.clone(), shape);
     }
@@ -387,18 +457,31 @@ fn object_pictures(
             {
                 continue;
             }
-            let undrawn = undrawn(archives, drawn, random)?;
-            if undrawn.any() {
-                cut += 1;
-                println!(
-                    "  {drawn} as {name}: {} body and {} shadow pixels undrawn",
-                    undrawn.body, undrawn.shadow
-                );
+            // The client draws an artifact's own picture with its own masks on its random
+            // template's entries (MCL-Q3's fix): cells outside them it never draws (E24 M1 T6b,
+            // the reviewer's R1-7).
+            if becomes == ARTIFACT && (own.width > random.width || own.height > random.height) {
+                problems.push(format!(
+                    "{drawn}: {} x {} cells, the random template {name}'s {} x {}: the client \
+                     never draws the cells outside",
+                    own.width, own.height, random.width, random.height
+                ));
+            }
+            match undrawn(archives, drawn, random) {
+                Ok(undrawn) if undrawn.any() => {
+                    cut += 1;
+                    println!(
+                        "  {drawn} as {name}: {} body and {} shadow pixels undrawn",
+                        undrawn.body, undrawn.shadow
+                    );
+                }
+                Ok(_) => {}
+                Err(e) => problems.push(format!("random object picture {e}")),
             }
         }
     }
     println!("  {cut} picture(s) lose pixels");
-    Ok(pictures)
+    Ok((pictures, shapes))
 }
 
 /// The owned objects' colours (E24 M1 T5b1; design §2.9): the owners' palette decodes, and its
@@ -456,7 +539,14 @@ fn owners_and_towns(
     println!("the towns' pictures drawn with a town template's masks (design §2.9):");
     let mut cut = 0;
     for (name, class, subclass) in pictures.values().filter(|(_, c, _)| *c == 77 || *c == 98) {
-        let template = files::load_shape(archives, name).map_err(|e| format!("{name}: {e}"))?;
+        // A name in no archive is a problem, and the gate goes on (E24 M1 T6b, R2-7).
+        let template = match files::load_shape(archives, name) {
+            Ok(template) => template,
+            Err(e) => {
+                problems.push(format!("town template {e}"));
+                continue;
+            }
+        };
         let defs = [&towns.village, &towns.fort, &towns.capitol];
         let factions: Vec<usize> = match (*class, usize::try_from(*subclass)) {
             (98, Ok(f)) => vec![f],
@@ -466,13 +556,16 @@ fn owners_and_towns(
             .iter()
             .flat_map(|&f| defs.iter().filter_map(move |list| list.get(f)))
         {
-            let undrawn = undrawn(archives, drawn, &template)?;
-            if undrawn.any() {
-                cut += 1;
-                println!(
-                    "  {drawn} as {name}: {} body and {} shadow pixels undrawn",
-                    undrawn.body, undrawn.shadow
-                );
+            match undrawn(archives, drawn, &template) {
+                Ok(undrawn) if undrawn.any() => {
+                    cut += 1;
+                    println!(
+                        "  {drawn} as {name}: {} body and {} shadow pixels undrawn",
+                        undrawn.body, undrawn.shadow
+                    );
+                }
+                Ok(_) => {}
+                Err(e) => problems.push(format!("town picture {e}")),
             }
         }
     }

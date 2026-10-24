@@ -4,8 +4,9 @@ adventure map's (M2 T6), *provisional*; clients/capture/README.md, "The original
 Wine the game is a Linux process that maps Heroes3.exe at its image base, so /proc/<pid>/mem
 gives its globals and records at their addresses (docs/exe/map.toml, structs.toml). Read only
 but for the harness's own timers, a siege's wall states before its first frame (E17 M4 T1b,
-`write_walls`), a map still's explored tiles (E24 M1 T3b2, `write_explored`) and its heroes' and
-boats' facings (E24 M1 T5a, `write_facing`).
+`write_walls`), a map still's explored tiles (E24 M1 T3b2, `write_explored`), its heroes' and
+boats' facings (E24 M1 T5a, `write_facing`) and its boarded boats' flag colours (E24 M1 T5b2,
+`write_boat_colour`).
 
   h3mem.py            print the battle's clocks and its stacks' animation state as JSON
   h3mem.py adventure  print the adventure map's state as JSON: the current player, the view,
@@ -157,7 +158,9 @@ PATH, VIEW, MOUSE_TILE = 0x48, 0xE4, 0xE8
 PATH_SHOWN = 0x4C
 # A path arrow's frame: 0 none, 1 to 25 a move today (green), 26 to 50 a later one (red).
 GREEN_FRAMES = range(1, 26)
-FRAME_DEADLINE = 0x698998  # battle animations' next frame time (0x4F82F0 waits for it)
+# The battle animations' next frame time (0x4F82F0 waits for it); on the adventure map the
+# view's redraw deadline (adventure_manager_procedure 0x4087B0; `map_due`, E24 M1 T3b2).
+FRAME_DEADLINE = 0x698998
 IDLE_STEP_TIME = 0x6989B8  # the idle step's next time (0x4960D0)
 COMBAT_SPEED = 0x6987EC  # the setting, 0 to 2 (factors 0x63CF7C)
 # Battle manager: records per side +0x54BC, the stacks from +0x54CC (21 per side, 0x6EE8 apart,
