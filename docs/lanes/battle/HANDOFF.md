@@ -54,6 +54,12 @@ Area traps live where they are used: experiments in `docs/experiments/README.md`
 
 ## Recent sessions
 
+### 2026-10-24 (111th) — the inbox's leftovers (in progress)
+
+The user's list: batch 2g's rows (BAT-Q62, BAT-Q28 rows 4, 7 to 10, the hypnotized stack's
+morale, two turn-order readings), the heroless side's war machines, the turret-shot preview, the
+test gaps and the `verified` clauses (`battle/inbox-leftovers`, done), CLT-Q4/Q6 seam to wire.
+
 ### 2026-10-24 (110th) — E23 closed
 
 The user: close E23 now, then the inbox, then E11. Every exit criterion met (the log); CI cannot start (billing), so criterion 6 rests on #441's full local verify and the user's Windows run.
@@ -63,8 +69,3 @@ The user: close E23 now, then the inbox, then E11. Every exit criterion met (the
 The user: all four parts in one session; the let-off a fix-optional quirk of its own (BAT-QUIRK-27,
 flag 33 in #436, `cross-lane`); BAT-Q62 (the rules' breath into a side column) waits for a row.
 `full-s3-a242` re-recorded; both bot reports regenerated.
-
-### 2026-10-23 (108th) — E23 T7: batches 4a, 4b, 4c designed and played
-
-The user: design and run the batches, no other cut. `experiments/agent/ai.py`, h3-experiment's
-Tan and `[[map.town]]`; set-ups checked first by replaying the port in the engine.

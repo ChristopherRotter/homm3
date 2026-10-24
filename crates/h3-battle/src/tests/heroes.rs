@@ -524,8 +524,9 @@ fn statistic_effects_change_the_selected_stacks_of_the_side_at_setup() {
             (10, 12, [6, 9], 35, 35, 5),
         ]
     );
+    // The attacker keeps its machines under a bare hero (BAT-WAR-001).
     let s = BattleSetup {
-        heroes: [None, Some(defender)],
+        heroes: [Some(bare_hero(&r)), Some(defender)],
         ..s
     };
     assert_eq!(stats(&s).get(6..), Some(&[(9, 12, [0, 0], 1, 1, 0)][..]));
@@ -769,7 +770,8 @@ fn a_hero_adds_its_attack_and_defense_to_every_stack_of_its_side() {
                 &[(0, "serf", 1)],
             )
         };
-        let b = BattleState::new(&r, &s, 1).unwrap();
+        // A side without a hero leads its Ballista with a bare one (BAT-WAR-001).
+        let b = BattleState::new(&r, &lead_machines(&r, s), 1).unwrap();
         b.stacks().iter().map(|s| (s.attack, s.defense)).collect()
     };
     // Stacks: the attacker's pikeman, serf and Ballista, then the defender's serf and Ballista.
@@ -991,7 +993,7 @@ fn hero_damage_bonuses_raise_the_sides_strikes_and_reduce_the_strikes_against_it
             war_machines: [vec![ballista], vec![]],
             ..setup(&r, &[(0, "archer", 10)], &[(0, "fixed", 10)])
         };
-        let b = BattleState::new(&r, &s, 1).unwrap();
+        let b = BattleState::new(&r, &lead_machines(&r, s), 1).unwrap();
         crate::combat::shot_damage_range(&b, &r, StackId(1), StackId(2))
     };
     assert_eq!(machine_shot([None, None]), (1, 1));

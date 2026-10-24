@@ -23,10 +23,13 @@ fn with_machines(
     defender: &[Spec],
     machines: [&[&str]; 2],
 ) -> BattleSetup {
-    BattleSetup {
-        war_machines: machines.map(|m| m.iter().map(|k| creature(r, k)).collect()),
-        ..setup(r, attacker, defender)
-    }
+    lead_machines(
+        r,
+        BattleSetup {
+            war_machines: machines.map(|m| m.iter().map(|k| creature(r, k)).collect()),
+            ..setup(r, attacker, defender)
+        },
+    )
 }
 
 fn start(r: &BattleRuleset, s: &BattleSetup, seed: u64) -> BattleState {
@@ -176,6 +179,34 @@ fn war_machine_setups_are_validated() {
         SetupError::NoRoom {
             side: BattleSide::Attacker,
             slot: 16
+        }
+    );
+}
+
+// covers: BAT-WAR-001
+#[test]
+fn a_side_without_a_hero_brings_no_war_machines() {
+    let r = ruleset();
+    let serf: &[Spec] = &[(0, "serf", 1)];
+    let mut s = setup(&r, serf, serf);
+    s.war_machines = [vec![creature(&r, "ballista")], vec![creature(&r, "tent")]];
+    s.heroes[1] = Some(bare_hero(&r));
+    // The original's 0x463600 sets up the machines of a side with a hero only (0x46374D).
+    let state = start(&r, &s, 1);
+    let machines: Vec<(BattleSide, &str)> = state
+        .stacks()
+        .iter()
+        .filter(|st| st.has(StackTraits::WAR_MACHINE))
+        .map(|st| (st.side, r.creature_key(st.creature).unwrap().name()))
+        .collect();
+    assert_eq!(machines, vec![(BattleSide::Defender, "tent")]);
+    assert_eq!(state.stacks().len(), 3);
+    // The listing is still checked.
+    s.war_machines[0] = vec![creature(&r, "serf")];
+    assert_eq!(
+        BattleState::new(&r, &s, 1).unwrap_err(),
+        SetupError::InvalidWarMachine {
+            side: BattleSide::Attacker
         }
     );
 }

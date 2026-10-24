@@ -244,6 +244,63 @@ fn a_defender_with_artillery_commands_its_turrets() {
     assert_eq!(s.active(), Some(StackId(2)));
 }
 
+// covers: BAT-DMG-011, BAT-SIE-018
+#[test]
+fn a_commanded_turret_s_shot_lands_within_its_preview() {
+    // The preview of the keep's shot is the shot's own (BAT-SIE-018): the creature's damage per
+    // creature summed, through the target's protections only; not a strike's attack, defense or
+    // penalties (the AI lane's E06 T6a: previewed 3 to 6 kills, 1 killed).
+    let r = turret_ruleset("t:faithful");
+    let setup = at(
+        &r,
+        town(&r, FortLevel::Citadel, 0),
+        [None, Some(gunner(&r))],
+        &[(0, "fixed", 20), (1, "archer", 10)],
+        &[(0, "fast", 20)],
+    );
+    let mut damages = std::collections::BTreeSet::new();
+    for seed in 0..16 {
+        let (mut s, _) = start(&r, &setup, seed);
+        assert_eq!(s.active(), Some(StackId(3)));
+        let target = StackId(1);
+        let shot = Command::Shoot {
+            target,
+            at: s.stacks()[1].footprint(field(&r)).front,
+        };
+        let p = crate::preview(&s, &r, BattleSide::Defender, shot).unwrap();
+        let keep = s.stacks()[3];
+        let c = r.creature(keep.creature).unwrap();
+        let n = u64::from(keep.count);
+        assert_eq!(
+            p.damage,
+            [n * u64::from(c.damage_min), n * u64::from(c.damage_max)]
+        );
+        let events = act(&mut s, &r, shot).unwrap();
+        let kills = events.iter().find_map(|e| match e.kind {
+            EventKind::Struck { kills, .. } => Some(kills),
+            _ => None,
+        });
+        let [(_, _, damage)] = strikes(&events)[..] else {
+            panic!("one shot");
+        };
+        assert!(p.damage[0] <= damage && damage <= p.damage[1]);
+        assert!(kills.is_some_and(|k| p.kills[0] <= k && k <= p.kills[1]));
+        damages.insert(damage);
+    }
+    assert!(damages.len() > 1);
+    // Under the target's Air Shield its share comes off both ends, as off the shot.
+    let (mut s, _) = start(&r, &setup, 0);
+    s.stacks.as_mut_slice()[1].spells.ranged_protection = 50;
+    let shot = Command::Shoot {
+        target: StackId(1),
+        at: s.stacks()[1].footprint(field(&r)).front,
+    };
+    let halved = crate::preview(&s, &r, BattleSide::Defender, shot).unwrap();
+    let (s, _) = start(&r, &setup, 0);
+    let whole = crate::preview(&s, &r, BattleSide::Defender, shot).unwrap();
+    assert!(halved.damage[0] < whole.damage[0] && halved.damage[1] < whole.damage[1]);
+}
+
 // ---------------------------------------------------------------- BAT-SIE-017
 
 // covers: BAT-SIE-017

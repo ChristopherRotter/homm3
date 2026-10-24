@@ -109,7 +109,12 @@ fn led(
         attacker: army(r, &[("base:pikeman", 10)]),
         defender: army(r, defender),
         obstacles: vec![],
-        heroes: [Some(hero), None],
+        // The defender's machines come with a hero (BAT-WAR-001): a bare one.
+        heroes: [
+            Some(hero),
+            (!machines.is_empty())
+                .then(|| BattleHero::new(r.hero_type_by_key("base:orrin").unwrap())),
+        ],
         terrain: None,
         battlefield: None,
         anti_magic: false,
