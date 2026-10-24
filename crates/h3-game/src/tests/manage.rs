@@ -150,6 +150,11 @@ fn a_player_rearranges_a_heros_army_in_its_turn() {
         game.adventure().hero(RED_HERO).unwrap().army,
         [imp(1, 5), imp(3, 4)]
     );
+    // Told to red alone.
+    for event in &events {
+        assert_eq!(project(event, Viewer::Player(RED)), Some(*event));
+        assert_eq!(project(event, Viewer::Player(BLUE)), None);
+    }
     // A merge empties the slot it leaves; the second hero's army is its own.
     let merge = ArmyCommand::Move {
         from: slot(RED_HERO, 3),
