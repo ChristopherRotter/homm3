@@ -1,0 +1,33 @@
+# E06's A/B run on the user's machine for the turn order as an input (the user, 2026-10-26, after
+# the turn-order probe: the trunk did not know which stack acts next, 0.18 against the order
+# rule's 0.89; E06-log "The turn-order probe"): `t7-1`'s settings (`e06-t7.toml`) with the MLP's
+# trunk reading observation v22's turn order, each stack slot's places in the rest of the round,
+# among its side's turns and in the next round (`h3_battle::turn_order`, the engine's own;
+# `policy`'s documentation). One change against `t7-1`; read it against `t7-1`'s ladder and with
+# the behaviour analysis (waits, defends, the wandering T6e found):
+#
+#   uv run --group train python -m h3env.train --config configs/e06-order.toml --out runs/order-1
+#   uv run --group train python -m h3env.train --resume runs/order-1
+
+seed = 1
+samples = 20_000_000
+
+[env]
+kinds = [78, 2, 100, 50, 25, 3]
+
+[network]
+order = true
+
+[league]
+self_play = 0.5
+snapshot_every = 1_000_000
+max_members = 16
+live = 4
+live_every = 250_000
+
+[gate]
+gate_every = 10_000_000
+
+[ladder]
+ladder_episodes = 250
+ladder_final_episodes = 500

@@ -105,8 +105,11 @@ pub use batch::{
 /// random seat), and `h3_system_policy_version`; the encodings unchanged. v33 (E06 T5, AI-Q7
 /// (b)): `H3BatchBuffers.preview` (the acting side's previewed kills per attack and shot entry,
 /// [N, `h3_preview_len()`]; the struct grows by one pointer at its end), `h3_preview_base` and
-/// `h3_preview_len`; the encodings unchanged.
-pub const H3_ABI_VERSION: u32 = 33;
+/// `h3_preview_len`; the encodings unchanged. v34 (E06, the turn order and T8b): observation
+/// encoding v22 (each stack slot's places in the turn order, `h3_sim::observation::ORDER`,
+/// appended: v21's layout is its prefix; `h3_observation_len` grows); the action encoding
+/// unchanged.
+pub const H3_ABI_VERSION: u32 = 34;
 
 /// `H3StepResult.result`: the battle is not decided (still running, or truncated).
 pub const H3_RESULT_NONE: i32 = -1;
@@ -669,7 +672,7 @@ mod tests {
 
     #[test]
     fn abi_smoke_create_step_destroy() {
-        assert_eq!(h3_abi_version(), 33);
+        assert_eq!(h3_abi_version(), 34);
         assert_eq!(
             h3_observation_encoding_version(),
             OBSERVATION_ENCODING_VERSION

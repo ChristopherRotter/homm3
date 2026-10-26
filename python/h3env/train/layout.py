@@ -1,12 +1,12 @@
-"""Observation encoding v21's layout as the entity network reads it (E06 T5a, design §11): the
-offsets of its parts and the stack columns it uses, and the columns the behaviour analysis reads
-(`h3env.train.inspect`, E06 T6a). `h3-sim`'s test `the_python_layout_is_the_encodings` pins every
-value here against `observation.rs`; a new observation encoding changes this file in the same
-change.
+"""Observation encoding v22's layout as the entity network reads it (E06 T5a, design §11): the
+offsets of its parts and the stack columns it uses, the columns the behaviour analysis reads
+(`h3env.train.inspect`, E06 T6a) and the turn order's (v22). `h3-sim`'s test
+`the_python_layout_is_the_encodings` pins every value here against `observation.rs`; a new
+observation encoding changes this file in the same change.
 """
 
 #: The encoding this layout describes (`_ffi.versions()["observation_encoding"]`).
-OBSERVATION_ENCODING = 21
+OBSERVATION_ENCODING = 22
 
 GLOBALS = 38
 HERO_PUBLIC_FEATURES = 14
@@ -15,13 +15,17 @@ HEX_PLANES = 16
 MAX_FIELD_HEXES = 255
 STACK_FEATURES = 99
 STACK_CAPACITY = 42
+ORDER_FEATURES = 3
 
 #: The viewer's public hero part; the opponent's follows it.
 HEROES = GLOBALS
 OWN_HERO = HEROES + 2 * HERO_PUBLIC_FEATURES
 FIELD = OWN_HERO + OWN_HERO_FEATURES
 STACKS = FIELD + HEX_PLANES * MAX_FIELD_HEXES
-OBSERVATION_LEN = STACKS + STACK_FEATURES * STACK_CAPACITY
+#: The turn order (v22), after the stack slots: v21's layout is the prefix before it, which a
+#: network without `[network] order` reads.
+ORDER = STACKS + STACK_FEATURES * STACK_CAPACITY
+OBSERVATION_LEN = ORDER + ORDER_FEATURES * STACK_CAPACITY
 
 #: A stack slot's columns the network reads apart: the slot holds a stack, its creature's handle,
 #: its position's column and row (a two-hex stack's rear hex; a turret's off-field hex), it is
@@ -55,6 +59,13 @@ WAR_MACHINE = 27
 BASE_COUNT = 36
 STARTED = 37
 TURRET = 47
+
+#: A stack slot's turn order columns (`h3_battle::turn_order`): its place in the rest of the
+#: round's turns (1: the active stack; 0: none), among its side's turns in the rest of the round
+#: (1: its side's next), in the next round's turns (0: none).
+ORDER_ROUND = 0
+ORDER_SIDE = 1
+ORDER_NEXT = 2
 
 #: Action encoding v13's entries the heads build (`h3_sim::action`): Wait, Defend, the moves,
 #: 24 attack positions per stack, 2 shots per stack, a heal per stack, End tactics, Retreat,

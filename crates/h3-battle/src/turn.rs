@@ -11,11 +11,13 @@
 
 use h3_content_battle::BattleRuleset;
 use h3_contracts::BattleSide;
+use h3_kernel::FixedVec;
 
 use crate::effects::Status;
 use crate::event::{Event, EventKind, Sink};
 use crate::geometry::Field;
-use crate::state::{BattleState, Stack, StackFlags, StackId, StackTraits};
+use crate::observe::Observation;
+use crate::state::{BattleState, STACK_CAPACITY, Stack, StackFlags, StackId, StackTraits};
 use crate::{control, effects, morale, obstacles, war};
 
 /// Whether stack `s` loses its turns (blind, petrified, paralysed) and its turn has passed this
@@ -24,57 +26,194 @@ fn passed_without_turns(s: &Stack) -> bool {
     s.spells.status.contains(Status::NO_TURNS) && s.flags.contains(StackFlags::STARTED)
 }
 
+/// Whether stack `s` may still be picked this round: alive, not done, not an ammunition supply
+/// (they never act, BAT-WAR-004) and not passed over losing its turns.
+fn pickable(s: &Stack) -> bool {
+    s.is_alive()
+        && !s.flags.contains(StackFlags::ACTED)
+        && !s.has(StackTraits::AMMO_SUPPLY)
+        && !passed_without_turns(s)
+}
+
+/// The side the speed tie-break prefers after `last_side_acted` (BAT-TRN-001): the other one, the
+/// attacker before any turn.
+fn preferred(last_side_acted: Option<BattleSide>) -> BattleSide {
+    last_side_acted.map_or(BattleSide::Attacker, BattleSide::opponent)
+}
+
+/// A stack's key in the turn order (BAT-TRN-001, BAT-TRN-002): smaller keys act earlier. The side
+/// tie-break changes with every turn, so it is applied by [`OrderKey::rank`].
+#[derive(Debug, Clone, Copy)]
+struct OrderKey {
+    /// Phase, turret, Catapult, speed.
+    head: (u8, bool, bool, u8),
+    side: BattleSide,
+    /// The army slot, then the id.
+    tail: (u8, u8),
+}
+
+impl Default for OrderKey {
+    fn default() -> Self {
+        Self {
+            head: (0, false, false, 0),
+            side: BattleSide::Attacker,
+            tail: (0, 0),
+        }
+    }
+}
+
+impl OrderKey {
+    /// The key of stack `s` with id `id`, the round's wait phase begun if `wait_phase`.
+    fn new(id: u8, s: &Stack, wait_phase: bool) -> Self {
+        // Phases: normal, waited during a good-morale turn, waited (BAT-MOR-003). Once the
+        // wait phase has begun every stack not done is a waited one (the original's pick
+        // clears the waited bits there and orders all alike, 0x4652A7, 0x464FDB): a stack
+        // created in the wait phase takes its place by its speed, the slower first (batch 2g
+        // WP: the Pikemen before the elementals summoned there).
+        let waited = s.flags.contains(StackFlags::WAITED) || wait_phase;
+        let phase = match (waited, s.flags.contains(StackFlags::HAD_MORALE)) {
+            (false, _) => 0,
+            (true, true) => 1,
+            (true, false) => 2,
+        };
+        // Smaller keys act earlier. Normal phase: faster first; wait phases: slower first.
+        let speed = if phase == 0 {
+            u8::MAX - s.speed_now()
+        } else {
+            s.speed_now()
+        };
+        // rule: BAT-SIE-011, BAT-SIE-016
+        // The turrets, then the Catapult before every other stack of their phase (the
+        // original's 0x464F50); the turrets by slot: the keep, the upper, the lower tower.
+        let turret = !s.is_turret();
+        let catapult = !s.is_catapult();
+        Self {
+            head: (phase, turret, catapult, speed),
+            side: s.side,
+            tail: (s.turn_slot(), id),
+        }
+    }
+
+    /// The full key with the side tie-break for `preferred`; the trailing id makes it unique, so
+    /// the order is total (ADR-0003 §9).
+    fn rank(self, preferred: BattleSide) -> ((u8, bool, bool, u8), bool, (u8, u8)) {
+        (self.head, self.side != preferred, self.tail)
+    }
+}
+
 /// The next stack to act this round, or `None` if every living stack has acted or passed its turn
 /// losing it.
 // rule: BAT-TRN-001, BAT-TRN-002
 pub(crate) fn next_active(state: &BattleState) -> Option<StackId> {
-    let preferred = state
-        .last_side_acted
-        .map_or(BattleSide::Attacker, BattleSide::opponent);
+    let preferred = preferred(state.last_side_acted);
     (0u8..)
         .zip(state.stacks.iter())
-        // Ammunition supplies never act (BAT-WAR-004).
-        .filter(|(_, s)| {
-            s.is_alive()
-                && !s.flags.contains(StackFlags::ACTED)
-                && !s.has(StackTraits::AMMO_SUPPLY)
-                && !passed_without_turns(s)
-        })
-        .min_by_key(|(id, s)| {
-            // Phases: normal, waited during a good-morale turn, waited (BAT-MOR-003). Once the
-            // wait phase has begun every stack not done is a waited one (the original's pick
-            // clears the waited bits there and orders all alike, 0x4652A7, 0x464FDB): a stack
-            // created in the wait phase takes its place by its speed, the slower first (batch 2g
-            // WP: the Pikemen before the elementals summoned there).
-            let waited = s.flags.contains(StackFlags::WAITED) || state.wait_phase;
-            let phase = match (waited, s.flags.contains(StackFlags::HAD_MORALE)) {
-                (false, _) => 0,
-                (true, true) => 1,
-                (true, false) => 2,
-            };
-            // Smaller keys act earlier. Normal phase: faster first; wait phases: slower first.
-            let speed = if phase == 0 {
-                u8::MAX - s.speed_now()
-            } else {
-                s.speed_now()
-            };
-            // rule: BAT-SIE-011, BAT-SIE-016
-            // The turrets, then the Catapult before every other stack of their phase (the
-            // original's 0x464F50); the turrets by slot: the keep, the upper, the lower tower.
-            let turret = !s.is_turret();
-            let catapult = !s.is_catapult();
-            // The trailing id makes the key unique, so the order is total (ADR-0003 §9).
-            (
-                phase,
-                turret,
-                catapult,
-                speed,
-                s.side != preferred,
-                s.turn_slot(),
-                *id,
-            )
-        })
+        .filter(|(_, s)| pickable(s))
+        .min_by_key(|(id, s)| OrderKey::new(*id, s, state.wait_phase).rank(preferred))
         .map(|(id, _)| StackId(id))
+}
+
+/// The turn order as the battle stands (BAT-TRN-001 to BAT-TRN-003), for viewers and agents: the
+/// stacks that take a turn in the rest of the round, the active stack first, then every living
+/// stack's turn in the next round, in the order [`next_active`]'s picks give them if each stack
+/// takes its turn as it comes. It foresees nothing a turn may change: a wait, good or bad
+/// morale, Fear, a death, an effect that begins or ends at a turn or the round's start, a stack
+/// the battle creates. A stack that loses its turns (blind, petrified, paralysed: BAT-MAG-024,
+/// BAT-MAG-043) has no place while it does, and an ammunition supply none (BAT-WAR-004). Within
+/// the tactics phase the round is the first; once the battle is over both are empty.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct TurnOrder {
+    /// The stacks to take a turn in the rest of the round, the active stack first.
+    pub round: FixedVec<StackId, STACK_CAPACITY>,
+    /// The stacks to take a turn in the next round, in its order.
+    pub next: FixedVec<StackId, STACK_CAPACITY>,
+}
+
+/// The turn order of the battle `obs` shows ([`TurnOrder`]). It reads only the observation's
+/// public part, so it is the same for every viewer.
+// rule: BAT-TRN-001, BAT-TRN-002, BAT-TRN-003
+pub fn turn_order(obs: &Observation) -> TurnOrder {
+    let mut order = TurnOrder::default();
+    if obs.result.is_some() {
+        return order;
+    }
+    let stacks = obs.stacks.as_slice();
+    let mut last = obs.last_side_acted;
+    if obs.tactics.is_some() {
+        // The phase's placements are no turns: its end starts the first round (BAT-TAC-002).
+        let first = keys(stacks, false, true);
+        last = fill(&mut order.round, first.as_slice(), 0, last, stacks);
+    } else {
+        let mut done = 0u64;
+        if let Some((active, s)) = obs
+            .active
+            .and_then(|a| stacks.get(a.index()).map(|s| (a, s)))
+        {
+            push(&mut order.round, active);
+            done |= 1u64 << active.0;
+            last = Some(acted_side(s));
+        }
+        let round = keys(stacks, obs.wait_phase, false);
+        last = fill(&mut order.round, round.as_slice(), done, last, stacks);
+    }
+    let next = keys(stacks, false, true);
+    fill(&mut order.next, next.as_slice(), 0, last, stacks);
+    order
+}
+
+/// The keys of the stacks that may take a turn, by id: in a new round (`fresh`) with the flags
+/// its start clears (BAT-TRN-003), else in this round, its wait phase begun if `wait_phase`. A
+/// stack that loses its turns passes without one, so it takes no place.
+fn keys(
+    stacks: &[Stack],
+    wait_phase: bool,
+    fresh: bool,
+) -> FixedVec<(u8, OrderKey), STACK_CAPACITY> {
+    let mut out = FixedVec::new();
+    for (id, s) in (0u8..).zip(stacks) {
+        let mut s = *s;
+        if fresh {
+            for flag in [
+                StackFlags::ACTED,
+                StackFlags::WAITED,
+                StackFlags::HAD_MORALE,
+                StackFlags::STARTED,
+            ] {
+                s.flags.set(flag, false);
+            }
+        }
+        if pickable(&s) && !s.spells.status.contains(Status::NO_TURNS) {
+            // At most STACK_CAPACITY stacks.
+            let _ = out.push((id, OrderKey::new(id, &s, wait_phase)));
+        }
+    }
+    out
+}
+
+/// Appends to `out` the stacks of `keys` not in `done` (a bit per id) in the order the picks
+/// take them, the tie-break starting from `last`; returns the tie-break's side after them.
+fn fill(
+    out: &mut FixedVec<StackId, STACK_CAPACITY>,
+    keys: &[(u8, OrderKey)],
+    mut done: u64,
+    mut last: Option<BattleSide>,
+    stacks: &[Stack],
+) -> Option<BattleSide> {
+    while let Some(&(id, _)) = keys
+        .iter()
+        .filter(|(id, _)| done & (1u64 << id) == 0)
+        .min_by_key(|(_, key)| key.rank(preferred(last)))
+    {
+        push(out, StackId(id));
+        done |= 1u64 << id;
+        last = Some(acted_side(&stacks[usize::from(id)]));
+    }
+    last
+}
+
+/// Appends `id` to `out`, which has room for every stack.
+fn push(out: &mut FixedVec<StackId, STACK_CAPACITY>, id: StackId) {
+    let _ = out.push(id);
 }
 
 /// Starts a new round, not in its wait phase (BAT-MAG-056): each side's rounds since its periodic

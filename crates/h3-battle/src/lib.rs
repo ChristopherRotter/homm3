@@ -83,6 +83,7 @@ pub use state::{
 };
 pub use tactics::{TacticsPhase, TacticsRounds};
 pub use terrain::{generate_battlefield_obstacles, generate_obstacles, generate_setup_obstacles};
+pub use turn::{TurnOrder, turn_order};
 
 #[cfg(test)]
 mod tests;

@@ -48,6 +48,7 @@ mod tactics;
 mod terrain;
 mod timed;
 mod town;
+mod turn_order;
 mod turrets;
 mod walls;
 mod war;

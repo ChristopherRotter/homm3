@@ -42,7 +42,7 @@ def test_the_layout_is_the_librarys() -> None:
     seen = 0
     for _ in range(40):
         for env in np.nonzero(batch.to_move >= 0)[0]:
-            stacks = batch.obs[env, L.STACKS :].reshape(L.STACK_CAPACITY, L.STACK_FEATURES)
+            stacks = batch.obs[env, L.STACKS : L.ORDER].reshape(L.STACK_CAPACITY, L.STACK_FEATURES)
             present = stacks[:, L.PRESENT] == 1.0
             legal = np.nonzero(batch.entry_mask[env])[0]
             for lo, hi, per in (
@@ -117,7 +117,7 @@ def test_an_empty_slot_is_not_seen_and_the_slots_order_does_not_matter() -> None
     obs = torch.from_numpy(batch.obs.copy())
     batch.close()
     net = small().eval()
-    stacks = obs[:, L.STACKS :].view(-1, L.STACK_CAPACITY, L.STACK_FEATURES)
+    stacks = obs[:, L.STACKS : L.ORDER].view(-1, L.STACK_CAPACITY, L.STACK_FEATURES)
     present = stacks[..., L.PRESENT] == 1.0
     row = int(torch.nonzero(present.sum(1) >= 2)[0, 0])
     empty = int(torch.nonzero(~present[row])[0, 0])
@@ -126,7 +126,7 @@ def test_an_empty_slot_is_not_seen_and_the_slots_order_does_not_matter() -> None
         # Noise in an empty slot (its present flag still 0) changes nothing the heads read
         # but that slot's own token.
         noisy = obs[row : row + 1].clone()
-        view = noisy[:, L.STACKS :].view(1, L.STACK_CAPACITY, L.STACK_FEATURES)
+        view = noisy[:, L.STACKS : L.ORDER].view(1, L.STACK_CAPACITY, L.STACK_FEATURES)
         view[0, empty, 1:] = torch.rand(L.STACK_FEATURES - 1) * 50
         c2, t2, h2 = net.encode(noisy)
         assert torch.allclose(context, c2, atol=1e-6) and torch.equal(hexes, h2)
@@ -135,7 +135,7 @@ def test_an_empty_slot_is_not_seen_and_the_slots_order_does_not_matter() -> None
         # Two present stacks swap their slots: the context stays, their tokens swap.
         a, b = torch.nonzero(present[row])[:2, 0].tolist()
         swapped = obs[row : row + 1].clone()
-        view = swapped[:, L.STACKS :].view(1, L.STACK_CAPACITY, L.STACK_FEATURES)
+        view = swapped[:, L.STACKS : L.ORDER].view(1, L.STACK_CAPACITY, L.STACK_FEATURES)
         view[0, [a, b]] = view[0, [b, a]].clone()
         c3, t3, _ = net.encode(swapped)
         assert torch.allclose(context, c3, atol=1e-5)
@@ -144,9 +144,9 @@ def test_an_empty_slot_is_not_seen_and_the_slots_order_does_not_matter() -> None
 
 def test_the_entity_network_refuses_other_encodings(monkeypatch) -> None:
     batch = BattleBatch(1)
-    other = {"observation_encoding": 22, "action_encoding": 13}
+    other = {"observation_encoding": 23, "action_encoding": 13}
     monkeypatch.setattr(_ffi, "versions", lambda: other)
-    with pytest.raises(ValueError, match="observation encoding v21"):
+    with pytest.raises(ValueError, match="observation encoding v22"):
         Entity.for_batch(batch)
     batch.close()
     with pytest.raises(ValueError, match="no multiple"):
@@ -159,8 +159,9 @@ def test_the_architecture_shows_its_parts_costs_and_diagram(tmp_path, capsys) ->
     mlp = Mlp.for_batch(batch, hidden=32, embed=8)
     batch.close()
     by_name = {p.name: p for p in parts(mlp, obs)}
-    # The MLP's trunk: 8 882 × 32 + 32 × 32 multiply-adds a decision, its shape the hidden width.
-    assert by_name["trunk"].macs == L.OBSERVATION_LEN * 32 + 32 * 32
+    # The MLP's trunk: 8 882 × 32 + 32 × 32 multiply-adds a decision (v21's prefix: no turn
+    # order), its shape the hidden width.
+    assert by_name["trunk"].macs == L.ORDER * 32 + 32 * 32
     assert by_name["trunk"].shape == (8, 32) and by_name["trunk"].cast_macs == 0
     assert by_name["spell_head"].macs == 0 and by_name["spell_head"].cast_macs == 34 * 128
     assert sum(p.parameters for p in by_name.values()) == sum(p.numel() for p in mlp.parameters())

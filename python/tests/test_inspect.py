@@ -116,7 +116,7 @@ def test_the_categories_and_the_observations_reading() -> None:
     obs[0, L.ROUND] = 3
     hero = obs[0, L.HEROES : L.OWN_HERO].reshape(2, L.HERO_PUBLIC_FEATURES)
     hero[1, [0, L.HERO_MANA, L.HERO_MAX_MANA]] = 1, 4, 20
-    stacks = obs[0, L.STACKS :].reshape(L.STACK_CAPACITY, L.STACK_FEATURES)
+    stacks = obs[0, L.STACKS : L.ORDER].reshape(L.STACK_CAPACITY, L.STACK_FEATURES)
     # Own: 3 creatures of 10 hit points, the top one at 4 (24), 5 at the start; a war machine.
     # The opponent's: 2 of 7 (14), its turn started, it defended; a turret, the active stack; a
     # dead stack.

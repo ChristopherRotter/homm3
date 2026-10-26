@@ -247,8 +247,8 @@ static int play_batch(Batched *out) {
 }
 
 int main(void) {
-    CHECK(h3_abi_version() == 33);
-    CHECK(h3_observation_encoding_version() == 21 && h3_action_encoding_version() == 13);
+    CHECK(h3_abi_version() == 34);
+    CHECK(h3_observation_encoding_version() == 22 && h3_action_encoding_version() == 13);
     CHECK(h3_encounters_version() == 1);
     CHECK(h3_system_policy_version() > 0); /* v32 */
 

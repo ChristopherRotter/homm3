@@ -21,6 +21,7 @@ from h3env import BattleBatch, _ffi
 torch = pytest.importorskip("torch")
 
 from h3env.train import EVAL_SEED, Config, Policy, Rollout, gae, resume, train  # noqa: E402
+from h3env.train import layout as L  # noqa: E402
 from h3env.train.entity import Entity  # noqa: E402
 from h3env.train.evaluate import (  # noqa: E402
     GATE_V1_SEED,
@@ -857,6 +858,56 @@ def test_a_preview_run_gates_plays_its_ladder_and_resumes(tmp_path) -> None:
     assert best.reads_preview
     rows = ladder(best, opponents=["random"], per_kind=1, max_steps=300)
     assert rows["random"]["games"] == 6
+
+
+def test_the_turn_order_reaches_the_trunk_only_with_order() -> None:
+    # The turn-order probe (E06-log): a network with `[network] order` reads observation v22's
+    # turn order; one without, as every network saved before v22, only v21's prefix.
+    batch = BattleBatch(8, threads=1, seed=3, max_steps=300)
+    batch.add_scenario(scenario("full"))
+    batch.add_encounters()
+    batch.reset()
+    obs = torch.from_numpy(batch.obs.copy())
+    # Each row's round has a first stack, its side's first; past the tactics phase (round 0,
+    # whose order is the first round's) it is the active stack.
+    order = obs[:, L.ORDER :].view(len(obs), L.STACK_CAPACITY, L.ORDER_FEATURES)
+    active = obs[:, L.STACKS : L.ORDER].view(len(obs), L.STACK_CAPACITY, L.STACK_FEATURES)
+    first = order[..., L.ORDER_ROUND] == 1
+    assert obs.shape[1] == L.OBSERVATION_LEN and first.sum(1).eq(1).all()
+    assert torch.equal(order[..., L.ORDER_SIDE][first], torch.ones(len(obs)))
+    fought = obs[:, L.ROUND] > 0
+    assert fought.any()
+    assert torch.equal(first[fought], active[fought][..., L.ACTIVE] == 1)
+    torch.manual_seed(0)
+    reads = Mlp.for_batch(batch, hidden=32, embed=8, order=True)
+    plain = build({"hidden": 32, "embed": 8}, batch)  # a saved config from before v22
+    batch.close()
+    assert reads.reads_order and not plain.reads_order
+    assert reads.trunk[0].in_features == L.OBSERVATION_LEN
+    assert plain.trunk[0].in_features == L.ORDER
+    moved = obs.clone()
+    moved[:, L.ORDER :] += 5.0
+    with torch.no_grad():
+        assert not torch.equal(reads.encode(obs)[0], reads.encode(moved)[0])
+        assert torch.equal(plain.encode(obs)[0], plain.encode(moved)[0])
+
+
+def test_an_order_run_resumes_and_its_files_read_the_order(tmp_path) -> None:
+    # A run whose network reads the turn order: stopped after its first update, resumed to the
+    # budget; its record names the option and its best network reads the order.
+    config = Config(**SMALL, order=True, samples=2 * ONE_UPDATE, snapshot_every=1)
+
+    def interrupt(record: dict) -> None:
+        if record["type"] == "update" and record["update"] == 1:
+            signal.raise_signal(signal.SIGINT)
+
+    stopped = train(config, tmp_path, log=interrupt)
+    assert stopped.policy.reads_order
+    finished = resume(tmp_path)
+    assert finished.updates >= 2 and finished.policy.reads_order
+    record = json.loads((tmp_path / "record.json").read_text())
+    assert check_record(record) == [] and record["config"]["network"]["order"] is True
+    assert load(tmp_path / "best.pt").reads_order
 
 
 def test_a_checkpoint_plays_the_ladder(tmp_path, capsys) -> None:

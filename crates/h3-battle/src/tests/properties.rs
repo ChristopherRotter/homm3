@@ -3291,3 +3291,64 @@ fn extreme_sieges_play_without_failures() {
         "{reach:?}"
     );
 }
+
+proptest! {
+    #![proptest_config(Config { cases: 64, ..Config::default() })]
+
+    /// The turn order (BAT-TRN-001 to BAT-TRN-003) is the same for both viewers, starts with the
+    /// active stack and foretells the next turn: in arbitrary games (sieges, war machines,
+    /// turrets, created stacks, effects, morale), after a Defend whose step holds nothing but
+    /// turns (no morale, Fear, regeneration, effect, obstacle or automatic action), the stack
+    /// activated is the one the order told next: the round's second, or the next round's first.
+    #[test]
+    fn the_turn_order_foretells_the_next_turn(
+        (att, def, ground, seed, steps, hidden) in arb_game(),
+    ) {
+        let r = lively();
+        let setup = game_setup(&r, (&att, &def, &ground), seed, &hidden);
+        let mut state = BattleState::new(&r, &setup, seed).unwrap();
+        let mut legal = LegalCommands::new();
+        let mut events = Vec::new();
+        for step in &steps {
+            let (actor, cmd) = resolve(&state, &r, step, &mut legal);
+            let obs = observe(&state, &r, BattleSide::Attacker);
+            let told = crate::turn_order(&obs);
+            prop_assert_eq!(&told, &crate::turn_order(&observe(&state, &r, BattleSide::Defender)));
+            if obs.tactics.is_none() {
+                prop_assert_eq!(told.round.as_slice().first().copied(), state.active());
+            }
+            events.clear();
+            let applied = apply(&mut state, &r, actor, cmd, &mut events).is_ok();
+            if !applied || obs.tactics.is_some() || cmd != Command::Defend || state.result().is_some() {
+                continue;
+            }
+            let quiet = events.iter().all(|e| {
+                matches!(
+                    e.kind,
+                    EventKind::Defended { .. }
+                        | EventKind::TurnStarted { .. }
+                        | EventKind::RoundStarted { .. }
+                )
+            });
+            if quiet {
+                // The turns started, an automatic one that did nothing among them, follow the
+                // order: the round's rest, then the next round's.
+                let started: Vec<StackId> = events
+                    .iter()
+                    .filter_map(|e| match e.kind {
+                        EventKind::TurnStarted { stack } => Some(stack),
+                        _ => None,
+                    })
+                    .collect();
+                let ahead: Vec<StackId> = told.round.as_slice()[1..]
+                    .iter()
+                    .chain(told.next.iter())
+                    .copied()
+                    .take(started.len())
+                    .collect();
+                prop_assert_eq!(&started, &ahead);
+                prop_assert_eq!(state.active(), started.last().copied());
+            }
+        }
+    }
+}
