@@ -621,3 +621,49 @@ T1a1 the recording and the idle loop, T1a2 the scroll with the speed options and
 - **MCL-Q6** (open): the edge zones are 16, 14, 16 and 15 pixels wide (the x rounding of E17's
   drawing bug narrows the east one); recommended: even zones in the client, the original's tests
   for the comparisons. A run of the six sequences takes about 40 minutes.
+
+### M2 T1b — the walk (2026-10-26)
+
+- **Read** (`E24-design.md` §3.5; map entries `hero_move_loop` 0x407B80 and `hero_move_step`
+  0x4805E0 extended, `view_draw_here` 0x40F870, `mobilize_hero` 0x4175E0 (H3API's
+  MobilizeHero), `hero_select` 0x417B20 (in part), `ambient_sounds_at` 0x4183D0 (inferred),
+  `path_arrow_at` 0x41B010, `def_draw_group_blend` 0x47C120 (inferred), `hero_walk_end`
+  0x47F7D0, the lifted hero's passes 0x47F860, 0x47FB40, 0x47FC80 (now read),
+  `hero_walk_animation` 0x480380, `hero_step_allowed` 0x481BE0 (inferred), `music_track_play`
+  0x59A1E0, the walk's tables 0x63D6C8, 0x63D6DC, 0x63D6F0, `terrain_music_tracks` 0x678330,
+  `step_sound_playing` 0x6968E0, `step_sound_next` 0x6968E4; the speed options' and
+  `view_shown`'s entries extended; the manager's +0xF4 corrected and +0x1EC to +0x20C, +0x360,
+  +0x388, +0x390 in `structs.toml`). A human player's selected hero is lifted off its tile and
+  drawn at the view's fixed centre (passes 5, 7 and 9, the last a blend); a step moves its tile
+  at once, centres the view on the new tile and slides the view's pixel offset from 32 x (dx, dy)
+  to 0 in 4, 3 or 2 frames of 50 ms (hero speeds 1 to 3; 8, 10-12-10, 16 pixels), one draw
+  without a wait at speed 4 (the computer's speeds 2 to 5 the same tables, 5 drawing nothing);
+  the walking groups 5 to 9, the frame stepped by pass 9 at each frame and carried from step to
+  step; no wait between steps; the next tile's arrow zeroed at the step's start; the objects
+  stand still during a walk (no idle step), the palettes step on; the standing group at the end,
+  shown by the next idle redraw. §1.2's "no pixel scrolling" corrected (the walk writes the
+  offset). The step sounds' calls and the terrain music's for T5. VCMI compared (§3.3): the same
+  times a tile, the same centring, but continuous; objects animated during a walk.
+- **Built** (the harness, additive): `frames`' option `points` (the selected hero's movement
+  points, `Mem.write_points`) and input `click` (handled, 500 clock reads, before the next input:
+  a walk at speed 4 ends inside it and reads the pointer); the timeline's walk lines `hero`,
+  `walk`, `arrows`, only where they change (`Mem.selected`, `Mem.walk`), so the earlier
+  sequences' timelines stay as recorded (`scroll-limits` run again: ok). The runbook's "The
+  walk". The objects' animation phases written 0 once a sequence's situation is staged
+  (`Mem.write_phases`) and their frame steps 0 at its 0 (`Mem.write_frame_steps`): two rounds of
+  second runs differed only in the screen's changed boxes at idle redraws, which moved with the
+  two mines' random phases and then with the steps' count since the load. T1a's sequences run
+  again with both: `idle-objects`, `idle-cycles`, `scroll-0` to `scroll-2` as recorded;
+  `scroll-limits` differed in one box (a hero's flag at the idle redraw at 720, one row), so it
+  was recorded again, twice the same. Three VM restarts cut runs (resumed).
+- **Recorded** (situations `seq-walk`, `seq-walk-follow`, `seq-sail`): `walk-1` to `walk-4` (each
+  hero speed: the eight direction keys without Ctrl, a four-tile path clicked twice),
+  `walk-follow` (the view not centred, an eight-tile walk, a scroll and a step), `walk-points` (a
+  walk the points end, the path's rest kept), `walk-sail` (a boat on open water); each twice
+  the same, every frame at 0 exact. Everything as read. No oddity of the original found (no
+  `MCL-Q`). A run of the seven sequences takes about 35 minutes.
+- **Decided with the user** at the start: MCL-Q6 answered (a), the client's edge zones 16 pixels
+  on every side; T1b done whole (not cut); **key bindings**: T4's window takes every key through
+  a table of actions (the original's keys its defaults, a user file overriding them), M3 T0 moves
+  it into the common crate with the battle viewer's keys (the client lane's inbox), a rebinding
+  screen with the options dialog later.

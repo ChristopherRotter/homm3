@@ -1,0 +1,14 @@
+# A boat sailing (E24 M2 T1b; clients/map/sequences.toml `walk-sail`; E24 design §3.5): `boats`'
+# copy of Deluge's lake, Red's hero walking onto a boat on a tile given an open water picture
+# (waves, the boat's flag in Red's colour, the boat; boarding takes the day's points, which the
+# sequence's `points` gives back), the view centred on it; Blue's hero on land.
+size = 36
+terrain = "grass"
+copy = [{ map = "Deluge.h3m", from = [4, 16], to = [22, 32], at = [0, 0] }]
+tiles = [{ at = [9, 12], terrain = "water", picture = 21 }]
+heroes = [
+    { at = [8, 12], class = 6, walk = [[9, 12]] },
+    { at = [2, 14], owner = 1 },
+]
+boats = [{ at = [9, 12], kind = 1 }]
+view = [0, 4, 0]

@@ -1,0 +1,17 @@
+# The walk on land (E24 M2 T1b; clients/map/sequences.toml `walk-1` to `walk-4`, `walk-points`;
+# E24 design §3.5): grass with a dirt and a rough patch (the view's pixel offset shows on every
+# tile), two owned mines whose flags step (the objects during a walk); Red's hero in the middle
+# with every neighbour free and grass between it and the clicked tiles, the view centred on it
+# (the hero at the view's column 9, row 8, where a walk keeps it); Blue's hero far off.
+size = 36
+terrain = "grass"
+patches = [
+    { terrain = "dirt", from = [9, 10], to = [13, 14] },
+    { terrain = "rough", from = [21, 21], to = [25, 24] },
+]
+heroes = [{ at = [17, 17], class = 2 }, { at = [33, 2], owner = 1 }]
+objects = [
+    { def = "AVMsawg0.def", at = [13, 23], owner = 0 },
+    { def = "AVMgold0.def", at = [26, 11], owner = 1 },
+]
+view = [8, 9, 0]

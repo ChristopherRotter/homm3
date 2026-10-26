@@ -44,9 +44,10 @@ drawer (`def_draw_plain`, runs skipped, not mirrored): part of the view, not of 
 
 ### 1.2 Where a tile goes
 
-- Tile (vx + i, vy + j) is drawn at **(32 i, 8 + 32 j)** plus manager +0xF4, +0xF8, which only
-  the construction writes (0x406DF0: 0). So there is no pixel scrolling: the view moves by tiles
-  (M2 checks).
+- Tile (vx + i, vy + j) is drawn at **(32 i, 8 + 32 j)** plus manager +0xF4, +0xF8, which the
+  construction sets to 0 (0x406DF0). So the scroll moves the view by tiles (§3.4); **corrected by
+  M2 T1b:** a walk's animation writes them, the map sliding by pixels under the walking hero
+  (`hero_walk_animation` 0x480380, §3.5).
 - Every pass clips each 32 × 32 tile to **x 8 … 599, y 8 … 551** (592 × 544): columns 0 and 18
   show 24 pixels each (x 8–31, 576–599), columns 1–17 whole, rows 0–16 whole; column −1 and 19,
   row 17 draw nothing, row −1 only a road's lower half. Its constants (8, 600, 544 and the 8 added
@@ -781,6 +782,12 @@ it is compared with the original's at 0 (must be exact).
 | Edge (T1a2) | `borderScrollWidth` 15: x < 15, x > width − 15; none while Ctrl is down or the window has no focus | differ by a pixel: 16 (x < 16, x > 784); the original's own focus flag the same (§3.4) |
 | Keys (T1a2) | the eight direction keys walk the selected hero (`config/keyBindingsConfig.json`, `moveHeroDirectional`); no key scrolls | the same without Ctrl; with Ctrl they scroll, one step a press (§3.4) |
 | Edge cursors (T1a2) | `Cursor::Map::SCROLL_*` by the direction while scrolling, the pointer when the delta is nothing | the same frames (32 to 39); the arrow once the view stops at a limit (§3.4) |
+| Walk's time (T1b) | `MapViewController::tick`: the move's progress by each rendered frame's time over `heroMoveTime` a tile (the options 200, 150, 100, 50, 25 ms and 0 instant, default 150; `enemyMoveTime` the computer's) | the same 200, 150, 100 ms a tile at speeds 1 to 3 and instant at 4, but in 4, 3 or 2 frames of 50 ms (§3.5); no 50 or 25 |
+| The view in a walk (T1b) | centred on the hero's interpolated place every rendered frame (`setViewCenter`), the hero drawn by `objectImageOffset` | the same centring, the map sliding by 8, 10-12-10 or 16 pixels a frame under the hero drawn at a fixed place (§3.5) |
+| The walking hero's frames (T1b) | `MapRendererAdventureMovingContext::objectImageIndex`: the animation time div 50 mod the group's frames; `moveGroups` by the rotation | the same 50 ms and walking groups (5 to 9, the left ones mirrored); the frame counted from the walk's start, one a drawn frame, carried from step to step (§3.5) |
+| The path in a walk (T1b) | `HeroMovementController::updatePath`: the node removed when the server's move arrives, before its animation | the same: the next tile's arrow gone at the step's start (§3.5) |
+| Objects in a walk (T1b) | animated on (the context's animation time runs) | differ: they stand still (no idle step runs during a walk), the palettes step on (§3.5) |
+| Step sounds (T1b) | `getMovementSoundFor`: one looped sound while the terrain stays, the terrain's `horseSound` on a road at both ends, else `horseSoundPenalty`; `HORSE10` flying | one sample a cycle of 8 frames by the new tile's terrain (+0x360), +0x388 in a boat or flying; no road read (which samples: T5) |
 
 ### 3.4 The scroll (M2 T1a2)
 
@@ -866,3 +873,139 @@ shipped one, the view at (9, 10); every frame at 0 exact):
   limit at 2 300: nothing. Every step that moved redrew the whole view at once (screen lines at
   the steps' own milliseconds); the cursor's point followed each move at the next poll (132,
   825, 1 914, 2 211: the 33-ms grid from 0).
+
+### 3.5 The walk (M2 T1b)
+
+Path read: a human player's walk along the path shown, from the click on its destination
+(`hero_move_loop` 0x407B80; its visits by the destination's class, the switch at 0x408750, not
+read), and the eight direction keys without Ctrl (`adventure_key_down` from 0x408E97); in
+`hero_move_step` 0x4805E0 what draws and times a step (its pricing: E08; boarding and landing,
+0x480949 to 0x480B0C and `hero_boards_boat` 0x4A1010, the visits and the network branches not
+read: M4); the animation (`hero_walk_animation` 0x480380), the lifted hero's passes 5, 7 and 9
+(0x47FB40, 0x47F860, 0x47FC80), `hero_walk_end` 0x47F7D0, `mobilize_hero` 0x4175E0 and the lift
+and centring in `hero_select` 0x417B20 (the hero list and path rebuilt in between not read),
+`wait_until` 0x4F82F0 during the frames. Not read: the computer player's walks (its speed's use
+only, M4), `hero_step_allowed` 0x481BE0's tests, `draw_frame_blend` 0x47D4F0, which samples the
+step sounds are and the ambient sounds (0x4183D0; both T5).
+
+- **The lifted hero.** A human player's selected hero is drawn apart from the map while the
+  manager's +0x1EC is set: lifted off its tile (+0x20C; `hero_select` hides it from its tile's
+  draw list, +0x1F0 its class, 34, or a boat's, 8) and drawn at the screen's fixed place (256,
+  232), 96 × 64: the view's columns 8 to 10 and rows 7 and 8, its tile at the view's (9, 8). Pass
+  5 draws its shadow's six 32 × 32 pieces and pass 7 its pieces among the layers (§2.2: row 7
+  after layer 2, row 8 after layer 1), pass 9 the whole of it once more over everything through
+  `def_draw_group_blend` 0x47C120 (inferred: a 50/50 blend, `draw_frame_blend`), its part beyond
+  the map's side not drawn. In a boat: the waves (not on a coast tile), the boat's flag and the
+  boat; on land the flag and the hero (§2.3's DEFs). Group +0x1FC, frame +0x200, the flag's frame
+  (+0x100 + +0x200) mod 8, mirrored when the facing +0x47 is above 4. The places are fixed: the
+  view's pixel offset below does not move them. A scroll puts the hero back on its tile
+  (`adventure_hero_stop` clears +0x1EC and +0x20C, §3.4); the turn's start and each step lift it
+  again.
+- **The walk** (`hero_move_loop`, the second click on the path's destination): the hero lifted
+  (`mobilize_hero` with 1, 0, 0: not centred), the start tile's step sound played, then the
+  pathfinder's path step by step through `hero_move_step`, **no wait between steps**. After each
+  step the loop drains the input messages: a key-down, a mouse button or a control's message ends
+  the walk after the step running; so do a refused or unpaid step and an event. At its end
+  `hero_walk_end` (the standing group by the facing, `hero_map_group` 0x4D9110; frame 0; the step
+  sound stopped), the path cleared once the hero stands on its destination, else rebuilt for the
+  rest (`make_hero_path` 0x418DD0, which redraws), the cursor by the mouse, the terrain's music.
+  Nothing else redraws: the standing hero shows at the next idle redraw (§3.1), at once when its
+  deadline passed during the walk, which then steps +0x100 once for each 180 ms the walk spanned
+  past it, up to the deadline's catching up (the deadline moves by max(180, the lateness)).
+- **A step** (`hero_move_step`): `view_shown` set by whether the viewing player sees the step's
+  start or end tile (0x48071F: else no frame is drawn); `mobilize_hero` with 0, 0, 1 (a hero not
+  lifted, as after a scroll, is lifted, the view centred on it and the whole screen shown at once:
+  `hero_select` 0x417E44, 0x41809B); +0x1EC set; the facing +0x47 and +0x1F4 the direction; **the
+  next tile's arrow zeroed** (`path_arrow_at` 0x41B010, 0x480B30: no redraw of its own, the next
+  frame shows it gone); the step refused by `hero_step_allowed` (the walk ends); then the
+  animation; the points; at the walk's last step (the path's last tile, the points then 0, or an
+  event) the standing group, frame 0 and the step sound stopped (0x4811CD); the terrain's music
+  when the tile at the view's centre changed terrain (0x4812DF: `terrain_music_tracks` 0x678330,
+  `music_track_play` 0x59A1E0); the new tile's step sound (below); the ambient sounds (0x48141B);
+  the view's offset back to 0 (0x481423).
+- **The animation** (`hero_walk_animation`): the walking group by the direction (0x4805BC: 5 up,
+  6 up-right and up-left, 7 right and left, 8 down-right and down-left, 9 down; the left ones
+  mirrored by the facing), +0x390 set, **the hero's tile moved to the next at once**. With
+  `view_shown`: **the view's corner the new tile less (9, 8)** (centred on the hero, never
+  clamped: the scroll's limits, §3.4, hold anyway) and **the view's pixel offset** (+0xF4, +0xF8,
+  added to every tile's place by every pass: §1.2's "no pixel scrolling" holds for the scroll,
+  not for the walk) from (32 dx, 32 dy) (`walk_start_offsets` 0x63D6F0): the screen looks as
+  before the step. Then each frame: its end = now + the frame's time, the offset less the
+  frame's pixels times (dx, dy), the view drawn (`view_draw_here` 0x40F870) and (0, 8) to (608,
+  552) shown at once, `wait_until` its end; so the map slides under the hero, who stays at the
+  view's centre. The speed is `option_walk_speed` for a human player, `option_computer_walk_speed`
+  else, read at each step (0x480421), by the tables `walk_frame_pixels` 0x63D6C8 and
+  `walk_frame_times` 0x63D6DC:
+
+  | Speed | Frames a tile | Their pixels | A frame | A tile |
+  |---|---|---|---|---|
+  | 1 | 4 | 8 | 50 ms | 200 ms |
+  | 2 (the default) | 3 | 10, 12, 10 (0x480509) | 50 ms | 150 ms |
+  | 3 | 2 | 16 | 50 ms | 100 ms |
+  | 4 | the view drawn and shown once at offset 0, no wait (0x480483) | | | 0 |
+  | the computer's 2 to 4 | as the human's 2 to 4 | | | |
+  | the computer's 5 | none (32 / 100 frames): nothing drawn | | | 0 |
+
+  Table index 0 (16 frames of 2 pixels, 100 ms each) is no setting's. The waits run the tick
+  (`wait_until` calls `adventure_tick`), so the palettes step every 200 ms during a walk and show
+  at the next frame; the objects' step +0x100 does not move during a walk (no idle step runs), so
+  the map's objects stand still while the hero walks, the hero's own flag stepping with its frame.
+- **The frames.** Pass 9 steps the frame +0x200 after it drew it while +0x390 is set (0x47FF6D):
+  one frame of the group a frame of the animation, mod 8, carried from step to step, back to 0
+  at the walk's end. Memory after a frame holds the frame pass 9 draws next (the timeline's
+  `walk` lines).
+- **The keys without Ctrl** (`adventure_key_down` 0x408E97): with a selected hero whose step that
+  way `hero_step_allowed` allows: a path shown is cleared and the view redrawn and shown at once
+  (with the objects' step when due); the hero's destination the neighbour; `hero_move_step` with
+  the last step's flag (one step, as above); `hero_walk_end` when the step says so; the cursor,
+  the music. A key-down is one step (the original repeats nothing itself, §3.4).
+- **The sounds** (for T5): the walk's start plays the start tile's step sound (0x407D03); a
+  step's end plays the new tile's at once while the frame +0x200 is 0, else queues it
+  (`step_sound_next` 0x6968E4) and pass 9 plays it when the frame wraps to 0 (0x47FF88), stopping
+  the one playing (`step_sound_playing` 0x6968E0); `hero_walk_end` stops it. The sounds: the
+  manager's +0x360 by the tile's terrain, +0x388 in a boat or flying (Angel Wings, or +0x112 not
+  -1); which samples they are, T5.
+
+**Recorded** (`clients/map/sequences.toml`; situations `seq-walk`, `seq-walk-follow`,
+`seq-sail`; the timeline's walk lines since T1b: `hero`, `walk`, `arrows`, only where they
+change; the objects' phases and frame steps written 0, as the screen's changed boxes at the
+idle redraws moved with the load's random phases and real time: the runbook; every frame at 0
+exact):
+
+- **`walk-2`** (speed 2): each direction key steps the hero at its press's millisecond: the
+  view's corner the new tile less (9, 8), the walking group by the direction (5, 6, 7, 8, 9, 8, 7,
+  6 for north to north-west, the facing 0 to 7) and frames at the press, + 50 and + 100 with
+  the offsets 22, 10, 0 times (dx, dy), each a whole view; at + 150 the standing group (0 to 4 by
+  the facing) and frame 0 in memory and an idle redraw at once (its deadline passed during the
+  step: the objects + 1, the deadline kept on its 180-ms grid), whose screen changes only at the
+  hero. The path clicked at 2 500 shows four arrows at once (`make_hero_path`'s redraw, the
+  objects as they stood); clicked again at 2 700, after the idle redraw due then: four steps at
+  2 700, 2 850, 3 000 and 3 150, each starting with its tile's arrow gone and the view moved, the
+  frame carried on (1, 2, 3, then 4, 5, 6, then 7, 0, 1, then 2, 3, 4); the palettes stepping at
+  2 800, 3 000, 3 200 in the frames, the objects not; the last frame at 3 250, the standing group
+  and the idle redraw at 3 300 (the objects + 2: the deadline 2 880 had passed by 420 ms).
+- **`walk-1`, `walk-3`** (speeds 1 and 3, the same inputs): four frames 50 ms apart with the
+  offsets 24, 16, 8, 0 (a key's step ends at + 200), two with 16, 0 (+ 100); the click's walk at
+  2 700 steps every 200 and 100 ms, the frame carried on (speed 1: 1 to 4, 5 to 0, 1 to 4, 5 to
+  0); otherwise as `walk-2`.
+- **`walk-follow`** (speed 2; the view at (0, 9), the hero at (6, 17), the view's column 6):
+  the path to (14, 19) shown at 100; walked from 300: the first frame already at the view
+  centred on the first step's tile ((−2, 9): x past the map's side), every step moving it with
+  the hero; the standing group at 1 500. Ctrl and Down at 1 800 scroll the view to (5, 12), the
+  hero back on its tile (its flag stepping there at 2 040, a row above the centre); Right at
+  2 100 steps it and the first frame shows the view centred again ((6, 11)).
+- **`walk-4`** (speed 4): a key's step is one whole-view frame at its press, the view and the
+  hero's tile moved, the standing group already in memory: the frame drawn shows the walking
+  group's frame 0 (the one draw), the standing picture at the next idle redraw on the 180-ms grid
+  (+ 80). The click's walk of four tiles falls whole in its millisecond (2 700: the view, the
+  hero, the arrows gone, the standing group); the walk's end then reads the pointer, still on the
+  clicked tile (the harness settles a click before the next input: the cursor drawn there until
+  the poll at 2 706 moves it to the parked point).
+- **`walk-points`** (450 points, a tile six steps east): the path's arrows, four green and two
+  red (the frames + 1: 12, then 37 and the destination's 26); four steps (300 to 750), the points
+  then 50, less than a step: 0 and the walk's last step; the standing group at 900, the two red
+  arrows kept (the path rebuilt the same).
+- **`walk-sail`** (the hero in a boat, 1 500 points, a water tile five steps north-east): the
+  boat's walking group 6 and its frames as a hero's, five steps 150 ms apart from 300; the
+  standing group 1 at 1 050; the view's corner passing the map's top (y −1). The palettes keep
+  stepping the water, shown at each redraw.
