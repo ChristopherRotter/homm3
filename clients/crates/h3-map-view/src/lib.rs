@@ -40,6 +40,7 @@ pub mod art;
 pub mod batch;
 pub mod check;
 pub mod compose;
+pub mod cursor;
 pub mod draw;
 pub mod layout;
 pub mod live;

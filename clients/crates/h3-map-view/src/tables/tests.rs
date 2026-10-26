@@ -115,7 +115,11 @@ fn loads_a_selection_dependencies_first() {
     assert_eq!(tables.map.road_offset, 16);
     assert_eq!((tables.map.cycle_ms, tables.map.frame_ms), (200, 180));
     assert_eq!(
-        (&tables.map.scroll_steps[..], tables.map.scroll_ms, tables.map.poll_ms),
+        (
+            &tables.map.scroll_steps[..],
+            tables.map.scroll_ms,
+            tables.map.poll_ms
+        ),
         (&[1, 2, 3][..], 70, 33)
     );
     assert_eq!(
@@ -456,11 +460,18 @@ fn refuses_what_breaks_the_format() {
     );
     // The scroll's steps (E24 M2 T2): one per speed, each at least a tile; a poll's time.
     for steps in ["[1, 2]", "[1, 2, 3, 4]", "[0, 2, 3]"] {
-        let bad = base("").replacen("scroll_steps = [1, 2, 3]", &format!("scroll_steps = {steps}"), 1);
+        let bad = base("").replacen(
+            "scroll_steps = [1, 2, 3]",
+            &format!("scroll_steps = {steps}"),
+            1,
+        );
         check(
             &[bad],
             "base",
-            entry("scroll_steps", "one step of at least a tile per scroll speed (3)"),
+            entry(
+                "scroll_steps",
+                "one step of at least a tile per scroll speed (3)",
+            ),
             "`scroll_steps`: one step of at least a tile per scroll speed (3)",
         );
     }

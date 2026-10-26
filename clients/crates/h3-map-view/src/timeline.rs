@@ -19,6 +19,7 @@ use alloc::vec::Vec;
 use core::fmt;
 
 use h3_render::Bugs;
+use h3_render::screen::Screen;
 
 use crate::layout::{AdventureLayout, DIRECTIONS};
 use crate::scene::ViewAt;
@@ -113,7 +114,8 @@ pub enum Action {
 /// Why the timeline cannot play an action yet.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Unplayable {
-    /// A hero's step or a click: the walk, M2 T3's (MCL-STUB-1).
+    /// A hero's step or a click: the walk, M2 T3's (the `sequences` command lists such a
+    /// sequence as T3's, not as failed).
     Walk,
     /// The pointer over the view: the cursor by the tile under it, M3's.
     OverView([i32; 2]),
@@ -122,7 +124,7 @@ pub enum Unplayable {
 impl fmt::Display for Unplayable {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Walk => write!(f, "a hero's walk (M2 T3, MCL-STUB-1)"),
+            Self::Walk => write!(f, "a hero's walk (M2 T3)"),
             Self::OverView([x, y]) => write!(f, "the pointer over the view at ({x}, {y}) (M3)"),
         }
     }
@@ -322,11 +324,7 @@ impl Loop {
     /// # Errors
     /// [`Unplayable::OverView`] for a pointer over the view.
     pub fn start(rules: Rules, start: &Start) -> Result<Self, Unplayable> {
-        let step = rules
-            .steps
-            .get(start.scroll_speed)
-            .copied()
-            .unwrap_or(1);
+        let step = rules.steps.get(start.scroll_speed).copied().unwrap_or(1);
         let cursor = Cursor {
             frame: rules.arrow,
             at: rules.drawn_at(start.pointer),
@@ -546,6 +544,28 @@ pub fn lines(states: &[State], screens: &BTreeMap<u32, [i32; 4]>) -> Vec<String>
         last = Some(s);
     }
     out
+}
+
+/// The box two frames differ in within `area` (left, top, right, bottom, the last two exclusive),
+/// as the timeline's `screen` lines give it (the harness's `changed_box` over the screen outside
+/// the panels); `None` when nothing in it differs. Frames of other sizes differ in all of it.
+#[must_use]
+pub fn changed(before: &Screen, after: &Screen, area: [i32; 4]) -> Option<[i32; 4]> {
+    let [left, top, right, bottom] = area;
+    if (before.width(), before.height()) != (after.width(), after.height()) {
+        return Some(area);
+    }
+    let mut found: Option<[i32; 4]> = None;
+    for y in top..bottom {
+        for x in left..right {
+            let (x64, y64) = (i64::from(x), i64::from(y));
+            if before.pixel(x64, y64) != after.pixel(x64, y64) {
+                let [x0, y0, x1, y1] = found.unwrap_or([x, y, x + 1, y + 1]);
+                found = Some([x0.min(x), y0.min(y), x1.max(x + 1), y1.max(y + 1)]);
+            }
+        }
+    }
+    found
 }
 
 #[cfg(test)]

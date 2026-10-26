@@ -106,7 +106,10 @@ impl Sequence {
     pub fn scroll_speed(&self) -> Result<usize, String> {
         let speed = self.scroll_speed.unwrap_or(DEFAULT_SCROLL_SPEED);
         if speed >= SCROLL_SPEEDS {
-            return Err(format!("{}: the scroll speed {speed} is not 0 to 2", self.id));
+            return Err(format!(
+                "{}: the scroll speed {speed} is not 0 to 2",
+                self.id
+            ));
         }
         Ok(speed)
     }
@@ -145,10 +148,7 @@ impl Sequence {
                 return Err(failed("not exactly one of keydown, keyup, pointer, click"));
             }
             if !(last..=self.ms).contains(&input.at) {
-                return Err(failed(&format!(
-                    "out of order or outside 1 to {}",
-                    self.ms
-                )));
+                return Err(failed(&format!("out of order or outside 1 to {}", self.ms)));
             }
             last = input.at;
             let action = if let Some(name) = &input.keydown {

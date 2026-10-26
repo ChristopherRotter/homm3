@@ -38,7 +38,11 @@ fn loads_a_layout_and_places_its_tiles() {
     assert_eq!(view.gems[1].at, [556, 6]);
     assert_eq!((layout.scroll.middle, layout.scroll.edge), ([9, 8], 16));
     assert_eq!(
-        (layout.cursor.arrow, layout.cursor.edges, layout.cursor.hot[9]),
+        (
+            layout.cursor.arrow,
+            layout.cursor.edges,
+            layout.cursor.hot[9]
+        ),
         (0, 2, [17, 18])
     );
     let names: Vec<String> = layout.names().into_iter().collect();

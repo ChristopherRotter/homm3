@@ -5,11 +5,11 @@
 
 use std::collections::BTreeMap;
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
 use h3_map::Limits;
-use h3_map::writer;
+use h3_map::writer::{self, ObjectTemplate};
 use h3_map_view::situation::Situation;
 
 use crate::files;
@@ -67,25 +67,36 @@ fn write(options: &Options) -> Result<(), String> {
     let path = &options.file;
     let text = fs::read_to_string(path).map_err(|e| format!("{}: {e}", path.display()))?;
     let situation = Situation::parse(&text).map_err(|e| format!("{}: {e}", path.display()))?;
-    let mut sources = BTreeMap::new();
-    for name in situation.sources() {
-        let map = options.install.join("Maps").join(&name);
-        let bytes = fs::read(&map).map_err(|e| format!("{}: {e}", map.display()))?;
-        let raw = h3_map::read(&bytes, &Limits::default())
-            .map_err(|e| format!("{}: {e}", map.display()))?;
-        sources.insert(name, raw);
-    }
     let templates = if situation.needs_templates() {
         let bytes = files::read_archives(&options.install)?;
         files::templates(&files::parse_archives(&bytes)?)?
     } else {
         Vec::new()
     };
-    let (map, extras) = situation.build(&sources, &templates)?;
-    let bytes = writer::write_with(&map, &extras)
-        .map_err(|e| format!("the writer refuses the situation's map: {e}"))?;
+    let bytes = map_bytes(&situation, &options.install, &templates)?;
     if let Some(dir) = options.out.parent() {
         fs::create_dir_all(dir).map_err(|e| format!("{}: {e}", dir.display()))?;
     }
     fs::write(&options.out, bytes).map_err(|e| format!("{}: {e}", options.out.display()))
+}
+
+/// A situation's map as the writer writes it: the shipped maps its copies name read from
+/// `<install>/Maps`, the game's object templates given (`files::templates`; only a situation that
+/// gives objects by their DEF needs them). Also the sequences' (E24 M2 T2).
+pub fn map_bytes(
+    situation: &Situation,
+    install: &Path,
+    templates: &[ObjectTemplate],
+) -> Result<Vec<u8>, String> {
+    let mut sources = BTreeMap::new();
+    for name in situation.sources() {
+        let map = install.join("Maps").join(&name);
+        let bytes = fs::read(&map).map_err(|e| format!("{}: {e}", map.display()))?;
+        let raw = h3_map::read(&bytes, &Limits::default())
+            .map_err(|e| format!("{}: {e}", map.display()))?;
+        sources.insert(name, raw);
+    }
+    let (map, extras) = situation.build(&sources, templates)?;
+    writer::write_with(&map, &extras)
+        .map_err(|e| format!("the writer refuses the situation's map: {e}"))
 }

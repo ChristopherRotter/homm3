@@ -41,7 +41,10 @@ fn the_keys_and_the_clicks() {
         BTreeMap::from([
             (1, vec![Action::Step(Direction::NorthWest)]),
             (2, vec![Action::Scroll(Direction::SouthWest)]),
-            (3, vec![Action::Click([300, 200]), Action::Pointer([700, 300])]),
+            (
+                3,
+                vec![Action::Click([300, 200]), Action::Pointer([700, 300])]
+            ),
         ])
     );
     assert!(s.walks());
@@ -58,7 +61,10 @@ fn refuses_what_breaks_a_rule() {
             "{ at = 1, keydown = \"Up\", keyup = \"Up\" }",
             "s: the input at 1: not exactly one of keydown, keyup, pointer, click",
         ),
-        ("{ at = 1 }", "s: the input at 1: not exactly one of keydown, keyup, pointer, click"),
+        (
+            "{ at = 1 }",
+            "s: the input at 1: not exactly one of keydown, keyup, pointer, click",
+        ),
         (
             "{ at = 0, pointer = [1, 1] }",
             "s: the input at 0: out of order or outside 1 to 100",

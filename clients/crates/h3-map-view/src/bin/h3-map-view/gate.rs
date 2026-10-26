@@ -142,6 +142,9 @@ fn gate(options: &Options) -> Result<usize, String> {
     for (i, gem) in layout.view.gems.iter().enumerate() {
         needs.push((format!("gem {i}"), gem.def.clone(), GEM_FRAMES, 1));
     }
+    // The adventure cursor (E24 M2 T2): a frame for each hot spot the layout gives.
+    let cursor = &layout.cursor;
+    needs.push(("cursor".into(), cursor.def.clone(), cursor.hot.len(), 1));
     for (what, name, frames, groups) in &needs {
         let Some((archive, data)) = find(name)? else {
             problems.push(format!("{what}: {name} in no archive"));

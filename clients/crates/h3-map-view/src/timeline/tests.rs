@@ -152,7 +152,10 @@ fn looped(bugs: Bugs, speed: usize) -> Loop {
 fn the_redraws_and_the_palettes_on_their_grids() {
     let mut l = looped(Bugs::Fixed, 1);
     let s = l.state(0);
-    assert_eq!((s.objects, s.cycles, s.drawn.frames, s.drawn.cycles), (0, 0, 0, 0));
+    assert_eq!(
+        (s.objects, s.cycles, s.drawn.frames, s.drawn.cycles),
+        (0, 0, 0, 0)
+    );
     for t in 1..=400 {
         l.run(t, &[]).unwrap();
         let s = l.state(t);
@@ -177,7 +180,10 @@ fn a_late_redraw_steps_the_objects_for_each_step_missed() {
     let mut l = looped(Bugs::Fixed, 1);
     l.run(400, &[]).unwrap();
     let s = l.state(400);
-    assert_eq!((s.drawn.frames, s.objects, s.cycles, s.drawn.cycles), (1, 2, 1, 1));
+    assert_eq!(
+        (s.drawn.frames, s.objects, s.cycles, s.drawn.cycles),
+        (1, 2, 1, 1)
+    );
     l.run(579, &[]).unwrap();
     assert_eq!(l.state(579).objects, 2);
     l.run(580, &[]).unwrap();
@@ -261,7 +267,11 @@ fn the_edge_zones() {
         ([400, 0], Direction::North),
         ([799, 300], Direction::East),
     ] {
-        assert_eq!((at(&fixed, p), at(&original, p)), (Some(d), Some(d)), "{p:?}");
+        assert_eq!(
+            (at(&fixed, p), at(&original, p)),
+            (Some(d), Some(d)),
+            "{p:?}"
+        );
     }
     for p in [[-1, 300], [800, 300], [400, -1], [400, 600], [400, 300]] {
         assert_eq!((at(&fixed, p), at(&original, p)), (None, None), "{p:?}");
@@ -305,7 +315,10 @@ fn what_it_cannot_play_yet() {
         l.run(1, &[Action::Step(Direction::North)]),
         Err(Unplayable::Walk)
     );
-    assert_eq!(l.run(2, &[Action::Click([300, 300])]), Err(Unplayable::Walk));
+    assert_eq!(
+        l.run(2, &[Action::Click([300, 300])]),
+        Err(Unplayable::Walk)
+    );
     assert_eq!(
         l.run(3, &[Action::Pointer([300, 300])]),
         Err(Unplayable::OverView([300, 300]))
@@ -324,10 +337,7 @@ fn what_it_cannot_play_yet() {
         play(rules(Bugs::Fixed), &over, &BTreeMap::new(), 10),
         Err((0, Unplayable::OverView([300, 300])))
     );
-    assert_eq!(
-        Unplayable::Walk.to_string(),
-        "a hero's walk (M2 T3, MCL-STUB-1)"
-    );
+    assert_eq!(Unplayable::Walk.to_string(), "a hero's walk (M2 T3)");
     assert_eq!(
         Unplayable::OverView([1, 2]).to_string(),
         "the pointer over the view at (1, 2) (M3)"
@@ -363,4 +373,29 @@ fn the_lines_with_the_screens() {
             "1 screen 8,8,600,552",
         ]
     );
+}
+
+#[test]
+fn the_box_two_frames_differ_in() {
+    use h3_render::screen::PixelFormat;
+    let format = PixelFormat::RGB565;
+    let before = Screen::new(10, 8, format).unwrap();
+    let mut after = before.clone();
+    assert_eq!(changed(&before, &after, [0, 0, 10, 8]), None);
+    after.set(2, 3, 1);
+    after.set(6, 1, 1);
+    after.set(9, 7, 1);
+    assert_eq!(changed(&before, &after, [0, 0, 10, 8]), Some([2, 1, 10, 8]));
+    // Outside the area nothing counts.
+    assert_eq!(changed(&before, &after, [0, 0, 9, 7]), Some([2, 1, 7, 4]));
+    assert_eq!(changed(&before, &after, [7, 0, 9, 7]), None);
+    let other = Screen::new(10, 9, format).unwrap();
+    assert_eq!(changed(&before, &other, [0, 0, 4, 4]), Some([0, 0, 4, 4]));
+}
+
+#[test]
+fn a_speed_without_a_step_scrolls_a_tile() {
+    let mut l = looped(Bugs::Fixed, 7);
+    l.run(1, &[Action::Scroll(Direction::South)]).unwrap();
+    assert_eq!(l.state(1).view, ViewAt { x: 9, y: 11, z: 0 });
 }
