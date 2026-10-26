@@ -38,7 +38,7 @@ Sources (labels as in `docs/04-rules-and-sources.md`):
 - `original-data` (the census): the 160 shipped maps (`original-data/maps.tar`) read with `h3-map`'s
   reader and imported, by a throwaway example (not committed), §1.
 
-## 0. Findings in short (T55a1 to T55a3)
+## 0. Findings in short (T55a1 to T55a4)
 
 - **Today** the import keeps every object of §2 to §4 as an inert blocker (classes 5, 65 to 69, 93,
   101; `docs/formats/h3m.md`, "Import") and refuses 8 maps for a monster with an artifact (§5).
@@ -73,14 +73,14 @@ Sources (labels as in `docs/04-rules-and-sources.md`):
   experience times Learning; the Tree of Knowledge one level, without Learning, at a price drawn at
   a new game (free, 2 000 gold or 10 gems). The Shrines and the Witch Hut teach at every visit what
   they drew at a new game (a Shrine's spell repeats none of its level until the level is used up;
-  a hut's skill from the map's mask, all 28 on an RoE map). The Scholar draws at the map's load, falls
+  a hut's skill from the map's mask, on an RoE map the fixed 0xEFBF: §13). The Scholar draws at the map's load, falls
   back to +1 primary skill and is removed. The University offers four drawn skills for 2 000 gold
   each to a class that may learn them. The Corpse, Wagon, Warrior's Tomb and Lean To are drawn at
   a new game; a full backpack turns the Corpse's artifact into 1 000 gold and the Wagon's into its
   resources and leaves the Tomb's; the Tomb costs −3 morale once until the hero's next battle ends
   (new hero state).
-- **Disputes (T55a2, §9):** D-33 an RoE map's Witch Hut (code: Leadership and Necromancy too; VCMI
-  and the wiki: never), D-34 the Shrines' repeats (code: none until the level is used up; VCMI:
+- **Disputes (T55a2, §9):** D-33 an RoE map's Witch Hut (code: a fixed mask of 14 skills, by the second reading; VCMI
+  and the wiki: never Leadership or Necromancy), D-34 the Shrines' repeats (code: none until the level is used up; VCMI:
   uniform), D-35 the Corpse's and the Wagon's artifact class and the Wagon's amount, D-36 Necromancy
   at a University (code: offered; VCMI and the wiki: never).
 - **Pandora's Box, events and the Pyramid (T55a3, §7):** boxes and events share one list of reward
@@ -102,6 +102,21 @@ Sources (labels as in `docs/04-rules-and-sources.md`):
   D-38 mana above the maximum (code: up to 999; VCMI: up to the maximum), D-39 the order
   (experience last with the old Learning; VCMI: before the rest, with the new Learning), D-40 the
   Pyramid's Gold Golems (code: 1 to 5 stacks; VCMI: one).
+- **The common rules (T55a4, §8):** the questions (§8.1: a chest's gold or experience, a guarded
+  artifact's or scroll's fight, the Arena, the Schools, the Tree, the Tomb, the University, the box,
+  the Pyramid) become pending decisions; the refusals (§8.2) are a full backpack, no book, Wisdom,
+  a known spell or skill, eight skills, gold, the level, a visit already made; a reward takes
+  effect at once (spells, skills, artifacts, mana, experience), at the next step (Pathfinding,
+  Scouting), at the owner's next turn (movement) or at the next battle (the bonuses); every draw of
+  a new game and every content is hidden until a visit, the team's marks become the visitor's
+  owner's knowledge, an event is never observed (§8.4).
+- **The second reading (§13)** confirmed the readings of T55a1 to T55a3 and corrected two:
+  an **RoE map's Witch Hut** takes the fixed mask 0xEFBF (14 skills: never Leadership, Necromancy or
+  Water Magic to First Aid; **A-21**, D-33 reshaped), and the Wagon's draw order. It found that **the
+  pathfinder makes an event's tile a stop for every colour**: a human's path never crosses a hidden
+  event and bends around it (**A-23**, §8.5: as the original, or blind). Also A-22 (a University's
+  draw on a map banning more than 24 skills) and A-24 (the loader's creature count past seven).
+- **Batch E7** (§11): 23 rows in two runs; **the rule ids** (§12); **the checkpoint**: ADV-Q28 (§14).
 
 ## 1. The census
 
@@ -672,6 +687,19 @@ event. An event of another colour does not stop the hero.
    (0x4F2CE0) is called. These
    are the same tests a battle and a turn run (not read, E10).
 
+**The second reading's additions** (§13): the test runs for the player whose turn it is, and only
+on a tile a step enters, so a hero that starts its move on an event does not fire it. In the
+computer's step (`hero_move_step`'s fifth argument 1) the stop is not forced (E10); a network
+replay skips the test. A repeatable event whose guards were beaten fires again without a battle
+(the record's army is the survivors; inferred). **The pathfinder treats an event's tile as a stop
+for every colour:** the tile carries the visitable bit (+0xD 0x10, cleared at the removal), the
+relax gives it a stop node, and `pathfinder_pass_through` (0x56AB40) lets a human's mouse path (its
+fourth argument 0) go on past a stop only for the classes 33 and 212. So **a human's planned path
+may end on an event but never crosses one: it goes around hidden events of any colour**, and the
+event's stop in `hero_move_step` meets only a path that ends there. Nothing in the pathfinder tests
+the class 26 or a colour. The adventure cursor (0x40E360, H3API's guess) tests no class 26 but tests
+the visitable bit (inferred). **A-23** (§9).
+
 ### 7.4 The rewards (0x49FA90)
 
 `original-data` (read): `grant_rewards` (the text, the hero, the tile, the position, the human
@@ -682,7 +710,7 @@ flag, the record) applies the parts **in this order**:
 | 1 | experience (+0x50, signed) | Only when above 0. The amount is computed **first**: amount × `hero_learning` (f32, truncated). The Learning level used is the one before this record's skills. The amount is **given last** (step 10). |
 | 2 | primary skills (+0x78, 4 signed bytes) | Each value **above 0** is added to hero +0x476 + i at once (unclamped; the level-up's A-9 covers the class). 0 or a negative value is skipped. |
 | 3 | secondary skills (+0x80, (skill, level) pairs) | A known skill below the given level **rises to it** (`hero_learn_secondary_skill` with the difference, at most Expert). A known skill at or above the level is unchanged. A new skill is learned at the level only below eight skills. There is no class or ban test. |
-| 4 | mana (+0x54, signed) | Added. The total is held **between 0 and 999**: it may exceed the hero's maximum, and a loss stops at 0. |
+| 4 | mana (+0x54, signed) | Added. The total is held **between 0 and 999**: it may exceed the hero's maximum, and a loss stops at 0. A sum past 999 is set to 999, so a hero who had more than 999 falls to 999 (the second reading, §13). |
 | 5 | morale (+0x58), luck (+0x59) | Added to the **bonuses that last until the end of the hero's next battle** (+0x11A, +0x11B; cleared by `hero_battle_bonuses_clear`). They add up across objects. |
 | 6 | resources (+0x5C, 7 signed) | `give_resource` per resource: 32-bit; a negative result becomes 0. |
 | 7 | artifacts (+0x90) | Each is given only while the backpack holds **fewer than 64** (`hero_give_artifact`: the first body position that takes it, else the backpack, with SoD's combination question). Otherwise it is **lost**. |
@@ -695,6 +723,10 @@ even when it found no room; a skipped artifact or spell does not. A human sees t
 the parts as pictures, in boxes of up to eight: steps 1 to 5 first, then the resources, the
 artifacts, the spells and the creatures. Each box after the first gets ADVEVENT 175 to 188 ("%s
 learns something.", "%s has found treasure.", …) when the map's text is empty.
+
+**The loader** (`load_rewards` 0x4FF6B0, the second reading): the creatures' count is a byte with no
+bound of seven, so a map listing more than seven stacks writes past the record's army (**A-24**,
+§9). `h3-map`'s reader reads the list whole into a vector, so the engine's import can refuse it.
 
 ### 7.5 The Pyramid (63)
 
@@ -896,21 +928,32 @@ original reads it:
 
 ### 8.5 The hidden event and the move
 
-- **A move is never rejected because of an event:** `MoveHero` checks its path as today, and a
-  rejection would reveal a hidden object (`docs/06-security.md`, "Side channels").
-- **Each step tests the tile it enters.** An event that fires for the hero's owner (§7.3: a human's
-  colour in the mask; a computer's also needs the flag, `PlayerSetup.human` since T54) ends the move
-  on its tile with the points left; the rest of the path is dropped. That is the move's outcome, not
-  an error. An event that does not fire changes nothing: no stop, the step's price as without it.
-- **`Reach`, `legal_moves` and so the env's tile masks never read events** (the AI lane's encodings
-  read `GameObservation` and `legal_moves`): every path and price is as if the event were not
-  there. The test is a property: two games that differ only by a hidden event give every player the
-  same observation and the same legal moves until it fires. The original's pathfinder: §13.
-- **Other players** are told the hero's steps as any steps (ADV-FOG-004). No player sees another's
-  path or points, so a stop on an event looks like a move that ended there. The mover learns of the
-  event when it fires, as the original's message tells it.
-- A fired event without the removal flag fires again at every **entry**; a hero standing on it does
-  not fire it again by starting a move there.
+**The original** (§7.3, the second reading): an event's tile is a stop for the pathfinder whatever
+the colour, so a human's planned path ends on an event or goes around it, and never crosses it.
+The hero enters the event's tile only as its path's last step: an event of the hero's colour fires
+there (a computer's needs the flag), one of another colour does not, and the hero stands on it. A
+human who watches the path arrows can therefore find hidden events: the path bends around an
+empty-looking tile, and a click on that tile gives a path that ends there. The leak is the
+original's, through the path, while the event itself is never drawn.
+
+**The engine** has two ways (**A-23**, §9; the user's at ADV-Q28):
+
+- **As the original:** an event's tile is an entrance for `Reach` (a path's end, never a pass node),
+  for every colour, as a pickup's is today. `legal_moves`, and so the env's tile masks (the AI
+  lane's encodings read `GameObservation` and `legal_moves`), then reveal where events are, as the
+  original's path does. The observation still never shows them; `docs/06-security.md` would list
+  the leak beside `ADV-QUIRK-1`'s fringe and decision 40's monster.
+- **Blind:** `Reach` and `legal_moves` never read events, every path and price as if the event were
+  not there, and a step into an event that fires ends the move on its tile with the points left
+  (the rest of the path dropped: the move's outcome, not an error). An event that does not fire
+  changes nothing. A property test checks it: two games that differ only by a hidden event give
+  every player the same observation and the same legal moves until it fires.
+
+In both, a move is never rejected because of an event (a rejection would tell of a hidden object:
+`docs/06-security.md`, "Side channels"), other players are told the hero's steps as any steps
+(ADV-FOG-004), and the mover learns of the event when it fires, as the original's message tells it.
+A fired event without the removal flag fires again at every entry, not for a hero that starts its
+move on it; its beaten guards do not come back.
 
 ### 8.6 Commands, decisions, events, the observation, replays and benchmarks
 
@@ -938,7 +981,7 @@ original reads it:
   paths that depend on order: a box with creatures and no room (the army dialog, then the
   experience), an event that stops a move, a University's purchases.
 - **Benchmarks.** Every step tests its tile for an event (one lookup per step: `random-play-*`); the
-  reach workloads do not change, since `Reach` never reads events. The heroes' marks (ten classes)
+  reach workloads gain only entrances as the original (A-23), nothing blind. The heroes' marks (ten classes)
   and bonuses grow the state a fork clones (`fork-xl-144`). A random-play workload on the rewards
   map.
 - **The env** (the AI lane's, decision 99): the new decisions reach agents through `legal_commands`
@@ -961,7 +1004,7 @@ original reads it:
 | D-35 | the Corpse's and the Wagon's artifact; the Wagon's amount | code: treasure and minor as one pool (by the classes' sizes, about 64 % treasure), the Corpse 20 %, the Wagon 40 %; the amount 2 to 5; VCMI and the wiki (Wagon): half each class (10 + 10 %, 20 + 20 %); the amount: wiki 2 to 5, VCMI 1 to 5 | the code's (the amount with the wiki); no row (a distribution) |
 | D-36 | Necromancy at a University | code (0x4C06F0): drawn like any unbanned skill, bought only by a class that weighs it (Death Knight, Necromancer); VCMI ("noneOf necromancy") and the wiki ("Necromancy can not appear in universities"): never offered | the reading against both: the user's, after a batch E7 row (many Universities) |
 | D-37 | a box's or event's secondary skill the hero knows | code (0x49FA90): raised to the given level, never lowered (Basic + Advanced: Advanced); VCMI (`grantRewardBeforeLevelup`): the given level added, clamped (Expert); wiki silent | the code's; a batch E7 row (a box with Advanced Wisdom, a hero with Basic Wisdom) |
-| D-38 | a box's or event's mana above the hero's maximum | code: the total held at 999; VCMI (`calculateManaPoints`, overflow factor 0): up to the maximum, the rest lost; wiki silent | the code's; a batch E7 row (a box with 500 mana, a hero of 100 at most) |
+| D-38 | a box's or event's mana above the hero's maximum | code (confirmed by the second reading): the total held in 0 to 999, a sum past 999 set to 999 (a hero above 999 falls to it); VCMI (`calculateManaPoints`, overflow factor 0): up to the maximum, the rest lost; wiki silent | the code's; a batch E7 row (a box with 500 mana, a hero of 100 at most) |
 | D-39 | the order of a box's or event's parts | code: experience computed with the Learning before the box's skills, given last (after the spells and creatures); VCMI: the box's skills, then the experience (with the new Learning) and its levels, then mana, morale, luck, artifacts, spells, creatures; wiki silent | the code's; batch E7 rows (a box with Learning and experience; a box with a level's experience and a level-3 spell, a hero whose level-up offers Wisdom) |
 | D-40 | the Pyramid's 40 Gold Golems | code (`monster_battle` with a second creature): split like a wandering monster's into 1 to 5 stacks by the army ratio, ordered by the table 0x63DF94; VCMI (`pyramid.json`): one stack of 40; wiki: "40 Gold Golems and two stacks of 10 Diamond Golems" (the split not stated) | the code's; a batch E7 row (a weak and a strong hero at one Pyramid) |
 
@@ -985,7 +1028,16 @@ positive values given; no shipped value above 5), a box's spells not tested agai
 the same), a looted Pyramid that still asks first, the Pyramid's spell lost when it cannot be
 learned (the wiki states it), an event that fires again at every entry (the editor's choice).
 
-Quirk candidates (T55a4, the second reading, §13): **A-21** an RoE map's Witch Hut takes the fixed
+**The second reading** (§13) confirmed the code's side of D-29 to D-32 and D-34 to D-40 and
+reshaped D-33.
+
+Quirk candidates (T55a4, the second reading, §13): **A-23** the pathfinder makes an event's tile a
+stop for every colour (§7.3, §8.5): a human's path never crosses a hidden event and bends around
+it, so the path tells where events are. Reachable on every map with events (486 on the shipped
+maps). Proposal: a quirk with a flag, `faithful` the original's stop (the legal moves reveal events,
+as the path does), `strict-fixed` blind (§8.5); the user's (ADV-Q28). **A-24** the loader writes
+past a reward record for more than seven creature stacks (§7.4): state-corrupting, unreachable on
+the shipped maps. Proposal: always fixed (the import refuses such a map). **A-21** an RoE map's Witch Hut takes the fixed
 mask 0xEFBF (0x5034BD), which looks like the editor's default (every skill but Leadership and
 Necromancy, 0x0FFFEFBF) cut to 16 bits: an RoE hut never teaches Water Magic, Earth Magic, Scholar,
 Tactics, Artillery, Learning, Offense, Armorer, Intelligence, Sorcery, Resistance or First Aid.
@@ -1014,8 +1066,9 @@ the rule ids into §12. What stays is T55b's:
   (its guards and text flag) as a guarded pile's; the scroll's spell (a byte); the monster's
   treasure artifact (the 8 maps refused for it move on). The bodies are the ones `h3-map` already
   reads (the Shrine's spell, the Witch Hut's mask, the Scholar's kind and code, `Rewards`,
-  `EventBody` with the players, computer and removal flags). No new refusal: nothing on the shipped
-  maps is out of range (§1). The map's timed events (the header's) stay out (decision 127).
+  `EventBody` with the players, computer and removal flags). One new refusal: a box's or event's
+  creature list of more than seven stacks (A-24); nothing on the shipped maps is out of range (§1).
+  An RoE map's Witch Hut gets its default mask at the import (A-21). The map's timed events (the header's) stay out (decision 127).
 - **Draws when the game is built** (decision 17's setup stream): the random artifacts and the
   chests (T55a1); the Tree's price, the Shrines' spells with their marks, the Witch Huts' skills,
   the Scholars' kinds, ids and fallbacks (the original draws the Scholar at the map's load), the
@@ -1060,13 +1113,13 @@ one new game each gives many samples.
 | E7-14 | D-39 (the Learning) | a box with Expert Learning and 1 000 experience; a hero without Learning | the experience gained | 1 000 (VCMI: 1 150) |
 | E7-15 | D-39 (the spells before the level) | a map that bans every skill but Wisdom and one other; a hero with a Spell Book, no Wisdom, just below a level; a box with that level's experience and a level-3 spell; Wisdom taken at the level-up | the hero's spells after; the level-up's offers | the spell is not learned (VCMI: the level-up first, so with Wisdom it is) |
 | E7-16 | D-40 | a Pyramid; a hero with one Pikeman fights it and retreats; a hero with a strong army fights it | each battle's stacks at its opening (`opening.py`) | the Gold Golems split into 1 to 5 stacks by the army ratio and the roll (`E08-battles.md` §4.1, less the two Diamond stacks), the slots by the table 0x63DF94; two Diamond stacks of 10 (VCMI: one stack of 40) |
-| E7-17 | §7.3 (the stop) | Red's hero moves along a straight path over an event for Red, then over an event for Blue only | the hero's tile and points after each move | it stops on the first event's tile with its points left; it passes the second |
+| E7-17 | §7.3 (the stop) | Red's hero sent to an event tile of Red's with points to spare, then another hero to one of Blue's only | each hero's tile, points and treasury after | the first fires and the hero stays on its tile with the points less the step; on the second nothing fires and the hero stands on it |
 | E7-18 | §7.3 (the repeats) | an event without the removal flag giving 100 gold: enter it, step off, enter again | the treasury after each entry | +100 twice; the event stays |
 | E7-19 | §7.4 (the artifacts) | a box with an artifact; a hero with 64 in the backpack | the backpack and the worn positions after | the artifact is lost; the box is removed |
 | E7-20 | §7.4 (the creatures) | a box with three stacks of other creatures; a hero with seven stacks | the army dialog's group; dismiss a hero's stack, take one group stack, OK; the army after | one dialog with the three stacks; the other two are lost |
 | E7-21 | §7.5 (looted, twice) | a looted Pyramid (another hero won it); a hero visits it twice, then fights | the luck bonus (+0x11B) after each visit, the stacks' luck at the opening, +0x11B after | −2 after both (not −4), 0 after the battle |
 | E7-22 | §7.5 (the Wisdom) | a hero with a Spell Book and Advanced Wisdom wins a Pyramid | the hero's spells, the Pyramid's word after | the spell is lost, the Pyramid looted |
-| E7-23 | §8.5, §13 (the path) | a hero's path planned across a hidden event's tile of its own colour and of another | the path's tiles (the path marks, as batch E1a counted them) | the path goes straight across both (see §13) |
+| E7-23 | A-23 (the path) | a hero west of a corridor one tile wide that holds an event of another colour; a click on the tile east of the event, then on the event's tile; the same in the open with an event of its own colour | the paths' tiles (the path marks, as batch E1a counted them) | the open path bends around the event; the corridor's tile beyond it gives no path (or one around the corridor); the event's tile gives a path ending there |
 
 **Not in the batch:** D-32 (an exhausted pool, rare), D-35 (distributions), A-17 to A-20 (none
 reachable on a shipped map), the computer's answers (E10).
@@ -1108,7 +1161,7 @@ record) are new families.
 | ADV-PIK-009 to -012 | the Corpse, the Wagon, the Warrior's Tomb, the Lean To | §6.9 | D-35 |
 | ADV-PIK-013 | Pandora's Box: the question, the guards, the rewards, the removal | §7.2 | — |
 | ADV-OBJ-007 | events: who fires them, the guards at once, the removal flag and the repeats | §7.3 | — |
-| ADV-MOV-011 | a step into a firing event ends the move there; `Reach` never reads events | §7.3, §8.5 | the original's pathfinder (§13) |
+| ADV-MOV-011 | an event's tile and the move: an entrance for `Reach` of every colour as the original, or blind; a step into a firing event ends the move there | §7.3, §8.5 | A-23 |
 | ADV-RWD-001 | the reward record's parts and their order | §7.4 | D-37, D-38, D-39, A-19 |
 | HER-CHG-003 | the hero's half of ADV-RWD-001 in `h3-heroes`: a skill raised to a level, the mana held in 0 to 999, the spells by book, Wisdom and knowledge | §7.4, §8.3 | — |
 | ADV-MON-012 | the monster battle with a second creature (the split less the other stacks, the order table) | §7.5 | D-40 |
@@ -1159,6 +1212,31 @@ backpack that leaves the artifact and still costs the morale (§6.9).
   player's hero assembles at once; receiving a combination sets its bit too.
 - A University with fewer than four unbanned skills would draw from a negative range (inferred;
   unreachable: at most 13 of 28 banned on a shipped map, `E08-progression.md` §6.3): **A-22** (§9).
-- The victory condition's artifact seems marked in the bans before they are rebuilt (0x4C4EF4,
-  inferred): for E10's victory conditions.
+- The victory condition's artifact seems marked in the bans before they are rebuilt (inferred, a
+  site in the new game's setup not mapped): for E10's victory conditions.
 
+**B confirmed** point by point: `grant_rewards`' parts and order, with the experience computed
+first from the Learning before the box's skills and given last (D-39), the skills raised to the
+level, never lowered (D-37), the mana held in 0 to 999 (D-38), the bonuses until the next battle's
+end, the artifacts lost with 64 in the backpack even when a body position is free, the spells' book,
+Wisdom and known tests, the creatures' one army dialog (§7.4); the box's question, its announced
+guards and its removal (§7.2); an event's firing by colour and computer flag, its stop, its guards at
+once, its removal flag (§7.3); the 400 records shared by boxes and events, record 0 past them
+(A-19); the Pyramid's pool, question at every visit, seed from the tile, Gold Golems in 1 to 5 stacks
+ordered by the table and two Diamond stacks of 10, the spell lost without a book or Expert Wisdom,
+the looted Pyramid's −2 once (D-40, A-20, §7.5).
+
+**B added** (written into the sections):
+
+- **The pathfinder and events** (§7.3, §8.5): an event's tile is a stop for every colour; a human's
+  path never crosses it (**A-23**). T55a4 checked the deciding branch (`pathfinder_pass_through`
+  returns no for every class but 33 and 212 on the mouse path, before its switch).
+- A Knowledge gained (`grant_rewards`, the Garden) raises the maximum only: the spell points the hero
+  has change only through a reward's mana part (§8.3).
+- The mana's 999: a sum past it is set to 999, also for a hero who had more (§7.4, D-38).
+- The loader's creature count has no bound of seven (**A-24**, §7.4).
+- An event fires only on entering, for the player whose turn it is; the computer's step does not
+  force the stop (E10); beaten guards of a repeatable event do not come back (inferred).
+
+**Not read by either:** the computer's answers (E10), the dialogs' drawing, `ai_pathfinder_map`
+(0x4B2DA0: whether a computer's path crosses events, E10), the second caller of the bans' rebuild.
