@@ -987,6 +987,12 @@ redraws moved with the load's random phases: the runbook; every frame at 0 exact
   offsets 24, 16, 8, 0 (a key's step ends at + 200), two with 16, 0 (+ 100); the click's walk at
   2 700 steps every 200 and 100 ms, the frame carried on (speed 1: 1 to 4, 5 to 0, 1 to 4, 5 to
   0); otherwise as `walk-2`.
+- **`walk-follow`** (speed 2; the view at (0, 9), the hero at (6, 17), the view's column 6):
+  the path to (14, 19) shown at 100; walked from 300: the first frame already at the view
+  centred on the first step's tile ((−2, 9): x past the map's side), every step moving it with
+  the hero; the standing group at 1 500. Ctrl and Down at 1 800 scroll the view to (5, 12), the
+  hero back on its tile (its flag stepping there at 2 040, a row above the centre); Right at
+  2 100 steps it and the first frame shows the view centred again ((6, 11)).
 - **`walk-4`** (speed 4): a key's step is one whole-view frame at its press, the view and the
   hero's tile moved, the standing group already in memory: the frame drawn shows the walking
   group's frame 0 (the one draw), the standing picture at the next idle redraw on the 180-ms grid
