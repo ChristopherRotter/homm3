@@ -4,32 +4,7 @@ Pre-refined tasks of the adventure lane, in order, then the inbox of discovered 
 
 ## Tasks
 
-Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T51b (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 6 are closed (2026-10-12, -13, -20, -21, -23, -26; increment 6, army and hero management, by T53's audit). **Increment 7, rewards on the map**, refined with the user at T53 (ADV-Q26; decisions 121 to 123): first T54 (the battle seam's facts), then round 1, the survey and the ADR amendment drafts (T55a, T55b), each task's cut confirmed with the user at its start. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
-
-### E08 T54 — The battle seam's facts from the game
-
-- **Scope** (decision 123; the inbox's three battle-lane notes of 2026-10-23 and -24, which this
-  task closes): `h3-game`'s battle setup (`state/battle.rs`, `Battles` when a battle starts on the
-  map) fills what the seam gained for battles from the map, each from the game's own state:
-  (1) `BattleSetup.difficulty`, the game's difficulty (the setup's, kept in the state if it is
-  not); (2) `BattleSetup.human`, per side from a new per-player flag of the game's setup
-  (`PlayerSetup`), false for a side without a player; with it BAT-QUIRK-27's let-off (BAT-MOR-004,
-  on in `faithful`) no longer reaches a human player's side. Where the flag comes from (the
-  session that seats the players, the map's player kinds for the import's default, what an env's
-  agent counts as) is the user's question at the task's start; (3) `BattleSetup.colours`, each
-  side's player colour (`None` for a monster's or a guard's side); (4) `BattleSetup.background`,
-  0x41ADB0's variant on dirt, grass and snow: the tiles within 3 of the battle's whose object
-  class is a tree-like, mountain-like or dead vegetation one (`docs/epics/E17-design.md` §5:
-  classes 114 to 160; the import may have to keep a decoration's class, a map import version);
-  (5) `BattleSetup.attacker_ground`, the special battlefield of the attacking hero's own tile
-  (ADV-GRD-001); (6) `BattleHero.sex`, the map's sex code for a placed hero (`h3-map`'s model
-  reads it; `None` the hero type's own). The retreat facts (`BattleSetup.retreat`, ADR-0027 point
-  14: a Tavern to hire the hero again, E09; the victory condition, E10; read only for a computer
-  player's hero, none before E10) stay at their defaults: a stub (`ADV-STUB-9`). Rule ids (a
-  `GAM-BAT-*` per derived fact), tests, the ten and two golden replays re-recorded (their hashes
-  inside battles move), the versions it moves (game state hash, map import) in the table.
-- **Not in it:** the computer player's own choices (E10, E13), the retreat facts' derivation.
-- **Depends on:** T53 (done). **Status:** ready; its cut confirmed with the user at its start.
+Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T51b (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 6 are closed (2026-10-12, -13, -20, -21, -23, -26; increment 6, army and hero management, by T53's audit). **Increment 7, rewards on the map**, refined with the user at T53 (ADV-Q26; decisions 121 to 123): T54 (the battle seam's facts) done; now round 1, the survey and the ADR amendment drafts (T55a, T55b), each task's cut confirmed with the user at its start. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
 
 ### E08 T55a — The rewards survey
 
@@ -54,8 +29,7 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
   (an `ADV-Q`).
 - **Not in it** (decision 121; the epic's sketch, items 8 and 9): boats, Navigation and the sea
   (Favorable Winds, the sea's chests and flotsam), the week's objects and mines; towns (E09).
-- **Depends on:** T54 (decision 123's order; nothing in it is needed). **Status:** ready after
-  T54; a user checkpoint at its end (decision 122).
+- **Depends on:** T54 (done). **Status:** ready; a user checkpoint at its end (decision 122).
 
 ### E08 T55b — The ADR amendment drafts, the design note and the cut
 
@@ -63,51 +37,13 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
   ADRs it touches (ADR-0016 for the objects and their visits, `docs/lanes/adventure/adr-drafts/`;
   ADR-0017 for the commands and decisions; ADR-0013 if `h3-heroes` gains rules), `E08-design.md`
   rewritten for increment 7 (the hero side, the map, the game, the batch and the cut, with
-  increment 7's exit criteria), the building tasks cut in rounds; the checkpoint's questions (an
+  increment 7's exit criteria), the building tasks cut in rounds; ADR-0017 point 11's line for
+  T54's facts (decision 124: the human flag of the game's setup, the viewers' facts, the
+  attacker's ground, the retreat facts behind `ADV-STUB-9`); the checkpoint's questions (an
   `ADV-Q`). The user accepts the drafts and the cut before anything is built (decision 122).
 - **Depends on:** T55a and its checkpoint. **Status:** waiting for T55a.
 
 ## Inbox
-
-- 2026-10-24 (**T54**, decision 123; the battle lane, CLT-Q4/Q6, `shared/clt-q4-q6-seam` and `battle/clt-q4-q6-carry`,
-  both `cross-lane` with the user's consent; **for you**, when battles start from the adventure
-  map): the seam carries three facts for viewers, read by no rule, each defaulting to "not
-  known": `BattleSetup.background` (the battlefield picture's variant on dirt, grass and snow:
-  0x41ADB0 counts the dead vegetation, mountains and trees within 3 tiles of the battle's tile, 0
-  where dead vegetation is the most, 1 where mountains are, 2 otherwise, an empty surrounding
-  included; `docs/epics/E17-design.md` §5), `BattleSetup.colours` (each side's player colour by
-  `BattleSide::index`, 0 red to 7 pink; `None` for a side without a player, a monster's or a
-  neutral town's; one colour for both sides is `SetupError::InvalidColour`) and `BattleHero.sex`
-  (`HeroSex`, where the map gave a placed hero one; `None` the hero type's own). `h3-game` should
-  set them when it starts a battle. The battle keeps them as hashed state (battle state hash v54)
-  and observes them; your ten golden replays were re-recorded with their options, their commands
-  unchanged (only checkpoint hashes taken inside a battle moved).
-
-- 2026-10-23 (**T54**, decision 123; the battle lane, E23 T7, `shared/e23-t7-human` #436 and `battle/e23-t7-rest`, both
-  `cross-lane` with the user's consent; **for you**): **a battle rule reads `BattleSetup.human`
-  now**: with the new fix-optional BAT-QUIRK-27 (`quirk.battle.computer_morale_let_off`, registry
-  position 33, on in `faithful`) a frozen stack of a side whose player is not human escapes one
-  bad-morale freeze in four (BAT-MOR-004, 0x464BDB; ADR-0023 point 7 widened). `h3-game`'s battle
-  setup (`state/battle.rs`) leaves `human` and `difficulty` at their defaults, so in a game's battle
-  every side, a human player's too, gets the let-off: set `human` from the side's player (true for
-  a human player's hero, false for a computer player's and a neutral side) and `difficulty` from
-  the game. In your paths: the base faithful core ruleset hash moved (`0x1ac6c50d158057de` →
-  `0x0c7e01b4dffeba0c`), your eight faithful replays' headers patched (`ruleset_hash` only; all ten
-  verify). Also BAT-WAR-003: the automatic tent heals the most hurt stack (no draw).
-
-- 2026-10-23 (**T54**, decision 123; the battle lane, E23 T6's last part, `battle/e23-t6`, `cross-lane` with the user's
-  consent; **for you**, when battles start from the adventure map): the battle now keeps
-  `BattleSetup.retreat` and `attacker_ground` (ADR-0027 point 14) as hashed state, and
-  `h3_battle_ai::choose` reads them: a hero's side retreats as the original's computer does
-  (BAT-AI-024; `POLICY_VERSION` 18) when the facts allow it, and the odds value an attacking hero's
-  spells at its own ground's mastery in `faithful`. The game orchestrator (`h3-game`) should derive
-  them: per side the hero's experience, its artifacts' worth by the original's count (per worn or
-  carried artifact the larger of the adventure AI's value, 0x433AA0, and half its gold cost), a
-  Tavern town of its player to hire it again from (another than the battle's town for its
-  defender), whether the scenario's victory condition wants that hero defeated; and the special
-  battlefield of the attacking hero's own tile. The defaults never retreat. Your ten golden
-  replays were re-recorded again with their options, their commands unchanged (only hash lines;
-  `duel-s2-d7` none): the hash covers the new fields.
 
 - 2026-10-23 (T42, measured; for a performance task): **a flyer's or water walker's reach costs
   about 1.9 times a walker's query** on the XL map (`reach-lifted-xl-144`: 279 k Ir a query

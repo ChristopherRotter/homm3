@@ -126,7 +126,7 @@ every one reads to its padding, and every body kind but the hero placeholder occ
 Versions the reader rejects: Heroes Chronicles (`0x1D`), HotA (`0x20`), WoG (`0x33`) and every
 other code.
 
-## Import (E08 T5a, T6a, T12a, T13a, T18b, T19a, T20a2a, T21a, T29, T49a, T49b; `MAP_IMPORT_VERSION` 10)
+## Import (E08 T5a, T6a, T12a, T13a, T18b, T19a, T20a2a, T21a, T29, T49a, T49b, T54; `MAP_IMPORT_VERSION` 11)
 
 `h3_map::import` turns a raw map and the game's rules into `h3_game::GameSetup`, which the game
 then validates (ADR-0015 point 4); `import_map` is its static layer. The import maps codes to
@@ -135,8 +135,9 @@ content and draws nothing; it rejects what the current increment cannot represen
 `MAP_IMPORT_VERSION` (ADV-Q2): any change to what an import yields bumps it.
 
 - **Players:** the colours whose human or computer flag is set, in colour order; a player's
-  `PlayerId` is its index there. Unsupported: a playing colour whose main town generates its hero
-  (RoE always does; towns are E09).
+  `PlayerId` is its index there; since v11 (E08 T54, GAM-BAT-010, ADV-Q27) a colour a human may
+  play counts as human (`PlayerSetup.human`), a computer-only one does not. Unsupported: a playing
+  colour whose main town generates its hero (RoE always does; towns are E09).
 - **The scenario's level limit and banned skills** (v8, E08 T29, GAM-SET-002): the header's level
   limit (AB and SoD; 0 none, always 0 in RoE) and SoD's banned skills, each set bit the skill of
   its code (`SSTRAITS.TXT` order; a set bit past the 28 codes is an unknown code; none in the
@@ -161,7 +162,9 @@ content and draws nothing; it rejects what the current increment cannot represen
   (`Subclass`); classes 12, 58, 60 and 76 ignore it. A resource body's amount (76, 79) is the
   pile's fixed amount (0 is none: drawn when the game is built; gold counts in hundreds, the type
   multiplies), which the setup bounds at 0x7FFFF; its message's text is presentation. Every other
-  class is a blocker.
+  class is a blocker. Since v11 (E08 T54, GAM-BAT-011) every object keeps its scenery by class
+  (`ObjectSetup.scenery`, `codes::scenery`): trees 114, 115, 135, 137, 155, 159, 160, mountains
+  123, 133, 134, 136, 157, 158, dead vegetation 119, ownable 17, 20, 33, 42, 53, 77, 87, 98.
 - **Guarded piles** (v7, E08 T21a, ADV-PIK-004): a pile's or random resource's guards record gives
   its guards (`ObjectSetup.guards`): the stacks by slot (creature by original id, the count) and
   whether the message has a text (the visit asks first; the text itself is not kept). A record
@@ -227,7 +230,8 @@ content and draws nothing; it rejects what the current increment cannot represen
   The validation (`h3_heroes::validate`) checks the rest, so a war machine in the backpack or a
   scroll without its spell fails it (no shipped map that imports has one). Until v8 an experience
   of 1 000 or more was unsupported (E08 decision 22). Ignored: name, portrait, patrol (a computer
-  player's), biography, sex.
+  player's), biography; since v11 (E08 T54, GAM-BAT-012) the sex is kept (0 male, 1 female,
+  any other the type's; the body's over the entry's).
 
 The maps of the user's installation (`crates/h3-map/examples/original_data.rs`): until
 2026-10-18 the folder held 164, four of them the user's own (`experiment`, `Untitled` and edited
