@@ -4,27 +4,104 @@ Pre-refined tasks of the map client lane, in order, then the inbox of discovered
 
 ## Tasks
 
-Epic: E24, the adventure map client. **M1 (stills of the map view) closed 2026-10-24** (T6b,
-the review list accepted by the user); next **M2: the map moving**, refined in its T0
-(`docs/epics/E24-map-client.md`: the decisions, how the viewer sees a map, the milestones). Code
-readings in the sandbox (`docs/exe/README.md`; every address cited needs a map entry), their
-detail in `docs/epics/E24-design.md`; captures by the harness (`clients/capture/README.md`), never
-in git. Every oddity of the original a reading or a capture finds is an `MCL-Q<n>` in the same
-task (the HANDOFF's autonomy contract).
+Epic: E24, the adventure map client. **M1 (stills of the map view) closed 2026-10-24**; **M2
+(the map moving) refined 2026-10-26** (M2 T0, with the user: `docs/epics/E24-map-client.md`, M2's
+scope, decisions and exit; the recording's format there). Tasks in order, each about half a
+context; a task that grows is cut at a seam agreed with the user. Code readings in the sandbox
+(`docs/exe/README.md`; every address cited needs a map entry), their detail in
+`docs/epics/E24-design.md` (§3 from T1a: the map moving); captures by the harness
+(`clients/capture/README.md`), never in git. Every oddity of the original a reading or a capture
+finds is an `MCL-Q<n>` in the same task (the HANDOFF's autonomy contract).
 
-### E24 M2 T0 — M2 refined with the user
+### E24 M2 T1a — the recording, the map standing still and the scroll
 
-- **Scope:** the epic's "M2 — the map moving" refined with the user: the objects' animations and
-  the palette cycles over time, the view scrolling, a hero's walk along its path (the arrows from
-  a path, T5b2's review item), in a window at the original's frame times (`h3-sdl`), checked frame
-  by frame against recorded sequences as E17 M2 did (its `frames` and sequences). With the user:
-  the readings first (the walk's frames and timing, the scroll), the recordings' format, what of
-  `h3-view` the window needs (`clock`, `sound`: a common crate is a `lanes.toml` change agreed
-  with the client lane, its inbox note of 2026-10-23), the tasks (each about half a context); the
-  queued M1 items (the inbox's writer bound, R2-8).
-- **Acceptance:** the epic's M2 section refined (decisions, tasks), the tasks in this queue, the
-  user's agreement.
-- **Depends on:** M1 closed (T6b, done). **Status:** ready (with the user).
+- **Scope:** the recording: `clients/map/sequences.toml` and `h3map.py frames [--only <id>]`
+  (an additive harness change; E17's `h3drive.py frames` the model, E17 design §7.9), as the
+  epic's M2 decision gives them; the hero and scroll speed options set before the load (where
+  the original keeps them: read). Readings (`E24-design.md` §3): the idle loop in time order
+  (the idle step of `adventure_manager_procedure` 0x4087B0 at 0x408A88, `view_show_step`
+  0x40F270, `adventure_tick` 0x4ED490's polls and its two calls every 60 ms: which redraw shows
+  which palette step, both kinds' steps over time); the scroll:
+  the arrow keys and the pointer at the edges (where, the step, the delay at each scroll speed,
+  a held key, diagonals, the view's limits at the map's sides, whether it redraws at once or at
+  the deadline), the edge cursors (DEF, frames, hot spots). Recorded: two idle sequences (water,
+  lava and the rivers; animated objects; about 8 s, past a whole colour cycle of 7.2 s), the
+  scroll at each speed (keys in each direction, the mouse at an edge and a corner).
+- **Acceptance:** §3's idle loop and scroll with their addresses mapped; each sequence recorded
+  twice with the same timeline; the runbook's section for `frames`; the Definition of Done. A
+  seam if it grows: the recording and the idle loop first, the scroll second.
+- **Depends on:** M2 T0 (done). **Status:** ready.
+
+### E24 M2 T1b — the walk, read and recorded
+
+- **Scope:** readings (`E24-design.md` §3): `hero_move_step` 0x4805E0's animation (E08 read its
+  pricing only), the moving hero's passes (`view_moving_hero_piece` 0x47F860, its shadow
+  0x47FB40, `view_moving_hero_step` 0x47FC80: the group +0x1FC and frame +0x200, the pixel offset
+  per frame, the frames per step), the time per frame at each hero speed (the enemy speed's
+  table with it), the view following the hero, the arrows taken away, the flags while moving,
+  the walk's end (the standing group), `view_shown` 0x6989C0 around a move, the step sounds'
+  calls (for T5), a boat sailing (`hero_boat` 0x4CE900); VCMI compared. Recorded: land walks in the eight
+  directions at each hero speed, one with the view following, one ended by the movement points
+  (the path's rest kept), a sail; each walk's tiles from the original's memory into the sequence.
+- **Acceptance:** §3's walk with its addresses mapped; the sequences recorded twice with the same
+  timelines; the Definition of Done.
+- **Depends on:** T1a (the recording). **Status:** ready after T1a.
+
+### E24 M2 T2 — the map over time, headless
+
+- **Scope:** time in the library (beside `live::Moment`, pure, time an input): from a situation
+  and a sequence's inputs, the redraws' times, the objects' step, both palette steps and the
+  view's corner as the scroll moves it, as the recorded timeline's lines; the edge cursors
+  (`h3-view`'s `cursor` copied, *provisional*, an origin comment); `h3-map-view sequences
+  [<id>]` (exit 1 on a difference) and `--frames <dir>`, the harness's frame check against the
+  recorded screens, `drawn` over the sequences; unit tests replaying the timelines without the
+  original files.
+- **Acceptance:** T1a's sequences as recorded, every line and every frame exact outside the
+  panels (or each difference an `MCL-Q<n>`); `clients/scripts/check.sh`; the Definition of Done.
+- **Depends on:** T1a. **Status:** ready after T1a.
+
+### E24 M2 T3 — the walk drawn
+
+- **Scope:** the walk in T2's timeline (a hero walks given tiles: built for real, M4 and M5 give
+  it the engine's tiles): the moving hero's group, frame and pixel offset per frame at the
+  speed's times, the view following, the arrows taken away, the walk's end; the moving hero's
+  pieces in passes 5, 7 and 9 and the boat sailing; `sequences` and the frame check for walks.
+- **Acceptance:** T1b's sequences as recorded, every line and every frame (or each difference an
+  `MCL-Q<n>`); the Definition of Done.
+- **Depends on:** T1b, T2. **Status:** ready after them.
+
+### E24 M2 T4 — the window
+
+- **Scope:** `h3-map-view window <situation | sequence>` through `h3-sdl` (as `h3-view window`,
+  E17 design §8.1): the map at the original's frame times at an integer scale; the scroll by the
+  keys and the mouse at the edges with the edge cursors (hardware or drawn); a sequence's walks
+  replayed; pause, a step, restart, fullscreen, vsync; `--measure`; `--check` reads every frame
+  back against the headless one (Xvfb); `h3-view`'s `clock` copied (*provisional*, an origin
+  comment); the Windows cross-build, tried on the user's machine.
+- **Acceptance:** a situation and a walk sequence play in the window; `--check` exact; the
+  Definition of Done.
+- **Depends on:** T2, T3. **Status:** ready after them.
+
+### E24 M2 T5 — the map's sound
+
+- **Scope:** readings (`E24-design.md` §3): the adventure music (which file, by what terrain,
+  when it changes, its fade), the objects' ambient loops (which objects and sounds, the volume
+  by distance, how many at once), the hero's step sounds (T1b's calls; by terrain); the map's
+  asset tables' sounds and the gate's check of them; built in the window (`--mute`, keys for the
+  music and the effects), on E17's pieces (`h3_assets::snd`, `wav`, `nanomp3`, `h3-sdl`); the
+  cues recorded in the original if the harness can tell them (E17 M2 T5b's way).
+- **Acceptance:** the sounds as read, the gate's check; the Definition of Done.
+- **Depends on:** T4 (the window), T1b (the step sounds' calls). **Status:** ready after them.
+
+### E24 M2 T6 — M2's closure
+
+- **Scope:** M2's exit (the epic) checked on `master`; fresh reviewer agents, one per area, in
+  parallel; each finding checked against the code and the executable, fixed or queued; R2-8's
+  one-line `cross-lane` pull request if no task took it (the inbox); the review list to the
+  user; M2's section moved to `E24-archive.md`; M3 T0 queued (the common crate proposed to the
+  client lane first: the epic's M2 decision).
+- **Acceptance:** the review list accepted by the user; the Definition of Done.
+- **Depends on:** T1a to T5. **Status:** ready after them.
 
 ## Inbox
 

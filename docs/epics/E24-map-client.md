@@ -1,8 +1,8 @@
 # E24 — The adventure map client
 
 Status: **refined** (2026-10-23, T0, with the user); **M1 closed** (2026-10-24, T6b: the
-reviewers, the review list accepted by the user); next M2 T0, M2 refined with the user
-(`docs/lanes/map-client/QUEUE.md`).
+reviewers, the review list accepted by the user); **M2 refined** (2026-10-26, M2 T0, with the
+user); next M2 T1a (`docs/lanes/map-client/QUEUE.md`).
 Lane: map-client (`docs/lanes/map-client/HANDOFF.md`: the autonomy contract, the user's asset
 notes). Opened 2026-10-23 when the user split the client lane at E17 M3's closure (CLT-Q18).
 Decisions so far live here (no ADR of its own yet; ADR-0020 and ADR-0024 bind it as they bind
@@ -80,18 +80,65 @@ autonomy contract (lane HANDOFF) says what the agent decides alone in between. T
 
 Tasks T0 to T6b and the exit record: `E24-archive.md` (verbatim); the build record: `E24-log.md`; the design: `E24-design.md` §1, §2. The set of 40 captured situations (`clients/map/situations/`) is exact; a change to the viewer runs `h3map.py drawn` first (the runbook).
 
-### M2 — the map moving (refined in M2 T0)
+### M2 — the map moving (refined 2026-10-26, M2 T0, with the user)
 
 The objects' animations and the terrain's colour cycles over time, the view scrolling, a hero's
-walk along its path (the path's arrows), in a window at the original's frame times (`h3-sdl`),
-checked frame by frame against recorded sequences as E17 M2 did for the battle.
+walk along its path (the path's arrows), in a window at the original's frame times (`h3-sdl`)
+with the map's sound, checked frame by frame against recorded sequences as E17 M2 did for the
+battle.
+
+- **Scope:** the map standing still over time (the objects' step at each redraw, every 180 ms;
+  the colour cycles' ticks every 200 ms, shown at the next redraw: `E24-design.md` §1.6); the
+  scroll, by whole tiles (the manager's pixel offset is never written, `map.toml` 0x406DF0), by
+  the arrow keys and the mouse at the screen's edges, at each map scroll speed, with the edge
+  cursors; a hero's walk along its path: its groups and frames, its pixel steps, the timing at
+  each hero speed (the enemy speed read with it), the view following it, the path's arrows
+  taken away step by step, on land in the eight directions and a boat sailing; the map's sound;
+  the window. **Not in M2:** boarding and landing, teleports, visits and their dialogs,
+  battles, the computer's heroes moving (M4); the rest of the mouse (M3).
+- **Decisions (the user, M2 T0; every recommendation taken):**
+  - **Walks are scripted in M2.** The walk is built for real (its input: a hero walks along
+    these tiles; M4 and M5 reuse it unchanged); in M2 its tiles come from the recorded
+    sequences (the original's path, read from its memory). The engine supplies them from M4 (a
+    game's record) and M5 (the player's click, the engine's path and move): the path always
+    comes from the engine (server-authoritative), never from a pathfinder in the client.
+  - **The map's sound is in M2** (T5): the terrain music, the objects' ambient loops, the hero's
+    step sounds; the map's own (`h3_view::sound` is the battle's opening and end), on E17's
+    pieces (`h3_assets::snd`, `wav`, `nanomp3`, `h3-sdl`'s audio).
+  - **`h3-view`'s `clock` and `cursor` are copied** into `h3-map-view` (*provisional*, an origin
+    comment each); M3 T0 proposes one common crate for both lanes (`clock`, `cursor`, `ui`,
+    `text`, `layout`, `mouse`) in one `shared/` pull request agreed with the client lane, and
+    the copies go.
+  - **Recorded and compared as E17 M2: every frame.** `clients/map/sequences.toml`: each
+    sequence a situation (of the set or its own), its options (hero speed, scroll speed) and its
+    inputs with their times (a key held and released, the pointer at a place, a tile clicked
+    twice), until a time. `h3map.py frames [--only <id>]` plays it in the original on the virtual
+    clock 1 ms at a time and keeps every screen whose view changed, with its time and the
+    state read from memory (the view's corner, the objects' step, both palette steps, the
+    moving hero's tile, offset, group and frame, the arrows left): the timeline committed
+    (`clients/map/timelines/<id>.txt`, numbers only), the screens local. `h3-map-view
+    sequences [<id>]` makes the viewer's timeline from the situation and the inputs (every line
+    as recorded, exit 1 on a difference; the unit tests replay the timelines without the
+    original files) and with `--frames <dir>` draws its frame at each kept time; compared pixel
+    by pixel outside the panels (the original's until M3), each frame's count recorded
+    (`timelines/<id>-frames.txt`); `drawn` covers the sequences (`STALE` when one changed).
+- **The queued M1 items:** R2-8 (the writer's edge bound, the inbox) waits for a task that
+  needs the writer; none planned, so T6 makes its one-line `cross-lane` pull request if no task
+  took it. A loaded saved game's draw lists: M4.
+- **Tasks** (the queue has each in full): T1a, the recording, the map standing still and the
+  scroll; T1b, the walk read and recorded; T2, the map over time headless (idle and scroll
+  exact); T3, the walk drawn (exact); T4, the window; T5, the sound; T6, M2's closure.
+- **Exit:** every recorded sequence as recorded, line by line and frame by frame (or each
+  difference an `MCL-Q<n>`); a situation and a sequence play in the window at the original's
+  frame times, with its sound, and render headless frame by frame.
 
 ### Later (refined when they come)
 
 - **M3, the adventure screen:** the minimap, the hero and town lists, the status window, the
   resource bar and the date, the buttons, the mouse and its cursor; the string catalogue's keys.
-  Needs `h3-view`'s `ui`, `text`, `clock`, `layout` (and `sound` for M2's window) in a common
-  crate: a `lanes.toml` change (shared) agreed with the client lane (its inbox has the note).
+  Needs `h3-view`'s `ui`, `text`, `layout`, `mouse` and the `clock` and `cursor` M2 copied in
+  one common crate: a `lanes.toml` change (shared) agreed with the client lane, proposed at M3
+  T0 (M2 T0's decision).
 - **M4, the engine's games shown:** a whole game's record and replay viewer; the live part from
   the engine (`h3_game`'s observation needs an object identity matching the map's object list:
   the adventure lane's inbox), the protocol's adventure messages (the server lane, E16); a battle
