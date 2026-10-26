@@ -7,7 +7,7 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 - **E17 M0–M3 done** (the lane split at M3 T9c, CLT-Q18: the battle client here, the adventure
   map client the map-client lane's E24); **M4 (sieges): T0 to T2c-2 done** (§10.1, §10.2,
   CLT-Q19 to Q21); **next T3** (M4's closure: a fresh reviewer, every capture afresh, the
-  review list, M5 refined with the user); M5 live play after M4. Open PR: T2c-2's (check it
+  review list, M5 refined with the user); M5 live play after M4. Open PR: #483 (T2c-2; check it
   first). Workspace `clients/` (`clients/README.md`), gates
   `clients/scripts/check.sh`; ADR-0020 (+ drafts in `adr-drafts/`), ADR-0024; the harness
   `clients/capture/README.md`; design §3–§10; records in `E17-log.md`.
@@ -34,7 +34,7 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
 
 ## Recent sessions
 
-- **2026-10-26, E17 M4 T2c-2 (done; PR open: check it first; not cut: the user).** Earthquake,
+- **2026-10-26, E17 M4 T2c-2 (done; #483 open: check it first; not cut: the user).** Earthquake,
   the end tune at a town, the siege's mouse (16, 22, the broken arrow); `quake`, `defended`,
   `aim`, `through` as recorded, frames exact but listed differences; T2b's and T2c-1's nine
   recaptured without their ` log` masks. Found: the status line kept at a hot-seat human turn
