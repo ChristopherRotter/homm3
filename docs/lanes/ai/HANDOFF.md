@@ -16,6 +16,8 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   by default). Increment 7, T8 the search (the user, 2026-10-26: the plateau taken as shown;
   design §14): T8a done. **Next:** T8b, the plumbing (C ABI v34, `h3-battle`'s part
   `cross-lane`), once the user accepts ADR-0025's amendment draft (`adr-drafts/`; QUEUE).
+- **Open pull request #487** (`claude/quirky-pasteur-aolk6i`: T6e, increment 6 closed, T8a): watch
+  it to its merge.
 - **Versions:** battle action encoding v13, observation encoding v21, replay format v31 (CLT-Q4/Q6), the adventure env's action encoding v4 (E08 T45), C ABI v33 (E06 T5: the kill preview) (`docs/08-work-process.md`, "Versions"). Next ids: AI-Q10, AI-QUIRK-1, AI-STUB-1.
 - Working agreement: increments with a user checkpoint (Q41's pattern); the user reviews ADRs and seams.
 
