@@ -57,7 +57,7 @@
 1000 screen 8,9,600,552
 1050 objects 3
 1050 walk 1 0 0 0
-1050 screen 280,235,326,296
+1050 screen 280,234,326,296
 1200 cycles 6 6
 1230 objects 4
 1230 screen 8,40,448,456

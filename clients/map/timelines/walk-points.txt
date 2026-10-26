@@ -50,7 +50,7 @@
 900 screen 276,236,330,296
 1000 cycles 5 5
 1080 objects 4
-1080 screen 288,79,443,249
+1080 screen 288,76,447,249
 1200 cycles 6 6
 1260 objects 5
 1260 screen 288,241,308,249
