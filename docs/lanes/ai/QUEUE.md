@@ -28,6 +28,16 @@ Sorted by destination at E05's audit (T9a, 2026-10-19); the origin stays in brac
 done: BAT-Q33's point for E05 (AI-Q3, ADR-0025 point 6), the `h3-game` coverage gap of a pending
 Pass offer (fixed by the adventure lane's fixed tests, #266).
 
+- 2026-10-26 (the adventure lane, E08 T52, `adventure/e08-t52`; **for you**, the entry below):
+  **the env plays on through a meeting and an army dialog** in the adventure lane's own test
+  (`h3-cli`'s `adventure::tests::the_env_plays_on_through_a_meeting_and_an_army_dialog`: your
+  `random_rollout` plays every seat to the day limit after either opened, its first action the
+  listed `Decline`). A map for your own test: `fixtures/maps/e08-army-12.h3m` (new), where red's
+  first hero (slot 0, tile (3, 5)) meets its mate by one step east and is offered six goblins'
+  join without room by one step west (`Action::accept()` then opens the army dialog). The
+  adventure lane changed nothing of yours; the management commands still reach agents only
+  through `h3_game::legal_management` (the env's encoding has no entry for them).
+
 - 2026-10-26 (the adventure lane, E08 T51b, `adventure/e08-t51b`; **for you**, ADR-0017
   point 8, `E08-design.md` §12): **a meeting and an army dialog are decisions now.** A step
   toward an own hero opens a meeting (`GameState::meeting`), an accepted join without room the

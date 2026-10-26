@@ -104,6 +104,11 @@ original reads a human side's only, decision 16); a side without a hero has no f
 
 ### 12. The env, the encoding's move, replays, fixtures, properties, benchmarks
 
+*Built in T52* (decision 119; the record in `E08-log.md`): the replays scripted with `h3 adventure
+run --script` on a new map, `e08-army-12.h3m`; the plans' fixtures as an `Exchange` of the first
+hero; the fork measured as `fork-meeting-xl-144` (+0.17 % over the battle's) and the listing as
+`manage-army-12`; the env's test stays the AI lane's (its inbox).
+
 - **The env is the AI lane's** since T45 (decisions 99, 103; ADR-0017 point 8); the replay model
   (`replay.rs`), `h3-cli`'s adventure commands, the golden replays and `benches/adventure/` stay
   this lane's. Increment 6 changes only the env's masks: `Decline` while a meeting or an army dialog is open
@@ -168,7 +173,7 @@ flag) land once:
 | 2 | **T47** + **T48** | T47: the harness's clicks and reads (the hero, exchange, split, creature and army dialogs; the spells, backpack, flags and tactics reads), the recipes and the run. T48: scored; the survey's §8 and the rules' sources; an ADV-Q if a row contradicts the reading |
 | 3 | **T49** | `h3-heroes`: positions (§2: the model, validation, the first position, the capture, the import v9, the constructor and the other lanes' call sites, `cross-lane`), moves, combinations and Titan's book, Scholar (§3). The largest task: cut in T49a (positions, §2; done) and T49b (§3; decision 111; done) |
 | 4 | **T50** + **T51** | T50 (done whole, decision 113): `h3-adventure`: the army commands, the split's bounds, dismissal, the formation and the flag, the cap, the meeting's visit, the join without room's report (§7, §8 visit, §9); adventure state hash v11, ruleset part v11. T51 in two (decision 116): T51a (done): `h3-game`: `Manage` on one hero, its per-hero listing and `split_range` (decision 117), events, the tactics flag in battle, replay format v6 (§10, §11); T51b (done whole, decision 118): the meeting and army dialog decisions, Scholar's application, the commands between two armies, the join offered without room (§8 to §10); game state hash v13; `ADV-STUB-2` closed |
-| 5 | **T52** + **T53** | T52: the env's masks (if still this lane's), replays v6 and the two new goldens, fixtures, plans, properties, benchmarks, `--with-original-data` (§12). T53: the audit against the exit criteria, increment 6 closed, increment 7 refined |
+| 5 | **T52** + **T53** | T52 (done whole, decision 119): replays v6 and the two new goldens (scripted), fixtures, plans, properties, benchmarks, `--with-original-data` (§12); the env's masks the AI lane's. T53: the audit against the exit criteria, increment 6 closed, increment 7 refined |
 
 **Increment 6's exit criteria:**
 1. A player rearranges each hero's army (move, merge, swap, split within the original's bounds,
@@ -197,6 +202,9 @@ flag) land once:
 - **The listing's size** (§10): settled at T51's start by listing per hero (decision 117,
   ADR-0017 point 6), so `legal_commands` and the env's rollout stay as they were; a hero with
   seven stacks and a full backpack still lists a few thousand commands, which T52 measures.
+  T52: in a meeting a hero with seven stacks and twelve backpack artifacts lists 270 commands,
+  its mate 92; both listings and the 196 split ranges of the two armies cost about 800 000
+  instructions (`manage-army-12`), about 0.1 ms in release.
 - **The handover of the env**: the AI lane takes an env whose encoding lacks increment 6's
   commands; agents trained before E13's macro-actions manage nothing. The masks' `Decline` keeps
   the env playable; the encoding's growth is the AI lane's call (its inbox).
