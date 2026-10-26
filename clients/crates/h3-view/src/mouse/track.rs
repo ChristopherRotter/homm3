@@ -147,6 +147,8 @@ struct Handler<'l> {
     busy: bool,
     /// The hero's spell being aimed (E17 M3 T7b-1).
     aiming: Option<u16>,
+    /// Both sides are played here (hot seat): a move over no control keeps the status line.
+    hot_seat: bool,
     shown: Shown,
 }
 
@@ -187,15 +189,23 @@ impl Handler<'_> {
     ) {
         let [width, height] = self.layout.mouse.field;
         if !(0..width).contains(&point[0]) || !(0..height).contains(&point[1]) {
-            // Outside the battlefield: unmarked, the items' hints, the pointer (0x475402).
+            // Outside the battlefield: unmarked, the items' hints, the pointer (0x475402). Over no
+            // control's hint an empty one with one human side, none in hot seat (E17 M4 T2c-2:
+            // `walk`, `turn` and `climb` empty the status line at the next human turn with the
+            // mouse parked, `hit`, `gate` and every hot-seat siege keep it; *provisional*: the
+            // dialog's dispatch 0x602360 is not read).
             self.set_marked(now, None);
             let hint = self
                 .layout
                 .panel
                 .item_at(point)
                 .and_then(crate::ui::Item::hint)
-                .map_or(Hint::Empty, |key| Hint::Control(key.into()));
-            self.write(now, &hint, field, name);
+                .map(|key| Hint::Control(key.into()));
+            match hint {
+                Some(hint) => self.write(now, &hint, field, name),
+                None if !self.hot_seat => self.write(now, &Hint::Empty, field, name),
+                None => {}
+            }
             self.set_frame(now, self.layout.mouse.panel_frame);
             self.hex = None;
             self.written = None;
@@ -266,14 +276,15 @@ impl Handler<'_> {
 /// order), `starts` its actions' starts (one per `Logged::Action`), `turns` its turns (the
 /// opening's first, then one per `Logged::Turn`), `inputs` what the mouse does (in time order:
 /// a move comes after the log's entries at its time up to an action's start, an `Act` takes that
-/// start). `name` words a hint in the battle a turn shows.
+/// start), `hot_seat` whether both sides are played here. `name` words a hint in the battle a
+/// turn shows.
 #[must_use]
 pub fn follow(
     log: &[(u32, Logged)],
     starts: &[Start],
     turns: &[Turn<'_>],
     inputs: &[Input],
-    layout: &BattleLayout,
+    (layout, hot_seat): (&BattleLayout, bool),
     name: &dyn Fn(&Hint, &Observation) -> String,
 ) -> Shown {
     let mut h = Handler {
@@ -289,6 +300,7 @@ pub fn follow(
         queued: Vec::new(),
         busy: false,
         aiming: None,
+        hot_seat,
         shown: Shown::default(),
     };
     let mut at = Cursor::default();

@@ -46,7 +46,7 @@ fn legal() -> Legal {
 }
 
 fn run(log: &[(u32, Logged)], starts: &[Start], turns: &[Turn<'_>], inputs: &[Input]) -> Shown {
-    follow(log, starts, turns, inputs, &layout(), &name)
+    follow(log, starts, turns, inputs, (&layout(), false), &name)
 }
 
 #[test]
@@ -112,6 +112,56 @@ fn a_waiting_human_turn_takes_each_move() {
     assert_eq!(Shown::default().frame(0), None);
     assert_eq!(Shown::default().point(0), None);
     assert_eq!(Shown::default().marked(0), None);
+}
+
+#[test]
+fn in_hot_seat_the_parked_mouse_keeps_the_status_line() {
+    // E17 M4 T2c-2 (`hit`, `gate`): both sides played here, the queued and the posted move over
+    // no control write nothing; a control's hint still.
+    let (o, legal) = (battle(), legal());
+    let mut next = battle();
+    next.active = Some(2);
+    let none = Legal::default();
+    let turn = |observation, legal| Turn {
+        field: Field {
+            observation,
+            legal,
+            facing: &Facing::Sides,
+            bugs: Bugs::Fixed,
+        },
+        human: true,
+    };
+    let turns = [turn(&o, &legal), turn(&next, &none)];
+    let inputs = [
+        Input::Move {
+            at: 100,
+            to: centre(90),
+        },
+        Input::Act { at: 100 },
+        Input::Move { at: 100, to: PARK },
+        Input::Move {
+            at: 500,
+            to: [700, 570],
+        },
+    ];
+    let log = [(100, Logged::Action), (500, Logged::Turn(2))];
+    let shown = follow(
+        &log,
+        &[Start { unmarks: true }],
+        &turns,
+        &inputs,
+        (&layout(), true),
+        &name,
+    );
+    assert_eq!(
+        shown.log,
+        [
+            (100, status("Attack(1)", true)),
+            (100, Logged::Action),
+            (500, Logged::Turn(2)),
+            (500, status("Control(\"battle.control.wait\")", false)),
+        ]
+    );
 }
 
 #[test]
