@@ -761,34 +761,72 @@ def approach_target(game, mem, name, target, days=0):
         best = min(open_, key=lambda t: (far(t, (x, y)), far(t, here), t[1], t[0]))
         if far(best, (x, y)) >= far(here, (x, y)):
             raise RuntimeError(f"{name} at {here} comes no nearer to {target} (unexplored)")
-        obs = walk(game, mem, name, [*best, z], days=days)
+        waited += ready(game, mem, name, [*best, z], days)["days_waited"]
+        obs = walk(game, mem, name, [*best, z])
         if not obs["arrived"]:
             raise RuntimeError(f"{name} did not reach {best} on the way to {target}")
         walked.append(list(best))
-        waited += obs.get("days_waited", 0)
 
 
-def walk(game, mem, name, target, answer=None, battle=None, level_up="left", actions=None,
-         choice=None, once=False, days=0, near=False):
-    """Selects the hero, clicks the target tile once (the path shows: its marks are read) and
-    again (the hero goes, or not, or visits what stands there), waits until it rests, answering
-    questions and playing battles on the way (settle); returns the observation. With `once`
-    (E08 T57, batch E7's E7-23) only the first click: the path is read and the hero stays. With
-    `days` (E08 T57: batch E7's long rounds of visits) a target the first click's path does not
-    reach today (its mark red) waits: the turns end until the hero's player's next one, at most
-    `days` times, and the walk starts again (`days_waited`). With `near` an unexplored target is
-    first approached (`approach_target`: `approached`, the tiles walked to)."""
-    approached, waited = approach_target(game, mem, name, target, days) if near else ([], 0)
-    hero = select(game, mem, name)
-    index = hero["index"]
+def view_both(game, mem, hero, x, y, z):
+    """The view on both ends when they share a level and fit in it, else on the target alone
+    (E17 H2; E08 T57: batch E7's visits 18 columns apart)."""
     x0, y0, z0 = hero["tile"]
-    x, y, z = (*target, 0) if len(target) == 2 else target
-    # Both ends in the view when they share a level and fit in it, else the target alone (E17 H2;
-    # E08 T57: batch E7's visits 18 columns apart).
     mid = ((x0 + x) // 2, (y0 + y) // 2)
     across, down = MAP_AREA[2:]
     fits = z == z0 and 0 <= x - mid[0] + CENTRE[0] < across and 0 <= y - mid[1] + CENTRE[1] < down
     centre(game, mem, *(mid if fits else (x, y)), z)
+
+
+def ready(game, mem, name, target, days=0, near=False):
+    """Gets a walk ready before its step reads anything (E08 T57, batch E7's rounds of visits):
+    with `near` an unexplored target is approached first (approach_target); with `days` the
+    target is clicked once and, while its path's mark is red (beyond today's points), the turns
+    end until the hero's player's next one, at most `days` times (each new day the route is set
+    anew: a click beside the hero, then on the target). Returns
+    {approached, days_waited, clicked}: with `clicked` the walk's first click walks at once."""
+    approached, waited = approach_target(game, mem, name, target, days) if near else ([], 0)
+    done = {"approached": approached, "days_waited": waited, "clicked": False}
+    if not days:
+        return done
+    x, y, z = (*target, 0) if len(target) == 2 else target
+    hero = select(game, mem, name)
+    view_both(game, mem, hero, x, y, z)
+    game.click(*hover(game, mem, x, y, z), 0.3)
+    game.move(*PARK)
+    time.sleep(0.3)
+    done["clicked"] = True
+    while mem.path().get((x, y, z)) == "red" and done["days_waited"] < days + waited:
+        while end_turn(game, mem) != hero["owner"]:
+            pass
+        done["days_waited"] += 1
+        # The route anew for the new day's points: a click on an open tile beside the hero (a
+        # route there, no walk), then one on the target (a click on the set destination walks).
+        hero = select(game, mem, name)
+        hx, hy, _ = hero["tile"]
+        beside = sorted(t for t in mem.open_tiles(hero["owner"], z)
+                        if max(abs(t[0] - hx), abs(t[1] - hy)) == 1 and t != (x, y))
+        if not beside:
+            raise RuntimeError(f"{name} has no open tile beside it to set its route anew")
+        centre(game, mem, *beside[0], z)
+        game.click(*hover(game, mem, *beside[0], z), 0.3)
+        view_both(game, mem, hero, x, y, z)
+        game.click(*hover(game, mem, x, y, z), 0.3)
+        game.move(*PARK)
+        time.sleep(0.3)
+    return done
+
+
+def walk(game, mem, name, target, answer=None, battle=None, level_up="left", actions=None,
+         choice=None, once=False):
+    """Selects the hero, clicks the target tile once (the path shows: its marks are read) and
+    again (the hero goes, or not, or visits what stands there), waits until it rests, answering
+    questions and playing battles on the way (settle); returns the observation. With `once`
+    (E08 T57, batch E7's E7-23) only the first click: the path is read and the hero stays."""
+    hero = select(game, mem, name)
+    index = hero["index"]
+    x, y, z = (*target, 0) if len(target) == 2 else target
+    view_both(game, mem, hero, x, y, z)
     before = observe(mem, index)
     game.click(*hover(game, mem, x, y, z), 0.3)
     game.move(*PARK)
@@ -797,15 +835,6 @@ def walk(game, mem, name, target, answer=None, battle=None, level_up="left", act
     # The game walks on a click on the hero's current destination: a path to this tile set
     # before makes the first click walk.
     first_walked = observe(mem, index) != before
-    if days and not first_walked and path.get((x, y, z)) == "red":
-        owner = hero["owner"]
-        while end_turn(game, mem) != owner:
-            pass
-        obs = walk(game, mem, name, target, answer, battle, level_up, actions, choice, once,
-                   days - 1)
-        obs["days_waited"] = obs.get("days_waited", 0) + 1 + waited
-        obs["approached"] = approached + obs.get("approached", [])
-        return obs
     if not first_walked and not once:
         game.click(*hover(game, mem, x, y, z), 0.3)
         game.move(*PARK)
@@ -818,8 +847,6 @@ def walk(game, mem, name, target, answer=None, battle=None, level_up="left", act
         "arrived": after["tile"] == [x, y, z],
         "moved": after["tile"] != before["tile"], "points_before": before["points"],
         "points": after["points"], "first_click_walked": first_walked, **events,
-        **({"approached": approached} if approached else {}),
-        **({"days_waited": waited} if waited else {}),
     }
 
 
@@ -928,7 +955,8 @@ SCREEN_ACTIONS = ("click", "right", "slider")
 # A message box's pictures by their DEF (E08 T57; observed at a Treasure Chest under Wine): a
 # resource (resour82.def, frame the resource), a primary skill or experience (pskill.def, frames
 # 0-3 the skills, 4 experience, 5 spell points), an artifact (artifact.def, frame the id), a
-# secondary skill (secskill.def, frame 3 x skill + 3 + level - 1), a spell (spells.def).
+# secondary skill (secskill.def, frame 3 x skill + 3 + level - 1), a spell (spells.def), a scroll
+# (spellscr.def), morale and luck (imrl82.def, ilck82.def: their frames as shown).
 PSKILL_FRAMES = (*h3mem.PRIMARY_SKILLS, "experience", "spell points")
 
 
@@ -946,6 +974,9 @@ def picture_text(mem, picture):
         return mem.spell_name(frame)
     if name == "spellscr.def":
         return f"Spell Scroll ({mem.spell_name(frame)})"
+    if name in ("imrl82.def", "ilck82.def"):
+        kind = "morale" if name.startswith("imrl") else "luck"
+        return f"{text} {kind} (frame {frame})".strip()
     if name == "secskill.def" and frame >= 3:
         skill, level = divmod(frame - 3, 3)
         return text or f"{LEVELS[level + 1].capitalize()} {h3mem.SKILLS[skill]}"
@@ -1592,8 +1623,8 @@ def oddities(obs, expect):
     if obs.get("dialogs") and not expect.get("dialogs"):
         notes.append(f"{obs['dialogs']} dialog(s) after the walk to {obs['target']}")
     if obs.get("days_waited"):
-        notes.append(f"the walk to {obs['target']} waited {obs['days_waited']} day(s): beyond "
-                     "the day's points")
+        notes.append(f"the walk to {obs['target']} waited {obs['days_waited']} day(s) before its "
+                     "step: beyond the day's points")
     if obs.get("first_click_walked"):
         notes.append(f"the first click on {obs['target']} walked (a path to it was set before)")
     if "question" in expect:
@@ -1795,6 +1826,10 @@ def batch(recipe_path, map_path=None, out=None):
             if step.get("end_turn"):
                 obs = {"end_turn": True, "player": end_turn(game, mem)}
             else:
+                prepared = None
+                if "walk" in step and (step.get("days") or step.get("near")):
+                    prepared = ready(game, mem, step["hero"], step["walk"], step.get("days", 0),
+                                     step.get("near", False))
                 index = select(game, mem, step["hero"])["index"]
                 before = snapshot(mem, index)
                 pre = pre_read(step, before, mem)
@@ -1805,8 +1840,11 @@ def batch(recipe_path, map_path=None, out=None):
                 if "walk" in step:
                     obs = walk(game, mem, step["hero"], step["walk"], step.get("answer"),
                                step.get("battle"), step.get("level_up", "left"),
-                               step.get("actions"), step.get("choice"), step.get("once", False),
-                               step.get("days", 0), step.get("near", False))
+                               step.get("actions"), step.get("choice"), step.get("once", False))
+                    if prepared:
+                        # E08 T57: the route set by `ready` makes the first click walk.
+                        obs["first_click_walked"] &= not prepared.pop("clicked")
+                        obs.update({k: v for k, v in prepared.items() if v})
                 elif "equip" in step:
                     obs = equip(game, mem, step["hero"], step["equip"])
                 elif "screen" in step:

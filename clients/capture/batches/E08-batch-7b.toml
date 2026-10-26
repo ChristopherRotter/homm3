@@ -15,6 +15,7 @@ difficulty = "easy"
 encounter = "E7-12"
 hero = "E7-12"
 walk = [6, 3]
+expect = { dialogs = true }
 answer = "yes"
 record = { "skills before" = "before:hero:skills", "the question; the messages (first words)" = ["questions", "messages", "message_pictures"], "skills after" = "hero:skills", "the box on (6, 3) after (yes or no)" = "object:6,3" }
 
@@ -22,6 +23,7 @@ record = { "skills before" = "before:hero:skills", "the question; the messages (
 encounter = "E7-13"
 hero = "E7-13"
 walk = [6, 6]
+expect = { dialogs = true }
 answer = "yes"
 record = { "spell points before" = "before:hero:spell_points", "the messages (first words)" = ["questions", "messages", "message_pictures"], "spell points after" = "hero:spell_points" }
 note = { "the box on (6, 6) after" = "object:6,6" }
@@ -30,6 +32,7 @@ note = { "the box on (6, 6) after" = "object:6,6" }
 encounter = "E7-14"
 hero = "E7-14"
 walk = [6, 9]
+expect = { dialogs = true }
 answer = "yes"
 level_up = "Wisdom"
 record = { "experience and skills before" = ["before:hero:experience", "before:hero:skills"], "the messages (the experience shown)" = ["questions", "messages", "message_pictures"], "the level-up's offers" = "level_up_dialogs", "experience and skills after" = ["hero:experience", "hero:skills"] }
@@ -38,6 +41,7 @@ record = { "experience and skills before" = ["before:hero:experience", "before:h
 encounter = "E7-15"
 hero = "E7-15"
 walk = [6, 12]
+expect = { dialogs = true }
 answer = "yes"
 level_up = "Wisdom"
 record = { "before: spells, skills, experience" = ["before:hero:spells", "before:hero:skills", "before:hero:experience"], "the messages (the parts shown, in order)" = ["questions", "messages", "message_pictures"], "the level-up's offers; the one taken" = "level_up_dialogs", "after: spells, skills, experience" = ["hero:spells", "hero:skills", "hero:experience"] }
@@ -48,6 +52,7 @@ record = { "before: spells, skills, experience" = ["before:hero:spells", "before
 encounter = "E7-17"
 hero = "E7-17"
 walk = [16, 3]
+expect = { dialogs = true }
 record = { "E7-17 before: tile, movement points, gold" = ["before:hero:tile", "before:hero:points", "before:resource:gold"], "E7-17's path (tiles); the message" = ["path_tiles", "messages", "message_pictures"], "E7-17 after: tile, movement points, gold" = ["hero:tile", "hero:points", "resource:gold"] }
 note = { "the event on (16, 3) after" = "object:16,3" }
 
@@ -55,6 +60,7 @@ note = { "the event on (16, 3) after" = "object:16,3" }
 encounter = "E7-17"
 hero = "E7-17b"
 walk = [16, 6]
+expect = { dialogs = true }
 record = { "E7-17b before: tile, movement points, gold" = ["before:hero:tile", "before:hero:points", "before:resource:gold"], "E7-17b's path (tiles); the message (or none)" = ["path_tiles", "messages", "message_pictures"], "E7-17b after: tile, movement points, gold" = ["hero:tile", "hero:points", "resource:gold"] }
 note = { "the event on (16, 6) after" = "object:16,6" }
 
@@ -64,18 +70,21 @@ note = { "the event on (16, 6) after" = "object:16,6" }
 encounter = "E7-18"
 hero = "E7-18"
 walk = [14, 9]
+expect = { dialogs = true }
 record = { "gold before" = "before:resource:gold", "first entry: the message; gold; tile" = ["messages", "resource:gold", "hero:tile"] }
 
 [[step]]
 encounter = "E7-18"
 hero = "E7-18"
 walk = [15, 9]
+expect = { dialogs = true }
 note = { "the step off east: messages" = "messages" }
 
 [[step]]
 encounter = "E7-18"
 hero = "E7-18"
 walk = [14, 9]
+expect = { dialogs = true }
 record = { "second entry: the message; gold; tile" = ["messages", "resource:gold", "hero:tile"] }
 note = { "the event on (14, 9) after" = "object:14,9" }
 
@@ -88,6 +97,7 @@ end_turn = true
 encounter = "E7-16"
 hero = "E7-16"
 walk = [26, 20]
+expect = { dialogs = true }
 answer = "yes"
 battle = "retreat"
 record = { "the Pyramid's word before (hex)" = ["before:word:26,20", "before:object:26,20"], "the question; the message" = ["questions", "messages"], "rows" = "opening:rows", "after the retreat: the Pyramid's word" = ["word:26,20", "object:26,20"] }
@@ -99,6 +109,7 @@ note = { "retreated" = "retreated" }
 encounter = "E7-22"
 hero = "E7-22"
 walk = [26, 20]
+expect = { dialogs = true }
 answer = "yes"
 battle = "auto"
 level_up = "Learning"
@@ -109,6 +120,7 @@ note = { "the question" = "questions", "E7-22's tile after the battle" = "hero:t
 encounter = "E7-22"
 hero = "E7-22"
 walk = [29, 22]
+expect = { dialogs = true }
 
 # --- E7-21: the looted Pyramid twice (stepping off between), then the Pikemen on (30, 18) -------------
 
@@ -121,6 +133,7 @@ record = { "before: luck bonus, status flags (hex)" = ["hero:luck_bonus", "hero:
 encounter = "E7-21"
 hero = "E7-21"
 walk = [26, 20]
+expect = { dialogs = true }
 answer = "yes"
 record = { "first visit: the question, messages; luck bonus, status flags after" = ["questions", "messages", "hero:luck_bonus", "hero:status"] }
 note = { "E7-21's tile after the first visit" = "hero:tile" }
@@ -129,11 +142,13 @@ note = { "E7-21's tile after the first visit" = "hero:tile" }
 encounter = "E7-21"
 hero = "E7-21"
 walk = [27, 20]
+expect = { dialogs = true }
 
 [[step]]
 encounter = "E7-21"
 hero = "E7-21"
 walk = [26, 20]
+expect = { dialogs = true }
 answer = "yes"
 record = { "second visit: messages; luck bonus, status flags after" = ["questions", "messages", "hero:luck_bonus", "hero:status"] }
 
@@ -141,6 +156,7 @@ record = { "second visit: messages; luck bonus, status flags after" = ["question
 encounter = "E7-21"
 hero = "E7-21"
 walk = [30, 18]
+expect = { dialogs = true }
 battle = "auto"
 record = { "the opening: each of E7-21's stacks' luck" = "luck:start:attacker", "after the battle: luck bonus, status flags" = ["hero:luck_bonus", "hero:status"] }
 note = { "battle" = "winner", "the opponent's luck at the opening" = "luck:start:defender" }
@@ -151,6 +167,7 @@ note = { "battle" = "winner", "the opponent's luck at the opening" = "luck:start
 encounter = "E7-19"
 hero = "E7-19"
 walk = [23, 3]
+expect = { dialogs = true }
 answer = "yes"
 record = { "before: backpack count, worn positions" = ["before:hero:backpack_count", "before:hero:positions"], "the messages (first words)" = ["questions", "messages", "message_pictures"], "after: backpack count, worn positions" = ["hero:backpack_count", "hero:positions"], "the box on (23, 3) after (yes or no)" = "object:23,3" }
 
@@ -160,6 +177,7 @@ record = { "before: backpack count, worn positions" = ["before:hero:backpack_cou
 encounter = "E7-20"
 hero = "E7-20"
 walk = [23, 6]
+expect = { dialogs = true }
 answer = "yes"
 actions = [
     { record = { "the messages; the dialog's title (or: no dialog)" = "dialog", "the dialog's upper army" = "shown:upper" } },

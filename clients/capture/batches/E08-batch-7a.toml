@@ -85,6 +85,7 @@ record = { "({x}, {y}) | its word before" = ["word:{x},{y}", "object:{x},{y}"] }
 encounter = "E7-1"
 hero = "E7-1"
 walk = [7, 4]
+expect = { dialogs = true }
 answer = "no"
 battle = "auto"
 record = { "after the step (the question's text, or: the battle at once)" = ["questions", "battle"], "after No: the axe on (7, 4) (yes or no); E7-1's artifacts" = ["object:7,4", "hero:positions", "hero:backpack"] }
@@ -93,6 +94,7 @@ record = { "after the step (the question's text, or: the battle at once)" = ["qu
 encounter = "E7-1"
 hero = "E7-1"
 walk = [7, 4]
+expect = { dialogs = true }
 answer = "yes"
 battle = "auto"
 record = { "the battle's result; E7-1's army after" = ["questions", "battle", "winner", "hero:army"], "worn positions after (position: artifact)" = "hero:positions", "backpack after" = "hero:backpack", "the axe on (7, 4) after (yes or no)" = "object:7,4" }
@@ -104,12 +106,14 @@ note = { "messages" = "messages" }
 encounter = "E7-2"
 hero = "E7-2"
 walk = [7, 8]
+expect = { dialogs = true }
 record = { "the axe's message (first words)" = ["messages", "message_pictures"], "worn positions after the axe (position: artifact)" = "hero:positions", "backpack after the axe" = "hero:backpack" }
 
 [[step]]
 encounter = "E7-2"
 hero = "E7-2"
 walk = [10, 8]
+expect = { dialogs = true }
 record = { "the scroll's message (first words)" = ["messages", "message_pictures"], "worn positions after the scroll" = "hero:positions", "backpack after the scroll" = "hero:backpack", "learned spells after the scroll" = "hero:spells" }
 
 # --- E7-4: six chests (7, 12) to (17, 12), the experience taken; the Learning Stone (18, 12) ----------
@@ -125,6 +129,7 @@ encounter = "E7-4"
 hero = "E7-4"
 each = { from = [7, 12], to = [17, 12], step = [2, 1] }
 walk = "each"
+expect = { dialogs = true }
 choice = "right"
 level_up = "not Learning"
 days = 2
@@ -136,6 +141,7 @@ note = { "messages" = "messages" }
 encounter = "E7-4"
 hero = "E7-4"
 walk = [18, 12]
+expect = { dialogs = true }
 level_up = "not Learning"
 days = 2
 near = true
@@ -147,6 +153,7 @@ record = { "the Learning Stone: experience before, after, its message" = ["befor
 encounter = "E7-6"
 hero = "E7-6"
 walk = [5, 16]
+expect = { dialogs = true }
 battle = "auto"
 record = { "before: backpack count, worn positions, gold" = ["before:hero:backpack_count", "before:hero:positions", "before:resource:gold"], "the messages after the battle (first words, in order)" = ["messages", "message_pictures"], "after: backpack count, worn positions, gold" = ["hero:backpack_count", "hero:positions", "resource:gold"] }
 note = { "battle" = "winner" }
@@ -159,6 +166,7 @@ hero = "E7-5"
 each = { from = [26, 4], to = [44, 10], step = [2, 2] }
 select = { holds = "artifact", controls = 3 }
 walk = "each"
+expect = { dialogs = true }
 choice = "left"
 days = 3
 near = true
@@ -175,6 +183,7 @@ hero = "E7-10"
 each = { from = [26, 16], to = [44, 18], step = [2, 2] }
 select = { holds = "artifact", controls = 1 }
 walk = "each"
+expect = { dialogs = true }
 days = 3
 near = true
 record = { "({x}, {y}) | message" = ["messages", "message_pictures"], "({x}, {y}) | treasury before / after" = ["before:treasury", "treasury"], "({x}, {y}) | backpack before / after" = ["before:hero:backpack_count", "hero:backpack_count"], "({x}, {y}) | its word after" = ["word:{x},{y}", "object:{x},{y}"] }
@@ -185,6 +194,7 @@ hero = "E7-10"
 each = { from = [26, 22], to = [44, 22], step = [2, 1] }
 select = { holds = "artifact", controls = 1 }
 walk = "each"
+expect = { dialogs = true }
 days = 3
 near = true
 record = { "({x}, {y}) | message" = ["messages", "message_pictures"], "({x}, {y}) | treasury before / after" = ["before:treasury", "treasury"], "({x}, {y}) | backpack before / after" = ["before:hero:backpack_count", "hero:backpack_count"], "({x}, {y}) | its word after" = ["word:{x},{y}", "object:{x},{y}"] }
@@ -194,6 +204,7 @@ encounter = "E7-10"
 hero = "E7-10"
 each = { from = [48, 16], to = [51, 16], step = [3, 1] }
 walk = "each"
+expect = { dialogs = true }
 answer = "yes"
 days = 3
 near = true
@@ -210,6 +221,7 @@ record = { "before: morale bonus, status flags (hex)" = ["hero:morale_bonus", "h
 encounter = "E7-11"
 hero = "E7-11"
 walk = [21, 28]
+expect = { dialogs = true }
 answer = "yes"
 record = { "first Tomb: messages; morale bonus, status flags after" = ["questions", "messages", "hero:morale_bonus", "hero:status"] }
 
@@ -217,6 +229,7 @@ record = { "first Tomb: messages; morale bonus, status flags after" = ["question
 encounter = "E7-11"
 hero = "E7-11"
 walk = [21, 31]
+expect = { dialogs = true }
 answer = "yes"
 record = { "second Tomb: messages; morale bonus, status flags after" = ["questions", "messages", "hero:morale_bonus", "hero:status"] }
 
@@ -224,6 +237,7 @@ record = { "second Tomb: messages; morale bonus, status flags after" = ["questio
 encounter = "E7-11"
 hero = "E7-11"
 walk = [25, 28]
+expect = { dialogs = true }
 battle = "auto"
 record = { "the opening: each of E7-11's stacks' morale" = "morale:start:attacker", "after the battle: morale bonus, status flags" = ["hero:morale_bonus", "hero:status"] }
 note = { "battle" = "winner", "the opponent's morale at the opening" = "morale:start:defender" }
