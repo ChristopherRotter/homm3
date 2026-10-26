@@ -136,7 +136,8 @@ battle.
   T1a2, the scroll (T1a cut at its seam before it started, the user, 2026-10-26; **done**
   2026-10-26: Ctrl and the direction keys, the edge every 70 ms, the limits, the edge cursors,
   four sequences; design §3.4, MCL-Q6 answered); T1b, the walk
-  read and recorded; T2, the map over time headless (idle and scroll exact); T3, the walk drawn
+  read and recorded (**done** 2026-10-26, whole: the lifted hero at the view's centre, the view
+  sliding by pixels, seven sequences; design §3.5); T2, the map over time headless (idle and scroll exact); T3, the walk drawn
   (exact); T4, the window; T5, the sound; T6, M2's closure.
 - **Exit:** every recorded sequence as recorded, line by line and frame by frame (or each
   difference an `MCL-Q<n>`); a situation and a sequence play in the window at the original's

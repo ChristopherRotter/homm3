@@ -581,7 +581,10 @@ situation's): `<ms> hero <x> <y> <level> <facing>` (the current player's selecte
 `Mem.selected`), `<ms> walk <group> <frame> <x> <y>` (the lifted hero's group, the frame pass 9
 draws next and the view's pixel offset, `Mem.walk`) and `<ms> arrows <x>,<y>,<level>,<arrow>
 ...` (the path's arrows left, `Mem.path_arrows`). A walk at hero speed 4 draws each step once
-without a wait: all of it falls in its click's millisecond.
+without a wait: all of it falls in its click's millisecond. Since T1b `frames` writes every map
+object's animation phase 0 once the situation is staged (`Mem.write_phases`): the load gives
+each a random one, and where an object's frames repeat a picture the box the screen changed in
+at a redraw moved with it from run to run (two mines did); the live part at 0 reads them back.
 
 ## The recipes' coordinates (800 × 600)
 

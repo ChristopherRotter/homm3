@@ -968,7 +968,8 @@ step sounds are and the ambient sounds (0x4183D0; both T5).
 
 **Recorded** (`clients/map/sequences.toml`; situations `seq-walk`, `seq-walk-follow`,
 `seq-sail`; the timeline's walk lines since T1b: `hero`, `walk`, `arrows`, only where they
-change, §3.2; every frame at 0 exact):
+change; the objects' phases written 0 once staged, as the screen's changed boxes at the idle
+redraws moved with the load's random phases: the runbook; every frame at 0 exact):
 
 - **`walk-2`** (speed 2): each direction key steps the hero at its press's millisecond: the
   view's corner the new tile less (9, 8), the walking group by the direction (5, 6, 7, 8, 9, 8, 7,
@@ -982,3 +983,22 @@ change, §3.2; every frame at 0 exact):
   frame carried on (1, 2, 3, then 4, 5, 6, then 7, 0, 1, then 2, 3, 4); the palettes stepping at
   2 800, 3 000, 3 200 in the frames, the objects not; the last frame at 3 250, the standing group
   and the idle redraw at 3 300 (the objects + 2: the deadline 2 880 had passed by 420 ms).
+- **`walk-1`, `walk-3`** (speeds 1 and 3, the same inputs): four frames 50 ms apart with the
+  offsets 24, 16, 8, 0 (a key's step ends at + 200), two with 16, 0 (+ 100); the click's walk at
+  2 700 steps every 200 and 100 ms, the frame carried on (speed 1: 1 to 4, 5 to 0, 1 to 4, 5 to
+  0); otherwise as `walk-2`.
+- **`walk-4`** (speed 4): a key's step is one whole-view frame at its press, the view and the
+  hero's tile moved, the standing group already in memory: the frame drawn shows the walking
+  group's frame 0 (the one draw), the standing picture at the next idle redraw on the 180-ms grid
+  (+ 80). The click's walk of four tiles falls whole in its millisecond (2 700: the view, the
+  hero, the arrows gone, the standing group); the walk's end then reads the pointer, still on the
+  clicked tile (the harness settles a click before the next input: the cursor drawn there until
+  the poll at 2 706 moves it to the parked point).
+- **`walk-points`** (450 points, a tile six steps east): the path's arrows, four green and two
+  red (the frames + 1: 12, then 37 and the destination's 26); four steps (300 to 750), the points
+  then 50, less than a step: 0 and the walk's last step; the standing group at 900, the two red
+  arrows kept (the path rebuilt the same).
+- **`walk-sail`** (the hero in a boat, 1 500 points, a water tile five steps north-east): the
+  boat's walking group 6 and its frames as a hero's, five steps 150 ms apart from 300; the
+  standing group 1 at 1 050; the view's corner passing the map's top (y −1). The palettes keep
+  stepping the water, shown at each redraw.

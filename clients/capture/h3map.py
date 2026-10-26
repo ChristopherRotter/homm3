@@ -687,6 +687,10 @@ def sequence(entry, out):
     (out / "frames.jsonl").unlink(missing_ok=True)
     down = set()
     try:
+        # The objects' phases fixed (T1b): the load gives each a random one (design §1.6), and
+        # where an object's frames repeat a picture the screen's changed box at a redraw moved
+        # with it from run to run. The live part at 0 reads them back.
+        mem.write_phases(0)
         for address, value in options:
             if address is None:
                 index, _ = mem.selected()

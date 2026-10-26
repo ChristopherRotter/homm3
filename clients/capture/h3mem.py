@@ -773,6 +773,13 @@ class Mem:
         return [(raw[i + 4], raw[i + 5], raw[i + 6]) + struct.unpack_from("<HB", raw, i + 8)
                 for i in range(0, len(raw), OBJECT_RECORD)]
 
+    def write_phases(self, phase=0):
+        """Every map object's animation phase (its record's u8 +0xA; E24 M2 T1b: `frames` fixes
+        them, the load's are random, design §1.6)."""
+        begin, end = struct.unpack("<II", self.read(self.manager_field(MANAGER_MAP) + MAP_OBJECTS, 8))
+        for record in range(begin, end, OBJECT_RECORD):
+            self.write_bytes(record + 0xA, bytes([phase]))
+
     def map_templates(self):
         """The map's object templates in memory (E24 M1 T4b): [(DEF, class, subclass)] in order,
         the map's own and then the copies a new game made for its random objects."""
