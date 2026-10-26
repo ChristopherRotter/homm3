@@ -28,6 +28,23 @@ Sorted by destination at E05's audit (T9a, 2026-10-19); the origin stays in brac
 done: BAT-Q33's point for E05 (AI-Q3, ADR-0025 point 6), the `h3-game` coverage gap of a pending
 Pass offer (fixed by the adventure lane's fixed tests, #266).
 
+- 2026-10-26 (the adventure lane, E08 T55b, `adventure/e08-t55b`; decisions 138–141; **for you,
+  when the adventure lane's T63 lands**): **answers typed by decision.** `h3_game::Answer` becomes
+  an enum by decision kind, each variant with its own type: `Offer(Consent)` (`Accept`,
+  `Decline`: every yes-or-no offer), `LevelUp(SkillOffer)` (`First`, `Second`), `Close` (a
+  meeting, an army dialog; today's `Decline` there), and increment 7's `Chest` (`Gold`,
+  `Experience`), `Arena` (`Attack`, `Defense`), `School` (`First`, `Second`, `Leave`) and
+  `University` (`Buy(slot)`, `Leave`). T63 migrates every caller, `h3-sim`'s
+  `src/adventure/action.rs` mapping of your entries included (`cross-lane`, the user's consent):
+  accept and decline onto `Offer` or `Close` by the open decision, the first and second entries
+  onto `LevelUp` and the new two-way choices. Yours to decide after it: whether a University's
+  purchase gets a head (until then the masks allow its `Leave`), and whether the new decisions'
+  views enter the observation. Your masks must allow at least one answer per decision (the system
+  actor's defaults: `Gold`, `Attack`, `Leave`, `Decline`, `Close`). Under `faithful`, if batch
+  E7's row E7-23 confirms A-23, `legal_moves` treats an event's tile as an entrance for every hero
+  (your tile masks then reveal hidden events, as the original's path does; `docs/06-security.md`
+  will say so). Design: `docs/epics/E08-design.md` §12, §14, §16; ADR-0017's draft point 6, 8.
+
 - 2026-10-26 (the adventure lane, E08 T52, `adventure/e08-t52`; **for you**, the entry below):
   **the env plays on through a meeting and an army dialog** in the adventure lane's own test
   (`h3-cli`'s `adventure::tests::the_env_plays_on_through_a_meeting_and_an_army_dialog`: your

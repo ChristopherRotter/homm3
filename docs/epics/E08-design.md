@@ -3,9 +3,9 @@
 A handover, not binding (`docs/adr/README.md`): the working detail behind increment 7's
 amendment drafts of ADR-0013 (points 1, 2, 15), ADR-0016 (points 1, 3, 4, 6) and ADR-0017
 (points 1, 4, 6, 8–11) in `docs/lanes/adventure/adr-drafts/*-increment-7.md`, written by T55b
-from T55a's survey and the answers at ADV-Q28 (the epic's decisions 129–136). The user accepts the
-drafts and the cut at ADV-Q29. The task that builds a section deletes it; the file goes when the
-epic closes. Facts and sources: survey `docs/rules/surveys/E08-rewards.md` (§ numbers are the
+from T55a's survey and the answers at ADV-Q28 (the epic's decisions 129–136), accepted with the
+cut at ADV-Q29 (decisions 138–141; decision 138's typed answers written into §14). The task that
+builds a section deletes it; the file goes when the epic closes. Facts and sources: survey `docs/rules/surveys/E08-rewards.md` (§ numbers are the
 survey's unless they name this note); the proposed rule ids are the survey's §12, with the
 additions of §6 and §17 here.
 
@@ -298,24 +298,40 @@ through `split` with the first creature's count, n less the second creature's st
 
 ## Part C — the game, the env, batch E7 and the cut
 
-### 14. The decisions (`h3-game`; GAM-DEC-005, -006, -004 amended)
+### 14. The decisions and their answers (`h3-game`; GAM-DEC-005, -006, -004 amended)
 
-- **`Decision`** gains: `Choice { owner, hero, kind, amounts }` (the chest: gold, experience; the
-  Arena: Attack, Defense; a School: its two skills, its price), answered `First`/`Second` (and
-  `Decline` where one may leave); `University { owner, hero, object, skills, price }`, open until
-  `Decline`, `Answer::Buy(slot)` buying while open (slot state from `university_slot`, the price
-  from the treasury); new `OfferKind`s (`OpenBox`, `SearchPyramid`, `SearchTomb`, `PayTree {
-  price }`) beside increment 3's `Fight`; `ArmyDialog` gains the group of up to seven stacks and a
-  **rest** (`Option<Rest>`).
-- **The rest** (GAM-DEC-007, new): what a visit owes after a decision closes or a battle's levels
-  are given: the experience (and its level-ups), the pickup or the record after a won guards'
-  battle, the Pyramid's spell. The game holds it beside the decisions (the hero, the object, what
-  remains) and runs it when the hero has no level-up pending and no army dialog open (at once when
-  none). Its owner sees nothing of it but the decisions it leads to.
+- **Typed answers** (decision 138; the ADR-0017 draft's point 6): `Answer` becomes an enum by
+  decision kind, each variant carrying its kind's own type; every decision's answers move,
+  increments 2 to 6's with increment 7's, in one replay format bump (v7):
+
+  | Variant | Its type | For | Default |
+  |---|---|---|---|
+  | `Offer(Consent)` | `Accept`, `Decline` | every yes-or-no offer: the Cartographer, the border guard, a monster's join, join for gold, pursuit, a guarded object's `Fight`; new: `OpenBox`, `SearchPyramid`, `SearchTomb`, `PayTree { price }` | `Decline` |
+  | `LevelUp(SkillOffer)` | `First`, `Second` | a level-up with two offers | the original's choice |
+  | `Chest(ChestChoice)` | `Gold`, `Experience` | a treasure chest's gold | `Gold` |
+  | `Arena(ArenaChoice)` | `Attack`, `Defense` | the Arena (no leaving) | `Attack` |
+  | `School(SchoolChoice)` | `First`, `Second`, `Leave` (the School's two skills by its type's order) | a School of Magic or War | `Leave` |
+  | `University(UniversityAnswer)` | `Buy(slot)`, `Leave` | the University (open until `Leave`) | `Leave` |
+  | `Close` | — | a meeting, an army dialog (increment 6's `Decline`) | `Close` |
+
+  `WrongAnswer` stays for a variant that is not the open decision's kind; a University's `Buy` of
+  a closed slot or one the treasury cannot pay is rejected (`SlotClosed`, `CannotPay`) and changes
+  nothing. The system actor's `answer_default` (its closed command set, ADR-0017 point 2) gives
+  the default per kind.
+- **`Decision`** gains: `Choice { owner, hero, object, kind, amounts }` (the chest: gold and
+  experience; the Arena; a School: its two skills and price); `University { owner, hero, object,
+  skills, price }`; the new `OfferKind`s beside increment 3's `Fight`; `ArmyDialog` gains the
+  group of up to seven stacks and a **rest** (`Option<Rest>`).
+- **The rest** (GAM-DEC-007, new; decision 141): what a visit owes after a decision closes or a
+  battle's levels are given: the experience (and its level-ups), the pickup or the record after a
+  won guards' battle, the Pyramid's spell. The game holds it beside the decisions (the hero, the
+  object, what remains) and runs it when the hero has no level-up pending and no army dialog open
+  (at once when none). Its owner sees nothing of it but the decisions it leads to.
 - **Views** (`DecisionView`): the choice's amounts; the offer's price (the Tree); the University's
-  skills and slot states; the dialog's group. **Defaults** of the system actor: `First` for the
-  chest and the Arena, `Decline` for the rest (the ADR-0017 draft's point 6).
-- **`legal_commands`:** each decision's answers; `Buy` per open slot the treasury can pay.
+  skills and slot states; the dialog's group.
+- **`legal_commands`:** each decision's answers: both of a choice (and `Leave` for a School), one
+  `Buy` per open slot the treasury can pay and `Leave` for a University, `Close` for a meeting or
+  an army dialog.
 
 ### 15. The game's application
 
@@ -328,9 +344,13 @@ through `split` with the first creature's count, n less the second creature's st
 
 ### 16. The env, replays, fixtures, properties, benchmarks
 
-- **The env** (the AI lane's): its masks allow at least one answer per new decision (`First` for
-  a choice, `Decline` otherwise); `Buy`'s head is the AI lane's call. Its inbox is told (T55b).
-- **Replays:** format v7 (`Answer::Buy`); the twelve goldens re-recorded; new: random play on a
+- **The env** (the AI lane's): its action mapping (`h3-sim`'s `adventure/action.rs`, which builds
+  `Answer::Accept` and the others from its entries) moves onto the typed answers in T63
+  (`cross-lane`, decision 138's consent): its accept, decline, first and second entries onto
+  `Offer`, `LevelUp`, `Close` and the new two-way choices; its masks allow at least one answer per
+  new decision (the defaults of §14); a University's purchase head is the AI lane's call. Its
+  inbox is told (T55b).
+- **Replays:** format v7 (the typed answers); the twelve goldens re-recorded; new: random play on a
   rewards fixture `fixtures/maps/e08-rewards-*.h3m` (every class of increment 7, written by
   `h3_map::writer`), and scripted replays of the order-dependent paths: a box with creatures and
   no room (the dialog, then the experience), an event that stops a move, a University's purchases,
@@ -355,7 +375,7 @@ through `split` with the first creature's count, n less the second creature's st
 | map import v12 | the classes, bodies, records, bans, the monster's artifact | T61 |
 | adventure state hash v13 | the visits' block, the army left's table, the draws on objects | T61, T62 |
 | game state hash (next) | the decisions, the rest, the bans | T63 |
-| adventure replay format v7 | `Answer::Buy` | T63 |
+| adventure replay format v7 | the typed answers (every decision's) | T63 |
 
 Ids beyond survey §12: **GAM-SET-003** (the scenario's spell and artifact bans as setup inputs),
 **GAM-DEC-007** (the rest), **GAM-BAT-014** (the bonuses cleared at a battle's end). Quirks:
@@ -406,7 +426,7 @@ increment 6 the shared task came first; here the batch decides an ADR clause, A-
 | 4 | **T60** | `h3-heroes`: part A (§1–§6): the bonuses, the changes, `grant`, the teachers' functions; the details' hash |
 | 5 | **T61** | `h3-map` and `h3-adventure`: the import (§7), the kinds (§8), the draws (§9), the state (§10); map import v12, ruleset part v12, adventure state hash v13. Likely cut in two (the import and kinds; the draws and state) |
 | 6 | **T62** | `h3-adventure`: the visits (§11), events and the move (§12), information (§13). Likely cut in two (pickups, teachers, finds; boxes, events, the Pyramid) |
-| 7 | **T63** | `h3-game`: the decisions and the rest (§14), the application (§15), `Answer::Buy`, replay format v7 |
+| 7 | **T63** | `h3-game`: the decisions, their typed answers (every decision's, migrated; `h3-sim`'s action mapping `cross-lane`) and the rest (§14), the application (§15), replay format v7. Likely cut in two (the typed answers' migration; increment 7's decisions) |
 | 8 | **T64** + **T65** | T64: replays, fixtures, properties, benchmarks, `--with-original-data` (§16). T65: the audit against the exit criteria, increment 7 closed, increment 8 refined |
 
 **Increment 7's exit criteria:**
@@ -438,6 +458,10 @@ increment 6 the shared task came first; here the batch decides an ADR clause, A-
 
 ### 20. Risks and open points
 
+- **The typed answers' migration** (decision 138) touches every caller that builds an answer:
+  the AI lane's action mapping (`cross-lane`), the CLI's replay files, the properties' plans and
+  the tests; done first in T63, with the twelve goldens re-recorded, so increment 7's decisions
+  land on the new types.
 - **The rest across decisions** (§14) is the increment's new mechanism: a visit that spans a
   battle, its level-ups and an army dialog. The scripted replays (§16) pin its order; a forgotten
   path would give a box's experience before its dialog (VCMI's order, D-39).

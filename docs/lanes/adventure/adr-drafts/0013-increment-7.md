@@ -1,10 +1,10 @@
 # ADR-0013 amendment (draft): rewards on the hero, the battle bonuses
 
 - Status: Proposed (E08 T55b, 2026-10-26), from T55a's survey and the answers at ADV-Q28 (the
-  epic's decisions 129–136). The user accepts it at ADV-Q29; the round-3 `shared/` task (T59)
-  applies it to ADR-0013.
+  epic's decisions 129–136). **Accepted by the user** (ADV-Q29, 2026-10-26; decisions 138–141).
+  The round-3 `shared/` task (T59) applies it to ADR-0013.
 - Amends: ADR-0013 points 1 and 2; adds point 15.
-- Detail: `docs/epics/E08-design.md` part A (§1–§5); facts: survey
+- Detail: `docs/epics/E08-design.md` part A (§1–§6); facts: survey
   `docs/rules/surveys/E08-rewards.md` §6.2–§6.9, §7.4, §7.5, §8.2, §8.3.
 
 ## Context

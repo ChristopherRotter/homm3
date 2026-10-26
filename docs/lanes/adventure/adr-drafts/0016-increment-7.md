@@ -1,10 +1,11 @@
 # ADR-0016 amendment (draft): rewards on the map: the objects, their state, events and the move
 
 - Status: Proposed (E08 T55b, 2026-10-26), from T55a's survey and the answers at ADV-Q28 (the
-  epic's decisions 129–136). The user accepts it at ADV-Q29; the round-3 `shared/` task (T59)
-  applies it to ADR-0016, with batch E7's outcome for A-23 written in (decision 131).
+  epic's decisions 129–136). **Accepted by the user** (ADV-Q29, 2026-10-26; decisions 138–141).
+  The round-3 `shared/` task (T59) applies it to ADR-0016, with batch E7's outcome for A-23
+  written in (decision 131).
 - Amends: ADR-0016 points 1, 3, 4 and 6.
-- Detail: `docs/epics/E08-design.md` part B (§6–§12); facts: survey
+- Detail: `docs/epics/E08-design.md` part B (§7–§13); facts: survey
   `docs/rules/surveys/E08-rewards.md` §1–§8, §9, §13.
 
 ## Context
