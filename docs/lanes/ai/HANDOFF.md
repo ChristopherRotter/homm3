@@ -28,7 +28,7 @@ Moved to `TRAPS.md`, in three groups: **Ownership** (cross-lane encodings and re
 
 ## Recent sessions
 
-### 2026-10-27 — the turn order as an input; T8b (in progress)
+### 2026-10-26 (night) — the turn order as an input; T8b (in progress)
 
 - The user (2026-10-26, before leaving): the turn order first, as observation v22 with the
   engine's order (`h3_battle::turn_order`, `cross-lane`), then T8b, one pull request (C ABI v34
