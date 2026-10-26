@@ -34,7 +34,12 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
 
 ## Recent sessions
 
-- **2026-10-26, E17 M4 T3a (done; #485 open: check it first).** T3 cut in three (the user).
+- **2026-10-26, E17 M4 T3b-1 (in progress; `client/e17-m4-t3b1`).** T3b cut in two (the
+  user: T3b-1 the hovered item read, the stills, the 15 siege sequences and `walk`, `turn`,
+  `climb`, the status line settled; T3b-2 the other 29 sequences, `drawn --record`). Done: the
+  harness reads `hovered_item` per step (pushed); `drawn` all 119 the same; `walk` as recorded.
+  Running: batch A (`turn` to `cyclops`); next batch B (`gate` to `through`), then `set`.
+- **2026-10-26, E17 M4 T3a (done; #485 merged).** T3 cut in three (the user).
   Three fresh reviewers one at a time (R1 drawing and timeline, R2 mouse and adapters, R3
   harness): 16 of 17 findings fixed, R1-3 queued (QUEUE's inbox); review items 10 to 12. The
   harness now refuses rolls it cannot force (`xdd.dll`'s ack: a 7th field). `drawn` unchanged.
@@ -44,6 +49,3 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
   recaptured without their ` log` masks. Found: the status line kept at a hot-seat human turn
   with the mouse parked (built as found, *provisional*; `aim`'s exception and the dispatch
   reading in QUEUE's inbox). CLT-Q22 and Q23 still open.
-- **2026-10-24, E17 M4 T2c-1 (done; #459 merged).** T2c cut in two (the user).
-  The drawbridge, the moat, a mine (`anim::siege`); `gate`, `gate-fortress`, `moat`, `mine` as
-  recorded, frames exact but listed differences; CLT-Q23 asked (built as recommended).
