@@ -8,7 +8,7 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   map client the map-client lane's E24); **M4 (sieges): T0 to T2c-2 done** (§10.1, §10.2,
   CLT-Q19 to Q21); **T3 cut in three** (the user, 2026-10-26: T3a the reviewers' findings
   fixed, T3b every capture afresh with the hovered item read, T3c the review list and M5 with
-  the user); **T3a done; next T3b**; M5 live play after M4. Open PR: T3a's (check it first). Workspace `clients/` (`clients/README.md`), gates
+  the user); **T3a done; next T3b**; M5 live play after M4. Open PR: #485 (T3a; check it first). Workspace `clients/` (`clients/README.md`), gates
   `clients/scripts/check.sh`; ADR-0020 (+ drafts in `adr-drafts/`), ADR-0024; the harness
   `clients/capture/README.md`; design §3–§10; records in `E17-log.md`.
 - **Captures** (the user, 2026-10-20): `h3drive.py drawn` first (no Wine); capture what it lists or the task changes, all at a milestone's closure or a harness change (runbook); a capture not as recorded leaves `kept/` (T9b: record, then `--reuse`); later tasks' detail in `NOTES.md`.
@@ -34,7 +34,7 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
 
 ## Recent sessions
 
-- **2026-10-26, E17 M4 T3a (done; PR open: check it first).** T3 cut in three (the user).
+- **2026-10-26, E17 M4 T3a (done; #485 open: check it first).** T3 cut in three (the user).
   Three fresh reviewers one at a time (R1 drawing and timeline, R2 mouse and adapters, R3
   harness): 16 of 17 findings fixed, R1-3 queued (QUEUE's inbox); review items 10 to 12. The
   harness now refuses rolls it cannot force (`xdd.dll`'s ack: a 7th field). `drawn` unchanged.
