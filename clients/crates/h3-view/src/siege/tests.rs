@@ -595,7 +595,7 @@ fn an_explosion_draws_in_its_rectangle_over_the_redraws() {
     // E17 M4 T2b (design §10.2, CLT-Q19 (4)): a wall shot's explosion is a list drawn within its
     // rectangle: the battle with the background, the first frame; the battle again without it
     // (the wall hit from frame 5), the next frame over it.
-    use crate::anim::Blast;
+    use crate::anim::{Blast, Landing};
     use crate::record::tests::{manifest, observation};
     use crate::scene::{Moment, battle_at};
     use h3_protocol::wire::KeyTables;
@@ -616,8 +616,10 @@ fn an_explosion_draws_in_its_rectangle_over_the_redraws() {
         walls: Some(whole),
         blast: Some(Blast {
             def: "SGEXPL.DEF".into(),
-            at: [437, 27],
-            rect: [437, 27, 691, 230],
+            landings: vec![Landing {
+                at: [437, 27],
+                rect: [437, 27, 691, 230],
+            }],
             frames: vec![(0, whole), (5, hit)],
         }),
         ..Moment::default()
@@ -646,4 +648,86 @@ fn an_explosion_draws_in_its_rectangle_over_the_redraws() {
     assert!(whole_at < blasts[0] && blasts[0] < hit_at && hit_at < blasts[1]);
     // Outside it the battle as the moment's walls show it: whole.
     assert!(list.iter().any(|d| name(d) == "Wa61.pcx"));
+}
+
+#[test]
+fn an_earthquake_s_explosions_land_on_every_target_and_its_shake_shifts_the_screen() {
+    // E17 M4 T2c-2 (design §10.2): each frame's redraw, then the frame over every target hit in
+    // turn; the list within each landing's rectangle. The shake: the whole frame's list shifted by
+    // the offsets of the steps shown, the battlefield shown.
+    use crate::anim::{Blast, Landing, SHAKE, shake_offsets};
+    use crate::record::tests::{manifest, observation};
+    use crate::scene::{Moment, battle_at, shaken};
+    use h3_protocol::wire::KeyTables;
+    let t = siege_tables();
+    let lay = layout();
+    let keys = manifest(KeyTables {
+        creatures: vec!["base:pikeman".into()],
+        factions: vec!["base:castle".into()],
+        ..KeyTables::default()
+    });
+    let mut o = observation();
+    o.siege = Some(siege(3));
+    o.stacks = stacks();
+    let whole = Walls::of(&siege(3));
+    let landings = vec![
+        Landing {
+            at: [393, 111],
+            rect: [393, 111, 647, 314],
+        },
+        Landing {
+            at: [393, 279],
+            rect: [393, 279, 647, 482],
+        },
+    ];
+    let moment = Moment {
+        walls: Some(whole),
+        blast: Some(Blast {
+            def: "SGEXPL.DEF".into(),
+            landings,
+            frames: vec![(0, whole), (1, whole)],
+        }),
+        ..Moment::default()
+    };
+    let list = battle_at(&o, &moment, &keys, &t, &lay).unwrap();
+    let within: Vec<(&[i32; 4], &Vec<Draw>)> = list
+        .iter()
+        .filter_map(|d| match d {
+            Draw::Within { rect, list } => Some((rect, list)),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(within.len(), 2);
+    assert_eq!(
+        (within[0].0, within[1].0),
+        (&[393, 111, 647, 314], &[393, 279, 647, 482])
+    );
+    assert_eq!(within[0].1, within[1].1);
+    let blasts: Vec<(i32, i32, u32)> = within[0]
+        .1
+        .iter()
+        .filter_map(|d| match d {
+            Draw::Explosion { x, y, frame, .. } => Some((*x, *y, *frame)),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(
+        blasts,
+        [(393, 111, 0), (393, 279, 0), (393, 111, 1), (393, 279, 1)]
+    );
+    // The shake: 16 steps, the 15 offsets and the first again.
+    let offsets = shake_offsets(16);
+    assert_eq!(
+        (offsets.len(), offsets[0], offsets[15]),
+        (16, SHAKE[0], SHAKE[0])
+    );
+    let Draw::Shaken {
+        offsets: o16,
+        rect,
+        list: inner,
+    } = shaken(list.clone(), 16, &lay)
+    else {
+        panic!("not shaken");
+    };
+    assert_eq!((o16, rect, inner), (offsets, [0, 0, 800, 556], list));
 }

@@ -8,16 +8,23 @@
 //! on its own (the slot inside the hex, the broken arrow's distance from the shooter's facing) is
 //! ported here. Over time (E17 M3 T6c-2, design §9.10: the hint against the log's new lines, a
 //! stack marked starting its fidget, a target left over from the last hex, the turns): [`track`].
+//! A siege's (E17 M4 T2c-2, design §10.2): the keep's and the upper tower's rectangles, the
+//! Catapult's targets (16), the turrets' info (22) and the walls' broken arrow (15).
 
 use alloc::collections::BTreeSet;
 use alloc::string::String;
 
-use h3_protocol::wire::{Command, Observation, Side, Stack};
+use h3_protocol::wire::{Command, Observation, Side, Siege, Stack};
+use h3_render::Bugs;
 
 use crate::layout::BattleLayout;
 use crate::scene::Draw;
+use crate::siege::{
+    FIELD_HEXES, GATE_HEX, KEEP_TARGET, TARGET_AIMS, TARGET_PARTS, TOWER_TARGETS, WALL_HEXES,
+};
 use crate::text::{Args, Catalogue};
 
+pub mod line;
 pub mod track;
 
 /// The battlefield's columns.
@@ -28,6 +35,15 @@ pub const ROWS: u8 = 11;
 const HEXES: i32 = 187;
 /// The distance beyond which a shot is halved (`shot_full_damage_distance` 0x467600).
 const FULL_DAMAGE_DISTANCE: i32 = 10;
+/// The fort levels from which the upper tower's rectangle and the lower tower's hex (a Castle)
+/// and the keep's rectangle (a Citadel) are targets (`battle_cursor` 0x476579, 0x4765E5).
+const CASTLE: u8 = 3;
+const CITADEL: u8 = 2;
+/// The original ids of the shooters whose shots the walls never halve (`shot_wall_test`
+/// 0x46753D): the Mage, the Arch Mage, the Enchanter, the Sharpshooter, the arrow tower.
+pub const WALL_EXEMPT: [u16; 5] = [34, 35, 136, 137, 149];
+/// The Catapult's original id: over a stack it aims as over an empty hex (0x4766B2).
+pub const CATAPULT: u16 = 145;
 
 /// Where the mouse is over the battlefield (`screen_to_hex`).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -36,22 +52,39 @@ pub enum Spot {
     Hex(u8),
     /// A side's hero's rectangle ("hexes" 0xFC and 0xFD).
     Hero(Side),
+    /// The keep's rectangle ("hex" 0xFE; E17 M4 T2c-2).
+    Keep,
+    /// The upper tower's rectangle ("hex" 0xFF).
+    Tower,
     /// Nothing.
     Nothing,
 }
 
 /// Where the point `[x, y]` of the screen is on the battlefield (`screen_to_hex` 0x4647A0): a
-/// hero's rectangle, else the hex whose box holds it, a point above a box's slanted top edge
-/// counting for the row above.
+/// hero's rectangle, else with `rects` the keep's or the upper tower's (E17 M4 T2c-2: set in
+/// every battle, 0x462700 and 0x462730; the client takes them in a siege only, the original's
+/// everywhere for the comparisons, CLT-Q21), else the hex whose box holds it, a point above a
+/// box's slanted top edge counting for the row above.
 #[must_use]
-pub fn spot(layout: &BattleLayout, [x, y]: [i32; 2]) -> Spot {
+pub fn spot(layout: &BattleLayout, [x, y]: [i32; 2], rects: bool) -> Spot {
     let mouse = &layout.mouse;
-    for (side, [left, top, right, bottom]) in [Side::Attacker, Side::Defender]
+    let within = |[left, top, right, bottom]: [i32; 4]| {
+        (left..=right).contains(&x) && (top..=bottom).contains(&y)
+    };
+    for (side, rect) in [Side::Attacker, Side::Defender]
         .into_iter()
         .zip(mouse.heroes)
     {
-        if (left..=right).contains(&x) && (top..=bottom).contains(&y) {
+        if within(rect) {
             return Spot::Hero(side);
+        }
+    }
+    if rects {
+        if within(mouse.keep) {
+            return Spot::Keep;
+        }
+        if within(mouse.tower) {
+            return Spot::Tower;
         }
     }
     let [w, h] = layout.hex_step;
@@ -125,7 +158,9 @@ pub fn distance(a: u8, b: u8) -> i32 {
     }
 }
 
-/// The acting stack's legal commands as the cursor asks them.
+/// The acting stack's legal commands as the cursor asks them, and what its own tests need to
+/// know of the acting stack (E17 M4 T2c-2: whether it is the Catapult, whether the walls halve
+/// its shots).
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct Legal {
     /// The positions it may walk or fly to.
@@ -136,6 +171,14 @@ pub struct Legal {
     shots: BTreeSet<u8>,
     /// The stacks it may heal.
     heals: BTreeSet<u8>,
+    /// The wall-shot targets it may shoot (a wall shooter of the attacker's: the targets
+    /// standing).
+    walls: BTreeSet<u8>,
+    /// It is the Catapult (its original id [`CATAPULT`]).
+    pub catapult: bool,
+    /// The walls never halve its shots (`shot_wall_test`'s shooters, [`WALL_EXEMPT`], or its
+    /// hero's bow: the wire's `no_distance_penalty`).
+    pub wall_exempt: bool,
 }
 
 impl Legal {
@@ -156,6 +199,9 @@ impl Legal {
                 }
                 Command::Heal { target } => {
                     legal.heals.insert(target);
+                }
+                Command::ShootWall { part } => {
+                    legal.walls.insert(part);
                 }
                 _ => {}
             }
@@ -187,7 +233,8 @@ impl Facing {
 }
 
 /// The battle as the cursor asks it: the stacks, the acting stack's legal commands and which way
-/// the stacks face.
+/// the stacks face; the profile (the siege's rectangles in every battle in the original's, the
+/// comparisons': CLT-Q21).
 #[derive(Debug, Clone, Copy)]
 pub struct Field<'a> {
     /// The battle.
@@ -196,9 +243,21 @@ pub struct Field<'a> {
     pub legal: &'a Legal,
     /// Which way the stacks face.
     pub facing: &'a Facing,
+    /// The profile.
+    pub bugs: Bugs,
 }
 
 impl Field<'_> {
+    /// Whether the mouse finds the keep's and the upper tower's rectangles (CLT-Q21).
+    fn rects(&self) -> bool {
+        self.observation.siege.is_some() || self.bugs == Bugs::Original
+    }
+
+    /// The siege's fort level (0 none: no siege, or no fort).
+    fn fort(&self) -> u8 {
+        self.observation.siege.as_ref().map_or(0, |s| s.fort)
+    }
+
     /// The acting stack.
     fn acting(&self) -> Option<&Stack> {
         let id = self.observation.active?;
@@ -249,10 +308,14 @@ pub enum Kind {
     Attack,
     /// Shoot the stack at half damage (15).
     BrokenArrow,
+    /// A wall-shot target for the Catapult or a Cyclops (16; E17 M4 T2c-2).
+    Wall,
     /// Heal the stack with the First Aid Tent (17).
     Heal,
     /// The other side's hero (21).
     EnemyHero,
+    /// A turret to look at (22, the query's frame; E17 M4 T2c-2).
+    Turret,
 }
 
 impl Kind {
@@ -269,8 +332,10 @@ impl Kind {
             Self::Pointer => 6,
             Self::Attack => 7,
             Self::BrokenArrow => 15,
+            Self::Wall => 16,
             Self::Heal => 17,
             Self::EnemyHero => 21,
+            Self::Turret => 22,
         }
     }
 }
@@ -304,6 +369,11 @@ pub enum Hint {
     /// is not read): "Cast %s on %s" (28) over a stack by its number, "Cast %s" (27) elsewhere on
     /// the battlefield; the spell by its handle.
     Cast(u16, Option<u8>),
+    /// A wall-shot target (E17 M4 T2c-2): "Attack %s" (221) with the target's part's name for the
+    /// town's type (WALLS.TXT, the parts' +0x1C, 0x492E70).
+    Wall(u8),
+    /// "View arrow tower info" (157; E17 M4 T2c-2).
+    Turret,
 }
 
 impl Hint {
@@ -322,8 +392,9 @@ impl Hint {
         &self,
         catalogue: &Catalogue,
         observation: &Observation,
-        (creature, spell): Namers<'_>,
+        namers: Namers<'_>,
     ) -> String {
+        let (creature, spell, part) = namers;
         let stack = |id: u8| observation.stacks.iter().find(|s| s.id == id);
         let name = |id: u8, single: bool| {
             stack(id).and_then(|s| {
@@ -343,6 +414,16 @@ impl Hint {
             Self::Attack(id) => with("battle.hint.attack", *id, false),
             Self::View(id) => with("battle.hint.view", *id, true),
             Self::Heal(id) => with("battle.hint.heal", *id, false),
+            Self::Wall(t) => {
+                let name = observation
+                    .siege
+                    .as_ref()
+                    .zip(TARGET_PARTS.get(usize::from(*t)))
+                    .and_then(|(s, &p)| part(s.faction, p))
+                    .map_or_else(String::new, |key| catalogue.text(&key, &Args::new()));
+                catalogue.text("battle.hint.attack", &Args::new().text("creature", &name))
+            }
+            Self::Turret => catalogue.text("battle.hint.turret", &Args::new()),
             Self::Hero => catalogue.text("battle.hint.hero", &Args::new()),
             Self::EnemyHero => catalogue.text("battle.hint.enemy-hero", &Args::new()),
             Self::NoShots => catalogue.text("battle.hint.no-shots", &Args::new()),
@@ -368,11 +449,14 @@ impl Hint {
     }
 }
 
-/// What names a hint's stacks and spells (E17 M3 T7b-1): a stack's creature key in the catalogue
-/// (`creature.base:pikeman`), a spell's by its handle (`spell.base:slow`).
+/// What names a hint's stacks, spells and walls (E17 M3 T7b-1): a stack's creature key in the
+/// catalogue (`creature.base:pikeman`), a spell's by its handle (`spell.base:slow`), a town's
+/// wall part by the town's faction handle and the part's number (E17 M4 T2c-2:
+/// `wall.base:castle.6`).
 pub type Namers<'a> = (
     &'a dyn Fn(&Stack) -> Option<String>,
     &'a dyn Fn(u16) -> Option<String>,
+    &'a dyn Fn(u16, usize) -> Option<String>,
 );
 
 /// The mouse at a point: the cursor, the status line's hint and the stack the mouse marks.
@@ -416,18 +500,19 @@ pub fn cursor(layout: &BattleLayout, frame: u32, [x, y]: [i32; 2]) -> Draw {
 /// The mouse at `point` of the screen in the battle `observation` shows, its acting stack's
 /// commands `legal` (`battle_buttons`' mouse move 0x4753A4): over the battlefield its spot's
 /// kind, over the panel the pointer and the hint of the control under it. A still: each side
-/// faces its own way and no target is left over ([`pointer_in`]).
+/// faces its own way and no target is left over ([`pointer_in`]); `bugs` the profile (CLT-Q21).
 #[must_use]
 pub fn pointer(
     observation: &Observation,
     legal: &Legal,
     layout: &BattleLayout,
-    point: [i32; 2],
+    (point, bugs): ([i32; 2], Bugs),
 ) -> Pointer {
     let field = Field {
         observation,
         legal,
         facing: &Facing::Sides,
+        bugs,
     };
     pointer_in(&field, layout, point, &mut None)
 }
@@ -457,7 +542,7 @@ pub fn pointer_in(
             marked: None,
         };
     }
-    let spot = spot(layout, point);
+    let spot = spot(layout, point, field.rects());
     let marked = match spot {
         Spot::Hex(hex) => field.at(hex).map(|s| s.id),
         _ => None,
@@ -468,7 +553,7 @@ pub fn pointer_in(
             let slot = slot(layout, point, hex);
             slots_in(field, hex)[slot]
         }
-        (Kind::EnemyHero, _) => Kind::Query.code(),
+        (Kind::EnemyHero | Kind::Turret, _) => Kind::Query.code(),
         _ => kind.code(),
     };
     let acting = field.acting();
@@ -480,6 +565,8 @@ pub fn pointer_in(
         (Kind::EnemyHero, ..) => Hint::EnemyHero,
         (Kind::Query, Some(id), _) => Hint::View(id),
         (Kind::Heal, Some(id), _) => Hint::Heal(id),
+        (Kind::Wall, Some(t), _) => Hint::Wall(t),
+        (Kind::Turret, ..) => Hint::Turret,
         (Kind::Nothing, _, Some(s)) if s.shooter && s.shots == 0 && aim.is_some() => Hint::NoShots,
         _ => Hint::Empty,
     };
@@ -491,10 +578,15 @@ pub fn pointer_in(
     }
 }
 
-/// The cursor's kind at `spot` and the stack it is about (`battle_cursor` 0x476490), the acting
-/// stack's target `aim` cleared on a hex of the field (0x476686) and set over an enemy (0x47679D)
-/// until neither a shot nor a strike reaches it (0x476837): the modelled cases (sieges, casters
-/// and network play are not: design §9.9).
+/// The cursor's kind at `spot` and what it is about (`battle_cursor` 0x476490): a stack, or for
+/// [`Kind::Wall`] the wall-shot target; the acting stack's target `aim` cleared on a hex of the
+/// field (0x476686) and set over an enemy (0x47679D) until neither a shot nor a strike reaches it
+/// (0x476837): the modelled cases (casters and network play are not: design §9.9). A siege's
+/// (E17 M4 T2c-2): over the upper tower's rectangle with a Castle and the keep's with a Citadel
+/// a wall shooter's target while it stands (16, its stack target cleared), else the turret's
+/// info (22); over an empty hex (any for the Catapult) a standing target's aim hex, the towers'
+/// with a Castle and the keep's with a Citadel (16); over hex 183 with a Castle where no move
+/// goes, the lower tower's info (22).
 fn kind(field: &Field<'_>, spot: Spot, aim: &mut Option<u8>) -> (Kind, Option<u8>) {
     let (observation, legal) = (field.observation, field.legal);
     let Some(acting) = field.acting() else {
@@ -512,6 +604,23 @@ fn kind(field: &Field<'_>, spot: Spot, aim: &mut Option<u8>) -> (Kind, Option<u8
             };
             return (kind, None);
         }
+        Spot::Keep | Spot::Tower => {
+            let (target, fort) = if spot == Spot::Keep {
+                (KEEP_TARGET, CITADEL)
+            } else {
+                (TOWER_TARGETS[0], CASTLE)
+            };
+            if field.fort() < fort {
+                return (Kind::Nothing, None);
+            }
+            return match wall(legal, target) {
+                Some(t) => {
+                    *aim = None;
+                    (Kind::Wall, Some(t))
+                }
+                None => (Kind::Turret, None),
+            };
+        }
         Spot::Hex(hex) => hex,
     };
     let column = hex % COLUMNS;
@@ -519,7 +628,8 @@ fn kind(field: &Field<'_>, spot: Spot, aim: &mut Option<u8>) -> (Kind, Option<u8
         return (Kind::Nothing, None);
     }
     *aim = None;
-    if let Some(stack) = field.at(hex) {
+    let stack = field.at(hex).filter(|_| !legal.catapult);
+    if let Some(stack) = stack {
         let id = Some(stack.id);
         if observation.tactics.is_some() || stack.id == acting.id {
             return (Kind::Query, id);
@@ -534,7 +644,8 @@ fn kind(field: &Field<'_>, spot: Spot, aim: &mut Option<u8>) -> (Kind, Option<u8
         }
         *aim = id;
         if legal.shots.contains(&stack.id) {
-            let kind = if halved(field, acting, stack) {
+            // The arrow tower shoots in full (0x4767B4); a stack off the field is a turret.
+            let kind = if acting.hex < FIELD_HEXES && halved(field, acting, (stack, hex)) {
                 Kind::BrokenArrow
             } else {
                 Kind::Shoot
@@ -547,6 +658,19 @@ fn kind(field: &Field<'_>, spot: Spot, aim: &mut Option<u8>) -> (Kind, Option<u8
         *aim = None;
         return (Kind::Nothing, None);
     }
+    // A wall-shot target's aim hex (0x47687B), while the target stands: the lower tower's with a
+    // Castle (the upper tower's and the keep's aims are their rectangles, tested at 0x4768BF).
+    let aimed = TARGET_AIMS.iter().position(|&a| a == hex).filter(|&t| {
+        let fort = if TOWER_TARGETS.contains(&t) {
+            CASTLE
+        } else {
+            1
+        };
+        field.fort() >= fort
+    });
+    if let Some(t) = aimed.and_then(|t| wall(legal, t)) {
+        return (Kind::Wall, Some(t));
+    }
     // An empty hex the reach map marks (+0x20E a position, +0x20F a two-hex stack's front hex,
     // 0x4B2E69, 0x4B2EF4).
     let [position, front] = field.hexes(acting);
@@ -554,17 +678,36 @@ fn kind(field: &Field<'_>, spot: Spot, aim: &mut Option<u8>) -> (Kind, Option<u8
     let reached = legal.moves.contains(&hex)
         || (acting.two_hex && u8::try_from(back).is_ok_and(|b| legal.moves.contains(&b)));
     match (reached, acting.flies) {
+        // The lower tower's hex with a Castle (0x476975).
+        (false, _) if hex == TARGET_AIMS[TOWER_TARGETS[1]] && field.fort() >= CASTLE => {
+            (Kind::Turret, None)
+        }
         (false, _) => (Kind::Nothing, None),
         (true, true) => (Kind::Fly, None),
         (true, false) => (Kind::Move, None),
     }
 }
 
-/// The cursor's own half-damage test of a shot (`shot_full_damage_distance` 0x467600 from
-/// 0x4767E6): without the shooter turned to the target (its front hex by its facing now), no
-/// shot of a shooter without the distance penalty is halved; else halved when both of the
-/// target's hexes are farther than 10. The siege's wall test (0x467510) is not modelled.
-fn halved(field: &Field<'_>, shooter: &Stack, target: &Stack) -> bool {
+/// The wall-shot target `t` (an index of [`TARGET_AIMS`]) when the acting stack may shoot it:
+/// a wall shooter of the attacker's outside the tactics phase, the target standing (0x476586 to
+/// 0x4765C7; the server lists it then).
+fn wall(legal: &Legal, t: usize) -> Option<u8> {
+    // `t` is one of the eight targets.
+    let t = u8::try_from(t).unwrap_or(u8::MAX);
+    legal.walls.contains(&t).then_some(t)
+}
+
+/// The cursor's own half-damage tests of a shot at `target` with the mouse over `hex`: the
+/// siege's walls (`shot_wall_test` 0x467510 from 0x4767D6, E17 M4 T2c-2: [`walls_halve`] from the
+/// shooter's position to the mouse's hex), then the distance (`shot_full_damage_distance`
+/// 0x467600 from 0x4767E6): without the shooter turned to the target (its front hex by its
+/// facing now), no shot of a shooter without the distance penalty is halved; else halved when
+/// both of the target's hexes are farther than 10.
+fn halved(field: &Field<'_>, shooter: &Stack, (target, hex): (&Stack, u8)) -> bool {
+    let walls = field.observation.siege.as_ref();
+    if walls.is_some_and(|s| !field.legal.wall_exempt && walls_halve(s, shooter.hex, hex)) {
+        return true;
+    }
     if shooter.no_distance_penalty {
         return false;
     }
@@ -573,6 +716,25 @@ fn halved(field: &Field<'_>, shooter: &Stack, target: &Stack) -> bool {
         .hexes(target)
         .iter()
         .all(|&h| distance(from, h) > FULL_DAMAGE_DISTANCE)
+}
+
+/// Whether the walls of `siege` halve a shot from `from` at `to` (`shot_wall_test` 0x467510 past
+/// its shooter's tests; BAT-SIE-008): a fort, `from` left of its row's wall hex and `to` at it or
+/// right of it ([`WALL_HEXES`]), and a wall on the straight line between them ([`line::blocked`]:
+/// the gate's hex while the gate is closed, any other wall hex while it stands).
+#[must_use]
+pub fn walls_halve(siege: &Siege, from: u8, to: u8) -> bool {
+    let wall = |hex: u8| WALL_HEXES.get(usize::from(hex / COLUMNS)).copied();
+    let outside = wall(from).is_some_and(|w| from < w);
+    let inside = wall(to).is_some_and(|w| to >= w);
+    let blocks = |hex: u8| {
+        if hex == GATE_HEX {
+            !siege.gate_open
+        } else {
+            siege.walls.contains(&hex)
+        }
+    };
+    siege.fort > 0 && outside && inside && line::blocked(from, to, &blocks)
 }
 
 /// The slot of the mouse inside the hex it is on (`cursor_attack_from_hex` 0x474A00): its angle
@@ -607,6 +769,7 @@ pub fn slots(observation: &Observation, legal: &Legal, hex: u8) -> [u32; 12] {
         observation,
         legal,
         facing: &Facing::Sides,
+        bugs: Bugs::Fixed,
     };
     slots_in(&field, hex)
 }

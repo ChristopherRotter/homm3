@@ -1,0 +1,47 @@
+# E17 M4 T2c-2: the recorded sequence `through` (sequences.toml; design §10.2, "The mouse"): a
+# siege of a Castle town with a Fort (walls and the gate, no turrets, no moat), both heroes human
+# (hot seat), the attacker's Catapult commanded (Basic Ballistics). In round 1 the defender's
+# Hobgoblins step inside the walls to 98 and the attacker's Archers walk to 88; in round 2 the
+# Archers shoot them through the closed gate from 10 hexes: the walls alone halve the shot
+# (`shot_wall_test` 0x467510), so the cursor over them is the broken arrow (15).
+
+[scenario]
+id = "sequence-through"
+# Both human (hot seat): the attacker commands the Catapult.
+human = ["attacker", "defender"]
+packs = ["base"]
+profile = "base:faithful"
+terrain = "base:grass"
+
+# The town: a Fort has walls and a gate, no turrets and no moat.
+[scenario.siege]
+faction = "base:castle"
+fort = "fort"
+moat = "absent"
+
+[[attacker]]
+slot = 0
+creature = "base:archer"
+count = 10
+
+[[defender]]
+slot = 0
+creature = "base:hobgoblin"
+count = 20
+
+# The heroes, each with 1 in every primary skill (`h3-view situation` writes them so).
+[scenario.attacker_hero]
+hero_type = "base:valeska"
+attack = 1
+defense = 1
+power = 1
+knowledge = 1
+# Basic Ballistics: the Catapult waits for its command.
+catapult = 1
+
+[scenario.defender_hero]
+hero_type = "base:ufretin"
+attack = 1
+defense = 1
+power = 1
+knowledge = 1

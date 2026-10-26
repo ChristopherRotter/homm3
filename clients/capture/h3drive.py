@@ -124,6 +124,9 @@ ROLLS = {
     "wall_miss_tie": (1, 100),  # a miss between two walls equally near: <= 50 the later
     "wall_retarget_tie": (1, 100),  # the next shot's target once its own fell: <= 50 the later
     "catapult_tie": (1, 1),   # random(1, k): the k-th of the weakest walls (automatic aim)
+    # Earthquake's (E17 M4 T2c-2): random(1, k) per hit, the k-th standing target with hit points
+    # left; `roll:quake_target:<a>,<b>,...` forces one hit's draw after the other.
+    "quake_target": (1, 1),
 }
 # How long `turn:` waits for the stack's turn (M3 T7a-2a): a human's stack waiting for an action
 # would keep the clock stepping for ever.
@@ -334,7 +337,11 @@ class Game:
 
     def roll(self, name, falls=True, count=1, value=None):
         """Forces the next `count` draws of the roll `name` (ROLLS) to make it fall, or fail (M3
-        T7b-2b-1), or (E17 M4 T2b) to return `value`."""
+        T7b-2b-1), or (E17 M4 T2b) to return `value`; a list of values (E17 M4 T2c-2) forces
+        the next draws to return them in order."""
+        if isinstance(value, list):
+            self.clock(f"roll {name} {','.join(map(str, value))} {len(value)}")
+            return
         draw = ROLLS[name][0 if falls else 1] if value is None else value
         self.clock(f"roll {name} {draw} {count}")
 
@@ -657,11 +664,19 @@ def act(game, action):
     """One action at the frozen clock: hex:<n>, click:x,y, move:x,y, key:<name>, step:<ms>,
     cast:<k>[:<hex>] (M3 T7a-2a: the hero's spell book by its key C, its place k, then the target
     hex if the spell takes one), roll:<name>[:fail|:<n>][:<count>] (M3 T7b-2b-1: the roll's
-    next draw falls, or fails; E17 M4 T2b: or is n; its next <count> draws so; ROLLS)."""
+    next draw falls, or fails; E17 M4 T2b: or is n; its next <count> draws so; ROLLS; E17 M4
+    T2c-2: roll:<name>:<a>,<b>,... its next draws a, b, ... in order)."""
     kind, _, arg = action.partition(":")
     if kind == "roll":
         name, _, rest = arg.partition(":")
         how, _, count = rest.partition(":")
+        values = how.split(",") if "," in how else None
+        if values is not None:
+            if name not in ROLLS or count or not all(v.isdigit() for v in values):
+                raise ValueError(f"`{action}`: the rolls are {', '.join(ROLLS)}; `:<a>,<b>,...` "
+                                 "and no count")
+            game.roll(name, value=[int(v) for v in values])
+            return
         if (name not in ROLLS or not (how in ("", "fail") or how.isdigit())
                 or not (count == "" or count.isdigit())):
             raise ValueError(f"`{action}`: the rolls are {', '.join(ROLLS)}; `:fail`, `:<n>` or "

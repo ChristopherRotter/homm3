@@ -44,6 +44,9 @@ typedef int(__cdecl *rand_fn)(void);
 #define RANDOM_BETWEEN 0x50B230u
 #define CRT_RAND 0x617E5Cu
 
+/* The most values a `roll <site> a,b,...` queues. */
+#define QUEUE 8
+
 /* The rolls' calls (docs/exe/map.toml): each a call of `target` returning the draw. */
 struct site {
     const char *name;
@@ -55,6 +58,9 @@ struct site {
     int fixed;        /* the site's other draws return `otherwise` */
     long otherwise;
     int logged;       /* its draws go to <H3CLOCK>\draws */
+    long queue[QUEUE]; /* E17 M4 T2c-2: the next draws' values, in order (`roll <site> a,b,..`) */
+    int queued;       /* how many */
+    int taken;        /* how many of them were drawn */
 };
 
 static struct site sites[] = {
@@ -89,6 +95,9 @@ static struct site sites[] = {
     {"wall_retarget_tie", 0x445E44, RANDOM_BETWEEN, 0, 0, 0, 0, 0},
     /* catapult_turn 0x473C00's automatic aim: random_between(1, k), the k-th weakest wall */
     {"catapult_tie", 0x473DA0, RANDOM_BETWEEN, 0, 0, 0, 0, 0},
+    /* earthquake 0x5A7C80's target per hit (E17 M4 T2c-2): random_between(1, k), the k-th
+       standing target with hit points left */
+    {"quake_target", 0x5A7DD8, RANDOM_BETWEEN, 0, 0, 0, 0, 0},
     /* ray_aim 0x5A5260: Chain Lightning's ray turns by random_between(10, 80) hundredths of a
        radian (or -80 to -10) at each aim while its target is far (E17 M3 T7c-3); logged */
     {"ray_aim", 0x5A53FC, RANDOM_BETWEEN, 0, 0, 0, 0, 0, 1},
@@ -146,7 +155,10 @@ static int forced(DWORD back, int draw)
         struct site *s = &sites[i];
         if (s->call + 5 != back)
             continue;
-        if (s->count > 0) {
+        if (s->taken < s->queued) {
+            draw = (int)s->queue[s->taken++];
+            forced_draws++;
+        } else if (s->count > 0) {
             s->count--;
             draw = (int)s->value;
             forced_draws++;
@@ -179,21 +191,41 @@ static int __cdecl forced_rand(void)
     return forced((DWORD)__builtin_return_address(0), draw);
 }
 
-/* `roll <site> <value> <count>` or `rolls <site> <value>|natural`. */
+/* `roll <site> <value> <count>`, `rolls <site> <value>|natural`, or (E17 M4 T2c-2) `roll <site>
+   <a>,<b>,...`: the next draws return a, b, ... in order (at most QUEUE; before any `<count>`). */
 static void force(const char *command, const char *name, const char *value, long count)
 {
     size_t i;
     char *end;
     long v = strtol(value, &end, 10);
     int natural = !strcmp(value, "natural");
-    if (!natural && (*value == 0 || *end != 0))
+    long queue[QUEUE];
+    int queued = 0;
+    if (!natural && *value != 0 && *end == ',' && !strcmp(command, "roll")) {
+        const char *at = value;
+        for (;;) {
+            if (queued == QUEUE)
+                return;
+            queue[queued++] = strtol(at, &end, 10);
+            if (end == at || (*end != ',' && *end != 0))
+                return;
+            if (*end == 0)
+                break;
+            at = end + 1;
+        }
+    } else if (!natural && (*value == 0 || *end != 0)) {
         return;
+    }
     EnterCriticalSection(&lock);
     for (i = 0; i < SITES; i++) {
         struct site *s = &sites[i];
         if (strcmp(s->name, name))
             continue;
-        if (!strcmp(command, "roll") && !natural && count >= 0) {
+        if (queued > 0) {
+            memcpy(s->queue, queue, sizeof queue);
+            s->queued = queued;
+            s->taken = 0;
+        } else if (!strcmp(command, "roll") && !natural && count >= 0) {
             s->value = v;
             s->count = count;
         } else if (!strcmp(command, "rolls")) {
@@ -211,7 +243,7 @@ static long pending(void)
     size_t i;
     long n = 0;
     for (i = 0; i < SITES; i++)
-        n += sites[i].count;
+        n += sites[i].count + sites[i].queued - sites[i].taken;
     return n;
 }
 

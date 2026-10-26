@@ -1,0 +1,53 @@
+# E17 M4 T2c-2: the recorded sequence `quake` (sequences.toml; design §10.2, "Earthquake"): a
+# siege of a Castle town with a Fort (walls and the gate, no turrets, no moat), both heroes human
+# (hot seat), the attacker's Catapult commanded (Basic Ballistics). Valeska casts Earthquake at
+# Advanced (Earth Magic: three hits), each hit's target forced (`quake_target`): the mid-upper
+# wall twice (its 2 hit points: destroyed) and the mid-lower wall once (state 1); the shake, then
+# SGEXPL over both at once.
+
+[scenario]
+id = "sequence-quake"
+# Both human (hot seat): the attacker commands the Catapult.
+human = ["attacker", "defender"]
+packs = ["base"]
+profile = "base:faithful"
+terrain = "base:grass"
+
+# The town: a Fort has walls and a gate, no turrets and no moat.
+[scenario.siege]
+faction = "base:castle"
+fort = "fort"
+moat = "absent"
+
+[[attacker]]
+slot = 0
+creature = "base:pikeman"
+count = 12
+
+[[defender]]
+slot = 0
+creature = "base:hobgoblin"
+count = 20
+
+# The heroes, each with 1 in every primary skill (`h3-view situation` writes them so) but
+# Valeska's knowledge: 20 spell points, Earthquake's cost.
+[scenario.attacker_hero]
+hero_type = "base:valeska"
+attack = 1
+defense = 1
+power = 1
+knowledge = 2
+mana = 20
+max_mana = 20
+spell_book = ["base:earthquake"]
+# Advanced Earth Magic on the original's map: three hits.
+masteries = { "base:earthquake" = 2 }
+# Basic Ballistics: the Catapult waits for its command.
+catapult = 1
+
+[scenario.defender_hero]
+hero_type = "base:ufretin"
+attack = 1
+defense = 1
+power = 1
+knowledge = 1

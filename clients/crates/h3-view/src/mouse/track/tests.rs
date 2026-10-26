@@ -8,6 +8,7 @@ use alloc::string::String;
 use alloc::vec::Vec;
 
 use h3_protocol::wire::{Command, Observation, Side};
+use h3_render::Bugs;
 
 use super::{Input, Shown, Start, Turn, follow};
 use crate::battle_log::Logged;
@@ -45,7 +46,7 @@ fn legal() -> Legal {
 }
 
 fn run(log: &[(u32, Logged)], starts: &[Start], turns: &[Turn<'_>], inputs: &[Input]) -> Shown {
-    follow(log, starts, turns, inputs, &layout(), &name)
+    follow(log, starts, turns, inputs, (&layout(), false), &name)
 }
 
 #[test]
@@ -55,6 +56,7 @@ fn a_waiting_human_turn_takes_each_move() {
         observation: &o,
         legal: &legal,
         facing: &Facing::Sides,
+        bugs: Bugs::Fixed,
     };
     let turns = [Turn { field, human: true }];
     let l = layout();
@@ -113,6 +115,56 @@ fn a_waiting_human_turn_takes_each_move() {
 }
 
 #[test]
+fn in_hot_seat_the_parked_mouse_keeps_the_status_line() {
+    // E17 M4 T2c-2 (`hit`, `gate`): both sides played here, the queued and the posted move over
+    // no control write nothing; a control's hint still.
+    let (o, legal) = (battle(), legal());
+    let mut next = battle();
+    next.active = Some(2);
+    let none = Legal::default();
+    let turn = |observation, legal| Turn {
+        field: Field {
+            observation,
+            legal,
+            facing: &Facing::Sides,
+            bugs: Bugs::Fixed,
+        },
+        human: true,
+    };
+    let turns = [turn(&o, &legal), turn(&next, &none)];
+    let inputs = [
+        Input::Move {
+            at: 100,
+            to: centre(90),
+        },
+        Input::Act { at: 100 },
+        Input::Move { at: 100, to: PARK },
+        Input::Move {
+            at: 500,
+            to: [700, 570],
+        },
+    ];
+    let log = [(100, Logged::Action), (500, Logged::Turn(2))];
+    let shown = follow(
+        &log,
+        &[Start { unmarks: true }],
+        &turns,
+        &inputs,
+        (&layout(), true),
+        &name,
+    );
+    assert_eq!(
+        shown.log,
+        [
+            (100, status("Attack(1)", true)),
+            (100, Logged::Action),
+            (500, Logged::Turn(2)),
+            (500, status("Control(\"battle.control.wait\")", false)),
+        ]
+    );
+}
+
+#[test]
 fn moves_wait_while_an_action_plays() {
     let (o, legal) = (battle(), legal());
     let mut next = battle();
@@ -124,6 +176,7 @@ fn moves_wait_while_an_action_plays() {
                 observation: &o,
                 legal: &legal,
                 facing: &Facing::Sides,
+                bugs: Bugs::Fixed,
             },
             human: true,
         },
@@ -132,6 +185,7 @@ fn moves_wait_while_an_action_plays() {
                 observation: &next,
                 legal: &none,
                 facing: &Facing::Sides,
+                bugs: Bugs::Fixed,
             },
             human: true,
         },
@@ -189,6 +243,7 @@ fn a_computers_turn_and_a_round_unmark() {
         observation,
         legal,
         facing: &Facing::Sides,
+        bugs: Bugs::Fixed,
     };
     let turns = [
         Turn {
@@ -260,11 +315,12 @@ fn a_target_left_over_says_no_shots_left() {
             observation: &o,
             legal: &legal,
             facing: &Facing::Sides,
+            bugs: Bugs::Fixed,
         },
         human: true,
     }];
     let off = [5, 200];
-    assert_eq!(spot(&layout(), off), Spot::Nothing);
+    assert_eq!(spot(&layout(), off, false), Spot::Nothing);
     let inputs = [
         Input::Move {
             at: 0,
@@ -317,6 +373,7 @@ fn a_turned_stack_takes_its_other_hexes() {
             observation: &o,
             legal: &legal,
             facing,
+            bugs: Bugs::Fixed,
         };
         crate::mouse::pointer_in(&field, &layout(), centre(hex), &mut None).marked
     };
@@ -334,6 +391,7 @@ fn a_turned_stack_takes_its_other_hexes() {
         observation: &idle,
         legal: &legal,
         facing: &sides,
+        bugs: Bugs::Fixed,
     };
     let p = crate::mouse::pointer_in(&field, &layout(), centre(90), &mut None);
     assert_eq!(p.hint, Hint::Empty);
@@ -370,6 +428,7 @@ fn a_two_hex_stack_stays_marked_across_its_hexes() {
             observation: &o,
             legal: &legal,
             facing: &Facing::Sides,
+            bugs: Bugs::Fixed,
         },
         human: true,
     }];
@@ -408,6 +467,7 @@ fn an_aimed_spell_hints_its_cast() {
         observation: &o,
         legal: &legal,
         facing: &Facing::Sides,
+        bugs: Bugs::Fixed,
     };
     let turns = [Turn { field, human: true }];
     let inputs = [
@@ -469,6 +529,7 @@ fn the_spell_book_empties_the_status_line() {
         observation: &o,
         legal: &legal,
         facing: &Facing::Sides,
+        bugs: Bugs::Fixed,
     };
     let turns = [Turn { field, human: true }];
     let inputs = [

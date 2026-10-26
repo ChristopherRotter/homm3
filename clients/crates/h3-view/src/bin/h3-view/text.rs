@@ -10,7 +10,7 @@ use std::process::ExitCode;
 use h3_formats::lod::LodArchive;
 use h3_formats::text::TextTable;
 use h3_view::battle_log::{self, Hit, Spread, Stack};
-use h3_view::tables::Tables as AssetTables;
+use h3_view::tables::{SIEGE_PARTS, Tables as AssetTables};
 use h3_view::text::keys::{EXECUTABLE, Entry, Keys, Row, address_field};
 use h3_view::text::pack::{Pack, Problem, Tables};
 use h3_view::text::{Args, Catalogue};
@@ -23,8 +23,10 @@ pub fn default_keys() -> PathBuf {
     assets::clients_dir().join("text").join("keys.toml")
 }
 
-/// The families' entries: the asset tables' creatures, spells and heroes (E17 M3 T7b-1) and the
-/// towns' moats by their faction (E17 M4 T2c-1), by qualified key, with their original ids.
+/// The families' entries: the asset tables' creatures, spells and heroes (E17 M3 T7b-1), the
+/// towns' moats by their faction (E17 M4 T2c-1) and their wall-shot targets' parts (E17 M4 T2c-2:
+/// `<faction>.<part>`, the town type's 18 parts in order), by qualified key, with their original
+/// ids.
 pub fn entries(tables: &AssetTables) -> BTreeMap<String, Vec<Entry>> {
     let entry = |key: &String, original: u16| Entry {
         key: key.clone(),
@@ -50,11 +52,22 @@ pub fn entries(tables: &AssetTables) -> BTreeMap<String, Vec<Entry>> {
         .iter()
         .map(|(key, t)| entry(key, u16::from(t.original)))
         .collect();
+    let walls = tables
+        .towns
+        .iter()
+        .flat_map(|(key, t)| {
+            h3_view::siege::TARGET_PARTS.map(|part| Entry {
+                key: format!("{key}.{part}"),
+                id: usize::from(t.original) * SIEGE_PARTS + part,
+            })
+        })
+        .collect();
     BTreeMap::from([
         (String::from("creature"), creatures),
         (String::from("hero"), heroes),
         (String::from("moat"), moats),
         (String::from("spell"), spells),
+        (String::from("wall"), walls),
     ])
 }
 
@@ -466,15 +479,17 @@ mod tests {
         assert!(keys.keys.contains_key("hero.base:orrin"));
         // E17 M4 T2c-1: a town's moat by its faction.
         assert!(keys.keys.contains_key("moat.base:castle"));
+        // E17 M4 T2c-2: a wall's part by its faction (the upper wall, part 6).
+        assert!(keys.keys.contains_key("wall.base:castle.6"));
         let names: BTreeSet<&str> = keys
             .keys
             .values()
             .flat_map(|k| k.original.iter().map(|(_, s, _)| s.table.as_str()))
             .collect();
         // E17 M3 T7b-2b-3: the executable's own strings too (Acid Breath's line); E17 M4 T2c-1
-        // the moats' names.
+        // the moats' names; E17 M4 T2c-2 the walls' parts (WALLS.TXT).
         let tables = [
-            "ARRAYTXT", "CRTRAITS", "EXE", "GENRLTXT", "HELP", "HOTRAITS", "SPTRAITS",
+            "ARRAYTXT", "CRTRAITS", "EXE", "GENRLTXT", "HELP", "HOTRAITS", "SPTRAITS", "WALLS",
         ];
         assert_eq!(names, BTreeSet::from(tables));
     }

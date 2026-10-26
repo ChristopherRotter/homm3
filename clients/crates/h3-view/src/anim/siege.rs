@@ -3,10 +3,13 @@
 //! shooter's frames, the rock's arc (`catapult_rock_flight` 0x467A00), the landing's explosion
 //! with the part's new state at its frame 5, the whole redraw (E17 M4 T2b); the drawbridge
 //! (`gate_open` 0x4671C0, `gate_close` 0x4672E0) and what a walk's hexes bring, a Land Mine's
-//! blast and the moat's damage (E17 M4 T2c-1). The original's slips (CLT-Q19 (1) to (5)) under
-//! [`Bugs::Original`], fixed in what the client draws.
+//! blast and the moat's damage (E17 M4 T2c-1); Earthquake (`earthquake` 0x5A7C80: the shake,
+//! the explosions over every target hit; E17 M4 T2c-2). The original's slips (CLT-Q19 (1) to (5))
+//! under [`Bugs::Original`], fixed in what the client draws; the shake copied in every profile
+//! (CLT-Q19 (6)).
 
 use alloc::string::String;
+use alloc::vec;
 use alloc::vec::Vec;
 
 use h3_render::Bugs;
@@ -137,8 +140,19 @@ pub struct WallKey {
     pub walls: Walls,
 }
 
+/// Where an explosion's frames land: the canvas's top-left and the rectangle shown (the canvas
+/// clipped to the battlefield; left, top, right, bottom, exclusive).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Landing {
+    /// The canvas's top-left.
+    pub at: [i32; 2],
+    /// The rectangle shown.
+    pub rect: [i32; 4],
+}
+
 /// A frame of a wall shot's explosion shown from `shown`, or (`frame` none) the explosion gone
 /// (§10.2, step 5): `blast` numbers the explosion, `walls` the states its redraw draws.
+/// Earthquake's land on every target hit at once (E17 M4 T2c-2).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BlastKey {
     /// The explosion's number in the timeline.
@@ -149,11 +163,8 @@ pub struct BlastKey {
     pub frame: Option<u32>,
     /// The DEF.
     pub def: String,
-    /// The canvas's top-left.
-    pub at: [i32; 2],
-    /// The rectangle shown (the canvas clipped to the battlefield; left, top, right, bottom,
-    /// exclusive).
-    pub rect: [i32; 4],
+    /// Where its frames land, in the order drawn.
+    pub landings: Vec<Landing>,
     /// The walls' states the frame's redraw draws.
     pub walls: Walls,
     /// Each frame drawn on the background restored (the slip fixed, CLT-Q19 (4)); else over the
@@ -161,18 +172,73 @@ pub struct BlastKey {
     pub restored: bool,
 }
 
-/// An explosion as it shows at a time: in its rectangle the frames drawn so far, each over a
+/// An explosion as it shows at a time: in its rectangles the frames drawn so far, each over a
 /// redraw of the battle with its walls' states (the original's, unrestored), or the last alone.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Blast {
     /// The DEF.
     pub def: String,
-    /// The canvas's top-left.
-    pub at: [i32; 2],
-    /// The rectangle shown.
-    pub rect: [i32; 4],
+    /// Where its frames land, in the order drawn (one each over the redraw).
+    pub landings: Vec<Landing>,
     /// The frames in the order drawn, each with the walls' states its redraw drew.
     pub frames: Vec<(u32, Walls)>,
+}
+
+/// Earthquake's shake (`earthquake_shake_offsets` 0x642284): the saved screen copied into the
+/// back buffer at each offset in turn, [`SHAKES`] times over.
+pub const SHAKE: [[i32; 2]; 15] = [
+    [2, 2],
+    [4, 1],
+    [3, -2],
+    [0, -6],
+    [2, -2],
+    [-1, 3],
+    [-5, 4],
+    [-8, 6],
+    [-4, 2],
+    [-1, 1],
+    [-3, -3],
+    [-7, -5],
+    [-5, -7],
+    [-2, -3],
+    [0, 0],
+];
+/// How many times the shake plays its offsets (0x5A7CE7).
+pub const SHAKES: u32 = 3;
+/// Earthquake's steps, the shake's and the explosions' (trunc(15 F), 0x5A7CD9, 0x5A7E3F).
+const QUAKE_STEP: u32 = 15;
+
+/// Earthquake's shake and explosions (E17 M4 T2c-2): its first step shows at `from`, one every
+/// `step` ms for the shake's [`SHAKES`] × 15; the mouse hidden from `from` to `until`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct QuakeKey {
+    /// When the shake's first step shows (the screen saved then).
+    pub from: u32,
+    /// A step's time.
+    pub step: u32,
+    /// When the mouse shows again.
+    pub until: u32,
+}
+
+impl QuakeKey {
+    /// How many of the shake's steps have shown at `t` (none: no shake then).
+    #[must_use]
+    pub fn steps(&self, t: u32) -> Option<u32> {
+        let n = SHAKES * 15;
+        let k = t.checked_sub(self.from)? / self.step.max(1);
+        (k < n).then_some(k + 1)
+    }
+}
+
+/// The offsets of the shake's first `steps` steps, in order.
+#[must_use]
+pub fn shake_offsets(steps: u32) -> Vec<[i32; 2]> {
+    SHAKE
+        .iter()
+        .cycle()
+        .take(usize::try_from(steps).unwrap_or(0))
+        .copied()
+        .collect()
 }
 
 /// What a walk's hexes bring in a siege (E17 M4 T2c-1): the step before which the closed gate
@@ -499,15 +565,7 @@ impl Player<'_> {
             Sound::WallMiss
         };
         self.cue(shooter, sound, false);
-        let [fw, fh] = self.stage.layout.mouse.field;
-        let [w, h] = burst.size;
-        let at = [to[0] - w / 2, to[1] - h / 2];
-        let rect = [
-            at[0].max(0),
-            at[1].max(0),
-            (at[0] + w).min(fw),
-            (at[1] + h).min(fh),
-        ];
+        let landings = vec![self.landing(&burst, to)];
         let blast = self.blast_count;
         self.blast_count += 1;
         let tick = self.speed.scale(TICK);
@@ -533,8 +591,7 @@ impl Player<'_> {
                 shown,
                 frame: Some(k),
                 def: burst.def.clone(),
-                at,
-                rect,
+                landings: landings.clone(),
                 walls,
                 restored: fixed,
             });
@@ -559,11 +616,139 @@ impl Player<'_> {
             shown: now,
             frame: None,
             def: burst.def,
-            at,
-            rect,
+            landings,
             walls,
             restored: fixed,
         });
+    }
+
+    /// Where `burst` lands centred on `to` (0x4462DC, 0x5A7EDE): its canvas's top-left and the
+    /// canvas clipped to the battlefield.
+    fn landing(&self, burst: &Burst, to: [i32; 2]) -> Landing {
+        let [fw, fh] = self.stage.layout.mouse.field;
+        let [w, h] = burst.size;
+        let at = [to[0] - w / 2, to[1] - h / 2];
+        let rect = [
+            at[0].max(0),
+            at[1].max(0),
+            (at[0] + w).min(fw),
+            (at[1] + h).min(fh),
+        ];
+        Landing { at, rect }
+    }
+
+    /// Earthquake (`earthquake` 0x5A7C80, §10.2; E17 M4 T2c-2), its hits `hits` (each target
+    /// and its damage, in the targets' order: the engine's `WallQuaked`), after the hero's frames
+    /// to the climax and the spell's sound; no log line. The mouse hidden; the shake: the screen
+    /// saved, then [`SHAKES`] × 15 steps of trunc(15 F) ms on their own clock, each the saved
+    /// screen copied at its offset and the battlefield shown (copied in every profile, CLT-Q19
+    /// (6)); a whole redraw shown at once. With a target hit, `WallHit` once and SGEXPL's frames
+    /// at trunc(15 F) on their own clock, each over an unshown redraw without the background
+    /// restored, drawn over every target hit in turn and its rectangle shown; the damage at frame
+    /// 5 after its redraw (with the slip fixed, before it, as a wall shot's: CLT-Q19 (4)); a whole
+    /// redraw shown at once, the mouse shown.
+    pub(super) fn quake(&mut self, spell: u16, hits: &[(usize, u8)]) {
+        let fixed = self.stage.bugs == Bugs::Fixed;
+        self.cue(0, Sound::Spell(spell), false);
+        let step = self.speed.scale(QUAKE_STEP);
+        let from = self.clock.now;
+        self.clock.wait(SHAKES * 15 * step);
+        // The background composed again and a whole redraw shown at once (0x5A7D6D).
+        let now = self.clock.now;
+        self.flush(now, now);
+        let burst = self.stage.siege.map(|s| s.hit.clone());
+        match burst.filter(|_| !hits.is_empty()) {
+            Some(burst) => {
+                self.cue(0, Sound::WallHit, false);
+                let landings: Vec<Landing> = hits
+                    .iter()
+                    .map(|&(t, _)| {
+                        let to = TARGET_POINTS.get(t).copied().unwrap_or_default();
+                        self.landing(&burst, to)
+                    })
+                    .collect();
+                let blast = self.blast_count;
+                self.blast_count += 1;
+                let key = self.wall_keys.len();
+                let mut damaged = false;
+                for k in 0..burst.frames {
+                    let damage = k == DAMAGE_FRAME;
+                    if damage && fixed {
+                        self.quake_damage(hits);
+                        damaged = true;
+                    }
+                    let shown = self.clock.now;
+                    if let Some(w) = self.wall_keys.get_mut(key).filter(|_| damage && fixed) {
+                        w.shown = shown;
+                    }
+                    let walls = self.siege.map(|s| s.walls).unwrap_or_default();
+                    self.blasts.push(BlastKey {
+                        blast,
+                        shown,
+                        frame: Some(k),
+                        def: burst.def.clone(),
+                        landings: landings.clone(),
+                        walls,
+                        restored: fixed,
+                    });
+                    if damage && !fixed {
+                        self.quake_damage(hits);
+                        damaged = true;
+                    }
+                    self.clock.wait(step);
+                }
+                if !damaged {
+                    self.quake_damage(hits);
+                }
+                // The end: a whole redraw shown at once (0x5A8052).
+                let now = self.clock.now;
+                if !fixed {
+                    for w in self.wall_keys.iter_mut().skip(key) {
+                        w.shown = now;
+                    }
+                }
+                self.flush(now, now);
+                let walls = self.siege.map(|s| s.walls).unwrap_or_default();
+                self.blasts.push(BlastKey {
+                    blast,
+                    shown: now,
+                    frame: None,
+                    def: burst.def,
+                    landings,
+                    walls,
+                    restored: fixed,
+                });
+            }
+            // No target hit (none standing), or no siege's stage: the damage at once (0x5A8059).
+            None => self.quake_damage(hits),
+        }
+        self.quakes.push(QuakeKey {
+            from,
+            step,
+            until: self.clock.now,
+        });
+    }
+
+    /// A hero's Earthquake ([`Player::quake`]) with the hits its effects report: the engine's
+    /// `WallQuaked` per target (its destructions with them). Always drawn.
+    pub(super) fn quaking(&mut self, spell: u16, effects: &[Event]) -> bool {
+        let hits: Vec<(usize, u8)> = effects
+            .iter()
+            .filter_map(|e| match *e {
+                Event::WallQuaked { part, damage } => Some((usize::from(part), damage)),
+                _ => None,
+            })
+            .collect();
+        self.quake(spell, &hits);
+        true
+    }
+
+    /// Earthquake's damage on every target it hit, in order (`wall_part_damage` 0x465990 per
+    /// target).
+    fn quake_damage(&mut self, hits: &[(usize, u8)]) {
+        for &(t, damage) in hits {
+            self.damage_wall(t, damage, None);
+        }
     }
 
     /// The damage of a wall shot or Earthquake on target `t`, drawn into memory at `at` (none: no
