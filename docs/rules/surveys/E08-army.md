@@ -597,7 +597,7 @@ from that run: E6-7's message (composed, so `h3lod` names no record) and E6-8's 
 | E6-10 (§5.1) | the right arrow: the first entry to the end, the five shown the array's first five | item 78 rotates the array | VCMI: the arrows only scroll a view | **conclusive**: the reading |
 | E6-9 (§5.4) | the Thunder on the right hand: a Spell Book on 17 (shown; locks on the head, torso and left hand); taken off into the backpack's first place: the book stays | the book after both | VCMI and the wiki the same | confirmed |
 
-No row contradicts the reading, so no question follows (`E08-design.md` §14). The rules these rows
+No row contradicts the reading, so no question follows (increment 6's design note §14, in `E08-log.md` since T53). The rules these rows
 settle are written in T49 to T51 and cite the batch's rows as their observation, `verified` where
 the row matches (§10's ids; HER-ART-001's locks now). A-16's ledger entry (decision 98: the
 original's bounds, no flag) takes E6-4 as its observation.

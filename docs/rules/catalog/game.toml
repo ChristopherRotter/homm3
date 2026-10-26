@@ -646,7 +646,7 @@ numeric  = "integer"
 id       = "GAM-MET-001"
 title    = "A step toward an own hero meets it"
 context  = "game"
-status   = "implemented"
+status   = "verified"
 summary  = "A step of a move toward a hero of the same player visits it from the neighbouring tile at the step's price, as a neighbour-visited object (ADV-OBJ-003) and as another player's hero (GAM-BAT-004): the move ends, the visitor stays on the tile before, nothing goes on past it; the visited hero's object is what the step meets, whatever lies under it, but not across the top of a tile not visited from above (ADV-OBJ-004); a flight passes over the hero and meets it only from a stop (ADV-MOV-009, -010). The reachable-tiles query lists the hero's tile as a destination with the points the visit leaves. The outcome reports the meeting (visitor, visited); the game opens it as the owner's decision with Scholar (HER-SPL-007) and the exchange (GAM-DEC-003, E08 T51b). Not modelled yet: allied heroes (teams, E10), an own hero in a town (E09), the computer player's meeting (E10). E08 T50: `check_step`, `passage` and the query treat every other hero alike, `AdventureOutcome::meeting`."
 numeric  = "integer"
 
@@ -672,7 +672,7 @@ numeric  = "integer"
 id       = "GAM-MAN-001"
 title    = "A player manages its heroes on the map in its turn"
 context  = "game"
-status   = "implemented"
+status   = "verified"
 summary  = "In its turn, with no decision open, a player gives management commands on its heroes on the map, at no cost, any number of times: an army command (a stack moved, merged, swapped, split or dismissed; ADV-ARM-001 to -005, -007), the formation and the tactics flag (ADV-ARM-006), an artifact's move (HER-ART-005), an assembly or a disassembly (HER-ART-006). The game checks the actor, its turn and its decision, that each hero named is its own on the map, and that a command between two armies (two heroes, or a hero and an army dialog's group) has them together (a meeting's, GAM-DEC-003; an army dialog's, GAM-DEC-004: E08 T51b; outside them `NotTogether`, the group alone `NoGroup`), and that while a meeting or an army dialog is open each hero named is one it holds (else `DecisionOpen`), then the adventure's or the hero model's rules, before anything changes; a refusal is typed and changes nothing. Each slot an army command names is told with what it holds after it, the formation and the flag when set, each artifact change as the hero change it is; to the owner alone (ADR-0016 point 6). E08 T51a: `GameCommand::Manage`, `Manage`, `ManageError`, `GameEvent::{StackChanged, FormationSet, TacticsSet}`."
 numeric  = "integer"
 
@@ -696,7 +696,7 @@ numeric  = "integer"
 
   [[rule.source]]
   kind       = "design"
-  ref        = "ADR-0017 points 1 and 6 (E08 decisions 93, 94: two armies together only in a meeting or an army dialog); E08-design.md section 10; the events per slot an agent's call at T51a"
+  ref        = "ADR-0017 points 1 and 6 (E08 decisions 93, 94: two armies together only in a meeting or an army dialog); E08-log.md, increment 6's design note at its closure, section 10; the events per slot an agent's call at T51a"
   confidence = "high"
 
 [[rule]]

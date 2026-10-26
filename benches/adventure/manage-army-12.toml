@@ -8,7 +8,7 @@ toolchain = "rustc 1.97.0 (2d8144b78 2026-07-07)"
 target = "x86_64-unknown-linux-gnu"
 
 [workload]
-description = "250 times both heroes' management listing in a meeting on the generated army map (E08 T52, increment 6; E08-design.md §16: the listing per hero): Valeska, seven stacks and twelve artifacts in her backpack (270 commands), and Caitlin (92), each legal_management and the split range of every pair of the two armies' 14 slots; counts only inside h3_cli::adventure::bench::management_queries"
+description = "250 times both heroes' management listing in a meeting on the generated army map (E08 T52; increment 6's design note §16 in E08-log.md: the listing per hero): Valeska, seven stacks and twelve artifacts in her backpack (270 commands), and Caitlin (92), each legal_management and the split range of every pair of the two armies' 14 slots; counts only inside h3_cli::adventure::bench::management_queries"
 args = [
     "adventure",
     "bench",
