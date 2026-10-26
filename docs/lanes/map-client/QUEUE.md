@@ -14,21 +14,7 @@ context; a task that grows is cut at a seam agreed with the user. Code readings 
 finds is an `MCL-Q<n>` in the same task (the HANDOFF's autonomy contract).
 
 T1a was cut at its seam before it started (the user, 2026-10-26): T1a1 the recording and the map
-standing still, T1a2 the scroll.
-
-### E24 M2 T1a1 — the recording and the map standing still
-
-- **Scope:** the recording: `clients/map/sequences.toml` (a situation and a time to stop; the
-  options and inputs as T1a2 and T1b add them) and `h3map.py frames [--only <id>]` (an additive
-  harness change; E17's `h3drive.py frames` the model, E17 design §7.9), as the epic's M2
-  decision gives them. Readings (`E24-design.md` §3): the idle loop in time order (the idle step
-  of `adventure_manager_procedure` 0x4087B0 at 0x408A88, `view_show_step` 0x40F270,
-  `adventure_tick` 0x4ED490's polls and its two calls every 60 ms: which redraw shows which
-  palette step, both kinds' steps over time). Recorded: two idle sequences (water, lava and the
-  rivers; animated objects; about 8 s, past a whole colour cycle of 7.2 s).
-- **Acceptance:** §3's idle loop with its addresses mapped; each sequence recorded twice with the
-  same timeline; the runbook's section for `frames`; the Definition of Done.
-- **Depends on:** M2 T0 (done). **Status:** in progress (`map-client/e24-m2-t1a1`).
+standing still (done 2026-10-26: `E24-log.md`), T1a2 the scroll.
 
 ### E24 M2 T1a2 — the scroll
 
@@ -38,10 +24,11 @@ standing still, T1a2 the scroll.
   the edges (where, the step, the delay at each scroll speed, a held key, diagonals, the view's
   limits at the map's sides, whether it redraws at once or at the deadline), the edge cursors
   (DEF, frames, hot spots). Recorded: the scroll at each speed (keys in each direction, the mouse
-  at an edge and a corner).
+  at an edge and a corner). T1a1's `frames` sets the sequence's 0 by writing the tick's, the
+  redraw's and the mouse poll's next times (design §3.2): a timer of the scroll's joins them.
 - **Acceptance:** §3's scroll with its addresses mapped; each sequence recorded twice with the
   same timeline; the runbook's `frames` section for the inputs; the Definition of Done.
-- **Depends on:** T1a1. **Status:** ready after T1a1.
+- **Depends on:** T1a1 (done). **Status:** ready.
 
 ### E24 M2 T1b — the walk, read and recorded
 
@@ -70,7 +57,7 @@ standing still, T1a2 the scroll.
   original files.
 - **Acceptance:** T1a's sequences as recorded, every line and every frame exact outside the
   panels (or each difference an `MCL-Q<n>`); `clients/scripts/check.sh`; the Definition of Done.
-- **Depends on:** T1a1, T1a2. **Status:** ready after them (its idle part after T1a1).
+- **Depends on:** T1a1 (done), T1a2. **Status:** ready after T1a2 (its idle part now).
 
 ### E24 M2 T3 — the walk drawn
 

@@ -35,6 +35,16 @@ compared pixel for pixel outside the masks of what the viewer does not draw yet.
       situation changed since its capture: its staging is no longer what was kept, T6b); exit 1
       unless every one is the same; --record writes the digests (E24 M1 T6a; the runbook, "Which
       captures a change needs"). <dir> defaults to clients/out/map-drawn.
+  h3map.py frames [--only <id>] [--out <dir>]
+      every sequence of clients/map/sequences.toml (or one; E24 M2 T1a1): its situation staged
+      as `still` stages it, its 0 set to the next millisecond (the palette tick's, the redraw's
+      and the mouse poll's next times written there), then 1-ms steps to its `ms`, each screen
+      whose view changed kept with the state memory holds; its timeline (the changes of the
+      view, the objects' steps, the palette steps and where the screen changed) against
+      clients/map/timelines/<id>.txt (`ok`, `CHANGED`, `new`), and the viewer's frame at 0
+      drawn with the live part read then against the original's; exit 1 unless each is as
+      recorded and exact at 0. A run as recorded or new keeps that live part
+      (timelines/<id>-live.toml). <dir> defaults to clients/out/map-frames.
 
 Needs `clients/capture/setup.sh` and `cargo build --release -p h3-map-view` (from clients/).
 """
@@ -395,9 +405,13 @@ def still(situation_path, out=None, keep=False):
     return compare(situation_path, out, cap)
 
 
-def capture(situation_path, out, keep=False):
-    """Shows one situation in the original: its screen (`still.xwd`, the array returned) and its
-    live part (`live.toml`) in `out`."""
+def stage(situation_path, out):
+    """Shows one situation in the original, up to its moment (E24 M2 T1a1: `capture`'s and
+    `sequence`'s common part): its map written to `out` (`map.h3m`), the game started on it, the
+    heroes walked, the explored tiles written, the view set, the path shown, the facings and the
+    boats' colours written; the clock still running. Returns the game (the caller stops it; a
+    failure here stops it first), its memory, the situation and the facings written
+    (`arrange`)."""
     out.mkdir(parents=True, exist_ok=True)
     sit = tomllib.loads(situation_path.read_text())
     check_situation(situation_path, sit)
@@ -418,12 +432,50 @@ def capture(situation_path, out, keep=False):
         set_view(game, mem, vx, vy, vz)
         show_path(game, mem, sit, (vx, vy, vz))
         # After the view moved: the selected hero is back on its tile (hero_on). The redraws
-        # below show the facings and the boats' colours.
+        # after this show the facings and the boats' colours.
         for x, y, facing in turn:
             mem.write_facing(x, y, 0, facing)
         for boat in sit.get("boats", []):
             if "colour" in boat:
                 mem.write_boat_colour(*boat["at"], 0, boat["colour"])
+    except BaseException:
+        game.stop()
+        raise
+    return game, mem, sit, turn
+
+
+def live_part(mem, sit, turn, k, k_rivers):
+    """The live part the screen shows right after a redraw at the frozen clock (the palette steps
+    `k`, `k_rivers` read by `cycle_step`), as `render --live` takes it: `live.toml`'s lines. The
+    redraw drew with the manager's +0x100 before it grew it (design §1.6): the screen shows the
+    step before the one memory holds. The objects in the map's order: their anchors (the viewer
+    checks them against its map's) and phases. Each object's template in memory: a random one's
+    is the copy a new game made (design §2.7), whose DEF, class and subclass the viewer draws it
+    as; a random dwelling's the dwelling's it became, a town's its picture by its buildings
+    (§2.9). Each object's owner as the view finds it (T5b1). The viewer's explored tiles and the
+    path shown (T5b2). Checks the heroes and boats against what the situation staged."""
+    objects, templates = mem.map_objects(), mem.map_templates()
+    heroes, boats = mem.map_heroes(sit["view"][2])
+    live = {"view": list(mem.view()) + [mem.view_level()], "cycles": k,
+            "river_cycles": k_rivers,
+            "frames": mem.frame_steps() - 1, "viewer": mem.current_player(),
+            "anchors": [list(o[:3]) for o in objects],
+            "phases": [o[4] for o in objects],
+            "defs": json.dumps([templates[o[3]][0] for o in objects]),
+            "classes": [list(templates[o[3]][1:]) for o in objects],
+            "heroes": heroes, "boats": boats, "owners": mem.map_owners(),
+            "explored": json.dumps(mem.explored_rows(mem.current_player())),
+            "path": mem.path_arrows(),
+            "situation": json.dumps(situation_digest(sit))}
+    check_staged(sit, turn, heroes, boats)
+    return "".join(f"{key} = {value}\n" for key, value in live.items())
+
+
+def capture(situation_path, out, keep=False):
+    """Shows one situation in the original: its screen (`still.xwd`, the array returned) and its
+    live part (`live.toml`) in `out`."""
+    game, mem, sit, turn = stage(situation_path, out)
+    try:
         game.clock("step 100")
         now = game.clock("freeze")
         # The moment: the idle step redraws the view only once the clock reaches the frame
@@ -455,30 +507,8 @@ def capture(situation_path, out, keep=False):
         if k != k_rivers:
             print(f"{situation_path.stem}: the rivers' palettes a step behind the terrains' (a "
                   "tick between their loads, design §1.6)", file=sys.stderr, flush=True)
-        # The redraw drew with the manager's +0x100 before it grew it (design §1.6): the screen
-        # shows the step before the one memory holds. The objects in the map's order: their
-        # anchors (the viewer checks them against its map's) and phases.
-        # Each object's template in memory: a random one's is the copy a new game made (design
-        # §2.7), whose DEF, class and subclass the viewer draws it as; a random dwelling's the
-        # dwelling's it became, a town's its picture by its buildings (§2.9). Each object's owner
-        # as the view finds it (T5b1). The viewer's explored tiles and the path shown (T5b2).
-        objects, templates = mem.map_objects(), mem.map_templates()
-        heroes, boats = mem.map_heroes(vz)
-        live = {"view": list(mem.view()) + [mem.view_level()], "cycles": k,
-                "river_cycles": k_rivers,
-                "frames": mem.frame_steps() - 1, "viewer": mem.current_player(),
-                "anchors": [list(o[:3]) for o in objects],
-                "phases": [o[4] for o in objects],
-                "defs": json.dumps([templates[o[3]][0] for o in objects]),
-                "classes": [list(templates[o[3]][1:]) for o in objects],
-                "heroes": heroes, "boats": boats, "owners": mem.map_owners(),
-                "explored": json.dumps(mem.explored_rows(mem.current_player())),
-                "path": mem.path_arrows(),
-                "situation": json.dumps(situation_digest(sit))}
-        check_staged(sit, turn, heroes, boats)
-        (out / "live.toml").write_text(
-            "# The original's live part at the still (h3map.py still).\n"
-            + "".join(f"{key} = {value}\n" for key, value in live.items()))
+        (out / "live.toml").write_text("# The original's live part at the still (h3map.py "
+                                       "still).\n" + live_part(mem, sit, turn, k, k_rivers))
     finally:
         if not keep:
             game.stop()
@@ -498,6 +528,172 @@ def compare(situation_path, out, cap):
     mask = masked(["panels"], cap.shape)
     n, where = h3cap.compare(cap, ours, mask, out / "diff.png")
     return n, int((~mask).sum()), where
+
+
+# The recorded sequences (E24 M2 T1a1; the epic's M2 decision): their list, timelines and the live
+# part each starts from.
+SEQUENCES = CLIENTS / "map/sequences.toml"
+TIMELINES = CLIENTS / "map/timelines"
+OUT_FRAMES = CLIENTS / "out/map-frames"
+
+
+def cycle_now(mem, tries=10):
+    """The palette cycles' steps (the terrains', the rivers') at a settled clock (`cycle_step`
+    without its waits: a step's 500 clock reads come after the tick's whole rotation); read again
+    a few times if a read fits no step."""
+    for _ in range(tries):
+        fits = cycle_fits(mem)
+        if all(fits):
+            return tuple(min(ks) for ks in fits)
+        time.sleep(0.01)
+    raise RuntimeError(f"the palettes in memory are no steady rotation of the files' ({fits})")
+
+
+def view_changed(before, after):
+    """The box `[x0, y0, x1, y1]` (x1, y1 exclusive) of the pixels that differ between two
+    screens outside the panels (the map's view and its frame; None: none)."""
+    return h3drive.changed_box(before[:552, :608], after[:552, :608])
+
+
+def map_timeline(states):
+    """The changes over a sequence (E24 M2 T1a1), one line each, numbers only: `<ms> view <x>
+    <y> <level>` (the view's top-left tile), `<ms> objects <n>` (the objects' frame steps memory
+    holds, the manager's +0x100, counted from the sequence's 0), `<ms> cycles <terrains>
+    <rivers>` (the palette steps memory holds, each kind's ticks counted from 0) and `<ms> screen
+    <x0>,<y0>,<x1>,<y1>` (where the screen outside the panels changed since the screen kept
+    before: each such screen is kept; x1, y1 exclusive). The first state, at 0, gives the view,
+    the objects and the cycles; its screen is always kept, without a line."""
+    lines, last = [], {}
+    for state in states:
+        t = state["t"]
+        for key in ("view", "objects", "cycles"):
+            if last.get(key) != state[key]:
+                lines.append(f"{t} {key} " + " ".join(map(str, state[key])))
+                last[key] = state[key]
+        if state.get("changed"):
+            lines.append(f"{t} screen " + ",".join(map(str, state["changed"])))
+    return lines
+
+
+def sequence(entry, out):
+    """One sequence in the original (E24 M2 T1a1): its situation staged as `still` stages it, the
+    clock frozen once both the palette tick and the view's redraw lie ahead of it; then the
+    sequence's 0 set to the next millisecond: the tick's and the redraw's next times written
+    there, and the mouse poll's (the harness's own timers, as E17's `align_mouse_poll`: the
+    original's phase between them is the map's load's real time, so a run starts like every
+    other). Then `ms` + 1 steps of 1 ms (0 to `ms`), each followed by the state memory holds and
+    the screen: every screen whose view (outside the panels) changed is kept
+    (`<out>/frames/t<ms>.npz`, local), its state in `<out>/frames.jsonl` (every step's in
+    `states.jsonl`, with the tick's and the redraw's next times, `due`). Writes the timeline
+    (`<out>/timeline.txt`, `map_timeline`), the live part the screen shows at 0
+    (`<out>/live.toml`, `live_part`) and the viewer's frame at 0 drawn with it against the
+    original's (`<out>/ours.png`, `diff.png`); returns the states and that frame's differing
+    pixels."""
+    situation_path = SITUATIONS / f"{entry['situation']}.toml"
+    game, mem, sit, turn = stage(situation_path, out)
+    kept = out / "frames"
+    shutil.rmtree(kept, ignore_errors=True)
+    kept.mkdir()
+    (out / "frames.jsonl").unlink(missing_ok=True)
+    try:
+        game.clock("step 100")
+        now = game.clock("freeze")
+        # As `capture`: a deadline the frozen clock passed is met at the next idle step first.
+        h3adv.wait_for(lambda: min(mem.map_due()) > now,
+                       lambda: f"the deadlines past the frozen clock at {now} ({mem.map_due()})")
+        t0 = now + 1
+        mem.write_u32(h3mem.PALETTE_TICK_TIME, t0)
+        mem.write_u32(h3mem.FRAME_DEADLINE, t0)
+        mem.align_mouse_poll(t0)
+        if game.clock("step 1", settle_reads=500) != t0:
+            raise RuntimeError("the clock did not step to the sequence's 0")
+        # The tick and the redraw came at 0 (each moved its next time on), so the screen shows
+        # the live part read now (a still's moment, as `capture` steps to).
+        h3adv.wait_for(lambda: mem.map_due() == (t0 + 200, t0 + 180),
+                       lambda: f"the tick and the redraw at the sequence's 0 ({t0}: next "
+                               f"{mem.map_due()})")
+        base = {"objects": mem.frame_steps(), "cycles": cycle_now(mem)}
+        counted = {"cycles": base["cycles"], "ticks": (0, 0)}
+        live = live_part(mem, sit, turn, *base["cycles"])
+
+        def state(t, pix, before):
+            k = cycle_now(mem)
+            ticks = tuple(n + (now_k - was) % 36 for n, now_k, was
+                          in zip(counted["ticks"], k, counted["cycles"]))
+            counted.update(cycles=k, ticks=ticks)
+            s = {"t": t - t0, "view": list(mem.view()) + [mem.view_level()],
+                 "objects": [mem.frame_steps() - base["objects"]], "cycles": list(ticks),
+                 "due": [d - t0 for d in mem.map_due()]}
+            box = None if before is None else view_changed(before, pix)
+            if before is None or box:
+                s["changed"] = box
+                s["frame"] = f"t{t - t0:05d}.npz"
+                np.savez_compressed(kept / s["frame"], screen=pix)
+            return s
+
+        first = game.settled()
+        states, last = [state(t0, first, None)], first
+        for _ in range(entry["ms"]):
+            t = game.clock("step 1", settle_reads=500)
+            pix = game.settled()
+            states.append(state(t, pix, last))
+            if "frame" in states[-1]:
+                last = pix
+    finally:
+        game.stop()
+    (out / "live.toml").write_text("# The original's live part at the sequence's 0 (h3map.py "
+                                   "frames).\n" + live)
+    with open(out / "states.jsonl", "w") as f, open(out / "frames.jsonl", "w") as g:
+        for s in states:
+            f.write(json.dumps(s) + "\n")
+            if "frame" in s:
+                g.write(json.dumps(s) + "\n")
+    (out / "timeline.txt").write_text("\n".join(map_timeline(states)) + "\n")
+    draw_ours(out / "map.h3m", sit, out / "live.toml", out / "ours.png")
+    n, _ = h3cap.compare(first, h3cap.png565(out / "ours.png"), masked(["panels"], first.shape),
+                         out / "diff.png")
+    return states, n
+
+
+def run_frames(rest):
+    """`frames [--only <id>] [--out <dir>]`: each sequence of `clients/map/sequences.toml` (or
+    one) recorded (`sequence`); its timeline against the one recorded in
+    `clients/map/timelines/<id>.txt` (`ok`, `CHANGED`, `new`), and the viewer's frame at 0 against
+    the original's (the live part at 0 is a still's: exact, as the capture set). A run as recorded
+    or new keeps its live part at 0 as `timelines/<id>-live.toml` (for the frame check, M2 T2).
+    Exit 1 unless every sequence is as recorded and its frame at 0 exact."""
+    only = rest[rest.index("--only") + 1] if "--only" in rest else None
+    base = Path(rest[rest.index("--out") + 1]) if "--out" in rest else OUT_FRAMES
+    entries = tomllib.loads(SEQUENCES.read_text())["sequence"]
+    if only:
+        entries = [e for e in entries if e["id"] == only]
+        if not entries:
+            sys.exit(f"no sequence `{only}` in {SEQUENCES.name}")
+    failed = 0
+    for e in entries:
+        here = base / e["id"]
+        try:
+            states, n = sequence(e, here)
+        except Exception as err:  # noqa: BLE001 (any failure fails this sequence alone)
+            failed += 1
+            print(f"{e['id']}: FAILED ({type(err).__name__}: {err})", flush=True)
+            continue
+        got = (here / "timeline.txt").read_text()
+        recorded = TIMELINES / f"{e['id']}.txt"
+        verdict = ("new" if not recorded.exists()
+                   else "ok" if got == recorded.read_text() else "CHANGED")
+        frames = sum("frame" in s for s in states)
+        print(f"{e['id']}: {len(got.splitlines())} changes, {frames} screens kept in {e['ms']} ms "
+              f"{verdict}; the frame at 0: {n} differing", flush=True)
+        failed += verdict != "ok" or n != 0
+        if verdict == "CHANGED":
+            print(f"{e['id']}: not as recorded, its live part not kept ({here / 'timeline.txt'})",
+                  flush=True)
+        else:
+            TIMELINES.mkdir(exist_ok=True)
+            shutil.copy(here / "live.toml", TIMELINES / f"{e['id']}-live.toml")
+    print(f"frames: {len(entries)} sequences, {failed} not as recorded; under {base}")
+    return 1 if failed else 0
 
 
 class Refused(RuntimeError):
@@ -650,6 +846,8 @@ def main(args):
         return run_set(args[1:])
     if args[:1] == ["drawn"]:
         return run_drawn(args[1:])
+    if args[:1] == ["frames"]:
+        return run_frames(args[1:])
     print(__doc__, file=sys.stderr)
     return 2
 

@@ -30,7 +30,7 @@ adventure).
 | `h3cap.py` | `diff` (our render against a capture, with masks) and `find` (the original's obstacles in a capture); `compare` and `boxes_at` for the frame check. |
 | `h3mem.py` | Reads the running game's state from its memory: the battle's clocks, idle steps, active stack and the mouse's highlight, each stack's group, frame, hex, offsets and draw layer, and each side's hero's group and frame and its flag's frame (M3 T3a), the magic animation drawn and the stacks under it (M3 T3b), the battle's outcome (H1); the adventure map's players, heroes (with their experience, level, army and skills: H1), view and path, the difficulty, a tile's monster, the topmost dialog's text (H1; below); since E08 T47a the topmost dialog's kind and its items' boxes, states and texts, a hero's army slot by slot, worn positions, flags and learned spells, the artifact held, the battle's tactics phase. |
 | `h3adv.py` | The adventure map (M2 T6, H1, H2): hot seat at a chosen difficulty, heroes (the list scrolled), tiles of either level clicked twice, questions answered, battles played, level-ups chosen, turns, artifacts put on from the backpack in the hero screen (E08 T37a), the hero screen's, the exchange's, the army, creature and split dialogs' items clicked by their ids and a tactics phase ended (E08 T47a); `batch` plays an experiment batch and fills its results template, `compare` sets two filled templates side by side, `learn-button`. |
-| `h3map.py` | The adventure map's stills (E24 M1 T3b2, the map client lane): `still` shows a situation of `../map/situations/` in the original (a single scenario, a writer's map or a shipped one whole, the human's explored tiles written, the view by the minimap, the clock frozen), draws ours and diffs them; `set` runs the map's capture set, keeping each live part; `drawn` (T6a) draws ours from the kept ones without the original. Below, "The map's stills". |
+| `h3map.py` | The adventure map's stills (E24 M1 T3b2, the map client lane): `still` shows a situation of `../map/situations/` in the original (a single scenario, a writer's map or a shipped one whole, the human's explored tiles written, the view by the minimap, the clock frozen), draws ours and diffs them; `set` runs the map's capture set, keeping each live part; `drawn` (T6a) draws ours from the kept ones without the original; `frames` (E24 M2 T1a1) records the map's sequences, 1 ms at a time. Below, "The map's stills" and "The map's sequences". |
 | `h3lod.py` | The original's text tables, read from the run directory's LODs at run time (H1): which record a dialog's text was written from (`ADVEVENT:86`); never their text. |
 | `batches/` | The batches' recipes: a spec's procedure as steps (`E08-batch-2.toml`), and the harness's own check (`harness-check.toml`, its spec in `checks/`). |
 | `../situations/` | The capture set: `set.toml` and its situations' scenario files; the recorded sequences, `sequences.toml`, their scenarios `seq-*.toml` and `timelines/`. |
@@ -524,6 +524,33 @@ T4b's runs beside a build failed so. Masked (`h3map.MASKS`): the panels right of
 and the cursor parked over the right panel. Every situation of T3b2 is exact; `set.toml` records
 the counts. The menus run in real time, so each run's k and frame steps differ: they are read,
 never assumed.
+
+**The map's sequences** (E24 M2 T1a1, the map client lane; `docs/epics/E24-design.md` §3): from
+`clients/`, after `cargo build --release -p h3-map-view`,
+
+```
+python3 capture/h3map.py frames [--only <id>] [--out <dir>]   # the recorded sequences
+```
+
+A sequence (`map/sequences.toml`: its id, a situation of `map/situations/`, one of the capture
+set's or its own `seq-*.toml`, and `ms`) is staged as `still` stages its situation (`stage`: the
+map, the game, the walks, the explored tiles, the view, the path, the facings), the clock frozen
+once both the palette tick's and the redraw's next times lie ahead of it; then its 0 is the next
+millisecond: `frames` writes both next times and the mouse poll's there (`Mem.write_u32`, the
+harness's own timers: the phase between them is the map's load's real time) and checks that the
+tick and the redraw ran at 0. Then 1-ms steps (each waits for 500 clock reads, as E17's
+sequences) to `ms`, each followed by the state memory holds (the view, the frame steps, both
+kinds' palette steps by `cycle_now`, the next times) and the screen (`Game.settled`): each screen
+whose pixels outside the panels changed is kept (`<out>/<id>/frames/t<ms>.npz`, its state in
+`frames.jsonl`, every step's in `states.jsonl`; local, never in git). Written: the timeline
+(`timeline.txt`, numbers only: the changes of the view, the objects' steps and the palette steps,
+each counted from 0 since each run's own start differs, and where the screen changed: E24
+design §3.2) against the one recorded in
+`map/timelines/<id>.txt` (`ok`, `CHANGED`, `new`), and the live part the screen shows at 0
+(`live.toml`, a still's), with which the viewer's frame at 0 is drawn and compared (`ours.png`,
+`diff.png`; it must be exact). A run as recorded or new keeps that live part as
+`map/timelines/<id>-live.toml`. A sequence of 8 000 ms takes about 10 minutes (75 ms a step; the staging adds half a minute);
+`<out>` defaults to `out/map-frames`. A new sequence is recorded twice, its second run `ok`.
 
 ## The recipes' coordinates (800 × 600)
 
