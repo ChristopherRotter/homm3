@@ -2457,6 +2457,53 @@ original files staged from the user's `original-data/install/`, the link droppin
   frame's defender's view; the real-asset gate (437 keys, the moat's nine among them; the siege
   sounds found); the library's tests; the timeline check of all 43 sequences as recorded.
 
+### M4 T2c-2 — Earthquake, the shots and the mouse recorded (2026-10-26)
+
+On `client/e17-m4-t2c2`, the user present at the start: offered a cut (Earthquake and the town's
+end first, the mouse with `aim` and `through` after, the masks' recount moved to T3), the user
+kept the task whole. GitHub reachable (the repository attached; public since 2026-10-26); the
+original files staged from the user's `original-data/install/`.
+
+- **Starting point:** `master` at `bef62ab` (#459 merged); the client gates' full check on that
+  code (`verify-once clients`: all gates passed); `drawn`: the 115 items the same.
+- **A code reading** (`earthquake` 0x5A7C80 whole: the shake's copy of the saved screen, its
+  own clock, the hits' draw and the targets' explosions with the damage after frame 5's redraw;
+  `battle_cursor` 0x476490's siege branches and empty-hex path: the Catapult over a stack
+  as over an empty hex, the aim hexes, hex 183's 22; `battle_status_line` 0x492840's cases 16
+  and 22, neither forced; `shot_wall_test` 0x467510 from the cursor: the acting stack's position
+  to the mouse's hex): design §10.2, "Recorded (M4 T2c-2)".
+- **The harness** (common paths): `xdd.c`'s site `quake_target` and a queue of forced values
+  (`roll:<name>:<a>,<b>,...`; the other rolls as before); the runbook.
+- **The viewer:** `anim::siege::quake` (the shake's `QuakeKey`, `Timeline::shake`, the cursor
+  hidden; the explosions' `Landing`s), `Draw::Shaken` and `scene::shaken` (the frame's
+  assemblers in `sequences` and `battle`), `EARTHQUAKE`; the end tune's town from the record's
+  siege; the mouse's siege (`Spot::Keep`, `Spot::Tower`, `Kind::Wall`, `Kind::Turret`,
+  `Hint::Wall`, `Hint::Turret`, `Legal`'s wall targets, `catapult` and `wall_exempt`,
+  `walls_halve`, `mouse::line`; `pointer::legal` in the binary); the layout's `keep` and `tower`;
+  the key family `wall` and `battle.hint.turret` (the real-asset gate: 510 keys).
+- **Recorded** (`sequences.toml`, hot seat, `key = "Up"`, seeds searched): `quake` (seed 2367:
+  the Catapult's shot and the three hits as forced), `defended` (11: the keep's 17 damage),
+  `aim` (1), `through` (6: the Archers' 15 damage); every timeline as recorded (`through` ends
+  at 13 000, before the Hobgoblins' own fidget).
+- **Found by the recaptures:** T2b's and T2c-1's nine sequences with the Catapult's hint (`hit`,
+  `missed`, `breach`, `tower`, `cyclops`, `gate`, `gate-fortress`, `moat`, `mine`) recaptured;
+  the status line keeps the last hint at a hot-seat human turn with the mouse parked, where the
+  model emptied it (their old ` log` masks), while `walk`, `turn` and `climb` (one human side)
+  empty it: built as found (`track`'s `hot_seat`, *provisional*). A code reading of the dispatch
+  (0x475512 → `window_manager_dispatch` 0x602320 → `dialog_send_to_items` 0x5FEDE0 →
+  `dialog_item_message`'s mouse move → `hovered_item` 0x6AAC68 → `combat_dialog_hint`
+  0x472B80, the map): an item writes its hint only as the mouse enters it, so a move back over
+  the last item entered writes nothing. Not explained: `aim`'s line emptied at the Pikemen's turn
+  (8 175) where `hit`'s, the same shot, keeps it; tried: emptying at every human turn's re-post
+  (`aim` right, `hit` and `missed` wrong, reverted); the inbox note asks for a capture reading
+  0x6AAC68.
+- **Checked:** the frame check of the thirteen (`timelines/<id>-frames.txt`; the nine with every
+  pixel count as recorded, only their ` log` masks gone): every frame exact but the listed
+  (design §10.2, "Recorded (M4 T2c-2)": the shooters' first frames' outline rows, `defended`'s
+  result window, `aim`'s last 8 frames' ` log`); `drawn`: the earlier items the same but the
+  nine (their status line now drawn), the four new, recorded; the real-asset gate (510 keys);
+  the viewer's timeline check of all 47 sequences (in `drawn`); `clients/scripts/check.sh`.
+
 ## Accepted review lists (M1, M2, M3)
 
 M1 and M2 moved from the epic file on 2026-10-20 (less start-up reading), unchanged; M3 at its

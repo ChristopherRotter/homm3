@@ -191,6 +191,12 @@ states; the Tower 26, without the moat).
   moat's damage and re-entry, a mine's blast mid-walk; `gate`, `gate-fortress`, `moat` and
   `mine` as recorded, their frames exact but the listed differences; found: a reaction's hold
   without a striker, a standing wall's hex taking a count box's place.
+- **T2c-2 done 2026-10-26** ([log](E17-log.md#m4-t2c-2--earthquake-the-shots-and-the-mouse-recorded-2026-10-26),
+  design §10.2 "Recorded (M4 T2c-2)"; not cut, the user): Earthquake (the shake copied, the
+  explosions over every target hit), the town's end tune, the siege's mouse (16, 22, the walls'
+  broken arrow); `quake`, `defended`, `aim` and `through` as recorded, their frames exact but the
+  listed differences; T2b's and T2c-1's nine with the Catapult's hint recaptured without their
+  ` log` masks; found: the status line kept at a hot-seat human turn with the mouse parked.
 
 ### The adventure lane's harness (H1, H2: its batch E3)
 

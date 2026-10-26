@@ -193,7 +193,8 @@ impl Handler<'_> {
             // control's hint an empty one with one human side, none in hot seat (E17 M4 T2c-2:
             // `walk`, `turn` and `climb` empty the status line at the next human turn with the
             // mouse parked, `hit`, `gate` and every hot-seat siege keep it; *provisional*: the
-            // dialog's dispatch 0x602360 is not read).
+            // dialog's items write a hint only as the mouse enters one, `hovered_item`
+            // 0x6AAC68, and what makes the park point's item entered again is not read).
             self.set_marked(now, None);
             let hint = self
                 .layout

@@ -1,9 +1,9 @@
 //! A shot's straight line through a siege's walls (`siege_line_clear` 0x467840, from the cursor's
-//! wall test `shot_wall_test` 0x467510; E17 M4 T2c-2, design §10.2; the engine's
-//! `h3_battle::siege::line_blocked`, BAT-SIE-008): on the column and row grid, not the hexes'
-//! geometry, from the shooter's column and row towards the target's in 17 × the larger
-//! difference steps of 1/17 of a cell along the longer axis and the matching fraction along the
-//! other, each position a single-precision value truncated to a hex at every step.
+//! wall test `shot_wall_test` 0x467510; E17 M4 T2c-2, design §10.2; the battle crate's
+//! `siege::line_blocked`, BAT-SIE-008): on the column and row grid, not the hexes' geometry, from
+//! the shooter's column and row towards the target's in 17 × the larger difference steps of 1/17
+//! of a cell along the longer axis and the matching fraction along the other, each position a
+//! single-precision value truncated to a hex at every step.
 //!
 //! No float arithmetic (`clippy.toml`): each axis is computed exactly in integers, as numerators
 //! over 2^[`FRAC`] ([`Axis`]). The original stores an axis's step as an `f32`: the axis's
@@ -72,7 +72,7 @@ fn fixed((m, e): Float) -> u64 {
 }
 
 /// The numerator `num` over 2^[`FRAC`] rounded to an `f32`'s 24 significant bits, to nearest,
-/// ties to even (`h3_kernel::arith::round_single`).
+/// ties to even (the kernel's `arith::round_single`).
 fn single(num: u64) -> u64 {
     let (m, e) = rounded((u128::from(num), 0), SINGLE);
     u64::try_from(m << e).unwrap_or(u64::MAX)

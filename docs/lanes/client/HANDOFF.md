@@ -5,9 +5,10 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 ## Current state
 
 - **E17 M0–M3 done** (the lane split at M3 T9c, CLT-Q18: the battle client here, the adventure
-  map client the map-client lane's E24); **M4 (sieges): T0 to T2c-1 done** (§10.1, §10.2,
-  CLT-Q19 to Q21); **next T2c-2** (Earthquake, the shots, the mouse), then T3; M5 live play
-  after M4. Workspace `clients/` (`clients/README.md`), gates
+  map client the map-client lane's E24); **M4 (sieges): T0 to T2c-2 done** (§10.1, §10.2,
+  CLT-Q19 to Q21); **next T3** (M4's closure: a fresh reviewer, every capture afresh, the
+  review list, M5 refined with the user); M5 live play after M4. Open PR: T2c-2's (check it
+  first). Workspace `clients/` (`clients/README.md`), gates
   `clients/scripts/check.sh`; ADR-0020 (+ drafts in `adr-drafts/`), ADR-0024; the harness
   `clients/capture/README.md`; design §3–§10; records in `E17-log.md`.
 - **Captures** (the user, 2026-10-20): `h3drive.py drawn` first (no Wine); capture what it lists or the task changes, all at a milestone's closure or a harness change (runbook); a capture not as recorded leaves `kept/` (T9b: record, then `--reuse`); later tasks' detail in `NOTES.md`.
@@ -33,13 +34,13 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
 
 ## Recent sessions
 
-- **2026-10-26, E17 M4 T2c-2 (in progress, `client/e17-m4-t2c2`; not cut: the user).**
-  Done and pushed: Earthquake (`anim::siege::quake`, `Draw::Shaken`), the end tune by the
-  record's siege, the siege's mouse (16, 22, the walls' broken arrow, `mouse::line`), the
-  harness's `quake_target` (value lists); `quake`, `defended`, `aim`, `through` timelines as
-  recorded. Next: their frames, then T2b's and T2c-1's eleven again without the ` log` masks
-  (`frames --only`), `drawn --record`, the docs, the PR.
-- **2026-10-24, E17 M4 T2c-1 (done; #459 open: check it first).** T2c cut in two (the user).
+- **2026-10-26, E17 M4 T2c-2 (done; PR open: check it first; not cut: the user).** Earthquake,
+  the end tune at a town, the siege's mouse (16, 22, the broken arrow); `quake`, `defended`,
+  `aim`, `through` as recorded, frames exact but listed differences; T2b's and T2c-1's nine
+  recaptured without their ` log` masks. Found: the status line kept at a hot-seat human turn
+  with the mouse parked (built as found, *provisional*; `aim`'s exception and the dispatch
+  reading in QUEUE's inbox). CLT-Q22 and Q23 still open.
+- **2026-10-24, E17 M4 T2c-1 (done; #459 merged).** T2c cut in two (the user).
   The drawbridge, the moat, a mine (`anim::siege`); `gate`, `gate-fortress`, `moat`, `mine` as
   recorded, frames exact but listed differences; CLT-Q23 asked (built as recommended).
 - **2026-10-23, E17 M4 T2b (done; #452).** Turret and wall shots played (`anim::siege`), seven

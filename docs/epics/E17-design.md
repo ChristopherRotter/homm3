@@ -3419,3 +3419,24 @@ the siege's mouse (not cut, the user). The viewer plays and draws the reading:
   checked against the engine's x87 steps in the binary's tests) before its distance test; the
   shooters it exempts by their original ids and the bows by the wire's `no_distance_penalty`
   (`pointer::legal`, *provisional*: the M4 review list); the arrow tower always shoots in full.
+- **The status line at a human turn with the mouse parked** (found by the recaptures): the
+  siege sequences in hot seat keep the last hint through the next human turn (`hit`'s and
+  `missed`'s Catapult's hint at the Griffins' turn, 3 775 and 3 375: the ` log` masks T2b and
+  T2c-1 listed), while `walk`, `turn` and `climb` (one human side) empty it as the model did
+  (§9.10). The tracker writes the empty hint outside the field over no control only with one
+  human side (*provisional*). The dispatch, read: outside the field the battle's move goes to the
+  window manager (0x475512, 0x602320), each dialog's items take it (0x5FEDE0), and an item takes
+  a move inside it only on entering, the hovered item being another (`hovered_item` 0x6AAC68,
+  forgotten only when that item is destroyed); then the combat dialog writes its hint, an empty
+  line for an item without one (0x472B80; nothing while the log's new entries show). So a move
+  back over the item the mouse last entered writes nothing, the hint stays. Not read: which item
+  lies under the park point, and what makes it entered again. One case the rule misses: `aim`'s
+  line emptied at the Pikemen's turn after the Catapult's shot (8 175: its last 8 frames listed
+  ` log`), where `hit`'s, the same shot, keeps it.
+- **Differences listed** (the frame check's `frames` files): the acting shooter's first frame
+  leaves its standing frame's outline top row (T2b's: the Catapult's 11 pixels in `quake`, `aim`
+  at 4 500 and `through`, `through`'s Archers' again at 6 991; the keep's 4 in `defended`);
+  `defended`'s last frame (1 487: the result's window over the darkened screen, not drawn yet, as `end`'s, M3 T8); `aim`'s
+  last 8 frames' ` log` (above). The rest exact: Earthquake's shake and explosions, the broken
+  arrow, the end tune's frames. T2b's and T2c-1's nine with the Catapult's hint, recaptured:
+  their ` log` masks gone, every other count as recorded.

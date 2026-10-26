@@ -479,15 +479,17 @@ mod tests {
         assert!(keys.keys.contains_key("hero.base:orrin"));
         // E17 M4 T2c-1: a town's moat by its faction.
         assert!(keys.keys.contains_key("moat.base:castle"));
+        // E17 M4 T2c-2: a wall's part by its faction (the upper wall, part 6).
+        assert!(keys.keys.contains_key("wall.base:castle.6"));
         let names: BTreeSet<&str> = keys
             .keys
             .values()
             .flat_map(|k| k.original.iter().map(|(_, s, _)| s.table.as_str()))
             .collect();
         // E17 M3 T7b-2b-3: the executable's own strings too (Acid Breath's line); E17 M4 T2c-1
-        // the moats' names.
+        // the moats' names; E17 M4 T2c-2 the walls' parts (WALLS.TXT).
         let tables = [
-            "ARRAYTXT", "CRTRAITS", "EXE", "GENRLTXT", "HELP", "HOTRAITS", "SPTRAITS",
+            "ARRAYTXT", "CRTRAITS", "EXE", "GENRLTXT", "HELP", "HOTRAITS", "SPTRAITS", "WALLS",
         ];
         assert_eq!(names, BTreeSet::from(tables));
     }
