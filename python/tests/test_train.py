@@ -35,7 +35,7 @@ from h3env.train.evaluate import (  # noqa: E402
     random_agent,
 )
 from h3env.train.policy import Mlp, build  # noqa: E402
-from h3env.train.ppo import Trainer  # noqa: E402
+from h3env.train.ppo import Trainer, episode_entries  # noqa: E402
 from h3env.train.run import (  # noqa: E402
     ConfigError,
     HeldOutError,
@@ -542,6 +542,68 @@ def test_a_neutral_episode_draws_no_member_and_the_rates_split_by_kind() -> None
     # The episodes the rollout's ends started drew alike.
     for e in np.nonzero(trainer.frozen_side >= 0)[0]:
         assert int(batch.encounter[e]) not in NEUTRAL_KINDS
+
+
+def test_the_entries_keep_every_kinds_share_and_split_the_player_kinds() -> None:
+    # E06 T6b: without `system_share` the batch's one entry, as before; with it the neutral
+    # kinds', the player kinds' own and one per side of the system actor, each kind's share of
+    # the episodes kept (`t7-1`'s kinds: the neutral 83 of 258, the player kinds' 175 split
+    # 3 : 1 : 1 at a quarter).
+    kinds = [78, 2, 100, 50, 25, 3]
+    assert episode_entries(Config(kinds=kinds)) == [(1, kinds, -1)]
+    assert episode_entries(Config()) == [(1, None, -1)]
+    player, neutral = [0, 0, 100, 50, 25, 0], [78, 2, 0, 0, 0, 3]
+    assert episode_entries(Config(kinds=kinds, system_share=0.25)) == [
+        (2000 * 83, neutral, -1),
+        (1500 * 175, player, -1),
+        (250 * 175, player, 0),
+        (250 * 175, player, 1),
+    ]
+    # No neutral kind, every player kind's episode against the system actor: two entries.
+    assert episode_entries(Config(kinds=player, system_share=1.0)) == [
+        (1000 * 175, player, 0),
+        (1000 * 175, player, 1),
+    ]
+
+
+def test_the_system_actor_plays_a_share_of_the_player_kinds_against_the_learner() -> None:
+    # E06 T6b (decision 9 amended): with `system_share` a player kind's episode may have the
+    # system actor on either side inside the batch; such an episode draws no member, the learner
+    # plays its other side alone, and the update record scores it there by side, apart from
+    # self-play's rates.
+    config = Config(
+        **{**SMALL, "envs": 32, "max_steps": 10},
+        self_play=0.0,
+        kinds=[0, 0, 1, 0, 0, 0],
+        system_share=0.5,
+    )
+    trainer = Trainer(config)
+    member, _ = trainer.join()
+    assert trainer.league.draw(0)
+    trainer.assign(np.arange(config.envs))
+    batch = trainer.batch
+    assert [e["weight"] for e in batch.entries()] == [1000, 500, 500]
+    system = trainer.system_side[batch.scenario]
+    assert (batch.encounter == _ffi.ENCOUNTER_HERO).all()
+    assert {0, 1, -1} <= set(system.tolist())
+    assert (trainer.frozen_side[system >= 0] == -1).all()
+    assert (trainer.frozen_id[system < 0] == member.id).all()
+    # The system actor moves inside the call: the side to move is always the learner's.
+    moving = (system >= 0) & (batch.to_move >= 0)
+    assert moving.any() and (batch.to_move[moving] == 1 - system[moving]).all()
+    roll = trainer.collect()
+    # Every episode is a member's or the system actor's: none counts as self-play.
+    assert roll["league_episodes"] > 0 and roll["self_play_episodes"] == 0
+    assert roll["by_kind"] == {}
+    assert set(roll["system"]) == {"attacker", "defender"}
+    for row in roll["system"].values():
+        assert row["episodes"] > 0 and 0.0 <= row["score"] <= 1.0
+    # The episodes the rollout's ends started drew alike.
+    system = trainer.system_side[batch.scenario]
+    assert (trainer.frozen_side[system >= 0] == -1).all()
+    assert (trainer.frozen_id[system < 0] == member.id).all()
+    stats = trainer.update(1e-4)
+    assert stats["update_samples"] > 0 and np.isfinite(stats["policy_loss"])
 
 
 def test_the_ladder_scores_at_reward_v1s_settings_whatever_the_run_trains_with() -> None:

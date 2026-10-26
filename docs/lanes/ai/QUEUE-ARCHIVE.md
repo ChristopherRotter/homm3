@@ -4,6 +4,23 @@ Finished history and informational notices moved out of `QUEUE.md` on 2026-10-24
 
 ## Completed tasks (the "Tasks" text as it stood on 2026-10-24)
 
+**E06 increment 6's choices** (moved 2026-10-26, the user chose the system actor as an opponent):
+
+**Next: increment 6's lever** (the user's choice at T6a's checkpoint):
+
+- **Increment 6's choices** (put to the user at T7d; T6a's evidence beside each):
+  - Code: the system actor as a training opponent in the hero kinds (a change of decision 9:
+    the agent never met it there and does not adapt to it; its ladder row then measures a
+    training opponent; **the agent's recommendation**, A/B against `t7-1`'s settings); **AI-Q7
+    (b) part 2** (the network reads `batch.preview` beside the entry mask, an opt-in
+    `[network]` key, the rollout keeps it; an A/B config against `t7-1`'s settings; the
+    targeting slack says yes, the turret's preview first, the battle lane's inbox);
+    potential-based shaping. Not the casts' exploration or the mana price (the hero casts as
+    much as the system actor's).
+  - Runs on the user's machine: 60 M at T7's mix (`configs/e06-t7.toml --set
+    samples=60_000_000`, about 4 hours: whether PPO plateaus, T8's trigger); the mana run
+    `t5-4` (`configs/e06-mana.toml`, about 75 minutes).
+
 **E05** (`docs/epics/E05-battle-env.md`) closed 2026-10-20 (T1 to T9 in six increments; the
 record in `E05-log.md`, the environment as built in `docs/07-simulation-and-ai.md` §1.1).
 
@@ -34,6 +51,23 @@ and defends (1 %) less than the system actor (7 %, 3 %), loses mostly defending;
 leaves a quarter of the previewed kills.
 
 ## Notices from other lanes and finished items, newest first
+
+- 2026-10-23 (the battle lane, E23 T7, `battle/e23-t7-rest` on `shared/e23-t7-human` #436, both
+  `cross-lane` with the user's consent; **for you**): **`POLICY_VERSION` 19** (the computer's
+  neighbour table without the side columns, batch 4b H1; slip 33 under BAT-QUIRK-25) and two
+  rules: BAT-WAR-003's automatic tent heals the most hurt stack (no draw any more), and the new
+  fix-optional **BAT-QUIRK-27** (`quirk.battle.computer_morale_let_off`, registry position 33, on
+  in `faithful`): a frozen stack of a side whose `BattleSetup.human` is false escapes one freeze in
+  four (BAT-MOR-004; ADR-0023 point 7 widened). Your batch plays both sides as human players'
+  (AI-Q3), so a `System` neutral side in training gets no let-off: set that side's `human` false if
+  the original's handicap is wanted (a question for E06). Both bot reports regenerated in the two
+  pull requests (#436: only `engine.core`; the battle PR: version 19; the system actor beats Greedy
+  0.655, Aggressor 0.681, attacks best on the neutral set, value +0.285). **E23's exit criterion 4
+  wants a gated batch workload with `System` seats** (`benches/ai/`; `h3 ai bench` has no `System`
+  seat yet): yours to add when it suits; the computer's own cost is `h3 bench-computer` (now with
+  `--heroes 1`: the slowest decision 3.0 to 4.1 ms, the 5 ms budget). **The workload: done**
+  (E06 T6a's pull request, `benches/ai/batch-system-neutral-v1.toml`); the let-off for a
+  `System` side in training is open (put to the user at T6a's checkpoint). **Answered 2026-10-26** (the user, E06 increment 6's refinement): every side stays human, the system actor's too (ADR-0025 point 6; E06 design §12).
 
 - 2026-10-24 (the battle lane, CLT-Q4/Q6, `shared/clt-q4-q6-seam` and `battle/clt-q4-q6-carry`,
   both `cross-lane` with the user's consent; for your information, done in your paths): **replay

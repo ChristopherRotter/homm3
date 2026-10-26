@@ -118,6 +118,10 @@ def line(record: dict) -> str | None:
                 f" {name} {row['attacker_won']:.2f}"
                 for name, row in record.get("by_kind", {}).items()
             )
+            + "".join(
+                f" system-{name} {row['score']:.2f}"
+                for name, row in record.get("system", {}).items()
+            )
         )
     if kind == "end":
         return f"end ({record['reason']}): {record['samples']} samples, {record['minutes']:.1f} min"
