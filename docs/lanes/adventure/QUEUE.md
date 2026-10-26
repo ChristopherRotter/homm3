@@ -4,17 +4,16 @@ Pre-refined tasks of the adventure lane, in order, then the inbox of discovered 
 
 ## Tasks
 
-Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T51b (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 6 are closed (2026-10-12, -13, -20, -21, -23, -26; increment 6, army and hero management, by T53's audit). **Increment 7, rewards on the map**, refined with the user at T53 (ADV-Q26; decisions 121 to 123): T54 (the battle seam's facts) done; now round 1, the survey and the ADR amendment drafts (T55a, T55b), each task's cut confirmed with the user at its start. T55a is cut in four (decision 125): T55a1 and T55a2 done (survey `docs/rules/surveys/E08-rewards.md` §1 to §6; decision 126 T55a2's cut), T55a3 and T55a4 below. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
+Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T51b (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 6 are closed (2026-10-12, -13, -20, -21, -23, -26; increment 6, army and hero management, by T53's audit). **Increment 7, rewards on the map**, refined with the user at T53 (ADV-Q26; decisions 121 to 123): T54 (the battle seam's facts) done; now round 1, the survey and the ADR amendment drafts (T55a, T55b), each task's cut confirmed with the user at its start. T55a is cut in four (decision 125): T55a1 and T55a2 done (survey `docs/rules/surveys/E08-rewards.md` §1 to §6; decision 126 T55a2's cut), T55a3 (decision 127 its cut) and T55a4 below. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
 
-### E08 T55a3 — The rewards survey: creatures, Pandora's Box and events
+### E08 T55a3 — The rewards survey: Pandora's Box, events and the Pyramid
 
-- **Scope** (decisions 121, 122, 125): survey §7: the **rewards that give creatures** (the army
-  dialog's other callers, 0x4ABDC0 and 0x573C80; survey `E08-army.md` §1), the Refugee Camp (78),
-  **Pandora's Box** (6) and **events** (26; not a case of `visit_object`: an event fires on its
-  tile), whose bodies hand out every kind of reward (the census's body counts for them); whether
-  the creature banks (16, 24, 25, 84, 85) and the Pyramid (63) are in increment 7; where Seer's
-  Huts and quest guards (83, 215) belong (placed, not read whole).
-- **Depends on:** T55a2 (done). **Status:** ready; its cut confirmed with the user at its start.
+- **Scope** (decisions 121, 125, 127): survey §7: **Pandora's Box** (6) and **events** (26; not a
+  case of `visit_object`: an event fires on its tile), whose one reward body hands out every kind
+  of reward (the census's body counts for them), their dialogs for their rules only; the
+  **Pyramid** (63). Placed elsewhere by decision 127: the creature banks (the sketch's item 10),
+  the Refugee Camp (item 9), Seer's Huts and quest guards (item 11).
+- **Depends on:** T55a2 (done). **Status:** in progress (`adventure/e08-t55a3`, 2026-10-26 17:40 UTC).
 
 ### E08 T55a4 — The rewards survey: the common rules, batch E7, the rule ids, the checkpoint
 
