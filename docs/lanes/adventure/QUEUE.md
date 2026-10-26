@@ -4,11 +4,72 @@ Pre-refined tasks of the adventure lane, in order, then the inbox of discovered 
 
 ## Tasks
 
-Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T51b (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 5 are closed (2026-10-12, -13, -20, -21, -23). **Increment 6, army and hero management** (decisions 90 to 117; survey `docs/rules/surveys/E08-army.md`, design `E08-design.md`): rounds 1 to 3 done (T44a to T49b); round 4 done (T50, T51a, T51b: the meeting with Scholar, the army dialog, the commands between two armies; game state hash v13; `ADV-STUB-2` closed); round 5: T52 done whole (decision 119: the plans and properties manage, the army map and two scripted golden replays, two new gated benchmarks; `E08-design.md` §12), **T53 next** (the audit against the exit criteria, increment 6 closed, increment 7 refined; §15), its cut confirmed with the user at its start. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
+Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T51b (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 6 are closed (2026-10-12, -13, -20, -21, -23, -26; increment 6, army and hero management, by T53's audit). **Increment 7, rewards on the map**, refined with the user at T53 (ADV-Q26; decisions 121 to 123): first T54 (the battle seam's facts), then round 1, the survey and the ADR amendment drafts (T55a, T55b), each task's cut confirmed with the user at its start. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
+
+### E08 T54 — The battle seam's facts from the game
+
+- **Scope** (decision 123; the inbox's three battle-lane notes of 2026-10-23 and -24, which this
+  task closes): `h3-game`'s battle setup (`state/battle.rs`, `Battles` when a battle starts on the
+  map) fills what the seam gained for battles from the map, each from the game's own state:
+  (1) `BattleSetup.difficulty`, the game's difficulty (the setup's, kept in the state if it is
+  not); (2) `BattleSetup.human`, per side from a new per-player flag of the game's setup
+  (`PlayerSetup`), false for a side without a player; with it BAT-QUIRK-27's let-off (BAT-MOR-004,
+  on in `faithful`) no longer reaches a human player's side. Where the flag comes from (the
+  session that seats the players, the map's player kinds for the import's default, what an env's
+  agent counts as) is the user's question at the task's start; (3) `BattleSetup.colours`, each
+  side's player colour (`None` for a monster's or a guard's side); (4) `BattleSetup.background`,
+  0x41ADB0's variant on dirt, grass and snow: the tiles within 3 of the battle's whose object
+  class is a tree-like, mountain-like or dead vegetation one (`docs/epics/E17-design.md` §5:
+  classes 114 to 160; the import may have to keep a decoration's class, a map import version);
+  (5) `BattleSetup.attacker_ground`, the special battlefield of the attacking hero's own tile
+  (ADV-GRD-001); (6) `BattleHero.sex`, the map's sex code for a placed hero (`h3-map`'s model
+  reads it; `None` the hero type's own). The retreat facts (`BattleSetup.retreat`, ADR-0027 point
+  14: a Tavern to hire the hero again, E09; the victory condition, E10; read only for a computer
+  player's hero, none before E10) stay at their defaults: a stub (`ADV-STUB-9`). Rule ids (a
+  `GAM-BAT-*` per derived fact), tests, the ten and two golden replays re-recorded (their hashes
+  inside battles move), the versions it moves (game state hash, map import) in the table.
+- **Not in it:** the computer player's own choices (E10, E13), the retreat facts' derivation.
+- **Depends on:** T53 (done). **Status:** ready; its cut confirmed with the user at its start.
+
+### E08 T55a — The rewards survey
+
+- **Scope** (decisions 121, 122): the survey `docs/rules/surveys/E08-rewards.md` (as T17a, T24a,
+  T34a and T44a): the original's rules for the objects that hand a visiting hero something, by
+  code reading (`docs/exe/README.md`) with VCMI 1.7.5 and the wiki, and a census of the 160
+  shipped maps (which classes, how often, which bodies). (1) **Treasure chests** (the gold or
+  experience choice, the artifact). (2) The objects that give **experience, spells, secondary or
+  primary skills**, once per hero or once per game (for example Tree of Knowledge, Learning Stone,
+  Witch Hut, the Shrines, Scholar, Arena, Library of Enlightenment, Marletto Tower, Star Axis,
+  Mercenary Camp, Garden of Revelation, the Schools of Magic and War; the survey settles the
+  list). (3) **Artifacts as pickups**, guarded or not, with the random artifacts and Spell
+  Scrolls. (4) **The monsters' treasures with an artifact** the import refuses (E08 decisions 22
+  and 48; 8 shipped maps). (5) **Rewards that give creatures** (the army dialog's other callers,
+  0x4ABDC0, 0x573C80; survey `E08-army.md` §1) and where Pandora's Box, events and Seer's Huts
+  belong. (6) What a reward asks (a question, a choice), refuses (a full backpack, a hero
+  without a book, a skill already known), what changes in the hero's derived properties and
+  when, what another player sees of a visited object (`docs/06-security.md`); the commands,
+  decisions, events, the observation, replays and benchmarks. (7) **Batch E7's plan** on the
+  client lane's harness (decision 122's agent's call). (8) The proposed rule ids, quirk
+  candidates and disputes; a fresh agent's second reading of the code; the checkpoint's questions
+  (an `ADV-Q`).
+- **Not in it** (decision 121; the epic's sketch, items 8 and 9): boats, Navigation and the sea
+  (Favorable Winds, the sea's chests and flotsam), the week's objects and mines; towns (E09).
+- **Depends on:** T54 (decision 123's order; nothing in it is needed). **Status:** ready after
+  T54; a user checkpoint at its end (decision 122).
+
+### E08 T55b — The ADR amendment drafts, the design note and the cut
+
+- **Scope:** from T55a's survey and the answers at its checkpoint: the amendment drafts of the
+  ADRs it touches (ADR-0016 for the objects and their visits, `docs/lanes/adventure/adr-drafts/`;
+  ADR-0017 for the commands and decisions; ADR-0013 if `h3-heroes` gains rules), `E08-design.md`
+  rewritten for increment 7 (the hero side, the map, the game, the batch and the cut, with
+  increment 7's exit criteria), the building tasks cut in rounds; the checkpoint's questions (an
+  `ADV-Q`). The user accepts the drafts and the cut before anything is built (decision 122).
+- **Depends on:** T55a and its checkpoint. **Status:** waiting for T55a.
 
 ## Inbox
 
-- 2026-10-24 (the battle lane, CLT-Q4/Q6, `shared/clt-q4-q6-seam` and `battle/clt-q4-q6-carry`,
+- 2026-10-24 (**T54**, decision 123; the battle lane, CLT-Q4/Q6, `shared/clt-q4-q6-seam` and `battle/clt-q4-q6-carry`,
   both `cross-lane` with the user's consent; **for you**, when battles start from the adventure
   map): the seam carries three facts for viewers, read by no rule, each defaulting to "not
   known": `BattleSetup.background` (the battlefield picture's variant on dirt, grass and snow:
@@ -22,7 +83,7 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
   and observes them; your ten golden replays were re-recorded with their options, their commands
   unchanged (only checkpoint hashes taken inside a battle moved).
 
-- 2026-10-23 (the battle lane, E23 T7, `shared/e23-t7-human` #436 and `battle/e23-t7-rest`, both
+- 2026-10-23 (**T54**, decision 123; the battle lane, E23 T7, `shared/e23-t7-human` #436 and `battle/e23-t7-rest`, both
   `cross-lane` with the user's consent; **for you**): **a battle rule reads `BattleSetup.human`
   now**: with the new fix-optional BAT-QUIRK-27 (`quirk.battle.computer_morale_let_off`, registry
   position 33, on in `faithful`) a frozen stack of a side whose player is not human escapes one
@@ -34,7 +95,7 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
   `0x0c7e01b4dffeba0c`), your eight faithful replays' headers patched (`ruleset_hash` only; all ten
   verify). Also BAT-WAR-003: the automatic tent heals the most hurt stack (no draw).
 
-- 2026-10-23 (the battle lane, E23 T6's last part, `battle/e23-t6`, `cross-lane` with the user's
+- 2026-10-23 (**T54**, decision 123; the battle lane, E23 T6's last part, `battle/e23-t6`, `cross-lane` with the user's
   consent; **for you**, when battles start from the adventure map): the battle now keeps
   `BattleSetup.retreat` and `attacker_ground` (ADR-0027 point 14) as hashed state, and
   `h3_battle_ai::choose` reads them: a hero's side retreats as the original's computer does
@@ -48,16 +109,6 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
   replays were re-recorded again with their options, their commands unchanged (only hash lines;
   `duel-s2-d7` none): the hash covers the new fields.
 
-- 2026-10-23 (the map-client lane, E24 M1 T1a, `map-client/e24-t1a`; answers your T8b1 note,
-  2026-10-11): **which hidden tiles the original draws with an edge piece**
-  (`docs/epics/E24-design.md` §1.5, a code reading of 0x412220 and 0x40F8C0). Every tile the
-  viewer has not explored and that has an explored tile among its eight neighbours gets a piece of
-  `tshre.def` chosen by which of the eight are unexplored (neighbours off the map count as
-  unexplored); every other unexplored tile gets the full `tshrc.def`; explored tiles nothing. So
-  the half-dark border is exactly ADR-0016's fringe (the eight tiles around an explored one), as
-  your T8b1 took it; VCMI agrees on which tiles. The view tests only the viewing player's own bit
-  of the tile's vision word (0x69CCBC = 1 << the viewing colour), no team bits. Nothing to change.
-
 - 2026-10-23 (T42, measured; for a performance task): **a flyer's or water walker's reach costs
   about 1.9 times a walker's query** on the XL map (`reach-lifted-xl-144`: 279 k Ir a query
   against `reach-xl-144`'s 148 k on the same games), and random play on the duel with one of each
@@ -70,11 +121,7 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
 
 - 2026-10-20 (T24a2b1, survey §6; for the increments that build them): **levels at load beyond placed heroes.** 61 prisoners in 28 shipped maps have a custom experience (levels 3 to 15, two at 42 in `Pandora's Box `) and 18 random heroes carry one: their levels at load come with prisons and random heroes (the wiki's "fictitious level-ups" of a prisoner, §5). `Marshland Menace` gives 15 hero types a map-wide experience of 2 000 that only its taverns reach (E09); a hired hero type may start with a skill its map bans (19 SoD maps ban skills; D-18), where the original's handling of such a skill was not read.
 
-- 2026-10-20 (T23, decision 48): what moved from increment 4 to the sketch's increment 5 is still called increment 4 where this docs-only change did not reach: ~~the code comment in `crates/h3-adventure/src/reach.rs` (movement skills)~~ (T33: increment 5); ADR-0016 (army management, increment 6 since decision 90: T44b's draft), with the amendment that builds army management (T24b2 needed none for ADR-0016; ADR-0013's movement and scouting line is in T24b1's draft, point 2). The surveys keep their *(inc. 4)* marks (input, not rules).
-
 - 2026-10-20 (T22b, E3-9's reading; for E10's computer players or the formation command: increment 6 since decision 90, T44a's survey point 4): the battle places an army in the tight formation only for a human player's side (`battle_war_machine_stacks` 0x463679, the side's +0x54A4): a computer player's hero always fights loose, whatever its formation. The engine has no computer player and keeps the map's formation (`ADV-QUIRK-8`); decide then whether a computer player's side fights loose (a rule or a quirk; the battle lane's inbox has the tables).
-
-- 2026-10-19 (the client lane, E17 H1 and H2; your request of 2026-10-13): **the harness answers questions and plays battles from the map** (`clients/capture/README.md`, "An experiment batch"; design `docs/epics/E17-design.md` §6.3). A recipe now has `difficulty` (checked in memory), a step's `answer` (`yes`/`no`, or per kind: `join`, `join for gold`, `flee`, `other`: the question named by the record its text came from, ADVEVENT 86, 88 or 89 + 90, 91) and `battle` (`auto`, `retreat`, `surrender`, `defender retreat`, `defender surrender`), and records the questions asked, the battle's stacks at the start and the end (and hexes: the formation), its outcome, any hero's experience, level, primary and secondary skills, army and whether it is on the map, every player's resources before and after, and a tile's monster (count, aggression, never flees). Checked on Easy with what h3-experiment places today and, for the offers, on a local map with patched dispositions (join, flee, join then flee): a monster's offers in a spec need T22a's dispositions and "never flees". Two things for the spec: hot seat needs at least two human players, and a player left without heroes and towns is out (with one human left the game ends): keep each player a hero after its battles. H2 the same day: `walk = [x, y, level]` (the underground, E3-4; shown on a shipped map, since `h3-map`'s writer has no underground yet), more than five heroes per player (the list scrolled), `level_up` (`left` or `right`: a level-up's offered skill), the observations `heroes:experience` (the heroes off the map: E3-7) and `date`, and any number of days. Seen on the way (scored with batch E3 at T22b): a map hero with 5 000 experience and 2/3/1/1, basic Diplomacy and advanced Logistics started at level 5 in two runs, its level-ups drawn (3/5/1/2 with both expert, then 3/4/2/2 with Diplomacy advanced) (E3-6); a surrender in hot seat moved its 470 gold to the other player (E3-8); the 147 heroes off the map held 40 to 90 in two runs, 1 and 4 of them at 90 (E3-7).
 
 - 2026-10-19 (T21b's audit): since E04c T10b's re-recording no golden replay declines a guarded pile's question or a Cartographer's offer (the battle lane's note of 2026-10-16 below, (5)); both stay covered by `h3-game`'s unit tests and the property plans. A wider seed search or a fixture of its own would restore them, with the next re-recording.
 

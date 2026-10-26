@@ -312,11 +312,11 @@ const MATE_SPELLS: [u8; 9] = [15, 41, 53, 54, 16, 17, 21, 28, 18];
 /// wood elves.
 const FULL_ARMY: [u16; 7] = [2, 4, 6, 8, 10, 16, 18];
 
-/// The first hero's exchanges (E08 T52, increment 6; `E08-design.md` §12): a mate, another hero
-/// of its owner on a tile beside it, so that a step meets it (GAM-MET-001), with a Spell Book,
-/// Scholar and Wisdom of its own (the first hero wearing a book too, so that a meeting teaches
-/// either, HER-SPL-007), spells of its own on a SoD map, and Elixir of Life's parts worn (an
-/// assembly, HER-ART-006); and in some plans the first hero's army full, seven stacks, with six
+/// The first hero's exchanges (E08 T52; increment 6's design note §12 in `E08-log.md`): a mate,
+/// another hero of its owner on a tile beside it, so that a step meets it (GAM-MET-001), with a
+/// Spell Book, Scholar and Wisdom of its own (the first hero wearing a book too, so that a meeting
+/// teaches either, HER-SPL-007), spells of its own on a SoD map, and Elixir of Life's parts worn
+/// (an assembly, HER-ART-006); and in some plans the first hero's army full, seven stacks, with six
 /// compliant goblins near it, so that their join finds no room and opens the army dialog
 /// (GAM-DEC-004).
 #[derive(Debug, Clone)]
@@ -2567,11 +2567,11 @@ fn check_management(
     Ok(())
 }
 
-/// A move and its inverse (E08 T52; `E08-design.md` §12): a stack moved onto an empty slot or
-/// swapped with another creature's stack, or an artifact moved onto an empty place, goes back by
-/// the inverse move, which `apply` accepts, leaving the armies and the heroes as they were. A
-/// merge's inverse is a split, and a swap of artifacts out of a backpack returns the other
-/// artifact to the backpack: those have none.
+/// A move and its inverse (E08 T52; increment 6's design note §12 in `E08-log.md`): a stack moved
+/// onto an empty slot or swapped with another creature's stack, or an artifact moved onto an empty
+/// place, goes back by the inverse move, which `apply` accepts, leaving the armies and the heroes
+/// as they were. A merge's inverse is a split, and a swap of artifacts out of a backpack returns
+/// the other artifact to the backpack: those have none.
 fn check_inverse(
     rules: &GameRuleset,
     (before, after): (&GameState, &GameState),

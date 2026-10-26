@@ -1,10 +1,11 @@
-//! A hero's army management (ADR-0016 point 3; E08 T50, `E08-design.md` §7): its owner moves a
-//! stack onto another slot (into a stack of its creature, into an empty slot, else a swap),
-//! splits a stack or dismisses one, within a hero's army, between the two heroes of a meeting,
-//! or between a hero and the group of an army dialog (GAM-MET-001, GAM-DEC-004: the game holds
-//! the decisions and the group). Counts keep their full width (A-15 fixed, ADV-ARM-005) and never
-//! pass a stack's most (ADV-ARM-007). This module plans a command on the armies it names, as new
-//! stacks; [`crate::AdventureState::manage_army`] finds the armies and applies the plan whole.
+//! A hero's army management (ADR-0016 point 3; E08 T50, increment 6's design note §7 in
+//! `E08-log.md`): its owner moves a stack onto another slot (into a stack of its creature, into an
+//! empty slot, else a swap), splits a stack or dismisses one, within a hero's army, between the two
+//! heroes of a meeting, or between a hero and the group of an army dialog (GAM-MET-001,
+//! GAM-DEC-004: the game holds the decisions and the group). Counts keep their full width (A-15
+//! fixed, ADV-ARM-005) and never pass a stack's most (ADV-ARM-007). This module plans a command on
+//! the armies it names, as new stacks; [`crate::AdventureState::manage_army`] finds the armies and
+//! applies the plan whole.
 
 use alloc::vec::Vec;
 use core::fmt;

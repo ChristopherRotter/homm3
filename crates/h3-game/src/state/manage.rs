@@ -1,10 +1,11 @@
-//! The management commands (GAM-MAN-001; E08 T51a, T51b; `E08-design.md` §10): a player's
-//! commands on its heroes on the map in its turn, outside a decision one hero at a time; a
-//! command between two armies needs them together, a meeting's two heroes (GAM-DEC-003) or a hero
-//! and its army dialog's group (GAM-DEC-004), and while one is open the commands name only what
-//! it holds. The game checks the actor, the turn and the decision, which armies are together,
-//! then the context's rules (the adventure's for armies, ADR-0016 point 3; `h3-heroes`' for
-//! artifacts, ADR-0013 point 14) before anything changes, then tells the owner alone.
+//! The management commands (GAM-MAN-001; E08 T51a, T51b; increment 6's design note §10 in
+//! `E08-log.md`): a player's commands on its heroes on the map in its turn, outside a decision one
+//! hero at a time; a command between two armies needs them together, a meeting's two heroes
+//! (GAM-DEC-003) or a hero and its army dialog's group (GAM-DEC-004), and while one is open the
+//! commands name only what it holds. The game checks the actor, the turn and the decision, which
+//! armies are together, then the context's rules (the adventure's for armies, ADR-0016 point 3;
+//! `h3-heroes`' for artifacts, ADR-0013 point 14) before anything changes, then tells the owner
+//! alone.
 
 use alloc::vec::Vec;
 

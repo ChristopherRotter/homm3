@@ -1195,7 +1195,7 @@ numeric  = "integer"
 
   [[rule.source]]
   kind       = "observation"
-  ref        = "experiments/results/E08-batch-3a.md and E08-batch-3b.md (the capture harness, Complete 4.0 Heroes3.exe under Wine without HD, hot seat, 2026-10-20): every flee offer declined (E3-1, E3-1c, E3-2, E3-2c on Easy; E3-2, E3-2c on Normal) left the tile empty with no battle; a declined join offer (E3-3r, E3-3b at Diplomacy 3, a monster that never flees) went on to a battle"
+  ref        = "experiments/results/E08-batch-3a.md and E08-batch-3b.md (the capture harness, Complete 4.0 Heroes3.exe under Wine without HD, hot seat, 2026-10-20): every flee offer declined (E3-1, E3-1c, E3-2, E3-2c on Easy; E3-2, E3-2c on Normal) left the tile empty with no battle; a declined join offer (E3-3r, E3-3b at Diplomacy 3, a monster that never flees) went on to a battle; batch E6 (experiments/results/E08-batch-6.md, stamp e17cb77c, 2026-10-23): E6-1 a join offered to a full army opened the army dialog, OK lost the group, the monster gone; E6-2 a stack dismissed in it and the group taken into the freed slot (GAM-DEC-004). No row accepts a join with room, so the status stays implemented (E08 T53's audit)"
   retrieved  = "2026-10-20"
   confidence = "high"
   note       = "Confirms the flight and a declined join's way on; a join was not accepted in the batch. E08 T22b."

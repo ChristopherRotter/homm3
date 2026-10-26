@@ -1,8 +1,9 @@
-//! A player's management of its heroes on the map (ADR-0016 point 3; E08 T50, `E08-design.md`
-//! §7): the army commands ([`crate::ArmyCommand`], planned by `crate::army`), the split's range,
-//! the formation and the tactics flag. The game routes them and checks the turn and the decision
-//! that allows two armies together (a meeting's, an army dialog's; ADR-0017 points 1 and 6, T51b);
-//! here each hero named must be the player's on the map, and the group must be given.
+//! A player's management of its heroes on the map (ADR-0016 point 3; E08 T50, increment 6's design
+//! note §7 in `E08-log.md`): the army commands ([`crate::ArmyCommand`], planned by `crate::army`),
+//! the split's range, the formation and the tactics flag. The game routes them and checks the turn
+//! and the decision that allows two armies together (a meeting's, an army dialog's; ADR-0017 points
+//! 1 and 6, T51b); here each hero named must be the player's on the map, and the group must be
+//! given.
 
 use alloc::vec::Vec;
 use core::ops::RangeInclusive;
