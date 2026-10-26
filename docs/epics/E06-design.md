@@ -228,7 +228,9 @@ member or fewer than it could, not at every rollout: an episode lasts longer tha
 call pass two or three sets' networks; the update record's `frozen_passes` measures it (T4b).
 
 The system actor is no member (T7c): it plays the neutral kinds' defender inside the batch, so a
-neutral episode draws none (§12). Still to come: exploiters (decision 9) only if a check shows the agent exploitable: a fresh learner trained
+neutral episode draws none (§12). From T6b it also plays a fixed share of the player kinds'
+episodes (`system_share`, §12), still no member: the batch draws an episode's entry, and with it
+the seats, itself, so its share cannot follow PFSP's weights. Still to come: exploiters (decision 9) only if a check shows the agent exploitable: a fresh learner trained
 against the frozen best alone for a fixed budget; if it beats the best at least 0.70 on the gate
 set, main exploiters join (designed then, T6).
 
@@ -340,7 +342,7 @@ key is an MLP). The comparison with the other architectures the user saw: `E06-l
   and a training pass per sample (`--time`), and a Mermaid diagram (`--mermaid <file>`) of the
   data flow, which GitHub renders.
 
-## 12. The neutral share (T7) — T7b, T7c built
+## 12. The system actor in training (T7, T6b) — T7b, T7c, T6b built
 
 Decisions 1, 7 and 9: the neutral kinds (a wandering monster, a pile's or a garrison's guards, a
 neutral town) join the training with the system actor as their defender (E23's policy of the
@@ -395,3 +397,50 @@ original's computer, complete for a side without a hero since E23 T4c). Refined 
   third neutral with T7c's numbers (2026-10-23: `[78, 2, 100, 50, 25, 3]`, the census's neutral
   shares a tenth). `t7-1` (`E06-log.md`, T7d): the report set as `t5-3`'s, the neutral set
   0.972 at value +0.245, flat from 10 M, below the system actor's +0.285.
+- **The system actor as an opponent in the player kinds** (T6b; increment 6's lever, the user,
+  2026-10-26: decision 9 amended, T6a's evidence: the agent never met the opponent that beats
+  it, and loses mostly defending): `[league] system_share` (0 by default, in thousandths) of the
+  player kinds' episodes have the system actor on a uniformly drawn side inside the batch, the
+  learner on the other, no league member. The batch draws it: `ppo.episode_entries` splits the
+  config's kinds into the neutral kinds' entry, the player kinds' own (both seats external) and
+  one per side with `h3_batch_add_encounters`' seats (`System` there, `External` the other),
+  weighed so that every kind keeps its share of the episodes; the trainer reads an episode's
+  entry (`batch.scenario`), so no ABI change. It needs `[env] kinds` (the defaults' weights are
+  the sampler's). The update record's `system` (and the curve's, per gate interval) gives the
+  learner's mean score against it by its side; such episodes leave self-play's rates
+  (`attacker_won`, `by_kind`). Without the key a batch has the one entry as before, so `t7-1`'s
+  runs are unchanged. The ladder's system row then measures a training opponent (decision 12
+  keeps it on the ladder); the gate set, the other rows and the neutral set stay comparable.
+  `configs/e06-t6b.toml`: `t7-1`'s settings with a quarter (the A/B, T6c).
+- **Every side stays human** (the user, 2026-10-26, asked at T6a's checkpoint): the batch keeps
+  `human = [true, true]` for the system actor's side too (ADR-0025 point 6 unchanged), so
+  BAT-QUIRK-27's let-off of a computer side's bad-morale freeze (BAT-MOR-004, since E23 T7) is
+  never played in training or on the held-out sets.
+
+## 13. The kill preview in the network (T6d) — built
+
+AI-Q7 (b) part 2 (decision 6; the user, 2026-10-26, after `t6b-1`): the batch's previewed kills
+(part 1, C ABI v33: each legal attack and shot entry's least and greatest kills, the engine's
+BAT-DMG-011 preview, what the original shows a player) reach the MLP's entry head; the
+encodings are unchanged.
+
+- **The bias:** a legal strike entry's logit gains `φ(f) · u(h)`. `f` holds four features: the
+  least and greatest kills (`symlog`), the share of the target stack their mean is (clipped to
+  [0, 1]), the hit points it is (`symlog` of the mean times the target's full hit points; the
+  target's slot is fixed by the entry: 24 attack entries, then 2 shots, per slot). `φ` is a
+  network of two layers (4 → `embed` → `embed`) shared by the entries; `u` a linear map of the
+  trunk's output to `embed` (initialized near 0, so the network starts as the plain MLP's), so
+  the state decides how much a kill counts. Only the legal entries' features are computed (a
+  row has a few dozen of its 1 092 previewed entries; the dense form would be 0.5 GB a
+  minibatch). The value and the cast heads read no preview, so a truncation's bootstrap from
+  `final_obs` (no preview there) is as before.
+- **The plumbing:** `[network] preview` (false by default; the MLP's: `resolve` refuses it with
+  the entity network). Every batch such a network plays writes the preview: the trainer's, the
+  gate's (when either network reads it), the ladder's (when any of its networks does);
+  `Policy.act` refuses a batch without it. The rollout keeps it in half precision (whole kills
+  up to 2 048 exact; 143 MB at 256 envs × 128 calls, beside the observations' 1.2 GB) and the
+  update recomputes the entry's log-probability from it. A saved file's config names
+  `preview`; one without it reads none.
+- **The run** (T6e, the user's machine): `configs/e06-t6d.toml`, `t7-1`'s settings with the
+  preview, against `t7-1` (one change; `t6b-1` showed the system actor as an opponent changes
+  nothing measurable).

@@ -44,10 +44,16 @@ class Part:
     cast_macs: float = 0.0
 
 
-def parts(net: Policy, obs: torch.Tensor) -> list[Part]:
+def parts(
+    net: Policy,
+    obs: torch.Tensor,
+    mask: torch.Tensor | None = None,
+    preview: torch.Tensor | None = None,
+) -> list[Part]:
     """`net`'s top-level parts (its direct children, then its own parameters as one part) on the
-    rows `obs`: the decision's pass (`encode`, `value`, `entry_logits`), then the cast heads with
-    every row a hero's cast of spell 0 at no target."""
+    rows `obs`: the decision's pass (`encode`, `value`, `entry_logits`, and for a network that
+    reads the kill preview `with_preview` on the rows' entry `mask` and `preview`), then the cast
+    heads with every row a hero's cast of spell 0 at no target."""
     rows = obs.shape[0]
     table: dict[str, Part] = {}
     counting: list[bool] = [False]
@@ -86,7 +92,9 @@ def parts(net: Policy, obs: torch.Tensor) -> list[Part]:
     with torch.no_grad():
         h = net.encode(obs)
         net.value(h)
-        net.entry_logits(h)
+        logits = net.entry_logits(h)
+        if net.reads_preview:
+            net.with_preview(logits, h, obs, preview, mask)
         counting[0] = True
         entry = torch.full((rows,), int(CASTS[0]), dtype=torch.long, device=obs.device)
         cast = net.cast_of(entry)
@@ -186,6 +194,7 @@ def timing(net: Policy, batch: BattleBatch, repeats: int) -> dict[str, float]:
     device = next(net.parameters()).device
     obs = torch.from_numpy(batch.obs).to(device)
     mask = torch.from_numpy(batch.entry_mask).to(device).bool()
+    preview = None if batch.preview is None else torch.from_numpy(batch.preview).to(device)
     rows = obs.shape[0]
     entry = mask.float().argmax(dim=1)
     cast = torch.zeros(rows, dtype=torch.bool, device=device)
@@ -196,10 +205,10 @@ def timing(net: Policy, batch: BattleBatch, repeats: int) -> dict[str, float]:
         with torch.no_grad():
             h = net.encode(obs)
             net.value(h)
-            net.entry_logits(h)
+            net.with_preview(net.entry_logits(h), h, obs, preview, mask)
 
     def train() -> None:
-        logp, ent, value = net.evaluate(obs, mask, entry, cast, heads)
+        logp, ent, value = net.evaluate(obs, mask, entry, cast, heads, preview)
         (logp.sum() + ent.sum() + value.sum()).backward()
         net.zero_grad(set_to_none=True)
 
@@ -237,7 +246,7 @@ def main(argv: list[str] | None = None) -> None:
         text = args.config.read_text(encoding="utf-8") if args.config else ""
         config = asdict(load_config(text, args.set))
         source = str(args.config or "the defaults")
-    batch = BattleBatch(args.rows, seed=config["seed"])
+    batch = BattleBatch(args.rows, seed=config["seed"], preview=config.get("preview", False))
     try:
         batch.add_encounters(kinds=config.get("kinds"))
         batch.reset()
@@ -249,7 +258,9 @@ def main(argv: list[str] | None = None) -> None:
         obs = torch.from_numpy(batch.obs).to(args.device)
         kind = config.get("kind", "mlp")
         title = f"The {kind} network of {source} ({args.rows} observations)"
-        rows = parts(net, obs)
+        mask = torch.from_numpy(batch.entry_mask).to(args.device).bool()
+        preview = None if batch.preview is None else torch.from_numpy(batch.preview).to(args.device)
+        rows = parts(net, obs, mask, preview)
         lines = [f"# {title}", "", table(rows)]
         if args.time:
             t = timing(net, batch, args.repeats)

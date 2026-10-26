@@ -4,11 +4,11 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 
 ## Current state
 
-- **E24 refined 2026-10-23** (T0, with the user): `docs/epics/E24-map-client.md` (decisions, milestones; log `E24-log.md`). **M1, stills of the map view, closed 2026-10-24** (T6b: the reviewers, the review list accepted; `E24-design.md` §1, §2; the crate `clients/crates/h3-map-view`; the capture set `clients/map/situations/`, 40, all exact; a change to the viewer runs `h3map.py drawn` first: the runbook, "Which captures a change needs"). **Next: M2 T0** (`QUEUE.md`: M2, the map moving, refined with the user).
-- **T6b's pull request** (`map-client/e24-t6b`, 2026-10-24): check it first (merged, or its mergeability with `master`).
-- **Ownership** (`lanes.toml`): this lane's crates in the client workspace (`clients/crates/h3-map…`: `h3-map-view` from T2), its data folder `clients/map/`, `docs/epics/E24*` and this folder; branches `map-client/<task>`; ids `MCL-Q<n>`, `MCL-QUIRK-<n>` (asset fixes), `MCL-STUB-<n>`; ADR drafts in `adr-drafts/`. **Common** with the client lane: the foundation (`h3-assets`, `h3-render`, `h3-sdl`, the workspace's `Cargo.toml`, `deny.toml`, `.gitignore`, `README.md`, `scripts/`, the string catalogue `clients/text/`, kept common by the user at T0) and the capture harness `clients/capture/` (the adventure lane changes it too): an additive change freely, a change in behaviour noted in the client lane's inbox. The rest of `clients/` is the client lane's (`h3-view` included: what M3 needs of it moves into a common crate, its inbox has the note).
-- **The writer:** this lane adds what its situations need to `h3_map::writer` (the adventure lane's) in additive `cross-lane` pull requests (the user, T0), noted in that lane's inbox. Since T3a `write_with(&map, &Extras { tiles, objects })`: `GivenTile`, `AnyObject` (any template but a hero's, the editor's body, an owner); `docs/formats/h3m.md`. It refuses an owner that is no player: a situation gives each owning colour a hero.
-- **From E17** (`clients/README.md`; ADR-0020, ADR-0024): the decoders, the compositor, the SDL 3 adapter, the string catalogue, the gate, the harness (the original under Wine, `h3mem.py` reads its memory; `h3map.py`: `clients/capture/README.md`, "The map's stills").
+- **E24** (`docs/epics/E24-map-client.md`; log `E24-log.md`, design `E24-design.md`): **M1** (stills) closed 2026-10-24 (the crate `clients/crates/h3-map-view`; the capture set `clients/map/situations/`, 40, all exact; a viewer change runs `h3map.py drawn` first: the runbook, "Which captures a change needs"). **M2** (the map moving; refined with the user 2026-10-26, tasks in `QUEUE.md`): T1a1 and T1a2 done 2026-10-26 (`h3map.py frames` with options and inputs, `clients/map/sequences.toml`, `timelines/`; design §3, the idle loop and the scroll; six sequences, each twice the same). **MCL-Q6 open** (the edge zones' widths; T2 builds both). **Next: M2 T1b** (the walk; T2 is ready too).
+- **M2 T1a2's pull request** (`map-client/e24-m2-t1a2`, 2026-10-26): check it first (merged, or its mergeability with `master`).
+- **Ownership** (`lanes.toml`): this lane's crates in the client workspace (`clients/crates/h3-map…`: `h3-map-view`), its data folder `clients/map/`, `docs/epics/E24*` and this folder; branches `map-client/<task>`; ids `MCL-Q<n>`, `MCL-QUIRK-<n>` (asset fixes), `MCL-STUB-<n>`; ADR drafts in `adr-drafts/`. **Common** with the client lane: the foundation (`h3-assets`, `h3-render`, `h3-sdl`, the workspace's `Cargo.toml`, `deny.toml`, `.gitignore`, `README.md`, `scripts/`, the string catalogue `clients/text/`, kept common by the user at T0) and the capture harness `clients/capture/` (the adventure lane changes it too): an additive change freely, a change in behaviour noted in the client lane's inbox. The rest of `clients/` is the client lane's (`h3-view` included: M2 copies its `clock` and `cursor`, M3 T0 proposes the common crate).
+- **The writer:** this lane adds what its situations need to `h3_map::writer` (the adventure lane's) in additive `cross-lane` pull requests (the user, T0), noted in that lane's inbox; its additions (T3a's `write_with`, `Extras`): `docs/formats/h3m.md`. It refuses an owner that is no player: a situation gives each owning colour a hero.
+- **From E17** (`clients/README.md`; ADR-0020, ADR-0024): the decoders, the compositor, the SDL 3 adapter, the string catalogue, the gate, the harness (the original under Wine, `h3mem.py`, `h3map.py`: the runbook `clients/capture/README.md`).
 - **The engine side:** `h3_map::parse` gives the raw map with every picture (`h3_map_view::art` reads it); the import keeps none, its `ObjectView`s have no index (M4's need, the adventure lane's inbox); no adventure messages in `h3-protocol` yet.
 - **Checkpoints** per milestone (the autonomy contract below), a fresh reviewer agent first (T6b: three in parallel, one per area).
 
@@ -21,14 +21,14 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 
 ## Standing traps
 
-Moved to `TRAPS.md`: CI out, the gate's and `h3map.py`'s staged files, a template's class in memory, `STALE` situations, one game at a time; the client lane's traps apply to the foundation and the harness (`docs/lanes/client/TRAPS.md`).
+Moved to `TRAPS.md`: the gate's and `h3map.py`'s staged files, a template's class in memory, `STALE` situations, one game at a time; the client lane's traps apply to the foundation and the harness (`docs/lanes/client/TRAPS.md`).
 
 ## Asset notes
 
-The user's dictation of 2026-10-12 is in `docs/lanes/client/ASSET-NOTES.md`; this lane's research items (the object draw order, the objects' shadows) in `ASSET-NOTES.md` here.
+The user's dictation (2026-10-12): `docs/lanes/client/ASSET-NOTES.md`; this lane's research items: `ASSET-NOTES.md` here.
 
 ## Recent sessions
 
-- **2026-10-24, E24 M1 T6b** (`map-client/e24-t6b`): M1's closure; three reviewers in parallel, 35 of 37 findings fixed (the fallen objects' lists, the harness's checks, `drawn`'s `STALE`), 2 queued; the set (40) again, exact; the review list accepted; M2 T0 queued.
-- **2026-10-24, E24 M1 T6a** (#456, merged): the half tick (the rivers a step behind for a whole game, §1.6; MCL-Q5 answered (a)); `h3map.py drawn`, the kept live parts; the set (40) captured.
-- **2026-10-24, E24 M1 T5b2** (#453, merged): the path's arrows (§2.10), the explored tiles, boarded boats' colours; five exact.
+- **2026-10-26, E24 M2 T1a2** (`map-client/e24-m2-t1a2`): the scroll read (Ctrl and the direction keys, the edge every 70 ms with its cursor, 1 to 3 tiles by the speed, the limits); `frames`' options, inputs and cursor line; four scroll sequences and the idle pair recorded twice the same, as read; MCL-Q6.
+- **2026-10-26, E24 M2 T1a1** (#477, merged): T1a cut in two with the user; the idle loop read; `h3map.py frames` (the sequence's 0 set by the harness's timers); `idle-cycles` and `idle-objects` recorded twice the same.
+- **2026-10-26, E24 M2 T0** (#475, merged): M2 refined with the user, every recommendation taken; tasks T1a to T6 queued.

@@ -700,3 +700,169 @@ points 4, 5, 6 and 8 moved to T5 with the heroes and the path, point 7 to T4b. S
   maps as a new game starts them, the shroud's edges around the explored circles, one reaching
   the map's right column beside the edge), `boats-colours` (seven boarded boats of the three
   types, Blue to Pink): each exact on its first run, the whole set (40) again.
+
+## 3. The map moving (M2, from T1a1, 2026-10-26)
+
+### 3.1 The idle loop in time order (M2 T1a1)
+
+Path read: the managers' loop (`executive_loop` 0x4B0E40) on the adventure screen without a
+dialog, a human player's turn, no network game, no hero moving; from the loop's turn through
+`input_next_message` 0x4EC590 and the adventure manager's idle step (0x408A88) to the tick
+(0x4ED490) and the redraws' own polls. Not read: the managers below the adventure manager (the
+chain stops at it: its idle step answers 1), the panels' redraw at the end of the view draw, the
+sound the idle step starts (0x4088F9 to 0x408996: M2 T5), the call that ends `pump_messages`.
+
+- **The loop.** Each turn of `executive_loop` pumps the Windows messages (`pump_messages`
+  0x4F7FB0), takes the next input message (`input_next_message`: **the tick first**, then the
+  oldest of the input manager's 64 queued messages, else an **idle message**, kind 0) and hands it
+  to the managers from the top down (each one's procedure, vtable +8) until one answers 1; then it
+  starts over at once. Nothing waits: at a frozen clock the loop spins (the harness's "clock
+  reads"), and a step of the clock is met by its next turn.
+- **The tick** (§1.6) is polled by every turn of the loop, before its message, and inside each
+  redraw (the view draw's start and end, 0x40F3F9 and 0x40F823; `screen_show_rect` before and
+  after, 0x602BDE and 0x602C40). So a palette step falls in the first turn at or after its time
+  (`palette_tick_time` 0x6989B4), and **before that turn's idle step**. Every 60 ms
+  (`tick_60ms_time` 0x6989AC) it also calls `network_keepalive` 0x5546B0 (nothing outside a
+  network game) and `turn_timer_poll` 0x557AF0 (inferred: a turn's timer, idle in a single game);
+  neither draws.
+- **The idle step** (the adventure manager's procedure on an idle message, 0x408A88): once the
+  clock reaches `frame_deadline` 0x698998 it clears +0x200 (the moving hero's frame, T1b), draws
+  the view (0x40F3F0, from +0xE4), shows (0, 8) to (608, 552) at once (`screen_show_rect`) and,
+  while the clock still has reached the deadline and +0x104 is clear, grows +0x100 and moves the
+  deadline on by max(180, the lateness) (0x408B26); then it pumps the messages. `view_show_step`
+  0x40F270 is the same show and step after the other redraws (a move, a visit).
+- **So, per millisecond of the clock:** the palette step if one is due, then the redraw if one is
+  due. A redraw shows every palette step up to its own millisecond and draws the objects at the
+  step +0x100 held before it (§1.6); the screen changes only at redraws. The palette steps come
+  every 200 ms and the redraws every 180 ms, on two grids whose phase is the map's load's real
+  time; neither is late when the clock moves 1 ms at a time (the harness), and a late one is
+  not caught up. Since 180 < 200 a redraw shows one palette step or none, never two: one redraw
+  in ten shows none, the one after a redraw that came less than 20 ms after a step (in the
+  recordings, at the step's own millisecond: 180, 1 980, 3 780, … after their 0).
+
+### 3.2 The recording (M2 T1a1)
+
+`h3map.py frames [--only <id>]` (the runbook, "The map's sequences") plays each sequence of
+`clients/map/sequences.toml`: its situation staged as a still is (`stage`, `capture`'s first
+half), the clock frozen once both deadlines lie ahead of it, then **the sequence's 0** set to the
+next millisecond by writing the palette tick's, the redraw's and the mouse poll's next times
+there (the harness's own timers, as E17's `align_mouse_poll`: the phase between the grids is the
+load's real time, so without this two runs differ), checked to have run at 0; then 1-ms steps to
+`ms`, each followed by the state memory holds and the screen. Every screen whose view (outside the
+panels) changed is kept (local); the **timeline** (`clients/map/timelines/<id>.txt`, numbers
+only) lists the changes: `<ms> view <x> <y> <level>`, `<ms> objects <n>` (+0x100 counted from
+0), `<ms> cycles <terrains> <rivers>` (each kind's palette steps counted from 0) and `<ms> screen
+<x0>,<y0>,<x1>,<y1>` (where the screen changed since the screen kept before: each one kept); the
+first state at 0, whose screen is always kept; the lines of one millisecond in that order, not
+the events' (the tick comes before the redraw). The live part at 0 is a still's
+(`timelines/<id>-live.toml`, kept from a run as recorded or new): the viewer's frame drawn with
+it is compared with the original's at 0 (must be exact).
+
+- **`idle-cycles`** (`seq-idle-cycles`: lava and water, the muddy, clear and lava rivers in four
+  quadrants of one view; 8 000 ms): the palettes step at 0, 200, 400, … (40 steps after 0, both
+  kinds together), the redraws at 0, 180, 360, … (+0x100 grows at each); the screen changes at
+  every redraw but 180, 1 980, 3 780, 5 580 and 7 380 (39 screens after 0's), each time over the
+  whole view: as §3.1 says, nothing between the redraws.
+- **`idle-objects`** (`objects-flat`: 116 objects, 47 flat, among cycling terrain; 8 000 ms): the same steps; the
+  screen changes at every redraw (44 after 0's), at the five redraws without a palette step only
+  the objects ((8, 13) to (600, 552)).
+- Each recorded twice, the second run's timelines as the first's; the frame at 0 exact in all
+  four runs. So the reading holds frame by frame for the map standing still: M2 T2's schedule is
+  the two grids from the sequence's 0, and at each redraw a still (§1.6) at the steps it shows.
+
+### 3.3 VCMI 1.7.5 compared
+
+| Point | VCMI (`client/mapView/`) | |
+|---|---|---|
+| Time | `MapViewController::tick` adds each rendered frame's time to the adventure context's `animationTime`; the map is drawn every frame | differ: the original draws the map only at its 180-ms redraws (§3.1) |
+| Palette steps | `MapRendererAdventureContext::terrainImageIndex`: `animationTime` div 180 | differ (§1.7): every 200 ms, polled, shown at the next redraw (none at one redraw in ten) |
+| Objects' steps | `objectImageIndex`: `animationTime` div 180 plus the object's id | the same 180 ms; differ (§1.7): a random phase, a step only at a redraw, a late redraw not caught up |
+| Scroll (T1a2) | `AdventureMapInterface::handleMapScrollingUpdate` (`client/adventureMap/`): every frame by `scrollSpeedPixels` × the frame's time, in pixels (the options' 400, 800, 1200 for the original's three speeds) | differ: whole tiles, 1, 2 or 3 a step, a step every 70 ms at the edges (§3.4) |
+| Edge (T1a2) | `borderScrollWidth` 15: x < 15, x > width − 15; none while Ctrl is down or the window has no focus | differ by a pixel: 16 (x < 16, x > 784); the original's own focus flag the same (§3.4) |
+| Keys (T1a2) | the eight direction keys walk the selected hero (`config/keyBindingsConfig.json`, `moveHeroDirectional`); no key scrolls | the same without Ctrl; with Ctrl they scroll, one step a press (§3.4) |
+| Edge cursors (T1a2) | `Cursor::Map::SCROLL_*` by the direction while scrolling, the pointer when the delta is nothing | the same frames (32 to 39); the arrow once the view stops at a limit (§3.4) |
+
+### 3.4 The scroll (M2 T1a2)
+
+Path read: the adventure manager's procedure (`adventure_manager_procedure` 0x4087B0) on a
+human player's turn, its messages by kind (0x4089AE: 0 idle, 1 a key down, 4 the mouse moved,
+0x200 a control's; a key up does nothing), the key-down's eight direction keys
+(`adventure_key_down` 0x408C40), the scroll itself (`view_scroll` 0x4195C0), the edge scroll
+(`edge_scroll` 0x419820), the mouse-move's branch outside the view (`adventure_mouse_move`
+0x40E360 from 0x40EB7D), the key messages' queuing (`input_key_message` 0x4EC0E0) and the window
+procedure's focus flag (`window_procedure` 0x4F7C00); the settings by their registry names
+(`settings_read` 0x50B7B0, `settings_check` 0x50B260). Not read: the other keys, the mouse over
+the view (the cursor by the tile under it: M3), the minimap's redraw (0x412C40), the options
+dialog beyond its speed buttons.
+
+- **The speeds.** The registry's "Window Scroll Speed" and "Walk Speed" (`settings_names`
+  0x63FF74) are read into `option_scroll_speed` 0x69878C (0 to 2, any other 1; the options
+  dialog's three buttons) and `option_walk_speed` 0x69875C (1 to 4, any other 2: the hero
+  speed, its use M2 T1b); "Computer Walk Speed", `option_computer_walk_speed` 0x698758 (2 to 5,
+  any other 3). The scroll reads its speed at each step, so a sequence's options are written into
+  memory once its situation is staged (`h3map.py frames`).
+- **A step** (`view_scroll`, a direction 0 to 7 clockwise from north, a flag): the step is 1, 2
+  or 3 tiles at the speeds 0, 1, 2 (`scroll_steps` 0x63A66C); `scroll_time` 0x691674 = now; the
+  view's corner moves by the step (north y less, north-east x more and y less, … north-west x and
+  y less); with the flag the cursor becomes the direction's edge cursor; then the corner is held
+  within x −9 to the map's width less 10 and y −8 to its height less 9 (the map's first and last
+  column at the view's middle column, 9 of 19; its first and last row at row 8 of 17), so a
+  diagonal step at one limit still moves along the other side. An unchanged corner ends the step:
+  no redraw. A changed one: the selected hero back on its tile if the turn's start lifted it
+  (`adventure_hero_stop` 0x417680, no redraw), the corner written, the minimap redrawn, **the
+  view drawn and shown at once** ((0, 8) to (608, 552), as the idle step shows it, with the
+  objects at the step +0x100 holds and the palettes as the tick left them), and if the clock has
+  reached `frame_deadline` the objects stepped as at a redraw (+0x100 + 1, the deadline on by
+  max(180, the lateness)): the step's redraw then takes the place of the redraw due. Then the
+  messages are pumped.
+- **The keys** (`adventure_key_down`, by scan code): 72 Up north, 73 PgUp north-east, 77 Right
+  east, 81 PgDn south-east, 80 Down south, 79 End south-west, 75 Left west, 71 Home north-west
+  (the keypad's with NumLock off give the same codes). **With Ctrl** (the message's modifiers
+  +0xC and 0xC) a step that way, without the edge cursor; **without Ctrl** the selected hero
+  steps that way (`hero_move_step` 0x4805E0: M2 T1b), nothing without a selected hero. A key-down
+  message is one step at once, no delay of its own; Windows repeats a held key's WM_KEYDOWN and
+  every one is queued (`input_key_message`, its repeat flag not looked at), so a held key steps at
+  the system's keyboard rate. The game has no repeat of its own: the harness turns the display's
+  repeat off (it repeats in real time, which one step of the virtual clock spans many times
+  over), so in a sequence a key held is one press.
+- **The edge** (`edge_scroll`, called before every message the adventure manager gets, idle
+  ones too, while `app_active` 0x6783D0, set by WM_ACTIVATEAPP): the mouse's point now
+  (`mouse_position_now` 0x50D500: GetCursorPos, x rounded down to even; not the 33-ms poll's).
+  Off the 800 × 600 screen or not within 16 pixels of a side: `scroll_time` = now, nothing else.
+  Within: west x < 16, east x > 784, north y < 16, south y > 584, a corner both (so the zones
+  are 16, 14, 16 and 15 pixels wide, the east one narrowed by the rounding: MCL-Q6); nothing until
+  70 ms after `scroll_time`, then a step with the edge cursor (which sets `scroll_time` = now);
+  if then the cursor is an edge cursor and the view did not move (a limit), the arrow (frame 0
+  of `cradvntr.DEF`). So the pointer arriving at an edge at t steps at t + 70, t + 140, … while
+  it stays within the 16 pixels; moving between edges keeps the grid (a step whose view did not
+  move counts as one); a key's step starts it anew.
+- **The edge cursors:** `cradvntr.DEF` (type 1) frames 32 to 39, north clockwise to north-west;
+  hot spots (`cursor_hot_spots` 0x67FF50 + (144 + frame) × 8): (6, 0), (16, 1), (22, 6),
+  (16, 17), (6, 22), (0, 17), (0, 5), (0, 1). Set by each edge step (also by one whose view did
+  not move, before the arrow above); a move of the mouse outside the view (0x40EB7D) keeps an
+  edge cursor while the mouse lies within the 16 pixels and sets the arrow otherwise. Drawn at
+  the mouse poll's point (E17 design §9.10): the point lags a move by up to 33 ms, the frame
+  changes at once.
+
+**Recorded** (`clients/map/sequences.toml`, situation `seq-scroll`: a 36-tile map copied from a
+shipped one, the view at (9, 10); every frame at 0 exact):
+
+- **`scroll-0`, `scroll-1`, `scroll-2`** (one speed each, the same inputs): Ctrl and Up, PgUp,
+  Right, PgDn, Down, End, Left, Home pressed at 100, 300, … 1 500 step the view at the press's
+  own millisecond by 1, 2 or 3 tiles in that direction (back at (9, 10) after the eighth); Ctrl
+  and Right held from 1 700 to 2 100: one step. The pointer at the left edge (2, 300) from 2 300:
+  the arrow's point moves at the poll (2 310), the first step at 2 370 with the west cursor (38),
+  then every 70 ms to 2 650. In the top-right corner (798, 1) from 2 700: the west cursor drawn
+  there at the poll (2 706) until the grid's next step at 2 720 turns it north-east (33), steps
+  to 3 000; over the right panel at 3 000 (after that millisecond's step) the arrow. Each step
+  redrew the whole view at once; the cursor lines are the same at every speed.
+- **`scroll-limits`** (the fast speed): the pointer in the bottom-right corner at 100 steps at
+  170, 240, … 520 by 3 tiles until (26, 27), the map's last column and row (x clamped at 520 from
+  27, y from 28); the step at 590 moves nothing and the cursor turns from south-east (35) to the
+  arrow. In the top-left corner from 800: the grid kept (a step at 800 before the move, the next
+  at 870), (−9, −8) at 1 640, the arrow at 1 710. In the top-right corner from 1 900 with the top
+  reached: x moves by 3 at 1 920 to 2 200, y stays, the cursor north-east (33) throughout. Over
+  the right panel at 2 200 (the step at 2 200 came first): the arrow. Ctrl and Up at the top
+  limit at 2 300: nothing. Every step that moved redrew the whole view at once (screen lines at
+  the steps' own milliseconds); the cursor's point followed each move at the next poll (132,
+  825, 1 914, 2 211: the 33-ms grid from 0).

@@ -1,0 +1,127 @@
+0 view 0 0 0
+0 objects 0
+0 cycles 0 0
+0 cursor 1 0 700 300
+180 objects 1
+200 cycles 1 1
+360 objects 2
+360 screen 8,8,600,552
+400 cycles 2 2
+540 objects 3
+540 screen 8,8,600,552
+600 cycles 3 3
+720 objects 4
+720 screen 8,8,600,552
+800 cycles 4 4
+900 objects 5
+900 screen 8,8,600,552
+1000 cycles 5 5
+1080 objects 6
+1080 screen 8,8,600,552
+1200 cycles 6 6
+1260 objects 7
+1260 screen 8,8,600,552
+1400 cycles 7 7
+1440 objects 8
+1440 screen 8,8,600,552
+1600 cycles 8 8
+1620 objects 9
+1620 screen 8,8,600,552
+1800 objects 10
+1800 cycles 9 9
+1800 screen 8,8,600,552
+1980 objects 11
+2000 cycles 10 10
+2160 objects 12
+2160 screen 8,8,600,552
+2200 cycles 11 11
+2340 objects 13
+2340 screen 8,8,600,552
+2400 cycles 12 12
+2520 objects 14
+2520 screen 8,8,600,552
+2600 cycles 13 13
+2700 objects 15
+2700 screen 8,8,600,552
+2800 cycles 14 14
+2880 objects 16
+2880 screen 8,8,600,552
+3000 cycles 15 15
+3060 objects 17
+3060 screen 8,8,600,552
+3200 cycles 16 16
+3240 objects 18
+3240 screen 8,8,600,552
+3400 cycles 17 17
+3420 objects 19
+3420 screen 8,8,600,552
+3600 objects 20
+3600 cycles 18 18
+3600 screen 8,8,600,552
+3780 objects 21
+3800 cycles 19 19
+3960 objects 22
+3960 screen 8,8,600,552
+4000 cycles 20 20
+4140 objects 23
+4140 screen 8,8,600,552
+4200 cycles 21 21
+4320 objects 24
+4320 screen 8,8,600,552
+4400 cycles 22 22
+4500 objects 25
+4500 screen 8,8,600,552
+4600 cycles 23 23
+4680 objects 26
+4680 screen 8,8,600,552
+4800 cycles 24 24
+4860 objects 27
+4860 screen 8,8,600,552
+5000 cycles 25 25
+5040 objects 28
+5040 screen 8,8,600,552
+5200 cycles 26 26
+5220 objects 29
+5220 screen 8,8,600,552
+5400 objects 30
+5400 cycles 27 27
+5400 screen 8,8,600,552
+5580 objects 31
+5600 cycles 28 28
+5760 objects 32
+5760 screen 8,8,600,552
+5800 cycles 29 29
+5940 objects 33
+5940 screen 8,8,600,552
+6000 cycles 30 30
+6120 objects 34
+6120 screen 8,8,600,552
+6200 cycles 31 31
+6300 objects 35
+6300 screen 8,8,600,552
+6400 cycles 32 32
+6480 objects 36
+6480 screen 8,8,600,552
+6600 cycles 33 33
+6660 objects 37
+6660 screen 8,8,600,552
+6800 cycles 34 34
+6840 objects 38
+6840 screen 8,8,600,552
+7000 cycles 35 35
+7020 objects 39
+7020 screen 8,8,600,552
+7200 objects 40
+7200 cycles 36 36
+7200 screen 8,8,600,552
+7380 objects 41
+7400 cycles 37 37
+7560 objects 42
+7560 screen 8,8,600,552
+7600 cycles 38 38
+7740 objects 43
+7740 screen 8,8,600,552
+7800 cycles 39 39
+7920 objects 44
+7920 screen 8,8,600,552
+8000 cycles 40 40

@@ -5898,3 +5898,176 @@ conditions) were read by their arguments and calls only: no map reaches them.
 
 **Verified:** the scoped verify (`cargo xtask verify --scope adventure --summary`, without the
 LODs) with no failing step; `scripts/exe.py check` and `cited` clean.
+
+### Increment 7, round 1: T55a2, the objects that teach (2026-10-26, `adventure/e08-t55a2`)
+
+Baseline: `master` at bef62ab (#474 merged; CI green; the sandbox's baseline verified the code).
+Original files staged from the user's repo folder (the executable, `maps.tar`, `extracted.tar`).
+At its start the agent measured the task from `visit_object`'s 20 cases (their handlers and
+callees to depth 2, helpers with more than 40 callers and read functions left out): about 6 700
+instructions not read on the human player's path in 54 functions (the computer's 0x528040, 1 922,
+left out), the handlers 80 to 300 each, the University's dialog about 2 400. The user took the
+whole task with the University's dialog read for its rules only (decision 126).
+
+**The survey** (`docs/rules/surveys/E08-rewards.md` §6, with §0, §1, §9 and §10 for T55a4):
+
+- **The marks** (§6.1): `setup_map_objects` numbers each once-per-hero class's objects; the hero
+  keeps a u32 per class (hero +0x57 to +0x7B), so a 33rd object shares the first one's mark (A-17;
+  at most 30 on a shipped map). The team's marks per kind (game +0x4E344), per tile (0x4FBF90) and
+  per player (record +0xC0, +0xC4) are knowledge only, some set before a refusal.
+- **The readings** (39 new `map.toml` entries, six amended; 18 `structs.toml` fields): the four +1 objects, the Arena (its
+  Cancel taken as Attack), the Library (level + 2 × Diplomacy ≥ 10), the Schools (1 000 gold, a
+  choice or leave), the Learning Stone (1 000 × Learning), the Tree (a price drawn at a new game,
+  one level by `experience_to_next_level`, no Learning), the Shrines (`random_shrine_spell`: no
+  repeat within a level until it is used up, the marks starting as the bans), the Witch Hut (the
+  map's mask, all 28 without one, less the bans), the Scholar (drawn at the map's load, a fallback
+  primary skill drawn at a new game, removed), the University (four drawn skills; known, class
+  weight 0, eight skills or less than 2 000 gold refuse), the Corpse (20 %; full backpack 1 000
+  gold), the Wagon (10 / 40 / 50 %; full backpack its resources), the Warrior's Tomb (30/50/15/5 %;
+  −3 morale once until the battle's end, cleared by `hero_battle_bonuses_clear` 0x4DA510; full
+  backpack: the artifact stays), the Lean To. VCMI 1.7.5 and the wiki compared for each.
+- **The census** (§1): no class above 32 on a map; the bodies of the Shrines, Witch Huts and
+  Scholars; no empty pool.
+- **Disputes** D-33 (an RoE map's Witch Hut teaches Leadership and Necromancy in the code only),
+  D-34 (the Shrines' repeats), D-35 (the Corpse's and Wagon's artifact class, the Wagon's amount),
+  D-36 (Necromancy at a University in the code only); quirk candidates A-17 (the 32-bit marks) and
+  A-18 (a spell of −1 not tested); rule ids proposed (ADV-TCH-001 to -007, ADV-PIK-009 to -012,
+  HER-ADV-008); batch E7's rows listed.
+
+*Agent's calls (change freely):* Lean To is in (decision 126); the census ran from a throwaway
+example in the clone (excluded from git, deleted); the University's dialog was read in its three
+rule functions (0x5F0790, 0x5F0AC0, 0x5F0F60), its drawing and 0x5D2DA0 not; the wiki was read
+through pages a search returned (the Corpse's was not returned).
+
+**Verified:** the scoped verify (`cargo xtask verify --scope adventure --summary`) with no failing
+step; `scripts/exe.py check` and `cited` clean.
+
+### Increment 7, round 1: T55a3, Pandora's Box, events and the Pyramid (2026-10-26, `adventure/e08-t55a3`)
+
+Baseline: `master` at f91cdd5 (#476 merged; CI green on it). Original files staged from the user's
+repo folder (the executable, `maps.tar`, `extracted.tar`). At the start the agent measured the
+task. It took the classes' handlers and their callees to depth 2, and left out the drawing, the
+battle itself and the computer's branches:
+
+- Pandora's Box and events: about 2 300 instructions, most of them one shared reward routine,
+  0x49FA90; their dialogs about 2 900 more.
+- the Pyramid: about 420.
+- the Refugee Camp: about 1 400, most of it the hire dialog of dwellings and towns.
+- the five creature banks: about 3 000, plus the battle's bank flag (battle +0x53C5), which
+  `BattleSetup` lacks.
+- Seer's Huts and quest guards: about 1 400, plus a quest system of nine missions.
+
+Decision 121's two other callers of the army dialog turned out to be the banks' reward and the
+Seer's Hut's. The user took T55a3 whole with Pandora's Box, events and the Pyramid, and placed the
+others in the sketch: the banks as item 10, the Refugee Camp in item 9, the quests as item 11 after
+E09 and E10 (decision 127).
+
+**The survey** (`docs/rules/surveys/E08-rewards.md` §7, with §0, §1, §9 and §10 for T55a4):
+
+- **The reward record** (§7.1): boxes and events share one list of 228-byte records (H3API's
+  H3PandorasBox, the layout confirmed). An event's word holds its colours (bits 10–17), the
+  computer flag (18) and the removal flag (19). Past 400 records the index stays 0 (A-19;
+  at most 99 on a shipped map).
+- **Pandora's Box** (§7.2, `visit_pandora_box` 0x4A0C50): the map's text, then "open?"; guards with
+  a warning and the guarded pile's battle; the rewards; empty: a message; removed.
+- **Events** (§7.3): `event_fires_for` (0x4FCDC0) for a human of a colour in the mask, a computer
+  only with its flag; **the move ends on the tile** (`move_interrupted` 0x69777C ends the move's
+  loop); `event_fire` (0x4A0ED0): guards fought at once, the rewards, removal with the flag (else
+  it fires at every entry), the end-of-game tests.
+- **The rewards** (§7.4, `grant_rewards` 0x49FA90), in order:
+  - the experience is computed first, with the Learning before the box's skills;
+  - primary skills, positive values only;
+  - secondary skills, raised to the level;
+  - mana, the total held in 0 to 999;
+  - morale and luck, to the bonuses until the next battle's end;
+  - resources;
+  - artifacts, lost when the backpack holds 64;
+  - spells, which need a book and a level of 2 + Wisdom at most;
+  - creatures; those without room go into one army dialog (0x5D12B0, read, renamed
+    `army_dialog_with`);
+  - the experience, given last.
+- **The Pyramid** (§7.5):
+  - At a new game it draws a level-5 spell with a school that the game does not ban. Titan's
+    Lightning Bolt is always banned by its flag 0x2000.
+  - At every visit it asks first.
+  - A looted Pyramid costs −2 luck once until the next battle's end (status bit 12).
+  - The guards are 40 Gold Golems, split by `monster_battle` with a second creature into 1 to 5
+    stacks (the table 0x63DF94 orders the slots), and 20 Diamond Golems in 2 stacks.
+  - The spell is lost without a book or without Expert Wisdom.
+  - An empty pool would read outside its list (A-20, unreachable).
+- **The census** (§1): 46 boxes, 486 events (48 on the whole maps), 60 Pyramids; the bodies' kinds
+  and ranges, with nothing out of range.
+- **Disputes**:
+  - D-37, a known skill: raised to the level in the code, added in VCMI;
+  - D-38, mana: up to 999 in the code, up to the maximum in VCMI;
+  - D-39, the order of the parts and the Learning used;
+  - D-40, the Pyramid's Gold Golem stacks.
+- **Proposed** for T55a4: the rule ids (ADV-PIK-013, ADV-OBJ-007, ADV-RWD-001, ADV-TCH-008,
+  ADV-MON-012, HER-ADV-008 widened) and batch E7's rows.
+
+The readings went into `map.toml` (21 new entries, 10 amended, among them `monster_battle`'s second
+and third creatures and `new_game_bans`' always-banned flag) and `structs.toml` (`reward_record`;
+the spell's level and school; a player's second human flag). `E08-army.md` §1.1 point 5 is updated
+for 0x5D12B0.
+
+*Agent's calls (change freely):*
+
+- The dialogs of Pandora's Box and events were read for their rules only (decision 127).
+  `load_rewards` (0x4FF6B0) was skimmed, and the census checks what it reads.
+- The end-of-game tests after an event (0x5F1B10, 0x5F1C80, 0x4F2CE0) are named for E10, not read.
+- The census ran from a throwaway example in the clone, excluded from git and deleted.
+- The wiki was read through pages a search returned (Pandora's Box, Event, Pyramid).
+
+**Verified:** the scoped verify (`cargo xtask verify --scope adventure --summary`) on 7bf3a6b
+passed every step but `check-exe-map`. The one address it flagged, 0x4A39A0, got its entry in
+d1e4c1e, after which `check-exe-map`, `check-docs` and `check-lane` passed. `scripts/exe.py check`
+and `cited` came back clean.
+
+### Increment 7, round 1: T55a4, the common rules, batch E7's plan, the second reading and the checkpoint (2026-10-26, `adventure/e08-t55a4`)
+
+Baseline: `master` at ef3c34b (#479 merged; CI's last code run on `master`, 9215205, green; the
+scoped verify in the sandbox passed, `deny` skipped). The executable and `Objects.txt` staged from
+the user's repo folder (no LODs: docs only). At the start the user took **T55a4 whole** (decision
+128) over two or three parts.
+
+**The survey** (`docs/rules/surveys/E08-rewards.md`):
+
+- **§8, the common rules:** what a visit asks (§8.1: ten classes ask, the rest do not; a battle, the
+  rewards, the army dialog, then the experience and its level-ups), refuses or converts (§8.2: a
+  full backpack, no book, Wisdom, a known spell or skill, eight skills, gold, the level, a visit
+  made), what changes when (§8.3: at once, at the next step, at the owner's next turn, at the next
+  battle; a Knowledge gained leaves the spell points), what a player knows (§8.4), the hidden event
+  and the move (§8.5), the commands, decisions, events, observation, replays, benchmarks and env
+  (§8.6).
+- **§10** rewritten as T55b's inheritance (the import's changes with one new refusal, the draws, the
+  new hero state, the battles); **§11** batch E7's plan: 23 rows in two runs (E7a the pickups and
+  the teachers, E7b the boxes, events and the Pyramid), with what the harness and the spec lack;
+  **§12** the proposed rule ids (new families `ADV-TCH`, `ADV-RWD`; GAM-DEC-005, -006, ADV-MOV-011,
+  ADV-FOG-007, ADV-VIS-006, HER-CHG-003, HER-ADV-008); **§14** the checkpoint's questions.
+
+**The second reading** (§13): two fresh agents in turn, from questions per function and without the
+survey: A, nine questions on the pickups and the objects that teach; B, seven on the reward routine,
+the box, events, the pathfinder, the records and the Pyramid. Both confirmed the readings point by
+point, but:
+
+- **An RoE map's Witch Hut** gets the fixed mask 0xEFBF from the loader (0x5034BD, checked by T55a4):
+  14 skills, never Leadership, Necromancy or Water Magic to First Aid. T55a2 had read all 28. D-33
+  reshaped (VCMI's 26 against the code's 14), **A-21** (the editor's default cut to 16 bits).
+- **The Wagon's draws** come as r, the amount, the resource (§6.9 corrected; not a rule).
+- **The pathfinder makes an event's tile a stop for every colour** (`pathfinder_pass_through`'s
+  mouse mode answers no for every class but 33 and 212, checked by T55a4): a human's path never
+  crosses a hidden event and bends around it. §8.5 rewritten with two ways; **A-23**.
+- Smaller: the pool's later-edition bans, the lost artifact when nothing takes it, the combination
+  question's conditions, the 999 clamp that lowers a hero above it, **A-22** (a University's
+  negative range), **A-24** (the loader's creature count past seven).
+
+**The exe map:** four entries amended (`pathfinder_pass_through`, `load_object_body`, `load_rewards`,
+and `adventure_mouse_move` 0x40E360, which the map-client lane's #480 had mapped meanwhile: a
+merge conflict, its entry kept).
+
+**The checkpoint** (ADV-Q28, asked interactively; decisions 129–136): the disputes the code's side,
+confirmed or reverted by batch E7; A-21 a flag; A-23 a flag **only if row E7-23 confirms it** (the
+user is skeptical); batch E7 whole before the build; no original limits on objects and their state
+(the user: a map whose every tile is a box must work; A-17 and A-19 not reproduced and no smaller
+bound in their place); the tutorial not modelled; §8 as written; decision 104 for the pool and the
+scope confirmed. **T55a done**; T55b is ready.

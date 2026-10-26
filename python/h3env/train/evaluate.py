@@ -76,6 +76,9 @@ NEUTRAL_V1_WEIGHTS = {
 #: The kinds whose defender is the system actor: one external seat, the attacker (design §12).
 NEUTRAL_KINDS = frozenset(NEUTRAL_V1_WEIGHTS)
 
+#: The kinds with a player on both sides (the report set's), in `H3_ENCOUNTER_*` order.
+PLAYER_KINDS = tuple(k for k in range(len(_ffi.ENCOUNTER_KINDS)) if k not in NEUTRAL_KINDS)
+
 #: The held-out sets the ladder plays (`h3 ai eval --set`'s names).
 SETS = ("report-v1", "neutral-v1", "v0")
 
@@ -447,7 +450,8 @@ def ladder(
     `play`'s; the engine seats only), or the neutral set v1's first `per_kind` per kind against
     its one opponent, the system actor (E06 T7c; the row `system`, whatever `opponents` names, no
     networks): the network's row beside `h3 ai eval`'s table on the same episodes. Each network's
-    mode is restored after."""
+    mode is restored after. The batches write the kill preview when one of the networks reads it
+    (E06 T6d)."""
     if held_out not in SETS:
         raise ValueError(f"unknown held-out set {held_out!r} (one of {SETS})")
     networks = dict(networks or {})
@@ -456,6 +460,8 @@ def ladder(
     if held_out == "neutral-v1":
         opponents = (NEUTRAL_OPPONENT,)
     nets = [policy, *networks.values()]
+    if any(net.reads_preview for net in nets):
+        settings["preview"] = True
     modes = [net.training for net in nets]
     for net in nets:
         net.eval()

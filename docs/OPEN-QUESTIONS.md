@@ -82,7 +82,10 @@ The review's fix C3 follows the reading of 0x47A100: a created stack whose round
 **Context.** The user (2026-10-19, AI-Q6): the engine's damage preview of one's own attack levels the field, "we may also attach the estimates to the observed state or to actions in the encoding for the RL agents". The bots read it from T7 on; the agents see only the flat observation v21. **Options:** (a) a per-target block in the observation (for the active stack: each enemy stack's least and greatest kills by a shot or a strike from where it stands; observation v22, the battle lane's encoding, `cross-lane`); (b) per-entry features beside the entry mask (the attack and shot entries' kills), a new output of the batch, the encodings unchanged; (c) leave it to the network. **Recommendation:** decide after T7's ladder shows how much the preview gives the Greedy bot over Aggressor; (b) first if it does, since it changes no encoding. Not blocking. **Moved to E06** (the user, 2026-10-19, E05 T9's cut): on the held-out episodes Greedy beats Aggressor only 0.519 and the user's network plays at Aggressor's level (T7c, T7d); E06 decides with its stronger baselines, (b) still first. **E06's plan** (AI-Q8): (b) as an experiment in T5, kept only if it measurably helps. **Part 1
 built** (E06 T5, 2026-10-23): the batch's optional output of each legal attack and shot entry's
 previewed kills (C ABI v33); part 2, the network reading it and the A/B run, after T7d's
-checkpoint.
+checkpoint. **Part 2 built** (E06 T6d, 2026-10-26, the user's lever after T6c; unblocked since
+the battle lane's #458 previews a commanded turret's shot as it is made): `[network] preview`,
+each legal strike's logit biased by its previewed kills (E06 design §13). Open until T6e's A/B
+run against `t7-1` says whether it measurably helps (kept only then).
 
 ### Client lane (`CLT-Q<n>`)
 
@@ -99,6 +102,10 @@ checkpoint.
 **Context.** `gate_open` 0x4671C0 and `gate_close` 0x4672E0 draw each of the gate's three states with the whole battle redrawn in memory but show only the drawbridge's rectangle (`drawbridge_rect` 0x694F30: x 365 to 542, y 211 to 380). A walker whose walk starts with the step onto the gate's hexes has its count box hidden first (+0x30, 0x442145), so memory draws it without the box while the screen keeps the box wherever it lies outside the rectangle, until the walker's first frame redraws its own rectangle: `gate`'s Hobgoblins on 93 keep their box for 300 ms (13 234 to 13 534, 319 pixels a frame; a walker on 94 has its box inside the rectangle). Mid-walk the stop's whole redraw shows the box hidden before the gate moves; the closing follows a whole redraw. A drawing slip, harmless to play. **Options:** (a) the client shows the whole battle with each state (the box hidden at once), the comparisons reproduce the original (`h3_render::Bugs`, as CLT-Q19 and Q22); (b) the client copies it always; (c) a graphics option. **Recommendation:** (a), as built: the timeline's drawbridge spans (`Timeline::bridges`, the original's profile alone) and the scene drawing the battle shown before with the moment's inside the rectangle (`Moment::bridge`, `Draw::Within`).
 
 ### Map client lane (`MCL-Q<n>`)
+
+#### MCL-Q6 — The edge scroll's zones are 16, 14, 16 and 15 pixels wide (E24 M2 T1a2)
+
+**Context.** The map scrolls while the mouse lies within the screen's edge zones (`edge_scroll` 0x419820; `docs/epics/E24-design.md` §3.4): x < 16 west, x > 784 east, y < 16 north, y > 584 south, on the mouse's point as `mouse_position_now` 0x50D500 gives it, x rounded down to even (E17's drawing bug, the user 2026-10-20: the client draws the cursor at the mouse itself). So the west and north zones are 16 pixels wide (0 to 15), the south 15 (585 to 599) and the east 14 (786 to 799: 785 rounds to 784). The mouse-move's test that keeps an edge cursor (0x40EBBA) is the same. A pixel or two at the right and bottom edges, harmless to play; no recorded sequence puts the pointer there. **Options:** (a) the client's zones 16 pixels on every side (x < 16, x ≥ 784, y < 16, y ≥ 584 on the mouse's own point), the original's tests on its rounded point for the comparisons only (`h3_render::Bugs`, as MCL-Q2 to Q5); (b) the client copies the original's tests on the unrounded point (16, 15, 16, 15); (c) copy them with the rounding (16, 14, 16, 15). **Recommendation:** (a): T2 builds the original's tests behind `--bugs original` and the even zones by default. **Blocked:** nothing (T2 builds both).
 
 ## Answered
 

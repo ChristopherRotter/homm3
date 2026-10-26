@@ -532,3 +532,92 @@ parallel.**
   live parts carry their situations' digests.
 - **The review list** (T2 to T6b, summarised in the session) accepted by the user. **M1 closed;**
   M2 T0 queued.
+
+### M2 T0 — M2 refined with the user (2026-10-26)
+
+One session, the user present; branch `map-client/e24-m2-t0` (docs only). Starting point: #460
+merged (2026-10-24), `master`'s CI green, the lane's scoped verify without a failing step. The
+agent read the lane's docs, the epic, E17 M2's record (its tasks, design §7.8, §7.9: the
+timeline and the frame check), `h3-view`'s `clock`, `sound` and `cursor`, the harness's
+`h3map.py` and the executable map's adventure entries; it proposed M2's scope, the recording's
+format and seven tasks. The user took every recommendation:
+
+- **Walks scripted in M2** (the user asked first whether this was for tests only or real: the
+  walk is built for real, its input a hero and its tiles; in M2 the tiles come from the
+  recorded sequences, from M4 the engine's records, from M5 the engine's answer to a click; the
+  client never finds a path itself, and wiring the engine now would pull M4's seam work in: the
+  observation's object identity, the import's 5 of 160 shipped maps, movement points).
+- **The map's sound in M2** (T5).
+- **`h3-view`'s `clock` and `cursor` copied** into `h3-map-view` (*provisional*); one common crate
+  proposed at M3 T0.
+- **Recorded and compared as E17 M2:** every frame at 1-ms steps, the timelines committed, the
+  frames compared pixel by pixel outside the panels, `drawn` over the sequences.
+
+What shaped the proposal: the original scrolls by whole tiles (the manager's pixel offset
++0xF4, +0xF8 is written only by its constructor, 0x406DF0); the idle map's moment is read
+(§1.6), so M2's idle work is its schedule; the moving hero's passes are mapped but not read
+(0x47F860, 0x47FB40, 0x47FC80), as is the move's animation in `hero_move_step` (E08 read its
+pricing). The queued M1 items: R2-8 waits for a task that needs the writer (none planned: T6
+then makes its pull request); a saved game's draw lists stay M4's.
+
+### M2 T1a1 — the recording and the map standing still (2026-10-26)
+
+T1a was cut in two before it started (the user, at the session's start: the queue's own seam):
+T1a1 the recording and the idle loop, T1a2 the scroll with the speed options and the inputs.
+
+- **Read** (`E24-design.md` §3.1; map entries `executive_loop` 0x4B0E40, `input_next_message`
+  0x4EC590, `pump_messages` 0x4F7FB0, `network_keepalive` 0x5546B0 and `turn_timer_poll`
+  0x557AF0 (inferred), `tick_60ms_time` 0x6989AC; `adventure_tick`'s and the manager
+  procedure's entries extended): the managers' loop takes the tick before each message and never
+  waits; the idle step redraws at the frame deadline and shows at once; the tick's 60-ms calls
+  draw nothing in a single game. H3API names the input manager's +0x38 `messages`, 64 of them,
+  as read. VCMI compared (§3.3): continuous time, a step every 180 ms for both.
+- **Built:** `h3map.py frames [--only <id>] [--out <dir>]` (an additive harness change: `capture`
+  split into `stage` and `live_part`, shared), `clients/map/sequences.toml` (a situation and `ms`;
+  T1a2 and T1b add the options and inputs), the timelines `clients/map/timelines/<id>.txt` and the
+  live parts at 0 `timelines/<id>-live.toml`; the runbook's "The map's sequences". The sequence's
+  0 is set by writing the tick's, the redraw's and the mouse poll's next times (*provisional*:
+  without it two runs' timelines differ by the load's real time); the counts in the timeline are
+  from 0 for the same reason. The viewer's frame at 0, drawn from the live part read then, is
+  compared with the original's in every run.
+- **Recorded:** `idle-cycles` (its own situation `seq-idle-cycles`: four quadrants copied so
+  that lava, water and the three cycling rivers share one view, found by the viewer's frames one
+  step apart) and `idle-objects` (`objects-flat`), 8 000 ms each, twice: the same timelines, the
+  frame at 0 exact each time. The screen changes only at redraws, every one but the redraw after
+  a step fell on a redraw's millisecond (no palette step since): five of 44 in 8 s.
+- **No oddity of the original found** (no `MCL-Q`). A run of both sequences takes 20 minutes.
+
+### M2 T1a2 — the scroll (2026-10-26)
+
+- **Read** (`E24-design.md` §3.4; map entries `adventure_key_down` 0x408C40,
+  `adventure_mouse_move` 0x40E360 (H3API's SimulateMouseOver, read in part), `view_scroll`
+  0x4195C0, `edge_scroll` 0x419820, `input_key_message` 0x4EC0E0, `window_procedure` 0x4F7C00
+  (in part), `settings_check` 0x50B260 (in part), `mouse_position_now` 0x50D500 (H3API's
+  GetCursorPosition), `scroll_steps` 0x63A66C, `settings_names` 0x63FF74, `scroll_time`
+  0x691674, `app_active` 0x6783D0, the three speed options 0x698758, 0x69875C, 0x69878C;
+  `adventure_hero_stop` 0x417680 read (H3API's DemobilizeHero), `adventure_manager_procedure`'s
+  and `settings_read`'s entries extended). The direction keys scroll only with Ctrl; without it
+  they walk the selected hero (T1b). A step is 1, 2 or 3 tiles by the scroll speed and redraws
+  at once; the edge steps every 70 ms from the last step (or from the mouse's arrival), with the
+  edge cursor; the view's corner stays within −9 to width − 10 and −8 to height − 9, and a step
+  that moves nothing turns an edge cursor back to the arrow. The speeds live in the registry
+  ("Window Scroll Speed" 0 to 2, "Walk Speed" 1 to 4) and in three globals. VCMI compared (§3.3):
+  smooth pixel scrolling, a 15-pixel edge, no key scroll.
+- **Built** (the harness, additive): `sequences.toml`'s options (`scroll_speed`, `hero_speed`,
+  written into memory once the situation is staged) and `inputs` (`keydown`, `keyup` with
+  xdotool's names, `pointer`), given after the step to their millisecond and settled by 500 more
+  clock reads; the scroll's last time written at 0 with the other timers; the display's key
+  repeat off (`xset`, added to `setup.sh`); the cursor in the timeline (`<ms> cursor <type>
+  <frame> <x> <y>`, `Mem.cursor`), so the idle pair was recorded again (its other lines as
+  T1a1's). The runbook's "Options and inputs".
+- **Recorded** (situation `seq-scroll`): `scroll-0`, `scroll-1`, `scroll-2` (each speed: Ctrl
+  and the eight keys, Ctrl and Right held, the left edge, the top-right corner) and
+  `scroll-limits` (the fast speed into three corners, the limits, Ctrl and Up at the top), each
+  twice the same; the idle pair again, twice; every frame at 0 exact. Everything as read: a
+  key's step at its press, one step for a held key, the edge's first step 70 ms after the
+  pointer's arrival, the corner's 70 ms grid kept across a move between edges (the west cursor
+  shown in the corner until the next step), the arrow at a limit, the cursor's point at the
+  33-ms polls.
+- **MCL-Q6** (open): the edge zones are 16, 14, 16 and 15 pixels wide (the x rounding of E17's
+  drawing bug narrows the east one); recommended: even zones in the client, the original's tests
+  for the comparisons. A run of the six sequences takes about 40 minutes.

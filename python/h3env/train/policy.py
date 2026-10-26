@@ -7,6 +7,13 @@ A row's action is its entry and, only where the entry is a cast, the spell, the 
 second target, chosen one head after another; its log-probability is the sum over the heads it
 chose. Masked logits take the dtype's lowest value, never `-inf`, so a row with a single legal
 choice (or none: an env that gave up) stays finite.
+
+The kill preview (AI-Q7 (b) part 2, E06 T6d; `[network] preview`, the MLP's): the batch's
+previewed kills of each legal attack and shot entry (`BattleBatch.preview`, C ABI v33) add a bias
+to that entry's logit, `φ(f) · u(h)`: `f` the entry's features (the least and greatest kills, the
+share of the target stack they are, the hit points they are), `φ` a small network shared by the
+entries, `u` a linear map of the trunk's output, so the state decides how much a kill counts.
+Only the entry head reads it; the value and the cast heads do not.
 """
 
 from __future__ import annotations
@@ -21,6 +28,7 @@ from torch import nn
 
 from .. import _ffi
 from ..batch import BattleBatch
+from . import layout as L
 from .run import NETWORK_KINDS
 
 #: The two cast entries, in the order of the cast one-hot the later heads take.
@@ -96,7 +104,23 @@ def rows_of(encoding: Encoding, index: torch.Tensor) -> Encoding:
 class Policy(nn.Module):
     """The interface of the trainer's networks: `encode` an observation's rows, then the value and
     the heads' logits from the encoding; `act`, `evaluate`, `values` and `frozen` on top. A kind
-    implements `encode`, `value` and the four `*_logits`."""
+    implements `encode`, `value` and the four `*_logits`; one that reads the kill preview
+    (`reads_preview`) also `with_preview`."""
+
+    #: Whether the entry head reads the batch's kill preview (`BattleBatch(preview=True)`).
+    reads_preview = False
+
+    def with_preview(
+        self,
+        logits: torch.Tensor,
+        encoding: Encoding,
+        obs: torch.Tensor,
+        preview: torch.Tensor | None,
+        mask: torch.Tensor,
+    ) -> torch.Tensor:
+        """The entry logits with the kill preview's bias (rows as `obs`; `mask` the entry mask,
+        bool); unchanged for a network that does not read it."""
+        return logits
 
     def encode(self, obs: torch.Tensor) -> Encoding:
         raise NotImplementedError
@@ -145,13 +169,20 @@ class Policy(nn.Module):
         n = batch.envs
         if rows is None:
             rows = np.arange(n)
-            obs, entry_mask = batch.obs, batch.entry_mask
+            obs, entry_mask, preview = batch.obs, batch.entry_mask, batch.preview
         else:
             obs, entry_mask = batch.obs[rows], batch.entry_mask[rows]
+            preview = None if batch.preview is None else batch.preview[rows]
         m = len(rows)
-        h = self.encode(torch.from_numpy(obs).to(device))
+        x = torch.from_numpy(obs).to(device)
+        h = self.encode(x)
         value = self.value(h)
-        logits = masked(self.entry_logits(h), torch.from_numpy(entry_mask).to(device).bool())
+        legal = torch.from_numpy(entry_mask).to(device).bool()
+        if self.reads_preview:
+            if preview is None:
+                raise ValueError("this network reads the kill preview: BattleBatch(preview=True)")
+            preview = torch.from_numpy(preview).to(device)
+        logits = masked(self.with_preview(self.entry_logits(h), h, x, preview, legal), legal)
         entry = pick(logits, generator, greedy)
         logprob = chosen(logits, entry)
         entries = entry.cpu().numpy().astype(np.uint32)
@@ -220,16 +251,19 @@ class Policy(nn.Module):
         entry: torch.Tensor,
         cast: torch.Tensor,
         heads: tuple[torch.Tensor, ...],
+        preview: torch.Tensor | None = None,
     ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """The log-probability, entropy and value of chosen actions under the current weights.
 
         `heads` = (spell_mask, spell, target_mask, target, second_mask, second), rows as `obs`
-        (masks bool); only the `cast` rows' heads count. The entropy is the entry's plus, for a
-        cast, its heads' along the chosen path."""
+        (masks bool); only the `cast` rows' heads count; `preview` the rows' kill preview, for a
+        network that reads it. The entropy is the entry's plus, for a cast, its heads' along the
+        chosen path."""
         spell_mask, spell, target_mask, target, second_mask, second = heads
         h = self.encode(obs)
         value = self.value(h)
-        logits = masked(self.entry_logits(h), entry_mask)
+        logits = self.with_preview(self.entry_logits(h), h, obs, preview, entry_mask)
+        logits = masked(logits, entry_mask)
         logprob = chosen(logits, entry)
         ent = entropy(logits)
         rows = torch.nonzero(cast).squeeze(1)
@@ -251,10 +285,28 @@ class Policy(nn.Module):
         return logprob, ent, value
 
 
+#: The features of a previewed entry (`Mlp.with_preview`).
+PREVIEW_FEATURES = 4
+
+
+def preview_slots(base: int, entries: int) -> np.ndarray:
+    """The target stack slot of each previewed entry (the batch's `preview_base`,
+    `preview_entries`): the attack entries' (24 per slot), then the shots' (2 per slot)."""
+    if base != L.ATTACK_BASE or entries != L.HEAL_BASE - L.ATTACK_BASE:
+        raise ValueError(f"a preview of entries {base} to {base + entries} is not v13's strikes")
+    return np.concatenate(
+        [
+            np.arange(L.ATTACK_SLOTS * L.STACK_CAPACITY) // L.ATTACK_SLOTS,
+            np.arange(2 * L.STACK_CAPACITY) // 2,
+        ]
+    )
+
+
 class Mlp(Policy):
     """The MLP (E05 T8): `symlog`, a trunk of two `hidden`-unit layers, the value and entry heads
     on it; the spell head takes the trunk and which cast, the target head also the spell's
-    embedding, the second head also the target's."""
+    embedding, the second head also the target's. With `preview` (E06 T6d) the entry head reads
+    the kill preview (the module's documentation)."""
 
     def __init__(
         self,
@@ -264,6 +316,7 @@ class Mlp(Policy):
         targets: int,
         hidden: int = 512,
         embed: int = 32,
+        preview: tuple[int, int] | None = None,
     ) -> None:
         super().__init__()
         root2 = float(np.sqrt(2.0))
@@ -280,10 +333,27 @@ class Mlp(Policy):
         self.target_head = init(nn.Linear(hidden + 2 + embed, targets), 0.01)
         self.target_embed = nn.Embedding(targets, embed)
         self.second_head = init(nn.Linear(hidden + 2 + 2 * embed, targets), 0.01)
+        #: `preview`: the batch's (`preview_base`, `preview_entries`), or None.
+        self.reads_preview = preview is not None
+        if preview is not None:
+            self.preview_base, self.preview_entries = preview
+            slot = torch.from_numpy(preview_slots(*preview))
+            column = L.STACKS + slot * L.STACK_FEATURES
+            self.register_buffer("count_column", column + L.COUNT, persistent=False)
+            self.register_buffer("hp_column", column + L.MAX_HP, persistent=False)
+            self.preview_net = nn.Sequential(
+                init(nn.Linear(PREVIEW_FEATURES, embed), root2),
+                nn.ReLU(),
+                init(nn.Linear(embed, embed), 1.0),
+            )
+            # Near 0 at the start: the network begins as the MLP without the preview.
+            self.preview_context = init(nn.Linear(hidden, embed), 0.01)
 
     @classmethod
-    def for_batch(cls, batch: BattleBatch, hidden: int = 512, embed: int = 32) -> Mlp:
-        """A network sized for `batch`'s encodings."""
+    def for_batch(
+        cls, batch: BattleBatch, hidden: int = 512, embed: int = 32, preview: bool = False
+    ) -> Mlp:
+        """A network sized for `batch`'s encodings (with `preview`, for its kill preview)."""
         return cls(
             batch.observation_len,
             batch.action_count,
@@ -291,6 +361,41 @@ class Mlp(Policy):
             batch.target_count,
             hidden,
             embed,
+            (batch.preview_base, batch.preview_entries) if preview else None,
+        )
+
+    def with_preview(self, logits, encoding, obs, preview, mask):
+        if not self.reads_preview:
+            return logits
+        if preview is None:
+            raise ValueError("this network reads the kill preview: BattleBatch(preview=True)")
+        base, entries = self.preview_base, self.preview_entries
+        # Only the legal strikes' features (a row has a few dozen of its 1 092 entries).
+        row, k = torch.nonzero(mask[:, base : base + entries], as_tuple=True)
+        kills = preview[row, k].to(obs.dtype)
+        least, greatest = kills[:, 0], kills[:, 1]
+        mean = 0.5 * (least + greatest)
+        count = obs[row, self.count_column[k]]
+        hp = obs[row, self.hp_column[k]]
+        features = torch.stack(
+            [
+                symlog(least),
+                symlog(greatest),
+                (mean / count.clamp(min=1.0)).clamp(0.0, 1.0),
+                symlog(mean * hp),
+            ],
+            dim=1,
+        )
+        bias = (self.preview_net(features) * self.preview_context(encoding[0])[row]).sum(1)
+        strikes = torch.zeros(logits.shape[0], entries, dtype=logits.dtype, device=logits.device)
+        strikes = strikes.index_put((row, k), bias)
+        return torch.cat(
+            [
+                logits[:, :base],
+                logits[:, base : base + entries] + strikes,
+                logits[:, base + entries :],
+            ],
+            dim=1,
         )
 
     def encode(self, obs: torch.Tensor) -> Encoding:
@@ -318,10 +423,11 @@ class Mlp(Policy):
 
 def build(config: dict[str, Any], batch: BattleBatch) -> Policy:
     """The network a run's config names (`asdict(Config)`, as every saved file holds it), sized
-    for `batch`'s encodings. A config without `kind` (before E06 T5a) names an MLP."""
+    for `batch`'s encodings. A config without `kind` (before E06 T5a) names an MLP, one without
+    `preview` (before E06 T6d) a network that does not read the kill preview."""
     kind = config.get("kind", "mlp")
     if kind == "mlp":
-        return Mlp.for_batch(batch, config["hidden"], config["embed"])
+        return Mlp.for_batch(batch, config["hidden"], config["embed"], config.get("preview", False))
     if kind == "entity":
         from .entity import Entity
 

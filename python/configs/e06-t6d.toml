@@ -1,0 +1,33 @@
+# E06 T6d's A/B run on the user's machine (increment 6, the user's next lever, 2026-10-26;
+# AI-Q7 (b) part 2): `t7-1`'s settings (`e06-t7.toml`) with the MLP's entry head reading the
+# batch's kill preview. Each legal attack and shot entry's previewed kills (the engine's
+# BAT-DMG-011 preview, what the original shows a player) add a bias to its logit, scaled by the
+# state (`policy`'s documentation); the bias starts near 0, so the network begins as `t7-1`'s
+# did. Every batch the network plays (the training's, the gate's, the ladders') writes the
+# preview. T6a's evidence: only 53 % of `t7-1`'s strikes take the best previewed kill:
+#
+#   uv run --group train python -m h3env.train --config configs/e06-t6d.toml --out runs/t6d-1
+#   uv run --group train python -m h3env.train --resume runs/t6d-1
+
+seed = 1
+samples = 20_000_000
+
+[env]
+kinds = [78, 2, 100, 50, 25, 3]
+
+[network]
+preview = true
+
+[league]
+self_play = 0.5
+snapshot_every = 1_000_000
+max_members = 16
+live = 4
+live_every = 250_000
+
+[gate]
+gate_every = 10_000_000
+
+[ladder]
+ladder_episodes = 250
+ladder_final_episodes = 500

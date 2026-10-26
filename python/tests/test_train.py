@@ -35,7 +35,7 @@ from h3env.train.evaluate import (  # noqa: E402
     random_agent,
 )
 from h3env.train.policy import Mlp, build  # noqa: E402
-from h3env.train.ppo import Trainer  # noqa: E402
+from h3env.train.ppo import Trainer, episode_entries  # noqa: E402
 from h3env.train.run import (  # noqa: E402
     ConfigError,
     HeldOutError,
@@ -544,6 +544,68 @@ def test_a_neutral_episode_draws_no_member_and_the_rates_split_by_kind() -> None
         assert int(batch.encounter[e]) not in NEUTRAL_KINDS
 
 
+def test_the_entries_keep_every_kinds_share_and_split_the_player_kinds() -> None:
+    # E06 T6b: without `system_share` the batch's one entry, as before; with it the neutral
+    # kinds', the player kinds' own and one per side of the system actor, each kind's share of
+    # the episodes kept (`t7-1`'s kinds: the neutral 83 of 258, the player kinds' 175 split
+    # 3 : 1 : 1 at a quarter).
+    kinds = [78, 2, 100, 50, 25, 3]
+    assert episode_entries(Config(kinds=kinds)) == [(1, kinds, -1)]
+    assert episode_entries(Config()) == [(1, None, -1)]
+    player, neutral = [0, 0, 100, 50, 25, 0], [78, 2, 0, 0, 0, 3]
+    assert episode_entries(Config(kinds=kinds, system_share=0.25)) == [
+        (2000 * 83, neutral, -1),
+        (1500 * 175, player, -1),
+        (250 * 175, player, 0),
+        (250 * 175, player, 1),
+    ]
+    # No neutral kind, every player kind's episode against the system actor: two entries.
+    assert episode_entries(Config(kinds=player, system_share=1.0)) == [
+        (1000 * 175, player, 0),
+        (1000 * 175, player, 1),
+    ]
+
+
+def test_the_system_actor_plays_a_share_of_the_player_kinds_against_the_learner() -> None:
+    # E06 T6b (decision 9 amended): with `system_share` a player kind's episode may have the
+    # system actor on either side inside the batch; such an episode draws no member, the learner
+    # plays its other side alone, and the update record scores it there by side, apart from
+    # self-play's rates.
+    config = Config(
+        **{**SMALL, "envs": 32, "max_steps": 10},
+        self_play=0.0,
+        kinds=[0, 0, 1, 0, 0, 0],
+        system_share=0.5,
+    )
+    trainer = Trainer(config)
+    member, _ = trainer.join()
+    assert trainer.league.draw(0)
+    trainer.assign(np.arange(config.envs))
+    batch = trainer.batch
+    assert [e["weight"] for e in batch.entries()] == [1000, 500, 500]
+    system = trainer.system_side[batch.scenario]
+    assert (batch.encounter == _ffi.ENCOUNTER_HERO).all()
+    assert {0, 1, -1} <= set(system.tolist())
+    assert (trainer.frozen_side[system >= 0] == -1).all()
+    assert (trainer.frozen_id[system < 0] == member.id).all()
+    # The system actor moves inside the call: the side to move is always the learner's.
+    moving = (system >= 0) & (batch.to_move >= 0)
+    assert moving.any() and (batch.to_move[moving] == 1 - system[moving]).all()
+    roll = trainer.collect()
+    # Every episode is a member's or the system actor's: none counts as self-play.
+    assert roll["league_episodes"] > 0 and roll["self_play_episodes"] == 0
+    assert roll["by_kind"] == {}
+    assert set(roll["system"]) == {"attacker", "defender"}
+    for row in roll["system"].values():
+        assert row["episodes"] > 0 and 0.0 <= row["score"] <= 1.0
+    # The episodes the rollout's ends started drew alike.
+    system = trainer.system_side[batch.scenario]
+    assert (trainer.frozen_side[system >= 0] == -1).all()
+    assert (trainer.frozen_id[system < 0] == member.id).all()
+    stats = trainer.update(1e-4)
+    assert stats["update_samples"] > 0 and np.isfinite(stats["policy_loss"])
+
+
 def test_the_ladder_scores_at_reward_v1s_settings_whatever_the_run_trains_with() -> None:
     # The mana-price experiment (decision 10): `[env] currency` and `mana_price` shape the
     # training's reward only; the ladders score at reward v1's, as the bots' tables do.
@@ -700,6 +762,99 @@ def test_an_entity_run_stops_resumes_and_plays_its_ladder(tmp_path) -> None:
     assert [s["ended"] for s in record["segments"]] == ["stop", "budget"]
     best = load(tmp_path / "best.pt")
     assert isinstance(best, Entity) and best.width == 16 and len(best.blocks) == 1
+    rows = ladder(best, opponents=["random"], per_kind=1, max_steps=300)
+    assert rows["random"]["games"] == 6
+
+
+def test_the_kill_preview_biases_the_legal_strikes_alone_and_is_recomputed() -> None:
+    # E06 T6d (AI-Q7 (b) part 2): a network that reads the preview adds a bias to each legal
+    # attack and shot entry's logit from its previewed kills, every other logit the MLP's own; it
+    # refuses a batch without the preview, and the update's log-probabilities come back from the
+    # rollout's stored preview (half precision).
+    batch = BattleBatch(8, threads=2, seed=3, max_steps=300, preview=True)
+    batch.add_scenario(scenario("full"))
+    batch.add_encounters()
+    batch.reset()
+    torch.manual_seed(0)
+    policy = Mlp.for_batch(batch, hidden=32, embed=8, preview=True)
+    assert policy.reads_preview and not Mlp.for_batch(batch, hidden=32, embed=8).reads_preview
+    with torch.no_grad():
+        policy.preview_context.weight.mul_(300.0)  # a bias large enough to move the choices
+    generator = torch.Generator().manual_seed(1)
+    calls = 40
+    rollout = Rollout(calls, batch.envs, batch)
+    assert rollout.preview is not None and rollout.preview.dtype == np.float16
+    base, n = batch.preview_base, batch.preview_entries
+    moved = 0
+    for t in range(calls):
+        obs = torch.from_numpy(batch.obs)
+        mask = torch.from_numpy(batch.entry_mask).bool()
+        with torch.no_grad():
+            h = policy.encode(obs)
+            plain = policy.entry_logits(h)
+            biased = policy.with_preview(plain, h, obs, torch.from_numpy(batch.preview), mask)
+        strikes = torch.zeros_like(mask)
+        strikes[:, base : base + n] = mask[:, base : base + n]
+        assert torch.equal(biased[~strikes], plain[~strikes])
+        moved += int((biased[strikes] != plain[strikes]).sum())
+        choice = policy.act(batch, generator)
+        rollout.store(t, batch, choice, batch.to_move)
+        a = batch.actions
+        a["entry"], a["spell"] = choice.entry, choice.spell
+        a["target"], a["second"] = choice.target, choice.second
+        batch.step()
+    assert moved > 0
+    valid = (rollout.side >= 0).reshape(-1)
+
+    def flat(array):
+        return torch.from_numpy(array.reshape(-1, *array.shape[2:])[valid])
+
+    heads = tuple(
+        flat(getattr(rollout, name))
+        for name in ("spell_mask", "spell", "target_mask", "target", "second_mask", "second")
+    )
+    with torch.no_grad():
+        logp, _, _ = policy.evaluate(
+            flat(rollout.obs),
+            flat(rollout.entry_mask),
+            flat(rollout.entry),
+            flat(rollout.cast),
+            heads,
+            flat(rollout.preview),
+        )
+    np.testing.assert_allclose(logp.numpy(), flat(rollout.logprob).numpy(), atol=1e-4)
+    with pytest.raises(ValueError, match="kill preview"):
+        policy.act(mixed_batch())
+    with pytest.raises(ValueError, match="kill preview"):
+        policy.evaluate(
+            flat(rollout.obs),
+            flat(rollout.entry_mask),
+            flat(rollout.entry),
+            flat(rollout.cast),
+            heads,
+        )
+
+
+def test_a_preview_run_gates_plays_its_ladder_and_resumes(tmp_path) -> None:
+    # E06 T6d: a run whose network reads the kill preview: its batch, the gate's and the
+    # ladders' write it; stopped after its first update and resumed to the budget; its files
+    # are networks that read it.
+    config = Config(**SMALL, preview=True, samples=2 * ONE_UPDATE, snapshot_every=1)
+
+    def interrupt(record: dict) -> None:
+        if record["type"] == "update" and record["update"] == 1:
+            signal.raise_signal(signal.SIGINT)
+
+    stopped = train(config, tmp_path, log=interrupt)
+    assert stopped.policy.reads_preview and stopped.batch.preview is not None
+    finished = resume(tmp_path)
+    assert finished.updates >= 2 and finished.policy.reads_preview
+    record = json.loads((tmp_path / "record.json").read_text())
+    assert check_record(record) == [] and record["config"]["network"]["preview"] is True
+    assert record["gates"] and all(g["result"] for g in record["gates"])
+    assert [ladder["final"] for ladder in record["ladders"]][-1] is True
+    best = load(tmp_path / "best.pt")
+    assert best.reads_preview
     rows = ladder(best, opponents=["random"], per_kind=1, max_steps=300)
     assert rows["random"]["games"] == 6
 

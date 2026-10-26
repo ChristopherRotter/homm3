@@ -163,6 +163,11 @@ GREEN_FRAMES = range(1, 26)
 FRAME_DEADLINE = 0x698998
 IDLE_STEP_TIME = 0x6989B8  # the idle step's next time (0x4960D0)
 COMBAT_SPEED = 0x6987EC  # the setting, 0 to 2 (factors 0x63CF7C)
+# The adventure map's speeds (E24 M2 T1a2, design §3.4; the registry's "Window Scroll Speed" and
+# "Walk Speed", settings_read 0x50B7B0): the scroll's, 0 to 2 (the tiles a step: 1, 2, 3 by
+# 0x63A66C), read at each scroll (view_scroll 0x4195C0); the hero's walk, 1 to 4 (M2 T1b). And
+# the scroll's last time (0x691674: the edge scroll waits 70 ms from it, 0x419820).
+SCROLL_SPEED, WALK_SPEED, SCROLL_TIME = 0x69878C, 0x69875C, 0x691674
 # Battle manager: records per side +0x54BC, the stacks from +0x54CC (21 per side, 0x6EE8 apart,
 # 0x548 each), the idle step's counter +0x13FFC.
 SIDE_COUNTS, STACKS, SIDE_STRIDE, STACK_SIZE, STEP_COUNTER = 0x54BC, 0x54CC, 0x6EE8, 0x548, 0x13FFC
@@ -261,7 +266,8 @@ class Mem:
 
     def write_u32(self, address, value):
         """Writes a u32 into the game's memory: only the harness's own timers (M3 T6c-2,
-        `align_mouse_poll`), never the game's state."""
+        `align_mouse_poll`) and the game's settings (E24 M2 T1a2: a sequence's speeds), never
+        the game's state."""
         with open(f"/proc/{self.pid}/mem", "r+b", buffering=0) as f:
             f.seek(address)
             f.write(struct.pack("<I", value))
@@ -723,6 +729,14 @@ class Mem:
     def frame_steps(self):
         """The objects' frame steps (adventure manager +0x100, design §1.6)."""
         return self.manager_field(FRAME_STEPS)
+
+    def cursor(self):
+        """The cursor (E24 M2 T1a2): its type (0 `crdeflt.DEF`, 1 `cradvntr.DEF`, ...), its
+        frame (the edge scroll's 32 to 39 on the map, design §3.4) and the point it is drawn at
+        (the mouse's at the last poll, its x even: design §9.10 of E17)."""
+        pointer = self.u32(MOUSE_MANAGER)
+        return [self.i32(pointer + CURSOR_TYPE), self.i32(pointer + CURSOR_FRAME),
+                self.i32(pointer + CURSOR_X), self.i32(pointer + CURSOR_Y)]
 
     def map_objects(self):
         """The map's objects in its order (E24 M1 T4a): [(x, y, level, template, phase)] from

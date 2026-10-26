@@ -29,7 +29,9 @@ also accepts schema 4, before the league: `t3b-1`, its config's `[pool]`):
   `frozen_passes`, instead of the pool's win rate; from E06 T7c, once a run's updates have
   them, `by_kind`: per encounter kind the self-play episodes, the attacker's wins and the
   truncations, summed over the interval; a neutral kind's attacker is the learner against the
-  system actor).
+  system actor; from E06 T6b, with `[league] system_share`, `system`: per side of the learner
+  its episodes against the system actor in the player kinds and its mean score there, a draw or
+  a truncation ½).
 - `gates` (schema 4): each gate's samples, update, the best it played, its result (`promoted`,
   `rejected`, `inconclusive`), pairs, the pairs' counts per score, LLR, mean score, Elo, games,
   seconds and (schema 5, E06 T4a) the league's member table at the gate (each member's id, kind,
