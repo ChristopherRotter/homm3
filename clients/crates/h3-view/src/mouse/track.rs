@@ -204,7 +204,7 @@ impl Handler<'_> {
         let Some(field) = field else {
             return;
         };
-        let at = match spot(self.layout, point) {
+        let at = match spot(self.layout, point, field.rects()) {
             Spot::Nothing => None,
             other => Some(other),
         };

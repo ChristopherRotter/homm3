@@ -560,6 +560,9 @@ pub const LAND_MINE: u16 = 11;
 pub const MINE_BLAST: u8 = 57;
 /// Force Field ([`QUICKSAND`]).
 pub const FORCE_FIELD: u16 = 12;
+/// Earthquake (E17 M4 T2c-2, design §10.2): its handler shakes the screen and plays the
+/// explosions over the walls it hits (`earthquake` 0x5A7C80; [`Timeline::shake`]).
+pub const EARTHQUAKE: u16 = 14;
 /// Fire Wall ([`QUICKSAND`]).
 pub const FIRE_WALL: u16 = 13;
 
@@ -966,6 +969,8 @@ pub struct Timeline {
     /// The spans in which the screen shows the drawbridge's rectangle alone (E17 M4 T2c-1; the
     /// original's, CLT-Q23).
     pub bridges: Vec<BridgeKey>,
+    /// Earthquake's shakes and the mouse hidden through them (E17 M4 T2c-2).
+    pub quakes: Vec<QuakeKey>,
     /// When the last frame shows.
     pub end: u32,
 }
@@ -1128,6 +1133,7 @@ impl Timeline {
         self.beams
             .iter()
             .any(|b| (b.cursor[0]..b.cursor[1]).contains(&t))
+            || self.quakes.iter().any(|q| (q.from..q.until).contains(&t))
     }
 
     /// The projectile showing at `t`, if one flies then.
@@ -1228,10 +1234,16 @@ impl Timeline {
         };
         Some(Blast {
             def: last.def.clone(),
-            at: last.at,
-            rect: last.rect,
+            landings: last.landings.clone(),
             frames,
         })
+    }
+
+    /// How many of Earthquake's shake's steps have shown at `t`, if it shakes then (E17 M4
+    /// T2c-2): the screen saved at its start shows shifted by each offset in turn
+    /// ([`shake_offsets`]).
+    pub fn shake(&self, t: u32) -> Option<u32> {
+        self.quakes.iter().find_map(|q| q.steps(t))
     }
 
     /// The battlefield objects showing at `t`, by anchor (E17 M3 T7c-2).
@@ -1353,6 +1365,10 @@ impl Timeline {
         times.extend(self.turrets.iter().map(|k| k.shown));
         times.extend(self.walls.iter().map(|k| k.shown));
         times.extend(self.blasts.iter().map(|k| k.shown));
+        for q in &self.quakes {
+            times.extend((0..SHAKES * 15).map(|k| q.from + k * q.step));
+            times.push(q.until);
+        }
         times.extend(&self.steps);
         let mut idle = self.idle;
         idle.run(until, |t| times.push(t));
@@ -1750,6 +1766,7 @@ fn played(
         blast_count: 0,
         bridges: Vec::new(),
         bridge_from: None,
+        quakes: Vec::new(),
     };
     // A siege with a fort (E17 M4 T2b): the walls' states and hit points, each turret standing.
     if let Some(s) = snapshot.siege.as_ref().filter(|s| s.fort > 0) {
@@ -1926,6 +1943,7 @@ fn played(
         walls: player.wall_keys,
         blasts: player.blasts,
         bridges: player.bridges,
+        quakes: player.quakes,
         end: player.clock.now,
     })
 }
@@ -2223,6 +2241,8 @@ struct Player<'a> {
     bridges: Vec<BridgeKey>,
     /// The start of the span the drawbridge's last redraws opened: the next frame shown ends it.
     bridge_from: Option<u32>,
+    /// Earthquake's shakes (E17 M4 T2c-2).
+    quakes: Vec<QuakeKey>,
 }
 
 /// A spell a melee strike leaves pending on the stack it struck ([`PENDING`]): the stack, the
@@ -2687,6 +2707,8 @@ impl Player<'_> {
                                 | Event::ObstaclePlaced { .. }
                                 | Event::SpellRaised { .. }
                                 | Event::Sacrificed { .. }
+                                | Event::WallQuaked { .. }
+                                | Event::WallDestroyed { .. }
                         )
                     }) {
                         i += 1;
@@ -3380,9 +3402,10 @@ impl Player<'_> {
                 .any(|e| matches!(*e, Event::SpellResisted { target } if target == t))
         };
         // The raises (E17 M3 T7c-3: `raise_stack`, player 4) and Chain Lightning (its handler's
-        // own rays) aim at a corpse or at several stacks.
+        // own rays) aim at a corpse or at several stacks; Earthquake at the walls (E17 M4 T2c-2).
         let mut done = self.raising(s, (spell, &look), effects)
-            || (look.original == CHAIN_LIGHTNING && self.chain(spell, &look, effects));
+            || (look.original == CHAIN_LIGHTNING && self.chain(spell, &look, effects))
+            || (look.original == EARTHQUAKE && self.quaking(spell, effects));
         match aimed.filter(|_| !done) {
             Some((t, live)) if resisted(t) => {
                 self.cue(t, Sound::Resisted, false);
@@ -5368,8 +5391,8 @@ pub use chain::{CHAIN_LIGHTNING, CHAIN_START};
 pub use creature::{FIRE_SHIELD, SHIELD_RETURN};
 pub use raise::{ANIMATE_DEAD, RAISE, RESURRECTION, SACRIFICE, SACRIFICED};
 pub use siege::{
-    Blast, BlastKey, BridgeKey, Burst, DRAWBRIDGE_RECT, SiegeStage, TARGET_POINTS, TurretKey,
-    TurretPose, WallKey, turret_record,
+    Blast, BlastKey, BridgeKey, Burst, DRAWBRIDGE_RECT, Landing, QuakeKey, SHAKE, SHAKES,
+    SiegeStage, TARGET_POINTS, TurretKey, TurretPose, WallKey, shake_offsets, turret_record,
 };
 
 #[cfg(test)]

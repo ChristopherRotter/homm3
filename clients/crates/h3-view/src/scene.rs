@@ -78,6 +78,9 @@ pub struct Moment {
     /// While the drawbridge's redraws show its rectangle alone (E17 M4 T2c-1, the original's:
     /// CLT-Q23), the battle the screen shows beyond it.
     pub bridge: Option<Box<Moment>>,
+    /// While Earthquake shakes the screen (E17 M4 T2c-2), how many of its steps have shown: the
+    /// frame's assembler shifts the whole screen ([`Draw::Shaken`]).
+    pub shake: Option<u32>,
 }
 
 impl Moment {
@@ -106,6 +109,7 @@ impl Moment {
             bridge: timeline
                 .bridge(t)
                 .map(|before| Box::new(Self::at(timeline, before))),
+            shake: timeline.shake(t),
         }
     }
 }
@@ -303,6 +307,18 @@ pub enum Draw {
     /// rectangle alone, `screen_show_rect` 0x446485).
     Within {
         /// The rectangle.
+        rect: [i32; 4],
+        /// The list.
+        list: Vec<Draw>,
+    },
+    /// Earthquake's shake (E17 M4 T2c-2, `earthquake` 0x5A7C80, design §10.2): the list composed
+    /// on a frame of its own (the screen saved), copied onto a copy of itself at each offset in
+    /// turn (what an offset uncovers keeps the step before's pixels: CLT-Q19 (6)); that copy's
+    /// rectangle `rect` (the battlefield shown) is drawn here, the saved frame elsewhere.
+    Shaken {
+        /// The offsets, in order.
+        offsets: Vec<[i32; 2]>,
+        /// The rectangle shown (left, top, right, bottom, exclusive).
         rect: [i32; 4],
         /// The list.
         list: Vec<Draw>,
@@ -669,23 +685,40 @@ pub fn battle_at(
         // canvas's own top, and the frame drawer clips the rows above the battlefield off them
         // again: an explosion over the top edge loses as many rows at its bottom (CLT-Q22: the
         // compose's original profile alone). Its columns alike at the left edge, which no wall's
-        // target reaches (the canvas 254 wide around x 400 or more).
-        let rows = u32::try_from(blast.rect[3] - blast.rect[1]).unwrap_or(0);
-        inner.push(Draw::Explosion {
-            def: blast.def.clone(),
-            frame,
-            x: blast.at[0],
-            y: blast.at[1],
-            rows,
-        });
+        // target reaches (the canvas 254 wide around x 400 or more). Earthquake's the same way
+        // over every target hit, in turn (0x5A7FDC; E17 M4 T2c-2).
+        for landing in &blast.landings {
+            let rows = u32::try_from(landing.rect[3] - landing.rect[1]).unwrap_or(0);
+            inner.push(Draw::Explosion {
+                def: blast.def.clone(),
+                frame,
+                x: landing.at[0],
+                y: landing.at[1],
+                rows,
+            });
+        }
     }
-    if let Some(blast) = &moment.blast {
+    // Each landing's rectangle shown (0x446485, 0x5A7FFC): the back buffer's in all of them.
+    for landing in moment.blast.iter().flat_map(|b| &b.landings) {
         list.push(Draw::Within {
-            rect: blast.rect,
-            list: inner,
+            rect: landing.rect,
+            list: inner.clone(),
         });
     }
     Ok(list)
+}
+
+/// A frame's whole list (the battle and the panel, no cursor) as Earthquake's shake shows it after
+/// `steps` of its steps (E17 M4 T2c-2, design §10.2): the screen saved at its start shifted by
+/// each offset in turn, the battlefield shown (the layout's mouse field), the panel as it was.
+#[must_use]
+pub fn shaken(list: Vec<Draw>, steps: u32, layout: &BattleLayout) -> Draw {
+    let [width, height] = layout.mouse.field;
+    Draw::Shaken {
+        offsets: crate::anim::shake_offsets(steps),
+        rect: [0, 0, width, height],
+        list,
+    }
 }
 
 /// [`battle_at`] without a wall shot's explosion, and how many of its first draws are the

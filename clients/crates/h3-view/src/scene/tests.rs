@@ -519,6 +519,7 @@ fn a_moment_draws_each_stack_in_its_pose() {
         turrets: [None; 3],
         blast: None,
         bridge: None,
+        shake: None,
     };
     let list = battle_at(&battle_view(), &moment, &keys(), &tables(), &layout).unwrap();
     // The magic animation right after its stack's sprite, once.

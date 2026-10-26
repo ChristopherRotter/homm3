@@ -146,15 +146,15 @@ pub fn names(list: &[Draw], layout: &BattleLayout) -> BTreeSet<String> {
         }
         Draw::Button { def, .. } | Draw::Cursor { def, .. } => vec![def],
         Draw::Text { item, .. } => vec![&item.picture, &item.font, &item.font_palette],
-        Draw::Ray(_) | Draw::Within { .. } => Vec::new(),
+        Draw::Ray(_) | Draw::Within { .. } | Draw::Shaken { .. } => Vec::new(),
     });
     let mut all: BTreeSet<String> = named
         .chain(core::iter::once(&layout.outline_palette))
         .map(|n| n.to_ascii_uppercase())
         .collect();
-    // A list drawn within a rectangle names its own (E17 M4 T2b).
+    // A list drawn within a rectangle names its own (E17 M4 T2b), a shaken one too (T2c-2).
     for d in list {
-        if let Draw::Within { list, .. } = d {
+        if let Draw::Within { list, .. } | Draw::Shaken { list, .. } = d {
             all.extend(names(list, layout));
         }
     }
@@ -331,6 +331,16 @@ mod tests {
                     rows: 1,
                 }],
             },
+            // A shaken list too (M4 T2c-2: Earthquake).
+            Draw::Shaken {
+                offsets: vec![[1, 1]],
+                rect: [0, 0, 1, 1],
+                list: vec![Draw::Background {
+                    picture: "Shaken.pcx".to_string(),
+                    x: 0,
+                    y: 0,
+                }],
+            },
         ];
         let names: Vec<String> = names(&list, &layout).into_iter().collect();
         assert_eq!(
@@ -355,6 +365,7 @@ mod tests {
                 "PLCBOWX.DEF",
                 "SGCSTW21.PCX",
                 "SGEXPL.DEF",
+                "SHAKEN.PCX",
                 "SMALFONT.FNT",
                 "SP12_.DEF",
                 "TINY.FNT"
