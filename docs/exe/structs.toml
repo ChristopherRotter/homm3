@@ -290,7 +290,9 @@ fields = [
   { offset = 0x0, name = "polarity", type = "i32", summary = "-1 negative, 0 neutral, 1 positive", confidence = "read" },
   { offset = 0x4, name = "sound", type = "char*", summary = "sound name", confidence = "read" },
   { offset = 0x8, name = "animation", type = "i32", summary = "animation", confidence = "read" },
-  { offset = 0xC, name = "flags", type = "u32", summary = "flag bits (installation.md §7.6)", confidence = "read" },
+  { offset = 0xC, name = "flags", type = "u32", summary = "flag bits (installation.md §7.6); 0x2000 (only 57, Titan's Lightning Bolt) bans the spell in every game (new_game_bans 0x4C286C)", confidence = "read", refs = ["rules/surveys/E08-rewards.md §7.5"] },
+  { offset = 0x18, name = "level", type = "i32", summary = "the spell's level 1-5 (from SPTRAITS.TXT; H3API level): a reward's and the Pyramid's spell is learned at most at 2 + Wisdom (0x4A059D, 0x4A442A)", confidence = "read", refs = ["rules/surveys/E08-rewards.md §7.4", "rules/surveys/E08-rewards.md §7.5"] },
+  { offset = 0x1C, name = "school", type = "u32", summary = "the spell's school bits (from SPTRAITS.TXT; H3API school): 0 none; the Pyramid's draw takes only spells with one (0x4C1A17)", confidence = "read", refs = ["rules/surveys/E08-rewards.md §7.5"] },
 ]
 
 [[struct]]
@@ -366,7 +368,7 @@ fields = [
   { offset = 0xC9, name = "secondary_skill_levels", type = "u8[28]", summary = "level per secondary skill id", confidence = "read", refs = ["installation.md §7.4"] },
   { offset = 0xE5, name = "secondary_skill_slots", type = "u8[28]", summary = "per secondary skill id its slot in the hero's list, 1-8 in the order learned (0x4E22D0)", confidence = "read", refs = ["rules/surveys/E08-progression.md §2.5"] },
   { offset = 0x101, name = "secondary_skill_count", type = "i32", summary = "the number of secondary skills known, at most 8 (0x4E22D0, 0x4DAD00)", confidence = "read", refs = ["rules/surveys/E08-progression.md §2.4"] },
-  { offset = 0x105, name = "status_flags", type = "u32", summary = "bit 21 a Warrior's Tomb's penalty taken until the battle's end (0x4A7DA8, cleared by 0x4DA510); bit 1 the Stables' +400 land points (0x4E4990); bit 18 in a boat (set by hero_boards_boat 0x4A1010; no flying or water walking then); bit 24 1 000 000 points a day (not set by any rule read)", confidence = "read", refs = ["rules/surveys/E08-hero-movement.md §1.1", "rules/surveys/E08-hero-movement.md §2.1"] },
+  { offset = 0x105, name = "status_flags", type = "u32", summary = "bit 21 a Warrior's Tomb's penalty taken until the battle's end (0x4A7DA8, cleared by 0x4DA510); bit 1 the Stables' +400 land points (0x4E4990); bit 18 in a boat (set by hero_boards_boat 0x4A1010; no flying or water walking then); bit 24 1 000 000 points a day (not set by any rule read); bit 12 a looted Pyramid's -2 luck taken until the battle's end (visit_pyramid 0x4A4309, cleared by 0x4DA510)", confidence = "read", refs = ["rules/surveys/E08-hero-movement.md §1.1", "rules/surveys/E08-hero-movement.md §2.1", "rules/surveys/E08-rewards.md §7.5"] },
   { offset = 0x112, name = "fly_power", type = "i32", summary = "the Fly spell's level, -1 none (H3API flyPower); Angel Wings count as 3 for the price and the pathfinder (0x4B18C0, 0x56B440) but not here, nor in the move's drop to 0 (A-12); with Angel Wings a guard attacks only at the move's destination", confidence = "read", refs = ["rules/surveys/E08-battles.md §2.2", "rules/surveys/E08-hero-movement.md §2.1"] },
   { offset = 0x116, name = "water_walk_power", type = "i32", summary = "the Water Walk spell's level, -1 none; Boots of Levitation count as 3 for the price and the pathfinder, not here", confidence = "read", refs = ["rules/surveys/E08-hero-movement.md §2.1"] },
   { offset = 0x11A, name = "morale_bonus", type = "i8", summary = "the morale bonus until the end of the hero's next battle: the Warrior's Tomb's -3 (0x4A7DC2); cleared by hero_battle_bonuses_clear 0x4DA510 (H3API moraleBonus)", confidence = "read", refs = ["rules/surveys/E08-rewards.md §6.9"] },
@@ -389,7 +391,7 @@ refs = ["rules/surveys/E08-objects.md"]
 h3api = "H3Main"
 fields = [
   { offset = 0x4, name = "shrine_spell_marks", type = "u8[70]", summary = "per spell set when a random Shrine drew it or when it is banned: start as a copy of the bans (0x4C2965), random_shrine_spell 0x4C95A0 skips and sets them (H3API disabledShrines)", confidence = "read", refs = ["rules/surveys/E08-rewards.md §6.5"] },
-  { offset = 0x4A, name = "banned_spells", type = "u8[70]", summary = "per spell set when the game bans it (H3API disabledSpells): the shrines' refill and the Scholar's draw skip it", confidence = "read", refs = ["rules/surveys/E08-rewards.md §6.5"] },
+  { offset = 0x4A, name = "banned_spells", type = "u8[70]", summary = "per spell set when the game bans it (H3API disabledSpells): the shrines' refill, the Scholar's and the Pyramid's draws skip it; the map's bans and every spell with flag 0x2000 (new_game_bans 0x4C286C)", confidence = "read", refs = ["rules/surveys/E08-rewards.md §6.5", "rules/surveys/E08-rewards.md §7.5"] },
   { offset = 0xA4, name = "hero_setup", type = "hero_setup[156]", summary = "per hero type the map file's placed hero (H3API heroSetup, H3SetupHero[156]): placed_heroes_setup (0x4CAE10) sets each hero up from it", confidence = "read", refs = ["rules/surveys/E08-progression.md §3.1"] },
   { offset = 0x1F458, name = "campaign_info", type = "bytes[0x7C]", summary = "H3API's campaignInfo (H3CmpInfo): +0x2 the scenario's index (campaignMapIndex), +0x4 the campaign (bigCampaignIndex), +0x3C the carried-over heroes (crossoverHeroes, walked by carried_heroes_setup 0x487290)", confidence = "inferred", refs = ["rules/surveys/E08-progression.md §3.1"] },
   { offset = 0x1F45C, name = "campaign_index", type = "i32", summary = "H3API's campaignInfo.bigCampaignIndex, the campaign's number (E08 T24a2a; T24a1 guessed a scenario): compared with 14 (with 0x69774C and hero 45) by the level-up's campaign branch and with 8 by a campaign case of the new game (called at 0x4C004D) and of placed_hero_setup", confidence = "inferred", refs = ["rules/surveys/E08-progression.md §2.3"] },
@@ -465,6 +467,7 @@ fields = [
   { offset = 0x9C, name = "resources", type = "i32[7]", summary = "wood, mercury, ore, sulfur, crystal, gems, gold (+0xB4)", confidence = "read", refs = ["rules/surveys/E08-objects.md §7.1"] },
   { offset = 0xC0, name = "corpses_searched", type = "u32", summary = "per Corpse a bit (its index in the word's bits 0-4) set at a visit by the player's hero (0x4A55FB); not read further", confidence = "read", refs = ["rules/surveys/E08-rewards.md §6.9"] },
   { offset = 0xC4, name = "lean_tos_visited", type = "u32", summary = "per Lean To a bit (its index in the word's bits 0-4) set at a visit (0x4A3275); not read further", confidence = "read", refs = ["rules/surveys/E08-rewards.md §6.9"] },
+  { offset = 0xE1, name = "human_e1", type = "u8", summary = "a second human flag (H3API names both +0xE1 and +0xE2 human): player_is_human_both 0x4BAD80 tests both, for an event", confidence = "read", refs = ["rules/surveys/E08-rewards.md §7.3"] },
   { offset = 0xE2, name = "human", type = "u8", summary = "a human player", confidence = "read", refs = ["rules/surveys/E08-objects.md §7.2"] },
   { offset = 0xE8, name = "combinations_asked", type = "bitset[12]", summary = "per combination a bit set when the assembly question was asked after an equip or a combination was equipped (combination_prompt_after_equip 0x4DC100): a set bit skips the question", confidence = "read", refs = ["rules/surveys/E08-army.md §5.3"] },
 ]
@@ -478,7 +481,7 @@ h3api = "H3AdventureManager"
 fields = [
   { offset = 0x48, name = "path_arrows", type = "u16*", summary = "per tile the selected hero's path arrow, at (level x height + y) x width + x (view_path_shadows_pass 0x411F90 to 0x411FA2: every level, the underground's after the surface's): 0 none, else the frame + 1 of adag.def (+0xB0) that passes 6 and 8 draw; 1-25 a move today (green), 26-50 the same arrows for later days (red, observed: h3mem.py); how a path's arrows are chosen is not read (M2)", confidence = "read", refs = ["epics/E17-design.md §6.3", "epics/E24-design.md §2.10"] },
   { offset = 0x4C, name = "path_shown", type = "i32", summary = "set while the selected hero's path is shown: the view draws its passes 6 and 8 (0x40F5F2, 0x40F694); set by the selected hero's first click on a tile (observed in every capture of E24 M1 T5b2)", confidence = "inferred", refs = ["epics/E24-design.md §1.1", "epics/E24-design.md §2.10"] },
-  { offset = 0x5C, name = "map", type = "map*", summary = "the map: tiles +0xD0, side +0xD4, object records +0x14 to +0x18 (begin and end, 12 bytes each, map_object, in the .h3m's order), templates +0x4 (0x44 bytes, object_template), their loaded DEFs +0x24 by template; the tiles and side as game +0x1FC40, +0x1FC44, so probably game + 0x1FB70", confidence = "read", refs = ["epics/E24-design.md §1.3", "epics/E24-design.md §2.2"] },
+  { offset = 0x5C, name = "map", type = "map*", summary = "the map: tiles +0xD0, side +0xD4, object records +0x14 to +0x18 (begin and end, 12 bytes each, map_object, in the .h3m's order), templates +0x4 (0x44 bytes, object_template), their loaded DEFs +0x24 by template; the tiles and side as game +0x1FC40, +0x1FC44, so probably game + 0x1FB70; the reward records +0x54 to +0x58 (begin and end, 228 bytes each, reward_record: events' and Pandora's Boxes', at most 400; 0x4A0C20)", confidence = "read", refs = ["epics/E24-design.md §1.3", "epics/E24-design.md §2.2", "rules/surveys/E08-rewards.md §7.1"] },
   { offset = 0x60, name = "terrain_defs", type = "def*[10]", summary = "the terrains' DEFs by code (terrain_def_names 0x65F55C); watrtl +0x80 and lavatl +0x7C have animated palettes", confidence = "read", refs = ["epics/E24-design.md §1.3"] },
   { offset = 0x8C, name = "river_defs", type = "def*[4]", summary = "the rivers' DEFs for codes 1-4 (read as +0x88 + 4 x code; river_def_names 0x65F588)", confidence = "read", refs = ["epics/E24-design.md §1.3"] },
   { offset = 0xA0, name = "road_defs", type = "def*[3]", summary = "the roads' DEFs for codes 1-3 (read as +0x9C + 4 x code; road_def_names 0x65F59C)", confidence = "read", refs = ["epics/E24-design.md §1.3"] },
@@ -722,4 +725,26 @@ refs = ["epics/E24-design.md §1.6"]
 h3api = "H3Palette565"
 fields = [
   { offset = 0x1C, name = "colours", type = "u16[256]", summary = "its 256 colours in 5-6-5, the entries palette16_rotate 0x522950 rotates", confidence = "read", refs = ["epics/E24-design.md §1.6"] },
+]
+
+[[struct]]
+name = "reward_record"
+size = 0xE4
+summary = "A Pandora's Box's or an event's record (the map's list +0x50, by the word's bits 0-9; H3API's H3PandorasBox, whose layout this reading confirms): what grant_rewards 0x49FA90 gives (E08 T55a3)."
+refs = ["rules/surveys/E08-rewards.md §7.1", "rules/surveys/E08-rewards.md §7.4"]
+h3api = "H3PandorasBox"
+fields = [
+  { offset = 0x0, name = "text", type = "string", summary = "the map's text (its characters at +0x4, empty as 0x63A608)", confidence = "read", refs = ["rules/surveys/E08-rewards.md §7.2"] },
+  { offset = 0x10, name = "has_guards", type = "u8", summary = "the guards flag: with a stack at +0x14 the visit fights first", confidence = "read", refs = ["rules/surveys/E08-rewards.md §7.2"] },
+  { offset = 0x14, name = "guards", type = "army", summary = "the guards, passed by address to the battle (the survivors stay)", confidence = "read", refs = ["rules/surveys/E08-rewards.md §7.2"] },
+  { offset = 0x50, name = "experience", type = "i32", summary = "experience, given only above 0, times Learning, last", confidence = "read", refs = ["rules/surveys/E08-rewards.md §7.4"] },
+  { offset = 0x54, name = "mana", type = "i32", summary = "spell points added, the total held in 0-999", confidence = "read", refs = ["rules/surveys/E08-rewards.md §7.4"] },
+  { offset = 0x58, name = "morale", type = "i8", summary = "added to the hero's morale bonus until the next battle (+0x11A)", confidence = "read", refs = ["rules/surveys/E08-rewards.md §7.4"] },
+  { offset = 0x59, name = "luck", type = "i8", summary = "added to the hero's luck bonus until the next battle (+0x11B)", confidence = "read", refs = ["rules/surveys/E08-rewards.md §7.4"] },
+  { offset = 0x5C, name = "resources", type = "i32[7]", summary = "per resource the amount given (negative takes, give_resource)", confidence = "read", refs = ["rules/surveys/E08-rewards.md §7.4"] },
+  { offset = 0x78, name = "primary_skills", type = "i8[4]", summary = "per primary skill the points added, only above 0", confidence = "read", refs = ["rules/surveys/E08-rewards.md §7.4"] },
+  { offset = 0x7C, name = "secondary_skills", type = "vector", summary = "(skill, level) pairs of two u32, begin +0x80, end +0x84: a known skill raised to the level, a new one below 8 skills", confidence = "read", refs = ["rules/surveys/E08-rewards.md §7.4"] },
+  { offset = 0x8C, name = "artifacts", type = "vector", summary = "artifact ids (u32), begin +0x90, end +0x94: each given while the backpack holds fewer than 64", confidence = "read", refs = ["rules/surveys/E08-rewards.md §7.4"] },
+  { offset = 0x9C, name = "spells", type = "vector", summary = "spell ids (u32), begin +0xA0, end +0xA4: learned with a Spell Book at level 2 + Wisdom or less", confidence = "read", refs = ["rules/surveys/E08-rewards.md §7.4"] },
+  { offset = 0xAC, name = "creatures", type = "army", summary = "the creatures given, slot by slot (army_add_stack; no room: army_dialog_with)", confidence = "read", refs = ["rules/surveys/E08-rewards.md §7.4"] },
 ]

@@ -4,31 +4,23 @@ Pre-refined tasks of the adventure lane, in order, then the inbox of discovered 
 
 ## Tasks
 
-Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T51b (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 6 are closed (2026-10-12, -13, -20, -21, -23, -26; increment 6, army and hero management, by T53's audit). **Increment 7, rewards on the map**, refined with the user at T53 (ADV-Q26; decisions 121 to 123): T54 (the battle seam's facts) done; now round 1, the survey and the ADR amendment drafts (T55a, T55b), each task's cut confirmed with the user at its start. T55a is cut in four (decision 125): T55a1 and T55a2 done (survey `docs/rules/surveys/E08-rewards.md` §1 to §6; decision 126 T55a2's cut), T55a3 and T55a4 below. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
-
-### E08 T55a3 — The rewards survey: creatures, Pandora's Box and events
-
-- **Scope** (decisions 121, 122, 125): survey §7: the **rewards that give creatures** (the army
-  dialog's other callers, 0x4ABDC0 and 0x573C80; survey `E08-army.md` §1), the Refugee Camp (78),
-  **Pandora's Box** (6) and **events** (26; not a case of `visit_object`: an event fires on its
-  tile), whose bodies hand out every kind of reward (the census's body counts for them); whether
-  the creature banks (16, 24, 25, 84, 85) and the Pyramid (63) are in increment 7; where Seer's
-  Huts and quest guards (83, 215) belong (placed, not read whole).
-- **Depends on:** T55a2 (done). **Status:** ready; its cut confirmed with the user at its start.
+Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T51b (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 6 are closed (2026-10-12, -13, -20, -21, -23, -26; increment 6, army and hero management, by T53's audit). **Increment 7, rewards on the map**, refined with the user at T53 (ADV-Q26; decisions 121 to 123): T54 (the battle seam's facts) done; now round 1, the survey and the ADR amendment drafts (T55a, T55b), each task's cut confirmed with the user at its start. T55a is cut in four (decision 125): T55a1 to T55a3 done (survey `docs/rules/surveys/E08-rewards.md` §1 to §7; decisions 126 and 127 the cuts of T55a2 and T55a3), T55a4 below. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
 
 ### E08 T55a4 — The rewards survey: the common rules, batch E7, the rule ids, the checkpoint
 
 - **Scope** (decisions 121, 122, 125): survey §8 on, from §2 to §7: (6) what a reward asks (a
   question, a choice), refuses (a full backpack, a hero without a book, a skill already known),
   what changes in the hero's derived properties and when (the combination question on a received
-  part, §10), what another player sees of a visited object (`docs/06-security.md`); the commands,
+  part, §10), what another player sees of a visited object (`docs/06-security.md`; an event is
+  never drawn, yet it ends a move: what a move and the env's masks may reveal, §10); the commands,
   decisions, events, the observation, replays and benchmarks. (7) **Batch E7's plan** on the
   client lane's harness (decision 122's agent's call; the rows §10 lists). (8) The proposed rule
   ids, quirk candidates and disputes (D-29 on); **a fresh agent's second reading** of T55a1 to
   T55a3's readings; the checkpoint's questions (an `ADV-Q`, the tutorial's chests among them).
-- **Not in T55a** (decision 121; the epic's sketch, items 8 and 9): boats, Navigation and the sea
-  (Favorable Winds, the sea's chests and flotsam), the week's objects and mines; towns (E09).
-- **Depends on:** T55a3. **Status:** waiting; a user checkpoint at its end (decision 122).
+- **Not in T55a** (decisions 121 and 127; the epic's sketch, items 8 to 11): boats, Navigation and
+  the sea (Favorable Winds, the sea's chests and flotsam), the week's objects and mines, the
+  Refugee Camp; the creature banks; Seer's Huts and quest guards; towns (E09).
+- **Depends on:** T55a3 (done). **Status:** ready; a user checkpoint at its end (decision 122).
 
 ### E08 T55b — The ADR amendment drafts, the design note and the cut
 
