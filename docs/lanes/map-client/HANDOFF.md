@@ -29,6 +29,7 @@ The user's dictation (2026-10-12): `docs/lanes/client/ASSET-NOTES.md`; this lane
 
 ## Recent sessions
 
+- **2026-10-26, E24 M2 T1a2** (`map-client/e24-m2-t1a2`, *in progress*): the scroll read (design §3.4: Ctrl and the direction keys, the edge every 70 ms, 1/2/3 tiles by the speed, the limits, the edge cursors), the map entries, `frames`' options, inputs and cursor; `scroll-limits` recorded once. Next: `scroll-0` to `-2` and the idle pair again (the cursor line), then each twice; the log, queue and epic lines.
 - **2026-10-26, E24 M2 T1a1** (`map-client/e24-m2-t1a1`): T1a cut in two with the user; the idle loop read (the managers' loop polls the tick before each message, the redraw every 180 ms shows at once); `h3map.py frames` (the sequence's 0 set by the harness's timers, the timeline's counts from 0); `idle-cycles` and `idle-objects` recorded twice the same, the frame at 0 exact.
 - **2026-10-26, E24 M2 T0** (#475, merged): M2 refined with the user, every recommendation taken (walks scripted in M2, the map's sound in M2, `h3-view`'s `clock` and `cursor` copied until M3's common crate, every frame recorded and compared as E17 M2); tasks T1a to T6 queued.
 - **2026-10-24, E24 M1 T6b** (#460, merged): M1's closure; three reviewers in parallel, 35 of 37 findings fixed (the fallen objects' lists, the harness's checks, `drawn`'s `STALE`), 2 queued; the set (40) again, exact; the review list accepted; M2 T0 queued.

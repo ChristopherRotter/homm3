@@ -17,8 +17,9 @@ run="$root/original-data/wine"
 export WINEPREFIX="${WINEPREFIX:-$HOME/.wine-h3}" WINEARCH=win32 WINEDEBUG=-all
 export WINEDLLOVERRIDES="mscoree,mshtml="
 
-# 1. Packages: 32-bit Wine, the virtual display and input, mingw-w64 for the forwarder.
-if ! command -v wine > /dev/null || ! command -v Xvfb > /dev/null; then
+# 1. Packages: 32-bit Wine, the virtual display and input (xset turns its key repeat off: E24 M2
+# T1a2), mingw-w64 for the forwarder.
+if ! command -v wine > /dev/null || ! command -v Xvfb > /dev/null || ! command -v xset > /dev/null; then
     # Another apt first (scripts/sandbox-setup.sh's, in the background): adding i386 between its
     # update and its install failed that install (2026-10-20), so wait for it to end.
     while pgrep -x apt-get > /dev/null || pgrep -x dpkg > /dev/null; do
@@ -27,7 +28,7 @@ if ! command -v wine > /dev/null || ! command -v Xvfb > /dev/null; then
     dpkg --add-architecture i386
     apt-get update -qq
     DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends \
-        wine wine32:i386 wine64 xvfb xdotool x11-apps imagemagick python3-numpy \
+        wine wine32:i386 wine64 xvfb xdotool x11-apps x11-xserver-utils imagemagick python3-numpy \
         gcc-mingw-w64-i686 binutils-mingw-w64-i686 > /dev/null
 fi
 

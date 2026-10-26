@@ -102,6 +102,10 @@ previews a commanded turret's shot as it is made.
 
 ### Map client lane (`MCL-Q<n>`)
 
+#### MCL-Q6 — The edge scroll's zones are 16, 14, 16 and 15 pixels wide (E24 M2 T1a2)
+
+**Context.** The map scrolls while the mouse lies within the screen's edge zones (`edge_scroll` 0x419820; `docs/epics/E24-design.md` §3.4): x < 16 west, x > 784 east, y < 16 north, y > 584 south, on the mouse's point as `mouse_position_now` 0x50D500 gives it, x rounded down to even (E17's drawing bug, the user 2026-10-20: the client draws the cursor at the mouse itself). So the west and north zones are 16 pixels wide (0 to 15), the south 15 (585 to 599) and the east 14 (786 to 799: 785 rounds to 784). The mouse-move's test that keeps an edge cursor (0x40EBBA) is the same. A pixel or two at the right and bottom edges, harmless to play; no recorded sequence puts the pointer there. **Options:** (a) the client's zones 16 pixels on every side (x < 16, x ≥ 784, y < 16, y ≥ 584 on the mouse's own point), the original's tests on its rounded point for the comparisons only (`h3_render::Bugs`, as MCL-Q2 to Q5); (b) the client copies the original's tests on the unrounded point (16, 15, 16, 15); (c) copy them with the rounding (16, 14, 16, 15). **Recommendation:** (a): T2 builds the original's tests behind `--bugs original` and the even zones by default. **Blocked:** nothing (T2 builds both).
+
 ## Answered
 
 Answered questions are history, kept out of the start-of-session reading. Read one only when a doc, a code comment or a queue entry cites its id (`git grep '<id>' -- docs`). The id's prefix says where it is; when a question is answered, move its entry from "Open" above to the **top** of that file (each lane edits only its own file, so lanes working at once never touch the same lines):

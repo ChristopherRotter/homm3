@@ -44,7 +44,10 @@ compared pixel for pixel outside the masks of what the viewer does not draw yet.
       clients/map/timelines/<id>.txt (`ok`, `CHANGED`, `new`), and the viewer's frame at 0
       drawn with the live part read then against the original's; exit 1 unless each is as
       recorded and exact at 0. A run as recorded or new keeps that live part
-      (timelines/<id>-live.toml). <dir> defaults to clients/out/map-frames.
+      (timelines/<id>-live.toml). Since E24 M2 T1a2 a sequence's options (the scroll and hero
+      speeds) are written once it is staged and its inputs (keys pressed and released, the
+      pointer moved) given at their milliseconds; the timeline has the cursor too. <dir>
+      defaults to clients/out/map-frames.
 
 Needs `clients/capture/setup.sh` and `cargo build --release -p h3-map-view` (from clients/).
 """
@@ -559,14 +562,16 @@ def map_timeline(states):
     """The changes over a sequence (E24 M2 T1a1), one line each, numbers only: `<ms> view <x>
     <y> <level>` (the view's top-left tile), `<ms> objects <n>` (the objects' frame steps memory
     holds, the manager's +0x100, counted from the sequence's 0), `<ms> cycles <terrains>
-    <rivers>` (the palette steps memory holds, each kind's ticks counted from 0) and `<ms> screen
-    <x0>,<y0>,<x1>,<y1>` (where the screen outside the panels changed since the screen kept
-    before: each such screen is kept; x1, y1 exclusive). The first state, at 0, gives the view,
-    the objects and the cycles; its screen is always kept, without a line."""
+    <rivers>` (the palette steps memory holds, each kind's ticks counted from 0), since T1a2
+    `<ms> cursor <type> <frame> <x> <y>` (the cursor's DEF type and frame and the point it is
+    drawn at, `Mem.cursor`) and `<ms> screen <x0>,<y0>,<x1>,<y1>` (where the screen outside the
+    panels changed since the screen kept before: each such screen is kept; x1, y1 exclusive).
+    The first state, at 0, gives the view, the objects, the cycles and the cursor; its screen is
+    always kept, without a line."""
     lines, last = [], {}
     for state in states:
         t = state["t"]
-        for key in ("view", "objects", "cycles"):
+        for key in ("view", "objects", "cycles", "cursor"):
             if last.get(key) != state[key]:
                 lines.append(f"{t} {key} " + " ".join(map(str, state[key])))
                 last[key] = state[key]
@@ -575,14 +580,74 @@ def map_timeline(states):
     return lines
 
 
+# A sequence's options (E24 M2 T1a2, design §3.4): written into the game's settings once its
+# situation is staged (both are read where they act: the scroll speed at each scroll), with the
+# values the original holds (the registry's, settings_read 0x50B7B0; its own check of them,
+# 0x50B260, the ranges).
+OPTIONS = {"scroll_speed": (h3mem.SCROLL_SPEED, range(0, 3)),
+           "hero_speed": (h3mem.WALK_SPEED, range(1, 5))}
+# A sequence's inputs (T1a2), each at a millisecond of the sequence: a key pressed or released
+# (xdotool's names, X keysyms, `ctrl+` holding the Control key with it: `ctrl+Up` presses both,
+# releases both) and the pointer moved to a point of the screen (800 x 600).
+INPUTS = ("keydown", "keyup", "pointer")
+
+
+def sequence_inputs(entry):
+    """A sequence's options and inputs, checked (T1a2): the options among `OPTIONS` in their
+    ranges; each input one of `INPUTS` at a millisecond from 1 to `ms` (0 is the still the frame
+    check compares), in order of time, a key released only once pressed, a pointer inside the
+    screen. Returns the options [(address, value)] and the inputs by time {t: [(kind, value)]}."""
+    unknown = set(entry) - {"id", "situation", "ms", "why", "inputs", *OPTIONS}
+    if unknown:
+        raise ValueError(f"{entry['id']}: unknown keys {sorted(unknown)}")
+    options = []
+    for name, (address, values) in OPTIONS.items():
+        if name in entry:
+            if entry[name] not in values:
+                raise ValueError(f"{entry['id']}: `{name}` {entry[name]} not in {values}")
+            options.append((address, entry[name]))
+    inputs, down, last = {}, set(), 1
+    for i in entry.get("inputs", []):
+        kinds = [k for k in INPUTS if k in i]
+        if len(kinds) != 1 or set(i) != {"at", kinds[0]}:
+            raise ValueError(f"{entry['id']}: an input is `at` and one of {INPUTS}: {i}")
+        kind, value, t = kinds[0], i[kinds[0]], i["at"]
+        if not last <= t <= entry["ms"]:
+            raise ValueError(f"{entry['id']}: an input at {t}: out of order or outside 1 to "
+                             f"{entry['ms']}")
+        if kind == "keydown":
+            down.add(value)
+        elif kind == "keyup":
+            if value not in down:
+                raise ValueError(f"{entry['id']}: `{value}` released at {t}, never pressed")
+            down.discard(value)
+        elif not (len(value) == 2 and 0 <= value[0] < h3drive.WIDTH
+                  and 0 <= value[1] < h3drive.HEIGHT):
+            raise ValueError(f"{entry['id']}: the pointer at {value}: off the screen")
+        inputs.setdefault(t, []).append((kind, value))
+        last = t
+    return options, inputs
+
+
+def give_input(game, kind, value):
+    """One input to the original (T1a2): xdotool's `keydown`, `keyup` or `mousemove`."""
+    if kind == "pointer":
+        game.move(*value)
+    else:
+        h3drive.run("xdotool", kind, value)
+
+
 def sequence(entry, out):
     """One sequence in the original (E24 M2 T1a1): its situation staged as `still` stages it, the
     clock frozen once both the palette tick and the view's redraw lie ahead of it; then the
     sequence's 0 set to the next millisecond: the tick's and the redraw's next times written
-    there, and the mouse poll's (the harness's own timers, as E17's `align_mouse_poll`: the
-    original's phase between them is the map's load's real time, so a run starts like every
-    other). Then `ms` + 1 steps of 1 ms (0 to `ms`), each followed by the state memory holds and
-    the screen: every screen whose view (outside the panels) changed is kept
+    there, and the mouse poll's and (T1a2) the scroll's last time (the harness's own timers, as
+    E17's `align_mouse_poll`: the original's phase between them is the map's load's real time,
+    so a run starts like every other). Its options (T1a2: the speeds) are written before.
+    Then `ms` + 1 steps of 1 ms (0 to `ms`), each followed by the inputs at that millisecond
+    (T1a2; the game then reads the frozen clock 500 times more: it handles them at that time)
+    and the state memory holds and the screen: every screen whose view (outside the panels)
+    changed is kept
     (`<out>/frames/t<ms>.npz`, local), its state in `<out>/frames.jsonl` (every step's in
     `states.jsonl`, with the tick's and the redraw's next times, `due`). Writes the timeline
     (`<out>/timeline.txt`, `map_timeline`), the live part the screen shows at 0
@@ -590,12 +655,20 @@ def sequence(entry, out):
     original's (`<out>/ours.png`, `diff.png`); returns the states and that frame's differing
     pixels."""
     situation_path = SITUATIONS / f"{entry['situation']}.toml"
+    options, inputs = sequence_inputs(entry)
     game, mem, sit, turn = stage(situation_path, out)
     kept = out / "frames"
     shutil.rmtree(kept, ignore_errors=True)
     kept.mkdir()
     (out / "frames.jsonl").unlink(missing_ok=True)
+    down = set()
     try:
+        for address, value in options:
+            mem.write_u32(address, value)
+        # The display's own key repeat is off (T1a2): it repeats a held key in real time, which
+        # a step of the virtual clock spans many times over; the original repeats nothing itself
+        # (a key held is one press, design §3.4).
+        h3drive.run("xset", "r", "off")
         game.clock("step 100")
         now = game.clock("freeze")
         # As `capture`: a deadline the frozen clock passed is met at the next idle step first.
@@ -604,6 +677,7 @@ def sequence(entry, out):
         t0 = now + 1
         mem.write_u32(h3mem.PALETTE_TICK_TIME, t0)
         mem.write_u32(h3mem.FRAME_DEADLINE, t0)
+        mem.write_u32(h3mem.SCROLL_TIME, t0)
         mem.align_mouse_poll(t0)
         if game.clock("step 1", settle_reads=500) != t0:
             raise RuntimeError("the clock did not step to the sequence's 0")
@@ -623,7 +697,7 @@ def sequence(entry, out):
             counted.update(cycles=k, ticks=ticks)
             s = {"t": t - t0, "view": list(mem.view()) + [mem.view_level()],
                  "objects": [mem.frame_steps() - base["objects"]], "cycles": list(ticks),
-                 "due": [d - t0 for d in mem.map_due()]}
+                 "cursor": mem.cursor(), "due": [d - t0 for d in mem.map_due()]}
             box = None if before is None else view_changed(before, pix)
             if before is None or box:
                 s["changed"] = box
@@ -635,11 +709,21 @@ def sequence(entry, out):
         states, last = [state(t0, first, None)], first
         for _ in range(entry["ms"]):
             t = game.clock("step 1", settle_reads=500)
+            for kind, value in inputs.get(t - t0, []):
+                give_input(game, kind, value)
+                if kind != "pointer":
+                    (down.add if kind == "keydown" else down.discard)(value)
+            if t - t0 in inputs:
+                game.clock("step 0", settle_reads=500)
             pix = game.settled()
             states.append(state(t, pix, last))
             if "frame" in states[-1]:
                 last = pix
     finally:
+        # A key left down stays down on the display for the next game (T1a2).
+        for value in down:
+            h3drive.run("xdotool", "keyup", value)
+        game.move(*h3adv.PARK)
         game.stop()
     (out / "live.toml").write_text("# The original's live part at the sequence's 0 (h3map.py "
                                    "frames).\n" + live)
