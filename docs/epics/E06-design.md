@@ -453,8 +453,9 @@ Decision 2's last increment (the user, 2026-10-26, after T6e: the plateau taken 
 seam (the user): T8a this design; T8b the plumbing; T8c a decision-time search with `t7-1`'s
 network measured, no training change; T8d expert iteration only if T8c gains. **Determinized
 from the start** (the user): the searcher is a legitimate agent, it reads only what its side's
-observation tells (ADR-0025 point 12's amendment, `docs/lanes/ai/adr-drafts/0025-amendment-
-search.md`). The tree in Python first (the user); Rust only if T8d needs the throughput.
+observation tells (ADR-0025 point 12's amendment, draft
+`docs/lanes/ai/adr-drafts/0025-amendment-search.md`). The tree in Python first (the user); Rust
+only if T8d needs the throughput.
 
 - **The agent.** At each of its decisions it builds W *worlds* (8) of the battle from its side's
   knowledge, runs N simulations (16 to 64) over them and plays the root's choice. The network is

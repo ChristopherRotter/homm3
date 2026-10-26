@@ -9,11 +9,15 @@ Pre-refined tasks of the AI lane, in order, then the inbox of discovered work. T
 **Increment 6** closed 2026-10-26 (T6b to T6e; its task list in `E06-archive.md`): both levers
 negative, the system actor as an opponent (T6c, `t6b-1`) and the kill preview in the network
 (T6e, `t6d-1`: the targeting better, the ladder unchanged; AI-Q7 closed, the preview off by
-default). **Next: T8, the search, refined** (the user, 2026-10-26: the plateau taken as shown,
-no 60 M run first): a design (`E06-design.md`, a new section) for the determinized search of
-decision 2 (the fork with its streams re-seeded, the hidden part guessed, the network as prior
-and value; where it runs and what it costs a decision), its first increment and a seam put to
-the user before any code.
+default).
+
+**Increment 7, T8 the search** (refined 2026-10-26, the user: the plateau taken as shown; design
+§14): T8a (the design, ADR-0025 point 12's amendment as a draft) done 2026-10-26. **Next: T8b,
+the plumbing**, once the user accepts the draft
+(`docs/lanes/ai/adr-drafts/0025-amendment-search.md`): C ABI v34 (`h3_batch_determinize`, `h3_env_reseed`), `h3-battle`'s
+`BattleState::determinized` and `reseed` (`cross-lane`, the user's consent 2026-10-26; the PR
+label), `h3env.search` and §14's tests; one pull request. Then T8c (the measurement on the
+user's machine with `t7-1`'s best), T8d only if T8c gains.
 
 - **Candidates kept** (not now): potential-based shaping (also against the wandering T6e found:
   the tactics phase's placements and moves cost nothing at γ 1); the 60 M run at T7's mix

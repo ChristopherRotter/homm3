@@ -860,3 +860,23 @@ entry only where a task builds on it.
   the best configuration; increment 6 closed. Next: T8 (the search) refined now, the plateau
   taken as shown (four 20 M runs at one ladder; `t4-2` at 60 M barely above `t5-3` at 20 M),
   without the 60 M run the agent recommended first.
+
+## Increment 7's refinement; T8a — the search's design (2026-10-26)
+
+- **The user's choices** (asked at T6e's checkpoint): T8 now, the plateau taken as shown; the
+  seam T8a (the design), T8b (the plumbing), T8c (a decision-time search measured with `t7-1`'s
+  network, no training change), T8d (expert iteration) only if T8c gains; **determinized from
+  the start** (the agent had recommended an oracle bound first: the true hidden part with the
+  stream re-seeded, a cheap upper bound); the tree in Python first; `h3-battle`'s part
+  `cross-lane` in T8b.
+- **Designed** (design §14): a world per seed (the other hero's private part guessed by the
+  encounter sampler from its public part, its hidden obstacles and a drawn spell placed again,
+  the stream re-seeded), Gumbel AlphaZero at the root and the completed-Q selection below,
+  open-loop over worlds, one network call per simulation round for the batch; ADR-0025 point
+  12's amendment as a draft (`docs/lanes/ai/adr-drafts/0025-amendment-search.md`: a world reads
+  nothing hidden, tested).
+- **What the code has:** the battle's one stream (`BattleState.rng`, crate-private, seeded from
+  the episode's seed) and `observe`'s list of what a side may not know (`h3-battle`'s
+  `observe.rs`); `h3_env_fork` forks a single env only, nothing forks a batch's env; the
+  encounter sampler draws a hero by faction and week (`h3-sim`'s `encounter/hero.rs`), so the
+  guess fixes the hero type and draws the rest.

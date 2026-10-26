@@ -1,6 +1,6 @@
 # E06 — Battle AI v1 and the local training pipeline v0
 
-Status: **in progress**, refined 2026-10-20 (AI-Q8); increment 1 (T1, T2a, T2b1, T2c) done; increment 2 (T3a, T3b) done; increment 3 (T4a, T4b) done; increment 4 (T5a to T5d) done 2026-10-23; increment 5 (T7a to T7d) done 2026-10-23, with T5's mana preparation and AI-Q7 (b) part 1; T6a (the behaviour analysis) done 2026-10-23; increment 6 (T6b to T6e) done 2026-10-26; T8 (the search) being refined (the user, 2026-10-26) · Lane: **ai** · Follows E05 (closed
+Status: **in progress**, refined 2026-10-20 (AI-Q8); increment 1 (T1, T2a, T2b1, T2c) done; increment 2 (T3a, T3b) done; increment 3 (T4a, T4b) done; increment 4 (T5a to T5d) done 2026-10-23; increment 5 (T7a to T7d) done 2026-10-23, with T5's mana preparation and AI-Q7 (b) part 1; T6a (the behaviour analysis) done 2026-10-23; increment 6 (T6b to T6e) done 2026-10-26; increment 7 (T8, the search) refined 2026-10-26, T8a done · Lane: **ai** · Follows E05 (closed
 2026-10-20) · Runs beside E23 (the battle lane: the original's battle AI, the system actor's
 policy), whose neutral side opens E06's neutral share (decision 1)
 
@@ -109,6 +109,18 @@ new observation or action encoding, unless an increment's evidence asks for one 
 | 5 | 2026-10-23 | T7a–T7d | the system actor's seat, the neutral share, `t7-1` |
 | 6 | 2026-10-26 | T6b–T6e | the system actor as an opponent, the kill preview in the network (AI-Q7): both negative |
 
+**Increment 7, T8 the search** (refined 2026-10-26, the user: the plateau taken as shown after
+T6e; measure a decision-time search before any training change; determinized from the start;
+the tree in Python first; `h3-battle`'s part `cross-lane` in T8b; design §14):
+
+- [x] **T8a The design** — done 2026-10-26: design §14, ADR-0025 point 12's amendment as a
+  draft (`docs/lanes/ai/adr-drafts/0025-amendment-search.md`); the record in `E06-log.md`.
+- [ ] **T8b The plumbing** — C ABI v34 (`h3_batch_determinize`, `h3_env_reseed`), `h3-battle`'s
+  `BattleState::determinized` and `reseed` (`cross-lane`), `h3env.search`; the tests of §14.
+- [ ] **T8c The measurement** — the search agent with `t7-1`'s best at N 16 and 64 against the
+  system actor and Greedy (report set) and on the neutral set, beside the sampled policy.
+- [ ] **T8d Expert iteration** — only if T8c gains: the search's targets in training.
+
 **Later increments** (cut at each checkpoint; proposed in design §10):
 
 - [ ] **T5 The rest** — AI-Q7 (b); the mana-price experiment; batch size and threads from T9c's
@@ -121,9 +133,6 @@ new observation or action encoding, unless an increment's evidence asks for one 
   2026-10-23), done 2026-10-23: `python -m h3env.train.inspect`; `t7-1` casts as the system
   actor does, plays alike against it and Greedy, waits and defends less; the record in
   `E06-log.md`. Then increment 6 (T6b to T6e), closed 2026-10-26.
-- [ ] **T8 Search** (only if PPO plateaus below the targets) — determinized search over the fork
-  with re-seeded streams, the learned network as its prior and value. The user, 2026-10-26: the
-  plateau taken as shown (T6e), T8 refined next.
 - [ ] **T9 Closure** — the audit, an independent review, the verifies, the docs.
 
 ## Exit criteria
