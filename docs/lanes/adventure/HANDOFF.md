@@ -21,7 +21,7 @@ Moved to `TRAPS.md`: forks without deep copies, RNG seeds server-only, template 
 
 ### 2026-10-26 — increment 7: T54, the battle seam's facts
 
-Baseline f2fc414 (#472 merged; CI green). T54 whole (ADV-Q27, decision 124: the human flag from the map's player kinds, a session overrides; three `cross-lane` literals with consent). 0x41ADB0's tile class read (0x505610's four walks, 0x40FCA0's ownable classes); `h3-game` fills difficulty, human, colours, sexes, background and the attacker's ground (GAM-BAT-010 to -013); game state hash v14, adventure state hash v12, map import v11; the twelve replays re-recorded, commands unchanged. Scoped verify with the original data: see the pull request; CI's full verify on it.
+Baseline f2fc414 (#472 merged; CI green). T54 whole (ADV-Q27, decision 124: the human flag from the map's player kinds, a session overrides; three `cross-lane` literals with consent). 0x41ADB0's tile class read (0x505610's four walks, 0x40FCA0's ownable classes); `h3-game` fills difficulty, human, colours, sexes, background and the attacker's ground (GAM-BAT-010 to -013); game state hash v14, adventure state hash v12, map import v11; the twelve replays re-recorded, commands unchanged. Scoped verify with the original data on 0507f5c: every step passed but `check-lane` (the three `cross-lane` literals, labelled); CI's full verify on the pull request.
 
 ### 2026-10-26 — increment 6 closed (T53); increment 7 refined
 
