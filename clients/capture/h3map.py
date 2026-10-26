@@ -567,7 +567,12 @@ def map_timeline(states):
     drawn at, `Mem.cursor`) and `<ms> screen <x0>,<y0>,<x1>,<y1>` (where the screen outside the
     panels changed since the screen kept before: each such screen is kept; x1, y1 exclusive).
     The first state, at 0, gives the view, the objects, the cycles and the cursor; its screen is
-    always kept, without a line."""
+    always kept, without a line. Since T1b the walk's lines, only where they change (at 0 they are
+    the situation's: the selected hero standing on its tile, the offset 0, its path's arrows):
+    `<ms> hero <x> <y> <level> <facing>` (the current player's selected hero, `Mem.selected`),
+    `<ms> walk <group> <frame> <x> <y>` (the moving hero's group and the frame pass 9 draws next,
+    the view's pixel offset: `Mem.walk`) and `<ms> arrows <x>,<y>,<level>,<arrow> ...` (the path's
+    arrows left, `Mem.path_arrows`' order; nothing after `arrows` once none is left)."""
     lines, last = [], {}
     for state in states:
         t = state["t"]
@@ -575,6 +580,14 @@ def map_timeline(states):
             if last.get(key) != state[key]:
                 lines.append(f"{t} {key} " + " ".join(map(str, state[key])))
                 last[key] = state[key]
+        for key in ("hero", "walk"):
+            if key in last and last[key] != state[key]:
+                lines.append(f"{t} {key} " + " ".join(map(str, state[key])))
+            last[key] = state[key]
+        if "arrows" in last and last["arrows"] != state["arrows"]:
+            lines.append(f"{t} arrows" + "".join(" " + ",".join(map(str, a))
+                                                 for a in state["arrows"]))
+        last["arrows"] = state["arrows"]
         if state.get("changed"):
             lines.append(f"{t} screen " + ",".join(map(str, state["changed"])))
     return lines
@@ -584,12 +597,18 @@ def map_timeline(states):
 # situation is staged (both are read where they act: the scroll speed at each scroll), with the
 # values the original holds (the registry's, settings_read 0x50B7B0; its own check of them,
 # 0x50B260, the ranges).
+# T1b: `points`, the selected hero's movement points (its record's +0x4D, as if it had walked;
+# `None` for the address: written by `Mem.write_points`), so that a walk stops on the way or a hero
+# that boarded a boat (which takes the day's points) sails.
 OPTIONS = {"scroll_speed": (h3mem.SCROLL_SPEED, range(0, 3)),
-           "hero_speed": (h3mem.WALK_SPEED, range(1, 5))}
+           "hero_speed": (h3mem.WALK_SPEED, range(1, 5)),
+           "points": (None, range(0, 4000))}
 # A sequence's inputs (T1a2), each at a millisecond of the sequence: a key pressed or released
 # (xdotool's names, X keysyms, `ctrl+` holding the Control key with it: `ctrl+Up` presses both,
-# releases both) and the pointer moved to a point of the screen (800 x 600).
-INPUTS = ("keydown", "keyup", "pointer")
+# releases both) and the pointer moved to a point of the screen (800 x 600); since T1b a left
+# click at a point (the pointer moved there, the button pressed and released: a tile clicked
+# shows the selected hero's path to it, clicked again it walks).
+INPUTS = ("keydown", "keyup", "pointer", "click")
 
 
 def sequence_inputs(entry):
@@ -623,16 +642,20 @@ def sequence_inputs(entry):
             down.discard(value)
         elif not (len(value) == 2 and 0 <= value[0] < h3drive.WIDTH
                   and 0 <= value[1] < h3drive.HEIGHT):
-            raise ValueError(f"{entry['id']}: the pointer at {value}: off the screen")
+            raise ValueError(f"{entry['id']}: the {kind} at {value}: off the screen")
         inputs.setdefault(t, []).append((kind, value))
         last = t
     return options, inputs
 
 
 def give_input(game, kind, value):
-    """One input to the original (T1a2): xdotool's `keydown`, `keyup` or `mousemove`."""
+    """One input to the original (T1a2): xdotool's `keydown`, `keyup` or `mousemove`; since T1b
+    a click (`mousemove`, then the left button's `click`, no wait between: the clock stands)."""
     if kind == "pointer":
         game.move(*value)
+    elif kind == "click":
+        game.move(*value)
+        h3drive.run("xdotool", "click", "1")
     else:
         h3drive.run("xdotool", kind, value)
 
@@ -643,9 +666,10 @@ def sequence(entry, out):
     sequence's 0 set to the next millisecond: the tick's and the redraw's next times written
     there, and the mouse poll's and (T1a2) the scroll's last time (the harness's own timers, as
     E17's `align_mouse_poll`: the original's phase between them is the map's load's real time,
-    so a run starts like every other). Its options (T1a2: the speeds) are written before.
-    Then `ms` + 1 steps of 1 ms (0 to `ms`), each followed by the inputs at that millisecond
-    (T1a2; the game then reads the frozen clock 500 times more: it handles them at that time)
+    so a run starts like every other). Its options (T1a2: the speeds; T1b: the selected hero's
+    points) are written before. Then `ms` + 1 steps of 1 ms (0 to `ms`), each followed by the
+    inputs at that millisecond (T1a2; the game then reads the frozen clock 500 times more: it
+    handles them at that time)
     and the state memory holds and the screen: every screen whose view (outside the panels)
     changed is kept
     (`<out>/frames/t<ms>.npz`, local), its state in `<out>/frames.jsonl` (every step's in
@@ -664,7 +688,13 @@ def sequence(entry, out):
     down = set()
     try:
         for address, value in options:
-            mem.write_u32(address, value)
+            if address is None:
+                index, _ = mem.selected()
+                if index < 0:
+                    raise RuntimeError("`points` without a selected hero")
+                mem.write_points(index, value)
+            else:
+                mem.write_u32(address, value)
         # The display's own key repeat is off (T1a2): it repeats a held key in real time, which
         # a step of the virtual clock spans many times over; the original repeats nothing itself
         # (a key held is one press, design §3.4).
@@ -697,7 +727,8 @@ def sequence(entry, out):
             counted.update(cycles=k, ticks=ticks)
             s = {"t": t - t0, "view": list(mem.view()) + [mem.view_level()],
                  "objects": [mem.frame_steps() - base["objects"]], "cycles": list(ticks),
-                 "cursor": mem.cursor(), "due": [d - t0 for d in mem.map_due()]}
+                 "cursor": mem.cursor(), "due": [d - t0 for d in mem.map_due()],
+                 "hero": mem.selected()[1], "walk": mem.walk(), "arrows": mem.path_arrows()}
             box = None if before is None else view_changed(before, pix)
             if before is None or box:
                 s["changed"] = box
@@ -711,8 +742,13 @@ def sequence(entry, out):
             t = game.clock("step 1", settle_reads=500)
             for kind, value in inputs.get(t - t0, []):
                 give_input(game, kind, value)
-                if kind != "pointer":
+                if kind in ("keydown", "keyup"):
                     (down.add if kind == "keydown" else down.discard)(value)
+                elif kind == "click":
+                    # The click handled before the next input (T1b): a walk at hero speed 4 ends
+                    # in it and reads the pointer (GetCursorPos) at its end, which a pointer
+                    # input given at once would race.
+                    game.clock("step 0", settle_reads=500)
             if t - t0 in inputs:
                 game.clock("step 0", settle_reads=500)
             pix = game.settled()

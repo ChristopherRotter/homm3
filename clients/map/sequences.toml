@@ -10,7 +10,11 @@
 # `inputs`, each at a millisecond from 1 to `ms`: `keydown` or `keyup` (xdotool's key names,
 # `ctrl+` holding the Control key with it: the map scrolls by Ctrl and the eight direction keys,
 # without Ctrl they walk the selected hero) and `pointer` (a point of the 800 x 600 screen: the
-# map scrolls while it lies within 16 pixels of a side). The clicks come with T1b.
+# map scrolls while it lies within 16 pixels of a side). Since T1b `points` (the selected hero's
+# movement points, written once the situation is staged) and `click` (the left button at a point:
+# a tile clicked shows the selected hero's path to it, clicked again the hero walks it; the
+# pointer is then parked over the right panel in the same millisecond, so that the cursor over
+# the view, M3's, stays out of the frames).
 
 [[sequence]]
 id = "idle-cycles"
@@ -109,4 +113,137 @@ inputs = [
     { at = 1900, pointer = [798, 0] },
     { at = 2200, pointer = [700, 300] },
     { at = 2300, keydown = "ctrl+Up" }, { at = 2360, keyup = "ctrl+Up" },
+]
+
+# The walk (M2 T1b, E24 design §3.5): at each hero speed (1 to 4), the eight direction keys without
+# Ctrl (a step of the selected hero each: north, north-east, ... north-west, back on its tile),
+# then a tile four steps away clicked (its path shown) and clicked again (walked).
+
+[[sequence]]
+id = "walk-1"
+situation = "seq-walk"
+ms = 4000
+hero_speed = 1
+points = 2000
+why = "the walk at hero speed 1: a step by each direction key, a path of four tiles clicked twice"
+inputs = [
+    { at = 100, keydown = "Up" }, { at = 160, keyup = "Up" },
+    { at = 400, keydown = "Prior" }, { at = 460, keyup = "Prior" },
+    { at = 700, keydown = "Right" }, { at = 760, keyup = "Right" },
+    { at = 1000, keydown = "Next" }, { at = 1060, keyup = "Next" },
+    { at = 1300, keydown = "Down" }, { at = 1360, keyup = "Down" },
+    { at = 1600, keydown = "End" }, { at = 1660, keyup = "End" },
+    { at = 1900, keydown = "Left" }, { at = 1960, keyup = "Left" },
+    { at = 2200, keydown = "Home" }, { at = 2260, keyup = "Home" },
+    { at = 2500, click = [440, 344] }, { at = 2500, pointer = [700, 300] },
+    { at = 2700, click = [440, 344] }, { at = 2700, pointer = [700, 300] },
+]
+
+[[sequence]]
+id = "walk-2"
+situation = "seq-walk"
+ms = 4000
+hero_speed = 2
+points = 2000
+why = "the walk at hero speed 2: a step by each direction key, a path of four tiles clicked twice"
+inputs = [
+    { at = 100, keydown = "Up" }, { at = 160, keyup = "Up" },
+    { at = 400, keydown = "Prior" }, { at = 460, keyup = "Prior" },
+    { at = 700, keydown = "Right" }, { at = 760, keyup = "Right" },
+    { at = 1000, keydown = "Next" }, { at = 1060, keyup = "Next" },
+    { at = 1300, keydown = "Down" }, { at = 1360, keyup = "Down" },
+    { at = 1600, keydown = "End" }, { at = 1660, keyup = "End" },
+    { at = 1900, keydown = "Left" }, { at = 1960, keyup = "Left" },
+    { at = 2200, keydown = "Home" }, { at = 2260, keyup = "Home" },
+    { at = 2500, click = [440, 344] }, { at = 2500, pointer = [700, 300] },
+    { at = 2700, click = [440, 344] }, { at = 2700, pointer = [700, 300] },
+]
+
+[[sequence]]
+id = "walk-3"
+situation = "seq-walk"
+ms = 4000
+hero_speed = 3
+points = 2000
+why = "the walk at hero speed 3: a step by each direction key, a path of four tiles clicked twice"
+inputs = [
+    { at = 100, keydown = "Up" }, { at = 160, keyup = "Up" },
+    { at = 400, keydown = "Prior" }, { at = 460, keyup = "Prior" },
+    { at = 700, keydown = "Right" }, { at = 760, keyup = "Right" },
+    { at = 1000, keydown = "Next" }, { at = 1060, keyup = "Next" },
+    { at = 1300, keydown = "Down" }, { at = 1360, keyup = "Down" },
+    { at = 1600, keydown = "End" }, { at = 1660, keyup = "End" },
+    { at = 1900, keydown = "Left" }, { at = 1960, keyup = "Left" },
+    { at = 2200, keydown = "Home" }, { at = 2260, keyup = "Home" },
+    { at = 2500, click = [440, 344] }, { at = 2500, pointer = [700, 300] },
+    { at = 2700, click = [440, 344] }, { at = 2700, pointer = [700, 300] },
+]
+
+[[sequence]]
+id = "walk-4"
+situation = "seq-walk"
+ms = 4000
+hero_speed = 4
+points = 2000
+why = "the walk at hero speed 4: a step by each direction key, a path of four tiles clicked twice"
+inputs = [
+    { at = 100, keydown = "Up" }, { at = 160, keyup = "Up" },
+    { at = 400, keydown = "Prior" }, { at = 460, keyup = "Prior" },
+    { at = 700, keydown = "Right" }, { at = 760, keyup = "Right" },
+    { at = 1000, keydown = "Next" }, { at = 1060, keyup = "Next" },
+    { at = 1300, keydown = "Down" }, { at = 1360, keyup = "Down" },
+    { at = 1600, keydown = "End" }, { at = 1660, keyup = "End" },
+    { at = 1900, keydown = "Left" }, { at = 1960, keyup = "Left" },
+    { at = 2200, keydown = "Home" }, { at = 2260, keyup = "Home" },
+    { at = 2500, click = [440, 344] }, { at = 2500, pointer = [700, 300] },
+    { at = 2700, click = [440, 344] }, { at = 2700, pointer = [700, 300] },
+]
+
+# The view following (T1b): the view not centred on the hero, a tile eight steps east clicked twice
+# (the first step centres the view, every step keeps it there), then Ctrl and Down (the view
+# scrolls off, the hero back on its tile) and Right alone (the step centres the view again).
+
+[[sequence]]
+id = "walk-follow"
+situation = "seq-walk-follow"
+ms = 2600
+hero_speed = 2
+points = 2000
+why = "the view following a walk from a view not centred on the hero, and a step after a scroll"
+inputs = [
+    { at = 100, click = [472, 344] }, { at = 100, pointer = [700, 300] },
+    { at = 300, click = [472, 344] }, { at = 300, pointer = [700, 300] },
+    { at = 1800, keydown = "ctrl+Down" }, { at = 1860, keyup = "ctrl+Down" },
+    { at = 2100, keydown = "Right" }, { at = 2160, keyup = "Right" },
+]
+
+# A walk the movement points end (T1b): 450 points, a tile six steps east clicked twice: four
+# steps (the fifth costs more than the 50 left, which the step then sets to 0), the rest of the
+# path kept.
+
+[[sequence]]
+id = "walk-points"
+situation = "seq-walk"
+ms = 1300
+hero_speed = 2
+points = 450
+why = "a walk ended by the movement points, the path's rest kept"
+inputs = [
+    { at = 100, click = [504, 280] }, { at = 100, pointer = [700, 300] },
+    { at = 300, click = [504, 280] }, { at = 300, pointer = [700, 300] },
+]
+
+# A boat sailing (T1b): the hero aboard on open water, a water tile five steps north-east clicked
+# twice.
+
+[[sequence]]
+id = "walk-sail"
+situation = "seq-sail"
+ms = 1500
+hero_speed = 2
+points = 1500
+why = "a boat sailing: its waves, flag and boat moving with the view"
+inputs = [
+    { at = 100, click = [472, 120] }, { at = 100, pointer = [700, 300] },
+    { at = 300, click = [472, 120] }, { at = 300, pointer = [700, 300] },
 ]

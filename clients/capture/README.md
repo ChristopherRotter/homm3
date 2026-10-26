@@ -569,6 +569,20 @@ in real time, which a step spans many times over; a key a sequence leaves down i
 it ends. The timeline has the cursor since T1a2 (`<ms> cursor <type> <frame> <x> <y>`,
 `Mem.cursor`: its point is the mouse poll's, on the 33-ms grid from 0).
 
+**The walk** (E24 M2 T1b, design §3.5): a sequence's `points` (the selected hero's movement
+points, `Mem.write_points`, written with the speeds: a walk the points end, or a hero that
+boarded a boat, which takes the day's points, sails) and the input `click` (a point of the
+screen: the pointer moved there and the left button clicked in that millisecond; a tile clicked
+shows the selected hero's path to it, clicked again the hero walks it; the game handles it, 500
+clock reads, before the next input of that millisecond). Park the pointer over
+the right panel in the same millisecond (`pointer = [700, 300]` after it): the cursor over the
+view is M3's. The timeline's walk lines appear only where they change (at 0 they are the
+situation's): `<ms> hero <x> <y> <level> <facing>` (the current player's selected hero,
+`Mem.selected`), `<ms> walk <group> <frame> <x> <y>` (the lifted hero's group, the frame pass 9
+draws next and the view's pixel offset, `Mem.walk`) and `<ms> arrows <x>,<y>,<level>,<arrow>
+...` (the path's arrows left, `Mem.path_arrows`). A walk at hero speed 4 draws each step once
+without a wait: all of it falls in its click's millisecond.
+
 ## The recipes' coordinates (800 × 600)
 
 | Where | Action | Point |

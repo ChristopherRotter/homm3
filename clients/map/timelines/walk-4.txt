@@ -1,0 +1,108 @@
+0 view 8 9 0
+0 objects 0
+0 cycles 0 0
+0 cursor 1 0 700 300
+100 view 8 8 0
+100 hero 17 16 0 0
+100 walk 0 0 0 0
+100 screen 8,8,600,552
+180 objects 1
+180 screen 277,241,314,296
+200 cycles 1 1
+360 objects 2
+360 screen 277,240,296,249
+400 view 9 7 0
+400 cycles 2 2
+400 hero 18 15 0 1
+400 walk 1 0 0 0
+400 screen 8,72,600,552
+540 objects 3
+540 screen 281,241,324,296
+600 cycles 3 3
+700 view 10 7 0
+700 hero 19 15 0 2
+700 walk 2 0 0 0
+700 screen 8,8,600,552
+720 objects 4
+720 screen 280,238,332,296
+800 cycles 4 4
+900 objects 5
+900 screen 288,140,511,249
+1000 view 11 8 0
+1000 cycles 5 5
+1000 hero 20 16 0 3
+1000 walk 3 0 0 0
+1000 screen 8,8,600,552
+1080 objects 6
+1080 screen 286,238,324,296
+1200 cycles 6 6
+1260 objects 7
+1260 screen 292,111,475,249
+1300 view 11 9 0
+1300 hero 20 17 0 4
+1300 walk 4 0 0 0
+1300 screen 8,8,600,552
+1400 cycles 7 7
+1440 objects 8
+1440 screen 293,238,315,296
+1600 view 10 10 0
+1600 cycles 8 8
+1600 hero 19 18 0 5
+1600 walk 3 0 0 0
+1600 screen 8,8,544,520
+1620 objects 9
+1620 screen 284,239,322,296
+1800 objects 10
+1800 cycles 9 9
+1800 screen 296,240,315,249
+1900 view 9 10 0
+1900 hero 18 18 0 6
+1900 walk 2 0 0 0
+1900 screen 8,8,600,552
+1980 objects 11
+1980 screen 276,238,328,296
+2000 cycles 10 10
+2160 objects 12
+2160 screen 301,241,320,249
+2200 view 8 9 0
+2200 cycles 11 11
+2200 hero 17 17 0 7
+2200 walk 1 0 0 0
+2200 screen 8,8,600,552
+2340 objects 13
+2340 screen 284,239,327,296
+2400 cycles 12 12
+2500 arrows 18,17,0,12 19,17,0,21 20,18,0,13 21,19,0,1
+2500 screen 308,240,441,351
+2520 objects 14
+2600 cycles 13 13
+2700 view 12 11 0
+2700 objects 15
+2700 cursor 1 0 440 344
+2700 hero 21 19 0 3
+2700 walk 3 0 0 0
+2700 arrows
+2700 screen 8,8,600,552
+2706 cursor 1 0 700 300
+2706 screen 440,344,450,362
+2800 cycles 14 14
+2880 objects 16
+2880 screen 285,236,323,296
+3000 cycles 15 15
+3060 objects 17
+3060 screen 292,15,447,249
+3200 cycles 16 16
+3240 objects 18
+3240 screen 293,240,312,249
+3400 cycles 17 17
+3420 objects 19
+3420 screen 292,12,447,249
+3600 objects 20
+3600 cycles 18 18
+3600 screen 292,241,311,249
+3780 objects 21
+3780 screen 292,12,447,249
+3800 cycles 19 19
+3960 objects 22
+3960 screen 292,240,312,249
+4000 cycles 20 20

@@ -40,7 +40,7 @@ standing still, T1a2 the scroll (both done 2026-10-26: `E24-log.md`).
   and a sequence's inputs, the redraws' times, the objects' step, both palette steps and the
   view's corner as the scroll moves it, as the recorded timeline's lines (design §3.4, the cursor
   lines too); the edge cursors (`h3-view`'s `cursor` copied, *provisional*, an origin comment;
-  the edge zones as MCL-Q6's answer, the original's behind `--bugs original`); `h3-map-view sequences
+  the edge zones 16 pixels on every side, MCL-Q6's answer, the original's behind `--bugs original`); `h3-map-view sequences
   [<id>]` (exit 1 on a difference) and `--frames <dir>`, the harness's frame check against the
   recorded screens, `drawn` over the sequences; unit tests replaying the timelines without the
   original files.
@@ -65,7 +65,14 @@ standing still, T1a2 the scroll (both done 2026-10-26: `E24-log.md`).
   keys and the mouse at the edges with the edge cursors (hardware or drawn); a sequence's walks
   replayed; pause, a step, restart, fullscreen, vsync; `--measure`; `--check` reads every frame
   back against the headless one (Xvfb); `h3-view`'s `clock` copied (*provisional*, an origin
-  comment); the Windows cross-build, tried on the user's machine.
+  comment); the Windows cross-build, tried on the user's machine. **Key bindings** (the user,
+  2026-10-26): every key goes through one table of actions (the scroll's eight directions with
+  Ctrl, the hero's eight steps, the window's own: pause, step, restart, fullscreen, vsync, quit),
+  the original's keys its defaults (design §3.4), a user file overriding them (its format and
+  place *provisional*: the review list); no key named in the event loop; `h3-sdl`'s `Key` grows
+  additively to the keys bound (a common path). M3 T0 moves the table into the common crate, the
+  battle viewer's keys too (the client lane's inbox); a screen to rebind them comes with the
+  options dialog, later.
 - **Acceptance:** a situation and a walk sequence play in the window; `--check` exact; the
   Definition of Done.
 - **Depends on:** T2, T3. **Status:** ready after them.

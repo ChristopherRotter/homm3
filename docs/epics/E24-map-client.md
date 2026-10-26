@@ -89,7 +89,7 @@ battle.
 
 - **Scope:** the map standing still over time (the objects' step at each redraw, every 180 ms;
   the colour cycles' ticks every 200 ms, shown at the next redraw: `E24-design.md` §1.6); the
-  scroll, by whole tiles (the manager's pixel offset is never written, `map.toml` 0x406DF0), by
+  scroll, by whole tiles (the manager's pixel offset only a walk writes: design §3.5), by
   Ctrl and the arrow keys and the mouse at the screen's edges, at each map scroll speed, with the
   edge cursors; a hero's walk along its path: its groups and frames, its pixel steps, the timing at
   each hero speed (the enemy speed read with it), the view following it, the path's arrows
@@ -122,6 +122,12 @@ battle.
     original files) and with `--frames <dir>` draws its frame at each kept time; compared pixel
     by pixel outside the panels (the original's until M3), each frame's count recorded
     (`timelines/<id>-frames.txt`); `drawn` covers the sequences (`STALE` when one changed).
+  - **Key bindings** (the user, 2026-10-26, at T1b's start): no key hard-coded in the client;
+    T4's window takes every key through a table of actions, the original's keys as its defaults,
+    a user file overriding them; M3 T0 moves the table into the common crate (the battle
+    viewer's keys too); a screen to rebind them comes with the options dialog.
+  - **The edge scroll's zones** (MCL-Q6, the user, 2026-10-26): 16 pixels on every side, the
+    original's 16, 14, 16 and 15 for the comparisons only (`--bugs original`).
 - **The queued M1 items:** R2-8 (the writer's edge bound, the inbox) waits for a task that
   needs the writer; none planned, so T6 makes its one-line `cross-lane` pull request if no task
   took it. A loaded saved game's draw lists: M4.
@@ -129,7 +135,7 @@ battle.
   (**done** 2026-10-26: `h3map.py frames`, two idle sequences; `E24-log.md`, design §3), and
   T1a2, the scroll (T1a cut at its seam before it started, the user, 2026-10-26; **done**
   2026-10-26: Ctrl and the direction keys, the edge every 70 ms, the limits, the edge cursors,
-  four sequences; design §3.4, MCL-Q6 open); T1b, the walk
+  four sequences; design §3.4, MCL-Q6 answered); T1b, the walk
   read and recorded; T2, the map over time headless (idle and scroll exact); T3, the walk drawn
   (exact); T4, the window; T5, the sound; T6, M2's closure.
 - **Exit:** every recorded sequence as recorded, line by line and frame by frame (or each
@@ -142,7 +148,7 @@ battle.
   resource bar and the date, the buttons, the mouse and its cursor; the string catalogue's keys.
   Needs `h3-view`'s `ui`, `text`, `layout`, `mouse` and the `clock` and `cursor` M2 copied in
   one common crate: a `lanes.toml` change (shared) agreed with the client lane, proposed at M3
-  T0 (M2 T0's decision).
+  T0 (M2 T0's decision); T4's key bindings move there too (the client lane's inbox).
 - **M4, the engine's games shown:** a whole game's record and replay viewer; the live part from
   the engine (`h3_game`'s observation needs an object identity matching the map's object list:
   the adventure lane's inbox), the protocol's adventure messages (the server lane, E16); a battle

@@ -32,6 +32,13 @@ Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12, M1 2026-10-13, M2 2026-10
 Other lanes add entries here. The client lane turns each into a task, or moves its detail into
 [`NOTES.md`](NOTES.md) and keeps one line here while the work waits.
 
+- 2026-10-26 (the map client lane, E24 M2 T1b; **for you, at M3 T0**): **custom key bindings**
+  (the user, 2026-10-26: keys hard-coded so far are to be phased into bindings the player can
+  change). The map client's window (E24 M2 T4) takes every key through a table of actions with
+  the original's keys as defaults and a user file overriding them; at E24 M3 T0 that table moves
+  into the common crate both lanes share (with `clock`, `cursor`, `ui`, …), and `h3-view
+  window`'s keys (now matched in its event loop, `window.rs`) go through it too. Nothing to do
+  before M3 T0's proposal; `h3-sdl`'s `Key` grows additively meanwhile (a common path).
 - 2026-10-24 (the battle lane, CLT-Q4/Q6, `shared/clt-q4-q6-seam` and `battle/clt-q4-q6-carry`,
   both `cross-lane` with the user's consent; **for you**): **the wire carries the viewers' facts**
   (protocol v35): `Observation.background` (0 to 2, the battlefield picture's variant on dirt,
