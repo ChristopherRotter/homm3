@@ -17,6 +17,8 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   design §14): T8a done (#487); the user accepted ADR-0025's amendment draft (`adr-drafts/`, into
   ADR-0025 with the next `shared/` change). **Next:** T8b, the plumbing (C ABI v34, `h3-battle`'s
   `determinized` and `reseed` `cross-lane`, the user's consent; QUEUE).
+- **Open pull request #489** (`claude/quirky-pasteur-aolk6i`: the turn-order probe, the ADR draft
+  accepted): watch it to its merge.
 - **Versions:** battle action encoding v13, observation encoding v21, replay format v31 (CLT-Q4/Q6), the adventure env's action encoding v4 (E08 T45), C ABI v33 (E06 T5: the kill preview) (`docs/08-work-process.md`, "Versions"). Next ids: AI-Q10, AI-QUIRK-1, AI-STUB-1.
 - Working agreement: increments with a user checkpoint (Q41's pattern); the user reviews ADRs and seams.
 
