@@ -604,8 +604,8 @@ through one reader of the format's message, guards and rewards (`load_rewards` 0
 Both append a 228-byte **reward record** to **one list** of the map (+0x50; begin +0x54, end
 +0x58). The record's index goes into bits 0–9 of the tile's word (`reward_record` 0x4A0C20). An
 event's word also holds the format's player byte in bits 10–17, the computer flag in bit 18 and
-"remove after the visit" in bit 19. The record holds the text (+0x4), the guards flag (+0x10), the
-guards (+0x14) and the rewards (`structs.toml`, `reward_record`).
+"remove after the visit" in bit 19. The record holds the text (a string at +0x0), the guards flag
+(+0x10), the guards (+0x14) and the rewards (`structs.toml`, `reward_record`).
 
 **At most 400 records:** a 401st box or event is not stored, and its word keeps index 0, so it reads
 the first record (**A-19**). The census's largest list is 99 (Myth and Legend: events and boxes
@@ -656,10 +656,11 @@ event. An event of another colour does not stop the hero.
 2. **The rewards** (`grant_rewards`, §7.4) with the event's text. If the guards already showed
    that text, the rewards get an empty one instead.
 3. **Removal:** with bit 19 the tile's object is cleared: its word, its class (+0x1E) and bit 0x10
-   of the tile's +0xD (not identified). Without bit 19 the event stays and **fires again** at every later entry by a hero
-   of a qualifying colour.
+   of the tile's +0xD (not identified). Without bit 19 the event stays and **fires again** at every
+   later entry by a hero of a qualifying colour.
 4. **The end-of-game tests:** `scenario_condition_test` (0x5F1B10) and the second test (0x5F1C80)
-   run on the game's victory condition (+0x1F89C). When either holds, 0x4F2CE0 is called. These
+   run on the game's victory condition (+0x1F89C). When either holds, `scenario_condition_met`
+   (0x4F2CE0) is called. These
    are the same tests a battle and a turn run (not read, E10).
 
 ### 7.4 The rewards (0x49FA90)
@@ -709,7 +710,7 @@ Elemental), so no shipped map has an empty pool.
    **once until the end of its next battle**: status flag bit 12, which `hero_battle_bonuses_clear`
    clears. This applies to the computer's heroes too.
 3. **Guarded:** `monster_battle` (0x4AC580, at 0x4A434A) against **40 Gold Golems** (116) and **20
-   Diamond Golems** (117 in 2 stacks), with no third creature:
+   Diamond Golems** (117) in 2 stacks, with no third creature:
    - The battle's seed comes from the tile, as for a wandering monster's.
    - The monster's strength sums both creatures' values. The number of stacks n comes from the army
      ratio and the roll (survey `E08-battles.md` §4.1, 2 to 7, then ±1), **less the 2 Diamond

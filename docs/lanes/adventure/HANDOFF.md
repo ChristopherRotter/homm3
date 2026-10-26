@@ -4,13 +4,13 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 
 ## Current state
 
-- **E08**: increments 1 to 6 **closed** (6 on 2026-10-26 by T53's audit). **Increment 7: rewards on the map** (decisions 121–125, ADV-Q26, ADV-Q27): T54 done (the battle seam's facts; the retreat facts behind `ADV-STUB-9`, E10); round 1: T55a cut in four (decision 125), T55a1 done (survey `E08-rewards.md` §1 to §5: the census and the pickups; disputes D-29 to D-32), T55a2 done (decision 126; §6: the objects that teach; D-33 to D-36, A-17, A-18). Records: `E08-log.md`; increment 6's scope and decisions in `E08-archive.md`.
-- **Open pull requests:** none (T55a2's #476 merged).
-- **Next:** merge T55a2's pull request; then T55a3 (creatures, Pandora's Box, events), T55a4 (the common rules, batch E7's plan, the rule ids, the second reading; a user checkpoint at its end), T55b (the ADR drafts, ADR-0017 point 11's line for T54 among them, the design note, the cut); each cut confirmed with the user at its start.
+- **E08**: increments 1 to 6 **closed** (6 on 2026-10-26 by T53's audit). **Increment 7: rewards on the map** (decisions 121–127, ADV-Q26, ADV-Q27): T54 done (the battle seam's facts; the retreat facts behind `ADV-STUB-9`, E10); round 1: T55a cut in four (decision 125), T55a1 done (survey `E08-rewards.md` §1 to §5: the census and the pickups; disputes D-29 to D-32), T55a2 done (decision 126; §6: the objects that teach; D-33 to D-36, A-17, A-18), T55a3 done (decision 127: Pandora's Box, events and the Pyramid; the banks, the Refugee Camp and the quests to the sketch's items 10, 9 and 11; §7; D-37 to D-40, A-19, A-20). Records: `E08-log.md`; increment 6's scope and decisions in `E08-archive.md`.
+- **Open pull requests:** `adventure/e08-t55a3` (T55a3, docs only: the survey, `map.toml`, `structs.toml`).
+- **Next:** merge T55a3's pull request; then T55a4 (the common rules, batch E7's plan, the rule ids, the second reading; a user checkpoint at its end), T55b (the ADR drafts, ADR-0017 point 11's line for T54 among them, the design note, the cut); each cut confirmed with the user at its start.
 - **Versions** (`docs/08-work-process.md`, "Versions"): game state hash v14 (T54), adventure state hash v12 (T54), adventure ruleset part v11 (T50), map import v11 (`MAP_IMPORT_VERSION`, T54), adventure replay format v6 (T51a); the env's action encoding v4 is the AI lane's. Built so far, by area: `OVERVIEW.md`; ownership: `lanes.toml` (the details are in `OVERVIEW.md`, "Ownership").
 - **ADRs accepted**: ADR-0015 to -0017 (2026-10-10), amended for increments 2 to 6 (last: T45).
 - **R01** (the content split): the core `h3-content` and `h3-pack` (`core.toml`) are shared; the writer is `h3_map::writer`.
-- **Ids:** questions `ADV-Q<n>` (next 28), quirks `ADV-QUIRK-<n>` (1 the fringe; 2, 3 the diagonal; 4 neutral stacks; 5, 6 obstacles, split; 7 A-6; 8 formation; 19, 20 A-15, A-16 (no flags); flags 19–24; 15, 17, 18 increment 5's, flags 31, 32; 14, 16 withdrawn, flag 30 retired), stubs `ADV-STUB-<n>` (next 10; 8 and 9 open, E10's), rules `ADV-*` and `GAM-*` (last `GAM-BAT-013`); the E08 surveys' disputes `D-<n>` (next 37) and reading quirk candidates `A-<n>` (next 19). Versions owned: game state hash, adventure state and ruleset-part hashes, map import, adventure replay format.
+- **Ids:** questions `ADV-Q<n>` (next 28), quirks `ADV-QUIRK-<n>` (1 the fringe; 2, 3 the diagonal; 4 neutral stacks; 5, 6 obstacles, split; 7 A-6; 8 formation; 19, 20 A-15, A-16 (no flags); flags 19–24; 15, 17, 18 increment 5's, flags 31, 32; 14, 16 withdrawn, flag 30 retired), stubs `ADV-STUB-<n>` (next 10; 8 and 9 open, E10's), rules `ADV-*` and `GAM-*` (last `GAM-BAT-013`); the E08 surveys' disputes `D-<n>` (next 41) and reading quirk candidates `A-<n>` (next 21). Versions owned: game state hash, adventure state and ruleset-part hashes, map import, adventure replay format.
 - **Working agreement:** a couple of tasks per checkpoint; the user confirms seams and ADRs; tokens first; fuzzing stable-only.
 
 ## Standing traps
@@ -21,7 +21,7 @@ Moved to `TRAPS.md`: forks without deep copies, RNG seeds server-only, template 
 
 ### 2026-10-26 — increment 7, round 1: T55a3, Pandora's Box, events and the Pyramid
 
-Baseline f91cdd5 (#476 merged; CI green on the last code commit). The user's cut (decision 127): Pandora's Box, events and the Pyramid; the banks, the Refugee Camp and the quests placed in the sketch (items 10, 9, 11). **In progress:** decision 127 recorded; next the census of the bodies, then the readings (0x4A0C50, 0x4A0ED0, 0x49FA90; 0x4A4230), survey §7.
+Baseline f91cdd5 (#476 merged; CI green). Measured at the start (the banks' and the Seer's Hut's rewards are decision 121's army-dialog callers); the user's cut: Pandora's Box, events and the Pyramid, the rest placed in the sketch (decision 127). Survey `E08-rewards.md` §7 (the shared reward record, the box, an event's firing and its stop, the reward routine's order, the Pyramid), §0, §1 (bodies), §9 (D-37 to D-40, A-19, A-20), §10; 20 new `map.toml` readings (10 amended), the `reward_record` struct; a throwaway census example (deleted). Docs only. The sandbox restarted twice (the baseline's background run died); the scoped verify ran before the pull request.
 
 ### 2026-10-26 — increment 7, round 1: T55a2, the objects that teach
 
