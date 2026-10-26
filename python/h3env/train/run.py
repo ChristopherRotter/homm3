@@ -97,6 +97,10 @@ class Config:
     width: int = field(default=128, metadata=_in("network"))
     layers: int = field(default=2, metadata=_in("network"))
     heads: int = field(default=4, metadata=_in("network"))
+    #: Whether the MLP's entry head reads the batch's kill preview (AI-Q7 (b) part 2, E06 T6d:
+    #: each legal strike's previewed kills, `policy`'s documentation); every batch the network
+    #: plays then writes it.
+    preview: bool = field(default=False, metadata=_in("network"))
     rollout: int = field(default=128, metadata=_in("ppo"))
     #: 1.0 since E06 T5a (AI-Q9: γ 0.995 let the winner stall, `t4-1` against `t4-2`).
     gamma: float = field(default=1.0, metadata=_in("ppo"))
@@ -316,6 +320,8 @@ def resolve(config: Config) -> Config:
             problems.append(f"`{key}` must be positive")
     if c.kind not in NETWORK_KINDS:
         problems.append(f"`kind` is one of {', '.join(NETWORK_KINDS)}")
+    elif c.preview and c.kind != "mlp":
+        problems.append('`preview` is the MLP\'s (`kind = "mlp"`)')
     if min(c.embed, c.width, c.layers, c.heads) <= 0 or c.width % c.heads:
         problems.append(
             "`embed`, `width`, `layers` and `heads` are positive, `width` a multiple of `heads`"

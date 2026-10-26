@@ -748,3 +748,25 @@ entry only where a task builds on it.
 - **Tests:** `test_run.py` (the refusals, the curve's `system`, the line),
   `test_train.py` (`episode_entries` at `t7-1`'s kinds; a trainer at a half: the system actor
   on both sides, never to move, no member, no self-play rates, its score by side, an update).
+
+## T6c — The A/B run `t6b-1`: the system actor as an opponent (2026-10-26)
+
+- **The run** (`python/records/t6b-1.json`; `configs/e06-t6b.toml`: `t7-1`'s settings with
+  `system_share` 0.25; commit 9215205, C ABI v33, the system actor's policy v19; 20 M samples in
+  76.0 minutes, one segment, 5 025 to 5 507 samples/s, `t7-1` 4 846 to 5 205): gates at 10 M
+  (+245 Elo) and 20 M (+28 Elo), both promoted; evaluation 12.0 minutes (`t7-1` 12.2). The
+  system actor's cost did not show on the user's 24 threads.
+- **Results** (the final ladder, 500 per kind; `t7-1`'s in brackets): Random 0.844 (0.828),
+  Aggressor 0.539 (0.551), Greedy 0.526 (0.528), the system actor 0.371 (0.374; hero 0.350,
+  siege a hero defends 0.360, a garrison's siege 0.477), the neutral set 0.978 at value +0.245
+  (0.972, +0.245). Every difference lies within the intervals (±0.011 to ±0.018 each).
+- **Against the system actor in training** (the curve's `system`, the learner's mean score):
+  attacking 0.477 at 10 M, 0.549 at 20 M; defending 0.107, 0.149. On the ladder 0.327 at 10 M
+  and 0.371 at 20 M; `t7-1`, which never met it there, 0.359 and 0.374.
+- **Read:** negative. Meeting the system actor in a fifth of the player kinds' samples does not
+  make the agent play better against it within 20 M samples; it gains against it at the pace it
+  gains without meeting it. The gap is not the opponent mix. Three 20 M runs with different
+  settings (`t5-3`, `t7-1`, `t6b-1`) end at the same ladder.
+- **The user's next lever** (2026-10-26, the agent's recommendation): AI-Q7 (b) part 2, the
+  kill preview in the network (T6d), an A/B against `t7-1`; and the behaviour analysis on
+  `t6b-1`'s best (the user uploaded `best.pt`).

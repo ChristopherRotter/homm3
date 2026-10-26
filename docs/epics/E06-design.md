@@ -416,3 +416,31 @@ original's computer, complete for a side without a hero since E23 T4c). Refined 
   `human = [true, true]` for the system actor's side too (ADR-0025 point 6 unchanged), so
   BAT-QUIRK-27's let-off of a computer side's bad-morale freeze (BAT-MOR-004, since E23 T7) is
   never played in training or on the held-out sets.
+
+## 13. The kill preview in the network (T6d) — built
+
+AI-Q7 (b) part 2 (decision 6; the user, 2026-10-26, after `t6b-1`): the batch's previewed kills
+(part 1, C ABI v33: each legal attack and shot entry's least and greatest kills, the engine's
+BAT-DMG-011 preview, what the original shows a player) reach the MLP's entry head; the
+encodings are unchanged.
+
+- **The bias:** a legal strike entry's logit gains `φ(f) · u(h)`. `f` holds four features: the
+  least and greatest kills (`symlog`), the share of the target stack their mean is (clipped to
+  [0, 1]), the hit points it is (`symlog` of the mean times the target's full hit points; the
+  target's slot is fixed by the entry: 24 attack entries, then 2 shots, per slot). `φ` is a
+  network of two layers (4 → `embed` → `embed`) shared by the entries; `u` a linear map of the
+  trunk's output to `embed` (initialized near 0, so the network starts as the plain MLP's), so
+  the state decides how much a kill counts. Only the legal entries' features are computed (a
+  row has a few dozen of its 1 092 previewed entries; the dense form would be 0.5 GB a
+  minibatch). The value and the cast heads read no preview, so a truncation's bootstrap from
+  `final_obs` (no preview there) is as before.
+- **The plumbing:** `[network] preview` (false by default; the MLP's: `resolve` refuses it with
+  the entity network). Every batch such a network plays writes the preview: the trainer's, the
+  gate's (when either network reads it), the ladder's (when any of its networks does);
+  `Policy.act` refuses a batch without it. The rollout keeps it in half precision (whole kills
+  up to 2 048 exact; 143 MB at 256 envs × 128 calls, beside the observations' 1.2 GB) and the
+  update recomputes the entry's log-probability from it. A saved file's config names
+  `preview`; one without it reads none.
+- **The run** (T6e, the user's machine): `configs/e06-t6d.toml`, `t7-1`'s settings with the
+  preview, against `t7-1` (one change; `t6b-1` showed the system actor as an opponent changes
+  nothing measurable).

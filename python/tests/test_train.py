@@ -766,6 +766,99 @@ def test_an_entity_run_stops_resumes_and_plays_its_ladder(tmp_path) -> None:
     assert rows["random"]["games"] == 6
 
 
+def test_the_kill_preview_biases_the_legal_strikes_alone_and_is_recomputed() -> None:
+    # E06 T6d (AI-Q7 (b) part 2): a network that reads the preview adds a bias to each legal
+    # attack and shot entry's logit from its previewed kills, every other logit the MLP's own; it
+    # refuses a batch without the preview, and the update's log-probabilities come back from the
+    # rollout's stored preview (half precision).
+    batch = BattleBatch(8, threads=2, seed=3, max_steps=300, preview=True)
+    batch.add_scenario(scenario("full"))
+    batch.add_encounters()
+    batch.reset()
+    torch.manual_seed(0)
+    policy = Mlp.for_batch(batch, hidden=32, embed=8, preview=True)
+    assert policy.reads_preview and not Mlp.for_batch(batch, hidden=32, embed=8).reads_preview
+    with torch.no_grad():
+        policy.preview_context.weight.mul_(300.0)  # a bias large enough to move the choices
+    generator = torch.Generator().manual_seed(1)
+    calls = 40
+    rollout = Rollout(calls, batch.envs, batch)
+    assert rollout.preview is not None and rollout.preview.dtype == np.float16
+    base, n = batch.preview_base, batch.preview_entries
+    moved = 0
+    for t in range(calls):
+        obs = torch.from_numpy(batch.obs)
+        mask = torch.from_numpy(batch.entry_mask).bool()
+        with torch.no_grad():
+            h = policy.encode(obs)
+            plain = policy.entry_logits(h)
+            biased = policy.with_preview(plain, h, obs, torch.from_numpy(batch.preview), mask)
+        strikes = torch.zeros_like(mask)
+        strikes[:, base : base + n] = mask[:, base : base + n]
+        assert torch.equal(biased[~strikes], plain[~strikes])
+        moved += int((biased[strikes] != plain[strikes]).sum())
+        choice = policy.act(batch, generator)
+        rollout.store(t, batch, choice, batch.to_move)
+        a = batch.actions
+        a["entry"], a["spell"] = choice.entry, choice.spell
+        a["target"], a["second"] = choice.target, choice.second
+        batch.step()
+    assert moved > 0
+    valid = (rollout.side >= 0).reshape(-1)
+
+    def flat(array):
+        return torch.from_numpy(array.reshape(-1, *array.shape[2:])[valid])
+
+    heads = tuple(
+        flat(getattr(rollout, name))
+        for name in ("spell_mask", "spell", "target_mask", "target", "second_mask", "second")
+    )
+    with torch.no_grad():
+        logp, _, _ = policy.evaluate(
+            flat(rollout.obs),
+            flat(rollout.entry_mask),
+            flat(rollout.entry),
+            flat(rollout.cast),
+            heads,
+            flat(rollout.preview),
+        )
+    np.testing.assert_allclose(logp.numpy(), flat(rollout.logprob).numpy(), atol=1e-4)
+    with pytest.raises(ValueError, match="kill preview"):
+        policy.act(mixed_batch())
+    with pytest.raises(ValueError, match="kill preview"):
+        policy.evaluate(
+            flat(rollout.obs),
+            flat(rollout.entry_mask),
+            flat(rollout.entry),
+            flat(rollout.cast),
+            heads,
+        )
+
+
+def test_a_preview_run_gates_plays_its_ladder_and_resumes(tmp_path) -> None:
+    # E06 T6d: a run whose network reads the kill preview: its batch, the gate's and the
+    # ladders' write it; stopped after its first update and resumed to the budget; its files
+    # are networks that read it.
+    config = Config(**SMALL, preview=True, samples=2 * ONE_UPDATE, snapshot_every=1)
+
+    def interrupt(record: dict) -> None:
+        if record["type"] == "update" and record["update"] == 1:
+            signal.raise_signal(signal.SIGINT)
+
+    stopped = train(config, tmp_path, log=interrupt)
+    assert stopped.policy.reads_preview and stopped.batch.preview is not None
+    finished = resume(tmp_path)
+    assert finished.updates >= 2 and finished.policy.reads_preview
+    record = json.loads((tmp_path / "record.json").read_text())
+    assert check_record(record) == [] and record["config"]["network"]["preview"] is True
+    assert record["gates"] and all(g["result"] for g in record["gates"])
+    assert [ladder["final"] for ladder in record["ladders"]][-1] is True
+    best = load(tmp_path / "best.pt")
+    assert best.reads_preview
+    rows = ladder(best, opponents=["random"], per_kind=1, max_steps=300)
+    assert rows["random"]["games"] == 6
+
+
 def test_a_checkpoint_plays_the_ladder(tmp_path, capsys) -> None:
     # E05 T7, E06 T3a: a saved network against Random and both bots, as `h3 ai eval`'s table's
     # row: on the report set v1 (by default) and on v0.
