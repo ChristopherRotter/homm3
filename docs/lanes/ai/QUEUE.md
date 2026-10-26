@@ -7,18 +7,19 @@ Pre-refined tasks of the AI lane, in order, then the inbox of discovered work. T
 **E05** (`docs/epics/E05-battle-env.md`) closed 2026-10-20 (record: `E05-log.md`; the environment as built: `docs/07-simulation-and-ai.md` §1.1). **E06** (`docs/epics/E06-battle-ai.md`, AI-Q8; design `E06-design.md`, record `E06-log.md`): increments 1 to 5 and T6a (the behaviour analysis; rerun `python -m h3env.train.inspect` at every checkpoint) done by 2026-10-23. Best so far, `t7-1` (20 M samples, a third neutral): 0.828, 0.551, 0.528 against Random, Aggressor, Greedy, the system actor 0.374; the neutral set's value +0.245 against the target +0.285. The tasks' history is in `QUEUE-ARCHIVE.md`.
 
 **Increment 6** (refined 2026-10-26, the user: the system actor as a training opponent in the
-player kinds, decision 9 amended; every side stays human, the let-off question answered): T6b
-(`[league] system_share`, `configs/e06-t6b.toml`) done 2026-10-26. **Next: T6c, the A/B run on
-the user's machine** (`uv run --group train python -m h3env.train --config configs/e06-t6b.toml
---out runs/t6b-1`, 20 M samples; the user uploads `record.json`, `metrics.jsonl`, `best.pt`),
-then `python -m h3env.train.inspect` on its best and the checkpoint against `t7-1`.
+player kinds; every side stays human): T6b and its run T6c done 2026-10-26, negative (`t6b-1`
+at `t7-1`'s ladder). The user's next lever: AI-Q7 (b) part 2, T6d (`[network] preview`,
+`configs/e06-t6d.toml`) done 2026-10-26. **Next: T6e, the A/B run on the user's machine**
+(`uv run --group train python -m h3env.train --config configs/e06-t6d.toml --out runs/t6d-1`,
+20 M samples; the user uploads `record.json`, `best.pt`), then `python -m h3env.train.inspect`
+on its best and the checkpoint against `t7-1` (AI-Q7: keep the preview only if it measurably
+helps).
 
-- **Still candidates at T6c's checkpoint:** AI-Q7 (b) part 2 (the network reads
-  `batch.preview` beside the entry mask, an opt-in `[network]` key, the rollout keeps it; an
-  A/B config; unblocked since the battle lane's #458 previews a turret's shot as it is made);
-  potential-based shaping. Not the casts' exploration or the mana price (T6a). Runs: 60 M at
-  T7's mix (`configs/e06-t7.toml --set samples=60_000_000`, about 4 hours: whether PPO
-  plateaus, T8's trigger); the mana run `t5-4` (`configs/e06-mana.toml`, about 75 minutes).
+- **Candidates at T6e's checkpoint:** potential-based shaping; runs: 60 M at T7's mix
+  (`configs/e06-t7.toml --set samples=60_000_000`, about 4 hours: whether PPO plateaus, T8's
+  trigger: three 20 M runs, `t5-3`, `t7-1`, `t6b-1`, end at the same ladder); the mana run
+  `t5-4` (`configs/e06-mana.toml`, about 75 minutes). Not the casts' exploration or the mana
+  price (T6a), nor more of the system actor as an opponent (T6c).
 - Later (design §10): T5's rest (throughput, the observations in place), T6, T8, T9.
 
 ## Inbox

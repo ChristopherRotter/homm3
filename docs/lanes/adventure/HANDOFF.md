@@ -21,7 +21,7 @@ Moved to `TRAPS.md`: forks without deep copies, RNG seeds server-only, template 
 
 ### 2026-10-26 — increment 7, round 1: T55a4, the common rules and the checkpoint
 
-Baseline ef3c34b (#479 merged; CI's last code run on `master` green; the scoped verify passed, deny skipped). The user's cut: T55a4 whole (decision 128). Survey `E08-rewards.md` §8 (the common rules), §10 (rewritten for T55b), §11 (batch E7, 23 rows), §12 (rule ids), §13 (two fresh agents in turn: the RoE Witch Hut's mask 0xEFBF, A-21; the pathfinder's event stop, A-23; A-22, A-24), §14; one new `map.toml` entry, three amended. ADV-Q28 asked and answered (decisions 129–136). Docs only.
+Baseline ef3c34b (#479 merged; CI's last code run on `master` green; the scoped verify passed, deny skipped). The user's cut: T55a4 whole (decision 128). Survey `E08-rewards.md` §8 (the common rules), §10 (rewritten for T55b), §11 (batch E7, 23 rows), §12 (rule ids), §13 (two fresh agents in turn: the RoE Witch Hut's mask 0xEFBF, A-21; the pathfinder's event stop, A-23; A-22, A-24), §14; four `map.toml` entries amended (0x40E360 merged with #480's). ADV-Q28 asked and answered (decisions 129–136). Docs only.
 
 ### 2026-10-26 — increment 7, round 1: T55a3, Pandora's Box, events and the Pyramid
 

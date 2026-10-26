@@ -6061,8 +6061,9 @@ point, but:
   question's conditions, the 999 clamp that lowers a hero above it, **A-22** (a University's
   negative range), **A-24** (the loader's creature count past seven).
 
-**The exe map:** one new entry (0x40E360, H3API's SimulateMouseOver, inferred), three amended
-(`pathfinder_pass_through`, `load_object_body`, `load_rewards`).
+**The exe map:** four entries amended (`pathfinder_pass_through`, `load_object_body`, `load_rewards`,
+and `adventure_mouse_move` 0x40E360, which the map-client lane's #480 had mapped meanwhile: a
+merge conflict, its entry kept).
 
 **The checkpoint** (ADV-Q28, asked interactively; decisions 129–136): the disputes the code's side,
 confirmed or reverted by batch E7; A-21 a flag; A-23 a flag **only if row E7-23 confirms it** (the

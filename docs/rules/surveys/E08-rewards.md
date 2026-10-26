@@ -697,7 +697,7 @@ relax gives it a stop node, and `pathfinder_pass_through` (0x56AB40) lets a huma
 fourth argument 0) go on past a stop only for the classes 33 and 212. So **a human's planned path
 may end on an event but never crosses one: it goes around hidden events of any colour**, and the
 event's stop in `hero_move_step` meets only a path that ends there. Nothing in the pathfinder tests
-the class 26 or a colour. The adventure cursor (0x40E360, H3API's guess) tests no class 26 but tests
+the class 26 or a colour. The adventure cursor (`adventure_mouse_move` 0x40E360) tests no class 26 but tests
 the visitable bit (inferred). **A-23** (§9).
 
 ### 7.4 The rewards (0x49FA90)

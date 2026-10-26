@@ -14,21 +14,7 @@ context; a task that grows is cut at a seam agreed with the user. Code readings 
 finds is an `MCL-Q<n>` in the same task (the HANDOFF's autonomy contract).
 
 T1a was cut at its seam before it started (the user, 2026-10-26): T1a1 the recording and the map
-standing still (done 2026-10-26: `E24-log.md`), T1a2 the scroll.
-
-### E24 M2 T1a2 — the scroll
-
-- **Scope:** the hero and scroll speed options set before the load (where the original keeps
-  them: read); the inputs a key held and released and the pointer at a place in
-  `sequences.toml`. Readings (`E24-design.md` §3): the scroll: the arrow keys and the pointer at
-  the edges (where, the step, the delay at each scroll speed, a held key, diagonals, the view's
-  limits at the map's sides, whether it redraws at once or at the deadline), the edge cursors
-  (DEF, frames, hot spots). Recorded: the scroll at each speed (keys in each direction, the mouse
-  at an edge and a corner). T1a1's `frames` sets the sequence's 0 by writing the tick's, the
-  redraw's and the mouse poll's next times (design §3.2): a timer of the scroll's joins them.
-- **Acceptance:** §3's scroll with its addresses mapped; each sequence recorded twice with the
-  same timeline; the runbook's `frames` section for the inputs; the Definition of Done.
-- **Depends on:** T1a1 (done). **Status:** ready.
+standing still, T1a2 the scroll (both done 2026-10-26: `E24-log.md`).
 
 ### E24 M2 T1b — the walk, read and recorded
 
@@ -41,23 +27,26 @@ standing still (done 2026-10-26: `E24-log.md`), T1a2 the scroll.
   calls (for T5), a boat sailing (`hero_boat` 0x4CE900); VCMI compared. Recorded: land walks in the eight
   directions at each hero speed, one with the view following, one ended by the movement points
   (the path's rest kept), a sail; each walk's tiles from the original's memory into the sequence.
+  T1a2 found the direction keys without Ctrl step the selected hero one tile (design §3.4,
+  0x408E97): read with the walk; the clicks join `sequences.toml`'s inputs (the runbook).
 - **Acceptance:** §3's walk with its addresses mapped; the sequences recorded twice with the same
   timelines; the Definition of Done.
-- **Depends on:** T1a1 (the recording), T1a2 (the hero speed option). **Status:** ready after
-  them.
+- **Depends on:** T1a1 (the recording), T1a2 (the hero speed option; both done). **Status:**
+  ready.
 
 ### E24 M2 T2 — the map over time, headless
 
 - **Scope:** time in the library (beside `live::Moment`, pure, time an input): from a situation
   and a sequence's inputs, the redraws' times, the objects' step, both palette steps and the
-  view's corner as the scroll moves it, as the recorded timeline's lines; the edge cursors
-  (`h3-view`'s `cursor` copied, *provisional*, an origin comment); `h3-map-view sequences
+  view's corner as the scroll moves it, as the recorded timeline's lines (design §3.4, the cursor
+  lines too); the edge cursors (`h3-view`'s `cursor` copied, *provisional*, an origin comment;
+  the edge zones as MCL-Q6's answer, the original's behind `--bugs original`); `h3-map-view sequences
   [<id>]` (exit 1 on a difference) and `--frames <dir>`, the harness's frame check against the
   recorded screens, `drawn` over the sequences; unit tests replaying the timelines without the
   original files.
 - **Acceptance:** T1a's sequences as recorded, every line and every frame exact outside the
   panels (or each difference an `MCL-Q<n>`); `clients/scripts/check.sh`; the Definition of Done.
-- **Depends on:** T1a1 (done), T1a2. **Status:** ready after T1a2 (its idle part now).
+- **Depends on:** T1a1, T1a2 (both done). **Status:** ready.
 
 ### E24 M2 T3 — the walk drawn
 

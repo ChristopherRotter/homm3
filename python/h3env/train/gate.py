@@ -152,6 +152,8 @@ def play_gate(
             seed=GATE_V1_SEED,
             max_steps=max_steps,
             final_obs=False,
+            # The kill preview for a network that reads it (E06 T6d).
+            preview=candidate.reads_preview or best.reads_preview,
         )
         batch.add_encounters(attacker="external", defender="external")
         batch.reset()

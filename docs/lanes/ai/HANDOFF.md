@@ -12,9 +12,9 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   behaviour analysis) 2026-10-23. Best so far `t7-1` (20 M, a third neutral): 0.828, 0.551,
   0.528 against Random, Aggressor, Greedy, the system actor 0.374; the neutral set's value
   +0.245 below the target +0.285. Increment 6 (the user, 2026-10-26): the system actor as a
-  training opponent in the player kinds; T6b (`[league] system_share`) done, **open pull request
-  #478** (watch it to its merge). **Next:** T6c, the A/B run `t6b-1` on the user's machine
-  (QUEUE).
+  training opponent (T6b, #478), its run `t6b-1` negative (T6c); then AI-Q7 (b) part 2, the kill
+  preview in the network (T6d, `[network] preview`), **open pull request #481** (watch it to its
+  merge). **Next:** T6e, the A/B run `t6d-1` on the user's machine (QUEUE).
 - **Versions:** battle action encoding v13, observation encoding v21, replay format v31 (CLT-Q4/Q6), the adventure env's action encoding v4 (E08 T45), C ABI v33 (E06 T5: the kill preview) (`docs/08-work-process.md`, "Versions"). Next ids: AI-Q10, AI-QUIRK-1, AI-STUB-1.
 - Working agreement: increments with a user checkpoint (Q41's pattern); the user reviews ADRs and seams.
 
@@ -23,6 +23,13 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 Moved to `TRAPS.md`, in three groups: **Ownership** (cross-lane encodings and replays, what `--scope ai` skips), **Environment** (what an agent sees, the batch, the pool's `unsafe`, benchmarks, the census, the encounter sampler, bots' tables) and **Python** (the trainer's resumable state, uv, PyTorch's pinned build, the sandbox's network).
 
 ## Recent sessions
+
+### 2026-10-26 (later) — T6c's run recorded; T6d, the kill preview in the network
+
+- `t6b-1` (the user's run) ends at `t7-1`'s ladder; its behaviour analysis shows the same play
+  against the system actor (E06-log T6c). The user chose AI-Q7 (b) part 2: built `[network]
+  preview` (E06 design §13), `configs/e06-t6d.toml`, on a branch restarted from `master` after
+  #478 merged.
 
 ### 2026-10-26 — E06 increment 6 refined; T6b, the system actor as an opponent
 
@@ -38,10 +45,3 @@ Moved to `TRAPS.md`, in three groups: **Ownership** (cross-lane encodings and re
   `inspect/t7-1-*.json`; E06-log T6a). Found the turret shot's preview (battle lane's inbox).
   Increment 6's lever put to the user (QUEUE). The user: the
   System-seat benchmark (ADR-0027 point 11) into the same pull request.
-
-### 2026-10-23 — T7d's mix; T5's rest beside it
-
-- The user: T7d at a third neutral (their machine); here the mana price's preparation (#429),
-  then AI-Q7 (b) part 1 (#432): the preview of every entry halves the engine's step (29 µs),
-  still far above training's 5 000 samples/s. `t7-1` recorded; the user: diagnose first (T6a),
-  in a fresh session.
