@@ -738,6 +738,13 @@ entry only where a task builds on it.
   defending, but the system actor's attacking is as strong); a quarter for the A/B (of the
   player kinds' samples about a fifth: self-play gives two learning sides an episode, a member
   or the system actor one).
+- **The system actor's cost** (the sandbox, 4 threads, 256 envs, random legal entries but the
+  casts, inside `step`): in the player kinds alone a call takes 2.96 ms with both seats
+  external, 36.3 ms with the system actor attacking, 29.7 ms defending (its hero's decisions;
+  about 0.5 ms of CPU a caller step). At `t7-1`'s kinds a call takes 3.70 ms, at a quarter
+  6.41 ms (the worst of 400 calls 7.9 ms and 44.5 ms). On the user's 24 threads that is about
+  half a millisecond more a call against `t7-1`'s about 50 ms (the network's passes and
+  updates): a few percent of the run, more where the worst calls bunch.
 - **Tests:** `test_run.py` (the refusals, the curve's `system`, the line),
   `test_train.py` (`episode_entries` at `t7-1`'s kinds; a trainer at a half: the system actor
   on both sides, never to move, no member, no self-play rates, its score by side, an update).
