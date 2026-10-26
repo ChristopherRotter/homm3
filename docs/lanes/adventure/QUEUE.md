@@ -4,23 +4,7 @@ Pre-refined tasks of the adventure lane, in order, then the inbox of discovered 
 
 ## Tasks
 
-Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T51b (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 6 are closed (2026-10-12, -13, -20, -21, -23, -26; increment 6, army and hero management, by T53's audit). **Increment 7, rewards on the map**, refined with the user at T53 (ADV-Q26; decisions 121 to 123): T54 (the battle seam's facts) done; now round 1, the survey and the ADR amendment drafts (T55a, T55b), each task's cut confirmed with the user at its start. T55a is cut in four (decision 125): T55a1 to T55a3 done (survey `docs/rules/surveys/E08-rewards.md` §1 to §7; decisions 126 and 127 the cuts of T55a2 and T55a3), T55a4 below. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
-
-### E08 T55a4 — The rewards survey: the common rules, batch E7, the rule ids, the checkpoint
-
-- **Scope** (decisions 121, 122, 125): survey §8 on, from §2 to §7: (6) what a reward asks (a
-  question, a choice), refuses (a full backpack, a hero without a book, a skill already known),
-  what changes in the hero's derived properties and when (the combination question on a received
-  part, §10), what another player sees of a visited object (`docs/06-security.md`; an event is
-  never drawn, yet it ends a move: what a move and the env's masks may reveal, §10); the commands,
-  decisions, events, the observation, replays and benchmarks. (7) **Batch E7's plan** on the
-  client lane's harness (decision 122's agent's call; the rows §10 lists). (8) The proposed rule
-  ids, quirk candidates and disputes (D-29 on); **a fresh agent's second reading** of T55a1 to
-  T55a3's readings; the checkpoint's questions (an `ADV-Q`, the tutorial's chests among them).
-- **Not in T55a** (decisions 121 and 127; the epic's sketch, items 8 to 11): boats, Navigation and
-  the sea (Favorable Winds, the sea's chests and flotsam), the week's objects and mines, the
-  Refugee Camp; the creature banks; Seer's Huts and quest guards; towns (E09).
-- **Depends on:** T55a3 (done). **Status:** ready; a user checkpoint at its end (decision 122).
+Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T51b (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 6 are closed (2026-10-12, -13, -20, -21, -23, -26; increment 6, army and hero management, by T53's audit). **Increment 7, rewards on the map**, refined with the user at T53 (ADV-Q26; decisions 121 to 123): T54 (the battle seam's facts) done; now round 1, the survey and the ADR amendment drafts (T55a, T55b), each task's cut confirmed with the user at its start. T55a is cut in four (decision 125): all four done (survey `docs/rules/surveys/E08-rewards.md`; decisions 126 to 128 the cuts, its checkpoint ADV-Q28 decisions 129 to 136); T55b below. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
 
 ### E08 T55b — The ADR amendment drafts, the design note and the cut
 
@@ -32,7 +16,12 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
   T54's facts (decision 124: the human flag of the game's setup, the viewers' facts, the
   attacker's ground, the retreat facts behind `ADV-STUB-9`); the checkpoint's questions (an
   `ADV-Q`). The user accepts the drafts and the cut before anything is built (decision 122).
-- **Depends on:** T55a (T55a4 and its checkpoint). **Status:** waiting for T55a.
+- **From the checkpoint** (ADV-Q28, decisions 129–136; survey `E08-rewards.md` §10 to §14): the
+  disputes built on the code's side; A-21 a flag; A-23 a flag only if batch E7's row E7-23 confirms
+  it; **batch E7 whole before the build** (its harness, spec and recipe tasks, the run and the
+  scoring in the cut, as T47 and T48 for batch E6); no original limits on objects and their state
+  (decision 133: a map whose every tile is a box); §8's common rules as written.
+- **Depends on:** T55a (done). **Status:** ready; its cut confirmed with the user at its start.
 
 ## Inbox
 

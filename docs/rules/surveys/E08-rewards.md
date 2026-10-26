@@ -936,7 +936,9 @@ human who watches the path arrows can therefore find hidden events: the path ben
 empty-looking tile, and a click on that tile gives a path that ends there. The leak is the
 original's, through the path, while the event itself is never drawn.
 
-**The engine** has two ways (**A-23**, §9; the user's at ADV-Q28):
+**The engine** has two ways (**A-23**, §9). Decision 131: both, as a flag (`faithful` the original's,
+`strict-fixed` blind), **only if batch E7's row E7-23 confirms the original's stop**; else the
+batch's behaviour is the rule:
 
 - **As the original:** an event's tile is an entrance for `Reach` (a path's end, never a pass node),
   for every colour, as a pickup's is today. `legal_moves`, and so the env's tile masks (the AI
@@ -1029,7 +1031,9 @@ the same), a looted Pyramid that still asks first, the Pyramid's spell lost when
 learned (the wiki states it), an event that fires again at every entry (the editor's choice).
 
 **The second reading** (§13) confirmed the code's side of D-29 to D-32 and D-34 to D-40 and
-reshaped D-33.
+reshaped D-33. **Decided at ADV-Q28** (§14): the code's side of every dispute, confirmed or reverted
+by batch E7 (decision 129); A-21 a flag (130); A-23 a flag if row E7-23 confirms it (131); A-17
+and A-19 not reproduced and no smaller bound in their place, A-18, A-20, A-22 and A-24 fixed (133).
 
 Quirk candidates (T55a4, the second reading, §13): **A-23** the pathfinder makes an event's tile a
 stop for every colour (§7.3, §8.5): a human's path never crosses a hidden event and bends around
@@ -1240,3 +1244,29 @@ the looted Pyramid's −2 once (D-40, A-20, §7.5).
 
 **Not read by either:** the computer's answers (E10), the dialogs' drawing, `ai_pathfinder_map`
 (0x4B2DA0: whether a computer's path crosses events, E10), the second caller of the bans' rebuild.
+
+## 14. For T55b: the checkpoint's questions (ADV-Q28)
+
+*Answered (2026-10-26, the epic's decisions 129–136):* 1 (a); 2 (a); 3 (a), **only if batch E7's row
+E7-23 confirms the original's stop** (the user: "if we are sure that this is in fact the original's
+behavior. I am kind of skeptical because it seems too obvious; an experiment will tell"); 4 (a);
+5 no flags, **and no original limits**: "raise the limits to a reasonable number. We want to allow
+maps even when every single tile is filled with a box, or every single tile with an object of some
+class. Just implement a more reasonable mechanism for visits and box / event state" (decision 133);
+6 not modelled; 7 as written; 8 both confirmed.
+
+1. **The disputes** D-29 to D-32 and D-34 to D-40 (§9): (a) the code's side, built and confirmed or
+   reverted by batch E7's row; (b) only once batch E7 confirms it; (c) VCMI's where the wiki agrees.
+   Recommended (a).
+2. **D-33 and A-21, an RoE map's Witch Hut:** (a) a quirk with a flag, `faithful` 0xEFBF,
+   `strict-fixed` VCMI's 26; (b) the original's everywhere; (c) VCMI's everywhere. Recommended (a).
+3. **A-23, an event's tile in the pathfinder:** (a) a quirk with a flag, `faithful` the original's
+   stop, `strict-fixed` blind; (b) the original's everywhere; (c) blind everywhere. Recommended (a).
+4. **Batch E7:** (a) all 23 rows in two runs before the build; (b) beside the build; (c) the
+   disputes' and quirks' rows only; (d) none. Recommended (a).
+5. **The unreachable quirk candidates:** A-17 and A-19 not reproduced, no flag; A-18, A-20, A-22 and
+   A-24 always fixed. Recommended: agreed.
+6. **The tutorial's chests:** not modelled (recommended), or a setup flag.
+7. **The common rules as written** (§8). Recommended: as written.
+8. **Decision 104 for the random artifacts' pool; what stays out of increment 7.** Recommended:
+   both confirmed.
