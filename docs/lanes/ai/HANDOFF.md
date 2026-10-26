@@ -13,8 +13,8 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   0.528 against Random, Aggressor, Greedy, the system actor 0.374; the neutral set's value
   +0.245 below the target +0.285. Increment 6 (the user, 2026-10-26): the system actor as a
   training opponent (T6b, #478), its run `t6b-1` negative (T6c); then AI-Q7 (b) part 2, the kill
-  preview in the network (T6d, `[network] preview`), **open pull request #481** (watch it to its
-  merge). **Next:** T6e, the A/B run `t6d-1` on the user's machine (QUEUE).
+  preview in the network (T6d, `[network] preview`, #481). **In progress:** T6e, the user's run
+  `t6d-1` against `t7-1` (QUEUE).
 - **Versions:** battle action encoding v13, observation encoding v21, replay format v31 (CLT-Q4/Q6), the adventure env's action encoding v4 (E08 T45), C ABI v33 (E06 T5: the kill preview) (`docs/08-work-process.md`, "Versions"). Next ids: AI-Q10, AI-QUIRK-1, AI-STUB-1.
 - Working agreement: increments with a user checkpoint (Q41's pattern); the user reviews ADRs and seams.
 
@@ -23,6 +23,12 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 Moved to `TRAPS.md`, in three groups: **Ownership** (cross-lane encodings and replays, what `--scope ai` skips), **Environment** (what an agent sees, the batch, the pool's `unsafe`, benchmarks, the census, the encounter sampler, bots' tables) and **Python** (the trainer's resumable state, uv, PyTorch's pinned build, the sandbox's network).
 
 ## Recent sessions
+
+### 2026-10-26 (evening) — T6e, the A/B run `t6d-1` (in progress)
+
+- **In progress:** the user's `t6d-1` record (committed as uploaded: it ends before its final
+  ladder; asked the user for `--resume runs/t6d-1`), `inspect` on its `best.pt` running in the
+  sandbox (`python/runs/t6d-1/`). Next: the log entry, AI-Q7's result put to the user.
 
 ### 2026-10-26 (later) — T6c's run recorded; T6d, the kill preview in the network
 
@@ -38,10 +44,3 @@ Moved to `TRAPS.md`, in three groups: **Ownership** (cross-lane encodings and re
   no ABI change), `configs/e06-t6b.toml`; E06's increments 1 to 5 moved to `E06-archive.md`.
   The system actor's hero decisions make a batch call at a quarter 1.7 times as long on the
   sandbox (E06-log T6b). The bots' tables were current (reproduced byte for byte).
-
-### 2026-10-23 — E06 T6a, the behaviour analysis
-
-- Built `python -m h3env.train.inspect`, ran it on the user's `t7-1` best (records
-  `inspect/t7-1-*.json`; E06-log T6a). Found the turret shot's preview (battle lane's inbox).
-  Increment 6's lever put to the user (QUEUE). The user: the
-  System-seat benchmark (ADR-0027 point 11) into the same pull request.
