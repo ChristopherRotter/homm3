@@ -700,3 +700,80 @@ points 4, 5, 6 and 8 moved to T5 with the heroes and the path, point 7 to T4b. S
   maps as a new game starts them, the shroud's edges around the explored circles, one reaching
   the map's right column beside the edge), `boats-colours` (seven boarded boats of the three
   types, Blue to Pink): each exact on its first run, the whole set (40) again.
+
+## 3. The map moving (M2, from T1a1, 2026-10-26)
+
+### 3.1 The idle loop in time order (M2 T1a1)
+
+Path read: the managers' loop (`executive_loop` 0x4B0E40) on the adventure screen without a
+dialog, a human player's turn, no network game, no hero moving; from the loop's turn through
+`input_next_message` 0x4EC590 and the adventure manager's idle step (0x408A88) to the tick
+(0x4ED490) and the redraws' own polls. Not read: the managers below the adventure manager (the
+chain stops at it: its idle step answers 1), the panels' redraw at the end of the view draw, the
+sound the idle step starts (0x4088F9 to 0x408996: M2 T5), the call that ends `pump_messages`.
+
+- **The loop.** Each turn of `executive_loop` pumps the Windows messages (`pump_messages`
+  0x4F7FB0), takes the next input message (`input_next_message`: **the tick first**, then the
+  oldest of the input manager's 64 queued messages, else an **idle message**, kind 0) and hands it
+  to the managers from the top down (each one's procedure, vtable +8) until one answers 1; then it
+  starts over at once. Nothing waits: at a frozen clock the loop spins (the harness's "clock
+  reads"), and a step of the clock is met by its next turn.
+- **The tick** (§1.6) is polled by every turn of the loop, before its message, and inside each
+  redraw (the view draw's start and end, 0x40F3F9 and 0x40F823; `screen_show_rect` before and
+  after, 0x602BDE and 0x602C40). So a palette step falls in the first turn at or after its time
+  (`palette_tick_time` 0x6989B4), and **before that turn's idle step**. Every 60 ms
+  (`tick_60ms_time` 0x6989AC) it also calls `network_keepalive` 0x5546B0 (nothing outside a
+  network game) and `turn_timer_poll` 0x557AF0 (inferred: a turn's timer, idle in a single game);
+  neither draws.
+- **The idle step** (the adventure manager's procedure on an idle message, 0x408A88): once the
+  clock reaches `frame_deadline` 0x698998 it clears +0x200 (the moving hero's frame, T1b), draws
+  the view (0x40F3F0, from +0xE4), shows (0, 8) to (608, 552) at once (`screen_show_rect`) and,
+  while the clock still has reached the deadline and +0x104 is clear, grows +0x100 and moves the
+  deadline on by max(180, the lateness) (0x408B26); then it pumps the messages. `view_show_step`
+  0x40F270 is the same show and step after the other redraws (a move, a visit).
+- **So, per millisecond of the clock:** the palette step if one is due, then the redraw if one is
+  due. A redraw shows every palette step up to its own millisecond and draws the objects at the
+  step +0x100 held before it (§1.6); the screen changes only at redraws. The palette steps come
+  every 200 ms and the redraws every 180 ms, on two grids whose phase is the map's load's real
+  time; neither is late when the clock moves 1 ms at a time (the harness), and a late one is
+  not caught up. Since 180 < 200 a redraw shows one palette step or none, never two: one redraw
+  in ten shows none, the one after a redraw that came less than 20 ms after a step (in the
+  recordings, at the step's own millisecond: 180, 1 980, 3 780, … after their 0).
+
+### 3.2 The recording (M2 T1a1)
+
+`h3map.py frames [--only <id>]` (the runbook, "The map's sequences") plays each sequence of
+`clients/map/sequences.toml`: its situation staged as a still is (`stage`, `capture`'s first
+half), the clock frozen once both deadlines lie ahead of it, then **the sequence's 0** set to the
+next millisecond by writing the palette tick's, the redraw's and the mouse poll's next times
+there (the harness's own timers, as E17's `align_mouse_poll`: the phase between the grids is the
+load's real time, so without this two runs differ), checked to have run at 0; then 1-ms steps to
+`ms`, each followed by the state memory holds and the screen. Every screen whose view (outside the
+panels) changed is kept (local); the **timeline** (`clients/map/timelines/<id>.txt`, numbers
+only) lists the changes: `<ms> view <x> <y> <level>`, `<ms> objects <n>` (+0x100 counted from
+0), `<ms> cycles <terrains> <rivers>` (each kind's palette steps counted from 0) and `<ms> screen
+<x0>,<y0>,<x1>,<y1>` (where the screen changed since the screen kept before: each one kept); the
+first state at 0, whose screen is always kept; the lines of one millisecond in that order, not
+the events' (the tick comes before the redraw). The live part at 0 is a still's
+(`timelines/<id>-live.toml`, kept from a run as recorded or new): the viewer's frame drawn with
+it is compared with the original's at 0 (must be exact).
+
+- **`idle-cycles`** (`seq-idle-cycles`: lava and water, the muddy, clear and lava rivers in four
+  quadrants of one view; 8 000 ms): the palettes step at 0, 200, 400, … (40 steps after 0, both
+  kinds together), the redraws at 0, 180, 360, … (+0x100 grows at each); the screen changes at
+  every redraw but 180, 1 980, 3 780, 5 580 and 7 380 (39 screens after 0's), each time over the
+  whole view: as §3.1 says, nothing between the redraws.
+- **`idle-objects`** (`objects-flat`: 116 objects, 47 flat, among cycling terrain; 8 000 ms): the same steps; the
+  screen changes at every redraw (44 after 0's), at the five redraws without a palette step only
+  the objects ((8, 13) to (600, 552)).
+- Each recorded twice, the second run's timelines as the first's; the frame at 0 exact in all
+  four runs. So the reading holds frame by frame for the map standing still: M2 T2's schedule is
+  the two grids from the sequence's 0, and at each redraw a still (§1.6) at the steps it shows.
+
+### 3.3 VCMI 1.7.5 compared
+
+| Point | VCMI (`client/mapView/`) | |
+|---|---|---|
+| Time | `MapViewController::tick` adds each rendered frame's time to the adventure context's `animationTime`; the map is drawn every frame | differ: the original draws the map only at its 180-ms redraws (§3.1) |
+| Palette steps | `MapRendererAdventureContext::terrainImageIndex`: `animationTime` div 180 | differ (§1.7): every 200 ms, polled, shown at the next redraw (none at one redraw in ten) |
+| Objects' steps | `objectImageIndex`: `animationTime` div 180 plus the object's id | the same 180 ms; differ (§1.7): a random phase, a step only at a redraw, a late redraw not caught up |

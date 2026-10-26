@@ -117,6 +117,9 @@ lr_schedule = "constant"
         ("", ["ladder.ladder_episodes=0"], "`ladder_episodes` lies in"),
         ("", ["ladder.ladder_final_episodes=501"], "`ladder_episodes` lies in"),
         ("", ["env.kinds=[1, 2]"], "six weights"),
+        ("", ["league.system_share=1.5"], "`system_share` lies in"),
+        ("", ["league.system_share=0.25"], "needs `\\[env\\] kinds`"),
+        ("", ["league.system_share=0.25", "env.kinds=[1, 0, 0, 0, 0, 1]"], "needs a player kind"),
         ("", ["ppo.lr"], "table.key=value"),
         ("seed = [", [], "not TOML"),
         ("", ["ppo.lr_schedule=cosine"], "linear or constant"),
@@ -531,6 +534,44 @@ def test_the_record_splits_the_rates_by_kind_and_keeps_the_neutral_ladder(tmp_pa
         **dict.fromkeys(("league", "frozen_passes", "value_loss", "entropy", "kl"), 1),
     }
     assert line(shown).endswith(" ev +nan hero 0.50 wandering 1.00")
+
+
+def test_the_record_scores_the_learner_against_the_system_actor_by_side(tmp_path: Path) -> None:
+    # E06 T6b: the update records' scores against the system actor (`system_share`) become each
+    # curve point's per side of the learner, weighed by their episodes.
+    run = Run(tmp_path / "r", load_config("samples = 30\n"), IDENTITY, "samples = 30\n")
+    records = [
+        {"type": "start", "name": "r", "update": 0, "samples": 0, "episodes": 0, "minutes": 0.0},
+        {
+            **_update(1, 10, 1.0),
+            "system": {
+                "attacker": {"episodes": 3, "score": 1 / 3},
+                "defender": {"episodes": 1, "score": 0.5},
+            },
+        },
+        {**_update(2, 20, 1.0), "system": {"attacker": {"episodes": 1, "score": 1.0}}},
+        _gate(2, 20, "rejected"),
+        _update(3, 30, 1.0),
+        _gate(3, 30, "rejected"),
+    ]
+    for r in records:
+        run.emit(r)
+    run.write_record()
+    run.close()
+    record = json.loads((tmp_path / "r" / "record.json").read_text())
+    assert check_record(record) == []
+    first, second = record["curve"]
+    assert first["system"] == {
+        "attacker": {"episodes": 4, "score": 0.5},
+        "defender": {"episodes": 1, "score": 0.5},
+    }
+    assert "system" not in second
+    shown = {
+        **records[1],
+        **dict.fromkeys(("samples_per_s", "attacker_won", "truncated", "league_score"), 0.5),
+        **dict.fromkeys(("league", "frozen_passes", "value_loss", "entropy", "kl"), 1),
+    }
+    assert line(shown).endswith(" ev +nan system-attacker 0.33 system-defender 0.50")
 
 
 def test_check_record_names_what_is_missing() -> None:

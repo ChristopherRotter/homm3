@@ -1,0 +1,32 @@
+# E06 T6b's A/B run on the user's machine (increment 6, the user's lever, 2026-10-26; design
+# §12): `t7-1`'s settings (`e06-t7.toml`) with the system actor as a training opponent in the
+# player kinds. A quarter of their episodes (a hero battle, a siege a hero defends, a
+# garrison's siege) have the system actor on a uniformly drawn side inside the batch, the
+# learner on the other and no league member; the rest are self-play or a member's as in `t7-1`,
+# and every kind keeps `t7-1`'s share of the episodes. The update lines show the learner's score
+# against it by side (`system-attacker`, `system-defender`); the ladder's system row now
+# measures a training opponent, the gate and the other rows stay comparable with `t7-1`'s:
+#
+#   uv run --group train python -m h3env.train --config configs/e06-t6b.toml --out runs/t6b-1
+#   uv run --group train python -m h3env.train --resume runs/t6b-1
+
+seed = 1
+samples = 20_000_000
+
+[env]
+kinds = [78, 2, 100, 50, 25, 3]
+
+[league]
+self_play = 0.5
+system_share = 0.25
+snapshot_every = 1_000_000
+max_members = 16
+live = 4
+live_every = 250_000
+
+[gate]
+gate_every = 10_000_000
+
+[ladder]
+ladder_episodes = 250
+ladder_final_episodes = 500

@@ -2,7 +2,7 @@
 
 Status: **refined** (2026-10-23, T0, with the user); **M1 closed** (2026-10-24, T6b: the
 reviewers, the review list accepted by the user); **M2 refined** (2026-10-26, M2 T0, with the
-user); next M2 T1a (`docs/lanes/map-client/QUEUE.md`).
+user); next M2 T1a2 (`docs/lanes/map-client/QUEUE.md`).
 Lane: map-client (`docs/lanes/map-client/HANDOFF.md`: the autonomy contract, the user's asset
 notes). Opened 2026-10-23 when the user split the client lane at E17 M3's closure (CLT-Q18).
 Decisions so far live here (no ADR of its own yet; ADR-0020 and ADR-0024 bind it as they bind
@@ -125,9 +125,11 @@ battle.
 - **The queued M1 items:** R2-8 (the writer's edge bound, the inbox) waits for a task that
   needs the writer; none planned, so T6 makes its one-line `cross-lane` pull request if no task
   took it. A loaded saved game's draw lists: M4.
-- **Tasks** (the queue has each in full): T1a, the recording, the map standing still and the
-  scroll; T1b, the walk read and recorded; T2, the map over time headless (idle and scroll
-  exact); T3, the walk drawn (exact); T4, the window; T5, the sound; T6, M2's closure.
+- **Tasks** (the queue has each in full): T1a1, the recording and the map standing still
+  (**done** 2026-10-26: `h3map.py frames`, two idle sequences; `E24-log.md`, design §3), and
+  T1a2, the scroll (T1a cut at its seam before it started, the user, 2026-10-26); T1b, the walk
+  read and recorded; T2, the map over time headless (idle and scroll exact); T3, the walk drawn
+  (exact); T4, the window; T5, the sound; T6, M2's closure.
 - **Exit:** every recorded sequence as recorded, line by line and frame by frame (or each
   difference an `MCL-Q<n>`); a situation and a sequence play in the window at the original's
   frame times, with its sound, and render headless frame by frame.
