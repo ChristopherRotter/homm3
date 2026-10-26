@@ -8,6 +8,8 @@
 # the nearest controls without one (`select`); a target not yet explored is approached first over
 # open tiles (`near`: the original finds no path onto an unexplored tile), and a visit beyond the
 # day's points waits for the hero's next turn (`days`), as the spec allows.
+# The specs' `opening.py` (a battle's stacks at its opening) is the battle record's `opening`
+# (`opening:rows`, `morale:start`, `luck:start`).
 
 spec = "experiments/specs/E08-batch-7a.toml"
 players = ["Red", "Blue"]

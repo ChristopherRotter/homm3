@@ -4,6 +4,8 @@
 # Red: E7-12 to E7-15 (Pandora's Boxes), E7-17 and E7-18 (events); Blue: E7-16 (the Pyramid,
 # retreat), E7-22 (the Pyramid won), E7-21 (the looted Pyramid twice, then a battle), E7-19 and
 # E7-20 (boxes without room), E7-23 (paths only: one click each, the hero never moves).
+# The specs' `opening.py` (a battle's stacks at its opening) is the battle record's `opening`
+# (`opening:rows`, `morale:start`, `luck:start`).
 
 spec = "experiments/specs/E08-batch-7b.toml"
 players = ["Red", "Blue"]
