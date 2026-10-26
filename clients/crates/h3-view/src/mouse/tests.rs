@@ -490,6 +490,12 @@ fn the_siege_rectangles_take_the_mouse_in_a_siege_or_the_original_s() {
     assert_eq!(fixed.marked, Some(5));
     let original = siege_at(&o, &legal, point, Bugs::Original);
     assert_eq!((original.kind, original.marked), (Kind::Nothing, None));
+    // A town without a fort is no siege (R2-2): the hex below, as outside a town.
+    let mut town = siege(0);
+    town.stacks.push(stack(5, Side::Defender, 0, 84, false));
+    assert_eq!(siege_at(&town, &legal, point, Bugs::Fixed).marked, Some(5));
+    let original = siege_at(&town, &legal, point, Bugs::Original);
+    assert_eq!((original.kind, original.marked), (Kind::Nothing, None));
 }
 
 #[test]
