@@ -199,6 +199,11 @@ states; the Tower 26, without the moat).
   broken arrow); `quake`, `defended`, `aim` and `through` as recorded, their frames exact but the
   listed differences; T2b's and T2c-1's nine with the Catapult's hint recaptured without their
   ` log` masks; found: the status line kept at a hot-seat human turn with the mouse parked.
+- **T3a done 2026-10-26** ([log](E17-log.md#m4-t3a--m4s-review-the-reviewers-findings-fixed-2026-10-26);
+  T3 cut in three by the user): three fresh reviewers (the drawing and timeline, the mouse and
+  the adapters, the harness), 17 findings: 16 fixed (a hex's every entry played, no moat over a
+  flier, the turrets' shot sound, the rectangles by the fort, a still's wall names, the harness
+  refusing what it cannot force; tests and the format doc), R1-3 queued; review items 10 to 12.
 
 ### The adventure lane's harness (H1, H2: its batch E3)
 
@@ -295,3 +300,17 @@ M3 at its review, T9b). The next milestone's list starts here.
    (`roll:<name>:<a>,<b>,...`, `xdd.c`'s queue of 8) and its roll `quake_target` (T2c-2).
 9. Earthquake with the slip fixed (T2c-2): the damage before frame 5's redraw and shown everywhere
    from it, as a wall shot's (the original's: after it, the new pictures from frame 6).
+10. The siege's mouse rectangles at a town without a fort (T3a, R2-2): none in the client's
+    profile, as outside a town (CLT-Q21's "a siege only" read as a town with a fort, as the
+    drawing reads it); the original's everywhere for the comparisons.
+11. The recorded siege timelines in the unit tests (T3a, R1-5): `keep`, `hit`, `missed`,
+    `automatic`, `quake`, `gate`, `moat` and `mine` replayed (CI, without the original data);
+    the others (`tower`, `cyclops`, `breach`, `gate-fortress`, `defended`, `aim`, `through`) by
+    `drawn`'s timeline check only (the original data); a turret facing right and the leftward
+    rows' wall strips tested on their own instead.
+12. The harness refuses what it cannot force (T3a, R3-1 to R3-4): `xdd.dll`'s ack gains a 7th
+    field, the refused roll commands and forced values; a forced value outside its call's
+    `random(a, b)` range is replaced by the call's own draw and fails the sequence; a new list
+    over a roll's undrawn one is refused; the wall states checked before a game starts (R3-5).
+    Queued (QUEUE's inbox, with a record that opens mid-battle): R1-3, the moat's strip by the
+    fixed moat rows.

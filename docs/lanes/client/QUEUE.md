@@ -4,19 +4,10 @@ Pre-refined tasks of the client lane, in order, then the inbox of discovered wor
 
 ## Tasks
 
-Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12, M1 2026-10-13, M2 2026-10-14; ADR-0020, ADR-0024; the battle client since the split of 2026-10-23, the adventure map client being the map-client lane's E24). M3 (fidelity) done 2026-10-23 with T9d; M4 (sieges) refined at T0 (2026-10-23, with the user); T1a, T1b, T2a and T2b done (2026-10-23), T2c-1 (2026-10-24, T2c cut in two by the user), T2c-2 (2026-10-26); T3 below, cut in three (T3a to T3c). The original files: stage them from the user's `original-data/install/` (one large file per staging call; the user's computer must be online); never from the installation. The captures need the five DLLs, `Heroes3.snd`, `H3ab_ahd.snd` and `H3ab_ahd.vid` too; the harness's runbook: `clients/capture/README.md`. The client's gates: `clients/scripts/check.sh` (the full local check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gate` from `clients/`. An asset fix gets its mechanism (ADR-0020 point 6: the entry's flag, the `faithful`/`fixed` profile) with the first one a task finds.
+Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12, M1 2026-10-13, M2 2026-10-14; ADR-0020, ADR-0024; the battle client since the split of 2026-10-23, the adventure map client being the map-client lane's E24). M3 (fidelity) done 2026-10-23 with T9d; M4 (sieges) refined at T0 (2026-10-23, with the user); T1a, T1b, T2a and T2b done (2026-10-23), T2c-1 (2026-10-24, T2c cut in two by the user), T2c-2 (2026-10-26), T3a (2026-10-26; T3 cut in three); T3b and T3c below. The original files: stage them from the user's `original-data/install/` (one large file per staging call; the user's computer must be online); never from the installation. The captures need the five DLLs, `Heroes3.snd`, `H3ab_ahd.snd` and `H3ab_ahd.vid` too; the harness's runbook: `clients/capture/README.md`. The client's gates: `clients/scripts/check.sh` (the full local check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gate` from `clients/`. An asset fix gets its mechanism (ADR-0020 point 6: the entry's flag, the `faithful`/`fixed` profile) with the first one a task finds.
 
-M4's closure, T3, cut in three by the user (2026-10-26): the review first, so that every capture
-afresh also captures its fixes.
-
-### E17 M4 T3a — M4's review: the reviewers' findings fixed
-
-- **Scope:** fresh read-only reviewers over M4's code by area (R1 the siege's drawing and
-  timeline, R2 the mouse, the interface and the adapters, R3 the harness's siege additions), one
-  at a time; each finding checked against the code and fixed with its test, or queued for the
-  review list.
-- **Acceptance:** the findings fixed or listed; `drawn` as before or its changes listed for T3b.
-- **Depends on:** T2c-2 (done). **Status:** in progress (2026-10-26).
+M4's closure, T3, cut in three by the user (2026-10-26): the review first (T3a, done), so that
+every capture afresh also captures its fixes.
 
 ### E17 M4 T3b — Every capture afresh
 
@@ -26,7 +17,8 @@ afresh also captures its fixes.
   (`frames`) under Wine, in batches (M3 T9a's: two sessions); `drawn --record`.
 - **Acceptance:** M4's exit (the epic file): each capture as recorded or its difference a listed
   fix or a classified quirk; the status line's rule settled or a `CLT-Q<n>`.
-- **Depends on:** T3a. **Status:** ready after T3a.
+- **Depends on:** T3a (done 2026-10-26: its harness checks, `xdd.dll`'s refused rolls, are in
+  every capture from here; its fixes changed no `drawn` item). **Status:** ready.
 
 ### E17 M4 T3c — M4's review list, M5 refined
 
@@ -72,7 +64,9 @@ Other lanes add entries here. The client lane turns each into a task, or moves i
   findings. R2-7: a timeline that steps forward (`Moment::at`, `Heroes::posed` and `Timeline::at`
   rescan the battle for every frame: 2.3 ms a frame over 82 seconds, `play`; for live play's long
   games). R2-8: a record that opens mid-battle (the snapshot's dead stacks as corpses, a raise of
-  one drawn; the box by the timeline's living set, not the first snapshot's `alive`). R4-2:
+  one drawn; the box by the timeline's living set, not the first snapshot's `alive`; with it
+  M4 T3a's R1-3: the moat's strip over a stack by the fixed moat rows, 0x63BCE8 and 0x63BCF4,
+  not the record's moat, which leaves out the bridges while the opening's gate is open). R4-2:
   `drawn`'s digest of what the masks depend on besides the pixels (`ours.txt`'s boxes, the log's
   text: digests recorded again from `master`'s viewer first, the runbook's rule). R4-9: a
   stricter shadow chain in `h3cap.redraws` (a near-black pixel counts as an artifact over almost

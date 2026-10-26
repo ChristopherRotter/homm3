@@ -2504,6 +2504,48 @@ original files staged from the user's `original-data/install/`.
   nine (their status line now drawn), the four new, recorded; the real-asset gate (510 keys);
   the viewer's timeline check of all 47 sequences (in `drawn`); `clients/scripts/check.sh`.
 
+### M4 T3a — M4's review: the reviewers' findings fixed (2026-10-26)
+
+On `client/e17-m4-t3a`, the user present at the start. **T3 cut in three by the user** (the
+agent's proposal, the review first so that every capture afresh also captures its fixes): T3a
+the reviewers, T3b every capture afresh with the hovered item read (the user: read-only, to
+settle T2c-2's status line), T3c the review list and M5. The original files staged from the
+user's `original-data/install/`.
+
+- **Starting point:** `master` at `81dac32` (#483 merged; CI green on it); the client gates' full
+  check on that code (`verify-once clients`: all gates passed).
+- **The reviewers:** three fresh read-only sub-agents, one after the other (AGENTS.md: no large
+  ones in parallel), each with M4's diff (`69cd97a..81dac32`) of its area: R1 the siege's drawing
+  and timeline (5 findings), R2 the mouse, the interface and the adapters (7), R3 the harness's
+  siege additions (5). Each finding checked against the code (and, for R1-1, the engine's
+  `enter_hexes` and `random_hexes`) before it was fixed.
+- **Fixed, the drawing and the timeline:** R1-1, a hex entered that brings more than one entry
+  (a mine on a moat hex, the moat's damage after the blast; a two-hex walker's two mines) played
+  only the first (`Entered::at` now yields each, in order); R1-2, a flier taking off from a moat
+  hex had the moat's strip drawn over it on every flight frame (`over_stack` draws none past the
+  last pass); R1-4, the leftward rows' wall strips (d = −1, hex 200 included) had no test; R1-5,
+  no test had a turret face right (`a_turret_faces_a_target_right_of_its_point`).
+- **Fixed, the interface and the adapters:** R2-1, the turrets' shots were silent (their sounds
+  by the stack's creature, the Arrow Tower having no entry: now the town's shooter's, as their
+  look; `TurretShot` in category 2); R2-2, the siege's rectangles took the mouse at a town
+  without a fort in the client's profile (now by the fort level); R2-3, a still's status line
+  named no wall part (`pointer::hint_text`, shared with the window's); R2-4, `render --seat`
+  with a record was ignored (now an error; `--seat` and `--walls` in the help); R2-5, the towns
+  against the packs' factions untested (`every_faction_has_its_town`); R2-6, `pointer::legal`
+  untested (the Catapult, the exempt shooters, a hero's bow); R2-7, the `[battle]` format's
+  siege fields missing from `clients/README.md`.
+- **Fixed, the harness:** R3-1 to R3-4, a roll command `xdd.dll` could not apply passed
+  silently (a list past 8 values, a count of 0, a list over an undrawn one, a forced value
+  outside its call's range, which the original would have run off its tables with): `act`
+  refuses them, `xdd.dll` counts what it refused in the ack's 7th field, `Game.roll` stops at
+  once, `sequence` fails at its end; R3-5, the wall states written unchecked (now 0 to 4 each,
+  the gate 0 to 3, before the game starts and in `write_walls`). The runbook.
+- **Queued:** R1-3 (the moat's strip by the record's moat, which leaves out the bridges while the
+  opening's gate is open: with a record that opens mid-battle, QUEUE's inbox). The review list's
+  items 10 to 12 (the epic).
+- **Checked:** the library's and the binary's tests (7 new); `drawn` after each reviewer's fixes:
+  all 119 the same; `clippy`, `fmt`.
+
 ## Accepted review lists (M1, M2, M3)
 
 M1 and M2 moved from the epic file on 2026-10-20 (less start-up reading), unchanged; M3 at its
