@@ -10,7 +10,12 @@
 //!   two `bench-check` workloads of the same games, `reach-xl-144` and `reach-lifted-xl-144`).
 //! * `fork`: forks of the env after `days` days of random play, inside [`fork_workload`]; with
 //!   `--battle 1` (E08 T19b1) the heroes seek each other instead and the play stops at the step
-//!   that opens a battle, so the forks carry an open battle.
+//!   that opens a battle, so the forks carry an open battle; with `--meeting 1` (E08 T52) a
+//!   player's heroes seek each other and the play stops when a meeting opens, so the forks carry
+//!   the open meeting.
+//! * `manage` (E08 T52): a player's heroes seek each other until a meeting opens, then both
+//!   heroes' management listing `--queries` times, inside [`management_queries`]
+//!   (`h3_game::legal_management` and every split range between the two armies).
 //!
 //! Two variants measure what an agent adds (wall time only, for the docs): `--observe 1`, the
 //! acting player's observation before each step; `--masks 1`, the entry mask and the chosen
@@ -24,7 +29,7 @@ use std::time::Instant;
 use h3_adventure::Pos;
 use h3_battle::LegalCommands;
 use h3_contracts::{HeroId, PlayerId};
-use h3_game::{Actor, legal_moves, movement};
+use h3_game::{Actor, ArmyRef, ArmySlot, legal_management, legal_moves, movement, split_range};
 use h3_kernel::{Rng, StreamId};
 use h3_sim::action::{ACTION_COUNT, SPELL_COUNT, TARGET_COUNT};
 use h3_sim::adventure::action::{self, hero_in_slot, tile_index};
@@ -43,6 +48,8 @@ pub enum Workload {
     Reach,
     /// Forks.
     Fork,
+    /// The management listing during a meeting (E08 T52).
+    Manage,
 }
 
 /// What [`run`] plays.
@@ -70,6 +77,10 @@ pub struct BenchOptions {
     pub masks: bool,
     /// `fork`: the play stops when a battle opens (within the day limit).
     pub battle: bool,
+    /// `fork`: the play stops when a meeting opens (within the day limit; E08 T52).
+    pub meeting: bool,
+    /// `manage`: how many times both heroes' listing is asked for (E08 T52).
+    pub queries: u32,
 }
 
 /// What [`run`] measured.
@@ -83,6 +94,8 @@ pub struct BenchResult {
     pub seconds: f64,
     /// `fork`: the games whose forks carried an open battle.
     pub battles: u64,
+    /// `fork` and `manage`: the games whose forks or listings had a meeting open (E08 T52).
+    pub meetings: u64,
 }
 
 /// Runs a workload on a map below `root` with the packs of `packs_dir`.
@@ -102,6 +115,7 @@ pub fn run(packs_dir: &Path, root: &Path, options: &BenchOptions) -> Result<Benc
         steps: 0,
         seconds: 0.0,
         battles: 0,
+        meetings: 0,
     };
     for g in 0..options.games {
         // The setup built the first game: a reset cannot fail.
@@ -119,13 +133,16 @@ pub fn run(packs_dir: &Path, root: &Path, options: &BenchOptions) -> Result<Benc
             }
             Workload::Reach => reach_rollout(&mut env, g),
             Workload::Fork => {
-                let steps = if options.battle {
+                let steps = if options.meeting {
+                    until_meeting(&mut env, g)
+                } else if options.battle {
                     until_battle(&mut env)
                 } else {
                     u64::from(random_rollout(&mut env, g, 0).steps)
                 };
                 let open = env.to_move().any(|p| env.phase(p) == Phase::Battle);
                 result.battles += u64::from(open);
+                result.meetings += u64::from(meeting(&env).is_some());
                 let start = Instant::now();
                 black_box(fork_workload(&env, options.forks));
                 (
@@ -133,6 +150,16 @@ pub fn run(packs_dir: &Path, root: &Path, options: &BenchOptions) -> Result<Benc
                     steps,
                     start.elapsed().as_secs_f64(),
                 )
+            }
+            Workload::Manage => {
+                let steps = until_meeting(&mut env, g);
+                let open = meeting(&env);
+                result.meetings += u64::from(open.is_some());
+                let start = Instant::now();
+                let queries = open.map_or(0, |(player, heroes)| {
+                    management_queries(&env, player, heroes, options.queries)
+                });
+                (queries, steps, start.elapsed().as_secs_f64())
             }
         };
         result.operations += operations;
@@ -210,6 +237,121 @@ fn seek(env: &AdventureEnv, player: PlayerId) -> Action {
         }
     }
     best.map_or_else(Action::end_turn, |(_, action)| action)
+}
+
+/// The acting player's open meeting (E08 T52): the player and its two heroes.
+fn meeting(env: &AdventureEnv) -> Option<(PlayerId, [HeroId; 2])> {
+    let player = env.to_move().find_map(Seat::player)?;
+    env.state().meeting(player).map(|heroes| (player, heroes))
+}
+
+/// Play until a meeting opens or the episode ends (`fork` with `meeting`, `manage`; E08 T52):
+/// on the map the acting player's heroes seek each other ([`seek_own`]); its offers, level-ups,
+/// army dialogs and battles, and the neutral seat's battles, are the env's random agent's (agent
+/// seed `agent_seed`): the steps played.
+fn until_meeting(env: &mut AdventureEnv, agent_seed: u64) -> u64 {
+    let mut rng = Rng::for_stream(agent_seed, StreamId::AGENT);
+    let mut steps = 0;
+    loop {
+        let Some(seat) = env.to_move().next() else {
+            break;
+        };
+        if meeting(env).is_some() {
+            break;
+        }
+        let state = env.state();
+        let action = match (seat, env.phase(seat)) {
+            (Seat::Player(player), Phase::Adventure)
+                if state.decision(player).is_none()
+                    && state.level_up(player).is_none()
+                    && state.army_dialog(player).is_none() =>
+            {
+                seek_own(env, player)
+            }
+            _ => choose(env, seat, &mut rng),
+        };
+        // A legal action is always accepted (h3-sim's tests); a refusal would repeat.
+        if env.step(seat, action).is_err() {
+            break;
+        }
+        steps += 1;
+    }
+    steps
+}
+
+/// The acting player's step toward another of its own heroes (E08 T52): of its heroes' legal
+/// moves the one that ends nearest (in steps, on the same level) to another of its heroes, the
+/// first slot's and tile's on a tie, the other hero's tile itself (a meeting) nearest of all;
+/// `EndTurn` when no move gets nearer than its hero stands.
+fn seek_own(env: &AdventureEnv, player: PlayerId) -> Action {
+    let state = env.state();
+    let own: Vec<(HeroId, Pos)> = state
+        .adventure()
+        .heroes()
+        .iter()
+        .filter(|hero| hero.owner == player)
+        .map(|hero| (hero.id, hero.pos))
+        .collect();
+    let mut best: Option<(u16, Action)> = None;
+    for slot in 0..HERO_SLOTS {
+        let (Some(hero), Some(reach)) = (
+            hero_in_slot(state, player, slot).and_then(|id| state.adventure().hero(id)),
+            action::moves(state, env.rules(), player, slot),
+        ) else {
+            continue;
+        };
+        let distance = |pos: Pos| {
+            own.iter()
+                .filter(|&&(id, other)| id != hero.id && other.level == pos.level)
+                .map(|(_, other)| other.x.abs_diff(pos.x).max(other.y.abs_diff(pos.y)))
+                .min()
+        };
+        let Some(here) = distance(hero.pos) else {
+            continue;
+        };
+        for (pos, _) in reach.tiles() {
+            let (Some(d), Some(tile)) = (distance(pos), tile_index(state, pos)) else {
+                continue;
+            };
+            if d < here && best.is_none_or(|(b, _)| d < b) {
+                best = Some((d, Action::move_to(slot, tile)));
+            }
+        }
+    }
+    best.map_or_else(Action::end_turn, |(_, action)| action)
+}
+
+/// `queries` times the management listing of both heroes of `player`'s open meeting (E08 T52;
+/// GAM-MAN-002), as a client asks for it: each hero's [`legal_management`], then the split range
+/// of every pair of slots of the two armies ([`split_range`]): the number of listings (two per
+/// time). The `manage` workload counts the instructions inside this function.
+#[inline(never)]
+pub fn management_queries(
+    env: &AdventureEnv,
+    player: PlayerId,
+    heroes: [HeroId; 2],
+    queries: u32,
+) -> u64 {
+    let (state, rules) = (env.state(), env.rules());
+    let actor = Actor::Player(player);
+    let slots: Vec<ArmySlot> = heroes
+        .iter()
+        .flat_map(|&hero| {
+            let army = ArmyRef::Hero(hero);
+            (0..rules.adventure().params().army_slots()).map(move |slot| ArmySlot { army, slot })
+        })
+        .collect();
+    for _ in 0..queries {
+        for &hero in &heroes {
+            black_box(legal_management(state, rules, actor, hero).len());
+        }
+        for &from in &slots {
+            for &to in &slots {
+                black_box(split_range(state, rules, actor, (from, to)));
+            }
+        }
+    }
+    2 * u64::from(queries)
 }
 
 /// Random play with every hero's reachable-tiles query at each step (the counted and timed part):

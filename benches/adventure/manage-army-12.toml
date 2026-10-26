@@ -1,0 +1,30 @@
+# Instruction-count baseline of one `cargo xtask bench-check` workload (valgrind/callgrind, event
+# Ir); the directory names the owning lane (lanes.toml). Counts are deterministic for a given
+# toolchain + target + source and are compared only when both match this file. A change above
+# `threshold_percent` fails verify. Update intentionally with
+# `cargo xtask bench-check --update --workload <name>` and state the reason in the commit message.
+
+toolchain = "rustc 1.97.0 (2d8144b78 2026-07-07)"
+target = "x86_64-unknown-linux-gnu"
+
+[workload]
+description = "250 times both heroes' management listing in a meeting on the generated army map (E08 T52, increment 6; E08-design.md §16: the listing per hero): Valeska, seven stacks and twelve artifacts in her backpack (270 commands), and Caitlin (92), each legal_management and the split range of every pair of the two armies' 14 slots; counts only inside h3_cli::adventure::bench::management_queries"
+args = [
+    "adventure",
+    "bench",
+    "--map",
+    "fixtures/maps/e08-army-12.h3m",
+    "--workload",
+    "manage",
+    "--games",
+    "1",
+    "--days",
+    "1",
+    "--queries",
+    "250",
+    "--seed",
+    "1",
+]
+collect = "*management_queries*"
+instructions = 399997833
+threshold_percent = 2

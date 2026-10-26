@@ -627,6 +627,8 @@ fn the_benchmark_workloads_run_and_count_what_they_say() {
                 observe,
                 masks,
                 battle: false,
+                meeting: false,
+                queries: 0,
             },
         )
         .unwrap()
@@ -679,15 +681,60 @@ fn the_benchmark_workloads_run_and_count_what_they_say() {
             observe: false,
             masks: false,
             battle: true,
+            meeting: false,
+            queries: 0,
         },
     )
     .unwrap();
     assert_eq!((fight.operations, fight.battles), (6, 2));
     assert!(fight.steps > 2, "{fight:?}");
+    assert_eq!(fight.meetings, 0);
+    // E08 T52: with `meeting` a player's heroes seek each other and the forks carry the open
+    // meeting; `manage` lists both heroes' management in it, two listings a time. On the army map
+    // red's Valeska meets Caitlin at her first step; on the duel the heroes stand on two levels and
+    // never meet.
+    let meeting = |map: &str, workload, games| {
+        bench::run(
+            &root().join("packs"),
+            &root(),
+            &bench::BenchOptions {
+                map: map.to_owned(),
+                profile: DEFAULT_PROFILE.to_owned(),
+                difficulty: h3_game::DEFAULT_DIFFICULTY,
+                workload,
+                games,
+                days: 2,
+                seed: 1,
+                forks: 3,
+                observe: false,
+                masks: false,
+                battle: false,
+                meeting: true,
+                queries: 5,
+            },
+        )
+        .unwrap()
+    };
+    let met = meeting(ARMY, bench::Workload::Fork, 2);
+    assert_eq!((met.operations, met.steps, met.meetings), (6, 2, 2));
+    let listed = meeting(ARMY, bench::Workload::Manage, 2);
+    assert_eq!(
+        (listed.operations, listed.steps, listed.meetings),
+        (20, 2, 2)
+    );
+    let apart = meeting(DUEL, bench::Workload::Manage, 1);
+    assert_eq!((apart.operations, apart.meetings), (0, 0));
+    assert!(apart.steps > 2, "{apart:?}");
     let dir = root().display().to_string();
     let packs = format!("{dir}/packs");
     let args = |words: &[&str]| words.iter().map(|w| (*w).to_owned()).collect::<Vec<_>>();
-    for (workload, agent) in [("play", "0"), ("play", "1"), ("reach", "1"), ("fork", "1")] {
+    for (workload, agent) in [
+        ("play", "0"),
+        ("play", "1"),
+        ("reach", "1"),
+        ("fork", "1"),
+        ("manage", "1"),
+    ] {
         cli::main(&args(&[
             "bench",
             "--map",
@@ -710,6 +757,10 @@ fn the_benchmark_workloads_run_and_count_what_they_say() {
             agent,
             "--battle",
             agent,
+            "--meeting",
+            agent,
+            "--queries",
+            "2",
             "--difficulty",
             "4",
         ]))
