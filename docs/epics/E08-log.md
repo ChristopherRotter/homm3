@@ -6199,7 +6199,7 @@ class and subclass of the object anchored at a tile, read on its entrance tile b
 mask, `entrance_cell` shared with `map_owners`; a University's entrance is left of its corner),
 `universities` (game +0x4E3CC, four i32 skills each), `dialog_pictures` (a message box's picture
 items with the text item starting at their bottom as caption; the choice frames 0x7809 and
-0x780A around them, vtable 0x63FE1C, observed at a chest), `open_tiles` (explored, empty, not
+0x780A around them, items of their own vtable, `h3mem.CHOICE_VTABLE`, observed at a chest), `open_tiles` (explored, empty, not
 closed, not guarded), `map_kind` (game +0x1F698); a hero's spell points (+0x18), status flags
 (+0x105), morale and luck bonuses (+0x11A, +0x11B); a battle stack's army slot (+0x5C).
 `h3adv`: `object:x,y` decodes the word by class as `map.toml`'s visit functions read it (chest,

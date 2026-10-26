@@ -16,6 +16,8 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
 
 ## Inbox
 
+- 2026-10-27 (T57's scoped verify, `--quick`, after merging `master`; **a failure found by a random case**, not by T57's change, which touches no crate): `h3-map`'s property `tests::view::views_move_as_the_events_say` failed once: `HeroView { id: HeroId(1), owner: PlayerId(1), pos: (6, 2, 0), own: None } shows untold` (`crates/h3-map/src/tests/view.rs:645`: a hero in the viewer's view that no event told), on an AB map of side 16; shrinking stopped at 192 iterations. The full scoped verify before it passed, and CI draws its own cases, so it may fail there at random. To reproduce, add the line `cc debe5cd489e29f31c01d097ecafd76a3de07450f4057d498636e553468dfa27d` to `crates/h3-map/proptest-regressions/tests/view.txt` (not committed: it would fail every run until fixed). Decide whether the view leaks a hero (`docs/06-security.md`) or the test's oracle misses a case; then fix and commit the seed with the fix.
+
 - 2026-10-23 (T42, measured; for a performance task): **a flyer's or water walker's reach costs
   about 1.9 times a walker's query** on the XL map (`reach-lifted-xl-144`: 279 k Ir a query
   against `reach-xl-144`'s 148 k on the same games), and random play on the duel with one of each
