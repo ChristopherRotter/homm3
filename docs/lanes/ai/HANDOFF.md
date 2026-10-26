@@ -32,6 +32,9 @@ Moved to `TRAPS.md`, in three groups: **Ownership** (cross-lane encodings and re
   shows better targeting but fewer strikes and long wandering (E06-log T6e). The user closed
   AI-Q7 (the preview off by default) and chose T8 next, determinized from the start, the tree in
   Python first: T8a, the design (E06 design §14) and ADR-0025 point 12's amendment as a draft.
+- #487 merged; the user accepted the ADR draft and both `h3-battle` functions `cross-lane`. The
+  user's question on the turn order: a probe shows the trunk does not know which stack acts
+  next (E06-log "The turn-order probe"); a candidate lever in QUEUE.
 
 ### 2026-10-26 (later) — T6c's run recorded; T6d, the kill preview in the network
 

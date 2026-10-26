@@ -20,6 +20,12 @@ into ADR-0025 due with the next `shared/` change. **Next: T8b, the plumbing:** C
 and §14's tests; one pull request. Then T8c (the measurement on the
 user's machine with `t7-1`'s best), T8d only if T8c gains.
 
+- **Candidate, the turn order as an input** (the user's question, 2026-10-26; E06-log "The
+  turn-order probe"): the trunk does not know which stack acts next (0.18 against the order
+  rule's 0.89). Options: per stack its place in the remaining order, the engine's (exact; a
+  batch output, C ABI, or observation v22, `cross-lane` with the battle lane) or computed from
+  v21 in Python (no ABI change; the probe's rule is 0.89); then an A/B against `t7-1`. The
+  user decides at T8b's checkpoint whether it comes first.
 - **Candidates kept** (not now): potential-based shaping (also against the wandering T6e found:
   the tactics phase's placements and moves cost nothing at γ 1); the 60 M run at T7's mix
   (`configs/e06-t7.toml --set samples=60_000_000`, about 4 hours); the mana run `t5-4`
