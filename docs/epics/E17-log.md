@@ -2544,7 +2544,8 @@ user's `original-data/install/`.
   opening's gate is open: with a record that opens mid-battle, QUEUE's inbox). The review list's
   items 10 to 12 (the epic).
 - **Checked:** the library's and the binary's tests (7 new); `drawn` after each reviewer's fixes:
-  all 119 the same; `clippy`, `fmt`.
+  all 119 the same; `clippy`, `fmt`; under Wine with the new `xdd.dll`, `frames --only quake`
+  (a forced list) and `missed` (a failed roll): as recorded, nothing refused (the rest in T3b).
 
 ## Accepted review lists (M1, M2, M3)
 
