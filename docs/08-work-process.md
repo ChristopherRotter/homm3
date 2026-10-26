@@ -178,13 +178,14 @@ scheduled task restarts the runner as a safety net; it resumes from `QUEUE.md` a
 `in progress (<branch>, <UTC time>)`, commits and pushes that on the lane branch; a runner that
 finds such a mark younger than three hours stops (the previous runner may still be alive), an
 older one resumes from that branch. Less context per task: `verify --summary`, the per-lane
-reading lists, the full verify left to CI (while CI cannot run, the runner runs it before the pull
-request: `05-testing.md`, "CI").
+reading lists, the full verify left to CI (`05-testing.md`, "CI"; an outage: "When CI cannot
+run").
 
 **Local loop and gates.** `cargo xtask verify --scope <lane>` lints, tests and covers the lane's
 crates, runs the lane's own gates (golden replays when it owns `h3-cli` or replays of its own
 under `fixtures/replays/`, the C ABI smoke test, its benchmark workloads) and `check-lane`; it never counts as green (exit 2 with no failing step is its normal result). On
-a `shared/` or cross-lane branch its `check-lane` step fails by design: run the full verify there.
+a `shared/` or cross-lane branch its `check-lane` step fails by design: CI's run on the pull
+request checks the lanes (with the label `cross-lane`) and runs the full verify.
 CI runs the full verify on every pull request whose code it has not verified yet (`05-testing.md`,
 "CI"). Each benchmark workload has its own baseline file,
 `benches/<lane>/<workload>.toml`, so each lane's +2 % gate is its own (`benches/README.md`).
@@ -200,12 +201,12 @@ touching another lane). A fresh reviewer agent checks each milestone before the 
 GitHub (`ChristopherRotter/homm3`) holds the durable copy, and **pull requests are how work
 reaches `master`** (Q3, Q49): no bundles or file copies between machines. A lane branch per task
 or increment (`<lane>/<task>`, "Lanes"), pushed after every commit (`AGENTS.md`, "Interruptions
-and resuming") and merged at its checkpoint once CI is green, or, while CI cannot run (minutes or
-billing), once the full local verify is green and recorded in the pull request (`05-testing.md`,
-"CI"; CI never blocks work). **A pull request is opened only when
+and resuming") and merged at its checkpoint once CI is green (during an outage, once the full
+local verify is green and recorded in the pull request: `05-testing.md`, "When CI cannot run";
+CI never blocks work). **A pull request is opened only when
 its branch is ready for merging** (the task or increment done, the scoped verify without a failing
 step, the lane docs updated; user, 2026-10-08): pushing a branch runs no CI, while every push to an
-open pull request does, and Actions minutes are scarce (`05-testing.md`, "CI"). An open pull
+open pull request does (`05-testing.md`, "CI"). An open pull
 request takes only review fixes and the user's changes. A merge of `master` into an open pull
 request (a conflict) waits until `master`'s latest run has finished: until then no run has
 verified that code, and the pull request's run cannot skip it (user, 2026-10-11). **An open pull
@@ -255,10 +256,11 @@ Agents usually work in a cloud sandbox cloned from GitHub.
    (`docs/05-testing.md`, "Each code state once"): the engine's gates, or the client lane's
    `clients/scripts/check.sh`, run in full only when no run has verified that code yet (then
    about 20 minutes on two CPUs; read the docs meanwhile, then check `target/sandbox/setup.log`
-   and `tail -n 3` of the log it names). Later runs: `cargo xtask verify --scope <lane>
-   --summary` for the lane's loop, or before a pull request
-   `CARGO_INCREMENTAL=0 nohup scripts/verify-once.sh engine --base origin/master -- --with-original-data > target/sandbox/once.log 2>&1 &`
-   (step 5). The coverage gate runs `cargo llvm-cov clean --workspace` before and after its
+   and `tail -n 3` of the log it names; with CI's fingerprint on `master`'s code only the light
+   gates run). Later runs: `cargo xtask verify --scope <lane> --summary` for the lane's loop and
+   before a pull request, with `--with-original-data` when the files are staged; CI runs the full
+   verify (`docs/05-testing.md`, "CI"; during an outage `scripts/verify-once.sh engine --base
+   origin/master -- --with-original-data` in the background, step 5). The coverage gate runs `cargo llvm-cov clean --workspace` before and after its
    run: test binaries of an earlier build (another branch, or a full run before a scoped one)
    entered the report as hundreds of misses at lines that do not match (E08, 2026-10-14; E04c
    T7: 224 in one file). A bare `cargo llvm-cov` outside the gate still needs that clean first.
@@ -322,7 +324,7 @@ Use `docs/adr/0000-template.md`. One decision per ADR. Statuses: Proposed, Accep
 
 ## Branching and commits
 
-Trunk-based: short-lived branches, small commits, `master` always green. Since 2026-10-06 the repo is on GitHub (`ChristopherRotter/homm3`); changes reach `master` through pull requests, and CI (`.github/workflows/ci.yml`, `05-testing.md`, "CI") must be green on them (while CI cannot run, the full local verify stands in); a pull request is opened only when its branch is ready for merging ("Branches, pull requests and syncing"). Branch names carry the lane (`battle/e04b-t5c`, `shared/<topic>`; "Lanes"). The PR body follows `docs/pull_request_template.md`. Conventional-style prefixes are welcome (`feat(battle): …`, `fix(game): …`, `docs: …`). Attribution trailers follow the session's configured instructions.
+Trunk-based: short-lived branches, small commits, `master` always green. Since 2026-10-06 the repo is on GitHub (`ChristopherRotter/homm3`); changes reach `master` through pull requests, and CI (`.github/workflows/ci.yml`, `05-testing.md`, "CI") must be green on them (during an outage, the full local verify stands in: `05-testing.md`, "When CI cannot run"); a pull request is opened only when its branch is ready for merging ("Branches, pull requests and syncing"). Branch names carry the lane (`battle/e04b-t5c`, `shared/<topic>`; "Lanes"). The PR body follows `docs/pull_request_template.md`. Conventional-style prefixes are welcome (`feat(battle): …`, `fix(game): …`, `docs: …`). Attribution trailers follow the session's configured instructions.
 
 ## Definition of Done
 
