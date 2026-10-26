@@ -134,8 +134,11 @@ the reading, three of them against VCMI (E6-4, E6-8, E6-10); no question.
    takes the group or part of it (a split into a free slot); or takes nothing.
 5. **The other callers** of 0x5D11D0, 0x4ABDC0 (0x4AC3FB) and 0x573C80 (0x573EBB), give a
    reward's creatures the same way (increment 7, rewards on the map). The dialog's other title
-   (an argument of 0x5D0B40: GENRLTXT 710 "Leave Guards") belongs to 0x5D12B0 (not read; mines
-   and garrisons, E09 and later).
+   (an argument of 0x5D0B40: GENRLTXT 710 "Leave Guards") belongs to 0x5D12B0's other caller
+   (0x4A39A0, not read; mines and garrisons, E09 and later). 0x5D12B0 (`army_dialog_with`, read in
+   T55a3) runs the dialog over a given army; Pandora's Box and events call it without the flag for
+   a reward's creatures that find no room (survey `E08-rewards.md` §7.4). Decision 127 places the
+   banks (0x4ABDC0) and the Seer's Hut (0x573C80) after increment 7.
 
 ### 1.2 VCMI and the wiki
 
