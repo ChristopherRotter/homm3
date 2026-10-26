@@ -499,7 +499,10 @@ whole level.
 
 ### 6.6 A secondary skill: the Witch Hut
 
-`original-data` (read): the body is a mask of allowed skills (AB and SoD; none in RoE). At a new
+`original-data` (read): the body is a mask of allowed skills (AB and SoD). An RoE map has none in
+the file: the loader writes the fixed mask **0xEFBF** instead (`load_object_body`, 0x5034BD, when
+the map's format, game +0x1F86C, is RoE's 0xE; the second reading, §13). That is skills 0 to 15 but
+Leadership (6) and Necromancy (12): 14 skills, never Water Magic to First Aid (16 to 27). At a new
 game (case 0x4C207D) the mask (an empty one: all 28 skills) less the banned skills (game +0x4E658)
 gives n candidates; the hut's skill is the r-th of them in id order, r = random_between(1, n), none
 −1 (`witch_hut_set_skill` 0x4C23C0, bits 13 to 19). The visit (`visit_witch_hut` 0x4A8080): the
@@ -510,8 +513,9 @@ marks, then −1, a known skill or eight skills (+0x101) a message; else
 one (RoE) the default **excludes Leadership and Necromancy**; the limiters agree (a free slot, not
 known). `wiki` (Witch Hut): the skill "cannot be Leadership, Necromancy" (the editor's default; the
 map may allow them), Basic, a skill "only ... if the hero has not already learned it"; RoE maps not
-addressed. The census: 191 huts on RoE maps (no mask: Leadership and Necromancy possible in the
-code); of the 581 masks of AB and SoD maps, 16 allow Leadership and none Necromancy. **D-33.**
+addressed. The census: 191 huts on RoE maps (the fixed mask: 14 skills in the code, 26 in VCMI); of
+the 581 masks of AB and SoD maps, 16 allow Leadership and none Necromancy. **D-33** (T55a2 read the
+RoE case as all 28 skills; the second reading found the loader's mask), **A-21** (§9).
 
 ### 6.7 The Scholar
 
@@ -563,9 +567,10 @@ class restrictions ("Barbarians cannot learn Water magic"). **D-36** (the readin
   sizes: 37 and 21 records in the packs, about 64 % treasure). The visit: with the artifact and a
   full backpack (≥ 64) **1 000 gold** to the owner instead; else the artifact to the hero; emptied
   either way; without one a message.
-- **Wagon** (0x4C1EA2; `visit_wagon` 0x4A69B0): every wagon draws a resource random_between(0, 5)
-  (wood to gems, no gold) and an amount random_between(2, 5); then r = random_between(0, 99): below
-  10 empty, below 50 `random_artifact_of_level(6)`, else the resources. The visit: an artifact to
+- **Wagon** (0x4C1EA2; `visit_wagon` 0x4A69B0): every wagon draws r = random_between(0, 99), then
+  an amount random_between(2, 5), then a resource random_between(0, 5) (wood to gems, no gold; the
+  order corrected by the second reading, §13); r below 10 empty, below 50
+  `random_artifact_of_level(6)`, else the resources. The visit: an artifact to
   the hero, with a full backpack **the drawn resources** instead; resources to the owner; emptied.
 - **Warrior's Tomb** (0x4C1F1C; `visit_warriors_tomb` 0x4A7C30): r below 30 a treasure artifact, 80
   minor, 95 major, else a relic. A human is asked first; no answer leaves (nothing, no penalty).
@@ -943,7 +948,7 @@ original reads it:
   `ai_university`, `ai_join_without_room`) are E10's. Until then a computer player's seat answers
   through `legal_commands` like any seat.
 
-## 9. Disputes and quirk candidates so far (for T55a4)
+## 9. Disputes and quirk candidates
 
 | Id | What | Sources | Proposal |
 |---|---|---|---|
@@ -951,7 +956,7 @@ original reads it:
 | D-30 | where a reward's artifact goes | code: `hero_give_artifact`, the first body position that takes it, else the backpack (HER-CHG-002, implemented, not yet verified); wiki: a chest's artifact "is put in the hero's backpack", "Scrolls go into the backpack" | the code's; a batch E7 row (a scroll or an artifact picked up with its position free) |
 | D-31 | the classes of a random artifact (65) | code: treasure, minor or major (0xE); VCMI: any legal class, relics too; wiki silent | the code's; a batch E7 row (many class 65 objects, no relic among them) |
 | D-32 | what a random artifact may repeat | code: never a banned, placed or already drawn one until the pool is exhausted; VCMI: the least rolled, placed ones not counted; wiki silent | the code's; no row (rare: a pool exhausted) |
-| D-33 | an RoE map's Witch Hut (no mask) | code (0x4C207D): any of the 28 skills not banned, Leadership and Necromancy among them (191 huts); VCMI: never Leadership or Necromancy; wiki: "cannot be Leadership, Necromancy" (the editor's default), RoE not addressed | the reading against both: the user's, after a batch E7 row (an RoE map with many huts) |
+| D-33 | an RoE map's Witch Hut (no mask in the file) | code (0x5034BD, the second reading): the fixed mask 0xEFBF, 14 skills (0 to 15 but Leadership and Necromancy; never Water Magic to First Aid); VCMI: the default, every skill but Leadership and Necromancy (26); wiki: "cannot be Leadership, Necromancy" (the editor's default), RoE not addressed | agreed on Leadership and Necromancy; the twelve last skills are A-21 (the user's); a batch E7 row (an RoE map with many huts) |
 | D-34 | what the random Shrines repeat | code (0x4C95A0): no spell of the level until each is out (the bans never); VCMI: uniform, repeats; wiki silent | the code's; a batch E7 row (15 random Shrines of one level: 15 spells) |
 | D-35 | the Corpse's and the Wagon's artifact; the Wagon's amount | code: treasure and minor as one pool (by the classes' sizes, about 64 % treasure), the Corpse 20 %, the Wagon 40 %; the amount 2 to 5; VCMI and the wiki (Wagon): half each class (10 + 10 %, 20 + 20 %); the amount: wiki 2 to 5, VCMI 1 to 5 | the code's (the amount with the wiki); no row (a distribution) |
 | D-36 | Necromancy at a University | code (0x4C06F0): drawn like any unbanned skill, bought only by a class that weighs it (Death Knight, Necromancer); VCMI ("noneOf necromancy") and the wiki ("Necromancy can not appear in universities"): never offered | the reading against both: the user's, after a batch E7 row (many Universities) |
@@ -979,6 +984,15 @@ is refused; T55b decides). Not quirks (T55a3): the primary skills read as signed
 positive values given; no shipped value above 5), a box's spells not tested against the bans (VCMI
 the same), a looted Pyramid that still asks first, the Pyramid's spell lost when it cannot be
 learned (the wiki states it), an event that fires again at every entry (the editor's choice).
+
+Quirk candidates (T55a4, the second reading, §13): **A-21** an RoE map's Witch Hut takes the fixed
+mask 0xEFBF (0x5034BD), which looks like the editor's default (every skill but Leadership and
+Necromancy, 0x0FFFEFBF) cut to 16 bits: an RoE hut never teaches Water Magic, Earth Magic, Scholar,
+Tactics, Artillery, Learning, Offense, Armorer, Intelligence, Sorcery, Resistance or First Aid.
+Reachable: 191 huts on the shipped RoE maps. Proposal: a quirk with a flag, `faithful` the 14
+skills, `strict-fixed` VCMI's 26; the classification is the user's (ADV-Q28). **A-22** a University
+on a map that bans more than 24 skills would draw from a negative range (0x4C06F0, inferred);
+unreachable (at most 13 banned). Proposal: always fixed (the University offers what is left).
 
 T55a1: none. Not quirks: the full backpack that refuses a wearable artifact (the
 wiki states it), the chest's 1 000 gold with a full backpack, the monster's artifact lost on a full
@@ -1036,7 +1050,7 @@ one new game each gives many samples.
 | E7-4 | §2.2, §6.4 (HER-EXP-001's arithmetic) | a hero with Basic Learning (no Learning specialty) at several chests and a Learning Stone | each chest's choice (its gold and experience), the experience gained | the experience is gold − 500 grown by 5 % (525, 1 050 or 1 575); the stone 1 050 |
 | E7-5 | §2.2 (a full backpack) | a hero with 64 artifacts in the backpack visits 40 chests (about two hold an artifact) | each chest's word before the visit (its artifact bit), the choice shown, the backpack after | an artifact chest offers 1 000 gold or 500 experience; the backpack stays at 64 |
 | E7-6 | §5 | a hero with 64 artifacts in the backpack defeats a monster holding a treasure artifact | the backpack, the worn positions, the treasury after | the artifact is lost; the resources are given |
-| E7-7 | D-33 | an RoE map with 60 Witch Huts (no masks) | each hut's skill (its word's bits 13–19) | Leadership or Necromancy among them (each hut 2 in 28: none in 60 about 1 %) |
+| E7-7 | D-33, A-21 | an RoE map with 60 Witch Huts | each hut's skill (its word's bits 13–19) | only the 14 skills of 0xEFBF: no Leadership, no Necromancy, nothing from Water Magic to First Aid (VCMI's 26 would show one of those twelve almost surely) |
 | E7-8 | D-34 | 15 random Shrines of level 1 | each shrine's spell (its word's bits 13–22) | 15 different spells (VCMI's uniform draw repeats almost surely) |
 | E7-9 | D-36 | 30 Universities | each one's four skills (game +0x4E3CC) | Necromancy in some (none in 30 about 1 %) |
 | E7-10 | §6.9 (a full backpack) | heroes with 64 artifacts in the backpack visit 20 Corpses, 10 Wagons and 2 Warrior's Tombs | the treasury, the backpack and each object's word after | a Corpse's artifact becomes 1 000 gold, a Wagon's its drawn resources; a Tomb keeps its artifact and still costs −3 morale |
@@ -1104,3 +1118,47 @@ record) are new families.
 | GAM-DEC-005 | the new offers and choices: a box, a Pyramid, a Tree, a Tomb; the chest, the Arena, the Schools | §8.1, §8.6 | — |
 | GAM-DEC-006 | the University as a decision: purchases while it is open | §6.8, §8.6 | the purchase's command (T55b) |
 | GAM-DEC-004 (amended) | the army dialog over up to seven leftover stacks; the visit's rest after its answer | §7.4, §8.1 | — |
+
+## 13. The second reading (T55a4)
+
+Two fresh agents, one after the other, re-read the deciding code without this survey (2026-10-26),
+from questions per function: **A** the pickups and the objects that teach (nine questions), **B**
+the reward routine, Pandora's Box, events, the pathfinder and the Pyramid (seven questions).
+
+**A confirmed** point by point: the guarded artifact's question, also without a text, built from the
+guards (D-29), the full backpack's refusal before anything (§3.2); `hero_give_artifact`'s body
+positions in order, then the backpack (D-30); the random artifacts' classes, no relic for 65
+(D-31), and their pool with its restart and its widening (D-32, §3.1); the Shrines' draw without
+repeats until a level is used up (D-34); the Corpse's pooled treasure and minor draw and the
+Wagon's chances (D-35); the University's draw with Necromancy and Leadership among the skills,
+its three refusals in order (known, the class's weight 0, eight skills) and the 2 000 gold (D-36);
+the once-per-hero marks' 32 bits (A-17); the Tomb's question, its −3 once until the next battle
+(the flag at hero +0x105, bit 21), a second Tomb's artifact without a second penalty, the full
+backpack that leaves the artifact and still costs the morale (§6.9).
+
+**A corrected two points** (both checked in the code by T55a4 and written into the sections):
+
+- **An RoE map's Witch Hut** (§6.6): the loader writes the fixed mask 0xEFBF (0x5034BD), so an RoE
+  hut never teaches Leadership, Necromancy or any of Water Magic to First Aid. T55a2 had read the
+  RoE case as all 28 skills. D-33 is reshaped and A-21 added (§9).
+- **The Wagon's draws** come in the order r, the amount, the resource (§6.9). It is the original
+  generator's order, not a rule (the engine's setup stream has its own, decision 17).
+
+**A added:**
+
+- The bans that start the random artifacts' pool (game +0x4E2B4) also hold the artifacts of a later
+  edition than the map's (from index 127 on an RoE map, 129 on an AB map) and, on a SoD map, the
+  artifacts that carry a banned spell (partly inferred). The widening after an exhausted pool
+  (0x1E) admits relics; a pool still empty would loop for ever (inferred; unreachable).
+- `hero_give_artifact` returns false when nothing takes the artifact; its callers remove the
+  object anyway, so the artifact is lost. Only a war machine whose position is taken can meet this
+  (inferred).
+- The combination question (§8.3) is asked only when the artifact went to the body, on a SoD map
+  (game +0x1F698 at least 2), with every part worn, with the caller's flag, for the viewing player,
+  once per player and combination (the player's bit +0xE8, set whatever the answer). A computer
+  player's hero assembles at once; receiving a combination sets its bit too.
+- A University with fewer than four unbanned skills would draw from a negative range (inferred;
+  unreachable: at most 13 of 28 banned on a shipped map, `E08-progression.md` §6.3): **A-22** (§9).
+- The victory condition's artifact seems marked in the bans before they are rebuilt (0x4C4EF4,
+  inferred): for E10's victory conditions.
+
