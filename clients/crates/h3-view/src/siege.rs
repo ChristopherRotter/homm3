@@ -17,7 +17,20 @@ use crate::tables::{SIEGE_PARTS, Tables, Town};
 /// The parts of the wall-shot targets (`wall_shot_targets` 0x63BE60): target `t`'s part is
 /// entry `t` (the upper tower, the upper wall, the mid-upper wall, the gate's arch, the mid-lower
 /// wall, the lower wall, the lower tower, the keep).
-const TARGET_PARTS: [usize; 8] = [5, 6, 8, 9, 10, 12, 13, 14];
+pub const TARGET_PARTS: [usize; 8] = [5, 6, 8, 9, 10, 12, 13, 14];
+/// Where the mouse aims at each wall-shot target (`wall_shot_targets`' +0; E17 M4 T2c-2): the
+/// upper tower's rectangle ("hex" 0xFF), the walls' and the gate's hexes, the lower tower's hex
+/// 183, the keep's rectangle (0xFE).
+pub const TARGET_AIMS: [u8; 8] = [0xFF, 29, 62, 96, 130, 182, 183, 0xFE];
+/// The upper tower's and the lower tower's targets, and the keep's.
+pub const TOWER_TARGETS: [usize; 2] = [0, 6];
+/// The keep's target.
+pub const KEEP_TARGET: usize = 7;
+/// Each row's wall hex (`siege_wall_hexes` 0x63BD00): a hex left of it is outside the walls, it
+/// and those right of it inside (`shot_wall_test` 0x467510; E17 M4 T2c-2).
+pub const WALL_HEXES: [u8; 11] = [12, 29, 45, 62, 78, 96, 112, 130, 147, 165, 182];
+/// The gate's hex: on a shot's line it blocks while the gate is closed (0x467840).
+pub const GATE_HEX: u8 = 96;
 /// The gate's wall-shot target.
 const GATE_TARGET: usize = 3;
 /// The wall hexes of the targets that open one when destroyed, by target (BAT-SIE-012: the upper

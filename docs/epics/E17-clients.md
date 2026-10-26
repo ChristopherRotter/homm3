@@ -191,6 +191,12 @@ states; the Tower 26, without the moat).
   moat's damage and re-entry, a mine's blast mid-walk; `gate`, `gate-fortress`, `moat` and
   `mine` as recorded, their frames exact but the listed differences; found: a reaction's hold
   without a striker, a standing wall's hex taking a count box's place.
+- **T2c-2 done 2026-10-26** ([log](E17-log.md#m4-t2c-2--earthquake-the-shots-and-the-mouse-recorded-2026-10-26),
+  design §10.2 "Recorded (M4 T2c-2)"; not cut, the user): Earthquake (the shake copied, the
+  explosions over every target hit), the town's end tune, the siege's mouse (16, 22, the walls'
+  broken arrow); `quake`, `defended`, `aim` and `through` as recorded, their frames exact but the
+  listed differences; T2b's and T2c-1's nine with the Catapult's hint recaptured without their
+  ` log` masks; found: the status line kept at a hot-seat human turn with the mouse parked.
 
 ### The adventure lane's harness (H1, H2: its batch E3)
 
@@ -275,4 +281,15 @@ M3 at its review, T9b). The next milestone's list starts here.
 5. The asset tables' `siege_sounds` (T2c-1: the drawbridge's and a mine's blast's, harvested by
    name) and the key family `moat` (ARRAYTXT's nine moat names by town type, keyed by faction).
 6. A siege's sounds in the window (T2c-1): the drawbridge's and the blast's play in category 2;
-   T2b's `WallHit` and `WallMiss` (category 0) are cued but not played yet (*provisional*).
+   T2b's `WallHit` and `WallMiss` (category 0) are cued but not played yet (*provisional*);
+   Earthquake's spell sound and `WallHit` are cued on no stack (T2c-2).
+7. The siege's mouse (T2c-2): the cursor's own tests know the acting stack by the asset tables'
+   original ids (the Catapult 145; the shooters the walls never halve, 34, 35, 136, 137, 149) and
+   the bows by the wire's `no_distance_penalty` (`pointer::legal`, the binary); a wire flag for
+   the walls' exemption would replace the ids (a protocol change, the server and battle lanes).
+   The wall-shot targets the cursor offers are the server's `ShootWall` commands.
+8. The key family `wall` (WALLS.TXT's parts by town type, `wall.<faction>.<part>` for the eight
+   targets' parts) and `battle.hint.turret` (GENRLTXT 157); the harness's forced values in order
+   (`roll:<name>:<a>,<b>,...`, `xdd.c`'s queue of 8) and its roll `quake_target` (T2c-2).
+9. Earthquake with the slip fixed (T2c-2): the damage before frame 5's redraw and shown everywhere
+   from it, as a wall shot's (the original's: after it, the new pictures from frame 6).

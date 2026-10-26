@@ -1,0 +1,54 @@
+# E17 M4 T2c-2: the recorded sequence `defended` (sequences.toml; design §10.2, "The end tune"):
+# a siege of a Castle town with a Citadel (the keep, a damaging moat), both heroes human (hot
+# seat). The defender commands the keep (Artillery), whose shot at the opening kills the
+# attacker's one Pikeman: the attacker keeps only its Catapult, a war machine, and the battle is
+# over. The result's window shows the defender's side (its player human here), so the tune is
+# `defend castle` (the manager's +0x53C8, set for every battle at a town).
+
+[scenario]
+id = "sequence-defended"
+# Both human (hot seat): the defender commands the keep, the attacker the Catapult.
+human = ["attacker", "defender"]
+packs = ["base"]
+profile = "base:faithful"
+terrain = "base:grass"
+
+# The town: a Citadel has the keep and a moat, no towers; the keep's 5 creatures (BAT-SIE-016).
+[scenario.siege]
+faction = "base:castle"
+fort = "citadel"
+moat = "damaging"
+structures = 1
+
+[[attacker]]
+slot = 0
+creature = "base:pikeman"
+count = 1
+
+[[defender]]
+slot = 0
+creature = "base:goblin"
+count = 15
+
+# The heroes, each with 1 in every primary skill (`h3-view situation` writes them so).
+[scenario.attacker_hero]
+hero_type = "base:valeska"
+attack = 1
+defense = 1
+power = 1
+knowledge = 1
+# Basic Ballistics: the Catapult waits for its command.
+catapult = 1
+
+[scenario.defender_hero]
+hero_type = "base:ufretin"
+attack = 1
+defense = 1
+power = 1
+knowledge = 1
+
+# Artillery (the situation writes it): the keep waits for its command.
+[scenario.defender_hero.ballista]
+level = 1
+shots = 1
+double_damage_chance_bp = 5000

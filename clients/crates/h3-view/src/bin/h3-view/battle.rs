@@ -205,8 +205,8 @@ impl Battle {
             &self.base,
             &self.turned,
             inputs,
-            &self.layout,
-            &writer.catalogue,
+            (&self.layout, &writer.catalogue),
+            (&self.tables, Bugs::Fixed),
         );
         if shown == self.shown && scrolls == self.scrolls.as_slice() {
             return Ok(false);
@@ -267,6 +267,10 @@ impl Battle {
             text,
             self.pressed,
         ));
+        // Earthquake's shake (E17 M4 T2c-2): the screen as it was, shifted.
+        if let Some(steps) = moment.shake {
+            list = vec![scene::shaken(list, steps, &self.layout)];
+        }
         Ok(list)
     }
 
@@ -383,14 +387,16 @@ impl Battle {
     }
 
     /// When the battle is decided and the tune its end plays then (E17 M3 T8, design §8.2): the
-    /// result's window shows the human side's view by the snapshot's `human`; the battle is at no
-    /// town (*provisional*: sieges are not drawn yet).
+    /// result's window shows the human side's view by the snapshot's `human`; a battle at a town
+    /// is the record's siege, a fort or not (the manager's +0x53C8; E17 M4 T2c-2, `defended`).
     pub fn end_tune(&self) -> Option<(u32, Tune)> {
         let (at, outcome) = self.timeline.ended?;
-        let human = self.record.first_snapshot().map_or([false; 2], |s| {
+        let snapshot = self.record.first_snapshot();
+        let human = snapshot.map_or([false; 2], |s| {
             [0, 1].map(|i| s.sides.get(i).is_some_and(|d| d.human))
         });
-        Some((at, h3_view::sound::end_tune(outcome, human, false)))
+        let town = snapshot.is_some_and(|s| s.siege.is_some());
+        Some((at, h3_view::sound::end_tune(outcome, human, town)))
     }
 
     /// The frame's size, as the layout gives it.

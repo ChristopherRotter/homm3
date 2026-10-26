@@ -106,13 +106,31 @@ pub fn compose(
             Draw::Within { rect, list } => {
                 // Its own frame, of which the rectangle is copied (E17 M4 T2b).
                 let own = compose(list, batch, layout, bugs)?;
-                for y in rect[1]..rect[3] {
-                    for x in rect[0]..rect[2] {
-                        if let Some(p) = own.pixel(i64::from(x), i64::from(y)) {
-                            screen.set(i64::from(x), i64::from(y), p);
+                copy_rect(&mut screen, &own, *rect);
+            }
+            Draw::Shaken {
+                offsets,
+                rect,
+                list,
+            } => {
+                // Earthquake's shake (E17 M4 T2c-2, 0x5A7D38): the saved frame copied at each
+                // offset in turn over the step before's, clipped to the frame; the copy's
+                // rectangle shown over the saved frame (copied in every profile, CLT-Q19 (6)).
+                let saved = compose(list, batch, layout, bugs)?;
+                let mut shaken = saved.clone();
+                for &[dx, dy] in offsets {
+                    let [w, h] = [shaken.width(), shaken.height()].map(i64::from);
+                    for y in 0..h {
+                        for x in 0..w {
+                            let from = (x - i64::from(dx), y - i64::from(dy));
+                            if let Some(p) = saved.pixel(from.0, from.1) {
+                                shaken.set(x, y, p);
+                            }
                         }
                     }
                 }
+                copy_rect(&mut screen, &saved, [0, 0, i32::MAX, i32::MAX]);
+                copy_rect(&mut screen, &shaken, *rect);
             }
             Draw::Projectile {
                 def,
@@ -424,6 +442,19 @@ const PLAIN: Drawer = Drawer::Plain {
     skip_runs: true,
     colour: None,
 };
+
+/// The pixels of `from` in `rect` (left, top, right, bottom, exclusive; clipped to `from`)
+/// copied into `screen` at the same places.
+fn copy_rect(screen: &mut Screen, from: &Screen, rect: [i32; 4]) {
+    let [w, h] = [from.width(), from.height()].map(i64::from);
+    let [left, top, right, bottom] = rect.map(i64::from);
+    for y in top.max(0)..bottom.min(h) {
+        for x in left.max(0)..right.min(w) {
+            // Inside `from`: a pixel every time.
+            screen.set(x, y, from.pixel(x, y).unwrap_or_default());
+        }
+    }
+}
 
 /// A frame drawn plain with runs skipped, its canvas's top-left at (`x`, `y`).
 fn plain(

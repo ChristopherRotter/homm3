@@ -299,7 +299,7 @@ fn render(options: &Options) -> Result<Vec<String>, String> {
         };
         let interface = crate::sequences::Interface {
             panels: &panels,
-            legal: &h3_view::mouse::Legal::new(&legal),
+            legal: &crate::pointer::legal(&record, &tables, observation, &legal),
             shown: None,
             walls: options.walls,
         };
@@ -357,8 +357,14 @@ fn render(options: &Options) -> Result<Vec<String>, String> {
                 at: 0,
                 to: crate::pointer::PARK,
             }];
-            let shown =
-                crate::pointer::shown(&record, &timeline, &[], &parked, &layout, &catalogue);
+            let shown = crate::pointer::shown(
+                &record,
+                &timeline,
+                &[],
+                &parked,
+                (&layout, &catalogue),
+                (&tables, Bugs::Fixed),
+            );
             let panels = crate::log::panels(
                 &record,
                 &shown.log,

@@ -269,6 +269,11 @@ id = "battle.hint.view"
 args = { creature = "text" }
 original = [{ at = "GENRLTXT:298", printf = ["creature"] }]
 
+# Over a siege's turret, a stack that may not shoot it (the cursor's kind 22; E17 M4 T2c-2).
+[[key]]
+id = "battle.hint.turret"
+original = [{ at = "GENRLTXT:157" }]
+
 [[key]]
 id = "battle.hint.heal"
 args = { creature = "text" }
@@ -372,6 +377,17 @@ column = 0
 id = "moat"
 table = "ARRAYTXT"
 first = 260
+column = 0
+
+# A town's wall part, which the Catapult's target hint names (`battle.hint.attack`; the cursor's
+# kind 16, 0x492E70; E17 M4 T2c-2): WALLS.TXT's 18 records per town type after its town's row, the
+# parts' (their second column filled), as `siege_wall_parts_by_town` 0x66D868 is loaded; a key per
+# faction of the asset tables' towns and wall-shot target's part, `wall.<faction>.<part>`.
+[[family]]
+id = "wall"
+table = "WALLS"
+first = 3
+by = 1
 column = 0
 
 # A hero type's name (HOTRAITS.TXT's first column; E17 M3 T7b-1): its non-blank records from

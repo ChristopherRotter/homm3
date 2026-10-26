@@ -155,7 +155,9 @@ poses never change. A commanded turret is shot with `hex:`, the Catapult or a Cy
 `hex:` at a wall's aim hex (29, 62, 96, 130, 182, 183) or `click:` into the keep's or the upper
 tower's rectangle; the wall shots' rolls are forced (above). The Catapult on its own acts in the
 command before it when the defender commands its turrets (Artillery): the record opens on the
-keep's turn.
+keep's turn. E17 M4 T2c-2: a hero's Earthquake is `cast:<k>` without a hex, its hits forced in
+order (`roll:quake_target:<a>,<b>,...`); `move:600,40` and `move:770,250` rest the mouse over
+the upper tower's and the keep's rectangles (`aim`: the cursor's kinds 16 and 22).
 
 **A siege** (E17 M4 T1b, design §10.1): a scenario's `[scenario.siege]` (faction, fort level,
 moat) makes `h3-view situation` write Blue's town of that faction (Objects.txt's first picture
@@ -648,10 +650,13 @@ calls redirected.
 | `wall_miss_tie` | `random(1, 100) <= 50` the later (1, 100) | 0x445F6C, a miss between two walls equally near |
 | `wall_retarget_tie` | `random(1, 100) <= 50` the later (1, 100) | 0x445E44, the next shot's target once its own fell |
 | `catapult_tie` | `random(1, k)` (1, 1) | 0x473DA0, the Catapult's own aim: the k-th of the weakest walls |
+| `quake_target` | `random(1, k)` (1, 1) | 0x5A7DD8, Earthquake's target per hit: the k-th standing target with hit points left (E17 M4 T2c-2) |
 
 A sequence's action `roll:<name>` forces the roll's next draw to fall, `roll:<name>:fail` to fail,
 `roll:<name>:<n>` to be n (E17 M4 T2b: the wall shots' rolls, whose draw picks among more than
-two outcomes), each with `:<count>` after it for the next count draws (`roll:wall_hit::2`);
+two outcomes), each with `:<count>` after it for the next count draws (`roll:wall_hit::2`), and
+`roll:<name>:<a>,<b>,...` the next draws a, b, ... in order (E17 M4 T2c-2: Earthquake's hits; at
+most 8; `<seq> roll <name> <a>,<b>,... <n>` in `ctl`, before any count forced on that roll);
 its key `fail = ["<name>", …]` (`--fail <name>` for `sequence`) fails every other draw of those
 rolls, so nothing falls the sequence did not ask for (the runs' differences in "Traps" among
 them). Each draw is made for every stack at its moment whatever its morale or luck (a morale of 0

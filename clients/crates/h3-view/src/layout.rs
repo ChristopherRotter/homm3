@@ -68,6 +68,11 @@ pub struct Mouse {
     /// The heroes' rectangles, the attacker's and the defender's: left, top, right and bottom,
     /// inclusive (`screen_to_hex` 0x4647A0, from 0x4626A0 and 0x4626D0).
     pub heroes: [[i32; 4]; 2],
+    /// A siege's keep's rectangle ("hex" 0xFE) and its upper tower's (0xFF), the same way (set for
+    /// every battle by 0x462700 and 0x462730; E17 M4 T2c-2).
+    pub keep: [i32; 4],
+    /// The upper tower's rectangle.
+    pub tower: [i32; 4],
     /// The height of a hex box's slanted top edge (10, 0x4648B6).
     pub slant: i32,
     /// A hex's centre from its box's corner (22, 26): the attack's slot is the mouse's angle from
@@ -252,6 +257,7 @@ mod tests {
         let m = &layout.mouse;
         assert_eq!((m.field, m.slant, m.centre), ([800, 556], 10, [22, 26]));
         assert_eq!(m.heroes, [[0, 16, 57, 127], [741, 16, 799, 127]]);
+        assert_eq!((m.keep, m.tower), ([742, 160, 799, 337], [564, 0, 651, 85]));
         assert_eq!((m.hot.len(), m.hot[7], m.panel_frame), (20, [22, 0], 6));
         let flat = BattleLayout {
             outline_ramp: 0,

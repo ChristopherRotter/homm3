@@ -58,6 +58,11 @@ field = [800, 556]
 # The heroes' rectangles, the attacker's and the defender's: left, top, right, bottom, inclusive
 # (`screen_to_hex` 0x4647A0, from 0x4626A0 and 0x4626D0).
 heroes = [[0, 16, 57, 127], [741, 16, 799, 127]]
+# A siege's keep's rectangle ("hex" 0xFE) and its upper tower's (0xFF), the same way, tested after
+# the heroes' (set for every battle by 0x462700 and 0x462730; E17 M4 T2c-2: the client takes them
+# in a siege only, CLT-Q21).
+keep = [742, 160, 799, 337]
+tower = [564, 0, 651, 85]
 # A hex box's slanted top edge, its height: a point above it is the row above's (0x4648B6).
 slant = 10
 # A hex's centre from its box's corner: the attack's slot is the mouse's angle from it (0x474A54).
