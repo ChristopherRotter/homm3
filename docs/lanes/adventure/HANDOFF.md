@@ -5,7 +5,7 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 ## Current state
 
 - **E08**: increments 1 to 6 **closed** (6 on 2026-10-26 by T53's audit: every exit criterion met). **Increment 7: rewards on the map** (decisions 121–123, ADV-Q26): refined; nothing built yet. Records: `E08-log.md`; increment 6's scope and decisions in `E08-archive.md`, its design note in the log.
-- **Open pull requests:** `adventure/e08-t53` (T53; docs and six code comments).
+- **Open pull requests:** `adventure/e08-t53` (#472, T53; docs and six code comments).
 - **Next:** merge T53's pull request; then T54 (`QUEUE.md`: `h3-game` fills the battle seam's facts, decision 123; the source of a player's human flag is the user's question at its start), then round 1: T55a (the rewards survey), T55b (the ADR drafts, the design note, the cut); each cut confirmed with the user at its start.
 - **Versions** (`docs/08-work-process.md`, "Versions"): game state hash v13 (T51b), adventure state hash v11, adventure ruleset part v11 (T50), map import v10 (`MAP_IMPORT_VERSION`, T49b), adventure replay format v6 (T51a); the env's action encoding v4 is the AI lane's. Built so far, by area: `OVERVIEW.md`; ownership: `lanes.toml` (the details are in `OVERVIEW.md`, "Ownership").
 - **ADRs accepted**: ADR-0015 to -0017 (2026-10-10), amended for increments 2 to 6 (last: T45).
