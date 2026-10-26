@@ -13,7 +13,7 @@ use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
 use h3_formats::lod::LodArchive;
-use h3_protocol::wire::{Command, Seat, ServerMessage, Side, Stack};
+use h3_protocol::wire::{Command, Seat, ServerMessage, Side};
 use h3_render::Bugs;
 use h3_view::anim::{self, Pose, Speed, Timeline};
 use h3_view::batch::{self, Batch};
@@ -493,14 +493,7 @@ pub(crate) fn draw_frames(
     let status = match &pointer {
         Some((_, p)) => {
             let catalogue = log::catalogue(tables, archives, exe)?;
-            let name = |s: &Stack| {
-                let key = manifest.keys.creatures.get(usize::from(s.creature))?;
-                Some(format!("creature.{key}"))
-            };
-            Some(
-                p.hint
-                    .text(&catalogue, snapshot, (&name, &|_| None, &|_, _| None)),
-            )
+            Some(pointer::hint_text(record, &catalogue, &p.hint, snapshot))
         }
         None => None,
     };

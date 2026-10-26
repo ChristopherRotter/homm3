@@ -278,25 +278,8 @@ pub fn shown(
         .iter()
         .map(|a| Start { unmarks: a.unmarks })
         .collect();
-    let keys = &record.header.manifest.keys.creatures;
-    let creature = |s: &Stack| {
-        let key = keys.get(usize::from(s.creature))?;
-        Some(format!("creature.{key}"))
-    };
-    let spells = &record.header.manifest.keys.spells;
-    let spell = |handle: u16| {
-        let key = spells.get(usize::from(handle))?;
-        Some(format!("spell.{key}"))
-    };
-    // A town's wall part (E17 M4 T2c-2): `wall.<faction>.<part>`.
-    let factions = &record.header.manifest.keys.factions;
-    let part = |faction: u16, part: usize| {
-        let key = factions.get(usize::from(faction))?;
-        Some(format!("wall.{key}.{part}"))
-    };
-    let name = |hint: &Hint, observation: &Observation| {
-        hint.text(catalogue, observation, (&creature, &spell, &part))
-    };
+    let name =
+        |hint: &Hint, observation: &Observation| hint_text(record, catalogue, hint, observation);
     // Both sides played here (hot seat; E17 M4 T2c-2).
     let hot_seat = snapshot.is_some_and(|o| o.sides.iter().all(|s| s.human));
     track::follow(
@@ -346,6 +329,31 @@ fn human(observation: &Observation) -> bool {
     observation.sides.get(side).is_some_and(|s| s.human)
 }
 
+/// A hint's text with the record's names, the window's and a still's alike (E17 M4 T3a, R2-3): a
+/// stack's creature (`creature.<key>`), a spell (`spell.<key>`), a town's wall part
+/// (`wall.<faction>.<part>`, E17 M4 T2c-2).
+pub fn hint_text(
+    record: &Record,
+    catalogue: &Catalogue,
+    hint: &Hint,
+    observation: &Observation,
+) -> String {
+    let keys = &record.header.manifest.keys;
+    let creature = |s: &Stack| {
+        let key = keys.creatures.get(usize::from(s.creature))?;
+        Some(format!("creature.{key}"))
+    };
+    let spell = |handle: u16| {
+        let key = keys.spells.get(usize::from(handle))?;
+        Some(format!("spell.{key}"))
+    };
+    let part = |faction: u16, part: usize| {
+        let key = keys.factions.get(usize::from(faction))?;
+        Some(format!("wall.{key}.{part}"))
+    };
+    hint.text(catalogue, observation, (&creature, &spell, &part))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -388,6 +396,47 @@ mod tests {
         for bad in ["12", "x", "0:x", "-1:4"] {
             assert!(cast(bad, (0, 54), &layout).is_err(), "{bad}");
         }
+    }
+
+    #[test]
+    fn the_acting_stack_s_own_tests_follow_its_creature() {
+        // E17 M4 T3a, R2-6: the Catapult by its original id (145), the shooters the walls never
+        // halve (34, 35, 136, 137, 149, the asset tables' ids) and a hero's bow
+        // (`no_distance_penalty`); a handle the manifest lacks neither.
+        use h3_protocol::wire::Seat;
+        let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+        let tables = crate::assets::load(&dir.join("assets"), crate::assets::ALL).unwrap();
+        let text = crate::scenario::record_of(
+            &dir.join("situations/seq-keep.toml"),
+            &dir.join("../packs"),
+            108,
+            Seat::Spectator,
+        )
+        .unwrap();
+        let record = h3_view::record::parse(&text).unwrap();
+        let mut o = record.first_snapshot().unwrap().clone();
+        let at = o.stacks.iter().position(|s| s.hex < 187).unwrap();
+        o.active = Some(o.stacks[at].id);
+        let keys = &record.header.manifest.keys.creatures;
+        let handle = |key: &str| {
+            let i = keys.iter().position(|k| k == key).unwrap();
+            u16::try_from(i).unwrap()
+        };
+        let tested = |creature: u16, bow: bool| {
+            let mut o = o.clone();
+            o.stacks[at].creature = creature;
+            o.stacks[at].no_distance_penalty = bow;
+            let l = legal(&record, &tables, &o, &[]);
+            (l.catapult, l.wall_exempt)
+        };
+        assert_eq!(tested(handle("base:catapult"), false), (true, false));
+        // (The record's packs are the base game's: the AB's 136 and 137 by the same list.)
+        for exempt in ["base:mage", "base:arch_mage"] {
+            assert_eq!(tested(handle(exempt), false), (false, true), "{exempt}");
+        }
+        assert_eq!(tested(handle("base:archer"), false), (false, false));
+        assert_eq!(tested(handle("base:archer"), true), (false, true));
+        assert_eq!(tested(u16::MAX, false), (false, false));
     }
 
     #[test]

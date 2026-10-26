@@ -6131,3 +6131,59 @@ by its kind**, increments 2 to 6's migrated in T63 (`h3-sim`'s action mapping `c
 ADR-0017 draft's point 6 and the design's §14 rewritten. Batch E7, then shared, then the build;
 the University's purchase an answer (`University(Buy(slot))`); the levels before the visit's rest.
 **T55b done**; T56 is ready.
+
+### Increment 7, round 1: T56, batch E7's maps and specs (2026-10-26, `adventure/e08-t56`)
+
+**The cut** (decision 142): measured at the start (the writer's bodies, the bodiless classes, a
+monster's treasure and the RoE format about 800 to 1 000 lines with tests; the spec's fields 500 to
+700, `cross-lane`; the two specs about 1 000 lines of TOML), the user took T56 whole; the AI
+lane's one line (`treasure: None` in `crates/h3-cli/src/ai/tests.rs`) consented when asked.
+
+**The writer** (`h3_map::writer`, `writer/rewards.rs`): `RewardObject` with `RewardBody`
+(`Artifact` for classes 5 and 65–69, `Scroll` 93, `Shrine` 88–90, `WitchHut` 113, `Pandora` 6,
+`Event` 26), each with the body the reader reads: the message record (`Message`: text, guards),
+the reward record (the reader's `model::Rewards`), an event's players, computer and removal flags;
+`Monster::treasure` (`Treasure`: text, seven resources, the artifact); `PLAIN_OBJECTS` gains the
+Corpse, the Pyramid, the Learning Stone, the Treasure Chest, the University, the Wagon and the
+Warrior's Tomb; `write_in(map, Format::RoE)` writes version `0x0E` (no level limit, the RoE
+player block and hero body, 16 bytes of allowed heroes, one-byte codes, no Witch Hut body) and
+`Codes` per format refuses what RoE cannot hold (a level limit, banned skills, a town, a hero
+type, artifact or creature past 128, 127, 118, a hero's spells, primary skills or misc 5, a
+Witch Hut's skills, towns past eight factions). The SoD bytes are unchanged (extras' golden CRC
+holds); a monster of class 54 now needs a creature the format names. Tests: the layout of each
+body, every refusal, and `tests/rewards.rs` reading both formats back (every body equal to what
+was written) and importing them: the static layers validate; the SoD map stops at
+`Unsupported::MonsterArtifact` and imports whole without it; the RoE map imports whole with RoE's
+rules alone (`import::ROE`). Coverage 100 %.
+
+**The spec** (`h3-experiment`, battle-owned, `cross-lane`): `[[map.artifact]]` (`artifact` or
+`random` by class), `[[map.scroll]]`, `[[map.shrine]]`, `[[map.hut]]`, `[[map.pandora]]`,
+`[[map.event]]` with `text`, `guards` and `gives` (a reward record by names); `grid` on them and
+on `[[map.object]]`; an opponent monster's `treasure`; a hero's `fill_backpack` (to 64); `[map]
+format` (`map_format`, the binary writes with `write_in`); `Tables::rewards` (the reward classes'
+templates). `docs/experiments/README.md` documents them and lists batch E7 as staged.
+
+**The specs** (compiled with the staged tables; `original_data` on the three maps: every static
+layer imports and validates, E7b and the RoE map whole, E7a stops at E7-6's treasure artifact):
+`E08-batch-7a` (72 × 72; E7-1 to E7-6, E7-8 to E7-11; Red 8 heroes, three of them only naming
+the draw rows, Blue 2), `-7a-roe` (36 × 36, RoE; E7-7's 60 Witch Huts, two `defaults` heroes),
+`-7b` (36 × 36, every skill banned but Wisdom and Learning; E7-12 to E7-23; Red 7 heroes, Blue
+6). The run E7a is two maps (the plan's "row 7 on an RoE map of its own"); E7-5 and E7-10 visit
+only the objects whose word holds an artifact and a few controls; a new game without an artifact
+chest, Corpse or Wagon is restarted before playing. Not needed: the treasury setting the queue
+named ("gold": no row buys anything), the University dialog's reads (E7-9 reads +0x4E3CC).
+
+**The review** (a fresh agent against survey §11 and the sections the rows cite; eight findings,
+all taken): (1) D-40's prediction ran the wrong way: a weak army's ratio gives n = 7, so **E7-16
+predicts 5 (or 4) Gold stacks**, E7-22's strong army one stack of 40, as VCMI's (E7-16 settles
+D-40); (2) the Pyramid is entered (0x63AA58 does not list 63): E7-22 walks off after its win, E7-21
+steps off between its two visits; (3) E7-4's hero could not reach the stone on day 1: the stone
+moved to (18, 12), the hero given Expert Logistics, a next day allowed; (4) E7-11's hero could
+wear a Tomb's morale artifact: its backpack filled (the Tomb's −3 applies either way); (5) a 13 %
+chance of no artifact chest among 40: the restart rule; (6) a Witch Hut blocks and is visited on
+the tile west of its picture's corner: the RoE spec's labels moved there; (7) 0x63AA58 lists class
+26 among the "not entered" classes against §7.3's stop on the event's tile: E7-17, E7-18 and E7-23
+predict both (the record tells them apart; T58 settles it); (8) the spec's and the writer's docs
+said guards with an empty text fight at once, the wiki's side of D-29: reworded (by class).
+
+T57 (the harness and the runs) and T58 (the scoring) queued.

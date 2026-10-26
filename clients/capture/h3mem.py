@@ -311,6 +311,9 @@ class Mem:
         the first frame shows them. The hit points stay: a tower's or the keep's written 0 makes
         the original skip its turn (its first frame then the attacker's, the record's the
         keep's)."""
+        # A part's picture is read by its state (five each), the gate's by its four (E17 M4 T3a).
+        if len(states) != 18 or not all(0 <= s <= 4 for s in states) or not 0 <= gate <= 3:
+            raise ValueError(f"wall states {states}, gate {gate}: 18 of 0 to 4, the gate 0 to 3")
         m = self.manager()
         with open(f"/proc/{self.pid}/mem", "r+b", buffering=0) as f:
             f.seek(m + WALL_STATES)

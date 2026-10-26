@@ -333,17 +333,27 @@ impl Battle {
         self.batch.sprite(name)
     }
 
-    /// The sounds of each stack living at the start, by its id (E17 M2 T5b).
+    /// The sounds of each stack living at the start, by its id (E17 M2 T5b); a siege's turrets
+    /// (off the field) the town's shooter's, as their look (E17 M4 T3a, R2-1).
     pub fn stack_sounds(&self) -> BTreeMap<u8, Sounds> {
         let keys = &self.record.header.manifest.keys.creatures;
+        let field = self.record.header.manifest.field;
+        let cells = u16::from(field.width) * u16::from(field.height);
+        let shooter = motion::town(&self.record, &self.tables)
+            .and_then(|town| motion::shooter(town, &self.tables))
+            .ok();
         self.record
             .first_snapshot()
             .map(|s| s.stacks.as_slice())
             .unwrap_or_default()
             .iter()
             .filter_map(|s| {
-                let key = keys.get(usize::from(s.creature))?;
-                let creature = self.tables.creatures.get(key)?;
+                let creature = if u16::from(s.hex) < cells {
+                    let key = keys.get(usize::from(s.creature))?;
+                    self.tables.creatures.get(key)?
+                } else {
+                    shooter?
+                };
                 Some((s.id, creature.sounds.clone()))
             })
             .collect()
