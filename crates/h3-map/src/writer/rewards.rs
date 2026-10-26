@@ -34,7 +34,8 @@ const MAX_MORALE: i8 = 3;
 
 /// A message record (`docs/formats/h3m.md`, "Shared parts of the bodies"): the text the game
 /// shows at the visit and the guards that fight for the object. With guards, the text is the
-/// question asked before the battle (empty: the guards fight at once).
+/// question asked before the battle; an empty one leaves it to the game, which differs by class
+/// (survey `docs/rules/surveys/E08-rewards.md` §3.2, §4, §7.2, §7.3).
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct Message {
     /// The text (Windows-1252, at most Latin-1).

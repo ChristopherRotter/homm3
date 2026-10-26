@@ -2,7 +2,7 @@
 
 Map file: `E08-batch-7a.h3m`. Fill in the blanks below and keep this file; an agent records the results (`docs/experiments/README.md`).
 
-**Stamp `a01503a7`.** The map's description in the scenario list starts with "Stamp a01503a7.": compare the two before you play. If they differ, the map is not this template's build: do not play it, ask for the map again.
+**Stamp `71c3008d`.** The map's description in the scenario list starts with "Stamp 71c3008d.": compare the two before you play. If they differ, the map is not this template's build: do not play it, ask for the map again.
 
 **Difficulty: Easy.** Choose it in the scenario list before you start.
 
@@ -13,8 +13,9 @@ Map file: `E08-batch-7a.h3m`. Fill in the blanks below and keep this file; an ag
 5. Positions are the original's numbers: head 0, shoulders 1, neck 2, right hand 3, left hand 4, torso 5, rings 6 and 7, feet 8, misc 9 to 12 (the hero screen's misc 1 to 4) and 18 (misc 5), war machines 13 to 16, spell book 17. Army slots count from 0 at the left. Tiles are (column, row) from 0 at the top left.
 6. Answer questions as the encounter says; write each question's or message's text (or its first words) down where the encounter asks for it. A level-up: take the offer the encounter names, else the left one.
 7. Each battle by auto combat unless the encounter says otherwise; a tactics phase is ended at once (its Start button).
-8. Order: at the start (save 1) rows E7-3, E7-8 and E7-9 read the map; nothing is played for them. Day 1, Red's turn: E7-1, E7-2, E7-4, E7-6, E7-5 (a hero out of movement points goes on the next day); end the turn. Blue's turn (save 2 at its start): E7-10, E7-11. Further days only for E7-5 and E7-10 if their heroes need them. Then the map is done.
-9. Fill in this file (anything unexpected goes into the encounter's last line) and keep it in the repo.
+8. At the start (save 1) read every chest's, Corpse's and Wagon's word: if none of E7-5's forty chests (26, 4) to (44, 10), none of E7-10's Corpses or none of its Wagons holds an artifact, restart the scenario (a new game draws again) and save again. Rows E7-3, E7-8 and E7-9 read the map of the game that is played; nothing is played for them.
+9. Order: day 1, Red's turn: E7-1, E7-2, E7-4, E7-6, E7-5 (a hero out of movement points goes on the next day); end the turn. Blue's turn (save 2 at its start): E7-10, E7-11. Further days only for E7-4, E7-5 and E7-10 if their heroes need them. Then the map is done.
+10. Fill in this file (anything unexpected goes into the encounter's last line) and keep it in the repo.
 
 ## E7-1 — A guarded artifact without a text: a question or the battle (D-29, ADV-PIK-007, D-30)
 
@@ -111,9 +112,9 @@ Map file: `E08-batch-7a.h3m`. Fill in the blanks below and keep this file; an ag
 
 ## E7-4 — Six chests and a Learning Stone with Basic Learning: the experience a choice gives (ADV-PIK-005, ADV-TCH-003, HER-EXP-001)
 
-- Red hero **E7-4** (Caitlin, specialty resource gold): attack 1, defense 1, power 1, knowledge 1; Basic Learning; no artifacts; no spells; army 3 Angel
+- Red hero **E7-4** (Caitlin, specialty resource gold): attack 1, defense 1, power 1, knowledge 1; Basic Learning, Expert Logistics; no artifacts; no spells; army 3 Angel
 
-1. Day 1, Red's turn: E7-4 stands at (4, 12) with Basic Learning (and no Learning specialty). Six chests stand at (7, 12) to (17, 12), every second tile; a Learning Stone at (20, 12). Read each chest's word first (bit 10: an artifact; bits 11 to 14: the gold in 500s).
+1. Day 1, Red's turn: E7-4 stands at (4, 12) with Basic Learning (and no Learning specialty) and Expert Logistics (for the points). Six chests stand at (7, 12) to (17, 12), every second tile; a Learning Stone at (18, 12). Read each chest's word first (bit 10: an artifact; bits 11 to 14: the gold in 500s). A hero out of movement points goes on the next day.
 2. For each chest from west to east: read E7-4's experience, click the chest twice, note the two pictures' values (gold and experience; or the artifact) and **take the experience** (the right picture); read the experience again. A level-up between: take the offer that is **not Learning** (the left one if neither is).
 3. Then the Learning Stone: read the experience, click it twice, note the message, read the experience again (a level-up as above).
 4. Read E7-4's secondary skills at the end (Learning must still be Basic).
@@ -140,7 +141,6 @@ Map file: `E08-batch-7a.h3m`. Fill in the blanks below and keep this file; an ag
 
 1. Day 1, Red's turn (after E7-6): E7-5 stands at (24, 6) with 64 Centaurs Axes in its backpack, nothing worn. Forty chests stand at (26, 4) to (44, 10), every second column and row. Read every chest's word at the start (save 1): bit 10 marks an artifact (bits 0 to 9 the artifact), else bits 11 to 14 the gold in 500s.
 2. Visit **every chest whose word holds an artifact**, then the three nearest gold chests. At each: read E7-5's backpack count and Red's gold, click the chest twice, note what is shown (the pictures' values, or the artifact) and take the **gold** (the left picture, or OK); read the backpack count and Red's gold again. A hero out of movement points goes on the next day.
-3. If no chest's word holds an artifact, write so and visit three gold chests.
 
 **Record**
 
@@ -334,10 +334,10 @@ Map file: `E08-batch-7a.h3m`. Fill in the blanks below and keep this file; an ag
 
 ## E7-11 — Two Warrior's Tombs, then a battle: the morale bonus (ADV-PIK-011, HER-ADV-008, GAM-BAT-014)
 
-- Blue hero **E7-11** (Calid, specialty resource sulfur): attack 1, defense 1, power 1, knowledge 1; no skills; no artifacts; no spells; army 20 Pikeman, 10 Centaur
+- Blue hero **E7-11** (Calid, specialty resource sulfur): attack 1, defense 1, power 1, knowledge 1; no skills; the backpack filled to 64 with Centaurs Axe; no spells; army 20 Pikeman, 10 Centaur
 - Opponent: 5 Pikeman (wandering monster, never flees)
 
-1. Blue's turn, after E7-10: E7-11 stands at (24, 28) with Pikemen and Centaurs (two factions: no morale from its army's mix beyond 0), no skills, no artifacts. Five savage Pikemen stand east of it at (25, 28). Two Warrior's Tombs stand west, their bottom-right corners at (21, 28) and (21, 31).
+1. Blue's turn, after E7-10: E7-11 stands at (24, 28) with Pikemen and Centaurs (two factions: no morale from its army's mix beyond 0), no skills, nothing worn and 64 Centaurs Axes in its backpack (a Tomb's artifact stays in the Tomb, so no artifact changes the morale). Five savage Pikemen stand east of it at (25, 28). Two Warrior's Tombs stand west, their bottom-right corners at (21, 28) and (21, 31); a hero enters a Tomb's tile.
 2. Read E7-11's morale bonus (+0x11A) and status flags. Walk west (away from the Pikemen) and visit the first Tomb (click it twice, answer **Yes**); note the messages; read the morale bonus and status flags.
 3. Visit the second Tomb the same way; read the morale bonus and status flags.
 4. Attack the Pikemen. At the battle's opening read the stacks' morale (the capture harness's `opening.py`, or the creature windows); then auto combat.

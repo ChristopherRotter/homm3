@@ -2,7 +2,7 @@
 
 Map file: `E08-batch-7b.h3m`. Fill in the blanks below and keep this file; an agent records the results (`docs/experiments/README.md`).
 
-**Stamp `02112650`.** The map's description in the scenario list starts with "Stamp 02112650.": compare the two before you play. If they differ, the map is not this template's build: do not play it, ask for the map again.
+**Stamp `76fe96bd`.** The map's description in the scenario list starts with "Stamp 76fe96bd.": compare the two before you play. If they differ, the map is not this template's build: do not play it, ask for the map again.
 
 **Difficulty: Easy.** Choose it in the scenario list before you start.
 
@@ -153,7 +153,7 @@ Map file: `E08-batch-7b.h3m`. Fill in the blanks below and keep this file; an ag
 1. Blue's turn, after E7-16: E7-22 stands at (29, 22) with a Spell Book, no spells, Advanced Wisdom (spells up to level 4) and a strong army. Read its spells and the Pyramid's word (bits 13 to 20: the spell).
 2. Click the Pyramid twice; answer **Yes**. At the battle's opening read every stack (`opening.py`); then auto combat.
 3. The level-ups after the battle: note each one's offers and take **Learning** every time (never Wisdom: Expert Wisdom would teach the level-5 spell). Note the messages after them.
-4. Read E7-22's spells, skills and the Pyramid's word.
+4. Read E7-22's spells, skills and the Pyramid's word. Then walk E7-22 back to (29, 22): it stands on the Pyramid's tile (26, 20) after the battle, and E7-21 must enter it.
 
 **Record**
 
@@ -183,7 +183,7 @@ Map file: `E08-batch-7b.h3m`. Fill in the blanks below and keep this file; an ag
 
 1. Blue's turn, after E7-22 (the Pyramid looted): E7-21 stands at (29, 18) with Pikemen and Centaurs, no skills, no artifacts. Five savage Pikemen stand east of it at (30, 18).
 2. Read E7-21's luck bonus (+0x11B) and status flags. Walk west (away from the Pikemen) and visit the Pyramid: click it twice, answer **Yes**; note the messages; read the luck bonus and status flags.
-3. Visit it again the same way; read the luck bonus and status flags.
+3. Step off to (27, 20), then visit it again the same way (the hero enters its tile (26, 20)); read the luck bonus and status flags.
 4. Attack the Pikemen. At the battle's opening read the stacks' luck (`opening.py`, or the creature windows); then auto combat.
 5. After the battle: read E7-21's luck bonus and status flags.
 

@@ -306,8 +306,10 @@ pub struct ArtifactSpec {
     /// More copies (`grid = { columns = 10, rows = 4, step = [2, 2] }`).
     #[serde(default)]
     pub grid: Grid,
-    /// The message's text: with guards, the question before their battle (none or empty: they
-    /// fight at once); without, the text shown when it is taken.
+    /// The message's text: with guards, the question before their battle (none or empty: the
+    /// game's own, which differs by class: an artifact's guards ask a question naming them, D-29,
+    /// a scroll's fight at once; survey `E08-rewards.md` §3.2, §4); without, the text shown when
+    /// it is taken.
     #[serde(default)]
     pub text: Option<String>,
     /// Guards as (creature, count), at most seven stacks.

@@ -9,7 +9,8 @@
 # | E7-13 | D-38: a box's mana past the maximum    | 100 + 500 = 600                                  | VCMI: 100                               |
 # | E7-14 | D-39: the Learning and the experience  | 1 000 (the Learning before the box's)            | VCMI: 1 150                             |
 # | E7-15 | D-39: the spells before the level      | the level-3 spell not learned                    | VCMI: the level-up first, learned       |
-# | E7-16 | D-40: the Pyramid's golems             | Gold Golems in 1 to 5 stacks, two Diamond of 10  | VCMI: one stack of 40; the wiki silent  |
+# | E7-16 | D-40: the Pyramid's golems             | a weak army: 5 (or 4) Gold stacks, two Diamond   | VCMI: one stack of 40; the wiki silent  |
+# |       |                                        | of 10 (E7-22's strong army: one Gold stack)      |                                         |
 # | E7-17 | §7.3: an event's stop and colours      | Red's fires, the hero stays on it; Blue's does   | consensus (VCMI, the wiki)              |
 # |       |                                        | nothing, the hero stands on it                   |                                         |
 # | E7-18 | §7.3: an event that stays              | +100 twice; the event stays                      | consensus                               |
@@ -101,7 +102,7 @@ from = [21, 30]
 to = [22, 30]
 
 # The Pyramid of E7-16, E7-22 and E7-21 (its bottom-right corner; it covers that tile and the one
-# west of it and is visited from the tiles around them).
+# west of it; a hero enters (26, 20), its visited tile, as for a mine: 0x63AA58 does not list 63).
 [[map.object]]
 picture = "AVXprmd0"
 at = [26, 20]
@@ -320,6 +321,9 @@ predictions = """
   (`move_interrupted`), **E7-17 on (16, 3)**, its points less four steps (4 × 100 on grass),
   **+100 gold**, the event removed. Blue's event does not fire for Red: **E7-17b on (16, 6)**, its
   points less four steps, the gold unchanged, no message.
+- **The other reading** (`docs/exe/map.toml`'s 0x63AA58 lists class 26 among the classes a hero
+  visits from the neighbouring tile): E7-17 fires the event from **(15, 3)** and stays there, the
+  step still paid; E7-17b stops on (15, 6) the same way. The record tells the two apart.
 - **VCMI** and **the wiki**: the same (an event for its players only).
 - Both paths end on the event (a path may end on one; A-23 is E7-23's).
 """
@@ -355,7 +359,8 @@ record = [
 ]
 predictions = """
 - **The code** (§7.3 step 3): without the removal flag the event **stays and fires again at every
-  later entry**: **+100, then +100 again**; the hero stops on (14, 9) both times.
+  later entry**: **+100, then +100 again**; the hero stops on (14, 9) both times (or on the tile
+  before it, as E7-17's other reading).
 - **VCMI** and **the wiki**: the same (the editor's choice).
 """
 [encounter.hero]
@@ -387,12 +392,14 @@ record = [
 predictions = """
 - **The code** (`visit_pyramid` 0x4A4230, `monster_battle` 0x4AC580, survey §7.5): asked at every
   visit; the battle against **40 Gold Golems and 20 Diamond Golems**: the stack count n from the
-  army ratio and the roll (`E08-battles.md` §4.1, 2 to 7, then ±1) **less the two Diamond stacks**,
-  at least 1: against one Pikeman the ratio is the largest, n at its smallest: **the Gold Golems in
-  1 (or 2) stacks**, **two Diamond stacks of 10**, slots by the table 0x63DF94 (n = 1: D D – G – –
-  –; n = 2: D D G – G – –). No stack upgraded. Retreated: nothing changes (the word as before).
-- **E7-22's opening** (a strong army, a small ratio): n larger, up to 5 Gold stacks (n = 5: G G D
-  G D G G).
+  hero's army value over the monster's strength (`E08-battles.md` §4.1: below 0.5 → 7, …, 2 or
+  more → 2; then d₁ ≤ 20 → n − 1, d₁ ≥ 80 and n < 7 → n + 1) **less the two Diamond stacks**, at
+  least 1. One Pikeman's ratio is about 0.002: n = 7, **five Gold stacks of 8** (slots by the table
+  0x63DF94, n = 5: G G D G D G G), or with d₁ ≤ 20 n = 6, **four Gold stacks of 10** (G D G D G – G);
+  **two Diamond stacks of 10** either way; no stack upgraded. Retreated: nothing changes (the word
+  as before).
+- **E7-22's opening** (a ratio of about 6: n 1 to 3): **one Gold stack of 40** (D D – G – – –),
+  which VCMI's split gives too: E7-16 is the row that settles D-40.
 - **VCMI** (`pyramid.json`): **one stack of 40** Gold Golems (and the Diamonds as it lists them).
   **The wiki**: "40 Gold Golems and two stacks of 10 Diamond Golems" (the split not stated).
 """
@@ -412,7 +419,7 @@ procedure = [
     "Blue's turn, after E7-16: E7-22 stands at (29, 22) with a Spell Book, no spells, Advanced Wisdom (spells up to level 4) and a strong army. Read its spells and the Pyramid's word (bits 13 to 20: the spell).",
     "Click the Pyramid twice; answer **Yes**. At the battle's opening read every stack (`opening.py`); then auto combat.",
     "The level-ups after the battle: note each one's offers and take **Learning** every time (never Wisdom: Expert Wisdom would teach the level-5 spell). Note the messages after them.",
-    "Read E7-22's spells, skills and the Pyramid's word.",
+    "Read E7-22's spells, skills and the Pyramid's word. Then walk E7-22 back to (29, 22): it stands on the Pyramid's tile (26, 20) after the battle, and E7-21 must enter it.",
 ]
 record = [
     { field = "before: spells; the Pyramid's word (hex)" },
@@ -428,7 +435,7 @@ predictions = """
   Wisdom (Advanced: 4) is **lost** (ADVEVENT 108): **no spells after**.
 - **The wiki**: the spell is lost when it cannot be learned. **VCMI** the same (the spell needs
   Expert Wisdom).
-- The opening: D-40 as E7-16 (a small ratio: more Gold stacks).
+- The opening: one Gold stack of 40 (a ratio of about 6; E7-16's prediction), as VCMI's.
 """
 [encounter.hero]
 type = "Octavia"
@@ -447,7 +454,7 @@ questions = ["ADV-TCH-008", "HER-ADV-008", "GAM-BAT-014"]
 procedure = [
     "Blue's turn, after E7-22 (the Pyramid looted): E7-21 stands at (29, 18) with Pikemen and Centaurs, no skills, no artifacts. Five savage Pikemen stand east of it at (30, 18).",
     "Read E7-21's luck bonus (+0x11B) and status flags. Walk west (away from the Pikemen) and visit the Pyramid: click it twice, answer **Yes**; note the messages; read the luck bonus and status flags.",
-    "Visit it again the same way; read the luck bonus and status flags.",
+    "Step off to (27, 20), then visit it again the same way (the hero enters its tile (26, 20)); read the luck bonus and status flags.",
     "Attack the Pikemen. At the battle's opening read the stacks' luck (`opening.py`, or the creature windows); then auto combat.",
     "After the battle: read E7-21's luck bonus and status flags.",
 ]
@@ -572,7 +579,8 @@ predictions = """
   A-23): an event's tile is a stop for every colour, which a human's path may end on but never
   crosses: **(15, 30): no path** (the corridor's only way passes the event); **(14, 30): a straight
   path ending on the event**; **(3, 30): a path bending around (4, 30)** (through (4, 29) or (4, 31),
-  two diagonal steps); **(4, 30): a straight path ending on it**.
+  two diagonal steps); **(4, 30): a straight path ending on it** (or on the tile before it, as
+  E7-17's other reading).
 - **The other side** (the user's doubt, decision 131; VCMI, the engine today): paths cross hidden
   events: **(15, 30) straight through (14, 30)**, **(3, 30) straight through (4, 30)**.
 - Decision 131: confirmed, A-23 is a quirk with a flag (`faithful` the stop, `strict-fixed` blind);
