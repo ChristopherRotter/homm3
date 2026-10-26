@@ -6071,3 +6071,63 @@ user is skeptical); batch E7 whole before the build; no original limits on objec
 (the user: a map whose every tile is a box must work; A-17 and A-19 not reproduced and no smaller
 bound in their place); the tutorial not modelled; §8 as written; decision 104 for the pool and the
 scope confirmed. **T55a done**; T55b is ready.
+
+### Increment 7, round 1: T55b, the ADR amendment drafts, the design note and the cut (2026-10-26, `adventure/e08-t55b`)
+
+Baseline: `master` at b2d2653 (#482 merged; CI's last code run, on 7a8899c, green; the sandbox's
+light gates passed on code 3c4cd19, which CI had verified). Docs only; no original data staged.
+**T55b whole** (decision 137, the user's choice of four at the start: three parts recommended),
+one session and one pull request, as T44b.
+
+**The drafts** (`docs/lanes/adventure/adr-drafts/*-increment-7.md`): ADR-0013 points 1, 2 and a new
+15 (the battle bonuses in the details with their once-marks, reaching the battle through the
+hero's own morale and luck effects, no seam change; the hero changes `GainPrimary`, `RaiseSkill`,
+`Bonus`, `ClearBonuses`; the reward record's hero half in the original's order; what a teacher may
+teach; the backpack's count as the test for receiving an artifact); ADR-0016 points 1, 3, 4, 6 (the
+visits' state without the original's bounds; 31 classes as kinds; random contents at the build,
+the random artifacts first; refusals as outcomes; a won guards' battle's rest after its levels;
+events as hidden objects that stop a move, A-23 in `Reach` only if E7-23 confirms it; the
+visitor's owner's knowledge; events never observed); ADR-0017 points 1, 4, 6, 8–11 (the human flag
+and the spell and artifact bans in the setup; increment 7's draws; the new decisions; the
+University; the visit's rest; resources lost; T54's battle facts in point 11, decision 124's
+line; the bonuses cleared at every battle's end).
+
+**The design note** `E08-design.md` rewritten for increment 7: part A (§1 the data, §2 the hero
+changes, §3 `grant`, §4 the teachers' functions, §5 the bonuses in battle, §6 ids), part B (§7 the
+import, §8 the kinds, §9 the draws, §10 the state, §11 the visits, §12 events and the move, §13
+information), part C (§14 the decisions and typed answers, §15 the application, §16 the env,
+replays, fixtures, properties and benchmarks, §17 versions and ids, §18 batch E7, §19 the cut and
+the exit criteria, §20 risks).
+
+**Decision 133's measurement** (§10; a throwaway callgrind program in the sandbox on `BitGrid` and
+stand-in tables, release build, not committed): on the XL map's 41 472 objects a fork costs 19 Ir
+for the once-per-hero marks in one map by hero id (its first write 2 727, 7 973 and 26 233 Ir with
+8, 48 and 156 heroes) against 453 Ir with a set on each of eight heroes (13 % of today's 3 564 Ir
+`fork-xl-144` fork); the players' knowledge 20 Ir (2 238 on a write); today's army left, one
+ordered map behind an `Arc`, copies every entry on a write: 11 086 Ir at 30 entries, 388 877 at
+1 000, 16 459 140 at 41 472; a two-level table with shared armies 4 197 Ir at 41 472. Chosen (the
+agent's calls of decision 137): one block behind one `Arc` for the marks, the knowledge and the
+emptied finds; the army left a two-level table.
+
+**Findings of the design:** (1) the battle bonuses need no seam change: `morale_and_luck` already
+sums the own side's morale and luck, so the bonuses fold into it; (2) the original gives a won
+battle's levels before a box's, an artifact's or the Pyramid's rest, which matters when a level-up
+gives Wisdom or Learning: the game holds the rest (GAM-DEC-007); (3) an event's stop is the move's
+outcome in both profiles, also for a client's explicit path; A-23 changes only `Reach` (and so the
+legal moves); (4) an RoE hut's mask stays the map's fact (none), A-21 is the build's rule, so the
+import reads no profile; (5) A-20 fixed as a Pyramid without a spell, A-22 as a University
+offering what is left; (6) open for T62's start: the order of an event and a monster guarding its
+tile on one step. New ids beyond survey §12: GAM-SET-003, GAM-DEC-007, GAM-BAT-014.
+
+**The cut** (§19): eight rounds, batch E7 first and before the `shared/` task (T56 the maps and
+spec; T57 the harness, recipes and runs + T58 the scoring; T59 `shared/`; T60 `h3-heroes`; T61 the
+import, kinds, draws and state; T62 the visits; T63 `h3-game`; T64 the replays and gates + T65 the
+audit). T56 queued. The AI lane's inbox told of the typed answers and A-23's masks.
+
+**The checkpoint** (ADV-Q29, asked interactively; decisions 138–141): the drafts and the design
+accepted, but the user, on the ADR-0017 draft's `Answer` gaining `Buy(u8)`: "I think there should
+be specific types tailored to the choice to be made"; asked again, **every decision's answer typed
+by its kind**, increments 2 to 6's migrated in T63 (`h3-sim`'s action mapping `cross-lane`); the
+ADR-0017 draft's point 6 and the design's §14 rewritten. Batch E7, then shared, then the build;
+the University's purchase an answer (`University(Buy(slot))`); the levels before the visit's rest.
+**T55b done**; T56 is ready.
