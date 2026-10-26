@@ -6018,5 +6018,7 @@ for 0x5D12B0.
 - The census ran from a throwaway example in the clone, excluded from git and deleted.
 - The wiki was read through pages a search returned (Pandora's Box, Event, Pyramid).
 
-**Verified:** `scripts/exe.py check` and `cited` came back clean. For the scoped verify, see the
-session's entry in the lane HANDOFF.
+**Verified:** the scoped verify (`cargo xtask verify --scope adventure --summary`) on 7bf3a6b
+passed every step but `check-exe-map`. The one address it flagged, 0x4A39A0, got its entry in
+d1e4c1e, after which `check-exe-map`, `check-docs` and `check-lane` passed. `scripts/exe.py check`
+and `cited` came back clean.
