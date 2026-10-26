@@ -5898,3 +5898,46 @@ conditions) were read by their arguments and calls only: no map reaches them.
 
 **Verified:** the scoped verify (`cargo xtask verify --scope adventure --summary`, without the
 LODs) with no failing step; `scripts/exe.py check` and `cited` clean.
+
+### Increment 7, round 1: T55a2, the objects that teach (2026-10-26, `adventure/e08-t55a2`)
+
+Baseline: `master` at bef62ab (#474 merged; CI green; the sandbox's baseline verified the code).
+Original files staged from the user's repo folder (the executable, `maps.tar`, `extracted.tar`).
+At its start the agent measured the task from `visit_object`'s 20 cases (their handlers and
+callees to depth 2, helpers with more than 40 callers and read functions left out): about 6 700
+instructions not read on the human player's path in 54 functions (the computer's 0x528040, 1 922,
+left out), the handlers 80 to 300 each, the University's dialog about 2 400. The user took the
+whole task with the University's dialog read for its rules only (decision 126).
+
+**The survey** (`docs/rules/surveys/E08-rewards.md` §6, with §0, §1, §9 and §10 for T55a4):
+
+- **The marks** (§6.1): `setup_map_objects` numbers each once-per-hero class's objects; the hero
+  keeps a u32 per class (hero +0x57 to +0x7B), so a 33rd object shares the first one's mark (A-17;
+  at most 30 on a shipped map). The team's marks per kind (game +0x4E344), per tile (0x4FBF90) and
+  per player (record +0xC0, +0xC4) are knowledge only, some set before a refusal.
+- **The readings** (39 new `map.toml` entries, six amended; 18 `structs.toml` fields): the four +1 objects, the Arena (its
+  Cancel taken as Attack), the Library (level + 2 × Diplomacy ≥ 10), the Schools (1 000 gold, a
+  choice or leave), the Learning Stone (1 000 × Learning), the Tree (a price drawn at a new game,
+  one level by `experience_to_next_level`, no Learning), the Shrines (`random_shrine_spell`: no
+  repeat within a level until it is used up, the marks starting as the bans), the Witch Hut (the
+  map's mask, all 28 without one, less the bans), the Scholar (drawn at the map's load, a fallback
+  primary skill drawn at a new game, removed), the University (four drawn skills; known, class
+  weight 0, eight skills or less than 2 000 gold refuse), the Corpse (20 %; full backpack 1 000
+  gold), the Wagon (10 / 40 / 50 %; full backpack its resources), the Warrior's Tomb (30/50/15/5 %;
+  −3 morale once until the battle's end, cleared by `hero_battle_bonuses_clear` 0x4DA510; full
+  backpack: the artifact stays), the Lean To. VCMI 1.7.5 and the wiki compared for each.
+- **The census** (§1): no class above 32 on a map; the bodies of the Shrines, Witch Huts and
+  Scholars; no empty pool.
+- **Disputes** D-33 (an RoE map's Witch Hut teaches Leadership and Necromancy in the code only),
+  D-34 (the Shrines' repeats), D-35 (the Corpse's and Wagon's artifact class, the Wagon's amount),
+  D-36 (Necromancy at a University in the code only); quirk candidates A-17 (the 32-bit marks) and
+  A-18 (a spell of −1 not tested); rule ids proposed (ADV-TCH-001 to -007, ADV-PIK-009 to -012,
+  HER-ADV-008); batch E7's rows listed.
+
+*Agent's calls (change freely):* Lean To is in (decision 126); the census ran from a throwaway
+example in the clone (excluded from git, deleted); the University's dialog was read in its three
+rule functions (0x5F0790, 0x5F0AC0, 0x5F0F60), its drawing and 0x5D2DA0 not; the wiki was read
+through pages a search returned (the Corpse's was not returned).
+
+**Verified:** the scoped verify (`cargo xtask verify --scope adventure --summary`) with no failing
+step; `scripts/exe.py check` and `cited` clean.

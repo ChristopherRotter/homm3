@@ -73,7 +73,7 @@ Refined with the user on 2026-10-26 (T53; ADV-Q26). Built like increments 1 to 6
 - **T54 The battle seam's facts from the game** (decisions 123, 124). Done (2026-10-26, `adventure/e08-t54`): the difficulty, the human sides, the colours, a placed hero's sex, the background (0x41ADB0, 0x505610 read), the attacker's ground; `ADV-STUB-9` the retreat facts; GAM-BAT-010 to -013.
 - **T55a The rewards survey** (decision 122), in four (decision 125):
   - **T55a1 The census and the pickups.** Done (2026-10-26, `adventure/e08-t55a1`): survey `E08-rewards.md` §1 to §5 (the census of the reward classes; treasure chests, artifacts and random artifacts with the unreachable pickup conditions, Spell Scrolls, the monsters' artifacts), 18 readings in `map.toml`; disputes D-29 to D-32.
-  - **T55a2 The objects that teach.** In progress (`adventure/e08-t55a2`; decision 126).
+  - **T55a2 The objects that teach.** Done (2026-10-26, `adventure/e08-t55a2`; decision 126): survey `E08-rewards.md` §6 (the once-per-hero marks, the 20 classes' gifts, prices and refusals, their draws at load and at a new game), 39 new readings in `map.toml`; disputes D-33 to D-36, quirk candidates A-17, A-18.
   - **T55a3 The rewards that give creatures, Pandora's Box and events.** Queued.
   - **T55a4 The common rules, batch E7's plan, the rule ids, the second reading and the checkpoint.** Queued.
 - **T55b The ADR amendment drafts, the design note and the cut** (decision 122). Queued.

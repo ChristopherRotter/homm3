@@ -4,23 +4,7 @@ Pre-refined tasks of the adventure lane, in order, then the inbox of discovered 
 
 ## Tasks
 
-Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T51b (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 6 are closed (2026-10-12, -13, -20, -21, -23, -26; increment 6, army and hero management, by T53's audit). **Increment 7, rewards on the map**, refined with the user at T53 (ADV-Q26; decisions 121 to 123): T54 (the battle seam's facts) done; now round 1, the survey and the ADR amendment drafts (T55a, T55b), each task's cut confirmed with the user at its start. T55a is cut in four (decision 125): T55a1 done (survey `docs/rules/surveys/E08-rewards.md` §1 to §5), T55a2 to T55a4 below. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
-
-### E08 T55a2 — The rewards survey: the objects that teach
-
-- **Scope** (decisions 121, 122, 125): survey `docs/rules/surveys/E08-rewards.md` §6, as T55a1's
-  sections (code reading by `docs/exe/README.md`, VCMI 1.7.5, the wiki; §1's census gives the
-  counts): the objects that give **experience, spells, secondary or primary skills**, once per
-  hero or once per game, and what each asks, refuses and costs: Arena (4), Marletto Tower (23),
-  Garden of Revelation (32), Library of Enlightenment (41), School of Magic (47), Mercenary Camp
-  (51), Star Axis (61), Scholar (81), the three Shrines (88 to 90), Learning Stone (100), Tree of
-  Knowledge (102), School of War (107), Witch Hut (113); the artifact givers Corpse (22), Wagon
-  (105) and Warrior's Tomb (108); Lean To (39) and University (104) at the list's edge (in or out,
-  the survey's call). `visit_object`'s cases name each handler (`map.toml`, 0x4A84F0); the
-  computer player's choice 0x527FE0 has two more callers here (0x4A6710, 0x4A7A40). New disputes
-  continue at D-33, quirk candidates at A-17; §9 and §10 collect what T55a4 needs.
-- **Depends on:** T55a1 (done). **Status:** in progress; the cut confirmed (decision 126: whole, the
-  University's dialog 0x5EF500 for its rules only).
+Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T51b (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 6 are closed (2026-10-12, -13, -20, -21, -23, -26; increment 6, army and hero management, by T53's audit). **Increment 7, rewards on the map**, refined with the user at T53 (ADV-Q26; decisions 121 to 123): T54 (the battle seam's facts) done; now round 1, the survey and the ADR amendment drafts (T55a, T55b), each task's cut confirmed with the user at its start. T55a is cut in four (decision 125): T55a1 and T55a2 done (survey `docs/rules/surveys/E08-rewards.md` §1 to §6; decision 126 T55a2's cut), T55a3 and T55a4 below. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
 
 ### E08 T55a3 — The rewards survey: creatures, Pandora's Box and events
 
@@ -30,7 +14,7 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
   tile), whose bodies hand out every kind of reward (the census's body counts for them); whether
   the creature banks (16, 24, 25, 84, 85) and the Pyramid (63) are in increment 7; where Seer's
   Huts and quest guards (83, 215) belong (placed, not read whole).
-- **Depends on:** T55a2. **Status:** waiting; its cut confirmed with the user at its start.
+- **Depends on:** T55a2 (done). **Status:** ready; its cut confirmed with the user at its start.
 
 ### E08 T55a4 — The rewards survey: the common rules, batch E7, the rule ids, the checkpoint
 
