@@ -13,24 +13,35 @@ context; a task that grows is cut at a seam agreed with the user. Code readings 
 (`clients/capture/README.md`), never in git. Every oddity of the original a reading or a capture
 finds is an `MCL-Q<n>` in the same task (the HANDOFF's autonomy contract).
 
-### E24 M2 T1a — the recording, the map standing still and the scroll
+T1a was cut at its seam before it started (the user, 2026-10-26): T1a1 the recording and the map
+standing still, T1a2 the scroll.
 
-- **Scope:** the recording: `clients/map/sequences.toml` and `h3map.py frames [--only <id>]`
-  (an additive harness change; E17's `h3drive.py frames` the model, E17 design §7.9), as the
-  epic's M2 decision gives them; the hero and scroll speed options set before the load (where
-  the original keeps them: read). Readings (`E24-design.md` §3): the idle loop in time order
-  (the idle step of `adventure_manager_procedure` 0x4087B0 at 0x408A88, `view_show_step`
-  0x40F270, `adventure_tick` 0x4ED490's polls and its two calls every 60 ms: which redraw shows
-  which palette step, both kinds' steps over time); the scroll:
-  the arrow keys and the pointer at the edges (where, the step, the delay at each scroll speed,
-  a held key, diagonals, the view's limits at the map's sides, whether it redraws at once or at
-  the deadline), the edge cursors (DEF, frames, hot spots). Recorded: two idle sequences (water,
-  lava and the rivers; animated objects; about 8 s, past a whole colour cycle of 7.2 s), the
-  scroll at each speed (keys in each direction, the mouse at an edge and a corner).
-- **Acceptance:** §3's idle loop and scroll with their addresses mapped; each sequence recorded
-  twice with the same timeline; the runbook's section for `frames`; the Definition of Done. A
-  seam if it grows: the recording and the idle loop first, the scroll second.
-- **Depends on:** M2 T0 (done). **Status:** ready.
+### E24 M2 T1a1 — the recording and the map standing still
+
+- **Scope:** the recording: `clients/map/sequences.toml` (a situation and a time to stop; the
+  options and inputs as T1a2 and T1b add them) and `h3map.py frames [--only <id>]` (an additive
+  harness change; E17's `h3drive.py frames` the model, E17 design §7.9), as the epic's M2
+  decision gives them. Readings (`E24-design.md` §3): the idle loop in time order (the idle step
+  of `adventure_manager_procedure` 0x4087B0 at 0x408A88, `view_show_step` 0x40F270,
+  `adventure_tick` 0x4ED490's polls and its two calls every 60 ms: which redraw shows which
+  palette step, both kinds' steps over time). Recorded: two idle sequences (water, lava and the
+  rivers; animated objects; about 8 s, past a whole colour cycle of 7.2 s).
+- **Acceptance:** §3's idle loop with its addresses mapped; each sequence recorded twice with the
+  same timeline; the runbook's section for `frames`; the Definition of Done.
+- **Depends on:** M2 T0 (done). **Status:** in progress (`map-client/e24-m2-t1a1`).
+
+### E24 M2 T1a2 — the scroll
+
+- **Scope:** the hero and scroll speed options set before the load (where the original keeps
+  them: read); the inputs a key held and released and the pointer at a place in
+  `sequences.toml`. Readings (`E24-design.md` §3): the scroll: the arrow keys and the pointer at
+  the edges (where, the step, the delay at each scroll speed, a held key, diagonals, the view's
+  limits at the map's sides, whether it redraws at once or at the deadline), the edge cursors
+  (DEF, frames, hot spots). Recorded: the scroll at each speed (keys in each direction, the mouse
+  at an edge and a corner).
+- **Acceptance:** §3's scroll with its addresses mapped; each sequence recorded twice with the
+  same timeline; the runbook's `frames` section for the inputs; the Definition of Done.
+- **Depends on:** T1a1. **Status:** ready after T1a1.
 
 ### E24 M2 T1b — the walk, read and recorded
 
@@ -45,7 +56,8 @@ finds is an `MCL-Q<n>` in the same task (the HANDOFF's autonomy contract).
   (the path's rest kept), a sail; each walk's tiles from the original's memory into the sequence.
 - **Acceptance:** §3's walk with its addresses mapped; the sequences recorded twice with the same
   timelines; the Definition of Done.
-- **Depends on:** T1a (the recording). **Status:** ready after T1a.
+- **Depends on:** T1a1 (the recording), T1a2 (the hero speed option). **Status:** ready after
+  them.
 
 ### E24 M2 T2 — the map over time, headless
 
@@ -58,7 +70,7 @@ finds is an `MCL-Q<n>` in the same task (the HANDOFF's autonomy contract).
   original files.
 - **Acceptance:** T1a's sequences as recorded, every line and every frame exact outside the
   panels (or each difference an `MCL-Q<n>`); `clients/scripts/check.sh`; the Definition of Done.
-- **Depends on:** T1a. **Status:** ready after T1a.
+- **Depends on:** T1a1, T1a2. **Status:** ready after them (its idle part after T1a1).
 
 ### E24 M2 T3 — the walk drawn
 
@@ -101,7 +113,7 @@ finds is an `MCL-Q<n>` in the same task (the HANDOFF's autonomy contract).
   user; M2's section moved to `E24-archive.md`; M3 T0 queued (the common crate proposed to the
   client lane first: the epic's M2 decision).
 - **Acceptance:** the review list accepted by the user; the Definition of Done.
-- **Depends on:** T1a to T5. **Status:** ready after them.
+- **Depends on:** T1a1 to T5. **Status:** ready after them.
 
 ## Inbox
 
