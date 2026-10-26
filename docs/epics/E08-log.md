@@ -6022,3 +6022,52 @@ for 0x5D12B0.
 passed every step but `check-exe-map`. The one address it flagged, 0x4A39A0, got its entry in
 d1e4c1e, after which `check-exe-map`, `check-docs` and `check-lane` passed. `scripts/exe.py check`
 and `cited` came back clean.
+
+### Increment 7, round 1: T55a4, the common rules, batch E7's plan, the second reading and the checkpoint (2026-10-26, `adventure/e08-t55a4`)
+
+Baseline: `master` at ef3c34b (#479 merged; CI's last code run on `master`, 9215205, green; the
+scoped verify in the sandbox passed, `deny` skipped). The executable and `Objects.txt` staged from
+the user's repo folder (no LODs: docs only). At the start the user took **T55a4 whole** (decision
+128) over two or three parts.
+
+**The survey** (`docs/rules/surveys/E08-rewards.md`):
+
+- **§8, the common rules:** what a visit asks (§8.1: ten classes ask, the rest do not; a battle, the
+  rewards, the army dialog, then the experience and its level-ups), refuses or converts (§8.2: a
+  full backpack, no book, Wisdom, a known spell or skill, eight skills, gold, the level, a visit
+  made), what changes when (§8.3: at once, at the next step, at the owner's next turn, at the next
+  battle; a Knowledge gained leaves the spell points), what a player knows (§8.4), the hidden event
+  and the move (§8.5), the commands, decisions, events, observation, replays, benchmarks and env
+  (§8.6).
+- **§10** rewritten as T55b's inheritance (the import's changes with one new refusal, the draws, the
+  new hero state, the battles); **§11** batch E7's plan: 23 rows in two runs (E7a the pickups and
+  the teachers, E7b the boxes, events and the Pyramid), with what the harness and the spec lack;
+  **§12** the proposed rule ids (new families `ADV-TCH`, `ADV-RWD`; GAM-DEC-005, -006, ADV-MOV-011,
+  ADV-FOG-007, ADV-VIS-006, HER-CHG-003, HER-ADV-008); **§14** the checkpoint's questions.
+
+**The second reading** (§13): two fresh agents in turn, from questions per function and without the
+survey: A, nine questions on the pickups and the objects that teach; B, seven on the reward routine,
+the box, events, the pathfinder, the records and the Pyramid. Both confirmed the readings point by
+point, but:
+
+- **An RoE map's Witch Hut** gets the fixed mask 0xEFBF from the loader (0x5034BD, checked by T55a4):
+  14 skills, never Leadership, Necromancy or Water Magic to First Aid. T55a2 had read all 28. D-33
+  reshaped (VCMI's 26 against the code's 14), **A-21** (the editor's default cut to 16 bits).
+- **The Wagon's draws** come as r, the amount, the resource (§6.9 corrected; not a rule).
+- **The pathfinder makes an event's tile a stop for every colour** (`pathfinder_pass_through`'s
+  mouse mode answers no for every class but 33 and 212, checked by T55a4): a human's path never
+  crosses a hidden event and bends around it. §8.5 rewritten with two ways; **A-23**.
+- Smaller: the pool's later-edition bans, the lost artifact when nothing takes it, the combination
+  question's conditions, the 999 clamp that lowers a hero above it, **A-22** (a University's
+  negative range), **A-24** (the loader's creature count past seven).
+
+**The exe map:** four entries amended (`pathfinder_pass_through`, `load_object_body`, `load_rewards`,
+and `adventure_mouse_move` 0x40E360, which the map-client lane's #480 had mapped meanwhile: a
+merge conflict, its entry kept).
+
+**The checkpoint** (ADV-Q28, asked interactively; decisions 129–136): the disputes the code's side,
+confirmed or reverted by batch E7; A-21 a flag; A-23 a flag **only if row E7-23 confirms it** (the
+user is skeptical); batch E7 whole before the build; no original limits on objects and their state
+(the user: a map whose every tile is a box must work; A-17 and A-19 not reproduced and no smaller
+bound in their place); the tutorial not modelled; §8 as written; decision 104 for the pool and the
+scope confirmed. **T55a done**; T55b is ready.
