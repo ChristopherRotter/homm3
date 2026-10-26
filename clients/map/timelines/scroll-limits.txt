@@ -24,7 +24,7 @@
 590 cursor 1 0 798 598
 600 cycles 3 3
 720 objects 4
-720 screen 8,177,285,296
+720 screen 8,176,285,296
 800 cycles 4 4
 825 cursor 1 0 0 0
 825 screen 0,0,10,18
