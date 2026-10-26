@@ -467,10 +467,20 @@ fn monster_type(rules: &GameRuleset) -> ObjectTypeId {
 }
 
 /// Red's hero's visit of the imps and its acceptance of their offer to join; the acceptance's
-/// events.
+/// events. With the offer open no management command is accepted or listed (`DecisionOpen`).
 fn join(game: &mut GameState, rules: &GameRuleset) -> Vec<GameEvent> {
     run(game, rules, RED_ACTOR, move_hero(0, &[Pos::new(1, 1, 0)])).unwrap();
     assert!(game.decision(RED).is_some());
+    let flag = GameCommand::Manage(Manage::Tactics {
+        hero: HERO,
+        on: false,
+    });
+    assert_eq!(
+        refused(game, rules, RED_ACTOR, flag),
+        GameCommandError::DecisionOpen
+    );
+    assert_eq!(legal_management(game, rules, RED_ACTOR, HERO), []);
+    assert_eq!(split_range(game, rules, RED_ACTOR, (at(1), at(0))), None);
     run(game, rules, RED_ACTOR, ACCEPT).unwrap()
 }
 

@@ -138,12 +138,17 @@ impl GameState {
         command: &ArmyCommand,
         sink: &mut S,
     ) -> Result<(), ManageError> {
-        let mut group = self.army_dialog(player).map(|(_, group)| group.to_vec());
+        // The open army dialog, its player's first decision (`check_managing`): its index and
+        // hero, and a copy of its group the adventure changes.
+        let dialog = self.first(player).zip(self.army_dialog(player));
+        let held = dialog.map(|(at, (hero, _))| (at, hero));
+        let mut group = dialog.map(|(_, (_, group))| group.to_vec());
         self.adventure
             .manage_army(rules.adventure(), player, command, group.as_mut())
             .map_err(ManageError::of_army)?;
-        if let Some(group) = group {
-            self.set_group(player, group);
+        if let Some(((at, hero), group)) = held.zip(group) {
+            let owner = player;
+            self.replace(at, Decision::ArmyDialog { owner, hero, group });
         }
         let (from, to) = command.slots();
         for at in core::iter::once(from).chain(to) {
@@ -161,15 +166,6 @@ impl GameState {
         };
         army.and_then(|army| army.iter().find(|s| s.slot == at.slot))
             .copied()
-    }
-
-    /// Sets the group of `player`'s open army dialog, its first decision (E08 T51b).
-    fn set_group(&mut self, player: PlayerId, group: Vec<ArmyStack>) {
-        // The command's army dialog is the player's first decision (`check_managing`).
-        let open = self.first(player).zip(self.first_decision(player).cloned());
-        if let Some((at, Decision::ArmyDialog { owner, hero, .. })) = open {
-            self.replace(at, Decision::ArmyDialog { owner, hero, group });
-        }
     }
 
     /// The details of `player`'s hero `hero` on the map.
