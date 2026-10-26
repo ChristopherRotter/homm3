@@ -2,8 +2,9 @@
 # every gate runs, and the lane check `cargo xtask check-lane` on pull requests (lanes.toml,
 # docs/08-work-process.md, "Lanes").
 #
-# Actions minutes are scarce (private repo on the free plan: 2 000 minutes a month; user,
-# 2026-10-08), so CI verifies each state of the code once (docs/05-testing.md, "CI"):
+# CI's full verify is the record: the repository is public since 2026-10-26, so Actions run
+# free, and agents run only the scoped verify locally (user; docs/05-testing.md, "CI"). Until then
+# minutes were scarce (2 000 a month; user, 2026-10-08). CI verifies each state of the code once:
 #
 # - The code fingerprint hashes every tracked file except `docs/`, `experiments/`, `clients/` (its
 #   own workspace and job, `clients.yml`) and `*.md`: no heavy gate (fmt, clippy,
@@ -26,7 +27,8 @@
 #   code change. Manual dispatch and the re-run of a run always run the full verify.
 #
 # Windows (the second platform of the determinism matrix, ADR-0003 §5, §11; Q3, Q7) is disabled
-# for now because it takes about twice as long (user, 2026-10-06); it stays a local run. To
+# for now because it takes about twice as long (user, 2026-10-06); it stays a local run (with free
+# minutes it could come back: Q59, the user's call). To
 # re-enable it, add `windows-2025` to the matrix: `bench-check` (valgrind) and `ffi-smoke` (no `cc`
 # on MSVC) report N/A there by design, everything else passed on 2026-10-06.
 #
