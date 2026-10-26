@@ -767,6 +767,41 @@ entry only where a task builds on it.
   make the agent play better against it within 20 M samples; it gains against it at the pace it
   gains without meeting it. The gap is not the opponent mix. Three 20 M runs with different
   settings (`t5-3`, `t7-1`, `t6b-1`) end at the same ladder.
+- **The behaviour analysis** (`python -m h3env.train.inspect` on the user's `best.pt`, as T6a;
+  `python/records/inspect/t6b-1-*.json`; against the system actor, `t7-1`'s in brackets): the
+  analysis's wins 0.394 (0.394); the hero casts in 91 % of the rounds it can (87 %), 33 mana
+  (33); targeting 54 % at the best previewed kill (53 %), 77 % of the best's kills (77 %), 12 %
+  killing nothing while one could (12 %); melee into a retaliation 77 % (77 %); clean melee
+  strikes deal 152 and cost 53 hit points (151, 53). The only shift: its stacks defend in
+  2.3 % of their turns (0.8 %) and wait in 1.6 % (2.6 %), alike against Greedy (1.9 %, 1.7 %):
+  not an adaptation to the system actor, which still waits in 7 % and defends in 2 %. It plays
+  the same against both opponents, as `t7-1` did. On the neutral set the hero casts in 82 % of
+  the rounds it can (67 %); the rest as before.
 - **The user's next lever** (2026-10-26, the agent's recommendation): AI-Q7 (b) part 2, the
-  kill preview in the network (T6d), an A/B against `t7-1`; and the behaviour analysis on
-  `t6b-1`'s best (the user uploaded `best.pt`).
+  kill preview in the network (T6d), an A/B against `t7-1`.
+
+## T6d — The kill preview in the network (2026-10-26)
+
+- **Built** (design §13; AI-Q7 (b) part 2): `[network] preview` (the MLP's; `resolve` refuses it
+  with the entity network). `Policy.with_preview` adds each legal strike entry's bias `φ(f) ·
+  u(h)` to the entry logits (`Mlp`: `preview_net` 4 → `embed` → `embed`, `preview_context`
+  `hidden` → `embed`, gain 0.01; the features from the preview and the target slot's count and
+  full hit points, `policy.preview_slots`); `act` reads `batch.preview` (refusing a batch
+  without it), `evaluate` the rollout's. The trainer's batch, the gate's (`play_gate`, when
+  either network reads it) and the ladder's (`ladder`, when any of its networks does) write
+  the preview; `Rollout.preview` keeps it in half precision; `build` reads `preview` from a
+  saved config (absent: none). `python -m h3env.train.network` shows and times the parts.
+  `configs/e06-t6d.toml`: `t7-1`'s settings with the preview.
+- **Agent's choices (change freely):** the bias on the entry logits only (the value and the
+  cast heads, and a truncation's bootstrap from `final_obs`, which has no preview, as before);
+  the four features; a bilinear bias, so the state weighs a kill; the context near 0 at the
+  start; only the legal entries computed (sparse: `nonzero`, `index_put`).
+- **Cost** (the sandbox's CPU, 4 threads, 256 rows, `--repeats 30`): 17 632 parameters more
+  (5 964 249), 0.4 % more multiply-adds; a forward pass 57.9 → 80.4 µs a decision, a training
+  pass 83.4 → 91.7 µs (the gathers and the scatter, not the arithmetic). The batch's preview
+  costs about 29 µs an env step (T5's AI-Q7 (b) part 1), about 0.3 ms a call of 256 envs on
+  the user's 24 threads, against `t7-1`'s about 50 ms a call.
+- **Tests:** `test_train.py`: the bias touches the legal strikes alone and moves them, the
+  stored half-precision preview gives the update the same log-probabilities, a batch or an
+  `evaluate` without the preview is refused; a run with the preview stops, resumes, gates and
+  plays its ladders, its files read the preview. `test_run.py`: the entity network refused.
