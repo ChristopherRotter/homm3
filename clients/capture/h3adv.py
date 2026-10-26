@@ -126,7 +126,10 @@ def dismiss(game, quiet=1.5, limit=60.0):
         elif time.monotonic() - since >= quiet:
             return clicked
         time.sleep(0.1)
-    raise TimeoutError("dialogs keep coming or the adventure map does not show")
+    bad = game.out / "not-dismissed.xwd"
+    game.dump(bad)  # E08 T57: what showed, for the record
+    raise TimeoutError(f"dialogs keep coming or the adventure map does not show (the display: "
+                       f"{bad})")
 
 
 # -- the game's start and turns ----------------------------------------------------------------
