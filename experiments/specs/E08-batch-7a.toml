@@ -1,0 +1,639 @@
+# Experiment batch E7a (E08 T56; decisions 129, 132, 139, 142): rows E7-1 to E7-6 and E7-8 to
+# E7-11 of increment 7's plan (survey docs/rules/surveys/E08-rewards.md §11; docs/epics/E08-design.md
+# §18), the pickups and the objects that teach, in SoD on Easy, hot seat, on one map; row E7-7 is
+# on an RoE map of its own (E08-batch-7a-roe.toml). Build: docs/experiments/README.md. Predictions
+# are for the agent who evaluates the results; the template never shows them.
+#
+# | row   | settles                                   | the reading (faithful)                         | the other source(s)                    |
+# | E7-1  | D-29: a guarded artifact without a text   | a question naming the guards; no battle first  | VCMI the same; the wiki: a battle      |
+# | E7-2  | D-30: where a pickup's artifact goes      | the axe worn (right hand), the scroll at misc 1| the wiki: both in the backpack         |
+# | E7-3  | D-31: the classes of a random artifact    | treasure, minor or major: no relic among 40    | VCMI: any class, relics too            |
+# | E7-4  | §2.2, §6.4: the chest's and stone's grant | (gold − 500) × 1.05; the stone 1 050           | VCMI the same; the wiki the same       |
+# | E7-5  | §2.2: a chest's artifact, full backpack   | 1 000 gold or 500 experience; backpack 64      | the code's alone                       |
+# | E7-6  | §5: a monster's artifact, full backpack   | the artifact lost, the resources given         | VCMI: no full backpack; the wiki silent|
+# | E7-8  | D-34: random Shrines of one level         | 15 different spells                            | VCMI: uniform, repeats                 |
+# | E7-9  | D-36: Necromancy at a University          | drawn like any skill: in some of 30            | VCMI and the wiki: never               |
+# | E7-10 | §6.9: the finds with a full backpack      | Corpse 1 000 gold; Wagon its resources; Tomb   | the code's alone                       |
+# |       |                                           | keeps its artifact, still −3 morale            |                                        |
+# | E7-11 | §6.9: two Tombs                           | −3 after both (not −6), −3 at the opening, 0   | the wiki: −3 until the next battle     |
+# |       |                                           | after the battle                               |                                        |
+#
+# **The plan's rows as staged.** E7-5 and E7-10 visit only the objects whose word holds an
+# artifact (the harness reads every word at the start) and a few controls: the full backpack's
+# cases are the ones that differ; about 2 of the 40 chests (5 %), 4 of the 20 Corpses (20 %) and
+# 4 of the 10 Wagons (40 %) hold one. E7-3, E7-8 and E7-9 read the map's draws at the new game and
+# play nothing. A hero with a full backpack carries 64 Centaurs Axes (`fill_backpack`): an axe the
+# visit gives is lost or kept by the backpack's count, not by a free right hand.
+#
+# The trap of the starting bonus: a hot-seat player's random starting bonus may give a hero an
+# artifact or resources. The template asks for gold; an artifact the spec does not give goes under
+# "anything odd", and the treasury is read before and after each visit, never across a day's start.
+
+[map]
+name = "E08 batch E7a"
+description = "Engine-generated experiment map (E08, batch E7a): the pickups and the objects that teach: a guarded artifact, where a pickup's artifact goes, random artifacts, chests, a monster's treasure, random Shrines, Universities, Corpses, Wagons and Warrior's Tombs. Hot seat, Red and Blue human, difficulty Easy; follow the results template."
+size = 72
+terrain = "grass"
+difficulty = "easy"
+instructions = [
+    "Copy `E08-batch-7a.h3m` into `D:\\Heroes3\\HoMM 3 Complete\\Maps`.",
+    "Use the HD launcher with plain HD (HD+ off).",
+    "Start the map in hot seat: *New Game → Multiplayer → Hot Seat*, two players, Red and Blue both human, difficulty **Easy**. If the scenario's options let you, set both players' starting bonus to gold. Before you start it, compare the stamp at the start of the map's description with the stamp above. Save right away (save 1).",
+    "Most records are the game's memory: an object's word on its tile, a hero's experience, primary and secondary skills, spell points, morale and luck bonuses (+0x11A, +0x11B) and status flags, its worn positions (+0x12D, 8 bytes each), its backpack in order (+0x1D4, the count +0x3D4), its learned spells (+0x3EA), its army (creature ids +0x91, counts +0xAD), the players' treasuries, the game's Universities (+0x4E3CC). The capture harness reads them (`clients/capture/batches/E08-batch-7a.toml`, E08 T57). Played by hand, read the screens instead and leave the memory-only lines empty.",
+    "Positions are the original's numbers: head 0, shoulders 1, neck 2, right hand 3, left hand 4, torso 5, rings 6 and 7, feet 8, misc 9 to 12 (the hero screen's misc 1 to 4) and 18 (misc 5), war machines 13 to 16, spell book 17. Army slots count from 0 at the left. Tiles are (column, row) from 0 at the top left.",
+    "Answer questions as the encounter says; write each question's or message's text (or its first words) down where the encounter asks for it. A level-up: take the offer the encounter names, else the left one.",
+    "Each battle by auto combat unless the encounter says otherwise; a tactics phase is ended at once (its Start button).",
+    "At the start (save 1) read every chest's, Corpse's and Wagon's word: if none of E7-5's forty chests (26, 4) to (44, 10), none of E7-10's Corpses or none of its Wagons holds an artifact, restart the scenario (a new game draws again) and save again. Rows E7-3, E7-8 and E7-9 read the map of the game that is played; nothing is played for them.",
+    "Order: day 1, Red's turn: E7-1, E7-2, E7-4, E7-6, E7-5 (a hero out of movement points goes on the next day); end the turn. Blue's turn (save 2 at its start): E7-10, E7-11. Further days only for E7-4, E7-5 and E7-10 if their heroes need them. Then the map is done.",
+    "Fill in this file (anything unexpected goes into the encounter's last line) and keep it in the repo.",
+]
+
+# Treasure Chests: E7-4's six in a row, then E7-5's forty in a grid.
+[[map.object]]
+picture = "AVTchst0"
+at = [7, 12]
+grid = { columns = 6, step = [2, 1] }
+
+[[map.object]]
+picture = "AVTchst0"
+at = [26, 4]
+grid = { columns = 10, rows = 4, step = [2, 2] }
+
+# E7-4's Learning Stone (entered: the hero stands on it).
+[[map.object]]
+picture = "AVSgzbo0"
+at = [18, 12]
+
+# E7-10's Corpses, Wagons and Warrior's Tombs.
+[[map.object]]
+picture = "AVXskds0"
+at = [26, 16]
+grid = { columns = 10, rows = 2, step = [2, 2] }
+
+[[map.object]]
+picture = "AVTwagn0"
+at = [26, 22]
+grid = { columns = 10, step = [2, 1] }
+
+[[map.object]]
+picture = "AVXtomb0"
+at = [48, 16]
+grid = { columns = 2, step = [3, 1] }
+
+# E7-11's two Warrior's Tombs, west of its hero (its monster is east of it).
+[[map.object]]
+picture = "AVXtomb0"
+at = [21, 28]
+
+[[map.object]]
+picture = "AVXtomb0"
+at = [21, 31]
+
+# E7-9's thirty Universities.
+[[map.object]]
+picture = "AVSuniv0"
+at = [40, 40]
+grid = { columns = 6, rows = 5, step = [5, 4] }
+
+# E7-1: a Centaurs Axe guarded by 10 Pikemen, its message record without a text.
+[[map.artifact]]
+artifact = "Centaurs Axe"
+at = [7, 4]
+guards = [["Pikeman", 10]]
+
+# E7-2: a Centaurs Axe and a Spell Scroll, unguarded.
+[[map.artifact]]
+artifact = "Centaurs Axe"
+at = [7, 8]
+
+[[map.scroll]]
+spell = "Magic Arrow"
+at = [10, 8]
+
+# E7-3: forty random artifacts (class 65, any class).
+[[map.artifact]]
+random = "any"
+at = [4, 40]
+grid = { columns = 10, rows = 4 }
+
+# E7-8: fifteen Shrines of the first circle, their spells drawn at the new game.
+[[map.shrine]]
+level = 1
+at = [4, 48]
+grid = { columns = 15, step = [2, 1] }
+
+# --- §3: the pickups (Red) ------------------------------------------------------------------------
+
+[[encounter]]
+id = "E7-1"
+title = "A guarded artifact without a text: a question or the battle"
+questions = ["D-29", "ADV-PIK-007", "D-30"]
+procedure = [
+    "Day 1, Red's turn: E7-1 stands at (4, 4) wearing and carrying nothing. A Centaurs Axe lies at (7, 4), guarded by 10 Pikemen; its message record has no text.",
+    "Click the axe once (the path), then once more: the hero walks to (6, 4).",
+    "Note what follows the step: a question (its text or first words) or the battle at once. A question: answer **No**.",
+    "After No: note whether the axe still lies at (7, 4) and read E7-1's worn positions and backpack. Click the axe again and answer **Yes**: the battle, auto combat.",
+    "After the battle: read E7-1's army, worn positions and backpack, and whether the axe still lies at (7, 4).",
+]
+record = [
+    { field = "after the step (the question's text, or: the battle at once)" },
+    { field = "after No: the axe on (7, 4) (yes or no); E7-1's artifacts" },
+    { field = "the battle's result; E7-1's army after" },
+    { field = "worn positions after (position: artifact)" },
+    { field = "backpack after" },
+    { field = "the axe on (7, 4) after (yes or no)" },
+    { field = "anything odd" },
+]
+predictions = """
+- **The code** (`visit_guarded_artifact` 0x49F070, survey §3.2 step 2): guards ask a yes-or-no
+  question, the record's text or, empty here, **a built one naming the guards** ("guarded by …",
+  the Pikemen and their quantity word). **No: nothing changes**, the axe stays. **Yes:** the battle
+  (`adventure_battle`, a guarded pile's call); won: the hero is told, `hero_give_artifact` wears
+  the axe at the first position that takes it, **the right hand (3)**, the backpack empty; the
+  object removed. VCMI the same (a question, GENERAL_TXT 420's guard text).
+- **The wiki** (Artifact): without a text "no question is asked and the guards attack
+  immediately": the battle right after the step (D-29's other side).
+- D-30 (where the axe goes): the code's right hand; the wiki's backpack ("Scrolls go into the
+  backpack", a chest's artifact "is put in the hero's backpack").
+- The engine today: the axe is a blocker (increment 7 not built); nothing to compare.
+"""
+[encounter.hero]
+type = "Sylvia"
+specialty = "skill Navigation"
+at = [4, 4]
+primary = [2, 2, 1, 1]
+army = [["Angel", 5]]
+
+[[encounter]]
+id = "E7-2"
+title = "Where a pickup's artifact goes: a Centaurs Axe, then a Spell Scroll"
+questions = ["D-30", "ADV-PIK-006", "ADV-PIK-008", "HER-CHG-002"]
+procedure = [
+    "Day 1, Red's turn: E7-2 stands at (4, 8) wearing and carrying nothing (no Spell Book). A Centaurs Axe lies at (7, 8), a Spell Scroll (Magic Arrow) at (10, 8), neither guarded.",
+    "Click the axe twice; note the message. Read E7-2's worn positions and backpack.",
+    "Click the scroll twice; note the message. Read E7-2's worn positions, backpack and learned spells.",
+]
+record = [
+    { field = "the axe's message (first words)" },
+    { field = "worn positions after the axe (position: artifact)" },
+    { field = "backpack after the axe" },
+    { field = "the scroll's message (first words)" },
+    { field = "worn positions after the scroll" },
+    { field = "backpack after the scroll" },
+    { field = "learned spells after the scroll" },
+    { field = "anything odd" },
+]
+predictions = """
+- **The code** (`visit_artifact` 0x49F7E0 and `visit_spell_scroll` 0x4A5EA0, survey §3.2, §4;
+  `hero_give_artifact` 0x4E3070, HER-CHG-002): the first body position that takes it, else the
+  backpack: **the axe in the right hand (3)**, **the scroll at misc 1 (9)**, the first free misc
+  position; **the backpack empty** both times. The scroll teaches nothing: **no learned spells**
+  (no Spell Book; a worn scroll's spell is castable, not learned).
+- **VCMI** (`pick`, `FIRST_AVAILABLE`): the same positions.
+- **The wiki** (D-30): "Scrolls go into the backpack when picked up", a chest's artifact "is put
+  in the hero's backpack": **both in the backpack**, nothing worn.
+"""
+[encounter.hero]
+type = "Sorsha"
+specialty = "creature Swordsman"
+at = [4, 8]
+primary = [2, 2, 1, 1]
+army = [["Angel", 2]]
+
+[[encounter]]
+id = "E7-3"
+title = "Forty random artifacts (class 65): their artifacts at the new game"
+questions = ["D-31", "D-32", "ADV-OBJ-006"]
+procedure = [
+    "At the start (save 1), before anything is played: forty random artifacts (class 65, any class) stand at (4, 40) to (13, 43), ten to a row. Read each one's word on its tile (bits 0 to 9: the artifact).",
+    "E7-3's hero stands at (2, 44) only to name the row; it plays nothing.",
+]
+record = [
+    { table = ["tile", "the word (hex)", "the artifact"], labels = [
+        "(4, 40)",
+        "(5, 40)",
+        "(6, 40)",
+        "(7, 40)",
+        "(8, 40)",
+        "(9, 40)",
+        "(10, 40)",
+        "(11, 40)",
+        "(12, 40)",
+        "(13, 40)",
+        "(4, 41)",
+        "(5, 41)",
+        "(6, 41)",
+        "(7, 41)",
+        "(8, 41)",
+        "(9, 41)",
+        "(10, 41)",
+        "(11, 41)",
+        "(12, 41)",
+        "(13, 41)",
+        "(4, 42)",
+        "(5, 42)",
+        "(6, 42)",
+        "(7, 42)",
+        "(8, 42)",
+        "(9, 42)",
+        "(10, 42)",
+        "(11, 42)",
+        "(12, 42)",
+        "(13, 42)",
+        "(4, 43)",
+        "(5, 43)",
+        "(6, 43)",
+        "(7, 43)",
+        "(8, 43)",
+        "(9, 43)",
+        "(10, 43)",
+        "(11, 43)",
+        "(12, 43)",
+        "(13, 43)",
+    ] },
+    { field = "anything odd" },
+]
+predictions = """
+- **The code** (`setup_map_objects` case 65, survey §3.1): a class 65 artifact is drawn by
+  `random_artifact_of_level(0xE)`: **treasure, minor or major, never a relic** (class 0x10);
+  never a banned, placed or already drawn one until the pool is exhausted (D-32): **40 different
+  artifacts**, none of the map's (the axes and the scroll) nor the game's combination parts if
+  banned. The 40 draws empty no class pool.
+- **VCMI** (`rollArtifact`, D-31): any legal class, **relics too** (about 15 % of the legal
+  artifacts are relics in SoD: 40 draws without one are unlikely, about 0.85^40 ≈ 0.2 %); repeats
+  only by the least rolled rule.
+- The wiki silent on class 65.
+- The scoring: an artifact's class is ARTRAITS' class column (T: treasure, N: minor, J: major,
+  R: relic).
+"""
+[encounter.hero]
+type = "Valeska"
+specialty = "creature Archer"
+at = [2, 44]
+primary = [0, 0, 0, 0]
+army = [["Pikeman", 1]]
+
+# --- §2, §6.4: chests and the Learning Stone (Red) ------------------------------------------------
+
+[[encounter]]
+id = "E7-4"
+title = "Six chests and a Learning Stone with Basic Learning: the experience a choice gives"
+questions = ["ADV-PIK-005", "ADV-TCH-003", "HER-EXP-001"]
+procedure = [
+    "Day 1, Red's turn: E7-4 stands at (4, 12) with Basic Learning (and no Learning specialty) and Expert Logistics (for the points). Six chests stand at (7, 12) to (17, 12), every second tile; a Learning Stone at (18, 12). Read each chest's word first (bit 10: an artifact; bits 11 to 14: the gold in 500s). A hero out of movement points goes on the next day.",
+    "For each chest from west to east: read E7-4's experience, click the chest twice, note the two pictures' values (gold and experience; or the artifact) and **take the experience** (the right picture); read the experience again. A level-up between: take the offer that is **not Learning** (the left one if neither is).",
+    "Then the Learning Stone: read the experience, click it twice, note the message, read the experience again (a level-up as above).",
+    "Read E7-4's secondary skills at the end (Learning must still be Basic).",
+]
+record = [
+    { table = ["chest", "its word (hex)", "gold shown", "experience shown", "experience before", "experience after"], labels = [
+        "(7, 12)", "(9, 12)", "(11, 12)", "(13, 12)", "(15, 12)", "(17, 12)",
+    ] },
+    { field = "the Learning Stone: experience before, after, its message" },
+    { field = "level-ups (level: the two offers, the one taken)" },
+    { field = "secondary skills at the end" },
+    { field = "anything odd" },
+]
+predictions = """
+- **The code** (`visit_treasure_chest` 0x4A6520, `chest_gold_or_experience` 0x4A6440, survey
+  §2.2; `visit_learning_stone` 0x4A6330, §6.4): a chest of 1 000, 1 500 or 2 000 gold offers that
+  gold or x = trunc(f32(gold − 500) × 1.05) experience with Basic Learning: **525, 1 050 or 1 575**
+  (shown and gained alike); the stone trunc(1 000 × 1.05) = **1 050**. A chest's draw: 32 % 1 000,
+  32 % 1 500, 31 % 2 000, 5 % an artifact (shown alone, no choice). The experience is gained at
+  once and its levels follow the visit.
+- **VCMI** (`calculateXp`, the hero's experience bonus percent) and **the wiki**: the same amounts
+  (500, 1 000, 1 500 before Learning; the stone 1 000 before it).
+- HER-EXP-001's arithmetic (the battle's f32 product) is the one checked here outside a battle.
+"""
+[encounter.hero]
+type = "Caitlin"
+specialty = "resource gold"
+at = [4, 12]
+primary = [1, 1, 1, 1]
+skills = [["Learning", 1], ["Logistics", 3]]
+army = [["Angel", 3]]
+
+[[encounter]]
+id = "E7-5"
+title = "Chests with a full backpack: an artifact chest's offer"
+questions = ["ADV-PIK-005"]
+procedure = [
+    "Day 1, Red's turn (after E7-6): E7-5 stands at (24, 6) with 64 Centaurs Axes in its backpack, nothing worn. Forty chests stand at (26, 4) to (44, 10), every second column and row. Read every chest's word at the start (save 1): bit 10 marks an artifact (bits 0 to 9 the artifact), else bits 11 to 14 the gold in 500s.",
+    "Visit **every chest whose word holds an artifact**, then the three nearest gold chests. At each: read E7-5's backpack count and Red's gold, click the chest twice, note what is shown (the pictures' values, or the artifact) and take the **gold** (the left picture, or OK); read the backpack count and Red's gold again. A hero out of movement points goes on the next day.",
+]
+record = [
+    { table = ["chest", "its word (hex)", "what is shown", "backpack before / after", "gold before / after"], labels = [
+        "(26, 4)",
+        "(28, 4)",
+        "(30, 4)",
+        "(32, 4)",
+        "(34, 4)",
+        "(36, 4)",
+        "(38, 4)",
+        "(40, 4)",
+        "(42, 4)",
+        "(44, 4)",
+        "(26, 6)",
+        "(28, 6)",
+        "(30, 6)",
+        "(32, 6)",
+        "(34, 6)",
+        "(36, 6)",
+        "(38, 6)",
+        "(40, 6)",
+        "(42, 6)",
+        "(44, 6)",
+        "(26, 8)",
+        "(28, 8)",
+        "(30, 8)",
+        "(32, 8)",
+        "(34, 8)",
+        "(36, 8)",
+        "(38, 8)",
+        "(40, 8)",
+        "(42, 8)",
+        "(44, 8)",
+        "(26, 10)",
+        "(28, 10)",
+        "(30, 10)",
+        "(32, 10)",
+        "(34, 10)",
+        "(36, 10)",
+        "(38, 10)",
+        "(40, 10)",
+        "(42, 10)",
+        "(44, 10)",
+    ] },
+    { field = "anything odd" },
+]
+predictions = """
+- **The code** (`visit_treasure_chest` 0x4A6520 step 1, survey §2.2): an artifact chest with a full
+  backpack (64) is taken as a **1 000 gold chest**: the choice **1 000 gold or 500 experience**
+  (trunc(f32(500) × 1.0), no Learning); the gold taken, **the backpack stays at 64** and the
+  artifact is gone with the chest. A gold chest as any: its gold or (gold − 500) experience.
+- **VCMI**: no full-backpack case (its backpack is unbounded): the artifact into the backpack (65).
+  **The wiki** (Treasure chest): "If the hero's backpack is full, the chest offers gold and
+  experience" (silent on the amount; the code's 1 000 is its own).
+- The row settles the amount (ADV-PIK-005's full-backpack branch).
+"""
+[encounter.hero]
+type = "Edric"
+specialty = "creature Griffin"
+at = [24, 6]
+primary = [1, 1, 1, 1]
+army = [["Angel", 3]]
+fill_backpack = "Centaurs Axe"
+
+[[encounter]]
+id = "E7-6"
+title = "A monster's treasure artifact with a full backpack"
+questions = ["ADV-MON-011"]
+procedure = [
+    "Day 1, Red's turn: E7-6 stands at (4, 16) with 64 Centaurs Axes in its backpack, nothing worn. Ten savage Pikemen east of it hold a treasure: 1 000 gold and a Centaurs Axe.",
+    "Read E7-6's backpack count and worn positions and Red's gold. Attack the Pikemen (auto combat).",
+    "Note every message after the battle (first words). Read E7-6's backpack count, worn positions and Red's gold.",
+]
+record = [
+    { field = "before: backpack count, worn positions, gold" },
+    { field = "the messages after the battle (first words, in order)" },
+    { field = "after: backpack count, worn positions, gold" },
+    { field = "anything odd" },
+]
+predictions = """
+- **The code** (`monster_treasure` 0x4A6B30, survey §5): the artifact first: with a full backpack a
+  human is told so and **the artifact is lost**, even with the right hand free; then the gold:
+  **+1 000**. So: the backpack 64, nothing worn, the gold up by 1 000 (and nothing else: the battle
+  gives experience only).
+- **VCMI** (`CGCreature::giveReward`): the resources, then the artifact (`FIRST_AVAILABLE`): **the
+  axe in the right hand** (no full-backpack case). The wiki: silent on a monster's treasure (its
+  rule for banks and heroes: it "will just disappear").
+"""
+[encounter.hero]
+type = "Tyris"
+specialty = "creature Cavalier"
+at = [4, 16]
+primary = [2, 2, 1, 1]
+army = [["Angel", 5]]
+fill_backpack = "Centaurs Axe"
+[encounter.opponent]
+monster = "Pikeman"
+count = 10
+treasure = { resources = { gold = 1000 }, artifact = "Centaurs Axe" }
+
+# --- §6: the draws at a new game ------------------------------------------------------------------
+
+[[encounter]]
+id = "E7-8"
+title = "Fifteen random Shrines of the first circle: their spells"
+questions = ["D-34", "ADV-TCH-004"]
+procedure = [
+    "At the start (save 1): fifteen Shrines of the first circle stand at (4, 48) to (32, 48), every second column, their spells drawn at the new game. Read each one's word on its tile (bits 13 to 22: the spell).",
+    "E7-8's hero stands at (2, 50) only to name the row; it plays nothing.",
+]
+record = [
+    { table = ["shrine", "the word (hex)", "the spell"], labels = [
+        "(4, 48)",
+        "(6, 48)",
+        "(8, 48)",
+        "(10, 48)",
+        "(12, 48)",
+        "(14, 48)",
+        "(16, 48)",
+        "(18, 48)",
+        "(20, 48)",
+        "(22, 48)",
+        "(24, 48)",
+        "(26, 48)",
+        "(28, 48)",
+        "(30, 48)",
+        "(32, 48)",
+    ] },
+    { field = "anything odd" },
+]
+predictions = """
+- **The code** (`random_shrine_spell` 0x4C95A0, survey §6.5): the random Shrines of a level repeat
+  **no spell until each of the level's spells is out** (SoD: 15 spells of level 1 with a school):
+  **15 different spells**, the whole first circle. The map bans none.
+- **VCMI** (D-34): uniform, independent draws: 15 draws from 15 repeat almost surely (all
+  different with probability 15!/15^15 ≈ 3 × 10⁻⁶).
+- The wiki silent.
+"""
+[encounter.hero]
+type = "Christian"
+specialty = "creature Ballista"
+at = [2, 50]
+primary = [0, 0, 0, 0]
+army = [["Pikeman", 1]]
+
+[[encounter]]
+id = "E7-9"
+title = "Thirty Universities: Necromancy among their skills"
+questions = ["D-36", "ADV-TCH-007"]
+procedure = [
+    "At the start (save 1): thirty Universities stand with their bottom-right corners at (40, 40) to (65, 56), six to a row 5 columns apart, the rows 4 apart. Read the game's Universities (+0x4E3CC): each one's four skills.",
+    "E7-9's hero stands at (36, 58) only to name the row; it plays nothing.",
+]
+record = [
+    { table = ["University", "its four skills"], labels = [
+        "(40, 40)",
+        "(45, 40)",
+        "(50, 40)",
+        "(55, 40)",
+        "(60, 40)",
+        "(65, 40)",
+        "(40, 44)",
+        "(45, 44)",
+        "(50, 44)",
+        "(55, 44)",
+        "(60, 44)",
+        "(65, 44)",
+        "(40, 48)",
+        "(45, 48)",
+        "(50, 48)",
+        "(55, 48)",
+        "(60, 48)",
+        "(65, 48)",
+        "(40, 52)",
+        "(45, 52)",
+        "(50, 52)",
+        "(55, 52)",
+        "(60, 52)",
+        "(65, 52)",
+        "(40, 56)",
+        "(45, 56)",
+        "(50, 56)",
+        "(55, 56)",
+        "(60, 56)",
+        "(65, 56)",
+    ] },
+    { field = "how many offer Necromancy" },
+    { field = "anything odd" },
+]
+predictions = """
+- **The code** (`setup_map_objects` case 104, `university_skills` 0x4C06F0, survey §6.8): four
+  different skills drawn among the 28 the map does not ban (it bans none), **Necromancy like any
+  other**: each University offers it with probability 4/28 = 1/7, so none among 30 has a
+  probability of (6/7)^30 ≈ 1 %; about **4 of the 30** expected.
+- **VCMI** (`"noneOf": ["necromancy"]`) and **the wiki** ("Necromancy can not appear in
+  universities"): **never**.
+- D-36 is the user's after this row (the reading against both).
+"""
+[encounter.hero]
+type = "Ingham"
+specialty = "creature Monk"
+at = [36, 58]
+primary = [0, 0, 0, 0]
+army = [["Pikeman", 1]]
+
+# --- §6.9: the finds (Blue) -----------------------------------------------------------------------
+
+[[encounter]]
+id = "E7-10"
+title = "Corpses, Wagons and Warrior's Tombs with a full backpack"
+questions = ["ADV-PIK-009", "ADV-PIK-010", "ADV-PIK-011"]
+procedure = [
+    "Blue's turn (save 2 at its start): E7-10 stands at (24, 18) with 64 Centaurs Axes in its backpack, nothing worn. Twenty Corpses stand at (26, 16) to (44, 18), every second column and row; ten Wagons at (26, 22) to (44, 22), every second column; two Warrior's Tombs with their bottom-right corners at (48, 16) and (51, 16). Read every Corpse's, Wagon's and Tomb's word at the start (save 1).",
+    "Visit **every Corpse and every Wagon whose word holds an artifact**, then one Corpse and one Wagon without one. At each: read Blue's treasury and E7-10's backpack count, click it twice, note the message (first words), read the treasury, the backpack count and its word again. A hero out of movement points goes on the next day.",
+    "Then both Tombs: at each, read E7-10's morale bonus (+0x11A) and backpack count, click it twice, answer the question **Yes**, note the messages, read the morale bonus, the backpack count and the Tomb's word again.",
+]
+record = [
+    { table = ["Corpse", "its word before", "message", "treasury before / after", "backpack before / after", "its word after"], labels = [
+        "(26, 16)",
+        "(28, 16)",
+        "(30, 16)",
+        "(32, 16)",
+        "(34, 16)",
+        "(36, 16)",
+        "(38, 16)",
+        "(40, 16)",
+        "(42, 16)",
+        "(44, 16)",
+        "(26, 18)",
+        "(28, 18)",
+        "(30, 18)",
+        "(32, 18)",
+        "(34, 18)",
+        "(36, 18)",
+        "(38, 18)",
+        "(40, 18)",
+        "(42, 18)",
+        "(44, 18)",
+    ] },
+    { table = ["Wagon", "its word before", "message", "treasury before / after", "backpack before / after", "its word after"], labels = [
+        "(26, 22)",
+        "(28, 22)",
+        "(30, 22)",
+        "(32, 22)",
+        "(34, 22)",
+        "(36, 22)",
+        "(38, 22)",
+        "(40, 22)",
+        "(42, 22)",
+        "(44, 22)",
+    ] },
+    { table = ["Tomb", "its word before", "the question", "messages", "morale bonus before / after", "backpack before / after", "its word after"], labels = [
+        "(48, 16)", "(51, 16)",
+    ] },
+    { field = "anything odd" },
+]
+predictions = """
+- **The code** (survey §6.9): a **Corpse** holding an artifact gives **1 000 gold** to the owner
+  instead with a full backpack (`visit_corpse` 0x4A5480), the backpack stays 64, the Corpse
+  emptied (its word without the artifact); an empty one shows a message. A **Wagon** holding an
+  artifact gives **the resources drawn with it** instead (each Wagon draws r, an amount 2 to 5 and
+  a resource wood to gems, so its word holds both), emptied; a Wagon with resources gives them. A
+  **Tomb** asks first; with its artifact and a full backpack **the artifact stays** (the word
+  unchanged but for the marks), a message; either way the morale bonus takes **−3 once** (the
+  status flag bit 21): −3 after the first Tomb, **still −3 after the second**.
+- **VCMI** and **the wiki**: no full-backpack cases (VCMI's backpack unbounded: the artifacts go
+  there); the Tomb's −3 "until the next battle" agreed.
+"""
+[encounter.hero]
+type = "Rissa"
+specialty = "resource mercury"
+owner = "blue"
+at = [24, 18]
+primary = [1, 1, 1, 1]
+army = [["Angel", 3]]
+fill_backpack = "Centaurs Axe"
+
+[[encounter]]
+id = "E7-11"
+title = "Two Warrior's Tombs, then a battle: the morale bonus"
+questions = ["ADV-PIK-011", "HER-ADV-008", "GAM-BAT-014"]
+procedure = [
+    "Blue's turn, after E7-10: E7-11 stands at (24, 28) with Pikemen and Centaurs (two factions: no morale from its army's mix beyond 0), no skills, nothing worn and 64 Centaurs Axes in its backpack (a Tomb's artifact stays in the Tomb, so no artifact changes the morale). Five savage Pikemen stand east of it at (25, 28). Two Warrior's Tombs stand west, their bottom-right corners at (21, 28) and (21, 31); a hero enters a Tomb's tile.",
+    "Read E7-11's morale bonus (+0x11A) and status flags. Walk west (away from the Pikemen) and visit the first Tomb (click it twice, answer **Yes**); note the messages; read the morale bonus and status flags.",
+    "Visit the second Tomb the same way; read the morale bonus and status flags.",
+    "Attack the Pikemen. At the battle's opening read the stacks' morale (the capture harness's `opening.py`, or the creature windows); then auto combat.",
+    "After the battle: read E7-11's morale bonus and status flags.",
+]
+record = [
+    { field = "before: morale bonus, status flags (hex)" },
+    { field = "first Tomb: messages; morale bonus, status flags after" },
+    { field = "second Tomb: messages; morale bonus, status flags after" },
+    { field = "the opening: each of E7-11's stacks' morale" },
+    { field = "after the battle: morale bonus, status flags" },
+    { field = "anything odd" },
+]
+predictions = """
+- **The code** (`visit_warriors_tomb` 0x4A7C30, survey §6.9; `hero_battle_bonuses_clear`
+  0x4DA510): the morale bonus takes −3 **once until the end of the next battle** (status flag bit
+  21 set at the first Tomb): **−3 after the first Tomb, −3 after the second (not −6)**; the
+  stacks open the battle at **morale −3** (their own 0 plus the bonus); after the battle the bonus
+  and the flag are **cleared: 0**. With the full backpack a Tomb's artifact stays in it (§6.9).
+- **VCMI** (`rewardableOnceVisitable.json`): −3 for one battle at every visit; whether two stack is
+  its bonus system's (not read: −3 or −6). **The wiki**: "-3 to morale until the next battle", a
+  searched tomb "gives the penalty only".
+"""
+[encounter.hero]
+type = "Calid"
+specialty = "resource sulfur"
+owner = "blue"
+at = [24, 28]
+primary = [1, 1, 1, 1]
+army = [["Pikeman", 20], ["Centaur", 10]]
+fill_backpack = "Centaurs Axe"
+[encounter.opponent]
+monster = "Pikeman"
+count = 5

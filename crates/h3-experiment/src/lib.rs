@@ -8,17 +8,23 @@
 //! resolve against the original tables of the user's installation ([`Tables`]), so a spec reads
 //! like the game ("Archangel", "Basic Armorer") and a typo fails at build time instead of in the
 //! game. From E08 T16b the map's description and the template's top carry the spec's [`stamp`],
-//! so a map left from an earlier build of the spec shows itself before it is played.
+//! so a map left from an earlier build of the spec shows itself before it is played. From E08 T56
+//! (batch E7) a map holds the objects that hand a visiting hero something (artifacts, Spell
+//! Scrolls, Shrines, Witch Huts, Pandora's Boxes and events, in grids of copies), a monster's
+//! treasure and a hero's backpack filled to 64, and may be written in the RoE format.
 
 pub mod tables;
 
 use std::collections::BTreeMap;
 use std::fmt::Write as _;
 
+use h3_map::model::{Rewards, Stack};
 use h3_map::writer::{
-    ARMY_SLOTS, ARTIFACT_SLOTS, Ground, Guards, Hero, HeroArtifacts, Map, MapObject, Monster,
-    ObjectTemplate, PLAYERS, Patch, Pile, Plain, Player, Road, RoadKind, Terrain, Town,
-    TownBuildings, Underground,
+    ARMY_SLOTS, ARTIFACT_OBJECT, ARTIFACT_SLOTS, EVENT_OBJECT, Event, Format, Ground, Guards, Hero,
+    HeroArtifacts, Map, MapObject, Message, Monster, ObjectTemplate, PANDORA_OBJECT, PLAYERS,
+    Patch, Pile, Plain, Player, RANDOM_ARTIFACT_OBJECTS, RewardBody, RewardObject, Road, RoadKind,
+    SCROLL_OBJECT, SHRINE_OBJECTS, Terrain, Town, TownBuildings, Treasure, Underground,
+    WITCH_HUT_OBJECT,
 };
 use serde::Deserialize;
 
@@ -152,6 +158,14 @@ pub const DISPOSITIONS: [&str; 5] = ["compliant", "friendly", "aggressive", "hos
 /// The game's difficulties as the scenario list names them, Easy (0) to Impossible (4) (E08
 /// T22a1: the difficulty a batch is played on).
 pub const DIFFICULTIES: [&str; 5] = ["easy", "normal", "hard", "expert", "impossible"];
+/// A random artifact's classes (E08 T56), the object classes 65 to 69 in order.
+pub const RANDOM_ARTIFACTS: [&str; 5] = ["any", "treasure", "minor", "major", "relic"];
+/// Player colours by colour index (an event's players, E08 T56).
+pub const COLOURS: [&str; PLAYERS] = [
+    "red", "blue", "tan", "green", "orange", "purple", "teal", "pink",
+];
+/// A full backpack: the most artifacts a hero carries there (E08 T56: batch E7's full backpacks).
+pub const BACKPACK: usize = 64;
 
 /// A whole spec file.
 #[derive(Debug, Clone, Deserialize)]
@@ -218,6 +232,245 @@ pub struct MapSpec {
     /// elsewhere on the map (batch 4b: the Tavern the computer's retreat test asks for).
     #[serde(default)]
     pub town: Vec<MapTownSpec>,
+    /// The map's format (E08 T56): "sod" (the default) or "roe" (batch E7's row E7-7: an RoE
+    /// map's Witch Huts). An RoE map holds no level limit, banned skills, towns, hero spells or
+    /// primary skills (its heroes take `defaults`), and RoE's codes only.
+    #[serde(default)]
+    pub format: Option<String>,
+    /// Artifacts and random artifacts (`[[map.artifact]]`, E08 T56), on the surface.
+    #[serde(default)]
+    pub artifact: Vec<ArtifactSpec>,
+    /// Spell Scrolls (`[[map.scroll]]`, E08 T56).
+    #[serde(default)]
+    pub scroll: Vec<ScrollSpec>,
+    /// Shrines (`[[map.shrine]]`, E08 T56).
+    #[serde(default)]
+    pub shrine: Vec<ShrineSpec>,
+    /// Witch Huts (`[[map.hut]]`, E08 T56).
+    #[serde(default)]
+    pub hut: Vec<HutSpec>,
+    /// Pandora's Boxes (`[[map.pandora]]`, E08 T56).
+    #[serde(default)]
+    pub pandora: Vec<PandoraSpec>,
+    /// Events (`[[map.event]]`, E08 T56).
+    #[serde(default)]
+    pub event: Vec<EventSpec>,
+}
+
+/// Where copies of an object stand (E08 T56): the first on `at`, then `columns` × `rows` of them
+/// `step` apart, columns eastwards and rows southwards (one copy by default).
+#[derive(Debug, Clone, Copy, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Grid {
+    /// The number of copies in a row.
+    #[serde(default = "one")]
+    pub columns: u8,
+    /// The number of rows.
+    #[serde(default = "one")]
+    pub rows: u8,
+    /// The distance between two copies, `[columns, rows]`.
+    #[serde(default = "unit")]
+    pub step: [u8; 2],
+}
+
+impl Default for Grid {
+    fn default() -> Self {
+        Self {
+            columns: 1,
+            rows: 1,
+            step: unit(),
+        }
+    }
+}
+
+fn one() -> u8 {
+    1
+}
+
+fn unit() -> [u8; 2] {
+    [1, 1]
+}
+
+/// An artifact (class 5) or a random artifact (65–69) and its message record (E08 T56).
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ArtifactSpec {
+    /// The artifact by `ARTRAITS.TXT` name; none for a random one.
+    #[serde(default)]
+    pub artifact: Option<String>,
+    /// A random artifact's class instead ([`RANDOM_ARTIFACTS`]).
+    #[serde(default)]
+    pub random: Option<String>,
+    /// The (first) object's position: the picture's bottom-right tile, its visitable tile.
+    pub at: [u8; 2],
+    /// More copies (`grid = { columns = 10, rows = 4, step = [2, 2] }`).
+    #[serde(default)]
+    pub grid: Grid,
+    /// The message's text: with guards, the question before their battle (none or empty: the
+    /// game's own, which differs by class: an artifact's guards ask a question naming them, D-29,
+    /// a scroll's fight at once; survey `E08-rewards.md` §3.2, §4); without, the text shown when
+    /// it is taken.
+    #[serde(default)]
+    pub text: Option<String>,
+    /// Guards as (creature, count), at most seven stacks.
+    #[serde(default)]
+    pub guards: Vec<(String, u16)>,
+}
+
+/// A Spell Scroll (class 93) and its message record (E08 T56).
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ScrollSpec {
+    /// The spell by `SPTRAITS.TXT` name.
+    pub spell: String,
+    /// The (first) object's position.
+    pub at: [u8; 2],
+    /// More copies.
+    #[serde(default)]
+    pub grid: Grid,
+    /// As [`ArtifactSpec::text`].
+    #[serde(default)]
+    pub text: Option<String>,
+    /// As [`ArtifactSpec::guards`].
+    #[serde(default)]
+    pub guards: Vec<(String, u16)>,
+}
+
+/// A Shrine of the first, second or third circle (classes 88–90; E08 T56).
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ShrineSpec {
+    /// The circle, 1–3.
+    pub level: u8,
+    /// The spell by `SPTRAITS.TXT` name; none: drawn when the game starts.
+    #[serde(default)]
+    pub spell: Option<String>,
+    /// The (first) object's position: the picture's bottom-right tile (the Shrine is visited
+    /// from it).
+    pub at: [u8; 2],
+    /// More copies.
+    #[serde(default)]
+    pub grid: Grid,
+}
+
+/// A Witch Hut (class 113; E08 T56).
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct HutSpec {
+    /// The skills it may teach by `SSTRAITS.TXT` name; none: the editor's (all but Leadership and
+    /// Necromancy; an RoE map stores none).
+    #[serde(default)]
+    pub skills: Option<Vec<String>>,
+    /// The (first) object's position: the picture's bottom-right tile (the hut is visited from
+    /// the tile west of it).
+    pub at: [u8; 2],
+    /// More copies.
+    #[serde(default)]
+    pub grid: Grid,
+}
+
+/// Pandora's Box (class 6) with its message and reward records (E08 T56).
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct PandoraSpec {
+    /// The (first) object's position.
+    pub at: [u8; 2],
+    /// More copies.
+    #[serde(default)]
+    pub grid: Grid,
+    /// As [`ArtifactSpec::text`]: without guards, the text shown when it opens.
+    #[serde(default)]
+    pub text: Option<String>,
+    /// As [`ArtifactSpec::guards`].
+    #[serde(default)]
+    pub guards: Vec<(String, u16)>,
+    /// What it gives.
+    #[serde(default)]
+    pub gives: GivesSpec,
+}
+
+/// An event (class 26) with its message and reward records (E08 T56).
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct EventSpec {
+    /// The (first) object's position.
+    pub at: [u8; 2],
+    /// More copies.
+    #[serde(default)]
+    pub grid: Grid,
+    /// As [`ArtifactSpec::text`]: without guards, the text shown when it fires.
+    #[serde(default)]
+    pub text: Option<String>,
+    /// As [`ArtifactSpec::guards`].
+    #[serde(default)]
+    pub guards: Vec<(String, u16)>,
+    /// What it gives.
+    #[serde(default)]
+    pub gives: GivesSpec,
+    /// The colours it fires for ([`COLOURS`]).
+    pub players: Vec<String>,
+    /// A computer player's hero fires it too.
+    #[serde(default)]
+    pub computer: bool,
+    /// It is removed after it fired (true, the default); false: it fires at every entry.
+    #[serde(default = "yes")]
+    pub removed: bool,
+}
+
+fn yes() -> bool {
+    true
+}
+
+/// A reward record: what a box or an event gives (E08 T56; negative resources, mana, morale or
+/// luck take).
+#[derive(Debug, Clone, Default, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct GivesSpec {
+    /// Experience.
+    #[serde(default)]
+    pub experience: u32,
+    /// Spell points.
+    #[serde(default)]
+    pub mana: i32,
+    /// Morale, −3 to 3.
+    #[serde(default)]
+    pub morale: i8,
+    /// Luck, −3 to 3.
+    #[serde(default)]
+    pub luck: i8,
+    /// Resources by name ([`RESOURCES`]).
+    #[serde(default)]
+    pub resources: BTreeMap<String, i32>,
+    /// Attack, defense, power, knowledge.
+    #[serde(default)]
+    pub primary: [u8; 4],
+    /// Secondary skills as (name, level 1–3).
+    #[serde(default)]
+    pub skills: Vec<(String, u8)>,
+    /// Artifacts by name.
+    #[serde(default)]
+    pub artifacts: Vec<String>,
+    /// Spells by name.
+    #[serde(default)]
+    pub spells: Vec<String>,
+    /// Creatures as (creature, count).
+    #[serde(default)]
+    pub creatures: Vec<(String, u16)>,
+}
+
+/// A wandering monster's message and treasure (E08 T56: batch E7's row E7-6).
+#[derive(Debug, Clone, Default, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct TreasureSpec {
+    /// The text shown when it is beaten.
+    #[serde(default)]
+    pub text: String,
+    /// Resources by name ([`RESOURCES`]).
+    #[serde(default)]
+    pub resources: BTreeMap<String, i32>,
+    /// The artifact by name.
+    #[serde(default)]
+    pub artifact: Option<String>,
 }
 
 /// A town of the map that no encounter fights (E23 T7): its entrance tile and the town as an
@@ -265,9 +518,11 @@ pub struct GroundSpec {
     pub at: [u8; 2],
 }
 
-/// An object without a body (E08 T32a, T36a): one of its pictures, placed with its bottom-right
-/// tile on `at`, on the surface. No hero, monster, pile or town may stand on a tile it blocks or
-/// is visited from: a hero comes to it in play.
+/// An object without a body (E08 T32a, T36a; since E08 T56 increment 7's: the Corpse, the
+/// Pyramid, the Learning Stone, the Treasure Chest, the University, the Wagon, the Warrior's
+/// Tomb): one of its pictures, placed with its bottom-right tile on `at`, on the surface. No
+/// hero, monster, pile or town may stand on a tile it blocks or is visited from: a hero comes to
+/// it in play.
 #[derive(Debug, Clone, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ObjectSpec {
@@ -280,6 +535,9 @@ pub struct ObjectSpec {
     /// Cartographer covers it and the tile west of it, its entrance; a Border Gate it and the two
     /// west of it, the middle one its entrance).
     pub at: [u8; 2],
+    /// More copies (E08 T56).
+    #[serde(default)]
+    pub grid: Grid,
 }
 
 /// Resource piles of one resource on one row, one per tile from `from` to `to`.
@@ -425,6 +683,10 @@ pub struct HeroSpec {
     /// worn `spell book`. The hero starts with full mana (10 × knowledge without Intelligence).
     #[serde(default)]
     pub spells: Vec<String>,
+    /// An artifact that fills the backpack after [`HeroSpec::backpack`] up to [`BACKPACK`]
+    /// (E08 T56: batch E7's full backpacks).
+    #[serde(default)]
+    pub fill_backpack: Option<String>,
     /// Tight formation.
     #[serde(default)]
     pub tight: bool,
@@ -469,6 +731,9 @@ pub struct Opponent {
     /// A town whose entrance is the tile north of the encounter's hero (E04c T5b: sieges).
     #[serde(default)]
     pub town: Option<TownSpec>,
+    /// A monster's message and treasure, given when it is beaten (E08 T56).
+    #[serde(default)]
+    pub treasure: Option<TreasureSpec>,
 }
 
 /// A town of the opponent's (E04c T5b). Its picture covers 8 columns and 6 rows up to two columns
@@ -566,6 +831,7 @@ pub fn build_only(
     if ![36, 72, 108, 144].contains(&size) {
         return Err(format!("map size {size} (36, 72, 108 or 144)"));
     }
+    map_format(spec)?;
     let base = terrain(&spec.map.terrain)?;
     let patches = level_patches(&spec.map.patch, size)?;
     let below = spec
@@ -628,8 +894,14 @@ pub fn build_only(
         .map(|g| Ok((0, ground(g, tables, size)?)))
         .collect::<Result<Vec<_>, String>>()?;
     for o in &spec.map.object {
-        objects.push((0, plain(o, tables, size)?));
+        objects.extend(plain(o, tables, size)?.into_iter().map(|p| (0, p)));
     }
+    // The objects that hand a visiting hero something (E08 T56), on the surface.
+    objects.extend(
+        reward_objects(&spec.map, tables)?
+            .into_iter()
+            .map(|r| (0, r)),
+    );
     let mut used_types = Vec::new();
     let mut heroes_per_player = [0usize; PLAYERS];
     let mut towns_per_player = [0usize; PLAYERS];
@@ -710,6 +982,7 @@ pub fn build_only(
                 flees,
                 hero: None,
                 town: None,
+                treasure,
             }) => {
                 let id = lookup(&tables.creatures, creature, "creature").map_err(ctx)?;
                 let template = tables
@@ -733,11 +1006,25 @@ pub fn build_only(
                 let tile = (x.saturating_add(1), y);
                 // Savage unless given: it never joins.
                 let kind = disposition.map_or(4, |d| d as u8);
-                objects.push((level, monster(template, tile, *count, kind, *flees)));
+                let treasure = treasure
+                    .as_ref()
+                    .map(|t| treasure_of(t, tables))
+                    .transpose()
+                    .map_err(ctx)?;
+                let given = treasure.as_ref().map_or(String::new(), |t| {
+                    let artifact = t.artifact.map_or("no artifact".to_owned(), |a| {
+                        tables.artifacts[usize::from(a)].name.clone()
+                    });
+                    format!(", its treasure {artifact}")
+                });
+                objects.push((
+                    level,
+                    monster(template, tile, *count, kind, *flees, treasure),
+                ));
                 let named = disposition.map_or(String::new(), |d| format!(", {}", DISPOSITIONS[d]));
                 let flight = if *flees { "may flee" } else { "never flees" };
                 Some(format!(
-                    "{count} {creature} (wandering monster{named}, {flight})"
+                    "{count} {creature} (wandering monster{named}, {flight}{given})"
                 ))
             }
             Some(Opponent {
@@ -747,6 +1034,7 @@ pub fn build_only(
                 flees: false,
                 hero: Some(h),
                 town: None,
+                treasure: None,
             }) => Some(add_hero(
                 h,
                 (x.saturating_add(1), y),
@@ -760,6 +1048,7 @@ pub fn build_only(
                 flees: false,
                 hero,
                 town: Some(t),
+                treasure: None,
             }) => {
                 let entrance = (x, y.saturating_sub(1));
                 let (town, mut summary) = town_object(t, tables, entrance, size).map_err(ctx)?;
@@ -787,7 +1076,7 @@ pub fn build_only(
             Some(_) => {
                 return Err(ctx(
                     "an opponent is `monster` + `count`, `hero`, or `town` with or without `hero` \
-                     (`disposition` and `flees` with a monster only)"
+                     (`disposition`, `flees` and `treasure` with a monster only)"
                         .into(),
                 ));
             }
@@ -840,6 +1129,10 @@ pub fn build_only(
             MapObject::Pile(p) => vec![(*level, p.tile)],
             MapObject::Town(t) => vec![(*level, t.tile)],
             MapObject::Plain(p) => covered(&p.template, p.tile)
+                .into_iter()
+                .map(|tile| (*level, tile))
+                .collect(),
+            MapObject::Reward(r) => covered(&r.template, r.tile)
                 .into_iter()
                 .map(|tile| (*level, tile))
                 .collect(),
@@ -1021,7 +1314,7 @@ fn ground(g: &GroundSpec, tables: &Tables, size: u8) -> Result<MapObject, String
 }
 
 /// A visitable object without a body by its picture's name (E08 T32a).
-fn plain(o: &ObjectSpec, tables: &Tables, size: u8) -> Result<MapObject, String> {
+fn plain(o: &ObjectSpec, tables: &Tables, size: u8) -> Result<Vec<MapObject>, String> {
     let name = o.picture.to_ascii_lowercase();
     let name = name.strip_suffix(".def").unwrap_or(&name);
     let template = tables
@@ -1034,10 +1327,17 @@ fn plain(o: &ObjectSpec, tables: &Tables, size: u8) -> Result<MapObject, String>
     if x >= size || y >= size {
         return Err(format!("object `{}` at {:?}: off the map", o.picture, o.at));
     }
-    Ok(MapObject::Plain(Plain {
-        tile: (x, y),
-        template,
-    }))
+    let tiles =
+        grid_tiles(o.at, o.grid, size).map_err(|e| format!("object `{}`: {e}", o.picture))?;
+    Ok(tiles
+        .into_iter()
+        .map(|tile| {
+            MapObject::Plain(Plain {
+                tile,
+                template: template.clone(),
+            })
+        })
+        .collect())
 }
 
 /// The tiles a template covers with its anchor on `anchor`: those it blocks or is visited from
@@ -1237,6 +1537,7 @@ fn hero(
             || !h.army.is_empty()
             || !h.artifacts.is_empty()
             || !h.backpack.is_empty()
+            || h.fill_backpack.is_some()
             || !h.spells.is_empty();
         if listed {
             return Err("a hero with `defaults` lists no army, experience, skills, \
@@ -1297,14 +1598,21 @@ fn hero(
         }
         worn[slot] = Some(id as u16);
     }
-    let backpack = h
+    let mut backpack = h
         .backpack
         .iter()
-        .map(|artifact| {
-            let names: Vec<String> = tables.artifacts.iter().map(|a| a.name.clone()).collect();
-            Ok(lookup(&names, artifact, "artifact")? as u16)
-        })
+        .map(|artifact| artifact_id(tables, artifact))
         .collect::<Result<Vec<_>, String>>()?;
+    if backpack.len() > BACKPACK {
+        return Err(format!(
+            "{} artifacts in the backpack (at most {BACKPACK})",
+            backpack.len()
+        ));
+    }
+    if let Some(fill) = &h.fill_backpack {
+        let id = artifact_id(tables, fill)?;
+        backpack.resize(BACKPACK, id);
+    }
     if !h.spells.is_empty() && !h.artifacts.contains_key(SPELL_BOOK_SLOT) {
         return Err(format!("spells need a worn `{SPELL_BOOK_SLOT}`"));
     }
@@ -1338,6 +1646,7 @@ fn monster(
     count: u16,
     disposition: u8,
     flees: bool,
+    treasure: Option<Treasure>,
 ) -> MapObject {
     MapObject::Monster(Monster {
         tile,
@@ -1346,7 +1655,294 @@ fn monster(
         disposition,
         never_flees: !flees,
         fixed_count: true,
+        treasure,
     })
+}
+
+/// A monster's treasure (E08 T56).
+fn treasure_of(t: &TreasureSpec, tables: &Tables) -> Result<Treasure, String> {
+    Ok(Treasure {
+        text: t.text.clone(),
+        resources: resources(&t.resources)?,
+        artifact: t
+            .artifact
+            .as_deref()
+            .map(|a| artifact_id(tables, a))
+            .transpose()?,
+    })
+}
+
+/// Seven amounts in [`RESOURCES`] order from a table of names.
+fn resources(by_name: &BTreeMap<String, i32>) -> Result<[i32; 7], String> {
+    let mut amounts = [0; 7];
+    for (name, &amount) in by_name {
+        let r = RESOURCES
+            .iter()
+            .position(|r| r == name)
+            .ok_or_else(|| format!("unknown resource `{name}`"))?;
+        amounts[r] = amount;
+    }
+    Ok(amounts)
+}
+
+fn artifact_id(tables: &Tables, name: &str) -> Result<u16, String> {
+    let names: Vec<String> = tables.artifacts.iter().map(|a| a.name.clone()).collect();
+    Ok(lookup(&names, name, "artifact")? as u16)
+}
+
+fn spell_id(tables: &Tables, name: &str) -> Result<u8, String> {
+    let id = lookup(&tables.spells, name, "spell")?;
+    if id >= MAP_SPELLS {
+        return Err(format!("{name} is not a hero spell"));
+    }
+    Ok(id as u8)
+}
+
+/// An army of at most seven stacks of one or more creatures.
+fn army_of(
+    stacks: &[(String, u16)],
+    tables: &Tables,
+) -> Result<[Option<(u16, u16)>; ARMY_SLOTS], String> {
+    if stacks.len() > ARMY_SLOTS {
+        return Err(format!("{} stacks (1–{ARMY_SLOTS})", stacks.len()));
+    }
+    let mut army = [None; ARMY_SLOTS];
+    for (slot, (name, count)) in stacks.iter().enumerate() {
+        if *count == 0 {
+            return Err(format!("an empty stack of {name}"));
+        }
+        army[slot] = Some((lookup(&tables.creatures, name, "creature")? as u16, *count));
+    }
+    Ok(army)
+}
+
+/// A message record from a text and guards: none without either (E08 T56).
+fn message_of(
+    text: Option<&String>,
+    guards: &[(String, u16)],
+    tables: &Tables,
+) -> Result<Option<Message>, String> {
+    if text.is_none() && guards.is_empty() {
+        return Ok(None);
+    }
+    let guards = if guards.is_empty() {
+        None
+    } else {
+        Some(army_of(guards, tables).map_err(|e| format!("guards: {e}"))?)
+    };
+    Ok(Some(Message {
+        text: text.cloned().unwrap_or_default(),
+        guards,
+    }))
+}
+
+/// A reward record (E08 T56).
+fn rewards_of(g: &GivesSpec, tables: &Tables) -> Result<Rewards, String> {
+    let skills = g
+        .skills
+        .iter()
+        .map(|(name, level)| {
+            if !(1..=3).contains(level) {
+                return Err(format!("skill level {level} (1–3)"));
+            }
+            Ok((lookup(&tables.skills, name, "skill")? as u8, *level))
+        })
+        .collect::<Result<_, String>>()?;
+    let creatures = g
+        .creatures
+        .iter()
+        .map(|(name, count)| {
+            if *count == 0 {
+                return Err(format!("an empty stack of {name}"));
+            }
+            Ok(Stack {
+                creature: lookup(&tables.creatures, name, "creature")? as u16,
+                count: *count,
+            })
+        })
+        .collect::<Result<_, String>>()?;
+    Ok(Rewards {
+        experience: g.experience,
+        mana: g.mana,
+        morale: g.morale,
+        luck: g.luck,
+        resources: resources(&g.resources)?,
+        primary: g.primary,
+        skills,
+        artifacts: g
+            .artifacts
+            .iter()
+            .map(|a| artifact_id(tables, a))
+            .collect::<Result<_, _>>()?,
+        spells: g
+            .spells
+            .iter()
+            .map(|s| spell_id(tables, s))
+            .collect::<Result<_, _>>()?,
+        creatures,
+    })
+}
+
+/// The tiles of a grid's copies, the first on `at` (E08 T56).
+fn grid_tiles(at: [u8; 2], grid: Grid, size: u8) -> Result<Vec<(u8, u8)>, String> {
+    if grid.columns == 0 || grid.rows == 0 {
+        return Err(format!("a grid at {at:?} of no copies"));
+    }
+    let mut tiles = Vec::new();
+    for row in 0..grid.rows {
+        for column in 0..grid.columns {
+            let x = u16::from(at[0]) + u16::from(column) * u16::from(grid.step[0]);
+            let y = u16::from(at[1]) + u16::from(row) * u16::from(grid.step[1]);
+            match (u8::try_from(x), u8::try_from(y)) {
+                (Ok(x), Ok(y)) if x < size && y < size => tiles.push((x, y)),
+                _ => {
+                    return Err(format!(
+                        "a grid at {at:?}: the copy at ({x}, {y}) is off the map"
+                    ));
+                }
+            }
+        }
+    }
+    Ok(tiles)
+}
+
+/// The template of a reward class and subclass (E08 T56).
+fn reward_template(tables: &Tables, class: u32, subclass: u32) -> Result<ObjectTemplate, String> {
+    tables
+        .rewards
+        .iter()
+        .find(|t| t.class == class && t.subclass == subclass)
+        .cloned()
+        .ok_or_else(|| format!("no template of class {class}, subclass {subclass}"))
+}
+
+/// The map's objects that hand a visiting hero something (E08 T56), in the spec's order of kinds:
+/// artifacts, scrolls, shrines, huts, boxes, events.
+fn reward_objects(map: &MapSpec, tables: &Tables) -> Result<Vec<MapObject>, String> {
+    let mut objects = Vec::new();
+    let mut place = |at: [u8; 2], grid: Grid, template: ObjectTemplate, body: RewardBody| {
+        for tile in grid_tiles(at, grid, map.size)? {
+            objects.push(MapObject::Reward(RewardObject {
+                tile,
+                template: template.clone(),
+                body: body.clone(),
+            }));
+        }
+        Ok::<_, String>(())
+    };
+    for a in &map.artifact {
+        let ctx = |e: String| format!("the artifact at {:?}: {e}", a.at);
+        let (class, subclass) = match (&a.artifact, &a.random) {
+            (Some(name), None) => (
+                ARTIFACT_OBJECT,
+                u32::from(artifact_id(tables, name).map_err(ctx)?),
+            ),
+            (None, Some(kind)) => {
+                let i = RANDOM_ARTIFACTS
+                    .iter()
+                    .position(|k| k.eq_ignore_ascii_case(kind.trim()))
+                    .ok_or_else(|| ctx(format!("unknown random artifact `{kind}`")))?;
+                (RANDOM_ARTIFACT_OBJECTS[i], 0)
+            }
+            _ => return Err(ctx("either `artifact` or `random`".into())),
+        };
+        let template = reward_template(tables, class, subclass).map_err(ctx)?;
+        let message = message_of(a.text.as_ref(), &a.guards, tables).map_err(ctx)?;
+        place(a.at, a.grid, template, RewardBody::Artifact(message)).map_err(ctx)?;
+    }
+    for sc in &map.scroll {
+        let ctx = |e: String| format!("the scroll at {:?}: {e}", sc.at);
+        let spell = spell_id(tables, &sc.spell).map_err(ctx)?;
+        let message = message_of(sc.text.as_ref(), &sc.guards, tables).map_err(ctx)?;
+        let template = reward_template(tables, SCROLL_OBJECT, 0).map_err(ctx)?;
+        place(
+            sc.at,
+            sc.grid,
+            template,
+            RewardBody::Scroll { message, spell },
+        )
+        .map_err(ctx)?;
+    }
+    for sh in &map.shrine {
+        let ctx = |e: String| format!("the shrine at {:?}: {e}", sh.at);
+        let class = match sh.level {
+            1..=3 => SHRINE_OBJECTS[usize::from(sh.level - 1)],
+            other => return Err(ctx(format!("level {other} (1–3)"))),
+        };
+        let spell = sh
+            .spell
+            .as_deref()
+            .map(|s| spell_id(tables, s))
+            .transpose()
+            .map_err(ctx)?;
+        let template = reward_template(tables, class, 0).map_err(ctx)?;
+        place(sh.at, sh.grid, template, RewardBody::Shrine(spell)).map_err(ctx)?;
+    }
+    for h in &map.hut {
+        let ctx = |e: String| format!("the witch hut at {:?}: {e}", h.at);
+        let skills = h
+            .skills
+            .as_ref()
+            .map(|names| {
+                let mut mask = [0u8; 4];
+                for name in names {
+                    let id = lookup(&tables.skills, name, "skill")?;
+                    mask[id / 8] |= 1 << (id % 8);
+                }
+                Ok::<_, String>(mask)
+            })
+            .transpose()
+            .map_err(ctx)?;
+        let template = reward_template(tables, WITCH_HUT_OBJECT, 0).map_err(ctx)?;
+        place(h.at, h.grid, template, RewardBody::WitchHut(skills)).map_err(ctx)?;
+    }
+    for b in &map.pandora {
+        let ctx = |e: String| format!("the box at {:?}: {e}", b.at);
+        let message = message_of(b.text.as_ref(), &b.guards, tables).map_err(ctx)?;
+        let rewards = rewards_of(&b.gives, tables).map_err(ctx)?;
+        let template = reward_template(tables, PANDORA_OBJECT, 0).map_err(ctx)?;
+        place(
+            b.at,
+            b.grid,
+            template,
+            RewardBody::Pandora { message, rewards },
+        )
+        .map_err(ctx)?;
+    }
+    for e in &map.event {
+        let ctx = |err: String| format!("the event at {:?}: {err}", e.at);
+        let mut players = 0u8;
+        for colour in &e.players {
+            let i = COLOURS
+                .iter()
+                .position(|c| c.eq_ignore_ascii_case(colour.trim()))
+                .ok_or_else(|| ctx(format!("unknown colour `{colour}`")))?;
+            players |= 1 << i;
+        }
+        let event = Event {
+            message: message_of(e.text.as_ref(), &e.guards, tables).map_err(ctx)?,
+            rewards: rewards_of(&e.gives, tables).map_err(ctx)?,
+            players,
+            computer: e.computer,
+            removed_after_visit: e.removed,
+        };
+        let template = reward_template(tables, EVENT_OBJECT, 0).map_err(ctx)?;
+        place(e.at, e.grid, template, RewardBody::Event(event)).map_err(ctx)?;
+    }
+    Ok(objects)
+}
+
+/// The format the spec's map is written in (E08 T56).
+///
+/// # Errors
+/// A format other than "sod" or "roe".
+pub fn map_format(spec: &Spec) -> Result<Format, String> {
+    match spec.map.format.as_deref().map(str::trim) {
+        None => Ok(Format::Sod),
+        Some(f) if f.eq_ignore_ascii_case("sod") => Ok(Format::Sod),
+        Some(f) if f.eq_ignore_ascii_case("roe") => Ok(Format::RoE),
+        Some(other) => Err(format!("unknown map format `{other}` (sod or roe)")),
+    }
 }
 
 /// One line describing a hero as the user should see it in the game.
@@ -1385,7 +1981,15 @@ fn hero_summary(h: &HeroSpec, hero: &Hero, tables: &Tables) -> String {
         .map(|(slot, a)| format!("{a} ({slot})"))
         .collect::<Vec<_>>()
         .join(", ");
-    let carried = h.backpack.iter().map(|a| format!("{a} (backpack)"));
+    let filled = h
+        .fill_backpack
+        .iter()
+        .map(|a| format!("the backpack filled to {BACKPACK} with {a}"));
+    let carried = h
+        .backpack
+        .iter()
+        .map(|a| format!("{a} (backpack)"))
+        .chain(filled);
     artifacts = (!artifacts.is_empty())
         .then_some(artifacts)
         .into_iter()
@@ -1546,6 +2150,9 @@ mod tests {
                  000000000000000000000000000000000000000000000000 111111111 000010101 155 0 0 0",
                 "avxbgt00.def 000111111111111111111111111111111111111111111111 \
                  010000000000000000000000000000000000000000000000 111111111 011111111 212 0 0 0",
+                // The Treasure Chest (E08 T56).
+                "AVTchst0.def 011111111111111111111111111111111111111111111111 \
+                 100000000000000000000000000000000000000000000000 111111111 011111111 101 0 5 0",
             ]
             .map(|line| ObjectTemplate::from_objects_txt(line).expect("template"))
             .to_vec(),
@@ -1558,6 +2165,27 @@ mod tests {
                 )
                 .expect("template"),
             )],
+            // E08 T56: the game's lines of an artifact (as the fixture's Ballista), a random
+            // artifact, a scroll, a first-circle Shrine, a Witch Hut, a box and an event; no
+            // second-circle Shrine, to see the error.
+            rewards: [
+                "AVA0000.def 011111111111111111111111111111111111111111111111 \
+                 100000000000000000000000000000000000000000000000 111111111 000000001 5 0 4 0",
+                "AVArand.def 011111111111111111111111111111111111111111111111 \
+                 100000000000000000000000000000000000000000000000 111111111 000000001 65 0 4 0",
+                "AVA0001.def 011111111111111111111111111111111111111111111111 \
+                 100000000000000000000000000000000000000000000000 111111111 000000001 93 0 4 0",
+                "AVXl1sh0.def 011111111111111111111111111111111111111111111111 \
+                 100000000000000000000000000000000000000000000000 111111111 011111111 88 0 0 0",
+                "AVSwtch0.def 101111111111111111111111111111111111111111111111 \
+                 010000000000000000000000000000000000000000000000 111111111 011111111 113 0 0 0",
+                "AVA0128.def 011111111111111111111111111111111111111111111111 \
+                 100000000000000000000000000000000000000000000000 111111111 000000001 6 0 4 0",
+                "AVZevnt0.def 011111111111111111111111111111111111111111111111 \
+                 100000000000000000000000000000000000000000000000 111111111 111111111 26 0 0 0",
+            ]
+            .map(|line| ObjectTemplate::from_objects_txt(line).expect("template"))
+            .to_vec(),
         }
     }
 
@@ -2189,7 +2817,8 @@ mod tests {
                 MapObject::Pile(_)
                 | MapObject::Ground(_)
                 | MapObject::Plain(_)
-                | MapObject::Town(_) => None,
+                | MapObject::Town(_)
+                | MapObject::Reward(_) => None,
             })
             .collect();
         // The encounter's hero, its `also` heroes, then the opponent beside the hero.
@@ -2473,5 +3102,338 @@ mod tests {
                     type = \"Twin\"\n        specialty = \"x\"\n        primary = [0, 0, 0, 0]\n        \
                     army = [[\"Pikeman\", 1]]";
         assert!(fails(hero, blue).contains("with a monster only"));
+    }
+
+    const REWARDS: &str = r#"
+        [map]
+        name = "Rewards"
+        description = "d"
+        terrain = "grass"
+
+        [[map.object]]
+        picture = "AVTchst0"
+        at = [20, 20]
+        grid = { columns = 3, rows = 2, step = [2, 3] }
+
+        [[map.artifact]]
+        artifact = "Ballista"
+        at = [10, 10]
+        guards = [["Pikeman", 10]]
+
+        [[map.artifact]]
+        random = "Any"
+        at = [12, 10]
+        grid = { columns = 2 }
+        text = "A gift"
+
+        [[map.scroll]]
+        spell = "Spell 15"
+        at = [15, 10]
+
+        [[map.shrine]]
+        level = 1
+        at = [17, 10]
+
+        [[map.shrine]]
+        level = 1
+        spell = "Spell 3"
+        at = [19, 10]
+
+        [[map.hut]]
+        at = [22, 10]
+
+        [[map.hut]]
+        skills = ["Archery"]
+        at = [25, 10]
+
+        [[map.pandora]]
+        at = [10, 14]
+        text = "Open?"
+        [map.pandora.gives]
+        experience = 1000
+        mana = 500
+        morale = 1
+        luck = -1
+        resources = { gold = 500, wood = 2 }
+        primary = [1, 0, 0, 2]
+        skills = [["Armorer", 2]]
+        artifacts = ["Ballista"]
+        spells = ["Spell 15"]
+        creatures = [["Archangel", 2]]
+
+        [[map.event]]
+        at = [12, 14]
+        players = ["red", "Blue"]
+        removed = false
+        guards = [["Pikeman", 3]]
+        text = "Fight?"
+        gives = { resources = { gold = 100 } }
+
+        [[encounter]]
+        id = "R"
+        title = "A full backpack beats a monster with a treasure"
+        [encounter.hero]
+        type = "Orrin"
+        specialty = "skill Archery"
+        at = [3, 3]
+        primary = [0, 0, 0, 0]
+        army = [["Pikeman", 56]]
+        backpack = ["Spell Book"]
+        fill_backpack = "Ballista"
+        [encounter.opponent]
+        monster = "Pikeman"
+        count = 10
+        treasure = { text = "Loot", resources = { gold = 1000 }, artifact = "Ballista" }
+    "#;
+
+    /// E08 T56: batch E7's objects, a monster's treasure and a full backpack.
+    #[test]
+    fn builds_reward_objects_treasures_and_full_backpacks() {
+        let spec = parse(REWARDS).expect("spec");
+        assert_eq!(map_format(&spec), Ok(Format::Sod));
+        let (map, text) = build(&spec, &tables(), "r.h3m").expect("build");
+        let bytes = h3_map::writer::write(&map).expect("writes");
+        let raw = h3_map::parse(&bytes, &h3_map::Limits::default()).expect("reads back");
+        assert_eq!(raw.objects.len(), map.objects.len());
+        let chests: Vec<(u8, u8)> = map
+            .objects
+            .iter()
+            .filter_map(|o| match o {
+                MapObject::Plain(p) if p.template.class == 101 => Some(p.tile),
+                _ => None,
+            })
+            .collect();
+        assert_eq!(
+            chests,
+            [(20, 20), (22, 20), (24, 20), (20, 23), (22, 23), (24, 23)]
+        );
+        let rewards: Vec<(u32, (u8, u8), &RewardBody)> = map
+            .objects
+            .iter()
+            .filter_map(|o| match o {
+                MapObject::Reward(r) => Some((r.template.class, r.tile, &r.body)),
+                _ => None,
+            })
+            .collect();
+        let classes: Vec<_> = rewards.iter().map(|(c, tile, _)| (*c, *tile)).collect();
+        assert_eq!(
+            classes,
+            [
+                (5, (10, 10)),
+                (65, (12, 10)),
+                (65, (13, 10)),
+                (93, (15, 10)),
+                (88, (17, 10)),
+                (88, (19, 10)),
+                (113, (22, 10)),
+                (113, (25, 10)),
+                (6, (10, 14)),
+                (26, (12, 14)),
+            ]
+        );
+        let mut guards = [None; ARMY_SLOTS];
+        guards[0] = Some((0, 10));
+        assert_eq!(
+            *rewards[0].2,
+            RewardBody::Artifact(Some(Message {
+                text: String::new(),
+                guards: Some(guards),
+            }))
+        );
+        assert_eq!(
+            *rewards[1].2,
+            RewardBody::Artifact(Some(Message {
+                text: "A gift".into(),
+                guards: None,
+            }))
+        );
+        assert_eq!(
+            *rewards[3].2,
+            RewardBody::Scroll {
+                message: None,
+                spell: 15
+            }
+        );
+        assert_eq!(*rewards[4].2, RewardBody::Shrine(None));
+        assert_eq!(*rewards[5].2, RewardBody::Shrine(Some(3)));
+        assert_eq!(*rewards[6].2, RewardBody::WitchHut(None));
+        assert_eq!(*rewards[7].2, RewardBody::WitchHut(Some([1, 0, 0, 0])));
+        let RewardBody::Pandora {
+            message,
+            rewards: given,
+        } = rewards[8].2
+        else {
+            panic!("not a box: {:?}", rewards[8].2)
+        };
+        assert_eq!(message.as_ref().map(|m| m.text.as_str()), Some("Open?"));
+        assert_eq!(
+            *given,
+            Rewards {
+                experience: 1000,
+                mana: 500,
+                morale: 1,
+                luck: -1,
+                resources: [2, 0, 0, 0, 0, 0, 500],
+                primary: [1, 0, 0, 2],
+                skills: vec![(1, 2)],
+                artifacts: vec![0],
+                spells: vec![15],
+                creatures: vec![Stack {
+                    creature: 1,
+                    count: 2
+                }],
+            }
+        );
+        let RewardBody::Event(event) = rewards[9].2 else {
+            panic!("not an event: {:?}", rewards[9].2)
+        };
+        assert_eq!(
+            (event.players, event.computer, event.removed_after_visit),
+            (0b11, false, false)
+        );
+        assert_eq!(event.rewards.resources[6], 100);
+        let mut guards = [None; ARMY_SLOTS];
+        guards[0] = Some((0, 3));
+        assert_eq!(event.message.as_ref().and_then(|m| m.guards), Some(guards));
+        let hero = map.objects.iter().find_map(|o| match o {
+            MapObject::Hero(h) => Some(h),
+            _ => None,
+        });
+        let backpack = &hero
+            .and_then(|h| h.artifacts.as_ref())
+            .expect("artifacts")
+            .backpack;
+        assert_eq!(backpack.len(), BACKPACK);
+        assert_eq!((backpack[0], backpack[1], backpack[63]), (1, 0, 0));
+        let treasure = map.objects.iter().find_map(|o| match o {
+            MapObject::Monster(m) => m.treasure.clone(),
+            _ => None,
+        });
+        assert_eq!(
+            treasure,
+            Some(Treasure {
+                text: "Loot".into(),
+                resources: [0, 0, 0, 0, 0, 0, 1000],
+                artifact: Some(0),
+            })
+        );
+        assert!(text.contains("Spell Book (backpack), the backpack filled to 64 with Ballista"));
+        assert!(text.contains("never flees, its treasure Ballista)"));
+    }
+
+    #[test]
+    fn rejects_mistakes_in_reward_objects() {
+        let t = tables();
+        let fails = |from: &str, to: &str| {
+            assert!(REWARDS.contains(from), "{from}");
+            let spec = parse(&REWARDS.replacen(from, to, 1)).expect("spec");
+            build(&spec, &t, "r.h3m").expect_err(to)
+        };
+        let both = "artifact = \"Ballista\"\n        random = \"any\"";
+        assert!(fails("artifact = \"Ballista\"", both).contains("either `artifact` or `random`"));
+        assert!(fails("random = \"Any\"", "random = \"rare\"").contains("unknown random artifact"));
+        assert!(
+            fails("random = \"Any\"", "random = \"minor\"").contains("no template of class 67")
+        );
+        assert!(fails("spell = \"Spell 15\"", "spell = \"Spell 70\"").contains("not a hero spell"));
+        let shrine = "level = 1\n        at = [17, 10]";
+        assert!(fails(shrine, "level = 4\n        at = [17, 10]").contains("level 4 (1–3)"));
+        assert!(
+            fails(shrine, "level = 2\n        at = [17, 10]").contains("no template of class 89")
+        );
+        assert!(fails("skills = [\"Archery\"]", "skills = [\"Flying\"]").contains("unknown skill"));
+        assert!(fails("[\"red\", \"Blue\"]", "[\"white\"]").contains("unknown colour `white`"));
+        assert!(fails("{ columns = 2 }", "{ columns = 0 }").contains("of no copies"));
+        assert!(fails("{ columns = 2 }", "{ columns = 30 }").contains("is off the map"));
+        assert!(fails("step = [2, 3]", "step = [2, 16]").contains("is off the map"));
+        assert!(fails("step = [2, 3]", "step = [0, 3]").contains("two objects on the tile"));
+        assert!(fails("wood = 2", "mithril = 2").contains("unknown resource `mithril`"));
+        assert!(fails("[\"Armorer\", 2]", "[\"Armorer\", 4]").contains("skill level 4"));
+        assert!(fails("[\"Archangel\", 2]", "[\"Archangel\", 0]").contains("empty stack"));
+        assert!(fails("[\"Archangel\", 2]", "[\"Seraph\", 1]").contains("unknown creature"));
+        assert!(
+            fails("artifacts = [\"Ballista\"]", "artifacts = [\"Orb\"]")
+                .contains("unknown artifact")
+        );
+        let eight = format!("guards = [{}]", ["[\"Pikeman\", 1]"; 8].join(", "));
+        assert!(fails("guards = [[\"Pikeman\", 3]]", &eight).contains("guards: 8 stacks (1–7)"));
+        assert!(
+            fails("guards = [[\"Pikeman\", 3]]", "guards = [[\"Pikeman\", 0]]")
+                .contains("guards: an empty stack of Pikeman")
+        );
+        assert!(
+            fails("artifact = \"Ballista\" }", "artifact = \"Orb\" }")
+                .contains("encounter R: unknown artifact")
+        );
+        let full = format!("backpack = [{}]", ["\"Ballista\""; 65].join(", "));
+        assert!(
+            fails("backpack = [\"Spell Book\"]", &full).contains("65 artifacts in the backpack")
+        );
+        assert!(
+            fails("fill_backpack = \"Ballista\"", "fill_backpack = \"Orb\"")
+                .contains("unknown artifact")
+        );
+        assert!(
+            fails(
+                "terrain = \"grass\"",
+                "terrain = \"grass\"\n        format = \"hota\""
+            )
+            .contains("unknown map format `hota`")
+        );
+        let defaults = REWARDS.replacen(
+            "primary = [0, 0, 0, 0]\n        army = [[\"Pikeman\", 56]]\n        backpack = [\"Spell Book\"]\n",
+            "defaults = true\n",
+            1,
+        );
+        let spec = parse(&defaults).expect("spec");
+        assert!(
+            build(&spec, &t, "r.h3m")
+                .expect_err("defaults")
+                .contains("lists no army")
+        );
+        assert!(
+            fails("monster = \"Pikeman\"\n        count = 10\n", "")
+                .contains("`treasure` with a monster only")
+        );
+    }
+
+    /// E08 T56: an RoE map (batch E7's row E7-7): its Witch Huts without skills, a hero of its
+    /// type's own; what RoE cannot hold fails when it is written.
+    #[test]
+    fn builds_an_roe_map() {
+        let text = r#"
+            [map]
+            name = "RoE"
+            description = "d"
+            terrain = "grass"
+            format = " RoE "
+            [[map.hut]]
+            at = [10, 10]
+            grid = { columns = 4, rows = 2, step = [3, 2] }
+            [[encounter]]
+            id = "H"
+            title = "Huts"
+            [encounter.hero]
+            type = "Orrin"
+            specialty = "skill Archery"
+            defaults = true
+        "#;
+        let spec = parse(text).expect("spec");
+        assert_eq!(map_format(&spec), Ok(Format::RoE));
+        let (map, _) = build(&spec, &tables(), "roe.h3m").expect("build");
+        let bytes = h3_map::writer::write_in(&map, Format::RoE).expect("writes");
+        let raw = h3_map::parse(&bytes, &h3_map::Limits::default()).expect("reads back");
+        assert_eq!(raw.header.version, h3_map::model::Version::RoE);
+        assert_eq!(raw.objects.len(), 9);
+        let banned = text.replacen(
+            "format",
+            "banned_skills = [\"Archery\"]\n            format",
+            1,
+        );
+        let spec = parse(&banned).expect("spec");
+        let (map, _) = build(&spec, &tables(), "roe.h3m").expect("build");
+        assert!(h3_map::writer::write_in(&map, Format::RoE).is_err());
+        let sod = text.replacen(" RoE ", "sod", 1);
+        assert_eq!(map_format(&parse(&sod).expect("spec")), Ok(Format::Sod));
     }
 }

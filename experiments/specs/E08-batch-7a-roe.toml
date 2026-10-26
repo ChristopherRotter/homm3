@@ -1,0 +1,135 @@
+# Experiment batch E7a, its RoE map (E08 T56; decisions 130, 132, 142): row E7-7 of increment
+# 7's plan (survey docs/rules/surveys/E08-rewards.md §11, §13; docs/epics/E08-design.md §18), an RoE
+# map's Witch Huts, in SoD on Easy, hot seat. The map is written in the RoE format (version 0x0E):
+# its huts store no skills, so the game draws from its RoE mask. The other rows of run E7a are on
+# E08-batch-7a.toml's map. Build: docs/experiments/README.md. Predictions are for the agent who
+# evaluates the results; the template never shows them.
+#
+# | row   | settles            | the reading (faithful)                              | the other source(s)                   |
+# | E7-7  | D-33, A-21         | 14 skills (0xEFBF): never Leadership or Necromancy, | VCMI: every skill but Leadership and  |
+# |       |                    | never Water Magic to First Aid                      | Necromancy (26)                       |
+#
+# Both heroes take their hero types' own army, skills and artifacts (`defaults`: an RoE map stores
+# no hero spells or primary skills); they play nothing.
+
+[map]
+name = "E08 batch E7a RoE"
+description = "Engine-generated experiment map (E08, batch E7a, row E7-7), in the RoE format: sixty Witch Huts whose skills the game draws at the new game. Hot seat, Red and Blue human, difficulty Easy; follow the results template."
+format = "roe"
+size = 36
+terrain = "grass"
+difficulty = "easy"
+instructions = [
+    "Copy `E08-batch-7a-roe.h3m` into `D:\\Heroes3\\HoMM 3 Complete\\Maps`.",
+    "Use the HD launcher with plain HD (HD+ off).",
+    "Start the map in hot seat: *New Game → Multiplayer → Hot Seat*, two players, Red and Blue both human, difficulty **Easy** (the scenario list shows it as a Restoration of Erathia map). Before you start it, compare the stamp at the start of the map's description with the stamp above. Save right away (save 1).",
+    "The record is the game's memory: each Witch Hut's word on its tile (bits 13 to 19: the skill). The capture harness reads it (`clients/capture/batches/E08-batch-7a-roe.toml`, E08 T57). Played by hand, visit the huts with a hero instead (each tells its skill) and note them.",
+    "Nothing is played: the row reads the new game's draws. Then the map is done.",
+    "Fill in this file (anything unexpected goes into the encounter's last line) and keep it in the repo.",
+]
+
+# Sixty Witch Huts, ten to a row 3 columns apart, the rows 3 apart. A hut's picture leaves its
+# corner `at` passable: it blocks, and is visited on, the tile west of it, (4, 5) to (31, 20).
+[[map.hut]]
+at = [5, 5]
+grid = { columns = 10, rows = 6, step = [3, 3] }
+
+[[encounter]]
+id = "E7-7"
+title = "Sixty Witch Huts on an RoE map: their skills"
+questions = ["D-33", "A-21", "ADV-TCH-005"]
+procedure = [
+    "At the start (save 1): sixty Witch Huts stand on (4, 5) to (31, 20), ten to a row 3 columns apart (each on the tile west of its picture's corner, the tile it blocks and is visited on). Read each one's word on that tile (bits 13 to 19: the skill, `SSTRAITS.TXT` order: 0 Pathfinding … 27 First Aid).",
+    "The heroes E7-7 (Red) and Blue's stand at (3, 30) and (30, 30) only to make the map playable; they play nothing.",
+]
+record = [
+    { table = ["Witch Hut", "the word (hex)", "the skill"], labels = [
+        "(4, 5)",
+        "(7, 5)",
+        "(10, 5)",
+        "(13, 5)",
+        "(16, 5)",
+        "(19, 5)",
+        "(22, 5)",
+        "(25, 5)",
+        "(28, 5)",
+        "(31, 5)",
+        "(4, 8)",
+        "(7, 8)",
+        "(10, 8)",
+        "(13, 8)",
+        "(16, 8)",
+        "(19, 8)",
+        "(22, 8)",
+        "(25, 8)",
+        "(28, 8)",
+        "(31, 8)",
+        "(4, 11)",
+        "(7, 11)",
+        "(10, 11)",
+        "(13, 11)",
+        "(16, 11)",
+        "(19, 11)",
+        "(22, 11)",
+        "(25, 11)",
+        "(28, 11)",
+        "(31, 11)",
+        "(4, 14)",
+        "(7, 14)",
+        "(10, 14)",
+        "(13, 14)",
+        "(16, 14)",
+        "(19, 14)",
+        "(22, 14)",
+        "(25, 14)",
+        "(28, 14)",
+        "(31, 14)",
+        "(4, 17)",
+        "(7, 17)",
+        "(10, 17)",
+        "(13, 17)",
+        "(16, 17)",
+        "(19, 17)",
+        "(22, 17)",
+        "(25, 17)",
+        "(28, 17)",
+        "(31, 17)",
+        "(4, 20)",
+        "(7, 20)",
+        "(10, 20)",
+        "(13, 20)",
+        "(16, 20)",
+        "(19, 20)",
+        "(22, 20)",
+        "(25, 20)",
+        "(28, 20)",
+        "(31, 20)",
+    ] },
+    { field = "how many teach a skill of 16 to 27 (Water Magic to First Aid), Leadership or Necromancy" },
+    { field = "anything odd" },
+]
+predictions = """
+- **The code** (0x5034BD, the second reading, survey §13; A-21): an RoE map's hut (no mask in the
+  file) takes the fixed mask **0xEFBF**: 14 skills, 0 to 15 but Leadership (6) and Necromancy (12):
+  Pathfinding, Archery, Logistics, Scouting, Diplomacy, Navigation, Wisdom, Mysticism, Luck,
+  Ballistics, Eagle Eye, Estates, Fire Magic, Air Magic. **None of the 60 teaches Water Magic,
+  Earth Magic, Scholar, Tactics, Artillery, Learning, Offense, Armorer, Intelligence, Sorcery,
+  Resistance or First Aid**, nor Leadership or Necromancy; each of the 14 about 4 times.
+- **VCMI** (the default mask, every skill but Leadership and Necromancy, 26): one of the twelve last
+  skills in 60 draws almost surely (none with probability (14/26)^60 ≈ 10⁻¹⁶).
+- **The wiki**: "cannot be Leadership, Necromancy" (the editor's default); RoE not addressed.
+- Decision 130 (A-21's flag): `faithful` the 14, `strict-fixed` VCMI's 26; this row confirms or
+  reverts the `faithful` side.
+"""
+[encounter.hero]
+type = "Sylvia"
+specialty = "skill Navigation"
+at = [3, 30]
+defaults = true
+
+[[encounter.also]]
+type = "Voy"
+specialty = "skill Navigation"
+owner = "blue"
+at = [30, 30]
+defaults = true

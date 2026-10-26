@@ -322,8 +322,9 @@ biography (bool + string); sex i8 (`-1` default); spells (bool + 9-byte mask); p
 + 4 × u8); 16 zero bytes.
 
 **Monster body** (classes 54, 71, 162–164): u32 identifier, u16 count (0 = random), disposition u8
-(0 compliant … 4 savage), message and treasure (bool; 0 here), never flees (bool), does not grow
-(bool), 2 zero bytes.
+(0 compliant … 4 savage), message and treasure (bool; 0 here, since E08 T56 a treasure: its text,
+seven i32 resources, the artifact u16 or `0xFFFF`), never flees (bool), does not grow (bool), 2
+zero bytes.
 
 **Terrain pictures** of interior tiles (the eight neighbours on the level have the tile's terrain),
 counted over 164 maps (E08 T10a; four of them the user's own): dirt 21–44, sand 0–23, grass, snow, swamp, rough,
@@ -354,6 +355,30 @@ surface's. Since E08 T32a the scenario's level limit and the Cartographers (clas
 the template from `Objects.txt`); since E08 T36a the trees (classes 135, 137, 155) and the
 Border Gates (212, the key's colour as subclass), no body either; since E08 T36b SoD's banned
 skills (the header's four bytes, bit `code` for the skill of that code). `h3-map`'s read-back test reads them back and imports them.
+
+**Increment 7's objects and the RoE format** (E08 T56, batch E7's maps; `writer::RewardObject`,
+`Monster::treasure`, `write_in`): the objects that hand a visiting hero something, with the bodies
+the reader reads: an artifact (5, the artifact as subclass) or a random artifact (65–69): its
+message record; a Spell Scroll (93): the record and the spell as a u32; a Shrine (88–90): the spell
+as a u32, `0xFF` drawn at the new game; a Witch Hut (113): its four bytes of skills (the editor's
+`0x0FFFEFBF` when none is given); Pandora's Box (6): the record and a reward record; an event (26):
+the record, a reward record, the players' bits, the computer's flag, the removal flag and 4 zero
+bytes. The **message record** is a bool, then the text, the guards' bool and seven slots, 4 zero
+bytes; the **reward record** experience u32, mana i32, morale and luck i8, seven i32 resources,
+four primary skill bytes, then u8-counted lists of (skill, level), artifacts, spells (u8) and
+(creature, u16 count), 8 zero bytes (as "Reading: the three versions" above). A wandering monster
+may carry a treasure (above). Increment 7's objects without a body are plain objects: the Corpse
+(22), the Pyramid (63), the Learning Stone (100), the Treasure Chest (101), the University (104),
+the Wagon (105), the Warrior's Tomb (108). **An RoE map** (`writer::Format::RoE`, version `0x0E`):
+no level limit; an unplayable colour is 6 bytes after its two bools; a played one has no town
+choice, one byte of allowed towns (eight factions) and no unknown byte or hero list; 16 bytes of
+allowed heroes (all 128), no placeholders, disposed heroes, banned artifacts, spells or skills or
+customised hero types; a hero's body has no identifier, always an experience u32 (0 for the hero
+type's own), 18 artifact slots, nothing after its patrol but the 16 zero bytes; a monster's no
+identifier; artifact and creature codes are one byte (`0xFF` none); a Witch Hut has no body. The
+writer refuses in RoE what it cannot hold: a level limit, banned skills, a town, a hero type,
+artifact or creature past RoE's (128, 127, 118), a hero's spells, primary skills or fifth misc
+artifact, a Witch Hut's skills. `h3-map`'s `tests/rewards.rs` reads both back and imports them.
 
 **The map client's additions** (E24 M1 T3a, `writer::write_with` and its `Extras`; the map client
 lane's additive change, the user's consent of 2026-10-23; a map without them is written byte for
