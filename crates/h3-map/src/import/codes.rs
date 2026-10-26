@@ -3,6 +3,8 @@
 //! ids the packs record beside each entry (`# original id N`; a test keeps the tables in step
 //! with `packs/*/core.toml`).
 
+use h3_adventure::Scenery;
+
 /// Terrains by `.h3m` code (0 to 9; `docs/formats/h3m.md`).
 pub(crate) const TERRAINS: [&str; 10] = [
     "base:dirt",
@@ -102,6 +104,22 @@ pub(crate) const RESOURCES: [&str; 7] = [
 
 /// The class of a monster whose subclass names its creature (ADV-MON-001).
 pub(crate) const MONSTER: u32 = 54;
+
+/// What an object of `class` is among a battle's surroundings (GAM-BAT-011, E08 T54; survey
+/// `E08-objects.md` §2.5): ownable by the original's `class_is_ownable` (0x40FCA0: the creature
+/// generators 17 and 20, a garrison 33, a lighthouse 42, a mine 53, a random town 77, a shipyard
+/// 87, a town 98), and the decorations 0x41ADB0 counts by its table over classes 114 to 160:
+/// trees 114, 115, 135, 137, 155, 159 and 160, mountains 123, 133, 134, 136, 157 and 158, dead
+/// vegetation 119.
+pub(crate) const fn scenery(class: u32) -> Scenery {
+    match class {
+        17 | 20 | 33 | 42 | 53 | 77 | 87 | 98 => Scenery::Ownable,
+        114 | 115 | 135 | 137 | 155 | 159 | 160 => Scenery::Tree,
+        123 | 133 | 134 | 136 | 157 | 158 => Scenery::Mountain,
+        119 => Scenery::DeadVegetation,
+        _ => Scenery::Other,
+    }
+}
 
 /// The special grounds' pictures and their sizes in tiles, width then height (ADV-GRD-001, E08
 /// T20a2a): the first two bytes of each picture's `.msk` in the sprite archives (`H3sprite.lod`,

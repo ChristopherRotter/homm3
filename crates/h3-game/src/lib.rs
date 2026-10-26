@@ -85,5 +85,6 @@ pub use state::{GameState, OpenBattle};
 /// (E08 T21a): a guarded pile's offer to fight. v9 (E08 T27): a hero's offers' levels. v10 (E08
 /// T29): the heroes' progression (the scenario's level limit and banned skills, the level seeds).
 /// v11 (E08 T30): the level-ups among the decisions. v12 (E08 T49a): a hero's worn artifacts by
-/// position. v13 (E08 T51b): the meetings and the army dialogs among the decisions.
-pub const GAME_STATE_HASH_VERSION: u32 = 13;
+/// position. v13 (E08 T51b): the meetings and the army dialogs among the decisions. v14 (E08
+/// T54): whether each player counts as human, each hero's sex the map gave.
+pub const GAME_STATE_HASH_VERSION: u32 = 14;

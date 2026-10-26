@@ -201,8 +201,16 @@ pub struct BattleStart {
     /// The battle's terrain by its tile ([`crate::BattleTerrains`]): the underground's, else the
     /// coast's, else the tile's own.
     pub terrain: TerrainId,
-    /// The special battlefield the tile gives, if any: the coast's.
+    /// The special battlefield the tile gives, if any: the coast's, or a special ground's
+    /// ([`crate::AdventureState::battle_ground`]).
     pub battlefield: Option<ContentKey>,
+    /// The battlefield picture's variant, 0 to 2, by the scenery around the tile
+    /// ([`crate::AdventureState::background`], GAM-BAT-011; E08 T54): for viewers.
+    pub background: u8,
+    /// The special battlefield of the special ground under the attacking hero, if any
+    /// ([`crate::AdventureState::special_ground`], GAM-BAT-013; E08 T54): the original's computer
+    /// values that hero's spells at the mastery of its own tile.
+    pub attacker_ground: Option<ContentKey>,
 }
 
 /// The defending side of a battle on the map (ADR-0017 point 10).

@@ -169,7 +169,11 @@ impl GameState {
     /// its setup from the visit and the store of heroes — the sides' armies and formations as on
     /// the map, each hero's battle hero and war machines (the hero model's), the terrain and the
     /// battlefield of the tile, each side owner's gold as its funds (a surrender's price, the
-    /// battle part's resource) — and its obstacles; the battle's own seed is the attacking player's
+    /// battle part's resource); since E08 T54 the game's difficulty and whether each side's player
+    /// counts as human (GAM-BAT-010; false for a side without a player), each side's player
+    /// colour and each hero's sex the map gave (GAM-BAT-012), the battlefield picture's variant
+    /// and the attacking hero's own ground (GAM-BAT-011, GAM-BAT-013), the retreat facts at their
+    /// default (`ADV-STUB-9`) — and its obstacles; the battle's own seed is the attacking player's
     /// stream's next draw, and the obstacles' seed the tile's under `ADV-QUIRK-5` (`faithful`),
     /// else the stream's draw after it (ADR-0017 point 4). Against a wandering monster (E08
     /// T20b2) the defending side has no hero and no owner, its army the monster split into stacks
@@ -203,7 +207,14 @@ impl GameState {
                 .and_then(|(resource, held)| held.get(usize::from(resource.raw())).copied())
                 .unwrap_or(0)
         };
-        let mut heroes = sides.map(|side| side.and_then(|side| self.battle_hero(core, side.hero)));
+        let mut heroes = sides.map(|side| {
+            side.and_then(|side| {
+                let mut hero = self.battle_hero(core, side.hero)?;
+                // rule: GAM-BAT-012
+                hero.sex = self.hero_sex(side.hero);
+                Some(hero)
+            })
+        });
         deny_tactics(
             &mut heroes,
             sides.map(|side| side.is_none_or(|side| side.tactics)),
@@ -214,6 +225,10 @@ impl GameState {
                 .unwrap_or_default()
         });
         let funds = sides.map(|side| side.map_or(0, |side| funds(side.owner)));
+        // rule: GAM-BAT-010
+        let human = sides.map(|side| side.and_then(|side| self.human(side.owner)) == Some(true));
+        // rule: GAM-BAT-012
+        let colours = sides.map(|side| side.and_then(|side| self.colour(side.owner)));
         // ADV-QUIRK-5 (`faithful`): the obstacles from the tile; else the stream's draw after the
         // battle's seed (and a monster's split).
         let stream = &mut self.players[player.index()].rng;
@@ -246,6 +261,16 @@ impl GameState {
             war_machines,
             formations: sides.map(|side| side.map(|side| side.formation).unwrap_or_default()),
             funds,
+            // rule: GAM-BAT-010
+            difficulty: self.adventure.difficulty(),
+            human,
+            // stub: ADV-STUB-9 (the retreat facts stay at their default, which never retreats)
+            retreat: Default::default(),
+            // rule: GAM-BAT-013
+            attacker_ground: start.attacker_ground.clone(),
+            // rule: GAM-BAT-011
+            background: Some(start.background),
+            colours,
             ..BattleSetup::default()
         };
         let obstacles = if core.quirks().is_enabled(OBSTACLES_FROM_TILE) {

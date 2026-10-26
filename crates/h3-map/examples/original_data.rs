@@ -198,7 +198,10 @@ fn check(
     // The static layer alone, in a game of one player without heroes: its objects' contents are
     // drawn as a game's are (E08 T12b).
     let setup = GameSetup {
-        players: vec![PlayerSetup { colour: 0 }],
+        players: vec![PlayerSetup {
+            colour: 0,
+            human: true,
+        }],
         difficulty: DEFAULT_DIFFICULTY,
         map: static_map,
         heroes: Vec::new(),

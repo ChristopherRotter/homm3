@@ -52,6 +52,7 @@ fn guards(army: Vec<ArmyStack>, question: bool) -> Option<Guards> {
 /// (700), with these guards.
 fn pile_at(x: u16, object_type: ObjectTypeId, guards: Option<Guards>) -> ObjectSetup {
     ObjectSetup {
+        scenery: Default::default(),
         anchor: Pos::new(x, 0, 0),
         blocked: TileMask::from_bits(1),
         visitable: TileMask::from_bits(1),
@@ -134,6 +135,7 @@ fn guards_stand_on_piles_only_as_a_valid_army() {
     };
     refused(pile_at(2, FIRE, guards(the_guards(), true)));
     refused(ObjectSetup {
+        scenery: Default::default(),
         monster: Some(MonsterSetup {
             creature: Some(PIKEMAN),
             count: 5,
@@ -308,6 +310,7 @@ fn the_guards_battle_leaves_their_survivors_or_gives_the_pile() {
         vec![
             pile_at(2, GOLD_PILE, None),
             ObjectSetup {
+                scenery: Default::default(),
                 monster: Some(MonsterSetup {
                     creature: Some(PIKEMAN),
                     count: 5,

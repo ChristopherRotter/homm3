@@ -137,6 +137,7 @@ fn a_water_walk_crosses_plain_water_and_lands_on_the_far_shore() {
     // An obstacle on the water: a flight passes it, a water walk does not.
     let mut setup = world(&["g~~g"], 1, vec![hero_at(1, 0, p(0, 0), &[PEASANT])]);
     setup.map.objects.push(ObjectSetup {
+        scenery: Default::default(),
         anchor: p(1, 0),
         blocked: TileMask::from_bits(1),
         visitable: TileMask::default(),

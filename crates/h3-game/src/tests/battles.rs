@@ -8,7 +8,9 @@ use h3_adventure::{
 };
 use h3_battle::{BattleState, Command, Event, EventKind, LegalCommands, Observation};
 use h3_content::ResourceId;
-use h3_contracts::{Army, BattleOutcome, BattleResult, BattleSetup, BattleSide, HeroOutcome};
+use h3_contracts::{
+    Army, BattleOutcome, BattleResult, BattleSetup, BattleSide, HeroOutcome, HeroSex,
+};
 use h3_heroes::HeroChange;
 use h3_kernel::Rng;
 
@@ -32,7 +34,10 @@ fn attack() -> GameCommand {
 /// [`setup`] with a third player (green, without heroes) and blue's tile on the coast.
 fn three_players() -> GameSetup {
     let mut setup = setup();
-    setup.players.push(PlayerSetup { colour: 2 });
+    setup.players.push(PlayerSetup {
+        colour: 2,
+        human: true,
+    });
     setup.map.tiles[10].coast = true;
     setup
 }
@@ -47,8 +52,10 @@ fn rules_for(profile: &str) -> GameRuleset {
 
 /// The battle's setup as GAM-BAT-001 builds it from `game` before the attack, the obstacles drawn
 /// from `obstacles`: the heroes' armies and formations, their battle heroes (with their maximum
-/// spell points) and war machines, blue's tile (on the coast: rock and the shore), the owners'
-/// gold.
+/// spell points and the sexes the setup gave) and war machines, blue's tile (on the coast: rock
+/// and the shore), the owners' gold; since E08 T54 the game's difficulty, whether each owner
+/// counts as human, the owners' colours (red 0, blue 1), the third picture (nothing around) and
+/// no ground under red's hero.
 fn expected_setup(game: &GameState, rules: &GameRuleset, obstacles: u64) -> BattleSetup {
     let core = rules.core();
     let side = |id: HeroId| {
@@ -56,6 +63,7 @@ fn expected_setup(game: &GameState, rules: &GameRuleset, obstacles: u64) -> Batt
         let details = game.hero(id).unwrap();
         let mut hero = h3_heroes::derive_battle_hero(details, core).unwrap();
         hero.magic.max_mana = h3_heroes::max_mana(details, core);
+        hero.sex = game.hero_sex(id);
         let machines = h3_heroes::war_machines(details, core);
         (
             Army {
@@ -75,7 +83,11 @@ fn expected_setup(game: &GameState, rules: &GameRuleset, obstacles: u64) -> Batt
         battlefield: Some(key("t:shore")),
         war_machines: [red_machines, blue_machines],
         formations: [Formation::Loose; 2],
-        funds: [2000, 2000],
+        funds: [RED, BLUE].map(|player| game.treasury(player).unwrap()[usize::from(GOLD.raw())]),
+        difficulty: game.adventure().difficulty(),
+        human: [RED, BLUE].map(|player| game.human(player).unwrap()),
+        background: Some(2),
+        colours: [Some(0), Some(1)],
         ..BattleSetup::default()
     };
     setup.obstacles =
@@ -584,6 +596,49 @@ fn every_result_takes_the_heroes_that_did_not_win_off_the_map() {
         resource: GOLD,
         amount: 2000,
     }));
+}
+
+// covers: GAM-BAT-010, GAM-BAT-012
+#[test]
+fn a_battles_setup_carries_the_difficulty_the_human_sides_colours_and_sexes() {
+    let rules = rules();
+    let mut setup = three_players();
+    setup.difficulty = 0;
+    // Blue counts as a computer player; red's hero is female by the map.
+    setup.players[1].human = false;
+    setup.heroes[0].details.sex = Some(HeroSex::Female);
+    let mut game = GameState::new(&rules, &setup, 5).unwrap();
+    assert_eq!(game.human(RED), Some(true));
+    assert_eq!(game.human(BLUE), Some(false));
+    assert_eq!(game.human(PlayerId::new(3)), None);
+    assert_eq!(game.hero_sex(RED_HERO), Some(HeroSex::Female));
+    let before = game.clone();
+    apply(
+        &mut game,
+        &rules,
+        Actor::Player(RED),
+        attack(),
+        &mut Vec::new(),
+    )
+    .unwrap();
+    let mut stream = before.stream(RED);
+    let seed = stream.next_u64();
+    let expected = expected_setup(&before, &rules, stream.next_u64());
+    assert_eq!(expected.difficulty, 0);
+    assert_eq!(expected.human, [true, false]);
+    let red = expected.heroes[0].as_ref().unwrap();
+    assert_eq!(red.sex, Some(HeroSex::Female));
+    assert_eq!(expected.heroes[1].as_ref().unwrap().sex, None);
+    let battle = BattleState::start(rules.battle(), &expected, seed, &mut Vec::new()).unwrap();
+    assert_eq!(game.battle(RED).unwrap().state(), &battle);
+    // The flags and the sexes are hashed: another human flag or sex is another game.
+    let mut other = setup.clone();
+    other.players[1].human = true;
+    let hash = |setup: &GameSetup| GameState::new(&rules, setup, 5).unwrap().state_hash();
+    assert_ne!(hash(&other), hash(&setup));
+    other = setup.clone();
+    other.heroes[0].details.sex = Some(HeroSex::Male);
+    assert_ne!(hash(&other), hash(&setup));
 }
 
 // covers: GAM-BAT-001

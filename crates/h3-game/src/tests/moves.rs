@@ -90,6 +90,7 @@ fn a_visits_gains_go_to_its_owner_s_treasury_and_are_told_to_it_alone() {
     let mut setup = setup();
     // A gold pile at (2, 0), next to red's hero at (1, 0) after one step.
     setup.map.objects.push(ObjectSetup {
+        scenery: Default::default(),
         anchor: Pos::new(2, 0, 0),
         blocked: TileMask::from_bits(1),
         visitable: TileMask::from_bits(1),

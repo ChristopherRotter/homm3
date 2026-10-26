@@ -608,7 +608,16 @@ fn setup() -> GameSetup {
     ];
     tiles[15].terrain = TerrainId::from_raw(1);
     GameSetup {
-        players: vec![PlayerSetup { colour: 0 }, PlayerSetup { colour: 1 }],
+        players: vec![
+            PlayerSetup {
+                colour: 0,
+                human: true,
+            },
+            PlayerSetup {
+                colour: 1,
+                human: true,
+            },
+        ],
         difficulty: 1,
         map: MapSetup {
             width: 4,
@@ -669,7 +678,10 @@ fn the_game_checks_its_part_before_the_adventure() {
         }),
         GameSetupError::Difficulty(2)
     );
-    let player = PlayerSetup { colour: 0 };
+    let player = PlayerSetup {
+        colour: 0,
+        human: true,
+    };
     assert_eq!(
         error(|s| s.players = vec![player; 256]),
         GameSetupError::Players(256)
@@ -723,11 +735,19 @@ fn the_game_checks_its_part_before_the_adventure() {
 #[test]
 fn the_adventure_checks_the_rest() {
     assert_eq!(
-        error(|s| s.players.push(PlayerSetup { colour: 3 })),
+        error(|s| s.players.push(PlayerSetup {
+            colour: 3,
+            human: true
+        })),
         GameSetupError::Colour(2)
     );
     let mut three = setup();
-    three.players = (0..3).map(|colour| PlayerSetup { colour }).collect();
+    three.players = (0..3)
+        .map(|colour| PlayerSetup {
+            colour,
+            human: true,
+        })
+        .collect();
     assert_eq!(three.validate(&rules()), Ok(()));
     assert_eq!(
         error(|s| s.players.clear()),

@@ -13,7 +13,7 @@ use alloc::vec::Vec;
 
 use h3_adventure::{AdventureOutcome, AdventureState, Meeting, NoRoom, Offer, OfferKind};
 use h3_content::{ResourceId, SkillId};
-use h3_contracts::{ArmyStack, HeroId, PlayerId};
+use h3_contracts::{ArmyStack, HeroId, HeroSex, PlayerId};
 use h3_heroes::{
     ArtifactInstance, HeroChange, HeroDetails, LevelUp, OfferLevels, Offers, meeting_spells,
 };
@@ -39,6 +39,8 @@ pub(crate) use battle::{raised_count, seen_by};
 struct PlayerState {
     /// Its colour (0 red to 7 pink).
     colour: u8,
+    /// Whether it counts as human (GAM-BAT-010, E08 T54; [`crate::PlayerSetup::human`]).
+    human: bool,
     /// Its stream: randomness its commands cause draws only from it (ADR-0017 point 4).
     rng: Rng,
     /// Whether its turn is running: its group's turn has started and it has not ended its turn.
@@ -226,7 +228,7 @@ impl GameState {
         let progression = Progression::new(
             setup.level_limit,
             &setup.banned_skills,
-            heroes.len(),
+            setup.heroes.iter().map(|hero| hero.details.sex).collect(),
             &mut draws,
         );
         let shares = adventure.map().terrain_shares();
@@ -248,6 +250,7 @@ impl GameState {
             .zip(0..=u8::MAX)
             .map(|(player, index)| PlayerState {
                 colour: player.colour,
+                human: player.human,
                 rng: Rng::for_stream(seed, StreamId::player(index)),
                 acting: false,
             })
@@ -771,6 +774,11 @@ impl GameState {
         self.players.get(player.index()).map(|p| p.colour)
     }
 
+    /// Whether a player counts as human (GAM-BAT-010, E08 T54), if the player exists.
+    pub fn human(&self, player: PlayerId) -> Option<bool> {
+        self.players.get(player.index()).map(|p| p.human)
+    }
+
     /// The players of the group whose turn is running.
     pub fn turn_group(&self) -> &[PlayerId] {
         &self.groups[self.group]
@@ -812,6 +820,12 @@ impl GameState {
             .map(|details| &**details)
     }
 
+    /// The sex the map gave a hero (GAM-BAT-012, E08 T54), `None` for its type's own or a hero
+    /// the game does not have.
+    pub fn hero_sex(&self, hero: HeroId) -> Option<HeroSex> {
+        self.progression.sex(hero)
+    }
+
     /// The store of heroes (GAM-HER-001): every hero's details, by id. A context reads them by
     /// reference through the hero model (ADR-0017 point 1).
     pub fn heroes(&self) -> &[Arc<HeroDetails>] {
@@ -846,10 +860,11 @@ impl GameState {
 }
 
 impl CanonicalHash for GameState {
-    /// Encoding v11 (E08 T30; v1 was T6b's, v2 T13's, v3 T14b's, v4 T15a's, v5 T18b's, v6
-    /// T19a's, v7 T20b1's, v8 T21a's, v9 T27's, v10 T29's): version;
-    /// the master seed; the day; the running group's index; the schedule (groups as length +
-    /// player ids); the players (colour, acting, stream state); since v2 the treasuries (the
+    /// Encoding v14 (E08 T54; v1 was T6b's, v2 T13's, v3 T14b's, v4 T15a's, v5 T18b's, v6
+    /// T19a's, v7 T20b1's, v8 T21a's, v9 T27's, v10 T29's, v11 T30's, v12 T49a's, v13 T51b's):
+    /// version; the master seed; the day; the running group's index; the schedule (groups as
+    /// length + player ids); the players (colour, since v14 whether it counts as human, acting,
+    /// stream state); since v2 the treasuries (the
     /// resource kinds, then every player's amounts as length and entries); since v3 the open
     /// decisions in opening order, as length and entries: since v6 first the decision's kind, 0
     /// an offer, 1 a battle; an offer's owner, hero, object type, anchor, since v4 the offer's
@@ -863,7 +878,8 @@ impl CanonicalHash for GameState {
     /// army dialog: its owner, its hero, the group (length, then each stack's slot, creature and
     /// count); the game's stream; since v5 the store of heroes (length, then each hero's
     /// details by id, [`hash_details`]); since v10 (E08 T29) the heroes' progression (the level
-    /// limit, the banned skills, the level seeds: [`Progression`]'s encoding); the adventure
+    /// limit, the banned skills, the level seeds, since v14 the heroes' sexes: [`Progression`]'s
+    /// encoding); the adventure
     /// state's hash.
     fn hash_into(&self, h: &mut StateHasher) {
         h.write_u32(GAME_STATE_HASH_VERSION);
@@ -880,6 +896,7 @@ impl CanonicalHash for GameState {
         h.write_len(self.players.len());
         for player in &self.players {
             h.write_u8(player.colour);
+            h.write_bool(player.human);
             h.write_bool(player.acting);
             player.rng.hash_into(h);
         }

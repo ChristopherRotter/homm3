@@ -600,6 +600,7 @@ pub(crate) fn world(rows: &[&str], levels: u8, heroes: Vec<HeroSetup>) -> Advent
             });
             if let Some((blocked, visitable, object_type)) = object {
                 objects.push(ObjectSetup {
+                    scenery: Default::default(),
                     anchor: Pos::new(
                         u16::try_from(x).unwrap(),
                         u16::try_from(index % height).unwrap(),

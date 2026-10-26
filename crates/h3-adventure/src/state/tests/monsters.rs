@@ -65,6 +65,7 @@ fn random(count: u32, disposition: u8) -> MonsterSetup {
 /// A one-tile object of `object_type` at column `x` of row 0, blocking and visited on its tile.
 fn object_at(x: u16, object_type: ObjectTypeId, monster: Option<MonsterSetup>) -> ObjectSetup {
     ObjectSetup {
+        scenery: Default::default(),
         anchor: Pos::new(x, 0, 0),
         blocked: TileMask::from_bits(1),
         visitable: TileMask::from_bits(1),
@@ -325,6 +326,7 @@ fn ground(
 ) -> ObjectSetup {
     let row = (1u64 << width) - 1;
     ObjectSetup {
+        scenery: Default::default(),
         anchor: Pos::new(x, y, level),
         blocked: TileMask::default(),
         visitable: TileMask::default(),
@@ -448,6 +450,7 @@ fn a_viewer_sees_a_monsters_creature_and_the_word_of_its_count() {
 /// A monster of `creature` whose tile is `(x, y)` on the surface, blocking and visited there.
 fn monster_at(x: u16, y: u16, creature: CreatureTypeId) -> ObjectSetup {
     ObjectSetup {
+        scenery: Default::default(),
         anchor: Pos::new(x, y, 0),
         ..object_at(0, MONSTER, Some(fixed(creature, 5, 2)))
     }
@@ -691,4 +694,152 @@ fn a_monster_on_the_fringe_shows_in_either_profile() {
             }]
         );
     }
+}
+
+/// An untyped object at `(x, y)` on the surface with these masks and scenery.
+fn scenery_at(x: u16, y: u16, (blocked, visitable): (u64, u64), scenery: Scenery) -> ObjectSetup {
+    ObjectSetup {
+        anchor: Pos::new(x, y, 0),
+        blocked: TileMask::from_bits(blocked),
+        visitable: TileMask::from_bits(visitable),
+        object_type: None,
+        amount: None,
+        drawn: TileMask::default(),
+        monster: None,
+        guards: None,
+        scenery,
+    }
+}
+
+// covers: GAM-BAT-011
+#[test]
+fn the_background_counts_the_scenery_the_tiles_around_a_battle_record() {
+    let (core, part) = monster_rules();
+    let rows = ["gggggggggg"; 10];
+    let mut lower = rows.to_vec();
+    lower.extend(rows);
+    let build = |objects: Vec<ObjectSetup>| {
+        let mut setup = world(&lower, 2, vec![]);
+        setup.map.objects = objects;
+        AdventureState::new(&core, &part, &setup, &mut draws()).unwrap()
+    };
+    let one = (1, 0);
+    let (tree, mountain, dead) = (Scenery::Tree, Scenery::Mountain, Scenery::DeadVegetation);
+    let mid = Pos::new(5, 5, 0);
+    // Nothing around: the third picture.
+    assert_eq!(build(vec![]).background(mid), 2);
+    // Counted within 3 tiles along each axis, on the battle's level, clipped to the map.
+    let trees = |at: &[(u16, u16)], scenery| -> Vec<ObjectSetup> {
+        at.iter()
+            .map(|&(x, y)| scenery_at(x, y, one, scenery))
+            .collect()
+    };
+    let mut objects = trees(&[(2, 2), (8, 8), (5, 5)], mountain);
+    objects.extend(trees(&[(1, 5), (9, 5), (5, 1)], dead));
+    objects.extend(trees(&[(3, 4), (4, 4)], tree));
+    assert_eq!(build(objects.clone()).background(mid), 1);
+    // A tie leaves the third picture; dead vegetation must outnumber both.
+    objects.extend(trees(&[(6, 6)], tree));
+    assert_eq!(build(objects.clone()).background(mid), 2);
+    objects.extend(trees(&[(2, 3), (2, 4), (2, 5)], dead));
+    assert_eq!(build(objects.clone()).background(mid), 2);
+    objects.extend(trees(&[(2, 6)], dead));
+    let state = build(objects);
+    assert_eq!(state.background(mid), 0);
+    // At the map's edge the square is cut: (0, 1) sees x 0 to 3 and y 0 to 4, so the mountain
+    // at (2, 2), the dead vegetation at (2, 3) and (2, 4) and the tree at (3, 4); (0, 0) loses
+    // the row 4.
+    assert_eq!(state.background(Pos::new(0, 1, 0)), 0);
+    assert_eq!(state.background(Pos::new(0, 0, 0)), 2);
+    // The other level sees nothing of it.
+    assert_eq!(state.background(Pos::new(5, 5, 1)), 2);
+    // A wide object anchored right of and below the square counts where it blocks inside it:
+    // anchored at (10, 9), off the map, three tiles from (8, 9) to (10, 9) and one at (8, 8).
+    let wide = scenery_at(10, 9, (0b111 | 1 << 10, 0), dead);
+    assert_eq!(build(vec![wide.clone()]).background(Pos::new(7, 7, 0)), 0);
+    assert_eq!(build(vec![wide]).background(Pos::new(4, 4, 0)), 2);
+}
+
+// covers: GAM-BAT-011
+#[test]
+fn a_tile_records_its_entrance_then_an_ownable_block_then_the_topmost_block() {
+    let (core, part) = monster_rules();
+    let at = Pos::new(3, 3, 0);
+    // Two dead vegetation at (5, 5) and (6, 5); three tiles (0, 0) to (2, 0) for the rest.
+    let background = |row: Vec<ObjectSetup>| {
+        let mut setup = world(&["ggggggg"; 7], 1, vec![]);
+        setup.map.objects = trees_of(&[(5, 5), (6, 5)], Scenery::DeadVegetation);
+        setup.map.objects.extend(row);
+        AdventureState::new(&core, &part, &setup, &mut draws())
+            .unwrap()
+            .background(at)
+    };
+    let row = |masks, scenery| scenery_at(2, 0, masks, scenery);
+    let trees = row((0b111, 0), Scenery::Tree);
+    let rock = row((0b111, 0), Scenery::Other);
+    assert_eq!(background(vec![]), 0);
+    // The trees outnumber the dead vegetation.
+    assert_eq!(background(vec![trees.clone()]), 2);
+    // Of two objects blocking a tile the topmost, the later in map order, takes it.
+    assert_eq!(background(vec![rock.clone(), trees.clone()]), 2);
+    assert_eq!(background(vec![trees.clone(), rock]), 0);
+    // An earlier ownable object's block takes the tiles from the later trees' block.
+    let mine = row((0b111, 0), Scenery::Ownable);
+    assert_eq!(background(vec![mine, trees.clone()]), 0);
+    // So does an earlier object visited from them, a blocker's entrance too.
+    let gate = row((0, 0b111), Scenery::Other);
+    assert_eq!(background(vec![gate, trees]), 0);
+}
+
+/// One-tile blockers of `scenery` at these surface tiles.
+fn trees_of(at: &[(u16, u16)], scenery: Scenery) -> Vec<ObjectSetup> {
+    at.iter()
+        .map(|&(x, y)| scenery_at(x, y, (1, 0), scenery))
+        .collect()
+}
+
+// covers: GAM-BAT-011, GAM-BAT-013
+#[test]
+fn a_battle_from_the_map_carries_its_background_and_the_attackers_ground() {
+    let (core, part) = monster_rules();
+    let mut setup = world(
+        &["gggggg"; 6],
+        1,
+        vec![hero_at(1, 0, Pos::new(1, 1, 0), &[PIKEMAN])],
+    );
+    // A monster at (2, 1) with a tree tile under its entrance; a hallow under the hero.
+    setup.map.objects = vec![
+        scenery_at(2, 1, (1, 0), Scenery::Tree),
+        object_at(2, MONSTER, Some(fixed(GNOLL, 5, 2))),
+        ground(HALLOW, (1, 1, 0), (1, 1)),
+    ];
+    setup.map.objects[1].anchor = Pos::new(2, 1, 0);
+    let mut state = AdventureState::new(&core, &part, &setup, &mut draws()).unwrap();
+    let hero = state.hero(HeroId::new(1)).unwrap().clone();
+    let tile = Pos::new(2, 1, 0);
+    let guards = || Defender::Guards { army: Vec::new() };
+    let battle = state.battle_at(&part, &hero, guards(), tile);
+    assert_eq!(battle.attacker_ground, Some(key("t:hallow")));
+    assert_eq!(battle.battlefield, None);
+    // The monster's entrance takes its tile: no tree around.
+    assert_eq!(battle.background, 2);
+    // Gone, it leaves the tile to the tree beneath.
+    state.remove_object(1);
+    assert_eq!(state.background(tile), 2);
+    assert_eq!(
+        state
+            .tile_sceneries(tile)
+            .filter(|&s| s == Scenery::Tree)
+            .count(),
+        1
+    );
+    // Off the ground, no ground of the attacker's.
+    let mut away = hero;
+    away.pos = Pos::new(0, 0, 0);
+    assert_eq!(
+        state
+            .battle_at(&part, &away, guards(), tile)
+            .attacker_ground,
+        None
+    );
 }

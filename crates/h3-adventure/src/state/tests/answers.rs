@@ -58,6 +58,7 @@ fn rules() -> Rules {
 /// 500 gold.
 fn monster_at(x: u16, y: u16, creature: CreatureTypeId, count: u32) -> ObjectSetup {
     ObjectSetup {
+        scenery: Default::default(),
         anchor: Pos::new(x, y, 0),
         blocked: TileMask::from_bits(1),
         visitable: TileMask::from_bits(1),

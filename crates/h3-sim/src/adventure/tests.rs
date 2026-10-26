@@ -81,6 +81,7 @@ fn chart_setup(rules: &GameRuleset, difficulty: u8) -> Arc<GameSetup> {
             .min_by_key(|&(steps, _)| steps)
             .unwrap();
         setup.map.objects.push(ObjectSetup {
+            scenery: Default::default(),
             anchor,
             blocked: TileMask::from_bits(1),
             visitable: TileMask::from_bits(1),

@@ -11,7 +11,7 @@ use alloc::collections::BTreeSet;
 use alloc::sync::Arc;
 
 use h3_content::{LEVEL_UP_FROM_SEED, Ruleset, SkillId};
-use h3_contracts::{HeroId, PlayerId};
+use h3_contracts::{HeroId, HeroSex, PlayerId};
 use h3_heroes::{
     ArmyWorth, Choice, HeroChange, HeroDetails, LevelUp, Offers, OriginalDraws, TerrainShares,
     apply_change_limited, draw_level_up, max_mana, original_choice, pending_levels,
@@ -26,8 +26,9 @@ use crate::observe::LevelUpView;
 /// The lowest and the highest level seed: the original's `random_between(1, 255)` (0x4BFEC2).
 const SEEDS: (u32, u32) = (1, 255);
 
-/// What a hero's levels read that never changes after the build (E08 T29): kept once per game,
-/// so a fork shares it.
+/// What a hero's levels read that never changes after the build (E08 T29), and since E08 T54 each
+/// hero's sex the map gave (GAM-BAT-012), which never changes either: kept once per game, so a
+/// fork shares it.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct Progression {
     /// The scenario's level limit, 0 none (HER-EXP-003).
@@ -37,15 +38,22 @@ pub(crate) struct Progression {
     /// Each hero's level seed, by id (GAM-HER-002): server-only state (ADR-0017 point 5), never
     /// in an observation or event.
     seeds: Box<[u8]>,
+    /// Each hero's sex the map gave, by id (`None`: its type's own; GAM-BAT-012).
+    sexes: Box<[Option<HeroSex>]>,
 }
 
 impl Progression {
     /// The progression of a game whose scenario has `level_limit` and bans `banned` (in any order,
-    /// repeats allowed), each hero's level seed drawn from `draws` in hero id order, one per hero
-    /// of `heroes` (GAM-HER-002).
-    pub(crate) fn new(level_limit: u8, banned: &[SkillId], heroes: usize, draws: &mut Rng) -> Self {
+    /// repeats allowed), with each hero's sex of `sexes` (by hero id) and its level seed drawn
+    /// from `draws` in hero id order (GAM-HER-002).
+    pub(crate) fn new(
+        level_limit: u8,
+        banned: &[SkillId],
+        sexes: Box<[Option<HeroSex>]>,
+        draws: &mut Rng,
+    ) -> Self {
         // rule: GAM-HER-002
-        let seeds = (0..heroes)
+        let seeds = (0..sexes.len())
             .map(|_| {
                 let (low, high) = SEEDS;
                 u8::try_from(draws.range_inclusive(low, high)).unwrap_or(u8::MAX)
@@ -57,7 +65,13 @@ impl Progression {
             level_limit,
             banned: banned.into_iter().collect(),
             seeds,
+            sexes,
         }
+    }
+
+    /// The sex the map gave `hero`, if any (GAM-BAT-012).
+    pub(crate) fn sex(&self, hero: HeroId) -> Option<HeroSex> {
+        self.sexes.get(usize::from(hero.raw())).copied().flatten()
     }
 
     /// The scenario's level limit, 0 none.
@@ -134,7 +148,8 @@ impl Progression {
 
 impl CanonicalHash for Progression {
     /// The level limit; the banned skills (length, then each); the level seeds (length, then
-    /// each).
+    /// each); since game state hash v14 (E08 T54) the heroes' sexes (length, then each: 0 the
+    /// type's own, 1 male, 2 female).
     fn hash_into(&self, h: &mut StateHasher) {
         h.write_u8(self.level_limit);
         h.write_len(self.banned.len());
@@ -143,6 +158,14 @@ impl CanonicalHash for Progression {
         }
         h.write_len(self.seeds.len());
         h.write_bytes(&self.seeds);
+        h.write_len(self.sexes.len());
+        for sex in &self.sexes {
+            h.write_u8(match sex {
+                None => 0,
+                Some(HeroSex::Male) => 1,
+                Some(HeroSex::Female) => 2,
+            });
+        }
     }
 }
 
