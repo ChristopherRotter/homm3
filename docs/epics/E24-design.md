@@ -847,6 +847,15 @@ dialog beyond its speed buttons.
 **Recorded** (`clients/map/sequences.toml`, situation `seq-scroll`: a 36-tile map copied from a
 shipped one, the view at (9, 10); every frame at 0 exact):
 
+- **`scroll-0`, `scroll-1`, `scroll-2`** (one speed each, the same inputs): Ctrl and Up, PgUp,
+  Right, PgDn, Down, End, Left, Home pressed at 100, 300, … 1 500 step the view at the press's
+  own millisecond by 1, 2 or 3 tiles in that direction (back at (9, 10) after the eighth); Ctrl
+  and Right held from 1 700 to 2 100: one step. The pointer at the left edge (2, 300) from 2 300:
+  the arrow's point moves at the poll (2 310), the first step at 2 370 with the west cursor (38),
+  then every 70 ms to 2 650. In the top-right corner (798, 1) from 2 700: the west cursor drawn
+  there at the poll (2 706) until the grid's next step at 2 720 turns it north-east (33), steps
+  to 3 000; over the right panel at 3 000 (after that millisecond's step) the arrow. Each step
+  redrew the whole view at once; the cursor lines are the same at every speed.
 - **`scroll-limits`** (the fast speed): the pointer in the bottom-right corner at 100 steps at
   170, 240, … 520 by 3 tiles until (26, 27), the map's last column and row (x clamped at 520 from
   27, y from 28); the step at 590 moves nothing and the cursor turns from south-east (35) to the

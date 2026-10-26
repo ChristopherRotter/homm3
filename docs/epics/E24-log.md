@@ -586,3 +586,38 @@ T1a1 the recording and the idle loop, T1a2 the scroll with the speed options and
   frame at 0 exact each time. The screen changes only at redraws, every one but the redraw after
   a step fell on a redraw's millisecond (no palette step since): five of 44 in 8 s.
 - **No oddity of the original found** (no `MCL-Q`). A run of both sequences takes 20 minutes.
+
+### M2 T1a2 — the scroll (2026-10-26)
+
+- **Read** (`E24-design.md` §3.4; map entries `adventure_key_down` 0x408C40,
+  `adventure_mouse_move` 0x40E360 (H3API's SimulateMouseOver, read in part), `view_scroll`
+  0x4195C0, `edge_scroll` 0x419820, `input_key_message` 0x4EC0E0, `window_procedure` 0x4F7C00
+  (in part), `settings_check` 0x50B260 (in part), `mouse_position_now` 0x50D500 (H3API's
+  GetCursorPosition), `scroll_steps` 0x63A66C, `settings_names` 0x63FF74, `scroll_time`
+  0x691674, `app_active` 0x6783D0, the three speed options 0x698758, 0x69875C, 0x69878C;
+  `adventure_hero_stop` 0x417680 read (H3API's DemobilizeHero), `adventure_manager_procedure`'s
+  and `settings_read`'s entries extended). The direction keys scroll only with Ctrl; without it
+  they walk the selected hero (T1b). A step is 1, 2 or 3 tiles by the scroll speed and redraws
+  at once; the edge steps every 70 ms from the last step (or from the mouse's arrival), with the
+  edge cursor; the view's corner stays within −9 to width − 10 and −8 to height − 9, and a step
+  that moves nothing turns an edge cursor back to the arrow. The speeds live in the registry
+  ("Window Scroll Speed" 0 to 2, "Walk Speed" 1 to 4) and in three globals. VCMI compared (§3.3):
+  smooth pixel scrolling, a 15-pixel edge, no key scroll.
+- **Built** (the harness, additive): `sequences.toml`'s options (`scroll_speed`, `hero_speed`,
+  written into memory once the situation is staged) and `inputs` (`keydown`, `keyup` with
+  xdotool's names, `pointer`), given after the step to their millisecond and settled by 500 more
+  clock reads; the scroll's last time written at 0 with the other timers; the display's key
+  repeat off (`xset`, added to `setup.sh`); the cursor in the timeline (`<ms> cursor <type>
+  <frame> <x> <y>`, `Mem.cursor`), so the idle pair was recorded again (its other lines as
+  T1a1's). The runbook's "Options and inputs".
+- **Recorded** (situation `seq-scroll`): `scroll-0`, `scroll-1`, `scroll-2` (each speed: Ctrl
+  and the eight keys, Ctrl and Right held, the left edge, the top-right corner) and
+  `scroll-limits` (the fast speed into three corners, the limits, Ctrl and Up at the top), each
+  twice the same; the idle pair again, twice; every frame at 0 exact. Everything as read: a
+  key's step at its press, one step for a held key, the edge's first step 70 ms after the
+  pointer's arrival, the corner's 70 ms grid kept across a move between edges (the west cursor
+  shown in the corner until the next step), the arrow at a limit, the cursor's point at the
+  33-ms polls.
+- **MCL-Q6** (open): the edge zones are 16, 14, 16 and 15 pixels wide (the x rounding of E17's
+  drawing bug narrows the east one); recommended: even zones in the client, the original's tests
+  for the comparisons. A run of the six sequences takes about 40 minutes.

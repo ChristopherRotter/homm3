@@ -90,8 +90,8 @@ battle.
 - **Scope:** the map standing still over time (the objects' step at each redraw, every 180 ms;
   the colour cycles' ticks every 200 ms, shown at the next redraw: `E24-design.md` §1.6); the
   scroll, by whole tiles (the manager's pixel offset is never written, `map.toml` 0x406DF0), by
-  the arrow keys and the mouse at the screen's edges, at each map scroll speed, with the edge
-  cursors; a hero's walk along its path: its groups and frames, its pixel steps, the timing at
+  Ctrl and the arrow keys and the mouse at the screen's edges, at each map scroll speed, with the
+  edge cursors; a hero's walk along its path: its groups and frames, its pixel steps, the timing at
   each hero speed (the enemy speed read with it), the view following it, the path's arrows
   taken away step by step, on land in the eight directions and a boat sailing; the map's sound;
   the window. **Not in M2:** boarding and landing, teleports, visits and their dialogs,
@@ -127,7 +127,9 @@ battle.
   took it. A loaded saved game's draw lists: M4.
 - **Tasks** (the queue has each in full): T1a1, the recording and the map standing still
   (**done** 2026-10-26: `h3map.py frames`, two idle sequences; `E24-log.md`, design §3), and
-  T1a2, the scroll (T1a cut at its seam before it started, the user, 2026-10-26); T1b, the walk
+  T1a2, the scroll (T1a cut at its seam before it started, the user, 2026-10-26; **done**
+  2026-10-26: Ctrl and the direction keys, the edge every 70 ms, the limits, the edge cursors,
+  four sequences; design §3.4, MCL-Q6 open); T1b, the walk
   read and recorded; T2, the map over time headless (idle and scroll exact); T3, the walk drawn
   (exact); T4, the window; T5, the sound; T6, M2's closure.
 - **Exit:** every recorded sequence as recorded, line by line and frame by frame (or each
