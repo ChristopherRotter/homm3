@@ -40,8 +40,8 @@ battle seam's facts from the game; point 11 does not name them yet.
      always, a guarded scroll with a text), and increment 7's: open a Pandora's Box, search a
      Pyramid (a looted one too) or a Warrior's Tomb, pay a Tree of Knowledge (its drawn price, not
      opened when the owner cannot pay).
-   - **`LevelUp(SkillOffer)`** (`First`, `Second`: the original's left and right offer) [point
-     6's original choice].
+   - **`LevelUp(SkillOffer)`** (`First`, `Second`: the original's left and right offer) [the
+     original's choice, ADR-0013 point 12].
    - **`Chest(ChestChoice)`** (`Gold`, `Experience`) [`Gold`, the original's plain OK]; the view
      shows both amounts.
    - **`Arena(ArenaChoice)`** (`Attack`, `Defense`; no leaving) [`Attack`, the original's Cancel].
