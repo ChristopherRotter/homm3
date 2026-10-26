@@ -33,7 +33,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import IO, Any
 
-from .evaluate import HELD_OUT_BATCH_SEEDS, OPPONENTS, REPORT_V1_ENVS
+from .evaluate import HELD_OUT_BATCH_SEEDS, OPPONENTS, PLAYER_KINDS, REPORT_V1_ENVS
 
 #: The version of `record.json`'s layout (`check_record`); 2: its segments (T2b1); 3: the
 #: engine's identity (the encodings' and encounters' versions, the batch's entries, T2c); 4: the
@@ -122,6 +122,12 @@ class Config:
     #: The league (design §8, `league`): the share of self-play episodes (else a live member plays
     #: one side, drawn per episode).
     self_play: float = field(default=0.5, metadata=_in("league"))
+    #: The share of the player kinds' episodes (a hero battle, the two sieges a player defends)
+    #: against the system actor (E06 T6b, decision 9 amended; design §12): it plays a uniformly
+    #: drawn side inside the batch, the learner the other, and no member is drawn; the rest are
+    #: self-play or a member's as above. In thousandths; above 0 it needs `[env] kinds` (the
+    #: batch's entries split them).
+    system_share: float = field(default=0.0, metadata=_in("league"))
     #: Samples between the learner's snapshots (the first after this many; 0: none, only the
     #: promoted networks join).
     snapshot_every: int = field(default=1_000_000, metadata=_in("league"))
@@ -336,6 +342,12 @@ def resolve(config: Config) -> Config:
         problems.append("`lr_schedule` is linear or constant")
     if not 0.0 <= c.lr_floor <= 1.0 or not 0.0 <= c.self_play <= 1.0 or not 0.0 < c.decay <= 1.0:
         problems.append("`lr_floor` and `self_play` lie in [0, 1], `decay` in (0, 1]")
+    if not 0.0 <= c.system_share <= 1.0:
+        problems.append("`system_share` lies in [0, 1]")
+    elif c.system_share and c.kinds is None:
+        problems.append("`system_share` needs `[env] kinds` (the player kinds' weights to split)")
+    elif c.system_share and not any(c.kinds[k] for k in PLAYER_KINDS):
+        problems.append("`system_share` needs a player kind (hero, siege_hero, siege_garrison)")
     if c.seed in HELD_OUT_BATCH_SEEDS:
         problems.append("`seed` is a held-out set's batch seed (v0's, the v1 sets')")
     if not (0.0 < c.alpha < 0.5 and 0.0 < c.beta < 0.5 and c.elo0 < c.elo1):
@@ -594,6 +606,9 @@ class Record:
         self._count = 0
         #: Per encounter kind since the last gate: the attacker's wins, truncations, episodes.
         self._kinds: dict[str, list[float]] = {}
+        #: Per side of the learner against the system actor since the last gate: its score sum
+        #: and episodes (E06 T6b).
+        self._system: dict[str, list[float]] = {}
 
     def _ended(self, record: dict[str, Any], how: str) -> None:
         self.progress["ended"] = how
@@ -624,6 +639,10 @@ class Record:
                 sums[0] += row["attacker_won"] * row["episodes"]
                 sums[1] += row["truncated"] * row["episodes"]
                 sums[2] += row["episodes"]
+            for name, row in record.get("system", {}).items():
+                sums = self._system.setdefault(name, [0.0, 0])
+                sums[0] += row["score"] * row["episodes"]
+                sums[1] += row["episodes"]
             self.progress["updates"] = record["update"]
             if self.segments:
                 end = self.segments[-1]["end"]
@@ -646,10 +665,15 @@ class Record:
                         }
                         for name, (won, cut, n) in self._kinds.items()
                     }
+                if self._system:
+                    point["system"] = {
+                        name: {"episodes": n, "score": score / n}
+                        for name, (score, n) in self._system.items()
+                    }
                 self.curve.append(
                     {"samples": record["samples"], "updates": record["update"], **point}
                 )
-            self._sums, self._count, self._kinds = {}, 0, {}
+            self._sums, self._count, self._kinds, self._system = {}, 0, {}, {}
             self.gates.append({**at, **{k: record[k] for k in GATE}})
             self.progress["evaluation_minutes"] += record["seconds"] / 60
         elif kind == "promotion":

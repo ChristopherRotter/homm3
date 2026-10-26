@@ -36,6 +36,12 @@ defender's seat inside the batch, so the learner plays only its attacker and the
 member for it. The update record splits the self-play episodes' rates by kind (`by_kind`), and
 the ladder also plays the neutral set v1 (`[ladder] ladder_neutral`), the learner attacking the
 system actor.
+
+The system actor as an opponent (E06 T6b, decision 9 amended): with `[league] system_share` a
+share of the player kinds' episodes has the system actor on a uniformly drawn side inside the
+batch (`episode_entries`: the player kinds' own entry beside one per side), so the learner plays
+the other and the league draws no member; the update record's `system` gives the learner's score
+there by its side.
 """
 
 from __future__ import annotations
@@ -52,7 +58,15 @@ import torch
 from .. import _ffi
 from ..batch import BattleBatch
 from ..seats import SeatBook
-from .evaluate import NEUTRAL_KINDS, Stopped, compact, held_out_seeds, ladder, load
+from .evaluate import (
+    NEUTRAL_KINDS,
+    PLAYER_KINDS,
+    Stopped,
+    compact,
+    held_out_seeds,
+    ladder,
+    load,
+)
 from .gate import Bounds, game_score, gate
 from .league import League, Member
 from .policy import Choice, Policy, build
@@ -215,6 +229,33 @@ def gae(
     return adv, (side >= 0) & closed
 
 
+#: The seats (attacker, defender) of an entry where the system actor plays side 0 or 1.
+_SEATS = (("system", "external"), ("external", "system"))
+
+
+def episode_entries(config: Config) -> list[tuple[int, list[int] | None, int]]:
+    """The batch's encounter entries (weight, kind weights, the side the system actor plays in
+    their player kinds or -1): one, `[env] kinds` as given, without `system_share`; with it the
+    neutral kinds' entry, the player kinds' own (their seats external) and one per side where
+    the system actor plays it, weighed so that every kind keeps its share of the episodes and
+    `system_share` (in thousandths) of the player kinds' have the system actor (E06 T6b)."""
+    c = config
+    share = round(c.system_share * 1000)
+    if not share:
+        return [(1, c.kinds, -1)]
+    assert c.kinds is not None  # `resolve` checks it
+    player = [w if k in PLAYER_KINDS else 0 for k, w in enumerate(c.kinds)]
+    neutral = [0 if k in PLAYER_KINDS else w for k, w in enumerate(c.kinds)]
+    p = sum(player)
+    entries = [
+        (2000 * sum(neutral), neutral, -1),
+        ((2000 - 2 * share) * p, player, -1),
+        (share * p, player, 0),
+        (share * p, player, 1),
+    ]
+    return [e for e in entries if e[0]]
+
+
 def device_of(name: str) -> torch.device:
     if name == "auto":
         return torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -241,7 +282,13 @@ class Trainer:
             currency=c.currency,
             mana_price=c.mana_price,
         )
-        self.batch.add_encounters(kinds=c.kinds)
+        entries = episode_entries(c)
+        for weight, kinds, side in entries:
+            seats = {} if side < 0 else dict(zip(("attacker", "defender"), _SEATS[side]))
+            self.batch.add_encounters(weight, kinds=kinds, **seats)
+        #: Per batch entry (`batch.scenario`), the side the system actor plays in the player
+        #: kinds (-1: none; the neutral kinds' defender is the encounters' own, E06 T6b).
+        self.system_side = np.array([side for _, _, side in entries], np.int8)
         #: The held-out episodes' seeds (v0's, the report and gate sets v1's): every training
         #: episode's is checked against them (design §5).
         self.held_out = HeldOut(held_out_seeds())
@@ -344,11 +391,13 @@ class Trainer:
 
     def assign(self, envs: np.ndarray) -> None:
         """Draws the opponent of each of `envs`' new episodes (`League.opponent`): a live member
-        on a uniformly drawn side, or self-play. A neutral kind's episode draws none: its defender
-        is the system actor, so the learner's attacker is its only external seat (design §12)."""
-        kind = self.batch.encounter
+        on a uniformly drawn side, or self-play. An episode with the system actor draws none (a
+        neutral kind's defender, or a side of the player kinds with `system_share`): the learner
+        plays its only external seat (design §12)."""
+        kind, entry = self.batch.encounter, self.batch.scenario
         for e in envs:
-            member = None if int(kind[e]) in NEUTRAL_KINDS else self.league.opponent()
+            internal = int(kind[e]) in NEUTRAL_KINDS or self.system_side[entry[e]] >= 0
+            member = None if internal else self.league.opponent()
             if member is None:
                 self.frozen_side[e], self.frozen_id[e], self.frozen_net[e] = -1, -1, None
             else:
@@ -492,6 +541,9 @@ class Trainer:
         tally: dict[int, list[float]] = {}
         #: Per encounter kind, the self-play episodes': the attacker's wins, truncations, games.
         by_kind: dict[int, list[int]] = {}
+        #: Per side of the learner against the system actor in the player kinds: its score sum
+        #: and games.
+        against_system = [[0.0, 0], [0.0, 0]]
         passes = 0
         for t in range(c.rollout):
             if stop is not None and stop.requested:
@@ -506,8 +558,9 @@ class Trainer:
             a = b.actions
             a["entry"], a["spell"] = choice.entry, choice.spell
             a["target"], a["second"] = choice.target, choice.second
-            # The kind of each env's episode before the step (an ended one's next comes after).
-            kinds = b.encounter.copy()
+            # The kind and entry of each env's episode before the step (an ended one's next comes
+            # after).
+            kinds, entries = b.encounter.copy(), b.scenario.copy()
             b.step()
             closed = self.book.settle(b)
             e, s = np.nonzero(closed.closed)
@@ -533,7 +586,13 @@ class Trainer:
             done = np.nonzero(b.done)[0]
             if len(done):
                 against = self.frozen_side[done] >= 0
-                own = done[~against]
+                system = self.system_side[entries[done]]
+                own = done[~against & (system < 0)]
+                # The learner's side is the one the system actor does not play.
+                for env, side in zip(done[system >= 0], system[system >= 0]):
+                    row = against_system[1 - int(side)]
+                    row[0] += game_score(int(b.result[env]), 1 - int(side))
+                    row[1] += 1
                 res = b.result[own]
                 for value in res[res >= 0]:
                     results[int(value)] += 1
@@ -589,6 +648,13 @@ class Trainer:
             "league_episodes": int(games),
             "league_score": sum(s for s, _ in tally.values()) / max(games, 1),
             "frozen_passes": passes / c.rollout,
+            # The learner's episodes against the system actor in the player kinds by its side,
+            # and its mean score there (`system_share`; a side without one is left out).
+            "system": {
+                name: {"episodes": n, "score": s / n}
+                for name, (s, n) in zip(("attacker", "defender"), against_system)
+                if n
+            },
         }
 
     def update(self, lr: float) -> dict:

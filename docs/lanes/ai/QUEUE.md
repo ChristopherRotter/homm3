@@ -6,20 +6,19 @@ Pre-refined tasks of the AI lane, in order, then the inbox of discovered work. T
 
 **E05** (`docs/epics/E05-battle-env.md`) closed 2026-10-20 (record: `E05-log.md`; the environment as built: `docs/07-simulation-and-ai.md` §1.1). **E06** (`docs/epics/E06-battle-ai.md`, AI-Q8; design `E06-design.md`, record `E06-log.md`): increments 1 to 5 and T6a (the behaviour analysis; rerun `python -m h3env.train.inspect` at every checkpoint) done by 2026-10-23. Best so far, `t7-1` (20 M samples, a third neutral): 0.828, 0.551, 0.528 against Random, Aggressor, Greedy, the system actor 0.374; the neutral set's value +0.245 against the target +0.285. The tasks' history is in `QUEUE-ARCHIVE.md`.
 
-**Next: increment 6's lever** (the user's choice at T6a's checkpoint):
+**Increment 6** (refined 2026-10-26, the user: the system actor as a training opponent in the
+player kinds, decision 9 amended; every side stays human, the let-off question answered): T6b
+(`[league] system_share`, `configs/e06-t6b.toml`) done 2026-10-26. **Next: T6c, the A/B run on
+the user's machine** (`uv run --group train python -m h3env.train --config configs/e06-t6b.toml
+--out runs/t6b-1`, 20 M samples; the user uploads `record.json`, `metrics.jsonl`, `best.pt`),
+then `python -m h3env.train.inspect` on its best and the checkpoint against `t7-1`.
 
-- **Increment 6's choices** (put to the user at T7d; T6a's evidence beside each):
-  - Code: the system actor as a training opponent in the hero kinds (a change of decision 9:
-    the agent never met it there and does not adapt to it; its ladder row then measures a
-    training opponent; **the agent's recommendation**, A/B against `t7-1`'s settings); **AI-Q7
-    (b) part 2** (the network reads `batch.preview` beside the entry mask, an opt-in
-    `[network]` key, the rollout keeps it; an A/B config against `t7-1`'s settings; the
-    targeting slack says yes, the turret's preview first, the battle lane's inbox);
-    potential-based shaping. Not the casts' exploration or the mana price (the hero casts as
-    much as the system actor's).
-  - Runs on the user's machine: 60 M at T7's mix (`configs/e06-t7.toml --set
-    samples=60_000_000`, about 4 hours: whether PPO plateaus, T8's trigger); the mana run
-    `t5-4` (`configs/e06-mana.toml`, about 75 minutes).
+- **Still candidates at T6c's checkpoint:** AI-Q7 (b) part 2 (the network reads
+  `batch.preview` beside the entry mask, an opt-in `[network]` key, the rollout keeps it; an
+  A/B config; unblocked since the battle lane's #458 previews a turret's shot as it is made);
+  potential-based shaping. Not the casts' exploration or the mana price (T6a). Runs: 60 M at
+  T7's mix (`configs/e06-t7.toml --set samples=60_000_000`, about 4 hours: whether PPO
+  plateaus, T8's trigger); the mana run `t5-4` (`configs/e06-mana.toml`, about 75 minutes).
 - Later (design §10): T5's rest (throughput, the observations in place), T6, T8, T9.
 
 ## Inbox
@@ -60,23 +59,6 @@ Pass offer (fixed by the adventure lane's fixed tests, #266).
   defended siege with Artillery can change, so regenerate the bot reports when convenient. Also:
   a side without a hero brings no war machines (BAT-WAR-001, the original's 0x463600); `h3-sim`'s
   encounters give machines only with a hero, so nothing of yours moves.
-
-- 2026-10-23 (the battle lane, E23 T7, `battle/e23-t7-rest` on `shared/e23-t7-human` #436, both
-  `cross-lane` with the user's consent; **for you**): **`POLICY_VERSION` 19** (the computer's
-  neighbour table without the side columns, batch 4b H1; slip 33 under BAT-QUIRK-25) and two
-  rules: BAT-WAR-003's automatic tent heals the most hurt stack (no draw any more), and the new
-  fix-optional **BAT-QUIRK-27** (`quirk.battle.computer_morale_let_off`, registry position 33, on
-  in `faithful`): a frozen stack of a side whose `BattleSetup.human` is false escapes one freeze in
-  four (BAT-MOR-004; ADR-0023 point 7 widened). Your batch plays both sides as human players'
-  (AI-Q3), so a `System` neutral side in training gets no let-off: set that side's `human` false if
-  the original's handicap is wanted (a question for E06). Both bot reports regenerated in the two
-  pull requests (#436: only `engine.core`; the battle PR: version 19; the system actor beats Greedy
-  0.655, Aggressor 0.681, attacks best on the neutral set, value +0.285). **E23's exit criterion 4
-  wants a gated batch workload with `System` seats** (`benches/ai/`; `h3 ai bench` has no `System`
-  seat yet): yours to add when it suits; the computer's own cost is `h3 bench-computer` (now with
-  `--heroes 1`: the slowest decision 3.0 to 4.1 ms, the 5 ms budget). **The workload: done**
-  (E06 T6a's pull request, `benches/ai/batch-system-neutral-v1.toml`); the let-off for a
-  `System` side in training is open (put to the user at T6a's checkpoint).
 
 - 2026-10-23 (this lane, E06 T5; for the next `shared/` change): `docs/07-simulation-and-ai.md`
   (shared) should name the batch's optional kill preview (C ABI v33: the acting side's previewed

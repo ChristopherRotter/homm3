@@ -76,6 +76,9 @@ NEUTRAL_V1_WEIGHTS = {
 #: The kinds whose defender is the system actor: one external seat, the attacker (design §12).
 NEUTRAL_KINDS = frozenset(NEUTRAL_V1_WEIGHTS)
 
+#: The kinds with a player on both sides (the report set's), in `H3_ENCOUNTER_*` order.
+PLAYER_KINDS = tuple(k for k in range(len(_ffi.ENCOUNTER_KINDS)) if k not in NEUTRAL_KINDS)
+
 #: The held-out sets the ladder plays (`h3 ai eval --set`'s names).
 SETS = ("report-v1", "neutral-v1", "v0")
 

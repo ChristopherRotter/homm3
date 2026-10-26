@@ -706,3 +706,38 @@ entry only where a task builds on it.
   previewed kills and an eighth of the strikes kill nothing: AI-Q7 (b) part 2 addresses it, once
   a turret's preview is right (the battle lane's inbox) or the turrets' entries are left out of
   the feature.
+
+## Increment 6's refinement (2026-10-26)
+
+- **The user's choice** (asked at T6a's checkpoint, the agent's recommendation): the system
+  actor as a training opponent in the player kinds, as an A/B against `t7-1`'s settings
+  (decision 9 amended); AI-Q7 (b) part 2 (now unblocked: the battle lane's #458 previews a
+  commanded turret's shot as it is made) and potential-based shaping stay candidates. T6b the
+  code, T6c the run on the user's machine.
+- **The let-off** (the battle lane's question, E23 T7, BAT-QUIRK-27): **every side stays
+  human**, the system actor's too (ADR-0025 point 6 unchanged); training and the held-out sets
+  never play the computer side's escape from a bad-morale freeze (design §12).
+
+## T6b — The system actor as an opponent in the player kinds (2026-10-26)
+
+- **Built** (design §12): `[league] system_share` (a float in [0, 1], used in thousandths; 0 by
+  default; above 0 it needs `[env] kinds` and a player kind, `resolve` refuses otherwise).
+  `ppo.episode_entries` splits the kinds into up to four encounter entries: the neutral kinds'
+  (weight 2000 · their sum), the player kinds' own (both seats external, (2000 − 2s) · their
+  sum) and one per side with the system actor there (`s` · their sum each, `s` the share in
+  thousandths), so every kind keeps its share of the episodes. With the share 0 the batch has
+  `t7-1`'s one entry. `Trainer.system_side` maps an entry (`batch.scenario`) to the system
+  actor's side; `assign` draws no member for such an episode (as for a neutral kind), and
+  `collect` scores the learner there by its side (`system`: episodes and mean score, a draw or
+  truncation ½), outside self-play's rates (`attacker_won`, `by_kind`). The record's curve sums
+  it per gate interval (schema 5 unchanged: a key added); the update line prints
+  `system-attacker`, `system-defender`. `configs/e06-t6b.toml`: `t7-1`'s settings with a
+  quarter.
+- **Agent's choices (change freely):** a fixed share, not a PFSP member (the batch draws the
+  entry, and with it the seats, at its own reset); a uniform side (T6a: the agent loses mostly
+  defending, but the system actor's attacking is as strong); a quarter for the A/B (of the
+  player kinds' samples about a fifth: self-play gives two learning sides an episode, a member
+  or the system actor one).
+- **Tests:** `test_run.py` (the refusals, the curve's `system`, the line),
+  `test_train.py` (`episode_entries` at `t7-1`'s kinds; a trainer at a half: the system actor
+  on both sides, never to move, no member, no self-play rates, its score by side, an update).
