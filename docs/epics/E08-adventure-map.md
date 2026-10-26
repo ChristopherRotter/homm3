@@ -65,13 +65,15 @@ Refined with the user on 2026-10-26 (T53; ADV-Q26). Built like increments 1 to 6
 
 125. **T55a in four** (the user, at T55a's start: after asking how much code there is to read, about 8 000 to 10 000 instructions not read yet, measured from `visit_object`'s cases and their callees, the user took the agent's four parts): T55a1 the census and the pickups (treasure chests, artifacts and random artifacts, Spell Scrolls, the monsters' artifacts), T55a2 the objects that teach (experience, spells, skills), T55a3 the rewards that give creatures with Pandora's Box and events, T55a4 the common rules, batch E7's plan, the rule ids, a fresh agent's second reading and the checkpoint's questions. Not chosen: three parts (T55a3 and T55a4 together), two parts, the census alone first. *Agent's call (change freely):* T55a3 decides whether the creature banks (16, 24, 25, 84, 85) and the Pyramid (63) are in; Seer's Huts and quest guards (83, 215) are only placed (survey `E08-rewards.md` §1).
 
+126. **T55a2 whole** (the user, at T55a2's start, 2026-10-26: measured from `visit_object`'s 20 cases, about 6 700 instructions not read yet on the human player's path in 54 functions, the computer player's 0x528040 left out; the handlers 80 to 300 each, the University's dialog about 2 400): all 20 classes in one task, the University's dialog (0x5EF500, a second caller 0x5D2DA0) read for its rules only (the skills offered, the price, the refusals), not its drawing. Not chosen: the University left to E09; T55a2 in two parts (the teachers; the artifact givers, Lean To and the University). *Agent's call (change freely):* Lean To is in (resources, like the Wagon's).
+
 ### Tasks (queue entries in `docs/lanes/adventure/QUEUE.md`; one or two per round, the cut confirmed at each checkpoint)
 
 - **T53 Increment 7 refined** (with increment 6's closure). Done (2026-10-26, `adventure/e08-t53`; decisions 120–123): rewards on the map, the battle seam's facts first, the first round queued (T54, T55a, T55b).
 - **T54 The battle seam's facts from the game** (decisions 123, 124). Done (2026-10-26, `adventure/e08-t54`): the difficulty, the human sides, the colours, a placed hero's sex, the background (0x41ADB0, 0x505610 read), the attacker's ground; `ADV-STUB-9` the retreat facts; GAM-BAT-010 to -013.
 - **T55a The rewards survey** (decision 122), in four (decision 125):
   - **T55a1 The census and the pickups.** Done (2026-10-26, `adventure/e08-t55a1`): survey `E08-rewards.md` §1 to §5 (the census of the reward classes; treasure chests, artifacts and random artifacts with the unreachable pickup conditions, Spell Scrolls, the monsters' artifacts), 18 readings in `map.toml`; disputes D-29 to D-32.
-  - **T55a2 The objects that teach.** Queued.
+  - **T55a2 The objects that teach.** In progress (`adventure/e08-t55a2`; decision 126).
   - **T55a3 The rewards that give creatures, Pandora's Box and events.** Queued.
   - **T55a4 The common rules, batch E7's plan, the rule ids, the second reading and the checkpoint.** Queued.
 - **T55b The ADR amendment drafts, the design note and the cut** (decision 122). Queued.

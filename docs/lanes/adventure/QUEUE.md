@@ -19,7 +19,8 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
   the survey's call). `visit_object`'s cases name each handler (`map.toml`, 0x4A84F0); the
   computer player's choice 0x527FE0 has two more callers here (0x4A6710, 0x4A7A40). New disputes
   continue at D-33, quirk candidates at A-17; §9 and §10 collect what T55a4 needs.
-- **Depends on:** T55a1 (done). **Status:** ready; its cut confirmed with the user at its start.
+- **Depends on:** T55a1 (done). **Status:** in progress; the cut confirmed (decision 126: whole, the
+  University's dialog 0x5EF500 for its rules only).
 
 ### E08 T55a3 — The rewards survey: creatures, Pandora's Box and events
 
