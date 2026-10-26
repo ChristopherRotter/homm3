@@ -532,3 +532,30 @@ parallel.**
   live parts carry their situations' digests.
 - **The review list** (T2 to T6b, summarised in the session) accepted by the user. **M1 closed;**
   M2 T0 queued.
+
+### M2 T0 — M2 refined with the user (2026-10-26)
+
+One session, the user present; branch `map-client/e24-m2-t0` (docs only). Starting point: #460
+merged (2026-10-24), `master`'s CI green, the lane's scoped verify without a failing step. The
+agent read the lane's docs, the epic, E17 M2's record (its tasks, design §7.8, §7.9: the
+timeline and the frame check), `h3-view`'s `clock`, `sound` and `cursor`, the harness's
+`h3map.py` and the executable map's adventure entries; it proposed M2's scope, the recording's
+format and seven tasks. The user took every recommendation:
+
+- **Walks scripted in M2** (the user asked first whether this was for tests only or real: the
+  walk is built for real, its input a hero and its tiles; in M2 the tiles come from the
+  recorded sequences, from M4 the engine's records, from M5 the engine's answer to a click; the
+  client never finds a path itself, and wiring the engine now would pull M4's seam work in: the
+  observation's object identity, the import's 5 of 160 shipped maps, movement points).
+- **The map's sound in M2** (T5).
+- **`h3-view`'s `clock` and `cursor` copied** into `h3-map-view` (*provisional*); one common crate
+  proposed at M3 T0.
+- **Recorded and compared as E17 M2:** every frame at 1-ms steps, the timelines committed, the
+  frames compared pixel by pixel outside the panels, `drawn` over the sequences.
+
+What shaped the proposal: the original scrolls by whole tiles (the manager's pixel offset
++0xF4, +0xF8 is written only by its constructor, 0x406DF0); the idle map's moment is read
+(§1.6), so M2's idle work is its schedule; the moving hero's passes are mapped but not read
+(0x47F860, 0x47FB40, 0x47FC80), as is the move's animation in `hero_move_step` (E08 read its
+pricing). The queued M1 items: R2-8 waits for a task that needs the writer (none planned: T6
+then makes its pull request); a saved game's draw lists stay M4's.
