@@ -5575,6 +5575,12 @@ a placed hero's sex; the retreat facts stubbed), not inside increment 7 or later
 inbox re-tagged: the battle lane's three notes of 2026-10-23 and -24 (the seam's facts) for T54;
 the other entries keep their tags.
 
+**Verify:** the scoped `cargo xtask verify --scope adventure --summary` passed every step it runs
+(fmt, clippy, check-arch, check-rules, check-stubs, check-docs, check-lane, test, coverage,
+determinism, bench-check, doc-drift; deny and ffi-smoke skipped by the scope; exit 2, its normal
+result), the doc checks again after the last edits; no original data staged (no step needs them
+for comments and docs). CI's full verify on the pull request is the record.
+
 #### Increment 6's design note at its closure (moved by T53)
 
 The note as T52 left it, every section built (T45 to T52; T53's round-5 row marked done); its §

@@ -21,7 +21,7 @@ Moved to `TRAPS.md`: forks without deep copies, RNG seeds server-only, template 
 
 ### 2026-10-26 — increment 6 closed (T53); increment 7 refined
 
-Baseline e8b9164 (#470, #471 merged; CI green). T53 whole (decision 120): the audit (seven criteria met; GAM-MET-001 and GAM-MAN-001 `verified`, ADV-MON-008 cites E6-1, E6-2), increment 6 moved to the archive and its design note to the log (the code's six citations repointed), increment 7 refined with the user (ADV-Q26: rewards on the map; T54 the seam's facts first; T55a, T55b); three informational inbox notes archived. Scoped verify: see the log's entry.
+Baseline e8b9164 (#470, #471 merged; CI green). T53 whole (decision 120): the audit (seven criteria met; GAM-MET-001 and GAM-MAN-001 `verified`, ADV-MON-008 cites E6-1, E6-2), increment 6 moved to the archive and its design note to the log (the code's six citations repointed), increment 7 refined with the user (ADV-Q26: rewards on the map; T54 the seam's facts first; T55a, T55b); three informational inbox notes archived. Scoped verify passed (exit 2, its normal result); CI's full verify on the pull request.
 
 ### 2026-10-26 — increment 6, round 5: T52
 
