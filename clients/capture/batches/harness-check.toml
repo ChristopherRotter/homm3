@@ -28,6 +28,7 @@ record = { "difficulty" = "difficulty", "gold at the start" = "before:resource:g
 encounter = "Win"
 hero = "Win"
 walk = [3, 5]
+expect = { dialogs = true }
 choice = "right"
 record = { "the chest's word before (hex)" = ["before:word:3,5", "before:object:3,5"], "the chest's choice" = "choice", "experience before / after the chest" = ["before:hero:experience", "hero:experience"], "the chest after" = "object:3,5" }
 note = { "level-ups" = "level_up_dialogs" }
@@ -36,6 +37,7 @@ note = { "level-ups" = "level_up_dialogs" }
 encounter = "Win"
 hero = "Win"
 walk = [7, 5]
+expect = { dialogs = true }
 answer = "yes"
 record = { "the Tomb's question; messages" = ["questions", "messages", "message_pictures"], "morale bonus, status flags before / after the Tomb" = ["before:hero:morale_bonus", "before:hero:status", "hero:morale_bonus", "hero:status"], "spell points, luck bonus, backpack count after the Tomb" = ["hero:spell_points", "hero:luck_bonus", "hero:backpack_count"], "the Tomb after" = ["word:7,5", "object:7,5"] }
 

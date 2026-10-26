@@ -854,6 +854,13 @@ design §7.1.
   Hall of Fame shows and the batch stops (`neither the adventure map, a battle nor a dialog`). An
   experiment map keeps each player a hero after its battles (the check gives Blue a second one).
 - A player without towns gets "you have lost your last town" after each battle too.
+- Days waited (`days`) cost every player's turn: batch E7a's third run (E08 T57), its heroes
+  without Logistics, ended the turns into a sixth day and stopped at a turn's start on a screen
+  `dismiss` could not pass (not identified; the display is now kept as `not-dismissed.xwd`). An
+  experiment map's players hold no towns: keep a batch within a few days.
+- The harness check's Gear battle (a plan between two heroes) stopped once in two runs (E08 T57):
+  no attack cursor over the Archangel's hexes, the cursor's frame 6 at every point tried; the
+  next run passed. Run the check again before suspecting a change.
 - The dialog's text is read from the topmost dialog's text items (design §6.3), not from the game's
   message buffer (0x6973D8), which a dialog with a map's own text may not touch.
 - The game's memory can lag its screen by a step: after an animation it starts the next turn in
