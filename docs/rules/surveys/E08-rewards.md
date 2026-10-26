@@ -4,7 +4,7 @@ The original's rules for the objects that hand a visiting hero something of the 
 (increment 7, E08 decisions 121 and 122), by code reading (`docs/exe/README.md`) against VCMI
 1.7.5 and the wiki, with a census of the 160 shipped maps. Cut in four parts (decision 125):
 **T55a1** the census and the pickups (§1 to §5, done), **T55a2** the objects that teach
-(experience, spells, skills; §6), **T55a3** the rewards that give creatures, Pandora's Box and
+(experience, spells, skills; §6, done), **T55a3** the rewards that give creatures, Pandora's Box and
 events (§7), **T55a4** the common rules, batch E7's plan, the rule ids, the second reading and the
 checkpoint's questions (§8 on). Sections of a later part are added by that part; §9 and §10 below
 collect what each part leaves for T55a4.
@@ -21,14 +21,19 @@ Sources (labels as in `docs/04-rules-and-sources.md`):
   `lib/entities/artifact/CArtHandler.cpp` (`legalArtifact`), `config/objects/rewardablePickable.json`
   (`treasureChest`), `lib/rewardable/Interface.cpp` and `lib/mapObjects/CGHeroInstance.cpp`
   (`calculateXp`), `lib/mapObjects/CGCreature.cpp` (`giveReward`), `config/gameConfig.json`
-  (`backpackSize` -1); links `https://github.com/vcmi/vcmi/blob/1.7.5/<file>`.
+  (`backpackSize` -1); for T55a2 `config/objects/rewardableOncePerHero.json`, `shrine.json`,
+  `witchHut.json`, `scholar.json`, `rewardableOnceVisitable.json`, `markets.json` (`university`),
+  `lib/mapping/MapFormatH3M.cpp` (`readWitchHut`, `readScholar`, `readShrine`),
+  `lib/json/JsonRandom.cpp` (`loadSpell`, `loadSecondary`), `CGHeroInstance.cpp` (`canLearnSkill`,
+  `canLearnSpell`); links `https://github.com/vcmi/vcmi/blob/1.7.5/<file>`.
 - `wiki`: read through the summarising fetch tool, `https://heroes.thelazy.net/index.php/<Page>`:
-  Treasure_chest, Artifact, Spell_scroll (the pages found through the search tool; a direct fetch
+  Treasure_chest, Artifact, Spell_scroll; for T55a2 Arena, Shrine, Learning_stone, Witch_Hut,
+  Scholar_(adventure_map), University, Wagon, Warrior's_Tomb (the pages found through the search tool; a direct fetch
   of a page not linked from a search is refused in this session). Quotes are short.
 - `original-data` (the census): the 160 shipped maps (`original-data/maps.tar`) read with `h3-map`'s
   reader and imported, by a throwaway example (not committed), §1.
 
-## 0. Findings in short (T55a1)
+## 0. Findings in short (T55a1, T55a2)
 
 - **Today** the import keeps every object of §2 to §4 as an inert blocker (classes 5, 65 to 69, 93,
   101; `docs/formats/h3m.md`, "Import") and refuses 8 maps for a monster with an artifact (§5).
@@ -55,6 +60,24 @@ Sources (labels as in `docs/04-rules-and-sources.md`):
   position that takes it; the wiki: the backpack), D-31 which classes a random artifact (65) may be
   (code: no relic; VCMI: any), D-32 which artifacts a random one may repeat (code: none on the map
   or given; VCMI: the least used).
+- **The objects that teach (T55a2, §6):** ten classes give once per hero, marked in 32 bits per
+  class on the hero (**A-17**: a 33rd object shares the first one's mark; at most 30 on a shipped
+  map): Marletto Tower, Garden, Mercenary Camp, Star Axis +1 to a skill; the Arena +2 to Attack or
+  Defense (no leaving without one); the Library +2 to all four from level 10 (2 less per
+  Diplomacy level); the Schools +1 of two for 1 000 gold (or leave); the Learning Stone 1 000
+  experience times Learning; the Tree of Knowledge one level, without Learning, at a price drawn at
+  a new game (free, 2 000 gold or 10 gems). The Shrines and the Witch Hut teach at every visit what
+  they drew at a new game (a Shrine's spell repeats none of its level until the level is used up;
+  a hut's skill from the map's mask, all 28 on an RoE map). The Scholar draws at the map's load, falls
+  back to +1 primary skill and is removed. The University offers four drawn skills for 2 000 gold
+  each to a class that may learn them. The Corpse, Wagon, Warrior's Tomb and Lean To are drawn at
+  a new game; a full backpack turns the Corpse's artifact into 1 000 gold and the Wagon's into its
+  resources and leaves the Tomb's; the Tomb costs −3 morale once until the hero's next battle ends
+  (new hero state).
+- **Disputes (T55a2, §9):** D-33 an RoE map's Witch Hut (code: Leadership and Necromancy too; VCMI
+  and the wiki: never), D-34 the Shrines' repeats (code: none until the level is used up; VCMI:
+  uniform), D-35 the Corpse's and the Wagon's artifact class and the Wagon's amount, D-36 Necromancy
+  at a University (code: offered; VCMI and the wiki: never).
 
 ## 1. The census
 
@@ -119,6 +142,18 @@ The bodies, for the parts of T55a1 (the rest with their parts):
   resources too) on 18 maps; today's import refuses Brave New World and its allied version,
   Hoard and its allied version, Myth and Legend, Pandora's Box, Treasure Hunt and Unholy Quest for
   it (the other 10 maps are refused first for another reason).
+
+The bodies and counts, for T55a2 (the same throwaway example):
+
+- **No class above 32 on a map:** the once-per-hero classes at most 30 (Learning Stones, Back For
+  Revenge), Scholars 31 (Battle of the Sexes), Shrines of level 1 29 (Race for Ardintinny).
+- **Shrines (88 to 90):** 1 215 random, 28 with a spell (each of its shrine's level, none banned);
+  no map bans every spell of a level.
+- **Witch Huts (113):** 191 on RoE maps (no mask); 581 masks on AB and SoD maps, 16 of them
+  allowing Leadership, none Necromancy, none empty or wholly banned.
+- **Scholars (81):** 609 random, 43 primary skills, 34 secondary skills, 8 spells (levels 1, 1, 3,
+  3, 4, 5, 5, 5); no placed id of 255.
+- **Universities (104):** no map leaves fewer than four skills unbanned.
 
 ## 2. Treasure chests (class 101)
 
@@ -286,6 +321,220 @@ full backpack is the code's, in line with the wiki's rule for banks and heroes).
 The import then takes the 53 artifacts (the 8 refused maps move on to their next refusal or import
 whole); `MonsterTreasure.artifact` is already read by `h3-map`.
 
+## 6. The objects that teach (T55a2)
+
+The cut (decision 126): the 20 classes of the queue's list, the University's dialog read for its
+rules only. `original-data` (read) follows the human player's path; the computer player's branches
+are named, not read (E10): the Arena's pick (read, it is short), `ai_fight_answer` and
+`ai_magic_school_choice` (0x527CD0) at the School of Magic, `ai_gold_or_experience` (0x527FE0) at
+the School of War and the Tree of Knowledge, `ai_artifact_received` (0x433B40) after an artifact,
+`ai_university` (0x524ED0). Every handler is called from `visit_object`'s case for its class
+(`map.toml`, 0x4A84F0); the University's case is inline (0x4AA4DE). The draws named "at a new
+game" are `setup_map_objects`' cases (0x4C0CC0, its tile walk: level, row, column).
+
+| Class | Gives | Asks or costs | Refuses | How often |
+|---|---|---|---|---|
+| 23 Marletto Tower, 32 Garden of Revelation, 51 Mercenary Camp, 61 Star Axis | +1 Defense, Knowledge, Attack, Spell Power | — | — | once per hero |
+| 4 Arena | +2 Attack or Defense | a choice | — | once per hero |
+| 41 Library of Enlightenment | +2 to all four | — | level + 2 × Diplomacy below 10 | once per hero |
+| 47 School of Magic, 107 School of War | +1 Spell Power or Knowledge, +1 Attack or Defense | 1 000 gold, a choice or leave | less gold | once per hero |
+| 100 Learning Stone | 1 000 experience × Learning | — | — | once per hero |
+| 102 Tree of Knowledge | one level | drawn: free, 2 000 gold or 10 gems; a question | too little | once per hero |
+| 88, 89, 90 Shrines | a spell of level 1, 2, 3 (drawn) | — | known, no Spell Book, Wisdom too low | every visit |
+| 113 Witch Hut | a secondary skill at Basic (drawn) | — | known, eight skills | every visit |
+| 81 Scholar | a spell, a skill level or +1 primary | — | (falls back to the primary skill) | once (removed) |
+| 104 University | up to four skills at Basic (drawn) | 2 000 gold each | known, the class's weight 0, eight skills, gold | every visit |
+| 22 Corpse | 20 %: a treasure or minor artifact | — | (full backpack: 1 000 gold) | once (emptied) |
+| 105 Wagon | an artifact (40 %) or 2 to 5 of a resource (50 %) | — | (full backpack: the resources) | once (emptied) |
+| 108 Warrior's Tomb | an artifact of any class; −3 morale | a question | (full backpack: nothing, the artifact stays) | the artifact once |
+| 39 Lean To | 1 to 5 of a resource | — | — | once (emptied) |
+
+### 6.1 The marks of a visit
+
+- **Once per hero.** At a new game each of the classes 4, 23, 32, 41, 47, 51, 61, 100, 102 and 107
+  numbers its objects from 0 in the walk's order (counters set to 0 at 0x4C0CF6) and keeps the
+  number in the tile word. The hero holds one u32 per class (hero +0x57 Learning Stones, +0x5B
+  Marletto, +0x5F Garden, +0x63 Mercenary Camp, +0x67 Star Axis, +0x6B Tree, +0x6F Library, +0x73
+  Arena, +0x77 School of Magic, +0x7B School of War; H3API's per-hero bitfields); a visit tests
+  and sets the bit `1 << number`. The x86 shift counts mod 32 (the Tree masks its number to 5
+  bits outright, 0x4C1E6D), so **the 33rd object of a class shares the first one's bit**: a hero
+  who visited one is refused by the other (**A-17**). The census (§1) has at most 30 of a class on
+  a map (30 Learning Stones in Back For Revenge); the wiki (Learning Stone): "There can be up to
+  32 learning stones in any map", which reads as the editor's limit.
+- **The team's marks** (presentation and knowledge, no rule reads them here): most handlers set,
+  for every player of the visitor's team (`player_team` 0x4A5960), a bit in a byte per object kind
+  (game +0x4E344, `kinds_visited`); the Tree, the Shrines, the Witch Hut, the Wagon and the Tomb
+  also set the tile word's bits 5 to 12 (`tile_mark_visited_by_team` 0x4FBF90); the Corpse and
+  the Lean To set a bit of the current player's record (+0xC0, +0xC4). Several handlers set them
+  before a refusal (the Schools before the gold test, the Tree before its price, the Shrines and
+  the Witch Hut before any test), so a refused visit still counts as seen. They feed what a player
+  knows of the object (its right-click), §10.
+
+### 6.2 Primary skills: Marletto Tower, Garden, Mercenary Camp, Star Axis, Arena, Library
+
+`original-data` (read): **Marletto Tower** (`visit_marletto_tower` 0x4A2050): visited, a message;
+else +1 Defense (hero +0x477), the marks. The **Garden of Revelation** (0x4A2710, +1 Knowledge),
+**Mercenary Camp** (0x4A38B0, +1 Attack) and **Star Axis** (0x4A3DC0, +1 Spell Power) are the same
+code with their fields. **Arena** (`visit_arena` 0x49E7D0, its marks 0x4E53C0 and 0x4E53E0):
+visited, a message; else a human picks in a two-picture box (window result 0x7809 Attack, 0x780A
+Defense, anything else Attack, also the box's Cancel: style 10 builds one, 0x7801 at 0x4F6E5B, so
+there is no way to leave without a bonus), +2 to it. The computer takes the lower of the two
+clamped to 0 to 99 (Attack on a tie). **Library of Enlightenment** (0x4A3280): visited, a message;
+level (+0x55) + 2 × Diplomacy (+0xCD) below 10 refuses with a message and no mark (level 10;
+8, 6, 4 with Basic, Advanced, Expert Diplomacy); else +2 to all four. Every increase is a byte's
+`inc` or `add`, unclamped: past 127 a skill wraps (the level-up's **A-9**; the readers clamp to 0
+to 99).
+
+`vcmi` (`config/objects/rewardableOncePerHero.json`): the same gifts, the Arena's choice
+(`selectPlayer`, no refusal), the Library's limiter (level 10, or 8, 6, 4 with Diplomacy 1, 2, 3).
+`wiki` (Arena): "It is not possible to leave the arena without accepting one of these bonuses"; the
+others not read (VCMI agrees). **Consensus.** VCMI keeps a set of visitors per object, so
+A-17 is the original's alone.
+
+### 6.3 The Schools of Magic and War
+
+`original-data` (read): **School of Magic** (`visit_school_of_magic` 0x4A33E0): visited, a message;
+else the team's kind mark, then the current player's gold (record +0xB4) below 1 000 refuses with a
+message and no hero mark. A human picks Spell Power or Knowledge or leaves (window result 0x7801:
+nothing paid, no mark; 0x7809 Power, 0x780A Knowledge, anything else Power); then +1, the hero's
+mark, −1 000 gold. **School of War** (0x4A7A40): the same with Attack or Defense (anything else
+Attack). The computer: at the School of War `ai_gold_or_experience` weighs the 1 000 gold against
+the hero's experience to the next level and declines or takes the lower skill as at the Arena; at
+the School of Magic `ai_fight_answer` then 0x527CD0 (not read).
+
+`vcmi`: `schoolOfMagic`, `schoolOfWar`: two rewards each with the gold limiter and −1 000 gold,
+`canRefuse`. **Consensus.**
+
+### 6.4 Experience: the Learning Stone and the Tree of Knowledge
+
+`original-data` (read): **Learning Stone** (`visit_learning_stone` 0x4A6330): visited, a message;
+else x = trunc(`hero_learning` × 1 000.0f) (the chest's computation, §2.2: 1 000 before Learning),
+shown, `hero_gain_experience(x, no levels, tell)`, the marks, then `hero_level_up`.
+**Tree of Knowledge** (0x4A6710): at a new game its price is drawn, random_between(0, 2) in the
+word's bits 13 to 15: free, 2 000 gold or 10 gems (record +0xB0). The visit: visited, a message;
+else the marks, then too little gold or gems refuses (a message, no hero mark); with a price a human
+is asked (the answer 0x7806 declines, no hero mark); the gift is `experience_to_next_level(level)`
+(0x4DA420: the gap between the hero's level's threshold and the next's, the level-up's table and
+its × 1.2 steps), so exactly one level, **without Learning**; then the hero's mark and
+`hero_level_up`.
+
+`vcmi`: `learningStone` gives `heroExperience` 1 000, which VCMI's rewards scale by the hero's
+Learning (`calculateXp`, §2.3); `treeOfKnowledge`: `heroLevel` 1 at a price drawn by the map's dice
+(below 34 free, 34 to 66 2 000 gold, 67 on 10 gems: 34/33/33 % against the code's thirds),
+`canRefuse`. `wiki` (Learning stone): "1000 experience points the first time they visit it",
+silent on Learning. **Consensus** (the Tree's third is a rounding of VCMI's dice, not a rule).
+
+### 6.5 Spells: the Shrines
+
+`original-data` (read): the body is the spell (a u32; 255 random, `h3-map`'s `Body::Shrine`). At a
+new game a spell of 0x3FF (the word's bits 13 to 22; the cases 0x4C1CA8, 0x4C1CF5, 0x4C1D59) is
+drawn by `random_shrine_spell` (0x4C95A0) among the spells 0 to 69 of the shrine's level that have
+a school and carry no shrine mark (game +0x4, `shrine_spell_marks`), uniformly; the drawn spell
+gets the mark. The marks start as a copy of the game's spell bans (game +0x4A; `new_game_bans`
+0x4C2965). When a level's pool is used up, the marks of its unbanned spells are cleared and the
+draw starts again. So **the random Shrines of a level repeat no spell until each of the level's
+spells is out** (SoD: 15 spells at each of the levels 1 to 3). The visit (`visit_shrine` 0x4A5610):
+the marks first, then a spell the hero knows (+0x3EA), no Spell Book (`hero_wears_artifact(0)`) or
+a level above Wisdom (+0xD0) + 2 refuses with its message; else the hero learns it
+(`hero_learn_spell`). No mark of the hero's own: a refused hero may come back. A spell of −1 (a
+draw that found nothing) is not tested and would read outside the tables (**A-18**).
+
+`vcmi` (`shrine.json`, `JsonRandom::loadSpell`): the map's spell, else a random allowed, not special
+spell of the level, **uniform with repeats**; the limiter `canLearnSpells` (a book, the level at
+most `maxSpellLevel`, not known, not banned). `wiki` (Shrine): level 1, 2, 3, Basic Wisdom for the
+third, the three refusals' texts; silent on the draw. **D-34** (the repeats). The census: 1 215
+random shrines, 28 placed with a spell (each of its shrine's level, none banned); no map bans a
+whole level.
+
+### 6.6 A secondary skill: the Witch Hut
+
+`original-data` (read): the body is a mask of allowed skills (AB and SoD; none in RoE). At a new
+game (case 0x4C207D) the mask (an empty one: all 28 skills) less the banned skills (game +0x4E658)
+gives n candidates; the hut's skill is the r-th of them in id order, r = random_between(1, n), none
+−1 (`witch_hut_set_skill` 0x4C23C0, bits 13 to 19). The visit (`visit_witch_hut` 0x4A8080): the
+marks, then −1, a known skill or eight skills (+0x101) a message; else
+`hero_learn_secondary_skill(skill, 1)`: Basic. No hero mark and no class test.
+
+`vcmi` (`witchHut.json`, `CMapLoaderH3M::readWitchHut`): an AB or SoD map's mask is used; without
+one (RoE) the default **excludes Leadership and Necromancy**; the limiters agree (a free slot, not
+known). `wiki` (Witch Hut): the skill "cannot be Leadership, Necromancy" (the editor's default; the
+map may allow them), Basic, a skill "only ... if the hero has not already learned it"; RoE maps not
+addressed. The census: 191 huts on RoE maps (no mask: Leadership and Necromancy possible in the
+code); of the 581 masks of AB and SoD maps, 16 allow Leadership and none Necromancy. **D-33.**
+
+### 6.7 The Scholar
+
+`original-data` (read): the body (`load_scholar_body` 0x500B30) is drawn **when the map is loaded**:
+a kind of 0xFF becomes random_between(0, 2) (0 a primary skill, 1 a secondary skill, 2 a spell) and
+its id is drawn: a spell uniformly among the spells 0 to 69 with a school that are not banned (any
+level, no marks), a skill among the 28 not banned, a primary skill random_between(0, 3); a placed
+kind takes the map's byte. At a new game a Scholar of kind 1 or 2 also gets a primary skill
+random_between(0, 3) (case 0x4C1B29), its fallback. The visit (`visit_scholar` 0x4A4DC0): a spell
+is learned when not known, of a level at most Wisdom + 2 and with a Spell Book; a skill is taken by
+`hero_learn_secondary_skill(skill, 1)` (a new one at Basic below eight skills, a known one one level
+up below Expert; no class test); when it cannot, and for kind 0, **+1 to the fallback primary
+skill**. Then the Scholar is removed (`remove_map_object`).
+
+`vcmi` (`scholar.json`, `readScholar`): the same three rewards in that order with the same limiters,
+a primary skill as the last resort, `removeObject`; a random kind by the map's dice (33/33/34 %).
+`wiki` (Scholar): "+1 to one of the primary skills, or one level of secondary skill, or a spell"; a
+known skill rises "to the next level"; a spell it cannot learn or an expert skill gives a primary
+skill instead; it teaches class-restricted skills; "disappears after that". **Consensus.** The
+census: 609 random, 43 primary, 34 secondary, 8 spells (two of level 1, two of 3, one of 4, three of
+5).
+
+### 6.8 The University
+
+`original-data` (read for its rules): at a new game (`university_setup` 0x4C06F0) four distinct
+skills are drawn, each random_between(0, n − 1) among the unbanned skills left; they go to the
+game's universities (game +0x4E3CC). A human's visit opens the dialog (0x5EF500; the computer
+`ai_university`); the team's kind mark is set after it. Each of the four slots
+(`university_slot_state` 0x5F0790) is disabled when the hero knows the skill, the hero's class
+weighs it 0 (hero class +0x18, the level-up's weights: Necromancy for every class but Death Knight
+and Necromancer, and e.g. Leadership for those two, Fire Magic for Rangers and Beastmasters) or the
+hero has eight skills; a click (0x5F0AC0) gives the reason, else the purchase box, whose button
+works only with 2 000 gold or more (0x5F0D18); buying (0x5F0F60) takes 2 000 gold from the owner
+and teaches the skill at Basic, and the slots are re-evaluated, so several skills may be bought in
+one visit. **Necromancy is among the skills drawn.**
+
+`vcmi` (`markets.json` `university`, `CGHeroInstance::canLearnSkill`): four offers, each **"noneOf
+necromancy"**; buying needs a free slot, an allowed and unknown skill and the class's probability
+above 0. `wiki` (University): "learn up to four secondary skills to basic level for 2000" each,
+"a disabled skill will not appear there", "**Necromancy can not appear in universities**", the
+class restrictions ("Barbarians cannot learn Water magic"). **D-36** (the reading against both).
+
+### 6.9 The finds: Corpse, Wagon, Warrior's Tomb and Lean To
+
+`original-data` (read):
+
+- **Corpse** (case 0x4C1131; `visit_corpse` 0x4A5480): random_between(0, 99) below 20 holds
+  `random_artifact_of_level(6)` (treasure and minor drawn as one pool, so weighted by the classes'
+  sizes: 37 and 21 records in the packs, about 64 % treasure). The visit: with the artifact and a
+  full backpack (≥ 64) **1 000 gold** to the owner instead; else the artifact to the hero; emptied
+  either way; without one a message.
+- **Wagon** (0x4C1EA2; `visit_wagon` 0x4A69B0): every wagon draws a resource random_between(0, 5)
+  (wood to gems, no gold) and an amount random_between(2, 5); then r = random_between(0, 99): below
+  10 empty, below 50 `random_artifact_of_level(6)`, else the resources. The visit: an artifact to
+  the hero, with a full backpack **the drawn resources** instead; resources to the owner; emptied.
+- **Warrior's Tomb** (0x4C1F1C; `visit_warriors_tomb` 0x4A7C30): r below 30 a treasure artifact, 80
+  minor, 95 major, else a relic. A human is asked first; no answer leaves (nothing, no penalty).
+  With the artifact and room it goes to the hero; empty, or with a full backpack (**the artifact
+  stays**), a message. Then, whether or not anything was found, the hero's morale bonus (+0x11A)
+  takes −3 **once until the end of its next battle** (status flag bit 21; `hero_battle_bonuses_clear`
+  0x4DA510, called by `battle_end`, zeroes the morale and luck bonuses and the flag).
+- **Lean To** (0x4C157A; `visit_lean_to` 0x4A31A0): a resource random_between(0, 5) and an amount
+  random_between(1, 5); the visit gives them to the owner and empties it.
+
+`vcmi` (`rewardableOnceVisitable.json`): Corpse 10 % treasure, 10 % minor, 80 % nothing; Wagon 20 %
+treasure, 20 % minor, 50 % **1 to 5** of a resource (no gold), 10 % nothing; Tomb 30/50/15/5 % by
+class, −3 morale for one battle at every visit, also at a looted tomb (whether two stack is VCMI's
+bonus system, not read); Lean To 1 to 5 of a resource (no gold); no full-backpack cases (VCMI's
+backpack is unbounded, §3.4). `wiki`: Wagon 10 % nothing, 20 % treasure, 20 % minor, 50 % "2–5"
+resources "(except gold)"; Warrior's Tomb 30/50/15/5 %, "Do you wish to search the tomb?", "-3 to
+morale until the next battle", a searched tomb gives the penalty only; the Corpse's page was not
+returned by a search. **D-35** (the artifact's class split, the Wagon's amount); the Tomb agrees;
+the full-backpack cases are the code's alone (rows for batch E7, §10).
+
 ## 9. Disputes and quirk candidates so far (for T55a4)
 
 | Id | What | Sources | Proposal |
@@ -294,8 +543,22 @@ whole); `MonsterTreasure.artifact` is already read by `h3-map`.
 | D-30 | where a reward's artifact goes | code: `hero_give_artifact`, the first body position that takes it, else the backpack (HER-CHG-002, implemented, not yet verified); wiki: a chest's artifact "is put in the hero's backpack", "Scrolls go into the backpack" | the code's; a batch E7 row (a scroll or an artifact picked up with its position free) |
 | D-31 | the classes of a random artifact (65) | code: treasure, minor or major (0xE); VCMI: any legal class, relics too; wiki silent | the code's; a batch E7 row (many class 65 objects, no relic among them) |
 | D-32 | what a random artifact may repeat | code: never a banned, placed or already drawn one until the pool is exhausted; VCMI: the least rolled, placed ones not counted; wiki silent | the code's; no row (rare: a pool exhausted) |
+| D-33 | an RoE map's Witch Hut (no mask) | code (0x4C207D): any of the 28 skills not banned, Leadership and Necromancy among them (191 huts); VCMI: never Leadership or Necromancy; wiki: "cannot be Leadership, Necromancy" (the editor's default), RoE not addressed | the reading against both: the user's, after a batch E7 row (an RoE map with many huts) |
+| D-34 | what the random Shrines repeat | code (0x4C95A0): no spell of the level until each is out (the bans never); VCMI: uniform, repeats; wiki silent | the code's; a batch E7 row (15 random Shrines of one level: 15 spells) |
+| D-35 | the Corpse's and the Wagon's artifact; the Wagon's amount | code: treasure and minor as one pool (by the classes' sizes, about 64 % treasure), the Corpse 20 %, the Wagon 40 %; the amount 2 to 5; VCMI and the wiki (Wagon): half each class (10 + 10 %, 20 + 20 %); the amount: wiki 2 to 5, VCMI 1 to 5 | the code's (the amount with the wiki); no row (a distribution) |
+| D-36 | Necromancy at a University | code (0x4C06F0): drawn like any unbanned skill, bought only by a class that weighs it (Death Knight, Necromancer); VCMI ("noneOf necromancy") and the wiki ("Necromancy can not appear in universities"): never offered | the reading against both: the user's, after a batch E7 row (many Universities) |
 
-Quirk candidates: none so far. Not quirks: the full backpack that refuses a wearable artifact (the
+Quirk candidates (T55a2): **A-17** the once-per-hero marks are 32 bits per class (§6.1): the 33rd
+object of a class shares the first one's mark. Unreachable on the shipped maps (at most 30) and
+probably in the editor (the wiki's "up to 32 learning stones"). Proposal: not reproduced (a mark
+per object), no flag. **A-18** a Shrine's or a Scholar's spell of −1 (a draw with nothing left, or
+a placed id of 255) is not tested at the visit and reads outside the tables (§6.5); unreachable on
+the shipped maps. Proposal: always fixed (nothing to learn: the Shrine refuses as for a known
+spell, the Scholar falls back). Not quirks (T55a2): the unclamped primary skill increases (the
+level-up's A-9 covers the class), the Arena's Cancel taken as Attack (the wiki: no leaving without
+a bonus), the team's marks set before a refusal (knowledge, §10).
+
+T55a1: none. Not quirks: the full backpack that refuses a wearable artifact (the
 wiki states it), the chest's 1 000 gold with a full backpack, the monster's artifact lost on a full
 backpack (the wiki's rule for banks), the dead pickup conditions (§3.3).
 
@@ -324,3 +587,29 @@ recommendation: not modelled, the Tutorial is a teaching map).
 - **The import's changes:** classes 5, 65 to 69, 93 and 101 typed; the record's guards and text flag
   as a guarded pile's; the scroll's spell (a byte); the random artifacts and the chests drawn when
   the game is built (setup stream, decision 17); the monster's artifact.
+- **New hero state (T55a2):** a visited mark per object for the ten once-per-hero classes (§6.1,
+  A-17); the bonus to morale until the end of the hero's next battle and its flag (the Tomb's −3,
+  §6.9), which reaches the battle seam (the hero's morale, ADR-0013): T55b's drafts.
+- **Decisions (T55a2):** the Arena's two options (no refusal); the Schools' two options or leave;
+  the Tree's and the Tomb's yes or no; the University's purchases (any learnable slot while the
+  gold lasts, then leave). The computer's choices are E10's.
+- **What a player knows (T55a2):** the team's marks (§6.1) make a Shrine's spell, a Witch Hut's
+  skill, a Tree's price and a Wagon's or a Tomb's state known to the visitor's team (the
+  right-click), hidden from the others; the hero's own marks are its owner's.
+- **Draws when the game is built (T55a2, decision 17's setup stream):** the Tree's price, the
+  Shrines' spells (with their marks), the Witch Huts' skills, the Scholars' kinds, ids and
+  fallbacks (the original draws the Scholar at the map's load), the Universities' four skills, the
+  Corpse, the Wagon, the Tomb and the Lean To.
+- **Batch E7's rows from T55a2:** D-33, D-34, D-36; the code's alone (VCMI and the wiki silent): the
+  full backpack at a Corpse (1 000 gold), a Wagon (its resources) and a Tomb (the artifact stays),
+  two Tombs before one battle (−3, not −6); the Learning Stone's 1 000 with Basic Learning (the
+  chest's truncation).
+- **The proposed rule ids (T55a2):** ADV-TCH-001 Marletto Tower, Garden, Mercenary Camp, Star Axis,
+  Arena and Library (§6.2), ADV-TCH-002 the Schools (§6.3), ADV-TCH-003 the Learning Stone and the
+  Tree (§6.4), ADV-TCH-004 the Shrines and their draw (§6.5, D-34), ADV-TCH-005 the Witch Hut (§6.6,
+  D-33), ADV-TCH-006 the Scholar (§6.7), ADV-TCH-007 the University (§6.8, D-36), ADV-PIK-009 the
+  Corpse, ADV-PIK-010 the Wagon, ADV-PIK-011 the Warrior's Tomb, ADV-PIK-012 the Lean To (§6.9,
+  D-35), HER-ADV-008 the morale bonus until the next battle's end (§6.9).
+- **The import's changes (T55a2):** the 20 classes typed (blockers today); the bodies `h3-map`
+  already reads (the Shrine's spell, the Witch Hut's mask, the Scholar's kind and code); no new
+  refusal.
