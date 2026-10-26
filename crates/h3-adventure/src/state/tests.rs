@@ -82,6 +82,7 @@ fn setup() -> AdventureSetup {
             tiles,
             objects: vec![
                 ObjectSetup {
+                    scenery: Default::default(),
                     anchor: Pos::new(1, 1, 0),
                     blocked: mask(&[(0, 0), (1, 0), (2, 0)]),
                     visitable: mask(&[(1, 1)]),
@@ -92,6 +93,7 @@ fn setup() -> AdventureSetup {
                     guards: None,
                 },
                 ObjectSetup {
+                    scenery: Default::default(),
                     anchor: Pos::new(2, 2, 1),
                     blocked: mask(&[(0, 0), (1, 0)]),
                     visitable: mask(&[(0, 0)]),
@@ -199,6 +201,7 @@ fn the_terrain_shares_count_the_tiles_no_object_blocks() {
     assert_eq!(build(&setup), all);
     // An object blocking the first row's sand and swamp leaves them out.
     setup.map.objects.push(ObjectSetup {
+        scenery: Default::default(),
         anchor: Pos::new(2, 0, 0),
         blocked: mask(&[(0, 0), (1, 0)]),
         visitable: TileMask::default(),
@@ -224,6 +227,7 @@ fn an_object_may_stick_out_past_the_right_and_bottom_edges() {
         // Anchored two columns right of and one row below the surface's corner (3, 2): its
         // blocked tile three columns left and two rows up is (2, 1), its visitable tile (3, 2).
         ObjectSetup {
+            scenery: Default::default(),
             anchor: Pos::new(5, 3, 0),
             blocked: mask(&[(0, 0), (3, 2), (6, 4), (0, 4)]),
             visitable: mask(&[(2, 1)]),
@@ -235,6 +239,7 @@ fn an_object_may_stick_out_past_the_right_and_bottom_edges() {
         },
         // Covering no tile of the map at all.
         ObjectSetup {
+            scenery: Default::default(),
             anchor: Pos::new(u16::MAX, u16::MAX, 1),
             blocked: mask(&[(0, 0)]),
             visitable: mask(&[(0, 0)]),
@@ -309,6 +314,7 @@ fn with_objects(objects: &[(ObjectTypeId, Option<u32>)]) -> AdventureSetup {
     let mut setup = setup();
     for (&(object_type, amount), x) in objects.iter().zip(0..) {
         setup.map.objects.push(ObjectSetup {
+            scenery: Default::default(),
             anchor: Pos::new(x % 4, 0, 1),
             blocked: TileMask::default(),
             visitable: mask(&[(0, 0)]),
@@ -423,6 +429,7 @@ fn a_removed_object_frees_the_tiles_no_other_object_covers() {
     let mut setup = setup();
     setup.heroes[0].pos = Pos::new(2, 1, 0);
     setup.map.objects.push(ObjectSetup {
+        scenery: Default::default(),
         anchor: Pos::new(1, 1, 0),
         blocked: mask(&[(0, 0)]),
         visitable: mask(&[(1, 0)]),

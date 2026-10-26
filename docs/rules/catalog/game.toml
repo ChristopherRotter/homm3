@@ -742,3 +742,76 @@ numeric  = "integer"
   kind       = "design"
   ref        = "the user at ADV-Q24 (E08 decision 96): the flag passed to the battle as Tactics 0 'as long as it doesn't change the behavior regarding how two heroes' tactics skill influence each other', so both levels go as 0, never the flagged hero's alone; ADR-0017 point 11"
   confidence = "high"
+
+[[rule]]
+id       = "GAM-BAT-010"
+title    = "A battle on the map: the game's difficulty and which sides count as human"
+context  = "game"
+status   = "implemented"
+summary  = "When the game builds a battle's setup (GAM-BAT-001) it passes the game's difficulty (the setup's, kept by the adventure state) and, per side, whether its player counts as human (`BattleSetup.human`): the player's flag of the game's setup (`PlayerSetup.human`), false for a side without a player (a monster, guards). A map's import sets the flag from the map's player kinds: a colour a human may play is human, a computer-only colour is not; whoever seats the players (an env, the server) may change it before the game is built, and an agent counts as whatever the setup says (ADV-Q27). The flag decides no one's commands; the battle reads it for the original's computer's choices and, with BAT-QUIRK-27 (faithful), the bad-morale let-off of a side without a human player (BAT-MOR-004), which before E08 T54 reached every side of a game's battle. It is hashed with the players (game state hash v14). Other readers of the original's flag (a computer player's starting resources, GAM-RES-002; its loose formation, ADV-QUIRK-8; its tactics flag, GAM-BAT-009) wait for E10's computer players. E08 T54: `PlayerSetup::human`, `GameState::human`, `start_battle`; `h3_map`'s import `players`."
+numeric  = "integer"
+quirks   = ["BAT-QUIRK-27"]
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (docs/formats/installation.md §7.21; ADR-0023 point 7): the battle's byte +0x54A4 per side, set from whether the side's player is human (0 for a side without a player), read by the bad-morale let-off (0x464BDB) and the computer's choices; the game's difficulty [game]+0x1F6D8"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "design"
+  ref        = "E08 decision 123 (the battle seam's facts first) and the user at ADV-Q27 (E08 decision 124, T54's start): the flag of the game's setup, the import's default from the map's player kinds, a session may change it"
+  confidence = "high"
+
+[[rule]]
+id       = "GAM-BAT-011"
+title    = "A battle on the map: the battlefield picture's variant from the scenery around its tile"
+context  = "game"
+status   = "implemented"
+summary  = "A battle from the map carries the battlefield picture's variant (`BattleSetup.background`, for viewers: no rule reads it; the original draws dirt, grass and snow by it): over the tiles within 3 of the battle's tile along each axis, on its level and clipped to the map, the scenery each tile records, 0 when dead vegetation outnumbers both the trees and the mountains, 1 when the mountains outnumber both the trees and the dead vegetation, else 2 (an empty surrounding too). A tile records, of the objects still on the map, the topmost visited from it, else the topmost ownable one blocking it, else the topmost one blocking it, else none; heroes take no tile. The topmost is the last in map order, as for visits (ADV-OBJ-003): the original's draw order by layer, where an object higher on the tile wins whatever the map's order, is not modelled (it needs the pictures' sizes). An object's scenery comes from its class at the import: trees 114, 115, 135, 137, 155, 159, 160; mountains 123, 133, 134, 136, 157, 158; dead vegetation 119; ownable 17, 20, 33, 42, 53, 77, 87, 98. E08 T54: `AdventureState::background`, `tile_sceneries`, `Scenery`, `h3_map`'s `codes::scenery`."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E08 T54; docs/rules/surveys/E08-objects.md §2.5, docs/epics/E17-design.md §5): battle_background_variant 0x41ADB0 counts, over x - 3 to x + 3 and y - 3 to y + 3 of the battle's map position (battle manager +0x13FF0) clipped to the map, the tiles whose recorded class (map_item +0x1E) its byte table at 0x41AFE0 marks a tree, a mountain or dead vegetation, and picks 0 if dead vegetation outnumbers both, 1 if mountains do, else 2; tile_refresh_object 0x505610 records a tile's class from its draw list, topmost first: an object whose entrance is on it, else an ownable one (class_is_ownable 0x40FCA0) blocking it, else any blocking it, else class 124"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Objects.txt (H3bitmap.lod): the 485 templates of classes 114 to 160 have no entrance tile, 44 of them block nothing"
+  confidence = "high"
+
+[[rule]]
+id       = "GAM-BAT-012"
+title    = "A battle on the map: each side's colour and a placed hero's sex, for viewers"
+context  = "game"
+status   = "implemented"
+summary  = "A battle from the map carries each side's player colour (`BattleSetup.colours`: 0 red to 7 pink, none for a side without a player) and each hero's sex the map gave it (`BattleHero.sex`; none: the hero type's own), for viewers: no rule reads them (the original draws a hero's flag and picture by them). A placed hero's sex is the map's code on its body (AB and SoD: 0 male, 1 female, any other the type's), else the code of its hero type's map-wide entry (SoD); the game keeps it with the heroes' static facts (game state hash v14). E08 T54: `HeroDetailsSetup::sex`, `GameState::hero_sex`, `start_battle`; `h3_map`'s import `hero_sex`."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (docs/epics/E17-design.md; CLT-Q6, docs/lanes/client/QUESTIONS-ANSWERED.md): battle_load_heroes 0x463370 draws each hero's flag by its player's colour and picks its picture by its sex"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "design"
+  ref        = "docs/formats/h3m.md: a placed hero's body (AB and SoD) and a hero type's map-wide entry (SoD) each hold a sex byte, 0xFF the default; the import takes the body's field over the entry's as for every customisation (GAM-HER-001, E08 T18b); 0 male and 1 female as CLT-Q6's HeroSex"
+  confidence = "medium"
+
+[[rule]]
+id       = "GAM-BAT-013"
+title    = "A battle on the map: the special ground under the attacking hero"
+context  = "game"
+status   = "implemented"
+summary  = "A battle from the map carries the special battlefield of the special ground under the attacking hero (`BattleSetup.attacker_ground`: the last ground in map order whose picture lies on the hero's tile, ADV-GRD-001; none off a ground). The defending side stands on the battle's tile, whose battlefield is the battle's own. Only the original's computer reads it (ADR-0027 point 14: it values the attacking hero's spells at the mastery of its own tile, with BAT-QUIRK-25 in faithful); the original's tile_spell_field names only the grounds that raise masteries, and the others raise none, so passing every ground values alike. E08 T54: `AdventureState::special_ground`, `BattleStart::attacker_ground`."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (docs/formats/installation.md §7.39): 0x5273D0 values a spell at the mastery of the hero's own map tile's special field (hero_tile_spell_field 0x4E4FA0, tile_spell_field 0x4FCF40 through tile_special_ground 0x4FCE20: Magic Plains, Lucid Pools, Fiery Fields, Rocklands, Magic Clouds; else -1)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "design"
+  ref        = "E08 decision 123; ADR-0027 point 14 (the battle lane's seam field, BAT-Q56)"
+  confidence = "high"

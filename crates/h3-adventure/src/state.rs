@@ -36,8 +36,12 @@ use crate::ruleset::{
 };
 use crate::setup::{
     AdventureSetup, ArmyError, Guards, HeroSetup, MapSetup, MonsterSetup, ObjectSetup, Pos,
-    SetupError, StandError, TileMask,
+    Scenery, SetupError, StandError, TileMask,
 };
+
+/// How far around a battle's tile the battlefield picture's variant counts the scenery, in tiles
+/// along each axis (GAM-BAT-011, E08 T54; the original's 0x41ADB0: x − 3 to x + 3, y − 3 to y + 3).
+pub const BACKGROUND_RADIUS: u16 = 3;
 
 /// A tile of the static map.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -105,6 +109,8 @@ pub struct MapObject {
     /// E08 T21a); none for every other object. A battle they survive leaves their stacks in the
     /// state, not here.
     pub guards: Option<Guards>,
+    /// What it is among a battle's surroundings (GAM-BAT-011, E08 T54).
+    pub scenery: Scenery,
 }
 
 /// A wandering monster of the static map (ADV-MON-001, E08 T20a2a): the map's data with what the
@@ -580,6 +586,7 @@ impl StaticMap {
             drawn: object.drawn,
             monster: None,
             guards,
+            scenery: object.scenery,
         });
     }
 
@@ -678,8 +685,9 @@ impl CanonicalHash for StaticMap {
     /// contents; since v9 its drawn mask and, as 0 for none or 1 and its fields in order, its
     /// monster: creature, count, aggression, never flees, does not grow, the treasure as length
     /// and entries; since v10, as 0 for none or 1 and its fields, its guards: whether they ask,
-    /// the stacks as length and slot, creature and count each). The per-tile object flags follow
-    /// from the objects.
+    /// the stacks as length and slot, creature and count each; since v12 its scenery, 0 other, 1
+    /// ownable, 2 a tree, 3 a mountain, 4 dead vegetation). The per-tile object flags follow from
+    /// the objects.
     fn hash_into(&self, h: &mut StateHasher) {
         h.write_u16(self.width);
         h.write_u16(self.height);
@@ -732,6 +740,13 @@ impl CanonicalHash for StaticMap {
                     }
                 }
             }
+            h.write_u8(match object.scenery {
+                Scenery::Other => 0,
+                Scenery::Ownable => 1,
+                Scenery::Tree => 2,
+                Scenery::Mountain => 3,
+                Scenery::DeadVegetation => 4,
+            });
         }
     }
 }
@@ -1262,21 +1277,42 @@ impl AdventureState {
 
     /// The battle the hero at `attacker` starts by visiting the hero at `defender` (indices among
     /// the heroes on the map; GAM-BAT-004, E08 T19a): both sides as they stand, fought at the
-    /// defender's tile ([`Self::battle_ground`]).
+    /// defender's tile ([`Self::battle_at`]).
     fn battle_start(
         &self,
         part: &AdventureRuleset,
         attacker: usize,
         defender: usize,
     ) -> BattleStart {
-        let tile = self.heroes[defender].pos;
+        let defending = &self.heroes[defender];
+        self.battle_at(
+            part,
+            &self.heroes[attacker],
+            Defender::Hero(defending.combatant()),
+            defending.pos,
+        )
+    }
+
+    /// The battle `attacker`, a hero on the map, starts against `defender` at `tile` (GAM-BAT-001,
+    /// E08 T19a): fought where [`Self::battle_ground`] says; since E08 T54 with the battlefield
+    /// picture's variant of the tile's surroundings ([`Self::background`], GAM-BAT-011) and the
+    /// special ground of the attacking hero's own tile ([`Self::special_ground`], GAM-BAT-013).
+    pub(crate) fn battle_at(
+        &self,
+        part: &AdventureRuleset,
+        attacker: &HeroOnMap,
+        defender: Defender,
+        tile: Pos,
+    ) -> BattleStart {
         let (terrain, battlefield) = self.battle_ground(part, tile);
         BattleStart {
-            attacker: self.heroes[attacker].combatant(),
-            defender: Defender::Hero(self.heroes[defender].combatant()),
+            attacker: attacker.combatant(),
+            defender,
             tile,
             terrain,
             battlefield,
+            background: self.background(tile),
+            attacker_ground: self.special_ground(part, attacker.pos),
         }
     }
 
@@ -1284,9 +1320,8 @@ impl AdventureState {
     /// `E04c-battlefields.md` §4; the ruleset part's [`crate::BattleTerrains`]): underground on its
     /// terrain, else on a coast tile (the map's flag) on the coast's terrain and battlefield, else
     /// on the tile's terrain without a special battlefield. Without the part's battle terrains,
-    /// always the last. Then a special ground on the tile replaces the battlefield, the coast's
-    /// too, and keeps the terrain (ADV-GRD-001, E08 T20a2a): the last ground in map order whose
-    /// picture lies on the tile (the original walks the tile's draw list from the top, 0x4FCE20).
+    /// always the last. Then a special ground on the tile ([`Self::special_ground`]) replaces the
+    /// battlefield, the coast's too, and keeps the terrain (ADV-GRD-001, E08 T20a2a).
     // rule: GAM-BAT-001, ADV-GRD-001
     pub fn battle_ground(
         &self,
@@ -1300,7 +1335,18 @@ impl AdventureState {
             }
             _ => (self.map.at(pos).terrain, None),
         };
-        let ground = self.map.objects().iter().rev().find_map(|object| {
+        (terrain, self.special_ground(part, pos).or(field))
+    }
+
+    /// The special battlefield of the special ground on `pos`, if any (ADV-GRD-001, E08 T20a2a):
+    /// the last ground in map order whose picture lies on the tile (the original walks the tile's
+    /// draw list from the top, 0x4FCE20). Since E08 T54 also the attacking hero's own tile's
+    /// (GAM-BAT-013: the original's computer values a hero's spells at its own tile's mastery,
+    /// `tile_spell_field` 0x4FCF40, which names only the grounds that raise masteries; the others
+    /// raise none, so the battle values them alike).
+    // rule: ADV-GRD-001, GAM-BAT-013
+    pub fn special_ground(&self, part: &AdventureRuleset, pos: Pos) -> Option<ContentKey> {
+        self.map.objects().iter().rev().find_map(|object| {
             match object.object_type.and_then(|id| part.object_type(id)) {
                 Some(ObjectType {
                     kind: ObjectKind::Ground { battlefield, .. },
@@ -1308,8 +1354,98 @@ impl AdventureState {
                 }) if object.lies_on(pos) => Some(battlefield.clone()),
                 _ => None,
             }
-        });
-        (terrain, ground.or(field))
+        })
+    }
+
+    /// The battlefield picture's variant of a battle at `pos` (GAM-BAT-011, E08 T54; the
+    /// original's 0x41ADB0): over the tiles within [`BACKGROUND_RADIUS`] of `pos` on its level,
+    /// clipped to the map, the scenery each tile records ([`Self::tile_sceneries`]), 0 when dead
+    /// vegetation outnumbers both the trees and the mountains, 1 when the mountains outnumber both
+    /// the trees and the dead vegetation, else 2 (an empty surrounding too). For viewers: no rule
+    /// reads it.
+    // rule: GAM-BAT-011
+    pub fn background(&self, pos: Pos) -> u8 {
+        let (mut trees, mut mountains, mut dead) = (0u8, 0u8, 0u8);
+        for scenery in self.tile_sceneries(pos) {
+            match scenery {
+                Scenery::Tree => trees += 1,
+                Scenery::Mountain => mountains += 1,
+                Scenery::DeadVegetation => dead += 1,
+                Scenery::Other | Scenery::Ownable => {}
+            }
+        }
+        if dead > trees && dead > mountains {
+            0
+        } else if mountains > trees && mountains > dead {
+            1
+        } else {
+            2
+        }
+    }
+
+    /// The scenery each tile within [`BACKGROUND_RADIUS`] of `pos` records (GAM-BAT-011; survey
+    /// `E08-objects.md` §2.5, the original's 0x505610 on each tile), in no particular order: of
+    /// the objects still on the map, the topmost — taken as the last in map order, as for visits
+    /// — visited from the tile, else the topmost ownable one blocking it, else the topmost one
+    /// blocking it; a tile without any records [`Scenery::Other`]. Heroes are no objects here, as
+    /// they take no tile in the original. One pass over the objects, whose masks reach at most
+    /// [`TileMask::COLUMNS`] − 1 columns left of and [`TileMask::ROWS`] − 1 rows above their
+    /// anchors.
+    fn tile_sceneries(&self, pos: Pos) -> impl Iterator<Item = Scenery> {
+        const SIDE: usize = 2 * BACKGROUND_RADIUS as usize + 1;
+        // Per tile of the square, the walk that took it (1 visited from, 2 an ownable object
+        // blocking it, 3 any object blocking it; 4 none yet) and its object's scenery.
+        let mut taken = [[(4u8, Scenery::Other); SIDE]; SIDE];
+        let left = pos.x.saturating_sub(BACKGROUND_RADIUS);
+        let top = pos.y.saturating_sub(BACKGROUND_RADIUS);
+        let right = pos
+            .x
+            .saturating_add(BACKGROUND_RADIUS)
+            .min(self.map.width().saturating_sub(1));
+        let bottom = pos
+            .y
+            .saturating_add(BACKGROUND_RADIUS)
+            .min(self.map.height().saturating_sub(1));
+        let reach = |low: u16, high: u16, extent: u8, at: u16| {
+            at >= low && at <= high.saturating_add(u16::from(extent) - 1)
+        };
+        for (index, object) in self.map.objects().iter().enumerate().rev() {
+            let anchor = object.anchor;
+            if anchor.level != pos.level
+                || !reach(left, right, TileMask::COLUMNS, anchor.x)
+                || !reach(top, bottom, TileMask::ROWS, anchor.y)
+                || self.is_removed(index)
+            {
+                continue;
+            }
+            for y in top..=bottom {
+                for x in left..=right {
+                    let tile = Pos::new(x, y, pos.level);
+                    let (blocks, visited) = object.covers(tile);
+                    let walk = if visited {
+                        1
+                    } else if blocks && object.scenery == Scenery::Ownable {
+                        2
+                    } else if blocks {
+                        3
+                    } else {
+                        continue;
+                    };
+                    let slot = &mut taken[usize::from(y - top)][usize::from(x - left)];
+                    // The objects come topmost first: a later one takes a tile only by an
+                    // earlier walk.
+                    if walk < slot.0 {
+                        *slot = (walk, object.scenery);
+                    }
+                }
+            }
+        }
+        let (columns, rows) = (usize::from(right - left) + 1, usize::from(bottom - top) + 1);
+        taken
+            .into_iter()
+            .take(rows)
+            .flat_map(move |row| row.into_iter().take(columns))
+            .map(|(_, scenery)| scenery)
     }
 
     /// Applies a battle's outcome to its heroes on the map (ADR-0017 point 11; GAM-BAT-002,

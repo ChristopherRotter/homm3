@@ -4,9 +4,9 @@
 
 use std::sync::{Arc, LazyLock};
 
-use h3_adventure::{Guards, Pos as TilePos, TileMask};
+use h3_adventure::{Guards, Pos as TilePos, Scenery, TileMask};
 use h3_content::{Formation, HeroEffect};
-use h3_contracts::{ArmyStack, PlayerId};
+use h3_contracts::{ArmyStack, HeroSex, PlayerId};
 use h3_game::{GameRuleset, HeroArmy, HeroDetailsSetup, PlayerSetup};
 use h3_pack_adventure::{ORIGINAL_PACKS, compile};
 use proptest::prelude::*;
@@ -17,7 +17,7 @@ use super::strategy::{raw_map, version};
 use crate::import::codes;
 use crate::model::{
     Artifacts, Bits, Body, CustomHero, HeroBody, MainTown, Message, MonsterBody, MonsterTreasure,
-    Object, Pos, RawMap, Stack, Template, Text, Tile, Version,
+    Object, Player, Pos, RawMap, Stack, Template, Text, Tile, Version,
 };
 use crate::{ImportError, Limits, Unsupported, import, import_map, parse};
 
@@ -107,6 +107,7 @@ fn map() -> RawMap {
                 owner: 0,
                 hero_type: 0,
                 army: Some(army),
+                sex: 0xFF,
                 ..HeroBody::default()
             })),
         ),
@@ -126,7 +127,13 @@ fn imports_the_static_layer_players_and_a_placed_hero() {
     let core = SOD.core();
     let part = SOD.adventure();
     let setup = import(&map(), &SOD).unwrap();
-    assert_eq!(setup.players, [PlayerSetup { colour: 0 }]);
+    assert_eq!(
+        setup.players,
+        [PlayerSetup {
+            colour: 0,
+            human: true
+        }]
+    );
     let s = &setup.map;
     assert_eq!((s.width, s.height, s.levels, s.tiles.len()), (3, 3, 1, 9));
     let dirt = core.terrain_by_key("base:dirt");
@@ -147,6 +154,7 @@ fn imports_the_static_layer_players_and_a_placed_hero() {
     assert_eq!(blocker.blocked, TileMask::from_bits(0b11));
     assert_eq!(blocker.visitable, TileMask::from_bits(1 << 8));
     assert_eq!((blocker.object_type, blocker.amount), (None, None));
+    assert_eq!(blocker.scenery, Scenery::Other);
     assert_eq!(import_map(&map(), &SOD).unwrap(), setup.map);
 
     let [hero] = setup.heroes.as_slice() else {
@@ -1085,6 +1093,80 @@ fn a_placed_heros_artifacts_keep_the_maps_positions() {
 fn artifact(core: &h3_content::Ruleset, code: u16) -> h3_content::ArtifactTypeId {
     core.artifact_by_key(codes::ARTIFACTS[usize::from(code)])
         .unwrap()
+}
+
+// covers: GAM-BAT-010, GAM-BAT-011
+#[test]
+fn a_maps_player_kinds_and_object_classes_carry_over() {
+    // A computer-only blue beside red, whom a human may play.
+    let mut m = map();
+    m.players[1] = Player {
+        human: false,
+        computer: true,
+        details: m.players[0].details.clone(),
+    };
+    let setup = import(&m, &SOD).unwrap();
+    let player = |colour, human| PlayerSetup { colour, human };
+    assert_eq!(setup.players, [player(0, true), player(1, false)]);
+    // Each class's scenery (`codes::scenery`, 0x40FCA0's and 0x41ADB0's tables).
+    let kinds = [
+        (114, Scenery::Tree),
+        (115, Scenery::Tree),
+        (135, Scenery::Tree),
+        (137, Scenery::Tree),
+        (155, Scenery::Tree),
+        (159, Scenery::Tree),
+        (160, Scenery::Tree),
+        (123, Scenery::Mountain),
+        (133, Scenery::Mountain),
+        (134, Scenery::Mountain),
+        (136, Scenery::Mountain),
+        (157, Scenery::Mountain),
+        (158, Scenery::Mountain),
+        (119, Scenery::DeadVegetation),
+        (17, Scenery::Ownable),
+        (20, Scenery::Ownable),
+        (33, Scenery::Ownable),
+        (42, Scenery::Ownable),
+        (53, Scenery::Ownable),
+        (77, Scenery::Ownable),
+        (87, Scenery::Ownable),
+        (116, Scenery::Other),
+        (124, Scenery::Other),
+        (161, Scenery::Other),
+        (216, Scenery::Other),
+    ];
+    for (class, scenery) in kinds {
+        let mut m = map();
+        m.templates[0].class = class;
+        let objects = import_map(&m, &SOD).unwrap().objects;
+        assert_eq!(objects[0].scenery, scenery, "class {class}");
+    }
+}
+
+// covers: GAM-BAT-012
+#[test]
+fn a_placed_heros_sex_is_the_bodys_else_the_map_wide_entrys() {
+    let sex = |own: u8, entry: Option<u8>| {
+        customised(|m| {
+            body(m).sex = own;
+            if let Some(code) = entry {
+                m.custom_heroes = vec![CustomHero {
+                    hero_type: 0,
+                    sex: code,
+                    ..CustomHero::default()
+                }];
+            }
+        })
+        .sex
+    };
+    assert_eq!(sex(0xFF, None), None);
+    assert_eq!(sex(1, None), Some(HeroSex::Female));
+    assert_eq!(sex(0, Some(1)), Some(HeroSex::Male));
+    assert_eq!(sex(0xFF, Some(1)), Some(HeroSex::Female));
+    assert_eq!(sex(0xFF, Some(0)), Some(HeroSex::Male));
+    // Any other code is the type's own.
+    assert_eq!(sex(2, Some(0xFF)), None);
 }
 
 #[test]

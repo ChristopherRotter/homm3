@@ -154,6 +154,21 @@ T13b's neighbour visit took the first (VCMI's), changed with the user's leave (2
 matters for no shipped map: no shipped map has a tile visited from two objects (0 of 100 311
 visitable tiles over the 160 since E08 T21b, 0 of 101 246 over the 164 before; heroes left out; `crates/h3-map/examples/original_data.rs`).
 
+**A tile without an entrance** (E08 T54; the battlefield picture's variant, 0x41ADB0, counts the
+classes the tiles within 3 of the battle record). When no object's entrance lies on the tile,
+0x505610 walks the draw list from the top three more times: the first object of an ownable class
+(`class_is_ownable` 0x40FCA0: 17, 20, 33, 42, 53, 77, 87, 98) whose passability blocks the tile, else
+the first object that blocks it, both recorded without the visitable flag and with the tile
+blocked; else the first object of class 124; else the tile keeps the class its reset gave (0, 3
+on coastal land). Heroes, boats, the Grail and the hero placeholders have no draw entries
+(`docs/epics/E24-design.md` §2.1) and never take a tile. The decorations (classes 114 to 160:
+485 templates in `Objects.txt`, none with an entrance tile, 44 blocking nothing) therefore give a
+tile their class where one is the topmost object blocking it and neither an entrance nor an
+ownable object's block lies on it. The engine (GAM-BAT-011): the same walks over the objects still
+on the map, the topmost taken as the last in map order, as for visits; the draw order by layer
+(an object higher on the tile wins whatever the map's order) is not modelled, its layers and
+footprints need the pictures' sizes (`.msk`), which the core does not hold.
+
 ## 3. Pickups
 
 ### 3.1 Resource piles (class 79)

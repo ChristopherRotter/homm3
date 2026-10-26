@@ -13,7 +13,7 @@ use std::fmt;
 use h3_adventure::ObjectKind;
 use h3_adventure::{Guards, MapSetup, MonsterSetup, ObjectSetup, Pos, TileMask, TileSetup};
 use h3_content::{CreatureTypeId, Formation, ResourceId, SkillId, SpellId};
-use h3_contracts::{ArmyStack, PlayerId};
+use h3_contracts::{ArmyStack, HeroSex, PlayerId};
 use h3_game::{
     DEFAULT_DIFFICULTY, GameHeroSetup, GameRuleset, GameSetup, HeroArmy, HeroArtifactsSetup,
     HeroDetailsSetup, PlayerSetup,
@@ -393,7 +393,8 @@ fn objects(map: &RawMap) -> Result<Vec<(usize, &Object, &Template)>, ImportError
         .collect()
 }
 
-/// The colours that play, in colour order, and the player each colour is.
+/// The colours that play, in colour order, and the player each colour is; a colour a human may
+/// play counts as human (GAM-BAT-010, E08 T54: the map's player kinds; ADV-Q27).
 fn players(map: &RawMap) -> Result<(Vec<PlayerSetup>, [Option<PlayerId>; 8]), ImportError> {
     let mut players = Vec::new();
     let mut colours = [None; 8];
@@ -410,7 +411,11 @@ fn players(map: &RawMap) -> Result<(Vec<PlayerSetup>, [Option<PlayerId>; 8]), Im
             return Err(Unsupported::HeroAtMainTown(colour).into());
         }
         *id = u8::try_from(players.len()).ok().map(PlayerId::new);
-        players.push(PlayerSetup { colour });
+        // rule: GAM-BAT-010
+        players.push(PlayerSetup {
+            colour,
+            human: player.human,
+        });
     }
     Ok((players, colours))
 }
@@ -477,6 +482,7 @@ fn footprint(object: &Object, template: &Template) -> ObjectSetup {
         file.reverse_bits() >> 16
     };
     ObjectSetup {
+        scenery: codes::scenery(template.class),
         anchor: Pos::new(
             u16::from(object.pos.x),
             u16::from(object.pos.y),
@@ -545,7 +551,8 @@ const TYPE_SPELL: u8 = 0xFE;
 /// `E08-battles.md` §6.3: the placed hero's are copied as they are, `placed_hero_setup` 0x4D8BF1,
 /// survey `E08-progression.md` §3.1, and no shipped map has one above 9, §6.1), secondary skills,
 /// artifacts worn and in the backpack, spells (SoD's set; AB's one spell beside the type's,
-/// `0xFF` none, `0xFE` the type's); the body's field over the map-wide entry's.
+/// `0xFF` none, `0xFE` the type's), since E08 T54 the sex ([`hero_sex`]); the body's field over
+/// the map-wide entry's.
 fn details(
     version: Version,
     rules: &GameRuleset,
@@ -605,13 +612,26 @@ fn details(
             Some(own)
         }
     };
+    // rule: GAM-BAT-012
+    let sex = hero_sex(body.sex).or_else(|| custom.and_then(|c| hero_sex(c.sex)));
     Ok(HeroDetailsSetup {
         experience,
         primary,
         skills,
         artifacts,
         spells,
+        sex,
     })
+}
+
+/// A hero's sex by the map's code (AB and SoD; E08 T54): 0 male, 1 female, any other (`0xFF`)
+/// the hero type's own.
+const fn hero_sex(code: u8) -> Option<HeroSex> {
+    match code {
+        0 => Some(HeroSex::Male),
+        1 => Some(HeroSex::Female),
+        _ => None,
+    }
 }
 
 /// A hero's stored artifacts (since v9, E08 T49a): each worn entry's artifact equipped at its

@@ -74,10 +74,12 @@ pub use ruleset::{
 };
 pub use setup::{
     AdventureSetup, ArmyError, Guards, HeroSetup, MapSetup, MonsterSetup, ObjectSetup, Pos,
-    SetupError, StandError, TileMask, TileSetup,
+    Scenery, SetupError, StandError, TileMask, TileSetup,
 };
 pub use split::{TileRand, split};
-pub use state::{AdventureState, HeroOnMap, MapObject, Monster, StaticMap, StaticTile};
+pub use state::{
+    AdventureState, BACKGROUND_RADIUS, HeroOnMap, MapObject, Monster, StaticMap, StaticTile,
+};
 
 /// Version of the adventure state's canonical hash encoding (`docs/08-work-process.md`,
 /// "Versions"; owned by the adventure lane). Bump it with any change to what the hash covers.
@@ -88,8 +90,8 @@ pub use state::{AdventureState, HeroOnMap, MapObject, Monster, StaticMap, Static
 /// tile of the static map is on the coast. v9 (E08 T20a2a): the tiles each object lies on, each
 /// monster's creature, count, aggression, flags and treasure, the armies battles left on objects
 /// and the game's difficulty. v10 (E08 T21a): each guarded pile's guards. v11 (E08 T50): each
-/// hero's tactics flag.
-pub const ADVENTURE_STATE_HASH_VERSION: u32 = 11;
+/// hero's tactics flag. v12 (E08 T54): each object's scenery.
+pub const ADVENTURE_STATE_HASH_VERSION: u32 = 12;
 
 /// Version of the adventure ruleset part's canonical hash encoding (ADR-0015 point 2; owned by the
 /// adventure lane). v2 (E08 T5a): the setup bounds and the army slots. v3 (E08 T6b): the starting

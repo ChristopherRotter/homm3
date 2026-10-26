@@ -115,6 +115,31 @@ pub struct ObjectSetup {
     /// A guarded pile's guards (ADV-PIK-004, E08 T21a): only for a pile, a random one included; a
     /// pile without guards has none (the map's empty guards record is a plain pile).
     pub guards: Option<Guards>,
+    /// What it is among a battle's surroundings (GAM-BAT-011, E08 T54): the map's class, for the
+    /// battlefield picture's variant ([`crate::AdventureState::background`]).
+    pub scenery: Scenery,
+}
+
+/// What an object is among a battle's surroundings, by its class on the map (GAM-BAT-011, E08
+/// T54): the original records one object per tile (0x505610) and picks the battlefield picture's
+/// variant by the trees, mountains and dead vegetation the tiles around a battle record
+/// (0x41ADB0). No rule but that picture reads it.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
+pub enum Scenery {
+    /// Any other class.
+    #[default]
+    Other,
+    /// An ownable class (the original's 0x40FCA0: creature generators, a garrison, a lighthouse,
+    /// a mine, a shipyard, a town or a random one): a tile it blocks records it before any other
+    /// object blocking the tile.
+    Ownable,
+    /// A tree-like decoration (brush, bushes, oaks, pines, willows, yucca trees, trees).
+    Tree,
+    /// A mountain-like decoration (a hill, a mound, a mountain, an outcropping, a volcanic vent, a
+    /// volcano).
+    Mountain,
+    /// Dead vegetation.
+    DeadVegetation,
 }
 
 /// A guarded pile's guards as the map gives them (ADV-PIK-004, E08 T21a): the stacks that defend

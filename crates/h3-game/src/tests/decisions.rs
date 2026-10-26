@@ -31,6 +31,7 @@ fn game(rules: &GameRuleset, difficulty: u8) -> GameState {
     setup.difficulty = difficulty;
     for anchor in [Pos::new(2, 0, 0), Pos::new(3, 2, 0)] {
         setup.map.objects.push(ObjectSetup {
+            scenery: Default::default(),
             anchor,
             blocked: TileMask::from_bits(1),
             visitable: TileMask::from_bits(1),
@@ -317,6 +318,7 @@ fn keys_game(rules: &GameRuleset) -> GameState {
     let mut setup = setup();
     for (x, ty) in [(1, "t:tent"), (3, "t:guard")] {
         setup.map.objects.push(ObjectSetup {
+            scenery: Default::default(),
             anchor: Pos::new(x, 0, 0),
             blocked: TileMask::from_bits(1),
             visitable: TileMask::from_bits(1),

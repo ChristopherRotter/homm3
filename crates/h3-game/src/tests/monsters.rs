@@ -24,6 +24,7 @@ fn object(
     monster: Option<MonsterSetup>,
 ) -> ObjectSetup {
     ObjectSetup {
+        scenery: Default::default(),
         anchor,
         blocked: TileMask::from_bits(1),
         visitable: TileMask::from_bits(1),
@@ -311,7 +312,7 @@ fn fight_out(state: &mut GameState, rules: &GameRuleset) -> Vec<GameEvent> {
     panic!("the battle did not end");
 }
 
-// covers: ADV-MON-009, GAM-BAT-001
+// covers: ADV-MON-009, GAM-BAT-001, GAM-BAT-010, GAM-BAT-011, GAM-BAT-012
 #[test]
 fn a_monster_fights_split_by_its_tile_and_the_system_plays_its_side() {
     let rules = valued("t:split");
@@ -334,6 +335,13 @@ fn a_monster_fights_split_by_its_tile_and_the_system_plays_its_side() {
     let battle = state.battle(RED).unwrap();
     assert_eq!(battle.owners(), [Some(RED), None]);
     assert_eq!(battle.heroes(), [Some(HeroId::new(0)), None]);
+    // The monsters' side has no player: not human, no colour (GAM-BAT-010, GAM-BAT-012); nothing
+    // stands around (GAM-BAT-011).
+    let seen = h3_battle::observe(battle.state(), rules.battle(), BattleSide::Attacker);
+    assert_eq!(seen.human, [true, false]);
+    assert_eq!(seen.colours, [Some(0), None]);
+    assert_eq!(seen.background, Some(2));
+    assert_eq!(seen.difficulty, state.adventure().difficulty());
     // Under ADV-QUIRK-6 its stacks are the split with the tile's draws.
     let army = state.adventure().hero(HeroId::new(0)).unwrap().army.clone();
     let mut tile = TileRand::new(at);
@@ -473,6 +481,7 @@ fn guarded_pile(
     question: bool,
 ) -> ObjectSetup {
     ObjectSetup {
+        scenery: Default::default(),
         amount: Some(5),
         guards: Some(Guards { army, question }),
         ..object(rules, "t:pile", anchor, None)
@@ -496,6 +505,7 @@ fn a_guarded_pile_looks_like_any_pile_to_every_viewer() {
     let rules = valued("t:split");
     let at = Pos::new(1, 1, 0);
     let plain = ObjectSetup {
+        scenery: Default::default(),
         amount: Some(5),
         ..object(&rules, "t:pile", at, None)
     };

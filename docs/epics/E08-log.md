@@ -5805,3 +5805,57 @@ flag) land once:
   trades (teams, E10), the computer player's join without room and meetings (E10), hero
   dismissal and the creature dialog's upgrade (E09), the backpack's rotation as a command of its
   own, the other callers of the army dialog (rewards, increment 7).
+
+### Increment 7, before round 1: T54, the battle seam's facts from the game (2026-10-26, `adventure/e08-t54`)
+
+Baseline: `master` at f2fc414 (#472 merged; CI green; the sandbox's light gates on code a4fc709,
+which CI had verified). Original files staged from the user's repo folder (the executable, both
+LODs, `maps.tar`, `extracted.tar`). At its start the user answered ADV-Q27 (decision 124): the
+human flag from the map's player kinds with a session's override, T54 whole, the `cross-lane`
+lines.
+
+**The code reading** (survey `E08-objects.md` §2.5; `map.toml`'s 0x41ADB0, 0x505610, the new
+`class_is_ownable` 0x40FCA0). 0x41ADB0 counts the class each tile within 3 of the battle's map
+position (battle manager +0x13FF0) records in its own record (`map_item` +0x1E), not an object
+list. 0x505610 sets that class from the tile's draw list, topmost first, in four walks: an object
+whose entrance is on the tile; else an ownable one (0x40FCA0's byte table, 0 true: 17, 20, 33,
+42, 53, 77, 87, 98) whose passability blocks the tile; else any blocking it; else one of class
+124; else the reset's 0 (3 on coastal land). The 485 decoration templates (classes 114–160) of
+`Objects.txt` have no entrance tile; 44 block nothing. 0x40FCA0's table was first misread (class
+77 left out); corrected before the code.
+
+**Built.** `h3-adventure`: `Scenery` (other, ownable, tree, mountain, dead vegetation) on
+`ObjectSetup` and `MapObject` (adventure state hash v12); `AdventureState::background` with
+`tile_sceneries` (one reverse pass over the objects whose masks reach the 7 × 7 square, the
+walks ranked per tile, removed objects skipped; the topmost is the last in map order, decision
+124), `special_ground` (split out of `battle_ground`), `battle_at` building every `BattleStart`
+(heroes, monsters, guards), which gains `background` and `attacker_ground`. `h3-game`:
+`PlayerSetup::human` and `HeroDetailsSetup::sex`; the players keep the flag, `Progression` the
+sexes (no extra reference count per fork); `GameState::human`, `hero_sex`; `start_battle` fills
+`difficulty` (the adventure state's), `human` (false without a player), `colours`, each hero's
+`sex`, `background`, `attacker_ground`, and leaves `retreat` at its default (`ADV-STUB-9`, E10).
+Game state hash v14. `h3-map`'s import: the human flag from the map's player kinds, every
+object's scenery by class (`codes::scenery`), a placed hero's sex (the body's code, else its
+type's map-wide entry's; 0 male, 1 female, any other the type's); map import v11; the test map's
+hero body takes the format's default sex code 0xFF (the model's `Default` gives 0, male).
+The attacker's ground passes every special ground: the battle's `mastery_at` only raises, so a
+ground the original's `tile_spell_field` leaves out (Cursed Ground and the others) values alike.
+
+**Tests.** `the_background_counts_the_scenery_the_tiles_around_a_battle_record`,
+`a_tile_records_its_entrance_then_an_ownable_block_then_the_topmost_block`,
+`a_battle_from_the_map_carries_its_background_and_the_attackers_ground` (h3-adventure);
+`a_battles_setup_carries_the_difficulty_the_human_sides_colours_and_sexes` and the extended
+`expected_setup`, the monster fight's observation (h3-game);
+`a_maps_player_kinds_and_object_classes_carry_over`,
+`a_placed_heros_sex_is_the_bodys_else_the_map_wide_entrys` (h3-map). Rules GAM-BAT-010 to -013.
+
+**Replays.** All twelve re-recorded with their options, their commands unchanged (the duel's
+players a human may play now count as human; no game's battle met a bad-morale freeze of theirs):
+every hash moved, the headers' versions.
+
+**Cross-lane** (the user's consent, ADV-Q27): `crates/h3-cli/src/ai/census.rs`' `PlayerSetup`
+literal, `crates/h3-sim/src/adventure/tests.rs`' and `tests/monsters.rs`' `ObjectSetup` literals
+(`scenery: Default::default()`).
+
+**Later readers of the human flag** (E10): a computer player's starting resources (GAM-RES-002's
+computer row), its loose formation (ADV-QUIRK-8), its ignored tactics flag (GAM-BAT-009).

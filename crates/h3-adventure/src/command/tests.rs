@@ -1423,6 +1423,8 @@ fn a_step_toward_another_players_hero_visits_it_and_starts_a_battle() {
                 tile: p(3, 0),
                 terrain: crate::testing::SAND,
                 battlefield: Some(ContentKey::parse("t:shore").unwrap()),
+                background: 2,
+                attacker_ground: None,
             }),
             ..AdventureOutcome::default()
         }

@@ -30,6 +30,7 @@ pub(super) fn monster_setup(rules: &GameRuleset, difficulty: u8) -> (Arc<GameSet
     let monster = rules.adventure().object_type_by_key("base:monster");
     assert!(monster.is_some(), "the original packs' monster");
     setup.map.objects.push(ObjectSetup {
+        scenery: Default::default(),
         anchor: near,
         blocked: TileMask::from_bits(1),
         visitable: TileMask::from_bits(1),

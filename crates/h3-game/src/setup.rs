@@ -12,7 +12,7 @@ use h3_content::{
     CreatureTypeId, Formation, HeroEffect, HeroType, HeroTypeId, Ruleset, SkillId, SpellId,
     StartingStack,
 };
-use h3_contracts::{ArmyStack, HeroId, PlayerId};
+use h3_contracts::{ArmyStack, HeroId, HeroSex, PlayerId};
 use h3_heroes::{ArtifactInstance, DetailsError, HeroDetails, OfferLevels};
 use h3_kernel::Rng;
 
@@ -24,6 +24,13 @@ pub struct PlayerSetup {
     /// The player's colour in the original's order (0 red to 7 pink): what a map's ownership
     /// and conditions name it by. Players act in colour order (sequential play).
     pub colour: u8,
+    /// Whether the player counts as human (GAM-BAT-010, E08 T54): a map's import sets it from the
+    /// map's player kinds (a colour a human may play is human, a computer-only colour is not;
+    /// ADV-Q27's answer), and whoever seats the players (an env, the server) may change it before
+    /// the game is built. Read by the battles from the map alone (`BattleSetup.human`): the
+    /// original lets a side without a human player off one bad-morale freeze in four
+    /// (BAT-MOR-004, BAT-QUIRK-27). It does not decide who sends a player's commands.
+    pub human: bool,
 }
 
 /// Where a hero's army comes from.
@@ -70,6 +77,9 @@ pub struct HeroDetailsSetup {
     pub artifacts: Option<HeroArtifactsSetup>,
     /// Learned spells; `None`: the hero type's.
     pub spells: Option<Vec<SpellId>>,
+    /// The hero's sex (an AB or SoD map's; E08 T54); `None`: the hero type's own. Only a battle's
+    /// viewers read it (GAM-BAT-012: the hero's picture).
+    pub sex: Option<HeroSex>,
 }
 
 /// A hero's artifacts as a setup gives them.

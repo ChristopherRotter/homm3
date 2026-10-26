@@ -92,7 +92,11 @@
 //! re-recorded all ten with their options, their commands unchanged: nine moved checkpoint hashes
 //! taken inside a battle, `duel-s2-d7` none. E08 T51b (game state hash v13: the meetings and the
 //! army dialogs) re-recorded all ten with their options, their commands unchanged (no game meets
-//! an own hero or a join without room): every hash moved.
+//! an own hero or a join without room): every hash moved. E08 T54 (the battle seam's facts: game
+//! state hash v14, adventure state hash v12, map import v11; the duel's players a human may play
+//! count as human, so the bad-morale let-off no longer reaches their sides in faithful, which no
+//! game's battle met) re-recorded all twelve with their options, their commands unchanged: every
+//! hash moved.
 //!
 //! **Scripted** (E08 T52, increment 6: the random agent manages nothing), on the generated
 //! `fixtures/maps/e08-army-12.h3m` (red's Valeska, hero 0, with a full army and twelve artifacts

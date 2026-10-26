@@ -338,7 +338,10 @@ impl Accumulator {
         let raw = h3_map::read(file, limits).map_err(|e| format!("read: {e}"))?;
         let map = h3_map::import_map(&raw, rules).map_err(|e| format!("static layer: {e}"))?;
         let setup = GameSetup {
-            players: vec![PlayerSetup { colour: 0 }],
+            players: vec![PlayerSetup {
+                colour: 0,
+                human: true,
+            }],
             difficulty: DEFAULT_DIFFICULTY,
             map,
             heroes: Vec::new(),

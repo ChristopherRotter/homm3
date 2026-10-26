@@ -183,6 +183,7 @@ fn a_move_and_the_reach_price_the_steps_by_the_heros_pathfinding() {
 /// A ground of `ty` lying on the 3 × 2 tiles left of and above `anchor` (its picture only).
 fn ground(ty: ObjectTypeId, anchor: Pos) -> ObjectSetup {
     ObjectSetup {
+        scenery: Default::default(),
         anchor,
         blocked: TileMask::default(),
         visitable: TileMask::default(),

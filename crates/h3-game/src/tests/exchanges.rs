@@ -422,6 +422,7 @@ fn a_meetings_listing_and_split_query_reach_the_other_hero() {
 /// An object of type `key` at `anchor`, blocking and visited there.
 fn object(rules: &GameRuleset, key: &str, anchor: Pos, monster: MonsterSetup) -> ObjectSetup {
     ObjectSetup {
+        scenery: Default::default(),
         anchor,
         blocked: TileMask::from_bits(1),
         visitable: TileMask::from_bits(1),

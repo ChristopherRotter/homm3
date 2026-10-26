@@ -121,6 +121,7 @@ fn the_setups_customisations_replace_the_defaults() {
                 backpack: vec![charm],
             }),
             spells: Some(vec![]),
+            sex: None,
         };
     });
     assert_eq!(custom.experience, 999);
