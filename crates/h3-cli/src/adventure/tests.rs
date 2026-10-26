@@ -609,6 +609,39 @@ fn a_script_records_a_replay_that_verifies() {
     std::fs::remove_dir_all(&dir).unwrap();
 }
 
+/// The env plays on through a meeting and an army dialog (E08 T52, increment 6's exit criterion
+/// 6; the env is the AI lane's, ADR-0017 point 8): on the army map red's first hero steps east
+/// onto its mate (a meeting) or west onto the goblins and accepts their join without room (the
+/// army dialog); the env's random agent then plays every seat on to the day limit, its first
+/// action the only one listed, `Decline`, which closes either.
+#[test]
+fn the_env_plays_on_through_a_meeting_and_an_army_dialog() {
+    use h3_sim::adventure::action::{hero_in_slot, tile_index};
+    use h3_sim::adventure::{Action, AdventureEnv, random_rollout};
+    let ids: Vec<String> = DEFAULT_PACKS.iter().map(|&s| s.to_owned()).collect();
+    let rules = load_rules(&root().join("packs"), &ids, DEFAULT_PROFILE).unwrap();
+    let (_, setup) = load_map(&root(), ARMY, &rules).unwrap();
+    let red = PlayerId::new(0);
+    for (x, answer) in [(4, None), (2, Some(Action::accept()))] {
+        let mut env = AdventureEnv::new(rules.clone(), Arc::new(setup.clone()), 1, 3).unwrap();
+        assert_eq!(hero_in_slot(env.state(), red, 0), Some(HeroId::new(0)));
+        let tile = tile_index(env.state(), Pos::new(x, 5, 0)).unwrap();
+        env.step(red, Action::move_to(0, tile)).unwrap();
+        if let Some(answer) = answer {
+            env.step(red, answer).unwrap();
+        }
+        let state = env.state();
+        let open = (
+            state.meeting(red).is_some(),
+            state.army_dialog(red).is_some(),
+        );
+        assert_eq!(open, (answer.is_none(), answer.is_some()));
+        let played = random_rollout(&mut env, 5, 0);
+        assert!(env.is_done() && played.day == 4, "{played:?}");
+        assert!(env.state().meeting(red).is_none() && env.state().army_dialog(red).is_none());
+    }
+}
+
 #[test]
 fn the_benchmark_workloads_run_and_count_what_they_say() {
     let bench = |workload, observe, masks| {
