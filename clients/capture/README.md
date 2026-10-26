@@ -155,7 +155,9 @@ poses never change. A commanded turret is shot with `hex:`, the Catapult or a Cy
 `hex:` at a wall's aim hex (29, 62, 96, 130, 182, 183) or `click:` into the keep's or the upper
 tower's rectangle; the wall shots' rolls are forced (above). The Catapult on its own acts in the
 command before it when the defender commands its turrets (Artillery): the record opens on the
-keep's turn.
+keep's turn. E17 M4 T2c-2: a hero's Earthquake is `cast:<k>` without a hex, its hits forced in
+order (`roll:quake_target:<a>,<b>,...`); `move:600,40` and `move:770,250` rest the mouse over
+the upper tower's and the keep's rectangles (`aim`: the cursor's kinds 16 and 22).
 
 **A siege** (E17 M4 T1b, design §10.1): a scenario's `[scenario.siege]` (faction, fort level,
 moat) makes `h3-view situation` write Blue's town of that faction (Objects.txt's first picture

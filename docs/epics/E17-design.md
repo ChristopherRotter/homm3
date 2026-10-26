@@ -3388,3 +3388,34 @@ it), `moat` and `mine` (below). Findings:
   copied), and the last frame (12 799), the Goblins' turn's start, the defender's view in hot
   seat: its mines on the moat's hexes (4 005 pixels), which a spectator's record lacks (T1b's
   side to act's view). The rest of each sequence's frames exact.
+
+**Recorded (M4 T2c-2, 2026-10-26).** Earthquake, the shots through the walls, the town's end and
+the siege's mouse (not cut, the user). The viewer plays and draws the reading:
+
+- **Earthquake** (`anim::siege::quake`, from the cast's effects: `WallQuaked`, `WallDestroyed`):
+  the spell's sound at the handler, the shake as `QuakeKey` spans (`Timeline::shake`: the steps
+  shown; the cursor hidden from the shake to the end's redraw), drawn by the frame's assembler as
+  `Draw::Shaken` (the frame's whole list, battle and panel, composed and copied at each offset over
+  the step before, the battlefield's 800 × 556 shown, the panel as saved: every profile, CLT-Q19
+  (6)); then `WallHit` and the explosions as one blast with a landing per target hit (`Landing`:
+  each frame's redraw, then the frame at every target in turn, the list within each landing's
+  rectangle); the damage at frame 5 after its redraw in the original's profile (its new pictures
+  from frame 6 in the rectangles, elsewhere at the end), before it with the slip fixed (a wall
+  shot's way). No hit, or no siege's stage: the damage at once after the shake.
+- **The forced targets** (`quake_target`, `xdd.c`): a draw per hit, the k-th standing target;
+  `roll:quake_target:<a>,<b>,...` forces the hits' draws in order (`xdd.c`'s queue of 8 values;
+  the other rolls unchanged).
+- **The end tune at a town** (`defended`): the result's window's town is the record's `Siege`
+  (`end_tune`'s `town`), so the defender's victory plays `defend castle`, its defeat `losecastle`.
+- **The mouse** (`mouse`): the keep's and the upper tower's rectangles in a siege (the original's
+  in every battle for the comparisons, CLT-Q21; the layout's `keep` and `tower`); the kinds 16
+  (`Kind::Wall`, the target standing: the server's `ShootWall` commands; the towers' with a
+  Castle, the keep's with a Citadel; over an empty hex, any for the Catapult, the targets' aim
+  hexes) and 22 (`Kind::Turret`, the query's frame 5; over hex 183 with a Castle where no move
+  goes); their hints "Attack %s" with the target's part's name (the key family `wall`, WALLS.TXT's
+  parts by town type, `wall.<faction>.<part>`) and "View arrow tower info" (`battle.hint.turret`,
+  GENRLTXT 157), neither forced. The cursor's wall test (`mouse::walls_halve`: from the shooter's
+  position to the mouse's hex, the row's wall hexes 0x63BD00, the line `mouse::line` in integers,
+  checked against the engine's x87 steps in the binary's tests) before its distance test; the
+  shooters it exempts by their original ids and the bows by the wire's `no_distance_penalty`
+  (`pointer::legal`, *provisional*: the M4 review list); the arrow tower always shoots in full.
