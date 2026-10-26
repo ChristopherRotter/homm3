@@ -147,8 +147,12 @@ struct Handler<'l> {
     busy: bool,
     /// The hero's spell being aimed (E17 M3 T7b-1).
     aiming: Option<u16>,
-    /// Both sides are played here (hot seat): a move over no control keeps the status line.
-    hot_seat: bool,
+    /// The panel's item the mouse last entered (`hovered_item` 0x6AAC68; E17 M4 T3b): a move
+    /// inside it writes no hint.
+    hovered: Option<u16>,
+    /// The panel's items take the battle's moves: not the move of the mouse resting where it was
+    /// placed before the battle (E17 M4 T3b: the opening enters no item).
+    items: bool,
     shown: Shown,
 }
 
@@ -189,23 +193,27 @@ impl Handler<'_> {
     ) {
         let [width, height] = self.layout.mouse.field;
         if !(0..width).contains(&point[0]) || !(0..height).contains(&point[1]) {
-            // Outside the battlefield: unmarked, the items' hints, the pointer (0x475402). Over no
-            // control's hint an empty one with one human side, none in hot seat (E17 M4 T2c-2:
-            // `walk`, `turn` and `climb` empty the status line at the next human turn with the
-            // mouse parked, `hit`, `gate` and every hot-seat siege keep it; *provisional*: the
-            // dialog's items write a hint only as the mouse enters one, `hovered_item`
-            // 0x6AAC68, and what makes the park point's item entered again is not read).
+            // Outside the battlefield: unmarked, the items' hints, the pointer (0x475402). The
+            // panel's items take the move (0x475512 → 0x602320 → 0x5FEDE0): the item under the
+            // mouse writes its hint, an empty line without one (0x472B80), only as the mouse
+            // enters it, another being the hovered item (0x5FE73E; E17 M4 T3b, read per frame:
+            // the panel's picture 2000 entered at the first move into the panel after the
+            // opening, so `walk`'s next human turn empties the line and `hit`'s keeps the
+            // Catapult's hint; `aim`'s mouse rests over the field until its shot).
             self.set_marked(now, None);
-            let hint = self
-                .layout
-                .panel
-                .item_at(point)
-                .and_then(crate::ui::Item::hint)
-                .map(|key| Hint::Control(key.into()));
-            match hint {
-                Some(hint) => self.write(now, &hint, field, name),
-                None if !self.hot_seat => self.write(now, &Hint::Empty, field, name),
-                None => {}
+            let item = if self.items {
+                self.layout.panel.item_at(point)
+            } else {
+                None
+            };
+            if let Some(item) = item
+                && self.hovered != Some(item.id())
+            {
+                self.hovered = Some(item.id());
+                let hint = item
+                    .hint()
+                    .map_or(Hint::Empty, |key| Hint::Control(key.into()));
+                self.write(now, &hint, field, name);
             }
             self.set_frame(now, self.layout.mouse.panel_frame);
             self.hex = None;
@@ -277,15 +285,15 @@ impl Handler<'_> {
 /// order), `starts` its actions' starts (one per `Logged::Action`), `turns` its turns (the
 /// opening's first, then one per `Logged::Turn`), `inputs` what the mouse does (in time order:
 /// a move comes after the log's entries at its time up to an action's start, an `Act` takes that
-/// start), `hot_seat` whether both sides are played here. `name` words a hint in the battle a
-/// turn shows.
+/// start; the first the mouse resting where it was placed before the battle). `name` words a hint
+/// in the battle a turn shows.
 #[must_use]
 pub fn follow(
     log: &[(u32, Logged)],
     starts: &[Start],
     turns: &[Turn<'_>],
     inputs: &[Input],
-    (layout, hot_seat): (&BattleLayout, bool),
+    layout: &BattleLayout,
     name: &dyn Fn(&Hint, &Observation) -> String,
 ) -> Shown {
     let mut h = Handler {
@@ -301,7 +309,8 @@ pub fn follow(
         queued: Vec::new(),
         busy: false,
         aiming: None,
-        hot_seat,
+        hovered: None,
+        items: false,
         shown: Shown::default(),
     };
     let mut at = Cursor::default();
@@ -329,6 +338,10 @@ pub fn follow(
                 h.write(now, &Hint::Empty, None, name);
                 h.hex = None;
                 h.written = None;
+                // The book's items take the mouse and are destroyed as it closes, the hovered
+                // one forgotten with them (0x5FE442; E17 M4 T3b, *provisional*: not read per
+                // frame).
+                h.hovered = None;
             }
             Input::Act { at: now } => {
                 h.aiming = None;
@@ -350,6 +363,7 @@ pub fn follow(
                     None if !h.busy => h.take(now, to, None, name),
                     _ => h.queued.push(to),
                 }
+                h.items = true;
             }
         }
     }

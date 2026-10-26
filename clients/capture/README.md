@@ -736,9 +736,11 @@ design §7.1.
 - The battle panel's buttons change with whose turn it is: the `battle` probes are the ones equal
   in both states.
 - A click's hover leaves the status line's hint in the log's item (`Attack Pikemen` over a
-  target) until a log line replaces it or a human's turn starts (the mouse posted again over
-  nothing), and a line held there less than 3 000 ms keeps hints out but an attack's (design
-  §9.8, §9.10): the viewer follows the harness's mouse since M3 T6c-2.
+  target) until a log line replaces it or the mouse enters another panel item: the park point
+  is the panel's picture (item 2000), entered once after the opening (a human turn's post or a
+  move), so a later turn's post there writes nothing (M4 T3b, `hovered_item`); a line held
+  there less than 3 000 ms keeps hints out but an attack's (design §9.8, §9.10, §10.2): the
+  viewer follows the harness's mouse since M3 T6c-2.
 - The game reads the mouse on a 33 ms grid of its clock and draws a new cursor frame where it
   last read it (design §9.10): the harness sets the grid's next time at a sequence's opening
   (`h3mem.Mem.align_mouse_poll`, a sequence's only write into the game's memory, a timer of the

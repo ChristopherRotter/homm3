@@ -355,8 +355,9 @@ fn render(options: &Options) -> Result<Vec<String>, String> {
             lines.push(format!("the timeline ends at {} ms", timeline.end));
             let mut moment = scene::Moment::at(&timeline, t);
             moment.walls = options.walls.or(moment.walls);
-            // The mouse parked as the harness parks it (E17 M3 T6c-2): a human's turn writes the
-            // hint there, none, which needs no words (an installation without text tables).
+            // The mouse parked as the harness parks it (E17 M3 T6c-2): resting there as the battle
+            // opens it enters no item and writes no hint (E17 M4 T3b), which needs no words (an
+            // installation without text tables).
             let catalogue = crate::log::catalogue(&tables, &archives, &exe).unwrap_or_default();
             let parked = [h3_view::mouse::track::Input::Move {
                 at: 0,
