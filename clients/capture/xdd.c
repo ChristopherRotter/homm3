@@ -27,8 +27,11 @@
         <seq> rolls <site> <value>          its other draws return <value> ...
         <seq> rolls <site> natural          ... or the generator's again (as at the start)
       A call is redirected only where its bytes are the call the table names. The ack goes on
-      with "<forced> <pending> <sites>": the draws forced so far, the forced draws still waiting
-      for their roll and the calls redirected.
+      with "<forced> <pending> <sites> <refused>": the draws forced so far, the forced draws
+      still waiting for their roll, the calls redirected and (E17 M4 T3a) what was refused: a
+      roll command it could not read (a queue past QUEUE values included), a queue that replaced
+      values of the site's last one never drawn, and a forced value outside the range its call
+      draws from (random_between(a, b): the call's own draw is returned instead).
    4. Logged draws (E17 M3 T7c-3, *provisional*): a site marked `logged` (Chain Lightning's
       rays turning in `ray_aim`) appends each of its draws, as returned, to <H3CLOCK>\draws, one
       line "<site> <value>", so the frame check can draw the same rays; the file starts empty
@@ -105,6 +108,7 @@ static struct site sites[] = {
 #define SITES (sizeof sites / sizeof *sites)
 
 static volatile LONG forced_draws;
+static volatile LONG refused; /* E17 M4 T3a: the roll commands and forced values refused */
 
 static time_fn real_time;
 static CRITICAL_SECTION lock;
@@ -146,8 +150,21 @@ static void apply(const char *command, long ms)
     LeaveCriticalSection(&lock);
 }
 
-/* A redirected call's draw `draw`, returning to `back` (the call + 5): forced or as drawn. */
-static int forced(DWORD back, int draw)
+/* A forced value `v` for a call drawing from `low` to `high` (`ranged`; rand() is not): v, or
+   the call's own `draw` with the value refused (E17 M4 T3a). */
+static int within(long v, int draw, int ranged, int low, int high)
+{
+    if (ranged && (v < low || v > high)) {
+        refused++;
+        return draw;
+    }
+    forced_draws++;
+    return (int)v;
+}
+
+/* A redirected call's draw `draw` (from `low` to `high` when `ranged`), returning to `back` (the
+   call + 5): forced or as drawn. */
+static int forced(DWORD back, int draw, int ranged, int low, int high)
 {
     size_t i;
     EnterCriticalSection(&lock);
@@ -156,15 +173,12 @@ static int forced(DWORD back, int draw)
         if (s->call + 5 != back)
             continue;
         if (s->taken < s->queued) {
-            draw = (int)s->queue[s->taken++];
-            forced_draws++;
+            draw = within(s->queue[s->taken++], draw, ranged, low, high);
         } else if (s->count > 0) {
             s->count--;
-            draw = (int)s->value;
-            forced_draws++;
+            draw = within(s->value, draw, ranged, low, high);
         } else if (s->fixed) {
-            draw = (int)s->otherwise;
-            forced_draws++;
+            draw = within(s->otherwise, draw, ranged, low, high);
         }
         if (s->logged) {
             FILE *f = fopen(draws_path, "a");
@@ -182,17 +196,20 @@ static int forced(DWORD back, int draw)
 static int __fastcall forced_between(int a, int b)
 {
     int draw = ((between_fn)RANDOM_BETWEEN)(a, b);
-    return forced((DWORD)__builtin_return_address(0), draw);
+    return forced((DWORD)__builtin_return_address(0), draw, 1, a < b ? a : b, a < b ? b : a);
 }
 
 static int __cdecl forced_rand(void)
 {
     int draw = ((rand_fn)CRT_RAND)();
-    return forced((DWORD)__builtin_return_address(0), draw);
+    return forced((DWORD)__builtin_return_address(0), draw, 0, 0, 0);
 }
 
 /* `roll <site> <value> <count>`, `rolls <site> <value>|natural`, or (E17 M4 T2c-2) `roll <site>
-   <a>,<b>,...`: the next draws return a, b, ... in order (at most QUEUE; before any `<count>`). */
+   <a>,<b>,...`: the next draws return a, b, ... in order (at most QUEUE; before any `<count>`).
+   A command it cannot read, a site it does not know, a count below 1 and a queue over values of
+   the last one not drawn yet are refused (E17 M4 T3a): counted in `refused`, nothing set (the
+   new queue set). */
 static void force(const char *command, const char *name, const char *value, long count)
 {
     size_t i;
@@ -200,20 +217,26 @@ static void force(const char *command, const char *name, const char *value, long
     long v = strtol(value, &end, 10);
     int natural = !strcmp(value, "natural");
     long queue[QUEUE];
-    int queued = 0;
+    int queued = 0, matched = 0;
     if (!natural && *value != 0 && *end == ',' && !strcmp(command, "roll")) {
         const char *at = value;
         for (;;) {
-            if (queued == QUEUE)
+            if (queued == QUEUE) {
+                InterlockedIncrement(&refused);
                 return;
+            }
             queue[queued++] = strtol(at, &end, 10);
-            if (end == at || (*end != ',' && *end != 0))
+            if (end == at || (*end != ',' && *end != 0)) {
+                InterlockedIncrement(&refused);
                 return;
+            }
             if (*end == 0)
                 break;
             at = end + 1;
         }
-    } else if (!natural && (*value == 0 || *end != 0)) {
+    } else if ((!natural && (*value == 0 || *end != 0))
+               || (!strcmp(command, "roll") && (natural || count < 1))) {
+        InterlockedIncrement(&refused);
         return;
     }
     EnterCriticalSection(&lock);
@@ -221,11 +244,14 @@ static void force(const char *command, const char *name, const char *value, long
         struct site *s = &sites[i];
         if (strcmp(s->name, name))
             continue;
+        matched = 1;
         if (queued > 0) {
+            if (s->taken < s->queued)
+                refused++;
             memcpy(s->queue, queue, sizeof queue);
             s->queued = queued;
             s->taken = 0;
-        } else if (!strcmp(command, "roll") && !natural && count >= 0) {
+        } else if (!strcmp(command, "roll")) {
             s->value = v;
             s->count = count;
         } else if (!strcmp(command, "rolls")) {
@@ -233,6 +259,8 @@ static void force(const char *command, const char *name, const char *value, long
             s->otherwise = natural ? 0 : v;
         }
     }
+    if (!matched)
+        refused++;
     InterlockedExchange(&reads, 0);
     LeaveCriticalSection(&lock);
 }
@@ -305,8 +333,8 @@ static DWORD WINAPI control(LPVOID unused)
         LeaveCriticalSection(&lock);
         f = fopen(tmp_path, "w");
         if (f) {
-            fprintf(f, "%lu %lu %ld %ld %ld %d\n", applied, (unsigned long)t, (long)reads,
-                    (long)forced_draws, waiting, redirected);
+            fprintf(f, "%lu %lu %ld %ld %ld %d %ld\n", applied, (unsigned long)t, (long)reads,
+                    (long)forced_draws, waiting, redirected, (long)refused);
             fclose(f);
             MoveFileExA(tmp_path, ack_path, MOVEFILE_REPLACE_EXISTING);
         }
