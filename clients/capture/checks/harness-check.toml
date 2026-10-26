@@ -12,6 +12,10 @@
 # E08 T37a (batch E5's reads, `cross-lane`): Fog, a tile's explored bit for a player and a table
 # filled cell by cell; Equip, artifacts put on from the backpack in the hero screen and the points
 # at a turn start read without a walk (Blue's heroes: Red holds eight, the list's most).
+# E08 T57 (batch E7's reads): Win, its backpack full, takes a chest's experience (a choice between
+# two pictures: an artifact chest offers 1 000 gold or 500 experience then, so a choice always
+# shows) and visits a Warrior's Tomb (its question; the morale bonus and status flags; its artifact
+# stays); the objects' words before and after.
 
 [map]
 name = "Harness check"
@@ -24,6 +28,15 @@ terrain = "grass"
 picture = "AVXcf0"
 at = [13, 14]
 
+# Win's chest and Warrior's Tomb (E08 T57).
+[[map.object]]
+picture = "AVTchst0"
+at = [3, 5]
+
+[[map.object]]
+picture = "AVXtomb0"
+at = [7, 5]
+
 [[encounter]]
 id = "Win"
 title = "A battle against a monster, fought by the computer (auto combat)"
@@ -35,6 +48,7 @@ specialty = "resource gold"
 at = [3, 3]
 primary = [5, 5, 1, 1]
 army = [["Archangel", 20]]
+fill_backpack = "Centaurs Axe"
 [encounter.opponent]
 monster = "Pikeman"
 count = 5
@@ -54,6 +68,22 @@ field = "the hero's army after"
 field = "experience after"
 [[encounter.record]]
 field = "the monster after"
+[[encounter.record]]
+field = "the chest's word before (hex)"
+[[encounter.record]]
+field = "the chest's choice"
+[[encounter.record]]
+field = "experience before / after the chest"
+[[encounter.record]]
+field = "the chest after"
+[[encounter.record]]
+field = "the Tomb's question; messages"
+[[encounter.record]]
+field = "morale bonus, status flags before / after the Tomb"
+[[encounter.record]]
+field = "spell points, luck bonus, backpack count after the Tomb"
+[[encounter.record]]
+field = "the Tomb after"
 [[encounter.record]]
 field = "anything odd"
 
