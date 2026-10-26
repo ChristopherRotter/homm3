@@ -93,6 +93,8 @@ Refined with the user on 2026-10-26 (T53; ADV-Q26). Built like increments 1 to 6
 
 142. **T56 whole** (the user's choice of four at T56's start, 2026-10-26, `AskUserQuestion`: "Whole, one session"; measured: the writer's bodies, the bodiless classes, a monster's treasure and the RoE format about 800 to 1 000 lines with tests; the spec's fields, `cross-lane`, 500 to 700; the two specs about 1 000 lines of TOML): the writer, the spec's fields and both specs with their templates in one session and one pull request (`cross-lane`). Recommended was three parts (the writer; the fields; the two specs); not chosen either: two parts as queued (the writer; the rest), three parts by run (each run's fields with its spec).
 
+143. **T57 whole** (the user's choice of three at T57's start, 2026-10-26, `AskUserQuestion`: "T57 whole"; the harness already read experience, skills, the worn artifacts and backpack, the treasury, points and path marks): the harness's reads, the three recipes and the runs in one session and one pull request. Recommended was two parts (the reads, the choice, the RoE start and the harness check; then the recipes and runs); not chosen either: the reads with E7a's runs, then E7b's. The University dialog's slots and purchase button are left out (no row needs them: E7-9 reads +0x4E3CC).
+
 ### Tasks (queue entries in `docs/lanes/adventure/QUEUE.md`; one or two per round, the cut confirmed at each checkpoint)
 
 - **T53 Increment 7 refined** (with increment 6's closure). Done (2026-10-26, `adventure/e08-t53`; decisions 120–123): rewards on the map, the battle seam's facts first, the first round queued (T54, T55a, T55b).

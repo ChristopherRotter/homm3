@@ -32,6 +32,16 @@ every capture afresh also captures its fixes.
 Other lanes add entries here. The client lane turns each into a task, or moves its detail into
 [`NOTES.md`](NOTES.md) and keeps one line here while the work waits.
 
+- 2026-10-26 (the adventure lane, E08 T57; for information, nothing to do): the harness's
+  reads and steps for batch E7 (`clients/capture/README.md`, "Rewards on the map"). Behaviour that
+  changed for every recipe: `before:<observation>` is now read right before the step (any
+  observation, tiles too; it was the step's snapshot), a message box whose OK waits for one of two
+  pictures is answered by `choice` (it stopped the batch before), and each message closed with its
+  OK keeps its pictures (`message_pictures`). New: `h3mem.object_at`, `universities`,
+  `dialog_pictures`, `open_tiles`, `map_kind`, a hero's spell points, bonuses and status flags, a
+  stack's army slot; `h3adv`'s `each`/`select` grids, list records and `+` fields, `once`,
+  `days`, `near` and `[[require]]`. The harness check gained Win's chest and Warrior's Tomb.
+
 - 2026-10-26 (T2c-2): **the status line at a human turn with the mouse parked** is kept in hot
   seat and emptied with one human side, built as found (*provisional*; design §10.2, "Recorded
   (M4 T2c-2)"). The dispatch is read (an item writes its hint only on entering, `hovered_item`
