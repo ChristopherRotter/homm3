@@ -1,10 +1,11 @@
-# E06 — archive: closed increments 1 to 5
+# E06 — archive: closed increments 1 to 6
 
-Moved out of `E06-battle-ai.md` on 2026-10-26 (increment 6's refinement), verbatim, so that the
-epic file holds what is open and the decisions that apply to the whole epic (decisions 1 to 12
-stay there). Each task's full record is in `E06-log.md` (grep its id).
+Moved out of `E06-battle-ai.md` on 2026-10-26 (increments 1 to 5 at increment 6's refinement,
+increment 6 at its checkpoint), verbatim, so that the epic file holds what is open and the
+decisions that apply to the whole epic (decisions 1 to 12 stay there). Each task's full record
+is in `E06-log.md` (grep its id).
 
-## Tasks of increments 1 to 5
+## Tasks of increments 1 to 6
 
 **Increment 1:** T1, then the user's review, then T2 in three small pull requests (design §10;
 the user, 2026-10-20: T1 and T2a in one).
@@ -77,3 +78,23 @@ the weights in the run's config, design §12): T7a and T7b, then the checkpoint,
 - [x] **T7d The run** — done 2026-10-23 (`t7-1`, a third neutral, 20 M samples): the report
   set as `t5-3`'s (0.828, 0.551, 0.528), the system actor 0.374, the neutral set 0.972 at value
   +0.245 (the target +0.285 not met); the record in `E06-log.md`.
+
+**Increment 6:** T6b, then T6c (refined 2026-10-26, the user: the system actor as a training
+opponent in the player kinds, decision 9 amended; the System side stays human); after T6c's
+negative result T6d, then T6e (the user, 2026-10-26: AI-Q7 (b) part 2).
+
+- [x] **T6b The system actor as an opponent** — done 2026-10-26: `[league] system_share` (the
+  batch's entries split by `ppo.episode_entries`, no ABI change), the update record's and the
+  curve's `system` (the learner's score by side), `configs/e06-t6b.toml`; the record in
+  `E06-log.md`.
+- [x] **T6c The A/B run** — done 2026-10-26, negative: `t6b-1` (the user's machine, 20 M
+  samples) ends at `t7-1`'s ladder (0.844, 0.539, 0.526, the system actor 0.371); its play
+  against the system actor unchanged (T6a's analysis); the record in `E06-log.md`.
+- [x] **T6d The kill preview in the network** (AI-Q7 (b) part 2) — done 2026-10-26: `[network]
+  preview` (each legal strike's logit gains a bias from its previewed kills, design §13), every
+  batch a reading network plays writes the preview, `configs/e06-t6d.toml`; the record in
+  `E06-log.md`.
+- [x] **T6e The A/B run** — done 2026-10-26, negative: `t6d-1` (the user's machine, 20 M
+  samples) ends at `t7-1`'s ladder (0.821, 0.553, 0.528, the system actor 0.365, the neutral
+  set's value +0.253); its targeting better, its battles longer (it strikes less, wanders
+  more); AI-Q7 closed, the preview off by default; the record in `E06-log.md`.

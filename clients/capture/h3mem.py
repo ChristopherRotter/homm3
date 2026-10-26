@@ -186,6 +186,11 @@ COMBAT_SPEED = 0x6987EC  # the setting, 0 to 2 (factors 0x63CF7C)
 # 0x63A66C), read at each scroll (view_scroll 0x4195C0); the hero's walk, 1 to 4 (M2 T1b). And
 # the scroll's last time (0x691674: the edge scroll waits 70 ms from it, 0x419820).
 SCROLL_SPEED, WALK_SPEED, SCROLL_TIME = 0x69878C, 0x69875C, 0x691674
+# The walk (E24 M2 T1b, design §3.5): the manager's view offset (i32 +0xF4, +0xF8: added to every
+# tile's place, written by the walk's animation 0x480380 only), the moving hero's group (i32
+# +0x1FC: 0 to 4 standing, 5 to 9 walking) and frame (i32 +0x200: stepped by pass 9 after it drew
+# it); a hero's movement points (i32 +0x4D of its record) and facing (u8 +0x47, HERO_FACING).
+VIEW_OFFSET, WALK_GROUP, WALK_FRAME, HERO_POINTS = 0xF4, 0x1FC, 0x200, 0x4D
 # Battle manager: records per side +0x54BC, the stacks from +0x54CC (21 per side, 0x6EE8 apart,
 # 0x548 each), the idle step's counter +0x13FFC.
 SIDE_COUNTS, STACKS, SIDE_STRIDE, STACK_SIZE, STEP_COUNTER = 0x54BC, 0x54CC, 0x6EE8, 0x548, 0x13FFC
@@ -778,6 +783,27 @@ class Mem:
         """The objects' frame steps (adventure manager +0x100, design §1.6)."""
         return self.manager_field(FRAME_STEPS)
 
+    def walk(self):
+        """The walk's drawing state (E24 M2 T1b, design §3.5): the moving hero's group and frame
+        (the frame pass 9 draws next) and the view's pixel offset x, y."""
+        manager = self.u32(ADVENTURE_MANAGER_POINTER)
+        return [self.i32(manager + WALK_GROUP), self.i32(manager + WALK_FRAME),
+                self.i32(manager + VIEW_OFFSET), self.i32(manager + VIEW_OFFSET + 4)]
+
+    def selected(self):
+        """The current player's selected hero (T1b): its index (-1 none), and its tile and facing
+        [x, y, level, facing] (empty without one)."""
+        index = self.player(self.current_player())["selected"]
+        if index < 0:
+            return index, []
+        record = self.game() + HEROES + HERO_SIZE * index
+        x, y, level = struct.unpack("<3h", self.read(record, 6))
+        return index, [x, y, level, self.read(record + HERO_FACING, 1)[0]]
+
+    def write_points(self, index, points):
+        """A hero's movement points (T1b: a sequence's `points`)."""
+        self.write_u32(self.game() + HEROES + HERO_SIZE * index + HERO_POINTS, points)
+
     def cursor(self):
         """The cursor (E24 M2 T1a2): its type (0 `crdeflt.DEF`, 1 `cradvntr.DEF`, ...), its
         frame (the edge scroll's 32 to 39 on the map, design §3.4) and the point it is drawn at
@@ -794,6 +820,18 @@ class Mem:
         raw = self.read(begin, OBJECT_RECORD * count) if count else b""
         return [(raw[i + 4], raw[i + 5], raw[i + 6]) + struct.unpack_from("<HB", raw, i + 8)
                 for i in range(0, len(raw), OBJECT_RECORD)]
+
+    def write_frame_steps(self, steps=0):
+        """The objects' frame steps (adventure manager +0x100; E24 M2 T1b: `frames` sets them at
+        a sequence's 0, the load's count depends on its real time)."""
+        self.write_u32(self.u32(ADVENTURE_MANAGER_POINTER) + FRAME_STEPS, steps)
+
+    def write_phases(self, phase=0):
+        """Every map object's animation phase (its record's u8 +0xA; E24 M2 T1b: `frames` fixes
+        them, the load's are random, design §1.6)."""
+        begin, end = struct.unpack("<II", self.read(self.manager_field(MANAGER_MAP) + MAP_OBJECTS, 8))
+        for record in range(begin, end, OBJECT_RECORD):
+            self.write_bytes(record + 0xA, bytes([phase]))
 
     def map_templates(self):
         """The map's object templates in memory (E24 M1 T4b): [(DEF, class, subclass)] in order,
