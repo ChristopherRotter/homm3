@@ -238,6 +238,13 @@ pub enum RecordError {
         /// Why.
         error: StepError,
     },
+    /// The game rejected a scripted command ([`Replay::record_commands`], E08 T52).
+    Rejected {
+        /// Commands recorded before it.
+        step: usize,
+        /// Why.
+        error: GameCommandError,
+    },
 }
 
 impl fmt::Display for RecordError {
@@ -247,6 +254,9 @@ impl fmt::Display for RecordError {
             Self::NoLimit => f.write_str("a game ends only by a limit: give a day or step limit"),
             Self::Refused { step, error } => {
                 write!(f, "the random agent's action {step} was refused: {error}")
+            }
+            Self::Rejected { step, error } => {
+                write!(f, "the scripted command {step} was rejected: {error}")
             }
         }
     }
@@ -323,6 +333,45 @@ impl Replay {
             checkpoints,
             final_day: env.day(),
             final_hash: env.state_hash(),
+        })
+    }
+
+    /// Records a game on `map` of scripted commands, each with its actor, applied in order through
+    /// `h3-game` at the setup's difficulty (E08 T52: the golden replays of a meeting and an army
+    /// dialog, which the random agent does not play): the replay of [`Self::verify`], a checkpoint
+    /// after every `checkpoint_every` commands (0: none).
+    ///
+    /// # Errors
+    ///
+    /// [`RecordError::Setup`], or [`RecordError::Rejected`] for the first command the game
+    /// rejects (nothing is recorded).
+    pub fn record_commands(
+        rules: &GameRuleset,
+        (setup, map): (&GameSetup, MapRef),
+        seed: u64,
+        commands: Vec<(Actor, GameCommand)>,
+        checkpoint_every: u32,
+    ) -> Result<Self, RecordError> {
+        let mut state = GameState::new(rules, setup, seed).map_err(RecordError::Setup)?;
+        let mut checkpoints = Vec::new();
+        for (i, (actor, command)) in commands.iter().enumerate() {
+            apply(&mut state, rules, *actor, command.clone(), &mut NoopSink)
+                .map_err(|error| RecordError::Rejected { step: i, error })?;
+            let every = checkpoint_every as usize;
+            if every != 0 && (i + 1) % every == 0 {
+                checkpoints.push(state.state_hash());
+            }
+        }
+        Ok(Self {
+            header: ReplayHeader::current(rules),
+            map,
+            seed,
+            difficulty: setup.difficulty,
+            commands,
+            checkpoint_every,
+            checkpoints,
+            final_day: state.day(),
+            final_hash: state.state_hash(),
         })
     }
 

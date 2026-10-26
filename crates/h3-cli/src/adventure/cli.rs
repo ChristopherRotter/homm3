@@ -4,36 +4,45 @@
 //! ```text
 //! h3 adventure run --map <file.h3m> [--packs-dir packs] [--root .] [--profile base:faithful]
 //!                  [--difficulty 1] [--seed N] [--agent-seed N] [--days N] [--max-steps N]
-//!                  [--checkpoint-every N] [--record <out.toml>]
+//!                  [--checkpoint-every N] [--script <commands.txt|replay.toml>]
+//!                  [--record <out.toml>]
 //! h3 adventure verify [--packs-dir packs] [--root .] <replay.toml>...
-//! h3 adventure bench --map <file.h3m> [--workload play|reach|fork] [--packs-dir packs] [--root .]
-//!                    [--profile base:faithful] [--difficulty 1] [--games N] [--days N]
-//!                    [--seed N] [--forks N] [--observe 0|1] [--masks 0|1]
+//! h3 adventure bench --map <file.h3m> [--workload play|reach|fork|manage] [--packs-dir packs]
+//!                    [--root .] [--profile base:faithful] [--difficulty 1] [--games N] [--days N]
+//!                    [--seed N] [--forks N] [--observe 0|1] [--masks 0|1] [--battle 0|1]
+//!                    [--meeting 0|1] [--queries N]
 //! ```
 //!
 //! `--root` is the directory map paths are relative to (the repository's root for the fixtures);
 //! a replay records the path as given. `--difficulty` is the game's (E08 T14b: a row of the
 //! rules' starting resources, 0 easy to 4 impossible in the original packs; default 1, normal, as
 //! a map's import sets it), checked by the game's build like the rest of the setup; a replay
-//! records it and `verify` plays at it.
+//! records it and `verify` plays at it. `--script` (E08 T52) plays its commands in place of the
+//! random agents (a text file of one command per line, as a replay writes them, or a replay
+//! file's commands: re-recording it), without the agents' options; the scripted golden replays
+//! of a meeting and an army dialog are recorded so.
 
 use std::path::PathBuf;
 
 use h3_game::DEFAULT_DIFFICULTY;
-use h3_sim::adventure::replay::RecordOptions;
+use h3_sim::adventure::replay::{RecordOptions, Replay};
 
 use super::bench::{BenchOptions, Workload};
-use super::{DEFAULT_PROFILE, RunOptions, run_random, verify_file};
+use super::{
+    DEFAULT_PROFILE, RunOptions, ScriptOptions, read_script, run_random, run_script, verify_file,
+};
 
 /// The adventure commands' usage.
 pub const USAGE: &str = "usage:
   h3 adventure run --map <file.h3m> [--packs-dir packs] [--root .] [--profile base:faithful]
                    [--difficulty 1] [--seed N] [--agent-seed N] [--days N] [--max-steps N]
-                   [--checkpoint-every N] [--record <out.toml>]
+                   [--checkpoint-every N] [--script <commands.txt|replay.toml>]
+                   [--record <out.toml>]
   h3 adventure verify [--packs-dir packs] [--root .] <replay.toml>...
-  h3 adventure bench --map <file.h3m> [--workload play|reach|fork] [--packs-dir packs] [--root .]
-                     [--profile base:faithful] [--difficulty 1] [--games N] [--days N]
-                     [--seed N] [--forks N] [--observe 0|1] [--masks 0|1] [--battle 0|1]";
+  h3 adventure bench --map <file.h3m> [--workload play|reach|fork|manage] [--packs-dir packs]
+                     [--root .] [--profile base:faithful] [--difficulty 1] [--games N] [--days N]
+                     [--seed N] [--forks N] [--observe 0|1] [--masks 0|1] [--battle 0|1]
+                     [--meeting 0|1] [--queries N]";
 
 /// Parsed arguments: `--name value` options and positional words.
 struct Args {
@@ -120,8 +129,12 @@ fn run(args: &Args) -> Result<(), String> {
         "days",
         "max-steps",
         "checkpoint-every",
+        "script",
         "record",
     ])?;
+    if let Some(script) = args.get("script") {
+        return run_scripted(args, script);
+    }
     let options = RunOptions {
         map: args.get("map").ok_or("--map is required")?.to_owned(),
         profile: args.get("profile").unwrap_or(DEFAULT_PROFILE).to_owned(),
@@ -143,10 +156,41 @@ fn run(args: &Args) -> Result<(), String> {
         &options,
     )
     .map_err(|e| e.to_string())?;
+    report(&replay, &text, args.get("record"))
+}
+
+/// `run --script` (E08 T52): the script's commands, recorded as the random game's are.
+fn run_scripted(args: &Args, script: &str) -> Result<(), String> {
+    if let Some(name) = ["agent-seed", "days", "max-steps"]
+        .into_iter()
+        .find(|&name| args.get(name).is_some())
+    {
+        return Err(format!("--{name} is the random agents': not with --script"));
+    }
+    let commands = read_script(&PathBuf::from(script)).map_err(|e| e.to_string())?;
+    let options = ScriptOptions {
+        map: args.get("map").ok_or("--map is required")?.to_owned(),
+        profile: args.get("profile").unwrap_or(DEFAULT_PROFILE).to_owned(),
+        difficulty: args.num("difficulty", DEFAULT_DIFFICULTY)?,
+        seed: args.num("seed", 1)?,
+        checkpoint_every: args.num("checkpoint-every", 25)?,
+    };
+    let (replay, text) = run_script(
+        &args.path("packs-dir", "packs"),
+        &args.path("root", "."),
+        &options,
+        commands,
+    )
+    .map_err(|e| e.to_string())?;
+    report(&replay, &text, args.get("record"))
+}
+
+/// Prints what a recorded game played and writes its replay to `record`, if given.
+fn report(replay: &Replay, text: &str, record: Option<&str>) -> Result<(), String> {
     println!("commands: {}", replay.commands.len());
     println!("day:      {}", replay.final_day);
     println!("hash:     {:#018x}", replay.final_hash);
-    if let Some(out) = args.get("record") {
+    if let Some(out) = record {
         std::fs::write(out, text).map_err(|e| format!("{out}: {e}"))?;
         println!("replay written to {out}");
     }
@@ -194,12 +238,19 @@ fn bench(args: &Args) -> Result<(), String> {
         "observe",
         "masks",
         "battle",
+        "meeting",
+        "queries",
     ])?;
     let workload = match args.get("workload").unwrap_or("play") {
         "play" => Workload::Play,
         "reach" => Workload::Reach,
         "fork" => Workload::Fork,
-        other => return Err(format!("--workload: `{other}` is not play, reach or fork")),
+        "manage" => Workload::Manage,
+        other => {
+            return Err(format!(
+                "--workload: `{other}` is not play, reach, fork or manage"
+            ));
+        }
     };
     let options = BenchOptions {
         map: args.get("map").ok_or("--map is required")?.to_owned(),
@@ -213,6 +264,8 @@ fn bench(args: &Args) -> Result<(), String> {
         observe: args.num("observe", 0u8)? != 0,
         masks: args.num("masks", 0u8)? != 0,
         battle: args.num("battle", 0u8)? != 0,
+        meeting: args.num("meeting", 0u8)? != 0,
+        queries: args.num("queries", 1_000)?,
     };
     if options.days == 0 {
         return Err("a game ends only by its day limit: --days must be above 0".to_owned());
@@ -227,6 +280,7 @@ fn bench(args: &Args) -> Result<(), String> {
         Workload::Play => "steps",
         Workload::Reach => "queries",
         Workload::Fork => "forks",
+        Workload::Manage => "listings",
     };
     let counted = if workload == Workload::Play {
         String::new()
@@ -242,6 +296,9 @@ fn bench(args: &Args) -> Result<(), String> {
             "forks with a battle open: {} of {} games",
             r.battles, options.games
         );
+    }
+    if workload == Workload::Manage || options.meeting {
+        println!("a meeting open: {} of {} games", r.meetings, options.games);
     }
     println!(
         "size of GameState: {} bytes, AdventureEnv: {} bytes",

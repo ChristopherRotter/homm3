@@ -730,5 +730,68 @@ pub fn run_random(packs_dir: &Path, root: &Path, options: &RunOptions) -> Result
     Ok((replay, text))
 }
 
+/// What [`run_script`] plays (E08 T52).
+#[derive(Debug, Clone)]
+pub struct ScriptOptions {
+    /// The map's path, relative to the root.
+    pub map: String,
+    /// The profile key.
+    pub profile: String,
+    /// The game's difficulty (setup input, checked by the game's build).
+    pub difficulty: u8,
+    /// The game's seed.
+    pub seed: u64,
+    /// Checkpoint interval (0 = none).
+    pub checkpoint_every: u32,
+}
+
+/// Reads a script (E08 T52): a replay file's commands (a path ending in `.toml`), or a text file
+/// of commands, one per line as a replay writes them ([`format_command`]), blank lines and lines
+/// starting with `#` skipped.
+///
+/// # Errors
+///
+/// The file's, or [`AdventureCliError::Format`] naming a malformed line or replay.
+pub fn read_script(path: &Path) -> Result<Vec<(Actor, GameCommand)>> {
+    let text = read_text(path)?;
+    if path.extension().is_some_and(|e| e == "toml") {
+        return Ok(parse_replay(&text)?.commands);
+    }
+    text.lines()
+        .map(str::trim)
+        .filter(|line| !line.is_empty() && !line.starts_with('#'))
+        .map(parse_command)
+        .collect()
+}
+
+/// Plays `commands` on a map at the options' difficulty and returns the replay and its TOML (E08
+/// T52: the scripted golden replays, of what the random agent does not play; a replay's own
+/// commands re-record it when a hash moves).
+///
+/// # Errors
+///
+/// The first [`AdventureCliError`]: the rules', the map's, the setup's or a rejected command's.
+pub fn run_script(
+    packs_dir: &Path,
+    root: &Path,
+    options: &ScriptOptions,
+    commands: Vec<(Actor, GameCommand)>,
+) -> Result<(Replay, String)> {
+    let ids: Vec<String> = DEFAULT_PACKS.iter().map(|&s| s.to_owned()).collect();
+    let rules = load_rules(packs_dir, &ids, &options.profile)?;
+    let (map, mut setup) = load_map(root, &options.map, &rules)?;
+    setup.difficulty = options.difficulty;
+    let replay = Replay::record_commands(
+        &rules,
+        (&setup, map),
+        options.seed,
+        commands,
+        options.checkpoint_every,
+    )
+    .map_err(AdventureCliError::Record)?;
+    let text = replay_to_toml(&replay)?;
+    Ok((replay, text))
+}
+
 #[cfg(test)]
 mod tests;

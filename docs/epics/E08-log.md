@@ -5408,3 +5408,87 @@ chose T51b whole (decision 118; recommended was two parts, the meeting first).
 - **Verify**: the scoped run without a failing step (its first coverage run found the two
   refusals untested and an implicit branch of the group's write-back, rewritten); the benchmarks
   passed `bench-check`.
+
+### Increment 6, round 5: T52, the plans and properties, the scripted golden replays, the benchmarks (2026-10-26, `adventure/e08-t52`, `shared/e08-t52-benches` #469)
+
+**Baseline:** `master` 7619a4a (#468 merged), its engine code verified (only the light gates
+ran). At its start the user chose T52 whole (decision 119; recommended was two parts, the tests
+first). The original game's files staged at the start, as the user's computer was about to go.
+
+- **The plans** (`h3-map`'s `play.rs`; drawn last, so the regression files' cases keep their
+  maps; the committed duel and XL maps unchanged, byte for byte): `Plan::exchange`, an
+  `Exchange` in one plan of two: a mate of the first hero's owner on the tile beside it (a
+  direction), Scholar and Wisdom at a level or none (its skills of its own), a Spell Book (the
+  first hero wears one too), up to five spells of its own on a SoD map (`MATE_SPELLS`: levels 1
+  to 5), Elixir of Life's three parts worn in one case of two (`ELIXIR_PARTS`, base artifacts
+  every version holds; the combination is SoD's, which the original packs enable); in one case
+  of two the first hero's army full (`FULL_ARMY`: seven creatures, none a plan's monster's) with
+  six compliant goblins on the tile beside it opposite the mate's.
+- **The driver**: `Step::Manage(n)` (the actor's management commands, `managing`: each hero's
+  `legal_management`, then the splits of every pair of slots of the armies managed together to
+  their range's ends and middle, `splits`; picked by kind first, `pick`, so an assembly among
+  hundreds of moves is played as often as the others), `Step::Meet(n)` (a move ending nearest to
+  another own hero; in a meeting or a dialog as `Manage`), `Step::Join(n)` (an offer to join
+  accepted, else a move onto a wandering monster's tile, a full army's first), runs of a `Meet`
+  and up to fifteen `Manage`s and of two `Join`s and `Manage`s; `Free::Manage` (an `Arbitrary`
+  command: kind, heroes or the group, slots up to two past the army's, a count, places up to a
+  few past the last). Agent's calls (change freely): the weights (2 single `Manage`s, 2 meeting
+  runs, 1 join run in `steps`), the goblins opposite the mate (a random offset rarely led to a
+  dialog: none in 96 cases), the join step preferring a full army's visit.
+- **The checks** (every step of `every_step_keeps_the_commands_invariants`): `check_invariants`
+  (every hero one to seven stacks in order, counts 1 to the stack cap, details `validate`d; a
+  group's stacks alike, its hero the player's; a meeting's heroes the player's, neighbours on one
+  level), `check_managing` (only the acting player lists management, for the heroes it may
+  manage; both formations and flags, no command twice, a sample of 24 listed commands applies;
+  a sample of 16 pairs of slots: a split range exactly where a split applies, its ends apply and
+  one past each refuses; another player's range none), `check_unlisted` (an accepted management
+  command is listed by a hero or a split within its pair's range), `check_conservation` (details
+  change by the told hero changes applied in order: a meeting's spells, artifacts' moves,
+  assemblies; a join without room holds its whole group, the army full; the told slots), the new
+  `check_groups` (a dialog opens with the group whole in slot 0, its slots change as told, closed
+  its stacks are lost and told in slot order), `check_decisions` (a meeting and a dialog open
+  and close as told, one at a time), `check_isolation` (another player's meeting and dialog
+  unchanged), `check_management` (no decision opens or closes, no hero moves; an army command
+  keeps the named armies' creatures but a dismissed stack's; formation and flag only as told; an
+  artifact's move keeps the two heroes' artifacts; an assembly turns the parts into the
+  combination, a disassembly back), `check_inverse` (a stack moved onto an empty slot or swapped,
+  an artifact moved onto an empty place: the inverse move applies and restores both armies and
+  heroes; a merge and a swap out of a backpack have none). The main property passed 320 cases in
+  a one-off run (48 committed). `the_plans_meet_and_manage` (96 fixed cases): 78 meetings, 10
+  spells taught, 457 moves, 428 splits, 354 dismissals, 220 formations, 233 flags, 430 artifact
+  moves, 24 assemblies, 18 disassemblies, 180 stacks and 98 artifacts between two heroes, 5 army
+  dialogs, 2 group stacks taken, 14 lost, 38 refused, 841 moves undone by their inverse.
+- **The army map** (`fixtures/maps/e08-army-12.h3m`, `fixtures.rs`' `army`): SoD, 12 × 12 of
+  grass; red's Valeska (hero 0) at (3, 5), a full army, twelve backpack artifacts
+  (`ARMY_BACKPACK`); Caitlin (hero 2, the mate) east of her: expert Scholar, advanced Wisdom,
+  Magic Arrow, Ice Bolt, Lightning Bolt, Fireball, Bless, Haste, Elixir's parts; six compliant
+  goblins west of her; blue's Rion (hero 1) at (9, 9). The fixture test counts a plan's mate
+  among its heroes.
+- **The scripted recording**: `Replay::record_commands` (`h3-sim`'s `replay.rs`: commands
+  applied through `h3-game`, a rejected one `RecordError::Rejected`, nothing recorded),
+  `h3 adventure run --script <file>` (`read_script`: one command per line as a replay writes it,
+  `#` comments; a `.toml` path a replay's own commands, which re-record it byte for byte;
+  `run_script`; the agents' options refused with it).
+- **The golden replays** (`army-meeting-s1`, 17 commands, and `army-dialog-s1`, 8, checkpoints
+  every 5; `adventure_replays.rs` lists what each does): the meeting (Scholar teaches Valeska five
+  spells of level 2 at most, stacks moved, split, swapped and dismissed between the two, the axe
+  to Caitlin's hand, the ring there and back, Elixir assembled, taken apart and assembled, a
+  formation and a flag, the meeting closed, a walk on); the dialog (the join accepted without
+  room, a stack dismissed, four goblins taken by a split from the group, the Monks moved into it,
+  closed: two stacks lost).
+- **The benchmarks**: `h3 adventure bench --meeting 1` (a player's heroes seek each other,
+  `until_meeting` and `seek_own`; the random agent plays offers, level-ups, dialogs and battles on
+  the way) and `--workload manage` (`management_queries`: both heroes' `legal_management` and
+  the split range of every pair of the two armies' slots, `--queries` times). Gated:
+  `fork-meeting-xl-144` 357 000 055 Ir (the meeting after 54 steps; +0.17 % over
+  `fork-xl-144`'s battle: no copy per fork beyond the decision's) and `manage-army-12`
+  399 997 833 Ir (250 times; Valeska lists 270 commands, 168 of them artifact moves, Caitlin 92;
+  about 106 µs a listing in release). The four earlier workloads within 1 % of their baselines.
+  The benches README's two rows are a shared path: `shared/e08-t52-benches` (#469).
+- **The env** (the AI lane's): the CLI's test plays `random_rollout` to the day limit after a
+  meeting and after an army dialog opened; the AI lane's inbox told (with the army map for its
+  own test).
+- **Versions**: none moved (the replay format stays v6; no hash).
+- **Verify**: the full `cargo xtask verify --with-original-data` passed every step (coverage,
+  determinism with the twelve replays, `bench-check` with the six adventure workloads) on code
+  5a00f64 (commit 61c13d2); `check-lane` ok (lane 20 files, common 2).

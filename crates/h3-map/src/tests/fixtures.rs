@@ -10,7 +10,7 @@ use std::path::PathBuf;
 
 use super::gzip_with;
 use super::play::{
-    BLOCKERS, FAITHFUL, GROUND_OBJECTS, GUARDED, KINDS, Kit, MONSTER_OBJECTS, Plan, Spot,
+    BLOCKERS, Exchange, FAITHFUL, GROUND_OBJECTS, GUARDED, KINDS, Kit, MONSTER_OBJECTS, Plan, Spot,
     experienced, masks,
 };
 use crate::model::Version;
@@ -460,6 +460,7 @@ fn duel() -> Plan {
         nomads: None,
         blockers,
         difficulty: 1,
+        exchange: None,
     }
 }
 
@@ -499,8 +500,49 @@ fn xl() -> Plan {
         nomads: None,
         blockers,
         difficulty: 1,
+        exchange: None,
     }
 }
+
+/// `e08-army-12.h3m` (E08 T52, increment 6): the scripted golden replays' and the management
+/// benchmark's map. SoD, 12 × 12 of grass, no underground and no blockers; red's first hero at
+/// (3, 5) with a full army ([`ARMY_FULL`]: seven stacks, none of goblins) and twelve artifacts in
+/// its backpack ([`ARMY_BACKPACK`]), its mate on the tile east of it (expert Scholar, advanced
+/// Wisdom, a Spell Book and six spells of its own, Elixir of Life's three parts worn: `play.rs`'
+/// [`Exchange`]), six compliant goblins on the tile west of it; blue's hero at (9, 9). A step
+/// east meets the mate (Scholar teaches both ways, HER-SPL-007); a step west is offered the
+/// goblins' join, which finds no room (the army dialog, GAM-DEC-004).
+fn army() -> Plan {
+    Plan {
+        version: Version::Sod,
+        side: 12,
+        two_levels: false,
+        tiles: vec![(2, 0, 0); 12 * 12],
+        players: vec![(0, true), (1, true)],
+        heroes: vec![((3, 5, 0), None), ((9, 9, 0), None)],
+        hero_types: 1,
+        backpacks: vec![ARMY_BACKPACK.to_vec()],
+        skills: vec![],
+        kits: vec![],
+        nomads: None,
+        blockers: vec![],
+        difficulty: 1,
+        exchange: Some(Exchange {
+            mate: 2,
+            scholar: 3,
+            wisdom: 2,
+            spells: vec![0, 1, 2, 4, 5, 6],
+            parts: true,
+            full: Some(ARMY_FULL.to_vec()),
+        }),
+    }
+}
+
+/// The army map's first hero's backpack (E08 T52): twelve of the plans' artifacts (codes 7 to
+/// 40, weapons, shields, helmets and armour of the base game).
+const ARMY_BACKPACK: [u16; 12] = [7, 8, 9, 10, 13, 14, 15, 16, 19, 20, 21, 22];
+/// The army map's first hero's army (E08 T52): the counts of `play.rs`' seven full-army creatures.
+const ARMY_FULL: [u16; 7] = [10, 8, 12, 6, 4, 9, 7];
 
 /// A hero's kit as worn artifacts and skills (code, level): [`Kit`].
 type KitSpec = (&'static [u16], &'static [(u8, u8)]);
@@ -555,10 +597,14 @@ const XL_EXPERIENCE: [u32; 8] = [970, 950, 4_570, 930, 980, 940, 960, 920];
 /// A committed generated map: its file name, plan and its heroes' custom experience (E08 T31).
 type Fixture = (&'static str, fn() -> Plan, &'static [u32]);
 
+/// The army map's heroes' (E08 T52): none gained yet, in the map's order (the mate last).
+const ARMY_EXPERIENCE: [u32; 3] = [0, 0, 0];
+
 /// The committed generated maps.
-const FIXTURES: [Fixture; 2] = [
+const FIXTURES: [Fixture; 3] = [
     ("e08-duel-36.h3m", duel, &DUEL_EXPERIENCE),
     ("e08-xl-144.h3m", xl, &XL_EXPERIENCE),
+    ("e08-army-12.h3m", army, &ARMY_EXPERIENCE),
 ];
 
 #[test]
@@ -578,7 +624,9 @@ fn generated_maps_are_committed_as_generated() {
             "{name} is not its plan's map: H3_WRITE_FIXTURES=1 rewrites it"
         );
         let setup = import(&read, &FAITHFUL).unwrap();
-        assert_eq!(setup.heroes.len(), plan().heroes.len(), "{name}");
+        // E08 T52: an exchange's mate too.
+        let mate = usize::from(plan().exchange.is_some());
+        assert_eq!(setup.heroes.len(), plan().heroes.len() + mate, "{name}");
         let custom: Vec<_> = setup.heroes.iter().map(|h| h.details.experience).collect();
         assert_eq!(
             custom,

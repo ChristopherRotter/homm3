@@ -16,6 +16,8 @@ fn root() -> PathBuf {
 }
 
 const DUEL: &str = "fixtures/maps/e08-duel-36.h3m";
+/// E08 T52's map: a meeting and an army dialog one step away.
+const ARMY: &str = "fixtures/maps/e08-army-12.h3m";
 
 fn options(days: u32) -> RunOptions {
     RunOptions {
@@ -533,6 +535,113 @@ fn the_command_line_runs_and_verifies() {
     std::fs::remove_dir_all(&dir).unwrap();
 }
 
+/// `run --script` (E08 T52): a text script's commands, blank lines and comments skipped, record a
+/// replay that verifies and that a replay file's commands re-record identically; a rejected
+/// command records nothing; the random agents' options and a malformed line are refused.
+#[test]
+fn a_script_records_a_replay_that_verifies() {
+    let dir = std::env::temp_dir().join(format!("h3-adventure-script-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let (root, packs) = (root(), root().join("packs"));
+    let script = dir.join("meeting.txt");
+    let text =
+        "# Valeska meets Caitlin.\n0 move 0 4,5,0\n\n0 army move 0:6 2:2\n0 decline\n0 end-turn\n";
+    std::fs::write(&script, text).unwrap();
+    let options = ScriptOptions {
+        map: ARMY.to_owned(),
+        profile: DEFAULT_PROFILE.to_owned(),
+        difficulty: h3_game::DEFAULT_DIFFICULTY,
+        seed: 3,
+        checkpoint_every: 2,
+    };
+    let commands = read_script(&script).unwrap();
+    assert_eq!(commands.len(), 4);
+    let (replay, toml) = run_script(&packs, &root, &options, commands).unwrap();
+    assert_eq!((replay.commands.len(), replay.checkpoints.len()), (4, 2));
+    let out = dir.join("meeting.toml");
+    std::fs::write(&out, &toml).unwrap();
+    assert!(verify_file(&out, &packs, &root).is_ok());
+    let again = run_script(&packs, &root, &options, read_script(&out).unwrap()).unwrap();
+    assert_eq!(again.1, toml);
+    // The second command again, the meeting closed: no army of another hero is together.
+    let mut rejected = read_script(&script).unwrap();
+    rejected.push(rejected[1].clone());
+    let e = run_script(&packs, &root, &options, rejected).unwrap_err();
+    assert!(
+        matches!(
+            e,
+            AdventureCliError::Record(RecordError::Rejected { step: 4, .. })
+        ),
+        "{e}"
+    );
+    assert!(e.to_string().contains("scripted command 4"), "{e}");
+    let bad = dir.join("bad.txt");
+    std::fs::write(&bad, "0 fly 3\n").unwrap();
+    assert!(read_script(&bad).is_err());
+    let args = |words: &[&str]| words.iter().map(|w| (*w).to_owned()).collect::<Vec<_>>();
+    let (root, packs, script) = (
+        root.display().to_string(),
+        packs.display().to_string(),
+        script.display().to_string(),
+    );
+    let run = |extra: &[&str]| {
+        let mut words = vec![
+            "run",
+            "--map",
+            ARMY,
+            "--root",
+            &root,
+            "--packs-dir",
+            &packs,
+            "--script",
+            &script,
+        ];
+        words.extend(extra);
+        cli::main(&args(&words))
+    };
+    run(&[]).unwrap();
+    for extra in [["--days", "1"], ["--agent-seed", "2"], ["--max-steps", "9"]] {
+        assert!(run(&extra).is_err(), "{extra:?}");
+    }
+    assert!(run(&["--seed", "x"]).is_err());
+    let missing = dir.join("nosuch.txt").display().to_string();
+    assert!(cli::main(&args(&["run", "--map", ARMY, "--script", &missing])).is_err());
+    std::fs::remove_dir_all(&dir).unwrap();
+}
+
+/// The env plays on through a meeting and an army dialog (E08 T52, increment 6's exit criterion
+/// 6; the env is the AI lane's, ADR-0017 point 8): on the army map red's first hero steps east
+/// onto its mate (a meeting) or west onto the goblins and accepts their join without room (the
+/// army dialog); the env's random agent then plays every seat on to the day limit, its first
+/// action the only one listed, `Decline`, which closes either.
+#[test]
+fn the_env_plays_on_through_a_meeting_and_an_army_dialog() {
+    use h3_sim::adventure::action::{hero_in_slot, tile_index};
+    use h3_sim::adventure::{Action, AdventureEnv, random_rollout};
+    let ids: Vec<String> = DEFAULT_PACKS.iter().map(|&s| s.to_owned()).collect();
+    let rules = load_rules(&root().join("packs"), &ids, DEFAULT_PROFILE).unwrap();
+    let (_, setup) = load_map(&root(), ARMY, &rules).unwrap();
+    let red = PlayerId::new(0);
+    for (x, answer) in [(4, None), (2, Some(Action::accept()))] {
+        let mut env = AdventureEnv::new(rules.clone(), Arc::new(setup.clone()), 1, 3).unwrap();
+        assert_eq!(hero_in_slot(env.state(), red, 0), Some(HeroId::new(0)));
+        let tile = tile_index(env.state(), Pos::new(x, 5, 0)).unwrap();
+        env.step(red, Action::move_to(0, tile)).unwrap();
+        if let Some(answer) = answer {
+            env.step(red, answer).unwrap();
+        }
+        let state = env.state();
+        let open = (
+            state.meeting(red).is_some(),
+            state.army_dialog(red).is_some(),
+        );
+        assert_eq!(open, (answer.is_none(), answer.is_some()));
+        let played = random_rollout(&mut env, 5, 0);
+        assert!(env.is_done() && played.day == 4, "{played:?}");
+        assert!(env.state().meeting(red).is_none() && env.state().army_dialog(red).is_none());
+    }
+}
+
 #[test]
 fn the_benchmark_workloads_run_and_count_what_they_say() {
     let bench = |workload, observe, masks| {
@@ -551,6 +660,8 @@ fn the_benchmark_workloads_run_and_count_what_they_say() {
                 observe,
                 masks,
                 battle: false,
+                meeting: false,
+                queries: 0,
             },
         )
         .unwrap()
@@ -603,15 +714,60 @@ fn the_benchmark_workloads_run_and_count_what_they_say() {
             observe: false,
             masks: false,
             battle: true,
+            meeting: false,
+            queries: 0,
         },
     )
     .unwrap();
     assert_eq!((fight.operations, fight.battles), (6, 2));
     assert!(fight.steps > 2, "{fight:?}");
+    assert_eq!(fight.meetings, 0);
+    // E08 T52: with `meeting` a player's heroes seek each other and the forks carry the open
+    // meeting; `manage` lists both heroes' management in it, two listings a time. On the army map
+    // red's Valeska meets Caitlin at her first step; on the duel the heroes stand on two levels and
+    // never meet.
+    let meeting = |map: &str, workload, games| {
+        bench::run(
+            &root().join("packs"),
+            &root(),
+            &bench::BenchOptions {
+                map: map.to_owned(),
+                profile: DEFAULT_PROFILE.to_owned(),
+                difficulty: h3_game::DEFAULT_DIFFICULTY,
+                workload,
+                games,
+                days: 2,
+                seed: 1,
+                forks: 3,
+                observe: false,
+                masks: false,
+                battle: false,
+                meeting: true,
+                queries: 5,
+            },
+        )
+        .unwrap()
+    };
+    let met = meeting(ARMY, bench::Workload::Fork, 2);
+    assert_eq!((met.operations, met.steps, met.meetings), (6, 2, 2));
+    let listed = meeting(ARMY, bench::Workload::Manage, 2);
+    assert_eq!(
+        (listed.operations, listed.steps, listed.meetings),
+        (20, 2, 2)
+    );
+    let apart = meeting(DUEL, bench::Workload::Manage, 1);
+    assert_eq!((apart.operations, apart.meetings), (0, 0));
+    assert!(apart.steps > 2, "{apart:?}");
     let dir = root().display().to_string();
     let packs = format!("{dir}/packs");
     let args = |words: &[&str]| words.iter().map(|w| (*w).to_owned()).collect::<Vec<_>>();
-    for (workload, agent) in [("play", "0"), ("play", "1"), ("reach", "1"), ("fork", "1")] {
+    for (workload, agent) in [
+        ("play", "0"),
+        ("play", "1"),
+        ("reach", "1"),
+        ("fork", "1"),
+        ("manage", "1"),
+    ] {
         cli::main(&args(&[
             "bench",
             "--map",
@@ -634,6 +790,10 @@ fn the_benchmark_workloads_run_and_count_what_they_say() {
             agent,
             "--battle",
             agent,
+            "--meeting",
+            agent,
+            "--queries",
+            "2",
             "--difficulty",
             "4",
         ]))

@@ -475,8 +475,8 @@ fn check_told(
                 decision = Some(Open::Offer(hero, object_type, anchor));
             }
             GameEvent::OfferRefused { player, .. } => prop_assert_eq!(player, viewer),
-            // E08 T51a: the management's events are the owner's (the plans manage nothing yet);
-            // a slot of an army dialog's group changes its group (T51b).
+            // E08 T51a: the management's events are the owner's (the plans manage since T52); a
+            // slot of an army dialog's group changes its group (T51b).
             GameEvent::StackChanged { player, at, stack } => {
                 prop_assert_eq!(player, viewer);
                 if let (ArmyRef::Group, Some(Open::Dialog(_, group))) = (at.army, &mut decision) {
@@ -1044,6 +1044,7 @@ fn vary_changes_what_the_viewer_never_sees_only() {
         nomads: None,
         blockers: vec![((4, 1, 0), 0), ((1, 5, 0), 1)],
         difficulty: 1,
+        exchange: None,
     };
     let m = lay_out(&plan);
     let unseen = Unseen {
@@ -1138,6 +1139,7 @@ fn a_typed_object_in_sight_shows_its_type_never_its_drawn_contents() {
         nomads: None,
         blockers: vec![((3, 1, 0), 3), ((1, 3, 0), 9)],
         difficulty: 1,
+        exchange: None,
     };
     let m = lay_out(&plan);
     let red = PlayerId::new(0);
@@ -1205,6 +1207,7 @@ fn another_players_level_up_shows_nothing_of_its_offers() {
         nomads: None,
         blockers: vec![((3, 2, 0), MONSTER_OBJECTS[3])],
         difficulty: 1,
+        exchange: None,
     };
     let (red, blue) = (PlayerId::new(0), PlayerId::new(1));
     let attack = GameCommand::Adventure(AdventureCommand::MoveHero {
