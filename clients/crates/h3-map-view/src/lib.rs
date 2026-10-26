@@ -11,8 +11,10 @@
 //! [`batch`] the assets it needs, decoded; [`compose`] draws it into a frame in the original's
 //! screen format with the view's drawers ([`draw`]) and the compositor's (`h3-render`).
 //! [`situation`] is a still of the capture set: a map built with the writer, its view and the
-//! tiles left unexplored. The adapters (the gate, `render`, `situation`) are the binary's
-//! modules, not this library.
+//! tiles left unexplored. [`timeline`] is the map over time (E24 M2 T2): the original's loop on a
+//! clock of milliseconds, its redraws, palette steps, scroll and cursor; [`sequence`] the recorded
+//! sequences it replays. The adapters (the gate, `render`, `situation`, `sequences`) are the
+//! binary's modules, not this library.
 //!
 //! Pure: no I/O, clock, threads or globals, `no_std` + `alloc`; time is an input. The header below
 //! is checked by `tests/purity.rs`.
@@ -43,5 +45,7 @@ pub mod layout;
 pub mod live;
 pub mod objects;
 pub mod scene;
+pub mod sequence;
 pub mod situation;
 pub mod tables;
+pub mod timeline;

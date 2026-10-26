@@ -69,6 +69,15 @@ pub struct ViewArt {
     pub cycle_ms: u32,
     /// The objects' frame step (180 ms: the manager's +0x100, design §1.6).
     pub frame_ms: u32,
+    /// The tiles a scroll step moves the view at the scroll speeds 0 to 2 (1, 2, 3:
+    /// `scroll_steps` 0x63A66C; E24 M2 T2, design §3.4).
+    pub scroll_steps: Vec<i32>,
+    /// The edge scroll's time from the last step, or the pointer's arrival, to the next (70 ms:
+    /// `edge_scroll` 0x419820).
+    pub scroll_ms: u32,
+    /// The mouse poll's (33 ms: `mouse_poll` 0x50D680, its next time moved on by at least this):
+    /// the cursor is drawn where the poll last read the mouse (E17 design §9.10).
+    pub poll_ms: u32,
     /// The unexplored tiles' pieces (design §1.5).
     pub shroud: Shroud,
     /// The heroes' and boats' pictures (E24 M1 T5a; design §2.3, §2.8).
@@ -313,6 +322,8 @@ pub const EDGE_FRAMES: usize = 36;
 pub const PATH_FRAMES: usize = 50;
 /// The entries of the shroud's table (one per mask).
 pub const MASKS: usize = 256;
+/// The scroll speeds (the options dialog's three, `option_scroll_speed` 0x69878C 0 to 2).
+pub const SCROLL_SPEEDS: usize = 3;
 
 /// A terrain's, river's or road's art.
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
@@ -510,6 +521,15 @@ pub fn load(files: &[TableFile], top: &str) -> Result<Tables, TableError> {
     name("path", &map.path, ".DEF")?;
     heroes(&map.heroes)?;
     owners_and_towns(map)?;
+    if map.scroll_steps.len() != SCROLL_SPEEDS || map.scroll_steps.iter().any(|&s| s < 1) {
+        return Err(entry(
+            "scroll_steps",
+            &format!("one step of at least a tile per scroll speed ({SCROLL_SPEEDS})"),
+        ));
+    }
+    if map.poll_ms == 0 {
+        return Err(entry("poll_ms", "a poll every 0 ms"));
+    }
     if map.shroud.pieces.len() != MASKS {
         return Err(entry(
             "shroud",
