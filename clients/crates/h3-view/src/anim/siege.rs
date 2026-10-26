@@ -251,11 +251,12 @@ pub(super) struct Entered {
 }
 
 impl Entered {
-    /// The events entering the path's hex `k` brings.
-    pub(super) fn at(&self, k: usize) -> Option<&[Event]> {
+    /// The events entering the path's hex `k` brings, each hex's in the engine's order (E17 M4
+    /// T3a, R1-1: a mine's blast and then the moat's damage, or a two-hex walker's two mines).
+    pub(super) fn at(&self, k: usize) -> impl Iterator<Item = &[Event]> {
         self.after
             .iter()
-            .find(|(at, _)| *at == k)
+            .filter(move |(at, _)| *at == k)
             .map(|(_, events)| events.as_slice())
     }
 }

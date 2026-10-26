@@ -589,6 +589,34 @@ fn a_wall_shot_s_group_follows_the_original_s_angle() {
 }
 
 #[test]
+fn a_turret_faces_a_target_right_of_its_point() {
+    // E17 M4 T3a, R1-5: the lower tower (its point 648, 566) shoots the Archers moved to 186,
+    // right of it: its shot's frames face right (`to[0] >= point[0]`), its stands before and
+    // after them left (0x465E74); the same shot at 137, left of it, faces left throughout.
+    let shot = |hex| {
+        let mut o = keep_siege();
+        if let Some(s) = o.stacks.iter_mut().find(|s| s.id == 2) {
+            s.hex = hex;
+        }
+        let commands = [(
+            Some(0),
+            vec![turret_shot(9, 2, 11, 1), Event::TurnStarted { stack: 3 }],
+        )];
+        let t = play_siege(&o, &commands, Bugs::Original, Some(&castle()));
+        t.turrets
+            .iter()
+            .filter(|k| k.record == 1)
+            .map(|k| k.pose.right)
+            .collect::<Vec<bool>>()
+    };
+    // Its opening stand, the shot's eight frames, its stand after them.
+    let mut right = [false; 10];
+    right[1..9].fill(true);
+    assert_eq!(shot(186), right);
+    assert_eq!(shot(137), [false; 10]);
+}
+
+#[test]
 fn turret_records_follow_their_positions() {
     assert_eq!(
         [254, 251, 255, 200].map(turret_record),

@@ -173,7 +173,8 @@ keep's turn). `walls = { parts = [18 picture states], gate = n }` writes a siege
 into the original once its setup has set them and before the battle screen shows
 (`h3drive.into_battle`, `h3mem.write_walls`: the parts' states +0x13FA8 and the gate's
 +0x53A4, the hit points left, or a destroyed turret's turn would pass), and the viewer draws the
-same (`h3-view render --walls`, *provisional*).
+same (`h3-view render --walls`, *provisional*); the states are checked before the game starts
+(E17 M4 T3a: each part's 0 to 4, the gate's 0 to 3; one past them reads another part's picture).
 
 **Another battlefield:** the original's obstacles depend on the battle's tile, the background on
 what stands around it (§4.4): `--tile x,y` (the set's `tile`) moves the battle. At (20, 20) on dirt
@@ -632,8 +633,13 @@ are the one named is redirected; that and the clock's import slot are the only b
 running copy that change, never a file. Commands in `ctl`: `<seq> roll <name> <value> <count>`
 (the next `<count>` draws return `<value>`), `<seq> rolls <name> <value>` (every other draw does)
 and `<seq> rolls <name> natural` (they are drawn again, as at the start). `ack` goes on with
-`<forced> <pending> <sites>`: the draws forced so far, the forced draws still waiting and the
-calls redirected.
+`<forced> <pending> <sites> <refused>`: the draws forced so far, the forced draws still waiting,
+the calls redirected and (E17 M4 T3a, the reviewer's R3-1 to R3-4) what `xdd.dll` refused: a
+command it cannot read or for a roll it does not know, a count below 1, a list past 8 values, a
+list over values of the roll's last list not drawn yet (the new list set), and a forced value
+outside the range its `random(a, b)` call draws from (the call's own draw taken: the original
+would run off its tables with it). `Game.roll` stops at once when its command was refused, and a
+sequence fails at its end when any forced value was.
 
 | Roll (`ROLLS`) | Draw (falls, fails) | Where, when |
 |---|---|---|
@@ -656,7 +662,8 @@ A sequence's action `roll:<name>` forces the roll's next draw to fall, `roll:<na
 `roll:<name>:<n>` to be n (E17 M4 T2b: the wall shots' rolls, whose draw picks among more than
 two outcomes), each with `:<count>` after it for the next count draws (`roll:wall_hit::2`), and
 `roll:<name>:<a>,<b>,...` the next draws a, b, ... in order (E17 M4 T2c-2: Earthquake's hits; at
-most 8; `<seq> roll <name> <a>,<b>,... <n>` in `ctl`, before any count forced on that roll);
+most 8, `QUEUE`; `<seq> roll <name> <a>,<b>,... <n>` in `ctl`, before any count forced on that
+roll; a count is at least 1);
 its key `fail = ["<name>", …]` (`--fail <name>` for `sequence`) fails every other draw of those
 rolls, so nothing falls the sequence did not ask for (the runs' differences in "Traps" among
 them). Each draw is made for every stack at its moment whatever its morale or luck (a morale of 0

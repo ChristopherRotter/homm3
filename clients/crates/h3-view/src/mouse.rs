@@ -248,9 +248,11 @@ pub struct Field<'a> {
 }
 
 impl Field<'_> {
-    /// Whether the mouse finds the keep's and the upper tower's rectangles (CLT-Q21).
+    /// Whether the mouse finds the keep's and the upper tower's rectangles (CLT-Q21): in a
+    /// siege, a town with a fort (E17 M4 T3a, R2-2: a town without one is no siege, as the
+    /// drawing's); in the original's profile in every battle.
     fn rects(&self) -> bool {
-        self.observation.siege.is_some() || self.bugs == Bugs::Original
+        self.fort() > 0 || self.bugs == Bugs::Original
     }
 
     /// The siege's fort level (0 none: no siege, or no fort).
