@@ -18,6 +18,10 @@ Moved to `TRAPS.md`: forks without deep copies, RNG seeds server-only, template 
 
 ## Recent sessions
 
+### 2026-10-26 — increment 6, round 5: T52 (in progress)
+
+Baseline 7619a4a (#468 merged; verified). T52 whole (the user's choice at its start). **In progress** on `adventure/e08-t52`: done, the plans and properties (`h3-map`'s `play.rs`, commit 0f39207); next, the scripted recording and the two golden replays, then the benchmarks, the docs and the full verify.
+
 ### 2026-10-26 — increment 6, round 4: T51b; round 4 closed
 
 Baseline f72f8c2 (full verify green). T51b whole (decision 118): the meeting with Scholar, the army dialog with the join offered without room, `Manage` between two armies; game state hash v13, `ADV-STUB-2` closed; the ten replays' commands unchanged. Full verify green; #468 open.
@@ -25,7 +29,3 @@ Baseline f72f8c2 (full verify green). T51b whole (decision 118): the meeting wit
 ### 2026-10-24 — increment 6, round 4: T51a
 
 Baseline e816f20. T51 cut in two (decision 116), the listing per hero (decision 117, ADR-0017 amended first); `Manage` on one hero, the flag in battle, replay format v6.
-
-### 2026-10-24 — increment 6, round 4: T50
-
-Baseline f89aa89. T50 whole (decision 113), the cap first (#455); the no-room offer left to T51; four duplicate decision-112 blocks removed from the epic.
