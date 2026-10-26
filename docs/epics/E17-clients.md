@@ -157,7 +157,9 @@ states; the Tower 26, without the moat).
   2026-10-24: T2c-1 the gate, the moat and a mine; T2c-2 Earthquake, the shots and the mouse): a
   defender out through the gate and back, a stack in the moat, a mine, Earthquake, a hero with
   Ballistics aiming the Catapult, a shot through the walls; the siege cursors.
-- **T3, M4's closure:** a fresh reviewer, every capture afresh, the review list, M5 refined.
+- **T3, M4's closure:** a fresh reviewer, every capture afresh, the review list, M5 refined
+  (cut in three by the user, 2026-10-26: T3a the reviewers' findings fixed, T3b every capture
+  afresh with the hovered item read, T3c the review list and M5).
 - **Exit:** the siege situations and sequences pass, or each difference is a listed fix or a
   classified quirk.
 - **T0 done 2026-10-23** ([log](E17-log.md#m4-t0--m4-sieges-refined-2026-10-23)): the cut
