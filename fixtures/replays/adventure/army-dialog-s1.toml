@@ -1,0 +1,50 @@
+commands = [
+    "0 move 0 2,5,0",
+    "0 accept",
+    "0 army dismiss 0:6",
+    "0 army split g:0 0:6 4",
+    "0 army move 0:3 g:1",
+    "0 decline",
+    "0 end-turn",
+    "1 end-turn",
+]
+checkpoints = ["0x201e2c665fe4cf13"]
+
+[replay]
+format = 6
+engine = "0.1.0"
+seed = "1"
+difficulty = 1
+packs = [
+    [
+    "base",
+    "harvest-1",
+],
+    [
+    "ab",
+    "harvest-1",
+],
+    [
+    "sod",
+    "harvest-1",
+],
+]
+profile = "base:faithful"
+ruleset_hash = "0xf253d2fdb8f18e30"
+adventure_ruleset_hash = "0xf9dc9fcea4630571"
+rng = "xoshiro256starstar+splitmix64"
+rng_version = 1
+hash = "fnv1a64-le"
+hash_version = 1
+game_state_hash_version = 13
+adventure_state_hash_version = 11
+checkpoint_every = 5
+
+[map]
+path = "fixtures/maps/e08-army-12.h3m"
+hash = "0xac8149d41d97cd68"
+import_version = 10
+
+[result]
+day = 2
+final_hash = "0xfb1d127ba24fe4b2"

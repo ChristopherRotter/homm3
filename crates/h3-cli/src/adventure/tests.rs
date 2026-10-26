@@ -16,6 +16,8 @@ fn root() -> PathBuf {
 }
 
 const DUEL: &str = "fixtures/maps/e08-duel-36.h3m";
+/// E08 T52's map: a meeting and an army dialog one step away.
+const ARMY: &str = "fixtures/maps/e08-army-12.h3m";
 
 fn options(days: u32) -> RunOptions {
     RunOptions {
@@ -530,6 +532,80 @@ fn the_command_line_runs_and_verifies() {
     ] {
         assert!(cli::main(&bad).is_err(), "{bad:?}");
     }
+    std::fs::remove_dir_all(&dir).unwrap();
+}
+
+/// `run --script` (E08 T52): a text script's commands, blank lines and comments skipped, record a
+/// replay that verifies and that a replay file's commands re-record identically; a rejected
+/// command records nothing; the random agents' options and a malformed line are refused.
+#[test]
+fn a_script_records_a_replay_that_verifies() {
+    let dir = std::env::temp_dir().join(format!("h3-adventure-script-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let (root, packs) = (root(), root().join("packs"));
+    let script = dir.join("meeting.txt");
+    let text =
+        "# Valeska meets Caitlin.\n0 move 0 4,5,0\n\n0 army move 0:6 2:2\n0 decline\n0 end-turn\n";
+    std::fs::write(&script, text).unwrap();
+    let options = ScriptOptions {
+        map: ARMY.to_owned(),
+        profile: DEFAULT_PROFILE.to_owned(),
+        difficulty: h3_game::DEFAULT_DIFFICULTY,
+        seed: 3,
+        checkpoint_every: 2,
+    };
+    let commands = read_script(&script).unwrap();
+    assert_eq!(commands.len(), 4);
+    let (replay, toml) = run_script(&packs, &root, &options, commands).unwrap();
+    assert_eq!((replay.commands.len(), replay.checkpoints.len()), (4, 2));
+    let out = dir.join("meeting.toml");
+    std::fs::write(&out, &toml).unwrap();
+    assert!(verify_file(&out, &packs, &root).is_ok());
+    let again = run_script(&packs, &root, &options, read_script(&out).unwrap()).unwrap();
+    assert_eq!(again.1, toml);
+    // The second command again, the meeting closed: no army of another hero is together.
+    let mut rejected = read_script(&script).unwrap();
+    rejected.push(rejected[1].clone());
+    let e = run_script(&packs, &root, &options, rejected).unwrap_err();
+    assert!(
+        matches!(
+            e,
+            AdventureCliError::Record(RecordError::Rejected { step: 4, .. })
+        ),
+        "{e}"
+    );
+    assert!(e.to_string().contains("scripted command 4"), "{e}");
+    let bad = dir.join("bad.txt");
+    std::fs::write(&bad, "0 fly 3\n").unwrap();
+    assert!(read_script(&bad).is_err());
+    let args = |words: &[&str]| words.iter().map(|w| (*w).to_owned()).collect::<Vec<_>>();
+    let (root, packs, script) = (
+        root.display().to_string(),
+        packs.display().to_string(),
+        script.display().to_string(),
+    );
+    let run = |extra: &[&str]| {
+        let mut words = vec![
+            "run",
+            "--map",
+            ARMY,
+            "--root",
+            &root,
+            "--packs-dir",
+            &packs,
+            "--script",
+            &script,
+        ];
+        words.extend(extra);
+        cli::main(&args(&words))
+    };
+    run(&[]).unwrap();
+    for extra in [["--days", "1"], ["--agent-seed", "2"], ["--max-steps", "9"]] {
+        assert!(run(&extra).is_err(), "{extra:?}");
+    }
+    assert!(run(&["--seed", "x"]).is_err());
+    let missing = dir.join("nosuch.txt").display().to_string();
+    assert!(cli::main(&args(&["run", "--map", ARMY, "--script", &missing])).is_err());
     std::fs::remove_dir_all(&dir).unwrap();
 }
 

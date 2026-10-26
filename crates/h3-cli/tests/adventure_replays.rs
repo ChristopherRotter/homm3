@@ -1,8 +1,8 @@
 //! Golden adventure replays (E08 T9b, increment 1's exit criteria): every replay under
 //! `fixtures/replays/adventure/` must reproduce its recorded state hashes on this platform and
 //! build configuration. `cargo xtask determinism` runs this test in debug, release and release
-//! with `-C target-cpu=native`; running it on another OS is the cross-platform check. The replays
-//! play the generated duel map `fixtures/maps/e08-duel-36.h3m` (re-record them with
+//! with `-C target-cpu=native`; running it on another OS is the cross-platform check. The random
+//! replays play the generated duel map `fixtures/maps/e08-duel-36.h3m` (re-record them with
 //! `h3 adventure run … --record` when a rule or an encoding changes on purpose; the commit says
 //! why), recorded with `--map fixtures/maps/e08-duel-36.h3m` and the options below. Since E08
 //! T20b3b2 the duel holds increment 3's monsters, guarded piles and special grounds, a monster and
@@ -93,6 +93,28 @@
 //! taken inside a battle, `duel-s2-d7` none. E08 T51b (game state hash v13: the meetings and the
 //! army dialogs) re-recorded all ten with their options, their commands unchanged (no game meets
 //! an own hero or a join without room): every hash moved.
+//!
+//! **Scripted** (E08 T52, increment 6: the random agent manages nothing), on the generated
+//! `fixtures/maps/e08-army-12.h3m` (red's Valeska, hero 0, with a full army and twelve artifacts
+//! in her backpack; her mate Caitlin, hero 2, east of her with expert Scholar, advanced Wisdom,
+//! six spells and Elixir of Life's parts worn; six compliant goblins west of her), recorded with
+//! `h3 adventure run --map fixtures/maps/e08-army-12.h3m --seed 1 --checkpoint-every 5 --script
+//! <script> --record <replay>`; a replay file is its own script (`--script <replay>` re-records
+//! its commands when a hash moves):
+//!
+//! - `army-meeting-s1`: Valeska steps onto Caitlin: Scholar teaches her the five spells of level 2
+//!   at most she lacks (HER-SPL-007), the meeting opens (GAM-MET-001, GAM-DEC-003); her Wood
+//!   Elves go into Caitlin's empty slot, three Archers onto Caitlin's by a split, Caitlin's
+//!   Pikemen and her Swordsmen swap, she dismisses her Monks (ADV-ARM-001 to -004); Centaur's
+//!   Axe goes from her backpack to Caitlin's right hand, the Ring of Vitality to her ring and
+//!   back (HER-ART-005); Caitlin assembles Elixir of Life, takes it apart and assembles it again
+//!   (HER-ART-006); a formation and a flag are set (ADV-ARM-006); the meeting closes (`decline`)
+//!   and Valeska walks on; both players end their turns.
+//! - `army-dialog-s1`: Valeska steps onto the goblins, whose offer to join she accepts with no
+//!   room: the army dialog opens with the six (ADV-MON-008, GAM-DEC-004); she dismisses her Wood
+//!   Elves, takes four goblins by a split from the group into the freed slot and moves her Monks
+//!   into the group; closed, the group's two goblins and the Monks are lost; both players end
+//!   their turns.
 
 use std::path::PathBuf;
 
@@ -107,7 +129,7 @@ fn golden_adventure_replays_reproduce_their_hashes() {
         .collect();
     files.sort();
     assert!(
-        files.len() >= 10,
+        files.len() >= 12,
         "expected the E08 replay fixtures in {}",
         dir.display()
     );
