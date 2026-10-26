@@ -13,8 +13,8 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   0.528 against Random, Aggressor, Greedy, the system actor 0.374; the neutral set's value
   +0.245 below the target +0.285. Increment 6 (the user, 2026-10-26): the system actor as a
   training opponent (T6b, #478), its run `t6b-1` negative (T6c); then AI-Q7 (b) part 2, the kill
-  preview in the network (T6d, `[network] preview`). **Next:** T6e, the A/B run `t6d-1` on the
-  user's machine (QUEUE).
+  preview in the network (T6d, `[network] preview`), **open pull request #481** (watch it to its
+  merge). **Next:** T6e, the A/B run `t6d-1` on the user's machine (QUEUE).
 - **Versions:** battle action encoding v13, observation encoding v21, replay format v31 (CLT-Q4/Q6), the adventure env's action encoding v4 (E08 T45), C ABI v33 (E06 T5: the kill preview) (`docs/08-work-process.md`, "Versions"). Next ids: AI-Q10, AI-QUIRK-1, AI-STUB-1.
 - Working agreement: increments with a user checkpoint (Q41's pattern); the user reviews ADRs and seams.
 
