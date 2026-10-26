@@ -6005,7 +6005,7 @@ E09 and E10 (decision 127).
 - **Proposed** for T55a4: the rule ids (ADV-PIK-013, ADV-OBJ-007, ADV-RWD-001, ADV-TCH-008,
   ADV-MON-012, HER-ADV-008 widened) and batch E7's rows.
 
-The readings went into `map.toml` (20 new entries, 10 amended, among them `monster_battle`'s second
+The readings went into `map.toml` (21 new entries, 10 amended, among them `monster_battle`'s second
 and third creatures and `new_game_bans`' always-banned flag) and `structs.toml` (`reward_record`;
 the spell's level and school; a player's second human flag). `E08-army.md` §1.1 point 5 is updated
 for 0x5D12B0.

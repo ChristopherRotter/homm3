@@ -628,7 +628,11 @@ together), so no shipped map reaches the cap.
    shown. When nothing was given, a human sees "the box is empty" (ADVEVENT 15).
 4. **The box is removed** (`remove_map_object`, with a pickup sound).
 
-At a new game, `setup_map_objects` case 6 only fills the word (9 instructions).
+At a new game, `setup_map_objects` case 6 (0x4C0DED) tests the word's low half as a signed
+number. The loader's index (0 to 399) is never negative, so a map's box is left as it is. A value
+of −1 to −5 would become an artifact from `random_artifact_of_level` (classes 0xE, 2, 4, 8 or 0x10;
+the switch at 0x4C0E0A), but no loader read sets one (perhaps the random map generator's; not
+read).
 
 ### 7.3 Events (26)
 
