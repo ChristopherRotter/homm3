@@ -855,3 +855,8 @@ entry only where a task builds on it.
   strikes less. Targeting is not what limits it. Four 20 M runs with different settings
   (`t5-3`, `t7-1`, `t6b-1`, `t6d-1`) end at the same ladder. By AI-Q7's rule (kept only if it
   measurably helps) the preview stays out of the best configuration.
+- **The checkpoint** (the user, 2026-10-26, the agent's recommendation on the first point):
+  AI-Q7 closed: `[network] preview` stays in the code, off by default (opt-in, tested), out of
+  the best configuration; increment 6 closed. Next: T8 (the search) refined now, the plateau
+  taken as shown (four 20 M runs at one ladder; `t4-2` at 60 M barely above `t5-3` at 20 M),
+  without the 60 M run the agent recommended first.

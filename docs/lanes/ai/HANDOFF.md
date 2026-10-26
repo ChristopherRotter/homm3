@@ -8,13 +8,15 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 - **E05 closed 2026-10-20**: its record and design in `E05-log.md` (cited as §n), the
   environment as built in `docs/07-simulation-and-ai.md` §1.1.
 - **E06** (AI-Q8; `docs/epics/E06-battle-ai.md`, design `E06-design.md`, record `E06-log.md`,
-  closed increments in `E06-archive.md`): increments 1 to 5 done (#306 to #432), T6a (the
-  behaviour analysis) 2026-10-23. Best so far `t7-1` (20 M, a third neutral): 0.828, 0.551,
-  0.528 against Random, Aggressor, Greedy, the system actor 0.374; the neutral set's value
-  +0.245 below the target +0.285. Increment 6 (the user, 2026-10-26): the system actor as a
-  training opponent (T6b, #478), its run `t6b-1` negative (T6c); then AI-Q7 (b) part 2, the kill
-  preview in the network (T6d, `[network] preview`, #481). **In progress:** T6e, the user's run
-  `t6d-1` against `t7-1` (QUEUE).
+  closed increments in `E06-archive.md`): increments 1 to 6 done (#306 to #481 and this
+  branch), T6a (the behaviour analysis) 2026-10-23. Best so far `t7-1` (20 M, a third neutral):
+  0.828, 0.551, 0.528 against Random, Aggressor, Greedy, the system actor 0.374; the neutral
+  set's value +0.245 below the target +0.285. Increment 6's two levers were negative: the system
+  actor as an opponent (`t6b-1`) and the kill preview in the network (`t6d-1`; AI-Q7 closed, off
+  by default). **Next:** T8, the search, refined (the user, 2026-10-26: the plateau taken as
+  shown; QUEUE): a design and a seam put to the user before any code.
+- **Branch** `claude/quirky-pasteur-aolk6i` (T6e's record, increment 6 closed; no pull request
+  yet: open it when ready).
 - **Versions:** battle action encoding v13, observation encoding v21, replay format v31 (CLT-Q4/Q6), the adventure env's action encoding v4 (E08 T45), C ABI v33 (E06 T5: the kill preview) (`docs/08-work-process.md`, "Versions"). Next ids: AI-Q10, AI-QUIRK-1, AI-STUB-1.
 - Working agreement: increments with a user checkpoint (Q41's pattern); the user reviews ADRs and seams.
 
@@ -24,11 +26,11 @@ Moved to `TRAPS.md`, in three groups: **Ownership** (cross-lane encodings and re
 
 ## Recent sessions
 
-### 2026-10-26 (evening) — T6e, the A/B run `t6d-1` (in progress)
+### 2026-10-26 (evening) — T6e, the A/B run `t6d-1`; increment 6 closed; T8's refinement
 
-- **In progress:** the user's `t6d-1` record (committed as uploaded: it ends before its final
-  ladder; asked the user for `--resume runs/t6d-1`), `inspect` on its `best.pt` running in the
-  sandbox (`python/runs/t6d-1/`). Next: the log entry, AI-Q7's result put to the user.
+- `t6d-1` (the user's run, the kill preview in the network) ends at `t7-1`'s ladder; `inspect`
+  shows better targeting but fewer strikes and long wandering (E06-log T6e). The user closed
+  AI-Q7 (the preview off by default) and chose T8 next. **In progress:** T8's design.
 
 ### 2026-10-26 (later) — T6c's run recorded; T6d, the kill preview in the network
 

@@ -417,7 +417,7 @@ original's computer, complete for a side without a hero since E23 T4c). Refined 
   BAT-QUIRK-27's let-off of a computer side's bad-morale freeze (BAT-MOR-004, since E23 T7) is
   never played in training or on the held-out sets.
 
-## 13. The kill preview in the network (T6d) — built
+## 13. The kill preview in the network (T6d) — built, off by default (T6e: no measurable gain)
 
 AI-Q7 (b) part 2 (decision 6; the user, 2026-10-26, after `t6b-1`): the batch's previewed kills
 (part 1, C ABI v33: each legal attack and shot entry's least and greatest kills, the engine's
@@ -443,4 +443,6 @@ encodings are unchanged.
   `preview`; one without it reads none.
 - **The run** (T6e, the user's machine): `configs/e06-t6d.toml`, `t7-1`'s settings with the
   preview, against `t7-1` (one change; `t6b-1` showed the system actor as an opponent changes
-  nothing measurable).
+  nothing measurable). **Result** (E06-log T6e): the ladder unchanged; the targeting better, but
+  the agent strikes less and wanders (moves, the tactics phase's placements), its battles
+  longer; AI-Q7 closed (the user, 2026-10-26).

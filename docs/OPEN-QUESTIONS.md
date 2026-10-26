@@ -77,15 +77,7 @@ The review's fix C3 follows the reading of 0x47A100: a created stack whose round
 
 ### AI lane (`AI-Q<n>`)
 
-#### AI-Q7 — The damage preview in the agents' encodings (E05 T7's cut; moved to E06)
-
-**Context.** The user (2026-10-19, AI-Q6): the engine's damage preview of one's own attack levels the field, "we may also attach the estimates to the observed state or to actions in the encoding for the RL agents". The bots read it from T7 on; the agents see only the flat observation v21. **Options:** (a) a per-target block in the observation (for the active stack: each enemy stack's least and greatest kills by a shot or a strike from where it stands; observation v22, the battle lane's encoding, `cross-lane`); (b) per-entry features beside the entry mask (the attack and shot entries' kills), a new output of the batch, the encodings unchanged; (c) leave it to the network. **Recommendation:** decide after T7's ladder shows how much the preview gives the Greedy bot over Aggressor; (b) first if it does, since it changes no encoding. Not blocking. **Moved to E06** (the user, 2026-10-19, E05 T9's cut): on the held-out episodes Greedy beats Aggressor only 0.519 and the user's network plays at Aggressor's level (T7c, T7d); E06 decides with its stronger baselines, (b) still first. **E06's plan** (AI-Q8): (b) as an experiment in T5, kept only if it measurably helps. **Part 1
-built** (E06 T5, 2026-10-23): the batch's optional output of each legal attack and shot entry's
-previewed kills (C ABI v33); part 2, the network reading it and the A/B run, after T7d's
-checkpoint. **Part 2 built** (E06 T6d, 2026-10-26, the user's lever after T6c; unblocked since
-the battle lane's #458 previews a commanded turret's shot as it is made): `[network] preview`,
-each legal strike's logit biased by its previewed kills (E06 design §13). Open until T6e's A/B
-run against `t7-1` says whether it measurably helps (kept only then).
+(no open questions)
 
 ### Client lane (`CLT-Q<n>`)
 

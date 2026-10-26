@@ -4,23 +4,22 @@ Pre-refined tasks of the AI lane, in order, then the inbox of discovered work. T
 
 ## Tasks
 
-**E05** (`docs/epics/E05-battle-env.md`) closed 2026-10-20 (record: `E05-log.md`; the environment as built: `docs/07-simulation-and-ai.md` §1.1). **E06** (`docs/epics/E06-battle-ai.md`, AI-Q8; design `E06-design.md`, record `E06-log.md`): increments 1 to 5 and T6a (the behaviour analysis; rerun `python -m h3env.train.inspect` at every checkpoint) done by 2026-10-23. Best so far, `t7-1` (20 M samples, a third neutral): 0.828, 0.551, 0.528 against Random, Aggressor, Greedy, the system actor 0.374; the neutral set's value +0.245 against the target +0.285. The tasks' history is in `QUEUE-ARCHIVE.md`.
+**E05** (`docs/epics/E05-battle-env.md`) closed 2026-10-20 (record: `E05-log.md`; the environment as built: `docs/07-simulation-and-ai.md` §1.1). **E06** (`docs/epics/E06-battle-ai.md`, AI-Q8; design `E06-design.md`, record `E06-log.md`): increments 1 to 6 and T6a (the behaviour analysis; rerun `python -m h3env.train.inspect` at every checkpoint) done by 2026-10-26. Best so far, `t7-1` (20 M samples, a third neutral): 0.828, 0.551, 0.528 against Random, Aggressor, Greedy, the system actor 0.374; the neutral set's value +0.245 against the target +0.285. The tasks' history is in `QUEUE-ARCHIVE.md`.
 
-**Increment 6** (refined 2026-10-26, the user: the system actor as a training opponent in the
-player kinds; every side stays human): T6b and its run T6c done 2026-10-26, negative (`t6b-1`
-at `t7-1`'s ladder). The user's next lever: AI-Q7 (b) part 2, T6d (`[network] preview`,
-`configs/e06-t6d.toml`) done 2026-10-26. **Next: T6e, the A/B run on the user's machine**
-(`uv run --group train python -m h3env.train --config configs/e06-t6d.toml --out runs/t6d-1`,
-20 M samples; the user uploads `record.json`, `best.pt`), then `python -m h3env.train.inspect`
-on its best and the checkpoint against `t7-1` (AI-Q7: keep the preview only if it measurably
-helps).
+**Increment 6** closed 2026-10-26 (T6b to T6e; its task list in `E06-archive.md`): both levers
+negative, the system actor as an opponent (T6c, `t6b-1`) and the kill preview in the network
+(T6e, `t6d-1`: the targeting better, the ladder unchanged; AI-Q7 closed, the preview off by
+default). **Next: T8, the search, refined** (the user, 2026-10-26: the plateau taken as shown,
+no 60 M run first): a design (`E06-design.md`, a new section) for the determinized search of
+decision 2 (the fork with its streams re-seeded, the hidden part guessed, the network as prior
+and value; where it runs and what it costs a decision), its first increment and a seam put to
+the user before any code.
 
-- **Candidates at T6e's checkpoint:** potential-based shaping; runs: 60 M at T7's mix
-  (`configs/e06-t7.toml --set samples=60_000_000`, about 4 hours: whether PPO plateaus, T8's
-  trigger: three 20 M runs, `t5-3`, `t7-1`, `t6b-1`, end at the same ladder); the mana run
-  `t5-4` (`configs/e06-mana.toml`, about 75 minutes). Not the casts' exploration or the mana
-  price (T6a), nor more of the system actor as an opponent (T6c).
-- Later (design §10): T5's rest (throughput, the observations in place), T6, T8, T9.
+- **Candidates kept** (not now): potential-based shaping (also against the wandering T6e found:
+  the tactics phase's placements and moves cost nothing at γ 1); the 60 M run at T7's mix
+  (`configs/e06-t7.toml --set samples=60_000_000`, about 4 hours); the mana run `t5-4`
+  (`configs/e06-mana.toml`, about 75 minutes).
+- Later (design §10): T5's rest (throughput, the observations in place), T9.
 
 ## Inbox
 
@@ -126,7 +125,7 @@ Pass offer (fixed by the adventure lane's fixed tests, #266).
 - **Baselines and AI-Q7:** Greedy value beats Aggressor only 0.519 on the held-out episodes: the
   preview of its own kills buys little without spells or a plan; a stronger baseline (casts, a
   one-ply look at the opponent's reply) is E06's, and AI-Q7 (whether the agents get the preview)
-  moved there (T7c; the user, 2026-10-19).
+  moved there (T7c; the user, 2026-10-19); AI-Q7 closed at E06 T6e (not kept, off by default).
 
 - **Encodings:** `h3_sim::action::encode` answers without a viewer (the same root as F-sec-2's
   leak, which the sim's `step` closes); it leaks nothing today (E04b T11b, the battle lane).
