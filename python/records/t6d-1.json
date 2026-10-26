@@ -120,9 +120,9 @@
   "samples": 20004557,
   "updates": 795,
   "episodes": 329283,
-  "minutes": 84.4533746983332,
-  "evaluation_minutes": 14.704683333334591,
-  "ended": null
+  "minutes": 105.00395838999927,
+  "evaluation_minutes": 27.346100000001023,
+  "ended": "budget"
  },
  "segments": [
   {
@@ -141,9 +141,9 @@
    "end": {
     "samples": 20004557,
     "updates": 795,
-    "minutes": 84.4533746983332
+    "minutes": 105.00395838999927
    },
-   "ended": null,
+   "ended": "budget",
    "dropped": 0
   }
  ],
@@ -774,6 +774,83 @@
      "siege_neutral": 0.82
     },
     "truncated": 0.0
+   }
+  },
+  {
+   "samples": 20004557,
+   "update": 795,
+   "minutes": 105.00206044166504,
+   "index": 2,
+   "final": true,
+   "per_kind": 500,
+   "seconds": 758.484999999986,
+   "opponents": {
+    "random": {
+     "win_rate": 0.8209999999999998,
+     "interval": 0.013803397958473846,
+     "value": 0.2723412173495786,
+     "kinds": {
+      "hero": 0.852,
+      "siege_hero": 0.867,
+      "siege_garrison": 0.605
+     },
+     "truncated": 0.0016666666666666668
+    },
+    "aggressor": {
+     "win_rate": 0.5528571428571428,
+     "interval": 0.018609045198504946,
+     "value": 0.029580481013108506,
+     "kinds": {
+      "hero": 0.556,
+      "siege_hero": 0.565,
+      "siege_garrison": 0.516
+     },
+     "truncated": 0.0016666666666666668
+    },
+    "greedy": {
+     "win_rate": 0.528,
+     "interval": 0.01854660482136825,
+     "value": 0.004753791426088093,
+     "kinds": {
+      "hero": 0.53,
+      "siege_hero": 0.532,
+      "siege_garrison": 0.512
+     },
+     "truncated": 0.002
+    },
+    "system": {
+     "win_rate": 0.3647254509018036,
+     "interval": 0.017934467590176025,
+     "value": -0.1061207429321851,
+     "kinds": {
+      "hero": 0.33950701402805605,
+      "siege_hero": 0.357,
+      "siege_garrison": 0.48105010020040084
+     },
+     "truncated": 0.0020013342228152103
+    },
+    "promoted-1": {
+     "win_rate": 0.536142857142857,
+     "interval": 0.01866115872072257,
+     "value": 0.021913913554057737,
+     "kinds": {
+      "hero": 0.5469999999999999,
+      "siege_hero": 0.531,
+      "siege_garrison": 0.503
+     },
+     "truncated": 0.0013333333333333333
+    }
+   },
+   "neutral": {
+    "win_rate": 0.9779272727272726,
+    "interval": 0.011063129109259929,
+    "value": 0.2532486647868416,
+    "kinds": {
+     "wandering": 0.982,
+     "guards": 0.964,
+     "siege_neutral": 0.862
+    },
+    "truncated": 0.0006666666666666666
    }
   }
  ],
