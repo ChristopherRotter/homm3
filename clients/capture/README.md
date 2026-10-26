@@ -485,10 +485,13 @@ record's value may be a list of observations (joined by `; `), and a field named
 to what an earlier step put there (`; ` between). `once = true` clicks the target once: the path
 is read and the hero stays (E7-23). `days = <n>` lets a walk whose target the path does not reach
 today (its mark red) wait up to n times for the hero's player's next turn (the other players'
-turns are ended; "anything odd" says so). `near = true` first approaches a target the hero's player has not
+turns are ended; "anything odd" says so), before the step reads anything, so that its `before:`
+reads never cross a day's start; each new day the route is set anew (a click beside the hero,
+then on the target), and the walk's first click then walks at once. `near = true` first approaches a target the hero's player has not
 explored (the original's pathfinder finds no path onto an unexplored tile): the hero walks to the
 open tile nearest the target (`h3mem.open_tiles`: explored, without an object, not closed, outside
-every monster's guard) until the target is explored, as a player would. A recipe's `[[require]]` entries (`{ what, each = {…},
+every monster's guard) until the target is explored, as a player would. Both happen before the step's
+reads (`h3adv.ready`). A recipe's `[[require]]` entries (`{ what, each = {…},
 holds = "artifact" }`) need an artifact among each grid's objects: a new game without one is
 started again, up to 20 times (the filled template's note says how often), as the specs' restart
 rules say.
