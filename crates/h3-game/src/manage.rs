@@ -1,8 +1,8 @@
 //! A player's management of its heroes on the map (ADR-0017 points 1 and 6, GAM-MAN-001; E08
-//! T51a, `E08-design.md` §10): the army commands of the adventure (ADR-0016 point 3), the
+//! T51a, T51b; `E08-design.md` §10): the army commands of the adventure (ADR-0016 point 3), the
 //! formation and the tactics flag, and the artifact commands of `h3-heroes` (ADR-0013 point 14).
-//! The game checks the actor, its turn and its open decision, which heroes may meet (a command
-//! between two heroes needs their meeting, T51b), then the context's rules, before anything
+//! The game checks the actor, its turn and its open decision, which armies may meet (two heroes
+//! in their meeting, a hero and the group in its army dialog), then the context's rules, before anything
 //! changes; the commands themselves apply in `state/manage.rs`, the per-hero listing is
 //! [`crate::legal_management`].
 

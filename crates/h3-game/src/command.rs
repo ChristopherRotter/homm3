@@ -92,7 +92,9 @@ pub enum GameCommandError {
     UnknownPlayer(PlayerId),
     /// The actor's turn is not running.
     NotYourTurn(PlayerId),
-    /// The actor has an open decision: its only legal commands are the answers (GAM-DEC-001).
+    /// The actor has an open decision: its only legal commands are the answers (GAM-DEC-001),
+    /// and with a meeting or an army dialog open the management commands on the heroes it holds
+    /// (GAM-MAN-001, E08 T51b): a command naming another hero is refused with this.
     DecisionOpen,
     /// An answer, but the actor has no open decision.
     NoDecision,
@@ -311,8 +313,8 @@ pub enum GameEvent {
         amount: u32,
     },
     /// A slot of a player's army changed by an army command (GAM-MAN-001, E08 T51a): one event per
-    /// slot the command names, the stack's, then its target's, with what it holds now. Seen by
-    /// the owner.
+    /// slot the command names, the stack's, then its target's, with what it holds now (a slot of
+    /// an army dialog's group too, `ArmyRef::Group`: T51b). Seen by the owner.
     StackChanged {
         /// The army's owner.
         player: PlayerId,
@@ -338,6 +340,39 @@ pub enum GameEvent {
         hero: HeroId,
         /// Whether the flag is on.
         on: bool,
+    },
+    /// A meeting of two of the player's heroes opened (GAM-DEC-003; E08 T51b), after the spells
+    /// Scholar taught each (their `HeroChanged`, the visitor's first). Seen by the owner.
+    MeetingOpened {
+        /// The heroes' owner.
+        player: PlayerId,
+        /// The visitor, then the visited hero.
+        heroes: [HeroId; 2],
+    },
+    /// An army dialog opened (GAM-DEC-004; E08 T51b): the group of an accepted join its hero's
+    /// army had no room for, as one stack in the group's slot 0. Seen by the owner.
+    ArmyDialogOpened {
+        /// The hero's owner.
+        player: PlayerId,
+        /// The hero the group joined.
+        hero: HeroId,
+        /// The group's stack.
+        stack: ArmyStack,
+    },
+    /// The player's meeting or army dialog closed (its `Decline`; E08 T51b). Seen by the owner.
+    DecisionClosed {
+        /// Its owner.
+        player: PlayerId,
+    },
+    /// A stack left in a closed army dialog's group, lost (GAM-DEC-004; E08 T51b), told after
+    /// the dialog's `DecisionClosed`, one per stack in slot order. Seen by the owner.
+    GroupLost {
+        /// The hero's owner.
+        player: PlayerId,
+        /// The hero the group had joined.
+        hero: HeroId,
+        /// The lost stack.
+        stack: ArmyStack,
     },
 }
 

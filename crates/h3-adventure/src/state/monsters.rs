@@ -47,11 +47,6 @@ enum Room {
     Slot(u8),
 }
 
-/// Whether `army` has room for a group of `count` `creature`s ([`room`]).
-fn has_room(army: &[ArmyStack], rules: (u8, u32), creature: CreatureTypeId, count: u32) -> bool {
-    room(army, rules, creature, count).is_some()
-}
-
 /// Adds `count` of `creature` to `army` as the original's `army_add_stack` (0x44ACE0), where
 /// [`room`] finds room (`rules`: the army's slots and a stack's most creatures, ADV-ARM-007):
 /// to its first stack of the creature that takes them within the most, else as a stack in its
@@ -117,9 +112,9 @@ impl AdventureState {
     /// The visit of the monster at object index `index`, of type `object_type`, by the hero
     /// `hero` (ADV-MON-007, E08 T20b1): the monster's answer to the hero as the store has
     /// its details ([`Temper`]: the hero's power, sympathy and Diplomacy against the monster's
-    /// strength and aggression, on the game's difficulty). An offer to join is made only while
-    /// the hero's army has room for the group (a stack of its creature or a free slot); without
-    /// room it counts as declined (E08 decision 22: the original's army dialog is `ADV-STUB-2`).
+    /// strength and aggression, on the game's difficulty). An offer to join is made whether or
+    /// not the hero's army has room for the group: accepted without room, the game opens the
+    /// army dialog (GAM-DEC-004, E08 T51b; [`AdventureOutcome::no_room`]).
     /// An offer names the monster by type and anchor; the game opens it as the player's decision
     /// (a price to join only when the player can pay); a fight is a battle it opens at once
     /// ([`Self::fight`], E08 T20b2).
@@ -138,13 +133,12 @@ impl AdventureState {
     }
 
     /// The answer of the monster at object index `index` to `hero` by `step` (its first answer
-    /// or the one after a declined join), an offer to join counting as declined when the army has
-    /// no room for the group (`ADV-STUB-2`), with the monster as the answer read it; none when
-    /// the hero or the monster is not on the map.
-    // stub: ADV-STUB-2
+    /// or the one after a declined join), with the monster as the answer read it; none when the
+    /// hero or the monster is not on the map. An offer to join is made whatever room the army has
+    /// (E08 T51b: the original's army dialog, GAM-DEC-004, follows an accepted join without room).
     fn answer_to(
         &self,
-        (core, part, heroes): (&Ruleset, &AdventureRuleset, &[Arc<HeroDetails>]),
+        (core, _, heroes): (&Ruleset, &AdventureRuleset, &[Arc<HeroDetails>]),
         hero: HeroId,
         index: usize,
         step: fn(Temper) -> Answer,
@@ -155,16 +149,7 @@ impl AdventureState {
             .get(usize::from(hero.raw()))
             .map(|details| &**details);
         let temper = Temper::new(core, (&visitor.army, details), monster, self.difficulty);
-        let rules = (part.params().army_slots(), part.params().max_stack_count());
-        let answer = match step(temper) {
-            Answer::Join | Answer::JoinForGold
-                if !has_room(&visitor.army, rules, monster.creature, monster.count) =>
-            {
-                temper.after_join()
-            }
-            answer => answer,
-        };
-        Some((answer, monster))
+        Some((step(temper), monster))
     }
 
     /// The object at `index`, one still on the map (the callers find it among those), as its
@@ -342,9 +327,9 @@ impl AdventureState {
     /// 0x4A7000 and `monster_join_for_gold` 0x4A7250, the price paid by the game): the whole
     /// group joins the hero's army as one stack ([`add_stack`]), told to the player; its
     /// treasure's resources are the player's gains; the monster leaves the map, told to the
-    /// players that see it there. A group that finds no room ([`room`]: the offer is made only
-    /// while it does until the game opens the army dialog, `ADV-STUB-2`) joins nothing and is
-    /// reported as [`AdventureOutcome::no_room`] (E08 T50), the rest as for a join. Nothing
+    /// players that see it there. A group that finds no room ([`room`]) joins nothing and is
+    /// reported as [`AdventureOutcome::no_room`] (E08 T50), the rest as for a join: the game opens
+    /// the army dialog with it (GAM-DEC-004, E08 T51b), as the original's after its yes. Nothing
     /// happens when the monster or the hero is gone.
     // rule: ADV-MON-008, ADV-ARM-007
     pub(super) fn join<S: Sink>(

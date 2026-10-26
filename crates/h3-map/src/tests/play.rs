@@ -899,14 +899,15 @@ pub(super) fn steps() -> impl Strategy<Value = Vec<Step>> {
     .prop_map(|runs: Vec<Vec<Step>>| runs.into_iter().flatten().collect())
 }
 
-/// On the map (E08 T19b2): the acting player's open offer declined, its open level-up's first
-/// offer taken (E08 T30); else the `n`-th of its
+/// On the map (E08 T19b2): the acting player's open offer, meeting or army dialog declined (E08
+/// T51b), its open level-up's first offer taken (E08 T30); else the `n`-th of its
 /// options that end nearest to another player's hero on the hero's level, nearer than the hero
 /// stands (an attack, on the other hero's tile, is nearest of all; the heroes seek each other as
 /// the fork benchmark's do: random play seldom meets); `EndTurn` when none gets nearer.
 fn seek(state: &GameState, legal: &[GameCommand], n: u16) -> GameCommand {
     let actor = acting(state);
-    if state.decision(actor).is_some() {
+    let exchanging = state.meeting(actor).is_some() || state.army_dialog(actor).is_some();
+    if state.decision(actor).is_some() || exchanging {
         return GameCommand::Answer(Answer::Decline);
     }
     if state.level_up(actor).is_some() {
@@ -1387,6 +1388,8 @@ fn check_legal(
     let fighting = battle_of(state, who).is_some();
     let decided = state.decision(actor).is_some();
     let levelling = state.level_up(actor).is_some();
+    // E08 T51b: a meeting or an army dialog, closed by `Decline` alone.
+    let exchanging = state.meeting(actor).is_some() || state.army_dialog(actor).is_some();
     let system = legal_commands(state, rules, Actor::System);
     prop_assert_eq!(system.is_empty(), who != Actor::System);
     prop_assert!(system.iter().all(|c| matches!(c, GameCommand::Battle(_))));
@@ -1411,6 +1414,8 @@ fn check_legal(
                 Vec::new()
             } else if decided {
                 answers.to_vec()
+            } else if exchanging {
+                vec![GameCommand::Answer(Answer::Decline)]
             } else {
                 vec![GameCommand::EndTurn]
             };
@@ -1420,6 +1425,7 @@ fn check_legal(
             let moves = legal_moves(state, rules, Actor::Player(player), *hero);
             let own = me
                 && !decided
+                && !exchanging
                 && !levelling
                 && !fighting
                 && state.adventure().hero(*hero).map(|h| h.owner) == Some(actor);
@@ -1497,6 +1503,15 @@ fn check_legal(
                 next
             );
         }
+        return Ok(());
+    }
+    if exchanging {
+        let decline = GameCommand::Answer(Answer::Decline);
+        prop_assert_eq!(legal, &[decline.clone()][..]);
+        let mut probe = state.clone();
+        let result = apply(&mut probe, rules, Actor::Player(actor), decline, &mut Vec::new());
+        prop_assert!(result.is_ok(), "Decline rejected: {:?}", result);
+        prop_assert!(!probe.has_decision(actor));
         return Ok(());
     }
     prop_assert_eq!(legal.first(), Some(&GameCommand::EndTurn));

@@ -1,7 +1,8 @@
 //! What a viewer may know of the whole game (ADR-0017 points 1 and 2, E08 T8b1;
 //! `docs/06-security.md`, "Information hiding"): the game's public facts (the day, the players'
 //! colours, whose turn is running), the viewer's own treasury (E08 T13a; other players' never
-//! show) and open decision (T14b; since T30 an offer or a level-up), the heroes it sees with their types and its own heroes'
+//! show) and open decision (T14b; since T30 an offer or a level-up, since T51b a meeting or an
+//! army dialog), the heroes it sees with their types and its own heroes'
 //! details (T18b, GAM-HER-001), each context's observation for the viewer (since T19a its
 //! battle's, as its side sees it), and the projection of the game's events. The seed, the streams and the state hash never show
 //! (ADR-0017 point 5).
@@ -11,7 +12,7 @@ use alloc::vec::Vec;
 
 use h3_adventure::{AdventureObservation, Offer, Viewers};
 use h3_content::{HeroTypeId, SkillId};
-use h3_contracts::{HeroId, PlayerId};
+use h3_contracts::{ArmyStack, HeroId, PlayerId};
 use h3_heroes::{HeroDetails, PrimarySkill};
 
 use crate::command::GameEvent;
@@ -39,10 +40,11 @@ pub struct GameObservation {
     /// The viewer's treasury, by resource in the core's order (GAM-RES-001); empty for a viewer
     /// that is not a player of the game.
     pub treasury: Vec<u32>,
-    /// The viewer's first open decision but a battle (GAM-DEC-001, E08 T14b; GAM-DEC-002, T30):
-    /// an offer, its object named by type and anchor, with its price, or a level-up with its
-    /// offers; other players' never show. While it is open the viewer's only legal commands are
-    /// its answers.
+    /// The viewer's first open decision but a battle (GAM-DEC-001, E08 T14b; GAM-DEC-002, T30;
+    /// GAM-DEC-003, GAM-DEC-004, T51b): an offer, its object named by type and anchor, with its
+    /// price, a level-up with its offers, a meeting's two heroes, or an army dialog's hero and
+    /// group; other players' never show. While it is open the viewer's only legal commands are
+    /// its answers, and in a meeting or an army dialog the management commands on what it holds.
     pub decision: Option<DecisionView>,
     /// The heroes the viewer sees on the adventure map (its own and the others its explored tiles
     /// show), by id: each hero's type (and so its class), and the details of its own only
@@ -63,6 +65,20 @@ pub enum DecisionView {
     Offer(Offer),
     /// A level-up with two offers (GAM-DEC-002), answered `First` or `Second`.
     LevelUp(LevelUpView),
+    /// A meeting of two of the viewer's heroes (GAM-DEC-003, E08 T51b), closed with `Decline`;
+    /// meanwhile the viewer manages both, also between them.
+    Meeting {
+        /// The visitor, then the visited hero.
+        heroes: [HeroId; 2],
+    },
+    /// An army dialog (GAM-DEC-004, E08 T51b), closed with `Decline`, which loses the group's
+    /// rest; meanwhile the viewer manages the hero and the group, also between them.
+    ArmyDialog {
+        /// The hero the group joined.
+        hero: HeroId,
+        /// The group's stacks, by slot.
+        group: Vec<ArmyStack>,
+    },
 }
 
 impl DecisionView {
@@ -70,7 +86,7 @@ impl DecisionView {
     pub const fn offer(&self) -> Option<&Offer> {
         match self {
             Self::Offer(offer) => Some(offer),
-            Self::LevelUp(_) => None,
+            _ => None,
         }
     }
 
@@ -78,7 +94,7 @@ impl DecisionView {
     pub const fn level_up(&self) -> Option<&LevelUpView> {
         match self {
             Self::LevelUp(level_up) => Some(level_up),
-            Self::Offer(_) => None,
+            _ => None,
         }
     }
 }
@@ -145,7 +161,18 @@ pub fn observe(state: &GameState, rules: &GameRuleset, viewer: Viewer) -> GameOb
             .decision(player)
             .cloned()
             .map(DecisionView::Offer)
-            .or_else(|| state.level_up(player).map(DecisionView::LevelUp)),
+            .or_else(|| state.level_up(player).map(DecisionView::LevelUp))
+            .or_else(|| {
+                let heroes = state.meeting(player)?;
+                Some(DecisionView::Meeting { heroes })
+            })
+            .or_else(|| {
+                let (hero, group) = state.army_dialog(player)?;
+                Some(DecisionView::ArmyDialog {
+                    hero,
+                    group: group.to_vec(),
+                })
+            }),
         heroes: adventure
             .heroes
             .iter()
@@ -169,7 +196,8 @@ pub fn observe(state: &GameState, rules: &GameRuleset, viewer: Viewer) -> GameOb
 
 /// The event as `viewer` may see it, or `None` if it is hidden from it: the game's own events are
 /// public but a treasury's change, an offer's, a hero's change and its level-ups, which show to
-/// their owner only (E08 T13b, T14b, T19a2a, T30; a management command's since T51a), and a battle's, which show to the owners that see them (E08 T19a); an adventure or a
+/// their owner only (E08 T13b, T14b, T19a2a, T30; a management command's since T51a, a meeting's
+/// and an army dialog's since T51b), and a battle's, which show to the owners that see them (E08 T19a); an adventure or a
 /// battle event shows to the players who see it, naming the viewer alone among them
 /// ([`h3_adventure::AdventureEvent::project`]).
 pub fn project(event: &GameEvent, viewer: Viewer) -> Option<GameEvent> {
@@ -214,7 +242,11 @@ pub fn project(event: &GameEvent, viewer: Viewer) -> Option<GameEvent> {
         | GameEvent::LevelGained { player: owner, .. }
         | GameEvent::StackChanged { player: owner, .. }
         | GameEvent::FormationSet { player: owner, .. }
-        | GameEvent::TacticsSet { player: owner, .. } => (owner == player).then_some(*event),
+        | GameEvent::TacticsSet { player: owner, .. }
+        | GameEvent::MeetingOpened { player: owner, .. }
+        | GameEvent::ArmyDialogOpened { player: owner, .. }
+        | GameEvent::DecisionClosed { player: owner }
+        | GameEvent::GroupLost { player: owner, .. } => (owner == player).then_some(*event),
         GameEvent::TurnEnded { .. }
         | GameEvent::DayStarted { .. }
         | GameEvent::TurnStarted { .. } => Some(*event),

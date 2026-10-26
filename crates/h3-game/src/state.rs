@@ -1,18 +1,22 @@
 //! The whole game's state (ADR-0017, E08 T6b): the players with their RNG streams, the day's
 //! schedule of turn groups, the calendar, the game's own stream, the treasuries (T13), the pending
 //! decisions (T14b; battles since T19a, `state/battle.rs`; level-ups since T30,
-//! `state/levels.rs`) and the contexts' states (the
+//! `state/levels.rs`; meetings and army dialogs since T51b, managed in `state/manage.rs`) and
+//! the contexts' states (the
 //! adventure; a battle lives in its decision). Built from a validated
 //! [`GameSetup`]; the steps only the game triggers (the start of a day, the start of a turn) are
 //! infallible, and commands go through [`crate::apply`].
 
 use alloc::sync::Arc;
+use alloc::vec;
 use alloc::vec::Vec;
 
-use h3_adventure::{AdventureOutcome, AdventureState, Offer, OfferKind};
+use h3_adventure::{AdventureOutcome, AdventureState, Meeting, NoRoom, Offer, OfferKind};
 use h3_content::{ResourceId, SkillId};
-use h3_contracts::{HeroId, PlayerId};
-use h3_heroes::{ArtifactInstance, HeroDetails, LevelUp, OfferLevels, Offers};
+use h3_contracts::{ArmyStack, HeroId, PlayerId};
+use h3_heroes::{
+    ArtifactInstance, HeroChange, HeroDetails, LevelUp, OfferLevels, Offers, meeting_spells,
+};
 use h3_kernel::hash::hash_of;
 use h3_kernel::{CanonicalHash, Rng, StateHasher, StreamId};
 
@@ -44,7 +48,9 @@ struct PlayerState {
 /// A pending decision (ADR-0017 point 6, GAM-DEC-001; E08 T14b): what its owners must answer
 /// before anything else. Increment 2's are offers (ADV-VIS-001, ADV-VIS-004), increment 3's the
 /// wandering monsters' too (ADV-MON-008, E08 T20b1); since E08 T19a a battle, owned by the
-/// players of its sides, who play it; since E08 T30 a level-up with two offers (GAM-DEC-002).
+/// players of its sides, who play it; since E08 T30 a level-up with two offers (GAM-DEC-002);
+/// since E08 T51b a meeting (GAM-DEC-003) and an army dialog (GAM-DEC-004), during which its
+/// owner also manages the heroes (and the group) it holds together (GAM-MAN-001).
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum Decision {
     /// An offer, answered by its owner.
@@ -69,6 +75,25 @@ enum Decision {
         /// The offers' levels after the level (HER-LVL-004), whatever the answer.
         offered: OfferLevels,
     },
+    /// A meeting of two heroes of one player (GAM-DEC-003, E08 T51b), closed by its owner's
+    /// `Decline`.
+    Meeting {
+        /// The heroes' owner, who closes it.
+        owner: PlayerId,
+        /// The visitor, then the visited hero.
+        heroes: [HeroId; 2],
+    },
+    /// An army dialog (GAM-DEC-004, E08 T51b): the group of an accepted join its hero's army had
+    /// no room for, held as a small army without a hero (the original's local army) until its
+    /// owner's `Decline`, which loses what is left in it.
+    ArmyDialog {
+        /// The hero's owner, who closes it.
+        owner: PlayerId,
+        /// The hero the group joined.
+        hero: HeroId,
+        /// The group: at its opening one stack in slot 0, by slot.
+        group: Vec<ArmyStack>,
+    },
 }
 
 /// The drawn level of a level-up decision: `view`'s level with its two offers and `offered`.
@@ -86,7 +111,10 @@ impl Decision {
     /// Whether `player` owns the decision.
     fn owned_by(&self, player: PlayerId) -> bool {
         match self {
-            Self::Offer { owner, .. } | Self::LevelUp { owner, .. } => *owner == player,
+            Self::Offer { owner, .. }
+            | Self::LevelUp { owner, .. }
+            | Self::Meeting { owner, .. }
+            | Self::ArmyDialog { owner, .. } => *owner == player,
             Self::Battle(battle) => battle.owners().contains(&Some(player)),
         }
     }
@@ -95,7 +123,7 @@ impl Decision {
     fn battle(&self) -> Option<&Arc<OpenBattle>> {
         match self {
             Self::Battle(battle) => Some(battle),
-            Self::Offer { .. } | Self::LevelUp { .. } => None,
+            _ => None,
         }
     }
 
@@ -103,9 +131,32 @@ impl Decision {
     fn battle_mut(&mut self) -> Option<&mut Arc<OpenBattle>> {
         match self {
             Self::Battle(battle) => Some(battle),
-            Self::Offer { .. } | Self::LevelUp { .. } => None,
+            _ => None,
         }
     }
+
+    /// What the decision holds together for its owner's management commands, if it is a
+    /// meeting or an army dialog (GAM-DEC-003, GAM-DEC-004; E08 T51b).
+    const fn together(&self) -> Option<Together> {
+        match self {
+            Self::Meeting { heroes, .. } => Some(Together::Meeting(*heroes)),
+            Self::ArmyDialog { hero, .. } => Some(Together::Dialog(*hero)),
+            _ => None,
+        }
+    }
+}
+
+/// What a player's management commands may name together (ADR-0017 point 6, GAM-MAN-001; E08
+/// T51b): one hero at a time without an open decision, a meeting's two heroes, or an army
+/// dialog's hero and its group.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Together {
+    /// No decision open: each command names one hero.
+    Alone,
+    /// An open meeting's two heroes (GAM-DEC-003), the visitor first.
+    Meeting([HeroId; 2]),
+    /// An open army dialog's hero, with its group (GAM-DEC-004).
+    Dialog(HeroId),
 }
 
 /// The state of a whole game.
@@ -297,14 +348,15 @@ impl GameState {
             .iter()
             .find_map(|d| match d {
                 Decision::LevelUp { owner, .. } => Some(*owner),
-                Decision::Offer { .. } | Decision::Battle(_) => None,
+                _ => None,
             })
     }
 
     /// Applies what the adventure left of a command of `player` or of its answer (ADR-0017
     /// point 10): the gains (GAM-RES-001), then the offer ([`Self::open`]) with whatever follows
-    /// one that does not open, then the battle ([`Self::start_battle`]; an outcome has an offer or
-    /// a battle, not both).
+    /// one that does not open, then the battle ([`Self::start_battle`]), the meeting
+    /// ([`Self::meet`], E08 T51b) or the army dialog ([`Self::open_army_dialog`], T51b): an
+    /// outcome has at most one of the offer, the battle, the meeting and the group without room.
     // rule: GAM-DEC-001
     pub(crate) fn settle_outcome<S: Sink>(
         &mut self,
@@ -322,7 +374,72 @@ impl GameState {
             if let Some(battle) = outcome.battle {
                 self.start_battle(rules, player, battle, sink);
             }
+            if let Some(meeting) = outcome.meeting {
+                self.meet(rules, player, meeting, sink);
+            }
+            if let Some(group) = outcome.no_room {
+                self.open_army_dialog(player, group, sink);
+            }
         }
+    }
+
+    /// Opens the meeting a step of `player`'s hero toward another of its heroes made (GAM-MET-001,
+    /// GAM-DEC-003; E08 T51b): Scholar first (HER-SPL-007: each hero learns the other's spells
+    /// [`meeting_spells`] gives, the visitor's first, each told to the player as its
+    /// `HeroChanged`), then the meeting as the player's decision, told to it alone
+    /// (`MeetingOpened`). The original's `visit_hero` (0x4A2800): 0x4A2940, then the exchange
+    /// screen (survey `E08-army.md` §2).
+    // rule: GAM-DEC-003, HER-SPL-007
+    fn meet<S: Sink>(
+        &mut self,
+        rules: &GameRuleset,
+        player: PlayerId,
+        Meeting { visitor, visited }: Meeting,
+        sink: &mut S,
+    ) {
+        let core = rules.core();
+        // Both heroes are on the map, so in the store (GAM-HER-001).
+        let (taught_visitor, taught_visited) = self
+            .hero(visitor)
+            .zip(self.hero(visited))
+            .map(|(a, b)| meeting_spells(a, b, core))
+            .unwrap_or_default();
+        let taught = [(visitor, taught_visitor), (visited, taught_visited)];
+        for (hero, spells) in taught {
+            for spell in spells {
+                let learned = HeroChange::LearnSpell(spell);
+                self.change_hero(core, hero, Some(player), learned, sink);
+            }
+        }
+        let heroes = [visitor, visited];
+        self.push_decision(Decision::Meeting {
+            owner: player,
+            heroes,
+        });
+        sink.emit(GameEvent::MeetingOpened { player, heroes });
+    }
+
+    /// Opens the army dialog of an accepted join whose group found no room in its hero's army
+    /// (ADV-MON-008, GAM-DEC-004; E08 T51b): the whole group as one stack in the first slot of a
+    /// small army without a hero, as the original's local army (0x5D11D0), as `player`'s
+    /// decision, told to it alone (`ArmyDialogOpened`).
+    // rule: GAM-DEC-004
+    fn open_army_dialog<S: Sink>(&mut self, player: PlayerId, group: NoRoom, sink: &mut S) {
+        let stack = ArmyStack {
+            slot: 0,
+            creature: group.creature,
+            count: group.count,
+        };
+        self.push_decision(Decision::ArmyDialog {
+            owner: player,
+            hero: group.hero,
+            group: vec![stack],
+        });
+        sink.emit(GameEvent::ArmyDialogOpened {
+            player,
+            hero: group.hero,
+            stack,
+        });
     }
 
     /// Opens the offer a command of `player` made (ADR-0017 point 10): as a pending decision of
@@ -373,14 +490,17 @@ impl GameState {
     }
 
     /// `Answer`: closes `player`'s first open decision (GAM-DEC-001), in its turn or not: an offer
-    /// ([`Self::answer_offer`]) or a level-up ([`Self::answer_level_up`], GAM-DEC-002, E08 T30).
+    /// ([`Self::answer_offer`]), a level-up ([`Self::answer_level_up`], GAM-DEC-002, E08 T30), a
+    /// meeting or an army dialog (`Decline`, [`Self::close_exchange`]; GAM-DEC-003, GAM-DEC-004,
+    /// E08 T51b).
     ///
     /// # Errors
     ///
     /// `UnknownPlayer`, then `NoDecision`, then `BattleOpen` when the first is a battle (E08
-    /// T19a), then `WrongAnswer` for an answer of the other kind (E08 T30), then `OfferGone` for
-    /// an acceptance; the state is then unchanged.
-    // rule: GAM-DEC-001, GAM-DEC-002
+    /// T19a), then `WrongAnswer` for an answer of the other kind (E08 T30; anything but `Decline`
+    /// for a meeting or an army dialog, T51b), then `OfferGone` for an acceptance; the state is
+    /// then unchanged.
+    // rule: GAM-DEC-001, GAM-DEC-002, GAM-DEC-003, GAM-DEC-004
     pub(crate) fn answer<S: Sink>(
         &mut self,
         rules: &GameRuleset,
@@ -413,6 +533,38 @@ impl GameState {
                 self.close(at);
                 self.answer_offer(rules, player, (&offer, guard_after), accepted, sink);
                 Ok(())
+            }
+            decision @ (Decision::Meeting { .. } | Decision::ArmyDialog { .. }) => {
+                if answer != Answer::Decline {
+                    return Err(GameCommandError::WrongAnswer);
+                }
+                self.close_exchange(player, at, decision, sink);
+                Ok(())
+            }
+        }
+    }
+
+    /// Closes `player`'s meeting or army dialog `decision` at `at` (GAM-DEC-003, GAM-DEC-004; E08
+    /// T51b), told to it (`DecisionClosed`): what is left in an army dialog's group is lost, each
+    /// stack told after it (`GroupLost`; the original destroys its local army when the dialog
+    /// returns, 0x5D11D0).
+    // rule: GAM-DEC-003, GAM-DEC-004
+    fn close_exchange<S: Sink>(
+        &mut self,
+        player: PlayerId,
+        at: usize,
+        decision: Decision,
+        sink: &mut S,
+    ) {
+        self.close(at);
+        sink.emit(GameEvent::DecisionClosed { player });
+        if let Decision::ArmyDialog { hero, group, .. } = decision {
+            for stack in group {
+                sink.emit(GameEvent::GroupLost {
+                    player,
+                    hero,
+                    stack,
+                });
             }
         }
     }
@@ -480,10 +632,44 @@ impl GameState {
     /// longer stand ([`AdventureState::offer_stands`]): then only declining it is legal. A battle
     /// is [`Self::battle`], a level-up [`Self::level_up`].
     pub fn decision(&self, player: PlayerId) -> Option<&Offer> {
-        match &self.decisions.as_deref().unwrap_or_default()[self.first(player)?] {
+        match self.first_decision(player)? {
             Decision::Offer { offer, .. } => Some(offer),
-            Decision::Battle(_) | Decision::LevelUp { .. } => None,
+            _ => None,
         }
+    }
+
+    /// The two heroes of `player`'s first open decision, if it is a meeting (GAM-DEC-003, E08
+    /// T51b): the visitor, then the visited hero. While it is open the player manages both
+    /// (GAM-MAN-001) and closes it with `Decline`.
+    pub fn meeting(&self, player: PlayerId) -> Option<[HeroId; 2]> {
+        match self.first_decision(player)? {
+            Decision::Meeting { heroes, .. } => Some(*heroes),
+            _ => None,
+        }
+    }
+
+    /// The hero and the group of `player`'s first open decision, if it is an army dialog
+    /// (GAM-DEC-004, E08 T51b): the group's stacks by slot. While it is open the player manages
+    /// the hero and the group (GAM-MAN-001) and closes it with `Decline`, losing the group's rest.
+    pub fn army_dialog(&self, player: PlayerId) -> Option<(HeroId, &[ArmyStack])> {
+        match self.first_decision(player)? {
+            Decision::ArmyDialog { hero, group, .. } => Some((*hero, group)),
+            _ => None,
+        }
+    }
+
+    /// What `player`'s management commands may name together now (GAM-MAN-001; E08 T51b): one
+    /// hero at a time without an open decision, a meeting's two heroes or an army dialog's hero
+    /// and group while one is its first; `None` with another open decision.
+    pub(crate) fn together(&self, player: PlayerId) -> Option<Together> {
+        self.first_decision(player)
+            .map_or(Some(Together::Alone), Decision::together)
+    }
+
+    /// `player`'s first open decision.
+    fn first_decision(&self, player: PlayerId) -> Option<&Decision> {
+        self.first(player)
+            .map(|at| &self.decisions.as_deref().unwrap_or_default()[at])
     }
 
     /// The level-up of `player`'s first open decision, if it has one and it is a level-up
@@ -495,13 +681,14 @@ impl GameState {
     /// The level-up of `player`'s first open decision, if it is one: as its owner sees it, and the
     /// drawn level its answer gives.
     pub(crate) fn open_level_up(&self, player: PlayerId) -> Option<(LevelUpView, LevelUp)> {
-        match &self.decisions.as_deref().unwrap_or_default()[self.first(player)?] {
+        match self.first_decision(player)? {
             Decision::LevelUp { view, offered, .. } => Some((*view, drawn(view, *offered))),
-            Decision::Battle(_) | Decision::Offer { .. } => None,
+            _ => None,
         }
     }
 
-    /// Whether `player` has an open decision, an offer, a level-up or a battle (GAM-DEC-001).
+    /// Whether `player` has an open decision, an offer, a level-up, a battle, a meeting or an
+    /// army dialog (GAM-DEC-001).
     pub fn has_decision(&self, player: PlayerId) -> bool {
         self.first(player).is_some()
     }
@@ -672,7 +859,9 @@ impl CanonicalHash for GameState {
     /// a battle's owners and heroes by side (each 0 for none, else 1 and the id), tile and battle
     /// state hash; since v11 (E08 T30) 2 a level-up: its owner, hero, new level, primary skill
     /// (0 attack to 3 knowledge), its two offers, the offers' levels after it (Wisdom's, a
-    /// school's); the game's stream; since v5 the store of heroes (length, then each hero's
+    /// school's); since v13 (E08 T51b) 3 a meeting: its owner, the visitor, the visited hero; 4 an
+    /// army dialog: its owner, its hero, the group (length, then each stack's slot, creature and
+    /// count); the game's stream; since v5 the store of heroes (length, then each hero's
     /// details by id, [`hash_details`]); since v10 (E08 T29) the heroes' progression (the level
     /// limit, the banned skills, the level seeds: [`Progression`]'s encoding); the adventure
     /// state's hash.
@@ -746,6 +935,24 @@ impl CanonicalHash for GameState {
                     }
                     h.write_u8(offered.wisdom);
                     h.write_u8(offered.school);
+                }
+                Decision::Meeting { owner, heroes } => {
+                    h.write_u8(3);
+                    h.write_u8(owner.raw());
+                    for hero in heroes {
+                        h.write_u16(hero.raw());
+                    }
+                }
+                Decision::ArmyDialog { owner, hero, group } => {
+                    h.write_u8(4);
+                    h.write_u8(owner.raw());
+                    h.write_u16(hero.raw());
+                    h.write_len(group.len());
+                    for stack in group {
+                        h.write_u8(stack.slot);
+                        stack.creature.hash_into(h);
+                        h.write_u32(stack.count);
+                    }
                 }
             }
         }

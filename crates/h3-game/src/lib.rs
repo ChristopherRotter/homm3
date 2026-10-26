@@ -15,7 +15,9 @@
 //! offer, whose acceptance checks that it still stands (T15a); battles (T19a); the heroes'
 //! progression (T29) and the level-ups as decisions ([`Answer::First`], [`Answer::Second`],
 //! [`default_answer`]; T30); the management commands ([`Manage`]) with their per-hero listing
-//! ([`legal_management`], [`split_range`]) and the tactics flag in battle (T51a).
+//! ([`legal_management`], [`split_range`]) and the tactics flag in battle (T51a); the meetings
+//! with Scholar and the army dialogs as decisions, during which the management commands name
+//! two armies ([`GameState::meeting`], [`GameState::army_dialog`]; T51b).
 //!
 //! Logic crate: pure, deterministic, `no_std` + `alloc` (ADR-0003, ADR-0005). The lint header
 //! below is required and checked by `cargo xtask check-arch`.
@@ -83,5 +85,5 @@ pub use state::{GameState, OpenBattle};
 /// (E08 T21a): a guarded pile's offer to fight. v9 (E08 T27): a hero's offers' levels. v10 (E08
 /// T29): the heroes' progression (the scenario's level limit and banned skills, the level seeds).
 /// v11 (E08 T30): the level-ups among the decisions. v12 (E08 T49a): a hero's worn artifacts by
-/// position.
-pub const GAME_STATE_HASH_VERSION: u32 = 12;
+/// position. v13 (E08 T51b): the meetings and the army dialogs among the decisions.
+pub const GAME_STATE_HASH_VERSION: u32 = 13;

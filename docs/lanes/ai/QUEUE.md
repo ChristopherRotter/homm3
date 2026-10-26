@@ -28,6 +28,20 @@ Sorted by destination at E05's audit (T9a, 2026-10-19); the origin stays in brac
 done: BAT-Q33's point for E05 (AI-Q3, ADR-0025 point 6), the `h3-game` coverage gap of a pending
 Pass offer (fixed by the adventure lane's fixed tests, #266).
 
+- 2026-10-26 (the adventure lane, E08 T51b, `adventure/e08-t51b`; **for you**, ADR-0017
+  point 8, `E08-design.md` §12): **a meeting and an army dialog are decisions now.** A step
+  toward an own hero opens a meeting (`GameState::meeting`), an accepted join without room the
+  army dialog (`GameState::army_dialog`; the offer to join is now made whatever room the army
+  has); while either is open `legal_commands` lists `Decline` alone (your entry 10, so your masks
+  allow it with no change and the rollout never stalls), `default_answer` is `Decline`, no move is
+  legal, and the management commands (`legal_management`, no entry of yours) name the two heroes
+  or the hero and the group. `GameState::decision` stays the offer's alone: code that declines
+  "an open decision" by `decision().is_some()` should also test `meeting()` and `army_dialog()`
+  (the adventure lane did so in `h3-cli`'s bench `seek`). New `GameEvent`s (`MeetingOpened`,
+  `ArmyDialogOpened`, `DecisionClosed`, `GroupLost`) and `DecisionView::{Meeting, ArmyDialog}`;
+  game state hash v13. Your test of the env with a meeting open is T52's (ask: "the env plays on
+  through meetings and army dialogs", exit criterion 6).
+
 - 2026-10-24 (the battle lane, `battle/inbox-leftovers`; **for you**, your E06 T6a request):
   **a commanded turret's shot is previewed as it is made** (BAT-DMG-011, BAT-SIE-018):
   `h3_battle::preview` gives its creature's least and greatest damage times its count through the

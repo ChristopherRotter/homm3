@@ -1171,7 +1171,7 @@ id       = "HER-SPL-007"
 title    = "Scholar at a meeting"
 context  = "heroes"
 status   = "verified"
-summary  = "When two heroes of one player meet, s is the greater `meeting_spells` level of the two (Scholar: 2, 3, 4 at Basic, Advanced, Expert; an artifact's counts; each hero's highest source). With none, or either hero without a worn spell book (an effect gives one, HER-BAT-011), nothing; else each learns every spell the other has learned (the details' spells, not an artifact's or a scroll's) that it has not, of a level at most the lesser of its learnable level (HER-SPL-005) and s, in spell order. The game applies them as `LearnSpell` changes at the meeting (E08 T50/T51). E08 T49b: `h3_heroes::meeting_spells`."
+summary  = "When two heroes of one player meet, s is the greater `meeting_spells` level of the two (Scholar: 2, 3, 4 at Basic, Advanced, Expert; an artifact's counts; each hero's highest source). With none, or either hero without a worn spell book (an effect gives one, HER-BAT-011), nothing; else each learns every spell the other has learned (the details' spells, not an artifact's or a scroll's) that it has not, of a level at most the lesser of its learnable level (HER-SPL-005) and s, in spell order. The game applies them as `LearnSpell` changes when the meeting opens, the visitor's first (GAM-DEC-003, E08 T51b). E08 T49b: `h3_heroes::meeting_spells`."
 numeric  = "integer"
 
   [[rule.source]]
