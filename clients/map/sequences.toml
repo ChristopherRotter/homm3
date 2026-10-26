@@ -1,0 +1,21 @@
+# The map's recorded sequences (E24 M2, *provisional*; the epic's M2 decision; clients/capture/README.md,
+# "The map's sequences"): each a situation of `situations/` (one of the capture set's or its own,
+# `seq-*.toml`) shown in the original as `h3map.py still` shows it, then played on the virtual clock
+# 1 ms at a time from the sequence's 0 (the palette tick and the view's redraw both due then) to `ms`
+# (`python3 capture/h3map.py frames [--only <id>]`, from clients/). Its timeline, numbers only, is
+# `timelines/<id>.txt` (the changes of the view, the objects' steps, the palette steps and where the
+# screen changed); the live part its screen shows at 0, `timelines/<id>-live.toml`. A run whose
+# timeline differs fails. The options (hero speed, scroll speed) and the inputs (keys, the pointer,
+# clicks) come with the sequences that need them (M2 T1a2, T1b).
+
+[[sequence]]
+id = "idle-cycles"
+situation = "seq-idle-cycles"
+ms = 8000
+why = "the map standing still: water, lava and the clear, muddy and lava rivers cycling, past a whole cycle (36 steps of 200 ms)"
+
+[[sequence]]
+id = "idle-objects"
+situation = "objects-flat"
+ms = 8000
+why = "the map standing still: animated objects (116 copied, 47 of them flat) stepping every 180 ms"

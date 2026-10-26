@@ -559,3 +559,30 @@ What shaped the proposal: the original scrolls by whole tiles (the manager's pix
 (0x47F860, 0x47FB40, 0x47FC80), as is the move's animation in `hero_move_step` (E08 read its
 pricing). The queued M1 items: R2-8 waits for a task that needs the writer (none planned: T6
 then makes its pull request); a saved game's draw lists stay M4's.
+
+### M2 T1a1 — the recording and the map standing still (2026-10-26)
+
+T1a was cut in two before it started (the user, at the session's start: the queue's own seam):
+T1a1 the recording and the idle loop, T1a2 the scroll with the speed options and the inputs.
+
+- **Read** (`E24-design.md` §3.1; map entries `executive_loop` 0x4B0E40, `input_next_message`
+  0x4EC590, `pump_messages` 0x4F7FB0, `network_keepalive` 0x5546B0 and `turn_timer_poll`
+  0x557AF0 (inferred), `tick_60ms_time` 0x6989AC; `adventure_tick`'s and the manager
+  procedure's entries extended): the managers' loop takes the tick before each message and never
+  waits; the idle step redraws at the frame deadline and shows at once; the tick's 60-ms calls
+  draw nothing in a single game. H3API names the input manager's +0x38 `messages`, 64 of them,
+  as read. VCMI compared (§3.3): continuous time, a step every 180 ms for both.
+- **Built:** `h3map.py frames [--only <id>] [--out <dir>]` (an additive harness change: `capture`
+  split into `stage` and `live_part`, shared), `clients/map/sequences.toml` (a situation and `ms`;
+  T1a2 and T1b add the options and inputs), the timelines `clients/map/timelines/<id>.txt` and the
+  live parts at 0 `timelines/<id>-live.toml`; the runbook's "The map's sequences". The sequence's
+  0 is set by writing the tick's, the redraw's and the mouse poll's next times (*provisional*:
+  without it two runs' timelines differ by the load's real time); the counts in the timeline are
+  from 0 for the same reason. The viewer's frame at 0, drawn from the live part read then, is
+  compared with the original's in every run.
+- **Recorded:** `idle-cycles` (its own situation `seq-idle-cycles`: four quadrants copied so
+  that lava, water and the three cycling rivers share one view, found by the viewer's frames one
+  step apart) and `idle-objects` (`objects-flat`), 8 000 ms each, twice: the same timelines, the
+  frame at 0 exact each time. The screen changes only at redraws, every one but the redraw after
+  a step fell on a redraw's millisecond (no palette step since): five of 44 in 8 s.
+- **No oddity of the original found** (no `MCL-Q`). A run of both sequences takes 20 minutes.
