@@ -5,8 +5,12 @@
 # (`python3 capture/h3map.py frames [--only <id>]`, from clients/). Its timeline, numbers only, is
 # `timelines/<id>.txt` (the changes of the view, the objects' steps, the palette steps and where the
 # screen changed); the live part its screen shows at 0, `timelines/<id>-live.toml`. A run whose
-# timeline differs fails. The options (hero speed, scroll speed) and the inputs (keys, the pointer,
-# clicks) come with the sequences that need them (M2 T1a2, T1b).
+# timeline differs fails. Since T1a2 a sequence may give the options the original holds
+# (`scroll_speed` 0 to 2, `hero_speed` 1 to 4: written once the situation is staged) and its
+# `inputs`, each at a millisecond from 1 to `ms`: `keydown` or `keyup` (xdotool's key names,
+# `ctrl+` holding the Control key with it: the map scrolls by Ctrl and the eight direction keys,
+# without Ctrl they walk the selected hero) and `pointer` (a point of the 800 x 600 screen: the
+# map scrolls while it lies within 16 pixels of a side). The clicks come with T1b.
 
 [[sequence]]
 id = "idle-cycles"
@@ -19,3 +23,90 @@ id = "idle-objects"
 situation = "objects-flat"
 ms = 8000
 why = "the map standing still: animated objects (116 copied, 47 of them flat) stepping every 180 ms"
+
+# The scroll (M2 T1a2, E24 design §3.4): at each scroll speed, Ctrl with each of the eight direction
+# keys once (pressed and released: a scroll at the press), Ctrl and Right held 400 ms (one press,
+# the original repeats nothing itself), the pointer at the left edge (a scroll every 70 ms after
+# 70 ms there) and in the top-right corner (the same 70 ms grid), then back over the right panel.
+
+[[sequence]]
+id = "scroll-0"
+situation = "seq-scroll"
+ms = 3100
+scroll_speed = 0
+why = "the scroll at the slow speed (1 tile a step): keys, the left edge, a corner"
+inputs = [
+    { at = 100, keydown = "ctrl+Up" }, { at = 160, keyup = "ctrl+Up" },
+    { at = 300, keydown = "ctrl+Prior" }, { at = 360, keyup = "ctrl+Prior" },
+    { at = 500, keydown = "ctrl+Right" }, { at = 560, keyup = "ctrl+Right" },
+    { at = 700, keydown = "ctrl+Next" }, { at = 760, keyup = "ctrl+Next" },
+    { at = 900, keydown = "ctrl+Down" }, { at = 960, keyup = "ctrl+Down" },
+    { at = 1100, keydown = "ctrl+End" }, { at = 1160, keyup = "ctrl+End" },
+    { at = 1300, keydown = "ctrl+Left" }, { at = 1360, keyup = "ctrl+Left" },
+    { at = 1500, keydown = "ctrl+Home" }, { at = 1560, keyup = "ctrl+Home" },
+    { at = 1700, keydown = "ctrl+Right" }, { at = 2100, keyup = "ctrl+Right" },
+    { at = 2300, pointer = [2, 300] },
+    { at = 2700, pointer = [798, 1] },
+    { at = 3000, pointer = [700, 300] },
+]
+
+[[sequence]]
+id = "scroll-1"
+situation = "seq-scroll"
+ms = 3100
+scroll_speed = 1
+why = "the scroll at the normal speed (2 tiles a step): keys, the left edge, a corner"
+inputs = [
+    { at = 100, keydown = "ctrl+Up" }, { at = 160, keyup = "ctrl+Up" },
+    { at = 300, keydown = "ctrl+Prior" }, { at = 360, keyup = "ctrl+Prior" },
+    { at = 500, keydown = "ctrl+Right" }, { at = 560, keyup = "ctrl+Right" },
+    { at = 700, keydown = "ctrl+Next" }, { at = 760, keyup = "ctrl+Next" },
+    { at = 900, keydown = "ctrl+Down" }, { at = 960, keyup = "ctrl+Down" },
+    { at = 1100, keydown = "ctrl+End" }, { at = 1160, keyup = "ctrl+End" },
+    { at = 1300, keydown = "ctrl+Left" }, { at = 1360, keyup = "ctrl+Left" },
+    { at = 1500, keydown = "ctrl+Home" }, { at = 1560, keyup = "ctrl+Home" },
+    { at = 1700, keydown = "ctrl+Right" }, { at = 2100, keyup = "ctrl+Right" },
+    { at = 2300, pointer = [2, 300] },
+    { at = 2700, pointer = [798, 1] },
+    { at = 3000, pointer = [700, 300] },
+]
+
+[[sequence]]
+id = "scroll-2"
+situation = "seq-scroll"
+ms = 3100
+scroll_speed = 2
+why = "the scroll at the fast speed (3 tiles a step): keys, the left edge, a corner"
+inputs = [
+    { at = 100, keydown = "ctrl+Up" }, { at = 160, keyup = "ctrl+Up" },
+    { at = 300, keydown = "ctrl+Prior" }, { at = 360, keyup = "ctrl+Prior" },
+    { at = 500, keydown = "ctrl+Right" }, { at = 560, keyup = "ctrl+Right" },
+    { at = 700, keydown = "ctrl+Next" }, { at = 760, keyup = "ctrl+Next" },
+    { at = 900, keydown = "ctrl+Down" }, { at = 960, keyup = "ctrl+Down" },
+    { at = 1100, keydown = "ctrl+End" }, { at = 1160, keyup = "ctrl+End" },
+    { at = 1300, keydown = "ctrl+Left" }, { at = 1360, keyup = "ctrl+Left" },
+    { at = 1500, keydown = "ctrl+Home" }, { at = 1560, keyup = "ctrl+Home" },
+    { at = 1700, keydown = "ctrl+Right" }, { at = 2100, keyup = "ctrl+Right" },
+    { at = 2300, pointer = [2, 300] },
+    { at = 2700, pointer = [798, 1] },
+    { at = 3000, pointer = [700, 300] },
+]
+
+# The view's limits (T1a2, design §3.4): at the fast speed the pointer in the bottom-right corner
+# until the view stops at the map's last column and row (the cursor back to the arrow), in the
+# top-left until it stops at (-9, -8), in the top-right with the top limit reached (the view
+# still moves right: its cursor stays the corner's), then Ctrl and Up at the top limit.
+
+[[sequence]]
+id = "scroll-limits"
+situation = "seq-scroll"
+ms = 2500
+scroll_speed = 2
+why = "the scroll's limits at the map's sides: the corners, the cursor where the view stops"
+inputs = [
+    { at = 100, pointer = [798, 598] },
+    { at = 800, pointer = [0, 0] },
+    { at = 1900, pointer = [798, 0] },
+    { at = 2200, pointer = [700, 300] },
+    { at = 2300, keydown = "ctrl+Up" }, { at = 2360, keyup = "ctrl+Up" },
+]

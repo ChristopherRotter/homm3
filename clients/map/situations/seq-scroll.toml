@@ -1,0 +1,10 @@
+# The view scrolling, for the scroll sequences `scroll-0`, `scroll-1`, `scroll-2` and `scroll-limits`
+# (E24 M2 T1a2; clients/map/sequences.toml, E24 design §3.4): a 36-tile map whose 36 x 36 tiles
+# are copied from Good Witch, Bad Witch's (36, 36)-(71, 71) (swamp, grass, dirt, rough, water, a
+# road and a river: every scroll step changes the view), Red's hero and Blue's in two corners,
+# the view at (9, 10), about the middle (its limits -9 to 26 and -8 to 27).
+size = 36
+terrain = "grass"
+copy = [{ map = "Good Witch, Bad Witch.h3m", from = [36, 36], to = [71, 71], at = [0, 0] }]
+heroes = [{ at = [33, 33], class = 2 }, { at = [33, 2], owner = 1 }]
+view = [9, 10, 0]
