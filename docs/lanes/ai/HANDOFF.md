@@ -14,10 +14,11 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   set's value +0.245 below the target +0.285. Increment 6's two levers were negative: the system
   actor as an opponent (`t6b-1`) and the kill preview in the network (`t6d-1`; AI-Q7 closed, off
   by default). Increment 7, T8 the search (the user, 2026-10-26: the plateau taken as shown;
-  design §14): T8a done. **Next:** T8b, the plumbing (C ABI v34, `h3-battle`'s part
-  `cross-lane`), once the user accepts ADR-0025's amendment draft (`adr-drafts/`; QUEUE).
-- **Open pull request #487** (`claude/quirky-pasteur-aolk6i`: T6e, increment 6 closed, T8a): watch
-  it to its merge.
+  design §14): T8a done (#487); the user accepted ADR-0025's amendment draft (`adr-drafts/`, into
+  ADR-0025 with the next `shared/` change). **Next:** T8b, the plumbing (C ABI v34, `h3-battle`'s
+  `determinized` and `reseed` `cross-lane`, the user's consent; QUEUE).
+- **Open pull request #489** (`claude/quirky-pasteur-aolk6i`: the turn-order probe, the ADR draft
+  accepted): watch it to its merge.
 - **Versions:** battle action encoding v13, observation encoding v21, replay format v31 (CLT-Q4/Q6), the adventure env's action encoding v4 (E08 T45), C ABI v33 (E06 T5: the kill preview) (`docs/08-work-process.md`, "Versions"). Next ids: AI-Q10, AI-QUIRK-1, AI-STUB-1.
 - Working agreement: increments with a user checkpoint (Q41's pattern); the user reviews ADRs and seams.
 
@@ -33,6 +34,9 @@ Moved to `TRAPS.md`, in three groups: **Ownership** (cross-lane encodings and re
   shows better targeting but fewer strikes and long wandering (E06-log T6e). The user closed
   AI-Q7 (the preview off by default) and chose T8 next, determinized from the start, the tree in
   Python first: T8a, the design (E06 design §14) and ADR-0025 point 12's amendment as a draft.
+- #487 merged; the user accepted the ADR draft and both `h3-battle` functions `cross-lane`. The
+  user's question on the turn order: a probe shows the trunk does not know which stack acts
+  next (E06-log "The turn-order probe"); a candidate lever in QUEUE.
 
 ### 2026-10-26 (later) — T6c's run recorded; T6d, the kill preview in the network
 

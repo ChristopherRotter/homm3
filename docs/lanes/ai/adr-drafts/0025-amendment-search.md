@@ -1,7 +1,7 @@
 # ADR-0025 amendment (draft): a search agent's worlds
 
-- Status: Proposed (E06 T8a, 2026-10-26; the user chose a determinized search from the start the
-  same day); goes into ADR-0025 through a `shared/` pull request once accepted.
+- Status: Accepted by the user on 2026-10-26 (E06 T8a; the user chose a determinized search from
+  the start the same day); goes into ADR-0025 through a `shared/` pull request.
 - Amends: ADR-0025 point 12 (information: the state, its hash and forks are trusted tooling,
   never an agent's input) with a point 12a.
 - Detail: `docs/epics/E06-design.md` §14.
