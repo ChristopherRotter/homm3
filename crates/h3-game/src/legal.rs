@@ -197,7 +197,9 @@ pub fn legal_management(
     let (core, part) = (rules.core(), rules.adventure());
     let group = state.army_dialog(player).map(|(_, group)| group);
     let other = match together {
-        Together::Meeting([visitor, visited]) => Some(if visitor == hero { visited } else { visitor }),
+        Together::Meeting([visitor, visited]) => {
+            Some(if visitor == hero { visited } else { visitor })
+        }
         Together::Alone | Together::Dialog(_) => None,
     };
     let toward = match together {
@@ -223,13 +225,17 @@ pub fn legal_management(
     };
     // A meeting's other hero takes artifacts too (HER-ART-005).
     let receiver = other.and_then(|id| state.own_details(player, id).ok().map(|d| (id, d)));
-    let targets = places(details, 1)
-        .map(|to| (hero, to, None))
-        .chain(receiver.into_iter().flat_map(|(id, other)| {
-            places(other, 1).map(move |to| (id, to, Some(other)))
-        }));
+    let targets = places(details, 1).map(|to| (hero, to, None)).chain(
+        receiver
+            .into_iter()
+            .flat_map(|(id, other)| places(other, 1).map(move |to| (id, to, Some(other)))),
+    );
     let moves = places(details, 0)
-        .flat_map(|from| targets.clone().map(move |(id, to, other)| (from, (id, to), other)))
+        .flat_map(|from| {
+            targets
+                .clone()
+                .map(move |(id, to, other)| (from, (id, to), other))
+        })
         .filter(|&(from, (_, to), other)| {
             check_move(details, other, core, ArtifactMove { from, to }).is_ok()
         })

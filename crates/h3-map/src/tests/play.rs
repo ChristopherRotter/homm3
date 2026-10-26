@@ -1509,7 +1509,13 @@ fn check_legal(
         let decline = GameCommand::Answer(Answer::Decline);
         prop_assert_eq!(legal, &[decline.clone()][..]);
         let mut probe = state.clone();
-        let result = apply(&mut probe, rules, Actor::Player(actor), decline, &mut Vec::new());
+        let result = apply(
+            &mut probe,
+            rules,
+            Actor::Player(actor),
+            decline,
+            &mut Vec::new(),
+        );
         prop_assert!(result.is_ok(), "Decline rejected: {:?}", result);
         prop_assert!(!probe.has_decision(actor));
         return Ok(());

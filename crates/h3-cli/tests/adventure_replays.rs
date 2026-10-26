@@ -90,7 +90,9 @@
 //! stack's most creatures) re-recorded all ten with their options, their commands unchanged:
 //! every hash moved. CLT-Q4/Q6 (battle state hash v54: the viewers' facts, `cross-lane`)
 //! re-recorded all ten with their options, their commands unchanged: nine moved checkpoint hashes
-//! taken inside a battle, `duel-s2-d7` none.
+//! taken inside a battle, `duel-s2-d7` none. E08 T51b (game state hash v13: the meetings and the
+//! army dialogs) re-recorded all ten with their options, their commands unchanged (no game meets
+//! an own hero or a join without room): every hash moved.
 
 use std::path::PathBuf;
 

@@ -6,7 +6,7 @@
 //! observation.
 
 use h3_adventure::{
-    AdventureEvent, AdventureEventKind, MonsterSetup, ObjectSetup, ObjectTypeId, TileMask,
+    AdventureEvent, AdventureEventKind, MonsterSetup, ObjectSetup, ObjectTypeId, TileMask, Viewers,
 };
 use h3_heroes::{ArtifactInstance, ArtifactPlace, Position, wearing};
 
@@ -48,7 +48,10 @@ fn a_step_toward_an_own_hero_opens_a_meeting_its_decline_closes() {
     assert_eq!(game.meeting(RED), Some(heroes));
     assert_eq!((game.meeting(BLUE), game.army_dialog(RED)), (None, None));
     assert!(game.has_decision(RED));
-    assert_eq!(game.adventure().hero(RED_HERO).unwrap().pos, Pos::new(0, 0, 0));
+    assert_eq!(
+        game.adventure().hero(RED_HERO).unwrap().pos,
+        Pos::new(0, 0, 0)
+    );
     // Its owner sees it; the other player does not.
     let seen = |player| observe(&game, &rules, Viewer::Player(player)).decision;
     assert_eq!(seen(RED), Some(DecisionView::Meeting { heroes }));
@@ -78,11 +81,14 @@ fn a_step_toward_an_own_hero_opens_a_meeting_its_decline_closes() {
     assert_eq!(closed, [GameEvent::DecisionClosed { player: RED }]);
     assert_eq!(project(&closed[0], Viewer::Player(BLUE)), None);
     assert_eq!(game.meeting(RED), None);
-    assert_eq!(legal_commands(&game, &rules, RED_ACTOR), [GameCommand::EndTurn]);
+    assert_eq!(
+        legal_commands(&game, &rules, RED_ACTOR),
+        [GameCommand::EndTurn]
+    );
     // Another step meets again; the meeting cost the step's points as T50's visit.
-    let points = game.adventure().hero(RED_HERO).unwrap().points;
+    let points = game.adventure().hero(RED_HERO).unwrap().movement;
     meet(&mut fresh, &rules);
-    assert_eq!(fresh.adventure().hero(RED_HERO).unwrap().points, points);
+    assert_eq!(fresh.adventure().hero(RED_HERO).unwrap().movement, points);
     meet(&mut game, &rules);
     assert_eq!(game.meeting(RED), Some(heroes));
 }
@@ -151,7 +157,7 @@ fn scholar_teaches_both_heroes_before_the_meeting_opens_the_visitors_first() {
     );
     let spells = |hero| game.hero(hero).unwrap().spells.clone();
     assert_eq!(spells(RED_HERO), [spell("t:gust"), spell("t:gate")]);
-    assert_eq!(spells(SECOND), [spell("t:gust"), spell("t:gate")]);
+    assert_eq!(spells(SECOND), [spell("t:gate"), spell("t:gust")]);
     // A second meeting teaches nothing more.
     run(&mut game, &rules, RED_ACTOR, DECLINE).unwrap();
     assert_eq!(after_steps(meet(&mut game, &rules)).len(), 1);
@@ -253,7 +259,10 @@ fn in_a_meeting_stacks_and_artifacts_move_between_its_two_heroes() {
     };
     let cases = [
         (army(blue_move), GameCommandError::DecisionOpen),
-        (GameCommand::Manage(blue_flag), GameCommandError::DecisionOpen),
+        (
+            GameCommand::Manage(blue_flag),
+            GameCommandError::DecisionOpen,
+        ),
         (
             artifact_move(
                 (RED_HERO, ArtifactPlace::Backpack(0)),
@@ -355,7 +364,12 @@ fn candidates(
 
 /// Checks that `legal_management` lists for red's `hero` exactly the commands among
 /// [`candidates`] that `apply` accepts, and returns the listing.
-fn listed(game: &GameState, rules: &GameRuleset, hero: HeroId, toward: Option<ArmyRef>) -> Vec<Manage> {
+fn listed(
+    game: &GameState,
+    rules: &GameRuleset,
+    hero: HeroId,
+    toward: Option<ArmyRef>,
+) -> Vec<Manage> {
     let listed = legal_management(game, rules, RED_ACTOR, hero);
     let accepted: Vec<Manage> = candidates(rules, hero, toward, (4, 3))
         .into_iter()
@@ -375,13 +389,23 @@ fn a_meetings_listing_and_split_query_reach_the_other_hero() {
     meet(&mut game, &rules);
     let red = listed(&game, &rules, RED_HERO, Some(ArmyRef::Hero(SECOND)));
     let second = listed(&game, &rules, SECOND, Some(ArmyRef::Hero(RED_HERO)));
-    // Red's hero's imps onto the second hero's six free slots and swapped with its imps; its
-    // artifacts onto the second hero's places too.
+    // Each hero's one stack stays (it may only swap, and both are imps); their artifacts reach
+    // the other hero's places.
     assert!(red.len() > alone.len());
-    assert!(red.contains(&Manage::Army(ArmyCommand::Move {
+    let merge = Manage::Army(ArmyCommand::Move {
+        from: slot(RED_HERO, 3),
+        to: slot(SECOND, 0),
+    });
+    assert!(!red.iter().any(|m| matches!(m, Manage::Army(ArmyCommand::Move { to, .. }) if to.army == ArmyRef::Hero(SECOND))));
+    // Split, red's hero's second stack merges into the second hero's or moves to its free slots.
+    let split = ArmyCommand::Split {
         from: slot(RED_HERO, 1),
-        to: slot(SECOND, 0)
-    })));
+        to: slot(RED_HERO, 3),
+        count: 4,
+    };
+    run(&mut game, &rules, RED_ACTOR, army(split)).unwrap();
+    let red = listed(&game, &rules, RED_HERO, Some(ArmyRef::Hero(SECOND)));
+    assert!(red.contains(&merge));
     assert!(second.contains(&Manage::Artifact {
         from: (SECOND, ArtifactPlace::Backpack(0)),
         to: (RED_HERO, ArtifactPlace::Backpack(2))
@@ -389,8 +413,8 @@ fn a_meetings_listing_and_split_query_reach_the_other_hero() {
     // None for another player's hero or a hero the meeting does not hold.
     assert_eq!(legal_management(&game, &rules, RED_ACTOR, BLUE_HERO), []);
     let range = |from, to| split_range(&game, &rules, RED_ACTOR, (from, to));
-    assert_eq!(range(slot(RED_HERO, 1), slot(SECOND, 4)), Some(1..=8));
-    assert_eq!(range(slot(SECOND, 0), slot(RED_HERO, 1)), Some(1..=11));
+    assert_eq!(range(slot(RED_HERO, 1), slot(SECOND, 4)), Some(1..=4));
+    assert_eq!(range(slot(SECOND, 0), slot(RED_HERO, 1)), Some(1..=7));
     assert_eq!(range(slot(RED_HERO, 1), slot(BLUE_HERO, 4)), None);
     assert_eq!(range(slot(RED_HERO, 1), group(4)), None);
 }
@@ -466,7 +490,11 @@ fn a_join_without_room_is_offered_and_opens_the_army_dialog() {
     // With 9 imps the group merges into them: no dialog.
     let mut roomy = dialog_game(&rules, vec![gogs(0, 2), imp(1, 9)]);
     let joined = join(&mut roomy, &rules);
-    assert!(!joined.iter().any(|e| matches!(e, GameEvent::ArmyDialogOpened { .. })));
+    assert!(
+        !joined
+            .iter()
+            .any(|e| matches!(e, GameEvent::ArmyDialogOpened { .. }))
+    );
     assert_eq!(roomy.adventure().hero(HERO).unwrap().army[1], imp(1, 13));
     // With two stacks of gogs the offer is still made; accepted, it opens the army dialog.
     let mut game = dialog_game(&rules, vec![gogs(0, 2), gogs(1, 5)]);
@@ -524,7 +552,13 @@ fn a_join_without_room_is_offered_and_opens_the_army_dialog() {
     // Room made: the five gogs dismissed, 3 imps split into their slot, one left in the group;
     // each slot told, the group's as `ArmyRef::Group`; the hash sees the group.
     let hash = game.state_hash();
-    run(&mut game, &rules, RED_ACTOR, army(ArmyCommand::Dismiss { at: at(1) })).unwrap();
+    run(
+        &mut game,
+        &rules,
+        RED_ACTOR,
+        army(ArmyCommand::Dismiss { at: at(1) }),
+    )
+    .unwrap();
     let take = ArmyCommand::Split {
         from: group(0),
         to: at(1),
@@ -537,7 +571,10 @@ fn a_join_without_room_is_offered_and_opens_the_army_dialog() {
     };
     assert_eq!(
         run(&mut game, &rules, RED_ACTOR, army(take)).unwrap(),
-        [told(group(0), Some(imp(0, 1))), told(at(1), Some(imp(1, 3)))]
+        [
+            told(group(0), Some(imp(0, 1))),
+            told(at(1), Some(imp(1, 3)))
+        ]
     );
     assert_ne!(game.state_hash(), hash);
     assert_eq!(game.army_dialog(RED), Some((HERO, &[imp(0, 1)][..])));
@@ -588,7 +625,10 @@ fn a_join_without_room_is_offered_and_opens_the_army_dialog() {
         assert_eq!(project(event, Viewer::Player(BLUE)), None);
     }
     assert_eq!(game.army_dialog(RED), None);
-    assert_eq!(legal_commands(&game, &rules, RED_ACTOR), [GameCommand::EndTurn]);
+    assert_eq!(
+        legal_commands(&game, &rules, RED_ACTOR),
+        [GameCommand::EndTurn]
+    );
     // Closed at once, the whole group is lost.
     let mut game = dialog_game(&rules, vec![gogs(0, 2), gogs(1, 5)]);
     join(&mut game, &rules);

@@ -88,7 +88,10 @@ pub(super) const fn army(command: ArmyCommand) -> GameCommand {
     GameCommand::Manage(Manage::Army(command))
 }
 
-pub(super) const fn artifact_move(from: (HeroId, ArtifactPlace), to: (HeroId, ArtifactPlace)) -> GameCommand {
+pub(super) const fn artifact_move(
+    from: (HeroId, ArtifactPlace),
+    to: (HeroId, ArtifactPlace),
+) -> GameCommand {
     GameCommand::Manage(Manage::Artifact { from, to })
 }
 
@@ -501,7 +504,12 @@ fn candidates(rules: &GameRuleset, hero: HeroId, (worn, carried): (usize, usize)
 }
 
 /// Whether `apply` accepts `command` of `actor` in `game`.
-pub(super) fn accepts(game: &GameState, rules: &GameRuleset, actor: Actor, command: Manage) -> bool {
+pub(super) fn accepts(
+    game: &GameState,
+    rules: &GameRuleset,
+    actor: Actor,
+    command: Manage,
+) -> bool {
     let mut copy = game.clone();
     apply(
         &mut copy,
