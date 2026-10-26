@@ -5941,3 +5941,84 @@ through pages a search returned (the Corpse's was not returned).
 
 **Verified:** the scoped verify (`cargo xtask verify --scope adventure --summary`) with no failing
 step; `scripts/exe.py check` and `cited` clean.
+
+### Increment 7, round 1: T55a3, Pandora's Box, events and the Pyramid (2026-10-26, `adventure/e08-t55a3`)
+
+Baseline: `master` at f91cdd5 (#476 merged; CI green on it). Original files staged from the user's
+repo folder (the executable, `maps.tar`, `extracted.tar`). At the start the agent measured the
+task. It took the classes' handlers and their callees to depth 2, and left out the drawing, the
+battle itself and the computer's branches:
+
+- Pandora's Box and events: about 2 300 instructions, most of them one shared reward routine,
+  0x49FA90; their dialogs about 2 900 more.
+- the Pyramid: about 420.
+- the Refugee Camp: about 1 400, most of it the hire dialog of dwellings and towns.
+- the five creature banks: about 3 000, plus the battle's bank flag (battle +0x53C5), which
+  `BattleSetup` lacks.
+- Seer's Huts and quest guards: about 1 400, plus a quest system of nine missions.
+
+Decision 121's two other callers of the army dialog turned out to be the banks' reward and the
+Seer's Hut's. The user took T55a3 whole with Pandora's Box, events and the Pyramid, and placed the
+others in the sketch: the banks as item 10, the Refugee Camp in item 9, the quests as item 11 after
+E09 and E10 (decision 127).
+
+**The survey** (`docs/rules/surveys/E08-rewards.md` §7, with §0, §1, §9 and §10 for T55a4):
+
+- **The reward record** (§7.1): boxes and events share one list of 228-byte records (H3API's
+  H3PandorasBox, the layout confirmed). An event's word holds its colours (bits 10–17), the
+  computer flag (18) and the removal flag (19). Past 400 records the index stays 0 (A-19;
+  at most 99 on a shipped map).
+- **Pandora's Box** (§7.2, `visit_pandora_box` 0x4A0C50): the map's text, then "open?"; guards with
+  a warning and the guarded pile's battle; the rewards; empty: a message; removed.
+- **Events** (§7.3): `event_fires_for` (0x4FCDC0) for a human of a colour in the mask, a computer
+  only with its flag; **the move ends on the tile** (`move_interrupted` 0x69777C ends the move's
+  loop); `event_fire` (0x4A0ED0): guards fought at once, the rewards, removal with the flag (else
+  it fires at every entry), the end-of-game tests.
+- **The rewards** (§7.4, `grant_rewards` 0x49FA90), in order:
+  - the experience is computed first, with the Learning before the box's skills;
+  - primary skills, positive values only;
+  - secondary skills, raised to the level;
+  - mana, the total held in 0 to 999;
+  - morale and luck, to the bonuses until the next battle's end;
+  - resources;
+  - artifacts, lost when the backpack holds 64;
+  - spells, which need a book and a level of 2 + Wisdom at most;
+  - creatures; those without room go into one army dialog (0x5D12B0, read, renamed
+    `army_dialog_with`);
+  - the experience, given last.
+- **The Pyramid** (§7.5):
+  - At a new game it draws a level-5 spell with a school that the game does not ban. Titan's
+    Lightning Bolt is always banned by its flag 0x2000.
+  - At every visit it asks first.
+  - A looted Pyramid costs −2 luck once until the next battle's end (status bit 12).
+  - The guards are 40 Gold Golems, split by `monster_battle` with a second creature into 1 to 5
+    stacks (the table 0x63DF94 orders the slots), and 20 Diamond Golems in 2 stacks.
+  - The spell is lost without a book or without Expert Wisdom.
+  - An empty pool would read outside its list (A-20, unreachable).
+- **The census** (§1): 46 boxes, 486 events (48 on the whole maps), 60 Pyramids; the bodies' kinds
+  and ranges, with nothing out of range.
+- **Disputes**:
+  - D-37, a known skill: raised to the level in the code, added in VCMI;
+  - D-38, mana: up to 999 in the code, up to the maximum in VCMI;
+  - D-39, the order of the parts and the Learning used;
+  - D-40, the Pyramid's Gold Golem stacks.
+- **Proposed** for T55a4: the rule ids (ADV-PIK-013, ADV-OBJ-007, ADV-RWD-001, ADV-TCH-008,
+  ADV-MON-012, HER-ADV-008 widened) and batch E7's rows.
+
+The readings went into `map.toml` (21 new entries, 10 amended, among them `monster_battle`'s second
+and third creatures and `new_game_bans`' always-banned flag) and `structs.toml` (`reward_record`;
+the spell's level and school; a player's second human flag). `E08-army.md` §1.1 point 5 is updated
+for 0x5D12B0.
+
+*Agent's calls (change freely):*
+
+- The dialogs of Pandora's Box and events were read for their rules only (decision 127).
+  `load_rewards` (0x4FF6B0) was skimmed, and the census checks what it reads.
+- The end-of-game tests after an event (0x5F1B10, 0x5F1C80, 0x4F2CE0) are named for E10, not read.
+- The census ran from a throwaway example in the clone, excluded from git and deleted.
+- The wiki was read through pages a search returned (Pandora's Box, Event, Pyramid).
+
+**Verified:** the scoped verify (`cargo xtask verify --scope adventure --summary`) on 7bf3a6b
+passed every step but `check-exe-map`. The one address it flagged, 0x4A39A0, got its entry in
+d1e4c1e, after which `check-exe-map`, `check-docs` and `check-lane` passed. `scripts/exe.py check`
+and `cited` came back clean.

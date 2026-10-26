@@ -1,11 +1,11 @@
-# E08 rewards survey (E08 T55a): treasure chests, artifacts and scrolls as pickups, the monsters' treasures, the objects that teach, the rewards that give creatures
+# E08 rewards survey (E08 T55a): treasure chests, artifacts and scrolls as pickups, the monsters' treasures, the objects that teach, Pandora's Box, events and the Pyramid
 
 The original's rules for the objects that hand a visiting hero something of the hero's own
 (increment 7, E08 decisions 121 and 122), by code reading (`docs/exe/README.md`) against VCMI
 1.7.5 and the wiki, with a census of the 160 shipped maps. Cut in four parts (decision 125):
 **T55a1** the census and the pickups (§1 to §5, done), **T55a2** the objects that teach
-(experience, spells, skills; §6, done), **T55a3** the rewards that give creatures, Pandora's Box and
-events (§7), **T55a4** the common rules, batch E7's plan, the rule ids, the second reading and the
+(experience, spells, skills; §6, done), **T55a3** Pandora's Box, events and the Pyramid (§7, done;
+decision 127 placed the banks, the Refugee Camp and the quests in later items), **T55a4** the common rules, batch E7's plan, the rule ids, the second reading and the
 checkpoint's questions (§8 on). Sections of a later part are added by that part; §9 and §10 below
 collect what each part leaves for T55a4.
 
@@ -25,15 +25,20 @@ Sources (labels as in `docs/04-rules-and-sources.md`):
   `witchHut.json`, `scholar.json`, `rewardableOnceVisitable.json`, `markets.json` (`university`),
   `lib/mapping/MapFormatH3M.cpp` (`readWitchHut`, `readScholar`, `readShrine`),
   `lib/json/JsonRandom.cpp` (`loadSpell`, `loadSecondary`), `CGHeroInstance.cpp` (`canLearnSkill`,
-  `canLearnSpell`); links `https://github.com/vcmi/vcmi/blob/1.7.5/<file>`.
+  `canLearnSpell`); for T55a3 `lib/mapObjects/CGPandoraBox.cpp` (`CGPandoraBox`, `CGEvent`),
+  `MapFormatH3M.cpp` (`readBoxContent`, `readEvent`, `readPandora`), `lib/rewardable/Interface.cpp`
+  (`grantRewardBeforeLevelup`, `grantRewardAfterLevelup`), `lib/rewardable/Reward.cpp`
+  (`calculateManaPoints`), `server/CGameHandler.cpp` (`giveCreatures`, `tryJoiningArmy`),
+  `config/objects/pyramid.json`; links `https://github.com/vcmi/vcmi/blob/1.7.5/<file>`.
 - `wiki`: read through the summarising fetch tool, `https://heroes.thelazy.net/index.php/<Page>`:
   Treasure_chest, Artifact, Spell_scroll; for T55a2 Arena, Shrine, Learning_stone, Witch_Hut,
-  Scholar_(adventure_map), University, Wagon, Warrior's_Tomb (the pages found through the search tool; a direct fetch
+  Scholar_(adventure_map), University, Wagon, Warrior's_Tomb; for T55a3 Pandora's_Box, Event, Pyramid
+  (the pages found through the search tool; a direct fetch
   of a page not linked from a search is refused in this session). Quotes are short.
 - `original-data` (the census): the 160 shipped maps (`original-data/maps.tar`) read with `h3-map`'s
   reader and imported, by a throwaway example (not committed), §1.
 
-## 0. Findings in short (T55a1, T55a2)
+## 0. Findings in short (T55a1 to T55a3)
 
 - **Today** the import keeps every object of §2 to §4 as an inert blocker (classes 5, 65 to 69, 93,
   101; `docs/formats/h3m.md`, "Import") and refuses 8 maps for a monster with an artifact (§5).
@@ -78,6 +83,25 @@ Sources (labels as in `docs/04-rules-and-sources.md`):
   and the wiki: never), D-34 the Shrines' repeats (code: none until the level is used up; VCMI:
   uniform), D-35 the Corpse's and the Wagon's artifact class and the Wagon's amount, D-36 Necromancy
   at a University (code: offered; VCMI and the wiki: never).
+- **Pandora's Box, events and the Pyramid (T55a3, §7):** boxes and events share one list of reward
+  records (at most 400: **A-19**, unreachable, 99 at most on a shipped map). A box asks "open?"
+  first, fights its guards after a warning, gives its rewards and is removed (empty: a message).
+  An event fires when a hero of a colour in its mask enters its tile (a computer's only with its
+  flag); it **ends the move there**, fights its guards at once (no question), gives its rewards,
+  and is removed only with its flag (else it fires at every entry). **The rewards** come in a fixed
+  order: primary skills (positive only), secondary skills (**raised to** the level, a new one below
+  eight), mana (the total held in 0 to 999), morale and luck (bonuses until the next battle's end),
+  resources, artifacts (lost with 64 in the backpack), spells (a book, level ≤ 2 + Wisdom),
+  creatures (no room: one army dialog, the rest lost), and **experience last**, computed with the
+  Learning before the box's skills. **The Pyramid** draws a level-5 spell at a new game (Titan's
+  Lightning Bolt never: always banned). It asks at every visit and fights 40 Gold Golems (split
+  into 1 to 5 stacks like a wandering monster's) and two stacks of 10 Diamond Golems. The spell is
+  lost without a book or Expert Wisdom. A looted Pyramid costs −2 luck once until the next battle's
+  end (**A-20**: an empty pool, unreachable).
+- **Disputes (T55a3, §9):** D-37 a known skill (code: raised to the level; VCMI: the level added),
+  D-38 mana above the maximum (code: up to 999; VCMI: up to the maximum), D-39 the order
+  (experience last with the old Learning; VCMI: before the rest, with the new Learning), D-40 the
+  Pyramid's Gold Golems (code: 1 to 5 stacks; VCMI: one).
 
 ## 1. The census
 
@@ -113,14 +137,14 @@ on the five maps that import whole.
 | 108 | Warrior's Tomb | 261 | 82 | 1 | T55a2 (an artifact) |
 | 39 | Lean To | 101 | 57 | 7 | T55a2 (resources; the list's edge) |
 | 104 | University | 143 | 75 | 0 | T55a2 (skills for gold) |
-| 6 | Pandora's Box | 46 | 20 | 0 | T55a3 |
-| 26 | Event | 486 | 68 | 48 | T55a3 |
-| 78 | Refugee Camp | 321 | 101 | 5 | T55a3 |
-| 16 | Creature Bank (subclasses 0–6) | 1 215 | 62–106 | 19 | T55a3 decides in or out |
-| 24 / 25 / 84 / 85 | Derelict Ship / Dragon Utopia / Crypt / Shipwreck | 170 / 74 / 277 / 401 | 58 / 55 / 97 / 69 | 2 / 1 / 4 / 10 | T55a3 decides in or out |
-| 63 | Pyramid | 60 | 41 | 2 | T55a3 decides in or out |
-| 83 | Seer's Hut (subclasses 0–2) | 265 | 41–56 | 0 | T55a3 (where it belongs) |
-| 215 | Quest Guard | 114 | 31 | 0 | T55a3 (where it belongs) |
+| 6 | Pandora's Box | 46 | 20 | 0 | T55a3, §7 |
+| 26 | Event | 486 | 68 | 48 | T55a3, §7 |
+| 78 | Refugee Camp | 321 | 101 | 5 | not in increment 7: the sketch's item 9 (decision 127) |
+| 16 | Creature Bank (subclasses 0–6) | 1 215 | 62–106 | 19 | not in increment 7: item 10 (decision 127) |
+| 24 / 25 / 84 / 85 | Derelict Ship / Dragon Utopia / Crypt / Shipwreck | 170 / 74 / 277 / 401 | 58 / 55 / 97 / 69 | 2 / 1 / 4 / 10 | not in increment 7: item 10 (decision 127) |
+| 63 | Pyramid | 60 | 41 | 2 | T55a3, §7 |
+| 83 | Seer's Hut (subclasses 0–2) | 265 | 41–56 | 0 | not in increment 7: item 11, after E09 and E10 (decision 127) |
+| 215 | Quest Guard | 114 | 31 | 0 | not in increment 7: item 11 (decision 127) |
 | 62 | Prison | 89 | 41 | 3 | not in increment 7 (a hero; the queue's inbox, 2026-10-20) |
 | 82 / 86 / 29 / 59 | Sea Chest / Shipwreck Survivor / Flotsam / Ocean Bottle | 826 / 362 / 2 019 / 29 | 80 / 72 / 90 / 15 | 37 / 7 / 92 / 3 | not in it: the sea (decision 121, the sketch's item 8) |
 
@@ -154,6 +178,33 @@ The bodies and counts, for T55a2 (the same throwaway example):
 - **Scholars (81):** 609 random, 43 primary skills, 34 secondary skills, 8 spells (levels 1, 1, 3,
   3, 4, 5, 5, 5); no placed id of 255.
 - **Universities (104):** no map leaves fewer than four skills unbanned.
+
+The bodies and counts, for T55a3 (a throwaway example of the same kind, deleted):
+
+- **Pandora's Boxes (6):** 46 on 20 maps (35 SoD, 6 RoE, 5 AB), none on the five whole maps; 15
+  message records, 11 with a text, 12 guarded (4 without a text). Every box gives something: 39 one
+  kind, 3 two, 4 three. Creatures 20 (21 stacks, at most 2 in a box), experience 14 (at most
+  25 000), spells 6 (104 spells, up to 19 in one box: levels 1 to 5 18, 42, 16, 20, 8; one box gives
+  a spell its map bans), resources 6 (one takes), artifacts 5 (10, at most 4), morale 3 (all
+  positive), primary skills 2 (+1), a secondary skill 1 (Expert).
+- **Events (26):** 486 on 68 maps (201 RoE, 182 AB, 103 SoD); 48 on the whole maps (Faeries 22,
+  Race for Ardintinny 12, Adventures of Jared Haret 11, the Tutorial 2, Knee Deep in the Dead 1:
+  texts, morale and luck from −3 to +2, creatures, two artifacts, a skill, a primary skill, a
+  loss of 10 gems and 1 000 gold; 3 guarded, all on Faeries). 482 message records, 470 with a text; 87
+  guarded (12 without a text). **231 give nothing** (180 a text only, 35 a text and guards, 12
+  guards only, 4 nothing at all: they only stop the hero); 222 give one kind, 33 more. Morale 76 (43
+  negative), resources 73 (26 take), artifacts 47 (53, at most 7), creatures 40 (63 stacks, up to
+  7), luck 29 (9 negative), experience 23 (at most 7 000), primary skills 7 (at most +5), skills 7
+  (8 pairs, levels 1 to 3), mana 4 (one negative, at most 60), spells 2. Colours: 389 for all, 97
+  for some; 60 for computers too; 460 removed after the visit, 26 repeat (none guarded; 10 give
+  something every time: morale, luck or a loss of resources, as Shadow Valleys' four).
+- **Out of range: none.** No morale or luck beyond ±3, no primary skill above 127, no experience of
+  2³¹ or more, no random creature code, no count of 0, no Spell Book, Scroll, Grail or war machine
+  among the artifacts. **The reward records per map:** at most 99 (Myth and Legend), then 79
+  (Pandora's Box), against the cap of 400 (§7.1).
+- **Pyramids (63):** 60 on 41 maps (at most 4: Land of Titans), 2 on the whole maps; four maps ban
+  level-5 spells: Good Witch, Bad Witch three (Fly, Dimension Door, Summon Water Elemental),
+  Gorlam's Tentacle Swampland and Island King with its allied version two (Fly, Dimension Door).
 
 ## 2. Treasure chests (class 101)
 
@@ -535,6 +586,187 @@ morale until the next battle", a searched tomb gives the penalty only; the Corps
 returned by a search. **D-35** (the artifact's class split, the Wagon's amount); the Tomb agrees;
 the full-backpack cases are the code's alone (rows for batch E7, §10).
 
+## 7. Pandora's Box, events and the Pyramid (T55a3)
+
+Decision 127 cut T55a3 to these three classes: the creature banks (16, 24, 25, 84, 85) are the
+sketch's item 10, the Refugee Camp (78) item 9, Seer's Huts and quest guards (83, 215) item 11. The
+two other callers of the army dialog that decision 121 named are the banks' reward (0x4ABDC0) and
+the Seer's Hut's (0x573C80), so they go with those items. Pandora's Box and events give creatures
+through their own reward routine (§7.4). The human player's path is read. The computer's answers
+(`ai_fight_answer` 0x52BD10, `ai_join_without_room` 0x52BC60, `ai_artifact_received` 0x433B40) are
+named, not read (E10). The texts are ADVEVENT.TXT's lines, which the code reads through
+`advevent_text_pointer` (0x696A18; line n at +4n of its +0x20 array).
+
+### 7.1 The reward record
+
+`original-data` (read): `load_object_body` reads a Pandora's Box (0x4FFBF0) and an event (0x5008B0)
+through one reader of the format's message, guards and rewards (`load_rewards` 0x4FF6B0, skimmed).
+Both append a 228-byte **reward record** to **one list** of the map (+0x50; begin +0x54, end
++0x58). The record's index goes into bits 0–9 of the tile's word (`reward_record` 0x4A0C20). An
+event's word also holds the format's player byte in bits 10–17, the computer flag in bit 18 and
+"remove after the visit" in bit 19. The record holds the text (a string at +0x0), the guards flag
+(+0x10), the guards (+0x14) and the rewards (`structs.toml`, `reward_record`).
+
+**At most 400 records:** a 401st box or event is not stored, and its word keeps index 0, so it reads
+the first record (**A-19**). The census's largest list is 99 (Myth and Legend: events and boxes
+together), so no shipped map reaches the cap.
+
+### 7.2 Pandora's Box (6)
+
+`original-data` (read): `visit_pandora_box` (0x4A0C50, `visit_object` case 6):
+
+1. **A human** sees the map's text, when it has one, in an OK box. Then comes the question "Do you
+   wish to open the box?" (ADVEVENT 14). Answering no does nothing, and the box stays. The computer
+   asks `ai_fight_answer` instead.
+2. **Guards** (the flag, and at least one stack): a human sees "you are attacked" (ADVEVENT 16),
+   then the battle against the record's army as the map gives it. The call is the guarded pile's
+   (`adventure_battle` 0x4AD470: no split, a stored seed; survey `E08-battles.md` §5.1).
+   - **Lost or retreated:** return. The box stays with the guards' survivors (the record's army,
+     passed by address).
+   - **Won:** the levels from the battle (0x4DA720).
+3. **The rewards** (`grant_rewards` 0x49FA90, §7.4), without the map's text, which was already
+   shown. When nothing was given, a human sees "the box is empty" (ADVEVENT 15).
+4. **The box is removed** (`remove_map_object`, with a pickup sound).
+
+At a new game, `setup_map_objects` case 6 (0x4C0DED) tests the word's low half as a signed
+number. The loader's index (0 to 399) is never negative, so a map's box is left as it is. A value
+of −1 to −5 would become an artifact from `random_artifact_of_level` (classes 0xE, 2, 4, 8 or 0x10;
+the switch at 0x4C0E0A), but no loader read sets one (perhaps the random map generator's; not
+read).
+
+### 7.3 Events (26)
+
+`original-data` (read): an event is not a case of `visit_object`, and `place_object_tiles` gives it
+no drawing, only its tile's class (§10).
+
+**When it fires.** `hero_move_step` tests the tile a step enters (`event_fires_for` 0x4FCDC0, at
+0x4811A3):
+
+- a **human** player (`player_is_human_both` 0x4BAD80: both of the player record's human flags,
+  +0xE1 and +0xE2) whose colour bit is in bits 10–17;
+- a **computer** player only with bit 18 set and its colour in the mask.
+
+When it fires, **the move ends on the event's tile**. The step sets its stop flag, as when the
+movement points run out, and the global `move_interrupted` (0x69777C, at 0x4816B6), which ends the
+move's loop (0x407F15). After the step, `event_fire` (0x4A0ED0, called at 0x481741) handles the
+event. An event of another colour does not stop the hero.
+
+**The fire** (`event_fire`):
+
+1. **Guards:** a human sees the event's text, or when the text is empty "you are attacked"
+   (ADVEVENT 16). There is **no question**: the battle starts at once, the same call as Pandora's.
+   - **Lost:** return. The event stays with the survivors.
+   - **Won:** the levels from the battle.
+2. **The rewards** (`grant_rewards`, §7.4) with the event's text. If the guards already showed
+   that text, the rewards get an empty one instead.
+3. **Removal:** with bit 19 the tile's object is cleared: its word, its class (+0x1E) and bit 0x10
+   of the tile's +0xD (not identified). Without bit 19 the event stays and **fires again** at every
+   later entry by a hero of a qualifying colour.
+4. **The end-of-game tests:** `scenario_condition_test` (0x5F1B10) and the second test (0x5F1C80)
+   run on the game's victory condition (+0x1F89C). When either holds, `scenario_condition_met`
+   (0x4F2CE0) is called. These
+   are the same tests a battle and a turn run (not read, E10).
+
+### 7.4 The rewards (0x49FA90)
+
+`original-data` (read): `grant_rewards` (the text, the hero, the tile, the position, the human
+flag, the record) applies the parts **in this order**:
+
+| # | Part (record offset) | The rule |
+|---|---|---|
+| 1 | experience (+0x50, signed) | Only when above 0. The amount is computed **first**: amount × `hero_learning` (f32, truncated). The Learning level used is the one before this record's skills. The amount is **given last** (step 10). |
+| 2 | primary skills (+0x78, 4 signed bytes) | Each value **above 0** is added to hero +0x476 + i at once (unclamped; the level-up's A-9 covers the class). 0 or a negative value is skipped. |
+| 3 | secondary skills (+0x80, (skill, level) pairs) | A known skill below the given level **rises to it** (`hero_learn_secondary_skill` with the difference, at most Expert). A known skill at or above the level is unchanged. A new skill is learned at the level only below eight skills. There is no class or ban test. |
+| 4 | mana (+0x54, signed) | Added. The total is held **between 0 and 999**: it may exceed the hero's maximum, and a loss stops at 0. |
+| 5 | morale (+0x58), luck (+0x59) | Added to the **bonuses that last until the end of the hero's next battle** (+0x11A, +0x11B; cleared by `hero_battle_bonuses_clear`). They add up across objects. |
+| 6 | resources (+0x5C, 7 signed) | `give_resource` per resource: 32-bit; a negative result becomes 0. |
+| 7 | artifacts (+0x90) | Each is given only while the backpack holds **fewer than 64** (`hero_give_artifact`: the first body position that takes it, else the backpack, with SoD's combination question). Otherwise it is **lost**. |
+| 8 | spells (+0xA0) | **Only with a Spell Book**. Each is learned (`hero_learn_spell`) when its level is at most **2 + Wisdom** and it is not known; there is no ban test (one shipped box gives a spell its map bans). Otherwise it is skipped without a message. Step 3's Wisdom and step 7's Spell Book count. |
+| 9 | creatures (+0xAC, an army of 7 slots) | Slot by slot: `army_add_stack` (onto the slot of the same creature, else the first empty slot). For a human, what finds **no room** goes into **one army dialog** after the last box (`army_dialog_with` 0x5D12B0, flag 0: the "make room" dialog of `army_full_dialog`, survey `E08-army.md` §1.1). What is left in that dialog is lost. The computer: `ai_join_without_room`. |
+| 10 | experience | Step 1's amount by `hero_gain_experience` (the levels, and the scenario's level limit with its message). |
+
+It returns whether anything was given. Every non-zero part counts, and so does every creature slot
+even when it found no room; a skipped artifact or spell does not. A human sees the map's text and
+the parts as pictures, in boxes of up to eight: steps 1 to 5 first, then the resources, the
+artifacts, the spells and the creatures. Each box after the first gets ADVEVENT 175 to 188 ("%s
+learns something.", "%s has found treasure.", …) when the map's text is empty.
+
+### 7.5 The Pyramid (63)
+
+`original-data` (read):
+
+**At a new game** (`setup_map_objects` case 63, 0x4C19DE): the pool is every spell 0 to 69 of
+**level 5 with a school** that the game does not ban. The game's bans (+0x4A, `new_game_bans`) are
+the map's, plus every spell with flag 0x2000. Only Titan's Lightning Bolt (57) has that flag, so it
+never enters the pool. The pool is Fly, Dimension Door, Implosion, Magic Mirror, Sacrifice and the
+four Summon Elementals, less the map's bans. One spell is drawn uniformly: random_between(0,
+n − 1). `pyramid_word_set` (0x4C2330) sets the word's bit 0 (guarded) and the spell in bits 13–20;
+bits 5–12 (the team marks) are cleared. An empty pool would read outside the list (**A-20**). The
+census found at most 3 of the 9 banned (Good Witch, Bad Witch: Fly, Dimension Door, Water
+Elemental), so no shipped map has an empty pool.
+
+**The visit** (`visit_pyramid` 0x4A4230, `visit_object` case 63):
+
+1. **A human** is asked first, at every visit (ADVEVENT 105: search it?). Answering no does
+   nothing. The computer asks `ai_fight_answer`. Then the team's mark is set
+   (`tile_mark_visited_by_team`).
+2. **Looted** (bit 0 clear): a human sees ADVEVENT 107. The hero takes **−2 luck** (+0x11B)
+   **once until the end of its next battle**: status flag bit 12, which `hero_battle_bonuses_clear`
+   clears. This applies to the computer's heroes too.
+3. **Guarded:** `monster_battle` (0x4AC580, at 0x4A434A) against **40 Gold Golems** (116) and **20
+   Diamond Golems** (117) in 2 stacks, with no third creature:
+   - The battle's seed comes from the tile, as for a wandering monster's.
+   - The monster's strength sums both creatures' values. The number of stacks n comes from the army
+     ratio and the roll (survey `E08-battles.md` §4.1, 2 to 7, then ±1), **less the 2 Diamond
+     stacks**, and is at least 1. So the Gold Golems split evenly into **1 to 5 stacks** and the
+     Diamond Golems into 2 of 10. No stack is upgraded.
+   - The slots are ordered by the table 0x63DF94 (`monster_stack_order`, row 7n). Slot by slot, with
+     G a Gold stack, D a Diamond stack and – an empty slot: n = 1 D D – G – – –; 2 D D G – G – –;
+     3 D G D G – G –; 4 G D G D G – G; 5 G G D G D G G.
+   - **Lost or retreated:** nothing changes. The counts are local, so the next fight is again
+     against 40 and 20.
+4. **Won:** the battle's levels. Bit 0 is cleared (looted) and the spell stays in the word. Then:
+   - no Spell Book: the spell is **lost** (ADVEVENT 109);
+   - level 5 above 2 + Wisdom (below Expert Wisdom): **lost** (108);
+   - otherwise `hero_learn_spell`. There is no "known" test, and relearning a known spell changes
+     nothing.
+
+### 7.6 VCMI and the wiki
+
+- **Pandora's Box.** `vcmi` (`CGPandoraBox`, `readBoxContent`): the question (ADVOB 14), guards
+  with text 16 and the battle, an empty box 15, removed after the rewards. The map's text is not
+  shown before the question (presentation). `wiki` (Pandora's Box): "Do you wish to open the box?",
+  "combat ensues if there are guardians", the reward list (spells "the proper level of Wisdom skill
+  is required", secondary skills "ignoring hero class restrictions"), "The box disappears after a
+  hero successfully opens it". **Consensus** on the visit.
+- **Events.** `vcmi` (`CGEvent`): fires for `availableFor` and `computerActivate`. The human flag
+  is HotA's (`levelHOTA3`), and SoD reads it as always set, as the code does. With guards it shows
+  the message (or 16) and fights at once. `removeAfterVisit`; a draw removes a non-repeatable
+  event. `wiki` (Event): "triggered when a hero enters the square", "can be canceled after a hero
+  first time triggers it, or it can be triggered unlimited times", guardians "will not be reset",
+  skills "even if it is restricted from his hero class", spells need "a corresponding level of
+  wisdom and a spell book". Silent on whether the hero stops. **Consensus.**
+- **The rewards** (`Rewardable::Interface`; the wiki silent beyond the above):
+  - **Skills:** VCMI **adds** the given level to the known one (Basic + Advanced = Expert); the
+    code raises to it (Advanced). **D-37.**
+  - **Mana:** VCMI gives mana up to the hero's **maximum** (`manaOverflowFactor` 0) and loses the
+    rest; the code allows up to 999. **D-38.**
+  - **Order:** VCMI gives the experience (computed after the box's skills, so with a new Learning)
+    and its levels **before** the mana, morale, luck, artifacts, spells and creatures; the code
+    computes it with the old Learning and gives it **last**. So a spell that needs the Wisdom of a
+    level-up is refused in the code, and the Learning differs. **D-39.**
+  - **Agree:** the spells' limits (`canLearnSpell`: a book, Wisdom, not known, bans allowed), the
+    morale and luck for one battle, creatures without room through the garrison dialog. VCMI's
+    unbounded backpack never loses an artifact (§3.4).
+  - **Primary skills:** VCMI adds them as unsigned bytes; no shipped value is above 5.
+- **The Pyramid.** `vcmi` (`pyramid.json`): a level-5 spell, question 105, guards **40 Gold Golems
+  in one stack** and two stacks of 10 Diamond Golems (`guardsLayout` default). The spell is learned
+  only by a hero who can learn it (108, 109 otherwise, lost). Looted: 107 and −2 luck for one
+  battle at each visit (`onVisited`; whether two such bonuses add was not traced, as the Tomb's,
+  §6.9). `wiki` (Pyramid): "guarded by 40 Gold Golems and two stacks of 10 Diamond Golems", "expert
+  Wisdom and a spell book", "it is lost forever", "Searching an empty pyramid decreases hero's luck
+  by 2", golems restored after a retreat. **D-40** (the Gold Golems' stacks); the rest agrees.
+
 ## 9. Disputes and quirk candidates so far (for T55a4)
 
 | Id | What | Sources | Proposal |
@@ -547,6 +779,10 @@ the full-backpack cases are the code's alone (rows for batch E7, §10).
 | D-34 | what the random Shrines repeat | code (0x4C95A0): no spell of the level until each is out (the bans never); VCMI: uniform, repeats; wiki silent | the code's; a batch E7 row (15 random Shrines of one level: 15 spells) |
 | D-35 | the Corpse's and the Wagon's artifact; the Wagon's amount | code: treasure and minor as one pool (by the classes' sizes, about 64 % treasure), the Corpse 20 %, the Wagon 40 %; the amount 2 to 5; VCMI and the wiki (Wagon): half each class (10 + 10 %, 20 + 20 %); the amount: wiki 2 to 5, VCMI 1 to 5 | the code's (the amount with the wiki); no row (a distribution) |
 | D-36 | Necromancy at a University | code (0x4C06F0): drawn like any unbanned skill, bought only by a class that weighs it (Death Knight, Necromancer); VCMI ("noneOf necromancy") and the wiki ("Necromancy can not appear in universities"): never offered | the reading against both: the user's, after a batch E7 row (many Universities) |
+| D-37 | a box's or event's secondary skill the hero knows | code (0x49FA90): raised to the given level, never lowered (Basic + Advanced: Advanced); VCMI (`grantRewardBeforeLevelup`): the given level added, clamped (Expert); wiki silent | the code's; a batch E7 row (a box with Advanced Wisdom, a hero with Basic Wisdom) |
+| D-38 | a box's or event's mana above the hero's maximum | code: the total held at 999; VCMI (`calculateManaPoints`, overflow factor 0): up to the maximum, the rest lost; wiki silent | the code's; a batch E7 row (a box with 500 mana, a hero of 100 at most) |
+| D-39 | the order of a box's or event's parts | code: experience computed with the Learning before the box's skills, given last (after the spells and creatures); VCMI: the box's skills, then the experience (with the new Learning) and its levels, then mana, morale, luck, artifacts, spells, creatures; wiki silent | the code's; batch E7 rows (a box with Learning and experience; a box with a level's experience and a level-3 spell, a hero whose level-up offers Wisdom) |
+| D-40 | the Pyramid's 40 Gold Golems | code (`monster_battle` with a second creature): split like a wandering monster's into 1 to 5 stacks by the army ratio, ordered by the table 0x63DF94; VCMI (`pyramid.json`): one stack of 40; wiki: "40 Gold Golems and two stacks of 10 Diamond Golems" (the split not stated) | the code's; a batch E7 row (a weak and a strong hero at one Pyramid) |
 
 Quirk candidates (T55a2): **A-17** the once-per-hero marks are 32 bits per class (§6.1): the 33rd
 object of a class shares the first one's mark. Unreachable on the shipped maps (at most 30) and
@@ -557,6 +793,16 @@ the shipped maps. Proposal: always fixed (nothing to learn: the Shrine refuses a
 spell, the Scholar falls back). Not quirks (T55a2): the unclamped primary skill increases (the
 level-up's A-9 covers the class), the Arena's Cancel taken as Attack (the wiki: no leaving without
 a bonus), the team's marks set before a refusal (knowledge, §10).
+
+Quirk candidates (T55a3): **A-19** events and boxes share one list of at most 400 reward records
+(§7.1): a 401st reads the first one's record. Unreachable on the shipped maps (at most 99).
+Proposal: not reproduced (a record per object), no flag. **A-20** a Pyramid whose level-5 pool is
+empty (the map bans all nine) reads outside the list at a new game (§7.5); unreachable (at most
+three banned). Proposal: always fixed (no spell: the Pyramid fights and gives nothing, or the map
+is refused; T55b decides). Not quirks (T55a3): the primary skills read as signed bytes (only
+positive values given; no shipped value above 5), a box's spells not tested against the bans (VCMI
+the same), a looted Pyramid that still asks first, the Pyramid's spell lost when it cannot be
+learned (the wiki states it), an event that fires again at every entry (the editor's choice).
 
 T55a1: none. Not quirks: the full backpack that refuses a wearable artifact (the
 wiki states it), the chest's 1 000 gold with a full backpack, the monster's artifact lost on a full
@@ -613,3 +859,48 @@ recommendation: not modelled, the Tutorial is a teaching map).
 - **The import's changes (T55a2):** the 20 classes typed (blockers today); the bodies `h3-map`
   already reads (the Shrine's spell, the Witch Hut's mask, the Scholar's kind and code); no new
   refusal.
+- **New hero state (T55a3):** the luck bonus until the next battle's end (+0x11B) beside T55a2's
+  morale bonus. Boxes and events add to both, cumulatively. The Pyramid's once flag (status bit 12,
+  −2 luck) sits beside the Tomb's (bit 21). HER-ADV-008 covers all of them.
+- **Decisions (T55a3):** a box's "open?" (yes or no); the Pyramid's "search?" (yes or no, at every
+  visit, a looted one too); the army dialog for a reward's creatures without room. That dialog is
+  one dialog over **up to seven** leftover stacks, unlike increment 6's joining group of one stack
+  (survey `E08-army.md` §1.1). An event asks nothing. A guarded box's or event's battle is a
+  guarded pile's. The computer's answers are E10's.
+- **The move (T55a3):** an event that fires **ends the move on its tile**, and one of another colour
+  does not. The stop depends on an object no player sees (below), so T55a4 must also settle what a
+  move's outcome and the env's masks may reveal.
+- **What a player knows (T55a3):**
+  - **An event has no picture** (`place_object_tiles` gives it none). No player sees it until it
+    fires, and the observation must never show it; when it fires, the visitor learns its text and
+    rewards.
+  - A box shows one picture for every box; its contents and guards are hidden, and the guards are
+    seen only in the battle.
+  - The Pyramid's spell is hidden. Whether it was looted is known to the visitor's team (the
+    team's mark, `tile_mark_visited_by_team`).
+- **Draws when the game is built (T55a3):** the Pyramid's spell (decision 17's setup stream). A box's
+  and an event's contents are the map's, with nothing drawn.
+- **The battles (T55a3):** a box's and an event's guards as a guarded pile's (no split, a stored
+  seed). The Pyramid's goes through the monster battle with a second creature (§7.5: the split less
+  the other stacks, the order table 0x63DF94), which the engine's monster battle does not have yet.
+- **The end-of-game tests after an event** (0x5F1B10, 0x5F1C80): E10's victory and loss conditions.
+- **Batch E7's rows from T55a3:**
+  - the disputes D-37, D-38, D-39 and D-40;
+  - the code's alone (VCMI and the wiki silent or different):
+    - an event that stops a hero mid-move, and one of another colour that does not;
+    - a repeatable event that fires at each entry;
+    - a box's artifact with a full backpack (lost);
+    - a box's creatures without room (one dialog for all; the rest lost);
+    - a looted Pyramid twice before a battle (−2, not −4);
+    - the Pyramid's spell without Expert Wisdom (lost, the Pyramid looted).
+- **The proposed rule ids (T55a3):**
+  - ADV-PIK-013 Pandora's Box (§7.2);
+  - ADV-OBJ-007 events: firing, the stop, removal and repeats (§7.3);
+  - ADV-RWD-001 the reward record's parts and their order (§7.4, D-37 to D-39);
+  - ADV-TCH-008 the Pyramid (§7.5, D-40);
+  - ADV-MON-012 the monster battle with a second creature (§7.5);
+  - HER-ADV-008 widened to the luck bonus and the Pyramid's flag.
+- **The import's changes (T55a3):** classes 6, 26 and 63 typed (blockers today). The bodies are the
+  ones `h3-map` already reads (`Rewards`, `EventBody`: the players, computer and removal flags).
+  The Pyramid's spell is drawn when the game is built. No new refusal: nothing on the shipped maps
+  is out of range (§1). The map's timed events (the header's) stay out (decision 127).
