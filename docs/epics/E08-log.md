@@ -5489,3 +5489,6 @@ first). The original game's files staged at the start, as the user's computer wa
   meeting and after an army dialog opened; the AI lane's inbox told (with the army map for its
   own test).
 - **Versions**: none moved (the replay format stays v6; no hash).
+- **Verify**: the full `cargo xtask verify --with-original-data` passed every step (coverage,
+  determinism with the twelve replays, `bench-check` with the six adventure workloads) on code
+  5a00f64 (commit 61c13d2); `check-lane` ok (lane 20 files, common 2).

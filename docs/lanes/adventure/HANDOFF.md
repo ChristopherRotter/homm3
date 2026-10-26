@@ -21,7 +21,7 @@ Moved to `TRAPS.md`: forks without deep copies, RNG seeds server-only, template 
 
 ### 2026-10-26 — increment 6, round 5: T52
 
-Baseline 7619a4a (#468 merged; verified). T52 whole (decision 119): the plans and properties manage (meetings, joins, arbitrary commands; invariants, effects, inverses), the army map and the scripted golden replays (`run --script`), two gated benchmarks (forks with a meeting, the listing in a meeting); no version moved. Full verify: running (its result goes into the pull request).
+Baseline 7619a4a (#468 merged; verified). T52 whole (decision 119): the plans and properties manage (meetings, joins, arbitrary commands; invariants, effects, inverses), the army map and the scripted golden replays (`run --script`), two gated benchmarks (forks with a meeting, the listing in a meeting); no version moved. Full verify with the original data green (code 5a00f64); #469 and the T52 pull request open.
 
 ### 2026-10-26 — increment 6, round 4: T51b; round 4 closed
 
