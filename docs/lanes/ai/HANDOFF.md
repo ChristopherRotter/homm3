@@ -28,7 +28,8 @@ Moved to `TRAPS.md`, in three groups: **Ownership** (cross-lane encodings and re
 - The user chose increment 6's lever (the system actor in the player kinds) and answered the
   let-off: every side stays human. Built `[league] system_share` (the batch's entries split,
   no ABI change), `configs/e06-t6b.toml`; E06's increments 1 to 5 moved to `E06-archive.md`.
-  **In progress:** the bots' tables regenerated after #458, the PR.
+  The system actor's hero decisions make a batch call at a quarter 1.7 times as long on the
+  sandbox (E06-log T6b). The bots' tables were current (reproduced byte for byte).
 
 ### 2026-10-23 — E06 T6a, the behaviour analysis
 

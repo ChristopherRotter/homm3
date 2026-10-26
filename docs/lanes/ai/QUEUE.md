@@ -59,6 +59,9 @@ Pass offer (fixed by the adventure lane's fixed tests, #266).
   defended siege with Artillery can change, so regenerate the bot reports when convenient. Also:
   a side without a hero brings no war machines (BAT-WAR-001, the original's 0x463600); `h3-sim`'s
   encounters give machines only with a hero, so nothing of yours moves.
+  **The bots' tables: current** (the battle lane regenerated them since, 5b4464f; E06 T6b
+  reproduced both byte for byte, 2026-10-26). Open: `inspect` may count a turret's shots
+  again (it leaves them out of the strikes).
 
 - 2026-10-23 (this lane, E06 T5; for the next `shared/` change): `docs/07-simulation-and-ai.md`
   (shared) should name the batch's optional kill preview (C ABI v33: the acting side's previewed
