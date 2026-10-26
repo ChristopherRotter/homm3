@@ -6,7 +6,7 @@ Pre-refined tasks of the adventure lane, in order, then the inbox of discovered 
 
 Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T51b (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 6 are closed (2026-10-12, -13, -20, -21, -23, -26; increment 6, army and hero management, by T53's audit). **Increment 7, rewards on the map**, refined with the user at T53 (ADV-Q26; decisions 121 to 123): T54 (the battle seam's facts) done; the survey and the ADR amendment drafts (T55a, T55b) done, each task's cut confirmed with the user at its start. T55a is cut in four (decision 125): all four done (survey `docs/rules/surveys/E08-rewards.md`; decisions 126 to 128 the cuts, its checkpoint ADV-Q28 decisions 129 to 136); T55b done (decision 137; its checkpoint ADV-Q29 decisions 138 to 141: the drafts accepted with typed answers, eight rounds with batch E7 first, design §19). The build's round 1 is T56 below. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
 
-### E08 T56 — Batch E7's maps and spec
+### E08 T56 — Batch E7's maps and spec — in progress (adventure/e08-t56, 2026-10-26 21:20 UTC; whole, decision 142)
 
 - **Scope** (design `E08-design.md` §18; survey `E08-rewards.md` §11): the maps of batch E7's two
   runs. `h3_map::writer` (this lane's): the object bodies of classes 5, 6, 22, 26, 63, 65, 88, 93,

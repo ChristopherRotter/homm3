@@ -91,6 +91,8 @@ Refined with the user on 2026-10-26 (T53; ADV-Q26). Built like increments 1 to 6
 140. **The University's purchase is an answer** that keeps the decision open (the user's choice of two): `University(Buy(slot))`, closed by `University(Leave)`. Not chosen: a `GameCommand` of its own.
 141. **A won guards' battle's levels come before the visit's rest** (the user's choice of two; GAM-DEC-007): the box's or event's rewards, the artifact or scroll, the Pyramid's spell after the winner's level-ups, as the original. Not chosen: the rest at the battle's end, before the level-ups.
 
+142. **T56 whole** (the user's choice of four at T56's start, 2026-10-26, `AskUserQuestion`: "Whole, one session"; measured: the writer's bodies, the bodiless classes, a monster's treasure and the RoE format about 800 to 1 000 lines with tests; the spec's fields, `cross-lane`, 500 to 700; the two specs about 1 000 lines of TOML): the writer, the spec's fields and both specs with their templates in one session and one pull request (`cross-lane`). Recommended was three parts (the writer; the fields; the two specs); not chosen either: two parts as queued (the writer; the rest), three parts by run (each run's fields with its spec).
+
 ### Tasks (queue entries in `docs/lanes/adventure/QUEUE.md`; one or two per round, the cut confirmed at each checkpoint)
 
 - **T53 Increment 7 refined** (with increment 6's closure). Done (2026-10-26, `adventure/e08-t53`; decisions 120–123): rewards on the map, the battle seam's facts first, the first round queued (T54, T55a, T55b).
