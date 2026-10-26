@@ -28,6 +28,14 @@ Moved to `TRAPS.md`, in three groups: **Ownership** (cross-lane encodings and re
 
 ## Recent sessions
 
+### 2026-10-27 — the turn order as an input; T8b (in progress)
+
+- The user (2026-10-26, before leaving): the turn order first, as observation v22 with the
+  engine's order (`h3_battle::turn_order`, `cross-lane`), then T8b, one pull request (C ABI v34
+  for both), and a 20 M A/B against `t7-1` prepared. **Done:** the turn order, v22, ABI v34,
+  `[network] order`, `configs/e06-order.toml` (6bda5a8). **Next:** T8b (design §14), then the
+  docs and the pull request.
+
 ### 2026-10-26 (evening) — T6e, the A/B run `t6d-1`; increment 6 closed; T8a, the search's design
 
 - `t6d-1` (the user's run, the kill preview in the network) ends at `t7-1`'s ladder; `inspect`
@@ -44,11 +52,3 @@ Moved to `TRAPS.md`, in three groups: **Ownership** (cross-lane encodings and re
   against the system actor (E06-log T6c). The user chose AI-Q7 (b) part 2: built `[network]
   preview` (E06 design §13), `configs/e06-t6d.toml`, on a branch restarted from `master` after
   #478 merged.
-
-### 2026-10-26 — E06 increment 6 refined; T6b, the system actor as an opponent
-
-- The user chose increment 6's lever (the system actor in the player kinds) and answered the
-  let-off: every side stays human. Built `[league] system_share` (the batch's entries split,
-  no ABI change), `configs/e06-t6b.toml`; E06's increments 1 to 5 moved to `E06-archive.md`.
-  The system actor's hero decisions make a batch call at a quarter 1.7 times as long on the
-  sandbox (E06-log T6b). The bots' tables were current (reproduced byte for byte).
