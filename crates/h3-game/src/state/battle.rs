@@ -209,10 +209,11 @@ impl GameState {
         };
         let mut heroes = sides.map(|side| {
             side.and_then(|side| {
-                let mut hero = self.battle_hero(core, side.hero)?;
-                // rule: GAM-BAT-012
-                hero.sex = self.hero_sex(side.hero);
-                Some(hero)
+                self.battle_hero(core, side.hero).map(|mut hero| {
+                    // rule: GAM-BAT-012
+                    hero.sex = self.hero_sex(side.hero);
+                    hero
+                })
             })
         });
         deny_tactics(
