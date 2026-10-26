@@ -229,8 +229,11 @@ def gae(
     return adv, (side >= 0) & closed
 
 
-#: The seats (attacker, defender) of an entry where the system actor plays side 0 or 1.
-_SEATS = (("system", "external"), ("external", "system"))
+#: The seats of an entry where the system actor plays side 0 (the attacker) or 1.
+_SEATS = (
+    {"attacker": "system", "defender": "external"},
+    {"attacker": "external", "defender": "system"},
+)
 
 
 def episode_entries(config: Config) -> list[tuple[int, list[int] | None, int]]:
@@ -284,8 +287,7 @@ class Trainer:
         )
         entries = episode_entries(c)
         for weight, kinds, side in entries:
-            seats = {} if side < 0 else dict(zip(("attacker", "defender"), _SEATS[side]))
-            self.batch.add_encounters(weight, kinds=kinds, **seats)
+            self.batch.add_encounters(weight, kinds=kinds, **({} if side < 0 else _SEATS[side]))
         #: Per batch entry (`batch.scenario`), the side the system actor plays in the player
         #: kinds (-1: none; the neutral kinds' defender is the encounters' own, E06 T6b).
         self.system_side = np.array([side for _, _, side in entries], np.int8)
@@ -589,7 +591,7 @@ class Trainer:
                 system = self.system_side[entries[done]]
                 own = done[~against & (system < 0)]
                 # The learner's side is the one the system actor does not play.
-                for env, side in zip(done[system >= 0], system[system >= 0]):
+                for env, side in zip(done[system >= 0], system[system >= 0], strict=True):
                     row = against_system[1 - int(side)]
                     row[0] += game_score(int(b.result[env]), 1 - int(side))
                     row[1] += 1
@@ -652,7 +654,7 @@ class Trainer:
             # and its mean score there (`system_share`; a side without one is left out).
             "system": {
                 name: {"episodes": n, "score": s / n}
-                for name, (s, n) in zip(("attacker", "defender"), against_system)
+                for name, (s, n) in zip(("attacker", "defender"), against_system, strict=True)
                 if n
             },
         }
