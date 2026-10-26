@@ -710,7 +710,7 @@ dialog, a human player's turn, no network game, no hero moving; from the loop's 
 `input_next_message` 0x4EC590 and the adventure manager's idle step (0x408A88) to the tick
 (0x4ED490) and the redraws' own polls. Not read: the managers below the adventure manager (the
 chain stops at it: its idle step answers 1), the panels' redraw at the end of the view draw, the
-sound the idle step starts (0x4088F9 to 0x408996: M2 T5), `pump_messages`' last call (0x5976E0).
+sound the idle step starts (0x4088F9 to 0x408996: M2 T5), the call that ends `pump_messages`.
 
 - **The loop.** Each turn of `executive_loop` pumps the Windows messages (`pump_messages`
   0x4F7FB0), takes the next input message (`input_next_message`: **the tick first**, then the
