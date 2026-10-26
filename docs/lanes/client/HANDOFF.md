@@ -33,11 +33,15 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
 
 ## Recent sessions
 
+- **2026-10-26, E17 M4 T2c-2 (in progress, `client/e17-m4-t2c2`; not cut: the user).**
+  Done and pushed: Earthquake (`anim::siege::quake`, `Draw::Shaken`), the end tune by the
+  record's siege, the siege's mouse (16, 22, the walls' broken arrow, `mouse::line`), the
+  harness's `quake_target` (value lists); `quake`, `defended`, `aim`, `through` timelines as
+  recorded. Next: their frames, then T2b's and T2c-1's eleven again without the ` log` masks
+  (`frames --only`), `drawn --record`, the docs, the PR.
 - **2026-10-24, E17 M4 T2c-1 (done; #459 open: check it first).** T2c cut in two (the user).
   The drawbridge, the moat, a mine (`anim::siege`); `gate`, `gate-fortress`, `moat`, `mine` as
   recorded, frames exact but listed differences; CLT-Q23 asked (built as recommended).
 - **2026-10-23, E17 M4 T2b (done; #452).** Turret and wall shots played (`anim::siege`), seven
   sequences as recorded, frames exact but listed differences; the harness's wall-shot rolls;
   CLT-Q22 asked (the explosion cut at the top edge, built as recommended).
-- **2026-10-23, E17 M4 T2a (done; #431).** What moves in a siege read (§10.2, the map);
-  CLT-Q19 to Q21 answered.
