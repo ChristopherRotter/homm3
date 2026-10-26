@@ -5859,3 +5859,42 @@ literal, `crates/h3-sim/src/adventure/tests.rs`' and `tests/monsters.rs`' `Objec
 
 **Later readers of the human flag** (E10): a computer player's starting resources (GAM-RES-002's
 computer row), its loose formation (ADV-QUIRK-8), its ignored tactics flag (GAM-BAT-009).
+
+### Increment 7, round 1: T55a1, the rewards survey's census and pickups (2026-10-26, `adventure/e08-t55a1`)
+
+Baseline: `master` at e1217a2 (#473 merged; CI green; the sandbox's scoped verify on its code
+passed). Original files staged from the user's repo folder (the executable, `maps.tar`,
+`extracted.tar`; not the LODs: nothing here touches the packs). At its start the user asked how
+much code T55a reads: measured from `visit_object`'s 94 cases and their callees, about 8 000 to
+10 000 instructions not read yet (the per-class handlers 80 to 330 each; the shared helpers mostly
+read; Pandora's Box, the banks and the army dialog's callers share one large closure). The user
+took the agent's cut in four (decision 125).
+
+**The survey** (`docs/rules/surveys/E08-rewards.md` §0 to §5, §9 and §10 for T55a4):
+
+- **The census** (§1): every class that may hand a visiting hero something, by the part that
+  reads it, with objects, maps and the objects on the five maps that import whole; the bodies of
+  T55a1's classes. 11 720 chests on 157 maps; 362 placed and 3 371 random artifacts; 100 scrolls;
+  53 monsters with an artifact on 18 maps (8 refused by today's import for it).
+- **The readings** (18 new `map.toml` entries, three amended): the chest's draw at a new game
+  (`setup_map_objects` case 101; the tutorial's 1 500 gold) and its visit (0x4A6520, the gold or
+  experience choice 0x4A6440, the computer's 0x527FE0); the artifact's body (0x4FF120, from the
+  body switch 0x502E00), the given marks (0x4C0AA0) before the random artifacts and the chests,
+  the visit (0x49F7E0) with the full backpack, the guarded artifact's question (0x49F070) and the
+  six pickup conditions that no map reaches; the scroll (0x4FF2F0, 0x4A5EA0, 0x4A5A80: a guarded
+  scroll without a text fights at once); the monster's treasure (0x4A6B30: the artifact lost on
+  a full backpack, then the resources). VCMI 1.7.5 and the wiki compared for each.
+- **Disputes** D-29 (a guarded artifact without a text: the wiki says it fights at once), D-30
+  (where a reward's artifact goes: the wiki says the backpack), D-31 (class 65 without relics:
+  VCMI rolls any class), D-32 (repeats); no quirk candidate; the tutorial's chests a question for
+  the checkpoint.
+
+*Agent's calls (change freely):* the census ran from a throwaway example in a `git worktree`
+outside the clone (its own target directory), so the baseline verify running in the clone was not
+disturbed; the wiki was read through pages a search returned (a direct fetch of other pages is
+refused in this session); a general text is cited by its table offset, not a GENRLTXT line (the
+line numbering differs between VCMI and the table); 0x49ED50, 0x49EA40 and 0x49E8F0 (the pickup
+conditions) were read by their arguments and calls only: no map reaches them.
+
+**Verified:** the scoped verify (`cargo xtask verify --scope adventure --summary`, without the
+LODs) with no failing step; `scripts/exe.py check` and `cited` clean.
