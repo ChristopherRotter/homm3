@@ -12,15 +12,15 @@ use h3_heroes::{
 
 use super::*;
 
-const RED: PlayerId = PlayerId::new(0);
-const BLUE: PlayerId = PlayerId::new(1);
-const RED_HERO: HeroId = HeroId::new(0);
-const BLUE_HERO: HeroId = HeroId::new(1);
-const SECOND: HeroId = HeroId::new(2);
+pub(super) const RED: PlayerId = PlayerId::new(0);
+pub(super) const BLUE: PlayerId = PlayerId::new(1);
+pub(super) const RED_HERO: HeroId = HeroId::new(0);
+pub(super) const BLUE_HERO: HeroId = HeroId::new(1);
+pub(super) const SECOND: HeroId = HeroId::new(2);
 
 /// The rules with seven army slots, `t:band` (a ring), `t:pair` (a combination of the ring and
 /// the band, worn as a ring) and `t:tactics` (Tactics 1 to 3).
-fn manage_rules() -> GameRuleset {
+pub(super) fn manage_rules() -> GameRuleset {
     let mut pack = core_pack(false);
     pack.artifacts.push(artifact("t:band", "t:ring_slot"));
     pack.artifacts.push(ArtifactDef {
@@ -38,13 +38,13 @@ fn manage_rules() -> GameRuleset {
     GameRuleset::new(core, Arc::new(part), Arc::new(battle)).unwrap()
 }
 
-fn art(rules: &GameRuleset, k: &str) -> ArtifactInstance {
+pub(super) fn art(rules: &GameRuleset, k: &str) -> ArtifactInstance {
     rules.core().artifact_by_key(k).unwrap().into()
 }
 
 /// [`setup`] with red's hero wearing the ring (position 2) and carrying the band and the charm,
 /// and a second red hero at (1, 0) with three imps.
-fn manage_setup(rules: &GameRuleset) -> GameSetup {
+pub(super) fn manage_setup(rules: &GameRuleset) -> GameSetup {
     let mut setup = setup();
     setup.heroes[0].details.artifacts = Some(HeroArtifactsSetup {
         worn: wearing(rules.core(), &[art(rules, "t:ring")]),
@@ -58,11 +58,11 @@ fn manage_setup(rules: &GameRuleset) -> GameSetup {
     setup
 }
 
-fn game(rules: &GameRuleset) -> GameState {
+pub(super) fn game(rules: &GameRuleset) -> GameState {
     GameState::new(rules, &manage_setup(rules), 1).unwrap()
 }
 
-const fn imp(slot: u8, count: u32) -> ArmyStack {
+pub(super) const fn imp(slot: u8, count: u32) -> ArmyStack {
     ArmyStack {
         slot,
         creature: IMP,
@@ -70,30 +70,33 @@ const fn imp(slot: u8, count: u32) -> ArmyStack {
     }
 }
 
-const fn slot(hero: HeroId, slot: u8) -> ArmySlot {
+pub(super) const fn slot(hero: HeroId, slot: u8) -> ArmySlot {
     ArmySlot {
         army: ArmyRef::Hero(hero),
         slot,
     }
 }
 
-const fn group(slot: u8) -> ArmySlot {
+pub(super) const fn group(slot: u8) -> ArmySlot {
     ArmySlot {
         army: ArmyRef::Group,
         slot,
     }
 }
 
-const fn army(command: ArmyCommand) -> GameCommand {
+pub(super) const fn army(command: ArmyCommand) -> GameCommand {
     GameCommand::Manage(Manage::Army(command))
 }
 
-const fn artifact_move(from: (HeroId, ArtifactPlace), to: (HeroId, ArtifactPlace)) -> GameCommand {
+pub(super) const fn artifact_move(
+    from: (HeroId, ArtifactPlace),
+    to: (HeroId, ArtifactPlace),
+) -> GameCommand {
     GameCommand::Manage(Manage::Artifact { from, to })
 }
 
 /// Applies `actor`'s `command` and returns its events.
-fn run(
+pub(super) fn run(
     game: &mut GameState,
     rules: &GameRuleset,
     actor: Actor,
@@ -104,7 +107,7 @@ fn run(
 }
 
 /// Applies `actor`'s `command`, which must be refused with `error`, nothing changed or told.
-fn refused(
+pub(super) fn refused(
     game: &mut GameState,
     rules: &GameRuleset,
     actor: Actor,
@@ -117,7 +120,7 @@ fn refused(
     error
 }
 
-fn manage_error(error: ManageError) -> GameCommandError {
+pub(super) fn manage_error(error: ManageError) -> GameCommandError {
     GameCommandError::Manage(error)
 }
 
@@ -501,7 +504,12 @@ fn candidates(rules: &GameRuleset, hero: HeroId, (worn, carried): (usize, usize)
 }
 
 /// Whether `apply` accepts `command` of `actor` in `game`.
-fn accepts(game: &GameState, rules: &GameRuleset, actor: Actor, command: Manage) -> bool {
+pub(super) fn accepts(
+    game: &GameState,
+    rules: &GameRuleset,
+    actor: Actor,
+    command: Manage,
+) -> bool {
     let mut copy = game.clone();
     apply(
         &mut copy,

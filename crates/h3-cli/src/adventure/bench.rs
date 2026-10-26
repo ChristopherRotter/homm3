@@ -167,10 +167,12 @@ fn until_battle(env: &mut AdventureEnv) -> u64 {
 /// The acting player's step toward another player's hero: of its heroes' legal moves the one that
 /// ends nearest (in steps, on the same level) to another player's hero, the first slot's and
 /// tile's on a tie, the hero's tile itself (a battle) nearest of all; `EndTurn` when no move gets
-/// nearer than its hero stands, `Decline` with an open decision.
+/// nearer than its hero stands, `Decline` with an open offer, meeting or army dialog.
 fn seek(env: &AdventureEnv, player: PlayerId) -> Action {
     let state = env.state();
-    if state.decision(player).is_some() {
+    // E08 T51b: a meeting and an army dialog are declined as an offer.
+    let exchanging = state.meeting(player).is_some() || state.army_dialog(player).is_some();
+    if state.decision(player).is_some() || exchanging {
         return Action::decline();
     }
     let others: Vec<Pos> = state

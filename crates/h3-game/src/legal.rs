@@ -19,12 +19,13 @@ use h3_battle::LegalCommands;
 use h3_content::Formation;
 use h3_contracts::{HeroId, PlayerId};
 use h3_heroes::{
-    ArmyWorth, ArtifactMove, ArtifactPlace, Position, check_assemble, check_disassemble,
-    check_move, original_choice,
+    ArmyWorth, ArtifactMove, ArtifactPlace, HeroDetails, Position, check_assemble,
+    check_disassemble, check_move, original_choice,
 };
 
 use crate::command::{Actor, Answer, GameCommand};
 use crate::manage::Manage;
+use crate::state::Together;
 use crate::{GameRuleset, GameState, OpenBattle};
 
 /// The commands `actor` may issue now but its moves: with an open battle the battle's legal
@@ -34,10 +35,12 @@ use crate::{GameRuleset, GameState, OpenBattle};
 /// offer no longer stands (ADR-0017 point 10: a border guard another player of the group passed,
 /// E08 T15a); with an open level-up its answers, `First` then `Second`, in its turn or not, and
 /// nothing else, and none for any other actor while the game waits for it (GAM-DEC-002, E08
-/// T30); otherwise `EndTurn`. Empty for a player whose turn is not
+/// T30); with an open meeting or army dialog `Decline` alone, which closes it (GAM-DEC-003,
+/// GAM-DEC-004, E08 T51b: its management commands are [`legal_management`]'s); otherwise
+/// `EndTurn`. Empty for a player whose turn is not
 /// running or who is not in the game, by `apply`'s own checks (ADR-0017's consequence). The moves
 /// are [`legal_moves`].
-// rule: GAM-DEC-001, GAM-DEC-002, GAM-BAT-001
+// rule: GAM-DEC-001, GAM-DEC-002, GAM-DEC-003, GAM-DEC-004, GAM-BAT-001
 pub fn legal_commands(state: &GameState, rules: &GameRuleset, actor: Actor) -> Vec<GameCommand> {
     if state.check_held(actor).is_err() {
         return Vec::new();
@@ -69,6 +72,10 @@ pub fn legal_commands(state: &GameState, rules: &GameRuleset, actor: Actor) -> V
             GameCommand::Answer(Answer::Second),
         ];
     }
+    if state.together(player) != Some(Together::Alone) {
+        // E08 T51b: a meeting or an army dialog; its management commands are per hero.
+        return vec![GameCommand::Answer(Answer::Decline)];
+    }
     if state.check_acting(player).is_err() {
         return Vec::new();
     }
@@ -77,14 +84,16 @@ pub fn legal_commands(state: &GameState, rules: &GameRuleset, actor: Actor) -> V
 
 /// The system actor's default answer to `player`'s first open decision (ADR-0017 points 2 and 6;
 /// E08 T30), which the hosting layer gives when the player does not answer (the server lane's
-/// M5): `Decline` for an offer; for a level-up the offer the original's choice takes (HER-LVL-006,
+/// M5): `Decline` for an offer, a meeting and an army dialog (E08 T51b); for a level-up the offer
+/// the original's choice takes (HER-LVL-006,
 /// the original's when the dialog's time runs out), with the setup's army worth and the map's
 /// terrain shares, as at load (GAM-SET-002), until E10 gives the engine the computer player's
 /// state its flag-set path reads (ADR-0017 point 6, ADV-Q17: `ADV-STUB-8`); none for a battle (a
 /// battle's default is the server lane's) or without an open decision.
 // rule: GAM-DEC-002
 pub fn default_answer(state: &GameState, rules: &GameRuleset, player: PlayerId) -> Option<Answer> {
-    if state.decision(player).is_some() {
+    let exchange = !matches!(state.together(player), Some(Together::Alone) | None);
+    if state.decision(player).is_some() || exchange {
         return Some(Answer::Decline);
     }
     state.open_level_up(player).and_then(|(view, level_up)| {
@@ -152,14 +161,18 @@ pub fn legal_moves(
 }
 
 /// The management commands `actor` may give on its hero `hero` now but the splits (GAM-MAN-002;
-/// E08 T51a, ADR-0017 point 6: listed per hero, as its moves are), each as `apply` accepts it: its
-/// army's commands ([`h3_adventure::AdventureState::army_commands`]: each stack's moves onto the
-/// army's other slots, then its dismissals), both formations and both values of the flag, each
-/// artifact's moves onto every place of the hero that takes it (`h3_heroes::check_move`: the
+/// E08 T51a, T51b; ADR-0017 point 6: listed per hero, as its moves are), each as `apply` accepts
+/// it: its army's commands ([`h3_adventure::AdventureState::army_commands`]: each stack's moves
+/// onto the army's other slots, then onto the other army's slots, a meeting's other hero's or an
+/// army dialog's group's, then its dismissals; with an army dialog open the group's own after
+/// them: its stacks' moves onto its other slots and onto the hero's, its dismissals), both
+/// formations and both values of the flag, each artifact's moves onto every place of the hero
+/// and then, with a meeting open, of the other hero that takes it (`h3_heroes::check_move`: the
 /// sources and the targets in position order, then by backpack index, a target up to the
 /// backpack's length), then the assemblies and the disassemblies by position. Empty when the
-/// actor's turn is not running or it has an open decision, by `apply`'s own checks, or the hero
-/// is not its on the map. A split's counts are [`split_range`]'s.
+/// actor's turn is not running, it has another open decision or a meeting or an army dialog that
+/// does not hold the hero, by `apply`'s own checks, or the hero is not its on the map. A split's
+/// counts are [`split_range`]'s.
 // rule: GAM-MAN-002
 pub fn legal_management(
     state: &GameState,
@@ -169,35 +182,66 @@ pub fn legal_management(
 ) -> Vec<Manage> {
     let own = match actor {
         Actor::Player(player) => state
-            .check_ready(player)
+            .check_managing(player)
             .ok()
-            .and_then(|()| state.own_details(player, hero).ok())
-            .map(|details| (player, details)),
+            .filter(|together| together.admits_heroes(core::iter::once(hero)).is_ok())
+            .and_then(|together| {
+                let details = state.own_details(player, hero).ok()?;
+                Some((player, together, details))
+            }),
         Actor::System => None,
     };
-    let Some((player, details)) = own else {
+    let Some((player, together, details)) = own else {
         return Vec::new();
     };
-    let core = rules.core();
-    let army = state
-        .adventure()
-        .army_commands(rules.adventure(), player, (ArmyRef::Hero(hero), None), None)
-        .into_iter()
-        .map(Manage::Army);
+    let (core, part) = (rules.core(), rules.adventure());
+    let group = state.army_dialog(player).map(|(_, group)| group);
+    let other = match together {
+        Together::Meeting([visitor, visited]) => {
+            Some(if visitor == hero { visited } else { visitor })
+        }
+        Together::Alone | Together::Dialog(_) => None,
+    };
+    let toward = match together {
+        Together::Meeting(_) => other.map(ArmyRef::Hero),
+        Together::Dialog(_) => Some(ArmyRef::Group),
+        Together::Alone => None,
+    };
+    let own_army = ArmyRef::Hero(hero);
+    let adventure = state.adventure();
+    let army = adventure.army_commands(part, player, (own_army, toward), group);
+    let grouped = group.map_or_else(Vec::new, |_| {
+        adventure.army_commands(part, player, (ArmyRef::Group, Some(own_army)), group)
+    });
     let formations =
         [Formation::Loose, Formation::Tight].map(|formation| Manage::Formation { hero, formation });
     let flags = [true, false].map(|on| Manage::Tactics { hero, on });
     let positions = (0..details.worn.len()).map(Position);
-    let worn = positions.clone().map(ArtifactPlace::Worn);
-    let carried = |end: usize| (0..end).map(ArtifactPlace::Backpack);
-    let targets = worn.clone().chain(carried(details.backpack.len() + 1));
-    let moves = worn
-        .chain(carried(details.backpack.len()))
-        .flat_map(|from| targets.clone().map(move |to| ArtifactMove { from, to }))
-        .filter(|&moved| check_move(details, None, core, moved).is_ok())
-        .map(|moved| Manage::Artifact {
-            from: (hero, moved.from),
-            to: (hero, moved.to),
+    // A hero's places: its positions, then its backpack's indices up to its length and `extra`.
+    let places = |details: &HeroDetails, extra: usize| {
+        (0..details.worn.len())
+            .map(|p| ArtifactPlace::Worn(Position(p)))
+            .chain((0..details.backpack.len() + extra).map(ArtifactPlace::Backpack))
+    };
+    // A meeting's other hero takes artifacts too (HER-ART-005).
+    let receiver = other.and_then(|id| state.own_details(player, id).ok().map(|d| (id, d)));
+    let targets = places(details, 1).map(|to| (hero, to, None)).chain(
+        receiver
+            .into_iter()
+            .flat_map(|(id, other)| places(other, 1).map(move |to| (id, to, Some(other)))),
+    );
+    let moves = places(details, 0)
+        .flat_map(|from| {
+            targets
+                .clone()
+                .map(move |(id, to, other)| (from, (id, to), other))
+        })
+        .filter(|&(from, (_, to), other)| {
+            check_move(details, other, core, ArtifactMove { from, to }).is_ok()
+        })
+        .map(|(from, to, _)| Manage::Artifact {
+            from: (hero, from),
+            to,
         });
     let assemblies = positions
         .clone()
@@ -206,7 +250,10 @@ pub fn legal_management(
     let disassemblies = positions
         .filter(|&at| check_disassemble(details, core, at).is_ok())
         .map(|at| Manage::Disassemble { hero, at });
-    army.chain(formations)
+    army.into_iter()
+        .chain(grouped)
+        .map(Manage::Army)
+        .chain(formations)
         .chain(flags)
         .chain(moves)
         .chain(assemblies)
@@ -215,10 +262,11 @@ pub fn legal_management(
 }
 
 /// The counts a split of `actor`'s stack at `from` with `to` may leave in `to` (GAM-MAN-002,
-/// ADV-ARM-003, ADV-ARM-007; E08 T51a): the adventure's
-/// [`h3_adventure::AdventureState::split_range`]. `None` when the actor may not give the split
-/// now (its turn, its open decision: `apply`'s checks), the two slots are not of one army
-/// (outside a meeting and an army dialog), or no split is possible there.
+/// ADV-ARM-003, ADV-ARM-007; E08 T51a, T51b): the adventure's
+/// [`h3_adventure::AdventureState::split_range`], with the open army dialog's group. `None` when
+/// the actor may not give the split now (its turn, its open decision: `apply`'s checks), the two
+/// slots' armies are not together (one army outside a decision, a meeting's two heroes, an army
+/// dialog's hero and group), or no split is possible there.
 // rule: GAM-MAN-002
 pub fn split_range(
     state: &GameState,
@@ -229,9 +277,10 @@ pub fn split_range(
     let Actor::Player(player) = actor else {
         return None;
     };
-    state.check_ready(player).ok()?;
-    (from.army == to.army).then_some(())?;
+    let armies = (from.army, (to.army != from.army).then_some(to.army));
+    state.check_managing(player).ok()?.admits(armies).ok()?;
+    let group = state.army_dialog(player).map(|(_, group)| group);
     state
         .adventure()
-        .split_range(rules.adventure(), player, (from, to), None)
+        .split_range(rules.adventure(), player, (from, to), group)
 }

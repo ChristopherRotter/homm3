@@ -328,9 +328,15 @@ fn a_defender_that_wins_holds_the_game_until_it_answers_outside_its_turn() {
     let mut state = ended;
     let held = Err(GameCommandError::WaitingForLevelUp(BLUE));
     let step = decisions::move_hero(2, &[Pos::new(3, 1, 0)]);
-    for command in [GameCommand::EndTurn, step.clone(), FIRST] {
+    // E08 T51b: nor a management command, which lists none.
+    let flag = GameCommand::Manage(Manage::Tactics {
+        hero: HeroId::new(2),
+        on: false,
+    });
+    for command in [GameCommand::EndTurn, step.clone(), FIRST, flag] {
         assert_eq!(play(&mut state, &rules, RED, command), held);
     }
+    assert_eq!(legal_management(&state, &rules, red, HeroId::new(2)), []);
     let wait = GameCommand::Battle(h3_battle::Command::Wait);
     let mut events = Vec::new();
     let system = apply(&mut state, &rules, Actor::System, wait, &mut events);

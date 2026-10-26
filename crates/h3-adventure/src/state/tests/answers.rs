@@ -269,12 +269,14 @@ fn easy_raises_diplomacy_and_a_creature_without_the_price_resource_joins_for_not
 
 // covers: ADV-MON-007, ADV-MON-008, ADV-ARM-007
 #[test]
-fn a_join_offer_needs_room_for_the_group() {
+fn a_join_is_offered_whatever_room_the_army_has() {
     let rules = rules();
     let c = |i: u16| CreatureTypeId::from_raw(4 + i);
-    // Seven stacks, none of pikemen: the offer to join counts as declined, so M = −4 below C
-    // offers to flee.
-    let full = [
+    // Seven stacks, none of pikemen, or one that cannot take the group's 10 within a stack's
+    // most (E08 decision 115): no room, the offer to join is made all the same (E08 T51b: the
+    // army dialog follows its acceptance, GAM-DEC-004); with a free slot or room in the pikemen
+    // too.
+    let mut full = [
         (PEASANT, 100),
         (GNOLL, 1),
         (WOLF, 1),
@@ -283,30 +285,13 @@ fn a_join_offer_needs_room_for_the_group() {
         (c(2), 1),
         (c(3), 1),
     ];
-    let mut s = pikemen(&rules, &full, -4);
-    let (outcome, _) = walk(&rules, &mut s, &[], &[(2, 0)]);
-    assert_eq!(outcome.offer, offer(2, 0, OfferKind::Pursue));
-    // With a stack of pikemen in a full army the group has room.
-    let mut with = full;
-    with[6] = (PIKEMAN, 1);
-    let mut s = pikemen(&rules, &with, -4);
-    let (outcome, _) = walk(&rules, &mut s, &[], &[(2, 0)]);
-    assert_eq!(outcome.offer, offer(2, 0, OfferKind::Join));
-    // Unless it cannot take the group's 10 within a stack's most (E08 decision 115); with a free
-    // slot it has room again.
-    for (pikemen_before, room) in [(MAX_STACK - 10, true), (MAX_STACK - 9, false)] {
-        with[6] = (PIKEMAN, pikemen_before);
-        let mut s = pikemen(&rules, &with, -4);
-        let (outcome, _) = walk(&rules, &mut s, &[], &[(2, 0)]);
-        let kind = if room {
-            OfferKind::Join
-        } else {
-            OfferKind::Pursue
-        };
-        assert_eq!(outcome.offer, offer(2, 0, kind));
-        let mut s = pikemen(&rules, &with[1..], -4);
-        let (outcome, _) = walk(&rules, &mut s, &[], &[(2, 0)]);
-        assert_eq!(outcome.offer, offer(2, 0, OfferKind::Join));
+    for last in [(c(3), 1), (PIKEMAN, 1), (PIKEMAN, MAX_STACK - 9)] {
+        full[6] = last;
+        for army in [&full[..], &full[1..]] {
+            let mut s = pikemen(&rules, army, -4);
+            let (outcome, _) = walk(&rules, &mut s, &[], &[(2, 0)]);
+            assert_eq!(outcome.offer, offer(2, 0, OfferKind::Join));
+        }
     }
 }
 

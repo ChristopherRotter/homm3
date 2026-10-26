@@ -311,6 +311,68 @@ quirks   = ["ADV-QUIRK-9"]
   confidence = "high"
 
 [[rule]]
+id       = "GAM-DEC-003"
+title    = "A meeting of two of a player's heroes: a decision during which both are managed"
+context  = "game"
+status   = "verified"
+summary  = "A step of a player's hero toward another of its heroes meets it (GAM-MET-001): Scholar first (HER-SPL-007: each hero learns the other's spells within its limit, the visitor's first, each told to the owner as the hero's `LearnSpell` change), then the meeting opens as a pending decision of the owner (GAM-DEC-001), told to it alone (`MeetingOpened`: the visitor, the visited hero). While it is open its owner's legal commands are `Decline`, which closes it (`DecisionClosed`), and the management commands (GAM-MAN-001) on either hero, also between the two: a stack moved, merged, swapped or split onto the other hero's army (ADV-ARM-002: a hero's last stack never leaves its army, it may swap), an artifact moved onto the other hero's places (HER-ART-005: the moving hero's changes, then the receiving hero's), either hero's formation, flag, assembly and disassembly; no move, no end of the turn (`DecisionOpen`), and a command naming another hero or the group is refused (`DecisionOpen`, `NoGroup`); `Accept`, `First` and `Second` are `WrongAnswer`. The listing per hero (GAM-MAN-002) and the split's query reach the other hero. The owner's observation shows the meeting (`DecisionView::Meeting`); no other player sees it or its commands. Closed, the next meeting needs another step; the system actor's default answer is `Decline`. Not modelled: the original's handing of an artifact still held on the cursor to the visitor when the screen closes (a client's concern: a command moves an artifact whole); two heroes of different players of one team (E10). E08 T51b: `Decision::Meeting`, `GameState::meeting`."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey E08-army.md sections 2, 2.3, 3.2): visit_hero 0x4A2800 runs Scholar (0x4A2940), then for a human player the exchange screen (swap_manager_create 0x5AE500, swap_manager_proc 0x5AFDF0) of the visitor (+0x40) and the visited (+0x44): each hero's army and worn positions and backpack, the split button, the portraits opening the hero screen; it stays open until closed"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "server/CGameHandler.cpp heroExchange: an exchange query between two non-enemy heroes, Scholar first (survey E08-army.md section 2.3)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/server/CGameHandler.cpp"
+  retrieved  = "2026-10-23"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-6.md E6-3, E6-4 and E6-7 (stamp e17cb77c, the capture harness, Complete 4.0 Heroes3.exe under Wine, hot seat, Easy, 2026-10-23; scored in T48, survey E08-army.md section 13): in the exchange screen of a meeting the stacks moved, merged, swapped and split between the two heroes as predicted, after Scholar's spells were learned"
+  retrieved  = "2026-10-23"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "design"
+  ref        = "ADR-0017 point 6 (E08 decision 93: a meeting is a pending decision per step, during which the two heroes' exchange commands are legal, closed by an answer); E08-design.md section 8"
+  confidence = "high"
+
+[[rule]]
+id       = "GAM-DEC-004"
+title    = "The army dialog: a joining group without room held as a small army until closed"
+context  = "game"
+status   = "verified"
+summary  = "When an accepted offer to join (ADV-MON-008) finds no room in the hero's army (ADV-ARM-007: no stack of its creature takes it whole within a stack's most and no slot is free), after the treasure and the monster's leaving the game opens the army dialog, a pending decision of the owner (GAM-DEC-001), with the whole group as one stack in slot 0 of a small army of the ruleset's slots without a hero (the original's local army), told to the owner alone (`ArmyDialogOpened`: the hero, the stack). While it is open its owner's legal commands are `Decline` and the management commands (GAM-MAN-001) on the hero and the group, also between them: the hero's stacks moved, merged, swapped, split or dismissed within its army or into the group (a hero's last stack never leaves its army, ADV-ARM-002), the group's within the group, into the hero's army or dismissed (the group has no protected stack), the hero's formation, flag and artifacts (the original's portrait opens the hero screen); a command naming another hero is `DecisionOpen`, no move and no end of the turn; each slot told as for any army command, the group's as `ArmyRef::Group`. `Decline` closes it (`DecisionClosed`): what is left in the group is lost, each stack told after it (`GroupLost`); `Accept`, `First` and `Second` are `WrongAnswer`; the system actor's default answer is `Decline`. The owner's observation shows the hero and the group (`DecisionView::ArmyDialog`); no other player sees it. The original's order (the dialog, then the treasure and the removal) shows only in the events' order: no other actor acts in between. E08 T51b: `Decision::ArmyDialog`, `GameState::army_dialog`."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey E08-army.md section 1.1): monster_join_free 0x4A7000 and monster_join_for_gold 0x4A7250 call army_full_dialog 0x5D11D0 for a human player when army_add_stack 0x44ACE0 fails: a local army of seven empty slots takes the group as one stack, the garrison exchange (0x5CE830) of the local army and the hero's (the hero's last stack may not merge into the group nor move to an empty slot of it, it may swap; dismissal offered; the portrait opens the hero screen); OK closes it and the local army is destroyed, its rest lost; then the treasure (0x4A6B30) and the monster's removal"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "lib/mapObjects/CGCreature.cpp joinDecision and tryJoiningArmy: without room showGarrisonDialog(group, hero, removableUnits = true), the object leaving when it closes with the creatures left in it (survey E08-army.md section 1.2)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/mapObjects/CGCreature.cpp"
+  retrieved  = "2026-10-23"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-6.md E6-1 and E6-2 (stamp e17cb77c, the capture harness, Complete 4.0 Heroes3.exe under Wine, hot seat, Easy, 2026-10-23; scored in T48, survey E08-army.md section 13): the join asked into a full army, the army dialog titled GENRLTXT 36; closed at once nothing joined and the monster was gone; after a stack's dismissal in it the group took the free slot"
+  retrieved  = "2026-10-23"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "design"
+  ref        = "ADR-0017 point 6 (E08 decision 94: the army dialog is a decision with the group as a small army, the stack commands between the hero and the group, closed by an answer, the rest lost); E08 decision 115 (a join at the cap: a free slot, else the army dialog); E08-design.md section 9"
+  confidence = "high"
+
+[[rule]]
 id       = "GAM-BAT-001"
 title    = "A battle on the map: its sides, its setup, its seeds, a decision its players own"
 context  = "game"
@@ -585,7 +647,7 @@ id       = "GAM-MET-001"
 title    = "A step toward an own hero meets it"
 context  = "game"
 status   = "implemented"
-summary  = "A step of a move toward a hero of the same player visits it from the neighbouring tile at the step's price, as a neighbour-visited object (ADV-OBJ-003) and as another player's hero (GAM-BAT-004): the move ends, the visitor stays on the tile before, nothing goes on past it; the visited hero's object is what the step meets, whatever lies under it, but not across the top of a tile not visited from above (ADV-OBJ-004); a flight passes over the hero and meets it only from a stop (ADV-MOV-009, -010). The reachable-tiles query lists the hero's tile as a destination with the points the visit leaves. The outcome reports the meeting (visitor, visited); the game opens it as the owner's decision with Scholar (HER-SPL-007) and the exchange (GAM-DEC-003) in T51; until then nothing follows. Not modelled yet: allied heroes (teams, E10), an own hero in a town (E09), the computer player's meeting (E10). E08 T50: `check_step`, `passage` and the query treat every other hero alike, `AdventureOutcome::meeting`."
+summary  = "A step of a move toward a hero of the same player visits it from the neighbouring tile at the step's price, as a neighbour-visited object (ADV-OBJ-003) and as another player's hero (GAM-BAT-004): the move ends, the visitor stays on the tile before, nothing goes on past it; the visited hero's object is what the step meets, whatever lies under it, but not across the top of a tile not visited from above (ADV-OBJ-004); a flight passes over the hero and meets it only from a stop (ADV-MOV-009, -010). The reachable-tiles query lists the hero's tile as a destination with the points the visit leaves. The outcome reports the meeting (visitor, visited); the game opens it as the owner's decision with Scholar (HER-SPL-007) and the exchange (GAM-DEC-003, E08 T51b). Not modelled yet: allied heroes (teams, E10), an own hero in a town (E09), the computer player's meeting (E10). E08 T50: `check_step`, `passage` and the query treat every other hero alike, `AdventureOutcome::meeting`."
 numeric  = "integer"
 
   [[rule.source]]
@@ -611,7 +673,7 @@ id       = "GAM-MAN-001"
 title    = "A player manages its heroes on the map in its turn"
 context  = "game"
 status   = "implemented"
-summary  = "In its turn, with no decision open, a player gives management commands on its heroes on the map, at no cost, any number of times: an army command (a stack moved, merged, swapped, split or dismissed; ADV-ARM-001 to -005, -007), the formation and the tactics flag (ADV-ARM-006), an artifact's move (HER-ART-005), an assembly or a disassembly (HER-ART-006). The game checks the actor, its turn and its decision, that each hero named is its own on the map, and that a command between two armies (two heroes, or a hero and an army dialog's group) has them together (a meeting's, GAM-DEC-003; an army dialog's, GAM-DEC-004: E08 T51b; outside them refused), then the adventure's or the hero model's rules, before anything changes; a refusal is typed and changes nothing. Each slot an army command names is told with what it holds after it, the formation and the flag when set, each artifact change as the hero change it is; to the owner alone (ADR-0016 point 6). E08 T51a: `GameCommand::Manage`, `Manage`, `ManageError`, `GameEvent::{StackChanged, FormationSet, TacticsSet}`."
+summary  = "In its turn, with no decision open, a player gives management commands on its heroes on the map, at no cost, any number of times: an army command (a stack moved, merged, swapped, split or dismissed; ADV-ARM-001 to -005, -007), the formation and the tactics flag (ADV-ARM-006), an artifact's move (HER-ART-005), an assembly or a disassembly (HER-ART-006). The game checks the actor, its turn and its decision, that each hero named is its own on the map, and that a command between two armies (two heroes, or a hero and an army dialog's group) has them together (a meeting's, GAM-DEC-003; an army dialog's, GAM-DEC-004: E08 T51b; outside them `NotTogether`, the group alone `NoGroup`), and that while a meeting or an army dialog is open each hero named is one it holds (else `DecisionOpen`), then the adventure's or the hero model's rules, before anything changes; a refusal is typed and changes nothing. Each slot an army command names is told with what it holds after it, the formation and the flag when set, each artifact change as the hero change it is; to the owner alone (ADR-0016 point 6). E08 T51a: `GameCommand::Manage`, `Manage`, `ManageError`, `GameEvent::{StackChanged, FormationSet, TacticsSet}`."
 numeric  = "integer"
 
   [[rule.source]]
@@ -642,7 +704,7 @@ id       = "GAM-MAN-002"
 title    = "The management commands are listed per hero"
 context  = "game"
 status   = "implemented"
-summary  = "The legal management commands are not in the flat list of legal commands (which keeps the end of the turn and the answers) but listed per hero, as its moves are (the reachable-tiles query): for the actor's hero on the map, in its turn without an open decision, every command `apply` accepts but the splits: its army's moves onto every other slot and its dismissals, both formations and both values of the flag, each artifact's moves onto every place the hero model takes it to, the assemblies and the disassemblies; none for another player's hero, a hero not on the map, the system actor or outside the turn. A split's counts come from a query per source and target slot of one army (ADV-ARM-003, -007): none where `apply` refuses every split. With a meeting or an army dialog open, the listing also gives the commands toward the other hero or the group (E08 T51b). E08 T51a: `legal_management`, `split_range`, `AdventureState::army_commands`."
+summary  = "The legal management commands are not in the flat list of legal commands (which keeps the end of the turn and the answers) but listed per hero, as its moves are (the reachable-tiles query): for the actor's hero on the map, in its turn without an open decision, every command `apply` accepts but the splits: its army's moves onto every other slot and its dismissals, both formations and both values of the flag, each artifact's moves onto every place the hero model takes it to, the assemblies and the disassemblies; none for another player's hero, a hero not on the map, the system actor or outside the turn. A split's counts come from a query per source and target slot of one army (ADV-ARM-003, -007): none where `apply` refuses every split. With a meeting open, a hero's listing also gives its stacks' moves onto the other hero's slots and its artifacts' moves onto the other hero's places; with an army dialog open, the hero's listing gives its stacks' moves onto the group's slots and then the group's own commands (its stacks' moves onto its other slots and the hero's, its dismissals); a hero the open decision does not hold lists none; the split's query takes slots of two armies together (E08 T51b). E08 T51a: `legal_management`, `split_range`, `AdventureState::army_commands`."
 numeric  = "integer"
 
   [[rule.source]]

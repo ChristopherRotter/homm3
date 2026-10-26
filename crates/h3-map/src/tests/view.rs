@@ -7,9 +7,9 @@ use h3_adventure::{
     AdventureCommand, AdventureEvent, AdventureEventKind, ObjectKind, ObjectView, OfferKind,
     Pos as TilePos, TileMask, TileView, Viewers,
 };
-use h3_contracts::{HeroId, PlayerId};
+use h3_contracts::{ArmyStack, HeroId, PlayerId};
 use h3_game::{
-    Actor, DecisionView, GameCommand, GameEvent, GameObservation, GameRuleset, GameState,
+    Actor, ArmyRef, DecisionView, GameCommand, GameEvent, GameObservation, GameRuleset, GameState,
     LevelUpView, Viewer, apply, legal_commands, legal_moves, observe, project,
 };
 use proptest::collection::vec;
@@ -336,11 +336,14 @@ fn depth(view: &TileView) -> u8 {
 /// T40: in `strict-fixed`, `ADV-QUIRK-18` off, each hero reveals around it to its owner then, so
 /// another player's last end of turn of the day can widen a radius grown since the hero's last
 /// step).
-/// An open decision as [`check_told`] follows it: an offer by its hero and object, or a level-up.
+/// An open decision as [`check_told`] follows it: an offer by its hero and object, a level-up,
+/// a meeting's two heroes, or an army dialog's hero and group (E08 T51b).
 #[derive(Debug, PartialEq)]
 enum Open {
     Offer(HeroId, h3_adventure::ObjectTypeId, TilePos),
     LevelUp(LevelUpView),
+    Meeting([HeroId; 2]),
+    Dialog(HeroId, Vec<ArmyStack>),
 }
 
 fn check_told(
@@ -367,7 +370,11 @@ fn check_told(
     let named = |d: &DecisionView| match d {
         DecisionView::Offer(o) => Open::Offer(o.hero, o.object_type, o.anchor),
         DecisionView::LevelUp(view) => Open::LevelUp(*view),
+        DecisionView::Meeting { heroes } => Open::Meeting(*heroes),
+        DecisionView::ArmyDialog { hero, group } => Open::Dialog(*hero, group.clone()),
     };
+    // E08 T51b: the group of the army dialog the viewer is told closed, whose stacks are lost.
+    let mut lost: Vec<ArmyStack> = Vec::new();
     let mut decision = before.decision.as_ref().map(named);
     let mut bought = before.adventure.bought.clone();
     let mut keys = before.adventure.keys;
@@ -468,10 +475,46 @@ fn check_told(
                 decision = Some(Open::Offer(hero, object_type, anchor));
             }
             GameEvent::OfferRefused { player, .. } => prop_assert_eq!(player, viewer),
-            // E08 T51a: the management's events are the owner's (the plans manage nothing yet).
-            GameEvent::StackChanged { player, .. }
-            | GameEvent::FormationSet { player, .. }
-            | GameEvent::TacticsSet { player, .. } => prop_assert_eq!(player, viewer),
+            // E08 T51a: the management's events are the owner's (the plans manage nothing yet);
+            // a slot of an army dialog's group changes its group (T51b).
+            GameEvent::StackChanged { player, at, stack } => {
+                prop_assert_eq!(player, viewer);
+                if let (ArmyRef::Group, Some(Open::Dialog(_, group))) = (at.army, &mut decision) {
+                    group.retain(|s| s.slot != at.slot);
+                    group.extend(stack);
+                    group.sort_by_key(|s| s.slot);
+                }
+            }
+            GameEvent::FormationSet { player, .. } | GameEvent::TacticsSet { player, .. } => {
+                prop_assert_eq!(player, viewer);
+            }
+            // E08 T51b: a meeting and an army dialog open and close as the viewer's decision;
+            // what an army dialog's group held when it closed is lost.
+            GameEvent::MeetingOpened { player, heroes } => {
+                prop_assert_eq!(player, viewer);
+                prop_assert!(decision.is_none());
+                decision = Some(Open::Meeting(heroes));
+            }
+            GameEvent::ArmyDialogOpened {
+                player,
+                hero,
+                stack,
+            } => {
+                prop_assert_eq!(player, viewer);
+                prop_assert!(decision.is_none());
+                decision = Some(Open::Dialog(hero, vec![stack]));
+            }
+            GameEvent::DecisionClosed { player } => {
+                prop_assert_eq!(player, viewer);
+                match decision.take() {
+                    Some(Open::Dialog(_, group)) => lost = group,
+                    open => prop_assert!(matches!(open, Some(Open::Meeting(_))), "{:?}", open),
+                }
+            }
+            GameEvent::GroupLost { player, stack, .. } => {
+                prop_assert_eq!(player, viewer);
+                prop_assert!(lost.contains(&stack), "{:?} was not in the group", stack);
+            }
             GameEvent::OfferAnswered {
                 player,
                 object_type,

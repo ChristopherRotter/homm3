@@ -4,7 +4,7 @@ Pre-refined tasks of the adventure lane, in order, then the inbox of discovered 
 
 ## Tasks
 
-Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T51a (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 5 are closed (2026-10-12, -13, -20, -21, -23). **Increment 6, army and hero management** (decisions 90 to 117; survey `docs/rules/surveys/E08-army.md`, design `E08-design.md`): rounds 1 to 3 done (T44a to T49b); round 4: T50 and T51a done; **T51b next** (`E08-design.md` §8, §9 and §10's T51b list: the meeting with Scholar, the army dialog with the join's offer without room, the commands between two armies; game state hash v13; `ADV-STUB-2` closed). Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
+Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T51b (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 5 are closed (2026-10-12, -13, -20, -21, -23). **Increment 6, army and hero management** (decisions 90 to 117; survey `docs/rules/surveys/E08-army.md`, design `E08-design.md`): rounds 1 to 3 done (T44a to T49b); round 4 done (T50, T51a, T51b: the meeting with Scholar, the army dialog, the commands between two armies; game state hash v13; `ADV-STUB-2` closed); **round 5 next**: T52 (the env's test through the AI lane's inbox, the two new golden replays, fixtures, plans, properties, benchmarks, `--with-original-data`; `E08-design.md` §12) and T53 (the audit against the exit criteria, increment 6 closed, increment 7 refined; §15), the cut confirmed with the user at its start. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
 
 ## Inbox
 
@@ -47,11 +47,6 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
   battlefield of the attacking hero's own tile. The defaults never retreat. Your ten golden
   replays were re-recorded again with their options, their commands unchanged (only hash lines;
   `duel-s2-d7` none): the hash covers the new fields.
-
-- 2026-10-23 (T45, for T51; its T49 half done in T49b: `meeting_spells` and `gives_spell_book`
-  are read by `h3_heroes::meeting_spells` and `equip`): **ownership.** The env is the AI lane's since T45: when T51 opens a meeting
-  or an army dialog, tell its inbox (its masks must allow `Decline` there, `E08-design.md` §12),
-  and T52 asks the AI lane, not this one, for the env's test.
 
 - 2026-10-23 (the map-client lane, E24 M1 T1a, `map-client/e24-t1a`; answers your T8b1 note,
   2026-10-11): **which hidden tiles the original draws with an edge piece**
