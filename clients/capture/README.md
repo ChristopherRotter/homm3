@@ -705,7 +705,9 @@ the recording's last state).
 map's addresses hold): the frame deadline and the idle step's time, the combat speed, the mouse
 (its hex, the cursor's kind, type, frame and the point it is drawn at: M3 T6c-2), and per
 stack its creature, hex, group, frame, facing, offsets, times, count, the count its box shows
-(`shown`, M3 T5b), its morale and luck (M3 T7b-2b-2a) (`docs/exe/structs.toml`). On
+(`shown`, M3 T5b), its morale and luck (M3 T7b-2b-2a) (`docs/exe/structs.toml`); the dialog
+item the mouse last entered (`hovered_item` 0x6AAC68: its id, kind, dialog, box, state and hint;
+M4 T3b), which every sequence's step records (`states.jsonl`, `frames.jsonl`; not in `kept/`). On
 the adventure map (M2 T6): the current player, each player's selected hero, hero list and
 resources, every hero's name, tile and points, the view's top-left tile, the tile under the
 mouse and the selected hero's path (design §6.3); for the map's stills (E24 M1 T3b2) the cycling

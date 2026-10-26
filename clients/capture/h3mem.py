@@ -8,14 +8,15 @@ but for the harness's own timers, a siege's wall states before its first frame (
 boats' facings (E24 M1 T5a, `write_facing`) and its boarded boats' flag colours (E24 M1 T5b2,
 `write_boat_colour`).
 
-  h3mem.py            print the battle's clocks and its stacks' animation state as JSON
+  h3mem.py            print the battle's clocks, its stacks' animation state, its log and the
+                      hovered dialog item as JSON
   h3mem.py adventure  print the adventure map's state as JSON: the current player, the view,
                       each player's selected hero and resources, every hero on the map
 
 Library use: `Mem` (globals, stacks, battle_heroes, battle_outcome, battlefield; current_player,
 player, heroes, all_heroes, hero, hero_named, view, mouse_tile, path, difficulty, tile, explored,
 monster, creature_name, artifact_name, dialog_text, dialog_items, level_up_dialog; since E08 T47a
-dialog, item_text, spell_name, held_artifact, tactics_phase; the map's
+dialog, item_text, spell_name, held_artifact, tactics_phase; since E17 M4 T3b hovered_item; the map's
 stills: write_explored, def_palette, map_due, frame_steps; since E24 M1 T5a boats, standing,
 map_heroes, hero_on, write_facing, write_bytes). Needs a running game
 (h3drive.py) and the rights to read its memory (root in a sandbox).
@@ -215,6 +216,11 @@ RETREATED, SURRENDERED, WINNER = 0x132B0, 0x132B2, 0x13D48
 # what the item shows, the status line's text included.
 COMBAT_DIALOG, LOG_ENTRIES, LOG_FRESH, LOG_FIRST, LOG_TIME, LOG_PANEL, PANEL_LOG_ITEM = (
     0x132FC, 0x58, 0x64, 0x68, 0x6C, 0x70, 0x34)
+# The dialog item the mouse last entered (`hovered_item` 0x6AAC68, map.toml; E17 M4 T2c-2: an
+# item writes its hint only on entering, 0x5FE747; forgotten when it is destroyed): read per
+# step since M4 T3b, read-only. Its dialog (+0x4) and hint (char* +0x20) by H3API's H3DlgItem
+# (`parent`, `hint`), observed in the running game (the item's dialog lists it).
+HOVERED_ITEM, ITEM_DIALOG, ITEM_HINT = 0x6AAC68, 0x4, 0x20
 # Stack fields (structs.toml, battle_stack): name -> offset (all i32).
 FIELDS = {
     "draw_layer": 0x8,
@@ -466,6 +472,28 @@ class Mem:
         return {"text": self.c_string(self.u32(item + ITEM_TEXT)), "entries": entries,
                 "fresh": self.i32(dialog + LOG_FRESH), "first": self.i32(dialog + LOG_FIRST),
                 "at": self.u32(dialog + LOG_TIME)}
+
+    def hovered_item(self):
+        """The dialog item the mouse last entered (E17 M4 T3b; `hovered_item` 0x6AAC68): its
+        address, id, vtable (its kind), its dialog's address and whether that is the battle's
+        combat dialog, its box relative to the dialog (x, y, width, height), its state and its
+        hint (None for none or unreadable); None while no item is hovered. Read-only."""
+        item = self.u32(HOVERED_ITEM)
+        if not item:
+            return None
+        raw = self.read(item, ITEM_TEXT)
+        dialog = struct.unpack_from("<I", raw, ITEM_DIALOG)[0]
+        manager = self.manager()
+        hint = struct.unpack_from("<I", raw, ITEM_HINT)[0]
+        try:
+            text = self.c_string(hint, 256) if 0x10000 <= hint < 0x80000000 else None
+        except (OSError, UnicodeDecodeError):
+            text = None
+        return {"at": item, "id": struct.unpack_from("<h", raw, ITEM_ID)[0],
+                "vtable": struct.unpack_from("<I", raw, 0)[0], "dialog": dialog,
+                "combat": bool(manager) and dialog == self.u32(manager + COMBAT_DIALOG),
+                "box": list(struct.unpack_from("<2h2H", raw, ITEM_BOX)),
+                "state": struct.unpack_from("<H", raw, ITEM_STATE)[0], "hint": text}
 
     # -- the adventure map ---------------------------------------------------------------------
     def game(self):
@@ -970,4 +998,4 @@ if __name__ == "__main__":
         sys.exit(__doc__)
     else:
         print(json.dumps({"globals": mem.globals(), "stacks": mem.stacks(),
-                          "log": mem.battle_log()}, indent=1))
+                          "log": mem.battle_log(), "hovered": mem.hovered_item()}, indent=1))
