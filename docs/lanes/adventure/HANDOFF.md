@@ -5,8 +5,8 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 ## Current state
 
 - **E08**: increments 1 to 5 **closed**. **Increment 6: army and hero management** (decisions 90–119; survey `E08-army.md`, design `E08-design.md`): rounds 1 to 4 done (T44a to T51b), round 5's T52 done (decision 119). Records: `E08-log.md`.
-- **Open pull requests:** `shared/e08-t52-benches` (#469, the benches README's two rows; merge first) and `adventure/e08-t52` (T52).
-- **Next:** merge #469, then T52's; then T53 (`QUEUE.md`; `E08-design.md` §15: the audit, increment 6 closed and moved to `E08-archive.md`, which also brings the epic file, at 37 KB, back under its 35 KB aim; increment 7 refined): confirm its cut with the user at its start.
+- **Open pull requests:** `shared/e08-t52-benches` (#469, the benches README's two rows; merge first) and `adventure/e08-t52` (#470, T52).
+- **Next:** merge #469, then #470; then T53 (`QUEUE.md`; `E08-design.md` §15: the audit, increment 6 closed and moved to `E08-archive.md`, which also brings the epic file, at 37 KB, back under its 35 KB aim; increment 7 refined): confirm its cut with the user at its start.
 - **Versions** (`docs/08-work-process.md`, "Versions"): game state hash v13 (T51b), adventure state hash v11, adventure ruleset part v11 (T50), map import v10 (`MAP_IMPORT_VERSION`, T49b), adventure replay format v6 (T51a); the env's action encoding v4 is the AI lane's. Built so far, by area: `OVERVIEW.md`; ownership: `lanes.toml` (the details are in `OVERVIEW.md`, "Ownership").
 - **ADRs accepted**: ADR-0015 to -0017 (2026-10-10), amended for increments 2 to 6 (last: T45).
 - **R01** (the content split): the core `h3-content` and `h3-pack` (`core.toml`) are shared; the writer is `h3_map::writer`.
@@ -21,7 +21,7 @@ Moved to `TRAPS.md`: forks without deep copies, RNG seeds server-only, template 
 
 ### 2026-10-26 — increment 6, round 5: T52
 
-Baseline 7619a4a (#468 merged; verified). T52 whole (decision 119): the plans and properties manage (meetings, joins, arbitrary commands; invariants, effects, inverses), the army map and the scripted golden replays (`run --script`), two gated benchmarks (forks with a meeting, the listing in a meeting); no version moved. Full verify with the original data green (code 5a00f64); #469 and the T52 pull request open.
+Baseline 7619a4a (#468 merged; verified). T52 whole (decision 119): the plans and properties manage (meetings, joins, arbitrary commands; invariants, effects, inverses), the army map and the scripted golden replays (`run --script`), two gated benchmarks (forks with a meeting, the listing in a meeting); no version moved. Full verify with the original data green (code 5a00f64); #469 and #470 open.
 
 ### 2026-10-26 — increment 6, round 4: T51b; round 4 closed
 
