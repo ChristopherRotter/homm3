@@ -410,7 +410,9 @@ impl<'t> SiegeLook<'t> {
     }
 
     /// What `draw_hex_stack` (0x494F40) draws after a stack on `hex` drawn in `pass` with the
-    /// moat flag: none on the gate row while the gate is not closed, nor in the last pass; else
+    /// moat flag: none on the gate row while the gate is not closed, nor in the last pass, nor
+    /// for a flier between its hexes (`pass` past the last: `draw_battle_stack` draws it by
+    /// itself, off its hexes, so no `draw_hex_stack`; E17 M4 T3a, R1-2); else
     /// the moat's strip at the stack's hex and at a two-hex stack's other hex (its position + 1
     /// facing right, − 1 facing left) when it is a moat hex (`moat_over_stack` 0x495A10: the
     /// moat picture's pixels at the hex's columns L to L + 43 and its box's rows 36 to 41, inside
@@ -425,7 +427,7 @@ impl<'t> SiegeLook<'t> {
         let (hex, two_hex, mirrored) = stack;
         let row = hex / self.width.max(1);
         let gated = row == GATE_ROW && self.walls.gate != GATE_CLOSED;
-        if !self.moat || gated || pass == LAST_PASS {
+        if !self.moat || gated || pass >= LAST_PASS {
             return Vec::new();
         }
         let other = two_hex.then(|| {

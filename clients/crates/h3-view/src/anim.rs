@@ -4646,7 +4646,7 @@ impl Player<'_> {
             self.stacks.insert(stack, live.clone());
             // Where it lands, the moat's re-entry or a mine (0x4B4A1E; *provisional*: not
             // recorded).
-            if let Some(events) = entered.at(path.len() - 1) {
+            for events in entered.at(path.len() - 1) {
                 self.entered((stack, &live), events, false);
                 let Some(l) = self.live(stack) else {
                     self.redraw();
@@ -4717,7 +4717,7 @@ impl Player<'_> {
             }
             // What the hex entered brings on the way (a mine's blast; `enter_hex` with the walk
             // going on): the stack stands on it meanwhile (0x4687C0).
-            if let Some(events) = entered.at(i + 1).filter(|_| i < last) {
+            for events in entered.at(i + 1).filter(|_| i < last) {
                 live.hex = pair[1];
                 self.stacks.insert(stack, live.clone());
                 self.entered((stack, &live), events, true);
@@ -4736,7 +4736,7 @@ impl Player<'_> {
         live.hex = end;
         self.stacks.insert(stack, live.clone());
         // What the last hex brings (the moat's damage, a mine's blast), before the turn back.
-        if let Some(events) = entered.at(path.len() - 1) {
+        for events in entered.at(path.len() - 1) {
             self.entered((stack, &live), events, false);
             let Some(l) = self.live(stack) else {
                 // Dead: no turn back, the box's redraw (0x4423D1).

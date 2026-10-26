@@ -633,3 +633,79 @@ fn a_mine_at_the_walk_s_end_blasts_after_it() {
     let last = t.keys.iter().rfind(|k| k.stack == 0);
     assert_eq!(last.map(|k| (k.pose.group, k.pose.hex)), Some((2, 61)));
 }
+
+#[test]
+fn every_event_a_hex_entered_brings_is_played() {
+    // E17 M4 T3a, R1-1: a mine on a moat hex blasts and then the moat damages (the engine's
+    // `enter_hexes`), and a two-hex walker's two mines both blast: each entry of the hex is
+    // played, in order.
+    let mut o = mine_siege();
+    o.siege = Some(town(
+        0,
+        2,
+        2,
+        vec![11, 28, 44, 61, 77, 95, 111, 129, 146, 164, 181],
+    ));
+    let mut walked = over_the_mine();
+    walked.retain(|e| !matches!(e, Event::Moved { from: 61 | 78, .. }));
+    let turn = walked.pop();
+    walked.push(Event::MoatDamage {
+        stack: 0,
+        hex: 61,
+        damage: h3_protocol::wire::WireU64(70),
+        kills: 0,
+    });
+    walked.extend(turn);
+    let t = play_mine(&o, &[(Some(0), walked)]);
+    let lines: Vec<&Logged> = t
+        .log
+        .iter()
+        .filter(|(_, l)| matches!(l, Logged::Moat { .. } | Logged::SpellDamage { .. }))
+        .map(|(_, l)| l)
+        .collect();
+    assert_eq!(
+        lines,
+        [
+            &Logged::SpellDamage {
+                spell: 11,
+                hit: (0, 150, 0)
+            },
+            &Logged::Moat { hit: (0, 70, 0) }
+        ]
+    );
+    // Two mines under the walk's end.
+    let mut walked = over_the_mine();
+    walked.retain(|e| !matches!(e, Event::Moved { from: 61 | 78, .. }));
+    let turn = walked.pop();
+    let blast: Vec<Event> = walked[walked.len() - 4..]
+        .iter()
+        .map(|e| match e.clone() {
+            Event::ObstacleRevealed { side, spell, .. } => Event::ObstacleRevealed {
+                side,
+                spell,
+                hexes: vec![60],
+            },
+            Event::ObstacleTriggered { stack, spell, .. } => Event::ObstacleTriggered {
+                stack,
+                spell,
+                hex: 60,
+            },
+            Event::ObstacleRemoved { spell, .. } => Event::ObstacleRemoved {
+                spell,
+                hexes: vec![60],
+            },
+            e => e,
+        })
+        .collect();
+    walked.extend(blast);
+    walked.extend(turn);
+    let t = play_mine(&mine_siege(), &[(Some(0), walked)]);
+    let blasts = t.cues.iter().filter(|c| c.sound == Sound::Mine).count();
+    assert_eq!(blasts, 2);
+    let lines = t
+        .log
+        .iter()
+        .filter(|(_, l)| matches!(l, Logged::SpellDamage { spell: 11, .. }))
+        .count();
+    assert_eq!(lines, 2);
+}
