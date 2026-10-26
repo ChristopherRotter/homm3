@@ -247,7 +247,19 @@ def hover(game, mem, x, y, level=0):
     there."""
     point = tile_point(mem, x, y)
     game.move(*point)
-    wait_for(lambda: mem.mouse_tile() == (x, y, level), f"the mouse on {(x, y, level)}")
+    try:
+        wait_for(lambda: mem.mouse_tile() == (x, y, level), f"the mouse on {(x, y, level)}")
+    except TimeoutError:
+        # E08 T57 (batch E7b's E7-23): the game finds the tile under the mouse again only when the
+        # mouse enters another of the view's cells, so after the view moved under a mouse that
+        # stays in the same cell it keeps the tile it saw before. The mouse goes to the next cell
+        # (inside the view) and back.
+        vx, _ = mem.view()
+        game.move(*tile_point(mem, x + 1 if x + 1 - vx < MAP_AREA[2] else x - 1, y))
+        time.sleep(0.5)
+        game.move(*point)
+        wait_for(lambda: mem.mouse_tile() == (x, y, level),
+                 lambda: f"the mouse on {(x, y, level)} (the game sees {mem.mouse_tile()})")
     return point
 
 
@@ -964,6 +976,8 @@ def picture_text(mem, picture):
     """A message box's picture as the templates take it: its caption and what it shows (`1000
     gold`, `525 experience`, `Centaurs Axe`, `Advanced Wisdom`), else its caption and DEF."""
     name, frame, text = picture["def"], picture["frame"], " ".join(picture["text"].split())
+    if any(c.isalpha() for c in text):
+        return text  # a caption that names what it shows (`500 Spell Points`, `Advanced Wisdom`)
     if name == "resour82.def" and 0 <= frame < len(h3mem.RESOURCES):
         return f"{text} {h3mem.RESOURCES[frame]}".strip()
     if name == "pskill.def" and 0 <= frame < len(PSKILL_FRAMES):
@@ -977,7 +991,7 @@ def picture_text(mem, picture):
     if name in ("imrl82.def", "ilck82.def"):
         kind = "morale" if name.startswith("imrl") else "luck"
         return f"{text} {kind} (frame {frame})".strip()
-    if name == "secskill.def" and frame >= 3:
+    if name in ("secskill.def", "secsk82.def") and frame >= 3:
         skill, level = divmod(frame - 3, 3)
         return text or f"{LEVELS[level + 1].capitalize()} {h3mem.SKILLS[skill]}"
     return f"{text} ({name} {frame})".strip()

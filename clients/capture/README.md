@@ -830,6 +830,11 @@ design §7.1.
   first, then down to the hero's row (H2).
 - The panel's level button changes with the map (enabled on a two-level map) and the level shown:
   the `adventure` probes leave it out (H2).
+- The game finds the tile under the mouse (adventure manager +0xE8) again only when the mouse
+  enters another of the view's cells: after the view moved under a mouse that stays in the same
+  cell, it keeps the tile it saw before (E08 T57, batch E7b's E7-23: a click there would act on
+  the old tile). `hover` checks the tile and moves the mouse through the next cell when it is
+  stale.
 - The adventure panel takes the current player's colour: the `adventure` probes are the ones
   equal on Red's and Blue's turn (`adventure_map`, Red's, stays for the battle's recipes).
 - A player without towns gets a message at the end of its turn and at the start of its next
