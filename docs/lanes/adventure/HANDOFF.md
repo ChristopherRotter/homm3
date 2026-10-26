@@ -19,6 +19,10 @@ Moved to `TRAPS.md`: forks without deep copies, RNG seeds server-only, template 
 
 ## Recent sessions
 
+### 2026-10-26 — increment 7, round 1: T55a4, the common rules and the checkpoint (in progress)
+
+Baseline ef3c34b (#479 merged; CI's last code run on `master` green; the scoped verify passed, deny skipped). The user's cut: T55a4 whole (decision 128). Branch `adventure/e08-t55a4`: survey §8 (the common rules), §10 (rewritten for T55b), §11 (batch E7, 23 rows), §12 (rule ids) drafted. **Next:** the second reading by two fresh agents in turn (A: pickups and teachers; B: rewards, the Pyramid, the event's stop and the pathfinder), §13, §9 final, ADV-Q28 and the checkpoint.
+
 ### 2026-10-26 — increment 7, round 1: T55a3, Pandora's Box, events and the Pyramid
 
 Baseline f91cdd5 (#476 merged; CI green). Measured at the start (the banks' and the Seer's Hut's rewards are decision 121's army-dialog callers); the user's cut: Pandora's Box, events and the Pyramid, the rest placed in the sketch (decision 127). Survey `E08-rewards.md` §7 (the shared reward record, the box, an event's firing and its stop, the reward routine's order, the Pyramid), §0, §1 (bodies), §9 (D-37 to D-40, A-19, A-20), §10; 21 new `map.toml` readings (10 amended), the `reward_record` struct; a throwaway census example (deleted). Docs only. The sandbox restarted three times (the baseline's background run died). The scoped verify on 7bf3a6b passed every step but `check-exe-map` (0x4A39A0 uncited; its entry added in d1e4c1e, then `check-exe-map`, `check-docs` and `check-lane` passed).
@@ -26,7 +30,3 @@ Baseline f91cdd5 (#476 merged; CI green). Measured at the start (the banks' and 
 ### 2026-10-26 — increment 7, round 1: T55a2, the objects that teach
 
 Baseline bef62ab (#474 merged; CI green; the sandbox's baseline verified the code). Measured at the start (about 6 700 instructions on the human path); the user's cut: whole, the University's dialog for its rules only (decision 126). Survey `E08-rewards.md` §6 (the 20 classes; the once-per-hero marks, 32 bits per class), §0, §1 (bodies), §9 (D-33 to D-36, A-17, A-18), §10; 39 new `map.toml` readings (six amended), 18 `structs.toml` fields; a throwaway census example (deleted). Docs only; the scoped verify passed.
-
-### 2026-10-26 — increment 7, round 1: T55a1, the rewards survey's census and pickups
-
-Baseline e1217a2 (#473 merged; CI green; the scoped verify passed). T55a cut in four with the user (decision 125: about 8 000 to 10 000 instructions to read, measured). T55a1: survey `E08-rewards.md` §0 to §5, §9, §10: the census of the reward classes (a throwaway example in a worktree), chests, placed and random artifacts (the unreachable pickup conditions), Spell Scrolls, the monsters' artifacts; 18 `map.toml` readings; D-29 to D-32 for the checkpoint. Docs only; the scoped verify passed (no LODs staged).
