@@ -117,6 +117,7 @@ lr_schedule = "constant"
         ("", ["ladder.ladder_episodes=0"], "`ladder_episodes` lies in"),
         ("", ["ladder.ladder_final_episodes=501"], "`ladder_episodes` lies in"),
         ("", ["env.kinds=[1, 2]"], "six weights"),
+        ("", ['network.kind="entity"', "network.preview=true"], "`preview` is the MLP's"),
         ("", ["league.system_share=1.5"], "`system_share` lies in"),
         ("", ["league.system_share=0.25"], "needs `\\[env\\] kinds`"),
         ("", ["league.system_share=0.25", "env.kinds=[1, 0, 0, 0, 0, 1]"], "needs a player kind"),

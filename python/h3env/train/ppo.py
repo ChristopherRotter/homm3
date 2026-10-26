@@ -99,6 +99,13 @@ class Rollout:
     def __init__(self, calls: int, envs: int, batch: BattleBatch) -> None:
         t, n = calls, envs
         self.obs = np.zeros((t, n, batch.observation_len), np.float32)
+        #: The kill preview when the batch writes it (E06 T6d), in half precision: kills, at
+        #: most a few thousand, keep three digits.
+        self.preview = (
+            None
+            if batch.preview is None
+            else np.zeros((t, n, batch.preview_entries, 2), np.float16)
+        )
         # The masks as bool, the dtype the network takes.
         self.entry_mask = np.zeros((t, n, batch.action_count), bool)
         self.spell_mask = np.zeros((t, n, batch.spell_count), bool)
@@ -132,6 +139,8 @@ class Rollout:
         row's learning side (-1 where none: no side to move, or a frozen network's move)."""
         self.obs[t] = batch.obs
         self.entry_mask[t] = batch.entry_mask
+        if self.preview is not None:
+            self.preview[t] = batch.preview
         self.side[t] = side
         self.entry[t] = choice.entry
         self.cast[t] = choice.cast
@@ -284,6 +293,7 @@ class Trainer:
             max_steps=c.max_steps,
             currency=c.currency,
             mana_price=c.mana_price,
+            preview=c.preview,
         )
         entries = episode_entries(c)
         for weight, kinds, side in entries:
@@ -682,6 +692,8 @@ class Trainer:
         start = time.perf_counter()
         arrays = {name: getattr(r, name) for name in FIELDS}
         arrays["adv"], arrays["returns"] = adv, returns
+        if r.preview is not None:
+            arrays["preview"] = r.preview
         stats = {"policy_loss": 0.0, "value_loss": 0.0, "entropy": 0.0, "kl": 0.0, "clip": 0.0}
         steps = 0
         rng = np.random.default_rng(self.updates)
@@ -696,6 +708,7 @@ class Trainer:
                     m["entry"],
                     m["cast"],
                     tuple(m[n] for n in FIELDS[4:10]),
+                    m.get("preview"),
                 )
                 old = m["logprob"]
                 a = m["adv"]
