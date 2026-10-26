@@ -843,6 +843,10 @@ pub fn build_only(
                 .into_iter()
                 .map(|tile| (*level, tile))
                 .collect(),
+            MapObject::Reward(r) => covered(&r.template, r.tile)
+                .into_iter()
+                .map(|tile| (*level, tile))
+                .collect(),
             MapObject::Ground(_) => vec![],
         })
         .collect();
@@ -1346,6 +1350,7 @@ fn monster(
         disposition,
         never_flees: !flees,
         fixed_count: true,
+        treasure: None,
     })
 }
 
@@ -2189,7 +2194,8 @@ mod tests {
                 MapObject::Pile(_)
                 | MapObject::Ground(_)
                 | MapObject::Plain(_)
-                | MapObject::Town(_) => None,
+                | MapObject::Town(_)
+                | MapObject::Reward(_) => None,
             })
             .collect();
         // The encounter's hero, its `also` heroes, then the opponent beside the hero.

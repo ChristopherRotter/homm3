@@ -159,6 +159,7 @@ fn census_map() -> Vec<u8> {
             disposition: 2,
             never_flees: false,
             fixed_count: false,
+            treasure: None,
         })
     };
     let creature = |id: u16| {
