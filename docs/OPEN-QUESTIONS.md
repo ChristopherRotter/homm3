@@ -69,7 +69,9 @@ The review's fix C3 follows the reading of 0x47A100: a created stack whose round
 
 ### Adventure lane (`ADV-Q<n>`)
 
-(no open questions)
+#### ADV-Q29 — Increment 7's drafts, design and cut (E08 T55b)
+
+T55b (decision 137, whole) wrote the amendment drafts of ADR-0013 (points 1, 2, 15: the battle bonuses in the details, the reward record's hero half, what a teacher may teach), ADR-0016 (points 1, 3, 4, 6: the visits' state without the original's bounds, 31 classes as kinds, events and the move, knowledge) and ADR-0017 (points 1, 4, 6, 8–11: the bans, the new decisions, the University, the visit's rest, T54's battle facts) in `docs/lanes/adventure/adr-drafts/*-increment-7.md`, and `docs/epics/E08-design.md` for increment 7 (parts A to C, the cut, the exit criteria). Decision 133's measurement (§10): one block behind one `Arc` for the marks, the knowledge and the emptied finds adds a reference count to a fork; the army left becomes a two-level table (today's map copies 16.5 M instructions on a write with 41 472 entries). (1) **The drafts and the design:** accept as written (recommended), or name changes. (2) **The cut:** batch E7 first, then the `shared/` task with E7-23's outcome written in, then the build, eight rounds T56 to T65 (recommended; design §19), or the shared task first as in increment 6 (A-23's clause conditional, a second shared change if E7-23 settles it). (3) **The University's purchase:** `Answer::Buy(slot)`, an answer that keeps the decision open (recommended), or a `GameCommand` of its own. (4) **A won guards' battle's levels before the visit's rest** (the box's rewards, the Pyramid's spell: the original's order, held by the game as GAM-DEC-007; recommended), or the rest at the battle's end before the level-ups (simpler; a level-up's Wisdom or Learning would not count). **Blocked:** T56 until answered.
 
 ### Server lane (`SRV-Q<n>`)
 
