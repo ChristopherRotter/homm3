@@ -1057,7 +1057,8 @@ backpack (the wiki's rule for banks), the dead pickup conditions (§3.3).
 **Questions for the checkpoint (T55a4 writes them as an `ADV-Q`):** the tutorial's chests (1 500
 gold always): a setup flag for the tutorial (game +0x1F69D also changes its starting resources,
 `E08-objects.md` §7.2, and some battle steps) or not modelled (one chest; the agent's
-recommendation: not modelled, the Tutorial is a teaching map).
+recommendation: not modelled, the Tutorial is a teaching map). *Answered at ADV-Q28:* not
+modelled (decision 134).
 
 ## 10. For T55b: the import, the state, the draws and the battles
 
@@ -1148,7 +1149,7 @@ record) are new families.
 
 | Id | Rule | Survey | Open points |
 |---|---|---|---|
-| ADV-PIK-005 | the treasure chest: its draw at a new game, the gold or experience choice, the full backpack's 1 000 gold | §2 | the tutorial (ADV-Q28) |
+| ADV-PIK-005 | the treasure chest: its draw at a new game, the gold or experience choice, the full backpack's 1 000 gold | §2 | the tutorial not modelled (decision 134) |
 | ADV-PIK-006 | an artifact's pickup; the full backpack refuses | §3.2 | — |
 | ADV-PIK-007 | a guarded artifact: always a question, a win gives it | §3.2 | D-29 |
 | ADV-PIK-008 | a Spell Scroll: the pickup with its spell; guarded, a question only with a text | §4 | — |
