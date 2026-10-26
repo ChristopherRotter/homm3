@@ -4,28 +4,49 @@ Pre-refined tasks of the AI lane, in order, then the inbox of discovered work. T
 
 ## Tasks
 
-**E05** (`docs/epics/E05-battle-env.md`) closed 2026-10-20 (record: `E05-log.md`; the environment as built: `docs/07-simulation-and-ai.md` §1.1). **E06** (`docs/epics/E06-battle-ai.md`, AI-Q8; design `E06-design.md`, record `E06-log.md`): increments 1 to 5 and T6a (the behaviour analysis; rerun `python -m h3env.train.inspect` at every checkpoint) done by 2026-10-23. Best so far, `t7-1` (20 M samples, a third neutral): 0.828, 0.551, 0.528 against Random, Aggressor, Greedy, the system actor 0.374; the neutral set's value +0.245 against the target +0.285. The tasks' history is in `QUEUE-ARCHIVE.md`.
+**E05** (`docs/epics/E05-battle-env.md`) closed 2026-10-20 (record: `E05-log.md`; the environment as built: `docs/07-simulation-and-ai.md` §1.1). **E06** (`docs/epics/E06-battle-ai.md`, AI-Q8; design `E06-design.md`, record `E06-log.md`): increments 1 to 6 and T6a (the behaviour analysis; rerun `python -m h3env.train.inspect` at every checkpoint) done by 2026-10-26. Best so far, `t7-1` (20 M samples, a third neutral): 0.828, 0.551, 0.528 against Random, Aggressor, Greedy, the system actor 0.374; the neutral set's value +0.245 against the target +0.285. The tasks' history is in `QUEUE-ARCHIVE.md`.
 
-**Increment 6** (refined 2026-10-26, the user: the system actor as a training opponent in the
-player kinds, decision 9 amended; every side stays human, the let-off question answered): T6b
-(`[league] system_share`, `configs/e06-t6b.toml`) done 2026-10-26. **Next: T6c, the A/B run on
-the user's machine** (`uv run --group train python -m h3env.train --config configs/e06-t6b.toml
---out runs/t6b-1`, 20 M samples; the user uploads `record.json`, `metrics.jsonl`, `best.pt`),
-then `python -m h3env.train.inspect` on its best and the checkpoint against `t7-1`.
+**Increment 6** closed 2026-10-26 (T6b to T6e; its task list in `E06-archive.md`): both levers
+negative, the system actor as an opponent (T6c, `t6b-1`) and the kill preview in the network
+(T6e, `t6d-1`: the targeting better, the ladder unchanged; AI-Q7 closed, the preview off by
+default).
 
-- **Still candidates at T6c's checkpoint:** AI-Q7 (b) part 2 (the network reads
-  `batch.preview` beside the entry mask, an opt-in `[network]` key, the rollout keeps it; an
-  A/B config; unblocked since the battle lane's #458 previews a turret's shot as it is made);
-  potential-based shaping. Not the casts' exploration or the mana price (T6a). Runs: 60 M at
-  T7's mix (`configs/e06-t7.toml --set samples=60_000_000`, about 4 hours: whether PPO
-  plateaus, T8's trigger); the mana run `t5-4` (`configs/e06-mana.toml`, about 75 minutes).
-- Later (design §10): T5's rest (throughput, the observations in place), T6, T8, T9.
+**Increment 7, T8 the search** (refined 2026-10-26, the user: the plateau taken as shown; design
+§14): T8a (the design, ADR-0025 point 12's amendment as a draft) done 2026-10-26. **Next: T8b,
+the plumbing**, once the user accepts the draft
+(`docs/lanes/ai/adr-drafts/0025-amendment-search.md`): C ABI v34 (`h3_batch_determinize`, `h3_env_reseed`), `h3-battle`'s
+`BattleState::determinized` and `reseed` (`cross-lane`, the user's consent 2026-10-26; the PR
+label), `h3env.search` and §14's tests; one pull request. Then T8c (the measurement on the
+user's machine with `t7-1`'s best), T8d only if T8c gains.
+
+- **Candidates kept** (not now): potential-based shaping (also against the wandering T6e found:
+  the tactics phase's placements and moves cost nothing at γ 1); the 60 M run at T7's mix
+  (`configs/e06-t7.toml --set samples=60_000_000`, about 4 hours); the mana run `t5-4`
+  (`configs/e06-mana.toml`, about 75 minutes).
+- Later (design §10): T5's rest (throughput, the observations in place), T9.
 
 ## Inbox
 
 Sorted by destination at E05's audit (T9a, 2026-10-19); the origin stays in brackets. Dropped as
 done: BAT-Q33's point for E05 (AI-Q3, ADR-0025 point 6), the `h3-game` coverage gap of a pending
 Pass offer (fixed by the adventure lane's fixed tests, #266).
+
+- 2026-10-26 (the adventure lane, E08 T55b, `adventure/e08-t55b`; decisions 138–141; **for you,
+  when the adventure lane's T63 lands**): **answers typed by decision.** `h3_game::Answer` becomes
+  an enum by decision kind, each variant with its own type: `Offer(Consent)` (`Accept`,
+  `Decline`: every yes-or-no offer), `LevelUp(SkillOffer)` (`First`, `Second`), `Close` (a
+  meeting, an army dialog; today's `Decline` there), and increment 7's `Chest` (`Gold`,
+  `Experience`), `Arena` (`Attack`, `Defense`), `School` (`First`, `Second`, `Leave`) and
+  `University` (`Buy(slot)`, `Leave`). T63 migrates every caller, `h3-sim`'s
+  `src/adventure/action.rs` mapping of your entries included (`cross-lane`, the user's consent):
+  accept and decline onto `Offer` or `Close` by the open decision, the first and second entries
+  onto `LevelUp` and the new two-way choices. Yours to decide after it: whether a University's
+  purchase gets a head (until then the masks allow its `Leave`), and whether the new decisions'
+  views enter the observation. Your masks must allow at least one answer per decision (the system
+  actor's defaults: `Gold`, `Attack`, `Leave`, `Decline`, `Close`). Under `faithful`, if batch
+  E7's row E7-23 confirms A-23, `legal_moves` treats an event's tile as an entrance for every hero
+  (your tile masks then reveal hidden events, as the original's path does; `docs/06-security.md`
+  will say so). Design: `docs/epics/E08-design.md` §12, §14, §16; ADR-0017's draft point 6, 8.
 
 - 2026-10-26 (the adventure lane, E08 T52, `adventure/e08-t52`; **for you**, the entry below):
   **the env plays on through a meeting and an army dialog** in the adventure lane's own test
@@ -108,7 +129,7 @@ Pass offer (fixed by the adventure lane's fixed tests, #266).
 - **Baselines and AI-Q7:** Greedy value beats Aggressor only 0.519 on the held-out episodes: the
   preview of its own kills buys little without spells or a plan; a stronger baseline (casts, a
   one-ply look at the opponent's reply) is E06's, and AI-Q7 (whether the agents get the preview)
-  moved there (T7c; the user, 2026-10-19).
+  moved there (T7c; the user, 2026-10-19); AI-Q7 closed at E06 T6e (not kept, off by default).
 
 - **Encodings:** `h3_sim::action::encode` answers without a viewer (the same root as F-sec-2's
   leak, which the sim's `step` closes); it leaks nothing today (E04b T11b, the battle lane).

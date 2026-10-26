@@ -37,6 +37,8 @@ fn rules(packs: usize) -> GameRuleset {
 }
 
 pub(super) static SOD: LazyLock<GameRuleset> = LazyLock::new(|| rules(3));
+/// RoE's rules alone (E08 T56: the writer's RoE maps).
+pub(super) static ROE: LazyLock<GameRuleset> = LazyLock::new(|| rules(1));
 
 /// A template mask in the file's encoding marking these `(column, row)` tiles of the anchor:
 /// bit `j` of byte `i` is the tile `7 − j` columns left of and `5 − i` rows above it.

@@ -45,6 +45,7 @@ commands:
           archives are searched before the AB ones, as the game does.
   render <scenario.toml | record.jsonl> [--seed <n>] [--packs <dir>] [--install <dir>]
          [--out <file.png>] [--list] [--at <ms> | --frames <dir>] [--speed <0-2>]
+         [--seat attacker|defender] [--walls <states>]
           draws a battle still: the battle at its start as the record's first snapshot shows it
           (the background, the obstacles, the heroes and their flags, every living stack
           standing on its hex with its count box; no corpses yet), with its assets loaded as one
@@ -59,7 +60,9 @@ commands:
           (<stem>[-s<seed>]-<ms>ms.png). --frames draws, instead of the still, the battle at
           each time <dir>/frames.toml lists (the capture set's, `h3drive.py set`), without
           fidgets of the viewer's own and with those the file lists, into <dir>/ours/ (what
-          it drew: <dir>/ours.txt).
+          it drew: <dir>/ours.txt). --seat runs a scenario from that side's view (a record
+          keeps its own); --walls gives a siege's wall states (the 18 parts' picture states,
+          then the gate's, comma-separated) in place of the record's.
   play <scenario.toml | record.jsonl> [--seed <n>] [--speed <0-2>] [--packs <dir>]
        [--install <dir>] [--out <dir>] [--png] [--from <ms>] [--to <ms>]
           a whole battle frame by frame, headless: a scenario is fought to its end in-process

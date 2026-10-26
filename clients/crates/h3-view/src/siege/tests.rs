@@ -381,6 +381,55 @@ fn walls_draw_in_three_strips_across_the_rows() {
 }
 
 #[test]
+fn the_leftward_rows_draw_their_strips_mirrored() {
+    // E17 M4 T3a, R1-4: on the rows that run right to left (d = −1) a wall's left strip is drawn
+    // at h − 17 − o and its right strip at h + 17 − o + 1: a buttress on 165 (row 9) and the
+    // lower wall on 182 (row 10), whose right strip falls on 200 (`AFTER_ROWS`).
+    let mut t = siege_tables();
+    let mut lower = town("Moat.pcx");
+    lower.parts[11] = WallPart {
+        at: [500, 400],
+        hex: Some(165),
+        pictures: ["", "Bt2.pcx", "Bt1.pcx", "Bt1.pcx", "Bt1.pcx"].map(ToString::to_string),
+    };
+    lower.parts[12].hex = Some(182);
+    t.towns.insert("base:lower".into(), lower);
+    let stacks = stacks();
+    let lay = layout();
+    let mut walls = Walls::of(&siege(3));
+    walls.parts[11] = 2;
+    walls.parts[12] = 2;
+    let look = look(&t, &siege(3), "base:lower", Some(walls), &stacks, None).unwrap();
+    let (min, max) = (i32::MIN, i32::MAX);
+    let edge = |hex: u8| lay.hex_box(hex / 17, hex % 17)[0];
+    let (b, w) = (edge(165), edge(182));
+    let buttress = |clip| wall("Bt1.pcx", [500, 400], Some(clip));
+    let lower_wall = |clip| wall("Wa11.pcx", [1, 1], Some(clip));
+    assert_eq!(look.parts_at(147, -1, &lay), [buttress([min, min, b, max])]);
+    assert_eq!(
+        look.parts_at(165, -1, &lay),
+        [
+            buttress([b, min, b + 44, max]),
+            lower_wall([min, min, w, max])
+        ]
+    );
+    assert_eq!(
+        look.parts_at(182, -1, &lay),
+        [
+            buttress([b + 44, min, max, max]),
+            lower_wall([w, min, w + 44, max])
+        ]
+    );
+    assert_eq!(AFTER_ROWS[0], (200, -1));
+    assert_eq!(
+        look.parts_at(200, -1, &lay),
+        [lower_wall([w + 44, min, max, max])]
+    );
+    // The same hexes drawn rightward take none of these strips.
+    assert!(look.parts_at(200, 1, &lay).is_empty());
+}
+
+#[test]
 fn the_moat_covers_a_stack_s_feet_and_its_box_is_drawn_again() {
     let t = siege_tables();
     let stacks = stacks();
@@ -419,12 +468,15 @@ fn the_moat_covers_a_stack_s_feet_and_its_box_is_drawn_again() {
         [strip(476, 170)]
     );
     assert_eq!(castle.over_stack((0, true, true), 4, &lay, None), []);
-    // Neither in the last pass, nor on the gate row while the gate is not closed.
-    assert!(
-        castle
-            .over_stack((44, false, false), 7, &lay, Some(&count))
-            .is_empty()
-    );
+    // Neither in the last pass, nor for a flier between its hexes (R1-2: drawn off them), nor
+    // on the gate row while the gate is not closed.
+    for pass in [7, crate::anim::FLYING] {
+        assert!(
+            castle
+                .over_stack((44, false, false), pass, &lay, Some(&count))
+                .is_empty()
+        );
+    }
     let open = Walls {
         gate: GATE_OPEN,
         ..Walls::of(&siege(3))
@@ -595,7 +647,7 @@ fn an_explosion_draws_in_its_rectangle_over_the_redraws() {
     // E17 M4 T2b (design §10.2, CLT-Q19 (4)): a wall shot's explosion is a list drawn within its
     // rectangle: the battle with the background, the first frame; the battle again without it
     // (the wall hit from frame 5), the next frame over it.
-    use crate::anim::Blast;
+    use crate::anim::{Blast, Landing};
     use crate::record::tests::{manifest, observation};
     use crate::scene::{Moment, battle_at};
     use h3_protocol::wire::KeyTables;
@@ -616,8 +668,10 @@ fn an_explosion_draws_in_its_rectangle_over_the_redraws() {
         walls: Some(whole),
         blast: Some(Blast {
             def: "SGEXPL.DEF".into(),
-            at: [437, 27],
-            rect: [437, 27, 691, 230],
+            landings: vec![Landing {
+                at: [437, 27],
+                rect: [437, 27, 691, 230],
+            }],
             frames: vec![(0, whole), (5, hit)],
         }),
         ..Moment::default()
@@ -646,4 +700,86 @@ fn an_explosion_draws_in_its_rectangle_over_the_redraws() {
     assert!(whole_at < blasts[0] && blasts[0] < hit_at && hit_at < blasts[1]);
     // Outside it the battle as the moment's walls show it: whole.
     assert!(list.iter().any(|d| name(d) == "Wa61.pcx"));
+}
+
+#[test]
+fn an_earthquake_s_explosions_land_on_every_target_and_its_shake_shifts_the_screen() {
+    // E17 M4 T2c-2 (design §10.2): each frame's redraw, then the frame over every target hit in
+    // turn; the list within each landing's rectangle. The shake: the whole frame's list shifted by
+    // the offsets of the steps shown, the battlefield shown.
+    use crate::anim::{Blast, Landing, SHAKE, shake_offsets};
+    use crate::record::tests::{manifest, observation};
+    use crate::scene::{Moment, battle_at, shaken};
+    use h3_protocol::wire::KeyTables;
+    let t = siege_tables();
+    let lay = layout();
+    let keys = manifest(KeyTables {
+        creatures: vec!["base:pikeman".into()],
+        factions: vec!["base:castle".into()],
+        ..KeyTables::default()
+    });
+    let mut o = observation();
+    o.siege = Some(siege(3));
+    o.stacks = stacks();
+    let whole = Walls::of(&siege(3));
+    let landings = vec![
+        Landing {
+            at: [393, 111],
+            rect: [393, 111, 647, 314],
+        },
+        Landing {
+            at: [393, 279],
+            rect: [393, 279, 647, 482],
+        },
+    ];
+    let moment = Moment {
+        walls: Some(whole),
+        blast: Some(Blast {
+            def: "SGEXPL.DEF".into(),
+            landings,
+            frames: vec![(0, whole), (1, whole)],
+        }),
+        ..Moment::default()
+    };
+    let list = battle_at(&o, &moment, &keys, &t, &lay).unwrap();
+    let within: Vec<(&[i32; 4], &Vec<Draw>)> = list
+        .iter()
+        .filter_map(|d| match d {
+            Draw::Within { rect, list } => Some((rect, list)),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(within.len(), 2);
+    assert_eq!(
+        (within[0].0, within[1].0),
+        (&[393, 111, 647, 314], &[393, 279, 647, 482])
+    );
+    assert_eq!(within[0].1, within[1].1);
+    let blasts: Vec<(i32, i32, u32)> = within[0]
+        .1
+        .iter()
+        .filter_map(|d| match d {
+            Draw::Explosion { x, y, frame, .. } => Some((*x, *y, *frame)),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(
+        blasts,
+        [(393, 111, 0), (393, 279, 0), (393, 111, 1), (393, 279, 1)]
+    );
+    // The shake: 16 steps, the 15 offsets and the first again.
+    let offsets = shake_offsets(16);
+    assert_eq!(
+        (offsets.len(), offsets[0], offsets[15]),
+        (16, SHAKE[0], SHAKE[0])
+    );
+    let Draw::Shaken {
+        offsets: o16,
+        rect,
+        list: inner,
+    } = shaken(list.clone(), 16, &lay)
+    else {
+        panic!("not shaken");
+    };
+    assert_eq!((o16, rect, inner), (offsets, [0, 0, 800, 556], list));
 }

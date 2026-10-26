@@ -416,3 +416,103 @@ original's computer, complete for a side without a hero since E23 T4c). Refined 
   `human = [true, true]` for the system actor's side too (ADR-0025 point 6 unchanged), so
   BAT-QUIRK-27's let-off of a computer side's bad-morale freeze (BAT-MOR-004, since E23 T7) is
   never played in training or on the held-out sets.
+
+## 13. The kill preview in the network (T6d) — built, off by default (T6e: no measurable gain)
+
+AI-Q7 (b) part 2 (decision 6; the user, 2026-10-26, after `t6b-1`): the batch's previewed kills
+(part 1, C ABI v33: each legal attack and shot entry's least and greatest kills, the engine's
+BAT-DMG-011 preview, what the original shows a player) reach the MLP's entry head; the
+encodings are unchanged.
+
+- **The bias:** a legal strike entry's logit gains `φ(f) · u(h)`. `f` holds four features: the
+  least and greatest kills (`symlog`), the share of the target stack their mean is (clipped to
+  [0, 1]), the hit points it is (`symlog` of the mean times the target's full hit points; the
+  target's slot is fixed by the entry: 24 attack entries, then 2 shots, per slot). `φ` is a
+  network of two layers (4 → `embed` → `embed`) shared by the entries; `u` a linear map of the
+  trunk's output to `embed` (initialized near 0, so the network starts as the plain MLP's), so
+  the state decides how much a kill counts. Only the legal entries' features are computed (a
+  row has a few dozen of its 1 092 previewed entries; the dense form would be 0.5 GB a
+  minibatch). The value and the cast heads read no preview, so a truncation's bootstrap from
+  `final_obs` (no preview there) is as before.
+- **The plumbing:** `[network] preview` (false by default; the MLP's: `resolve` refuses it with
+  the entity network). Every batch such a network plays writes the preview: the trainer's, the
+  gate's (when either network reads it), the ladder's (when any of its networks does);
+  `Policy.act` refuses a batch without it. The rollout keeps it in half precision (whole kills
+  up to 2 048 exact; 143 MB at 256 envs × 128 calls, beside the observations' 1.2 GB) and the
+  update recomputes the entry's log-probability from it. A saved file's config names
+  `preview`; one without it reads none.
+- **The run** (T6e, the user's machine): `configs/e06-t6d.toml`, `t7-1`'s settings with the
+  preview, against `t7-1` (one change; `t6b-1` showed the system actor as an opponent changes
+  nothing measurable). **Result** (E06-log T6e): the ladder unchanged; the targeting better, but
+  the agent strikes less and wanders (moves, the tactics phase's placements), its battles
+  longer; AI-Q7 closed (the user, 2026-10-26).
+
+## 14. The search (T8) — designed (T8a)
+
+Decision 2's last increment (the user, 2026-10-26, after T6e: the plateau taken as shown). The
+seam (the user): T8a this design; T8b the plumbing; T8c a decision-time search with `t7-1`'s
+network measured, no training change; T8d expert iteration only if T8c gains. **Determinized
+from the start** (the user): the searcher is a legitimate agent, it reads only what its side's
+observation tells (ADR-0025 point 12's amendment, draft
+`docs/lanes/ai/adr-drafts/0025-amendment-search.md`). The tree in Python first (the user); Rust
+only if T8d needs the throughput.
+
+- **The agent.** At each of its decisions it builds W *worlds* (8) of the battle from its side's
+  knowledge, runs N simulations (16 to 64) over them and plays the root's choice. The network is
+  a promoted MLP's without the preview (a single env writes none): its entry and cast heads are
+  the prior, its value head a leaf's value. It plays both sides inside the tree, each from its
+  own observation of the world; never the real opponent's policy (the system actor, Greedy).
+- **A world** (C ABI v34, `h3_batch_determinize(batch, env, viewer, seed) -> H3Env *`): a copy
+  of the env's battle in which, for the viewer, everything hidden (`h3_battle::observe`'s list)
+  is replaced from the world's seed:
+  1. the other side's hero's private part (its secondary skills' values, the war machines'
+     levels, the spell book, masteries, spell bonuses, resistance, duration bonus, defences,
+     negates, the opening spells, Eagle Eye; funds and the surrender price go unread, surrender
+     masked) from the encounter sampler: a hero of the observed hero type (public), its level and
+     draws by the table's week prior, of R (8) candidates the one whose primary skills are
+     nearest the observed (L1, ties to the first drawn); then made consistent with the public:
+     the spells the public state shows it cast added to its book (T8b: what the state keeps of
+     them), no book when it carries none, a war machine's skill at least Basic where it commands
+     the machine and none where it does not. Its public part (primary skills, mana and its
+     maximum, the round's casts) stays as observed;
+  2. the other side's hidden spell obstacles (BAT-MAG-031: the cast public, the hexes not)
+     placed again by their spell's rule, and a spell a random caster the viewer does not control
+     drew (BAT-MAG-049) drawn again by its rule, from the world's stream;
+  3. the battle's stream re-seeded, so no roll of the true stream is known. The defender's
+     Escape Tunnel stays as it is (retreat is masked).
+
+  A world reads nothing hidden: two states that differ only in what the viewer may not know give
+  the same world for a seed (T8b's test). Items 2 and 3 and writing a guessed private part live
+  where the hidden part is defined, `h3-battle` (`BattleState::determinized(viewer, guess,
+  seed)`, `reseed`; trusted tooling beside `observe`, `cross-lane` in T8b with the user's
+  consent); the guess in `h3-sim` (the sampler's hero draws).
+- **The search** (`h3env.search`): Gumbel AlphaZero (Danihelka et al., "Policy improvement by
+  planning with Gumbel", ICLR 2022), fit for a pretrained prior, few simulations and many
+  actions. At the root, Gumbel-top-k (16) full actions: entries by Gumbel-top-k over the entry
+  logits, a cast's heads by their Gumbel-perturbed argmax in order; sequential halving over them,
+  the action of the largest `g + logits + σ(q̂)`. Below the root, the deterministic selection of
+  the completed-Q improved policy. Chance and the hidden part are averaged open-loop: the tree is
+  keyed by action histories; a simulation takes a world (round robin over W) with a fresh stream
+  from the agent's own, forks it (`h3_env_fork`) and replays its path (`h3_env_step`); a node
+  keeps its first evaluation's prior and selects among the actions legal in the simulation's
+  world, renormalized. Values are the side to move's: reward v1 at a terminal, the value head at
+  a leaf.
+- **Batching:** the agent searches every env it moves at once: each simulation round evaluates
+  one leaf per env in one network call (the GPU's), so a decision costs N calls for the batch.
+- **Cost** (measured in T8b): a simulation steps its path through ctypes (a few steps) and reads
+  an observation and masks at its leaf; a world costs R hero draws (an encounter's hero about
+  50 µs, E05 T5b2). T8c's report set (3 000 battles per opponent, about 28 decisions each) at
+  N 32 is about 2.7 M simulations: tens of minutes on the user's machine; the sandbox plays a
+  subset.
+- **T8b, the plumbing:** C ABI v34 (`h3_batch_determinize`, `h3_env_reseed`), `h3-battle`'s
+  `determinized` and `reseed` (`cross-lane`), the bindings in `h3env.tools`, `h3env.search` (the
+  tree, the batched leaves, a `report` agent `search(policy, simulations, worlds, k)`). Tests:
+  a world is the same from states that differ only in the hidden part; a world plays to its end;
+  the guess agrees with the public part; a seed gives the same choices; `python -m
+  h3env.search --time` times a decision.
+- **T8c, the measurement:** the search agent with `t7-1`'s best (the user's file) at N 16 and 64
+  against the system actor and Greedy on the report set, and on the neutral set, beside the
+  sampled policy on the same episodes: win rate, value, cost per decision. T8d only if the search
+  gains beyond the intervals.
+- **T8d, expert iteration** (designed after T8c): the search's improved policy and value as the
+  trainer's targets.

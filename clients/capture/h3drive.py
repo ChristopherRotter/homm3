@@ -124,10 +124,15 @@ ROLLS = {
     "wall_miss_tie": (1, 100),  # a miss between two walls equally near: <= 50 the later
     "wall_retarget_tie": (1, 100),  # the next shot's target once its own fell: <= 50 the later
     "catapult_tie": (1, 1),   # random(1, k): the k-th of the weakest walls (automatic aim)
+    # Earthquake's (E17 M4 T2c-2): random(1, k) per hit, the k-th standing target with hit points
+    # left; `roll:quake_target:<a>,<b>,...` forces one hit's draw after the other.
+    "quake_target": (1, 1),
 }
 # How long `turn:` waits for the stack's turn (M3 T7a-2a): a human's stack waiting for an action
 # would keep the clock stepping for ever.
 TURN_LIMIT = 30000
+# The most values `roll:<name>:<a>,<b>,...` queues (xdd.c's QUEUE).
+QUEUE = 8
 
 
 class Unreadable(RuntimeError):
@@ -325,18 +330,28 @@ class Game:
     # -- the clock ----------------------------------------------------------------------------
     def ack(self):
         """xdd.dll's acknowledgement: the command's seq, the clock's time, the game's reads since,
-        and (M3 T7b-2b-1) the draws forced, the forced draws pending and the calls redirected."""
+        and (M3 T7b-2b-1) the draws forced, the forced draws pending and the calls redirected, and
+        (E17 M4 T3a) the roll commands and forced values it refused."""
         try:
             fields = [int(v) for v in (self.clock_dir / "ack").read_text().split()]
         except (OSError, ValueError):
             return None
-        return tuple(fields + [0] * (6 - len(fields))) if len(fields) >= 3 else None
+        return tuple(fields + [0] * (7 - len(fields))) if len(fields) >= 3 else None
 
     def roll(self, name, falls=True, count=1, value=None):
         """Forces the next `count` draws of the roll `name` (ROLLS) to make it fall, or fail (M3
-        T7b-2b-1), or (E17 M4 T2b) to return `value`."""
-        draw = ROLLS[name][0 if falls else 1] if value is None else value
-        self.clock(f"roll {name} {draw} {count}")
+        T7b-2b-1), or (E17 M4 T2b) to return `value`; a list of values (E17 M4 T2c-2) forces
+        the next draws to return them in order."""
+        if isinstance(value, list):
+            command = f"roll {name} {','.join(map(str, value))} {len(value)}"
+        else:
+            draw = ROLLS[name][0 if falls else 1] if value is None else value
+            command = f"roll {name} {draw} {count}"
+        # A command xdd.dll refuses stops here (E17 M4 T3a): it would force nothing.
+        before = (self.ack() or (0,) * 7)[6]
+        self.clock(command)
+        if self.ack()[6] > before:
+            raise RuntimeError(f"xdd.dll refused `{command}`")
 
     def rolls_fail(self, name):
         """Every other draw of the roll `name` fails it (M3 T7b-2b-1)."""
@@ -586,6 +601,7 @@ def run_set(rest):
         # Where the mouse rests (M3 T6c-1): the situation's point, else the parked one; the
         # viewer draws its cursor and hint there.
         mouse = tuple(sit.get("mouse", PARK))
+        walled = walls_args(sit)  # checked before the game starts (E17 M4 T3a)
         game, stacks = Game(here), []
         try:
             # The step into the battle (E17 M4 T1b): a siege's attacker stands south of the
@@ -605,7 +621,7 @@ def run_set(rest):
         # defender's turn in hot seat), a spectator's by default.
         seat = ["--seat", sit["seat"]] if "seat" in sit else []
         view([h3view, "render", str(scenario), "--out", str(ours), "--frames", str(here), *seat,
-              *walls_args(sit)])
+              *walled])
         changed = False
         for (at, frame), path in zip(sorted(frames.items()), paths):
             # The pixels' digest: an XWD file's colour map holds bytes the X server leaves unset.
@@ -657,15 +673,25 @@ def act(game, action):
     """One action at the frozen clock: hex:<n>, click:x,y, move:x,y, key:<name>, step:<ms>,
     cast:<k>[:<hex>] (M3 T7a-2a: the hero's spell book by its key C, its place k, then the target
     hex if the spell takes one), roll:<name>[:fail|:<n>][:<count>] (M3 T7b-2b-1: the roll's
-    next draw falls, or fails; E17 M4 T2b: or is n; its next <count> draws so; ROLLS)."""
+    next draw falls, or fails; E17 M4 T2b: or is n; its next <count> draws so; ROLLS; E17 M4
+    T2c-2: roll:<name>:<a>,<b>,... its next draws a, b, ... in order)."""
     kind, _, arg = action.partition(":")
     if kind == "roll":
         name, _, rest = arg.partition(":")
         how, _, count = rest.partition(":")
+        values = how.split(",") if "," in how else None
+        if values is not None:
+            # At most xdd.c's QUEUE values (E17 M4 T3a).
+            if (name not in ROLLS or count or len(values) > QUEUE
+                    or not all(v.isdigit() for v in values)):
+                raise ValueError(f"`{action}`: the rolls are {', '.join(ROLLS)}; `:<a>,<b>,...` "
+                                 f"(at most {QUEUE}) and no count")
+            game.roll(name, value=[int(v) for v in values])
+            return
         if (name not in ROLLS or not (how in ("", "fail") or how.isdigit())
-                or not (count == "" or count.isdigit())):
+                or not (count == "" or count.isdigit() and int(count) > 0)):
             raise ValueError(f"`{action}`: the rolls are {', '.join(ROLLS)}; `:fail`, `:<n>` or "
-                             "nothing, then `:<count>` or nothing")
+                             "nothing, then `:<count>` (at least 1) or nothing")
         game.roll(name, falls=how != "fail", count=int(count or 1),
                   value=int(how) if how.isdigit() else None)
     elif kind == "cast":
@@ -905,6 +931,11 @@ def sequence(game, map_path, out, pre=0, actions=(), ms=1000, screen=False, fram
     if rolls and game.ack()[4]:
         raise RuntimeError(f"{game.ack()[4]} forced draws no roll took (the states: "
                            f"{out / 'states.jsonl'})")
+    # A forced value outside its call's range was refused, the call's own draw taken (E17 M4
+    # T3a): not the sequence asked for.
+    if rolls and game.ack()[6]:
+        raise RuntimeError(f"xdd.dll refused {game.ack()[6]} forced values or commands (the "
+                           f"states: {out / 'states.jsonl'})")
     if frames:
         with open(out / "frames.jsonl", "w") as f:
             for s in states:
@@ -951,11 +982,18 @@ def sequence_command(map_path, out, rest):
 
 def walls_args(entry):
     """`h3-view render`'s `--walls` for a situation's wall states (E17 M4 T1b): the 18 parts'
-    picture states, then the gate's, as the harness writes them into the original."""
+    picture states, then the gate's, as the harness writes them into the original; checked
+    first (E17 M4 T3a): the original reads a part's picture by its state, so one past its five
+    reads another part's or no picture at all."""
     walls = entry.get("walls")
     if walls is None:
         return []
-    return ["--walls", ",".join(map(str, [*walls["parts"], walls["gate"]]))]
+    parts, gate = walls.get("parts"), walls.get("gate")
+    if (not isinstance(parts, list) or len(parts) != 18
+            or not all(isinstance(p, int) and 0 <= p <= 4 for p in parts)
+            or not (isinstance(gate, int) and 0 <= gate <= 3)):
+        raise ValueError(f"walls: 18 parts' states 0 to 4 and the gate's 0 to 3, not {walls}")
+    return ["--walls", ",".join(map(str, [*parts, gate]))]
 
 
 def only_one(selected, ident, where):

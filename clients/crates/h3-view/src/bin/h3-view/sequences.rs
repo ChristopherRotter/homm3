@@ -13,7 +13,7 @@ use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
 use h3_formats::lod::LodArchive;
-use h3_protocol::wire::{Command, Seat, ServerMessage, Side, Stack};
+use h3_protocol::wire::{Command, Seat, ServerMessage, Side};
 use h3_render::Bugs;
 use h3_view::anim::{self, Pose, Speed, Timeline};
 use h3_view::batch::{self, Batch};
@@ -332,7 +332,14 @@ fn sequences(options: &Options) -> Result<usize, String> {
         )
         .map_err(|e| format!("{}: {e}", sequence.id))?;
         let catalogue = log::catalogue(&tables, &archives, &exe)?;
-        let shown = pointer::shown(&record, &timeline, &turned, &inputs, &layout, &catalogue);
+        let shown = pointer::shown(
+            &record,
+            &timeline,
+            &turned,
+            &inputs,
+            (&layout, &catalogue),
+            (&tables, Bugs::Original),
+        );
 
         pointer::entered(
             &mut timeline,
@@ -480,17 +487,13 @@ pub(crate) fn draw_frames(
     let pointer = kept.mouse.map(|point| {
         (
             point,
-            mouse::pointer(snapshot, interface.legal, layout, point),
+            mouse::pointer(snapshot, interface.legal, layout, (point, Bugs::Original)),
         )
     });
     let status = match &pointer {
         Some((_, p)) => {
             let catalogue = log::catalogue(tables, archives, exe)?;
-            let name = |s: &Stack| {
-                let key = manifest.keys.creatures.get(usize::from(s.creature))?;
-                Some(format!("creature.{key}"))
-            };
-            Some(p.hint.text(&catalogue, snapshot, (&name, &|_| None)))
+            Some(pointer::hint_text(record, &catalogue, &p.hint, snapshot))
         }
         None => None,
     };
@@ -584,6 +587,10 @@ pub(crate) fn draw_frames(
         // *provisional*, the situations' battles write no lines; T6c-2 times it).
         let text = status.as_deref().unwrap_or_else(|| panels.text(frame.t));
         list.extend(panels.at_showing(snapshot, &timeline.turns, frame.t, layout, text));
+        // Earthquake's shake (E17 M4 T2c-2): the screen as it was, shifted; the cursor hidden.
+        if let Some(steps) = moment.shake {
+            list = vec![scene::shaken(list, steps, layout)];
+        }
         if let Some(shown) = interface.shown {
             // The cursor's frame now, drawn where the original's is (its memory), else at the
             // mouse; none while a ray hides it.

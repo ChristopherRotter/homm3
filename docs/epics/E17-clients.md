@@ -157,7 +157,9 @@ states; the Tower 26, without the moat).
   2026-10-24: T2c-1 the gate, the moat and a mine; T2c-2 Earthquake, the shots and the mouse): a
   defender out through the gate and back, a stack in the moat, a mine, Earthquake, a hero with
   Ballistics aiming the Catapult, a shot through the walls; the siege cursors.
-- **T3, M4's closure:** a fresh reviewer, every capture afresh, the review list, M5 refined.
+- **T3, M4's closure:** a fresh reviewer, every capture afresh, the review list, M5 refined
+  (cut in three by the user, 2026-10-26: T3a the reviewers' findings fixed, T3b every capture
+  afresh with the hovered item read, T3c the review list and M5).
 - **Exit:** the siege situations and sequences pass, or each difference is a listed fix or a
   classified quirk.
 - **T0 done 2026-10-23** ([log](E17-log.md#m4-t0--m4-sieges-refined-2026-10-23)): the cut
@@ -191,6 +193,17 @@ states; the Tower 26, without the moat).
   moat's damage and re-entry, a mine's blast mid-walk; `gate`, `gate-fortress`, `moat` and
   `mine` as recorded, their frames exact but the listed differences; found: a reaction's hold
   without a striker, a standing wall's hex taking a count box's place.
+- **T2c-2 done 2026-10-26** ([log](E17-log.md#m4-t2c-2--earthquake-the-shots-and-the-mouse-recorded-2026-10-26),
+  design §10.2 "Recorded (M4 T2c-2)"; not cut, the user): Earthquake (the shake copied, the
+  explosions over every target hit), the town's end tune, the siege's mouse (16, 22, the walls'
+  broken arrow); `quake`, `defended`, `aim` and `through` as recorded, their frames exact but the
+  listed differences; T2b's and T2c-1's nine with the Catapult's hint recaptured without their
+  ` log` masks; found: the status line kept at a hot-seat human turn with the mouse parked.
+- **T3a done 2026-10-26** ([log](E17-log.md#m4-t3a--m4s-review-the-reviewers-findings-fixed-2026-10-26);
+  T3 cut in three by the user): three fresh reviewers (the drawing and timeline, the mouse and
+  the adapters, the harness), 17 findings: 16 fixed (a hex's every entry played, no moat over a
+  flier, the turrets' shot sound, the rectangles by the fort, a still's wall names, the harness
+  refusing what it cannot force; tests and the format doc), R1-3 queued; review items 10 to 12.
 
 ### The adventure lane's harness (H1, H2: its batch E3)
 
@@ -275,4 +288,29 @@ M3 at its review, T9b). The next milestone's list starts here.
 5. The asset tables' `siege_sounds` (T2c-1: the drawbridge's and a mine's blast's, harvested by
    name) and the key family `moat` (ARRAYTXT's nine moat names by town type, keyed by faction).
 6. A siege's sounds in the window (T2c-1): the drawbridge's and the blast's play in category 2;
-   T2b's `WallHit` and `WallMiss` (category 0) are cued but not played yet (*provisional*).
+   T2b's `WallHit` and `WallMiss` (category 0) are cued but not played yet (*provisional*);
+   Earthquake's spell sound and `WallHit` are cued on no stack (T2c-2).
+7. The siege's mouse (T2c-2): the cursor's own tests know the acting stack by the asset tables'
+   original ids (the Catapult 145; the shooters the walls never halve, 34, 35, 136, 137, 149) and
+   the bows by the wire's `no_distance_penalty` (`pointer::legal`, the binary); a wire flag for
+   the walls' exemption would replace the ids (a protocol change, the server and battle lanes).
+   The wall-shot targets the cursor offers are the server's `ShootWall` commands.
+8. The key family `wall` (WALLS.TXT's parts by town type, `wall.<faction>.<part>` for the eight
+   targets' parts) and `battle.hint.turret` (GENRLTXT 157); the harness's forced values in order
+   (`roll:<name>:<a>,<b>,...`, `xdd.c`'s queue of 8) and its roll `quake_target` (T2c-2).
+9. Earthquake with the slip fixed (T2c-2): the damage before frame 5's redraw and shown everywhere
+   from it, as a wall shot's (the original's: after it, the new pictures from frame 6).
+10. The siege's mouse rectangles at a town without a fort (T3a, R2-2): none in the client's
+    profile, as outside a town (CLT-Q21's "a siege only" read as a town with a fort, as the
+    drawing reads it); the original's everywhere for the comparisons.
+11. The recorded siege timelines in the unit tests (T3a, R1-5): `keep`, `hit`, `missed`,
+    `automatic`, `quake`, `gate`, `moat` and `mine` replayed (CI, without the original data);
+    the others (`tower`, `cyclops`, `breach`, `gate-fortress`, `defended`, `aim`, `through`) by
+    `drawn`'s timeline check only (the original data); a turret facing right and the leftward
+    rows' wall strips tested on their own instead.
+12. The harness refuses what it cannot force (T3a, R3-1 to R3-4): `xdd.dll`'s ack gains a 7th
+    field, the refused roll commands and forced values; a forced value outside its call's
+    `random(a, b)` range is replaced by the call's own draw and fails the sequence; a new list
+    over a roll's undrawn one is refused; the wall states checked before a game starts (R3-5).
+    Queued (QUEUE's inbox, with a record that opens mid-battle): R1-3, the moat's strip by the
+    fixed moat rows.

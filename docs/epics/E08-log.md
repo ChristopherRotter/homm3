@@ -6022,3 +6022,168 @@ for 0x5D12B0.
 passed every step but `check-exe-map`. The one address it flagged, 0x4A39A0, got its entry in
 d1e4c1e, after which `check-exe-map`, `check-docs` and `check-lane` passed. `scripts/exe.py check`
 and `cited` came back clean.
+
+### Increment 7, round 1: T55a4, the common rules, batch E7's plan, the second reading and the checkpoint (2026-10-26, `adventure/e08-t55a4`)
+
+Baseline: `master` at ef3c34b (#479 merged; CI's last code run on `master`, 9215205, green; the
+scoped verify in the sandbox passed, `deny` skipped). The executable and `Objects.txt` staged from
+the user's repo folder (no LODs: docs only). At the start the user took **T55a4 whole** (decision
+128) over two or three parts.
+
+**The survey** (`docs/rules/surveys/E08-rewards.md`):
+
+- **§8, the common rules:** what a visit asks (§8.1: ten classes ask, the rest do not; a battle, the
+  rewards, the army dialog, then the experience and its level-ups), refuses or converts (§8.2: a
+  full backpack, no book, Wisdom, a known spell or skill, eight skills, gold, the level, a visit
+  made), what changes when (§8.3: at once, at the next step, at the owner's next turn, at the next
+  battle; a Knowledge gained leaves the spell points), what a player knows (§8.4), the hidden event
+  and the move (§8.5), the commands, decisions, events, observation, replays, benchmarks and env
+  (§8.6).
+- **§10** rewritten as T55b's inheritance (the import's changes with one new refusal, the draws, the
+  new hero state, the battles); **§11** batch E7's plan: 23 rows in two runs (E7a the pickups and
+  the teachers, E7b the boxes, events and the Pyramid), with what the harness and the spec lack;
+  **§12** the proposed rule ids (new families `ADV-TCH`, `ADV-RWD`; GAM-DEC-005, -006, ADV-MOV-011,
+  ADV-FOG-007, ADV-VIS-006, HER-CHG-003, HER-ADV-008); **§14** the checkpoint's questions.
+
+**The second reading** (§13): two fresh agents in turn, from questions per function and without the
+survey: A, nine questions on the pickups and the objects that teach; B, seven on the reward routine,
+the box, events, the pathfinder, the records and the Pyramid. Both confirmed the readings point by
+point, but:
+
+- **An RoE map's Witch Hut** gets the fixed mask 0xEFBF from the loader (0x5034BD, checked by T55a4):
+  14 skills, never Leadership, Necromancy or Water Magic to First Aid. T55a2 had read all 28. D-33
+  reshaped (VCMI's 26 against the code's 14), **A-21** (the editor's default cut to 16 bits).
+- **The Wagon's draws** come as r, the amount, the resource (§6.9 corrected; not a rule).
+- **The pathfinder makes an event's tile a stop for every colour** (`pathfinder_pass_through`'s
+  mouse mode answers no for every class but 33 and 212, checked by T55a4): a human's path never
+  crosses a hidden event and bends around it. §8.5 rewritten with two ways; **A-23**.
+- Smaller: the pool's later-edition bans, the lost artifact when nothing takes it, the combination
+  question's conditions, the 999 clamp that lowers a hero above it, **A-22** (a University's
+  negative range), **A-24** (the loader's creature count past seven).
+
+**The exe map:** four entries amended (`pathfinder_pass_through`, `load_object_body`, `load_rewards`,
+and `adventure_mouse_move` 0x40E360, which the map-client lane's #480 had mapped meanwhile: a
+merge conflict, its entry kept).
+
+**The checkpoint** (ADV-Q28, asked interactively; decisions 129–136): the disputes the code's side,
+confirmed or reverted by batch E7; A-21 a flag; A-23 a flag **only if row E7-23 confirms it** (the
+user is skeptical); batch E7 whole before the build; no original limits on objects and their state
+(the user: a map whose every tile is a box must work; A-17 and A-19 not reproduced and no smaller
+bound in their place); the tutorial not modelled; §8 as written; decision 104 for the pool and the
+scope confirmed. **T55a done**; T55b is ready.
+
+### Increment 7, round 1: T55b, the ADR amendment drafts, the design note and the cut (2026-10-26, `adventure/e08-t55b`)
+
+Baseline: `master` at b2d2653 (#482 merged; CI's last code run, on 7a8899c, green; the sandbox's
+light gates passed on code 3c4cd19, which CI had verified). Docs only; no original data staged.
+**T55b whole** (decision 137, the user's choice of four at the start: three parts recommended),
+one session and one pull request, as T44b.
+
+**The drafts** (`docs/lanes/adventure/adr-drafts/*-increment-7.md`): ADR-0013 points 1, 2 and a new
+15 (the battle bonuses in the details with their once-marks, reaching the battle through the
+hero's own morale and luck effects, no seam change; the hero changes `GainPrimary`, `RaiseSkill`,
+`Bonus`, `ClearBonuses`; the reward record's hero half in the original's order; what a teacher may
+teach; the backpack's count as the test for receiving an artifact); ADR-0016 points 1, 3, 4, 6 (the
+visits' state without the original's bounds; 31 classes as kinds; random contents at the build,
+the random artifacts first; refusals as outcomes; a won guards' battle's rest after its levels;
+events as hidden objects that stop a move, A-23 in `Reach` only if E7-23 confirms it; the
+visitor's owner's knowledge; events never observed); ADR-0017 points 1, 4, 6, 8–11 (the human flag
+and the spell and artifact bans in the setup; increment 7's draws; the new decisions; the
+University; the visit's rest; resources lost; T54's battle facts in point 11, decision 124's
+line; the bonuses cleared at every battle's end).
+
+**The design note** `E08-design.md` rewritten for increment 7: part A (§1 the data, §2 the hero
+changes, §3 `grant`, §4 the teachers' functions, §5 the bonuses in battle, §6 ids), part B (§7 the
+import, §8 the kinds, §9 the draws, §10 the state, §11 the visits, §12 events and the move, §13
+information), part C (§14 the decisions and typed answers, §15 the application, §16 the env,
+replays, fixtures, properties and benchmarks, §17 versions and ids, §18 batch E7, §19 the cut and
+the exit criteria, §20 risks).
+
+**Decision 133's measurement** (§10; a throwaway callgrind program in the sandbox on `BitGrid` and
+stand-in tables, release build, not committed): on the XL map's 41 472 objects a fork costs 19 Ir
+for the once-per-hero marks in one map by hero id (its first write 2 727, 7 973 and 26 233 Ir with
+8, 48 and 156 heroes) against 453 Ir with a set on each of eight heroes (13 % of today's 3 564 Ir
+`fork-xl-144` fork); the players' knowledge 20 Ir (2 238 on a write); today's army left, one
+ordered map behind an `Arc`, copies every entry on a write: 11 086 Ir at 30 entries, 388 877 at
+1 000, 16 459 140 at 41 472; a two-level table with shared armies 4 197 Ir at 41 472. Chosen (the
+agent's calls of decision 137): one block behind one `Arc` for the marks, the knowledge and the
+emptied finds; the army left a two-level table.
+
+**Findings of the design:** (1) the battle bonuses need no seam change: `morale_and_luck` already
+sums the own side's morale and luck, so the bonuses fold into it; (2) the original gives a won
+battle's levels before a box's, an artifact's or the Pyramid's rest, which matters when a level-up
+gives Wisdom or Learning: the game holds the rest (GAM-DEC-007); (3) an event's stop is the move's
+outcome in both profiles, also for a client's explicit path; A-23 changes only `Reach` (and so the
+legal moves); (4) an RoE hut's mask stays the map's fact (none), A-21 is the build's rule, so the
+import reads no profile; (5) A-20 fixed as a Pyramid without a spell, A-22 as a University
+offering what is left; (6) open for T62's start: the order of an event and a monster guarding its
+tile on one step. New ids beyond survey §12: GAM-SET-003, GAM-DEC-007, GAM-BAT-014.
+
+**The cut** (§19): eight rounds, batch E7 first and before the `shared/` task (T56 the maps and
+spec; T57 the harness, recipes and runs + T58 the scoring; T59 `shared/`; T60 `h3-heroes`; T61 the
+import, kinds, draws and state; T62 the visits; T63 `h3-game`; T64 the replays and gates + T65 the
+audit). T56 queued. The AI lane's inbox told of the typed answers and A-23's masks.
+
+**The checkpoint** (ADV-Q29, asked interactively; decisions 138–141): the drafts and the design
+accepted, but the user, on the ADR-0017 draft's `Answer` gaining `Buy(u8)`: "I think there should
+be specific types tailored to the choice to be made"; asked again, **every decision's answer typed
+by its kind**, increments 2 to 6's migrated in T63 (`h3-sim`'s action mapping `cross-lane`); the
+ADR-0017 draft's point 6 and the design's §14 rewritten. Batch E7, then shared, then the build;
+the University's purchase an answer (`University(Buy(slot))`); the levels before the visit's rest.
+**T55b done**; T56 is ready.
+
+### Increment 7, round 1: T56, batch E7's maps and specs (2026-10-26, `adventure/e08-t56`)
+
+**The cut** (decision 142): measured at the start (the writer's bodies, the bodiless classes, a
+monster's treasure and the RoE format about 800 to 1 000 lines with tests; the spec's fields 500 to
+700, `cross-lane`; the two specs about 1 000 lines of TOML), the user took T56 whole; the AI
+lane's one line (`treasure: None` in `crates/h3-cli/src/ai/tests.rs`) consented when asked.
+
+**The writer** (`h3_map::writer`, `writer/rewards.rs`): `RewardObject` with `RewardBody`
+(`Artifact` for classes 5 and 65–69, `Scroll` 93, `Shrine` 88–90, `WitchHut` 113, `Pandora` 6,
+`Event` 26), each with the body the reader reads: the message record (`Message`: text, guards),
+the reward record (the reader's `model::Rewards`), an event's players, computer and removal flags;
+`Monster::treasure` (`Treasure`: text, seven resources, the artifact); `PLAIN_OBJECTS` gains the
+Corpse, the Pyramid, the Learning Stone, the Treasure Chest, the University, the Wagon and the
+Warrior's Tomb; `write_in(map, Format::RoE)` writes version `0x0E` (no level limit, the RoE
+player block and hero body, 16 bytes of allowed heroes, one-byte codes, no Witch Hut body) and
+`Codes` per format refuses what RoE cannot hold (a level limit, banned skills, a town, a hero
+type, artifact or creature past 128, 127, 118, a hero's spells, primary skills or misc 5, a
+Witch Hut's skills, towns past eight factions). The SoD bytes are unchanged (extras' golden CRC
+holds); a monster of class 54 now needs a creature the format names. Tests: the layout of each
+body, every refusal, and `tests/rewards.rs` reading both formats back (every body equal to what
+was written) and importing them: the static layers validate; the SoD map stops at
+`Unsupported::MonsterArtifact` and imports whole without it; the RoE map imports whole with RoE's
+rules alone (`import::ROE`). Coverage 100 %.
+
+**The spec** (`h3-experiment`, battle-owned, `cross-lane`): `[[map.artifact]]` (`artifact` or
+`random` by class), `[[map.scroll]]`, `[[map.shrine]]`, `[[map.hut]]`, `[[map.pandora]]`,
+`[[map.event]]` with `text`, `guards` and `gives` (a reward record by names); `grid` on them and
+on `[[map.object]]`; an opponent monster's `treasure`; a hero's `fill_backpack` (to 64); `[map]
+format` (`map_format`, the binary writes with `write_in`); `Tables::rewards` (the reward classes'
+templates). `docs/experiments/README.md` documents them and lists batch E7 as staged.
+
+**The specs** (compiled with the staged tables; `original_data` on the three maps: every static
+layer imports and validates, E7b and the RoE map whole, E7a stops at E7-6's treasure artifact):
+`E08-batch-7a` (72 × 72; E7-1 to E7-6, E7-8 to E7-11; Red 8 heroes, three of them only naming
+the draw rows, Blue 2), `-7a-roe` (36 × 36, RoE; E7-7's 60 Witch Huts, two `defaults` heroes),
+`-7b` (36 × 36, every skill banned but Wisdom and Learning; E7-12 to E7-23; Red 7 heroes, Blue
+6). The run E7a is two maps (the plan's "row 7 on an RoE map of its own"); E7-5 and E7-10 visit
+only the objects whose word holds an artifact and a few controls; a new game without an artifact
+chest, Corpse or Wagon is restarted before playing. Not needed: the treasury setting the queue
+named ("gold": no row buys anything), the University dialog's reads (E7-9 reads +0x4E3CC).
+
+**The review** (a fresh agent against survey §11 and the sections the rows cite; eight findings,
+all taken): (1) D-40's prediction ran the wrong way: a weak army's ratio gives n = 7, so **E7-16
+predicts 5 (or 4) Gold stacks**, E7-22's strong army one stack of 40, as VCMI's (E7-16 settles
+D-40); (2) the Pyramid is entered (0x63AA58 does not list 63): E7-22 walks off after its win, E7-21
+steps off between its two visits; (3) E7-4's hero could not reach the stone on day 1: the stone
+moved to (18, 12), the hero given Expert Logistics, a next day allowed; (4) E7-11's hero could
+wear a Tomb's morale artifact: its backpack filled (the Tomb's −3 applies either way); (5) a 13 %
+chance of no artifact chest among 40: the restart rule; (6) a Witch Hut blocks and is visited on
+the tile west of its picture's corner: the RoE spec's labels moved there; (7) 0x63AA58 lists class
+26 among the "not entered" classes against §7.3's stop on the event's tile: E7-17, E7-18 and E7-23
+predict both (the record tells them apart; T58 settles it); (8) the spec's and the writer's docs
+said guards with an empty text fight at once, the wiki's side of D-29: reworded (by class).
+
+T57 (the harness and the runs) and T58 (the scoring) queued.

@@ -5,11 +5,13 @@
 use std::collections::BTreeSet;
 
 use h3_protocol::wire::{Command, Observation, Side, Stack};
+use h3_render::Bugs;
 use h3_view::anim::Timeline;
 use h3_view::layout::BattleLayout;
 use h3_view::mouse::track::{self, Input, Shown, Start, Turn};
-use h3_view::mouse::{Facing, Field, Hint, Legal};
+use h3_view::mouse::{CATAPULT, Facing, Field, Hint, Legal, WALL_EXEMPT};
 use h3_view::record::Record;
+use h3_view::tables::Tables;
 use h3_view::text::Catalogue;
 
 /// Where the harness parks the mouse (`h3drive.py`'s `PARK`): in the panel beside the log's item,
@@ -181,17 +183,48 @@ fn cast(arg: &str, (now, spell): (u32, u16), layout: &BattleLayout) -> Result<Ve
     Ok(out)
 }
 
+/// The acting stack's legal commands `commands` in `observation` as the cursor asks them, with
+/// what its own tests need of the stack (E17 M4 T2c-2): the Catapult, whether the walls halve its
+/// shots (its creature's original id by the asset tables `tables`, its hero's bow by the wire's
+/// `no_distance_penalty`).
+pub fn legal(
+    record: &Record,
+    tables: &Tables,
+    observation: &Observation,
+    commands: &[Command],
+) -> Legal {
+    let mut legal = Legal::new(commands);
+    let acting = observation
+        .active
+        .and_then(|id| observation.stacks.iter().find(|s| s.id == id));
+    if let Some(s) = acting {
+        let original = record
+            .header
+            .manifest
+            .keys
+            .creatures
+            .get(usize::from(s.creature))
+            .and_then(|key| tables.creatures.get(key))
+            .map(|c| c.original);
+        legal.catapult = original == Some(CATAPULT);
+        legal.wall_exempt =
+            s.no_distance_penalty || original.is_some_and(|o| WALL_EXEMPT.contains(&o));
+    }
+    legal
+}
+
 /// What the mouse shows over the record's battle as `timeline` plays it: `turned` the battle and
 /// its legal commands before each command and after the last (`scenario::turned`; none for a
 /// record without its scenario: the opening's battle then stands for every turn, with no legal
-/// commands), `inputs` what the mouse does; its hints in `catalogue`'s words.
+/// commands), `inputs` what the mouse does; its hints in `catalogue`'s words; the acting stacks'
+/// creatures by `tables` ([`legal`]), the profile `bugs` (the siege's rectangles, CLT-Q21).
 pub fn shown(
     record: &Record,
     timeline: &Timeline,
     turned: &[(Observation, Vec<Command>)],
     inputs: &[Input],
-    layout: &BattleLayout,
-    catalogue: &Catalogue,
+    (layout, catalogue): (&BattleLayout, &Catalogue),
+    (tables, bugs): (&Tables, Bugs),
 ) -> Shown {
     // The turns: the opening's, then each one the log starts, paired with the engine's battle
     // whose acting stack it is.
@@ -208,7 +241,9 @@ pub fn shown(
         let (observation, legal) = match found {
             Some(i) => {
                 next = i + 1;
-                (turned[i].0.clone(), Legal::new(&turned[i].1))
+                let (observation, commands) = &turned[i];
+                let legal = legal(record, tables, observation, commands);
+                (observation.clone(), legal)
             }
             None => {
                 let Some(mut observation) = snapshot.cloned() else {
@@ -233,6 +268,7 @@ pub fn shown(
                 observation,
                 legal,
                 facing,
+                bugs,
             },
             human: human(observation),
         })
@@ -242,20 +278,18 @@ pub fn shown(
         .iter()
         .map(|a| Start { unmarks: a.unmarks })
         .collect();
-    let keys = &record.header.manifest.keys.creatures;
-    let creature = |s: &Stack| {
-        let key = keys.get(usize::from(s.creature))?;
-        Some(format!("creature.{key}"))
-    };
-    let spells = &record.header.manifest.keys.spells;
-    let spell = |handle: u16| {
-        let key = spells.get(usize::from(handle))?;
-        Some(format!("spell.{key}"))
-    };
-    let name = |hint: &Hint, observation: &Observation| {
-        hint.text(catalogue, observation, (&creature, &spell))
-    };
-    track::follow(&timeline.log, &starts, &turns, inputs, layout, &name)
+    let name =
+        |hint: &Hint, observation: &Observation| hint_text(record, catalogue, hint, observation);
+    // Both sides played here (hot seat; E17 M4 T2c-2).
+    let hot_seat = snapshot.is_some_and(|o| o.sides.iter().all(|s| s.human));
+    track::follow(
+        &timeline.log,
+        &starts,
+        &turns,
+        inputs,
+        (layout, hot_seat),
+        &name,
+    )
 }
 
 /// The timeline with the stacks the mouse entered playing their group 1 ([`Timeline::enter`]): each
@@ -293,6 +327,31 @@ fn human(observation: &Observation) -> bool {
     };
     let side = usize::from(stack.controller == Side::Defender);
     observation.sides.get(side).is_some_and(|s| s.human)
+}
+
+/// A hint's text with the record's names, the window's and a still's alike (E17 M4 T3a, R2-3): a
+/// stack's creature (`creature.<key>`), a spell (`spell.<key>`), a town's wall part
+/// (`wall.<faction>.<part>`, E17 M4 T2c-2).
+pub fn hint_text(
+    record: &Record,
+    catalogue: &Catalogue,
+    hint: &Hint,
+    observation: &Observation,
+) -> String {
+    let keys = &record.header.manifest.keys;
+    let creature = |s: &Stack| {
+        let key = keys.creatures.get(usize::from(s.creature))?;
+        Some(format!("creature.{key}"))
+    };
+    let spell = |handle: u16| {
+        let key = keys.spells.get(usize::from(handle))?;
+        Some(format!("spell.{key}"))
+    };
+    let part = |faction: u16, part: usize| {
+        let key = keys.factions.get(usize::from(faction))?;
+        Some(format!("wall.{key}.{part}"))
+    };
+    hint.text(catalogue, observation, (&creature, &spell, &part))
 }
 
 #[cfg(test)]
@@ -336,6 +395,78 @@ mod tests {
         assert_eq!(untargeted[1], Input::Book { at: 0 });
         for bad in ["12", "x", "0:x", "-1:4"] {
             assert!(cast(bad, (0, 54), &layout).is_err(), "{bad}");
+        }
+    }
+
+    #[test]
+    fn the_acting_stack_s_own_tests_follow_its_creature() {
+        // E17 M4 T3a, R2-6: the Catapult by its original id (145), the shooters the walls never
+        // halve (34, 35, 136, 137, 149, the asset tables' ids) and a hero's bow
+        // (`no_distance_penalty`); a handle the manifest lacks neither.
+        use h3_protocol::wire::Seat;
+        let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+        let tables = crate::assets::load(&dir.join("assets"), crate::assets::ALL).unwrap();
+        let text = crate::scenario::record_of(
+            &dir.join("situations/seq-keep.toml"),
+            &dir.join("../packs"),
+            108,
+            Seat::Spectator,
+        )
+        .unwrap();
+        let record = h3_view::record::parse(&text).unwrap();
+        let mut o = record.first_snapshot().unwrap().clone();
+        let at = o.stacks.iter().position(|s| s.hex < 187).unwrap();
+        o.active = Some(o.stacks[at].id);
+        let keys = &record.header.manifest.keys.creatures;
+        let handle = |key: &str| {
+            let i = keys.iter().position(|k| k == key).unwrap();
+            u16::try_from(i).unwrap()
+        };
+        let tested = |creature: u16, bow: bool| {
+            let mut o = o.clone();
+            o.stacks[at].creature = creature;
+            o.stacks[at].no_distance_penalty = bow;
+            let l = legal(&record, &tables, &o, &[]);
+            (l.catapult, l.wall_exempt)
+        };
+        assert_eq!(tested(handle("base:catapult"), false), (true, false));
+        // (The record's packs are the base game's: the AB's 136 and 137 by the same list.)
+        for exempt in ["base:mage", "base:arch_mage"] {
+            assert_eq!(tested(handle(exempt), false), (false, true), "{exempt}");
+        }
+        assert_eq!(tested(handle("base:archer"), false), (false, false));
+        assert_eq!(tested(handle("base:archer"), true), (false, true));
+        assert_eq!(tested(u16::MAX, false), (false, false));
+    }
+
+    #[test]
+    fn the_cursor_s_shot_line_steps_as_the_engine_s_x87() {
+        // E17 M4 T2c-2: the library's integer axis (`h3_view::mouse::line`) against the x87's
+        // steps as the engine computes them (`h3_kernel::arith::X87`, its own test of the same):
+        // every start, difference and longer difference of the field.
+        use h3_kernel::arith::{DOUBLE_BITS, SINGLE_BITS, X87};
+        use h3_view::mouse::line::Axis;
+        for long in 1..=16u32 {
+            let reach = i32::try_from(long).unwrap();
+            for d in -reach..=reach {
+                let unit = X87::ratio(d.unsigned_abs(), long, DOUBLE_BITS)
+                    .unwrap()
+                    .round(SINGLE_BITS);
+                let by = unit.over(X87::int(17)).unwrap().round(SINGLE_BITS);
+                for from in 0..=16i32 {
+                    let mut x87 = X87::int(u64::from(from.unsigned_abs()));
+                    let mut axis = Axis::new(from, d, long);
+                    for step in 0..17 * long {
+                        x87 = if d < 0 { x87.minus(by) } else { x87.plus(by) }.round(SINGLE_BITS);
+                        let column = axis.advance();
+                        assert_eq!(
+                            (axis.position(), i64::from(column)),
+                            (x87.to_fixed(), i64::try_from(x87.trunc()).unwrap()),
+                            "from {from}, difference {d} of {long}, step {step}"
+                        );
+                    }
+                }
+            }
         }
     }
 }

@@ -6,7 +6,11 @@ use std::path::Path;
 use h3_formats::exe;
 use h3_formats::lod::LodArchive;
 use h3_formats::text::{TextTable, decode_windows_1252};
-use h3_map::writer::{ARTIFACT_SLOTS, GROUND_OBJECTS, ObjectTemplate, PLAIN_OBJECTS, TOWN_OBJECT};
+use h3_map::writer::{
+    ARTIFACT_OBJECT, ARTIFACT_SLOTS, EVENT_OBJECT, GROUND_OBJECTS, ObjectTemplate, PANDORA_OBJECT,
+    PLAIN_OBJECTS, RANDOM_ARTIFACT_OBJECTS, SCROLL_OBJECT, SHRINE_OBJECTS, TOWN_OBJECT,
+    WITCH_HUT_OBJECT,
+};
 
 /// Object class of a fixed wandering monster (subclass = creature id).
 const MONSTER_CLASS: u32 = 54;
@@ -83,6 +87,25 @@ pub struct Tables {
     pub plains: Vec<ObjectTemplate>,
     /// Town templates (`Objects.txt`, class [`TOWN_OBJECT`]) as (faction, template; E04c T5b).
     pub towns: Vec<(u32, ObjectTemplate)>,
+    /// Templates of the objects that hand a visiting hero something, with a body (`Objects.txt`,
+    /// the classes of [`is_reward`]; E08 T56), in the file's order.
+    pub rewards: Vec<ObjectTemplate>,
+}
+
+/// Whether the writer's reward objects take this class (E08 T56): an artifact (5), a random
+/// artifact (65–69), Pandora's Box (6), an event (26), a Shrine (88–90), a Spell Scroll (93), a
+/// Witch Hut (113).
+pub fn is_reward(class: u32) -> bool {
+    [
+        ARTIFACT_OBJECT,
+        PANDORA_OBJECT,
+        EVENT_OBJECT,
+        SCROLL_OBJECT,
+        WITCH_HUT_OBJECT,
+    ]
+    .contains(&class)
+        || RANDOM_ARTIFACT_OBJECTS.contains(&class)
+        || SHRINE_OBJECTS.contains(&class)
 }
 
 impl Tables {
@@ -207,6 +230,11 @@ impl Tables {
             .filter(|t| PLAIN_OBJECTS.contains(&t.class))
             .cloned()
             .collect();
+        let rewards = templates
+            .iter()
+            .filter(|t| is_reward(t.class))
+            .cloned()
+            .collect();
         Ok(Self {
             creatures: names(creatures),
             heroes,
@@ -223,6 +251,7 @@ impl Tables {
             grounds,
             plains,
             towns,
+            rewards,
         })
     }
 

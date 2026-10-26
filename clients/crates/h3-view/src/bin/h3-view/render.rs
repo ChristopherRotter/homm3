@@ -107,7 +107,7 @@ impl Options {
         if at.is_some() && frames.is_some() {
             return Err("render: --at or --frames, not both".into());
         }
-        Ok(Self {
+        let options = Self {
             input: input.ok_or("render: which scenario or record?")?,
             seed,
             packs: packs.unwrap_or_else(|| manifest.join("../../../packs")),
@@ -121,7 +121,12 @@ impl Options {
             frames,
             seat,
             walls,
-        })
+        };
+        // A record keeps the seat it was recorded from (E17 M4 T3a, R2-4).
+        if options.seat != Seat::Spectator && !options.scenario() {
+            return Err("render: --seat runs a scenario; a record keeps its own seat".into());
+        }
+        Ok(options)
     }
 
     /// Whether the input is a scenario file (else a record).
@@ -299,7 +304,7 @@ fn render(options: &Options) -> Result<Vec<String>, String> {
         };
         let interface = crate::sequences::Interface {
             panels: &panels,
-            legal: &h3_view::mouse::Legal::new(&legal),
+            legal: &crate::pointer::legal(&record, &tables, observation, &legal),
             shown: None,
             walls: options.walls,
         };
@@ -357,8 +362,14 @@ fn render(options: &Options) -> Result<Vec<String>, String> {
                 at: 0,
                 to: crate::pointer::PARK,
             }];
-            let shown =
-                crate::pointer::shown(&record, &timeline, &[], &parked, &layout, &catalogue);
+            let shown = crate::pointer::shown(
+                &record,
+                &timeline,
+                &[],
+                &parked,
+                (&layout, &catalogue),
+                (&tables, Bugs::Fixed),
+            );
             let panels = crate::log::panels(
                 &record,
                 &shown.log,
@@ -457,6 +468,7 @@ mod tests {
         }
         for bad in [
             &["a.toml", "--seat", "spectator"][..],
+            &["r.jsonl", "--seat", "defender"],
             &["a.toml", "--walls", "1,2,3"],
             &["a.toml", "--walls", ""],
             &["a.toml", "--walls", "x"],

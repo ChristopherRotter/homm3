@@ -5,9 +5,13 @@ use alloc::string::ToString;
 use alloc::vec;
 use alloc::vec::Vec;
 
-use h3_protocol::wire::{Command, Hero, Observation, Side, Stack, Tactics};
+use h3_protocol::wire::{Command, Hero, Observation, Side, Siege, Stack, Tactics};
+use h3_render::Bugs;
 
-use super::{Hint, Kind, Legal, Pointer, Spot, distance, neighbour, pointer, slot, slots, spot};
+use super::{
+    Facing, Field, Hint, Kind, Legal, Pointer, Spot, distance, neighbour, pointer, pointer_in,
+    slot, slots, spot, walls_halve,
+};
 use crate::layout::{BattleLayout, parse_battle};
 use crate::record::tests::observation;
 use crate::scene::Draw;
@@ -27,12 +31,14 @@ const PACK: &str = r#"{
             "heal": "Mend {{creature}}",
             "no-shots": "Empty!",
             "cast-on": "Zap {{creature}} with {{spell}}",
-            "cast": "Zap {{spell}}"
+            "cast": "Zap {{spell}}",
+            "turret": "Tower."
         },
         "control": { "wait": "Hold" }
     },
     "creature": { "t:ant_one": "Ant", "t:ant_other": "Ants" },
-    "spell": { "t:slow": "Slow" }
+    "spell": { "t:slow": "Slow" },
+    "wall": { "t:castle": { "6": "Top Wall" } }
 }"#;
 
 pub(super) fn layout() -> BattleLayout {
@@ -86,37 +92,37 @@ pub(super) fn centre(hex: u8) -> [i32; 2] {
 }
 
 fn at(o: &Observation, commands: &[Command], point: [i32; 2]) -> Pointer {
-    pointer(o, &Legal::new(commands), &layout(), point)
+    pointer(o, &Legal::new(commands), &layout(), (point, Bugs::Fixed))
 }
 
 #[test]
 fn the_mouse_finds_hexes_heroes_and_nothing() {
     let l = layout();
-    assert_eq!(spot(&l, [0, 16]), Spot::Hero(Side::Attacker));
-    assert_eq!(spot(&l, [57, 127]), Spot::Hero(Side::Attacker));
-    assert_eq!(spot(&l, [799, 16]), Spot::Hero(Side::Defender));
-    assert_eq!(spot(&l, [58, 127]), Spot::Hex(0));
+    assert_eq!(spot(&l, [0, 16], false), Spot::Hero(Side::Attacker));
+    assert_eq!(spot(&l, [57, 127], false), Spot::Hero(Side::Attacker));
+    assert_eq!(spot(&l, [799, 16], false), Spot::Hero(Side::Defender));
+    assert_eq!(spot(&l, [58, 127], false), Spot::Hex(0));
     for hex in [0, 18, 86, 90, 186] {
-        assert_eq!(spot(&l, centre(hex)), Spot::Hex(hex));
+        assert_eq!(spot(&l, centre(hex), false), Spot::Hex(hex));
     }
     // Above a box's slanted edge: from odd row 1 into even row 0 on the left (a column less), from
     // even row 2 into odd row 1 on the right (a column more); on the right of row 1 and the left
     // of row 2 the column stays.
-    assert_eq!(spot(&l, [60, 130]), Spot::Hex(0));
-    assert_eq!(spot(&l, [100, 130]), Spot::Hex(1));
-    assert_eq!(spot(&l, [120, 172]), Spot::Hex(19));
-    assert_eq!(spot(&l, [82, 172]), Spot::Hex(18));
+    assert_eq!(spot(&l, [60, 130], false), Spot::Hex(0));
+    assert_eq!(spot(&l, [100, 130], false), Spot::Hex(1));
+    assert_eq!(spot(&l, [120, 172], false), Spot::Hex(19));
+    assert_eq!(spot(&l, [82, 172], false), Spot::Hex(18));
     // Below the edge the hex's own row.
-    assert_eq!(spot(&l, [80, 137]), Spot::Hex(18));
+    assert_eq!(spot(&l, [80, 137], false), Spot::Hex(18));
     // Off the field: above row 0's edge, left of row 1's first box's edge, an even row's first
     // 22 pixels, outside the boxes.
-    assert_eq!(spot(&l, [70, 87]), Spot::Nothing);
-    assert_eq!(spot(&l, [16, 130]), Spot::Nothing);
-    assert_eq!(spot(&l, [5, 200]), Spot::Nothing);
-    assert_eq!(spot(&l, [20, 200]), Spot::Nothing);
-    assert_eq!(spot(&l, [100, 60]), Spot::Nothing);
-    assert_eq!(spot(&l, [100, 86 + 472]), Spot::Nothing);
-    assert_eq!(spot(&l, [14 + 748, 300]), Spot::Nothing);
+    assert_eq!(spot(&l, [70, 87], false), Spot::Nothing);
+    assert_eq!(spot(&l, [16, 130], false), Spot::Nothing);
+    assert_eq!(spot(&l, [5, 200], false), Spot::Nothing);
+    assert_eq!(spot(&l, [20, 200], false), Spot::Nothing);
+    assert_eq!(spot(&l, [100, 60], false), Spot::Nothing);
+    assert_eq!(spot(&l, [100, 86 + 472], false), Spot::Nothing);
+    assert_eq!(spot(&l, [14 + 748, 300], false), Spot::Nothing);
 }
 
 #[test]
@@ -390,7 +396,7 @@ fn hints_are_worded_by_the_catalogue() {
     let c = catalogue();
     let name = |s: &Stack| (s.id != 2).then(|| "creature.t:ant".to_string());
     let spell = |h: u16| (h == 54).then(|| "spell.t:slow".to_string());
-    let text = |h: Hint| h.text(&c, &o, (&name, &spell));
+    let text = |h: Hint| h.text(&c, &o, (&name, &spell, &|_, _| None));
     // E17 M3 T7b-1: a spell aimed at a stack, at no stack; an unknown spell named by nothing.
     assert_eq!(text(Hint::Cast(54, Some(1))), "Zap Ants with Slow");
     assert_eq!(text(Hint::Cast(54, None)), "Zap Slow");
@@ -410,4 +416,206 @@ fn hints_are_worded_by_the_catalogue() {
     assert_eq!(text(Hint::View(2)), "See .");
     assert_eq!(text(Hint::View(9)), "See .");
     assert!(!Hint::Move(0).forced());
+}
+
+/// A siege of a town of `fort` (E17 M4 T2c-2): the attacker's Catapult (4, its war machine on
+/// 119) and Archers (0, on 88), the defender's Hobgoblins (1, on 98) inside the walls; the gate
+/// closed, every wall standing.
+fn siege(fort: u8) -> Observation {
+    let mut o = battle();
+    let mut catapult = stack(4, Side::Attacker, 0, 119, true);
+    catapult.war_machine = true;
+    let mut archers = stack(0, Side::Attacker, 0, 88, false);
+    archers.shooter = true;
+    archers.shots = 12;
+    o.stacks = vec![archers, stack(1, Side::Defender, 0, 98, false), catapult];
+    o.siege = Some(Siege {
+        faction: 0,
+        fort,
+        moat: 0,
+        gate_open: false,
+        walls: vec![12, 29, 45, 62, 78, 96, 112, 130, 147, 165, 182],
+        moat_hexes: Vec::new(),
+        parts: vec![2; 8],
+    });
+    o
+}
+
+/// The Catapult's legal commands: a shot at each target in `standing`.
+fn catapult(standing: &[u8]) -> Legal {
+    let shots: Vec<Command> = standing
+        .iter()
+        .map(|&part| Command::ShootWall { part })
+        .collect();
+    let mut legal = Legal::new(&shots);
+    legal.catapult = true;
+    legal
+}
+
+/// The mouse at `point` in `o` for `legal`, the profile `bugs`.
+fn siege_at(o: &Observation, legal: &Legal, point: [i32; 2], bugs: Bugs) -> Pointer {
+    let field = Field {
+        observation: o,
+        legal,
+        facing: &Facing::Sides,
+        bugs,
+    };
+    pointer_in(&field, &layout(), point, &mut Some(1))
+}
+
+const KEEP: [i32; 2] = [770, 250];
+const TOWER: [i32; 2] = [600, 40];
+
+#[test]
+fn the_siege_rectangles_take_the_mouse_in_a_siege_or_the_original_s() {
+    // E17 M4 T2c-2 (CLT-Q21): the keep's 742–799 × 160–337, the upper tower's 564–651 × 0–85,
+    // bounds inclusive, after the heroes'.
+    let l = layout();
+    assert_eq!(spot(&l, [742, 160], true), Spot::Keep);
+    assert_eq!(spot(&l, [799, 337], true), Spot::Keep);
+    assert_eq!(spot(&l, [564, 0], true), Spot::Tower);
+    assert_eq!(spot(&l, [651, 85], true), Spot::Tower);
+    assert_eq!(spot(&l, [799, 127], true), Spot::Hero(Side::Defender));
+    assert_ne!(spot(&l, [741, 200], true), Spot::Keep);
+    assert_ne!(spot(&l, [652, 40], true), Spot::Tower);
+    // Outside a siege the client finds the hex below; the original's rectangles take the mouse
+    // in every battle (kind 0 there), marking no stack.
+    let mut o = battle();
+    o.stacks.push(stack(5, Side::Defender, 0, 84, false));
+    let point = centre(84);
+    assert_eq!(spot(&l, point, true), Spot::Keep);
+    assert_eq!(spot(&l, point, false), Spot::Hex(84));
+    let legal = Legal::new(&[]);
+    let fixed = siege_at(&o, &legal, point, Bugs::Fixed);
+    assert_eq!(fixed.marked, Some(5));
+    let original = siege_at(&o, &legal, point, Bugs::Original);
+    assert_eq!((original.kind, original.marked), (Kind::Nothing, None));
+    // A town without a fort is no siege (R2-2): the hex below, as outside a town.
+    let mut town = siege(0);
+    town.stacks.push(stack(5, Side::Defender, 0, 84, false));
+    assert_eq!(siege_at(&town, &legal, point, Bugs::Fixed).marked, Some(5));
+    let original = siege_at(&town, &legal, point, Bugs::Original);
+    assert_eq!((original.kind, original.marked), (Kind::Nothing, None));
+}
+
+#[test]
+fn the_catapult_aims_at_the_standing_targets() {
+    // E17 M4 T2c-2: a Castle, every target standing: the rectangles and the aim hexes give the
+    // Catapult's target (16) and "Attack %s" with the part; the stack target cleared.
+    let o = siege(3);
+    let all = catapult(&[0, 1, 2, 3, 4, 5, 6, 7]);
+    let aim = |point| siege_at(&o, &all, point, Bugs::Fixed);
+    for (point, t) in [
+        (TOWER, 0),
+        (centre(29), 1),
+        (centre(62), 2),
+        (centre(96), 3),
+        (centre(130), 4),
+        (centre(182), 5),
+        (centre(183), 6),
+        (KEEP, 7),
+    ] {
+        let p = aim(point);
+        assert_eq!(
+            (p.kind, p.frame, p.hint),
+            (Kind::Wall, 16, Hint::Wall(t)),
+            "{t}"
+        );
+    }
+    // Over a stack, the Catapult aims as over an empty hex: nothing to do on the Archers.
+    let p = aim(centre(88));
+    assert_eq!((p.kind, p.marked), (Kind::Nothing, Some(0)));
+    // A target down: its rectangle shows the turret's info (22, the query's frame), its aim hex
+    // nothing but the lower tower's hex, which shows its info.
+    let some = catapult(&[1, 2, 3, 4, 5]);
+    for point in [TOWER, KEEP, centre(183)] {
+        let p = siege_at(&o, &some, point, Bugs::Fixed);
+        assert_eq!((p.kind, p.frame, p.hint), (Kind::Turret, 5, Hint::Turret));
+    }
+    let gone = catapult(&[1, 3, 4, 5]);
+    assert_eq!(
+        siege_at(&o, &gone, centre(62), Bugs::Fixed).kind,
+        Kind::Nothing
+    );
+    // A Citadel: no upper tower (its rectangle nothing), the keep a target; a Fort: neither.
+    let citadel = siege(2);
+    let p = |o: &Observation, point| siege_at(o, &all, point, Bugs::Fixed).kind;
+    assert_eq!(
+        (
+            p(&citadel, TOWER),
+            p(&citadel, KEEP),
+            p(&citadel, centre(183))
+        ),
+        (Kind::Nothing, Kind::Wall, Kind::Nothing)
+    );
+    let fort = siege(1);
+    assert_eq!(
+        (p(&fort, TOWER), p(&fort, KEEP)),
+        (Kind::Nothing, Kind::Nothing)
+    );
+    assert_eq!(p(&fort, centre(29)), Kind::Wall);
+    // The kinds' numbers: the cursor's frame for 16, the query's for 22.
+    assert_eq!((Kind::Wall.code(), Kind::Turret.code()), (16, 22));
+}
+
+#[test]
+fn the_walls_halve_a_shot_through_them() {
+    // E17 M4 T2c-2 (`shot_wall_test` 0x467510): the Archers on 88 outside, the Hobgoblins on 98
+    // inside, 10 hexes apart: only the closed gate on the line halves the shot, the broken
+    // arrow (15).
+    let mut o = siege(3);
+    o.active = Some(0);
+    let mut legal = Legal::new(&[Command::Shoot { target: 1, at: 98 }]);
+    let over = |o: &Observation, legal: &Legal| siege_at(o, legal, centre(98), Bugs::Fixed);
+    let p = over(&o, &legal);
+    assert_eq!(
+        (p.kind, p.frame, p.hint),
+        (Kind::BrokenArrow, 15, Hint::Attack(1))
+    );
+    // The gate open: a shot in full; a shooter the walls never halve, too.
+    let mut open = o.clone();
+    open.siege.as_mut().unwrap().gate_open = true;
+    assert_eq!(over(&open, &legal).kind, Kind::Shoot);
+    legal.wall_exempt = true;
+    assert_eq!(over(&o, &legal).kind, Kind::Shoot);
+    // The test itself: outside to inside, a fort, a wall on the line.
+    let s = o.siege.clone().unwrap();
+    assert!(walls_halve(&s, 88, 98));
+    assert!(!walls_halve(&s, 88, 95));
+    assert!(!walls_halve(&s, 97, 98));
+    let mut none = s.clone();
+    none.fort = 0;
+    assert!(!walls_halve(&none, 88, 98));
+    // Hex 187 and beyond have no row's wall.
+    assert!(!walls_halve(&s, 200, 98));
+    assert!(!walls_halve(&s, 88, 200));
+    // A turret's shot is never halved (the arrow tower, 0x4767B4).
+    let mut turret = stack(5, Side::Defender, 0, 254, false);
+    turret.war_machine = true;
+    let mut t = siege(3);
+    t.stacks.push(turret);
+    t.active = Some(5);
+    let shoot = Legal::new(&[Command::Shoot { target: 0, at: 88 }]);
+    assert_eq!(
+        siege_at(&t, &shoot, centre(88), Bugs::Fixed).kind,
+        Kind::Shoot
+    );
+}
+
+#[test]
+fn the_siege_s_hints_name_the_walls_and_the_turrets() {
+    // E17 M4 T2c-2: "Attack %s" with the target's part's name for the town's type (the upper
+    // wall, target 1, is part 6); "View arrow tower info".
+    let o = siege(3);
+    let c = catalogue();
+    let part = |_, p: usize| Some(alloc::format!("wall.t:castle.{p}"));
+    let named = |h: Hint| h.text(&c, &o, (&|_| None, &|_| None, &part));
+    assert_eq!(named(Hint::Wall(1)), "Hit Top Wall");
+    assert_eq!(named(Hint::Turret), "Tower.");
+    assert!(!Hint::Wall(1).forced() && !Hint::Turret.forced());
+    // Outside a siege, or a target without a part, no name.
+    let plain = battle();
+    let text = |o: &Observation, h: Hint| h.text(&c, o, (&|_| None, &|_| None, &|_, _| None));
+    assert_eq!(text(&plain, Hint::Wall(1)), "Hit ");
+    assert_eq!(text(&o, Hint::Wall(9)), "Hit ");
 }

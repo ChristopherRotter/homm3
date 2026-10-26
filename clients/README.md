@@ -194,7 +194,11 @@ on the M1 review list):
   `resist_sound` (a spell resisted by the stack it was aimed at; M3 T7b-1) and
   `good_morale_sound`, `bad_morale_sound`, `fear_sound`, `luck_sound` (the rolled effects over a
   stack; M3 T7b-2b-2b, optional, entry names without an extension), `drain_sound`,
-  `thunderbolt_sound` (Life Drain's and the Thunderbird's bolt's; M3 T7b-2b-3, optional).
+  `thunderbolt_sound` (Life Drain's and the Thunderbird's bolt's; M3 T7b-2b-3, optional),
+  `wall_explosions` (a wall shot's two explosion DEFs: a shot with damage's, then one without;
+  M4 T2b), `wall_sounds` (their landings' sounds, the same order) and `siege_sounds` (the
+  drawbridge's and a Land Mine's blast; M4 T2c-1), each optional, the sounds entry names without
+  an extension (a siege without them draws no explosion and plays no such sound).
 - `[[creature]]`: `key`, `original` (its original id, the executable's creature number: its
   record among `crtraits.txt`'s creature rows; M3 T4b-1), `def` (the battle sprite), `times` (`cranim.txt`'s fidget interval, walk,
   attack and flight distance as the executable keeps them: scaled by 9000, 500, 500, 115 and

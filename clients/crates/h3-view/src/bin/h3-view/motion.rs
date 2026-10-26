@@ -56,12 +56,7 @@ pub fn looks(
             (entry, entry.missile.clone())
         } else {
             let town = town(record, tables)?;
-            let entry = tables
-                .creatures
-                .values()
-                .find(|c| c.original == town.turrets.shooter)
-                .ok_or_else(|| format!("creature {}", town.turrets.shooter))?;
-            (entry, Some(town.turrets.missile.clone()))
+            (shooter(town, tables)?, Some(town.turrets.missile.clone()))
         };
         looks.insert(
             stack.creature,
@@ -71,8 +66,18 @@ pub fn looks(
     Ok(looks)
 }
 
+/// The creature the town's turrets show (its shooter by its original id): their look and their
+/// shot's sound (E17 M4 T3a, R2-1).
+pub fn shooter<'t>(town: &Town, tables: &'t Tables) -> Result<&'t Creature, String> {
+    tables
+        .creatures
+        .values()
+        .find(|c| c.original == town.turrets.shooter)
+        .ok_or_else(|| format!("creature {}", town.turrets.shooter))
+}
+
 /// The town of a siege the record's battle is fought at.
-fn town<'t>(record: &Record, tables: &'t Tables) -> Result<&'t Town, String> {
+pub fn town<'t>(record: &Record, tables: &'t Tables) -> Result<&'t Town, String> {
     let siege = record
         .first_snapshot()
         .and_then(|s| s.siege.as_ref())

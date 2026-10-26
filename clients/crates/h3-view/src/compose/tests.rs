@@ -842,3 +842,48 @@ fn a_list_within_a_rectangle_draws_there_alone() {
     }];
     assert!(compose(&missing, &batch(), &small()).is_err());
 }
+
+#[test]
+fn a_shaken_list_is_copied_at_each_offset_over_the_step_before() {
+    // E17 M4 T2c-2 (Earthquake, CLT-Q19 (6)): the saved frame (blue, green at (2, 0)) copied
+    // right by one, then left by one and down by one, over the copy before: what an offset
+    // uncovers keeps the step before's pixels; the rectangle shown over the saved frame.
+    let saved = vec![
+        Draw::Background {
+            picture: "bg.pcx".to_string(),
+            x: 0,
+            y: 0,
+        },
+        Draw::AbsoluteObstacle {
+            picture: "abs.pcx".to_string(),
+            x: 1,
+            y: 0,
+        },
+    ];
+    let [b, g] = [BLUE, GREEN].map(|c| FORMAT.pack(c));
+    let shaken = |offsets: Vec<[i32; 2]>, rect| {
+        let list = [Draw::Shaken {
+            offsets,
+            rect,
+            list: saved.clone(),
+        }];
+        compose(&list, &batch(), &small()).unwrap()
+    };
+    let one = shaken(vec![[1, 0]], [0, 0, 6, 1]);
+    assert_eq!(one.pixels(), [b, b, b, g, b, b, b, b, b, b, b, b]);
+    let two = shaken(vec![[1, 0], [-1, 1]], [0, 0, 6, 2]);
+    assert_eq!(two.pixels(), [b, b, b, g, b, b, b, g, b, b, b, b]);
+    // Its rectangle clipped to the frame; what its list lacks is an error.
+    let none = shaken(vec![], [-5, -5, 50, 50]);
+    assert_eq!(none.pixels(), [b, b, g, b, b, b, b, b, b, b, b, b]);
+    let missing = [Draw::Shaken {
+        offsets: vec![],
+        rect: [0, 0, 1, 1],
+        list: vec![Draw::Background {
+            picture: "none.pcx".to_string(),
+            x: 0,
+            y: 0,
+        }],
+    }];
+    assert!(compose(&missing, &batch(), &small()).is_err());
+}

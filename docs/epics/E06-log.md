@@ -748,3 +748,135 @@ entry only where a task builds on it.
 - **Tests:** `test_run.py` (the refusals, the curve's `system`, the line),
   `test_train.py` (`episode_entries` at `t7-1`'s kinds; a trainer at a half: the system actor
   on both sides, never to move, no member, no self-play rates, its score by side, an update).
+
+## T6c — The A/B run `t6b-1`: the system actor as an opponent (2026-10-26)
+
+- **The run** (`python/records/t6b-1.json`; `configs/e06-t6b.toml`: `t7-1`'s settings with
+  `system_share` 0.25; commit 9215205, C ABI v33, the system actor's policy v19; 20 M samples in
+  76.0 minutes, one segment, 5 025 to 5 507 samples/s, `t7-1` 4 846 to 5 205): gates at 10 M
+  (+245 Elo) and 20 M (+28 Elo), both promoted; evaluation 12.0 minutes (`t7-1` 12.2). The
+  system actor's cost did not show on the user's 24 threads.
+- **Results** (the final ladder, 500 per kind; `t7-1`'s in brackets): Random 0.844 (0.828),
+  Aggressor 0.539 (0.551), Greedy 0.526 (0.528), the system actor 0.371 (0.374; hero 0.350,
+  siege a hero defends 0.360, a garrison's siege 0.477), the neutral set 0.978 at value +0.245
+  (0.972, +0.245). Every difference lies within the intervals (±0.011 to ±0.018 each).
+- **Against the system actor in training** (the curve's `system`, the learner's mean score):
+  attacking 0.477 at 10 M, 0.549 at 20 M; defending 0.107, 0.149. On the ladder 0.327 at 10 M
+  and 0.371 at 20 M; `t7-1`, which never met it there, 0.359 and 0.374.
+- **Read:** negative. Meeting the system actor in a fifth of the player kinds' samples does not
+  make the agent play better against it within 20 M samples; it gains against it at the pace it
+  gains without meeting it. The gap is not the opponent mix. Three 20 M runs with different
+  settings (`t5-3`, `t7-1`, `t6b-1`) end at the same ladder.
+- **The behaviour analysis** (`python -m h3env.train.inspect` on the user's `best.pt`, as T6a;
+  `python/records/inspect/t6b-1-*.json`; against the system actor, `t7-1`'s in brackets): the
+  analysis's wins 0.394 (0.394); the hero casts in 91 % of the rounds it can (87 %), 33 mana
+  (33); targeting 54 % at the best previewed kill (53 %), 77 % of the best's kills (77 %), 12 %
+  killing nothing while one could (12 %); melee into a retaliation 77 % (77 %); clean melee
+  strikes deal 152 and cost 53 hit points (151, 53). The only shift: its stacks defend in
+  2.3 % of their turns (0.8 %) and wait in 1.6 % (2.6 %), alike against Greedy (1.9 %, 1.7 %):
+  not an adaptation to the system actor, which still waits in 7 % and defends in 2 %. It plays
+  the same against both opponents, as `t7-1` did. On the neutral set the hero casts in 82 % of
+  the rounds it can (67 %); the rest as before.
+- **The user's next lever** (2026-10-26, the agent's recommendation): AI-Q7 (b) part 2, the
+  kill preview in the network (T6d), an A/B against `t7-1`.
+
+## T6d — The kill preview in the network (2026-10-26)
+
+- **Built** (design §13; AI-Q7 (b) part 2): `[network] preview` (the MLP's; `resolve` refuses it
+  with the entity network). `Policy.with_preview` adds each legal strike entry's bias `φ(f) ·
+  u(h)` to the entry logits (`Mlp`: `preview_net` 4 → `embed` → `embed`, `preview_context`
+  `hidden` → `embed`, gain 0.01; the features from the preview and the target slot's count and
+  full hit points, `policy.preview_slots`); `act` reads `batch.preview` (refusing a batch
+  without it), `evaluate` the rollout's. The trainer's batch, the gate's (`play_gate`, when
+  either network reads it) and the ladder's (`ladder`, when any of its networks does) write
+  the preview; `Rollout.preview` keeps it in half precision; `build` reads `preview` from a
+  saved config (absent: none). `python -m h3env.train.network` shows and times the parts.
+  `configs/e06-t6d.toml`: `t7-1`'s settings with the preview.
+- **Agent's choices (change freely):** the bias on the entry logits only (the value and the
+  cast heads, and a truncation's bootstrap from `final_obs`, which has no preview, as before);
+  the four features; a bilinear bias, so the state weighs a kill; the context near 0 at the
+  start; only the legal entries computed (sparse: `nonzero`, `index_put`).
+- **Cost** (the sandbox's CPU, 4 threads, 256 rows, `--repeats 30`): 17 632 parameters more
+  (5 964 249), 0.4 % more multiply-adds; a forward pass 57.9 → 80.4 µs a decision, a training
+  pass 83.4 → 91.7 µs (the gathers and the scatter, not the arithmetic). The batch's preview
+  costs about 29 µs an env step (T5's AI-Q7 (b) part 1), about 0.3 ms a call of 256 envs on
+  the user's 24 threads, against `t7-1`'s about 50 ms a call.
+- **Tests:** `test_train.py`: the bias touches the legal strikes alone and moves them, the
+  stored half-precision preview gives the update the same log-probabilities, a batch or an
+  `evaluate` without the preview is refused; a run with the preview stops, resumes, gates and
+  plays its ladders, its files read the preview. `test_run.py`: the entity network refused.
+
+## T6e — The A/B run `t6d-1`: the kill preview in the network (2026-10-26)
+
+- **The run** (`python/records/t6d-1.json`; `configs/e06-t6d.toml`: `t7-1`'s settings with
+  `[network] preview`; commit 7a8899c, C ABI v33, the system actor's policy v19; 20 M samples,
+  the last gate at 85.4 minutes, the end at 105.0, one segment, 4 231 to 4 470 samples/s, 13 %
+  fewer than `t7-1`'s 4 846 to 5 205): gates at 10 M (+214 Elo) and 20 M (+22 Elo), both
+  promoted; evaluation 27.3 minutes (`t7-1` 12.2): the ladders 96, 270, 419 s and the final
+  758 s (`t7-1` 93, 137, 138, 220). The first upload was copied while the final ladder still
+  ran (`ended` null, the last save before it); the second is the run's end.
+- **Results** (the final ladder, 500 per kind; `t7-1`'s in brackets): Random 0.821 (0.828),
+  Aggressor 0.553 (0.551), Greedy 0.528 (0.528), the system actor 0.365 (0.374; hero 0.340,
+  a siege a hero defends 0.357, a garrison's siege 0.481), the neutral set 0.978 at value
+  +0.253 (0.972, +0.245; strata 0.982, 0.964, 0.862). Every win rate lies within the intervals
+  (±0.011 to ±0.019). The neutral value's +0.008: a battle's reward on the neutral set has a
+  standard deviation of 0.147 (the sandbox, this `best.pt`, 1 500 battles: standard error
+  0.004), so about 1.5 standard errors of two independent runs (the shared episodes would make
+  a paired comparison tighter; `t7-1`'s network is not in the sandbox); a fifth of the gap to
+  the target +0.285.
+- **The behaviour analysis** (`python -m h3env.train.inspect` on the user's `best.pt`, as T6a;
+  `python/records/inspect/t6d-1-*.json`; against the system actor, `t7-1`'s in brackets):
+  - **Targeting improved as intended:** 61 % of its strikes the best previewed (53 %), their
+    kills 85 % of the best's (77 %), 4 % killing nothing while one could (12 %); melee into a
+    retaliation while a target without one was in reach 6 % (11 %); a clean melee strike
+    deals 196 hit points (151) and costs 50 (53). Against Greedy alike (64 %, 85 %, 3 %).
+  - **But it strikes less and wanders:** it strikes at 42 % of the decisions with a legal
+    strike (73 %), shoots at 62 % of those with a legal shot (88 %); moves are 38 % of its
+    decisions (27 %), the tactics phase's 25 % (11 %); 44 decisions a battle (28), 6.0 rounds
+    (4.9). Worst in the sieges: attacking a garrison it moves in 73 % of its decisions (43 %)
+    and strikes at 16 % of those with a strike legal (70 %), 9.0 rounds (4.2); attacking a
+    town a hero defends, half its decisions are the tactics phase's placements (36 a battle;
+    8), whose rounds have no limit (BAT-TAC-002) and cost nothing at γ 1 but the step limit.
+  - **The outcomes did not move:** the analysis's wins 0.395 (0.394) against the system
+    actor, 0.529 (0.529) against Greedy; the hero casts in 79 % of the rounds it can (87 %),
+    35 mana (33).
+  - **The neutral set:** 84 % of its strikes the best (72 %), 90 % of the best's kills (80 %),
+    2 % killing nothing (9 %); wandering stacks and guards a little faster (4.4 and 4.5
+    rounds, 4.8 and 4.9) and better (reward +0.258 and +0.237, +0.239 and +0.228); a neutral
+    town slower (7.2 rounds, 5.6; +0.136, +0.147), with the same wandering as the sieges.
+- **Training:** truncations 0.14 % and 0.12 % of self-play at 10 M and 20 M (`t7-1` 0.4 %,
+  0.001 %), on the final ladder 0.1 to 0.2 % (`t7-1` none); the entropy 2.81 and 2.54 (2.83,
+  1.98): the policy stayed broader in the second half (KL and clip fraction alike).
+- **The cost:** besides the 13 % of training, the evaluation's battles are longer and some
+  truncate (a set's batch plays until its last battle ends): the final ladder 3.4 × `t7-1`'s,
+  the analysis on the sandbox 821 and 431 s against 279 and 140 s.
+- **Read:** negative. The preview fixes what T6a measured, the targeting, and the outcomes do
+  not move: the agent spends it on wandering (moves, the tactics phase's placements) and
+  strikes less. Targeting is not what limits it. Four 20 M runs with different settings
+  (`t5-3`, `t7-1`, `t6b-1`, `t6d-1`) end at the same ladder. By AI-Q7's rule (kept only if it
+  measurably helps) the preview stays out of the best configuration.
+- **The checkpoint** (the user, 2026-10-26, the agent's recommendation on the first point):
+  AI-Q7 closed: `[network] preview` stays in the code, off by default (opt-in, tested), out of
+  the best configuration; increment 6 closed. Next: T8 (the search) refined now, the plateau
+  taken as shown (four 20 M runs at one ladder; `t4-2` at 60 M barely above `t5-3` at 20 M),
+  without the 60 M run the agent recommended first.
+
+## Increment 7's refinement; T8a — the search's design (2026-10-26)
+
+- **The user's choices** (asked at T6e's checkpoint): T8 now, the plateau taken as shown; the
+  seam T8a (the design), T8b (the plumbing), T8c (a decision-time search measured with `t7-1`'s
+  network, no training change), T8d (expert iteration) only if T8c gains; **determinized from
+  the start** (the agent had recommended an oracle bound first: the true hidden part with the
+  stream re-seeded, a cheap upper bound); the tree in Python first; `h3-battle`'s part
+  `cross-lane` in T8b.
+- **Designed** (design §14): a world per seed (the other hero's private part guessed by the
+  encounter sampler from its public part, its hidden obstacles and a drawn spell placed again,
+  the stream re-seeded), Gumbel AlphaZero at the root and the completed-Q selection below,
+  open-loop over worlds, one network call per simulation round for the batch; ADR-0025 point
+  12's amendment as a draft (`docs/lanes/ai/adr-drafts/0025-amendment-search.md`: a world reads
+  nothing hidden, tested).
+- **What the code has:** the battle's one stream (`BattleState.rng`, crate-private, seeded from
+  the episode's seed) and `observe`'s list of what a side may not know (`h3-battle`'s
+  `observe.rs`); `h3_env_fork` forks a single env only, nothing forks a batch's env; the
+  encounter sampler draws a hero by faction and week (`h3-sim`'s `encounter/hero.rs`), so the
+  guess fixes the hero type and draws the rest.

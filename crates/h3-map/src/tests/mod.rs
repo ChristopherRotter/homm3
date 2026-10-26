@@ -1,12 +1,14 @@
 //! Tests of the reader: the round trip of every model a version can hold, truncation, arbitrary
 //! bytes, each typed error and limit, the gzip layer, and the experiment writer's maps; the
 //! import in `import.rs`; random play on imported maps through `h3-game` in `play.rs` (E08 T8b2a),
-//! what a viewer may learn there in `view.rs` (E08 T8b2b).
+//! what a viewer may learn there in `view.rs` (E08 T8b2b); the writer's reward objects and RoE
+//! maps read back and imported in `rewards.rs` (E08 T56).
 
 mod encode;
 mod fixtures;
 mod import;
 mod play;
+mod rewards;
 mod strategy;
 mod view;
 
@@ -825,6 +827,7 @@ fn maps_from_the_experiment_writer_read_back() {
         disposition: 4,
         never_flees: true,
         fixed_count: false,
+        treasure: None,
     };
     let mut players: [Option<w::Player>; w::PLAYERS] = Default::default();
     players[0] = Some(w::Player {
@@ -1118,6 +1121,7 @@ fn the_writer_s_underground_and_guarded_piles_read_back() {
         disposition: 1,
         never_flees: false,
         fixed_count: true,
+        treasure: None,
     });
     let mut players: [Option<w::Player>; w::PLAYERS] = Default::default();
     players[0] = Some(w::Player {

@@ -1,6 +1,6 @@
 # E06 — Battle AI v1 and the local training pipeline v0
 
-Status: **in progress**, refined 2026-10-20 (AI-Q8); increment 1 (T1, T2a, T2b1, T2c) done; increment 2 (T3a, T3b) done; increment 3 (T4a, T4b) done; increment 4 (T5a to T5d) done 2026-10-23; increment 5 (T7a to T7d) done 2026-10-23, with T5's mana preparation and AI-Q7 (b) part 1; T6a (the behaviour analysis) done 2026-10-23; increment 6 refined 2026-10-26 (T6b done) · Lane: **ai** · Follows E05 (closed
+Status: **in progress**, refined 2026-10-20 (AI-Q8); increment 1 (T1, T2a, T2b1, T2c) done; increment 2 (T3a, T3b) done; increment 3 (T4a, T4b) done; increment 4 (T5a to T5d) done 2026-10-23; increment 5 (T7a to T7d) done 2026-10-23, with T5's mana preparation and AI-Q7 (b) part 1; T6a (the behaviour analysis) done 2026-10-23; increment 6 (T6b to T6e) done 2026-10-26; increment 7 (T8, the search) refined 2026-10-26, T8a done · Lane: **ai** · Follows E05 (closed
 2026-10-20) · Runs beside E23 (the battle lane: the original's battle AI, the system actor's
 policy), whose neutral side opens E06's neutral share (decision 1)
 
@@ -38,7 +38,8 @@ on held-out encounters.
    stack slots and hex planes as entities (attention), in Python, with no encoding change.
 6. **AI-Q7, option (b) as an experiment:** the kills of each attack and shot entry (the engine's
    preview, BAT-DMG-011) as features beside the entry mask, a new output of the batch, the
-   encodings unchanged; kept only if it measurably helps.
+   encodings unchanged; kept only if it measurably helps. **Closed 2026-10-26** (T6e, the
+   user): no measurable gain, `[network] preview` stays in the code, off by default.
 7. **Proficiency targets** (exit criterion 5), on held-out encounters at the default weights,
    both sides weighed equally, the sampled policy: at least **0.95 against Random**, at least
    **0.75 against Aggressor and against Greedy**, a positive value efficiency (mean reward v1)
@@ -106,17 +107,19 @@ new observation or action encoding, unless an increment's evidence asks for one 
 | 3 | 2026-10-22 | T4a, T4b | the league (PFSP), the first league runs (γ 1.0 ends the stalling) |
 | 4 | 2026-10-23 | T5a–T5d | the entity network (parked), the truncation penalty |
 | 5 | 2026-10-23 | T7a–T7d | the system actor's seat, the neutral share, `t7-1` |
+| 6 | 2026-10-26 | T6b–T6e | the system actor as an opponent, the kill preview in the network (AI-Q7): both negative |
 
-**Increment 6:** T6b, then T6c (refined 2026-10-26, the user: the system actor as a training
-opponent in the player kinds, decision 9 amended; the System side stays human).
+**Increment 7, T8 the search** (refined 2026-10-26, the user: the plateau taken as shown after
+T6e; measure a decision-time search before any training change; determinized from the start;
+the tree in Python first; `h3-battle`'s part `cross-lane` in T8b; design §14):
 
-- [x] **T6b The system actor as an opponent** — done 2026-10-26: `[league] system_share` (the
-  batch's entries split by `ppo.episode_entries`, no ABI change), the update record's and the
-  curve's `system` (the learner's score by side), `configs/e06-t6b.toml`; the record in
-  `E06-log.md`.
-- [ ] **T6c The A/B run** — on the user's machine: `t6b-1` (`configs/e06-t6b.toml`, a quarter
-  of the player kinds against the system actor) against `t7-1`, 20 M samples; then
-  `python -m h3env.train.inspect` on its best.
+- [x] **T8a The design** — done 2026-10-26: design §14, ADR-0025 point 12's amendment as a
+  draft (`docs/lanes/ai/adr-drafts/0025-amendment-search.md`); the record in `E06-log.md`.
+- [ ] **T8b The plumbing** — C ABI v34 (`h3_batch_determinize`, `h3_env_reseed`), `h3-battle`'s
+  `BattleState::determinized` and `reseed` (`cross-lane`), `h3env.search`; the tests of §14.
+- [ ] **T8c The measurement** — the search agent with `t7-1`'s best at N 16 and 64 against the
+  system actor and Greedy (report set) and on the neutral set, beside the sampled policy.
+- [ ] **T8d Expert iteration** — only if T8c gains: the search's targets in training.
 
 **Later increments** (cut at each checkpoint; proposed in design §10):
 
@@ -124,14 +127,12 @@ opponent in the player kinds, decision 9 amended; the System side stays human).
   table; the observations in place. Beside T7d (the user, 2026-10-23): the mana price's
   preparation done 2026-10-23 (the ladders at reward v1's settings, `configs/e06-mana.toml`; the
   record in `E06-log.md`); AI-Q7 (b) part 1 done 2026-10-23 (the batch's previewed kills, C ABI
-  v33); part 2 (the network reads them) after the checkpoint.
+  v33); part 2 (the network reads them), increment 6's T6d, negative at T6e (AI-Q7 closed).
 - [ ] **T6 Toward the targets** — runs on the best configuration until decision 7's targets hold,
   or the evidence says PPO plateaus (then T8). T6a, the behaviour analysis (the user,
   2026-10-23), done 2026-10-23: `python -m h3env.train.inspect`; `t7-1` casts as the system
   actor does, plays alike against it and Greedy, waits and defends less; the record in
-  `E06-log.md`. Then increment 6 (T6b, T6c), below.
-- [ ] **T8 Search** (only if PPO plateaus below the targets) — determinized search over the fork
-  with re-seeded streams, the learned network as its prior and value.
+  `E06-log.md`. Then increment 6 (T6b to T6e), closed 2026-10-26.
 - [ ] **T9 Closure** — the audit, an independent review, the verifies, the docs.
 
 ## Exit criteria

@@ -11,10 +11,11 @@ use alloc::vec::Vec;
 use h3_protocol::wire::{Event, Observation, Side, Siege, Stack, WireU64};
 use h3_render::Bugs;
 
-use super::{at, flags, layout, look, screenless, snapshot, tables, until};
+use super::{at, cast_heroes, flags, layout, look, screenless, snapshot, tables, until};
 use crate::anim::{
-    Blast, Burst, Casts, Command, Logged, Look, Missile, Projectile, SiegeStage, Sound, Speed,
-    Stage, Timeline, TurretPose, timeline, turret_record, unfidgeted,
+    Blast, Burst, Caster, Casts, Command, EARTHQUAKE, Landing, Logged, Look, Missile, Projectile,
+    SiegeStage, Sound, Speed, SpellLook, Stage, Timeline, TurretPose, timeline, turret_record,
+    unfidgeted,
 };
 use crate::siege::Walls;
 
@@ -22,6 +23,7 @@ const KEEP: &str = include_str!("../../../../../situations/timelines/keep.txt");
 const HIT: &str = include_str!("../../../../../situations/timelines/hit.txt");
 const MISSED: &str = include_str!("../../../../../situations/timelines/missed.txt");
 const AUTOMATIC: &str = include_str!("../../../../../situations/timelines/automatic.txt");
+const QUAKE: &str = include_str!("../../../../../situations/timelines/quake.txt");
 
 /// The siege tests' creatures (invented handles).
 pub(super) const PIKEMAN: u16 = 40;
@@ -417,8 +419,10 @@ fn the_hit_sequence_plays_as_recorded() {
         blast(2975),
         Some(Blast {
             def: "SGEXPL.DEF".to_string(),
-            at: [437, 27],
-            rect: [437, 27, 691, 230],
+            landings: vec![Landing {
+                at: [437, 27],
+                rect: [437, 27, 691, 230],
+            }],
             frames: vec![(0, whole), (1, whole)],
         })
     );
@@ -472,7 +476,10 @@ fn the_automatic_sequence_plays_as_recorded() {
     assert_eq!((t.outlined(0), t.outlined(100)), (Some(3), None));
     assert_eq!(t.walls.len(), 1);
     let blast = t.blasts.first().unwrap();
-    assert_eq!((blast.def.as_str(), blast.at), ("CSGRCK.DEF", [430, 97]));
+    assert_eq!(
+        (blast.def.as_str(), blast.landings[0].at),
+        ("CSGRCK.DEF", [430, 97])
+    );
     assert!(t.cues.iter().any(|c| c.sound == Sound::WallMiss));
     // The slip fixed, a shot of no damage changes no walls either.
     let fixed = play_siege(&o, &commands, Bugs::Fixed, Some(&castle));
@@ -582,9 +589,243 @@ fn a_wall_shot_s_group_follows_the_original_s_angle() {
 }
 
 #[test]
+fn a_turret_faces_a_target_right_of_its_point() {
+    // E17 M4 T3a, R1-5: the lower tower (its point 648, 566) shoots the Archers moved to 186,
+    // right of it: its shot's frames face right (`to[0] >= point[0]`), its stands before and
+    // after them left (0x465E74); the same shot at 137, left of it, faces left throughout.
+    let shot = |hex| {
+        let mut o = keep_siege();
+        if let Some(s) = o.stacks.iter_mut().find(|s| s.id == 2) {
+            s.hex = hex;
+        }
+        let commands = [(
+            Some(0),
+            vec![turret_shot(9, 2, 11, 1), Event::TurnStarted { stack: 3 }],
+        )];
+        let t = play_siege(&o, &commands, Bugs::Original, Some(&castle()));
+        t.turrets
+            .iter()
+            .filter(|k| k.record == 1)
+            .map(|k| k.pose.right)
+            .collect::<Vec<bool>>()
+    };
+    // Its opening stand, the shot's eight frames, its stand after them.
+    let mut right = [false; 10];
+    right[1..9].fill(true);
+    assert_eq!(shot(186), right);
+    assert_eq!(shot(137), [false; 10]);
+}
+
+#[test]
 fn turret_records_follow_their_positions() {
     assert_eq!(
         [254, 251, 255, 200].map(turret_record),
         [Some(0), Some(1), Some(2), None]
     );
+}
+
+/// `quake`'s siege (`seq-quake.toml`, E17 M4 T2c-2): a Castle town with a Fort, the attacker's
+/// Pikemen and Catapult, the defender's Hobgoblins; the Catapult's turn opens it.
+fn fort_siege() -> Observation {
+    let mut catapult = machine_at(1, Side::Attacker, CATAPULT, (119, 19));
+    catapult.two_hex = true;
+    let mut o = snapshot(vec![
+        catapult,
+        at(0, Side::Attacker, PIKEMAN, 86, false),
+        at(2, Side::Defender, HOBGOBLIN, 100, false),
+    ]);
+    o.siege = Some(Siege {
+        faction: 0,
+        fort: 1,
+        moat: 0,
+        gate_open: false,
+        walls: vec![12, 29, 45, 62, 78, 96, 112, 130, 147, 165, 182],
+        moat_hexes: Vec::new(),
+        parts: vec![2; 8],
+    });
+    o
+}
+
+/// The timeline of a siege with Valeska casting (Orrin's numbers: five of eight casting frames
+/// before the spell) Earthquake ([`EARTHQUAKE`], handle 14), the heroes beside it.
+fn play_quake(
+    snapshot: &Observation,
+    commands: &[(Option<u32>, Vec<Event>)],
+    bugs: Bugs,
+    siege: &SiegeStage,
+) -> Timeline {
+    let layout = layout();
+    let magic = BTreeMap::new();
+    let casts = Casts {
+        spells: BTreeMap::from([(
+            14,
+            SpellLook {
+                original: EARTHQUAKE,
+                ..SpellLook::default()
+            },
+        )]),
+        casters: [
+            Some(Caster {
+                point: [49, 48],
+                before: 5,
+                frames: 8,
+            }),
+            None,
+        ],
+        groups: [4, 0],
+        ..Casts::default()
+    };
+    let stage = Stage {
+        layout: &layout,
+        width: 17,
+        groups: tables().battle.groups,
+        magic: &magic,
+        casts: &casts,
+        bugs,
+        siege: Some(siege),
+    };
+    let commands: Vec<Command<'_>> = commands
+        .iter()
+        .map(|(at, events)| Command { at: *at, events })
+        .collect();
+    timeline(snapshot, &commands, &siege_looks(), stage, Speed::default())
+        .unwrap()
+        .with_heroes(cast_heroes())
+}
+
+/// `quake`'s commands: the Catapult hits the lower wall for 1, the Hobgoblins defend, Valeska's
+/// Earthquake hits the mid-upper wall twice (destroyed) and the mid-lower wall once, the Pikemen
+/// defend.
+fn quake_commands() -> Vec<(Option<u32>, Vec<Event>)> {
+    let turn = |stack| Event::TurnStarted { stack };
+    vec![
+        (
+            Some(0),
+            vec![
+                Event::WallShot {
+                    stack: 1,
+                    aimed: 5,
+                    part: 5,
+                    damage: 1,
+                },
+                turn(2),
+            ],
+        ),
+        (Some(3875), vec![Event::Defended { stack: 2 }, turn(0)]),
+        (
+            Some(3875),
+            vec![
+                Event::SpellCast {
+                    side: Side::Attacker,
+                    spell: 14,
+                    target: h3_protocol::wire::Target::None {},
+                    second: h3_protocol::wire::Target::None {},
+                },
+                Event::WallQuaked { part: 2, damage: 2 },
+                Event::WallDestroyed { part: 2 },
+                Event::WallQuaked { part: 4, damage: 1 },
+            ],
+        ),
+        (
+            Some(3875),
+            vec![
+                Event::Defended { stack: 0 },
+                Event::RoundStarted { round: 2 },
+                turn(1),
+            ],
+        ),
+    ]
+}
+
+#[test]
+fn the_quake_sequence_plays_as_recorded() {
+    // `quake` (E17 M4 T2c-2, design §10.2): Valeska's frames 0 to 4 from 3 875, the shake's 45
+    // steps of 15 ms from 4 375 (the last frame's showing), a whole redraw and SGEXPL's ten
+    // frames over both targets from 5 050, the walls' damage at frame 5 (5 125) after its
+    // redraw, the end's whole redraw at 5 200 with her last frames.
+    let o = fort_siege();
+    let castle = castle();
+    let t = play_quake(&o, &quake_commands(), Bugs::Original, &castle);
+    assert_eq!(t.lines_with_heroes(9875), recorded(QUAKE, 9875));
+    assert_eq!(
+        (t.shake(4374), t.shake(4375), t.shake(4389)),
+        (None, Some(1), Some(1))
+    );
+    assert_eq!(
+        (t.shake(4390), t.shake(5049), t.shake(5050)),
+        (Some(2), Some(45), None)
+    );
+    assert!(!t.cursor_hidden(4374) && t.cursor_hidden(4375) && t.cursor_hidden(5199));
+    assert!(!t.cursor_hidden(5200));
+    // Both targets' explosions at once, each frame over the frames before it; frame 5's redraw
+    // the old walls, frame 6's the new.
+    let whole = Walls::of(o.siege.as_ref().unwrap());
+    let mut quaked = whole;
+    quaked.parts[8] = 0;
+    quaked.parts[10] = 1;
+    let mut after_shot = whole;
+    after_shot.parts[12] = 1;
+    quaked.parts[12] = 1;
+    let landings = vec![
+        Landing {
+            at: [393, 111],
+            rect: [393, 111, 647, 314],
+        },
+        Landing {
+            at: [393, 279],
+            rect: [393, 279, 647, 482],
+        },
+    ];
+    assert_eq!(t.blast(5049), None);
+    assert_eq!(
+        t.blast(5050),
+        Some(Blast {
+            def: "SGEXPL.DEF".to_string(),
+            landings,
+            frames: vec![(0, after_shot)],
+        })
+    );
+    let frames = t.blast(5140).unwrap().frames;
+    assert_eq!((frames[5], frames[6]), ((5, after_shot), (6, quaked)));
+    assert_eq!(t.blast(5200), None);
+    assert_eq!(
+        (t.walls(5199), t.walls(5200)),
+        (Some(after_shot), Some(quaked))
+    );
+    // Its sound at the handler, `WallHit` once with the explosions.
+    let cue = |sound| t.cues.iter().rev().find(|c| c.sound == sound).map(|c| c.at);
+    assert_eq!(
+        (cue(Sound::Spell(14)), cue(Sound::WallHit)),
+        (Some(4375), Some(5050))
+    );
+    // Its shake's and explosions' times among the changes.
+    let changes = t.changes(6000);
+    assert!(changes.contains(&4390) && changes.contains(&5185) && changes.contains(&5200));
+    // The slip fixed: the damage before frame 5's redraw, shown everywhere from it; each frame
+    // alone.
+    let fixed = play_quake(&o, &quake_commands(), Bugs::Fixed, &castle);
+    assert_eq!(fixed.walls(5125), Some(quaked));
+    assert_eq!(fixed.blast(5125).unwrap().frames, vec![(5, quaked)]);
+}
+
+#[test]
+fn an_earthquake_without_a_target_or_a_stage_damages_at_once() {
+    // E17 M4 T2c-2: no target hit (nothing standing) plays the shake alone; without the siege's
+    // stage (its explosion unknown) the hits damage at once after it.
+    let o = fort_siege();
+    let mut commands = quake_commands();
+    commands[2].1.truncate(1);
+    let castle = castle();
+    let t = play_quake(&o, &commands, Bugs::Original, &castle);
+    assert!(t.shake(4375).is_some() && t.blast(5050).is_none());
+    let none = SiegeStage {
+        hit: Burst::default(),
+        ..castle
+    };
+    let t = play_quake(&o, &quake_commands(), Bugs::Original, &none);
+    let mut quaked = Walls::of(o.siege.as_ref().unwrap());
+    quaked.parts[8] = 0;
+    quaked.parts[10] = 1;
+    quaked.parts[12] = 1;
+    assert_eq!(t.walls(5200), Some(quaked));
 }
