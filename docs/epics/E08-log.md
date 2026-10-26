@@ -5344,3 +5344,67 @@ ADR-0017 point 6 amended in `shared/e08-t51a-legal` (docs only, with `docs/06-se
   six battles of the flag), `h3-adventure`'s listing against the state's command (within, toward
   another hero, the last stack, the group), the battle start's flag, the CLI's round trip and
   refusals.
+
+### Increment 6, round 4: T51b, the meeting with Scholar, the army dialog, the commands between two armies (2026-10-26, `adventure/e08-t51b`)
+
+**Baseline:** `master` f72f8c2 (#461, #463 merged); its engine code not verified yet, so the
+sandbox ran the full verify with the original data first: every step passed. At its start the user
+chose T51b whole (decision 118; recommended was two parts, the meeting first).
+
+- **The decisions** (`state.rs`): `Decision::Meeting { owner, heroes: [visitor, visited] }`
+  (GAM-DEC-003) and `Decision::ArmyDialog { owner, hero, group: Vec<ArmyStack> }` (GAM-DEC-004),
+  opened by `settle_outcome` from the adventure's `AdventureOutcome::meeting` (`meet`) and
+  `no_room` (`open_army_dialog`: the group as one stack in slot 0). Scholar first (HER-SPL-007):
+  `meeting_spells` on both heroes' details, the visitor's `LearnSpell` changes, then the visited
+  hero's, each `HeroChanged`, then `MeetingOpened`. `answer`: `Decline` closes either
+  (`close_exchange`: `DecisionClosed`, then a `GroupLost` per stack left in the group, slot
+  order), anything else is `WrongAnswer`. Queries `GameState::{meeting, army_dialog}`;
+  `GameState::decision` stays the offer's alone. Game state hash v13: kinds 3 (owner, the two
+  heroes) and 4 (owner, hero, the group's stacks).
+- **The join offered without room** (ADV-MON-008): `answer_to`'s skip (`has_room`) gone, so the
+  offer is made whatever room the army has; `ADV-STUB-2` closed (`docs/stubs.toml`). Accepted
+  without room, the adventure's T50 outcome (`no_room`, the treasure and the monster's leaving)
+  opens the dialog. No join offer waits for a guard (`guard_after` is set only for an object on an
+  entered tile, never a monster's), so no battle starts while a dialog is open.
+- **Management with a decision open** (`state/manage.rs`): `Together::{Alone, Meeting, Dialog}`
+  (`GameState::together`, from the player's first decision; `None` for another kind),
+  `check_managing` (the turn, that decision, the level-up's hold), `Together::admits` for an army
+  command's armies (outside a decision as T51a: `NoGroup`, `NotTogether`; in a meeting its two
+  heroes, the group `NoGroup`; in a dialog the hero and the group) and `admits_heroes` (a hero the
+  open decision does not hold: `DecisionOpen`). An army command runs on a copy of the group,
+  written back (`set_group`) only when the adventure accepts it; each slot told from its army
+  (`stack_at`: the hero's on the map or the group). An artifact between the two heroes of a
+  meeting applies `move_changes`' `from`, then its `to` changes; outside a meeting two heroes are
+  `NotTogether` as before. The group's own commands (a move within it, its dismissal) are allowed:
+  ADR-0016 point 3 (its last stack moves out, merges or is dismissed) and the original's upper bar
+  (0x5C7400); ADR-0017 point 6's "between the hero and the group's small army" read as including
+  them (an agent's reading).
+- **The listing** (GAM-MAN-002): `legal_commands` lists `Decline` alone with either open (the
+  env's entry 10); `default_answer` `Decline`; `legal_moves` none. `legal_management` for a hero
+  the decision holds: its army's moves onto its own and the other army's slots (`army_commands`'
+  `to`), its dismissals, with a dialog then the group's commands (from the group toward the hero),
+  the formations and flags, each artifact's moves onto its own places and then the meeting's other
+  hero's (`check_move` with `Some(other)`), the assemblies. `split_range` takes slots of two armies
+  together (`admits`), with the dialog's group.
+- **Events and views**: `GameEvent::{MeetingOpened, ArmyDialogOpened, DecisionClosed, GroupLost}`
+  (the owner's alone, `project`; `GameEvent` stays `Copy`: the group is told per stack, as T51a's
+  `StackChanged`, against the design's `ArmyDialogOpened { stack }` / `GroupLost { stacks }`, an
+  agent's call; the design's `MeetingOpened { learned }` dropped: the learned spells are their
+  `HeroChanged`). `DecisionView::{Meeting { heroes }, ArmyDialog { hero, group }}`.
+- **Other crates**: `h3-map`'s view test follows the new decisions and the group's slots;
+  `play.rs`' checks expect `Decline` alone with either open and its plans decline them (`seek`);
+  `h3-cli`'s bench `seek` declines them too. `h3-sim` (the AI lane's) needed nothing: its masks
+  come from `legal_commands`; its inbox told.
+- **Replays**: the ten re-recorded with their options, their commands unchanged (no game meets an
+  own hero or a join without room): every hash moved (`adventure_replays.rs`' history).
+- **Rules**: GAM-DEC-003 and GAM-DEC-004 written, `verified` by batch E6's E6-1 to E6-4 and E6-7;
+  ADV-MON-008, GAM-MET-001, GAM-MAN-001, -002, HER-SPL-007, ADV-ARM-002 and -007 restated.
+- **Tests**: `h3-game`'s `tests/exchanges.rs` (the meeting's opening, listing, refusals, hash and
+  closing; Scholar both ways, the visitor's first; stacks and artifacts between the two heroes and
+  the refusals; the listing per hero and the split's query in a meeting and in a dialog against
+  every candidate `apply` accepts; the join without room offered, its dialog's events, view,
+  commands with the group and closing with the loss; a management command refused with an offer
+  open), `level_ups.rs`' held game refusing one too, `h3-adventure`'s join offered whatever room.
+- **Verify**: the scoped run without a failing step (its first coverage run found the two
+  refusals untested and an implicit branch of the group's write-back, rewritten); the benchmarks
+  passed `bench-check`.
