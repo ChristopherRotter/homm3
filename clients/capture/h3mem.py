@@ -773,6 +773,11 @@ class Mem:
         return [(raw[i + 4], raw[i + 5], raw[i + 6]) + struct.unpack_from("<HB", raw, i + 8)
                 for i in range(0, len(raw), OBJECT_RECORD)]
 
+    def write_frame_steps(self, steps=0):
+        """The objects' frame steps (adventure manager +0x100; E24 M2 T1b: `frames` sets them at
+        a sequence's 0, the load's count depends on its real time)."""
+        self.write_u32(self.u32(ADVENTURE_MANAGER_POINTER) + FRAME_STEPS, steps)
+
     def write_phases(self, phase=0):
         """Every map object's animation phase (its record's u8 +0xA; E24 M2 T1b: `frames` fixes
         them, the load's are random, design §1.6)."""

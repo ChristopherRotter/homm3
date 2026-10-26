@@ -968,8 +968,9 @@ step sounds are and the ambient sounds (0x4183D0; both T5).
 
 **Recorded** (`clients/map/sequences.toml`; situations `seq-walk`, `seq-walk-follow`,
 `seq-sail`; the timeline's walk lines since T1b: `hero`, `walk`, `arrows`, only where they
-change; the objects' phases written 0 once staged, as the screen's changed boxes at the idle
-redraws moved with the load's random phases: the runbook; every frame at 0 exact):
+change; the objects' phases and frame steps written 0, as the screen's changed boxes at the
+idle redraws moved with the load's random phases and real time: the runbook; every frame at 0
+exact):
 
 - **`walk-2`** (speed 2): each direction key steps the hero at its press's millisecond: the
   view's corner the new tile less (9, 8), the walking group by the direction (5, 6, 7, 8, 9, 8, 7,

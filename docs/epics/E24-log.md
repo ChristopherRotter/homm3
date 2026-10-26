@@ -650,9 +650,10 @@ T1a1 the recording and the idle loop, T1a2 the scroll with the speed options and
   `walk`, `arrows`, only where they change (`Mem.selected`, `Mem.walk`), so the earlier
   sequences' timelines stay as recorded (`scroll-limits` run again: ok). The runbook's "The
   walk". The objects' animation phases written 0 once a sequence's situation is staged
-  (`Mem.write_phases`): a first round of second runs differed only in the screen's changed boxes
-  at idle redraws, which moved with the two mines' random phases; `idle-objects` and
-  `scroll-limits` run again with it: as recorded.
+  (`Mem.write_phases`) and their frame steps 0 at its 0 (`Mem.write_frame_steps`): two rounds of
+  second runs differed only in the screen's changed boxes at idle redraws, which moved with the
+  two mines' random phases and then with the steps' count since the load; `idle-objects` and
+  `scroll-limits` run again with both: as recorded. Three VM restarts cut runs (resumed).
 - **Recorded** (situations `seq-walk`, `seq-walk-follow`, `seq-sail`): `walk-1` to `walk-4` (each
   hero speed: the eight direction keys without Ctrl, a four-tile path clicked twice),
   `walk-follow` (the view not centred, an eight-tile walk, a scroll and a step), `walk-points` (a

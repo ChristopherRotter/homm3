@@ -29,6 +29,6 @@ The user's dictation (2026-10-12): `docs/lanes/client/ASSET-NOTES.md`; this lane
 
 ## Recent sessions
 
-- **2026-10-26, E24 M2 T1b** (`map-client/e24-m2-t1b`): the walk read (the lifted hero at the view's fixed centre, each step centring the view and sliding it by pixels in 4, 3, 2 frames of 50 ms or one draw, the arrows, the walk's end, the sounds' calls); `frames`' `points`, `click`, walk lines, fixed phases; seven walk sequences (in progress: their runs with the phases fixed, `target/sandbox/run-walks4.sh`; then the PR); MCL-Q6 answered; key bindings planned.
+- **2026-10-26, E24 M2 T1b** (`map-client/e24-m2-t1b`): the walk read (the lifted hero at the view's fixed centre, each step centring the view and sliding it by pixels in 4, 3, 2 frames of 50 ms or one draw, the arrows, the walk's end, the sounds' calls); `frames`' `points`, `click`, walk lines, fixed phases and frame steps; seven walk sequences (in progress: their runs with the phases fixed, `target/sandbox/run-walks4.sh`; then the PR); MCL-Q6 answered; key bindings planned.
 - **2026-10-26, E24 M2 T1a2** (#480, merged): the scroll read (Ctrl and the direction keys, the edge every 70 ms with its cursor, 1 to 3 tiles by the speed, the limits); `frames`' options, inputs and cursor line; four scroll sequences and the idle pair recorded twice the same, as read; MCL-Q6.
 - **2026-10-26, E24 M2 T1a1** (#477, merged): T1a cut in two with the user; the idle loop read; `h3map.py frames` (the sequence's 0 set by the harness's timers); `idle-cycles` and `idle-objects` recorded twice the same.

@@ -689,7 +689,7 @@ def sequence(entry, out):
     try:
         # The objects' phases fixed (T1b): the load gives each a random one (design §1.6), and
         # where an object's frames repeat a picture the screen's changed box at a redraw moved
-        # with it from run to run. The live part at 0 reads them back.
+        # with it from run to run (the frame steps too: below). The live part at 0 reads them.
         mem.write_phases(0)
         for address, value in options:
             if address is None:
@@ -709,6 +709,9 @@ def sequence(entry, out):
         h3adv.wait_for(lambda: min(mem.map_due()) > now,
                        lambda: f"the deadlines past the frozen clock at {now} ({mem.map_due()})")
         t0 = now + 1
+        # The objects' frame steps 0 (T1b): with the phases (above) an object's frame at the
+        # redraw at 0 is the same in every run; the count since the load is its real time's.
+        mem.write_frame_steps(0)
         mem.write_u32(h3mem.PALETTE_TICK_TIME, t0)
         mem.write_u32(h3mem.FRAME_DEADLINE, t0)
         mem.write_u32(h3mem.SCROLL_TIME, t0)
