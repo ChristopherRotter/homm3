@@ -14,9 +14,14 @@
 //! that winners capture, raise and learn (`the_plans_play_battles_to_a_victory`); since T20b3b1
 //! with wandering monsters and special grounds (their offers to join, to join for gold and to
 //! flee, groups joining, and their battles, whose unowned side the driver plays as the system
-//! actor); since T21a with guarded piles (their questions, and their battles won and lost). What
-//! a viewer may learn is T8b2b's ([`super::view`]), on the same maps and driver.
+//! actor); since T21a with guarded piles (their questions, and their battles won and lost); since
+//! T52 with management (increment 6): a mate of the first hero beside it with Scholar, spells and
+//! Elixir of Life's parts, a full army whose join opens the army dialog, the meetings, the
+//! management commands listed and arbitrary ones, the invariants of every state, management's
+//! effects and a move's inverse (`the_plans_meet_and_manage`). What a viewer may learn is T8b2b's
+//! ([`super::view`]), on the same maps and driver.
 
+use std::ops::RangeInclusive;
 use std::sync::{Arc, LazyLock};
 
 use h3_adventure::{
@@ -26,11 +31,12 @@ use h3_adventure::{
 use h3_battle::{
     CastTargets, Command, Event, EventKind, cast_targets, castable_spells, second_targets,
 };
-use h3_content::{ArtifactTypeId, CreatureTypeId, ResourceId};
+use h3_content::{ArtifactTypeId, CreatureTypeId, Formation, ResourceId};
 use h3_contracts::{BattleResult, BattleSide, HeroId, PlayerId};
 use h3_game::{
-    Actor, Answer, GameCommand, GameCommandError, GameEvent, GameRuleset, GameState, HeroChange,
-    OpenBattle, Sink, apply, legal_commands, legal_moves,
+    Actor, Answer, ArmyCommand, ArmyRef, ArmySlot, ArtifactPlace, GameCommand, GameCommandError,
+    GameEvent, GameRuleset, GameState, HeroChange, Manage, OpenBattle, Position, Sink, apply,
+    legal_commands, legal_management, legal_moves, split_range,
 };
 use h3_pack_adventure::{ORIGINAL_PACKS, compile};
 use proptest::collection::vec;
@@ -44,8 +50,8 @@ use super::sample;
 use super::strategy::version;
 use crate::import::codes;
 use crate::model::{
-    Artifacts, Body, HeroBody, Message, MonsterBody, MonsterTreasure, RawMap, Stack, Template,
-    Text, Tile, Version,
+    Artifacts, Bits, Body, HeroBody, Message, MonsterBody, MonsterTreasure, RawMap, Stack,
+    Template, Text, Tile, Version,
 };
 use crate::{Limits, import, parse};
 
@@ -285,6 +291,70 @@ pub(super) struct Plan {
     /// normal; the tests take the map's): impossible, with no gold to start, in half the cases,
     /// so that Cartographers are refused as well as offered.
     pub(super) difficulty: u8,
+    /// (E08 T52) The first hero's exchanges: a mate of its owner beside it, and its full army;
+    /// none: neither.
+    pub(super) exchange: Option<Exchange>,
+}
+
+/// Elixir of Life's three parts (E08 T52; HER-ART-006: a SoD combination of artifacts every map
+/// version holds), as code and position in a map's worn slots: Ring of Vitality (94) and Ring of
+/// Life (95) on the rings, Vial of Lifeblood (96) in the third misc slot.
+pub(super) const ELIXIR_PARTS: [(u16, usize); 3] = [(94, 6), (95, 7), (96, 11)];
+/// Scholar's and Wisdom's skill codes (E08 T52; HER-SPL-007, HER-SPL-005).
+const SCHOLAR: u8 = 18;
+const WISDOM: u8 = 7;
+/// The spells a mate may know of its own on a SoD map (E08 T52; the map's custom spells, which
+/// only SoD stores): Magic Arrow, Bless, Haste and Slow (level 1), Ice Bolt and Lightning Bolt
+/// (2), Fireball and Air Shield (3), Implosion (5).
+const MATE_SPELLS: [u8; 9] = [15, 41, 53, 54, 16, 17, 21, 28, 18];
+/// A full army's seven creatures (E08 T52), none a plan's monster's ([`MONSTERS`]), so that a
+/// group joining it finds no room: archers, griffins, swordsmen, monks, cavaliers, dwarves and
+/// wood elves.
+const FULL_ARMY: [u16; 7] = [2, 4, 6, 8, 10, 16, 18];
+
+/// The first hero's exchanges (E08 T52, increment 6; `E08-design.md` §12): a mate, another hero
+/// of its owner on a tile beside it, so that a step meets it (GAM-MET-001), with a Spell Book,
+/// Scholar and Wisdom of its own (the first hero wearing a book too, so that a meeting teaches
+/// either, HER-SPL-007), spells of its own on a SoD map, and Elixir of Life's parts worn (an
+/// assembly, HER-ART-006); and in some plans the first hero's army full, seven stacks, with six
+/// compliant goblins near it, so that their join finds no room and opens the army dialog
+/// (GAM-DEC-004).
+#[derive(Debug, Clone)]
+pub(super) struct Exchange {
+    /// The mate's direction from the first hero ([`DIRECTIONS`]).
+    pub(super) mate: u8,
+    /// The mate's Scholar level (0: none).
+    pub(super) scholar: u8,
+    /// The mate's Wisdom level (0: none).
+    pub(super) wisdom: u8,
+    /// The mate's spells of its own on a SoD map, as indices into [`MATE_SPELLS`].
+    pub(super) spells: Vec<usize>,
+    /// Whether the mate wears Elixir of Life's parts ([`ELIXIR_PARTS`]).
+    pub(super) parts: bool,
+    /// The first hero's full army ([`FULL_ARMY`]'s counts), the goblins on the tile beside it
+    /// opposite the mate's; none: neither.
+    pub(super) full: Option<Vec<u16>>,
+}
+
+/// The first hero's exchanges (E08 T52): the mate in any direction, Scholar and Wisdom at a level
+/// or none, up to five spells, the parts in one case of two, and a full army in one case of two.
+fn exchange() -> impl Strategy<Value = Exchange> {
+    (
+        0u8..8,
+        0u8..=3,
+        0u8..=3,
+        subsequence((0..MATE_SPELLS.len()).collect::<Vec<_>>(), 0..=5),
+        any::<bool>(),
+        proptest::option::weighted(0.5, vec(1u16..=40, FULL_ARMY.len())),
+    )
+        .prop_map(|(mate, scholar, wisdom, spells, parts, full)| Exchange {
+            mate,
+            scholar,
+            wisdom,
+            spells,
+            parts,
+            full,
+        })
 }
 
 /// Terrain, road and river codes: mostly land, some water and rock (codes 8 and 9).
@@ -428,6 +498,8 @@ pub(super) fn plan() -> impl Strategy<Value = Plan> {
                 vec(kit(), 0..=6),
                 proptest::option::weighted(0.75, (any::<bool>(), 0u8..4)),
                 proptest::option::weighted(0.5, (any::<u8>(), 1u16..=20)),
+                // E08 T52, drawn last for the same reason.
+                proptest::option::weighted(0.5, exchange()),
             ),
         ),
     )
@@ -444,7 +516,7 @@ pub(super) fn plan() -> impl Strategy<Value = Plan> {
                 mut blockers,
                 difficulty,
                 keyring,
-                (backpacks, mut skills, beside, pile, (mut kits, lifts, nomads)),
+                (backpacks, mut skills, beside, pile, (mut kits, lifts, nomads, exchange)),
             )| {
                 // In three plans of four (E08 T42) a flyer and a water walker: the first two
                 // heroes in either order wear Angel Wings and Boots of Levitation (in place of
@@ -538,6 +610,7 @@ pub(super) fn plan() -> impl Strategy<Value = Plan> {
                     nomads,
                     blockers,
                     difficulty,
+                    exchange,
                 }
             },
         )
@@ -577,7 +650,14 @@ pub(super) fn lay_out(plan: &Plan) -> RawMap {
     }
     m.templates = vec![template(34, &[(1, 0)], &[(1, 0)])];
     // The blockers' templates, and the typed objects' up to the last one the plan uses.
-    let used = plan.blockers.iter().map(|&(_, o)| o + 1).max().unwrap_or(0);
+    // E08 T52: the goblins of a full army ([`Exchange`]) too.
+    let goblins = plan
+        .exchange
+        .as_ref()
+        .and_then(|e| e.full.as_ref())
+        .map(|_| MONSTER_OBJECTS[0]);
+    let used = plan.blockers.iter().map(|&(_, o)| o).chain(goblins);
+    let used = used.map(|o| o + 1).max().unwrap_or(0);
     m.templates.extend((0..used.max(BLOCKERS.len())).map(|o| {
         let (blocked, visitable) = masks(o);
         let (class, subclass, _) = KINDS[o / BLOCKERS.len()];
@@ -594,6 +674,37 @@ pub(super) fn lay_out(plan: &Plan) -> RawMap {
             heroes.push((at, army));
         }
     }
+    // E08 T52: the first hero's full army, the goblins near it and its mate on the tile beside
+    // it (none on a tile another hero holds), the last hero.
+    let exchange = plan.exchange.as_ref();
+    let full: Slots = exchange.and_then(|e| e.full.as_ref()).map(|counts| {
+        FULL_ARMY
+            .iter()
+            .zip(counts)
+            .map(|(&creature, &count)| Some((creature, count)))
+            .collect()
+    });
+    let none: Slots = None;
+    let mut goblins = None;
+    let mut mate = None;
+    if let (Some(exchange), Some(&((hx, hy, hz), _))) = (exchange, heroes.first()) {
+        let beside = |direction: u8| {
+            let (dx, dy) = DIRECTIONS[usize::from(direction % 8)];
+            let shift = |h: u8, d: i16| {
+                u8::try_from((i16::from(h) + d + i16::from(side)) % i16::from(side)).unwrap()
+            };
+            (shift(hx, dx), shift(hy, dy), hz)
+        };
+        if exchange.full.is_some() {
+            heroes[0].1 = &full;
+            goblins = Some((beside(exchange.mate + 4), MONSTER_OBJECTS[0]));
+        }
+        let at = beside(exchange.mate);
+        if heroes.iter().all(|&(taken, _)| taken != at) {
+            mate = Some(heroes.len());
+            heroes.push((at, &none));
+        }
+    }
     for &((x, y, z), _) in &heroes {
         let index = (usize::from(z) * usize::from(side) + usize::from(y)) * usize::from(side)
             + usize::from(x);
@@ -605,7 +716,7 @@ pub(super) fn lay_out(plan: &Plan) -> RawMap {
     // The typed objects laid out, by class and subclass (a kind's type; two kinds share the gold
     // pile's, E08 T16a; the monsters' kinds the monster's) and anchor.
     let mut typed: Vec<((u32, u32), Spot)> = Vec::new();
-    for &((x, y, z), shape) in &plan.blockers {
+    for &((x, y, z), shape) in plan.blockers.iter().chain(&goblins) {
         let (ax, ay, az) = (x % side, y % side, z % levels);
         let (blocked, visitable) = masks(shape);
         let covers = |&((hx, hy, hz), _): &(Spot, _)| {
@@ -670,24 +781,53 @@ pub(super) fn lay_out(plan: &Plan) -> RawMap {
         if let Some(kit) = kit.filter(|kit| !kit.skills.is_empty()) {
             skills.get_or_insert_with(Vec::new).extend(&kit.skills);
         }
-        let own = backpack.is_some() || skills.is_some() || !worn_kit.is_empty();
+        // E08 T52: the mate's Scholar and Wisdom are its skills of its own; it and the first hero
+        // wear a Spell Book (HER-SPL-007: a meeting teaches only between two books), the mate
+        // Elixir of Life's parts, and on a SoD map its spells of its own.
+        let mated = exchange.filter(|_| Some(usize::from(index)) == mate);
+        if let Some(exchange) = mated {
+            let levels = [(SCHOLAR, exchange.scholar), (WISDOM, exchange.wisdom)];
+            skills = Some(levels.into_iter().filter(|&(_, l)| l > 0).collect());
+        }
+        let parts = mated
+            .filter(|e| e.parts)
+            .map_or(&[][..], |_| &ELIXIR_PARTS[..]);
+        let book = skills.is_some() || (index == 0 && exchange.is_some());
+        let own = backpack.is_some() || book || !worn_kit.is_empty();
         let artifacts = own.then(|| {
             let mut worn = vec![None; v.artifact_slots()];
-            if skills.is_some() {
+            if book {
                 worn[17] = Some(0);
             }
             for &artifact in worn_kit {
                 let (_, slot) = MOVERS.iter().find(|&&(a, _)| a == artifact).unwrap();
                 worn[*slot] = Some(artifact);
             }
+            for &(artifact, slot) in parts {
+                worn[slot] = Some(artifact);
+            }
             Artifacts {
                 worn,
                 backpack: backpack.into_iter().flatten().copied().map(Some).collect(),
             }
         });
+        let spells = mated.filter(|e| v == Version::Sod && !e.spells.is_empty());
+        let spells = spells.map(|exchange| {
+            let mut bits = vec![0u8; 9];
+            for &i in &exchange.spells {
+                let spell = MATE_SPELLS[i];
+                bits[usize::from(spell / 8)] |= 1 << (spell % 8);
+            }
+            Bits(bits)
+        });
+        let owner = if mated.is_some() {
+            0
+        } else {
+            usize::from(index)
+        };
         let body = HeroBody {
             identifier: (v != Version::RoE).then_some(u32::from(index)),
-            owner: colours[usize::from(index) % colours.len()],
+            owner: colours[owner % colours.len()],
             hero_type: u8::try_from(hero_type).unwrap(),
             experience: (v != Version::Sod).then_some(0),
             army,
@@ -696,6 +836,7 @@ pub(super) fn lay_out(plan: &Plan) -> RawMap {
             spell: (v == Version::Ab).then_some(u8::MAX),
             artifacts,
             secondary_skills: skills,
+            spells,
             ..HeroBody::default()
         };
         let mut o = object(x + 1, y, HERO_TEMPLATE, Body::Hero(Box::new(body)));
@@ -778,6 +919,15 @@ pub(super) enum Step {
     /// (E08 T19b2) The acting player fights: on the map it seeks another player's hero
     /// ([`seek`]), in a battle it plays the `n`-th of its fighting commands ([`fight`]).
     Fight(u16),
+    /// (E08 T52) The acting player's `n`-th management command ([`managing`], modulo their
+    /// number), or as `Legal(n)` if it has none (a battle, an offer or a level-up open).
+    Manage(u16),
+    /// (E08 T52) On the map the acting player's hero seeks another of its own ([`meet`]); with a
+    /// meeting or an army dialog open, as `Manage(n)`.
+    Meet(u16),
+    /// (E08 T52) The acting player's open offer to join accepted; on the map its `n`-th option
+    /// that ends on a wandering monster's tile ([`join`]); else as `Meet(n)`.
+    Join(u16),
 }
 
 #[derive(Debug, Clone)]
@@ -816,6 +966,95 @@ pub(super) enum Free {
     },
     /// An answer to a pending decision (E08 T14b).
     Answer(Answer),
+    /// (E08 T52) A management command of arbitrary heroes, slots, places and counts.
+    Manage(Arbitrary),
+}
+
+/// An arbitrary management command (E08 T52; GAM-MAN-001): its kind (modulo 9: a move, a split
+/// and a dismissal of a stack, a formation, a flag, an artifact's move, an assembly, a
+/// disassembly, a move onto the same slot), two heroes (or the group, `None`), two slots (up to
+/// one past the army's), a count, and two places (worn or in the backpack, up to a few past the
+/// last).
+#[derive(Debug, Clone)]
+pub(super) struct Arbitrary {
+    kind: u8,
+    heroes: [Option<Who>; 2],
+    slots: [u8; 2],
+    count: u32,
+    places: [(bool, u8); 2],
+}
+
+impl Arbitrary {
+    /// The command, its heroes resolved for `actor`.
+    fn command(&self, state: &GameState, actor: PlayerId) -> Manage {
+        let army = |who: Option<Who>| {
+            who.map_or(ArmyRef::Group, |who| ArmyRef::Hero(who.hero(state, actor)))
+        };
+        let [a, b] = self.heroes.map(army);
+        let [sa, sb] = self.slots;
+        let from = ArmySlot { army: a, slot: sa };
+        let to = ArmySlot { army: b, slot: sb };
+        let hero = |who: Option<Who>| who.map_or(HeroId::new(0), |w| w.hero(state, actor));
+        let place = |(worn, n): (bool, u8)| {
+            if worn {
+                ArtifactPlace::Worn(Position(usize::from(n)))
+            } else {
+                ArtifactPlace::Backpack(usize::from(n))
+            }
+        };
+        let (h, at) = (
+            hero(self.heroes[0]),
+            Position(usize::from(self.places[0].1)),
+        );
+        match self.kind % 9 {
+            0 => Manage::Army(ArmyCommand::Move { from, to }),
+            1 => Manage::Army(ArmyCommand::Split {
+                from,
+                to,
+                count: self.count,
+            }),
+            2 => Manage::Army(ArmyCommand::Dismiss { at: from }),
+            3 => Manage::Formation {
+                hero: h,
+                formation: if self.count.is_multiple_of(2) {
+                    Formation::Loose
+                } else {
+                    Formation::Tight
+                },
+            },
+            4 => Manage::Tactics {
+                hero: h,
+                on: self.count.is_multiple_of(2),
+            },
+            5 => Manage::Artifact {
+                from: (h, place(self.places[0])),
+                to: (hero(self.heroes[1]), place(self.places[1])),
+            },
+            6 => Manage::Assemble { hero: h, at },
+            7 => Manage::Disassemble { hero: h, at },
+            _ => Manage::Army(ArmyCommand::Move { from, to: from }),
+        }
+    }
+}
+
+fn arbitrary() -> impl Strategy<Value = Arbitrary> {
+    (
+        any::<u8>(),
+        [
+            proptest::option::weighted(0.9, who()),
+            proptest::option::weighted(0.9, who()),
+        ],
+        [0u8..9, 0u8..9],
+        prop_oneof![3 => 0u32..50, 1 => any::<u32>()],
+        [(any::<bool>(), 0u8..24), (any::<bool>(), 0u8..24)],
+    )
+        .prop_map(|(kind, heroes, slots, count, places)| Arbitrary {
+            kind,
+            heroes,
+            slots,
+            count,
+            places,
+        })
 }
 
 /// A hero of an arbitrary command: the `n`-th of the actor's own (modulo their number; hero 0 if
@@ -877,6 +1116,7 @@ pub(super) fn step() -> impl Strategy<Value = Step> {
         } else {
             Answer::Decline
         })),
+        arbitrary().prop_map(Free::Manage),
     ];
     prop_oneof![
         6 => any::<u16>().prop_map(Step::Legal),
@@ -885,15 +1125,30 @@ pub(super) fn step() -> impl Strategy<Value = Step> {
         2 => (any::<u16>(), edit).prop_map(|(n, edit)| Step::Edited(n, edit)),
         2 => (proptest::option::weighted(0.33, any::<u8>()), free)
             .prop_map(|(player, command)| Step::Free { player, command }),
+        2 => any::<u16>().prop_map(Step::Manage),
     ]
 }
 
 /// Steps of random play (E08 T19b2): single steps and runs of [`Step::Fight`], long enough to
-/// bring two players' heroes together and play their battle to its end.
+/// bring two players' heroes together and play their battle to its end; since E08 T52 runs of
+/// management, a [`Step::Meet`] and then [`Step::Manage`]s, which meet a hero's mate and
+/// exchange with it, and runs of joins, two [`Step::Join`]s (a visit to a monster and the
+/// join's acceptance) and then [`Step::Manage`]s, which manage an army dialog.
 pub(super) fn steps() -> impl Strategy<Value = Vec<Step>> {
     let run = vec(any::<u16>(), 16..96).prop_map(|ns| ns.into_iter().map(Step::Fight).collect());
+    let manage = (any::<u16>(), vec(any::<u16>(), 2..16)).prop_map(|(n, ns)| {
+        core::iter::once(Step::Meet(n))
+            .chain(ns.into_iter().map(Step::Manage))
+            .collect()
+    });
+    let join = (any::<u16>(), vec(any::<u16>(), 2..16)).prop_map(|(n, ns)| {
+        [Step::Join(n), Step::Join(n)]
+            .into_iter()
+            .chain(ns.into_iter().map(Step::Manage))
+            .collect()
+    });
     vec(
-        prop_oneof![12 => step().prop_map(|step| vec![step]), 1 => run],
+        prop_oneof![12 => step().prop_map(|step| vec![step]), 1 => run, 2 => manage, 1 => join],
         0..40,
     )
     .prop_map(|runs: Vec<Vec<Step>>| runs.into_iter().flatten().collect())
@@ -929,6 +1184,218 @@ fn seek(state: &GameState, legal: &[GameCommand], n: u16) -> GameCommand {
         };
         let here = state.adventure().hero(hero).and_then(|h| distance(h.pos));
         let there = path.last().and_then(|&to| distance(to));
+        if let (Some(here), Some(there)) = (here, there)
+            && there < here
+            && there <= nearest
+        {
+            if there < nearest {
+                best.clear();
+                nearest = there;
+            }
+            best.push(command);
+        }
+    }
+    best.get(usize::from(n) % best.len().max(1))
+        .map_or(GameCommand::EndTurn, |&command| command.clone())
+}
+
+/// The armies the acting player may manage now (E08 T52; ADR-0017 point 6): a meeting's two
+/// heroes, an army dialog's hero and group, else each of its heroes alone; none while it may
+/// not manage (a battle, an offer or a level-up open, the game waiting for another player).
+fn managed(state: &GameState) -> Vec<Vec<ArmyRef>> {
+    let player = acting(state);
+    if actor(state) != Actor::Player(player)
+        || state.battle(player).is_some()
+        || state.decision(player).is_some()
+        || state.waiting_for().is_some()
+    {
+        return Vec::new();
+    }
+    if let Some(heroes) = state.meeting(player) {
+        return vec![heroes.map(ArmyRef::Hero).to_vec()];
+    }
+    if let Some((hero, _)) = state.army_dialog(player) {
+        return vec![vec![ArmyRef::Hero(hero), ArmyRef::Group]];
+    }
+    let heroes = state.adventure().heroes().iter();
+    heroes
+        .filter(|h| h.owner == player)
+        .map(|h| vec![ArmyRef::Hero(h.id)])
+        .collect()
+}
+
+/// The stack at `at` (E08 T52): in its hero's army on the map, or in the acting player's army
+/// dialog's group.
+fn stack_at(state: &GameState, at: ArmySlot) -> Option<h3_contracts::ArmyStack> {
+    let army = match at.army {
+        ArmyRef::Hero(hero) => state.adventure().hero(hero).map(|h| &h.army[..]),
+        ArmyRef::Group => state.army_dialog(acting(state)).map(|(_, group)| group),
+    };
+    army.and_then(|army| army.iter().find(|s| s.slot == at.slot).copied())
+}
+
+/// The splits the acting player may give now (E08 T52; GAM-MAN-002, ADV-ARM-003): of each stack
+/// of the armies it manages ([`managed`]) with each other slot of those armies, each pair with
+/// its [`split_range`].
+fn splits(
+    state: &GameState,
+    rules: &GameRuleset,
+) -> Vec<(ArmySlot, ArmySlot, RangeInclusive<u32>)> {
+    let actor = actor(state);
+    let mut splits = Vec::new();
+    for armies in managed(state) {
+        let slots: Vec<ArmySlot> = armies
+            .iter()
+            .flat_map(|&army| (0..7).map(move |slot| ArmySlot { army, slot }))
+            .collect();
+        for &from in slots.iter().filter(|&&at| stack_at(state, at).is_some()) {
+            for &to in &slots {
+                if let Some(range) = split_range(state, rules, actor, (from, to)) {
+                    splits.push((from, to, range));
+                }
+            }
+        }
+    }
+    splits
+}
+
+/// The acting player's management commands (E08 T52; GAM-MAN-002): each of its heroes'
+/// [`legal_management`] by id, then its [`splits`], each to its range's ends and the count
+/// between them.
+pub(super) fn managing(state: &GameState, rules: &GameRuleset) -> Vec<GameCommand> {
+    let actor = actor(state);
+    let mut commands: Vec<GameCommand> = state
+        .adventure()
+        .heroes()
+        .iter()
+        .flat_map(|h| legal_management(state, rules, actor, h.id))
+        .map(GameCommand::Manage)
+        .collect();
+    for (from, to, range) in splits(state, rules) {
+        let (low, high) = (*range.start(), *range.end());
+        let mut counts = vec![low, low + (high - low) / 2, high];
+        counts.dedup();
+        commands.extend(counts.into_iter().map(|count| {
+            GameCommand::Manage(Manage::Army(ArmyCommand::Split { from, to, count }))
+        }));
+    }
+    commands
+}
+
+/// A management command's kind (E08 T52): a stack's move, split or dismissal, a formation or a
+/// flag, an artifact's move, an assembly or a disassembly.
+fn kind(command: &GameCommand) -> usize {
+    match command {
+        GameCommand::Manage(Manage::Army(ArmyCommand::Move { .. })) => 0,
+        GameCommand::Manage(Manage::Army(ArmyCommand::Split { .. })) => 1,
+        GameCommand::Manage(Manage::Army(ArmyCommand::Dismiss { .. })) => 2,
+        GameCommand::Manage(Manage::Formation { .. } | Manage::Tactics { .. }) => 3,
+        GameCommand::Manage(Manage::Artifact { .. }) => 4,
+        _ => 5,
+    }
+}
+
+/// The `n`-th of `commands` (E08 T52), a kind ([`kind`]) chosen first among those listed, then a
+/// command of it, so that a rare kind (an assembly among hundreds of moves) is played as often
+/// as the others; none if there are none.
+fn pick(commands: &[GameCommand], n: u16) -> Option<GameCommand> {
+    let mut kinds: Vec<usize> = commands.iter().map(kind).collect();
+    kinds.sort_unstable();
+    kinds.dedup();
+    let n = usize::from(n);
+    let chosen = *kinds.get(n % kinds.len().max(1))?;
+    let of: Vec<&GameCommand> = commands.iter().filter(|c| kind(c) == chosen).collect();
+    Some(of[(n / kinds.len()) % of.len()].clone())
+}
+
+/// On the map (E08 T52): the acting player's open offer to join (for free or for gold) accepted,
+/// another offer declined, its level-up's first offer taken; else the `n`-th of its options that
+/// end on a wandering monster's tile (a visit: its offer, or its battle), those of a hero whose
+/// army is full first; else as [`meet`].
+fn join(state: &GameState, rules: &GameRuleset, legal: &[GameCommand], n: u16) -> GameCommand {
+    let actor = acting(state);
+    match state.decision(actor).map(|offer| &offer.kind) {
+        Some(OfferKind::Join | OfferKind::JoinForGold { .. }) => {
+            return GameCommand::Answer(Answer::Accept);
+        }
+        Some(_) => return GameCommand::Answer(Answer::Decline),
+        None => {}
+    }
+    if battle_of(state, self::actor(state)).is_none()
+        && state.level_up(actor).is_none()
+        && state.meeting(actor).is_none()
+        && state.army_dialog(actor).is_none()
+    {
+        let adventure = state.adventure();
+        let monster = |pos: TilePos| {
+            adventure.map().visited_from(pos).iter().any(|&i| {
+                !adventure.is_removed(i) && adventure.map().objects()[i].monster.is_some()
+            })
+        };
+        let visits: Vec<(HeroId, &GameCommand)> = legal
+            .iter()
+            .filter_map(|c| {
+                let (hero, path) = as_move(c)?;
+                path.last()
+                    .is_some_and(|&to| monster(to))
+                    .then_some((hero, c))
+            })
+            .collect();
+        // A full army's visits first: their joins find no room.
+        let slots = usize::from(rules.adventure().params().army_slots());
+        let full = |hero: HeroId| adventure.hero(hero).is_some_and(|h| h.army.len() == slots);
+        let first: Vec<&GameCommand> = visits
+            .iter()
+            .filter(|(h, _)| full(*h))
+            .map(|&(_, c)| c)
+            .collect();
+        let all: Vec<&GameCommand> = visits.iter().map(|&(_, c)| c).collect();
+        let visits = if first.is_empty() { all } else { first };
+        if !visits.is_empty() {
+            return visits[usize::from(n) % visits.len()].clone();
+        }
+    }
+    meet(state, rules, legal, n)
+}
+
+/// On the map (E08 T52): the acting player's open offer declined, its level-up's first offer
+/// taken, its meeting or army dialog managed (the `n`-th of [`managing`], `Decline` if none);
+/// else the `n`-th of its options that end nearest to another of its own heroes on the hero's
+/// level, nearer than the hero stands (a step onto the other's tile meets it, nearest of all);
+/// `EndTurn` when none gets nearer. In a battle, as `Legal(n)`.
+fn meet(state: &GameState, rules: &GameRuleset, legal: &[GameCommand], n: u16) -> GameCommand {
+    let actor = acting(state);
+    if battle_of(state, self::actor(state)).is_some() {
+        return legal[usize::from(n) % legal.len()].clone();
+    }
+    if state.decision(actor).is_some() {
+        return GameCommand::Answer(Answer::Decline);
+    }
+    if state.level_up(actor).is_some() {
+        return GameCommand::Answer(Answer::First);
+    }
+    if state.meeting(actor).is_some() || state.army_dialog(actor).is_some() {
+        return pick(&managing(state, rules), n).unwrap_or(GameCommand::Answer(Answer::Decline));
+    }
+    let heroes = state.adventure().heroes();
+    let distance = |mover: HeroId, pos: TilePos| {
+        heroes
+            .iter()
+            .filter(|h| h.owner == actor && h.id != mover && h.pos.level == pos.level)
+            .map(|h| h.pos.x.abs_diff(pos.x).max(h.pos.y.abs_diff(pos.y)))
+            .min()
+    };
+    let mut best: Vec<&GameCommand> = Vec::new();
+    let mut nearest = u16::MAX;
+    for command in legal {
+        let Some((hero, path)) = as_move(command) else {
+            continue;
+        };
+        let here = state
+            .adventure()
+            .hero(hero)
+            .and_then(|h| distance(hero, h.pos));
+        let there = path.last().and_then(|&to| distance(hero, to));
         if let (Some(here), Some(there)) = (here, there)
             && there < here
             && there <= nearest
@@ -1214,6 +1681,13 @@ pub(super) fn resolve(
         Step::EndTurn => (who, GameCommand::EndTurn),
         Step::Fight(n) if battle_of(state, who).is_some() => (who, fight(state, rules, legal, *n)),
         Step::Fight(n) => (who, seek(state, legal, *n)),
+        Step::Manage(n) => (
+            who,
+            pick(&managing(state, rules), *n)
+                .unwrap_or_else(|| legal[usize::from(*n) % legal.len()].clone()),
+        ),
+        Step::Meet(n) => (who, meet(state, rules, legal, *n)),
+        Step::Join(n) => (who, join(state, rules, legal, *n)),
         Step::Edited(n, edit) => {
             let moves: Vec<(HeroId, &[TilePos])> = legal.iter().filter_map(as_move).collect();
             let Some(&(mut hero, path)) = moves.get(usize::from(*n) % moves.len().max(1)) else {
@@ -1255,6 +1729,9 @@ pub(super) fn resolve(
             match command {
                 Free::EndTurn => (who, GameCommand::EndTurn),
                 Free::Answer(answer) => (who, GameCommand::Answer(*answer)),
+                Free::Manage(arbitrary) => {
+                    (who, GameCommand::Manage(arbitrary.command(state, actor)))
+                }
                 Free::Move {
                     hero,
                     directions,
@@ -1578,6 +2055,23 @@ fn check_unlisted(
         prop_assert!(targets.iter().any(|&t| t == target), "{:?}", command);
         return Ok(());
     }
+    // E08 T52: a management command `apply` accepts is one its hero lists, or a split to a count
+    // in its pair's range (GAM-MAN-002).
+    if let GameCommand::Manage(manage) = *command {
+        let player = Actor::Player(actor);
+        let heroes = before.adventure().heroes().iter();
+        let listed = heroes
+            .clone()
+            .any(|h| legal_management(before, rules, player, h.id).contains(&manage));
+        let split = match manage {
+            Manage::Army(ArmyCommand::Split { from, to, count }) => {
+                split_range(before, rules, player, (from, to)).is_some_and(|r| r.contains(&count))
+            }
+            _ => false,
+        };
+        prop_assert!(listed || split, "unlisted {:?} accepted", command);
+        return Ok(());
+    }
     let (hero, path) =
         as_move(command).ok_or_else(|| fail(format!("unlisted {command:?} accepted")))?;
     prop_assert_eq!(before.adventure().hero(hero).map(|h| h.owner), Some(actor));
@@ -1627,6 +2121,23 @@ fn check_conservation(
         let levelled = events
             .iter()
             .any(|e| matches!(e, GameEvent::LevelGained { hero, .. } if *hero == id));
+        // E08 T52: outside a battle a hero's details change by the changes its owner is told: a
+        // meeting's spells (HER-SPL-007), an artifact's move, an assembly and a disassembly
+        // (HER-ART-005, -006), each applied in order.
+        let mut told = (**b).clone();
+        for event in events {
+            if let GameEvent::HeroChanged {
+                player,
+                hero,
+                change,
+            } = *event
+                && hero == id
+            {
+                prop_assert_eq!(Some(player), before.adventure().hero(id).map(|h| h.owner));
+                prop_assert!(!levelled, "{:?} levelled and changed", id);
+                h3_heroes::apply_change(&mut told, rules.core(), change);
+            }
+        }
         if levelled {
             check_levels(rules, (before, after), events, id)?;
             prop_assert_eq!(
@@ -1634,7 +2145,7 @@ fn check_conservation(
                 (b.experience, b.mana, &b.worn, &b.backpack, &b.spells)
             );
         } else {
-            prop_assert_eq!(b, a);
+            prop_assert_eq!(&told, &**a);
         }
     }
     prop_assert_eq!(before.heroes().len(), after.heroes().len());
@@ -1654,7 +2165,18 @@ fn check_conservation(
             _ => None,
         })
         .collect();
-    prop_assert!(joined.len() <= 1, "{:?}", joined);
+    // E08 T52: a group that finds no room joins nothing and is held whole in the army dialog
+    // (ADV-MON-008, GAM-DEC-004), its monster leaving as one that joins.
+    let held: Vec<(HeroId, CreatureTypeId, u32)> = events
+        .iter()
+        .filter_map(|e| match *e {
+            GameEvent::ArmyDialogOpened { hero, stack, .. } => {
+                Some((hero, stack.creature, stack.count))
+            }
+            _ => None,
+        })
+        .collect();
+    prop_assert!(joined.len() + held.len() <= 1, "{:?} {:?}", joined, held);
     let mut contents = Vec::new();
     for event in events {
         if let GameEvent::Adventure(AdventureEvent {
@@ -1676,7 +2198,7 @@ fn check_conservation(
                 // A monster that joins (all of it, of its creature) gives its treasure; one that
                 // flees gives nothing.
                 if let Some(monster) = &o.monster
-                    && let Some(&(_, creature, count)) = joined.first()
+                    && let Some(&(_, creature, count)) = joined.first().or(held.first())
                 {
                     prop_assert_eq!(creature, monster.creature);
                     prop_assert_eq!(Some(count), before.adventure().monster_count(i));
@@ -1768,7 +2290,495 @@ fn check_conservation(
             );
         }
     }
+    // E08 T52: a full army: the group held (the army as it was), none of its creature's stacks
+    // able to take it within a stack's most (ADV-ARM-007).
+    for &(hero, creature, count) in &held {
+        let (_, army) = expected.iter().find(|(id, _)| *id == hero).unwrap();
+        let most = rules.adventure().params().max_stack_count();
+        let slots = rules.adventure().params().army_slots();
+        prop_assert_eq!(army.len(), usize::from(slots), "{:?} held with room", hero);
+        prop_assert!(
+            army.iter()
+                .all(|s| s.creature != creature || s.count.saturating_add(count) > most),
+            "{:?} held a group its stack takes",
+            hero
+        );
+    }
+    // E08 T52: every slot a management command names, told with what it holds after it
+    // (GAM-MAN-001).
+    for event in events {
+        if let GameEvent::StackChanged {
+            at:
+                ArmySlot {
+                    army: ArmyRef::Hero(hero),
+                    slot,
+                },
+            stack,
+            ..
+        } = *event
+        {
+            let (_, army) = expected
+                .iter_mut()
+                .find(|(id, _)| *id == hero)
+                .ok_or_else(|| fail(format!("{event:?} of a hero off the map")))?;
+            army.retain(|s| s.slot != slot);
+            if let Some(stack) = stack {
+                prop_assert_eq!(stack.slot, slot);
+                let at = army.iter().position(|s| s.slot > slot);
+                army.insert(at.unwrap_or(army.len()), stack);
+            }
+        }
+    }
     prop_assert_eq!(expected, armies(after));
+    check_groups(before, after, events)
+}
+
+/// The army dialogs' groups (E08 T52; GAM-DEC-004): a dialog opens with the group whole in its
+/// slot 0, as told; a slot of a group changes as told (`StackChanged`); a closed dialog's group
+/// is lost, each stack it held told in slot order after the dialog's close; nothing else
+/// changes a group.
+fn check_groups(
+    before: &GameState,
+    after: &GameState,
+    events: &[GameEvent],
+) -> Result<(), TestCaseError> {
+    for player in (0..before.players()).map(|p| PlayerId::new(u8::try_from(p).unwrap())) {
+        let group = |state: &GameState| {
+            state
+                .army_dialog(player)
+                .map(|(hero, group)| (hero, group.to_vec()))
+        };
+        let mut expected = group(before);
+        let mut lost = Vec::new();
+        for event in events {
+            match *event {
+                GameEvent::ArmyDialogOpened {
+                    player: owner,
+                    hero,
+                    stack,
+                } if owner == player => {
+                    prop_assert!(expected.is_none(), "{:?} with a dialog open", event);
+                    prop_assert_eq!(stack.slot, 0);
+                    expected = Some((hero, vec![stack]));
+                }
+                GameEvent::StackChanged {
+                    player: owner,
+                    at:
+                        ArmySlot {
+                            army: ArmyRef::Group,
+                            slot,
+                        },
+                    stack,
+                } if owner == player => {
+                    let (_, group) = expected
+                        .as_mut()
+                        .ok_or_else(|| fail(format!("{event:?} without a dialog")))?;
+                    group.retain(|s| s.slot != slot);
+                    if let Some(stack) = stack {
+                        prop_assert_eq!(stack.slot, slot);
+                        let at = group.iter().position(|s| s.slot > slot);
+                        group.insert(at.unwrap_or(group.len()), stack);
+                    }
+                }
+                GameEvent::DecisionClosed { player: owner } if owner == player => {
+                    if let Some((_, group)) = expected.take() {
+                        lost = group;
+                    }
+                }
+                GameEvent::GroupLost {
+                    player: owner,
+                    stack,
+                    ..
+                } if owner == player => {
+                    prop_assert!(!lost.is_empty(), "{:?} without a group", event);
+                    prop_assert_eq!(lost.remove(0), stack);
+                }
+                _ => {}
+            }
+        }
+        prop_assert!(
+            lost.is_empty(),
+            "{:?}'s group not told lost: {:?}",
+            player,
+            lost
+        );
+        prop_assert_eq!(group(after), expected);
+    }
+    Ok(())
+}
+
+/// The creatures of `armies`, by creature, as `state` has them (E08 T52).
+fn creatures(state: &GameState, armies: &[ArmyRef]) -> Vec<(CreatureTypeId, u64)> {
+    let mut all: Vec<(CreatureTypeId, u64)> = Vec::new();
+    for &army in armies {
+        for slot in 0..7 {
+            if let Some(stack) = stack_at(state, ArmySlot { army, slot }) {
+                match all.iter_mut().find(|(c, _)| *c == stack.creature) {
+                    Some((_, n)) => *n += u64::from(stack.count),
+                    None => all.push((stack.creature, u64::from(stack.count))),
+                }
+            }
+        }
+    }
+    all.sort_unstable();
+    all
+}
+
+/// The artifacts `heroes` wear and carry, as type and scroll spell, sorted (E08 T52).
+fn artifacts(state: &GameState, heroes: &[HeroId]) -> Vec<(u16, Option<u16>)> {
+    let mut all: Vec<_> = heroes
+        .iter()
+        .flat_map(|&id| {
+            let d = state.hero(id).unwrap();
+            d.worn
+                .iter()
+                .flatten()
+                .chain(&d.backpack)
+                .map(|item| (item.artifact.raw(), item.spell.map(|s| s.raw())))
+                .collect::<Vec<_>>()
+        })
+        .collect();
+    all.sort_unstable();
+    all
+}
+
+/// The armies an army command names (E08 T52): the stack's, and the target's if another.
+fn named(command: &ArmyCommand) -> Vec<ArmyRef> {
+    let (from, to) = match *command {
+        ArmyCommand::Move { from, to } | ArmyCommand::Split { from, to, .. } => (from, Some(to)),
+        ArmyCommand::Dismiss { at } => (at, None),
+    };
+    let mut armies = vec![from.army];
+    armies.extend(to.map(|to| to.army).filter(|&army| army != from.army));
+    armies
+}
+
+/// A management command's effects (E08 T52; GAM-MAN-001, ADV-ARM-001 to -006, HER-ART-005,
+/// HER-ART-006), beside the told slots and hero changes [`check_conservation`] checks: it opens
+/// and closes no decision; no hero moves or loses points; an army command changes only the armies
+/// it names, which hold the same creatures but a dismissed stack, which leaves; a formation or a
+/// flag changes only its hero's, as told; an artifact's move keeps the artifacts of the heroes it
+/// names, an assembly turns its combination's parts into it, a disassembly the combination into
+/// its parts.
+fn check_management(
+    rules: &GameRuleset,
+    (before, after): (&GameState, &GameState),
+    player: PlayerId,
+    command: &Manage,
+    events: &[GameEvent],
+) -> Result<(), TestCaseError> {
+    prop_assert_eq!(before.meeting(player), after.meeting(player));
+    prop_assert_eq!(
+        before.army_dialog(player).map(|(hero, _)| hero),
+        after.army_dialog(player).map(|(hero, _)| hero)
+    );
+    let armies = match command {
+        Manage::Army(army) => named(army),
+        _ => Vec::new(),
+    };
+    for (b, a) in before
+        .adventure()
+        .heroes()
+        .iter()
+        .zip(after.adventure().heroes())
+    {
+        prop_assert_eq!(
+            (b.id, b.owner, b.pos, b.movement),
+            (a.id, a.owner, a.pos, a.movement)
+        );
+        if !armies.contains(&ArmyRef::Hero(b.id)) {
+            prop_assert_eq!(&b.army, &a.army);
+        }
+        let formation = events.iter().rev().find_map(|e| match *e {
+            GameEvent::FormationSet {
+                hero, formation, ..
+            } if hero == b.id => Some(formation),
+            _ => None,
+        });
+        let tactics = events.iter().rev().find_map(|e| match *e {
+            GameEvent::TacticsSet { hero, on, .. } if hero == b.id => Some(on),
+            _ => None,
+        });
+        prop_assert_eq!(a.formation, formation.unwrap_or(b.formation));
+        prop_assert_eq!(a.tactics, tactics.unwrap_or(b.tactics));
+    }
+    match *command {
+        Manage::Army(army) => {
+            let mut expected = creatures(before, &armies);
+            if let ArmyCommand::Dismiss { at } = army {
+                let stack = stack_at(before, at).unwrap();
+                let (_, n) = expected
+                    .iter_mut()
+                    .find(|(c, _)| *c == stack.creature)
+                    .unwrap();
+                *n -= u64::from(stack.count);
+                expected.retain(|&(_, n)| n > 0);
+            }
+            prop_assert_eq!(creatures(after, &armies), expected);
+        }
+        Manage::Formation { hero, formation } => {
+            let told = GameEvent::FormationSet {
+                player,
+                hero,
+                formation,
+            };
+            prop_assert_eq!(events, &[told][..]);
+        }
+        Manage::Tactics { hero, on } => {
+            prop_assert_eq!(events, &[GameEvent::TacticsSet { player, hero, on }][..]);
+        }
+        Manage::Artifact { from, to } => {
+            let heroes = if from.0 == to.0 {
+                vec![from.0]
+            } else {
+                vec![from.0, to.0]
+            };
+            prop_assert_eq!(artifacts(after, &heroes), artifacts(before, &heroes));
+        }
+        Manage::Assemble { hero, .. } | Manage::Disassemble { hero, .. } => {
+            let assembled = matches!(command, Manage::Assemble { .. });
+            let (whole, parted) = if assembled {
+                (after, before)
+            } else {
+                (before, after)
+            };
+            // The one artifact the whole side has more: the combination, whose parts the parted
+            // side has instead.
+            let mut gained = artifacts(whole, &[hero]);
+            let mut expected = artifacts(parted, &[hero]);
+            for item in artifacts(parted, &[hero]) {
+                if let Some(i) = gained.iter().position(|&i| i == item) {
+                    gained.remove(i);
+                }
+            }
+            prop_assert_eq!(gained.len(), 1, "{:?}", command);
+            let combination = ArtifactTypeId::from_raw(gained[0].0);
+            let parts = &rules.core().artifact(combination).unwrap().parts;
+            prop_assert!(!parts.is_empty(), "{:?}", combination);
+            for part in parts {
+                let i = expected.iter().position(|&(a, _)| a == part.raw());
+                expected.remove(i.ok_or_else(|| fail(format!("{part:?} missing")))?);
+            }
+            expected.push(gained[0]);
+            expected.sort_unstable();
+            prop_assert_eq!(artifacts(whole, &[hero]), expected);
+        }
+    }
+    Ok(())
+}
+
+/// A move and its inverse (E08 T52; `E08-design.md` §12): a stack moved onto an empty slot or
+/// swapped with another creature's stack, or an artifact moved onto an empty place, goes back by
+/// the inverse move, which `apply` accepts, leaving the armies and the heroes as they were. A
+/// merge's inverse is a split, and a swap of artifacts out of a backpack returns the other
+/// artifact to the backpack: those have none.
+fn check_inverse(
+    rules: &GameRuleset,
+    (before, after): (&GameState, &GameState),
+    player: PlayerId,
+    command: &Manage,
+) -> Result<bool, TestCaseError> {
+    let inverse = match *command {
+        Manage::Army(ArmyCommand::Move { from, to }) => {
+            let (moved, there) = (stack_at(before, from), stack_at(before, to));
+            if there.is_some_and(|t| moved.is_some_and(|m| m.creature == t.creature)) {
+                return Ok(false);
+            }
+            Manage::Army(ArmyCommand::Move { from: to, to: from })
+        }
+        Manage::Artifact { from, to } => {
+            let target = before.hero(to.0).unwrap();
+            if let ArtifactPlace::Worn(q) = to.1
+                && target.worn[q.0].is_some()
+            {
+                return Ok(false);
+            }
+            Manage::Artifact { from: to, to: from }
+        }
+        _ => return Ok(false),
+    };
+    let mut back = after.clone();
+    let result = apply(
+        &mut back,
+        rules,
+        Actor::Player(player),
+        GameCommand::Manage(inverse),
+        &mut Vec::new(),
+    );
+    prop_assert!(
+        result.is_ok(),
+        "{:?} undone by {:?}: {:?}",
+        command,
+        inverse,
+        result
+    );
+    prop_assert_eq!(armies(&back), armies(before));
+    prop_assert_eq!(back.heroes(), before.heroes());
+    prop_assert_eq!(
+        back.army_dialog(player).map(|(_, g)| g.to_vec()),
+        before.army_dialog(player).map(|(_, g)| g.to_vec())
+    );
+    Ok(true)
+}
+
+/// The invariants of every state (E08 T52; ADV-ARM-002, -004, -007, HER-ART-001): every hero on
+/// the map has one to seven stacks, in distinct slots in order, each of at least one creature and
+/// at most a stack's most; every hero's details are valid; an army dialog's group has at most
+/// seven stacks alike (none: all taken) and holds a hero of its player on the map; a meeting holds
+/// two of the player's heroes on the map, neighbours on one level.
+fn check_invariants(rules: &GameRuleset, state: &GameState) -> Result<(), TestCaseError> {
+    let params = rules.adventure().params();
+    let (slots, most) = (params.army_slots(), params.max_stack_count());
+    let valid = |army: &[h3_contracts::ArmyStack]| {
+        army.windows(2).all(|w| w[0].slot < w[1].slot)
+            && army
+                .iter()
+                .all(|s| s.slot < slots && (1..=most).contains(&s.count))
+    };
+    for hero in state.adventure().heroes() {
+        prop_assert!(!hero.army.is_empty() && valid(&hero.army), "{:?}", hero);
+        let details = state.hero(hero.id).unwrap();
+        let checked = h3_heroes::validate(details, rules.core());
+        prop_assert!(checked.is_ok(), "{:?}: {:?}", hero.id, checked);
+    }
+    for player in (0..state.players()).map(|p| PlayerId::new(u8::try_from(p).unwrap())) {
+        let own = |hero: HeroId| {
+            state
+                .adventure()
+                .hero(hero)
+                .filter(|h| h.owner == player)
+                .map(|h| h.pos)
+        };
+        if let Some((hero, group)) = state.army_dialog(player) {
+            prop_assert!(valid(group), "{:?}", group);
+            prop_assert!(own(hero).is_some());
+        }
+        if let Some([a, b]) = state.meeting(player) {
+            let (a, b) = (own(a).unwrap(), own(b).unwrap());
+            prop_assert_eq!(a.level, b.level);
+            prop_assert_eq!(a.x.abs_diff(b.x).max(a.y.abs_diff(b.y)), 1);
+        }
+    }
+    Ok(())
+}
+
+/// Up to `most` of `items`, evenly spread from an offset `seed` picks (E08 T52: the probes of a
+/// long listing, a different sample at every state).
+fn spread<T>(items: &[T], most: usize, seed: u64) -> impl Iterator<Item = &T> {
+    let stride = items.len().div_ceil(most).max(1);
+    let offset = usize::try_from(seed % u64::try_from(stride).unwrap()).unwrap();
+    items.iter().skip(offset).step_by(stride)
+}
+
+/// Management's legality consistency, before a step (E08 T52; GAM-MAN-002, ADR-0017 point 6):
+/// only the acting player lists management commands, and only while it may manage ([`managed`]):
+/// for each of its heroes, or the heroes its meeting or army dialog holds; each hero lists both
+/// formations and both values of the flag and no command twice, and every command listed applies
+/// (a sample of a long listing). A hero not on the map, another player's, and the system list
+/// none. A pair of slots of the armies managed together has a split range exactly when a split
+/// applies there: its ends apply, a count past either is refused, and a pair without one refuses
+/// a split of one creature; another player has none.
+fn check_managing(state: &GameState, rules: &GameRuleset) -> Result<(), TestCaseError> {
+    let player = acting(state);
+    let managed = managed(state);
+    let held: Vec<HeroId> = managed
+        .iter()
+        .flatten()
+        .filter_map(|&army| match army {
+            ArmyRef::Hero(hero) => Some(hero),
+            ArmyRef::Group => None,
+        })
+        .collect();
+    let seed = state.state_hash();
+    let probe = |command: Manage| {
+        let mut probe = state.clone();
+        let command = GameCommand::Manage(command);
+        apply(
+            &mut probe,
+            rules,
+            Actor::Player(player),
+            command,
+            &mut Vec::new(),
+        )
+    };
+    let ids = (0..=u16::try_from(state.heroes().len()).unwrap()).map(HeroId::new);
+    for id in ids {
+        prop_assert!(legal_management(state, rules, Actor::System, id).is_empty());
+        for p in (0..=state.players()).map(|p| PlayerId::new(u8::try_from(p).unwrap())) {
+            let listed = legal_management(state, rules, Actor::Player(p), id);
+            let lists = p == player && held.contains(&id);
+            prop_assert_eq!(
+                !listed.is_empty(),
+                lists,
+                "{:?} for {:?}: {:?}",
+                id,
+                p,
+                listed
+            );
+            if !lists {
+                continue;
+            }
+            for formation in [Formation::Loose, Formation::Tight] {
+                let set = Manage::Formation {
+                    hero: id,
+                    formation,
+                };
+                prop_assert!(listed.contains(&set), "{:?} unlisted", set);
+            }
+            for on in [true, false] {
+                let set = Manage::Tactics { hero: id, on };
+                prop_assert!(listed.contains(&set), "{:?} unlisted", set);
+            }
+            for (i, command) in listed.iter().enumerate() {
+                prop_assert!(!listed[..i].contains(command), "{:?} twice", command);
+            }
+            for &command in spread(&listed, 24, seed) {
+                let result = probe(command);
+                prop_assert!(
+                    result.is_ok(),
+                    "listed {:?} rejected: {:?}",
+                    command,
+                    result
+                );
+            }
+        }
+    }
+    let other = PlayerId::new((player.raw() + 1) % u8::try_from(state.players()).unwrap());
+    let mut pairs = Vec::new();
+    for armies in &managed {
+        let slots: Vec<ArmySlot> = armies
+            .iter()
+            .flat_map(|&army| (0..7).map(move |slot| ArmySlot { army, slot }))
+            .collect();
+        for &from in slots.iter().filter(|&&at| stack_at(state, at).is_some()) {
+            pairs.extend(slots.iter().map(|&to| (from, to)));
+        }
+    }
+    for &(from, to) in spread(&pairs, 16, seed) {
+        let range = split_range(state, rules, Actor::Player(player), (from, to));
+        if other != player {
+            prop_assert_eq!(
+                split_range(state, rules, Actor::Player(other), (from, to)),
+                None
+            );
+        }
+        let split = |count| probe(Manage::Army(ArmyCommand::Split { from, to, count })).is_ok();
+        match range {
+            Some(range) => {
+                let (low, high) = (*range.start(), *range.end());
+                prop_assert!(split(low) && split(high), "{:?} {:?} {:?}", from, to, range);
+                prop_assert!(
+                    low == 0 || !split(low - 1),
+                    "{:?} {:?} {:?}",
+                    from,
+                    to,
+                    range
+                );
+                prop_assert!(!split(high + 1), "{:?} {:?} {:?}", from, to, range);
+            }
+            None => prop_assert!(!split(1), "{:?} {:?} split without a range", from, to),
+        }
+    }
     Ok(())
 }
 
@@ -2352,6 +3362,7 @@ fn check_decisions(
                     (true, OfferKind::Pass) => passed = Some((object_type, anchor)),
                     // E08 T20b3b1: the group joins and leaves the map, a declined flight lets the
                     // monster leave; an accepted pursuit is its battle.
+                    // E08 T52: or, without room, the group held in the army dialog.
                     (true, OfferKind::Join | OfferKind::JoinForGold { .. }) => {
                         let joined = events.iter().any(|e| {
                             matches!(
@@ -2359,7 +3370,7 @@ fn check_decisions(
                                 GameEvent::Adventure(AdventureEvent {
                                     kind: AdventureEventKind::CreaturesJoined { .. },
                                     ..
-                                })
+                                }) | GameEvent::ArmyDialogOpened { .. }
                             )
                         });
                         prop_assert!(joined, "{:?} without the creatures joining", event);
@@ -2399,6 +3410,34 @@ fn check_decisions(
         }
     }
     prop_assert_eq!(passed, None);
+    // E08 T52: a meeting of two of the actor's heroes opens as told (a step toward another of its
+    // heroes, GAM-MET-001), an army dialog as told (an accepted join without room), each when
+    // neither is open, and each closes as told (its `Decline`; GAM-DEC-003, GAM-DEC-004).
+    let dialog = |state: &GameState| state.army_dialog(actor).map(|(hero, _)| hero);
+    let mut exchange = (before.meeting(actor), dialog(before));
+    for event in events {
+        match *event {
+            GameEvent::MeetingOpened { player, heroes } => {
+                prop_assert_eq!((player, exchange), (actor, (None, None)));
+                for hero in heroes {
+                    let owner = after.adventure().hero(hero).map(|h| h.owner);
+                    prop_assert_eq!(owner, Some(actor));
+                }
+                exchange.0 = Some(heroes);
+            }
+            GameEvent::ArmyDialogOpened { player, hero, .. } => {
+                prop_assert_eq!((player, exchange), (actor, (None, None)));
+                exchange.1 = Some(hero);
+            }
+            GameEvent::DecisionClosed { player } => {
+                prop_assert_eq!(player, actor);
+                prop_assert!(exchange != (None, None), "{:?} with nothing open", event);
+                exchange = (None, None);
+            }
+            _ => {}
+        }
+    }
+    prop_assert_eq!((after.meeting(actor), dialog(after)), exchange);
     prop_assert_eq!(after.decision(actor), decision.as_ref());
     prop_assert!(after.adventure().bought(actor).eq(bought));
     prop_assert_eq!(after.adventure().keys(actor), keys);
@@ -2488,6 +3527,9 @@ fn check_isolation(
                     .eq(after.adventure().bought(player))
             );
             prop_assert_eq!(before.decision(player), after.decision(player));
+            // E08 T52: nor its meeting or army dialog.
+            prop_assert_eq!(before.meeting(player), after.meeting(player));
+            prop_assert_eq!(before.army_dialog(player), after.army_dialog(player));
             // E08 T30: a level-up opens for the other owner of the battle the command ended.
             if !partners.contains(&player) {
                 prop_assert_eq!(before.level_up(player), after.level_up(player));
@@ -2521,9 +3563,11 @@ proptest! {
         let mut state = start_on(&experienced(&plan, experience.as_deref()), rules, seed);
         for step in &steps {
             check_progression(rules, &state)?;
+            check_invariants(rules, &state)?;
             let legal = options(&state, rules);
             let reaches = reaches(&state, rules);
             check_legal(&state, rules, &legal, &reaches)?;
+            check_managing(&state, rules)?;
             let (actor, command) = resolve(&state, rules, &legal, step);
             let listed = actor == self::actor(&state) && legal.contains(&command);
             let before = state.clone();
@@ -2554,8 +3598,14 @@ proptest! {
             check_decisions(rules, (&before, &state), player, &events)?;
             check_isolation(&before, &state, player, &events)?;
             check_conservation(rules, &before, &state, &events)?;
+            // E08 T52: management (GAM-MAN-001), and a move's inverse.
+            if let GameCommand::Manage(manage) = &command {
+                check_management(rules, (&before, &state), player, manage, &events)?;
+                check_inverse(rules, (&before, &state), player, manage)?;
+            }
         }
         check_progression(rules, &state)?;
+        check_invariants(rules, &state)?;
     }
 
     /// Clone equivalence: a fork playing other commands leaves its parent as it was, and a fork
@@ -2920,6 +3970,124 @@ fn the_plans_fly_and_walk_on_water() {
     );
 }
 
+/// What a set of games managed (E08 T52): the meetings opened and the spells Scholar taught at
+/// them; the accepted management commands by kind, those between a meeting's two heroes (stacks
+/// and artifacts), the group's stacks taken into a hero's army; the army dialogs opened and the
+/// stacks lost with their groups; the management commands refused; the moves undone by their
+/// inverse ([`check_inverse`]).
+#[derive(Debug, Default)]
+struct Managed {
+    meetings: usize,
+    taught: usize,
+    moves: usize,
+    splits: usize,
+    dismissals: usize,
+    formations: usize,
+    flags: usize,
+    artifacts: usize,
+    assemblies: usize,
+    disassemblies: usize,
+    stacks_exchanged: usize,
+    artifacts_exchanged: usize,
+    dialogs: usize,
+    taken: usize,
+    lost: usize,
+    refused: usize,
+    undone: usize,
+}
+
+impl Managed {
+    /// Counts an applied command and its events.
+    fn count(&mut self, command: &GameCommand, accepted: bool, events: &[GameEvent]) {
+        let meeting = events
+            .iter()
+            .any(|e| matches!(e, GameEvent::MeetingOpened { .. }));
+        for event in events {
+            match *event {
+                GameEvent::MeetingOpened { .. } => self.meetings += 1,
+                GameEvent::HeroChanged {
+                    change: HeroChange::LearnSpell(_),
+                    ..
+                } if meeting => self.taught += 1,
+                GameEvent::ArmyDialogOpened { .. } => self.dialogs += 1,
+                GameEvent::GroupLost { .. } => self.lost += 1,
+                _ => {}
+            }
+        }
+        let GameCommand::Manage(manage) = command else {
+            return;
+        };
+        if !accepted {
+            self.refused += 1;
+            return;
+        }
+        let hero = |army: ArmyRef| matches!(army, ArmyRef::Hero(_));
+        match *manage {
+            Manage::Army(army) => {
+                match army {
+                    ArmyCommand::Move { .. } => self.moves += 1,
+                    ArmyCommand::Split { .. } => self.splits += 1,
+                    ArmyCommand::Dismiss { .. } => self.dismissals += 1,
+                }
+                let armies = named(&army);
+                self.stacks_exchanged +=
+                    usize::from(armies.len() == 2 && armies.iter().all(|&a| hero(a)));
+                self.taken += usize::from(armies.len() == 2 && armies[0] == ArmyRef::Group);
+            }
+            Manage::Formation { .. } => self.formations += 1,
+            Manage::Tactics { .. } => self.flags += 1,
+            Manage::Artifact { from, to } => {
+                self.artifacts += 1;
+                self.artifacts_exchanged += usize::from(from.0 != to.0);
+            }
+            Manage::Assemble { .. } => self.assemblies += 1,
+            Manage::Disassemble { .. } => self.disassemblies += 1,
+        }
+    }
+}
+
+/// The plans meet and manage (E08 T52, increment 6's exit criteria 1 to 4): over a fixed set of
+/// cases (proptest's deterministic runner), random play with the management runs ([`steps`])
+/// meets a hero's mate and learns Scholar's spells there, moves, splits and dismisses stacks,
+/// exchanges stacks and artifacts between the two heroes, sets formations and flags, assembles
+/// and disassembles Elixir of Life, opens army dialogs for a full army's join, takes the group's
+/// stacks and loses the rest, refuses arbitrary management commands and undoes moves by their
+/// inverse; the properties above check each (`every_step_keeps_the_commands_invariants`).
+// covers: GAM-MAN-001, GAM-MAN-002, GAM-MET-001, GAM-DEC-003, GAM-DEC-004, HER-SPL-007
+#[test]
+fn the_plans_meet_and_manage() {
+    use proptest::strategy::ValueTree;
+    let mut runner = proptest::test_runner::TestRunner::deterministic();
+    let strategy = (plan(), any::<bool>(), any::<u64>(), steps());
+    let mut managed = Managed::default();
+    for _ in 0..96 {
+        let (plan, strict, seed, steps) = strategy.new_tree(&mut runner).unwrap().current();
+        let rules = if strict { &*STRICT } else { &*FAITHFUL };
+        let mut state = start(&plan, rules, seed);
+        for step in &steps {
+            let legal = options(&state, rules);
+            let (actor, command) = resolve(&state, rules, &legal, step);
+            let before = state.clone();
+            let mut events = Vec::new();
+            let result = apply(&mut state, rules, actor, command.clone(), &mut events);
+            managed.count(&command, result.is_ok(), &events);
+            if let (Ok(()), GameCommand::Manage(manage)) = (result, &command) {
+                let player = player_of(&before, actor);
+                let undone = check_inverse(rules, (&before, &state), player, manage).unwrap();
+                managed.undone += usize::from(undone);
+            }
+        }
+    }
+    let m = &managed;
+    assert!(m.meetings > 0 && m.taught > 0, "{m:?}");
+    assert!(m.moves > 0 && m.splits > 0 && m.dismissals > 0, "{m:?}");
+    assert!(m.formations > 0 && m.flags > 0 && m.artifacts > 0, "{m:?}");
+    assert!(m.assemblies > 0 && m.disassemblies > 0, "{m:?}");
+    assert!(m.stacks_exchanged > 0 && m.artifacts_exchanged > 0, "{m:?}");
+    assert!(m.dialogs > 0 && m.taken > 0 && m.lost > 0, "{m:?}");
+    assert!(m.refused > 0 && m.undone > 0, "{m:?}");
+}
+
 /// The draws' source by the profile, on the original packs (E08 T31, design §14; GAM-HER-002,
 /// GAM-SET-002, `ADV-QUIRK-9`): in `faithful` a hero's levels at load come from its own level seed
 /// and the level (the original's generator), so the levels another hero gains at load before it
@@ -2942,6 +4110,7 @@ fn the_levels_at_load_follow_the_seed_in_faithful_and_the_stream_in_strict_fixed
         nomads: None,
         blockers: vec![],
         difficulty: 1,
+        exchange: None,
     };
     // The second hero's levels at load, at 12 000 experience (level 8), after the first hero's
     // at `first` experience.

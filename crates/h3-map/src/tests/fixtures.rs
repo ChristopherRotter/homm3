@@ -460,6 +460,7 @@ fn duel() -> Plan {
         nomads: None,
         blockers,
         difficulty: 1,
+        exchange: None,
     }
 }
 
@@ -499,6 +500,7 @@ fn xl() -> Plan {
         nomads: None,
         blockers,
         difficulty: 1,
+        exchange: None,
     }
 }
 
