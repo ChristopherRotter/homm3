@@ -63,11 +63,17 @@ Refined with the user on 2026-10-26 (T53; ADV-Q26). Built like increments 1 to 6
 
 124. **T54's start** (the user, ADV-Q27): a player's human flag is a flag of the game's setup (`PlayerSetup.human`), which a map's import sets from the map's player kinds (a colour a human may play is human, a computer-only one is not) and a session may change before the game is built; an env's agent counts as whatever the setup says. T54 whole (not chosen: the background in a task of its own, or behind a stub); the `cross-lane` lines in the AI lane's code (`census.rs`, two `h3-sim` tests) with the user's consent. *Agent's call (change freely):* a tile's topmost object for the background is the last in map order, as for visits (the original's draw order by layer needs the pictures' sizes); ADR-0017 point 11 gains T54's facts in T55b's drafts.
 
+125. **T55a in four** (the user, at T55a's start: after asking how much code there is to read, about 8 000 to 10 000 instructions not read yet, measured from `visit_object`'s cases and their callees, the user took the agent's four parts): T55a1 the census and the pickups (treasure chests, artifacts and random artifacts, Spell Scrolls, the monsters' artifacts), T55a2 the objects that teach (experience, spells, skills), T55a3 the rewards that give creatures with Pandora's Box and events, T55a4 the common rules, batch E7's plan, the rule ids, a fresh agent's second reading and the checkpoint's questions. Not chosen: three parts (T55a3 and T55a4 together), two parts, the census alone first. *Agent's call (change freely):* T55a3 decides whether the creature banks (16, 24, 25, 84, 85) and the Pyramid (63) are in; Seer's Huts and quest guards (83, 215) are only placed (survey `E08-rewards.md` §1).
+
 ### Tasks (queue entries in `docs/lanes/adventure/QUEUE.md`; one or two per round, the cut confirmed at each checkpoint)
 
 - **T53 Increment 7 refined** (with increment 6's closure). Done (2026-10-26, `adventure/e08-t53`; decisions 120–123): rewards on the map, the battle seam's facts first, the first round queued (T54, T55a, T55b).
 - **T54 The battle seam's facts from the game** (decisions 123, 124). Done (2026-10-26, `adventure/e08-t54`): the difficulty, the human sides, the colours, a placed hero's sex, the background (0x41ADB0, 0x505610 read), the attacker's ground; `ADV-STUB-9` the retreat facts; GAM-BAT-010 to -013.
-- **T55a The rewards survey** (decision 122). Queued.
+- **T55a The rewards survey** (decision 122), in four (decision 125):
+  - **T55a1 The census and the pickups.** Done (2026-10-26, `adventure/e08-t55a1`): survey `E08-rewards.md` §1 to §5 (the census of the reward classes; treasure chests, artifacts and random artifacts with the unreachable pickup conditions, Spell Scrolls, the monsters' artifacts), 18 readings in `map.toml`; disputes D-29 to D-32.
+  - **T55a2 The objects that teach.** Queued.
+  - **T55a3 The rewards that give creatures, Pandora's Box and events.** Queued.
+  - **T55a4 The common rules, batch E7's plan, the rule ids, the second reading and the checkpoint.** Queued.
 - **T55b The ADR amendment drafts, the design note and the cut** (decision 122). Queued.
 
 ## Later increments (sketch)
