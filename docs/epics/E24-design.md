@@ -1052,3 +1052,66 @@ T1a's six sequences line by line and frame by frame.
   45, `scroll-0` and `scroll-1` 22 each, `scroll-2` 24, `scroll-limits` 28), all exact
   (`timelines/<id>-frames.txt`). The edge cursors' and the arrow's frames and hot spots are
   among them (the cursor over the frame's left border at (2, 300) and in the top-left corner).
+
+### 3.7 The walk over time, headless (M2 T3a)
+
+§3.5 built into `h3_map_view::timeline` (*provisional*) and checked against T1b's seven walk
+sequences, every line but the `screen` ones (the walk drawn is T3b's). Read this time, filling
+§3.5's gaps (`docs/exe/map.toml`):
+
+- **A walk's waits run the tick.** `wait_until` returns at once when its time has passed, else
+  runs `adventure_tick` at each turn of its wait (0x4F83A3): the mouse poll and the palettes'
+  step, nothing else; so during a walk the cursor's point follows the mouse on its 33-ms grid, and
+  no idle message runs (no redraw, no objects' step, no edge scroll).
+- **The cursor** is hidden from a walk's start (`mouse_hide`: a key's at 0x409013, after the path's
+  clearing; the path's at 0x407E7C, after the lift) to its end (`mouse_show`), whose last act reads
+  the mouse's point now (`mouse_position_now`, its x even) and passes it to `adventure_mouse_move`
+  with the tile under the mouse forgotten (+0xEC −1: a key's 0x4090F1, the path's 0x40812F): the
+  cursor drawn there at once (`walk-4`'s 2 700, off the poll's grid), its frame by the move (off
+  the view as §3.4; over it the cursor by the tile, M3's: `walk-4` recorded the arrow over a tile
+  its hero could reach, which M3's reading of 0x40E91B on, the pathfinder's tile records, will
+  explain; the timeline keeps the frame there).
+- **A key with a path shown** clears it, draws and shows the view and steps the objects once if
+  the redraw is due (0x408F52 to 0x409002: the deadline on by max(180, the lateness)), before the
+  step.
+- **The animation** (0x480391 on): the offset 0, the walking group (the switch 0x4805BC), +0x390,
+  the hero's tile moved, the view's corner the tile less (9, 8) (immediates: the layout's
+  `[scroll] middle`); speed 4 draws once without touching the offset; else n = 32 / the speed's
+  pixels frames, each: its end now + 50, the offset less the pixels (speed 2's second frame 12),
+  the view drawn and shown, `wait_until`; +0x390 cleared at the end. Pass 9 steps the frame by 1
+  mod 8 (0x47FF74, a constant): the tables' `[map.walk]`. `mobilize_hero` (0x480914) runs before
+  the facing is set (0x480946): a hero lifted by a step is drawn standing by its old facing once.
+
+**The model** (*provisional*; what no recording shows is marked so):
+
+- The selected hero stands on its tile at 0 (the harness sets a sequence's view through the
+  minimap, which puts back the hero a turn's start lifted); a step or a walk lifts it, a scroll
+  that moves the view puts it back (§3.4). Its tile and facing come from the live part at 0
+  (`sequence::selected`: the viewer's only hero).
+- **The path walked** is the path shown, ordered from the hero neighbour by neighbour (memory
+  lists the arrows by level, row and column: `timeline::chain`), its green arrows (1 to 25) the
+  steps: the first red one is a step the points do not pay (`walk-points`). Clicking shows the path
+  to the tile (`make_hero_path`'s draw), the destination clicked again walks it. In M2 the paths
+  are the original's, the first `arrows` line after each click (`Sequence::paths`); the engine's
+  path and move from M4. A walk that stops short keeps the arrows left (the original builds the
+  path again: `walk-points` the same) and draws the view.
+- **The tile clicked:** the view's corner plus the point's x and y divided by 32 (§1.2's open
+  point, M3's; the sequences click tiles' middles).
+- **Actions given during a walk** wait; the mouse's point is read at once. A key's step leaves
+  them to the loop's turn at its end, before the idle message; the path's walk drains them after
+  each step, a key or a click ending it after that step, the rest dropped (0x407FA7). Not
+  recorded: the sequences give only the parked pointer after a click.
+- A key's step off the map's side does nothing (the engine's `hero_step_allowed` from M4; not
+  recorded). The hero speed is 2 when a sequence gives none (`option_walk_speed`).
+
+**Checked** (2026-10-27, no new recording): T1b's seven timelines line by line but the `screen`
+boxes (`h3-map-view sequences`, the unit tests), the T2 six unchanged and `drawn` the same.
+`walk-follow` gives its scroll speed since: T1b's original held 0 (Ctrl and Down moved one tile),
+the harness otherwise leaves the game's setting.
+
+**For T3b (the walk drawn):** `timeline::Draw` carries what a walk's frame shows (the view's
+offset, the selected hero, the lifted hero's group and frame, the path's arrows) and `Cursor` its
+`shown`; the scene draws the lifted hero at the view's middle (passes 5, 7 and 9, the last a
+blend: `draw_frame_blend` 0x47D4F0 if the frames need it) and adds the offset to every pass; the
+hero DEFs' groups 5 to 9 in the gate (`HeroArt::drawn_groups`); the `sequences` adapter and the
+harness's frame check over the walks; the walks recorded again in a fresh sandbox first.

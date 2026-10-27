@@ -4,7 +4,8 @@ use alloc::string::ToString;
 use alloc::vec;
 
 use crate::layout::AdventureLayout;
-use crate::sequence::Sequences;
+use crate::live::{Facing, LiveHero};
+use crate::sequence::{self, Sequences};
 use crate::situation::Situation;
 use crate::tables;
 
@@ -19,7 +20,7 @@ fn rules(bugs: Bugs) -> Rules {
 
 /// The recorded sequences and their situations and timelines (no original file).
 const SEQUENCES: &str = include_str!("../../../../map/sequences.toml");
-const RECORDED: [(&str, &str, &str); 6] = [
+const RECORDED: [(&str, &str, &str); 13] = [
     (
         "idle-cycles",
         include_str!("../../../../map/situations/seq-idle-cycles.toml"),
@@ -50,7 +51,102 @@ const RECORDED: [(&str, &str, &str); 6] = [
         include_str!("../../../../map/situations/seq-scroll.toml"),
         include_str!("../../../../map/timelines/scroll-limits.txt"),
     ),
+    (
+        "walk-1",
+        include_str!("../../../../map/situations/seq-walk.toml"),
+        include_str!("../../../../map/timelines/walk-1.txt"),
+    ),
+    (
+        "walk-2",
+        include_str!("../../../../map/situations/seq-walk.toml"),
+        include_str!("../../../../map/timelines/walk-2.txt"),
+    ),
+    (
+        "walk-3",
+        include_str!("../../../../map/situations/seq-walk.toml"),
+        include_str!("../../../../map/timelines/walk-3.txt"),
+    ),
+    (
+        "walk-4",
+        include_str!("../../../../map/situations/seq-walk.toml"),
+        include_str!("../../../../map/timelines/walk-4.txt"),
+    ),
+    (
+        "walk-follow",
+        include_str!("../../../../map/situations/seq-walk-follow.toml"),
+        include_str!("../../../../map/timelines/walk-follow.txt"),
+    ),
+    (
+        "walk-points",
+        include_str!("../../../../map/situations/seq-walk.toml"),
+        include_str!("../../../../map/timelines/walk-points.txt"),
+    ),
+    (
+        "walk-sail",
+        include_str!("../../../../map/situations/seq-sail.toml"),
+        include_str!("../../../../map/timelines/walk-sail.txt"),
+    ),
 ];
+
+/// The walks' live parts at 0 (`h3map.py frames`): their selected heroes.
+const LIVE: [(&str, &str); 7] = [
+    (
+        "walk-1",
+        include_str!("../../../../map/timelines/walk-1-live.toml"),
+    ),
+    (
+        "walk-2",
+        include_str!("../../../../map/timelines/walk-2-live.toml"),
+    ),
+    (
+        "walk-3",
+        include_str!("../../../../map/timelines/walk-3-live.toml"),
+    ),
+    (
+        "walk-4",
+        include_str!("../../../../map/timelines/walk-4-live.toml"),
+    ),
+    (
+        "walk-follow",
+        include_str!("../../../../map/timelines/walk-follow-live.toml"),
+    ),
+    (
+        "walk-points",
+        include_str!("../../../../map/timelines/walk-points-live.toml"),
+    ),
+    (
+        "walk-sail",
+        include_str!("../../../../map/timelines/walk-sail-live.toml"),
+    ),
+];
+
+/// A live part's heroes and viewer (`[x, y, level, class, facing, owner, boat, colour]` rows, as
+/// the binary's `read_live` takes them).
+fn live_heroes(text: &str) -> (Vec<LiveHero>, u8) {
+    let table: toml::Table = text.parse().unwrap();
+    let number = |v: &toml::Value| v.as_integer().unwrap();
+    let heroes = table["heroes"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|row| {
+            let row: Vec<i64> = row.as_array().unwrap().iter().map(number).collect();
+            let byte = |i: usize| u8::try_from(row[i]).unwrap();
+            LiveHero {
+                at: Pos {
+                    x: byte(0),
+                    y: byte(1),
+                    z: byte(2),
+                },
+                class: byte(3),
+                facing: Facing::from_number(byte(4)).unwrap(),
+                owner: byte(5),
+                boat: None,
+            }
+        })
+        .collect();
+    (heroes, u8::try_from(number(&table["viewer"])).unwrap())
+}
 
 /// Where the harness parks the pointer (`h3adv.py`'s `PARK`).
 const PARK: [i32; 2] = [700, 300];
@@ -66,7 +162,10 @@ fn start(situation: &str, speed: usize) -> Start {
         },
         size: i32::from(s.size),
         scroll_speed: speed,
+        hero_speed: 2,
         pointer: PARK,
+        hero: None,
+        paths: Vec::new(),
     }
 }
 
@@ -84,10 +183,17 @@ fn replays_the_recorded_timelines() {
     let sequences = Sequences::parse(SEQUENCES).unwrap();
     for (id, situation, recorded) in RECORDED {
         let sequence = sequences.get(id).unwrap();
-        assert!(!sequence.walks(), "{id}");
+        let mut start = start(situation, sequence.scroll_speed().unwrap());
+        start.hero_speed = sequence.hero_speed().unwrap();
+        if let Some((_, live)) = LIVE.iter().find(|(l, _)| *l == id) {
+            let (heroes, viewer) = live_heroes(live);
+            start.hero = Some(sequence::selected(&heroes, viewer).unwrap());
+            start.paths = sequence.paths(recorded).unwrap();
+        }
+        assert_eq!(sequence.walks(), start.hero.is_some(), "{id}");
         let states = play(
             rules(Bugs::Original),
-            &start(situation, sequence.scroll_speed().unwrap()),
+            &start,
             &sequence.actions().unwrap(),
             sequence.ms,
         )
@@ -103,7 +209,7 @@ fn replays_the_recorded_timelines() {
 }
 
 #[test]
-fn the_walks_are_m2_t3s() {
+fn the_walks_frames_are_m2_t3bs() {
     let sequences = Sequences::parse(SEQUENCES).unwrap();
     let walks: Vec<&str> = sequences
         .sequence
@@ -123,18 +229,6 @@ fn the_walks_are_m2_t3s() {
             "walk-sail"
         ]
     );
-    let walk = sequences.get("walk-2").unwrap();
-    let situation = include_str!("../../../../map/situations/seq-walk.toml");
-    let first = *walk.actions().unwrap().keys().next().unwrap();
-    assert_eq!(
-        play(
-            rules(Bugs::Original),
-            &start(situation, 1),
-            &walk.actions().unwrap(),
-            walk.ms
-        ),
-        Err((first, Unplayable::Walk))
-    );
 }
 
 /// A loop over a 36-tile map at (9, 10), the pointer parked.
@@ -143,7 +237,10 @@ fn looped(bugs: Bugs, speed: usize) -> Loop {
         view: ViewAt { x: 9, y: 10, z: 0 },
         size: 36,
         scroll_speed: speed,
+        hero_speed: 2,
         pointer: PARK,
+        hero: None,
+        paths: Vec::new(),
     };
     Loop::start(rules(bugs), &start).unwrap()
 }
@@ -293,7 +390,15 @@ fn the_cursor_follows_the_poll() {
         l.run(t, given).unwrap();
         let s = l.state(t);
         let at = if t < 33 { PARK } else { [2, 300] };
-        assert_eq!(s.cursor, Cursor { frame: 0, at }, "{t}");
+        assert_eq!(
+            s.cursor,
+            Cursor {
+                frame: 0,
+                at,
+                shown: true
+            },
+            "{t}"
+        );
     }
     // The first edge step 70 ms after the pointer's arrival, its cursor at once.
     for t in 41..=80 {
@@ -312,14 +417,6 @@ fn the_cursor_follows_the_poll() {
 fn what_it_cannot_play_yet() {
     let mut l = looped(Bugs::Fixed, 1);
     assert_eq!(
-        l.run(1, &[Action::Step(Direction::North)]),
-        Err(Unplayable::Walk)
-    );
-    assert_eq!(
-        l.run(2, &[Action::Click([300, 300])]),
-        Err(Unplayable::Walk)
-    );
-    assert_eq!(
         l.run(3, &[Action::Pointer([300, 300])]),
         Err(Unplayable::OverView([300, 300]))
     );
@@ -327,7 +424,10 @@ fn what_it_cannot_play_yet() {
         view: ViewAt { x: 0, y: 0, z: 0 },
         size: 36,
         scroll_speed: 1,
+        hero_speed: 2,
         pointer: [300, 300],
+        hero: None,
+        paths: Vec::new(),
     };
     assert_eq!(
         Loop::start(rules(Bugs::Fixed), &over),
@@ -337,10 +437,24 @@ fn what_it_cannot_play_yet() {
         play(rules(Bugs::Fixed), &over, &BTreeMap::new(), 10),
         Err((0, Unplayable::OverView([300, 300])))
     );
-    assert_eq!(Unplayable::Walk.to_string(), "a hero's walk (M2 T3)");
+    let mut parked = over.clone();
+    parked.pointer = PARK;
+    let later = BTreeMap::from([(5, vec![Action::Click([700, 2])])]);
+    assert_eq!(
+        play(rules(Bugs::Fixed), &parked, &later, 10),
+        Err((5, Unplayable::Panel([700, 2])))
+    );
     assert_eq!(
         Unplayable::OverView([1, 2]).to_string(),
         "the pointer over the view at (1, 2) (M3)"
+    );
+    assert_eq!(
+        Unplayable::Panel([700, 2]).to_string(),
+        "a click off the view at (700, 2) (M3)"
+    );
+    assert_eq!(
+        Unplayable::NoPath([3, 4, 0]).to_string(),
+        "no path given from the selected hero to (3, 4, 0)"
     );
 }
 
@@ -398,4 +512,239 @@ fn a_speed_without_a_step_scrolls_a_tile() {
     let mut l = looped(Bugs::Fixed, 7);
     l.run(1, &[Action::Scroll(Direction::South)]).unwrap();
     assert_eq!(l.state(1).view, ViewAt { x: 9, y: 11, z: 0 });
+}
+
+/// A loop over a 36-tile map, its selected hero at (17, 17) facing east and the view centred on
+/// it, the pointer parked, at a hero speed with these paths.
+fn walking(speed: usize, paths: Vec<Vec<Arrow>>) -> Loop {
+    let start = Start {
+        view: ViewAt { x: 8, y: 9, z: 0 },
+        size: 36,
+        scroll_speed: 1,
+        hero_speed: speed,
+        pointer: PARK,
+        hero: Some(Hero {
+            at: Pos { x: 17, y: 17, z: 0 },
+            facing: Direction::East,
+        }),
+        paths,
+    };
+    Loop::start(rules(Bugs::Fixed), &start).unwrap()
+}
+
+fn arrow(x: u8, y: u8, arrow: u16) -> Arrow {
+    Arrow {
+        at: Pos { x, y, z: 0 },
+        arrow,
+    }
+}
+
+/// The middle of tile (x, y) while the view's corner is (8, 9).
+fn tile(x: i32, y: i32) -> [i32; 2] {
+    [(x - 8) * 32 + 16, (y - 9) * 32 + 16]
+}
+
+/// Four tiles east of the hero, all green, the last the green cross.
+fn east() -> Vec<Arrow> {
+    vec![
+        arrow(21, 17, 1),
+        arrow(18, 17, 12),
+        arrow(20, 17, 12),
+        arrow(19, 17, 12),
+    ]
+}
+
+#[test]
+fn a_step_needs_a_hero_and_the_map() {
+    let mut l = looped(Bugs::Fixed, 1);
+    let before = l.state(0);
+    l.run(1, &[Action::Step(Direction::North)]).unwrap();
+    assert_eq!((l.state(1).hero, l.state(1).drawn), (None, before.drawn));
+    for (x, y, direction) in [
+        (0, 5, Direction::West),
+        (5, 0, Direction::North),
+        (35, 5, Direction::East),
+    ] {
+        let mut l = walking(2, Vec::new());
+        l.hero = Some(Hero {
+            at: Pos { x, y, z: 0 },
+            facing: Direction::East,
+        });
+        l.run(1, &[Action::Step(direction)]).unwrap();
+        let s = l.state(1);
+        assert_eq!(s.hero.unwrap().at, Pos { x, y, z: 0 }, "{direction:?}");
+        assert!(s.cursor.shown && s.drawn.lifted.is_none());
+    }
+}
+
+#[test]
+fn a_step_and_its_frames() {
+    // Speed 1: four frames 50 ms apart sliding the view by 8 pixels, the cursor hidden.
+    let mut l = walking(1, Vec::new());
+    l.run(1, &[Action::Step(Direction::NorthEast)]).unwrap();
+    let s = l.state(1);
+    assert_eq!(
+        (s.view, s.hero.unwrap().at, s.walk.offset, s.walk.frame),
+        (
+            ViewAt { x: 9, y: 8, z: 0 },
+            Pos { x: 18, y: 16, z: 0 },
+            [24, -24],
+            1
+        )
+    );
+    assert_eq!(s.drawn.lifted, Some([6, 0]));
+    assert!(!s.cursor.shown);
+    for t in 2..=200 {
+        l.run(t, &[]).unwrap();
+    }
+    assert_eq!(l.state(200).walk.offset, [0, 0]);
+    assert_eq!(l.state(200).walk.group, 6);
+    // At 201 the step's end: the standing group by the facing, the cursor shown, the redraw due
+    // since 180 drawing the hero standing.
+    l.run(201, &[]).unwrap();
+    let s = l.state(201);
+    assert_eq!((s.walk.group, s.walk.frame), (1, 0));
+    assert!(s.cursor.shown);
+    assert_eq!(s.drawn.lifted, Some([1, 0]));
+    assert_eq!(s.objects, 1);
+}
+
+#[test]
+fn a_path_shown_then_walked() {
+    let mut l = walking(3, vec![east()]);
+    let dest = tile(21, 17);
+    l.run(1, &[Action::Click(dest)]).unwrap();
+    let s = l.state(1);
+    assert_eq!(s.arrows.len(), 4);
+    assert_eq!(s.drawn.path, s.arrows);
+    // Memory's order: by row, then column.
+    assert_eq!(s.arrows[0].at.x, 18);
+    l.run(2, &[Action::Click(dest)]).unwrap();
+    assert_eq!(l.state(2).arrows.len(), 3);
+    for t in 3..=402 {
+        l.run(t, &[]).unwrap();
+    }
+    let s = l.state(402);
+    assert_eq!(s.hero.unwrap().at, Pos { x: 21, y: 17, z: 0 });
+    assert!(s.arrows.is_empty() && s.cursor.shown);
+    // The frame carried from step to step: eight frames drawn, 0 at the end.
+    assert_eq!((s.walk.group, s.walk.frame), (2, 0));
+}
+
+#[test]
+fn a_click_or_a_key_stops_the_paths_walk_after_its_step() {
+    for stop in [Action::Click(tile(21, 17)), Action::Step(Direction::South)] {
+        let mut l = walking(2, vec![east()]);
+        l.run(1, &[Action::Click(tile(21, 17))]).unwrap();
+        l.run(2, &[Action::Click(tile(21, 17))]).unwrap();
+        l.run(3, &[stop, Action::Pointer([700, 400])]).unwrap();
+        for t in 4..152 {
+            l.run(t, &[]).unwrap();
+        }
+        assert!(!l.state(151).cursor.shown);
+        l.run(152, &[]).unwrap();
+        // Ended after its first step, the rest shown again and drawn, the pointer's and the
+        // click's messages dropped; the cursor where the mouse is now.
+        let s = l.state(152);
+        assert_eq!(s.hero.unwrap().at, Pos { x: 18, y: 17, z: 0 }, "{stop:?}");
+        assert_eq!((s.arrows.len(), s.drawn.path.len()), (3, 3));
+        assert_eq!((s.walk.group, s.view.x), (2, 9));
+        assert_eq!(s.cursor.at, [700, 400]);
+    }
+}
+
+#[test]
+fn a_red_first_arrow_walks_nowhere() {
+    let red = vec![arrow(18, 17, 37), arrow(19, 17, 26)];
+    let mut l = walking(2, vec![red]);
+    l.run(1, &[Action::Click(tile(19, 17))]).unwrap();
+    l.run(2, &[Action::Click(tile(19, 17))]).unwrap();
+    let s = l.state(2);
+    assert_eq!(s.hero.unwrap().at, Pos { x: 17, y: 17, z: 0 });
+    assert_eq!((s.arrows.len(), s.drawn.lifted), (2, Some([2, 0])));
+    assert!(s.cursor.shown);
+}
+
+#[test]
+fn actions_during_a_keys_step_wait_for_its_end() {
+    // A click showing a path and a key stepping again, given during a step at speed 1 (1 to 201):
+    // at its end the click shows the path from the new tile (its point read with the view as it
+    // stands then: (8, 8)), the key clears it (the objects stepped once, the redraw due since
+    // 180) and steps again.
+    let up = vec![arrow(18, 16, 12), arrow(19, 16, 1)];
+    let mut l = walking(1, vec![up]);
+    l.run(1, &[Action::Step(Direction::North)]).unwrap();
+    l.run(
+        2,
+        &[Action::Click([(19 - 8) * 32 + 16, (16 - 8) * 32 + 16])],
+    )
+    .unwrap();
+    l.run(3, &[Action::Step(Direction::East), Action::Pointer(PARK)])
+        .unwrap();
+    for t in 4..=201 {
+        l.run(t, &[]).unwrap();
+    }
+    let s = l.state(201);
+    assert_eq!(s.hero.unwrap().at, Pos { x: 18, y: 16, z: 0 });
+    assert!(s.arrows.is_empty() && !s.cursor.shown);
+    assert_eq!((s.objects, s.drawn.frames), (1, 2));
+    for t in 202..=401 {
+        l.run(t, &[]).unwrap();
+    }
+    assert!(l.state(401).cursor.shown);
+    // A key's step on a path shown before the redraw's time: cleared, no objects' step.
+    let mut l = walking(2, vec![east()]);
+    l.run(1, &[Action::Click(tile(21, 17))]).unwrap();
+    l.run(2, &[Action::Step(Direction::South)]).unwrap();
+    let s = l.state(2);
+    assert!(s.arrows.is_empty());
+    assert_eq!(s.objects, 0);
+    // A pointer over the view given during a step: unplayable at its end.
+    let mut l = walking(2, Vec::new());
+    l.run(1, &[Action::Step(Direction::North)]).unwrap();
+    l.run(2, &[Action::Pointer([300, 300])]).unwrap();
+    for t in 3..151 {
+        l.run(t, &[]).unwrap();
+    }
+    assert_eq!(l.run(151, &[]), Err(Unplayable::OverView([300, 300])));
+}
+
+#[test]
+fn clicks_it_cannot_play() {
+    let mut l = walking(2, vec![east()]);
+    assert_eq!(
+        l.run(1, &[Action::Click([700, 300])]),
+        Err(Unplayable::Panel([700, 300]))
+    );
+    assert_eq!(
+        l.run(2, &[Action::Click(tile(21, 19))]),
+        Err(Unplayable::NoPath([21, 19, 0]))
+    );
+    let mut l = looped(Bugs::Fixed, 1);
+    assert_eq!(
+        l.run(1, &[Action::Click([16, 16])]),
+        Err(Unplayable::NoPath([9, 10, 0]))
+    );
+}
+
+#[test]
+fn a_paths_order() {
+    let from = Pos { x: 0, y: 0, z: 0 };
+    let path = chain(from, &[arrow(2, 1, 1), arrow(1, 0, 12)]).unwrap();
+    assert_eq!(
+        path,
+        [
+            (Direction::East, arrow(1, 0, 12)),
+            (Direction::SouthEast, arrow(2, 1, 1))
+        ]
+    );
+    // Two neighbours, none, or one on another level: no order.
+    assert_eq!(chain(from, &[arrow(1, 0, 12), arrow(0, 1, 12)]), None);
+    assert_eq!(chain(from, &[arrow(5, 5, 1)]), None);
+    let below = Arrow {
+        at: Pos { x: 1, y: 0, z: 1 },
+        arrow: 1,
+    };
+    assert_eq!(chain(from, &[below]), None);
+    assert_eq!(Direction::between(from, Pos { x: 2, y: 0, z: 0 }), None);
 }

@@ -2,6 +2,8 @@ use super::*;
 
 use alloc::vec;
 
+use crate::live::Facing;
+
 const SEQUENCES: &str = include_str!("../../../../map/sequences.toml");
 
 fn one(rest: &str) -> Sequence {
@@ -93,5 +95,80 @@ fn refuses_what_breaks_a_rule() {
         one("scroll_speed = 3").scroll_speed(),
         Err("s: the scroll speed 3 is not 0 to 2".to_string())
     );
+    assert_eq!(one("").hero_speed(), Ok(2));
+    assert_eq!(one("hero_speed = 4").hero_speed(), Ok(4));
+    for speed in [0, 5] {
+        assert_eq!(
+            one(&format!("hero_speed = {speed}")).hero_speed(),
+            Err(format!("s: the hero speed {speed} is not 1 to 4"))
+        );
+    }
     assert!(Sequences::parse("[[sequence]]\nid = 1").is_err());
+}
+
+#[test]
+fn the_paths_the_clicks_showed() {
+    let s = one(
+        "inputs = [{ at = 10, click = [1, 1] }, { at = 20, click = [1, 1] }, \
+         { at = 30, keydown = \"Up\" }, { at = 40, click = [5, 5] }]",
+    );
+    let recorded = "0 view 1 2 0\n10 arrows 3,4,0,12 4,4,0,1\n20 arrows 4,4,0,1\n21 arrows\n\
+                    45 screen 1,1,2,2\n50 arrows 7,7,1,26\n";
+    let path = |list: &[(u8, u8, u8, u16)]| -> Vec<Arrow> {
+        list.iter()
+            .map(|&(x, y, z, arrow)| Arrow {
+                at: Pos { x, y, z },
+                arrow,
+            })
+            .collect()
+    };
+    // Each click's first arrows after it, once: 10's, 20's (the rest of 10's), 40's (at 50).
+    assert_eq!(
+        s.paths(recorded),
+        Ok(vec![
+            path(&[(3, 4, 0, 12), (4, 4, 0, 1)]),
+            path(&[(4, 4, 0, 1)]),
+            path(&[(7, 7, 1, 26)]),
+        ])
+    );
+    let twice = one("inputs = [{ at = 10, click = [1, 1] }, { at = 10, click = [1, 1] }]");
+    assert_eq!(twice.paths(recorded).unwrap().len(), 1);
+    assert_eq!(one("").paths(recorded), Ok(Vec::new()));
+    for bad in [
+        "x arrows 1,1,0,1",
+        "5 arrows 1,1,0",
+        "5 arrows 1,1,0,z",
+        "5 arrows 300,1,0,1",
+    ] {
+        assert_eq!(
+            s.paths(bad),
+            Err(format!("s: the line `{bad}` does not read")),
+            "{bad}"
+        );
+    }
+}
+
+#[test]
+fn the_selected_hero() {
+    let hero = |x, owner, facing| LiveHero {
+        at: Pos { x, y: 3, z: 0 },
+        class: 2,
+        owner,
+        facing,
+        boat: None,
+    };
+    let heroes = [hero(1, 1, Facing::Up), hero(2, 0, Facing::DownLeft)];
+    assert_eq!(
+        selected(&heroes, 0),
+        Ok(Hero {
+            at: Pos { x: 2, y: 3, z: 0 },
+            facing: Direction::SouthWest
+        })
+    );
+    assert_eq!(
+        selected(&heroes, 3),
+        Err("0 heroes of the viewer's colour 3: a walk needs one, its selected hero".to_string())
+    );
+    let two = [hero(1, 0, Facing::Up), hero(2, 0, Facing::Up)];
+    assert!(selected(&two, 0).is_err());
 }

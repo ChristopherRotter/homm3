@@ -14,6 +14,10 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   load's real time's (`cycles`, `river_cycles`), so a run as recorded keeps a new
   `timelines/<id>-live.toml` and `drawn` then finds its frames `CHANGED`: `drawn --record` after
   every `frames` run that kept one.
+- **A sequence's options left out are the original's settings** (M2 T3a): the harness writes
+  only the options a sequence gives, so one that scrolls without its `scroll_speed` ran at what
+  the game held (`walk-follow`'s Ctrl and Down moved one tile, speed 0, in T1b's run) while the
+  viewer takes the default (1): give every option a sequence's inputs use.
 - **A sequence's objects' phases and frame steps are 0** (T1b): `frames` writes them (the load's random phases and real time moved the screen's changed boxes between runs); a still's (`set`, `still`) stay the load's, read into its live part.
 - **One game at a time:** `h3mem.Mem()` takes the first game process it finds, so a `still --keep` game left running makes the next still read it (T5a); stop it first (`wineserver -k` with `h3drive.env()`). At a human player's turn start the selected hero is off its tile until the view moves: find heroes by their records (`Mem.hero_on`).
 - The client lane's standing traps apply to the foundation and the harness (`docs/lanes/client/HANDOFF.md`): the licences (`winit`, `cpal`, Bevy are excluded: SDL 3), the purity allowlist of a pure crate, `clients/Cargo.lock` as a common path, no float arithmetic in drawing and timing, never running the original from the installation, captures never in git, a capture run alone.

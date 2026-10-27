@@ -20,7 +20,7 @@ fn names(stem: &str, n: usize) -> String {
 /// The `[map.heroes]` section: every list of its length.
 fn heroes() -> String {
     format!(
-        "[map.heroes]\nclasses = [{}]\nflags = [{}]\nboats = [{}]\nwaves = [{}]\nboat_flags = [{}]\ngroups = [0, 1, 2, 3, 4, 3, 2, 1]\n",
+        "[map.heroes]\nclasses = [{}]\nflags = [{}]\nboats = [{}]\nwaves = [{}]\nboat_flags = [{}]\ngroups = [0, 1, 2, 3, 4, 3, 2, 1]\n\n{WALK}",
         names("ah", HERO_CLASSES),
         names("af", COLOURS),
         names("ab", BOAT_TYPES),
@@ -28,6 +28,9 @@ fn heroes() -> String {
         names("abf", BOAT_TYPES * COLOURS),
     )
 }
+
+/// The `[map.walk]` section (E24 M2 T3a), as `base.toml`'s.
+const WALK: &str = "[map.walk]\ngroups = [5, 6, 7, 8, 9, 8, 7, 6]\nframes = 8\nframe_ms = 50\npixels = [[8, 8, 8, 8], [10, 12, 10], [16, 16], []]\n";
 
 /// The `[map.owners]` and `[map.towns]` sections: a list of every faction's town pictures each.
 fn owners_and_towns() -> String {
@@ -481,6 +484,43 @@ fn refuses_what_breaks_the_format() {
         entry("poll_ms", "a poll every 0 ms"),
         "`poll_ms`: a poll every 0 ms",
     );
+    // The walk (E24 M2 T3a): a group per direction, frames and their time, per hero speed pixels
+    // summing to one tile, or none.
+    let walk = |from: &str, to: &str| base("").replacen(from, to, 1);
+    check(
+        &[walk("groups = [5, 6, 7, 8, 9, 8, 7, 6]", "groups = [5, 6]")],
+        "base",
+        entry("walk groups", "2 entries, not 8"),
+        "`walk groups`: 2 entries, not 8",
+    );
+    for (from, to) in [
+        ("frames = 8", "frames = 0"),
+        ("frame_ms = 50", "frame_ms = 0"),
+    ] {
+        check(
+            &[walk(from, to)],
+            "base",
+            entry("walk", "no frames, or frames of 0 ms"),
+            "`walk`: no frames, or frames of 0 ms",
+        );
+    }
+    let rule = "one list per hero speed (4), each of positive pixels summing to one tile, or empty";
+    for pixels in [
+        "[[8, 8, 8, 8], [10, 12, 10], [16, 16]]",
+        "[[8, 8, 8, 8], [10, 12, 10], [16, 15], []]",
+        "[[8, 8, 8, 8], [10, 12, 10], [32, 0], []]",
+    ] {
+        let bad = walk(
+            "pixels = [[8, 8, 8, 8], [10, 12, 10], [16, 16], []]",
+            &format!("pixels = {pixels}"),
+        );
+        check(
+            &[bad],
+            "base",
+            entry("walk pixels", rule),
+            &format!("`walk pixels`: {rule}"),
+        );
+    }
 }
 
 #[test]

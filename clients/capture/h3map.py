@@ -37,7 +37,7 @@ compared pixel for pixel outside the masks of what the viewer does not draw yet.
       captures a change needs"). Since E24 M2 T2 the recorded sequences too: each one's frames
       drawn by the viewer from its kept live part (timelines/<id>-live.toml) at the times its
       screen changes (`h3-map-view sequences <id> --frames`, which also checks its timeline), the
-      digests against clients/map/timelines/drawn.txt; a walk is M2 T3's. <dir> defaults to
+      digests against clients/map/timelines/drawn.txt; a walk is M2 T3b's. <dir> defaults to
       clients/out/map-drawn.
   h3map.py frames [--only <id>] [--out <dir>] [--reuse]
       every sequence of clients/map/sequences.toml (or one; E24 M2 T1a1): its situation staged
@@ -791,7 +791,7 @@ def sequence(entry, out):
 
 
 def walks(entry):
-    """Whether a sequence walks a hero (M2 T3's: its frame check waits for the walk drawn): the
+    """Whether a sequence walks a hero (M2 T3b's: its frame check waits for the walk drawn): the
     hero's options, a click, a direction key without Ctrl (`h3_map_view::sequence`'s `walks`)."""
     keys = [i["keydown"] for i in entry.get("inputs", []) if "keydown" in i]
     return ("hero_speed" in entry or "points" in entry
@@ -901,7 +901,7 @@ def run_frames(rest):
             shutil.copy(here / "live.toml", TIMELINES / f"{e['id']}-live.toml")
         # The frame check (T2): every kept screen against the viewer's at its time.
         if walks(e):
-            print(f"{e['id']}: the frame check of a walk is M2 T3's", flush=True)
+            print(f"{e['id']}: the frame check of a walk is M2 T3b's", flush=True)
             continue
         try:
             checked, said, frames, differ = frame_check(e, here)
@@ -1070,7 +1070,7 @@ def drawn_sequences(rest, base, record):
     new) at the times its own screen changes (`ours_frames`: `h3-map-view sequences` without the
     original's frames, which also checks the timeline against the recorded one), each frame's
     digest outside the panels against `timelines/drawn.txt` (`<id> t<ms> <digest>`). A walk is M2
-    T3's. `--only` names a situation or a sequence. Returns how many are not the same and how
+    T3b's. `--only` names a situation or a sequence. Returns how many are not the same and how
     many could not be drawn (with `--record`, the digests of those drawn are written)."""
     only = rest[rest.index("--only") + 1] if "--only" in rest else None
     entries = [e for e in tomllib.loads(SEQUENCES.read_text())["sequence"]
