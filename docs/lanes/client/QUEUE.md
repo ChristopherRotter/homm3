@@ -4,18 +4,126 @@ Pre-refined tasks of the client lane, in order, then the inbox of discovered wor
 
 ## Tasks
 
-Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12, M1 2026-10-13, M2 2026-10-14; ADR-0020, ADR-0024; the battle client since the split of 2026-10-23, the adventure map client being the map-client lane's E24). M3 (fidelity) done 2026-10-23 with T9d; M4 (sieges) refined at T0 (2026-10-23, with the user); T1a, T1b, T2a and T2b done (2026-10-23), T2c-1 (2026-10-24, T2c cut in two by the user), T2c-2 (2026-10-26), T3a (2026-10-26; T3 cut in three), T3b-1 and T3b-2 (2026-10-27; T3b cut in two); T3c below. The original files: stage them from the user's `original-data/install/` (one large file per staging call; the user's computer must be online); never from the installation. The captures need the five DLLs, `Heroes3.snd`, `H3ab_ahd.snd` and `H3ab_ahd.vid` too; the harness's runbook: `clients/capture/README.md`. The client's gates: `clients/scripts/check.sh` (the full local check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gate` from `clients/`. An asset fix gets its mechanism (ADR-0020 point 6: the entry's flag, the `faithful`/`fixed` profile) with the first one a task finds.
+Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12, M1 2026-10-13, M2 2026-10-14, M3
+2026-10-23, M4 2026-10-27; ADR-0020, ADR-0024; the battle client since the split of 2026-10-23,
+the adventure map client being the map-client lane's E24). M5 (live play) refined at M4's
+closure (T3c, 2026-10-27, with the user): hot seat in-process first, then a game on a server;
+its tasks below, in order (T3 and T4 need T2, T5 only T1). The original files: stage them from
+the user's `original-data/install/` (one large file per staging call; the user's computer must
+be online); never from the installation. The captures need the five DLLs, `Heroes3.snd`,
+`H3ab_ahd.snd` and `H3ab_ahd.vid` too; the harness's runbook: `clients/capture/README.md`. The
+client's gates: `clients/scripts/check.sh` (the full local check; CI's job runs the same), the
+real-asset gate `cargo run -p h3-view -- gate` from `clients/`. An asset fix gets its mechanism
+(ADR-0020 point 6: the entry's flag, the `faithful`/`fixed` profile) with the first one a task
+finds.
 
-M4's closure, T3, cut in three by the user (2026-10-26): the review first (T3a, done), so that
-every capture afresh also captures its fixes.
+### E17 M5 T1 — the timeline that grows
 
-### E17 M4 T3c — M4's review list, M5 refined
+- **Scope:** `anim`'s timeline extended by the commands as they arrive (the session's events
+  appended, the record growing) instead of built over the whole record first, and a frame drawn
+  without rescanning the battle (R2-7: `Moment::at`, `Heroes::posed` and `Timeline::at` rescan it
+  for every frame, 2.3 ms a frame over `play`'s 82 seconds); `h3-view window` and `play` feeding
+  the bot's commands into the timeline while it plays, through `h3-protocol`'s session in-process
+  (a live source beside the record file).
+- **Acceptance:** every recorded sequence's timeline unchanged (`h3-view sequences`, the unit
+  tests' replays) and every frame as before (`h3drive.py drawn`, the staged data); a frame's cost
+  measured and independent of the battle's length; the window plays a scenario's battle while it
+  is fought; the Definition of Done.
+- **Depends on:** M4 (done 2026-10-27). **Status:** ready.
 
-- **Scope:** the review list with the user (the epic's "Review lists", T3a's queued findings;
-  item 15 a proposal: the recipes' starting bonus, T3b-2), CLT-Q22 to Q24, M5 (live play)
-  refined with the user.
-- **Acceptance:** the review list accepted; M5's tasks in this queue; M4 done.
-- **Depends on:** T3b-2 (done 2026-10-27). **Status:** ready; the user present.
+### E17 M5 T2 — hot seat: the player's commands
+
+- **Scope:** a left click does what the cursor shows (`pointer::legal`'s kinds: a walk, a
+  flight, an attack from the cursor's side, a shot, the Catapult's wall target, a Faerie
+  Dragon's cast), the panel's Wait and Defend and their keys (the window's, until E24 M3 T0's
+  common key table: the inbox); when the original takes input (read: during an animation, the
+  key that acts at a cast's end, M3 T7b-1) and the window's input closed otherwise; each seat a
+  human or the Greedy bot (a flag); the commands through the in-process session (the engine
+  validates them as a server's). CLT-Q24's answer: the tracker forgets the hovered item over the
+  battlefield in the client's profile, `Bugs::Original` keeping the original's.
+- **Acceptance:** a scenario's battle played to its end by clicks in hot seat and against the
+  bot; scripted inputs (a test) give the commands the engine's legal list names; the recorded
+  sequences and frames unchanged (the comparisons' profile); the Definition of Done.
+- **Depends on:** T1. **Status:** ready after T1.
+
+### E17 M5 T3 — the spell book and the hero's aim
+
+- **Scope:** the spell book (`spell_book_dialog` 0x59BDF0, read at M3 T7a-2a, design §7.16: the
+  places, the tabs, the bookmark, the pages, the mastery ribbons, the costs greyed) drawn and
+  used, a spell above the hero's mana refused with its message; the aim: `enter_player_cast`
+  0x59EC50's loop read (the targets it offers, `crspell.DEF`'s cursor, the status line GENRLTXT
+  28 "Cast %s on %s" and 27, the cancel) and built; `cast`'s 71 pixels (the battlefield redrawn
+  over a rock's top for the click's frame, 0x479038's path). The detail: `QUEUE-ARCHIVE.md`,
+  2026-10-21 (T7b-1). Recorded: the book's stills (a page, a tab) and an aimed cast.
+- **Acceptance:** a hero casts through the book in the window; the book's stills and the aim's
+  sequence as recorded, or each difference listed; the Definition of Done.
+- **Depends on:** T2. **Status:** ready after T2.
+
+### E17 M5 T4 — the battle's dialogs
+
+- **Scope:** surrender (its price) and retreat with their confirmations, the result window
+  (`battle_result_dialog` 0x4702D0: the heroes, the texts, the casualties, OK; the screen
+  darkened under it, 0x44E5F0 from 0x47782C: `end`'s last frame differs by them now), Auto Combat
+  (its button selected, the panel dimmed while the stacks play themselves), the tactics phase's
+  panel (0x46C050) and its end; read, drawn, recorded. The detail: `QUEUE-ARCHIVE.md`,
+  2026-10-21 (T8) and 2026-10-20 (T6a).
+- **Acceptance:** each dialog's still and a sequence through it as recorded, or each difference
+  listed; battles ended by a surrender, a retreat and a victory in the window; the Definition of
+  Done.
+- **Depends on:** T2. **Status:** ready after T2.
+
+### E17 M5 T5 — what a played battle shows
+
+- **Scope:** the created stacks (`StackCreated`: Summon Elemental, Clone; a Pit Lord's
+  `RoseFromCorpse`): their numbers, their record index and the dissolve that shows them
+  (`create_battle_stack`, 75 ms steps; `screen_dissolve` 0x602DC0's blend, Sacrifice's victim's
+  too), the message when no hex is free, a clone's `Vanished`, Teleport's dissolve; the panel's
+  side by each turn's controller (R3-1: Hypnotize, a created stack); the battle waiting for the
+  heal's sound and the other effects'. The detail: `QUEUE-ARCHIVE.md`, 2026-10-22 (T7c-3).
+  Recorded against the original.
+- **Acceptance:** the new sequences as recorded, or each difference listed; `sacrifice`'s
+  dissolve exact; the Definition of Done.
+- **Depends on:** T1. **Status:** ready after T1.
+
+### E17 M5 T6 — a game on a server
+
+- **Scope:** the window connects to `h3-server` over its WebSocket: the hello (a fresh nonce, the
+  address dialed), the welcome's checks (its signature, its `id` the address dialed), the key
+  pinned per address, a game joined by its seat token, the content check (the manifest's packs
+  and profile compiled, the ruleset hash compared: the previews only when equal), the commands
+  sent and the record growing from the server's messages; a record that opens mid-battle (R2-8:
+  the snapshot's dead stacks as corpses, the box by the timeline's living set; M4 T3a's R1-3:
+  the moat's strip by the fixed moat rows, 0x63BCE8 and 0x63BCF4) for a join and a re-join after
+  a drop or a server restart (the numbering afresh); the end's `remote_turn`. The server lane's
+  notes: `NOTES.md`, "The live client"; the detail: `QUEUE-ARCHIVE.md`, 2026-10-23 (T9b). Its
+  dependency (a WebSocket client with TLS): asked of the user before it is added.
+- **Acceptance:** a battle played to its end in two windows on a local `h3-server`, a seat each;
+  a drop and a re-join; both outcomes of the content check; tests over loopback where the
+  adapter allows; the Definition of Done.
+- **Depends on:** T2; the user's choice of the dependency. **Status:** ready after T2 (the
+  dependency asked at the task).
+
+### E17 M5 T7 — accounts
+
+- **Scope:** the account's key from the login and the password (argon2id with the server lane's
+  parameters, the seed as Ed25519's secret key; the test vector in `NOTES.md`, "The live
+  client"), derived once per device and cached (never the password); the login signed only for
+  the address dialed, a registration's display name; seats by account (joined without a token,
+  re-taken after a drop); `Rekey` after a password change; the goodbyes `Rekeyed`,
+  `CommandLimit`, `Abandoned`. Its dependencies (argon2, Ed25519): asked of the user at the task.
+- **Acceptance:** the test vector reproduced; a battle played logged in on a local `h3-server`,
+  the seat re-taken after a drop; the Definition of Done.
+- **Depends on:** T6; the user's choice of the dependencies. **Status:** ready after T6.
+
+### E17 M5 T8 — M5's closure
+
+- **Scope:** a fresh reviewer, the battle recipes' starting bonus set to Gold (M4's review item
+  15: `to_scenario` and hot seat leave the scenario list's bonus random, which gave a hero an
+  artifact for one run at M4 T3b-2), every capture afresh, the review list, the next milestone
+  refined with the user (the ladders, the pause, the server browser; HD; graphics options).
+- **Acceptance:** the review list accepted; every capture as recorded or its difference listed;
+  the next milestone's tasks in this queue; M5 done.
+- **Depends on:** T1 to T7. **Status:** waiting (the user, at its checkpoint).
 
 ## Inbox
 
@@ -59,31 +167,11 @@ Other lanes add entries here. The client lane turns each into a task, or moves i
   `GROUPS` list, the header as a line of its own.
 
 - 2026-10-23 (T9b, the reviewers; the epic log's "M3 T9b", the accepted review list): queued
-  findings. R2-7: a timeline that steps forward (`Moment::at`, `Heroes::posed` and `Timeline::at`
-  rescan the battle for every frame: 2.3 ms a frame over 82 seconds, `play`; for live play's long
-  games). R2-8: a record that opens mid-battle (the snapshot's dead stacks as corpses, a raise of
-  one drawn; the box by the timeline's living set, not the first snapshot's `alive`; with it
-  M4 T3a's R1-3: the moat's strip over a stack by the fixed moat rows, 0x63BCE8 and 0x63BCF4,
-  not the record's moat, which leaves out the bridges while the opening's gate is open). R4-2:
-  `drawn`'s digest of what the masks depend on besides the pixels (`ours.txt`'s boxes, the log's
-  text: digests recorded again from `master`'s viewer first, the runbook's rule). R4-9: a
-  stricter shadow chain in `h3cap.redraws` (a near-black pixel counts as an artifact over almost
-  anything; the counts stay exact). R3-1 goes with the created stacks below.
-
-- 2026-10-21 (T7b-1): **a hero's aim.** Between the book's place and the target's click the
-  cursor is the spell's (`crspell.DEF`, animated: not read; the viewer leaves it as it was) and the
-  status line says "Cast %s on %s" (GENRLTXT 28, built *provisional*, not forced; 27 elsewhere);
-  `enter_player_cast` 0x59EC50's loop is not read (which targets it offers, the cursor's frames):
-  with the mouse's model when a recording aims a hero's area spell at a hex (T7c-1's are the
-  Faerie Dragon's clicks), and for live play. And `cast`'s 71
-  pixels at 0: the original redraws the battlefield over a rock's top (obstacle 22) for the one
-  frame of the click (0x479038's path, not read).
-
-- 2026-10-21 (T8): the battle's result window (`battle_result_dialog` 0x4702D0, not read beyond
-  its tune: the heroes, the texts, the casualties, OK) and the whole screen darkened under it
-  (0x44E5F0 from 0x47782C): `end`'s last frame differs by them (its counts). The volume settings
-  (0x5996C0) and a track resuming where it stopped (0x59AA82) with the client's options and a
-  second battle (later); the network's `remote_turn` in the end's choice with live play.
+  findings. R4-2: `drawn`'s digest of what the masks depend on besides the pixels (`ours.txt`'s
+  boxes, the log's text: digests recorded again from `master`'s viewer first, the runbook's
+  rule). R4-9: a stricter shadow chain in `h3cap.redraws` (a near-black pixel counts as an
+  artifact over almost anything; the counts stay exact). (R2-7, R2-8 with R1-3 and R3-1 went into
+  M5 T1, T6 and T5 at M4 T3c; the entry's full text in `QUEUE-ARCHIVE.md`.)
 
 - 2026-10-19 (E17 H1, H2; the adventure lane, E08 T22a1): the harness's check
   (`capture/checks/harness-check.toml`) can gain a monster's offers, a pile's question and a walk
@@ -93,36 +181,15 @@ Other lanes add entries here. The client lane turns each into a task, or moves i
   archive set to the directories and a batch's ranges, `h3-view gate` measuring it. NOTES,
   "Assets and archives".
 
-- 2026-10-22 (T7c-3): **created stacks are not drawn.** `StackCreated` (Summon Elemental, Clone)
-  and a Pit Lord's `RoseFromCorpse` add a stack the record's first snapshot lacks, and the scene
-  draws only the snapshot's stacks (a wire `Stack` each): the viewer needs the new stack's
-  numbers (from the ruleset, or a later snapshot in the record), its record index and the
-  dissolve that shows it (`create_battle_stack`, 75 ms steps, the blend not read; T9d built a
-  dissolve's time for Sacrifice's victim, `anim::GONE`, `DISSOLVE_STEP`, and the frame check of
-  `sacrifice` lists its blend: `screen_dissolve` 0x602DC0, read for both); with them the
-  message when no hex is free, a clone's `Vanished`, Teleport's dissolve (moved at once now) and
-  Sacrifice's victim leaving no corpse; and the panel's side by each turn's
-  controller (T9b, R3-1: `scene::controller` takes the opening's, so Hypnotize and a created stack
-  are not followed). The battle waits for the heal's sound (T3b) and the other
-  effects' (T7b-2b, T7c-3). NOTES, "The battle screen".
-
-- 2026-10-20 (T6a): the tactics phase's panel (0x46C050, not read) and Auto Combat switched on
-  (its button selected, the panel dimmed while stacks play themselves) wait for a record with a
-  tactics phase and for live play. Design §9.7.
-
 - When CLT-Q5 is answered: the deck and the two boats as situations; CLT-Q4: the background
   variants 0 and 1. NOTES, "Battlefields and boats".
-
-- Sieges (the battle lane, 2026-10-14 to 16): the turrets as stacks (drawn as the town's
-  shooters since T1b), the Catapult, the gate opening before the step. NOTES, "Sieges"; M4 T2b
-  to T2c-2 took the shots, the gate, the moat, the mines, Earthquake and the mouse (design
-  §10.2).
 
 - Later milestones: graphics options (the user, at M1), an HD layout's origin and viewport.
   NOTES, "Options and layouts". (The adventure map's object draw order, research item 9, went to
   the map-client lane at the split, 2026-10-23.)
 
-- The live client (the server lane, 2026-10-09 to 13): the record file, the content check, a
-  server restart, accounts, ladders, the server browser. NOTES, "The live client".
+- The live client (the server lane, 2026-10-09 to 13): M5 T6 and T7 take the record file, the
+  content check, a server restart and accounts; the ladders, the pause by agreement and the
+  server browser come after M5. NOTES, "The live client".
 
 Archive of the lane's finished and informational entries: `QUEUE-ARCHIVE.md` (grep it for an id or a task a doc cites). Keep this file to what is open: a done task leaves it, a notice nobody has to act on goes to the archive at once (`docs/08-work-process.md`, "Keeping the start-of-session reading small").

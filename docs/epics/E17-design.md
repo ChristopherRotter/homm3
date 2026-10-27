@@ -3468,8 +3468,9 @@ dialog, box, state and hint, in `states.jsonl` and `frames.jsonl`), read-only.
   items not read per frame; the M3 sequences with casts, T3b-2). The panel's picture takes the
   mouse by its layout's `size` (`ui::Picture::size`, the layouts' format: the M4 review list).
   The battlefield's last hint so stays over the panel's background in live play too: CLT-Q24
-  asked (recommended: the client forgets the hovered item over the battlefield, the original's
-  for the comparisons); built as the original's meanwhile.
+  asked, answered (a) at M4's review (T3c): the client forgets the hovered item over the
+  battlefield, the original's for the comparisons; built as the original's meanwhile, the
+  switch in M5 T2.
 - **Captured:** the 15 siege sequences and `walk`, `turn`, `climb` as recorded but `aim`, whose
   last 8 frames' ` log` masks are gone (its counts recorded again); the 72 stills (99 frames) as
   recorded; `drawn` the same for all but `aim`.

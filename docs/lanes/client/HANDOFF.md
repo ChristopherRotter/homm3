@@ -4,19 +4,19 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 
 ## Current state
 
-- **E17 M0–M3 done** (the lane split at M3 T9c, CLT-Q18: the battle client here, the adventure
-  map client the map-client lane's E24); **M4 (sieges): T0 to T3b-2 done** (§10.1, §10.2; T3
-  cut in three by the user: T3a the review, T3b the captures, cut in two, T3c the review list
-  and M5 with the user); **next T3c** (the user present: review items 1 to 15, 15 a proposal,
-  CLT-Q22 to Q24, M5 refined); M5 live play after M4. Open PR: #501 (T3b-2; check it first).
-  Workspace `clients/`
+- **E17 M0–M4 done** (M4, sieges, closed at T3c on 2026-10-27 with the user: the review list
+  accepted, CLT-Q22 to Q24 answered (a); the lane split at M3 T9c, CLT-Q18: the battle client
+  here, the adventure map client the map-client lane's E24). **M5 (live play) refined at T3c:
+  T1 to T8** (QUEUE, the epic's M5): hot seat in-process first, then a game on a server and
+  accounts; the new dependencies the user's at T6 and T7. **Next: M5 T1** (the timeline that
+  grows, R2-7). Open PR: #503 (T3c; check it first). Workspace `clients/`
   (`clients/README.md`), gates `clients/scripts/check.sh`; ADR-0020 (+ drafts in
   `adr-drafts/`), ADR-0024; the harness `clients/capture/README.md`; design §3–§10; records in
   `E17-log.md`.
 - **Captures** (the user, 2026-10-20): `h3drive.py drawn` first (no Wine); capture what it lists or the task changes, all at a milestone's closure or a harness change (runbook); a capture not as recorded leaves `kept/` (T9b: record, then `--reuse`); later tasks' detail in `NOTES.md`.
 - **The user's requirements** (epic, "Decisions"): a string catalogue (JSON packs, no committed translation, CLT-Q7); graphics options (`faithful` default); exhaustive diffs; drawing bugs fixed, the original's only for comparisons (`Bugs`).
 - The lane owns `clients/` but the map-client lane's paths and the common ones (`lanes.toml`: the foundation, `text/`, the harness; an additive change freely, a change in behaviour into the map-client lane's inbox), plus `docs/epics/E17*` and this folder; branches `client/<task>`; ids `CLT-Q<n>`, `CLT-QUIRK-<n>` (asset fixes), `CLT-STUB-<n>`; ADR drafts in `adr-drafts/`, numbered when accepted.
-- **Checkpoints** per milestone (below), a fresh reviewer agent first. **Open:** CLT-Q5, Q22–Q24.
+- **Checkpoints** per milestone (below), a fresh reviewer agent first. **Open:** CLT-Q5.
 - Stage from `original-data/install/`: the four LODs (one per call), `h3maped.exe`, both `.snd`, `MP3/COMBAT01`–`04` and the end tunes, `Heroes3.exe`, the five DLLs, `H3ab_ahd.vid`; `cp -rn` the staged `original-data/.` into the clone. Frames stay in the sandbox.
 
 ## Autonomy contract (agreed by the user, 2026-10-12)
@@ -36,7 +36,12 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
 
 ## Recent sessions
 
-- **2026-10-27, E17 M4 T3b-2 (done; #501 open: check it first).** Not cut (the user). The 29
+- **2026-10-27, E17 M4 T3c (done; #503 open: check it first).** The M4 checkpoint, the user
+  present; docs only. Review items 1 to 14 accepted, 15 (the recipes' starting bonus Gold) at M5's
+  closure; CLT-Q22 to Q24 answered (a), Q24's switch in M5 T2; M5 refined as drafted (T1 to T8;
+  the inbox entries it takes moved into its tasks, their text in `QUEUE-ARCHIVE.md`). **M4
+  done.** The original files staged into the sandbox before the user's computer disconnected.
+- **2026-10-27, E17 M4 T3b-2 (done; #501 merged).** Not cut (the user). The 29
   sequences captured afresh, all as recorded: 25 at once, `strike`, `luck` and `bolt` at a rerun
   (the original's luck and spell power varied: the starting bonus likely, runbook "Traps",
   review item 15 a proposed fix), `sacrifice` with the engine's seed 9 (the original's 23 in
@@ -47,7 +52,3 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
   entered once after the opening; the viewer tracks the hovered item (the hot-seat proxy
   gone; review item 13), `aim`'s exception explained. The 72 stills and 18 sequences as
   recorded but `aim`'s ` log` masks (recorded); `drawn` the same but `aim`. CLT-Q24 asked.
-- **2026-10-26, E17 M4 T3a (done; #485 merged).** T3 cut in three (the user).
-  Three fresh reviewers one at a time (R1 drawing and timeline, R2 mouse and adapters, R3
-  harness): 16 of 17 findings fixed, R1-3 queued (QUEUE's inbox); review items 10 to 12. The
-  harness now refuses rolls it cannot force (`xdd.dll`'s ack: a 7th field). `drawn` unchanged.
