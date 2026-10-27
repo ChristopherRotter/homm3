@@ -7,7 +7,9 @@ order rule's prediction from the observation. Labels from the later decisions of
 the stack that acts next (a morale repeat left out) and the opponent's stack that acts next.
 Linear and small-MLP probes (masked to the candidates) on the trunk's output and, as the probes'
 own control, on the observation's order columns alone; trained on 3/4 of the envs, tested on the
-rest. A one-off script (`python/records/README.md`); from `python/`:
+rest. Since observation v22 (E06 T6f) also the order block's own reading (`engine_order`: the
+next stack the engine's `turn_order` tells, no wait, morale or death foreseen). A one-off script
+(`python/records/README.md`); from `python/`:
 
     uv run --group train python records/inspect/probe_order.py runs/t6d-1/best.pt 600 \
         > records/inspect/t6d-1-order-probe.json
@@ -31,7 +33,8 @@ N = L.STACK_CAPACITY
 
 def order(st, a, active_attacker, attacker, wait_phase):
     """The order rule (BAT-TRN-001/002/003, approximate: no freezes, blindness, Catapult's turn,
-    hypnosis): the slots acting after the active one `a`, over the rest of the round and the next."""
+    hypnosis): the slots acting after the active one `a`, over the rest of the round and the
+    next."""
     alive = (st[:, L.PRESENT] > 0) & (st[:, L.ALIVE] > 0) & (st[:, SPEED] > 0)
     speed = st[:, SPEED]
     acted = st[:, L.ACTED] > 0
@@ -76,7 +79,9 @@ def main(path, calls):
     policy = load(path)
     policy.eval()
     envs = 256
-    batch = BattleBatch(envs, threads=4, seed=0x0D0E_0001, max_steps=2000, preview=True, final_obs=False)
+    batch = BattleBatch(
+        envs, threads=4, seed=0x0D0E_0001, max_steps=2000, preview=True, final_obs=False
+    )
     batch.add_encounters(
         kinds={"hero": 100, "siege_hero": 50, "siege_garrison": 25},
         attacker="external",
@@ -90,6 +95,7 @@ def main(path, calls):
     H, HR, RAW, CAND, OPP, ENV = [], [], [], [], [], []
     cols = [L.PRESENT, L.ALIVE, L.OWN, SPEED, L.ACTED, L.WAITED, L.ACTIVE, GOOD_MORALE]
     rule_next, rule_opp, naive_next = [], [], []
+    engine_next, engine_opp = [], []  # observation v22's order block (`h3_battle::turn_order`)
     next_active, next_opp = [], []
     owner_att = []  # per sample: its viewer is the attacker
     open_ = [[] for _ in range(envs)]  # per env: samples awaiting a label
@@ -135,10 +141,25 @@ def main(path, calls):
             fresh = cand & (st[:, L.ACTED] == 0) & (st[:, L.WAITED] == 0) & (st[:, SPEED] > 0)
             pool = np.nonzero(fresh if fresh.any() else cand)[0]
             nv = int(pool[np.argmax(st[pool, SPEED])])
+            ob = obs[e, L.ORDER : L.ORDER + N * L.ORDER_FEATURES].reshape(N, L.ORDER_FEATURES)
+            en = np.nonzero(ob[:, L.ORDER_ROUND] == 2)[0]
+            en = en if len(en) else np.nonzero(ob[:, L.ORDER_NEXT] == 1)[0]
+            eo = np.nonzero((attacker != va) & (ob[:, L.ORDER_SIDE] == 1))[0]
+            if not len(eo):
+                nxt = np.where(
+                    (attacker != va) & (ob[:, L.ORDER_NEXT] > 0), ob[:, L.ORDER_NEXT], np.inf
+                )
+                eo = [int(np.argmin(nxt))] if np.isfinite(nxt).any() else []
+            engine_next.append(int(en[0]) if len(en) else -1)
+            engine_opp.append(int(eo[0]) if len(eo) else -1)
             p = len(H)
             H.append(h[e])
             HR.append(hr[e])
-            RAW.append(np.concatenate([st[:, cols].ravel(), obs[e, [WAIT_PHASE, VIEWER_ATTACKS]]]).astype(np.float16))
+            RAW.append(
+                np.concatenate([st[:, cols].ravel(), obs[e, [WAIT_PHASE, VIEWER_ATTACKS]]]).astype(
+                    np.float16
+                )
+            )
             CAND.append(cand)
             OPP.append(opp_now)
             ENV.append(e)
@@ -155,9 +176,18 @@ def main(path, calls):
             open_[e] = []
     batch.close()
     return {
-        "H": np.stack(H), "HR": np.stack(HR), "RAW": np.stack(RAW), "CAND": np.stack(CAND), "OPP": np.stack(OPP),
-        "ENV": np.array(ENV), "rule_next": np.array(rule_next), "rule_opp": np.array(rule_opp),
-        "naive_next": np.array(naive_next), "next_active": np.array(next_active),
+        "H": np.stack(H),
+        "HR": np.stack(HR),
+        "RAW": np.stack(RAW),
+        "CAND": np.stack(CAND),
+        "OPP": np.stack(OPP),
+        "ENV": np.array(ENV),
+        "rule_next": np.array(rule_next),
+        "rule_opp": np.array(rule_opp),
+        "naive_next": np.array(naive_next),
+        "next_active": np.array(next_active),
+        "engine_next": np.array(engine_next),
+        "engine_opp": np.array(engine_opp),
         "next_opp": np.array(next_opp),
     }
 
@@ -176,7 +206,9 @@ def fit(X, y, mask, train, test, hidden):
     net = (
         torch.nn.Linear(d, N)
         if hidden == 0
-        else torch.nn.Sequential(torch.nn.Linear(d, hidden), torch.nn.ReLU(), torch.nn.Linear(hidden, N))
+        else torch.nn.Sequential(
+            torch.nn.Linear(d, hidden), torch.nn.ReLU(), torch.nn.Linear(hidden, N)
+        )
     )
     opt = torch.optim.Adam(net.parameters(), lr=1e-3, weight_decay=1e-4)
     tr = torch.tensor(train)
@@ -198,7 +230,10 @@ def fit(X, y, mask, train, test, hidden):
 if __name__ == "__main__":
     d = main(sys.argv[1], int(sys.argv[2]) if len(sys.argv) > 2 else 600)
     out = {"samples": int(len(d["H"]))}
-    for label, mask_key, rule_key in (("next_active", "CAND", "rule_next"), ("next_opp", "OPP", "rule_opp")):
+    for label, mask_key, rule_key, engine_key in (
+        ("next_active", "CAND", "rule_next", "engine_next"),
+        ("next_opp", "OPP", "rule_opp", "engine_opp"),
+    ):
         y = d[label]
         mask = d[mask_key]
         ok = (y >= 0) & mask[np.arange(len(y)), y.clip(0)]
@@ -209,6 +244,7 @@ if __name__ == "__main__":
             "test": int(len(test)),
             "uniform": float((1.0 / np.maximum(mask[test].sum(1), 1)).mean()),
             "rule": float((d[rule_key][test] == y[test]).mean()),
+            "engine_order": float((d[engine_key][test] == y[test]).mean()),
         }
         if label == "next_active":
             row["naive_fastest"] = float((d["naive_next"][test] == y[test]).mean())

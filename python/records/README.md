@@ -80,6 +80,14 @@ trunk knows which stack acts next, from `inspect/probe_order.py` (a one-off scri
 `uv run --group train python records/inspect/probe_order.py runs/<run>/best.pt 600` from
 `python/`; the method and the findings in `docs/epics/E06-log.md`).
 
+## The search's measurements
+
+`search/<run>-<set>-<N>[-<per kind>].json` (E06 T8c): `python -m h3env.search --report --best
+runs/<run>/best.pt --opponent <seat> --set <set> --simulations <N> [--per-kind <n>] --json …`,
+the search and the sampled policy on the same held-out episodes (the settings, both rows, the
+search's costs; the findings in `docs/epics/E06-log.md`). `-fixedscale`: before the search's σ
+rescaled the completed values (T8c), when the search played as the sampled policy.
+
 ## Lineage
 
 The promoted networks (from E06 T3b: a run's `promoted/<n>.pt`, its record's `promotions`) and

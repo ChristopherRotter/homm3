@@ -447,7 +447,7 @@ encodings are unchanged.
   the agent strikes less and wanders (moves, the tactics phase's placements), its battles
   longer; AI-Q7 closed (the user, 2026-10-26).
 
-## 14. The search (T8) — designed (T8a), its plumbing built (T8b)
+## 14. The search (T8) — designed (T8a), its plumbing built (T8b), measured (T8c)
 
 Decision 2's last increment (the user, 2026-10-26, after T6e: the plateau taken as shown). The
 seam (the user): T8a this design; T8b the plumbing; T8c a decision-time search with `t7-1`'s
@@ -490,13 +490,14 @@ only if T8d needs the throughput.
   planning with Gumbel", ICLR 2022), fit for a pretrained prior, few simulations and many
   actions. At the root, Gumbel-top-k (16) full actions: entries by Gumbel-top-k over the entry
   logits, a cast's heads by their Gumbel-perturbed argmax in order; sequential halving over them,
-  the action of the largest `g + logits + σ(q̂)`. Below the root, the deterministic selection of
-  the completed-Q improved policy. Chance and the hidden part are averaged open-loop: the tree is
-  keyed by action histories; a simulation takes a world (round robin over W) with a fresh stream
-  from the agent's own, forks it (`h3_env_fork`) and replays its path (`h3_env_step`); a node
-  keeps its first evaluation's prior and selects among the actions legal in the simulation's
-  world, renormalized. Values are the side to move's: reward v1 at a terminal, the value head at
-  a leaf.
+  the action of the largest `g + logits + σ(q̂)`, the completed values rescaled by their least
+  and greatest over the node's candidates (T8c: a fixed scale left the prior alone). Below the
+  root, the deterministic selection of the completed-Q improved policy. Chance and the hidden
+  part are averaged open-loop: the tree is keyed by action histories; a simulation takes a world
+  (round robin over W) with a fresh stream from the agent's own, forks it (`h3_env_fork`) and
+  replays its path (`h3_env_step`); a node keeps its first evaluation's prior and selects among
+  the actions legal in the simulation's world, renormalized. Values are the side to move's:
+  reward v1 at a terminal, the value head at a leaf.
 - **Batching:** the agent searches every env it moves at once: each simulation round evaluates
   one leaf per env in one network call (the GPU's), so a decision costs N calls for the batch.
 - **Cost** (measured in T8b): a simulation steps its path through ctypes (a few steps) and reads
@@ -510,16 +511,15 @@ only if T8d needs the throughput.
   gives way to the network's most likely action; a world in which another side moves after the
   same actions evaluates its position without a node. Gap: AI-STUB-1 (the hidden obstacles'
   number and value).
-- **T8c, the measurement:** the search agent with `t7-1`'s best (the user's file) at N 16 and 64
-  against the system actor and Greedy on the report set, and on the neutral set, beside the
-  sampled policy on the same episodes: win rate, value, cost per decision (`python -m
-  h3env.search --report --best <best.pt> --device cuda --opponent system --simulations 16
-  --json …`; `--set neutral-v1`; `--per-kind`: the sets' 500 by default). T8d only if the
-  search gains beyond the intervals.
+- **T8c, the measurement — done** (E06-log T8c; the sandbox, `order-1`'s best): the search
+  beside the sampled policy on the same episodes (`python -m h3env.search --report --best
+  <best.pt> --opponent system --simulations 64 --json …`; `--set neutral-v1`; `--per-kind`: the
+  sets' 500 by default): no gain against the system actor at N 16 and 64 nor on the neutral set
+  at N 64. T8d only if the search gains beyond the intervals: not indicated.
 - **T8d, expert iteration** (designed after T8c): the search's improved policy and value as the
   trainer's targets.
 
-## 15. The turn order as an input (T6f) — built, its A/B run the user's (T6g)
+## 15. The turn order as an input (T6f) — built, off by default (T6g: no measurable gain)
 
 The turn-order probe (E06-log) showed the trunk does not know which stack acts next. The user
 (2026-10-26): the engine's own order in the observation, v22, before T8b.
@@ -531,5 +531,5 @@ The turn-order probe (E06-log) showed the trunk does not know which stack acts n
   after v21's layout, which stays its prefix.
 - **The network:** `[network] order` (the MLP's): the trunk reads the whole observation, else
   v21's prefix (every network saved before v22). The entity network reads v21's slots as before.
-- **The run** (T6g, the user's machine): `configs/e06-order.toml`, `t7-1`'s settings with the
-  order; read against `t7-1`'s ladder and with `inspect` (the waits, defends and wandering).
+- **The run** (T6g, `order-1`, E06-log): `t7-1`'s ladder and play; the trained trunk still
+  does not represent the order it reads (the probe again).
