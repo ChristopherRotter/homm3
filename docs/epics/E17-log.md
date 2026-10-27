@@ -2833,7 +2833,7 @@ green.
   `set_up` (the test compiles each packs-and-profile once: 3.5 s where fighting through the
   session took 105); `pointer::legal` takes the manifest.
 - **Checks:** `sequences` all 47 as recorded (the flush and the switch change none); `drawn`
-  (below); the library's tests (290) and the binary's (38); clippy; the client check; the scoped
+  all 119 the same; the library's tests (290) and the binary's (38); clippy; the client check; the scoped
   verify.
 - **Inbox:** the stack's and the turret's info dialogs and the right button's popups (not built;
   M5 T4 or later).
