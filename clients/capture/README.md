@@ -28,8 +28,8 @@ adventure).
 | `h3drive.py` | The driver: starts the game, the recipes (fixed coordinates, screens by probes), the clock, dumps; the commands `battle`, `set`, `learn`, `shot`, `sequence`, `sequences`, `frames`. |
 | `screens.toml` | The screens the driver recognises: 12 probes `[x, y, 5-6-5 value]` each (numbers only). |
 | `h3cap.py` | `diff` (our render against a capture, with masks) and `find` (the original's obstacles in a capture); `compare` and `boxes_at` for the frame check. |
-| `h3mem.py` | Reads the running game's state from its memory: the battle's clocks, idle steps, active stack and the mouse's highlight, each stack's group, frame, hex, offsets and draw layer, and each side's hero's group and frame and its flag's frame (M3 T3a), the magic animation drawn and the stacks under it (M3 T3b), the battle's outcome (H1); the adventure map's players, heroes (with their experience, level, army and skills: H1), view and path, the difficulty, a tile's monster, the topmost dialog's text (H1; below); since E08 T47a the topmost dialog's kind and its items' boxes, states and texts, a hero's army slot by slot, worn positions, flags and learned spells, the artifact held, the battle's tactics phase. |
-| `h3adv.py` | The adventure map (M2 T6, H1, H2): hot seat at a chosen difficulty, heroes (the list scrolled), tiles of either level clicked twice, questions answered, battles played, level-ups chosen, turns, artifacts put on from the backpack in the hero screen (E08 T37a), the hero screen's, the exchange's, the army, creature and split dialogs' items clicked by their ids and a tactics phase ended (E08 T47a); `batch` plays an experiment batch and fills its results template, `compare` sets two filled templates side by side, `learn-button`. |
+| `h3mem.py` | Reads the running game's state from its memory: the battle's clocks, idle steps, active stack and the mouse's highlight, each stack's group, frame, hex, offsets and draw layer, and each side's hero's group and frame and its flag's frame (M3 T3a), the magic animation drawn and the stacks under it (M3 T3b), the battle's outcome (H1); the adventure map's players, heroes (with their experience, level, army and skills: H1), view and path, the difficulty, a tile's monster, the topmost dialog's text (H1; below); since E08 T47a the topmost dialog's kind and its items' boxes, states and texts, a hero's army slot by slot, worn positions, flags and learned spells, the artifact held, the battle's tactics phase; since E08 T57 a map object's word on its entrance tile, the Universities' skills, a hero's spell points, morale and luck bonuses and status flags, a stack's army slot, a message box's pictures and captions, the game's version. |
+| `h3adv.py` | The adventure map (M2 T6, H1, H2): hot seat at a chosen difficulty, heroes (the list scrolled), tiles of either level clicked twice, questions answered, battles played, level-ups chosen, turns, artifacts put on from the backpack in the hero screen (E08 T37a), the hero screen's, the exchange's, the army, creature and split dialogs' items clicked by their ids and a tactics phase ended (E08 T47a), a choice between two pictures made, steps run over a grid of tiles and a new game started again until its draws hold what the recipe requires (E08 T57); `batch` plays an experiment batch and fills its results template, `compare` sets two filled templates side by side, `learn-button`. |
 | `h3map.py` | The adventure map's stills (E24 M1 T3b2, the map client lane): `still` shows a situation of `../map/situations/` in the original (a single scenario, a writer's map or a shipped one whole, the human's explored tiles written, the view by the minimap, the clock frozen), draws ours and diffs them; `set` runs the map's capture set, keeping each live part; `drawn` (T6a) draws ours from the kept ones without the original; `frames` (E24 M2 T1a1) records the map's sequences, 1 ms at a time (T1a2: with their options and inputs). Below, "The map's stills" and "The map's sequences". |
 | `h3lod.py` | The original's text tables, read from the run directory's LODs at run time (H1): which record a dialog's text was written from (`ADVEVENT:86`); never their text. |
 | `batches/` | The batches' recipes: a spec's procedure as steps (`E08-batch-2.toml`), and the harness's own check (`harness-check.toml`, its spec in `checks/`). |
@@ -84,6 +84,15 @@ since T6b: a situation whose staging changed is stale) and each situation whose 
 adds or changes (its count recorded with why); 3. `h3map.py drawn --record`, `kept/` and `drawn.txt` committed with
 the task (`set` keeps a capture's live part only when it is as recorded or new); 4. the whole
 set at a milestone's closure and after a harness change that can alter the original's side.
+
+Since E24 M2 T2 `drawn` covers the map's recorded sequences too: each one's frames drawn from
+its kept live part at 0 (`map/timelines/<id>-live.toml`, which `frames` keeps from a run as
+recorded or new, with the digest of the situation it showed: `STALE` when that changed) at the
+times its screen changes (`h3-map-view sequences <id> --frames`, which also checks the timeline:
+a timeline not as recorded fails the sequence), their digests outside the panels against
+`map/timelines/drawn.txt` (`<id> t<ms> <digest>`); `frames --only <id>` for a sequence it lists
+as `CHANGED`, `new` or `STALE` (and its counts recorded), then `drawn --record`. A walk is M2
+T3's.
 
 `drawn` reporting every one the same (a change that reaches no reference frame) needs no Wine
 setup at all. Its digests are of the PNG files' pixels (`h3_render::png`'s unfiltered rows): a
@@ -407,8 +416,9 @@ A battle that opens in its tactics phase (battle manager +0x13D68 at its start; 
 button, before `battle` plays (batch E6's E6-6). A step walks, equips or opens a screen.
 
 A step without `walk`, `equip` or `screen` only reads. `record` fills the template's fields and table rows
-from the observation; `before:<observation>` reads the same before the step (not `explored:`: the
-step's snapshot holds no tiles, so a read before a walk is a step of its own). A table of one
+from the observation; `before:<observation>` reads the same right before the step (since E08 T57
+any observation, tiles and words too; in an action's `record` still not `explored:`, `word:`,
+`object:` or `monster:`). A table of one
 value column is filled by the row's label; since E08 T37a a wider one cell by cell, by `<row label>
 | <column>` (`"W (2, 10) | after the battle" = "explored:2,10"`), and `compare` keys such cells
 the same way:
@@ -436,6 +446,13 @@ the same way:
 | `screen`, `dialog`, `split:counts`, `shown`, `tactics` | since E08 T47a: the screen showing (`hero`, `exchange`, `army`, `map`, …), the record the topmost dialog's text was written from (a title: `GENRLTXT:36`), the split dialog's two counts as it shows them (`10 : 0`, the source first), what an action's right click opened (`question GENRLTXT:733`, `window ?`, `none`), whether the last battle opened in its tactics phase |
 | `explored:x,y[,level][:<colour>]` | yes or no: the player (the step's hero's owner, or `red`, `blue`, …) has explored the tile: its bit in the tile's vision word (`tile_vision_word` 0x4F79B0, the words at 0x6989F8; E08 T37a) |
 | `monster:x,y`, `aggression:x,y`, `never_flees:x,y` | the monster on a tile (`30 Pikemen`, `none`), its aggression (−4 to 10) and flag, from the tile's word |
+| `word:x,y[,level]`, `object:x,y[,level]` | since E08 T57: the word of the object anchored there (`0xffff93ff`), read on its entrance tile (a University's is left of its corner; without an object anchored there the tile's own), and what it holds by that word (below, "Rewards on the map"); `none` once the object is gone |
+| `hero:spell_points`, `hero:morale_bonus`, `hero:luck_bonus`, `hero:status`, `hero:backpack_count` | since E08 T57: the spell points (+0x18), the bonuses until the next battle's end (+0x11A, +0x11B), the status flags in hex (+0x105: 0x200000 a Warrior's Tomb's penalty taken, 0x1000 a looted Pyramid's), the backpack's count (+0x3D4) |
+| `choice`, `choice:left`, `choice:right`, `choice:taken` | since E08 T57: the step's choices between two pictures (`1000 gold or 525 experience: right`), or one part of each |
+| `message_pictures` | since E08 T57: the pictures of the messages closed with their OK, with their captions (`ADVEVENT:175: 1000 experience, Expert Learning`; messages without pictures left out; `none`) |
+| `level_up_dialogs` | since E08 T57: the step's level-up dialogs in one line (`level 2: Wisdom or Learning, took left (Wisdom)`) |
+| `treasury[:<colour>]`, `offering:<skill>`, `map_kind` | since E08 T57: a player's seven resources (`40 wood, …, 30900 gold`), how many of the game's Universities offer the skill (`2 of 30`), the game's version (`RoE`, `AB`, `SoD`: game +0x1F698) |
+| `opening:rows`, `morale:start[:<side>]`, `luck:start[:<side>]` | since E08 T57: the last battle's stacks at its opening as table rows (side, army slot, hex, creature, count; a `rows` record), and each stack's morale or luck as set at the start (`20 Pikemen -3, 10 Centaurs -3`) |
 
 `expect = { marks = <n>, path = "green", question = "join, flee", battle = true, dialogs = true }`
 notes a difference under the encounter's "anything odd" (`dialogs = true`: dialogs passed after
@@ -444,6 +461,49 @@ and adds `<label>: <value>` under "anything odd" unless it reads `none` (batch E
 `equipment`, the starting bonus's trap). `end_turn = true` ends the turn. Everything the record holds comes from
 the game's memory, not from the screen. `compare` prints each record line of two filled templates
 as the same or different (random amounts differ by nature: judge them by their ranges).
+
+**Rewards on the map** (E08 T57, batch E7; `docs/rules/surveys/E08-rewards.md`). `object:x,y`
+decodes the word of the object anchored at (x, y) (`h3mem.object_at`, on its entrance tile) by its
+class, as the visit functions read it (`docs/exe/map.toml`): an artifact's name (class 5: the
+subclass); a Treasure Chest's `artifact <name>` (bit 10, bits 0–9) or `<n> gold` (bits 11–14 in
+500s); a Corpse's `artifact <name>` (bit 16, bits 6–15) or `empty`; a Wagon's `artifact <name>`
+(bits 13 and 14, bits 15–24), `<n> <resource>` (bits 0–4, 25–28) or `empty` (bit 13 clear); a
+Warrior's Tomb's `artifact <name>` (bit 0, bits 13–22) or `empty`; a Shrine's spell (bits 13–22);
+a Witch Hut's skill (bits 13–19); a University's four skills (the game's Universities, +0x4E3CC, at
+bits 13–24); a Pyramid's `guarded` or `looted` (bit 0) and its spell (bits 13–20); `Pandora's
+Box`, `event`, `Spell Scroll`, `class <n>` for another, `none` without one.
+
+A message box whose OK waits for one of two pictures (a Treasure Chest's gold or experience:
+`chest_gold_or_experience` 0x4A6440; its frames are items 0x7809, the left, and 0x780A) is
+answered by the step's `choice` (`left` or `right`, or a list, one per such box in order, the last
+one repeated): the side's frame clicked, then the OK; each side's picture and caption are kept
+(`choice`). Every message closed with its OK keeps its pictures too (`message_pictures`:
+`h3mem.dialog_pictures`, a picture item with the text item starting at its bottom as its caption;
+`resour82.def`, `pskill.def`, `artifact.def`, `spells.def`, `spellscr.def` and `secskill.def`
+named, any other DEF by its name and frame). `level_up` also takes `not <skill>`: the offer that
+is not that skill (the left if neither is). A battle's record keeps every stack's army slot, hex,
+morale and luck at the opening (`opening`).
+
+A recipe's steps may run over a grid of tiles: `each = { from = [x, y], to = [x, y], step = [dx,
+dy] }` (rows, then columns), `{x}` and `{y}` in the step's strings replaced by each tile's. A step
+without a walk reads its `record` at every tile at once (`"({x}, {y}) | the word (hex)" =
+"word:{x},{y}"`); with `walk = "each"` it walks to each tile in turn, and `select = { holds =
+"artifact", controls = <n> }` keeps only the tiles whose object holds an artifact by its word,
+nearest first from the hero, then the `n` nearest without one (read when the step comes). A
+record's value may be a list of observations (joined by `; `), and a field named `+<field>` adds
+to what an earlier step put there (`; ` between). `once = true` clicks the target once: the path
+is read and the hero stays (E7-23). `days = <n>` lets a walk whose target the path does not reach
+today (its mark red) wait up to n times for the hero's player's next turn (the other players'
+turns are ended; "anything odd" says so), before the step reads anything, so that its `before:`
+reads never cross a day's start; each new day the route is set anew (a click beside the hero,
+then on the target), and the walk's first click then walks at once. `near = true` first approaches a target the hero's player has not
+explored (the original's pathfinder finds no path onto an unexplored tile): the hero walks to the
+open tile nearest the target (`h3mem.open_tiles`: explored, without an object, not closed, outside
+every monster's guard) until the target is explored, as a player would. Both happen before the step's
+reads (`h3adv.ready`). A recipe's `[[require]]` entries (`{ what, each = {…},
+holds = "artifact" }`) need an artifact among each grid's objects: a new game without one is
+started again, up to 20 times (the filled template's note says how often), as the specs' restart
+rules say.
 
 **A new screen** (another recipe): get there by hand once with `Game.click`/`key`, then
 `python3 capture/h3drive.py learn <name> --in x0,y0,x1,y1 [--avoid …] [--also other-state.xwd]`
@@ -532,7 +592,7 @@ never assumed.
 `clients/`, after `cargo build --release -p h3-map-view`,
 
 ```
-python3 capture/h3map.py frames [--only <id>] [--out <dir>]   # the recorded sequences
+python3 capture/h3map.py frames [--only <id>] [--out <dir>] [--reuse]   # the recorded sequences
 ```
 
 A sequence (`map/sequences.toml`: its id, a situation of `map/situations/`, one of the capture
@@ -590,6 +650,22 @@ frame steps (+0x100) 0 with the timers before the sequence's 0 (`Mem.write_frame
 load gives each object a random phase and the steps count the load's real time, and where an
 object's frames repeat a picture the box the screen changed in at a redraw moved with them from
 run to run (two mines did); the live part at 0 reads them back.
+
+**The frame check** (E24 M2 T2, design §3.6): after each run `frames` has the viewer replay the
+sequence without the original (`h3-map-view sequences <id> --frames <out>/<id> --live
+<out>/<id>/live.toml`: the map's timeline from the situation, this run's live part at 0 and the
+inputs, its frame at every time its own screen changed and at every time `frames/` holds one of
+the original's, `ours/t<ms>.png`, its timeline `ours.txt`; it prints its verdict on the timeline
+against the recorded one, every line, the `screen` boxes from its own frames included) and
+compares each kept screen with ours outside the panels: `frames.txt`, a line `<ms> <differing
+pixels>` per kept screen, `diff/t<ms>.png` for one that differs, against
+`map/timelines/<id>-frames.txt` (`ok`, `CHANGED`, `new`: copied there by hand once a second run
+gives the same, as the timeline). A walk's frame check is M2 T3's (`walks`: the hero's options,
+a click or a direction key without Ctrl). `--reuse` takes the original's screens, states and live
+part from an earlier run under `<out>` and compares again (after a change to the viewer; the
+original's frames stay only in the sandbox that recorded them). `h3-map-view sequences` alone
+(no Wine; the assets only) checks every sequence's timeline; `drawn` covers the sequences too
+(below).
 
 ## The recipes' coordinates (800 × 600)
 
@@ -802,6 +878,11 @@ design §7.1.
   first, then down to the hero's row (H2).
 - The panel's level button changes with the map (enabled on a two-level map) and the level shown:
   the `adventure` probes leave it out (H2).
+- The game finds the tile under the mouse (adventure manager +0xE8) again only when the mouse
+  enters another of the view's cells: after the view moved under a mouse that stays in the same
+  cell, it keeps the tile it saw before (E08 T57, batch E7b's E7-23: a click there would act on
+  the old tile). `hover` checks the tile and moves the mouse through the next cell when it is
+  stale.
 - The adventure panel takes the current player's colour: the `adventure` probes are the ones
   equal on Red's and Blue's turn (`adventure_map`, Red's, stays for the battle's recipes).
 - A player without towns gets a message at the end of its turn and at the start of its next
@@ -821,6 +902,13 @@ design §7.1.
   Hall of Fame shows and the batch stops (`neither the adventure map, a battle nor a dialog`). An
   experiment map keeps each player a hero after its battles (the check gives Blue a second one).
 - A player without towns gets "you have lost your last town" after each battle too.
+- Days waited (`days`) cost every player's turn: batch E7a's third run (E08 T57), its heroes
+  without Logistics, ended the turns into a sixth day and stopped at a turn's start on a screen
+  `dismiss` could not pass (not identified; the display is now kept as `not-dismissed.xwd`). An
+  experiment map's players hold no towns: keep a batch within a few days.
+- The harness check's Gear battle (a plan between two heroes) stopped once in two runs (E08 T57):
+  no attack cursor over the Archangel's hexes, the cursor's frame 6 at every point tried; the
+  next run passed. Run the check again before suspecting a change.
 - The dialog's text is read from the topmost dialog's text items (design §6.3), not from the game's
   message buffer (0x6973D8), which a dialog with a map's own text may not touch.
 - The game's memory can lag its screen by a step: after an animation it starts the next turn in

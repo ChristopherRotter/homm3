@@ -16,7 +16,8 @@ boats' facings (E24 M1 T5a, `write_facing`) and its boarded boats' flag colours 
 Library use: `Mem` (globals, stacks, battle_heroes, battle_outcome, battlefield; current_player,
 player, heroes, all_heroes, hero, hero_named, view, mouse_tile, path, difficulty, tile, explored,
 monster, creature_name, artifact_name, dialog_text, dialog_items, level_up_dialog; since E08 T47a
-dialog, item_text, spell_name, held_artifact, tactics_phase; since E17 M4 T3b hovered_item; the map's
+dialog, item_text, spell_name, held_artifact, tactics_phase; since E08 T57 object_at,
+universities, dialog_pictures, map_kind, template_bytes; since E17 M4 T3b hovered_item; the map's
 stills: write_explored, def_palette, map_due, frame_steps; since E24 M1 T5a boats, standing,
 map_heroes, hero_on, write_facing, write_bytes). Needs a running game
 (h3drive.py) and the rights to read its memory (root in a sandbox).
@@ -73,6 +74,8 @@ SKILLS = ("Pathfinding", "Archery", "Logistics", "Scouting", "Diplomacy", "Navig
 # Game (E17 H1): the difficulty (i8 +0x1F6D8, 0 easy to 4 impossible), the tiles (a pointer
 # +0x1FC40, level by level, row by row, 0x26 bytes each), two levels (u8 +0x1FC48).
 DIFFICULTY, TILES, TWO_LEVELS, TILE_SIZE = 0x1F6D8, 0x1FC40, 0x1FC48, 0x26
+# The game's version (E08 T57; structs.toml game +0x1F698 map_kind: 0 RoE, 1 AB, 2 SoD).
+MAP_KIND, MAP_KINDS = 0x1F698, ("RoE", "AB", "SoD")
 # The date (E17 H2; H3API's H3Main date): the day of the week, the week and the month, u16 each.
 DATE = 0x1F63E
 DIFFICULTIES = ("easy", "normal", "hard", "expert", "impossible")
@@ -147,6 +150,21 @@ SPELL_TABLE_POINTER, SPELL_SIZE, SPELL_NAME = 0x687F58, 0x88, 0x10
 FLAGS, LEARNED_SPELLS, SPELL_COUNT = 0x48, 0x3EA, 70
 # The battle manager's tactics phase (i32 +0x13D68, structs.toml battle_manager; E08 T47a).
 TACTICS_PHASE = 0x13D68
+# Hero (E08 T57, batch E7; structs.toml, hero): the spell points (i16 +0x18), the status flags
+# (u32 +0x105: bit 21 a Warrior's Tomb's penalty taken, bit 12 a looted Pyramid's), the morale
+# and luck bonuses until the next battle's end (i8 +0x11A, +0x11B).
+SPELL_POINTS, STATUS, MORALE_BONUS, LUCK_BONUS = 0x18, 0x105, 0x11A, 0x11B
+# Game (E08 T57; structs.toml, game): the Universities' vector (begin +0x4E3CC, end +0x4E3D0),
+# four i32 skills each, indexed by a University's tile word's bits 13-24 (university_skills
+# 0x405E10).
+UNIVERSITIES, UNIVERSITY_SIZE = 0x4E3CC, 16
+# A message box's pictures (E08 T57, observed under Wine at a Treasure Chest; message_box_build
+# 0x4F6990): a picture item (PICTURE_VTABLE) with its caption, a text item whose box starts at the
+# picture's bottom; a choice's frames (vtable 0x63FE1C) are items 0x7809 + n (the left 0x7809,
+# the right 0x780A), the window's result when chosen. The box's frame pieces are pictures of
+# dialgbox.def.
+CHOICE_VTABLE, CHOICE_FIRST, TEXT_VTABLE = 0x63FE1C, 0x7809, 0x642DB0
+FRAME_DEFS = ("dialgbox.def",)
 # Player: the selected hero (i32 +0x4, -1 none), the hero count (i8 +0x1) and the heroes (i32[8]
 # +0x8, the hero list's order), the resources (i32[7] +0x9C).
 RESOURCES = ("wood", "mercury", "ore", "sulfur", "crystal", "gems", "gold")
@@ -235,6 +253,7 @@ FIELDS = {
     "frame": 0x40,
     "facing": 0x44,
     "count": 0x4C,
+    "army_slot": 0x5C,  # E08 T57 (batch E7's openings): the army slot the stack came from
     "speed": 0xC4,  # E08 T32b1: a plan's move in reach
     # The count the box shows while it is not -1 (E17 M3 T5b, design §4.3): the count before a
     # strike's kills, set by `stack_take_damage` (0x4440DB), -1 again at the end of
@@ -557,6 +576,11 @@ class Mem:
             "positions": {s: a for s, a in enumerate(worn) if a >= 0},
             "flags": raw[FLAGS],
             "spells": [s for s in range(SPELL_COUNT) if raw[LEARNED_SPELLS + s]],
+            # E08 T57 (batch E7): the spell points, the status flags, the morale and luck bonuses.
+            "spell_points": struct.unpack_from("<h", raw, SPELL_POINTS)[0],
+            "status": struct.unpack_from("<I", raw, STATUS)[0],
+            "morale_bonus": struct.unpack_from("<b", raw, MORALE_BONUS)[0],
+            "luck_bonus": struct.unpack_from("<b", raw, LUCK_BONUS)[0],
         }
 
     def artifact_name(self, artifact):
@@ -697,6 +721,22 @@ class Mem:
         return [[i % side, i // side % side, i // (side * side), a]
                 for i, a in enumerate(arrows) if a]
 
+    def open_tiles(self, colour, z=0):
+        """The tiles of a level a hero of `colour` may walk to without visiting or meeting
+        anything (E08 T57, the harness's approach to an unexplored target): explored by that
+        player, no object's class (+0x1E 0), not closed (+0xD bit 0x01: rock, or an object
+        blocks it) and outside every monster's guard (the vision word's bit 8)."""
+        game = self.game()
+        side = self.i32(game + MAP_SIDE)
+        count = side * side
+        raw = self.read(self.u32(game + TILES) + TILE_SIZE * count * z, TILE_SIZE * count)
+        words = struct.unpack(f"<{count}H", self.read(self.u32(TILE_VISION_POINTER) + 2 * count * z,
+                                                      2 * count))
+        return {(i % side, i // side) for i in range(count)
+                if words[i] >> colour & 1 and not words[i] & 0x100
+                and struct.unpack_from("<i", raw, TILE_SIZE * i + 0x1E)[0] == 0
+                and not raw[TILE_SIZE * i + 0xD] & 1}
+
     def explored_rows(self, colour):
         """A player's explored bits of every tile (E24 M1 T5b2), as `render --live` takes them: a
         string per row of each level in turn, `1` explored, `0` not (tile_vision_word 0x4F79B0)."""
@@ -711,6 +751,11 @@ class Mem:
         day, week, month = struct.unpack("<3H", self.read(self.game() + DATE, 6))
         return month, week, day
 
+
+    def map_kind(self):
+        """The game's version as the rules test it (E08 T57; game +0x1F698): RoE, AB or SoD."""
+        kind = self.i32(self.game() + MAP_KIND)
+        return MAP_KINDS[kind] if 0 <= kind < len(MAP_KINDS) else str(kind)
 
     def difficulty(self):
         """The game's difficulty by name (E17 H1)."""
@@ -827,6 +872,62 @@ class Mem:
             out.append((name,) + struct.unpack("<II", self.read(record + TEMPLATE_CLASS, 8)))
         return out
 
+    def template_bytes(self):
+        """The map's object templates' records as one byte string (E24 M1 T5b1; E08 T57)."""
+        begin, end = struct.unpack("<II", self.read(self.manager_field(MANAGER_MAP)
+                                                    + MAP_TEMPLATES, 8))
+        return self.read(begin, end - begin) if end > begin else b""
+
+    def object_at(self, x, y, z=0):
+        """The object anchored at (x, y, z), read on its entrance tile (E08 T57, batch E7: an
+        object's word lives on the tile it is visited from, object_entrance_tile 0x4FEC30, the
+        anchor's for a one-tile object, a University's one left of it): its class, subclass,
+        word and that tile; without an object anchored there, the tile's own. A class of 0 is
+        none (a pickup taken, an emptied event: the tile's object cleared)."""
+        game = self.game()
+        side = self.i32(game + MAP_SIDE)
+        at = (x, y)
+        for ox, oy, oz, template, _ in self.map_objects():
+            if (ox, oy, oz) == (x, y, z):
+                at = entrance_cell(self.template_bytes(), side, x, y, template) or at
+                break
+        found = self.tile(*at, z)
+        found["tile"] = [at[0], at[1], z]
+        return found
+
+    def universities(self):
+        """The game's Universities (E08 T57; game +0x4E3CC): each one's four skill ids, in the
+        order a new game set them up (university_setup 0x4C06F0)."""
+        begin, end = struct.unpack("<II", self.read(self.game() + UNIVERSITIES, 8))
+        count = (end - begin) // UNIVERSITY_SIZE
+        raw = self.read(begin, UNIVERSITY_SIZE * count) if count > 0 else b""
+        return [list(struct.unpack_from("<4i", raw, UNIVERSITY_SIZE * i)) for i in range(count)]
+
+    def dialog_pictures(self):
+        """The topmost dialog's pictures with their captions (E08 T57: a message box's rewards, a
+        choice's two sides): [{def, frame, text, box, choice}] in item order, the box's frame
+        pieces left out; `choice` the id of the choice frame around the picture (0x7809 the
+        left, 0x780A the right), None outside one."""
+        items = self.dialog_items()
+        frames = [i for i in items if i["vtable"] == CHOICE_VTABLE and i["id"] >= CHOICE_FIRST]
+        texts = [i for i in items if i["vtable"] == TEXT_VTABLE and i["text"] is not None]
+        out = []
+        for item in items:
+            if item["vtable"] != PICTURE_VTABLE or not item["def"]:
+                continue
+            name = self.c_string(item["def"] + DEF_NAME, 13).lower()
+            if name in FRAME_DEFS:
+                continue
+            x, y, width, height = item["box"]
+            caption = next((t["text"] for t in texts if abs(t["box"][1] - (y + height)) <= 4
+                            and t["box"][0] < x + width and x < t["box"][0] + t["box"][2]), "")
+            choice = next((f["id"] for f in frames if f["box"][0] <= x + width // 2
+                           < f["box"][0] + f["box"][2] and f["box"][1] <= y + height // 2
+                           < f["box"][1] + f["box"][3]), None)
+            out.append({"def": name, "frame": item["frame"], "text": caption, "box": item["box"],
+                        "choice": choice})
+        return out
+
     def map_owners(self):
         """Every map object's owner as the view passes find it (E24 M1 T5b1, design §2.9), in the
         map's order: -1 none. tile_object_owner 0x40FD20 of the tile object_entrance_tile
@@ -840,20 +941,10 @@ class Mem:
         game = self.game()
         side = self.i32(game + MAP_SIDE)
         tiles = self.u32(game + TILES)
-        map_ = self.manager_field(MANAGER_MAP)
-        begin, end = struct.unpack("<II", self.read(map_ + MAP_TEMPLATES, 8))
-        templates = self.read(begin, end - begin) if end > begin else b""
+        templates = self.template_bytes()
 
         def entrance(x, y, template):
-            t = TEMPLATE_RECORD * template
-            width, height = templates[t + 0x10], templates[t + 0x11]
-            mask = int.from_bytes(templates[t + 0x2C:t + 0x32], "little")
-            for dy in range(height):
-                for dx in range(width):
-                    tx, ty = x - dx, y - dy
-                    if 0 <= tx < side and 0 <= ty < side and mask >> (47 - 8 * dy - dx) & 1:
-                        return tx, ty
-            return None
+            return entrance_cell(templates, side, x, y, template)
 
         def vector(offset, size, index, field, signed=True):
             first = self.u32(game + offset)
@@ -1009,6 +1100,21 @@ class Mem:
                 texts.append(text)
             item = struct.unpack_from("<I", raw, NEXT_ITEM)[0]
         return "\n".join(texts)
+
+
+def entrance_cell(templates, side, x, y, template):
+    """An object's entrance tile (x, y) from its anchor and template (object_entrance_tile
+    0x4FEC30): the template's first visitable cell, by row from the anchor's upwards, each row
+    from the anchor's column leftwards; None without one (E24 M1 T5b1)."""
+    t = TEMPLATE_RECORD * template
+    width, height = templates[t + 0x10], templates[t + 0x11]
+    mask = int.from_bytes(templates[t + 0x2C:t + 0x32], "little")
+    for dy in range(height):
+        for dx in range(width):
+            tx, ty = x - dx, y - dy
+            if 0 <= tx < side and 0 <= ty < side and mask >> (47 - 8 * dy - dx) & 1:
+                return tx, ty
+    return None
 
 
 def unpack(packed):

@@ -26,7 +26,43 @@ pub struct AdventureLayout {
     pub player_palette: String,
     /// The map's view.
     pub view: View,
+    /// The view's scroll (E24 M2 T2, design §3.4).
+    pub scroll: Scroll,
+    /// The adventure cursor (E24 M2 T2, design §3.4).
+    pub cursor: CursorArt,
 }
+
+/// The view's scroll (`view_scroll` 0x4195C0, `edge_scroll` 0x419820; design §3.4).
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Scroll {
+    /// The view's tile the map's first and last column and row stop at (9, 8, the view's middle
+    /// of 19 by 17): the view's corner stays within −9 to the map's width less 10 and −8 to its
+    /// height less 9.
+    pub middle: [i32; 2],
+    /// The edge zones: the view scrolls while the pointer lies within this many pixels of a side
+    /// of the frame (16, MCL-Q6's answer; the original's are 16, 14, 16 and 15 pixels wide,
+    /// reproduced under `Bugs::Original` only).
+    pub edge: i32,
+}
+
+/// The adventure cursor (the mouse manager's type 1: `cursor_defs` 0x67FF38; design §3.4).
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CursorArt {
+    /// Its DEF (`cradvntr.def`).
+    pub def: String,
+    /// The pointer's frame (0).
+    pub arrow: u32,
+    /// The first edge cursor's frame (32): the scroll's eight directions from north clockwise.
+    pub edges: u32,
+    /// Its frames' hot spots (`cursor_hot_spots` 0x67FF50 + (144 + frame) × 8): the canvas's
+    /// corner is the mouse less its frame's.
+    pub hot: Vec<[i32; 2]>,
+}
+
+/// The scroll's directions, one edge cursor each.
+pub const DIRECTIONS: u32 = 8;
 
 /// The map's view (§1.1, §1.2).
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
@@ -112,6 +148,25 @@ impl AdventureLayout {
         if view.tile < 1 {
             return Err(format!("a tile of {} pixels", view.tile));
         }
+        name(&self.cursor.def, ".DEF")?;
+        let frames = u32::try_from(self.cursor.hot.len()).unwrap_or(u32::MAX);
+        let edges = self.cursor.edges.saturating_add(DIRECTIONS);
+        if self.cursor.arrow >= frames || edges > frames {
+            return Err(format!(
+                "the cursor's hot spots end at frame {frames}: the arrow {} or the edges {} to {} \
+                 lie past them",
+                self.cursor.arrow,
+                self.cursor.edges,
+                edges.saturating_sub(1)
+            ));
+        }
+        let edge = i64::from(self.scroll.edge);
+        if edge < 1 || 2 * edge > width.min(height) {
+            return Err(format!(
+                "edge zones of {} pixels in a frame of {:?}",
+                self.scroll.edge, self.frame
+            ));
+        }
         Ok(())
     }
 
@@ -119,7 +174,7 @@ impl AdventureLayout {
     #[must_use]
     pub fn names(&self) -> BTreeSet<String> {
         core::iter::once(&self.picture)
-            .chain([&self.player_palette])
+            .chain([&self.player_palette, &self.cursor.def])
             .chain(self.view.gems.iter().map(|g| &g.def))
             .map(|n| n.to_ascii_uppercase())
             .collect()

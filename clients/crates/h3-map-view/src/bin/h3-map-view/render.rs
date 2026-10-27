@@ -275,7 +275,7 @@ const RANDOM_DWELLINGS: [u32; 3] = [216, 217, 218];
 /// reviewer's R2-3). Each key is optional (`defs` and `classes` together); other keys are left.
 /// The file's `cycles`, `frames` and `viewer` override `--cycles`, `--at` and `--viewer`: the
 /// comparisons draw the original's.
-fn read_live(
+pub fn read_live(
     path: &PathBuf,
     view: ViewAt,
     art: &mut MapArt,

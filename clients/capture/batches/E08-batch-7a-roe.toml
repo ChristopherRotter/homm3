@@ -1,0 +1,16 @@
+# E08 batch E7a's RoE map played by the capture harness (E08 T57; h3adv.py batch): row E7-7 of
+# experiments/specs/E08-batch-7a-roe.toml, the sixty Witch Huts' skills as the new game drew them,
+# read from each hut's word on the tile it is visited from ((4, 5) to (31, 20), ten to a row 3
+# columns apart, six rows 3 apart: the tile west of its picture's corner). Nothing is played. The
+# map is in the RoE format (0x0E); the game's version is noted (game +0x1F698).
+
+spec = "experiments/specs/E08-batch-7a-roe.toml"
+players = ["Red", "Blue"]
+difficulty = "easy"
+
+[[step]]
+encounter = "E7-7"
+hero = "E7-7"
+each = { from = [4, 5], to = [31, 20], step = [3, 3] }
+record = { "({x}, {y}) | the word (hex)" = "word:{x},{y}", "({x}, {y}) | the skill" = "object:{x},{y}" }
+note = { "the game's version (game +0x1F698)" = "map_kind" }

@@ -1009,3 +1009,46 @@ exact):
   boat's walking group 6 and its frames as a hero's, five steps 150 ms apart from 300; the
   standing group 1 at 1 050; the view's corner passing the map's top (y −1). The palettes keep
   stepping the water, shown at each redraw.
+
+### 3.6 The map over time, headless (M2 T2)
+
+No new reading: §3.1 and §3.4 built as `h3_map_view::timeline` (*provisional*), checked against
+T1a's six sequences line by line and frame by frame.
+
+- **One millisecond** (`Loop::run`): the palette tick when due (the next one now + 200 ms), the
+  mouse poll when due (the cursor drawn where the mouse is, its x even under `Bugs::Original`, E17
+  design §9.9; the next poll on by the larger of 33 ms and its lateness), then the idle message
+  (the edge scroll, then the idle redraw when due), then each action given at that millisecond as
+  its message, the edge scroll before each. A pointer's move is seen by the edge scroll of its own
+  message (GetCursorPos reads the new point); outside the view it sets the arrow unless the point
+  lies in a zone (an edge cursor stays). The actions come after the millisecond's idle turns, as
+  the harness gives its inputs: a key's step at a redraw's millisecond draws the step the idle
+  redraw left (`scroll-0` at 900), while an edge step there comes first, in the idle message, and
+  takes the redraw's place (`scroll-limits` at 1 080). Both give the timeline's lines; neither
+  view shows an animated object then, so the frames cannot tell the two orders apart.
+- **The counts.** The timeline's `objects` is +0x100 less its value after 0's redraw; a draw shows
+  +0x100 before its step, so the draw at a redraw after 0 shows the line's count before it plus
+  one, and the live part's `frames` is what 0's draw showed. The `cycles` count the ticks after 0's
+  (both kinds alike: the viewer's clock keeps the rivers with the terrains, MCL-Q5; a still's split
+  comes from the live part). The objects' step after a redraw loops while the deadline is reached,
+  the deadline on by the larger of 180 and the lateness: a redraw 220 ms late steps twice (as
+  `walk-2`'s +2 at 3 300 showed).
+- **The screen** (the `sequences` adapter): the view as its last draw shows it, the cursor over
+  it (`cradvntr.def`'s frame by the mouse manager's drawer, runs skipped: `Cursor::read`, copied
+  from `h3-view`; its hot spot from `cursor_hot_spots` 0x67FF50 + (144 + frame) × 8, the layout's
+  `[cursor]`, 43 frames, read 2026-10-27: 32 to 39 as §3.4 lists them, the arrow (0, 0)). Drawn
+  at each millisecond the draw or the cursor changed, its box against the last kept screen within
+  (0, 0) to (608, 552) is the `screen` line: so the viewer's `screen` lines say its frames change
+  where the original's did, and the frame check says they are the same frames.
+- **The edge zones** (MCL-Q6): the client's 16 pixels on every side (x < 16, x ≥ 784, y < 16,
+  y ≥ 584), the original's (x even, x < 16, x > 784, y < 16, y > 584) under `Bugs::Original`, which
+  `h3-map-view sequences` takes by default (the comparisons). The sequences' points lie in both.
+- **Not played:** a walk (a hero's step, a click: T3's, `Unplayable::Walk`; `sequences` lists the
+  seven walk sequences as T3's), the pointer over the view (M3's cursor by the tile: refused).
+- **Checked** (2026-10-27, T1a's six sequences recorded again in a fresh sandbox, each as
+  recorded): every line of each timeline as the viewer makes it (`h3-map-view sequences`; the
+  unit tests replay all but the `screen` lines without the original files), and every kept screen
+  of the original against ours outside the panels, 181 frames (`idle-cycles` 40, `idle-objects`
+  45, `scroll-0` and `scroll-1` 22 each, `scroll-2` 24, `scroll-limits` 28), all exact
+  (`timelines/<id>-frames.txt`). The edge cursors' and the arrow's frames and hot spots are
+  among them (the cursor over the frame's left border at (2, 300) and in the top-left corner).

@@ -53,6 +53,9 @@ path = "adag.def"
 road_offset = 16
 cycle_ms = 200
 frame_ms = 180
+scroll_steps = [1, 2, 3]
+scroll_ms = 70
+poll_ms = 33
 
 [map.shroud]
 full = "tshrc.def"
@@ -111,6 +114,14 @@ fn loads_a_selection_dependencies_first() {
     assert_eq!(tables.map.edge, "edg.def");
     assert_eq!(tables.map.road_offset, 16);
     assert_eq!((tables.map.cycle_ms, tables.map.frame_ms), (200, 180));
+    assert_eq!(
+        (
+            &tables.map.scroll_steps[..],
+            tables.map.scroll_ms,
+            tables.map.poll_ms
+        ),
+        (&[1, 2, 3][..], 70, 33)
+    );
     assert_eq!(
         tables
             .layer(Layer::Terrain)
@@ -446,6 +457,29 @@ fn refuses_what_breaks_the_format() {
         "base",
         entry("boat 1", "`ab1.pcx` is not a .DEF name"),
         "`boat 1`: `ab1.pcx` is not a .DEF name",
+    );
+    // The scroll's steps (E24 M2 T2): one per speed, each at least a tile; a poll's time.
+    for steps in ["[1, 2]", "[1, 2, 3, 4]", "[0, 2, 3]"] {
+        let bad = base("").replacen(
+            "scroll_steps = [1, 2, 3]",
+            &format!("scroll_steps = {steps}"),
+            1,
+        );
+        check(
+            &[bad],
+            "base",
+            entry(
+                "scroll_steps",
+                "one step of at least a tile per scroll speed (3)",
+            ),
+            "`scroll_steps`: one step of at least a tile per scroll speed (3)",
+        );
+    }
+    check(
+        &[base("").replacen("poll_ms = 33", "poll_ms = 0", 1)],
+        "base",
+        entry("poll_ms", "a poll every 0 ms"),
+        "`poll_ms`: a poll every 0 ms",
     );
 }
 

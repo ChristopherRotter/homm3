@@ -15,22 +15,8 @@ finds is an `MCL-Q<n>` in the same task (the HANDOFF's autonomy contract).
 
 T1a was cut at its seam before it started (the user, 2026-10-26): T1a1 the recording and the map
 standing still, T1a2 the scroll; T1b, the walk, done whole (all three done 2026-10-26:
-`E24-log.md`).
-
-### E24 M2 T2 — the map over time, headless
-
-- **Scope:** time in the library (beside `live::Moment`, pure, time an input): from a situation
-  and a sequence's inputs, the redraws' times, the objects' step, both palette steps and the
-  view's corner as the scroll moves it, as the recorded timeline's lines (design §3.4, the cursor
-  lines too); the edge cursors (`h3-view`'s `cursor` copied, *provisional*, an origin comment;
-  the edge zones 16 pixels on every side, MCL-Q6's answer, the original's behind `--bugs original`); `h3-map-view sequences
-  [<id>]` (exit 1 on a difference) and `--frames <dir>`, the harness's frame check against the
-  recorded screens, `drawn` over the sequences; unit tests replaying the timelines without the
-  original files.
-- **Acceptance:** T1a's sequences as recorded, every line and every frame exact outside the
-  panels (or each difference an `MCL-Q<n>`; T1b's walk sequences listed as T3's, a stub, not
-  failed); `clients/scripts/check.sh`; the Definition of Done.
-- **Depends on:** T1a1, T1a2 (both done). **Status:** ready.
+`E24-log.md`); T2, the map over time headless, done whole (2026-10-27: the user chose it over a
+cut before the frame check).
 
 ### E24 M2 T3 — the walk drawn
 
@@ -42,10 +28,12 @@ standing still, T1a2 the scroll; T1b, the walk, done whole (all three done 2026-
   walking group and the frame carried from step to step, the arrows taken away, the objects
   standing still and the palettes stepping during a walk, the walk's end and the standing
   picture at the next idle redraw (the objects' catch-up steps); the boat sailing; the timeline's
-  `hero`, `walk` and `arrows` lines; `sequences` and the frame check for walks.
+  `hero`, `walk` and `arrows` lines; `sequences` and the frame check for walks (T2 keeps the
+  walk sequences out of both: `timeline::Unplayable::Walk`, the viewer's `Sequence::walks`,
+  `h3map.py`'s `walks`; `drawn` over them too).
 - **Acceptance:** T1b's sequences as recorded, every line and every frame (or each difference an
   `MCL-Q<n>`); the Definition of Done.
-- **Depends on:** T1b (done), T2. **Status:** ready after T2.
+- **Depends on:** T1b, T2 (both done). **Status:** ready.
 
 ### E24 M2 T4 — the window
 
@@ -64,7 +52,7 @@ standing still, T1a2 the scroll; T1b, the walk, done whole (all three done 2026-
   options dialog, later.
 - **Acceptance:** a situation and a walk sequence play in the window; `--check` exact; the
   Definition of Done.
-- **Depends on:** T2, T3. **Status:** ready after them.
+- **Depends on:** T2 (done), T3. **Status:** ready after T3.
 
 ### E24 M2 T5 — the map's sound
 
@@ -92,6 +80,16 @@ standing still, T1a2 the scroll; T1b, the walk, done whole (all three done 2026-
 
 Other lanes add entries here. The map client lane turns each into a task, or keeps one line here
 while the work waits.
+
+- 2026-10-26 (the adventure lane, E08 T57; for information, nothing to do): the harness's
+  reads and steps for batch E7 (`clients/capture/README.md`, "Rewards on the map"). Behaviour that
+  changed for every recipe: `before:<observation>` is now read right before the step (any
+  observation, tiles too; it was the step's snapshot), a message box whose OK waits for one of two
+  pictures is answered by `choice` (it stopped the batch before), and each message closed with its
+  OK keeps its pictures (`message_pictures`). New: `h3mem.object_at`, `universities`,
+  `dialog_pictures`, `open_tiles`, `map_kind`, a hero's spell points, bonuses and status flags, a
+  stack's army slot; `h3adv`'s `each`/`select` grids, list records and `+` fields, `once`,
+  `days`, `near` and `[[require]]`. The harness check gained Win's chest and Warrior's Tomb.
 
 - 2026-10-24 (this lane, E24 M1 T6b's reviewer, R2-8; with the next writer pull request): the
   writer's edge bound for an object (`crates/h3-map/src/writer/extras.rs` `PAST_RIGHT`, `PAST_BOTTOM`, its test
