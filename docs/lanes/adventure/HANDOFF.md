@@ -21,7 +21,7 @@ Moved to `TRAPS.md`: forks without deep copies, RNG seeds server-only, template 
 
 ### 2026-10-27 — increment 7, round 5: T61b, the bans, the draws and the state
 
-Baseline c94a5ab (#507 merged, CI green; the sandbox's light gates passed; the original data staged from the user's computer). The census first: nothing broke, 8 maps import whole. The user's cut: whole (decision 149); `cross-lane` (consented): the bans' default lines in the AI lane's `census.rs` and `ai/tests.rs`. `h3-game`/`h3-map`: GAM-SET-003 (map import v13; the SoD editor's default artifact bans 141 to 143 ban nothing). `h3-adventure`: `state/draws.rs` (`Resolved`, twelve rules), `persistent::Table` for the army left, `state/visits.rs` (`Visits`, none until T62), adventure state hash v14; `ADV-QUIRK-23` to `-26`; the twelve replays re-recorded. The scoped verify with the original data passed but `check-lane` (the label). Pull request: see "Current state".
+Baseline c94a5ab (#507 merged, CI green; the sandbox's light gates passed; the original data staged from the user's computer). The census first: nothing broke, 8 maps import whole. The user's cut: whole (decision 149); `cross-lane` (consented): the bans' two default lines in the AI lane's `census.rs`. `h3-game`/`h3-map`: GAM-SET-003 (map import v13; the SoD editor's default artifact bans 141 to 143 ban nothing). `h3-adventure`: `state/draws.rs` (`Resolved`, twelve rules), `persistent::Table` for the army left, `state/visits.rs` (`Visits`, none until T62), adventure state hash v14; `ADV-QUIRK-23` to `-26`; the twelve replays re-recorded. The scoped verify with the original data passed but `check-lane` (the label). Pull request: see "Current state".
 
 ### 2026-10-27 — increment 7, round 5: T61a, the import and the kinds
 

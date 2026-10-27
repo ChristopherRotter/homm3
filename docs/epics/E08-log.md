@@ -6596,9 +6596,10 @@ from the user's computer (`maps.tar`, `extracted.tar`, the executable and the tw
   on `AdventureSetup` (skills, spells, artifacts), which only the build's draws read; the import's
   spell set and artifact set, the latter within the edition's artifacts the codes name: the SoD
   editor's default bans the unused records 141 to 143 (123 bits on 41 shipped maps), which an
-  error would have refused on every such map. `cross-lane` (consented): the AI lane's two
-  `GameSetup` literals (`census.rs`, `ai/tests.rs`), two default lines each; the AI lane's inbox
-  told.
+  error would have refused on every such map. `cross-lane` (consented): the AI lane's one full
+  `GameSetup` literal (`census.rs`), two default lines; the queue named `ai/tests.rs` too, whose
+  literal is the experiment writer's `Map` (a first edit there broke its build, which the
+  workspace check caught before the pull request); the AI lane's inbox told.
 - **The draws** (design §9; `state/draws.rs`; adventure state hash v14): `MapObject::resolved:
   Resolved` (`Nothing`, `Artifact`, `Price`, `Spell`, `Skill`, `Scholar(gift, fallback)`,
   `Skills`), a chest's gold and a find's resources in `contents`; after the piles and the monsters,
@@ -6621,7 +6622,8 @@ from the user's computer (`maps.tar`, `extracted.tar`, the executable and the tw
   `fork-xl-144`: 3 587 Ir a fork against 3 564 (+0.65 %); `random-play-duel-36` −0.50 %.
 - **Replays**: the twelve re-recorded with their options, their commands unchanged (neither map
   has an object that draws, nor bans): every hash moved.
-- **Gates**: the scoped verify with the original data (`check-lane` flags the four AI-lane lines,
-  the label `cross-lane`); coverage closed three gaps on the way (a test helper's early returns,
+- **Gates**: the scoped verify with the original data (`check-lane` flags the AI lane's file, the
+  label `cross-lane`), then `cargo check --workspace --all-targets` and `h3-cli`'s and `h3-sim`'s
+  tests (the scoped verify builds neither the AI lane's tests nor every target); coverage closed three gaps on the way (a test helper's early returns,
   the pool's out-of-range bans, the two new errors' texts); `check-arch` refused a `sort_unstable`
   (the hut's candidates now come in id order from the unbanned skills).
