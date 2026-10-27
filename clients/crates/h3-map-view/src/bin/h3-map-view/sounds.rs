@@ -83,7 +83,9 @@ pub fn mp3(install: &Path, name: &str) -> Result<Music, String> {
     let bytes = fs::read(&path).map_err(|e| format!("{}: {e}", path.display()))?;
     let decoded = nanomp3::decode_all::<i16>(&bytes);
     let channels = decoded.channels.map_or(0, |c| c as u16);
-    if channels == 0 || decoded.sample_rate == 0 {
+    // A track whose frames do not decode holds no samples (M2 T6a, the reviewer's R2-1: the music's
+    // fade waited for them for ever).
+    if channels == 0 || decoded.sample_rate == 0 || decoded.samples.is_empty() {
         return Err(format!("{}: holds no audio", path.display()));
     }
     Ok((decoded.sample_rate, channels, decoded.samples))
