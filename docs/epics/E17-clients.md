@@ -138,10 +138,14 @@ commands as they come, takes them from the mouse and the keys, and draws what a 
 shows that the recordings did not need: the spell book, the hero's aim, the battle's dialogs,
 the stacks created mid-battle.
 
-- **T1, the timeline that grows** (R2-7): the timeline takes commands as they arrive and draws a
-  frame without rescanning the battle (`Moment::at`, `Heroes::posed`, `Timeline::at`: 2.3 ms a
-  frame over 82 seconds now); the window plays the bot's battle with its commands arriving while
-  it plays; every recorded sequence's timeline and frames unchanged (`sequences`, `drawn`).
+- **T1a, a frame without the rescan** (R2-7; done 2026-10-27): `anim::Playhead` reads the
+  timeline forward, a frame costing what changed since the one before (0.3 to 1 µs, against
+  `Moment::at`'s 1.6 to 7 µs over `play`'s 82 seconds and 306 µs half an hour after its end; the
+  2.3 ms a frame was the composing); `play`, `window` and `sequences` draw through it.
+- **T1b, the timeline that grows** (T1 cut in two, the user, 2026-10-27): the timeline takes
+  commands as they arrive; the window plays the bot's battle with its commands arriving while it
+  plays, the batch, the sounds, the panel and the mouse growing with them; every recorded
+  sequence's timeline and frames unchanged (`sequences`, `drawn`).
 - **T2, hot seat: the player's commands:** a click does what the cursor shows (a walk, an attack
   from the cursor's side, a shot, the Catapult's target, a Faerie Dragon's cast), Wait and Defend
   and their keys (the window's, until E24 M3 T0's common key table: QUEUE's inbox); the input
