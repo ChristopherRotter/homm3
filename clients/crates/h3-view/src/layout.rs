@@ -56,6 +56,26 @@ pub struct BattleLayout {
     /// T4b-2b-1, T6a): its picture, buttons and the battle log's item (`crate::panel` names
     /// them).
     pub panel: Dialog,
+    /// The hero's spell book (E17 M5 T3a; design §7.17; `crate::book` names its items).
+    pub book: BookLayout,
+}
+
+/// The hero's spell book (`spell_book_dialog` 0x59BDF0; E17 M5 T3a, design §7.17): its dialog and
+/// the mastery ribbons' DEFs.
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct BookLayout {
+    /// The schools by the book's index (its school bit's: air 0, fire 1, water 2, earth 3), the
+    /// rulesets' school keys without their pack: the ribbons', emblems' and tabs' order.
+    pub schools: Vec<String>,
+    /// The mastery ribbons' DEFs by school: air, fire, water, earth (0x641D94).
+    pub ribbons: Vec<String>,
+    /// The cursor the book sets (`crdeflt.def`, the mouse manager's type 0, 0x67FF38).
+    pub cursor: String,
+    /// Its frames' hot spots (0x67FF50): the canvas's corner is the mouse less its frame's.
+    pub hot: Vec<[i32; 2]>,
+    /// The dialog, its loops' entries made into their items ([`Dialog::expanded`]).
+    pub dialog: Dialog,
 }
 
 /// The mouse over the battle (`battle_buttons`' mouse move 0x4753A4; design §9.9): where it finds
@@ -201,7 +221,14 @@ impl BattleLayout {
 /// # Errors
 /// The parser's message: not TOML, an unknown, missing or mistyped field.
 pub fn parse_battle(text: &str) -> Result<BattleLayout, String> {
-    toml::from_str(text).map_err(|e| e.to_string())
+    let mut layout: BattleLayout = toml::from_str(text).map_err(|e| e.to_string())?;
+    let empty = Dialog {
+        place: [0, 0],
+        shadow: None,
+        items: Vec::new(),
+    };
+    layout.book.dialog = core::mem::replace(&mut layout.book.dialog, empty).expanded();
+    Ok(layout)
 }
 
 #[cfg(test)]
@@ -259,6 +286,16 @@ mod tests {
         assert_eq!(m.heroes, [[0, 16, 57, 127], [741, 16, 799, 127]]);
         assert_eq!((m.keep, m.tower), ([742, 160, 799, 337], [564, 0, 651, 85]));
         assert_eq!((m.hot.len(), m.hot[7], m.panel_frame), (20, [22, 0], 6));
+        // §7.17: the book at (90, 2), its 51 items once the loops are made items; place 11's
+        // icon at the right page's last row and column, its text below it.
+        let book = &layout.book;
+        assert_eq!((book.dialog.place, book.dialog.items.len()), ([90, 2], 51));
+        assert_eq!((book.schools.len(), book.ribbons.len()), (4, 4));
+        assert_eq!((book.cursor.as_str(), book.hot.len()), ("crdeflt.def", 2));
+        let area = |id| book.dialog.item(id).and_then(crate::ui::Item::area);
+        assert_eq!(area(224), Some(([419, 281], [78, 65])));
+        assert_eq!(area(248), Some(([415, 346], [86, 36])));
+        assert_eq!(area(0x7801), Some(([478, 407], [35, 42])));
         let flat = BattleLayout {
             outline_ramp: 0,
             ..layout

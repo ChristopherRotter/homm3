@@ -42,6 +42,15 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   timeline shown is `Growing::waiting`'s copy, so a command starts a fresh playhead
   (`Battle::command`); presses and the battle's keys count only while it waits, at or past the
   timeline's end (`Battle::takes`).
+- The spell book (E17 M5 T3a) is a modal dialog: the battle behind it stands still, so the
+  window's `next_frame` returns at once while it is open (scanning the idle steps for a change
+  never ends: the window hung). Its hero comes from the side to act's own observation
+  (`Live::own_view`): the turn's observation (`Battle::turned`) is the spectator's, without
+  `own_hero`. Casts are not in the engine's legal list: ask `h3_battle::cast_targets`
+  (`Live::casts_untargeted`). A situation's `actions` run at the frozen clock: after a `move:` the
+  original's cursor stays where it was until the clock steps (compare from 100 ms).
+- `h3_formats`' `c_string` takes printable ASCII alone: an executable string with line breaks
+  (the book's place formats) is read by the client's `text::exe_string`.
 - The viewer reads `clients/layouts/*.toml` at run time: a layout change made while a batch
   runs breaks (or changes) the release binary's comparisons of the batch (M4 T3b-1: an unknown
   field); keep the layout with the binary it was built for until the batch ends.

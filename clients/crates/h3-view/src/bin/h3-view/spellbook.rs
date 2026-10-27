@@ -1,0 +1,296 @@
+//! The hero's spell book in the viewer (E17 M5 T3a; `docs/epics/E17-design.md` §7.17): the book's
+//! hero from a battle's observation, its ruleset and its names, for the window and the capture
+//! set's stills (`h3_view::book` the book itself).
+
+use h3_content::SpellCategory;
+use h3_content_battle::BattleRuleset;
+use h3_kernel::Handle;
+use h3_protocol::wire::{Manifest, Observation};
+use h3_view::book::{Hero, Kind, Memory, Open, Outcome, Spell};
+use h3_view::layout::BookLayout;
+use h3_view::tables::Tables;
+use h3_view::text::{Args, Catalogue};
+
+/// The forms of a spell's description by mastery (the catalogue's family `spell-text`).
+const MASTERY_FORMS: [&str; 4] = ["none", "basic", "advanced", "expert"];
+
+/// Whether the battle opens the acting hero's book in `observation`: the side to act is the
+/// observation's own and the panel's spell book button is enabled (`battle_controls_state`: a human
+/// side whose hero wears a book and has not cast this round, outside the tactics phase; E17 M3
+/// T6a, `h3_view::panel`).
+pub fn takes(observation: &Observation) -> bool {
+    let Some(active) = observation.active else {
+        return false;
+    };
+    let Some(stack) = observation.stacks.iter().find(|s| s.id == active) else {
+        return false;
+    };
+    let side = stack.side;
+    side == observation.viewer
+        && !h3_view::panel::shown(
+            observation,
+            Some(side),
+            h3_view::panel::Kept::built(side),
+            "",
+            [0, 1],
+        )
+        .state(h3_view::panel::SPELL_BOOK)
+        .disabled
+}
+
+/// The book of the observation's own hero (the viewer's side's, which the battle asks to act):
+/// its spells as the book shows them. The mastery is the hero's (the observation's, the hero's
+/// own) unless the battlefield raises one of the spell's schools (Expert; 0x4E5080 with the field,
+/// BAT-TER-005, as the engine's `mastery_at`); the cost the spell's at that mastery changed by the
+/// armies' change (the observation's `cost_change`), at least 1, a free spell free (0x4E5240,
+/// BAT-MAG-054, as the engine's `mana::cost`: *provisional*, the client's copy of that formula: the
+/// M5 review list); the hero's mastery of each school its mastery of the book's spells of that
+/// school alone (the school a spell of several shows under on the tab of all schools; a school
+/// none of them names counts as none: *provisional*). None without the own hero or its view.
+pub fn hero(
+    observation: &Observation,
+    (manifest, ruleset): (&Manifest, &BattleRuleset),
+    (tables, catalogue): (&Tables, &Catalogue),
+    layout: &BookLayout,
+) -> Option<Hero> {
+    let side = observation.sides.get(usize::from(
+        observation.viewer == h3_protocol::wire::Side::Defender,
+    ))?;
+    let view = side.hero.as_ref()?;
+    let own = observation.own_hero.as_ref()?;
+    let core = &**ruleset;
+    let battlefield = observation
+        .battlefield
+        .and_then(|b| ruleset.battlefield(Handle::from_raw(b)));
+    let school_of = |school: h3_content::SchoolId| {
+        let key = core.spell_schools().get(school.index())?.key.as_str();
+        let name = key.rsplit(':').next().unwrap_or(key);
+        layout.schools.iter().position(|s| s == name)
+    };
+    let mut schools = [0u8; 4];
+    let mut spells = Vec::new();
+    for entry in &own.spell_book {
+        let Some(spell) = ruleset.spell(Handle::from_raw(entry.spell)) else {
+            continue;
+        };
+        let kind = match spell.category {
+            SpellCategory::Combat => Kind::Combat,
+            SpellCategory::Adventure => Kind::Adventure,
+            SpellCategory::Ability => continue,
+        };
+        let indices: Vec<usize> = spell.schools.iter().filter_map(|&s| school_of(s)).collect();
+        if let [only] = indices[..]
+            && let Some(level) = schools.get_mut(only)
+        {
+            *level = (*level).max(entry.mastery);
+        }
+        let bits = indices.iter().fold(0u8, |b, &i| b | (1 << i));
+        let raised = battlefield.is_some_and(|b| b.raises(&spell.schools));
+        let mastery = if raised { 3 } else { entry.mastery.min(3) };
+        let base = spell.cost[usize::from(mastery)];
+        let cost = if base == 0 {
+            0
+        } else {
+            u16::try_from((i32::from(base) + i32::from(side.cost_change)).max(1))
+                .unwrap_or(u16::MAX)
+        };
+        let key = manifest.keys.spells.get(usize::from(entry.spell))?;
+        let original = tables.spells.get(key).map_or(0, |s| u32::from(s.original));
+        let description = catalogue.text(
+            &format!("spell-text.{key}"),
+            &Args::new().context(MASTERY_FORMS[usize::from(mastery)]),
+        );
+        spells.push(Spell {
+            handle: entry.spell,
+            original,
+            name: catalogue.text(&format!("spell.{key}"), &Args::new()),
+            description,
+            level: spell.level,
+            schools: bits,
+            kind,
+            mastery,
+            cost,
+        });
+    }
+    Some(Hero {
+        id: view.hero_type,
+        mana: view.mana,
+        schools,
+        spells,
+    })
+}
+
+/// What a capture-set situation's actions leave of the spell book over its opening (E17 M5 T3a):
+/// the book open, if any, and where the mouse is.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Still {
+    /// The book left open.
+    pub open: Option<Open>,
+    /// The mouse after the actions.
+    pub mouse: [i32; 2],
+    /// When the actions were made (ms after the opening: a situation's at once, 0); the battle
+    /// behind the open book stands as it was then.
+    pub at: u32,
+}
+
+/// A situation's `actions` played at its opening (`h3drive.py`'s `act` at the frozen clock, after
+/// the mouse's move to `mouse`): `key:<k>` opens the book of the hero `hero` gives (while the
+/// panel's spell book button takes it) by its key C, or is the open book's key; `click:<x>,<y>`
+/// moves the mouse there, presses (the open book's) and parks it; `move:<x>,<y>` moves it, over
+/// the open book its hover (0x59D6C4). A move to the park point after a click is a move as the
+/// harness's is. Nothing else may come in a situation's actions.
+pub fn still(
+    actions: &[String],
+    mouse: [i32; 2],
+    hero: impl FnOnce() -> Option<Hero>,
+    (layout, catalogue): (&BookLayout, &Catalogue),
+) -> Result<Still, String> {
+    let mut memory = Memory::default();
+    let mut hero = Some(hero);
+    let mut still = Still {
+        open: None,
+        mouse,
+        at: 0,
+    };
+    let point = |arg: &str| -> Result<[i32; 2], String> {
+        let (x, y) = arg
+            .split_once(',')
+            .ok_or_else(|| format!("`{arg}`: not x,y"))?;
+        let parse = |v: &str| v.trim().parse::<i32>().map_err(|e| format!("`{arg}`: {e}"));
+        Ok([parse(x)?, parse(y)?])
+    };
+    let moved = |still: &mut Still, memory: &mut Memory, to: [i32; 2]| {
+        still.mouse = to;
+        if let Some(open) = still.open.as_mut() {
+            open.hover(memory, (layout, catalogue), to);
+        }
+    };
+    for action in actions {
+        let (kind, arg) = action.split_once(':').unwrap_or((action, ""));
+        match kind {
+            "key" => {
+                // The harness's key names (xdotool's) as the book's: a letter upper-cased.
+                let key = if arg.len() == 1 {
+                    arg.to_ascii_uppercase()
+                } else {
+                    arg.to_owned()
+                };
+                match still.open.as_mut() {
+                    Some(open) => {
+                        if !matches!(
+                            open.key(&mut memory, &key, catalogue),
+                            Outcome::Nothing | Outcome::Turned
+                        ) {
+                            still.open = None;
+                        }
+                    }
+                    None if key == "C" => {
+                        if let Some(h) = hero.take().and_then(|f| f()) {
+                            still.open = Some(Open::new(&mut memory, h, catalogue));
+                        }
+                    }
+                    None => return Err(format!("`{action}`: only the book's keys in a situation")),
+                }
+            }
+            "click" => {
+                let to = point(arg)?;
+                moved(&mut still, &mut memory, to);
+                if let Some(open) = still.open.as_mut()
+                    && !matches!(
+                        open.press(&mut memory, (layout, catalogue), to),
+                        Outcome::Nothing | Outcome::Turned
+                    )
+                {
+                    still.open = None;
+                }
+                moved(&mut still, &mut memory, crate::pointer::PARK);
+            }
+            "move" => moved(&mut still, &mut memory, point(arg)?),
+            _ => {
+                return Err(format!(
+                    "`{action}`: a situation's actions are key:, click: and move:"
+                ));
+            }
+        }
+    }
+    Ok(still)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use h3_view::layout::parse_battle;
+
+    fn layout() -> BookLayout {
+        parse_battle(include_str!("../../../../../layouts/battle.toml"))
+            .unwrap()
+            .book
+    }
+
+    fn hero() -> Hero {
+        Hero {
+            id: 1,
+            mana: 10,
+            schools: [0; 4],
+            spells: vec![Spell {
+                handle: 3,
+                original: 3,
+                name: "Dart".into(),
+                description: "{Dart}\n\nIt hits.".into(),
+                level: 1,
+                schools: 1,
+                kind: Kind::Combat,
+                mastery: 0,
+                cost: 5,
+            }],
+        }
+    }
+
+    fn played(actions: &[&str], hero: Option<Hero>) -> Result<Still, String> {
+        let actions: Vec<String> = actions.iter().map(|a| (*a).to_owned()).collect();
+        let catalogue = Catalogue::default();
+        still(
+            &actions,
+            crate::pointer::PARK,
+            || hero,
+            (&layout(), &catalogue),
+        )
+    }
+
+    #[test]
+    fn a_situation_s_actions_open_turn_and_hover_the_book() {
+        // C opens it; the mouse over place 0's icon: its hint (the catalogue's key, no pack here),
+        // the book's cursor over an item.
+        let still = played(&["key:c", "move:246,123"], Some(hero())).unwrap();
+        assert_eq!(still.mouse, [246, 123]);
+        let open = still.open.unwrap();
+        assert_eq!(open.cursor, Some(1));
+        assert!(open.status.starts_with("{Dart} ("));
+        // The fire tab clicked: the book turned, the mouse parked; Down: the next tab.
+        let still = played(&["key:c", "click:654,228", "key:Down"], Some(hero())).unwrap();
+        assert_eq!(still.mouse, crate::pointer::PARK);
+        assert_eq!(still.open.unwrap().book.tab, 4);
+        // The close clicked, Escape, the place's spell chosen: the book closed.
+        for actions in [
+            &["key:c", "click:585,430"][..],
+            &["key:c", "key:Escape"],
+            &["key:c", "click:246,123"],
+        ] {
+            assert_eq!(
+                played(actions, Some(hero())).unwrap().open,
+                None,
+                "{actions:?}"
+            );
+        }
+        // No book to open: nothing open.
+        assert_eq!(played(&["key:c"], None).unwrap().open, None);
+    }
+
+    #[test]
+    fn a_situation_s_other_actions_are_errors() {
+        assert!(played(&["key:w"], Some(hero())).is_err());
+        assert!(played(&["hex:40"], Some(hero())).is_err());
+        assert!(played(&["key:c", "click:1"], Some(hero())).is_err());
+        assert!(played(&["move:a,2"], Some(hero())).is_err());
+    }
+}

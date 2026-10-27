@@ -531,7 +531,7 @@ def write_screens(screens):
 
 
 def capture(game, map_path, out, frames, key="Right", stacks=None, hot_seat=False, mouse=None,
-            walls=None):
+            walls=None, actions=()):
     """The battle of the map: its opening, then a dump at each time in `frames` (ms after the
     opening, ascending); returns the dumps' paths. With `stacks` (a list; M3 T1b-2) the stacks
     the game's memory holds at each dump (h3mem: the fidgets) are appended to it. With
@@ -539,7 +539,8 @@ def capture(game, map_path, out, frames, key="Right", stacks=None, hot_seat=Fals
     stack of Blue's opens idle. With `mouse` (M3 T6c-1) the mouse moves there at the opening, the
     clock frozen, after the first turn started (its cursor, the status line's hint, a stack it
     marks: design §9.9). With `walls` (M4 T1b) a siege's wall states, written before its first
-    frame (`into_battle`)."""
+    frame (`into_battle`). With `actions` (E17 M5 T3a: the spell book's stills) the actions after
+    the mouse's move, at the frozen clock (`act`)."""
     game.start(map_path)
     if hot_seat:
         import h3adv
@@ -551,6 +552,8 @@ def capture(game, map_path, out, frames, key="Right", stacks=None, hot_seat=Fals
     if mouse is not None:
         game.move(*mouse)
         time.sleep(0.3)
+    for action in actions:
+        act(game, action)
     mem = None
     if stacks is not None:
         import h3mem
@@ -606,16 +609,19 @@ def run_set(rest):
         try:
             # The step into the battle (E17 M4 T1b): a siege's attacker stands south of the
             # town's entrance (`key = "Up"`), any other west of the defender.
+            # The actions after the mouse's move (E17 M5 T3a: the spell book opened, a tab or a
+            # corner clicked, the mouse over a place).
             paths = capture(game, map_path, here, list(frames), key=sit.get("key", "Right"),
                             stacks=stacks, hot_seat=bool(hot_seat), mouse=mouse,
-                            walls=sit.get("walls"))
+                            walls=sit.get("walls"), actions=sit.get("actions", ()))
         finally:
             game.stop()
         # Our frame at each time (M3 T1b-2): the battle's idle steps (the outline's pulse) on the
         # original's clock, the original's fidgets taken from its memory, as the frame check does.
         kept = [{"t": at, "frame": p.name, "stacks": st}
                 for at, p, st in zip(sorted(frames), paths, stacks)]
-        (here / "frames.toml").write_text(frames_toml(kept, mouse))
+        (here / "frames.toml").write_text(frames_toml(kept, mouse,
+                                                      actions=sit.get("actions", ())))
         ours = here / "ours.png"  # its record: ours.jsonl (the count boxes' masks)
         # Whose record (E17 M4 T1b): a side's shows its hidden objects (a Tower's mines on the
         # defender's turn in hot seat), a spectator's by default.
@@ -1065,7 +1071,7 @@ def ray_draws(clock_dir):
             if line.startswith("ray_aim ")]
 
 
-def frames_toml(kept, mouse=None, rays=()):
+def frames_toml(kept, mouse=None, rays=(), actions=()):
     """The kept frames for `h3-view sequences --frames`: each one's time, file and the stacks the
     original shows fidgeting (group 1: the viewer draws none of its own in a check), and, where
     the original's memory was read for them (the frame check, M3 T3a), its heroes' groups and
@@ -1074,11 +1080,14 @@ def frames_toml(kept, mouse=None, rays=()):
     hint and marked stack); a sequence's frame the point the original's cursor is drawn at (M3
     T6c-2: its memory, `cursor_at`; the game reads the mouse on a 33 ms grid of its own, design
     §9.10); a frame that replaced another within its millisecond the heroes that one showed
-    (`before`, M3 T7c-3); and the draws its Chain Lightning's rays turned by (M3 T7c-3: `h3-view
-    sequences --frames` draws the same rays)."""
+    (`before`, M3 T7c-3); the draws its Chain Lightning's rays turned by (M3 T7c-3: `h3-view
+    sequences --frames` draws the same rays); and a situation's actions after its mouse's move
+    (E17 M5 T3a: the viewer plays them into the spell book)."""
     out = ["# The original's kept frames (h3drive.py frames): numbers only.", ""]
     if mouse is not None:
         out += [f"mouse = [{mouse[0]}, {mouse[1]}]", ""]
+    if actions:
+        out += [f"actions = [{', '.join(repr(a).replace(chr(39), chr(34)) for a in actions)}]", ""]
     if rays:
         out += [f"rays = [{', '.join(str(r) for r in rays)}]", ""]
     for k in kept:

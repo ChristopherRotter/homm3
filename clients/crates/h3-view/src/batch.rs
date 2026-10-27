@@ -146,7 +146,10 @@ pub fn names(list: &[Draw], layout: &BattleLayout) -> BTreeSet<String> {
         }
         Draw::Button { def, .. } | Draw::Cursor { def, .. } => vec![def],
         Draw::Text { item, .. } => vec![&item.picture, &item.font, &item.font_palette],
-        Draw::Ray(_) | Draw::Within { .. } | Draw::Shaken { .. } => Vec::new(),
+        Draw::Label { item, .. } => vec![&item.font, &item.font_palette],
+        Draw::Ray(_) | Draw::Within { .. } | Draw::Shaken { .. } | Draw::Darken { .. } => {
+            Vec::new()
+        }
     });
     let mut all: BTreeSet<String> = named
         .chain(core::iter::once(&layout.outline_palette))
@@ -275,6 +278,24 @@ mod tests {
                 y: 0,
                 text: "x".to_string(),
             },
+            // A text alone its font and its palette (E17 M5 T3a).
+            Draw::Label {
+                item: crate::ui::Label {
+                    id: 1,
+                    at: [0, 0],
+                    size: [1, 1],
+                    font: "Book.fnt".to_string(),
+                    font_palette: "Book.pal".to_string(),
+                    colour: 1,
+                    align: 1,
+                    hint: None,
+                    repeat: None,
+                },
+                x: 0,
+                y: 0,
+                text: String::new(),
+                disabled: false,
+            },
             // A picture its own name and the players' palette; a button its DEF (M3 T6a).
             Draw::Picture {
                 picture: "cbar.pcx".to_string(),
@@ -348,6 +369,8 @@ mod tests {
             [
                 "ABS.PCX",
                 "BG.PCX",
+                "BOOK.FNT",
+                "BOOK.PAL",
                 "C06SPF0.DEF",
                 "CBAR.PCX",
                 "CH00.DEF",

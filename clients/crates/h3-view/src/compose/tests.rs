@@ -655,6 +655,23 @@ fn a_text_item_is_its_picture_with_the_text_over_it() {
     // Empty: the picture alone.
     let empty = compose(&[draw(&item, "")], &batch, &layout).unwrap();
     assert_eq!(empty.pixel(3, 3), Some(0));
+    // At most the item's size of its picture (E17 M5 T3a): a box 3 wide cuts the picture's last
+    // column.
+    let narrow = crate::ui::Text {
+        size: [3, 3],
+        ..item.clone()
+    };
+    let cut = compose(&[draw(&narrow, "")], &batch, &layout).unwrap();
+    assert_eq!((cut.pixel(4, 1), cut.pixel(5, 1)), (Some(b), Some(0)));
+    // A darkened rectangle (E17 M5 T3a): each channel halved over what is drawn.
+    let dark = compose(
+        &[draw(&item, ""), Draw::Darken { rect: [0, 1, 3, 1] }],
+        &batch,
+        &layout,
+    )
+    .unwrap();
+    assert_eq!(dark.pixel(2, 1), Some(FORMAT.shadow_body(b)));
+    assert_eq!(dark.pixel(3, 1), Some(b));
     // What the batch lacks: the font, its palette, the picture.
     let gone = |what: &str| Err(ComposeError::Missing(what.to_string()));
     let lacking = |change: fn(&mut crate::ui::Text)| {
@@ -670,6 +687,63 @@ fn a_text_item_is_its_picture_with_the_text_over_it() {
     assert_eq!(
         lacking(|i| i.picture = "no.pcx".to_string()),
         gone("no.pcx")
+    );
+}
+
+/// A text alone (E17 M5 T3a: the spell book's): the text in its 4 x 3 box at (2, 1), colour 1
+/// (entry 10), 3 (entry 12) while disabled; nothing behind it.
+#[test]
+fn a_text_alone_is_its_text_greyed_while_disabled() {
+    let mut layout = small();
+    layout.frame = [8, 4];
+    let item = crate::ui::Label {
+        id: 1,
+        at: [0, 0],
+        size: [4, 3],
+        font: "Small.fnt".to_string(),
+        font_palette: "text.pal".to_string(),
+        colour: 1,
+        align: 1,
+        hint: None,
+        repeat: None,
+    };
+    let mut batch = batch();
+    let text = build::pal(&palette(&[(10, WHITE), (12, RED)]), &[0; 256], 0, &[]);
+    batch.add("text.pal", &text).unwrap();
+    let mut glyphs = vec![h3_assets::fnt::Glyph::default(); 256];
+    glyphs[usize::from(b'a')].width = 1;
+    glyphs[usize::from(b'a')].pixels = vec![0, 0, 0xFF];
+    let font = h3_assets::fnt::Font {
+        height: 3,
+        y_offset: 0,
+        glyphs,
+    };
+    batch.add("Small.fnt", &build::fnt(&font)).unwrap();
+    let draw = |item: &crate::ui::Label, disabled| Draw::Label {
+        item: item.clone(),
+        x: 2,
+        y: 1,
+        text: "a".into(),
+        disabled,
+    };
+    let [w, r] = [WHITE, RED].map(|c| FORMAT.pack(c));
+    let shown = compose(&[draw(&item, false)], &batch, &layout).unwrap();
+    assert_eq!(
+        shown.pixels(),
+        [[0; 8], [0; 8], [0; 8], [0, 0, 0, w, 0, 0, 0, 0]].concat()
+    );
+    let greyed = compose(&[draw(&item, true)], &batch, &layout).unwrap();
+    assert_eq!(greyed.pixel(3, 3), Some(r));
+    let gone = |what: &str| Err(ComposeError::Missing(what.to_string()));
+    let lacking = |change: fn(&mut crate::ui::Label)| {
+        let mut other = item.clone();
+        change(&mut other);
+        compose(&[draw(&other, false)], &batch, &layout)
+    };
+    assert_eq!(lacking(|i| i.font = "no.fnt".to_string()), gone("no.fnt"));
+    assert_eq!(
+        lacking(|i| i.font_palette = "no.pal".to_string()),
+        gone("no.pal")
     );
 }
 

@@ -2094,6 +2094,85 @@ resistance roll, if any (category 3, 0x5A0331); Curse's is named `Curse`, withou
   `DISSOLVE_STEPS`). **Not built:** the blend (the viewer shows the picture before it until its
   end, *provisional*; with the created stacks' dissolve, QUEUE's inbox).
 
+### 7.17 The spell book (M5 T3a)
+
+T3 cut in two by the user on 2026-10-27 (the book here; the hero's aim, the Faerie Dragon's F key,
+`cast`'s 71 pixels and an aimed cast recorded T3b). Read: `spell_book_dialog` 0x59BDF0 for its
+items, `spell_book_page` 0x59C9A0 for what a page shows, `spell_book_proc` 0x59D040 for its keys,
+clicks and moves, `spell_book_text` 0x59BAA0 (a spell's hint), `dialog_show` 0x5FEAE0 (the
+shadow), `dialog_item_at` 0x5FF3E0, `dialog_def_draw` 0x4EAB40, the text item's drawer 0x5BC5F0
+again; built: `h3_view::book`, `ui`'s new kinds, the layout's `[book]`, the binary's
+`spellbook`.
+
+- **The dialog** (620 × 595 at (90, 2), the base dialog's flags 0x12; its items in the order they
+  are drawn): `Spelback.pcx` (200) in the hero's owner's colours (0x450520); the mastery
+  ribbons (201 to 212) and the spells' icons (`spells.def`, 213 to 224), DEF picture items
+  78 × 65 at the places of §7.16; the places' texts (237 to 248), text items 86 × 36 at
+  (113 + 86 c, 154 + 96 r) and (329 + 86 c, 154 + 96 r), `tiny.fnt`, colour 1, alignment 1;
+  `schools.def` (236) at (117, 74) over places 0 and 1; `SpelTab.def` (225) at (524, 88); the tabs'
+  areas (226 air, 227 fire, 228 water, 229 earth, 230 all; 83 × 43 at x 523, from the top air,
+  earth, fire, water, all); the corners `SpelTrnL.pcx` (234, (97, 77)) and `SpelTrnR.pcx` (235,
+  (487, 74)); the bookmarks' areas (231 combat at (219, 404), 232 adventure at (353, 405)); the
+  spell points (233, `smalfont.fnt`, colour 7, alignment 5, the hero's mana as `%d`); the close's
+  area (0x7801); the status line (249), `smalfont.fnt` over `spelroll.pcx` at (8, 569), 605 × 19 (the
+  picture is 606 wide: an item draws at most its size of it). A DEF picture item of an interface
+  DEF (type 0x47) draws its frame of group 0 as a DEF button does (0x47BF00); a text item adds 2
+  to its colour while disabled (state bit 8). Transparent items take the mouse and draw nothing.
+- **The shadow:** the dialog's flag 0x10 makes `vShow` darken the screen under a strip right of
+  it and one below it, 8 wide and offset 8, each again one pixel in (`screen_darken` four times):
+  the strips' insides at a quarter, their outer edge at a half. The battle behind stands still
+  while the book is open (the modal loop runs no battle idle step: the original's frames at 100
+  ms and a second are the same).
+- **A page** (0x59C9A0): the hero's spells of the tab's schools and the bookmark's kind, each under
+  its school (the tab's; on the tab of all schools the one the hero knows best, 0x4E51C0),
+  sorted by level, school bit, name (0x59DBE0); twelve a page, a school's first page's emblem over
+  places 0 and 1 and its later pages starting two earlier; each place its ribbon (its school's
+  `SPLEV?.def`, 0x641D94, the frame the mastery on this battlefield, 0x4E5080), icon (the frame
+  the spell's number) and text: `{name}\n<level>/<mastery>\n<Spell Points>: <cost>`, without
+  `/<mastery>` for none (the executable's formats 0x684BEC and 0x684BDC; the levels GENRLTXT 173
+  to 177, the masteries SKILLLEV 3 to 5, the word GENRLTXT 388), disabled (greyed) above the hero's
+  mana; the empty places hidden; the left corner on a page after the first, the right one while
+  spells follow. The book keeps its page, tab and bookmark for the same hero (§7.16): the first
+  opening shows page 0 of all schools; an opening after the adventure bookmark too.
+- **Its input** (0x59D040): a left press (the item's message on the button going down) on a place
+  gives the spell when the hero can pay (the dialog closes on it), else a message (GENRLTXT 207);
+  with the adventure bookmark the spell's description in a message; a tab, a bookmark or a corner
+  turns the book (page 0 of a new tab or bookmark); the close closes it. Keys (scan codes):
+  Escape and Enter close, A and C take a bookmark, the left and right arrows turn a page where
+  its corner shows, up and down take the tab above or below (round to the other end; 0x641DA4,
+  0x641DB8). A move over another item than the last (0x684B4C, never reset) sets the default
+  cursor (`crdeflt.def` frame 1 over an item, 0 elsewhere) and the status line: over a place its
+  spell's description at the hero's mastery to its first line break with ` (<level>)`
+  (0x59BAA0), over the other items their `Help.txt` hints (records 450 to 460, 0x6A52D0), else
+  nothing. The item the mouse takes is the last added that is shown, enabled and not disabled
+  (0x5FF3E0; a greyed text is passed over). The option "Animate SpellBook" (0x698788, on by
+  default) plays the page turn's video (`PgTrnLft`, `PgTrnRgh`) before a turn: the harness sets it
+  off, the client plays none (no video yet).
+- **Built:** `ui` (`Def`, `Label`, `Area`, an entry's `repeat`, every item's state, the DEFs and
+  frames a screen gives, `Dialog::item_taking` as read, `Dialog::shadow`); `Draw::Label`,
+  `Draw::Darken`; `h3_view::book` (`Book`, `Memory`, `Page`, `Open`: the page, the items' states,
+  presses, keys, the mouse); the layout's `[book]` (the dialog, the schools' order, the ribbons,
+  the cursor); the catalogue's keys `book.*` and the family `spell-text` (the descriptions by the
+  context of the mastery, read raw: a `%` is text; a family over another's list). The binary
+  (`spellbook`): the book's hero from the side to act's own observation (its book, its spells'
+  masteries), the ruleset (levels, schools, kinds, costs: the cost at the mastery plus the
+  observation's `cost_change`, at least 1, *provisional*, the review list) and the names; the
+  school levels from the book's spells of one school (*provisional*). The window: the panel's
+  button or C (on release) opens the book while the battle waits for a human; it takes the mouse
+  and its keys (Escape closes the book, not the window); a spell the engine casts without a
+  target (`cast_targets`) is cast at once; one that takes a target closes the book (T3b's aim).
+  The capture set's situations take `actions` (`key:`, `click:`, `move:` at the frozen clock):
+  `render --frames` plays them into the book.
+- **Checked:** `book`, `book-page`, `book-fire` at 0 ms and `book-hint` at 100 ms and a second:
+  exact (the shadow, the corners, the emblem, the greyed texts, the hint, the cursor). At 0 ms
+  after a move the original's cursor still stands where it was (the frozen clock; its status line
+  follows at once), so `book-hint` compares from 100 ms. In the window (Xvfb, `xdotool`): C opens
+  the book, the hint over a place, the corner turns the page, Death Ripple cast from it.
+- **Not modelled** (later): the message boxes (a spell above the mana, an adventure spell's
+  description, `hero_book_button`'s refusals: T4, the dialogs); the right button's help; the
+  page turn's video; the aim (T3b); the book on the adventure map; an unattended run's casts
+  through the book (they are given without a press).
+
 ## 8. The window, input and audio evaluation (M2 T2)
 
 ADR-0020 point 4 left the library to a measured evaluation at M2; the choice, the user's

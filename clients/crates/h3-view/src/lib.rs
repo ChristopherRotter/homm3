@@ -34,6 +34,7 @@ extern crate alloc;
 pub mod anim;
 pub mod batch;
 pub mod battle_log;
+pub mod book;
 pub mod clock;
 pub mod compose;
 pub mod cursor;

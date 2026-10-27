@@ -12,8 +12,8 @@ use h3_assets::def::Frame;
 use h3_assets::palette::{Palette, Rgb};
 use h3_render::Bugs;
 use h3_render::blit::{
-    Drawer, Placement, draw_frame, draw_frame_rows, draw_image, draw_image_keyed,
-    draw_image_keyed_clipped, draw_image_keyed_in,
+    Drawer, Placement, darken, draw_frame, draw_frame_rows, draw_image, draw_image_clipped,
+    draw_image_keyed, draw_image_keyed_clipped, draw_image_keyed_in,
 };
 use h3_render::palette::{ScreenPalette, with_player_colours};
 use h3_render::screen::{PixelFormat, Screen};
@@ -336,10 +336,13 @@ pub fn compose(
                     false,
                 )?;
             }
+            Draw::Darken { rect } => darken(&mut screen, *rect),
             Draw::Text { item, x, y, text } => {
-                // 0x5BC7F0: the item's picture, opaque (0x44FDB0), then its text (0x5BC5F0 →
+                // 0x5BC7F0: the item's picture, opaque (0x44FDB0), at most the item's size of it
+                // (E17 M5 T3a: `spelroll.pcx` is a column wider), then its text (0x5BC5F0 →
                 // 0x4B5490) in the item's box, the colour and alignment it was made with.
-                draw_image(&mut screen, picture_of(batch, &item.picture)?, *x, *y);
+                let clip = [*x, *y, x + item.size[0], y + item.size[1]];
+                draw_image_clipped(&mut screen, picture_of(batch, &item.picture)?, *x, *y, clip);
                 let font = batch
                     .font(&item.font)
                     .ok_or_else(|| ComposeError::Missing(item.font.clone()))?;
@@ -357,6 +360,38 @@ pub fn compose(
                     font,
                     colours: &colours,
                     colour: item.colour,
+                    alignment: item.align,
+                    bugs,
+                };
+                draw_text(&mut screen, &encode_1252(text).0, area, style);
+            }
+            Draw::Label {
+                item,
+                x,
+                y,
+                text,
+                disabled,
+            } => {
+                // 0x5BC5F0 (E17 M5 T3a): the text in the item's box, its colour 2 more with the
+                // state's bit 8 (0x5BC641); the background colour, 0 in every one built, fills
+                // nothing.
+                let font = batch
+                    .font(&item.font)
+                    .ok_or_else(|| ComposeError::Missing(item.font.clone()))?;
+                let palette = batch
+                    .palette(&item.font_palette)
+                    .ok_or_else(|| ComposeError::Missing(item.font_palette.clone()))?;
+                let area = TextBox {
+                    x: *x,
+                    y: *y,
+                    width: item.size[0],
+                    height: item.size[1],
+                };
+                let colours = ScreenPalette::new(palette, FORMAT);
+                let style = TextStyle {
+                    font,
+                    colours: &colours,
+                    colour: item.colour + if *disabled { 2 } else { 0 },
                     alignment: item.align,
                     bugs,
                 };

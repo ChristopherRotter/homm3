@@ -246,6 +246,35 @@ pub struct Battle<'g> {
     scrolls: Vec<(u32, i64)>,
     /// The panel's button pressed (the mouse's or a hotkey's).
     pub pressed: Option<u16>,
+    /// The hero's spell book open over the battle, when it opened and its hero's player's colour
+    /// (E17 M5 T3a): the battle behind it stands as it was then (the dialog's modal loop runs no
+    /// idle step).
+    book: Option<(h3_view::book::Open, u32, u8)>,
+    /// What the book remembers between openings (the original's globals: one per game).
+    book_memory: h3_view::book::Memory,
+}
+
+/// A cursor's look (E17 M5 T3a): its DEF, its frame and the frame's hot spot (the combat cursor
+/// over the battle, the default one the spell book sets).
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub struct CursorLook {
+    /// The DEF.
+    pub def: String,
+    /// The frame of group 0.
+    pub frame: u32,
+    /// The hot spot in the frame's canvas.
+    pub hot: [i32; 2],
+}
+
+/// What the spell book did with an input (E17 M5 T3a).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum BookDid {
+    /// Nothing the screen shows.
+    Nothing,
+    /// The book or its status line or cursor changed: draw again.
+    Changed,
+    /// The book closed on a spell without a target: the cast to give.
+    Cast(Command),
 }
 
 impl<'g> Battle<'g> {
@@ -329,6 +358,8 @@ impl<'g> Battle<'g> {
             inputs: Vec::new(),
             scrolls: Vec::new(),
             pressed: None,
+            book: None,
+            book_memory: h3_view::book::Memory::default(),
         };
         battle.follow()?;
         Ok(battle)
@@ -565,11 +596,152 @@ impl<'g> Battle<'g> {
         writer.panels(&self.record, &logged)
     }
 
-    /// The combat cursor's frame at `t` (the panel's pointer before the mouse is anywhere).
-    pub fn cursor_frame(&self, t: u32) -> u32 {
-        self.shown
-            .frame(t)
-            .unwrap_or(self.ground.layout.mouse.panel_frame)
+    /// The cursor at `t`: the spell book's once it set one (E17 M5 T3a), else the combat cursor's
+    /// frame (the panel's pointer before the mouse is anywhere).
+    pub fn cursor(&self, t: u32) -> CursorLook {
+        let hot_of = |hot: &[[i32; 2]], frame: u32| {
+            usize::try_from(frame)
+                .ok()
+                .and_then(|f| hot.get(f).copied())
+                .unwrap_or_default()
+        };
+        if let Some(frame) = self.book.as_ref().and_then(|(open, _, _)| open.cursor) {
+            let book = &self.ground.layout.book;
+            return CursorLook {
+                def: book.cursor.clone(),
+                frame,
+                hot: hot_of(&book.hot, frame),
+            };
+        }
+        let mouse = &self.ground.layout.mouse;
+        let frame = self.shown.frame(t).unwrap_or(mouse.panel_frame);
+        CursorLook {
+            def: mouse.cursor.clone(),
+            frame,
+            hot: hot_of(&mouse.hot, frame),
+        }
+    }
+
+    /// Whether the spell book is open over the battle.
+    pub fn book_open(&self) -> bool {
+        self.book.is_some()
+    }
+
+    /// Opens the acting hero's spell book at `at` (E17 M5 T3a; `hero_book_button` 0x59E900 from
+    /// the panel's button or its key C): while the battle waits for a human whose hero's book the
+    /// panel's button takes. Whether it opened. *Not modelled:* the refusals' message boxes (an
+    /// anti-magic garrison, the Orb of Inhibition), T4's.
+    pub fn open_book(&mut self, at: u32) -> bool {
+        if self.book.is_some() || !self.takes(at) {
+            return false;
+        }
+        let ground = self.ground;
+        // The side to act's own view: its hero's spells (as its seat is sent them).
+        let (Some(observation), Some((ruleset, _, _)), Some(writer)) = (
+            self.live.as_ref().and_then(Live::own_view),
+            ground.fight.as_ref(),
+            ground.writer.as_ref(),
+        ) else {
+            return false;
+        };
+        if !crate::spellbook::takes(&observation) {
+            return false;
+        }
+        let names = (&ground.tables, &writer.catalogue);
+        let manifest = &self.record.header.manifest;
+        let Some(hero) = crate::spellbook::hero(
+            &observation,
+            (manifest, ruleset),
+            names,
+            &ground.layout.book,
+        ) else {
+            return false;
+        };
+        let open = h3_view::book::Open::new(&mut self.book_memory, hero, &writer.catalogue);
+        // The hero's player's colours (the record names none: red, blue; CLT-Q6).
+        let index = usize::from(observation.viewer == h3_protocol::wire::Side::Defender);
+        let player = observation.sides[index]
+            .colour
+            .unwrap_or_else(|| u8::try_from(index).unwrap_or(0));
+        self.book = Some((open, at, player));
+        true
+    }
+
+    /// The open book's answer to `outcome` (E17 M5 T3a): closed, or closed on a spell, whose cast
+    /// is given when the engine takes it without a target (one that takes a target is aimed first:
+    /// T3b's); a refusal's and a description's message boxes are T4's.
+    fn book_did(&mut self, outcome: h3_view::book::Outcome) -> BookDid {
+        use h3_view::book::Outcome;
+        match outcome {
+            Outcome::Nothing | Outcome::Refused { .. } | Outcome::Described(_) => BookDid::Nothing,
+            Outcome::Turned => BookDid::Changed,
+            Outcome::Closed => {
+                self.book = None;
+                BookDid::Changed
+            }
+            Outcome::Chosen(spell) => {
+                self.book = None;
+                let untargeted = Command::Cast {
+                    spell,
+                    target: h3_protocol::wire::Target::None {},
+                    second: h3_protocol::wire::Target::None {},
+                };
+                let takes = self
+                    .live
+                    .as_ref()
+                    .is_some_and(|live| live.casts_untargeted(spell));
+                if takes {
+                    BookDid::Cast(untargeted)
+                } else {
+                    BookDid::Changed
+                }
+            }
+        }
+    }
+
+    /// A key down while the book is open (its name, as the book's: `C`, `Escape`, `Return`,
+    /// the arrows).
+    pub fn book_key(&mut self, key: &str) -> BookDid {
+        let Some(writer) = self.ground.writer.as_ref() else {
+            return BookDid::Nothing;
+        };
+        let Some((open, _, _)) = self.book.as_mut() else {
+            return BookDid::Nothing;
+        };
+        let outcome = open.key(&mut self.book_memory, key, &writer.catalogue);
+        self.book_did(outcome)
+    }
+
+    /// A left press at `point` while the book is open.
+    pub fn book_press(&mut self, point: [i32; 2]) -> BookDid {
+        let ground = self.ground;
+        let Some(writer) = ground.writer.as_ref() else {
+            return BookDid::Nothing;
+        };
+        let Some((open, _, _)) = self.book.as_mut() else {
+            return BookDid::Nothing;
+        };
+        let outcome = open.press(
+            &mut self.book_memory,
+            (&ground.layout.book, &writer.catalogue),
+            point,
+        );
+        self.book_did(outcome)
+    }
+
+    /// The mouse moved to `point` while the book is open: whether its status line or cursor
+    /// changed.
+    pub fn book_hover(&mut self, point: [i32; 2]) -> bool {
+        let ground = self.ground;
+        let (Some(writer), Some((open, _, _))) = (ground.writer.as_ref(), self.book.as_mut())
+        else {
+            return false;
+        };
+        open.hover(
+            &mut self.book_memory,
+            (&ground.layout.book, &writer.catalogue),
+            point,
+        )
     }
 
     /// The battle's layout.
@@ -710,14 +882,24 @@ impl<'g> Battle<'g> {
     /// The draw list of the battle at `t` (the playhead's moment: going back starts it over; the
     /// battle played on first if `t` is at or past its timeline's end).
     pub fn list_at(&mut self, t: u32) -> Result<Vec<Draw>, String> {
-        self.grow(t)?;
+        // Behind the open spell book the battle stands as it was when it opened (E17 M5 T3a).
+        let at = self
+            .book
+            .as_ref()
+            .map_or(t, |&(_, opened, _)| opened.min(t));
+        self.grow(at)?;
         let timeline = self
             .entered
             .as_ref()
             .unwrap_or_else(|| self.played.timeline());
-        self.head.seek(timeline, t);
+        self.head.seek(timeline, at);
         let moment = self.head.moment(timeline);
-        self.list(t, &moment)
+        let mut list = self.list(at, &moment)?;
+        if let Some((open, _, player)) = &self.book {
+            let layout = &self.ground.layout;
+            list.extend(open.draws(&layout.book, &layout.player_palette, *player));
+        }
+        Ok(list)
     }
 
     /// Every distinct frame up to `until` (past the end the battle idles; none: to its end), the

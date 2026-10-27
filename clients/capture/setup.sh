@@ -75,6 +75,9 @@ key="HKEY_LOCAL_MACHINE\\SOFTWARE\\New World Computing\\Heroes of Might and Magi
     # at 0, the button only sets a flag and the stack's turn still waits (war_machine_automatic,
     # 0x474CDF). The capture set never turns auto combat on.
     printf '"Combat Auto Creatures"=dword:00000001\r\n'
+    # The spell book turns its pages without the videos (E17 M5 T3a: PgTrnLft and PgTrnRgh, which
+    # the run directory's empty VIDEO.VID lacks; 0x59D1E0): the viewer draws none.
+    printf '"Animate SpellBook"=dword:00000000\r\n'
     printf '"Main Game Full Screen"=dword:00000001\r\n\r\n'
     printf '[HKEY_CURRENT_USER\\Software\\Wine\\Drivers]\r\n"Audio"=""\r\n'
 } > "$run/h3.reg"

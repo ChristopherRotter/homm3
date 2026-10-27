@@ -302,11 +302,38 @@ fn render(options: &Options) -> Result<Vec<String>, String> {
         } else {
             Vec::new()
         };
+        // A situation's actions (E17 M5 T3a: the spell book's stills) played at its opening.
+        let (mouse, actions) = crate::sequences::situation_inputs(dir)?;
+        let book = if actions.is_empty() {
+            None
+        } else {
+            let ruleset = crate::scenario::ruleset(&options.packs, manifest)?;
+            let catalogue = crate::log::catalogue(&tables, &archives, &exe)?;
+            let hero = || {
+                crate::spellbook::takes(observation)
+                    .then(|| {
+                        crate::spellbook::hero(
+                            observation,
+                            (manifest, &ruleset),
+                            (&tables, &catalogue),
+                            &layout.book,
+                        )
+                    })
+                    .flatten()
+            };
+            Some(crate::spellbook::still(
+                &actions,
+                mouse.unwrap_or(crate::pointer::PARK),
+                hero,
+                (&layout.book, &catalogue),
+            )?)
+        };
         let interface = crate::sequences::Interface {
             panels: &panels,
             legal: &crate::pointer::legal(&record.header.manifest, &tables, observation, &legal),
             shown: None,
             walls: options.walls,
+            book: book.as_ref(),
         };
         let drawn = crate::sequences::draw_frames(
             dir,

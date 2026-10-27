@@ -376,6 +376,26 @@ pub enum Draw {
         /// text instead when it shows).
         text: String,
     },
+    /// A rectangle of the screen darkened (`screen_darken` 0x44E5F0: each channel halved; E17 M5
+    /// T3a: a dialog's shadow, [`crate::ui::Dialog::shadow`]).
+    Darken {
+        /// Its left edge, top edge, width and height.
+        rect: [i32; 4],
+    },
+    /// A dialog's text alone (`H3DlgText`, E17 M5 T3a: the spell book's): the text in the item's
+    /// box in its font, its colour 2 more while disabled (0x5BC5F0).
+    Label {
+        /// The item: its size, font and how the text is drawn.
+        item: crate::ui::Label,
+        /// Its left edge.
+        x: i32,
+        /// Its top edge.
+        y: i32,
+        /// The text.
+        text: String,
+        /// The item is disabled (its state's bit 8).
+        disabled: bool,
+    },
 }
 
 /// A picture's player colours (0x450520): the players' palette and the player's colour (0 red to

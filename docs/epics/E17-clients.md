@@ -7,8 +7,8 @@ dates: `E17-archive.md` (with this line's earlier text). Refined 2026-10-12 (E17
 notes, done the same day). Decisions: [ADR-0020](../adr/0020-clients.md) (accepted at the M0
 checkpoint, point 7 rewritten there). Working detail (code readings, formats, layouts):
 `docs/epics/E17-design.md`; done tasks in full: [`E17-log.md`](E17-log.md). Lane: client
-(`docs/lanes/client/HANDOFF.md`; the user's asset notes are there). Next: M5 T1 (the timeline
-that grows; `docs/lanes/client/QUEUE.md`). Since T9c (2026-10-23) this epic is the battle
+(`docs/lanes/client/HANDOFF.md`; the user's asset notes are there). Next: M5 T3b (the hero's
+aim; `docs/lanes/client/QUEUE.md`). Since T9c (2026-10-23) this epic is the battle
 client's; the adventure map client is E24, the map-client lane's.
 
 ## Goal
@@ -160,13 +160,19 @@ the stacks created mid-battle.
     the battle takes none dropped; the screen showing the side to act's hidden objects (every
     side's events, `Timeline::screen`); unattended runs pressing the bot's choices (design
     §9.12).
-- **T3, the spell book and the hero's aim:** the book (`spell_book_dialog` 0x59BDF0, read at M3
-  T7a-2a, design §7.16) drawn and used; the aim's loop read (`enter_player_cast` 0x59EC50: the
-  targets it offers, the cursor `crspell.DEF`, the status line GENRLTXT 27 and 28) and built,
-  a Faerie Dragon's cast through it (its F key); the book and an aimed cast recorded.
+- **T3, the spell book and the hero's aim** (cut in two by the user, 2026-10-27):
+  - **T3a, the spell book** (done 2026-10-27): read (design §7.17: the dialog's items, the page,
+    the keys, the move's hint and cursor, the shadow), drawn (`h3_view::book`, `ui`'s DEF items,
+    texts alone and areas) and used in the window (its button or C, a spell without a target
+    cast at once); its stills (`book`, `book-page`, `book-fire`, `book-hint`) exact; CLT-Q26.
+  - **T3b, the hero's aim:** the aim's loop read (`enter_player_cast` 0x59EC50: the targets it
+    offers, the cursor `crspell.DEF`, the status line GENRLTXT 27 and 28, the cancel) and built,
+    a book's spell aimed and a Faerie Dragon's cast through it (its F key), `cast`'s 71 pixels;
+    an aimed cast recorded.
 - **T4, the battle's dialogs:** surrender (its price) and retreat, the result window
   (`battle_result_dialog` 0x4702D0, the screen darkened under it by 0x44E5F0), Auto Combat, the
-  tactics phase's panel (0x46C050); read, drawn, recorded.
+  tactics phase's panel (0x46C050), the message box (0x4F6990: the book's refusals and an
+  adventure spell's description, T3a's); read, drawn, recorded.
 - **T5, what a played battle shows:** the created stacks (`StackCreated`: Summon Elemental,
   Clone; a Pit Lord's `RoseFromCorpse`) with their dissolve (`screen_dissolve` 0x602DC0's blend,
   Sacrifice's victim's too), a clone's `Vanished`, Teleport's dissolve; the panel's side by each
@@ -257,3 +263,14 @@ M3 at its review, T9b, M4 at its review, T3c). The next milestone's list starts 
 1. The sides a human plays in the window are the battle's human players, the bot's the
    computer's (T2b, `--human`; design §9.12): the engine's computer-only rules (BAT-QUIRK-27's
    let-off) apply to the bot's side; without `--human` the scenario's `human` stays.
+2. The spell book's costs and school levels in the client (T3a, `spellbook::hero`; design
+   §7.17): the cost the ruleset's at the mastery plus the observation's `cost_change` (a copy of
+   the engine's BAT-MAG-054 formula; a public engine function or an observation field would
+   replace it), the hero's school levels from the book's spells of one school (the observation
+   gives masteries by spell: a school none of them names counts as none, which can put Magic
+   Arrow under another school than the original on the tab of all schools).
+3. The capture set's situations take actions (T3a, `actions`: `key:`, `click:`, `move:` after the
+   mouse's move, at the frozen clock) and the harness sets "Animate SpellBook" off (the page
+   turn's videos, which the client does not play): the stills of a dialog.
+4. The layout format's new kinds (T3a: `def`, `label`, `area`, an entry's `repeat`, a dialog's
+   `shadow`; the `[book]` section) and the catalogue's (a family's `list`, `contexts`, `raw`).

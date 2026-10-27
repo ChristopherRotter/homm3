@@ -99,6 +99,9 @@ impl Pack {
                     format!("{id}_{form}")
                 };
                 match cell(source, tables).and_then(|text| {
+                    if source.raw {
+                        return Ok(Message::literal_text(text));
+                    }
                     Message::from_printf(text, printf, |n| key.args.get(n).copied())
                         .map_err(|e| format!("{e:?} in {text:?}"))
                 }) {

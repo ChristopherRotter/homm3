@@ -926,3 +926,60 @@ walls = { parts = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], gate =
 at = 0
 differing = 0
 why = "exact: as siege-castle-ruined, Conflux's pictures (M4 T1b)"
+
+# E17 M5 T3a: the hero's spell book (book.toml; design §7.17), opened by its key C at the opening
+# (the Champions' turn, Orrin's book; the attacker's record, which holds the hero's spells), the
+# clock frozen: page 0 of all schools; its second page by the corner; the fire tab (its emblem,
+# five spells); the mouse over place 1 (Magic Arrow: the status line's hint, the cursor over an
+# item).
+[[situation]]
+id = "book"
+scenario = "book.toml"
+seat = "attacker"
+actions = ["key:c"]
+
+[[situation.frame]]
+at = 0
+differing = 0
+why = "exact: the book over the battle, its shadow, the cursor still the battle's (E17 M5 T3a)"
+
+[[situation]]
+id = "book-page"
+scenario = "book.toml"
+seat = "attacker"
+actions = ["key:c", "click:591,92"]
+
+[[situation.frame]]
+at = 0
+differing = 0
+why = "exact: the second page by the corner (E17 M5 T3a)"
+
+[[situation]]
+id = "book-fire"
+scenario = "book.toml"
+seat = "attacker"
+actions = ["key:c", "click:654,228"]
+
+[[situation.frame]]
+at = 0
+differing = 0
+why = "exact: the fire tab, its emblem (E17 M5 T3a)"
+
+[[situation]]
+id = "book-hint"
+scenario = "book.toml"
+seat = "attacker"
+actions = ["key:c", "move:332,123"]
+
+# At once the original's cursor still stands at the park point (the move's redraw waits for the
+# frozen clock; its status line does not): compared from 100 ms on. The battle behind the book stands
+# still (the modal loop runs no idle step): the same at 100 ms and a second.
+[[situation.frame]]
+at = 100
+differing = 0
+why = "exact: the hint over place 1, the book's cursor at the mouse (E17 M5 T3a)"
+
+[[situation.frame]]
+at = 1000
+differing = 0
+why = "exact: the battle behind the book still (E17 M5 T3a)"
