@@ -33,6 +33,7 @@ use h3_render::screen::Screen;
 use crate::layout::{AdventureLayout, DIRECTIONS};
 use crate::live::Arrow;
 use crate::scene::ViewAt;
+use crate::sequence::{DEFAULT_HERO_SPEED, DEFAULT_SCROLL_SPEED};
 use crate::sound::{Cue, Sound};
 use crate::tables::{Tables, WalkArt};
 
@@ -291,8 +292,8 @@ impl Rules {
     #[must_use]
     pub fn tile_at(&self, view: ViewAt, [x, y]: [i32; 2]) -> [i32; 3] {
         [
-            view.x + x / self.tile.max(1),
-            view.y + y / self.tile.max(1),
+            view.x.saturating_add(x / self.tile.max(1)),
+            view.y.saturating_add(y / self.tile.max(1)),
             i32::from(view.z),
         ]
     }
@@ -467,6 +468,9 @@ pub struct Loop {
     path: Vec<(Direction, Arrow)>,
     paths: Vec<Vec<Arrow>>,
     moving: Option<Moving>,
+    /// A path's walk started since the flag was last taken: it empties the input queue at its
+    /// start (0x407E87), the messages behind its click gone ([`Loop::resume`]).
+    flushed: bool,
     /// The window's live input ([`Start::live`]).
     live: bool,
     /// The map's sound and its cues not taken yet ([`Start::sound`]).
@@ -479,11 +483,19 @@ impl Loop {
     /// # Errors
     /// [`Unplayable::OverView`] for a pointer over the view (but live).
     pub fn start(rules: Rules, start: &Start) -> Result<Self, Unplayable> {
-        let step = rules.steps.get(start.scroll_speed).copied().unwrap_or(1);
+        // A speed out of range is the original's default (`settings_check` 0x50B260: the scroll
+        // speed 1, the hero speed 2; M2 T6a, the reviewer's R1-7).
+        let step = rules
+            .steps
+            .get(start.scroll_speed)
+            .or_else(|| rules.steps.get(DEFAULT_SCROLL_SPEED))
+            .copied()
+            .unwrap_or(1);
         let pixels = start
             .hero_speed
             .checked_sub(1)
             .and_then(|i| rules.walk.pixels.get(i))
+            .or_else(|| rules.walk.pixels.get(DEFAULT_HERO_SPEED - 1))
             .cloned()
             .unwrap_or_default();
         let cursor = Cursor {
@@ -526,6 +538,7 @@ impl Loop {
                 .unwrap_or_default(),
             paths: start.paths.clone(),
             moving: None,
+            flushed: false,
             live: start.live,
             sound: start.sound.clone(),
             rules,
@@ -583,7 +596,9 @@ impl Loop {
         self.sound.as_mut().map(Sound::take).unwrap_or_default()
     }
 
-    /// The millisecond `t` (after the last one run) with the actions given at it.
+    /// The millisecond `t` (after the last one run) with the actions given at it, one after
+    /// another, each handled before the next is given (the harness's way: a click's walk at hero
+    /// speed 4 ends before the next input, a later one waits behind a walk under way).
     ///
     /// # Errors
     /// An action the loop cannot play yet ([`Unplayable`]).
@@ -608,7 +623,11 @@ impl Loop {
                     }
                     moving.queued.push(action);
                 }
-                None => self.act(t, action)?,
+                None => {
+                    self.act(t, action, true)?;
+                    // Given after the click was handled: behind the walk's emptying of the queue.
+                    self.flushed = false;
+                }
             }
         }
         Ok(())
@@ -641,9 +660,12 @@ impl Loop {
         }
     }
 
-    /// One action given at `t`: its message, the edge scroll before it.
-    fn act(&mut self, t: u32, action: Action) -> Result<(), Unplayable> {
-        if let Action::Pointer(at) | Action::Click(at) = action {
+    /// One action's message at `t`, the edge scroll before it: `fresh`, given now; else given
+    /// during a walk and taken after it, whose point the mouse has left (the edge scroll and the
+    /// cursor read the mouse's point now, GetCursorPos: the latest given, M2 T6a, the reviewer's
+    /// R1-3; a click's tile is its message's).
+    fn act(&mut self, t: u32, action: Action, fresh: bool) -> Result<(), Unplayable> {
+        if fresh && let Action::Pointer(at) | Action::Click(at) = action {
             // The move's message: GetCursorPos (the edge's) already reads the new point.
             self.pointer = at;
         }
@@ -788,6 +810,9 @@ impl Loop {
     /// wait between them (the first red one a step the points do not pay, which ends the walk:
     /// 0x480864; the engine's move from M4); none, and the walk ends at once.
     fn walk_path(&mut self, t: u32) {
+        // The input queue emptied after the lift (`mouse_hide`, 0x4EC570 at 0x407E87; M2 T6a, the
+        // reviewer's R1-5): the messages behind the click are gone.
+        self.flushed = true;
         // The start tile's step sound (0x407D03), then the lift (0x407DEC).
         if let (Some(sound), Some(hero)) = (&mut self.sound, self.hero) {
             sound.walk_start(t, hero.at);
@@ -863,9 +888,11 @@ impl Loop {
     /// The walk from `t`: each frame when its time comes (0x4804F0: the offset less its pixels, the
     /// view drawn and shown, its end its start plus the frame's time), each step's end (0x48117A
     /// on: at the walk's last step the standing group and frame 0, 0x4811CD; the offset 0,
-    /// 0x481423), the path's walk draining the actions given meanwhile (a key or a click ends it
-    /// after the step, the rest dropped: 0x407FA7), the next step at once; the walk's end. The
-    /// walk left under way waits; one that ended gives the actions waiting for the loop's turn.
+    /// 0x481423), the path's walk taking the actions given meanwhile (0x407F80 to 0x407FFA: up
+    /// to the first key-down or button, a step, a scroll or a click, which ends it after the step;
+    /// those before it dropped, those behind it waiting), the next step at once; the walk's end.
+    /// The walk left under way waits; one that ended gives the actions waiting for the loop's
+    /// turn.
     fn carry_on(&mut self, t: u32, mut moving: Moving) -> Option<Vec<Action>> {
         loop {
             if t < moving.until {
@@ -891,14 +918,21 @@ impl Loop {
             }
             self.walk.offset = [0, 0];
             if !moving.key {
-                if moving
-                    .queued
-                    .iter()
-                    .any(|a| matches!(a, Action::Step(_) | Action::Click(_)))
-                {
-                    moving.rest.clear();
+                // The messages' kinds 1, 8, 0x20 and 0x200 end the walk (0x407FA7): a key-down,
+                // Ctrl's too (M2 T6a, the reviewer's R1-1), and a button; the loop reads up to the
+                // first of them, the rest stays in the queue for the main loop (R1-2). A key
+                // without a binding (Ctrl alone, M3's hotkeys) is no action yet: the adapter's
+                // keys only.
+                let ends = moving.queued.iter().position(|a| {
+                    matches!(a, Action::Step(_) | Action::Scroll(_) | Action::Click(_))
+                });
+                match ends {
+                    Some(i) => {
+                        moving.rest.clear();
+                        moving.queued.drain(..=i);
+                    }
+                    None => moving.queued.clear(),
                 }
-                moving.queued.clear();
             }
             let Some((direction, next)) = moving.rest.pop_front() else {
                 self.finish(t, moving.key);
@@ -911,32 +945,38 @@ impl Loop {
         }
     }
 
-    /// The walk's end: the path's walk clears the path once the hero stands on its destination,
-    /// else shows it again for the rest and draws the view (`make_hero_path` 0x418DD0 at 0x4080C9;
-    /// M2: the arrows left, as `walk-points` recorded; the engine's path from M4); `hero_walk_end`
-    /// 0x47F7D0 (the standing group, frame 0); the cursor shown again where the mouse is now,
+    /// The walk's end: `hero_walk_end` 0x47F7D0 (the standing group, frame 0; for a walk a
+    /// message ended at 0x408002, before the path's redraw: M2 T6a, the reviewer's R1-4); the
+    /// path's walk clears the path once the hero stands on its destination, else shows it again
+    /// for the rest and draws the view (`make_hero_path` 0x418DD0 at 0x4080C9, with the option
+    /// Show Route on, 0x698774; M2: the arrows left, as `walk-points` recorded; the engine's path
+    /// from M4); the cursor shown again where the mouse is now,
     /// by its move with its tile forgotten (`mouse_position_now` 0x50D500, its x even;
     /// `adventure_mouse_move` 0x40E360: a key's 0x4090F1, the path's 0x40812F).
     fn finish(&mut self, t: u32, key: bool) {
-        if !key && !self.path.is_empty() {
-            self.draw();
-        }
         self.stand();
         if let Some(sound) = &mut self.sound {
             sound.walk_end(t);
+        }
+        if !key && !self.path.is_empty() {
+            self.draw();
         }
         self.cursor.at = self.rules.drawn_at(self.pointer);
         self.cursor.shown = true;
         self.moved();
     }
 
-    /// The loop's turn after a walk at its last millisecond: the actions given during it (a key's
-    /// step only: the path's walk dropped them) as their messages, then the idle message. One that
-    /// walks again queues the rest.
+    /// The loop's turn after a walk at its last millisecond: the actions given during it and
+    /// left in the queue (a key's step leaves all; the path's walk those behind the one that
+    /// ended it) as their messages, then the idle message. One that walks again queues the rest;
+    /// a path's walk empties the queue at its start (0x407E87: M2 T6a, the reviewer's R1-5).
     fn resume(&mut self, t: u32, queued: Vec<Action>) -> Result<(), Unplayable> {
         let mut queued = queued.into_iter();
         while let Some(action) = queued.next() {
-            self.act(t, action)?;
+            self.act(t, action, false)?;
+            if core::mem::take(&mut self.flushed) {
+                queued.by_ref().for_each(drop);
+            }
             if let Some(moving) = &mut self.moving {
                 moving.queued.extend(queued);
                 return Ok(());

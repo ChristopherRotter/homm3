@@ -228,6 +228,20 @@ fn refuses_what_it_cannot_build() {
         Situation::parse(&PLAIN.replace("view = [0, 0, 0]", "view = [0, 0, 1]")).unwrap_err(),
         "a situation's view is on the surface (level 0)"
     );
+    // The view's corner within the map's side of the map (M2 T6a, the reviewer's R1-8).
+    for (view, ok) in [
+        ("[-36, 36, 0]", true),
+        ("[-37, 0, 0]", false),
+        ("[0, 37, 0]", false),
+    ] {
+        let parsed = Situation::parse(&PLAIN.replace("[0, 0, 0]", view));
+        assert_eq!(parsed.is_ok(), ok, "{view}");
+    }
+    assert_eq!(
+        Situation::parse(&PLAIN.replace("view = [0, 0, 0]", "view = [2147483640, 0, 0]"))
+            .unwrap_err(),
+        "the view's corner [2147483640, 0] lies more than the map's side (36) off the map"
+    );
     assert!(Situation::parse("size = 36").is_err());
 }
 
