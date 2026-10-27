@@ -1,8 +1,8 @@
 # E08 design note: increment 7, rewards on the map
 
 A handover, not binding (`docs/adr/README.md`): the working detail behind increment 7's
-amendment drafts of ADR-0013 (points 1, 2, 15), ADR-0016 (points 1, 3, 4, 6) and ADR-0017
-(points 1, 4, 6, 8–11) in `docs/lanes/adventure/adr-drafts/*-increment-7.md`, written by T55b
+amendments of ADR-0013 (points 1, 2, 15), ADR-0016 (points 1, 3, 4, 6) and ADR-0017 (points 1,
+4, 6, 8–11), applied by T59 from the drafts T55b wrote
 from T55a's survey and the answers at ADV-Q28 (the epic's decisions 129–136), accepted with the
 cut at ADV-Q29 (decisions 138–141; decision 138's typed answers written into §14). The task that
 builds a section deletes it; the file goes when the epic closes. Facts and sources: survey `docs/rules/surveys/E08-rewards.md` (§ numbers are the
