@@ -20,8 +20,8 @@ const PURE: [(&str, &[&str]); 1] = [(
 
 /// Dependencies of the package that only its binary (an adapter) uses: Cargo has no binary-only
 /// dependencies, so the library's sources must never name them (*provisional*, E24 M1 T2: the
-/// archives' reader `h3-formats`, the gate's).
-const BINARY_ONLY: [(&str, &[&str]); 1] = [("h3-map-view", &["h3-formats"])];
+/// archives' reader `h3-formats`, the gate's; E24 M2 T4a: the window's adapter `h3-sdl`).
+const BINARY_ONLY: [(&str, &[&str]); 1] = [("h3-map-view", &["h3-formats", "h3-sdl"])];
 
 /// Attributes every pure crate root carries.
 const REQUIRED: [&str; 2] = ["#![no_std]", "#![forbid(unsafe_code)]"];

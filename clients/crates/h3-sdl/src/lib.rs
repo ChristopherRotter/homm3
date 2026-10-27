@@ -52,7 +52,8 @@ pub struct CursorImage {
     pub rgba: Vec<u8>,
 }
 
-/// The keys the viewer answers: its own and the battle panel's hotkeys (E17 M3 T6c-2).
+/// The keys the viewers answer: the battle viewer's own and its panel's hotkeys (E17 M3 T6c-2), the
+/// map viewer's table of keys (E24 M2 T4a: the eight direction keys, Control, the function keys).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Key {
     /// Escape.
@@ -93,6 +94,42 @@ pub enum Key {
     V,
     /// W.
     W,
+    /// The left arrow.
+    Left,
+    /// Page Up.
+    PageUp,
+    /// Page Down.
+    PageDown,
+    /// End.
+    End,
+    /// The left Control key.
+    LeftCtrl,
+    /// The right Control key.
+    RightCtrl,
+    /// F1.
+    F1,
+    /// F2.
+    F2,
+    /// F3.
+    F3,
+    /// F4.
+    F4,
+    /// F5.
+    F5,
+    /// F6.
+    F6,
+    /// F7.
+    F7,
+    /// F8.
+    F8,
+    /// F9.
+    F9,
+    /// F10.
+    F10,
+    /// F11.
+    F11,
+    /// F12.
+    F12,
 }
 
 impl Key {
@@ -118,6 +155,24 @@ impl Key {
             SDLK_S => Self::S,
             SDLK_V => Self::V,
             SDLK_W => Self::W,
+            SDLK_LEFT => Self::Left,
+            SDLK_PAGEUP => Self::PageUp,
+            SDLK_PAGEDOWN => Self::PageDown,
+            SDLK_END => Self::End,
+            SDLK_LCTRL => Self::LeftCtrl,
+            SDLK_RCTRL => Self::RightCtrl,
+            SDLK_F1 => Self::F1,
+            SDLK_F2 => Self::F2,
+            SDLK_F3 => Self::F3,
+            SDLK_F4 => Self::F4,
+            SDLK_F5 => Self::F5,
+            SDLK_F6 => Self::F6,
+            SDLK_F7 => Self::F7,
+            SDLK_F8 => Self::F8,
+            SDLK_F9 => Self::F9,
+            SDLK_F10 => Self::F10,
+            SDLK_F11 => Self::F11,
+            SDLK_F12 => Self::F12,
             _ => return None,
         })
     }
@@ -145,7 +200,72 @@ impl Key {
             Self::S => "S",
             Self::V => "V",
             Self::W => "W",
+            Self::Left => "Left",
+            Self::PageUp => "PageUp",
+            Self::PageDown => "PageDown",
+            Self::End => "End",
+            Self::LeftCtrl => "LeftCtrl",
+            Self::RightCtrl => "RightCtrl",
+            Self::F1 => "F1",
+            Self::F2 => "F2",
+            Self::F3 => "F3",
+            Self::F4 => "F4",
+            Self::F5 => "F5",
+            Self::F6 => "F6",
+            Self::F7 => "F7",
+            Self::F8 => "F8",
+            Self::F9 => "F9",
+            Self::F10 => "F10",
+            Self::F11 => "F11",
+            Self::F12 => "F12",
         }
+    }
+
+    /// Every key, in the enum's order.
+    pub const ALL: [Self; 37] = [
+        Self::Escape,
+        Self::Space,
+        Self::Right,
+        Self::Up,
+        Self::Down,
+        Self::Home,
+        Self::A,
+        Self::C,
+        Self::D,
+        Self::E,
+        Self::F,
+        Self::H,
+        Self::M,
+        Self::O,
+        Self::P,
+        Self::R,
+        Self::S,
+        Self::V,
+        Self::W,
+        Self::Left,
+        Self::PageUp,
+        Self::PageDown,
+        Self::End,
+        Self::LeftCtrl,
+        Self::RightCtrl,
+        Self::F1,
+        Self::F2,
+        Self::F3,
+        Self::F4,
+        Self::F5,
+        Self::F6,
+        Self::F7,
+        Self::F8,
+        Self::F9,
+        Self::F10,
+        Self::F11,
+        Self::F12,
+    ];
+
+    /// The key a name gives ([`Key::name`]'s), if any.
+    #[must_use]
+    pub fn from_name(name: &str) -> Option<Self> {
+        Self::ALL.into_iter().find(|k| k.name() == name)
     }
 }
 
@@ -1005,5 +1125,19 @@ mod tests {
         assert_eq!(fit(3840, 2072, 800, 600), 3);
         assert_eq!(fit(600, 400, 800, 600), 1);
         assert_eq!(fit(0, 0, 0, 0), 1);
+    }
+
+    #[test]
+    fn every_key_is_found_by_its_name() {
+        for (i, key) in Key::ALL.into_iter().enumerate() {
+            assert_eq!(Key::from_name(key.name()), Some(key));
+            // In the enum's order, each once.
+            assert!(Key::ALL[..i].iter().all(|k| *k < key), "{key:?}");
+        }
+        assert_eq!(Key::from_name("PageUp"), Some(Key::PageUp));
+        assert_eq!(Key::from_name("Ctrl"), None);
+        assert_eq!(Key::of(SDLK_LCTRL), Some(Key::LeftCtrl));
+        assert_eq!(Key::of(SDLK_F11), Some(Key::F11));
+        assert_eq!(Key::of(SDLK_TAB), None);
     }
 }

@@ -1,0 +1,176 @@
+use alloc::string::ToString;
+use alloc::vec::Vec;
+
+use super::*;
+
+#[test]
+fn the_defaults_are_the_originals_keys_and_the_windows() {
+    let keys = Keys::original();
+    let directions = [
+        ("Up", Direction::North),
+        ("PageUp", Direction::NorthEast),
+        ("Right", Direction::East),
+        ("PageDown", Direction::SouthEast),
+        ("Down", Direction::South),
+        ("End", Direction::SouthWest),
+        ("Left", Direction::West),
+        ("Home", Direction::NorthWest),
+    ];
+    for (key, d) in directions {
+        assert_eq!(keys.command(true, key), Some(Command::Scroll(d)), "{key}");
+        assert_eq!(keys.command(false, key), Some(Command::Hero(d)), "{key}");
+    }
+    for (key, command) in [
+        ("F5", Command::Pause),
+        ("F6", Command::Frame),
+        ("F7", Command::Restart),
+        ("F8", Command::Vsync),
+        ("F11", Command::Fullscreen),
+        ("Escape", Command::Quit),
+    ] {
+        assert_eq!(keys.command(false, key), Some(command), "{key}");
+        // A chord matches exactly: Ctrl held is another chord.
+        assert_eq!(keys.command(true, key), None, "{key}");
+    }
+    assert_eq!(keys.command(false, "P"), None);
+    // Every command bound once, in the table's order.
+    let chords = keys.chords();
+    assert_eq!(chords.len(), 22);
+    let commands: Vec<Command> = chords.iter().map(|&(c, _)| c).collect();
+    assert_eq!(commands, Command::all());
+    assert_eq!(chords[0].1.to_string(), "Ctrl+Up");
+    assert_eq!(chords[8].1.to_string(), "Up");
+    assert_eq!(chords[21].1.to_string(), "Escape");
+}
+
+#[test]
+fn every_command_has_a_name_and_the_maps_its_action() {
+    let all = Command::all();
+    assert_eq!(all.len(), 22);
+    for &command in &all {
+        assert_eq!(Command::from_name(&command.name()), Some(command));
+    }
+    let names: Vec<String> = all.iter().map(|c| c.name()).collect();
+    assert_eq!(names[..2], ["scroll-north", "scroll-north-east"]);
+    assert_eq!(names[13], "hero-south-west");
+    assert_eq!(
+        names[16..],
+        ["pause", "frame", "restart", "vsync", "fullscreen", "quit"]
+    );
+    assert_eq!(Command::from_name("scroll"), None);
+    assert_eq!(
+        Command::Scroll(Direction::West).action(),
+        Some(Action::Scroll(Direction::West))
+    );
+    assert_eq!(
+        Command::Hero(Direction::SouthEast).action(),
+        Some(Action::Step(Direction::SouthEast))
+    );
+    assert_eq!(Command::Pause.action(), None);
+}
+
+#[test]
+fn chords_read_and_write() {
+    assert_eq!(
+        Chord::parse("Ctrl+Up"),
+        Ok(Chord {
+            ctrl: true,
+            key: "Up".into()
+        })
+    );
+    assert_eq!(
+        Chord::parse("F5"),
+        Ok(Chord {
+            ctrl: false,
+            key: "F5".into()
+        })
+    );
+    for text in ["Ctrl+Up", "F5", "Escape"] {
+        assert_eq!(Chord::parse(text).unwrap().to_string(), text);
+    }
+    for bad in ["", "Ctrl+", "Shift+Up", "Page Up", "Ctrl+Ctrl+Up"] {
+        assert_eq!(
+            Chord::parse(bad),
+            Err(format!("`{bad}` is not a key, or Ctrl+ and a key")),
+            "{bad}"
+        );
+    }
+}
+
+#[test]
+fn a_users_file_overrides_command_by_command() {
+    let keys = Keys::with_file(
+        "# mine\npause = [\"Space\", \"P\", \"P\"]\nquit = []\nhero-north = [\"W\"]\n\
+         scroll-north = [\"Ctrl+W\", \"Ctrl+Up\"]\n",
+    )
+    .unwrap();
+    assert_eq!(keys.command(false, "Space"), Some(Command::Pause));
+    assert_eq!(keys.command(false, "P"), Some(Command::Pause));
+    assert_eq!(keys.command(false, "F5"), None);
+    // Unbound.
+    assert_eq!(keys.command(false, "Escape"), None);
+    assert_eq!(keys.command(false, "Up"), None);
+    assert_eq!(
+        keys.command(false, "W"),
+        Some(Command::Hero(Direction::North))
+    );
+    assert_eq!(
+        keys.command(true, "W"),
+        Some(Command::Scroll(Direction::North))
+    );
+    assert_eq!(
+        keys.command(true, "Up"),
+        Some(Command::Scroll(Direction::North))
+    );
+    // The rest kept.
+    assert_eq!(keys.command(false, "F6"), Some(Command::Frame));
+    let chords = keys.chords();
+    assert_eq!(chords.len(), 24);
+    assert!(chords.iter().all(|&(c, _)| c != Command::Quit));
+    assert_eq!(chords[0].1.to_string(), "Ctrl+W");
+    // An empty file is the defaults.
+    assert_eq!(Keys::with_file(""), Ok(Keys::original()));
+}
+
+#[test]
+fn a_users_file_is_checked() {
+    let all: Vec<String> = Command::all().into_iter().map(Command::name).collect();
+    let cases = [
+        ("pause = [", None),
+        (
+            "jump = [\"J\"]",
+            Some(format!(
+                "`jump` is no command; the commands: {}",
+                all.join(", ")
+            )),
+        ),
+        (
+            "pause = \"P\"",
+            Some("`pause` is not a list of keys".to_string()),
+        ),
+        (
+            "pause = [1]",
+            Some("`pause` is not a list of keys".to_string()),
+        ),
+        (
+            "pause = [\"\"]",
+            Some("`pause`: `` is not a key, or Ctrl+ and a key".to_string()),
+        ),
+        (
+            "pause = [\"Escape\"]",
+            Some("Escape is bound to both `pause` and `quit`".to_string()),
+        ),
+        (
+            "hero-east = [\"Ctrl+Up\"]",
+            Some("Ctrl+Up is bound to both `scroll-north` and `hero-east`".to_string()),
+        ),
+    ];
+    for (text, message) in cases {
+        let got = Keys::with_file(text);
+        match message {
+            Some(m) => assert_eq!(got, Err(m), "{text}"),
+            // The parser's own message.
+            None => assert!(got.is_err(), "{text}"),
+        }
+    }
+}

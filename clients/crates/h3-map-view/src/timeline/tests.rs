@@ -10,7 +10,7 @@ use crate::situation::Situation;
 use crate::tables;
 
 /// The committed tables and layout (`clients/map/`).
-fn rules(bugs: Bugs) -> Rules {
+pub(crate) fn rules(bugs: Bugs) -> Rules {
     let text = include_str!("../../../../map/assets/base.toml");
     let tables = tables::load(&[tables::parse(text).unwrap()], "base").unwrap();
     let layout =
@@ -167,6 +167,22 @@ fn start(situation: &str, speed: usize) -> Start {
         hero: None,
         paths: Vec::new(),
     }
+}
+
+/// A recorded sequence's start, its actions and its end, as `replays_the_recorded_timelines` plays
+/// it (the replay's tests, E24 M2 T4a).
+pub(crate) fn recorded(id: &str) -> (Start, BTreeMap<u32, Vec<Action>>, u32) {
+    let sequences = Sequences::parse(SEQUENCES).unwrap();
+    let sequence = sequences.get(id).unwrap();
+    let (_, situation, timeline) = RECORDED.iter().find(|(r, _, _)| *r == id).unwrap();
+    let mut start = start(situation, sequence.scroll_speed().unwrap());
+    start.hero_speed = sequence.hero_speed().unwrap();
+    if let Some((_, live)) = LIVE.iter().find(|(l, _)| *l == id) {
+        let (heroes, viewer) = live_heroes(live);
+        start.hero = Some(sequence::selected(&heroes, viewer).unwrap());
+        start.paths = sequence.paths(timeline).unwrap();
+    }
+    (start, sequence.actions().unwrap(), sequence.ms)
 }
 
 /// A recorded timeline without its `screen` lines (the frames': the binary draws them).
