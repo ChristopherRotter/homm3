@@ -1015,3 +1015,48 @@ entry only where a task builds on it.
   test plays a world of each env. Python `tests/test_search.py`: the binding's worlds, the
   schedule, the improved policy, legal and repeatable choices, battles to their end, refusals,
   `--report`.
+
+## T6g — The A/B run `order-1`: the turn order as an input (2026-10-27)
+
+- **The run** (`python/records/order-1.json`; `configs/e06-order.toml`: `t7-1`'s settings with
+  `[network] order`; commit d1b263e, C ABI v34, observation v22, the system actor's policy v19;
+  20 M samples in 86.5 minutes, one segment, 4 543 to 5 413 samples/s, `t7-1` 4 846 to 5 205):
+  gates at 10 M (+245 Elo) and 20 M (+22 Elo), both promoted; evaluation 18.5 minutes (`t7-1`
+  12.2): the 10 M ladder 458 s (137) and its gate 50 s (13), the battles longer there.
+- **Results** (the final ladder, 500 per kind; `t7-1`'s in brackets): Random 0.832 (0.828),
+  Aggressor 0.553 (0.551), Greedy 0.527 (0.528), the system actor 0.369 (0.374; hero 0.356, a
+  siege a hero defends 0.343, a garrison's siege 0.475), the neutral set 0.978 at value +0.250
+  (0.972, +0.245; strata 0.982, 0.962, 0.852). Every difference lies within the intervals
+  (±0.011 to ±0.018). At 10 M it was behind: Greedy 0.479 (0.499), the system actor 0.327
+  (0.359).
+- **Training:** the first half shortened its battles later: 170 samples an episode (`t7-1`
+  101), truncations 3.1 % of self-play (0.4 %; 12 % in the first 2 M samples); the second half
+  79 (66) and 0.2 % (0.0 %); the entropy 2.97 and 2.14 (2.83, 1.98).
+- **The behaviour analysis** (`python -m h3env.train.inspect` on the user's `best.pt`, the
+  sandbox's CPU; `python/records/inspect/order-1-*.json`; against the system actor, `t7-1`'s in
+  brackets): wins 0.399 (0.394); 26.6 decisions a battle (28.1), 4.96 rounds (4.94); its stacks
+  wait in 1.3 % of their turns (2.6 %) and defend in 0.5 % (0.8 %), the system actor's 8.7 % and
+  2.9 %; the tactics phase 6.6 % of its decisions (10.9 %); the hero casts in 93 % of the rounds
+  it can (87 %), 34 mana (33); targeting 52 % at the best previewed (53 %), 76 % of the best's
+  kills (77 %), 13 % killing nothing while one could (12 %); melee into a retaliation 77 % (77 %).
+  Against Greedy alike. On the neutral set it waits in 8.1 % of its turns (4.4 %) and its hero
+  casts in 95 % of the rounds it can (67 %), at the same value (+0.242; +0.236 in `t7-1`'s
+  analysis).
+- **The probe again** (`records/inspect/probe_order.py` on `order-1`'s best,
+  `order-1-order-probe.json`; it now also reads the order block itself, `engine_order`): the
+  trained trunk predicts the next stack at 0.22 / 0.25 (linear / MLP probe; `t6d-1` 0.18 / 0.19)
+  and the opponent's next at 0.35 / 0.37 (0.34 / 0.35), still below an untrained trunk's (0.26 /
+  0.32 and 0.40 / 0.46), while the block it reads tells them at 0.885 and 0.866. The network has
+  the order in its input and does not keep it.
+- **The block checked** (the same self-play, scratch scripts): outside the tactics phase the
+  active stack holds place 1 in all 24 167 decisions. Of the opponent's next stacks the block
+  misses and the probe's rule finds (1 290 of 16 849), 1 234 are automatic turns (a war machine
+  whose skill its hero lacks, a turret, the Catapult: placed in the order, but no decision, and
+  the probe's labels count decisions alone) and 56 a stack whose lost turns ended in play. No
+  fault of `turn_order`; a probe of the order should label turns, not decisions.
+- **Read:** negative. The turn order in the input moves neither the ladder nor the play T6a and
+  T6e measured (the waits and defends went down, not up): the MLP's trunk drops the 126 order
+  features among 9 008 as it dropped v21's order columns. Five 20 M runs with different settings
+  (`t5-3`, `t7-1`, `t6b-1`, `t6d-1`, `order-1`) end at the same ladder. The agent's
+  recommendation: `[network] order` stays off by default (opt-in, tested), out of the best
+  configuration; observation v22 stays (its block costs the step about 6 %, under 1 % of a run).

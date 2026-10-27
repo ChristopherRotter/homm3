@@ -46,6 +46,10 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
 - Observation v22 appends the turn order after v21's layout (`layout.ORDER`, v21's length): a
   network reads it only with `[network] order` (else the prefix, as every network saved before
   v22); slices of the stack slots end at `ORDER` (`entity.py`, `inspect.py`), never at the end.
+  The block places every turn, the automatic ones too (a war machine whose skill its hero
+  lacks, a turret, the Catapult: no decision); in the tactics phase it tells round 1's order
+  (the active stack is not at place 1). A probe that labels by decisions sees those as misses
+  (E06-log T6g).
 - `h3env.BattleBatch`'s output arrays are read-only attributes (the engine holds their
   addresses): copy or write into them, never rebind; its head arrays must be N long.
 

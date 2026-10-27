@@ -1,0 +1,1142 @@
+{
+ "system": {
+  "ladder": {
+   "win_rate": 0.9740121212121211,
+   "interval": 0.012197849231508016,
+   "value": 0.24242908330896526,
+   "kinds": {
+    "wandering": 0.978,
+    "guards": 0.966,
+    "siege_neutral": 0.856
+   },
+   "sides": {
+    "wandering": [
+     0.978
+    ],
+    "guards": [
+     0.966
+    ],
+    "siege_neutral": [
+     0.856
+    ]
+   },
+   "games": 1500,
+   "skipped": 0,
+   "truncated": 0.0,
+   "seconds": 31.716025756000022
+  },
+  "groups": {
+   "wandering": {
+    "attacker": {
+     "won": {
+      "battles": 489,
+      "won": 1.0,
+      "truncated": 0.0,
+      "reward": 0.25821428953294767,
+      "rounds": 4.2433537832310835,
+      "decisions": 24.713701431492844,
+      "mix": {
+       "wait": 0.08258171286719074,
+       "defend": 0.004716590815059991,
+       "move": 0.4073645014480761,
+       "melee": 0.19304923458833265,
+       "shot": 0.15573024410426148,
+       "hero_cast": 0.13115432354158046,
+       "creature_cast": 0.0004964832436905255,
+       "turret": 0.0,
+       "tactics": 0.013405047579644187,
+       "other": 0.01150186181216384
+      },
+      "turns": {
+       "waited": 0.10685224839400428,
+       "defended": 0.006102783725910064,
+       "opponent_waited": 0.14202127659574468,
+       "opponent_defended": 0.00026595744680851064
+      },
+      "hero": {
+       "battles": 489,
+       "castable_rounds": 3.3865030674846626,
+       "cast": 0.9571256038647343,
+       "mana_spent": 22.27402862985685,
+       "mana_share": 0.35628536848647413,
+       "spells": {
+        "Magic Arrow": 394,
+        "Ice Bolt": 258,
+        "Lightning Bolt": 251,
+        "Cure": 131,
+        "Curse": 75,
+        "Frost Ring": 46,
+        "Shield": 37,
+        "Dispel": 33,
+        "Implosion": 32,
+        "Bless": 31,
+        "Remove Obstacle": 31,
+        "Stone Skin": 24,
+        "Fire Wall": 23,
+        "Weakness": 23,
+        "Teleport": 22,
+        "Protection from Fire": 21,
+        "Fireball": 16,
+        "Haste": 14,
+        "Force Field": 14,
+        "Resurrection": 11,
+        "Animate Dead": 10,
+        "Protection from Air": 6,
+        "Disrupting Ray": 6,
+        "Blind": 6,
+        "Misfortune": 6,
+        "Destroy Undead": 5,
+        "Quicksand": 5,
+        "Fortune": 5,
+        "Mirth": 5,
+        "Berserk": 5,
+        "Frenzy": 4,
+        "Bloodlust": 4,
+        "Precision": 4,
+        "Slayer": 3,
+        "Slow": 3,
+        "Hypnotize": 3,
+        "Fire Elemental": 2,
+        "Prayer": 2,
+        "Air Elemental": 2,
+        "Air Shield": 2,
+        "Fire Shield": 2,
+        "Anti-Magic": 2,
+        "Meteor Shower": 2,
+        "Inferno": 1,
+        "Water Elemental": 1,
+        "Chain Lightning": 1,
+        "Forgetfulness": 1
+       }
+      },
+      "opponent_hero": {
+       "battles": 0,
+       "mana_spent": null,
+       "mana_share": null
+      },
+      "shooting": {
+       "decisions": 2271,
+       "wait": 0.023778071334214,
+       "move": 0.11756935270805813,
+       "shot": 0.8287098194627918,
+       "hero_cast": 0.029502421840598855,
+       "creature_cast": 0.00044033465433729633
+      },
+      "targeting": {
+       "strike_legal": 5774,
+       "struck": 0.729996536196744,
+       "strikes": 4215,
+       "at_best": 0.8059311981020166,
+       "kills": 0.8664398128455976,
+       "no_kill": 0.054804270462633455
+      },
+      "trades": {
+       "melee_into_retaliation": 0.7711101585940848,
+       "melee_avoidable": 0.0818688384054865,
+       "melee": {
+        "strikes": 1422,
+        "dealt": 40.4521800281294,
+        "taken": 8.907172995780591
+       },
+       "shot": {
+        "strikes": 1104,
+        "dealt": 23.01086956521739,
+        "taken": -0.14130434782608695
+       },
+       "least_killed": 0.9996041171813144,
+       "first": 0.8404907975460123
+      }
+     },
+     "all": {
+      "battles": 500,
+      "won": 0.978,
+      "truncated": 0.0,
+      "reward": 0.24557333831582218,
+      "rounds": 4.4,
+      "decisions": 25.01,
+      "mix": {
+       "wait": 0.08172730907636945,
+       "defend": 0.004638144742103159,
+       "move": 0.41183526589364255,
+       "melee": 0.19224310275889644,
+       "shot": 0.1541783286685326,
+       "hero_cast": 0.13026789284286286,
+       "creature_cast": 0.0005597760895641743,
+       "turret": 0.0,
+       "tactics": 0.013434626149540184,
+       "other": 0.011115553778488605
+      },
+      "turns": {
+       "waited": 0.10551311170761925,
+       "defended": 0.005988023952095809,
+       "opponent_waited": 0.1321867321867322,
+       "opponent_defended": 0.0002457002457002457
+      },
+      "hero": {
+       "battles": 500,
+       "castable_rounds": 3.402,
+       "cast": 0.9576719576719577,
+       "mana_spent": 22.334,
+       "mana_share": 0.36027229319912246,
+       "spells": {
+        "Magic Arrow": 403,
+        "Ice Bolt": 258,
+        "Lightning Bolt": 252,
+        "Cure": 139,
+        "Curse": 83,
+        "Frost Ring": 46,
+        "Shield": 39,
+        "Dispel": 34,
+        "Bless": 33,
+        "Implosion": 32,
+        "Remove Obstacle": 31,
+        "Stone Skin": 26,
+        "Teleport": 26,
+        "Protection from Fire": 23,
+        "Fire Wall": 23,
+        "Weakness": 23,
+        "Fireball": 16,
+        "Haste": 15,
+        "Force Field": 14,
+        "Resurrection": 11,
+        "Animate Dead": 10,
+        "Protection from Air": 7,
+        "Disrupting Ray": 6,
+        "Blind": 6,
+        "Misfortune": 6,
+        "Destroy Undead": 5,
+        "Quicksand": 5,
+        "Fortune": 5,
+        "Mirth": 5,
+        "Berserk": 5,
+        "Frenzy": 4,
+        "Bloodlust": 4,
+        "Precision": 4,
+        "Slayer": 3,
+        "Slow": 3,
+        "Forgetfulness": 3,
+        "Hypnotize": 3,
+        "Fire Elemental": 2,
+        "Prayer": 2,
+        "Air Elemental": 2,
+        "Air Shield": 2,
+        "Fire Shield": 2,
+        "Anti-Magic": 2,
+        "Meteor Shower": 2,
+        "Inferno": 1,
+        "Prot. from Earth": 1,
+        "Water Elemental": 1,
+        "Chain Lightning": 1
+       }
+      },
+      "opponent_hero": {
+       "battles": 0,
+       "mana_spent": null,
+       "mana_share": null
+      },
+      "shooting": {
+       "decisions": 2323,
+       "wait": 0.023676280671545414,
+       "move": 0.11579853637537667,
+       "shot": 0.8299612569952648,
+       "hero_cast": 0.030133448127421438,
+       "creature_cast": 0.00043047783039173483
+      },
+      "targeting": {
+       "strike_legal": 5911,
+       "struck": 0.73287091862629,
+       "strikes": 4332,
+       "at_best": 0.8072483841181902,
+       "kills": 0.8646327863079064,
+       "no_kill": 0.055401662049861494
+      },
+      "trades": {
+       "melee_into_retaliation": 0.7720465890183028,
+       "melee_avoidable": 0.08361064891846921,
+       "melee": {
+        "strikes": 1451,
+        "dealt": 40.20675396278428,
+        "taken": 9.13645761543763
+       },
+       "shot": {
+        "strikes": 1122,
+        "dealt": 22.94295900178253,
+        "taken": -0.13903743315508021
+       },
+       "least_killed": 0.9996113486202876,
+       "first": 0.84
+      }
+     },
+     "lost": {
+      "battles": 11,
+      "won": 0.0,
+      "truncated": 0.0,
+      "reward": -0.3163744021545757,
+      "rounds": 11.363636363636363,
+      "decisions": 38.18181818181818,
+      "mix": {
+       "wait": 0.05714285714285714,
+       "defend": 0.002380952380952381,
+       "move": 0.5404761904761904,
+       "melee": 0.16904761904761906,
+       "shot": 0.10952380952380952,
+       "hero_cast": 0.10476190476190476,
+       "creature_cast": 0.002380952380952381,
+       "turret": 0.0,
+       "tactics": 0.014285714285714285,
+       "other": 0.0
+      },
+      "turns": {
+       "waited": 0.06936416184971098,
+       "defended": 0.002890173410404624,
+       "opponent_waited": 0.012903225806451613,
+       "opponent_defended": 0.0
+      },
+      "hero": {
+       "battles": 11,
+       "castable_rounds": 4.090909090909091,
+       "cast": 0.9777777777777777,
+       "mana_spent": 25.0,
+       "mana_share": 0.6470588235294118,
+       "spells": {
+        "Magic Arrow": 9,
+        "Cure": 8,
+        "Curse": 8,
+        "Teleport": 4,
+        "Stone Skin": 2,
+        "Bless": 2,
+        "Shield": 2,
+        "Protection from Fire": 2,
+        "Forgetfulness": 2,
+        "Dispel": 1,
+        "Haste": 1,
+        "Lightning Bolt": 1,
+        "Prot. from Earth": 1,
+        "Protection from Air": 1
+       }
+      },
+      "opponent_hero": {
+       "battles": 0,
+       "mana_spent": null,
+       "mana_share": null
+      },
+      "shooting": {
+       "decisions": 52,
+       "wait": 0.019230769230769232,
+       "move": 0.038461538461538464,
+       "shot": 0.8846153846153846,
+       "hero_cast": 0.057692307692307696
+      },
+      "targeting": {
+       "strike_legal": 137,
+       "struck": 0.8540145985401459,
+       "strikes": 117,
+       "at_best": 0.8547008547008547,
+       "kills": 0.764934057408844,
+       "no_kill": 0.07692307692307693
+      },
+      "trades": {
+       "melee_into_retaliation": 0.8028169014084507,
+       "melee_avoidable": 0.14084507042253522,
+       "melee": {
+        "strikes": 29,
+        "dealt": 28.17241379310345,
+        "taken": 20.379310344827587
+       },
+       "shot": {
+        "strikes": 18,
+        "dealt": 18.77777777777778,
+        "taken": 0.0
+       },
+       "least_killed": 1.0,
+       "first": 0.8181818181818182
+      }
+     }
+    }
+   },
+   "all": {
+    "battles": 1500,
+    "won": 0.9333333333333333,
+    "truncated": 0.0,
+    "reward": 0.2102057835974847,
+    "rounds": 4.772666666666667,
+    "decisions": 25.898,
+    "mix": {
+     "wait": 0.06463819599969109,
+     "defend": 0.0037068499498030738,
+     "move": 0.4014724431745051,
+     "melee": 0.2112389631116946,
+     "shot": 0.14932942054727522,
+     "hero_cast": 0.11758951785208639,
+     "creature_cast": 0.00146729477179705,
+     "turret": 0.0,
+     "tactics": 0.024583622930985663,
+     "other": 0.025973691662161815
+    },
+    "turns": {
+     "waited": 0.08149157822996787,
+     "defended": 0.004673352156557297,
+     "opponent_waited": 0.1328643744658471,
+     "opponent_defended": 0.01459470120307672
+    },
+    "hero": {
+     "battles": 1500,
+     "castable_rounds": 3.2046666666666668,
+     "cast": 0.9502808404410235,
+     "mana_spent": 20.361333333333334,
+     "mana_share": 0.34710762586657573,
+     "spells": {
+      "Magic Arrow": 1178,
+      "Ice Bolt": 751,
+      "Lightning Bolt": 642,
+      "Cure": 430,
+      "Curse": 243,
+      "Shield": 150,
+      "Bless": 105,
+      "Dispel": 104,
+      "Protection from Fire": 87,
+      "Frost Ring": 81,
+      "Remove Obstacle": 70,
+      "Stone Skin": 64,
+      "Weakness": 59,
+      "Blind": 55,
+      "Implosion": 52,
+      "Teleport": 50,
+      "Fire Wall": 46,
+      "Haste": 42,
+      "Fireball": 39,
+      "Force Field": 28,
+      "Resurrection": 21,
+      "Fortune": 20,
+      "Slow": 18,
+      "Chain Lightning": 18,
+      "Animate Dead": 15,
+      "Disrupting Ray": 14,
+      "Meteor Shower": 14,
+      "Protection from Air": 13,
+      "Quicksand": 12,
+      "Mirth": 11,
+      "Frenzy": 11,
+      "Destroy Undead": 10,
+      "Bloodlust": 10,
+      "Anti-Magic": 10,
+      "Berserk": 9,
+      "Misfortune": 9,
+      "Forgetfulness": 9,
+      "Inferno": 8,
+      "Prayer": 8,
+      "Hypnotize": 8,
+      "Clone": 8,
+      "Slayer": 5,
+      "Precision": 5,
+      "Air Shield": 3,
+      "Prot. from Water": 3,
+      "Earthquake": 3,
+      "Death Ripple": 3,
+      "Fire Elemental": 2,
+      "Air Elemental": 2,
+      "Fire Shield": 2,
+      "Prot. from Earth": 2,
+      "Magic Mirror": 2,
+      "Water Elemental": 1,
+      "Land Mine": 1,
+      "Armageddon": 1,
+      "Earth Elemental": 1
+     }
+    },
+    "opponent_hero": {
+     "battles": 0,
+     "mana_spent": null,
+     "mana_share": null
+    },
+    "shooting": {
+     "decisions": 7042,
+     "wait": 0.019312695257029253,
+     "defend": 0.0008520306731042318,
+     "move": 0.12311843226356149,
+     "shot": 0.8237716557796081,
+     "hero_cast": 0.03180914512922465,
+     "creature_cast": 0.0005680204487361545,
+     "other": 0.0005680204487361545
+    },
+    "targeting": {
+     "strike_legal": 18805,
+     "struck": 0.7448550917309227,
+     "strikes": 14007,
+     "at_best": 0.7386306846576711,
+     "kills": 0.8064198449724981,
+     "no_kill": 0.08695652173913043
+    },
+    "trades": {
+     "melee_into_retaliation": 0.7932000974896417,
+     "melee_avoidable": 0.07592005849378504,
+     "melee": {
+      "strikes": 4024,
+      "dealt": 40.060636182902584,
+      "taken": 8.592693836978132
+     },
+     "shot": {
+      "strikes": 2821,
+      "dealt": 22.75469691598724,
+      "taken": -0.1651896490606168
+     },
+     "least_killed": 0.9995617238860482,
+     "first": 0.7666666666666667
+    }
+   },
+   "guards": {
+    "attacker": {
+     "won": {
+      "battles": 483,
+      "won": 1.0,
+      "truncated": 0.0,
+      "reward": 0.25328409723073675,
+      "rounds": 4.3354037267080745,
+      "decisions": 23.579710144927535,
+      "mix": {
+       "wait": 0.08999912195978575,
+       "defend": 0.004214593028360699,
+       "move": 0.41469839318640794,
+       "melee": 0.19624198788304503,
+       "shot": 0.1646325401703398,
+       "hero_cast": 0.10483800158047239,
+       "creature_cast": 0.0002634120642725437,
+       "turret": 0.0,
+       "tactics": 0.011063306699446834,
+       "other": 0.014048643427868997
+      },
+      "turns": {
+       "waited": 0.11333480760725342,
+       "defended": 0.005307386112339673,
+       "opponent_waited": 0.15182522123893805,
+       "opponent_defended": 0.0002765486725663717
+      },
+      "hero": {
+       "battles": 483,
+       "castable_rounds": 2.579710144927536,
+       "cast": 0.9582664526484751,
+       "mana_spent": 15.879917184265011,
+       "mana_share": 0.24495401124169647,
+       "spells": {
+        "Magic Arrow": 308,
+        "Ice Bolt": 206,
+        "Lightning Bolt": 182,
+        "Cure": 152,
+        "Curse": 39,
+        "Shield": 30,
+        "Remove Obstacle": 28,
+        "Protection from Fire": 25,
+        "Fireball": 20,
+        "Dispel": 18,
+        "Weakness": 15,
+        "Bless": 15,
+        "Teleport": 13,
+        "Blind": 13,
+        "Stone Skin": 13,
+        "Haste": 12,
+        "Fire Wall": 10,
+        "Fortune": 8,
+        "Frost Ring": 8,
+        "Implosion": 7,
+        "Force Field": 7,
+        "Frenzy": 7,
+        "Chain Lightning": 5,
+        "Quicksand": 5,
+        "Forgetfulness": 4,
+        "Meteor Shower": 4,
+        "Resurrection": 4,
+        "Berserk": 4,
+        "Mirth": 4,
+        "Destroy Undead": 3,
+        "Disrupting Ray": 3,
+        "Anti-Magic": 3,
+        "Prayer": 3,
+        "Clone": 2,
+        "Inferno": 2,
+        "Animate Dead": 2,
+        "Bloodlust": 2,
+        "Slayer": 2,
+        "Magic Mirror": 1,
+        "Prot. from Earth": 1,
+        "Protection from Air": 1,
+        "Land Mine": 1,
+        "Hypnotize": 1,
+        "Slow": 1
+       }
+      },
+      "opponent_hero": {
+       "battles": 0,
+       "mana_spent": null,
+       "mana_share": null
+      },
+      "shooting": {
+       "decisions": 2189,
+       "wait": 0.015989036089538604,
+       "defend": 0.0013704888076747374,
+       "move": 0.09456372772955687,
+       "shot": 0.8565555047967108,
+       "hero_cast": 0.031521242576518956
+      },
+      "targeting": {
+       "strike_legal": 5410,
+       "struck": 0.7597042513863216,
+       "strikes": 4110,
+       "at_best": 0.824330900243309,
+       "kills": 0.8730779748934782,
+       "no_kill": 0.04939172749391727
+      },
+      "trades": {
+       "melee_into_retaliation": 0.7959731543624161,
+       "melee_avoidable": 0.0756152125279642,
+       "melee": {
+        "strikes": 1354,
+        "dealt": 31.92023633677991,
+        "taken": 7.554652880354505
+       },
+       "shot": {
+        "strikes": 993,
+        "dealt": 18.51963746223565,
+        "taken": -0.24370594159113795
+       },
+       "least_killed": 1.0,
+       "first": 0.8716356107660456
+      }
+     },
+     "all": {
+      "battles": 500,
+      "won": 0.966,
+      "truncated": 0.0,
+      "reward": 0.23386209367215632,
+      "rounds": 4.518,
+      "decisions": 23.888,
+      "mix": {
+       "wait": 0.08883121232417951,
+       "defend": 0.004102478231748158,
+       "move": 0.42138312123241795,
+       "melee": 0.1942397856664434,
+       "shot": 0.1611687876758205,
+       "hero_cast": 0.10398526456798393,
+       "creature_cast": 0.0002511721366376423,
+       "turret": 0.0,
+       "tactics": 0.011386470194239785,
+       "other": 0.014651707970529136
+      },
+      "turns": {
+       "waited": 0.11162546028406102,
+       "defended": 0.005155181483429774,
+       "opponent_waited": 0.14205128205128206,
+       "opponent_defended": 0.0002564102564102564
+      },
+      "hero": {
+       "battles": 500,
+       "castable_rounds": 2.594,
+       "cast": 0.9575944487278335,
+       "mana_spent": 16.012,
+       "mana_share": 0.24907444855800642,
+       "spells": {
+        "Magic Arrow": 308,
+        "Ice Bolt": 214,
+        "Lightning Bolt": 182,
+        "Cure": 162,
+        "Curse": 48,
+        "Shield": 38,
+        "Remove Obstacle": 31,
+        "Protection from Fire": 25,
+        "Fireball": 20,
+        "Dispel": 18,
+        "Weakness": 17,
+        "Bless": 16,
+        "Blind": 14,
+        "Teleport": 13,
+        "Stone Skin": 13,
+        "Haste": 12,
+        "Frost Ring": 12,
+        "Fire Wall": 11,
+        "Fortune": 8,
+        "Implosion": 7,
+        "Force Field": 7,
+        "Frenzy": 7,
+        "Chain Lightning": 5,
+        "Quicksand": 5,
+        "Forgetfulness": 4,
+        "Meteor Shower": 4,
+        "Resurrection": 4,
+        "Berserk": 4,
+        "Mirth": 4,
+        "Destroy Undead": 3,
+        "Disrupting Ray": 3,
+        "Anti-Magic": 3,
+        "Prayer": 3,
+        "Clone": 2,
+        "Inferno": 2,
+        "Animate Dead": 2,
+        "Bloodlust": 2,
+        "Slayer": 2,
+        "Hypnotize": 2,
+        "Magic Mirror": 1,
+        "Prot. from Earth": 1,
+        "Protection from Air": 1,
+        "Land Mine": 1,
+        "Slow": 1
+       }
+      },
+      "opponent_hero": {
+       "battles": 0,
+       "mana_spent": null,
+       "mana_share": null
+      },
+      "shooting": {
+       "decisions": 2242,
+       "wait": 0.015611061552185548,
+       "defend": 0.0013380909901873326,
+       "move": 0.0927743086529884,
+       "shot": 0.8586083853702052,
+       "hero_cast": 0.03166815343443354
+      },
+      "targeting": {
+       "strike_legal": 5565,
+       "struck": 0.7628032345013477,
+       "strikes": 4245,
+       "at_best": 0.8237926972909305,
+       "kills": 0.8704269422013431,
+       "no_kill": 0.05182567726737338
+      },
+      "trades": {
+       "melee_into_retaliation": 0.7961206896551725,
+       "melee_avoidable": 0.07801724137931035,
+       "melee": {
+        "strikes": 1393,
+        "dealt": 31.718592964824122,
+        "taken": 8.015075376884422
+       },
+       "shot": {
+        "strikes": 1004,
+        "dealt": 18.465139442231077,
+        "taken": -0.2410358565737052
+       },
+       "least_killed": 1.0,
+       "first": 0.858
+      }
+     },
+     "lost": {
+      "battles": 17,
+      "won": 0.0,
+      "truncated": 0.0,
+      "reward": -0.31795130155104045,
+      "rounds": 9.705882352941176,
+      "decisions": 32.64705882352941,
+      "mix": {
+       "wait": 0.06486486486486487,
+       "defend": 0.0018018018018018018,
+       "move": 0.5585585585585585,
+       "melee": 0.15315315315315314,
+       "shot": 0.09009009009009009,
+       "hero_cast": 0.08648648648648649,
+       "creature_cast": 0.0,
+       "turret": 0.0,
+       "tactics": 0.018018018018018018,
+       "other": 0.02702702702702703
+      },
+      "turns": {
+       "waited": 0.07809110629067245,
+       "defended": 0.0021691973969631237,
+       "opponent_waited": 0.017605633802816902,
+       "opponent_defended": 0.0
+      },
+      "hero": {
+       "battles": 17,
+       "castable_rounds": 3.0,
+       "cast": 0.9411764705882353,
+       "mana_spent": 19.764705882352942,
+       "mana_share": 0.4043321299638989,
+       "spells": {
+        "Cure": 10,
+        "Curse": 9,
+        "Ice Bolt": 8,
+        "Shield": 8,
+        "Frost Ring": 4,
+        "Remove Obstacle": 3,
+        "Weakness": 2,
+        "Blind": 1,
+        "Bless": 1,
+        "Hypnotize": 1,
+        "Fire Wall": 1
+       }
+      },
+      "opponent_hero": {
+       "battles": 0,
+       "mana_spent": null,
+       "mana_share": null
+      },
+      "shooting": {
+       "decisions": 53,
+       "move": 0.018867924528301886,
+       "shot": 0.9433962264150944,
+       "hero_cast": 0.03773584905660377
+      },
+      "targeting": {
+       "strike_legal": 155,
+       "struck": 0.8709677419354839,
+       "strikes": 135,
+       "at_best": 0.8074074074074075,
+       "kills": 0.6522686025408349,
+       "no_kill": 0.1259259259259259
+      },
+      "trades": {
+       "melee_into_retaliation": 0.8,
+       "melee_avoidable": 0.1411764705882353,
+       "melee": {
+        "strikes": 39,
+        "dealt": 24.71794871794872,
+        "taken": 24.0
+       },
+       "shot": {
+        "strikes": 11,
+        "dealt": 13.545454545454545,
+        "taken": 0.0
+       },
+       "least_killed": 1.0,
+       "first": 0.47058823529411764
+      }
+     }
+    }
+   },
+   "siege_neutral": {
+    "attacker": {
+     "lost": {
+      "battles": 72,
+      "won": 0.0,
+      "truncated": 0.0,
+      "reward": -0.13085335296192271,
+      "rounds": 6.777777777777778,
+      "decisions": 24.083333333333332,
+      "mix": {
+       "wait": 0.02422145328719723,
+       "defend": 0.002306805074971165,
+       "move": 0.3344867358708189,
+       "melee": 0.3027681660899654,
+       "shot": 0.11707035755478662,
+       "hero_cast": 0.14763552479815456,
+       "creature_cast": 0.0028835063437139563,
+       "turret": 0.0,
+       "tactics": 0.015570934256055362,
+       "other": 0.0530565167243368
+      },
+      "turns": {
+       "waited": 0.029808374733853796,
+       "defended": 0.0028388928317956,
+       "opponent_waited": 0.10487641950567803,
+       "opponent_defended": 0.07615230460921844
+      },
+      "hero": {
+       "battles": 72,
+       "castable_rounds": 3.8194444444444446,
+       "cast": 0.9309090909090909,
+       "mana_spent": 18.88888888888889,
+       "mana_share": 0.6557377049180327,
+       "spells": {
+        "Magic Arrow": 95,
+        "Cure": 41,
+        "Shield": 19,
+        "Curse": 19,
+        "Dispel": 17,
+        "Bless": 16,
+        "Stone Skin": 11,
+        "Ice Bolt": 10,
+        "Protection from Fire": 5,
+        "Slow": 4,
+        "Fire Wall": 3,
+        "Weakness": 3,
+        "Prot. from Water": 3,
+        "Protection from Air": 3,
+        "Haste": 2,
+        "Inferno": 1,
+        "Bloodlust": 1,
+        "Meteor Shower": 1,
+        "Lightning Bolt": 1,
+        "Prayer": 1
+       }
+      },
+      "opponent_hero": {
+       "battles": 0,
+       "mana_spent": null,
+       "mana_share": null
+      },
+      "shooting": {
+       "decisions": 220,
+       "wait": 0.004545454545454545,
+       "move": 0.04090909090909091,
+       "shot": 0.9227272727272727,
+       "hero_cast": 0.031818181818181815
+      },
+      "targeting": {
+       "strike_legal": 873,
+       "struck": 0.8339060710194731,
+       "strikes": 728,
+       "at_best": 0.6016483516483516,
+       "kills": 0.6704950040197543,
+       "no_kill": 0.2348901098901099
+      },
+      "trades": {
+       "melee_into_retaliation": 0.7942857142857143,
+       "melee_avoidable": 0.10666666666666667,
+       "melee": {
+        "strikes": 101,
+        "dealt": 16.019801980198018,
+        "taken": 13.950495049504951
+       },
+       "shot": {
+        "strikes": 38,
+        "dealt": 8.131578947368421,
+        "taken": 0.0
+       },
+       "least_killed": 1.0,
+       "first": 0.5138888888888888
+      }
+     },
+     "all": {
+      "battles": 500,
+      "won": 0.856,
+      "truncated": 0.0,
+      "reward": 0.15118191880447557,
+      "rounds": 5.4,
+      "decisions": 28.796,
+      "mix": {
+       "wait": 0.029726350882066953,
+       "defend": 0.0025698013613001808,
+       "move": 0.3759549937491318,
+       "melee": 0.24183914432560077,
+       "shot": 0.1352965689679122,
+       "hero_cast": 0.11786359216557855,
+       "creature_cast": 0.003264342269759689,
+       "turret": 0.0,
+       "tactics": 0.04521461314071399,
+       "other": 0.04827059313793582
+      },
+      "turns": {
+       "waited": 0.036826707967647566,
+       "defended": 0.0031836172775770093,
+       "opponent_waited": 0.1282971965198177,
+       "opponent_defended": 0.03038254384753487
+      },
+      "hero": {
+       "battles": 500,
+       "castable_rounds": 3.618,
+       "cast": 0.9380873410724156,
+       "mana_spent": 22.738,
+       "mana_share": 0.4574866202567301,
+       "spells": {
+        "Magic Arrow": 467,
+        "Ice Bolt": 279,
+        "Lightning Bolt": 208,
+        "Cure": 129,
+        "Curse": 112,
+        "Shield": 73,
+        "Bless": 56,
+        "Dispel": 52,
+        "Protection from Fire": 39,
+        "Blind": 35,
+        "Stone Skin": 25,
+        "Frost Ring": 23,
+        "Weakness": 19,
+        "Haste": 15,
+        "Slow": 14,
+        "Implosion": 13,
+        "Chain Lightning": 12,
+        "Fire Wall": 12,
+        "Teleport": 11,
+        "Remove Obstacle": 8,
+        "Meteor Shower": 8,
+        "Force Field": 7,
+        "Fortune": 7,
+        "Clone": 6,
+        "Resurrection": 6,
+        "Disrupting Ray": 5,
+        "Inferno": 5,
+        "Protection from Air": 5,
+        "Anti-Magic": 5,
+        "Bloodlust": 4,
+        "Prot. from Water": 3,
+        "Earthquake": 3,
+        "Misfortune": 3,
+        "Animate Dead": 3,
+        "Hypnotize": 3,
+        "Death Ripple": 3,
+        "Prayer": 3,
+        "Fireball": 3,
+        "Destroy Undead": 2,
+        "Quicksand": 2,
+        "Forgetfulness": 2,
+        "Mirth": 2,
+        "Armageddon": 1,
+        "Earth Elemental": 1,
+        "Magic Mirror": 1,
+        "Precision": 1,
+        "Air Shield": 1
+       }
+      },
+      "opponent_hero": {
+       "battles": 0,
+       "mana_spent": null,
+       "mana_share": null
+      },
+      "shooting": {
+       "decisions": 2477,
+       "wait": 0.018570851836899476,
+       "defend": 0.0012111425111021397,
+       "move": 0.15744852644327817,
+       "shot": 0.786435203875656,
+       "hero_cast": 0.03350827614049253,
+       "creature_cast": 0.0012111425111021397,
+       "other": 0.0016148566814695195
+      },
+      "targeting": {
+       "strike_legal": 7329,
+       "struck": 0.7408923454768727,
+       "strikes": 5430,
+       "at_best": 0.6173112338858195,
+       "kills": 0.7522741159267066,
+       "no_kill": 0.13959484346224676
+      },
+      "trades": {
+       "melee_into_retaliation": 0.8058587018954624,
+       "melee_avoidable": 0.06921309592188397,
+       "melee": {
+        "strikes": 1180,
+        "dealt": 49.728813559322035,
+        "taken": 8.60593220338983
+       },
+       "shot": {
+        "strikes": 695,
+        "dealt": 28.64748201438849,
+        "taken": -0.09784172661870504
+       },
+       "least_killed": 0.9989333333333333,
+       "first": 0.602
+      }
+     },
+     "won": {
+      "battles": 428,
+      "won": 1.0,
+      "truncated": 0.0,
+      "reward": 0.19862710470910333,
+      "rounds": 5.168224299065421,
+      "decisions": 29.588785046728972,
+      "mix": {
+       "wait": 0.030480101073910297,
+       "defend": 0.002605811749842072,
+       "move": 0.3816329753632344,
+       "melee": 0.23349652558433354,
+       "shot": 0.137792166771952,
+       "hero_cast": 0.11378711307643714,
+       "creature_cast": 0.0033164876816171827,
+       "turret": 0.0,
+       "tactics": 0.049273531269740996,
+       "other": 0.04761528742893241
+      },
+      "turns": {
+       "waited": 0.037794967198668365,
+       "defended": 0.003231175952217762,
+       "opponent_waited": 0.13440111420612813,
+       "opponent_defended": 0.018454038997214484
+      },
+      "hero": {
+       "battles": 428,
+       "castable_rounds": 3.5841121495327104,
+       "cast": 0.939374185136897,
+       "mana_spent": 23.385514018691588,
+       "mana_share": 0.4394345172761997,
+       "spells": {
+        "Magic Arrow": 372,
+        "Ice Bolt": 269,
+        "Lightning Bolt": 207,
+        "Curse": 93,
+        "Cure": 88,
+        "Shield": 54,
+        "Bless": 40,
+        "Dispel": 35,
+        "Blind": 35,
+        "Protection from Fire": 34,
+        "Frost Ring": 23,
+        "Weakness": 16,
+        "Stone Skin": 14,
+        "Implosion": 13,
+        "Haste": 13,
+        "Chain Lightning": 12,
+        "Teleport": 11,
+        "Slow": 10,
+        "Fire Wall": 9,
+        "Remove Obstacle": 8,
+        "Force Field": 7,
+        "Fortune": 7,
+        "Meteor Shower": 7,
+        "Clone": 6,
+        "Resurrection": 6,
+        "Disrupting Ray": 5,
+        "Anti-Magic": 5,
+        "Inferno": 4,
+        "Bloodlust": 3,
+        "Earthquake": 3,
+        "Misfortune": 3,
+        "Animate Dead": 3,
+        "Hypnotize": 3,
+        "Death Ripple": 3,
+        "Fireball": 3,
+        "Destroy Undead": 2,
+        "Quicksand": 2,
+        "Forgetfulness": 2,
+        "Mirth": 2,
+        "Prayer": 2,
+        "Protection from Air": 2,
+        "Armageddon": 1,
+        "Earth Elemental": 1,
+        "Magic Mirror": 1,
+        "Precision": 1,
+        "Air Shield": 1
+       }
+      },
+      "opponent_hero": {
+       "battles": 0,
+       "mana_spent": null,
+       "mana_share": null
+      },
+      "shooting": {
+       "decisions": 2257,
+       "wait": 0.01993797075764289,
+       "defend": 0.001329198050509526,
+       "move": 0.16880815241470978,
+       "shot": 0.7731501993797075,
+       "hero_cast": 0.033673017279574655,
+       "creature_cast": 0.001329198050509526,
+       "other": 0.0017722640673460345
+      },
+      "targeting": {
+       "strike_legal": 6456,
+       "struck": 0.7283147459727385,
+       "strikes": 4702,
+       "at_best": 0.6197362824330073,
+       "kills": 0.7561125056826044,
+       "no_kill": 0.12484049340706083
+      },
+      "trades": {
+       "melee_into_retaliation": 0.8079134257693609,
+       "melee_avoidable": 0.06256340886033142,
+       "melee": {
+        "strikes": 1079,
+        "dealt": 52.88415199258573,
+        "taken": 8.105653382761817
+       },
+       "shot": {
+        "strikes": 657,
+        "dealt": 29.834094368340942,
+        "taken": -0.1035007610350076
+       },
+       "least_killed": 0.9988479262672811,
+       "first": 0.616822429906542
+      }
+     }
+    }
+   }
+  }
+ }
+}

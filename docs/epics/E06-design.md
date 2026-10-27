@@ -519,7 +519,7 @@ only if T8d needs the throughput.
 - **T8d, expert iteration** (designed after T8c): the search's improved policy and value as the
   trainer's targets.
 
-## 15. The turn order as an input (T6f) — built, its A/B run the user's (T6g)
+## 15. The turn order as an input (T6f) — built, off by default (T6g: no measurable gain)
 
 The turn-order probe (E06-log) showed the trunk does not know which stack acts next. The user
 (2026-10-26): the engine's own order in the observation, v22, before T8b.
@@ -531,5 +531,5 @@ The turn-order probe (E06-log) showed the trunk does not know which stack acts n
   after v21's layout, which stays its prefix.
 - **The network:** `[network] order` (the MLP's): the trunk reads the whole observation, else
   v21's prefix (every network saved before v22). The entity network reads v21's slots as before.
-- **The run** (T6g, the user's machine): `configs/e06-order.toml`, `t7-1`'s settings with the
-  order; read against `t7-1`'s ladder and with `inspect` (the waits, defends and wandering).
+- **The run** (T6g, `order-1`, E06-log): `t7-1`'s ladder and play; the trained trunk still
+  does not represent the order it reads (the probe again).
