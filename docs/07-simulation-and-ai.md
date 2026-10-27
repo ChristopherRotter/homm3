@@ -35,7 +35,14 @@ design note kept in `docs/epics/E05-log.md` (§1 to §9).
   threads in contiguous shards; play never depends on T, and a batch steps bit for bit as N
   single envs with their episode seeds (a property test). At most `MAX_ENVS` (65 536) envs; each
   entry's rulesets' content hashes and the encodings' and encounters' versions read back for a
-  training run's record (C ABI v31, E06 T2c).
+  training run's record (C ABI v31, E06 T2c). Like both sides' final observations, the acting
+  side's previewed kills of each legal attack and shot entry are an option (`Outputs::preview`,
+  C ABI v33, E06 T5): the engine's preview (BAT-DMG-011), what the original shows a player
+  before a strike, never the retaliation.
+- **The observation** (`h3_sim::observation`, encoding v22): v21's flat layout, then per stack
+  slot its places in the engine's turn order (`h3_battle::turn_order`: in the rest of the round,
+  among its side's, in the next round; E06 T6f). A network may read v21's prefix alone (the
+  trainer's `[network] order` off, its default).
 - **Seats** per scenario side: `External` (the caller acts) or `Internal(policy)`, played inside
   the call: `Random` (tests and benchmarks), `System` (E23's policy of the original's computer),
   the bots `Aggressor` and `Greedy`. Every side plays as a human player's (`human`), and Retreat
@@ -56,7 +63,11 @@ design note kept in `docs/epics/E05-log.md` (§1 to §9).
   zero-sum exactly.
 - **Information:** only projected observations cross the batch (the acting side's, both sides' at
   a truncation). The fork, the state hash and the episode seeds are trusted tooling (`h3.h`,
-  `h3env.tools`), never an agent's input.
+  `h3env.tools`), never an agent's input. A search agent also reads *worlds* (ADR-0025 point
+  12a; C ABI v34, E06 T8b): copies of the battle in which what its side may not know is replaced
+  by a guess drawn from the world's seed (`h3_batch_determinize`, the engine's
+  `BattleState::determinized`; the stream re-seeded, `h3_env_reseed`), which it may fork and
+  step; the true state's fork and hash stay tooling.
 - **Python** (`python/`, package `h3env`): ctypes over the C ABI, the caller's numpy arrays
   written in place, the library's ABI version checked, short arrays refused and the outputs read-only; uv with
   CPython 3.12 (on the user's machine a conda Python); PyTorch 2.14 (CUDA 12.6) in the opt-in
@@ -90,7 +101,7 @@ Scripted bots are baselines for evaluation only; training uses self-play and the
 
 - random legal agent (also the benchmark workload; built, `Policy::Random`),
 - simple heuristic battle bots (built in E05: Aggressor and Greedy value, §1.1),
-- later: stronger scripted bots, search-based agents (MCTS with the forkable env), and references such as the original game's AI and other open-source AIs where comparison is feasible.
+- later: stronger scripted bots, search-based agents (MCTS with the forkable env; E06 T8 built a determinized Gumbel search over worlds, `h3env.search`, which gained nothing over its network, `docs/epics/E06-log.md` T8c), and references such as the original game's AI and other open-source AIs where comparison is feasible.
 
 ## 3. Strategy per problem
 
@@ -132,4 +143,4 @@ Local PC: Ryzen 9 3900-class CPU (12 cores / 24 threads), GTX 1070 (8 GB, Pascal
 
 ## 7. Deferred
 
-RL algorithm selection, network architectures, the reward's weights beyond v1 (its mana price is provisional), the exact opponent ladder, league management, multi-agent (>2 players) handling. E05's smoke run chose nothing here for good: its PPO, network and settings only show the environment trainable (E06 decides). E06 (refined 2026-10-20, AI-Q8) chose PPO with a league of past checkpoints (prioritized fictitious self-play), search only if PPO plateaus, and its targets and evaluation gate (`docs/epics/E06-battle-ai.md`).
+RL algorithm selection, network architectures, the reward's weights beyond v1 (its mana price is provisional), the exact opponent ladder, league management, multi-agent (>2 players) handling. E05's smoke run chose nothing here for good: its PPO, network and settings only show the environment trainable (E06 decides). E06 (refined 2026-10-20, AI-Q8) chose PPO with a league of past checkpoints (prioritized fictitious self-play), search only if PPO plateaus, and its targets and evaluation gate (`docs/epics/E06-battle-ai.md`). PPO plateaued at the heuristic bots' level whatever the lever, and the search gained nothing over the network (E06 T6, T8): the user revised E06's targets to the evidence and closes it with `t7-1` as the battle AI v1 (2026-10-27); a stronger battle agent is E25's.
