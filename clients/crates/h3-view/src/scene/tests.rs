@@ -992,10 +992,26 @@ fn the_panel_over_time_follows_the_turns_and_the_log() {
     let none = Panels::new(&o, &[], Vec::new());
     assert_eq!(picture(&none.at(&o, &[], 0, &layout)), Some(0));
     assert_eq!(none.text(0), "");
-    // E17 M3 T9b, the reviewer: the scroll buttons take a click once a human's turn enabled them.
-    assert!(panels.scrolls(&o, &started, 300));
-    assert!(!panels.scrolls(&o, &started, 200));
-    assert!(!none.scrolls(&o, &[], 0));
+    // E17 M3 T9b, the reviewer: the scroll buttons take a click once a human's turn enabled them
+    // (the opening's own active stack none: Red's turn at 300 is the first).
+    let later = Panels::new(&o, &events, Vec::new());
+    assert!(later.scrolls(&started, 300));
+    assert!(!later.scrolls(&started, 200));
+    assert!(!none.scrolls(&[], 0));
+    // Red's opening is a human's turn: enabled from the start.
+    assert!(panels.scrolls(&started, 0));
+    // The log's texts by time: the last of the list shown by then, whatever their order (a
+    // shot's line has its start's time).
+    let shot = vec![
+        (0, String::new()),
+        (100, "a".to_string()),
+        (50, "b".to_string()),
+    ];
+    let shot = Panels::new(&o, &[], shot);
+    assert_eq!(
+        [shot.text(49), shot.text(60), shot.text(120)],
+        ["", "b", "b"]
+    );
 }
 
 #[test]

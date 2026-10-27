@@ -7,6 +7,7 @@ mod battle;
 mod bot;
 mod gate;
 mod harvest;
+mod live;
 mod log;
 mod motion;
 mod play;
