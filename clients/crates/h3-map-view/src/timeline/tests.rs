@@ -168,6 +168,7 @@ fn start(situation: &str, speed: usize) -> Start {
         paths: Vec::new(),
         path: Vec::new(),
         live: false,
+        sound: None,
     }
 }
 
@@ -261,6 +262,7 @@ fn looped(bugs: Bugs, speed: usize) -> Loop {
         paths: Vec::new(),
         path: Vec::new(),
         live: false,
+        sound: None,
     };
     Loop::start(rules(bugs), &start).unwrap()
 }
@@ -453,6 +455,7 @@ fn what_it_cannot_play_yet() {
         paths: Vec::new(),
         path: Vec::new(),
         live: false,
+        sound: None,
     };
     assert_eq!(
         Loop::start(rules(Bugs::Fixed), &over),
@@ -555,6 +558,7 @@ fn walking(speed: usize, paths: Vec<Vec<Arrow>>) -> Loop {
         paths,
         path: Vec::new(),
         live: false,
+        sound: None,
     };
     Loop::start(rules(Bugs::Fixed), &start).unwrap()
 }
@@ -634,6 +638,84 @@ fn a_step_and_its_frames() {
     assert!(s.cursor.shown);
     assert_eq!(s.drawn.lifted, Some([1, 0]));
     assert_eq!(s.objects, 1);
+}
+
+#[test]
+fn a_walks_sounds() {
+    // The walk east at speed 3 (two frames a step), over grass but dirt from x 19, LoopAren at
+    // (16, 17), a tile west of the hero.
+    let tiles = crate::sound::tests::tiles(
+        36,
+        |x, _| if x >= 19 { 0 } else { 2 },
+        |x, y| ((x, y) == (16, 17)).then_some(2),
+    );
+    let mut l = walking(3, vec![east()]);
+    l.sound = Some(crate::sound::tests::sound(tiles));
+    let (middle, standing) = (l.middle(), l.standing());
+    if let Some(sound) = &mut l.sound {
+        sound.start(0, middle, standing);
+    }
+    let dest = tile(21, 17);
+    l.run(1, &[Action::Click(dest)]).unwrap();
+    l.run(2, &[Action::Click(dest)]).unwrap();
+    for t in 3..=402 {
+        l.run(t, &[]).unwrap();
+    }
+    let cues: Vec<String> = l
+        .take_cues()
+        .iter()
+        .map(|(t, c)| crate::sound::line(*t, c))
+        .collect();
+    // The map's start; the walk's start (its sound, then the lift restarting the loops); each
+    // step's end the loop's volume by its distance, gone at 4; onto dirt (a step's end at frame
+    // 4) the music at once and the step sound at the frame's wrap (352); the last step's end.
+    assert_eq!(
+        cues,
+        [
+            "0 music Grass",
+            "0 loop 0 LoopAren.wav 28",
+            "0 loop-volume 0 28",
+            "2 step horse02.wav",
+            "2 loop-stop 0",
+            "2 loop 0 LoopAren.wav 28",
+            "2 loop-volume 0 28",
+            "102 loop-volume 0 20",
+            "202 music Dirt",
+            "202 loop-volume 0 10",
+            "302 loop-stop 0",
+            "352 step-stop",
+            "352 step horse00.wav",
+            "402 step-stop",
+        ]
+    );
+    assert!(l.take_cues().is_empty());
+    // Key steps west after a scroll (the lift centres the view on the hero's dirt: no change):
+    // no step sound, but onto grass the new terrain's, started and stopped at the step's end
+    // (after the ambient sounds); LoopAren back within 3 tiles.
+    l.run(403, &[Action::Scroll(Direction::West)]).unwrap();
+    for t in [404, 505, 606] {
+        l.run(t, &[Action::Step(Direction::West)]).unwrap();
+        for t in t + 1..t + 101 {
+            l.run(t, &[]).unwrap();
+        }
+    }
+    let cues: Vec<String> = l
+        .take_cues()
+        .iter()
+        .map(|(t, c)| crate::sound::line(*t, c))
+        .collect();
+    assert_eq!(l.state(706).hero.unwrap().at, Pos { x: 18, y: 17, z: 0 });
+    assert_eq!(
+        cues,
+        [
+            "605 loop 0 LoopAren.wav 10",
+            "605 loop-volume 0 10",
+            "706 music Grass",
+            "706 step horse02.wav",
+            "706 loop-volume 0 20",
+            "706 step-stop"
+        ]
+    );
 }
 
 #[test]
@@ -792,6 +874,7 @@ fn live(pointer: [i32; 2], hero: bool, path: Vec<Arrow>) -> Start {
         paths: vec![east()],
         path,
         live: true,
+        sound: None,
     }
 }
 

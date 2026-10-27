@@ -105,50 +105,216 @@ fort = ["AVCcasx0.def", "AVCramx0.def", "AVCtowx0.def", "AVCinfx0.def", "AVCnecx
 capitol = ["AVCcasz0.def", "AVCramz0.def", "AVCtowz0.def", "AVCinfz0.def", "AVCnecz0.def",
            "AVCdunz0.def", "AVCstrz0.def", "AVCforz0.def", "AVChforz.def"]
 
+# The map's sounds (E24 M2 T5; design §3.11): the ambient loops by the original's index
+# (ambient_loop_names 0x65F794) and their volume by distance 0 to 3 (ambient_volumes 0x63A64C);
+# a tile's loop (tile_ambient_sound 0x418620): water below picture 21 the shore's, else by the
+# object the tile records (0x505610) as the game loads its class (object_class_values 0x63A6E4):
+# an entrance's by class (its switch 0x41868B; a bank, the fourth dwelling and a garrison by
+# subclass), a dwelling's by its creature (dwelling_creatures 0x63D570, the switch 0x418809), a
+# mine's by type or abandoned; without an entrance the volcano's, or on a tile of no class the
+# special ground's (tile_special_ground 0x4FCE20). The flying hero's step sound (+0x388); the
+# terrains' music and step sounds are on their [[terrain]] entries.
+[map.sound]
+flying = "horse10.wav"
+loops = ["LoopAnim.wav", "LoopArch.wav", "LoopAren.wav", "LoopBehe.wav", "LoopBird.wav",
+         "LoopBuoy.wav", "LoopCamp.wav", "LoopCave.wav", "LoopDead.wav", "LoopDevl.wav",
+         "LoopDog.wav", "LoopDrag.wav", "LoopFact.wav", "LoopFall.wav", "LoopFire.wav",
+         "LoopFlag.wav", "LoopFoun.wav", "LoopGemP.wav", "LoopGrem.wav", "LoopGrif.wav",
+         "LoopHarp.wav", "LoopHors.wav", "LoopHydr.wav", "LoopLear.wav", "LoopLumb.wav",
+         "LoopMagi.wav", "LoopMark.wav", "LoopMerc.wav", "LoopMill.wav", "LoopMine.wav",
+         "LoopMon1.wav", "LoopMon2.wav", "LoopMonk.wav", "LoopMons.wav", "LoopOrc.wav",
+         "LoopPega.wav", "LoopPike.wav", "LoopSanc.wav", "LoopShrin.wav", "LoopStar.wav",
+         "LoopSulf.wav", "LoopSwar.wav", "LoopSwor.wav", "LoopTita.wav", "LoopUnic.wav",
+         "LoopVolc.wav", "Loopair.wav", "loopcrys.wav", "loopcurs.wav", "loopden.wav",
+         "loopdwar.wav", "loopeart.wav", "loopelf.wav", "loopfaer.wav", "loopgard.wav",
+         "loopgate.wav", "loopgobl.wav", "looplepr.wav", "loopmant.wav", "loopmedu.wav",
+         "loopnaga.wav", "loopogre.wav", "loopsire.wav", "loopskel.wav", "looptav.wav",
+         "loopvent.wav", "loopwind.wav", "loopwhir.wav", "loopwolf.wav", "loopocea.wav"]
+volumes = [32, 28, 20, 10]
+shore = "loopocea.wav"
+shore_pictures = 21
+loaded_as = [[165, 114], [166, 115], [167, 116], [168, 117], [169, 118], [170, 119], [171, 120],
+             [172, 121], [173, 122], [174, 123], [175, 124], [176, 125], [177, 126], [178, 127],
+             [179, 128], [180, 129], [181, 130], [182, 131], [183, 132], [184, 133], [185, 134],
+             [186, 135], [187, 136], [188, 137], [189, 138], [190, 143], [191, 147], [192, 148],
+             [193, 149], [194, 150], [195, 151], [196, 152], [197, 153], [198, 154], [199, 155],
+             [200, 156], [201, 157], [202, 158], [203, 159], [204, 160], [205, 161], [219, 33],
+             [220, 53], [221, 99], [223, 21], [230, 46]]
+ownable = [17, 20, 33, 42, 53, 77, 87, 98]
+hole = 124
+objects = [
+  { class = 4, loop = "LoopAren.wav" },
+  { class = 7, loop = "LoopMark.wav" },
+  { class = 11, loop = "LoopBuoy.wav" },
+  { class = 12, loop = "LoopCamp.wav" },
+  { class = 16, subclass = 0, loop = "LoopCave.wav" },
+  { class = 16, subclass = 1, loop = "loopdwar.wav" },
+  { class = 16, subclass = 2, loop = "LoopGrif.wav" },
+  { class = 16, subclass = 3, loop = "LoopFire.wav" },
+  { class = 16, subclass = 4, loop = "loopmedu.wav" },
+  { class = 16, subclass = 5, loop = "loopnaga.wav" },
+  { class = 16, subclass = 6, loop = "LoopLear.wav" },
+  { class = 20, subclass = 0, loop = "LoopTita.wav" },
+  { class = 20, subclass = 1, loop = "LoopFact.wav" },
+  { class = 23, loop = "LoopSwar.wav" },
+  { class = 25, loop = "LoopDrag.wav" },
+  { class = 28, loop = "loopfaer.wav" },
+  { class = 30, loop = "LoopFoun.wav" },
+  { class = 31, loop = "LoopFall.wav" },
+  { class = 32, loop = "loopgard.wav" },
+  { class = 33, subclass = 0, loop = "LoopSwar.wav" },
+  { class = 33, subclass = 1, loop = "LoopMagi.wav" },
+  { class = 35, loop = "LoopSwar.wav" },
+  { class = 43, loop = "LoopMon1.wav" },
+  { class = 44, loop = "LoopMon1.wav" },
+  { class = 45, loop = "LoopMon2.wav" },
+  { class = 47, loop = "LoopMagi.wav" },
+  { class = 48, loop = "LoopFoun.wav" },
+  { class = 51, loop = "LoopMerc.wav" },
+  { class = 55, loop = "looplepr.wav" },
+  { class = 60, loop = "LoopFire.wav" },
+  { class = 61, loop = "LoopStar.wav" },
+  { class = 64, loop = "LoopFlag.wav" },
+  { class = 78, loop = "LoopMerc.wav" },
+  { class = 80, loop = "LoopSanc.wav" },
+  { class = 84, loop = "LoopDead.wav" },
+  { class = 87, loop = "LoopLumb.wav" },
+  { class = 88, loop = "LoopShrin.wav" },
+  { class = 89, loop = "LoopShrin.wav" },
+  { class = 90, loop = "LoopShrin.wav" },
+  { class = 92, loop = "loopsire.wav" },
+  { class = 94, loop = "LoopHors.wav" },
+  { class = 95, loop = "looptav.wav" },
+  { class = 96, loop = "LoopSanc.wav" },
+  { class = 97, loop = "loopden.wav" },
+  { class = 99, loop = "LoopMark.wav" },
+  { class = 100, loop = "LoopLear.wav" },
+  { class = 103, loop = "loopgate.wav" },
+  { class = 106, loop = "LoopFact.wav" },
+  { class = 107, loop = "LoopSwar.wav" },
+  { class = 109, loop = "LoopMill.wav" },
+  { class = 111, loop = "loopwhir.wav" },
+  { class = 112, loop = "loopwind.wav" },
+]
+dwelling_creatures = [106, 96, 74, 66, 68, 10, 14, 112, 12, 94, 54, 104, 16, 113, 52, 18, 114, 30,
+                      36, 86, 98, 84, 44, 102, 26, 4, 72, 46, 110, 42, 100, 34, 80, 76, 78, 8, 38,
+                      48, 90, 88, 50, 82, 92, 28, 40, 22, 70, 115, 60, 108, 20, 24, 64, 62, 56,
+                      58, 0, 2, 6, 118, 120, 130, 132, 133, 134, 135, 136, 137, 24, 112, 113, 114,
+                      115, 138, 139, 140, 141, 142, 143, 144]
+creatures = [
+  { creatures = [0], loop = "LoopPike.wav" },
+  { creatures = [2, 100], loop = "LoopArch.wav" },
+  { creatures = [4, 30], loop = "LoopGrif.wav" },
+  { creatures = [8], loop = "LoopMonk.wav" },
+  { creatures = [10, 14], loop = "LoopHors.wav" },
+  { creatures = [12], loop = "LoopSanc.wav" },
+  { creatures = [16], loop = "loopdwar.wav" },
+  { creatures = [18], loop = "loopelf.wav" },
+  { creatures = [20], loop = "LoopPega.wav" },
+  { creatures = [22], loop = "loopgard.wav" },
+  { creatures = [24], loop = "LoopUnic.wav" },
+  { creatures = [26, 68, 82], loop = "LoopDrag.wav" },
+  { creatures = [28], loop = "LoopGrem.wav" },
+  { creatures = [34, 36], loop = "LoopMagi.wav" },
+  { creatures = [38], loop = "loopnaga.wav" },
+  { creatures = [40], loop = "LoopTita.wav" },
+  { creatures = [42, 50, 114], loop = "LoopFire.wav" },
+  { creatures = [44, 52], loop = "loopvent.wav" },
+  { creatures = [46], loop = "LoopDog.wav" },
+  { creatures = [48, 70, 74, 94], loop = "LoopCave.wav" },
+  { creatures = [54], loop = "LoopDevl.wav" },
+  { creatures = [56], loop = "loopskel.wav" },
+  { creatures = [58, 60, 62, 64, 66], loop = "LoopDead.wav" },
+  { creatures = [72], loop = "LoopHarp.wav" },
+  { creatures = [76], loop = "loopmedu.wav" },
+  { creatures = [78, 102], loop = "LoopAnim.wav" },
+  { creatures = [80], loop = "loopmant.wav" },
+  { creatures = [84], loop = "loopgobl.wav" },
+  { creatures = [86], loop = "loopwolf.wav" },
+  { creatures = [88, 98], loop = "LoopOrc.wav" },
+  { creatures = [90], loop = "loopogre.wav" },
+  { creatures = [92], loop = "LoopBird.wav" },
+  { creatures = [96], loop = "LoopBehe.wav" },
+  { creatures = [104], loop = "LoopLear.wav" },
+  { creatures = [106, 108], loop = "LoopMons.wav" },
+  { creatures = [110], loop = "LoopHydr.wav" },
+  { creatures = [112], loop = "Loopair.wav" },
+  { creatures = [113], loop = "loopeart.wav" },
+  { creatures = [115], loop = "LoopFoun.wav" },
+]
+creature_default = "LoopSwor.wav"
+mines = ["LoopLumb.wav", "LoopStar.wav", "LoopSulf.wav", "LoopSulf.wav", "loopcrys.wav",
+         "LoopGemP.wav", "LoopMine.wav"]
+abandoned = "LoopCave.wav"
+blocking = [{ class = 158, loop = "LoopVolc.wav" }]
+grounds = [21, 46, 222, 224, 225, 226, 227, 228, 229, 231]
+ground_loops = [{ class = 21, loop = "loopcurs.wav" }, { class = 46, loop = "LoopMagi.wav" }]
+
 # The terrains by the .h3m's codes (the packs' [[terrain]] in this order); `cycles`: the palette
-# ranges the tick rotates (design §1.6).
+# ranges the tick rotates (design §1.6); `music` the track the view's middle on it asks for
+# (terrain_music_tracks 0x678330 and the names at 0x684AE8; rock none) and `step` the walking
+# hero's step sound (horse%02d.wav into the manager's +0x360; E24 M2 T5, design §3.11).
 
 [[terrain]]  # dirt
 code = 0
 def = "dirttl.def"
+music = "Dirt"
+step = "horse00.wav"
 
 [[terrain]]  # sand
 code = 1
 def = "sandtl.def"
+music = "Sand"
+step = "horse01.wav"
 
 [[terrain]]  # grass
 code = 2
 def = "grastl.def"
+music = "Grass"
+step = "horse02.wav"
 
 [[terrain]]  # snow
 code = 3
 def = "snowtl.def"
+music = "Snow"
+step = "horse03.wav"
 
 [[terrain]]  # swamp
 code = 4
 def = "swmptl.def"
+music = "Swamp"
+step = "horse04.wav"
 
 [[terrain]]  # rough
 code = 5
 def = "rougtl.def"
+music = "Rough"
+step = "horse05.wav"
 
 [[terrain]]  # subterranean
 code = 6
 def = "subbtl.def"
+music = "Underground"
+step = "horse06.wav"
 
 [[terrain]]  # lava
 code = 7
 def = "lavatl.def"
+music = "Lava"
+step = "horse07.wav"
 cycles = [[246, 254]]
 
 [[terrain]]  # water
 code = 8
 def = "watrtl.def"
+music = "Water"
+step = "horse08.wav"
 cycles = [[229, 240], [242, 253]]
 
 [[terrain]]  # rock
 code = 9
 def = "rocktl.def"
+step = "horse09.wav"
 
 # The rivers by the .h3m's codes (0: none).
 

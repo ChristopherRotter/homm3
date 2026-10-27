@@ -132,8 +132,10 @@ search the parent directories).
   the adventure screen's layout (`clients/map/`), finds every name they hold where the game
   searches it in the four LODs and decodes it, and checks that each DEF's group 0 holds the
   frames the view draws, the terrains', rivers' and roads' as many as the highest picture any
-  shipped map gives (`<install>/Maps`); it prints each DEF's frames, encodings and run pixels and
-  exits 1 on a problem (findings: `docs/epics/E24-design.md` §1.9).
+  shipped map gives (`<install>/Maps`); since E24 M2 T5 every sound the tables name in the sound
+  archives and every terrain's music in `<install>/MP3`, decoded; it prints each DEF's frames,
+  encodings and run pixels, each sound's length, and exits 1 on a problem (findings:
+  `docs/epics/E24-design.md` §1.9).
 - **A still of the adventure map** (E24 M1 T3b1): `cargo run --release -p h3-map-view -- render
   <map.h3m> --view <x>,<y>[,<z>]` (from `clients/`) draws the adventure screen at that view as
   the original does, so far its frame and the view's terrain, rivers, roads, edge, objects and
@@ -153,7 +155,7 @@ search the parent directories).
   E24 M2 T3a: the selected hero's steps and the path's walk at the hero speeds, its lines but the
   `screen` ones, which wait for the walk drawn, M2 T3b); `--frames` writes our frames for the harness's frame check, `python3
   capture/h3map.py frames` (the runbook, "The map's sequences").
-- **The map in a window** (E24 M2 T4a, T4b1): `cargo run --release -p h3-map-view -- window
+- **The map in a window** (E24 M2 T4a, T4b1, T5): `cargo run --release -p h3-map-view -- window
   <sequence | situation>` (from `clients/`) shows a recorded sequence (its inputs replayed at
   their times) or a situation (its kept live part) through `h3-sdl` at the original's frame
   times, drawn as `sequences` draws it. Past a sequence's inputs, and in a situation from the
@@ -161,8 +163,10 @@ search the parent directories).
   keypad's too) scroll, a direction key steps the selected hero (a held key repeats), the
   pointer at the frame's edges scrolls with the edge cursors, a click shows a path the map knows
   and walks it on its destination; the cursor is the hardware one, or drawn (`--drawn-cursor`).
-  Every key goes through the table `h3_map_view::keys` (*provisional*): F5 pause, F6 the next
-  frame while paused, F7 restart, F8 vsync, F9 the cursor's kind, F11 fullscreen, Esc quit. A
+  The map's sound plays (T5, design §3.11: the terrain's music, the step sound, the ambient
+  loops; `--mute` none, `--cues <file>` writes each cue played). Every key goes through the table
+  `h3_map_view::keys` (*provisional*): F2 the music, F3 the effects, F5 pause, F6 the next frame
+  while paused, F7 restart, F8 vsync, F9 the cursor's kind, F11 fullscreen, Esc quit. A
   user's `keys.toml` (`--keys`, else in the working directory) overrides them command by command
   (its format: the usage). `--check <s>` reads every frame back (Xvfb in the sandbox) and plays
   every action headless to check each change shown, `--measure <s>` times them; both take the
@@ -181,7 +185,7 @@ search the parent directories).
 | `clients/scenarios/*.toml` | the client's battle scenarios (the scenario format of `packs/README.md`) for `h3-view render` and `play`: the stills T7 renders, `smoke.toml` the captured smoke battle (T8), `battle.toml` the whole battle `play` fights (M2 T4b-2a) |
 | `clients/capture/` | the reference captures (below; the runbook `capture/README.md`): `setup.sh`, the driver `h3drive.py` and its screens' probes, `h3cap.py` (diffs, obstacles), the `xdd.dll` source (forwarder and virtual clock) |
 | `clients/situations/` | the capture set (`set.toml`) and its situations' scenario files: what the harness shows the original, with each frame's recorded differences; the recorded sequences (`sequences.toml`, `timelines/`) with their engine commands (the casts' since M3 T7a-2a, with the screen's changes); `kept/`, what the last captures kept and the viewer's digests at those times |
-| `clients/crates/h3-map-view` | the adventure map's viewer (the map-client lane, E24): the library (pure, `no_std`) holds the map's static art read from the raw `.h3m` (`art`), its live part (`live`: the objects standing, a random object's drawn template, owners, heroes, boats, the viewer's explored tiles, the path shown, the moment), the map's asset tables (`tables`), the adventure screen's layout (`layout`), what the gate checks of a DEF (`check`), the still: the draw list at a view (`scene`), its decoded assets (`batch`), the map's drawers (`draw`) and the composition into a frame (`compose`), the capture set's situations (`situation`), the map over time (`timeline`: the original's loop on a clock of milliseconds; `sequence`, the recorded sequences; E24 M2 T2), the window's (E24 M2 T4a: `replay`, the timeline run forward as the clock needs, since T4b1 given the player's actions as they come; `keys`, the table of commands; `clock`, a copy of `h3-view`'s) and the cursor (`cursor`, a copy of `h3-view`'s; both copies until M3 T0's common crate); its binary the map's real-asset gate, `render`, `situation`, `sequences` and `window`. Its package depends on `h3-assets`, `h3-map` (the raw model), `h3-render` and, for the binary only, `h3-formats` and `h3-sdl` (`tests/purity.rs`, a copy of `h3-view`'s for this crate) |
+| `clients/crates/h3-map-view` | the adventure map's viewer (the map-client lane, E24): the library (pure, `no_std`) holds the map's static art read from the raw `.h3m` (`art`), its live part (`live`: the objects standing, a random object's drawn template, owners, heroes, boats, the viewer's explored tiles, the path shown, the moment), the map's asset tables (`tables`), the adventure screen's layout (`layout`), what the gate checks of a DEF (`check`), the still: the draw list at a view (`scene`), its decoded assets (`batch`), the map's drawers (`draw`) and the composition into a frame (`compose`), the capture set's situations (`situation`), the map over time (`timeline`: the original's loop on a clock of milliseconds; `sequence`, the recorded sequences; E24 M2 T2), the window's (E24 M2 T4a: `replay`, the timeline run forward as the clock needs, since T4b1 given the player's actions as they come; `keys`, the table of commands; `clock`, a copy of `h3-view`'s), the map's sound (`sound`: the tiles' ambient sounds and the original's sound state, cued by the timeline; E24 M2 T5) and the cursor (`cursor`, a copy of `h3-view`'s; both copies until M3 T0's common crate); its binary the map's real-asset gate, `render`, `situation`, `sequences` and `window`. Its package depends on `h3-assets`, `h3-map` (the raw model), `h3-render` and, for the binary only, `h3-formats`, `h3-sdl` and `nanomp3` (`tests/purity.rs`, a copy of `h3-view`'s for this crate) |
 | `clients/map/assets/base.toml` | the map's asset tables (below, "The map's asset tables") |
 | `clients/map/layouts/adventure.toml` | the adventure screen's layout at the native resolution: the frame and its picture, the view's place, tile, loops and clip, the corner gems (`docs/epics/E24-design.md` §1.1, §1.2, §1.9), the scroll's limits and edge zones and the adventure cursor's DEF, frames and hot spots (§3.4, E24 M2 T2); an HD layout is another file of the same format (*provisional*) |
 | `clients/out/` | local output (renders, reports); gitignored |
@@ -290,10 +294,24 @@ The format:
   length; `[map.owners]` (E24 M1 T5b1): `palette` (`game.pal`), `neutral` (the entry of an
   object without an owner, 63; a colour's is the next but the colour) and `classes` (the classes
   whose bodies draw their flag pixels in it); `[map.towns]`: `village`, `fort` and `capitol` (a
-  town's picture by faction without a Fort, with one, with a Capitol: 9 each).
+  town's picture by faction without a Fort, with one, with a Capitol: 9 each); optional
+  `[map.sound]` (E24 M2 T5, *provisional*; `docs/epics/E24-design.md` §3.11; without it the map
+  plays no sound): `flying` (the flying hero's step sound, `horse10.wav`), `loops` (the ambient
+  loops' WAVs by the original's index, 70), `volumes` (a loop's volume by distance 0 to 3),
+  `shore` and `shore_pictures` (water below that picture sounds as that loop), `loaded_as` (the
+  map's classes the game loads as others, `[map's, game's]`), `ownable` and `hole` (the classes
+  a tile without an entrance records first: 0x505610's walks), `objects` (an entrance tile's loop
+  by class, `{ class, subclass?, loop }`, the first that matches), `dwelling_creatures` (a
+  dwelling's creature by subclass), `creatures` (its loop by creature, `{ creatures, loop }`) and
+  `creature_default`, `mines` (a mine's loop by type) and `abandoned`, `blocking` (a tile's loop
+  without an entrance by its class) and `grounds` with `ground_loops` (the special grounds of a
+  tile of no class, the first from the top, and their loops); every loop named by its WAV name,
+  one of `loops`.
 - `[[terrain]]`, `[[river]]`, `[[road]]`: `code` (the `.h3m`'s; 0 is no river or road), `def` (a
   tile's picture is its group 0's frame), optional `cycles` (the palette ranges the tick rotates,
-  first and last entry). A code defined twice in a selection is an error.
+  first and last entry); a terrain's optional `music` (its track's name, `MP3/<name>.mp3`; none
+  where the music goes on, rock) and `step` (the walking hero's step sound; E24 M2 T5). A code
+  defined twice in a selection is an error.
 
 ## The string catalogue
 

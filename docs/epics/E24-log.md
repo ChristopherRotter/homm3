@@ -834,3 +834,44 @@ live input and the Windows build. No code reading; design §3.9.
   pauses by Space, Esc then nothing, Ctrl+F12 quits; an unknown key refused with the list.
 - **Not checked here:** fullscreen (bare Xvfb has no window manager; the adapter's, unchanged since
   E17 §8.1); the Windows build (T4b).
+
+### M2 T5 — the map's sound (2026-10-27)
+
+Taken whole (the user, at the session's start, over a cut into the readings headless and the
+window, or one by sound kind). The user's computer link dropped after the staging (the MP3
+folder's terrain tracks staged with the rest). Design §3.11.
+
+- **Read:** the terrain music's requests (the map's start 0x419990, `hero_select`'s, a step's end;
+  the tracks 0x684AE8; `play_music`'s same-name test) and its change (`music_stop_fade`
+  0x59B080: the old track's place kept, a fade-out 114 … 12 by 100 ms, then the new one where it
+  stopped, fading in); the step sounds (`horse00` to `horse10`, 0x40747A; in a boat the water's,
+  flying `horse10`; one loop from the walk's start, changed only where the music's terrain
+  changes, at the frame's wrap; a key's step none but a new terrain's at its end); the ambient
+  loops (`ambient_sounds_at`'s two passes over the rings to 3 tiles, `ambient_sound_visit`'s
+  slots, the volumes 32, 28, 20, 10; `tile_ambient_sound`'s switch by class, a dwelling's
+  creature, a mine's type, the shore's water, the volcano, the special grounds; `hero_hide`'s
+  restored class); the callers (the scroll none). Corrected: design §3.3's and §3.5's "+0x388 in
+  a boat" (the terrain's). MCL-Q8 (the found set's shift mod 32) and MCL-Q9 (the shore's 21
+  against the coast's 20) asked, both built as the original's.
+- **Built** (*provisional*): the tables' `[map.sound]` and the terrains' `music` and `step`
+  (`h3_map_view::sound::SoundArt`, resolved as `SoundRules` into `Tables::sound`, with
+  `Tables::sounds` and `tracks` for the gate); `h3_map_view::sound` (`TileSounds`: each tile's
+  loop from the art, the live part and every level's draw lists, the tile's recorded object as
+  0x505610's walks give it, heroes standing silent; `Sound`: +0x58, the slots, the step sound
+  playing and queued, its `Cue`s); `Start::sound`, the timeline's loop driving it (the start, the
+  lift, the walk's start, a step's end, the frame's wrap, the walk's end; `Loop::take_cues`); the
+  replay's cues kept apart and handed out once (`Replay::take_cues`, again after a rerun or a
+  restart); `keys`' `music` (F2) and `effects` (F3); the binary's `sounds` (the archives, the
+  WAVs, the MP3s; the gate's check) and `audio` (`Library`, `Player`), the window's `--mute` and
+  `--cues`, `paint`'s tiles' sounds; `nanomp3` for the binary.
+- **Checked:** the sound's unit tests (the tables' rules and errors, a hand-made map's tiles, the
+  slots' scan order, the eviction, the volumes, the stop flag, MCL-Q8's shared bit, the music and
+  the step sounds over a walk), the timeline's walk east with its cues (the start, the lift, the
+  volumes by distance, the music at once and the step sound at the wrap, the key steps after a
+  scroll), the replay's cues across a rerun from 0 and a restart; the gate: the 81 WAVs and the 9
+  tracks found and decoded; `sequences` 13 of 13 as recorded; under Xvfb with SDL's `disk` driver
+  the fade-in and the fade-out sample-exact against the tracks (design §3.11), every frame read
+  back exact and every change the headless loop's; the client gates at 100 %.
+- **Not checked here:** the original's cues (the harness's settings have no sound; Miles under
+  Wine without a device untried); `drawn` (no drawing changed; the original's screens are not in
+  this sandbox); a hero flying (none in M2's situations).

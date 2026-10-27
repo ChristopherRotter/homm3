@@ -1,12 +1,14 @@
 //! `h3-map-view`: the adventure map client's command line (E24). An adapter: it reads files and
 //! prints; what it computes comes from the pure library.
 
+mod audio;
 mod files;
 mod gate;
 mod paint;
 mod render;
 mod sequences;
 mod situation;
+mod sounds;
 mod window;
 
 use std::process::ExitCode;
@@ -28,7 +30,9 @@ commands:
           Objects.txt and the shipped maps' templates: its shape and the pixels its .msk leaves
           undrawn (D8), and, listed, those a random object's picture loses drawn with its random
           template's masks (design §2.7); the templates with a visitable cell outside their
-          .msk and the owners' and towns' pictures (design §2.9). It exits 1 on a problem. <dir> defaults to
+          .msk and the owners' and towns' pictures (design §2.9); the map's sounds (E24 M2 T5):
+          every ambient loop and step sound in the sound archives, decoded, every terrain's music
+          in <install>/MP3, decoded. It exits 1 on a problem. <dir> defaults to
           $H3_INSTALL, then to the repository's original-data/install.
   render <map.h3m> --view <x>,<y>[,<z>] [--at <ms>] [--cycles <k>] [--live <live.toml>]
          [--viewer <0-7>] [--hidden <x0>,<y0>,<x1>,<y1>]... [--bugs fixed|original]
@@ -73,8 +77,8 @@ commands:
           lane's writer, the shipped maps its copies name read from <dir>/Maps (a situation
           that names a shipped map whole, `map`, is the harness's to load: refused).
   window <sequence | situation> [--keys <file>] [--scale <n>] [--vsync] [--fullscreen]
-         [--drawn-cursor] [--bugs fixed|original] [--install <dir>] [--map <dir>]
-         [--check <s> | --measure <s>]
+         [--drawn-cursor] [--mute] [--cues <file>] [--bugs fixed|original] [--install <dir>]
+         [--map <dir>] [--check <s> | --measure <s>]
           shows a recorded sequence (<map>/sequences.toml: its inputs replayed at their times,
           the cursor the recording's) or a situation (<map>/situations/<id>.toml, with its kept
           live part if any; the viewer's hero selected when it has one only) in a window at the
@@ -83,14 +87,17 @@ commands:
           a direction key (the keypad's too) scroll, a direction key steps the selected hero (a
           held key repeats), the pointer at the frame's edges scrolls with the edge cursors, a
           click shows a path the map knows and on its destination walks it; the cursor is the
-          hardware one (--drawn-cursor or F9: drawn in the frame at the mouse poll's point). Every
-          key goes through a table of commands (E24 M2 T4a, provisional): F5 pauses, F6 shows the
-          next frame while paused, F7 restarts, F8 turns vsync on or off, F9 the cursor's kind,
-          F11 fullscreen, Esc quits. A user's file (--keys, else keys.toml in the working
+          hardware one (--drawn-cursor or F9: drawn in the frame at the mouse poll's point). The
+          map's sound plays (E24 M2 T5): the terrain's music, the walking hero's step sound, the
+          objects' ambient loops within three tiles of the view's middle; --mute plays none,
+          --cues writes each cue played with the clock's millisecond. Every key goes through a
+          table of commands (E24 M2 T4a, provisional): F2 switches the music, F3 the effects, F5
+          pauses, F6 shows the next frame while paused, F7 restarts, F8 turns vsync on or off, F9
+          the cursor's kind, F11 fullscreen, Esc quits. A user's file (--keys, else keys.toml in the working
           directory when there is one) overrides the defaults command by command, e.g.
           `pause = [\"Space\"]`, `quit = [\"Escape\", \"Ctrl+F12\"]` (the commands: scroll-north ...
-          scroll-north-west, hero-north ... hero-north-west, pause, frame, restart, vsync,
-          cursor, fullscreen, quit; [] unbinds one). --bugs defaults to fixed. --check <s> and
+          scroll-north-west, hero-north ... hero-north-west, music, effects, pause, frame,
+          restart, vsync, cursor, fullscreen, quit; [] unbinds one). --bugs defaults to fixed. --check <s> and
           --measure <s> run unattended for <s> seconds (the window's own keys but Esc do
           nothing; the map's input is taken) and report when each frame showed against its time;
           --check also reads every frame back and compares it with the frame composed, and plays

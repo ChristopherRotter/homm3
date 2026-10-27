@@ -12,9 +12,11 @@
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
 use std::fs;
 use std::path::Path;
+use std::sync::Arc;
 
 use h3_formats::lod::LodArchive;
 use h3_map::Limits;
+use h3_map::model::Pos;
 use h3_map::writer::ObjectTemplate;
 use h3_map_view::art::MapArt;
 use h3_map_view::batch::{self, Batch};
@@ -22,10 +24,11 @@ use h3_map_view::compose::{FORMAT, compose};
 use h3_map_view::cursor::{Cursor as Sprite, Image};
 use h3_map_view::layout::AdventureLayout;
 use h3_map_view::live::{Facing, Lifted, Live, Moment, Walking};
-use h3_map_view::objects::{self, Shapes};
+use h3_map_view::objects::{self, DrawLists, Shapes};
 use h3_map_view::scene::{self, ViewAt};
 use h3_map_view::sequence::{self, DEFAULT_HERO_SPEED, DEFAULT_SCROLL_SPEED, Sequence};
 use h3_map_view::situation::Situation;
+use h3_map_view::sound::{Sound, TileSounds};
 use h3_map_view::tables::Tables;
 use h3_map_view::timeline::{Action, Cursor, Draw, Start};
 use h3_render::Bugs;
@@ -97,6 +100,7 @@ pub fn for_sequence<'a>(
     } else {
         (None, Vec::new())
     };
+    let sound = painter.sound(hero.map(|h| h.at))?;
     let start = Start {
         view,
         size: i32::from(situation.size),
@@ -107,6 +111,7 @@ pub fn for_sequence<'a>(
         paths,
         path: Vec::new(),
         live: false,
+        sound,
     };
     Ok(Setup {
         painter,
@@ -162,6 +167,7 @@ pub fn for_situation<'a>(
     let (heroes, viewer) = (&painter.live.heroes, painter.live.viewer);
     let hero = sequence::selected(heroes, viewer).ok();
     painter.selected = sequence::selected_index(heroes, viewer).ok();
+    let sound = painter.sound(hero.map(|h| h.at))?;
     let start = Start {
         view,
         size: i32::try_from(painter.art.size).unwrap_or(i32::MAX),
@@ -172,6 +178,7 @@ pub fn for_situation<'a>(
         paths: Vec::new(),
         path: painter.live.path.clone(),
         live: false,
+        sound,
     };
     Ok(Setup {
         painter,
@@ -263,6 +270,23 @@ impl<'a> Painter<'a> {
         };
         painter.add([assets.layout.cursor.def.to_ascii_uppercase()])?;
         Ok(painter)
+    }
+
+    /// The map's sound from 0 (E24 M2 T5; design §3.11): each tile's ambient sound from every
+    /// level's draw lists, the selected `hero`'s tile left to the timeline; none without the
+    /// tables' sounds.
+    fn sound(&self, hero: Option<Pos>) -> Result<Option<Sound>, String> {
+        let Some(rules) = &self.assets.tables.sound else {
+            return Ok(None);
+        };
+        let lists = (0..self.art.levels)
+            .map(|z| {
+                let z = u8::try_from(z).map_err(|_| format!("level {z}"))?;
+                DrawLists::build(&self.art, &self.live, &self.shapes, z).map_err(|e| e.to_string())
+            })
+            .collect::<Result<Vec<_>, String>>()?;
+        let tiles = TileSounds::build(&self.art, &self.live, &lists, rules, hero);
+        Ok(Some(Sound::new(Arc::new(rules.clone()), Arc::new(tiles))))
     }
 
     /// Decodes the named assets not decoded yet.

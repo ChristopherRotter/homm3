@@ -151,8 +151,10 @@ battle.
   §3.9); T4b cut at its seam before it started (the user, 2026-10-27): T4b1, the live input
   (**done** 2026-10-27: the keys, the keypad's and their repeats, the edge scroll, the clicks, the
   hardware or drawn cursor, `Replay::give`, every change shown checked against a headless play;
-  design §3.10), T4b2, the Windows build tried on the user's machine; T5, the sound; T6, M2's
-  closure.
+  design §3.10), T4b2, the Windows build tried on the user's machine; T5, the sound (**done**
+  2026-10-27, whole: the terrain music, the step sounds and the ambient loops read;
+  `h3_map_view::sound`, cued by the timeline and the replay, played by the window; the gate's
+  check of the sounds; design §3.11; MCL-Q8, MCL-Q9 open); T6, M2's closure.
 - **Exit:** every recorded sequence as recorded, line by line and frame by frame (or each
   difference an `MCL-Q<n>`); a situation and a sequence play in the window at the original's
   frame times, with its sound, and render headless frame by frame.
@@ -223,3 +225,11 @@ reviewers'):
   one; the pointer off the window parked off the frame (no edge scrolls); the view composed whole
   after an input (30 to 60 ms in the sandbox; an incremental scroll left for later); a user's
   file binds only the adapter's keys (`h3_sdl::Key`: 13 letters, M3's hotkeys add the rest).
+- **M2 T5, the sound** (*provisional*): the tables' `[map.sound]` and a terrain's `music` and
+  `step` (the format: `clients/README.md`); the volumes as gains at the settings' highest (no
+  settings yet); F2 the music and F3 the effects (effects off holds the gains at 0, the loops
+  running on); the music's fades applied to its samples as queued (the device's time); a track
+  decoded on a thread when first asked for; the ambient slots on four streams (the original's
+  category of eight handles, at most four used); a flying hero's step sound unused until M4 (the
+  engine's); the cues not compared with the original (the harness plays without sound); an
+  abandoned mine by H3API's flag (the map's 220 or subclass 7, its set-up not read).
