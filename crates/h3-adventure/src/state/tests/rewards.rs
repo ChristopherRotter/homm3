@@ -155,6 +155,8 @@ pub(super) fn rules(faithful: bool) -> Rules {
                 ty("t:scroll", ObjectKindDef::Scroll),
                 // E08 T62b1 (`records.rs`).
                 ty("t:box", ObjectKindDef::PandoraBox),
+                // E08 T62b2 (`events.rs`).
+                ty("t:event", ObjectKindDef::Event),
             ]);
         },
     )
