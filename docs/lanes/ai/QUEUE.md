@@ -4,69 +4,43 @@ Pre-refined tasks of the AI lane, in order, then the inbox of discovered work. T
 
 ## Tasks
 
-**E05** (`docs/epics/E05-battle-env.md`) closed 2026-10-20 (record: `E05-log.md`; the environment as built: `docs/07-simulation-and-ai.md` §1.1). **E06** (`docs/epics/E06-battle-ai.md`, AI-Q8; design `E06-design.md`, record `E06-log.md`): increments 1 to 6 and T6a (the behaviour analysis; rerun `python -m h3env.train.inspect` at every checkpoint) done by 2026-10-26. Best so far, `t7-1` (20 M samples, a third neutral): 0.828, 0.551, 0.528 against Random, Aggressor, Greedy, the system actor 0.374; the neutral set's value +0.245 against the target +0.285. The tasks' history is in `QUEUE-ARCHIVE.md`.
+**E05** (`docs/epics/E05-battle-env.md`) closed 2026-10-20 (record: `E05-log.md`; the environment as built: `docs/07-simulation-and-ai.md` §1.1). **E06** (`docs/epics/E06-battle-ai.md`, AI-Q8; design `E06-design.md`, record `E06-log.md`): increments 1 to 7 done by 2026-10-27; the battle AI v1 is `t7-1` (20 M samples, a third neutral): 0.828, 0.551, 0.528 against Random, Aggressor, Greedy at +0.273, +0.029, +0.010, the neutral set's value +0.245 (decision 7's targets as revised 2026-10-27, met), the system actor 0.374 (E25's target). The tasks' history is in `QUEUE-ARCHIVE.md`.
 
-**Increment 6** closed 2026-10-26 (T6b to T6e; its task list in `E06-archive.md`): both levers
-negative, the system actor as an opponent (T6c, `t6b-1`) and the kill preview in the network
-(T6e, `t6d-1`: the targeting better, the ladder unchanged; AI-Q7 closed, the preview off by
-default).
+**Increment 7** closed 2026-10-27 at the user's checkpoint (its task list in `E06-archive.md`):
+T8a to T8c, T6f and T6g, the turn order as an input and the search over determinized worlds,
+both negative; T8d not built. The user revised decision 7's targets to "beat every heuristic
+bot", which `t7-1` meets, and chose E06's closure with `t7-1` as the battle AI v1; the stronger
+agent is E25's (BACKLOG, a sketch; AI-STUB-1 moved there).
 
-**Increment 7, T8 the search** (refined 2026-10-26, the user: the plateau taken as shown; design
-§14): T8a (the design, ADR-0025 point 12's amendment as a draft) done 2026-10-26; the user
-accepted the draft (`docs/lanes/ai/adr-drafts/0025-amendment-search.md`) the same day, its move
-into ADR-0025 due with the next `shared/` change. T6f (the turn order as an input, observation
-v22) and T8b (the plumbing, C ABI v34) done 2026-10-27 (#493); T6g (the user's run `order-1`)
-and T8c (the search measured in the sandbox with `order-1`'s best, its σ fixed) done 2026-10-27,
-both negative (E06-log). **Next: the user's checkpoint** (E06-log T8c, "Put to the user"): close
-increment 7 and decide E06's end (the agent's recommendation: decision 7's targets revised to the
-evidence, then T9 with `t7-1` as the battle AI v1), or T8d with the tree in Rust, or the
-true-world search as a diagnostic; and AI-STUB-1 (a world's gap against ADR-0025 point 12a),
-which matters only for T8d.
+**Increment 8, T9 the closure** (refined 2026-10-27; the epic file's task list, E05's T9 as the
+pattern). **Merge `shared/e06-search-docs` first** (ADR-0025 point 12a, the env doc, BACKLOG).
 
-- **Optional, the user's machine** (T8c's rows the sandbox left out): `uv run --group train
-  python -m h3env.search --report --best runs/t7-1/best.pt --device cuda --opponent greedy
-  --simulations 64 --json runs/t8c-greedy-64.json`; with `--opponent system` for the report
-  set's whole 500 per kind.
+- **T9a The audit** (the sandbox; next): exit criteria 1 to 5 against the code, tests and
+  committed records; E06's leftovers sorted by destination (E25, encounters v2, E13, another
+  lane's inbox) or dropped: T5's open parts (`t5-4`, the batch size and threads, the
+  observations in place), the candidates below, this inbox; the Python READMEs current.
+- **T9b The independent review** (the sandbox): at most three fresh read-only reviewers, one
+  slice each (the trainer; the search and its worlds; the batch since E05, C ABI v31 to v34),
+  each finding with a failure path, verified, then fixed.
+- **T9c The verifies** (the user's machine; exit criterion 6): `cargo xtask verify
+  --with-original-data` and `uv run --group train pytest` on Windows; on Linux CI's full verify
+  and a sandbox with the user's files staged.
+- **T9d The closure:** `shared/e06-closure` first (BACKLOG E06 done, the env doc's training
+  pipeline as built, ADR-0026's detail line), the design note at closure, the epic file done.
 
-- **Candidates kept** (not now): `[network] order` (T6g: no gain, off by default);
-  potential-based shaping (also against the wandering T6e found: the tactics phase's placements
-  and moves cost nothing at γ 1); the 60 M run at T7's mix
+- **Candidates for E25** (T9a moves them; nothing runs in E06): `[network] order` (T6g: no
+  gain, off by default); potential-based shaping (also against the wandering T6e found: the
+  tactics phase's placements and moves cost nothing at γ 1); the 60 M run at T7's mix
   (`configs/e06-t7.toml --set samples=60_000_000`, about 4 hours); the mana run `t5-4`
-  (`configs/e06-mana.toml`, about 75 minutes).
-- Later (design §10): T5's rest (throughput, the observations in place), T9.
+  (`configs/e06-mana.toml`, about 75 minutes); T8c's optional Greedy rows on the user's machine
+  (`uv run --group train python -m h3env.search --report --best runs/t7-1/best.pt --device cuda
+  --opponent greedy --simulations 64 --json runs/t8c-greedy-64.json`).
 
 ## Inbox
 
 Sorted by destination at E05's audit (T9a, 2026-10-19); the origin stays in brackets. Dropped as
 done: BAT-Q33's point for E05 (AI-Q3, ADR-0025 point 6), the `h3-game` coverage gap of a pending
 Pass offer (fixed by the adventure lane's fixed tests, #266).
-
-- 2026-10-27 (the adventure lane, E08 T61b, `adventure/e08-t61b`, `cross-lane` with the user's
-  consent; informational, nothing to act on unless a literal of yours is new): `GameSetup` gained
-  `banned_spells` and `banned_artifacts` (GAM-SET-003, map import v13); your one full literal,
-  `crates/h3-cli/src/ai/census.rs`'s, got `banned_spells: Vec::new()` and
-  `banned_artifacts: Vec::new()`. The adventure state hash is v14
-  (the build's draws on increment 7's objects, `MapObject::resolved`, and the visits' block,
-  `AdventureState::visits`), so a saved state hash of yours moves; no env encoding changed. The
-  shipped maps that import whole are 8 now (`Myth and Legend`, `Pandora's Box `, `Unholy Quest`
-  join the 5), should a census of yours list them.
-- 2026-10-27 (the adventure lane, E08 T61a, `adventure/e08-t61a`; for the next census, `h3 ai
-  census`): `ObjectSetup::guards` is no longer a pile's only. Since map import v12 a placed or
-  random artifact, a Spell Scroll, a Pandora's Box and an event carry the guards of their message
-  records too, so `census.rs`'s `objects()` counts every guarded object as a guarded pile; filter
-  by the type's kind (`ObjectKind::Pickup`) to keep `guarded_piles` a pile's count. The shipped
-  `census-v1.toml` is unaffected until a re-run. Increment 7's 31 classes are typed now
-  (`ObjectKind::Chest`, `Artifact`, …); the census's `_ => {}` arm ignores them.
-
-- 2026-10-27 (this lane, E06 T6f and T8b; for the next `shared/` change):
-  `docs/07-simulation-and-ai.md` (shared) should name observation v22 (the turn order block
-  after v21's layout, `[network] order`) and C ABI v34's worlds (`h3_batch_determinize`,
-  `h3_env_reseed`, a search agent's under ADR-0025 point 12a) under "The batch" and
-  "Information"; ADR-0025 point 12a's text with the draft's "As built" (AI-STUB-1).
-
-- 2026-10-26 (this lane, E06 T8a; for the next `shared/` change): **ADR-0025 point 12a** from
-  the draft the user accepted (`docs/lanes/ai/adr-drafts/0025-amendment-search.md`: a search
-  agent's worlds), then the draft deleted; T8b builds on it either way.
 
 - 2026-10-27 (the adventure lane, E08 T58, `adventure/e08-t58`; **for you**, correcting the
   T55b entry below): **A-23 is withdrawn.** Batch E7's row E7-23 showed the original's path
@@ -127,11 +101,6 @@ Pass offer (fixed by the adventure lane's fixed tests, #266).
   **The bots' tables: current** (the battle lane regenerated them since, 5b4464f; E06 T6b
   reproduced both byte for byte, 2026-10-26). Open: `inspect` may count a turret's shots
   again (it leaves them out of the strikes).
-
-- 2026-10-23 (this lane, E06 T5; for the next `shared/` change): `docs/07-simulation-and-ai.md`
-  (shared) should name the batch's optional kill preview (C ABI v33: the acting side's previewed
-  kills of each legal attack and shot entry, the engine's BAT-DMG-011 preview, what the original
-  shows a player) under "The batch" and "Information".
 
 - 2026-10-23 (the battle lane, E23 T6's last part, `battle/e23-t6`, `cross-lane` with the user's
   consent; **for you**): the replay format is **v30** (`h3_sim::REPLAY_FORMAT_VERSION`: the setup

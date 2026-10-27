@@ -1,6 +1,6 @@
 # E06 — Battle AI v1 and the local training pipeline v0
 
-Status: **in progress**, refined 2026-10-20 (AI-Q8); increment 1 (T1, T2a, T2b1, T2c) done; increment 2 (T3a, T3b) done; increment 3 (T4a, T4b) done; increment 4 (T5a to T5d) done 2026-10-23; increment 5 (T7a to T7d) done 2026-10-23, with T5's mana preparation and AI-Q7 (b) part 1; T6a (the behaviour analysis) done 2026-10-23; increment 6 (T6b to T6e) done 2026-10-26; increment 7 (T8, the search) refined 2026-10-26, T8a, T6f (the turn order as an input), T8b, T6g (its run) and T8c (the search measured) done, both negative · Lane: **ai** · Follows E05 (closed
+Status: **in progress**, refined 2026-10-20 (AI-Q8); increments 1 to 7 done (the last, the search, closed 2026-10-27, negative); at its checkpoint the user revised decision 7's targets to the evidence and chose the closure: increment 8, T9, with `t7-1` as the battle AI v1; a stronger agent is E25's · Lane: **ai** · Follows E05 (closed
 2026-10-20) · Runs beside E23 (the battle lane: the original's battle AI, the system actor's
 policy), whose neutral side opens E06's neutral share (decision 1)
 
@@ -22,7 +22,9 @@ on held-out encounters.
    (longer runs, a league, a larger or structured network). An AlphaZero-style search (the fork
    with its random streams re-seeded, the hidden part guessed: the opponent hero's private part,
    hidden obstacles) is a final, experimental increment, **only if PPO plateaus below the
-   targets** (decision 7).
+   targets** (decision 7). **Closed 2026-10-27** (the user, increment 7's checkpoint): the
+   search over determinized worlds, measured at T8c, gained nothing over its network; expert
+   iteration (T8d) not built, a search in Rust trained on its own choices is E25's candidate.
 3. **Compute: runs of a few hours** on the user's machine (GTX 1070, Ryzen 9 3900X), longer once
    required. The agent prepares configs and commands and reads the logs over the device link; the
    sandbox runs only short CPU checks.
@@ -49,6 +51,16 @@ on held-out encounters.
    against every ladder member. In the neutral share: in the player's seat against the system
    actor, a value efficiency better than every ladder bot's in the same seat on the same episodes,
    and better than the system actor's own in that seat once E23's hero part plays a hero side.
+   **Revised 2026-10-27** (the user, increment 7's checkpoint; six levers left PPO at one ladder
+   and the search gained nothing, E06-log T8c): **the agent beats every heuristic bot.**
+   Against Random, Aggressor and Greedy a win rate above 0.5 and a positive value efficiency; in
+   the neutral share, in the player's seat against the system actor, a value efficiency better
+   than every heuristic bot's in the same seat on the same episodes. Judged as before (the
+   lineage's latest promoted network, each point estimate, ADR-0026 point 7). `t7-1` meets them:
+   0.828, 0.551, 0.528 at +0.273, +0.029, +0.010 (against Greedy within its interval, ±0.018, of
+   0.5); the neutral set +0.245 against Greedy's +0.223 and Aggressor's +0.216. Not E06's: 0.95
+   and 0.75, and the system actor, which beats `t7-1` 0.626 (+0.101) and attacks the neutral set
+   better (+0.285): E25's target.
 8. **Evaluation:** the sampled policy on a fixed held-out set (greedy play repeats itself, E05
    T8b). Promotion to the current best is automatic by a sequential test (SPRT, as chess engines
    gate their patches) of the new checkpoint against the current best, its bounds declared in the
@@ -111,41 +123,33 @@ new observation or action encoding, unless an increment's evidence asks for one 
 | 4 | 2026-10-23 | T5a–T5d | the entity network (parked), the truncation penalty |
 | 5 | 2026-10-23 | T7a–T7d | the system actor's seat, the neutral share, `t7-1` |
 | 6 | 2026-10-26 | T6b–T6e | the system actor as an opponent, the kill preview in the network (AI-Q7): both negative |
+| 7 | 2026-10-27 | T8a–T8c, T6f, T6g | the turn order as an input, the search over determinized worlds: both negative; T8d not built; with it T5's and T6's open parts (decision 7 revised) |
 
-**Increment 7, T8 the search** (refined 2026-10-26, the user: the plateau taken as shown after
-T6e; measure a decision-time search before any training change; determinized from the start;
-the tree in Python first; `h3-battle`'s part `cross-lane` in T8b; design §14):
+**Increment 8, T9 the closure** (refined 2026-10-27, the user at increment 7's checkpoint: E06
+closes with `t7-1` as the battle AI v1, decision 7 revised; the pattern E05's T9, `E05-log.md`):
 
-- [x] **T8a The design** — done 2026-10-26: design §14, ADR-0025 point 12's amendment as a
-  draft (`docs/lanes/ai/adr-drafts/0025-amendment-search.md`, accepted by the user the same day);
-  the record in `E06-log.md`.
-- [x] **T6f The turn order as an input** (the user, 2026-10-26, before T8b; after the
-  turn-order probe) — done 2026-10-26: `h3_battle::turn_order` (`cross-lane`), observation
-  v22, `[network] order`, `configs/e06-order.toml`; the record in `E06-log.md`.
-- [x] **T6g The A/B run `order-1`** — done 2026-10-27 (the user's run): negative, the ladder
-  `t7-1`'s and the play alike; the trunk still drops the order (the probe again); the record in
-  `E06-log.md`.
-- [x] **T8b The plumbing** — done 2026-10-27: C ABI v34 (`h3_batch_determinize`,
-  `h3_env_reseed`), `h3-battle`'s `BattleState::determinized` and `reseed` (`cross-lane`),
-  `h3env.search` with `--time` and `--report`; one gap (AI-STUB-1); the record in `E06-log.md`.
-- [x] **T8c The measurement** — done 2026-10-27 in the sandbox with `order-1`'s best (at
-  `t7-1`'s level): the search's σ fixed (a fixed scale left the prior alone); no gain against
-  the system actor at N 16 and 64 nor on the neutral set at N 64; the record in `E06-log.md`.
-- [ ] **T8d Expert iteration** — only if T8c gains: not indicated (T8c); the user's checkpoint.
-
-**Later increments** (cut at each checkpoint; proposed in design §10):
-
-- [ ] **T5 The rest** — AI-Q7 (b); the mana-price experiment; batch size and threads from T9c's
-  table; the observations in place. Beside T7d (the user, 2026-10-23): the mana price's
-  preparation done 2026-10-23 (the ladders at reward v1's settings, `configs/e06-mana.toml`; the
-  record in `E06-log.md`); AI-Q7 (b) part 1 done 2026-10-23 (the batch's previewed kills, C ABI
-  v33); part 2 (the network reads them), increment 6's T6d, negative at T6e (AI-Q7 closed).
-- [ ] **T6 Toward the targets** — runs on the best configuration until decision 7's targets hold,
-  or the evidence says PPO plateaus (then T8). T6a, the behaviour analysis (the user,
-  2026-10-23), done 2026-10-23: `python -m h3env.train.inspect`; `t7-1` casts as the system
-  actor does, plays alike against it and Greedy, waits and defends less; the record in
-  `E06-log.md`. Then increment 6 (T6b to T6e), closed 2026-10-26.
-- [ ] **T9 Closure** — the audit, an independent review, the verifies, the docs.
+- [ ] **T9a The audit** (the sandbox) — exit criteria 1 to 5 against the code, the tests and
+  the committed records (5 on `t7-1`'s record and ladder, decision 7 as revised); E06's
+  leftovers sorted by destination (E25, encounters v2, E13, another lane's inbox) or dropped as
+  done: T5's open parts (the mana-price run `t5-4`, the batch size and threads, the observations
+  in place), the QUEUE's candidates kept, the AI queue's inbox (AI-STUB-1 went to E25 at the
+  checkpoint); `python/README.md` and the records' README current (the search, `[network]
+  order` and `preview`, the probes).
+- [ ] **T9b The independent review** (the sandbox) — fresh read-only reviewers, one slice each,
+  at most three: the trainer (`h3env.train`: the resumable state, the gate, the league, the
+  ladder); the search and its worlds (`h3env.search`, `h3-sim`'s and `h3-ffi`'s part of T8b);
+  the batch's additions since E05 (C ABI v31 to v34: the identity read-back, the system actor's
+  seat, the preview, observation v22). Each finding with a failure path, verified one by one,
+  then fixed.
+- [ ] **T9c The verifies** (exit criterion 6; the user's machine, a script and its logs over
+  the device link) — `cargo xtask verify --with-original-data` and the Python tests (`uv run
+  --group train pytest`) on Windows; on Linux CI's full verify and, with the user's files
+  staged in a sandbox, `--with-original-data`.
+- [ ] **T9d The closure** — `shared/e06-closure` first (BACKLOG: E06 done;
+  `docs/07-simulation-and-ai.md`: the training pipeline as built, beside §1.1; ADR-0026's
+  working-detail line); the design note at closure (E05's way, its text kept in `E06-log.md`
+  and the references repointed, or kept as a file: decided then); the epic file done; the
+  lane's HANDOFF and QUEUE.
 
 ## Exit criteria
 
@@ -157,7 +161,8 @@ the tree in Python first; `h3-battle`'s part `cross-lane` in T8b; design §14):
    ladder is played for every promoted checkpoint.
 4. The league (prioritized fictitious self-play over past checkpoints) trains the promoted agent.
 5. The promoted agent meets decision 7's targets on the player-against-player kinds, and, once
-   E23's neutral side exists, the neutral target.
+   E23's neutral side exists, the neutral target (revised 2026-10-27: it beats every heuristic
+   bot in both).
 6. `cargo xtask verify` passes on Linux and Windows, including `--with-original-data`; the Python
    tests pass on both (a lane command).
 
@@ -165,7 +170,8 @@ the tree in Python first; `h3-battle`'s part `cross-lane` in T8b; design §14):
 
 - **The targets may be out of reach for PPO on v21:** 0.75 against Greedy from today's 0.479.
   The entity network and longer runs first; search (T8) is the fallback; the targets can be
-  revised at a checkpoint with evidence.
+  revised at a checkpoint with evidence. **Realized** (2026-10-27): PPO plateaued at Greedy's
+  level and the search gained nothing; decision 7 revised, the gap E25's.
 - **E23's timing:** the neutral share waits for its T2 to T4, the neutral target's last clause
   for its T5 and T6.
 - **The GTX 1070:** 8 GB, no tensor cores; the network's passes already dominate the run. A
