@@ -2916,8 +2916,9 @@ was cut short by the task's first edits; its fmt, clippy and deny steps passed).
 - **Checks:** `book`, `book-page`, `book-fire` (0 ms) and `book-hint` (100 ms, 1 s) exact, new in
   `set.toml`; `drawn` the other 119 the same. The window under Xvfb with `xdotool`: C opens the
   book, the hint over Magic Arrow, the corner to page 2, Death Ripple cast from it (its ripple, the
-  log's lines, the panel's book button disabled). The library's tests (307) and the binary's (41);
-  clippy; the client check; the scoped verify.
+  log's lines, the panel's book button disabled); the unattended `battle.toml --human both
+  --check 150`'s 1281 frames exact. The library's tests (308) and the binary's (41); the client
+  check (coverage 100 %); the scoped verify.
 - **Found:** the book's last hovered item is never reset (0x684B4C): an opening over the item the
   mouse was last over shows no hint until it moves to another (CLT-Q26, built as the original's).
   The message boxes (a spell above the mana, an adventure spell's description, the book button's
