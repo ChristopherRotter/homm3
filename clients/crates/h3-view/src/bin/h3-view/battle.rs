@@ -837,7 +837,8 @@ impl<'g> Battle<'g> {
     /// and good luck's (E17 M3 T7b-2b-2b), Life Drain's, the Thunderbird's bolt's and the spells'
     /// the striker's effects play (E17 M3 T7b-2b-3), the sound placed with each object (E17 M3
     /// T7c-2), a siege's drawbridge and a mine's blast (E17 M4 T2c-1); while the battle is still
-    /// played, every one it may play (E17 M5 T1b: its cues are not known yet).
+    /// fought, every one it may play (E17 M5 T1b: its cues are not known yet; T2b: waiting for a
+    /// human too).
     pub fn battle_sounds(&self) -> BTreeMap<Sound, String> {
         let spells = &self.record.header.manifest.keys.spells;
         let tables = &self.ground.tables;
@@ -875,9 +876,11 @@ impl<'g> Battle<'g> {
             sounds.push((Sound::Object(handle), spell(handle, true)));
         }
         let cued = |cue: &Sound| self.timeline().cues.iter().any(|c| c.sound == *cue);
+        // Still fought: by the bot or waiting for a human (E17 M5 T2b).
+        let fought = !matches!(self.played, Played::Finished(_));
         sounds
             .into_iter()
-            .filter(|(cue, _)| self.playing() || cued(cue))
+            .filter(|(cue, _)| fought || cued(cue))
             .filter_map(|(cue, name)| Some((cue, name?)))
             .collect()
     }
