@@ -148,7 +148,11 @@ battle.
   269 frames exact; design §3.8; MCL-Q7 open); T4, the window, cut at its seam before it started
   (the user, 2026-10-27): T4a, the window replaying and the key table (**done** 2026-10-27:
   `h3-map-view window`, `h3_map_view::keys` and `replay`, every frame read back exact; design
-  §3.9), T4b, the map's live input and the Windows build; T5, the sound; T6, M2's closure.
+  §3.9); T4b cut at its seam before it started (the user, 2026-10-27): T4b1, the live input
+  (**done** 2026-10-27: the keys, the keypad's and their repeats, the edge scroll, the clicks, the
+  hardware or drawn cursor, `Replay::give`, every change shown checked against a headless play;
+  design §3.10), T4b2, the Windows build tried on the user's machine; T5, the sound; T6, M2's
+  closure.
 - **Exit:** every recorded sequence as recorded, line by line and frame by frame (or each
   difference an `MCL-Q<n>`); a situation and a sequence play in the window at the original's
   frame times, with its sound, and render headless frame by frame.
@@ -212,3 +216,10 @@ reviewers'):
   decides both viewers'.
 - **M2 T4a, the replay's cursor:** drawn in the frame at the recorded point, the system's pointer
   hidden over the window and the mouse doing nothing until T4b.
+- **M2 T4b1, the live input** (*provisional*): a held key's repeats are the system's (the
+  original's way); the keypad's eight keys bound with the direction keys in either NumLock
+  state; F9 the cursor's kind, the hardware cursor the default; the pointer over the view the
+  arrow (M3's tile cursors), a click on the button's press; a situation's hero the viewer's only
+  one; the pointer off the window parked off the frame (no edge scrolls); the view composed whole
+  after an input (30 to 60 ms in the sandbox; an incremental scroll left for later); a user's
+  file binds only the adapter's keys (`h3_sdl::Key`: 13 letters, M3's hotkeys add the rest).

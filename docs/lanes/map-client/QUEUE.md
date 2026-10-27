@@ -19,28 +19,23 @@ standing still, T1a2 the scroll; T1b, the walk, done whole (all three done 2026-
 cut before the frame check); T3 cut at its seam before it started (the user, 2026-10-27): T3a,
 the walk's timing headless, and T3b, the walk drawn (taken whole), both done 2026-10-27. T4 cut
 at its seam before it started (the user, 2026-10-27): T4a, the window replaying and the key
-table (done 2026-10-27), then T4b, the map's live input and the Windows build.
+table (done 2026-10-27), then T4b, the map's live input and the Windows build, cut at its seam
+before it started (the user, 2026-10-27): T4b1, the live input in the sandbox (done 2026-10-27),
+then T4b2, the Windows build on the user's machine.
 
-### E24 M2 T4b — the map's live input, the Windows build
+### E24 M2 T4b2 — the Windows build tried on the user's machine
 
-- **Scope:** the window takes the player's input into the map's loop: the table's scroll and
-  step actions at the clock's millisecond (Ctrl and a direction key scroll, a direction key steps
-  the selected hero), the pointer at the edges scrolling with the edge cursors (hardware or
-  drawn), the pointer over the view and the clicks as the timeline allows them (the rest M3's);
-  a sequence's window taking live input after its recorded ones (or a situation's alone); the
-  Windows cross-build (`--target x86_64-pc-windows-gnu`, as E17 design §8.1), tried on the user's
-  machine (its `--check` and `--measure`, the user watching it).
-- **Acceptance:** scroll and steps by the keys and the edge scroll work in the window, a check
-  of the live input's actions against the headless loop; the Windows build's `--check` exact on
-  the user's machine; the Definition of Done.
-- **From T4a** (design §3.9): the window's `Replay` runs the loop ahead of the clock to the next
-  change (up to 180 ms ahead when the map stands still), so an action given live at the
-  clock's millisecond may land behind what it ran: insert it and run again from a kept loop (or
-  run only to the clock); a situation selects no hero yet (its kept path would be cleared by the
-  `Painter`'s walk part); SDL 3's keypad keys with NumLock off are to be checked against the
-  original's (the same codes as the direction keys); `h3_sdl::Key` has 13 letters only (a user's
-  file cannot bind the rest).
-- **Depends on:** T4a (done). **Status:** ready.
+- **Scope:** the Windows cross-build of `h3-map-view` (`--target x86_64-pc-windows-gnu`,
+  `mingw-w64`, as E17 design §8.1: `rustup target add` worked in the sandbox on 2026-10-27), a
+  `.cmd` for the user (as E17's `clients/out/win/measure.cmd`: a situation and a sequence, each
+  `--check` and `--measure`, the output written to a file), the build and the `.cmd` put into
+  the user's `clients/out/win/` (the link to the user's computer; else sent in the conversation),
+  the user watching the window and trying the keys and the mouse (design §3.10); the frame and
+  input delays recorded; what the user finds fixed or queued.
+- **Acceptance:** the Windows build's `--check` exact on the user's machine (the read-back and the
+  headless check); the delays recorded in design §3.10; the Definition of Done.
+- **Depends on:** T4b1 (done). **Status:** ready; needs the user at the machine (or the user
+  runs the `.cmd` and pastes its output).
 
 ### E24 M2 T5 — the map's sound
 
@@ -51,8 +46,8 @@ table (done 2026-10-27), then T4b, the map's live input and the Windows build.
   music and the effects), on E17's pieces (`h3_assets::snd`, `wav`, `nanomp3`, `h3-sdl`); the
   cues recorded in the original if the harness can tell them (E17 M2 T5b's way).
 - **Acceptance:** the sounds as read, the gate's check; the Definition of Done.
-- **Depends on:** T4a and T4b (the window), T1b (the step sounds' calls: design §3.5, done). **Status:**
-  ready after T4b.
+- **Depends on:** T4a and T4b1 (the window), T1b (the step sounds' calls: design §3.5, done).
+  **Status:** ready (T4b2 may come first or after: it needs the user's machine).
 
 ### E24 M2 T6 — M2's closure
 
@@ -62,7 +57,7 @@ table (done 2026-10-27), then T4b, the map's live input and the Windows build.
   user; M2's section moved to `E24-archive.md`; M3 T0 queued (the common crate proposed to the
   client lane first: the epic's M2 decision).
 - **Acceptance:** the review list accepted by the user; the Definition of Done.
-- **Depends on:** T1a1 to T5. **Status:** ready after them.
+- **Depends on:** T1a1 to T5 (T4b1 and T4b2). **Status:** ready after them.
 
 ## Inbox
 

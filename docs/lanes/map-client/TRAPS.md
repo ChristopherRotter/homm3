@@ -20,4 +20,9 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   viewer takes the default (1): give every option a sequence's inputs use.
 - **A sequence's objects' phases and frame steps are 0** (T1b): `frames` writes them (the load's random phases and real time moved the screen's changed boxes between runs); a still's (`set`, `still`) stay the load's, read into its live part.
 - **One game at a time:** `h3mem.Mem()` takes the first game process it finds, so a `still --keep` game left running makes the next still read it (T5a); stop it first (`wineserver -k` with `h3drive.env()`). At a human player's turn start the selected hero is off its tile until the view moves: find heroes by their records (`Mem.hero_on`).
+- **Driving the window under Xvfb** (M2 T4b1): `xdotool click --window <id>` sends a synthetic
+  event that SDL ignores; move the pointer with `mousemove --window` and click with a plain
+  `xdotool click 1` (keys with `key --window` arrive). The window takes several seconds to open
+  while the archives load: wait for `xdotool search --onlyvisible --name h3-map-view` before
+  sending anything, and keep the run's output out of the repository.
 - The client lane's standing traps apply to the foundation and the harness (`docs/lanes/client/HANDOFF.md`): the licences (`winit`, `cpal`, Bevy are excluded: SDL 3), the purity allowlist of a pure crate, `clients/Cargo.lock` as a common path, no float arithmetic in drawing and timing, never running the original from the installation, captures never in git, a capture run alone.
