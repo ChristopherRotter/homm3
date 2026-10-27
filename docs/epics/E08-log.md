@@ -6887,3 +6887,10 @@ user's computer.
   play property lists and applies the new answers (`choice_answers`), its free answers of every
   kind, its view property the new events; `h3-cli`'s words of every answer and the bad ones;
   `h3-sim`'s entries of a University's purchases and leaving and of the Arena through the env.
+- **Gates:** the scoped verify with the original data: its first run failed coverage (the new
+  decisions' hash arms, a School's first answer, two errors' text, an unreachable empty answer
+  list), all fixed; the second passed every step but `check-lane` (the `cross-lane` change, by
+  design); `bench-check` at its baselines (`random-play-duel-36` −0.47 %, `fork-xl-144` +0.76 %,
+  `manage-army-12` +0.35 %); `cargo clippy --workspace --all-targets` clean; `h3-sim`'s,
+  `h3-cli`'s and `h3-map`'s tests. A smoke run, not committed: random play on the eight shipped
+  maps that run whole (three seeds each, 14 days, at most 3 000 steps), no failure.
