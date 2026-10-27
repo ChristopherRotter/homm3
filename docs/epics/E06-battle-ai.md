@@ -1,6 +1,6 @@
 # E06 — Battle AI v1 and the local training pipeline v0
 
-Status: **in progress**, refined 2026-10-20 (AI-Q8); increment 1 (T1, T2a, T2b1, T2c) done; increment 2 (T3a, T3b) done; increment 3 (T4a, T4b) done; increment 4 (T5a to T5d) done 2026-10-23; increment 5 (T7a to T7d) done 2026-10-23, with T5's mana preparation and AI-Q7 (b) part 1; T6a (the behaviour analysis) done 2026-10-23; increment 6 (T6b to T6e) done 2026-10-26; increment 7 (T8, the search) refined 2026-10-26, T8a, T6f (the turn order as an input), T8b and T6g (its run, negative) done · Lane: **ai** · Follows E05 (closed
+Status: **in progress**, refined 2026-10-20 (AI-Q8); increment 1 (T1, T2a, T2b1, T2c) done; increment 2 (T3a, T3b) done; increment 3 (T4a, T4b) done; increment 4 (T5a to T5d) done 2026-10-23; increment 5 (T7a to T7d) done 2026-10-23, with T5's mana preparation and AI-Q7 (b) part 1; T6a (the behaviour analysis) done 2026-10-23; increment 6 (T6b to T6e) done 2026-10-26; increment 7 (T8, the search) refined 2026-10-26, T8a, T6f (the turn order as an input), T8b, T6g (its run) and T8c (the search measured) done, both negative · Lane: **ai** · Follows E05 (closed
 2026-10-20) · Runs beside E23 (the battle lane: the original's battle AI, the system actor's
 policy), whose neutral side opens E06's neutral share (decision 1)
 
@@ -128,10 +128,10 @@ the tree in Python first; `h3-battle`'s part `cross-lane` in T8b; design §14):
 - [x] **T8b The plumbing** — done 2026-10-27: C ABI v34 (`h3_batch_determinize`,
   `h3_env_reseed`), `h3-battle`'s `BattleState::determinized` and `reseed` (`cross-lane`),
   `h3env.search` with `--time` and `--report`; one gap (AI-STUB-1); the record in `E06-log.md`.
-- [ ] **T8c The measurement** — the search agent with `t7-1`'s best at N 16 and 64 against the
-  system actor and Greedy (report set) and on the neutral set, beside the sampled policy
-  (`python -m h3env.search --report`, design §14).
-- [ ] **T8d Expert iteration** — only if T8c gains: the search's targets in training.
+- [x] **T8c The measurement** — done 2026-10-27 in the sandbox with `order-1`'s best (at
+  `t7-1`'s level): the search's σ fixed (a fixed scale left the prior alone); no gain against
+  the system actor at N 16 and 64 nor on the neutral set at N 64; the record in `E06-log.md`.
+- [ ] **T8d Expert iteration** — only if T8c gains: not indicated (T8c); the user's checkpoint.
 
 **Later increments** (cut at each checkpoint; proposed in design §10):
 

@@ -1087,3 +1087,25 @@ entry only where a task builds on it.
   battles): 0.384 ± 0.028, value −0.092 (the sampled 0.381, −0.095 on the same episodes): no
   gain beyond the intervals (per kind and side within 5 of 200 battles). 60 ms a decision, 49
   minutes.
+- **The neutral set, N 64** (attacking the system actor): on its first 200 per kind (600
+  battles) value +0.250 (the sampled +0.238), the same +0.012 in each kind; on the whole set
+  (500 per kind, 1 500 battles) +0.247 (+0.242; wandering +0.251 and +0.246, guards +0.234 and
+  +0.234, a neutral town +0.152 and +0.151), wins 0.974 both: the first 600's gain did not hold.
+  36 ms a decision, 25 minutes.
+- **Not run:** Greedy (the system actor's rows show no gain at either N), `t7-1`'s network (not
+  in the sandbox; `order-1`'s plays at its level), N 64 on the report set's other 300 per kind.
+- **Read:** negative. A decision-time search over determinized worlds with this network gains
+  nothing beyond the intervals against the system actor (N 16 and 64) or on the neutral set
+  (N 64), at 13 to 47 times the sampled policy's time. The network's values tell the actions
+  apart by a few hundredths, less than one step's chance and the worlds' guesses vary them: its
+  evaluation, not the planning on top of it, limits the agent. By design §14's rule T8d (expert
+  iteration) is not indicated; it would also need the tree in Rust (the sandbox's search makes
+  about 17 to 38 decisions a second, a training run some thousands).
+- **Put to the user** (the checkpoint; the agent's recommendation first): (a) close increment 7
+  with T8 negative and decide E06's end: decision 7's targets revised to the evidence (six
+  levers, one ladder: PPO on this network plateaus at Greedy's level, 0.37 against the system
+  actor) and T9, the closure, with `t7-1` the battle AI v1; a stronger agent (a network that
+  reads the battle's structure, a search in Rust with expert iteration) as an epic of its own;
+  (b) T8d regardless (the tree in Rust first); (c) a search diagnostic first: the true world
+  (the hidden part known, the stream re-seeded; a batch fork, an ABI addition) bounds what the
+  guess costs. AI-STUB-1 (T8b's gap) matters only for (b).

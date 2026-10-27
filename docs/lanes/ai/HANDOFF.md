@@ -12,11 +12,13 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   third neutral): 0.828, 0.551, 0.528 against Random, Aggressor, Greedy, the system actor 0.374;
   the neutral set's value +0.245 below the target +0.285. Increment 7, T8 the search (design
   §14): T8a, T6f (the turn order, observation v22) and T8b (the plumbing, #493) done; T6g (the
-  user's run `order-1`) done 2026-10-27: negative, `t7-1`'s ladder, the trunk drops the order.
-  **In progress:** T8c in the sandbox with `order-1`'s best (the user's upload; `t7-1`'s is not
-  here; `python/runs/t8c/`, ignored): the search's σ fixed (it moved 1 % of the choices); at N 16
-  no gain against the system actor (0.371, the sampled 0.374); N 64 on 200 per kind running.
-  At T8b's checkpoint the user reviews AI-STUB-1.
+  user's run `order-1`) done 2026-10-27: negative, `t7-1`'s ladder, the trunk drops the order;
+  T8c (the search measured, the sandbox, `order-1`'s best; its σ fixed) done 2026-10-27:
+  negative, no gain at N 16 or 64. **Next: the user's checkpoint** (E06-log T8c, "Put to the
+  user"; QUEUE): close increment 7 and decide E06's end, or T8d, or the true-world diagnostic;
+  AI-STUB-1 matters only for T8d.
+- **Open pull request:** this session's (`claude/zealous-cray-5ct70h`, T6g and T8c): watch it to
+  its merge.
 - **Versions:** battle action encoding v13, observation encoding v22, replay format v31
   (CLT-Q4/Q6), the adventure env's action encoding v4 (E08 T45), C ABI v34 (T6f and T8b: the turn
   order, the worlds) (`docs/08-work-process.md`, "Versions"). Next ids: AI-Q10, AI-QUIRK-1,
@@ -28,6 +30,14 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 Moved to `TRAPS.md`, in three groups: **Ownership** (cross-lane encodings and replays, what `--scope ai` skips), **Environment** (what an agent sees, the batch, the pool's `unsafe`, benchmarks, the census, the encounter sampler, bots' tables) and **Python** (the trainer's resumable state, uv, PyTorch's pinned build, the sandbox's network).
 
 ## Recent sessions
+
+### 2026-10-27 — T6g, the run `order-1` recorded; T8c, the search measured
+
+- The user uploaded `order-1` (T6g): `t7-1`'s ladder and play; the probe again: the trunk drops
+  the order it reads (the block checked, no fault). T8c in the sandbox with `order-1`'s best:
+  the search played as the sampled policy (σ's fixed scale; fixed: rescaled per node, as
+  `mctx`), then no gain at N 16 and 64 against the system actor nor at N 64 on the neutral set.
+  Put to the user: the checkpoint (E06's end, T8d, a diagnostic) and AI-STUB-1.
 
 ### 2026-10-26 to 27 — T6f, the turn order as an input; T8b, the search's plumbing
 
@@ -46,10 +56,3 @@ Moved to `TRAPS.md`, in three groups: **Ownership** (cross-lane encodings and re
 - #487 merged; the user accepted the ADR draft and both `h3-battle` functions `cross-lane`. The
   user's question on the turn order: a probe shows the trunk does not know which stack acts
   next (E06-log "The turn-order probe"); a candidate lever in QUEUE.
-
-### 2026-10-26 (later) — T6c's run recorded; T6d, the kill preview in the network
-
-- `t6b-1` (the user's run) ends at `t7-1`'s ladder; its behaviour analysis shows the same play
-  against the system actor (E06-log T6c). The user chose AI-Q7 (b) part 2: built `[network]
-  preview` (E06 design §13), `configs/e06-t6d.toml`, on a branch restarted from `master` after
-  #478 merged.

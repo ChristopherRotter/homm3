@@ -511,12 +511,11 @@ only if T8d needs the throughput.
   gives way to the network's most likely action; a world in which another side moves after the
   same actions evaluates its position without a node. Gap: AI-STUB-1 (the hidden obstacles'
   number and value).
-- **T8c, the measurement:** the search agent with `t7-1`'s best (the user's file) at N 16 and 64
-  against the system actor and Greedy on the report set, and on the neutral set, beside the
-  sampled policy on the same episodes: win rate, value, cost per decision (`python -m
-  h3env.search --report --best <best.pt> --device cuda --opponent system --simulations 16
-  --json …`; `--set neutral-v1`; `--per-kind`: the sets' 500 by default). T8d only if the
-  search gains beyond the intervals.
+- **T8c, the measurement — done** (E06-log T8c; the sandbox, `order-1`'s best): the search
+  beside the sampled policy on the same episodes (`python -m h3env.search --report --best
+  <best.pt> --opponent system --simulations 64 --json …`; `--set neutral-v1`; `--per-kind`: the
+  sets' 500 by default): no gain against the system actor at N 16 and 64 nor on the neutral set
+  at N 64. T8d only if the search gains beyond the intervals: not indicated.
 - **T8d, expert iteration** (designed after T8c): the search's improved policy and value as the
   trainer's targets.
 
