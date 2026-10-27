@@ -309,3 +309,124 @@ fn a_run_on_the_widest_grid_does_not_overflow() {
     assert_eq!(grid.count(), 10);
     assert!(grid.get(p(65_519, 0, 0)));
 }
+
+/// E08 T61b: the persistent table's entries by index, across leaves and mid tables.
+#[test]
+fn a_table_sets_reads_and_removes_entries_by_index() {
+    let mut table: Table<u32> = Table::new();
+    assert_eq!(
+        (table.len(), table.get(0), table.stored()),
+        (0, None, (0, 0))
+    );
+    // Entries in one leaf, in two leaves of one mid table, and in a later mid table.
+    for (index, value) in [(3, 30), (15, 150), (16, 160), (5000, 50)] {
+        table.set(index, Some(value));
+    }
+    assert_eq!(table.len(), 4);
+    assert_eq!(
+        (table.get(3), table.get(15), table.get(16), table.get(5000)),
+        (Some(&30), Some(&150), Some(&160), Some(&50))
+    );
+    assert_eq!(
+        (table.get(4), table.get(4999), table.get(1 << 40)),
+        (None, None, None)
+    );
+    assert_eq!(table.stored(), (2, 3));
+    let entries: Vec<(usize, u32)> = table.iter().map(|(i, &v)| (i, v)).collect();
+    assert_eq!(entries, [(3, 30), (15, 150), (16, 160), (5000, 50)]);
+    // A value is replaced in place.
+    table.set(3, Some(31));
+    assert_eq!((table.len(), table.get(3)), (4, Some(&31)));
+    // A part without an entry is no part: the leaf, then the mid table, then the top go.
+    table.set(16, None);
+    assert_eq!((table.len(), table.stored()), (3, (2, 2)));
+    table.set(5000, None);
+    assert_eq!((table.len(), table.stored()), (2, (1, 1)));
+    table.set(3, None);
+    table.set(15, None);
+    assert_eq!((table.len(), table.stored()), (0, (0, 0)));
+    assert!(table.shares_top(&Table::new()));
+    assert_eq!(table, Table::new());
+}
+
+#[test]
+fn a_tables_fork_shares_until_it_writes_and_a_write_copies_only_its_path() {
+    let mut table: Table<Vec<u8>> = Table::new();
+    table.set(1, Some(std::vec![1]));
+    table.set(2000, Some(std::vec![2]));
+    let mut fork = table.clone();
+    assert!(fork.shares_top(&table));
+    // Removing what is not there copies nothing.
+    fork.set(7, None);
+    assert!(fork.shares_top(&table));
+    // A write copies the top, one mid table and one leaf; every value stays shared, the
+    // untouched entries' leaves too.
+    fork.set(3, Some(std::vec![3]));
+    assert!(!fork.shares_top(&table));
+    assert!(fork.shares_value(&table, 1) && fork.shares_value(&table, 2000));
+    assert_eq!((table.len(), table.get(3)), (2, None));
+    assert_eq!((fork.len(), fork.get(3)), (3, Some(&std::vec![3])));
+    assert!(!fork.shares_value(&table, 3));
+}
+
+#[test]
+fn a_tables_equality_and_debug_see_content_only() {
+    let mut a: Table<u8> = Table::new();
+    a.set(40, Some(4));
+    a.set(2, Some(2));
+    let mut b: Table<u8> = Table::new();
+    b.set(2, Some(2));
+    b.set(9000, Some(9));
+    b.set(40, Some(4));
+    assert_ne!(a, b);
+    b.set(9000, None);
+    assert_eq!(a, b);
+    assert!(!a.shares_top(&b));
+    assert_eq!(format!("{a:?}"), "{2: 2, 40: 4}");
+    let mut c = a.clone();
+    c.set(40, Some(5));
+    assert_ne!(a, c);
+    let mut d = a.clone();
+    d.set(41, Some(4));
+    d.set(40, None);
+    assert_ne!(a, d);
+}
+
+proptest! {
+    /// The table against a model: a write through a fork reaches nothing else, and each reads,
+    /// counts and iterates as its own ordered map.
+    #[test]
+    fn a_tables_writes_match_an_ordered_map(
+        base in proptest::collection::vec((0usize..5000, proptest::option::of(any::<u8>())), 0..60),
+        first in proptest::collection::vec((0usize..5000, proptest::option::of(any::<u8>())), 0..60),
+    ) {
+        let apply = |table: &mut Table<u8>, model: &mut std::collections::BTreeMap<usize, u8>, ops: &[(usize, Option<u8>)]| {
+            for &(index, value) in ops {
+                table.set(index, value);
+                match value {
+                    Some(v) => model.insert(index, v),
+                    None => model.remove(&index),
+                };
+            }
+        };
+        let mut table = Table::new();
+        let mut model = std::collections::BTreeMap::new();
+        apply(&mut table, &mut model, &base);
+        let (mut fork, mut fork_model) = (table.clone(), model.clone());
+        apply(&mut fork, &mut fork_model, &first);
+        for (table, model) in [(&table, &model), (&fork, &fork_model)] {
+            prop_assert_eq!(table.len(), model.len());
+            let entries: Vec<(usize, u8)> = table.iter().map(|(i, &v)| (i, v)).collect();
+            let expected: Vec<(usize, u8)> = model.iter().map(|(&i, &v)| (i, v)).collect();
+            prop_assert_eq!(entries, expected);
+            for index in 0..5000 {
+                prop_assert_eq!(table.get(index), model.get(&index));
+            }
+        }
+        prop_assert_eq!(table == fork, model == fork_model);
+        if table.len() == 0 {
+            prop_assert_eq!(table.stored(), (0, 0));
+        }
+        prop_assert_ne!(fork.len() + 1, 0);
+    }
+}

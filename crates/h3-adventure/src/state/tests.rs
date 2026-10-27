@@ -116,7 +116,7 @@ fn setup() -> AdventureSetup {
             hero(1, 0, Pos::new(0, 0, 0)),
         ],
         difficulty: 0,
-        bans: crate::Bans::default(),
+        bans: Bans::default(),
     }
 }
 
@@ -874,7 +874,9 @@ fn the_hash_sees_content_not_sharing() {
 
 mod answers;
 mod day;
+mod draws;
 mod flight;
 mod holds;
 mod monsters;
 mod piles;
+mod visits;

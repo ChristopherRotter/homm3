@@ -244,6 +244,165 @@ impl<const WORDS: usize> CanonicalHash for BitGrid<WORDS> {
     }
 }
 
+/// Entries per leaf of a [`Table`].
+const LEAF: usize = 16;
+/// Leaves per mid table of a [`Table`].
+const MID: usize = 64;
+
+/// A leaf of a [`Table`]: its entries, each value shared.
+type Leaf<T> = [Option<Arc<T>>; LEAF];
+/// A mid table of a [`Table`]: its leaves.
+type Mid<T> = [Option<Arc<Leaf<T>>>; MID];
+
+/// A sparse table of values by index, persistent (E08 T61b; design §10 of
+/// `docs/epics/E08-design.md`, decision 133): a top table of mid tables of 64 leaves of 16
+/// entries, each value shared, so a fork ([`Clone`]) is a reference count (none for an empty
+/// table) and a write copies at most the top table, a mid table and a leaf, pointers only,
+/// whatever the number of entries (the armies battles left on objects: T55b's measurement, about
+/// 4 200 Ir a write with 41 472 entries against 16 million for one map). A part without an entry
+/// is no part at all, so an empty table holds nothing. Nothing sees the sharing: equality,
+/// `Debug` and the iteration see the entries in index order.
+pub(crate) struct Table<T> {
+    top: Option<Arc<Vec<Option<Arc<Mid<T>>>>>>,
+    len: usize,
+}
+
+impl<T> Clone for Table<T> {
+    fn clone(&self) -> Self {
+        Self {
+            top: self.top.clone(),
+            len: self.len,
+        }
+    }
+}
+
+/// The mid table, leaf and entry of an index.
+const fn split(index: usize) -> (usize, usize, usize) {
+    (index / (MID * LEAF), index / LEAF % MID, index % LEAF)
+}
+
+impl<T> Table<T> {
+    /// No entry.
+    pub(crate) const fn new() -> Self {
+        Self { top: None, len: 0 }
+    }
+
+    /// How many entries it holds.
+    pub(crate) const fn len(&self) -> usize {
+        self.len
+    }
+
+    /// The entry at `index`, if any.
+    pub(crate) fn get(&self, index: usize) -> Option<&T> {
+        let (t, m, l) = split(index);
+        let mid = self.top.as_ref()?.get(t)?.as_ref()?;
+        mid[m].as_ref()?[l].as_deref()
+    }
+
+    /// Sets the entry at `index` to `value`, or removes it for none; removing an entry that is
+    /// not there copies nothing.
+    pub(crate) fn set(&mut self, index: usize, value: Option<T>) {
+        if value.is_none() && self.get(index).is_none() {
+            return;
+        }
+        let (t, m, l) = split(index);
+        let top = Arc::make_mut(self.top.get_or_insert_with(|| Arc::new(Vec::new())));
+        if top.len() <= t {
+            top.resize(t + 1, None);
+        }
+        let mid =
+            Arc::make_mut(top[t].get_or_insert_with(|| Arc::new(core::array::from_fn(|_| None))));
+        let leaf =
+            Arc::make_mut(mid[m].get_or_insert_with(|| Arc::new(core::array::from_fn(|_| None))));
+        let had = leaf[l].is_some();
+        let has = value.is_some();
+        leaf[l] = value.map(Arc::new);
+        self.len = self.len + usize::from(has) - usize::from(had);
+        if leaf.iter().all(Option::is_none) {
+            mid[m] = None;
+            if mid.iter().all(Option::is_none) {
+                top[t] = None;
+                while top.last().is_some_and(Option::is_none) {
+                    top.pop();
+                }
+            }
+        }
+        if self.len == 0 {
+            self.top = None;
+        }
+    }
+
+    /// The entries in index order.
+    pub(crate) fn iter(&self) -> impl Iterator<Item = (usize, &T)> {
+        self.top
+            .iter()
+            .flat_map(|top| top.iter().enumerate())
+            .filter_map(|(t, mid)| Some((t, mid.as_deref()?)))
+            .flat_map(|(t, mid)| {
+                mid.iter()
+                    .enumerate()
+                    .filter_map(move |(m, leaf)| Some((t * MID + m, leaf.as_deref()?)))
+            })
+            .flat_map(|(at, leaf)| {
+                leaf.iter()
+                    .enumerate()
+                    .filter_map(move |(l, value)| Some((at * LEAF + l, value.as_deref()?)))
+            })
+    }
+}
+
+impl<T: PartialEq> PartialEq for Table<T> {
+    /// Content only: the entries in index order.
+    fn eq(&self, other: &Self) -> bool {
+        self.len == other.len && self.iter().eq(other.iter())
+    }
+}
+
+impl<T: Eq> Eq for Table<T> {}
+
+impl<T: fmt::Debug> fmt::Debug for Table<T> {
+    /// Content only: the entries by index.
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_map().entries(self.iter()).finish()
+    }
+}
+
+#[cfg(test)]
+impl<T> Table<T> {
+    /// Whether two tables share their top table (tests of the sharing; pointer identity stays
+    /// here); two empty tables do.
+    pub(crate) fn shares_top(&self, other: &Self) -> bool {
+        match (&self.top, &other.top) {
+            (Some(a), Some(b)) => Arc::ptr_eq(a, b),
+            (a, b) => a.is_none() && b.is_none(),
+        }
+    }
+
+    /// Whether the entries at `index` of the two tables are one shared value.
+    pub(crate) fn shares_value(&self, other: &Self, index: usize) -> bool {
+        let value = |table: &Self| {
+            let (t, m, l) = split(index);
+            let mid = table.top.as_ref()?.get(t)?.as_ref()?;
+            mid[m].as_ref()?[l].clone()
+        };
+        value(self)
+            .zip(value(other))
+            .is_some_and(|(a, b)| Arc::ptr_eq(&a, &b))
+    }
+
+    /// How many mid tables and leaves are stored.
+    pub(crate) fn stored(&self) -> (usize, usize) {
+        let mids: Vec<&Mid<T>> = self
+            .top
+            .iter()
+            .flat_map(|top| top.iter().flatten())
+            .map(|m| &**m)
+            .collect();
+        let leaves = mids.iter().map(|mid| mid.iter().flatten().count()).sum();
+        (mids.len(), leaves)
+    }
+}
+
 #[cfg(test)]
 impl<const WORDS: usize> BitGrid<WORDS> {
     /// Whether two grids share their table (tests of the sharing; pointer identity stays here).
