@@ -952,6 +952,12 @@ entry only where a task builds on it.
   alike). `h3-sim`: the block's columns, the layout pinned against `layout.py`. Python: a network
   with `order` reads the block, one without (and a saved config from before v22) does not; a
   run with it resumes and its files read the order.
+- **Cost:** the batch's step counts the order block (an observation's `turn_order`: the keys
+  without copying a stack, sorted by their unique key without the side tie-break, the picks a
+  group scan): `batch-random-full` +7.03 %, `batch-random-encounters-v1` +5.90 % (both
+  re-baselined, lane-only), `batch-random-siege` +1.80 %; the battle's rollouts unchanged
+  (−0.01 %, +0.79 %). A training run is bound by the network's passes (about 5 000 samples/s
+  end to end against 50 000 steps/s a thread inside the step), so this is below 1 % of a run.
 - **The A/B run** (the user's machine; T6g):
   `uv run --group train python -m h3env.train --config configs/e06-order.toml --out runs/order-1`
   (about 1 h 45 min, as `t7-1`); then the ladder against `t7-1`'s and `python -m
