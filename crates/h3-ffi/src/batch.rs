@@ -18,8 +18,7 @@ use h3_sim::{
 
 use crate::{
     H3_ERR_ARGUMENT, H3_ERR_EPISODE_OVER, H3_ERR_INVALID_ACTION, H3_ERR_NULL, H3_ERR_PANIC,
-    H3_ERR_REJECTED, H3_OK, H3Action, H3Env, PANIC_MESSAGE, result_code, scenario, side,
-    side_code,
+    H3_ERR_REJECTED, H3_OK, H3Action, H3Env, PANIC_MESSAGE, result_code, scenario, side, side_code,
 };
 
 /// The batch is not ready for the call: it has no scenario yet (`h3_batch_reset`), or it was not
@@ -729,7 +728,10 @@ pub unsafe extern "C" fn h3_batch_determinize(
             .ok()
             .map(|w| Box::new(H3Env::new(w)))
     }));
-    world.ok().flatten().map_or(std::ptr::null_mut(), Box::into_raw)
+    world
+        .ok()
+        .flatten()
+        .map_or(std::ptr::null_mut(), Box::into_raw)
 }
 
 /// The version of the encounter distribution `h3_batch_add_encounters` plays

@@ -838,12 +838,18 @@ fn a_world_through_the_abi_is_the_rust_batchs() {
         assert_eq!(unsafe { crate::h3_env_reseed(world, 9) }, H3_OK);
         let mut reseeded = rust.fork();
         reseeded.reseed(9);
-        assert_eq!(unsafe { crate::h3_env_state_hash(world) }, reseeded.state_hash());
+        assert_eq!(
+            unsafe { crate::h3_env_state_hash(world) },
+            reseeded.state_hash()
+        );
         unsafe { crate::h3_env_destroy(world) };
     }
     for (batch, env, viewer) in [(b, n, 0), (b, 0, 2), (std::ptr::null_mut(), 0, 0)] {
         assert!(unsafe { h3_batch_determinize(batch, env, viewer, 5) }.is_null());
     }
-    assert_eq!(unsafe { crate::h3_env_reseed(std::ptr::null_mut(), 9) }, H3_ERR_NULL);
+    assert_eq!(
+        unsafe { crate::h3_env_reseed(std::ptr::null_mut(), 9) },
+        H3_ERR_NULL
+    );
     unsafe { h3_batch_destroy(b) };
 }
