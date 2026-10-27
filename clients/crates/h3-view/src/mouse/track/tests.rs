@@ -609,6 +609,11 @@ fn moves_made_while_an_action_plays_are_dropped_as_the_next_turn_starts() {
             at: 0,
             to: centre(87),
         },
+        // Elsewhere on the same hex: the same walk, nothing written again.
+        Input::Move {
+            at: 50,
+            to: [centre(87)[0] + 3, centre(87)[1]],
+        },
         Input::Act { at: 100 },
         Input::Move {
             at: 200,
@@ -633,6 +638,10 @@ fn moves_made_while_an_action_plays_are_dropped_as_the_next_turn_starts() {
         ]
     );
     assert_eq!(shown.point(400), Some(centre(88)));
+    // A human turn starting with the mouse nowhere takes nothing (the action showed the pointer).
+    let still = run(&log, &[Start { unmarks: true }], &turns, &[]);
+    assert_eq!(still.log, log);
+    assert_eq!(still.frames, [(100, 6)]);
 }
 
 #[test]

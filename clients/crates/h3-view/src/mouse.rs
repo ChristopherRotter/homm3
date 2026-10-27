@@ -933,12 +933,12 @@ pub fn click(field: &Field<'_>, layout: &BattleLayout, point: [i32; 2]) -> Optio
     if !(0..width).contains(&point[0]) || !(0..height).contains(&point[1]) {
         return None;
     }
+    let acting = field.acting()?;
     let spot = spot(layout, point, field.rects());
     let (kind, target) = kind(field, spot, &mut None);
     let legal = field.legal;
-    match (kind, spot) {
-        (Kind::Move | Kind::Fly, Spot::Hex(hex)) => {
-            let acting = field.acting()?;
+    match (kind, spot, target) {
+        (Kind::Move | Kind::Fly, Spot::Hex(hex), _) => {
             let [position, front] = field.hexes(acting);
             let back = i32::from(hex) - (i32::from(front) - i32::from(position));
             let to = u8::try_from(back)
@@ -947,20 +947,15 @@ pub fn click(field: &Field<'_>, layout: &BattleLayout, point: [i32; 2]) -> Optio
                 .unwrap_or(hex);
             Some(Command::Move { to })
         }
-        (Kind::Shoot | Kind::BrokenArrow, Spot::Hex(hex)) => {
-            let target = target?;
-            let at = legal.aim(target, hex)?;
-            Some(Command::Shoot { target, at })
-        }
-        (Kind::Attack, Spot::Hex(hex)) => {
-            let from = attack_slots(field, hex)[slot(layout, point, hex)].from?;
-            Some(Command::Attack {
-                target: target?,
-                from,
-            })
-        }
-        (Kind::Wall, _) => Some(Command::ShootWall { part: target? }),
-        (Kind::Heal, _) => Some(Command::Heal { target: target? }),
+        (Kind::Shoot | Kind::BrokenArrow, Spot::Hex(hex), Some(target)) => legal
+            .aim(target, hex)
+            .map(|at| Command::Shoot { target, at }),
+        (Kind::Attack, Spot::Hex(hex), Some(target)) => attack_slots(field, hex)
+            [slot(layout, point, hex)]
+        .from
+        .map(|from| Command::Attack { target, from }),
+        (Kind::Wall, _, Some(part)) => Some(Command::ShootWall { part }),
+        (Kind::Heal, _, Some(target)) => Some(Command::Heal { target }),
         _ => None,
     }
 }

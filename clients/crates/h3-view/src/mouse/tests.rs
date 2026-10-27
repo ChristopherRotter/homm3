@@ -834,4 +834,5 @@ fn the_panel_s_wait_and_defend_give_their_commands_when_listed() {
     let defend = Legal::new(&[Command::Defend {}]);
     assert_eq!(button(&defend, WAIT), None);
     assert_eq!(button(&Legal::default(), DEFEND), None);
+    assert_eq!(button(&Legal::new(&[Command::Retreat {}]), DEFEND), None);
 }
