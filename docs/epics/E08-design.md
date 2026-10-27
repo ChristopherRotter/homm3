@@ -269,13 +269,13 @@ through `split` with the first creature's count, n less the second creature's st
   outcome says so), the guards fight at once (a guarded pile's battle, its rest after the levels),
   else the record (§11.1); removed with its flag. A move is never rejected because of an event; a
   hero that starts its move on an event does not fire it; a non-firing event changes nothing.
-- **`Reach`:** under A-23's `faithful` stop (if E7-23 confirms it) an event's tile is an entrance
-  for every hero (a destination, never a pass node), as a pickup's visitable tile is today;
-  under `strict-fixed` (the flag off) `Reach` never reads the bit. If E7-23 shows paths crossing
-  events, neither profile reads it and A-23 is withdrawn (decision 131).
-- **Security:** `docs/06-security.md` lists A-23's leak (the legal moves reveal events under
-  `faithful`) beside the fringe's, if it is built. A property test (strict-fixed): two games that
-  differ by a hidden event give every player the same observation and legal moves until it fires.
+- **`Reach`** never reads the bit, in every profile: batch E7's E7-23 showed a path crossing a
+  hidden event and the re-read found an event's tile no stop for the original's pathfinder (its
+  entrance bit cleared at the placement), so A-23 is withdrawn (decision 131; T58, survey
+  `E08-rewards.md` §15). No flag, no `ADV-QUIRK-22`.
+- **Security:** nothing leaks through the legal moves, so `docs/06-security.md` lists nothing new
+  for events. A property test: two games that differ by a hidden event give every player the same
+  observation and legal moves until it fires.
 - **Open point** (T62's start): the order of an event and a monster guarding its tile on the same
   step (the original's `hero_move_step` tests the event at 0x4811A3 and fires it at 0x481741; the
   guard's attack was not placed in that order).
@@ -357,19 +357,18 @@ through `split` with the first creature's count, n less the second creature's st
   a won guarded box whose level-up gives Wisdom before its spells.
 - **Properties** (`h3-map`'s `play.rs`): the plans visit every kind, answer every decision, check
   the invariants after every command (marks only grow, an emptied find gives nothing, a removed
-  object never returns); a rejected command leaves the hash; under `strict-fixed` the hidden-event
-  property (§12); **decision 133's test**: a 144 × 144 two-level map with a box on every free tile
+  object never returns); a rejected command leaves the hash; the hidden-event property (§12); **decision 133's test**: a 144 × 144 two-level map with a box on every free tile
   (and one with a Learning Stone on every free tile) builds, plays a few hundred steps with
   visits, and forks within the gate's cost.
 - **Benchmarks:** `random-play` on the rewards map (a new workload); `fork-xl-144` with the block
   live (+ about 20 Ir); a fork of the all-boxes map (a new workload); the reach workloads
-  unchanged under `strict-fixed`, with the entrances under `faithful`.
+  unchanged (events are blind to `Reach`, §12).
 
 ### 17. Versions and the remaining rule ids
 
 | Version | Change | Task |
 |---|---|---|
-| core ruleset hash, pack format (next: v49, v48) | the mana ceiling; A-21's flag (and A-23's if confirmed) | T59 |
+| core ruleset hash, pack format (next: v49, v48) | the mana ceiling; A-21's flag (A-23 withdrawn, T58) | T59 |
 | details' hash, game state hash | the battle bonuses | T60 |
 | adventure ruleset part v12 | the kinds | T61 |
 | map import v12 | the classes, bodies, records, bans, the monster's artifact | T61 |
@@ -379,8 +378,8 @@ through `split` with the first creature's count, n less the second creature's st
 
 Ids beyond survey §12: **GAM-SET-003** (the scenario's spell and artifact bans as setup inputs),
 **GAM-DEC-007** (the rest), **GAM-BAT-014** (the bonuses cleared at a battle's end). Quirks:
-A-21 → `ADV-QUIRK-21` (flag 37 if no other lane takes it first); A-23 → `ADV-QUIRK-22` only if
-E7-23 confirms it; A-17 to A-20, A-22 and A-24 recorded in the ledger as not reproduced or fixed
+A-21 → `ADV-QUIRK-21` (flag 37 if no other lane takes it first); A-23 withdrawn (T58: no quirk,
+no flag); A-17 to A-20, A-22 and A-24 recorded in the ledger as not reproduced or fixed
 (no flags).
 
 ### 18. Batch E7
@@ -422,7 +421,7 @@ increment 6 the shared task came first; here the batch decides an ADR clause, A-
 |---|---|---|
 | 1 | **T56** | Batch E7's maps: the writer's bodies and the RoE format (§18), the spec's fields (`cross-lane`), the two specs and templates. Likely cut in two at its start (the writer; the spec) |
 | 2 | **T57** + **T58** | T57: the harness's reads and clicks, the recipes, the runs E7a and E7b (as T47: cut at its start). T58: scored (survey §15); A-23 settled (decision 131); an `ADV-Q` if a row contradicts the reading |
-| 3 | **T59** | `shared/`: the three ADRs amended (with T58's outcome), the mana ceiling, A-21's flag (A-23's if confirmed), the glossary |
+| 3 | **T59** | `shared/`: the three ADRs amended (with T58's outcome: A-23 withdrawn, events blind to `Reach`), the mana ceiling, A-21's flag, the glossary |
 | 4 | **T60** | `h3-heroes`: part A (§1–§6): the bonuses, the changes, `grant`, the teachers' functions; the details' hash |
 | 5 | **T61** | `h3-map` and `h3-adventure`: the import (§7), the kinds (§8), the draws (§9), the state (§10); map import v12, ruleset part v12, adventure state hash v13. Likely cut in two (the import and kinds; the draws and state) |
 | 6 | **T62** | `h3-adventure`: the visits (§11), events and the move (§12), information (§13). Likely cut in two (pickups, teachers, finds; boxes, events, the Pyramid) |
@@ -447,10 +446,10 @@ increment 6 the shared task came first; here the batch decides an ADR clause, A-
 5. The morale and luck bonuses reach the hero's next battle and end with it (HER-ADV-008,
    GAM-BAT-014); a won guards' battle's levels come before the visit's rest (GAM-DEC-007).
 6. Contents and draws stay hidden until a visit; the visitor's owner keeps what it learned; events
-   are never observed; A-23 as batch E7 decided (ADV-VIS-006, ADV-FOG-007, ADV-MOV-011); a map with
+   are never observed and blind to `Reach` (A-23 withdrawn by batch E7; ADV-VIS-006, ADV-FOG-007, ADV-MOV-011); a map with
    a box on every tile builds, plays and forks (decision 133).
-7. Every new rule has its id, source and tests; A-21 (and A-23 if confirmed) in the ledger with
-   flags, A-17 to A-20, A-22, A-24 recorded; the gates pass (coverage, determinism with the
+7. Every new rule has its id, source and tests; A-21 in the ledger with its flag (A-23
+   withdrawn, T58), A-17 to A-20, A-22, A-24 recorded; the gates pass (coverage, determinism with the
    re-recorded and new replays, the benchmarks at their baselines and the new ones baselined); the
    env plays on through every new decision.
 8. Batch E7 run and scored; D-29 to D-31, D-33, D-34, D-36 to D-40 and the consensus rows
@@ -469,8 +468,8 @@ increment 6 the shared task came first; here the batch decides an ADR clause, A-
   refuses them (towns, random heroes: 128 and 18 maps); the census after T61 says how many.
 - **Batch E7's size:** 23 rows, two maps for E7a, a harness grown by about ten reads; the cut of
   T56 and T57 at their starts (as T47's three parts).
-- **A-23** is built only if E7-23 confirms it; either way the move's stop at a firing event is
-  the rule (§12), and `Reach`'s callers (the env's masks) change only under `faithful`.
+- ~~**A-23**~~ withdrawn by T58 (survey `E08-rewards.md` §15): the move's stop at a firing event
+  is the rule (§12) and `Reach`'s callers (the env's masks) do not change.
 - **The army left's table** (§10) is a change of storage under increment 3's monsters: their
   replays must not move (the hash walks content, ADR-0016 point 2).
 - **Not in increment 7** (decisions 127, 136): the creature banks, the Refugee Camp, Seer's Huts

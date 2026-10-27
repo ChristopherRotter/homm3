@@ -50,6 +50,13 @@ Pass offer (fixed by the adventure lane's fixed tests, #266).
   the draft the user accepted (`docs/lanes/ai/adr-drafts/0025-amendment-search.md`: a search
   agent's worlds), then the draft deleted; T8b builds on it either way.
 
+- 2026-10-27 (the adventure lane, E08 T58, `adventure/e08-t58`; **for you**, correcting the
+  T55b entry below): **A-23 is withdrawn.** Batch E7's row E7-23 showed the original's path
+  crossing a hidden event, and the re-read found an event's tile no stop for its pathfinder. So
+  `legal_moves` never reads events in any profile, and your tile masks reveal nothing of them;
+  a step into a firing event ends the move there (the move's outcome). Survey
+  `docs/rules/surveys/E08-rewards.md` §15; design §12.
+
 - 2026-10-26 (the adventure lane, E08 T55b, `adventure/e08-t55b`; decisions 138–141; **for you,
   when the adventure lane's T63 lands**): **answers typed by decision.** `h3_game::Answer` becomes
   an enum by decision kind, each variant with its own type: `Offer(Consent)` (`Accept`,

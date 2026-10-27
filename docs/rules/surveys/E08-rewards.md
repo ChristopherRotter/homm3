@@ -114,9 +114,15 @@ Sources (labels as in `docs/04-rules-and-sources.md`):
   an **RoE map's Witch Hut** takes the fixed mask 0xEFBF (14 skills: never Leadership, Necromancy or
   Water Magic to First Aid; **A-21**, D-33 reshaped), and the Wagon's draw order. It found that **the
   pathfinder makes an event's tile a stop for every colour**: a human's path never crosses a hidden
-  event and bends around it (**A-23**, §8.5: as the original, or blind). Also A-22 (a University's
+  event and bends around it (**A-23**, §8.5: as the original, or blind). *Withdrawn by T58 (§15):
+  batch E7's path crossed an event, and the re-read found the event's tile no stop (its entrance
+  bit cleared at the placement).* Also A-22 (a University's
   draw on a map banning more than 24 skills) and A-24 (the loader's creature count past seven).
 - **Batch E7** (§11): 23 rows in two runs; **the rule ids** (§12); **the checkpoint**: ADV-Q28 (§14).
+- **Batch E7 scored (T58, §15):** every dispute's row shows the code's side (none reverts); A-21's
+  0xEFBF confirmed; **A-23 withdrawn**: a path crosses an event of any colour (an event's tile is no
+  stop: `place_object_tiles` clears its entrance bit), and a firing event ends the move at its tile;
+  a full backpack is tested before a free position.
 
 ## 1. The census
 
@@ -691,14 +697,15 @@ event. An event of another colour does not stop the hero.
 on a tile a step enters, so a hero that starts its move on an event does not fire it. In the
 computer's step (`hero_move_step`'s fifth argument 1) the stop is not forced (E10); a network
 replay skips the test. A repeatable event whose guards were beaten fires again without a battle
-(the record's army is the survivors; inferred). **The pathfinder treats an event's tile as a stop
-for every colour:** the tile carries the visitable bit (+0xD 0x10, cleared at the removal), the
-relax gives it a stop node, and `pathfinder_pass_through` (0x56AB40) lets a human's mouse path (its
-fourth argument 0) go on past a stop only for the classes 33 and 212. So **a human's planned path
-may end on an event but never crosses one: it goes around hidden events of any colour**, and the
-event's stop in `hero_move_step` meets only a path that ends there. Nothing in the pathfinder tests
-the class 26 or a colour. The adventure cursor (`adventure_mouse_move` 0x40E360) tests no class 26 but tests
-the visitable bit (inferred). **A-23** (§9).
+(the record's army is the survivors; inferred). ~~**The pathfinder treats an event's tile as a stop
+for every colour**~~ (withdrawn by T58, §15: the placement clears the tile's visitable bit, 0x505C78,
+so the relax gives it no stop node and `pathfinder_pass_through` is never asked: **a path crosses
+an event of any colour**, and the event's stop in `hero_move_step` ends the move at whichever step
+enters it). The second reading had: the tile carries the visitable bit (+0xD 0x10, cleared at the
+removal), the relax gives it a stop node, and `pathfinder_pass_through` (0x56AB40) lets a human's
+mouse path (its fourth argument 0) go on past a stop only for the classes 33 and 212. The adventure
+cursor (`adventure_mouse_move` 0x40E360) tests no class 26 but tests the visitable bit (inferred),
+which an event's tile lacks. **A-23** (§9, withdrawn).
 
 ### 7.4 The rewards (0x49FA90)
 
@@ -928,30 +935,22 @@ original reads it:
 
 ### 8.5 The hidden event and the move
 
-**The original** (§7.3, the second reading): an event's tile is a stop for the pathfinder whatever
-the colour, so a human's planned path ends on an event or goes around it, and never crosses it.
-The hero enters the event's tile only as its path's last step: an event of the hero's colour fires
-there (a computer's needs the flag), one of another colour does not, and the hero stands on it. A
-human who watches the path arrows can therefore find hidden events: the path bends around an
-empty-looking tile, and a click on that tile gives a path that ends there. The leak is the
-original's, through the path, while the event itself is never drawn.
+**The original** (§7.3; corrected by T58, §15): an event's tile is no stop for the pathfinder
+(`place_object_tiles` clears its visitable bit), so a human's planned path goes over hidden events
+of any colour as over an empty tile, and a path may also end on one. An event fires at whichever
+step enters its tile, mid-path too: one of the hero's colour fires there (a computer's needs the
+flag) and **the move ends on its tile**; one of another colour does not fire and the hero walks on.
+The path tells nothing of events. *Until T58 this section had the second reading's stop (the path
+bending around events, **A-23**), which batch E7's row E7-23 contradicted (decision 131).*
 
-**The engine** has two ways (**A-23**, §9). Decision 131: both, as a flag (`faithful` the original's,
-`strict-fixed` blind), **only if batch E7's row E7-23 confirms the original's stop**; else the
-batch's behaviour is the rule:
+**The engine** (decision 131, A-23 withdrawn; every profile, no flag): `Reach` and `legal_moves`
+never read events, every path and price as if the event were not there, and a step into an event
+that fires ends the move on its tile with the points left (the rest of the path dropped: the
+move's outcome, not an error). An event that does not fire changes nothing. A property test checks
+it: two games that differ only by a hidden event give every player the same observation and the
+same legal moves until it fires.
 
-- **As the original:** an event's tile is an entrance for `Reach` (a path's end, never a pass node),
-  for every colour, as a pickup's is today. `legal_moves`, and so the env's tile masks (the AI
-  lane's encodings read `GameObservation` and `legal_moves`), then reveal where events are, as the
-  original's path does. The observation still never shows them; `docs/06-security.md` would list
-  the leak beside `ADV-QUIRK-1`'s fringe and decision 40's monster.
-- **Blind:** `Reach` and `legal_moves` never read events, every path and price as if the event were
-  not there, and a step into an event that fires ends the move on its tile with the points left
-  (the rest of the path dropped: the move's outcome, not an error). An event that does not fire
-  changes nothing. A property test checks it: two games that differ only by a hidden event give
-  every player the same observation and the same legal moves until it fires.
-
-In both, a move is never rejected because of an event (a rejection would tell of a hidden object:
+A move is never rejected because of an event (a rejection would tell of a hidden object:
 `docs/06-security.md`, "Side channels"), other players are told the hero's steps as any steps
 (ADV-FOG-004), and the mover learns of the event when it fires, as the original's message tells it.
 A fired event without the removal flag fires again at every entry, not for a hero that starts its
@@ -983,7 +982,7 @@ move on it; its beaten guards do not come back.
   paths that depend on order: a box with creatures and no room (the army dialog, then the
   experience), an event that stops a move, a University's purchases.
 - **Benchmarks.** Every step tests its tile for an event (one lookup per step: `random-play-*`); the
-  reach workloads gain only entrances as the original (A-23), nothing blind. The heroes' marks (ten classes)
+  reach workloads gain nothing (events are blind to `Reach`: A-23 withdrawn, §15). The heroes' marks (ten classes)
   and bonuses grow the state a fork clones (`fork-xl-144`). A random-play workload on the rewards
   map.
 - **The env** (the AI lane's, decision 99): the new decisions reach agents through `legal_commands`
@@ -1032,14 +1031,16 @@ learned (the wiki states it), an event that fires again at every entry (the edit
 
 **The second reading** (§13) confirmed the code's side of D-29 to D-32 and D-34 to D-40 and
 reshaped D-33. **Decided at ADV-Q28** (§14): the code's side of every dispute, confirmed or reverted
-by batch E7 (decision 129); A-21 a flag (130); A-23 a flag if row E7-23 confirms it (131); A-17
+by batch E7 (decision 129); A-21 a flag (130); A-23 a flag if row E7-23 confirms it (131; withdrawn by T58, §15); A-17
 and A-19 not reproduced and no smaller bound in their place, A-18, A-20, A-22 and A-24 fixed (133).
 
 Quirk candidates (T55a4, the second reading, §13): **A-23** the pathfinder makes an event's tile a
 stop for every colour (§7.3, §8.5): a human's path never crosses a hidden event and bends around
 it, so the path tells where events are. Reachable on every map with events (486 on the shipped
 maps). Proposal: a quirk with a flag, `faithful` the original's stop (the legal moves reveal events,
-as the path does), `strict-fixed` blind (§8.5); the user's (ADV-Q28). **A-24** the loader writes
+as the path does), `strict-fixed` blind (§8.5); the user's (ADV-Q28). *Withdrawn (T58, §15): batch
+E7's row E7-23 showed a path crossing an event, and the re-read found the event's tile no stop; the
+blind way is the original's.* **A-24** the loader writes
 past a reward record for more than seven creature stacks (§7.4): state-corrupting, unreachable on
 the shipped maps. Proposal: always fixed (the import refuses such a map). **A-21** an RoE map's Witch Hut takes the fixed
 mask 0xEFBF (0x5034BD), which looks like the editor's default (every skill but Leadership and
@@ -1168,7 +1169,7 @@ record) are new families.
 | ADV-PIK-009 to -012 | the Corpse, the Wagon, the Warrior's Tomb, the Lean To | §6.9 | D-35 |
 | ADV-PIK-013 | Pandora's Box: the question, the guards, the rewards, the removal | §7.2 | — |
 | ADV-OBJ-007 | events: who fires them, the guards at once, the removal flag and the repeats | §7.3 | — |
-| ADV-MOV-011 | an event's tile and the move: an entrance for `Reach` of every colour as the original, or blind; a step into a firing event ends the move there | §7.3, §8.5 | A-23 |
+| ADV-MOV-011 | an event's tile and the move: blind (`Reach` never reads events; T58, §15); a step into a firing event ends the move there | §7.3, §8.5 | A-23 (withdrawn) |
 | ADV-RWD-001 | the reward record's parts and their order | §7.4 | D-37, D-38, D-39, A-19 |
 | HER-CHG-003 | the hero's half of ADV-RWD-001 in `h3-heroes`: a skill raised to a level, the mana held in 0 to 999, the spells by book, Wisdom and knowledge | §7.4, §8.3 | — |
 | ADV-MON-012 | the monster battle with a second creature (the split less the other stacks, the order table) | §7.5 | D-40 |
@@ -1236,8 +1237,9 @@ the looted Pyramid's −2 once (D-40, A-20, §7.5).
 **B added** (written into the sections):
 
 - **The pathfinder and events** (§7.3, §8.5): an event's tile is a stop for every colour; a human's
-  path never crosses it (**A-23**). T55a4 checked the deciding branch (`pathfinder_pass_through`
-  returns no for every class but 33 and 212 on the mouse path, before its switch).
+  path never crosses it (**A-23**; withdrawn by T58, §15: the tile is no stop, so the branch is
+  never asked). T55a4 checked the deciding branch (`pathfinder_pass_through` returns no for every
+  class but 33 and 212 on the mouse path, before its switch).
 - A Knowledge gained (`grant_rewards`, the Garden) raises the maximum only: the spell points the hero
   has change only through a reward's mana part (§8.3).
 - The mana's 999: a sum past it is set to 999, also for a hero who had more (§7.4, D-38).
@@ -1263,7 +1265,7 @@ class. Just implement a more reasonable mechanism for visits and box / event sta
    Recommended (a).
 2. **D-33 and A-21, an RoE map's Witch Hut:** (a) a quirk with a flag, `faithful` 0xEFBF,
    `strict-fixed` VCMI's 26; (b) the original's everywhere; (c) VCMI's everywhere. Recommended (a).
-3. **A-23, an event's tile in the pathfinder:** (a) a quirk with a flag, `faithful` the original's
+3. **A-23, an event's tile in the pathfinder** (*T58: withdrawn, §15*): (a) a quirk with a flag, `faithful` the original's
    stop, `strict-fixed` blind; (b) the original's everywhere; (c) blind everywhere. Recommended (a).
 4. **Batch E7:** (a) all 23 rows in two runs before the build; (b) beside the build; (c) the
    disputes' and quirks' rows only; (d) none. Recommended (a).
@@ -1273,3 +1275,100 @@ class. Just implement a more reasonable mechanism for visits and box / event sta
 7. **The common rules as written** (§8). Recommended: as written.
 8. **Decision 104 for the random artifacts' pool; what stays out of increment 7.** Recommended:
    both confirmed.
+
+## 15. Batch E7 scored (T58)
+
+Played by the capture harness under Wine in T57 (`experiments/results/E08-batch-7a.md`, the
+fourth run, stamp 48a36c8c; `-7a-roe.md`, one run; `-7b.md`, the third run; Complete 4.0, Easy, hot
+seat, the starting bonus random), each row against §11's prediction and its spec's
+(`experiments/specs/E08-batch-7a.toml`, `-7a-roe.toml`, `-7b.toml`). The words, positions,
+bonuses and openings are the game's memory, read by the harness. "Conclusive": another source
+predicted otherwise.
+
+| Row | Observed | Reading | Other source | Verdict |
+|---|---|---|---|---|
+| E7-1 (D-29) | a question first (GENRLTXT 421); No: the axe stays, no battle; Yes: the battle, won, the axe then worn in the right hand (position 3) | the same | VCMI the same; the wiki: a battle at once | **conclusive**: the reading |
+| E7-2 (D-30) | the axe worn in the right hand (3); the scroll at misc 1 (9), no spell learned (no book) | the same | the wiki: both in the backpack | **conclusive**: the reading |
+| E7-3 (D-31) | forty different artifacts: 13 treasure, 8 minor, 19 major, no relic | no relic | VCMI: relics too | **conclusive**: the reading |
+| E7-4 (§2.2, §6.4) | chests of 1 000, 1 500, 2 000 gold offered 525, 1 050, 1 575 experience, taken; the stone 1 050; Learning still Basic | (gold − 500) × 1.05; 1 050 | VCMI and the wiki the same | confirmed |
+| E7-5 (§2.2) | four artifact chests of forty (treasure artifacts), each offering 1 000 gold or 500 experience; the backpack 64 throughout; gold chests as E7-4's without Learning | the same | the code's alone | the reading |
+| E7-6 (§5) | the treasure's 1 000 gold given; the axe lost (the backpack 64, only the Catapult worn) | the same | VCMI: no full backpack | the reading |
+| E7-7 (D-33, A-21) | the sixty RoE huts drew exactly the fourteen skills of 0xEFBF (none of Leadership, Necromancy, Water Magic to First Aid) | the same | VCMI: 26 skills | **conclusive**: the reading |
+| E7-8 (D-34) | fifteen different spells: the fifteen of the first circle | the same | VCMI: uniform, repeats | **conclusive**: the reading |
+| E7-9 (D-36) | Necromancy in 4 of 30 Universities (T57's second game: 1 of 30) | in some | VCMI and the wiki: never | **conclusive**: the reading |
+| E7-10 (§6.9) | 5 of 20 Corpses held an artifact, each turned into 1 000 gold; 5 of 10 Wagons, each giving its drawn resources (2 sulfur, 4 crystal, …); an empty Corpse: its message, nothing; both Tombs kept their artifacts, −3 morale after each | the same | the code's alone | the reading |
+| E7-11 (§6.9) | −3 after each Tomb (status 0x200000), −3 at the opening for both stacks, 0 and 0x0 after the battle | the same | the wiki: −3 until the next battle | confirmed |
+| E7-12 (D-37) | Basic Wisdom + a box's Advanced: Advanced | the same | VCMI: Expert | **conclusive**: the reading |
+| E7-13 (D-38) | 100 + 500 = 600 spell points | the same | VCMI: 100 | **conclusive**: the reading |
+| E7-14 (D-39) | Expert Learning and 1 000 experience: 1 000 gained; Wisdom at level 2 | the same | VCMI: 1 150 | **conclusive**: the reading |
+| E7-15 (D-39) | 999 + 1 experience and Fireball: the spell not learned (the box's message names only the experience); Wisdom taken at level 2 | the same | VCMI: the level-up first, learned | **conclusive**: the reading |
+| E7-16 (D-40) | one Pikeman against Gold, Gold, Diamond, Gold, Diamond, Gold, Gold in slots 0 to 6 (stacks of 8 and 10); retreated: still guarded | the same (n = 7, the table 0x63DF94) | VCMI: one stack of 40 | **conclusive**: the reading |
+| E7-17 (§7.3) | Red's event fired at the path's end (100 gold, removed), the hero on its tile, 1 560 → 1 160 points; on Blue's the hero stood, nothing fired, the event stays | the same | consensus | confirmed |
+| E7-18 (§7.3) | +100 at each entry; the event stays | the same | consensus | confirmed |
+| E7-19 (§7.4) | the box's axe lost (the backpack 64); the box removed | the same | VCMI: no full backpack | the reading |
+| E7-20 (§7.4) | the army dialog (GENRLTXT 36) with the three stacks; the Monks dismissed, the Wood Elves taken into slot 4, the rest lost; the box removed | the same | VCMI the same | confirmed |
+| E7-21 (§7.5) | each visit asked (ADVEVENT 105); −2 luck after both (status 0x1000), −2 at the opening, 0 after | the same | the wiki: −2 | confirmed |
+| E7-22 (§7.5) | Diamond, Diamond, Gold in slots 0, 1, 3 (10, 10, 40); won; three level-ups (Learning); Dimension Door lost with Advanced Wisdom; the Pyramid looted (bit 0 cleared) | the same | the wiki the same | confirmed |
+| E7-23 (A-23) | the open: a straight path (7, 30) to (3, 30) over Blue's own event at (4, 30), and one ending on it; the corridor: no path to (14, 30) nor (15, 30) | around (4, 30); a path ending on (14, 30) | VCMI and the engine: through it | **contradicted** (the open half); the corridor half tested nothing (below) |
+
+**The disputes** (decision 129): every row of a dispute shows the code's side (D-29, D-30, D-31,
+D-34, D-36 to D-40, each conclusive against VCMI or the wiki), so none reverts and no `ADV-Q`
+follows. **D-33 and A-21** (E7-7): the fixed mask 0xEFBF, so decision 130's flag stands. D-32 and
+D-35 had no row; what the batch shows of them fits both sides: E7-3's forty draws repeat nothing
+(VCMI's least-rolled draw would not repeat in forty either), and E7-10's ten artifacts were five
+treasure and five minor (the code's pool about 64 % treasure, VCMI's half).
+
+**A-23 is withdrawn** (decision 131: "contradicted, A-23 is withdrawn and the reading re-read").
+E7-23's open half shows a path crossing a hidden event. Its corridor half tested nothing: the
+targets (14, 30) and (15, 30) lay 6 and 7 tiles east of a hero with the radius 5 (ADV-FOG-002:
+dx² ≤ 30) and no Blue hero came near, so both were unexplored, and the original draws no path onto
+an unexplored tile (ADV-MOV-008). **The re-read** (T58, `docs/exe/map.toml`):
+
+- `place_object_tiles` (0x505C2D to 0x505C87) gives an event's entrance tile no drawing, its class
+  (+0x1E 26) and its word (+0x0), and **clears** +0xD bits 0x01 and 0x10 (`and word [tile + 0xC],
+  0xEEFF`, 0x505C78): an event's tile is neither blocked nor an entrance. `tile_refresh_around_heroes`
+  (0x505A10) leaves an event's tile as it is, so later placements and removals keep it so.
+- `pathfinder_expand` passes the entered tile's +0xD bit 0x10 to the relax (0x4B2D12 to 0x4B2D22),
+  which stores it as the node's stop flag (node +4 bit 1, 0x4B1EF1 to 0x4B1F04); `pathfinder_run`
+  asks `pathfinder_pass_through` only of a stop node (0x56BB7C). An event's tile is no stop, so the
+  no that `pathfinder_pass_through` gives a human's mouse path for class 26 (§13) is never asked,
+  and nothing on the way tests a colour: **a path crosses an event of any colour**.
+- `event_fires_for` (0x4FCDC0) reads only the tile's class and word, so an event fires at whichever
+  step enters it, mid-path too, and the move ends there (§7.3; E7-17 and E7-18 entered theirs as the
+  path's last step).
+
+The second reading's step "the tile carries the visitable bit" was the error: it was inferred from
+the removal (§7.3 step 3), which clears a bit the placement had already cleared. **The rule** (no
+flag, every profile): §8.5's blind way. `Reach` and `legal_moves` never read events; a step into a
+firing event ends the move on its tile with the points left, the rest of the path dropped; one that
+does not fire changes nothing. Nothing leaks, so `docs/06-security.md` lists nothing for it. No
+re-run: the other colour's case rests on the code, which tests no colour before the fire; a
+corridor run would only confirm it.
+
+**What else the rows show:**
+
+- **A full backpack is tested before the placement** (§2.2, §5, §6.9, §7.4 as read): E7-6's and
+  E7-19's heroes wore nothing but the Catapult, E7-5's and E7-10's no artifact (their specs), and
+  every artifact was lost or turned into gold or resources, not worn in a free right hand: the count
+  (≥ 64) decides.
+- **The team's mark:** a visit sets the visitor's colour bit in the word's bits 5–12 (§6.1): Blue's
+  bit 6 in E7-10's Wagons and Tombs and in E7-16's Pyramid after the retreat (0x…1F → 0x…5F; E7-16's
+  spec said "the word as before", meaning its content, which did not change).
+- **The draws:** E7-5's four artifact chests held treasure artifacts (`random_artifact_of_level(2)`,
+  §2.1); E7-10's two Tombs minor ones. Corpses: 5 of 20 in the recorded game, 9 of 20 in T57's
+  second; together 14 of 40 against 20 % (14 or more: about 2 %). The threshold was read again
+  (0x4C113D: `random_between(0, 99)` below 20) and the harness tests the right bit (bit 16, as
+  `visit_corpse`): chance, and D-35's distributions stay out of the batch. Wagons: 5 of 10 in the
+  recorded game by the results' words (T57's log entry says 7). Within chance of 40 %.
+- **The version field:** game +0x1F698 read 2 (SoD) on the RoE map (E7-7): it is not the map's
+  format (T57).
+
+**The rules** (§12): the rows become the observations of the rules T60 to T63 write, `verified`
+where the row matches: ADV-PIK-005 (E7-4, E7-5), -006 and -008 (E7-2), -007 (E7-1), -009 to -011
+(E7-10, E7-11), -013 (E7-19, E7-20), ADV-OBJ-006 (E7-3), -007 (E7-17, E7-18), ADV-MOV-011 (E7-17,
+E7-23's open half), ADV-MON-011 (E7-6), -012 (E7-16, E7-22), ADV-TCH-003 (E7-4), -004 (E7-8), -005
+(E7-7), -007 (E7-9), -008 (E7-16, E7-21, E7-22), ADV-RWD-001 and HER-CHG-003 (E7-12 to E7-15,
+E7-19), HER-ADV-008 and GAM-BAT-014 (E7-11, E7-21), GAM-DEC-004 amended (E7-20), GAM-DEC-007
+(E7-22). The rules already written got their observations now: HER-EXP-001 (E7-4, `verified`),
+HER-CHG-002 (E7-1, E7-2, `verified`), ADV-MOV-008 (E7-23's corridor; T57's second E7a run,
+`E08-log.md`).

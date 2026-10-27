@@ -3,7 +3,9 @@
 - Status: Proposed (E08 T55b, 2026-10-26), from T55a's survey and the answers at ADV-Q28 (the
   epic's decisions 129–136). **Accepted by the user** (ADV-Q29, 2026-10-26; decisions 138–141).
   The round-3 `shared/` task (T59) applies it to ADR-0016, with batch E7's outcome for A-23
-  written in (decision 131).
+  written in (decision 131): **A-23 withdrawn** (T58, survey §15: a path crossed a hidden event;
+  the original's placement clears an event tile's entrance bit, so the pathfinder never stops
+  there), written into point 4 and point 6 below.
 - Amends: ADR-0016 points 1, 3, 4 and 6.
 - Detail: `docs/epics/E08-design.md` part B (§7–§13); facts: survey
   `docs/rules/surveys/E08-rewards.md` §1–§8, §9, §13.
@@ -16,7 +18,7 @@ teach or hold a find, Pandora's Box, events and the Pyramid. The original bounds
 ways the engine does not copy (decision 133, the user: "We want to allow maps even when every
 single tile is filled with a box, or every single tile with an object of some class"): 32
 once-per-hero marks per class (A-17), 400 reward records (A-19). Events are hidden objects that
-stop a hero, and the original's pathfinder lets a human's path find them (A-23, §8.5).
+stop a hero; the original's pathfinder never reads them (§8.5; A-23 withdrawn by batch E7, T58).
 
 ## Decision
 
@@ -66,11 +68,11 @@ stop a hero, and the original's pathfinder lets a human's path find them (A-23, 
      not human, ADR-0017 point 1's flag, only with the computer flag), and **the move ends
      there**: the rest of the path is dropped, the move's outcome, never a rejection. Its guards
      fight at once (no question); without the removal flag it fires again at every later entry,
-     never for a hero that starts its move on it. **The reachable-tiles query** (A-23, decision
-     131; the outcome of batch E7's row E7-23 written in by T59): if the row confirms the
-     original's stop, an event's tile is an entrance for every colour (a path's end, never passed)
-     under the `faithful` profile, and the query never reads events (blind) under `strict-fixed`;
-     if it does not, the batch's behaviour is the rule for both.
+     never for a hero that starts its move on it. **The reachable-tiles query never reads events**
+     (blind, in every profile, no flag): batch E7's row E7-23 showed the original's path crossing
+     a hidden event, and the original's placement clears an event tile's entrance bit, so its
+     pathfinder never stops there (decision 131: A-23 withdrawn; T58, survey §15). A step into a
+     firing event mid-path ends the move there, as at the path's end.
    - **Visits.** A question is a pending decision of the visitor's owner (ADR-0017 point 6). A
      refusal (a full backpack, no spell book, too little Wisdom, a known spell or skill, eight
      skills, a price the owner cannot pay, a mark already set, an emptied find) is the visit's
@@ -99,16 +101,15 @@ stop a hero, and the original's pathfinder lets a human's path find them (A-23, 
    looted), which that player's observation shows from then on. A hero's once-per-hero marks and
    bonuses are its owner's. An **event is never observed**, not even by its visitor's owner after
    it fired; its firing is told to the visitor's owner alone, its removal to no one. Removals of
-   picked-up objects are seen where the tiles are, as a pile's. Under A-23's `faithful` stop the
-   legal moves reveal where events are, as the original's path does; `docs/06-security.md` lists
-   that leak beside the fringe's.
+   picked-up objects are seen where the tiles are, as a pile's. The legal moves never depend on an
+   event (A-23 withdrawn), so they reveal nothing of one before it fires.
 
 ## Consequences
 
 - The adventure state grows by one block (the state hash and its version); the army left changes
   its storage; `fork-xl-144` moves by a reference count at most once a reward was visited.
-- Every caller of the reachable-tiles query (`legal_moves`, the env's masks, the properties'
-  plans) meets events' tiles as entrances under `faithful`, if batch E7 confirms A-23.
+- The callers of the reachable-tiles query (`legal_moves`, the env's masks, the properties'
+  plans) do not change for events (A-23 withdrawn).
 - The monster battle gains a second creature (the Pyramid's), which `split` lays out by the
   original's order table (ADV-MON-012).
 - The import maps 31 more classes and reads the scenario's spell and artifact bans.
@@ -120,7 +121,7 @@ stop a hero, and the original's pathfinder lets a human's path find them (A-23, 
 - **The marks on each hero on the map:** a fork copies a set per hero (453 instructions with eight
   heroes, measured, against 19 for one block) and a hero that leaves the map loses them.
 - **Events as visitable objects** (seen, entered as any): the original never draws them.
-- **A-23 as the original's everywhere, or blind everywhere** (decision 131: a flag, if E7-23
-  confirms the stop).
+- **A-23, an event's tile as a stop** (the second reading's, as a flag under decision 131): withdrawn,
+  the original's pathfinder never stops there (batch E7's E7-23 and the re-read, T58).
 - **VCMI's side of the disputes** (decision 129: the code's side, confirmed or reverted by
   batch E7).
