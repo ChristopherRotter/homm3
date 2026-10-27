@@ -87,6 +87,8 @@ Refined with the user on 2026-10-26 (T53; ADV-Q26). Built like increments 1 to 6
 
 146. **T59 whole** (the user's choice of three at T59's start, 2026-10-27, `AskUserQuestion`: "Whole, one PR (Recommended)"; the alternatives were its docs half alone, then the code half in the next session, or the reverse, since a session's shared changes go in one `shared/` pull request): the three ADR drafts applied, the mana ceiling, A-21's and A-25's flags, the glossary, the replay headers and the AI lane's two bots' tables in `shared/e08-t59` (`cross-lane`). A-25's flag written into ADR-0013 point 15.4 and ADR-0016 point 4 (the drafts predated decision 145). The names: `quirk.adventure.roe_witch_hut_mask` (37) and `quirk.adventure.full_backpack_refuses` (38).
 
+147. **T60 in two** (the user's choice of three at T60's start, 2026-10-27, `AskUserQuestion`: "Two parts, T60a now (Recommended)"; the alternatives were T60 whole in one pull request, or three parts with the bonuses and the four changes apart): **T60a** the battle bonuses on `HeroDetails`, the four changes, the bonuses in battle (HER-ADV-008), game state hash v15 and the twelve adventure replays re-recorded; **T60b** `grant` (HER-CHG-003) and the teachers' functions with `can_receive_artifact` under flag 38, inside `h3-heroes` with no version. The other lanes' `HeroDetails` literals gain one line each (`cross-lane`, the user's consent: `h3-pack-battle`'s tests, `h3-sim`'s encounter; their inboxes told).
+
 ### Tasks (queue entries in `docs/lanes/adventure/QUEUE.md`; one or two per round, the cut confirmed at each checkpoint)
 
 - **T53 Increment 7 refined** (with increment 6's closure). Done (2026-10-26, `adventure/e08-t53`; decisions 120–123): rewards on the map, the battle seam's facts first, the first round queued (T54, T55a, T55b).
@@ -102,6 +104,9 @@ Refined with the user on 2026-10-26 (T53; ADV-Q26). Built like increments 1 to 6
 - **T58 Batch E7 scored** (design §18). Done (2026-10-27, `adventure/e08-t58`; decision 144, whole with a re-read): survey `E08-rewards.md` §15; every dispute's row the code's side (none reverts, no `ADV-Q`), A-21's 0xEFBF confirmed; **A-23 withdrawn** (decision 131): a path crosses an event of any colour, the event tile's entrance bit cleared at the placement (0x505C78); HER-EXP-001 and HER-CHG-002 `verified`.
 - **T58b `h3-map`'s view property: a hero shown untold** (decision 144; the queue's inbox of 2026-10-27, a random case). Done (2026-10-27, `adventure/e08-t58b`): the test's oracle, not a leak (a new day's reveal in `strict-fixed` shows a standing hero untold); the seed committed. ADV-Q30 (decision 145): A-25 a quirk with a flag.
 - **T59 Increment 7's shared part** (design §19, round 3; `shared/`). Done (2026-10-27, `shared/e08-t59`, `cross-lane`; decision 146, whole): ADR-0013 points 1, 2, 15, ADR-0016 points 1, 3, 4, 6 and ADR-0017 points 1, 4, 6, 8–11 amended (A-23 withdrawn, A-25's flag), the drafts deleted; `HeroParams::mana_ceiling` (999; pack format v48, core ruleset hash v49); `ADV-QUIRK-21` and `-22` (flags 37, 38); the glossary; the replay headers and the bots' tables.
+- **T60 `h3-heroes`: the rewards on the hero** (design part A, round 4), in two (decision 147):
+  - **T60a The battle bonuses and the four changes.** Done (2026-10-27, `adventure/e08-t60a`, `cross-lane`): `BattleBonuses` on `HeroDetails`; `GainPrimary`, `RaiseSkill`, `Bonus`, `ClearBonuses`; the bonuses in the own side's morale and luck (HER-ADV-008); game state hash v15, the twelve replays re-recorded (their commands unchanged).
+  - **T60b The reward record's hero half and the teachers** (design §3, §4): `grant` (HER-CHG-003), the eight functions, `can_receive_artifact` under flag 38. Next.
 
 ## Later increments (sketch)
 
