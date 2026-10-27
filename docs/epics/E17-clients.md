@@ -154,8 +154,12 @@ the stacks created mid-battle.
     §9.11: the input queue emptied at every turn's start); CLT-Q24's switch; scripted presses
     over every scenario's turns give the engine's legal commands but a two-hex stack's step one
     hex back (CLT-Q25: the original's copied).
-  - **T2b, hot seat in the window:** each seat a human or the Greedy bot; the human's command
-    through the in-process session, the window waiting at the timeline's end.
+  - **T2b, hot seat in the window** (done 2026-10-27; whole, the user): `--human` (the sides a
+    human plays here, the battle's human players); the battle waiting at its timeline's end
+    (`Growing::waiting`), a press's or a button's command through the session, input made while
+    the battle takes none dropped; the screen showing the side to act's hidden objects (every
+    side's events, `Timeline::screen`); unattended runs pressing the bot's choices (design
+    §9.12).
 - **T3, the spell book and the hero's aim:** the book (`spell_book_dialog` 0x59BDF0, read at M3
   T7a-2a, design §7.16) drawn and used; the aim's loop read (`enter_player_cast` 0x59EC50: the
   targets it offers, the cursor `crspell.DEF`, the status line GENRLTXT 27 and 28) and built,
@@ -248,4 +252,8 @@ Accepted by the user (M1 2026-10-13, M2 2026-10-14, M3 2026-10-23, M4 2026-10-27
 [`E17-log.md`](E17-log.md#accepted-review-lists-m1-to-m4) (M1 and M2 moved there on 2026-10-20,
 M3 at its review, T9b, M4 at its review, T3c). The next milestone's list starts here.
 
-**M5** (for its closure, T8): none yet.
+**M5** (for its closure, T8):
+
+1. The sides a human plays in the window are the battle's human players, the bot's the
+   computer's (T2b, `--human`; design §9.12): the engine's computer-only rules (BAT-QUIRK-27's
+   let-off) apply to the bot's side; without `--human` the scenario's `human` stays.

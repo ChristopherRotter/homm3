@@ -632,6 +632,24 @@ pub struct Object {
     pub before_stacks: bool,
     /// The hexes it blocks (Force Field's: a count box does not take them, 0x43E605).
     pub blocked: Vec<u8>,
+    /// The side that alone sees it while it is not revealed (a Quicksand pit's or a Land Mine's
+    /// placed out of the other side's sight, BAT-MAG-031; E17 M5 T2b): it shows only when that
+    /// side is the screen's ([`Timeline::screen`]); none, both see it.
+    pub owner: Option<Side>,
+}
+
+/// Whether a screen that shows `screen`'s hidden objects shows `object` (none: every object; E17
+/// M5 T2b, [`Timeline::screen`]).
+fn sees(screen: Option<Side>, object: &Object) -> bool {
+    screen.is_none() || object.owner.is_none_or(|owner| Some(owner) == screen)
+}
+
+/// The other side.
+const fn opponent(side: Side) -> Side {
+    match side {
+        Side::Attacker => Side::Defender,
+        Side::Defender => Side::Attacker,
+    }
 }
 
 /// A battlefield object placed at `anchor` from `shown` on, or (`object` none) gone from then
@@ -1056,6 +1074,9 @@ pub struct Timeline {
     pub bridges: Vec<BridgeKey>,
     /// Earthquake's shakes and the mouse hidden through them (E17 M4 T2c-2).
     pub quakes: Vec<QuakeKey>,
+    /// Whether each side's player is a human here (the snapshot's `human`; E17 M5 T2b): the
+    /// screen shows the side to act's hidden objects ([`Timeline::screen`]).
+    pub humans: [bool; 2],
     /// When the last frame shows.
     pub end: u32,
 }
@@ -1303,7 +1324,28 @@ impl Timeline {
                 None => shown.remove(&k.anchor),
             };
         }
+        let screen = self.screen(t);
+        shown.retain(|_, o| sees(screen, o));
         shown
+    }
+
+    /// The side whose hidden objects the screen shows at `t` (E17 M5 T2b; `battle_redraw`
+    /// 0x49460A to 0x49463A, design §7.16): the side to act when a human here plays it, else the
+    /// other one; none when no human plays here (a record holds only what its viewer sees: every
+    /// object shows). The side to act is its turn's stack's side at the start
+    /// (*provisional*: a hypnotized stack's controller is not followed, R3-1).
+    pub fn screen(&self, t: u32) -> Option<Side> {
+        if !self.humans.contains(&true) {
+            return None;
+        }
+        let i = self.turns.partition_point(|(at, _)| *at <= t);
+        let stack = match i.checked_sub(1) {
+            Some(i) => Some(self.turns[i].1),
+            None => self.outlines.first().and_then(|(_, s)| *s),
+        };
+        let side = self.members.iter().find(|m| Some(m.stack) == stack)?.side;
+        let human = self.humans[usize::from(side == Side::Defender)];
+        Some(if human { side } else { opponent(side) })
     }
 
     /// The magic animation over the whole battlefield showing at `t`, if one is drawn then (E17
@@ -1838,6 +1880,8 @@ impl<'a> Growing<'a> {
             objects: Vec::new(),
             pending_objects: Vec::new(),
             placed: BTreeMap::new(),
+            hidden: BTreeSet::new(),
+            secret: BTreeMap::new(),
             kept: None,
             fields: Vec::new(),
             field_kept: None,
@@ -1895,15 +1939,18 @@ impl<'a> Growing<'a> {
             .filter(|(_, l)| !l.spells.is_empty())
             .map(|(&id, l)| (id, hue(l, casts)))
             .collect();
-        // The snapshot's battlefield objects show from the start (E17 M3 T7c-2).
+        // The snapshot's battlefield objects show from the start (E17 M3 T7c-2); one the other
+        // side does not see, only to its own (E17 M5 T2b).
         for o in &snapshot.spell_obstacles {
-            player.place(o.spell, &o.hexes);
+            player.place(o.spell, &o.hexes, (!o.revealed).then_some(o.side));
         }
         player.flush(0, 0);
+        let humans = [0, 1].map(|i| snapshot.sides.get(i).is_some_and(|s| s.human));
         let timeline = Timeline {
             members,
             outlines: vec![(0, snapshot.active)],
             fidgets,
+            humans,
             ..Timeline::default()
         };
         let mut growing = Self {
@@ -1915,6 +1962,46 @@ impl<'a> Growing<'a> {
         };
         growing.hand_over();
         Ok(growing)
+    }
+
+    /// [`Growing::push`] with each of the command's events seen by one side only or by both:
+    /// `seen` gives, for each event in order, the side that alone sees it (none: both, as for an
+    /// event missing from it). The events are every side's (E17 M5 T2b: a battle in hot seat or
+    /// against the computer, whose screen shows the side to act's hidden objects,
+    /// [`Timeline::screen`]): an object placed by an event one side alone sees is that side's
+    /// until it is revealed.
+    pub fn push_seen(&mut self, command: &Command<'_>, computer: bool, seen: &[Option<Side>]) {
+        self.player.secret = command
+            .events
+            .iter()
+            .zip(seen)
+            .filter_map(|(e, &side)| match e {
+                Event::ObstaclePlaced { hexes, .. } => Some((*hexes.iter().max()?, side?)),
+                _ => None,
+            })
+            .collect();
+        self.push(command, computer);
+        self.player.secret.clear();
+    }
+
+    /// The timeline as the battle waits at its end for the next command (E17 M5 T2b: a human's
+    /// turn): what the last command left to the battle's next redraw shows with the first idle
+    /// step after the end, the idle steps and the fidgets going on. The next command given at
+    /// `t` grows a timeline with the same moments before `t` ([`Growing::push`]).
+    #[must_use]
+    pub fn waiting(&self) -> Timeline {
+        let mut tail = Self {
+            player: self.player.clone(),
+            timeline: self.timeline.clone(),
+            commands: self.commands,
+            waiting: self.waiting,
+            open_bridge: self.open_bridge,
+        };
+        let idle = tail.player.idle;
+        let first = idle.next.max(idle.from);
+        tail.player.flush(first, first);
+        tail.hand_over();
+        tail.timeline
     }
 
     /// Plays `command` after those before it (a command without a time as soon as the previous
@@ -2302,7 +2389,7 @@ impl Riding {
 }
 
 /// Plays the commands.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct Player<'a> {
     stage: Stage<'a>,
     speed: Speed,
@@ -2369,6 +2456,11 @@ struct Player<'a> {
     /// The objects on the battlefield in memory by anchor, each with the animation it vanishes
     /// with.
     placed: BTreeMap<u8, u8>,
+    /// The anchors of those one side alone sees (E17 M5 T2b).
+    hidden: BTreeSet<u8>,
+    /// The anchors of the objects the command under way places out of the other side's sight,
+    /// with the side that sees them (E17 M5 T2b, [`Growing::push_seen`]).
+    secret: BTreeMap<u8, Side>,
     /// The last frame of a magic animation at a hex that its caller keeps (`keep`, E17 M3
     /// T7c-2): on the screen until the next frame drawn erases it.
     kept: Option<SpotKey>,
@@ -2950,19 +3042,22 @@ impl Player<'_> {
                 Event::ObstacleRemoved { ref hexes, .. } if i > expired => self.vanish(hexes),
                 // An object placed outside a hero's cast (a town's mines at the battle's start)
                 // or one the viewer did not see revealed (E17 M3 T7c-2): drawn from the next
-                // frame on.
+                // frame on; one the viewer saw hidden from the other side shows to both from then
+                // on (E17 M5 T2b).
                 Event::ObstaclePlaced {
                     spell, ref hexes, ..
                 }
                 | Event::ObstacleRevealed {
                     spell, ref hexes, ..
                 } => {
-                    let known = hexes
-                        .iter()
-                        .max()
-                        .is_some_and(|a| self.placed.contains_key(a));
+                    let anchor = hexes.iter().max();
+                    let known = anchor.is_some_and(|a| self.placed.contains_key(a));
+                    let revealed = matches!(event, Event::ObstacleRevealed { .. });
                     if !known {
-                        self.place(spell, hexes);
+                        let owner = self.owner(hexes);
+                        self.place(spell, hexes, owner.filter(|_| !revealed));
+                    } else if revealed && anchor.is_some_and(|a| self.hidden.contains(a)) {
+                        self.place(spell, hexes, None);
                     }
                 }
                 Event::TurnStarted { stack } => {
@@ -3899,11 +3994,16 @@ impl Player<'_> {
     /// The battlefield object `spell` placed on `hexes` (E17 M3 T7c-2; `place_battle_object`
     /// 0x4669B0): in memory now, at its anchor (the lowest hex, its bottom row's), drawn from the
     /// next frame on.
-    fn place(&mut self, spell: u16, hexes: &[u8]) {
+    fn place(&mut self, spell: u16, hexes: &[u8], owner: Option<Side>) {
         let (Some(look), Some(&anchor)) = (self.object_look(spell, hexes), hexes.iter().max())
         else {
             return;
         };
+        if owner.is_some() {
+            self.hidden.insert(anchor);
+        } else {
+            self.hidden.remove(&anchor);
+        }
         let forced = self
             .stage
             .casts
@@ -3918,8 +4018,15 @@ impl Player<'_> {
             rows: look.rows,
             before_stacks: look.before_stacks,
             blocked,
+            owner,
         };
         self.pending_objects.push((anchor, Some(object)));
+    }
+
+    /// The side that alone sees the object the command under way places on `hexes` (E17 M5
+    /// T2b, [`Growing::push_seen`]); none, both.
+    fn owner(&self, hexes: &[u8]) -> Option<Side> {
+        self.secret.get(hexes.iter().max()?).copied()
     }
 
     /// The battlefield object on `hexes` goes (E17 M3 T7c-2; `remove_battle_object` 0x466B30):
@@ -3930,6 +4037,7 @@ impl Player<'_> {
             return;
         };
         let vanish = self.placed.remove(&anchor);
+        self.hidden.remove(&anchor);
         self.pending_objects.push((anchor, None));
         if let Some(number) = vanish {
             self.at_hex(number, anchor, self.speed.scale(TICK), false);
@@ -3972,7 +4080,7 @@ impl Player<'_> {
             if let Some(o) = self.object_look(spell, hexes) {
                 self.at_hex(o.placed, at, tick, true);
             }
-            self.place(spell, hexes);
+            self.place(spell, hexes, self.owner(hexes));
             if look.original != FORCE_FIELD {
                 self.redraw();
             }

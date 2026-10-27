@@ -16,6 +16,17 @@
 //! layout's `keys`: S, R, O, A, C, W, D and Space); a replay takes no command, but the log's
 //! scroll buttons and the arrow keys scroll it.
 //!
+//! Hot seat (E17 M5 T2b): `--human attacker|defender|both` names the sides a human plays here
+//! (their players the battle's human ones, the bot playing the others). On a human's turn the
+//! battle waits at its end, idling, until a left press over the battlefield gives its command
+//! (`h3_view::mouse::click`, as the button goes down) or the panel's Wait or Defend is clicked
+//! (the mouse's button released over it, or its hotkey released: `mouse::button`); input made
+//! while the battle takes none (an action playing, the computer's turn) gives nothing. The screen
+//! shows the side to act's hidden objects (`anim::Timeline::screen`). Unattended (`--check`,
+//! `--measure`), the window presses a human's commands itself: the bot's choice, pressed where
+//! the mouse gives it (given without a press where none does: a hero's cast, the tactics phase's
+//! end), so that the battle is the bot's at once with the same setup, which the run checks.
+//!
 //! The sound (T5b, [`crate::audio`]): a battle shown from its start opens as the original's does,
 //! its start sound playing over the first frame while the battle's clock waits (at most 10 s),
 //! then the music starts, looping and fading in, and the clock with it; the stacks' sounds follow
@@ -30,19 +41,22 @@
 use std::path::PathBuf;
 use std::process::ExitCode;
 
+use h3_protocol::wire::Command;
 use h3_render::screen::Screen;
 use h3_sdl::{Config, CursorImage, Event, Key, ReadBack, Window};
 use h3_view::anim::Speed;
 use h3_view::clock::Clock;
 use h3_view::compose::FORMAT;
 use h3_view::cursor::Cursor;
+use h3_view::layout::BattleLayout;
 use h3_view::mouse::track::Input;
 use h3_view::scene::Draw;
 use h3_view::sound::Tune;
+use h3_view::ui::Item;
 
 use crate::assets;
 use crate::audio::{Library, Player};
-use crate::battle::{Battle, Ground, Source};
+use crate::battle::{Battle, Ground, Press, Source};
 
 /// How far past the last change the window looks for the next one before it waits for input
 /// only (a battle that no longer changes).
@@ -53,6 +67,10 @@ const IDLE_SPAN_MS: u32 = 60_000;
 
 /// The longest wait for input, so that the clock is read now and then.
 const WAIT_MS: u32 = 250;
+
+/// How long after a human's turn started an unattended run presses its command (E17 M5 T2b):
+/// a few idle steps show first.
+const PRESS_AFTER_MS: u32 = 400;
 
 /// The tunes a battle may end with (E17 M5 T1b: decoded before a battle fought as it is played
 /// ends).
@@ -79,16 +97,26 @@ pub struct Options {
     run: Option<(u32, bool)>,
 }
 
+/// The sides `name` names (`attacker`, `defender`, `both`).
+fn sides(name: &str) -> Option<[bool; 2]> {
+    match name {
+        "attacker" => Some([true, false]),
+        "defender" => Some([false, true]),
+        "both" => Some([true, true]),
+        _ => None,
+    }
+}
+
 impl Options {
     /// Parses `<scenario.toml | record.jsonl> [--seed <n>] [--speed <0-2>] [--packs <dir>]
-    /// [--install <dir>] [--scale <n>] [--vsync] [--drawn-cursor] [--fullscreen] [--from <ms>]
-    /// [--mute] [--check <s> | --measure <s>]`.
+    /// [--install <dir>] [--human attacker|defender|both] [--scale <n>] [--vsync]
+    /// [--drawn-cursor] [--fullscreen] [--from <ms>] [--mute] [--check <s> | --measure <s>]`.
     pub fn parse(args: &[String]) -> Result<Self, String> {
         let clients = assets::clients_dir();
         let env = std::env::var_os("H3_INSTALL").map(PathBuf::from);
         let (mut input, mut seed, mut speed, mut packs, mut install) = (None, 1, 0, None, None);
         let (mut scale, mut vsync, mut drawn_cursor, mut fullscreen) = (None, false, false, false);
-        let (mut from, mut run, mut mute) = (0, None, false);
+        let (mut from, mut run, mut mute, mut humans) = (0, None, false, [false; 2]);
         let mut rest = args.iter();
         while let Some(arg) = rest.next() {
             let mut value = || {
@@ -110,6 +138,10 @@ impl Options {
                 "--speed" => speed = number(value()?)?.min(2),
                 "--packs" => packs = Some(PathBuf::from(value()?)),
                 "--install" => install = Some(PathBuf::from(value()?)),
+                "--human" => {
+                    let v = value()?;
+                    humans = sides(&v).ok_or_else(|| format!("window: no sides `{v}`"))?;
+                }
                 "--scale" => scale = Some(number(value()?)?.clamp(1, 16)),
                 "--vsync" => vsync = true,
                 "--drawn-cursor" => drawn_cursor = true,
@@ -134,6 +166,7 @@ impl Options {
                 install: install
                     .or(env)
                     .unwrap_or_else(|| clients.join("../original-data/install")),
+                humans,
             },
             scale,
             vsync,
@@ -380,6 +413,11 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
     let mut scrolls: Vec<(u32, i64)> = Vec::new();
     let mut held: Option<Held> = None;
     let mut report = Report::default();
+    // An unattended run presses a human's commands itself (E17 M5 T2b).
+    let mut presser = (options.run.is_some() && source.humans.contains(&true)).then(|| Presser {
+        points: crate::pointer::press_points(battle.layout()),
+        ..Presser::default()
+    });
     let started = win.ticks_ns();
     let stop_ns = options
         .run
@@ -401,6 +439,10 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
             });
         let mut redraw = false;
         let mut mouse_changed = false;
+        let mut grew = false;
+        if let Some(p) = presser.as_mut() {
+            grew |= p.press(&mut battle, &mut inputs, clock.ms(win.ticks_ns()))?;
+        }
         for event in win.wait(timeout) {
             let now = win.ticks_ns();
             // A key that moves the battle ends the opening first: the clock runs, the music starts.
@@ -506,6 +548,10 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                         mouse_changed = true;
                     }
                 }
+                // A press or one of the battle's keys made while a battle fought here takes no
+                // input is dropped, its release then doing nothing (design §9.11; E17 M5 T2b).
+                Event::Click { down: true, .. } if !battle.takes(at) => {}
+                Event::Key(Key::Up | Key::Down) if !battle.takes(at) => {}
                 Event::Click {
                     down: true,
                     at: (x, y),
@@ -517,6 +563,10 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                             over: true,
                         });
                         mouse_changed = true;
+                    } else if let Some(command) = battle.press(at, [x, y]) {
+                        // A press over the battlefield acts as the button goes down (design
+                        // §9.11; E17 M5 T2b).
+                        grew |= give(&mut battle, &mut inputs, at, command)?;
                     }
                 }
                 Event::Click { down: false, .. } => {
@@ -524,6 +574,10 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                         // A disabled button takes none (0x4562DD; E17 M3 T9b, the reviewer).
                         if let Some(by) = scroll_by(h.id).filter(|_| h.over && battle.scrolls(at)) {
                             scrolls.push((at, by));
+                        }
+                        // Wait and Defend give theirs as the button is released over them.
+                        if let Some(command) = battle.button(at, h.id).filter(|_| h.over) {
+                            grew |= give(&mut battle, &mut inputs, at, command)?;
                         }
                         mouse_changed = true;
                     }
@@ -534,7 +588,8 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                     mouse_changed = true;
                 }
                 Event::Key(key) => {
-                    if let Some(id) = battle.layout().panel.button_for_key(key.name()) {
+                    let button = battle.layout().panel.button_for_key(key.name());
+                    if let Some(id) = button.filter(|_| battle.takes(at)) {
                         held = Some(Held {
                             id,
                             key: Some(key),
@@ -544,20 +599,24 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                     }
                 }
                 Event::KeyUp(key) => {
-                    if held.take_if(|h| h.key == Some(key)).is_some() {
+                    if let Some(h) = held.take_if(|h| h.key == Some(key)) {
+                        // A hotkey's release clicks its button (0x45659F).
+                        if let Some(command) = battle.button(at, h.id) {
+                            grew |= give(&mut battle, &mut inputs, at, command)?;
+                        }
                         mouse_changed = true;
                     }
                 }
                 Event::Redraw => redraw = true,
             }
         }
-        // The mouse, a button held, the log scrolled (E17 M3 T6c-2): the battle follows them and
-        // the frame now is made again.
-        if mouse_changed {
+        // The mouse, a button held, the log scrolled (E17 M3 T6c-2), a command given (E17 M5
+        // T2b): the battle follows them and the frame now is made again.
+        if mouse_changed || grew {
             let pressed = held.filter(|h| h.over).map(|h| h.id);
             let changed = battle.mouse(&inputs, &scrolls)? || battle.pressed != pressed;
             battle.pressed = pressed;
-            if changed {
+            if changed || grew {
                 let ms = clock.ms(win.ticks_ns());
                 changes = Changes::new(&battle);
                 let latest = changes.latest(&mut battle, ms)?;
@@ -698,7 +757,20 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
         "frame after its time (ms): {}",
         summary(&mut report.late_us)
     ));
-    let ok = report.difference.is_none();
+    let mut ok = report.difference.is_none();
+    if let Some(p) = &presser {
+        lines.push(format!(
+            "pressed: {} commands on the battlefield, {} on the panel's buttons, {} given without \
+             a press",
+            p.at, p.buttons, p.given
+        ));
+        let same = battle.as_the_bot_fights().unwrap_or(Ok(false))?;
+        lines.push(format!(
+            "the battle so far is the bot's at once: {}",
+            if same { "yes" } else { "no" }
+        ));
+        ok &= same;
+    }
     if read {
         lines.push(format!(
             "read back: {} of {} frames exact ({}){}",
@@ -712,6 +784,77 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
         ));
     }
     Ok((lines, ok))
+}
+
+/// Gives a human's `command` at `at` (E17 M5 T2b): the mouse's inputs after it gone, its
+/// action's start taken; whether the battle took it.
+fn give(
+    battle: &mut Battle<'_>,
+    inputs: &mut Vec<Input>,
+    at: u32,
+    command: Command,
+) -> Result<bool, String> {
+    inputs.retain(|i| i.at() <= at);
+    inputs.push(Input::Act { at });
+    battle.command(at, command)
+}
+
+/// An unattended run's presses for the humans (E17 M5 T2b): where a press gives each command
+/// on the battlefield, and the commands pressed there, on the panel's buttons and given without
+/// a press.
+#[derive(Debug, Default)]
+struct Presser {
+    points: Vec<([i32; 2], Vec<[i32; 2]>)>,
+    at: usize,
+    buttons: usize,
+    given: usize,
+}
+
+impl Presser {
+    /// At `now`, [`PRESS_AFTER_MS`] after a human's turn started, presses the bot's choice: the
+    /// mouse moved where it gives it, then its press; whether a command was given.
+    fn press(
+        &mut self,
+        battle: &mut Battle<'_>,
+        inputs: &mut Vec<Input>,
+        now: u32,
+    ) -> Result<bool, String> {
+        if !battle.waiting() || now < battle.timeline().end.saturating_add(PRESS_AFTER_MS) {
+            return Ok(false);
+        }
+        let wanted = battle.choice().ok_or("no command for the turn waiting")?;
+        inputs.retain(|i| i.at() <= now);
+        let to = match battle.press_for(now, wanted, &self.points) {
+            Some(Press::At(point)) => {
+                self.at += 1;
+                Some(point)
+            }
+            Some(Press::Button(id)) => {
+                self.buttons += 1;
+                button_centre(battle.layout(), id)
+            }
+            None => {
+                self.given += 1;
+                None
+            }
+        };
+        if let Some(to) = to {
+            inputs.push(Input::Move { at: now, to });
+        }
+        give(battle, inputs, now, wanted)
+    }
+}
+
+/// The centre of the panel's button `id`.
+fn button_centre(layout: &BattleLayout, id: u16) -> Option<[i32; 2]> {
+    let panel = &layout.panel;
+    panel.items.iter().find_map(|item| match item {
+        Item::Button(b) if b.id == id => Some([
+            panel.place[0] + b.at[0] + b.size[0] / 2,
+            panel.place[1] + b.at[1] + b.size[1] / 2,
+        ]),
+        _ => None,
+    })
 }
 
 /// A panel button held: by the mouse (`key` none; `over` while the mouse stays on it) or by a

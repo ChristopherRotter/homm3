@@ -8,12 +8,13 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   accepted, CLT-Q22 to Q24 answered (a); the lane split at M3 T9c, CLT-Q18: the battle client
   here, the adventure map client the map-client lane's E24). **M5 (live play)** (QUEUE, the
   epic's M5): hot seat in-process first, then a game on a server and accounts; the new
-  dependencies the user's at T6 and T7. **T1a, T1b and T2a done** (the playhead; the timeline
-  that grows, `live.rs`; the click's command, `mouse::click` and `button`). T2 cut in two by the
-  user (T2a, T2b; the Faerie Dragon's cast into T3). **Next: M5 T2b** (hot seat in the window).
-  Open PR: #515 (T2a; check it first). Workspace `clients/` (`clients/README.md`), gates
-  `clients/scripts/check.sh`; ADR-0020 (+ drafts in `adr-drafts/`), ADR-0024; the harness
-  `clients/capture/README.md`; design §3–§10; records in `E17-log.md`.
+  dependencies the user's at T6 and T7. **T1 and T2 done** (the playhead; the timeline that
+  grows, `live.rs`; the click's command; hot seat in the window: `--human`, the battle waiting
+  at its end, the screen's hidden objects). **Next: M5 T3** (the spell book and the hero's aim,
+  the Faerie Dragon's cast). Open PR: T2b's (`client/e17-m5-t2b`; check it first). Workspace
+  `clients/` (`clients/README.md`), gates `clients/scripts/check.sh`; ADR-0020 (+ drafts in
+  `adr-drafts/`), ADR-0024; the harness `clients/capture/README.md`; design §3–§10; records in
+  `E17-log.md`.
 - **Captures** (the user, 2026-10-20): `h3drive.py drawn` first (no Wine); capture what it lists or the task changes, all at a milestone's closure or a harness change (runbook); a capture not as recorded leaves `kept/` (T9b: record, then `--reuse`); later tasks' detail in `NOTES.md`.
 - **The user's requirements** (epic, "Decisions"): a string catalogue (JSON packs, no committed translation, CLT-Q7); graphics options (`faithful` default); exhaustive diffs; drawing bugs fixed, the original's only for comparisons (`Bugs`).
 - The lane owns `clients/` but the map-client lane's paths and the common ones (`lanes.toml`: the foundation, `text/`, the harness; an additive change freely, a change in behaviour into the map-client lane's inbox), plus `docs/epics/E17*` and this folder; branches `client/<task>`; ids `CLT-Q<n>`, `CLT-QUIRK-<n>` (asset fixes), `CLT-STUB-<n>`; ADR drafts in `adr-drafts/`, numbered when accepted.
@@ -38,22 +39,22 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
 
 ## Recent sessions
 
-- **2026-10-27, E17 M5 T2a (done; #515 open: check it first).** T2 cut in two by the user (T2a,
+- **2026-10-27, E17 M5 T2b (done; its PR open: check it first).** Whole (the user, against the
+  cut proposed). `Growing::waiting`, `push_seen`, `Object::owner`, `Timeline::screen`; `--human`,
+  `Live`'s seats and every side's events, `Battle::command`, `press`, `button`, `takes`;
+  unattended runs press the bot's choices. Read: Land Mine's placings show on every screen
+  (0x5A060F). `window --check` hot seat and against the bot to the battle's end, every frame
+  exact; real X clicks; the Tower's mines on the defender's turns only. `sequences` 47, `drawn`
+  119 the same. No new question; the M5 review list's item 1.
+- **2026-10-27, E17 M5 T2a (done; #515 merged).** T2 cut in two by the user (T2a,
   T2b; the Faerie Dragon's cast into T3). Read (design §9.11): the press by the cursor's kind,
   the slots' from-hexes, the input queue emptied at every turn's start (T6c-2's queued moves
   corrected). `mouse::click`, `button`, `attack_slots`; CLT-Q24's switch; `clicks.rs`: presses
   over 1 455 turns give the legal commands but CLT-Q25's walk (asked and answered: the
   original's copied, an option later). `sequences` all 47 as recorded.
-- **2026-10-27, E17 M5 T1b (done; #509 open: check it first).** Whole, as cut at T1a.
+- **2026-10-27, E17 M5 T1b (done; #509 merged).** Whole, as cut at T1a.
   `anim::Growing` (the timeline a command at a time, only appended to; a drawbridge span open
   until the next redraw), `Playhead::extend`; `battle.rs` as `Ground` and `Battle<'g>`,
   `live.rs` (the session in-process, the bot's command when a frame reaches the timeline's end);
   `motion`'s `every`; the panel's reads logarithmic. `play` byte for byte as fought at once;
   `window --check` 1 094 frames exact. No new question.
-- **2026-10-27, E17 M5 T1a (done; #506 merged).** T1 cut in two (the user: T1a,
-  T1b). The sandbox new, the original files staged again before the computer disconnected.
-  Measured: R2-7's 2.3 ms was the composing; `Moment::at` 1.6 to 7 µs over `play`'s battle,
-  306 µs half an hour into its idle end. `anim::Playhead` reads the timeline forward (0.3 to
-  1 µs anywhere); `play`, `window`, `sequences` draw through it, `sequences` checks it against
-  `Moment::at` at every recorded change, `play --moments` times both. `drawn` all 119 the same.
-  The panel's per-frame scans of the turns left for T1b. No new question.
