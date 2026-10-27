@@ -78,10 +78,11 @@ pub struct Extras {
 
 /// The classes whose bodies name a hero: a hero, a prison, a random hero, a hero placeholder.
 const HERO_CLASSES: [u32; 4] = [34, 62, 70, 214];
-/// How far past the map's right and bottom edges an object's position may lie: a template is
-/// at most 8 tiles wide and 6 high, so one further out would have no cell on the map.
-const PAST_RIGHT: u16 = 7;
-const PAST_BOTTOM: u16 = 5;
+/// How far past the map's side an object's position may lie (`x <= side + PAST_RIGHT`, the
+/// right edge's column being `side - 1`): a template is at most 8 tiles wide and 6 high, so one
+/// further out would have no cell on the map (its leftmost column `x - 7`, its top row `y - 5`).
+const PAST_RIGHT: u16 = 6;
+const PAST_BOTTOM: u16 = 4;
 /// A witch hut's possible skills as the editor sets them: all 28 but Leadership (6) and
 /// Necromancy (12); 213 of the 259 witch huts in the game's 56 SoD maps (E24 M1 T3a, as every
 /// count below).
@@ -586,7 +587,7 @@ mod tests {
         let MapObject::Monster(pikeman) = &map.objects[1] else {
             panic!("the smoke map's second object is a monster")
         };
-        let mut mine = object(0, (43, 41), template(53, 0));
+        let mut mine = object(0, (42, 40), template(53, 0));
         mine.owner = Some(1);
         let extras = Extras {
             tiles: vec![],
@@ -616,7 +617,7 @@ mod tests {
             placed,
             [
                 ((30, 30, 0), 2),
-                ((43, 41, 0), 3),
+                ((42, 40, 0), 3),
                 ((21, 20, 0), 1),
                 ((4, 4, 1), 4)
             ]
@@ -797,14 +798,14 @@ mod tests {
             ..boat()
         };
         let past = "object tile (past the edges)";
-        assert!(write_with(&map, &objects(vec![at(0, (43, 41))])).is_ok());
+        assert!(write_with(&map, &objects(vec![at(0, (42, 40))])).is_ok());
         assert_eq!(
-            write_with(&map, &objects(vec![at(0, (44, 0))])),
-            error(past, 44 << 8)
+            write_with(&map, &objects(vec![at(0, (43, 0))])),
+            error(past, 43 << 8)
         );
         assert_eq!(
-            write_with(&map, &objects(vec![at(0, (0, 42))])),
-            error(past, 42)
+            write_with(&map, &objects(vec![at(0, (0, 41))])),
+            error(past, 41)
         );
         assert_eq!(
             write_with(&map, &objects(vec![at(1, (0, 0))])),
