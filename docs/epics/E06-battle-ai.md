@@ -128,13 +128,10 @@ new observation or action encoding, unless an increment's evidence asks for one 
 **Increment 8, T9 the closure** (refined 2026-10-27, the user at increment 7's checkpoint: E06
 closes with `t7-1` as the battle AI v1, decision 7 revised; the pattern E05's T9, `E05-log.md`):
 
-- [ ] **T9a The audit** (the sandbox) — exit criteria 1 to 5 against the code, the tests and
-  the committed records (5 on `t7-1`'s record and ladder, decision 7 as revised); E06's
-  leftovers sorted by destination (E25, encounters v2, E13, another lane's inbox) or dropped as
-  done: T5's open parts (the mana-price run `t5-4`, the batch size and threads, the observations
-  in place), the QUEUE's candidates kept, the AI queue's inbox (AI-STUB-1 went to E25 at the
-  checkpoint); `python/README.md` and the records' README current (the search, `[network]
-  order` and `preview`, the probes).
+- [x] **T9a The audit** (the sandbox) — done 2026-10-27 (`E06-log.md`): exit criteria 1 to 5
+  met (5's neutral comparison spans the system actor's `POLICY_VERSION` 18 and 19: T9c plays
+  `t7-1`'s ladder again); the leftovers sorted in the AI queue's inbox (E25, encounters v2, E13,
+  the adventure env); the Python READMEs current.
 - [ ] **T9b The independent review** (the sandbox) — fresh read-only reviewers, one slice each,
   at most three: the trainer (`h3env.train`: the resumable state, the gate, the league, the
   ladder); the search and its worlds (`h3env.search`, `h3-sim`'s and `h3-ffi`'s part of T8b);
@@ -144,7 +141,8 @@ closes with `t7-1` as the battle AI v1, decision 7 revised; the pattern E05's T9
 - [ ] **T9c The verifies** (exit criterion 6; the user's machine, a script and its logs over
   the device link) — `cargo xtask verify --with-original-data` and the Python tests (`uv run
   --group train pytest`) on Windows; on Linux CI's full verify and, with the user's files
-  staged in a sandbox, `--with-original-data`.
+  staged in a sandbox, `--with-original-data`. With them `t7-1`'s final ladder on today's
+  engine (T9a).
 - [ ] **T9d The closure** — `shared/e06-closure` first (BACKLOG: E06 done;
   `docs/07-simulation-and-ai.md`: the training pipeline as built, beside §1.1; ADR-0026's
   working-detail line); the design note at closure (E05's way, its text kept in `E06-log.md`

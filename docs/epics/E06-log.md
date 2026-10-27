@@ -1131,3 +1131,43 @@ entry only where a task builds on it.
 - **Increment 8** (the epic file): T9a the audit, T9b the independent review (at most three
   reviewers), T9c the verifies (the user's machine, exit criterion 6), T9d the closure (a
   `shared/e06-closure` first), E05's T9 as the pattern.
+
+## T9a — The audit (2026-10-27)
+
+- **Exit criteria 1 to 5 against the code, tests and records** (on `master` at 73a0bfe):
+  - **1 met.** Every run the epic's results cite has its record in `python/records/` (`t3b-1`,
+    `t4-1`, `t4-2`, `t5-1` to `t5-3`, `t6b-1`, `t6d-1`, `t7-1`, `order-1`; `t5-4` was prepared,
+    never run), each with its config, commit (none dirty), C ABI version, rulesets, metrics;
+    `test_every_committed_record_and_config_is_valid` checks them and the configs.
+  - **2 met.** `test_a_stopped_run_resumes_to_its_budget`, `…_killed_hard_resumes_from_its_last_checkpoint`,
+    a gate and a ladder cut short (`…_runs_first_at_the_resume`), the league's files, the entity,
+    preview and order runs' resumes (`test_train.py`); `test_run.py`'s resume rules.
+  - **3 met.** The SPRT (`test_gate.py`: bounds, error rates, a network against itself not
+    promoted) promotes by itself in every run; every promoted network has its ladder in its
+    record (`t3b-1` to `order-1`: one per promotion, the final best's again at the end; `t5-1`,
+    stopped, both of its).
+  - **4 met.** `t7-1`'s league (`self_play` 0.5, 16 members, 4 live, PFSP power 2) trained it;
+    `test_the_league_draws_scores_and_retires`, `…_retires_its_most_beaten_and_a_resume_keeps_its_files`.
+  - **5 met** (decision 7 as revised): `t7-1`'s final ladder (500 per kind) 0.828, 0.551, 0.528
+    at +0.273, +0.029, +0.010; the neutral set +0.245 against the bots' table's Greedy +0.2239,
+    Aggressor +0.2170, Random −0.0502 (the epic's +0.223 and +0.216: truncated, not rounded).
+    **One caveat:** `t7-1` played the system actor at `POLICY_VERSION` 18 (its record), the bots'
+    tables are at 19 (E23 T7, 2026-10-23: the neutral side's neighbour table), so the neutral
+    comparison is not on one engine. It holds whichever: the three A/B runs at 19 on `t7-1`'s
+    settings reach +0.245, +0.253, +0.250 (`t6b-1`, `t6d-1`, `order-1`), and `t7-1`'s own
+    analysis on the sandbox's CPU (`inspect/t7-1-neutral-v1.json`) +0.236, all above Greedy's.
+    The player kinds' rows do not move with the policy (the bots' tables' values stayed the same
+    across the core ruleset's later hashes). T9c plays `t7-1`'s final ladder again on today's
+    engine (its network is on the user's machine).
+- **The leftovers sorted** (the AI queue's inbox, by destination): **E25** the increment-7
+  candidates (`[network] order` and `preview`, shaping, the 60 M run, `t5-4`), the search's
+  (AI-STUB-1, T8c's Greedy rows, a repetition rule for a search agent, the oracle harness), T5's
+  open parts (the batch size and threads, the observations in place) with the performance notes,
+  `inspect`'s turret shots; **encounters v2** A3's growth too (meant for E23, closed without it);
+  **E13** unchanged; **the adventure env** T55b's typed answers (T58's withdrawal of A-23 folded
+  in); **any time** the viewer-less `encode`, `tools.Env` after a panic. To `QUEUE-ARCHIVE.md`
+  as done or informational: E08 T45, T51b, T52, T58, E23 T4c and T6's last part, the turret
+  preview, the baselines and AI-Q7.
+- **The Python READMEs:** `python/README.md` gained the kill preview in the network, the system
+  actor's share, the behaviour analysis, the battle AI v1 and the search's outcome;
+  `records/README.md`'s lineage `t7-1` as the battle AI v1 and the three A/B runs.
