@@ -2789,6 +2789,55 @@ T1a kept (the original files staged, the baseline green).
   timeline afresh when it entered stacks (a clone and `enter`): the battle's length per command,
   not per frame.
 
+### M5 T2a — The click's command (2026-10-27)
+
+On `client/e17-m5-t2a`, the user present. T2 cut in two by the user at the start (T2a the
+library's, T2b the window's hot seat; the Faerie Dragon's cast moved to T3, its key entering the
+hero's aim 0x59EC50). The sandbox new, the original files staged from the user's
+`original-data/` before anything else; the baseline (the client check) green, CI's `master` run
+green.
+
+- **Starting point:** `master` at `79aaf74` (#509 merged).
+- **Read** (design §9.11, `docs/exe/map.toml`: `battle_click_action` 0x476BD0 and `input_flush`
+  0x4EC570 new; `battle_buttons`, `cursor_attack_slots`, `battle_controls_state` and
+  `input_post_mouse_move` amended):
+  - a press over the battlefield (the left button down on the battlefield's items) acts at once
+    by the cursor's kind the last move left: a walk or a flight to the hex (a two-hex stack's to
+    the position whose front hex it is, before the hex as a position), a shot at the hex, a
+    strike from the slot's from-hex, a wall shot, a heal; the hero its spell book, a stack its
+    stats dialog, a turret its info; nothing else. The panel's Wait (2009; 2300 too) and Defend
+    (2010) when clicked (the button's release, its hotkey's key up);
+  - `cursor_attack_slots` whole: each slot's from-hex with its frame (the position beside for a
+    two-hex stack's right and left when taken; the preferred one, else the other with the
+    vertical sword); a slot without one copies both;
+  - who takes input: +0x132B4, the side to act played on this computer; every stack's turn start
+    empties the input queue outside Auto Combat and a remote turn (0x478301), so a click, a key
+    or a move made during an action or a computer's turn is dropped, and a human's turn takes
+    only the mouse where it rests. This corrects T6c-2's "the moves that waited are taken first";
+    a hero's cast returns to the same turn without the flush (T7b-1's key after a cast).
+- **The library:** `mouse::click` (the command a press gives at a point in a turn's battle),
+  `mouse::button` with `WAIT` and `DEFEND`, `mouse::attack_slots` (`Slot`: frame and from-hex;
+  `slots_in` its frames); `Legal`'s shots with their aims (`shoots`, `aim`), its Wait and Defend.
+  The tracker: the queue dropped at a human turn's start (no `queued` any more); CLT-Q24's answer,
+  the hovered item forgotten when the battle takes a move over the battlefield in the client's
+  profile (`Handler::bugs` from the first turn), the original's kept in its own. Tests: a press
+  per kind, the slots' from-hexes (facing right and left, the vertical swords, right and left's
+  position beside), the buttons; the dropped moves; CLT-Q24 in both profiles.
+- **The binary:** `clicks.rs` (a test): every scenario of `clients/situations` but its lists and
+  the packs' synthetic ones fought by the bot for both sides, each turn's presses (each hex's
+  point; in each slot of a hex the acting stack may strike; the wall rectangles; the two buttons)
+  against the engine's legal walks, strikes, shots, wall shots, heals, Wait and Defend: 1 455
+  turns, 76 162 commands, equal but one walk, a two-hex stack's step one hex back where two are
+  open (157 turns): CLT-Q25, asked and answered the same day (the original's copied, the fix an
+  option later, the epic's "Later"). `scenario::battle` split into `definition`, `compiled` and
+  `set_up` (the test compiles each packs-and-profile once: 3.5 s where fighting through the
+  session took 105); `pointer::legal` takes the manifest.
+- **Checks:** `sequences` all 47 as recorded (the flush and the switch change none); `drawn`
+  all 119 the same; the library's tests (290) and the binary's (38); clippy; the client check; the scoped
+  verify.
+- **Inbox:** the stack's and the turret's info dialogs and the right button's popups (not built;
+  M5 T4 or later).
+
 ## Accepted review lists (M1 to M4)
 
 M1 and M2 moved from the epic file on 2026-10-20 (less start-up reading), unchanged; M3 at its

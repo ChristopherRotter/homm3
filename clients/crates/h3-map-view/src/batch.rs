@@ -91,19 +91,29 @@ impl Batch {
     /// The DEF `name`.
     #[must_use]
     pub fn sprite(&self, name: &str) -> Option<&Sprite> {
-        self.sprites.get(&name.to_ascii_uppercase())
+        upper(&self.sprites, name)
     }
 
     /// The picture `name`.
     #[must_use]
     pub fn picture(&self, name: &str) -> Option<&Pcx> {
-        self.pictures.get(&name.to_ascii_uppercase())
+        upper(&self.pictures, name)
     }
 
     /// The palette `name`.
     #[must_use]
     pub fn palette(&self, name: &str) -> Option<&Palette> {
-        self.palettes.get(&name.to_ascii_uppercase())
+        upper(&self.palettes, name)
+    }
+}
+
+/// `name`'s entry of a map keyed by upper-cased names, a name with no lower-case letter looked up
+/// as it is (a scene's thousands of lookups a view: E24 M2 T4b3).
+fn upper<'m, T>(map: &'m BTreeMap<String, T>, name: &str) -> Option<&'m T> {
+    if name.bytes().any(|b| b.is_ascii_lowercase()) {
+        map.get(&name.to_ascii_uppercase())
+    } else {
+        map.get(name)
     }
 }
 

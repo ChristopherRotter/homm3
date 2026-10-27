@@ -447,14 +447,13 @@ encodings are unchanged.
   the agent strikes less and wanders (moves, the tactics phase's placements), its battles
   longer; AI-Q7 closed (the user, 2026-10-26).
 
-## 14. The search (T8) — designed (T8a), its plumbing built (T8b), measured (T8c)
+## 14. The search (T8) — designed (T8a), its plumbing built (T8b), measured (T8c): no gain, closed
 
 Decision 2's last increment (the user, 2026-10-26, after T6e: the plateau taken as shown). The
 seam (the user): T8a this design; T8b the plumbing; T8c a decision-time search with `t7-1`'s
 network measured, no training change; T8d expert iteration only if T8c gains. **Determinized
 from the start** (the user): the searcher is a legitimate agent, it reads only what its side's
-observation tells (ADR-0025 point 12's amendment, draft
-`docs/lanes/ai/adr-drafts/0025-amendment-search.md`). The tree in Python first (the user); Rust
+observation tells (ADR-0025 point 12a). The tree in Python first (the user); Rust
 only if T8d needs the throughput.
 
 - **The agent.** At each of its decisions it builds W *worlds* (8) of the battle from its side's
@@ -517,7 +516,8 @@ only if T8d needs the throughput.
   sets' 500 by default): no gain against the system actor at N 16 and 64 nor on the neutral set
   at N 64. T8d only if the search gains beyond the intervals: not indicated.
 - **T8d, expert iteration** (designed after T8c): the search's improved policy and value as the
-  trainer's targets.
+  trainer's targets. **Not built** (the user, 2026-10-27, increment 7's checkpoint): E06 closes
+  without it; a search in Rust trained on its own choices is E25's candidate, with AI-STUB-1.
 
 ## 15. The turn order as an input (T6f) — built, off by default (T6g: no measurable gain)
 

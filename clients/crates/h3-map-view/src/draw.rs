@@ -31,6 +31,8 @@
 //! `full_width − x − w`), so the rectangle cuts the picture as drawn and a clip on the screen is
 //! the same.
 
+use alloc::borrow::Cow;
+
 use h3_assets::def::Frame;
 use h3_render::palette::ScreenPalette;
 use h3_render::screen::Screen;
@@ -51,9 +53,9 @@ pub struct Place {
 
 /// Draws `frame`'s literal pixels in `palette`'s colours and skips its runs (0x47DD40).
 pub fn raw(screen: &mut Screen, frame: &Frame, palette: &ScreenPalette, at: Place, clip: [i32; 4]) {
-    each_pixel(frame, at, clip, |x, y, index, run| {
+    each_pixel(screen, frame, at, clip, |p, index, run| {
         if !run {
-            screen.set(x, y, palette.get(index));
+            *p = palette.get(index);
         }
     });
 }
@@ -62,14 +64,11 @@ pub fn raw(screen: &mut Screen, frame: &Frame, palette: &ScreenPalette, at: Plac
 /// body (0x47E820).
 pub fn shadows(screen: &mut Screen, frame: &Frame, at: Place, clip: [i32; 4]) {
     let format = screen.format();
-    each_pixel(frame, at, clip, |x, y, index, run| {
-        let shade = match (run, index) {
-            (true, 1 | 2) => Some(format.shadow_border(screen.pixel(x, y).unwrap_or(0))),
-            (true, 3 | 4) => Some(format.shadow_body(screen.pixel(x, y).unwrap_or(0))),
-            _ => None,
-        };
-        if let Some(pixel) = shade {
-            screen.set(x, y, pixel);
+    each_pixel(screen, frame, at, clip, |p, index, run| {
+        match (run, index) {
+            (true, 1 | 2) => *p = format.shadow_border(*p),
+            (true, 3 | 4) => *p = format.shadow_body(*p),
+            _ => {}
         }
     });
 }
@@ -84,14 +83,11 @@ pub fn flagged(
     clip: [i32; 4],
     colour: Option<u16>,
 ) {
-    each_pixel(frame, at, clip, |x, y, index, run| {
-        let pixel = match (run, index, colour) {
-            (false, ..) => Some(palette.get(index)),
-            (true, 5, Some(c)) => Some(c),
-            _ => None,
-        };
-        if let Some(pixel) = pixel {
-            screen.set(x, y, pixel);
+    each_pixel(screen, frame, at, clip, |p, index, run| {
+        match (run, index, colour) {
+            (false, ..) => *p = palette.get(index),
+            (true, 5, Some(c)) => *p = c,
+            _ => {}
         }
     });
 }
@@ -100,14 +96,11 @@ pub fn flagged(
 /// (0x47D930).
 pub fn shadow_pass(screen: &mut Screen, frame: &Frame, at: Place, clip: [i32; 4]) {
     let format = screen.format();
-    each_pixel(frame, at, clip, |x, y, index, run| {
-        let shade = match (run, index) {
-            (true, 1) => Some(format.shadow_border(screen.pixel(x, y).unwrap_or(0))),
-            (true, 4) => Some(format.shadow_body(screen.pixel(x, y).unwrap_or(0))),
-            _ => None,
-        };
-        if let Some(pixel) = shade {
-            screen.set(x, y, pixel);
+    each_pixel(screen, frame, at, clip, |p, index, run| {
+        match (run, index) {
+            (true, 1) => *p = format.shadow_border(*p),
+            (true, 4) => *p = format.shadow_body(*p),
+            _ => {}
         }
     });
 }
@@ -122,42 +115,105 @@ pub fn blend(
     clip: [i32; 4],
 ) {
     let half = screen.format().half_mask();
-    each_pixel(frame, at, clip, |x, y, index, run| {
+    each_pixel(screen, frame, at, clip, |p, index, run| {
         if !run {
-            let under = screen.pixel(x, y).unwrap_or(0);
-            screen.set(
-                x,
-                y,
-                ((palette.get(index) >> 1) & half) + ((under >> 1) & half),
-            );
+            *p = ((palette.get(index) >> 1) & half) + ((*p >> 1) & half);
         }
     });
 }
 
-/// Calls `put(x, y, index, run)` for each of `frame`'s pixels inside its canvas, placed by `at`,
-/// whose screen position lies inside `clip` (left, top, right, bottom; the last two exclusive).
-fn each_pixel(frame: &Frame, at: Place, clip: [i32; 4], mut put: impl FnMut(i64, i64, u8, bool)) {
+/// Hands `put` the screen's pixel under each pixel of `frame` placed at `at` that lies on its
+/// canvas, inside `clip` and on the screen, with the frame's index there and whether it came from
+/// a run (none past the end of the frame's runs). Row by row (E24 M2 T4b3, *provisional*): each
+/// row's columns worked out once from the canvas, the clip and the screen, the screen's row then
+/// walked forwards, or backwards when mirrored left to right, with no per-pixel test.
+fn each_pixel(
+    screen: &mut Screen,
+    frame: &Frame,
+    at: Place,
+    clip: [i32; 4],
+    mut put: impl FnMut(&mut u16, u8, bool),
+) {
+    let (screen_w, screen_h) = (i64::from(screen.width()), i64::from(screen.height()));
     let [left, top, right, bottom] = clip.map(i64::from);
+    let (left, right) = (left.max(0), right.min(screen_w));
+    let (top, bottom) = (top.max(0), bottom.min(screen_h));
     let width = usize::try_from(frame.width).unwrap_or(usize::MAX).max(1);
     let (canvas_w, canvas_h) = (i64::from(frame.full_width), i64::from(frame.full_height));
-    for (i, &index) in frame.pixels.iter().enumerate() {
-        let run = frame.runs.get(i).copied().unwrap_or(false);
-        let cx = i64::from(frame.left) + to_i64(i % width);
-        let cy = i64::from(frame.top) + to_i64(i / width);
-        if !(0..canvas_w).contains(&cx) || !(0..canvas_h).contains(&cy) {
+    let (frame_x, frame_y) = (i64::from(frame.left), i64::from(frame.top));
+    // The screen's x of the row's column c: base + c, or base − c mirrored.
+    let base = if at.mirror_x {
+        i64::from(at.x) + canvas_w - 1 - frame_x
+    } else {
+        i64::from(at.x) + frame_x
+    };
+    let runs = runs_of(frame);
+    let pixels = screen.pixels_mut();
+    for (r, row) in frame.pixels.chunks(width).enumerate() {
+        let cy = frame_y + to_i64(r);
+        let sy = if at.mirror_y { canvas_h - 1 - cy } else { cy };
+        let y = i64::from(at.y) + sy;
+        if !(0..canvas_h).contains(&cy) || !(top..bottom).contains(&y) {
             continue;
         }
-        let sx = if at.mirror_x { canvas_w - 1 - cx } else { cx };
-        let sy = if at.mirror_y { canvas_h - 1 - cy } else { cy };
-        let (x, y) = (i64::from(at.x) + sx, i64::from(at.y) + sy);
-        if (left..right).contains(&x) && (top..bottom).contains(&y) {
-            put(x, y, index, run);
+        // The columns on the canvas, then those whose x lies in [left, right).
+        let (on_from, on_to) = (
+            (-frame_x).max(0),
+            (canvas_w - frame_x).min(to_i64(row.len())),
+        );
+        let (from, to) = if at.mirror_x {
+            (on_from.max(base - right + 1), on_to.min(base - left + 1))
+        } else {
+            (on_from.max(left - base), on_to.min(right - base))
+        };
+        if from >= to {
+            continue;
         }
+        // The screen's pixels from the row's leftmost x on.
+        let x = if at.mirror_x {
+            base - to + 1
+        } else {
+            base + from
+        };
+        let start = to_usize(y * screen_w + x);
+        let n = to_usize(to - from);
+        let dst = pixels.get_mut(start..start + n).unwrap_or_default();
+        let (from, to) = (to_usize(from), to_usize(to));
+        let src = row.get(from..to).unwrap_or_default();
+        let first = r.saturating_mul(width).saturating_add(from);
+        let runs = runs.get(first..first + src.len()).unwrap_or_default();
+        let src = src.iter().copied().zip(runs.iter().copied());
+        if at.mirror_x {
+            for (p, (index, run)) in dst.iter_mut().rev().zip(src) {
+                put(p, index, run);
+            }
+        } else {
+            for (p, (index, run)) in dst.iter_mut().zip(src) {
+                put(p, index, run);
+            }
+        }
+    }
+}
+
+/// Whether each of `frame`'s pixels came from a run: its runs, none past their end (a decoded
+/// frame has one for every pixel).
+fn runs_of(frame: &Frame) -> Cow<'_, [bool]> {
+    if frame.runs.len() >= frame.pixels.len() {
+        Cow::Borrowed(&frame.runs)
+    } else {
+        let mut runs = frame.runs.clone();
+        runs.resize(frame.pixels.len(), false);
+        Cow::Owned(runs)
     }
 }
 
 fn to_i64(value: usize) -> i64 {
     i64::try_from(value).unwrap_or(i64::MAX)
+}
+
+/// A place worked out to lie on the screen, as an index.
+fn to_usize(value: i64) -> usize {
+    usize::try_from(value).unwrap_or(0)
 }
 
 #[cfg(test)]

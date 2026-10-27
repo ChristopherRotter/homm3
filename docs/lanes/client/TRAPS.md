@@ -14,6 +14,11 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
 - The harness's `actions` are the viewer's mouse (`pointer::inputs`, design §9.10): a new action
   kind needs both; `hex_point` and `PARK` mirror `h3drive.py`'s; a `key:` right after a `cast:`
   acts at the cast's end in both (T7b-1).
+- A press's command is `h3_view::mouse::click`'s, by the cursor's kind (E17 M5 T2a): a new kind
+  or a changed one needs its press there too; `h3-view`'s `clicks` test checks the presses
+  against the engine's legal lists over every scenario's turns (CLT-Q25's walk the one gap).
+  Input made while the battle does not take it is dropped at the next turn's start, not taken
+  then (design §9.11; the tracker had it queued until T2a).
 - Tell spells by `SpellLook::original`, not engine handles (Poison 70). After a hero's cast a
   stack acts by `key:` only (runbook).
 - Sequences are spectators' records; the engine rolls its own (a box ` n…` or the log ` log`
