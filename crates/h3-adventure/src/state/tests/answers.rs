@@ -446,8 +446,11 @@ fn an_offer_whose_monster_is_gone_does_nothing_and_a_join_without_room_is_report
     let outcome = s.accept_offer((&rules.0, &rules.1, &[]), RED, &join, &mut events);
     let group = NoRoom {
         hero: HERO,
-        creature: PIKEMAN,
-        count: 10,
+        group: vec![ArmyStack {
+            slot: 0,
+            creature: PIKEMAN,
+            count: 10,
+        }],
     };
     assert_eq!(
         outcome,

@@ -1593,16 +1593,29 @@ numeric  = "integer"
 
 [[rule]]
 id       = "ADV-TCH-008"
-title    = "The Pyramid: its spell drawn when the game is built"
+title    = "The Pyramid: its spell, its question, its battle, its luck"
 context  = "adventure"
-status   = "implemented"
-summary  = "The Pyramid draws its spell when the game is built, in object order after the random artifacts: with equal chances among the hero spells of its type's level (5) that are not banned and not granted by name only (the original's game bans the flag 0x2000: Titan's Lightning Bolt; the base pack's pool is Fly, Dimension Door, Implosion, Magic Mirror, Sacrifice and the four Summon Elementals, less the map's bans); none left: no spell (A-20 fixed, E08 decision 133: it fights and gives nothing). The question, the battle (ADV-MON-012), the luck of a looted one: E08 T62. E08 T61b: `Resolved::Spell`."
+status   = "verified"
+summary  = "The Pyramid draws its spell when the game is built, in object order after the random artifacts: with equal chances among the hero spells of its type's level (5) that are not banned and not granted by name only (the original's game bans the flag 0x2000: Titan's Lightning Bolt; the base pack's pool is Fly, Dimension Door, Implosion, Magic Mirror, Sacrifice and the four Summon Elementals, less the map's bans); none left: no spell (A-20 fixed, E08 decision 133: it fights and gives nothing). Its visit asks first at every visit, a looted one too (`OfferKind::SearchPyramid`; declined: nothing); accepted, the visitor's owner learns whether it is looted (ADV-VIS-006: `Known::Emptied`); a looted one gives the hero its type's bonus (-2 luck once until the end of its next battle by its mark 1, HER-ADV-008); else the battle against its guards at once, 40 Gold Golems split as a monster's less the 20 Diamond Golems' 2 stacks of 10 (ADV-MON-012), at its tile. Lost or retreated: nothing changes (the counts are local). Won: looted (emptied, never removed), and its spell learned when the hero can learn it without the known test (a Spell Book, its level within 2 + Wisdom: `h3_heroes::can_learn_spell`; a known one changes nothing), else lost; until T63 before the winner's levels (GAM-DEC-007, ADV-STUB-10). E08 T61b: `Resolved::Spell`; T62b1: `AdventureState::search_pyramid`, `loot_pyramid`."
 numeric  = "integer"
 
   [[rule.source]]
   kind       = "original-data"
-  ref        = "Heroes3.exe code reading (E08 T55a3; survey E08-rewards.md §7.5): setup_map_objects case 63 at 0x4C19DE draws random_between(0, n - 1) over the spells 0 to 69 of level 5 with a school that the game does not ban (the map's bans and the flag 0x2000); pyramid_word_set 0x4C2330 stores it in bits 13 to 20 with bit 0 (guarded); an empty pool reads outside the list (A-20)"
+  ref        = "Heroes3.exe code reading (E08 T55a3; survey E08-rewards.md §7.5): setup_map_objects case 63 at 0x4C19DE draws random_between(0, n - 1) over the spells 0 to 69 of level 5 with a school that the game does not ban (the map's bans and the flag 0x2000); pyramid_word_set 0x4C2330 stores it in bits 13 to 20 with bit 0 (guarded); an empty pool reads outside the list (A-20); visit_pyramid 0x4A4230: ADVEVENT 105 at every visit, the team's mark, looted (bit 0 clear) -2 luck once by status bit 12 (0x4A42FA), else monster_battle with 116 x 40 and 117 x 20 in 2 stacks (0x4A434A), won: the levels, bit 0 cleared, the spell lost without a book (109) or above 2 + Wisdom (108), else hero_learn_spell with no known test"
   confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-7b.md E7-21 and E7-22 (2026-10-27; survey E08-rewards.md §15): each visit asked, -2 luck after both visits of a looted one (status 0x1000), -2 at the next battle's opening, 0 after it; won with Diamond, Diamond, Gold in slots 0, 1, 3, three level-ups, Dimension Door lost with Advanced Wisdom, the Pyramid looted"
+  retrieved  = "2026-10-27"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Pyramid: guarded by 40 Gold Golems and two stacks of 10 Diamond Golems; expert Wisdom and a spell book needed, else the spell is lost forever; searching an empty pyramid decreases luck by 2"
+  url        = "https://heroes.thelazy.net/index.php/Pyramid"
+  retrieved  = "2026-10-26"
+  confidence = "medium"
 
 [[rule]]
 id       = "ADV-PIK-009"
@@ -1677,6 +1690,39 @@ numeric  = "integer"
   kind       = "original-data"
   ref        = "Heroes3.exe code reading (E08 T55a2; survey E08-rewards.md §6.9): setup_map_objects case 0x4C157A: a resource random_between(0, 5) and an amount random_between(1, 5); visit_lean_to 0x4A31A0"
   confidence = "high"
+
+[[rule]]
+id       = "ADV-PIK-013"
+title    = "Pandora's Box: the question, the guards, the record, the removal"
+context  = "adventure"
+status   = "verified"
+summary  = "A Pandora's Box asks its visitor first, at every visit (`OfferKind::OpenBox`; declined: nothing, it stays). Accepted, while its guards stand (the map's, or the survivors of a lost battle) they fight at once, announced and not asked, as a guarded pile's (ADV-PIK-004: unsplit, unowned, at the box's tile); lost or retreated, their survivors stay with it (none after a draw); won, or without guards standing, its reward record is given (ADV-RWD-001; until T63 a won box's record comes before the winner's levels, GAM-DEC-007, ADV-STUB-10) and it leaves the map (ADV-OBJ-005), told to the players that see it there. Its contents and guards are hidden until then (every box looks alike). The original's 'the box is empty' for a record that gave nothing is a message only. E08 T62b1: `AdventureState::open_box`, `give_box`, `end_unowned_battle`."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E08 T55a3; survey E08-rewards.md §7.2): visit_pandora_box 0x4A0C50: a human sees the map's text, then ADVEVENT 14 (no: nothing); guards (the record's flag and a stack): ADVEVENT 16, adventure_battle 0x4AD470 as a guarded pile's (no split, the record's army by address), lost: return, won: the levels (0x4DA720); grant_rewards 0x49FA90 without the text (nothing given: ADVEVENT 15); remove_map_object"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-7b.md E7-19 and E7-20 (2026-10-27; survey E08-rewards.md §15): the box's axe lost with the backpack at 64 and the box removed; the army dialog with the box's three stacks, the box removed"
+  retrieved  = "2026-10-27"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "lib/mapObjects/CGPandoraBox.cpp: the question (ADVOB 14), guards with text 16 and the battle, an empty box 15, removed after the rewards"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/mapObjects/CGPandoraBox.cpp"
+  retrieved  = "2026-10-26"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Pandora's Box: 'Do you wish to open the box?', combat ensues if there are guardians, the box disappears after a hero successfully opens it"
+  url        = "https://heroes.thelazy.net/index.php/Pandora%27s_Box"
+  retrieved  = "2026-10-26"
+  confidence = "medium"
 
 [[rule]]
 id       = "ADV-PIK-006"
@@ -1772,6 +1818,33 @@ quirks   = ["ADV-QUIRK-22"]
   confidence = "medium"
 
 [[rule]]
+id       = "ADV-MON-012"
+title    = "The monster battle with a second creature"
+context  = "adventure"
+status   = "verified"
+summary  = "Monsters of two creatures (the Pyramid's guards, ADV-TCH-008) split for their battle as a wandering monster's (ADV-MON-009) with these changes: the strength sums both creatures' (each AI value times its count); the number of stacks from the table and the first draw is less the second creature's stacks, at least 1 and at most the first creature's count; the first creature divides evenly into them, the second keeps its stacks (20 Diamond Golems as 2 of 10); no stack is upgraded and no second draw is taken; the slots follow the original's table 0x63DF94 (row 7n for n stacks of the first: n = 1 D D - G - - -; 2 D D G - G - -; 3 D G D G - G -; 4 G D G D G - G; 5 G G D G D G G; 6 G G G D G G G with one second stack). The draw comes from the tile's generator under ADV-QUIRK-6, else from the attacking player's stream. Their losses are not kept. E08 T62b1: `h3_adventure::split_with_second`, `Defender::Monsters`."
+numeric  = "integer"
+quirks   = ["ADV-QUIRK-6"]
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E08 T55a3, T62b1; survey E08-rewards.md §7.5): monster_battle 0x4AC580 with a second creature: the strength sums the types (0x4AC607 to 0x4AC64C), the stacks less the second's (0x4AC6CD) and at least 1, at most the count (0x4AC6D9 to 0x4AC6EC), the second's even stacks after the first's (0x4AC7C3), no upgrade (0x4AC763), then monster_stack_order 0x63DF94's row 7n + the third type's stacks (0x4AC8AB)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-7b.md E7-16 and E7-22 (2026-10-27; survey E08-rewards.md §15, D-40): one Pikeman against Gold, Gold, Diamond, Gold, Diamond, Gold, Gold in slots 0 to 6 (stacks of 8 and 10); a strong hero against Diamond, Diamond, Gold in slots 0, 1, 3 (10, 10, 40)"
+  retrieved  = "2026-10-27"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "config/objects/pyramid.json: 40 Gold Golems in one stack and two stacks of 10 Diamond Golems (guardsLayout default); D-40, the observation and the code agree against it"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/config/objects/pyramid.json"
+  retrieved  = "2026-10-26"
+  confidence = "low"
+
+[[rule]]
 id       = "ADV-TCH-001"
 title    = "The once-per-hero gifts of primary skills: Marletto Tower, Garden, Mercenary Camp, Star Axis, Arena, Library"
 context  = "adventure"
@@ -1836,3 +1909,30 @@ numeric  = "integer"
   kind       = "design"
   ref        = "E08 decision 135 (ADV-Q28): the team's marks as the visitor's owner's knowledge until E10; design §13 of docs/epics/E08-design.md"
   confidence = "high"
+
+[[rule]]
+id       = "ADV-RWD-001"
+title    = "A reward record's parts and their order"
+context  = "adventure"
+status   = "verified"
+summary  = "A reward record (a Pandora's Box's, ADV-PIK-013; an event's, ADV-OBJ-007) gives its visitor's hero its hero half by `h3_heroes::grant` (HER-CHG-003: the experience computed first with the Learning before the record's skills, D-39, and given last; the primary skills above 0; each skill raised to its level, never lowered, D-37, a new one below eight; the spell points held in 0 to 999, D-38; the morale and luck to the battle bonuses; the artifacts the hero can receive, else lost, under ADV-QUIRK-22; the spells by book, Wisdom and knowledge); its resources, a positive amount gained and a negative one lost, never below 0 (GAM-RES-001); its creatures slot by slot onto the hero's army as `army_add_stack` (ADV-ARM-007: its first stack of the creature that takes them within a stack's most, else its first free slot), each told to the owner, and the stacks that find no room, at their slots in the record, as one group for one army dialog (GAM-DEC-004), what is left in it lost. The game gives the experience with its level-ups after the record; until T63 before the dialog closes (GAM-DEC-007, ADV-STUB-10). A record per object, with no bound on their number (A-19 not reproduced: ADV-QUIRK-28). E08 T62b1: `AdventureState::give_record`, `AdventureOutcome::losses`, `NoRoom::group`."
+numeric  = "integer"
+quirks   = ["ADV-QUIRK-22", "ADV-QUIRK-28"]
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E08 T55a3; survey E08-rewards.md §7.4): grant_rewards 0x49FA90 in order: the experience x hero_learning (f32, truncated) first, the primary skills above 0, the skills raised, the mana in 0 to 999, morale and luck to +0x11A/+0x11B, the resources by give_resource (0x4E3600, a negative result 0), the artifacts while the backpack holds fewer than 64, the spells with a book within 2 + Wisdom, the creatures slot by slot (army_add_stack 0x44ACE0, a slot that joined cleared from the record's copy, 0x4A09BB), what found no room in one army_dialog_with (0x4A0A34) for a human, then hero_gain_experience (0x4A0A48)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-7b.md E7-12 to E7-15, E7-19, E7-20 (2026-10-27; survey E08-rewards.md §15): Basic Wisdom and a box's Advanced: Advanced; 100 + 500 = 600 spell points; Expert Learning and 1 000 experience: 1 000; Fireball not learned at 999 + 1 experience, Wisdom taken at the level after; the box's axe lost with a full backpack; the army dialog with the box's three stacks, the rest lost"
+  retrieved  = "2026-10-27"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "lib/rewardable/Interface.cpp grantRewardBeforeLevelup and grantRewardAfterLevelup: skills added, mana up to the maximum, the experience before the rest (D-37, D-38, D-39: the code and the batch against it); the creatures without room through the garrison dialog (agree)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/rewardable/Interface.cpp"
+  retrieved  = "2026-10-26"
+  confidence = "medium"

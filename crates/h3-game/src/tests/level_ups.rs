@@ -416,3 +416,19 @@ fn the_system_actors_default_takes_the_offer_the_original_chooses() {
     // Over the seeds' draws the original takes either offer.
     assert!(answers.contains(&Answer::First) && answers.contains(&Answer::Second));
 }
+
+// covers: GAM-DEC-002
+#[test]
+fn a_heros_open_level_up_is_not_drawn_again() {
+    // E08 T62b1: a won box's record gives experience before the battle's own levels are given
+    // (ADV-STUB-10); the second call finds the hero's level-up open and draws nothing.
+    let rules = rules();
+    let game = game(&rules, 950, &[]);
+    let (mut ended, _) = end(&game, &rules, &won_by(BattleSide::Attacker, 2));
+    assert_eq!(ended.waiting_for(), Some(RED));
+    let before = ended.clone();
+    let mut events = Vec::new();
+    ended.give_levels(&rules, (RED_HERO, RED), &mut events);
+    assert!(events.is_empty());
+    assert_eq!(ended, before);
+}

@@ -17,6 +17,7 @@ mod manage;
 mod monsters;
 mod moves;
 mod observe;
+mod records;
 mod rewards;
 mod state;
 
@@ -32,8 +33,8 @@ use core::num::{NonZeroU8, NonZeroU16, NonZeroU32};
 use h3_adventure::{
     AdventurePack, AdventureParamsDef, AdventureRuleset, ArmyError, BattleTerrainsDef, ChestDef,
     FindContentDef, FindDef, GiftDef, Gives, MapSetup, MonsterParamsDef, ObjectKindDef,
-    ObjectTypeDef, OnceBonus, Passage, PickupDef, Pos, PrimarySkill, SetupError, StandError,
-    StartingResourcesDef, TerrainMovementDef, TileSetup, Visit,
+    ObjectTypeDef, OnceBonus, Passage, PickupDef, Pos, PrimarySkill, PyramidDef, SetupError,
+    StandError, StartingResourcesDef, TerrainMovementDef, TileSetup, Visit,
 };
 use h3_content::{
     ArtifactClass, ArtifactDef, ArtifactSlotDef, ArtifactTypeId, ContentKey, ContentPack,
@@ -508,6 +509,22 @@ fn part_with(core: &Ruleset, chances: Vec<u8>, slots: u8) -> AdventureRuleset {
                         luck: 0,
                         mark: 0,
                     }),
+                }),
+            ),
+            // E08 T62b1: Pandora's Box and a Pyramid of 4 imps and a stack of 2 gogs
+            // (`records.rs`).
+            reward("t:box", ObjectKindDef::PandoraBox),
+            reward(
+                "t:pyramid",
+                ObjectKindDef::Pyramid(PyramidDef {
+                    split: (key("t:imp"), 4),
+                    fixed: (key("t:gog"), vec![2]),
+                    level: 1,
+                    looted: OnceBonus {
+                        morale: 0,
+                        luck: -2,
+                        mark: 1,
+                    },
                 }),
             ),
         ],

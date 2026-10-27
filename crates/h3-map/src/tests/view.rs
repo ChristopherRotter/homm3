@@ -494,14 +494,24 @@ fn check_told(
                 prop_assert!(decision.is_none());
                 decision = Some(Open::Meeting(heroes));
             }
+            // E08 T62b1: one event per stack of the group at its opening, in slot order.
             GameEvent::ArmyDialogOpened {
                 player,
                 hero,
                 stack,
             } => {
                 prop_assert_eq!(player, viewer);
-                prop_assert!(decision.is_none());
-                decision = Some(Open::Dialog(hero, vec![stack]));
+                match &mut decision {
+                    Some(Open::Dialog(open, group))
+                        if *open == hero && group.last().is_some_and(|s| s.slot < stack.slot) =>
+                    {
+                        group.push(stack);
+                    }
+                    _ => {
+                        prop_assert!(decision.is_none());
+                        decision = Some(Open::Dialog(hero, vec![stack]));
+                    }
+                }
             }
             GameEvent::DecisionClosed { player } => {
                 prop_assert_eq!(player, viewer);
@@ -537,6 +547,11 @@ fn check_told(
                 }
             }
             GameEvent::ResourcePaid {
+                player,
+                resource,
+                amount,
+            }
+            | GameEvent::ResourceLost {
                 player,
                 resource,
                 amount,

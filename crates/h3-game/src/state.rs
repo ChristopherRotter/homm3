@@ -8,7 +8,6 @@
 //! infallible, and commands go through [`crate::apply`].
 
 use alloc::sync::Arc;
-use alloc::vec;
 use alloc::vec::Vec;
 
 use h3_adventure::{
@@ -358,7 +357,9 @@ impl GameState {
     }
 
     /// Applies what the adventure left of a command of `player` or of its answer (ADR-0017
-    /// point 10): the gains (GAM-RES-001), the hero's gains ([`Self::give_hero`], E08 T62a), then
+    /// point 10): the gains (GAM-RES-001), the losses ([`Self::lose`], E08 T62b1), the hero's
+    /// gains ([`Self::give_hero`], E08 T62a: until T63 a reward record's experience before its
+    /// army dialog closes, `ADV-STUB-10`), then
     /// the offer ([`Self::open`]) with whatever follows one that does not open, then the battle
     /// ([`Self::start_battle`]), the meeting ([`Self::meet`], E08 T51b), the army dialog
     /// ([`Self::open_army_dialog`], T51b) or the choice ([`Self::choose_by_default`], T62a): an
@@ -376,6 +377,8 @@ impl GameState {
         let mut next = Some(outcome);
         while let Some(outcome) = next.take() {
             self.gain(player, &outcome.gains, sink);
+            self.lose(player, &outcome.losses, sink);
+            // stub: ADV-STUB-10 (a record's experience and its levels before its army dialog)
             if let Some(gains) = outcome.hero {
                 self.give_hero(rules, player, gains, sink);
             }
@@ -467,26 +470,25 @@ impl GameState {
         sink.emit(GameEvent::MeetingOpened { player, heroes });
     }
 
-    /// Opens the army dialog of an accepted join whose group found no room in its hero's army
-    /// (ADV-MON-008, GAM-DEC-004; E08 T51b): the whole group as one stack in the first slot of a
-    /// small army without a hero, as the original's local army (0x5D11D0), as `player`'s
-    /// decision, told to it alone (`ArmyDialogOpened`).
+    /// Opens the army dialog of a group that found no room in its hero's army (GAM-DEC-004; E08
+    /// T51b): an accepted join's whole group as one stack in the first slot (ADV-MON-008), a
+    /// reward record's stacks without room at their slots (ADV-RWD-001, E08 T62b1), as a small
+    /// army without a hero, the original's local army (0x5D11D0, 0x5D12B0), as `player`'s
+    /// decision, told to it alone (`ArmyDialogOpened`, one event per stack in slot order).
     // rule: GAM-DEC-004
     fn open_army_dialog<S: Sink>(&mut self, player: PlayerId, group: NoRoom, sink: &mut S) {
-        let stack = ArmyStack {
-            slot: 0,
-            creature: group.creature,
-            count: group.count,
-        };
+        let hero = group.hero;
+        for &stack in &group.group {
+            sink.emit(GameEvent::ArmyDialogOpened {
+                player,
+                hero,
+                stack,
+            });
+        }
         self.push_decision(Decision::ArmyDialog {
             owner: player,
-            hero: group.hero,
-            group: vec![stack],
-        });
-        sink.emit(GameEvent::ArmyDialogOpened {
-            player,
-            hero: group.hero,
-            stack,
+            hero,
+            group: group.group,
         });
     }
 
@@ -853,6 +855,26 @@ impl GameState {
         }
     }
 
+    /// Takes each resource of `losses` from `player`'s treasury, never below 0 (GAM-RES-001; a
+    /// reward record's, ADV-RWD-001, E08 T62b1), each told to it (`ResourceLost`, the amount
+    /// actually taken).
+    // rule: GAM-RES-001
+    pub(crate) fn lose<S: Sink>(
+        &mut self,
+        player: PlayerId,
+        losses: &[(ResourceId, u32)],
+        sink: &mut S,
+    ) {
+        for &(resource, amount) in losses {
+            let amount = self.treasuries.pay(player, resource, amount);
+            sink.emit(GameEvent::ResourceLost {
+                player,
+                resource,
+                amount,
+            });
+        }
+    }
+
     /// A player's treasury, by resource in the core's order, if the player exists (GAM-RES-001).
     pub fn treasury(&self, player: PlayerId) -> Option<&[u32]> {
         self.treasuries.of(player)
@@ -905,8 +927,9 @@ impl GameState {
 }
 
 impl CanonicalHash for GameState {
-    /// Encoding v14 (E08 T54; v1 was T6b's, v2 T13's, v3 T14b's, v4 T15a's, v5 T18b's, v6
-    /// T19a's, v7 T20b1's, v8 T21a's, v9 T27's, v10 T29's, v11 T30's, v12 T49a's, v13 T51b's):
+    /// Encoding v17 (E08 T62b1; v1 was T6b's, v2 T13's, v3 T14b's, v4 T15a's, v5 T18b's, v6
+    /// T19a's, v7 T20b1's, v8 T21a's, v9 T27's, v10 T29's, v11 T30's, v12 T49a's, v13 T51b's, v14
+    /// T54's, v15 T60a's, v16 T62a's):
     /// version; the master seed; the day; the running group's index; the schedule (groups as
     /// length + player ids); the players (colour, since v14 whether it counts as human, acting,
     /// stream state); since v2 the treasuries (the
@@ -914,8 +937,10 @@ impl CanonicalHash for GameState {
     /// decisions in opening order, as length and entries: since v6 first the decision's kind, 0
     /// an offer, 1 a battle; an offer's owner, hero, object type, anchor, since v4 the offer's
     /// kind, 0 a reveal, 1 a passage, since v7 2 a join, 3 a join for gold, 4 a flight, since v8
-    /// 5 a guarded pile's fight, then a reveal's or a join for gold's price as length and
-    /// resource–amount pairs, since v7 whether a guard's visit waits for the answer;
+    /// 5 a guarded pile's fight, since v16 6 a gift's price, 7 a find's question, since v17 8
+    /// Pandora's Box's question, 9 the Pyramid's, then a reveal's, a join for gold's or a gift's
+    /// price as length and resource–amount pairs, since v7 whether a guard's visit waits for the
+    /// answer;
     /// a battle's owners and heroes by side (each 0 for none, else 1 and the id), tile and battle
     /// state hash; since v11 (E08 T30) 2 a level-up: its owner, hero, new level, primary skill
     /// (0 attack to 3 knowledge), its two offers, the offers' levels after it (Wisdom's, a
@@ -969,6 +994,8 @@ impl CanonicalHash for GameState {
                         OfferKind::Fight => (5, None),
                         OfferKind::Gift { price } => (6, Some(price)),
                         OfferKind::Search => (7, None),
+                        OfferKind::OpenBox => (8, None),
+                        OfferKind::SearchPyramid => (9, None),
                     };
                     h.write_u8(tag);
                     if let Some(price) = price {

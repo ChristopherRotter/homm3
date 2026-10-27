@@ -6696,3 +6696,73 @@ code verified by CI); the original data staged from the user's computer.
   --workspace --all-targets` and `h3-sim`'s, `h3-cli`'s and `h3-map`'s tests. A smoke run, not
   committed: random play on the eight shipped maps that import whole (three seeds each, 14 days,
   at most 3 000 steps), no failure.
+
+### Increment 7, round 6: T62b1, the reward record, Pandora's Box and the Pyramid (2026-10-27, `adventure/e08-t62b1`)
+
+**The opening reading** (design §12's open point, before the cut; survey §8.5, `docs/exe/map.toml`):
+`hero_move_step` flags a firing event at 0x4811A3, lets the tile's guard visit at 0x48169D
+(`after_step_guard_check` → `guard_attack`: the join and flight offers or the battle with its
+levels) and fires the event only after it, at 0x481741, on the frame's flag alone. So **the guard
+comes first**, and the fire does not look at how the guard's visit ended: a hero that lost or
+retreated is already in the heroes' pool with owner −1 (0x4DA2B5) and still gets the event, its
+resources added to "player −1" outside the player table (`give_resource` 0x4E3612). **A-26**,
+state-corrupting: always fixed, no flag (`ADV-QUIRK-29` in T62b2). A flying hero stopped by a
+firing event mid-move is at its move's end for the guard test, so its tile's guard attacks there.
+**The cut** (decision 151, asked after the reading): T62b in two, the rest staying in T63 (the
+user's choice; the agent recommended four parts with the rest moved first): T62b1 the record, the
+box and the Pyramid; T62b2 events and the move. **Baseline:** `master` 240cf26 (#516 merged, CI
+green on it); the sandbox's light gates passed; the original data staged from the user's computer.
+
+- **The outcome** (`command.rs`): `AdventureOutcome::losses` (a record's negative resources);
+  `NoRoom { hero, group }` (a join's one stack in slot 0, a record's stacks without room at their
+  slots: the original's copy of the record's army, each joined slot cleared, 0x4A09BB);
+  `OfferKind::OpenBox`, `OfferKind::SearchPyramid`; `Defender::Monsters { split, fixed }`.
+- **The split** (`split.rs`, ADV-MON-012): `split_with_second` (the strength summed, the stacks
+  less the second's, at least 1, at most the count, no upgrade and no second draw, the order of
+  `monster_stack_order` 0x63DF94's rows 7n for n = 1 to 6, read whole: rows 7 to 42 hold the
+  permutations, the row ignores the second creature's stacks); `split`'s count and even stacks
+  factored out (`stack_count`, `even`), its draws unchanged.
+- **The visits** (`state/records.rs`, dispatched by `Effect::PandoraBox` and `Effect::Pyramid`):
+  `ask` (the question at every visit); `open_box` (the guards' battle at once through `piles.rs`'
+  new `guards_battle`, which `fight_or_pick` now calls, else `give_box`: the record, then the
+  removal); `give_record` (`h3_heroes::grant` against the store's details, the resources split into
+  gains and losses, the creatures through `monsters.rs`' `add_stack` with `CreaturesJoined` to the
+  owner, the rest one group); `search_pyramid` (the owner learns it, a looted one's bonus, else the
+  battle against `Defender::Monsters` at its tile); `loot_pyramid` (emptied, the spell by
+  `can_learn_spell(…, false)` and not yet known, else lost). `end_unowned_battle` dispatches by the
+  kind at the tile: a monster's end, a won Pyramid's loot, a guarded object's survivors, then a
+  box's record or a pickup.
+- **The game:** `settle_outcome` takes the losses (`lose`: `Treasuries::pay`, never below 0,
+  `GameEvent::ResourceLost` to the owner); `open_army_dialog` opens over the group, one
+  `ArmyDialogOpened` per stack in slot order (the event stays `Copy`); `start_battle` splits
+  `Defender::Monsters` with the tile's draw under `ADV-QUIRK-6`, else red's stream; `give_levels`
+  draws nothing while the hero's level-up is open (a won box's record gives experience before the
+  battle's own levels: without the guard a level would have been drawn twice). Game state hash
+  v17 (the two offer kinds, 8 and 9).
+- **Interim orders** (`ADV-STUB-10`, decision 151): a won box's record and a won Pyramid's spell
+  before the winner's levels; a record's experience and its levels before its army dialog closes.
+- **Rules:** ADV-RWD-001, ADV-PIK-013, ADV-MON-012 (new, `verified`: E7-12 to E7-16, E7-19, E7-20,
+  E7-22); ADV-TCH-008 (the visit; `verified`: E7-21, E7-22); GAM-RES-001 (losses), GAM-DEC-004
+  (the record's group), GAM-DEC-002 (no level drawn twice) amended; A-19 as `ADV-QUIRK-28`
+  (exploit-fix, no flag; its test: two boxes, two records).
+- *Agent's calls (change freely):* the empty box's message is presentation, no event (T62a's
+  refusals send none either); the record's creatures join in the adventure before the game applies
+  the hero's changes (nothing of either reads the other; the events' order is not the original's
+  picture order); a looted Pyramid's bonus is in the outcome even when its mark is set (the hero
+  model gates it, as the Tomb's); `Defender::Monsters` named by its shape, not by the Pyramid.
+- **Tests:** `h3-adventure`'s `split/tests.rs` (the six rows and the bounds), `state/tests/records.rs`
+  (7: the box's question, record and removal, the group without room, the guarded box's battle,
+  loss, win and draw, the Pyramid's question, battle, loss, win and loot, the spell lost, the
+  record per object); `h3-game`'s `tests/records.rs` (5: the box's record through `MoveHero` and
+  `Answer`, a loss floored at 0, the dialog at the record's slots, a won guarded box, the
+  Pyramid's split under both profiles and its luck) and `level_ups.rs` (an open level-up drawn
+  once); `h3-map`'s play and view properties take a dialog opened over several stacks and the
+  losses.
+- **Replays**: the twelve re-recorded with their options, their commands unchanged (neither map has
+  a box or a Pyramid): every hash moved.
+- **Gates**: the scoped verify with the original data passed every step on its second run (the
+  first: coverage, a box's record for a hero off the map and a box without its record, both
+  tested since); `bench-check` at its baselines (no workload's map holds the new kinds). Then
+  `cargo check --workspace --all-targets` and `h3-map`'s and `h3-sim`'s tests. A smoke run, not
+  committed: random play on the eight shipped maps that run whole (the seven `.h3m` and the
+  Tutorial; three seeds each, 14 days, at most 3 000 steps), no failure.

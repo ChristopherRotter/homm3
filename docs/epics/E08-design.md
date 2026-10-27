@@ -143,8 +143,8 @@ then, hashed after the army left. Measured: `fork-xl-144` (see the log, T61b).
 
 ### 11. The visits (`h3-adventure`)
 
-Built by T62a for the pickups, teachers and finds (`state/rewards.rs`; the record, boxes, events and
-the Pyramid are T62b's): the outcome's `HeroGains` (the changes, then the experience the game gives
+Built by T62a for the pickups, teachers and finds (`state/rewards.rs`), by T62b1 for the record,
+Pandora's Box and the Pyramid (`state/records.rs`; decision 151; events are T62b2's): the outcome's `HeroGains` (the changes, then the experience the game gives
 with its level-ups), `Choice` (`ChoiceKind::Chest`, `ChoiceKind::Primary`) answered by
 `AdventureState::choose` with a `Pick` (first, second, leave), `UniversityVisit`, the offers
 `OfferKind::Gift { price }` (the Tree's, the design's `PayTree`) and `OfferKind::Search` (the
@@ -188,14 +188,18 @@ only when it gives.
 (gains, and losses that floor at 0); the creatures slot by slot onto the army (a stack of its
 creature, else the first empty slot, the cap of ADV-ARM-007), what finds no room into **one army
 dialog** after the last stack; the experience (`Granted::experience`) is carried in the outcome
-for the game to give last (§14). The outcome reports whether anything was given (an empty box's
-message).
+for the game to give last (§14). Built by T62b1 (`give_record`): the losses as
+`AdventureOutcome::losses` (the game's `ResourceLost`), the group at the record's slots as
+`NoRoom::group` (one `ArmyDialogOpened` per stack); *agent's call:* the empty box's message is
+presentation, no event (as T62a's refusals).
 
 **11.2 The monster battle with a second creature** (ADV-MON-012, D-40): the Pyramid's guards
 through `split` with the first creature's count, n less the second creature's stacks (at least
 1), and the order table 0x63DF94's row for n (slot by slot: n = 1 D D – G – – –; 2 D D G – G – –;
 3 D G D G – G –; 4 G D G D G – G; 5 G G D G D G G); the split's draws as a monster's
-(`ADV-QUIRK-6`). Losses are not kept (no army left).
+(`ADV-QUIRK-6`). Losses are not kept (no army left). Built by T62b1: `Defender::Monsters`,
+`split_with_second` (the rows for n = 1 to 6 with no third creature; E7-16 and E7-22 confirmed
+two of them).
 
 ### 12. Events and the move (ADV-OBJ-007, ADV-MOV-011; A-23)
 
@@ -215,9 +219,13 @@ through `split` with the first creature's count, n less the second creature's st
 - **Security:** nothing leaks through the legal moves, so `docs/06-security.md` lists nothing new
   for events. A property test: two games that differ by a hidden event give every player the same
   observation and legal moves until it fires.
-- **Open point** (T62's start): the order of an event and a monster guarding its tile on the same
-  step (the original's `hero_move_step` tests the event at 0x4811A3 and fires it at 0x481741; the
-  guard's attack was not placed in that order).
+- **An event on a guarded tile** (T62b's opening reading, survey §8.5): the guard visits first
+  (0x48169D), the event fires after the guard's visit (0x481741). The original fires it whatever
+  that visit ended in, also for a hero the guard beat or that retreated (in the pool, owner −1:
+  A-26, state-corrupting); fixed, no flag (`ADV-QUIRK-29`, T62b2): the event fires only for a
+  hero still on its tile once the guard's visit is over (its offers answered, its battle and
+  levels given), and stays otherwise. The wait across the guard's decisions is T63's rest
+  (GAM-DEC-007); until then a guarded tile's event does not fire (`ADV-STUB-10`, decision 151).
 
 ### 13. Information (ADV-VIS-006, ADV-FOG-007)
 

@@ -10,13 +10,13 @@ use h3_heroes::{ArtifactInstance, HeroChange};
 use super::decisions::{ACCEPT, DECLINE, GOLD, RED, after_steps, move_hero, play};
 use super::*;
 
-const HERO: HeroId = HeroId::new(0);
+pub(super) const HERO: HeroId = HeroId::new(0);
 /// The tile the objects stand on, beside red's hero at (0, 0).
-const AT: Pos = Pos::new(1, 0, 0);
+pub(super) const AT: Pos = Pos::new(1, 0, 0);
 const RING: ArtifactTypeId = ArtifactTypeId::from_raw(4);
 
 /// An object of type `k` at [`AT`], holding `holds`.
-fn reward_at(rules: &GameRuleset, k: &str, holds: Holds) -> ObjectSetup {
+pub(super) fn reward_at(rules: &GameRuleset, k: &str, holds: Holds) -> ObjectSetup {
     ObjectSetup {
         scenery: Default::default(),
         anchor: AT,
@@ -32,19 +32,19 @@ fn reward_at(rules: &GameRuleset, k: &str, holds: Holds) -> ObjectSetup {
 }
 
 /// [`setup`] (2 000 gold each) with this object.
-fn game(rules: &GameRuleset, object: ObjectSetup) -> GameState {
+pub(super) fn game(rules: &GameRuleset, object: ObjectSetup) -> GameState {
     let mut setup = setup();
     setup.map.objects = vec![object];
     GameState::new(rules, &setup, 7).unwrap()
 }
 
 /// Red's hero visits the object at [`AT`]: the events after its step.
-fn visit(state: &mut GameState, rules: &GameRuleset) -> Vec<GameEvent> {
+pub(super) fn visit(state: &mut GameState, rules: &GameRuleset) -> Vec<GameEvent> {
     after_steps(play(state, rules, RED, move_hero(0, &[AT])).unwrap())
 }
 
 /// The change told to red of its hero.
-fn changed(change: HeroChange) -> GameEvent {
+pub(super) fn changed(change: HeroChange) -> GameEvent {
     GameEvent::HeroChanged {
         player: RED,
         hero: HERO,
@@ -53,7 +53,7 @@ fn changed(change: HeroChange) -> GameEvent {
 }
 
 /// Red's gold.
-fn gold(state: &GameState) -> u32 {
+pub(super) fn gold(state: &GameState) -> u32 {
     state.treasury(RED).unwrap()[0]
 }
 
@@ -174,7 +174,7 @@ fn the_tombs_question_opens_and_its_morale_reaches_the_hero() {
 }
 
 /// Red's victory over a side without a hero at [`AT`], keeping its nine imps.
-fn won() -> BattleOutcome {
+pub(super) fn won() -> BattleOutcome {
     BattleOutcome {
         result: BattleResult::Victory(BattleSide::Attacker),
         survivors: [

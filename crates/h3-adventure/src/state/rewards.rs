@@ -49,7 +49,7 @@ fn receives(core: &Ruleset, details: Option<&HeroDetails>, item: ArtifactInstanc
 }
 
 /// An outcome giving `hero` these changes, none when there are none.
-fn changes(hero: HeroId, changes: Vec<HeroChange>) -> AdventureOutcome {
+pub(super) fn changes(hero: HeroId, changes: Vec<HeroChange>) -> AdventureOutcome {
     AdventureOutcome {
         hero: (!changes.is_empty()).then(|| HeroGains::changes(hero, changes)),
         ..AdventureOutcome::default()
@@ -59,7 +59,7 @@ fn changes(hero: HeroId, changes: Vec<HeroChange>) -> AdventureOutcome {
 impl AdventureState {
     /// The visits' block to write: built on its first write (none before, so a fork costs nothing
     /// more until then), copied when a fork shares it.
-    fn visits_mut(&mut self) -> &mut Visits {
+    pub(super) fn visits_mut(&mut self) -> &mut Visits {
         let (objects, players) = (self.map.objects().len(), self.players);
         let block = self
             .visits
@@ -90,7 +90,7 @@ impl AdventureState {
 
     /// `player` learns what a visit left on the object at `index` (ADV-VIS-006): the block is
     /// written only when the player did not know it yet.
-    fn learn(&mut self, player: PlayerId, index: usize) {
+    pub(super) fn learn(&mut self, player: PlayerId, index: usize) {
         if !self.knows(player, index) {
             self.visits_mut().learn(player, index);
         }

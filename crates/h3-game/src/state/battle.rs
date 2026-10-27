@@ -9,7 +9,9 @@ use alloc::sync::Arc;
 use alloc::vec::Vec;
 use core::cmp::Ordering;
 
-use h3_adventure::{BattleStart, Combatant, Defender, Pos, TileRand, Viewers, split};
+use h3_adventure::{
+    BattleStart, Combatant, Defender, Pos, TileRand, Viewers, split, split_with_second,
+};
 use h3_battle::{BattleState, Command, Event, Visibility, generate_setup_obstacles};
 use h3_content::{FULL_BP, OBSTACLES_FROM_TILE, Ruleset, SINGLE_PRECISION_RATES, SPLIT_FROM_TILE};
 use h3_contracts::{
@@ -197,7 +199,7 @@ impl GameState {
         let core = rules.core();
         let defending = match &start.defender {
             Defender::Hero(hero) => Some(hero),
-            Defender::Monster { .. } | Defender::Guards { .. } => None,
+            Defender::Monster { .. } | Defender::Guards { .. } | Defender::Monsters { .. } => None,
         };
         let sides: [Option<&Combatant>; 2] = [Some(&start.attacker), defending];
         let resource = rules.battle().battle().surrender.map(|s| s.resource);
@@ -250,6 +252,22 @@ impl GameState {
             }
             // rule: ADV-PIK-004
             Defender::Guards { army } => army.clone(),
+            // rule: ADV-MON-012
+            Defender::Monsters {
+                split: first,
+                fixed: (second, stacks),
+            } => {
+                let from_tile = core.quirks().is_enabled(SPLIT_FROM_TILE);
+                let mut tile = TileRand::new(start.tile);
+                let second = (*second, &stacks[..]);
+                split_with_second(core, &start.attacker.army, *first, second, || {
+                    if from_tile {
+                        tile.percent()
+                    } else {
+                        stream.range_inclusive(1, 100)
+                    }
+                })
+            }
         };
         let mut setup = BattleSetup {
             attacker: Army {
@@ -442,8 +460,10 @@ impl GameState {
     /// enter the visitor's owner's treasury (ADV-MON-010), its artifact the hero's when it can
     /// receive it (ADV-MON-011, E08 T62a); the guards' survivors stay with the object, or after
     /// the visitor's victory a pile is picked up, its contents entering the treasury
-    /// (ADV-PIK-004), an artifact or a scroll going to the hero (ADV-PIK-007, ADV-PIK-008: until
-    /// T63 before the winner's levels, `ADV-STUB-10`), applied as a command's outcome. Last (E08 T30) the winner's hero gets its pending levels
+    /// (ADV-PIK-004), an artifact or a scroll going to the hero (ADV-PIK-007, ADV-PIK-008), a
+    /// Pandora's Box giving its record (ADV-PIK-013, E08 T62b1), a won Pyramid looted and its
+    /// spell taught (ADV-TCH-008): until T63 before the winner's levels (`ADV-STUB-10`), applied
+    /// as a command's outcome. Last (E08 T30) the winner's hero gets its pending levels
     /// ([`Self::give_levels`], GAM-BAT-008): after the whole outcome, Necromancy and Eagle Eye
     /// included, as the original gives a human player's after the battle's screen (0x4AE324).
     // rule: GAM-BAT-002, GAM-BAT-003, GAM-BAT-005, GAM-BAT-008, ADV-MON-010, ADV-PIK-004
@@ -506,7 +526,8 @@ impl GameState {
                 (survivors, won),
                 &mut AdventureSink(&mut *sink),
             );
-            // stub: ADV-STUB-10 (a won guarded artifact or scroll before the winner's levels)
+            // stub: ADV-STUB-10 (a won guarded object's pickup, a box's record, the Pyramid's
+            // spell before the winner's levels)
             self.settle_outcome(rules, visitor, ended, sink);
         }
         // rule: GAM-BAT-008

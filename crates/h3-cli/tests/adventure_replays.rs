@@ -105,7 +105,9 @@
 //! object that draws, nor bans) re-recorded all twelve with their options, their commands
 //! unchanged: every hash moved. E08 T62a (game state hash v16: a gift's price and a find's
 //! question among the offer kinds, neither map has one) re-recorded all twelve with their options,
-//! their commands unchanged: every hash moved.
+//! their commands unchanged: every hash moved. E08 T62b1 (game state hash v17: Pandora's Box's and
+//! the Pyramid's questions among the offer kinds, neither map has one) re-recorded all twelve with
+//! their options, their commands unchanged: every hash moved.
 //!
 //! **Scripted** (E08 T52, increment 6: the random agent manages nothing), on the generated
 //! `fixtures/maps/e08-army-12.h3m` (red's Valeska, hero 0, with a full army and twelve artifacts

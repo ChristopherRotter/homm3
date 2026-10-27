@@ -337,3 +337,16 @@ A candidate becomes an entry here only once it is confirmed for SoD (by an exper
 - Defaults: fixed in every profile
 - Regression test: `crates/h3-adventure/src/state/tests/rewards.rs`, `a_once_per_hero_gift_gives_once_and_marks_the_hero` (the mark per object and hero); the design's measurement of marks on every object, E08 T55b (design §10)
 - Decided by / date: the user 2026-10-26 (ADV-Q28; decision 133); built and recorded by E08 T62a
+
+### ADV-QUIRK-28 — A 401st box or event reads the first one's reward record
+- Class: exploit-fix (no flag: the engine keeps no bound of the original's on visits' state, E08 decision 133; A-19)
+- Context / rules affected: adventure, ADV-RWD-001 (the reward record), ADV-PIK-013 (Pandora's Box), ADV-OBJ-007 (events)
+- Original behavior: Pandora's Boxes and events append their 228-byte reward records to one list of the map (+0x50), at most 400; a 401st is not stored and its tile's word keeps the index 0, so it gives the first record (survey `E08-rewards.md` §7.1, §9).
+- Intended/expected behavior: a record per object (`Holds::Record`, `EventSetup::record` on the object, design §7), with no bound on how many boxes or events a map holds.
+- Impact: unreachable on the shipped maps (at most 99 records, Myth and Legend); a made map with more would repeat the first record.
+- Community status: not documented; VCMI keeps the rewards on each object.
+- Sources: code reading (E08 T55a3, survey §7.1).
+- Flag: none (always fixed)
+- Defaults: fixed in every profile
+- Regression test: `crates/h3-adventure/src/state/tests/records.rs`, `every_box_holds_its_own_record`
+- Decided by / date: the user 2026-10-26 (ADV-Q28; decision 133); built and recorded by E08 T62b1

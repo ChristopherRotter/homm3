@@ -141,6 +141,10 @@ pub struct AdventureOutcome {
     /// Each resource gained with its amount, in the order the rule gives them (a campfire's
     /// resource, then its gold).
     pub gains: Vec<(ResourceId, u32)>,
+    /// Each resource lost with its amount, in the order the rule takes them (a reward record's
+    /// negative resources, ADV-RWD-001, E08 T62b1): the game takes them from the player's
+    /// treasury, never below 0.
+    pub losses: Vec<(ResourceId, u32)>,
     /// The offer the command's visit makes its player, if any: a Cartographer's whose type the
     /// player has not bought (ADV-VIS-001), a border guard's whose key the player holds
     /// (ADV-VIS-004).
@@ -158,9 +162,10 @@ pub struct AdventureOutcome {
     /// The meeting the command's step toward an own hero makes (GAM-MET-001, E08 T50): the game
     /// opens it as the owner's decision (T51b).
     pub meeting: Option<Meeting>,
-    /// The group of an accepted join that found no room in its hero's army (ADV-MON-008, E08
-    /// T50): its treasure was given and the monster left the map as for any join; the game opens
-    /// the army dialog with it (GAM-DEC-004, T51b).
+    /// The group that found no room in its hero's army, which the game opens the army dialog with
+    /// (GAM-DEC-004, E08 T51b): an accepted join's (ADV-MON-008, E08 T50), its treasure given and
+    /// the monster gone as for any join; since E08 T62b1 a reward record's stacks that found none
+    /// (ADV-RWD-001).
     pub no_room: Option<NoRoom>,
     /// What the visit gives its hero (ADR-0017 point 10, increment 7; E08 T62a): the artifacts,
     /// spells, skills, primary skills, spell points, bonuses and experience of a pickup, a
@@ -320,16 +325,17 @@ pub struct Meeting {
     pub visited: HeroId,
 }
 
-/// A joining group its hero's army had no room for (ADV-MON-008, ADV-ARM-007; E08 T50): no stack
-/// of its creature takes it whole within a stack's most and no slot is free.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+/// A group its hero's army had no room for (ADV-ARM-007; E08 T50): for each of its stacks, no
+/// stack of its creature takes it whole within a stack's most and no slot is free. A joining
+/// group's (ADV-MON-008) is one stack in slot 0; a reward record's (ADV-RWD-001, E08 T62b1) its
+/// stacks that found no room, at their slots in the record (the original's copy of the record's
+/// army, each stack that joined cleared, 0x4A09BB).
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct NoRoom {
     /// The hero it joined.
     pub hero: HeroId,
-    /// Its creature.
-    pub creature: CreatureTypeId,
-    /// How many.
-    pub count: u32,
+    /// Its stacks by slot, at least one.
+    pub group: Vec<ArmyStack>,
 }
 
 /// A battle a visit starts (ADR-0017 points 10 and 11; GAM-BAT-001, E08 T19a): its two sides as
@@ -375,10 +381,21 @@ pub enum Defender {
         count: u32,
     },
     /// A guarded pile's guards (ADV-PIK-004, E08 T21a), unowned: their stacks by slot as they
-    /// stand, which defend unsplit (the original passes the map's army, 0x4A4876).
+    /// stand, which defend unsplit (the original passes the map's army, 0x4A4876). Since E08
+    /// T62b1 a Pandora's Box's too (ADV-PIK-013).
     Guards {
         /// The stacks by slot.
         army: Vec<ArmyStack>,
+    },
+    /// Monsters of two creatures (ADV-MON-012, E08 T62b1: the Pyramid's guards), unowned: the
+    /// first split as a monster's less the second's stacks, the second in its stacks, the slots
+    /// in the original's order; the game splits them ([`crate::split_with_second`]) with the
+    /// draws its profile gives (`ADV-QUIRK-6`). Their losses are not kept.
+    Monsters {
+        /// The first creature and its count.
+        split: (CreatureTypeId, u32),
+        /// The second creature and its stacks' counts, in order.
+        fixed: (CreatureTypeId, Vec<u32>),
     },
 }
 
@@ -427,7 +444,9 @@ impl Offer {
             | OfferKind::Join
             | OfferKind::Pursue
             | OfferKind::Fight
-            | OfferKind::Search => &[],
+            | OfferKind::Search
+            | OfferKind::OpenBox
+            | OfferKind::SearchPyramid => &[],
         }
     }
 }
@@ -474,6 +493,13 @@ pub enum OfferKind {
     /// A find's question (ADV-PIK-011, E08 T62a: the Warrior's Tomb's "search?"): accepted, its
     /// contents and its bonus; declined, nothing.
     Search,
+    /// Pandora's Box's question (ADV-PIK-013, E08 T62b1: "open the box?"): accepted, its guards
+    /// fight at once, else its reward record is given and it leaves the map; declined, nothing.
+    OpenBox,
+    /// The Pyramid's question (ADV-TCH-008, E08 T62b1: "search it?", at every visit): accepted,
+    /// its owner learns whether it is looted, a looted one costs the hero luck once, else its
+    /// guards fight; declined, nothing.
+    SearchPyramid,
 }
 
 /// The players who may see an event (ADR-0016 point 6): a set of players, resolved when the event
