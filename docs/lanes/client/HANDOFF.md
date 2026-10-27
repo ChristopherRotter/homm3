@@ -10,7 +10,7 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   epic's M5): hot seat in-process first, then a game on a server and accounts; the new
   dependencies the user's at T6 and T7. **T1a and T1b done** (the playhead; the timeline that
   grows, `play` and the window fighting a scenario as they play it, `live.rs`). **Next: M5 T2**
-  (hot seat: the player's commands). Open PR: the T1b one (check it first). Workspace `clients/`
+  (hot seat: the player's commands). Open PR: #509 (T1b; check it first). Workspace `clients/`
   (`clients/README.md`), gates `clients/scripts/check.sh`; ADR-0020 (+ drafts in
   `adr-drafts/`), ADR-0024; the harness `clients/capture/README.md`; design §3–§10; records in
   `E17-log.md`.
@@ -37,12 +37,12 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
 
 ## Recent sessions
 
-- **2026-10-27, E17 M5 T1b (done; PR open: check it first).** Whole, as cut at T1a. `anim::Growing` (the
-  timeline a command at a time, only appended to; a drawbridge span open until the next redraw),
-  `Playhead::extend`; `battle.rs` as `Ground` and `Battle<'g>`, `live.rs` (the session
-  in-process, the bot's command when a frame reaches the timeline's end); `motion`'s `every`;
-  the panel's reads logarithmic. `play` byte for byte as fought at once; `window --check` 1 094
-  frames exact. No new question.
+- **2026-10-27, E17 M5 T1b (done; #509 open: check it first).** Whole, as cut at T1a.
+  `anim::Growing` (the timeline a command at a time, only appended to; a drawbridge span open
+  until the next redraw), `Playhead::extend`; `battle.rs` as `Ground` and `Battle<'g>`,
+  `live.rs` (the session in-process, the bot's command when a frame reaches the timeline's end);
+  `motion`'s `every`; the panel's reads logarithmic. `play` byte for byte as fought at once;
+  `window --check` 1 094 frames exact. No new question.
 - **2026-10-27, E17 M5 T1a (done; #506 merged).** T1 cut in two (the user: T1a,
   T1b). The sandbox new, the original files staged again before the computer disconnected.
   Measured: R2-7's 2.3 ms was the composing; `Moment::at` 1.6 to 7 µs over `play`'s battle,
