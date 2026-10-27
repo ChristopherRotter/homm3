@@ -6760,3 +6760,9 @@ green on it); the sandbox's light gates passed; the original data staged from th
   losses.
 - **Replays**: the twelve re-recorded with their options, their commands unchanged (neither map has
   a box or a Pyramid): every hash moved.
+- **Gates**: the scoped verify with the original data passed every step on its second run (the
+  first: coverage, a box's record for a hero off the map and a box without its record, both
+  tested since); `bench-check` at its baselines (no workload's map holds the new kinds). Then
+  `cargo check --workspace --all-targets` and `h3-map`'s and `h3-sim`'s tests. A smoke run, not
+  committed: random play on the eight shipped maps that run whole (the seven `.h3m` and the
+  Tutorial; three seeds each, 14 days, at most 3 000 steps), no failure.
