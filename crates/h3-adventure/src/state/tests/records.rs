@@ -246,6 +246,12 @@ fn a_guarded_box_fights_at_once_and_gives_its_record_after_a_win() {
     assert_eq!(outcome.gains, [(GOLD, 500)]);
     assert_eq!(joined(&events).len(), 2);
     assert!(won.is_removed(0));
+    // Nothing visited at the battle's tile: nothing.
+    let mut events = Vec::new();
+    let elsewhere = (HERO, Pos::new(5, 0, 0));
+    let context = (&rules.0, &rules.1, &heroes[..]);
+    let none = s.end_unowned_battle(context, elsewhere, (&[], true), &mut events);
+    assert_eq!((none, events.len()), (AdventureOutcome::default(), 0));
     // A draw leaves none: the next accepted question opens it without a battle.
     let (_, _) = ended(&mut s, &[], false);
     let (outcome, _) = accept(&rules, &mut s, &heroes, &open);

@@ -217,6 +217,16 @@ fn the_pyramid_fights_two_creatures_split_by_its_tile_and_a_looted_one_costs_luc
         .collect();
     assert_eq!(defending, expected);
     assert!(expected.iter().any(|&(_, c, n)| (c, n) == (GOG, 2)));
+    // Without ADV-QUIRK-6 the split draws from red's stream.
+    let rules_strict = valued("t:faithful");
+    let mut strict = game(
+        &rules_strict,
+        reward_at(&rules_strict, "t:pyramid", Holds::Nothing),
+    );
+    visit(&mut strict, &rules_strict);
+    play(&mut strict, &rules_strict, RED, ACCEPT).unwrap();
+    let stacks = strict.battle(RED).unwrap().state().stacks();
+    assert!(stacks.iter().any(|s| s.creature == GOG && s.count == 2));
     // Won: looted; asked again, its luck once by its mark.
     let mut state = game(&rules, reward_at(&rules, "t:pyramid", Holds::Nothing));
     let sides = ([Some(RED), None], [Some(HERO), None], AT);

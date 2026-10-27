@@ -85,10 +85,11 @@ impl AdventureState {
         sink: &mut S,
     ) -> AdventureOutcome {
         let map = Arc::clone(&self.map);
-        let outcome = match &map.objects()[index].holds {
-            Holds::Record(record) => self.give_record(rules, hero, record, sink),
-            _ => AdventureOutcome::default(),
-        };
+        let mut outcome = AdventureOutcome::default();
+        // The setup gives every box its record (`SetupError::Holds`).
+        if let Holds::Record(record) = &map.objects()[index].holds {
+            outcome = self.give_record(rules, hero, record, sink);
+        }
         self.take_object(rules.0, (index, object_type), sink);
         outcome
     }
@@ -119,12 +120,14 @@ impl AdventureState {
             .map(|details| grant(details, core, &record.hero))
             .unwrap_or_default();
         let mut outcome = AdventureOutcome::default();
+        // The setup gives no amount of 0 (`SetupError::Holds`).
         for &(resource, amount) in &record.resources {
-            match u32::try_from(amount) {
-                Ok(gain) if gain > 0 => outcome.gains.push((resource, gain)),
-                Ok(_) => {}
-                Err(_) => outcome.losses.push((resource, amount.unsigned_abs())),
-            }
+            let into = if amount < 0 {
+                &mut outcome.losses
+            } else {
+                &mut outcome.gains
+            };
+            into.push((resource, amount.unsigned_abs()));
         }
         let room = (part.params().army_slots(), part.params().max_stack_count());
         let mut group = Vec::new();
