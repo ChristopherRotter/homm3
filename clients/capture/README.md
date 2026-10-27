@@ -802,7 +802,9 @@ the recording's last state).
 map's addresses hold): the frame deadline and the idle step's time, the combat speed, the mouse
 (its hex, the cursor's kind, type, frame and the point it is drawn at: M3 T6c-2), and per
 stack its creature, hex, group, frame, facing, offsets, times, count, the count its box shows
-(`shown`, M3 T5b), its morale and luck (M3 T7b-2b-2a) (`docs/exe/structs.toml`). On
+(`shown`, M3 T5b), its morale and luck (M3 T7b-2b-2a) (`docs/exe/structs.toml`); the dialog
+item the mouse last entered (`hovered_item` 0x6AAC68: its id, kind, dialog, box, state and hint;
+M4 T3b), which every sequence's step records (`states.jsonl`, `frames.jsonl`; not in `kept/`). On
 the adventure map (M2 T6): the current player, each player's selected hero, hero list and
 resources, every hero's name, tile and points, the view's top-left tile, the tile under the
 mouse and the selected hero's path (design §6.3); for the map's stills (E24 M1 T3b2) the cycling
@@ -831,9 +833,11 @@ design §7.1.
 - The battle panel's buttons change with whose turn it is: the `battle` probes are the ones equal
   in both states.
 - A click's hover leaves the status line's hint in the log's item (`Attack Pikemen` over a
-  target) until a log line replaces it or a human's turn starts (the mouse posted again over
-  nothing), and a line held there less than 3 000 ms keeps hints out but an attack's (design
-  §9.8, §9.10): the viewer follows the harness's mouse since M3 T6c-2.
+  target) until a log line replaces it or the mouse enters another panel item: the park point
+  is the panel's picture (item 2000), entered once after the opening (a human turn's post or a
+  move), so a later turn's post there writes nothing (M4 T3b, `hovered_item`); a line held
+  there less than 3 000 ms keeps hints out but an attack's (design §9.8, §9.10, §10.2): the
+  viewer follows the harness's mouse since M3 T6c-2.
 - The game reads the mouse on a 33 ms grid of its clock and draws a new cursor frame where it
   last read it (design §9.10): the harness sets the grid's next time at a sequence's opening
   (`h3mem.Mem.align_mouse_poll`, a sequence's only write into the game's memory, a timer of the

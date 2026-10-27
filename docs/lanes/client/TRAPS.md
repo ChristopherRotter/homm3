@@ -18,6 +18,9 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   stack acts by `key:` only (runbook).
 - Sequences are spectators' records; the engine rolls its own (a box ` n…` or the log ` log`
   listed; a seed searched to match: runbook, "Forced rolls"). Records: army, then war machines.
+- The viewer reads `clients/layouts/*.toml` at run time: a layout change made while a batch
+  runs breaks (or changes) the release binary's comparisons of the batch (M4 T3b-1: an unknown
+  field); keep the layout with the binary it was built for until the batch ends.
 - A capture times out at the main menu when the CPU is busy: run it alone. A fresh sandbox's
   first capture once differed (T7c-2): recapture. A background job stops at 2 h: batches.
 - Sieges: machines acting on their own at the opening act before the record opens (CLT-Q20: the

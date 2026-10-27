@@ -819,7 +819,8 @@ def sequence(game, map_path, out, pre=0, actions=(), ms=1000, screen=False, fram
     `screens` (M3 T7a-2b) each state the box where the screen changed since the step before
     (`changed`), which the timeline lists. With `fail` (M3 T7b-2b-1) every draw of those rolls
     (ROLLS) fails them but those a `roll:` action forces; a forced draw no roll took fails the
-    sequence. `key` steps the hero into the battle (E17 M4 T2b: `Up` into a siege's town)."""
+    sequence. `key` steps the hero into the battle (E17 M4 T2b: `Up` into a siege's town). Each
+    state holds the hovered dialog item (E17 M4 T3b, `h3mem.Mem.hovered_item`)."""
     import hashlib
     import json
 
@@ -873,6 +874,10 @@ def sequence(game, map_path, out, pre=0, actions=(), ms=1000, screen=False, fram
         s["log"] = mem.battle_log()
         if s["log"] is not None:
             s["log"]["at"] -= t0
+        # The dialog item the mouse last entered (E17 M4 T3b): which one a move inside it writes
+        # no hint for (design §10.2, the status line at a human turn), in `states.jsonl` and
+        # `frames.jsonl` only.
+        s["hovered"] = mem.hovered_item()
         if screen or frames or screens:
             pix = game.settled()
             s["screen"] = hashlib.sha1(pix.tobytes()).hexdigest()[:12]

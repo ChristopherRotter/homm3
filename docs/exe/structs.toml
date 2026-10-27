@@ -634,13 +634,17 @@ fields = [
 [[struct]]
 name = "dialog_item"
 size = 0x50
-summary = "An item of a dialog (H3API's H3DlgItem; a text item is its H3DlgText, whose size is used here); only what the capture harness reads, observed in the running game (h3mem.py), not read."
+summary = "An item of a dialog (H3API's H3DlgItem; a text item is its H3DlgText, whose size is used here); what the capture harness reads, observed in the running game (h3mem.py), read where marked."
 refs = ["epics/E17-design.md §6.3"]
 h3api = "H3DlgItem"
 fields = [
   { offset = 0x0, name = "vtable", type = "u32", summary = "the item's kind: 0x63EC48 a DEF picture (0x4EA720), 0x63BA94 a picture (0x4502D0), 0x63BB54 a DEF button (0x455EF0)", confidence = "read", refs = ["epics/E08-log.md T32b1"] },
+  { offset = 0x4, name = "dialog", type = "dialog*", summary = "the dialog the item belongs to (H3API's parent; its vtable +0x10 gives the item's hint, 0x5FE930); the battle panel's items' is the combat dialog (E17 M4 T3b, observed)", confidence = "read", refs = ["epics/E17-design.md §10.2"] },
   { offset = 0x8, name = "next", type = "dialog_item*", summary = "the next item of the dialog (0 after the last)", confidence = "inferred", refs = ["epics/E17-design.md §6.3"] },
   { offset = 0x10, name = "id", type = "i16", summary = "the item's id (a question's OK 30725, its Cancel 30726)", confidence = "inferred", refs = ["epics/E17-design.md §6.3"] },
+  { offset = 0x16, name = "state", type = "u16", summary = "state bits (bit 8 disabled, 0x5FE560; bit 2 takes the mouse, 0x5FE6DA); the battle panel's picture 2000 holds 6 (E17 M4 T3b, observed)", confidence = "read", refs = ["epics/E17-design.md §9.7", "epics/E17-design.md §10.2"] },
+  { offset = 0x18, name = "box", type = "i16 x, i16 y, u16 width, u16 height", summary = "the item's place and size from its dialog's corner (H3API's xPos, yPos, widthItem, heightItem); the battle panel's picture 2000: (0, 556, 800, 44) (E08 T47a, E17 M4 T3b, observed)", confidence = "inferred", refs = ["epics/E17-design.md §10.2"] },
+  { offset = 0x20, name = "hint", type = "char*", summary = "the hint the status line shows as the mouse enters the item (0 none: an empty line; 0x472B80)", confidence = "read", refs = ["epics/E17-design.md §10.2"] },
   { offset = 0x30, name = "text", type = "string", summary = "a text item's text: a string record, the characters' pointer at +0x34 and their number at +0x38 (H3API's H3String); a DEF picture holds its loaded DEF here instead (its name at +0x4, H3API's H3LoadedDef; 0x4EA720, E08 T32b1)", confidence = "inferred", refs = ["epics/E17-design.md §6.3"] },
   { offset = 0x34, name = "frame", type = "i32", summary = "a DEF picture's or DEF button's frame (0x4EA720, 0x455EF0; the level-up dialog's skill pictures, 0x4F8880)", confidence = "read", refs = ["epics/E08-log.md T32b1"] },
 ]
