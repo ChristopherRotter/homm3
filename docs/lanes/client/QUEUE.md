@@ -8,7 +8,8 @@ Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12, M1 2026-10-13, M2 2026-10
 2026-10-23, M4 2026-10-27; ADR-0020, ADR-0024; the battle client since the split of 2026-10-23,
 the adventure map client being the map-client lane's E24). M5 (live play) refined at M4's
 closure (T3c, 2026-10-27, with the user): hot seat in-process first, then a game on a server;
-its tasks below, in order (T3 and T4 need T2; T1a and T1b done 2026-10-27). The original
+its tasks below, in order (T3 and T4 need T2b; T1a and T1b done 2026-10-27; T2 cut into T2a
+and T2b by the user, 2026-10-27). The original
 files: stage them from the user's `original-data/install/` (one large file per staging call; the
 user's computer must be online); never from the installation. The captures need the five DLLs,
 `Heroes3.snd`, `H3ab_ahd.snd` and `H3ab_ahd.vid` too; the harness's runbook:
@@ -17,25 +18,38 @@ check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gat
 `clients/`. An asset fix gets its mechanism (ADR-0020 point 6: the entry's flag, the
 `faithful`/`fixed` profile) with the first one a task finds.
 
-### E17 M5 T2 — hot seat: the player's commands
+### E17 M5 T2a — the click's command
 
-- **Scope:** a left click does what the cursor shows (`pointer::legal`'s kinds: a walk, a
-  flight, an attack from the cursor's side, a shot, the Catapult's wall target, a Faerie
-  Dragon's cast), the panel's Wait and Defend and their keys (the window's, until E24 M3 T0's
-  common key table: the inbox); when the original takes input (read: during an animation, the
-  key that acts at a cast's end, M3 T7b-1) and the window's input closed otherwise; each seat a
-  human or the Greedy bot (a flag); the commands through the in-process session (the engine
-  validates them as a server's). CLT-Q24's answer: the tracker forgets the hovered item over the
-  battlefield in the client's profile, `Bugs::Original` keeping the original's. From T1b: a
-  seat's command goes through `crate::live` (both seats held there; the bot's now), and a human's
+T2 cut in two by the user (2026-10-27): T2a the library's, T2b the window's; the Faerie Dragon's
+cast moved to T3 (its F key enters the hero's aim, 0x59EC50 from `battle_buttons` 0x475CD8).
+
+- **Scope:** the command a left click gives where the cursor shows it (`h3_view::mouse`, the
+  kinds of `pointer::legal`): a walk, a flight, an attack from the cursor's side (the from-hex
+  `cursor_attack_slots` 0x474690 takes for the slot, `cursor_attack_from_hex` 0x474A00), a shot,
+  a heal, the Catapult's wall target; the panel's Wait and Defend by their buttons and keys (the
+  layout's, until E24 M3 T0's common key table: the inbox). Read: `battle_buttons`' click branch
+  (what a click on the field does by the cursor's kind, on the button's down or up) and when the
+  battle takes a click (during an action, a computer's turn: queued or dropped; the key that
+  acts at a cast's end, M3 T7b-1). CLT-Q24's answer: the tracker forgets the hovered item over
+  the battlefield in the client's profile, `Bugs::Original` keeping the original's.
+- **Acceptance:** scripted clicks over every scenario's turns give exactly the engine's legal
+  list (every walk, strike, shot, heal and wall shot reached, no click an illegal command); the
+  recorded sequences and frames unchanged (the comparisons' profile); the Definition of Done.
+- **Depends on:** T1b (done 2026-10-27). **Status:** ready.
+
+### E17 M5 T2b — hot seat in the window
+
+- **Scope:** each seat a human or the Greedy bot (a flag); a human's command (T2a's) through
+  `crate::live` (both seats held there; the bot's now), the engine validating it as a server's;
+  the window's input closed while the battle does not take it (T2a's reading). A human's command
   arrives after the timeline's end, so the window shows the tail while it waits: what the last
   command left to the next redraw (`anim::Growing`) shows with the first idle step after the end
   (the timeline grown with the command's time, `Command::at`, gives the same), and a playhead
-  past the old end starts over (`Playhead::extend`).
+  past the old end starts over (`Playhead::extend`). Hot seat shows the side to act's view (the
+  panel's colours, runbook "A siege").
 - **Acceptance:** a scenario's battle played to its end by clicks in hot seat and against the
-  bot; scripted inputs (a test) give the commands the engine's legal list names; the recorded
-  sequences and frames unchanged (the comparisons' profile); the Definition of Done.
-- **Depends on:** T1b (done 2026-10-27). **Status:** ready.
+  bot; the recorded sequences and frames unchanged; `window --check`; the Definition of Done.
+- **Depends on:** T2a. **Status:** ready after T2a.
 
 ### E17 M5 T3 — the spell book and the hero's aim
 
@@ -43,12 +57,15 @@ check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gat
   places, the tabs, the bookmark, the pages, the mastery ribbons, the costs greyed) drawn and
   used, a spell above the hero's mana refused with its message; the aim: `enter_player_cast`
   0x59EC50's loop read (the targets it offers, `crspell.DEF`'s cursor, the status line GENRLTXT
-  28 "Cast %s on %s" and 27, the cancel) and built; `cast`'s 71 pixels (the battlefield redrawn
+  28 "Cast %s on %s" and 27, the cancel) and built; the Faerie Dragon's cast through it (its F
+  key, `battle_buttons` 0x475C17 to 0x475CD8: the drawn spell aimed as the hero's, action 10;
+  moved here from T2 by the user, 2026-10-27); `cast`'s 71 pixels (the battlefield redrawn
   over a rock's top for the click's frame, 0x479038's path). The detail: `QUEUE-ARCHIVE.md`,
   2026-10-21 (T7b-1). Recorded: the book's stills (a page, a tab) and an aimed cast.
-- **Acceptance:** a hero casts through the book in the window; the book's stills and the aim's
+- **Acceptance:** a hero casts through the book in the window, a Faerie Dragon by its key; the
+  book's stills and the aim's
   sequence as recorded, or each difference listed; the Definition of Done.
-- **Depends on:** T2. **Status:** ready after T2.
+- **Depends on:** T2b. **Status:** ready after T2b.
 
 ### E17 M5 T4 — the battle's dialogs
 
@@ -61,7 +78,7 @@ check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gat
 - **Acceptance:** each dialog's still and a sequence through it as recorded, or each difference
   listed; battles ended by a surrender, a retreat and a victory in the window; the Definition of
   Done.
-- **Depends on:** T2. **Status:** ready after T2.
+- **Depends on:** T2b. **Status:** ready after T2b.
 
 ### E17 M5 T5 — what a played battle shows
 
@@ -91,7 +108,7 @@ check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gat
 - **Acceptance:** a battle played to its end in two windows on a local `h3-server`, a seat each;
   a drop and a re-join; both outcomes of the content check; tests over loopback where the
   adapter allows; the Definition of Done.
-- **Depends on:** T2; the user's choice of the dependency. **Status:** ready after T2 (the
+- **Depends on:** T2b; the user's choice of the dependency. **Status:** ready after T2b (the
   dependency asked at the task).
 
 ### E17 M5 T7 — accounts
