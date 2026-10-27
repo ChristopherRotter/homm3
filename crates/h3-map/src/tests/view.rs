@@ -316,26 +316,25 @@ fn depth(view: &TileView) -> u8 {
     }
 }
 
-/// The observation's consistency with the events: `after` is `before` with what `viewer` was
-/// `told` applied as a client would. The day, the acting players and the turn group follow the
-/// game's events; the
-/// heroes it sees move as the projected steps say (a step names the viewer alone and tells at
-/// least one tile; a step's tile it leaves is where the viewer last saw the hero, a step it is
-/// not told the tile entered takes the hero out of its sight); a hero shows without a step only
-/// on a tile the viewer did not see before. The viewer forgets nothing: a tile's view only
-/// deepens, and keeps what it showed; an object it saw leaves its view only as an object removal
-/// it is told (E08 T13b), and a monster's word of its count changes only as it is told (E08
-/// T20b3b1); its treasury changes only by the gains and payments it is told,
-/// which are its own. Its open decision and its purchases change only as its offers' events say:
-/// an offer it is told opened is its decision, an answer closes it, an accepted Cartographer's
-/// adds the type to its purchases (E08 T14b); a level-up it is told opened is its decision, and
-/// the level it is told it gained closes it (E08 T30); a reveal it is told explores at least that many
-/// more tiles; its keys change only by the keys it is told it gained (T15a); its heroes' details
-/// only by the changes it is told, each of a hero it saw as its own (T19a2a). Its planes change
-/// only by its own command (`own`), and its explored tiles grow at a new day's start too (E08
-/// T40: in `strict-fixed`, `ADV-QUIRK-18` off, each hero reveals around it to its owner then, so
-/// another player's last end of turn of the day can widen a radius grown since the hero's last
-/// step).
+/// The observation's consistency with the events: `after` is `before` with what `viewer` was `told`
+/// applied as a client would. The day, the acting players and the turn group follow the game's
+/// events; the heroes it sees move as the projected steps say (a step names the viewer alone and
+/// tells at least one tile; a step's tile it leaves is where the viewer last saw the hero, a step
+/// it is not told the tile entered takes the hero out of its sight); a hero shows without a step
+/// only on a tile the viewer did not see before, by its own command or a new day's reveal (E08
+/// T58b). The viewer forgets nothing: a tile's view only deepens, and keeps what it showed; an
+/// object it saw leaves its view only as an object removal it is told (E08 T13b), and a monster's
+/// word of its count changes only as it is told (E08 T20b3b1); its treasury changes only by the
+/// gains and payments it is told, which are its own. Its open decision and its purchases change
+/// only as its offers' events say: an offer it is told opened is its decision, an answer closes it,
+/// an accepted Cartographer's adds the type to its purchases (E08 T14b); a level-up it is told
+/// opened is its decision, and the level it is told it gained closes it (E08 T30); a reveal it is
+/// told explores at least that many more tiles; its keys change only by the keys it is told it
+/// gained (T15a); its heroes' details only by the changes it is told, each of a hero it saw as its
+/// own (T19a2a). Its planes change only by its own command (`own`), and its explored tiles grow at
+/// a new day's start too (E08 T40: in `strict-fixed`, `ADV-QUIRK-18` off, each hero reveals around
+/// it to its owner then, so another player's last end of turn of the day can widen a radius grown
+/// since the hero's last step).
 /// An open decision as [`check_told`] follows it: an offer by its hero and object, a level-up,
 /// a meeting's two heroes, or an army dialog's hero and group (E08 T51b).
 #[derive(Debug, PartialEq)]
@@ -640,10 +639,14 @@ fn check_told(
     for &(id, pos) in &heroes {
         prop_assert_eq!(after.adventure.hero(id).map(|h| h.pos), Some(pos));
     }
+    // A hero shows without a step only where the viewer's sight grew: by its own command, or by
+    // a new day's reveal (E08 T40, below; T58b: a hero standing in the radius a Scouting grown
+    // since its owner's last step widened at the day's start).
+    let revealing = own || after.day != before.day;
     for hero in &after.adventure.heroes {
         if !heroes.iter().any(|&(id, _)| id == hero.id) {
             prop_assert!(
-                own && !stepped.contains(&hero.id),
+                revealing && !stepped.contains(&hero.id),
                 "{:?} shows untold",
                 hero
             );
