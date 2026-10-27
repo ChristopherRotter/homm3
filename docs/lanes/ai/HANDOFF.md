@@ -13,8 +13,8 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   engine); the search's measurement inconclusive; the system actor (0.628 against `t7-1`) is
   E25's target. **Next:** none queued; E25 (Battle AI v2, a sketch) waits for its refinement
   with the user (QUEUE's "For E25"); the adventure env's typed answers wait for E08 T63.
-- **Open pull requests:** #522 (`shared`, docs: BACKLOG, the env doc §1.2, ADR-0025/0026; merges
-  first) and the lane's closure (`claude/kind-bohr-wfa9oq` after it): watch both to their merge.
+- **Open pull requests:** the lane's closure (`claude/kind-bohr-wfa9oq`, E06 T9c and T9d; its
+  shared part #522 merged): watch it to its merge.
 - **Versions:** battle action encoding v13, observation encoding v22, replay format v31
   (CLT-Q4/Q6), the adventure env's action encoding v4 (E08 T45), C ABI v34 (T6f and T8b: the turn
   order, the worlds) (`docs/08-work-process.md`, "Versions"). Next ids: AI-Q10, AI-QUIRK-1,
