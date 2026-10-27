@@ -198,8 +198,9 @@ fn keys(stacks: &[Stack], wait_phase: bool, fresh: bool) -> FixedVec<OrderKey, S
             let _ = out.push(key);
         }
     }
-    out.as_mut_slice()
-        .sort_unstable_by_key(|k| (k.head, k.tail));
+    // The key ends in the stack's id (ADR-0003 §9).
+    let sorted = h3_kernel::order::sort_by_unique_key(out.as_mut_slice(), |k| (k.head, k.tail));
+    debug_assert!(sorted.is_ok(), "two stacks of one id");
     out
 }
 
