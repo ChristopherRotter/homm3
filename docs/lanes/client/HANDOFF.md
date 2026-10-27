@@ -8,7 +8,7 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   map client the map-client lane's E24); **M4 (sieges): T0 to T3b-2 done** (§10.1, §10.2; T3
   cut in three by the user: T3a the review, T3b the captures, cut in two, T3c the review list
   and M5 with the user); **next T3c** (the user present: review items 1 to 15, 15 a proposal,
-  CLT-Q22 to Q24, M5 refined); M5 live play after M4. Open PR: #PR (T3b-2; check it first).
+  CLT-Q22 to Q24, M5 refined); M5 live play after M4. Open PR: #501 (T3b-2; check it first).
   Workspace `clients/`
   (`clients/README.md`), gates `clients/scripts/check.sh`; ADR-0020 (+ drafts in
   `adr-drafts/`), ADR-0024; the harness `clients/capture/README.md`; design §3–§10; records in
@@ -36,7 +36,7 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
 
 ## Recent sessions
 
-- **2026-10-27, E17 M4 T3b-2 (done; #PR open: check it first).** Not cut (the user). The 29
+- **2026-10-27, E17 M4 T3b-2 (done; #501 open: check it first).** Not cut (the user). The 29
   sequences captured afresh, all as recorded: 25 at once, `strike`, `luck` and `bolt` at a rerun
   (the original's luck and spell power varied: the starting bonus likely, runbook "Traps",
   review item 15 a proposed fix), `sacrifice` with the engine's seed 9 (the original's 23 in
