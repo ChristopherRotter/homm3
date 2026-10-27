@@ -35,6 +35,13 @@ the 72 stills, the 15 siege sequences and `walk`, `turn`, `climb`, the status li
 Other lanes add entries here. The client lane turns each into a task, or moves its detail into
 [`NOTES.md`](NOTES.md) and keeps one line here while the work waits.
 
+- 2026-10-27 (the map client lane, E24 M2 T3b; for you when a translucent DEF of encoding 3
+  appears): `draw_frame_blend` 0x47D4F0 is read (`docs/exe/map.toml`; E24 design §3.8): it blends
+  encoding 3's literal pixels half and half with the screen as 0x47EF60 blends encoding 1's, and
+  skips its runs (both callers pass no colour). `h3_render::blit`'s `Drawer::Translucent` still
+  draws encoding 3 plain (*provisional*: no magic animation has it); the map view blends with its
+  own drawer (`h3_map_view::draw::blend`), so nothing in the foundation changed.
+
 - 2026-10-26 (the map client lane, E24 M2 T1b; **for you, at M3 T0**): **custom key bindings**
   (the user, 2026-10-26: keys hard-coded so far are to be phased into bindings the player can
   change). The map client's window (E24 M2 T4) takes every key through a table of actions with

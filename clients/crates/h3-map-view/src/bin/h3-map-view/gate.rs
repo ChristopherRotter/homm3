@@ -10,6 +10,7 @@
 
 use std::collections::BTreeMap;
 use std::fs;
+use std::ops::Range;
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
@@ -132,11 +133,16 @@ fn gate(options: &Options) -> Result<usize, String> {
         "\nDEFs (group 0): name, archive, frames held / drawn, encodings, run pixels by index"
     );
     let mut needs: Vec<(String, String, usize, u32)> = Vec::new();
+    // The heroes' and boats' walking groups (E24 M2 T3b), by the need's name.
+    let mut walking: BTreeMap<String, (Range<u32>, usize)> = BTreeMap::new();
     for need in tables.defs() {
         let maps = need
             .layer
             .and_then(|key| highest.get(&key))
             .map_or(0, |(picture, _)| usize::from(*picture) + 1);
+        if !need.walking.is_empty() {
+            walking.insert(need.name.clone(), (need.walking, need.walk_frames));
+        }
         needs.push((need.what, need.name, need.frames.max(maps), need.groups));
     }
     for (i, gem) in layout.view.gems.iter().enumerate() {
@@ -156,7 +162,13 @@ fn gate(options: &Options) -> Result<usize, String> {
                     "  {what:<13} {name:<12} {archive:<13} {}",
                     line(&summary, *frames)
                 );
-                for p in check::problems(&summary, *frames, *groups) {
+                let walk = walking.get(name).cloned();
+                let walks =
+                    walk.map(|(groups, frames)| check::walk_problems(&summary, groups, frames));
+                for p in check::problems(&summary, *frames, *groups)
+                    .into_iter()
+                    .chain(walks.into_iter().flatten())
+                {
                     problems.push(format!("{what}: {name}: {p}"));
                 }
             }

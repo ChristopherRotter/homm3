@@ -143,7 +143,9 @@ battle.
   frame by frame; design §3.6); T3, the walk, cut at its seam before it started (the user,
   2026-10-27): T3a, its timing headless (**done** 2026-10-27: the walk in `h3_map_view::timeline`,
   T1b's seven sequences exact line by line but the `screen` boxes; design §3.7), T3b, the walk
-  drawn (exact); T4, the window; T5, the sound; T6, M2's closure.
+  drawn (**done** 2026-10-27, whole: the lifted hero at the view's middle and its blended pass 9,
+  the view's offset, the late redraw drawn again; T1b's seven recorded again, every line and all
+  269 frames exact; design §3.8; MCL-Q7 open); T4, the window; T5, the sound; T6, M2's closure.
 - **Exit:** every recorded sequence as recorded, line by line and frame by frame (or each
   difference an `MCL-Q<n>`); a situation and a sequence play in the window at the original's
   frame times, with its sound, and render headless frame by frame.
