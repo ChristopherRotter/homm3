@@ -280,16 +280,7 @@ pub fn shown(
         .collect();
     let name =
         |hint: &Hint, observation: &Observation| hint_text(record, catalogue, hint, observation);
-    // Both sides played here (hot seat; E17 M4 T2c-2).
-    let hot_seat = snapshot.is_some_and(|o| o.sides.iter().all(|s| s.human));
-    track::follow(
-        &timeline.log,
-        &starts,
-        &turns,
-        inputs,
-        (layout, hot_seat),
-        &name,
-    )
+    track::follow(&timeline.log, &starts, &turns, inputs, layout, &name)
 }
 
 /// The timeline with the stacks the mouse entered playing their group 1 ([`Timeline::enter`]): each

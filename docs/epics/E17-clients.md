@@ -159,7 +159,9 @@ states; the Tower 26, without the moat).
   Ballistics aiming the Catapult, a shot through the walls; the siege cursors.
 - **T3, M4's closure:** a fresh reviewer, every capture afresh, the review list, M5 refined
   (cut in three by the user, 2026-10-26: T3a the reviewers' findings fixed, T3b every capture
-  afresh with the hovered item read, T3c the review list and M5).
+  afresh with the hovered item read, T3c the review list and M5; T3b cut in two by the user:
+  T3b-1 the hovered item, the stills, the siege sequences and `walk`, `turn`, `climb`, T3b-2 the
+  other 29 sequences).
 - **Exit:** the siege situations and sequences pass, or each difference is a listed fix or a
   classified quirk.
 - **T0 done 2026-10-23** ([log](E17-log.md#m4-t0--m4-sieges-refined-2026-10-23)): the cut
@@ -204,6 +206,11 @@ states; the Tower 26, without the moat).
   the adapters, the harness), 17 findings: 16 fixed (a hex's every entry played, no moat over a
   flier, the turrets' shot sound, the rectangles by the fort, a still's wall names, the harness
   refusing what it cannot force; tests and the format doc), R1-3 queued; review items 10 to 12.
+- **T3b-1 done 2026-10-27** ([log](E17-log.md#m4-t3b-1--the-hovered-item-the-stills-and-the-siege-sequences-afresh-2026-10-27),
+  design §10.2 "Recorded afresh"; T3b cut in two by the user): the harness reads the hovered
+  item per step; the status line settled (the panel's picture entered once after the opening,
+  `aim`'s exception with it; the viewer tracks the hovered item, the hot-seat proxy gone); the
+  stills and 18 sequences captured afresh, as recorded but `aim`'s ` log` masks; review item 13.
 
 ### The adventure lane's harness (H1, H2: its batch E3)
 
@@ -314,3 +321,8 @@ M3 at its review, T9b). The next milestone's list starts here.
     over a roll's undrawn one is refused; the wall states checked before a game starts (R3-5).
     Queued (QUEUE's inbox, with a record that opens mid-battle): R1-3, the moat's strip by the
     fixed moat rows.
+13. The status line by the hovered panel item (T3b-1, design §10.2 "Recorded afresh"): the
+    layouts' picture gains `size`, where it takes the mouse (the battle panel's 2000, 800 × 44);
+    the tracker writes a panel item's hint only as the mouse enters it, the first input (the
+    mouse resting where it was placed before the battle) entering none, and a spell book's close
+    forgetting the hovered item (*provisional*, not read per frame); the hot-seat proxy removed.
