@@ -143,6 +143,15 @@ then, hashed after the army left. Measured: `fork-xl-144` (see the log, T61b).
 
 ### 11. The visits (`h3-adventure`)
 
+Built by T62a for the pickups, teachers and finds (`state/rewards.rs`; the record, boxes, events and
+the Pyramid are T62b's): the outcome's `HeroGains` (the changes, then the experience the game gives
+with its level-ups), `Choice` (`ChoiceKind::Chest`, `ChoiceKind::Primary`) answered by
+`AdventureState::choose` with a `Pick` (first, second, leave), `UniversityVisit`, the offers
+`OfferKind::Gift { price }` (the Tree's, the design's `PayTree`) and `OfferKind::Search` (the
+Tomb's); `h3-game` applies the hero's gains and, until T63's decisions, answers the choices with
+their defaults and leaves the University (`ADV-STUB-10`, decision 150). The calls the build made
+are in the log (T62a).
+
 Each kind's visit, in the original's order (survey §2 to §7), returns its outcome (ADR-0017
 point 10); a refusal is an outcome. Where the original records the visitor's team mark the
 visitor's owner's knowledge bit is set at that point (§13); the hero's once-per-hero mark is set
@@ -211,6 +220,10 @@ through `split` with the first creature's count, n less the second creature's st
   guard's attack was not placed in that order).
 
 ### 13. Information (ADV-VIS-006, ADV-FOG-007)
+
+Built by T62a for its kinds: `AdventureObservation::known` (per viewer, the objects still on the
+map by type and anchor with what it learned: `Known::Spell`, `Skill`, `Price`, `Skills`, `Emptied`
+as the find stands now), `OwnHeroView::marks`. Events (ADV-FOG-007) are T62b's.
 
 - **Object views:** unchanged in what is public (type, anchor, masks): chests, scrolls and boxes
   look alike; events are never in a view; a removal is `ObjectRemoved` where seen.
@@ -359,7 +372,7 @@ increment 6 the shared task came first; here the batch decides an ADR clause, A-
 | 3 | **T59** | `shared/`: the three ADRs amended (with T58's outcome: A-23 withdrawn, events blind to `Reach`), the mana ceiling, A-21's and A-25's flags, the glossary |
 | 4 | **T60** | `h3-heroes`: part A (§1–§6): the bonuses, the changes, `grant`, the teachers' functions; the details' hash |
 | 5 | **T61** | `h3-map` and `h3-adventure`: the import (§7), the kinds (§8), the draws (§9), the state (§10). In two (decision 148): T61a the import and kinds (done: map import v12, ruleset part v12, adventure state hash v13); T61b the bans, the draws and the state (done: map import v13, adventure state hash v14) |
-| 6 | **T62** | `h3-adventure`: the visits (§11), events and the move (§12), information (§13). Likely cut in two (pickups, teachers, finds; boxes, events, the Pyramid) |
+| 6 | **T62** | `h3-adventure`: the visits (§11), events and the move (§12), information (§13). In two (decision 150): T62a the pickups, teachers and finds, the game applying the hero's gains (done: game state hash v16); T62b boxes, events, the Pyramid |
 | 7 | **T63** | `h3-game`: the decisions, their typed answers (every decision's, migrated; `h3-sim`'s action mapping `cross-lane`) and the rest (§14), the application (§15), replay format v7. Likely cut in two (the typed answers' migration; increment 7's decisions) |
 | 8 | **T64** + **T65** | T64: replays, fixtures, properties, benchmarks, `--with-original-data` (§16). T65: the audit against the exit criteria, increment 7 closed, increment 8 refined |
 

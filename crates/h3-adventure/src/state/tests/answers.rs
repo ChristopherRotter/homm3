@@ -354,7 +354,7 @@ fn a_declined_flight_lets_the_monster_go_without_its_treasure() {
     // Accepted, the hero pursues and fights it: the battle, the monster still on the map.
     let mut s = pikemen(&rules, &[(PEASANT, 100)], -4);
     let before = s.clone();
-    let outcome = s.accept_offer(&rules.0, &rules.1, RED, &pursue, &mut events);
+    let outcome = s.accept_offer((&rules.0, &rules.1, &[]), RED, &pursue, &mut events);
     assert_eq!(
         outcome.battle.map(|b| (b.tile, b.defender)),
         Some((
@@ -376,7 +376,7 @@ fn an_accepted_join_adds_the_group_gives_the_treasure_and_removes_the_monster() 
     let join = offer(2, 0, OfferKind::Join).unwrap();
     // Into the stack of its creature.
     let mut s = pikemen(&rules, &[(PEASANT, 100), (PIKEMAN, 3)], -4);
-    let outcome = s.accept_offer(&rules.0, &rules.1, RED, &join, &mut events);
+    let outcome = s.accept_offer((&rules.0, &rules.1, &[]), RED, &join, &mut events);
     assert_eq!(outcome.gains, [(GOLD, 500)]);
     assert_eq!(outcome.offer, None);
     let army = &s.hero(HERO).unwrap().army;
@@ -413,7 +413,7 @@ fn an_accepted_join_adds_the_group_gives_the_treasure_and_removes_the_monster() 
         },
     )
     .unwrap();
-    let outcome = s.accept_offer(&rules.0, &rules.1, RED, &gold, &mut events);
+    let outcome = s.accept_offer((&rules.0, &rules.1, &[]), RED, &gold, &mut events);
     assert_eq!(outcome.gains, [(GOLD, 500)]);
     let army = &s.hero(HERO).unwrap().army;
     assert_eq!(
@@ -443,7 +443,7 @@ fn an_offer_whose_monster_is_gone_does_nothing_and_a_join_without_room_is_report
     let mut s = pikemen(&rules, &six, -4);
     s.raise(&rules.0, &rules.1, HERO, (c(3), 1));
     let army = s.hero(HERO).unwrap().army.clone();
-    let outcome = s.accept_offer(&rules.0, &rules.1, RED, &join, &mut events);
+    let outcome = s.accept_offer((&rules.0, &rules.1, &[]), RED, &join, &mut events);
     let group = NoRoom {
         hero: HERO,
         creature: PIKEMAN,
@@ -472,7 +472,7 @@ fn an_offer_whose_monster_is_gone_does_nothing_and_a_join_without_room_is_report
     for kind in [OfferKind::Join, OfferKind::Pursue] {
         let gone = offer(2, 0, kind).unwrap();
         assert_eq!(
-            s.accept_offer(&rules.0, &rules.1, RED, &gone, &mut events),
+            s.accept_offer((&rules.0, &rules.1, &[]), RED, &gone, &mut events),
             AdventureOutcome::default()
         );
         assert_eq!(
@@ -492,7 +492,7 @@ fn an_offer_whose_monster_is_gone_does_nothing_and_a_join_without_room_is_report
         AdventureOutcome::default()
     );
     assert_eq!(
-        s.accept_offer(&rules.0, &rules.1, RED, &stranger, &mut events),
+        s.accept_offer((&rules.0, &rules.1, &[]), RED, &stranger, &mut events),
         AdventureOutcome::default()
     );
     // An offer naming an object that is no monster: no answer either.
@@ -624,7 +624,7 @@ fn a_fight_starts_a_battle_against_the_unsplit_monster_at_its_tile() {
 #[test]
 fn a_monsters_battle_leaves_its_survivors_or_removes_it_with_its_treasure() {
     let rules = rules();
-    let core = (&rules.0, &rules.1);
+    let core: (&Ruleset, &AdventureRuleset, &[Arc<HeroDetails>]) = (&rules.0, &rules.1, &[]);
     let tile = Pos::new(2, 0, 0);
     let stack = |slot, creature, count| ArmyStack {
         slot,
@@ -645,7 +645,9 @@ fn a_monsters_battle_leaves_its_survivors_or_removes_it_with_its_treasure() {
     assert_eq!(word(&s), 2);
     let mut same = s.clone();
     let left = [stack(0, PIKEMAN, 3), stack(2, GNOLL, 2)];
-    let gains = s.end_monster_battle(core, tile, (&left, false), &mut events);
+    let gains = s
+        .end_monster_battle(core, (HERO, tile), (&left, false), &mut events)
+        .gains;
     assert!(gains.is_empty());
     assert_eq!(s.monster_count(0), Some(5));
     assert_eq!(s.army_left(0), Some(&[stack(0, PIKEMAN, 5)][..]));
@@ -664,7 +666,12 @@ fn a_monsters_battle_leaves_its_survivors_or_removes_it_with_its_treasure() {
     events.clear();
     // Survivors of the same word: nothing to tell.
     let had = same.monster_count(0).unwrap();
-    same.end_monster_battle(core, tile, (&[stack(1, PIKEMAN, had)], false), &mut events);
+    same.end_monster_battle(
+        core,
+        (HERO, tile),
+        (&[stack(1, PIKEMAN, had)], false),
+        &mut events,
+    );
     assert_eq!((same.monster_count(0), word(&same)), (Some(had), 2));
     assert!(events.is_empty());
     // Its next battle is against the survivors.
@@ -678,7 +685,9 @@ fn a_monsters_battle_leaves_its_survivors_or_removes_it_with_its_treasure() {
         })
     );
     // Beaten: it leaves the map, and the victory gives its treasure.
-    let gains = s.end_monster_battle(core, tile, (&[], true), &mut events);
+    let gains = s
+        .end_monster_battle(core, (HERO, tile), (&[], true), &mut events)
+        .gains;
     assert_eq!(gains, [(GOLD, 500)]);
     assert!(s.is_removed(0));
     assert_eq!(s.army_left(0), None);
@@ -694,7 +703,9 @@ fn a_monsters_battle_leaves_its_survivors_or_removes_it_with_its_treasure() {
     );
     // Both sides dead: it leaves the map without its treasure.
     let mut s = pikemen(&rules, &[(PEASANT, 100)], 1);
-    let gains = s.end_monster_battle(core, tile, (&[], false), &mut events);
+    let gains = s
+        .end_monster_battle(core, (HERO, tile), (&[], false), &mut events)
+        .gains;
     assert!(gains.is_empty());
     assert!(s.is_removed(0));
     // No monster visited at the tile, or another object: nothing.
@@ -709,7 +720,8 @@ fn a_monsters_battle_leaves_its_survivors_or_removes_it_with_its_treasure() {
     let before = s.clone();
     for at in [Pos::new(0, 0, 0), Pos::new(2, 1, 0)] {
         assert!(
-            s.end_monster_battle(core, at, (&[], true), &mut events)
+            s.end_monster_battle(core, (HERO, at), (&[], true), &mut events)
+                .gains
                 .is_empty()
         );
     }

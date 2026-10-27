@@ -17,6 +17,7 @@ mod manage;
 mod monsters;
 mod moves;
 mod observe;
+mod rewards;
 mod state;
 
 extern crate std;
@@ -29,9 +30,10 @@ use alloc::sync::Arc;
 use core::num::{NonZeroU8, NonZeroU16, NonZeroU32};
 
 use h3_adventure::{
-    AdventurePack, AdventureParamsDef, AdventureRuleset, ArmyError, BattleTerrainsDef, MapSetup,
-    MonsterParamsDef, ObjectKindDef, ObjectTypeDef, Passage, PickupDef, Pos, SetupError,
-    StandError, StartingResourcesDef, TerrainMovementDef, TileSetup, Visit,
+    AdventurePack, AdventureParamsDef, AdventureRuleset, ArmyError, BattleTerrainsDef, ChestDef,
+    FindContentDef, FindDef, GiftDef, Gives, MapSetup, MonsterParamsDef, ObjectKindDef,
+    ObjectTypeDef, OnceBonus, Passage, PickupDef, Pos, PrimarySkill, SetupError, StandError,
+    StartingResourcesDef, TerrainMovementDef, TileSetup, Visit,
 };
 use h3_content::{
     ArtifactClass, ArtifactDef, ArtifactSlotDef, ArtifactTypeId, ContentKey, ContentPack,
@@ -341,6 +343,35 @@ fn artifact(k: &str, slot: &str) -> ArtifactDef {
     }
 }
 
+/// An object type of increment 7 (E08 T62a), visited from beside.
+fn reward(k: &str, kind: ObjectKindDef) -> ObjectTypeDef {
+    ObjectTypeDef {
+        key: key(k),
+        name: "Reward".into(),
+        visit: Visit::Neighbour,
+        from_above: true,
+        kind,
+    }
+}
+
+/// A once-per-hero gift (E08 T62a).
+fn gift(gives: Gives, prices: Vec<Vec<(ContentKey, u32)>>, leave: bool) -> ObjectKindDef {
+    ObjectKindDef::Gift(GiftDef {
+        gives,
+        prices,
+        admits: None,
+        leave,
+    })
+}
+
+/// A gift's choice of two primary skills (E08 T62a).
+const fn choice(first: PrimarySkill, second: PrimarySkill, amount: u8) -> Gives {
+    Gives::Choice {
+        skills: [first, second],
+        amount,
+    }
+}
+
 /// The adventure part for `core`: maps up to 4 × 4 on one level, three players, armies of two
 /// slots, a land table of 1300, 1360, 1430, 1500 for speeds 0 to 3, the original's starting
 /// stack chances, a gold pile `t:pile` (5 to 10 hundreds), a Cartographer `t:chart`, a tent
@@ -422,6 +453,63 @@ fn part_with(core: &Ruleset, chances: Vec<u8>, slots: u8) -> AdventureRuleset {
                 from_above: true,
                 kind: ObjectKindDef::Monster { levels: None },
             },
+            // E08 T62a: increment 7's pickups, teachers and finds (`rewards.rs`).
+            reward(
+                "t:chest",
+                ObjectKindDef::Chest(ChestDef {
+                    resource: key("t:gold"),
+                    gold: vec![(100, 1500)],
+                    artifact: vec![],
+                    full_backpack: 1000,
+                    experience_offset: 500,
+                }),
+            ),
+            reward("t:artifact", ObjectKindDef::Artifact { classes: None }),
+            reward("t:stone", gift(Gives::Experience(1000), vec![], false)),
+            reward(
+                "t:tree",
+                gift(Gives::Level, vec![vec![(key("t:gold"), 1000)]], false),
+            ),
+            reward(
+                "t:dear_tree",
+                gift(Gives::Level, vec![vec![(key("t:gold"), 5000)]], false),
+            ),
+            reward(
+                "t:arena",
+                gift(
+                    choice(PrimarySkill::Attack, PrimarySkill::Defense, 2),
+                    vec![],
+                    false,
+                ),
+            ),
+            reward(
+                "t:school",
+                gift(
+                    choice(PrimarySkill::Power, PrimarySkill::Knowledge, 1),
+                    vec![vec![(key("t:gold"), 1000)]],
+                    true,
+                ),
+            ),
+            reward(
+                "t:university",
+                ObjectKindDef::University {
+                    offers: 2,
+                    price: vec![(key("t:gold"), 2000)],
+                },
+            ),
+            reward(
+                "t:tomb",
+                ObjectKindDef::Find(FindDef {
+                    draws: vec![(100, FindContentDef::Nothing)],
+                    full_backpack: None,
+                    question: true,
+                    bonus: Some(OnceBonus {
+                        morale: -3,
+                        luck: 0,
+                        mark: 0,
+                    }),
+                }),
+            ),
         ],
         params: Some(AdventureParamsDef {
             native_cost: cost,

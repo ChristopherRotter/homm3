@@ -87,5 +87,6 @@ pub use state::{GameState, OpenBattle};
 /// v11 (E08 T30): the level-ups among the decisions. v12 (E08 T49a): a hero's worn artifacts by
 /// position. v13 (E08 T51b): the meetings and the army dialogs among the decisions. v14 (E08
 /// T54): whether each player counts as human, each hero's sex the map gave. v15 (E08 T60a): a
-/// hero's battle bonuses.
-pub const GAME_STATE_HASH_VERSION: u32 = 15;
+/// hero's battle bonuses. v16 (E08 T62a): a gift's price and a find's question among the offer
+/// kinds.
+pub const GAME_STATE_HASH_VERSION: u32 = 16;

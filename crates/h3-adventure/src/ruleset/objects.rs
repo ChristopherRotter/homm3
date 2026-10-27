@@ -196,6 +196,22 @@ pub(crate) enum Effect<'k> {
     Gate(u8),
     /// The monster's answer to the hero (a wandering monster, ADV-MON-007, E08 T20b1).
     Monster,
+    /// Its gold or artifact (a treasure chest, ADV-PIK-005, E08 T62a).
+    Chest(&'k Chest),
+    /// Its artifact, picked up (an artifact or a Spell Scroll, ADV-PIK-006 to -008, E08 T62a).
+    Artifact,
+    /// Its gift, once per hero (ADV-TCH-001 to -003, E08 T62a).
+    Gift(&'k Gift),
+    /// Its spell (a Shrine, ADV-TCH-004, E08 T62a).
+    Shrine,
+    /// Its skill (a Witch Hut, ADV-TCH-005, E08 T62a).
+    WitchHut,
+    /// Its gift, then it leaves the map (a Scholar, ADV-TCH-006, E08 T62a).
+    Scholar,
+    /// Its skills, each for this price (a University, ADV-TCH-007, E08 T62a).
+    University(&'k Resources),
+    /// Its contents, once (a find, ADV-PIK-009 to -012, E08 T62a).
+    Find(&'k Find),
 }
 
 impl ObjectKind {
@@ -204,7 +220,8 @@ impl ObjectKind {
     /// an object whose visit is not built is rejected (`Visit`). E08 T13b: the pickups; T14a and
     /// T14b: the Cartographer, entered, with its offer; T15a: the observatories, the tents and the
     /// guards with their offer; T15b: the gates, which are not visited by their key's holders;
-    /// T20b1: the wandering monsters, whose visit is their answer.
+    /// T20b1: the wandering monsters, whose visit is their answer; T62a: the chests, artifacts,
+    /// scrolls, gifts, Shrines, Witch Huts, Scholars, Universities and finds.
     pub(crate) fn effect(&self) -> Option<Effect<'_>> {
         match self {
             Self::Pickup(_) => Some(Effect::Pickup),
@@ -214,20 +231,16 @@ impl ObjectKind {
             Self::KeyGuard { key } => Some(Effect::Guard(*key)),
             Self::KeyGate { key } => Some(Effect::Gate(*key)),
             Self::Monster { .. } => Some(Effect::Monster),
-            // E08 T61a: increment 7's kinds are typed; their visits come with T62.
-            Self::Ground { .. }
-            | Self::Chest(_)
-            | Self::Artifact { .. }
-            | Self::Scroll
-            | Self::Gift(_)
-            | Self::Shrine { .. }
-            | Self::WitchHut { .. }
-            | Self::Scholar
-            | Self::University { .. }
-            | Self::Find(_)
-            | Self::PandoraBox
-            | Self::Event
-            | Self::Pyramid(_) => None,
+            Self::Chest(chest) => Some(Effect::Chest(chest)),
+            Self::Artifact { .. } | Self::Scroll => Some(Effect::Artifact),
+            Self::Gift(gift) => Some(Effect::Gift(gift)),
+            Self::Shrine { .. } => Some(Effect::Shrine),
+            Self::WitchHut { .. } => Some(Effect::WitchHut),
+            Self::Scholar => Some(Effect::Scholar),
+            Self::University { price, .. } => Some(Effect::University(price)),
+            Self::Find(find) => Some(Effect::Find(find)),
+            // E08 T61a: typed; the boxes', events' and the Pyramid's visits come with T62b.
+            Self::Ground { .. } | Self::PandoraBox | Self::Event | Self::Pyramid(_) => None,
         }
     }
 

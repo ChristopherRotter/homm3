@@ -536,10 +536,18 @@ fn the_box_two_frames_differ_in() {
 }
 
 #[test]
-fn a_speed_without_a_step_scrolls_a_tile() {
+fn a_speed_out_of_range_is_the_originals_default() {
+    // `settings_check` 0x50B260 (M2 T6a, the reviewer's R1-7): a scroll speed out of range is
+    // speed 1's step (2 tiles), a hero speed out of range speed 2's frames.
     let mut l = looped(Bugs::Fixed, 7);
     l.run(1, &[Action::Scroll(Direction::South)]).unwrap();
-    assert_eq!(l.state(1).view, ViewAt { x: 9, y: 11, z: 0 });
+    assert_eq!(l.state(1).view, ViewAt { x: 9, y: 12, z: 0 });
+    for speed in [0, 5] {
+        let mut l = walking(speed, Vec::new());
+        l.run(1, &[Action::Step(Direction::East)]).unwrap();
+        // The first of speed 2's frames: a tile back less its 10 pixels.
+        assert_eq!(l.state(1).walk.offset, [22, 0], "{speed}");
+    }
 }
 
 /// A loop over a 36-tile map, its selected hero at (17, 17) facing east and the view centred on
@@ -741,25 +749,106 @@ fn a_path_shown_then_walked() {
 }
 
 #[test]
-fn a_click_or_a_key_stops_the_paths_walk_after_its_step() {
-    for stop in [Action::Click(tile(21, 17)), Action::Step(Direction::South)] {
+fn a_click_a_key_or_a_scroll_stops_the_paths_walk_after_its_step() {
+    for stop in [
+        Action::Click(tile(21, 17)),
+        Action::Step(Direction::South),
+        Action::Scroll(Direction::South),
+    ] {
         let mut l = walking(2, vec![east()]);
         l.run(1, &[Action::Click(tile(21, 17))]).unwrap();
         l.run(2, &[Action::Click(tile(21, 17))]).unwrap();
-        l.run(3, &[stop, Action::Pointer([700, 400])]).unwrap();
+        l.run(3, &[Action::Pointer([700, 400]), stop]).unwrap();
         for t in 4..152 {
             l.run(t, &[]).unwrap();
         }
         assert!(!l.state(151).cursor.shown);
         l.run(152, &[]).unwrap();
-        // Ended after its first step, the rest shown again and drawn, the pointer's and the
-        // click's messages dropped; the cursor where the mouse is now.
+        // Ended after its first step (0x407FA7; a scroll's key-down too, M2 T6a, the reviewer's
+        // R1-1): the pointer's message before the stop dropped, the stop's own taken (no scroll,
+        // no step); the hero standing (`hero_walk_end` 0x408002) when the rest of the path is
+        // shown again and drawn (R1-4); the cursor where the mouse is now.
         let s = l.state(152);
         assert_eq!(s.hero.unwrap().at, Pos { x: 18, y: 17, z: 0 }, "{stop:?}");
         assert_eq!((s.arrows.len(), s.drawn.path.len()), (3, 3));
-        assert_eq!((s.walk.group, s.view.x), (2, 9));
-        assert_eq!(s.cursor.at, [700, 400]);
+        assert_eq!((s.walk.group, s.view.x, s.view.y), (2, 9, 9));
+        assert_eq!(s.drawn.lifted, Some([2, 0]), "{stop:?}");
+        let now = if let Action::Click(at) = stop {
+            at
+        } else {
+            [700, 400]
+        };
+        assert_eq!(s.cursor.at, now, "{stop:?}");
+        assert!(s.cursor.shown);
     }
+}
+
+#[test]
+fn the_messages_behind_the_one_that_stops_a_paths_walk_wait_for_its_end() {
+    // Two keys during the first step at speed 2 (M2 T6a, the reviewer's R1-2): the first stops
+    // the walk after that step, the second, left in the queue, steps the hero south after it.
+    let mut l = walking(2, vec![east()]);
+    l.run(1, &[Action::Click(tile(21, 17))]).unwrap();
+    l.run(2, &[Action::Click(tile(21, 17))]).unwrap();
+    l.run(3, &[Action::Step(Direction::South)]).unwrap();
+    l.run(4, &[Action::Step(Direction::South)]).unwrap();
+    for t in 5..=152 {
+        l.run(t, &[]).unwrap();
+    }
+    let s = l.state(152);
+    assert_eq!(s.hero.unwrap().at, Pos { x: 18, y: 18, z: 0 });
+    assert!(s.arrows.is_empty() && !s.cursor.shown);
+    for t in 153..=302 {
+        l.run(t, &[]).unwrap();
+    }
+    let s = l.state(302);
+    assert_eq!(s.hero.unwrap().at, Pos { x: 18, y: 18, z: 0 });
+    assert!(s.cursor.shown);
+}
+
+#[test]
+fn a_paths_walk_empties_the_input_queue_at_its_start() {
+    // During a key's step north (1 to 151) a click showing the path, one on its destination and a
+    // key: at the step's end the second click walks the path (the view then (8, 8)) and empties
+    // the queue (0x407E87; M2 T6a, the reviewer's R1-5): the key is gone, the path walked whole.
+    let mut l = walking(2, vec![east()]);
+    let dest = [(21 - 8) * 32 + 16, (17 - 8) * 32 + 16];
+    l.run(1, &[Action::Step(Direction::North)]).unwrap();
+    l.run(2, &[Action::Click(dest), Action::Click(dest)])
+        .unwrap();
+    l.run(3, &[Action::Step(Direction::South)]).unwrap();
+    for t in 4..=1000 {
+        l.run(t, &[]).unwrap();
+    }
+    let s = l.state(1000);
+    assert_eq!(
+        s.hero.unwrap(),
+        Hero {
+            at: Pos { x: 21, y: 17, z: 0 },
+            facing: Direction::East
+        }
+    );
+    assert!(s.arrows.is_empty() && s.cursor.shown);
+}
+
+#[test]
+fn a_message_taken_after_a_walk_reads_the_mouse_now() {
+    // The pointer through the east zone and back over the panel during a key's step (M2 T6a, the
+    // reviewer's R1-3): at the step's end the edge scroll reads the mouse's point now, the
+    // panel's, and scrolls nothing.
+    let mut l = walking(2, Vec::new());
+    l.run(1, &[Action::Step(Direction::North)]).unwrap();
+    l.run(2, &[Action::Pointer([790, 300])]).unwrap();
+    l.run(3, &[Action::Pointer(PARK)]).unwrap();
+    for t in 4..=151 {
+        l.run(t, &[]).unwrap();
+    }
+    let s = l.state(151);
+    assert_eq!(
+        (s.hero.unwrap().at, s.view),
+        (Pos { x: 17, y: 16, z: 0 }, ViewAt { x: 8, y: 8, z: 0 })
+    );
+    assert!(s.cursor.shown);
 }
 
 #[test]

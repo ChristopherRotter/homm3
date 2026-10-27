@@ -276,9 +276,13 @@ fn compiles_the_reward_kinds() {
             },
         })
     );
-    // Their visits come with T62: none is visited yet.
+    // Their visits (E08 T62a): every kind but the box's, the event's and the Pyramid's (T62b).
     for n in 0..reward_kinds().len() {
-        assert_eq!(kind(n).effect(), None, "{n}");
+        let later = matches!(
+            kind(n),
+            ObjectKind::PandoraBox | ObjectKind::Event | ObjectKind::Pyramid(_)
+        );
+        assert_eq!(kind(n).effect().is_none(), later, "{n}");
     }
     // The other gifts' shapes, a chest of gold only, a find's other turns.
     for gives in [

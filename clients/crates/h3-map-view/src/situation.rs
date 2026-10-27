@@ -333,7 +333,7 @@ impl Situation {
     /// Parses a situation and checks its view's level (the surface only).
     ///
     /// # Errors
-    /// The parser's message, or a view on another level.
+    /// The parser's message, a view on another level or one more than the map's side off it.
     pub fn parse(text: &str) -> Result<Self, String> {
         // A shipped map loaded whole (`map`, E24 M1 T4b) is the harness's (E24 M1 T6b, R2-12).
         let table: toml::Table = toml::from_str(text).map_err(|e| e.to_string())?;
@@ -343,6 +343,19 @@ impl Situation {
         let situation: Self = toml::from_str(text).map_err(|e| e.to_string())?;
         if situation.view[2] != 0 {
             return Err("a situation's view is on the surface (level 0)".into());
+        }
+        // The view's corner near the map (M2 T6a, the reviewer's R1-8: one far off overflowed the
+        // tile under a click); the original's own range, -9 to the side less 10, is the harness's
+        // check (`render --live`).
+        let side = i32::from(situation.size);
+        if situation.view[..2]
+            .iter()
+            .any(|v| !(-side..=side).contains(v))
+        {
+            return Err(format!(
+                "the view's corner {:?} lies more than the map's side ({side}) off the map",
+                &situation.view[..2]
+            ));
         }
         Ok(situation)
     }
