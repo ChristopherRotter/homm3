@@ -399,6 +399,25 @@ quirks   = ["ADV-QUIRK-17"]
   note       = "Regression tests: a_water_walk_costs_the_water_walk_price_from_water, a_water_walk_crosses_plain_water_and_lands_on_the_far_shore."
 
 [[rule]]
+id       = "ADV-MOV-011"
+title    = "An event and the move: blind paths, the stop on the firing step"
+context  = "adventure"
+status   = "verified"
+summary  = "A path is checked and priced as if no event lay on the map: an event's tile is no stop for the reachable tiles nor for MoveHero, in every profile (A-23 withdrawn, E08 decision 131: the original's placement clears the tile's visitable bit), so a path crosses events of any colour and may end on one, and neither a path's acceptance, its price nor the reachable tiles tell of one. Then the first step onto a tile the hero stands on (a stop that visits nothing; a flyer's free tile mid-flight too, not a tile it only passes over) that fires an event (ADV-OBJ-007) ends the move there with the points left after that step, the rest of the path dropped (the outcome's `dropped`), and the event fires. A hero that starts its move on an event does not fire it; a later step back onto it does. A flyer stopped so is at its move's end for the guard test (the original's), which until T63 cannot arise: an event on a guarded tile does not fire (ADV-STUB-10). E08 T62b2: `StaticMap::events_at`, `MoveHero`, `AdventureOutcome::dropped`."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E08 T55a3, T58; survey E08-rewards.md §7.3, §8.5, §15): place_object_tiles clears an event tile's visitable bit (0x505C78), so the pathfinder's relax gives it no stop node; hero_move_step sets the step's stop flag and move_interrupted 0x69777C (at 0x4816B6) when event_fires_for holds, ending the move's loop (0x407F15)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-7b.md E7-17 and E7-23 (2026-10-27; survey E08-rewards.md §15): the hero stood on Red's event with 1 560 - 400 = 1 160 points after four steps; paths to (3, 30) and (4, 30) crossed and ended on Blue's own hidden event as on an empty tile"
+  retrieved  = "2026-10-27"
+  confidence = "high"
+
+[[rule]]
 id       = "ADV-FOG-001"
 title    = "The scouting radius of a hero"
 context  = "adventure"
@@ -540,6 +559,26 @@ numeric  = "integer"
   url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/CCreatureHandler.cpp"
   retrieved  = "2026-10-13"
   confidence = "high"
+
+[[rule]]
+id       = "ADV-FOG-007"
+title    = "An event is never observed; its firing is told to its visitor's owner alone"
+context  = "adventure"
+status   = "implemented"
+summary  = "No player's view holds an event: its tile is no object's in the tile views and the objects leave it out, whatever the player explored; its removal is told to nobody. Its firing is told to the mover's owner alone (`EventFired`, with the hero and the tile), then what its guards' battle or its record gives as any visit's; other players see the hero's steps as any steps (ADV-FOG-004). With ADV-MOV-011 nothing tells of an event before it fires: two games that differ by an event give every player the same observation, legal commands, legal moves and told events until it fires (the property test). E08 T62b2: `AdventureState::observe`, `AdventureEventKind::EventFired`."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E08 T55a3; survey E08-rewards.md §7.3, §8.4, §8.5): place_object_tiles gives an event no drawing, only its tile's class, and clears the tile's visitable bit, so neither the map nor the adventure cursor shows it; event_fire shows its message to a human mover only"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Event: an invisible object, not shown on the adventure map"
+  url        = "https://heroes.thelazy.net/index.php/Event"
+  retrieved  = "2026-10-27"
+  confidence = "medium"
 
 [[rule]]
 id       = "ADV-OBJ-001"
@@ -1457,6 +1496,39 @@ numeric  = "integer"
   ref        = "lib/mapObjects/MiscObjects.cpp CGArtifact::pickRandomObject (survey E08-rewards.md §3.4): a random artifact of any legal class, relics too for class 65, and the least rolled one, placed ones not counted (D-31, D-32: the code's side, E08 decision 129)"
   url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/mapObjects/MiscObjects.cpp"
   retrieved  = "2026-10-26"
+  confidence = "medium"
+
+[[rule]]
+id       = "ADV-OBJ-007"
+title    = "Events: who fires them, the guards at once, the record, the removal flag and the repeats"
+context  = "adventure"
+status   = "verified"
+summary  = "An event lies on its template's visitable tile, kept apart from the tiles objects are visited from (never visited, never observed: ADV-MOV-011, ADV-FOG-007). A step onto its tile fires it when its colours hold the mover's player's colour and the player counts as human (GAM-BAT-010's flag), or with the event's computer flag; one of another colour changes nothing. On a tile several events lie on, the last in map order still on the map is the tile's. Fired: told to the mover's owner alone; while its guards stand (the map's, or the survivors of a lost battle) they fight at once, announced and not asked, as Pandora's Box's (unsplit, unowned, at its tile; lost or retreated, their survivors stay, none after a draw); won, or without guards standing, its reward record is given (ADV-RWD-001; until T63 a won event's record comes before the winner's levels, ADV-STUB-10); then with its removal flag it leaves the map, told to nobody; without it, it stays and fires again at every later entry, its beaten guards gone for good. On a tile a monster guards the original lets the guard visit first and fires the event after it whatever that visit ended in (A-26, fixed: ADV-QUIRK-29, for a hero still on its tile only); until T63's rest such an event does not fire (ADV-STUB-10). The event's scenario tests after it (the original's victory tests) come with E10. E08 T62b2: `AdventureState::firing_event`, `fire_event`, `give_event`, `end_event_battle`, `AdventureSetup::seats`."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E08 T55a3, T62b1's opening reading; survey E08-rewards.md §7.3, §8.5): hero_move_step tests the entered tile with event_fires_for 0x4FCDC0 at 0x4811A3 (a human player, both human flags +0xE1 and +0xE2, whose colour bit is in bits 10-17; a computer only with bit 18); event_fire 0x4A0ED0 at 0x481741 after after_step_guard_check 0x48169D: guards announced (ADVEVENT 16) and fought at once as Pandora's, lost: return; the rewards (grant_rewards 0x49FA90); with bit 19 the tile's object cleared, else it stays"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-7b.md E7-17 and E7-18 (the capture harness, 2026-10-27; survey E08-rewards.md §15): Red's event fired at the path's end (100 gold, removed), Blue's on Red's path did nothing and stays; an event without the removal flag gave 100 gold at each entry and stays"
+  retrieved  = "2026-10-27"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "lib/mapObjects/CGPandoraBox.cpp CGEvent: onHeroVisit fires for availableFor colours, humanActivate or computerActivate, the guards then the rewards, removeAfterVisit"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/mapObjects/CGPandoraBox.cpp"
+  retrieved  = "2026-10-27"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Event: an invisible object triggered when a hero of the chosen players steps on it, optionally guarded, optionally removed after the visit"
+  url        = "https://heroes.thelazy.net/index.php/Event"
+  retrieved  = "2026-10-27"
   confidence = "medium"
 
 [[rule]]

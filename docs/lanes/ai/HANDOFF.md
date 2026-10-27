@@ -15,10 +15,9 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   as amended; a fair variant is the battle lane's, later). **Next: increment 1's T1a** (QUEUE:
   T1a to T1c the search's terminal, the true world, T8c again; T2a asks the user the neutral
   kinds' training mix first). The adventure env's typed answers wait for E08 T63.
-- **Open pull requests:** #525 (`shared/e25-refinement`: `lanes.toml`, BACKLOG, ADR-0026 and
-  0027; a second branch the user allowed), merged first; then this lane's
-  (`claude/cool-sagan-qdfznc`: E06 T9c and T9d, which `claude/kind-bohr-wfa9oq` left unopened,
-  and E25's refinement): watch both to their merge.
+- **Open pull requests:** this lane's E25 refinement (`claude/cool-sagan-qdfznc`): watch it to
+  its merge. Merged: #524 (E06 T9c, T9d), #525 (the refinement's shared part,
+  `shared/e25-refinement`, a second branch the user allowed).
 - **Versions:** battle action encoding v13, observation encoding v22, replay format v31
   (CLT-Q4/Q6), the adventure env's action encoding v4 (E08 T45), C ABI v34 (T6f and T8b: the turn
   order, the worlds) (`docs/08-work-process.md`, "Versions"). Next ids: AI-Q11, AI-QUIRK-1,
@@ -33,8 +32,8 @@ Moved to `TRAPS.md`, in three groups: **Ownership** (cross-lane encodings and re
 
 ### 2026-10-27 — E25's refinement (AI-Q10)
 
-- Found E06's lane closure (T9c, T9d) finished on `claude/kind-bohr-wfa9oq` but never opened:
-  carried on this branch. The user: target the faithful system actor; increment 1 the search's
+- E06's lane closure (T9c, T9d), left unopened on `claude/kind-bohr-wfa9oq`, merged as #524
+  meanwhile. The user: target the faithful system actor; increment 1 the search's
   diagnostics and shaping; run lengths per run; asked what the system actor reads that a player
   may not (the hidden part listed in AI-Q10): it trains no agent any more, a fair variant goes to
   the battle lane's inbox, imitating that one is a candidate. Done: the epic file, increment 1's

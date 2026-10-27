@@ -639,7 +639,18 @@ pub(crate) fn world(rows: &[&str], levels: u8, heroes: Vec<HeroSetup>) -> Advent
         heroes,
         difficulty: 0,
         bans: crate::Bans::default(),
+        seats: seats(2),
     }
+}
+
+/// `players` players' seats (E08 T62b2): each player's colour its id, every one human.
+pub(crate) fn seats(players: u8) -> Vec<crate::Seat> {
+    (0..players)
+        .map(|colour| crate::Seat {
+            colour,
+            human: true,
+        })
+        .collect()
 }
 
 /// The state of a setup as the game builds it (E08 T40): [`AdventureState::new`] with
