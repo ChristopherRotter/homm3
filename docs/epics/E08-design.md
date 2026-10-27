@@ -16,37 +16,16 @@ B**, the map (`h3-map`, `h3-adventure`); **part C**, the game, the env, batch E7
 
 ## Part A — the hero side (`h3-heroes`, the core content)
 
-### 1. The data
+### 1, 2. The data and the hero changes
 
-- **The battle bonuses** (ADR-0013 point 1): `HeroDetails` gains `bonuses: BattleBonuses
-  { morale: i8, luck: i8, marks: u8 }`, default zero. The morale and luck add up across objects
-  (a box's and an event's, the Tomb's −3, the Pyramid's −2; §7.4, §6.9, §7.5) and are held
-  saturating (the original's byte wraps past 127: A-9's class, fixed; unreachable on the shipped
-  maps). `marks` is a set of **once-marks**, one bit per kind of once-bonus; the object types name
-  theirs in `adventure.toml` (the Warrior's Tomb mark 0, the Pyramid mark 1), so `h3-heroes` knows
-  no object. `validate` accepts any value; the details' hash covers them.
-- **The mana ceiling** (999, §7.4): `HeroParams::mana_ceiling`, built by T59 (pack format v48,
-  core ruleset hash v49).
-- **Already there:** the artifact classes (`ArtifactClass`, Special never placed at random), the
-  spells' level, schools and `granted_by_name_only` (Titan's Lightning Bolt, flag 0x2000), the
-  classes' level-up weights (the University's slots), the Learning factor (HER-EXP-001), the
-  learnable level (HER-SPL-005), the backpack's most (64, HER-ART-002), the most skills (8).
-- **Not the details':** the once-per-hero marks of objects (the adventure's, by hero id, §10) and
-  the players' knowledge (§10).
-
-### 2. The hero changes (ADR-0013 point 2)
-
-| Change | Applies | Check |
-|---|---|---|
-| `GainPrimary([u8; 4])` | each value added, saturating at `primary_max` (A-9's class) | always passes |
-| `RaiseSkill { skill, level }` | a known skill below `level` rises to it; a new one is learned at `level` | the skill the ruleset's, `level` 1–3; a new skill only below the most (else `CannotLearn`) |
-| `Bonus { morale, luck, mark }` | adds both, saturating; with `Some(mark)` only while the mark is clear, then sets it | the mark below 8 |
-| `ClearBonuses` | morale and luck to 0, every mark clear | always passes |
-
-`SetSpellPoints`, `LearnSpell`, `AddArtifact` and `GainExperience` serve the rest; the adventure
-passes only positive primary values (the record's signed bytes, §7.4) and computes the mana total
-through §3's function. A change that would do nothing (a skill at or above the level) is not
-emitted.
+Built by T60a (`E08-log.md`, "T60a"): `HeroDetails::bonuses` (`BattleBonuses`), the changes
+`GainPrimary`, `RaiseSkill`, `Bonus`, `ClearBonuses`, the details' hash in the game state hash
+v15. Already there for §3 and §4: the artifact classes (`ArtifactClass`, Special never placed at
+random), the spells' level, schools and `granted_by_name_only` (Titan's Lightning Bolt, flag
+0x2000), the classes' level-up weights (the University's slots), the Learning factor
+(HER-EXP-001), the learnable level (HER-SPL-005), the backpack's most (64, HER-ART-002), the most
+skills (8), `HeroParams::mana_ceiling` (999, T59). Not the details': the once-per-hero marks of
+objects (the adventure's, by hero id, §10) and the players' knowledge (§10).
 
 ### 3. The reward record's hero half (HER-CHG-003; ADR-0013 point 15.2)
 
@@ -88,19 +67,16 @@ A combination completed by a received part asks nothing (§8.3): the player asse
 | `learning_experience(details, ruleset, amount)` | `trunc(f32(amount) × learning factor)`: the Learning Stone (1 000), a chest (gold − 500) | §2.2, §6.4 |
 | `next_level_experience(details, ruleset)` | the gap to the next level's threshold, no Learning: the Tree | §6.4 |
 
-### 5. The bonuses in battle (HER-ADV-008)
+### 5. The bonuses in battle
 
-`derive_battle_hero` folds `bonuses.morale` into the own-side morale total and `bonuses.luck` into
-the own-side luck total of `morale_and_luck` (both already summed per side there), so the battle
-receives one `BattleEffect::Morale`/`Luck` each, as today; the battle's ±3 bounds apply as for
-every source. No seam change (ADR-0013 point 6). The game applies `ClearBonuses` to every hero of
-a battle when it ends (§15). A test: a hero with a −3 bonus and Leadership Basic gets −2 morale
-on its stacks; after any battle, 0.
+Built by T60a (HER-ADV-008: `derive_battle_hero` folds the bonuses into the own side's morale and
+luck sums). Left for T63: the game applies `ClearBonuses` to every hero of a battle when it ends
+(§15, GAM-BAT-014); its test: a hero with a −3 bonus and Leadership Basic gets −2 morale on its
+stacks; after any battle, 0.
 
 ### 6. Rule ids, quirks, shared needs (the hero side)
 
-HER-CHG-003 (§3) and HER-ADV-008 (§1, §5) as survey §12; HER-CHG-001's summary grows by §2's
-changes. No quirk of the hero side but A-25's (`FULL_BACKPACK_REFUSES`, flag 38, T59: a full
+HER-CHG-003 (§3) as survey §12 (T60b); HER-ADV-008 and HER-CHG-001's summary built by T60a. No quirk of the hero side but A-25's (`FULL_BACKPACK_REFUSES`, flag 38, T59: a full
 backpack refuses an artifact whatever the free positions in `faithful`; ADR-0013 point 15.4; the
 wraps are A-9's class). Everything else is `h3-heroes`' (the lane's).
 
@@ -368,7 +344,7 @@ through `split` with the first creature's count, n less the second creature's st
 | Version | Change | Task |
 |---|---|---|
 | core ruleset hash v49, pack format v48 | the mana ceiling; A-21's and A-25's flags (A-23 withdrawn, T58) | T59 (done) |
-| details' hash, game state hash | the battle bonuses | T60 |
+| details' hash, game state hash v15 | the battle bonuses | T60a (done) |
 | adventure ruleset part v12 | the kinds | T61 |
 | map import v12 | the classes, bodies, records, bans, the monster's artifact | T61 |
 | adventure state hash v13 | the visits' block, the army left's table, the draws on objects | T61, T62 |

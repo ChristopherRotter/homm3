@@ -4,18 +4,22 @@ Pre-refined tasks of the adventure lane, in order, then the inbox of discovered 
 
 ## Tasks
 
-Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T51b (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 6 are closed (2026-10-12, -13, -20, -21, -23, -26; increment 6, army and hero management, by T53's audit). **Increment 7, rewards on the map**, refined with the user at T53 (ADV-Q26; decisions 121 to 123): T54 (the battle seam's facts) done; the survey and the ADR amendment drafts (T55a, T55b) done, each task's cut confirmed with the user at its start. T55a is cut in four (decision 125): all four done (survey `docs/rules/surveys/E08-rewards.md`; decisions 126 to 128 the cuts, its checkpoint ADV-Q28 decisions 129 to 136); T55b done (decision 137; its checkpoint ADV-Q29 decisions 138 to 141: the drafts accepted with typed answers, eight rounds with batch E7 first, design §19). T56 done (decision 142: whole, batch E7's maps and specs). Round 2: T57 done (decision 143: whole, the harness's reads, the recipes and the three runs), T58 done (decision 144: scored, A-23 withdrawn). T58b done (decision 144: `h3-map`'s view test's oracle; ADV-Q30, decision 145: A-25 a quirk with a flag). Round 3: T59 done (decision 146: whole, `shared/e08-t59`). Round 4: T60 below. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
+Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T51b (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 6 are closed (2026-10-12, -13, -20, -21, -23, -26; increment 6, army and hero management, by T53's audit). **Increment 7, rewards on the map**, refined with the user at T53 (ADV-Q26; decisions 121 to 123): T54 (the battle seam's facts) done; the survey and the ADR amendment drafts (T55a, T55b) done, each task's cut confirmed with the user at its start. T55a is cut in four (decision 125): all four done (survey `docs/rules/surveys/E08-rewards.md`; decisions 126 to 128 the cuts, its checkpoint ADV-Q28 decisions 129 to 136); T55b done (decision 137; its checkpoint ADV-Q29 decisions 138 to 141: the drafts accepted with typed answers, eight rounds with batch E7 first, design §19). T56 done (decision 142: whole, batch E7's maps and specs). Round 2: T57 done (decision 143: whole, the harness's reads, the recipes and the three runs), T58 done (decision 144: scored, A-23 withdrawn). T58b done (decision 144: `h3-map`'s view test's oracle; ADV-Q30, decision 145: A-25 a quirk with a flag). Round 3: T59 done (decision 146: whole, `shared/e08-t59`). Round 4: T60 in two (decision 147): T60a done (`adventure/e08-t60a`, the bonuses and the four changes), T60b below. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
 
-### E08 T60 — `h3-heroes`: the rewards on the hero (design part A)
+### E08 T60b — `h3-heroes`: the reward record's hero half and the teachers (design §3, §4)
 
-- **Scope** (design §1–§6, round 4; ADR-0013 points 1, 2, 15): `HeroDetails`' battle bonuses
-  (`BattleBonuses { morale, luck, marks }`, saturating; the details' hash and the game state
-  hash); the hero changes `GainPrimary`, `RaiseSkill`, `Bonus`, `ClearBonuses`; `grant` (the
-  reward record's hero half in the original's order, the mana held under
-  `HeroParams::mana_ceiling`); the teachers' functions (§4), `can_receive_artifact` under
-  `FULL_BACKPACK_REFUSES` (A-25, flag 38); `derive_battle_hero` folding the bonuses in (§5);
-  HER-CHG-003, HER-ADV-008, HER-CHG-001's summary.
-- **Depends on:** T59 (done). **Status:** ready; its cut confirmed with the user at its start.
+- **Scope** (design §3, §4, §6; ADR-0013 point 15): `grant(details, ruleset, &HeroReward) ->
+  Granted` (the reward record's hero half in the original's order on a scratch copy: the
+  experience with the Learning before the record's skills, D-39; `GainPrimary`, `RaiseSkill`, the
+  mana held in 0 to `HeroParams::mana_ceiling`, D-38; `Bonus`; the artifacts by
+  `can_receive_artifact`, else `lost`; the spells by a worn book and the learnable level after
+  the skills, else `skipped`); the eight functions of §4 (`can_receive_artifact` under
+  `FULL_BACKPACK_REFUSES`, A-25, flag 38: on, the backpack's count below its most whatever the
+  free positions; off, a position that takes it or the backpack below its most;
+  `learns_spell`'s known-counts form, `hut_teaches`, `university_slot`, `scholar_reward`,
+  `library_admits`, `learning_experience`, `next_level_experience`); HER-CHG-003; the regression
+  test of `ADV-QUIRK-22` in both profiles. No version, no other crate.
+- **Depends on:** T60a (done). **Status:** ready.
 
 ## Inbox
 

@@ -12,6 +12,15 @@ E23, the original's battle AI, is **closed** (2026-10-24; `docs/epics/E23-origin
 
 Consolidated on 2026-10-19 (the user): the entries from E01 to E04c's closure are merged below by kind, done and duplicate parts dropped; the origin stays in brackets (an epic and task, a review report such as r3 or F-r2b-2). History: git. Items for other lanes went into their inboxes; the First Aid Tent became BAT-Q51. The addresses are readings of the executable, the reviews' not read a second time. Where the readings stand: `installation.md` §7.8–§7.33; the reviews' reports stay on `battle/e04b-t11b-review-reports` and `battle/e04c-t10b-review-reports`; their experiment candidates are in `docs/experiments/README.md` ("From the battle queue's inbox", "From the E04b review", "From E04c").
 
+- 2026-10-27 (the adventure lane, E08 T60a, `adventure/e08-t60a`, `cross-lane` with the user's
+  consent; for your information, nothing to do): **`HeroDetails` gained `bonuses`**
+  (`h3_heroes::BattleBonuses`: morale and luck until the end of the hero's next battle, and
+  once-marks; HER-ADV-008). Every `HeroDetails` literal of `h3-pack-battle`'s tests (`src/tests.rs`,
+  eleven `tests/harvested_*.rs`) got `bonuses: Default::default()`; a new literal needs it too.
+  `derive_battle_hero` adds the bonuses to the own side's `Morale` and `Luck` effects, so a battle
+  from the map may now carry morale or luck a hero's skills and artifacts do not explain; the
+  seam and your rules are unchanged, and every bonus is 0 until increment 7's objects (T62).
+
 - 2026-10-27 (the adventure lane, E08 T59, `shared/e08-t59`, `cross-lane`; for your information,
   nothing to do): **your harvester and packs** gained increment 7's shared part: the gap-fill's
   `[heroes.params]` `mana_ceiling = 999` (source `exe-mana-ceiling`) written into `[hero_params]`

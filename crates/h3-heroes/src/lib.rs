@@ -11,8 +11,10 @@
 //! flying and water-walking levels, the scouting radius; ADR-0013 point 13), and since E08 T49a
 //! the worn artifacts by position (`positions`, the first position that takes one, `wearing`;
 //! ADR-0013 point 1), and since E08 T49b an artifact's moves, the combinations' assembly and
-//! disassembly, Titan's Thunder's Spell Book and Scholar at a meeting (ADR-0013 point 14). No
-//! commands and no
+//! disassembly, Titan's Thunder's Spell Book and Scholar at a meeting (ADR-0013 point 14), and
+//! since E08 T60a the battle bonuses until the next battle's end and the rewards' changes: primary
+//! skills gained, a skill raised to a level, a bonus with its once-mark, the bonuses cleared
+//! (ADR-0013 points 1, 2). No commands and no
 //! map or battle state: who levels a hero up, when, and equipping and learning arrive with the
 //! adventure and game epics (E08–E10); the battle never depends on this crate and reads only the
 //! battle hero of the seam (`h3_contracts::BattleHero`).
@@ -61,7 +63,7 @@ pub use derive::{
     gained_experience, join_bonus, max_mana, necromancy,
 };
 pub use details::{
-    ArtifactInstance, HeroDetails, OfferLevels, PrimarySkill, validate, war_machines,
+    ArtifactInstance, BattleBonuses, HeroDetails, OfferLevels, PrimarySkill, validate, war_machines,
 };
 pub use error::{ChangeError, CombineError, DetailsError, MoveError};
 pub use level::{

@@ -231,6 +231,7 @@ fn the_artifacts_give_the_originals_defences() {
         backpack: vec![],
         spells: vec![],
         mana: 0,
+        bonuses: Default::default(),
     };
     let effects = derive_battle_hero(
         &worn(&[

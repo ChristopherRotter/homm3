@@ -131,6 +131,7 @@ fn diplomat(level: u8) -> Arc<HeroDetails> {
         backpack: vec![],
         spells: vec![],
         mana: 0,
+        bonuses: Default::default(),
     })
 }
 

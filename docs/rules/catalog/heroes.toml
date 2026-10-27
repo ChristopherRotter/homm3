@@ -926,7 +926,7 @@ id       = "HER-CHG-001"
 title    = "A change to a hero's details is checked before it applies"
 context  = "heroes"
 status   = "implemented"
-summary  = "A context changes a hero only through typed changes the game applies to its store (ADR-0013 point 2, E08 decision 25): gain experience (the sum, at most the bound or the scenario's level limit's cap: HER-EXP-002, HER-EXP-003), set the spell points, receive an artifact (HER-CHG-002), lose the artifact at a worn or backpack position (the later ones move up), learn a spell (E08 T19a2b: added at the end; it must be a hero spell of the ruleset the hero has not learned), place an artifact at a given position or backpack index (E08 T49a: a move's target), gain a level (E08 T27). A worn placement or a received artifact worn is equipped (E08 T49b, HER-ART-007). A move (HER-ART-005), an assembly and a disassembly (HER-ART-006) are given as such changes, each checked in turn. Each is checked against the hero's details first, so that they stay valid (HER-DET-001 to HER-SPL-001): a received artifact must be of the ruleset, holding a spell exactly when it is a scroll (HER-ART-003), and find room; a lost one must be there; a level (E08 T27, HER-LVL-005) must be pending. Applying a change the check refuses changes nothing. E08 T19a2a, T19a2b, T27: `h3_heroes::{HeroChange, check_change, apply_change, apply_change_limited}`."
+summary  = "A context changes a hero only through typed changes the game applies to its store (ADR-0013 point 2, E08 decision 25): gain experience (the sum, at most the bound or the scenario's level limit's cap: HER-EXP-002, HER-EXP-003), set the spell points, receive an artifact (HER-CHG-002), lose the artifact at a worn or backpack position (the later ones move up), learn a spell (E08 T19a2b: added at the end; it must be a hero spell of the ruleset the hero has not learned), place an artifact at a given position or backpack index (E08 T49a: a move's target), gain a level (E08 T27); since E08 T60a a reward's: gain primary skills (each added, at most `primary_max`: A-9's class, saturating), raise a secondary skill to a level (a known one below it rises to it, one at or above it stays: raised, never lowered, D-37; a new one is learned at that level after the others), and the battle bonuses (HER-ADV-008: a bonus to morale and luck with an optional once-mark, the bonuses cleared). A worn placement or a received artifact worn is equipped (E08 T49b, HER-ART-007). A move (HER-ART-005), an assembly and a disassembly (HER-ART-006) are given as such changes, each checked in turn. Each is checked against the hero's details first, so that they stay valid (HER-DET-001 to HER-SPL-001): a received artifact must be of the ruleset, holding a spell exactly when it is a scroll (HER-ART-003), and find room; a lost one must be there; a level (E08 T27, HER-LVL-005) must be pending; a raised skill must be the ruleset's at Basic to Expert and new only below the most skills (eight), a bonus's once-mark one of eight kinds; primary skills gained and the bonuses cleared always pass. Applying a change the check refuses changes nothing. E08 T19a2a, T19a2b, T27, T60a: `h3_heroes::{HeroChange, check_change, apply_change, apply_change_limited}`."
 numeric  = "integer"
 
   [[rule.source]]
@@ -1481,4 +1481,37 @@ numeric  = "integer"
   ref        = "Pathfinding - Heroes 3 wiki (survey E08-hero-movement.md §2.2): 'reducing the cost of moving one tile by 25 movement points' per level, minimum 100 in SoD; 'Pathfinding is useless on roads'"
   url        = "https://heroes.thelazy.net/index.php/Pathfinding"
   retrieved  = "2026-10-21"
+  confidence = "medium"
+
+[[rule]]
+id       = "HER-ADV-008"
+title    = "A hero's morale and luck bonuses until the end of its next battle"
+context  = "heroes"
+status   = "implemented"
+summary  = "A hero holds morale and luck bonuses until the end of its next battle (`HeroDetails::bonuses`, ADR-0013 point 1): objects add to them (a Pandora's Box's and an event's reward record, the Warrior's Tomb's -3 morale, a looted Pyramid's -2 luck), summed across objects and held saturating at -128 and 127 (the original's bytes wrap: A-9's class, fixed; unreachable on the shipped maps). A once-bonus carries a once-mark (one of eight kinds; the object types name theirs, the Tomb 0, the Pyramid 1): while its mark is set the bonus adds nothing, so two Tombs before a battle give -3, not -6, and two visits of a looted Pyramid -2. In battle the bonuses join the own side's morale and luck sums with every other source (HER-BAT-003), so the battle gets one effect of each and bounds it as any (BAT-MOR-001, BAT-LCK-001); a battle without the map has none. The battle's end clears both and every mark (`HeroChange::ClearBonuses`; the game gives it to every hero of a battle, GAM-BAT-014). The map's import gives no hero bonuses. E08 T60a: `h3_heroes::{BattleBonuses, HeroChange::Bonus, HeroChange::ClearBonuses, derive_battle_hero}`; the objects and the clearing at a battle's end come with T62 and T63."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E08 T55a2, T55a3; survey E08-rewards.md §6.9, §7.4, §7.5, §8.3): the hero's morale bonus +0x11A and luck bonus +0x11B (bytes), a reward record's morale and luck added to them (0x49FA90, part 5), the Warrior's Tomb's -3 once under status bit 21 (visit_warriors_tomb 0x4A7C30), a looted Pyramid's -2 luck once under bit 12; hero_battle_bonuses_clear 0x4DA510, called by battle_end (0x477792), zeroes both and the two bits"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-7a.md and E08-batch-7b.md (the capture harness, Complete 4.0 Heroes3.exe under Wine; survey E08-rewards.md §15): E7-11, -3 morale after each of two Tombs (status 0x200000), -3 at the battle's opening for both stacks, 0 and no flag after it; E7-21, -2 luck after each of two visits of a looted Pyramid (status 0x1000), -2 at the opening, 0 after"
+  retrieved  = "2026-10-27"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Warrior's Tomb and Pyramid - Heroes 3 wiki (survey E08-rewards.md §6.9, §15): '-3 to morale until the next battle', a searched tomb giving the penalty only; a looted Pyramid's -2 luck (E7-21's row)"
+  url        = "https://heroes.thelazy.net/index.php/Warrior%27s_Tomb"
+  retrieved  = "2026-10-26"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "config/objects/rewardableOnceVisitable.json (1.7.5; survey E08-rewards.md §6.9): the Tomb's -3 morale for one battle, at every visit; whether two stack is VCMI's bonus system, not read"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/config/objects/rewardableOnceVisitable.json"
+  retrieved  = "2026-10-26"
   confidence = "medium"

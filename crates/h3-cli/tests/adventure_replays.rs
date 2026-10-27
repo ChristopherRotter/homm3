@@ -96,7 +96,8 @@
 //! state hash v14, adventure state hash v12, map import v11; the duel's players a human may play
 //! count as human, so the bad-morale let-off no longer reaches their sides in faithful, which no
 //! game's battle met) re-recorded all twelve with their options, their commands unchanged: every
-//! hash moved.
+//! hash moved. E08 T60a (game state hash v15: a hero's battle bonuses, none of which a game here
+//! gives) re-recorded all twelve with their options, their commands unchanged: every hash moved.
 //!
 //! **Scripted** (E08 T52, increment 6: the random agent manages nothing), on the generated
 //! `fixtures/maps/e08-army-12.h3m` (red's Valeska, hero 0, with a full army and twelve artifacts

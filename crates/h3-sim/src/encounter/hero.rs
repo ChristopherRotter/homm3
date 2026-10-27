@@ -182,6 +182,7 @@ impl HeroData {
                 .map(|h| h.spells.clone())
                 .unwrap_or_default(),
             mana: 0,
+            bonuses: Default::default(),
         };
         let add = |details: &mut HeroDetails, artifact: ArtifactTypeId| {
             apply_change(

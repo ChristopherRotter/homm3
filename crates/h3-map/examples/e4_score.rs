@@ -1073,6 +1073,7 @@ mod tests {
                 backpack: Vec::new(),
                 spells: Vec::new(),
                 mana: 0,
+                bonuses: Default::default(),
             };
             for seed in [
                 1,
@@ -1199,6 +1200,7 @@ mod tests {
             backpack: Vec::new(),
             spells: Vec::new(),
             mana: 0,
+            bonuses: Default::default(),
         };
         let batch = Batch {
             core,
@@ -1321,6 +1323,7 @@ mod tests {
             backpack: Vec::new(),
             spells: Vec::new(),
             mana: 0,
+            bonuses: Default::default(),
         }
     }
 
