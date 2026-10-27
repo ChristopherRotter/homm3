@@ -59,6 +59,11 @@ evaluates against Random alone and writes its records into an ignored directory.
    member on a random side; members are weighted by how often they still beat the learner
    (`(1 − p)^2`), at most 4 of them live per rollout (bounding the forward passes per call), at
    most 16 kept. Exploiters only if a check shows the agent exploitable. Bots never train.
+   **Amended 2026-10-27** (the user, E25's refinement, AI-Q10): the faithful system actor
+   (ADR-0027, which reads the whole state) trains no longer: no league member, no defender of the
+   neutral kinds in training, no `system_share`; it stays the target and a ladder opponent. A
+   fair variant that decides on its side's observation (the battle lane's, later) may train, and
+   imitating it is a candidate.
 9. **Records are committed:** each run's `record.json` (identity: config, commit, ABI and
    encodings' versions, rulesets' content hashes, the encounter table's version; segments;
    metrics as a short curve; every gate, promotion and ladder) as `python/records/<run>.json`,
@@ -89,3 +94,5 @@ evaluates against Random alone and writes its records into an ignored directory.
 
 - 2026-10-20: Accepted (E06 T1 review: every point of the design note's §11 as proposed).
 - 2026-10-27: The working-detail line after E06's closure (the design note deleted).
+- 2026-10-27: Point 8 amended (E25's refinement, AI-Q10): the faithful system actor trains no
+  longer.
