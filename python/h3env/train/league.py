@@ -1,4 +1,4 @@
-"""The league (E06 T4a, ADR-0026 point 8, `docs/epics/E06-design.md` §8): prioritized fictitious
+"""The league (E06 T4a, ADR-0026 point 8, `docs/epics/E06-log.md` §8): prioritized fictitious
 self-play (AlphaStar's PFSP) over the learner's past, free of torch (the trainer holds the
 members' networks, their files sit in the run's directory).
 

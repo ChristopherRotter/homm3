@@ -12,6 +12,14 @@ E23, the original's battle AI, is **closed** (2026-10-24; `docs/epics/E23-origin
 
 Consolidated on 2026-10-19 (the user): the entries from E01 to E04c's closure are merged below by kind, done and duplicate parts dropped; the origin stays in brackets (an epic and task, a review report such as r3 or F-r2b-2). History: git. Items for other lanes went into their inboxes; the First Aid Tent became BAT-Q51. The addresses are readings of the executable, the reviews' not read a second time. Where the readings stand: `installation.md` §7.8–§7.33; the reviews' reports stay on `battle/e04b-t11b-review-reports` and `battle/e04c-t10b-review-reports`; their experiment candidates are in `docs/experiments/README.md` ("From the battle queue's inbox", "From the E04b review", "From E04c").
 
+- 2026-10-27 (the AI lane, E06 T9d; **for you, a comment only**, when you next touch the file):
+  `crates/h3-battle/src/world.rs`'s module documentation cites `docs/epics/E06-design.md` §14,
+  deleted at E06's closure: its text is kept in `docs/epics/E06-log.md`, "The design note at
+  closure", §14. Also for your information: E06 T9b's review found three gaps of a world against
+  ADR-0025 point 12a.2 (the other hero's morale and luck modifiers kept, the magic limits
+  recomputed with the guess, a commanded war machine automatic without a guess), now AI-STUB-1's
+  (E25, `docs/stubs.toml`); nothing to do before E25.
+
 - 2026-10-27 (the adventure lane, E08 T60a, `adventure/e08-t60a`, `cross-lane` with the user's
   consent; for your information, nothing to do): **`HeroDetails` gained `bonuses`**
   (`h3_heroes::BattleBonuses`: morale and luck until the end of the hero's next battle, and

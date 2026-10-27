@@ -5,7 +5,7 @@ criterion 1): `<run>.json`, a copy of the run directory's final `record.json`
 (`python/runs/<run>/`, git-ignored). Checkpoints and networks stay on the machine that trained
 them.
 
-A record (schema 5, `h3env.train.run.Record`; `docs/epics/E06-design.md` §4; `check_record`
+A record (schema 5, `h3env.train.run.Record`; `docs/epics/E06-log.md` §4; `check_record`
 also accepts schema 4, before the league: `t3b-1`, its config's `[pool]`):
 
 - `id`: the run's name (its config's `name`, else its directory's).

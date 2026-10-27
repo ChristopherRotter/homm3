@@ -1,6 +1,6 @@
 # E06 — Battle AI v1 and the local training pipeline v0
 
-Status: **in progress**, refined 2026-10-20 (AI-Q8); increments 1 to 7 done (the last, the search, closed 2026-10-27; its measurement inconclusive, T9b); at its checkpoint the user revised decision 7's targets to the evidence and chose the closure: increment 8, T9, with `t7-1` as the battle AI v1; a stronger agent is E25's · Lane: **ai** · Follows E05 (closed
+Status: **closed** 2026-10-27 (refined 2026-10-20, AI-Q8; T1 to T9 in 8 increments, each with a user checkpoint; the battle AI v1 is `t7-1`, decision 7's targets as revised 2026-10-27 met and played again on the closing engine; verified on Linux by CI and on the user's Windows machine incl. `--with-original-data`; the search's measurement inconclusive, a stronger agent E25's) · Lane: **ai** · Follows E05 (closed
 2026-10-20) · Runs beside E23 (the battle lane: the original's battle AI, the system actor's
 policy), whose neutral side opens E06's neutral share (decision 1)
 
@@ -142,17 +142,16 @@ closes with `t7-1` as the battle AI v1, decision 7 revised; the pattern E05's T9
   distribution's data pinned to its version; the bots' tables regenerated (the adventure hash).
   The user: T8c inconclusive and a terminal by reward v1 E25's, the world's three gaps to
   AI-STUB-1 (E25).
-- [ ] **T9c The verifies** (exit criterion 6; the user's machine, a script whose summary and
-  logs the user uploads) — `cargo xtask verify --with-original-data` and the Python tests (`uv
-  run --group train pytest`) on Windows; on Linux CI's full verify and the Python tests in the
-  sandbox (done at T9b; the user, 2026-10-27: no Linux run with the original data). With them
-  `t7-1`'s final ladder on today's engine (T9a).
-- [ ] **T9d The closure** — `shared/e06-closure` first (BACKLOG: E06 done, its E25 row and
-  note on T8c, inconclusive; `docs/07-simulation-and-ai.md`: the training pipeline as built,
-  beside §1.1; ADR-0026's working-detail line; ADR-0025 point 12a: AI-STUB-1's gaps, a world
-  for the side to move only, T9b); the design note at closure (E05's way, its text kept in `E06-log.md`
-  and the references repointed, or kept as a file: decided then); the epic file done; the
-  lane's HANDOFF and QUEUE.
+- [x] **T9c The verifies** (exit criterion 6, as amended) — done 2026-10-27 (`E06-log.md`): on
+  the user's Windows machine `cargo xtask verify --with-original-data` green and the Python tests
+  passed; on Linux CI's full verify (#519) and the sandbox's Python tests (T9b); `t7-1`'s final
+  ladder on the closing engine: 0.830, 0.550, 0.530 at +0.273, +0.029, +0.010, the neutral set
+  0.970 at +0.244 (Greedy's +0.224): the targets hold.
+- [x] **T9d The closure** — done 2026-10-27: #522 first (BACKLOG E06 done; 
+  `docs/07-simulation-and-ai.md` §1.2, the training pipeline as built; ADR-0026's working-detail line; ADR-0025 point
+  12a after the review); the design note's text kept in `E06-log.md` ("The design note at
+  closure", its numbering kept), the note deleted, `python/`'s references repointed; the lane's
+  HANDOFF and QUEUE.
 
 ## Exit criteria
 

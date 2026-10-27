@@ -1,4 +1,4 @@
-"""The evaluation gate (E06 T3b, `docs/epics/E06-design.md` §6): the SPRT's arithmetic and error
+"""The evaluation gate (E06 T3b, `docs/epics/E06-log.md` §6): the SPRT's arithmetic and error
 rates without torch, then the head-to-head of two networks on the gate set v1 (with torch)."""
 
 from __future__ import annotations

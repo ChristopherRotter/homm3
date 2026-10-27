@@ -1,4 +1,4 @@
-"""A training run from the command line (E06 T2a, T2b1, T3b; ADR-0026, `docs/epics/E06-design.md`
+"""A training run from the command line (E06 T2a, T2b1, T3b; ADR-0026, `docs/epics/E06-log.md`
 §1.3):
 
     uv run --group train python -m h3env.train --config configs/e06-t4.toml --out runs/t4-1
