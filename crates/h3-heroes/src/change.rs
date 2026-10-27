@@ -369,7 +369,7 @@ fn carried(ruleset: &Ruleset, artifact: &ArtifactType) -> bool {
 }
 
 /// Whether the backpack holds fewer than the ruleset's most (HER-ART-002).
-fn has_space(details: &HeroDetails, ruleset: &Ruleset) -> bool {
+pub(crate) fn has_space(details: &HeroDetails, ruleset: &Ruleset) -> bool {
     ruleset
         .hero_params()
         .is_some_and(|params| details.backpack.len() < usize::from(params.backpack))
