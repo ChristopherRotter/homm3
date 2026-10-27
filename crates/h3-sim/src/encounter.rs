@@ -404,6 +404,24 @@ impl Sampler {
         self.rules.core()
     }
 
+    /// A guess of the hero `view` shows, for a search agent's world (E06 T8, design §14;
+    /// ADR-0025 point 12a): of `candidates` heroes of its type drawn as an encounter draws one
+    /// (A7: the level and draws by week, the week by a hero battle's prior, a siege's if
+    /// `siege`), the one whose primary skills are nearest the view's (L1, ties to the first
+    /// drawn), each war machine the view shows it commands learnt at least at Basic. `None` for
+    /// a hero type none of the distribution's factions has.
+    pub fn guess(
+        &self,
+        rng: &mut Rng,
+        view: &h3_battle::HeroView,
+        siege: bool,
+        candidates: usize,
+    ) -> Option<h3_contracts::BattleHero> {
+        let kind = if siege { Kind::SiegeHero } else { Kind::Hero };
+        let weeks = &self.table.kinds[kind.index()].week;
+        self.hero.guess(self, rng, view, weeks, candidates)
+    }
+
     /// The encounter of `seed`: every draw from its stream `ENCOUNTER`.
     pub fn sample(&self, seed: u64) -> Encounter {
         let rng = &mut Rng::for_stream(seed, StreamId::ENCOUNTER);

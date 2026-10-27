@@ -4,9 +4,11 @@
 //! (`h3_heroes::derive_battle_hero`, `max_mana`, `war_machines`), as the game derives them
 //! (GAM-BAT-001).
 
+use h3_battle::HeroView;
+use h3_content::CompiledHeroEffect;
 use h3_content::{
-    ArtifactClass, ArtifactTypeId, CreatureTypeId, HeroEffect, MAX_HERO_SKILLS, MAX_SKILL_LEVEL,
-    Ruleset, SpellCategory, SpellId,
+    ArtifactClass, ArtifactTypeId, CreatureTypeId, HeroClassId, HeroEffect, HeroTypeId,
+    MAX_HERO_SKILLS, MAX_SKILL_LEVEL, Ruleset, SkillId, SpellCategory, SpellId,
 };
 use h3_contracts::BattleHero;
 use h3_heroes::{
@@ -36,6 +38,9 @@ pub(super) struct HeroData {
     spells: [Vec<SpellId>; 5],
     /// The war machines' artifacts.
     war_machines: Vec<ArtifactTypeId>,
+    /// The skills whose Basic level commands the Ballista, the First Aid Tent and the Catapult
+    /// (Artillery, First Aid, Ballistics: found by their effects), if the ruleset has them.
+    machine_skills: [Option<SkillId>; 3],
     /// The spell book's artifact.
     spell_book: ArtifactTypeId,
     /// The primary skills' maximum.
@@ -92,10 +97,22 @@ impl HeroData {
                 .filter_map(|(index, _)| SpellId::from_index(index))
                 .collect::<Vec<_>>()
         });
+        let gives = |test: fn(&CompiledHeroEffect) -> bool| {
+            (0..)
+                .zip(core.skills())
+                .find(|(_, s)| s.effects(1).iter().any(test))
+                .and_then(|(i, _)| SkillId::from_index(i))
+        };
+        let machine_skills = [
+            gives(|e| matches!(e, HeroEffect::Artillery { .. })),
+            gives(|e| matches!(e, HeroEffect::FirstAid { .. })),
+            gives(|e| matches!(e, HeroEffect::Ballistics { .. })),
+        ];
         Ok(Self {
             artifacts,
             spells,
             war_machines,
+            machine_skills,
             spell_book: artifact(&table.spell_book)?,
             primary_max: core.hero_params().map_or(u8::MAX, |p| p.primary_max),
         })
@@ -109,17 +126,31 @@ impl HeroData {
         faction: usize,
         week: u8,
     ) -> HeroDetails {
-        let core = sampler.core();
-        let table = sampler.table();
         let data = &sampler.factions[faction];
         let (class_id, types) = &data.classes[rng.below(data.classes.len() as u32) as usize];
         let hero_type = types[rng.below(types.len() as u32) as usize];
+        self.details_of(sampler, rng, (faction, *class_id, hero_type), week)
+    }
+
+    /// A hero of type `hero_type`, of class `class_id` and faction `faction` (an index of the
+    /// sampler's factions), by `week`: its level, primary and secondary skills, artifacts and
+    /// spells as [`details`](Self::details) draws them.
+    pub(super) fn details_of(
+        &self,
+        sampler: &Sampler,
+        rng: &mut Rng,
+        (faction, class_id, hero_type): (usize, HeroClassId, HeroTypeId),
+        week: u8,
+    ) -> HeroDetails {
+        let core = sampler.core();
+        let table = sampler.table();
+        let data = &sampler.factions[faction];
         let w = usize::from(week).min(WEEKS) - 1;
         let spread = table.level_spread;
         let level = (table.hero_level[w] + rng.range_inclusive(0, 2 * u32::from(spread)) as u8)
             .saturating_sub(spread)
             .max(1);
-        let (primary, skills) = match (core.hero_class(*class_id), core.hero_type(hero_type)) {
+        let (primary, skills) = match (core.hero_class(class_id), core.hero_type(hero_type)) {
             (Some(class), Some(hero)) => {
                 let mut primary = class.primary;
                 let mut skills = hero.skills.clone();
@@ -212,22 +243,101 @@ impl HeroData {
     }
 }
 
+impl HeroData {
+    /// A guess of the hero `view` shows (`Sampler::guess`): of `candidates` heroes of its type
+    /// by weeks drawn by `weeks`, the one whose primary skills are nearest the view's (L1, ties to
+    /// the first drawn), then the skill of each war machine the view shows it commands learnt at
+    /// Basic where it does not command it (in place of its last skills when its slots are full). `None` for a hero type none
+    /// of the sampler's factions has.
+    pub(super) fn guess(
+        &self,
+        sampler: &Sampler,
+        rng: &mut Rng,
+        view: &HeroView,
+        weeks: &[u32],
+        candidates: usize,
+    ) -> Option<BattleHero> {
+        let core = sampler.core();
+        let class = core.hero_type(view.hero_type)?.class;
+        let faction = sampler.factions.iter().position(|f| {
+            f.classes
+                .iter()
+                .any(|(c, types)| *c == class && types.contains(&view.hero_type))
+        })?;
+        let target = [view.attack, view.defense, view.power, view.knowledge];
+        let mut best: Option<(u32, HeroDetails)> = None;
+        for _ in 0..candidates.max(1) {
+            let week = pick(rng, weeks.iter().copied()) as u8 + 1;
+            let details = self.details_of(sampler, rng, (faction, class, view.hero_type), week);
+            let (hero, _) = self.battle(core, &details);
+            let primary = [hero.attack, hero.defense, hero.power, hero.knowledge];
+            let distance = primary
+                .iter()
+                .zip(target)
+                .map(|(&a, b)| u32::from(a.abs_diff(b)))
+                .sum::<u32>();
+            if best.as_ref().is_none_or(|(d, _)| distance < *d) {
+                best = Some((distance, details));
+            }
+        }
+        let (_, mut details) = best?;
+        let (hero, _) = self.battle(core, &details);
+        let machines = &hero.war_machines;
+        let has = [
+            machines.ballista.is_some(),
+            machines.tent.is_some(),
+            machines.catapult.is_some(),
+        ];
+        let commands = [
+            view.commands_ballista,
+            view.commands_tent,
+            view.commands_catapult,
+        ];
+        let commanded: Vec<SkillId> = self
+            .machine_skills
+            .iter()
+            .zip(commands)
+            .filter_map(|(skill, commanded)| skill.filter(|_| commanded))
+            .collect();
+        let learn: Vec<SkillId> = self
+            .machine_skills
+            .iter()
+            .zip(commands)
+            .zip(has)
+            .filter_map(|((skill, commanded), has)| skill.filter(|_| commanded && !has))
+            .collect();
+        let learnt = !learn.is_empty();
+        details.skills.retain(|(s, _)| !learn.contains(s));
+        // Room from the last skills that command no machine the view shows.
+        while details.skills.len() + learn.len() > MAX_HERO_SKILLS {
+            let Some(i) = details
+                .skills
+                .iter()
+                .rposition(|(s, _)| !commanded.contains(s))
+            else {
+                break;
+            };
+            details.skills.remove(i);
+        }
+        details.skills.extend(learn.iter().map(|&s| (s, 1)));
+        Some(if learnt {
+            self.battle(core, &details).0
+        } else {
+            hero
+        })
+    }
+}
+
 /// One level-up's secondary skill: a skill drawn by the class's weights among the known ones
 /// below Expert and, while a slot is free, the unknown ones; raised a level, or learnt at Basic.
-fn level_up_skill(
-    rng: &mut Rng,
-    weights: &[(h3_content::SkillId, u8)],
-    skills: &mut Vec<(h3_content::SkillId, u8)>,
-) {
-    let weight = |&(skill, w): &(h3_content::SkillId, u8)| match skills
-        .iter()
-        .find(|(known, _)| *known == skill)
-    {
-        Some(&(_, level)) if level < MAX_SKILL_LEVEL => u32::from(w),
-        Some(_) => 0,
-        None if skills.len() < MAX_HERO_SKILLS => u32::from(w),
-        None => 0,
-    };
+fn level_up_skill(rng: &mut Rng, weights: &[(SkillId, u8)], skills: &mut Vec<(SkillId, u8)>) {
+    let weight =
+        |&(skill, w): &(SkillId, u8)| match skills.iter().find(|(known, _)| *known == skill) {
+            Some(&(_, level)) if level < MAX_SKILL_LEVEL => u32::from(w),
+            Some(_) => 0,
+            None if skills.len() < MAX_HERO_SKILLS => u32::from(w),
+            None => 0,
+        };
     if weights.iter().map(weight).sum::<u32>() == 0 {
         return;
     }

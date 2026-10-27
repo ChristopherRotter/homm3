@@ -1135,3 +1135,59 @@ fn encounter_seats_replace_the_encounters_own() {
         assert!(ended > 0, "{seats:?}");
     }
 }
+
+/// E06 T8b: a world of an env's battle (ADR-0025 point 12a, design §14): its viewer sees the
+/// battle in it as in the env; the other side's hero is a guess with the observed public part
+/// and a setup without what the viewer may not know; a seed gives the same world, another
+/// another; a world plays to its end; a world of no playing env is refused.
+#[test]
+fn a_world_of_an_env_shows_its_viewer_the_battle_and_plays_to_its_end() {
+    let sampler = crate::encounter::tests::SAMPLER.clone();
+    let sampler = Arc::new(sampler.with_weights([0, 0, 2, 1, 0, 0]).unwrap());
+    let mut batch = BattleBatch::new(BatchConfig {
+        envs: 8,
+        threads: 0,
+        seed: 5,
+        max_steps: 500,
+        reward: RewardConfig::default(),
+    })
+    .unwrap();
+    let viewer = BattleSide::Attacker;
+    assert_eq!(
+        batch.determinize(0, viewer, 1).err(),
+        Some(BatchError::NotReset)
+    );
+    let encounters = Scenario::encounters(Arc::clone(&sampler), 1, None).unwrap();
+    batch.add_scenario(encounters).unwrap();
+    let mut arrays = Arrays::new(8);
+    batch.reset(&mut arrays.outputs()).unwrap();
+    assert_eq!(
+        batch.determinize(8, viewer, 1).err(),
+        Some(BatchError::NoEnv(8))
+    );
+    let mut guessed = 0;
+    for i in 0..8 {
+        let env = batch.env(i).unwrap();
+        for viewer in BattleSide::BOTH {
+            let other = viewer.opponent();
+            let world = batch.determinize(i, viewer, 7).unwrap();
+            assert_eq!(world.observation(viewer), env.observation(viewer));
+            let again = batch.determinize(i, viewer, 7).unwrap();
+            assert_eq!(world.state_hash(), again.state_hash());
+            let another = batch.determinize(i, viewer, 8).unwrap();
+            assert_ne!(world.state_hash(), another.state_hash());
+            let (setup, guess) = (world.setup(), &world.setup().heroes[other.index()]);
+            assert_eq!(setup.funds[other.index()], 0);
+            if let Some(view) = env.state().hero(other) {
+                // The guess is of the observed type; the world shows its public part.
+                assert_eq!(guess.as_ref().map(|h| h.hero_type), Some(view.hero_type));
+                assert_eq!(world.state().hero(other), Some(view));
+                guessed += 1;
+            }
+            let mut w = world.fork();
+            let result = rollout::random_rollout(&mut w, 3, 0);
+            assert!(w.is_done(), "env {i}: {result:?}");
+        }
+    }
+    assert!(guessed >= 8, "{guessed}");
+}

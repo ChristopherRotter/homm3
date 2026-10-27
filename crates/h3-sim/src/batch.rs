@@ -117,6 +117,8 @@ pub enum BatchError {
     NoScenario,
     /// The batch was not reset yet.
     NotReset,
+    /// No env of this index is playing (past the batch, or it gave up).
+    NoEnv(usize),
     /// The system refused to start one of the batch's threads.
     Threads(String),
     /// An input or output array is shorter than the batch needs.
@@ -141,6 +143,7 @@ impl std::fmt::Display for BatchError {
             Self::Setup(e) => write!(f, "setup: {e}"),
             Self::NoScenario => f.write_str("the batch has no scenario"),
             Self::NotReset => f.write_str("the batch was not reset"),
+            Self::NoEnv(index) => write!(f, "no env {index} is playing"),
             Self::Threads(e) => write!(f, "a thread did not start: {e}"),
             Self::Buffer { name, len, needed } => {
                 write!(f, "`{name}` has {len} elements, {needed} needed")
@@ -469,6 +472,9 @@ struct Source<'a> {
     reward: RewardConfig,
 }
 
+/// The heroes a world's guess draws to pick the nearest to the observed (E06 T8, design §14).
+pub const GUESS_CANDIDATES: usize = 8;
+
 /// N battle environments stepped together (see the module documentation).
 #[derive(Debug)]
 pub struct BattleBatch {
@@ -563,6 +569,40 @@ impl BattleBatch {
     /// agent's view, ADR-0025 point 12); `None` before the first reset or for an env that gave up.
     pub fn env(&self, index: usize) -> Option<&BattleEnv> {
         self.slots.get(index).and_then(|s| s.env.as_ref())
+    }
+
+    /// A world of env `index`'s battle for `viewer` (E06 T8, ADR-0025 point 12a; design §14;
+    /// [`BattleEnv::world`]), a single env from `seed`: the other side's hero guessed by the
+    /// env's encounter distribution ([`Sampler::guess`] of [`GUESS_CANDIDATES`] heroes, from
+    /// stream `ENCOUNTER` of `seed`; a hero of its type alone outside the distribution or for a
+    /// type it lacks), the battle's stream `BATTLE` of `seed`. The world is the agent's to fork
+    /// and step; it reads nothing `viewer` may not know.
+    ///
+    /// # Errors
+    /// [`BatchError::NotReset`], [`BatchError::NoEnv`], or [`BatchError::Setup`] for a guess the
+    /// battle refuses.
+    pub fn determinize(
+        &self,
+        index: usize,
+        viewer: BattleSide,
+        seed: u64,
+    ) -> Result<BattleEnv, BatchError> {
+        self.check_ready()?;
+        let slot = self.slots.get(index).ok_or(BatchError::NoEnv(index))?;
+        let env = slot.env.as_ref().ok_or(BatchError::NoEnv(index))?;
+        let state = env.state();
+        let guess = state.hero(viewer.opponent()).and_then(|view| {
+            let sampler = self.scenarios[slot.scenario as usize].sampler()?;
+            let mut rng = Rng::for_stream(seed, StreamId::ENCOUNTER);
+            sampler.guess(
+                &mut rng,
+                &view,
+                env.setup().siege.is_some(),
+                GUESS_CANDIDATES,
+            )
+        });
+        env.world(viewer, guess.as_ref(), seed)
+            .map_err(BatchError::Setup)
     }
 
     /// Starts every env's first episode (and again from the start on a later call: the batch
