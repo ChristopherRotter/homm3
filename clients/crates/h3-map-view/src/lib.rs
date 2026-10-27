@@ -47,6 +47,7 @@ pub mod draw;
 pub mod keys;
 pub mod layout;
 pub mod live;
+pub mod music;
 pub mod objects;
 pub mod replay;
 pub mod scene;
