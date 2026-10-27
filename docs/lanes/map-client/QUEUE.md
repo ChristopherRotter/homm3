@@ -22,29 +22,8 @@ at its seam before it started (the user, 2026-10-27): T4a, the window replaying 
 table (done 2026-10-27), then T4b, the map's live input and the Windows build, cut at its seam
 before it started (the user, 2026-10-27): T4b1, the live input in the sandbox (done 2026-10-27),
 then T4b2, the Windows build on the user's machine (done 2026-10-27), which found the view's
-drawing too slow: T4b3 (the user, 2026-10-27). T5, the sound, done whole 2026-10-27 (the user
+drawing too slow: T4b3 (the user, 2026-10-27; done 2026-10-27). T5, the sound, done whole 2026-10-27 (the user
 chose it over a cut).
-
-### E24 M2 T4b3 — the view's drawing made fast
-
-- **Scope:** a view composed fast enough for old hardware (the user, at T4b2: "the client should
-  run on really old hardware too, and given the simple 2D graphics we have absolutely no business
-  having performance issues"), its frames unchanged. On the user's machine `path-objects` with
-  input showed frames p95 99 ms late, 87 of 500 passed over; one view there costs 775 million
-  instructions (design §3.10: `draw::flagged` and `draw::shadow_pass` visit every pixel of every
-  frame through a closure, a division and a modulo each, writing through `Screen::set`). Make
-  `h3_map_view::draw` and `compose` draw by rows inside the clip, the transparent pixels skipped
-  (a frame's spans worked out once and kept), the screen's rows written directly, no allocation
-  per piece (the palettes' keys, a flag's palette, the frame picture's copy); the pictures a
-  map needs loaded with the map rather than during a walk's frames (`paint`'s `add`); the window
-  reporting how long its views took to compose (median, p95, max). Measured before and after:
-  callgrind in the sandbox, the user's `map-measure.cmd` again (a new exe).
-- **Acceptance:** every frame as before (unit tests; `sequences` 13 of 13; `drawn` the same for the
-  40 situations and 13 sequences; the window's `--check` exact under Xvfb); `path-objects`'s view
-  at least 20 times fewer instructions; on the user's machine `path-objects` with input passing
-  over no frame of a walk at speed 2; the Definition of Done. If it grows: cut between the
-  drawing (T4b3a) and the loading and the report (T4b3b).
-- **Depends on:** T4b2 (done). **Status:** ready.
 
 ### E24 M2 T6 — M2's closure
 
@@ -54,12 +33,21 @@ chose it over a cut).
   user; M2's section moved to `E24-archive.md`; M3 T0 queued (the common crate proposed to the
   client lane first: the epic's M2 decision).
 - **Acceptance:** the review list accepted by the user; the Definition of Done.
-- **Depends on:** T1a1 to T5 (T4b1 to T4b3). **Status:** ready after T4b3.
+- **Depends on:** T1a1 to T5 (T4b1 to T4b3). **Status:** ready.
 
 ## Inbox
 
 Other lanes add entries here. The map client lane turns each into a task, or keeps one line here
 while the work waits.
+
+- 2026-10-27 (this lane, E24 M2 T4b3; the user: "it will do for now, but we should check back in
+  at some point"): **a frame's fixed cost.** A frame takes 4 to 6 ms to make on the user's machine
+  (5.7 in the sandbox), about 4 even for a near-empty view: the frame picture's and the terrain's
+  pixels drawn every frame, the widening to 32 bits, the painter's two copies of the screen, the
+  scene built afresh, the objects' transparent pixels still visited (design §3.12, "Left"). Take
+  it up with the next work that touches the drawing (M3's panels at the latest): spans of a
+  frame's drawn pixels made once, the frame picture converted once a viewer, no screen copies, a
+  scroll or a walk redrawing only what moved; measure with `map-measure.cmd`'s "a frame made in".
 
 - 2026-10-26 (the adventure lane, E08 T57; for information, nothing to do): the harness's
   reads and steps for batch E7 (`clients/capture/README.md`, "Rewards on the map"). Behaviour that

@@ -269,7 +269,45 @@ impl<'a> Painter<'a> {
             selected: None,
         };
         painter.add([assets.layout.cursor.def.to_ascii_uppercase()])?;
+        painter.preload()?;
         Ok(painter)
+    }
+
+    /// Decodes every asset a view of the map draws at 0, each level scanned view by view (E24 M2
+    /// T4b3, *provisional*): a walk or a scroll then finds its pictures decoded rather than
+    /// decoding them between its frames (a path's arrows shown later, or an object's other
+    /// picture, are still decoded when first drawn).
+    fn preload(&mut self) -> Result<(), String> {
+        let assets = self.assets;
+        let view = &assets.layout.view;
+        let (across, down) = (
+            (view.columns[1] - view.columns[0]).max(1),
+            (view.rows[1] - view.rows[0]).max(1),
+        );
+        let size = i32::try_from(self.art.size).map_err(|_| "the map's size".to_owned())?;
+        for z in 0..self.art.levels {
+            let z = u8::try_from(z).map_err(|_| format!("level {z}"))?;
+            let mut y = 0;
+            while y < size {
+                let mut x = 0;
+                while x < size {
+                    let scene = scene::scene(
+                        &self.art,
+                        &self.live,
+                        assets.tables,
+                        assets.layout,
+                        &self.shapes,
+                        ViewAt { x, y, z },
+                        assets.bugs,
+                    )
+                    .map_err(|e| e.to_string())?;
+                    self.add(batch::names(&scene))?;
+                    x += across;
+                }
+                y += down;
+            }
+        }
+        Ok(())
     }
 
     /// The map's sound from 0 (E24 M2 T5; design §3.11): each tile's ambient sound from every

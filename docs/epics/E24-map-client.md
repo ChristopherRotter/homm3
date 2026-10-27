@@ -154,7 +154,9 @@ battle.
   design §3.10), T4b2, the Windows build tried on the user's machine (**done** 2026-10-27:
   every frame read back exact on Windows, the delays measured, the user's findings; design
   §3.10; MCL-Q10 asked and answered), T4b3, the view's drawing made fast (the user, at T4b2:
-  "the client should run on really old hardware too"); T5, the sound (**done**
+  "the client should run on really old hardware too"; **done** 2026-10-27: the drawers by rows,
+  31 times fewer instructions a view, every frame unchanged, none passed over on the user's
+  machine; design §3.12; MCL-Q11 asked); T5, the sound (**done**
   2026-10-27, whole: the terrain music, the step sounds and the ambient loops read;
   `h3_map_view::sound`, cued by the timeline and the replay, played by the window; the gate's
   check of the sounds; design §3.11; MCL-Q8, MCL-Q9 open); T6, M2's closure.
@@ -247,3 +249,8 @@ reviewers'):
 - **M2 T4b2, the Windows build:** `h3-map-view.exe` looks for `clients/map` and the installation
   copy where it was built (`CARGO_MANIFEST_DIR`), so the user's `.cmd` files name `--map` and
   `--install` (`h3-view` looks above the exe; one way for both in M3 T0's common crate).
+- **M2 T4b3, the view drawn fast** (*provisional*): `h3-render`'s `Screen::pixels_mut`
+  (additive, the foundation's); every asset a view of the map draws at 0 decoded when the map
+  loads (a big map's load longer, no decoding during a walk); the window's report gives how long
+  each frame took to make; a frame of a near-empty view still about 4 ms on the user's machine
+  (the inbox: the user, "we should check back in at some point").

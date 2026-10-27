@@ -1331,7 +1331,12 @@ ambient sounds again 6 s later, 0x4088F9), the visits', battles' and the compute
   0x6968E4 for pass 9's step of the frame to 0 (0x47FF88). The walk's last step stops it first
   (0x481216, the frame 0 then, so a new terrain's starts at once) and `hero_walk_end` stops it
   again (0x47F825); a key's step (no `hero_move_loop`) starts none but a new terrain's, stopped
-  at its end. So a walk on one terrain plays one loop from its first step to its end.
+  at its end. So a walk on one terrain plays one loop from its first step to its end, and the
+  direction keys' steps play none (T4b2: the manager's +0x360 to +0x388 are read nowhere else,
+  `exe.py grep`). `Heroes3.snd` also holds `HORSE20` to `HORSE27` and `HORSE29` (none for 28, the
+  water's index: perhaps the roads' sounds, *inferred*), longer than their 00 to 09; the
+  executable's only `horse` string is the loader's, so they never play (**MCL-Q11**, the user at
+  T4b3: "a few terrain-specific samples which the original doesn't seem to play").
 - **The ambient sounds** (`ambient_sounds_at`, this = the manager; a tile and a stop flag): four
   slots at +0x228 (8 bytes each: a sound's index, −1 none, and its distance, 127 none), the
   sounds loaded on demand at +0x248 (70 pointers), +0x224 a bit set of the sounds found. Called
@@ -1395,3 +1400,37 @@ ambient sounds again 6 s later, 0x4088F9), the visits', battles' and the compute
   `horse08` sailing, `loopocea` restarted by the lift), the volcano and medusas
   (`objects-flat`), the gold and gem mines (`owners-objects`); every frame read back exact and
   every change shown the headless loop's in each run.
+
+### 3.12 The view drawn fast (M2 T4b3)
+
+No reading; the frames as before, pixel for pixel (*provisional* in what follows).
+
+- **The drawers** (`h3_map_view::draw`): a frame's pixels go row by row: a row off the canvas or
+  outside the clip and the screen is passed over, the row's first and last columns inside them
+  worked out once, the screen's row (`Screen::pixels_mut`, `h3-render`'s, additive) walked
+  forwards or, mirrored, backwards beside the frame's indices and runs, each drawer's own test per
+  pixel inlined; a frame whose runs end early (only a test's) is padded with literal ones.
+- **The composition** (`compose`): the frame's picture drawn from its rows in the viewer's
+  colours with no copy of it (the 480 000 pixels before were cloned and drawn through the
+  general blitter's division per pixel); a DEF's cycled palette kept by its name as the scene
+  spells it (no upper-cased copy a piece); the flag palette's colours once a scene; the batch's
+  names looked up as they are when they hold no lower-case letter.
+- **The pictures** (`paint`): every asset a view of the map draws at 0, each level scanned view
+  by view, decoded when the map loads (a path's arrows shown later are still decoded when first
+  drawn).
+- **Measured.** Callgrind (sandbox, `render` of `path-objects`): the composition 775 million
+  instructions before, 24.6 million after (31 times fewer; `draw::flagged` 392 → 8,
+  `draw::shadow_pass` 326 → 9). The window reports how long each frame took to make (the view,
+  the cursor, the widening to 32 bits): in the sandbox a median 5.2 to 5.7 ms, p95 9. On the
+  user's machine (`map-measure.cmd` again): a frame made in a median 4.0 to 5.8 ms, p95 4.5 to 7.9,
+  at most 10.7; `path-objects` with the user's input a frame a median 0.6 ms after its time, p95
+  8.2, **none passed over** (87 before), an input's frame a median 7.8 ms (13.5); `walk-1` as
+  before (median 0.5, p95 1.6). Every frame read back exact (162, 393), every change the headless
+  loop's.
+- **Left** (the user: "it will do for now, but we should check back in at some point"): a frame
+  of a near-empty view still takes about 4 ms on the user's machine: the frame picture's 480 000
+  pixels, the terrain's tiles, the widening of 480 000 pixels to 32 bits, the painter's two
+  copies of the screen, the scene built afresh; the objects' frames are still visited pixel by
+  pixel, transparent ones included. Spans of a frame's drawn pixels made once, the frame picture
+  converted once a viewer, the screen not copied, and a scroll or a walk redrawing only what
+  moved are the next steps (the queue's inbox).

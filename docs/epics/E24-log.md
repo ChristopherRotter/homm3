@@ -910,3 +910,34 @@ the user's machine"), §3.4 (the input ring's bound).
 - **Found on the way:** a `git fetch` through the link left `.git/objects/maintenance.lock`
   again (moved aside: `.git/stale-maintenance-lock-2026-10-27b`); apt's `mingw-w64` needs an
   `apt-get update` first in a fresh sandbox.
+
+### M2 T4b3 — the view drawn fast (2026-10-27)
+
+Queued and taken in the same session as T4b2 (the user: "the client should run on really old
+hardware too, and given the simple 2D graphics we have absolutely no business having
+performance issues"); taken whole. Design §3.12.
+
+- **Built** (*provisional*): `h3_map_view::draw`'s pixels by rows (each row's columns from the
+  canvas, the clip and the screen once; the screen's row walked forwards or mirrored backwards;
+  the closure per pixel inlined; `runs_of` pads a frame whose runs end early); `compose` drawing
+  the frame picture from its rows in the viewer's colours (no copy), a DEF's cycled palette by
+  its name as spelled, the flag palette's colours once a scene; `Batch`'s lookups without an
+  upper-cased copy for names already upper-case; `h3-render`'s `Screen::pixels_mut` (additive);
+  the binary's `Painter::preload` (every asset a view of the map draws at 0, view by view on each
+  level) and the window's "a frame made in" (view, cursor, widening; SDL's clock).
+- **Checked:** every one of `drawn`'s 490 PNGs (40 situations, the 13 sequences' 450 frames: the
+  whole frame, panels included) byte for byte as before the change, `drawn` 0 not the same,
+  `sequences` 13 of 13 as recorded; the window under Xvfb (`path-objects` with Ctrl and held
+  direction keys, `walk-1`): every frame read back exact, every change the headless loop's;
+  `clients/scripts/check.sh` (fmt, clippy, tests, deny, coverage 100 %, the CI paths).
+- **Measured:** callgrind, `render` of `path-objects`: the composition 775 → 24.6 million
+  instructions. The user's machine (`map-measure.cmd` with the new exe; T4b2's kept as
+  `map-measure-t4b2.txt`): a frame made in a median 4.0 to 5.8 ms; `path-objects` with input p95
+  8.2 ms after its time (99), none passed over (87); the sandbox 5.2 to 5.7 ms.
+- **The user's findings:** the frame's cost "will do for now", to be checked again (the inbox);
+  no hooves heard: the user's runs walked by the direction keys only (none clicked a path's end),
+  whose steps play none in the original (§3.11: only `hero_move_loop` and a step's terrain change
+  read the step sounds); the sandbox's mix has `walk-1`'s and a clicked walk's beats; "a few
+  terrain-specific samples which the original doesn't seem to play": `HORSE20` to `HORSE27` and
+  `HORSE29` in `Heroes3.snd`, never loaded (**MCL-Q11**; the 20 files in the user's
+  `clients/out/win/horses/`).
