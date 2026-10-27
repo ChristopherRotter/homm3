@@ -6267,3 +6267,53 @@ path to (3, 30) over Blue's own event at (4, 30), and one ending on it.
 **Traps found** (README, "Traps"): the game finds the tile under the mouse again only when the
 mouse enters another of the view's cells; days waited cost every player's turn (E7a's third run);
 the check's Gear battle stopped once.
+
+### Increment 7, round 2: T58, batch E7 scored; A-23 withdrawn (2026-10-27, `adventure/e08-t58`, `cross-lane`)
+
+**The cut** (decision 144; asked at the start): T58 whole with a re-read. **Baseline:** `master`
+828a703 (#490, T57, merged dd3d2d1f; CI on `master` green); the sandbox's light gates passed (the
+code verified by CI's run). `Heroes3.exe` staged from the user's PC for the re-read. `cross-lane`
+for the batch's row in `docs/experiments/README.md` (battle-owned), as T38.
+
+**At the start:** E7-23's corridor half tested nothing. Its targets (14, 30) and (15, 30) lay 6 and
+7 tiles east of a hero of radius 5 (ADV-FOG-002: dx² ≤ 30), no Blue hero came near, and the
+original draws no path onto an unexplored tile (ADV-MOV-008, T57's own finding): "no path" there is
+the fog's. Its open half was valid: a straight path over Blue's own event.
+
+**Batch E7 scored** (survey `E08-rewards.md` §15, from T57's results): every dispute's row as the
+code reading, conclusive against VCMI or the wiki: D-29 (E7-1), D-30 (E7-2), D-31 (E7-3: forty
+artifacts, no relic), D-33 with A-21 (E7-7), D-34 (E7-8: the fifteen spells of the first circle),
+D-36 (E7-9), D-37 to D-39 (E7-12 to E7-15), D-40 (E7-16: G G D G D G G as the table 0x63DF94; E7-22
+D D – G); the full-backpack rows (E7-5, E7-6, E7-10, E7-19) and the consensus rows confirmed. None
+reverts; no `ADV-Q`. Two findings: a full backpack is tested before a free position (E7-6's axe
+lost with the right hand free), and a visit sets the visitor's colour bit in the word's bits 5–12
+(Blue's bit 6 after E7-16's retreat: the content as before). Corpses 5 of 20 (the recorded game)
+and 9 of 20 (T57's second game): 14 of 40 against 20 % (about 2 %); the threshold read again
+(0x4C113D, below 20) and the harness's bit right (bit 16): chance. Wagons 5 of 10 in the recorded
+game by its words (T57's entry says 7).
+
+**The re-read** (decision 131: "contradicted, A-23 is withdrawn and the reading re-read"):
+`place_object_tiles` gives an event's entrance tile its class (+0x1E 26) and word but clears +0xD
+bits 0x01 and 0x10 (`and word [tile + 0xC], 0xEEFF` at 0x505C78; `tile_refresh_around_heroes`
+0x505A10 leaves the tile so); `pathfinder_expand` hands the entered tile's +0xD bit 0x10 to the
+relax (0x4B2D12 to 0x4B2D22), which stores it as the node's stop flag (node +4 bit 1, 0x4B1EF1 to
+0x4B1F04); `pathfinder_run` asks `pathfinder_pass_through` only of a stop node (0x56BB7C), with the
+mouse's mode 0 (0x41955B's sixth argument). An event's tile is no stop, so the second reading's
+"no for class 26" is never asked, and nothing tests a colour: a path crosses any event.
+`event_fires_for` (0x4FCDC0) reads the class and the word, so an event fires mid-path at the step
+that enters it and the move ends there (§7.3). The second reading's error: "the tile carries the
+visitable bit", inferred from the removal, which clears it again. **A-23 withdrawn**: §8.5's blind
+way is the rule in every profile, no flag, no `ADV-QUIRK-22`, no leak for `docs/06-security.md`;
+no re-run (the other colour rests on the code, which tests none).
+
+- **Docs:** survey §0, §7.3, §8.5 (rewritten), §8.6, §9, §12 (ADV-MOV-011), §13, §14, §15 (new);
+  `docs/exe/map.toml` (0x4B1A70, 0x4FCDC0, 0x505B20, 0x56AB40, 0x56B440), `structs.toml`
+  (`map_item` +0xD); `E08-design.md` §12, §16, §17, §19, §20; the ADR-0016 draft (points 4, 6, the
+  consequences and alternatives); `docs/experiments/README.md`'s row (`cross-lane`); the lane's
+  `TRAPS.md` (a path row's targets must be explored); the AI lane's inbox (A-23 withdrawn: the
+  masks reveal nothing of events).
+- **The catalog:** observations for HER-EXP-001 (E7-4; `verified`), HER-CHG-002 (E7-1, E7-2;
+  `verified`), ADV-MOV-008 (E7-23's corridor). The new rules (survey §12) cite their rows when T60
+  to T63 write them (§15 lists them).
+- **For T59:** the drafts carry A-23's outcome (ADR-0016 point 4: `Reach` never reads events); the
+  mana ceiling and A-21's flag as design §17.

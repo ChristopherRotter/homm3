@@ -4,19 +4,35 @@ Pre-refined tasks of the adventure lane, in order, then the inbox of discovered 
 
 ## Tasks
 
-Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T51b (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 6 are closed (2026-10-12, -13, -20, -21, -23, -26; increment 6, army and hero management, by T53's audit). **Increment 7, rewards on the map**, refined with the user at T53 (ADV-Q26; decisions 121 to 123): T54 (the battle seam's facts) done; the survey and the ADR amendment drafts (T55a, T55b) done, each task's cut confirmed with the user at its start. T55a is cut in four (decision 125): all four done (survey `docs/rules/surveys/E08-rewards.md`; decisions 126 to 128 the cuts, its checkpoint ADV-Q28 decisions 129 to 136); T55b done (decision 137; its checkpoint ADV-Q29 decisions 138 to 141: the drafts accepted with typed answers, eight rounds with batch E7 first, design §19). T56 done (decision 142: whole, batch E7's maps and specs). Round 2: T57 done (decision 143: whole, the harness's reads, the recipes and the three runs); T58 below. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
+Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T51b (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 6 are closed (2026-10-12, -13, -20, -21, -23, -26; increment 6, army and hero management, by T53's audit). **Increment 7, rewards on the map**, refined with the user at T53 (ADV-Q26; decisions 121 to 123): T54 (the battle seam's facts) done; the survey and the ADR amendment drafts (T55a, T55b) done, each task's cut confirmed with the user at its start. T55a is cut in four (decision 125): all four done (survey `docs/rules/surveys/E08-rewards.md`; decisions 126 to 128 the cuts, its checkpoint ADV-Q28 decisions 129 to 136); T55b done (decision 137; its checkpoint ADV-Q29 decisions 138 to 141: the drafts accepted with typed answers, eight rounds with batch E7 first, design §19). T56 done (decision 142: whole, batch E7's maps and specs). Round 2: T57 done (decision 143: whole, the harness's reads, the recipes and the three runs), T58 done (decision 144: scored, A-23 withdrawn). Then T58b (decision 144) and round 3's T59 below. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
 
-### E08 T58 — Batch E7 scored
+### E08 T58b — `h3-map`'s view property: a hero shown untold (a random case)
 
-- **Scope** (design §18, "The scoring"): survey `E08-rewards.md` §15 (new), each row against §11's
-  and the specs' predictions; decision 131's outcome for A-23 (E7-23); a dispute a row
-  contradicts reverts to the other side (decision 129) or becomes an `ADV-Q`; the consensus rows'
-  sources `verified`; `docs/experiments/README.md`'s batch row evaluated.
-- **Depends on:** T57 (done: the filled results `experiments/results/E08-batch-7a.md`, `-7a-roe.md`, `-7b.md`; T57's log entry lists what the runs showed). **Status:** ready.
+- **Scope** (decision 144: next, in a session of its own, before T59): reproduce the inbox's
+  failure of 2026-10-27 (T57's scoped verify) with its seed: `tests::view::views_move_as_the_events_say`
+  failed once with `HeroView { id: HeroId(1), owner: PlayerId(1), pos: (6, 2, 0), own: None } shows
+  untold` (`crates/h3-map/src/tests/view.rs:645`: a hero in the viewer's view that no event told),
+  on an AB map of side 16, shrinking stopped at 192 iterations; the line `cc
+  debe5cd489e29f31c01d097ecafd76a3de07450f4057d498636e553468dfa27d` in
+  `crates/h3-map/proptest-regressions/tests/view.txt` reproduces it (not committed: it fails every
+  run until fixed). Decide whether the view leaks a hero (`docs/06-security.md`) or the test's
+  oracle misses a case; fix it and commit the seed with the fix. CI draws its own cases, so it may
+  fail there at random until then.
+- **Depends on:** nothing. **Status:** ready.
+
+### E08 T59 — Increment 7's shared part (`shared/`)
+
+- **Scope** (design §19, round 3; decision 139): a `shared/` pull request, merged before the
+  build: the three drafts `docs/lanes/adventure/adr-drafts/{0013,0016,0017}-increment-7.md`
+  applied to ADR-0013, -0016 and -0017 (with T58's outcome: A-23 withdrawn, `Reach` never reads
+  events), then the drafts deleted; the mana ceiling (design §1: `[hero_params]` `mana_ceiling`
+  999 in `h3-content`, `h3-pack` and the packs' `core.toml`; pack format and core ruleset hash,
+  design §17); A-21's flag (`ADV-QUIRK-21`, flag 37 if free; `faithful` 0xEFBF, `strict-fixed`
+  every skill but Leadership and Necromancy); `docs/03-domain.md`'s terms (reward record,
+  once-per-hero mark, knowledge, battle bonuses, event).
+- **Depends on:** T58 (done). **Status:** ready; its cut confirmed with the user at its start.
 
 ## Inbox
-
-- 2026-10-27 (T57's scoped verify, `--quick`, after merging `master`; **a failure found by a random case**, not by T57's change, which touches no crate): `h3-map`'s property `tests::view::views_move_as_the_events_say` failed once: `HeroView { id: HeroId(1), owner: PlayerId(1), pos: (6, 2, 0), own: None } shows untold` (`crates/h3-map/src/tests/view.rs:645`: a hero in the viewer's view that no event told), on an AB map of side 16; shrinking stopped at 192 iterations. The full scoped verify before it passed, and CI draws its own cases, so it may fail there at random. To reproduce, add the line `cc debe5cd489e29f31c01d097ecafd76a3de07450f4057d498636e553468dfa27d` to `crates/h3-map/proptest-regressions/tests/view.txt` (not committed: it would fail every run until fixed). Decide whether the view leaks a hero (`docs/06-security.md`) or the test's oracle misses a case; then fix and commit the seed with the fix.
 
 - 2026-10-23 (T42, measured; for a performance task): **a flyer's or water walker's reach costs
   about 1.9 times a walker's query** on the XL map (`reach-lifted-xl-144`: 279 k Ir a query
