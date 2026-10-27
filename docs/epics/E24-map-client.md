@@ -128,9 +128,8 @@ battle.
     viewer's keys too); a screen to rebind them comes with the options dialog.
   - **The edge scroll's zones** (MCL-Q6, the user, 2026-10-26): 16 pixels on every side, the
     original's 16, 14, 16 and 15 for the comparisons only (`--bugs original`).
-- **The queued M1 items:** R2-8 (the writer's edge bound, the inbox) waits for a task that
-  needs the writer; none planned, so T6 makes its one-line `cross-lane` pull request if no task
-  took it. A loaded saved game's draw lists: M4.
+- **The queued M1 items:** R2-8 (the writer's edge bound): no task needed the writer, so T6b1
+  made its one-line `cross-lane` pull request (#523). A loaded saved game's draw lists: M4.
 - **Tasks** (the queue has each in full): T1a1, the recording and the map standing still
   (**done** 2026-10-26: `h3map.py frames`, two idle sequences; `E24-log.md`, design §3), and
   T1a2, the scroll (T1a cut at its seam before it started, the user, 2026-10-26; **done**
@@ -165,7 +164,10 @@ battle.
   the user; design §3.7 corrected; MCL-Q11 answered), T6a2, the music player as the original's
   music thread (**done** 2026-10-27, whole: `play_music`, `music_thread` and `music_stop_fade`
   read; `h3_map_view::music` and the window's music on it, the five findings fixed; design §3.11;
-  MCL-Q12 asked), T6b, the closure.
+  MCL-Q12 asked), T6b, the closure, cut at its seam before it started (the user, 2026-10-27):
+  T6b1, the recordings again (**done** 2026-10-27: the 13 sequences, every line and all 450
+  frames exact, T6a's harness changes run; the 40 stills exact; R2-8 as #523), T6b2, the
+  closure with the user.
 - **Exit:** every recorded sequence as recorded, line by line and frame by frame (or each
   difference an `MCL-Q<n>`); a situation and a sequence play in the window at the original's
   frame times, with its sound, and render headless frame by frame.

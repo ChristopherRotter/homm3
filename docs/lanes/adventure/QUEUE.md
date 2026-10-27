@@ -23,6 +23,14 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
 
 ## Inbox
 
+- 2026-10-27 (the map client lane, E24 M2 T6b1, `map-client/e24-r2-8`, `cross-lane` with the
+  user's consent at E24 T0; for your information, nothing to do): **the writer's edge bound one
+  tighter** (E24 M1's reviewer, R2-8): `h3_map::writer::write_with` took an object anchored up to
+  `side + 7` columns and `side + 5` rows, where an 8-wide or 6-high template has no cell on the
+  map; now `side + 6` and `side + 4` (7 and 5 past the last column and row, as its doc comment
+  and `docs/formats/h3m.md` already said). `crates/h3-map/src/writer/extras.rs`, its tests moved
+  with it.
+
 - 2026-10-27 (E08 T62b2's census; **for the increment that builds boats**): 9 events of the shipped
   maps lie on water. The engine fires an event only for a hero that stands on its tile, so these
   fire once a hero in a boat can step onto them (the original's `hero_move_step` tests every tile a
