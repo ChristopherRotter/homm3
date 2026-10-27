@@ -1,4 +1,4 @@
-"""A run's lifecycle without torch (E06 T2a, T2b1; ADR-0026, `docs/epics/E06-design.md` §1 to
+"""A run's lifecycle without torch (E06 T2a, T2b1; ADR-0026, `docs/epics/E06-log.md` §1 to
 §5): the config file and `--set`, the schedule in samples, atomic writes, the held-out check,
 the run's directory and record, what a resume needs (its allowed changes, the segments' seeds,
 the metrics cut back, Ctrl+C), the league's bookkeeping (E06 T4a), and every committed record

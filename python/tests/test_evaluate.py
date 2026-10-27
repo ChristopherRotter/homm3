@@ -1,4 +1,4 @@
-"""The held-out sets v1 without torch (E06 T3a, `docs/epics/E06-design.md` §5; the neutral set,
+"""The held-out sets v1 without torch (E06 T3a, `docs/epics/E06-log.md` §5; the neutral set,
 T7c, §12): the report and neutral sets' episodes and rates, every held-out seed in the trainer's
 check, and the committed bots' tables."""
 

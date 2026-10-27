@@ -4,25 +4,11 @@ Pre-refined tasks of the AI lane, in order, then the inbox of discovered work. T
 
 ## Tasks
 
-**E05** (`docs/epics/E05-battle-env.md`) closed 2026-10-20 (record: `E05-log.md`; the environment as built: `docs/07-simulation-and-ai.md` §1.1). **E06** (`docs/epics/E06-battle-ai.md`, AI-Q8; design `E06-design.md`, record `E06-log.md`): increments 1 to 7 done by 2026-10-27; the battle AI v1 is `t7-1` (20 M samples, a third neutral): 0.828, 0.551, 0.528 against Random, Aggressor, Greedy at +0.273, +0.029, +0.010, the neutral set's value +0.245 (decision 7's targets as revised 2026-10-27, met), the system actor 0.374 (E25's target). The tasks' history is in `QUEUE-ARCHIVE.md`.
+**E05** (`docs/epics/E05-battle-env.md`) closed 2026-10-20 (record: `E05-log.md`; the environment as built: `docs/07-simulation-and-ai.md` §1.1). **E06** (`docs/epics/E06-battle-ai.md`, AI-Q8) closed 2026-10-27 (T1 to T9 in 8 increments; record `E06-log.md`, the design note kept there; the training pipeline as built: `docs/07-simulation-and-ai.md` §1.2): the battle AI v1 is `t7-1`, on the closing engine 0.830, 0.550, 0.530 against Random, Aggressor, Greedy at +0.273, +0.029, +0.010 and the neutral set's value +0.244 (decision 7's targets as revised, met), the system actor 0.628 against it (E25's target). The tasks' history is in `QUEUE-ARCHIVE.md`.
 
-**Increment 8, T9 the closure** (refined 2026-10-27; the epic file's task list, E05's T9 as the
-pattern). T9a, the audit, done 2026-10-27 (`E06-log.md`): exit criteria 1 to 5 met, E06's
-leftovers sorted into the inbox below.
-
-T9b, the review, done 2026-10-27 (`E06-log.md`): 14 findings verified, the fixable ones
-fixed; the user: T8c inconclusive (E25 measures again), the world's gaps to AI-STUB-1.
-
-- **T9c The verifies** (the user's machine, next; exit criterion 6 as amended 2026-10-27):
-  `cargo xtask verify --with-original-data` and `uv run --group train pytest` on Windows (Linux:
-  CI's full verify and the sandbox's Python tests, T9b), and `t7-1`'s final ladder again on
-  today's engine (T9a: it played the system actor's `POLICY_VERSION` 18, the bots' tables 19),
-  one PowerShell script once this pull request merged; the user uploads its summary, logs and the
-  two ladder files.
-- **T9d The closure:** `shared/e06-closure` first (BACKLOG E06 done and its E25 row and note:
-  T8c inconclusive; the env doc's training pipeline as built; ADR-0026's detail line; ADR-0025
-  point 12a: "one known gap" becomes AI-STUB-1's gaps, and the C ABI refuses a world of the side
-  not to move), the design note at closure, the epic file done.
+**Next:** no task queued. E25 (Battle AI v2; BACKLOG, a sketch) waits for its refinement with
+the user; E06's leftovers for it are the inbox's "For E25", the search's terminal by reward v1
+and T8c again first. The adventure env's typed answers wait for the adventure lane's T63.
 
 ## Inbox
 

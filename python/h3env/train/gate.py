@@ -1,4 +1,4 @@
-"""The evaluation gate (E06 T3b, `docs/epics/E06-design.md` §6; ADR-0026 point 6): a candidate
+"""The evaluation gate (E06 T3b, `docs/epics/E06-log.md` §6; ADR-0026 point 6): a candidate
 network against the current best on the gate set v1, promoted by a sequential test.
 
     uv run --group train python -m h3env.train.gate --candidate runs/b/best.pt --best runs/a/best.pt

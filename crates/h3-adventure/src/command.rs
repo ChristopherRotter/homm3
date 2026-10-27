@@ -179,6 +179,9 @@ pub struct AdventureOutcome {
     /// The University the visit opens (ADV-TCH-007, E08 T62a): the game opens it as the player's
     /// decision, its purchases made through `h3_heroes::university_slot` (GAM-DEC-006).
     pub university: Option<UniversityVisit>,
+    /// The steps of the move's path not taken (ADV-MOV-011, E08 T62b2): an event fired on the
+    /// tile of an earlier step and ended the move there; 0 for every other outcome.
+    pub dropped: usize,
 }
 
 /// What a visit gives its hero (ADR-0017 point 10, increment 7; E08 T62a): each change passes
@@ -627,6 +630,15 @@ pub enum AdventureEventKind {
         creature: CreatureTypeId,
         /// How many joined.
         count: u32,
+    },
+    /// An event fired for a hero that stepped onto its tile (ADV-OBJ-007, ADV-FOG-007; E08 T62b2):
+    /// the move ended there, and its guards' battle or its reward record follows. Seen by the
+    /// hero's owner alone: no other player is told of an event, nor sees one.
+    EventFired {
+        /// The hero.
+        hero: HeroId,
+        /// The event's tile, where the hero stands.
+        tile: Pos,
     },
     /// The word of a wandering monster's count that a viewer sees changed (ADV-FOG-006,
     /// ADV-MON-010; E08 T20b3b1): a battle it survived left it fewer creatures. Seen by the

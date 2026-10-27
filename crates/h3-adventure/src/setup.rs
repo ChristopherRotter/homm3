@@ -288,6 +288,21 @@ pub struct AdventureSetup {
     pub difficulty: u8,
     /// The scenario's bans, which only the build's draws read (GAM-SET-003, E08 T61b).
     pub bans: Bans,
+    /// Each player's seat, by player id (E08 T62b2): what an event's colours and computer flag
+    /// test (ADV-OBJ-007). The game gives its players' (`PlayerSetup`); one per player.
+    pub seats: Vec<Seat>,
+}
+
+/// A player's seat as an event tests it (ADV-OBJ-007, E08 T62b2): the game's player's colour and
+/// whether it counts as human (GAM-BAT-010, E08 T54).
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct Seat {
+    /// The colour in the original's order (0 red to 7 pink); an event fires for a colour below 8
+    /// only.
+    pub colour: u8,
+    /// Whether the player counts as human: one that does not fires an event only with the event's
+    /// computer flag.
+    pub human: bool,
 }
 
 /// The scenario's bans as the build's draws read them (GAM-SET-003, E08 T61b; design §9 of
@@ -392,6 +407,8 @@ pub enum SetupError {
     UnknownRiver(usize),
     /// No players, or more than the ruleset allows.
     Players(u8),
+    /// The seats do not give one per player (E08 T62b2); their number.
+    Seats(usize),
     /// The object at this index is anchored on a level the map does not have.
     ObjectLevel(usize),
     /// The object at this index has an object type the ruleset does not know.
@@ -454,6 +471,7 @@ impl fmt::Display for SetupError {
             Self::UnknownRoad(tile) => write!(f, "tile {tile} has an unknown road"),
             Self::UnknownRiver(tile) => write!(f, "tile {tile} has an unknown river"),
             Self::Players(n) => write!(f, "{n} players are outside the bounds"),
+            Self::Seats(n) => write!(f, "{n} seats do not give one per player"),
             Self::ObjectLevel(object) => {
                 write!(f, "object {object} is anchored on a missing level")
             }

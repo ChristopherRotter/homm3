@@ -350,3 +350,16 @@ A candidate becomes an entry here only once it is confirmed for SoD (by an exper
 - Defaults: fixed in every profile
 - Regression test: `crates/h3-adventure/src/state/tests/records.rs`, `every_box_holds_its_own_record`
 - Decided by / date: the user 2026-10-26 (ADV-Q28; decision 133); built and recorded by E08 T62b1
+
+### ADV-QUIRK-29 — An event on a guarded tile fires for a hero its guard beat
+- Class: exploit-fix (no flag: state-corrupting, fixed in every profile; `AGENTS.md`; A-26)
+- Context / rules affected: adventure, ADV-OBJ-007 (events), ADV-MOV-011 (the move), ADV-MON-006 (the guard's visit)
+- Original behavior: a step onto an event's tile that a monster guards flags the event (0x4811A3), lets the guard visit first (`after_step_guard_check` 0x48169D: the join or flight offers, or the battle with its levels) and then fires the event on the step's flag alone (`event_fire` at 0x481741), whatever the guard's visit ended in: a hero beaten by the guard, or that retreated, is already in the heroes' pool with owner −1 (0x4DA2B5) and still receives the event: its guards fight the pooled hero, or its record is granted to it, the resources added to "player −1", outside the player table (`give_resource` 0x4E3612) (survey `E08-rewards.md` §8.5, §9).
+- Intended/expected behavior: the guard visits first, then the event fires only for a hero still on its tile once the guard's visit is over (its offers answered, its battle and levels given), and stays otherwise (design §12). The wait across the guard's decisions is T63's rest (GAM-DEC-007): until then an event on a tile a monster guards does not fire at all (`ADV-STUB-10`).
+- Impact: state-corrupting (writes outside the player table, gives a pooled hero a record); reachable on any map with an event inside a guard's 3 × 3 block.
+- Community status: not documented (survey §7.6: neither VCMI's `CGEvent` nor the wiki speaks of an event on a guarded tile).
+- Sources: code reading (E08 T62b1's opening reading, survey §8.5).
+- Flag: none (always fixed)
+- Defaults: fixed in every profile
+- Regression test: `crates/h3-adventure/src/state/tests/events.rs`, `an_event_on_a_guarded_tile_does_not_fire_until_the_rest` (until T63; T63 adds the fire after a won guard's visit)
+- Decided by / date: the agent's classification at E08 T62b1's opening reading (state-corrupting: `AGENTS.md`), recorded in decision 151's cut; built and recorded by E08 T62b2
