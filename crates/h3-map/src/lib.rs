@@ -48,8 +48,9 @@ pub use parse::parse;
 /// puts in them (a placed artifact, a scroll's spell, a Shrine's spell, a Witch Hut's mask, a
 /// Scholar's gift, Pandora's Box's and an event's reward record and the event's flags), the
 /// guards of artifacts, scrolls, boxes and events, a monster's treasure artifact (a monster with
-/// one supported); a reward of more creature stacks than an army's slots unsupported (A-24).
-pub const MAP_IMPORT_VERSION: u32 = 12;
+/// one supported); a reward of more creature stacks than an army's slots unsupported (A-24). v13
+/// (E08 T61b): the map's banned spells and artifacts into the game's setup (GAM-SET-003).
+pub const MAP_IMPORT_VERSION: u32 = 13;
 
 /// Reads a map file as the game stores it (gzip-compressed) within `limits`.
 ///

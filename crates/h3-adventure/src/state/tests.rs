@@ -116,6 +116,7 @@ fn setup() -> AdventureSetup {
             hero(1, 0, Pos::new(0, 0, 0)),
         ],
         difficulty: 0,
+        bans: crate::Bans::default(),
     }
 }
 

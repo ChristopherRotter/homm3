@@ -75,7 +75,7 @@ pub use ruleset::{
     TerrainWalkerDef, Turn, TurnDef, Visit,
 };
 pub use setup::{
-    AdventureSetup, ArmyError, EventSetup, Guards, HeroSetup, Holds, MapSetup, MonsterSetup,
+    AdventureSetup, ArmyError, Bans, EventSetup, Guards, HeroSetup, Holds, MapSetup, MonsterSetup,
     ObjectSetup, Pos, RewardRecord, Scenery, SetupError, StandError, TileMask, TileSetup,
 };
 pub use split::{TileRand, split};

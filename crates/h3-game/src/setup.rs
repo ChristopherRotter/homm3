@@ -7,10 +7,10 @@ use alloc::vec;
 use alloc::vec::Vec;
 use core::fmt;
 
-use h3_adventure::{AdventureSetup, HeroSetup, MapSetup, Pos, SetupError};
+use h3_adventure::{AdventureSetup, Bans, HeroSetup, MapSetup, Pos, SetupError};
 use h3_content::{
-    CreatureTypeId, Formation, HeroEffect, HeroType, HeroTypeId, Ruleset, SkillId, SpellId,
-    StartingStack,
+    ArtifactTypeId, CreatureTypeId, Formation, HeroEffect, HeroType, HeroTypeId, Ruleset, SkillId,
+    SpellId, StartingStack,
 };
 use h3_contracts::{ArmyStack, HeroId, HeroSex, PlayerId};
 use h3_heroes::{ArtifactInstance, DetailsError, HeroDetails, OfferLevels};
@@ -116,6 +116,14 @@ pub struct GameSetup {
     /// The secondary skills the scenario bans (HER-LVL-003; the map's set, SoD): no level offers
     /// them. Each must be the ruleset's; their order and repeats do not matter. E08 T29.
     pub banned_skills: Vec<SkillId>,
+    /// The spells the scenario bans (GAM-SET-003; the map's set, SoD): no draw when the game is
+    /// built gives them (a Shrine's, a Scholar's, the Pyramid's). Each must be the ruleset's; their
+    /// order and repeats do not matter. E08 T61b.
+    pub banned_spells: Vec<SpellId>,
+    /// The artifacts the scenario bans (GAM-SET-003; the map's set, AB and SoD): no draw when the
+    /// game is built gives them (a random artifact's, a chest's, a find's). Each must be the
+    /// ruleset's; their order and repeats do not matter. E08 T61b.
+    pub banned_artifacts: Vec<ArtifactTypeId>,
 }
 
 /// Why a [`GameSetup`] cannot start a game.
@@ -139,6 +147,10 @@ pub enum GameSetupError {
     Hero(HeroId, DetailsError),
     /// A banned skill is not the ruleset's (E08 T29).
     BannedSkill(SkillId),
+    /// A banned spell is not the ruleset's (E08 T61b).
+    BannedSpell(SpellId),
+    /// A banned artifact is not the ruleset's (E08 T61b).
+    BannedArtifact(ArtifactTypeId),
     /// The adventure context rejects its part.
     Adventure(SetupError),
 }
@@ -164,6 +176,12 @@ impl fmt::Display for GameSetupError {
             Self::BannedSkill(skill) => {
                 write!(f, "banned skill {} is not the ruleset's", skill.raw())
             }
+            Self::BannedSpell(spell) => {
+                write!(f, "banned spell {} is not the ruleset's", spell.raw())
+            }
+            Self::BannedArtifact(artifact) => {
+                write!(f, "banned artifact {} is not the ruleset's", artifact.raw())
+            }
             Self::Adventure(error) => write!(f, "adventure: {error}"),
         }
     }
@@ -173,7 +191,8 @@ impl core::error::Error for GameSetupError {}
 
 impl GameSetup {
     /// Checks the setup: the game's part (a difficulty the ruleset has, players in colour order
-    /// within the ruleset's players, banned skills of the ruleset (E08 T29), known hero types,
+    /// within the ruleset's players, banned skills, then spells and artifacts of the ruleset (E08
+    /// T29, T61b), known hero types,
     /// starting armies that can be drawn, the heroes' details by the hero model, E08 T18b), then
     /// the adventure context's part with its own checks. It builds the game as
     /// [`GameState::new`] does: whether a setup is valid does not depend on the seed, since every
@@ -217,6 +236,21 @@ impl GameSetup {
             .find(|&&skill| rules.core().skill(skill).is_none())
         {
             return Err(GameSetupError::BannedSkill(skill));
+        }
+        // rule: GAM-SET-003
+        if let Some(&spell) = self
+            .banned_spells
+            .iter()
+            .find(|&&spell| rules.core().spell(spell).is_none())
+        {
+            return Err(GameSetupError::BannedSpell(spell));
+        }
+        if let Some(&artifact) = self
+            .banned_artifacts
+            .iter()
+            .find(|&&artifact| rules.core().artifact(artifact).is_none())
+        {
+            return Err(GameSetupError::BannedArtifact(artifact));
         }
         if self.heroes.len() > usize::from(u16::MAX) + 1 {
             return Err(GameSetupError::Heroes(self.heroes.len()));
@@ -263,6 +297,11 @@ impl GameSetup {
             map: self.map.clone(),
             heroes,
             difficulty: self.difficulty,
+            bans: Bans {
+                skills: self.banned_skills.clone(),
+                spells: self.banned_spells.clone(),
+                artifacts: self.banned_artifacts.clone(),
+            },
         };
         Ok((setup, details))
     }
@@ -294,7 +333,7 @@ fn hero_details(
                 .artifacts()
                 .iter()
                 .position(|a| a.effects.contains(&HeroEffect::SpellBook))
-                .and_then(h3_content::ArtifactTypeId::from_index)
+                .and_then(ArtifactTypeId::from_index)
                 .filter(|_| hero_type.spell_book);
             let book: Vec<ArtifactInstance> = book.into_iter().map(Into::into).collect();
             (h3_heroes::wearing(core, &book), Vec::new())
@@ -335,7 +374,7 @@ fn hero_details(
             .artifacts()
             .iter()
             .position(|a| a.war_machine == Some(machine))
-            .and_then(h3_content::ArtifactTypeId::from_index);
+            .and_then(ArtifactTypeId::from_index);
         let at = artifact.and_then(|id| {
             h3_heroes::first_position(&details, core, id).map(|at| (at, ArtifactInstance::from(id)))
         });

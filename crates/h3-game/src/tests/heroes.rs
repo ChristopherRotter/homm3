@@ -170,9 +170,7 @@ fn the_store_is_in_the_hash_and_shared_by_forks() {
             h.details.artifacts = Some(HeroArtifactsSetup {
                 // The book on its position 0 of four.
                 worn: vec![
-                    Some(ArtifactInstance::from(
-                        h3_content::ArtifactTypeId::from_raw(0),
-                    )),
+                    Some(ArtifactInstance::from(ArtifactTypeId::from_raw(0))),
                     None,
                     None,
                     None,
@@ -183,21 +181,19 @@ fn the_store_is_in_the_hash_and_shared_by_forks() {
         |h| {
             h.details.artifacts = Some(HeroArtifactsSetup {
                 worn: vec![None; 4],
-                backpack: vec![ArtifactInstance::from(
-                    h3_content::ArtifactTypeId::from_raw(2),
-                )],
+                backpack: vec![ArtifactInstance::from(ArtifactTypeId::from_raw(2))],
             });
         },
         |h| {
             h.details.artifacts = Some(HeroArtifactsSetup {
                 worn: vec![None; 4],
                 backpack: vec![ArtifactInstance::scroll(
-                    h3_content::ArtifactTypeId::from_raw(3),
-                    h3_content::SpellId::from_raw(0),
+                    ArtifactTypeId::from_raw(3),
+                    SpellId::from_raw(0),
                 )],
             });
         },
-        |h| h.details.spells = Some(vec![h3_content::SpellId::from_raw(0)]),
+        |h| h.details.spells = Some(vec![SpellId::from_raw(0)]),
         |h| h.hero_type = SAGE,
         |h| h.formation = Formation::Tight,
     ];
