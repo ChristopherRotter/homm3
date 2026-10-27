@@ -17,7 +17,7 @@ use h3_protocol::session::Bot as _;
 use h3_protocol::wire::{Command, Observation, Side};
 use h3_render::Bugs;
 use h3_view::layout::{BattleLayout, parse_battle};
-use h3_view::mouse::{self, DEFEND, Facing, Field, Spot, WAIT};
+use h3_view::mouse::{self, DEFEND, Facing, Field, WAIT};
 
 /// The client workspace.
 fn clients() -> PathBuf {
@@ -47,45 +47,6 @@ fn scenarios() -> Vec<PathBuf> {
     out
 }
 
-/// A point of `hex` in each of its twelve slots, outside the siege's rectangles where the slot
-/// has one there.
-fn slot_points(layout: &BattleLayout, hex: u8) -> Vec<[i32; 2]> {
-    let [left, top] = layout.hex_box(hex / 17, hex % 17);
-    let [w, h] = layout.hex_step;
-    let within =
-        |[l, t, r, b]: [i32; 4], [x, y]: [i32; 2]| (l..=r).contains(&x) && (t..=b).contains(&y);
-    let free = |p: [i32; 2]| !within(layout.mouse.keep, p) && !within(layout.mouse.tower, p);
-    let inside: Vec<[i32; 2]> = (top - h..top + 2 * h)
-        .flat_map(|y| (left..left + w).map(move |x| [x, y]))
-        .filter(|&p| mouse::spot(layout, p, false) == Spot::Hex(hex))
-        .collect();
-    (0..12)
-        .filter_map(|s| {
-            let in_slot = |p: &&[i32; 2]| mouse::slot(layout, **p, hex) == s;
-            let mut all = inside.iter().filter(in_slot);
-            let first = all.clone().next().copied();
-            all.find(|p| free(**p)).copied().or(first)
-        })
-        .collect()
-}
-
-/// Each hex's centre (the harness's point) and its slots' points.
-fn points(layout: &BattleLayout) -> Vec<([i32; 2], Vec<[i32; 2]>)> {
-    (0..187u8)
-        .map(|hex| {
-            (
-                crate::pointer::hex_point(layout, hex),
-                slot_points(layout, hex),
-            )
-        })
-        .collect()
-}
-
-/// A rectangle's centre.
-fn middle([l, t, r, b]: [i32; 4]) -> [i32; 2] {
-    [(l + r) / 2, (t + b) / 2]
-}
-
 /// The commands the presses give in `field` ([`points`], the rectangles, the two buttons).
 fn pressed(
     layout: &BattleLayout,
@@ -108,7 +69,7 @@ fn pressed(
         take(c);
     }
     for rect in [layout.mouse.keep, layout.mouse.tower] {
-        take(mouse::click(field, layout, middle(rect)));
+        take(mouse::click(field, layout, crate::pointer::middle(rect)));
     }
     for id in [WAIT, DEFEND] {
         take(mouse::button(field.legal, id));
@@ -231,7 +192,7 @@ fn presses_give_exactly_the_engine_s_legal_commands() {
         parse_battle(&fs::read_to_string(clients().join("layouts/battle.toml")).unwrap()).unwrap();
     let mut with = With {
         tables: crate::assets::load(&clients().join("assets"), crate::assets::ALL).unwrap(),
-        hexes: points(&layout),
+        hexes: crate::pointer::press_points(&layout),
         layout,
         rulesets: BTreeMap::new(),
     };

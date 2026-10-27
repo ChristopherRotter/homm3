@@ -285,7 +285,7 @@ fn the_moat_that_kills_a_walker_ends_its_walk() {
     let moat = Event::MoatDamage {
         stack: 0,
         hex: 77,
-        damage: h3_protocol::wire::WireU64(500),
+        damage: WireU64(500),
         kills: 40,
     };
     let walked = vec![
@@ -341,7 +341,7 @@ fn the_moat_that_kills_a_walker_ends_its_walk() {
     lived[1] = Event::MoatDamage {
         stack: 0,
         hex: 77,
-        damage: h3_protocol::wire::WireU64(70),
+        damage: WireU64(70),
         kills: 1,
     };
     let t = play_siege(&o, &[(Some(0), lived)], Bugs::Original, Some(&castle()));
@@ -375,7 +375,7 @@ fn the_moat_sequence_plays_as_recorded() {
     let moat = |kills| Event::MoatDamage {
         stack: 0,
         hex: 77,
-        damage: h3_protocol::wire::WireU64(70),
+        damage: WireU64(70),
         kills,
     };
     let mut walked: Vec<Event> = [86, 69, 70, 71, 72, 73, 74, 75, 76]
@@ -529,9 +529,9 @@ fn over_the_mine() -> Vec<Event> {
         },
         Event::SpellDamage {
             target: 0,
-            value: h3_protocol::wire::WireU64(150),
-            caster: h3_protocol::wire::WireU64(150),
-            damage: h3_protocol::wire::WireU64(150),
+            value: WireU64(150),
+            caster: WireU64(150),
+            damage: WireU64(150),
             kills: 0,
         },
         Event::ObstacleRemoved {
@@ -591,14 +591,13 @@ fn the_mine_sequence_plays_as_recorded() {
     assert!(at(Sound::Move, false).contains(&11331));
 }
 
+/// A command at a time with its events, each seen by the side given (none: both).
+type Seen = (u32, Vec<Event>, Vec<Option<Side>>);
+
 /// The mine siege grown with `commands`, each with the sides that alone see its events (E17 M5
 /// T2b), every side's player human or not by `humans`; its snapshot's hidden mine at 61 (the
 /// defender's, none seeing it but its side) if `laid`.
-fn grow_seen(
-    humans: [bool; 2],
-    laid: bool,
-    commands: &[(u32, Vec<Event>, Vec<Option<Side>>)],
-) -> Timeline {
+fn grow_seen(humans: [bool; 2], laid: bool, commands: &[Seen]) -> Timeline {
     let mut o = mine_siege();
     for (side, human) in o.sides.iter_mut().zip(humans) {
         side.human = human;
@@ -797,7 +796,7 @@ fn every_event_a_hex_entered_brings_is_played() {
     walked.push(Event::MoatDamage {
         stack: 0,
         hex: 61,
-        damage: h3_protocol::wire::WireU64(70),
+        damage: WireU64(70),
         kills: 0,
     });
     walked.extend(turn);

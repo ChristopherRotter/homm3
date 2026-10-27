@@ -76,6 +76,7 @@ impl Options {
                 install: install
                     .or(env)
                     .unwrap_or_else(|| clients.join("../original-data/install")),
+                humans: [false; 2],
             },
             out,
             png,

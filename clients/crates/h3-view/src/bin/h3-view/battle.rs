@@ -26,6 +26,7 @@ use h3_view::compose::compose;
 use h3_view::hero::Heroes;
 use h3_view::layout::{self, BattleLayout};
 use h3_view::mouse::track::{Input, Shown};
+use h3_view::mouse::{self, Field};
 use h3_view::record::{self, Record};
 use h3_view::scene::Panels;
 use h3_view::scene::{self, Draw, Moment};
@@ -49,6 +50,10 @@ pub struct Source {
     pub packs: PathBuf,
     /// The installation copy whose archives are read.
     pub install: PathBuf,
+    /// The sides a human plays here, a scenario's (E17 M5 T2b): their players are the battle's
+    /// human ones, the others the computer's (the bot's); none, the scenario's own and the bot
+    /// plays both.
+    pub humans: [bool; 2],
 }
 
 impl Source {
@@ -63,6 +68,15 @@ impl Source {
             .file_stem()
             .map_or_else(|| "battle".into(), |s| s.to_string_lossy().into_owned())
     }
+}
+
+/// Where a press gives a command (E17 M5 T2b).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Press {
+    /// A left press at a point of the battlefield.
+    At([i32; 2]),
+    /// A click of the panel's button.
+    Button(u16),
 }
 
 /// What a battle is drawn from, read once (E17 M5 T1b): the battle grows over it.
@@ -94,6 +108,8 @@ pub struct Ground {
     speed: Speed,
     /// A scenario's battle: its ruleset, setup and seed (none: a record file's).
     fight: Option<(BattleRuleset, BattleSetup, u64)>,
+    /// The sides a human plays here ([`Source::humans`]).
+    humans: [bool; 2],
 }
 
 impl Ground {
@@ -101,10 +117,19 @@ impl Ground {
     /// (its battle is fought as it is played: every magic animation and spell read for it, as its
     /// events are not known yet).
     pub fn load(source: &Source) -> Result<Self, String> {
+        let humans = source.humans;
+        if humans.contains(&true) && !source.scenario() {
+            return Err("a human plays a scenario's battle, not a record's".into());
+        }
         let (record, fight) = if source.scenario() {
-            let (ruleset, setup) =
+            let (ruleset, mut setup) =
                 crate::scenario::battle(&source.input, &source.packs, source.seed)?;
-            let opening = Live::new(&ruleset, setup.clone(), source.seed)?.record()?;
+            // The sides a human plays here are the battle's human players, the bot's the
+            // computer's (E17 M5 T2b, *provisional*).
+            if humans.contains(&true) {
+                setup.human = humans;
+            }
+            let opening = Live::new(&ruleset, setup.clone(), source.seed, humans)?.record()?;
             let record = record::parse(&opening).map_err(|e| e.to_string())?;
             (record, Some((ruleset, setup, source.seed)))
         } else {
@@ -167,15 +192,18 @@ impl Ground {
             seed,
             speed: source.speed,
             fight,
+            humans,
         })
     }
 }
 
-/// The battle's timeline as it is played: growing, or finished once the battle is over or the
-/// record ends.
+/// The battle's timeline as it is played: growing, waiting at its end for a human's command
+/// (E17 M5 T2b: the timeline shown then, [`Growing::waiting`]), or finished once the battle is
+/// over or the record ends.
 #[derive(Debug)]
 enum Played<'g> {
     Growing(Box<Growing<'g>>),
+    Waiting(Box<Growing<'g>>, Box<Timeline>),
     Finished(Box<Timeline>),
 }
 
@@ -183,7 +211,7 @@ impl Played<'_> {
     fn timeline(&self) -> &Timeline {
         match self {
             Self::Growing(g) => g.timeline(),
-            Self::Finished(t) => t,
+            Self::Waiting(_, t) | Self::Finished(t) => t,
         }
     }
 }
@@ -228,6 +256,18 @@ impl<'g> Battle<'g> {
             .record
             .first_snapshot()
             .ok_or("the record holds no snapshot")?;
+        let fight = match &ground.fight {
+            Some((ruleset, setup, seed)) => {
+                Some(Live::new(ruleset, setup.clone(), *seed, ground.humans)?)
+            }
+            None => None,
+        };
+        // A battle a human plays here grows from every side's events: the screen shows the side
+        // to act's hidden objects (E17 M5 T2b), the snapshot's among them.
+        let mut opening = snapshot.clone();
+        if let Some(fight) = fight.as_ref().filter(|f| f.human()) {
+            opening.spell_obstacles = fight.obstacles();
+        }
         let stage = motion::stage(
             &ground.record,
             &ground.tables,
@@ -235,7 +275,7 @@ impl<'g> Battle<'g> {
             (&ground.magic, &ground.casts, ground.siege.as_ref()),
         );
         let mut growing = Growing::new(
-            snapshot,
+            &opening,
             &ground.looks,
             stage,
             ground.speed,
@@ -245,17 +285,19 @@ impl<'g> Battle<'g> {
         .with_heroes(ground.heroes.clone());
         let mut live = None;
         let mut turned = Vec::new();
-        let played = match &ground.fight {
-            Some((ruleset, setup, seed)) => {
-                let fight = Live::new(ruleset, setup.clone(), *seed)?;
+        let played = match fight {
+            Some(fight) => {
                 turned.extend(fight.turn());
-                let over = fight.over();
-                live = Some(fight);
-                if over {
+                let played = if fight.over() {
                     Played::Finished(Box::new(growing.finish()))
+                } else if fight.waiting() {
+                    let tail = Box::new(growing.waiting());
+                    Played::Waiting(Box::new(growing), tail)
                 } else {
                     Played::Growing(Box::new(growing))
-                }
+                };
+                live = Some(fight);
+                played
             }
             None => {
                 // A record's commands, each the computer's when it has no time.
@@ -268,7 +310,7 @@ impl<'g> Battle<'g> {
             }
         };
         let commands = match &played {
-            Played::Growing(_) => 0,
+            Played::Growing(_) | Played::Waiting(..) => 0,
             Played::Finished(_) => anim::commands(&ground.record.messages).len(),
         };
         let head = Playhead::new(played.timeline());
@@ -299,9 +341,16 @@ impl<'g> Battle<'g> {
             .unwrap_or_else(|| self.played.timeline())
     }
 
-    /// Whether commands are still to come (a battle being fought, not over yet).
+    /// Whether the bot's commands are still to come (a battle being fought, not over yet, not
+    /// waiting for a human's command).
     pub fn playing(&self) -> bool {
         matches!(self.played, Played::Growing(_))
+    }
+
+    /// Whether the battle waits at its end for a human's command (E17 M5 T2b): its timeline
+    /// idles on, the press giving the command ([`Battle::command`]).
+    pub fn waiting(&self) -> bool {
+        matches!(self.played, Played::Waiting(..))
     }
 
     /// The commands played.
@@ -338,28 +387,80 @@ impl<'g> Battle<'g> {
         Ok(true)
     }
 
-    /// The next command: the bot's, sent from its seat; what the spectator was sent for it joins
-    /// the record, its events the timeline (the computer's next unless the battle is over), the
-    /// battle at the turn after it the mouse's. Over, the timeline is finished.
+    /// The next command: the bot's, sent from its seat ([`Battle::take`]); none while the
+    /// battle waits for a human's.
     fn play_next(&mut self) -> Result<(), String> {
+        let (Some(live), Played::Growing(_)) = (self.live.as_mut(), &self.played) else {
+            return Ok(());
+        };
+        match live.next()? {
+            Some(played) => self.take(None, played),
+            None => Ok(()),
+        }
+    }
+
+    /// A human's `command`, pressed at `at` while the battle waits for it (E17 M5 T2b): sent
+    /// from the side to act's seat, the session validating it, its action starting at `at` or at
+    /// the timeline's end if later; whether the battle took it (none waits: nothing).
+    pub fn command(&mut self, at: u32, command: Command) -> Result<bool, String> {
+        let (Some(live), Played::Waiting(..)) = (self.live.as_mut(), &self.played) else {
+            return Ok(false);
+        };
+        let played = live.play(command)?;
+        let placeholder = Played::Finished(Box::default());
+        if let Played::Waiting(growing, _) = std::mem::replace(&mut self.played, placeholder) {
+            let at = at.max(growing.timeline().end);
+            self.played = Played::Growing(growing);
+            self.take(Some(at), played)?;
+        }
+        // The timeline shown was the one waiting: a playhead afresh.
+        self.head = Playhead::new(self.timeline());
+        self.follow()?;
+        Ok(true)
+    }
+
+    /// A command `played` at `at` (none: the computer's, as soon as the last one ended): what
+    /// the spectator was sent for it joins the record, its events the timeline (every side's when
+    /// a human plays here), the battle at the turn after it the mouse's; the next command the
+    /// computer's unless the battle is over or a human's comes next. Over, the timeline is
+    /// finished; a human's next, it waits.
+    fn take(&mut self, at: Option<u32>, played: crate::live::Played) -> Result<(), String> {
         let (Some(live), Played::Growing(growing)) = (self.live.as_mut(), &mut self.played) else {
             return Ok(());
         };
-        let messages = live.next()?.unwrap_or_default();
-        let over = live.over();
+        let (over, waiting) = (live.over(), live.waiting());
+        let computer = !over && !waiting;
         let first = self.record.messages.len();
-        self.record.messages.extend(messages);
-        for message in &self.record.messages[first..] {
-            if let ServerMessage::Events { events, .. } = message {
-                growing.push(&anim::Command { at: None, events }, !over);
-                self.commands += 1;
+        self.record.messages.extend(played.messages);
+        if live.human() {
+            let (events, seen): (Vec<_>, Vec<_>) = played.events.into_iter().unzip();
+            growing.push_seen(
+                &anim::Command {
+                    at,
+                    events: &events,
+                },
+                computer,
+                &seen,
+            );
+            self.commands += 1;
+        } else {
+            for message in &self.record.messages[first..] {
+                if let ServerMessage::Events { events, .. } = message {
+                    growing.push(&anim::Command { at, events }, computer);
+                    self.commands += 1;
+                }
             }
         }
         self.turned.extend(live.turn());
-        if over {
+        if over || waiting {
             let placeholder = Played::Finished(Box::default());
             if let Played::Growing(growing) = std::mem::replace(&mut self.played, placeholder) {
-                self.played = Played::Finished(Box::new(growing.finish()));
+                self.played = if over {
+                    Played::Finished(Box::new(growing.finish()))
+                } else {
+                    let tail = Box::new(growing.waiting());
+                    Played::Waiting(growing, tail)
+                };
             }
         }
         Ok(())
@@ -509,6 +610,96 @@ impl<'g> Battle<'g> {
             list = vec![scene::shaken(list, steps, layout)];
         }
         Ok(list)
+    }
+
+    /// The command a left press at `point` gives at `at` (E17 M5 T2b; `h3_view::mouse::click`,
+    /// design §9.11), by the battle the waiting turn asks.
+    pub fn press(&self, at: u32, point: [i32; 2]) -> Option<Command> {
+        self.taken(at, |field| mouse::click(field, &self.ground.layout, point))
+    }
+
+    /// The command the panel's button `id` gives when clicked at `at` (E17 M5 T2b;
+    /// `h3_view::mouse::button`): Wait and Defend when listed.
+    pub fn button(&self, at: u32, id: u16) -> Option<Command> {
+        self.taken(at, |field| mouse::button(field.legal, id))
+    }
+
+    /// Where a press at `at` gives `wanted` (E17 M5 T2b: the window's unattended presses): the
+    /// panel's Wait or Defend, else a point of `points` ([`crate::pointer::press_points`]) or the
+    /// siege's rectangles; none if none gives it (a hero's cast, the tactics phase's end: M5 T3,
+    /// T4; CLT-Q25's step back) or the battle takes no press then.
+    pub fn press_for(
+        &self,
+        at: u32,
+        wanted: Command,
+        points: &[([i32; 2], Vec<[i32; 2]>)],
+    ) -> Option<Press> {
+        let layout = &self.ground.layout;
+        let rects = [layout.mouse.keep, layout.mouse.tower].map(crate::pointer::middle);
+        self.taken(at, |field| {
+            let button = [mouse::WAIT, mouse::DEFEND]
+                .into_iter()
+                .find(|&id| mouse::button(field.legal, id) == Some(wanted));
+            if let Some(id) = button {
+                return Some(Press::Button(id));
+            }
+            points
+                .iter()
+                .flat_map(|(centre, slots)| std::iter::once(centre).chain(slots))
+                .chain(&rects)
+                .copied()
+                .find(|&p| mouse::click(field, layout, p) == Some(wanted))
+                .map(Press::At)
+        })
+    }
+
+    /// The bot's choice for the side to act (E17 M5 T2b: what the window's unattended run
+    /// presses for a human); none for a record or once the battle is over.
+    pub fn choice(&mut self) -> Option<Command> {
+        self.live.as_mut()?.choice()
+    }
+
+    /// Whether the fought battle's record so far is the start of the battle the bot fights at
+    /// once with the same setup (E17 M5 T2b: a battle pressed by the bot's choices); none for a
+    /// record.
+    pub fn as_the_bot_fights(&mut self) -> Option<Result<bool, String>> {
+        let (ruleset, setup, seed) = self.ground.fight.as_ref()?;
+        let mut check = || {
+            let bot = crate::live::bot_record(ruleset, setup.clone(), *seed)?;
+            let bot = record::parse(&bot).map_err(|e| e.to_string())?;
+            let ours = self.live.as_mut().ok_or("no battle")?.record()?;
+            let ours = record::parse(&ours).map_err(|e| e.to_string())?;
+            Ok(bot.header == ours.header && bot.messages.starts_with(&ours.messages))
+        };
+        Some(check())
+    }
+
+    /// Whether the battle takes the mouse's presses and the keys at `at` (E17 M5 T2b, design
+    /// §9.11): a record's always (the viewer's scrolls and buttons); a battle fought here only
+    /// while it waits for a human's command and its last action played (input made before is
+    /// dropped as the turn starts).
+    pub fn takes(&self, at: u32) -> bool {
+        self.live.is_none() || (self.waiting() && at >= self.played.timeline().end)
+    }
+
+    /// What `give` gives in the battle of the turn waiting at `at`: none unless the battle
+    /// waits for a human's command and its last action played (the timeline's end reached; a
+    /// press made before is dropped as the turn starts, design §9.11).
+    fn taken<T>(&self, at: u32, give: impl Fn(&Field<'_>) -> Option<T>) -> Option<T> {
+        if self.live.is_none() || !self.takes(at) {
+            return None;
+        }
+        let (observation, commands) = self.turned.last()?;
+        let tables = &self.ground.tables;
+        let manifest = &self.record.header.manifest;
+        let legal = crate::pointer::legal(manifest, tables, observation, commands);
+        let facing = crate::pointer::facing(self.timeline(), at);
+        give(&Field {
+            observation,
+            legal: &legal,
+            facing: &facing,
+            bugs: Bugs::Fixed,
+        })
     }
 
     /// Whether the log's scroll buttons take a click at `t` (E17 M3 T9b, the reviewer).
