@@ -176,6 +176,7 @@ fn a_page_holds_twelve_places_a_school_s_first_its_emblem() {
     assert_eq!(page.places[0].as_ref().unwrap().handle, 10);
     assert_eq!(page.places[3].as_ref().unwrap().handle, 13);
     assert!(page.places[4].is_none() && !page.next);
+    assert!(place_of(&page, 3).is_some() && place_of(&page, 12).is_none());
 }
 
 #[test]
