@@ -22,7 +22,7 @@ use std::process::ExitCode;
 
 use std::sync::Arc;
 
-use h3_adventure::{MapSetup, ObjectKind, land_table_points};
+use h3_adventure::{Holds, MapSetup, ObjectKind, land_table_points};
 use h3_game::{DEFAULT_DIFFICULTY, GameRuleset, GameSetup, GameState, PlayerSetup};
 use h3_map::model::{Artifacts, Body, Player, RawMap, SeerTask, Text, Version};
 use h3_map::{ImportError, Limits, gunzip, import, import_map};
@@ -389,6 +389,7 @@ fn census(
         add(ask, usize::from(guards.question));
         add(two, usize::from(guards.army.len() > 1));
     }
+    events(setup, rules, &mut add);
     let mut lying = BTreeMap::<(u16, u16, u8), usize>::new();
     for object in setup.objects.iter().filter(|o| o.drawn.bits() != 0) {
         add("special grounds", 1);
@@ -407,6 +408,95 @@ fn census(
     }
     add(
         "tiles two or more special grounds lie on",
+        lying.values().filter(|&&n| n > 1).count(),
+    );
+}
+
+/// Counts the events (E08 T62b2, ADV-OBJ-007): how many, those that fire for a computer, those
+/// removed after they fire, those whose template has other than one visitable tile, and the
+/// tiles they lie on that are another object's visitable or blocked tile, another event's, water,
+/// or within one step of a monster's visitable tile on its level (a guard may stand there).
+fn events(setup: &MapSetup, rules: &GameRuleset, add: &mut impl FnMut(&'static str, usize)) {
+    let part = rules.adventure();
+    let kind = |o: &h3_adventure::ObjectSetup| {
+        o.object_type
+            .and_then(|id| part.object_type(id))
+            .map(|ty| &ty.kind)
+    };
+    let tiles = |o: &h3_adventure::ObjectSetup, mask: h3_adventure::TileMask| {
+        let anchor = o.anchor;
+        mask.offsets()
+            .filter_map(move |(column, row)| {
+                let x = anchor.x.checked_sub(u16::from(column))?;
+                let y = anchor.y.checked_sub(u16::from(row))?;
+                Some((anchor.level, y, x))
+            })
+            .collect::<Vec<_>>()
+    };
+    let is_event = |o: &h3_adventure::ObjectSetup| matches!(kind(o), Some(ObjectKind::Event));
+    let mut visited = BTreeMap::<(u8, u16, u16), usize>::new();
+    let mut blocked = BTreeMap::<(u8, u16, u16), usize>::new();
+    let mut monsters = Vec::new();
+    for o in &setup.objects {
+        for at in tiles(o, o.blocked) {
+            *blocked.entry(at).or_default() += 1;
+        }
+        if !is_event(o) {
+            for at in tiles(o, o.visitable) {
+                *visited.entry(at).or_default() += 1;
+                if o.monster.is_some() {
+                    monsters.push(at);
+                }
+            }
+        }
+    }
+    let mut lying = BTreeMap::<(u8, u16, u16), usize>::new();
+    for o in setup.objects.iter().filter(|o| is_event(o)) {
+        let Holds::Event(event) = &o.holds else {
+            continue;
+        };
+        add("events", 1);
+        add(
+            "events that fire for a computer",
+            usize::from(event.computer),
+        );
+        add("events removed after they fire", usize::from(event.remove));
+        add("events with guards", usize::from(o.guards.is_some()));
+        let on = tiles(o, o.visitable);
+        add(
+            "events with other than one visitable tile",
+            usize::from(on.len() != 1),
+        );
+        for at in on {
+            *lying.entry(at).or_default() += 1;
+            add(
+                "events on another object's visitable tile",
+                usize::from(visited.contains_key(&at)),
+            );
+            add(
+                "events on an object's blocked tile",
+                usize::from(blocked.contains_key(&at)),
+            );
+            let (level, y, x) = at;
+            let side = setup.width;
+            let index = (usize::from(level) * usize::from(setup.height) + usize::from(y))
+                * usize::from(side)
+                + usize::from(x);
+            let water = setup.tiles.get(index).is_some_and(|t| {
+                matches!(
+                    part.passage(t.terrain),
+                    Some(h3_adventure::Passage::Water(_))
+                )
+            });
+            add("events on water", usize::from(water));
+            let near = monsters
+                .iter()
+                .any(|&(l, my, mx)| l == level && my.abs_diff(y) <= 1 && mx.abs_diff(x) <= 1);
+            add("events within one step of a monster", usize::from(near));
+        }
+    }
+    add(
+        "tiles two or more events lie on",
         lying.values().filter(|&&n| n > 1).count(),
     );
 }

@@ -442,6 +442,18 @@ fn check_told(
                 kind: AdventureEventKind::CreaturesJoined { .. },
                 seen_by,
             }) => prop_assert_eq!(seen_by, alone),
+            // E08 T62b2: an event's firing, told to its visitor's owner alone (ADV-FOG-007).
+            GameEvent::Adventure(AdventureEvent {
+                kind: AdventureEventKind::EventFired { hero, .. },
+                seen_by,
+            }) => {
+                prop_assert_eq!(seen_by, alone);
+                let own = before
+                    .heroes
+                    .iter()
+                    .any(|h| h.id == hero && h.details.is_some());
+                prop_assert!(own, "{:?} of a hero not the viewer's", event);
+            }
             GameEvent::Adventure(AdventureEvent {
                 kind:
                     AdventureEventKind::MonsterChanged {

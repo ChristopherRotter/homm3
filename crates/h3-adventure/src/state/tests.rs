@@ -117,6 +117,7 @@ fn setup() -> AdventureSetup {
         ],
         difficulty: 0,
         bans: Bans::default(),
+        seats: crate::testing::seats(2),
     }
 }
 
@@ -597,6 +598,7 @@ fn each_broken_invariant_is_its_own_error() {
     );
     assert_eq!(error(|s| s.players = 0), SetupError::Players(0));
     assert_eq!(error(|s| s.players = 3), SetupError::Players(3));
+    assert_eq!(error(|s| s.seats.truncate(1)), SetupError::Seats(1));
     assert_eq!(
         error(|s| s.map.objects[1].anchor = Pos::new(0, 0, 2)),
         SetupError::ObjectLevel(1)
@@ -709,6 +711,7 @@ fn the_errors_read_well() {
         (SetupError::UnknownRoad(2), "tile 2 has an unknown road"),
         (SetupError::UnknownRiver(2), "tile 2 has an unknown river"),
         (SetupError::Players(9), "9 players are outside the bounds"),
+        (SetupError::Seats(1), "1 seats do not give one per player"),
         (
             SetupError::ObjectLevel(3),
             "object 3 is anchored on a missing level",
@@ -851,10 +854,18 @@ fn the_hash_sees_content_not_sharing() {
     assert_ne!(pile(Some(1)), pile(Some(2)));
     let mut more = setup();
     more.players = 1;
+    more.seats.truncate(1);
     more.heroes[0].owner = PlayerId::new(0);
     let one = build(&more).unwrap();
     more.players = 2;
+    more.seats = crate::testing::seats(2);
     assert_ne!(build(&more).unwrap().state_hash(), one.state_hash());
+    // The seats are state (v15, E08 T62b2): a colour, a human flag.
+    for edit in [|s: &mut Seat| s.colour = 5, |s: &mut Seat| s.human = false] {
+        let mut seated = setup();
+        edit(&mut seated.seats[1]);
+        assert_ne!(build(&seated).unwrap().state_hash(), base.state_hash());
+    }
     // The movement points left are state.
     let mut moved = base.clone();
     moved.heroes[1].movement -= 1;
@@ -875,6 +886,7 @@ fn the_hash_sees_content_not_sharing() {
 mod answers;
 mod day;
 mod draws;
+mod events;
 mod flight;
 mod holds;
 mod monsters;

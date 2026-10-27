@@ -8,6 +8,7 @@ mod aftermath;
 mod battles;
 mod day;
 mod decisions;
+mod events;
 mod exchanges;
 mod heroes;
 mod legal;
@@ -527,6 +528,8 @@ fn part_with(core: &Ruleset, chances: Vec<u8>, slots: u8) -> AdventureRuleset {
                     },
                 }),
             ),
+            // E08 T62b2 (`events.rs`).
+            reward("t:event", ObjectKindDef::Event),
         ],
         params: Some(AdventureParamsDef {
             native_cost: cost,

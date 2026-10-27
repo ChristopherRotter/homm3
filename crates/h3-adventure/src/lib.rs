@@ -80,7 +80,7 @@ pub use ruleset::{
 };
 pub use setup::{
     AdventureSetup, ArmyError, Bans, EventSetup, Guards, HeroSetup, Holds, MapSetup, MonsterSetup,
-    ObjectSetup, Pos, RewardRecord, Scenery, SetupError, StandError, TileMask, TileSetup,
+    ObjectSetup, Pos, RewardRecord, Scenery, Seat, SetupError, StandError, TileMask, TileSetup,
 };
 pub use split::{TileRand, split, split_with_second};
 
@@ -106,8 +106,9 @@ pub use state::{
 /// hero's tactics flag. v12 (E08 T54): each object's scenery. v13 (E08 T61a): what each object
 /// holds from the map (increment 7's kinds) and a monster's treasure artifact. v14 (E08 T61b): what
 /// the build drew for each object, and the visits' block (none, or the heroes' marks, the
-/// players' knowledge and the emptied objects).
-pub const ADVENTURE_STATE_HASH_VERSION: u32 = 14;
+/// players' knowledge and the emptied objects). v15 (E08 T62b2): each player's seat (its colour
+/// and whether it counts as human).
+pub const ADVENTURE_STATE_HASH_VERSION: u32 = 15;
 
 /// Version of the adventure ruleset part's canonical hash encoding (ADR-0015 point 2; owned by the
 /// adventure lane). v2 (E08 T5a): the setup bounds and the army slots. v3 (E08 T6b): the starting

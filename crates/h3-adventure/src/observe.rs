@@ -227,8 +227,10 @@ impl AdventureState {
     /// planes, built word by word from its explored grid, then each tile's view, the heroes and
     /// the typed objects it sees (a monster's creature and the word of its count, E08 T20a2a),
     /// the Cartographer types it bought (E08 T14b) and the keys it holds (T15a). A viewer that is
-    /// not a player of the game sees no tile, no hero, no object, no purchase and no key.
-    // rule: ADV-FOG-004, ADV-FOG-005, ADV-FOG-006
+    /// not a player of the game sees no tile, no hero, no object, no purchase and no key. An event
+    /// is never among the objects, and its tile is no object's in the tile views (ADV-FOG-007,
+    /// E08 T62b2).
+    // rule: ADV-FOG-004, ADV-FOG-005, ADV-FOG-006, ADV-FOG-007
     pub fn observe(
         &self,
         core: &Ruleset,
@@ -316,29 +318,32 @@ impl AdventureState {
                 || ((objects_on_fringe || monster) && observation.is_fringe(pos))
         };
         let words = part.params().monsters();
-        let objects =
-            map.objects()
-                .iter()
-                .enumerate()
-                .filter_map(|(index, object)| {
-                    let object_type = object.object_type?;
-                    let monster = object.monster.is_some();
-                    (!self.is_removed(index) && object.tiles(map).any(|pos| sees(pos, monster)))
-                        .then(|| ObjectView {
-                            object_type,
-                            anchor: object.anchor,
-                            blocked: object.blocked,
-                            visitable: object.visitable,
-                            drawn: object.drawn,
-                            monster: object.monster.as_ref().map(|monster| MonsterView {
-                                creature: monster.creature,
-                                count_word: words.map_or(0, |w| {
-                                    w.count_word(self.monster_count(index).unwrap_or(monster.count))
-                                }),
-                            }),
-                        })
+        let objects = map
+            .objects()
+            .iter()
+            .enumerate()
+            .filter_map(|(index, object)| {
+                let object_type = object.object_type?;
+                let monster = object.monster.is_some();
+                // An event is never observed (ADV-FOG-007, E08 T62b2).
+                (!self.is_removed(index)
+                    && object.event().is_none()
+                    && object.tiles(map).any(|pos| sees(pos, monster)))
+                .then(|| ObjectView {
+                    object_type,
+                    anchor: object.anchor,
+                    blocked: object.blocked,
+                    visitable: object.visitable,
+                    drawn: object.drawn,
+                    monster: object.monster.as_ref().map(|monster| MonsterView {
+                        creature: monster.creature,
+                        count_word: words.map_or(0, |w| {
+                            w.count_word(self.monster_count(index).unwrap_or(monster.count))
+                        }),
+                    }),
                 })
-                .collect();
+            })
+            .collect();
         observation.objects = objects;
         observation.known = self.known_by(part, viewer);
         observation
@@ -429,6 +434,7 @@ impl AdventureEvent {
                 | AdventureEventKind::KeyGained { .. }
                 | AdventureEventKind::HeroRemoved { .. }
                 | AdventureEventKind::CreaturesJoined { .. }
+                | AdventureEventKind::EventFired { .. }
                 | AdventureEventKind::MonsterChanged { .. } => self.kind,
             },
             seen_by: alone,
