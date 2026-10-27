@@ -7,7 +7,7 @@ use alloc::vec;
 use alloc::vec::Vec;
 use core::fmt;
 
-use h3_adventure::{AdventureSetup, Bans, HeroSetup, MapSetup, Pos, SetupError};
+use h3_adventure::{AdventureSetup, Bans, HeroSetup, MapSetup, Pos, Seat, SetupError};
 use h3_content::{
     ArtifactTypeId, CreatureTypeId, Formation, HeroEffect, HeroType, HeroTypeId, Ruleset, SkillId,
     SpellId, StartingStack,
@@ -302,6 +302,15 @@ impl GameSetup {
                 spells: self.banned_spells.clone(),
                 artifacts: self.banned_artifacts.clone(),
             },
+            // E08 T62b2: what an event tests (ADV-OBJ-007).
+            seats: self
+                .players
+                .iter()
+                .map(|player| Seat {
+                    colour: player.colour,
+                    human: player.human,
+                })
+                .collect(),
         };
         Ok((setup, details))
     }

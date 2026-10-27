@@ -253,7 +253,7 @@ paths = [
     "docs/lanes/map-client/",
 ]
 
-# The battle agent (E05, E06; the user, 2026-10-18, AI-Q1): the sim layer and its encodings, the
+# The battle agent (E05, E06, E25; the user, 2026-10-18, AI-Q1): the sim layer and its encodings, the
 # C ABI, the Python side, the AI benchmarks. A battle rule that changes the observation or the
 # action encoding is a `cross-lane` change from the battle lane (`docs/08-work-process.md`).
 # The adventure env (`crates/h3-sim/src/adventure/`: AdventureEnv, its action encoding and
@@ -270,5 +270,6 @@ paths = [
     "benches/ai/",
     "docs/epics/E05*",
     "docs/epics/E06*",
+    "docs/epics/E25*",
     "docs/lanes/ai/",
 ]

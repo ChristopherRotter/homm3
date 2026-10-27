@@ -31,12 +31,12 @@ use crate::movement::{
 };
 use crate::persistent::{BitGrid, Table};
 use crate::ruleset::{
-    AdventureRuleset, Effect, MAX_GAIN, MAX_MONSTER_COUNT, MAX_PICKUP_AMOUNT, ObjectKind,
-    ObjectType, ObjectTypeId, Passage, Pickup, RiverId, RoadId, Visit,
+    AdventureRuleset, Effect, MAX_GAIN, MAX_MONSTER_COUNT, MAX_PICKUP_AMOUNT, MAX_PLAYERS,
+    ObjectKind, ObjectType, ObjectTypeId, Passage, Pickup, RiverId, RoadId, Visit,
 };
 use crate::setup::{
-    AdventureSetup, ArmyError, Bans, Guards, HeroSetup, Holds, MapSetup, MonsterSetup, ObjectSetup,
-    Pos, Scenery, SetupError, StandError, TileMask,
+    AdventureSetup, ArmyError, Bans, EventSetup, Guards, HeroSetup, Holds, MapSetup, MonsterSetup,
+    ObjectSetup, Pos, Scenery, Seat, SetupError, StandError, TileMask,
 };
 
 /// How far around a battle's tile the battlefield picture's variant counts the scenery, in tiles
@@ -74,6 +74,7 @@ impl StaticTile {
 }
 
 mod draws;
+mod events;
 mod flags;
 mod holds;
 mod manage;
@@ -148,6 +149,15 @@ pub struct Monster {
 }
 
 impl MapObject {
+    /// The event it is, if it is one (ADV-OBJ-007, E08 T62b2: the setup gives every event, and
+    /// only an event, [`Holds::Event`]): never visited from its tile, never observed.
+    pub fn event(&self) -> Option<&EventSetup> {
+        match &self.holds {
+            Holds::Event(event) => Some(event),
+            _ => None,
+        }
+    }
+
     /// `pos` as `(column, row)` left of and above the anchor, if it is on the anchor's level and
     /// in the block of its masks.
     fn offset_of(&self, pos: Pos) -> Option<(u8, u8)> {
@@ -161,8 +171,13 @@ impl MapObject {
         }
     }
 
-    /// Whether the object blocks `pos`, and whether it is visited from `pos`.
+    /// Whether the object blocks `pos`, and whether it is visited from `pos`: neither for an
+    /// event, which lies on its tile apart from both (ADV-OBJ-007, E08 T62b2; the original's
+    /// placement clears both bits of its tile, 0x505C78, whatever its template's masks say).
     pub fn covers(&self, pos: Pos) -> (bool, bool) {
+        if self.event().is_some() {
+            return (false, false);
+        }
         self.offset_of(pos).map_or((false, false), |(column, row)| {
             (
                 self.blocked.contains(column, row),
@@ -204,6 +219,15 @@ pub struct StaticMap {
     /// visitable tile, the common case, is turned down without a lookup in [`Self::visits`]
     /// (`bench-check`, E08 T13b). Follows from the objects too.
     typed_visits: Vec<u64>,
+    /// The events lying on each tile, by tile index, in map order (ADV-OBJ-007, E08 T62b2; design
+    /// §12): an event's template's visitable tile, kept apart from the tiles objects are visited
+    /// from, so the movement, the reachable tiles, the occupancy and the views see nothing of it
+    /// (the original's placement clears the tile's visitable bit, 0x505C78). Follows from the
+    /// objects, so the hash leaves it out.
+    events: BTreeMap<usize, Vec<usize>>,
+    /// A bit per tile index: whether an event lies on the tile, so a step tests it without a
+    /// lookup in [`Self::events`] (`bench-check`). Follows from the objects too.
+    event_tiles: Vec<u64>,
     /// A bit per tile index: land on the coast (the map's flag, [`crate::TileSetup::coast`]; E08
     /// T19a), which only a battle's ground reads, so the tiles the hot paths copy stay small
     /// (`bench-check`).
@@ -283,6 +307,8 @@ impl StaticMap {
             objects: Vec::with_capacity(setup.objects.len()),
             visits: BTreeMap::new(),
             typed_visits: vec![0; setup.tiles.len().div_ceil(64)],
+            events: BTreeMap::new(),
+            event_tiles: vec![0; setup.tiles.len().div_ceil(64)],
             coast,
             near_monsters: vec![0; setup.tiles.len().div_ceil(64)],
             any_monster: false,
@@ -355,7 +381,8 @@ impl StaticMap {
             if !holds::check_holds(core, part, ty.map(|ty| &ty.kind), &object.holds) {
                 return Err(SetupError::Holds(index));
             }
-            map.place(object, guards);
+            let event = ty.is_some_and(|ty| matches!(ty.kind, ObjectKind::Event));
+            map.place(object, guards, event);
         }
         map.resolve(core, part, &setup.objects, draws);
         draws::resolve_rewards(core, part, bans, &mut map.objects, draws);
@@ -586,16 +613,27 @@ impl StaticMap {
     }
 
     /// Marks the tiles an object covers; tiles of its footprint off the map are ignored
-    /// (ADV-OBJ-001).
-    // rule: ADV-OBJ-001
-    fn place(&mut self, object: &ObjectSetup, guards: Option<Guards>) {
-        for (column, row) in object.blocked.offsets() {
+    /// (ADV-OBJ-001). An `event` blocks no tile, and its visitable tiles are the tiles it lies on,
+    /// no tile an object is visited from (ADV-OBJ-007, E08 T62b2: the original's placement clears
+    /// the blocked and the visitable bit of its tile, 0x505C78; every shipped map's event has a
+    /// template blocking its tile).
+    // rule: ADV-OBJ-001, ADV-OBJ-007
+    fn place(&mut self, object: &ObjectSetup, guards: Option<Guards>, event: bool) {
+        for (column, row) in object.blocked.offsets().filter(|_| !event) {
             if let Some(index) = self.offset(object.anchor, column, row) {
                 self.tiles[index].blocked = true;
             }
         }
         for (column, row) in object.visitable.offsets() {
             if let Some(index) = self.offset(object.anchor, column, row) {
+                if event {
+                    self.events
+                        .entry(index)
+                        .or_default()
+                        .push(self.objects.len());
+                    self.event_tiles[index / 64] |= 1 << (index % 64);
+                    continue;
+                }
                 self.tiles[index].visitable = true;
                 self.visits
                     .entry(index)
@@ -701,6 +739,16 @@ impl StaticMap {
         self.index(pos)
             .filter(|&index| self.typed_visits[index / 64] >> (index % 64) & 1 == 1)
             .and_then(|index| self.visits.get(&index))
+            .map_or(&[], Vec::as_slice)
+    }
+
+    /// The events lying on `pos`, by index in map order (ADV-OBJ-007, E08 T62b2; none off the
+    /// map): a step onto the tile fires the last of them still on the map
+    /// ([`AdventureState::event_at`]).
+    pub fn events_at(&self, pos: Pos) -> &[usize] {
+        self.index(pos)
+            .filter(|&index| self.event_tiles[index / 64] >> (index % 64) & 1 == 1)
+            .and_then(|index| self.events.get(&index))
             .map_or(&[], Vec::as_slice)
     }
 
@@ -881,6 +929,9 @@ pub struct AdventureState {
     /// The game's difficulty, from 0 (easy; E08 T20a2a): a static input the monsters' answer
     /// reads (ADV-MON-007, E08 T20b).
     difficulty: u8,
+    /// Each player's seat by player id (E08 T62b2): a static input an event's step reads
+    /// (ADV-OBJ-007); the entries past the players unused. An array, so a fork copies it.
+    seats: [Seat; MAX_PLAYERS as usize],
     /// The armies battles left on objects, by object index (E08 T20a2a): a monster's survivors
     /// (ADV-MON-010, E08 T20b), a guarded object's (E08 T21b). Since E08 T61b a persistent
     /// two-level table (design §10): a fork shares it, a write copies at most three small tables,
@@ -913,6 +964,11 @@ impl AdventureState {
         if !(1..=part.params().max_players()).contains(&setup.players) {
             return Err(SetupError::Players(setup.players));
         }
+        if setup.seats.len() != usize::from(setup.players) {
+            return Err(SetupError::Seats(setup.seats.len()));
+        }
+        let mut seats = [Seat::default(); MAX_PLAYERS as usize];
+        seats[..setup.seats.len()].copy_from_slice(&setup.seats);
         let unexplored = BitGrid::new(map.width(), map.height(), map.levels());
         let mut state = Self {
             map: Arc::new(map),
@@ -922,6 +978,7 @@ impl AdventureState {
             occupancy: None,
             flags: None,
             difficulty: setup.difficulty,
+            seats,
             army_left: Table::new(),
             visits: None,
         };
@@ -1144,8 +1201,16 @@ impl AdventureState {
     /// way: only its last step's tile is tested for a guard and only its object visited (the
     /// original's move, 0x48147D to 0x4814E1). Each step, a pass included, reveals and emits its
     /// event.
+    ///
+    /// Events (E08 T62b2; ADV-MOV-011, ADV-OBJ-007): the path is checked and priced as if no event
+    /// lay on the map, so neither its acceptance nor its price tells of one; then the first step
+    /// onto a tile the hero stands on (a stop, nothing visited) that fires an event
+    /// ([`Self::firing_event`]) ends the move there with the points left after it, the rest of
+    /// the path dropped ([`AdventureOutcome::dropped`]), and the event fires
+    /// ([`Self::fire_event`]). The hero's start is no step: a hero that starts on an event does
+    /// not fire it.
     // rule: ADV-MOV-006, ADV-MOV-007, ADV-MOV-009, ADV-MOV-010, ADV-FOG-003
-    // rule: ADV-OBJ-003, ADV-MON-006, GAM-MET-001
+    // rule: ADV-OBJ-003, ADV-MON-006, GAM-MET-001, ADV-MOV-011
     fn move_hero<S: Sink>(
         &mut self,
         core: &Ruleset,
@@ -1173,6 +1238,8 @@ impl AdventureState {
         let (mut at, mut from, mut points) =
             (start, self.live(start, self.map.at(start)), hero.movement);
         let (mut node, mut visit, mut guard) = (Node::Stop, None, None);
+        // The first step that fires an event: the step, the event, the points left after it.
+        let mut fired = None;
         for (step, &next) in path.iter().enumerate() {
             if visit.is_some() || guard.is_some() {
                 return Err(AdventureCommandError::PastVisit { step });
@@ -1204,10 +1271,20 @@ impl AdventureState {
                     guard = self.guard_at(part, next);
                 }
             }
+            if fired.is_none() && met.is_none() && kind == Node::Stop {
+                fired = self
+                    .firing_event(part, player, next)
+                    .map(|event| (step, event, points));
+            }
             visit = met;
         }
-        let stays = visit.is_some_and(|met| !met.enters());
-        let walked = &path[..path.len() - usize::from(stays)];
+        let walked = if let Some((step, _, left)) = fired {
+            (at, points) = (path[step], left);
+            &path[..=step]
+        } else {
+            let stays = visit.is_some_and(|met| !met.enters());
+            &path[..path.len() - usize::from(stays)]
+        };
         let hero = &mut self.heroes[index];
         hero.pos = at;
         hero.movement = points;
@@ -1232,6 +1309,12 @@ impl AdventureState {
             from = to;
         }
         let rules = (core, part, heroes);
+        if let Some((step, event, _)) = fired {
+            return Ok(AdventureOutcome {
+                dropped: path.len() - step - 1,
+                ..self.fire_event(rules, (player, id), (event, at), sink)
+            });
+        }
         let outcome = match visit {
             None => AdventureOutcome::default(),
             Some(Meets::Object(visit)) => self.visit(rules, (player, id), visit, sink),
@@ -2064,9 +2147,9 @@ impl AdventureState {
 }
 
 impl CanonicalHash for AdventureState {
-    /// Encoding v14 (E08 T61b; v1 was T5a's, v2 T6b's, v3 T8a's, v4 T12's, v5 T14b's, v6 T15a's,
-    /// v7 T18b's, v8 T19a's, v9 T20a2a's, v10 T21a's, v11 T50's; v12 and v13 changed the static
-    /// map's):
+    /// Encoding v15 (E08 T62b2; v1 was T5a's, v2 T6b's, v3 T8a's, v4 T12's, v5 T14b's, v6
+    /// T15a's, v7 T18b's, v8 T19a's, v9 T20a2a's, v10 T21a's, v11 T50's, v14 T61b's; v12 and v13
+    /// changed the static map's):
     /// version; the static map's content hash (since v4 with the objects' types and contents); the
     /// number of players; the heroes by id (id, owner, tile, the army's stacks by slot: slot,
     /// creature, count; since v7 the formation, 0 loose, 1 tight; since v11 the tactics flag;
@@ -2075,7 +2158,8 @@ impl CanonicalHash for AdventureState {
     /// [`Occupancy`]'s encoding; there is an occupancy only once an object has left); since v5 the
     /// Cartographer types bought, as length and entries in type order (the type, then its byte of
     /// player bits); since v6 then the keys, a byte of player bits per colour (none bought and no
-    /// key before the first purchase or key); since v9 the difficulty, then the armies battles
+    /// key before the first purchase or key); since v9 the difficulty, (since v15) each player's
+    /// seat by player id (its colour, whether it counts as human), then the armies battles
     /// left on objects as their number and, by object index, the index and the army's stacks as
     /// length and entries (slot, creature, count); since v14 the visits' block (0 for none, else
     /// 1 and [`Visits`]' encoding; there is one only once a visit wrote it).
@@ -2111,6 +2195,10 @@ impl CanonicalHash for AdventureState {
         }
         self.flags.as_deref().unwrap_or(&Flags::NONE).hash_into(h);
         h.write_u8(self.difficulty);
+        for seat in &self.seats[..usize::from(self.players)] {
+            h.write_u8(seat.colour);
+            h.write_bool(seat.human);
+        }
         h.write_len(self.army_left.len());
         for (index, army) in self.army_left.iter() {
             h.write_len(index);

@@ -1,4 +1,4 @@
-"""Decision-time search over determinized worlds (E06 T8, `docs/epics/E06-design.md` §14; ADR-0025
+"""Decision-time search over determinized worlds (E06 T8, `docs/epics/E06-log.md` §14; ADR-0025
 point 12a): Gumbel AlphaZero at the root and the completed-Q improved policy below it (Danihelka
 et al., "Policy improvement by planning with Gumbel", ICLR 2022), with a trained network's heads
 as the prior and its value at a leaf.

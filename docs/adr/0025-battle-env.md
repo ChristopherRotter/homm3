@@ -85,14 +85,19 @@ and ADR-0023 point 7 (`human`, `difficulty`) stay as they are.
         know): the other side's hero's private part from a guess consistent with its public
         part, its hidden spell obstacles and a drawn spell placed or drawn again by their rules,
         the battle's stream re-seeded (`h3_env_reseed`, `BattleState::reseed`). C ABI v34.
+        Through the C ABI only for the env's side to move (E06 T9b): a world of the other side
+        holds that side's own hero as it is.
      2. A world depends only on what the viewer may know and its seed: two states that differ
         only in the rest give the same world (a test of the function: a unit test and a property
         over arbitrary games, with the viewer's observation of a world equal to its observation
         of the battle). A change of `observe`'s list changes the function in the same change.
-        One known gap (AI-STUB-1): a world keeps the number and value of the other side's hidden
-        obstacles (only their hexes are drawn again), which follow the caster's private mastery,
-        and the last drawn spells of random casters not active (read only by the computer's cast
-        choice).
+        Known gaps (AI-STUB-1, E25): a world keeps the number and value of the other side's
+        hidden obstacles (only their hexes are drawn again), which follow the caster's private
+        mastery, and the last drawn spells of random casters not active (read only by the
+        computer's cast choice); and (E06 T9b's review) the other hero's morale and luck
+        modifiers from its private effects, the magic limits recomputed with the guess (the
+        viewer's own casting rights may differ from the true battle's), and without a guess a
+        commanded war machine played automatically.
      3. A world's forks (`h3_env_fork`) and steps are the agent's to use; the true state's fork
         and hash stay trusted tooling, never an agent's input.
      4. The guess is the AI lane's (the encounter sampler's hero draws, `h3-sim`'s
@@ -136,4 +141,7 @@ and ADR-0023 point 7 (`human`, `difficulty`) stay as they are.
 - 2026-10-20: The working-detail line after E05's closure (the design note deleted).
 - 2026-10-27: Point 12a, a search agent's worlds (E06 T8a's amendment, accepted by the user on
   2026-10-26; built in E06 T8b, C ABI v34, with one gap, AI-STUB-1; its detail in
-  `docs/epics/E06-design.md` §14). The AI lane's draft is retired.
+  `docs/epics/E06-log.md`, the design note at closure, §14). The AI lane's draft is retired.
+- 2026-10-27: Point 12a's facts after E06 T9b's review (the user): a world through the C ABI for
+  the side to move only, the gaps AI-STUB-1 holds; the design note's reference after E06's
+  closure (its text kept in `E06-log.md`).

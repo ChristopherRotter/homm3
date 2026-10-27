@@ -1,4 +1,4 @@
-"""A training run's lifecycle, free of torch (E06 T2a, T2b1; ADR-0026, `docs/epics/E06-design.md`
+"""A training run's lifecycle, free of torch (E06 T2a, T2b1; ADR-0026, `docs/epics/E06-log.md`
 §1 to §5): the config and its TOML file, the schedule in samples, atomic writes, the held-out
 check, the run's directory with its typed metrics and its record, and what a resume needs from
 them (the changes it allows, the segments' batch seeds, the metrics cut back to the save, Ctrl+C).
@@ -69,7 +69,7 @@ def _in(table: str) -> dict:
 
 @dataclass
 class Config:
-    """Every setting of a run (`docs/epics/E06-design.md` §1.2): its record's `config`, by table.
+    """Every setting of a run (`docs/epics/E06-log.md` §1.2): its record's `config`, by table.
     Cadences that change the training count samples (learner decisions that trained, §2)."""
 
     #: The record's id ("": the run directory's name).

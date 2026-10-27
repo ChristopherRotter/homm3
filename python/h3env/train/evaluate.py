@@ -1,5 +1,5 @@
 """The evaluation (E05 T8, `docs/epics/E05-log.md` §8.2; the held-out sets v1, E06 T3a,
-`docs/epics/E06-design.md` §5): the agent against an engine seat (Random or a baseline bot) or
+`docs/epics/E06-log.md` §5): the agent against an engine seat (Random or a baseline bot) or
 another network on held-out episodes of the encounter distribution, once as the attacker and once
 as the defender of the same battles.
 

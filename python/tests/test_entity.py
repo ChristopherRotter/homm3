@@ -1,4 +1,4 @@
-"""The entity network (E06 T5a, `docs/epics/E06-design.md` §11): the layout it reads is the
+"""The entity network (E06 T5a, `docs/epics/E06-log.md` §11): the layout it reads is the
 library's, its logits stand in the encodings' order, an empty slot is not seen, the stacks' slot
 order does not matter to its context; the visualization command. They need the group `train`."""
 

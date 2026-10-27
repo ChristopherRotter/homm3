@@ -1228,3 +1228,582 @@ the fix, or kept with its reason.
 - **The Python tests** (the lane command, `uv run --group train pytest` in the sandbox): two
   failures before the fixes, the bots' tables' adventure hash stale since E08 T61 (the Python
   tests are no CI gate): both regenerated, every number the same.
+
+## T9c — The verifies on the user's machine (2026-10-27)
+
+- **The code:** `master` at 9263fc8 (#519 merged). The user's Windows 10 machine, release, the
+  script `t9c.ps1` (the QUEUE's T9c), its summary and logs uploaded. Exit criterion 6 as the
+  user amended it at T9b (Linux: CI's full verify, no run with the original data).
+- **The Windows verify** (`cargo xtask verify --with-original-data --summary`): green; every step
+  passed (coverage 372 s, determinism 95 s, `original-data` 34 s), `ffi-smoke` and `bench-check`
+  N/A on Windows. **The Python tests** (`uv run --group train pytest`, the release library built
+  first): passed. **Linux:** CI's full verify on #519 (the same code) and the Python tests in
+  the sandbox at T9b (137 passed, the GPU test skipped).
+- **`t7-1`'s final ladder on the closing engine** (T9a's caveat: it had played the system actor
+  at `POLICY_VERSION` 18, the bots' tables at 19; `python -m h3env.train.ladder --device cuda`,
+  500 battles per kind): the report set 0.830 ± 0.013 at +0.273 against Random, 0.550 ± 0.018 at
+  +0.029 against Aggressor, 0.530 ± 0.018 at +0.010 against Greedy, 0.372 ± 0.018 at −0.103
+  against the system actor (2 998 battles, 2 skipped); the neutral set 0.970 ± 0.013 at +0.244
+  (wandering 0.974, guards 0.970, a neutral town 0.852), the bots' table's Greedy +0.224,
+  Aggressor +0.217, Random −0.050. The same as `t7-1`'s record within its intervals (0.828,
+  0.551, 0.528, 0.374; +0.245): decision 7's revised targets hold on the closing engine.
+- Exit criterion 6 met (as amended); with T9a and T9b, criteria 1 to 6.
+
+## T9d — The closure (2026-10-27)
+
+- **Shared first** (#522): BACKLOG (E06 done; E25's search candidate and the note: T8c
+  inconclusive), `docs/07-simulation-and-ai.md` §1.2 (the training pipeline as built) and its
+  §1.1 and §2 references, ADR-0026's working-detail line, ADR-0025 point 12a after the review (a
+  world through the C ABI for the side to move only; AI-STUB-1's gaps). Docs only.
+- **The design note at closure** (below): its sections stayed after their tasks built them, as
+  the record of the build's decisions; its text is kept with its numbering, the note deleted (the
+  ADR index's rule), the references in `python/` repointed to `E06-log.md` §n (comments and
+  docstrings only). `h3-battle`'s `world.rs` cites the note too: the battle queue's inbox says
+  where to.
+- **Exit criteria:** 1 to 5 (T9a, after T9b's fixes) and 6 (T9c, as amended) met. E06 closed.
+- **What later epics inherit:** the AI queue's inbox by destination (E25: the search's terminal
+  by reward v1 and T8c again first, AI-STUB-1, the levers E06 left, throughput; encounters v2;
+  E13; the adventure env), `t7-1` as the battle AI v1 and the ladder's baseline.
+
+## The design note at closure
+
+`docs/epics/E06-design.md` was deleted when E06 closed (T9d, the ADR index's rule). Its sections
+had stayed after their tasks built them, as the record of the build's decisions; its text at the
+closure follows, its numbering kept: "`E06-log.md` §n" in `python/` and "design §n" in the code,
+the epic file, earlier entries of this log, the queue and its archive point here. The lasting
+parts are in `docs/07-simulation-and-ai.md` §1.2 (the training pipeline as built); the decisions
+are ADR-0026's (the search's worlds ADR-0025 point 12a).
+
+Companion to `docs/epics/E06-battle-ai.md` and ADR-0026 (E06 T1; accepted by the user 2026-10-20,
+every point as proposed: `E06-log.md`, T1). The training pipeline on the user's machine: a run, its
+config and records (§1, §4), its budget and schedule (§2), the resumable state (§3), the held-out
+sets (§5), the evaluation gate (§6), the ladder (§7), the league (§8), the costs (§9) and the
+increments (§10). Each task turns its section into code and docs and deletes it here. Starting
+point: E05's trainer (`python/h3env/train/`, `E05-log.md` §8 and §9).
+
+### 1. A run
+
+#### 1.1 Its directory
+
+A run is a directory, `python/runs/<run>/` by default (git-ignored), named by the user:
+
+| File | Holds | Written |
+|---|---|---|
+| `config.toml` | the config file as given, copied | at the start |
+| `checkpoint.pt` | the full training state (§3.1) | every few minutes, before a gate, at a stop |
+| `best.pt` | the current best's network and its metadata | at a promotion |
+| `promoted/<n>.pt` | each promoted network (n from 0, the starting one) | at a promotion, never rewritten |
+| `league/<id>.pt` | each league snapshot's network (§8) | once; deleted when it retires |
+| `metrics.jsonl` | one typed record per line (§4.1) | appended, flushed per line |
+| `record.json` | the run's summary (§4.2) | at each gate, ladder, stop and the end |
+
+Every `.pt` and `record.json` is written atomically (§3.2). A crash leaves at most a stale `*.tmp`,
+removed at the next start. Built (T2a, T2b1, T3b, T4a): `config.toml`, `metrics.jsonl`,
+`record.json`, the atomic writes, `checkpoint.pt` (the whole state, `Trainer.state`),
+`promoted/<n>.pt` and `best.pt` (each promotion's network with its index, how, run and parent),
+`league/<id>.pt` (each snapshot's network; a retired one's deleted after the next checkpoint).
+
+#### 1.2 The config file — built (T2a)
+
+`h3env.train.run` (`Config`, `load_config`; `python/README.md`, "Training runs"): TOML, the
+defaults in code, `--set table.key=value`, unknown keys refused, the resolved config in the
+record; configs in `python/configs/`. Its tables today: `[env]`, `[network]`, `[ppo]`, `[pool]`,
+`[checkpoint]` (`checkpoint_minutes`, T2b1), `[device]`, and since T3b `[gate]` (`gate_every`
+in samples, `elo0`, `elo1`, `alpha`, `beta`, `max_pairs`, §6) and `[ladder]`
+(`ladder_opponents`, `ladder_episodes` and `ladder_final_episodes` per kind, `ladder_promoted`,
+§7), which replaced `[evaluation]` (a key belongs to one table, hence the prefixes), and since
+T4a `[league]` (`self_play`, `snapshot_every`, `max_members`, `live`, `live_every`, `pfsp_power`,
+`decay`, `retire_games`, §8) replacing `[pool]`. To come: `network.kind` (`"mlp"`, `"entity"`,
+T5).
+
+#### 1.3 Commands
+
+```
+uv run --group train python -m h3env.train --config configs/e06-t3.toml --out runs/t3-1
+uv run --group train python -m h3env.train --resume runs/t3-1 [--set samples=400_000_000]
+uv run --group train python -m h3env.train --config configs/e06-t4.toml --out runs/t4-1 \
+    --init-from runs/t3-1/best.pt
+```
+
+- `--resume` — built (T2b1; `h3env.train.run.resumed`, `ppo.resume`): the config comes from the
+  checkpoint; its `--set`s may change only `run.RESUMABLE` (`samples`, extended or cut;
+  `env.threads`; `[device]`; `checkpoint.checkpoint_minutes`), any other change is refused with
+  its keys named (a new run). A finished run resumes only with a larger budget.
+- `--init-from` — built (T3b; `Trainer.init_from`): a new run (fresh optimizer, counters,
+  pool) from a saved network of the same size (`best.pt`, `promoted/<n>.pt`, `checkpoint.pt`);
+  the record's `parent` names its file, run, promoted index, samples and updates, and the
+  parent's network is the new run's best #0 (`how` `init`), so its gates continue the lineage.
+
+### 2. The budget and the schedule, in samples — built (T2a)
+
+`samples` (the budget: the first update boundary at or past it), the learning rate (`linear` to
+`lr · lr_floor` over `lr_horizon`, fixed at the start; or `constant`), the league's snapshots and
+live draws (T4a) and the gates (`Cadence`, T3b; E05's evaluation against Random is gone) count
+samples (`run.py`). Wall time sets only the checkpoints (T2b1).
+
+### 3. The resumable state — built (T2b1, T3b, T4a)
+
+Built (`ppo.Trainer.state`, `restore`, `ppo.resume`; `run.Run`, `Stop`, `resumed`,
+`segment_seed`; `E06-log.md`, T2b1): `checkpoint.pt` format 1 holds the resolved config, the
+segment, the counters (samples, updates, episodes, the run's seconds), the best rate, the
+cadences' next samples, the network, the optimizer, the pool's networks (E05's pool: inside the
+checkpoint, 8 networks at most), the generators (sampling, the pool's numpy one, torch's CPU and
+CUDA states), `metrics.jsonl`'s length and whether the run finished. It is taken at an update
+boundary only: at the start, every `checkpoint_minutes` (5) of wall time, after each evaluation, at
+a stop and at the end. Not saved: the batch's battles, `SeatBook`, the open transitions (a resume
+starts new episodes, decision 4). Ctrl+C: the first stops a rollout at its next call (discarded:
+no weight, no counter changed) or lets an update or an evaluation finish, then saves with a `stop`
+record; the second raises. `--resume` cuts `metrics.jsonl` back to the saved length (the
+`segment` record counts the records dropped), restores the state and opens a new segment on its
+own batch seed (SplitMix64 of the run's `seed`); every episode's seed is still checked against the
+held-out set's. Reproducible from the records, not bitwise equal to an uninterrupted run.
+
+Built in T3b (`checkpoint.pt` format 2; format 1 is refused at a resume, its `best.pt` can seed a
+new run `--init-from`): the gate's state (the promoted entries, the next gate in samples, the
+last gate's update, the last final ladder, `pending`: a gate or ladder that began after the save
+and has no result). A checkpoint is taken before and after each gate and ladder; a pending one
+runs first at the resume, again, the gate on the saved learner, the ladder on the promoted network
+read from `promoted/` (with the ones before it its ladder plays: the networks stay outside the
+checkpoint); a gate or ladder stops at its next batch call on Ctrl+C (`evaluate.Stopped`). A
+replace Windows refuses five times keeps the old file, warns and goes on (`run.atomic_write`).
+
+Built in T4a (format 3; format 2 is refused at a resume): the league replaces the pool, each
+member's id, kind (snapshot, promoted; later the system actor), file (`league/<id>.pt` or its
+`promoted/<n>.pt`, outside the checkpoint), birth and its decayed and plain score counts, the live
+set, the next draw and the league's generator (`League.state`); the members' networks come from
+their files at the resume. A retired snapshot's file is deleted after the next checkpoint (the
+last one still names it); a resume removes the files of `league/` its checkpoint does not name.
+
+### 4. The record — built (T2a, T2b1, T2c, T3b, T4a)
+
+Built: `run.Run` and `run.Record` (typed `metrics.jsonl`: `start` with the identity, `update`,
+`snapshot`, `eval`, `stop`, `segment`, `end`; `record.json` schema 2, rebuilt from those records
+in order: its segments with their seeds, commits, changes, spans, how each ended and the records
+dropped), `python/records/` (README, `check_record` over every committed record in
+`tests/test_run.py`); schema 3 (T2c, C ABI v31): the identity's encodings' and encounter
+distribution's versions and the batch's `entries` (kind, weight, the core, battle and adventure
+rulesets' content hashes); schema 4 (T3b): `parent`, the `gate`, `promotion` and `ladder`
+records and the record's `gates`, `promotions`, `ladders`, `best` (the latest promotion), its
+curve per gate interval and `progress.evaluation_minutes` (`python/records/README.md`); schema 5 (T4a): the league's
+fields in each `update` record (its size, the live set, whether it was drawn, the episodes against
+members and the learner's mean score in them, the frozen networks a call passed), `snapshot`
+records (the member, the one it retired), the member table in each gate (id, kind, birth, `p`,
+games, whether live; the last gate's is the end's), the curve's `league_score` and
+`frozen_passes`. Schema 4 records stay valid (`t3b-1`).
+
+### 5. The held-out sets — built (T3a)
+
+Built (`h3env.train.evaluate`, `h3 ai eval --set`, `python -m h3env.train.ladder --set`;
+`E06-log.md`, T3a; the constants pinned between Rust and Python by an `h3-cli` test):
+
+- **The report set v1** (the ladder and the targets): per kind with a player on both sides (a
+  hero battle, a siege a hero defends, a garrison's siege; `H3_ENCOUNTER_*` 2, 3, 4) a batch of
+  500 envs, seed `REPORT_V1_SEED + k`, the kind one-hot, each env's first episode played from
+  both sides: 500 games per (kind, side), 3 000 per opponent. The overall rate weighs the kinds
+  as the distribution does (4 : 2 : 1), the sides equally; its 95 % interval comes from the
+  stratified variance `¼ Σ Σ w² r (1 − r) / n`: ±0.9 points at 0.95, ±1.8 at 0.75, ±2.0 at
+  0.50 (one kind ±1.4, ±2.7, ±3.1). The first n envs of each kind are themselves a stratified
+  set: 250 give ±2.5 at 0.75 (the intermediate ladders, §7). The sampled policy's generator is
+  seeded per (kind, side) alike for every network (common random numbers). The neutral kinds
+  have a set of their own, the neutral set v1 (T7c, §12; the player's seat only).
+- **The gate set v1** (the SPRT, T3b): the default kinds, `GATE_V1_SEED`, 500 envs × 8
+  episodes; pair j is episode ⌊j / 500⌋ of env j mod 500, 4 000 pairs at most, each played
+  twice (the candidate attacking, then the best). Separate from the report set, so the networks
+  the gate selects are not measured on the episodes that selected them. Its seeds are defined;
+  T3b plays it.
+- **v0** (E05's `EVAL_SEED`, 100 envs × 10 episodes, the default kinds) stays selectable, so
+  E05's numbers can be compared; the trainer's evaluation plays it until T3b's gate.
+- **Disjointness without a growing set** (T2a, T3a): every held-out episode's seed (v0's, the
+  report set's 1 500, the gate set's 4 000) is computed once and each training episode's seed
+  checked against them, a hit stops the run; a run's `seed` among the sets' batch seeds is
+  refused, and so is a ladder of a network trained on one.
+
+### 6. The evaluation gate — built (T3b)
+
+Built as below (`h3env.train.gate`: `Sprt`, `play_gate`, `gate`, `python -m h3env.train.gate`;
+in the run `ppo._go`); the end of a run gates the learner if it trained since its last gate, and
+`gate_every` 0 gates only there. The SPRT's error rates and pair counts were checked by simulation
+(`tests/test_gate.py`: about 590 pairs at either hypothesis, 64 at +100 Elo). The first
+min(500, `max_pairs`) envs of each batch play (a smaller cap needs fewer).
+
+- **When:** every `gate.gate_every` samples (10 M, about 20 minutes at E05's rate), the learner's
+  current network is the candidate. The run starts with best #0: the untrained network, or the
+  parent's for `--init-from`.
+- **Play:** the gate set's pairs in order; two batches of 500 envs, both seats external (in one
+  the candidate attacks, in the other the best), each network acting on its rows (E05's
+  `Trainer.act` with two networks); both batches advance until every env finished its next
+  episode, then the pairs up to there are scored.
+- **The score of a pair:** the candidate's mean over its two games, a win 1, a draw or a
+  truncation ½, a loss 0: one of 0, ¼, ½, ¾, 1. A pair plays both sides of one battle, so the
+  attacker's advantage cancels.
+- **The test** (a generalized SPRT on the pair scores, as Fishtest's normal approximation):
+  `H0: s = s0`, `H1: s = s1` with `s = 1/(1 + 10^(−elo/400))`; after n pairs
+  `LLR = n (s1 − s0)(2 x̄ − s0 − s1) / (2 σ̂²)`, x̄ and σ̂² the pairs' mean and variance from the
+  five outcomes' counts with half a pair added to each (no zero variance early). In pair order,
+  the first n with `LLR ≥ ln((1 − β)/α)` promotes; `LLR ≤ ln(β/(1 − α))` rejects; `max_pairs`
+  without either rejects (inconclusive). The pairs after the deciding one are not counted.
+- **Bounds** (the config's `[gate]`, recorded): `elo0 = 0`, `elo1 = 20` (s1 = 0.529), α = β =
+  0.05 (±2.94), `max_pairs = 4 000`. The expected pairs: about 500 to 800 at either hypothesis
+  (a pair's variance 0.08 to 0.125), about 840 to 1 310 halfway, so the cap stops only a
+  candidate equal to the best within a few Elo. A large gain decides early (+100 Elo: about 65 to
+  100 pairs).
+- **A promotion:** the candidate becomes `promoted/<n>.pt` and `best.pt`, joins the league (§8),
+  and the ladder plays it (§7). A rejection changes nothing. No second condition: a candidate
+  that wins the gate but loses ground against the bots is still promoted; the ladder shows it, and
+  a guard follows only if it happens.
+
+### 7. The ladder — built (T3a, T3b)
+
+Built: the report set's ladder (`evaluate.ladder`, `report`; T3a) with network opponents (both
+seats external, `evaluate.duel`; T3b), played in the run for best #0, every promotion and the
+final best (`Trainer.ladder`), each a `ladder` record. Not built: `h3 ai eval --games`.
+
+- **When:** for best #0 at the start, for every promoted network, and at the run's end for the
+  final best on the full set. In the run's process, between updates (the GPU is the run's).
+- **Opponents:** Random, Aggressor, Greedy and the system actor (the engine's seats; the system
+  actor since T7c), and the previous `ladder.ladder_promoted` (1) promoted networks of the lineage (both seats
+  external). Earlier ones are compared through the records, not replayed. With
+  `ladder.ladder_neutral` (T7c) the neutral set v1 too, attacking the system actor (§12).
+- **Set:** the report set v1, the first `ladder.ladder_episodes` (250) per kind for an intermediate
+  ladder, all 500 at the end and for any claim of a target (built as a tool in T3a:
+  `evaluate.ladder`, `report`; T3b plays it inside a run).
+- **Per opponent:** the win rate per (kind, side), per kind and overall with the 95 % intervals
+  of §5, the value efficiency (mean reward v1, weighed alike: at reward v1's currency and price,
+  `evaluate.CURRENCY`, `MANA_PRICE`, whatever the run's `[env]` trains with; the gate reads
+  results only), truncations, skipped episodes, games and seconds. One `ladder` record and the
+  record's ladder table.
+- **The bots' table** on the report set — built (T3a): `h3 ai eval --set report-v1 --json
+  python/records/bots-report-v1.json` plays every pair of bots on the same episodes; the bots
+  are deterministic and Random draws from the episode's seat stream, so the table is a function
+  of the engine (its identity in the file, checked by a Python test): regenerated when the bots
+  or the rules move (the lane's trap). The ladder prints the bots' rates beside the network's.
+- **Ratings:** Glicko-2 stays in one place, `h3 ai eval` (`src/ai/rating.rs`). It is a report,
+  not part of the promotion or the targets; when one is wanted, `h3 ai eval --games <file>`
+  merges the network games Python wrote (`ladder` records) with the bots' (optional; not built
+  in T3a).
+- **The targets** (decision 7) are judged on the lineage's latest promoted network's full ladder:
+  each point estimate at or above its target, the interval reported. Never the best of many
+  checkpoints on the same set (that selects on its noise).
+
+### 8. The league — built (T4a)
+
+Built (`h3env.train.league`, the trainer's `join`, `assign`, `collect`; `[league]`): PFSP over a
+snapshot every `snapshot_every` samples (1 M; E05's pool: 600 000) and every promoted network
+(best #0 from the start), at most `max_members` (16) on the device; an episode is self-play with
+`self_play` (0.5), else a live member on a uniformly drawn side (only the learner's decisions
+train); `p_m = (score + 1) / (games + 2)` (a win 1, a draw or truncation ½, decayed by `decay`
+0.99 per update); `live` (4) members drawn without replacement by `(1 − p_m)^pfsp_power` (2),
+each new episode's member among them by the same weights; a new member retires the highest
+`p_m` among those with `retire_games` (200) games, or of all, the oldest of equals; a retired
+promoted network's file stays. One change from the outline: the live set is drawn again every
+`live_every` samples (250 000, about ten updates at `t3b-1`'s size) and when it holds a retired
+member or fewer than it could, not at every rollout: an episode lasts longer than a rollout
+(`t3b-1`: about 147 calls against 128) and keeps its opponent, so a draw per rollout would have a
+call pass two or three sets' networks; the update record's `frozen_passes` measures it (T4b).
+
+The system actor is no member (T7c): it plays the neutral kinds' defender inside the batch, so a
+neutral episode draws none (§12). From T6b it also plays a fixed share of the player kinds'
+episodes (`system_share`, §12), still no member: the batch draws an episode's entry, and with it
+the seats, itself, so its share cannot follow PFSP's weights. Still to come: exploiters (decision 9) only if a check shows the agent exploitable: a fresh learner trained
+against the frozen best alone for a fixed budget; if it beats the best at least 0.70 on the gate
+set, main exploiters join (designed then, T6).
+
+### 9. Costs on the user's machine (estimates; T2 to T4 measure them)
+
+Measured by T3b's hour (`t3b-1`, `E06-log.md`): about 5 100 samples/s; a gate 18 s to 162 s, a
+ladder of 250 per kind 50 s to 302 s, the final ladder 391 s; at a gate every 5 M samples the
+gates and ladders took 21.4 % of the run, the ladders three quarters of that. The estimates below
+stay for what is not measured yet.
+
+- **Training:** about 8 500 samples/s end to end with E05's pool and evaluations (T8c); the
+  pool's frozen passes cost a third of the updates per minute, which §8's live set bounds.
+- **Checkpoint:** about 75 MB (the network, Adam's moments, the league table), under a second on
+  an SSD, every 5 minutes; snapshots 24 MB each, at most 16 kept; promoted networks kept.
+- **Evaluation speed:** E05 played 2 000 games against Random in 82 to 140 s with 100 envs;
+  500 envs should batch the network's passes better. Assume 15 to 30 games/s until measured.
+- **A gate:** 500 to 1 300 pairs typically (1 000 to 2 600 games, 1 to 3 minutes); the cap 8 000
+  games (4 to 9 minutes).
+- **A ladder:** intermediate, 3 bots and 1 promoted × 1 500 games = 6 000 games (3 to 7
+  minutes); the final one twice that.
+- At a gate every 10 M samples (about 20 minutes), gates and ladders could take a quarter to a
+  third of a run's time while most gates promote (early). The user's hour with gates
+  (`configs/e06-t3b.toml`, T3b) measures it (the record's `progress.evaluation_minutes`); T4's
+  configs set `gate_every` and `ladder_episodes` from it so evaluation stays under about 20 %.
+
+### 10. The increments
+
+Each with the user's checkpoint; only the next one refined (Q41's pattern).
+
+- **Increment 1** (done 2026-10-20): T1, the user's review, then T2 in three small pull
+  requests:
+  - **T2a — Config and record:** done 2026-10-20 (`E06-log.md`).
+  - **T2b1 — The full checkpoint and `--resume`:** done 2026-10-20 (`E06-log.md`; the user cut
+    T2b there: the pending gate or ladder and `--init-from` wait for T3's gate, §3).
+  - **T2c — C ABI v31:** done 2026-10-20 (`E06-log.md`).
+  - Moved to T5: the observations written in place. It needs no ABI change: `h3_batch_step`
+    takes its buffers per call, so the binding can pass the rollout's row (the read-only
+    attributes stay); worth its code only if a profile shows the copy.
+- **Increment 2** (done 2026-10-20, `E06-log.md`): T3a (the held-out sets v1 in Python and
+  `h3 ai eval --set`, the ladder on them, the bots' table, the bots' fallback branches tested),
+  T3b (the gate, the promotion, the ladder per promotion, their state in the checkpoint and a
+  pending one at the resume, `--init-from`; the user one pull request). The hour on the user's
+  machine with gates (`python/configs/e06-t3b.toml`) measures §9's evaluation share; its result
+  sets T4's cadences.
+- **Increment 3** (done 2026-10-22, `E06-log.md`; AI-Q9: γ 1.0): T4a (the league of §8; with
+  `configs/e06-t4.toml`: a gate every 10 M samples and ladders of 250 per kind, about 12 % of a
+  run by `t3b-1`'s costs), T4b (two league runs of 60 M samples, about 3.5 hours each, at γ 0.995
+  and γ 1.0 against the stalling; one of them stopped and resumed for real).
+- **Increment 4** (refined 2026-10-22; T4b's evidence: the MLP at γ 1.0 still climbs slowly, the
+  learning rate at its floor at the budget; done 2026-10-23): T5a (the entity network of §11
+  and the visualization command), T5b (`t5-1`: stalled), T5c (the truncation penalty), T5d
+  (`t5-2`, `t5-3`: the entity network parked, the MLP with the penalty near `t4-2`'s 60 M in
+  20 M).
+- **Increment 5** (refined 2026-10-23, the user: T7 first, no run meanwhile; done 2026-10-23,
+  `E06-log.md`): T7a (`shared/`: `h3-sim` may depend on `h3-battle-ai`), T7b (the system
+  actor's seat, C ABI v32; §12), then at the checkpoint T7c (the trainer's neutral share, the
+  neutral held-out set, the system actor in the ladder) and T7d (`t7-1`).
+- **Then** T5's rest (AI-Q7 (b), the mana price, the batch size and threads from T9c's table,
+  the observations in place), T6, T8 (only if PPO plateaus), T9. Built beside T7d (the user,
+  2026-10-23): the mana price's preparation (the evaluation at reward v1's settings,
+  `configs/e06-mana.toml`), then AI-Q7 (b)'s batch output (part 1, C ABI v33: the acting side's
+  previewed kills per attack and shot entry, an option of the batch; part 2, the network reading
+  them beside the entry mask and an A/B config, after the checkpoint).
+
+### 11. The entity network — built (T5a)
+
+Decision 5: v21 read as entities, in Python, with no encoding change. `[network] kind` chooses
+`"mlp"` (E05's, the default: its weights and files stay as they are) or `"entity"`; both share
+one interface (`h3env.train.policy.Network`: `encode`, the value, the four heads' logits; `act`,
+`evaluate` and `frozen` on top), and a saved network's config names its kind (a file without the
+key is an MLP). The comparison with the other architectures the user saw: `E06-log.md`,
+"Increment 4's refinement".
+
+- **Layout** (`h3env.train.layout`, pinned by an `h3-sim` test against `observation.rs`): the
+  globals (38), the two public hero parts (14 each), the own hero's private part (578), 16 hex
+  planes of 255, 42 stack slots of 99 (8 882); in a slot, present (0), the creature's handle
+  (3), x and y (12, 13), active (18).
+- **Tokens** (width `width`, 128): one per stack slot, `symlog` of its 99 features through a
+  linear layer plus learned embeddings of its creature's handle (clamped to 255), x (31) and y
+  (15), an empty slot masked out of attention; the global token (the globals and both public
+  hero parts, 66); the own-hero token (578); the field token: each hex's 16 planes (`symlog`)
+  through a shared 16 → 16 layer plus a learned per-hex embedding, ReLU, the 255 hex vectors
+  flattened through a linear layer.
+- **Encoder:** `layers` (2) pre-norm transformer layers, `heads` (4), feed-forward twice the
+  width, over the 45 tokens; the context is the global token's output, the active stack's (zeros
+  without a present active one) and the mean of the present stacks', through a linear layer and
+  ReLU.
+- **Heads** (the logits in action encoding v13's order): the value and the 15 fixed entries
+  (Wait, Defend, End tactics, Retreat, Surrender, the two casts, the 8 wall shots) from the
+  context; Move h from hex h's vector, the 24 attacks, 2 shots and the heal of stack s from its
+  token, each scored against the context (an additive pointer: a linear layer of the key plus
+  one of the query, ReLU, a linear layer to the logits); the spell head as the MLP's; the target
+  heads point at "none", the 255 hexes and the 42 stacks the same way, their query the context,
+  the cast and the spell's embedding (the second target's also the target's embedding).
+- **Cost** (measured in T5a, `E06-log.md`): 1.19 M parameters against the MLP's 5.95 M, 15.5 M
+  multiply-adds per decision against 5.5 M, about five times the MLP's time on the sandbox's CPU;
+  on the GTX 1070 `t5-1` trained at about 1 600 samples/s (the MLP's `t4-2`: about 5 000).
+- **T5b's lesson** (`t5-1`, `E06-log.md`): a move's logit reads its hex's own features and the
+  context, so "to my edge" is easy and "toward that stack" hard; both sides learned to hide and
+  45 % of self-play stalled to the step limit. The user's remedy is the incentive, not features:
+  `ppo.truncation_penalty` (T5c).
+- **Parked** (T5d, 2026-10-23): with the penalty the entity network stopped stalling but stayed
+  behind the MLP per sample from 10 M on (entropy 3.4 to 3.1, the MLP's 2.7 to 1.9; explained
+  variance 0.52 against 0.78) at 3.4 times its cost. It stays buildable (`kind = "entity"`);
+  a revival would start from the move head's view of the stacks.
+- **Visualization** (`python -m h3env.train.network`, no dependency beyond torch): a config's
+  network (`--config`, `--set`) or a saved file's: each module's parameters and output shape on
+  an observation, the multiply-adds of its linear layers and attention, the time of a forward
+  and a training pass per sample (`--time`), and a Mermaid diagram (`--mermaid <file>`) of the
+  data flow, which GitHub renders.
+
+### 12. The system actor in training (T7, T6b) — T7b, T7c, T6b built
+
+Decisions 1, 7 and 9: the neutral kinds (a wandering monster, a pile's or a garrison's guards, a
+neutral town) join the training with the system actor as their defender (E23's policy of the
+original's computer, complete for a side without a hero since E23 T4c). Refined with the user on
+2026-10-23: T7a, T7b now; T7c and the run (T7d) after T7b's checkpoint.
+
+- **The seat** (T7b; ADR-0025 point 5, ADR-0027): `Policy::System` plays
+  `h3_battle_ai::choose(state, ruleset, side, rng)` from the seat's stream, inside the call as
+  the bots do. It reads the whole state (a trusted host, ADR-0027 point 4) and plays its side as
+  the computer's whatever `human` says (point 8); the batch's `human = [true, true]` stays
+  (ADR-0025 point 6). Its commands always apply (it validates them; the batch's property test
+  plays it on both sides of every synthetic scenario, a hero's side included). A hero's side
+  retreats only with the setup's adventure facts (E23 T6, BAT-AI-024, ADR-0027 point 14), which
+  the encounters leave at their defaults: it never retreats here. Once the sampler fills them,
+  an escape would end the episode inside the call, and ADR-0025 point 7 then needs a decision.
+- **The neutral kinds' defender** is `Internal(System)` (A12; it was `Random`): the caller always
+  plays the attacker of a neutral encounter, and an evaluation's seats still replace it.
+- **The weights stay where they are** (the user, 2026-10-23): the distribution's defaults keep
+  the neutral kinds at 0, so the held-out sets (v0, the report set v1, the gate set) keep their
+  episodes and every recorded result stays comparable. A run draws the neutral share by its own
+  `[env] kinds` (A1's shares: 780, 20, 100, 50, 25, 25); no new encounters version.
+- **C ABI v32** (T7b): the seat `H3_SEAT_SYSTEM` (4) and `h3_system_policy_version()`
+  (`h3_battle_ai::POLICY_VERSION`, ADR-0027 point 12), which `h3env`'s `versions()` adds to a run
+  record's identity (`system_policy`; a record gains a key, the schema stays 5). `h3env`'s seat
+  name `"system"`; `h3 ai eval --policies` names `system` (not in its default list yet). The
+  encodings are unchanged.
+- **The trainer** (T7c): a neutral episode has one learning side, the attacker, and no league
+  member (`Trainer.assign` draws none for a neutral kind; before T7c a member would have taken
+  one side of a neutral battle: the defender's, which the system actor plays, so the member never
+  moved but scored, or the attacker's, so nothing trained). The update record's `by_kind` splits
+  the self-play episodes' rates (the attacker's wins, the truncations) by kind, and the record's
+  curve sums them per gate interval. The gate stays on the gate set v1 (the default kinds).
+- **The neutral set v1** (T7c; `neutral-v1` in `evaluate.py`, `h3 ai eval --set neutral-v1`,
+  `python -m h3env.train.ladder --set neutral-v1`): one stratum per neutral kind (batch seed
+  `NEUTRAL_V1_SEED + k`, `0x5EED_E7A1_0003_0000`; the kind one-hot; the first episode of each of
+  500 envs), weighed by A1's shares (780 : 20 : 25, `share` in `encounters-v1.toml`), the
+  policy in the attacker's seat against the system actor: 1 500 games, ±1.8 points at 0.95, ±3.6
+  at 0.75 (the wandering stratum is 94.5 % of the weight). `h3 ai eval` plays every policy, the
+  system actor too, in the same seat on the same episodes (`bots-neutral-v1.json`); decision
+  7's neutral target reads off it (the value efficiency above every ladder bot's and the system
+  actor's own).
+  Its seeds are held out like the other sets'. Every ladder plays it (`ladder.ladder_neutral`,
+  true by default; as many per kind as the report set's), its row the ladder record's `neutral`.
+- **The system actor on the ladder** (T7c, decision 12): an opponent of `evaluate.OPPONENTS`, so
+  `ladder.ladder_opponents` and `h3 ai eval`'s default list name it; `h3 ai eval --json` schema
+  2 names the engine's `system_policy` and a set's fixed `defender`; both bots' tables
+  regenerated. The bots on the report set (`bots-report-v1.json`): the system actor beats
+  Greedy 0.653, Aggressor 0.681, Random 0.875; on the neutral set it attacks best (value +0.285
+  against Greedy's +0.223, Aggressor's +0.216, Random's −0.056; `E06-log.md`, T7c).
+- **The run** (T7d; `configs/e06-t7.toml`, `t5-3`'s settings): the census shares would put
+  82.5 % of the episodes in the neutral kinds, each with one learning side; the user chose a
+  third neutral with T7c's numbers (2026-10-23: `[78, 2, 100, 50, 25, 3]`, the census's neutral
+  shares a tenth). `t7-1` (`E06-log.md`, T7d): the report set as `t5-3`'s, the neutral set
+  0.972 at value +0.245, flat from 10 M, below the system actor's +0.285.
+- **The system actor as an opponent in the player kinds** (T6b; increment 6's lever, the user,
+  2026-10-26: decision 9 amended, T6a's evidence: the agent never met the opponent that beats
+  it, and loses mostly defending): `[league] system_share` (0 by default, in thousandths) of the
+  player kinds' episodes have the system actor on a uniformly drawn side inside the batch, the
+  learner on the other, no league member. The batch draws it: `ppo.episode_entries` splits the
+  config's kinds into the neutral kinds' entry, the player kinds' own (both seats external) and
+  one per side with `h3_batch_add_encounters`' seats (`System` there, `External` the other),
+  weighed so that every kind keeps its share of the episodes; the trainer reads an episode's
+  entry (`batch.scenario`), so no ABI change. It needs `[env] kinds` (the defaults' weights are
+  the sampler's). The update record's `system` (and the curve's, per gate interval) gives the
+  learner's mean score against it by its side; such episodes leave self-play's rates
+  (`attacker_won`, `by_kind`). Without the key a batch has the one entry as before, so `t7-1`'s
+  runs are unchanged. The ladder's system row then measures a training opponent (decision 12
+  keeps it on the ladder); the gate set, the other rows and the neutral set stay comparable.
+  `configs/e06-t6b.toml`: `t7-1`'s settings with a quarter (the A/B, T6c).
+- **Every side stays human** (the user, 2026-10-26, asked at T6a's checkpoint): the batch keeps
+  `human = [true, true]` for the system actor's side too (ADR-0025 point 6 unchanged), so
+  BAT-QUIRK-27's let-off of a computer side's bad-morale freeze (BAT-MOR-004, since E23 T7) is
+  never played in training or on the held-out sets.
+
+### 13. The kill preview in the network (T6d) — built, off by default (T6e: no measurable gain)
+
+AI-Q7 (b) part 2 (decision 6; the user, 2026-10-26, after `t6b-1`): the batch's previewed kills
+(part 1, C ABI v33: each legal attack and shot entry's least and greatest kills, the engine's
+BAT-DMG-011 preview, what the original shows a player) reach the MLP's entry head; the
+encodings are unchanged.
+
+- **The bias:** a legal strike entry's logit gains `φ(f) · u(h)`. `f` holds four features: the
+  least and greatest kills (`symlog`), the share of the target stack their mean is (clipped to
+  [0, 1]), the hit points it is (`symlog` of the mean times the target's full hit points; the
+  target's slot is fixed by the entry: 24 attack entries, then 2 shots, per slot). `φ` is a
+  network of two layers (4 → `embed` → `embed`) shared by the entries; `u` a linear map of the
+  trunk's output to `embed` (initialized near 0, so the network starts as the plain MLP's), so
+  the state decides how much a kill counts. Only the legal entries' features are computed (a
+  row has a few dozen of its 1 092 previewed entries; the dense form would be 0.5 GB a
+  minibatch). The value and the cast heads read no preview, so a truncation's bootstrap from
+  `final_obs` (no preview there) is as before.
+- **The plumbing:** `[network] preview` (false by default; the MLP's: `resolve` refuses it with
+  the entity network). Every batch such a network plays writes the preview: the trainer's, the
+  gate's (when either network reads it), the ladder's (when any of its networks does);
+  `Policy.act` refuses a batch without it. The rollout keeps it in half precision (whole kills
+  up to 2 048 exact; 143 MB at 256 envs × 128 calls, beside the observations' 1.2 GB) and the
+  update recomputes the entry's log-probability from it. A saved file's config names
+  `preview`; one without it reads none.
+- **The run** (T6e, the user's machine): `configs/e06-t6d.toml`, `t7-1`'s settings with the
+  preview, against `t7-1` (one change; `t6b-1` showed the system actor as an opponent changes
+  nothing measurable). **Result** (E06-log T6e): the ladder unchanged; the targeting better, but
+  the agent strikes less and wanders (moves, the tactics phase's placements), its battles
+  longer; AI-Q7 closed (the user, 2026-10-26).
+
+### 14. The search (T8) — designed (T8a), its plumbing built (T8b), measured (T8c): no gain, closed
+
+Decision 2's last increment (the user, 2026-10-26, after T6e: the plateau taken as shown). The
+seam (the user): T8a this design; T8b the plumbing; T8c a decision-time search with `t7-1`'s
+network measured, no training change; T8d expert iteration only if T8c gains. **Determinized
+from the start** (the user): the searcher is a legitimate agent, it reads only what its side's
+observation tells (ADR-0025 point 12a). The tree in Python first (the user); Rust
+only if T8d needs the throughput.
+
+- **The agent.** At each of its decisions it builds W *worlds* (8) of the battle from its side's
+  knowledge, runs N simulations (16 to 64) over them and plays the root's choice. The network is
+  a promoted MLP's without the preview (a single env writes none): its entry and cast heads are
+  the prior, its value head a leaf's value. It plays both sides inside the tree, each from its
+  own observation of the world; never the real opponent's policy (the system actor, Greedy).
+- **A world** (C ABI v34, `h3_batch_determinize(batch, env, viewer, seed) -> H3Env *`): a copy
+  of the env's battle in which, for the viewer, everything hidden (`h3_battle::observe`'s list)
+  is replaced from the world's seed:
+  1. the other side's hero's private part (its secondary skills' values, the war machines'
+     levels, the spell book, masteries, spell bonuses, resistance, duration bonus, defences,
+     negates, the opening spells, Eagle Eye; funds and the surrender price go unread, surrender
+     masked) from the encounter sampler: a hero of the observed hero type (public), its level and
+     draws by the table's week prior, of R (8) candidates the one whose primary skills are
+     nearest the observed (L1, ties to the first drawn); then made consistent with the public:
+     the spells the public state shows it cast added to its book (T8b: what the state keeps of
+     them), no book when it carries none, a war machine's skill at least Basic where it commands
+     the machine and none where it does not. Its public part (primary skills, mana and its
+     maximum, the round's casts) stays as observed;
+  2. the other side's hidden spell obstacles (BAT-MAG-031: the cast public, the hexes not)
+     placed again by their spell's rule, and a spell a random caster the viewer does not control
+     drew (BAT-MAG-049) drawn again by its rule, from the world's stream;
+  3. the battle's stream re-seeded, so no roll of the true stream is known. The defender's
+     Escape Tunnel stays as it is (retreat is masked).
+
+  A world reads nothing hidden: two states that differ only in what the viewer may not know give
+  the same world for a seed (T8b's test). Items 2 and 3 and writing a guessed private part live
+  where the hidden part is defined, `h3-battle` (`BattleState::determinized(viewer, guess,
+  seed)`, `reseed`; trusted tooling beside `observe`, `cross-lane` in T8b with the user's
+  consent); the guess in `h3-sim` (the sampler's hero draws).
+- **The search** (`h3env.search`): Gumbel AlphaZero (Danihelka et al., "Policy improvement by
+  planning with Gumbel", ICLR 2022), fit for a pretrained prior, few simulations and many
+  actions. At the root, Gumbel-top-k (16) full actions: entries by Gumbel-top-k over the entry
+  logits, a cast's heads by their Gumbel-perturbed argmax in order; sequential halving over them,
+  the action of the largest `g + logits + σ(q̂)`, the completed values rescaled by their least
+  and greatest over the node's candidates (T8c: a fixed scale left the prior alone). Below the
+  root, the deterministic selection of the completed-Q improved policy. Chance and the hidden
+  part are averaged open-loop: the tree is keyed by action histories; a simulation takes a world
+  (round robin over W) with a fresh stream from the agent's own, forks it (`h3_env_fork`) and
+  replays its path (`h3_env_step`); a node keeps its first evaluation's prior and selects among
+  the actions legal in the simulation's world, renormalized. Values are the side to move's:
+  reward v1 at a terminal, the value head at a leaf.
+- **Batching:** the agent searches every env it moves at once: each simulation round evaluates
+  one leaf per env in one network call (the GPU's), so a decision costs N calls for the batch.
+- **Cost** (measured in T8b): a simulation steps its path through ctypes (a few steps) and reads
+  an observation and masks at its leaf; a world costs R hero draws (an encounter's hero about
+  50 µs, E05 T5b2). T8c's report set (3 000 battles per opponent, about 28 decisions each) at
+  N 32 is about 2.7 M simulations: tens of minutes on the user's machine; the sandbox plays a
+  subset.
+- **T8b, the plumbing — built** (E06-log T8b): C ABI v34 (with T6f's observation v22),
+  `determinized`, `reseed`, the guess, `h3env.search` with `--time` and `--report`. Beyond the
+  above: the root's candidates are the entries the true battle allows, a chosen cast it refuses
+  gives way to the network's most likely action; a world in which another side moves after the
+  same actions evaluates its position without a node. Gap: AI-STUB-1 (the hidden obstacles'
+  number and value).
+- **T8c, the measurement — done** (E06-log T8c; the sandbox, `order-1`'s best): the search
+  beside the sampled policy on the same episodes (`python -m h3env.search --report --best
+  <best.pt> --opponent system --simulations 64 --json …`; `--set neutral-v1`; `--per-kind`: the
+  sets' 500 by default): no gain against the system actor at N 16 and 64 nor on the neutral set
+  at N 64. T8d only if the search gains beyond the intervals: not indicated.
+- **T8d, expert iteration** (designed after T8c): the search's improved policy and value as the
+  trainer's targets. **Not built** (the user, 2026-10-27, increment 7's checkpoint): E06 closes
+  without it; a search in Rust trained on its own choices is E25's candidate, with AI-STUB-1.
+
+### 15. The turn order as an input (T6f) — built, off by default (T6g: no measurable gain)
+
+The turn-order probe (E06-log) showed the trunk does not know which stack acts next. The user
+(2026-10-26): the engine's own order in the observation, v22, before T8b.
+
+- **The order:** `h3_battle::turn_order` (`turn.rs`, sharing `next_active`'s key): the rest of the
+  round's turns as they come (no wait, morale or death foreseen), then the next round's.
+- **The encoding:** per stack slot its place in the rest of the round (1: the active stack), its
+  place among its side's turns there (1: its side's next), its place in the next round; appended
+  after v21's layout, which stays its prefix.
+- **The network:** `[network] order` (the MLP's): the trunk reads the whole observation, else
+  v21's prefix (every network saved before v22). The entity network reads v21's slots as before.
+- **The run** (T6g, `order-1`, E06-log): `t7-1`'s ladder and play; the trained trunk still
+  does not represent the order it reads (the probe again).

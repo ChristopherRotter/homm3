@@ -1,4 +1,4 @@
-"""A network's architecture at a glance (E06 T5a, `docs/epics/E06-design.md` §11):
+"""A network's architecture at a glance (E06 T5a, `docs/epics/E06-log.md` §11):
 
     uv run --group train python -m h3env.train.network --config configs/e06-t5.toml
     uv run --group train python -m h3env.train.network --set network.kind=mlp --time

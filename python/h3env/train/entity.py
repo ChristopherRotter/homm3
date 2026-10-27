@@ -1,4 +1,4 @@
-"""The entity network (E06 T5a, `docs/epics/E06-design.md` §11; decision 5): observation v21 read
+"""The entity network (E06 T5a, `docs/epics/E06-log.md` §11; decision 5): observation v21 read
 as entities by its layout (`layout`), with no encoding change.
 
 Tokens of `width` features: one per stack slot (its features under `symlog` through a linear

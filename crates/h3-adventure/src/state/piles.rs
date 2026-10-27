@@ -124,9 +124,10 @@ impl AdventureState {
     /// picks it up, or opens the box), unseen by every player (the guards are hidden). A won
     /// Pyramid is looted and teaches its spell ([`Self::loot_pyramid`]); after any other end
     /// nothing changes (its guards' losses are not kept). Until T63 what a win gives comes before
-    /// the winner's levels (`ADV-STUB-10`). Infallible: nothing when none of them is visited at
-    /// `tile`.
-    // rule: ADV-PIK-004, ADV-MON-010, ADV-PIK-013, ADV-TCH-008
+    /// the winner's levels (`ADV-STUB-10`). Else, since E08 T62b2, an event's guards' battle at
+    /// its tile, where its visitor stands ([`Self::end_event_battle`], ADV-OBJ-007). Infallible:
+    /// nothing when none of them is at `tile`.
+    // rule: ADV-PIK-004, ADV-MON-010, ADV-PIK-013, ADV-TCH-008, ADV-OBJ-007
     pub fn end_unowned_battle<S: Sink>(
         &mut self,
         rules: (&Ruleset, &AdventureRuleset, &[Arc<HeroDetails>]),
@@ -136,7 +137,7 @@ impl AdventureState {
     ) -> AdventureOutcome {
         let (core, part, _) = rules;
         let Some((index, object_type, ty)) = self.tile_object(part, tile) else {
-            return AdventureOutcome::default();
+            return self.end_event_battle(rules, (hero, tile), (survivors, won), sink);
         };
         match ty.kind {
             ObjectKind::Monster { .. } => {
@@ -154,7 +155,7 @@ impl AdventureState {
                     (true, _) => self.pick_up(core, hero, (index, object_type), sink),
                 }
             }
-            _ => AdventureOutcome::default(),
+            _ => self.end_event_battle(rules, (hero, tile), (survivors, won), sink),
         }
     }
 }
