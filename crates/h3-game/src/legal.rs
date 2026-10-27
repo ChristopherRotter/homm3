@@ -120,10 +120,8 @@ fn answers(state: &GameState, rules: &GameRuleset, player: PlayerId) -> Vec<Answ
             .chain([Answer::University(UniversityAnswer::Leave)])
             .collect();
     }
-    if !matches!(state.together(player), Some(Together::Alone) | None) {
-        return vec![Answer::Close];
-    }
-    Vec::new()
+    // The other decisions but a battle: a meeting or an army dialog.
+    vec![Answer::Close]
 }
 
 /// The system actor's default answer to `player`'s first open decision (ADR-0017 points 2 and 6;

@@ -317,6 +317,14 @@ fn the_decision_errors_read_well() {
         "the answer does not fit the open decision"
     );
     assert_eq!(
+        GameCommandError::SlotClosed.to_string(),
+        "the University's slot is not open for the hero"
+    );
+    assert_eq!(
+        GameCommandError::CannotPay.to_string(),
+        "the treasury cannot pay the price"
+    );
+    assert_eq!(
         GameCommandError::WaitingForLevelUp(PlayerId::new(1)).to_string(),
         "the game waits for player 1's level-up"
     );

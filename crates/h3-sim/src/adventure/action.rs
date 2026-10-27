@@ -11,9 +11,9 @@
 //! | 0 | End the turn |
 //! | 1 + s, s < 8 | Move the player's hero in slot `s` to the tile in the tile head |
 //! | 9 | Accept the player's open offer (E08 T14b: a Cartographer's offer) |
-//! | 10 | Decline it; close a meeting or an army dialog; leave a School or a University (E08 T63a) |
-//! | 11 | The first answer of the player's open two-way decision: a level-up's first offer (E08 T30: the dialog's left), a chest's gold, the Arena's first skill, a School's first (T63a) |
-//! | 12 | Its second answer: a level-up's second offer (the dialog's right), a chest's experience, the Arena's second skill, a School's second (T63a) |
+//! | 10 | Decline it, or close or leave the player's open decision (E08 T63a) |
+//! | 11 | The open decision's first answer (E08 T30: a level-up's left offer; T63a) |
+//! | 12 | Its second answer (E08 T30: a level-up's right offer; T63a) |
 //! | 13 + s, s < 4 | Buy the skill in slot `s` of the player's open University (E08 T63a) |
 //!
 //! A player's hero slots are its heroes on the map in the order of their ids, the first

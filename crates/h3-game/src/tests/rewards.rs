@@ -181,6 +181,9 @@ fn the_arena_is_answered_with_one_of_its_skills_and_cannot_be_left() {
     );
     assert_eq!(default_answer(&state, &rules, RED), Some(attack));
     wrong_kinds(&mut state, &rules, &[attack, defense]);
+    // Hashed with the decision.
+    let fresh = game(&rules, reward_at(&rules, "t:arena", Holds::Nothing));
+    assert_ne!(state.state_hash(), fresh.state_hash());
     let mut first = state.clone();
     let before = state.hero(HERO).unwrap().primary;
     let events = play(&mut state, &rules, RED, answered(defense)).unwrap();
@@ -223,8 +226,12 @@ fn a_school_opens_when_its_price_is_paid_and_may_be_left() {
         panic!("no choice")
     };
     assert_eq!(choice.price(), [(GOLD, 1000)]);
+    // Hashed with the decision.
+    let fresh = game(&rules, reward_at(&rules, "t:school", Holds::Nothing));
+    assert_ne!(state.state_hash(), fresh.state_hash());
     // Left: nothing paid, no mark, nothing given.
     let mut taken = state.clone();
+    let mut first = state.clone();
     let closed = GameEvent::DecisionClosed { player: RED };
     let events = play(&mut state, &rules, RED, answered(answers[2])).unwrap();
     assert_eq!(events, [closed]);
@@ -243,6 +250,8 @@ fn a_school_opens_when_its_price_is_paid_and_may_be_left() {
     );
     assert_eq!(gold(&taken), 1000);
     assert!(taken.adventure().is_marked(HERO, 0));
+    let events = play(&mut first, &rules, RED, answered(answers[0])).unwrap();
+    assert_eq!(events[2], changed(HeroChange::GainPrimary([0, 0, 1, 0])));
     // A treasury that cannot pay: refused, told to the player, no decision.
     let mut poor = game(&rules, reward_at(&rules, "t:school", Holds::Nothing));
     poor.set_resource(RED, GOLD, 999);
@@ -297,6 +306,10 @@ fn a_university_sells_its_open_slots_until_it_is_left() {
     assert_eq!(legal_commands(&state, &rules, Actor::Player(RED)), listed);
     assert_eq!(default_answer(&state, &rules, RED), Some(leave));
     wrong_kinds(&mut state, &rules, &[leave]);
+    // Hashed with the decision.
+    let mut fresh = game(&rules, reward_at(&rules, "t:university", Holds::Nothing));
+    fresh.set_resource(RED, GOLD, 4000);
+    assert_ne!(state.state_hash(), fresh.state_hash());
     // A slot it lacks is closed.
     let refused = play(&mut state, &rules, RED, answered(buy(9)));
     assert_eq!(refused, Err(GameCommandError::SlotClosed));
