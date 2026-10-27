@@ -35,7 +35,11 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
 
 ## Recent sessions
 
-- **2026-10-27, E17 M4 T3b-1 (done; #492 open: check it first).** T3b cut in two (the
+- **2026-10-27, E17 M4 T3b-2 (in progress, `client/e17-m4-t3b2`).** #492 merged; baseline
+  (`verify-once clients`) green, `drawn` all 119 the same. Next: the 29 sequences in three
+  batches (`shot`–`cast`, `resist`–`acid`, `stare`–`sacrifice`), the casts' `hovered`, `drawn
+  --record`. Frames stay in the sandbox: a new session captures them again.
+- **2026-10-27, E17 M4 T3b-1 (done; #492 merged).** T3b cut in two (the
   user). The harness reads `hovered_item` per step: the park point is the panel's picture,
   entered once after the opening; the viewer tracks the hovered item (the hot-seat proxy
   gone; review item 13), `aim`'s exception explained. The 72 stills and 18 sequences as
@@ -44,6 +48,3 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
   Three fresh reviewers one at a time (R1 drawing and timeline, R2 mouse and adapters, R3
   harness): 16 of 17 findings fixed, R1-3 queued (QUEUE's inbox); review items 10 to 12. The
   harness now refuses rolls it cannot force (`xdd.dll`'s ack: a 7th field). `drawn` unchanged.
-- **2026-10-26, E17 M4 T2c-2 (done; #483 merged).** Earthquake, the end tune at a town, the
-  siege's mouse; `quake`, `defended`, `aim`, `through` recorded; the status line kept at a
-  hot-seat human turn found (settled at T3b-1).
