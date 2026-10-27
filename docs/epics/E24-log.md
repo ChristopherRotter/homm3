@@ -1051,3 +1051,26 @@ On `map-client/e24-m2-t6a2`, the user present; taken whole (it fit a session, no
 - **Noted:** the client lane's inbox (the battle's end tune follows the combat music's fade-out;
   the model a candidate for M3 T0's common crate); this lane's inbox (the sound without the
   focus).
+
+### M2 T6b1 — the recordings again (2026-10-27)
+
+On `map-client/e24-m2-t6b1` and `map-client/e24-r2-8`, the user present; T6b cut at its seam
+before it started (the user): T6b1 the sandbox's part, T6b2 the closure with the user.
+
+- **Starting point:** `master` at #521 (CI green, #520 merged); `clients/scripts/check.sh` in
+  the sandbox, all gates passed; `h3map.py drawn` all the same (40 situations, 13 sequences,
+  450 frames).
+- **Recorded** (the runbook's "everything" at a milestone's closure; T6a's harness changes,
+  R3-1 to R3-10, run for the first time): `frames`, the 13 sequences, each `ok` line by line
+  (127, 132, 82, 82, 84, 89, 189, 171, 151, 108, 117, 56 and 66 lines), its frame at 0 exact and
+  its frame check `ok`, all 450 frames 0 differing; about an hour. `set`, the 40 stills, each
+  0 differing as recorded; one game's Wine exited before the menu and was started again (the
+  runbook's known case). The kept live parts changed with the runs' load times (the palette and
+  frame steps, the traps): `drawn` then 31 `CHANGED`, none `STALE`, `new` or refused; `drawn
+  --record`, then `drawn` all the same.
+- **R2-8** (E24 M1's reviewer; #523, `cross-lane`): `h3_map::writer`'s edge bound one tighter,
+  `side + 6` columns and `side + 4` rows (7 and 5 past the last column and row, as the doc
+  comment and `h3m.md` said); its tests moved with it; no situation anchors an object past it
+  (the furthest (40, 40) on a 36 map). The adventure lane's inbox notes it.
+- **No new question.** M2's exit holds in the sandbox: every recorded sequence as recorded, line
+  by line and frame by frame; T6b2 tries the window and its sound on the user's machine.
