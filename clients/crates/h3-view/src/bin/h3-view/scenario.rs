@@ -12,6 +12,7 @@ use h3_content::{CompiledHeroEffect, HeroEffect};
 use h3_content_battle::BattleRuleset;
 use h3_contracts::{BattleEffect, FortLevel, MachineControl};
 use h3_kernel::{Rng, StreamId};
+use h3_pack_battle::ScenarioDef;
 use h3_protocol::session::{ConnId, GameConfig, SeatKind, Session};
 use h3_protocol::wire::{ClientMessage, Command, Manifest, Observation, Seat, ServerMessage};
 use h3_protocol::{codec, map};
@@ -63,24 +64,42 @@ pub fn battle(
     packs: &Path,
     seed: u64,
 ) -> Result<(BattleRuleset, BattleSetup), String> {
-    let def = h3_pack_battle::parse_scenario(&read(scenario)?)
-        .map_err(|e| format!("{}: {e}", scenario.display()))?;
+    let def = definition(scenario)?;
+    let ruleset = compiled(&def, packs)?;
+    let setup = set_up(&def, &ruleset, seed).map_err(|e| format!("{}: {e}", scenario.display()))?;
+    Ok((ruleset, setup))
+}
+
+/// The scenario file's definition.
+pub fn definition(scenario: &Path) -> Result<ScenarioDef, String> {
+    h3_pack_battle::parse_scenario(&read(scenario)?)
+        .map_err(|e| format!("{}: {e}", scenario.display()))
+}
+
+/// The ruleset `def`'s packs (read from `packs`) compile to with its profile.
+pub fn compiled(def: &ScenarioDef, packs: &Path) -> Result<BattleRuleset, String> {
     let texts = pack_texts(packs, &def.packs)?;
     let refs: Vec<(&str, &str)> = texts
         .iter()
         .map(|(c, b)| (c.as_str(), b.as_str()))
         .collect();
-    let ruleset = h3_pack_battle::compile(&refs, &def.profile)
-        .map_err(|e| format!("{}: {e}", packs.display()))?;
-    let mut setup = def
-        .resolve(&ruleset)
-        .map_err(|e| format!("{}: {e}", scenario.display()))?;
+    h3_pack_battle::compile(&refs, &def.profile).map_err(|e| format!("{}: {e}", packs.display()))
+}
+
+/// The setup `def` resolves to in `ruleset` with `seed` (its obstacles generated from the seed
+/// when it asks).
+pub fn set_up(
+    def: &ScenarioDef,
+    ruleset: &BattleRuleset,
+    seed: u64,
+) -> Result<BattleSetup, String> {
+    let mut setup = def.resolve(ruleset).map_err(|e| e.to_string())?;
     if def.random_obstacles {
         // For the terrain and the special battlefield, as `h3 run` (E17 M3 T2).
         let mut rng = Rng::for_stream(seed, StreamId::OBSTACLES);
-        setup.obstacles = h3_battle::generate_setup_obstacles(&ruleset, &setup, &mut rng);
+        setup.obstacles = h3_battle::generate_setup_obstacles(ruleset, &setup, &mut rng);
     }
-    Ok((ruleset, setup))
+    Ok(setup)
 }
 
 /// What the original's map needs of a scenario's battle (E17 M2 T1, `situation`): its terrain's

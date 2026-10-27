@@ -304,7 +304,7 @@ fn render(options: &Options) -> Result<Vec<String>, String> {
         };
         let interface = crate::sequences::Interface {
             panels: &panels,
-            legal: &crate::pointer::legal(&record, &tables, observation, &legal),
+            legal: &crate::pointer::legal(&record.header.manifest, &tables, observation, &legal),
             shown: None,
             walls: options.walls,
         };

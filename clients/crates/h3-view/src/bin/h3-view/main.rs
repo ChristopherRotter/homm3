@@ -5,6 +5,8 @@ mod assets;
 mod audio;
 mod battle;
 mod bot;
+#[cfg(test)]
+mod clicks;
 mod gate;
 mod harvest;
 mod live;
