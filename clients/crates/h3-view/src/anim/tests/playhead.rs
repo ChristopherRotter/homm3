@@ -1,7 +1,8 @@
 //! E17 M5 T1a: the playhead against [`Moment::at`], the reference: at every change of every
 //! replay of the tests (their `timeline` and `fidgeting` check it) and 1 ms after each, going
 //! forward from 0 and back again; keys the lists hold out of the order they show. T1b: every
-//! replay grown a command at a time, a playhead extended along.
+//! replay grown a command at a time, a playhead extended along. T2b: before each command given
+//! at a time, the timeline waiting for it ([`Growing::waiting`]).
 
 use alloc::collections::BTreeMap;
 use alloc::vec;
@@ -52,6 +53,23 @@ pub(crate) fn grows(
     let mut before = growing.timeline().clone();
     let mut head = Playhead::new(&before);
     for (i, command) in commands.iter().enumerate() {
+        // A command given at a time (a player's) waited for at the end (E17 M5 T2b): before it,
+        // the timeline waiting shows the whole battle's moments, a playhead's and at once.
+        if let Some(given) = command.at {
+            let tail = growing.waiting();
+            assert!(begins(&tail, &before), "command {i}, waiting");
+            let mut head = Playhead::new(&tail);
+            let times = tail.changes(given);
+            for t in times
+                .into_iter()
+                .filter(|t| (before.end..given).contains(t))
+            {
+                head.seek(&tail, t);
+                let moment = Moment::at(whole, t);
+                assert_eq!(head.moment(&tail), moment, "at {t} ms, waiting for {i}");
+                assert_eq!(Moment::at(&tail, t), moment, "at {t} ms, waiting for {i}");
+            }
+        }
         let computer = commands.get(i + 1).is_some_and(|c| c.at.is_none());
         growing.push(command, computer);
         let now = growing.timeline();

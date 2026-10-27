@@ -9,7 +9,7 @@ use h3_render::Bugs;
 use h3_view::anim::Timeline;
 use h3_view::layout::BattleLayout;
 use h3_view::mouse::track::{self, Input, Shown, Start, Turn};
-use h3_view::mouse::{CATAPULT, Facing, Field, Hint, Legal, WALL_EXEMPT};
+use h3_view::mouse::{self, CATAPULT, Facing, Field, Hint, Legal, Spot, WALL_EXEMPT};
 use h3_view::record::Record;
 use h3_view::tables::Tables;
 use h3_view::text::Catalogue;
@@ -31,6 +31,42 @@ pub fn hex_point(layout: &BattleLayout, hex: u8) -> [i32; 2] {
         layout.hex_origin[0] + layout.hex_step[0] * column + shift + 22,
         layout.hex_origin[1] + layout.hex_step[1] * row + 26,
     ]
+}
+
+/// A point of `hex` in each of its twelve slots, outside the siege's rectangles where the slot
+/// has one there (E17 M5 T2a's `clicks` test).
+fn slot_points(layout: &BattleLayout, hex: u8) -> Vec<[i32; 2]> {
+    let [left, top] = layout.hex_box(hex / 17, hex % 17);
+    let [w, h] = layout.hex_step;
+    let within =
+        |[l, t, r, b]: [i32; 4], [x, y]: [i32; 2]| (l..=r).contains(&x) && (t..=b).contains(&y);
+    let free = |p: [i32; 2]| !within(layout.mouse.keep, p) && !within(layout.mouse.tower, p);
+    let inside: Vec<[i32; 2]> = (top - h..top + 2 * h)
+        .flat_map(|y| (left..left + w).map(move |x| [x, y]))
+        .filter(|&p| mouse::spot(layout, p, false) == Spot::Hex(hex))
+        .collect();
+    (0..12)
+        .filter_map(|s| {
+            let in_slot = |p: &&[i32; 2]| mouse::slot(layout, **p, hex) == s;
+            let mut all = inside.iter().filter(in_slot);
+            let first = all.clone().next().copied();
+            all.find(|p| free(**p)).copied().or(first)
+        })
+        .collect()
+}
+
+/// Each hex's centre (the harness's point, [`hex_point`]) and a point in each of its slots: where
+/// a press gives each of a turn's commands on the battlefield (E17 M5 T2a's `clicks` test; T2b's
+/// unattended presses in the window).
+pub fn press_points(layout: &BattleLayout) -> Vec<([i32; 2], Vec<[i32; 2]>)> {
+    (0..187u8)
+        .map(|hex| (hex_point(layout, hex), slot_points(layout, hex)))
+        .collect()
+}
+
+/// A rectangle's centre.
+pub fn middle([l, t, r, b]: [i32; 4]) -> [i32; 2] {
+    [(l + r) / 2, (t + b) / 2]
 }
 
 /// The screen's centre of the spell book's place `k` (`h3drive.py`'s `book_place`; E17 M3
@@ -251,13 +287,7 @@ pub fn shown(
                 (observation, Legal::default())
             }
         };
-        let left: BTreeSet<u8> = timeline
-            .at(t)
-            .into_iter()
-            .filter(|(_, p)| p.mirrored)
-            .map(|(id, _)| id)
-            .collect();
-        battles.push((observation, legal, Facing::Left(left)));
+        battles.push((observation, legal, facing(timeline, t)));
     }
     let turns: Vec<Turn<'_>> = battles
         .iter()
@@ -279,6 +309,17 @@ pub fn shown(
     let name =
         |hint: &Hint, observation: &Observation| hint_text(record, catalogue, hint, observation);
     track::follow(&timeline.log, &starts, &turns, inputs, layout, &name)
+}
+
+/// Which way the stacks face at `t` of `timeline`: those its poses then mirror face left.
+pub fn facing(timeline: &Timeline, t: u32) -> Facing {
+    let left: BTreeSet<u8> = timeline
+        .at(t)
+        .into_iter()
+        .filter(|(_, p)| p.mirrored)
+        .map(|(id, _)| id)
+        .collect();
+    Facing::Left(left)
 }
 
 /// The timeline with the stacks the mouse entered playing their group 1 ([`Timeline::enter`]): each

@@ -2838,6 +2838,49 @@ green.
 - **Inbox:** the stack's and the turret's info dialogs and the right button's popups (not built;
   M5 T4 or later).
 
+### M5 T2b — Hot seat in the window (2026-10-27)
+
+On `client/e17-m5-t2b`, the user present. Proposed cut in two (the commands and the wait; the
+side to act's view); the user chose T2b whole. The sandbox new, the original files staged from
+the user's `original-data/` first; the baseline (the client check) green, CI's `master` run green.
+
+- **Starting point:** `master` at `13459b4` (#515 merged).
+- **Read:** Land Mine's handler (`cast_spell` 0x5A0536 on): its sample and each mine's placing
+  animation behind only the hidden battle's test (0x5A060F to 0x5A063D), so the placings show on
+  every screen; the screen's side as §7.16 read it (0x49460A to 0x49463A). Design §9.12.
+- **The library:** `Growing::waiting` (the timeline waiting at its end: what the last command
+  left shown with the first idle step after it; `Player` cloned for it), `Growing::push_seen`
+  (each event's side that alone sees it: an object placed out of the other side's sight is its
+  side's, `Object::owner`, until revealed), `Timeline::humans` and `Timeline::screen` (the side to
+  act when a human here plays it, else the other; none without a human: every object shows), the
+  objects filtered by it in `Timeline::objects` and `Playhead::moment`. Tests: before every command
+  given at a time in the replays (21 of them reach one), the waiting timeline's moments, a
+  playhead's and at once, are the whole battle's; a defender's hidden mine in hot seat, against
+  the computer both ways and without a human, laid by an event and in the snapshot, revealed.
+- **The binary:** `--human attacker|defender|both` (`Source::humans`: the battle's human players,
+  the review list's item 1); `live::Live` with its seats (`waiting`, `play`, `choice`,
+  `obstacles`, every side's events with the side that sees each, `bot_record`); `Battle` waiting
+  (`Played::Waiting` with the timeline `waiting` gives), `command` (the action at the press's
+  time, a fresh playhead), `press`, `button`, `takes`, `press_for`, `choice`,
+  `as_the_bot_fights`; a battle a human plays grows from every side's events, its opening's
+  obstacles both sides'. The window: a press over the battlefield gives its command as the button
+  goes down, Wait and Defend as released or by their keys' release; a press or one of the
+  battle's keys made while the battle takes none is dropped; unattended runs press the bot's
+  choices (`Presser`, 400 ms into the turn) and check the battle against the bot's at once.
+  `pointer::press_points` and `middle` moved from `clicks.rs`, `pointer::facing` from `shown`;
+  the help's keys corrected (P, Home, H).
+- **Checks:** `window --check` under Xvfb on `scenarios/battle.toml`: hot seat (`--human both`,
+  speed 2, 150 s) 24 commands pressed, 1 281 of 1 281 frames exact; a human attacker against the
+  bot, 16 pressed, 1 248 of 1 248; at speed 0 for 60 s, 14 pressed, 715 of 715; each "the battle
+  so far is the bot's at once: yes" (the bot alone at speed 2 passed over 54 frames in the same
+  run, the sandbox's noise). Real X clicks (`xdotool`, the window interactive): the Angel's
+  flight, the Champions' Defend by D, the Marksmen's Wait by the button, the Wolf Riders' walk;
+  the log's frame red, then blue on the defender's turn. The Tower's siege in hot seat: its mines
+  on the keep's and the towers' turns (the defender's screen), none on the Catapult's.
+  `sequences` all 47 as recorded; `drawn` all 119 the same (the Tower's still, the defender's
+  record on the keep's turn, among them). The library's tests and the binary's (39); clippy; the
+  client check; the scoped verify.
+
 ## Accepted review lists (M1 to M4)
 
 M1 and M2 moved from the epic file on 2026-10-20 (less start-up reading), unchanged; M3 at its
