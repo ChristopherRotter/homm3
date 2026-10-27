@@ -388,7 +388,7 @@ packs = [[
     "0.1.0",
 ]]
 profile = "synthetic:faithful"
-ruleset_hash = "0x5d325c352ca87060"
+ruleset_hash = "0xf957d87efe3a32c6"
 battle_ruleset_hash = "0x7504e0bf2b62c97c"
 rng = "xoshiro256starstar+splitmix64"
 rng_version = 1

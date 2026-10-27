@@ -37,6 +37,23 @@ left open whether objects are a closed enum or data-driven primitives. No logic 
      fog's) that the movement rules read; the static map keeps every footprint.
    - **Plain arrays** for the small, hot parts: heroes on the map, their armies with the army's
      formation, movement points.
+   - **Increment 7's block** (E08 decision 133: bounded only by the map's objects, never by the
+     original's 32 marks per class, A-17, or 400 reward records, A-19), behind one `Arc`, none
+     until the first visit that writes one: **per object**, an object **emptied** (a Corpse,
+     Wagon, Lean To or Warrior's Tomb searched, a Pyramid looted) beside the removal, and the
+     **army left** by a battle (a box's, an event's, a guarded artifact's or scroll's guards,
+     besides a monster's) in a table of leaves whose copy on a write is bounded, not the whole
+     map's (one ordered map behind an `Arc` copied every entry: 16.5 M instructions with 41 472
+     entries, measured); **per hero, by hero id**, the **once-per-hero marks** (which objects of
+     the once-per-hero classes the hero has visited), a bit set by object index kept beside the
+     heroes on the map, not in them, so a hero that leaves the map keeps its marks (the original's
+     hero record) and a fork does not copy one set per hero; **per player**, its **knowledge of
+     objects** (the original's team marks: which objects a hero of the player has visited), a bit
+     set by object index. A fork costs one reference count more; a write copies the block's
+     handles and one table and leaf of the set it changes (1 to 3 thousand instructions with eight
+     heroes and players on the XL map's 41 472 objects, measured in E08 T55b). The **reward
+     records** are static (the static map), one per box or event, never shared (A-19 not
+     reproduced).
 
    A fork is `Clone`: a few reference increments plus the plain arrays. The structures are
    hand-rolled in `h3-adventure` (no persistent-collections dependency) and move to the kernel
@@ -79,7 +96,9 @@ left open whether objects are a closed enum or data-driven primitives. No logic 
    stacks and groups above it are invalid, and later rules that add creatures keep it. The
    formation and the flag change at no cost. The adventure
    validates and applies these commands; the game routes them and checks the turn and the
-   decision (ADR-0017 points 1 and 6).
+   decision (ADR-0017 points 1 and 6). From increment 7 a visit's changes to the hero come back
+   as hero changes (ADR-0013 points 2 and 15); its morale and luck bonuses are the details'. The
+   once-per-hero marks are the adventure's (point 1).
 4. **Map objects are closed behaviour kinds with data parameters** (as abilities, ADR-0012;
    answers the `docs/03` question). An object is its static part (position, template masks of
    blocked and visitable tiles, object type), a kind from a closed enum in `h3-adventure` with
@@ -172,6 +191,58 @@ left open whether objects are a closed enum or data-driven primitives. No logic 
      visited from above stay as for the battle's visit. A join that finds no room is offered as
      any join; accepted, it reports the group, which the game holds as the army dialog's
      decision (ADV-MON-008 amended).
+   - **Increment 7's kinds** (rewards on the map; the import maps classes 4, 5, 6, 22, 23, 26,
+     32, 39, 41, 47, 51, 61, 63, 65 to 69, 81, 88 to 90, 93, 100 to 102, 104, 105, 107, 108 and
+     113):
+     - **Pickups that go to the hero:** a **treasure chest** (gold drawn, or a treasure artifact;
+       gold asks gold or experience), a **placed or random artifact** (a random one drawn at the
+       build by its classes), a **Spell Scroll** (its spell from the map). A guarded artifact
+       always asks (D-29), a guarded scroll only with a text; a win picks it up. A **monster's
+       treasure artifact** goes to the hero after a win or a join (the import takes it: the 8
+       refused maps move on).
+     - **Teachers:** the once-per-hero gifts (Marletto Tower, the Garden of Revelation, the
+       Mercenary Camp, the Star Axis, the Arena, the Library of Enlightenment, the Schools of
+       Magic and War, the Learning Stone, the Tree of Knowledge), the **Shrines**, the **Witch
+       Hut**, the **Scholar** and the **University**. **Finds** emptied by a visit: the Corpse,
+       the Wagon, the Lean To and the Warrior's Tomb. **Pandora's Box** (a reward record, a
+       question, guards announced) and the **Pyramid** (a drawn spell, a question at every visit,
+       a monster battle with a second creature, a looted Pyramid's luck).
+     - **Events:** a reward record with its colours, computer flag and removal flag. An event is
+       no visitable object: nothing is drawn or observed of it (point 6); a hero that **enters
+       its tile by a step** fires it when the hero's owner's colour is in its colours (a player
+       that is not human, ADR-0017 point 1's flag, only with the computer flag), and **the move
+       ends there**: the rest of the path is dropped, the move's outcome, never a rejection. Its
+       guards fight at once (no question); without the removal flag it fires again at every later
+       entry, never for a hero that starts its move on it. **The reachable-tiles query never
+       reads events** (blind, in every profile, no flag): batch E7's row E7-23 showed the
+       original's path crossing a hidden event, and the original's placement clears an event
+       tile's entrance bit, so its pathfinder never stops there (E08 decision 131: A-23
+       withdrawn, T58). A step into a firing event mid-path ends the move there, as at the path's
+       end.
+     - **Visits.** A question is a pending decision of the visitor's owner (ADR-0017 point 6). A
+       refusal (a full backpack, no spell book, too little Wisdom, a known spell or skill, eight
+       skills, a price the owner cannot pay, a mark already set, an emptied find) is the visit's
+       outcome, never a rejected step, and changes nothing but the visitor's owner's knowledge,
+       which the original records first. When the hero cannot receive an artifact (ADR-0013
+       point 15.4; under A-25's flag a full backpack, whatever the free positions), a placed
+       artifact or a scroll refuses the visit, a chest's artifact turns into its gold choice, a
+       Corpse's into gold and a Wagon's into its resources, a Tomb's is left, and a box's, an
+       event's or a monster's is lost (survey `E08-rewards.md` §8.2). After a won guards' battle
+       the visit's rest (the pickup, the rewards, the spell) comes after the battle's levels (the
+       original's order).
+     - **Random contents of increment 7 are drawn when the game is built**, from the setup
+       stream in object order, the random artifacts first: the random artifacts and a chest's, a
+       Corpse's, a Wagon's and a Tomb's artifact from one pool of the ruleset's artifacts that
+       are placed at random (never one banned, placed or drawn before, until the pool is
+       exhausted: D-32), a chest's gold, the Tree's price, a Shrine's spell (no spell of its level
+       repeated until each is out: D-34), a Witch Hut's skill, a Scholar's kind and reward, a
+       University's four skills, the finds' contents, the Pyramid's spell. The scenario's bans
+       (skills, spells, artifacts) are static inputs. Nothing a visit does draws.
+     - **No original bound** (E08 decision 133): a mark per object (A-17), a record per box or
+       event (A-19); the import refuses a box's or an event's creature list longer than an army
+       (A-24). An RoE map's Witch Hut without a mask takes the original's fixed 14 skills (mask
+       0xEFBF) under `faithful` and every skill but Leadership and Necromancy under
+       `strict-fixed` (A-21, `ADV-QUIRK-21`, a quirk with a flag).
 5. **Fog of war.** Each player has an explored layer (a bitset grid). An explored tile stays
    visible with its current content until a rule clears it (Cover of Darkness): no line-of-sight
    memory (VCMI, survey `E08-adventure-core.md` §2). Reveals set disk-shaped areas;
@@ -203,7 +274,16 @@ left open whether objects are a closed enum or data-driven primitives. No logic 
    contents. From increment 6 a hero's army, formation, flag and details are its owner's only,
    so every management change, a meeting and an army dialog are told to the owner alone; another
    player learns of a meeting only the step it sees (a step is a step), and of the group only the
-   monster's leaving where it sees the tiles.
+   monster's leaving where it sees the tiles. From increment 7 chests, scrolls and boxes look
+   alike; a placed artifact's picture names it; every content and every draw stays hidden until a
+   visit. A visit tells its visitor's owner what the original's dialog shows and records the
+   owner's **knowledge** of the object (a Shrine's spell, a hut's skill, a Tree's price, a
+   University's skills, a find emptied, a Pyramid looted), which that player's observation shows
+   from then on. A hero's once-per-hero marks and bonuses are its owner's. An **event is never
+   observed**, not even by its visitor's owner after it fired; its firing is told to the visitor's
+   owner alone, its removal to no one. Removals of picked-up objects are seen where the tiles
+   are, as a pile's. The legal moves never depend on an event (A-23 withdrawn), so they reveal
+   nothing of one before it fires.
 
 ## Consequences
 
@@ -230,6 +310,12 @@ left open whether objects are a closed enum or data-driven primitives. No logic 
   the game checks both before applying either. The original's human-only reading of the flags
   (the formation and the tactics phase for a human player's side) has no counterpart: the engine
   has no computer player (E08 decision 16); E10 decides for its computer players.
+- Increment 7: the adventure state grows by one block (the state hash and its version); the army
+  left changes its storage; `fork-xl-144` moves by a reference count at most once a reward was
+  visited. The callers of the reachable-tiles query (`legal_moves`, the env's masks, the
+  properties' plans) do not change for events (A-23 withdrawn). The monster battle gains a second
+  creature (the Pyramid's), which `split` lays out by the original's order table (ADV-MON-012).
+  The import maps 31 more classes and reads the scenario's spell and artifact bans.
 
 ## Alternatives considered
 
@@ -255,6 +341,13 @@ left open whether objects are a closed enum or data-driven primitives. No logic 
   original exchanges only in the meeting a step opens, which costs the step's points); one answer
   naming what to dismiss and where the group goes (a fraction of the original's dialog); VCMI's
   split bounds, or a flag for A-16.
+- Increment 7 (ADV-Q28, ADV-Q29): the original's bounds (32 marks per class, 400 records) or a
+  smaller bound of the engine's (E08 decision 133); the marks on each hero on the map (a fork
+  copies a set per hero, 453 instructions with eight heroes against 19 for one block, measured,
+  and a hero that leaves the map loses them); events as visitable objects (the original never
+  draws them); A-23, an event's tile as a stop (withdrawn: the original's pathfinder never stops
+  there, batch E7's E7-23 and the re-read, E08 T58); VCMI's side of the disputes (batch E7
+  showed the code's side on every row, E08 T58).
 
 ## Revision history
 
@@ -293,3 +386,11 @@ left open whether objects are a closed enum or data-driven primitives. No logic 
   point 3: a stack's count cap, a ruleset parameter of 1 000 000 (the original's 16-bit limits
   do not bind): merges refused past it, the split's count within it, a joining or raised group
   to a free slot else no room, setups above it invalid.
+- 2026-10-27 (E08 T59; the user at ADV-Q28, ADV-Q29 and ADV-Q30): points 1, 3, 4 and 6 amended
+  for E08 increment 7, rewards on the map: one block for objects emptied, the army left, the
+  once-per-hero marks by hero id and each player's knowledge, bounded by the map alone (E08
+  decision 133); visits' hero changes; the 31 classes' kinds (pickups, teachers, finds, Pandora's
+  Box, the Pyramid, events that stop a move and that the reachable-tiles query never reads), their
+  refusals (A-25's full backpack), their draws at the build, A-21's Witch Hut mask; the knowledge
+  in the observation, events never observed. Drafted in E08 T55b (#484; survey `E08-rewards.md`
+  §1–§9, §13); batch E7's outcome (T58, §15: A-23 withdrawn) and decision 145 folded in.

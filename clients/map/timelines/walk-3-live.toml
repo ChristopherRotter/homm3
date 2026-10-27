@@ -1,7 +1,7 @@
 # The original's live part at the sequence's 0 (h3map.py frames).
 view = [8, 9, 0]
-cycles = 14
-river_cycles = 14
+cycles = 13
+river_cycles = 13
 frames = 0
 viewer = 0
 anchors = [[18, 17, 0], [34, 2, 0], [13, 23, 0], [26, 11, 0]]

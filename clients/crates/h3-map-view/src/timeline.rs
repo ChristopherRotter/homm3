@@ -583,7 +583,10 @@ impl Loop {
     /// The idle message: the edge scroll before it, then the idle step (0x408A88).
     fn idle_message(&mut self, t: u32) {
         self.edge(t);
-        if t >= self.frame_at {
+        // Each redraw steps the objects once (0x408B26); one later than a step leaves the deadline
+        // at the clock, so the loop's next turn, in the same millisecond, redraws again: after a
+        // walk the screen shows the last of them (M2 T3b, design §3.8).
+        while t >= self.frame_at {
             self.draw();
             self.step_objects(t);
         }
@@ -939,10 +942,11 @@ impl Loop {
             .unwrap_or(0);
     }
 
-    /// The objects' step after a redraw (0x408B26): while the clock has reached the deadline,
-    /// +0x100 grows by one and the deadline moves on by the larger of the step and its lateness.
+    /// The objects' step after a redraw (0x408B26, `view_show_step` 0x40F270): once the clock has
+    /// reached the deadline, +0x100 grows by one and the deadline moves on by the larger of the
+    /// step and its lateness (a late one to the clock: the next idle message redraws again).
     fn step_objects(&mut self, t: u32) {
-        while t >= self.frame_at {
+        if t >= self.frame_at {
             self.steps = self.steps.saturating_add(1);
             let late = t - self.frame_at;
             self.frame_at = self

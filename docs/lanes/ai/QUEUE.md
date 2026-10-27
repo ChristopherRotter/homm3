@@ -41,6 +41,13 @@ Sorted by destination at E05's audit (T9a, 2026-10-19); the origin stays in brac
 done: BAT-Q33's point for E05 (AI-Q3, ADR-0025 point 6), the `h3-game` coverage gap of a pending
 Pass offer (fixed by the adventure lane's fixed tests, #266).
 
+- 2026-10-27 (the adventure lane, E08 T59, `shared/e08-t59`, `cross-lane`; for your information,
+  nothing to do): core ruleset hash v49 (the mana ceiling, two adventure flags; no battle rule
+  moved): `bots-report-v1.json` and `bots-neutral-v1.json` regenerated in that pull request
+  (`h3 ai eval --set report-v1|neutral-v1 --json`); the run records keep the hash they ran on.
+  ADR-0017 point 8 now says the env's mapping onto the answers typed by decision (E08 T63,
+  `cross-lane`) and that a University's purchase head is your call.
+
 - 2026-10-27 (this lane, E06 T6f and T8b; for the next `shared/` change):
   `docs/07-simulation-and-ai.md` (shared) should name observation v22 (the turn order block
   after v21's layout, `[network] order`) and C ABI v34's worlds (`h3_batch_determinize`,

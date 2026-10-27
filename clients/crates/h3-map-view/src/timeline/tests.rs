@@ -271,15 +271,18 @@ fn the_redraws_and_the_palettes_on_their_grids() {
 }
 
 #[test]
-fn a_late_redraw_steps_the_objects_for_each_step_missed() {
-    // The window's clock may jump (T4): at 400 the redraw due at 180 draws the step it held, then
-    // steps twice (the deadline moved by the lateness, 220, then by 180: 580); one palette step.
+fn a_late_redraw_draws_again_for_each_step_missed() {
+    // The window's clock may jump (T4), and a walk keeps the idle step from running: at 400 the
+    // redraw due at 180 draws the step it held and steps once, the deadline moved by the lateness
+    // (220) to the clock, so the loop's next turn redraws at once and steps again (the deadline
+    // then by 180: 580); the screen shows the second draw (M2 T3b: the walks' ends). One palette
+    // step.
     let mut l = looped(Bugs::Fixed, 1);
     l.run(400, &[]).unwrap();
     let s = l.state(400);
     assert_eq!(
         (s.drawn.frames, s.objects, s.cycles, s.drawn.cycles),
-        (1, 2, 1, 1)
+        (2, 2, 1, 1)
     );
     l.run(579, &[]).unwrap();
     assert_eq!(l.state(579).objects, 2);

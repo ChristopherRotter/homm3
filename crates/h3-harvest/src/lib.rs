@@ -932,7 +932,9 @@ pub fn harvest(inputs: &Inputs, gap: &GapFill) -> Result<Harvest, String> {
          \"quirk.adventure.split_from_tile\" = true, \
          \"quirk.adventure.level_up_from_seed\" = true, \
          \"quirk.adventure.drop_ignores_artifacts\" = true, \
-         \"quirk.adventure.radius_waits_for_a_step\" = true }    # Q-0003, Q-0005, Q-0004, Q-0006, Q-0007, Q-0008, Q-0009, Q-0010, Q-0011, Q-0012, BAT-QUIRK-3 to BAT-QUIRK-5, BAT-QUIRK-7, BAT-QUIRK-13, BAT-QUIRK-19, BAT-QUIRK-23, BAT-QUIRK-24, BAT-QUIRK-25, BAT-QUIRK-27 to BAT-QUIRK-30, ADV-QUIRK-1 to ADV-QUIRK-6, ADV-QUIRK-9, ADV-QUIRK-10, ADV-QUIRK-17, ADV-QUIRK-18\n",
+         \"quirk.adventure.radius_waits_for_a_step\" = true, \
+         \"quirk.adventure.roe_witch_hut_mask\" = true, \
+         \"quirk.adventure.full_backpack_refuses\" = true }    # Q-0003, Q-0005, Q-0004, Q-0006, Q-0007, Q-0008, Q-0009, Q-0010, Q-0011, Q-0012, BAT-QUIRK-3 to BAT-QUIRK-5, BAT-QUIRK-7, BAT-QUIRK-13, BAT-QUIRK-19, BAT-QUIRK-23, BAT-QUIRK-24, BAT-QUIRK-25, BAT-QUIRK-27 to BAT-QUIRK-30, ADV-QUIRK-1 to ADV-QUIRK-6, ADV-QUIRK-9, ADV-QUIRK-10, ADV-QUIRK-17, ADV-QUIRK-18, ADV-QUIRK-21, ADV-QUIRK-22\n",
     );
     base.push_str(
         "\n[[profile]]\nid = \"strict-fixed\"    # all quirks fixed\n\
@@ -968,7 +970,9 @@ pub fn harvest(inputs: &Inputs, gap: &GapFill) -> Result<Harvest, String> {
          \"quirk.adventure.split_from_tile\" = false, \
          \"quirk.adventure.level_up_from_seed\" = false, \
          \"quirk.adventure.drop_ignores_artifacts\" = false, \
-         \"quirk.adventure.radius_waits_for_a_step\" = false }   # Q-0003, Q-0005, Q-0004, Q-0006, Q-0007, Q-0008, Q-0009, Q-0010, Q-0011, Q-0012, BAT-QUIRK-3 to BAT-QUIRK-5, BAT-QUIRK-7, BAT-QUIRK-13, BAT-QUIRK-19, BAT-QUIRK-23, BAT-QUIRK-24, BAT-QUIRK-25, BAT-QUIRK-27 to BAT-QUIRK-30, ADV-QUIRK-1 to ADV-QUIRK-6, ADV-QUIRK-9, ADV-QUIRK-10, ADV-QUIRK-17, ADV-QUIRK-18\n",
+         \"quirk.adventure.radius_waits_for_a_step\" = false, \
+         \"quirk.adventure.roe_witch_hut_mask\" = false, \
+         \"quirk.adventure.full_backpack_refuses\" = false }   # Q-0003, Q-0005, Q-0004, Q-0006, Q-0007, Q-0008, Q-0009, Q-0010, Q-0011, Q-0012, BAT-QUIRK-3 to BAT-QUIRK-5, BAT-QUIRK-7, BAT-QUIRK-13, BAT-QUIRK-19, BAT-QUIRK-23, BAT-QUIRK-24, BAT-QUIRK-25, BAT-QUIRK-27 to BAT-QUIRK-30, ADV-QUIRK-1 to ADV-QUIRK-6, ADV-QUIRK-9, ADV-QUIRK-10, ADV-QUIRK-17, ADV-QUIRK-18, ADV-QUIRK-21, ADV-QUIRK-22\n",
     );
 
     // ab
@@ -1212,14 +1216,15 @@ fn write_hero_params(
         "\n# Hero parameters (Tier 2): rule ids in docs/rules/catalog/heroes.toml (sources in the\n\
          # gap-fill file).\n[hero_params]\nprimary_min = [{a}, {d}, {s}, {k}]\nprimary_max = {}\n\
          backpack = {}\nlearn_level = {}\nexperience = [{}]\nmax_level = {}\nwisdom = {}\n\
-         schools = [{}]\n",
+         schools = [{}]\nmana_ceiling = {}\n",
         p.primary_max,
         p.backpack,
         p.learn_level,
         experience.join(", "),
         p.max_level,
         skill(&p.wisdom)?,
-        schools.join(", ")
+        schools.join(", "),
+        p.mana_ceiling
     );
     Ok(())
 }

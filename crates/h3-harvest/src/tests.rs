@@ -580,6 +580,7 @@ experience = [0, 1000, 2000]
 max_level = 74
 wisdom = "Skill 7"
 schools = ["Skill 14", "Skill 15"]
+mana_ceiling = 999
 sources = ["s"]
 
 [heroes.offer_intervals]
@@ -1102,7 +1103,7 @@ fn harvests_hero_content() {
     ));
     assert!(base.contains(
         "backpack = 64\nlearn_level = 2\nexperience = [0, 1000, 2000]\nmax_level = 74\n\
-         wisdom = \"skill_7\"\nschools = [\"skill_14\", \"skill_15\"]\n"
+         wisdom = \"skill_7\"\nschools = [\"skill_14\", \"skill_15\"]\nmana_ceiling = 999\n"
     ));
     // E08 T26b: the listed classes' intervals and every other's.
     let intervals = |k: &str| {

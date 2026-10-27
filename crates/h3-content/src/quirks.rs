@@ -124,6 +124,8 @@ pub const REGISTRY: QuirkRegistry = QuirkRegistry::new(&[
     "quirk.battle.breath_skips_side_columns",
     "quirk.battle.retaliation_at_a_dead_striker",
     "quirk.battle.raise_by_rear_hex",
+    "quirk.adventure.roe_witch_hut_mask",
+    "quirk.adventure.full_backpack_refuses",
 ]);
 
 /// Q-0003: creatures of a side without a hero never get lucky strikes (BAT-LCK-002).
@@ -303,6 +305,21 @@ pub const RETALIATION_AT_A_DEAD_STRIKER: QuirkFlag = QuirkFlag(35);
 /// Off: by either hex (BAT-MAG-035). Read by the battle from batch 2g.
 pub const RAISE_BY_REAR_HEX: QuirkFlag = QuirkFlag(36);
 
+/// ADV-QUIRK-21 (A-21, E08 decision 130; survey `E08-rewards.md` §9, D-33): a Witch Hut on an RoE
+/// map, whose file holds no skill mask, draws from the original's fixed mask 0xEFBF (0x5034BD):
+/// the skills 0 to 15 but Leadership and Necromancy, never Water Magic to First Aid. Off: every
+/// skill but Leadership and Necromancy (the editor's default, VCMI's). Read by the adventure's
+/// build from E08 T61.
+pub const ROE_WITCH_HUT_MASK: QuirkFlag = QuirkFlag(37);
+
+/// ADV-QUIRK-22 (A-25, E08 decision 145; survey `E08-rewards.md` §15): a hero whose backpack
+/// holds its most (64) receives no artifact, whatever its free positions: the visits test the
+/// count before `hero_give_artifact` places anything, so the artifact is lost or turned into
+/// gold or resources (ADR-0013 point 15.4). Off: the artifact goes to the first position that
+/// takes it, else the backpack (HER-CHG-002); only one without room is refused. Read by
+/// `h3-heroes` and the adventure's visits from E08 T60.
+pub const FULL_BACKPACK_REFUSES: QuirkFlag = QuirkFlag(38);
+
 /// The prefix of the flags of data quirks: a gated override names one of them (`fixes`), and
 /// rule code never reads them (ADR-0007, amendment E04b T8e).
 pub const DATA_QUIRK_PREFIX: &str = "quirk.content.";
@@ -345,7 +362,14 @@ mod tests {
 
     #[test]
     fn registry_lookup_and_bitset() {
-        assert_eq!(REGISTRY.len(), 37);
+        assert_eq!(REGISTRY.len(), 39);
+        assert_eq!(
+            [
+                REGISTRY.lookup("quirk.adventure.roe_witch_hut_mask"),
+                REGISTRY.lookup("quirk.adventure.full_backpack_refuses"),
+            ],
+            [Some(ROE_WITCH_HUT_MASK), Some(FULL_BACKPACK_REFUSES)]
+        );
         assert_eq!(
             REGISTRY.lookup("quirk.battle.computer_morale_let_off"),
             Some(COMPUTER_MORALE_LET_OFF)
@@ -514,7 +538,7 @@ mod tests {
         }
         // The positions stay taken, so the flags after them keep their indices
         // (`registry_lookup_and_bitset`), and the flags that exist are every other position.
-        assert_eq!(REGISTRY.len(), 37);
+        assert_eq!(REGISTRY.len(), 39);
         assert_eq!(
             [
                 REGISTRY.names[9],
@@ -528,7 +552,7 @@ mod tests {
             REGISTRY
                 .flags()
                 .map(QuirkFlag::index)
-                .eq((0..37).filter(|i| ![9, 10, 14, 30].contains(i)))
+                .eq((0..39).filter(|i| ![9, 10, 14, 30].contains(i)))
         );
         // A registry without retired flags has them all.
         assert!(TEST.flags().map(QuirkFlag::index).eq(0..2));

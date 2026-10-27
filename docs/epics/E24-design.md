@@ -1032,7 +1032,7 @@ T1a's six sequences line by line and frame by frame.
   (both kinds alike: the viewer's clock keeps the rivers with the terrains, MCL-Q5; a still's split
   comes from the live part). The objects' step after a redraw loops while the deadline is reached,
   the deadline on by the larger of 180 and the lateness: a redraw 220 ms late steps twice (as
-  `walk-2`'s +2 at 3 300 showed).
+  `walk-2`'s +2 at 3 300 showed); each step is a redraw of its own, the screen the last (§3.8).
 - **The screen** (the `sequences` adapter): the view as its last draw shows it, the cursor over
   it (`cradvntr.def`'s frame by the mouse manager's drawer, runs skipped: `Cursor::read`, copied
   from `h3-view`; its hot spot from `cursor_hot_spots` 0x67FF50 + (144 + frame) × 8, the layout's
@@ -1109,9 +1109,71 @@ boxes (`h3-map-view sequences`, the unit tests), the T2 six unchanged and `drawn
 `walk-follow` gives its scroll speed since: T1b's original held 0 (Ctrl and Down moved one tile),
 the harness otherwise leaves the game's setting.
 
-**For T3b (the walk drawn):** `timeline::Draw` carries what a walk's frame shows (the view's
-offset, the selected hero, the lifted hero's group and frame, the path's arrows) and `Cursor` its
-`shown`; the scene draws the lifted hero at the view's middle (passes 5, 7 and 9, the last a
-blend: `draw_frame_blend` 0x47D4F0 if the frames need it) and adds the offset to every pass; the
-hero DEFs' groups 5 to 9 in the gate (`HeroArt::drawn_groups`); the `sequences` adapter and the
-harness's frame check over the walks; the walks recorded again in a fresh sandbox first.
+**For T3b (the walk drawn):** done, §3.8.
+
+### 3.8 The walk drawn (M2 T3b)
+
+§3.5's lifted hero and the view's offset built into the scene (*provisional*), checked against
+T1b's seven walk sequences recorded again, every line and every frame. Read this time
+(`docs/exe/map.toml`):
+
+- **The blend** (`draw_frame_blend` 0x47D4F0): it reads the frame as encoding 3 whatever its
+  encoding (the heroes', flags' and boats' DEFs are all encoding 3: the gate), clips as the other
+  drawers and mirrors across the frame's width; a literal pixel is blended half and half with the
+  screen, `((c >> 1) & H) + ((d >> 1) & H)` with the half mask 0x6968A4 (0x47EF60's encoding 1
+  blend, E17 design §3.3); a run of 5 is blended so with the colour argument when that is not 0;
+  every other run is skipped. Both callers pass 0: `def_draw_group_blend` 0x47C120 (pass 9) and
+  `draw_frame_transparent` 0x47EF60's encoding 3 (`h3_render`'s `Drawer::Translucent` draws that
+  one plain, *provisional* there: the client lane's inbox). So pass 9 draws the lifted hero's
+  pixels over themselves with each channel's lowest bit lost, and shows the hero half through
+  whatever a later layer drew over it.
+- **Pass 9's cut** (`view_moving_hero_step` 0x47FC80, drawn while `view_shown` 0x6989C0 is set):
+  the 96 × 64 picture at (256, 232) loses, with the view's corner (x, y) and the map's side n,
+  32 × −(x + 8) + the offset's x on the left when x + 8 < 0, 32 × (x + 11 − n) on the right when
+  x + 11 ≥ n, 32 × −(y + 7) + the offset's y at the top when y + 7 < 0 and 32 × (y + 9 − n) at
+  the bottom when y + 9 ≥ n. The boat's flag there is by its type and the hero's owner (pass 7's
+  by the boat's colour); no waves.
+- **Passes 5 and 7's cells**: on the view's tiles of columns 8 to 10 and rows 7 and 8 that lie on
+  the map (off it nothing: 0x4115A1, 0x410C13), the cell (i − 8, j − 7) at its fixed place,
+  clipped to it. Pass 5 (0x411A2C): after the tile's objects' shadows, before the heroes' and
+  boats' (the hero's or the boat's shadow alone). Pass 7: row 8's cell after layer 1's heroes
+  and boats (0x41133B), row 7's after layer 2's (0x4112FB); a tile whose list is empty (0x410D8F)
+  draws all its heroes and boats, then the cell (0x411396), so a standing hero on the row below
+  comes first there.
+- **The map's side during a step** (MCL-Q7): passes 5 and 7 cut the lifted hero at the view's
+  tiles, which the offset does not move, pass 9 on the left and the top at the map's side moved by
+  the offset, on the right and the bottom at the tiles. So for a step's frames but its last, with
+  a strip up to 24 pixels wide (32 less the first frame's pixels): a step away from a side shows
+  the hero over the map's edge; one onto the last column or row leaves a strip of it on the map
+  undrawn; one onto the first column or row shows that strip half transparent (pass 9's blend
+  alone). A standing hero is cut at the map's side. No sequence walks there.
+- **A late redraw** (0x408A88 to 0x408B46): each idle redraw steps the objects once, the deadline
+  on by the larger of 180 and the lateness; one later than a step (only after a walk, when no idle
+  message ran) leaves the deadline at the clock, so the loop's next turn, in the same
+  millisecond, redraws again and steps once more. The screen shows the last draw: at `walk-1`'s
+  key steps (200 ms) and every path walk's end the lifted hero's flag one frame on. T2's model
+  stepped twice under one draw (no recorded frame showed an animated picture then).
+
+**Built** (*provisional*): the live part's `walking` (the offset, the lifted hero by its index,
+its group and frame; none in a still); the scene adds the offset to every tile pass's places (not
+the gems' or the lifted hero's), leaves the lifted hero off its tile, draws its cells in passes 5
+and 7 as read and the whole of it after the arrows (`Pass::Blend`, `draw::blend`), its flags'
+frame the objects' step plus its own modulo the walk's 8 (passes 7 and 9); the timeline's idle
+redraw draws again for each step it is late (`step_objects` one step); the gate asks the heroes',
+flags', boats' and waves' DEFs for the walking groups 5 to 9 with 8 frames each (their standing
+groups hold 1, the flags' 8: `check::walk_problems`); `h3-map-view sequences` draws a walk (each
+draw puts the selected hero where the draw has it, lifted or on its tile, and the path's arrows
+left), so its `screen` lines and `--frames` cover the walks; the harness's frame check and
+`drawn` cover them (`walks` gone from `h3map.py`).
+
+**VCMI 1.7.5** (`client/mapView/`): the moving hero is drawn once among the objects at its
+interpolated place (`MapRenderer.cpp`; transparency only for fading, `objectTransparency`): no
+second, blended draw over the later layers, and no cut by tiles at the map's side.
+
+**Checked** (2026-10-27, T1b's seven recorded again in a fresh sandbox, each timeline as
+recorded and its frame at 0 exact): every line of all 13 sequences as the viewer makes it, the
+`screen` boxes included (`h3-map-view sequences`: 13 played, 13 as recorded), and every kept
+screen of the walks against ours outside the panels, 269 frames (`walk-1` 64, `walk-2` 55,
+`walk-3` 45, `walk-4` 32, `walk-follow` 36, `walk-points` 17, `walk-sail` 20), all exact
+(`timelines/<id>-frames.txt`); `drawn` the 40 situations the same and the 13 sequences' 450
+frames recorded. The first draw differed only at the walks' ends (the late redraw above).

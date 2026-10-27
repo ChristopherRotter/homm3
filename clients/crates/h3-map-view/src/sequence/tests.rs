@@ -169,6 +169,8 @@ fn the_selected_hero() {
         selected(&heroes, 3),
         Err("0 heroes of the viewer's colour 3: a walk needs one, its selected hero".to_string())
     );
+    assert_eq!(selected_index(&heroes, 0), Ok(1));
     let two = [hero(1, 0, Facing::Up), hero(2, 0, Facing::Up)];
     assert!(selected(&two, 0).is_err());
+    assert!(selected_index(&two, 0).is_err());
 }

@@ -17,6 +17,7 @@ use alloc::format;
 use alloc::string::{String, ToString};
 use alloc::vec::Vec;
 use core::fmt;
+use core::ops::Range;
 
 use serde::Deserialize;
 
@@ -107,6 +108,16 @@ pub struct WalkArt {
     /// (`walk_frame_pixels` 0x63D6C8: a tile in 32 / that many frames; speed 2's middle frame 12,
     /// 0x480509): none at speed 4, one draw at the step's end place without a wait (0x480483).
     pub pixels: Vec<Vec<i32>>,
+}
+
+impl WalkArt {
+    /// The groups a step draws, from the lowest to one past the highest (5 to 10); none without
+    /// a group.
+    #[must_use]
+    pub fn drawn_groups(&self) -> Range<u32> {
+        let low = self.groups.iter().min().copied().unwrap_or(0);
+        low..self.groups.iter().max().map_or(0, |g| g + 1)
+    }
 }
 
 /// The owned objects' colours (E24 M1 T5b1; design §2.9): the bodies of a few classes draw their
@@ -393,6 +404,12 @@ pub struct DefNeed {
     /// with group 0's frames at least: a hero's picture is its facing's group at a frame counted
     /// by group 0's frames (design §2.8).
     pub groups: u32,
+    /// The walking groups the view draws (the heroes' and boats': 5 to 10, exclusive; E24 M2
+    /// T3b), each with `walk_frames` frames at least: a step draws its group's frames 0 to the
+    /// walk's frames less one, whatever group 0 holds (design §3.8). Empty for the rest.
+    pub walking: Range<u32>,
+    /// The frames each walking group holds at least.
+    pub walk_frames: usize,
 }
 
 impl Tables {
@@ -423,6 +440,8 @@ impl Tables {
                     layer: Some((layer, *code)),
                     frames: 1,
                     groups: 1,
+                    walking: 0..0,
+                    walk_frames: 0,
                 });
             }
         }
@@ -439,8 +458,13 @@ impl Tables {
                 layer: None,
                 frames,
                 groups: 1,
+                walking: 0..0,
+                walk_frames: 0,
             });
         }
+        // The facings' standing groups, and a step's walking ones (E24 M2 T3b): the lifted hero
+        // draws a walking group's frames 0 to the walk's frames less one, its flag too.
+        let walk_frames = usize::try_from(map.walk.frames).unwrap_or(usize::MAX);
         for (name, what) in map.heroes.defs() {
             needs.push(DefNeed {
                 name,
@@ -448,6 +472,8 @@ impl Tables {
                 layer: None,
                 frames: 1,
                 groups: map.heroes.drawn_groups(),
+                walking: map.walk.drawn_groups(),
+                walk_frames,
             });
         }
         for (name, what) in map.towns.defs() {
@@ -457,6 +483,8 @@ impl Tables {
                 layer: None,
                 frames: 1,
                 groups: 1,
+                walking: 0..0,
+                walk_frames: 0,
             });
         }
         needs

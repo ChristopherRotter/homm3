@@ -225,6 +225,7 @@ fn pack() -> ContentPack {
             max_level: 74,
             wisdom: key("t:wisdom"),
             schools: vec![],
+            mana_ceiling: 999,
         }),
         ..ContentPack::new(PackManifest {
             id: "t".into(),
