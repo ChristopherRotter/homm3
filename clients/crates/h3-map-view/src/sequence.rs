@@ -252,10 +252,7 @@ fn arrow(word: &str) -> Option<Arrow> {
 /// # Errors
 /// None or several of that colour.
 pub fn selected(heroes: &[LiveHero], viewer: u8) -> Result<Hero, String> {
-    let index = selected_index(heroes, viewer)?;
-    let hero = heroes
-        .get(index)
-        .ok_or_else(|| String::from("no selected hero"))?;
+    let hero = &heroes[selected_index(heroes, viewer)?];
     let facing = usize::from(hero.facing.number());
     Ok(Hero {
         at: hero.at,

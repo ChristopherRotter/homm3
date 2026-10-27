@@ -430,6 +430,15 @@ const SLOTS: usize = 6;
 /// The lifted hero's picture in tiles, columns and rows (96 × 64: design §3.5).
 const LIFTED: [i32; 2] = [3, 2];
 
+/// A cell of the lifted hero's picture over a tile: the hero, its group and frame, the cell's
+/// column (0 to 2) and row (0 or 1).
+#[derive(Debug, Clone, Copy)]
+struct Cell<'h> {
+    hero: &'h LiveHero,
+    lifted: Lifted,
+    at: [i32; 2],
+}
+
 /// Which of the lifted hero's draws: pass 5's cell, pass 7's cell, pass 9's whole.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Picture {
@@ -637,7 +646,7 @@ impl<'a> View<'a> {
                 _ => continue,
             };
             self.standing(x, y, place, out, Pass::Body, slots);
-            if let Some(cell) = cell.filter(|c| c[1] == row) {
+            if let Some(cell) = cell.filter(|c| c.at[1] == row) {
                 self.lifted_piece(cell, Pass::Body, out);
             }
         }
@@ -655,12 +664,16 @@ impl<'a> View<'a> {
     /// The cell (column 0 to 2, row 0 or 1) of the lifted hero's picture over the map's tile
     /// (x, y), if a hero is lifted and the tile is on the map (passes 5 and 7 draw no piece off
     /// it: 0x4115A1, 0x410C13).
-    fn lifted_cell(&self, x: i32, y: i32) -> Option<[i32; 2]> {
-        self.lifted?;
+    fn lifted_cell(&self, x: i32, y: i32) -> Option<Cell<'a>> {
+        let (hero, lifted) = self.lifted?;
         self.art.tile(x, y, self.at.z)?;
         let ([ci, cj], _) = self.lifted_corner();
         let (a, b) = (x - self.at.x - ci, y - self.at.y - cj);
-        ((0..LIFTED[0]).contains(&a) && (0..LIFTED[1]).contains(&b)).then_some([a, b])
+        ((0..LIFTED[0]).contains(&a) && (0..LIFTED[1]).contains(&b)).then_some(Cell {
+            hero,
+            lifted,
+            at: [a, b],
+        })
     }
 
     /// One cell of the lifted hero's picture (`view_moving_hero_shadow_piece` 0x47FB40 in pass 5,
@@ -668,17 +681,18 @@ impl<'a> View<'a> {
     /// pictures at the fixed place, its group and frame the walk's, mirrored by its facing. The
     /// shadow is the hero's or the boat's alone; the pictures on land its flag and the hero, in
     /// a boat the waves (not on the coast), the boat's flag by its type and colour, the boat. A
-    /// flag's frame is the objects' frame step plus the hero's, modulo the walk's frames.
-    fn lifted_piece(&self, [a, b]: [i32; 2], pass: Pass, out: &mut Vec<Draw>) {
-        let Some((hero, lifted)) = self.lifted else {
-            return;
-        };
+    /// flag's frame is the objects' frame step plus the hero's, modulo the walk's frames. The cell
+    /// lies inside the view's clip (the original clips it to the screen alone).
+    fn lifted_piece(&self, cell: Cell<'_>, pass: Pass, out: &mut Vec<Draw>) {
+        let Cell {
+            hero,
+            lifted,
+            at: [a, b],
+        } = cell;
         let tile = self.layout.view.tile;
         let (_, [cx, cy]) = self.lifted_corner();
         let (left, top) = (cx + tile * a, cy + tile * b);
-        let Some(clip) = self.clip([left, top], 0) else {
-            return;
-        };
+        let clip = [left, top, left + tile, top + tile];
         let defs = match pass {
             Pass::Shadow => self.lifted_defs(hero, lifted, Picture::Shadow),
             _ => self.lifted_defs(hero, lifted, Picture::Cell),
@@ -703,8 +717,9 @@ impl<'a> View<'a> {
     /// the hero or its boat, whole, blended over everything drawn, at the fixed place; a boat's
     /// flag by its type and the hero's owner. The part beyond the map's sides is cut: by whole
     /// tiles past the side, on the left and the top less the walk's offset there too, on the right
-    /// and the bottom not (the original's cut, which the offset leaves a few pixels off during a
-    /// step at the map's right or bottom side).
+    /// and the bottom not (the original's cut; with passes 5 and 7's cells, cut at the view's
+    /// tiles, it leaves a strip off during a step at the map's side: MCL-Q7, built as the
+    /// original's in both profiles until answered).
     fn lifted_whole(&self, out: &mut Vec<Draw>) {
         let Some((hero, lifted)) = self.lifted else {
             return;
