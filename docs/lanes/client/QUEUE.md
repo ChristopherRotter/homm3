@@ -105,6 +105,16 @@ check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gat
 Other lanes add entries here. The client lane turns each into a task, or moves its detail into
 [`NOTES.md`](NOTES.md) and keeps one line here while the work waits.
 
+- 2026-10-27 (the map client lane, E24 M2 T6a2; for the battle's end tune when its sound is next
+  touched): **the music thread read whole** (`docs/exe/map.toml`: `play_music` 0x59ACB0,
+  `music_thread` 0x59A840, `music_stop_fade` 0x59B080; E24 design §3.11, "The music's thread").
+  For `h3-view`: the end's tune does not cut the combat music; the thread fades it out first
+  (900 ms by tenths from its volume, its place kept), then opens the tune, so the tune starts
+  900 ms after `play_music`, and a battle ended within 900 ms of the music's start waits for the
+  fade-in's end too (the thread holds the manager's +0xA8 through it). `h3_map_view::music`
+  models the thread (looping tracks only: a track played once starts at its volume from its
+  start and is never resumed), a candidate for M3 T0's common crate.
+
 - 2026-10-27 (E17 M5 T2a, the click read; for M5 T4 or later): **the stack's and the turret's
   info by the mouse** are not built: a left press on a stack to look at (kind 5) opens its stats
   dialog (`stack_stats_dialog` 0x468860, modal), on a turret (22) its info (0x47A380); the right

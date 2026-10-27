@@ -27,21 +27,7 @@ chose it over a cut).
 
 T6, M2's closure, cut at its seam before it started (the user, 2026-10-27): T6a, the reviewers
 and their fixes (done 2026-10-27: 24 of 29 fixed; `E24-log.md`), its five music findings cut out
-as T6a2 (the user), then T6b, the closure.
-
-### E24 M2 T6a2 — the music player as the original's music thread
-
-- **Scope:** T6a's five music findings (R2-2 to R2-5, R2-11; each with its addresses in
-  `E24-log.md`, "M2 T6a"): the original's music thread read where T5 and the reviewer did not
-  (`play_music` 0x59ACB0, `music_thread` 0x59A840, `music_stop_fade` 0x59B080: the critical
-  sections, the pending and playing names, the place saved before the fade, a request during a
-  fade-in); the window's music player rebuilt on a pure model of it (requests, fades, places and
-  the queue's take-back, driven by the samples queued and heard), tested without a device; design
-  §3.11 and its review-list entry updated; the battle client's music (`h3_view::sound`, the same
-  `play_music`) noted in the client lane's inbox if it shares a finding.
-- **Acceptance:** each finding fixed with a test, or an `MCL-Q<n>` for an oddity of the original;
-  `clients/scripts/check.sh` green; the Definition of Done.
-- **Depends on:** T6a. **Status:** ready once T6a merged.
+as T6a2 (the user; done 2026-10-27, whole), then T6b, the closure.
 
 ### E24 M2 T6b — M2's closure
 
@@ -59,6 +45,14 @@ as T6a2 (the user), then T6b, the closure.
 
 Other lanes add entries here. The map client lane turns each into a task, or keeps one line here
 while the work waits.
+
+- 2026-10-27 (this lane, E24 M2 T6a2): **the sound without the focus** is not built. The original
+  on losing it (`window_procedure` 0x4F7E88, `sound_focus_lost` 0x599C40, read in part) stops
+  every effect sample and fades the music out (the stub 0x59A830: `music_stop_fade`, its place
+  kept); on regaining it `music_resume` 0x59AC00 asks for the track again (it fades in where it
+  faded out) and the effects come back by 0x4F7E2E (not read). The window plays on without the
+  focus. With M3's settings or the next sound task: read the rest, then `h3_map_view::music`'s
+  model takes a fade without a pending track and the window follows `Window::focused()`.
 
 - 2026-10-27 (this lane, E24 M2 T4b3; the user: "it will do for now, but we should check back in
   at some point"): **a frame's fixed cost.** A frame takes 4 to 6 ms to make on the user's machine

@@ -14,7 +14,9 @@
 //! tiles left unexplored. [`timeline`] is the map over time (E24 M2 T2): the original's loop on a
 //! clock of milliseconds, its redraws, palette steps, scroll and cursor; [`sequence`] the recorded
 //! sequences it replays. For the window (E24 M2 T4a): [`replay`] runs the timeline forward as its
-//! clock ([`clock`]) needs, [`keys`] is the table of what each key does. The adapters (the gate,
+//! clock ([`clock`]) needs, [`keys`] is the table of what each key does; [`sound`] the map's
+//! sound as cues (M2 T5), [`music`] the original's music thread for the window's music stream
+//! (M2 T6a2). The adapters (the gate,
 //! `render`, `situation`, `sequences`, `window`) are the binary's modules, not this library.
 //!
 //! Pure: no I/O, clock, threads or globals, `no_std` + `alloc`; time is an input. The header below
@@ -47,6 +49,7 @@ pub mod draw;
 pub mod keys;
 pub mod layout;
 pub mod live;
+pub mod music;
 pub mod objects;
 pub mod replay;
 pub mod scene;

@@ -1017,3 +1017,37 @@ findings cut out as T6a2 by the user once they were checked.
   `cited` (every cited address covered). Not yet: the window's R2-7, R2-8 and R2-10 by hand (T6b,
   on the user's machine: Alt+Tab with the pointer at an edge, fullscreen's bars, F7 in a
   situation).
+
+### M2 T6a2 — the music player as the original's music thread (2026-10-27)
+
+On `map-client/e24-m2-t6a2`, the user present; taken whole (it fit a session, no seam asked).
+
+- **Starting point:** `master` at #517 (CI green); `clients/scripts/check.sh` in the sandbox, all
+  gates passed.
+- **Read** (design §3.11, "The music's thread"; the map's entries): `play_music` 0x59ACB0 whole
+  (its filters, the restart of a name whose stream stopped, a thread a request), `music_thread`
+  0x59A840 whole (the lock +0xA8 from 0x59A859 to 0x59ABE7, the pending name taken after the
+  fade, the open, the place, the fade-in), `music_stop_fade` 0x59B080 whole (the place before the
+  fade, the fade from the stream's volume, the pause); `music_resume` 0x59AC00, `window_procedure`'s
+  activation case and `sound_focus_lost` 0x599C40 in part (the inbox). Each of the reviewer's five
+  confirmed: R2-2 (a request during a fade-in waits for its end, the fade-out from the whole),
+  R2-3 (the take-back), R2-4 (the filters; an oddity: **MCL-Q12**), R2-5 (the place before the
+  fade), R2-11 (no test).
+- **Built:** `h3_map_view::music` (pure, 100 %): `Music`, the original's state on a clock of the
+  frames heard (`request` with its filters, `advance` giving runs of one volume, the thread's
+  steps between: the lock through each fade, the pending name taken at the fade-out's end, the
+  place kept where the fade-out begins and taken back at the open), `Queue`, the model at the
+  frames heard and a copy at the frames queued (a request taken: the stream cleared and queued
+  again from the frames heard; the window's clear the same). The window's music (`audio`) on it:
+  one stream of 44.1 kHz stereo (another format refused), the runs' samples scaled, a track
+  being decoded holding the music instead of the frame loop waiting for it.
+- **Checked:** 15 unit tests of the model (each finding's case, the pending and playing filters,
+  grass-dirt-grass, a missing, an empty and a slow track, a place past a track's end) and the
+  queue against a fake stream played in uneven turns (what it plays is what the model alone
+  hears); the window under Xvfb with SDL's `disk` driver (design §3.11, "Checked"): back onto
+  grass 326 ms after the dirt kept Dirt; back during Dirt's fade-in: its fade-in ended, its
+  fade-out from 114, Grass where its fade began. `h3-map-view`'s tests, clippy, fmt; `exe.py
+  check` and `check-exe-map`.
+- **Noted:** the client lane's inbox (the battle's end tune follows the combat music's fade-out;
+  the model a candidate for M3 T0's common crate); this lane's inbox (the sound without the
+  focus).

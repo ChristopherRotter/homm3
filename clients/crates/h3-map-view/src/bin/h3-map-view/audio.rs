@@ -2,45 +2,41 @@
 //! played as the original's sound manager plays them, on `h3-sdl`'s audio (one stream a source,
 //! SDL mixing them; `h3-view`'s battle sound the model, E17 design §8.2).
 //!
-//! - **The music** on one stream, looping, at the music's volume (127, a setting of 10). A track
-//!   asked for while another plays: the old one fades out (its volume less a tenth every 100 ms:
-//!   114 … 12, `music_stop_fade` 0x59B080), its place kept under its name; after 900 ms the new
-//!   one starts where its name last stopped (from its start the first time) and fades in (12, 25,
-//!   … 114 every 100 ms, then 127 after 900 ms: E17 §8.2). The fades scale the samples as they
-//!   are queued, so they follow the device's time (paused with it), as the original's thread
-//!   follows real time; a track asked for takes back what is queued of the old one, its fade-out
-//!   starting at what plays. A track is decoded
-//!   on a thread of its own when first asked for (during the old one's fade-out; with none
-//!   playing, it starts once decoded, the frames going on; the map's first before the window
-//!   opens).
+//! - **The music** on one stream as the original's music thread plays it (M2 T6a2:
+//!   `h3_map_view::music`, the model of `play_music` 0x59ACB0, `music_thread` 0x59A840 and
+//!   `music_stop_fade` 0x59B080): a request dropped for the name pending or playing, the old track
+//!   faded out (its place kept where the fade began) after any fade-in under way, then the last
+//!   asked for faded in where its name last faded out. The model runs on the frames the device
+//!   has played, so the fades follow the device's time (paused with it), as the original's thread
+//!   follows real time; its copy queues a second ahead, and a request it takes takes that back
+//!   (the stream cleared, queued again from what was heard). A track is decoded on a thread of its
+//!   own when first asked for (the map's first before the window opens); the music waits for it
+//!   (the original opens its file at once). Every track is 44.1 kHz stereo (the nine terrain
+//!   tracks are); one of another format is refused, as one that does not decode.
 //! - **The step sound** on one stream (category 0's one sample), looping, at 127.
 //! - **The ambient loops**, a stream per slot (4; the original's category 3 takes 8 handles, its
 //!   slots at most 4 of them), looping, each at its cue's volume (32, 28, 20 or 10 by distance).
 //!
 //! The volumes are SDL gains of volume / 127 (both settings at their highest, as `h3-view`'s:
-//! no settings yet). The music and the effects (the step and ambient sounds) can be switched
-//! off, which holds their gains at 0. A sound that is missing or does not decode costs that
-//! sound, noted in the report. An adapter: it reads files and drives the audio device.
+//! no settings yet), the music's fades scaling its samples. The music and the effects (the step
+//! and ambient sounds) can be switched off, which holds their gains at 0. A sound that is missing
+//! or does not decode costs that sound, noted in the report. An adapter: it reads files and
+//! drives the audio device.
 
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use std::thread::{self, JoinHandle};
 
 use h3_assets::wav::Pcm;
+use h3_map_view::music::{FULL, Queue, Request, Run, Track};
 use h3_map_view::sound::{Cue, SLOTS, SoundRules};
 use h3_sdl::Audio;
 
 use crate::sounds::{self, Music};
 
-/// The music's and the files' volume on Miles' scale (127).
-const FULL: u8 = 127;
-/// The fade-in's volumes, one every [`FADE_STEP`] ms (E17 §8.2; `h3_view::sound::FADE`'s).
-const FADE_IN: [u8; 9] = [12, 25, 38, 50, 63, 76, 88, 101, 114];
-/// The fade-out's volumes, one every [`FADE_STEP`] ms from 127 (design §3.11: an f32 sum
-/// truncated), the stream paused after the last.
-const FADE_OUT: [u8; 9] = [114, 101, 88, 76, 63, 50, 38, 25, 12];
-/// A fade's step, in ms.
-const FADE_STEP: u64 = 100;
+/// The music stream's format: every track's (44.1 kHz stereo, as the nine terrain tracks).
+const MUSIC_RATE: u32 = 44_100;
+const MUSIC_CHANNELS: u16 = 2;
 /// How far ahead a loop and the music are queued, in ms.
 const AHEAD_MS: u64 = 1_000;
 
@@ -57,7 +53,8 @@ pub struct Library {
     install: PathBuf,
     /// The WAVs by stem, upper-cased.
     clips: BTreeMap<String, Pcm>,
-    /// The tracks asked for, by name: none for one missing.
+    /// The tracks asked for and decoded, by name: none for one missing, not decodable or of
+    /// another format than the music stream's.
     tracks: BTreeMap<String, Option<Music>>,
     /// The tracks being decoded.
     decoding: BTreeMap<String, JoinHandle<Result<Music, String>>>,
@@ -118,33 +115,77 @@ impl Library {
         self.decoding.insert(name.to_owned(), handle);
     }
 
-    /// Whether a track is decoded (or failed to be), so that taking it does not wait.
-    fn ready(&self, name: &str) -> bool {
-        self.tracks.contains_key(name)
-            || self.decoding.get(name).is_some_and(JoinHandle::is_finished)
+    /// A decoding joined: the track kept if it is of the music stream's format, else noted.
+    fn join(
+        &mut self,
+        name: String,
+        handle: JoinHandle<Result<Music, String>>,
+        lines: &mut Vec<String>,
+    ) {
+        let music = handle
+            .join()
+            .unwrap_or_else(|_| Err(format!("{name}: its decoding failed")))
+            .and_then(|music| {
+                if (music.0, music.1) == (MUSIC_RATE, MUSIC_CHANNELS) {
+                    Ok(music)
+                } else {
+                    Err(format!(
+                        "{name}: {} Hz, {} channels (the music's stream takes {MUSIC_RATE} Hz, \
+                         {MUSIC_CHANNELS})",
+                        music.0, music.1
+                    ))
+                }
+            })
+            .map_err(|e| lines.push(format!("music: {e}")))
+            .ok();
+        self.tracks.insert(name, music);
     }
 
-    /// A track, its decoding waited for (started if it was not; a missing one noted in `lines`).
-    fn track(&mut self, name: &str, lines: &mut Vec<String>) -> Option<&Music> {
-        self.request(name);
-        if let Some(handle) = self.decoding.remove(name) {
-            let music = handle
-                .join()
-                .unwrap_or_else(|_| Err(format!("{name}: its decoding failed")))
-                .map_err(|e| lines.push(format!("music: {e}")))
-                .ok();
-            self.tracks.insert(name.to_owned(), music);
+    /// The decodings that have finished, kept (none waited for).
+    fn collect(&mut self, lines: &mut Vec<String>) {
+        let done: Vec<String> = self
+            .decoding
+            .iter()
+            .filter(|(_, h)| h.is_finished())
+            .map(|(n, _)| n.clone())
+            .collect();
+        for name in done {
+            if let Some(handle) = self.decoding.remove(&name) {
+                self.join(name, handle, lines);
+            }
         }
-        self.tracks.get(name).and_then(Option::as_ref)
+    }
+
+    /// What the music knows of a track: its frames once decoded.
+    fn state(&self, name: &str) -> Track {
+        match self.tracks.get(name) {
+            Some(Some((_, channels, samples))) => {
+                let frames = samples.len() / usize::from((*channels).max(1));
+                Track::Frames(u64::try_from(frames).unwrap_or(u64::MAX))
+            }
+            Some(None) => Track::Missing,
+            None => Track::Decoding,
+        }
     }
 
     /// The tracks the cues ask for, decoded now (the map's first, before the window opens).
     pub fn prepare(&mut self, cues: &[(u32, Cue)], lines: &mut Vec<String>) {
         for (_, cue) in cues {
             if let Cue::Music(name) = cue {
-                self.track(name, lines);
+                self.request(name);
+                if let Some(handle) = self.decoding.remove(name.as_str()) {
+                    self.join(name.clone(), handle, lines);
+                }
             }
         }
+    }
+
+    /// A run's samples at its volume; none for a track not decoded.
+    fn samples(&self, run: &Run) -> Vec<i16> {
+        self.tracks
+            .get(&run.name)
+            .and_then(Option::as_ref)
+            .map_or_else(Vec::new, |music| run_samples(music, run))
     }
 
     /// What was loaded, for the report.
@@ -176,40 +217,13 @@ struct Lane {
     volume: u8,
 }
 
-/// A track queued: its name, the next sample to queue and the samples queued since it started
-/// (the fade-in's clock).
-#[derive(Debug, Clone)]
-struct Track {
-    name: String,
-    next: usize,
-    queued: usize,
-}
-
-/// A track fading out: what remains of it, and the track asked for next.
-#[derive(Debug, Clone)]
-struct FadeOut {
-    old: Track,
-    /// The fade's samples queued.
-    done: usize,
-    next: String,
-}
-
 /// The audio output of the map.
 #[derive(Debug)]
 pub struct Player {
     out: Audio,
     music_stream: usize,
-    /// The music's format on its stream.
-    music_format: (u32, u16),
-    music: Option<Track>,
-    /// A track asked for while none played, started once decoded (M2 T6a, the reviewer's R2-6:
-    /// waiting for it stopped the frames).
-    pending: Option<String>,
-    /// The track playing fading out for the one asked for (its samples scaled as they are
-    /// queued, so the fade follows the device's time).
-    fading: Option<FadeOut>,
-    /// Where each track stopped (a sample).
-    places: BTreeMap<String, usize>,
+    /// The music as the original's thread plays it, at the frames heard and queued ahead.
+    music: Queue,
     step: Lane,
     slots: Vec<Lane>,
     /// Whether the music and the effects are heard.
@@ -224,7 +238,7 @@ impl Player {
     /// ambient slots'.
     pub fn open() -> Result<Self, String> {
         let mut out = Audio::open()?;
-        let music_stream = out.add_stream(44_100, 2)?;
+        let music_stream = out.add_stream(MUSIC_RATE, MUSIC_CHANNELS)?;
         let lane = |out: &mut Audio| -> Result<Lane, String> {
             Ok(Lane {
                 stream: out.add_stream(22_050, 1)?,
@@ -240,11 +254,7 @@ impl Player {
         Ok(Self {
             out,
             music_stream,
-            music_format: (44_100, 2),
-            music: None,
-            pending: None,
-            fading: None,
-            places: BTreeMap::new(),
+            music: Queue::new(MUSIC_RATE),
             step,
             slots,
             music_on: true,
@@ -253,35 +263,24 @@ impl Player {
         })
     }
 
+    /// The frames the music's stream still holds.
+    fn music_queued(&self) -> u64 {
+        let frames = self.out.queued(self.music_stream) / usize::from(MUSIC_CHANNELS);
+        u64::try_from(frames).unwrap_or(u64::MAX)
+    }
+
     /// Plays a cue (its decoding of a track started at once).
     pub fn cue(&mut self, library: &mut Library, cue: &Cue, lines: &mut Vec<String>) {
         self.played += 1;
         match cue {
             Cue::Music(name) => {
                 library.request(name);
-                if let Some(fade) = self.fading.as_mut() {
-                    fade.next.clone_from(name);
-                } else if let Some(old) = self.music.take() {
-                    // What is queued but not heard yet is taken back: the fade starts at what
-                    // plays now.
-                    let len = track_len(library, &old.name);
-                    let back = self.out.queued(self.music_stream);
+                library.collect(lines);
+                let queued = self.music_queued();
+                let tracks = |n: &str| library.state(n);
+                if self.music.request(name, queued, &tracks) == Request::Taken {
+                    // What is queued is taken back: queued again from what was heard.
                     self.out.clear(self.music_stream);
-                    let old = Track {
-                        next: (old.next + len - back % len.max(1)) % len.max(1),
-                        queued: old.queued.saturating_sub(back),
-                        ..old
-                    };
-                    self.fading = Some(FadeOut {
-                        old,
-                        done: 0,
-                        next: name.clone(),
-                    });
-                } else if library.ready(name) {
-                    self.pending = None;
-                    self.start_music(library, name, lines);
-                } else {
-                    self.pending = Some(name.clone());
                 }
             }
             Cue::Step(name) => {
@@ -310,31 +309,10 @@ impl Player {
         }
     }
 
-    /// A track started where its name last stopped, fading in.
-    fn start_music(&mut self, library: &mut Library, name: &str, lines: &mut Vec<String>) {
-        let Some((rate, channels, samples)) = library.track(name, lines) else {
-            self.music = None;
-            return;
-        };
-        if self.music_format != (*rate, *channels) {
-            self.music_format = (*rate, *channels);
-            self.out.set_format(self.music_stream, *rate, *channels);
-        }
-        let place = self.places.get(name).copied().unwrap_or(0);
-        self.music = Some(Track {
-            name: name.to_owned(),
-            next: if place < samples.len() { place } else { 0 },
-            queued: 0,
-        });
-    }
-
-    /// Every sound stopped, the tracks' places forgotten (the window's restart).
+    /// Every sound stopped, the music's model afresh (the window's restart).
     pub fn reset(&mut self) {
         self.out.clear(self.music_stream);
-        self.music = None;
-        self.pending = None;
-        self.fading = None;
-        self.places.clear();
+        self.music = Queue::new(MUSIC_RATE);
         stop(&mut self.out, &mut self.step);
         for lane in &mut self.slots {
             stop(&mut self.out, lane);
@@ -350,13 +328,12 @@ impl Player {
         }
     }
 
-    /// Holds or resumes every sound (the fades hold with it: they follow the samples).
+    /// Holds or resumes every sound (the fades hold with it: they follow the frames heard).
     pub fn pause(&mut self, on: bool) {
         self.out.pause(on);
     }
 
-    /// Keeps the loops and the music queued ahead (the fades applied as the music's samples are
-    /// queued).
+    /// Keeps the loops and the music queued ahead (the music's runs as the model plays them).
     pub fn service(&mut self, library: &mut Library, lines: &mut Vec<String>) {
         for lane in std::iter::once(&self.step).chain(&self.slots) {
             let Some(clip) = lane.clip.as_deref().and_then(|n| library.clip(n)) else {
@@ -370,85 +347,22 @@ impl Player {
             self.music_stream,
             gain(if self.music_on { FULL } else { 0 }),
         );
-        if let Some(name) = self.pending.take() {
-            if library.ready(&name) {
-                self.start_music(library, &name, lines);
-            } else {
-                self.pending = Some(name);
+        library.collect(lines);
+        let queued = self.music_queued();
+        let want = u64::from(MUSIC_RATE) * AHEAD_MS / 1000;
+        let tracks = |n: &str| library.state(n);
+        for run in self.music.top_up(queued, want, &tracks) {
+            if self
+                .out
+                .put(self.music_stream, &library.samples(&run), false)
+                .is_err()
+            {
+                // The model and the stream apart: queued again from what was heard.
+                self.out.clear(self.music_stream);
+                self.music.cleared();
+                break;
             }
         }
-        let (rate, channels) = self.music_format;
-        let ahead = ahead(rate, channels);
-        let step = fade_step(rate, channels);
-        while self.out.queued(self.music_stream) < ahead {
-            if let Some(mut fade) = self.fading.take() {
-                // The fade-out: 900 ms of the old track, a tenth less every 100 ms; then the new
-                // track, once decoded (waited for only when the fade has nearly played out).
-                let whole = step * FADE_OUT.len();
-                if fade.done >= whole {
-                    if library.ready(&fade.next) || self.out.queued(self.music_stream) < step {
-                        self.end_fade(library, fade, lines);
-                        continue;
-                    }
-                    self.fading = Some(fade);
-                    break;
-                }
-                let Some((_, _, samples)) =
-                    library.tracks.get(&fade.old.name).and_then(Option::as_ref)
-                else {
-                    fade.done = whole;
-                    self.fading = Some(fade);
-                    continue;
-                };
-                let n = (whole - fade.done)
-                    .min(ahead)
-                    .min(samples.len().saturating_sub(fade.old.next));
-                if n == 0 {
-                    // Nothing left to fade (R2-1): the fade ends.
-                    fade.done = whole;
-                    self.fading = Some(fade);
-                    continue;
-                }
-                let chunk = samples
-                    .get(fade.old.next..fade.old.next + n)
-                    .unwrap_or_default();
-                let scaled = scale(chunk, fade.done, step, &FADE_OUT, 0);
-                if self.out.put(self.music_stream, &scaled, false).is_err() {
-                    self.fading = Some(fade);
-                    break;
-                }
-                fade.done += n;
-                fade.old.next = (fade.old.next + n) % samples.len().max(1);
-                self.fading = Some(fade);
-                continue;
-            }
-            let Some(track) = self.music.as_mut() else {
-                break;
-            };
-            let Some((_, _, samples)) = library.tracks.get(&track.name).and_then(Option::as_ref)
-            else {
-                break;
-            };
-            if samples.is_empty() {
-                break;
-            }
-            let end = (track.next + ahead).min(samples.len());
-            let chunk = samples.get(track.next..end).unwrap_or_default();
-            let scaled = scale(chunk, track.queued, step, &FADE_IN, FULL);
-            if self.out.put(self.music_stream, &scaled, false).is_err() {
-                break;
-            }
-            track.queued += end - track.next;
-            track.next = if end == samples.len() { 0 } else { end };
-        }
-    }
-
-    /// A fade-out's end: the old track's place kept under its name, the new one started.
-    fn end_fade(&mut self, library: &mut Library, fade: FadeOut, lines: &mut Vec<String>) {
-        let channels = usize::from(self.music_format.1.max(1));
-        let place = fade.old.next - fade.old.next % channels;
-        self.places.insert(fade.old.name, place);
-        self.start_music(library, &fade.next, lines);
     }
 
     /// The device, for the report.
@@ -457,30 +371,21 @@ impl Player {
     }
 }
 
-/// A track's samples (0 when it is not decoded).
-fn track_len(library: &Library, name: &str) -> usize {
-    library
-        .tracks
-        .get(name)
-        .and_then(Option::as_ref)
-        .map_or(0, |(_, _, s)| s.len())
-}
-
-/// The samples of a fade's step (100 ms at `rate` × `channels`).
-fn fade_step(rate: u32, channels: u16) -> usize {
-    let samples = u64::from(rate) * u64::from(channels) * FADE_STEP / 1000;
-    usize::try_from(samples).unwrap_or(usize::MAX).max(1)
-}
-
-/// `chunk` scaled by a fade's volume: its samples counted from `from` in the fade, a step every
-/// `step` samples, `after` past the fade's end (integer arithmetic: v × sample / 127).
-fn scale(chunk: &[i16], from: usize, step: usize, fade: &[u8; 9], after: u8) -> Vec<i16> {
-    chunk
+/// A run's frames of a decoded track, scaled by its volume (integer arithmetic: v × sample /
+/// 127); none past the track's end.
+fn run_samples((_, channels, samples): &Music, run: &Run) -> Vec<i16> {
+    let channels = usize::from(*channels);
+    let at = |frame: u64| {
+        usize::try_from(frame)
+            .unwrap_or(usize::MAX)
+            .saturating_mul(channels)
+    };
+    samples
+        .get(at(run.from)..at(run.from.saturating_add(run.frames)))
+        .unwrap_or_default()
         .iter()
-        .enumerate()
-        .map(|(i, &sample)| {
-            let v = fade.get((from + i) / step).copied().unwrap_or(after);
-            let scaled = i32::from(sample) * i32::from(v) / i32::from(FULL);
+        .map(|&sample| {
+            let scaled = i32::from(sample) * i32::from(run.volume) / i32::from(FULL);
             i16::try_from(scaled).unwrap_or(sample)
         })
         .collect()
@@ -521,20 +426,26 @@ mod tests {
     use super::*;
 
     #[test]
-    fn the_fades_scale_the_samples_step_by_step() {
-        // 100 ms of 44.1 kHz stereo is 8 820 samples.
-        assert_eq!(fade_step(44_100, 2), 8_820);
-        assert_eq!(fade_step(0, 0), 1);
-        // Samples 0 to 2 of the fade-out at steps 0 (114) and, from 2, 1 (101).
-        assert_eq!(
-            scale(&[127, -127, 127], 0, 2, &FADE_OUT, 0),
-            [114, -114, 101]
-        );
-        // Past the fade-in's nine steps, the whole; past the fade-out's, nothing.
-        assert_eq!(scale(&[1000], 18, 2, &FADE_IN, FULL), [1000]);
-        assert_eq!(scale(&[1000], 18, 2, &FADE_OUT, 0), [0]);
-        assert_eq!(scale(&[i16::MIN], 0, 1, &FADE_IN, FULL), [-3096]);
+    fn a_runs_samples_are_scaled_by_its_volume() {
+        let music: Music = (MUSIC_RATE, 2, vec![127, -127, 1000, i16::MIN, 5, 6]);
+        let run = |from, frames, volume| Run {
+            name: "A".to_owned(),
+            from,
+            frames,
+            volume,
+        };
+        // Frames 1 and 2 at 114: each channel's sample × 114 / 127.
+        assert_eq!(run_samples(&music, &run(1, 2, 114)), [897, -29_413, 4, 5]);
+        assert_eq!(run_samples(&music, &run(0, 1, FULL)), [127, -127]);
+        // Past the end: nothing.
+        assert!(run_samples(&music, &run(2, 2, FULL)).is_empty());
+    }
+
+    #[test]
+    fn the_volumes_are_gains_and_a_second_is_queued_ahead() {
         assert_eq!(ahead(22_050, 1), 22_050);
+        assert_eq!(ahead(MUSIC_RATE, MUSIC_CHANNELS), 88_200);
         assert!((gain(FULL) - 1.0).abs() < f32::EPSILON);
+        assert!(gain(0).abs() < f32::EPSILON);
     }
 }
