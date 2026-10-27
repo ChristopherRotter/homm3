@@ -22,6 +22,7 @@ use core::ops::Range;
 use serde::Deserialize;
 
 use crate::art::Layer;
+use crate::sound::{SoundArt, SoundRules};
 
 /// One table file as written.
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
@@ -89,6 +90,9 @@ pub struct ViewArt {
     pub towns: TownArt,
     /// The hero's walk (E24 M2 T3a; design §3.5).
     pub walk: WalkArt,
+    /// The map's sounds (E24 M2 T5; design §3.11): none, and the map plays none.
+    #[serde(default)]
+    pub sound: Option<SoundArt>,
 }
 
 /// The hero's walk (E24 M2 T3a; design §3.5, `hero_walk_animation` 0x480380): the group a step
@@ -371,6 +375,13 @@ pub struct LayerArt {
     /// (each entry takes its lower neighbour's colour, the first the last's; design §1.6).
     #[serde(default)]
     pub cycles: Vec<[u8; 2]>,
+    /// A terrain's music: the track's name (`mp3/<name>.mp3`; E24 M2 T5, `terrain_music_tracks`
+    /// 0x678330), none where the music goes on (rock).
+    #[serde(default)]
+    pub music: Option<String>,
+    /// A terrain's step sound (`horse00.wav` …, the manager's +0x360; E24 M2 T5).
+    #[serde(default)]
+    pub step: Option<String>,
 }
 
 /// A selection's tables, merged.
@@ -386,6 +397,8 @@ pub struct Tables {
     pub rivers: BTreeMap<u8, LayerArt>,
     /// The roads, by code.
     pub roads: BTreeMap<u8, LayerArt>,
+    /// The map's sounds resolved (E24 M2 T5), if the tables give them.
+    pub sound: Option<SoundRules>,
 }
 
 /// A DEF the tables name, the frames of its group 0 the view draws and the groups it draws.
@@ -498,6 +511,29 @@ impl Tables {
             .map(|n| n.name.to_ascii_uppercase())
             .collect()
     }
+
+    /// Every sound archive entry the tables name (E24 M2 T5: the ambient loops, the step sounds),
+    /// as the archives hold them: the stem, upper-cased, each once.
+    #[must_use]
+    pub fn sounds(&self) -> BTreeSet<String> {
+        self.sound
+            .iter()
+            .flat_map(SoundRules::wavs)
+            .map(|n| {
+                let upper = n.to_ascii_uppercase();
+                upper.strip_suffix(".WAV").unwrap_or(&upper).to_string()
+            })
+            .collect()
+    }
+
+    /// Every music track the tables name (`mp3/<name>.mp3`), each once.
+    #[must_use]
+    pub fn tracks(&self) -> BTreeSet<String> {
+        self.sound
+            .iter()
+            .flat_map(|s| s.music.values().cloned())
+            .collect()
+    }
 }
 
 /// Why tables do not load.
@@ -597,6 +633,7 @@ pub fn load(files: &[TableFile], top: &str) -> Result<Tables, TableError> {
         terrains: BTreeMap::new(),
         rivers: BTreeMap::new(),
         roads: BTreeMap::new(),
+        sound: None,
     };
     for file in selected {
         // `cycle`: whether the scene cycles the layer's palettes (the terrains' and the rivers',
@@ -618,11 +655,28 @@ pub fn load(files: &[TableFile], top: &str) -> Result<Tables, TableError> {
                 if art.cycles.iter().any(|[first, last]| first > last) {
                     return Err(entry(&what, "a cycle's first entry is after its last"));
                 }
+                if !zero && (art.music.is_some() || art.step.is_some()) {
+                    return Err(entry(&what, "only a terrain has music and a step sound"));
+                }
                 if into.insert(art.code, art.clone()).is_some() {
                     return Err(TableError::DuplicateCode(what));
                 }
             }
         }
+    }
+    if let Some(sound) = &map.sound {
+        let music = tables
+            .terrains
+            .iter()
+            .filter_map(|(code, t)| t.music.clone().map(|m| (*code, m)))
+            .collect();
+        let steps = tables
+            .terrains
+            .iter()
+            .filter_map(|(code, t)| t.step.clone().map(|m| (*code, m)))
+            .collect();
+        tables.sound =
+            Some(SoundRules::new(sound, music, steps).map_err(|rule| entry("sound", &rule))?);
     }
     Ok(tables)
 }

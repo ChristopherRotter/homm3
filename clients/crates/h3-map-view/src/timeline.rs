@@ -33,6 +33,7 @@ use h3_render::screen::Screen;
 use crate::layout::{AdventureLayout, DIRECTIONS};
 use crate::live::Arrow;
 use crate::scene::ViewAt;
+use crate::sound::{Cue, Sound};
 use crate::tables::{Tables, WalkArt};
 
 /// The mouse manager's type of the adventure cursor (`cursor_defs` 0x67FF38: 1, `cradvntr.def`),
@@ -336,6 +337,10 @@ pub struct Start {
     /// leads to only moves the pointer (M3: the panels; M4: the engine's paths). A recorded
     /// sequence refuses them ([`Unplayable`]), so that its frames never show what M3 draws.
     pub live: bool,
+    /// The map's sound (E24 M2 T5, design §3.11): the original's sound state before the map's
+    /// screen starts, which the loop starts at 0 and drives; none for a map without the tables'
+    /// sounds, which gives no cues.
+    pub sound: Option<Sound>,
 }
 
 /// The cursor drawn: a frame of the layout's cursor and the point its hot spot is at.
@@ -464,6 +469,8 @@ pub struct Loop {
     moving: Option<Moving>,
     /// The window's live input ([`Start::live`]).
     live: bool,
+    /// The map's sound and its cues not taken yet ([`Start::sound`]).
+    sound: Option<Sound>,
 }
 
 impl Loop {
@@ -520,6 +527,7 @@ impl Loop {
             paths: start.paths.clone(),
             moving: None,
             live: start.live,
+            sound: start.sound.clone(),
             rules,
         };
         if !l.path.is_empty() {
@@ -528,6 +536,12 @@ impl Loop {
         }
         // The turn's start left the standing group by the facing and frame 0 (`hero_select`).
         l.stand();
+        // The map's screen started before 0: its music and ambient sounds (0x419B3F), the hero
+        // on its tile.
+        let (middle, standing) = (l.middle(), l.standing());
+        if let Some(sound) = &mut l.sound {
+            sound.start(0, middle, standing);
+        }
         if !l.live && l.rules.over_view(start.pointer) {
             return Err(Unplayable::OverView(start.pointer));
         }
@@ -562,6 +576,11 @@ impl Loop {
     #[must_use]
     pub fn cursor(&self) -> Cursor {
         self.cursor
+    }
+
+    /// The sound's cues given since the last take (E24 M2 T5), with their milliseconds.
+    pub fn take_cues(&mut self) -> Vec<(u32, Cue)> {
+        self.sound.as_mut().map(Sound::take).unwrap_or_default()
     }
 
     /// The millisecond `t` (after the last one run) with the actions given at it.
@@ -769,8 +788,12 @@ impl Loop {
     /// wait between them (the first red one a step the points do not pay, which ends the walk:
     /// 0x480864; the engine's move from M4); none, and the walk ends at once.
     fn walk_path(&mut self, t: u32) {
+        // The start tile's step sound (0x407D03), then the lift (0x407DEC).
+        if let (Some(sound), Some(hero)) = (&mut self.sound, self.hero) {
+            sound.walk_start(t, hero.at);
+        }
         if !self.lifted {
-            self.lift();
+            self.lift(t, false);
         }
         let mut steps: VecDeque<(Direction, Pos)> = self
             .path
@@ -780,7 +803,7 @@ impl Loop {
             .collect();
         match steps.pop_front() {
             Some((direction, next)) => self.walk_off(t, false, direction, next, steps),
-            None => self.finish(false),
+            None => self.finish(t, false),
         }
     }
 
@@ -805,7 +828,7 @@ impl Loop {
             until: t,
             queued: Vec::new(),
         };
-        self.step(direction, next);
+        self.step(t, direction, next);
         self.carry_on(t, moving);
     }
 
@@ -815,10 +838,9 @@ impl Loop {
     /// gone); the offset 0, the walking group, the facing, the hero on the next tile at once and
     /// the view centred on it (0x48041D, never clamped); at speed 4 the view drawn once (0x480483),
     /// else the offset a tile back (`walk_start_offsets` 0x63D6F0) for the frames.
-    fn step(&mut self, direction: Direction, next: Pos) {
+    fn step(&mut self, t: u32, direction: Direction, next: Pos) {
         if !self.lifted {
-            self.lift();
-            self.centre();
+            self.lift(t, true);
             self.draw();
         }
         self.path.retain(|(_, a)| a.at != next);
@@ -831,7 +853,7 @@ impl Loop {
         });
         self.centre();
         if self.pixels.is_empty() {
-            self.frame_drawn();
+            self.frame_drawn(t);
         } else {
             let [dx, dy] = direction.delta();
             self.walk.offset = [self.rules.tile * dx, self.rules.tile * dy];
@@ -854,13 +876,18 @@ impl Loop {
                 let [dx, dy] = moving.direction.delta();
                 self.walk.offset[0] -= pixels * dx;
                 self.walk.offset[1] -= pixels * dy;
-                self.frame_drawn();
+                self.frame_drawn(t);
                 moving.frame += 1;
                 moving.until = t.saturating_add(self.rules.walk.frame_ms);
                 continue;
             }
             if moving.last {
                 self.stand();
+            }
+            // The step's end's sounds (0x481216 to 0x48141B): the view's middle is the hero's.
+            let middle = self.middle();
+            if let (Some(sound), Some(hero)) = (&mut self.sound, self.hero) {
+                sound.step_end(t, middle, hero.at, moving.last, self.walk.frame);
             }
             self.walk.offset = [0, 0];
             if !moving.key {
@@ -874,13 +901,13 @@ impl Loop {
                 moving.queued.clear();
             }
             let Some((direction, next)) = moving.rest.pop_front() else {
-                self.finish(moving.key);
+                self.finish(t, moving.key);
                 return Some(moving.queued);
             };
             moving.direction = direction;
             moving.last = moving.rest.is_empty();
             moving.frame = 0;
-            self.step(direction, next);
+            self.step(t, direction, next);
         }
     }
 
@@ -890,11 +917,14 @@ impl Loop {
     /// 0x47F7D0 (the standing group, frame 0); the cursor shown again where the mouse is now,
     /// by its move with its tile forgotten (`mouse_position_now` 0x50D500, its x even;
     /// `adventure_mouse_move` 0x40E360: a key's 0x4090F1, the path's 0x40812F).
-    fn finish(&mut self, key: bool) {
+    fn finish(&mut self, t: u32, key: bool) {
         if !key && !self.path.is_empty() {
             self.draw();
         }
         self.stand();
+        if let Some(sound) = &mut self.sound {
+            sound.walk_end(t);
+        }
         self.cursor.at = self.rules.drawn_at(self.pointer);
         self.cursor.shown = true;
         self.moved();
@@ -918,9 +948,33 @@ impl Loop {
 
     /// The selected hero lifted off its tile (`hero_select` with b clear: +0x20C, the standing
     /// group by its facing, frame 0).
-    fn lift(&mut self) {
+    fn lift(&mut self, t: u32, centred: bool) {
         self.lifted = true;
         self.stand();
+        if centred {
+            self.centre();
+        }
+        // Its sounds (0x4180A0): the ambient sounds around the view's middle, restarted; the
+        // music of the hero's terrain when it centred the view.
+        let middle = self.middle();
+        if let (Some(sound), Some(hero)) = (&mut self.sound, self.hero) {
+            sound.select(t, middle, hero.at, centred);
+        }
+    }
+
+    /// The tile at the view's middle (the corner plus the layout's middle: (9, 8)).
+    fn middle(&self) -> [i32; 3] {
+        let [mx, my] = self.rules.middle;
+        [
+            self.view.x.saturating_add(mx),
+            self.view.y.saturating_add(my),
+            i32::from(self.view.z),
+        ]
+    }
+
+    /// The selected hero standing on its tile (not lifted).
+    fn standing(&self) -> Option<Pos> {
+        self.hero.filter(|_| !self.lifted).map(|h| h.at)
     }
 
     /// The standing group by the hero's facing and frame 0 (`hero_map_group` 0x4D9110).
@@ -977,11 +1031,17 @@ impl Loop {
     }
 
     /// A walk's frame drawn: pass 9 steps the lifted hero's frame after it (0x47FF6D).
-    fn frame_drawn(&mut self) {
+    fn frame_drawn(&mut self, t: u32) {
         self.draw();
         self.walk.frame = (self.walk.frame + 1)
             .checked_rem(self.rules.walk.frames)
             .unwrap_or(0);
+        // At the frame's wrap to 0 the queued step sound (0x47FF88).
+        if self.walk.frame == 0
+            && let Some(sound) = &mut self.sound
+        {
+            sound.wrap(t);
+        }
     }
 
     /// The objects' step after a redraw (0x408B26, `view_show_step` 0x40F270): once the clock has

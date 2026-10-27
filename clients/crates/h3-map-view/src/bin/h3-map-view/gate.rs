@@ -227,6 +227,7 @@ fn gate(options: &Options) -> Result<usize, String> {
     }));
     entrances_outside(&visits, &shapes, &mut problems);
     owners_and_towns(&archives, &tables, &pictures, &mut problems)?;
+    crate::sounds::check(&options.install, &tables, &mut problems)?;
 
     if !problems.is_empty() {
         println!("\nproblems:");

@@ -19,6 +19,9 @@ toml.workspace = true
 h3-formats.workspace = true
 # The window (E24 M2 T4a): the platform adapter, the binary's only.
 h3-sdl.workspace = true
+# The music (E24 M2 T5): the terrain tracks' MP3s, decoded by the binary only (`h3-view`'s
+# decoder).
+nanomp3.workspace = true
 
 [lints]
 workspace = true

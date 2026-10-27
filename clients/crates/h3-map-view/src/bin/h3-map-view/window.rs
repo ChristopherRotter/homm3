@@ -36,11 +36,13 @@ use h3_map_view::clock::Clock;
 use h3_map_view::keys::{Command, Keys};
 use h3_map_view::replay::{Change, Replay};
 use h3_map_view::sequence::Sequences;
+use h3_map_view::sound;
 use h3_map_view::timeline::{self, Action, Cursor, Rules, Start, Unplayable};
 use h3_render::Bugs;
 use h3_render::screen::Screen;
 use h3_sdl::{Config, CursorImage, Event, Key, ReadBack, Window};
 
+use crate::audio::{Library, Player};
 use crate::files;
 use crate::paint::{self, Assets, Painter, Setup};
 
@@ -70,15 +72,20 @@ pub struct Options {
     map: PathBuf,
     /// Unattended for this many seconds; whether each frame is read back.
     run: Option<(u32, bool)>,
+    /// No sound (E24 M2 T5).
+    mute: bool,
+    /// Where each cue played is written (the cue's line and the clock's millisecond it played at).
+    cues: Option<PathBuf>,
 }
 
 impl Options {
     /// Parses `<sequence | situation> [--keys <file>] [--scale <n>] [--vsync] [--fullscreen]
-    /// [--drawn-cursor] [--bugs fixed|original] [--install <dir>] [--map <dir>] [--check <s> |
-    /// --measure <s>]`.
+    /// [--drawn-cursor] [--mute] [--cues <file>] [--bugs fixed|original] [--install <dir>]
+    /// [--map <dir>] [--check <s> | --measure <s>]`.
     pub fn parse(args: &[String]) -> Result<Self, String> {
         let (mut id, mut keys, mut scale, mut install, mut map) = (None, None, None, None, None);
         let (mut vsync, mut fullscreen, mut drawn_cursor) = (false, false, false);
+        let (mut mute, mut cues) = (false, None);
         let (mut bugs, mut run) = (Bugs::Fixed, None);
         let mut rest = args.iter();
         while let Some(arg) = rest.next() {
@@ -97,6 +104,8 @@ impl Options {
                 "--vsync" => vsync = true,
                 "--fullscreen" => fullscreen = true,
                 "--drawn-cursor" => drawn_cursor = true,
+                "--mute" => mute = true,
+                "--cues" => cues = Some(PathBuf::from(value()?)),
                 "--bugs" => {
                     bugs = match value()?.as_str() {
                         "fixed" => Bugs::Fixed,
@@ -126,6 +135,8 @@ impl Options {
             install: install.unwrap_or_else(files::default_install),
             map: map.unwrap_or_else(files::default_map),
             run,
+            mute,
+            cues,
         })
     }
 }
@@ -400,6 +411,28 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
     let new_replay =
         || Replay::new(rules.clone(), &start, actions.clone()).map_err(|why| unplayable((0, why)));
     let mut replay = new_replay()?;
+    // The sound (E24 M2 T5): the WAVs decoded now, the device opened; none muted, without the
+    // tables' sounds, or without a device (noted).
+    let mut audio = match (&tables.sound, options.mute) {
+        (Some(rules), false) => match Library::load(&options.install, rules, &mut lines)
+            .and_then(|library| Ok((library, Player::open()?)))
+        {
+            Ok(audio) => Some(audio),
+            Err(e) => {
+                lines.push(format!("sound: {e}; none played"));
+                None
+            }
+        },
+        _ => None,
+    };
+    let mut cue_lines: Vec<String> = Vec::new();
+    // The cues at 0 taken now, their music decoded before the window opens; played at its first
+    // turn.
+    let mut first_cues = Vec::new();
+    if let Some((library, _)) = &mut audio {
+        first_cues = replay.take_cues(0).map_err(unplayable)?;
+        library.prepare(&first_cues, &mut lines);
+    }
     // The map is live after a sequence's last input (from the start without one).
     let live_after = actions.keys().next_back().copied();
     let [width, height] = layout.frame;
@@ -462,6 +495,7 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                     .unwrap_or(WAIT_MS)
                     .min(WAIT_MS)
             });
+
         let mut redraw = false;
         // The pointer's last move not yet given (a batch's moves are one).
         let mut pointer: Option<[i32; 2]> = None;
@@ -514,7 +548,23 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                 Some(Command::Quit) => break 'run,
                 // Unattended, the window's other keys do nothing.
                 _ if unattended => {}
-                Some(Command::Pause) => clock.toggle(now),
+                Some(Command::Pause) => {
+                    clock.toggle(now);
+                    if let Some((_, player)) = &mut audio {
+                        player.pause(clock.paused());
+                    }
+                }
+                Some(Command::Music) => {
+                    if let Some((_, player)) = &mut audio {
+                        player.music_on = !player.music_on;
+                    }
+                }
+                Some(Command::Effects) => {
+                    if let Some((_, player)) = &mut audio {
+                        let on = !player.effects_on;
+                        player.set_effects(on);
+                    }
+                }
                 Some(Command::Frame) if clock.paused() => {
                     if let Some(f) = &next {
                         clock.seek(now, f.change.t);
@@ -522,6 +572,9 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                 }
                 Some(Command::Restart) => {
                     replay = new_replay()?;
+                    if let Some((_, player)) = &mut audio {
+                        player.reset();
+                    }
                     clock.seek(now, 0);
                     look.live = live_after.is_none();
                     (shown, renew) = (None, true);
@@ -561,6 +614,18 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                 replay.give(t, action);
             }
             renew = true;
+        }
+        // The sound's cues up to the clock, then the streams kept going.
+        if let Some((library, player)) = &mut audio {
+            let mut cues = std::mem::take(&mut first_cues);
+            cues.extend(replay.take_cues(ms).map_err(unplayable)?);
+            for (t, cue) in cues {
+                player.cue(library, &cue, &mut lines);
+                if options.cues.is_some() {
+                    cue_lines.push(format!("{ms} {}", sound::line(t, &cue)));
+                }
+            }
+            player.service(library, &mut lines);
         }
         // A hardware cursor SDL could not remake (a new scale) is drawn instead.
         if look.hardware() && hw.is_some_and(|(_, on)| on) && !win.hardware_cursor() {
@@ -652,6 +717,20 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
     }
     let seconds = win.ticks_ns().saturating_sub(started) / 1_000_000;
     lines.push(win.describe());
+    if let Some((library, player)) = &audio {
+        lines.push(format!(
+            "{}; {}; {} cues played",
+            library.describe(),
+            player.describe(),
+            player.played
+        ));
+    }
+    drop(audio);
+    if let Some(path) = &options.cues {
+        let mut text = cue_lines.join("\n");
+        text.push('\n');
+        fs::write(path, text).map_err(|e| format!("{}: {e}", path.display()))?;
+    }
     drop(win);
     let [scrolls, steps, moves, clicks] = given;
     let view = shown
@@ -779,6 +858,9 @@ mod tests {
             "--vsync",
             "--fullscreen",
             "--drawn-cursor",
+            "--mute",
+            "--cues",
+            "c.txt",
             "--bugs",
             "original",
             "--map",
@@ -791,14 +873,15 @@ mod tests {
         .unwrap();
         assert_eq!(o.id, "walk-1");
         assert_eq!(o.keys, Some(PathBuf::from("mine.toml")));
-        assert!(o.vsync && o.fullscreen && o.drawn_cursor);
+        assert!(o.vsync && o.fullscreen && o.drawn_cursor && o.mute);
+        assert_eq!(o.cues, Some(PathBuf::from("c.txt")));
         assert_eq!(
             (o.scale, o.bugs, o.run),
             (Some(1), Bugs::Original, Some((20, true)))
         );
         assert_eq!((o.map, o.install), (PathBuf::from("m"), PathBuf::from("i")));
         let m = Options::parse(&args(&["boats", "--measure", "5"])).unwrap();
-        assert!(!m.drawn_cursor);
+        assert!(!m.drawn_cursor && !m.mute && m.cues.is_none());
         assert_eq!(
             (m.scale, m.bugs, m.run),
             (None, Bugs::Fixed, Some((5, false)))

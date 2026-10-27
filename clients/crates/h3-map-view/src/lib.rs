@@ -52,5 +52,6 @@ pub mod replay;
 pub mod scene;
 pub mod sequence;
 pub mod situation;
+pub mod sound;
 pub mod tables;
 pub mod timeline;
