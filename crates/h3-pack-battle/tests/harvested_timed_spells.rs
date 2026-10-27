@@ -45,6 +45,7 @@ fn details(r: &BattleRuleset, hero: &str, primary: [u8; 4], spells: &[&str]) -> 
         backpack: vec![],
         spells: spells.iter().map(|k| r.spell_by_key(k).unwrap()).collect(),
         mana: u16::from(primary[3]) * 10,
+        bonuses: Default::default(),
     }
 }
 

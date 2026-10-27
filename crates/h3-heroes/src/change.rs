@@ -6,7 +6,8 @@
 //! T19a2b a learned spell; since E08 T27 a level (HER-LVL-005) and the experience a gain gives
 //! under the scenario's level limit (HER-EXP-003); since E08 T49a the worn artifacts by position
 //! and an artifact placed at a given place; since E08 T49b the Spell Book an equipped Titan's
-//! Thunder adds (HER-ART-007).
+//! Thunder adds (HER-ART-007); since E08 T60a the rewards' changes (primary skills, a skill
+//! raised to a level) and the battle bonuses (HER-ADV-008).
 
 use h3_content::{
     ArtifactType, CreatureFlag, CreatureTypeId, MAX_HERO_SKILLS, MAX_SKILL_LEVEL, Ruleset, SkillId,
@@ -14,7 +15,8 @@ use h3_content::{
 };
 
 use crate::details::{
-    ArtifactInstance, HeroDetails, OfferLevels, PrimarySkill, check_artifact, hero_spell,
+    ArtifactInstance, BattleBonuses, HeroDetails, OfferLevels, PrimarySkill, check_artifact,
+    hero_spell,
 };
 use crate::error::ChangeError;
 use crate::level::{gained_under_limit, pending_levels};
@@ -71,6 +73,33 @@ pub enum HeroChange {
         /// The levels at which Wisdom and a school were last offered, after this level.
         offered: OfferLevels,
     },
+    /// It gains primary skills (E08 T60a; a reward's, HER-CHG-003): each value added to the base
+    /// skill of its [`PrimarySkill`] order, at most the ruleset's `primary_max` (A-9's class: the
+    /// original's byte wraps, `ADV-QUIRK-13`'s saturation instead).
+    GainPrimary([u8; 4]),
+    /// A secondary skill rises to a level (E08 T60a; a reward's, HER-CHG-003): a known skill
+    /// below `level` rises to it (one at or above it stays: raised, never lowered, D-37), a new
+    /// one is learned at `level` after the others.
+    RaiseSkill {
+        /// The skill.
+        skill: SkillId,
+        /// Its level after the change: 1 Basic to 3 Expert.
+        level: u8,
+    },
+    /// The battle bonuses grow (E08 T60a, HER-ADV-008): the morale and luck added, saturating; with
+    /// a once-mark, only while that mark is clear, which it then sets (the Warrior's Tomb's, a
+    /// looted Pyramid's: a second visit before a battle adds nothing).
+    Bonus {
+        /// The morale added.
+        morale: i8,
+        /// The luck added.
+        luck: i8,
+        /// The once-mark that gates and records the bonus, below [`BattleBonuses::MARKS`].
+        mark: Option<u8>,
+    },
+    /// The battle bonuses end (E08 T60a, HER-ADV-008): morale and luck to 0, every once-mark
+    /// clear; the game gives it to every hero of a battle at its end.
+    ClearBonuses,
 }
 
 /// Checks a change against valid hero details (HER-CHG-001): the details stay valid with it
@@ -81,7 +110,9 @@ pub enum HeroChange {
 /// ruleset (HER-SPL-001) the hero has not learned; a level must be pending, its learned skill the
 /// ruleset's, below Expert if known and new only below the most skills, the offers' levels at most
 /// the new level (HER-LVL-005). Whether the skill was one of the level's offers is the caller's
-/// check (it holds the drawn [`crate::LevelUp`]).
+/// check (it holds the drawn [`crate::LevelUp`]). Primary skills gained and the bonuses cleared
+/// always pass; a raised skill must be the ruleset's at Basic to Expert, new only below the most
+/// skills (E08 T60a); a bonus's once-mark must be one of [`BattleBonuses::MARKS`].
 ///
 /// # Errors
 /// [`ChangeError::Artifact`] for an artifact the ruleset refuses, [`ChangeError::NoRoom`] when it
@@ -89,7 +120,9 @@ pub enum HeroChange {
 /// is none at the place, [`ChangeError::CannotPlace`] for a place that refuses a placed artifact,
 /// [`ChangeError::Spell`] for a spell the ruleset refuses,
 /// [`ChangeError::KnownSpell`] for one the hero has learned; [`ChangeError::NoLevelPending`],
-/// [`ChangeError::CannotLearn`] and [`ChangeError::OfferedAboveLevel`] for a level.
+/// [`ChangeError::CannotLearn`] and [`ChangeError::OfferedAboveLevel`] for a level;
+/// [`ChangeError::CannotLearn`] and [`ChangeError::SkillLevel`] for a raised skill,
+/// [`ChangeError::Mark`] for a bonus.
 pub fn check_change(
     details: &HeroDetails,
     ruleset: &Ruleset,
@@ -122,7 +155,31 @@ pub fn check_change(
         HeroChange::GainLevel {
             learned, offered, ..
         } => check_level(details, ruleset, learned, offered),
+        HeroChange::GainPrimary(_) | HeroChange::ClearBonuses => Ok(()),
+        HeroChange::RaiseSkill { skill, level } => check_raise(details, ruleset, skill, level),
+        HeroChange::Bonus { mark, .. } => match mark {
+            Some(mark) if mark >= BattleBonuses::MARKS => Err(ChangeError::Mark(mark)),
+            _ => Ok(()),
+        },
     }
+}
+
+/// [`check_change`] of a raised skill: the ruleset's skill at Basic to Expert, a new one only
+/// below the most skills (HER-SEC-001). A known one at or above the level passes and stays.
+fn check_raise(
+    details: &HeroDetails,
+    ruleset: &Ruleset,
+    skill: SkillId,
+    level: u8,
+) -> Result<(), ChangeError> {
+    let known = details.skills.iter().any(|&(s, _)| s == skill);
+    if ruleset.skill(skill).is_none() || !(known || details.skills.len() < MAX_HERO_SKILLS) {
+        return Err(ChangeError::CannotLearn(skill));
+    }
+    (1..=MAX_SKILL_LEVEL)
+        .contains(&level)
+        .then_some(())
+        .ok_or(ChangeError::SkillLevel(skill))
 }
 
 /// [`check_change`] of a level (HER-LVL-005).
@@ -227,6 +284,30 @@ pub fn apply_change_limited(
             }
             details.offered = offered;
         }
+        HeroChange::GainPrimary(gains) => {
+            // A-9's class: each sum saturates at `primary_max`.
+            let max = ruleset.hero_params().map_or(0, |params| params.primary_max);
+            for (base, gain) in details.primary.iter_mut().zip(gains) {
+                *base = base.saturating_add(gain).min(max);
+            }
+        }
+        HeroChange::RaiseSkill { skill, level } => {
+            match details.skills.iter_mut().find(|(s, _)| *s == skill) {
+                Some((_, known)) => *known = (*known).max(level),
+                None => details.skills.push((skill, level)),
+            }
+        }
+        HeroChange::Bonus { morale, luck, mark } => {
+            // rule: HER-ADV-008
+            let bonuses = &mut details.bonuses;
+            if mark.is_some_and(|mark| bonuses.has_mark(mark)) {
+                return;
+            }
+            bonuses.morale = bonuses.morale.saturating_add(morale);
+            bonuses.luck = bonuses.luck.saturating_add(luck);
+            bonuses.marks |= mark.map_or(0, |mark| 1 << mark);
+        }
+        HeroChange::ClearBonuses => details.bonuses = BattleBonuses::default(),
     }
 }
 

@@ -207,6 +207,35 @@ fn the_store_is_in_the_hash_and_shared_by_forks() {
         let other = GameState::new(&rules, &other, 3).unwrap();
         assert_ne!(other.state_hash(), state.state_hash(), "change {i}");
     }
+    // The battle bonuses (v15, E08 T60a): each of morale, luck and the once-marks; a map gives
+    // none.
+    assert_eq!(
+        state.hero(HeroId::new(0)).unwrap().bonuses,
+        Default::default()
+    );
+    let bonuses = [
+        HeroChange::Bonus {
+            morale: 1,
+            luck: 0,
+            mark: None,
+        },
+        HeroChange::Bonus {
+            morale: 0,
+            luck: 1,
+            mark: None,
+        },
+        HeroChange::Bonus {
+            morale: 0,
+            luck: 0,
+            mark: Some(0),
+        },
+    ];
+    for change in bonuses {
+        let mut other = state.clone();
+        other.apply_hero_change(rules.core(), HeroId::new(0), change);
+        assert_ne!(other.state_hash(), state.state_hash(), "{change:?}");
+        assert_eq!(other.state_hash(), hash_of(&other));
+    }
 }
 
 // covers: GAM-HER-001

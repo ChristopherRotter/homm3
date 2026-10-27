@@ -43,6 +43,7 @@ fn details(r: &BattleRuleset, rng: &mut Rng) -> HeroDetails {
         backpack: vec![],
         spells: vec![],
         mana: 0,
+        bonuses: Default::default(),
     };
     for key in ["base:ballistics", "base:artillery"] {
         let level = u8::try_from(rng.below(4)).unwrap();

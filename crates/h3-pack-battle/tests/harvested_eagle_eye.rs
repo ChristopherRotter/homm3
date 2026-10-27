@@ -42,6 +42,7 @@ fn chance(r: &BattleRuleset, (hero, level): (&str, u8), skill: u8, worn: &[&str]
         backpack: vec![],
         spells: vec![],
         mana: 0,
+        bonuses: Default::default(),
     };
     let one = |key: &str| Army {
         stacks: vec![ArmyStack {

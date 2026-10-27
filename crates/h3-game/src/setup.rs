@@ -327,6 +327,8 @@ fn hero_details(
             .clone()
             .unwrap_or_else(|| hero_type.spells.clone()),
         mana: 0,
+        // None at a map's start (HER-ADV-008): a map holds no hero's bonuses.
+        bonuses: Default::default(),
     };
     for &machine in machines {
         let artifact = core

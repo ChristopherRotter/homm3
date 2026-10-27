@@ -3176,6 +3176,11 @@ fn check_heroes_after_battle(
                 HeroChange::GainLevel { .. } => prop_assert!(false, "{:?} told a level", id),
                 // E08 T49a: nor a placed artifact (a move's).
                 HeroChange::PlaceArtifact { .. } => prop_assert!(false, "{:?} told a place", id),
+                // E08 T60a: nor a reward's change or the bonuses (increment 7's, T62 and T63).
+                HeroChange::GainPrimary(_)
+                | HeroChange::RaiseSkill { .. }
+                | HeroChange::Bonus { .. }
+                | HeroChange::ClearBonuses => prop_assert!(false, "{:?} told a reward", id),
             }
         }
         prop_assert_eq!((a.experience, a.mana), (experience, mana));

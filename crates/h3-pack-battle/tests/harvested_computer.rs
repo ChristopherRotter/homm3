@@ -45,6 +45,7 @@ fn details(r: &BattleRuleset, rng: &mut Rng) -> HeroDetails {
         backpack: vec![],
         spells: vec![],
         mana: [0, 20, 100][pick(rng, 3)],
+        bonuses: Default::default(),
     };
     for skill in [
         "base:tactics",
@@ -526,6 +527,7 @@ fn fire_mage(r: &BattleRuleset) -> BattleHero {
         backpack: vec![],
         spells: vec![r.spell_by_key("base:fire_wall").unwrap()],
         mana: 100,
+        bonuses: Default::default(),
     };
     h3_heroes::validate(&d, r).unwrap();
     derive_battle_hero(&d, r).unwrap()

@@ -125,10 +125,15 @@ pub enum ChangeError {
     /// A level is gained, but none is pending: the level is the experience's (HER-LVL-005).
     NoLevelPending,
     /// A level's learned skill is not the ruleset's, is at Expert, or is new to a hero who knows
-    /// the most skills (HER-LVL-005).
+    /// the most skills (HER-LVL-005); a raised skill is not the ruleset's, or is new to a hero who
+    /// knows the most skills (E08 T60a).
     CannotLearn(SkillId),
     /// A level sets an offer's level above the new level (HER-LVL-005).
     OfferedAboveLevel,
+    /// A raised skill's level is not Basic to Expert (E08 T60a).
+    SkillLevel(SkillId),
+    /// A bonus's once-mark is of no kind: 8 or above (E08 T60a, HER-ADV-008).
+    Mark(u8),
 }
 
 impl fmt::Display for ChangeError {
@@ -151,6 +156,10 @@ impl fmt::Display for ChangeError {
             Self::NoLevelPending => f.write_str("no level is pending"),
             Self::CannotLearn(id) => write!(f, "secondary skill {} cannot be learned", id.raw()),
             Self::OfferedAboveLevel => f.write_str("an offer's level exceeds the new level"),
+            Self::SkillLevel(id) => {
+                write!(f, "secondary skill {} cannot rise to that level", id.raw())
+            }
+            Self::Mark(mark) => write!(f, "once-mark {mark} is of no kind"),
         }
     }
 }

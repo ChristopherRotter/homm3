@@ -96,6 +96,7 @@ fn details(attack: u8, defense: u8, diplomacy: Option<u8>) -> HeroDetails {
         backpack: vec![],
         spells: vec![],
         mana: 0,
+        bonuses: Default::default(),
     }
 }
 

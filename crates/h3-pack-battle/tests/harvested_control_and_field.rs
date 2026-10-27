@@ -50,6 +50,7 @@ fn details(
         backpack: vec![],
         spells: spells.iter().map(|k| spell(r, k)).collect(),
         mana: u16::from(knowledge) * 10,
+        bonuses: Default::default(),
     }
 }
 

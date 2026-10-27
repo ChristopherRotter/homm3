@@ -65,6 +65,7 @@ fn details(
         backpack: vec![],
         spells: spells.iter().map(|k| spell(r, k)).collect(),
         mana: u16::from(knowledge) * 10,
+        bonuses: Default::default(),
     }
 }
 
@@ -350,6 +351,7 @@ fn batch_2a_r1_r2_chain_lightning_by_the_screen_distance_and_the_army_slot() {
             backpack: vec![],
             spells: vec![],
             mana: 0,
+            bonuses: Default::default(),
         };
         let peasants = [100, 101, 102].map(|count| ("ab:peasant", count));
         let setup = BattleSetup {

@@ -314,6 +314,59 @@ fn morale_and_luck_effects_are_combined_and_count_each_artifact_once() {
     );
 }
 
+// covers: HER-ADV-008
+#[test]
+fn the_battle_bonuses_join_the_own_sides_morale_and_luck() {
+    use Affects::{Enemy, Own};
+    let morale = |amount, affects| BattleEffect::Morale { amount, affects };
+    let luck = |amount, affects| BattleEffect::Luck { amount, affects };
+    let r = morale_ruleset();
+    let mut d = details(&r);
+    take_off(&mut d.worn, art(&r, "t:hook"));
+    d.skills = vec![(skill(&r, "t:leadership"), 1)];
+    // The Tomb's −3 and Basic Leadership's +1 beside the circle's and band's +2: 0, left out;
+    // the Pyramid's −2 luck beside the eye's +1: −1; the enemy's morale and luck (the
+    // specialty's) stay their own.
+    d.bonuses = BattleBonuses {
+        morale: -3,
+        luck: -2,
+        marks: 0b11,
+    };
+    let sums = |hero: &BattleHero| -> Vec<BattleEffect> {
+        hero.effects
+            .iter()
+            .copied()
+            .filter(|e| matches!(e, BattleEffect::Morale { .. } | BattleEffect::Luck { .. }))
+            .collect()
+    };
+    let hero = derive_battle_hero(&d, &r).unwrap();
+    assert_eq!(
+        sums(&hero),
+        [morale(1, Enemy), luck(-1, Own), luck(-1, Enemy)]
+    );
+    // Without the circle and the band: Leadership's +1 and −3 make −2 (design §5's case).
+    take_off(&mut d.worn, art(&r, "t:circle"));
+    let hero = derive_battle_hero(&d, &r).unwrap();
+    assert_eq!(
+        sums(&hero),
+        [
+            morale(-2, Own),
+            morale(1, Enemy),
+            luck(-1, Own),
+            luck(-1, Enemy)
+        ]
+    );
+    // A hero with no other source gets the bonuses alone, held to `i8` as every sum.
+    let plain = ruleset();
+    let mut bare = details(&plain);
+    bare.bonuses.morale = -3;
+    let hero = derive_battle_hero(&bare, &plain).unwrap();
+    assert_eq!(sums(&hero), [morale(-3, Own)]);
+    // After the battle's end (cleared), none.
+    apply_change(&mut bare, &plain, HeroChange::ClearBonuses);
+    assert_eq!(sums(&derive_battle_hero(&bare, &plain).unwrap()), []);
+}
+
 // covers: HER-BAT-006
 #[test]
 fn a_worn_no_retreat_artifact_adds_one_no_retreat_effect() {
@@ -1161,7 +1214,7 @@ fn more_battle_effects_than_the_seam_holds_are_an_error() {
 }
 
 proptest! {
-    // covers: HER-BAT-001, HER-BAT-002, HER-BAT-003, HER-BAT-004
+    // covers: HER-BAT-001, HER-BAT-002, HER-BAT-003, HER-BAT-004, HER-ADV-008
     #[test]
     fn derivation_succeeds_exactly_for_valid_details_and_stays_in_limits(
         worn in proptest::collection::vec(0u16..10, 0..8),
@@ -1169,6 +1222,8 @@ proptest! {
         swap in proptest::option::of((0usize..9, 0usize..9)),
         skills in proptest::collection::vec((0u16..10, 1u8..=3), 0..3),
         primary in proptest::array::uniform4(0u8..=100),
+        // E08 T60a: the battle bonuses join the morale and luck sums (HER-ADV-008).
+        (morale, luck, marks) in (any::<i8>(), any::<i8>(), any::<u8>()),
     ) {
         let r = morale_ruleset();
         let listed: Vec<ArtifactInstance> =
@@ -1181,6 +1236,7 @@ proptest! {
             primary,
             skills: skills.iter().map(|&(s, l)| (SkillId::from_raw(s), l)).collect(),
             worn,
+            bonuses: BattleBonuses { morale, luck, marks },
             ..details(&r)
         };
         let derived = derive_battle_hero(&d, &r);

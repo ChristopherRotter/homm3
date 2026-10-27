@@ -153,6 +153,7 @@ fn batch_2a_r6_the_hero_casts_in_his_ballistas_turn() {
         backpack: vec![],
         spells: vec![spell],
         mana: u16::from(knowledge) * 10,
+        bonuses: Default::default(),
     };
     let artillery = vec![(r.skill_by_key("base:artillery").unwrap(), 1)];
     let calid = details(

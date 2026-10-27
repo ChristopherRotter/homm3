@@ -16,7 +16,7 @@ use h3_contracts::{
 };
 use h3_kernel::arith::{SINGLE_BITS, X87, mul_div_floor};
 
-use crate::details::{HeroDetails, PrimarySkill, check};
+use crate::details::{BattleBonuses, HeroDetails, PrimarySkill, check};
 use crate::error::DetailsError;
 use crate::spells;
 
@@ -29,7 +29,8 @@ use crate::spells;
 /// spell masteries, HER-SPL-003, and Eagle Eye, HER-SPL-004; the mana passed through), the spell
 /// bonuses (HER-BAT-012), the magic resistance (HER-BAT-013), the spell duration bonus
 /// (HER-BAT-014), the casting limits (HER-BAT-015), the spell defences (HER-BAT-016) and the
-/// opening spells (HER-BAT-017). The details are validated first.
+/// opening spells (HER-BAT-017); the battle bonuses join the morale and luck (HER-ADV-008, E08
+/// T60a). The details are validated first.
 ///
 /// The maximum mana stays 0 (informative; it is derived with hero progression, E08–E10).
 ///
@@ -60,7 +61,10 @@ pub fn derive_battle_hero(
         .unwrap_or(0);
 
     // rule: HER-BAT-003
-    hero.effects = morale_and_luck(effects(details, ruleset, Count::OncePerType));
+    hero.effects = morale_and_luck(
+        effects(details, ruleset, Count::OncePerType),
+        details.bonuses,
+    );
 
     // rule: HER-BAT-006
     if effects(details, ruleset, Count::OncePerType).any(|e| matches!(e, HeroEffect::NoRetreat)) {
@@ -605,8 +609,12 @@ pub(crate) enum Count {
 /// The morale and luck effects among `effects`, combined per kind and affected stacks: the
 /// changes summed (saturated to `i8`; a sum of 0 is left out), the caps the smallest. In the
 /// order morale, luck, morale cap, luck cap, each for the own, the enemy and both sides
-/// (HER-BAT-003).
-fn morale_and_luck<'a>(effects: impl Iterator<Item = &'a CompiledHeroEffect>) -> Vec<BattleEffect> {
+/// (HER-BAT-003). The hero's battle bonuses join the own side's morale and luck sums
+/// (HER-ADV-008), so the battle gets one effect of each as from any source and bounds it alike.
+fn morale_and_luck<'a>(
+    effects: impl Iterator<Item = &'a CompiledHeroEffect>,
+    bonuses: BattleBonuses,
+) -> Vec<BattleEffect> {
     // [morale, luck, morale cap, luck cap][own, enemy, both]
     let mut totals: [[Option<i32>; 3]; 4] = [[None; 3]; 4];
     for effect in effects {
@@ -624,6 +632,11 @@ fn morale_and_luck<'a>(effects: impl Iterator<Item = &'a CompiledHeroEffect>) ->
             Some(t) if cap => t.min(value),
             Some(t) => t + value,
         });
+    }
+    // rule: HER-ADV-008
+    for (kind, bonus) in [(0, bonuses.morale), (1, bonuses.luck)] {
+        let own = &mut totals[kind][affects_index(Affects::Own)];
+        *own = Some(own.unwrap_or(0) + i32::from(bonus));
     }
     let mut out = Vec::new();
     for (kind, by_affects) in totals.iter().enumerate() {
