@@ -19,7 +19,7 @@ use h3_map::writer::ObjectTemplate;
 use h3_map_view::art::MapArt;
 use h3_map_view::batch::{self, Batch};
 use h3_map_view::compose::{FORMAT, compose};
-use h3_map_view::cursor::Cursor as Sprite;
+use h3_map_view::cursor::{Cursor as Sprite, Image};
 use h3_map_view::layout::AdventureLayout;
 use h3_map_view::live::{Facing, Lifted, Live, Moment, Walking};
 use h3_map_view::objects::{self, Shapes};
@@ -105,6 +105,8 @@ pub fn for_sequence<'a>(
         pointer: PARK,
         hero,
         paths,
+        path: Vec::new(),
+        live: false,
     };
     Ok(Setup {
         painter,
@@ -116,7 +118,8 @@ pub fn for_sequence<'a>(
 
 /// A situation (`<map>/situations/<id>.toml`) set up to stand still: its map (the writer's, or the
 /// shipped one it names), its kept live part if any, the original's default speeds, the pointer
-/// parked, no hero selected (the map's live input is T4b's).
+/// parked; the viewer's hero selected when it has only one (*provisional*: M4 selects by the
+/// game), its path shown as the still shows it (E24 M2 T4b: the window's live input steps it).
 pub fn for_situation<'a>(
     assets: &'a Assets<'a>,
     map: &Path,
@@ -155,15 +158,20 @@ pub fn for_situation<'a>(
     let view = view_at(view, &path)?;
     let kept = map.join("situations/kept").join(format!("{id}.toml"));
     let live = kept.exists().then_some(kept);
-    let painter = Painter::new(assets, &raw, live.as_deref(), view, &hidden)?;
+    let mut painter = Painter::new(assets, &raw, live.as_deref(), view, &hidden)?;
+    let (heroes, viewer) = (&painter.live.heroes, painter.live.viewer);
+    let hero = sequence::selected(heroes, viewer).ok();
+    painter.selected = sequence::selected_index(heroes, viewer).ok();
     let start = Start {
         view,
         size: i32::try_from(painter.art.size).unwrap_or(i32::MAX),
         scroll_speed: DEFAULT_SCROLL_SPEED,
         hero_speed: DEFAULT_HERO_SPEED,
         pointer: PARK,
-        hero: None,
+        hero,
         paths: Vec::new(),
+        path: painter.live.path.clone(),
+        live: false,
     };
     Ok(Setup {
         painter,
@@ -335,6 +343,18 @@ impl<'a> Painter<'a> {
         if !shown {
             return Ok(screen);
         }
+        let cursor = self.cursor(frame)?;
+        cursor.draw(&mut screen, x, y);
+        Ok(screen)
+    }
+
+    /// The cursor's frame as an image (the hardware cursor's, E24 M2 T4b).
+    pub fn cursor_image(&mut self, frame: u32) -> Result<Image, String> {
+        Ok(self.cursor(frame)?.image(FORMAT))
+    }
+
+    /// The layout's cursor's frame, read once.
+    fn cursor(&mut self, frame: u32) -> Result<&Sprite, String> {
         let art = &self.assets.layout.cursor;
         if !self.cursors.contains_key(&frame) {
             let [hx, hy] = usize::try_from(frame)
@@ -352,9 +372,8 @@ impl<'a> Painter<'a> {
                 .ok_or_else(|| format!("{}: no frame {frame}", art.def))?;
             self.cursors.insert(frame, sprite);
         }
-        if let Some(cursor) = self.cursors.get(&frame) {
-            cursor.draw(&mut screen, x, y);
-        }
-        Ok(screen)
+        self.cursors
+            .get(&frame)
+            .ok_or_else(|| format!("{}: no frame {frame}", art.def))
     }
 }

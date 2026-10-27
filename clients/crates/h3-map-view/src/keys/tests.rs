@@ -7,24 +7,27 @@ use super::*;
 fn the_defaults_are_the_originals_keys_and_the_windows() {
     let keys = Keys::original();
     let directions = [
-        ("Up", Direction::North),
-        ("PageUp", Direction::NorthEast),
-        ("Right", Direction::East),
-        ("PageDown", Direction::SouthEast),
-        ("Down", Direction::South),
-        ("End", Direction::SouthWest),
-        ("Left", Direction::West),
-        ("Home", Direction::NorthWest),
+        ("Up", "Keypad8", Direction::North),
+        ("PageUp", "Keypad9", Direction::NorthEast),
+        ("Right", "Keypad6", Direction::East),
+        ("PageDown", "Keypad3", Direction::SouthEast),
+        ("Down", "Keypad2", Direction::South),
+        ("End", "Keypad1", Direction::SouthWest),
+        ("Left", "Keypad4", Direction::West),
+        ("Home", "Keypad7", Direction::NorthWest),
     ];
-    for (key, d) in directions {
-        assert_eq!(keys.command(true, key), Some(Command::Scroll(d)), "{key}");
-        assert_eq!(keys.command(false, key), Some(Command::Hero(d)), "{key}");
+    for (key, pad, d) in directions {
+        for k in [key, pad] {
+            assert_eq!(keys.command(true, k), Some(Command::Scroll(d)), "{k}");
+            assert_eq!(keys.command(false, k), Some(Command::Hero(d)), "{k}");
+        }
     }
     for (key, command) in [
         ("F5", Command::Pause),
         ("F6", Command::Frame),
         ("F7", Command::Restart),
         ("F8", Command::Vsync),
+        ("F9", Command::Cursor),
         ("F11", Command::Fullscreen),
         ("Escape", Command::Quit),
     ] {
@@ -33,20 +36,22 @@ fn the_defaults_are_the_originals_keys_and_the_windows() {
         assert_eq!(keys.command(true, key), None, "{key}");
     }
     assert_eq!(keys.command(false, "P"), None);
-    // Every command bound once, in the table's order.
+    // Every command bound, in the table's order: the map's twice (the key and the keypad's).
     let chords = keys.chords();
-    assert_eq!(chords.len(), 22);
-    let commands: Vec<Command> = chords.iter().map(|&(c, _)| c).collect();
+    assert_eq!(chords.len(), 39);
+    let mut commands: Vec<Command> = chords.iter().map(|&(c, _)| c).collect();
+    commands.dedup();
     assert_eq!(commands, Command::all());
     assert_eq!(chords[0].1.to_string(), "Ctrl+Up");
-    assert_eq!(chords[8].1.to_string(), "Up");
-    assert_eq!(chords[21].1.to_string(), "Escape");
+    assert_eq!(chords[1].1.to_string(), "Ctrl+Keypad8");
+    assert_eq!(chords[16].1.to_string(), "Up");
+    assert_eq!(chords[38].1.to_string(), "Escape");
 }
 
 #[test]
 fn every_command_has_a_name_and_the_maps_its_action() {
     let all = Command::all();
-    assert_eq!(all.len(), 22);
+    assert_eq!(all.len(), 23);
     for &command in &all {
         assert_eq!(Command::from_name(&command.name()), Some(command));
     }
@@ -55,7 +60,15 @@ fn every_command_has_a_name_and_the_maps_its_action() {
     assert_eq!(names[13], "hero-south-west");
     assert_eq!(
         names[16..],
-        ["pause", "frame", "restart", "vsync", "fullscreen", "quit"]
+        [
+            "pause",
+            "frame",
+            "restart",
+            "vsync",
+            "cursor",
+            "fullscreen",
+            "quit"
+        ]
     );
     assert_eq!(Command::from_name("scroll"), None);
     assert_eq!(
@@ -110,6 +123,7 @@ fn a_users_file_overrides_command_by_command() {
     // Unbound.
     assert_eq!(keys.command(false, "Escape"), None);
     assert_eq!(keys.command(false, "Up"), None);
+    assert_eq!(keys.command(false, "Keypad8"), None);
     assert_eq!(
         keys.command(false, "W"),
         Some(Command::Hero(Direction::North))
@@ -125,7 +139,7 @@ fn a_users_file_overrides_command_by_command() {
     // The rest kept.
     assert_eq!(keys.command(false, "F6"), Some(Command::Frame));
     let chords = keys.chords();
-    assert_eq!(chords.len(), 24);
+    assert_eq!(chords.len(), 39);
     assert!(chords.iter().all(|&(c, _)| c != Command::Quit));
     assert_eq!(chords[0].1.to_string(), "Ctrl+W");
     // An empty file is the defaults.
