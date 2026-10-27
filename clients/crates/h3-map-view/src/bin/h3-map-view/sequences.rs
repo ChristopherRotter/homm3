@@ -6,7 +6,9 @@
 //! compared with the one recorded (`timelines/<id>.txt`). With `--frames <dir>` (one sequence)
 //! the frame at every time the screen changed and at every time `<dir>/frames/` holds one of the
 //! original's (`h3map.py frames`' `t<ms>.npz`) is written as `<dir>/ours/t<ms>.png`, the timeline
-//! as `<dir>/ours.txt`. A walk is M2 T3's: listed, not played.
+//! as `<dir>/ours.txt`. A walk (M2 T3a, T3b) is played with the hero the live part at 0 selects
+//! and the paths its recorded timeline shows; each draw moves that hero, lifts it, slides the view
+//! by the walk's offset and shows the path's arrows left (the live part's `walking`).
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
@@ -21,10 +23,10 @@ use h3_map_view::batch::{self, Batch};
 use h3_map_view::compose::{FORMAT, compose};
 use h3_map_view::cursor::Cursor as Sprite;
 use h3_map_view::layout::AdventureLayout;
-use h3_map_view::live::{Live, Moment};
+use h3_map_view::live::{Facing, Lifted, Live, Moment, Walking};
 use h3_map_view::objects::{self, Shapes};
 use h3_map_view::scene::{self, ViewAt};
-use h3_map_view::sequence::{Sequence, Sequences};
+use h3_map_view::sequence::{self, Sequence, Sequences};
 use h3_map_view::situation::Situation;
 use h3_map_view::tables::Tables;
 use h3_map_view::timeline::{self, Cursor, Draw, Rules, Start, State, Unplayable};
@@ -107,8 +109,6 @@ enum Verdict {
     New(usize),
     /// The first line that differs (0-based): ours and the recorded one (empty past the end).
     Changed(usize, String, String),
-    /// A walk, M2 T3's.
-    Walk,
 }
 
 pub fn run(options: &Options) -> ExitCode {
@@ -122,7 +122,7 @@ pub fn run(options: &Options) -> ExitCode {
     }
 }
 
-/// Every sequence asked for; whether each is as recorded (a walk counts as such).
+/// Every sequence asked for; whether each is as recorded.
 fn all(options: &Options) -> Result<bool, String> {
     let tables = files::load_tables(&options.map)?;
     let layout = files::load_layout(&options.map)?;
@@ -147,7 +147,7 @@ fn all(options: &Options) -> Result<bool, String> {
         templates: &templates,
         options,
     };
-    let (mut same, mut stubs) = (0, 0);
+    let mut same = 0;
     for sequence in &chosen {
         let id = &sequence.id;
         match context.check(sequence) {
@@ -160,15 +160,11 @@ fn all(options: &Options) -> Result<bool, String> {
                 "{id}: CHANGED at line {}: ours `{ours}`, recorded `{recorded}`",
                 line + 1
             ),
-            Ok(Verdict::Walk) => {
-                stubs += 1;
-                println!("{id}: a walk, M2 T3's (not played)");
-            }
             Err(message) => println!("{id}: FAILED ({message})"),
         }
     }
-    let played = chosen.len() - stubs;
-    println!("sequences: {played} played, {same} as recorded; {stubs} walks left to M2 T3");
+    let played = chosen.len();
+    println!("sequences: {played} played, {same} as recorded");
     Ok(same == played)
 }
 
@@ -184,9 +180,7 @@ struct Context<'a> {
 impl Context<'_> {
     /// One sequence: played, drawn, its timeline against the recorded one.
     fn check(&self, sequence: &Sequence) -> Result<Verdict, String> {
-        if sequence.walks() {
-            return Ok(Verdict::Walk);
-        }
+        let walks = sequence.walks();
         let map = &self.options.map;
         let path = map
             .join("situations")
@@ -199,15 +193,8 @@ impl Context<'_> {
             y,
             z: u8::try_from(z).map_err(|_| format!("{}: the view's level", path.display()))?,
         };
-        let start = Start {
-            view,
-            size: i32::from(situation.size),
-            scroll_speed: sequence.scroll_speed()?,
-            pointer: PARK,
-        };
-        let rules = Rules::new(self.tables, self.layout, self.options.bugs);
-        let states = timeline::play(rules, &start, &sequence.actions()?, sequence.ms)
-            .map_err(|(t, why): (u32, Unplayable)| format!("at {t} ms: {why}"))?;
+        let recorded_path = map.join("timelines").join(format!("{}.txt", sequence.id));
+        let recorded = fs::read_to_string(&recorded_path).ok();
         let bytes = situation::map_bytes(&situation, &self.options.install, self.templates)?;
         let raw = h3_map::parse(&bytes, &Limits::default()).map_err(|e| e.to_string())?;
         let live_path = self.options.live.clone().unwrap_or_else(|| {
@@ -215,6 +202,29 @@ impl Context<'_> {
                 .join(format!("{}-live.toml", sequence.id))
         });
         let mut painter = Painter::new(self, &raw, &live_path, view)?;
+        // A walk's hero is the live part's selected one, its paths the ones the recording shows.
+        let (hero, paths) = if walks {
+            let live = &painter.live;
+            let hero = sequence::selected(&live.heroes, live.viewer)
+                .map_err(|e| format!("{}: {e}", live_path.display()))?;
+            painter.selected = sequence::selected_index(&live.heroes, live.viewer).ok();
+            let paths = sequence.paths(recorded.as_deref().unwrap_or_default())?;
+            (Some(hero), paths)
+        } else {
+            (None, Vec::new())
+        };
+        let start = Start {
+            view,
+            size: i32::from(situation.size),
+            scroll_speed: sequence.scroll_speed()?,
+            hero_speed: sequence.hero_speed()?,
+            pointer: PARK,
+            hero,
+            paths,
+        };
+        let rules = Rules::new(self.tables, self.layout, self.options.bugs);
+        let states = timeline::play(rules, &start, &sequence.actions()?, sequence.ms)
+            .map_err(|(t, why): (u32, Unplayable)| format!("at {t} ms: {why}"))?;
         let wanted = match &self.options.frames {
             Some(dir) => original_times(dir)?,
             None => BTreeSet::new(),
@@ -225,10 +235,10 @@ impl Context<'_> {
         }
         let mut screens = BTreeMap::new();
         let (mut kept, mut current): (Option<Screen>, Option<Screen>) = (None, None);
-        let mut shown = None;
+        let mut shown: Option<(Draw, Cursor)> = None;
         for s in &states {
-            if shown != Some((s.drawn, s.cursor)) {
-                shown = Some((s.drawn, s.cursor));
+            if shown.as_ref() != Some(&(s.drawn.clone(), s.cursor)) {
+                shown = Some((s.drawn.clone(), s.cursor));
                 current = Some(painter.frame(s)?);
             }
             let Some(frame) = &current else { continue };
@@ -257,8 +267,7 @@ impl Context<'_> {
             fs::write(&out, lines.join("\n") + "\n")
                 .map_err(|e| format!("{}: {e}", out.display()))?;
         }
-        let recorded_path = map.join("timelines").join(format!("{}.txt", sequence.id));
-        let Ok(recorded) = fs::read_to_string(&recorded_path) else {
+        let Some(recorded) = recorded else {
             return Ok(Verdict::New(lines.len()));
         };
         Ok(compare(&lines, &recorded))
@@ -312,6 +321,9 @@ struct Painter<'a> {
     added: BTreeSet<String>,
     view: Option<(Draw, Screen)>,
     cursors: BTreeMap<u32, Sprite>,
+    /// A walk's hero (its index in the live part's heroes): each draw puts it where the draw has
+    /// it, lifted or on its tile; none for a sequence that walks no hero.
+    selected: Option<usize>,
 }
 
 impl<'a> Painter<'a> {
@@ -346,6 +358,7 @@ impl<'a> Painter<'a> {
             added: BTreeSet::new(),
             view: None,
             cursors: BTreeMap::new(),
+            selected: None,
         };
         painter.add([context.layout.cursor.def.to_ascii_uppercase()])?;
         Ok(painter)
@@ -366,9 +379,9 @@ impl<'a> Painter<'a> {
     }
 
     /// The view as a draw shows it (the last one kept).
-    fn view(&mut self, draw: Draw) -> Result<Screen, String> {
+    fn view(&mut self, draw: &Draw) -> Result<Screen, String> {
         if let Some((d, screen)) = &self.view
-            && *d == draw
+            && d == draw
         {
             return Ok(screen.clone());
         }
@@ -378,6 +391,9 @@ impl<'a> Painter<'a> {
             river_cycles: base.river_cycles.wrapping_add(draw.cycles),
             frames: base.frames.wrapping_add(draw.frames),
         };
+        if let Some(index) = self.selected {
+            self.walk(index, draw);
+        }
         let context = self.context;
         let scene = scene::scene(
             &self.art,
@@ -392,14 +408,41 @@ impl<'a> Painter<'a> {
         self.add(batch::names(&scene))?;
         let screen =
             compose(&scene, &self.batch, context.layout.frame).map_err(|e| e.to_string())?;
-        self.view = Some((draw, screen.clone()));
+        self.view = Some((draw.clone(), screen.clone()));
         Ok(screen)
+    }
+
+    /// A walk's part of a draw in the live part: the selected hero's tile and facing, lifted at
+    /// the view's middle or on its tile, the view's offset, the path's arrows left.
+    fn walk(&mut self, index: usize, draw: &Draw) {
+        let live = &mut self.live;
+        if let (Some(hero), Some(at)) = (live.heroes.get_mut(index), draw.hero) {
+            hero.at = at.at;
+            hero.facing = Facing::from_number(u8::try_from(at.facing.number()).unwrap_or(0))
+                .unwrap_or(hero.facing);
+        }
+        live.path.clone_from(&draw.path);
+        live.walking = Walking {
+            offset: draw.offset,
+            lifted: draw.lifted.map(|[group, frame]| Lifted {
+                hero: index,
+                group,
+                frame,
+            }),
+        };
     }
 
     /// The screen a state shows: its view, the cursor over it.
     fn frame(&mut self, s: &State) -> Result<Screen, String> {
-        let mut screen = self.view(s.drawn)?;
-        let Cursor { frame, at: [x, y] } = s.cursor;
+        let mut screen = self.view(&s.drawn)?;
+        let Cursor {
+            frame,
+            at: [x, y],
+            shown,
+        } = s.cursor;
+        if !shown {
+            return Ok(screen);
+        }
         let art = &self.context.layout.cursor;
         if !self.cursors.contains_key(&frame) {
             let [hx, hy] = usize::try_from(frame)

@@ -225,7 +225,8 @@ fn wisdom_and_the_skill_condition_of_a_share_parse() {
          [[artifact]]\nid = \"a\"\nname = \"A\"\nclass = \"relic\"\n\
          effects = [{{ kind = \"necromancy\", bp = 3000, unless_skill = \"s\" }}]\n\
          [hero_params]\nprimary_min = [0, 0, 1, 1]\nprimary_max = 99\nbackpack = 64\n\
-         learn_level = 2\nexperience = [0, 10]\nmax_level = 1\nwisdom = \"s\"\nschools = []\n"
+         learn_level = 2\nexperience = [0, 10]\nmax_level = 1\nwisdom = \"s\"\nschools = []\n\
+         mana_ceiling = 999\n"
     ))
     .unwrap();
     assert_eq!(
@@ -403,6 +404,48 @@ fn the_harvested_scholar_and_titans_thunder() {
 }
 
 #[test]
+fn the_mana_ceiling_parses_and_is_required() {
+    // E08 T59 (pack format v48): the most spell points a reward record leaves a hero.
+    let manifest = "[pack]\nid = \"x\"\nversion = \"1\"\n";
+    let params = "[hero_params]\nprimary_min = [0, 0, 1, 1]\nprimary_max = 99\nbackpack = 64\n\
+                  learn_level = 2\nexperience = [0, 10]\nmax_level = 1\nwisdom = \"s\"\n\
+                  schools = []\n";
+    let pack = parse_pack(&format!("{manifest}{params}mana_ceiling = 999\n")).unwrap();
+    assert_eq!(pack.hero_params.map(|p| p.mana_ceiling), Some(999));
+    // Without it, or above a spell point's range, the parameters do not parse.
+    for tail in ["", "mana_ceiling = 65536\n"] {
+        assert!(matches!(
+            parse_pack(&format!("{manifest}{params}{tail}")),
+            Err(PackError::Syntax(_))
+        ));
+    }
+    // The harvested base pack holds the original's 999.
+    let base = compile(&[BASE_CORE], "base:faithful").unwrap();
+    assert_eq!(base.hero_params().map(|p| p.mana_ceiling), Some(999));
+}
+
+#[test]
+fn the_harvested_flags_of_increment_7() {
+    // E08 T59: A-21's and A-25's flags (`ADV-QUIRK-21`, `-22`), on in `faithful` and off in
+    // `strict-fixed` with every expansion.
+    use h3_content::{FULL_BACKPACK_REFUSES, ROE_WITCH_HUT_MASK};
+    for packs in [
+        &[SOD_CORE, AB_CORE, BASE_CORE][..],
+        &[AB_CORE, BASE_CORE],
+        &[BASE_CORE],
+    ] {
+        for (profile, on) in [("base:faithful", true), ("base:strict-fixed", false)] {
+            let q = compile(packs, profile).unwrap().quirks();
+            assert_eq!(
+                [ROE_WITCH_HUT_MASK, FULL_BACKPACK_REFUSES].map(|f| q.is_enabled(f)),
+                [on; 2],
+                "{profile}"
+            );
+        }
+    }
+}
+
+#[test]
 fn the_level_data_and_class_overrides_parse() {
     // E08 T26b (pack format v44): the experience of the first levels, the highest level, the
     // skills offered when due, the class's intervals and a gated class override.
@@ -410,7 +453,8 @@ fn the_level_data_and_class_overrides_parse() {
     let class = "[[hero_class]]\nid = \"c\"\nfaction = \"f\"\nprimary = [1, 1, 1, 1]\n\
                  primary_gain = [[25, 25, 25, 25], [25, 25, 25, 25]]\n";
     let params = "[hero_params]\nprimary_min = [0, 0, 1, 1]\nprimary_max = 99\nbackpack = 64\n\
-                  learn_level = 2\nexperience = [0, 1000, 2000]\nmax_level = 74\n";
+                  learn_level = 2\nexperience = [0, 1000, 2000]\nmax_level = 74\n\
+                  mana_ceiling = 999\n";
     let pack = parse_pack(&format!(
         "{manifest}{params}wisdom = \"w\"\nschools = [\"base:fire\", \"air\"]\n\
          {class}offer_intervals = [6, 4]\n\

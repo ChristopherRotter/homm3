@@ -201,12 +201,15 @@ inputs = [
 
 # The view following (T1b): the view not centred on the hero, a tile eight steps east clicked twice
 # (the first step centres the view, every step keeps it there), then Ctrl and Down (the view
-# scrolls off, the hero back on its tile) and Right alone (the step centres the view again).
+# scrolls off, the hero back on its tile) and Right alone (the step centres the view again). Its
+# scroll speed is 0 (T1b's recording held 0: Ctrl and Down moved the view one tile; given since
+# M2 T3a, as the harness otherwise leaves the original's setting).
 
 [[sequence]]
 id = "walk-follow"
 situation = "seq-walk-follow"
 ms = 2600
+scroll_speed = 0
 hero_speed = 2
 points = 2000
 why = "the view following a walk from a view not centred on the hero, and a step after a scroll"

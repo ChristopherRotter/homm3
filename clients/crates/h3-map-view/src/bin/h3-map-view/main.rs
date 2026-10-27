@@ -57,10 +57,13 @@ commands:
           200 ms, the scroll by Ctrl and the direction keys and at the frame's edges, the cursor)
           and the screen drawn wherever it can change: the timeline (the view, the objects' and
           palette steps, the cursor and the box the screen changed in outside the panels) is
-          compared line by line with <map>/timelines/<id>.txt. A walk is M2 T3's: listed, not
-          played. With --frames (one sequence) the frame at each time the screen changed and at
-          each time <dir>/frames/ holds the original's (t<ms>.npz, h3map.py frames) is written
-          as <dir>/ours/t<ms>.png, the timeline as <dir>/ours.txt. --bugs defaults to original
+          compared line by line with <map>/timelines/<id>.txt. A walk (the selected hero the
+          live part's, its paths the recorded ones: E24 M2 T3a) is drawn as the timeline has it
+          (the hero lifted at the view's middle, the view slid by the walk's offset, the path's
+          arrows left: E24 M2 T3b). With --frames (one sequence) the frame at each time the
+          screen changed and at each time <dir>/frames/ holds the original's (t<ms>.npz,
+          h3map.py frames) is written as <dir>/ours/t<ms>.png, the timeline as
+          <dir>/ours.txt. --bugs defaults to original
           (the comparisons: the original's edge zones, MCL-Q6, and its cursor's even x). It
           exits 1 unless every sequence played is as recorded.
   situation <situation.toml> --out <map.h3m> [--install <dir>]

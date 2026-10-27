@@ -1316,3 +1316,293 @@ fn the_underground_is_drawn_as_the_surface() {
     assert_eq!(shroud.len(), 1);
     assert_eq!(shroud[0].2, [32 * 9, 8 + 32 * 9]);
 }
+
+// The walk's draw (E24 M2 T3b, design §3.5, §3.8).
+
+/// `live` with hero `index` lifted in `group` at `frame`, the view slid by `offset`.
+fn walking(live: &Live, index: usize, group: u32, frame: u32, offset: [i32; 2]) -> Live {
+    let mut live = live.clone();
+    live.walking = crate::live::Walking {
+        offset,
+        lifted: Some(Lifted {
+            hero: index,
+            group,
+            frame,
+        }),
+    };
+    live
+}
+
+/// A pass's pieces of the heroes' and boats' DEFs (`ah…`, `af…`, `ab…`), the map's objects left.
+fn heroes_of(scene: &Scene, of: Pass) -> Vec<HeroSeen> {
+    grouped(scene, of)
+        .into_iter()
+        .filter(|p| p.0.starts_with('a'))
+        .collect()
+}
+
+/// The lifted hero's cell (a, b) at its fixed place: the view's tile (8 + a, 7 + b)'s rectangle.
+fn cell(a: i32, b: i32) -> [i32; 4] {
+    [256 + 32 * a, 232 + 32 * b, 288 + 32 * a, 264 + 32 * b]
+}
+
+#[test]
+fn a_lifted_hero_is_drawn_at_the_views_middle_and_once_more_blended() {
+    // Hero class 3 of colour 2 at (20, 20), facing left (mirrored), lifted in the walking group 7
+    // at frame 3; the objects' frame step 11: its flag's frame (11 + 3) mod 8. The view at
+    // (11, 12) has the hero at its middle; at (0, 0) it is off the view and still drawn there.
+    let (art, mut live) = art_with(vec![]);
+    live.heroes = vec![land_hero(20, 20, 3, 2, Facing::Left)];
+    live.moment.frames = 11;
+    let lifted = walking(&live, 0, 7, 3, [0, 0]);
+    let shapes = hero_shapes(&art, &[("af02.def", 8), ("ah03_.def", 8)]);
+    let cells = [(0, 0), (1, 0), (2, 0), (0, 1), (1, 1), (2, 1)];
+    for view in [at(11, 12), at(0, 0)] {
+        let s = drawn(&art, &lifted, &shapes, view);
+        let piece = |def: &str, frame: u32, clip: [i32; 4]| {
+            (def.to_string(), 7, frame, [256, 232], true, clip)
+        };
+        // Pass 5: the hero's shadow alone, a cell on each tile it covers.
+        let shadows: Vec<HeroSeen> = cells
+            .iter()
+            .map(|&(a, b)| piece("ah03_.def", 3, cell(a, b)))
+            .collect();
+        assert_eq!(heroes_of(&s, Pass::Shadow), shadows, "{view:?}");
+        // Pass 7: its flag and the hero in each cell.
+        let bodies: Vec<HeroSeen> = cells
+            .iter()
+            .flat_map(|&(a, b)| {
+                [
+                    piece("af02.def", 6, cell(a, b)),
+                    piece("ah03_.def", 3, cell(a, b)),
+                ]
+            })
+            .collect();
+        assert_eq!(heroes_of(&s, Pass::Body), bodies, "{view:?}");
+        // Pass 9: both whole, blended, after the arrows and before the unexplored tiles.
+        let whole = [256, 232, 352, 296];
+        assert_eq!(
+            grouped(&s, Pass::Blend),
+            [piece("af02.def", 6, whole), piece("ah03_.def", 3, whole)],
+            "{view:?}"
+        );
+    }
+    // Not lifted it stands on its tile: its facing's group 2, off the view at (0, 0).
+    let s = drawn(&art, &live, &shapes, at(11, 12));
+    assert!(grouped(&s, Pass::Blend).is_empty());
+    assert_eq!(heroes_of(&s, Pass::Body).len(), 12);
+    assert!(heroes_of(&s, Pass::Body).iter().all(|p| p.1 == 2));
+    assert!(heroes_of(&drawn(&art, &live, &shapes, at(0, 0)), Pass::Body).is_empty());
+}
+
+#[test]
+fn pass_9_comes_after_the_arrows_and_before_the_unexplored_tiles() {
+    let (art, mut live) = art_with(vec![]);
+    live.heroes = vec![land_hero(9, 8, 0, 0, Facing::Right)];
+    live.path = vec![Arrow {
+        at: pos(10, 8),
+        arrow: 3,
+    }];
+    live.explored.set(0, 0, 0, false);
+    let s = drawn(
+        &art,
+        &walking(&live, 0, 7, 0, [0, 0]),
+        &hero_shapes(&art, &[]),
+        at(0, 0),
+    );
+    let (_, path) = span(&s, Pass::Path);
+    let (blend, last) = span(&s, Pass::Blend);
+    let (shroud, _) = span(&s, Pass::Shroud);
+    assert!(path < blend && last < shroud);
+}
+
+#[test]
+fn the_walks_offset_moves_every_tiles_place_but_the_lifted_hero_and_the_gems() {
+    let (art, mut live) = art_with(vec![]);
+    live.heroes = vec![land_hero(9, 8, 0, 0, Facing::Right)];
+    live.path = vec![Arrow {
+        at: pos(12, 8),
+        arrow: 3,
+    }];
+    let shapes = hero_shapes(&art, &[]);
+    let still = drawn(&art, &walking(&live, 0, 7, 0, [0, 0]), &shapes, at(0, 0));
+    let slid = drawn(&art, &walking(&live, 0, 7, 0, [10, -22]), &shapes, at(0, 0));
+    // A terrain's or an arrow's canvas is its tile's place; its clip that tile inside the view's.
+    let moved = |p: &Seen| {
+        let [x, y] = [p.2[0] + 10, p.2[1] - 22];
+        let clip = [x.max(8), y.max(8), (x + 32).min(600), (y + 32).min(552)];
+        (p.0.clone(), p.1, [x, y], p.3, clip)
+    };
+    for pass in [Pass::Terrain, Pass::Path] {
+        let expected: Vec<Seen> = pieces(&still, pass)
+            .iter()
+            .map(moved)
+            .filter(|p| p.4[0] < p.4[2] && p.4[1] < p.4[3])
+            .collect();
+        // The rows and columns past the view's (−1 and 19, 17) fill what the offset uncovers.
+        let got: Vec<Seen> = pieces(&slid, pass)
+            .into_iter()
+            .filter(|p| expected.iter().any(|e| e.2 == p.2))
+            .collect();
+        assert_eq!(got, expected, "{pass:?}");
+    }
+    // The pass 8 arrow on (12, 8): at its tile's place plus the offset.
+    assert_eq!(
+        pieces(&slid, Pass::Path)[0].2,
+        [32 * 12 + 10, 8 + 32 * 8 - 22]
+    );
+    // The lifted hero and the gems keep their places (the pool's pieces move).
+    for pass in [Pass::Shadow, Pass::Body, Pass::Blend] {
+        assert_eq!(heroes_of(&slid, pass), heroes_of(&still, pass), "{pass:?}");
+        assert!(!heroes_of(&still, pass).is_empty(), "{pass:?}");
+    }
+    let gems = |s: &Scene| -> Vec<Draw> {
+        s.draws
+            .iter()
+            .filter(|d| matches!(d, Draw::Gem { .. }))
+            .cloned()
+            .collect()
+    };
+    assert_eq!(gems(&slid), gems(&still));
+}
+
+#[test]
+fn the_lifted_heros_cells_lie_among_the_layers_as_a_heros() {
+    // The 2 × 2 tree anchored at (6, 6): its cells' layer 1 on row 6, 2 on row 5. The lifted
+    // hero's lower cells come after layer 1, its upper ones after layer 2.
+    let (art, mut live) = art_with_objects(vec![object("tree.def", 6, 6, 0)]);
+    let shapes = with_shape(&art, "tree.def", [0xff; 6], [0xff; 6], 1);
+    let (flag, hero, tree) = ("af00.def", "ah00_.def", "tree.def");
+    // The hero's row 5: on (6, 5) the tree's layer 2 covers its lower cell.
+    live.heroes = vec![land_hero(6, 5, 0, 0, Facing::Right)];
+    let s = drawn(&art, &walking(&live, 0, 7, 0, [0, 0]), &shapes, at(-3, -3));
+    assert_eq!(on_tile(&s, Pass::Body, 9, 8), [flag, hero, tree]);
+    // The hero's row 6: its lower cell over the tree's layer 1 on (6, 6), its upper one over
+    // layer 2 on (6, 5).
+    live.heroes = vec![land_hero(6, 6, 0, 0, Facing::Right)];
+    let s = drawn(&art, &walking(&live, 0, 7, 0, [0, 0]), &shapes, at(-3, -2));
+    assert_eq!(on_tile(&s, Pass::Body, 9, 8), [tree, flag, hero]);
+    assert_eq!(on_tile(&s, Pass::Body, 9, 7), [tree, flag, hero]);
+    // The shadows: the objects', then the lifted hero's (the hero alone), then the others'.
+    assert_eq!(on_tile(&s, Pass::Shadow, 9, 7), [tree, hero]);
+}
+
+#[test]
+fn an_empty_lists_heroes_come_before_the_lifted_heros_cell() {
+    // The lifted hero at (10, 10), a standing one below it at (10, 11) whose upper row covers the
+    // lifted hero's tile: with no object there, the standing hero first (0x411396); its shadow
+    // after the lifted one's.
+    let (art, mut live) = art_with(vec![]);
+    live.heroes = vec![
+        land_hero(10, 10, 0, 0, Facing::Right),
+        land_hero(10, 11, 1, 1, Facing::Right),
+    ];
+    let s = drawn(
+        &art,
+        &walking(&live, 0, 7, 0, [0, 0]),
+        &hero_shapes(&art, &[]),
+        at(1, 2),
+    );
+    assert_eq!(
+        on_tile(&s, Pass::Body, 9, 8),
+        ["af01.def", "ah01_.def", "af00.def", "ah00_.def"]
+    );
+    assert_eq!(
+        on_tile(&s, Pass::Shadow, 9, 8),
+        ["ah00_.def", "af01.def", "ah01_.def"]
+    );
+}
+
+#[test]
+fn the_lifted_hero_beyond_the_maps_sides_is_cut() {
+    // The map is 36 × 36. Its cells off the map are not drawn; pass 9's picture is cut by whole
+    // tiles past a side, less the offset on the left and the top.
+    let (art, mut live) = art_with(vec![]);
+    live.heroes = vec![land_hero(0, 0, 0, 0, Facing::Right)];
+    let shapes = hero_shapes(&art, &[]);
+    let blend_clip = |view: ViewAt, offset: [i32; 2]| {
+        let s = drawn(&art, &walking(&live, 0, 7, 0, offset), &shapes, view);
+        grouped(&s, Pass::Blend).first().map(|p| p.5)
+    };
+    // The view at (−10, −8): the picture's first map column −2, its first row −1.
+    let s = drawn(&art, &walking(&live, 0, 7, 0, [0, 0]), &shapes, at(-10, -8));
+    let clips: BTreeSet<[i32; 4]> = heroes_of(&s, Pass::Body).iter().map(|p| p.5).collect();
+    assert_eq!(clips, BTreeSet::from([cell(2, 1)]));
+    assert_eq!(blend_clip(at(-10, -8), [0, 0]), Some([320, 264, 352, 296]));
+    assert_eq!(
+        blend_clip(at(-10, -8), [-10, 22]),
+        Some([310, 286, 352, 296])
+    );
+    // Past the right and the bottom sides by a column and a row: no offset there.
+    assert_eq!(blend_clip(at(26, 28), [0, 0]), Some([256, 232, 320, 264]));
+    assert_eq!(
+        blend_clip(at(26, 28), [10, -22]),
+        Some([256, 232, 320, 264])
+    );
+    // Nothing left: no draw.
+    assert_eq!(blend_clip(at(-11, -8), [0, 22]), None);
+}
+
+#[test]
+fn a_lifted_hero_in_a_boat_its_waves_flags_and_boat() {
+    // Water at (4, 8), open (21), and at (16, 8), the coast (0); the hero of colour 2 in a boat
+    // of type 1 with flag colour 3, facing up, lifted in group 6 at frame 5, the objects' step 0.
+    let water = |x: u8, picture: u8| GivenTile {
+        level: 0,
+        tile: (x, 8),
+        terrain: Terrain::Water,
+        picture,
+        river: None,
+        road: None,
+        flags: 0,
+    };
+    let (art, mut live) = art_with(vec![water(4, 21), water(16, 0)]);
+    let sail = |x: u8| LiveHero {
+        boat: Some(Boat { kind: 1, colour: 3 }),
+        ..land_hero(x, 8, 4, 2, Facing::Up)
+    };
+    let shapes = hero_shapes(&art, &[]);
+    live.heroes = vec![sail(4)];
+    let s = drawn(&art, &walking(&live, 0, 6, 5, [0, 0]), &shapes, at(-5, 0));
+    // Pass 5: the boat's shadow alone; pass 7: the waves, the boat's flag by its colour, the
+    // boat; pass 9: the boat's flag by the hero's colour and the boat, no waves.
+    assert_eq!(on_tile(&s, Pass::Shadow, 9, 8), ["ab02_.def"]);
+    assert_eq!(
+        on_tile(&s, Pass::Body, 9, 8),
+        ["abm02_.def", "abf02d.def", "ab02_.def"]
+    );
+    let whole: Vec<(String, u32, u32)> = grouped(&s, Pass::Blend)
+        .into_iter()
+        .map(|p| (p.0, p.1, p.2))
+        .collect();
+    assert_eq!(
+        whole,
+        [
+            ("abf02r.def".to_string(), 6, 5),
+            ("ab02_.def".to_string(), 6, 5)
+        ]
+    );
+    // On the coast: no waves.
+    live.heroes = vec![sail(16)];
+    let s = drawn(&art, &walking(&live, 0, 6, 5, [0, 0]), &shapes, at(7, 0));
+    assert_eq!(on_tile(&s, Pass::Body, 9, 8), ["abf02d.def", "ab02_.def"]);
+}
+
+#[test]
+fn a_lifted_hero_that_is_none_of_the_heroes_has_no_scene() {
+    let (art, live) = art_with(vec![]);
+    let err = scene(
+        &art,
+        &walking(&live, 0, 7, 0, [0, 0]),
+        &tables(),
+        &layout(),
+        &shapes_of(&art),
+        at(0, 0),
+        Bugs::Fixed,
+    )
+    .unwrap_err();
+    assert_eq!(
+        err,
+        SceneError::Live("the lifted hero 0 of 0 heroes".to_string())
+    );
+}

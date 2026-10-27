@@ -66,6 +66,11 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
    misc position come with the SoD pack), never the map's version (the original's `mapKind`,
    which follows the map); a rule the packs cannot express yet (the moat, E09) gains data or a
    configuration input then.
+   **The setup** (increment 7): `GameSetup` holds each player's **human flag** (E08 T54: a map's
+   import sets it from the map's player kinds, a colour a human may play is human; a session may
+   change it before the game is built; an env's agent counts as whatever the setup says), and
+   beside the banned skills the scenario's **banned spells and artifacts** (static, from the map),
+   which the game passes to the adventure's build.
 2. **Actors and viewers.** `Actor::Player(PlayerId)` for every player command, also a bot's;
    `Actor::System` for the trusted layer that hosts the game only (the server's session layer,
    the env), never for a player, with its own closed set of commands (end a player's turn,
@@ -120,6 +125,10 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
    the new level, in `faithful` (`ADV-QUIRK-9`, fix-optional, E08 decision 55); in
    `strict-fixed` from the owner's stream in play and from the setup stream at load. A level is
    drawn when it is given or its decision opens, never earlier.
+   Increment 7's random contents are setup placeholders drawn from the setup stream when the
+   state is built (ADR-0016 point 4); no visit of increment 7 draws. The Pyramid's monster battle
+   splits its guards as a monster's (`ADV-QUIRK-6`: the tile under `faithful`, the attacking
+   player's stream under `strict-fixed`).
 5. **Seeds are server-only** (E08 decision 9). The master seed and the stream positions are
    authoritative state: in the state hash (which never reaches a client either), never in an
    observation or event, never seeded from client data; the observation-hygiene and
@@ -134,7 +143,7 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
    both offers answered yes or no: the Cartographer's (a price, E08 decision 15) and the border
    guard's passage (no price; ADV-Q10, D-7). A player's open decisions form a queue (at most one
    in increment 2); `GameCommand::Answer` answers the first (`Accept` or `Decline`, additive
-   variants for later kinds), and a decline only closes it. While one is open, its owner's legal
+   variants for later kinds; typed by decision from increment 7, below), and a decline only closes it. While one is open, its owner's legal
    commands are its answers only: no move, no `EndTurn`. The system actor's default answer is
    `Decline`. Increment 3's offers (yes or no): **join for free**, **join for gold**, **pursue
    a fleeing monster**, **fight an object's guards**. Answering an offer may open the next
@@ -179,6 +188,40 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
    the answers, and a query lists one hero's management commands (with a meeting or an army
    dialog open, those toward the other hero or the group too) but the splits, whose counts a
    second query gives for a source and a target.
+   **An answer is typed by its decision** (increment 7, E08 decision 138; it replaces the
+   untyped `Accept`, `Decline`, `First` and `Second` above): `GameCommand::Answer` answers the
+   actor's first open decision with an `Answer` whose variant names the kind of decision and
+   carries that kind's own type; an answer of another kind is rejected (`WrongAnswer`) and
+   changes nothing. Every decision's answers, increments 2 to 6's migrated with increment 7's
+   (one replay format bump), the system actor's default in brackets:
+   - **`Offer(Consent)`** (`Accept`, `Decline`) [`Decline`]: every yes-or-no offer, each the same
+     question with an optional price (point 10): the Cartographer's, the border guard's, a
+     monster's join, join for gold and pursuit, a guarded object's fight (a guarded artifact
+     always, a guarded scroll with a text), and increment 7's: open a Pandora's Box, search a
+     Pyramid (a looted one too) or a Warrior's Tomb, pay a Tree of Knowledge (its drawn price,
+     not opened when the owner cannot pay).
+   - **`LevelUp(SkillOffer)`** (`First`, `Second`: the original's left and right offer) [the
+     original's choice, ADR-0013 point 12].
+   - **`Chest(ChestChoice)`** (`Gold`, `Experience`) [`Gold`, the original's plain OK]; the view
+     shows both amounts.
+   - **`Arena(ArenaChoice)`** (`Attack`, `Defense`; no leaving) [`Attack`, the original's Cancel].
+   - **`School(SchoolChoice)`** (the first or the second of the School's two skills, or `Leave`
+     without paying) [`Leave`]; opened only when the owner can pay its price, which the view
+     shows.
+   - **`University(UniversityAnswer)`** (`Buy(slot)`, `Leave`) [`Leave`]: the University is a
+     decision like a meeting, open until `Leave`; each `Buy` buys an open slot's skill for the
+     type's price (checked against the slot's state and the treasury) and keeps it open. Its view
+     shows the four skills and each slot's state.
+   - **`Close`** [`Close`]: ends a meeting or an army dialog (increment 6's `Decline` for them).
+     The army dialog also opens over **up to seven leftover stacks** of a box's or an event's
+     creatures, with the same management commands; the visit's rest (the experience, then its
+     level-ups) comes after it closes.
+   - **The visit's rest after a won guards' battle** (a pickup, the rewards, the Pyramid's spell)
+     is held by the game and given once the winner's level-ups are answered (at once when there
+     are none), as the original gives the levels first (E08 decision 141).
+
+   Each of increment 7's questions is its owner's alone, holds no one else and blocks its owner's
+   `EndTurn` like an offer.
 7. **Simultaneous play is designed for, not built.** Built now: turn groups, streams per player,
    pending decisions. **Not decided** (deferred to the increment that builds it): the target
    that commands of the players of one group commute (any interleaving, the same state hash; a
@@ -218,7 +261,14 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
    (`replay.rs`), which stays the adventure lane's with `crates/h3-cli/src/adventure/` and
    `fixtures/replays/adventure/` (longest match). Increment 6 adds no entry to the action encoding
    (v4); its masks allow `Decline` while a meeting or an army dialog is open, so an agent that
-   meets a hero or fills its army closes the decision and plays on.
+   meets a hero or fills its army closes the decision and plays on. Increment 7's decisions reach
+   agents through `legal_commands`; the env's action encoding maps its entries onto the typed
+   answers (its `Accept`, `Decline`, first and second offer entries onto `Offer`, `LevelUp`,
+   `Close` and the new kinds' two-way choices), and its masks must allow at least one answer of
+   each decision, so a rollout never stalls (the system actor's defaults, point 6). Whether a
+   University's purchase gets a head of the encoding is the AI lane's call; the mapping's change
+   in `h3-sim` comes with the typed answers, `cross-lane` with the user's consent (E08 decision
+   138).
 9. **Versions owned by the adventure lane** (T2 adds the rows): the game state hash (`h3-game`),
    the adventure state and ruleset-part hashes (`h3-adventure`), the import version (`h3-map`),
    the adventure replay format (`h3-sim`'s `replay.rs`), and until increment 6 the action
@@ -236,6 +286,11 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
    adventure state hash (the flag), the details' hash (positions), the core ruleset hash and the
    pack format (shared: two effect kinds), the map import (positions), the adventure replay
    format v6 (the management commands); the action encoding's version is the AI lane's.
+   Increment 7: the core ruleset hash and the pack format (shared: the mana ceiling, the quirk
+   flags), the adventure ruleset part (the kinds), the map import (the classes, their bodies, the
+   bans), the adventure state hash (the visits' block, the army left), the game state hash (the
+   decisions, the details' bonuses), the adventure replay format v7 (the typed answers); the
+   action encoding's version is the AI lane's.
 10. **Gains and costs cross by outcome.** A context's `apply` returns an outcome: the resources
     its command gains for the actor and the offers it opens, each with its price. The context
     never sees a treasury. The game adds the gains after the context applied (gains cannot fail,
@@ -248,7 +303,13 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
     army change (a group joining) and a battle to start (the visitor, the defender: a monster,
     an object's guards or another player's hero, the tile). A join for gold the payer cannot
     pay is not opened and counts as declined, so the visit's chain goes on, without the refusal
-    event (the original asks only when the player can pay).
+    event (the original asks only when the player can pay). Increment 7: a visit's outcome may
+    also name the reward's hero changes (ADR-0013 point 15), **resources lost** (a reward
+    record's negative amounts: the treasury goes to 0 at the least, never refusing), a choice
+    with its amounts, a group of up to seven stacks without room, the visit's rest after a battle
+    or an army dialog, an event's firing (to its visitor's owner) and the move's stop. A price (a
+    School's, a Tree's, a University's) is the treasury's and the object type's, never the
+    command's.
 11. **Battles through the game** (increment 3; ADR-0013 point 5). The game builds the
     `BattleSetup`: the armies from the adventure (a monster's stacks by its split), each hero's
     `BattleHero` and war machines from `h3-heroes`, the battlefield from the tile in the
@@ -272,6 +333,19 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
     then **both** heroes' Tactics go as 0, so no side gets the tactics phase and the two levels'
     cancelling (BAT-TAC-001) stays as the experiments confirmed it (the user's condition at
     ADV-Q24). No seam changes.
+    **The setup's facts from the game** (E08 T54, decision 124; GAM-BAT-010 to -013): the game's
+    difficulty; each side's `human` flag from its player's setup flag (false for an unowned
+    side), which the battle's bad-morale let-off reads (BAT-QUIRK-27); the sides' colours; each
+    hero's sex (a placed hero's from the map); the background (the scenery of the tiles around
+    the battle's, a tile's topmost object the last in map order); the attacker's ground (the
+    special ground of the attacking hero's own tile). The retreat facts stay at their defaults
+    (`ADV-STUB-9`: a Tavern to hire the hero again, E09; the victory condition and the computer
+    player's reading, E10). **Increment 7's battles:** a box's, an event's, a guarded artifact's
+    and a guarded scroll's guards fight as a guarded pile's (unsplit; their survivors stay with
+    the object); the Pyramid's as a monster battle with a second creature (ADR-0016 point 4),
+    whose losses are not kept (the next fight is against the full guards). When a battle ends
+    every hero in it loses its battle bonuses (ADR-0013 point 15.1), as the original's
+    `battle_end`.
 
 ## Consequences
 
@@ -307,6 +381,16 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
   are the owner's. The AI lane takes the env with an encoding that ignores increment 6's
   commands until it extends it; the replays record them from v6 on. A battle's observation
   shows the zeroed Tactics of both heroes in a battle the flag cancelled.
+- Increment 7: `Answer` becomes an enum by decision kind: every caller that builds one changes
+  (the env's action mapping, the CLI's replay files, the properties' plans, the tests); the
+  replay format bumps once (v7); `h3-protocol` maps no adventure command yet (the server lane's,
+  when it does). A wrong answer is a type error at the caller where it can be, `WrongAnswer`
+  where the decision is only known at run time. The game holds a visit's rest across a battle
+  and its level-ups, and across an army dialog: one more kind of pending state, its owner's, in
+  the game state hash. Simultaneous play's inventory (point 7) grows by what two players'
+  commands can both write: a find emptied, a chest, artifact, scroll, Scholar, box or event
+  removed, an event's guards (the objects of increment 2's kind); a player's knowledge and a
+  hero's marks are written by their owner's commands only.
 
 ## Alternatives considered
 
@@ -347,6 +431,14 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
   adventure lane's encoding now. At T51's start: every management command in `legal_commands`
   (each call in a player's turn would build up to a few thousand of them, and the env's random
   rollout, which picks among its entries, would play differently).
+- Increment 7 (ADV-Q29): one answer type for every decision (today's, with a `Buy(u8)` added; the
+  user: "there should be specific types tailored to the choice to be made"), or typed answers
+  for increment 7's decisions alone beside the old ones; a command of its own for the
+  University's purchase (a purchase answers the open decision and keeps it open, as a meeting's
+  management does: no new routing, E08 decision 140); the rewards given at the battle's end,
+  before the level-ups (a level-up's Wisdom or Learning would not count for a box's spells and
+  experience, nor Expert Wisdom for the Pyramid's spell, unlike the original); the army dialog's
+  rest given before it opens (VCMI's order, D-39: batch E7 showed the code's side, E08 T58).
 
 ## Revision history
 
@@ -395,3 +487,12 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
   management commands are listed per hero by a query, as moves are, not by `legal_commands`,
   which keeps `EndTurn` and the answers (the design note's fallback for the list's size, taken
   before the build: `E08-design.md` §16).
+- 2026-10-27 (E08 T59; the user at ADV-Q28 and ADV-Q29): points 1, 4, 6, 8, 9, 10 and 11 amended
+  for E08 increment 7, rewards on the map: the setup's human flag and the scenario's spell and
+  artifact bans; increment 7's draws at the build; answers typed by decision (E08 decision 138),
+  increments 2 to 6's migrated, the University a decision open until `Leave`, the army dialog
+  over a box's or an event's leftover stacks, the visit's rest after the level-ups (E08 decision
+  141); the env's mapping onto the typed answers; the versions; the outcome's lost resources,
+  choices and the move's stop; the battle setup's facts from the game (E08 T54, decision 124),
+  increment 7's guards and the battle bonuses cleared at a battle's end. Drafted in E08 T55b
+  (#484; survey `E08-rewards.md` §8.1, §8.6).

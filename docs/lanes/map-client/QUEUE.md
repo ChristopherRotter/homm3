@@ -16,24 +16,8 @@ finds is an `MCL-Q<n>` in the same task (the HANDOFF's autonomy contract).
 T1a was cut at its seam before it started (the user, 2026-10-26): T1a1 the recording and the map
 standing still, T1a2 the scroll; T1b, the walk, done whole (all three done 2026-10-26:
 `E24-log.md`); T2, the map over time headless, done whole (2026-10-27: the user chose it over a
-cut before the frame check).
-
-### E24 M2 T3 — the walk drawn
-
-- **Scope:** the walk in T2's timeline (a hero walks given tiles: built for real, M4 and M5 give
-  it the engine's tiles; in M2 the tiles of a sequence's first `arrows` line after its click,
-  or the key's neighbour): as design §3.5 reads it, the lifted hero at the view's fixed centre
-  (passes 5, 7 and 9, the last a blend: its drawer read if the frames need it), each step's
-  view centred and its pixel offset per frame at the speed's times (speed 4 one draw), the
-  walking group and the frame carried from step to step, the arrows taken away, the objects
-  standing still and the palettes stepping during a walk, the walk's end and the standing
-  picture at the next idle redraw (the objects' catch-up steps); the boat sailing; the timeline's
-  `hero`, `walk` and `arrows` lines; `sequences` and the frame check for walks (T2 keeps the
-  walk sequences out of both: `timeline::Unplayable::Walk`, the viewer's `Sequence::walks`,
-  `h3map.py`'s `walks`; `drawn` over them too).
-- **Acceptance:** T1b's sequences as recorded, every line and every frame (or each difference an
-  `MCL-Q<n>`); the Definition of Done.
-- **Depends on:** T1b, T2 (both done). **Status:** ready.
+cut before the frame check); T3 cut at its seam before it started (the user, 2026-10-27): T3a,
+the walk's timing headless, and T3b, the walk drawn (taken whole), both done 2026-10-27.
 
 ### E24 M2 T4 — the window
 
@@ -52,7 +36,7 @@ cut before the frame check).
   options dialog, later.
 - **Acceptance:** a situation and a walk sequence play in the window; `--check` exact; the
   Definition of Done.
-- **Depends on:** T2 (done), T3. **Status:** ready after T3.
+- **Depends on:** T2 and T3b (done). **Status:** ready.
 
 ### E24 M2 T5 — the map's sound
 

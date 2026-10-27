@@ -1,8 +1,8 @@
 # E08 design note: increment 7, rewards on the map
 
 A handover, not binding (`docs/adr/README.md`): the working detail behind increment 7's
-amendment drafts of ADR-0013 (points 1, 2, 15), ADR-0016 (points 1, 3, 4, 6) and ADR-0017
-(points 1, 4, 6, 8–11) in `docs/lanes/adventure/adr-drafts/*-increment-7.md`, written by T55b
+amendments of ADR-0013 (points 1, 2, 15), ADR-0016 (points 1, 3, 4, 6) and ADR-0017 (points 1,
+4, 6, 8–11), applied by T59 from the drafts T55b wrote
 from T55a's survey and the answers at ADV-Q28 (the epic's decisions 129–136), accepted with the
 cut at ADV-Q29 (decisions 138–141; decision 138's typed answers written into §14). The task that
 builds a section deletes it; the file goes when the epic closes. Facts and sources: survey `docs/rules/surveys/E08-rewards.md` (§ numbers are the
@@ -18,16 +18,15 @@ B**, the map (`h3-map`, `h3-adventure`); **part C**, the game, the env, batch E7
 
 ### 1. The data
 
-- **The battle bonuses** (ADR-0013 draft point 1): `HeroDetails` gains `bonuses: BattleBonuses
+- **The battle bonuses** (ADR-0013 point 1): `HeroDetails` gains `bonuses: BattleBonuses
   { morale: i8, luck: i8, marks: u8 }`, default zero. The morale and luck add up across objects
   (a box's and an event's, the Tomb's −3, the Pyramid's −2; §7.4, §6.9, §7.5) and are held
   saturating (the original's byte wraps past 127: A-9's class, fixed; unreachable on the shipped
   maps). `marks` is a set of **once-marks**, one bit per kind of once-bonus; the object types name
   theirs in `adventure.toml` (the Warrior's Tomb mark 0, the Pyramid mark 1), so `h3-heroes` knows
   no object. `validate` accepts any value; the details' hash covers them.
-- **The mana ceiling** (999, §7.4): a hero parameter of the core content (`[hero_params]`,
-  `mana_ceiling`), so `h3-heroes` reads it from the ruleset. Pack format and core ruleset hash
-  (shared, T59).
+- **The mana ceiling** (999, §7.4): `HeroParams::mana_ceiling`, built by T59 (pack format v48,
+  core ruleset hash v49).
 - **Already there:** the artifact classes (`ArtifactClass`, Special never placed at random), the
   spells' level, schools and `granted_by_name_only` (Titan's Lightning Bolt, flag 0x2000), the
   classes' level-up weights (the University's slots), the Learning factor (HER-EXP-001), the
@@ -35,7 +34,7 @@ B**, the map (`h3-map`, `h3-adventure`); **part C**, the game, the env, batch E7
 - **Not the details':** the once-per-hero marks of objects (the adventure's, by hero id, §10) and
   the players' knowledge (§10).
 
-### 2. The hero changes (ADR-0013 draft point 2)
+### 2. The hero changes (ADR-0013 point 2)
 
 | Change | Applies | Check |
 |---|---|---|
@@ -49,7 +48,7 @@ passes only positive primary values (the record's signed bytes, §7.4) and compu
 through §3's function. A change that would do nothing (a skill at or above the level) is not
 emitted.
 
-### 3. The reward record's hero half (HER-CHG-003; ADR-0013 draft point 15.2)
+### 3. The reward record's hero half (HER-CHG-003; ADR-0013 point 15.2)
 
 `h3_heroes::grant(details, ruleset, reward: &HeroReward) -> Granted` where `HeroReward` holds the
 record's experience, primary skills, skills, mana, morale, luck, artifacts and spells (resources
@@ -67,7 +66,7 @@ checked against the details as the earlier parts leave them (the original's orde
    to it; a negative delta stops at 0);
 5. `Bonus { morale, luck, None }` when either is not 0;
 6. (resources: the adventure's);
-7. `AddArtifact` per artifact while the backpack holds fewer than its most (§4), else `lost`;
+7. `AddArtifact` per artifact that `can_receive_artifact` admits (§4: A-25's flag), else `lost`;
 8. `LearnSpell` per spell with a worn spell book (step 7's counts), of a level at most the
    learnable level (step 3's Wisdom counts), not known; else `skipped`; the map's bans not tested;
 9. (creatures: the adventure's; the army dialog: the game's);
@@ -76,11 +75,11 @@ checked against the details as the earlier parts leave them (the original's orde
 A combination completed by a received part asks nothing (§8.3): the player assembles with
 `Manage::Assemble`. The function is pure and total; `Granted` is empty for an empty record.
 
-### 4. What a teacher may teach (ADR-0013 draft point 15.3–15.4)
+### 4. What a teacher may teach (ADR-0013 point 15.3–15.4)
 
 | Function | Rule | Survey |
 |---|---|---|
-| `can_receive_artifact(details, ruleset)` | the backpack's count below its most, whatever the free positions | §3.2, §8.2 |
+| `can_receive_artifact(details, ruleset, artifact)` | `FULL_BACKPACK_REFUSES` on (`faithful`): the backpack's count below its most, whatever the free positions; off: a position that takes it (HER-CHG-002) or the backpack below its most (A-25, decision 145; ADR-0013 point 15.4) | §3.2, §8.2, §15 |
 | `learns_spell(details, ruleset, spell, known_counts)` | a worn spell book, level ≤ learnable, and (a Shrine, a Scholar, a box) not known; the Pyramid passes `known_counts = false` (relearning changes nothing) | §6.5, §6.7, §7.5 |
 | `hut_teaches(details, ruleset, skill)` | not known, below the most skills; no class test | §6.6 |
 | `university_slot(details, ruleset, skill) -> SlotState` | `Known`, `NoRoom` (eight), `Barred` (the class weighs it 0), else `Open` | §6.8 |
@@ -101,15 +100,15 @@ on its stacks; after any battle, 0.
 ### 6. Rule ids, quirks, shared needs (the hero side)
 
 HER-CHG-003 (§3) and HER-ADV-008 (§1, §5) as survey §12; HER-CHG-001's summary grows by §2's
-changes. No quirk of the hero side (the wraps are A-9's class). **Shared** (T59): the mana ceiling
-in the core's hero parameters (`h3-content`, `h3-pack`, the packs' `core.toml`). Everything else
-is `h3-heroes`' (the lane's).
+changes. No quirk of the hero side but A-25's (`FULL_BACKPACK_REFUSES`, flag 38, T59: a full
+backpack refuses an artifact whatever the free positions in `faithful`; ADR-0013 point 15.4; the
+wraps are A-9's class). Everything else is `h3-heroes`' (the lane's).
 
 ## Part B — the map (`h3-map`, `h3-adventure`)
 
 ### 7. The import (`h3-map`; map import v12)
 
-- **Classes to types** (`codes.rs`): the 31 classes of the ADR-0016 draft's point 4, each to an
+- **Classes to types** (`codes.rs`): the 31 classes of ADR-0016 point 4, each to an
   object type key of the packs' `adventure.toml`; 65 to 69 to one "random artifact" type each
   (their classes are the type's parameter); 88 to 90 to three Shrine types (the level the type's).
 - **Bodies** (all already read, survey §10): an artifact's message → `Guards` with `question:
@@ -157,7 +156,7 @@ instance's on `MapObject` (static). Names are the build's (change freely); the s
 `ObjectKind::effect` gains an `Effect` per kind (the one place a visit is wired, T13b's rule).
 Events are not visited through it (§12).
 
-### 9. The draws when the game is built (ADR-0016 draft point 4; GAM-SET-001's stream)
+### 9. The draws when the game is built (ADR-0016 point 4; GAM-SET-001's stream)
 
 From the setup stream, after today's draws (piles, campfires, monsters), in two passes in object
 order (the original resolves the random artifacts first, then walks the rest, §3.1):
@@ -179,7 +178,7 @@ order (the original resolves the random artifacts first, then walks the rest, §
 The draws' order is the engine's (decision 17), so the original's dropped draws (a placed
 artifact's, §3.1) have no counterpart. The tutorial is not modelled (decision 134).
 
-### 10. The state (ADR-0016 draft point 1; decision 133)
+### 10. The state (ADR-0016 point 1; decision 133)
 
 - **The visits' block** (`Option<Arc<Visits>>`, none until the first visit that writes one):
   - `marks: BTreeMap<HeroId, BitGrid>` — a hero's once-per-hero marks, a bit per object index
@@ -213,7 +212,7 @@ artifact's, §3.1) have no counterpart. The tutorial is not modelled (decision 1
 
 ### 11. The visits (`h3-adventure`)
 
-Each kind's visit, in the original's order (survey §2 to §7), returns its outcome (ADR-0017 draft
+Each kind's visit, in the original's order (survey §2 to §7), returns its outcome (ADR-0017
 point 10); a refusal is an outcome. Where the original records the visitor's team mark the
 visitor's owner's knowledge bit is set at that point (§13); the hero's once-per-hero mark is set
 only when it gives.
@@ -269,13 +268,13 @@ through `split` with the first creature's count, n less the second creature's st
   outcome says so), the guards fight at once (a guarded pile's battle, its rest after the levels),
   else the record (§11.1); removed with its flag. A move is never rejected because of an event; a
   hero that starts its move on an event does not fire it; a non-firing event changes nothing.
-- **`Reach`:** under A-23's `faithful` stop (if E7-23 confirms it) an event's tile is an entrance
-  for every hero (a destination, never a pass node), as a pickup's visitable tile is today;
-  under `strict-fixed` (the flag off) `Reach` never reads the bit. If E7-23 shows paths crossing
-  events, neither profile reads it and A-23 is withdrawn (decision 131).
-- **Security:** `docs/06-security.md` lists A-23's leak (the legal moves reveal events under
-  `faithful`) beside the fringe's, if it is built. A property test (strict-fixed): two games that
-  differ by a hidden event give every player the same observation and legal moves until it fires.
+- **`Reach`** never reads the bit, in every profile: batch E7's E7-23 showed a path crossing a
+  hidden event and the re-read found an event's tile no stop for the original's pathfinder (its
+  entrance bit cleared at the placement), so A-23 is withdrawn (decision 131; T58, survey
+  `E08-rewards.md` §15). No flag, no `ADV-QUIRK-22`.
+- **Security:** nothing leaks through the legal moves, so `docs/06-security.md` lists nothing new
+  for events. A property test: two games that differ by a hidden event give every player the same
+  observation and legal moves until it fires.
 - **Open point** (T62's start): the order of an event and a monster guarding its tile on the same
   step (the original's `hero_move_step` tests the event at 0x4811A3 and fires it at 0x481741; the
   guard's attack was not placed in that order).
@@ -300,7 +299,7 @@ through `split` with the first creature's count, n less the second creature's st
 
 ### 14. The decisions and their answers (`h3-game`; GAM-DEC-005, -006, -004 amended)
 
-- **Typed answers** (decision 138; the ADR-0017 draft's point 6): `Answer` becomes an enum by
+- **Typed answers** (decision 138; ADR-0017 point 6): `Answer` becomes an enum by
   decision kind, each variant carrying its kind's own type; every decision's answers move,
   increments 2 to 6's with increment 7's, in one replay format bump (v7):
 
@@ -357,19 +356,18 @@ through `split` with the first creature's count, n less the second creature's st
   a won guarded box whose level-up gives Wisdom before its spells.
 - **Properties** (`h3-map`'s `play.rs`): the plans visit every kind, answer every decision, check
   the invariants after every command (marks only grow, an emptied find gives nothing, a removed
-  object never returns); a rejected command leaves the hash; under `strict-fixed` the hidden-event
-  property (§12); **decision 133's test**: a 144 × 144 two-level map with a box on every free tile
+  object never returns); a rejected command leaves the hash; the hidden-event property (§12); **decision 133's test**: a 144 × 144 two-level map with a box on every free tile
   (and one with a Learning Stone on every free tile) builds, plays a few hundred steps with
   visits, and forks within the gate's cost.
 - **Benchmarks:** `random-play` on the rewards map (a new workload); `fork-xl-144` with the block
   live (+ about 20 Ir); a fork of the all-boxes map (a new workload); the reach workloads
-  unchanged under `strict-fixed`, with the entrances under `faithful`.
+  unchanged (events are blind to `Reach`, §12).
 
 ### 17. Versions and the remaining rule ids
 
 | Version | Change | Task |
 |---|---|---|
-| core ruleset hash, pack format (next: v49, v48) | the mana ceiling; A-21's flag (and A-23's if confirmed) | T59 |
+| core ruleset hash v49, pack format v48 | the mana ceiling; A-21's and A-25's flags (A-23 withdrawn, T58) | T59 (done) |
 | details' hash, game state hash | the battle bonuses | T60 |
 | adventure ruleset part v12 | the kinds | T61 |
 | map import v12 | the classes, bodies, records, bans, the monster's artifact | T61 |
@@ -378,9 +376,12 @@ through `split` with the first creature's count, n less the second creature's st
 | adventure replay format v7 | the typed answers (every decision's) | T63 |
 
 Ids beyond survey §12: **GAM-SET-003** (the scenario's spell and artifact bans as setup inputs),
-**GAM-DEC-007** (the rest), **GAM-BAT-014** (the bonuses cleared at a battle's end). Quirks:
-A-21 → `ADV-QUIRK-21` (flag 37 if no other lane takes it first); A-23 → `ADV-QUIRK-22` only if
-E7-23 confirms it; A-17 to A-20, A-22 and A-24 recorded in the ledger as not reproduced or fixed
+**GAM-DEC-007** (the rest), **GAM-BAT-014** (the bonuses cleared at a battle's end). Quirks (T59,
+in `docs/rules/quirks-adventure.md`): A-21 → `ADV-QUIRK-21`, `quirk.adventure.roe_witch_hut_mask`
+(flag 37, `ROE_WITCH_HUT_MASK`); A-25 (decision 145) → `ADV-QUIRK-22`,
+`quirk.adventure.full_backpack_refuses` (flag 38, `FULL_BACKPACK_REFUSES`): `faithful` the count
+test, `strict-fixed` the placement first (survey §15); A-23 withdrawn (T58: no quirk, no flag);
+A-17 to A-20, A-22 and A-24 recorded in the ledger as not reproduced or fixed
 (no flags).
 
 ### 18. Batch E7
@@ -422,7 +423,7 @@ increment 6 the shared task came first; here the batch decides an ADR clause, A-
 |---|---|---|
 | 1 | **T56** | Batch E7's maps: the writer's bodies and the RoE format (§18), the spec's fields (`cross-lane`), the two specs and templates. Likely cut in two at its start (the writer; the spec) |
 | 2 | **T57** + **T58** | T57: the harness's reads and clicks, the recipes, the runs E7a and E7b (as T47: cut at its start). T58: scored (survey §15); A-23 settled (decision 131); an `ADV-Q` if a row contradicts the reading |
-| 3 | **T59** | `shared/`: the three ADRs amended (with T58's outcome), the mana ceiling, A-21's flag (A-23's if confirmed), the glossary |
+| 3 | **T59** | `shared/`: the three ADRs amended (with T58's outcome: A-23 withdrawn, events blind to `Reach`), the mana ceiling, A-21's and A-25's flags, the glossary |
 | 4 | **T60** | `h3-heroes`: part A (§1–§6): the bonuses, the changes, `grant`, the teachers' functions; the details' hash |
 | 5 | **T61** | `h3-map` and `h3-adventure`: the import (§7), the kinds (§8), the draws (§9), the state (§10); map import v12, ruleset part v12, adventure state hash v13. Likely cut in two (the import and kinds; the draws and state) |
 | 6 | **T62** | `h3-adventure`: the visits (§11), events and the move (§12), information (§13). Likely cut in two (pickups, teachers, finds; boxes, events, the Pyramid) |
@@ -447,10 +448,10 @@ increment 6 the shared task came first; here the batch decides an ADR clause, A-
 5. The morale and luck bonuses reach the hero's next battle and end with it (HER-ADV-008,
    GAM-BAT-014); a won guards' battle's levels come before the visit's rest (GAM-DEC-007).
 6. Contents and draws stay hidden until a visit; the visitor's owner keeps what it learned; events
-   are never observed; A-23 as batch E7 decided (ADV-VIS-006, ADV-FOG-007, ADV-MOV-011); a map with
+   are never observed and blind to `Reach` (A-23 withdrawn by batch E7; ADV-VIS-006, ADV-FOG-007, ADV-MOV-011); a map with
    a box on every tile builds, plays and forks (decision 133).
-7. Every new rule has its id, source and tests; A-21 (and A-23 if confirmed) in the ledger with
-   flags, A-17 to A-20, A-22, A-24 recorded; the gates pass (coverage, determinism with the
+7. Every new rule has its id, source and tests; A-21 and A-25 in the ledger with their flags
+   (A-23 withdrawn, T58), A-17 to A-20, A-22, A-24 recorded; the gates pass (coverage, determinism with the
    re-recorded and new replays, the benchmarks at their baselines and the new ones baselined); the
    env plays on through every new decision.
 8. Batch E7 run and scored; D-29 to D-31, D-33, D-34, D-36 to D-40 and the consensus rows
@@ -469,8 +470,8 @@ increment 6 the shared task came first; here the batch decides an ADR clause, A-
   refuses them (towns, random heroes: 128 and 18 maps); the census after T61 says how many.
 - **Batch E7's size:** 23 rows, two maps for E7a, a harness grown by about ten reads; the cut of
   T56 and T57 at their starts (as T47's three parts).
-- **A-23** is built only if E7-23 confirms it; either way the move's stop at a firing event is
-  the rule (§12), and `Reach`'s callers (the env's masks) change only under `faithful`.
+- ~~**A-23**~~ withdrawn by T58 (survey `E08-rewards.md` §15): the move's stop at a firing event
+  is the rule (§12) and `Reach`'s callers (the env's masks) do not change.
 - **The army left's table** (§10) is a change of storage under increment 3's monsters: their
   replays must not move (the hash walks content, ADR-0016 point 2).
 - **Not in increment 7** (decisions 127, 136): the creature banks, the Refugee Camp, Seer's Huts

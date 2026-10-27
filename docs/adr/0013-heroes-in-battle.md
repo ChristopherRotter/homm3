@@ -33,18 +33,28 @@ are computed before the seam (03-domain). The seam must change once for E04a and
    it" (a received artifact, a disassembled part, a combination built) and for the capture
    (HER-ART-004); within one slot it is the original's numbering; across slots the war machines
    and the spell book, which no walk takes, sit before the fifth misc position in the original
-   and after it here, which no rule can tell apart. The import keeps the map's positions.
+   and after it here, which no rule can tell apart. The import keeps the map's positions. From E08
+   increment 7 the details hold the hero's **battle bonuses**: a morale bonus and a luck bonus
+   (each an `i8`, added to and held saturating: the original's byte wraps past 127, A-9's class,
+   fixed) and a small set of **once-marks** (the original's status bits: the Warrior's Tomb's, the
+   Pyramid's). They last until the end of the hero's next battle (point 15.1). The once-per-hero
+   marks of map objects are not the details' but the adventure's (ADR-0016 point 1).
 2. **Crates.** `h3-heroes` is the **hero model**: a logic crate in the shared layer beneath the
    contexts (kernel, content, contracts only) with `HeroDetails`, its validation, the translations
    (`derive_battle_hero`, `war_machines`) and the typed hero changes (`HeroChange`: experience,
    spell points, a spell, an artifact; from E08 increment 4 a level-up: the level, its primary
-   skill, the learned skill, the counters) with their checks; no commands, no map, game or battle state. The adventure, the game and later the
+   skill, the learned skill, the counters; from increment 7 a primary skill gain, each value above
+   0 added and saturating at `primary_max`, A-9's class; a skill raised to a level, never lowered,
+   a new skill only below the most; a bonus, morale and luck added with an optional once-mark, a
+   marked bonus taken only while its mark is clear, then setting it; clearing the bonuses, both to
+   0 and every mark clear) with their checks; no commands, no map, game or battle state. The adventure, the game and later the
    towns depend on it; `h3-battle` never does and sees only `BattleHero` (points 4 and 5). **What
    a hero has from its details in every context is derived here once** (BAT-Q19): its available
    spells (learned, worn scrolls, the spell-giving artifacts) and its mastery of a spell
    (`h3_heroes::available_spells`, `spell_masteries`), from E08 increment 3 the adventure's Attack
    and Defense, Diplomacy's join bonus, the maximum spell points, Necromancy and Learning, from
-   increment 4 progression (point 12), from increment 5 its movement and scouting (point 13); no
+   increment 4 progression (point 12), from increment 5 its movement and scouting (point 13),
+   from increment 6 its artifact moves (point 14), from increment 7 its rewards (point 15); no
    context keeps its own copy, and no adventure profile seam copies them (E08 decision 5
    withdrawn).
 3. **Effects are data.** Artifacts, skill levels and specialties carry a closed `HeroEffect` enum in
@@ -173,6 +183,37 @@ are computed before the seam (03-domain). The seam must change once for E04a and
     4. **Hero changes** grow by what a move, an assembly and a disassembly need (a placed
        artifact, a removal at a position, the swap's return); a move between two heroes is checked
        on both before either changes.
+15. **Rewards are `h3-heroes`' rules** (E08 increment 7; pure functions of the details, the
+    ruleset and explicit inputs; the adventure reads them through these functions and returns the
+    changes, the game applies them, point 12's pattern):
+    1. **The battle bonuses reach the battle as the hero's own effects**: `derive_battle_hero`
+       adds the morale bonus to the hero's own-side morale effects and the luck bonus to its luck
+       effects (point 6's side modifiers; the battle's own bounds apply). No seam changes. The
+       game clears them for every hero of a battle when it ends (ADR-0017 point 11).
+    2. **The reward record's hero half** (Pandora's Box, events), in the original's order against
+       the details as each part leaves them: the experience amount computed first, with the
+       hero's Learning before the record's skills (HER-EXP-001's factor, truncated); the primary
+       skills (positive values only); the skills raised to their levels; the spell points added
+       and the total held between 0 and the ruleset's **mana ceiling** (999, a hero parameter: a
+       hero above it falls to it); the bonuses added; the artifacts, each received as point 15.4
+       says and **lost** when refused; the spells, each learned only with a worn spell book, of a
+       level at most the learnable level (HER-SPL-005) and not known, the map's bans not tested;
+       the experience **last**. Resources and creatures are the adventure's and the game's
+       (ADR-0016 point 4, ADR-0017 point 6).
+    3. **What a teacher may teach** is derived here: a Witch Hut's skill (not known, below the
+       most skills; no class test); a University's slot (not known, below the most, and the
+       class's level-up weight above 0); a Scholar's spell (as point 15.2's), skill (a known one
+       a level up below Expert, a new one at Basic below the most; no class test) and its
+       fallback; a Shrine's and the Pyramid's spell (a worn spell book, the learnable level, a
+       Shrine also not known); the Library's condition (the level plus 2 × the Diplomacy level at
+       least 10); the Learning Stone's and a chest's experience (an amount × the Learning factor,
+       truncated); the Tree of Knowledge's (the experience to the next level, no Learning).
+    4. **Whether a hero can receive an artifact**: the original tests the backpack's count below
+       its most (64) before it places anything, so a full backpack refuses an artifact whatever
+       the free positions (A-25, `ADV-QUIRK-22`, on in `faithful`); with the flag off
+       (`strict-fixed`) the artifact is placed first (the first position that takes it, else the
+       backpack below its most: HER-CHG-002), and only an artifact without room is refused (E08
+       decision 145). The caller loses or converts a refused artifact.
 
 ## Consequences
 
@@ -206,6 +247,12 @@ are computed before the seam (03-domain). The seam must change once for E04a and
   game state hash change; the golden replays are re-recorded. Two effect kinds (the pack format,
   the core ruleset hash). A meeting's Scholar and a hero's moves are deterministic functions: no
   stream, no draw.
+- Rewards (point 15, increment 7): `HeroDetails` grows by the battle bonuses (the details' hash
+  and the game state hash; the import keeps them at 0); `derive_battle_hero` reads two more
+  fields, so every battle from the map gets them and a battle without the map (E01 to E04c's
+  setups) has none. The mana ceiling is a hero parameter of the core content and A-25 a quirk
+  flag (the pack format, the core ruleset hash). No rule outside `h3-heroes` computes a learnable
+  spell, a skill's room or a reward's order.
 
 ## Alternatives considered
 
@@ -237,6 +284,11 @@ are computed before the seam (03-domain). The seam must change once for E04a and
   positions); the combination at the clicked part's position (VCMI; the original equips it at the
   first position that takes it); disassembly in the backpack (VCMI, with room for the parts; the
   original disassembles only a worn combination).
+- Rewards (E08 ADV-Q28, ADV-Q29): the battle bonuses on the hero on the map (`h3-adventure`; the
+  battle's derivation would need a second source, the original keeps them in the hero) or as a
+  temporary artifact-like effect (the original adds them up and clears them at a battle's end,
+  which an effect list does not express); VCMI's reward order and sums (D-37 to D-39: batch E7
+  showed the code's side, E08 T58).
 
 ## Revision history
 
@@ -292,3 +344,9 @@ are computed before the seam (03-domain). The seam must change once for E04a and
   (`meeting_spells`, `gives_spell_book`), artifact moves, combinations (where the game's
   configuration enables them, E08 decision 104) and Scholar at a meeting as `h3-heroes`' rules.
   Drafted in E08 T44b (#412; survey `E08-army.md` §2.2, §5).
+- 2026-10-27 (E08 T59; the user at ADV-Q28, ADV-Q29 and ADV-Q30): points 1 and 2 amended and
+  point 15 added for E08 increment 7, rewards on the map: the battle bonuses and once-marks in the
+  details, four hero changes, and rewards as `h3-heroes`' rules (the bonuses as the hero's own
+  effects in its next battle, the reward record's hero half in the original's order with the mana
+  ceiling, what a teacher may teach, an artifact received under A-25's flag). Drafted in E08 T55b
+  (#484; survey `E08-rewards.md`), batch E7's outcome (T58, §15) and decision 145 folded in.

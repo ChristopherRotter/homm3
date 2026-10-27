@@ -5,17 +5,20 @@
 //! xdotool's names. [`Sequence::actions`] turns the inputs into the viewer's actions
 //! ([`crate::timeline::Action`]) by the original's default keys (design §3.4): Ctrl and a direction
 //! key scroll the view, a direction key alone steps the selected hero, a key's release does
-//! nothing.
+//! nothing. A walk's paths are the original's, from the recorded timeline ([`Sequence::paths`]),
+//! and its hero the live part's ([`selected`]): M2's walks are scripted (the epic's M2 decision).
 
 use alloc::collections::BTreeMap;
 use alloc::format;
 use alloc::string::{String, ToString};
 use alloc::vec::Vec;
 
+use h3_map::model::Pos;
 use serde::Deserialize;
 
-use crate::tables::SCROLL_SPEEDS;
-use crate::timeline::{Action, Direction};
+use crate::live::{Arrow, LiveHero};
+use crate::tables::{HERO_SPEEDS, SCROLL_SPEEDS};
+use crate::timeline::{Action, Direction, Hero};
 
 /// The file.
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
@@ -39,9 +42,10 @@ pub struct Sequence {
     pub why: String,
     /// The scroll speed the original holds (0 to 2; the original's 1 when its settings hold none).
     pub scroll_speed: Option<usize>,
-    /// The hero speed (1 to 4: the walk, M2 T3).
-    pub hero_speed: Option<u8>,
-    /// The selected hero's movement points (the walk, M2 T3).
+    /// The hero speed (1 to 4; the original's 2 when its settings hold none: the walk).
+    pub hero_speed: Option<usize>,
+    /// The selected hero's movement points (the harness writes them; the path's arrows the
+    /// original shows tell the walk where they end).
     pub points: Option<u32>,
     /// The inputs in time order.
     #[serde(default)]
@@ -68,6 +72,10 @@ pub struct Input {
 /// The scroll speed when a sequence gives none (`settings_read` 0x50B7B0: any value but 0 to 2 is
 /// 1).
 pub const DEFAULT_SCROLL_SPEED: usize = 1;
+
+/// The hero speed when a sequence gives none (`option_walk_speed` 0x69875C: any value but 1 to 4
+/// is 2).
+pub const DEFAULT_HERO_SPEED: usize = 2;
 
 /// The direction keys by xdotool's names (X keysyms), the original's scan codes 72, 73, 77, 81, 80,
 /// 79, 75, 71 (`adventure_key_down` 0x408C40, design §3.4): north clockwise to north-west.
@@ -114,8 +122,21 @@ impl Sequence {
         Ok(speed)
     }
 
+    /// The hero speed (its own or the default), checked.
+    ///
+    /// # Errors
+    /// A speed out of 1 to 4.
+    pub fn hero_speed(&self) -> Result<usize, String> {
+        let speed = self.hero_speed.unwrap_or(DEFAULT_HERO_SPEED);
+        if !(1..=HERO_SPEEDS).contains(&speed) {
+            return Err(format!("{}: the hero speed {speed} is not 1 to 4", self.id));
+        }
+        Ok(speed)
+    }
+
     /// Whether the sequence walks a hero (a click, a direction key without Ctrl, the hero's
-    /// options): M2 T3's.
+    /// options): its timeline needs the selected hero ([`selected`]) and its paths, its draws
+    /// lift and move that hero ([`selected_index`]).
     #[must_use]
     pub fn walks(&self) -> bool {
         self.hero_speed.is_some()
@@ -178,6 +199,85 @@ impl Sequence {
         }
         Ok(actions)
     }
+
+    /// The paths its clicks show, as the original showed them (M2's scripted walks): for each
+    /// click, the first `arrows` line at or after it that lists any, from its recorded timeline
+    /// (`h3map.py frames`: `<ms> arrows <x>,<y>,<level>,<arrow> ...`), each path once.
+    ///
+    /// # Errors
+    /// An `arrows` line that does not read.
+    pub fn paths(&self, recorded: &str) -> Result<Vec<Vec<Arrow>>, String> {
+        let mut lines = Vec::new();
+        for line in recorded.lines() {
+            let mut words = line.split_whitespace();
+            let (Some(t), Some("arrows")) = (words.next(), words.next()) else {
+                continue;
+            };
+            let failed = || format!("{}: the line `{line}` does not read", self.id);
+            let t: u32 = t.parse().map_err(|_| failed())?;
+            let arrows: Option<Vec<Arrow>> = words.map(arrow).collect();
+            lines.push((t, arrows.ok_or_else(failed)?));
+        }
+        let mut paths: Vec<Vec<Arrow>> = Vec::new();
+        for input in self.inputs.iter().filter(|i| i.click.is_some()) {
+            let shown = lines
+                .iter()
+                .find(|(t, arrows)| *t >= input.at && !arrows.is_empty());
+            if let Some((_, path)) = shown.filter(|(_, p)| !paths.contains(p)) {
+                paths.push(path.clone());
+            }
+        }
+        Ok(paths)
+    }
+}
+
+/// An arrow of an `arrows` line: `<x>,<y>,<level>,<arrow>`.
+fn arrow(word: &str) -> Option<Arrow> {
+    let parts: Vec<&str> = word.split(',').collect();
+    let [x, y, z, arrow] = parts[..] else {
+        return None;
+    };
+    match (x.parse(), y.parse(), z.parse(), arrow.parse()) {
+        (Ok(x), Ok(y), Ok(z), Ok(arrow)) => Some(Arrow {
+            at: Pos { x, y, z },
+            arrow,
+        }),
+        _ => None,
+    }
+}
+
+/// The hero a walking sequence moves: the live part's only hero of the viewing player's colour
+/// (the current player's selected hero), on its tile and facing as the live part at 0 holds it.
+///
+/// # Errors
+/// None or several of that colour.
+pub fn selected(heroes: &[LiveHero], viewer: u8) -> Result<Hero, String> {
+    let hero = &heroes[selected_index(heroes, viewer)?];
+    let facing = usize::from(hero.facing.number());
+    Ok(Hero {
+        at: hero.at,
+        facing: Direction::ALL[facing % Direction::ALL.len()],
+    })
+}
+
+/// The index in `heroes` of the hero [`selected`] gives (the one a walk's draws lift and move).
+///
+/// # Errors
+/// None or several of the viewer's colour.
+pub fn selected_index(heroes: &[LiveHero], viewer: u8) -> Result<usize, String> {
+    let own: Vec<usize> = heroes
+        .iter()
+        .enumerate()
+        .filter(|(_, h)| h.owner == viewer)
+        .map(|(i, _)| i)
+        .collect();
+    let [index] = own[..] else {
+        return Err(format!(
+            "{} heroes of the viewer's colour {viewer}: a walk needs one, its selected hero",
+            own.len()
+        ));
+    };
+    Ok(index)
 }
 
 /// A key's name: with Ctrl or not, and its direction.

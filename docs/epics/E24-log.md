@@ -700,3 +700,71 @@ whole).
   Not seen in a frame: the order of a scroll and a redraw due in the same millisecond (no
   animated object in either view then, design §3.6).
 - **No oddity of the original found** (no `MCL-Q`).
+
+### M2 T3a — the walk over time, headless (2026-10-27)
+
+T3 cut at its seam before it started (the user, at the session's start): T3a the walk's timing,
+every line but the `screen` ones and no recording; T3b the walk drawn, its screens and the frame
+check, the walks recorded again first.
+
+- **Built** (`E24-design.md` §3.7): the walk in `h3_map_view::timeline` (*provisional*): a
+  direction key's step and the path shown by a click and walked by a second one, the selected
+  hero lifted (back on its tile after a scroll that moves the view), the view centred by each
+  step and slid by the hero speed's pixels in frames of 50 ms (speed 4 one draw), the walking
+  group and the frame carried from step to step, the path's arrows zeroed step by step, the
+  path's green arrows as the steps, the standing group at the walk's end and the objects' catch-up
+  at the next idle redraw, the cursor hidden during a walk and read again at its end, the actions
+  given meanwhile waiting (a key's) or drained (the path's: a key or a click ends it), the
+  `hero`, `walk` and `arrows` lines; `Unplayable` without `Walk` (`Panel`, `NoPath` added),
+  `Start`'s hero speed, hero and paths, `Draw` with the walk's part (offset, hero, lifted picture,
+  arrows) and `Cursor`'s `shown` for T3b; `timeline::chain` (a path's arrows in its order);
+  `sequence`'s `hero_speed` (2 by default), `paths` (the recorded `arrows` after each click),
+  `selected` (the live part's hero of the viewer). The tables' `[map.walk]` (groups, frames,
+  frame time, pixels per speed; checked). The binary's `sequences` plays the walks and compares
+  their lines but the `screen` ones (`--frames` on a walk refused: T3b's). `sequences.toml`:
+  `walk-follow`'s scroll speed 0 given (T1b's original held 0). The harness and the runbooks say
+  T3b's for a walk's frame check.
+- **Read** (`docs/exe/map.toml`): `wait_until` runs the tick at each turn of its wait (the poll,
+  the palettes); a key's step with a path shown (cleared, drawn, the objects stepped once if due);
+  the cursor hidden and shown around a walk and the mouse read again at its end; the animation's
+  start, frames and the pass 9 frame's mod 8.
+- **Checked:** the seven walk timelines every line but the `screen` ones (`h3-map-view
+  sequences`: 13 played, 13 as recorded; the unit tests replay all 13 without the original files);
+  `drawn` the same (40 situations, the six sequences' 181 frames). No recording this time.
+- **Not shown by a recording** (*provisional*, design §3.7): the actions queued during a walk; a
+  key at the map's side; the arrow over the view at `walk-4`'s end (M3's cursor by the tile).
+- **No oddity of the original found** (no `MCL-Q`).
+
+### M2 T3b — the walk drawn (2026-10-27)
+
+Taken whole (the user, at the session's start, over a cut at the frame check or between land and
+boat).
+
+- **Read** (`docs/exe/map.toml`; design §3.8): `draw_frame_blend` 0x47D4F0 (encoding 3's literal
+  pixels blended half and half with the screen, runs skipped with no colour; both callers pass
+  none) and `def_draw_group_blend` 0x47C120; pass 9's cut at the map's sides exactly (the offset
+  on the left and the top only); passes 5 and 7's lifted cells (after the objects' shadows; row
+  8's after layer 1, row 7's after layer 2; after all heroes and boats on a tile with an empty
+  list; none off the map); the idle redraw's one step a redraw (0x408B26), so a late one redraws
+  again in the same millisecond.
+- **Built** (*provisional*): `Live::walking` (`Walking`, `Lifted`: the offset and the lifted
+  hero by index, group and frame); the scene's offset on every tile pass, the lifted hero off its
+  tile and at the view's middle (passes 5 and 7's cells, pass 9 whole: `Pass::Blend`,
+  `draw::blend`), the flags' frame the objects' step plus the hero's mod 8, a boat's flag in
+  pass 9 by the hero's owner; `timeline`'s idle redraw drawing again for each step it is late
+  (`step_objects` one step; the test renamed `a_late_redraw_draws_again_for_each_step_missed`);
+  the gate's walking groups (`WalkArt::drawn_groups` a range, `DefNeed::walking` and
+  `walk_frames`, `check::walk_problems`: the standing groups hold 1 frame, the flags 8, every
+  walking group 8); `sequence::selected_index`; `h3-map-view sequences` draws the walks (its
+  `Verdict::Walk` and the `--frames` refusal gone); `h3map.py`'s `walks` gone (the frame check and
+  `drawn` over the walks). The client lane's inbox: 0x47D4F0 read for its `Drawer::Translucent`.
+- **Recorded** (a fresh sandbox, about 35 minutes): T1b's seven walks again, each timeline as
+  recorded and its frame at 0 exact; their live parts kept (`walk-1`, `-2`, `-3`, `-follow`
+  changed, as every run's).
+- **Checked:** all 13 sequences every line, the `screen` boxes included (13 played, 13 as
+  recorded); the walks' 269 frames against the original's, all exact (`timelines/<id>-frames.txt`
+  new); `drawn`: the 40 situations the same, the 13 sequences' 450 frames recorded. The first draw
+  missed 8 frames, all at walks' ends: the lifted hero's flag a frame behind (the late redraw).
+- **Not shown by a recording** (*provisional*): a step at the map's side (MCL-Q7).
+- **MCL-Q7** (the lifted hero cut at the view's tiles during a step at the map's side): built as
+  the original's in both profiles meanwhile.

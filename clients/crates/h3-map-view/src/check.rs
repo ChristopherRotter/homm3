@@ -10,6 +10,7 @@ use alloc::collections::BTreeSet;
 use alloc::format;
 use alloc::string::String;
 use alloc::vec::Vec;
+use core::ops::Range;
 
 use h3_assets::Error;
 use h3_assets::def::{self, Def, Encoding, Frame, FrameRef};
@@ -183,6 +184,22 @@ pub fn problems(summary: &DefSummary, frames: usize, groups: u32) -> Vec<String>
         }
     }
     found
+}
+
+/// What is wrong with a DEF whose walking groups `walking` must hold `frames` frames each (a
+/// step draws a walking group's frames 0 to the walk's frames less one: E24 M2 T3b, design §3.8):
+/// a group missing or with fewer.
+#[must_use]
+pub fn walk_problems(summary: &DefSummary, walking: Range<u32>, frames: usize) -> Vec<String> {
+    walking
+        .filter_map(|id| match summary.groups.iter().find(|(g, _)| *g == id) {
+            None => Some(format!("no group {id}, a step draws it")),
+            Some(&(_, n)) if n < frames => {
+                Some(format!("{n} frames in group {id}, a step draws {frames}"))
+            }
+            Some(_) => None,
+        })
+        .collect()
 }
 
 #[cfg(test)]

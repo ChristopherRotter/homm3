@@ -20,7 +20,7 @@ fn names(stem: &str, n: usize) -> String {
 /// The `[map.heroes]` section: every list of its length.
 fn heroes() -> String {
     format!(
-        "[map.heroes]\nclasses = [{}]\nflags = [{}]\nboats = [{}]\nwaves = [{}]\nboat_flags = [{}]\ngroups = [0, 1, 2, 3, 4, 3, 2, 1]\n",
+        "[map.heroes]\nclasses = [{}]\nflags = [{}]\nboats = [{}]\nwaves = [{}]\nboat_flags = [{}]\ngroups = [0, 1, 2, 3, 4, 3, 2, 1]\n\n{WALK}",
         names("ah", HERO_CLASSES),
         names("af", COLOURS),
         names("ab", BOAT_TYPES),
@@ -28,6 +28,9 @@ fn heroes() -> String {
         names("abf", BOAT_TYPES * COLOURS),
     )
 }
+
+/// The `[map.walk]` section (E24 M2 T3a), as `base.toml`'s.
+const WALK: &str = "[map.walk]\ngroups = [5, 6, 7, 8, 9, 8, 7, 6]\nframes = 8\nframe_ms = 50\npixels = [[8, 8, 8, 8], [10, 12, 10], [16, 16], []]\n";
 
 /// The `[map.owners]` and `[map.towns]` sections: a list of every faction's town pictures each.
 fn owners_and_towns() -> String {
@@ -171,15 +174,17 @@ fn every_def_with_the_frames_the_view_draws() {
     // Then the towns' pictures, one frame of one group each (E24 M1 T5b1).
     assert_eq!(needs.len(), 8 + heroes + 3 * FACTIONS);
     assert!(defs[..8].iter().all(|n| n.groups == 1));
+    assert!(defs[..8].iter().all(|n| n.walking.is_empty()));
+    // Each also in a step's walking groups 5 to 9, 8 frames each (E24 M2 T3b).
     assert!(
         defs[8..8 + heroes]
             .iter()
-            .all(|n| n.groups == 5 && n.frames == 1)
+            .all(|n| n.groups == 5 && n.frames == 1 && n.walking == (5..10) && n.walk_frames == 8)
     );
     assert!(
         defs[8 + heroes..]
             .iter()
-            .all(|n| n.groups == 1 && n.frames == 1)
+            .all(|n| n.groups == 1 && n.frames == 1 && n.walking.is_empty())
     );
     assert_eq!(
         [&needs[8 + heroes], needs.last().unwrap()],
@@ -481,6 +486,43 @@ fn refuses_what_breaks_the_format() {
         entry("poll_ms", "a poll every 0 ms"),
         "`poll_ms`: a poll every 0 ms",
     );
+    // The walk (E24 M2 T3a): a group per direction, frames and their time, per hero speed pixels
+    // summing to one tile, or none.
+    let walk = |from: &str, to: &str| base("").replacen(from, to, 1);
+    check(
+        &[walk("groups = [5, 6, 7, 8, 9, 8, 7, 6]", "groups = [5, 6]")],
+        "base",
+        entry("walk groups", "2 entries, not 8"),
+        "`walk groups`: 2 entries, not 8",
+    );
+    for (from, to) in [
+        ("frames = 8", "frames = 0"),
+        ("frame_ms = 50", "frame_ms = 0"),
+    ] {
+        check(
+            &[walk(from, to)],
+            "base",
+            entry("walk", "no frames, or frames of 0 ms"),
+            "`walk`: no frames, or frames of 0 ms",
+        );
+    }
+    let rule = "one list per hero speed (4), each of positive pixels summing to one tile, or empty";
+    for pixels in [
+        "[[8, 8, 8, 8], [10, 12, 10], [16, 16]]",
+        "[[8, 8, 8, 8], [10, 12, 10], [16, 15], []]",
+        "[[8, 8, 8, 8], [10, 12, 10], [32, 0], []]",
+    ] {
+        let bad = walk(
+            "pixels = [[8, 8, 8, 8], [10, 12, 10], [16, 16], []]",
+            &format!("pixels = {pixels}"),
+        );
+        check(
+            &[bad],
+            "base",
+            entry("walk pixels", rule),
+            &format!("`walk pixels`: {rule}"),
+        );
+    }
 }
 
 #[test]
@@ -492,6 +534,13 @@ fn the_facings_groups() {
         ..tables.map.heroes
     };
     assert_eq!(none.drawn_groups(), 0);
+    // A step's walking groups 5 to 9 (E24 M2 T3b).
+    assert_eq!(tables.map.walk.drawn_groups(), 5..10);
+    let still = WalkArt {
+        groups: vec![],
+        ..tables.map.walk
+    };
+    assert!(still.drawn_groups().is_empty());
 }
 
 #[test]

@@ -40,6 +40,13 @@ Sorted by destination at E05's audit (T9a, 2026-10-19); the origin stays in brac
 done: BAT-Q33's point for E05 (AI-Q3, ADR-0025 point 6), the `h3-game` coverage gap of a pending
 Pass offer (fixed by the adventure lane's fixed tests, #266).
 
+- 2026-10-27 (the adventure lane, E08 T59, `shared/e08-t59`, `cross-lane`; for your information,
+  nothing to do): core ruleset hash v49 (the mana ceiling, two adventure flags; no battle rule
+  moved): `bots-report-v1.json` and `bots-neutral-v1.json` regenerated in that pull request
+  (`h3 ai eval --set report-v1|neutral-v1 --json`); the run records keep the hash they ran on.
+  ADR-0017 point 8 now says the env's mapping onto the answers typed by decision (E08 T63,
+  `cross-lane`) and that a University's purchase head is your call.
+
 - 2026-10-27 (this lane, E06 T6f and T8b; for the next `shared/` change):
   `docs/07-simulation-and-ai.md` (shared) should name observation v22 (the turn order block
   after v21's layout, `[network] order`) and C ABI v34's worlds (`h3_batch_determinize`,
@@ -49,6 +56,13 @@ Pass offer (fixed by the adventure lane's fixed tests, #266).
 - 2026-10-26 (this lane, E06 T8a; for the next `shared/` change): **ADR-0025 point 12a** from
   the draft the user accepted (`docs/lanes/ai/adr-drafts/0025-amendment-search.md`: a search
   agent's worlds), then the draft deleted; T8b builds on it either way.
+
+- 2026-10-27 (the adventure lane, E08 T58, `adventure/e08-t58`; **for you**, correcting the
+  T55b entry below): **A-23 is withdrawn.** Batch E7's row E7-23 showed the original's path
+  crossing a hidden event, and the re-read found an event's tile no stop for its pathfinder. So
+  `legal_moves` never reads events in any profile, and your tile masks reveal nothing of them;
+  a step into a firing event ends the move there (the move's outcome). Survey
+  `docs/rules/surveys/E08-rewards.md` §15; design §12.
 
 - 2026-10-26 (the adventure lane, E08 T55b, `adventure/e08-t55b`; decisions 138–141; **for you,
   when the adventure lane's T63 lands**): **answers typed by decision.** `h3_game::Answer` becomes

@@ -37,8 +37,8 @@ compared pixel for pixel outside the masks of what the viewer does not draw yet.
       captures a change needs"). Since E24 M2 T2 the recorded sequences too: each one's frames
       drawn by the viewer from its kept live part (timelines/<id>-live.toml) at the times its
       screen changes (`h3-map-view sequences <id> --frames`, which also checks its timeline), the
-      digests against clients/map/timelines/drawn.txt; a walk is M2 T3's. <dir> defaults to
-      clients/out/map-drawn.
+      digests against clients/map/timelines/drawn.txt; the walks too since E24 M2 T3b. <dir>
+      defaults to clients/out/map-drawn.
   h3map.py frames [--only <id>] [--out <dir>] [--reuse]
       every sequence of clients/map/sequences.toml (or one; E24 M2 T1a1): its situation staged
       as `still` stages it, its 0 set to the next millisecond (the palette tick's, the redraw's
@@ -790,15 +790,6 @@ def sequence(entry, out):
     return states, n
 
 
-def walks(entry):
-    """Whether a sequence walks a hero (M2 T3's: its frame check waits for the walk drawn): the
-    hero's options, a click, a direction key without Ctrl (`h3_map_view::sequence`'s `walks`)."""
-    keys = [i["keydown"] for i in entry.get("inputs", []) if "keydown" in i]
-    return ("hero_speed" in entry or "points" in entry
-            or any("click" in i for i in entry.get("inputs", []))
-            or any(not k.startswith("ctrl+") for k in keys))
-
-
 def ours_frames(ident, here, live):
     """The viewer's frames of a sequence (E24 M2 T2): `h3-map-view sequences <id> --frames
     <here> --live <live>` writes `<here>/ours/t<ms>.png` at every time its screen changed and
@@ -899,10 +890,8 @@ def run_frames(rest):
         else:
             TIMELINES.mkdir(exist_ok=True)
             shutil.copy(here / "live.toml", TIMELINES / f"{e['id']}-live.toml")
-        # The frame check (T2): every kept screen against the viewer's at its time.
-        if walks(e):
-            print(f"{e['id']}: the frame check of a walk is M2 T3's", flush=True)
-            continue
+        # The frame check (T2; the walks since T3b): every kept screen against the viewer's at
+        # its time.
         try:
             checked, said, frames, differ = frame_check(e, here)
         except Exception as err:  # noqa: BLE001 (any failure fails this sequence alone)
@@ -1069,12 +1058,12 @@ def drawn_sequences(rest, base, record):
     its kept live part (`timelines/<id>-live.toml`, written by `frames` from a run as recorded or
     new) at the times its own screen changes (`ours_frames`: `h3-map-view sequences` without the
     original's frames, which also checks the timeline against the recorded one), each frame's
-    digest outside the panels against `timelines/drawn.txt` (`<id> t<ms> <digest>`). A walk is M2
-    T3's. `--only` names a situation or a sequence. Returns how many are not the same and how
+    digest outside the panels against `timelines/drawn.txt` (`<id> t<ms> <digest>`), the walks
+    too since M2 T3b. `--only` names a situation or a sequence. Returns how many are not the same and how
     many could not be drawn (with `--record`, the digests of those drawn are written)."""
     only = rest[rest.index("--only") + 1] if "--only" in rest else None
     entries = [e for e in tomllib.loads(SEQUENCES.read_text())["sequence"]
-               if not walks(e) and only in (None, e["id"])]
+               if only in (None, e["id"])]
     digests_path = TIMELINES / "drawn.txt"
     recorded = {}
     if digests_path.exists():

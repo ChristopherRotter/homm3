@@ -6267,3 +6267,123 @@ path to (3, 30) over Blue's own event at (4, 30), and one ending on it.
 **Traps found** (README, "Traps"): the game finds the tile under the mouse again only when the
 mouse enters another of the view's cells; days waited cost every player's turn (E7a's third run);
 the check's Gear battle stopped once.
+
+### Increment 7, round 2: T58, batch E7 scored; A-23 withdrawn (2026-10-27, `adventure/e08-t58`, `cross-lane`)
+
+**The cut** (decision 144; asked at the start): T58 whole with a re-read. **Baseline:** `master`
+828a703 (#490, T57, merged dd3d2d1f; CI on `master` green); the sandbox's light gates passed (the
+code verified by CI's run). `Heroes3.exe` staged from the user's PC for the re-read. `cross-lane`
+for the batch's row in `docs/experiments/README.md` (battle-owned), as T38.
+
+**At the start:** E7-23's corridor half tested nothing. Its targets (14, 30) and (15, 30) lay 6 and
+7 tiles east of a hero of radius 5 (ADV-FOG-002: dx² ≤ 30), no Blue hero came near, and the
+original draws no path onto an unexplored tile (ADV-MOV-008, T57's own finding): "no path" there is
+the fog's. Its open half was valid: a straight path over Blue's own event.
+
+**Batch E7 scored** (survey `E08-rewards.md` §15, from T57's results): every dispute's row as the
+code reading, conclusive against VCMI or the wiki: D-29 (E7-1), D-30 (E7-2), D-31 (E7-3: forty
+artifacts, no relic), D-33 with A-21 (E7-7), D-34 (E7-8: the fifteen spells of the first circle),
+D-36 (E7-9), D-37 to D-39 (E7-12 to E7-15), D-40 (E7-16: G G D G D G G as the table 0x63DF94; E7-22
+D D – G); the full-backpack rows (E7-5, E7-6, E7-10, E7-19) and the consensus rows confirmed. None
+reverts; no `ADV-Q`. Two findings: a full backpack is tested before a free position (E7-6's axe
+lost with the right hand free), and a visit sets the visitor's colour bit in the word's bits 5–12
+(Blue's bit 6 after E7-16's retreat: the content as before). Corpses 5 of 20 (the recorded game)
+and 9 of 20 (T57's second game): 14 of 40 against 20 % (about 2 %); the threshold read again
+(0x4C113D, below 20) and the harness's bit right (bit 16): chance. Wagons 5 of 10 in the recorded
+game by its words (T57's entry says 7).
+
+**The re-read** (decision 131: "contradicted, A-23 is withdrawn and the reading re-read"):
+`place_object_tiles` gives an event's entrance tile its class (+0x1E 26) and word but clears +0xD
+bits 0x01 and 0x10 (`and word [tile + 0xC], 0xEEFF` at 0x505C78; `tile_refresh_around_heroes`
+0x505A10 leaves the tile so); `pathfinder_expand` hands the entered tile's +0xD bit 0x10 to the
+relax (0x4B2D12 to 0x4B2D22), which stores it as the node's stop flag (node +4 bit 1, 0x4B1EF1 to
+0x4B1F04); `pathfinder_run` asks `pathfinder_pass_through` only of a stop node (0x56BB7C), with the
+mouse's mode 0 (0x41955B's sixth argument). An event's tile is no stop, so the second reading's
+"no for class 26" is never asked, and nothing tests a colour: a path crosses any event.
+`event_fires_for` (0x4FCDC0) reads the class and the word, so an event fires mid-path at the step
+that enters it and the move ends there (§7.3). The second reading's error: "the tile carries the
+visitable bit", inferred from the removal, which clears it again. **A-23 withdrawn**: §8.5's blind
+way is the rule in every profile, no flag, no `ADV-QUIRK-22`, no leak for `docs/06-security.md`;
+no re-run (the other colour rests on the code, which tests none).
+
+- **Docs:** survey §0, §7.3, §8.5 (rewritten), §8.6, §9, §12 (ADV-MOV-011), §13, §14, §15 (new);
+  `docs/exe/map.toml` (0x4B1A70, 0x4FCDC0, 0x505B20, 0x56AB40, 0x56B440), `structs.toml`
+  (`map_item` +0xD); `E08-design.md` §12, §16, §17, §19, §20; the ADR-0016 draft (points 4, 6, the
+  consequences and alternatives); `docs/experiments/README.md`'s row (`cross-lane`); the lane's
+  `TRAPS.md` (a path row's targets must be explored); the AI lane's inbox (A-23 withdrawn: the
+  masks reveal nothing of events).
+- **The catalog:** observations for HER-EXP-001 (E7-4; `verified`), HER-CHG-002 (E7-1, E7-2;
+  `verified`), ADV-MOV-008 (E7-23's corridor). The new rules (survey §12) cite their rows when T60
+  to T63 write them (§15 lists them).
+- **For T59:** the drafts carry A-23's outcome (ADR-0016 point 4: `Reach` never reads events); the
+  mana ceiling and A-21's flag as design §17.
+
+### Increment 7, round 2: T58b, `h3-map`'s view property's random failure; A-25 (2026-10-27, `adventure/e08-t58b`)
+
+Decision 144 (next after T58, the user: "You can fix the random test failure now"), in the same
+session after #494 merged (2969de0). **The failure** (the queue's inbox, T57's scoped verify):
+`views_move_as_the_events_say` with the seed `cc debe5cd4…` reproduced at once. In `strict-fixed`,
+player 3's end of turn started day 2; the new day's reveal (E08 T40, `ADV-QUIRK-18` off: each hero
+reveals around it to its owner) widened player 2's hero's radius, grown to 8 by an Expert Scouting
+taken since its last step, onto (6, 2), which went from the fringe to seen, with player 1's hero
+standing on it. No event names a hero shown by a reveal, as for one the viewer's own move reveals.
+**Not a leak** (the tile is explored, ADV-FOG-004), **the oracle's gap**: `check_told` let the
+planes grow at a new day (T40) but let a hero show without a step only after the viewer's own
+command. Now `own || after.day != before.day`, with the tile's not-seen-before test as it was;
+the seed committed with a comment. `PROPTEST_CASES=1000` of the property passed.
+
+**A-25** (ADV-Q30, decision 145; the user on T58's report: "sounds like a bug to me"): a full
+backpack tested before a free position is a quirk with a flag, `faithful` the original's,
+`strict-fixed` the placement first; survey `E08-rewards.md` §15, design §17 (`ADV-QUIRK-22`, flag
+38 if free), T59's queue entry.
+
+### Increment 7, round 3: T59, increment 7's shared part (2026-10-27, `shared/e08-t59`, `cross-lane`)
+
+**The cut** (decision 146; asked at the start, `AskUserQuestion`): T59 whole, one `shared/` pull
+request, as T45; not chosen: the docs half or the code half alone (a session's shared changes go
+in one pull request, so a split takes two sessions). **Baseline:** `master` 18f3cb1 (#496
+merged; CI green on it; the sandbox's light gates passed, the code verified by CI). The user's PC
+was linked: the original data staged from the repository's `original-data` (the executable, both
+LODs, `maps.tar`, `extracted.tar`).
+
+- **The ADRs** (the three accepted drafts applied, then deleted with their folder): ADR-0013
+  points 1 (the battle bonuses and once-marks), 2 (four hero changes; rewards among what is
+  derived once) and 15 added (the bonuses as the hero's own effects, the reward record's hero
+  half with the mana ceiling, what a teacher may teach, receiving an artifact); ADR-0016 points 1
+  (increment 7's block: emptied, the army left, the once-per-hero marks by hero id, the players'
+  knowledge), 3, 4 (the 31 classes' kinds, events blind to the reachable-tiles query, visits'
+  refusals, the draws at the build, A-21) and 6 (knowledge, events never observed); ADR-0017
+  points 1 (the human flag, the bans), 4, 6 (answers typed by decision, pointed to from
+  increment 2's sentence), 8, 9, 10 and 11 (T54's setup facts, increment 7's guards, the bonuses
+  cleared); each ADR's consequences, alternatives and history; the index's three Read-when
+  cells. **A-25's flag written in** (decision 145 came after the drafts): ADR-0013 point 15.4 (the
+  count first with the flag on, the placement first with it off), point 15.2 and ADR-0016 point
+  4's refusals point to it. A-23's withdrawal was already in the drafts (T58).
+- **The mana ceiling**: `HeroParams::mana_ceiling` and `HeroParamsDef::mana_ceiling` (`u16`, as
+  the details' mana) in `h3-content`, hashed after the schools: **core ruleset hash v49** (the
+  golden base hash `0xc62d83f6389d8ef4`); `h3-pack`'s `[hero_params]` requires it: **pack format
+  v48** (`the_mana_ceiling_parses_and_is_required`: 999 parses, missing or 65 536 is a syntax
+  error, the harvested base holds 999); the synthetic pack 450 (above its 40 × 10 maximum, as the
+  original's 999 above 990). The harvester (battle-owned, `cross-lane`): the gap-fill's
+  `[heroes.params]` `mana_ceiling = 999` with the source `exe-mana-ceiling` (`grant_rewards`
+  0x49FA90, survey §7.4, §13, batch E7's E7-13), written into `[hero_params]`.
+- **The flags**: `quirk.adventure.roe_witch_hut_mask` (37, `ROE_WITCH_HUT_MASK`, `ADV-QUIRK-21`)
+  and `quirk.adventure.full_backpack_refuses` (38, `FULL_BACKPACK_REFUSES`, `ADV-QUIRK-22`) in
+  the registry, exported, on in the harvested `base:faithful` and off in `strict-fixed`
+  (`the_harvested_flags_of_increment_7`; the synthetic packs name no adventure flag, so both are
+  off there); the two entries in `docs/rules/quirks-adventure.md` (regression tests with T60 to
+  T62, which read them). `base` re-harvested from the staged installation: three lines changed
+  (the ceiling, the two profiles).
+- **Replays and records**: the 22 golden replays keep commands and state hashes; only
+  `ruleset_hash` in their headers moved (synthetic faithful `0xf957d87efe3a32c6`, base faithful
+  `0x026155eb7308da0f`, strict-fixed `0x242432fb9f5bf302`), each verified by `h3 verify` and
+  `h3 adventure verify`. The AI lane's `bots-report-v1.json` and `bots-neutral-v1.json`
+  regenerated (`h3 ai eval --json`, release). The run records (`t6b-1`, `t6d-1`) keep the hash
+  they ran on.
+- **Docs**: `docs/03-domain.md`'s glossary (battle bonuses and once-marks, the mana ceiling, reward
+  record, map event, once-per-hero mark, knowledge); `packs/README.md` (v48's field, the base
+  pack's 999); the design note's §1, §3, §4, §6 and §17 (what T59 built removed, A-25's flag in
+  `can_receive_artifact`, the drafts' points now the ADRs'); the epic file trimmed under its
+  35 KB aim (decisions 125–128, 137, 142, 143, the cuts of done tasks, moved verbatim to
+  `E08-archive.md`); decision 146 and the task's line; the queue (T59 out, T60 queued from design
+  §19); the battle lane's inbox and HANDOFF versions, the AI lane's inbox.

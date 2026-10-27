@@ -99,6 +99,10 @@ The review's fix C3 follows the reading of 0x47A100: a created stack whose round
 
 ### Map client lane (`MCL-Q<n>`)
 
+#### MCL-Q7 — The lifted hero is cut at the view's tiles, not the map's side, during a step (E24 M2 T3b)
+
+**Context.** While a hero walks, the original draws it lifted at the view's middle and slides the map under it by the step's pixel offset (`docs/epics/E24-design.md` §3.5, §3.8). Passes 5 and 7 draw the hero's six cells only on the view's tiles that lie on the map, at fixed places the offset does not move (0x4115A1, 0x410C13); pass 9 cuts its blended copy at the map's side moved by the offset on the left and the top, at the tiles on the right and the bottom (`view_moving_hero_step` 0x47FC80). A standing hero is cut at the map's side. So, for a step's frames but its last, by a strip up to 24 pixels wide (32 less the first frame's pixels): a step away from a side draws the hero over the map's edge; a step onto the last column or row leaves a strip of it on the map undrawn; a step onto the first column or row shows that strip half transparent (pass 9 alone). A brief slip of the drawing at the map's sides, no effect on play; no recorded sequence walks there. **Options:** (a) the client cuts the lifted hero at the map's side moved by the offset in all three passes, as a standing hero is cut; the comparisons reproduce the original (`h3_render::Bugs`, as MCL-Q2, Q4, Q6); (b) the client copies it always (as built); (c) a graphics option. **Recommendation:** (a); built as the original's meanwhile (both profiles).
+
 ## Answered
 
 Answered questions are history, kept out of the start-of-session reading. Read one only when a doc, a code comment or a queue entry cites its id (`git grep '<id>' -- docs`). The id's prefix says where it is; when a question is answered, move its entry from "Open" above to the **top** of that file (each lane edits only its own file, so lanes working at once never touch the same lines):

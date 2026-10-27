@@ -887,6 +887,7 @@ fn params() -> HeroParamsDef {
         max_level: 74,
         wisdom: key("t:tactics"),
         schools: vec![key("t:archery")],
+        mana_ceiling: 999,
     }
 }
 
@@ -921,8 +922,9 @@ fn hero_params_are_optional_unique_and_checked() {
         compiled.schools,
         vec![with.skill_by_key("t:archery").unwrap()]
     );
+    assert_eq!(compiled.mana_ceiling, 999);
     // The hash sees presence and every field.
-    let changes: [fn(&mut HeroParamsDef); 8] = [
+    let changes: [fn(&mut HeroParamsDef); 9] = [
         |d| d.primary_min[3] = 2,
         |d| d.primary_max = 98,
         |d| d.backpack = 0,
@@ -931,6 +933,7 @@ fn hero_params_are_optional_unique_and_checked() {
         |d| d.max_level = 73,
         |d| d.wisdom = key("t:archery"),
         |d| d.schools.clear(),
+        |d| d.mana_ceiling = 998,
     ];
     let hash = with.content_hash();
     assert_ne!(without.content_hash(), hash);

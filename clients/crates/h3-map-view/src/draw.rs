@@ -19,6 +19,12 @@
 //! - [`shadow_pass`]: `draw_frame_shadow_pass` (0x47D930, through 0x47BE60): the objects' shadows
 //!   (pass 5). Runs of index 1 darken the screen as a shadow's border, of 4 as its body (E17
 //!   design §3.3); everything else is left.
+//! - [`blend`]: `draw_frame_blend` (0x47D4F0, through `def_draw_group_blend` 0x47C120, which
+//!   passes no colour; E24 M2 T3b): the lifted hero's pass 9. Literal pixels are blended half and
+//!   half with the screen, `((c >> 1) & H) + ((d >> 1) & H)` with the half mask H (0x6968A4), as
+//!   0x47EF60's encoding 1 does (E17 design §3.3); runs of 5 would take a colour given, every
+//!   other run is skipped. It reads encoding 3 whatever the frame's (the heroes', flags' and
+//!   boats' DEFs are all encoding 3: the gate).
 //!
 //! The clip: the passes give the drawer a source rectangle of the placed picture (0x411E67 to
 //! 0x411ED3 for the roads); `draw_frame_raw` turns it into the frame's own when mirrored (0x47DDD9:
@@ -102,6 +108,28 @@ pub fn shadow_pass(screen: &mut Screen, frame: &Frame, at: Place, clip: [i32; 4]
         };
         if let Some(pixel) = shade {
             screen.set(x, y, pixel);
+        }
+    });
+}
+
+/// Blends `frame`'s literal pixels in `palette`'s colours half and half with the screen under
+/// them and skips its runs (0x47D4F0 with no colour).
+pub fn blend(
+    screen: &mut Screen,
+    frame: &Frame,
+    palette: &ScreenPalette,
+    at: Place,
+    clip: [i32; 4],
+) {
+    let half = screen.format().half_mask();
+    each_pixel(frame, at, clip, |x, y, index, run| {
+        if !run {
+            let under = screen.pixel(x, y).unwrap_or(0);
+            screen.set(
+                x,
+                y,
+                ((palette.get(index) >> 1) & half) + ((under >> 1) & half),
+            );
         }
     });
 }
