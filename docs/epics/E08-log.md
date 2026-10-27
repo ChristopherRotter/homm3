@@ -6827,3 +6827,8 @@ original data staged from the user's computer.
   property takes `EventFired`.
 - **Replays**: the twelve re-recorded with their options, their commands and days unchanged (neither
   map has an event): the version and every hash moved.
+- **Gates**: the scoped verify with the original data passed every step on its first run;
+  `bench-check` at its baselines (no workload's map holds an event: a stop's step tests one bit);
+  then `cargo check --workspace --all-targets` and `h3-sim`'s tests. A smoke run, not committed:
+  random play on the eight shipped maps that run whole (three seeds each, 14 days, at most 3 000
+  steps), no failure.

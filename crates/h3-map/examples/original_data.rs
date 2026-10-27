@@ -9,8 +9,8 @@
 //! sees names a typed object by its type and anchor, ADR-0016 point 6); since E08 T20a2a the
 //! monsters' and the special grounds' counts, since E08 T21a the guarded piles' and since E08 T29
 //! the level limits, the banned skills and the levels at load of the maps that import whole
-//! (`docs/formats/h3m.md`, "Import"), and since E08 T42 the Tutorial's hero's day's points
-//! (checked).
+//! (`docs/formats/h3m.md`, "Import"), since E08 T42 the Tutorial's hero's day's points
+//! (checked), and since E08 T62b2 the events: their flags and the tiles they lie on.
 //!
 //! `cargo run -p h3-map --example original_data -- original-data/install`
 //!
