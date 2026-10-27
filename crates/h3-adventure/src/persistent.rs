@@ -253,6 +253,8 @@ const MID: usize = 64;
 type Leaf<T> = [Option<Arc<T>>; LEAF];
 /// A mid table of a [`Table`]: its leaves.
 type Mid<T> = [Option<Arc<Leaf<T>>>; MID];
+/// The top table of a [`Table`]: its mid tables.
+type Top<T> = Vec<Option<Arc<Mid<T>>>>;
 
 /// A sparse table of values by index, persistent (E08 T61b; design §10 of
 /// `docs/epics/E08-design.md`, decision 133): a top table of mid tables of 64 leaves of 16
@@ -263,7 +265,7 @@ type Mid<T> = [Option<Arc<Leaf<T>>>; MID];
 /// is no part at all, so an empty table holds nothing. Nothing sees the sharing: equality,
 /// `Debug` and the iteration see the entries in index order.
 pub(crate) struct Table<T> {
-    top: Option<Arc<Vec<Option<Arc<Mid<T>>>>>>,
+    top: Option<Arc<Top<T>>>,
     len: usize,
 }
 
@@ -294,9 +296,14 @@ impl<T> Table<T> {
 
     /// The entry at `index`, if any.
     pub(crate) fn get(&self, index: usize) -> Option<&T> {
+        self.entry(index).map(|value| &**value)
+    }
+
+    /// The shared value at `index`, if any.
+    fn entry(&self, index: usize) -> Option<&Arc<T>> {
         let (t, m, l) = split(index);
         let mid = self.top.as_ref()?.get(t)?.as_ref()?;
-        mid[m].as_ref()?[l].as_deref()
+        mid[m].as_ref()?[l].as_ref()
     }
 
     /// Sets the entry at `index` to `value`, or removes it for none; removing an entry that is
@@ -380,14 +387,9 @@ impl<T> Table<T> {
 
     /// Whether the entries at `index` of the two tables are one shared value.
     pub(crate) fn shares_value(&self, other: &Self, index: usize) -> bool {
-        let value = |table: &Self| {
-            let (t, m, l) = split(index);
-            let mid = table.top.as_ref()?.get(t)?.as_ref()?;
-            mid[m].as_ref()?[l].clone()
-        };
-        value(self)
-            .zip(value(other))
-            .is_some_and(|(a, b)| Arc::ptr_eq(&a, &b))
+        self.entry(index)
+            .zip(other.entry(index))
+            .is_some_and(|(a, b)| Arc::ptr_eq(a, b))
     }
 
     /// How many mid tables and leaves are stored.

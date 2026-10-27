@@ -61,15 +61,26 @@ ruleset part v12), what the map puts in them (`ObjectSetup::holds`, `Holds`; the
 artifacts, scrolls, boxes and events, the monster's treasure artifact (`MonsterSetup::artifact`),
 A-24 refused (`Unsupported::RewardArmy`); map import v12, adventure state hash v13 (the static
 map's holdings). A scroll holds the Spell Scroll with its spell as an `ArtifactInstance`, so its
-kind has no parameter; an empty Witch Hut mask imports as every skill. Left for T61b: **the
-bans** (the map's banned spells and artifacts into `GameSetup` beside `banned_skills`,
-GAM-SET-003; the game passes all three to the adventure's build), moved there because only the
-draws read them and a new `GameSetup` field touches the AI lane's two literals (`cross-lane`).
+kind has no parameter; an empty Witch Hut mask imports as every skill. **The bans**
+(T61b, map import v13, GAM-SET-003): `GameSetup::banned_spells` and `banned_artifacts` beside
+`banned_skills`, each checked against the ruleset; the game passes the three to the adventure's
+build as `h3_adventure::Bans`; the import reads the artifact set within the edition's codes (the
+editor's default bans of the unused records 141 to 143 and an AB set's padding ban nothing; the AI
+lane's two literals `cross-lane`).
 Left for T62: an event's tile apart from the movement's masks (§12's "Static"; until then a
 typed event blocks a walk as the blocker it was); every visit (`ObjectKind::effect` gives none
-for the new kinds). The census of what imports whole is the next run with the original data.
+for the new kinds). The census (T61b's run, `h3m.md` "Import"): 8 maps import whole, 3 more
+than before, the 8 refused for a monster's artifact before all moving on.
 
 ### 9. The draws when the game is built (ADR-0016 point 4; GAM-SET-001's stream)
+
+Built by T61b (`state/draws.rs`; `MapObject::resolved`, `Resolved`, a chest's gold and a find's
+resources in `MapObject::contents`; adventure state hash v14; ADV-OBJ-006, ADV-PIK-005, ADV-PIK-009
+to -012, ADV-TCH-003 to -008). Two points the build settled: a draw whose classes are out restarts
+the marks from the bans *before* it widens to every class, as 0x4C94D0 does, so the widened draws
+may repeat; a Scholar's empty pool (every skill or spell banned) gives a primary skill, and the
+Wagon's resources are drawn beside its artifact (the turn `drawn`). A-18, A-20, A-22 and A-24 are
+`ADV-QUIRK-23` to `-26` (exploit-fix, no flag).
 
 From the setup stream, after today's draws (piles, campfires, monsters), in two passes in object
 order (the original resolves the random artifacts first, then walks the rest, §3.1):
@@ -92,6 +103,13 @@ The draws' order is the engine's (decision 17), so the original's dropped draws 
 artifact's, §3.1) have no counterpart. The tutorial is not modelled (decision 134).
 
 ### 10. The state (ADR-0016 point 1; decision 133)
+
+Built by T61b: the army left as `persistent::Table` (a top table of mid tables of 64 leaves of 16
+shared entries; the hash's encoding unchanged, so increment 3's replays moved only by the
+version); the visits' block as `h3_adventure::Visits`, a public value with its own methods (the
+repo forbids crate-private code without a caller, so T62's visits store and write it through
+`AdventureState`'s field; nothing outside the state can put one in a game), none in a state until
+then, hashed after the army left. Measured: `fork-xl-144` (see the log, T61b).
 
 - **The visits' block** (`Option<Arc<Visits>>`, none until the first visit that writes one):
   - `marks: BTreeMap<HeroId, BitGrid>` — a hero's once-per-hero marks, a bit per object index
@@ -285,7 +303,8 @@ through `split` with the first creature's count, n less the second creature's st
 | adventure ruleset part v12 | the kinds | T61a (done) |
 | map import v12 | the classes, bodies, records, the monster's artifact (the bans: T61b, import v13) | T61a (done) |
 | adventure state hash v13 | the objects' holdings and a monster's treasure artifact | T61a (done) |
-| adventure state hash v14 | the visits' block, the army left's table, the draws on objects | T61b, T62 |
+| map import v13 | the scenario's banned spells and artifacts | T61b (done) |
+| adventure state hash v14 | the draws on objects and the visits' block (the army left's table keeps its encoding) | T61b (done) |
 | game state hash (next) | the decisions, the rest, the bans | T63 |
 | adventure replay format v7 | the typed answers (every decision's) | T63 |
 
@@ -339,7 +358,7 @@ increment 6 the shared task came first; here the batch decides an ADR clause, A-
 | 2 | **T57** + **T58** | T57: the harness's reads and clicks, the recipes, the runs E7a and E7b (as T47: cut at its start). T58: scored (survey §15); A-23 settled (decision 131); an `ADV-Q` if a row contradicts the reading |
 | 3 | **T59** | `shared/`: the three ADRs amended (with T58's outcome: A-23 withdrawn, events blind to `Reach`), the mana ceiling, A-21's and A-25's flags, the glossary |
 | 4 | **T60** | `h3-heroes`: part A (§1–§6): the bonuses, the changes, `grant`, the teachers' functions; the details' hash |
-| 5 | **T61** | `h3-map` and `h3-adventure`: the import (§7), the kinds (§8), the draws (§9), the state (§10). In two (decision 148): T61a the import and kinds (done: map import v12, ruleset part v12, adventure state hash v13); T61b the bans, the draws and the state (map import v13, adventure state hash v14) |
+| 5 | **T61** | `h3-map` and `h3-adventure`: the import (§7), the kinds (§8), the draws (§9), the state (§10). In two (decision 148): T61a the import and kinds (done: map import v12, ruleset part v12, adventure state hash v13); T61b the bans, the draws and the state (done: map import v13, adventure state hash v14) |
 | 6 | **T62** | `h3-adventure`: the visits (§11), events and the move (§12), information (§13). Likely cut in two (pickups, teachers, finds; boxes, events, the Pyramid) |
 | 7 | **T63** | `h3-game`: the decisions, their typed answers (every decision's, migrated; `h3-sim`'s action mapping `cross-lane`) and the rest (§14), the application (§15), replay format v7. Likely cut in two (the typed answers' migration; increment 7's decisions) |
 | 8 | **T64** + **T65** | T64: replays, fixtures, properties, benchmarks, `--with-original-data` (§16). T65: the audit against the exit criteria, increment 7 closed, increment 8 refined |
@@ -380,14 +399,14 @@ increment 6 the shared task came first; here the batch decides an ADR clause, A-
 - **The rest across decisions** (§14) is the increment's new mechanism: a visit that spans a
   battle, its level-ups and an army dialog. The scripted replays (§16) pin its order; a forgotten
   path would give a box's experience before its dialog (VCMI's order, D-39).
-- **The import's reach:** typing 31 classes makes more maps import whole only where nothing else
-  refuses them (towns, random heroes: 128 and 18 maps); the census after T61 says how many.
+- ~~**The import's reach**~~ (T61b's census): 8 maps import whole; the rest stop at towns (128)
+  and random heroes (21) or a hero in a town (3).
 - **Batch E7's size:** 23 rows, two maps for E7a, a harness grown by about ten reads; the cut of
   T56 and T57 at their starts (as T47's three parts).
 - ~~**A-23**~~ withdrawn by T58 (survey `E08-rewards.md` §15): the move's stop at a firing event
   is the rule (§12) and `Reach`'s callers (the env's masks) do not change.
-- **The army left's table** (§10) is a change of storage under increment 3's monsters: their
-  replays must not move (the hash walks content, ADR-0016 point 2).
+- ~~**The army left's table**~~ (§10, T61b): built with the hash's encoding unchanged; the
+  replays' commands did not move.
 - **Not in increment 7** (decisions 127, 136): the creature banks, the Refugee Camp, Seer's Huts
   and quest guards, the map's timed events, the computer's answers and the end-of-game tests after
   an event (E10), casting the adventure spells scrolls hold, teams (allies' knowledge, E10).

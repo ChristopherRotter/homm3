@@ -879,6 +879,14 @@ fn the_errors_read_well() {
             "banned skill 4 is not the ruleset's",
         ),
         (
+            GameSetupError::BannedSpell(SpellId::from_raw(9)),
+            "banned spell 9 is not the ruleset's",
+        ),
+        (
+            GameSetupError::BannedArtifact(ArtifactTypeId::from_raw(7)),
+            "banned artifact 7 is not the ruleset's",
+        ),
+        (
             GameSetupError::Adventure(SetupError::Players(0)),
             "adventure: 0 players are outside the bounds",
         ),

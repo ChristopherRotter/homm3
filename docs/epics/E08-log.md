@@ -6576,3 +6576,52 @@ reachable when the census was due (below).
 - **Verify** (scoped, no original data staged): every step passed but check-lane, which flags the
   two AI-lane test files (the consented `cross-lane` lines); coverage, determinism and bench-check
   passed; check-docs, check-rules, check-stubs and doc-drift re-run after the docs, ok.
+
+### Increment 7, round 5: T61b, the bans, the draws and the state (2026-10-27, `adventure/e08-t61b`, `cross-lane`)
+
+**The cut** (decision 149, asked at the start with the census's result): whole; the agent's
+recommendation was two parts (the state apart). **Baseline:** `master` c94a5ab (#507 merged, CI
+green on it); the sandbox's light gates passed (the code verified by CI); the original data staged
+from the user's computer (`maps.tar`, `extracted.tar`, the executable and the two LODs).
+
+- **The census first** (T61a's import v12, then v13): every map reads, every static layer imports
+  and validates; 8 import whole (`Myth and Legend`, `Pandora's Box `, `Unholy Quest` join T49a's
+  5); the 8 refused for a monster's artifact before: 3 whole, 3 a random hero, 2 a hero in a town;
+  128 a hero generated at a main town, 21 a random hero, 3 a hero in a town. The example's
+  "guarded piles" counted every guarded object since T61a (171): now by kind (36 piles as T21a's,
+  33 artifacts, 3 scrolls, 12 boxes, 87 events), and the bans (26 maps ban spells, 111
+  artifacts). Recorded in `h3m.md` "Import".
+- **The bans** (GAM-SET-003, map import v13): `GameSetup::banned_spells`, `banned_artifacts`
+  (`GameSetupError::BannedSpell`, `BannedArtifact`, after the banned skills); `h3_adventure::Bans`
+  on `AdventureSetup` (skills, spells, artifacts), which only the build's draws read; the import's
+  spell set and artifact set, the latter within the edition's artifacts the codes name: the SoD
+  editor's default bans the unused records 141 to 143 (123 bits on 41 shipped maps), which an
+  error would have refused on every such map. `cross-lane` (consented): the AI lane's two
+  `GameSetup` literals (`census.rs`, `ai/tests.rs`), two default lines each; the AI lane's inbox
+  told.
+- **The draws** (design §9; `state/draws.rs`; adventure state hash v14): `MapObject::resolved:
+  Resolved` (`Nothing`, `Artifact`, `Price`, `Spell`, `Skill`, `Scholar(gift, fallback)`,
+  `Skills`), a chest's gold and a find's resources in `contents`; after the piles and the monsters,
+  in two walks in object order: the random artifacts (`ArtifactPool`: marks from the bans and the
+  placed artifacts; a class out restarts the marks from the bans, then widens to every class but
+  Special, so widened draws may repeat, as 0x4C94D0), then chests, a gift's price (the Tree),
+  Shrines (`ShrineMarks`, per level), Witch Huts (the mask less the bans in id order; an RoE hut by
+  flag 37), Scholars (an empty pool gives a primary skill), Universities, finds (the Wagon's
+  resources beside its artifact) and the Pyramid. A hero spell always has a school (the core's
+  compiler), so the pools test the category, the bans and `granted_by_name_only`. Rules
+  ADV-OBJ-006, ADV-PIK-005, ADV-PIK-009 to -012, ADV-TCH-003 to -008 (`implemented`; their visits
+  T62); `ADV-QUIRK-21`'s regression test; A-18, A-20, A-22 and A-24 as `ADV-QUIRK-23` to `-26`
+  (exploit-fix, no flag; design §17 had them in the ledger, which T59 did not write).
+- **The state** (design §10): the army left as `persistent::Table` (a top table of mid tables of
+  64 leaves of 16 entries, each value shared; a part without an entry is none; the hash's
+  encoding unchanged); `Visits` (each hero's marks by hero id, each player's knowledge, the emptied
+  objects, a bit per object index in `Occupancy`'s grid shape), a public value whose methods are
+  its API, since the lints refuse crate-private code without a caller (T62's visits write it);
+  `AdventureState::visits` none until then, hashed after the army left (0 or 1 and its encoding).
+  `fork-xl-144`: 3 587 Ir a fork against 3 564 (+0.65 %); `random-play-duel-36` −0.50 %.
+- **Replays**: the twelve re-recorded with their options, their commands unchanged (neither map
+  has an object that draws, nor bans): every hash moved.
+- **Gates**: the scoped verify with the original data (`check-lane` flags the four AI-lane lines,
+  the label `cross-lane`); coverage closed three gaps on the way (a test helper's early returns,
+  the pool's out-of-range bans, the two new errors' texts); `check-arch` refused a `sort_unstable`
+  (the hut's candidates now come in id order from the unbanned skills).

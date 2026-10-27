@@ -126,20 +126,17 @@ impl<'c> ArtifactPool<'c> {
     pub(super) fn new(
         core: &'c Ruleset,
         bans: &[ArtifactTypeId],
-        placed: impl IntoIterator<Item = ArtifactTypeId>,
+        placed: &[ArtifactTypeId],
     ) -> Self {
-        let mut banned = vec![false; core.artifacts().len()];
-        for artifact in bans {
-            if let Some(mark) = banned.get_mut(artifact.index()) {
-                *mark = true;
-            }
-        }
-        let mut marks = banned.clone();
-        for artifact in placed {
-            if let Some(mark) = marks.get_mut(artifact.index()) {
-                *mark = true;
-            }
-        }
+        let among = |list: &[ArtifactTypeId], index| list.iter().any(|a| a.index() == index);
+        let banned: Vec<bool> = (0..core.artifacts().len())
+            .map(|index| among(bans, index))
+            .collect();
+        let marks = banned
+            .iter()
+            .enumerate()
+            .map(|(index, &ban)| ban || among(placed, index))
+            .collect();
         Self {
             core,
             banned,
@@ -280,7 +277,8 @@ pub(super) fn resolve_rewards(
             }
             _ => None,
         });
-    let mut artifacts = ArtifactPool::new(core, &bans.artifacts, placed.collect::<Vec<_>>());
+    let placed: Vec<ArtifactTypeId> = placed.collect();
+    let mut artifacts = ArtifactPool::new(core, &bans.artifacts, &placed);
     for object in objects.iter_mut() {
         if let Some(ObjectKind::Artifact {
             classes: Some(classes),
@@ -324,7 +322,7 @@ pub(super) fn resolve_rewards(
                     _ if roe_mask => roe,
                     _ => roe_fixed,
                 };
-                hut_draw(mask, &bans.skills, draws)
+                hut_draw(mask, &skills, draws)
             }
             (ObjectKind::Scholar, &Holds::Gift(gift)) => {
                 scholar_draw(gift, &skills, &any_level, draws)
@@ -372,16 +370,15 @@ fn chest_draw(
 }
 
 /// A Witch Hut's skill (ADV-TCH-005; survey §6.6, D-33, A-21): the r-th of its mask's skills in
-/// id order less the banned ones, with equal chances; none left: none.
+/// id order less the banned ones (`skills`: the unbanned skills in id order), with equal chances;
+/// none left: none.
 // rule: ADV-TCH-005
-fn hut_draw(mask: &[SkillId], banned: &[SkillId], draws: &mut Rng) -> Resolved {
-    let mut left: Vec<SkillId> = mask
+fn hut_draw(mask: &[SkillId], skills: &[SkillId], draws: &mut Rng) -> Resolved {
+    let left: Vec<SkillId> = skills
         .iter()
         .copied()
-        .filter(|skill| !banned.contains(skill))
+        .filter(|skill| mask.contains(skill))
         .collect();
-    left.sort_unstable();
-    left.dedup();
     pick(&left, draws).map_or(Resolved::Nothing, |&skill| Resolved::Skill(skill))
 }
 
