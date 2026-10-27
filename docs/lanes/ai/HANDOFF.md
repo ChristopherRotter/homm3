@@ -8,17 +8,14 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 - **E05 closed 2026-10-20**: its record and design in `E05-log.md` (cited as §n), the
   environment as built in `docs/07-simulation-and-ai.md` §1.1.
 - **E06** (AI-Q8; `docs/epics/E06-battle-ai.md`, design `E06-design.md`, record `E06-log.md`,
-  closed increments in `E06-archive.md`): increments 1 to 6 done, T6a (the behaviour analysis)
-  2026-10-23. Best so far `t7-1` (20 M, a third neutral): 0.828, 0.551, 0.528 against Random,
-  Aggressor, Greedy, the system actor 0.374; the neutral set's value +0.245 below the target
-  +0.285. Increment 7, T8 the search (design §14): T8a done (#487), the ADR-0025 amendment
-  accepted (`adr-drafts/`, into ADR-0025 with the next `shared/` change); T6f (the turn order
-  as an input, observation v22, the user's choice before T8b; design §15) and T8b (the
-  plumbing) done on this branch. **Next, the user's machine:** T6g (the A/B run `order-1`,
-  `configs/e06-order.toml`) and T8c (`python -m h3env.search --report` with `t7-1`'s
-  `best.pt`); the commands in QUEUE. At T8b's checkpoint the user reviews AI-STUB-1.
-- **Open pull request #493** (`claude/jolly-volta-qejdfa`, `cross-lane`: T6f and T8b, `h3-battle`'s
-  `turn_order`, `determinized`, `reseed`): watch it to its merge.
+  closed increments in `E06-archive.md`): increments 1 to 6 done. Best so far `t7-1` (20 M, a
+  third neutral): 0.828, 0.551, 0.528 against Random, Aggressor, Greedy, the system actor 0.374;
+  the neutral set's value +0.245 below the target +0.285. Increment 7, T8 the search (design
+  §14): T8a, T6f (the turn order, observation v22) and T8b (the plumbing, #493) done; T6g (the
+  user's run `order-1`) done 2026-10-27: negative, `t7-1`'s ladder, the trunk drops the order.
+  **In progress:** T8c in the sandbox with `order-1`'s best (the user's upload; `t7-1`'s is not
+  here), N 16 on the report set against the system actor and Greedy and on the neutral set
+  (`python/runs/t8c/`, ignored). At T8b's checkpoint the user reviews AI-STUB-1.
 - **Versions:** battle action encoding v13, observation encoding v22, replay format v31
   (CLT-Q4/Q6), the adventure env's action encoding v4 (E08 T45), C ABI v34 (T6f and T8b: the turn
   order, the worlds) (`docs/08-work-process.md`, "Versions"). Next ids: AI-Q10, AI-QUIRK-1,
