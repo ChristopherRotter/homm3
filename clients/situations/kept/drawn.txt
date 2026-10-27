@@ -3617,11 +3617,11 @@ sequences/sacrifice t00979 250bc097b1c1e04a
 sequences/sacrifice t01012 88d029e07f2526c0
 sequences/sacrifice t01112 1280fbe675c9644a
 sequences/sacrifice t01212 d1f3ceb4827de7c6
-sequences/sacrifice t01312b da724ea77cc52770
-sequences/sacrifice t01412 0845b2a10800047e
-sequences/sacrifice t01512 e2e2f70cd6ac096a
-sequences/sacrifice t01612 827374c03bc7140a
-sequences/sacrifice t01712 ffdb1a1f27575bfe
+sequences/sacrifice t01312b 5f300a66fc80f36f
+sequences/sacrifice t01412 6430a32a150206ef
+sequences/sacrifice t01512 520b160daebb27b8
+sequences/sacrifice t01612 3ba0ba7a0e3c7239
+sequences/sacrifice t01712 5b076b7f2eaa07eb
 sequences/sacrifice t01812 e1166aec5e1ed650
 sequences/sacrifice t01912 f17cf1efe82ce117
 sequences/sacrifice t02012 f01a6c4b38b5abb7

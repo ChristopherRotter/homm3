@@ -5,10 +5,11 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 ## Current state
 
 - **E17 M0–M3 done** (the lane split at M3 T9c, CLT-Q18: the battle client here, the adventure
-  map client the map-client lane's E24); **M4 (sieges): T0 to T3b-1 done** (§10.1, §10.2; T3
+  map client the map-client lane's E24); **M4 (sieges): T0 to T3b-2 done** (§10.1, §10.2; T3
   cut in three by the user: T3a the review, T3b the captures, cut in two, T3c the review list
-  and M5 with the user); **next T3b-2** (the other 29 sequences); M5 live play after M4. Open
-  PR: #492 (T3b-1; check it first). Workspace `clients/`
+  and M5 with the user); **next T3c** (the user present: review items 1 to 15, 15 a proposal,
+  CLT-Q22 to Q24, M5 refined); M5 live play after M4. Open PR: #501 (T3b-2; check it first).
+  Workspace `clients/`
   (`clients/README.md`), gates `clients/scripts/check.sh`; ADR-0020 (+ drafts in
   `adr-drafts/`), ADR-0024; the harness `clients/capture/README.md`; design §3–§10; records in
   `E17-log.md`.
@@ -35,7 +36,13 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
 
 ## Recent sessions
 
-- **2026-10-27, E17 M4 T3b-1 (done; #492 open: check it first).** T3b cut in two (the
+- **2026-10-27, E17 M4 T3b-2 (done; #501 open: check it first).** Not cut (the user). The 29
+  sequences captured afresh, all as recorded: 25 at once, `strike`, `luck` and `bolt` at a rerun
+  (the original's luck and spell power varied: the starting bonus likely, runbook "Traps",
+  review item 15 a proposed fix), `sacrifice` with the engine's seed 9 (the original's 23 in
+  three runs; review item 14). The casts' `hovered` fits T3b-1's rule (the book still
+  *provisional*). `drawn` recorded (`sacrifice`). No new question.
+- **2026-10-27, E17 M4 T3b-1 (done; #492 merged).** T3b cut in two (the
   user). The harness reads `hovered_item` per step: the park point is the panel's picture,
   entered once after the opening; the viewer tracks the hovered item (the hot-seat proxy
   gone; review item 13), `aim`'s exception explained. The 72 stills and 18 sequences as
@@ -44,6 +51,3 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
   Three fresh reviewers one at a time (R1 drawing and timeline, R2 mouse and adapters, R3
   harness): 16 of 17 findings fixed, R1-3 queued (QUEUE's inbox); review items 10 to 12. The
   harness now refuses rolls it cannot force (`xdd.dll`'s ack: a 7th field). `drawn` unchanged.
-- **2026-10-26, E17 M4 T2c-2 (done; #483 merged).** Earthquake, the end tune at a town, the
-  siege's mouse; `quake`, `defended`, `aim`, `through` recorded; the status line kept at a
-  hot-seat human turn found (settled at T3b-1).

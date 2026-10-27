@@ -743,13 +743,14 @@ command = [
 # Pikeman's corpse (hex 35) with the lone Archer (hex 86) its victim: the cast's line names the
 # victim by its number after its death (0: the plural), animation 51 over it with its death, no
 # corpse but the dissolve's eight steps of 150 ms outside the deadline, then the raise. `seed`:
-# the engine's, whose damage is the original's (the Grand Elves 22). The frame check: as the
-# original's but the dissolve's seven blending steps (3 262 to 4 162 ms; the blend not drawn).
+# the engine's, whose damage is the original's (the Grand Elves 23 in M4 T3b-2's three runs,
+# 22 at T9d's: seed 9, then 5). The frame check: as the original's but the dissolve's seven
+# blending steps (3 262 to 4 162 ms; the blend not drawn).
 [[sequence]]
 id = "sacrifice"
 scenario = "seq-sacrifice.toml"
 hot_seat = true
-seed = 5
+seed = 9
 actions = [
     "turn:1.0", "hex:35", "turn:1.1", "key:d", "turn:0.2", "cast:0:35", "hex:86",
 ]
