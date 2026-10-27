@@ -77,15 +77,7 @@ The review's fix C3 follows the reading of 0x47A100: a created stack whose round
 
 ### AI lane (`AI-Q<n>`)
 
-#### AI-Q7 — The damage preview in the agents' encodings (E05 T7's cut; moved to E06)
-
-**Context.** The user (2026-10-19, AI-Q6): the engine's damage preview of one's own attack levels the field, "we may also attach the estimates to the observed state or to actions in the encoding for the RL agents". The bots read it from T7 on; the agents see only the flat observation v21. **Options:** (a) a per-target block in the observation (for the active stack: each enemy stack's least and greatest kills by a shot or a strike from where it stands; observation v22, the battle lane's encoding, `cross-lane`); (b) per-entry features beside the entry mask (the attack and shot entries' kills), a new output of the batch, the encodings unchanged; (c) leave it to the network. **Recommendation:** decide after T7's ladder shows how much the preview gives the Greedy bot over Aggressor; (b) first if it does, since it changes no encoding. Not blocking. **Moved to E06** (the user, 2026-10-19, E05 T9's cut): on the held-out episodes Greedy beats Aggressor only 0.519 and the user's network plays at Aggressor's level (T7c, T7d); E06 decides with its stronger baselines, (b) still first. **E06's plan** (AI-Q8): (b) as an experiment in T5, kept only if it measurably helps. **Part 1
-built** (E06 T5, 2026-10-23): the batch's optional output of each legal attack and shot entry's
-previewed kills (C ABI v33); part 2, the network reading it and the A/B run, after T7d's
-checkpoint. **Part 2 built** (E06 T6d, 2026-10-26, the user's lever after T6c; unblocked since
-the battle lane's #458 previews a commanded turret's shot as it is made): `[network] preview`,
-each legal strike's logit biased by its previewed kills (E06 design §13). Open until T6e's A/B
-run against `t7-1` says whether it measurably helps (kept only then).
+(no open questions)
 
 ### Client lane (`CLT-Q<n>`)
 
@@ -106,10 +98,6 @@ run against `t7-1` says whether it measurably helps (kept only then).
 **Context.** A panel item writes its hint (an empty line for one without) only as the mouse enters it, the item last entered being remembered (`hovered_item` 0x6AAC68, read per frame at T3b-1; `docs/epics/E17-design.md` §10.2, "Recorded afresh"); moves over the battlefield go to the battle and leave it as it was. The panel's picture (item 2000, everywhere no control is) is entered once after the opening; from then on a move from the battlefield back onto the panel's background writes nothing, and neither does a later human turn's post of the resting mouse: the battlefield's last hint stays on the status line while the mouse lies over the panel (`hit`'s "Attack" over a wall part through the Griffins' turn, `missed`, `automatic`, the hot-seat sieges). In live play the same: a target's hint stays after the mouse leaves the battlefield for the panel's background. A slip of the interface, harmless to play but misleading. **Options:** (a) the client forgets the hovered item when the mouse moves over the battlefield, so the panel's background writes its empty line again; the comparisons reproduce the original (`h3_render::Bugs`, as CLT-Q19, Q22, Q23); (b) the client copies it always (as built); (c) a graphics option. **Recommendation:** (a); built as the original's meanwhile (the tracker's `hovered`, both profiles).
 
 ### Map client lane (`MCL-Q<n>`)
-
-#### MCL-Q6 — The edge scroll's zones are 16, 14, 16 and 15 pixels wide (E24 M2 T1a2)
-
-**Context.** The map scrolls while the mouse lies within the screen's edge zones (`edge_scroll` 0x419820; `docs/epics/E24-design.md` §3.4): x < 16 west, x > 784 east, y < 16 north, y > 584 south, on the mouse's point as `mouse_position_now` 0x50D500 gives it, x rounded down to even (E17's drawing bug, the user 2026-10-20: the client draws the cursor at the mouse itself). So the west and north zones are 16 pixels wide (0 to 15), the south 15 (585 to 599) and the east 14 (786 to 799: 785 rounds to 784). The mouse-move's test that keeps an edge cursor (0x40EBBA) is the same. A pixel or two at the right and bottom edges, harmless to play; no recorded sequence puts the pointer there. **Options:** (a) the client's zones 16 pixels on every side (x < 16, x ≥ 784, y < 16, y ≥ 584 on the mouse's own point), the original's tests on its rounded point for the comparisons only (`h3_render::Bugs`, as MCL-Q2 to Q5); (b) the client copies the original's tests on the unrounded point (16, 15, 16, 15); (c) copy them with the rounding (16, 14, 16, 15). **Recommendation:** (a): T2 builds the original's tests behind `--bugs original` and the even zones by default. **Blocked:** nothing (T2 builds both).
 
 ## Answered
 

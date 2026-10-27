@@ -17,14 +17,27 @@
 //! Since E24 M1 T3a, [`write_with`] also writes [`Extras`] for the map client's drawing
 //! situations: tiles as given (terrain, river and road pictures and their flags) and objects of
 //! any template with the editor's body.
+//!
+//! Since E08 T56 (batch E7's maps) it writes the objects that hand a visiting hero something,
+//! with their bodies ([`RewardObject`]: artifacts with their guards, Spell Scrolls, Shrines,
+//! Witch Huts, Pandora's Boxes and events), a monster's [`Treasure`], increment 7's objects
+//! without a body as [`Plain`] objects, and, through [`write_in`], a map in the RoE format
+//! ([`Format::RoE`], version `0x0E`).
 
 mod extras;
+mod rewards;
 
 use std::fmt;
 
 pub use extras::{AnyObject, Extras, GivenTile, RiverKind};
+pub use rewards::{
+    ARTIFACT_OBJECT, EVENT_OBJECT, Event, Message, PANDORA_OBJECT, RANDOM_ARTIFACT_OBJECTS,
+    RewardBody, RewardObject, SCROLL_OBJECT, SHRINE_OBJECTS, SPELL_COUNT, Treasure,
+    WITCH_HUT_OBJECT, WITCH_HUT_SKILLS,
+};
 
 use crate::gzip::crc32;
+use crate::model::Version;
 
 /// Why a map could not be written.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -51,8 +64,108 @@ impl fmt::Display for WriteError {
 
 impl std::error::Error for WriteError {}
 
+/// The format a map is written in (E08 T56).
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub enum Format {
+    /// The Restoration of Erathia's (version `0x0E`): no level limit, banned lists, custom hero
+    /// types or hero spells and primary skills, one-byte artifact and creature codes, 128 hero
+    /// types, 18 artifact slots, 8 factions, no towns (the writer's), no Witch Hut skills (batch
+    /// E7's row E7-7, A-21).
+    RoE,
+    /// The Shadow of Death's (version `0x1C`).
+    #[default]
+    Sod,
+}
+
+impl Format {
+    /// The reader's version of the format.
+    const fn version(self) -> Version {
+        match self {
+            Self::RoE => Version::RoE,
+            Self::Sod => Version::Sod,
+        }
+    }
+}
+
+/// The codes a map of a format may name, and the checks of them (E08 T56).
+pub(super) struct Codes {
+    /// The format.
+    pub(super) format: Format,
+    /// Hero types.
+    heroes: usize,
+    /// Artifacts.
+    artifacts: usize,
+    /// Creatures.
+    creatures: u16,
+    /// A hero's artifact slots.
+    slots: usize,
+}
+
+impl Codes {
+    fn of(format: Format) -> Self {
+        let v = format.version();
+        Self {
+            format,
+            heroes: v.hero_types(),
+            artifacts: v.artifacts(),
+            creatures: match format {
+                Format::RoE => ROE_CREATURE_COUNT,
+                Format::Sod => CREATURE_COUNT,
+            },
+            slots: v.artifact_slots(),
+        }
+    }
+
+    pub(super) fn artifact(&self, code: impl Into<u32>) -> Result<(), WriteError> {
+        let code = code.into();
+        if usize::try_from(code).is_ok_and(|c| c < self.artifacts) {
+            Ok(())
+        } else {
+            Err(out_of_range("artifact", code))
+        }
+    }
+
+    /// A stack names a creature the map may name and holds one or more.
+    pub(super) fn stack(&self, creature: u16, count: u16) -> Result<(), WriteError> {
+        if creature >= self.creatures {
+            return Err(out_of_range("creature", creature));
+        }
+        if count == 0 {
+            return Err(out_of_range("stack size", count));
+        }
+        Ok(())
+    }
+
+    pub(super) fn army(&self, army: &[Option<(u16, u16)>; ARMY_SLOTS]) -> Result<(), WriteError> {
+        army.iter()
+            .flatten()
+            .try_for_each(|&(creature, count)| self.stack(creature, count))
+    }
+
+    pub(super) fn skill(&self, skill: u8, level: u8) -> Result<(), WriteError> {
+        if skill >= SKILL_COUNT {
+            return Err(out_of_range("secondary skill", skill));
+        }
+        if !(1..=3).contains(&level) {
+            return Err(out_of_range("secondary skill level", level));
+        }
+        Ok(())
+    }
+
+    /// Refuses what the format cannot hold.
+    fn refuse(&self, what: &'static str, value: impl TryInto<u64>) -> Result<(), WriteError> {
+        match self.format {
+            Format::RoE => Err(out_of_range(what, value)),
+            Format::Sod => Ok(()),
+        }
+    }
+}
+
 /// Format version of The Shadow of Death maps.
 pub const SOD_FORMAT: u32 = 0x1C;
+/// Creatures an RoE map may name: Pikeman 0 to Diamond Golem 117 (VCMI 1.7.5
+/// `MapFeaturesH3M::getFeaturesROE`, `creaturesCount`; an RoE code is one byte).
+pub const ROE_CREATURE_COUNT: u16 = 118;
 /// Number of heroes in a SoD map's tables.
 pub const HERO_COUNT: u8 = 156;
 /// Number of hero classes.
@@ -89,8 +202,10 @@ pub const GROUND_OBJECTS: [u32; 12] = [21, 46, 222, 223, 224, 225, 226, 227, 228
 /// above (`packs/base/adventure.toml`; E08 T32a: batch E4's attack on a hero standing on one);
 /// since E08 T36a the trees, obstacles that only block (Oak Trees 135, Pine Trees 137, Trees
 /// 155), and the Border Gates (212; subclass the key's colour, 0 light blue … 7 black), visited
-/// from the tile before (batch E5's flights over a tree line and a gate).
-pub const PLAIN_OBJECTS: [u32; 5] = [13, 135, 137, 155, 212];
+/// from the tile before (batch E5's flights over a tree line and a gate); since E08 T56 increment
+/// 7's (batch E7): the Corpse (22), the Pyramid (63), the Learning Stone (100), the Treasure
+/// Chest (101), the University (104), the Wagon (105) and the Warrior's Tomb (108).
+pub const PLAIN_OBJECTS: [u32; 12] = [13, 22, 63, 100, 101, 104, 105, 108, 135, 137, 155, 212];
 /// Object class of a town of a fixed faction (subclass = faction, `TOWNTYPE.TXT` order: Castle 0
 /// … Conflux 8; E04c T5b).
 pub const TOWN_OBJECT: u32 = 98;
@@ -111,6 +226,8 @@ const DEFAULT_ALLOWED_HEROES: [u8; 20] = [
     0xef, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
     0xff, 0xff, 0x01, 0x00,
 ];
+/// An RoE map's allowed heroes: all 128 (E08 T56).
+const ROE_ALLOWED_HEROES: [u8; 16] = [0xff; 16];
 /// Artifacts banned from random generation by default (127–143: Vial of Dragon Blood,
 /// Armageddon's Blade, the combination artifacts and the three unused ones), as in the game's
 /// own SoD maps.
@@ -349,6 +466,9 @@ pub struct Monster {
     pub never_flees: bool,
     /// Does not grow.
     pub fixed_count: bool,
+    /// The message and treasure it gives when beaten (E08 T56: batch E7's row E7-6); `None`:
+    /// none.
+    pub treasure: Option<Treasure>,
 }
 
 /// A resource pile placed on the map (E08 T16b), with or without guards (E08 T22a1).
@@ -457,10 +577,13 @@ pub enum MapObject {
     Pile(Pile),
     /// A special ground.
     Ground(Ground),
-    /// An object without a body (E08 T32a): a Cartographer, a tree, a Border Gate.
+    /// An object without a body (E08 T32a): a Cartographer, a tree, a Border Gate; since E08 T56
+    /// increment 7's (a chest, a Corpse, the Pyramid, …).
     Plain(Plain),
     /// A town.
     Town(Town),
+    /// An object that hands a visiting hero something, with its body (E08 T56).
+    Reward(RewardObject),
 }
 
 /// A rectangle of tiles with a terrain of its own (E08 T10a: movement experiments).
@@ -577,6 +700,17 @@ pub fn write(map: &Map) -> Result<Vec<u8>, WriteError> {
     write_with(map, &Extras::default())
 }
 
+/// Writes `map` as an uncompressed map in `format` (E08 T56: batch E7's RoE map); in
+/// [`Format::Sod`] the bytes are [`write()`]'s.
+///
+/// # Errors
+/// As [`write()`]; in [`Format::RoE`] also what an RoE map cannot hold: a level limit, banned
+/// skills, a town, a hero type, artifact or creature past RoE's, a hero's spells, primary skills
+/// or fifth miscellaneous artifact, a Witch Hut's skills, a town choice past the eight factions.
+pub fn write_in(map: &Map, format: Format) -> Result<Vec<u8>, WriteError> {
+    write_all(map, &Extras::default(), format)
+}
+
 /// Writes `map` with `extras` as an uncompressed SoD map (E24 M1 T3a): the given tiles in place
 /// of what the map gives them, the objects of any template after the map's own. Without extras
 /// the bytes are [`write()`]'s.
@@ -586,36 +720,52 @@ pub fn write(map: &Map) -> Result<Vec<u8>, WriteError> {
 /// off the map (past the edges by more than its template can reach), a hero class, an owner
 /// for a class without one or without a playable player.
 pub fn write_with(map: &Map, extras: &Extras) -> Result<Vec<u8>, WriteError> {
-    validate(map)?;
+    write_all(map, extras, Format::Sod)
+}
+
+fn write_all(map: &Map, extras: &Extras, format: Format) -> Result<Vec<u8>, WriteError> {
+    let codes = Codes::of(format);
+    validate(map, &codes)?;
     extras::validate(map, extras)?;
-    let mut out = Out::default();
-    out.u32(SOD_FORMAT);
+    let sod = format == Format::Sod;
+    let mut out = Out(Vec::new(), format);
+    out.u32(format.version().code());
     out.bool(map.players.iter().any(Option::is_some));
     out.u32(u32::from(map.size));
     out.bool(map.underground.is_some());
     out.string(&map.name)?;
     out.string(&map.description)?;
     out.u8(1); // difficulty: normal
-    out.u8(map.level_limit);
+    if sod {
+        out.u8(map.level_limit);
+    }
     for (colour, player) in map.players.iter().enumerate() {
         write_player(&mut out, map, colour, player.as_ref())?;
     }
     out.u8(0xff); // victory: standard
     out.u8(0xff); // loss: standard
     out.u8(0); // no teams
-    out.bytes(&DEFAULT_ALLOWED_HEROES);
-    out.u32(0); // no campaign hero placeholders
-    out.u8(0); // no disposed heroes
-    out.bytes(&[0; 31]); // map options (unused in SoD)
-    out.bytes(&DEFAULT_BANNED_ARTIFACTS);
-    out.bytes(&[0; 9]); // no banned spells
-    let mut banned = [0u8; SKILL_COUNT.div_ceil(8) as usize];
-    for &code in &map.banned_skills {
-        banned[usize::from(code / 8)] |= 1 << (code % 8);
+    if sod {
+        out.bytes(&DEFAULT_ALLOWED_HEROES);
+        out.u32(0); // no campaign hero placeholders
+        out.u8(0); // no disposed heroes
+    } else {
+        out.bytes(&ROE_ALLOWED_HEROES);
     }
-    out.bytes(&banned);
+    out.bytes(&[0; 31]); // map options (unused)
+    if sod {
+        out.bytes(&DEFAULT_BANNED_ARTIFACTS);
+        out.bytes(&[0; 9]); // no banned spells
+        let mut banned = [0u8; SKILL_COUNT.div_ceil(8) as usize];
+        for &code in &map.banned_skills {
+            banned[usize::from(code / 8)] |= 1 << (code % 8);
+        }
+        out.bytes(&banned);
+    }
     out.u32(0); // no rumors
-    out.bytes(&[0; HERO_COUNT as usize]); // no customised hero types
+    if sod {
+        out.bytes(&[0; HERO_COUNT as usize]); // no customised hero types
+    }
     let surface = Level {
         base: map.terrain,
         patches: &map.patches,
@@ -649,10 +799,11 @@ pub fn write_with(map: &Map, extras: &Extras) -> Result<Vec<u8>, WriteError> {
         let identifier = len32(index).saturating_add(1);
         match object {
             MapObject::Hero(hero) => write_hero(&mut out, hero, identifier)?,
-            MapObject::Monster(monster) => write_monster(&mut out, monster, identifier),
+            MapObject::Monster(monster) => write_monster(&mut out, monster, identifier)?,
             MapObject::Pile(pile) => write_pile(&mut out, pile)?,
             MapObject::Ground(_) | MapObject::Plain(_) => {} // no body
             MapObject::Town(town) => write_town(&mut out, town, identifier),
+            MapObject::Reward(reward) => rewards::write_body(&mut out, &reward.body)?,
         }
     }
     for (index, object) in extras.objects.iter().enumerate() {
@@ -685,12 +836,23 @@ fn out_of_range(what: &'static str, value: impl TryInto<u64>) -> WriteError {
     }
 }
 
-fn validate(map: &Map) -> Result<(), WriteError> {
+fn validate(map: &Map, codes: &Codes) -> Result<(), WriteError> {
     if ![36, 72, 108, 144].contains(&map.size) {
         return Err(out_of_range("map size", map.size));
     }
     if let Some(&code) = map.banned_skills.iter().find(|&&code| code >= SKILL_COUNT) {
         return Err(out_of_range("banned skill", code));
+    }
+    if map.level_limit != 0 {
+        codes.refuse("level limit in an RoE map", map.level_limit)?;
+    }
+    if let Some(&code) = map.banned_skills.first() {
+        codes.refuse("banned skill in an RoE map", code)?;
+    }
+    for player in map.players.iter().flatten() {
+        if player.towns >> 8 != 0 {
+            codes.refuse("allowed towns in an RoE map (eight factions)", player.towns)?;
+        }
     }
     let below = map.underground.iter().flat_map(|u| &u.patches);
     for patch in map.patches.iter().chain(below) {
@@ -722,6 +884,7 @@ fn validate(map: &Map) -> Result<(), WriteError> {
             MapObject::Ground(ground) => ground.tile,
             MapObject::Plain(plain) => plain.tile,
             MapObject::Town(town) => town.tile,
+            MapObject::Reward(reward) => reward.tile,
         };
         if x >= map.size || y >= map.size {
             return Err(out_of_range(
@@ -730,18 +893,19 @@ fn validate(map: &Map) -> Result<(), WriteError> {
             ));
         }
         match object {
-            MapObject::Hero(hero) => validate_hero(map, hero)?,
-            MapObject::Monster(monster) => validate_monster(monster)?,
-            MapObject::Pile(pile) => validate_pile(pile)?,
+            MapObject::Hero(hero) => validate_hero(map, hero, codes)?,
+            MapObject::Monster(monster) => validate_monster(monster, codes)?,
+            MapObject::Pile(pile) => validate_pile(pile, codes)?,
             MapObject::Ground(ground) => validate_ground(ground)?,
             MapObject::Plain(plain) => validate_plain(plain)?,
-            MapObject::Town(town) => validate_town(map, town)?,
+            MapObject::Town(town) => validate_town(map, town, codes)?,
+            MapObject::Reward(reward) => rewards::validate(reward, codes)?,
         }
     }
     Ok(())
 }
 
-fn validate_hero(map: &Map, hero: &Hero) -> Result<(), WriteError> {
+fn validate_hero(map: &Map, hero: &Hero, codes: &Codes) -> Result<(), WriteError> {
     if map
         .players
         .get(usize::from(hero.owner))
@@ -750,8 +914,14 @@ fn validate_hero(map: &Map, hero: &Hero) -> Result<(), WriteError> {
     {
         return Err(out_of_range("hero owner (no playable player)", hero.owner));
     }
-    if hero.hero_type >= HERO_COUNT {
+    if usize::from(hero.hero_type) >= codes.heroes {
         return Err(out_of_range("hero type", hero.hero_type));
+    }
+    if hero.spells.is_some() {
+        codes.refuse("hero spells in an RoE map", hero.hero_type)?;
+    }
+    if hero.primary.is_some() {
+        codes.refuse("hero primary skills in an RoE map", hero.hero_type)?;
     }
     if hero.class >= HERO_CLASS_COUNT {
         return Err(out_of_range("hero class", hero.class));
@@ -765,23 +935,19 @@ fn validate_hero(map: &Map, hero: &Hero) -> Result<(), WriteError> {
             return Err(out_of_range("secondary skill count", skills.len()));
         }
         for &(skill, level) in skills {
-            if skill >= SKILL_COUNT {
-                return Err(out_of_range("secondary skill", skill));
-            }
-            if !(1..=3).contains(&level) {
-                return Err(out_of_range("secondary skill level", level));
-            }
+            codes.skill(skill, level)?;
         }
     }
     if let Some(army) = &hero.army {
-        validate_army(army)?;
+        codes.army(army)?;
     }
     if let Some(artifacts) = &hero.artifacts {
+        if let Some(&artifact) = artifacts.worn[codes.slots..].iter().flatten().next() {
+            codes.refuse("artifact at misc 5 in an RoE map", artifact)?;
+        }
         let worn = artifacts.worn.iter().flatten();
         for &artifact in worn.chain(&artifacts.backpack) {
-            if artifact >= ARTIFACT_COUNT {
-                return Err(out_of_range("artifact", artifact));
-            }
+            codes.artifact(artifact)?;
         }
         if artifacts.backpack.len() > 64 {
             return Err(out_of_range("backpack size", artifacts.backpack.len()));
@@ -790,17 +956,25 @@ fn validate_hero(map: &Map, hero: &Hero) -> Result<(), WriteError> {
     Ok(())
 }
 
-fn validate_monster(monster: &Monster) -> Result<(), WriteError> {
+fn validate_monster(monster: &Monster, codes: &Codes) -> Result<(), WriteError> {
     if !MONSTER_OBJECTS.contains(&monster.template.class) {
         return Err(out_of_range("monster object class", monster.template.class));
     }
     if monster.disposition > 4 {
         return Err(out_of_range("monster disposition", monster.disposition));
     }
-    Ok(())
+    if monster.template.class == MONSTER_OBJECTS[0]
+        && u16::try_from(monster.template.subclass).map_or(true, |c| c >= codes.creatures)
+    {
+        return Err(out_of_range("creature", monster.template.subclass));
+    }
+    monster
+        .treasure
+        .as_ref()
+        .map_or(Ok(()), |t| rewards::validate_treasure(t, codes))
 }
 
-fn validate_pile(pile: &Pile) -> Result<(), WriteError> {
+fn validate_pile(pile: &Pile, codes: &Codes) -> Result<(), WriteError> {
     if pile.template.class != PILE_OBJECT {
         return Err(out_of_range("pile object class", pile.template.class));
     }
@@ -814,20 +988,7 @@ fn validate_pile(pile: &Pile) -> Result<(), WriteError> {
         if guards.army.iter().all(Option::is_none) {
             return Err(out_of_range("pile guards (no stack)", 0u8));
         }
-        validate_army(&guards.army)?;
-    }
-    Ok(())
-}
-
-/// Every stack of an army names a creature the map may name and holds one or more.
-fn validate_army(army: &[Option<(u16, u16)>; ARMY_SLOTS]) -> Result<(), WriteError> {
-    for &(creature, count) in army.iter().flatten() {
-        if creature >= CREATURE_COUNT {
-            return Err(out_of_range("creature", creature));
-        }
-        if count == 0 {
-            return Err(out_of_range("stack size", count));
-        }
+        codes.army(&guards.army)?;
     }
     Ok(())
 }
@@ -848,10 +1009,11 @@ fn validate_plain(plain: &Plain) -> Result<(), WriteError> {
     }
 }
 
-fn validate_town(map: &Map, town: &Town) -> Result<(), WriteError> {
+fn validate_town(map: &Map, town: &Town, codes: &Codes) -> Result<(), WriteError> {
     if town.template.class != TOWN_OBJECT {
         return Err(out_of_range("town object class", town.template.class));
     }
+    codes.refuse("town in an RoE map", town.template.subclass)?;
     if town.template.subclass >= FACTION_COUNT {
         return Err(out_of_range("town faction", town.template.subclass));
     }
@@ -865,7 +1027,7 @@ fn validate_town(map: &Map, town: &Town) -> Result<(), WriteError> {
         return Err(out_of_range("town owner (no playable player)", owner));
     }
     if let Some(garrison) = &town.garrison {
-        validate_army(garrison)?;
+        codes.army(garrison)?;
     }
     if let TownBuildings::Custom { built, forbidden } = &town.buildings {
         let last = MAP_BUILDINGS % 8;
@@ -882,17 +1044,27 @@ fn write_player(
     colour: usize,
     player: Option<&Player>,
 ) -> Result<(), WriteError> {
+    let sod = out.1 == Format::Sod;
     let Some(player) = player else {
-        // Nobody plays this colour: the game skips 13 bytes; the editor writes the fields of an
-        // empty player there (no town, no main hero).
-        out.bytes(&[0, 0, 0, 0, 0, 0, 0, 0, 0, 0xff, 0, 0, 0, 0, 0]);
+        // Nobody plays this colour: the game skips 13 bytes (RoE: 6); the editor writes the
+        // fields of an empty player there (no town, no main hero).
+        if sod {
+            out.bytes(&[0, 0, 0, 0, 0, 0, 0, 0, 0, 0xff, 0, 0, 0, 0, 0]);
+        } else {
+            out.bytes(&[0, 0, 0, 0, 0, 0, 0, 0xff]);
+        }
         return Ok(());
     };
     out.bool(player.human);
     out.bool(player.computer);
     out.u8(0); // AI tactic: random
-    out.u8(0); // town choice not offered
-    out.u16(player.towns);
+    if sod {
+        out.u8(0); // town choice not offered
+        out.u16(player.towns);
+    } else {
+        // Eight factions in one byte (checked).
+        out.u8(player.towns.to_le_bytes()[0]);
+    }
     out.bool(false); // town not random
     out.bool(false); // no main town
     let heroes: Vec<u8> = map
@@ -911,11 +1083,13 @@ fn write_player(
         }
         None => out.u8(0xff),
     }
-    out.u8(0); // unknown, always 0 in the game's maps
-    out.u32(len32(heroes.len()));
-    for hero in heroes {
-        out.u8(hero);
-        out.string("")?;
+    if sod {
+        out.u8(0); // unknown, always 0 in the game's maps
+        out.u32(len32(heroes.len()));
+        for hero in heroes {
+            out.u8(hero);
+            out.string("")?;
+        }
     }
     Ok(())
 }
@@ -990,6 +1164,7 @@ fn object_template(object: &MapObject) -> ObjectTemplate {
         MapObject::Ground(ground) => ground.template.clone(),
         MapObject::Plain(plain) => plain.template.clone(),
         MapObject::Town(town) => town.template.clone(),
+        MapObject::Reward(reward) => reward.template.clone(),
     }
 }
 
@@ -1015,19 +1190,28 @@ fn position(object: &MapObject) -> (u8, u8) {
         MapObject::Ground(ground) => ground.tile,
         MapObject::Plain(plain) => plain.tile,
         MapObject::Town(town) => town.tile,
+        MapObject::Reward(reward) => reward.tile,
     }
 }
 
+/// A hero's body; RoE's has no identifier, always an experience (0 for the hero type's own), one
+/// byte per code, 18 artifact slots and nothing after the patrol but the unused bytes (spells and
+/// primary skills were refused).
 fn write_hero(out: &mut Out, hero: &Hero, identifier: u32) -> Result<(), WriteError> {
-    out.u32(identifier);
+    let sod = out.1 == Format::Sod;
+    if sod {
+        out.u32(identifier);
+    }
     out.u8(hero.owner);
     out.u8(hero.hero_type);
     out.bool(hero.name.is_some());
     if let Some(name) = &hero.name {
         out.string(name)?;
     }
-    out.bool(hero.experience.is_some());
-    if let Some(experience) = hero.experience {
+    if sod {
+        out.bool(hero.experience.is_some());
+    }
+    if let Some(experience) = hero.experience.or((!sod).then_some(0)) {
         out.u32(experience);
     }
     out.bool(false); // no custom portrait
@@ -1045,37 +1229,44 @@ fn write_hero(out: &mut Out, hero: &Hero, identifier: u32) -> Result<(), WriteEr
     out.bool(hero.tight_formation);
     out.bool(hero.artifacts.is_some());
     if let Some(artifacts) = &hero.artifacts {
-        for slot in &artifacts.worn {
-            out.u16(slot.unwrap_or(0xffff));
+        let slots = Codes::of(out.1).slots;
+        for &slot in &artifacts.worn[..slots] {
+            out.code(slot);
         }
         out.u16(u16::try_from(artifacts.backpack.len()).unwrap_or(u16::MAX));
         for &artifact in &artifacts.backpack {
-            out.u16(artifact);
+            out.code(Some(artifact));
         }
     }
     out.u8(0xff); // no patrol
-    out.bool(false); // no custom biography
-    out.u8(0xff); // sex of the hero type
-    out.bool(hero.spells.is_some());
-    if let Some(spells) = &hero.spells {
-        out.bytes(spells);
-    }
-    out.bool(hero.primary.is_some());
-    if let Some(primary) = &hero.primary {
-        out.bytes(primary);
+    if sod {
+        out.bool(false); // no custom biography
+        out.u8(0xff); // sex of the hero type
+        out.bool(hero.spells.is_some());
+        if let Some(spells) = &hero.spells {
+            out.bytes(spells);
+        }
+        out.bool(hero.primary.is_some());
+        if let Some(primary) = &hero.primary {
+            out.bytes(primary);
+        }
     }
     out.bytes(&[0; 16]);
     Ok(())
 }
 
-fn write_monster(out: &mut Out, monster: &Monster, identifier: u32) {
-    out.u32(identifier);
+/// A monster's body; RoE's has no identifier.
+fn write_monster(out: &mut Out, monster: &Monster, identifier: u32) -> Result<(), WriteError> {
+    if out.1 == Format::Sod {
+        out.u32(identifier);
+    }
     out.u16(monster.count);
     out.u8(monster.disposition);
-    out.bool(false); // no message or treasure
+    rewards::write_treasure(out, monster.treasure.as_ref())?;
     out.bool(monster.never_flees);
     out.bool(monster.fixed_count);
     out.bytes(&[0, 0]);
+    Ok(())
 }
 
 /// A pile's body (`docs/formats/h3m.md`, classes 76 and 79): the message (unguarded: none;
@@ -1093,13 +1284,9 @@ fn write_pile(out: &mut Out, pile: &Pile) -> Result<(), WriteError> {
     Ok(())
 }
 
-/// An army's seven slots, `0xFFFF` for an empty one.
+/// An army's seven slots, the format's "none" code for an empty one.
 fn write_army(out: &mut Out, army: &[Option<(u16, u16)>; ARMY_SLOTS]) {
-    for slot in army {
-        let (creature, count) = slot.unwrap_or((0xffff, 0));
-        out.u16(creature);
-        out.u16(count);
-    }
+    out.army(army);
 }
 
 /// A town's body (`docs/formats/h3m.md`, classes 77 and 98): no name, no required or banned
@@ -1135,11 +1322,26 @@ fn len32(len: usize) -> u32 {
     u32::try_from(len).unwrap_or(u32::MAX)
 }
 
-/// Little-endian output buffer.
+/// Little-endian output buffer and the format it writes.
 #[derive(Default)]
-struct Out(Vec<u8>);
+struct Out(Vec<u8>, Format);
 
 impl Out {
+    /// An artifact or creature code: one byte in RoE (`0xFF` none), two from AB on (`0xFFFF`
+    /// none). The codes were checked to fit.
+    fn code(&mut self, code: Option<u16>) {
+        match self.1 {
+            Format::RoE => self.u8(code.map_or(0xff, |c| c.to_le_bytes()[0])),
+            Format::Sod => self.u16(code.unwrap_or(0xffff)),
+        }
+    }
+    /// An army's seven slots: a code and a count each.
+    fn army(&mut self, army: &[Option<(u16, u16)>; ARMY_SLOTS]) {
+        for slot in army {
+            self.code(slot.map(|(creature, _)| creature));
+            self.u16(slot.map_or(0, |(_, count)| count));
+        }
+    }
     fn u8(&mut self, value: u8) {
         self.0.push(value);
     }
@@ -1241,6 +1443,7 @@ mod tests {
                     disposition: 4,
                     never_flees: true,
                     fixed_count: true,
+                    treasure: None,
                 }),
             ],
             underground: None,

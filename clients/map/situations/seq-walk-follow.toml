@@ -1,0 +1,15 @@
+# The view following a walk (E24 M2 T1b; clients/map/sequences.toml `walk-follow`; E24 design
+# §3.5): `seq-walk`'s map with Red's hero near the view's left side, the view not centred on it
+# (the walk's first step centres it), grass to the east for a walk of eight tiles.
+size = 36
+terrain = "grass"
+patches = [
+    { terrain = "dirt", from = [9, 10], to = [13, 14] },
+    { terrain = "rough", from = [21, 21], to = [25, 24] },
+]
+heroes = [{ at = [6, 17], class = 2 }, { at = [33, 2], owner = 1 }]
+objects = [
+    { def = "AVMsawg0.def", at = [13, 23], owner = 0 },
+    { def = "AVMgold0.def", at = [26, 11], owner = 1 },
+]
+view = [0, 9, 0]

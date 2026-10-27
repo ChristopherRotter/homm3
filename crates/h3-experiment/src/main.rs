@@ -9,7 +9,7 @@
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
-use h3_experiment::{Tables, build_only, parse};
+use h3_experiment::{Tables, build_only, map_format, parse};
 
 const USAGE: &str = "usage: h3-experiment <spec.toml> --install <dir> --map <out.h3m> --template <out.md>\n       h3-experiment <spec.toml> --install <dir> --map <out.h3m> --only <encounter>\n       h3-experiment --install <dir> --list heroes|creatures|skills|artifacts|spells";
 
@@ -114,7 +114,8 @@ fn run() -> Result<(), String> {
         .file_name()
         .map_or_else(String::new, |f| f.to_string_lossy().into_owned());
     let (map, template) = build_only(&spec, &tables, &file, args.only.as_deref())?;
-    let bytes = h3_map::writer::write(&map).map_err(|e| format!("map: {e}"))?;
+    let bytes =
+        h3_map::writer::write_in(&map, map_format(&spec)?).map_err(|e| format!("map: {e}"))?;
     for out in &outputs {
         if let Some(dir) = out.parent().filter(|d| !d.as_os_str().is_empty()) {
             std::fs::create_dir_all(dir).map_err(|e| format!("{}: {e}", dir.display()))?;

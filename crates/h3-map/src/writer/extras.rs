@@ -353,6 +353,7 @@ mod tests {
                 disposition: 4,
                 never_flees: true,
                 fixed_count: false,
+                treasure: None,
             }),
             MapObject::Pile(Pile {
                 tile: (7, 9),

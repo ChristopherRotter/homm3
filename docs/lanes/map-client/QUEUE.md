@@ -14,25 +14,8 @@ context; a task that grows is cut at a seam agreed with the user. Code readings 
 finds is an `MCL-Q<n>` in the same task (the HANDOFF's autonomy contract).
 
 T1a was cut at its seam before it started (the user, 2026-10-26): T1a1 the recording and the map
-standing still, T1a2 the scroll (both done 2026-10-26: `E24-log.md`).
-
-### E24 M2 T1b — the walk, read and recorded
-
-- **Scope:** readings (`E24-design.md` §3): `hero_move_step` 0x4805E0's animation (E08 read its
-  pricing only), the moving hero's passes (`view_moving_hero_piece` 0x47F860, its shadow
-  0x47FB40, `view_moving_hero_step` 0x47FC80: the group +0x1FC and frame +0x200, the pixel offset
-  per frame, the frames per step), the time per frame at each hero speed (the enemy speed's
-  table with it), the view following the hero, the arrows taken away, the flags while moving,
-  the walk's end (the standing group), `view_shown` 0x6989C0 around a move, the step sounds'
-  calls (for T5), a boat sailing (`hero_boat` 0x4CE900); VCMI compared. Recorded: land walks in the eight
-  directions at each hero speed, one with the view following, one ended by the movement points
-  (the path's rest kept), a sail; each walk's tiles from the original's memory into the sequence.
-  T1a2 found the direction keys without Ctrl step the selected hero one tile (design §3.4,
-  0x408E97): read with the walk; the clicks join `sequences.toml`'s inputs (the runbook).
-- **Acceptance:** §3's walk with its addresses mapped; the sequences recorded twice with the same
-  timelines; the Definition of Done.
-- **Depends on:** T1a1 (the recording), T1a2 (the hero speed option; both done). **Status:**
-  ready.
+standing still, T1a2 the scroll; T1b, the walk, done whole (all three done 2026-10-26:
+`E24-log.md`).
 
 ### E24 M2 T2 — the map over time, headless
 
@@ -40,23 +23,29 @@ standing still, T1a2 the scroll (both done 2026-10-26: `E24-log.md`).
   and a sequence's inputs, the redraws' times, the objects' step, both palette steps and the
   view's corner as the scroll moves it, as the recorded timeline's lines (design §3.4, the cursor
   lines too); the edge cursors (`h3-view`'s `cursor` copied, *provisional*, an origin comment;
-  the edge zones as MCL-Q6's answer, the original's behind `--bugs original`); `h3-map-view sequences
+  the edge zones 16 pixels on every side, MCL-Q6's answer, the original's behind `--bugs original`); `h3-map-view sequences
   [<id>]` (exit 1 on a difference) and `--frames <dir>`, the harness's frame check against the
   recorded screens, `drawn` over the sequences; unit tests replaying the timelines without the
   original files.
 - **Acceptance:** T1a's sequences as recorded, every line and every frame exact outside the
-  panels (or each difference an `MCL-Q<n>`); `clients/scripts/check.sh`; the Definition of Done.
+  panels (or each difference an `MCL-Q<n>`; T1b's walk sequences listed as T3's, a stub, not
+  failed); `clients/scripts/check.sh`; the Definition of Done.
 - **Depends on:** T1a1, T1a2 (both done). **Status:** ready.
 
 ### E24 M2 T3 — the walk drawn
 
 - **Scope:** the walk in T2's timeline (a hero walks given tiles: built for real, M4 and M5 give
-  it the engine's tiles): the moving hero's group, frame and pixel offset per frame at the
-  speed's times, the view following, the arrows taken away, the walk's end; the moving hero's
-  pieces in passes 5, 7 and 9 and the boat sailing; `sequences` and the frame check for walks.
+  it the engine's tiles; in M2 the tiles of a sequence's first `arrows` line after its click,
+  or the key's neighbour): as design §3.5 reads it, the lifted hero at the view's fixed centre
+  (passes 5, 7 and 9, the last a blend: its drawer read if the frames need it), each step's
+  view centred and its pixel offset per frame at the speed's times (speed 4 one draw), the
+  walking group and the frame carried from step to step, the arrows taken away, the objects
+  standing still and the palettes stepping during a walk, the walk's end and the standing
+  picture at the next idle redraw (the objects' catch-up steps); the boat sailing; the timeline's
+  `hero`, `walk` and `arrows` lines; `sequences` and the frame check for walks.
 - **Acceptance:** T1b's sequences as recorded, every line and every frame (or each difference an
   `MCL-Q<n>`); the Definition of Done.
-- **Depends on:** T1b, T2. **Status:** ready after them.
+- **Depends on:** T1b (done), T2. **Status:** ready after T2.
 
 ### E24 M2 T4 — the window
 
@@ -65,7 +54,14 @@ standing still, T1a2 the scroll (both done 2026-10-26: `E24-log.md`).
   keys and the mouse at the edges with the edge cursors (hardware or drawn); a sequence's walks
   replayed; pause, a step, restart, fullscreen, vsync; `--measure`; `--check` reads every frame
   back against the headless one (Xvfb); `h3-view`'s `clock` copied (*provisional*, an origin
-  comment); the Windows cross-build, tried on the user's machine.
+  comment); the Windows cross-build, tried on the user's machine. **Key bindings** (the user,
+  2026-10-26): every key goes through one table of actions (the scroll's eight directions with
+  Ctrl, the hero's eight steps, the window's own: pause, step, restart, fullscreen, vsync, quit),
+  the original's keys its defaults (design §3.4), a user file overriding them (its format and
+  place *provisional*: the review list); no key named in the event loop; `h3-sdl`'s `Key` grows
+  additively to the keys bound (a common path). M3 T0 moves the table into the common crate, the
+  battle viewer's keys too (the client lane's inbox); a screen to rebind them comes with the
+  options dialog, later.
 - **Acceptance:** a situation and a walk sequence play in the window; `--check` exact; the
   Definition of Done.
 - **Depends on:** T2, T3. **Status:** ready after them.
@@ -79,7 +75,8 @@ standing still, T1a2 the scroll (both done 2026-10-26: `E24-log.md`).
   music and the effects), on E17's pieces (`h3_assets::snd`, `wav`, `nanomp3`, `h3-sdl`); the
   cues recorded in the original if the harness can tell them (E17 M2 T5b's way).
 - **Acceptance:** the sounds as read, the gate's check; the Definition of Done.
-- **Depends on:** T4 (the window), T1b (the step sounds' calls). **Status:** ready after them.
+- **Depends on:** T4 (the window), T1b (the step sounds' calls: design §3.5, done). **Status:**
+  ready after T4.
 
 ### E24 M2 T6 — M2's closure
 

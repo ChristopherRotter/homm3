@@ -91,6 +91,8 @@ Refined with the user on 2026-10-26 (T53; ADV-Q26). Built like increments 1 to 6
 140. **The University's purchase is an answer** that keeps the decision open (the user's choice of two): `University(Buy(slot))`, closed by `University(Leave)`. Not chosen: a `GameCommand` of its own.
 141. **A won guards' battle's levels come before the visit's rest** (the user's choice of two; GAM-DEC-007): the box's or event's rewards, the artifact or scroll, the Pyramid's spell after the winner's level-ups, as the original. Not chosen: the rest at the battle's end, before the level-ups.
 
+142. **T56 whole** (the user's choice of four at T56's start, 2026-10-26, `AskUserQuestion`: "Whole, one session"; measured: the writer's bodies, the bodiless classes, a monster's treasure and the RoE format about 800 to 1 000 lines with tests; the spec's fields, `cross-lane`, 500 to 700; the two specs about 1 000 lines of TOML): the writer, the spec's fields and both specs with their templates in one session and one pull request (`cross-lane`). Recommended was three parts (the writer; the fields; the two specs); not chosen either: two parts as queued (the writer; the rest), three parts by run (each run's fields with its spec).
+
 ### Tasks (queue entries in `docs/lanes/adventure/QUEUE.md`; one or two per round, the cut confirmed at each checkpoint)
 
 - **T53 Increment 7 refined** (with increment 6's closure). Done (2026-10-26, `adventure/e08-t53`; decisions 120–123): rewards on the map, the battle seam's facts first, the first round queued (T54, T55a, T55b).
@@ -101,7 +103,9 @@ Refined with the user on 2026-10-26 (T53; ADV-Q26). Built like increments 1 to 6
   - **T55a3 Pandora's Box, events and the Pyramid** (decision 127: the banks, the Refugee Camp and the quests placed elsewhere). Done (2026-10-26, `adventure/e08-t55a3`): survey `E08-rewards.md` §7 (the shared reward record, the box, an event's firing and its stop, the reward routine's parts and order, the Pyramid), the census of the bodies, 21 new readings in `map.toml`; disputes D-37 to D-40, quirk candidates A-19, A-20.
   - **T55a4 The common rules, batch E7's plan, the rule ids, the second reading and the checkpoint** (decision 128). Done (2026-10-26, `adventure/e08-t55a4`): survey `E08-rewards.md` §8 (the common rules), §10 to §14 (T55b's inheritance, batch E7's 23 rows, the rule ids, two fresh agents' second reading: the RoE Witch Hut's mask, A-21, and the pathfinder's event stop, A-23), ADV-Q28 answered (decisions 129–136). **T55a done.**
 - **T55b The ADR amendment drafts, the design note and the cut** (decision 122; from decisions 129–136, batch E7 before the build). Done (2026-10-26, `adventure/e08-t55b`; decision 137): the drafts `docs/lanes/adventure/adr-drafts/{0013,0016,0017}-increment-7.md`, `E08-design.md` for increment 7 (parts A to C; the state measured for decision 133; eight rounds T56 to T65, batch E7 first), ADV-Q29 answered (decisions 138–141: the answers typed by decision).
-- **T56 Batch E7's maps and spec** (decisions 132, 139; design §18): the writer's bodies and the RoE format, the spec's fields (`cross-lane`), the specs and templates of E7a and E7b. Ready; its cut confirmed at its start.
+- **T56 Batch E7's maps and spec** (decisions 132, 139; design §18). Done (2026-10-26, `adventure/e08-t56`; decision 142, whole): `h3_map::writer`'s reward objects with their bodies, a monster's treasure, increment 7's plain classes and the RoE format (`write_in`); the spec's fields (`cross-lane`, `h3-experiment`); the specs and templates `E08-batch-7a` (rows 1–6, 8–11), `-7a-roe` (row 7) and `-7b` (rows 12–23), each map read back, its static layer imported and validated.
+- **T57 Batch E7's harness and runs** (design §18): the harness's reads, the recipes, the runs E7a and E7b. Ready; its cut confirmed at its start.
+- **T58 Batch E7 scored** (design §18): survey §15, A-23 settled (decision 131). After T57.
 
 ## Later increments (sketch)
 

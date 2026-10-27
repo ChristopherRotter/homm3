@@ -4,25 +4,32 @@ Pre-refined tasks of the adventure lane, in order, then the inbox of discovered 
 
 ## Tasks
 
-Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T51b (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 6 are closed (2026-10-12, -13, -20, -21, -23, -26; increment 6, army and hero management, by T53's audit). **Increment 7, rewards on the map**, refined with the user at T53 (ADV-Q26; decisions 121 to 123): T54 (the battle seam's facts) done; the survey and the ADR amendment drafts (T55a, T55b) done, each task's cut confirmed with the user at its start. T55a is cut in four (decision 125): all four done (survey `docs/rules/surveys/E08-rewards.md`; decisions 126 to 128 the cuts, its checkpoint ADV-Q28 decisions 129 to 136); T55b done (decision 137; its checkpoint ADV-Q29 decisions 138 to 141: the drafts accepted with typed answers, eight rounds with batch E7 first, design §19). The build's round 1 is T56 below. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
+Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T51b (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 6 are closed (2026-10-12, -13, -20, -21, -23, -26; increment 6, army and hero management, by T53's audit). **Increment 7, rewards on the map**, refined with the user at T53 (ADV-Q26; decisions 121 to 123): T54 (the battle seam's facts) done; the survey and the ADR amendment drafts (T55a, T55b) done, each task's cut confirmed with the user at its start. T55a is cut in four (decision 125): all four done (survey `docs/rules/surveys/E08-rewards.md`; decisions 126 to 128 the cuts, its checkpoint ADV-Q28 decisions 129 to 136); T55b done (decision 137; its checkpoint ADV-Q29 decisions 138 to 141: the drafts accepted with typed answers, eight rounds with batch E7 first, design §19). T56 done (decision 142: whole, batch E7's maps and specs). Round 2 is T57 and T58 below. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
 
-### E08 T56 — Batch E7's maps and spec
+### E08 T57 — Batch E7's harness and runs
 
-- **Scope** (design `E08-design.md` §18; survey `E08-rewards.md` §11): the maps of batch E7's two
-  runs. `h3_map::writer` (this lane's): the object bodies of classes 5, 6, 22, 26, 63, 65, 88, 93,
-  100, 101, 104, 105, 108 and 113 (a box's and an event's reward record, guards, text, colours and
-  flags; an artifact's guards and text; a scroll's spell; a Shrine's spell; a hut's mask), a
-  monster's treasure artifact, and an RoE map (format 0x0E, its header, no masks) for row E7-7.
-  `h3-experiment`'s spec (battle-owned: `cross-lane`): the rows' objects and the heroes' artifacts,
-  64-artifact backpacks, skills, spell books and gold; the specs
-  `experiments/specs/E08-batch-7a.toml` (rows E7-1 to E7-11, row 7 on an RoE map of its own) and
-  `-7b.toml` (E7-12 to E7-23), the results templates `experiments/results/E08-batch-7a.md`,
-  `-7b.md`; each map reads, imports (its static layer) and validates in the engine.
-- **From the checkpoint** (ADV-Q29, decisions 138–141): the drafts and the design accepted (the
-  answers typed by decision, T63); batch E7 first, then T59's `shared/` task with E7-23's outcome,
-  then the build (decision 139, design §19's rounds).
-- **Depends on:** T55b (done). **Status:** ready; its cut confirmed with the user at its start
-  (likely two parts: the writer; the spec and the templates).
+- **Scope** (design `E08-design.md` §18; survey `E08-rewards.md` §11; T56's specs
+  `experiments/specs/E08-batch-7a.toml`, `-7a-roe.toml`, `-7b.toml` and their templates): the
+  harness (`clients/capture/`, common; CLT-Q18: this lane builds it with its check and tells the
+  client and map-client lanes' inboxes): reads of an object's word on its tile, the game's
+  Universities (+0x4E3CC), a hero's experience, primary and secondary skills, spell points,
+  morale and luck bonuses (+0x11A, +0x11B) and status flags, its tile and movement points, the
+  backpack's count, the treasury; the two-picture choice's items (0x7809, 0x780A); the path marks
+  (batch E1a's) for E7-23; an RoE map started in hot seat. The recipes
+  `clients/capture/batches/E08-batch-7a.toml`, `-7a-roe.toml`, `-7b.toml` and the runs, the
+  templates filled. The design's University dialog (slots, purchase button) is not needed by the
+  specs' rows (E7-9 reads +0x4E3CC only): T57's call. E7-5 and E7-10 visit only the objects
+  whose word holds an artifact and a few controls (the specs say which).
+- **Depends on:** T56 (done). **Status:** ready; its cut confirmed with the user at its start (as
+  T47: likely the harness's reads first, then the runs).
+
+### E08 T58 — Batch E7 scored
+
+- **Scope** (design §18, "The scoring"): survey `E08-rewards.md` §15 (new), each row against §11's
+  and the specs' predictions; decision 131's outcome for A-23 (E7-23); a dispute a row
+  contradicts reverts to the other side (decision 129) or becomes an `ADV-Q`; the consensus rows'
+  sources `verified`; `docs/experiments/README.md`'s batch row evaluated.
+- **Depends on:** T57. **Status:** after T57 (round 2, with it or after it).
 
 ## Inbox
 

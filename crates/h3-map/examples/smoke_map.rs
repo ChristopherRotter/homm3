@@ -87,6 +87,7 @@ fn smoke_map(pikeman: ObjectTemplate) -> Map {
                 disposition: 4, // savage: never joins
                 never_flees: true,
                 fixed_count: true,
+                treasure: None,
             }),
         ],
         underground: None,

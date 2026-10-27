@@ -75,6 +75,11 @@ the battles' groups (`h3env.train.inspect`; the findings in `docs/epics/E06-log.
 are the device's: a CPU's differ from the GPU ladder's in a few battles. `t7-1`'s on both
 stratified sets (the sandbox's CPU, 4 threads).
 
+`inspect/<run>-order-probe.json` (E06, the turn-order probe, 2026-10-26): whether the run's
+trunk knows which stack acts next, from `inspect/probe_order.py` (a one-off script, not a module:
+`uv run --group train python records/inspect/probe_order.py runs/<run>/best.pt 600` from
+`python/`; the method and the findings in `docs/epics/E06-log.md`).
+
 ## Lineage
 
 The promoted networks (from E06 T3b: a run's `promoted/<n>.pt`, its record's `promotions`) and
