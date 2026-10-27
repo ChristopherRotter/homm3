@@ -141,6 +141,15 @@ fn the_tactics_phase_tells_the_first_round_and_an_ended_battle_none() {
     let order = turn_order(&obs);
     assert_eq!(ids(order.round.as_slice()), [1, 2, 0]);
     assert_eq!(ids(order.next.as_slice()), [1, 2, 0]);
+    // An observation without an active stack outside the tactics phase: the round's order from
+    // its start.
+    let mut idle = observe(
+        &battle(&r, &[(0, "fixed", 1)], &[(0, "slow", 1)], 1),
+        &r,
+        BattleSide::Attacker,
+    );
+    idle.active = None;
+    assert_eq!(ids(turn_order(&idle).round.as_slice()), [0, 1]);
     obs.result = Some(BattleResult::Victory(BattleSide::Attacker));
     assert_eq!(turn_order(&obs), TurnOrder::default());
     assert_eq!(vec![0u8; 0], ids(TurnOrder::default().round.as_slice()));

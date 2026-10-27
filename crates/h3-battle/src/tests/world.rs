@@ -122,6 +122,20 @@ fn a_world_plays_on_and_reseeding_draws_other_rolls() {
             .unwrap()
             .spell_book
     );
+    // A hero without a book has none in the world, whatever the guess's.
+    let mut bookless = hero(&r);
+    bookless.magic.spell_book = None;
+    let plain = arena(
+        &r,
+        [Some(mage(&r, &["quicksand"])), Some(bookless)],
+        &[("fixed", 5, 2, 5)],
+        &[("fixed", 5, 12, 5)],
+        7,
+    );
+    let w = world(&plain, &r, &mage(&r, &["bolt"]), 3);
+    let seen = observe(&w, &r, BattleSide::Defender);
+    assert!(!seen.heroes[1].unwrap().spell_book);
+    assert_eq!(seen.own_hero.unwrap().spell_book, SpellSet::default());
     // A guess the battle refuses is an error (BAT-HER-001).
     let mut bad = guess;
     bad.tactics = 9;

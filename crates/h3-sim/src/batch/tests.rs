@@ -1190,4 +1190,22 @@ fn a_world_of_an_env_shows_its_viewer_the_battle_and_plays_to_its_end() {
         }
     }
     assert!(guessed >= 8, "{guessed}");
+    // A guess the battle refuses is an error; without one the other hero is its type alone.
+    let (env, view) = (0..8)
+        .find_map(|i| {
+            let env = batch.env(i).unwrap();
+            env.state().hero(BattleSide::Defender).map(|v| (env, v))
+        })
+        .unwrap();
+    let mut bad = h3_contracts::BattleHero::new(view.hero_type);
+    bad.tactics = 9;
+    let refused = env.world(BattleSide::Attacker, Some(&bad), 1);
+    assert!(matches!(refused, Err(SetupError::InvalidHero { .. })));
+    let bare = env.world(BattleSide::Attacker, None, 1).unwrap();
+    let hero = bare.setup().heroes[1].as_ref().unwrap();
+    assert_eq!(*hero, h3_contracts::BattleHero::new(view.hero_type));
+    assert_eq!(
+        bare.observation(BattleSide::Attacker),
+        env.observation(BattleSide::Attacker)
+    );
 }

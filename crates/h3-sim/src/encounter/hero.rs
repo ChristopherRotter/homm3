@@ -258,15 +258,14 @@ impl HeroData {
         candidates: usize,
     ) -> Option<BattleHero> {
         let core = sampler.core();
-        let class = core.hero_type(view.hero_type)?.class;
-        let faction = sampler.factions.iter().position(|f| {
+        let (faction, class) = (0..).zip(&sampler.factions).find_map(|(i, f)| {
             f.classes
                 .iter()
-                .any(|(c, types)| *c == class && types.contains(&view.hero_type))
+                .find(|(_, types)| types.contains(&view.hero_type))
+                .map(|&(c, _)| (i, c))
         })?;
         let target = [view.attack, view.defense, view.power, view.knowledge];
-        let mut best: Option<(u32, HeroDetails)> = None;
-        for _ in 0..candidates.max(1) {
+        let draw = |rng: &mut Rng| {
             let week = pick(rng, weeks.iter().copied()) as u8 + 1;
             let details = self.details_of(sampler, rng, (faction, class, view.hero_type), week);
             let (hero, _) = self.battle(core, &details);
@@ -276,11 +275,15 @@ impl HeroData {
                 .zip(target)
                 .map(|(&a, b)| u32::from(a.abs_diff(b)))
                 .sum::<u32>();
-            if best.as_ref().is_none_or(|(d, _)| distance < *d) {
-                best = Some((distance, details));
+            (distance, details)
+        };
+        let (mut nearest, mut details) = draw(rng);
+        for _ in 1..candidates {
+            let (distance, other) = draw(rng);
+            if distance < nearest {
+                (nearest, details) = (distance, other);
             }
         }
-        let (_, mut details) = best?;
         let (hero, _) = self.battle(core, &details);
         let machines = &hero.war_machines;
         let has = [
@@ -307,19 +310,19 @@ impl HeroData {
             .filter_map(|((skill, commanded), has)| skill.filter(|_| commanded && !has))
             .collect();
         let learnt = !learn.is_empty();
-        details.skills.retain(|(s, _)| !learn.contains(s));
         // Room from the last skills that command no machine the view shows.
-        while details.skills.len() + learn.len() > MAX_HERO_SKILLS {
-            let Some(i) = details
-                .skills
-                .iter()
-                .rposition(|(s, _)| !commanded.contains(s))
-            else {
-                break;
-            };
-            details.skills.remove(i);
-        }
-        details.skills.extend(learn.iter().map(|&s| (s, 1)));
+        let (kept, others): (Vec<_>, Vec<_>) = details
+            .skills
+            .iter()
+            .filter(|(s, _)| !learn.contains(s))
+            .partition(|(s, _)| commanded.contains(s));
+        let room = MAX_HERO_SKILLS.saturating_sub(kept.len() + learn.len());
+        details.skills = others
+            .into_iter()
+            .take(room)
+            .chain(kept)
+            .chain(learn.iter().map(|&s| (s, 1)))
+            .collect();
         Some(if learnt {
             self.battle(core, &details).0
         } else {

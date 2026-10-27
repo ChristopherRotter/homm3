@@ -588,18 +588,17 @@ impl BattleBatch {
         seed: u64,
     ) -> Result<BattleEnv, BatchError> {
         self.check_ready()?;
-        let slot = self.slots.get(index).ok_or(BatchError::NoEnv(index))?;
-        let env = slot.env.as_ref().ok_or(BatchError::NoEnv(index))?;
-        let state = env.state();
-        let guess = state.hero(viewer.opponent()).and_then(|view| {
-            let sampler = self.scenarios[slot.scenario as usize].sampler()?;
+        let (slot, env) = self
+            .slots
+            .get(index)
+            .and_then(|s| s.env.as_ref().map(|env| (s, env)))
+            .ok_or(BatchError::NoEnv(index))?;
+        let sampler = self.scenarios[slot.scenario as usize].sampler();
+        let view = env.state().hero(viewer.opponent());
+        let siege = env.setup().siege.is_some();
+        let guess = sampler.zip(view).and_then(|(sampler, view)| {
             let mut rng = Rng::for_stream(seed, StreamId::ENCOUNTER);
-            sampler.guess(
-                &mut rng,
-                &view,
-                env.setup().siege.is_some(),
-                GUESS_CANDIDATES,
-            )
+            sampler.guess(&mut rng, &view, siege, GUESS_CANDIDATES)
         });
         env.world(viewer, guess.as_ref(), seed)
             .map_err(BatchError::Setup)
