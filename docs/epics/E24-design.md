@@ -1301,14 +1301,17 @@ No new reading but `input_key_message` 0x4EC0E0's (T1a2: the message's code is l
 
 Path read: the terrain music's requests (`music_track_play` 0x59A1E0 and its callers on the map:
 the manager's start 0x419990, `hero_select` 0x417B20, `hero_move_step` 0x4805E0, the walk's and
-the key's ends) and the music thread's change (`music_stop_fade` 0x59B080 before `music_thread`
-0x59A840's open, E17 §8.2 for the rest); the step sounds' loads (`adventure_manager_start`
+the key's ends) and the music's thread (M2 T6a2: `play_music` 0x59ACB0, `music_thread`
+0x59A840, `music_stop_fade` 0x59B080; E17 §8.2 for the rest); the step sounds' loads (`adventure_manager_start`
 0x407474) and plays (0x407CD0, 0x481344, pass 9's 0x47FF88, `hero_walk_end` 0x47F7D0); the
 ambient sounds (`ambient_sounds_at` 0x4183D0, `ambient_sound_visit` 0x418C10, `tile_ambient_sound`
 0x418620, `sample_control` 0x599F40) and their callers. Not read: the mine record's set-up (its
 `abandoned` byte +2 as H3API names it), a network game's turn start (0x419E00: the music and the
 ambient sounds again 6 s later, 0x4088F9), the visits', battles' and the computer players' sounds
-(M4), the AI's turn music.
+(M4), the AI's turn music; the sound without the focus (M2 T6a2, the lane's inbox:
+`window_procedure` 0x4F7C00 calls `sound_focus_lost` 0x599C40 on losing it, every effect sample
+stopped and the music faded out by the stub 0x59A830, and `music_resume` 0x59AC00 on regaining
+it, the track asked for again; the effects' return not read).
 
 - **The settings.** Nothing plays with the effects' setting (0x698764) at 0 (`ambient_sounds_at`
   returns before its scan, `sound_volume` gives 0) or the music's (0x698760) at 0 (`play_music`
@@ -1322,14 +1325,34 @@ ambient sounds again 6 s later, 0x4088F9), the visits', battles' and the compute
   terrain differs from +0x58, which it then becomes. `terrain_music_tracks` 0x678330 gives the
   track, `music_track_play` its name (0x684AE8: track 2 Water, 3 Grass, 4 Snow, 5 Swamp, 6 Lava,
   7 Sand, 8 Dirt, 9 Rough, 10 Underground; rock's 0 plays nothing, the music on) through
-  `play_music` with a loop count of 0 and the effects kept, nothing when that name plays already
-  (0x59AD0D). The walk's and the key's ends ask for +0x58's again (no change). The change (the
-  music's thread): the playing track's position is kept under its name (0x69FEC0, 0x108 bytes an
-  entry) and it fades out, its volume less a tenth of its start every 100 ms (an f32 sum
-  truncated: 114, 101, 88, 76, 63, 50, 38, 25, 12 from 127, `Sleep(100)` between), paused 900 ms
-  after the request; then the new track opens where its name last stopped and fades in (E17
-  §8.2: 12, 25, … 114, then 127 after 900 ms). The fades run on the thread's real time, not the
-  game's clock.
+  `play_music` with a loop count of 0 and the effects kept (below: dropped when that name is
+  pending or playing). The walk's and the key's ends ask for +0x58's again (no change).
+- **The music's thread** (M2 T6a2; three of the manager's critical sections: +0xC0 the names,
+  +0x90 Miles' calls, +0xA8 a thread's whole run). `play_music` (nothing with the music's setting
+  at 0) drops a request whose name is the pending one (`music_pending_name` 0x6A3394, 0x59AD0D),
+  or the one the thread opened last (`music_playing_name` 0x6A3290) while its stream
+  (`music_stream` 0x69FE78) plays (`AIL_stream_status` 4, 0x59AD43 to 0x59ADA6): a fading track
+  plays. That name with its stream not playing (one missing, one played once and ended) is asked
+  for again once +0xA8 is free (the game's thread waits for it, 0x59AE2B). Any other name becomes
+  the pending one (0x59AF1F) and starts a thread of its own (0x59AEFD). A thread enters +0xA8 first
+  (0x59A859) and leaves it at its end (0x59ABE7): threads run one after another, and one that finds
+  no pending name ends (0x59A883). Else `music_stop_fade` (+0xA8 too): a stream open and not yet
+  faded (+0x8C, set when a thread opens one, 0x59A9CF) has its place (`AIL_stream_position`)
+  kept under its name *before* its fade (0x59B146 to 0x59B1A8; `music_positions` 0x69FEC0, 0x108
+  bytes an entry, one appended for a new name), then fades from its volume (`AIL_stream_volume`
+  0x59B1E2: the whole, since a fade-in holds +0xA8) by a tenth every 100 ms (0x59B21B, an f32 sum
+  truncated: 114, 101, 88, 76, 63, 50, 38, 25, 12 from 127, `Sleep(100)` between), paused after
+  900 ms (0x59B26A). The thread closes it (0x59A8F4), takes the pending name *as it is then*
+  (0x59A96A, cleared at 0x59A9A8: the last asked for during the fade), opens it, starts a looping
+  one silent where its name's last fade began (0x59AA82) and fades it in (E17 §8.2: 12, 25, …
+  114, then 127 after 900 ms) still holding +0xA8 (0x59AB42 to 0x59ABB1); it starts a stream only
+  while the game is the active application (`app_active`, 0x59AA15). So a track asked for
+  during a fade-in waits for its end, then the new track fades out from the whole; one asked for
+  during a fade-out replaces the pending one; and the old track asked for again during its own
+  fade-out is dropped: grass, dirt and grass again within 900 ms keeps Dirt playing on grass
+  until the music's terrain next changes (**MCL-Q12**). The fades run on the thread's real time,
+  not the game's clock. The place is Miles' stream position, an offset in the file: whether it
+  is what is heard or Miles' read point is Miles' own (not read; the viewer keeps what is heard).
 - **The step sounds.** `horse00.wav` to `horse10.wav` loaded into the manager's +0x360 to +0x388
   (0x40747A, `horse%02d.wav`): by the terrain 0 to 9, and +0x388 for a hero flying (its Fly
   spell's level +0x112 not −1, or Angel Wings, artifact 72); a hero in a boat (+0x105 bit 18)
@@ -1394,13 +1417,18 @@ ambient sounds again 6 s later, 0x4088F9), the visits', battles' and the compute
   them (no recording to compare with). A hero flies in no situation (M4: the engine's).
 - **The window** (`audio`, *provisional*; E17 §8.2's way): the WAVs the tables name decoded when
   the map loads, a track on a thread of its own when first asked for (the map's first before
-  the window opens; a new one during the old one's fade-out, waited for only when the fade has
-  nearly played out); one stream for the music, one for the step sound, one per ambient slot;
-  the volumes as SDL gains of v / 127 (both settings at their highest); the fades applied to the
-  music's samples as they are queued (taking back what is queued of the old track, its place
-  kept from what plays), so they follow the device's time, as the original's thread follows real
-  time. F2 and F3 switch the music and the effects (their gains held at 0, the loops running on),
-  `--mute` plays nothing, `--cues` writes each cue played.
+  the window opens); one stream for the music, one for the step sound, one per ambient slot;
+  the volumes as SDL gains of v / 127 (both settings at their highest). The music (M2 T6a2):
+  `h3_map_view::music` models the thread above on a clock of the frames the device has played
+  (`Music`: the pending and playing names, the stream opening, fading in, playing or fading out,
+  the places; `Queue`: the model at the frames heard and a copy at the frames queued, a second
+  ahead), its runs' samples scaled by their volume; a request lands at the frames heard and,
+  taken, takes back what is queued (the stream cleared, queued again from there), so the fades
+  follow the device's time, as the original's thread follows real time. A track still being
+  decoded holds the music (the original opens its file at once; a terrain track decodes well
+  within a fade-out), one not of 44.1 kHz stereo is refused (the nine terrain tracks are). F2 and
+  F3 switch the music and the effects (their gains held at 0, the loops running on), `--mute`
+  plays nothing, `--cues` writes each cue played.
 - **Checked** (Xvfb, SDL's `disk` driver writing the mix; the tracks decoded by `ffmpeg` and
   aligned with the mix, correlation 1.0): `objects-myth` the Dirt track fading in by 100 ms steps
   to its whole after 900 ms (each step's gain measured on the samples); `seq-walk` driven by
@@ -1410,6 +1438,12 @@ ambient sounds again 6 s later, 0x4088F9), the visits', battles' and the compute
   `horse08` sailing, `loopocea` restarted by the lift), the volcano and medusas
   (`objects-flat`), the gold and gem mines (`owners-objects`); every frame read back exact and
   every change shown the headless loop's in each run.
+  M2 T6a2, the music on the model (the same way; the mix located in the tracks by normalised
+  cross-correlation, 100 ms at a time): `seq-walk` onto the dirt patch and back 326 ms later:
+  Grass faded out, Dirt from its start faded in and playing on (the second request dropped);
+  back 1 320 ms later, during Dirt's fade-in: its fade-in ended, its fade-out from 114 at once,
+  then Grass where its fade-out began, fading in; every window at the whole volume correlation
+  1.0000.
 
 ### 3.12 The view drawn fast (M2 T4b3)
 

@@ -163,7 +163,9 @@ battle.
   before it started (the user, 2026-10-27): T6a, the reviewers and their fixes (**done**
   2026-10-27: three reviewers, 29 findings, 24 fixed; the music player's five cut out as T6a2 by
   the user; design §3.7 corrected; MCL-Q11 answered), T6a2, the music player as the original's
-  music thread, T6b, the closure.
+  music thread (**done** 2026-10-27, whole: `play_music`, `music_thread` and `music_stop_fade`
+  read; `h3_map_view::music` and the window's music on it, the five findings fixed; design §3.11;
+  MCL-Q12 asked), T6b, the closure.
 - **Exit:** every recorded sequence as recorded, line by line and frame by frame (or each
   difference an `MCL-Q<n>`); a situation and a sequence play in the window at the original's
   frame times, with its sound, and render headless frame by frame.
@@ -269,3 +271,9 @@ reviewers'):
   manager sends none) and the pointer given off the frame without the focus; a point on the
   window off the frame taken as the frame's nearest (fullscreen's bars); `frames` writes no
   scroll time and releases the direction keys and Ctrl at a run's start.
+- **M2 T6a2, the music** (*provisional*): `h3_map_view::music` on a clock of the frames the
+  device has played, a second queued ahead and taken back when a request is taken; a track still
+  being decoded holds the music (silence; the original opens its file at once) and counts as
+  playing for a request of its name; a track not of 44.1 kHz stereo refused (one stream format);
+  a track's place what is heard where its fade began (Miles' position not read); the sound
+  without the focus not built (the inbox).
