@@ -63,9 +63,15 @@ def considered_visits(k: int, simulations: int) -> list[int]:
     return sequence[:simulations]
 
 
-def scaled(q: np.ndarray) -> np.ndarray:
-    """A value of reward v1 (zero-sum, about −1 to 1) on [0, 1]."""
-    return np.clip((q + 1.0) / 2.0, 0.0, 1.0)
+def rescaled(q: np.ndarray, legal: np.ndarray) -> np.ndarray:
+    """Completed Q-values on [0, 1] by their least and greatest over the `legal` candidates (the
+    paper's normalization, `mctx`'s `rescale_values`; all 0 when they are equal). A fixed scale
+    would not do: a battle's values differ by a few hundredths between actions, the prior's
+    logits by several units, so σ(q̂) would never move a choice (E06-log T8c)."""
+    if not legal.any():
+        return np.zeros_like(q)
+    lo, hi = q[legal].min(), q[legal].max()
+    return np.clip((q - lo) / max(hi - lo, 1e-8), 0.0, 1.0)
 
 
 def softmax(x: np.ndarray) -> np.ndarray:
@@ -111,7 +117,7 @@ class Node:
     def sigma(self, legal: np.ndarray) -> np.ndarray:
         """The completed-Q transform `σ(q̂)` over the `legal` candidates."""
         top = self.visits[legal].max() if legal.any() else 0
-        return (C_VISIT + top) * C_SCALE * scaled(self.completed(legal))
+        return (C_VISIT + top) * C_SCALE * rescaled(self.completed(legal), legal)
 
     def select(self, legal: np.ndarray) -> int:
         """Below the root: the deterministic selection of the completed-Q improved policy among

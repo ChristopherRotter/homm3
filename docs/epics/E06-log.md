@@ -1015,3 +1015,97 @@ entry only where a task builds on it.
   test plays a world of each env. Python `tests/test_search.py`: the binding's worlds, the
   schedule, the improved policy, legal and repeatable choices, battles to their end, refusals,
   `--report`.
+
+## T6g — The A/B run `order-1`: the turn order as an input (2026-10-27)
+
+- **The run** (`python/records/order-1.json`; `configs/e06-order.toml`: `t7-1`'s settings with
+  `[network] order`; commit d1b263e, C ABI v34, observation v22, the system actor's policy v19;
+  20 M samples in 86.5 minutes, one segment, 4 543 to 5 413 samples/s, `t7-1` 4 846 to 5 205):
+  gates at 10 M (+245 Elo) and 20 M (+22 Elo), both promoted; evaluation 18.5 minutes (`t7-1`
+  12.2): the 10 M ladder 458 s (137) and its gate 50 s (13), the battles longer there.
+- **Results** (the final ladder, 500 per kind; `t7-1`'s in brackets): Random 0.832 (0.828),
+  Aggressor 0.553 (0.551), Greedy 0.527 (0.528), the system actor 0.369 (0.374; hero 0.356, a
+  siege a hero defends 0.343, a garrison's siege 0.475), the neutral set 0.978 at value +0.250
+  (0.972, +0.245; strata 0.982, 0.962, 0.852). Every difference lies within the intervals
+  (±0.011 to ±0.018). At 10 M it was behind: Greedy 0.479 (0.499), the system actor 0.327
+  (0.359).
+- **Training:** the first half shortened its battles later: 170 samples an episode (`t7-1`
+  101), truncations 3.1 % of self-play (0.4 %; 12 % in the first 2 M samples); the second half
+  79 (66) and 0.2 % (0.0 %); the entropy 2.97 and 2.14 (2.83, 1.98).
+- **The behaviour analysis** (`python -m h3env.train.inspect` on the user's `best.pt`, the
+  sandbox's CPU; `python/records/inspect/order-1-*.json`; against the system actor, `t7-1`'s in
+  brackets): wins 0.399 (0.394); 26.6 decisions a battle (28.1), 4.96 rounds (4.94); its stacks
+  wait in 1.3 % of their turns (2.6 %) and defend in 0.5 % (0.8 %), the system actor's 8.7 % and
+  2.9 %; the tactics phase 6.6 % of its decisions (10.9 %); the hero casts in 93 % of the rounds
+  it can (87 %), 34 mana (33); targeting 52 % at the best previewed (53 %), 76 % of the best's
+  kills (77 %), 13 % killing nothing while one could (12 %); melee into a retaliation 77 % (77 %).
+  Against Greedy alike. On the neutral set it waits in 8.1 % of its turns (4.4 %) and its hero
+  casts in 95 % of the rounds it can (67 %), at the same value (+0.242; +0.236 in `t7-1`'s
+  analysis).
+- **The probe again** (`records/inspect/probe_order.py` on `order-1`'s best,
+  `order-1-order-probe.json`; it now also reads the order block itself, `engine_order`): the
+  trained trunk predicts the next stack at 0.22 / 0.25 (linear / MLP probe; `t6d-1` 0.18 / 0.19)
+  and the opponent's next at 0.35 / 0.37 (0.34 / 0.35), still below an untrained trunk's (0.26 /
+  0.32 and 0.40 / 0.46), while the block it reads tells them at 0.885 and 0.866. The network has
+  the order in its input and does not keep it.
+- **The block checked** (the same self-play, scratch scripts): outside the tactics phase the
+  active stack holds place 1 in all 24 167 decisions. Of the opponent's next stacks the block
+  misses and the probe's rule finds (1 290 of 16 849), 1 234 are automatic turns (a war machine
+  whose skill its hero lacks, a turret, the Catapult: placed in the order, but no decision, and
+  the probe's labels count decisions alone) and 56 a stack whose lost turns ended in play. No
+  fault of `turn_order`; a probe of the order should label turns, not decisions.
+- **Read:** negative. The turn order in the input moves neither the ladder nor the play T6a and
+  T6e measured (the waits and defends went down, not up): the MLP's trunk drops the 126 order
+  features among 9 008 as it dropped v21's order columns. Five 20 M runs with different settings
+  (`t5-3`, `t7-1`, `t6b-1`, `t6d-1`, `order-1`) end at the same ladder. The agent's
+  recommendation: `[network] order` stays off by default (opt-in, tested), out of the best
+  configuration; observation v22 stays (its block costs the step about 6 %, under 1 % of a run).
+
+## T8c — The measurement, in the sandbox with `order-1`'s network (2026-10-27)
+
+- **The network:** `order-1`'s best (the user's upload, T6g; `t7-1`'s file is not in the
+  sandbox): the same ladder as `t7-1`'s, observation v22 with `[network] order`. The search
+  with it plays (`--report` on 20 per kind first: 120 battles, 14 ms a decision at N 16).
+- **The search was the sampled policy** (`--report`, N 16, W 8, k 16, the report set against
+  the system actor, 2 998 battles): 0.374 and value −0.101, the sampled policy 0.374 and −0.102
+  on the same episodes. The cause: σ(q̂) took the completed values on a fixed scale ((q + 1) / 2,
+  T8b's choice), but a battle's values differ by a few hundredths between actions (their spread
+  over a root's candidates: median 0.08) while the prior's logits differ by several units
+  (median 7.0): σ spread 0.2 to 0.3, and the root's choice differed from the prior's own
+  Gumbel-max sample in 1.0 % of the decisions at N 16, 2.1 % at N 64 (384 roots each, the
+  sandbox's self-play). **Fixed:** σ rescales the completed values by their least and greatest
+  over the node's legal candidates (`search.rescaled`; the paper's normalization, `mctx`'s
+  `rescale_values`), so σ spans `(c_visit + max N) · c_scale` (5.1 at one visit); the choice
+  then differs from the prior's sample in 45 % (N 16) and 33 % (N 64). Test:
+  `test_small_value_differences_decide_once_rescaled`.
+- **N 16, rescaled** (the same set): 0.371 ± 0.018, value −0.101 (the sampled 0.374, −0.102):
+  no gain. 102 000 decisions (the fixed scale's, which played as the sampled policy, 79 000:
+  longer battles), 26 ms a decision, 45 minutes on the sandbox's 4 threads. At N 16 and k 16
+  sequential halving gives each candidate one visit, in one world, and its one step holds the
+  damage rolls: the comparison is mostly noise.
+- **N 64** (rescaled; the report set's first 200 per kind against the system actor, 1 199
+  battles): 0.384 ± 0.028, value −0.092 (the sampled 0.381, −0.095 on the same episodes): no
+  gain beyond the intervals (per kind and side within 5 of 200 battles). 60 ms a decision, 49
+  minutes.
+- **The neutral set, N 64** (attacking the system actor): on its first 200 per kind (600
+  battles) value +0.250 (the sampled +0.238), the same +0.012 in each kind; on the whole set
+  (500 per kind, 1 500 battles) +0.247 (+0.242; wandering +0.251 and +0.246, guards +0.234 and
+  +0.234, a neutral town +0.152 and +0.151), wins 0.974 both: the first 600's gain did not hold.
+  36 ms a decision, 25 minutes.
+- **Not run:** Greedy (the system actor's rows show no gain at either N), `t7-1`'s network (not
+  in the sandbox; `order-1`'s plays at its level), N 64 on the report set's other 300 per kind.
+- **Read:** negative. A decision-time search over determinized worlds with this network gains
+  nothing beyond the intervals against the system actor (N 16 and 64) or on the neutral set
+  (N 64), at 13 to 47 times the sampled policy's time. The network's values tell the actions
+  apart by a few hundredths, less than one step's chance and the worlds' guesses vary them: its
+  evaluation, not the planning on top of it, limits the agent. By design §14's rule T8d (expert
+  iteration) is not indicated; it would also need the tree in Rust (the sandbox's search makes
+  about 17 to 38 decisions a second, a training run some thousands).
+- **Put to the user** (the checkpoint; the agent's recommendation first): (a) close increment 7
+  with T8 negative and decide E06's end: decision 7's targets revised to the evidence (six
+  levers, one ladder: PPO on this network plateaus at Greedy's level, 0.37 against the system
+  actor) and T9, the closure, with `t7-1` the battle AI v1; a stronger agent (a network that
+  reads the battle's structure, a search in Rust with expert iteration) as an epic of its own;
+  (b) T8d regardless (the tree in Rust first); (c) a search diagnostic first: the true world
+  (the hidden part known, the stream re-seeded; a batch fork, an ABI addition) bounds what the
+  guess costs. AI-STUB-1 (T8b's gap) matters only for (b).

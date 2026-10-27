@@ -15,21 +15,22 @@ default).
 §14): T8a (the design, ADR-0025 point 12's amendment as a draft) done 2026-10-26; the user
 accepted the draft (`docs/lanes/ai/adr-drafts/0025-amendment-search.md`) the same day, its move
 into ADR-0025 due with the next `shared/` change. T6f (the turn order as an input, observation
-v22; the user, 2026-10-26: before T8b) and T8b (the plumbing: C ABI v34, `determinized` and
-`reseed` `cross-lane`, `h3env.search`) done 2026-10-27, one pull request (E06-log). **Next, on
-the user's machine:**
+v22) and T8b (the plumbing, C ABI v34) done 2026-10-27 (#493); T6g (the user's run `order-1`)
+and T8c (the search measured in the sandbox with `order-1`'s best, its σ fixed) done 2026-10-27,
+both negative (E06-log). **Next: the user's checkpoint** (E06-log T8c, "Put to the user"): close
+increment 7 and decide E06's end (the agent's recommendation: decision 7's targets revised to the
+evidence, then T9 with `t7-1` as the battle AI v1), or T8d with the tree in Rust, or the
+true-world search as a diagnostic; and AI-STUB-1 (a world's gap against ADR-0025 point 12a),
+which matters only for T8d.
 
-- **T6g, the A/B run `order-1`:** `uv run --group train python -m h3env.train --config
-  configs/e06-order.toml --out runs/order-1` (about 1 h 45 min), then its ladder against
-  `t7-1`'s and `python -m h3env.train.inspect`; upload `record.json`, `metrics.jsonl`, `best.pt`.
-- **T8c, the measurement** (design §14), with `t7-1`'s `best.pt`: `uv run --group train python -m
-  h3env.search --report --best runs/t7-1/best.pt --device cuda --opponent system --simulations
-  16 --json runs/t8c-system-16.json`, then `--opponent greedy`, `--set neutral-v1` (its opponent
-  the system actor) and `--simulations 64`; T8d only if the search gains beyond the intervals.
-  At T8b's checkpoint the user reviews AI-STUB-1 (a world's gap against ADR-0025 point 12a).
+- **Optional, the user's machine** (T8c's rows the sandbox left out): `uv run --group train
+  python -m h3env.search --report --best runs/t7-1/best.pt --device cuda --opponent greedy
+  --simulations 64 --json runs/t8c-greedy-64.json`; with `--opponent system` for the report
+  set's whole 500 per kind.
 
-- **Candidates kept** (not now): potential-based shaping (also against the wandering T6e found:
-  the tactics phase's placements and moves cost nothing at γ 1); the 60 M run at T7's mix
+- **Candidates kept** (not now): `[network] order` (T6g: no gain, off by default);
+  potential-based shaping (also against the wandering T6e found: the tactics phase's placements
+  and moves cost nothing at γ 1); the 60 M run at T7's mix
   (`configs/e06-t7.toml --set samples=60_000_000`, about 4 hours); the mana run `t5-4`
   (`configs/e06-mana.toml`, about 75 minutes).
 - Later (design §10): T5's rest (throughput, the observations in place), T9.
@@ -39,21 +40,6 @@ the user's machine:**
 Sorted by destination at E05's audit (T9a, 2026-10-19); the origin stays in brackets. Dropped as
 done: BAT-Q33's point for E05 (AI-Q3, ADR-0025 point 6), the `h3-game` coverage gap of a pending
 Pass offer (fixed by the adventure lane's fixed tests, #266).
-
-- 2026-10-27 (the adventure lane, E08 T60a, `adventure/e08-t60a`, `cross-lane` with the user's
-  consent; for your information, nothing to do): **`HeroDetails` gained `bonuses`**
-  (`h3_heroes::BattleBonuses`, HER-ADV-008: morale and luck until the hero's next battle's end, and
-  once-marks). `h3-sim`'s encounter (`encounter/hero.rs`) got `bonuses: Default::default()`; a new
-  literal needs it too. Game state hash v15 (the bonuses in a hero's details): the twelve adventure
-  replays re-recorded, their commands unchanged. `HeroChange` gained `GainPrimary`, `RaiseSkill`,
-  `Bonus` and `ClearBonuses`: a `GameEvent::HeroChanged` may carry them from T62 and T63.
-
-- 2026-10-27 (the adventure lane, E08 T59, `shared/e08-t59`, `cross-lane`; for your information,
-  nothing to do): core ruleset hash v49 (the mana ceiling, two adventure flags; no battle rule
-  moved): `bots-report-v1.json` and `bots-neutral-v1.json` regenerated in that pull request
-  (`h3 ai eval --set report-v1|neutral-v1 --json`); the run records keep the hash they ran on.
-  ADR-0017 point 8 now says the env's mapping onto the answers typed by decision (E08 T63,
-  `cross-lane`) and that a University's purchase head is your call.
 
 - 2026-10-27 (this lane, E06 T6f and T8b; for the next `shared/` change):
   `docs/07-simulation-and-ai.md` (shared) should name observation v22 (the turn order block
