@@ -717,8 +717,16 @@ impl<'a> View<'a> {
         let (end_x, end_y) = (first_x + LIFTED[0], first_y + LIFTED[1]);
         let left = if first_x < 0 { -first_x * tile + ox } else { 0 };
         let top = if first_y < 0 { -first_y * tile + oy } else { 0 };
-        let right = if end_x >= side { (end_x - side) * tile } else { 0 };
-        let bottom = if end_y >= side { (end_y - side) * tile } else { 0 };
+        let right = if end_x >= side {
+            (end_x - side) * tile
+        } else {
+            0
+        };
+        let bottom = if end_y >= side {
+            (end_y - side) * tile
+        } else {
+            0
+        };
         let clip = [
             cx + left,
             cy + top,
@@ -768,7 +776,11 @@ impl<'a> View<'a> {
         let with = |def: Option<&'a str>, f: u32| def.map(|d| (d, f));
         let owner = usize::from(hero.owner);
         match (hero.boat, picture) {
-            (None, Picture::Shadow) => [with(pick(&art.classes, hero.class.into()), frame), None, None],
+            (None, Picture::Shadow) => [
+                with(pick(&art.classes, hero.class.into()), frame),
+                None,
+                None,
+            ],
             (None, _) => [
                 with(pick(&art.flags, owner), flag_frame),
                 with(pick(&art.classes, hero.class.into()), frame),

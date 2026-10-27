@@ -174,15 +174,17 @@ fn every_def_with_the_frames_the_view_draws() {
     // Then the towns' pictures, one frame of one group each (E24 M1 T5b1).
     assert_eq!(needs.len(), 8 + heroes + 3 * FACTIONS);
     assert!(defs[..8].iter().all(|n| n.groups == 1));
+    assert!(defs[..8].iter().all(|n| n.walking.is_empty()));
+    // Each also in a step's walking groups 5 to 9, 8 frames each (E24 M2 T3b).
     assert!(
         defs[8..8 + heroes]
             .iter()
-            .all(|n| n.groups == 5 && n.frames == 1)
+            .all(|n| n.groups == 5 && n.frames == 1 && n.walking == (5..10) && n.walk_frames == 8)
     );
     assert!(
         defs[8 + heroes..]
             .iter()
-            .all(|n| n.groups == 1 && n.frames == 1)
+            .all(|n| n.groups == 1 && n.frames == 1 && n.walking.is_empty())
     );
     assert_eq!(
         [&needs[8 + heroes], needs.last().unwrap()],
@@ -533,12 +535,12 @@ fn the_facings_groups() {
     };
     assert_eq!(none.drawn_groups(), 0);
     // A step's walking groups 5 to 9 (E24 M2 T3b).
-    assert_eq!(tables.map.walk.drawn_groups(), 10);
+    assert_eq!(tables.map.walk.drawn_groups(), 5..10);
     let still = WalkArt {
         groups: vec![],
         ..tables.map.walk
     };
-    assert_eq!(still.drawn_groups(), 0);
+    assert!(still.drawn_groups().is_empty());
 }
 
 #[test]

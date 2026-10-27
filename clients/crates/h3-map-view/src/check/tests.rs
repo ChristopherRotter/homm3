@@ -67,6 +67,16 @@ fn counts_group_0s_frames_encodings_and_runs() {
     );
     let full = def(&[(0, &[("a", 0)]), (1, &[("b", 1)])], &frames[..2]);
     assert!(problems(&summarize(&full).unwrap(), 1, 2).is_empty());
+    // A step's walking groups (E24 M2 T3b): each with the walk's frames, whatever group 0 holds.
+    assert_eq!(
+        walk_problems(&summary, 1..3, 2),
+        [
+            "1 frames in group 1, a step draws 2",
+            "no group 2, a step draws it"
+        ]
+    );
+    assert!(walk_problems(&summary, 0..1, 3).is_empty());
+    assert!(walk_problems(&summary, 0..0, 9).is_empty());
 }
 
 #[test]

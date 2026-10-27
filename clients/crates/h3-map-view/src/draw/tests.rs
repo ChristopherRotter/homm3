@@ -193,7 +193,10 @@ fn the_shadow_pass_darkens_under_runs_of_one_and_four_only() {
 fn blend_halves_literal_pixels_with_the_screen_and_skips_runs() {
     // Pixel 0x001F (blue 31) over white 0xFFFF: each channel's halves added under the half mask
     // 0x7BEF; a run (here of 5, a flag's index) leaves the screen.
-    let f = frame([31, 5, 0, 31, 31, 31], [false, true, false, false, false, false]);
+    let f = frame(
+        [31, 5, 0, 31, 31, 31],
+        [false, true, false, false, false, false],
+    );
     let mut s = screen(0xFFFF);
     blend(&mut s, &f, &palette(), Place::default(), [0, 0, 3, 1]);
     let half = FORMAT.half_mask();

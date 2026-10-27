@@ -1447,7 +1447,10 @@ fn the_walks_offset_moves_every_tiles_place_but_the_lifted_hero_and_the_gems() {
         assert_eq!(got, expected, "{pass:?}");
     }
     // The pass 8 arrow on (12, 8): at its tile's place plus the offset.
-    assert_eq!(pieces(&slid, Pass::Path)[0].2, [32 * 12 + 10, 8 + 32 * 8 - 22]);
+    assert_eq!(
+        pieces(&slid, Pass::Path)[0].2,
+        [32 * 12 + 10, 8 + 32 * 8 - 22]
+    );
     // The lifted hero and the gems keep their places (the pool's pieces move).
     for pass in [Pass::Shadow, Pass::Body, Pass::Blend] {
         assert_eq!(heroes_of(&slid, pass), heroes_of(&still, pass), "{pass:?}");
@@ -1526,10 +1529,16 @@ fn the_lifted_hero_beyond_the_maps_sides_is_cut() {
     let clips: BTreeSet<[i32; 4]> = heroes_of(&s, Pass::Body).iter().map(|p| p.5).collect();
     assert_eq!(clips, BTreeSet::from([cell(2, 1)]));
     assert_eq!(blend_clip(at(-10, -8), [0, 0]), Some([320, 264, 352, 296]));
-    assert_eq!(blend_clip(at(-10, -8), [-10, 22]), Some([310, 286, 352, 296]));
+    assert_eq!(
+        blend_clip(at(-10, -8), [-10, 22]),
+        Some([310, 286, 352, 296])
+    );
     // Past the right and the bottom sides by a column and a row: no offset there.
     assert_eq!(blend_clip(at(26, 28), [0, 0]), Some([256, 232, 320, 264]));
-    assert_eq!(blend_clip(at(26, 28), [10, -22]), Some([256, 232, 320, 264]));
+    assert_eq!(
+        blend_clip(at(26, 28), [10, -22]),
+        Some([256, 232, 320, 264])
+    );
     // Nothing left: no draw.
     assert_eq!(blend_clip(at(-11, -8), [0, 22]), None);
 }
@@ -1576,10 +1585,7 @@ fn a_lifted_hero_in_a_boat_its_waves_flags_and_boat() {
     // On the coast: no waves.
     live.heroes = vec![sail(16)];
     let s = drawn(&art, &walking(&live, 0, 6, 5, [0, 0]), &shapes, at(7, 0));
-    assert_eq!(
-        on_tile(&s, Pass::Body, 9, 8),
-        ["abf02d.def", "ab02_.def"]
-    );
+    assert_eq!(on_tile(&s, Pass::Body, 9, 8), ["abf02d.def", "ab02_.def"]);
 }
 
 #[test]
