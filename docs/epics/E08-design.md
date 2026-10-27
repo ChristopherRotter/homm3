@@ -215,9 +215,13 @@ through `split` with the first creature's count, n less the second creature's st
 - **Security:** nothing leaks through the legal moves, so `docs/06-security.md` lists nothing new
   for events. A property test: two games that differ by a hidden event give every player the same
   observation and legal moves until it fires.
-- **Open point** (T62's start): the order of an event and a monster guarding its tile on the same
-  step (the original's `hero_move_step` tests the event at 0x4811A3 and fires it at 0x481741; the
-  guard's attack was not placed in that order).
+- **An event on a guarded tile** (T62b's opening reading, survey §8.5): the guard visits first
+  (0x48169D), the event fires after the guard's visit (0x481741). The original fires it whatever
+  that visit ended in, also for a hero the guard beat or that retreated (in the pool, owner −1:
+  A-26, state-corrupting); fixed, no flag (`ADV-QUIRK-29`, T62b2): the event fires only for a
+  hero still on its tile once the guard's visit is over (its offers answered, its battle and
+  levels given), and stays otherwise. The wait across the guard's decisions is T63's rest
+  (GAM-DEC-007); until then a guarded tile's event does not fire (`ADV-STUB-10`, decision 151).
 
 ### 13. Information (ADV-VIS-006, ADV-FOG-007)
 

@@ -4,28 +4,38 @@ Pre-refined tasks of the adventure lane, in order, then the inbox of discovered 
 
 ## Tasks
 
-Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T51b (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 6 are closed (2026-10-12, -13, -20, -21, -23, -26; increment 6, army and hero management, by T53's audit). **Increment 7, rewards on the map**, refined with the user at T53 (ADV-Q26; decisions 121 to 123): T54 (the battle seam's facts) done; the survey and the ADR amendment drafts (T55a, T55b) done, each task's cut confirmed with the user at its start. T55a is cut in four (decision 125): all four done (survey `docs/rules/surveys/E08-rewards.md`; decisions 126 to 128 the cuts, its checkpoint ADV-Q28 decisions 129 to 136); T55b done (decision 137; its checkpoint ADV-Q29 decisions 138 to 141: the drafts accepted with typed answers, eight rounds with batch E7 first, design §19). T56 done (decision 142: whole, batch E7's maps and specs). Round 2: T57 done (decision 143: whole, the harness's reads, the recipes and the three runs), T58 done (decision 144: scored, A-23 withdrawn). T58b done (decision 144: `h3-map`'s view test's oracle; ADV-Q30, decision 145: A-25 a quirk with a flag). Round 3: T59 done (decision 146: whole, `shared/e08-t59`). Round 4: T60 in two (decision 147): T60a done (`adventure/e08-t60a`, the bonuses and the four changes), T60b done (`adventure/e08-t60b`, `grant` and the teachers). Round 5: T61 in two (decision 148): T61a done (`adventure/e08-t61a`, the import and the kinds), T61b done (`adventure/e08-t61b`, decision 149: whole, the bans, the draws and the state). Round 6: T62 in two (decision 150): T62a done (`adventure/e08-t62a`, the pickups, teachers and finds), T62b below. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
+Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T51b (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 6 are closed (2026-10-12, -13, -20, -21, -23, -26; increment 6, army and hero management, by T53's audit). **Increment 7, rewards on the map**, refined with the user at T53 (ADV-Q26; decisions 121 to 123): T54 (the battle seam's facts) done; the survey and the ADR amendment drafts (T55a, T55b) done, each task's cut confirmed with the user at its start. T55a is cut in four (decision 125): all four done (survey `docs/rules/surveys/E08-rewards.md`; decisions 126 to 128 the cuts, its checkpoint ADV-Q28 decisions 129 to 136); T55b done (decision 137; its checkpoint ADV-Q29 decisions 138 to 141: the drafts accepted with typed answers, eight rounds with batch E7 first, design §19). T56 done (decision 142: whole, batch E7's maps and specs). Round 2: T57 done (decision 143: whole, the harness's reads, the recipes and the three runs), T58 done (decision 144: scored, A-23 withdrawn). T58b done (decision 144: `h3-map`'s view test's oracle; ADV-Q30, decision 145: A-25 a quirk with a flag). Round 3: T59 done (decision 146: whole, `shared/e08-t59`). Round 4: T60 in two (decision 147): T60a done (`adventure/e08-t60a`, the bonuses and the four changes), T60b done (`adventure/e08-t60b`, `grant` and the teachers). Round 5: T61 in two (decision 148): T61a done (`adventure/e08-t61a`, the import and the kinds), T61b done (`adventure/e08-t61b`, decision 149: whole, the bans, the draws and the state). Round 6: T62 in two (decision 150): T62a done (`adventure/e08-t62a`, the pickups, teachers and finds), T62b in two (decision 151: the rest stays in T63), T62b1 and T62b2 below. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
 
-### E08 T62b — `h3-adventure`: the reward record, Pandora's Box, events and the move, the Pyramid (design §11.1, §11.2, §12, §13)
+### E08 T62b1 — `h3-adventure` and `h3-game`: the reward record, Pandora's Box and the Pyramid (design §11, §11.1, §11.2) — in progress
 
-- **Scope** (decision 150; design §11 to §13, §17; ADR-0016 points 1, 4, 6; ADR-0017 points 4, 6,
-  8 to 11): the reward record's adventure half (§11.1, ADV-RWD-001: `h3_heroes::grant` for the
-  hero, the resources gained and lost, which `h3-game` applies flooring at 0, the creatures slot
-  by slot onto the army and what finds no room into one army dialog of up to seven stacks, the
-  experience carried for the game to give last); Pandora's Box (ADV-PIK-013: the offer, the
-  guards' battle as a guarded pile's, the record, the removal); an event's tile apart from the
-  movement's masks and the step that fires it (§12, ADV-OBJ-007, ADV-MOV-011: the move's stop, the
-  guards at once, the record, the removal flag; the open point first, by a code reading: the order
-  of an event and a monster guarding its tile on the same step, 0x4811A3 and 0x481741); the
-  Pyramid (ADV-TCH-008, ADV-MON-012: the offer every visit, the battle with a second creature, the
-  looted luck, the spell); what a player sees and is told (§13, ADV-FOG-007; the hidden-event
-  property); A-19 into the ledger as `ADV-QUIRK-28` (not reproduced, no flag: a record per object).
-  T62a built the outcome's `HeroGains` (`changes`, `experience`), `Choice`, the visits' block's
-  writers (`visits_mut`, `learn`; `Known::Emptied` serves a looted Pyramid) and `pick_up` for
-  guarded objects. For the next `shared/` change (not a lane path): `docs/06-security.md`'s "Its
-  own" gains the viewer's knowledge of visited objects and its heroes' marks (ADV-VIS-006, T62a).
+- **Scope** (decision 151; design §11, §17; ADR-0016 points 1, 4, 6; ADR-0017 points 4, 6, 8 to
+  11): the reward record's adventure half (§11.1, ADV-RWD-001: `h3_heroes::grant` for the hero,
+  the resources gained and lost, which `h3-game` applies flooring at 0, the creatures slot by slot
+  onto the army and what finds no room into one army dialog of up to seven stacks at the record's
+  slots (GAM-DEC-004 amended), the experience carried for the game to give); Pandora's Box
+  (ADV-PIK-013: the offer, the guards' battle as a guarded pile's, the record, the removal); the
+  Pyramid (ADV-TCH-008, ADV-MON-012: the offer every visit, the knowledge after it, the looted
+  luck, the battle with a second creature split and ordered by 0x63DF94, the spell after a win);
+  A-19 into the ledger as `ADV-QUIRK-28` (not reproduced, no flag: a record per object). Interim
+  under `ADV-STUB-10` until T63's rest: a won box's record and the Pyramid's spell before the
+  winner's levels, the record's experience before its army dialog closes.
+- **Depends on:** T62a (merged). **Status:** in progress (`adventure/e08-t62b1`).
+
+### E08 T62b2 — `h3-adventure`: events and the move (design §12, §13's events)
+
+- **Scope** (decision 151; design §12, §13; ADR-0016 points 1, 6; ADR-0017 point 10): an event's
+  tile apart from the movement's masks and the step that fires it (ADV-OBJ-007, ADV-MOV-011: the
+  move's stop with the points left, the rest of the path dropped, the guards at once as a guarded
+  pile's, the record of T62b1, the removal flag; a hero that starts on it does not fire it); the
+  guard of the tile first (survey §8.5): until T63's rest an event on a guarded tile does not fire
+  (`ADV-STUB-10`); A-26 fixed as `ADV-QUIRK-29` (no flag: the event fires only for a hero still on
+  its tile after the guard's visit); what a player sees and is told (ADV-FOG-007: never observed,
+  its firing told to its visitor's owner alone; the hidden-event property: two games that differ
+  by a hidden event give every player the same observation and legal moves until it fires).
+  For the next `shared/` change (not a lane path): `docs/06-security.md`'s "Its own" gains the
+  viewer's knowledge of visited objects and its heroes' marks (ADV-VIS-006, T62a).
 - **Cut:** confirmed with the user at its start.
-- **Depends on:** T62a (`adventure/e08-t62a`). **Status:** ready once T62a merges.
+- **Depends on:** T62b1. **Status:** ready once T62b1 merges.
 
 ## Inbox
 

@@ -956,6 +956,18 @@ A move is never rejected because of an event (a rejection would tell of a hidden
 A fired event without the removal flag fires again at every entry, not for a hero that starts its
 move on it; its beaten guards do not come back.
 
+**An event on a guarded tile** (E08 T62b's opening reading, design §12's open point): the step
+tests the event (`event_fires_for` at 0x4811A3: the flag kept in the step's frame, the stop set),
+then `after_step_guard_check` (0x48169D) lets the tile's guard visit (`guard_attack` 0x481900: the
+join or flight offers, or the battle with its levels), and only then fires the event (`event_fire`
+at 0x481741, after the frame's flag alone). **The guard comes first.** The fire does not look at
+how the guard's visit ended: a hero that lost or retreated is already back in the heroes' pool,
+its owner −1 (0x4DA2B5, `adventure_battle`'s pool call), and the event still runs for it: its
+guards fight that hero's one-creature army, or `grant_rewards` gives the pooled hero the record and
+`give_resource` (0x4E3612) adds the resources to "player −1", outside the player table (**A-26**,
+§9). A flying hero stopped by a firing event mid-move is at its move's end for the guard test
+(the stop is the end flag 0x480090 reads), so its tile's guard attacks first there too.
+
 ### 8.6 Commands, decisions, events, the observation, replays and benchmarks
 
 - **Commands.** Visits come from steps as today; there is no visit command. The questions are
@@ -1033,6 +1045,14 @@ learned (the wiki states it), an event that fires again at every entry (the edit
 reshaped D-33. **Decided at ADV-Q28** (§14): the code's side of every dispute, confirmed or reverted
 by batch E7 (decision 129); A-21 a flag (130); A-23 a flag if row E7-23 confirms it (131; withdrawn by T58, §15); A-17
 and A-19 not reproduced and no smaller bound in their place, A-18, A-20, A-22 and A-24 fixed (133).
+
+Quirk candidate (E08 T62b's opening reading, §8.5): **A-26** an event on a tile a monster guards
+fires after the guard's visit whatever it ended in: a hero beaten by the guard, or that retreated,
+is in the heroes' pool with owner −1 and still receives the event (its guards fight the pooled
+hero, or its record is granted to it, the resources to "player −1", outside the player table).
+State-corrupting, reachable (an event inside a guard's 3 × 3 block). Always fixed, no flag
+(`AGENTS.md`: state-corrupting bugs are always fixed): the event fires only for a hero still on
+its tile after the guard's visit, and stays otherwise; T62b2 builds it as `ADV-QUIRK-29`.
 
 Quirk candidates (T55a4, the second reading, §13): **A-23** the pathfinder makes an event's tile a
 stop for every colour (§7.3, §8.5): a human's path never crosses a hidden event and bends around
