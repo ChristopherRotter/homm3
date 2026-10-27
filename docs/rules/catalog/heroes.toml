@@ -961,6 +961,59 @@ numeric  = "integer"
   confidence = "high"
 
 [[rule]]
+id       = "HER-CHG-003"
+title    = "A reward record's hero half, and whether a hero can receive an artifact"
+context  = "heroes"
+status   = "implemented"
+summary  = "A Pandora's Box's or an event's reward record gives the hero its parts in the original's order, each tested against the details as the earlier parts leave them (ADR-0013 point 15.2): (1) the experience amount, only when above 0 read as signed (the map's u32: 2^31 and above give none), times the hero's Learning factor (HER-EXP-001, truncated) with the Learning it has before the record's skills (D-39), given by the game last, after the creatures and their army dialog; (2) each primary skill value above 0 added (at most `primary_max`: A-9's class, saturating); (3) each secondary skill raised to its level, never lowered (D-37), a new one only below the most skills (eight), no class or ban test; (4) the spell points plus the record's (when not 0), held between 0 and the ruleset's mana ceiling (999): above the hero's maximum, and a hero above the ceiling falls to it (D-38); (5) the morale and luck added to the battle bonuses (HER-ADV-008), without a once-mark; (6) each artifact the hero can receive, else lost; (7) each spell learned only with a worn spell book (step 6's counts), of a level at most the learnable level (HER-SPL-005; step 3's Wisdom counts), not known, the map's bans not tested, else skipped. The resources and creatures are the adventure's (ADV-RWD-001). Whether a hero can receive an artifact (ADR-0013 point 15.4; every giver: a chest, a pickup, a find, a box, a monster's treasure): it finds room (HER-CHG-002), and with `quirk.adventure.full_backpack_refuses` (A-25, ADV-QUIRK-22, on in `faithful`) only while the backpack holds fewer than its most (64), whatever the free positions; the caller loses or converts a refused one. An artifact the ruleset refuses as received (a Spell Scroll without a spell, HER-ART-003) is lost. E08 T60b: `h3_heroes::{grant, HeroReward, Granted, can_receive_artifact}`; the visits that call them come with E08 T62."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E08 T55a1 to T55a4; survey E08-rewards.md §7.4, §13): grant_rewards 0x49FA90 applies the record's parts in order: the experience computed first (amount x hero_learning 0x4E4840, f32, truncated, only when above 0 as a signed value) and given last by hero_gain_experience 0x4E33B0; the primary skills above 0; the skills raised by hero_learn_secondary_skill with the difference; the mana added and held in 0 to 999 (a sum past 999 set to 999); the morale and luck added to +0x11A, +0x11B; the artifacts only while hero_backpack_count 0x4D90C0 is below 64 (hero_give_artifact 0x4E3070), else lost; the spells only with the Spell Book worn, a level at most Wisdom + 2 and not known (hero_learn_spell). The visits test the backpack's count first (visit_treasure_chest 0x4A6520, visit_artifact 0x49F7E0; survey §2.2, §3.2, §5, §6.9)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-7b.md and E08-batch-7a.md (the capture harness, Complete 4.0 Heroes3.exe under Wine; scored in E08 T58, survey E08-rewards.md §15): E7-12, Basic Wisdom and a box's Advanced gave Advanced (D-37); E7-13, 100 + 500 = 600 spell points above the maximum (D-38); E7-14, a box's Expert Learning and 1 000 experience gave 1 000 (D-39); E7-15, the box's spell not learned before the level-up's Wisdom (D-39); E7-5, E7-6, E7-10 and E7-19, a hero with free positions and a full backpack lost or converted every artifact (A-25)"
+  retrieved  = "2026-10-27"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "lib/rewardable/Interface.cpp grantRewardBeforeLevelup and the reward's calculateManaPoints (1.7.5; survey E08-rewards.md §7.6, D-37 to D-39): the record's skill level added (clamped at Expert), the mana up to the hero's maximum, the experience after the skills with the new Learning; no full-backpack test. Disputed; the code reading and batch E7 rule"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/rewardable/Interface.cpp"
+  retrieved  = "2026-10-26"
+  confidence = "low"
+
+[[rule]]
+id       = "HER-CHG-004"
+title    = "What a teacher may teach"
+context  = "heroes"
+status   = "implemented"
+summary  = "The hero's side of the objects that teach (ADR-0013 point 15.3), read by the adventure's visits, which return the changes: a Witch Hut teaches a skill the hero does not know, at Basic, while it knows fewer than eight, with no class test; a University's slot is known, without room (eight skills), barred (the hero's class weighs the skill 0 at a level-up, D-36: Necromancy for most classes), or open (bought at Basic; the price is the adventure's); a Scholar gives its spell when the hero can learn it, its skill a level up (a known one below Expert, a new one at Basic below eight; no class test) or its primary skill +1, and a spell or skill the hero cannot take gives +1 to the fallback primary skill drawn with it; a Shrine's, a Scholar's and a record's spell needs a worn spell book, a level at most the learnable level (HER-SPL-005) and not to be known, the Pyramid's not the last (relearning changes nothing), the map's bans not tested; the Library of Enlightenment admits a hero whose level plus twice its Diplomacy level (the join bonus's level, HER-ADV-002: Diplomacy alone gives it) is at least the type's level (10: level 10, or 8, 6, 4 with Basic, Advanced, Expert Diplomacy); the Learning Stone's 1 000, a chest's gold - 500 and a record's amount give that many times the Learning factor, truncated (HER-EXP-001); the Tree of Knowledge gives the gap between the thresholds of the hero's level and the next (HER-EXP-002), without Learning, so exactly one level. E08 T60b: `h3_heroes::{hut_teaches, university_slot, SlotState, scholar_reward, ScholarGift, can_learn_spell, library_admits, learning_experience, next_level_experience}`; the visits come with E08 T62."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E08 T55a1, T55a2; survey E08-rewards.md §2.2, §6.2 to §6.8): visit_witch_hut 0x4A8080 (a known skill or eight skills refuse; hero_learn_secondary_skill(skill, 1)); university_slot_state 0x5F0790 (known, the class's weight 0 at hero class +0x18, eight skills); visit_scholar 0x4A4DC0 (a spell with a Spell Book, Wisdom + 2 and not known; a skill by hero_learn_secondary_skill(skill, 1); else +1 to the fallback primary skill); visit_shrine 0x4A5610 (known, no Spell Book, a level above Wisdom + 2 refuse); the Library 0x4A3280 (level +0x55 plus 2 x Diplomacy +0xCD below 10 refuses); visit_learning_stone 0x4A6330 and chest_gold_or_experience 0x4A6440 (trunc(hero_learning 0x4E4840 x amount)); the Tree of Knowledge 0x4A6710 (experience_to_next_level 0x4DA420, no Learning)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "config/objects/rewardableOncePerHero.json, witchHut.json, scholar.json, shrine.json, markets.json (1.7.5; survey E08-rewards.md §6.2 to §6.8): the same limiters (a free slot and an unknown skill for the hut; a book, the level and an unknown spell for the Shrine; the Scholar's three gifts and its primary-skill last resort; the Library's level 10, 8, 6, 4 with Diplomacy); the University's offers exclude Necromancy (D-36, the code reading rules)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/config/objects/rewardableOncePerHero.json"
+  retrieved  = "2026-10-26"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Witch Hut, Scholar, Library of Enlightenment, Learning stone - Heroes 3 wiki (survey E08-rewards.md §6.2, §6.4, §6.6, §6.7): the hut's Basic skill only if not learned; the Scholar's '+1 to one of the primary skills, or one level of secondary skill, or a spell', a primary skill instead of a spell it cannot learn or an expert skill; the Library's level condition with Diplomacy; the stone's 1000 experience"
+  url        = "https://heroes.thelazy.net/index.php/Scholar"
+  retrieved  = "2026-10-26"
+  confidence = "medium"
+
+[[rule]]
 id       = "HER-ART-004"
 title    = "What a defeated hero yields, in which order"
 context  = "heroes"

@@ -106,7 +106,8 @@ Refined with the user on 2026-10-26 (T53; ADV-Q26). Built like increments 1 to 6
 - **T59 Increment 7's shared part** (design §19, round 3; `shared/`). Done (2026-10-27, `shared/e08-t59`, `cross-lane`; decision 146, whole): ADR-0013 points 1, 2, 15, ADR-0016 points 1, 3, 4, 6 and ADR-0017 points 1, 4, 6, 8–11 amended (A-23 withdrawn, A-25's flag), the drafts deleted; `HeroParams::mana_ceiling` (999; pack format v48, core ruleset hash v49); `ADV-QUIRK-21` and `-22` (flags 37, 38); the glossary; the replay headers and the bots' tables.
 - **T60 `h3-heroes`: the rewards on the hero** (design part A, round 4), in two (decision 147):
   - **T60a The battle bonuses and the four changes.** Done (2026-10-27, `adventure/e08-t60a`, `cross-lane`): `BattleBonuses` on `HeroDetails`; `GainPrimary`, `RaiseSkill`, `Bonus`, `ClearBonuses`; the bonuses in the own side's morale and luck (HER-ADV-008); game state hash v15, the twelve replays re-recorded (their commands unchanged).
-  - **T60b The reward record's hero half and the teachers** (design §3, §4): `grant` (HER-CHG-003), the eight functions, `can_receive_artifact` under flag 38. Next.
+  - **T60b The reward record's hero half and the teachers.** Done (2026-10-27, `adventure/e08-t60b`): `grant` with `HeroReward` and `Granted` (HER-CHG-003), `can_receive_artifact` under flag 38 (`ADV-QUIRK-22`'s test in both profiles), the teachers (HER-CHG-004: `can_learn_spell`, `hut_teaches`, `university_slot`, `scholar_reward`, `library_admits`, `learning_experience`, `next_level_experience`); no version. **T60 done.**
+- **T61 `h3-map` and `h3-adventure`: the import, the kinds, the draws, the state** (design §7 to §10, round 5; map import v12, ruleset part v12, adventure state hash v13). Next; its cut confirmed at its start (design §19: likely the import and kinds, then the draws and state).
 
 ## Later increments (sketch)
 

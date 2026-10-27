@@ -6444,3 +6444,55 @@ stale lock of the session's own fetch removed). No original data staged (none ne
   the new tests, fixed, clippy re-run clean over the lane's crates and `h3-pack-battle`, `h3-sim`,
   `h3-cli`) and `check-lane` (`cross-lane` by design; `check-lane --cross-lane` ok); coverage,
   determinism and bench-check passed.
+
+### Increment 7, round 4: T60b, the reward record's hero half and the teachers (2026-10-27, `adventure/e08-t60b`)
+
+**The cut** (decision 147): T60b whole, inside `h3-heroes`, no version; nothing to split (the
+previous session's estimate held). **Baseline:** `master` c637652 (#500 merged as 40151d3, CI
+green on it; c637652 a client change); the sandbox's light gates passed (the code verified by
+CI). No original data staged (none needed).
+
+- **`grant`** (design §3; ADR-0013 point 15.2; HER-CHG-003): `h3_heroes::grant(details, ruleset,
+  &HeroReward) -> Granted` on a scratch copy, each change checked and applied before the next
+  part is tested. `HeroReward` holds the map's values (`experience: u32`, read as signed;
+  `primary: [i8; 4]`; `skills`; `mana: i32`; `morale`, `luck: i8`; `artifacts`; `spells`),
+  `Granted { changes, experience, lost, skipped }`. The experience through `learning_experience`
+  of the details before the record's skills (D-39), not a change. The engine's readings where the
+  design was silent: a skill pair that changes nothing (known at or above its level) or that the
+  ruleset refuses gives no change; a mana of 0 gives none (a hero above the ceiling keeps its
+  points then); an artifact the ruleset refuses as received (a Spell Scroll without a spell, one
+  it lacks) is lost.
+- **`can_receive_artifact(details, ruleset, ArtifactInstance)`** (ADR-0013 point 15.4): the
+  `AddArtifact` check (HER-CHG-002), and with `FULL_BACKPACK_REFUSES` the backpack below its
+  most too. Under HER-CHG-003 (every giver calls it); `change::has_space` made `pub(crate)`.
+- **The teachers** (design §4; ADR-0013 point 15.3; **HER-CHG-004**, an id beyond survey §12, so
+  that HER-CHG-003 stays the record's): `can_learn_spell(details, ruleset, spell, known_counts)`
+  is the design's "`learns_spell`'s known-counts form" under its own name, so `learns_spell`
+  (Eagle Eye, HER-SPL-006) and its caller in `h3-game` stay as they are (it delegates with
+  `true`); `hut_teaches`; `university_slot -> SlotState { Known, NoRoom, Barred, Open }` in the
+  design's order (no room before the class's weight; a hero type or skill the ruleset lacks:
+  barred); `scholar_reward(details, ruleset, ScholarGift, fallback)` with `ScholarGift {
+  Primary, Skill, Spell }` for the design's kind and id (a primary gift +1 to itself, the
+  fallback for a spell or skill the hero cannot take); `library_admits(details, ruleset, level)`
+  (the Diplomacy level read as `join_bonus`, which only Diplomacy gives; no skill by name);
+  `learning_experience` (= `gained_experience`, HER-EXP-001's single computation);
+  `next_level_experience` (the gap between the level's and the next level's thresholds; 0
+  without the hero parameters).
+- **Tests** (`src/tests/grant.rs`, a pack with Wisdom, Learning and Diplomacy stand-ins, a worn
+  book, spells of levels 3 and 5, class weights and both profiles):
+  `a_record_is_granted_in_the_original_order` (E7-13's 600 points, E7-14's 1 000),
+  `the_experience_is_signed_and_counts_the_learning_known_before`,
+  `skills_rise_never_fall_and_a_new_one_needs_room` (E7-12),
+  `the_mana_is_held_between_zero_and_the_ceiling`,
+  `the_bonuses_and_primary_skills_are_given_only_when_set`,
+  `a_spell_needs_the_book_the_record_may_give`,
+  **`a_full_backpack_refuses_an_artifact_in_faithful_only`** (`ADV-QUIRK-22`'s regression test in
+  both profiles: E7-5, E7-6, E7-10, E7-19's situation), and the teachers' five.
+- **Rules**: HER-CHG-003 and HER-CHG-004 (new, implemented: the code reading, batch E7, VCMI, the
+  wiki); the ledger's `ADV-QUIRK-22` names its test.
+- **Docs**: the design note's §3, §4 (built, shortened), §6, §11's Pyramid; the tasks' lines;
+  the queue (T61); the HANDOFF; `OVERVIEW.md`.
+- **Verify** (scoped, no original data staged): every step passed but check-rules, which ran
+  before the catalog had HER-CHG-003 and -004 (the markers' ids unknown); re-run after the
+  catalog's entries, ok, with check-docs, check-exe-map, check-stubs and doc-drift; coverage,
+  determinism and bench-check passed.

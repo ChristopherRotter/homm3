@@ -27,45 +27,14 @@ random), the spells' level, schools and `granted_by_name_only` (Titan's Lightnin
 skills (8), `HeroParams::mana_ceiling` (999, T59). Not the details': the once-per-hero marks of
 objects (the adventure's, by hero id, §10) and the players' knowledge (§10).
 
-### 3. The reward record's hero half (HER-CHG-003; ADR-0013 point 15.2)
+### 3, 4. The reward record's hero half and what a teacher may teach
 
-`h3_heroes::grant(details, ruleset, reward: &HeroReward) -> Granted` where `HeroReward` holds the
-record's experience, primary skills, skills, mana, morale, luck, artifacts and spells (resources
-and creatures stay the adventure's), and `Granted { changes: Vec<HeroChange>, experience: u32,
-lost: Vec<ArtifactTypeId>, skipped: Vec<SpellId> }`. It works on a scratch copy so each part is
-checked against the details as the earlier parts leave them (the original's order, §7.4):
-
-1. the experience amount: `trunc(f32(amount) × learning factor)` with the Learning **before** the
-   record's skills (D-39), only for an amount above 0 (the map's u32 read as signed: 2³¹ and
-   above give none); returned in `experience`, **not** applied (the game gives it last, §14);
-2. `GainPrimary` with each value above 0;
-3. `RaiseSkill` per pair (D-37: raised, never lowered; a new one only below the most; no class or
-   ban test);
-4. `SetSpellPoints(clamp(mana + delta, 0, mana_ceiling))` (D-38: a hero above the ceiling falls
-   to it; a negative delta stops at 0);
-5. `Bonus { morale, luck, None }` when either is not 0;
-6. (resources: the adventure's);
-7. `AddArtifact` per artifact that `can_receive_artifact` admits (§4: A-25's flag), else `lost`;
-8. `LearnSpell` per spell with a worn spell book (step 7's counts), of a level at most the
-   learnable level (step 3's Wisdom counts), not known; else `skipped`; the map's bans not tested;
-9. (creatures: the adventure's; the army dialog: the game's);
-10. (the experience: the game's, after the army dialog).
-
-A combination completed by a received part asks nothing (§8.3): the player assembles with
-`Manage::Assemble`. The function is pure and total; `Granted` is empty for an empty record.
-
-### 4. What a teacher may teach (ADR-0013 point 15.3–15.4)
-
-| Function | Rule | Survey |
-|---|---|---|
-| `can_receive_artifact(details, ruleset, artifact)` | `FULL_BACKPACK_REFUSES` on (`faithful`): the backpack's count below its most, whatever the free positions; off: a position that takes it (HER-CHG-002) or the backpack below its most (A-25, decision 145; ADR-0013 point 15.4) | §3.2, §8.2, §15 |
-| `learns_spell(details, ruleset, spell, known_counts)` | a worn spell book, level ≤ learnable, and (a Shrine, a Scholar, a box) not known; the Pyramid passes `known_counts = false` (relearning changes nothing) | §6.5, §6.7, §7.5 |
-| `hut_teaches(details, ruleset, skill)` | not known, below the most skills; no class test | §6.6 |
-| `university_slot(details, ruleset, skill) -> SlotState` | `Known`, `NoRoom` (eight), `Barred` (the class weighs it 0), else `Open` | §6.8 |
-| `scholar_reward(details, ruleset, kind, id, fallback) -> HeroChange` | a spell as `learns_spell`; a skill: known below Expert a level up, new at Basic below the most; else +1 to the fallback primary | §6.7 |
-| `library_admits(details, ruleset, level)` | level + 2 × Diplomacy level ≥ the type's level (10) | §6.2 |
-| `learning_experience(details, ruleset, amount)` | `trunc(f32(amount) × learning factor)`: the Learning Stone (1 000), a chest (gold − 500) | §2.2, §6.4 |
-| `next_level_experience(details, ruleset)` | the gap to the next level's threshold, no Learning: the Tree | §6.4 |
+Built by T60b (`E08-log.md`, "T60b"): `grant` with `HeroReward` and `Granted` (HER-CHG-003; the
+experience in `Granted::experience` for the game to give last, §14), `can_receive_artifact`
+under flag 38 (A-25), and the teachers (HER-CHG-004): `can_learn_spell` (the known-counts form;
+the Pyramid passes `false`), `hut_teaches`, `university_slot` (`SlotState`), `scholar_reward`
+(`ScholarGift`: kind and id in one; the fallback for a spell or skill), `library_admits`,
+`learning_experience`, `next_level_experience`. For §11's visits.
 
 ### 5. The bonuses in battle
 
@@ -76,9 +45,9 @@ stacks; after any battle, 0.
 
 ### 6. Rule ids, quirks, shared needs (the hero side)
 
-HER-CHG-003 (§3) as survey §12 (T60b); HER-ADV-008 and HER-CHG-001's summary built by T60a. No quirk of the hero side but A-25's (`FULL_BACKPACK_REFUSES`, flag 38, T59: a full
-backpack refuses an artifact whatever the free positions in `faithful`; ADR-0013 point 15.4; the
-wraps are A-9's class). Everything else is `h3-heroes`' (the lane's).
+Built: HER-ADV-008 and HER-CHG-001's summary (T60a), HER-CHG-003 and HER-CHG-004 (the teachers,
+an id beyond survey §12; T60b). No quirk of the hero side but A-25's (`FULL_BACKPACK_REFUSES`,
+flag 38: its regression test in both profiles by T60b; the wraps are A-9's class).
 
 ## Part B — the map (`h3-map`, `h3-adventure`)
 
@@ -218,7 +187,7 @@ only when it gives.
   its rest after the levels; then the record (ADV-RWD-001, §11.1); removed.
 - **Pyramid** (ADV-TCH-008): the offer at every visit; knowledge after it; looted → `Bonus { luck:
   −2, mark: Some(1) }`; else the monster battle (§11.2), its rest after the levels: looted (emptied),
-  the spell by `learns_spell(known_counts = false)` or lost.
+  the spell by `can_learn_spell(…, false)` or lost.
 
 **11.1 The record** (ADV-RWD-001, the adventure's half): `grant` (§3) for the hero; the resources
 (gains, and losses that floor at 0); the creatures slot by slot onto the army (a stack of its
