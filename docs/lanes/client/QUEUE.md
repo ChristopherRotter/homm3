@@ -26,7 +26,7 @@ the 72 stills, the 15 siege sequences and `walk`, `turn`, `climb`, the status li
 ### E17 M4 T3c — M4's review list, M5 refined
 
 - **Scope:** the review list with the user (the epic's "Review lists", T3a's queued findings),
-  CLT-Q22 and Q23, M5 (live play) refined with the user.
+  CLT-Q22 to Q24, M5 (live play) refined with the user.
 - **Acceptance:** the review list accepted; M5's tasks in this queue; M4 done.
 - **Depends on:** T3b-2. **Status:** ready after T3b-2; the user present.
 

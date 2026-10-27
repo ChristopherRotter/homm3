@@ -3467,5 +3467,8 @@ dialog, box, state and hint, in `states.jsonl` and `frames.jsonl`), read-only.
   harness's park) enters none; a book (`Input::Book`) forgets it (*provisional*: the book's
   items not read per frame; the M3 sequences with casts, T3b-2). The panel's picture takes the
   mouse by its layout's `size` (`ui::Picture::size`, the layouts' format: the M4 review list).
+  The battlefield's last hint so stays over the panel's background in live play too: CLT-Q24
+  asked (recommended: the client forgets the hovered item over the battlefield, the original's
+  for the comparisons); built as the original's meanwhile.
 - **Captured:** the 15 siege sequences and `walk`, `turn`, `climb` as recorded but `aim`, whose
   last 8 frames' ` log` masks are gone (its counts recorded again); the stills below.

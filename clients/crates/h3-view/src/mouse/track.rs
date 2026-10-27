@@ -199,7 +199,9 @@ impl Handler<'_> {
             // enters it, another being the hovered item (0x5FE73E; E17 M4 T3b, read per frame:
             // the panel's picture 2000 entered at the first move into the panel after the
             // opening, so `walk`'s next human turn empties the line and `hit`'s keeps the
-            // Catapult's hint; `aim`'s mouse rests over the field until its shot).
+            // Catapult's hint; `aim`'s mouse rests over the field until its shot). The
+            // battlefield's last hint so stays over the panel's picture: the original's in both
+            // profiles, CLT-Q24 asked.
             self.set_marked(now, None);
             let item = if self.items {
                 self.layout.panel.item_at(point)
