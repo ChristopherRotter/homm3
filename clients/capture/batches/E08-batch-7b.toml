@@ -1,0 +1,220 @@
+# E08 batch E7b played by the capture harness (E08 T57; h3adv.py batch): the procedure of
+# experiments/specs/E08-batch-7b.toml as steps, on Easy, with T57's reads (README, "Rewards on the
+# map"). Hot seat, Red and Blue human; the map bans every skill but Wisdom and Learning. Day 1,
+# Red: E7-12 to E7-15 (Pandora's Boxes), E7-17 and E7-18 (events); Blue: E7-16 (the Pyramid,
+# retreat), E7-22 (the Pyramid won), E7-21 (the looted Pyramid twice, then a battle), E7-19 and
+# E7-20 (boxes without room), E7-23 (paths only: one click each, the hero never moves).
+# The specs' `opening.py` (a battle's stacks at its opening) is the battle record's `opening`
+# (`opening:rows`, `morale:start`, `luck:start`).
+
+spec = "experiments/specs/E08-batch-7b.toml"
+players = ["Red", "Blue"]
+difficulty = "easy"
+
+# --- Day 1, Red: the boxes ---------------------------------------------------------------------------
+
+[[step]]
+encounter = "E7-12"
+hero = "E7-12"
+walk = [6, 3]
+expect = { dialogs = true }
+answer = "yes"
+record = { "skills before" = "before:hero:skills", "the question; the messages (first words)" = ["questions", "messages", "message_pictures"], "skills after" = "hero:skills", "the box on (6, 3) after (yes or no)" = "object:6,3" }
+
+[[step]]
+encounter = "E7-13"
+hero = "E7-13"
+walk = [6, 6]
+expect = { dialogs = true }
+answer = "yes"
+record = { "spell points before" = "before:hero:spell_points", "the messages (first words)" = ["questions", "messages", "message_pictures"], "spell points after" = "hero:spell_points" }
+note = { "the box on (6, 6) after" = "object:6,6" }
+
+[[step]]
+encounter = "E7-14"
+hero = "E7-14"
+walk = [6, 9]
+expect = { dialogs = true }
+answer = "yes"
+level_up = "Wisdom"
+record = { "experience and skills before" = ["before:hero:experience", "before:hero:skills"], "the messages (the experience shown)" = ["questions", "messages", "message_pictures"], "the level-up's offers" = "level_up_dialogs", "experience and skills after" = ["hero:experience", "hero:skills"] }
+
+[[step]]
+encounter = "E7-15"
+hero = "E7-15"
+walk = [6, 12]
+expect = { dialogs = true }
+answer = "yes"
+level_up = "Wisdom"
+record = { "before: spells, skills, experience" = ["before:hero:spells", "before:hero:skills", "before:hero:experience"], "the messages (the parts shown, in order)" = ["questions", "messages", "message_pictures"], "the level-up's offers; the one taken" = "level_up_dialogs", "after: spells, skills, experience" = ["hero:spells", "hero:skills", "hero:experience"] }
+
+# --- E7-17: Red's event on (16, 3), then Blue's only on (16, 6) --------------------------------------
+
+[[step]]
+encounter = "E7-17"
+hero = "E7-17"
+walk = [16, 3]
+expect = { dialogs = true }
+record = { "E7-17 before: tile, movement points, gold" = ["before:hero:tile", "before:hero:points", "before:resource:gold"], "E7-17's path (tiles); the message" = ["path_tiles", "messages", "message_pictures"], "E7-17 after: tile, movement points, gold" = ["hero:tile", "hero:points", "resource:gold"] }
+note = { "the event on (16, 3) after" = "object:16,3" }
+
+[[step]]
+encounter = "E7-17"
+hero = "E7-17b"
+walk = [16, 6]
+expect = { dialogs = true }
+record = { "E7-17b before: tile, movement points, gold" = ["before:hero:tile", "before:hero:points", "before:resource:gold"], "E7-17b's path (tiles); the message (or none)" = ["path_tiles", "messages", "message_pictures"], "E7-17b after: tile, movement points, gold" = ["hero:tile", "hero:points", "resource:gold"] }
+note = { "the event on (16, 6) after" = "object:16,6" }
+
+# --- E7-18: the event on (14, 9) that stays: in, off east, in again ------------------------------------
+
+[[step]]
+encounter = "E7-18"
+hero = "E7-18"
+walk = [14, 9]
+expect = { dialogs = true }
+record = { "gold before" = "before:resource:gold", "first entry: the message; gold; tile" = ["messages", "resource:gold", "hero:tile"] }
+
+[[step]]
+encounter = "E7-18"
+hero = "E7-18"
+walk = [15, 9]
+expect = { dialogs = true }
+note = { "the step off east: messages" = "messages" }
+
+[[step]]
+encounter = "E7-18"
+hero = "E7-18"
+walk = [14, 9]
+expect = { dialogs = true }
+record = { "second entry: the message; gold; tile" = ["messages", "resource:gold", "hero:tile"] }
+note = { "the event on (14, 9) after" = "object:14,9" }
+
+[[step]]
+end_turn = true
+
+# --- Blue: E7-16, the Pyramid (26, 20) with one Pikeman: the opening, then the retreat ----------------
+
+[[step]]
+encounter = "E7-16"
+hero = "E7-16"
+walk = [26, 20]
+expect = { dialogs = true }
+answer = "yes"
+battle = "retreat"
+record = { "the Pyramid's word before (hex)" = ["before:word:26,20", "before:object:26,20"], "the question; the message" = ["questions", "messages"], "rows" = "opening:rows", "after the retreat: the Pyramid's word" = ["word:26,20", "object:26,20"] }
+note = { "retreated" = "retreated" }
+
+# --- E7-22: the Pyramid won with Advanced Wisdom; Learning at every level-up ---------------------------
+
+[[step]]
+encounter = "E7-22"
+hero = "E7-22"
+walk = [26, 20]
+expect = { dialogs = true }
+answer = "yes"
+battle = "auto"
+level_up = "Learning"
+record = { "before: spells; the Pyramid's word (hex)" = ["before:hero:spells", "before:word:26,20", "before:object:26,20"], "rows" = "opening:rows", "the battle's result; the level-ups (offers, the one taken)" = ["winner", "level_up_dialogs"], "the messages after the level-ups (first words)" = ["messages", "message_pictures"], "after: spells, skills; the Pyramid's word (hex)" = ["hero:spells", "hero:skills", "word:26,20", "object:26,20"] }
+note = { "the question" = "questions", "E7-22's tile after the battle" = "hero:tile" }
+
+[[step]]
+encounter = "E7-22"
+hero = "E7-22"
+walk = [29, 22]
+expect = { dialogs = true }
+
+# --- E7-21: the looted Pyramid twice (stepping off between), then the Pikemen on (30, 18) -------------
+
+[[step]]
+encounter = "E7-21"
+hero = "E7-21"
+record = { "before: luck bonus, status flags (hex)" = ["hero:luck_bonus", "hero:status"] }
+
+[[step]]
+encounter = "E7-21"
+hero = "E7-21"
+walk = [26, 20]
+expect = { dialogs = true }
+answer = "yes"
+record = { "first visit: the question, messages; luck bonus, status flags after" = ["questions", "messages", "hero:luck_bonus", "hero:status"] }
+note = { "E7-21's tile after the first visit" = "hero:tile" }
+
+[[step]]
+encounter = "E7-21"
+hero = "E7-21"
+walk = [27, 20]
+expect = { dialogs = true }
+
+[[step]]
+encounter = "E7-21"
+hero = "E7-21"
+walk = [26, 20]
+expect = { dialogs = true }
+answer = "yes"
+record = { "second visit: messages; luck bonus, status flags after" = ["questions", "messages", "hero:luck_bonus", "hero:status"] }
+
+[[step]]
+encounter = "E7-21"
+hero = "E7-21"
+walk = [30, 18]
+expect = { dialogs = true }
+battle = "auto"
+record = { "the opening: each of E7-21's stacks' luck" = "luck:start:attacker", "after the battle: luck bonus, status flags" = ["hero:luck_bonus", "hero:status"] }
+note = { "battle" = "winner", "the opponent's luck at the opening" = "luck:start:defender" }
+
+# --- E7-19: a box's axe with a full backpack ---------------------------------------------------------
+
+[[step]]
+encounter = "E7-19"
+hero = "E7-19"
+walk = [23, 3]
+expect = { dialogs = true }
+answer = "yes"
+record = { "before: backpack count, worn positions" = ["before:hero:backpack_count", "before:hero:positions"], "the messages (first words)" = ["questions", "messages", "message_pictures"], "after: backpack count, worn positions" = ["hero:backpack_count", "hero:positions"], "the box on (23, 3) after (yes or no)" = "object:23,3" }
+
+# --- E7-20: a box's three stacks for seven: the Monks (slot 4) dismissed, the Wood Elves taken --------
+
+[[step]]
+encounter = "E7-20"
+hero = "E7-20"
+walk = [23, 6]
+expect = { dialogs = true }
+answer = "yes"
+actions = [
+    { record = { "the messages; the dialog's title (or: no dialog)" = "dialog", "the dialog's upper army" = "shown:upper" } },
+    { click = ["lower:4", "lower:4", "dismiss"], answer = "yes" },
+    { click = ["upper:0", "lower:4"] },
+    { click = ["ok"] },
+]
+record = { "army before" = "before:hero:slots", "+the messages; the dialog's title (or: no dialog)" = ["questions", "messages"], "army after" = "hero:slots", "the box on (23, 6) after (yes or no)" = "object:23,6" }
+
+# --- E7-23: paths only (one click each) --------------------------------------------------------------
+
+[[step]]
+encounter = "E7-23"
+hero = "E7-23"
+walk = [15, 30]
+once = true
+record = { "to (15, 30): the path's tiles (or: no path)" = "path_tiles" }
+
+[[step]]
+encounter = "E7-23"
+hero = "E7-23"
+walk = [14, 30]
+once = true
+record = { "to (14, 30): the path's tiles" = "path_tiles" }
+
+[[step]]
+encounter = "E7-23"
+hero = "E7-23"
+walk = [3, 30]
+once = true
+record = { "to (3, 30): the path's tiles" = "path_tiles" }
+
+[[step]]
+encounter = "E7-23"
+hero = "E7-23"
+walk = [4, 30]
+once = true
+record = { "to (4, 30): the path's tiles" = "path_tiles" }

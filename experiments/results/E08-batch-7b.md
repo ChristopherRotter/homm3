@@ -1,5 +1,7 @@
 # E08 batch E7b — results
 
+> Played by the capture harness on 2026-10-27 (`clients/capture/h3adv.py batch clients/capture/batches/E08-batch-7b.toml`): the same Complete 4.0 `Heroes3.exe` under Wine, without the HD mod; hot seat, difficulty Easy, the starting bonus random, Show Route on; read from the game's memory.
+
 Map file: `E08-batch-7b.h3m`. Fill in the blanks below and keep this file; an agent records the results (`docs/experiments/README.md`).
 
 **Stamp `76fe96bd`.** The map's description in the scenario list starts with "Stamp 76fe96bd.": compare the two before you play. If they differ, the map is not this template's build: do not play it, ask for the map again.
@@ -26,10 +28,10 @@ Map file: `E08-batch-7b.h3m`. Fill in the blanks below and keep this file; an ag
 
 **Record**
 
-- skills before: 
-- the question; the messages (first words): 
-- skills after: 
-- the box on (6, 3) after (yes or no): 
+- skills before: Wisdom basic
+- the question; the messages (first words): ADVEVENT:14; ADVEVENT:175; ADVEVENT:175: Advanced Wisdom
+- skills after: Wisdom advanced
+- the box on (6, 3) after (yes or no): none
 - anything odd: 
 
 ## E7-13 — A box's 500 mana for a hero at its maximum of 100 (D-38, ADV-RWD-001, HER-CHG-003)
@@ -42,9 +44,9 @@ Map file: `E08-batch-7b.h3m`. Fill in the blanks below and keep this file; an ag
 
 **Record**
 
-- spell points before: 
-- the messages (first words): 
-- spell points after: 
+- spell points before: 100
+- the messages (first words): ADVEVENT:14; ADVEVENT:177; ADVEVENT:177: 500 Spell Points
+- spell points after: 600
 - anything odd: 
 
 ## E7-14 — A box's Expert Learning and 1 000 experience for a hero without Learning (D-39, ADV-RWD-001, HER-EXP-001)
@@ -58,10 +60,10 @@ Map file: `E08-batch-7b.h3m`. Fill in the blanks below and keep this file; an ag
 
 **Record**
 
-- experience and skills before: 
-- the messages (the experience shown): 
-- the level-up's offers: 
-- experience and skills after: 
+- experience and skills before: 0; none
+- the messages (the experience shown): ADVEVENT:14; ADVEVENT:175; ADVEVENT:175: Expert Learning, 1000 experience
+- the level-up's offers: level 2: Wisdom or none, took Wisdom
+- experience and skills after: 1000; Learning expert, Wisdom basic
 - anything odd: 
 
 ## E7-15 — A box's level-3 spell with the experience of a level that offers Wisdom (D-39, ADV-RWD-001, HER-CHG-003)
@@ -75,10 +77,10 @@ Map file: `E08-batch-7b.h3m`. Fill in the blanks below and keep this file; an ag
 
 **Record**
 
-- before: spells, skills, experience: 
-- the messages (the parts shown, in order): 
-- the level-up's offers; the one taken: 
-- after: spells, skills, experience: 
+- before: spells, skills, experience: none; none; 999
+- the messages (the parts shown, in order): ADVEVENT:14; ADVEVENT:175; ADVEVENT:175: 1 experience
+- the level-up's offers; the one taken: level 2: Learning or Wisdom, took right (Wisdom)
+- after: spells, skills, experience: none; Wisdom basic; 1000
 - anything odd: 
 
 ## E7-17 — An event's stop: Red's fires and ends the move on it; Blue's does nothing (ADV-OBJ-007, ADV-MOV-011)
@@ -94,13 +96,13 @@ Map file: `E08-batch-7b.h3m`. Fill in the blanks below and keep this file; an ag
 
 **Record**
 
-- E7-17 before: tile, movement points, gold: 
-- E7-17's path (tiles); the message: 
-- E7-17 after: tile, movement points, gold: 
-- E7-17b before: tile, movement points, gold: 
-- E7-17b's path (tiles); the message (or none): 
-- E7-17b after: tile, movement points, gold: 
-- anything odd: 
+- E7-17 before: tile, movement points, gold: 12,3,0; 1560; 30000
+- E7-17's path (tiles); the message: 13,3 14,3 15,3 16,3; ADVEVENT:183; ADVEVENT:183: 100 gold
+- E7-17 after: tile, movement points, gold: 16,3,0; 1160; 30100
+- E7-17b before: tile, movement points, gold: 12,6,0; 1560; 30100
+- E7-17b's path (tiles); the message (or none): 13,6 14,6 15,6 16,6; none; none
+- E7-17b after: tile, movement points, gold: 16,6,0; 1160; 30100
+- anything odd: the event on (16, 6) after: event
 
 ## E7-18 — An event without the removal flag: it fires at every entry (ADV-OBJ-007)
 
@@ -112,10 +114,10 @@ Map file: `E08-batch-7b.h3m`. Fill in the blanks below and keep this file; an ag
 
 **Record**
 
-- gold before: 
-- first entry: the message; gold; tile: 
-- second entry: the message; gold; tile: 
-- anything odd: 
+- gold before: 30100
+- first entry: the message; gold; tile: ADVEVENT:183; 30200; 14,9,0
+- second entry: the message; gold; tile: ADVEVENT:183; 30300; 14,9,0
+- anything odd: the event on (14, 9) after: event
 
 ## E7-16 — The Pyramid's golems against a weak hero (and E7-22's strong one) (D-40, ADV-MON-012, ADV-TCH-008)
 
@@ -128,23 +130,23 @@ Map file: `E08-batch-7b.h3m`. Fill in the blanks below and keep this file; an ag
 
 **Record**
 
-- the Pyramid's word before (hex): 
-- the question; the message: 
+- the Pyramid's word before (hex): 0xffe1001f; guarded, Dimension Door
+- the question; the message: ADVEVENT:105; none
 
 | side | slot | hex | creature | count |
 |---|---|---|---|---|
-|   |   |   |   |   |
-|   |   |   |   |   |
-|   |   |   |   |   |
-|   |   |   |   |   |
-|   |   |   |   |   |
-|   |   |   |   |   |
-|   |   |   |   |   |
-|   |   |   |   |   |
+| attacker | 0 | 86 | Pikeman | 1 |
+| defender | 0 | 15 | Gold Golems | 8 |
+| defender | 1 | 49 | Gold Golems | 8 |
+| defender | 2 | 83 | Diamond Golems | 10 |
+| defender | 3 | 100 | Gold Golems | 8 |
+| defender | 4 | 117 | Diamond Golems | 10 |
+| defender | 5 | 151 | Gold Golems | 8 |
+| defender | 6 | 185 | Gold Golems | 8 |
 |   |   |   |   |   |
 
-- after the retreat: the Pyramid's word: 
-- anything odd: 
+- after the retreat: the Pyramid's word: 0xffe1005f; guarded, Dimension Door
+- anything odd: retreated: attacker
 
 ## E7-22 — The Pyramid won by a hero with Advanced Wisdom: its level-5 spell (ADV-TCH-008, D-40, GAM-DEC-007)
 
@@ -157,24 +159,24 @@ Map file: `E08-batch-7b.h3m`. Fill in the blanks below and keep this file; an ag
 
 **Record**
 
-- before: spells; the Pyramid's word (hex): 
+- before: spells; the Pyramid's word (hex): none; 0xffe1005f; guarded, Dimension Door
 
 | side | slot | hex | creature | count |
 |---|---|---|---|---|
-|   |   |   |   |   |
-|   |   |   |   |   |
-|   |   |   |   |   |
-|   |   |   |   |   |
-|   |   |   |   |   |
+| attacker | 0 | 35 | Archangels | 20 |
+| attacker | 1 | 137 | Titans | 10 |
+| defender | 0 | 49 | Diamond Golems | 10 |
+| defender | 1 | 100 | Diamond Golems | 10 |
+| defender | 3 | 151 | Gold Golems | 40 |
 |   |   |   |   |   |
 |   |   |   |   |   |
 |   |   |   |   |   |
 |   |   |   |   |   |
 
-- the battle's result; the level-ups (offers, the one taken): 
-- the messages after the level-ups (first words): 
-- after: spells, skills; the Pyramid's word (hex): 
-- anything odd: 
+- the battle's result; the level-ups (offers, the one taken): attacker; level 2: Wisdom or Learning, took right (Learning); level 3: Learning or Wisdom, took left (Learning); level 4: Learning or Wisdom, took left (Learning)
+- the messages after the level-ups (first words): GENRLTXT:16; none
+- after: spells, skills; the Pyramid's word (hex): none; Wisdom advanced, Learning expert; 0xffe1005e; looted, Dimension Door
+- anything odd: the question: ADVEVENT:105; E7-22's tile after the battle: 26,20,0
 
 ## E7-21 — A looted Pyramid visited twice, then a battle: the luck bonus (ADV-TCH-008, HER-ADV-008, GAM-BAT-014)
 
@@ -189,12 +191,12 @@ Map file: `E08-batch-7b.h3m`. Fill in the blanks below and keep this file; an ag
 
 **Record**
 
-- before: luck bonus, status flags (hex): 
-- first visit: the question, messages; luck bonus, status flags after: 
-- second visit: messages; luck bonus, status flags after: 
-- the opening: each of E7-21's stacks' luck: 
-- after the battle: luck bonus, status flags: 
-- anything odd: 
+- before: luck bonus, status flags (hex): 0; 0x0
+- first visit: the question, messages; luck bonus, status flags after: ADVEVENT:105; ADVEVENT:107; -2; 0x1000
+- second visit: messages; luck bonus, status flags after: ADVEVENT:105; ADVEVENT:107; -2; 0x1000
+- the opening: each of E7-21's stacks' luck: 20 Pikemen -2, 10 Centaurs -2
+- after the battle: luck bonus, status flags: 0; 0x0
+- anything odd: E7-21's tile after the first visit: 26,20,0; battle: attacker; the opponent's luck at the opening: 3 Pikemen 0, 2 Pikemen 0
 
 ## E7-19 — A box's artifact with a full backpack (ADV-RWD-001, ADV-PIK-013)
 
@@ -206,10 +208,10 @@ Map file: `E08-batch-7b.h3m`. Fill in the blanks below and keep this file; an ag
 
 **Record**
 
-- before: backpack count, worn positions: 
-- the messages (first words): 
-- after: backpack count, worn positions: 
-- the box on (23, 3) after (yes or no): 
+- before: backpack count, worn positions: 64; 16: Catapult
+- the messages (first words): ADVEVENT:14; ADVEVENT:15; none
+- after: backpack count, worn positions: 64; 16: Catapult
+- the box on (23, 3) after (yes or no): none
 - anything odd: 
 
 ## E7-20 — A box's three stacks for a hero with seven: the army dialog (ADV-RWD-001, GAM-DEC-004, ADV-PIK-013)
@@ -223,11 +225,11 @@ Map file: `E08-batch-7b.h3m`. Fill in the blanks below and keep this file; an ag
 
 **Record**
 
-- army before: 
-- the messages; the dialog's title (or: no dialog): 
-- the dialog's upper army: 
-- army after: 
-- the box on (23, 6) after (yes or no): 
+- army before: 0: 10 Pikemen, 1: 10 Archers, 2: 5 Griffins, 3: 5 Swordsmen, 4: 3 Monks, 5: 2 Cavaliers, 6: 1 Angel
+- the messages; the dialog's title (or: no dialog): GENRLTXT:36; ADVEVENT:14; ADVEVENT:186
+- the dialog's upper army: 0: 5, 1: 3, 2: 2
+- army after: 0: 10 Pikemen, 1: 10 Archers, 2: 5 Griffins, 3: 5 Swordsmen, 4: 5 Wood Elves, 5: 2 Cavaliers, 6: 1 Angel
+- the box on (23, 6) after (yes or no): none
 - anything odd: 
 
 ## E7-23 — A path and a hidden event: around it in the open, past it in a dead-end corridor (A-23, ADV-MOV-011)
@@ -242,8 +244,8 @@ Map file: `E08-batch-7b.h3m`. Fill in the blanks below and keep this file; an ag
 
 **Record**
 
-- to (15, 30): the path's tiles (or: no path): 
-- to (14, 30): the path's tiles: 
-- to (3, 30): the path's tiles: 
-- to (4, 30): the path's tiles: 
+- to (15, 30): the path's tiles (or: no path): none
+- to (14, 30): the path's tiles: none
+- to (3, 30): the path's tiles: 3,30 4,30 5,30 6,30 7,30
+- to (4, 30): the path's tiles: 4,30 5,30 6,30 7,30
 - anything odd: 

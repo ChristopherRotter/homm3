@@ -6187,3 +6187,83 @@ predict both (the record tells them apart; T58 settles it); (8) the spec's and t
 said guards with an empty text fight at once, the wiki's side of D-29: reworded (by class).
 
 T57 (the harness and the runs) and T58 (the scoring) queued.
+
+### Increment 7, round 2: T57, batch E7's harness and runs (2026-10-26/27, `adventure/e08-t57`)
+
+**The cut** (decision 143): the user took T57 whole (recommended was the reads first, then the
+runs). The University dialog's slots and purchase button left out: no row needs them (E7-9 reads
+the game's Universities, +0x4E3CC).
+
+**The reads** (`clients/capture/`, common; README "Rewards on the map"): `h3mem.object_at` (the word,
+class and subclass of the object anchored at a tile, read on its entrance tile by the template's
+mask, `entrance_cell` shared with `map_owners`; a University's entrance is left of its corner),
+`universities` (game +0x4E3CC, four i32 skills each), `dialog_pictures` (a message box's picture
+items with the text item starting at their bottom as caption; the choice frames 0x7809 and
+0x780A around them, items of their own vtable, `h3mem.CHOICE_VTABLE`, observed at a chest), `open_tiles` (explored, empty, not
+closed, not guarded), `map_kind` (game +0x1F698); a hero's spell points (+0x18), status flags
+(+0x105), morale and luck bonuses (+0x11A, +0x11B); a battle stack's army slot (+0x5C).
+`h3adv`: `object:x,y` decodes the word by class as `map.toml`'s visit functions read it (chest,
+Corpse, Wagon, Tomb, Shrine, Witch Hut, University, Pyramid, artifact by subclass); `word:x,y`;
+`choice` (a message box whose OK waits for a picture: the side's frame, then the OK; it stopped
+the batch before); `message_pictures`; `level_up = "not <skill>"`; `level_up_dialogs`,
+`treasury`, `offering:<skill>`, `opening:rows` (a `rows` record fills a table's unlabelled rows),
+`morale:start`, `luck:start`; `before:` read right before the step (any observation); a list of
+observations per field, `+<field>`; `each`/`select` grids (steps expanded as they come, nearest
+first), `once`, `days` (a red target waits for the hero's next turn), `near` (an unexplored target
+approached over open tiles: the pathfinder finds no path onto an unexplored tile, as the first E7a
+run showed: E7-5's and E7-10's visits past the first got no path), `[[require]]` (a new game
+started again, at most 20 times). The walk's view centres on the target when both ends do not fit.
+A walk is got ready before its step reads anything (`ready`: the approach and the day waits, the
+route set anew each day), so its `before:` reads never cross a day's start; the walk's view
+centres on the target when both ends do not fit; `hover` moves the mouse through the next cell
+when the game's tile under it is stale (below). README: "Rewards on the map", the observations'
+table, two traps.
+
+**The recipes** (`clients/capture/batches/`): `E08-batch-7a.toml` (the draw rows and the words of
+E7-5's and E7-10's objects first, then Red's E7-1, E7-2, E7-4, E7-6, E7-5 and Blue's E7-10, E7-11;
+three `[[require]]` grids, the spec's restart rule; E7-5 and E7-10 by `select`, `near` and
+`days`), `-7a-roe.toml` (E7-7's sixty huts read on their visit tiles; the game's version noted),
+`-7b.toml` (E7-12 to E7-23; E7-23 by `once`). The specs' `opening.py` is the battle record's
+`opening` (the recipes say so; the specs keep the word).
+
+**The spec's change** (`E08-batch-7a`): E7-5 and E7-10 got Expert Logistics, as T56's review gave
+E7-4 (for the points: without it the third run took them into a sixth day, where it stopped);
+the predictions do not depend on it. The compiled map is in the user's `experiments/out/`.
+
+**The runs** (all on Easy, hot seat, under Wine; the results filled in `experiments/results/`):
+E7a four times (the first stopped where a target 18 columns away fell outside the view; the second
+found no path to the chests and Corpses past the first, all unexplored, whence `near`; the third
+ran its day waits into a sixth day and stopped at a turn's start; the fourth, recorded, took five
+days, no restart), the RoE map once, E7b three times (the first stopped at E7-23's last click: the
+game kept the tile under the mouse from before the view moved, whence `hover`'s retry; the second
+was stopped for a caption fix; the third recorded). The harness check twice (the first stopped in
+Gear's plan battle, no attack cursor; the second passed: Win's chest 1 500 gold or 1 000
+experience, the experience taken, 50 → 1 050; the Tomb's question, −3 and 0x200000, its artifact
+kept with the full backpack).
+
+**What the runs showed** (for T58; not scored here): E7-1 a question first (GENRLTXT 421; No left
+the axe and fought nothing; Yes the battle, the axe then worn in the right hand). E7-2 the axe in
+the right hand, the scroll at misc 1 (position 9), no spell learned. E7-3 forty different
+artifacts. E7-4 525, 1 050 and 1 575 for chests of 1 000, 1 500 and 2 000, the stone 1 050,
+Learning still Basic. E7-5 four artifact chests of forty, each offering 1 000 gold or 500
+experience, the backpack 64 throughout. E7-6 the treasure's 1 000 gold given, the axe lost. E7-7
+the sixty huts drew exactly the fourteen skills of 0xEFBF; game +0x1F698 read 2 (SoD) on the RoE
+map. E7-8 fifteen different spells. E7-9 Necromancy in 4 of 30 Universities (the second run's
+game: 1 of 30). E7-10 5 of 20 Corpses held an artifact (the second run's game: 9 of 20), each
+giving 1 000 gold; 7 of 10 Wagons (4 of 10), each giving its drawn resources; the Tombs kept
+their artifacts, −3 morale after the first and after the second. E7-11 −3 after each Tomb (status
+0x200000), −3 at the opening, 0 and 0x0 after the battle. E7-12 Advanced Wisdom. E7-13 600 spell
+points. E7-14 1 000 experience (no Learning bonus), Wisdom taken at level 2. E7-15 Fireball not
+learned, Wisdom then taken. E7-16 one Pikeman against five Gold Golem stacks of 8 and two Diamond
+stacks of 10 (slots 0 to 6). E7-22 two Diamond stacks of 10 and one Gold stack of 40; Dimension
+Door lost with Advanced Wisdom, the Pyramid looted (bit 0 cleared). E7-21 −2 luck after both
+visits (status 0x1000), −2 at the opening, 0 after. E7-17 Red's event fired with the hero standing
+on its tile (1 560 points → 1 160), and was removed; on Blue's-only event the hero stood on the
+tile and nothing fired. E7-18 +100 at each entry. E7-19 the axe lost, the box removed. E7-20 the
+army dialog (GENRLTXT 36) with the three stacks; the Monks dismissed, the Wood Elves taken, the
+rest lost. E7-23 no path to (15, 30) nor to (14, 30) (Red's event in Blue's corridor); a straight
+path to (3, 30) over Blue's own event at (4, 30), and one ending on it.
+
+**Traps found** (README, "Traps"): the game finds the tile under the mouse again only when the
+mouse enters another of the view's cells; days waited cost every player's turn (E7a's third run);
+the check's Gear battle stopped once.

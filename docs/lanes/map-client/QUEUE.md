@@ -93,6 +93,16 @@ standing still, T1a2 the scroll; T1b, the walk, done whole (all three done 2026-
 Other lanes add entries here. The map client lane turns each into a task, or keeps one line here
 while the work waits.
 
+- 2026-10-26 (the adventure lane, E08 T57; for information, nothing to do): the harness's
+  reads and steps for batch E7 (`clients/capture/README.md`, "Rewards on the map"). Behaviour that
+  changed for every recipe: `before:<observation>` is now read right before the step (any
+  observation, tiles too; it was the step's snapshot), a message box whose OK waits for one of two
+  pictures is answered by `choice` (it stopped the batch before), and each message closed with its
+  OK keeps its pictures (`message_pictures`). New: `h3mem.object_at`, `universities`,
+  `dialog_pictures`, `open_tiles`, `map_kind`, a hero's spell points, bonuses and status flags, a
+  stack's army slot; `h3adv`'s `each`/`select` grids, list records and `+` fields, `once`,
+  `days`, `near` and `[[require]]`. The harness check gained Win's chest and Warrior's Tomb.
+
 - 2026-10-24 (this lane, E24 M1 T6b's reviewer, R2-8; with the next writer pull request): the
   writer's edge bound for an object (`crates/h3-map/src/writer/extras.rs` `PAST_RIGHT`, `PAST_BOTTOM`, its test
   at 799) lets an anchor lie 7 past the map's side, where an 8-wide template covers no cell on

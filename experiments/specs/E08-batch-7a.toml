@@ -318,7 +318,7 @@ id = "E7-5"
 title = "Chests with a full backpack: an artifact chest's offer"
 questions = ["ADV-PIK-005"]
 procedure = [
-    "Day 1, Red's turn (after E7-6): E7-5 stands at (24, 6) with 64 Centaurs Axes in its backpack, nothing worn. Forty chests stand at (26, 4) to (44, 10), every second column and row. Read every chest's word at the start (save 1): bit 10 marks an artifact (bits 0 to 9 the artifact), else bits 11 to 14 the gold in 500s.",
+    "Day 1, Red's turn (after E7-6): E7-5 stands at (24, 6) with 64 Centaurs Axes in its backpack, nothing worn, and Expert Logistics (for the points: without it E08 T57's third run took E7-5 and E7-10 into a sixth day, where it stopped). Forty chests stand at (26, 4) to (44, 10), every second column and row. Read every chest's word at the start (save 1): bit 10 marks an artifact (bits 0 to 9 the artifact), else bits 11 to 14 the gold in 500s.",
     "Visit **every chest whose word holds an artifact**, then the three nearest gold chests. At each: read E7-5's backpack count and Red's gold, click the chest twice, note what is shown (the pictures' values, or the artifact) and take the **gold** (the left picture, or OK); read the backpack count and Red's gold again. A hero out of movement points goes on the next day.",
 ]
 record = [
@@ -381,6 +381,7 @@ type = "Edric"
 specialty = "creature Griffin"
 at = [24, 6]
 primary = [1, 1, 1, 1]
+skills = [["Logistics", 3]]
 army = [["Angel", 3]]
 fill_backpack = "Centaurs Axe"
 
@@ -532,7 +533,7 @@ id = "E7-10"
 title = "Corpses, Wagons and Warrior's Tombs with a full backpack"
 questions = ["ADV-PIK-009", "ADV-PIK-010", "ADV-PIK-011"]
 procedure = [
-    "Blue's turn (save 2 at its start): E7-10 stands at (24, 18) with 64 Centaurs Axes in its backpack, nothing worn. Twenty Corpses stand at (26, 16) to (44, 18), every second column and row; ten Wagons at (26, 22) to (44, 22), every second column; two Warrior's Tombs with their bottom-right corners at (48, 16) and (51, 16). Read every Corpse's, Wagon's and Tomb's word at the start (save 1).",
+    "Blue's turn (save 2 at its start): E7-10 stands at (24, 18) with 64 Centaurs Axes in its backpack, nothing worn, and Expert Logistics (for the points, as E7-5). Twenty Corpses stand at (26, 16) to (44, 18), every second column and row; ten Wagons at (26, 22) to (44, 22), every second column; two Warrior's Tombs with their bottom-right corners at (48, 16) and (51, 16). Read every Corpse's, Wagon's and Tomb's word at the start (save 1).",
     "Visit **every Corpse and every Wagon whose word holds an artifact**, then one Corpse and one Wagon without one. At each: read Blue's treasury and E7-10's backpack count, click it twice, note the message (first words), read the treasury, the backpack count and its word again. A hero out of movement points goes on the next day.",
     "Then both Tombs: at each, read E7-10's morale bonus (+0x11A) and backpack count, click it twice, answer the question **Yes**, note the messages, read the morale bonus, the backpack count and the Tomb's word again.",
 ]
@@ -594,6 +595,7 @@ specialty = "resource mercury"
 owner = "blue"
 at = [24, 18]
 primary = [1, 1, 1, 1]
+skills = [["Logistics", 3]]
 army = [["Angel", 3]]
 fill_backpack = "Centaurs Axe"
 
