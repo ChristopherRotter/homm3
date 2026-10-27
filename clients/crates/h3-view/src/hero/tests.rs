@@ -4,6 +4,7 @@ use alloc::vec::Vec;
 use h3_render::Bugs;
 
 use crate::anim::tests::magic;
+use crate::anim::tests::playhead::agrees;
 use crate::anim::{self, Member, Pose, Stage, Timeline};
 use crate::record::tests::observation;
 use crate::scene::Moment;
@@ -68,6 +69,11 @@ fn idle(turns: &[(u32, u8)], actions: Vec<Action>) -> Timeline {
     timeline
 }
 
+/// `timeline` with `heroes`: its playhead shows their poses as [`Moment::at`] does (E17 M5 T1a).
+fn checked(timeline: &Timeline, heroes: &Heroes) {
+    agrees(&timeline.clone().with_heroes(heroes.clone()));
+}
+
 fn pose(group: u32, frame: u32, flag: u32) -> Option<HeroPose> {
     Some(HeroPose { group, frame, flag })
 }
@@ -89,6 +95,7 @@ fn the_flags_wave_and_the_hero_moves_after_standing_long_enough() {
     // Its clock starts again at its end.
     assert_eq!(at(9_500), Some((0, 0)));
     assert_eq!(at(9_600), Some((1, 0)));
+    checked(&timeline, &heroes);
     // An action starts the clocks again.
     let timeline = idle(
         &[],
@@ -101,6 +108,7 @@ fn the_flags_wave_and_the_hero_moves_after_standing_long_enough() {
     let at = |t| heroes.at(&timeline, t)[1].map(|p| (p.group, p.frame));
     assert_eq!(at(7_500), Some((0, 0)));
     assert_eq!(at(7_600), Some((1, 0)));
+    checked(&timeline, &heroes);
     // A side without a hero shows none; no hero at all: none drawn.
     let one = Heroes::new([None, Some(look())], [true, true], groups(), None);
     assert_eq!(one.at(&timeline, 0)[0], None);
@@ -160,6 +168,10 @@ fn a_death_asks_one_hero_for_defeat_or_the_other_for_victory() {
     assert_eq!(at(neither, 1_000), [Some((0, 0)), Some((0, 0))]);
     // No generator of its own: no reactions (the reference checks take the original's).
     assert_eq!(at(None, 1_000), [Some((0, 0)), Some((0, 0))]);
+    for seed in [defeat, victory, neither, None] {
+        let heroes = Heroes::new([Some(look()), Some(look())], [true, false], groups(), seed);
+        checked(&timeline, &heroes);
+    }
     // While a computer's turn runs (or none) the request lapses.
     for turns in [&[(0, 1)][..], &[]] {
         let timeline = idle(turns, died.clone());
@@ -173,6 +185,7 @@ fn a_death_asks_one_hero_for_defeat_or_the_other_for_victory() {
             let shown = heroes.at(&timeline, t)[1].map(|p| (p.group, p.frame));
             assert_eq!(shown, Some((0, 0)));
         }
+        checked(&timeline, &heroes);
     }
 }
 
@@ -207,6 +220,7 @@ fn each_reaction_plays_once_a_round() {
         Some(0)
     };
     assert_eq!(group(&timeline, 3_000), second);
+    checked(&timeline, &heroes);
     // A round after a death clears its request.
     let cleared = vec![Action {
         end: 1_000,
@@ -238,6 +252,7 @@ fn each_reaction_plays_once_a_round() {
     // The victory plays once; the second death's draw may ask again, but not this round.
     assert_eq!(heroes.at(&timeline, 1_000)[0].map(|p| p.group), Some(3));
     assert_eq!(heroes.at(&timeline, 2_200)[0].map(|p| p.group), Some(0));
+    checked(&timeline, &heroes);
 }
 
 #[test]
@@ -256,10 +271,12 @@ fn a_timeline_carries_its_heroes() {
             .with_heroes(Heroes::new([None, None], [true, true], groups(), None));
     assert!(none.still());
     assert_eq!(Moment::at(&none, 0).heroes, [None, None]);
+    agrees(&none);
     let heroes = Heroes::new([Some(look()), None], [true, true], groups(), None);
     let timeline = timeline.with_heroes(heroes);
     // The flags wave: nothing is ever still.
     assert!(!timeline.still());
     assert_eq!(Moment::at(&timeline, 900).heroes, [pose(0, 0, 2), None]);
     assert_eq!(Moment::at(&timeline, 1_000).heroes, [pose(0, 0, 3), None]);
+    agrees(&timeline);
 }

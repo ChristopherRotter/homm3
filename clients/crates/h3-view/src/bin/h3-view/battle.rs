@@ -3,6 +3,7 @@
 //! the layout, the timeline at the original's timing with the viewer's own fidgets, and, once
 //! loaded, the checkpoint batch. An adapter: it reads files and the archives.
 
+use std::cell::RefCell;
 use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -11,7 +12,7 @@ use h3_formats::lod::LodArchive;
 use h3_protocol::wire::{Command, Observation};
 use h3_render::Bugs;
 use h3_render::screen::Screen;
-use h3_view::anim::{self, Sound, Speed, Timeline};
+use h3_view::anim::{self, Playhead, Sound, Speed, Timeline};
 use h3_view::batch::{self, Batch, Sprite};
 use h3_view::battle_log::Logged;
 use h3_view::compose::compose;
@@ -65,6 +66,9 @@ pub struct Battle {
     layout: BattleLayout,
     /// The battle at the original's timing.
     pub timeline: Timeline,
+    /// The timeline read forward as the frames are asked for (E17 M5 T1a): a frame costs what
+    /// changed since the one before it, not the battle's length.
+    head: RefCell<Playhead>,
     /// The panel over the battle: its turns and its log (E17 M3 T6b).
     pub panels: Panels,
     /// The commands played.
@@ -179,6 +183,7 @@ impl Battle {
             tables,
             layout,
             base: timeline.clone(),
+            head: RefCell::new(Playhead::new(&timeline)),
             timeline,
             panels,
             commands,
@@ -216,6 +221,7 @@ impl Battle {
             let group = self.tables.battle.groups.mouse_over;
             let frames = |id: u8| self.fidget_frames.get(&id).copied().unwrap_or(0);
             timeline.enter(&shown.entered, u32::from(group), &frames);
+            self.head = RefCell::new(Playhead::new(&timeline));
             self.timeline = timeline;
         }
         // The scrolls after the log's entries at their time.
@@ -281,17 +287,24 @@ impl Battle {
             .is_some_and(|s| self.panels.scrolls(s, &self.timeline.turns, t))
     }
 
-    /// The draw list of the battle at `t`.
+    /// The draw list of the battle at `t` (the playhead's moment: going back starts it over).
     pub fn list_at(&self, t: u32) -> Result<Vec<Draw>, String> {
-        self.list(t, &Moment::at(&self.timeline, t))
+        let moment = {
+            let mut head = self.head.borrow_mut();
+            head.seek(&self.timeline, t);
+            head.moment(&self.timeline)
+        };
+        self.list(t, &moment)
     }
 
     /// Every distinct frame up to `until` (past the end the battle idles): its time, moment and
     /// draw list; a moment that draws what the one before drew is not a new frame.
     pub fn frames(&self, until: u32) -> Result<Vec<(u32, Moment, Vec<Draw>)>, String> {
         let mut frames: Vec<(u32, Moment, Vec<Draw>)> = Vec::new();
+        let mut head = Playhead::new(&self.timeline);
         for t in self.timeline.changes(until) {
-            let moment = Moment::at(&self.timeline, t);
+            head.seek(&self.timeline, t);
+            let moment = head.moment(&self.timeline);
             let list = self.list(t, &moment)?;
             if frames.last().is_some_and(|(_, _, last)| *last == list) {
                 continue;

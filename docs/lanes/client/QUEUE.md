@@ -8,7 +8,7 @@ Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12, M1 2026-10-13, M2 2026-10
 2026-10-23, M4 2026-10-27; ADR-0020, ADR-0024; the battle client since the split of 2026-10-23,
 the adventure map client being the map-client lane's E24). M5 (live play) refined at M4's
 closure (T3c, 2026-10-27, with the user): hot seat in-process first, then a game on a server;
-its tasks below, in order (T3 and T4 need T2, T5 only T1). The original files: stage them from
+its tasks below, in order (T3 and T4 need T2, T5 only T1b). The original files: stage them from
 the user's `original-data/install/` (one large file per staging call; the user's computer must
 be online); never from the installation. The captures need the five DLLs, `Heroes3.snd`,
 `H3ab_ahd.snd` and `H3ab_ahd.vid` too; the harness's runbook: `clients/capture/README.md`. The
@@ -17,19 +17,25 @@ real-asset gate `cargo run -p h3-view -- gate` from `clients/`. An asset fix get
 (ADR-0020 point 6: the entry's flag, the `faithful`/`fixed` profile) with the first one a task
 finds.
 
-### E17 M5 T1 — the timeline that grows
+### E17 M5 T1b — the timeline that grows
+
+T1 cut in two (the user, 2026-10-27): T1a, a frame drawn without rescanning the battle
+(`anim::Playhead`), is done (the epic's log, "M5 T1a").
 
 - **Scope:** `anim`'s timeline extended by the commands as they arrive (the session's events
-  appended, the record growing) instead of built over the whole record first, and a frame drawn
-  without rescanning the battle (R2-7: `Moment::at`, `Heroes::posed` and `Timeline::at` rescan it
-  for every frame, 2.3 ms a frame over `play`'s 82 seconds); `h3-view window` and `play` feeding
-  the bot's commands into the timeline while it plays, through `h3-protocol`'s session in-process
-  (a live source beside the record file).
-- **Acceptance:** every recorded sequence's timeline unchanged (`h3-view sequences`, the unit
-  tests' replays) and every frame as before (`h3drive.py drawn`, the staged data); a frame's cost
-  measured and independent of the battle's length; the window plays a scenario's battle while it
-  is fought; the Definition of Done.
-- **Depends on:** M4 (done 2026-10-27). **Status:** ready.
+  appended, the record growing) instead of built over the whole record first: the player kept
+  between commands, what a later command revises left open at the tail (whether the computer
+  acts next, the last layer changes' redraw), the playhead going on over what was appended;
+  `h3-view window` and `play` feeding the bot's commands into the timeline while it plays,
+  through `h3-protocol`'s session in-process (a live source beside the record file): the
+  checkpoint batch, the sounds, the panel (its turns and log texts still read over the battle
+  per frame: grown and read forward with it) and the mouse's turns grown with the commands.
+- **Acceptance:** a record's timeline built command by command equals the one built at once
+  (every recorded sequence, the unit tests' replays); every recorded sequence's timeline and
+  every frame unchanged (`h3-view sequences`, `h3drive.py drawn`); the window plays a scenario's
+  battle while it is fought, a frame's cost independent of the battle's length (`play
+  --moments`); the Definition of Done.
+- **Depends on:** T1a (done 2026-10-27). **Status:** ready.
 
 ### E17 M5 T2 — hot seat: the player's commands
 
@@ -44,7 +50,7 @@ finds.
 - **Acceptance:** a scenario's battle played to its end by clicks in hot seat and against the
   bot; scripted inputs (a test) give the commands the engine's legal list names; the recorded
   sequences and frames unchanged (the comparisons' profile); the Definition of Done.
-- **Depends on:** T1. **Status:** ready after T1.
+- **Depends on:** T1b. **Status:** ready after T1b.
 
 ### E17 M5 T3 — the spell book and the hero's aim
 
@@ -83,7 +89,7 @@ finds.
   Recorded against the original.
 - **Acceptance:** the new sequences as recorded, or each difference listed; `sacrifice`'s
   dissolve exact; the Definition of Done.
-- **Depends on:** T1. **Status:** ready after T1.
+- **Depends on:** T1b. **Status:** ready after T1b.
 
 ### E17 M5 T6 — a game on a server
 

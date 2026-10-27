@@ -94,7 +94,10 @@ search the parent directories).
   commands at the original's timing with the viewer's own fidgets and draws every distinct frame:
   `clients/out/play/<stem>-s<seed>/` holds the record, `frames.txt` (each frame's moment),
   `cues.txt` (the creatures' sounds as they start and stop, T5b) and, with `--png`, `f<ms>.png`;
-  `--to` past the end lets the battle idle.
+  `--to` past the end lets the battle idle. `--moments` (E17 M5 T1a) times a frame's moment for
+  each quarter of the frames: `anim::Playhead`'s, which reads the timeline forward and draws
+  `play`'s, `window`'s and `sequences`' frames, against `scene::Moment::at`'s, the reference read
+  from the battle's start.
 - **A battle in a window** (E17 M2 T5a, ADR-0024, design §8.1): `cargo run --release -p h3-view
   -- window scenarios/battle.toml [--seed <n>] [--scale <n>] [--vsync] [--drawn-cursor]
   [--fullscreen]` (from `clients/`) loads the battle as `play` does and shows each frame when it

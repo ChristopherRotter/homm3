@@ -6,10 +6,11 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 
 - **E17 M0–M4 done** (M4, sieges, closed at T3c on 2026-10-27 with the user: the review list
   accepted, CLT-Q22 to Q24 answered (a); the lane split at M3 T9c, CLT-Q18: the battle client
-  here, the adventure map client the map-client lane's E24). **M5 (live play) refined at T3c:
-  T1 to T8** (QUEUE, the epic's M5): hot seat in-process first, then a game on a server and
-  accounts; the new dependencies the user's at T6 and T7. **Next: M5 T1** (the timeline that
-  grows, R2-7). Open PR: #503 (T3c; check it first). Workspace `clients/`
+  here, the adventure map client the map-client lane's E24). **M5 (live play)** (QUEUE, the
+  epic's M5): hot seat in-process first, then a game on a server and accounts; the new
+  dependencies the user's at T6 and T7. T1 cut in two (the user): **T1a done** (the playhead,
+  `anim::Playhead`). **Next: M5 T1b** (the timeline that grows, the window's live source). Open
+  PR: the T1a one (check it first). Workspace `clients/`
   (`clients/README.md`), gates `clients/scripts/check.sh`; ADR-0020 (+ drafts in
   `adr-drafts/`), ADR-0024; the harness `clients/capture/README.md`; design §3–§10; records in
   `E17-log.md`.
@@ -36,7 +37,14 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
 
 ## Recent sessions
 
-- **2026-10-27, E17 M4 T3c (done; #503 open: check it first).** The M4 checkpoint, the user
+- **2026-10-27, E17 M5 T1a (done; PR open: check it first).** T1 cut in two (the user: T1a,
+  T1b). The sandbox new, the original files staged again before the computer disconnected.
+  Measured: R2-7's 2.3 ms was the composing; `Moment::at` 1.6 to 7 µs over `play`'s battle,
+  306 µs half an hour into its idle end. `anim::Playhead` reads the timeline forward (0.3 to
+  1 µs anywhere); `play`, `window`, `sequences` draw through it, `sequences` checks it against
+  `Moment::at` at every recorded change, `play --moments` times both. `drawn` all 119 the same.
+  The panel's per-frame scans of the turns left for T1b. No new question.
+- **2026-10-27, E17 M4 T3c (done; #503 merged).** The M4 checkpoint, the user
   present; docs only. Review items 1 to 14 accepted, 15 (the recipes' starting bonus Gold) at M5's
   closure; CLT-Q22 to Q24 answered (a), Q24's switch in M5 T2; M5 refined as drafted (T1 to T8;
   the inbox entries it takes moved into its tasks, their text in `QUEUE-ARCHIVE.md`). **M4
@@ -47,8 +55,3 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
   review item 15 a proposed fix), `sacrifice` with the engine's seed 9 (the original's 23 in
   three runs; review item 14). The casts' `hovered` fits T3b-1's rule (the book still
   *provisional*). `drawn` recorded (`sacrifice`). No new question.
-- **2026-10-27, E17 M4 T3b-1 (done; #492 merged).** T3b cut in two (the
-  user). The harness reads `hovered_item` per step: the park point is the panel's picture,
-  entered once after the opening; the viewer tracks the hovered item (the hot-seat proxy
-  gone; review item 13), `aim`'s exception explained. The 72 stills and 18 sequences as
-  recorded but `aim`'s ` log` masks (recorded); `drawn` the same but `aim`. CLT-Q24 asked.

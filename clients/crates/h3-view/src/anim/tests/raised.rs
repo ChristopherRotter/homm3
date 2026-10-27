@@ -10,13 +10,14 @@ use alloc::vec::Vec;
 use h3_protocol::wire::{Event, Observation, Side, WireU64};
 use h3_render::Bugs;
 
+use super::timeline;
 use super::{
     ARCHANGEL, MARKSMAN, PIKEMAN, SWORDSMAN, at, cast, cast_heroes, flags, layout, look, looks,
     moved, screenless, snapshot, spots_of, struck, tables, until,
 };
 use crate::anim::{
     BOLT, CHAIN_START, Caster, Casts, Command, Explosion, LIGHTNING_BOLT, Logged, Look, MagicLook,
-    RAISE, SACRIFICED, SHIELD_RETURN, Sound, Speed, SpellLook, Stage, Timeline, timeline, unrolled,
+    RAISE, SACRIFICED, SHIELD_RETURN, Sound, Speed, SpellLook, Stage, Timeline, unrolled,
 };
 
 const RAISE_LINES: &str = include_str!("../../../../../situations/timelines/raise.txt");
