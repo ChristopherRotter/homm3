@@ -27,6 +27,7 @@ use h3_kernel::{CanonicalHash, Handle, StateHasher};
 use crate::ADVENTURE_RULESET_HASH_VERSION;
 
 mod objects;
+mod rewards;
 mod starting;
 
 pub(crate) use objects::Effect;
@@ -35,6 +36,10 @@ pub use objects::{
     ObjectTypeId, Pickup, PickupDef, Visit,
 };
 use objects::{ObjectTables, Scope, check_object_types, compile_object_types, random_monsters};
+pub use rewards::{
+    Chest, ChestDef, Find, FindContent, FindContentDef, FindDef, Gift, GiftDef, Gives, OnceBonus,
+    Pyramid, PyramidDef, Turn, TurnDef,
+};
 use starting::compile_starting;
 pub use starting::{MAX_DIFFICULTIES, StartingResources, StartingResourcesDef};
 
@@ -461,6 +466,8 @@ pub enum AdventureCompileError {
     UnknownResource(String),
     /// A creature the core ruleset does not define.
     UnknownCreature(String),
+    /// A secondary skill the core ruleset does not define (E08 T61a).
+    UnknownSkill(String),
     /// An object type no pack defines.
     UnknownObjectType(String),
     /// An object type's parameters are invalid.
@@ -526,6 +533,7 @@ impl fmt::Display for AdventureCompileError {
             }
             Self::UnknownTerrain(k) => write!(f, "unknown terrain `{k}`"),
             Self::UnknownCreature(k) => write!(f, "unknown creature `{k}`"),
+            Self::UnknownSkill(k) => write!(f, "unknown skill `{k}`"),
             Self::UnknownResource(k) => write!(f, "unknown resource `{k}`"),
             Self::UnknownObjectType(k) => write!(f, "unknown object type `{k}`"),
             Self::InvalidObjectType { key, reason } => {
@@ -626,10 +634,15 @@ impl AdventureRuleset {
                     })
             })
             .collect::<Result<Vec<_>, _>>()?;
-        check_object_types(core, &tables.objects.types, &tables.not_random_monsters)?;
         check_terrain_walkers(core, &terrains, &tables.terrain_walkers)?;
         let (params, battle, price) = tables.params.ok_or(AdventureCompileError::MissingParams)?;
         let params = validate_params(params, battle, price)?;
+        check_object_types(
+            core,
+            &tables.objects.types,
+            &tables.not_random_monsters,
+            params.army_slots(),
+        )?;
         let starting_resources = tables
             .starting_resources
             .ok_or(AdventureCompileError::MissingDifficulties)?;

@@ -33,6 +33,7 @@ fn object(
         drawn: TileMask::default(),
         monster,
         guards: None,
+        holds: Default::default(),
     }
 }
 
@@ -45,6 +46,7 @@ fn gogs(count: u32, disposition: u8) -> Option<MonsterSetup> {
         never_flees: false,
         no_growth: false,
         treasure: vec![(GOLD, 100)],
+        artifact: None,
     })
 }
 

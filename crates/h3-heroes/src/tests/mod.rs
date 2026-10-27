@@ -523,6 +523,22 @@ fn invalid_details_are_rejected() {
         change(&r, &mut d);
         assert_eq!(validate(&d, &r), Err(error), "{error}");
     }
+    // E08 T61a: the same test of one artifact, the map's on an object.
+    let scroll = art(&r, "t:scroll").artifact;
+    assert_eq!(validate_artifact(art(&r, "t:eye"), &r), Ok(()));
+    assert_eq!(
+        validate_artifact(ArtifactInstance::scroll(scroll, spell_id(&r, "t:bolt")), &r),
+        Ok(())
+    );
+    assert_eq!(
+        validate_artifact(art(&r, "t:scroll"), &r),
+        Err(DetailsError::ScrollWithoutSpell(scroll))
+    );
+    let unknown = ArtifactTypeId::from_raw(99);
+    assert_eq!(
+        validate_artifact(ArtifactInstance::from(unknown), &r),
+        Err(DetailsError::UnknownArtifact(unknown))
+    );
     // The handles the cases name are the ones of the test pack.
     assert_eq!(slot_id(&r, "t:machine"), ArtifactSlotId::from_raw(3));
     assert_eq!(art(&r, "t:grail").artifact, ArtifactTypeId::from_raw(8));

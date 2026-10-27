@@ -397,7 +397,7 @@ pub(crate) fn hero_details(skills: &[(SkillId, u8)]) -> HeroDetails {
 }
 
 /// [`movement_rules_edited`] with the adventure pack changed by `edit_part` too.
-fn movement_rules_with(
+pub(crate) fn movement_rules_with(
     faithful: bool,
     size: u16,
     edit: impl FnOnce(&mut ContentPack),
@@ -619,8 +619,10 @@ pub(crate) fn world(rows: &[&str], levels: u8, heroes: Vec<HeroSetup>) -> Advent
                         never_flees: false,
                         no_growth: false,
                         treasure: vec![],
+                        artifact: None,
                     }),
                     guards: None,
+                    holds: Default::default(),
                 });
             }
         }

@@ -105,6 +105,16 @@ pub(crate) const RESOURCES: [&str; 7] = [
 /// The class of a monster whose subclass names its creature (ADV-MON-001).
 pub(crate) const MONSTER: u32 = 54;
 
+/// The placed artifact's class (E08 T61a): its subclass is the artifact's code.
+pub(crate) const ARTIFACT: u32 = 5;
+
+/// The event's class (E08 T61a).
+pub(crate) const EVENT: u32 = 26;
+
+/// The Spell Scroll's artifact code, which a scroll object (class 93) gives with its spell (E08
+/// T61a; `visit_spell_scroll` 0x4A5EA0 gives artifact 1).
+pub(crate) const SPELL_SCROLL: u16 = 1;
+
 /// What an object of `class` is among a battle's surroundings (GAM-BAT-011, E08 T54; survey
 /// `E08-objects.md` §2.5): ownable by the original's `class_is_ownable` (0x40FCA0: the creature
 /// generators 17 and 20, a garrison 33, a lighthouse 42, a mine 53, a random town 77, a shipyard
@@ -246,6 +256,39 @@ pub(crate) fn object_type(class: u32, subclass: u32) -> Option<Option<&'static s
         163 => Some("base:random_monster_6"),
         164 => Some("base:random_monster_7"),
         212 => by_subclass(&BORDER_GATES),
+        // E08 T61a (design §7): increment 7's 31 classes; a placed artifact's subclass is its
+        // artifact (ARTIFACTS), a Shrine's level its class.
+        4 => Some("base:arena"),
+        ARTIFACT => Some("base:artifact"),
+        6 => Some("base:pandoras_box"),
+        22 => Some("base:corpse"),
+        23 => Some("base:marletto_tower"),
+        EVENT => Some("base:event"),
+        32 => Some("base:garden_of_revelation"),
+        39 => Some("base:lean_to"),
+        41 => Some("base:library_of_enlightenment"),
+        47 => Some("base:school_of_magic"),
+        51 => Some("base:mercenary_camp"),
+        61 => Some("base:star_axis"),
+        63 => Some("base:pyramid"),
+        65 => Some("base:random_artifact"),
+        66 => Some("base:random_treasure_artifact"),
+        67 => Some("base:random_minor_artifact"),
+        68 => Some("base:random_major_artifact"),
+        69 => Some("base:random_relic_artifact"),
+        81 => Some("base:scholar"),
+        88 => Some("base:shrine_of_magic_incantation"),
+        89 => Some("base:shrine_of_magic_gesture"),
+        90 => Some("base:shrine_of_magic_thought"),
+        93 => Some("base:spell_scroll"),
+        100 => Some("base:learning_stone"),
+        101 => Some("base:treasure_chest"),
+        102 => Some("base:tree_of_knowledge"),
+        104 => Some("base:university"),
+        105 => Some("base:wagon"),
+        107 => Some("base:school_of_war"),
+        108 => Some("base:warriors_tomb"),
+        113 => Some("base:witch_hut"),
         222 => Some("sod:clover_field"),
         223 => Some("sod:cursed_ground"),
         224 => Some("sod:evil_fog"),

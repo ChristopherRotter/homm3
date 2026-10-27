@@ -52,6 +52,7 @@ fn fixed(creature: CreatureTypeId, count: u32, disposition: u8) -> MonsterSetup 
         never_flees: false,
         no_growth: false,
         treasure: vec![],
+        artifact: None,
     }
 }
 
@@ -74,6 +75,7 @@ fn object_at(x: u16, object_type: ObjectTypeId, monster: Option<MonsterSetup>) -
         drawn: TileMask::default(),
         monster,
         guards: None,
+        holds: Default::default(),
     }
 }
 
@@ -335,6 +337,7 @@ fn ground(
         drawn: TileMask::from_bits((0..height).fold(0, |bits, r| bits | row << (8 * u32::from(r)))),
         monster: None,
         guards: None,
+        holds: Default::default(),
     }
 }
 
@@ -708,6 +711,7 @@ fn scenery_at(x: u16, y: u16, (blocked, visitable): (u64, u64), scenery: Scenery
         monster: None,
         guards: None,
         scenery,
+        holds: Default::default(),
     }
 }
 

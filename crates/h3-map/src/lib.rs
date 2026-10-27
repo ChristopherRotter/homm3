@@ -44,8 +44,12 @@ pub use parse::parse;
 /// supported (its levels at load are the game's). v9 (E08 T49a): a placed hero's worn artifacts
 /// at the map's positions. v10 (E08 T49b): an equipped Titan's Thunder adds a Spell Book. v11
 /// (E08 T54): each player's human flag from the map's player kinds, each object's scenery by its
-/// class, a placed hero's sex.
-pub const MAP_IMPORT_VERSION: u32 = 11;
+/// class, a placed hero's sex. v12 (E08 T61a): increment 7's 31 classes typed with what the map
+/// puts in them (a placed artifact, a scroll's spell, a Shrine's spell, a Witch Hut's mask, a
+/// Scholar's gift, Pandora's Box's and an event's reward record and the event's flags), the
+/// guards of artifacts, scrolls, boxes and events, a monster's treasure artifact (a monster with
+/// one supported); a reward of more creature stacks than an army's slots unsupported (A-24).
+pub const MAP_IMPORT_VERSION: u32 = 12;
 
 /// Reads a map file as the game stores it (gzip-compressed) within `limits`.
 ///

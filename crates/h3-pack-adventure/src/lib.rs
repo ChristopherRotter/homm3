@@ -79,6 +79,27 @@
 //! # ground = { battlefield = "cursed_ground" } # a special ground (ADV-GRD-001); with
 //! #                                # `no_native = true` (E08 T40) a step from a tile it tops
 //! #                                # costs no army the native price (ADV-MOV-004)
+//! # E08 T61a, increment 7's kinds (classes: "treasure", "minor", "major", "relic", "special";
+//! # primary skills: "attack", "defense", "power", "knowledge"; prices and gifts as `price`):
+//! # chest = { resource = "gold", gold = [[32, 1000]], artifact = ["treasure"],
+//! #           full_backpack = 1000, experience_offset = 500 } # [chance, amount] pairs
+//! # artifact = {}                  # the map names it; or artifact = { classes = ["relic"] }
+//! # scroll = {}                    # also scholar, pandora_box, event: no parameters
+//! # gift = { gives = { primary = [0, 1, 0, 0] } } # or { choice = { skills = ["attack",
+//! #                                # "defense"], amount = 2 } }, { experience = 1000 }, "level";
+//! #                                # prices = [{}, { gold = 2000 }] (one drawn), admits = 10,
+//! #                                # leave = true
+//! # shrine = { level = 1 }
+//! # witch_hut = { roe = ["archery"], roe_fixed = ["archery", "first_aid"] } # skills
+//! # university = { offers = 4, price = { gold = 2000 } }
+//! # find = { draws = [{ chance = 20, holds = { artifact = ["minor"] } },
+//! #          { chance = 80, holds = "nothing" }], full_backpack = { give = { gold = 1000 } } }
+//! #                                # holds: "nothing", { artifact = [...] }, { resources =
+//! #                                # { amount = [1, 5], resources = ["wood"] } }; full_backpack:
+//! #                                # { give = {...} }, "drawn", "stays"; question = true;
+//! #                                # bonus = { morale = -3, luck = 0, mark = 0 }
+//! # pyramid = { split = { creature = "gold_golem", count = 40 }, fixed = { creature =
+//! #             "diamond_golem", stacks = [10, 10] }, level = 5, looted = { luck = -2, mark = 1 } }
 //!
 //! [[difficulty]]                   # E08 T13a, GAM-RES-002: the starting resources by the game's
 //!                                  # difficulty, from 0 (easy); exactly one enabled pack gives
@@ -98,10 +119,11 @@ use std::num::NonZeroU32;
 
 use h3_adventure::{
     AdventureCompileError, AdventurePack, AdventureParamsDef, AdventureRuleset, BattleTerrainsDef,
-    MonsterParamsDef, ObjectKindDef, ObjectTypeDef, Passage, PickupDef, RiverDef, RoadDef,
-    StartingResourcesDef, TerrainMovementDef, TerrainWalkerDef, Visit,
+    ChestDef, FindContentDef, FindDef, GiftDef, Gives, MonsterParamsDef, ObjectKindDef,
+    ObjectTypeDef, OnceBonus, Passage, PickupDef, PrimarySkill, PyramidDef, RiverDef, RoadDef,
+    StartingResourcesDef, TerrainMovementDef, TerrainWalkerDef, TurnDef, Visit,
 };
-use h3_content::{ContentKey, KeyError, PackManifest, Ruleset};
+use h3_content::{ArtifactClass, ContentKey, KeyError, PackManifest, Ruleset};
 use h3_pack::PackError;
 use serde::Deserialize;
 
@@ -302,6 +324,205 @@ struct ObjectTypeDto {
     key_gate: Option<KeyDto>,
     monster: Option<MonsterDto>,
     ground: Option<GroundDto>,
+    chest: Option<ChestDto>,
+    artifact: Option<ArtifactDto>,
+    scroll: Option<EmptyDto>,
+    gift: Option<GiftDto>,
+    shrine: Option<ShrineDto>,
+    witch_hut: Option<WitchHutDto>,
+    scholar: Option<EmptyDto>,
+    university: Option<UniversityDto>,
+    find: Option<FindDto>,
+    pandora_box: Option<EmptyDto>,
+    event: Option<EmptyDto>,
+    pyramid: Option<PyramidDto>,
+}
+
+/// A kind table without parameters (`scroll = {}`).
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct EmptyDto {}
+
+#[derive(Deserialize, Clone, Copy)]
+#[serde(rename_all = "snake_case")]
+enum ClassDto {
+    Treasure,
+    Minor,
+    Major,
+    Relic,
+    Special,
+}
+
+impl From<ClassDto> for ArtifactClass {
+    fn from(class: ClassDto) -> Self {
+        match class {
+            ClassDto::Treasure => Self::Treasure,
+            ClassDto::Minor => Self::Minor,
+            ClassDto::Major => Self::Major,
+            ClassDto::Relic => Self::Relic,
+            ClassDto::Special => Self::Special,
+        }
+    }
+}
+
+fn classes(list: Vec<ClassDto>) -> Vec<ArtifactClass> {
+    list.into_iter().map(ArtifactClass::from).collect()
+}
+
+#[derive(Deserialize, Clone, Copy)]
+#[serde(rename_all = "snake_case")]
+enum PrimaryDto {
+    Attack,
+    Defense,
+    Power,
+    Knowledge,
+}
+
+impl From<PrimaryDto> for PrimarySkill {
+    fn from(skill: PrimaryDto) -> Self {
+        match skill {
+            PrimaryDto::Attack => Self::Attack,
+            PrimaryDto::Defense => Self::Defense,
+            PrimaryDto::Power => Self::Power,
+            PrimaryDto::Knowledge => Self::Knowledge,
+        }
+    }
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct ChestDto {
+    resource: String,
+    gold: Vec<(u8, u32)>,
+    #[serde(default)]
+    artifact: Vec<ClassDto>,
+    full_backpack: u32,
+    experience_offset: u32,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct ArtifactDto {
+    classes: Option<Vec<ClassDto>>,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "snake_case", deny_unknown_fields)]
+enum GivesDto {
+    Primary([u8; 4]),
+    Choice { skills: [PrimaryDto; 2], amount: u8 },
+    Experience(u32),
+    Level,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct GiftDto {
+    gives: GivesDto,
+    #[serde(default)]
+    prices: Vec<BTreeMap<String, u32>>,
+    admits: Option<u8>,
+    #[serde(default)]
+    leave: bool,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct ShrineDto {
+    level: u8,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct WitchHutDto {
+    roe: Vec<String>,
+    roe_fixed: Vec<String>,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct UniversityDto {
+    offers: u8,
+    price: BTreeMap<String, u32>,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "snake_case", deny_unknown_fields)]
+enum HoldsDto {
+    Nothing,
+    Artifact(Vec<ClassDto>),
+    Resources {
+        amount: [u32; 2],
+        resources: Vec<String>,
+    },
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct DrawDto {
+    chance: u8,
+    holds: HoldsDto,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "snake_case", deny_unknown_fields)]
+enum TurnDto {
+    Give(BTreeMap<String, u32>),
+    Drawn,
+    Stays,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct BonusDto {
+    #[serde(default)]
+    morale: i8,
+    #[serde(default)]
+    luck: i8,
+    mark: u8,
+}
+
+impl From<BonusDto> for OnceBonus {
+    fn from(b: BonusDto) -> Self {
+        Self {
+            morale: b.morale,
+            luck: b.luck,
+            mark: b.mark,
+        }
+    }
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct FindDto {
+    draws: Vec<DrawDto>,
+    full_backpack: Option<TurnDto>,
+    #[serde(default)]
+    question: bool,
+    bonus: Option<BonusDto>,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct GuardDto {
+    creature: String,
+    count: u32,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct StacksDto {
+    creature: String,
+    stacks: Vec<u32>,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct PyramidDto {
+    split: GuardDto,
+    fixed: StacksDto,
+    level: u8,
+    looted: BonusDto,
 }
 
 #[derive(Deserialize)]
@@ -408,6 +629,95 @@ fn object_type(pack: &str, t: ObjectTypeDto) -> Result<ObjectTypeDef, AdventureP
             battlefield: reference(pack, &g.battlefield)?,
             no_native: g.no_native,
         });
+    }
+    let amounts = |map: BTreeMap<String, u32>| {
+        map.iter()
+            .map(|(k, &a)| Ok((reference(pack, k)?, a)))
+            .collect::<Result<Vec<_>, KeyError>>()
+    };
+    if let Some(c) = t.chest {
+        kinds.push(ObjectKindDef::Chest(ChestDef {
+            resource: reference(pack, &c.resource)?,
+            gold: c.gold,
+            artifact: classes(c.artifact),
+            full_backpack: c.full_backpack,
+            experience_offset: c.experience_offset,
+        }));
+    }
+    kinds.extend(t.artifact.map(|a| ObjectKindDef::Artifact {
+        classes: a.classes.map(classes),
+    }));
+    kinds.extend(t.scroll.map(|_| ObjectKindDef::Scroll));
+    if let Some(g) = t.gift {
+        kinds.push(ObjectKindDef::Gift(GiftDef {
+            gives: match g.gives {
+                GivesDto::Primary(gains) => Gives::Primary(gains),
+                GivesDto::Choice { skills, amount } => Gives::Choice {
+                    skills: skills.map(PrimarySkill::from),
+                    amount,
+                },
+                GivesDto::Experience(amount) => Gives::Experience(amount),
+                GivesDto::Level => Gives::Level,
+            },
+            prices: g
+                .prices
+                .into_iter()
+                .map(amounts)
+                .collect::<Result<_, _>>()?,
+            admits: g.admits,
+            leave: g.leave,
+        }));
+    }
+    kinds.extend(t.shrine.map(|s| ObjectKindDef::Shrine { level: s.level }));
+    if let Some(w) = t.witch_hut {
+        kinds.push(ObjectKindDef::WitchHut {
+            roe: refs(w.roe)?,
+            roe_fixed: refs(w.roe_fixed)?,
+        });
+    }
+    kinds.extend(t.scholar.map(|_| ObjectKindDef::Scholar));
+    if let Some(u) = t.university {
+        kinds.push(ObjectKindDef::University {
+            offers: u.offers,
+            price: amounts(u.price)?,
+        });
+    }
+    if let Some(f) = t.find {
+        let mut draws = Vec::with_capacity(f.draws.len());
+        for draw in f.draws {
+            draws.push((
+                draw.chance,
+                match draw.holds {
+                    HoldsDto::Nothing => FindContentDef::Nothing,
+                    HoldsDto::Artifact(list) => FindContentDef::Artifact(classes(list)),
+                    HoldsDto::Resources { amount, resources } => FindContentDef::Resources {
+                        amount,
+                        resources: refs(resources)?,
+                    },
+                },
+            ));
+        }
+        kinds.push(ObjectKindDef::Find(FindDef {
+            draws,
+            full_backpack: match f.full_backpack {
+                None => None,
+                Some(TurnDto::Give(map)) => Some(TurnDef::Give(amounts(map)?)),
+                Some(TurnDto::Drawn) => Some(TurnDef::Drawn),
+                Some(TurnDto::Stays) => Some(TurnDef::Stays),
+            },
+            question: f.question,
+            bonus: f.bonus.map(OnceBonus::from),
+        }));
+    }
+    kinds.extend(t.pandora_box.map(|_| ObjectKindDef::PandoraBox));
+    kinds.extend(t.event.map(|_| ObjectKindDef::Event));
+    if let Some(p) = t.pyramid {
+        kinds.push(ObjectKindDef::Pyramid(PyramidDef {
+            split: (reference(pack, &p.split.creature)?, p.split.count),
+            fixed: (reference(pack, &p.fixed.creature)?, p.fixed.stacks),
+            level: p.level,
+            looted: OnceBonus::from(p.looted),
+        }));
     }
     let [kind] = <[ObjectKindDef; 1]>::try_from(kinds)
         .map_err(|_| AdventurePackError::ObjectKind(t.id.clone()))?;
