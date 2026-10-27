@@ -1078,6 +1078,7 @@ fn spell_objects_go_through_the_obstacles_passes() {
         rows,
         before_stacks,
         blocked,
+        owner: None,
     };
     let moment = Moment {
         pulse: 5,

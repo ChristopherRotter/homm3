@@ -18,7 +18,7 @@ use alloc::collections::{BTreeMap, BTreeSet};
 use alloc::vec;
 use alloc::vec::Vec;
 
-use super::{Blast, Fidgets, Idle, Pose, Timeline};
+use super::{Blast, Fidgets, Idle, Pose, Timeline, sees};
 use crate::hero::Posing;
 use crate::scene::Moment;
 
@@ -304,6 +304,7 @@ impl Playhead {
     #[must_use]
     pub fn moment(&self, timeline: &Timeline) -> Moment {
         let t = self.at;
+        let screen = timeline.screen(t);
         let mut poses: BTreeMap<u8, Pose> = timeline
             .members
             .iter()
@@ -328,6 +329,7 @@ impl Playhead {
                 .placed
                 .iter()
                 .filter_map(|(&a, &i)| timeline.objects[i].object.clone().map(|o| (a, o)))
+                .filter(|(_, o)| sees(screen, o))
                 .collect(),
             field: self.field.and_then(|i| timeline.fields[i].shows()),
             counts: self

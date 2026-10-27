@@ -9,7 +9,7 @@ use alloc::string::ToString;
 use alloc::vec;
 use alloc::vec::Vec;
 
-use h3_protocol::wire::{Event, Observation, Side, Siege};
+use h3_protocol::wire::{Event, Observation, ObstacleKind, Side, Siege, SpellObstacle, WireU64};
 use h3_render::Bugs;
 
 use super::siege::{
@@ -19,8 +19,8 @@ use super::siege::{
 use super::timeline;
 use super::{at, layout, snapshot, tables, until};
 use crate::anim::{
-    BridgeKey, Casts, Command, Logged, MINE_BLAST, MagicLook, ObjectLook, Sound, Speed, SpellLook,
-    Stage, Timeline,
+    BridgeKey, Casts, Command, Growing, Logged, MINE_BLAST, MagicLook, ObjectLook, Sound, Speed,
+    SpellLook, Stage, Timeline,
 };
 use crate::siege::{GATE_CLOSED, GATE_MOVING, GATE_OPEN};
 
@@ -589,6 +589,150 @@ fn the_mine_sequence_plays_as_recorded() {
     assert_eq!(at(Sound::Mine, false), [9655]);
     assert!(at(Sound::Move, true).contains(&9655));
     assert!(at(Sound::Move, false).contains(&11331));
+}
+
+/// The mine siege grown with `commands`, each with the sides that alone see its events (E17 M5
+/// T2b), every side's player human or not by `humans`; its snapshot's hidden mine at 61 (the
+/// defender's, none seeing it but its side) if `laid`.
+fn grow_seen(
+    humans: [bool; 2],
+    laid: bool,
+    commands: &[(u32, Vec<Event>, Vec<Option<Side>>)],
+) -> Timeline {
+    let mut o = mine_siege();
+    for (side, human) in o.sides.iter_mut().zip(humans) {
+        side.human = human;
+    }
+    if laid {
+        o.spell_obstacles = vec![SpellObstacle {
+            spell: 11,
+            kind: ObstacleKind::Mine {},
+            side: Side::Defender,
+            hexes: vec![61],
+            rounds: 0,
+            value: WireU64(0),
+            revealed: false,
+        }];
+    }
+    let (layout, magic, casts, castle) = (layout(), BTreeMap::new(), mine_casts(), castle());
+    let stage = Stage {
+        layout: &layout,
+        width: 17,
+        groups: tables().battle.groups,
+        magic: &magic,
+        casts: &casts,
+        bugs: Bugs::Original,
+        siege: Some(&castle),
+    };
+    let looks = siege_looks();
+    let mut growing = Growing::new(&o, &looks, stage, Speed::default(), None).unwrap();
+    for (at, events, seen) in commands {
+        let command = Command {
+            at: Some(*at),
+            events,
+        };
+        growing.push_seen(&command, false, seen);
+    }
+    growing.finish()
+}
+
+#[test]
+fn a_mine_one_side_alone_sees_shows_on_its_screen_only() {
+    // E17 M5 T2b (design §7.16, `battle_redraw` 0x49460A): the defender's mine at 61, placed out
+    // of the attacker's sight (by an event the defender alone sees), shows while the screen is
+    // the defender's: the side to act's when its player is human here, else the other side's.
+    // Revealed, both see it. Without a human here every object shows (a record's own view).
+    let defended = |stack, next| {
+        vec![
+            Event::Defended { stack },
+            Event::TurnStarted { stack: next },
+        ]
+    };
+    let revealed = Event::ObstacleRevealed {
+        side: Side::Defender,
+        spell: 11,
+        hexes: vec![61],
+    };
+    let commands = [
+        // The keep's turn: the mine laid, the Titans' turn next.
+        (
+            0,
+            vec![
+                Event::ObstaclePlaced {
+                    side: Side::Defender,
+                    spell: 11,
+                    hexes: vec![61],
+                },
+                Event::Defended { stack: 4 },
+                Event::TurnStarted { stack: 0 },
+            ],
+            vec![Some(Side::Defender)],
+        ),
+        // A placement without hexes and one both sides see, at 70.
+        (
+            1_000,
+            vec![
+                Event::ObstaclePlaced {
+                    side: Side::Attacker,
+                    spell: 11,
+                    hexes: Vec::new(),
+                },
+                Event::ObstaclePlaced {
+                    side: Side::Attacker,
+                    spell: 11,
+                    hexes: vec![70],
+                },
+                Event::Defended { stack: 0 },
+                Event::TurnStarted { stack: 3 },
+            ],
+            vec![Some(Side::Attacker), None],
+        ),
+        (2_000, defended(3, 0), Vec::new()),
+        (
+            3_000,
+            vec![
+                revealed,
+                Event::Defended { stack: 0 },
+                Event::TurnStarted { stack: 3 },
+            ],
+            vec![Some(Side::Attacker)],
+        ),
+        (4_000, defended(3, 0), Vec::new()),
+    ];
+    // Each turn's start (the Titans', the Goblins', the Titans', the Goblins', the Titans').
+    let shows = |humans: [bool; 2]| {
+        let t = grow_seen(humans, false, &commands);
+        super::playhead::agrees(&t);
+        assert_eq!(t.turns.len(), 5);
+        t.turns
+            .iter()
+            .map(|&(at, _)| t.objects(at + 1).contains_key(&61))
+            .collect::<Vec<_>>()
+    };
+    // Hot seat: on the defender's turns only, until revealed.
+    assert_eq!(shows([true, true]), [false, true, false, true, true]);
+    // A human attacker against the computer: never until revealed, which shows with the next
+    // frame drawn (the Defend draws none: the next command's first idle step).
+    assert_eq!(shows([true, false]), [false, false, false, false, true]);
+    // A human defender against the computer: always, from the next frame drawn after it was
+    // laid (the next command's first idle step). No human here: the same.
+    let always = [false, true, true, true, true];
+    assert_eq!(shows([false, true]), always);
+    assert_eq!(shows([false, false]), always);
+    // The snapshot's hidden mine: on the keep's turn the defender's screen in hot seat, the
+    // attacker's against the computer.
+    let laid = |humans| grow_seen(humans, true, &[]).objects(0).contains_key(&61);
+    assert!(laid([true, true]) && !laid([true, false]) && laid([false, false]));
+    let mut t = grow_seen([true, true], true, &[]);
+    assert_eq!(t.screen(0), Some(Side::Defender));
+    assert_eq!(t.humans, [true, true]);
+    // The object both see shows on every screen; a turn of a stack the battle did not start
+    // with names no screen (every object shows).
+    let both = grow_seen([true, false], false, &commands);
+    assert!(both.objects(both.end).contains_key(&70));
+    t.turns.push((10, 99));
+    assert_eq!(t.screen(10), None);
+    assert!(t.objects(10).contains_key(&61));
 }
 
 #[test]
