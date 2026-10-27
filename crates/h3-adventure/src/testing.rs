@@ -638,6 +638,7 @@ pub(crate) fn world(rows: &[&str], levels: u8, heroes: Vec<HeroSetup>) -> Advent
         },
         heroes,
         difficulty: 0,
+        bans: crate::Bans::default(),
     }
 }
 

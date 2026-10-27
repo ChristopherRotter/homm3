@@ -22,7 +22,7 @@ use std::process::ExitCode;
 
 use std::sync::Arc;
 
-use h3_adventure::{MapSetup, land_table_points};
+use h3_adventure::{MapSetup, ObjectKind, land_table_points};
 use h3_game::{DEFAULT_DIFFICULTY, GameRuleset, GameSetup, GameState, PlayerSetup};
 use h3_map::model::{Artifacts, Body, Player, RawMap, SeerTask, Text, Version};
 use h3_map::{ImportError, Limits, gunzip, import, import_map};
@@ -207,6 +207,8 @@ fn check(
         heroes: Vec::new(),
         level_limit: 0,
         banned_skills: Vec::new(),
+        banned_spells: Vec::new(),
+        banned_artifacts: Vec::new(),
     };
     setup
         .validate(rules)
@@ -220,7 +222,7 @@ fn check(
     if twins > 0 {
         peaks.4.insert(name.to_owned(), twins);
     }
-    census(&map, &setup.map, &mut peaks.5);
+    census(&map, &setup.map, rules, &mut peaks.5);
     let outcome = match import(&map, rules) {
         Ok(setup) => {
             let game = GameState::new(rules, &setup, 0)
@@ -279,9 +281,41 @@ fn tutorial(game: &GameState, rules: &GameRuleset) -> Result<(), String> {
 /// beyond savage, treasures with an artifact; grounds, those whose picture the import's table
 /// lacks (they lie on one tile), and tiles two or more grounds lie on; (E08 T21a) the guarded
 /// piles the import keeps, those whose guards ask first, and the piles with a guards record the
-/// import reads as plain (no stack) or leaves unguarded (a random stack).
-fn census(map: &RawMap, setup: &MapSetup, counts: &mut BTreeMap<&'static str, usize>) {
+/// import reads as plain (no stack) or leaves unguarded (a random stack); since E08 T61b the
+/// guarded objects by kind (T61a gave guards to artifacts, scrolls, boxes and events) and the
+/// scenario's banned spells and artifacts (GAM-SET-003).
+fn census(
+    map: &RawMap,
+    setup: &MapSetup,
+    rules: &GameRuleset,
+    counts: &mut BTreeMap<&'static str, usize>,
+) {
     let mut add = |what, n: usize| *counts.entry(what).or_default() += n;
+    // E08 T61b: the banned spells and artifacts, and bits past the original's codes (the
+    // import's tables: 70 hero spells before the abilities, 141 artifacts).
+    let set = |bits: &h3_map::model::Bits, from: usize| {
+        (from..bits.bytes().len() * 8)
+            .filter(|&code| bits.get(code))
+            .count()
+    };
+    add(
+        "maps banning spells",
+        usize::from(set(&map.banned_spells, 0) > 0),
+    );
+    add("banned spells", set(&map.banned_spells, 0));
+    add(
+        "banned spells past the 70 hero spells",
+        set(&map.banned_spells, 70),
+    );
+    add(
+        "maps banning artifacts",
+        usize::from(set(&map.banned_artifacts, 0) > 0),
+    );
+    add("banned artifacts", set(&map.banned_artifacts, 0));
+    add(
+        "banned artifacts past the 141 codes",
+        set(&map.banned_artifacts, 141),
+    );
     // E08 T29: the scenario's level limit and banned skills (survey E08-progression.md §6.2,
     // §6.3: none has a limit, 19 SoD maps ban skills, none past the 28 skills' codes).
     add(
@@ -316,13 +350,44 @@ fn census(map: &RawMap, setup: &MapSetup, counts: &mut BTreeMap<&'static str, us
         |o| matches!(&o.body, Body::Resource { message: Some(m), .. } if m.guards.is_some()),
     );
     add("piles with a guards record", records.count());
-    for guards in setup.objects.iter().filter_map(|o| o.guards.as_ref()) {
-        add("guarded piles", 1);
-        add("guarded piles that ask first", usize::from(guards.question));
-        add(
-            "guarded piles with two or more stacks",
-            usize::from(guards.army.len() > 1),
-        );
+    for object in &setup.objects {
+        let Some(guards) = &object.guards else {
+            continue;
+        };
+        let kind = object
+            .object_type
+            .and_then(|id| rules.adventure().object_type(id))
+            .map(|ty| &ty.kind);
+        let (all, ask, two) = match kind {
+            Some(ObjectKind::Pickup(_)) => (
+                "guarded piles",
+                "guarded piles that ask first",
+                "guarded piles with two or more stacks",
+            ),
+            Some(ObjectKind::Artifact { .. }) => (
+                "guarded artifacts",
+                "guarded artifacts that ask first",
+                "guarded artifacts with two or more stacks",
+            ),
+            Some(ObjectKind::Scroll) => (
+                "guarded scrolls",
+                "guarded scrolls that ask first",
+                "guarded scrolls with two or more stacks",
+            ),
+            Some(ObjectKind::PandoraBox) => (
+                "guarded boxes",
+                "guarded boxes that ask first",
+                "guarded boxes with two or more stacks",
+            ),
+            _ => (
+                "guarded events",
+                "guarded events that ask first",
+                "guarded events with two or more stacks",
+            ),
+        };
+        add(all, 1);
+        add(ask, usize::from(guards.question));
+        add(two, usize::from(guards.army.len() > 1));
     }
     let mut lying = BTreeMap::<(u16, u16, u8), usize>::new();
     for object in setup.objects.iter().filter(|o| o.drawn.bits() != 0) {

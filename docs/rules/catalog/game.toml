@@ -154,6 +154,24 @@ quirks   = ["ADV-QUIRK-9", "ADV-QUIRK-12"]
   confidence = "high"
 
 [[rule]]
+id       = "GAM-SET-003"
+title    = "The scenario's banned spells and artifacts"
+context  = "game"
+status   = "implemented"
+summary  = "The setup carries the scenario's banned spells (the map's set, SoD: the spell of each set bit's code) and banned artifacts (AB's and SoD's set: the artifact of each set bit's code among the edition's artifacts the codes name; an AB set's 7 padding bits and the original's 3 unused records 141 to 143, which the editor bans by default on a SoD map, ban nothing), each the ruleset's (GameSetupError::BannedSpell, BannedArtifact, checked after the banned skills), a set in any order. The game passes the three bans to the adventure's build (h3_adventure::Bans), whose draws when the game is built never give a banned one (ADV-OBJ-006, ADV-PIK-005, ADV-PIK-009 to -012, ADV-TCH-003 to -008; GAM-SET-001's stream); the game keeps none of them afterwards, nothing in play reading them in increment 7. Like the original's game bans, the draws also leave out every spell granted by name only (the flag 0x2000: Titan's Lightning Bolt). Not built: an SoD map's bans of the artifacts that carry a banned spell (the second reading, partly inferred) and of the artifacts of a later edition than the map's (the pool is the ruleset's packs, E08 decisions 104 and 136). E08 T61b (map import v13): `h3_game::GameSetup`, `h3_map::import`."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E08 T55a1, T55a2, T55a3, survey E08-rewards.md §3.1, §6.5, §7.5, §13): new_game_bans 0x4C2450 sets the game's banned skills (+0x4E658) and spells (+0x4A) from the map's, plus every spell with the flag 0x2000; artifacts_given_init 0x4C0AA0 starts the random artifacts' marks (+0x4E224) as the map's banned artifacts (+0x4E2B4); the Shrines' marks start as the spell bans (0x4C2965), the Pyramid's pool leaves them out (0x4C19DE); docs/formats/h3m.md (the header's sets)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "the 160 shipped maps (E08 T61b, h3-map's original_data example): 26 ban spells (210 bits, none past the 70 hero spells), 111 ban artifacts (1 061 bits, 123 of them the unused records 141 to 143 on 41 SoD maps); every map that imports whole validates with its bans"
+  confidence = "high"
+
+[[rule]]
 id       = "GAM-TRN-001"
 title    = "Players act one at a time in colour order"
 context  = "game"

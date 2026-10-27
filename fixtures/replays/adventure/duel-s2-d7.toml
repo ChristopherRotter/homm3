@@ -42,7 +42,7 @@ commands = [
     "1 move 3 31,9,1",
     "1 end-turn",
 ]
-checkpoints = ["0xc9f53d606684759f"]
+checkpoints = ["0xb484afa975738e24"]
 
 [replay]
 format = 6
@@ -71,14 +71,14 @@ rng_version = 1
 hash = "fnv1a64-le"
 hash_version = 1
 game_state_hash_version = 15
-adventure_state_hash_version = 13
+adventure_state_hash_version = 14
 checkpoint_every = 25
 
 [map]
 path = "fixtures/maps/e08-duel-36.h3m"
 hash = "0x37d348cff2785a01"
-import_version = 12
+import_version = 13
 
 [result]
 day = 8
-final_hash = "0x4e6d4c52cfcc3aaa"
+final_hash = "0xff5414dec13bc696"

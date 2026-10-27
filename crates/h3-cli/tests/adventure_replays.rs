@@ -100,7 +100,10 @@
 //! gives) re-recorded all twelve with their options, their commands unchanged: every hash moved.
 //! E08 T61a (adventure state hash v13, ruleset part v12, map import v12: increment 7's kinds and
 //! what objects hold, none of which either map has) re-recorded all twelve with their options,
-//! their commands unchanged: every hash moved.
+//! their commands unchanged: every hash moved. E08 T61b (adventure state hash v14, map import v13:
+//! the draws when the game is built, the visits' block, the scenario's bans; neither map has an
+//! object that draws, nor bans) re-recorded all twelve with their options, their commands
+//! unchanged: every hash moved.
 //!
 //! **Scripted** (E08 T52, increment 6: the random agent manages nothing), on the generated
 //! `fixtures/maps/e08-army-12.h3m` (red's Valeska, hero 0, with a full army and twelve artifacts

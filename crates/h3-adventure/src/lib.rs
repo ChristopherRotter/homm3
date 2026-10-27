@@ -75,7 +75,7 @@ pub use ruleset::{
     TerrainWalkerDef, Turn, TurnDef, Visit,
 };
 pub use setup::{
-    AdventureSetup, ArmyError, EventSetup, Guards, HeroSetup, Holds, MapSetup, MonsterSetup,
+    AdventureSetup, ArmyError, Bans, EventSetup, Guards, HeroSetup, Holds, MapSetup, MonsterSetup,
     ObjectSetup, Pos, RewardRecord, Scenery, SetupError, StandError, TileMask, TileSetup,
 };
 pub use split::{TileRand, split};
@@ -86,7 +86,8 @@ pub use split::{TileRand, split};
 /// no edge to the hero model.
 pub use h3_heroes::{ArtifactInstance, HeroReward, PrimarySkill, ScholarGift};
 pub use state::{
-    AdventureState, BACKGROUND_RADIUS, HeroOnMap, MapObject, Monster, StaticMap, StaticTile,
+    AdventureState, BACKGROUND_RADIUS, HeroOnMap, MapObject, Monster, Resolved, StaticMap,
+    StaticTile, Visits,
 };
 
 /// Version of the adventure state's canonical hash encoding (`docs/08-work-process.md`,
@@ -99,8 +100,10 @@ pub use state::{
 /// monster's creature, count, aggression, flags and treasure, the armies battles left on objects
 /// and the game's difficulty. v10 (E08 T21a): each guarded pile's guards. v11 (E08 T50): each
 /// hero's tactics flag. v12 (E08 T54): each object's scenery. v13 (E08 T61a): what each object
-/// holds from the map (increment 7's kinds) and a monster's treasure artifact.
-pub const ADVENTURE_STATE_HASH_VERSION: u32 = 13;
+/// holds from the map (increment 7's kinds) and a monster's treasure artifact. v14 (E08 T61b): what
+/// the build drew for each object, and the visits' block (none, or the heroes' marks, the
+/// players' knowledge and the emptied objects).
+pub const ADVENTURE_STATE_HASH_VERSION: u32 = 14;
 
 /// Version of the adventure ruleset part's canonical hash encoding (ADR-0015 point 2; owned by the
 /// adventure lane). v2 (E08 T5a): the setup bounds and the army slots. v3 (E08 T6b): the starting

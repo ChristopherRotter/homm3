@@ -990,6 +990,55 @@ fn the_scenarios_level_limit_and_banned_skills_carry_over() {
     );
 }
 
+/// The scenario's banned spells and artifacts (E08 T61b, map import v13): each set bit the spell
+/// or artifact of its code; an artifact's only among the edition's that the codes name.
+// covers: GAM-SET-003
+#[test]
+fn the_scenarios_banned_spells_and_artifacts_carry_over() {
+    let core = SOD.core();
+    let spell = |k| core.spell_by_key(k).unwrap();
+    let artifact = |k| core.artifact_by_key(k).unwrap();
+    let mut m = map();
+    // Fly (6) and Town Portal (9); Visions (2) twice over is one bit.
+    m.banned_spells = Bits(vec![1 << 6 | 1 << 2, 1 << 1, 0, 0, 0, 0, 0, 0, 0]);
+    // The spell book (0), the Vial of Dragon Blood (127), Cornucopia (140) and the three unused
+    // records the editor bans by default (141 to 143), which no code names.
+    let mut bits = vec![0u8; 18];
+    bits[0] = 1;
+    bits[15] = 0x80;
+    bits[17] = 0x10 | 0xE0;
+    m.banned_artifacts = Bits(bits);
+    let setup = import(&m, &SOD).unwrap();
+    assert_eq!(
+        setup.banned_spells,
+        [
+            spell("base:visions"),
+            spell("base:fly"),
+            spell("base:town_portal")
+        ]
+    );
+    assert_eq!(
+        setup.banned_artifacts,
+        [
+            artifact("base:spell_book"),
+            artifact("ab:vial_of_dragon_blood"),
+            artifact("sod:cornucopia")
+        ]
+    );
+    assert_eq!(setup.validate(&SOD), Ok(()));
+    let plain = import(&map(), &SOD).unwrap();
+    assert_eq!(
+        (plain.banned_spells.len(), plain.banned_artifacts.len()),
+        (0, 0)
+    );
+    // An AB map's set is 17 bytes, its last 7 bits past the edition's 129 artifacts: padding.
+    let mut ab = map();
+    ab.header.version = Version::Ab;
+    ab.banned_spells = Bits(Vec::new());
+    ab.banned_artifacts = Bits([vec![0; 16], vec![0xFE]].concat());
+    assert_eq!(import(&ab, &SOD).map(|s| s.banned_artifacts.len()), Ok(0));
+}
+
 fn body(m: &mut RawMap) -> &mut HeroBody {
     match &mut m.objects[1].body {
         Body::Hero(h) => h,
