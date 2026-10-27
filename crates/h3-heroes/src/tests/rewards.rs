@@ -2,7 +2,6 @@
 //! skills gained, a skill raised to a level, a bonus with its once-mark, the bonuses cleared.
 
 use std::string::ToString;
-use std::vec::Vec;
 
 use super::*;
 
