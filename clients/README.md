@@ -146,8 +146,9 @@ search the parent directories).
   without the original: the map's timeline (`h3_map_view::timeline`: the redraws, the palette
   steps, the scroll by Ctrl and the direction keys and at the frame's edges, the edge cursors)
   from each sequence's situation, its live part at 0 and its inputs, the screen drawn wherever it
-  changes, every line compared with `map/timelines/<id>.txt` (exit 1 on a difference; a walk is
-  M2 T3's, listed); `--frames` writes our frames for the harness's frame check, `python3
+  changes, every line compared with `map/timelines/<id>.txt` (exit 1 on a difference; a walk,
+  E24 M2 T3a: the selected hero's steps and the path's walk at the hero speeds, its lines but the
+  `screen` ones, which wait for the walk drawn, M2 T3b); `--frames` writes our frames for the harness's frame check, `python3
   capture/h3map.py frames` (the runbook, "The map's sequences").
 
 | Path | What |
@@ -261,7 +262,10 @@ The format:
   (how far below its tile a road is drawn, 16), `cycle_ms` (the palette cycles' step, 200),
   `frame_ms` (the objects' frame step, 180), `scroll_steps` (a scroll step's tiles at the three
   scroll speeds, 1, 2, 3), `scroll_ms` (the edge scroll's time between steps, 70) and `poll_ms`
-  (the mouse poll's, 33; E24 M2 T2); `[map.shroud]`: `full` and `edge` (the
+  (the mouse poll's, 33; E24 M2 T2); `[map.walk]` (E24 M2 T3a): `groups` (the walking group by
+  the step's direction, 8), `frames` (the frames a walking group steps through, 8), `frame_ms` (a
+  frame's time at the hero speeds 1 to 3, 50) and `pixels` (per hero speed 1 to 4 the pixels each
+  frame slides the view by, summing to a tile; none at speed 4, one draw); `[map.shroud]`: `full` and `edge` (the
   unexplored tiles' DEFs) and `pieces` (each mask's piece, 256 numbers: the executable's table);
   `[map.heroes]` (E24 M1 T5a): `classes` (a hero's map DEF by class, 18), `flags` (its flag by
   owner, 8), `boats` and `waves` (by type, 3 each), `boat_flags` (by type × 8 + colour, 24) and

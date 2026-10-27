@@ -86,6 +86,27 @@ pub struct ViewArt {
     pub owners: OwnerArt,
     /// The towns' pictures by their buildings (E24 M1 T5b1; design §2.9).
     pub towns: TownArt,
+    /// The hero's walk (E24 M2 T3a; design §3.5).
+    pub walk: WalkArt,
+}
+
+/// The hero's walk (E24 M2 T3a; design §3.5, `hero_walk_animation` 0x480380): the group a step
+/// draws, the frames' time and the pixels each frame slides the view by, at each hero speed.
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct WalkArt {
+    /// The walking group by the step's direction, 0 north to 7 north-west (the switch 0x4805BC;
+    /// mirrored above 4 as the standing groups, [`HeroArt::groups`]).
+    pub groups: Vec<u32>,
+    /// The frames a walking group steps through (pass 9's +0x200 mod 8, 0x47FF74): one a frame
+    /// drawn, carried from step to step.
+    pub frames: u32,
+    /// A frame's time at the hero speeds 1 to 3 (`walk_frame_times` 0x63D6DC: 50 ms).
+    pub frame_ms: u32,
+    /// The pixels each frame of a step slides the view by, at the hero speeds 1 to 4
+    /// (`walk_frame_pixels` 0x63D6C8: a tile in 32 / that many frames; speed 2's middle frame 12,
+    /// 0x480509): none at speed 4, one draw at the step's end place without a wait (0x480483).
+    pub pixels: Vec<Vec<i32>>,
 }
 
 /// The owned objects' colours (E24 M1 T5b1; design §2.9): the bodies of a few classes draw their
@@ -324,6 +345,8 @@ pub const PATH_FRAMES: usize = 50;
 pub const MASKS: usize = 256;
 /// The scroll speeds (the options dialog's three, `option_scroll_speed` 0x69878C 0 to 2).
 pub const SCROLL_SPEEDS: usize = 3;
+/// The hero speeds (the options dialog's four, `option_walk_speed` 0x69875C 1 to 4).
+pub const HERO_SPEEDS: usize = 4;
 
 /// A terrain's, river's or road's art.
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
@@ -530,6 +553,7 @@ pub fn load(files: &[TableFile], top: &str) -> Result<Tables, TableError> {
     if map.poll_ms == 0 {
         return Err(entry("poll_ms", "a poll every 0 ms"));
     }
+    walk(&map.walk)?;
     if map.shroud.pieces.len() != MASKS {
         return Err(entry(
             "shroud",
@@ -593,6 +617,38 @@ fn heroes(art: &HeroArt) -> Result<(), TableError> {
     }
     for (def, what) in art.defs() {
         name(&what, &def, ".DEF")?;
+    }
+    Ok(())
+}
+
+/// The walk's numbers: a group per direction, frames and their time, and per hero speed pixels
+/// that each sum to a tile's (the same for every speed but the one-draw one).
+fn walk(art: &WalkArt) -> Result<(), TableError> {
+    if art.groups.len() != FACINGS {
+        return Err(entry(
+            "walk groups",
+            &format!("{} entries, not {FACINGS}", art.groups.len()),
+        ));
+    }
+    if art.frames == 0 || art.frame_ms == 0 {
+        return Err(entry("walk", "no frames, or frames of 0 ms"));
+    }
+    let sums: BTreeSet<i32> = art
+        .pixels
+        .iter()
+        .filter(|p| !p.is_empty())
+        .map(|p| p.iter().sum())
+        .collect();
+    if art.pixels.len() != HERO_SPEEDS
+        || sums.len() != 1
+        || art.pixels.iter().flatten().any(|&p| p < 1)
+    {
+        return Err(entry(
+            "walk pixels",
+            &format!(
+                "one list per hero speed ({HERO_SPEEDS}), each of positive pixels summing to one tile, or empty"
+            ),
+        ));
     }
     Ok(())
 }

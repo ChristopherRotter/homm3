@@ -70,6 +70,18 @@ boat_flags = [
 ]
 groups = [0, 1, 2, 3, 4, 3, 2, 1]
 
+# The hero's walk (E24 M2 T3a; design §3.5, hero_walk_animation 0x480380): the walking group by
+# the step's direction, 0 north to 7 north-west (the switch 0x4805BC; mirrored above 4), the frames
+# a walking group steps through (pass 9's +0x200 mod 8, 0x47FF74), a frame's time at the hero
+# speeds 1 to 3 (walk_frame_times 0x63D6DC) and the pixels each frame slides the view by at the
+# hero speeds 1 to 4 (walk_frame_pixels 0x63D6C8: a tile in 32 / that many frames; speed 2's
+# middle frame 12, 0x480509; speed 4 one draw at the step's end place, no wait, 0x480483).
+[map.walk]
+groups = [5, 6, 7, 8, 9, 8, 7, 6]
+frames = 8
+frame_ms = 50
+pixels = [[8, 8, 8, 8], [10, 12, 10], [16, 16], []]
+
 # The owned objects' colours (E24 M1 T5b1; design §2.9): the bodies of these classes (the
 # dwellings 17 and 20, a garrison 33, a lighthouse 42, a mine 53, the towns 77 and 98, a shipyard
 # 87: the view passes' jump tables 0x41153C and 0x412470's; and the map's classes the game loads

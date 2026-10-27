@@ -660,8 +660,10 @@ against the recorded one, every line, the `screen` boxes from its own frames inc
 compares each kept screen with ours outside the panels: `frames.txt`, a line `<ms> <differing
 pixels>` per kept screen, `diff/t<ms>.png` for one that differs, against
 `map/timelines/<id>-frames.txt` (`ok`, `CHANGED`, `new`: copied there by hand once a second run
-gives the same, as the timeline). A walk's frame check is M2 T3's (`walks`: the hero's options,
-a click or a direction key without Ctrl). `--reuse` takes the original's screens, states and live
+gives the same, as the timeline). A walk's frame check is M2 T3b's (`walks`: the hero's options,
+a click or a direction key without Ctrl; since T3a `h3-map-view sequences` plays a walk, with the
+live part's selected hero and the paths its recorded timeline shows, and checks its lines but the
+`screen` ones). `--reuse` takes the original's screens, states and live
 part from an earlier run under `<out>` and compares again (after a change to the viewer; the
 original's frames stay only in the sandbox that recorded them). `h3-map-view sequences` alone
 (no Wine; the assets only) checks every sequence's timeline; `drawn` covers the sequences too
