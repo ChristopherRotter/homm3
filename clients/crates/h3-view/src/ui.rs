@@ -39,10 +39,15 @@ pub enum Item {
 
 impl Item {
     /// Where the item takes the mouse, from the dialog's corner: its corner and size (a picture
-    /// takes none: *provisional*, design §9.9).
+    /// only with its `size`: *provisional*, design §9.9).
     #[must_use]
     pub const fn area(&self) -> Option<([i32; 2], [i32; 2])> {
         match self {
+            Self::Picture(Picture {
+                at,
+                size: Some(size),
+                ..
+            }) => Some((*at, *size)),
             Self::Picture(_) => None,
             Self::Button(b) => Some((b.at, b.size)),
             Self::Text(t) => Some((t.at, t.size)),
@@ -82,6 +87,11 @@ pub struct Picture {
     pub picture: String,
     /// Its top-left corner from the dialog's.
     pub at: [i32; 2],
+    /// Its size where it takes the mouse (its picture's; E17 M4 T3b: the battle's panel picture
+    /// is entered as the hovered item, `hovered_item` 0x6AAC68); none: it takes none
+    /// (*provisional*, design §9.9).
+    #[serde(default)]
+    pub size: Option<[i32; 2]>,
 }
 
 /// A button of DEF frames (`H3DlgDefButton` 0x455EF0, drawn by 0x456940): a frame of the DEF's

@@ -46,7 +46,7 @@ fn legal() -> Legal {
 }
 
 fn run(log: &[(u32, Logged)], starts: &[Start], turns: &[Turn<'_>], inputs: &[Input]) -> Shown {
-    follow(log, starts, turns, inputs, (&layout(), false), &name)
+    follow(log, starts, turns, inputs, &layout(), &name)
 }
 
 #[test]
@@ -87,8 +87,9 @@ fn a_waiting_human_turn_takes_each_move() {
     assert_eq!(shown.frames, frames);
     assert_eq!(shown.marked, [(100, Some(1)), (200, None)]);
     assert_eq!(shown.entered, [(100, 1)]);
+    // The mouse resting where it was placed before the battle enters no item: no hint at 0 (E17
+    // M4 T3b); the log's item at 300 has none.
     let log = [
-        (0, status("Empty", false)),
         (100, status("Attack(1)", true)),
         (150, status("Attack(1)", true)),
         (200, status("Move(0)", false)),
@@ -115,9 +116,11 @@ fn a_waiting_human_turn_takes_each_move() {
 }
 
 #[test]
-fn in_hot_seat_the_parked_mouse_keeps_the_status_line() {
-    // E17 M4 T2c-2 (`hit`, `gate`): both sides played here, the queued and the posted move over
-    // no control write nothing; a control's hint still.
+fn an_item_writes_its_hint_only_as_the_mouse_enters_it() {
+    // E17 M4 T3b (`hovered_item` 0x6AAC68, read per frame): the mouse resting where it was placed
+    // before the battle enters no item; the queued move into the panel enters its picture (an
+    // empty line), the next turn's post there writes nothing; a control's hint as the mouse
+    // enters it, the picture's empty line as it comes back.
     let (o, legal) = (battle(), legal());
     let mut next = battle();
     next.active = Some(2);
@@ -131,26 +134,35 @@ fn in_hot_seat_the_parked_mouse_keeps_the_status_line() {
         },
         human: true,
     };
-    let turns = [turn(&o, &legal), turn(&next, &none)];
+    let turns = [turn(&o, &legal), turn(&next, &none), turn(&next, &none)];
     let inputs = [
+        Input::Move { at: 0, to: PARK },
         Input::Move {
             at: 100,
             to: centre(90),
         },
         Input::Act { at: 100 },
         Input::Move { at: 100, to: PARK },
+        Input::Act { at: 500 },
         Input::Move {
-            at: 500,
+            at: 900,
             to: [700, 570],
         },
+        Input::Move { at: 950, to: PARK },
+        Input::Move { at: 990, to: PARK },
     ];
-    let log = [(100, Logged::Action), (500, Logged::Turn(2))];
+    let log = [
+        (100, Logged::Action),
+        (500, Logged::Turn(2)),
+        (500, Logged::Action),
+        (900, Logged::Turn(2)),
+    ];
     let shown = follow(
         &log,
-        &[Start { unmarks: true }],
+        &[Start { unmarks: true }, Start::default()],
         &turns,
         &inputs,
-        (&layout(), true),
+        &layout(),
         &name,
     );
     assert_eq!(
@@ -159,7 +171,11 @@ fn in_hot_seat_the_parked_mouse_keeps_the_status_line() {
             (100, status("Attack(1)", true)),
             (100, Logged::Action),
             (500, Logged::Turn(2)),
-            (500, status("Control(\"battle.control.wait\")", false)),
+            (500, status("Empty", false)),
+            (500, Logged::Action),
+            (900, Logged::Turn(2)),
+            (900, status("Control(\"battle.control.wait\")", false)),
+            (950, status("Empty", false)),
         ]
     );
 }
@@ -211,14 +227,14 @@ fn moves_wait_while_an_action_plays() {
     let log = [(100, Logged::Action), (500, Logged::Turn(2))];
     let shown = run(&log, &[Start { unmarks: true }], &turns, &inputs);
     // The same hex again writes nothing; the action shows the pointer and unmarks; the parked
-    // mouse waits until the next human turn, which takes it, then posts it again.
+    // mouse waits until the next human turn, which takes it (entering the panel's picture: an
+    // empty line), then posts it again (the same item: nothing; E17 M4 T3b).
     assert_eq!(
         shown.log,
         [
             (0, status("Attack(1)", true)),
             (100, Logged::Action),
             (500, Logged::Turn(2)),
-            (500, status("Empty", false)),
             (500, status("Empty", false)),
             (500, status("Control(\"battle.control.wait\")", false)),
         ]
@@ -400,10 +416,15 @@ fn a_turned_stack_takes_its_other_hexes() {
 
 #[test]
 fn without_turns_the_panel_still_answers() {
-    // A record without its battle: the mouse over the panel writes the control's hint, over
-    // the field nothing.
+    // A record without its battle: the mouse over the panel writes the control's hint (no
+    // words without a battle), over the field nothing; resting where it was placed before the
+    // battle, nothing (E17 M4 T3b).
     let inputs = [
         Input::Move { at: 0, to: PARK },
+        Input::Move {
+            at: 1,
+            to: [700, 570],
+        },
         Input::Move {
             at: 5,
             to: centre(90),
@@ -411,7 +432,7 @@ fn without_turns_the_panel_still_answers() {
         Input::Act { at: 9 },
     ];
     let shown = run(&[(9, Logged::Action)], &[], &[], &inputs);
-    assert_eq!(shown.log, [(0, status("", false)), (9, Logged::Action)]);
+    assert_eq!(shown.log, [(1, status("", false)), (9, Logged::Action)]);
     assert_eq!(shown.frames, [(0, 6)]);
     assert_eq!(Input::Act { at: 4 }.at(), 4);
 }
@@ -508,7 +529,6 @@ fn an_aimed_spell_hints_its_cast() {
     assert_eq!(
         texts,
         [
-            s("Empty", false),
             s("Cast(54, Some(1))", false),
             s("Cast(54, None)", false),
             s("Control(\"battle.control.wait\")", false),
@@ -537,11 +557,13 @@ fn the_spell_book_empties_the_status_line() {
             at: 0,
             to: centre(87),
         },
+        Input::Move { at: 1, to: PARK },
         Input::Book { at: 2 },
         Input::Move {
             at: 3,
             to: centre(87),
         },
+        Input::Move { at: 4, to: PARK },
     ];
     let shown = run(&[], &[], &turns, &inputs);
     let texts: Vec<(u32, String)> = shown
@@ -552,8 +574,13 @@ fn the_spell_book_empties_the_status_line() {
             _ => None,
         })
         .collect();
-    assert_eq!(texts.len(), 3);
-    assert_eq!(texts[1], (2, String::new()));
-    assert_eq!(texts[2].1, texts[0].1);
+    // The book's items, the hovered one among them, are gone as it closes (E17 M4 T3b): the
+    // panel's picture is entered again.
+    let empty = String::from("Empty");
+    assert_eq!(texts.len(), 5);
+    assert_eq!(texts[1], (1, empty.clone()));
+    assert_eq!(texts[2], (2, String::new()));
+    assert_eq!(texts[3].1, texts[0].1);
+    assert_eq!(texts[4], (4, empty));
     assert_eq!(Input::Book { at: 4 }.at(), 4);
 }

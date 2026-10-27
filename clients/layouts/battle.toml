@@ -90,12 +90,15 @@ panel_frame = 6
 [panel]
 place = [0, 556]
 
-# The picture (0x46B704), in the acting player's colours (0x450520).
+# The picture (0x46B704), in the acting player's colours (0x450520). It takes the mouse where no
+# control does (E17 M4 T3b: the hovered item, `hovered_item` 0x6AAC68, at the park point: id
+# 2000, its box (0, 556, 800, 44), its state 6), with no hint: entering it writes an empty line.
 [[panel.items]]
 kind = "picture"
 id = 2000
 picture = "cbar.pcx"
 at = [0, 0]
+size = [800, 44]
 
 # The buttons, 48 x 36 (0x46B765 to 0x46BAB8): Surrender, Retreat, the options, Auto Combat.
 [[panel.items]]

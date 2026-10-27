@@ -86,7 +86,8 @@ fn a_dialog_reads_its_items_in_order() {
 
 #[test]
 fn the_item_under_the_mouse_gives_its_hint() {
-    // E17 M3 T6c-1: the last item in order whose area holds the point; a picture takes none.
+    // E17 M3 T6c-1: the last item in order whose area holds the point; a picture without its
+    // `size` takes none.
     let d = dialog();
     let at = |x, y| d.item_at([x, y]).map(Item::id);
     assert_eq!(at(13, 24), Some(2));
@@ -105,6 +106,25 @@ fn the_item_under_the_mouse_gives_its_hint() {
     assert_eq!(d.button_at([61, 59]), None);
     assert_eq!(d.button_for_key("Space"), Some(2));
     assert_eq!(d.button_for_key("X"), None);
+}
+
+#[test]
+fn a_picture_with_its_size_takes_the_mouse_under_the_controls() {
+    // E17 M4 T3b: the battle's panel picture is the hovered item where no control is.
+    let mut d = dialog();
+    if let Item::Picture(p) = &mut d.items[0] {
+        p.size = Some([80, 44]);
+    }
+    assert_eq!(d.items[0].area(), Some(([0, 0], [80, 44])));
+    let at = |x, y| d.item_at([x, y]).map(Item::id);
+    assert_eq!(at(10, 20), Some(1));
+    assert_eq!(at(61, 59), Some(1));
+    assert_eq!(at(13, 24), Some(2));
+    assert_eq!(at(90, 20), None);
+    assert_eq!(d.button_at([10, 20]), None);
+    let sized: Dialog =
+        toml::from_str(&DIALOG.replace("at = [0, 0]", "at = [0, 0]\nsize = [80, 44]")).unwrap();
+    assert_eq!(sized, d);
 }
 
 #[test]
