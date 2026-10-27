@@ -682,7 +682,12 @@ fn a_monster_on_the_fringe_shows_in_either_profile() {
             creature: PIKEMAN,
             count: 1,
         }];
-        state.end_monster_battle((&core, &part), p(6, 1), (&left, false), &mut events);
+        state.end_monster_battle(
+            (&core, &part, &[]),
+            (HeroId::new(1), p(6, 1)),
+            (&left, false),
+            &mut events,
+        );
         assert_eq!(
             events,
             [AdventureEvent {

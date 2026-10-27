@@ -236,7 +236,7 @@ fn an_accepted_question_or_no_question_fights_the_unsplit_guards_at_the_piles_ti
     let mut s = guarded(&rules, true);
     visit(&rules, &mut s);
     let mut events = Vec::new();
-    let accepted = s.accept_offer(&rules.0, &rules.1, RED, &question(), &mut events);
+    let accepted = s.accept_offer((&rules.0, &rules.1, &[]), RED, &question(), &mut events);
     battle(accepted, &s);
     assert!(events.is_empty());
     let mut s = guarded(&rules, false);
@@ -249,7 +249,7 @@ fn an_accepted_question_or_no_question_fights_the_unsplit_guards_at_the_piles_ti
         hero: HeroId::new(9),
         ..question()
     };
-    let outcome = s.accept_offer(&rules.0, &rules.1, RED, &stranger, &mut events);
+    let outcome = s.accept_offer((&rules.0, &rules.1, &[]), RED, &stranger, &mut events);
     assert_eq!(outcome, AdventureOutcome::default());
 }
 
@@ -257,12 +257,14 @@ fn an_accepted_question_or_no_question_fights_the_unsplit_guards_at_the_piles_ti
 #[test]
 fn the_guards_battle_leaves_their_survivors_or_gives_the_pile() {
     let rules = rules();
-    let parts = (&rules.0, &rules.1);
+    let parts: (&Ruleset, &AdventureRuleset, &[Arc<HeroDetails>]) = (&rules.0, &rules.1, &[]);
     let mut events: Vec<AdventureEvent> = Vec::new();
     // Lost or retreated: the survivors stay as the guards, unseen; the next visit fights them.
     let mut s = guarded(&rules, false);
     let left = [stack(4, GNOLL, 3)];
-    let gains = s.end_unowned_battle(parts, TILE, (&left, false), &mut events);
+    let gains = s
+        .end_unowned_battle(parts, (HERO, TILE), (&left, false), &mut events)
+        .gains;
     assert!(gains.is_empty() && events.is_empty());
     assert_eq!(s.guards_left(0), &left[..]);
     assert_eq!(s.army_left(0), Some(&left[..]));
@@ -275,7 +277,9 @@ fn the_guards_battle_leaves_their_survivors_or_gives_the_pile() {
         })
     );
     // Won: the pile is picked up, told to the players that see it.
-    let gains = s.end_unowned_battle(parts, TILE, (&[], true), &mut events);
+    let gains = s
+        .end_unowned_battle(parts, (HERO, TILE), (&[], true), &mut events)
+        .gains;
     assert_eq!(gains, [(GOLD, 700)]);
     assert!(s.is_removed(0));
     assert_eq!(s.army_left(0), None);
@@ -295,11 +299,13 @@ fn the_guards_battle_leaves_their_survivors_or_gives_the_pile() {
     let mut s = guarded(&rules, true);
     let (outcome, _) = visit(&rules, &mut s);
     assert_eq!(outcome.offer, Some(question()));
-    let gains = s.end_unowned_battle(parts, TILE, (&[], false), &mut events);
+    let gains = s
+        .end_unowned_battle(parts, (HERO, TILE), (&[], false), &mut events)
+        .gains;
     assert!(gains.is_empty() && events.is_empty());
     assert!(s.guards_left(0).is_empty());
     let mut again = s.clone();
-    let accepted = s.accept_offer(&rules.0, &rules.1, RED, &question(), &mut events);
+    let accepted = s.accept_offer((&rules.0, &rules.1, &[]), RED, &question(), &mut events);
     assert_eq!(accepted.gains, [(GOLD, 700)]);
     assert!(accepted.battle.is_none() && s.is_removed(0));
     let (outcome, _) = visit(&rules, &mut again);
@@ -329,12 +335,15 @@ fn the_guards_battle_leaves_their_survivors_or_gives_the_pile() {
     let before = s.clone();
     for at in [Pos::new(0, 2, 0), TILE] {
         assert!(
-            s.end_unowned_battle(parts, at, (&[], true), &mut events)
+            s.end_unowned_battle(parts, (HERO, at), (&[], true), &mut events)
+                .gains
                 .is_empty()
         );
     }
     assert_eq!(s, before);
-    let gains = s.end_unowned_battle(parts, Pos::new(4, 0, 0), (&[], true), &mut events);
+    let gains = s
+        .end_unowned_battle(parts, (HERO, Pos::new(4, 0, 0)), (&[], true), &mut events)
+        .gains;
     assert_eq!(gains, [(GOLD, 50)]);
     assert!(s.is_removed(1));
 }

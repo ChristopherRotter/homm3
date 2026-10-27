@@ -11,7 +11,9 @@ use alloc::sync::Arc;
 use alloc::vec;
 use alloc::vec::Vec;
 
-use h3_adventure::{AdventureOutcome, AdventureState, Meeting, NoRoom, Offer, OfferKind};
+use h3_adventure::{
+    AdventureOutcome, AdventureState, Choice, HeroGains, Meeting, NoRoom, Offer, OfferKind, Pick,
+};
 use h3_content::{ResourceId, SkillId};
 use h3_contracts::{ArmyStack, HeroId, HeroSex, PlayerId};
 use h3_heroes::{
@@ -356,10 +358,13 @@ impl GameState {
     }
 
     /// Applies what the adventure left of a command of `player` or of its answer (ADR-0017
-    /// point 10): the gains (GAM-RES-001), then the offer ([`Self::open`]) with whatever follows
-    /// one that does not open, then the battle ([`Self::start_battle`]), the meeting
-    /// ([`Self::meet`], E08 T51b) or the army dialog ([`Self::open_army_dialog`], T51b): an
-    /// outcome has at most one of the offer, the battle, the meeting and the group without room.
+    /// point 10): the gains (GAM-RES-001), the hero's gains ([`Self::give_hero`], E08 T62a), then
+    /// the offer ([`Self::open`]) with whatever follows one that does not open, then the battle
+    /// ([`Self::start_battle`]), the meeting ([`Self::meet`], E08 T51b), the army dialog
+    /// ([`Self::open_army_dialog`], T51b) or the choice ([`Self::choose_by_default`], T62a): an
+    /// outcome has at most one of the offer, the battle, the meeting, the group without room, the
+    /// choice and the University. Until T63 the University is left at once (ADV-STUB-10): its
+    /// decision and purchases come with the typed answers.
     // rule: GAM-DEC-001
     pub(crate) fn settle_outcome<S: Sink>(
         &mut self,
@@ -371,6 +376,9 @@ impl GameState {
         let mut next = Some(outcome);
         while let Some(outcome) = next.take() {
             self.gain(player, &outcome.gains, sink);
+            if let Some(gains) = outcome.hero {
+                self.give_hero(rules, player, gains, sink);
+            }
             next = outcome
                 .offer
                 .and_then(|offer| self.open(rules, player, offer, outcome.guard_after, sink));
@@ -383,7 +391,44 @@ impl GameState {
             if let Some(group) = outcome.no_room {
                 self.open_army_dialog(player, group, sink);
             }
+            if let Some(choice) = outcome.choice {
+                next = self.choose_by_default(&choice);
+            }
         }
+    }
+
+    /// Gives `player`'s hero what a visit gave it (ADR-0017 point 10, E08 T62a): each change in
+    /// order ([`Self::change_hero`]: the hero model applies it, told to the player as its
+    /// `HeroChanged`), then the experience under the scenario's level limit with the levels it
+    /// brings ([`Self::give_levels`], GAM-DEC-002).
+    // rule: GAM-DEC-002
+    fn give_hero<S: Sink>(
+        &mut self,
+        rules: &GameRuleset,
+        player: PlayerId,
+        gains: HeroGains,
+        sink: &mut S,
+    ) {
+        let (core, hero) = (rules.core(), gains.hero);
+        for change in gains.changes {
+            self.change_hero(core, hero, Some(player), change, sink);
+        }
+        if gains.experience > 0 {
+            let change = HeroChange::GainExperience(gains.experience);
+            self.change_hero(core, hero, Some(player), change, sink);
+            self.give_levels(rules, (hero, player), sink);
+        }
+    }
+
+    /// A visit's choice answered at once with its default (ADR-0017 point 6's: the chest's gold,
+    /// the Arena's first skill; a School left), until T63 opens it as its owner's decision with
+    /// the typed answers (ADV-STUB-10); a choice whose default would cost a price counts as left.
+    /// Returns what the answer gives, for the caller to apply.
+    fn choose_by_default(&mut self, choice: &Choice) -> Option<AdventureOutcome> {
+        // stub: ADV-STUB-10 (the choices answered by their defaults until T63's decisions)
+        let pick = choice.default_pick();
+        (pick != Pick::Leave && choice.price().is_empty())
+            .then(|| self.adventure.choose(choice, pick))
     }
 
     /// Opens the meeting a step of `player`'s hero toward another of its heroes made (GAM-MET-001,
@@ -617,7 +662,7 @@ impl GameState {
         let context = (rules.core(), rules.adventure(), heroes);
         let mut events = AdventureSink(&mut *sink);
         let outcome = if accepted {
-            adventure.accept_offer(context.0, context.1, player, offer, &mut events)
+            adventure.accept_offer(context, player, offer, &mut events)
         } else {
             adventure.decline_offer(context, offer, &mut events)
         };
@@ -922,6 +967,8 @@ impl CanonicalHash for GameState {
                         OfferKind::JoinForGold { price } => (3, Some(price)),
                         OfferKind::Pursue => (4, None),
                         OfferKind::Fight => (5, None),
+                        OfferKind::Gift { price } => (6, Some(price)),
+                        OfferKind::Search => (7, None),
                     };
                     h.write_u8(tag);
                     if let Some(price) = price {

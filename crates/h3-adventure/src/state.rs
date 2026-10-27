@@ -81,6 +81,7 @@ mod monsters;
 mod occupancy;
 mod passage;
 mod piles;
+mod rewards;
 mod visits;
 
 pub use draws::Resolved;
@@ -1570,7 +1571,11 @@ impl AdventureState {
     /// player nothing (the original's message is not modelled). A border gate (ADV-VIS-005, E08
     /// T15b), visited by a player without its key (its holders cross it, [`Self::visit_at`]):
     /// nothing, as the guard's (the original's message is not modelled). A wandering monster
-    /// (ADV-MON-007, E08 T20b1): its answer to the hero ([`Self::visit_monster`]).
+    /// (ADV-MON-007, E08 T20b1): its answer to the hero ([`Self::visit_monster`]). Since E08
+    /// T62a increment 7's pickups, teachers and finds (`rewards.rs`): a treasure chest
+    /// ([`Self::visit_chest`]), an artifact or a Spell Scroll ([`Self::visit_artifact`]), a
+    /// once-per-hero gift ([`Self::visit_gift`]), a Shrine, a Witch Hut, a Scholar, a University
+    /// and a find.
     // rule: ADV-PIK-001, ADV-PIK-003, ADV-OBJ-005, ADV-VIS-001, ADV-VIS-002, ADV-VIS-003, ADV-VIS-004
     // rule: ADV-VIS-005, ADV-PIK-004
     fn visit<S: Sink>(
@@ -1581,6 +1586,7 @@ impl AdventureState {
         sink: &mut S,
     ) -> AdventureOutcome {
         let core = rules.0;
+        let object = (visit.object, visit.object_type);
         let anchor = self.map.objects()[visit.object].anchor;
         let offer = |kind| Offer {
             hero,
@@ -1590,10 +1596,7 @@ impl AdventureState {
         };
         let mut outcome = AdventureOutcome::default();
         match visit.effect {
-            Effect::Pickup => {
-                let object = (visit.object, visit.object_type);
-                outcome = self.visit_pile(core, rules.1, hero, object, sink);
-            }
+            Effect::Pickup => outcome = self.visit_pile(core, rules.1, hero, object, sink),
             Effect::Chart(price) => {
                 outcome.offer = (!self.has_bought(player, visit.object_type)).then(|| {
                     offer(OfferKind::Reveal {
@@ -1627,9 +1630,17 @@ impl AdventureState {
                 outcome.offer = self.has_key(player, key).then(|| offer(OfferKind::Pass));
             }
             Effect::Gate(_) => {}
-            Effect::Monster => {
-                outcome = self.visit_monster(rules, hero, (visit.object, visit.object_type));
+            Effect::Monster => outcome = self.visit_monster(rules, hero, object),
+            Effect::Chest(chest) => outcome = self.visit_chest(rules, hero, object, chest, sink),
+            Effect::Artifact => outcome = self.visit_artifact(rules, hero, object, sink),
+            Effect::Gift(gift) => outcome = self.visit_gift(rules, (player, hero), object, gift),
+            Effect::Shrine => outcome = self.visit_shrine(rules, (player, hero), visit.object),
+            Effect::WitchHut => outcome = self.visit_witch_hut(rules, (player, hero), visit.object),
+            Effect::Scholar => outcome = self.visit_scholar(rules, hero, object, sink),
+            Effect::University(price) => {
+                outcome = self.visit_university((player, hero), object, price);
             }
+            Effect::Find(find) => outcome = self.visit_find(rules, (player, hero), object, find),
         }
         outcome
     }
@@ -1667,17 +1678,7 @@ impl AdventureState {
     /// such object, [`Self::tile_object`]; no shipped map has two typed objects of one type on one
     /// anchor, `crates/h3-map/examples/original_data.rs`).
     fn offer_object(&self, offer: &Offer) -> Option<usize> {
-        self.map
-            .objects()
-            .iter()
-            .enumerate()
-            .rev()
-            .find(|&(index, object)| {
-                object.object_type == Some(offer.object_type)
-                    && object.anchor == offer.anchor
-                    && !self.is_removed(index)
-            })
-            .map(|(index, _)| index)
+        self.object_named(offer.object_type, offer.anchor)
     }
 
     /// Accepts `offer`, made to `player` by a visit (ADR-0017 point 10: the game has checked that
@@ -1693,16 +1694,18 @@ impl AdventureState {
     /// leaves the map; its treasure is the outcome's gains ([`Self::join`]). Its offer to flee:
     /// the hero fights it (ADV-MON-008; [`Self::pursue`]). A guarded pile's question (ADV-PIK-004,
     /// E08 T21a): the hero fights its guards as they stand, or picks it up when none stand any
-    /// more ([`Self::fight_or_pick`]). Infallible; the outcome is what the game applies after.
-    // rule: ADV-VIS-001, ADV-VIS-004, ADV-MON-008, ADV-PIK-004
+    /// more ([`Self::fight_or_pick`]; since E08 T62a a guarded artifact's or scroll's too). A
+    /// gift's price (ADV-TCH-003, E08 T62a): the gift given, the hero marked. A find's question
+    /// (ADV-PIK-011): the find searched. Infallible; the outcome is what the game applies after.
+    // rule: ADV-VIS-001, ADV-VIS-004, ADV-MON-008, ADV-PIK-004, ADV-TCH-003, ADV-PIK-011
     pub fn accept_offer<S: Sink>(
         &mut self,
-        core: &Ruleset,
-        part: &AdventureRuleset,
+        rules: (&Ruleset, &AdventureRuleset, &[Arc<HeroDetails>]),
         player: PlayerId,
         offer: &Offer,
         sink: &mut S,
     ) -> AdventureOutcome {
+        let (core, part, _) = rules;
         match offer.kind {
             OfferKind::Reveal { .. } => {
                 self.reveal_terrain(part, player, offer.object_type, sink);
@@ -1715,7 +1718,7 @@ impl AdventureState {
                 AdventureOutcome::default()
             }
             OfferKind::Join | OfferKind::JoinForGold { .. } => {
-                self.join((core, part), player, offer, sink)
+                self.join(rules, player, offer, sink)
             }
             OfferKind::Pursue => self.pursue(part, offer),
             OfferKind::Fight => self
@@ -1725,6 +1728,8 @@ impl AdventureState {
                     self.fight_or_pick(core, part, offer.hero, pile, sink)
                 })
                 .unwrap_or_default(),
+            OfferKind::Gift { .. } => self.accept_gift(rules, offer),
+            OfferKind::Search => self.accept_search(rules, player, offer),
         }
     }
 

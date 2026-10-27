@@ -58,10 +58,14 @@ mod testing;
 pub use army::{ArmyCommand, ArmyCommandError, ArmyRef, ArmySlot, split_range};
 pub use command::{
     AdventureCommand, AdventureCommandError, AdventureEvent, AdventureEventKind, AdventureOutcome,
-    BattleStart, Combatant, Defender, Meeting, NoRoom, Offer, OfferKind, Sink, Viewers,
+    BattleStart, Choice, ChoiceKind, Combatant, Defender, HeroGains, Meeting, NoRoom, Offer,
+    OfferKind, Pick, Sink, UniversityVisit, Viewers,
 };
 pub use movement::{day_points, diagonal_cost, land_table_points, native_terrain};
-pub use observe::{AdventureObservation, HeroView, MonsterView, ObjectView, OwnHeroView, TileView};
+pub use observe::{
+    AdventureObservation, HeroView, Known, KnownObject, MonsterView, ObjectView, OwnHeroView,
+    TileView,
+};
 pub use persistent::BitGrid;
 pub use reach::Reach;
 pub use ruleset::{
