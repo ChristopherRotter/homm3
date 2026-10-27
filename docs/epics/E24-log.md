@@ -667,3 +667,36 @@ T1a1 the recording and the idle loop, T1a2 the scroll with the speed options and
   a table of actions (the original's keys its defaults, a user file overriding them), M3 T0 moves
   it into the common crate with the battle viewer's keys (the client lane's inbox), a rebinding
   screen with the options dialog later.
+
+### M2 T2 — the map over time, headless (2026-10-27)
+
+Taken whole (the user, at the session's start: offered a cut before the frame check, chose T2
+whole).
+
+- **Built** (`E24-design.md` §3.6): `h3_map_view::timeline` (*provisional*; pure: the original's
+  loop a millisecond at a time from a sequence's start and the player's actions: the palette
+  ticks, the idle redraws and the objects' steps, the scroll by Ctrl and the direction keys and at
+  the frame's edges with the speeds' steps, the 70 ms grid and the limits, the edge cursors and
+  the arrow, the mouse poll's point; `Action` (the window's actions T4's key table will bind),
+  `Unplayable` (a walk, T3's; the pointer over the view, M3's), `lines` (the timeline's lines),
+  `changed` (the `screen` boxes)); `h3_map_view::sequence` (`sequences.toml` read, the inputs as
+  actions by the original's default keys); `h3_map_view::cursor` (`h3-view`'s copied,
+  *provisional*, an origin comment); the tables' `scroll_steps`, `scroll_ms`, `poll_ms`; the
+  layout's `[scroll]` (`middle`, `edge`: MCL-Q6's 16 pixels, the original's zones under
+  `Bugs::Original`) and `[cursor]` (`cradvntr.def`, the arrow, the edge cursors, 43 hot spots read
+  from `cursor_hot_spots` 0x67FF50); the gate checks the cursor's 43 frames. The binary's
+  `sequences [<id>] [--frames <dir>] [--live <live.toml>]` (every line against the recorded
+  timeline, the `screen` boxes from its own frames; a walk listed as T3's; `--bugs` original by
+  default). The harness (additive): `frames`' frame check (`frames.txt` against
+  `timelines/<id>-frames.txt`, `diff/`), `--reuse`, `drawn` over the sequences
+  (`timelines/drawn.txt`, `STALE`); the runbook's "The frame check".
+- **Checked:** T1a's six sequences recorded again (this sandbox keeps their screens; each
+  timeline as recorded, the frame at 0 exact; 40 minutes): every line of every timeline as the
+  viewer's, and all 181 kept screens exact outside the panels (`timelines/<id>-frames.txt`, all
+  0); `drawn` draws the 40 situations the same and the six sequences' 181 frames
+  (`timelines/drawn.txt`). The unit tests replay the six timelines' state lines without the
+  original files. The seven walk sequences are listed as T3's. The run's live parts at 0 differ
+  from the last ones in their palette steps (the load's real time), kept as the runs gave them.
+  Not seen in a frame: the order of a scroll and a redraw due in the same millisecond (no
+  animated object in either view then, design §3.6).
+- **No oddity of the original found** (no `MCL-Q`).

@@ -351,7 +351,7 @@ impl Loop {
         if l.rules.over_view(start.pointer) {
             return Err(Unplayable::OverView(start.pointer));
         }
-        l.run(0, &[])?;
+        l.idle(0);
         Ok(l)
     }
 
@@ -373,6 +373,15 @@ impl Loop {
     /// # Errors
     /// An action the loop cannot play yet ([`Unplayable`]).
     pub fn run(&mut self, t: u32, actions: &[Action]) -> Result<(), Unplayable> {
+        self.idle(t);
+        for &action in actions {
+            self.act(t, action)?;
+        }
+        Ok(())
+    }
+
+    /// The millisecond's turns before its actions: the tick, the poll, the idle message.
+    fn idle(&mut self, t: u32) {
         // The loop's turn: the tick before its message (0x4ED490 from input_next_message), the
         // mouse poll (0x50D680): the cursor drawn where it reads the mouse.
         if t >= self.palette_at {
@@ -391,28 +400,30 @@ impl Loop {
             self.draw();
             self.step_objects(t);
         }
-        for &action in actions {
-            if let Action::Pointer(at) = action {
-                // The move's message: GetCursorPos (the edge's) already reads the new point.
-                self.pointer = at;
+    }
+
+    /// One action given at `t`: its message, the edge scroll before it.
+    fn act(&mut self, t: u32, action: Action) -> Result<(), Unplayable> {
+        if let Action::Pointer(at) = action {
+            // The move's message: GetCursorPos (the edge's) already reads the new point.
+            self.pointer = at;
+        }
+        self.edge(t);
+        match action {
+            Action::Scroll(direction) => {
+                self.scroll(t, direction, false);
             }
-            self.edge(t);
-            match action {
-                Action::Scroll(direction) => {
-                    self.scroll(t, direction, false);
+            Action::Pointer(at) => {
+                // A move outside the view (adventure_mouse_move 0x40EB7D) keeps an edge cursor
+                // while the mouse lies in a zone, the arrow otherwise.
+                if self.rules.over_view(at) {
+                    return Err(Unplayable::OverView(at));
                 }
-                Action::Pointer(at) => {
-                    // A move outside the view (adventure_mouse_move 0x40EB7D) keeps an edge cursor
-                    // while the mouse lies in a zone, the arrow otherwise.
-                    if self.rules.over_view(at) {
-                        return Err(Unplayable::OverView(at));
-                    }
-                    if self.rules.edge_at(at).is_none() {
-                        self.cursor.frame = self.rules.arrow;
-                    }
+                if self.rules.edge_at(at).is_none() {
+                    self.cursor.frame = self.rules.arrow;
                 }
-                Action::Step(_) | Action::Click(_) => return Err(Unplayable::Walk),
             }
+            Action::Step(_) | Action::Click(_) => return Err(Unplayable::Walk),
         }
         Ok(())
     }
