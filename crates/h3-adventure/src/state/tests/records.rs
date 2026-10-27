@@ -210,6 +210,26 @@ fn a_records_creatures_without_room_are_one_group_at_their_slots() {
     let mut s = boxed(&rules, record(), None);
     let (outcome, events) = accept(&rules, &mut s, &[], &open);
     assert_eq!((outcome.hero, joined(&events).len()), (None, 2));
+    // A hero no longer on the map gets no creature; the gains still go to the player.
+    let mut s = boxed(&rules, record(), None);
+    let gone = Offer {
+        hero: HeroId::new(9),
+        ..open.clone()
+    };
+    let (outcome, events) = accept(&rules, &mut s, &[], &gone);
+    assert_eq!(
+        (outcome.gains, joined(&events).len()),
+        (vec![(GOLD, 500)], 0)
+    );
+    assert!(s.is_removed(0));
+    // A box without its record (the setup gives every box one) gives nothing and leaves.
+    let mut s = boxed(&rules, record(), None);
+    Arc::make_mut(&mut s.map).objects[0].holds = Holds::Nothing;
+    assert_eq!(
+        accept(&rules, &mut s, &[], &open).0,
+        AdventureOutcome::default()
+    );
+    assert!(s.is_removed(0));
 }
 
 // covers: ADV-PIK-013, ADV-PIK-004
