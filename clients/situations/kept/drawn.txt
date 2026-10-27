@@ -4515,6 +4515,11 @@ sequences/walk t02392 4c4ab887cfe8a666
 sequences/walk t02492 66db92452ff62bf0
 sequences/walk t02592 0a254a6d569a8d49
 sequences/walk t02692 4e620de245f0f52f
+set/book t00000 291199e911c0b032
+set/book-fire t00000 1e42a0a812f8cf8d
+set/book-hint t00100 87b838d5d1a041b2
+set/book-hint t01000 87b838d5d1a041b2
+set/book-page t00000 a48c80010bd02361
 set/clover-field t00000 dd175f07e6b9ea68
 set/counts t00000 39f639f64ac2a772
 set/counts t00400 b93e520351c2eaa4
