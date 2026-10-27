@@ -625,8 +625,12 @@ Control key with Up: the map scrolls by Ctrl and the direction keys `Up`, `Prior
 point of the screen; the map scrolls while it lies within 16 pixels of a side: keep it outside
 the view, x below 8 or y below 8 or over the panels, until M3 draws the cursor over the view).
 The step to that millisecond comes first, then the inputs, then the game reads the frozen clock
-500 times more (it handles them at that millisecond), then the state and the screen. Since the
-scroll's 70 ms run from its own last time, `frames` writes that time too at 0 (`SCROLL_TIME`).
+500 times more (it handles them at that millisecond), then the state and the screen. The
+scroll's 70 ms run from its own last time, which `edge_scroll` sets to the clock at every call
+while the pointer lies outside the zones (0x419978): the parked pointer aligns it, `frames`
+writes nothing there (M2 T6a: it did, to no effect). A key name is one of the eight above, with
+`ctrl+` or not, checked before the run (xdotool only warns about a name it does not know); a key
+a killed run left down is released at the next run's start.
 The display's key repeat is off (`xset r off`, which `setup.sh` installs): it repeats a held key
 in real time, which a step spans many times over; a key a sequence leaves down is released when
 it ends. The timeline has the cursor since T1a2 (`<ms> cursor <type> <frame> <x> <y>`,
@@ -639,7 +643,9 @@ screen: the pointer moved there and the left button clicked in that millisecond;
 shows the selected hero's path to it, clicked again the hero walks it; the game handles it, 500
 clock reads, before the next input of that millisecond). Park the pointer over
 the right panel in the same millisecond (`pointer = [700, 300]` after it): the cursor over the
-view is M3's. The timeline's walk lines appear only where they change (at 0 they are the
+view is M3's. At hero speed 4 the walk ends inside the click's millisecond, so the cursor stays at
+the click's point until the next mouse poll (`walk-4`: drawn at 2700, gone at 2706); those frames
+are compared like the others. The timeline's walk lines appear only where they change (at 0 they are the
 situation's): `<ms> hero <x> <y> <level> <facing>` (the current player's selected hero,
 `Mem.selected`), `<ms> walk <group> <frame> <x> <y>` (the lifted hero's group, the frame pass 9
 draws next and the view's pixel offset, `Mem.walk`) and `<ms> arrows <x>,<y>,<level>,<arrow>

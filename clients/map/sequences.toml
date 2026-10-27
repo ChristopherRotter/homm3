@@ -14,7 +14,8 @@
 # movement points, written once the situation is staged) and `click` (the left button at a point:
 # a tile clicked shows the selected hero's path to it, clicked again the hero walks it; the
 # pointer is then parked over the right panel in the same millisecond, so that the cursor over
-# the view, M3's, stays out of the frames).
+# the view, M3's, stays out of the frames, but at hero speed 4, whose walk ends inside the
+# click's millisecond: the cursor stays at the click's point until the next mouse poll, 33 ms).
 
 [[sequence]]
 id = "idle-cycles"
