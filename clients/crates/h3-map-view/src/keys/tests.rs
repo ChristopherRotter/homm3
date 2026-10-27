@@ -23,6 +23,8 @@ fn the_defaults_are_the_originals_keys_and_the_windows() {
         }
     }
     for (key, command) in [
+        ("F2", Command::Music),
+        ("F3", Command::Effects),
         ("F5", Command::Pause),
         ("F6", Command::Frame),
         ("F7", Command::Restart),
@@ -38,20 +40,20 @@ fn the_defaults_are_the_originals_keys_and_the_windows() {
     assert_eq!(keys.command(false, "P"), None);
     // Every command bound, in the table's order: the map's twice (the key and the keypad's).
     let chords = keys.chords();
-    assert_eq!(chords.len(), 39);
+    assert_eq!(chords.len(), 41);
     let mut commands: Vec<Command> = chords.iter().map(|&(c, _)| c).collect();
     commands.dedup();
     assert_eq!(commands, Command::all());
     assert_eq!(chords[0].1.to_string(), "Ctrl+Up");
     assert_eq!(chords[1].1.to_string(), "Ctrl+Keypad8");
     assert_eq!(chords[16].1.to_string(), "Up");
-    assert_eq!(chords[38].1.to_string(), "Escape");
+    assert_eq!(chords[40].1.to_string(), "Escape");
 }
 
 #[test]
 fn every_command_has_a_name_and_the_maps_its_action() {
     let all = Command::all();
-    assert_eq!(all.len(), 23);
+    assert_eq!(all.len(), 25);
     for &command in &all {
         assert_eq!(Command::from_name(&command.name()), Some(command));
     }
@@ -61,6 +63,8 @@ fn every_command_has_a_name_and_the_maps_its_action() {
     assert_eq!(
         names[16..],
         [
+            "music",
+            "effects",
             "pause",
             "frame",
             "restart",
@@ -139,7 +143,7 @@ fn a_users_file_overrides_command_by_command() {
     // The rest kept.
     assert_eq!(keys.command(false, "F6"), Some(Command::Frame));
     let chords = keys.chords();
-    assert_eq!(chords.len(), 39);
+    assert_eq!(chords.len(), 41);
     assert!(chords.iter().all(|&(c, _)| c != Command::Quit));
     assert_eq!(chords[0].1.to_string(), "Ctrl+W");
     // An empty file is the defaults.

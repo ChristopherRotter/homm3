@@ -107,6 +107,7 @@ pub fn for_sequence<'a>(
         paths,
         path: Vec::new(),
         live: false,
+        sound: None,
     };
     Ok(Setup {
         painter,
@@ -172,6 +173,7 @@ pub fn for_situation<'a>(
         paths: Vec::new(),
         path: painter.live.path.clone(),
         live: false,
+        sound: None,
     };
     Ok(Setup {
         painter,

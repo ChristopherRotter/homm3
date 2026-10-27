@@ -67,6 +67,7 @@ fn idle() -> Replay {
         paths: Vec::new(),
         path: Vec::new(),
         live: false,
+        sound: None,
     };
     let actions = BTreeMap::from([
         (0, vec![Action::Scroll(Direction::East)]),
@@ -185,4 +186,70 @@ fn an_action_given_at_a_time_shown_runs_again_from_0() {
     // At 0: played at 1.
     r.give(0, Action::Scroll(Direction::West));
     assert_eq!(r.at(1).unwrap().drawn.view.x, 7);
+}
+
+#[test]
+fn its_cues_are_handed_out_once() {
+    // The timeline's walk east at speed 3 over grass, dirt from x 19, LoopAren a tile west.
+    let tiles = crate::sound::tests::tiles(
+        36,
+        |x, _| if x >= 19 { 0 } else { 2 },
+        |x, y| ((x, y) == (16, 17)).then_some(2),
+    );
+    let arrow = |x, arrow| crate::live::Arrow {
+        at: h3_map::model::Pos { x, y: 17, z: 0 },
+        arrow,
+    };
+    let dest = [(21 - 8) * 32 + 16, (17 - 9) * 32 + 16];
+    let start = Start {
+        view: ViewAt { x: 8, y: 9, z: 0 },
+        size: 36,
+        scroll_speed: 1,
+        hero_speed: 3,
+        pointer: [700, 300],
+        hero: Some(crate::timeline::Hero {
+            at: h3_map::model::Pos { x: 17, y: 17, z: 0 },
+            facing: Direction::East,
+        }),
+        paths: vec![vec![arrow(18, 12), arrow(19, 12), arrow(20, 12), arrow(21, 1)]],
+        path: Vec::new(),
+        live: false,
+        sound: Some(crate::sound::tests::sound(tiles)),
+    };
+    let actions = BTreeMap::from([(1, vec![Action::Click(dest)]), (2, vec![Action::Click(dest)])]);
+    let mut r = Replay::new(rules(Bugs::Fixed), &start, actions).unwrap();
+    let lines = |cues: Vec<(u32, Cue)>| -> Vec<alloc::string::String> {
+        cues.iter().map(|(t, c)| crate::sound::line(*t, c)).collect()
+    };
+    let at_0 = [
+        "0 music Grass",
+        "0 loop 0 LoopAren.wav 28",
+        "0 loop-volume 0 28",
+    ];
+    assert_eq!(lines(r.take_cues(0).unwrap()), at_0);
+    assert_eq!(
+        lines(r.take_cues(102).unwrap()),
+        [
+            "2 step horse02.wav",
+            "2 loop-stop 0",
+            "2 loop 0 LoopAren.wav 28",
+            "2 loop-volume 0 28",
+            "102 loop-volume 0 20",
+        ]
+    );
+    // The loop run ahead, then given an action at 2: run again from 0, the cues taken not given
+    // again; a key at 102 ends the walk after its second step.
+    assert!(r.after(102, 1_000).unwrap().is_some());
+    r.give(2, Action::Pointer([700, 300]));
+    r.give(102, Action::Step(Direction::North));
+    assert_eq!(
+        lines(r.take_cues(300).unwrap()),
+        ["202 music Dirt", "202 loop-volume 0 10", "202 step-stop"]
+    );
+    assert!(r.take_cues(300).unwrap().is_empty());
+    assert!(r.take_cues(250).unwrap().is_empty());
+    // A restart gives the start's cues again.
+    r.restart();
+    assert_eq!(lines(r.take_cues(0).unwrap()), at_0);
+    assert!(r.take_cues(0).unwrap().is_empty());
 }

@@ -2,12 +2,13 @@
 //! client): every key the window takes goes through this one table of commands. Its defaults are
 //! the original's keys on the adventure map (`docs/epics/E24-design.md` §3.4: Ctrl and a direction
 //! key scroll the view, a direction key alone steps the selected hero; the keypad's eight give the
-//! same scan codes in either NumLock state, §3.10) and the window's own (pause, a frame on, restart,
-//! vsync, the cursor's kind, fullscreen, quit), which take the function keys and Esc, keys the
-//! original's map leaves to nothing else. A user's file overrides the defaults command by command
-//! ([`Keys::with_file`]). A key is named as the adapter names it (`h3-sdl`'s `Key::name`: `Up`,
-//! `PageUp`, `F5`, …), `Ctrl+` holding either Control key with it; the adapter checks the names
-//! ([`Keys::chords`]). A chord matches exactly: a key with Ctrl held is not the key alone. M3 T0
+//! same scan codes in either NumLock state, §3.10) and the window's own (the music, the effects,
+//! pause, a frame on, restart, vsync, the cursor's kind, fullscreen, quit), which take the function
+//! keys and Esc, keys the original's map leaves to nothing else. A user's file overrides the
+//! defaults command by command ([`Keys::with_file`]). A key is named as the adapter names it
+//! (`h3-sdl`'s `Key::name`: `Up`, `PageUp`, `F5`, …), `Ctrl+` holding either Control key with it;
+//! the adapter checks the names ([`Keys::chords`]). A chord matches exactly: a key with Ctrl held is
+//! not the key alone. M3 T0
 //! moves the table into the common crate (the battle viewer's keys too); a screen to rebind them
 //! comes with the options dialog.
 
@@ -26,6 +27,10 @@ pub enum Command {
     Scroll(Direction),
     /// The selected hero one step that way (the original's direction key alone).
     Hero(Direction),
+    /// The music heard or not (E24 M2 T5).
+    Music,
+    /// The effects (the step and ambient sounds) heard or not (E24 M2 T5).
+    Effects,
     /// The clock held, or run on.
     Pause,
     /// While paused, the next frame.
@@ -55,7 +60,9 @@ const KEYPAD_KEYS: [&str; 8] = [
 ];
 
 /// The window's own commands and their keys.
-const WINDOW_KEYS: [(Command, &str); 7] = [
+const WINDOW_KEYS: [(Command, &str); 9] = [
+    (Command::Music, "F2"),
+    (Command::Effects, "F3"),
     (Command::Pause, "F5"),
     (Command::Frame, "F6"),
     (Command::Restart, "F7"),
@@ -88,6 +95,8 @@ impl Command {
             Self::Vsync => "vsync".into(),
             Self::Cursor => "cursor".into(),
             Self::Fullscreen => "fullscreen".into(),
+            Self::Music => "music".into(),
+            Self::Effects => "effects".into(),
             Self::Quit => "quit".into(),
         }
     }

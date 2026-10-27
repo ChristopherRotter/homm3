@@ -11,11 +11,17 @@
 //! change shown: the loop may have run past it to find the next change, so each change keeps the
 //! loop as it stood at its millisecond and the loop runs again from the latest one before the
 //! action. Given so, the changes are the ones a headless play of every action gives.
+//!
+//! The sound's cues (E24 M2 T5) are kept apart from the changes, by their milliseconds, until
+//! the window takes them as its clock reaches them ([`Replay::take_cues`]); the loop run again
+//! from a change gives the cues after it again, and the ones handed out already are not given
+//! twice.
 
 use alloc::collections::{BTreeMap, VecDeque};
 use alloc::vec::Vec;
 use core::iter;
 
+use crate::sound::Cue;
 use crate::timeline::{Action, Cursor, Draw, Loop, Rules, Start, Unplayable};
 
 /// What the screen shows from a millisecond on.
@@ -43,6 +49,14 @@ pub struct Replay {
     kept: VecDeque<(Change, Loop)>,
     /// The latest change, as of `t`.
     now: (Change, Loop),
+    /// The cues at 0 (the map's screen's start), given again at each restart.
+    first_cues: Vec<(u32, Cue)>,
+    /// The cues not taken yet, in time order.
+    cues: VecDeque<(u32, Cue)>,
+    /// The cues taken: up to this millisecond, that many at it.
+    taken: Option<(u32, usize)>,
+    /// The cues the loop gave again at the last taken millisecond since it last ran again.
+    again: usize,
 }
 
 /// The change the loop shows now, with the loop.
@@ -67,7 +81,8 @@ impl Replay {
         start: &Start,
         actions: BTreeMap<u32, Vec<Action>>,
     ) -> Result<Self, Unplayable> {
-        let first = Loop::start(rules, start)?;
+        let mut first = Loop::start(rules, start)?;
+        let first_cues = first.take_cues();
         Ok(Self {
             l: first.clone(),
             now: shown(&first, 0),
@@ -75,15 +90,68 @@ impl Replay {
             actions,
             t: 0,
             kept: VecDeque::new(),
+            cues: first_cues.iter().cloned().collect(),
+            first_cues,
+            taken: None,
+            again: 0,
         })
     }
 
-    /// Back to 0 (the changes kept forgotten; the actions given kept).
+    /// Back to 0 (the changes kept forgotten; the actions given kept), the sound from its start:
+    /// the cues at 0 given again.
     pub fn restart(&mut self) {
+        self.taken = None;
+        self.rewind();
+    }
+
+    /// The loop from 0 again, the cues not taken forgotten and the ones at 0 given again but the
+    /// ones taken.
+    fn rewind(&mut self) {
         self.l = self.first.clone();
         self.t = 0;
         self.kept.clear();
         self.now = shown(&self.first, 0);
+        self.cues.clear();
+        self.again = 0;
+        let first = self.first_cues.clone();
+        self.keep_cues(first);
+    }
+
+    /// The cues the loop gave, but the ones taken already (the loop run again gives them again).
+    fn keep_cues(&mut self, cues: Vec<(u32, Cue)>) {
+        for (t, cue) in cues {
+            if let Some((taken, n)) = self.taken {
+                if t < taken {
+                    continue;
+                }
+                if t == taken && self.again < n {
+                    self.again += 1;
+                    continue;
+                }
+            }
+            self.cues.push_back((t, cue));
+        }
+    }
+
+    /// The cues up to `t` not taken yet, in order, the loop run to `t` first.
+    ///
+    /// # Errors
+    /// As [`Replay::at`].
+    pub fn take_cues(&mut self, t: u32) -> Result<Vec<(u32, Cue)>, (u32, Unplayable)> {
+        self.run_to(t)?;
+        let mut out = Vec::new();
+        while self.cues.front().is_some_and(|(c, _)| *c <= t) {
+            if let Some(cue) = self.cues.pop_front() {
+                out.push(cue);
+            }
+        }
+        let at_t = out.iter().filter(|(c, _)| *c == t).count();
+        self.taken = match self.taken {
+            Some((taken, n)) if taken == t => Some((t, n + at_t)),
+            Some((taken, n)) if taken > t => Some((taken, n)),
+            _ => Some((t, at_t)),
+        };
+        Ok(out)
     }
 
     /// The last millisecond run.
@@ -112,13 +180,16 @@ impl Replay {
             match self.kept.pop_back() {
                 Some(earlier) => self.now = earlier,
                 None => {
-                    self.restart();
+                    self.rewind();
                     return;
                 }
             }
         }
         self.l = self.now.1.clone();
         self.t = self.now.0.t;
+        let from = self.t;
+        self.cues.retain(|(c, _)| *c <= from);
+        self.again = 0;
     }
 
     /// What the screen shows at `t`: the latest change at or before it, the loop run to `t` (the
@@ -173,6 +244,8 @@ impl Replay {
             let given = self.actions.get(&next).map_or(&[][..], Vec::as_slice);
             self.l.run(next, given).map_err(|why| (next, why))?;
             self.t = next;
+            let cues = self.l.take_cues();
+            self.keep_cues(cues);
             if *self.l.drawn() != self.now.0.drawn || self.l.cursor() != self.now.0.cursor {
                 let change = shown(&self.l, next);
                 self.kept
