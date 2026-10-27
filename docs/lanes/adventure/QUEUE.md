@@ -4,24 +4,25 @@ Pre-refined tasks of the adventure lane, in order, then the inbox of discovered 
 
 ## Tasks
 
-Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T51b (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 6 are closed (2026-10-12, -13, -20, -21, -23, -26; increment 6, army and hero management, by T53's audit). **Increment 7, rewards on the map**, refined with the user at T53 (ADV-Q26; decisions 121 to 123): T54 (the battle seam's facts) done; the survey and the ADR amendment drafts (T55a, T55b) done, each task's cut confirmed with the user at its start. T55a is cut in four (decision 125): all four done (survey `docs/rules/surveys/E08-rewards.md`; decisions 126 to 128 the cuts, its checkpoint ADV-Q28 decisions 129 to 136); T55b done (decision 137; its checkpoint ADV-Q29 decisions 138 to 141: the drafts accepted with typed answers, eight rounds with batch E7 first, design §19). T56 done (decision 142: whole, batch E7's maps and specs). Round 2: T57 done (decision 143: whole, the harness's reads, the recipes and the three runs), T58 done (decision 144: scored, A-23 withdrawn). T58b done (decision 144: `h3-map`'s view test's oracle; ADV-Q30, decision 145: A-25 a quirk with a flag). Round 3: T59 done (decision 146: whole, `shared/e08-t59`). Round 4: T60 in two (decision 147): T60a done (`adventure/e08-t60a`, the bonuses and the four changes), T60b done (`adventure/e08-t60b`, `grant` and the teachers). Round 5: T61 in two (decision 148): T61a done (`adventure/e08-t61a`, the import and the kinds), T61b below. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
+Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T51b (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 6 are closed (2026-10-12, -13, -20, -21, -23, -26; increment 6, army and hero management, by T53's audit). **Increment 7, rewards on the map**, refined with the user at T53 (ADV-Q26; decisions 121 to 123): T54 (the battle seam's facts) done; the survey and the ADR amendment drafts (T55a, T55b) done, each task's cut confirmed with the user at its start. T55a is cut in four (decision 125): all four done (survey `docs/rules/surveys/E08-rewards.md`; decisions 126 to 128 the cuts, its checkpoint ADV-Q28 decisions 129 to 136); T55b done (decision 137; its checkpoint ADV-Q29 decisions 138 to 141: the drafts accepted with typed answers, eight rounds with batch E7 first, design §19). T56 done (decision 142: whole, batch E7's maps and specs). Round 2: T57 done (decision 143: whole, the harness's reads, the recipes and the three runs), T58 done (decision 144: scored, A-23 withdrawn). T58b done (decision 144: `h3-map`'s view test's oracle; ADV-Q30, decision 145: A-25 a quirk with a flag). Round 3: T59 done (decision 146: whole, `shared/e08-t59`). Round 4: T60 in two (decision 147): T60a done (`adventure/e08-t60a`, the bonuses and the four changes), T60b done (`adventure/e08-t60b`, `grant` and the teachers). Round 5: T61 in two (decision 148): T61a done (`adventure/e08-t61a`, the import and the kinds), T61b done (`adventure/e08-t61b`, decision 149: whole, the bans, the draws and the state). Round 6: T62 below. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
 
-### E08 T61b — `h3-map` and `h3-adventure`: the bans, the draws, the state (design §9, §10)
+### E08 T62 — `h3-adventure`: the visits, events and the move, information (design §11 to §13)
 
-- **Scope** (design §9, §10, §17; ADR-0016 points 1, 4; GAM-SET-003): the scenario's banned
-  spells and artifacts into `GameSetup` beside `banned_skills` and the game passing all three to
-  the adventure's build (map import v13; the AI lane's two `GameSetup` literals, `census.rs` and
-  `ai/tests.rs`: `cross-lane`, ask the user); the draws when the game is built from the setup
-  stream in object order, the random artifacts first (§9; A-21 under flag 37, D-31, D-32, D-34,
-  D-36, A-20 and A-22 fixed), onto the static map beside `MapObject::holds`; the state (§10: the
-  visits' block with the once-per-hero marks, the knowledge and `emptied`, the army left as a
-  two-level table; adventure state hash v14, `fork-xl-144` measured). T61a built the kinds and
-  what the map puts in objects (`Holds`).
-- **First:** with the original data staged (`maps.tar`), run `--with-original-data`: T61a's
-  import (v12) was not run against the shipped maps (the census of what imports whole, every
-  static layer still validating); fix what it finds before building on it.
-- **Cut:** confirmed with the user at its start (likely whole, or the draws and the state apart).
-- **Depends on:** T61a (`adventure/e08-t61a`). **Status:** ready once T61a merges.
+- **Scope** (design §11 to §13, §17; ADR-0016 points 1, 4, 6; ADR-0017 points 4, 6, 8 to 11): every
+  visit of increment 7's kinds through `ObjectKind::effect` (the pickups: chests, artifacts,
+  scrolls; the teachers: the gifts, Shrines, Witch Huts, Scholars, Universities; the finds;
+  Pandora's Box; the Pyramid), reading what the map put in each object (`MapObject::holds`) and
+  what the build drew (`MapObject::resolved`, a chest's gold and a find's resources in
+  `contents`); the once-per-hero marks, the knowledge and `emptied` written into the state's
+  `Visits` block (T61b built it: none until the first visit, then shared); the reward record's
+  adventure half (§11.1, ADV-RWD-001: resources, creatures and the army dialog); an event's tile
+  apart from the movement's masks, the step that fires it (§12; the open point: an event and a
+  monster guarding its tile); what a player sees and is told (§13, ADV-VIS-006, ADV-FOG-007);
+  `ADV-QUIRK-22`'s visits in both profiles; A-17 and A-19 into the ledger (not reproduced, no
+  flag: the marks per object, a record per object).
+- **Cut:** confirmed with the user at its start (design §19: likely in two, the pickups, teachers
+  and finds first, then boxes, events and the Pyramid).
+- **Depends on:** T61b (`adventure/e08-t61b`). **Status:** ready once T61b merges.
 
 ## Inbox
 

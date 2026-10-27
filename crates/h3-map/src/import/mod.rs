@@ -191,6 +191,8 @@ pub fn import(map: &RawMap, rules: &GameRuleset) -> Result<GameSetup, ImportErro
         heroes,
         level_limit: map.header.level_limit,
         banned_skills: banned_skills(map, rules)?,
+        banned_spells: spell_set(rules, &map.banned_spells)?,
+        banned_artifacts: banned_artifacts(map, rules)?,
     })
 }
 
@@ -873,6 +875,22 @@ fn spell_set(rules: &GameRuleset, bits: &Bits) -> Result<Vec<SpellId>, ImportErr
         )
         .filter(|&(_, set)| set)
         .map(|(code, _)| spell(rules, code))
+        .collect()
+}
+
+/// The artifacts the map bans (AB's and SoD's set, `docs/formats/h3m.md`; GAM-SET-003, E08
+/// T61b): the artifact of each set bit's code among the map's edition's artifacts that the
+/// codes name. The bits past them are the set's padding (an AB map's last 7) or the original's
+/// three unused records 141 to 143, which the editor bans by default on a SoD map.
+fn banned_artifacts(
+    map: &RawMap,
+    rules: &GameRuleset,
+) -> Result<Vec<h3_content::ArtifactTypeId>, ImportError> {
+    // rule: GAM-SET-003
+    let codes = map.header.version.artifacts().min(codes::ARTIFACTS.len());
+    (0..codes)
+        .filter(|&code| map.banned_artifacts.get(code))
+        .map(|code| artifact(rules, u16::try_from(code).unwrap_or(u16::MAX)))
         .collect()
 }
 

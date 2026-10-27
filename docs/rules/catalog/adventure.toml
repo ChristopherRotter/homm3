@@ -1432,3 +1432,244 @@ numeric  = "integer"
   kind       = "design"
   ref        = "the user at T47b's E6-5 (E08 decision 109: 'We should just support a reasonable amount and handle saturation gracefully, e.g. by not allowing stack merges to exceed that number') and at T50's start (decisions 114, 115: 1 000 000; a joining group to a free slot, else the army dialog); ADR-0016 point 3"
   confidence = "high"
+
+[[rule]]
+id       = "ADV-OBJ-006"
+title    = "Random artifacts when the game is built: the classes and the pool"
+context  = "adventure"
+status   = "implemented"
+summary  = "When the game is built, after the piles' and the monsters' draws and before every other draw of increment 7's objects, each random artifact (classes 65 to 69: treasure, minor and major together; treasure; minor; major; relic) gets an artifact, in object order, with equal chances among the ruleset's artifacts of its classes that carry no mark (D-31: no relic for class 65). The marks start as the scenario's banned artifacts and every placed artifact (a class-5 object's), and each draw marks the one it gives, so no artifact repeats nor duplicates a placed one (D-32); a draw that finds none left restarts the marks from the bans, and with still none draws from every class but Special (the restart then repeats). Every artifact banned: none. The chests' and the finds' artifacts draw from the same pool and marks, after the random artifacts. The pool is the ruleset's packs, not the map's edition (E08 decisions 104 and 136). Drawn from the setup stream (GAM-SET-001's), in the engine's order (decision 17). The visit: ADV-PIK-006, ADV-PIK-007 (T62). E08 T61b: `h3_adventure::Resolved::Artifact`."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E08 T55a1, E24 M1 T4b; survey E08-rewards.md §3.1): artifacts_given_init 0x4C0AA0 starts the given marks (game +0x4E224) as the map's bans (+0x4E2B4) and marks each placed artifact (a class 5 entrance tile); resolve_random_objects 0x4C9DD0 then turns each random artifact into a placed one by random_artifact_of_level 0x4C94D0 (level bits 0xE, 2, 4, 8, 0x10): uniform among the artifacts of those classes not disabled and not marked; none left, the marks restart from the bans, and with still none any of the four classes (0x1E); the drawn one marked"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-7a.md E7-3 (the capture harness, Complete 4.0 Heroes3.exe under Wine, 2026-10-27; survey E08-rewards.md §15, T58): forty class-65 objects drew forty different artifacts, 13 treasure, 8 minor, 19 major, no relic"
+  retrieved  = "2026-10-27"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "lib/mapObjects/MiscObjects.cpp CGArtifact::pickRandomObject (survey E08-rewards.md §3.4): a random artifact of any legal class, relics too for class 65, and the least rolled one, placed ones not counted (D-31, D-32: the code's side, E08 decision 129)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/mapObjects/MiscObjects.cpp"
+  retrieved  = "2026-10-26"
+  confidence = "medium"
+
+[[rule]]
+id       = "ADV-PIK-005"
+title    = "The treasure chest: its contents drawn when the game is built"
+context  = "adventure"
+status   = "implemented"
+summary  = "When the game is built (after the random artifacts, ADV-OBJ-006), each treasure chest draws r in 0 to 99 from the setup stream: below its type's first chance its first gold, below the first two together its second, and so on (the base pack: 32, 32 and 31 for 1 000, 1 500 and 2 000 gold), the gold its contents; else an artifact of its classes (treasure) from the random artifacts' pool and marks. The tutorial is not modelled (E08 decision 134: its chests draw as any chest's). The visit (the gold or the experience, the full backpack's 1 000 gold): E08 T62. E08 T61b: `MapObject::contents`, `Resolved::Artifact`."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E08 T55a1; survey E08-rewards.md §2.1): setup_map_objects 0x4C0CC0, case 101 at 0x4C1DD8, draws r = random_between(0, 99) once per chest in its tile walk (60 in the tutorial); r < 32: 1 000 gold, r < 64: 1 500, r < 95: 2 000, else random_artifact_of_level(2) 0x4C94D0, after the random artifacts were resolved"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-7a.md E7-4, E7-5 (2026-10-27; survey E08-rewards.md §15): chests of 1 000, 1 500 and 2 000 gold and chests with treasure artifacts"
+  retrieved  = "2026-10-27"
+  confidence = "high"
+
+[[rule]]
+id       = "ADV-TCH-003"
+title    = "The Tree of Knowledge's price drawn when the game is built"
+context  = "adventure"
+status   = "implemented"
+summary  = "A once-per-hero gift whose type has several prices draws one of them with equal chances when the game is built, from the setup stream after the random artifacts (the Tree of Knowledge: free, 2 000 gold or 10 gems); a gift of one price or none draws nothing. The visits of the Learning Stone and the Tree (the experience, the level without Learning, the price's refusal): E08 T62. E08 T61b: `Resolved::Price`."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E08 T55a2; survey E08-rewards.md §6.4): at a new game the Tree of Knowledge's price is random_between(0, 2) in the tile word's bits 13 to 15, free, 2 000 gold or 10 gems (record +0xB0); visit_tree_of_knowledge 0x4A6710 reads it"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "config/objects/rewardableOncePerHero.json treeOfKnowledge: the price by the map's dice, below 34 free, 34 to 66 2 000 gold, 67 on 10 gems (34/33/33 against the code's thirds: a rounding, not a rule; survey §6.4)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/config/objects/rewardableOncePerHero.json"
+  retrieved  = "2026-10-26"
+  confidence = "medium"
+
+[[rule]]
+id       = "ADV-TCH-004"
+title    = "The Shrines: a random Shrine's spell drawn when the game is built"
+context  = "adventure"
+status   = "implemented"
+summary  = "A Shrine holds the map's spell, or, without one, draws a spell of its type's level when the game is built, in object order after the random artifacts: with equal chances among the level's hero spells that are not banned, not granted by name only and carry no Shrine mark; the drawn spell is marked; when none of the level is left, the level's marks clear and the draw starts again (D-34: the random Shrines of a level repeat no spell until each of its spells is out). The map's spell marks nothing. A level without a spell to give: none (A-18 fixed, E08 decision 133: the Shrine refuses every visit). The visit (the book, the Wisdom limit, a known spell): E08 T62. E08 T61b: `Resolved::Spell`."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E08 T55a2; survey E08-rewards.md §6.5): setup_map_objects' Shrine cases (0x4C1CA8, 0x4C1CF5, 0x4C1D59) draw a spell of 0x3FF by random_shrine_spell 0x4C95A0: random_between(0, n - 1) over the level's spells 0 to 69 with a school and no shrine mark (game +0x4), marked; none left, the marks of the level's unbanned spells cleared; the marks start as the game's spell bans (0x4C2965; new_game_bans 0x4C2450: the map's and the flag 0x2000)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-7a.md E7-8 (2026-10-27; survey E08-rewards.md §15): fifteen random Shrines of the first circle held fifteen different spells, the fifteen of the level"
+  retrieved  = "2026-10-27"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "config/objects/shrine.json, JsonRandom::loadSpell: the map's spell, else a random allowed spell of the level, uniform with repeats (D-34: the code's side, E08 decision 129)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/config/objects/shrine.json"
+  retrieved  = "2026-10-26"
+  confidence = "medium"
+
+[[rule]]
+id       = "ADV-TCH-005"
+title    = "The Witch Hut: its skill drawn when the game is built"
+context  = "adventure"
+status   = "implemented"
+summary  = "A Witch Hut draws its skill when the game is built, in object order after the random artifacts: the r-th, with equal chances, of its mask's skills in id order less the banned skills (an empty mask in the file imports as every skill); every skill banned: none (it refuses every visit). An RoE map's hut has no mask in the file: under ADV-QUIRK-21's flag (faithful) it draws among the original's fixed mask 0xEFBF (the skills 0 to 15 but Leadership and Necromancy, 14), off (strict-fixed) among every skill but Leadership and Necromancy (the kind's two lists, the base pack's). The visit (Basic, a known skill or eight skills refuse): E08 T62. E08 T61b: `Resolved::Skill`."
+numeric  = "integer"
+quirks   = ["ADV-QUIRK-21"]
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E08 T55a2, the second reading T55a4; survey E08-rewards.md §6.6, §13): load_object_body 0x502E00 writes the fixed mask 0xEFBF for an RoE map's hut (0x5034BD); at a new game (case 0x4C207D) witch_hut_set_skill 0x4C23C0 takes the mask (an empty one: all 28) less the banned skills (game +0x4E658), the r-th in id order with r = random_between(1, n), none -1"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-7a-roe.md E7-7 (2026-10-27; survey E08-rewards.md §15): sixty RoE huts drew exactly the fourteen skills of 0xEFBF"
+  retrieved  = "2026-10-27"
+  confidence = "high"
+
+[[rule]]
+id       = "ADV-TCH-006"
+title    = "The Scholar: its gift and fallback drawn when the game is built"
+context  = "adventure"
+status   = "implemented"
+summary  = "A Scholar holds the map's gift, or draws one when the game is built, in object order after the random artifacts: a kind with equal chances among a primary skill, a secondary skill and a spell, then a primary skill among the four, a skill among the unbanned ones or a spell among the unbanned hero spells of any level that are not granted by name only (an empty pool: a primary skill instead); a skill or a spell, the map's or drawn, then draws the primary skill it raises instead when the hero cannot take it, among the four (a primary skill's gift is its own). The visit (the gift or +1 to the fallback, the removal; HER-CHG-004's scholar_reward): E08 T62. E08 T61b: `Resolved::Scholar`."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E08 T55a2; survey E08-rewards.md §6.7): load_scholar_body 0x500B30 draws a random kind (0xFF) as random_between(0, 2) and its id when the map loads: a spell uniformly among the spells 0 to 69 with a school that are not banned, a skill among the 28 not banned, a primary skill random_between(0, 3); at a new game a Scholar of kind 1 or 2 gets its fallback primary skill random_between(0, 3) (case 0x4C1B29)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "config/objects/scholar.json, CMapLoaderH3M::readScholar: the three rewards with a primary skill as the last resort, a random kind by the map's dice (33/33/34); consensus (survey §6.7)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/config/objects/scholar.json"
+  retrieved  = "2026-10-26"
+  confidence = "medium"
+
+[[rule]]
+id       = "ADV-TCH-007"
+title    = "The University: its skills drawn when the game is built"
+context  = "adventure"
+status   = "implemented"
+summary  = "A University draws its type's number of distinct skills (four) when the game is built, in object order after the random artifacts: each with equal chances among the unbanned skills not yet drawn, in the draw's order, Necromancy among them (D-36: the code's side; only a class that weighs it can buy it); fewer left than offers: all of them (A-22 fixed, E08 decision 133). The visit and its purchases (GAM-DEC-006, HER-CHG-004's university_slot): E08 T62, T63. E08 T61b: `Resolved::Skills`."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E08 T55a2; survey E08-rewards.md §6.8, §13): university_setup 0x4C06F0 draws four distinct skills, each random_between(0, n - 1) among the unbanned skills left, into the game's universities (game +0x4E3CC); more than 24 banned would draw from a negative range (A-22, inferred, unreachable)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-7b.md E7-9 (2026-10-27; survey E08-rewards.md §15): Necromancy offered in 4 of 30 Universities"
+  retrieved  = "2026-10-27"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "University - Heroes 3 wiki: \"Necromancy can not appear in universities\" (D-36: contradicted by E7-9; VCMI's noneOf necromancy agrees with the wiki)"
+  url        = "https://heroes.thelazy.net/index.php/University"
+  retrieved  = "2026-10-26"
+  confidence = "low"
+
+[[rule]]
+id       = "ADV-TCH-008"
+title    = "The Pyramid: its spell drawn when the game is built"
+context  = "adventure"
+status   = "implemented"
+summary  = "The Pyramid draws its spell when the game is built, in object order after the random artifacts: with equal chances among the hero spells of its type's level (5) that are not banned and not granted by name only (the original's game bans the flag 0x2000: Titan's Lightning Bolt; the base pack's pool is Fly, Dimension Door, Implosion, Magic Mirror, Sacrifice and the four Summon Elementals, less the map's bans); none left: no spell (A-20 fixed, E08 decision 133: it fights and gives nothing). The question, the battle (ADV-MON-012), the luck of a looted one: E08 T62. E08 T61b: `Resolved::Spell`."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E08 T55a3; survey E08-rewards.md §7.5): setup_map_objects case 63 at 0x4C19DE draws random_between(0, n - 1) over the spells 0 to 69 of level 5 with a school that the game does not ban (the map's bans and the flag 0x2000); pyramid_word_set 0x4C2330 stores it in bits 13 to 20 with bit 0 (guarded); an empty pool reads outside the list (A-20)"
+  confidence = "high"
+
+[[rule]]
+id       = "ADV-PIK-009"
+title    = "The Corpse: its contents drawn when the game is built"
+context  = "adventure"
+status   = "implemented"
+summary  = "A find draws its contents when the game is built, in object order after the random artifacts: r in 0 to 99 picks the entry of its type's table by the chances in order; an artifact entry draws from the random artifacts' pool and marks among its classes as one pool (weighted by the classes' sizes, D-35); a resources entry draws an amount between its bounds, then one of its resources with equal chances (its contents); nothing holds nothing. The Corpse (the base pack): 20 % a treasure or minor artifact, 80 % nothing. The visit (the artifact, 1 000 gold with a full backpack, emptied): E08 T62. E08 T61b: `Resolved::Artifact`."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E08 T55a2; survey E08-rewards.md §6.9): setup_map_objects case 0x4C1131: random_between(0, 99) below 20 holds random_artifact_of_level(6) 0x4C94D0 (treasure and minor as one pool); visit_corpse 0x4A5480"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-7b.md E7-10 (2026-10-27; survey E08-rewards.md §15): 5 of 20 Corpses held an artifact"
+  retrieved  = "2026-10-27"
+  confidence = "medium"
+
+[[rule]]
+id       = "ADV-PIK-010"
+title    = "The Wagon: its contents drawn when the game is built"
+context  = "adventure"
+status   = "implemented"
+summary  = "The Wagon draws as any find (ADV-PIK-009): 10 % nothing, 40 % a treasure or minor artifact, 50 % 2 to 5 of one of wood, mercury, ore, sulfur, crystal and gems (the amount first, then the resource; D-35 with the wiki's 2 to 5); a Wagon with an artifact also draws its resources, which a full backpack gets instead of the artifact (the turn `drawn`). The visit: E08 T62. E08 T61b: `MapObject::contents`, `Resolved::Artifact`."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E08 T55a2, the second reading T55a4; survey E08-rewards.md §6.9, §13): setup_map_objects case 0x4C1EA2: every wagon draws r = random_between(0, 99), then an amount random_between(2, 5), then a resource random_between(0, 5); r below 10 empty, below 50 random_artifact_of_level(6), else the resources; visit_wagon 0x4A69B0"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-7b.md E7-10 (2026-10-27; survey E08-rewards.md §15): 5 of 10 Wagons held an artifact, each giving its drawn resources (2 sulfur, 4 crystal, ...) with a full backpack"
+  retrieved  = "2026-10-27"
+  confidence = "medium"
+
+[[rule]]
+id       = "ADV-PIK-011"
+title    = "The Warrior's Tomb: its artifact drawn when the game is built"
+context  = "adventure"
+status   = "implemented"
+summary  = "The Warrior's Tomb draws as any find (ADV-PIK-009): 30 % a treasure artifact, 50 % a minor one, 15 % a major one, 5 % a relic. The visit (the question, the artifact left with a full backpack, -3 morale once until the next battle): E08 T62. E08 T61b: `Resolved::Artifact`."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E08 T55a2; survey E08-rewards.md §6.9): setup_map_objects case 0x4C1F1C: r below 30 a treasure artifact, 80 minor, 95 major, else a relic; visit_warriors_tomb 0x4A7C30"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Warrior's Tomb - Heroes 3 wiki: 30/50/15/5 % by class (consensus with VCMI's rewardableOnceVisitable.json)"
+  url        = "https://heroes.thelazy.net/index.php/Warrior%27s_Tomb"
+  retrieved  = "2026-10-26"
+  confidence = "medium"
+
+[[rule]]
+id       = "ADV-PIK-012"
+title    = "The Lean To: its resources drawn when the game is built"
+context  = "adventure"
+status   = "implemented"
+summary  = "The Lean To draws as any find (ADV-PIK-009): 1 to 5 of one of wood, mercury, ore, sulfur, crystal and gems (the amount first, then the resource), its contents. The visit (to the owner, emptied): E08 T62. E08 T61b: `MapObject::contents`."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E08 T55a2; survey E08-rewards.md §6.9): setup_map_objects case 0x4C157A: a resource random_between(0, 5) and an amount random_between(1, 5); visit_lean_to 0x4A31A0"
+  confidence = "high"

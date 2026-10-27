@@ -286,6 +286,24 @@ pub struct AdventureSetup {
     /// The game's difficulty, from 0 (easy; E08 T20a2a): a static input the monsters' answer
     /// reads (ADV-MON-007, E08 T20b). The game checks it against its starting resources.
     pub difficulty: u8,
+    /// The scenario's bans, which only the build's draws read (GAM-SET-003, E08 T61b).
+    pub bans: Bans,
+}
+
+/// The scenario's bans as the build's draws read them (GAM-SET-003, E08 T61b; design §9 of
+/// `docs/epics/E08-design.md`): no draw gives a banned skill, spell or artifact. The game checks
+/// each against the ruleset; their order and repeats do not matter, and one the ruleset lacks
+/// bans nothing. The original's game bans every spell with the flag 0x2000 besides the map's
+/// (`new_game_bans`; Titan's Lightning Bolt), which the draws leave out as
+/// `h3_content::Spell::granted_by_name_only`.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct Bans {
+    /// The banned secondary skills (HER-LVL-003's too).
+    pub skills: Vec<SkillId>,
+    /// The banned spells.
+    pub spells: Vec<SpellId>,
+    /// The banned artifacts.
+    pub artifacts: Vec<ArtifactTypeId>,
 }
 
 /// Why a hero may not stand on a tile (ADV-MAP-001).

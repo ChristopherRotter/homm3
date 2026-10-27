@@ -2,8 +2,6 @@
 //! monsters' data and its checks, the draws when the game is built, the tiles a ground lies on
 //! and a battle's ground there, the hashes, and what a viewer sees.
 
-use std::collections::BTreeMap;
-
 use h3_content::{ContentPack, CreatureDef, CreatureInfoDef};
 use h3_kernel::hash::hash_of;
 
@@ -287,9 +285,9 @@ fn the_hashes_see_the_monsters_the_drawn_tiles_the_difficulty_and_the_armies_lef
     assert_eq!(base.monster_count(1), Some(7));
     assert_eq!(base.monster_count(9), None);
     let mut left = base.clone();
-    left.army_left = Some(Arc::new(BTreeMap::from([(
+    left.army_left.set(
         1,
-        vec![
+        Some(vec![
             ArmyStack {
                 slot: 0,
                 creature: GNOLL,
@@ -300,22 +298,22 @@ fn the_hashes_see_the_monsters_the_drawn_tiles_the_difficulty_and_the_armies_lef
                 creature: GNOLL,
                 count: 1,
             },
-        ],
-    )])));
+        ]),
+    );
     assert_eq!(left.army_left(1).map(<[ArmyStack]>::len), Some(2));
     assert_eq!(left.army_left(0), None);
     assert_eq!(left.monster_count(1), Some(3));
     assert_ne!(left.state_hash(), base.state_hash());
     assert_eq!(left.state_hash(), hash_of(&left));
     let mut other = left.clone();
-    other.army_left = Some(Arc::new(BTreeMap::from([(
+    other.army_left.set(
         1,
-        vec![ArmyStack {
+        Some(vec![ArmyStack {
             slot: 0,
             creature: GNOLL,
             count: 3,
-        }],
-    )])));
+        }]),
+    );
     assert_ne!(other.state_hash(), left.state_hash());
 }
 
@@ -431,14 +429,14 @@ fn a_viewer_sees_a_monsters_creature_and_the_word_of_its_count() {
     assert_eq!(state.monster_count(4), None);
     // An army left changes the word.
     let mut left = state.clone();
-    left.army_left = Some(Arc::new(BTreeMap::from([(
+    left.army_left.set(
         1,
-        vec![ArmyStack {
+        Some(vec![ArmyStack {
             slot: 0,
             creature: GNOLL,
             count: 50,
-        }],
-    )])));
+        }]),
+    );
     assert_eq!(
         left.observe(&core, &part, RED).objects[1]
             .monster

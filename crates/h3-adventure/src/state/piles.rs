@@ -2,7 +2,6 @@
 //! `visit_guarded_resource`, 0x4A4780): a pile whose guards still stand asks its question (a
 //! [`OfferKind::Fight`] offer) or fights at once; once they are beaten it is picked up as any pile.
 
-use alloc::sync::Arc;
 use alloc::vec::Vec;
 
 use h3_content::{ResourceId, Ruleset};
@@ -134,13 +133,8 @@ impl AdventureState {
                 self.end_monster_battle((core, part), tile, (survivors, won), sink)
             }
             Some((index, object_type, false)) if self.map.objects()[index].guards.is_some() => {
-                let mut armies = self.army_left.as_deref().cloned().unwrap_or_default();
-                if won {
-                    armies.remove(&index);
-                } else {
-                    armies.insert(index, survivors.to_vec());
-                }
-                self.army_left = (!armies.is_empty()).then(|| Arc::new(armies));
+                self.army_left
+                    .set(index, (!won).then(|| survivors.to_vec()));
                 if !won {
                     return Vec::new();
                 }

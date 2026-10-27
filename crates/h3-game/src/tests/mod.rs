@@ -34,11 +34,11 @@ use h3_adventure::{
     StandError, StartingResourcesDef, TerrainMovementDef, TileSetup, Visit,
 };
 use h3_content::{
-    ArtifactClass, ArtifactDef, ArtifactSlotDef, ContentKey, ContentPack, CreatureDef,
-    CreatureInfoDef, CreatureTypeId, FactionDef, Formation, HeroClassDef, HeroEffect,
+    ArtifactClass, ArtifactDef, ArtifactSlotDef, ArtifactTypeId, ContentKey, ContentPack,
+    CreatureDef, CreatureInfoDef, CreatureTypeId, FactionDef, Formation, HeroClassDef, HeroEffect,
     HeroParamsDef, HeroTypeDef, HeroTypeId, PackManifest, ProfileDef, RaisedCreature, ResourceDef,
-    Ruleset, SecondarySkillDef, SkillId, SpellCategory, SpellDef, SpellSchoolDef, StartingStackDef,
-    TerrainDef, TerrainId,
+    Ruleset, SecondarySkillDef, SkillId, SpellCategory, SpellDef, SpellId, SpellSchoolDef,
+    StartingStackDef, TerrainDef, TerrainId,
 };
 use h3_content_battle::{
     AbilityDef, BattleCreatureDef, BattlePack, BattleParamsDef, BattleRuleset, BattleSpellDef,
@@ -651,6 +651,8 @@ fn setup() -> GameSetup {
         ],
         level_limit: 0,
         banned_skills: vec![],
+        banned_spells: Vec::new(),
+        banned_artifacts: Vec::new(),
     }
 }
 
@@ -669,6 +671,7 @@ fn a_setup_with_custom_and_starting_armies_validates() {
     assert_eq!(setup.validate(&rules()), Ok(()));
 }
 
+// covers: GAM-SET-003
 #[test]
 fn the_game_checks_its_part_before_the_adventure() {
     // The difficulty first: the ruleset has rows 0 and 1.
@@ -704,6 +707,27 @@ fn the_game_checks_its_part_before_the_adventure() {
             s.heroes[1].hero_type = HeroTypeId::from_raw(5);
         }),
         GameSetupError::BannedSkill(unknown)
+    );
+    // E08 T61b: the banned spells, then the banned artifacts, after the skills.
+    let spell = SpellId::from_raw(u16::MAX);
+    let artifact = ArtifactTypeId::from_raw(u16::MAX);
+    assert_eq!(
+        error(|s| {
+            s.banned_skills = vec![unknown];
+            s.banned_spells = vec![spell];
+        }),
+        GameSetupError::BannedSkill(unknown)
+    );
+    assert_eq!(
+        error(|s| {
+            s.banned_spells = vec![SpellId::from_raw(0), spell];
+            s.banned_artifacts = vec![artifact];
+        }),
+        GameSetupError::BannedSpell(spell)
+    );
+    assert_eq!(
+        error(|s| s.banned_artifacts = vec![ArtifactTypeId::from_raw(0), artifact]),
+        GameSetupError::BannedArtifact(artifact)
     );
     let many = (usize::from(u16::MAX) + 2, usize::from(u16::MAX) + 1);
     let hero = setup().heroes[0].clone();
@@ -853,6 +877,14 @@ fn the_errors_read_well() {
         (
             GameSetupError::BannedSkill(SkillId::from_raw(4)),
             "banned skill 4 is not the ruleset's",
+        ),
+        (
+            GameSetupError::BannedSpell(SpellId::from_raw(9)),
+            "banned spell 9 is not the ruleset's",
+        ),
+        (
+            GameSetupError::BannedArtifact(ArtifactTypeId::from_raw(7)),
+            "banned artifact 7 is not the ruleset's",
         ),
         (
             GameSetupError::Adventure(SetupError::Players(0)),

@@ -29,14 +29,14 @@ use crate::fog::{on_fringe, reveal};
 use crate::movement::{
     DIRECTIONS, Pricing, day_points, details_of, direction, hero_movement, hero_radius,
 };
-use crate::persistent::BitGrid;
+use crate::persistent::{BitGrid, Table};
 use crate::ruleset::{
     AdventureRuleset, Effect, MAX_GAIN, MAX_MONSTER_COUNT, MAX_PICKUP_AMOUNT, ObjectKind,
     ObjectType, ObjectTypeId, Passage, Pickup, RiverId, RoadId, Visit,
 };
 use crate::setup::{
-    AdventureSetup, ArmyError, Guards, HeroSetup, Holds, MapSetup, MonsterSetup, ObjectSetup, Pos,
-    Scenery, SetupError, StandError, TileMask,
+    AdventureSetup, ArmyError, Bans, Guards, HeroSetup, Holds, MapSetup, MonsterSetup, ObjectSetup,
+    Pos, Scenery, SetupError, StandError, TileMask,
 };
 
 /// How far around a battle's tile the battlefield picture's variant counts the scenery, in tiles
@@ -73,6 +73,7 @@ impl StaticTile {
     };
 }
 
+mod draws;
 mod flags;
 mod holds;
 mod manage;
@@ -80,10 +81,13 @@ mod monsters;
 mod occupancy;
 mod passage;
 mod piles;
+mod visits;
 
+pub use draws::Resolved;
 use flags::Flags;
 pub(crate) use occupancy::Occupancy;
 pub(crate) use passage::{Mode, Node};
+pub use visits::Visits;
 
 /// An object of the static map: its position, footprint, type and contents (ADR-0016 point 4).
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -98,7 +102,9 @@ pub struct MapObject {
     /// game was built (ADV-PIK-002).
     pub object_type: Option<ObjectTypeId>,
     /// What a pickup gives, drawn when the game was built (ADV-PIK-001, ADV-PIK-003): each
-    /// resource with its amount, the type's multiplier applied; empty for every other kind.
+    /// resource with its amount, the type's multiplier applied; since E08 T61b a chest's gold
+    /// (ADV-PIK-005) and a find's resources (ADV-PIK-009 to -012: the Wagon's beside its
+    /// artifact too); empty for every other kind.
     pub contents: Vec<(ResourceId, u32)>,
     /// The tiles its picture is drawn on beyond its blocked and visitable ones: a special
     /// ground's (ADV-GRD-001, E08 T20a2a); empty for every other object.
@@ -114,6 +120,8 @@ pub struct MapObject {
     pub scenery: Scenery,
     /// What the map put in it (E08 T61a; [`Holds`]).
     pub holds: Holds,
+    /// What the build drew for it beside what the map put in it (E08 T61b; [`Resolved`]).
+    pub resolved: Resolved,
 }
 
 /// A wandering monster of the static map (ADV-MON-001, E08 T20a2a): the map's data with what the
@@ -214,11 +222,13 @@ pub struct StaticMap {
 
 impl StaticMap {
     /// Builds the static map from its setup, checking the dimensions, the tiles and the objects
-    /// (level, type, amount, their number), then draws the objects' random contents from `draws`.
+    /// (level, type, amount, their number), then draws the objects' random contents from `draws`
+    /// under the scenario's `bans`.
     fn new(
         core: &Ruleset,
         part: &AdventureRuleset,
         setup: &MapSetup,
+        bans: &Bans,
         draws: &mut Rng,
     ) -> Result<Self, SetupError> {
         let params = part.params();
@@ -346,6 +356,7 @@ impl StaticMap {
             map.place(object, guards);
         }
         map.resolve(core, part, &setup.objects, draws);
+        draws::resolve_rewards(core, part, bans, &mut map.objects, draws);
         map.mark_near_monsters();
         map.mark_no_native(part);
         // After the objects, as the original counts after placing its map's objects.
@@ -434,7 +445,8 @@ impl StaticMap {
     /// of its types with equal chances), then each pile's amount where the map fixes none and each
     /// paired pickup's amount and resource (ADV-PIK-001, ADV-PIK-003: the amount first). Piles
     /// take the map's amount, or the drawn one, times the multiplier. Then the monsters
-    /// ([`Self::resolve_monsters`]).
+    /// ([`Self::resolve_monsters`]); the rewards come after both (`draws::resolve_rewards`, E08
+    /// T61b).
     // rule: ADV-PIK-001, ADV-PIK-002, ADV-PIK-003
     fn resolve(
         &mut self,
@@ -603,6 +615,7 @@ impl StaticMap {
             guards,
             scenery: object.scenery,
             holds: object.holds.clone(),
+            resolved: Resolved::Nothing,
         });
     }
 
@@ -703,8 +716,9 @@ impl CanonicalHash for StaticMap {
     /// and entries; since v10, as 0 for none or 1 and its fields, its guards: whether they ask,
     /// the stacks as length and slot, creature and count each; since v12 its scenery, 0 other, 1
     /// ownable, 2 a tree, 3 a mountain, 4 dead vegetation; since v13 a monster's treasure artifact
-    /// after its treasure, and after the scenery what the object holds, [`Holds`]' encoding). The
-    /// per-tile object flags follow from the objects.
+    /// after its treasure, and after the scenery what the object holds, [`Holds`]' encoding; since
+    /// v14 after it what the build drew, [`Resolved`]'s). The per-tile object flags follow from
+    /// the objects.
     fn hash_into(&self, h: &mut StateHasher) {
         h.write_u16(self.width);
         h.write_u16(self.height);
@@ -766,6 +780,7 @@ impl CanonicalHash for StaticMap {
                 Scenery::DeadVegetation => 4,
             });
             object.holds.hash_into(h);
+            object.resolved.hash_into(h);
         }
     }
 }
@@ -865,9 +880,13 @@ pub struct AdventureState {
     /// reads (ADV-MON-007, E08 T20b).
     difficulty: u8,
     /// The armies battles left on objects, by object index (E08 T20a2a): a monster's survivors
-    /// (ADV-MON-010, E08 T20b), later a guarded object's. None until a battle leaves one, then
-    /// one block the forks share, as [`Self::flags`].
-    army_left: Option<Arc<BTreeMap<usize, Vec<ArmyStack>>>>,
+    /// (ADV-MON-010, E08 T20b), a guarded object's (E08 T21b). Since E08 T61b a persistent
+    /// two-level table (design §10): a fork shares it, a write copies at most three small tables,
+    /// so an army left on every object of the XL map costs a write no more than one does.
+    army_left: Table<Vec<ArmyStack>>,
+    /// What visits left on the objects (E08 T61b; [`Visits`], design §10): none until a visit
+    /// writes it (E08 T62), then one block the forks share, as [`Self::flags`].
+    visits: Option<Arc<Visits>>,
 }
 
 impl AdventureState {
@@ -888,7 +907,7 @@ impl AdventureState {
         setup: &AdventureSetup,
         draws: &mut Rng,
     ) -> Result<Self, SetupError> {
-        let map = StaticMap::new(core, part, &setup.map, draws)?;
+        let map = StaticMap::new(core, part, &setup.map, &setup.bans, draws)?;
         if !(1..=part.params().max_players()).contains(&setup.players) {
             return Err(SetupError::Players(setup.players));
         }
@@ -901,7 +920,8 @@ impl AdventureState {
             occupancy: None,
             flags: None,
             difficulty: setup.difficulty,
-            army_left: None,
+            army_left: Table::new(),
+            visits: None,
         };
         for hero in &setup.heroes {
             state.place(core, part, hero)?;
@@ -1992,10 +2012,12 @@ impl AdventureState {
     /// The army a battle left on the object at `index`, if one did (E08 T20a2a; written from
     /// E08 T20b).
     pub fn army_left(&self, index: usize) -> Option<&[ArmyStack]> {
-        self.army_left
-            .as_deref()
-            .and_then(|left| left.get(&index))
-            .map(Vec::as_slice)
+        self.army_left.get(index).map(Vec::as_slice)
+    }
+
+    /// What visits left on the objects (E08 T61b, design §10): none until a visit writes it.
+    pub fn visits(&self) -> Option<&Visits> {
+        self.visits.as_deref()
     }
 
     /// The count of the monster at object index `index` as it stands (E08 T20a2a): the creatures
@@ -2028,8 +2050,9 @@ impl AdventureState {
 }
 
 impl CanonicalHash for AdventureState {
-    /// Encoding v11 (E08 T50; v1 was T5a's, v2 T6b's, v3 T8a's, v4 T12's, v5 T14b's, v6 T15a's,
-    /// v7 T18b's, v8 T19a's, v9 T20a2a's, v10 T21a's):
+    /// Encoding v14 (E08 T61b; v1 was T5a's, v2 T6b's, v3 T8a's, v4 T12's, v5 T14b's, v6 T15a's,
+    /// v7 T18b's, v8 T19a's, v9 T20a2a's, v10 T21a's, v11 T50's; v12 and v13 changed the static
+    /// map's):
     /// version; the static map's content hash (since v4 with the objects' types and contents); the
     /// number of players; the heroes by id (id, owner, tile, the army's stacks by slot: slot,
     /// creature, count; since v7 the formation, 0 loose, 1 tight; since v11 the tactics flag;
@@ -2040,7 +2063,8 @@ impl CanonicalHash for AdventureState {
     /// player bits); since v6 then the keys, a byte of player bits per colour (none bought and no
     /// key before the first purchase or key); since v9 the difficulty, then the armies battles
     /// left on objects as their number and, by object index, the index and the army's stacks as
-    /// length and entries (slot, creature, count).
+    /// length and entries (slot, creature, count); since v14 the visits' block (0 for none, else
+    /// 1 and [`Visits`]' encoding; there is one only once a visit wrote it).
     fn hash_into(&self, h: &mut StateHasher) {
         h.write_u32(ADVENTURE_STATE_HASH_VERSION);
         h.write_u64(self.map.content_hash());
@@ -2073,15 +2097,21 @@ impl CanonicalHash for AdventureState {
         }
         self.flags.as_deref().unwrap_or(&Flags::NONE).hash_into(h);
         h.write_u8(self.difficulty);
-        let left = self.army_left.as_deref();
-        h.write_len(left.map_or(0, BTreeMap::len));
-        for (index, army) in left.into_iter().flatten() {
-            h.write_len(*index);
+        h.write_len(self.army_left.len());
+        for (index, army) in self.army_left.iter() {
+            h.write_len(index);
             h.write_len(army.len());
             for stack in army {
                 h.write_u8(stack.slot);
                 stack.creature.hash_into(h);
                 h.write_u32(stack.count);
+            }
+        }
+        match &self.visits {
+            None => h.write_u8(0),
+            Some(visits) => {
+                h.write_u8(1);
+                visits.hash_into(h);
             }
         }
     }

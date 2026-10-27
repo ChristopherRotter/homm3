@@ -249,7 +249,7 @@ A candidate becomes an entry here only once it is confirmed for SoD (by an exper
 
 ### ADV-QUIRK-21 — An RoE map's Witch Hut teaches only 14 skills
 - Class: fix-optional (the user, 2026-10-26, ADV-Q28, A-21; the epic's decision 130)
-- Context / rules affected: adventure, the Witch Hut's skill drawn at the build (ADV-TCH-, E08 design §8, §9; E08 T61)
+- Context / rules affected: adventure, the Witch Hut's skill drawn at the build (ADV-TCH-005, E08 design §8, §9; E08 T61b)
 - Original behavior: an RoE map's file holds no Witch Hut mask, and the load (0x5034BD) gives every such hut the fixed mask 0xEFBF, the editor's default (every skill but Leadership and Necromancy, 0x0FFFEFBF) cut to 16 bits: the skills 0 to 15 but Leadership and Necromancy, so an RoE hut never teaches Water Magic, Earth Magic, Scholar, Tactics, Artillery, Learning, Offense, Armorer, Intelligence, Sorcery, Resistance or First Aid (survey `E08-rewards.md` §9, D-33).
 - Intended/expected behavior: every skill but Leadership and Necromancy, the editor's default and VCMI's 26.
 - Impact: gameplay: 191 huts on the shipped RoE maps draw from 14 skills instead of 26.
@@ -257,7 +257,7 @@ A candidate becomes an entry here only once it is confirmed for SoD (by an exper
 - Sources: code reading (E08 T55a2, the second reading T55a4; survey §9, §13); batch E7's E7-7 (`experiments/results/E08-batch-7a-roe.md`: the fixed mask on an RoE map; survey §15, T58).
 - Flag: `quirk.adventure.roe_witch_hut_mask` (registry position 37, E08 T59)
 - Defaults: faithful = on (the mask 0xEFBF), strict-fixed = off (every skill but Leadership and Necromancy)
-- Regression test: with the build's draws (E08 T61)
+- Regression test: `h3-adventure`'s `a_witch_hut_draws_from_its_mask_less_the_bans_and_an_roe_hut_by_the_profile` (`src/state/tests/draws.rs`, E08 T61b: the build's draw in both profiles, ADV-TCH-005)
 - Decided by / date: the user 2026-10-26 (ADV-Q28; decision 130); confirmed by batch E7's E7-7 (T58); the flag added by E08 T59
 
 ### ADV-QUIRK-22 — A full backpack refuses an artifact whatever the free positions
@@ -272,3 +272,55 @@ A candidate becomes an entry here only once it is confirmed for SoD (by an exper
 - Defaults: faithful = on (the count first), strict-fixed = off (the placement first)
 - Regression test: `h3-heroes`' `a_full_backpack_refuses_an_artifact_in_faithful_only` (`src/tests/grant.rs`, E08 T60b: `can_receive_artifact` and `grant` in both profiles); the visits' with E08 T62
 - Decided by / date: the user 2026-10-27 (ADV-Q30; decision 145); the flag added by E08 T59
+
+### ADV-QUIRK-23 — A Shrine's or a Scholar's spell of −1 reads outside the tables
+- Class: exploit-fix (no flag: an out-of-bounds read, fixed in every profile as AGENTS.md requires; A-18, E08 decision 133)
+- Context / rules affected: adventure, ADV-TCH-004 and ADV-TCH-006 (the draws when the game is built, E08 T61b; the visits, T62)
+- Original behavior: a Shrine's random spell is drawn by `random_shrine_spell` (0x4C95A0), which gives −1 when its level has no spell left after the marks' restart; a Scholar's placed spell may be 255; neither visit (`visit_shrine` 0x4A5610, `visit_scholar` 0x4A4DC0) tests it, so the visit reads the spell tables outside their bounds (survey `E08-rewards.md` §6.5, §9).
+- Intended/expected behavior: a Shrine whose level has no spell to give holds none and refuses every visit; a Scholar whose skill or spell pool is empty gives a primary skill.
+- Impact: unreachable on the shipped maps (no map bans a whole level); state-corrupting where reached.
+- Community status: not documented; VCMI draws only allowed spells.
+- Sources: code reading (E08 T55a2, survey §6.5, §9).
+- Flag: none (always fixed)
+- Defaults: fixed in every profile
+- Regression test: `crates/h3-adventure/src/state/tests/draws.rs`, `random_shrines_repeat_no_spell_until_their_level_is_out` (a level without a spell) and `a_scholar_holds_its_gift_and_the_primary_skill_it_gives_instead` (every skill and spell banned); the visits' with E08 T62
+- Decided by / date: the user 2026-10-26 (ADV-Q28; decision 133); built by E08 T61b
+
+### ADV-QUIRK-24 — A Pyramid with every spell of its level banned reads outside its list
+- Class: exploit-fix (no flag: an out-of-bounds read, fixed in every profile as AGENTS.md requires; A-20, E08 decision 133)
+- Context / rules affected: adventure, ADV-TCH-008 (the draw when the game is built, E08 T61b)
+- Original behavior: at a new game (`setup_map_objects` case 63, 0x4C19DE) the Pyramid draws `random_between(0, n − 1)` over the unbanned level-5 spells with a school; with all nine banned the pool is empty and the draw reads outside the list (survey `E08-rewards.md` §7.5, §9).
+- Intended/expected behavior: the Pyramid holds no spell: its guards still fight, a win gives nothing but the looted mark.
+- Impact: unreachable on the shipped maps (at most three of the nine banned).
+- Community status: not documented.
+- Sources: code reading (E08 T55a3, survey §7.5, §9).
+- Flag: none (always fixed)
+- Defaults: fixed in every profile
+- Regression test: `crates/h3-adventure/src/state/tests/draws.rs`, `the_pyramid_holds_an_unbanned_spell_of_its_level`
+- Decided by / date: the user 2026-10-26 (ADV-Q28; decision 133); built by E08 T61b
+
+### ADV-QUIRK-25 — A University with fewer than four unbanned skills draws from a negative range
+- Class: exploit-fix (no flag: an out-of-range draw, fixed in every profile as AGENTS.md requires; A-22, E08 decision 133)
+- Context / rules affected: adventure, ADV-TCH-007 (the draw when the game is built, E08 T61b)
+- Original behavior: `university_setup` (0x4C06F0) draws its four distinct skills each as `random_between(0, n − 1)` among the unbanned skills left; a map that bans more than 24 skills leaves the last draws a negative range (inferred, survey `E08-rewards.md` §9, §13).
+- Intended/expected behavior: the University offers every unbanned skill left, fewer than four.
+- Impact: unreachable on the shipped maps (at most 13 skills banned).
+- Community status: not documented.
+- Sources: code reading (E08 T55a2, the second reading T55a4; survey §6.8, §13).
+- Flag: none (always fixed)
+- Defaults: fixed in every profile
+- Regression test: `crates/h3-adventure/src/state/tests/draws.rs`, `a_university_draws_distinct_unbanned_skills_and_all_when_fewer_are_left`
+- Decided by / date: the user 2026-10-26 (ADV-Q28; decision 133); built by E08 T61b
+
+### ADV-QUIRK-26 — A reward of more than seven creature stacks writes past its record
+- Class: exploit-fix (no flag: an out-of-bounds write, state-corrupting, fixed in every profile as AGENTS.md requires; A-24, E08 decision 133)
+- Context / rules affected: the map's import (`docs/formats/h3m.md`, "Import"; ADV-RWD-001, E08 T61a)
+- Original behavior: the loader reads a Pandora's Box's or an event's creature list into a record of seven stacks without a bound, so a longer list writes past the record (survey `E08-rewards.md` §7.4, §13).
+- Intended/expected behavior: the import refuses such a map (`Unsupported::RewardArmy`).
+- Impact: unreachable on the shipped maps (none gives more than seven stacks).
+- Community status: not documented.
+- Sources: code reading (E08 T55a4, the second reading; survey §7.4, §13).
+- Flag: none (always fixed)
+- Defaults: fixed in every profile
+- Regression test: `crates/h3-map/src/tests/import.rs`, `increment_7_bodies_import_with_their_guards_and_records` (E08 T61a: `Unsupported::RewardArmy`)
+- Decided by / date: the user 2026-10-26 (ADV-Q28; decision 133); built by E08 T61a, recorded by E08 T61b

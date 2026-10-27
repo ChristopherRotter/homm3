@@ -347,6 +347,8 @@ impl Accumulator {
             heroes: Vec::new(),
             level_limit: 0,
             banned_skills: Vec::new(),
+            banned_spells: Vec::new(),
+            banned_artifacts: Vec::new(),
         };
         // The seed draws the static layer's random contents, which no number here reads.
         let state = GameState::new(rules, &setup, 0).map_err(|e| format!("setup: {e}"))?;
