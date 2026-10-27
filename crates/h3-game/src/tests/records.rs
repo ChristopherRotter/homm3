@@ -10,7 +10,7 @@ use h3_adventure::{Guards, Holds, OfferKind, RewardRecord, TileRand, split_with_
 use h3_contracts::BattleSide;
 use h3_heroes::{HeroChange, HeroReward};
 
-use super::decisions::{ACCEPT, DECLINE, GOLD, RED, play};
+use super::decisions::{ACCEPT, CLOSE, DECLINE, GOLD, RED, play};
 use super::monsters::valued;
 use super::rewards::{AT, HERO, changed, game, gold, reward_at, visit, won};
 use super::*;
@@ -133,7 +133,7 @@ fn a_records_creatures_without_room_open_one_army_dialog_at_their_slots() {
     let army = &state.adventure().hero(HERO).unwrap().army;
     assert_eq!(army[0], stack(0, IMP, 3));
     // Closed: what is left is lost.
-    let events = play(&mut state, &rules, RED, DECLINE).unwrap();
+    let events = play(&mut state, &rules, RED, CLOSE).unwrap();
     assert!(events.contains(&GameEvent::GroupLost {
         player: RED,
         hero: HERO,

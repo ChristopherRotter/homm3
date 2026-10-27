@@ -12,10 +12,12 @@ use h3_content::ResourceId;
 use super::*;
 
 pub(super) const RED: PlayerId = PlayerId::new(0);
-const BLUE: PlayerId = PlayerId::new(1);
+pub(super) const BLUE: PlayerId = PlayerId::new(1);
 pub(super) const GOLD: ResourceId = ResourceId::from_raw(0);
-pub(super) const ACCEPT: GameCommand = GameCommand::Answer(Answer::Accept);
-pub(super) const DECLINE: GameCommand = GameCommand::Answer(Answer::Decline);
+pub(super) const ACCEPT: GameCommand = GameCommand::Answer(Answer::Offer(Consent::Accept));
+pub(super) const DECLINE: GameCommand = GameCommand::Answer(Answer::Offer(Consent::Decline));
+/// Closes a meeting or an army dialog (E08 T63a: increment 6's `Decline`).
+pub(super) const CLOSE: GameCommand = GameCommand::Answer(Answer::Close);
 
 pub(super) fn move_hero(hero: u16, path: &[Pos]) -> GameCommand {
     GameCommand::Adventure(AdventureCommand::MoveHero {
@@ -114,10 +116,17 @@ fn an_open_offer_leaves_its_owner_its_answers_only() {
     assert_eq!(seen, DecisionView::Offer(offer));
     assert_eq!(observe(&state, &rules, Viewer::Player(BLUE)).decision, None);
     // E08 T30: the system actor's default is to decline; a level-up's answers are wrong here.
-    assert_eq!(default_answer(&state, &rules, RED), Some(Answer::Decline));
+    assert_eq!(
+        default_answer(&state, &rules, RED),
+        Some(Answer::Offer(Consent::Decline))
+    );
     assert_eq!(default_answer(&state, &rules, BLUE), None);
     let unanswered = state.state_hash();
-    for answer in [Answer::First, Answer::Second] {
+    for answer in [
+        Answer::LevelUp(SkillOffer::First),
+        Answer::LevelUp(SkillOffer::Second),
+        Answer::Close,
+    ] {
         let wrong = play(&mut state, &rules, RED, GameCommand::Answer(answer));
         assert_eq!(wrong, Err(GameCommandError::WrongAnswer));
     }

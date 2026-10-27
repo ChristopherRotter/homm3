@@ -2,7 +2,7 @@
 //! with their adventure files and `.h3m` maps from disk, recording random games and the adventure
 //! replay file format (TOML). The commands themselves are in [`cli`].
 //!
-//! Replay file format v6 (`fixtures/replays/adventure/*.toml` are examples; v2 added the
+//! Replay file format v7 (`fixtures/replays/adventure/*.toml` are examples; v2 added the
 //! difficulty and the answers, E08 T14b: a v1 file has no difficulty, reads as normal and is
 //! refused by its format version; a later file without one is malformed; v3 added the battle
 //! commands, E08 T19b1, and names each command's actor: a player by its number; v4 the system
@@ -11,14 +11,17 @@
 //! `army move|split|dismiss` naming slots as `<army>:<slot>`, the army a hero's id or `g` the
 //! army dialog's group; `formation <hero> loose|tight`; `tactics <hero> on|off`; `artifact
 //! <hero>:<place> <hero>:<place>`, a place `w<position>` worn or `b<index>` in the backpack;
-//! `assemble` and `disassemble <hero> <position>`):
+//! `assemble` and `disassemble <hero> <position>`; v7 the answers typed by the decision's kind,
+//! E08 T63a: `answer <kind> <answer>`, the kinds `offer accept|decline`, `level-up
+//! first|second`, `chest gold|experience`, `arena attack|defense`, `school first|second|leave`,
+//! `university buy <slot>|leave`, and `answer close` for a meeting or an army dialog):
 //!
 //! ```toml
 //! commands = [                        # the game commands in order, each after its actor:
 //!     "0 move 1 5,7,0 6,8,0",         #   `<player> move <hero> <x>,<y>,<level> …` (the path
 //!     "0 end-turn",                   #   without the hero's own tile), `<player> end-turn`
-//!     "1 accept",                     #   `<player> accept` or `decline`: an offer's answer
-//!     "1 answer first",               #   `<player> answer first` or `second`: a level-up's
+//!     "1 answer offer accept",        #   `<player> answer <kind> …`: an answer to the
+//!     "1 answer level-up first",      #   player's open decision, of its kind
 //!     "1 battle attack 3 41",         #   `<player> battle <command>`: a command in its battle,
 //!     "system battle wait",           #   the battle replays' text without the side letter;
 //!                                     #   `system battle …`: the unowned side's
@@ -28,7 +31,7 @@
 //! checkpoints = ["0x…"]               # state hash after every `checkpoint_every` commands
 //!
 //! [replay]
-//! format = 6
+//! format = 7
 //! engine = "0.1.0"
 //! seed = "1"                          # u64 as a decimal string
 //! difficulty = 1                      # the game's (GameSetup::difficulty), 1 the import's
@@ -67,8 +70,9 @@ use h3_adventure::{AdventureCommand, Pos};
 use h3_content::Formation;
 use h3_contracts::{BattleSide, HeroId, PlayerId};
 use h3_game::{
-    Actor, Answer, ArmyCommand, ArmyRef, ArmySlot, ArtifactPlace, GameCommand, GameRuleset,
-    GameSetup, Manage, Position,
+    Actor, Answer, ArenaChoice, ArmyCommand, ArmyRef, ArmySlot, ArtifactPlace, ChestChoice,
+    Consent, GameCommand, GameRuleset, GameSetup, Manage, Position, SchoolChoice, SkillOffer,
+    UniversityAnswer,
 };
 use h3_sim::adventure::replay::{
     MapRef, RecordError, RecordOptions, Replay, ReplayError, ReplayHeader, map_content_hash,
@@ -256,10 +260,10 @@ fn parse_hex64(s: &str) -> Result<u64> {
         .ok_or_else(|| AdventureCliError::Format(format!("bad hash `{s}`")))
 }
 
-/// A command as a replay file writes it (format v6, the module's docs): its actor, then the
+/// A command as a replay file writes it (format v7, the module's docs): its actor, then the
 /// command; a battle command (E08 T19b1) as the battle replays write it ([`crate::format_command`])
 /// without the side, which is the actor's in its battle; a management command (E08 T51a) by its
-/// own words ([`format_manage`]).
+/// own words ([`format_manage`]); an answer (E08 T63a) by its kind and words ([`format_answer`]).
 pub fn format_command(actor: Actor, command: &GameCommand) -> String {
     let player = match actor {
         Actor::Player(player) => player.raw().to_string(),
@@ -273,12 +277,8 @@ pub fn format_command(actor: Actor, command: &GameCommand) -> String {
             format!("{player} battle {text}")
         }
         GameCommand::EndTurn => format!("{player} end-turn"),
-        // E08 T14b: an answer to the player's open decision (format v2).
-        GameCommand::Answer(Answer::Accept) => format!("{player} accept"),
-        GameCommand::Answer(Answer::Decline) => format!("{player} decline"),
-        // E08 T30: a level-up's answer (format v5).
-        GameCommand::Answer(Answer::First) => format!("{player} answer first"),
-        GameCommand::Answer(Answer::Second) => format!("{player} answer second"),
+        // E08 T14b: an answer to the player's open decision (format v2; typed since v7, T63a).
+        GameCommand::Answer(answer) => format!("{player} answer {}", format_answer(*answer)),
         GameCommand::Adventure(AdventureCommand::MoveHero { hero, path }) => {
             let mut text = format!("{player} move {}", hero.raw());
             for pos in path {
@@ -288,6 +288,53 @@ pub fn format_command(actor: Actor, command: &GameCommand) -> String {
         }
         GameCommand::Manage(command) => format!("{player} {}", format_manage(command)),
     }
+}
+
+/// An answer's words (format v7, E08 T63a): its kind, then the kind's answer.
+fn format_answer(answer: Answer) -> String {
+    let words = match answer {
+        Answer::Offer(Consent::Accept) => "offer accept",
+        Answer::Offer(Consent::Decline) => "offer decline",
+        Answer::LevelUp(SkillOffer::First) => "level-up first",
+        Answer::LevelUp(SkillOffer::Second) => "level-up second",
+        Answer::Chest(ChestChoice::Gold) => "chest gold",
+        Answer::Chest(ChestChoice::Experience) => "chest experience",
+        Answer::Arena(ArenaChoice::Attack) => "arena attack",
+        Answer::Arena(ArenaChoice::Defense) => "arena defense",
+        Answer::School(SchoolChoice::First) => "school first",
+        Answer::School(SchoolChoice::Second) => "school second",
+        Answer::School(SchoolChoice::Leave) => "school leave",
+        Answer::University(UniversityAnswer::Buy(slot)) => {
+            return format!("university buy {slot}");
+        }
+        Answer::University(UniversityAnswer::Leave) => "university leave",
+        Answer::Close => "close",
+    };
+    words.to_owned()
+}
+
+/// Parses the words of an answer after `answer` (format v7, [`format_answer`]); none for others.
+fn parse_answer<'w>(mut words: impl Iterator<Item = &'w str>) -> Option<Answer> {
+    let answer = match (words.next()?, words.next()) {
+        ("offer", Some("accept")) => Answer::Offer(Consent::Accept),
+        ("offer", Some("decline")) => Answer::Offer(Consent::Decline),
+        ("level-up", Some("first")) => Answer::LevelUp(SkillOffer::First),
+        ("level-up", Some("second")) => Answer::LevelUp(SkillOffer::Second),
+        ("chest", Some("gold")) => Answer::Chest(ChestChoice::Gold),
+        ("chest", Some("experience")) => Answer::Chest(ChestChoice::Experience),
+        ("arena", Some("attack")) => Answer::Arena(ArenaChoice::Attack),
+        ("arena", Some("defense")) => Answer::Arena(ArenaChoice::Defense),
+        ("school", Some("first")) => Answer::School(SchoolChoice::First),
+        ("school", Some("second")) => Answer::School(SchoolChoice::Second),
+        ("school", Some("leave")) => Answer::School(SchoolChoice::Leave),
+        ("university", Some("buy")) => {
+            Answer::University(UniversityAnswer::Buy(words.next()?.parse().ok()?))
+        }
+        ("university", Some("leave")) => Answer::University(UniversityAnswer::Leave),
+        ("close", None) => return Some(Answer::Close),
+        _ => return None,
+    };
+    words.next().is_none().then_some(answer)
 }
 
 /// An army slot as `<army>:<slot>`: the army a hero's id, or `g` for the group.
@@ -435,13 +482,7 @@ pub fn parse_command(text: &str) -> Result<(Actor, GameCommand)> {
     };
     let command = match words.next() {
         Some("end-turn") => GameCommand::EndTurn,
-        Some("accept") => GameCommand::Answer(Answer::Accept),
-        Some("decline") => GameCommand::Answer(Answer::Decline),
-        Some("answer") => match words.next() {
-            Some("first") => GameCommand::Answer(Answer::First),
-            Some("second") => GameCommand::Answer(Answer::Second),
-            _ => return Err(bad()),
-        },
+        Some("answer") => GameCommand::Answer(parse_answer(words.by_ref()).ok_or_else(bad)?),
         Some("battle") => {
             let rest: Vec<&str> = words.by_ref().collect();
             let (_, command) =

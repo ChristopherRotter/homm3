@@ -59,12 +59,16 @@ static DUEL_SETUP: LazyLock<Arc<GameSetup>> = LazyLock::new(|| setup(&FAITHFUL))
 /// reaches on day 1 by a last step not from above (a Cartographer is not entered from above,
 /// ADV-OBJ-004).
 fn chart_setup(rules: &GameRuleset, difficulty: u8) -> Arc<GameSetup> {
+    beside(rules, difficulty, "base:cartographer_land")
+}
+
+/// The duel at `difficulty` with an object of the original packs' type `key` near each hero, as
+/// [`chart_setup`]'s Cartographers (E08 T63a: a University's, an Arena's).
+fn beside(rules: &GameRuleset, difficulty: u8, key: &str) -> Arc<GameSetup> {
     let mut setup = GameSetup::clone(&setup(rules));
     setup.difficulty = difficulty;
-    let chart = rules
-        .adventure()
-        .object_type_by_key("base:cartographer_land");
-    assert!(chart.is_some(), "the original packs' land Cartographer");
+    let chart = rules.adventure().object_type_by_key(key);
+    assert!(chart.is_some(), "the original packs' {key}");
     let state = GameState::new(rules, &setup, 0).unwrap();
     for hero in state.adventure().heroes() {
         let reach = state
@@ -125,7 +129,8 @@ fn the_duel_starts_with_red_to_move_and_both_its_heroes_free() {
     assert_eq!(
         mask,
         [
-            true, true, true, false, false, false, false, false, false, false, false, false, false
+            true, true, true, false, false, false, false, false, false, false, false, false, false,
+            false, false, false, false
         ]
     );
     env.legal_mask(PlayerId::new(1), &mut mask);
@@ -159,17 +164,17 @@ fn tiles_and_actions_encode_as_documented() {
     assert_eq!(tile_index(state, h3_adventure::Pos::new(0, 36, 0)), None);
     assert_eq!(tile_index(state, h3_adventure::Pos::new(0, 0, 2)), None);
     assert_eq!(tile_pos(state, 36 * 36 * 2), None);
-    assert_eq!(ACTION_ENCODING_VERSION, 4);
-    assert_eq!((ACCEPT, DECLINE, ENTRY_COUNT), (9, 10, 13));
-    assert_eq!((FIRST, SECOND), (11, 12));
+    assert_eq!(ACTION_ENCODING_VERSION, 5);
+    assert_eq!((ACCEPT, DECLINE, ENTRY_COUNT), (9, 10, 17));
+    assert_eq!((FIRST, SECOND, BUY_BASE, UNIVERSITY_SLOTS), (11, 12, 13, 4));
     assert_eq!(Action::end_turn(), Action::Adventure(MapAction::default()));
     let map = |entry, tile| Action::Adventure(MapAction { entry, tile });
     assert_eq!(Action::move_to(2, 9), map(3, 9));
     assert_eq!(Action::accept(), map(9, 0));
     assert_eq!(Action::decline(), map(10, 0));
     assert_eq!(
-        (Action::first(), Action::second()),
-        (map(11, 0), map(12, 0))
+        (Action::first(), Action::second(), Action::buy(3)),
+        (map(11, 0), map(12, 0), map(16, 0))
     );
     assert_eq!(hero_in_slot(state, PlayerId::new(0), HERO_SLOTS), None);
     assert_eq!(hero_in_slot(state, PlayerId::new(1), 2), None);

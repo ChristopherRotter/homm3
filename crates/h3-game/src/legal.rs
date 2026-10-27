@@ -14,33 +14,32 @@ use alloc::vec;
 use alloc::vec::Vec;
 use core::ops::RangeInclusive;
 
-use h3_adventure::{ArmyRef, ArmySlot, Reach};
+use h3_adventure::{ArmyRef, ArmySlot, ChoiceKind, Reach};
 use h3_battle::LegalCommands;
 use h3_content::Formation;
 use h3_contracts::{HeroId, PlayerId};
 use h3_heroes::{
-    ArmyWorth, ArtifactMove, ArtifactPlace, HeroDetails, Position, check_assemble,
+    ArmyWorth, ArtifactMove, ArtifactPlace, HeroDetails, Position, SlotState, check_assemble,
     check_disassemble, check_move, original_choice,
 };
 
-use crate::command::{Actor, Answer, GameCommand};
+use crate::command::{
+    Actor, Answer, ArenaChoice, ChestChoice, Consent, GameCommand, SchoolChoice, SkillOffer,
+    UniversityAnswer,
+};
 use crate::manage::Manage;
 use crate::state::Together;
 use crate::{GameRuleset, GameState, OpenBattle};
 
 /// The commands `actor` may issue now but its moves: with an open battle the battle's legal
 /// commands for its side while that side is to act, and none while the other side is
-/// (`h3_battle::legal_commands`; GAM-BAT-001, E08 T19a); with an open offer its answers, `Accept`
-/// then `Decline`, in its turn or not, and nothing else (GAM-DEC-001); `Decline` alone when the
-/// offer no longer stands (ADR-0017 point 10: a border guard another player of the group passed,
-/// E08 T15a); with an open level-up its answers, `First` then `Second`, in its turn or not, and
-/// nothing else, and none for any other actor while the game waits for it (GAM-DEC-002, E08
-/// T30); with an open meeting or army dialog `Decline` alone, which closes it (GAM-DEC-003,
-/// GAM-DEC-004, E08 T51b: its management commands are [`legal_management`]'s); otherwise
-/// `EndTurn`. Empty for a player whose turn is not
-/// running or who is not in the game, by `apply`'s own checks (ADR-0017's consequence). The moves
-/// are [`legal_moves`].
-// rule: GAM-DEC-001, GAM-DEC-002, GAM-DEC-003, GAM-DEC-004, GAM-BAT-001
+/// (`h3_battle::legal_commands`; GAM-BAT-001, E08 T19a); otherwise with an open decision its
+/// answers alone, in its turn or not ([`answers`]: GAM-DEC-001 to GAM-DEC-006), and none for any
+/// other actor while the game waits for a level-up (GAM-DEC-002, E08 T30); otherwise `EndTurn`.
+/// Empty for a player whose turn is not running or who is not in the game, by `apply`'s own
+/// checks (ADR-0017's consequence). The moves are [`legal_moves`]; a meeting's and an army
+/// dialog's management commands [`legal_management`]'s.
+// rule: GAM-DEC-001, GAM-DEC-002, GAM-DEC-003, GAM-DEC-004, GAM-DEC-005, GAM-DEC-006, GAM-BAT-001
 pub fn legal_commands(state: &GameState, rules: &GameRuleset, actor: Actor) -> Vec<GameCommand> {
     if state.check_held(actor).is_err() {
         return Vec::new();
@@ -58,23 +57,11 @@ pub fn legal_commands(state: &GameState, rules: &GameRuleset, actor: Actor) -> V
     if let Some(battle) = state.battle(player) {
         return battle_commands(battle, rules, Some(player));
     }
-    if let Some(offer) = state.decision(player) {
-        let accept = state.adventure().offer_stands(offer);
-        return [Answer::Accept, Answer::Decline]
+    if state.has_decision(player) {
+        return answers(state, rules, player)
             .into_iter()
-            .filter(|&answer| accept || answer == Answer::Decline)
             .map(GameCommand::Answer)
             .collect();
-    }
-    if state.level_up(player).is_some() {
-        return vec![
-            GameCommand::Answer(Answer::First),
-            GameCommand::Answer(Answer::Second),
-        ];
-    }
-    if state.together(player) != Some(Together::Alone) {
-        // E08 T51b: a meeting or an army dialog; its management commands are per hero.
-        return vec![GameCommand::Answer(Answer::Decline)];
     }
     if state.check_acting(player).is_err() {
         return Vec::new();
@@ -82,32 +69,102 @@ pub fn legal_commands(state: &GameState, rules: &GameRuleset, actor: Actor) -> V
     vec![GameCommand::EndTurn]
 }
 
+/// The answers to `player`'s first open decision but a battle (ADR-0017 point 6; E08 T63a: typed
+/// by the decision's kind), in this order: an offer's `Accept` while it stands (ADR-0017 point
+/// 10: not a border guard another player of the group passed, E08 T15a), then `Decline`
+/// (GAM-DEC-001); a level-up's `First`, then `Second` (GAM-DEC-002); a meeting's or an army
+/// dialog's `Close` (GAM-DEC-003, GAM-DEC-004); a chest's `Gold`, then `Experience`; the Arena's
+/// `Attack`, then `Defense`; a School's `First`, `Second`, then `Leave` (GAM-DEC-005); a
+/// University's `Buy` of each slot open for the hero while the treasury can pay its price, in
+/// slot order, then `Leave` (GAM-DEC-006).
+fn answers(state: &GameState, rules: &GameRuleset, player: PlayerId) -> Vec<Answer> {
+    if let Some(offer) = state.decision(player) {
+        let accept = state.adventure().offer_stands(offer);
+        return [Consent::Accept, Consent::Decline]
+            .into_iter()
+            .filter(|&consent| accept || consent == Consent::Decline)
+            .map(Answer::Offer)
+            .collect();
+    }
+    if state.level_up(player).is_some() {
+        return vec![
+            Answer::LevelUp(SkillOffer::First),
+            Answer::LevelUp(SkillOffer::Second),
+        ];
+    }
+    if let Some(choice) = state.choice(player) {
+        return match choice.kind {
+            ChoiceKind::Chest { .. } => vec![
+                Answer::Chest(ChestChoice::Gold),
+                Answer::Chest(ChestChoice::Experience),
+            ],
+            ChoiceKind::Primary { leave: false, .. } => vec![
+                Answer::Arena(ArenaChoice::Attack),
+                Answer::Arena(ArenaChoice::Defense),
+            ],
+            ChoiceKind::Primary { leave: true, .. } => vec![
+                Answer::School(SchoolChoice::First),
+                Answer::School(SchoolChoice::Second),
+                Answer::School(SchoolChoice::Leave),
+            ],
+        };
+    }
+    if let Some(visit) = state.university(player) {
+        let pays = state.can_pay(player, &visit.price);
+        return (0..=u8::MAX)
+            .zip(&visit.skills)
+            .filter(|&(_, &skill)| {
+                pays && state.slot_state(rules, visit.hero, skill) == SlotState::Open
+            })
+            .map(|(slot, _)| Answer::University(UniversityAnswer::Buy(slot)))
+            .chain([Answer::University(UniversityAnswer::Leave)])
+            .collect();
+    }
+    if !matches!(state.together(player), Some(Together::Alone) | None) {
+        return vec![Answer::Close];
+    }
+    Vec::new()
+}
+
 /// The system actor's default answer to `player`'s first open decision (ADR-0017 points 2 and 6;
-/// E08 T30), which the hosting layer gives when the player does not answer (the server lane's
-/// M5): `Decline` for an offer, a meeting and an army dialog (E08 T51b); for a level-up the offer
-/// the original's choice takes (HER-LVL-006,
-/// the original's when the dialog's time runs out), with the setup's army worth and the map's
+/// E08 T30, T63a), which the hosting layer gives when the player does not answer (the server
+/// lane's M5): an offer's `Decline`; a meeting's and an army dialog's `Close` (E08 T51b); a
+/// chest's `Gold` (the original's plain OK), the Arena's `Attack` (its Cancel), a School's and a
+/// University's `Leave`; for a level-up the offer the original's choice takes (HER-LVL-006, the
+/// original's when the dialog's time runs out), with the setup's army worth and the map's
 /// terrain shares, as at load (GAM-SET-002), until E10 gives the engine the computer player's
 /// state its flag-set path reads (ADR-0017 point 6, ADV-Q17: `ADV-STUB-8`); none for a battle (a
 /// battle's default is the server lane's) or without an open decision.
-// rule: GAM-DEC-002
+// rule: GAM-DEC-002, GAM-DEC-005, GAM-DEC-006
 pub fn default_answer(state: &GameState, rules: &GameRuleset, player: PlayerId) -> Option<Answer> {
-    let exchange = !matches!(state.together(player), Some(Together::Alone) | None);
-    if state.decision(player).is_some() || exchange {
-        return Some(Answer::Decline);
+    if state.decision(player).is_some() {
+        return Some(Answer::Offer(Consent::Decline));
+    }
+    if let Some(choice) = state.choice(player) {
+        return Some(match choice.kind {
+            ChoiceKind::Chest { .. } => Answer::Chest(ChestChoice::Gold),
+            ChoiceKind::Primary { leave: false, .. } => Answer::Arena(ArenaChoice::Attack),
+            ChoiceKind::Primary { leave: true, .. } => Answer::School(SchoolChoice::Leave),
+        });
+    }
+    if state.university(player).is_some() {
+        return Some(Answer::University(UniversityAnswer::Leave));
+    }
+    if !matches!(state.together(player), Some(Together::Alone) | None) {
+        return Some(Answer::Close);
     }
     state.open_level_up(player).and_then(|(view, level_up)| {
         // stub: ADV-STUB-8
         let shares = state.adventure().map().terrain_shares();
         state.hero(view.hero).map(|details| {
             let worth = ArmyWorth::SETUP;
-            Answer::of(original_choice(
+            Answer::LevelUp(SkillOffer::of(original_choice(
                 details,
                 rules.core(),
                 &level_up,
                 worth,
                 shares,
-            ))
+            )))
         })
     })
 }

@@ -29,8 +29,10 @@ use super::rollout::choose;
 /// game's difficulty and the answers to decisions; version 3 (E08 T19b1): each command's actor
 /// (ADR-0017 point 8) and battle commands; version 4 (E08 T20b2): the system actor, which plays a
 /// battle's unowned side; version 5 (E08 T30): a level-up's answers; version 6 (E08 T51a): the
-/// management commands. A replay of another version is refused ([`ReplayHeader::check`]).
-pub const REPLAY_FORMAT_VERSION: u32 = 6;
+/// management commands; version 7 (E08 T63a): the answers typed by the decision's kind
+/// (`h3_game::Answer`: a meeting or an army dialog closed by `Close`, increment 7's choices and
+/// University). A replay of another version is refused ([`ReplayHeader::check`]).
+pub const REPLAY_FORMAT_VERSION: u32 = 7;
 
 /// Identity of the rules and algorithms a replay depends on.
 #[derive(Debug, Clone, PartialEq, Eq)]

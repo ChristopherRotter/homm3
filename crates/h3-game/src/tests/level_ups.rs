@@ -18,8 +18,8 @@ const BLUE: PlayerId = PlayerId::new(1);
 const RED_HERO: HeroId = HeroId::new(0);
 const BLUE_HERO: HeroId = HeroId::new(1);
 const GOG: CreatureTypeId = CreatureTypeId::from_raw(1);
-const FIRST: GameCommand = GameCommand::Answer(Answer::First);
-const SECOND: GameCommand = GameCommand::Answer(Answer::Second);
+const FIRST: GameCommand = GameCommand::Answer(Answer::LevelUp(SkillOffer::First));
+const SECOND: GameCommand = GameCommand::Answer(Answer::LevelUp(SkillOffer::Second));
 
 /// The sides of a battle red's hero (the attacker) and blue's fought, and its tile.
 const SIDES: ([Option<PlayerId>; 2], [Option<HeroId>; 2], Pos) = (
@@ -177,12 +177,16 @@ fn a_won_battle_opens_the_winners_level_up_which_its_answer_gives() {
     let choice = original_choice(&details, rules.core(), &drawn, ArmyWorth::SETUP, shares);
     assert_eq!(
         default_answer(&ended, &rules, RED),
-        Some(Answer::of(choice))
+        Some(Answer::LevelUp(SkillOffer::of(choice)))
     );
     assert_eq!(default_answer(&ended, &rules, BLUE), None);
     // Wrong answers, other commands and other players change nothing.
     let mut state = ended.clone();
-    for answer in [Answer::Accept, Answer::Decline] {
+    for answer in [
+        Answer::Offer(Consent::Accept),
+        Answer::Offer(Consent::Decline),
+        Answer::Close,
+    ] {
         let wrong = play(&mut state, &rules, RED, GameCommand::Answer(answer));
         assert_eq!(wrong, Err(GameCommandError::WrongAnswer));
     }
@@ -410,11 +414,14 @@ fn the_system_actors_default_takes_the_offer_the_original_chooses() {
         let shares = ended.adventure().map().terrain_shares();
         let choice = original_choice(details, rules.core(), &level_up, ArmyWorth::SETUP, shares);
         let answer = default_answer(&ended, &rules, RED).unwrap();
-        assert_eq!(answer, Answer::of(choice));
+        assert_eq!(answer, Answer::LevelUp(SkillOffer::of(choice)));
         answers.push(answer);
     }
     // Over the seeds' draws the original takes either offer.
-    assert!(answers.contains(&Answer::First) && answers.contains(&Answer::Second));
+    assert!(
+        answers.contains(&Answer::LevelUp(SkillOffer::First))
+            && answers.contains(&Answer::LevelUp(SkillOffer::Second))
+    );
 }
 
 // covers: GAM-DEC-002

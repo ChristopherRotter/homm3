@@ -34,32 +34,83 @@ fn options(days: u32) -> RunOptions {
     }
 }
 
+/// The command of `answer`.
+const fn answer(answer: Answer) -> GameCommand {
+    GameCommand::Answer(answer)
+}
+
 #[test]
 fn commands_round_trip_through_their_text() {
     let hero = HeroId::new(12);
     let cases = [
         (PlayerId::new(0), GameCommand::EndTurn, "0 end-turn"),
+        // Format v7 (E08 T63a): the answers typed by the decision's kind.
         (
             PlayerId::new(2),
-            GameCommand::Answer(Answer::Accept),
-            "2 accept",
+            answer(Answer::Offer(Consent::Accept)),
+            "2 answer offer accept",
         ),
         (
             PlayerId::new(3),
-            GameCommand::Answer(Answer::Decline),
-            "3 decline",
+            answer(Answer::Offer(Consent::Decline)),
+            "3 answer offer decline",
         ),
-        // Format v5 (E08 T30): a level-up's answers.
         (
             PlayerId::new(1),
-            GameCommand::Answer(Answer::First),
-            "1 answer first",
+            answer(Answer::LevelUp(SkillOffer::First)),
+            "1 answer level-up first",
         ),
         (
             PlayerId::new(0),
-            GameCommand::Answer(Answer::Second),
-            "0 answer second",
+            answer(Answer::LevelUp(SkillOffer::Second)),
+            "0 answer level-up second",
         ),
+        (
+            PlayerId::new(0),
+            answer(Answer::Chest(ChestChoice::Gold)),
+            "0 answer chest gold",
+        ),
+        (
+            PlayerId::new(0),
+            answer(Answer::Chest(ChestChoice::Experience)),
+            "0 answer chest experience",
+        ),
+        (
+            PlayerId::new(0),
+            answer(Answer::Arena(ArenaChoice::Attack)),
+            "0 answer arena attack",
+        ),
+        (
+            PlayerId::new(0),
+            answer(Answer::Arena(ArenaChoice::Defense)),
+            "0 answer arena defense",
+        ),
+        (
+            PlayerId::new(0),
+            answer(Answer::School(SchoolChoice::First)),
+            "0 answer school first",
+        ),
+        (
+            PlayerId::new(0),
+            answer(Answer::School(SchoolChoice::Second)),
+            "0 answer school second",
+        ),
+        (
+            PlayerId::new(0),
+            answer(Answer::School(SchoolChoice::Leave)),
+            "0 answer school leave",
+        ),
+        (
+            PlayerId::new(0),
+            answer(Answer::University(UniversityAnswer::Buy(3))),
+            "0 answer university buy 3",
+        ),
+        (
+            PlayerId::new(0),
+            answer(Answer::University(UniversityAnswer::Leave)),
+            "0 answer university leave",
+        ),
+        (PlayerId::new(0), answer(Answer::Close), "0 answer close"),
         (
             PlayerId::new(7),
             GameCommand::Adventure(AdventureCommand::MoveHero {
@@ -194,10 +245,25 @@ fn commands_round_trip_through_their_text() {
         "0 jump",
         "0",
         "0 end-turn extra",
-        "0 accept now",
+        "0 accept",
+        "0 decline",
+        "0 answer first",
         "0 answer",
-        "0 answer third",
-        "0 answer first now",
+        "0 answer offer",
+        "0 answer offer maybe",
+        "0 answer offer accept now",
+        "0 answer level-up third",
+        "0 answer chest silver",
+        "0 answer arena power",
+        "0 answer school stay",
+        "0 answer university",
+        "0 answer university buy",
+        "0 answer university buy x",
+        "0 answer university buy 256",
+        "0 answer university buy 1 now",
+        "0 answer university stay",
+        "0 answer close now",
+        "0 answer shrug",
         "0 move",
         "0 move h1",
         "0 move 1 3,4",
@@ -332,7 +398,7 @@ fn the_difficulty_and_the_answers_round_trip_through_the_file() {
     };
     let (replay, text) = run_random(&packs, &dir, &easy).unwrap();
     assert_eq!(replay.difficulty, 0);
-    assert!(text.contains("format = 6\n"), "{text}");
+    assert!(text.contains("format = 7\n"), "{text}");
     assert!(text.contains("difficulty = 0\n"), "{text}");
     let (normal, _) = run_random(&packs, &dir, &options(1)).unwrap();
     assert_eq!(normal.difficulty, h3_game::DEFAULT_DIFFICULTY);
@@ -361,7 +427,7 @@ fn the_difficulty_and_the_answers_round_trip_through_the_file() {
     assert!(matches!(e, AdventureCliError::Format(_)), "{e}");
     // A v1 file: no difficulty, refused by its version before its map is read.
     let v1 = text
-        .replacen("format = 6", "format = 1", 1)
+        .replacen("format = 7", "format = 1", 1)
         .replacen("difficulty = 0\n", "", 1);
     assert_eq!(
         parse_replay(&v1).unwrap().difficulty,
@@ -378,20 +444,20 @@ fn the_difficulty_and_the_answers_round_trip_through_the_file() {
     // A later file without its difficulty is malformed, not a game at normal difficulty.
     let e = verify(&text.replacen("difficulty = 0\n", "", 1)).unwrap_err();
     assert!(matches!(e, AdventureCliError::Format(_)), "{e}");
-    assert!(e.to_string().contains("format 6 needs a difficulty"), "{e}");
+    assert!(e.to_string().contains("format 7 needs a difficulty"), "{e}");
     std::fs::remove_dir_all(&tmp).unwrap();
     // Answers round-trip through the file.
     let mut answered = replay.clone();
     answered.commands.push((
         Actor::Player(PlayerId::new(1)),
-        GameCommand::Answer(Answer::Accept),
+        answer(Answer::Offer(Consent::Accept)),
     ));
     answered.commands.push((
         Actor::Player(PlayerId::new(0)),
-        GameCommand::Answer(Answer::Decline),
+        answer(Answer::University(UniversityAnswer::Buy(2))),
     ));
     let text = replay_to_toml(&answered).unwrap();
-    assert!(text.contains("\"1 accept\""), "{text}");
+    assert!(text.contains("\"1 answer offer accept\""), "{text}");
     assert_eq!(parse_replay(&text).unwrap(), answered);
     // A difficulty the rules do not have is the setup's error.
     let e = run_random(
@@ -544,8 +610,7 @@ fn a_script_records_a_replay_that_verifies() {
     std::fs::create_dir_all(&dir).unwrap();
     let (root, packs) = (root(), root().join("packs"));
     let script = dir.join("meeting.txt");
-    let text =
-        "# Valeska meets Caitlin.\n0 move 0 4,5,0\n\n0 army move 0:6 2:2\n0 decline\n0 end-turn\n";
+    let text = "# Valeska meets Caitlin.\n0 move 0 4,5,0\n\n0 army move 0:6 2:2\n0 answer close\n0 end-turn\n";
     std::fs::write(&script, text).unwrap();
     let options = ScriptOptions {
         map: ARMY.to_owned(),

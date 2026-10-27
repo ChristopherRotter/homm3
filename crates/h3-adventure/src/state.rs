@@ -1330,18 +1330,25 @@ impl AdventureState {
                 ..AdventureOutcome::default()
             },
         };
-        // The guard visits after the tile's own object (ADV-MON-006); after its offer's answer
-        // when it made one (E08 T20b1). A step that does not enter tests no guard (T20b3a).
+        // The guard visits after the tile's own object (ADV-MON-006); after the answer to its
+        // offer (E08 T20b1), its choice or its University (T63a) when it made one. Otherwise the
+        // monster's answer (an offer or a battle) follows what the object gave (its resources,
+        // losses and hero's gains; E08 T63a: before it the monster's answer replaced all but the
+        // resources). A step that does not enter tests no guard (T20b3a).
         Ok(match guard {
             None => outcome,
-            Some(_) if outcome.offer.is_some() => AdventureOutcome {
+            Some(_) if outcome.waits() => AdventureOutcome {
                 guard_after: true,
                 ..outcome
             },
             Some(guard) => {
-                let mut answer = self.visit_monster(rules, id, guard);
-                answer.gains.splice(0..0, outcome.gains);
-                answer
+                let answer = self.visit_monster(rules, id, guard);
+                AdventureOutcome {
+                    gains: outcome.gains.into_iter().chain(answer.gains).collect(),
+                    losses: outcome.losses,
+                    hero: outcome.hero,
+                    ..answer
+                }
             }
         })
     }

@@ -7,7 +7,7 @@
 
 use h3_adventure::Pos;
 use h3_contracts::BattleResult;
-use h3_game::{Answer, DecisionView, GameEvent};
+use h3_game::{Answer, DecisionView, GameEvent, SkillOffer};
 
 use super::*;
 
@@ -316,7 +316,10 @@ fn a_level_up_is_answered_by_its_two_entries() {
     assert_eq!(observed, Some(DecisionView::LevelUp(view)));
     check_masks(&env, winner).unwrap();
     let (state, rules) = (env.state(), env.rules());
-    for (entry, answer) in [(FIRST, Answer::First), (SECOND, Answer::Second)] {
+    for (entry, answer) in [
+        (FIRST, Answer::LevelUp(SkillOffer::First)),
+        (SECOND, Answer::LevelUp(SkillOffer::Second)),
+    ] {
         let command = GameCommand::Answer(answer);
         let action = Action::map(entry, 0);
         assert_eq!(
