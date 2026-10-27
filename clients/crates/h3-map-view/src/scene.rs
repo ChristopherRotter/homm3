@@ -7,7 +7,10 @@
 //! gems; the heroes and boats as two-row objects among them (E24 M1 T5a, §2.3, §2.8): their
 //! shadows after the objects', their pictures after the bodies of layers 1 and 2; the path's
 //! arrows (E24 M1 T5b2, §2.10): their shadows after every other shadow, their pixels after the
-//! bodies. [`crate::compose`] draws the list.
+//! bodies. A walk's draw (E24 M2 T3b, §3.5, §3.8; [`crate::live::Walking`]) adds the view's pixel offset to
+//! every pass's places and draws the lifted hero at the view's middle instead of on its tile: its
+//! shadow's and pictures' cells in passes 5 and 7 among the tiles', then the whole of it once
+//! more, blended, after the arrows (pass 9). [`crate::compose`] draws the list.
 //!
 //! Each piece of the view carries its clip: the 32 × 32 rectangle of its tile (a road's 16 pixels
 //! lower) inside the view's clip (§1.2), as the passes cut their source rectangles.
@@ -24,7 +27,7 @@ use h3_render::Bugs;
 
 use crate::art::{Layer, MapArt};
 use crate::layout::AdventureLayout;
-use crate::live::{Facing, Live, LiveBoat, LiveHero};
+use crate::live::{Facing, Lifted, Live, LiveBoat, LiveHero};
 use crate::objects::{self, DrawLists, Entry, ObjectsError, Shapes};
 use crate::tables::{ShroudPiece, Tables};
 
@@ -66,6 +69,10 @@ pub enum Pass {
     Body,
     /// A path arrow (pass 8): its pixels, runs skipped (def_draw_raw 0x47BF50).
     Path,
+    /// The lifted hero drawn whole once more (pass 9, `view_moving_hero_step` 0x47FC80, E24 M2
+    /// T3b): its literal pixels blended half and half with the screen, its runs skipped
+    /// (`draw_frame_blend` 0x47D4F0 with no colour, through `def_draw_group_blend` 0x47C120).
+    Blend,
     /// An unexplored tile (pass 10), drawn twice: its pixels, then its runs as shadows (§1.5).
     Shroud,
 }
@@ -223,6 +230,7 @@ pub fn scene(
         shapes,
         lists,
         standing: standing(live, at.z),
+        lifted: lifted(live),
         arrows: arrows(live, at.z),
         at,
         bugs,
@@ -234,7 +242,7 @@ pub fn scene(
         players: layout.player_palette.clone(),
         viewer: live.viewer,
     });
-    let passes: [TilePass<'_>; 9] = [
+    let passes: [TilePass<'_>; 8] = [
         View::terrain,
         View::river,
         View::road,
@@ -243,11 +251,12 @@ pub fn scene(
         View::path_shadow,
         View::bodies,
         View::path,
-        View::shroud,
     ];
     for pass in passes {
         view.pass(&mut draws, pass);
     }
+    view.lifted_whole(&mut draws);
+    view.pass(&mut draws, View::shroud);
     for gem in &layout.view.gems {
         draws.push(Draw::Gem {
             def: gem.def.clone(),
@@ -286,6 +295,8 @@ struct View<'a> {
     shapes: &'a Shapes,
     lists: DrawLists,
     standing: BTreeMap<(i32, i32), Standing<'a>>,
+    /// The lifted hero and its group and frame (`check_live` found it).
+    lifted: Option<(&'a LiveHero, Lifted)>,
     arrows: BTreeMap<(i32, i32), u16>,
     at: ViewAt,
     bugs: Bugs,
@@ -301,13 +312,26 @@ enum Standing<'a> {
 
 /// The heroes and boats on level `z` by their tiles (the first on a tile, should two be given).
 fn standing(live: &Live, z: u8) -> BTreeMap<(i32, i32), Standing<'_>> {
-    let heroes = live.heroes.iter().map(|h| (h.at, Standing::Hero(h)));
+    // The lifted hero is off its tile (`hero_select` hides it from its tile's list, +0x20C).
+    let lifted = live.walking.lifted.map(|l| l.hero);
+    let heroes = live
+        .heroes
+        .iter()
+        .enumerate()
+        .filter(|&(i, _)| Some(i) != lifted)
+        .map(|(_, h)| (h.at, Standing::Hero(h)));
     let boats = live.boats.iter().map(|b| (b.at, Standing::Boat(b)));
     let mut out = BTreeMap::new();
     for (at, s) in heroes.chain(boats).filter(|(at, _)| at.z == z) {
         out.entry((i32::from(at.x), i32::from(at.y))).or_insert(s);
     }
     out
+}
+
+/// The lifted hero with its group and frame, if one is lifted (`check_live` found it).
+fn lifted(live: &Live) -> Option<(&LiveHero, Lifted)> {
+    let lifted = live.walking.lifted?;
+    live.heroes.get(lifted.hero).map(|h| (h, lifted))
 }
 
 /// The live part fits the map (E24 M1 T6b, the reviewer's R1-3): one entry per object, the
@@ -343,6 +367,14 @@ fn check_live(art: &MapArt, live: &Live) -> Result<(), SceneError> {
         if !owned {
             return wrong(format!("{what} at {tile:?} has no owner"));
         }
+    }
+    if let Some(Lifted { hero, .. }) = live.walking.lifted
+        && hero >= live.heroes.len()
+    {
+        return wrong(format!(
+            "the lifted hero {hero} of {} heroes",
+            live.heroes.len()
+        ));
     }
     Ok(())
 }
@@ -395,17 +427,32 @@ fn arrows(live: &Live, z: u8) -> BTreeMap<(i32, i32), u16> {
 /// standing dx columns right of and dy rows below it.
 const SLOTS: usize = 6;
 
+/// The lifted hero's picture in tiles, columns and rows (96 × 64: design §3.5).
+const LIFTED: [i32; 2] = [3, 2];
+
+/// Which of the lifted hero's draws: pass 5's cell, pass 7's cell, pass 9's whole.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Picture {
+    Shadow,
+    Cell,
+    Whole,
+}
+
 /// One pass's work on one tile: its map coordinates, its place, the list.
 type TilePass<'v> = fn(&View<'v>, i32, i32, [i32; 2], &mut Vec<Draw>);
 
 impl<'a> View<'a> {
-    /// Calls `visit` with each tile of the view: rows outer, columns inner (design §1.1).
+    /// Calls `visit` with each tile of the view: rows outer, columns inner (design §1.1), at its
+    /// place moved by the walk's offset (`hero_walk_animation` 0x480380: every pass adds +0xF4
+    /// and +0xF8 to every tile's place; design §3.5).
     fn tiles(&self, mut visit: impl FnMut(i32, i32, [i32; 2])) {
         let view = &self.layout.view;
+        let [dx, dy] = self.live.walking.offset;
         for j in view.rows[0]..=view.rows[1] {
             for i in view.columns[0]..=view.columns[1] {
                 let (x, y) = (self.at.x.saturating_add(i), self.at.y.saturating_add(j));
-                visit(x, y, view.place(i, j));
+                let [px, py] = view.place(i, j);
+                visit(x, y, [px.saturating_add(dx), py.saturating_add(dy)]);
             }
         }
     }
@@ -557,23 +604,199 @@ impl<'a> View<'a> {
         self.objects(x, y, place, out, Pass::Flat, None);
     }
 
-    /// Pass 5: the tile's pieces of the objects' shadows, in list order, then the heroes' and
-    /// boats' by slot (0x411590; design §2.2).
+    /// Pass 5: the tile's pieces of the objects' shadows, in list order, then the lifted hero's
+    /// cell over the tile (0x411A2C), then the heroes' and boats' by slot (0x411590; design §2.2,
+    /// §3.8).
     fn shadows(&self, x: i32, y: i32, place: [i32; 2], out: &mut Vec<Draw>) {
         self.objects(x, y, place, out, Pass::Shadow, None);
+        if let Some(cell) = self.lifted_cell(x, y) {
+            self.lifted_piece(cell, Pass::Shadow, out);
+        }
         self.standing(x, y, place, out, Pass::Shadow, 0..SLOTS);
     }
 
     /// Pass 7: the tile's pieces of the objects' bodies, layer by layer, each in list order, the
-    /// heroes and boats on the tile's row after layer 1 and those on the row below after layer 2
-    /// (0x410C00; design §2.2, §2.3: a tile with an empty list draws them all, in the same order).
+    /// heroes and boats on the tile's row after layer 1 and those on the row below after layer 2,
+    /// the lifted hero's lower cells after the first and its upper ones after the second (0x410C00;
+    /// design §2.2, §2.3, §3.8). A tile with an empty list draws its heroes and boats, then the
+    /// lifted hero's cell (0x411396).
     fn bodies(&self, x: i32, y: i32, place: [i32; 2], out: &mut Vec<Draw>) {
+        let cell = self.lifted_cell(x, y);
+        if self.lists.at(x, y).is_empty() {
+            self.standing(x, y, place, out, Pass::Body, 0..SLOTS);
+            if let Some(cell) = cell {
+                self.lifted_piece(cell, Pass::Body, out);
+            }
+            return;
+        }
         for layer in 0..=MAX_LAYER {
             self.objects(x, y, place, out, Pass::Body, Some(layer));
-            match layer {
-                1 => self.standing(x, y, place, out, Pass::Body, 0..3),
-                2 => self.standing(x, y, place, out, Pass::Body, 3..SLOTS),
-                _ => {}
+            let (slots, row) = match layer {
+                1 => (0..3, 1),
+                2 => (3..SLOTS, 0),
+                _ => continue,
+            };
+            self.standing(x, y, place, out, Pass::Body, slots);
+            if let Some(cell) = cell.filter(|c| c[1] == row) {
+                self.lifted_piece(cell, Pass::Body, out);
+            }
+        }
+    }
+
+    /// The view's tile the lifted hero's 96 × 64 picture has its top-left corner on (the view's
+    /// middle less one column and one row: (8, 7)), and that corner's place, which the walk's
+    /// offset does not move (0x47F860, 0x47FC80: 256, 232).
+    fn lifted_corner(&self) -> ([i32; 2], [i32; 2]) {
+        let [mx, my] = self.layout.scroll.middle;
+        let corner = [mx - 1, my - 1];
+        (corner, self.layout.view.place(corner[0], corner[1]))
+    }
+
+    /// The cell (column 0 to 2, row 0 or 1) of the lifted hero's picture over the map's tile
+    /// (x, y), if a hero is lifted and the tile is on the map (passes 5 and 7 draw no piece off
+    /// it: 0x4115A1, 0x410C13).
+    fn lifted_cell(&self, x: i32, y: i32) -> Option<[i32; 2]> {
+        self.lifted?;
+        self.art.tile(x, y, self.at.z)?;
+        let ([ci, cj], _) = self.lifted_corner();
+        let (a, b) = (x - self.at.x - ci, y - self.at.y - cj);
+        ((0..LIFTED[0]).contains(&a) && (0..LIFTED[1]).contains(&b)).then_some([a, b])
+    }
+
+    /// One cell of the lifted hero's picture (`view_moving_hero_shadow_piece` 0x47FB40 in pass 5,
+    /// `view_moving_hero_piece` 0x47F860 in pass 7; design §3.5): the cell's square of each of its
+    /// pictures at the fixed place, its group and frame the walk's, mirrored by its facing. The
+    /// shadow is the hero's or the boat's alone; the pictures on land its flag and the hero, in
+    /// a boat the waves (not on the coast), the boat's flag by its type and colour, the boat. A
+    /// flag's frame is the objects' frame step plus the hero's, modulo the walk's frames.
+    fn lifted_piece(&self, [a, b]: [i32; 2], pass: Pass, out: &mut Vec<Draw>) {
+        let Some((hero, lifted)) = self.lifted else {
+            return;
+        };
+        let tile = self.layout.view.tile;
+        let (_, [cx, cy]) = self.lifted_corner();
+        let (left, top) = (cx + tile * a, cy + tile * b);
+        let Some(clip) = self.clip([left, top], 0) else {
+            return;
+        };
+        let defs = match pass {
+            Pass::Shadow => self.lifted_defs(hero, lifted, Picture::Shadow),
+            _ => self.lifted_defs(hero, lifted, Picture::Cell),
+        };
+        for (def, frame) in defs.into_iter().flatten() {
+            out.push(Draw::Piece {
+                pass,
+                def: String::from(def),
+                group: lifted.group,
+                frame,
+                x: cx,
+                y: cy,
+                mirror_x: hero.facing.mirrored(),
+                mirror_y: false,
+                clip,
+                flag: None,
+            });
+        }
+    }
+
+    /// Pass 9 (`view_moving_hero_step` 0x47FC80; design §3.5, §3.8): the lifted hero's flag, then
+    /// the hero or its boat, whole, blended over everything drawn, at the fixed place; a boat's
+    /// flag by its type and the hero's owner. The part beyond the map's sides is cut: by whole
+    /// tiles past the side, on the left and the top less the walk's offset there too, on the right
+    /// and the bottom not (the original's cut, which the offset leaves a few pixels off during a
+    /// step at the map's right or bottom side).
+    fn lifted_whole(&self, out: &mut Vec<Draw>) {
+        let Some((hero, lifted)) = self.lifted else {
+            return;
+        };
+        let tile = self.layout.view.tile;
+        let ([ci, cj], [cx, cy]) = self.lifted_corner();
+        let [ox, oy] = self.live.walking.offset;
+        let side = self.side();
+        let (first_x, first_y) = (self.at.x + ci, self.at.y + cj);
+        let (end_x, end_y) = (first_x + LIFTED[0], first_y + LIFTED[1]);
+        let left = if first_x < 0 { -first_x * tile + ox } else { 0 };
+        let top = if first_y < 0 { -first_y * tile + oy } else { 0 };
+        let right = if end_x >= side { (end_x - side) * tile } else { 0 };
+        let bottom = if end_y >= side { (end_y - side) * tile } else { 0 };
+        let clip = [
+            cx + left,
+            cy + top,
+            cx + LIFTED[0] * tile - right,
+            cy + LIFTED[1] * tile - bottom,
+        ];
+        if clip[0] >= clip[2] || clip[1] >= clip[3] {
+            return;
+        }
+        for (def, frame) in self
+            .lifted_defs(hero, lifted, Picture::Whole)
+            .into_iter()
+            .flatten()
+        {
+            out.push(Draw::Piece {
+                pass: Pass::Blend,
+                def: String::from(def),
+                group: lifted.group,
+                frame,
+                x: cx,
+                y: cy,
+                mirror_x: hero.facing.mirrored(),
+                mirror_y: false,
+                clip,
+                flag: None,
+            });
+        }
+    }
+
+    /// The lifted hero's DEFs a draw of `picture` takes, in order, each with its frame.
+    fn lifted_defs(
+        &self,
+        hero: &LiveHero,
+        lifted: Lifted,
+        picture: Picture,
+    ) -> [Option<(&str, u32)>; 3] {
+        let art = &self.tables.map.heroes;
+        let pick = |list: &'a [String], i: usize| list.get(i).map(String::as_str);
+        let frame = lifted.frame;
+        let flag_frame = self
+            .live
+            .moment
+            .frames
+            .wrapping_add(frame)
+            .checked_rem(self.tables.map.walk.frames)
+            .unwrap_or(0);
+        let with = |def: Option<&'a str>, f: u32| def.map(|d| (d, f));
+        let owner = usize::from(hero.owner);
+        match (hero.boat, picture) {
+            (None, Picture::Shadow) => [with(pick(&art.classes, hero.class.into()), frame), None, None],
+            (None, _) => [
+                with(pick(&art.flags, owner), flag_frame),
+                with(pick(&art.classes, hero.class.into()), frame),
+                None,
+            ],
+            (Some(boat), Picture::Shadow) => {
+                [with(pick(&art.boats, boat.kind.into()), frame), None, None]
+            }
+            (Some(boat), Picture::Cell) => {
+                let kind = usize::from(boat.kind);
+                let coast = self
+                    .art
+                    .tile(hero.at.x.into(), hero.at.y.into(), hero.at.z)
+                    .is_some_and(|t| t.coast());
+                let flag = (boat.colour < 8).then(|| kind * 8 + usize::from(boat.colour));
+                [
+                    with(pick(&art.waves, kind).filter(|_| !coast), frame),
+                    with(flag.and_then(|i| pick(&art.boat_flags, i)), flag_frame),
+                    with(pick(&art.boats, kind), frame),
+                ]
+            }
+            (Some(boat), Picture::Whole) => {
+                let kind = usize::from(boat.kind);
+                [
+                    with(pick(&art.boat_flags, kind * 8 + owner), flag_frame),
+                    with(pick(&art.boats, kind), frame),
+                    None,
+                ]
             }
         }
     }

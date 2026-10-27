@@ -532,6 +532,13 @@ fn the_facings_groups() {
         ..tables.map.heroes
     };
     assert_eq!(none.drawn_groups(), 0);
+    // A step's walking groups 5 to 9 (E24 M2 T3b).
+    assert_eq!(tables.map.walk.drawn_groups(), 10);
+    let still = WalkArt {
+        groups: vec![],
+        ..tables.map.walk
+    };
+    assert_eq!(still.drawn_groups(), 0);
 }
 
 #[test]

@@ -160,6 +160,19 @@ fn the_paths_shadow_alone_then_its_pixels_alone() {
 }
 
 #[test]
+fn the_lifted_hero_once_more_blended() {
+    // E24 M2 T3b: pass 9 blends its literal pixels with the screen and skips its runs.
+    let terrain = piece(Pass::Terrain, "terrain.def", 1, 0, 0, [0, 0, 2, 2]);
+    let whole = piece(Pass::Blend, "shroud.def", 0, 0, 0, ALL);
+    let screen = compose(&scene(vec![terrain, whole]), &batch(), [2, 2]).unwrap();
+    let half = FORMAT.half_mask();
+    assert_eq!(
+        screen.pixels(),
+        [((9 >> 1) & half) + ((5 >> 1) & half), 6, 7, 8]
+    );
+}
+
+#[test]
 fn the_objects_through_the_flagged_drawer_and_the_shadow_pass() {
     // An object's 2 × 2 frame: a literal 9, a flag's run of 5, a shadow's runs of 1 and 4.
     let mut b = batch();

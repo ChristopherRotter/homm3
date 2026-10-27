@@ -109,6 +109,14 @@ pub struct WalkArt {
     pub pixels: Vec<Vec<i32>>,
 }
 
+impl WalkArt {
+    /// The groups a step draws: one past the highest.
+    #[must_use]
+    pub fn drawn_groups(&self) -> u32 {
+        self.groups.iter().max().map_or(0, |g| g + 1)
+    }
+}
+
 /// The owned objects' colours (E24 M1 T5b1; design §2.9): the bodies of a few classes draw their
 /// flag pixels (the runs of index 5) in an entry of a palette by the owner (passes 4 and 7,
 /// tile_object_owner 0x40FD20); every other class's are skipped.
@@ -441,13 +449,17 @@ impl Tables {
                 groups: 1,
             });
         }
+        // The facings' standing groups and a step's walking ones (E24 M2 T3b): the lifted hero
+        // draws a walking group's frames 0 to the walk's frames less one, its flag too.
+        let walk_frames = usize::try_from(map.walk.frames).unwrap_or(usize::MAX);
+        let groups = map.heroes.drawn_groups().max(map.walk.drawn_groups());
         for (name, what) in map.heroes.defs() {
             needs.push(DefNeed {
                 name,
                 what,
                 layer: None,
-                frames: 1,
-                groups: map.heroes.drawn_groups(),
+                frames: walk_frames.max(1),
+                groups,
             });
         }
         for (name, what) in map.towns.defs() {

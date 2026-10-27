@@ -135,8 +135,8 @@ impl Sequence {
     }
 
     /// Whether the sequence walks a hero (a click, a direction key without Ctrl, the hero's
-    /// options): its timeline needs the selected hero ([`selected`]) and its paths, its frames
-    /// the walk drawn (M2 T3b).
+    /// options): its timeline needs the selected hero ([`selected`]) and its paths, its draws
+    /// lift and move that hero ([`selected_index`]).
     #[must_use]
     pub fn walks(&self) -> bool {
         self.hero_speed.is_some()
@@ -252,18 +252,35 @@ fn arrow(word: &str) -> Option<Arrow> {
 /// # Errors
 /// None or several of that colour.
 pub fn selected(heroes: &[LiveHero], viewer: u8) -> Result<Hero, String> {
-    let own: Vec<&LiveHero> = heroes.iter().filter(|h| h.owner == viewer).collect();
-    let [hero] = own[..] else {
-        return Err(format!(
-            "{} heroes of the viewer's colour {viewer}: a walk needs one, its selected hero",
-            own.len()
-        ));
-    };
+    let index = selected_index(heroes, viewer)?;
+    let hero = heroes
+        .get(index)
+        .ok_or_else(|| String::from("no selected hero"))?;
     let facing = usize::from(hero.facing.number());
     Ok(Hero {
         at: hero.at,
         facing: Direction::ALL[facing % Direction::ALL.len()],
     })
+}
+
+/// The index in `heroes` of the hero [`selected`] gives (the one a walk's draws lift and move).
+///
+/// # Errors
+/// None or several of the viewer's colour.
+pub fn selected_index(heroes: &[LiveHero], viewer: u8) -> Result<usize, String> {
+    let own: Vec<usize> = heroes
+        .iter()
+        .enumerate()
+        .filter(|(_, h)| h.owner == viewer)
+        .map(|(i, _)| i)
+        .collect();
+    let [index] = own[..] else {
+        return Err(format!(
+            "{} heroes of the viewer's colour {viewer}: a walk needs one, its selected hero",
+            own.len()
+        ));
+    };
+    Ok(index)
 }
 
 /// A key's name: with Ctrl or not, and its direction.

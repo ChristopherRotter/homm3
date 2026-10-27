@@ -80,6 +80,7 @@ fn live(objects: usize) -> Live {
         explored: Explored::all(10, 2, true),
         path: Vec::new(),
         moment: Moment::default(),
+        walking: crate::live::Walking::default(),
     }
 }
 

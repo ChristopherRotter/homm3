@@ -35,6 +35,36 @@ pub struct Live {
     pub path: Vec<Arrow>,
     /// The moment drawn.
     pub moment: Moment,
+    /// The walk's part of the draw (E24 M2 T3b, design §3.5, §3.8): the view's pixel offset and
+    /// the selected hero lifted off its tile; none in a still (`Walking::default`).
+    pub walking: Walking,
+}
+
+/// The walk's part of a draw (the adventure manager's +0xF4, +0xF8, +0x1EC, +0x1FC, +0x200;
+/// design §3.5): what the timeline's draws give (`h3_map_view::timeline::Draw`), from M4 the
+/// engine's walk.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct Walking {
+    /// The view's pixel offset, x and y: every pass adds it to every tile's place (a walk's frames
+    /// slide the map under the lifted hero); the lifted hero's places and the corner gems keep
+    /// theirs.
+    pub offset: [i32; 2],
+    /// The hero lifted off its tile, drawn at the view's middle (passes 5, 7 and 9); none while
+    /// every hero stands on its tile.
+    pub lifted: Option<Lifted>,
+}
+
+/// The hero lifted off its tile (+0x1EC; design §3.5): the selected hero of a human player from
+/// its first step until a scroll puts it back.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Lifted {
+    /// The hero, by its index in [`Live::heroes`] (its tile is the view's middle, its facing
+    /// mirrors its pictures).
+    pub hero: usize,
+    /// Its group (+0x1FC): a walking one (5 to 9) during a step, its standing one (0 to 4) else.
+    pub group: u32,
+    /// Its frame in the group (+0x200), counted on by every draw of a step.
+    pub frame: u32,
 }
 
 /// One arrow of the path shown (E24 M1 T5b2; design §2.2, §2.10): the adventure manager's
@@ -268,7 +298,7 @@ impl Live {
     /// boats of the map, facing right; every town (not a random one) with its picture by its
     /// buildings at the start (`towns`; E24 M1 T5b1, design §2.9: a new game redraws every town
     /// so, as a copy of its template); every tile explored (*provisional*: what a start reveals
-    /// is the engine's, a comparison reads it); no path shown; the moment 0.
+    /// is the engine's, a comparison reads it); no path shown; the moment 0; no walk.
     #[must_use]
     pub fn at_start(raw: &RawMap, art: &MapArt, viewer: u8, towns: &TownArt) -> Self {
         let mut heroes = Vec::new();
@@ -328,6 +358,7 @@ impl Live {
             explored: Explored::all(art.size, art.levels, true),
             path: Vec::new(),
             moment: Moment::default(),
+            walking: Walking::default(),
         }
     }
 }

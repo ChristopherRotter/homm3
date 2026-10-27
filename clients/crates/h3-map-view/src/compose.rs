@@ -104,6 +104,7 @@ pub fn compose(scene: &Scene, batch: &Batch, frame: [u32; 2]) -> Result<Screen, 
                     }
                     Pass::Shadow => draw::shadow_pass(&mut screen, f, at, *clip),
                     Pass::PathShadow => draw::shadows(&mut screen, f, at, *clip),
+                    Pass::Blend => draw::blend(&mut screen, f, palette, at, *clip),
                     _ => draw::raw(&mut screen, f, palette, at, *clip),
                 }
                 if *pass == Pass::Shroud {
