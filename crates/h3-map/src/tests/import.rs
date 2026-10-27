@@ -4,8 +4,11 @@
 
 use std::sync::{Arc, LazyLock};
 
-use h3_adventure::{Guards, Pos as TilePos, Scenery, TileMask};
-use h3_content::{Formation, HeroEffect};
+use h3_adventure::{
+    ArtifactInstance, Guards, Holds, ObjectSetup, Pos as TilePos, PrimarySkill, Scenery,
+    ScholarGift, TileMask,
+};
+use h3_content::{Formation, HeroEffect, ResourceId};
 use h3_contracts::{ArmyStack, HeroSex, PlayerId};
 use h3_game::{GameRuleset, HeroArmy, HeroDetailsSetup, PlayerSetup};
 use h3_pack_adventure::{ORIGINAL_PACKS, compile};
@@ -16,8 +19,8 @@ use super::sample;
 use super::strategy::{raw_map, version};
 use crate::import::codes;
 use crate::model::{
-    Artifacts, Bits, Body, CustomHero, HeroBody, MainTown, Message, MonsterBody, MonsterTreasure,
-    Object, Player, Pos, RawMap, Stack, Template, Text, Tile, Version,
+    Artifacts, Bits, Body, CustomHero, EventBody, HeroBody, MainTown, Message, MonsterBody,
+    MonsterTreasure, Object, Player, Pos, RawMap, Rewards, Stack, Template, Text, Tile, Version,
 };
 use crate::{ImportError, Limits, Unsupported, import, import_map, parse};
 
@@ -341,11 +344,61 @@ fn the_typed_classes_import_as_their_object_types() {
     ] {
         cases.push((class, 0, key.into()));
     }
+    // E08 T61a: increment 7's classes (a placed artifact's subclass is its artifact).
+    for (class, key) in [
+        (4, "arena"),
+        (5, "artifact"),
+        (6, "pandoras_box"),
+        (22, "corpse"),
+        (23, "marletto_tower"),
+        (26, "event"),
+        (32, "garden_of_revelation"),
+        (39, "lean_to"),
+        (41, "library_of_enlightenment"),
+        (47, "school_of_magic"),
+        (51, "mercenary_camp"),
+        (61, "star_axis"),
+        (63, "pyramid"),
+        (65, "random_artifact"),
+        (66, "random_treasure_artifact"),
+        (67, "random_minor_artifact"),
+        (68, "random_major_artifact"),
+        (69, "random_relic_artifact"),
+        (81, "scholar"),
+        (88, "shrine_of_magic_incantation"),
+        (89, "shrine_of_magic_gesture"),
+        (90, "shrine_of_magic_thought"),
+        (93, "spell_scroll"),
+        (100, "learning_stone"),
+        (101, "treasure_chest"),
+        (102, "tree_of_knowledge"),
+        (104, "university"),
+        (105, "wagon"),
+        (107, "school_of_war"),
+        (108, "warriors_tomb"),
+        (113, "witch_hut"),
+    ] {
+        let subclass = if class == 5 { 7 } else { 0 };
+        cases.push((class, subclass, format!("base:{key}")));
+    }
     let part = SOD.adventure();
     for (class, subclass, key) in &cases {
         let body = match class {
             76 | 79 => pile_body(0, None),
             54 | 71..=75 | 162..=164 => Body::Monster(MonsterBody::default()),
+            5 | 65..=69 => Body::Artifact(None),
+            93 => Body::Scroll {
+                message: None,
+                spell: 15,
+            },
+            88..=90 => Body::Shrine { spell: 0xff },
+            113 => Body::WitchHut(Bits::default()),
+            81 => Body::Scholar { kind: -1, code: 0 },
+            6 => Body::Pandora {
+                message: None,
+                rewards: Rewards::default(),
+            },
+            26 => Body::Event(EventBody::default()),
             _ => Body::None,
         };
         let setup = import(&typed_map(*class, *subclass, body), &SOD).unwrap();
@@ -496,7 +549,7 @@ fn monsters_import_with_their_data() {
     let rules = SOD.core();
     let resource = |key: &str| {
         let index = rules.resources().iter().position(|r| r.key.as_str() == key);
-        h3_content::ResourceId::from_index(index.unwrap()).unwrap()
+        ResourceId::from_index(index.unwrap()).unwrap()
     };
     // Class 54's subclass is the creature; the treasure keeps its resources above 0, in order.
     let treasure = MonsterTreasure {
@@ -538,25 +591,38 @@ fn monsters_import_with_their_data() {
             code: 122
         })
     );
-    // A treasure with an artifact: unsupported, its static layer keeps the monster without it.
-    let m = typed_map(
-        54,
-        0,
-        body(
-            9,
-            Some(MonsterTreasure {
-                artifact: Some(7),
-                ..treasure
-            }),
-        ),
-    );
+    // E08 T61a: a treasure with an artifact imports it (ADV-MON-011); an unknown code is an
+    // error, the Spell Scroll (code 1, which holds no spell there) passes the import and
+    // validation refuses it.
+    let with = |artifact| {
+        typed_map(
+            54,
+            0,
+            body(
+                9,
+                Some(MonsterTreasure {
+                    artifact: Some(artifact),
+                    ..treasure.clone()
+                }),
+            ),
+        )
+    };
+    let setup = import(&with(7), &SOD).unwrap();
+    let monster = setup.map.objects[0].monster.as_ref().unwrap();
     assert_eq!(
-        import(&m, &SOD),
-        Err(ImportError::Unsupported(Unsupported::MonsterArtifact(0)))
+        monster.artifact,
+        SOD.core().artifact_by_key("base:centaurs_axe")
     );
-    let layer = import_map(&m, &SOD).unwrap();
-    assert_eq!(layer.objects[0].monster.as_ref().unwrap().count, 9);
-    assert!(layer.objects[0].object_type.is_some());
+    assert_eq!(monster.count, 9);
+    setup.validate(&SOD).unwrap();
+    assert_eq!(
+        import(&with(999), &SOD),
+        Err(ImportError::UnknownCode {
+            what: "artifact",
+            code: 999
+        })
+    );
+    assert!(import(&with(1), &SOD).unwrap().validate(&SOD).is_err());
 }
 
 // covers: ADV-GRD-001
@@ -771,12 +837,12 @@ fn the_errors_and_reasons_read_well() {
         ),
         (
             Unsupported::RandomStack(0),
-            "a random stack in a hero's army or a pile's guards",
+            "a random stack in a hero's army, an object's guards or a reward's creatures",
         ),
         (Unsupported::HeroInTown(0), "a hero standing in a town"),
         (
-            Unsupported::MonsterArtifact(0),
-            "a monster with an artifact in its treasure",
+            Unsupported::RewardArmy(0),
+            "a reward of more creature stacks than an army's slots",
         ),
     ];
     for (what, text) in reasons {
@@ -1335,4 +1401,234 @@ fn diplomacy_gives_a_join_bonus_of_its_level() {
                 .any(|e| matches!(e, HeroEffect::SurrenderDiscount { .. }))
         );
     }
+}
+
+// E08 T61a (design §7): what the map puts in increment 7's objects, their guards, the records and
+// what makes a map unsupported or unknown.
+// covers: ADV-OBJ-002
+#[test]
+fn increment_7_bodies_import_with_their_guards_and_records() {
+    let core = SOD.core();
+    let holds = |class: u32, body: Body| {
+        import(&typed_map(class, 0, body), &SOD).map(|s| s.map.objects[0].clone())
+    };
+    let guards = |text: &[u8]| {
+        let mut army = vec![None; 7];
+        army[3] = Some(Stack {
+            creature: 0,
+            count: 6,
+        });
+        Some(Message {
+            text: Text(text.to_vec()),
+            guards: Some(army),
+        })
+    };
+    // A scroll's guards ask only with a text; an artifact's always (D-29); a box's never.
+    let scroll = |text: &[u8]| Body::Scroll {
+        message: guards(text),
+        spell: 0x0300_0000 | 15,
+    };
+    let asks = |object: ObjectSetup| object.guards.map(|g| (g.question, g.army.len()));
+    assert_eq!(asks(holds(93, scroll(b"Q")).unwrap()), Some((true, 1)));
+    assert_eq!(asks(holds(93, scroll(b"")).unwrap()), Some((false, 1)));
+    let spell = |key: &str| core.spell_by_key(key).unwrap();
+    // The scroll's spell is its u32's low byte.
+    assert_eq!(
+        holds(93, scroll(b"")).unwrap().holds,
+        Holds::Artifact(ArtifactInstance::scroll(
+            core.artifact_by_key("base:spell_scroll").unwrap(),
+            spell("base:magic_arrow")
+        ))
+    );
+    assert_eq!(
+        asks(holds(66, Body::Artifact(guards(b""))).unwrap()),
+        Some((true, 1))
+    );
+    let pandora = |message, rewards| Body::Pandora { message, rewards };
+    assert_eq!(
+        asks(holds(6, pandora(guards(b"Q"), Rewards::default())).unwrap()),
+        Some((false, 1))
+    );
+    // A message without stacks guards nothing.
+    let text_only = Some(Message {
+        text: Text(b"Hello".to_vec()),
+        guards: None,
+    });
+    assert_eq!(holds(66, Body::Artifact(text_only)).unwrap().guards, None);
+    // A random stack among the guards: unsupported, the static layer unguarded.
+    let mut random = guards(b"");
+    random.as_mut().unwrap().guards.as_mut().unwrap()[0] = Some(Stack {
+        creature: 0xFFFF - 3,
+        count: 2,
+    });
+    let m = typed_map(5, 7, Body::Artifact(random));
+    assert_eq!(
+        import(&m, &SOD),
+        Err(ImportError::Unsupported(Unsupported::RandomStack(0)))
+    );
+    assert_eq!(import_map(&m, &SOD).unwrap().objects[0].guards, None);
+    // The Scholar's kinds: random, a primary skill, a skill, a spell; unknown codes.
+    let scholar = |kind: i8, code: u8| holds(81, Body::Scholar { kind, code }).map(|o| o.holds);
+    assert_eq!(scholar(-1, 9), Ok(Holds::Gift(None)));
+    assert_eq!(
+        scholar(0, 3),
+        Ok(Holds::Gift(Some(ScholarGift::Primary(
+            PrimarySkill::Knowledge
+        ))))
+    );
+    assert_eq!(
+        scholar(1, 7),
+        Ok(Holds::Gift(Some(ScholarGift::Skill(
+            core.skill_by_key("base:wisdom").unwrap()
+        ))))
+    );
+    assert_eq!(
+        scholar(2, 15),
+        Ok(Holds::Gift(Some(ScholarGift::Spell(spell(
+            "base:magic_arrow"
+        )))))
+    );
+    let unknown = |what, code| Err(ImportError::UnknownCode { what, code });
+    assert_eq!(scholar(0, 4), unknown("primary skill", 4));
+    assert_eq!(scholar(1, 28), unknown("secondary skill", 28));
+    assert_eq!(scholar(2, 200), unknown("spell", 200));
+    assert_eq!(scholar(3, 0), unknown("scholar kind", 3));
+    assert_eq!(scholar(-2, 0), unknown("scholar kind", 0xFE));
+    // A Witch Hut's mask with a bit past the skills; a Shrine's unknown spell.
+    assert_eq!(
+        holds(113, Body::WitchHut(Bits(vec![0, 0, 0, 0x10]))).map(|o| o.holds),
+        unknown("secondary skill", 28)
+    );
+    assert_eq!(
+        holds(88, Body::Shrine { spell: 0x1_0000 }).map(|o| o.holds),
+        unknown("spell", 0xFFFF)
+    );
+    // A record's codes: an unknown skill, artifact, spell or creature is an error.
+    let record = |rewards: Rewards| holds(6, pandora(None, rewards)).map(|o| o.holds);
+    for (rewards, what, code) in [
+        (
+            Rewards {
+                skills: vec![(40, 1)],
+                ..Rewards::default()
+            },
+            "secondary skill",
+            40,
+        ),
+        (
+            Rewards {
+                artifacts: vec![999],
+                ..Rewards::default()
+            },
+            "artifact",
+            999,
+        ),
+        (
+            Rewards {
+                spells: vec![250],
+                ..Rewards::default()
+            },
+            "spell",
+            250,
+        ),
+        (
+            Rewards {
+                creatures: vec![Stack {
+                    creature: 122,
+                    count: 1,
+                }],
+                ..Rewards::default()
+            },
+            "creature",
+            122,
+        ),
+    ] {
+        assert_eq!(record(rewards), unknown(what, code));
+    }
+    // A negative primary byte and a resource loss stay as the map has them.
+    let Ok(Holds::Record(read)) = record(Rewards {
+        primary: [0xFF, 0, 5, 0],
+        resources: [0, 0, 0, 0, 0, -10, 0],
+        ..Rewards::default()
+    }) else {
+        panic!("not a record")
+    };
+    assert_eq!(read.hero.primary, [-1, 0, 5, 0]);
+    assert_eq!(read.resources, [(ResourceId::from_index(5).unwrap(), -10)]);
+    // A-24: more creature stacks than an army's slots, or a random one: unsupported, the static
+    // layer keeps the box without its creatures.
+    let pikemen = Stack {
+        creature: 0,
+        count: 1,
+    };
+    for (creatures, what) in [
+        (vec![pikemen; 8], Unsupported::RewardArmy(0)),
+        (
+            vec![
+                pikemen,
+                Stack {
+                    creature: 0xFFFF - 1,
+                    count: 1,
+                },
+            ],
+            Unsupported::RandomStack(0),
+        ),
+    ] {
+        let m = typed_map(
+            6,
+            0,
+            pandora(
+                None,
+                Rewards {
+                    creatures,
+                    ..Rewards::default()
+                },
+            ),
+        );
+        assert_eq!(import(&m, &SOD), Err(ImportError::Unsupported(what)));
+        let Holds::Record(kept) = &import_map(&m, &SOD).unwrap().objects[0].holds else {
+            panic!("not a record")
+        };
+        assert!(kept.creatures.is_empty());
+    }
+    // Seven stacks import; an event's flags and guards.
+    let seven = record(Rewards {
+        creatures: vec![pikemen; 7],
+        ..Rewards::default()
+    });
+    assert!(matches!(seven, Ok(Holds::Record(r)) if r.creatures.len() == 7));
+    let event = holds(
+        26,
+        Body::Event(EventBody {
+            message: guards(b"Q"),
+            players: 0x81,
+            computer: true,
+            remove_after_visit: false,
+            ..EventBody::default()
+        }),
+    )
+    .unwrap();
+    assert_eq!(asks(event.clone()), Some((false, 1)));
+    let Holds::Event(fired) = event.holds else {
+        panic!("not an event")
+    };
+    assert_eq!(
+        (fired.colours, fired.computer, fired.remove),
+        (0x81, true, false)
+    );
+    // An event's or a box's random guards, or its record's: the first found.
+    let m = typed_map(
+        26,
+        0,
+        Body::Event(EventBody {
+            rewards: Rewards {
+                creatures: vec![pikemen; 9],
+                ..Rewards::default()
+            },
+            ..EventBody::default()
+        }),
+    );
+    assert_eq!(
+        import(&m, &SOD),
+        Err(ImportError::Unsupported(Unsupported::RewardArmy(0)))
+    );
 }

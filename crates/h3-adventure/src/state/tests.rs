@@ -91,6 +91,7 @@ fn setup() -> AdventureSetup {
                     drawn: TileMask::default(),
                     monster: None,
                     guards: None,
+                    holds: Default::default(),
                 },
                 ObjectSetup {
                     scenery: Default::default(),
@@ -102,6 +103,7 @@ fn setup() -> AdventureSetup {
                     drawn: TileMask::default(),
                     monster: None,
                     guards: None,
+                    holds: Default::default(),
                 },
             ],
         },
@@ -210,6 +212,7 @@ fn the_terrain_shares_count_the_tiles_no_object_blocks() {
         drawn: TileMask::default(),
         monster: None,
         guards: None,
+        holds: Default::default(),
     });
     let blocked = TerrainShares {
         tiles: 8,
@@ -236,6 +239,7 @@ fn an_object_may_stick_out_past_the_right_and_bottom_edges() {
             drawn: TileMask::default(),
             monster: None,
             guards: None,
+            holds: Default::default(),
         },
         // Covering no tile of the map at all.
         ObjectSetup {
@@ -248,6 +252,7 @@ fn an_object_may_stick_out_past_the_right_and_bottom_edges() {
             drawn: TileMask::default(),
             monster: None,
             guards: None,
+            holds: Default::default(),
         },
     ];
     let state = build(&setup).unwrap();
@@ -323,6 +328,7 @@ fn with_objects(objects: &[(ObjectTypeId, Option<u32>)]) -> AdventureSetup {
             drawn: TileMask::default(),
             monster: None,
             guards: None,
+            holds: Default::default(),
         });
     }
     setup
@@ -438,6 +444,7 @@ fn a_removed_object_frees_the_tiles_no_other_object_covers() {
         drawn: TileMask::default(),
         monster: None,
         guards: None,
+        holds: Default::default(),
     });
     let base = build(&setup).unwrap();
     let map = base.map();
@@ -867,5 +874,6 @@ fn the_hash_sees_content_not_sharing() {
 mod answers;
 mod day;
 mod flight;
+mod holds;
 mod monsters;
 mod piles;

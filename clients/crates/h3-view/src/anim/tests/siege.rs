@@ -11,11 +11,11 @@ use alloc::vec::Vec;
 use h3_protocol::wire::{Event, Observation, Side, Siege, Stack, WireU64};
 use h3_render::Bugs;
 
+use super::timeline;
 use super::{at, cast_heroes, flags, layout, look, screenless, snapshot, tables, until};
 use crate::anim::{
     Blast, Burst, Caster, Casts, Command, EARTHQUAKE, Landing, Logged, Look, Missile, Projectile,
-    SiegeStage, Sound, Speed, SpellLook, Stage, Timeline, TurretPose, timeline, turret_record,
-    unfidgeted,
+    SiegeStage, Sound, Speed, SpellLook, Stage, Timeline, TurretPose, turret_record, unfidgeted,
 };
 use crate::siege::Walls;
 

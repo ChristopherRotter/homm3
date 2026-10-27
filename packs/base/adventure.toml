@@ -541,3 +541,274 @@ name = "Magic Plains"
 visit = "enter"
 from_above = true
 ground = { battlefield = "magic_plains" }
+
+# E08 T61a, increment 7 (ADR-0016 point 4; survey docs/rules/surveys/E08-rewards.md, design
+# docs/epics/E08-design.md section 8): the objects that hand a visiting hero something. The visit
+# modes are the original's per-class lists (0x63AA58 "cannot be entered", 0x63AB00 "visitable from
+# above"): classes 5, 6, 22, 26, 65-69, 81, 93 and 101 are visited from a neighbour and from above,
+# every other class here is entered and not visitable from above. The visits come with T62, the
+# draws when the game is built with T61b; until then a step onto these objects is refused as a
+# blocker's (ADV-OBJ-003).
+
+# ADV-PIK-005: a treasure chest (class 101). setup_map_objects (0x4C0CC0, case 101 at 0x4C1DD8)
+# draws r in 0-99: below 32 1 000 gold, below 64 1 500, below 95 2 000, else a treasure artifact
+# (random_artifact_of_level(2), 0x4C94D0). The visit (0x4A6520): an artifact with a full backpack
+# counts as 1 000 gold; gold asks gold or (gold - 500) times Learning as experience (0x4A6440).
+# Survey section 2; VCMI config/objects/rewardablePickable.json treasureChest and the wiki agree
+# but for the full backpack (batch E7's E7-1 to E7-3).
+[[object_type]]
+id = "treasure_chest"
+name = "Treasure Chest"
+visit = "neighbour"
+from_above = true
+chest = { resource = "gold", gold = [[32, 1000], [32, 1500], [31, 2000]], artifact = ["treasure"], full_backpack = 1000, experience_offset = 500 }
+
+# ADV-PIK-006, ADV-PIK-007: a placed artifact (class 5; its artifact the template's subclass).
+# ADV-OBJ-006: the random artifacts (65 any of treasure, minor and major; 66 treasure; 67 minor;
+# 68 major; 69 relic): resolve_random_objects (0x4C9DD0) with random_artifact_of_level's class bits
+# 0xE, 2, 4, 8 and 0x10 (survey section 3.1).
+[[object_type]]
+id = "artifact"
+name = "Artifact"
+visit = "neighbour"
+from_above = true
+artifact = {}
+
+[[object_type]]
+id = "random_artifact"
+name = "Random artifact"
+visit = "neighbour"
+from_above = true
+artifact = { classes = ["treasure", "minor", "major"] }
+
+[[object_type]]
+id = "random_treasure_artifact"
+name = "Random treasure artifact"
+visit = "neighbour"
+from_above = true
+artifact = { classes = ["treasure"] }
+
+[[object_type]]
+id = "random_minor_artifact"
+name = "Random minor artifact"
+visit = "neighbour"
+from_above = true
+artifact = { classes = ["minor"] }
+
+[[object_type]]
+id = "random_major_artifact"
+name = "Random major artifact"
+visit = "neighbour"
+from_above = true
+artifact = { classes = ["major"] }
+
+[[object_type]]
+id = "random_relic_artifact"
+name = "Random relic"
+visit = "neighbour"
+from_above = true
+artifact = { classes = ["relic"] }
+
+# ADV-PIK-008: a Spell Scroll (class 93): its spell the map's (load_scroll_body 0x4FF2F0), the
+# Spell Scroll artifact with it (visit_spell_scroll 0x4A5EA0; survey section 4).
+[[object_type]]
+id = "spell_scroll"
+name = "Spell Scroll"
+visit = "neighbour"
+from_above = true
+scroll = {}
+
+# ADV-TCH-001: the once-per-hero primary skill gifts (survey section 6.2): Marletto Tower (23,
+# 0x4A2050) +1 Defense, the Garden of Revelation (32, 0x4A2710) +1 Knowledge, the Mercenary Camp
+# (51, 0x4A38B0) +1 Attack, the Star Axis (61, 0x4A3DC0) +1 Spell Power, the Arena (4, 0x49E7D0)
+# +2 Attack or Defense with no way out, the Library of Enlightenment (41, 0x4A3280) +2 to all four
+# from level 10 (8, 6, 4 with Diplomacy). VCMI config/objects/rewardableOncePerHero.json agrees.
+[[object_type]]
+id = "arena"
+name = "Arena"
+visit = "enter"
+from_above = false
+gift = { gives = { choice = { skills = ["attack", "defense"], amount = 2 } } }
+
+[[object_type]]
+id = "marletto_tower"
+name = "Marletto Tower"
+visit = "enter"
+from_above = false
+gift = { gives = { primary = [0, 1, 0, 0] } }
+
+[[object_type]]
+id = "garden_of_revelation"
+name = "Garden of Revelation"
+visit = "enter"
+from_above = false
+gift = { gives = { primary = [0, 0, 0, 1] } }
+
+[[object_type]]
+id = "library_of_enlightenment"
+name = "Library of Enlightenment"
+visit = "enter"
+from_above = false
+gift = { gives = { primary = [2, 2, 2, 2] }, admits = 10 }
+
+[[object_type]]
+id = "mercenary_camp"
+name = "Mercenary Camp"
+visit = "enter"
+from_above = false
+gift = { gives = { primary = [1, 0, 0, 0] } }
+
+[[object_type]]
+id = "star_axis"
+name = "Star Axis"
+visit = "enter"
+from_above = false
+gift = { gives = { primary = [0, 0, 1, 0] } }
+
+# ADV-TCH-002: the School of Magic (47, 0x4A33E0) and the School of War (107, 0x4A7A40): 1 000
+# gold for +1 Spell Power or Knowledge, +1 Attack or Defense, or leave (survey section 6.3; VCMI
+# schoolOfMagic, schoolOfWar).
+[[object_type]]
+id = "school_of_magic"
+name = "School of Magic"
+visit = "enter"
+from_above = false
+gift = { gives = { choice = { skills = ["power", "knowledge"], amount = 1 } }, prices = [{ gold = 1000 }], leave = true }
+
+[[object_type]]
+id = "school_of_war"
+name = "School of War"
+visit = "enter"
+from_above = false
+gift = { gives = { choice = { skills = ["attack", "defense"], amount = 1 } }, prices = [{ gold = 1000 }], leave = true }
+
+# ADV-TCH-003: the Learning Stone (100, 0x4A6330) 1 000 experience times Learning; the Tree of
+# Knowledge (102, 0x4A6710) one level without Learning, its price drawn at a new game among free,
+# 2 000 gold and 10 gems (random_between(0, 2); survey section 6.4).
+[[object_type]]
+id = "learning_stone"
+name = "Learning Stone"
+visit = "enter"
+from_above = false
+gift = { gives = { experience = 1000 } }
+
+[[object_type]]
+id = "tree_of_knowledge"
+name = "Tree of Knowledge"
+visit = "enter"
+from_above = false
+gift = { gives = "level", prices = [{}, { gold = 2000 }, { gems = 10 }] }
+
+# ADV-TCH-004: the Shrines of Magic Incantation (88), Gesture (89) and Thought (90): a spell of
+# level 1, 2 and 3, the map's or drawn at a new game (random_shrine_spell 0x4C95A0; survey
+# section 6.5).
+[[object_type]]
+id = "shrine_of_magic_incantation"
+name = "Shrine of Magic Incantation"
+visit = "enter"
+from_above = false
+shrine = { level = 1 }
+
+[[object_type]]
+id = "shrine_of_magic_gesture"
+name = "Shrine of Magic Gesture"
+visit = "enter"
+from_above = false
+shrine = { level = 2 }
+
+[[object_type]]
+id = "shrine_of_magic_thought"
+name = "Shrine of Magic Thought"
+visit = "enter"
+from_above = false
+shrine = { level = 3 }
+
+# ADV-TCH-005: the Witch Hut (113): a skill drawn among the map's mask; an RoE map has none, and
+# the loader writes the fixed mask 0xEFBF (load_object_body 0x5034BD: skills 0 to 15 but
+# Leadership and Necromancy) under `faithful`; `strict-fixed` takes every skill but those two, as
+# VCMI's default (A-21, ADV-QUIRK-21, flag 37; survey section 6.6).
+[[object_type]]
+id = "witch_hut"
+name = "Witch Hut"
+visit = "enter"
+from_above = false
+witch_hut = { roe = ["pathfinding", "archery", "logistics", "scouting", "diplomacy", "navigation", "wisdom", "mysticism", "luck", "ballistics", "eagle_eye", "estates", "fire_magic", "air_magic"], roe_fixed = ["pathfinding", "archery", "logistics", "scouting", "diplomacy", "navigation", "wisdom", "mysticism", "luck", "ballistics", "eagle_eye", "estates", "fire_magic", "air_magic", "water_magic", "earth_magic", "scholar", "tactics", "artillery", "learning", "offense", "armorer", "intelligence", "sorcery", "resistance", "first_aid"] }
+
+# ADV-TCH-006: the Scholar (81): a primary skill, a secondary skill or a spell, the map's or drawn
+# (load_scholar_body 0x500B30; survey section 6.7).
+[[object_type]]
+id = "scholar"
+name = "Scholar"
+visit = "neighbour"
+from_above = true
+scholar = {}
+
+# ADV-TCH-007: the University (104): four skills drawn at a new game (university_setup 0x4C06F0),
+# each 2 000 gold (0x5F0D18; survey section 6.8).
+[[object_type]]
+id = "university"
+name = "University"
+visit = "enter"
+from_above = false
+university = { offers = 4, price = { gold = 2000 } }
+
+# ADV-PIK-009 to -012: the finds (survey section 6.9). The Corpse (22, 0x4C1131): 20 % a treasure
+# or minor artifact as one pool, 1 000 gold with a full backpack. The Wagon (105, 0x4C1EA2): 10 %
+# nothing, 40 % a treasure or minor artifact, 50 % 2 to 5 of wood to gems, which a full backpack
+# gets instead of the artifact. The Warrior's Tomb (108, 0x4C1F1C): 30/50/15/5 % by class, a
+# question, -3 morale once until the next battle (status bit 21), the artifact left with a full
+# backpack. The Lean To (39, 0x4C157A): 1 to 5 of wood to gems.
+[[object_type]]
+id = "corpse"
+name = "Corpse"
+visit = "neighbour"
+from_above = true
+find = { draws = [{ chance = 20, holds = { artifact = ["treasure", "minor"] } }, { chance = 80, holds = "nothing" }], full_backpack = { give = { gold = 1000 } } }
+
+[[object_type]]
+id = "wagon"
+name = "Wagon"
+visit = "enter"
+from_above = false
+find = { draws = [{ chance = 10, holds = "nothing" }, { chance = 40, holds = { artifact = ["treasure", "minor"] } }, { chance = 50, holds = { resources = { amount = [2, 5], resources = ["wood", "mercury", "ore", "sulfur", "crystal", "gems"] } } }], full_backpack = "drawn" }
+
+[[object_type]]
+id = "warriors_tomb"
+name = "Warrior's Tomb"
+visit = "enter"
+from_above = false
+find = { draws = [{ chance = 30, holds = { artifact = ["treasure"] } }, { chance = 50, holds = { artifact = ["minor"] } }, { chance = 15, holds = { artifact = ["major"] } }, { chance = 5, holds = { artifact = ["relic"] } }], full_backpack = "stays", question = true, bonus = { morale = -3, mark = 0 } }
+
+[[object_type]]
+id = "lean_to"
+name = "Lean To"
+visit = "enter"
+from_above = false
+find = { draws = [{ chance = 100, holds = { resources = { amount = [1, 5], resources = ["wood", "mercury", "ore", "sulfur", "crystal", "gems"] } } }] }
+
+# ADV-PIK-013: Pandora's Box (6), ADV-OBJ-007: an event (26): the map's reward record (survey
+# section 7); an event is fired by a step onto its tile, never visited (design section 12, T62).
+[[object_type]]
+id = "pandoras_box"
+name = "Pandora's Box"
+visit = "neighbour"
+from_above = true
+pandora_box = {}
+
+[[object_type]]
+id = "event"
+name = "Event"
+visit = "neighbour"
+from_above = true
+event = {}
+
+# ADV-TCH-008: the Pyramid (63): 40 Gold Golems split as a monster's and 20 Diamond Golems in 2
+# stacks (visit_pyramid 0x4A4230, monster_battle 0x4AC580); a level-5 spell drawn at a new game;
+# a looted Pyramid costs its visitor -2 luck once until the next battle (status bit 12; survey
+# section 7.5).
+[[object_type]]
+id = "pyramid"
+name = "Pyramid"
+visit = "enter"
+from_above = false
+pyramid = { split = { creature = "gold_golem", count = 40 }, fixed = { creature = "diamond_golem", stacks = [10, 10] }, level = 5, looted = { luck = -2, mark = 1 } }

@@ -8,7 +8,7 @@ use std::fmt::Write as _;
 use std::path::PathBuf;
 use std::process::ExitCode;
 
-use h3_view::anim::Speed;
+use h3_view::anim::{Playhead, Speed, Timeline};
 use h3_view::scene::Moment;
 
 use crate::assets;
@@ -24,6 +24,7 @@ pub struct Options {
     png: bool,
     from: u32,
     to: Option<u32>,
+    moments: bool,
 }
 
 impl Options {
@@ -34,6 +35,7 @@ impl Options {
         let env = std::env::var_os("H3_INSTALL").map(PathBuf::from);
         let (mut input, mut seed, mut speed, mut packs, mut install) = (None, 1, 0, None, None);
         let (mut out, mut png, mut from, mut to) = (None, false, 0, None);
+        let mut moments = false;
         let mut rest = args.iter();
         while let Some(arg) = rest.next() {
             let mut value = || {
@@ -54,6 +56,7 @@ impl Options {
                 "--install" => install = Some(PathBuf::from(value()?)),
                 "--out" => out = Some(PathBuf::from(value()?)),
                 "--png" => png = true,
+                "--moments" => moments = true,
                 "--from" => from = u32::try_from(number(value()?)?).unwrap_or(u32::MAX),
                 "--to" => to = Some(u32::try_from(number(value()?)?).unwrap_or(u32::MAX)),
                 flag if flag.starts_with("--") => {
@@ -77,6 +80,7 @@ impl Options {
             png,
             from,
             to,
+            moments,
         })
     }
 
@@ -118,7 +122,17 @@ fn play(options: &Options) -> Result<Vec<String>, String> {
     let mut battle = Battle::load(&options.source, record_to.as_deref(), &mut lines)?;
     // Past the last command the battle idles: the outline pulses and the stacks fidget.
     let until = options.to.unwrap_or(battle.timeline.end);
-    let frames = battle.frames(until)?;
+    let (frames, listed) = timed(|| battle.frames(until));
+    let frames = frames?;
+    lines.push(format!(
+        "{} frames' moments and draw lists in {} ms",
+        frames.len(),
+        listed.as_millis()
+    ));
+    if options.moments {
+        let times: Vec<u32> = frames.iter().map(|(t, ..)| *t).collect();
+        lines.extend(moments(&battle.timeline, &times));
+    }
     let mut log = String::new();
     for (t, moment, _) in &frames {
         let _ = writeln!(log, "{}", describe(*t, moment));
@@ -169,6 +183,39 @@ fn play(options: &Options) -> Result<Vec<String>, String> {
     Ok(lines)
 }
 
+/// The cost of a frame's moment at `times` (E17 M5 T1a), a line for each quarter of them: the
+/// playhead's, read forward through all of them, and the reference's ([`Moment::at`], each read
+/// from the battle's start), in ns a frame.
+fn moments(timeline: &Timeline, times: &[u32]) -> Vec<String> {
+    let mut head = Playhead::new(timeline);
+    let quarter = times.len().div_ceil(4).max(1);
+    times
+        .chunks(quarter)
+        .map(|part| {
+            let ((), ours) = timed(|| {
+                for &t in part {
+                    head.seek(timeline, t);
+                    std::hint::black_box(head.moment(timeline));
+                }
+            });
+            let ((), reference) = timed(|| {
+                for &t in part {
+                    std::hint::black_box(Moment::at(timeline, t));
+                }
+            });
+            let per = |d: std::time::Duration| d.as_nanos() / part.len().max(1) as u128;
+            format!(
+                "moments {} to {} ms ({} frames): the playhead {} ns a frame, Moment::at {} ns",
+                part.first().copied().unwrap_or(0),
+                part.last().copied().unwrap_or(0),
+                part.len(),
+                per(ours),
+                per(reference)
+            )
+        })
+        .collect()
+}
+
 /// A moment as one line, as `sequences --frames` writes them.
 fn describe(t: u32, moment: &Moment) -> String {
     crate::sequences::describe(t, moment).trim_end().to_owned()
@@ -197,12 +244,14 @@ mod tests {
             "900",
             "--out",
             "x",
+            "--moments",
         ]))
         .unwrap();
         assert_eq!(o.source.seed, 7);
         assert_eq!(o.source.speed, Speed::new(2));
         assert!(o.png && o.source.scenario());
         assert_eq!((o.from, o.to), (100, Some(900)));
+        assert!(o.moments);
         assert_eq!(o.dir(), PathBuf::from("x"));
         let r = Options::parse(&args(&["a/b.jsonl"])).unwrap();
         assert!(!r.source.scenario());

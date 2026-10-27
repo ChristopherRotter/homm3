@@ -10,6 +10,30 @@ use h3_protocol::wire::{Stack, Strike, WireU64};
 use crate::record::tests::observation;
 use crate::scene::tests::{layout, stack, tables};
 
+/// [`super::timeline`], its playhead checked against [`crate::scene::Moment::at`] (E17 M5 T1a):
+/// every replay of the tests is.
+fn timeline(
+    snapshot: &Observation,
+    commands: &[Command<'_>],
+    looks: &BTreeMap<u16, Look>,
+    stage: Stage<'_>,
+    speed: Speed,
+) -> Result<Timeline, AnimError> {
+    super::timeline(snapshot, commands, looks, stage, speed).inspect(playhead::agrees)
+}
+
+/// [`super::fidgeting`], its playhead checked as [`timeline`]'s.
+fn fidgeting(
+    snapshot: &Observation,
+    commands: &[Command<'_>],
+    looks: &BTreeMap<u16, Look>,
+    stage: Stage<'_>,
+    speed: Speed,
+    seed: u32,
+) -> Result<Timeline, AnimError> {
+    super::fidgeting(snapshot, commands, looks, stage, speed, seed).inspect(playhead::agrees)
+}
+
 /// The recorded timelines (design §7.6).
 const WALK: &str = include_str!("../../../../situations/timelines/walk.txt");
 const SHOT: &str = include_str!("../../../../situations/timelines/shot.txt");
@@ -5411,6 +5435,7 @@ fn objects_outside_casts_and_without_their_looks() {
     assert!(t.keys.iter().any(|k| k.stack == 1 && k.pose.group == 3));
 }
 
+pub(crate) mod playhead;
 mod raised;
 mod reviewed;
 mod siege;

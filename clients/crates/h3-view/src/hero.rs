@@ -109,6 +109,31 @@ struct State {
     won: bool,
 }
 
+/// The heroes as the idle steps left them by a time (E17 M5 T1a): their states, the viewer's
+/// generator, the actions and the commands' frames taken (each list's next), and the steps taken
+/// (the flags' frames).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct Posing {
+    states: [State; 2],
+    rng: Option<u32>,
+    actions: usize,
+    keys: usize,
+    steps: u32,
+}
+
+impl Posing {
+    /// The frames the commands draw by `t` ([`crate::anim::HeroKey`]; `drawn`: from when they
+    /// are drawn, else from when they show), in order.
+    pub(crate) fn keys_to(&mut self, timeline: &Timeline, t: u32, drawn: bool) {
+        let time = |k: &crate::anim::HeroKey| if drawn { k.drawn } else { k.shown };
+        while let Some(key) = timeline.hero_keys.get(self.keys).filter(|k| time(k) <= t) {
+            let state = &mut self.states[usize::from(key.side != 0)];
+            (state.group, state.frame) = (key.group, key.frame);
+            self.keys += 1;
+        }
+    }
+}
+
 impl Heroes {
     /// The heroes of a battle: the attacker's and the defender's looks (none: that side has no
     /// hero), whether each side's player is human, the DEF groups, and a seed for the viewer's
@@ -151,58 +176,84 @@ impl Heroes {
     /// [`Heroes::at`], or [`Heroes::drawn_at`] with `drawn`: the idle steps by `t`, and the frames
     /// the commands draw ([`crate::anim::HeroKey`]: a cast) from when they show or are drawn.
     fn posed(&self, timeline: &Timeline, t: u32, drawn: bool) -> [Option<HeroPose>; 2] {
-        let time = |k: &crate::anim::HeroKey| if drawn { k.drawn } else { k.shown };
-        let standing = u32::from(self.groups.standing);
-        let mut states = [State {
-            group: standing,
-            ..State::default()
-        }; 2];
-        let mut rng = self.seed;
-        let mut actions = timeline.actions.iter().peekable();
-        let mut keys = timeline.hero_keys.iter().peekable();
-        let keyed = |states: &mut [State; 2], key: &crate::anim::HeroKey| {
-            let state = &mut states[usize::from(key.side != 0)];
-            (state.group, state.frame) = (key.group, key.frame);
-        };
-        let mut steps = 0u32;
-        {
-            let mut step = |now: u32| {
-                // A command's frames come before the next idle step (none runs while it plays).
-                while let Some(key) = keys.next_if(|k| time(k) <= now) {
-                    keyed(&mut states, key);
-                }
-                while let Some(action) = actions.next_if(|a| a.end <= now) {
-                    self.act(&mut states, action, &mut rng);
-                }
-                let human = timeline
-                    .active(now)
-                    .and_then(|stack| timeline.members.iter().find(|m| m.stack == stack))
-                    .is_some_and(|m| self.human[usize::from(m.side == Side::Defender)]);
-                for (state, look) in states.iter_mut().zip(&self.looks) {
-                    if let Some(look) = look {
-                        self.step(state, look, now, human);
-                    }
-                }
-                steps += 1;
-            };
-            for &now in timeline.steps.iter().filter(|s| **s <= t) {
-                step(now);
-            }
-            let mut idle = timeline.idle;
-            idle.run(t, &mut step);
+        let mut posing = self.posing();
+        for &now in timeline.steps.iter().filter(|s| **s <= t) {
+            let human = self.human(timeline, timeline.active(now));
+            self.step_at(&mut posing, timeline, now, (drawn, human));
         }
+        let mut idle = timeline.idle;
+        idle.run(t, |now| {
+            let human = self.human(timeline, timeline.active(now));
+            self.step_at(&mut posing, timeline, now, (drawn, human));
+        });
         // The frames since the last idle step.
-        for key in keys.take_while(|k| time(k) <= t) {
-            keyed(&mut states, key);
+        posing.keys_to(timeline, t, drawn);
+        self.poses(&posing)
+    }
+
+    /// The heroes as the battle starts, before its first idle step (E17 M5 T1a: the playhead
+    /// moves them on step by step, [`Heroes::step_at`]).
+    pub(crate) fn posing(&self) -> Posing {
+        Posing {
+            states: [State {
+                group: u32::from(self.groups.standing),
+                ..State::default()
+            }; 2],
+            rng: self.seed,
+            actions: 0,
+            keys: 0,
+            steps: 0,
         }
+    }
+
+    /// Whether the side of the `active` stack of `timeline` has a human player.
+    pub(crate) fn human(&self, timeline: &Timeline, active: Option<u8>) -> bool {
+        active
+            .and_then(|stack| timeline.members.iter().find(|m| m.stack == stack))
+            .is_some_and(|m| self.human[usize::from(m.side == Side::Defender)])
+    }
+
+    /// One idle step at `now` (`drawn`: the commands' frames from when they are drawn; `human`:
+    /// the side whose turn it is has a human player): a command's frames by then come first, then
+    /// the actions ended by then (none runs while a command plays).
+    pub(crate) fn step_at(
+        &self,
+        posing: &mut Posing,
+        timeline: &Timeline,
+        now: u32,
+        (drawn, human): (bool, bool),
+    ) {
+        posing.keys_to(timeline, now, drawn);
+        while let Some(action) = timeline
+            .actions
+            .get(posing.actions)
+            .filter(|a| a.end <= now)
+        {
+            self.act(&mut posing.states, action, &mut posing.rng);
+            posing.actions += 1;
+        }
+        for (state, look) in posing.states.iter_mut().zip(&self.looks) {
+            if let Some(look) = look {
+                self.step(state, look, now, human);
+            }
+        }
+        posing.steps += 1;
+    }
+
+    /// What each side's hero and flag show as `posing` stands (none: no hero).
+    pub(crate) fn poses(&self, posing: &Posing) -> [Option<HeroPose>; 2] {
         let mut out = [None; 2];
-        for (side, ((out, look), state)) in out.iter_mut().zip(&self.looks).zip(&states).enumerate()
+        for (side, ((out, look), state)) in out
+            .iter_mut()
+            .zip(&self.looks)
+            .zip(&posing.states)
+            .enumerate()
         {
             if let Some(look) = look {
                 *out = Some(HeroPose {
                     group: state.group,
                     frame: state.frame,
-                    flag: (FLAG_START[side] + steps) % look.flag_frames.max(1),
+                    flag: (FLAG_START[side] + posing.steps) % look.flag_frames.max(1),
                 });
             }
         }

@@ -98,6 +98,9 @@
 //! game's battle met) re-recorded all twelve with their options, their commands unchanged: every
 //! hash moved. E08 T60a (game state hash v15: a hero's battle bonuses, none of which a game here
 //! gives) re-recorded all twelve with their options, their commands unchanged: every hash moved.
+//! E08 T61a (adventure state hash v13, ruleset part v12, map import v12: increment 7's kinds and
+//! what objects hold, none of which either map has) re-recorded all twelve with their options,
+//! their commands unchanged: every hash moved.
 //!
 //! **Scripted** (E08 T52, increment 6: the random agent manages nothing), on the generated
 //! `fixtures/maps/e08-army-12.h3m` (red's Valeska, hero 0, with a full army and twelve artifacts

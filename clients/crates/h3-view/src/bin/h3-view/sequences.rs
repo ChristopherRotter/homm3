@@ -15,7 +15,7 @@ use std::process::ExitCode;
 use h3_formats::lod::LodArchive;
 use h3_protocol::wire::{Command, Seat, ServerMessage, Side};
 use h3_render::Bugs;
-use h3_view::anim::{self, Pose, Speed, Timeline};
+use h3_view::anim::{self, Playhead, Pose, Speed, Timeline};
 use h3_view::batch::{self, Batch};
 use h3_view::compose::compose;
 use h3_view::hero::HeroPose;
@@ -350,6 +350,14 @@ fn sequences(options: &Options) -> Result<usize, String> {
         );
         // What the harness saw: its recording ends `ms` after the actions.
         let until = sequence.until();
+        // The timeline read forward as the window reads it (E17 M5 T1a).
+        if let Some(t) = playhead_differs(&timeline, until) {
+            differing += 1;
+            println!(
+                "{}: the playhead's moment at {t} ms is not the timeline's",
+                sequence.id
+            );
+        }
         let lines = if sequence.heroes {
             timeline.lines_with_heroes(until)
         } else {
@@ -446,6 +454,16 @@ fn sequences(options: &Options) -> Result<usize, String> {
     Ok(differing)
 }
 
+/// The first time up to `until` at which `timeline`'s playhead, read forward from 0 through its
+/// changes, shows another moment than [`scene::Moment::at`] (E17 M5 T1a), if one does.
+fn playhead_differs(timeline: &Timeline, until: u32) -> Option<u32> {
+    let mut head = Playhead::new(timeline);
+    timeline.changes(until).into_iter().find(|&t| {
+        head.seek(timeline, t);
+        head.moment(timeline) != scene::Moment::at(timeline, t)
+    })
+}
+
 /// The draws the original's Chain Lightning rays turned by in `<here>/frames.toml` (E17 M3
 /// T7c-3; none without the file).
 fn kept_rays(here: &Path) -> Result<Vec<i32>, String> {
@@ -497,8 +515,11 @@ pub(crate) fn draw_frames(
         }
         None => None,
     };
+    // The frames' times are read forward (E17 M5 T1a; one earlier than the last starts over).
+    let mut head = Playhead::new(timeline);
     for frame in &kept.frame {
-        let mut moment = scene::Moment::at(timeline, frame.t);
+        head.seek(timeline, frame.t);
+        let mut moment = head.moment(timeline);
         moment.walls = interface.walls.or(moment.walls);
         moment.marked = match interface.shown {
             Some(shown) => shown.marked(frame.t),

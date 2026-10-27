@@ -228,6 +228,12 @@ impl QuakeKey {
         let k = t.checked_sub(self.from)? / self.step.max(1);
         (k < n).then_some(k + 1)
     }
+
+    /// When the shake has shown all its steps ([`QuakeKey::steps`] gives none from then on; E17
+    /// M5 T1a).
+    pub(super) fn shaken(&self) -> u64 {
+        u64::from(self.from) + u64::from(SHAKES * 15) * u64::from(self.step.max(1))
+    }
 }
 
 /// The offsets of the shake's first `steps` steps, in order.

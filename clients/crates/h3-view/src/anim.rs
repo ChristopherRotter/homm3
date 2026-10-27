@@ -263,6 +263,57 @@ pub struct Projectile {
     pub mirrored: bool,
 }
 
+impl Flight {
+    /// The projectile it shows at `t`, if it flies then (E17 M5 T1a: [`Timeline::projectile`]'s
+    /// and the playhead's).
+    pub fn at(&self, t: u32) -> Option<Projectile> {
+        let k = t.checked_sub(self.from)? / self.step.max(1);
+        (k < self.steps).then(|| {
+            let frame = match self.cycle {
+                0 => self.frame,
+                n => (self.frame + k) % n,
+            };
+            let at = usize::try_from(k)
+                .ok()
+                .and_then(|k| self.path.get(k))
+                .copied()
+                .unwrap_or_else(|| {
+                    let k = i32::try_from(k).unwrap_or(0);
+                    [
+                        self.start[0] + k * self.delta[0],
+                        self.start[1] + k * self.delta[1],
+                    ]
+                });
+            Projectile {
+                def: self.def.clone(),
+                frame,
+                at,
+                mirrored: self.mirrored,
+            }
+        })
+    }
+
+    /// When it has flown: the end of its last step ([`Flight::at`] shows none from then on).
+    fn until(&self) -> u64 {
+        u64::from(self.from) + u64::from(self.steps) * u64::from(self.step.max(1))
+    }
+}
+
+impl Beam {
+    /// The ray it shows at `t`, if it is drawn then: the strokes of the ticks shown by then (E17
+    /// M5 T1a: [`Timeline::ray`]'s and the playhead's).
+    pub fn at(&self, t: u32) -> Option<Ray> {
+        let k = match self.step {
+            0 => self.ticks.len(),
+            step => usize::try_from(t.checked_sub(self.from)? / step).unwrap_or(usize::MAX),
+        };
+        (t >= self.from && t < self.until && k >= 1).then(|| Ray {
+            strokes: self.ticks.iter().take(k).flatten().copied().collect(),
+            colours: self.colours.clone(),
+        })
+    }
+}
+
 impl Look {
     /// The frames of `group` (0 if the DEF lacks it).
     fn count(&self, group: u8) -> u32 {
@@ -693,6 +744,40 @@ pub struct Spot {
     pub translucent: bool,
     /// The canvas's top-left.
     pub at: [i32; 2],
+}
+
+impl MagicKey {
+    /// The magic animation it shows (none: erased).
+    fn shows(&self) -> Option<Magic> {
+        self.frame.map(|frame| Magic {
+            def: self.def.clone(),
+            frame,
+            translucent: self.translucent,
+            over: self.over.clone(),
+        })
+    }
+}
+
+impl SpotKey {
+    /// The magic animation at a hex it shows (none: erased).
+    fn shows(&self) -> Option<Spot> {
+        self.frame.map(|frame| Spot {
+            def: self.def.clone(),
+            frame,
+            translucent: self.translucent,
+            at: self.at,
+        })
+    }
+}
+
+impl FieldKey {
+    /// The magic animation over the battlefield it shows (none: erased).
+    fn shows(&self) -> Option<Field> {
+        self.frame.map(|frame| Field {
+            def: self.def.clone(),
+            frame,
+        })
+    }
 }
 
 impl Stage<'_> {
@@ -1138,54 +1223,17 @@ impl Timeline {
 
     /// The projectile showing at `t`, if one flies then.
     pub fn projectile(&self, t: u32) -> Option<Projectile> {
-        self.flights.iter().find_map(|f| {
-            let k = t.checked_sub(f.from)? / f.step.max(1);
-            (k < f.steps).then(|| {
-                let frame = match f.cycle {
-                    0 => f.frame,
-                    n => (f.frame + k) % n,
-                };
-                let at = usize::try_from(k)
-                    .ok()
-                    .and_then(|k| f.path.get(k))
-                    .copied()
-                    .unwrap_or_else(|| {
-                        let k = i32::try_from(k).unwrap_or(0);
-                        [f.start[0] + k * f.delta[0], f.start[1] + k * f.delta[1]]
-                    });
-                Projectile {
-                    def: f.def.clone(),
-                    frame,
-                    at,
-                    mirrored: f.mirrored,
-                }
-            })
-        })
+        self.flights.iter().find_map(|f| f.at(t))
     }
 
     /// The ray showing at `t`, if one is drawn then: the strokes of the ticks shown by then.
     pub fn ray(&self, t: u32) -> Option<Ray> {
-        self.beams.iter().find_map(|b| {
-            let k = match b.step {
-                0 => b.ticks.len(),
-                step => usize::try_from(t.checked_sub(b.from)? / step).unwrap_or(usize::MAX),
-            };
-            (t >= b.from && t < b.until && k >= 1).then(|| Ray {
-                strokes: b.ticks.iter().take(k).flatten().copied().collect(),
-                colours: b.colours.clone(),
-            })
-        })
+        self.beams.iter().find_map(|b| b.at(t))
     }
 
     /// The magic animation showing at `t`, if one is drawn then (E17 M3 T3b).
     pub fn magic(&self, t: u32) -> Option<Magic> {
-        let key = self.magics.iter().rev().find(|k| k.shown <= t)?;
-        key.frame.map(|frame| Magic {
-            def: key.def.clone(),
-            frame,
-            translucent: key.translucent,
-            over: key.over.clone(),
-        })
+        self.magics.iter().rev().find(|k| k.shown <= t)?.shows()
     }
 
     /// Each turret record's pose shown at `t` (E17 M4 T2b; none: a record no turret sets up).
@@ -1261,22 +1309,12 @@ impl Timeline {
     /// The magic animation over the whole battlefield showing at `t`, if one is drawn then (E17
     /// M3 T7c-2).
     pub fn field(&self, t: u32) -> Option<Field> {
-        let key = self.fields.iter().rev().find(|k| k.shown <= t)?;
-        key.frame.map(|frame| Field {
-            def: key.def.clone(),
-            frame,
-        })
+        self.fields.iter().rev().find(|k| k.shown <= t)?.shows()
     }
 
     /// The magic animation at a hex showing at `t`, if one is drawn then (E17 M3 T7c-1).
     pub fn spot(&self, t: u32) -> Option<Spot> {
-        let key = self.spots.iter().rev().find(|k| k.shown <= t)?;
-        key.frame.map(|frame| Spot {
-            def: key.def.clone(),
-            frame,
-            translucent: key.translucent,
-            at: key.at,
-        })
+        self.spots.iter().rev().find(|k| k.shown <= t)?.shows()
     }
 
     /// The counts the stacks' boxes show at `t`, by id, of the stacks whose count changed by then
@@ -5384,11 +5422,13 @@ pub fn differences(ours: &str, expected: &str) -> Vec<String> {
 mod chain;
 mod creature;
 mod entered;
+mod playhead;
 mod raise;
 mod siege;
 
 pub use chain::{CHAIN_LIGHTNING, CHAIN_START};
 pub use creature::{FIRE_SHIELD, SHIELD_RETURN};
+pub use playhead::Playhead;
 pub use raise::{ANIMATE_DEAD, RAISE, RESURRECTION, SACRIFICE, SACRIFICED};
 pub use siege::{
     Blast, BlastKey, BridgeKey, Burst, DRAWBRIDGE_RECT, Landing, QuakeKey, SHAKE, SHAKES,

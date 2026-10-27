@@ -64,14 +64,15 @@ commands:
           keeps its own); --walls gives a siege's wall states (the 18 parts' picture states,
           then the gate's, comma-separated) in place of the record's.
   play <scenario.toml | record.jsonl> [--seed <n>] [--speed <0-2>] [--packs <dir>]
-       [--install <dir>] [--out <dir>] [--png] [--from <ms>] [--to <ms>]
+       [--install <dir>] [--out <dir>] [--png] [--from <ms>] [--to <ms>] [--moments]
           a whole battle frame by frame, headless: a scenario is fought to its end in-process
           with a simple bot in both seats (its obstacles from the seed, default 1), or a record
           is read; its commands are played at the original's timing at combat speed --speed
           (h3_view::anim) and every distinct frame is drawn (from --from to --to ms). Writes the
           record, each frame's moment (frames.txt) and the creatures' sound cues (cues.txt) to
           <out> (default clients/out/play/<stem>[-s<seed>]); --png also writes each frame as
-          f<ms>.png there.
+          f<ms>.png there. --moments times a frame's moment for each quarter of the frames: the
+          playhead's (read forward) and the reference's (read from the battle's start).
   window <scenario.toml | record.jsonl> [--seed <n>] [--speed <0-2>] [--packs <dir>]
          [--install <dir>] [--scale <n>] [--vsync] [--drawn-cursor] [--fullscreen] [--from <ms>]
          [--mute] [--check <s> | --measure <s>]

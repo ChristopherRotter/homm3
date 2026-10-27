@@ -51,55 +51,23 @@ flag 38: its regression test in both profiles by T60b; the wraps are A-9's class
 
 ## Part B — the map (`h3-map`, `h3-adventure`)
 
-### 7. The import (`h3-map`; map import v12)
+### 7, 8. The import and the kinds
 
-- **Classes to types** (`codes.rs`): the 31 classes of ADR-0016 point 4, each to an
-  object type key of the packs' `adventure.toml`; 65 to 69 to one "random artifact" type each
-  (their classes are the type's parameter); 88 to 90 to three Shrine types (the level the type's).
-- **Bodies** (all already read, survey §10): an artifact's message → `Guards` with `question:
-  true` whenever it has stacks (D-29: the guarded artifact always asks); a scroll's → `Guards` with
-  `question` = the text is not empty (§4), and its spell; a Shrine's spell (255: drawn); a Witch
-  Hut's mask (`None` on an RoE map, which has none in the file: A-21 is the build's, §9); a
-  Scholar's kind and id (`0xFF` random); `Rewards` → the object's **reward record** (below); an
-  event's colours, computer flag and removal flag; the monster's treasure artifact
-  (`Unsupported::MonsterArtifact` goes: the 8 maps move on).
-- **The reward record** (`RewardRecord` in `h3-adventure`'s setup, one per box or event, A-19 not
-  reproduced): experience (the map's u32; 2³¹ and above none, §7.4's signed test), mana (i32),
-  morale, luck (i8), resources (i32 each, by resource; negative a loss), primary skills (the
-  bytes as i8; only positive values given), skills (the ruleset's, level 1–3), artifacts, spells,
-  creatures (stacks by slot). **Refused** (`Unsupported`, A-24): more than seven creature stacks;
-  a random creature code (as the guards'). The guards as a guarded pile's `Guards` (a box's
-  `question: false`: announced, never asked).
-- **The bans:** the map's banned spells and artifacts (AB and SoD headers; RoE none) into
-  `GameSetup` beside `banned_skills` (GAM-SET-003, §17); the game passes all three to the
-  adventure's build.
-- **Still blockers:** the classes of later items (banks, Refugee Camp, Seer's Huts, quest guards,
-  boats, mines, dwellings…). The census of what imports whole after T61 is its own measurement
-  (`--with-original-data`).
-
-### 8. The kinds (`h3-adventure`'s ruleset part v12; `adventure.toml`)
-
-Closed variants of `ObjectKind`, the type's parameters in the packs (data, ADR-0006), the
-instance's on `MapObject` (static). Names are the build's (change freely); the shapes:
-
-| Kind | Classes | Type parameters | Instance (map, then drawn) |
-|---|---|---|---|
-| `Chest` | 101 | gold amounts and chances (32/32/31 %: 1 000, 1 500, 2 000), the artifact's chance (5 %) and class (treasure), a full backpack's gold (1 000), the experience offset (500) | drawn: gold or an artifact |
-| `Artifact` | 5, 65–69 | for a random type its classes (65: treasure, minor, major) | the artifact (the template's subclass) or drawn; guards |
-| `Scroll` | 93 | — | the spell; guards |
-| `Gift` | 4, 23, 32, 41, 47, 51, 61, 100, 102, 107 | once per hero; what it gives: primary gains, a choice of two primary skills with its amount, experience × Learning, one level; a price (or drawn prices: the Tree's free, 2 000 gold, 10 gems); a condition (the Library's level 10, 2 per Diplomacy level); whether one may leave (the Schools, not the Arena) | the Tree's price (drawn) |
-| `Shrine` | 88–90 | the spell level | the spell (map or drawn) |
-| `WitchHut` | 113 | the RoE masks: `faithful` 0xEFBF, `strict-fixed` all but Leadership and Necromancy (A-21) | the mask (map's or the RoE default), the skill (drawn) |
-| `Scholar` | 81 | — | the kind and id (map or drawn), the fallback primary (drawn) |
-| `University` | 104 | offers (4), price (2 000 gold) | the four skills (drawn) |
-| `Find` | 22, 39, 105, 108 | its draw table (§6.9: the Corpse 20 % treasure-or-minor; the Wagon 10 % empty, 40 % treasure-or-minor, 50 % 2–5 of wood to gems; the Lean To 1–5 of wood to gems; the Tomb by class 30/50/15/5), a full backpack's turn (gold 1 000, the resources, or the artifact stays), a question (the Tomb), a bonus with its once-mark (the Tomb: −3 morale, mark 0) | the contents (drawn) |
-| `PandoraBox` | 6 | — | the reward record, guards |
-| `Event` | 26 | — | the reward record, guards, colours, computer flag, removal flag |
-| `Pyramid` | 63 | the guards (40 Gold Golems split; 20 Diamond Golems in 2 stacks), the spell level (5), the looted bonus (−2 luck, mark 1) | the spell (drawn; none: A-20) |
-| `Monster` (amended) | 54, 71–75, 162–164 | — | the treasure's artifact (map) |
-
-`ObjectKind::effect` gains an `Effect` per kind (the one place a visit is wired, T13b's rule).
-Events are not visited through it (§12).
+Built by T61a (`E08-log.md`, "T61a"): the 31 classes typed (`codes.rs`), the kinds with their
+type parameters in `adventure.toml` (`ObjectKind::Chest`, `Artifact`, `Scroll`, `Gift`,
+`Shrine`, `WitchHut`, `Scholar`, `University`, `Find`, `PandoraBox`, `Event`, `Pyramid`;
+ruleset part v12), what the map puts in them (`ObjectSetup::holds`, `Holds`; the reward record
+`RewardRecord` with `h3_heroes::HeroReward` as its hero half, `EventSetup`), the guards of
+artifacts, scrolls, boxes and events, the monster's treasure artifact (`MonsterSetup::artifact`),
+A-24 refused (`Unsupported::RewardArmy`); map import v12, adventure state hash v13 (the static
+map's holdings). A scroll holds the Spell Scroll with its spell as an `ArtifactInstance`, so its
+kind has no parameter; an empty Witch Hut mask imports as every skill. Left for T61b: **the
+bans** (the map's banned spells and artifacts into `GameSetup` beside `banned_skills`,
+GAM-SET-003; the game passes all three to the adventure's build), moved there because only the
+draws read them and a new `GameSetup` field touches the AI lane's two literals (`cross-lane`).
+Left for T62: an event's tile apart from the movement's masks (§12's "Static"; until then a
+typed event blocks a walk as the blocker it was); every visit (`ObjectKind::effect` gives none
+for the new kinds). The census of what imports whole is the next run with the original data.
 
 ### 9. The draws when the game is built (ADR-0016 point 4; GAM-SET-001's stream)
 
@@ -314,9 +282,10 @@ through `split` with the first creature's count, n less the second creature's st
 |---|---|---|
 | core ruleset hash v49, pack format v48 | the mana ceiling; A-21's and A-25's flags (A-23 withdrawn, T58) | T59 (done) |
 | details' hash, game state hash v15 | the battle bonuses | T60a (done) |
-| adventure ruleset part v12 | the kinds | T61 |
-| map import v12 | the classes, bodies, records, bans, the monster's artifact | T61 |
-| adventure state hash v13 | the visits' block, the army left's table, the draws on objects | T61, T62 |
+| adventure ruleset part v12 | the kinds | T61a (done) |
+| map import v12 | the classes, bodies, records, the monster's artifact (the bans: T61b, import v13) | T61a (done) |
+| adventure state hash v13 | the objects' holdings and a monster's treasure artifact | T61a (done) |
+| adventure state hash v14 | the visits' block, the army left's table, the draws on objects | T61b, T62 |
 | game state hash (next) | the decisions, the rest, the bans | T63 |
 | adventure replay format v7 | the typed answers (every decision's) | T63 |
 
@@ -370,7 +339,7 @@ increment 6 the shared task came first; here the batch decides an ADR clause, A-
 | 2 | **T57** + **T58** | T57: the harness's reads and clicks, the recipes, the runs E7a and E7b (as T47: cut at its start). T58: scored (survey §15); A-23 settled (decision 131); an `ADV-Q` if a row contradicts the reading |
 | 3 | **T59** | `shared/`: the three ADRs amended (with T58's outcome: A-23 withdrawn, events blind to `Reach`), the mana ceiling, A-21's and A-25's flags, the glossary |
 | 4 | **T60** | `h3-heroes`: part A (§1–§6): the bonuses, the changes, `grant`, the teachers' functions; the details' hash |
-| 5 | **T61** | `h3-map` and `h3-adventure`: the import (§7), the kinds (§8), the draws (§9), the state (§10); map import v12, ruleset part v12, adventure state hash v13. Likely cut in two (the import and kinds; the draws and state) |
+| 5 | **T61** | `h3-map` and `h3-adventure`: the import (§7), the kinds (§8), the draws (§9), the state (§10). In two (decision 148): T61a the import and kinds (done: map import v12, ruleset part v12, adventure state hash v13); T61b the bans, the draws and the state (map import v13, adventure state hash v14) |
 | 6 | **T62** | `h3-adventure`: the visits (§11), events and the move (§12), information (§13). Likely cut in two (pickups, teachers, finds; boxes, events, the Pyramid) |
 | 7 | **T63** | `h3-game`: the decisions, their typed answers (every decision's, migrated; `h3-sim`'s action mapping `cross-lane`) and the rest (§14), the application (§15), replay format v7. Likely cut in two (the typed answers' migration; increment 7's decisions) |
 | 8 | **T64** + **T65** | T64: replays, fixtures, properties, benchmarks, `--with-original-data` (§16). T65: the audit against the exit criteria, increment 7 closed, increment 8 refined |

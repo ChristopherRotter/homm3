@@ -9,7 +9,10 @@ use crate::model::{
     Bits, Body, EventBody, Message, MonsterTreasure, RawMap, Rewards, Stack, Text, Version,
 };
 use crate::writer as w;
-use crate::{ImportError, Unsupported, import, import_map, read};
+use crate::{import, import_map, read};
+use h3_adventure::{ArtifactInstance, EventSetup, Guards, HeroReward, Holds, RewardRecord};
+use h3_content::ResourceId;
+use h3_contracts::ArmyStack;
 
 fn template(class: u32, subclass: u32) -> w::ObjectTemplate {
     w::ObjectTemplate {
@@ -256,17 +259,131 @@ fn the_writer_s_reward_objects_read_back_and_import() {
         .map(|o| m.templates[usize::try_from(o.template).unwrap()].class)
         .collect();
     assert_eq!(classes, [22, 63, 100, 101, 104, 105, 108]);
-    // The static layer imports and validates; the whole map stops at the monster's artifact
-    // (its import is increment 7's, T61) and imports without it.
+    // The static layer imports and validates; since E08 T61a the whole map too, the monster's
+    // artifact with it, each object typed with what it holds (design §7).
     static_layer_validates(&m, &SOD);
+    let setup = import(&m, &SOD).unwrap();
+    setup.validate(&SOD).unwrap();
+    let core = SOD.core();
+    let part = SOD.adventure();
+    let objects = &setup.map.objects;
+    let key = |i: usize| {
+        objects[i]
+            .object_type
+            .and_then(|id| part.object_type(id))
+            .map(|t| t.key.as_str())
+    };
+    let artifact = |key: &str| core.artifact_by_key(key).unwrap();
+    let spell = |key: &str| core.spell_by_key(key).unwrap();
+    let skill = |key: &str| core.skill_by_key(key).unwrap();
+    let axe = artifact("base:centaurs_axe");
+    // The hero is no object of the static map: the artifact is the first.
+    assert_eq!(key(0), Some("base:artifact"));
+    assert_eq!(objects[0].holds, Holds::Artifact(axe.into()));
+    // D-29: a guarded artifact asks whatever its text.
+    let stacks = |question| {
+        Some(Guards {
+            army: vec![
+                ArmyStack {
+                    slot: 1,
+                    creature: core.creature_by_key("base:pikeman").unwrap(),
+                    count: 12,
+                },
+                ArmyStack {
+                    slot: 6,
+                    creature: core.creature_by_key("base:halberdier").unwrap(),
+                    count: 3,
+                },
+            ],
+            question,
+        })
+    };
+    assert_eq!(objects[0].guards, stacks(true));
     assert_eq!(
-        import(&m, &SOD),
-        Err(ImportError::Unsupported(Unsupported::MonsterArtifact(10)))
+        (key(1), &objects[1].holds, &objects[1].guards),
+        (Some("base:random_artifact"), &Holds::Nothing, &None)
     );
-    let mut without = written;
-    without.objects[10] = monster((23, 5), 0, None);
-    let m = read(&w::gzip(&w::write(&without).unwrap()), &limits()).unwrap();
-    import(&m, &SOD).unwrap().validate(&SOD).unwrap();
+    let scroll = ArtifactInstance::scroll(artifact("base:spell_scroll"), spell("base:magic_arrow"));
+    assert_eq!(
+        (key(2), &objects[2].holds),
+        (Some("base:spell_scroll"), &Holds::Artifact(scroll))
+    );
+    assert_eq!(objects[3].holds, Holds::Spell(None));
+    assert_eq!(
+        (key(4), &objects[4].holds),
+        (
+            Some("base:shrine_of_magic_gesture"),
+            &Holds::Spell(Some(spell("base:frost_ring")))
+        )
+    );
+    // The editor's default mask (all but Leadership and Necromancy), and bits 0 and 27.
+    let Holds::Skills(Some(mask)) = &objects[5].holds else {
+        panic!("{:?}", objects[5].holds)
+    };
+    assert_eq!(mask.len(), 26);
+    assert!(!mask.contains(&skill("base:leadership")) && !mask.contains(&skill("base:necromancy")));
+    assert_eq!(
+        objects[6].holds,
+        Holds::Skills(Some(vec![
+            skill("base:pathfinding"),
+            skill("base:first_aid")
+        ]))
+    );
+    let resource = |i: usize| ResourceId::from_index(i).unwrap();
+    let record = RewardRecord {
+        hero: HeroReward {
+            experience: 1000,
+            primary: [1, 0, 0, 2],
+            skills: vec![(skill("base:wisdom"), 2)],
+            mana: 500,
+            morale: 1,
+            luck: -1,
+            artifacts: vec![axe],
+            spells: vec![spell("base:magic_arrow")],
+        },
+        resources: vec![(resource(0), 1), (resource(6), 500)],
+        creatures: vec![ArmyStack {
+            slot: 0,
+            creature: core.creature_by_key("base:pikeman").unwrap(),
+            count: 5,
+        }],
+    };
+    assert_eq!(
+        (key(7), &objects[7].holds, &objects[7].guards),
+        (
+            Some("base:pandoras_box"),
+            &Holds::Record(Box::new(record)),
+            &None
+        )
+    );
+    // An event's guards are announced, never asked.
+    assert_eq!(
+        objects[8].holds,
+        Holds::Event(Box::new(EventSetup {
+            record: RewardRecord {
+                resources: vec![(resource(6), 100)],
+                ..RewardRecord::default()
+            },
+            colours: 0b11,
+            computer: false,
+            remove: true,
+        }))
+    );
+    assert_eq!(objects[8].guards, stacks(false));
+    assert_eq!(objects[9].monster.as_ref().unwrap().artifact, Some(axe));
+    let plain = [
+        "corpse",
+        "pyramid",
+        "learning_stone",
+        "treasure_chest",
+        "university",
+        "wagon",
+        "warriors_tomb",
+    ];
+    for (i, id) in (10..).zip(plain) {
+        assert_eq!(key(i), Some(format!("base:{id}").as_str()));
+        assert_eq!(objects[i].holds, Holds::Nothing);
+    }
 }
 
 #[test]
@@ -361,12 +478,12 @@ fn the_writer_s_roe_maps_read_back_and_import() {
     };
     assert_eq!(message.as_ref().unwrap().guards, raw_guards());
     static_layer_validates(&m, &ROE);
-    let mut without = written;
-    without.objects[1] = monster((5, 5), 117, None);
-    let m = read(
-        &w::gzip(&w::write_in(&without, w::Format::RoE).unwrap()),
-        &limits(),
-    )
-    .unwrap();
-    import(&m, &ROE).unwrap().validate(&ROE).unwrap();
+    // E08 T61a: the whole map imports, the monster's artifact with it; an RoE map's Witch Huts
+    // hold no mask (their type's skills by the profile, A-21).
+    let setup = import(&m, &ROE).unwrap();
+    setup.validate(&ROE).unwrap();
+    let objects = &setup.map.objects;
+    assert!(objects[0].monster.as_ref().unwrap().artifact.is_some());
+    assert_eq!(objects[1].holds, Holds::Skills(None));
+    assert_eq!(objects[2].holds, Holds::Skills(None));
 }

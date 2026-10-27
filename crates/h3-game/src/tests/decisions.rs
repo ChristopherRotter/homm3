@@ -40,6 +40,7 @@ fn game(rules: &GameRuleset, difficulty: u8) -> GameState {
             drawn: TileMask::default(),
             monster: None,
             guards: None,
+            holds: Default::default(),
         });
     }
     GameState::new(rules, &setup, 7).unwrap()
@@ -327,6 +328,7 @@ fn keys_game(rules: &GameRuleset) -> GameState {
             drawn: TileMask::default(),
             monster: None,
             guards: None,
+            holds: Default::default(),
         });
     }
     GameState::new(rules, &setup, 7).unwrap()

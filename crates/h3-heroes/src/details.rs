@@ -280,6 +280,18 @@ pub(crate) fn check_artifact(
     Ok(artifact)
 }
 
+/// Whether a hero may hold this artifact at all (HER-ART-003; E08 T61a: the map's artifacts and
+/// scrolls on objects, which the adventure's setup checks): an artifact of the ruleset, holding a
+/// spell exactly when it is a scroll, that spell the ruleset's and no creature ability.
+///
+/// # Errors
+///
+/// [`DetailsError::UnknownArtifact`], [`DetailsError::ScrollWithoutSpell`],
+/// [`DetailsError::SpellOnArtifact`], or the spell's error.
+pub fn validate_artifact(item: ArtifactInstance, ruleset: &Ruleset) -> Result<(), DetailsError> {
+    check_artifact(item, ruleset).map(|_| ())
+}
+
 /// An artifact holds a spell exactly when its type has the `scroll` effect, and that spell is a
 /// spell of the ruleset that is not a creature ability. The artifact is known.
 fn validate_scroll(item: ArtifactInstance, ruleset: &Ruleset) -> Result<(), DetailsError> {

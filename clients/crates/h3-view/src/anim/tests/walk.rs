@@ -16,10 +16,11 @@ use super::siege::{
     CATAPULT, CHAMPION, GOBLIN, HOBGOBLIN, PIKEMAN, TITAN, TURRET, castle, machine_at, play_siege,
     recorded, siege_looks,
 };
+use super::timeline;
 use super::{at, layout, snapshot, tables, until};
 use crate::anim::{
     BridgeKey, Casts, Command, Logged, MINE_BLAST, MagicLook, ObjectLook, Sound, Speed, SpellLook,
-    Stage, Timeline, timeline,
+    Stage, Timeline,
 };
 use crate::siege::{GATE_CLOSED, GATE_MOVING, GATE_OPEN};
 

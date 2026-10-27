@@ -2665,6 +2665,56 @@ sound archives, `H3ab_ahd.vid`, both executables, the five DLLs, the battle and 
   `QUEUE-ARCHIVE.md`).
 - **M4 done.** M4's scope and tasks moved to `E17-archive.md`, its review list below.
 
+### M5 T1a — A frame without the rescan: the playhead (2026-10-27)
+
+On `client/e17-m5-t1a`, the user present at the start: **T1 cut in two** (the user, over the
+agent's three parts): T1a, a frame drawn without rescanning the battle; T1b, the timeline that
+grows command by command together with the window's live source. The sandbox new: the original
+files staged again from the user's `original-data/install/` (the same 26 files and
+`README.TXT`) before the computer disconnected.
+
+- **Starting point:** `master` at `94a5039` (#503 merged, then #504 and #505); the baseline
+  (`verify-once clients`) ran the full client check: all gates passed; `drawn` all 119 the same.
+- **Measured first** (`play scenarios/battle.toml`, the release build): R2-7's "2.3 ms a frame"
+  was the composing of the pixels (`compose`: 2.5 to 3 ms a frame, the battle's length not in
+  it); the moment itself (`Moment::at`) took 1.6 µs a frame in the battle's first quarter and
+  7 µs in its last, and with the battle idling after its end 108 µs ten minutes on and 306 µs
+  thirty minutes on (the fidgets' and the heroes' idle steps run from the end, the keys from 0;
+  with heroes, `situations/heroes-castle-rampart.toml`: 0.8 to 3.7 µs, then 100 µs ten minutes
+  on). The draw list besides it (`Battle::list`): 20 to 25 µs a change, flat.
+- **Built** (*provisional*, the autonomy contract: the inner structure):
+  - `anim::Playhead` (`anim/playhead.rs`): the moment at the time it reached, moved on by what
+    showed since. Each list's keys sorted once by (time shown, place in the list) and taken in
+    that order, a slot (a stack's pose, count, hue; an anchor's object; a turret record; the
+    outline, the magic animations, the walls, the explosion) keeping the later key of the list,
+    as the readers' "the last in the list shown by then" has it whatever the order shown; the
+    spans (a projectile's flight, a ray, a shake, a drawbridge's redraws) open while they last;
+    the idle steps run on, each a hero's step and the outline's pulse, after the last command the
+    fidgets' too; the battle just before each drawbridge's redraws kept as the playhead passes
+    it (`Moment::bridge`). Going back starts over from 0. It does not hold the timeline (given at
+    each call), so that `Battle` keeps both.
+  - Shared with the reference readers, so that each rule is written once: `Flight::at`,
+    `Beam::at`, the magic, spot and field keys' frames (`Timeline::projectile`, `ray`, `magic`,
+    `spot`, `field` now call them), `QuakeKey::shaken`; the heroes' steps (`hero::Posing`,
+    `Heroes::step_at`, `poses`, `human`) behind both `Heroes::at` and the playhead.
+  - `scene::Moment::at` stays the reference; the playhead's moments must be its at every time.
+  - The binary: `Battle` draws through a playhead (`play`'s frames; the window's `list_at`, a new
+    playhead when the mouse changes the timeline); `sequences --frames` reads the kept frames'
+    times forward; `sequences` checks every recorded sequence's playhead against `Moment::at` at
+    every change (a difference counts as the sequence's); `play --moments` times both readers by
+    quarter of the frames.
+- **After:** the playhead 0.3 to 1 µs a frame everywhere (`play`'s battle 544 to 786 ns a
+  quarter, its idle half hour 745 to 992 ns; the heroes' battle 300 to 610 ns).
+- **Left as they are** (read over the battle per frame, a few µs at most): the panel's turns and
+  log texts (`Panels::at_pressed`, `text_at`) and `Timeline::cursor_hidden`'s rays and shakes;
+  into T1b, whose panel grows with the commands.
+- **Checks:** the library's tests (283; every replay of the anim tests has its playhead checked
+  against `Moment::at` at each change up to 6 s after its end and 1 ms after each, forward and
+  after going back, through the tests' `timeline` and `fidgeting`; the heroes' tests with their
+  heroes; keys held out of the order they show), checked to fail with a fault put in; coverage
+  100 %; `play`'s `frames.txt` and `cues.txt` byte for byte as before; `drawn` all 119 the same,
+  `sequences`' playhead check passing on all 47 recorded sequences (each as recorded).
+
 ## Accepted review lists (M1 to M4)
 
 M1 and M2 moved from the epic file on 2026-10-20 (less start-up reading), unchanged; M3 at its

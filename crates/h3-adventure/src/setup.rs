@@ -8,8 +8,13 @@
 use alloc::vec::Vec;
 use core::fmt;
 
-use h3_content::{CreatureTypeId, Formation, ResourceId, TerrainId};
+use alloc::boxed::Box;
+
+use h3_content::{
+    ArtifactTypeId, CreatureTypeId, Formation, ResourceId, SkillId, SpellId, TerrainId,
+};
 use h3_contracts::{ArmyStack, HeroId, PlayerId};
+use h3_heroes::{ArtifactInstance, HeroReward, ScholarGift};
 
 use crate::ruleset::{ObjectTypeId, RiverId, RoadId};
 
@@ -118,6 +123,65 @@ pub struct ObjectSetup {
     /// What it is among a battle's surroundings (GAM-BAT-011, E08 T54): the map's class, for the
     /// battlefield picture's variant ([`crate::AdventureState::background`]).
     pub scenery: Scenery,
+    /// What the map puts in an object of increment 7's kinds (E08 T61a; design §7): exactly
+    /// the shape its type's kind takes ([`Holds`]), nothing for every other object.
+    pub holds: Holds,
+}
+
+/// What the map puts in an object of increment 7's kinds (E08 T61a; design §7 of
+/// `docs/epics/E08-design.md`), checked against its type's kind when the game is built; what
+/// the build draws comes beside it (T61b).
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub enum Holds {
+    /// Nothing: every other kind, and the kinds whose contents are drawn (a chest, a random
+    /// artifact, a gift, a University, a find, the Pyramid).
+    #[default]
+    Nothing,
+    /// A placed artifact's (ADV-PIK-006: the template's subclass, no spell) or a Spell Scroll's
+    /// (ADV-PIK-008: the Spell Scroll with the map's spell), as a hero would hold it
+    /// (`h3_heroes::validate_artifact`).
+    Artifact(ArtifactInstance),
+    /// A Shrine's spell (ADV-TCH-004): a hero spell of the ruleset; none drawn when the game is
+    /// built.
+    Spell(Option<SpellId>),
+    /// A Witch Hut's skills, the map's mask (ADV-TCH-005): distinct skills of the ruleset; none
+    /// on an RoE map, whose huts take their type's skills by the profile (A-21).
+    Skills(Option<Vec<SkillId>>),
+    /// A Scholar's gift (ADV-TCH-006): a skill or hero spell of the ruleset; none drawn when the
+    /// game is built.
+    Gift(Option<ScholarGift>),
+    /// Pandora's Box's rewards (ADV-PIK-013).
+    Record(Box<RewardRecord>),
+    /// An event (ADV-OBJ-007).
+    Event(Box<EventSetup>),
+}
+
+/// A reward record (ADV-RWD-001, E08 T61a; survey `E08-rewards.md` §7.1, design §7): what a
+/// Pandora's Box or an event gives, as the map stores it, every part optional. One per object,
+/// with no bound on their number (A-19 not reproduced, E08 decision 133).
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct RewardRecord {
+    /// The hero's half (HER-CHG-003; `h3_heroes::grant`): its skills of the ruleset at Basic to
+    /// Expert, its artifacts and hero spells the ruleset's.
+    pub hero: HeroReward,
+    /// The resources: distinct resources of the ruleset, each amount not 0 (negative a loss).
+    pub resources: Vec<(ResourceId, i32)>,
+    /// The creatures, stacks by slot: valid as an army's but for none at all (no war machine;
+    /// the import refuses more stacks than an army's slots, A-24).
+    pub creatures: Vec<ArmyStack>,
+}
+
+/// An event as the map gives it (ADV-OBJ-007, E08 T61a; survey `E08-rewards.md` §7.3).
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct EventSetup {
+    /// What it gives.
+    pub record: RewardRecord,
+    /// The colours it fires for, a bit per colour (bit 0 red).
+    pub colours: u8,
+    /// Whether it fires for a player that is not human too (the map's computer flag).
+    pub computer: bool,
+    /// Whether it leaves the map after it fires.
+    pub remove: bool,
 }
 
 /// What an object is among a battle's surroundings, by its class on the map (GAM-BAT-011, E08
@@ -175,6 +239,9 @@ pub struct MonsterSetup {
     /// What its owner's player gains when the monster is beaten or joins (E08 T20b): distinct
     /// resources, each amount from 1 to [`crate::MAX_GAIN`].
     pub treasure: Vec<(ResourceId, u32)>,
+    /// The artifact its treasure holds (ADV-MON-011, E08 T61a): one a hero may hold, without a
+    /// spell (`h3_heroes::validate_artifact`).
+    pub artifact: Option<ArtifactTypeId>,
 }
 
 /// The static map as the setup gives it: what never changes after setup.
@@ -323,10 +390,14 @@ pub enum SetupError {
     /// the monsters' parameters lack (or no such parameters); a treasure naming an unknown
     /// resource or one twice, or an amount outside 1 to [`crate::MAX_GAIN`].
     Monster(usize),
-    /// The object at this index has guards and is no pile, or its guards are invalid
-    /// (ADV-PIK-004): no stack, a slot beyond the army slots or used twice, a stack without
-    /// creatures or with more than a stack holds, an unknown creature or a war machine.
+    /// The object at this index has guards and is no pile, artifact, scroll, Pandora's Box or
+    /// event (E08 T61a), or its guards are invalid (ADV-PIK-004): no stack, a slot beyond the army
+    /// slots or used twice, a stack without creatures or with more than a stack holds, an unknown
+    /// creature or a war machine.
     Guards(usize),
+    /// What the object at this index holds does not fit its type's kind, or is invalid (E08
+    /// T61a; [`Holds`]).
+    Holds(usize),
     /// More objects than the state tracks (32 × 65 535); the number.
     Objects(usize),
     /// Two heroes share this id.
@@ -382,6 +453,9 @@ impl fmt::Display for SetupError {
             }
             Self::Monster(object) => write!(f, "object {object} has invalid monster data"),
             Self::Guards(object) => write!(f, "object {object} has invalid guards"),
+            Self::Holds(object) => {
+                write!(f, "object {object} holds what its type does not take")
+            }
             Self::Objects(n) => write!(f, "{n} objects are too many"),
             Self::DuplicateHero(hero) => write!(f, "hero {} is placed twice", hero.raw()),
             Self::UnknownOwner(hero) => {

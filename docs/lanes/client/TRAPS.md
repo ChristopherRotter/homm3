@@ -18,6 +18,10 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   stack acts by `key:` only (runbook).
 - Sequences are spectators' records; the engine rolls its own (a box ` n…` or the log ` log`
   listed; a seed searched to match: runbook, "Forced rolls"). Records: army, then war machines.
+- A new list of the timeline that `scene::Moment::at` reads needs its reader in
+  `anim::Playhead` too (E17 M5 T1a; the frames are drawn through it): the tests check the two at
+  every change of every replay (`anim/tests/playhead.rs`), `h3-view sequences` at every recorded
+  sequence's.
 - The viewer reads `clients/layouts/*.toml` at run time: a layout change made while a batch
   runs breaks (or changes) the release binary's comparisons of the batch (M4 T3b-1: an unknown
   field); keep the layout with the binary it was built for until the batch ends.
