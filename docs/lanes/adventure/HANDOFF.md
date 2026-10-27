@@ -5,8 +5,8 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 ## Current state
 
 - **E08**: increments 1 to 6 **closed**. **Increment 7: rewards on the map** (decisions 121–147, ADV-Q26 to ADV-Q30): T54 to T58b done (the battle seam's facts; survey `E08-rewards.md`; the drafts and design `E08-design.md`, eight rounds, decision 139; batch E7 scored, A-23 withdrawn; A-25 a quirk with a flag, decision 145); T59 done (#497, `shared/`: the ADRs amended, `HeroParams::mana_ceiling`, flags 37 and 38, the glossary); **T60 in two** (decision 147): **T60a done** (`adventure/e08-t60a`, `cross-lane`: `HeroDetails::bonuses`, the changes `GainPrimary`, `RaiseSkill`, `Bonus`, `ClearBonuses`, the bonuses in battle HER-ADV-008, game state hash v15, the twelve replays re-recorded). Records: `E08-log.md`; increment 6's in `E08-archive.md`.
-- **Open pull requests:** T60a's (`adventure/e08-t60a`, `cross-lane`).
-- **Next:** merge T60a's pull request; then T60b (`grant` and the teachers, design §3, §4; inside `h3-heroes`, no version), then T61 (its cut confirmed at its start).
+- **Open pull requests:** #500 `adventure/e08-t60a` (T60a, `cross-lane`).
+- **Next:** merge #500; then T60b (`grant` and the teachers, design §3, §4; inside `h3-heroes`, no version), then T61 (its cut confirmed at its start).
 - **Versions** (`docs/08-work-process.md`, "Versions"): game state hash v15 (T60a), adventure state hash v12 (T54), adventure ruleset part v11 (T50), map import v11 (`MAP_IMPORT_VERSION`, T54), adventure replay format v6 (T51a); the env's action encoding v4 is the AI lane's. Built so far, by area: `OVERVIEW.md`; ownership: `lanes.toml` (the details are in `OVERVIEW.md`, "Ownership").
 - **ADRs accepted**: ADR-0015 to -0017 (2026-10-10), amended for increments 2 to 7 (last: T59, with ADR-0013).
 - **R01** (the content split): the core `h3-content` and `h3-pack` (`core.toml`) are shared; the writer is `h3_map::writer`.
