@@ -3,7 +3,9 @@
 `Env` wraps the single-env C functions (`h3_env_*`). Unlike the batch it reads the full state
 (`state_hash`, `fork`) and keeps the escapes (Retreat, Surrender) and the scenario's own `human`
 flags: for tests, tools and training infrastructure, never for an agent's input and never to be
-forwarded to a client.
+forwarded to a client. The exception is a *world* (`BattleBatch.determinize`, C ABI v34, ADR-0025
+point 12a): an env whose battle holds nothing its side may not know, a search agent's to fork,
+step and observe.
 """
 
 from __future__ import annotations
@@ -66,6 +68,10 @@ class Env:
 
     def reset(self, seed: int) -> None:
         _ffi.check(self._lib.h3_env_reset(self._handle, seed))
+
+    def reseed(self, seed: int) -> None:
+        """Re-seeds the battle's stream (C ABI v34): a world's simulation draws its own rolls."""
+        _ffi.check(self._lib.h3_env_reseed(self._handle, seed))
 
     def to_move(self) -> int:
         """The side to act, -1 once the episode is over."""

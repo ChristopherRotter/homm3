@@ -107,8 +107,9 @@ pub use batch::{
 /// [N, `h3_preview_len()`]; the struct grows by one pointer at its end), `h3_preview_base` and
 /// `h3_preview_len`; the encodings unchanged. v34 (E06, the turn order and T8b): observation
 /// encoding v22 (each stack slot's places in the turn order, `h3_sim::observation::ORDER`,
-/// appended: v21's layout is its prefix; `h3_observation_len` grows); the action encoding
-/// unchanged.
+/// appended: v21's layout is its prefix; `h3_observation_len` grows), and a search agent's
+/// worlds (ADR-0025 point 12a): `h3_batch_determinize` (a single env of an env's battle with
+/// what a side may not know replaced) and `h3_env_reseed`; the action encoding unchanged.
 pub const H3_ABI_VERSION: u32 = 34;
 
 /// `H3StepResult.result`: the battle is not decided (still running, or truncated).
@@ -393,6 +394,23 @@ pub unsafe extern "C" fn h3_env_fork(env: *const H3Env) -> *mut H3Env {
     };
     let forked = catch_unwind(AssertUnwindSafe(|| Box::new(H3Env::new(e.env.fork()))));
     forked.map_or(std::ptr::null_mut(), Box::into_raw)
+}
+
+/// Re-seeds the battle's stream (v34, E06 T8: each of a world's simulations draws its own rolls;
+/// `h3_battle::BattleState::reseed`). `H3_ERR_NULL` for a null handle.
+///
+/// # Safety
+/// `env` must be null or a live handle not used concurrently.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn h3_env_reseed(env: *mut H3Env, seed: u64) -> i32 {
+    // SAFETY: per the contract.
+    let Some(e) = (unsafe { env.as_mut() }) else {
+        return H3_ERR_NULL;
+    };
+    guard(|| {
+        e.env.reseed(seed);
+        H3_OK
+    })
 }
 
 /// Restarts the battle with a new seed.

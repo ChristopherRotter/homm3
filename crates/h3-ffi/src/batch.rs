@@ -18,7 +18,8 @@ use h3_sim::{
 
 use crate::{
     H3_ERR_ARGUMENT, H3_ERR_EPISODE_OVER, H3_ERR_INVALID_ACTION, H3_ERR_NULL, H3_ERR_PANIC,
-    H3_ERR_REJECTED, H3_OK, H3Action, PANIC_MESSAGE, result_code, scenario, side_code,
+    H3_ERR_REJECTED, H3_OK, H3Action, H3Env, PANIC_MESSAGE, result_code, scenario, side,
+    side_code,
 };
 
 /// The batch is not ready for the call: it has no scenario yet (`h3_batch_reset`), or it was not
@@ -700,6 +701,35 @@ pub unsafe extern "C" fn h3_batch_scenario_info(
         encounters: u32::from(sampler.is_some()),
     };
     H3_OK
+}
+
+/// A world of env `env`'s battle for side `viewer` (0 attacker, 1 defender) from `seed` (v34, E06
+/// T8; `h3_sim::BattleBatch::determinize`, ADR-0025 point 12a): a new single env (destroy it with
+/// `h3_env_destroy`) whose battle is the env's with everything `viewer` may not know replaced
+/// (the other side's hero guessed by the env's encounter distribution, its hidden obstacles and a
+/// drawn spell drawn again, the stream re-seeded), the agent's to fork, step and observe. Null
+/// for a null or not reset batch, an env past it or not playing, or another `viewer`.
+///
+/// # Safety
+/// `batch` must be null or a live handle not used concurrently.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn h3_batch_determinize(
+    batch: *const H3Batch,
+    env: u32,
+    viewer: i32,
+    seed: u64,
+) -> *mut H3Env {
+    // SAFETY: per the contract.
+    let (Some(h), Some(viewer)) = (unsafe { batch.as_ref() }, side(viewer)) else {
+        return std::ptr::null_mut();
+    };
+    let world = catch_unwind(AssertUnwindSafe(|| {
+        h.batch
+            .determinize(env as usize, viewer, seed)
+            .ok()
+            .map(|w| Box::new(H3Env::new(w)))
+    }));
+    world.ok().flatten().map_or(std::ptr::null_mut(), Box::into_raw)
 }
 
 /// The version of the encounter distribution `h3_batch_add_encounters` plays

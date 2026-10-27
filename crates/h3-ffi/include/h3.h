@@ -9,6 +9,9 @@
  * seeds (H3BatchBuffers.episode_seed, h3_batch_episode_seed) carry the full state or the battle's
  * future draws. They are for training tools, replays and tests: never an agent's input, never
  * forwarded to a client. An agent sees the projected observations only (h3_env_observe, obs).
+ * A search agent's worlds (v34, ADR-0025 point 12a): h3_batch_determinize makes a single env of an
+ * env's battle with everything one side may not know replaced (a guess, a fresh stream); a world's
+ * forks, steps and h3_env_reseed are that agent's to use.
  */
 #ifndef H3_H
 #define H3_H
@@ -82,6 +85,8 @@ H3Env *h3_env_create_scenario(const char *toml, size_t len, uint64_t seed, uint3
 void h3_env_destroy(H3Env *env);
 H3Env *h3_env_fork(const H3Env *env); /* trusted tooling: the full state */
 int32_t h3_env_reset(H3Env *env, uint64_t seed);
+/* v34: re-seeds the battle's stream (a world's simulation draws its own rolls). */
+int32_t h3_env_reseed(H3Env *env, uint64_t seed);
 int32_t h3_env_to_move(const H3Env *env);
 int32_t h3_env_legal_mask(H3Env *env, int32_t actor, uint8_t *out, size_t len);
 int32_t h3_env_spell_mask(H3Env *env, int32_t actor, uint32_t entry, uint8_t *out, size_t len);
@@ -209,6 +214,11 @@ int32_t h3_batch_scenario_info(const H3Batch *batch, uint32_t index, H3ScenarioI
 uint32_t h3_encounters_version(void);
 /* v32 (E06 T7): the behaviour version of H3_SEAT_SYSTEM's policy (ADR-0027 point 12). */
 uint32_t h3_system_policy_version(void);
+/* v34 (E06 T8): a world of env `env`'s battle for side `viewer` from `seed`, a new single env
+ * (h3_env_destroy it): the other side's hero guessed by the env's encounter distribution, its
+ * hidden spell obstacles and a drawn spell drawn again, the stream re-seeded. NULL for a null or
+ * not reset batch, an env past it or not playing, or another viewer. */
+H3Env *h3_batch_determinize(const H3Batch *batch, uint32_t env, int32_t viewer, uint64_t seed);
 
 #ifdef __cplusplus
 }

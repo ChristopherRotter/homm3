@@ -811,3 +811,39 @@ fn bot_seats_play_inside_the_call() {
     assert!(ended > 0);
     unsafe { h3_batch_destroy(b) };
 }
+
+/// v34 (E06 T8b): a world of an env's battle through the ABI is the Rust batch's
+/// (`BattleBatch::determinize`), a single env of its own; re-seeding moves its stream alone;
+/// refused arguments give null.
+#[test]
+fn a_world_through_the_abi_is_the_rust_batchs() {
+    let n = 4;
+    let b = create(&config(n, 0, 6, 400)).unwrap();
+    assert_eq!(add_encounters(b, 1, Some([0, 0, 1, 1, 0, 0])).0, H3_OK);
+    assert!(unsafe { h3_batch_determinize(b, 0, 0, 5) }.is_null());
+    let mut arrays = Arrays::new(n as usize);
+    let buffers = arrays.buffers();
+    assert_eq!(unsafe { h3_batch_reset(b, &buffers) }, H3_OK);
+    let h = unsafe { &*b };
+    for i in 0..n {
+        let viewer = i32::from(arrays.to_move[i as usize]);
+        let world = unsafe { h3_batch_determinize(b, i, viewer, 5) };
+        assert!(!world.is_null());
+        let rust = h
+            .batch
+            .determinize(i as usize, side(viewer).unwrap(), 5)
+            .unwrap();
+        let hash = unsafe { crate::h3_env_state_hash(world) };
+        assert_eq!(hash, rust.state_hash());
+        assert_eq!(unsafe { crate::h3_env_reseed(world, 9) }, H3_OK);
+        let mut reseeded = rust.fork();
+        reseeded.reseed(9);
+        assert_eq!(unsafe { crate::h3_env_state_hash(world) }, reseeded.state_hash());
+        unsafe { crate::h3_env_destroy(world) };
+    }
+    for (batch, env, viewer) in [(b, n, 0), (b, 0, 2), (std::ptr::null_mut(), 0, 0)] {
+        assert!(unsafe { h3_batch_determinize(batch, env, viewer, 5) }.is_null());
+    }
+    assert_eq!(unsafe { crate::h3_env_reseed(std::ptr::null_mut(), 9) }, H3_ERR_NULL);
+    unsafe { h3_batch_destroy(b) };
+}

@@ -300,6 +300,12 @@ impl BattleEnv {
         })
     }
 
+    /// Re-seeds the battle's stream (E06 T8: each of a world's simulations draws its own rolls;
+    /// [`BattleState::reseed`]).
+    pub fn reseed(&mut self, seed: u64) {
+        self.state.reseed(seed);
+    }
+
     /// Canonical hash of the battle state.
     pub fn state_hash(&self) -> u64 {
         self.state.state_hash()

@@ -207,6 +207,7 @@ _SIGNATURES = {
     "h3_env_destroy": (None, [_env]),
     "h3_env_fork": (_env, [_env]),
     "h3_env_reset": (c_int32, [_env, c_uint64]),
+    "h3_env_reseed": (c_int32, [_env, c_uint64]),
     "h3_env_to_move": (c_int32, [_env]),
     "h3_env_legal_mask": (c_int32, [_env, c_int32, _u8p, c_size_t]),
     "h3_env_spell_mask": (c_int32, [_env, c_int32, c_uint32, _u8p, c_size_t]),
@@ -236,6 +237,7 @@ _SIGNATURES = {
     "h3_batch_episode_seed": (c_uint64, [c_uint64, c_uint32, c_uint32]),
     "h3_batch_scenario_count": (c_uint32, [_batch]),
     "h3_batch_scenario_info": (c_int32, [_batch, c_uint32, POINTER(H3ScenarioInfo)]),
+    "h3_batch_determinize": (_env, [_batch, c_uint32, c_int32, c_uint64]),
 }
 
 

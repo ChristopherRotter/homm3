@@ -237,6 +237,22 @@ static int play_batch(Batched *out) {
         }
     }
     CHECK(seed[0] == h3_batch_episode_seed(9, 0, episode[0]));
+    /* v34: a world of each env's battle for the side to act, played on; refused arguments. */
+    for (int i = 0; i < BATCH; i++) {
+        if (to_move[i] < 0)
+            continue;
+        H3Env *world = h3_batch_determinize(batch, (uint32_t)i, to_move[i], 5);
+        CHECK(world != NULL && h3_env_to_move(world) == to_move[i]);
+        uint64_t before = h3_env_state_hash(world);
+        CHECK(h3_env_reseed(world, 6) == H3_OK && h3_env_state_hash(world) != before);
+        Played played;
+        CHECK(play(world, &played) == 0);
+        h3_env_destroy(world);
+    }
+    CHECK(h3_batch_determinize(batch, BATCH, 0, 5) == NULL);
+    CHECK(h3_batch_determinize(batch, 0, 2, 5) == NULL);
+    CHECK(h3_batch_determinize(NULL, 0, 0, 5) == NULL);
+    CHECK(h3_env_reseed(NULL, 5) == H3_ERR_NULL);
     free(obs);
     free(final_obs);
     free(preview);

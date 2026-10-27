@@ -15,6 +15,7 @@ import numpy as np
 
 from . import _ffi
 from ._ffi import H3Error
+from .tools import Env
 
 #: Seat names for `add_scenario` (`H3_SEAT_*`).
 SEATS = {
@@ -288,6 +289,17 @@ class BattleBatch:
     def reset(self) -> None:
         """Starts every env's first episode (a later reset replays the same episodes)."""
         self._check(self._lib.h3_batch_reset(self._live(), byref(self._buffers)))
+
+    def determinize(self, env: int, viewer: int, seed: int) -> Env:
+        """A world of env `env`'s battle for side `viewer` from `seed` (C ABI v34, E06 T8;
+        ADR-0025 point 12a): a single env whose battle is the env's with everything `viewer` may
+        not know replaced (the other side's hero guessed by the env's encounter distribution, its
+        hidden obstacles and a drawn spell drawn again, the stream re-seeded): a search agent's
+        to fork, step and observe."""
+        handle = self._lib.h3_batch_determinize(self._live(), env, viewer, seed)
+        if not handle:
+            raise H3Error(_ffi.ERR_ARGUMENT, f"no world of env {env} for side {viewer}")
+        return Env(handle)
 
     def spell_mask(self, entries: np.ndarray) -> np.ndarray:
         """[N, `spell_count`]: each env's legal spells after choosing `entries` ("0 only" for an
