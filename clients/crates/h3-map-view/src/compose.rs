@@ -12,7 +12,6 @@
 //! runs skipped (`h3_render::blit`). A DEF's palette is cycled once per scene
 //! (design §1.6).
 
-use alloc::boxed::Box;
 use alloc::collections::BTreeMap;
 use alloc::format;
 use alloc::string::String;
@@ -21,7 +20,7 @@ use core::fmt;
 
 use h3_assets::def::Frame;
 use h3_assets::palette::{Palette, Rgb};
-use h3_assets::pcx::{IndexedImage, Pcx};
+use h3_assets::pcx::Pcx;
 use h3_render::blit::{Drawer, Placement, draw_frame, draw_image};
 use h3_render::palette::{ScreenPalette, with_player_colours};
 use h3_render::screen::{PixelFormat, Screen};
@@ -59,7 +58,10 @@ impl fmt::Display for ComposeError {
 pub fn compose(scene: &Scene, batch: &Batch, frame: [u32; 2]) -> Result<Screen, ComposeError> {
     let [width, height] = frame;
     let mut screen = Screen::new(width, height, FORMAT).ok_or(ComposeError::Frame(frame))?;
-    let mut palettes: BTreeMap<String, ScreenPalette> = BTreeMap::new();
+    // Each DEF's palette cycled once, by its name as the scene spells it (one name in two
+    // spellings only cycles twice), and the flag palette's colours once (E24 M2 T4b3).
+    let mut palettes: BTreeMap<&str, ScreenPalette> = BTreeMap::new();
+    let mut flag_colours = None;
     for item in &scene.draws {
         match item {
             Draw::Frame {
@@ -73,7 +75,7 @@ pub fn compose(scene: &Scene, batch: &Batch, frame: [u32; 2]) -> Result<Screen, 
                 let players = batch
                     .palette(players)
                     .ok_or_else(|| ComposeError::Missing(players.clone()))?;
-                draw_image(&mut screen, &in_colours(image, players, *viewer), 0, 0);
+                frame_picture(&mut screen, image, players, *viewer);
             }
             Draw::Piece {
                 pass,
@@ -89,7 +91,7 @@ pub fn compose(scene: &Scene, batch: &Batch, frame: [u32; 2]) -> Result<Screen, 
             } => {
                 let (sprite, f) = frame_of(batch, def, *group, *frame)?;
                 let palette = palettes
-                    .entry(def.to_ascii_uppercase())
+                    .entry(def.as_str())
                     .or_insert_with(|| cycled(sprite, def, &scene.cycles));
                 let at = Place {
                     x: *x,
@@ -99,7 +101,7 @@ pub fn compose(scene: &Scene, batch: &Batch, frame: [u32; 2]) -> Result<Screen, 
                 };
                 match pass {
                     Pass::Flat | Pass::Body => {
-                        let colour = flag_colour(batch, &scene.flags, *flag)?;
+                        let colour = flag_colour(batch, &scene.flags, *flag, &mut flag_colours)?;
                         draw::flagged(&mut screen, f, palette, at, *clip, colour);
                     }
                     Pass::Shadow => draw::shadow_pass(&mut screen, f, at, *clip),
@@ -131,21 +133,34 @@ pub fn compose(scene: &Scene, batch: &Batch, frame: [u32; 2]) -> Result<Screen, 
 }
 
 /// The screen colour of entry `flag` of the flag palette `flags`, `None` without an entry or for
-/// a colour of 0, which the flagged drawer takes as none (0x47D0A0; design §2.9).
-fn flag_colour(batch: &Batch, flags: &str, flag: Option<u8>) -> Result<Option<u16>, ComposeError> {
+/// a colour of 0, which the flagged drawer takes as none (0x47D0A0; design §2.9); the palette's
+/// colours worked out once a scene, in `colours`.
+fn flag_colour(
+    batch: &Batch,
+    flags: &str,
+    flag: Option<u8>,
+    colours: &mut Option<ScreenPalette>,
+) -> Result<Option<u16>, ComposeError> {
     let Some(entry) = flag else {
         return Ok(None);
     };
-    let palette = batch
-        .palette(flags)
-        .ok_or_else(|| ComposeError::Missing(String::from(flags)))?;
-    let colour = ScreenPalette::new(palette, FORMAT).get(entry);
+    let palette = match colours.take() {
+        Some(palette) => palette,
+        None => {
+            let palette = batch
+                .palette(flags)
+                .ok_or_else(|| ComposeError::Missing(String::from(flags)))?;
+            ScreenPalette::new(palette, FORMAT)
+        }
+    };
+    let colour = colours.insert(palette).get(entry);
     Ok((colour != 0).then_some(colour))
 }
 
-/// A picture in a viewer's colours: an 8-bit one's entries 224–255 its 32 colours of the players'
-/// palette (from entry 32 × the colour); a 24-bit one has no palette and is kept.
-fn in_colours(image: &Pcx, players: &Palette, viewer: u8) -> Pcx {
+/// The frame's picture drawn opaque at the screen's top-left corner in a viewer's colours: an
+/// 8-bit one's entries 224–255 its 32 colours of the players' palette (from entry 32 × the
+/// colour), row by row with no copy of it; a 24-bit one has no palette and is drawn as it is.
+fn frame_picture(screen: &mut Screen, image: &Pcx, players: &Palette, viewer: u8) {
     match image {
         Pcx::Indexed(indexed) => {
             let colours: Vec<Rgb> = players
@@ -155,12 +170,21 @@ fn in_colours(image: &Pcx, players: &Palette, viewer: u8) -> Pcx {
                 .take(32)
                 .copied()
                 .collect();
-            Pcx::Indexed(Box::new(IndexedImage {
-                palette: with_player_colours(&indexed.palette, &colours),
-                ..(**indexed).clone()
-            }))
+            let palette =
+                ScreenPalette::new(&with_player_colours(&indexed.palette, &colours), FORMAT);
+            let width = usize::try_from(screen.width()).unwrap_or(0).max(1);
+            let from = usize::try_from(indexed.width).unwrap_or(0).max(1);
+            for (row, line) in screen
+                .pixels_mut()
+                .chunks_mut(width)
+                .zip(indexed.pixels.chunks(from))
+            {
+                for (p, &index) in row.iter_mut().zip(line) {
+                    *p = palette.get(index);
+                }
+            }
         }
-        Pcx::Rgb(_) => image.clone(),
+        Pcx::Rgb(_) => draw_image(screen, image, 0, 0),
     }
 }
 

@@ -187,6 +187,12 @@ impl Screen {
         &self.pixels
     }
 
+    /// Every pixel for writing, row-major, top row first: for a drawer that walks the rows itself
+    /// (the adventure map's, E24 M2 T4b3).
+    pub fn pixels_mut(&mut self) -> &mut [u16] {
+        &mut self.pixels
+    }
+
     /// The pixel at `(x, y)`, if on the screen.
     #[must_use]
     pub fn pixel(&self, x: i64, y: i64) -> Option<u16> {
@@ -360,5 +366,13 @@ mod tests {
         *s.pixel_mut(2, 0).unwrap() = 0x0841;
         // As the PNG widens: each channel's bits repeated downwards.
         assert_eq!(s.xrgb(), [0x00FF_FFFF, 0x00FF_0000, 0x0008_0808]);
+    }
+
+    #[test]
+    fn the_pixels_are_written_row_by_row() {
+        let mut s = Screen::new(3, 2, PixelFormat::RGB565).unwrap();
+        s.pixels_mut()[4] = 9;
+        assert_eq!(s.pixel(1, 1), Some(9));
+        assert_eq!(s.pixels().iter().filter(|&&p| p != 0).count(), 1);
     }
 }
