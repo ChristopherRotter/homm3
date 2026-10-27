@@ -664,7 +664,7 @@ numeric  = "float"
 id       = "HER-EXP-001"
 title    = "The experience a hero gains, grown by Learning"
 context  = "heroes"
-status   = "implemented"
+status   = "verified"
 summary  = "Experience a hero gains (increment 3: a battle's, GAM-BAT-002) is grown by the sum of its experience_gain effects (Learning 5/10/15 %, a Learning specialist's grown by 5 % of itself per level, as HER-BAT-004's growth), rounded down, at most 2^32 - 1. Under quirk Q-0005 the original's getter and product: trunc((1 + f32(r x (1 + 0.05 x level))) x f32(points)) in its x87 arithmetic, so a specialist can gain one point less (level 2, Basic, 200 points: 210, not 211) and points above 2^24 are rounded to single precision even without Learning. E08 T19a2a: `h3_heroes::gained_experience`."
 numeric  = "float"
 quirks   = ["Q-0005"]
@@ -684,6 +684,12 @@ quirks   = ["Q-0005"]
   [[rule.source]]
   kind       = "observation"
   ref        = "E04a batch 1b R5 (E04a-log.md; survey E08-battles.md §8): 550 experience with Expert Learning gave floor(550 x 1.15) = 632"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-7a.md E7-4 (stamp 48a36c8c, the capture harness, Complete 4.0 Heroes3.exe under Wine, hot seat, Easy, 2026-10-27; scored in E08 T58, survey E08-rewards.md section 15): a hero with Basic Learning and no Learning specialty took 525, 1 050 and 1 575 experience from chests of 1 000, 1 500 and 2 000 gold and 1 050 from a Learning Stone: each gain (500, 1 000, 1 500, 1 000) grown by 5 %, through the same getter as a battle's (survey E08-rewards.md sections 2.2 and 6.4)"
+  retrieved  = "2026-10-27"
   confidence = "high"
 
 [[rule]]
@@ -932,7 +938,7 @@ numeric  = "integer"
 id       = "HER-CHG-002"
 title    = "Where a received artifact goes"
 context  = "heroes"
-status   = "implemented"
+status   = "verified"
 summary  = "A hero that receives an artifact wears it at the first position that takes it: the lowest empty position of its slot when, with it there, HER-ART-001 holds (each slot it locks keeps a free position); else it goes to the end of the backpack if its slot's artifacts may be carried (HER-ART-002: not the war machines, the Catapult or the spell book) and the backpack holds fewer than the ruleset's backpack size (64); else there is no room. The same first position places a hero's spell book and war machines at a game's start, an assembled combination and a disassembled combination's parts (HER-ART-006). Worn, it is equipped: Titan's Thunder adds a Spell Book (HER-ART-007, E08 T49b). The original's question (or a computer player's build) when a received part completes a combination is the assembly offered as a command (HER-ART-006; E08 T50/T51, E10). E08 T19a2a: `h3_heroes::check_change`, `apply_change`; T49a: by position, `h3_heroes::first_position`."
 numeric  = "integer"
 
@@ -947,6 +953,12 @@ numeric  = "integer"
   url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/entities/artifact/ArtifactUtils.cpp#L91-L112"
   retrieved  = "2026-10-03"
   confidence = "medium"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-7a.md E7-1 and E7-2 (stamp 48a36c8c, the capture harness, Complete 4.0 Heroes3.exe under Wine, hot seat, Easy, 2026-10-27; scored in E08 T58, survey E08-rewards.md section 15, D-30): a hero wearing nothing took a picked-up Centaurs Axe into the right hand (position 3), then a Spell Scroll into misc 1 (position 9), the backpack empty; E7-1's hero the axe of a guarded pile after the battle into the right hand. The wiki's \"put in the hero's backpack\" contradicted"
+  retrieved  = "2026-10-27"
+  confidence = "high"
 
 [[rule]]
 id       = "HER-ART-004"

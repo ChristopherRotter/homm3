@@ -312,6 +312,12 @@ numeric  = "integer"
   retrieved  = "2026-10-22"
   confidence = "high"
 
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-7b.md E7-23 (stamp 76fe96bd, the capture harness, Complete 4.0 Heroes3.exe under Wine, hot seat, Easy, 2026-10-27; scored in E08 T58, survey E08-rewards.md section 15): a hero of radius 5 clicking (14, 30) and (15, 30), 6 and 7 tiles east of it and unexplored, got no path either time; E08 T57's second E7a run found no path to chests and Corpses beyond the explored area (E08-log.md, T57)"
+  retrieved  = "2026-10-27"
+  confidence = "high"
+
 [[rule]]
 id       = "ADV-MOV-009"
 title    = "Flying"
