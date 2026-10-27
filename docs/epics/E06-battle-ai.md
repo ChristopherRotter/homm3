@@ -1,6 +1,6 @@
 # E06 — Battle AI v1 and the local training pipeline v0
 
-Status: **in progress**, refined 2026-10-20 (AI-Q8); increments 1 to 7 done (the last, the search, closed 2026-10-27, negative); at its checkpoint the user revised decision 7's targets to the evidence and chose the closure: increment 8, T9, with `t7-1` as the battle AI v1; a stronger agent is E25's · Lane: **ai** · Follows E05 (closed
+Status: **in progress**, refined 2026-10-20 (AI-Q8); increments 1 to 7 done (the last, the search, closed 2026-10-27; its measurement inconclusive, T9b); at its checkpoint the user revised decision 7's targets to the evidence and chose the closure: increment 8, T9, with `t7-1` as the battle AI v1; a stronger agent is E25's · Lane: **ai** · Follows E05 (closed
 2026-10-20) · Runs beside E23 (the battle lane: the original's battle AI, the system actor's
 policy), whose neutral side opens E06's neutral share (decision 1)
 
@@ -25,6 +25,9 @@ on held-out encounters.
    targets** (decision 7). **Closed 2026-10-27** (the user, increment 7's checkpoint): the
    search over determinized worlds, measured at T8c, gained nothing over its network; expert
    iteration (T8d) not built, a search in Rust trained on its own choices is E25's candidate.
+   **T9b** (the user, 2026-10-27): T8c's verdict inconclusive, not negative (a terminal scored
+   ±1 against the value head's reward v1, escapes reachable below the root); measured again in
+   E25.
 3. **Compute: runs of a few hours** on the user's machine (GTX 1070, Ryzen 9 3900X), longer once
    required. The agent prepares configs and commands and reads the logs over the device link; the
    sandbox runs only short CPU checks.
@@ -123,31 +126,31 @@ new observation or action encoding, unless an increment's evidence asks for one 
 | 4 | 2026-10-23 | T5a–T5d | the entity network (parked), the truncation penalty |
 | 5 | 2026-10-23 | T7a–T7d | the system actor's seat, the neutral share, `t7-1` |
 | 6 | 2026-10-26 | T6b–T6e | the system actor as an opponent, the kill preview in the network (AI-Q7): both negative |
-| 7 | 2026-10-27 | T8a–T8c, T6f, T6g | the turn order as an input, the search over determinized worlds: both negative; T8d not built; with it T5's and T6's open parts (decision 7 revised) |
+| 7 | 2026-10-27 | T8a–T8c, T6f, T6g | the turn order as an input (negative), the search over determinized worlds (inconclusive, T9b); T8d not built; with it T5's and T6's open parts (decision 7 revised) |
 
 **Increment 8, T9 the closure** (refined 2026-10-27, the user at increment 7's checkpoint: E06
 closes with `t7-1` as the battle AI v1, decision 7 revised; the pattern E05's T9, `E05-log.md`):
 
-- [ ] **T9a The audit** (the sandbox) — exit criteria 1 to 5 against the code, the tests and
-  the committed records (5 on `t7-1`'s record and ladder, decision 7 as revised); E06's
-  leftovers sorted by destination (E25, encounters v2, E13, another lane's inbox) or dropped as
-  done: T5's open parts (the mana-price run `t5-4`, the batch size and threads, the observations
-  in place), the QUEUE's candidates kept, the AI queue's inbox (AI-STUB-1 went to E25 at the
-  checkpoint); `python/README.md` and the records' README current (the search, `[network]
-  order` and `preview`, the probes).
-- [ ] **T9b The independent review** (the sandbox) — fresh read-only reviewers, one slice each,
-  at most three: the trainer (`h3env.train`: the resumable state, the gate, the league, the
-  ladder); the search and its worlds (`h3env.search`, `h3-sim`'s and `h3-ffi`'s part of T8b);
-  the batch's additions since E05 (C ABI v31 to v34: the identity read-back, the system actor's
-  seat, the preview, observation v22). Each finding with a failure path, verified one by one,
-  then fixed.
-- [ ] **T9c The verifies** (exit criterion 6; the user's machine, a script and its logs over
-  the device link) — `cargo xtask verify --with-original-data` and the Python tests (`uv run
-  --group train pytest`) on Windows; on Linux CI's full verify and, with the user's files
-  staged in a sandbox, `--with-original-data`.
-- [ ] **T9d The closure** — `shared/e06-closure` first (BACKLOG: E06 done;
-  `docs/07-simulation-and-ai.md`: the training pipeline as built, beside §1.1; ADR-0026's
-  working-detail line); the design note at closure (E05's way, its text kept in `E06-log.md`
+- [x] **T9a The audit** (the sandbox) — done 2026-10-27 (`E06-log.md`): exit criteria 1 to 5
+  met (5's neutral comparison spans the system actor's `POLICY_VERSION` 18 and 19: T9c plays
+  `t7-1`'s ladder again); the leftovers sorted in the AI queue's inbox (E25, encounters v2, E13,
+  the adventure env); the Python READMEs current.
+- [x] **T9b The independent review** (the sandbox) — done 2026-10-27 (`E06-log.md`): three
+  reviewers (the trainer; the search and its worlds; the batch since E05), 14 findings verified;
+  fixed: a refused checkpoint's files, a refused `best.pt`, one-sample minibatches, escapes in
+  the search's tree, a world of the side not to move, the system actor's retreat in a batch, the
+  distribution's data pinned to its version; the bots' tables regenerated (the adventure hash).
+  The user: T8c inconclusive and a terminal by reward v1 E25's, the world's three gaps to
+  AI-STUB-1 (E25).
+- [ ] **T9c The verifies** (exit criterion 6; the user's machine, a script whose summary and
+  logs the user uploads) — `cargo xtask verify --with-original-data` and the Python tests (`uv
+  run --group train pytest`) on Windows; on Linux CI's full verify and the Python tests in the
+  sandbox (done at T9b; the user, 2026-10-27: no Linux run with the original data). With them
+  `t7-1`'s final ladder on today's engine (T9a).
+- [ ] **T9d The closure** — `shared/e06-closure` first (BACKLOG: E06 done, its E25 row and
+  note on T8c, inconclusive; `docs/07-simulation-and-ai.md`: the training pipeline as built,
+  beside §1.1; ADR-0026's working-detail line; ADR-0025 point 12a: AI-STUB-1's gaps, a world
+  for the side to move only, T9b); the design note at closure (E05's way, its text kept in `E06-log.md`
   and the references repointed, or kept as a file: decided then); the epic file done; the
   lane's HANDOFF and QUEUE.
 
@@ -164,14 +167,16 @@ closes with `t7-1` as the battle AI v1, decision 7 revised; the pattern E05's T9
    E23's neutral side exists, the neutral target (revised 2026-10-27: it beats every heuristic
    bot in both).
 6. `cargo xtask verify` passes on Linux and Windows, including `--with-original-data`; the Python
-   tests pass on both (a lane command).
+   tests pass on both (a lane command). **Amended 2026-10-27** (the user, T9b): on Linux CI's
+   full verify (no original data, ADR-0009), `--with-original-data` on Windows alone.
 
 ## Risks
 
 - **The targets may be out of reach for PPO on v21:** 0.75 against Greedy from today's 0.479.
   The entity network and longer runs first; search (T8) is the fallback; the targets can be
   revised at a checkpoint with evidence. **Realized** (2026-10-27): PPO plateaued at Greedy's
-  level and the search gained nothing; decision 7 revised, the gap E25's.
+  level and the search gained nothing (T9b: inconclusive, measured again in E25); decision 7
+  revised, the gap E25's.
 - **E23's timing:** the neutral share waits for its T2 to T4, the neutral target's last clause
   for its T5 and T6.
 - **The GTX 1070:** 8 GB, no tensor cores; the network's passes already dominate the run. A

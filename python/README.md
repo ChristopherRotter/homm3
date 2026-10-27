@@ -106,7 +106,14 @@ cuda` on the GPU), and `--mermaid` writes the table with the data flow as a Merm
 the engine's turn order (`h3_battle::turn_order`: the rest of the round, its side's, the next
 round) after v21's layout; `[network] order = true` (the MLP's) has the trunk read them, else
 it reads v21's prefix, as every network saved before v22 does (`configs/e06-order.toml`:
-`t7-1`'s settings with the order, the A/B run `order-1`).
+`t7-1`'s settings with the order, the A/B run `order-1`). No measurable gain (E06 T6g): off by
+default.
+
+**The kill preview** (E06 T6d, AI-Q7 (b), design §13): `[network] preview = true` (the MLP's)
+has the entry head read each legal attack's and shot's previewed kills (`BattleBatch(…,
+preview=True)`, above) as a bias of those entries alone; every batch the network plays then
+writes the preview (`configs/e06-t6d.toml`, the A/B run `t6d-1`). No measurable gain (E06 T6e,
+AI-Q7 closed): off by default.
 
 **A battle cut at `env.max_steps`** (2 000) costs each learning side `ppo.truncation_penalty`
 (1.0) and ends its trajectory there (E06 T5c; reward v1 lies in about (−1, 1), so stalling to
@@ -121,7 +128,10 @@ checked against the held-out sets' (a hit stops the run).
 **The neutral share** (E06 T7c, design §12): `env.kinds` (six weights, `H3_ENCOUNTER_*` order)
 draws the neutral kinds the defaults leave at 0 (`configs/e06-t7.toml`: the census's shares,
 82.5 % neutral). There the system actor defends inside the batch, so only the learner's attacker
-trains and the league draws no member.
+trains and the league draws no member. `[league] system_share` (E06 T6b, design §12) has the
+system actor play a share of the player kinds' episodes too: a uniformly drawn side inside the
+batch, the learner the other, no member drawn (`configs/e06-t6b.toml`, the A/B run `t6b-1`: no
+measurable gain, 0 by default).
 
 **The league** (E06 T4a, ADR-0026 point 8, design §8; `h3env.train.league`): prioritized
 fictitious self-play over the learner's past. Its members are a snapshot of the learner every
@@ -177,7 +187,9 @@ reproducible from its record (the segments' seeds), not bitwise equal to an unin
 Older checkpoints (formats 1 and 2, before T4a's league) do not resume: start a new run
 `--init-from` their `best.pt`.
 On Windows a file another process holds open (a ladder reading `best.pt`) is kept as it was after
-five refused replaces, with a warning; the run goes on.
+five refused replaces, with a warning; the run goes on. A refused `best.pt` is written again at
+each checkpoint until it is; a refused `checkpoint.pt` keeps the retired snapshots' files it names
+until a checkpoint is written (E06 T9b).
 
 A checkpoint against Random, the baseline bots (E05 T7) and the system actor (E06 T7c), on a
 held-out set (E06 T3a): the report set v1 by default (500 battles per kind with a player on both
@@ -192,7 +204,18 @@ results.
 
 ```sh
 uv run --group train python -m h3env.train.ladder --checkpoint runs/t4-1/best.pt [--episodes 250]
+uv run --group train python -m h3env.train.inspect --checkpoint runs/t7-1/best.pt [--set neutral-v1]
 ```
+
+`h3env.train.inspect` (E06 T6a) is the behaviour analysis: the ladder's play against the system
+actor and Greedy (`--opponents`), each battle sorted by kind, side and outcome, and per group the
+decisions' mix, the hero's casts and mana, shooting, targeting against the engine's preview, the
+trades and who struck first (the module's documentation; `records/README.md` for the committed
+analyses).
+
+**The battle AI v1** is `t7-1`'s best (E06's closure, decision 7 as revised 2026-10-27: it beats
+every heuristic bot; `records/t7-1.json`, `records/README.md`'s lineage); its network stays on
+the user's machine.
 
 ## Search (E06 T8, design §14)
 
@@ -211,5 +234,8 @@ uv run --group train python -m h3env.search --report --best runs/t7-1/best.pt --
 `--report` plays the search and the sampled policy (unless `--no-sampled`) on the same episodes
 of a held-out set (`--set report-v1` or `neutral-v1`, `--per-kind` of its 500) and prints and
 writes their rates, values and the search's costs (decisions, simulations, fallbacks: a chosen
-action the true battle refuses, replaced by the network's own).
+action the true battle refuses, replaced by the network's own). Measured at E06 T8c with
+`order-1`'s network: no gain over the sampled policy (`records/search/`, `E06-log.md`), a verdict
+T9b made inconclusive (a terminal scored ±1, not reward v1; escapes below the root, fixed): E25
+measures again (ADR-0025 point 12a, AI-STUB-1).
 

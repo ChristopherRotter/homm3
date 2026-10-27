@@ -707,7 +707,9 @@ pub unsafe extern "C" fn h3_batch_scenario_info(
 /// `h3_env_destroy`) whose battle is the env's with everything `viewer` may not know replaced
 /// (the other side's hero guessed by the env's encounter distribution, its hidden obstacles and a
 /// drawn spell drawn again, the stream re-seeded), the agent's to fork, step and observe. Null
-/// for a null or not reset batch, an env past it or not playing, or another `viewer`.
+/// for a null or not reset batch, an env past it or not playing, or a `viewer` other than the
+/// env's side to move (E06 T9b: a world of the other side would hold its own hero as it is, which
+/// its opponent, the agent, may not know).
 ///
 /// # Safety
 /// `batch` must be null or a live handle not used concurrently.
@@ -723,9 +725,11 @@ pub unsafe extern "C" fn h3_batch_determinize(
         return std::ptr::null_mut();
     };
     let world = catch_unwind(AssertUnwindSafe(|| {
+        let acting = h.batch.env(env as usize).and_then(|e| e.to_move());
         h.batch
             .determinize(env as usize, viewer, seed)
             .ok()
+            .filter(|_| acting == Some(viewer))
             .map(|w| Box::new(H3Env::new(w)))
     }));
     world

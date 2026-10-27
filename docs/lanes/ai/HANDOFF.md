@@ -8,17 +8,14 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 - **E05 closed 2026-10-20**: its record and design in `E05-log.md` (cited as §n), the
   environment as built in `docs/07-simulation-and-ai.md` §1.1.
 - **E06** (AI-Q8; `docs/epics/E06-battle-ai.md`, design `E06-design.md`, record `E06-log.md`,
-  closed increments in `E06-archive.md`): increments 1 to 7 done; the last two levers (the turn
-  order, `order-1`; the search, T8c) negative. At increment 7's checkpoint (2026-10-27) the user
-  revised decision 7's targets to "beat every heuristic bot", which `t7-1` meets (0.828, 0.551,
-  0.528 at positive values; the neutral set +0.245 above Greedy's +0.223), and chose the
-  closure: `t7-1` is the battle AI v1, the system actor (0.374 against it) E25's target (Battle
-  AI v2, a sketch; AI-STUB-1 moved there). **Next: increment 8, T9a the audit** (QUEUE; then
-  T9b the review, T9c the verifies on the user's machine, T9d the closure).
-- **Open pull requests:** `shared/e06-search-docs` (ADR-0025 point 12a, the env doc's v22 and
-  C ABI v33/v34, BACKLOG's E06 row and E25; merges first) and the lane's
-  (`claude/beautiful-wozniak-zjmkkw`: the checkpoint, increment 8 refined): watch both to
-  their merge.
+  closed increments in `E06-archive.md`): increments 1 to 7 done; `t7-1` is the battle AI v1
+  (decision 7 as revised 2026-10-27, met), the system actor E25's target. Increment 8 (T9, the
+  closure): T9a the audit and T9b the review done 2026-10-27 (T8c's search verdict inconclusive,
+  measured again in E25; the world's gaps in AI-STUB-1). **Next: T9c on the user's machine**
+  (Windows only, the user: exit criterion 6 amended; the script in QUEUE's T9c, after this
+  lane's pull request merged), then T9d, the closure (`shared/e06-closure` first).
+- **Open pull requests:** the lane's (`claude/kind-bohr-wfa9oq`: T9a, T9b): watch it to its
+  merge.
 - **Versions:** battle action encoding v13, observation encoding v22, replay format v31
   (CLT-Q4/Q6), the adventure env's action encoding v4 (E08 T45), C ABI v34 (T6f and T8b: the turn
   order, the worlds) (`docs/08-work-process.md`, "Versions"). Next ids: AI-Q10, AI-QUIRK-1,
@@ -30,6 +27,15 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 Moved to `TRAPS.md`, in three groups: **Ownership** (cross-lane encodings and replays, what `--scope ai` skips), **Environment** (what an agent sees, the batch, the pool's `unsafe`, benchmarks, the census, the encounter sampler, bots' tables) and **Python** (the trainer's resumable state, uv, PyTorch's pinned build, the sandbox's network).
 
 ## Recent sessions
+
+### 2026-10-27 — T9a the audit, T9b the independent review
+
+- T9a: exit criteria 1 to 5 met (5's neutral comparison spans `POLICY_VERSION` 18 and 19: T9c
+  plays `t7-1` again); the inbox sorted by destination. T9b: three reviewers, 14 findings, the
+  fixable fixed with tests (trainer files on a refused replace, NaN minibatches, the search's
+  escapes, a world of the side not to move, the system actor's retreat, the encounter data
+  pinned); the bots' tables regenerated (adventure hash). The user: T8c inconclusive (a terminal
+  scored ±1), E25 measures again; the world's gaps to AI-STUB-1; T9c on Windows only.
 
 ### 2026-10-27 — Increment 7's checkpoint: E06 to its closure, the targets revised
 
@@ -45,11 +51,3 @@ Moved to `TRAPS.md`, in three groups: **Ownership** (cross-lane encodings and re
   the search played as the sampled policy (σ's fixed scale; fixed: rescaled per node, as
   `mctx`), then no gain at N 16 and 64 against the system actor nor at N 64 on the neutral set.
   Put to the user: the checkpoint (E06's end, T8d, a diagnostic) and AI-STUB-1.
-
-### 2026-10-26 to 27 — T6f, the turn order as an input; T8b, the search's plumbing
-
-- The user (before leaving): the turn order first, as observation v22 with the engine's order
-  (`h3_battle::turn_order`, `cross-lane`), then T8b, one pull request with one C ABI bump (v34),
-  and a 20 M A/B against `t7-1` prepared (`configs/e06-order.toml`). Built both (E06-log T6f,
-  T8b); `h3env.search` also has T8c's `--report`. One gap against ADR-0025 point 12a
-  registered (AI-STUB-1); the battle lane's inbox names the two additions to `h3-battle`.

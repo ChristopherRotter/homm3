@@ -1131,3 +1131,100 @@ entry only where a task builds on it.
 - **Increment 8** (the epic file): T9a the audit, T9b the independent review (at most three
   reviewers), T9c the verifies (the user's machine, exit criterion 6), T9d the closure (a
   `shared/e06-closure` first), E05's T9 as the pattern.
+
+## T9a — The audit (2026-10-27)
+
+- **Exit criteria 1 to 5 against the code, tests and records** (on `master` at 73a0bfe):
+  - **1 met.** Every run the epic's results cite has its record in `python/records/` (`t3b-1`,
+    `t4-1`, `t4-2`, `t5-1` to `t5-3`, `t6b-1`, `t6d-1`, `t7-1`, `order-1`; `t5-4` was prepared,
+    never run), each with its config, commit (none dirty), C ABI version, rulesets, metrics;
+    `test_every_committed_record_and_config_is_valid` checks them and the configs.
+  - **2 met.** `test_a_stopped_run_resumes_to_its_budget`, `…_killed_hard_resumes_from_its_last_checkpoint`,
+    a gate and a ladder cut short (`…_runs_first_at_the_resume`), the league's files, the entity,
+    preview and order runs' resumes (`test_train.py`); `test_run.py`'s resume rules.
+  - **3 met.** The SPRT (`test_gate.py`: bounds, error rates, a network against itself not
+    promoted) promotes by itself in every run; every promoted network has its ladder in its
+    record (`t3b-1` to `order-1`: one per promotion, the final best's again at the end; `t5-1`,
+    stopped, both of its).
+  - **4 met.** `t7-1`'s league (`self_play` 0.5, 16 members, 4 live, PFSP power 2) trained it;
+    `test_the_league_draws_scores_and_retires`, `…_retires_its_most_beaten_and_a_resume_keeps_its_files`.
+  - **5 met** (decision 7 as revised): `t7-1`'s final ladder (500 per kind) 0.828, 0.551, 0.528
+    at +0.273, +0.029, +0.010; the neutral set +0.245 against the bots' table's Greedy +0.2239,
+    Aggressor +0.2170, Random −0.0502 (the epic's +0.223 and +0.216: truncated, not rounded).
+    **One caveat:** `t7-1` played the system actor at `POLICY_VERSION` 18 (its record), the bots'
+    tables are at 19 (E23 T7, 2026-10-23: the neutral side's neighbour table), so the neutral
+    comparison is not on one engine. It holds whichever: the three A/B runs at 19 on `t7-1`'s
+    settings reach +0.245, +0.253, +0.250 (`t6b-1`, `t6d-1`, `order-1`), and `t7-1`'s own
+    analysis on the sandbox's CPU (`inspect/t7-1-neutral-v1.json`) +0.236, all above Greedy's.
+    The player kinds' rows do not move with the policy (the bots' tables' values stayed the same
+    across the core ruleset's later hashes). T9c plays `t7-1`'s final ladder again on today's
+    engine (its network is on the user's machine).
+- **The leftovers sorted** (the AI queue's inbox, by destination): **E25** the increment-7
+  candidates (`[network] order` and `preview`, shaping, the 60 M run, `t5-4`), the search's
+  (AI-STUB-1, T8c's Greedy rows, a repetition rule for a search agent, the oracle harness), T5's
+  open parts (the batch size and threads, the observations in place) with the performance notes,
+  `inspect`'s turret shots; **encounters v2** A3's growth too (meant for E23, closed without it);
+  **E13** unchanged; **the adventure env** T55b's typed answers (T58's withdrawal of A-23 folded
+  in); **any time** the viewer-less `encode`, `tools.Env` after a panic. To `QUEUE-ARCHIVE.md`
+  as done or informational: E08 T45, T51b, T52, T58, E23 T4c and T6's last part, the turret
+  preview, the baselines and AI-Q7.
+- **The Python READMEs:** `python/README.md` gained the kill preview in the network, the system
+  actor's share, the behaviour analysis, the battle AI v1 and the search's outcome;
+  `records/README.md`'s lineage `t7-1` as the battle AI v1 and the three A/B runs.
+
+## T9b — The independent review (2026-10-27)
+
+Three fresh read-only reviewers, one slice each, run one after another; every finding with a
+failure path, verified against the code by the agent, then fixed with a test that fails before
+the fix, or kept with its reason.
+
+- **r1, the trainer** (`h3env.train`; 4 findings, 4 doubts, 7 test gaps): **fixed:** on Windows a
+  refused `checkpoint.pt` replace (another process holding it, `run.atomic_write`) still deleted
+  the retired snapshots' files the old checkpoint names, so `--resume` failed in `restore`; a
+  promotion's refused `best.pt` was never written again (a user's upload of `best.pt` then the
+  network before); an update of fewer than twice `minibatches` samples normalized a single
+  advantage (NaN weights: `--set env.envs=1`). `save` returns whether it wrote, the files go
+  after a written checkpoint, a refused best is written at each checkpoint until it is,
+  minibatches hold two samples at least (`test_a_refused_replace_keeps_what_the_old_checkpoint_names`,
+  `test_an_update_of_fewer_samples_than_minibatches_stays_finite`). **Kept:** the kill preview
+  stored in half precision (kills above 2 048 round, the first epoch's ratio off by that; the
+  preview is off by default, T6e); the record's ladder table without `skipped` and `games`
+  (`metrics.jsonl` keeps them; every set's games are fixed). Doubts not traced: promotion files
+  ahead of a checkpoint and a resume that rejects; a gate looping on a skipped episode (both
+  seats external: none known); a very large `pfsp_power` underflowing every weight. Sound: the
+  resumable state, the SPRT, the league, PPO's masks, GAE and seats, the held-out check.
+- **r2, the search and its worlds** (`h3env.search`, T8b's part of `h3-battle`, `h3-sim`,
+  `h3-ffi`; 7 findings, 4 doubts): **fixed:** below the root a node took its entries from the
+  world's single-env mask, which keeps Retreat and Surrender (ADR-0025 point 7 masks them in the
+  batch): an opponent's node could retreat and give the viewer a win (masked now,
+  `test_no_node_takes_an_escape_a_worlds_own_mask_allows`); `h3_batch_determinize` made a world
+  for either side, though a world of the side not to move holds that side's own hero as it is
+  (refused now, as its documentation said; `h3.h`, the binding); the docstring's "reward v1 at a
+  terminal" and "Gumbel-perturbed cast heads at the root" (neither built: corrected).
+  **Kept, the user's decisions (2026-10-27):** a world's step scores a decided battle ±1 (a single
+  env's reward) where the value head learned reward v1 (about ±0.2 to 0.4), so a terminal inside
+  the horizon outweighs every leaf and, with the escapes, distorted T8c's search: **T8c's verdict
+  is inconclusive**, not negative; a terminal scored by reward v1 and T8c again are E25's first
+  step (the AI queue's "For E25"; E06 closes on `t7-1`, whose targets the search does not touch).
+  Three gaps of a world against ADR-0025 point 12a.2 (the other hero's morale and luck modifiers
+  kept, the magic limits recomputed with the guess, a commanded war machine automatic without a
+  guess) join AI-STUB-1 (E25); T9d's shared part amends point 12a's "one known gap". Doubts: a
+  world copies the env's step count; re-placed obstacles avoid every occupied hex; a past summon
+  the guessed book lacks; a failed `determinize` stops the evaluation. Sound: sequential halving,
+  Gumbel-top-k, completed Q, σ's rescaling, the backed-up signs, determinism, `reseed`, the hidden
+  obstacles cleared, the C ABI's checks.
+- **r3, the batch since E05** (C ABI v31 to v34; 3 findings, 3 doubts): **fixed:** a scenario
+  with retreat facts (a Tavern) let the system actor retreat inside a batch call, which point 7
+  rules out for every seat (the encounters leave them unset: training unaffected):
+  `Scenario::new` drops them, as it sets both sides human; a run's record names
+  `ENCOUNTERS_VERSION`, not the two data files the distribution is built from: a test pins their
+  bytes to the version (`encounter::tests::the_shipped_data_are_their_version`; TRAPS). **Kept:**
+  r1's half-precision preview again. Doubts: `play_internal` has no progress guard if the system
+  actor's command were refused; the record's commit is the Python tree's, the library names only
+  its ABI version (the AI queue's "Any time"); the turn order's side by owner, not controller (a
+  hypnotized stack). Sound: no thread-count dependence (threads 0 to 7, bit for bit), the pool,
+  the buffers' checks, the layouts (`h3.h`, Rust, `_ffi.py`), refusals leave state, the preview
+  rewritten every call, the turn order from the viewer's observation (`ORDER` 8 882 in both).
+- **The Python tests** (the lane command, `uv run --group train pytest` in the sandbox): two
+  failures before the fixes, the bots' tables' adventure hash stale since E08 T61 (the Python
+  tests are no CI gate): both regenerated, every number the same.

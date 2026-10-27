@@ -295,7 +295,7 @@ class BattleBatch:
         ADR-0025 point 12a): a single env whose battle is the env's with everything `viewer` may
         not know replaced (the other side's hero guessed by the env's encounter distribution, its
         hidden obstacles and a drawn spell drawn again, the stream re-seeded): a search agent's
-        to fork, step and observe."""
+        to fork, step and observe. Only for the env's side to move (`to_move`, E06 T9b)."""
         handle = self._lib.h3_batch_determinize(self._live(), env, viewer, seed)
         if not handle:
             raise H3Error(_ffi.ERR_ARGUMENT, f"no world of env {env} for side {viewer}")

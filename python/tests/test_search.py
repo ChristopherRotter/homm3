@@ -10,7 +10,7 @@ from h3env import BattleBatch, H3Error, _ffi
 
 torch = pytest.importorskip("torch")
 
-from h3env.search import Node, Searcher, considered_visits, search  # noqa: E402
+from h3env.search import Leaf, Node, Search, Searcher, considered_visits, search  # noqa: E402
 from h3env.train.evaluate import play  # noqa: E402
 from h3env.train.policy import Mlp  # noqa: E402
 
@@ -44,6 +44,8 @@ def test_a_world_shows_its_side_the_battle_and_holds_its_own_stream() -> None:
         world.close()
     with pytest.raises(H3Error, match="no world"):
         b.determinize(b.envs, 0, 5)
+    with pytest.raises(H3Error, match="no world"):
+        b.determinize(0, 1 - int(b.to_move[0]), 5)
     b.close()
 
 
@@ -112,6 +114,26 @@ def test_a_search_chooses_legal_actions_and_a_seed_gives_the_same() -> None:
         choices.append(seen)
         b.close()
     assert all(np.array_equal(a, b) for a, b in zip(*choices, strict=True))
+
+
+def test_no_node_takes_an_escape_a_worlds_own_mask_allows() -> None:
+    # A world is a single env, whose mask keeps Retreat and Surrender; the batch never allows
+    # them (ADR-0025 point 7), and neither does the search's tree (E06 T9b).
+    b = batch()
+    searcher = Searcher(network(b), simulations=2, worlds=1, k=4, rng=np.random.default_rng(1))
+    escapes = [_ffi.RETREAT, _ffi.SURRENDER]
+    leaves = []
+    for e in range(b.envs):
+        side = int(b.to_move[e])
+        world = b.determinize(e, side, 5)
+        leaves.append(Leaf(world, side, [], Search(e, side, [world]), root=True))
+    assert any(leaf.world.legal_mask(leaf.side)[escapes].any() for leaf in leaves)
+    with torch.no_grad():
+        searcher.expand(leaves)
+    for leaf in leaves:
+        assert not np.isin(leaf.search.root.actions[:, 0], escapes).any()
+        leaf.world.close()
+    b.close()
 
 
 def test_a_search_agent_plays_its_battles_to_the_end() -> None:

@@ -217,7 +217,8 @@ uint32_t h3_system_policy_version(void);
 /* v34 (E06 T8): a world of env `env`'s battle for side `viewer` from `seed`, a new single env
  * (h3_env_destroy it): the other side's hero guessed by the env's encounter distribution, its
  * hidden spell obstacles and a drawn spell drawn again, the stream re-seeded. NULL for a null or
- * not reset batch, an env past it or not playing, or another viewer. */
+ * not reset batch, an env past it or not playing, or a viewer other than the env's side to move
+ * (E06 T9b). */
 H3Env *h3_batch_determinize(const H3Batch *batch, uint32_t env, int32_t viewer, uint64_t seed);
 
 #ifdef __cplusplus

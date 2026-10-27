@@ -697,7 +697,8 @@ class Trainer:
         stats = {"policy_loss": 0.0, "value_loss": 0.0, "entropy": 0.0, "kl": 0.0, "clip": 0.0}
         steps = 0
         rng = np.random.default_rng(self.updates)
-        size = max(1, len(flat) // c.minibatches)
+        # Two samples at least: a single one's advantage has no spread (NaN, E06 T9b).
+        size = max(2, len(flat) // c.minibatches)
         for _ in range(c.epochs):
             order = rng.permutation(flat)
             for k in range(0, len(order) - size + 1, size):
@@ -752,8 +753,9 @@ class Trainer:
         }
 
 
-def save(path: Path, state: dict[str, Any]) -> None:
-    atomic_write(path, lambda f: torch.save(state, f))
+def save(path: Path, state: dict[str, Any]) -> bool:
+    """Whether `path` now holds `state` (`atomic_write`: Windows may refuse the replace)."""
+    return atomic_write(path, lambda f: torch.save(state, f))
 
 
 def identity(trainer: Trainer) -> dict:
@@ -862,8 +864,12 @@ def _go(trainer: Trainer, run: Run, stop: Stop | None, opening: dict) -> Trainer
     config = trainer.config
     stop = Stop() if stop is None else stop
     last_save = time.monotonic()
-    #: Retired snapshots' files, deleted after the next checkpoint (the last one names them).
+    #: Retired snapshots' files, deleted after the next checkpoint written (the last one names
+    #: them; a refused replace keeps the old one, E06 T9b).
     doomed: list[Path] = []
+    #: The promoted network whose `best.pt` replace was refused, written again at each
+    #: checkpoint until it is (E06 T9b).
+    stale_best: dict | None = None
 
     def counters() -> dict:
         return {
@@ -875,16 +881,19 @@ def _go(trainer: Trainer, run: Run, stop: Stop | None, opening: dict) -> Trainer
 
     def checkpoint(finished: bool = False) -> None:
         """The training state and then the record; the state names the metrics' length."""
-        nonlocal last_save
+        nonlocal last_save, stale_best
         if run.out is not None:
             state = trainer.state(
                 seconds=run.seconds(), metrics_length=run.sync(), finished=finished
             )
-            save(run.out / "checkpoint.pt", state)
+            saved = save(run.out / "checkpoint.pt", state)
             run.write_record()
-            for path in doomed:
-                path.unlink(missing_ok=True)
-            doomed.clear()
+            if saved:
+                for path in doomed:
+                    path.unlink(missing_ok=True)
+                doomed.clear()
+            if stale_best is not None and save(run.out / "best.pt", stale_best):
+                stale_best = None
         last_save = time.monotonic()
 
     def join(index: int | None = None) -> dict:
@@ -906,6 +915,7 @@ def _go(trainer: Trainer, run: Run, stop: Stop | None, opening: dict) -> Trainer
     def promote(how: str) -> None:
         """The learner becomes the next promoted network, the best and a league member; its
         ladder is pending."""
+        nonlocal stale_best
         index = trainer.promote()
         record = {"type": "promotion", "index": index, "how": how, **counters()}
         trainer.promoted.append({k: record[k] for k in ("index", "how", "samples", "update")})
@@ -915,7 +925,7 @@ def _go(trainer: Trainer, run: Run, stop: Stop | None, opening: dict) -> Trainer
             )
             (run.out / "promoted").mkdir(exist_ok=True)
             save(run.out / "promoted" / f"{index}.pt", network)
-            save(run.out / "best.pt", network)
+            stale_best = None if save(run.out / "best.pt", network) else network
         run.emit({**record, **join(index)})
         trainer.pending = {"kind": "ladder", "final": False}
 

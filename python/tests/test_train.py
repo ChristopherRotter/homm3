@@ -424,6 +424,54 @@ def test_the_league_retires_its_most_beaten_and_a_resume_keeps_its_files(tmp_pat
     assert check_record(record) == [] and len(record["gates"][-1]["league"]) == 2
 
 
+def test_a_refused_replace_keeps_what_the_old_checkpoint_names(tmp_path, monkeypatch) -> None:
+    # Windows refuses a replace while another process holds the file (`run.atomic_write`, E06
+    # T9b): once a checkpoint names a snapshot every later one is refused, so the old one stays
+    # with the retired snapshots' files it names and still resumes; the start's refused `best.pt`
+    # is written at the next checkpoint.
+    from h3env.train import ppo
+
+    real = ppo.save
+    kept: dict = {}
+
+    def refusing(path: Path, state: dict) -> bool:
+        if path.name == "best.pt" and "best" not in kept:
+            kept["best"] = True
+            assert not (tmp_path / "best.pt").exists()
+            return False
+        if path.name == "checkpoint.pt" and "named" in kept:
+            return False
+        saved = real(path, state)
+        members = state.get("league", {}).get("members", [])
+        if path.name == "checkpoint.pt" and any(m["kind"] == "snapshot" for m in members):
+            kept["named"] = list(members)
+        return saved
+
+    monkeypatch.setattr("h3env.train.ppo.save", refusing)
+    settings = dict(snapshot_every=1, max_members=2, retire_games=0, checkpoint_minutes=0)
+    trainer = train(Config(**SMALL, samples=4 * ONE_UPDATE, **settings), tmp_path)
+    named = {m["id"]: m["file"] for m in kept["named"]}
+    retired = {r["retired"] for r in _records(tmp_path) if r["type"] == "snapshot"}
+    assert retired & set(named), "a member the kept checkpoint names retires later"
+    assert all((tmp_path / f).exists() for f in named.values())
+    best = torch.load(tmp_path / "best.pt", weights_only=True)
+    assert best["index"] == trainer.lineage[-1][0]
+    monkeypatch.undo()
+    resumed = resume(tmp_path)
+    assert resumed.samples >= 4 * ONE_UPDATE
+
+
+def test_an_update_of_fewer_samples_than_minibatches_stays_finite() -> None:
+    # One env, a short rollout and many minibatches: every minibatch holds two samples at least
+    # (a single one's advantage has no spread: NaN weights before E06 T9b).
+    trainer = Trainer(Config(**{**SMALL, "envs": 1, "rollout": 8, "minibatches": 8}))
+    trainer.collect()
+    stats = trainer.update(trainer.config.lr)
+    assert 2 <= stats["update_samples"] < 2 * trainer.config.minibatches
+    assert all(torch.isfinite(p).all() for p in trainer.policy.parameters())
+    trainer.batch.close()
+
+
 #: A run that dies hard (SIGKILL; TerminateProcess on Windows) while it writes its fifth
 #: checkpoint, the one after its third update (`checkpoint_minutes` 0: one at every update; two
 #: around best #0's ladder before the first).

@@ -76,6 +76,24 @@ fn count<K: Ord>(values: impl IntoIterator<Item = K>) -> BTreeMap<K, usize> {
     counts
 }
 
+/// The shipped data and the version a run's record names move together (E06 T9b): a run names
+/// `ENCOUNTERS_VERSION`, not the files, so a change of either (the census run again, a number of
+/// the table) fails here until the version is decided (the held-out sets' episodes move) and the
+/// pin updated. FNV-1a over the files' bytes (LF on every platform, `.gitattributes`).
+#[test]
+fn the_shipped_data_are_their_version() {
+    let fnv = |text: &str| {
+        text.bytes().fold(0xcbf2_9ce4_8422_2325_u64, |h, b| {
+            (h ^ u64::from(b)).wrapping_mul(0x0100_0000_01b3)
+        })
+    };
+    assert_eq!(
+        (ENCOUNTERS_VERSION, fnv(ENCOUNTERS_V1), fnv(CENSUS_V1)),
+        (1, 0x9f04_385f_e774_d1b7, 0x573b_7498_2bee_08b8),
+        "the encounter distribution's data changed: decide ENCOUNTERS_VERSION, then update the pin"
+    );
+}
+
 #[test]
 fn the_shipped_files_parse() {
     let table = EncounterTable::v1();
