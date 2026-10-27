@@ -201,18 +201,7 @@ fn render(options: &Options) -> Result<PathBuf, String> {
             &files::templates(&archives)?,
         )?;
     }
-    // Each rectangle clamped to the map (E24 M1 T6b, the reviewer's R2-13: a huge one took long).
-    let last = i32::try_from(art.size)
-        .unwrap_or(i32::MAX)
-        .saturating_sub(1);
-    let on_map = |v: i32| v.clamp(0, last);
-    for &[x0, y0, x1, y1] in &options.hidden {
-        for y in on_map(y0.min(y1))..=on_map(y0.max(y1)) {
-            for x in on_map(x0.min(x1))..=on_map(x0.max(x1)) {
-                live.explored.set(x, y, options.view.z, false);
-            }
-        }
-    }
+    hide(&art, &mut live, options.view.z, &options.hidden);
     let mut shapes = files::load_shapes(&archives, &objects::pictures(&art, &live))?;
     let heroes: Vec<String> = tables
         .map
@@ -248,6 +237,23 @@ fn render(options: &Options) -> Result<PathBuf, String> {
     fs::write(&out, h3_render::png::encode(&screen))
         .map_err(|e| format!("{}: {e}", out.display()))?;
     Ok(out)
+}
+
+/// The tiles of the rectangles `hidden` (`[x0, y0, x1, y1]`, corners included) on level `z` left
+/// unexplored; each rectangle clamped to the map (E24 M1 T6b, the reviewer's R2-13: a huge one
+/// took long).
+pub fn hide(art: &MapArt, live: &mut Live, z: u8, hidden: &[[i32; 4]]) {
+    let last = i32::try_from(art.size)
+        .unwrap_or(i32::MAX)
+        .saturating_sub(1);
+    let on_map = |v: i32| v.clamp(0, last);
+    for &[x0, y0, x1, y1] in hidden {
+        for y in on_map(y0.min(y1))..=on_map(y0.max(y1)) {
+            for x in on_map(x0.min(x1))..=on_map(x0.max(x1)) {
+                live.explored.set(x, y, z, false);
+            }
+        }
+    }
 }
 
 /// The artifacts' class.

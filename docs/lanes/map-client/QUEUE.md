@@ -17,26 +17,30 @@ T1a was cut at its seam before it started (the user, 2026-10-26): T1a1 the recor
 standing still, T1a2 the scroll; T1b, the walk, done whole (all three done 2026-10-26:
 `E24-log.md`); T2, the map over time headless, done whole (2026-10-27: the user chose it over a
 cut before the frame check); T3 cut at its seam before it started (the user, 2026-10-27): T3a,
-the walk's timing headless, and T3b, the walk drawn (taken whole), both done 2026-10-27.
+the walk's timing headless, and T3b, the walk drawn (taken whole), both done 2026-10-27. T4 cut
+at its seam before it started (the user, 2026-10-27): T4a, the window replaying and the key
+table (done 2026-10-27), then T4b, the map's live input and the Windows build.
 
-### E24 M2 T4 — the window
+### E24 M2 T4b — the map's live input, the Windows build
 
-- **Scope:** `h3-map-view window <situation | sequence>` through `h3-sdl` (as `h3-view window`,
-  E17 design §8.1): the map at the original's frame times at an integer scale; the scroll by the
-  keys and the mouse at the edges with the edge cursors (hardware or drawn); a sequence's walks
-  replayed; pause, a step, restart, fullscreen, vsync; `--measure`; `--check` reads every frame
-  back against the headless one (Xvfb); `h3-view`'s `clock` copied (*provisional*, an origin
-  comment); the Windows cross-build, tried on the user's machine. **Key bindings** (the user,
-  2026-10-26): every key goes through one table of actions (the scroll's eight directions with
-  Ctrl, the hero's eight steps, the window's own: pause, step, restart, fullscreen, vsync, quit),
-  the original's keys its defaults (design §3.4), a user file overriding them (its format and
-  place *provisional*: the review list); no key named in the event loop; `h3-sdl`'s `Key` grows
-  additively to the keys bound (a common path). M3 T0 moves the table into the common crate, the
-  battle viewer's keys too (the client lane's inbox); a screen to rebind them comes with the
-  options dialog, later.
-- **Acceptance:** a situation and a walk sequence play in the window; `--check` exact; the
-  Definition of Done.
-- **Depends on:** T2 and T3b (done). **Status:** ready.
+- **Scope:** the window takes the player's input into the map's loop: the table's scroll and
+  step actions at the clock's millisecond (Ctrl and a direction key scroll, a direction key steps
+  the selected hero), the pointer at the edges scrolling with the edge cursors (hardware or
+  drawn), the pointer over the view and the clicks as the timeline allows them (the rest M3's);
+  a sequence's window taking live input after its recorded ones (or a situation's alone); the
+  Windows cross-build (`--target x86_64-pc-windows-gnu`, as E17 design §8.1), tried on the user's
+  machine (its `--check` and `--measure`, the user watching it).
+- **Acceptance:** scroll and steps by the keys and the edge scroll work in the window, a check
+  of the live input's actions against the headless loop; the Windows build's `--check` exact on
+  the user's machine; the Definition of Done.
+- **From T4a** (design §3.9): the window's `Replay` runs the loop ahead of the clock to the next
+  change (up to 180 ms ahead when the map stands still), so an action given live at the
+  clock's millisecond may land behind what it ran: insert it and run again from a kept loop (or
+  run only to the clock); a situation selects no hero yet (its kept path would be cleared by the
+  `Painter`'s walk part); SDL 3's keypad keys with NumLock off are to be checked against the
+  original's (the same codes as the direction keys); `h3_sdl::Key` has 13 letters only (a user's
+  file cannot bind the rest).
+- **Depends on:** T4a (done). **Status:** ready.
 
 ### E24 M2 T5 — the map's sound
 
@@ -47,8 +51,8 @@ the walk's timing headless, and T3b, the walk drawn (taken whole), both done 202
   music and the effects), on E17's pieces (`h3_assets::snd`, `wav`, `nanomp3`, `h3-sdl`); the
   cues recorded in the original if the harness can tell them (E17 M2 T5b's way).
 - **Acceptance:** the sounds as read, the gate's check; the Definition of Done.
-- **Depends on:** T4 (the window), T1b (the step sounds' calls: design §3.5, done). **Status:**
-  ready after T4.
+- **Depends on:** T4a and T4b (the window), T1b (the step sounds' calls: design §3.5, done). **Status:**
+  ready after T4b.
 
 ### E24 M2 T6 — M2's closure
 

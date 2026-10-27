@@ -534,6 +534,18 @@ impl Loop {
         }
     }
 
+    /// What the screen's view shows: its last draw.
+    #[must_use]
+    pub fn drawn(&self) -> &Draw {
+        &self.drawn
+    }
+
+    /// The cursor.
+    #[must_use]
+    pub fn cursor(&self) -> Cursor {
+        self.cursor
+    }
+
     /// The millisecond `t` (after the last one run) with the actions given at it.
     ///
     /// # Errors
@@ -1087,4 +1099,4 @@ pub fn changed(before: &Screen, after: &Screen, area: [i32; 4]) -> Option<[i32; 
 }
 
 #[cfg(test)]
-mod tests;
+pub(crate) mod tests;

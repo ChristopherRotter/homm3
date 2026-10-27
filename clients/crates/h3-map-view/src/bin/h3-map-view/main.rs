@@ -3,9 +3,11 @@
 
 mod files;
 mod gate;
+mod paint;
 mod render;
 mod sequences;
 mod situation;
+mod window;
 
 use std::process::ExitCode;
 
@@ -70,6 +72,23 @@ commands:
           writes a situation's map (clients/map/situations/; E24 M1 T3b2) with the adventure
           lane's writer, the shipped maps its copies name read from <dir>/Maps (a situation
           that names a shipped map whole, `map`, is the harness's to load: refused).
+  window <sequence | situation> [--keys <file>] [--scale <n>] [--vsync] [--fullscreen]
+         [--bugs fixed|original] [--install <dir>] [--map <dir>] [--check <s> | --measure <s>]
+          shows a recorded sequence (<map>/sequences.toml: its inputs replayed at their times,
+          then the map standing still on) or a situation (<map>/situations/<id>.toml, with its
+          kept live part if any: standing still) in a window at the original's frame times, as
+          `sequences` draws it (the cursor the replay's, drawn in the frame). Every key goes
+          through a table of commands (E24 M2 T4a, provisional): F5 pauses, F6 shows the next
+          frame while paused, F7 restarts, F8 turns vsync on or off, F11 fullscreen, Esc quits;
+          the original's map keys (Ctrl and a direction key scroll, a direction key steps the
+          selected hero) are bound but take no effect yet (E24 M2 T4b). A user's file
+          (--keys, else keys.toml in the working directory when there is one) overrides the
+          defaults command by command, e.g. `pause = [\"Space\"]`, `quit = [\"Escape\", \"Ctrl+F12\"]`
+          (the commands: scroll-north ... scroll-north-west, hero-north ... hero-north-west,
+          pause, frame, restart, vsync, fullscreen, quit; [] unbinds one). --bugs defaults to
+          fixed. --check <s> and --measure <s> run unattended for <s> seconds and report when
+          each frame showed against its time; --check also reads every frame back and compares
+          it with the frame composed (exit 1 on a difference).
 ";
 
 fn main() -> ExitCode {
@@ -98,6 +117,13 @@ fn main() -> ExitCode {
         },
         Some((command, rest)) if command == "situation" => match situation::Options::parse(rest) {
             Ok(options) => situation::run(&options),
+            Err(message) => {
+                eprintln!("{message}");
+                ExitCode::from(2)
+            }
+        },
+        Some((command, rest)) if command == "window" => match window::Options::parse(rest) {
+            Ok(options) => window::run(&options),
             Err(message) => {
                 eprintln!("{message}");
                 ExitCode::from(2)
