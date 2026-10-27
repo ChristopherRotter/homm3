@@ -7,11 +7,14 @@ use alloc::collections::BTreeMap;
 use alloc::vec;
 
 use h3_protocol::wire::{Observation, Side};
+use h3_render::Bugs;
 
-use super::{PIKEMAN, at, moved, play, snapshot};
+use super::{PIKEMAN, at, layout, looks, magic, moved, play, snapshot, tables};
 use crate::anim::{
-    Command, Growing, Key, Look, Playhead, Pose, Speed, Stage, Timeline, TurretKey, TurretPose,
+    Casts, Command, Growing, Key, Look, Playhead, Pose, Speed, Stage, Timeline, TurretKey,
+    TurretPose,
 };
+use crate::hero::Heroes;
 use crate::scene::Moment;
 
 /// How far past its end a timeline is checked: its idle steps, the fidgets and the heroes' idle
@@ -104,6 +107,28 @@ fn begins(now: &Timeline, before: &Timeline) -> bool {
         })
         && starts(&now.quakes, &before.quakes)
         && now.end >= before.end
+}
+
+#[test]
+fn a_growing_timeline_carries_its_heroes() {
+    let (layout, tables, magic, casts) = (layout(), tables(), magic(), Casts::default());
+    let stage = Stage {
+        layout: &layout,
+        width: 17,
+        groups: tables.battle.groups,
+        magic: &magic,
+        casts: &casts,
+        bugs: Bugs::Original,
+        siege: None,
+    };
+    let o = snapshot(vec![at(0, Side::Attacker, PIKEMAN, 50, false)]);
+    let heroes = Heroes::new([None, None], [true, true], tables.battle.hero_groups, None);
+    let growing = Growing::new(&o, &looks(), stage, Speed::default(), None)
+        .unwrap()
+        .with_heroes(heroes.clone());
+    assert_eq!(growing.commands(), 0);
+    assert_eq!(growing.timeline().heroes, Some(heroes.clone()));
+    assert_eq!(growing.finish().heroes, Some(heroes));
 }
 
 #[test]

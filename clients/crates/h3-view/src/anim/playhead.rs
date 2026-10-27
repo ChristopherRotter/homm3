@@ -441,14 +441,13 @@ impl Spans {
         }
     }
 
-    /// Adds the spans of the list `spans` past those it holds; whether each begins after `at`.
+    /// Adds the spans of the list `spans` past those it holds (the ends of all read again: an
+    /// open one's may be known now); whether each added begins after `at` (else the playhead
+    /// starts over).
     fn extend(&mut self, spans: impl Iterator<Item = (u32, u64)>, at: u32) -> bool {
         let (starts, ends): (Vec<u32>, Vec<u64>) = spans.unzip();
-        let after = self.starts.extend(starts.into_iter(), at);
-        if after {
-            self.ends = ends;
-        }
-        after
+        self.ends = ends;
+        self.starts.extend(starts.into_iter(), at)
     }
 
     /// Moves to `t`: the spans begun by then open, those ended by then close.
