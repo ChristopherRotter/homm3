@@ -711,7 +711,7 @@ dialog, a human player's turn, no network game, no hero moving; from the loop's 
 `input_next_message` 0x4EC590 and the adventure manager's idle step (0x408A88) to the tick
 (0x4ED490) and the redraws' own polls. Not read: the managers below the adventure manager (the
 chain stops at it: its idle step answers 1), the panels' redraw at the end of the view draw, the
-sound the idle step starts (0x4088F9 to 0x408996: M2 T5), the call that ends `pump_messages`.
+sound the idle step starts (0x4088F9 to 0x408996: a network game's, §3.11), the call that ends `pump_messages`.
 
 - **The loop.** Each turn of `executive_loop` pumps the Windows messages (`pump_messages`
   0x4F7FB0), takes the next input message (`input_next_message`: **the tick first**, then the
@@ -787,7 +787,7 @@ it is compared with the original's at 0 (must be exact).
 | The walking hero's frames (T1b) | `MapRendererAdventureMovingContext::objectImageIndex`: the animation time div 50 mod the group's frames; `moveGroups` by the rotation | the same 50 ms and walking groups (5 to 9, the left ones mirrored); the frame counted from the walk's start, one a drawn frame, carried from step to step (§3.5) |
 | The path in a walk (T1b) | `HeroMovementController::updatePath`: the node removed when the server's move arrives, before its animation | the same: the next tile's arrow gone at the step's start (§3.5) |
 | Objects in a walk (T1b) | animated on (the context's animation time runs) | differ: they stand still (no idle step runs during a walk), the palettes step on (§3.5) |
-| Step sounds (T1b) | `getMovementSoundFor`: one looped sound while the terrain stays, the terrain's `horseSound` on a road at both ends, else `horseSoundPenalty`; `HORSE10` flying | one sample a cycle of 8 frames by the new tile's terrain (+0x360), +0x388 in a boat or flying; no road read (which samples: T5) |
+| Step sounds (T1b) | `getMovementSoundFor`: one looped sound while the terrain stays, the terrain's `horseSound` on a road at both ends, else `horseSoundPenalty`; `HORSE10` flying | one looped sample from the walk's start to its end (`horse00` to `horse09` by the terrain, `horse10` flying, the water's in a boat), changed only where the view's middle changes terrain, at the frame's wrap to 0; no road (§3.11) |
 
 ### 3.4 The scroll (M2 T1a2)
 
@@ -886,7 +886,7 @@ read: M4); the animation (`hero_walk_animation` 0x480380), the lifted hero's pas
 and centring in `hero_select` 0x417B20 (the hero list and path rebuilt in between not read),
 `wait_until` 0x4F82F0 during the frames. Not read: the computer player's walks (its speed's use
 only, M4), `hero_step_allowed` 0x481BE0's tests, `draw_frame_blend` 0x47D4F0, which samples the
-step sounds are and the ambient sounds (0x4183D0; both T5).
+step sounds are and the ambient sounds (0x4183D0; both T5: §3.11).
 
 - **The lifted hero.** A human player's selected hero is drawn apart from the map while the
   manager's +0x1EC is set: lifted off its tile (+0x20C; `hero_select` hides it from its tile's
@@ -959,12 +959,12 @@ step sounds are and the ambient sounds (0x4183D0; both T5).
   (with the objects' step when due); the hero's destination the neighbour; `hero_move_step` with
   the last step's flag (one step, as above); `hero_walk_end` when the step says so; the cursor,
   the music. A key-down is one step (the original repeats nothing itself, §3.4).
-- **The sounds** (for T5): the walk's start plays the start tile's step sound (0x407D03); a
-  step's end plays the new tile's at once while the frame +0x200 is 0, else queues it
-  (`step_sound_next` 0x6968E4) and pass 9 plays it when the frame wraps to 0 (0x47FF88), stopping
-  the one playing (`step_sound_playing` 0x6968E0); `hero_walk_end` stops it. The sounds: the
-  manager's +0x360 by the tile's terrain, +0x388 in a boat or flying (Angel Wings, or +0x112 not
-  -1); which samples they are, T5.
+- **The sounds** (T5: §3.11): the walk's start plays the start tile's step sound (0x407D03); a
+  step's end where the music's terrain changes plays the new tile's at once while the frame
+  +0x200 is 0, else queues it (`step_sound_next` 0x6968E4) and pass 9 plays it when the frame
+  wraps to 0 (0x47FF88), stopping the one playing (`step_sound_playing` 0x6968E0); `hero_walk_end`
+  stops it. The sounds: the manager's +0x360 by the tile's terrain (in a boat too), +0x388 flying
+  (Angel Wings, or +0x112 not -1).
 
 **Recorded** (`clients/map/sequences.toml`; situations `seq-walk`, `seq-walk-follow`,
 `seq-sail`; the timeline's walk lines since T1b: `hero`, `walk`, `arrows`, only where they
@@ -1265,3 +1265,94 @@ No new reading but `input_key_message` 0x4EC0E0's (T1a2: the message's code is l
   machine measures it in T4b2. An incremental scroll (the view moved by whole tiles, only the
   new strip drawn) would cut the input's delay: not needed for M2 (*provisional*).
 
+
+### 3.11 The map's sound (M2 T5)
+
+Path read: the terrain music's requests (`music_track_play` 0x59A1E0 and its callers on the map:
+the manager's start 0x419990, `hero_select` 0x417B20, `hero_move_step` 0x4805E0, the walk's and
+the key's ends) and the music thread's change (`music_stop_fade` 0x59B080 before `music_thread`
+0x59A840's open, E17 §8.2 for the rest); the step sounds' loads (`adventure_manager_start`
+0x407474) and plays (0x407CD0, 0x481344, pass 9's 0x47FF88, `hero_walk_end` 0x47F7D0); the
+ambient sounds (`ambient_sounds_at` 0x4183D0, `ambient_sound_visit` 0x418C10, `tile_ambient_sound`
+0x418620, `sample_control` 0x599F40) and their callers. Not read: the mine record's set-up (its
+`abandoned` byte +2 as H3API names it), a network game's turn start (0x419E00: the music and the
+ambient sounds again 6 s later, 0x4088F9), the visits', battles' and the computer players' sounds
+(M4), the AI's turn music.
+
+- **The settings.** Nothing plays with the effects' setting (0x698764) at 0 (`ambient_sounds_at`
+  returns before its scan, `sound_volume` gives 0) or the music's (0x698760) at 0 (`play_music`
+  returns); a volume v is v × (s + 1) / 10 at a setting s (E17 §8.2). The harness's settings have
+  no sound (`clients/capture/setup.sh`), so the original's cues are not recorded (below).
+- **The music** (the manager's +0x58: the terrain whose music was asked for last). Asked for by
+  the terrain of the tile at the view's middle (the corner plus (9, 8); off the map, tile (0, 0)'s)
+  when the map's screen starts (0x419BFD); by the selected hero's tile's when `hero_select` centres
+  the view on it (with its flag c: the turn's start, a step's start after a scroll, 0x418104);
+  at a step's end by the view's middle's (the hero's new tile: 0x4812C6), each only when that
+  terrain differs from +0x58, which it then becomes. `terrain_music_tracks` 0x678330 gives the
+  track, `music_track_play` its name (0x684AE8: track 2 Water, 3 Grass, 4 Snow, 5 Swamp, 6 Lava,
+  7 Sand, 8 Dirt, 9 Rough, 10 Underground; rock's 0 plays nothing, the music on) through
+  `play_music` with a loop count of 0 and the effects kept, nothing when that name plays already
+  (0x59AD0D). The walk's and the key's ends ask for +0x58's again (no change). The change (the
+  music's thread): the playing track's position is kept under its name (0x69FEC0, 0x108 bytes an
+  entry) and it fades out, its volume less a tenth of its start every 100 ms (an f32 sum
+  truncated: 114, 101, 88, 76, 63, 50, 38, 25, 12 from 127, `Sleep(100)` between), paused 900 ms
+  after the request; then the new track opens where its name last stopped and fades in (E17
+  §8.2: 12, 25, … 114, then 127 after 900 ms). The fades run on the thread's real time, not the
+  game's clock.
+- **The step sounds.** `horse00.wav` to `horse10.wav` loaded into the manager's +0x360 to +0x388
+  (0x40747A, `horse%02d.wav`): by the terrain 0 to 9, and +0x388 for a hero flying (its Fly
+  spell's level +0x112 not −1, or Angel Wings, artifact 72); a hero in a boat (+0x105 bit 18)
+  takes the tile's terrain's, the water's (0x481351, 0x407CCB). Each plays looping (+0x30 = 0)
+  at its loader's volume, 127, in category 0 (sample handle 0, E17 §8.2). The path's walk starts
+  the start tile's at once (0x407D03: `step_sound_playing` 0x6968E0). A step's end changes it only
+  where the music's terrain changes (0x4812D9 jumps past both): the new tile's plays at once when
+  the lifted hero's frame +0x200 is 0 (the one playing stopped), else waits in `step_sound_next`
+  0x6968E4 for pass 9's step of the frame to 0 (0x47FF88). The walk's last step stops it first
+  (0x481216, the frame 0 then, so a new terrain's starts at once) and `hero_walk_end` stops it
+  again (0x47F825); a key's step (no `hero_move_loop`) starts none but a new terrain's, stopped
+  at its end. So a walk on one terrain plays one loop from its first step to its end.
+- **The ambient sounds** (`ambient_sounds_at`, this = the manager; a tile and a stop flag): four
+  slots at +0x228 (8 bytes each: a sound's index, −1 none, and its distance, 127 none), the
+  sounds loaded on demand at +0x248 (70 pointers), +0x224 a bit set of the sounds found. Called
+  with the view's middle: by the map's start (0x419C22, stop 1), by `hero_select` whatever its
+  flags (0x4180FF, stop 1: the turn's start, the walk's lift after a scroll, a step's), by each
+  step's end (0x48141B, stop 0); the scroll calls neither it nor the music (`view_scroll`
+  0x4195C0). Its run:
+  1. each slot with a sound: stopped and emptied with the stop flag; its distance 127;
+  2. with the effects on and a tile, +0x224 = 0, then two passes; each visits the middle at
+     distance 0, then the rings at Chebyshev distance 1 to 3, each ring's 8 d tiles by i from 0
+     to 2 d − 1 four at a time: the top row's (x − d + i, y − d), the right column's (x + d, y − d
+     + i), the bottom row's (x + d − i, y + d), the left column's (x − d, y + d − i);
+  3. a visit (0x418C10) of a tile on the map with a sound s (below): a slot holding s takes the
+     smaller distance and sets +0x224's bit 1 << s (on x86 the shift's count is s mod 32); in the
+     first pass nothing else; in the second the slot of the greatest distance above this one (the
+     first such) is taken: its sound stopped, s at this distance, loaded (`wav_load` of
+     `ambient_loop_names` 0x65F794), played looping in category 3 (the 8 handles 6 to 13) at
+     `ambient_volumes` 0x63A64C[distance] (32, 28, 20, 10 for 0 to 3), and +0x224 ^= 1 << s;
+  4. each slot then: a distance above 5 (not found) stopped and emptied; a sound whose bit is set
+     takes `ambient_volumes`[its distance] (`sample_control` with 100 → `AIL_set_sample_volume`).
+  So at most four loops, the nearest by their tiles; kept loops change only their volume as the
+  view moves, unless the stop flag restarts them all. With the shift's count taken mod 32, two
+  sounds 32 apart share a bit: one's XOR in the second pass clears the other's, which then keeps
+  its earlier volume (**MCL-Q8**).
+- **A tile's sound** (`tile_ambient_sound` 0x418620, on the tile's record: §2.1, the E08 survey's
+  §2.5 for which object a tile records): water (terrain 8) of a picture below 21 (the shore's)
+  `loopocea` (69), before any object; else on an entrance tile (+0xD bit 0x10) by the class
+  +0x1E as the game loads it (`object_class_values` 0x63A6E4: 219 as 33, 220 as 53, 221 as 99,
+  223 as 21, 230 as 46, 165–189 as 114–138, 190–205 as 143–161) and the subclass +0x22: the
+  table's `classes` (`clients/map/assets/base.toml`, `[map.sound]`); a creature bank (16), the
+  fourth dwelling (20) and a garrison (33) by subclass; a dwelling (17) by its creature
+  (`dwelling_creatures` 0x63D570[subclass]), `LoopSwor` for one the switch lacks; a mine (53)
+  `LoopCave` when abandoned (H3API's +2: the map's 220 or subclass 7, *inferred*), else by its
+  type (+1, the subclass); without an entrance a volcano (158) `LoopVolc`, and a tile of class 0
+  the special ground's (`tile_special_ground` 0x4FCE20: the first of 21, 46, 222, 224 to 229 and
+  231 among its objects from the top: 21 `loopcurs`, 46 `LoopMagi`, the others none). A hero's
+  tile (class 34: a hero standing; the lifted one restores the class under it, 0x4D7746) and
+  every other class has none.
+- **The viewer** (*provisional*): `h3_map_view::sound` holds the tiles' sounds (`TileSounds`,
+  from the art, the live part, the draw lists and the tables: the class a tile records by
+  0x505610's walks) and the original's state (`Sound`: +0x58, the slots, the step sound playing
+  and queued); the timeline's loop drives it at the moments above and gives its cues (`Cue`:
+  the music asked for, a step sound started or stopped, a slot's loop started, stopped or its
+  volume) with their milliseconds. The window plays them (below); `sequences` does not write
+  them (no recording to compare with). A hero flies in no situation (M4: the engine's).
