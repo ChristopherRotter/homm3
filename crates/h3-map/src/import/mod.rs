@@ -357,7 +357,7 @@ fn typed(
 /// creature of class 54's subclass (a random monster's is drawn when the game is built), the count
 /// (0 drawn), the disposition code, never flees, does not grow, and the treasure's resources that
 /// are above 0 (its message is presentation) and, since E08 T61a, its artifact (ADV-MON-011).
-// rule: ADV-MON-001, ADV-MON-011
+// rule: ADV-MON-001
 fn monster(
     rules: &GameRuleset,
     template: &Template,

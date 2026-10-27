@@ -41,6 +41,14 @@ Sorted by destination at E05's audit (T9a, 2026-10-19); the origin stays in brac
 done: BAT-Q33's point for E05 (AI-Q3, ADR-0025 point 6), the `h3-game` coverage gap of a pending
 Pass offer (fixed by the adventure lane's fixed tests, #266).
 
+- 2026-10-27 (the adventure lane, E08 T61a, `adventure/e08-t61a`; for the next census, `h3 ai
+  census`): `ObjectSetup::guards` is no longer a pile's only. Since map import v12 a placed or
+  random artifact, a Spell Scroll, a Pandora's Box and an event carry the guards of their message
+  records too, so `census.rs`'s `objects()` counts every guarded object as a guarded pile; filter
+  by the type's kind (`ObjectKind::Pickup`) to keep `guarded_piles` a pile's count. The shipped
+  `census-v1.toml` is unaffected until a re-run. Increment 7's 31 classes are typed now
+  (`ObjectKind::Chest`, `Artifact`, …); the census's `_ => {}` arm ignores them.
+
 - 2026-10-27 (this lane, E06 T6f and T8b; for the next `shared/` change):
   `docs/07-simulation-and-ai.md` (shared) should name observation v22 (the turn order block
   after v21's layout, `[network] order`) and C ABI v34's worlds (`h3_batch_determinize`,
