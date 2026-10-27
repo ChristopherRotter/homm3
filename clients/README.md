@@ -150,6 +150,16 @@ search the parent directories).
   E24 M2 T3a: the selected hero's steps and the path's walk at the hero speeds, its lines but the
   `screen` ones, which wait for the walk drawn, M2 T3b); `--frames` writes our frames for the harness's frame check, `python3
   capture/h3map.py frames` (the runbook, "The map's sequences").
+- **The map in a window** (E24 M2 T4a): `cargo run --release -p h3-map-view -- window <sequence |
+  situation>` (from `clients/`) shows a recorded sequence (its inputs replayed at their times,
+  then the map standing still on) or a situation (its kept live part, standing still) through
+  `h3-sdl` at the original's frame times, drawn as `sequences` draws it. Every key goes through
+  the table `h3_map_view::keys` (*provisional*): F5 pause, F6 the next frame while paused, F7
+  restart, F8 vsync, F11 fullscreen, Esc quit; the original's map keys are bound (Ctrl and a
+  direction key scroll, a direction key steps the hero) but take effect with M2 T4b, the mouse
+  too. A user's `keys.toml` (`--keys`, else in the working directory) overrides them command by
+  command (its format: the usage). `--check <s>` reads every frame back (Xvfb in the sandbox),
+  `--measure <s>` times them.
 
 | Path | What |
 |---|---|
@@ -164,7 +174,7 @@ search the parent directories).
 | `clients/scenarios/*.toml` | the client's battle scenarios (the scenario format of `packs/README.md`) for `h3-view render` and `play`: the stills T7 renders, `smoke.toml` the captured smoke battle (T8), `battle.toml` the whole battle `play` fights (M2 T4b-2a) |
 | `clients/capture/` | the reference captures (below; the runbook `capture/README.md`): `setup.sh`, the driver `h3drive.py` and its screens' probes, `h3cap.py` (diffs, obstacles), the `xdd.dll` source (forwarder and virtual clock) |
 | `clients/situations/` | the capture set (`set.toml`) and its situations' scenario files: what the harness shows the original, with each frame's recorded differences; the recorded sequences (`sequences.toml`, `timelines/`) with their engine commands (the casts' since M3 T7a-2a, with the screen's changes); `kept/`, what the last captures kept and the viewer's digests at those times |
-| `clients/crates/h3-map-view` | the adventure map's viewer (the map-client lane, E24): the library (pure, `no_std`) holds the map's static art read from the raw `.h3m` (`art`), its live part (`live`: the objects standing, a random object's drawn template, owners, heroes, boats, the viewer's explored tiles, the path shown, the moment), the map's asset tables (`tables`), the adventure screen's layout (`layout`), what the gate checks of a DEF (`check`), the still: the draw list at a view (`scene`), its decoded assets (`batch`), the map's drawers (`draw`) and the composition into a frame (`compose`), the capture set's situations (`situation`), the map over time (`timeline`: the original's loop on a clock of milliseconds; `sequence`, the recorded sequences; E24 M2 T2) and the cursor (`cursor`, a copy of `h3-view`'s until M3 T0's common crate); its binary the map's real-asset gate, `render`, `situation` and `sequences`. Its package depends on `h3-assets`, `h3-map` (the raw model), `h3-render` and, for the binary only, `h3-formats` (`tests/purity.rs`, a copy of `h3-view`'s for this crate) |
+| `clients/crates/h3-map-view` | the adventure map's viewer (the map-client lane, E24): the library (pure, `no_std`) holds the map's static art read from the raw `.h3m` (`art`), its live part (`live`: the objects standing, a random object's drawn template, owners, heroes, boats, the viewer's explored tiles, the path shown, the moment), the map's asset tables (`tables`), the adventure screen's layout (`layout`), what the gate checks of a DEF (`check`), the still: the draw list at a view (`scene`), its decoded assets (`batch`), the map's drawers (`draw`) and the composition into a frame (`compose`), the capture set's situations (`situation`), the map over time (`timeline`: the original's loop on a clock of milliseconds; `sequence`, the recorded sequences; E24 M2 T2), the window's (E24 M2 T4a: `replay`, the timeline run forward as the clock needs; `keys`, the table of commands; `clock`, a copy of `h3-view`'s) and the cursor (`cursor`, a copy of `h3-view`'s; both copies until M3 T0's common crate); its binary the map's real-asset gate, `render`, `situation`, `sequences` and `window`. Its package depends on `h3-assets`, `h3-map` (the raw model), `h3-render` and, for the binary only, `h3-formats` and `h3-sdl` (`tests/purity.rs`, a copy of `h3-view`'s for this crate) |
 | `clients/map/assets/base.toml` | the map's asset tables (below, "The map's asset tables") |
 | `clients/map/layouts/adventure.toml` | the adventure screen's layout at the native resolution: the frame and its picture, the view's place, tile, loops and clip, the corner gems (`docs/epics/E24-design.md` §1.1, §1.2, §1.9), the scroll's limits and edge zones and the adventure cursor's DEF, frames and hot spots (§3.4, E24 M2 T2); an HD layout is another file of the same format (*provisional*) |
 | `clients/out/` | local output (renders, reports); gitignored |

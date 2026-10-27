@@ -145,7 +145,10 @@ battle.
   T1b's seven sequences exact line by line but the `screen` boxes; design §3.7), T3b, the walk
   drawn (**done** 2026-10-27, whole: the lifted hero at the view's middle and its blended pass 9,
   the view's offset, the late redraw drawn again; T1b's seven recorded again, every line and all
-  269 frames exact; design §3.8; MCL-Q7 open); T4, the window; T5, the sound; T6, M2's closure.
+  269 frames exact; design §3.8; MCL-Q7 open); T4, the window, cut at its seam before it started
+  (the user, 2026-10-27): T4a, the window replaying and the key table (**done** 2026-10-27:
+  `h3-map-view window`, `h3_map_view::keys` and `replay`, every frame read back exact; design
+  §3.9), T4b, the map's live input and the Windows build; T5, the sound; T6, M2's closure.
 - **Exit:** every recorded sequence as recorded, line by line and frame by frame (or each
   difference an `MCL-Q<n>`); a situation and a sequence play in the window at the original's
   frame times, with its sound, and render headless frame by frame.
@@ -194,3 +197,18 @@ battle.
 ## Review lists
 
 M1's review lists (three reviewers, T6b; the list accepted): `E24-archive.md`. Later milestones add theirs here.
+
+**M2's review list** (the autonomy contract's "queue for the milestone review"; T6 adds the
+reviewers'):
+
+- **M2 T4a, the key table** (*provisional*): the user's file a TOML table of commands by name
+  (`scroll-north` … `hero-north-west`, `pause`, `frame`, `restart`, `vsync`, `fullscreen`,
+  `quit`), each with its list of chords (`"Ctrl+Up"`), replacing that command's defaults, `[]`
+  unbinding it; its place `--keys`, else `keys.toml` in the working directory; a chord matches
+  exactly (Ctrl and a key is not the key).
+- **M2 T4a, the window's own keys:** F5 pause, F6 the next frame while paused, F7 restart, F8
+  vsync, F11 fullscreen, Esc quit, not `h3-view window`'s P, →, Home, F and V: the original's
+  map takes the direction keys and nearly every letter (design §3.9). M3 T0's common table
+  decides both viewers'.
+- **M2 T4a, the replay's cursor:** drawn in the frame at the recorded point, the system's pointer
+  hidden over the window and the mouse doing nothing until T4b.

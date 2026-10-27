@@ -1177,3 +1177,32 @@ screen of the walks against ours outside the panels, 269 frames (`walk-1` 64, `w
 `walk-3` 45, `walk-4` 32, `walk-follow` 36, `walk-points` 17, `walk-sail` 20), all exact
 (`timelines/<id>-frames.txt`); `drawn` the 40 situations the same and the 13 sequences' 450
 frames recorded. The first draw differed only at the walks' ends (the late redraw above).
+
+### 3.9 The window (M2 T4a)
+
+`h3-map-view window` built on E17's adapter (E17 design §8.1; ADR-0024), no reading of its own
+(*provisional*):
+
+- **The replay.** A sequence plays as `sequences` plays it (the same set-up and drawing, the
+  binary's `paint`), a situation as a sequence without inputs (its kept live part, the speeds the
+  original's defaults, the pointer parked, no hero selected). `h3_map_view::replay` runs the
+  timeline's loop forward only as far as the clock needs (`at`: the change shown at a time;
+  `after`: the next one, at most 600 s ahead) and forgets the changes before the one shown, so a
+  window left open keeps a few. A change is a new view draw or cursor: on the map at least one
+  each 180 ms (the redraw's step), so the window presents about 5.5 frames a second standing
+  still. Past a sequence's inputs the map stands still on; a restart plays it again from 0.
+- **The cursor** in a replay is the timeline's, drawn in the frame at its point, as the headless
+  frames have it; the system's is hidden over the window (`Window::open`), the mouse does nothing
+  (T4b: the live pointer, the hardware or drawn cursor).
+- **The keys** (the user, 2026-10-26; `h3_map_view::keys`): one table of commands, each with its
+  chords (a key by `h3_sdl::Key`'s name, `Ctrl+` holding either Control key). Defaults: the
+  original's eight direction keys (§3.4) for the hero's steps and with Ctrl for the scroll; the
+  window's own on the function keys and Esc (F5 pause, F6 the next frame while paused, F7
+  restart, F8 vsync, F11 fullscreen, Esc quit), because the original's map takes the arrows,
+  Home, End and the page keys and nearly every letter (M3's hotkeys), so `h3-view window`'s P,
+  →, Home, F and V would clash there. A chord matches exactly (Ctrl and F5 is not F5). A user's
+  `keys.toml` (`--keys`, else the working directory's) replaces the chords of each command it
+  names; a chord bound twice, an unknown command or key, or Control alone is refused at the start.
+- **Measured** (the sandbox, Xvfb, scale 1): a frame shows a median 5 to 9 ms after its time, p95
+  8 to 11 ms (the software renderer's present; at scale 2, 21 and 35); every frame read back
+  exact (log: M2 T4a).

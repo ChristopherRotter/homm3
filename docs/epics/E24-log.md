@@ -768,3 +768,38 @@ boat).
 - **Not shown by a recording** (*provisional*): a step at the map's side (MCL-Q7).
 - **MCL-Q7** (the lifted hero cut at the view's tiles during a step at the map's side): built as
   the original's in both profiles meanwhile.
+
+### M2 T4a — the window replaying, the key table (2026-10-27)
+
+T4 cut at its seam before it started (the user, at the session's start, over taking it whole or
+cutting off only the Windows trial): T4a the window replaying and the key table, T4b the map's
+live input and the Windows build. No code reading; design §3.9.
+
+- **Built** (*provisional*): `h3_map_view::keys` (the table: `Command`, the scroll's and the
+  hero's eight directions and the window's own six; `Chord`, a key by the adapter's name with or
+  without Ctrl, matched exactly; `Keys::original`, the original's direction keys and the
+  window's F5 pause, F6 a frame on, F7 restart, F8 vsync, F11 fullscreen, Esc quit;
+  `Keys::with_file`, a user's TOML file over the defaults command by command, `[]` unbinding, a
+  chord bound to two commands refused); `h3_map_view::replay` (`Replay`: the timeline's loop run
+  forward as the window asks, `at`, `after` with a look-ahead, `restart`; the changes of the
+  view's draw and the cursor); `h3_map_view::clock` (`h3-view`'s copied, an origin comment);
+  `Loop::drawn` and `Loop::cursor`; the binary's `paint` (the set-up and the `Painter` moved out of
+  `sequences`, shared with the window; a situation's set-up: its writer's or shipped map, its kept
+  live part or the start with its `hidden` rectangles, `render::hide` factored out) and `window`
+  (`h3-view window`'s loop: the frame of each change composed ahead and shown when due, a change
+  overtaken passed over, the replay's cursor drawn in the frame, the system's hidden; the keys
+  checked against `h3_sdl::Key`, Control alone refused; `--check`, `--measure`); `h3-sdl`'s `Key`
+  grown additively (Left, PageUp, PageDown, End, LeftCtrl, RightCtrl, F1 to F12; `Key::ALL`,
+  `Key::from_name`), `h3-map-view` depending on `h3-sdl` for its binary (the purity test's
+  `BINARY_ONLY`).
+- **Checked:** the replay's changes equal the headless play's for `scroll-limits`, `walk-1` and
+  `walk-sail` (a unit test, again after a restart); `sequences` 13 of 13 as recorded after the
+  move; `drawn`: the 40 situations and the 13 sequences' frames the same. Under Xvfb (two cores,
+  Mesa's OpenGL ES 2, scale 1): `walk-1 --check 20` 153 of 153 frames exact, `objects-flat` and
+  `shipped-hoard --check 10` 56 of 56 each, `walk-sail --scale 2 --check 8` 56 of 56 at
+  1600 × 1200, none passed over; `scroll-limits --measure 10`: a frame a median 5.3 ms after its
+  time, p95 8.4, max 28.5. Driven by `xdotool`: F5 holds the map, F6 shows the next frame while
+  held, F7 restarts, Esc exits 0; a user's file (`pause = ["Space"]`, `quit = ["Ctrl+F12"]`)
+  pauses by Space, Esc then nothing, Ctrl+F12 quits; an unknown key refused with the list.
+- **Not checked here:** fullscreen (bare Xvfb has no window manager; the adapter's, unchanged since
+  E17 §8.1); the Windows build (T4b).

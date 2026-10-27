@@ -114,4 +114,7 @@ fn what_it_cannot_play() {
     let mut r = Replay::new(rules(Bugs::Original), &start, actions).unwrap();
     assert_eq!(r.at(10), Err((5, Unplayable::OverView([300, 300]))));
     assert_eq!(r.ran(), 4);
+    // Running ahead for the next change meets it too.
+    r.restart();
+    assert_eq!(r.after(0, 100), Err((5, Unplayable::OverView([300, 300]))));
 }
