@@ -171,8 +171,13 @@ impl MapObject {
         }
     }
 
-    /// Whether the object blocks `pos`, and whether it is visited from `pos`.
+    /// Whether the object blocks `pos`, and whether it is visited from `pos`: neither for an
+    /// event, which lies on its tile apart from both (ADV-OBJ-007, E08 T62b2; the original's
+    /// placement clears both bits of its tile, 0x505C78, whatever its template's masks say).
     pub fn covers(&self, pos: Pos) -> (bool, bool) {
+        if self.event().is_some() {
+            return (false, false);
+        }
         self.offset_of(pos).map_or((false, false), |(column, row)| {
             (
                 self.blocked.contains(column, row),
@@ -608,11 +613,13 @@ impl StaticMap {
     }
 
     /// Marks the tiles an object covers; tiles of its footprint off the map are ignored
-    /// (ADV-OBJ-001). An `event`'s visitable tiles are the tiles it lies on, no tile an object is
-    /// visited from (ADV-OBJ-007, E08 T62b2).
+    /// (ADV-OBJ-001). An `event` blocks no tile, and its visitable tiles are the tiles it lies on,
+    /// no tile an object is visited from (ADV-OBJ-007, E08 T62b2: the original's placement clears
+    /// the blocked and the visitable bit of its tile, 0x505C78; every shipped map's event has a
+    /// template blocking its tile).
     // rule: ADV-OBJ-001, ADV-OBJ-007
     fn place(&mut self, object: &ObjectSetup, guards: Option<Guards>, event: bool) {
-        for (column, row) in object.blocked.offsets() {
+        for (column, row) in object.blocked.offsets().filter(|_| !event) {
             if let Some(index) = self.offset(object.anchor, column, row) {
                 self.tiles[index].blocked = true;
             }

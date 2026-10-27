@@ -438,10 +438,17 @@ fn events(setup: &MapSetup, rules: &GameRuleset, add: &mut impl FnMut(&'static s
     let mut blocked = BTreeMap::<(u8, u16, u16), usize>::new();
     let mut monsters = Vec::new();
     for o in &setup.objects {
+        if is_event(o) {
+            add(
+                "events whose template blocks a tile",
+                usize::from(o.blocked.bits() != 0),
+            );
+            continue;
+        }
         for at in tiles(o, o.blocked) {
             *blocked.entry(at).or_default() += 1;
         }
-        if !is_event(o) {
+        {
             for at in tiles(o, o.visitable) {
                 *visited.entry(at).or_default() += 1;
                 if o.monster.is_some() {
@@ -474,7 +481,7 @@ fn events(setup: &MapSetup, rules: &GameRuleset, add: &mut impl FnMut(&'static s
                 usize::from(visited.contains_key(&at)),
             );
             add(
-                "events on an object's blocked tile",
+                "events on another object's blocked tile",
                 usize::from(blocked.contains_key(&at)),
             );
             let (level, y, x) = at;

@@ -19,9 +19,9 @@ use super::*;
 
 const BLUE: PlayerId = PlayerId::new(1);
 
-/// An event at `at` (lying on its one tile, blocking none) giving 300 gold, firing for `colours`
-/// (and for computers with `computer`), leaving the map after it fires with `remove`, guarded by
-/// two imps with `guarded`.
+/// An event at `at` (its template blocking its one tile, as the shipped maps' do) giving 300
+/// gold, firing for `colours` (and for computers with `computer`), leaving the map after it fires
+/// with `remove`, guarded by two imps with `guarded`.
 fn event_at(
     rules: &GameRuleset,
     at: Pos,
@@ -31,7 +31,7 @@ fn event_at(
     ObjectSetup {
         scenery: Default::default(),
         anchor: at,
-        blocked: TileMask::default(),
+        blocked: TileMask::from_bits(1),
         visitable: TileMask::from_bits(1),
         object_type: rules.adventure().object_type_by_key("t:event"),
         amount: None,

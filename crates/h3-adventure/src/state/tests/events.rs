@@ -30,9 +30,9 @@ fn gold() -> RewardRecord {
     }
 }
 
-/// An event lying on `(x, 1)` (its one visitable tile, blocking none) giving 100 gold, firing
-/// for `colours` (and for computers with `computer`), leaving the map after it fires with
-/// `remove`.
+/// An event lying on `(x, 1)` giving 100 gold, firing for `colours` (and for computers with
+/// `computer`), leaving the map after it fires with `remove`. Its template blocks its one
+/// visitable tile, as every shipped map's event's does: an event blocks nothing all the same.
 fn event(rules: &Rules, x: u16, colours: u8, computer: bool, remove: bool) -> ObjectSetup {
     let holds = Holds::Event(Box::new(EventSetup {
         record: gold(),
@@ -42,7 +42,6 @@ fn event(rules: &Rules, x: u16, colours: u8, computer: bool, remove: bool) -> Ob
     }));
     ObjectSetup {
         anchor: Pos::new(x, 1, 0),
-        blocked: TileMask::default(),
         ..object(rules, x, "t:event", holds)
     }
 }
@@ -309,8 +308,13 @@ fn no_player_sees_an_event_in_its_views_its_paths_or_its_reach() {
         );
         assert_eq!(a, b);
     }
-    assert!(with.is_explored(RED, Pos::new(3, 1, 0)));
-    assert_eq!(with.map().events_at(Pos::new(3, 1, 0)), [0]);
+    let tile = Pos::new(3, 1, 0);
+    assert!(with.is_explored(RED, tile));
+    assert_eq!(with.map().events_at(tile), [0]);
+    // Its template blocks its tile: the event neither blocks it nor is visited from it.
+    let static_tile = with.map().tile(tile).unwrap();
+    assert!(!static_tile.blocked && !static_tile.visitable);
+    assert_eq!(with.map().objects()[0].covers(tile), (false, false));
     assert_eq!(with.map().events_at(Pos::new(99, 1, 0)), [] as [usize; 0]);
     // The reachable tiles and their paths the same; a path may end on the event of another colour.
     let tiles = |s: &AdventureState| {
