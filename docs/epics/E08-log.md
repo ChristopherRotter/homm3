@@ -6627,3 +6627,72 @@ from the user's computer (`maps.tar`, `extracted.tar`, the executable and the tw
   tests (the scoped verify builds neither the AI lane's tests nor every target); coverage closed three gaps on the way (a test helper's early returns,
   the pool's out-of-range bans, the two new errors' texts); `check-arch` refused a `sort_unstable`
   (the hut's candidates now come in id order from the unbanned skills).
+
+### Increment 7, round 6: T62a, the pickups, the teachers and the finds (2026-10-27, `adventure/e08-t62a`)
+
+**The cut** (decision 150, asked at the start): T62 in two as designed, T62a the pickups, teachers
+and finds; and `h3-game` applies the simple parts now (the agent's recommendation both times).
+**Baseline:** `master` 54b9264 (#511 merged, CI green on it); the sandbox's light gates passed (the
+code verified by CI); the original data staged from the user's computer.
+
+- **The outcome** (`command.rs`; ADR-0017 point 10's increment 7): `AdventureOutcome::hero`
+  (`HeroGains`: the changes in order, then the experience the game gives last), `choice`
+  (`Choice` with `ChoiceKind::Chest { gold, experience }` or `ChoiceKind::Primary { skills,
+  amount, price, leave }`; `allows`, `default_pick`, `price`), `university` (`UniversityVisit`);
+  `Pick` (first, second, leave), the adventure's answer that T63's typed answers map onto;
+  `OfferKind::Gift { price }` and `OfferKind::Search`.
+- **The visits** (`state/rewards.rs`, dispatched by `ObjectKind::effect`'s new `Effect`s; the
+  boxes, events and the Pyramid still none): a chest (an artifact the hero receives, else the
+  choice; removed with the visit); an artifact or a scroll (refused while the hero cannot receive
+  it, then its guards as a guarded pile's, then `pick_up`, which a won battle's end also calls);
+  a once-per-hero gift (the mark, the Library's condition, the Tree's drawn price known, a choice,
+  an offer to pay or the gift at once; `give_gift`, `accept_gift`; `choose` marks a gift's pick);
+  the Shrines, Witch Huts, Scholars and Universities; the finds (`visit_find`, `accept_search`,
+  `search`: the knowledge, the artifact or its turn, emptied, the Tomb's bonus whatever it held). A
+  monster's treasure artifact (`treasure_artifact`) after a win (`end_monster_battle`) or a join.
+  `accept_offer`, `end_unowned_battle` and `end_monster_battle` take the store of heroes (and the
+  latter two the hero) and the battles' ends return an outcome. `Resolved::artifact`, `skills`.
+- **The state:** the visits' block written through `visits_mut` (built on its first write, copied
+  when a fork shares it), `learn` writing only what the player did not know (a fork's block stays
+  shared on a second visit of a Shrine: tested); `AdventureState::is_marked`, `knows`,
+  `is_emptied`. The adventure state hash's encoding unchanged (v14 hashed the block already).
+- **The views** (ADV-VIS-006): `AdventureObservation::known` (`KnownObject`: type, anchor,
+  `Known::Spell`, `Skill`, `Price`, `Skills`, `Emptied`), `OwnHeroView::marks`.
+- **The game** (decision 150; part of design §15 moved from T63): `settle_outcome` gives the
+  hero's gains (`give_hero`: each change through `change_hero`, then the experience with
+  `give_levels`) and answers a choice with its default (`choose_by_default`: the chest's gold, the
+  Arena's first skill, a School left; a priced default counts as left); the University is left at
+  once; a battle's end against an object or a monster settles its outcome (a won guarded artifact's
+  pickup before the winner's levels). All three `ADV-STUB-10` until T63. Game state hash v16 (the
+  two offer kinds, as v8 for the pile's question).
+- **Rules:** ADV-PIK-006, -007, -008, ADV-MON-011 (`verified`: E7-1, E7-2, E7-6), ADV-TCH-001,
+  -002, ADV-VIS-006 (new, `implemented`); the visit halves of ADV-OBJ-006, ADV-PIK-005, -009 to
+  -012, ADV-TCH-003 to -007; `ADV-QUIRK-22` linked from the rules that read
+  `can_receive_artifact` and tested in both profiles (the chest, the artifact and scroll, the
+  monster's artifact); A-17 as `ADV-QUIRK-27` (exploit-fix, no flag); `ADV-QUIRK-23`'s visit test.
+- *Agent's calls (change freely):* a chest whose artifact draw found none offers the 1 000 gold's
+  choice, as for an artifact the hero cannot receive; a random artifact whose draw found none
+  leaves the map at its visit, giving nothing; a Tomb whose artifact stays (a full backpack) is
+  not emptied, an empty find is; the knowledge is written only where a visit tells something
+  drawn (the Shrines, the Witch Hut, a gift's drawn price, the University, the finds; not a
+  School's, whose skills and price are its type's, nor a gift of one price); a find's emptying
+  shows as it stands now to a player who knows it; the University's purchases (the slot's state,
+  the skill at Basic) are left to T63 with `h3_heroes::university_slot`; the offers named
+  generically (`Gift`, `Search`) rather than the design's `PayTree`, `SearchTomb`; a hero without
+  details in the store (the adventure's own tests) receives nothing and gains no experience.
+- **Tests:** `h3-adventure`'s `state/tests/rewards.rs` (18: each kind through `MoveHero`, the
+  choices, fabricated offers naming no gift or find, the marks and knowledge in the views, the
+  block's sharing); `draws.rs`' rules builder shared (`rules_with`); `h3-game`'s
+  `tests/rewards.rs` (the experience and its level, the defaults, the gift's offer paid and
+  refused, the Tomb's question and morale, a won guarded artifact and a beaten monster's artifact
+  through `end_battle`); `h3-map`'s play property's answered offers (no plan lays out the new
+  kinds yet: T64).
+- **Replays**: the twelve re-recorded with their options, their commands unchanged (neither map
+  has a gift or a find): every hash moved.
+- **Gates**: the scoped verify with the original data passed every step but two, both fixed and
+  passing alone since: `check-rules` (the catalog was written after the run started) and coverage
+  (the two new offer kinds' arms of the game's hash: the open offers hashed in the game's tests);
+  `bench-check` at its baselines (no workload's map holds the new kinds). Then `cargo check
+  --workspace --all-targets` and `h3-sim`'s, `h3-cli`'s and `h3-map`'s tests. A smoke run, not
+  committed: random play on the eight shipped maps that import whole (three seeds each, 14 days,
+  at most 3 000 steps), no failure.

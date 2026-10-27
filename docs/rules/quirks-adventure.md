@@ -283,7 +283,7 @@ A candidate becomes an entry here only once it is confirmed for SoD (by an exper
 - Sources: code reading (E08 T55a2, survey §6.5, §9).
 - Flag: none (always fixed)
 - Defaults: fixed in every profile
-- Regression test: `crates/h3-adventure/src/state/tests/draws.rs`, `random_shrines_repeat_no_spell_until_their_level_is_out` (a level without a spell) and `a_scholar_holds_its_gift_and_the_primary_skill_it_gives_instead` (every skill and spell banned); the visits' with E08 T62
+- Regression test: `crates/h3-adventure/src/state/tests/draws.rs`, `random_shrines_repeat_no_spell_until_their_level_is_out` (a level without a spell) and `a_scholar_holds_its_gift_and_the_primary_skill_it_gives_instead` (every skill and spell banned); the visit's: `crates/h3-adventure/src/state/tests/rewards.rs`, `a_shrine_teaches_its_spell_to_a_hero_who_can_learn_it` (a Shrine without a spell refuses, E08 T62a)
 - Decided by / date: the user 2026-10-26 (ADV-Q28; decision 133); built by E08 T61b
 
 ### ADV-QUIRK-24 — A Pyramid with every spell of its level banned reads outside its list
@@ -324,3 +324,16 @@ A candidate becomes an entry here only once it is confirmed for SoD (by an exper
 - Defaults: fixed in every profile
 - Regression test: `crates/h3-map/src/tests/import.rs`, `increment_7_bodies_import_with_their_guards_and_records` (E08 T61a: `Unsupported::RewardArmy`)
 - Decided by / date: the user 2026-10-26 (ADV-Q28; decision 133); built by E08 T61a, recorded by E08 T61b
+
+### ADV-QUIRK-27 — The 33rd once-per-hero object of a class shares the first one's mark
+- Class: exploit-fix (no flag: the engine keeps no bound of the original's on visits' state, E08 decision 133; A-17)
+- Context / rules affected: adventure, ADV-TCH-001 to ADV-TCH-003 (the once-per-hero gifts' marks, E08 T62a)
+- Original behavior: at a new game each of the ten once-per-hero classes numbers its objects from 0 in the walk's order and the hero holds one u32 of marks per class; a visit tests and sets the bit `1 << number`, and the x86 shift counts mod 32 (the Tree masks its number to 5 bits outright, 0x4C1E6D), so the 33rd object of a class shares the first one's bit: a hero who visited one is refused by the other (survey `E08-rewards.md` §6.1, §9).
+- Intended/expected behavior: a mark per object, by its index in the static map (`h3_adventure::Visits`, design §10), with no bound on how many objects of a class a map holds or a hero marks.
+- Impact: unreachable on the shipped maps (at most 30 of a class, 30 Learning Stones in Back For Revenge; the wiki reads 32 as the editor's limit); a made map with more would refuse the later ones.
+- Community status: the wiki (Learning stone): "There can be up to 32 learning stones in any map"; VCMI keeps a set of visitors per object.
+- Sources: code reading (E08 T55a2, survey §6.1).
+- Flag: none (always fixed)
+- Defaults: fixed in every profile
+- Regression test: `crates/h3-adventure/src/state/tests/rewards.rs`, `a_once_per_hero_gift_gives_once_and_marks_the_hero` (the mark per object and hero); the design's measurement of marks on every object, E08 T55b (design §10)
+- Decided by / date: the user 2026-10-26 (ADV-Q28; decision 133); built and recorded by E08 T62a

@@ -7,7 +7,7 @@ use h3_adventure::{Guards, Holds, MonsterSetup, ObjectSetup, OfferKind, TileMask
 use h3_contracts::{Army, BattleOutcome, BattleResult, BattleSide, HeroOutcome};
 use h3_heroes::{ArtifactInstance, HeroChange};
 
-use super::decisions::{ACCEPT, GOLD, RED, after_steps, move_hero, play};
+use super::decisions::{ACCEPT, DECLINE, GOLD, RED, after_steps, move_hero, play};
 use super::*;
 
 const HERO: HeroId = HeroId::new(0);
@@ -123,6 +123,11 @@ fn a_gifts_price_opens_as_an_offer_when_the_treasury_can_pay() {
             }
         )
     );
+    // The open offer is hashed with its kind and price.
+    let mut declined = state.clone();
+    play(&mut declined, &rules, RED, DECLINE).unwrap();
+    assert_ne!(state.state_hash(), declined.state_hash());
+    assert!(!declined.adventure().is_marked(HERO, 0));
     let events = play(&mut state, &rules, RED, ACCEPT).unwrap();
     assert!(events.contains(&GameEvent::ResourcePaid {
         player: RED,
@@ -153,6 +158,10 @@ fn the_tombs_question_opens_and_its_morale_reaches_the_hero() {
     let mut state = game(&rules, reward_at(&rules, "t:tomb", Holds::Nothing));
     visit(&mut state, &rules);
     assert_eq!(state.decision(RED).unwrap().kind, OfferKind::Search);
+    let mut declined = state.clone();
+    play(&mut declined, &rules, RED, DECLINE).unwrap();
+    assert_ne!(state.state_hash(), declined.state_hash());
+    assert_eq!(declined.hero(HERO).unwrap().bonuses.morale, 0);
     let events = play(&mut state, &rules, RED, ACCEPT).unwrap();
     let morale = HeroChange::Bonus {
         morale: -3,
