@@ -1060,3 +1060,26 @@ entry only where a task builds on it.
   (`t5-3`, `t7-1`, `t6b-1`, `t6d-1`, `order-1`) end at the same ladder. The agent's
   recommendation: `[network] order` stays off by default (opt-in, tested), out of the best
   configuration; observation v22 stays (its block costs the step about 6 %, under 1 % of a run).
+
+## T8c — The measurement, in the sandbox with `order-1`'s network (2026-10-27)
+
+- **The network:** `order-1`'s best (the user's upload, T6g; `t7-1`'s file is not in the
+  sandbox): the same ladder as `t7-1`'s, observation v22 with `[network] order`. The search
+  with it plays (`--report` on 20 per kind first: 120 battles, 14 ms a decision at N 16).
+- **The search was the sampled policy** (`--report`, N 16, W 8, k 16, the report set against
+  the system actor, 2 998 battles): 0.374 and value −0.101, the sampled policy 0.374 and −0.102
+  on the same episodes. The cause: σ(q̂) took the completed values on a fixed scale ((q + 1) / 2,
+  T8b's choice), but a battle's values differ by a few hundredths between actions (their spread
+  over a root's candidates: median 0.08) while the prior's logits differ by several units
+  (median 7.0): σ spread 0.2 to 0.3, and the root's choice differed from the prior's own
+  Gumbel-max sample in 1.0 % of the decisions at N 16, 2.1 % at N 64 (384 roots each, the
+  sandbox's self-play). **Fixed:** σ rescales the completed values by their least and greatest
+  over the node's legal candidates (`search.rescaled`; the paper's normalization, `mctx`'s
+  `rescale_values`), so σ spans `(c_visit + max N) · c_scale` (5.1 at one visit); the choice
+  then differs from the prior's sample in 45 % (N 16) and 33 % (N 64). Test:
+  `test_small_value_differences_decide_once_rescaled`.
+- **N 16, rescaled** (the same set): 0.371 ± 0.018, value −0.101 (the sampled 0.374, −0.102):
+  no gain. 102 000 decisions (the fixed scale's, which played as the sampled policy, 79 000:
+  longer battles), 26 ms a decision, 45 minutes on the sandbox's 4 threads. At N 16 and k 16
+  sequential halving gives each candidate one visit, in one world, and its one step holds the
+  damage rolls: the comparison is mostly noise.
