@@ -326,6 +326,9 @@ fn unplayable((t, why): (u32, Unplayable)) -> String {
 struct Report {
     /// Per frame shown at its time: how late, in microseconds.
     late_us: Vec<u64>,
+    /// The same for the frames at a millisecond the player's input was given at (composed once it
+    /// came, not ahead).
+    input_late_us: Vec<u64>,
     /// Frames passed over because a later one was due already.
     skipped: usize,
     /// Frames read back, and those that matched.
@@ -429,7 +432,9 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
     // The mouse's last point, and the changes shown (the headless check's).
     let mut mouse: Option<[i32; 2]> = None;
     let mut log: Vec<Change> = Vec::new();
-    let mut given = 0_usize;
+    // The actions given: scrolls, steps, the pointer's moves, clicks.
+    let mut given = [0_usize; 4];
+    let mut given_at: BTreeSet<u32> = BTreeSet::new();
     let mut renew = look.live;
     let mut report = Report::default();
     let started = win.ticks_ns();
@@ -545,8 +550,14 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
         // The player's input, after the change shown.
         if look.live && !input.is_empty() {
             let t = ms.max(shown.as_ref().map_or(0, |f| f.change.t).saturating_add(1));
-            given += input.len();
+            given_at.insert(t);
             for action in input {
+                given[match action {
+                    Action::Scroll(_) => 0,
+                    Action::Step(_) => 1,
+                    Action::Pointer(_) => 2,
+                    Action::Click(_) => 3,
+                }] += 1;
                 replay.give(t, action);
             }
             renew = true;
@@ -582,17 +593,14 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                 };
                 shown = Some(again);
             }
-            next = match &shown {
-                Some(f) => replay
-                    .after(f.change.t, LOOK_AHEAD_MS)
-                    .map_err(unplayable)?
-                    .map(|c| Frame::of(&mut painter, c, look))
-                    .transpose()?,
-                None => Some(Frame::of(
-                    &mut painter,
-                    replay.at(0).map_err(unplayable)?,
-                    look,
-                )?),
+            let change = match &shown {
+                Some(f) => replay.after(f.change.t, LOOK_AHEAD_MS),
+                None => replay.at(0).map(Some),
+            }
+            .map_err(unplayable)?;
+            next = match (next.take(), change) {
+                (Some(n), Some(c)) if n.change == c && n.shows(&c, look) => Some(n),
+                (_, c) => c.map(|c| Frame::of(&mut painter, c, look)).transpose()?,
             };
         }
         // A later change may be due already: the latest is shown instead; if it shows what shows,
@@ -621,9 +629,11 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                         Frame::of(&mut painter, change, look)?
                     };
                     let back = show(&mut win, &due, read)?;
-                    report
-                        .late_us
-                        .push(clock.late(win.ticks_ns(), due.change.t) / 1000);
+                    let late = clock.late(win.ticks_ns(), due.change.t) / 1000;
+                    report.late_us.push(late);
+                    if given_at.contains(&due.change.t) {
+                        report.input_late_us.push(late);
+                    }
                     if let Some(back) = back {
                         compare(&back, &due, &mut report);
                     }
@@ -643,16 +653,26 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
     let seconds = win.ticks_ns().saturating_sub(started) / 1_000_000;
     lines.push(win.describe());
     drop(win);
+    let [scrolls, steps, moves, clicks] = given;
+    let view = shown
+        .as_ref()
+        .map(|f| f.change.drawn.view)
+        .unwrap_or(start.view);
     lines.push(format!(
         "{what}, keys: {keys_from}; {} frames shown in {seconds} ms, {} passed over, the map run \
-         to {} ms, {given} actions given",
+         to {} ms; given: {scrolls} scrolls, {steps} steps, {moves} moves, {clicks} clicks; the \
+         view at ({}, {}, {})",
         report.late_us.len(),
         report.skipped,
-        replay.ran()
+        replay.ran(),
+        view.x,
+        view.y,
+        view.z
     ));
     lines.push(format!(
-        "frame after its time (ms): {}",
-        summary(&mut report.late_us)
+        "frame after its time (ms): {}; at an input's time: {}",
+        summary(&mut report.late_us),
+        summary(&mut report.input_late_us)
     ));
     let mut ok = report.difference.is_none();
     if read {
