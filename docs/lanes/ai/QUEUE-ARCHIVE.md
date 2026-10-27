@@ -4,6 +4,37 @@ Finished history and informational notices moved out of `QUEUE.md` on 2026-10-24
 
 ## Completed tasks (the "Tasks" text as it stood on 2026-10-24)
 
+**E06 increment 7, at its checkpoint** (moved 2026-10-27, the user: E06 closes, T9 next):
+
+**Increment 6** closed 2026-10-26 (T6b to T6e; its task list in `E06-archive.md`): both levers
+negative, the system actor as an opponent (T6c, `t6b-1`) and the kill preview in the network
+(T6e, `t6d-1`: the targeting better, the ladder unchanged; AI-Q7 closed, the preview off by
+default).
+
+**Increment 7, T8 the search** (refined 2026-10-26, the user: the plateau taken as shown; design
+§14): T8a (the design, ADR-0025 point 12's amendment as a draft) done 2026-10-26; the user
+accepted the draft (`docs/lanes/ai/adr-drafts/0025-amendment-search.md`) the same day, its move
+into ADR-0025 due with the next `shared/` change. T6f (the turn order as an input, observation
+v22) and T8b (the plumbing, C ABI v34) done 2026-10-27 (#493); T6g (the user's run `order-1`)
+and T8c (the search measured in the sandbox with `order-1`'s best, its σ fixed) done 2026-10-27,
+both negative (E06-log). **Next: the user's checkpoint** (E06-log T8c, "Put to the user"): close
+increment 7 and decide E06's end (the agent's recommendation: decision 7's targets revised to the
+evidence, then T9 with `t7-1` as the battle AI v1), or T8d with the tree in Rust, or the
+true-world search as a diagnostic; and AI-STUB-1 (a world's gap against ADR-0025 point 12a),
+which matters only for T8d.
+
+- **Optional, the user's machine** (T8c's rows the sandbox left out): `uv run --group train
+  python -m h3env.search --report --best runs/t7-1/best.pt --device cuda --opponent greedy
+  --simulations 64 --json runs/t8c-greedy-64.json`; with `--opponent system` for the report
+  set's whole 500 per kind.
+
+- **Candidates kept** (not now): `[network] order` (T6g: no gain, off by default);
+  potential-based shaping (also against the wandering T6e found: the tactics phase's placements
+  and moves cost nothing at γ 1); the 60 M run at T7's mix
+  (`configs/e06-t7.toml --set samples=60_000_000`, about 4 hours); the mana run `t5-4`
+  (`configs/e06-mana.toml`, about 75 minutes).
+- Later (design §10): T5's rest (throughput, the observations in place), T9.
+
 **E06 increment 6, T6d's stage** (moved 2026-10-26 at T6e's checkpoint):
 
 **Increment 6** (refined 2026-10-26, the user: the system actor as a training opponent in the
@@ -85,6 +116,41 @@ and defends (1 %) less than the system actor (7 %, 3 %), loses mostly defending;
 leaves a quarter of the previewed kills.
 
 ## Notices from other lanes and finished items, newest first
+
+- 2026-10-27 (the adventure lane, E08 T61b, `adventure/e08-t61b`, `cross-lane` with the user's
+  consent; informational, nothing to act on unless a literal of yours is new): `GameSetup` gained
+  `banned_spells` and `banned_artifacts` (GAM-SET-003, map import v13); your one full literal,
+  `crates/h3-cli/src/ai/census.rs`'s, got `banned_spells: Vec::new()` and
+  `banned_artifacts: Vec::new()`. The adventure state hash is v14
+  (the build's draws on increment 7's objects, `MapObject::resolved`, and the visits' block,
+  `AdventureState::visits`), so a saved state hash of yours moves; no env encoding changed. The
+  shipped maps that import whole are 8 now (`Myth and Legend`, `Pandora's Box `, `Unholy Quest`
+  join the 5), should a census of yours list them.
+- 2026-10-27 (the adventure lane, E08 T61a, `adventure/e08-t61a`; for the next census, `h3 ai
+  census`): `ObjectSetup::guards` is no longer a pile's only. Since map import v12 a placed or
+  random artifact, a Spell Scroll, a Pandora's Box and an event carry the guards of their message
+  records too, so `census.rs`'s `objects()` counts every guarded object as a guarded pile; filter
+  by the type's kind (`ObjectKind::Pickup`) to keep `guarded_piles` a pile's count. The shipped
+  `census-v1.toml` is unaffected until a re-run. Increment 7's 31 classes are typed now
+  (`ObjectKind::Chest`, `Artifact`, …); the census's `_ => {}` arm ignores them.
+
+- 2026-10-27 (this lane, E06 T6f and T8b; for the next `shared/` change):
+  `docs/07-simulation-and-ai.md` (shared) should name observation v22 (the turn order block
+  after v21's layout, `[network] order`) and C ABI v34's worlds (`h3_batch_determinize`,
+  `h3_env_reseed`, a search agent's under ADR-0025 point 12a) under "The batch" and
+  "Information"; ADR-0025 point 12a's text with the draft's "As built" (AI-STUB-1).
+  Done 2026-10-27 in `shared/e06-search-docs` (E06 increment 7's checkpoint).
+
+- 2026-10-26 (this lane, E06 T8a; for the next `shared/` change): **ADR-0025 point 12a** from
+  the draft the user accepted (`docs/lanes/ai/adr-drafts/0025-amendment-search.md`: a search
+  agent's worlds), then the draft deleted; T8b builds on it either way.
+  Done 2026-10-27 in `shared/e06-search-docs` (E06 increment 7's checkpoint).
+
+- 2026-10-23 (this lane, E06 T5; for the next `shared/` change): `docs/07-simulation-and-ai.md`
+  (shared) should name the batch's optional kill preview (C ABI v33: the acting side's previewed
+  kills of each legal attack and shot entry, the engine's BAT-DMG-011 preview, what the original
+  shows a player) under "The batch" and "Information".
+  Done 2026-10-27 in `shared/e06-search-docs` (E06 increment 7's checkpoint).
 
 - 2026-10-27 (the adventure lane, E08 T60a, `adventure/e08-t60a`, `cross-lane` with the user's
   consent; for your information, nothing to do): **`HeroDetails` gained `bonuses`**

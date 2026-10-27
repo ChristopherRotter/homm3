@@ -1109,3 +1109,25 @@ entry only where a task builds on it.
   (b) T8d regardless (the tree in Rust first); (c) a search diagnostic first: the true world
   (the hidden part known, the stream re-seeded; a batch fork, an ABI addition) bounds what the
   guess costs. AI-STUB-1 (T8b's gap) matters only for (b).
+
+## Increment 7's checkpoint; increment 8's refinement, T9 the closure (2026-10-27)
+
+- **The user's choices** (asked at the session's start, the agent's recommendations taken):
+  close increment 7 with T8 negative and E06 with `t7-1` as the battle AI v1; decision 7's
+  targets revised to "beat every heuristic bot" (against Random, Aggressor and Greedy a win rate
+  above 0.5 and a positive value efficiency; on the neutral set a value above every heuristic
+  bot's), which `t7-1` meets (T7d's final ladder: 0.828, 0.551, 0.528 at +0.273, +0.029, +0.010;
+  the neutral set +0.245 against Greedy's +0.223 and Aggressor's +0.216). Against Greedy the
+  rate is within its interval (±0.018) of 0.5: a point estimate, as ADR-0026 point 7 judges.
+  The system actor (it beats `t7-1` 0.626; +0.285 on the neutral set) and a stronger agent
+  are E25's (Battle AI v2, a sketch in BACKLOG): a network that reads the battle's structure,
+  a search in Rust trained on its own choices, the true-world search as a diagnostic, shaping.
+- **Done in this session:** the AI lane's part (the epic file: decisions 2 and 7, exit
+  criterion 5, the risk; increment 7 and T5's and T6's open parts to `E06-archive.md`;
+  AI-STUB-1's epic E25; the ADR draft retired) and the `shared/` part
+  (`shared/e06-search-docs`, merged first: ADR-0025 point 12a with T8b's as-built facts,
+  `docs/07-simulation-and-ai.md` with observation v22, C ABI v33's preview and v34's worlds,
+  BACKLOG's E06 row and E25). The AI queue's three inbox entries for the shared change leave it.
+- **Increment 8** (the epic file): T9a the audit, T9b the independent review (at most three
+  reviewers), T9c the verifies (the user's machine, exit criterion 6), T9d the closure (a
+  `shared/e06-closure` first), E05's T9 as the pattern.

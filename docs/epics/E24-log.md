@@ -955,8 +955,8 @@ findings cut out as T6a2 by the user once they were checked.
   time and its drawing; R2 the window, the input and the sound; R3 the harness and the
   recordings), each against the design's readings and the epic's review list; 8, 11 and 10
   findings, each checked against the code and, where it named the original, the executable
-  (`scripts/exe.py`: `hero_move_loop` 0x407E87, 0x407F80 to 0x4080CE; `sub_4EC570`, now
-  `input_queue_flush`; `edge_scroll` 0x419978; `play_music` 0x59AD0D to 0x59ADA6; the settings'
+  (`scripts/exe.py`: `hero_move_loop` 0x407E87, 0x407F80 to 0x4080CE; `input_flush` 0x4EC570 (the
+  client lane's name, E17 M5 T2a, merged meanwhile); `edge_scroll` 0x419978; `play_music` 0x59AD0D to 0x59ADA6; the settings'
   names at 0x63FF74, 0x698774 `option_show_route`). R1 also compared T4b3's row drawers with the
   slow ones in 200 000 random cases (clips, sides, mirrors, offsets): no pixel differs.
 - **Fixed, the library** (each new test fails on the old code): R1-1, a scroll's key-down (Ctrl
@@ -967,7 +967,7 @@ findings cut out as T6a2 by the user once they were checked.
   point, which the edge scroll then read: the mouse's point now (GetCursorPos), a click's tile its
   own; R1-4, a walk a message ended drew the path's redraw with the walking pose: `hero_walk_end`
   first (0x408002, then `make_hero_path` 0x4080C9); R1-5, a path's walk empties the input queue
-  at its start (`input_queue_flush` at 0x407E87): the messages queued behind its click during a
+  at its start (`input_flush` at 0x407E87): the messages queued behind its click during a
   key's step are gone; R1-6, the stop's test checked no drawn pose and locked in R1-2 (rewritten,
   four tests added); R1-7, a speed out of range is the original's default (scroll 1, hero 2,
   `settings_check`), not a tile and an instant walk; R1-8, a situation's view far off the map

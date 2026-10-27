@@ -1102,7 +1102,7 @@ sequences, every line but the `screen` ones (the walk drawn is T3b's). Read this
   point, M3's; the sequences click tiles' middles).
 - **Actions given during a walk** wait; the mouse's point is read at once. A key's step leaves
   them to the loop's turn at its end, before the idle message; the path's walk empties the queue
-  at its start (`sub_4EC570` at 0x407E87, after `mouse_hide`: the messages behind its click
+  at its start (`input_flush` 0x4EC570 at 0x407E87, after `mouse_hide`: the messages behind its click
   gone) and after each step reads the messages up to the first key-down (a step's, a scroll's,
   Ctrl's alone), mouse button or control's message (kinds 1, 8, 0x20, 0x200: 0x407FA7), which
   ends it after that step: those before it are dropped, the one itself taken, those behind it

@@ -147,15 +147,19 @@ the stacks created mid-battle.
   scenario as they play it (`live.rs`: the session in-process, both seats held, the bot's
   command asked for when a frame reaches the timeline's end), the record, the panel, the mouse
   and the batch growing with it; `play`'s output byte for byte as fought at once.
-- **T2, hot seat: the player's commands:** a click does what the cursor shows (a walk, an attack
-  from the cursor's side, a shot, the Catapult's target, a Faerie Dragon's cast), Wait and Defend
-  and their keys (the window's, until E24 M3 T0's common key table: QUEUE's inbox); the input
-  taken when the original takes it (read); each seat a human or the Greedy bot. CLT-Q24's answer
-  built: the hovered item forgotten over the battlefield in the client's profile.
+- **T2, hot seat: the player's commands** (cut in two by the user, 2026-10-27; the Faerie
+  Dragon's cast moved to T3, its key entering the hero's aim):
+  - **T2a, the click's command** (done 2026-10-27): `mouse::click` and `button` (a walk, a
+    strike from the slot's from-hex, a shot, a heal, a wall shot, Wait and Defend), read (design
+    §9.11: the input queue emptied at every turn's start); CLT-Q24's switch; scripted presses
+    over every scenario's turns give the engine's legal commands but a two-hex stack's step one
+    hex back (CLT-Q25: the original's copied).
+  - **T2b, hot seat in the window:** each seat a human or the Greedy bot; the human's command
+    through the in-process session, the window waiting at the timeline's end.
 - **T3, the spell book and the hero's aim:** the book (`spell_book_dialog` 0x59BDF0, read at M3
   T7a-2a, design §7.16) drawn and used; the aim's loop read (`enter_player_cast` 0x59EC50: the
-  targets it offers, the cursor `crspell.DEF`, the status line GENRLTXT 27 and 28) and built;
-  the book and an aimed cast recorded.
+  targets it offers, the cursor `crspell.DEF`, the status line GENRLTXT 27 and 28) and built,
+  a Faerie Dragon's cast through it (its F key); the book and an aimed cast recorded.
 - **T4, the battle's dialogs:** surrender (its price) and retreat, the result window
   (`battle_result_dialog` 0x4702D0, the screen darkened under it by 0x44E5F0), Auto Combat, the
   tactics phase's panel (0x46C050); read, drawn, recorded.
@@ -199,7 +203,8 @@ it (`docs/rules/surveys/E08-battles.md` §13; the requests in the queue's inbox 
 
 After M5 (live play, above): the ladders, the pause by agreement and the server browser (the
 user, 2026-10-27, M4 T3c; the server lane's notes in `NOTES.md`, "The live client"). Later: HD
-layouts, graphics options beyond `faithful`, the client's options (volumes), video. The
+layouts, graphics options beyond `faithful`, the client's options (volumes; a two-hex stack's
+step one hex back by the mouse as a gameplay option, off by default: CLT-Q25), video. The
 adventure map and the full game viewer: E24, the map-client lane.
 
 ## Research items from the asset notes

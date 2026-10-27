@@ -1,11 +1,12 @@
-# E06 — archive: closed increments 1 to 6
+# E06 — archive: closed increments 1 to 7
 
 Moved out of `E06-battle-ai.md` on 2026-10-26 (increments 1 to 5 at increment 6's refinement,
-increment 6 at its checkpoint), verbatim, so that the epic file holds what is open and the
-decisions that apply to the whole epic (decisions 1 to 12 stay there). Each task's full record
-is in `E06-log.md` (grep its id).
+increment 6 at its checkpoint) and 2026-10-27 (increment 7 and the later tasks T5 and T6 at its
+checkpoint), verbatim, so that the epic file holds what is open and the decisions that apply to
+the whole epic (decisions 1 to 12 stay there). Each task's full record is in `E06-log.md` (grep
+its id).
 
-## Tasks of increments 1 to 6
+## Tasks of increments 1 to 7
 
 **Increment 1:** T1, then the user's review, then T2 in three small pull requests (design §10;
 the user, 2026-10-20: T1 and T2a in one).
@@ -98,3 +99,44 @@ negative result T6d, then T6e (the user, 2026-10-26: AI-Q7 (b) part 2).
   samples) ends at `t7-1`'s ladder (0.821, 0.553, 0.528, the system actor 0.365, the neutral
   set's value +0.253); its targeting better, its battles longer (it strikes less, wanders
   more); AI-Q7 closed, the preview off by default; the record in `E06-log.md`.
+
+**Increment 7, T8 the search** (refined 2026-10-26, the user: the plateau taken as shown after
+T6e; measure a decision-time search before any training change; determinized from the start;
+the tree in Python first; `h3-battle`'s part `cross-lane` in T8b; design §14):
+
+- [x] **T8a The design** — done 2026-10-26: design §14, ADR-0025 point 12's amendment as a
+  draft (`docs/lanes/ai/adr-drafts/0025-amendment-search.md`, accepted by the user the same day);
+  the record in `E06-log.md`.
+- [x] **T6f The turn order as an input** (the user, 2026-10-26, before T8b; after the
+  turn-order probe) — done 2026-10-26: `h3_battle::turn_order` (`cross-lane`), observation
+  v22, `[network] order`, `configs/e06-order.toml`; the record in `E06-log.md`.
+- [x] **T6g The A/B run `order-1`** — done 2026-10-27 (the user's run): negative, the ladder
+  `t7-1`'s and the play alike; the trunk still drops the order (the probe again); the record in
+  `E06-log.md`.
+- [x] **T8b The plumbing** — done 2026-10-27: C ABI v34 (`h3_batch_determinize`,
+  `h3_env_reseed`), `h3-battle`'s `BattleState::determinized` and `reseed` (`cross-lane`),
+  `h3env.search` with `--time` and `--report`; one gap (AI-STUB-1); the record in `E06-log.md`.
+- [x] **T8c The measurement** — done 2026-10-27 in the sandbox with `order-1`'s best (at
+  `t7-1`'s level): the search's σ fixed (a fixed scale left the prior alone); no gain against
+  the system actor at N 16 and 64 nor on the neutral set at N 64; the record in `E06-log.md`.
+- [ ] **T8d Expert iteration** — only if T8c gains: not indicated (T8c); the user's checkpoint.
+
+Closed 2026-10-27 at the checkpoint (the user): T8d not built (a search in Rust trained on its
+own choices is E25's candidate), decision 7's targets revised, T9 next.
+
+**Later increments, closed with increment 7** (2026-10-27; the user: E06 ends with T9):
+
+- [ ] **T5 The rest** — AI-Q7 (b); the mana-price experiment; batch size and threads from T9c's
+  table; the observations in place. Beside T7d (the user, 2026-10-23): the mana price's
+  preparation done 2026-10-23 (the ladders at reward v1's settings, `configs/e06-mana.toml`; the
+  record in `E06-log.md`); AI-Q7 (b) part 1 done 2026-10-23 (the batch's previewed kills, C ABI
+  v33); part 2 (the network reads them), increment 6's T6d, negative at T6e (AI-Q7 closed).
+- [ ] **T6 Toward the targets** — runs on the best configuration until decision 7's targets hold,
+  or the evidence says PPO plateaus (then T8). T6a, the behaviour analysis (the user,
+  2026-10-23), done 2026-10-23: `python -m h3env.train.inspect`; `t7-1` casts as the system
+  actor does, plays alike against it and Greedy, waits and defends less; the record in
+  `E06-log.md`. Then increment 6 (T6b to T6e), closed 2026-10-26.
+
+T5's open parts (the mana-price run `t5-4`, the batch size and threads, the observations in
+place) were not done: T9a sorts them to their destinations. T6 ended with PPO's plateau shown
+(increments 6 and 7) and decision 7's targets revised, which `t7-1` meets.
