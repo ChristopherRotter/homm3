@@ -769,6 +769,37 @@ boat).
 - **MCL-Q7** (the lifted hero cut at the view's tiles during a step at the map's side): built as
   the original's in both profiles meanwhile.
 
+### M2 T4b1 — the map's live input (2026-10-27)
+
+T4b cut at its seam before it started (the user, at the session's start, over cutting the mouse
+off or taking it whole): T4b1 the live input in the sandbox, T4b2 the Windows build tried on the
+user's machine. No new reading (`input_key_message`'s scan code, T1a2's); design §3.10.
+
+- **Built** (*provisional*): `Replay::give` (an action at a millisecond after the change shown;
+  each change keeps the loop as of its millisecond, and one given behind the loop runs it again
+  from the latest change before it, from 0 when none is kept), `Replay::actions`; `Start::live`
+  (the pointer over the view played, the arrow outside a zone; a click off the view or on a tile
+  no path leads to only the pointer's move: `Loop::refused`) and `Start::path` (the path shown at
+  0, chained from the hero, clickable); the key table's keypad keys and `cursor` (F9); `h3-sdl`
+  additively: `Key::Keypad1` to `Keypad9` but 5, `Window::set_key_repeats`; the binary's
+  `paint` (a situation's hero the viewer's only one, its kept path; `Painter::cursor_image`; the
+  last two views kept, the frame shown and the one ahead) and `window` (the input past a
+  sequence's inputs: the keys through the table, repeats to the map only, the pointer's moves one
+  a batch, the left button's presses, the mouse given where it lies when the map goes live; the
+  hardware cursor set at each change, or drawn while on the frame; `--drawn-cursor`; the next
+  frame kept when an input leaves it; `--check`'s headless check of every change shown; the
+  given actions by kind, the view at the end and the frames at an input's time in the report).
+- **Checked:** the timeline's live start (the pointer over the view, the west zone over it, the
+  clicks it cannot play, the path at 0) and the replay's actions given behind the loop (five
+  sequences, as known ahead, again after a restart) by unit tests; under Xvfb every run's frames
+  read back exact and every change shown the headless loop's (design §3.10's list); `sequences`
+  13 of 13, `drawn` 40 situations and 13 sequences the same.
+- **Found:** a view composes in 30 to 60 ms in the sandbox (release), so a frame at an input's time
+  shows that late and a walk at speed 2 lags; `xdotool click --window` sends a synthetic event
+  SDL ignores (the plain `click` works: `TRAPS.md`); the sandbox's baseline started by
+  `sandbox-setup.sh` stopped when the session's first turn ended (its log ends at the coverage
+  step; the gates ran again by hand).
+
 ### M2 T4a — the window replaying, the key table (2026-10-27)
 
 T4 cut at its seam before it started (the user, at the session's start, over taking it whole or

@@ -130,6 +130,22 @@ pub enum Key {
     F11,
     /// F12.
     F12,
+    /// The keypad's 1 (E24 M2 T4b: in either NumLock state, as SDL 3 names them).
+    Keypad1,
+    /// The keypad's 2 (E24 M2 T4b: in either NumLock state, as SDL 3 names them).
+    Keypad2,
+    /// The keypad's 3 (E24 M2 T4b: in either NumLock state, as SDL 3 names them).
+    Keypad3,
+    /// The keypad's 4 (E24 M2 T4b: in either NumLock state, as SDL 3 names them).
+    Keypad4,
+    /// The keypad's 6 (E24 M2 T4b: in either NumLock state, as SDL 3 names them).
+    Keypad6,
+    /// The keypad's 7 (E24 M2 T4b: in either NumLock state, as SDL 3 names them).
+    Keypad7,
+    /// The keypad's 8 (E24 M2 T4b: in either NumLock state, as SDL 3 names them).
+    Keypad8,
+    /// The keypad's 9 (E24 M2 T4b: in either NumLock state, as SDL 3 names them).
+    Keypad9,
 }
 
 impl Key {
@@ -173,6 +189,14 @@ impl Key {
             SDLK_F10 => Self::F10,
             SDLK_F11 => Self::F11,
             SDLK_F12 => Self::F12,
+            SDLK_KP_1 => Self::Keypad1,
+            SDLK_KP_2 => Self::Keypad2,
+            SDLK_KP_3 => Self::Keypad3,
+            SDLK_KP_4 => Self::Keypad4,
+            SDLK_KP_6 => Self::Keypad6,
+            SDLK_KP_7 => Self::Keypad7,
+            SDLK_KP_8 => Self::Keypad8,
+            SDLK_KP_9 => Self::Keypad9,
             _ => return None,
         })
     }
@@ -218,11 +242,19 @@ impl Key {
             Self::F10 => "F10",
             Self::F11 => "F11",
             Self::F12 => "F12",
+            Self::Keypad1 => "Keypad1",
+            Self::Keypad2 => "Keypad2",
+            Self::Keypad3 => "Keypad3",
+            Self::Keypad4 => "Keypad4",
+            Self::Keypad6 => "Keypad6",
+            Self::Keypad7 => "Keypad7",
+            Self::Keypad8 => "Keypad8",
+            Self::Keypad9 => "Keypad9",
         }
     }
 
     /// Every key, in the enum's order.
-    pub const ALL: [Self; 37] = [
+    pub const ALL: [Self; 45] = [
         Self::Escape,
         Self::Space,
         Self::Right,
@@ -260,6 +292,14 @@ impl Key {
         Self::F10,
         Self::F11,
         Self::F12,
+        Self::Keypad1,
+        Self::Keypad2,
+        Self::Keypad3,
+        Self::Keypad4,
+        Self::Keypad6,
+        Self::Keypad7,
+        Self::Keypad8,
+        Self::Keypad9,
     ];
 
     /// The key a name gives ([`Key::name`]'s), if any.
@@ -274,7 +314,8 @@ impl Key {
 pub enum Event {
     /// The window was closed.
     Quit,
-    /// A key went down (repeats left out).
+    /// A key went down (its repeats left out, unless [`Window::set_key_repeats`] lets them in:
+    /// then each repeat comes as another `Key` without a `KeyUp` between).
     Key(Key),
     /// A key went up (E17 M3 T6c-2: a hotkey's button is released).
     KeyUp(Key),
@@ -335,6 +376,8 @@ pub struct Window {
     /// over the window (the frame draws the cursor itself).
     cursor: Option<CursorImage>,
     hardware: Option<Hardware>,
+    /// Whether a held key's repeats come as keys (E24 M2 T4b).
+    repeats: bool,
 }
 
 /// The room left for the window's title bar and frame when it is sized to fit, in points.
@@ -422,6 +465,7 @@ impl Window {
                 fullscreen: config.fullscreen,
                 cursor: None,
                 hardware: None,
+                repeats: false,
             };
             // The window's pixels per point, from its size at one point per frame pixel: the
             // display's usable area in pixels decides the scale (integers only).
@@ -482,6 +526,12 @@ impl Window {
         }
     }
 
+    /// Whether a held key's repeats (the system's keyboard rate) come as [`Event::Key`] too: the
+    /// map's keys repeat as the original's do (E24 design §3.4); off when the window opens.
+    pub fn set_key_repeats(&mut self, on: bool) {
+        self.repeats = on;
+    }
+
     /// SDL's clock: nanoseconds since SDL started.
     #[must_use]
     pub fn ticks_ns(&self) -> u64 {
@@ -514,7 +564,9 @@ impl Window {
             let ty = SDL_EventType(ev.r#type);
             match ty {
                 SDL_EVENT_QUIT | SDL_EVENT_WINDOW_CLOSE_REQUESTED => Some(Event::Quit),
-                SDL_EVENT_KEY_DOWN if !ev.key.repeat => Key::of(ev.key.key).map(Event::Key),
+                SDL_EVENT_KEY_DOWN if self.repeats || !ev.key.repeat => {
+                    Key::of(ev.key.key).map(Event::Key)
+                }
                 SDL_EVENT_KEY_UP => Key::of(ev.key.key).map(Event::KeyUp),
                 SDL_EVENT_MOUSE_BUTTON_DOWN | SDL_EVENT_MOUSE_BUTTON_UP
                     if i32::from(ev.button.button) == SDL_BUTTON_LEFT =>
@@ -1138,6 +1190,9 @@ mod tests {
         assert_eq!(Key::from_name("Ctrl"), None);
         assert_eq!(Key::of(SDLK_LCTRL), Some(Key::LeftCtrl));
         assert_eq!(Key::of(SDLK_F11), Some(Key::F11));
+        assert_eq!(Key::of(SDLK_KP_7), Some(Key::Keypad7));
+        assert_eq!(Key::from_name("Keypad3"), Some(Key::Keypad3));
+        assert_eq!(Key::of(SDLK_KP_5), None);
         assert_eq!(Key::of(SDLK_TAB), None);
     }
 }

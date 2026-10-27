@@ -65,6 +65,8 @@ fn idle() -> Replay {
         pointer: [700, 300],
         hero: None,
         paths: Vec::new(),
+        path: Vec::new(),
+        live: false,
     };
     let actions = BTreeMap::from([
         (0, vec![Action::Scroll(Direction::East)]),
@@ -117,4 +119,70 @@ fn what_it_cannot_play() {
     // Running ahead for the next change meets it too.
     r.restart();
     assert_eq!(r.after(0, 100), Err((5, Unplayable::OverView([300, 300]))));
+}
+
+/// A sequence's actions given as a window gives the player's (E24 M2 T4b): each at its
+/// millisecond once the changes before it are shown, the loop having run ahead past it for the
+/// next change; then the rest shown to the end. With the number given behind the loop.
+fn given_live(id: &str) -> (Vec<Change>, Replay, usize) {
+    let (start, actions, ms) = recorded(id);
+    let mut replay = Replay::new(rules(Bugs::Original), &start, BTreeMap::new()).unwrap();
+    let mut shown = vec![replay.at(0).unwrap()];
+    let mut behind = 0;
+    for (&at, list) in actions.range(1..) {
+        while let Some(next) = replay.after(shown.last().unwrap().t, 1_000).unwrap() {
+            if next.t >= at {
+                break;
+            }
+            shown.push(next);
+        }
+        behind += usize::from(replay.ran() >= at);
+        for &action in list {
+            replay.give(at, action);
+        }
+    }
+    while let Some(next) = replay.after(shown.last().unwrap().t, 1_000).unwrap() {
+        if next.t > ms {
+            break;
+        }
+        shown.push(next);
+    }
+    (shown, replay, behind)
+}
+
+#[test]
+fn actions_given_live_are_played_as_known_ahead() {
+    for id in ["scroll-0", "scroll-limits", "walk-1", "walk-4", "walk-sail"] {
+        let (_, actions, ms) = recorded(id);
+        let want = headless(id);
+        let (shown, mut replay, behind) = given_live(id);
+        assert_eq!(shown, want, "{id}");
+        assert!(behind > 0, "{id}");
+        let given: BTreeMap<u32, Vec<Action>> =
+            actions.into_iter().filter(|&(t, _)| t > 0).collect();
+        assert_eq!(*replay.actions(), given, "{id}");
+        // The ones given kept for a restart.
+        replay.restart();
+        assert_eq!(replayed(&mut replay, ms), want, "{id}");
+    }
+}
+
+#[test]
+fn an_action_given_at_a_time_shown_runs_again_from_0() {
+    let mut r = idle();
+    let at_180 = r.after(0, 1_000).unwrap().unwrap();
+    assert_eq!(r.after(at_180.t, 1_000).unwrap().unwrap().t, 360);
+    // Before the change shown: none kept before it, the loop from 0 (the action at 0 still not
+    // played).
+    r.give(100, Action::Scroll(Direction::South));
+    assert_eq!(r.ran(), 0);
+    let scrolled = r.at(100).unwrap();
+    assert_eq!((scrolled.t, scrolled.drawn.view.y), (100, 12));
+    // Ahead of the loop: only kept.
+    r.give(900, Action::Scroll(Direction::North));
+    assert_eq!(r.ran(), 100);
+    assert_eq!(r.at(900).unwrap().drawn.view.y, 10);
+    // At 0: played at 1.
+    r.give(0, Action::Scroll(Direction::West));
+    assert_eq!(r.at(1).unwrap().drawn.view.x, 7);
 }

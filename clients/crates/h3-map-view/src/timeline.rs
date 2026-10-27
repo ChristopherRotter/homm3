@@ -328,6 +328,14 @@ pub struct Start {
     /// recorded; the engine's from M4): the one leading from the hero, neighbour by neighbour, to
     /// the tile clicked.
     pub paths: Vec<Vec<Arrow>>,
+    /// The path shown at 0, its arrows in any order (a situation's kept still: the selected
+    /// hero's; E24 M2 T4b): shown when it leads from the hero, one of the paths a click shows then.
+    pub path: Vec<Arrow>,
+    /// The window's live input (E24 M2 T4b, *provisional*): the pointer over the view shows the
+    /// arrow (M3: the cursor by the tile under it), and a click off the view or on a tile no path
+    /// leads to only moves the pointer (M3: the panels; M4: the engine's paths). A recorded
+    /// sequence refuses them ([`Unplayable`]), so that its frames never show what M3 draws.
+    pub live: bool,
 }
 
 /// The cursor drawn: a frame of the layout's cursor and the point its hot spot is at.
@@ -454,13 +462,15 @@ pub struct Loop {
     path: Vec<(Direction, Arrow)>,
     paths: Vec<Vec<Arrow>>,
     moving: Option<Moving>,
+    /// The window's live input ([`Start::live`]).
+    live: bool,
 }
 
 impl Loop {
     /// The loop after the sequence's 0: the tick, the poll and the redraw there.
     ///
     /// # Errors
-    /// [`Unplayable::OverView`] for a pointer over the view.
+    /// [`Unplayable::OverView`] for a pointer over the view (but live).
     pub fn start(rules: Rules, start: &Start) -> Result<Self, Unplayable> {
         let step = rules.steps.get(start.scroll_speed).copied().unwrap_or(1);
         let pixels = start
@@ -503,14 +513,22 @@ impl Loop {
                 frame: 0,
                 offset: [0, 0],
             },
-            path: Vec::new(),
+            path: start
+                .hero
+                .and_then(|h| chain(h.at, &start.path))
+                .unwrap_or_default(),
             paths: start.paths.clone(),
             moving: None,
+            live: start.live,
             rules,
         };
+        if !l.path.is_empty() {
+            l.paths.push(start.path.clone());
+            l.drawn.path = l.arrows();
+        }
         // The turn's start left the standing group by the facing and frame 0 (`hero_select`).
         l.stand();
-        if l.rules.over_view(start.pointer) {
+        if !l.live && l.rules.over_view(start.pointer) {
             return Err(Unplayable::OverView(start.pointer));
         }
         l.tick(0);
@@ -616,7 +634,7 @@ impl Loop {
                 self.scroll(t, direction, false);
             }
             Action::Pointer(at) => {
-                if self.rules.over_view(at) {
+                if !self.live && self.rules.over_view(at) {
                     return Err(Unplayable::OverView(at));
                 }
                 self.moved();
@@ -630,9 +648,11 @@ impl Loop {
     /// The mouse's move (`adventure_mouse_move` 0x40E360): outside the view (0x40EB7D) an edge
     /// cursor stays while the mouse lies in a zone, the arrow otherwise. Over the view the cursor
     /// by the tile is M3's: kept (a click's own move, which the sequences follow at once by the
-    /// pointer parked; a walk's end, where `walk-4` recorded the arrow it had).
+    /// pointer parked; a walk's end, where `walk-4` recorded the arrow it had); live, as outside.
     fn moved(&mut self) {
-        if !self.rules.over_view(self.pointer) && self.rules.edge_at(self.pointer).is_none() {
+        if (self.live || !self.rules.over_view(self.pointer))
+            && self.rules.edge_at(self.pointer).is_none()
+        {
             self.cursor.frame = self.rules.arrow;
         }
     }
@@ -710,9 +730,10 @@ impl Loop {
 
     /// A click on the view (M3 the rest): on the path's destination the hero walks the path, on
     /// another tile the path there is shown (`make_hero_path` 0x418DD0, which draws the view).
+    /// Live, a click off the view or on a tile no path leads to is only the pointer's move.
     fn click(&mut self, t: u32, at: [i32; 2]) -> Result<(), Unplayable> {
         if !self.rules.over_view(at) {
-            return Err(Unplayable::Panel(at));
+            return self.refused(Unplayable::Panel(at));
         }
         let tile = self.rules.tile_at(self.view, at);
         let pos = |a: &Arrow| [i32::from(a.at.x), i32::from(a.at.y), i32::from(a.at.z)];
@@ -720,17 +741,26 @@ impl Loop {
             self.walk_path(t);
             return Ok(());
         }
-        let path = self
-            .hero
-            .and_then(|hero| {
-                self.paths
-                    .iter()
-                    .filter_map(|p| chain(hero.at, p))
-                    .find(|c| c.last().is_some_and(|(_, a)| pos(a) == tile))
-            })
-            .ok_or(Unplayable::NoPath(tile))?;
+        let path = self.hero.and_then(|hero| {
+            self.paths
+                .iter()
+                .filter_map(|p| chain(hero.at, p))
+                .find(|c| c.last().is_some_and(|(_, a)| pos(a) == tile))
+        });
+        let Some(path) = path else {
+            return self.refused(Unplayable::NoPath(tile));
+        };
         self.path = path;
         self.draw();
+        Ok(())
+    }
+
+    /// A click the loop cannot play: refused, or live the pointer's move only.
+    fn refused(&mut self, why: Unplayable) -> Result<(), Unplayable> {
+        if !self.live {
+            return Err(why);
+        }
+        self.moved();
         Ok(())
     }
 

@@ -1,21 +1,33 @@
 //! `h3-map-view window` (E24 M2 T4a, `h3-view window`'s way: E17 design §8.1, ADR-0024): a
 //! recorded sequence or a situation in a window at the original's frame times. The map is set up
 //! as `sequences` sets it up (`crate::paint`): a sequence's inputs replayed at their milliseconds
-//! (its scrolls, edge cursors and walks), a situation standing still; past a sequence's inputs the
-//! map stands still on. The timeline runs forward as the map's clock needs (`h3_map_view::replay`,
-//! `h3_map_view::clock`); the frame of each change is composed and widened ahead of its time and
-//! presented when it falls due, a change overtaken by a later one passed over. The cursor is the
-//! replay's, drawn in the frame at its point (the system's is hidden over the window); the mouse
-//! and the map's keys take no effect yet (T4b, the map's live input).
+//! (its scrolls, edge cursors and walks), a situation standing still. The timeline runs forward as
+//! the map's clock needs (`h3_map_view::replay`, `h3_map_view::clock`); the frame of each change is
+//! composed and widened ahead of its time and presented when it falls due, a change overtaken by a
+//! later one passed over. During a sequence's inputs the cursor is the recording's, drawn in the
+//! frame (the system's is hidden over the window).
+//!
+//! The map's live input (M2 T4b, *provisional*; design §3.10): past a sequence's inputs, and in a
+//! situation from the start, the keys and the mouse are the timeline's actions, given at the
+//! clock's millisecond (after the change shown: `Replay::give`) — the table's scroll and step
+//! keys (a held key's repeats too, as the original's: design §3.4), the pointer's moves (the last
+//! of a batch of events; off the window a point off the frame) and the left button's presses. The
+//! timeline plays them live (`Start::live`): the pointer over the view shows the arrow, a click it
+//! cannot play only moves the pointer (M3's). The cursor then is the hardware one with the
+//! timeline's frame (hidden while a walk hides it), or drawn in the frame at the timeline's point
+//! (`--drawn-cursor`; not while that point lies off the frame); the cursor command switches.
 //!
 //! Every key goes through the table of commands (`h3_map_view::keys`; *provisional*): the defaults,
 //! or a user's file over them (`--keys`, else `keys.toml` in the working directory when there is
 //! one); each key it names must be one the adapter knows (`h3_sdl::Key`), Control held with
-//! `Ctrl+`. `--check <s>` and `--measure <s>` run unattended for that many seconds (the keys but
-//! quit do nothing) and report when each frame showed against its time; `--check` also reads
-//! every frame back before presenting it and compares it with the composed frame at the window's
-//! scale (the black around it included). An adapter: the window is `h3-sdl`'s.
+//! `Ctrl+`. `--check <s>` and `--measure <s>` run unattended for that many seconds (the window's
+//! own keys but quit do nothing; the map's input is taken) and report when each frame showed
+//! against its time; `--check` also reads every frame back before presenting it and compares it
+//! with the composed frame at the window's scale (the black around it included), and at the end
+//! plays every action (the recorded and the given) headless (`timeline::play`) and compares each
+//! change shown with the headless loop's at its time. An adapter: the window is `h3-sdl`'s.
 
+use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
@@ -24,10 +36,10 @@ use h3_map_view::clock::Clock;
 use h3_map_view::keys::{Command, Keys};
 use h3_map_view::replay::{Change, Replay};
 use h3_map_view::sequence::Sequences;
-use h3_map_view::timeline::{Rules, Unplayable};
+use h3_map_view::timeline::{self, Action, Cursor, Rules, Start, Unplayable};
 use h3_render::Bugs;
 use h3_render::screen::Screen;
-use h3_sdl::{Config, Event, Key, ReadBack, Window};
+use h3_sdl::{Config, CursorImage, Event, Key, ReadBack, Window};
 
 use crate::files;
 use crate::paint::{self, Assets, Painter, Setup};
@@ -41,6 +53,9 @@ const WAIT_MS: u32 = 250;
 /// The user's file of keys looked for in the working directory.
 const KEYS_FILE: &str = "keys.toml";
 
+/// The pointer's point once it left the window: off the frame, where no edge scrolls.
+const OFF: [i32; 2] = [-1, -1];
+
 /// The command's options.
 #[derive(Debug, PartialEq, Eq)]
 pub struct Options {
@@ -49,6 +64,7 @@ pub struct Options {
     scale: Option<u32>,
     vsync: bool,
     fullscreen: bool,
+    drawn_cursor: bool,
     bugs: Bugs,
     install: PathBuf,
     map: PathBuf,
@@ -58,10 +74,12 @@ pub struct Options {
 
 impl Options {
     /// Parses `<sequence | situation> [--keys <file>] [--scale <n>] [--vsync] [--fullscreen]
-    /// [--bugs fixed|original] [--install <dir>] [--map <dir>] [--check <s> | --measure <s>]`.
+    /// [--drawn-cursor] [--bugs fixed|original] [--install <dir>] [--map <dir>] [--check <s> |
+    /// --measure <s>]`.
     pub fn parse(args: &[String]) -> Result<Self, String> {
         let (mut id, mut keys, mut scale, mut install, mut map) = (None, None, None, None, None);
-        let (mut vsync, mut fullscreen, mut bugs, mut run) = (false, false, Bugs::Fixed, None);
+        let (mut vsync, mut fullscreen, mut drawn_cursor) = (false, false, false);
+        let (mut bugs, mut run) = (Bugs::Fixed, None);
         let mut rest = args.iter();
         while let Some(arg) = rest.next() {
             let mut value = || {
@@ -78,6 +96,7 @@ impl Options {
                 "--scale" => scale = Some(number(value()?)?.clamp(1, 16)),
                 "--vsync" => vsync = true,
                 "--fullscreen" => fullscreen = true,
+                "--drawn-cursor" => drawn_cursor = true,
                 "--bugs" => {
                     bugs = match value()?.as_str() {
                         "fixed" => Bugs::Fixed,
@@ -102,6 +121,7 @@ impl Options {
             scale,
             vsync,
             fullscreen,
+            drawn_cursor,
             bugs,
             install: install.unwrap_or_else(files::default_install),
             map: map.unwrap_or_else(files::default_map),
@@ -207,28 +227,93 @@ fn set_up<'a>(assets: &'a Assets<'a>, options: &Options) -> Result<(Setup<'a>, S
     Ok((setup, format!("the situation {}", options.id)))
 }
 
-/// A frame composed ahead of its time: the change it shows, the frame and the frame widened.
+/// How a frame shows the cursor: the recording's in the frame until the map is live, then the
+/// hardware cursor (none in the frame) or the drawn one (not while its point lies off the frame).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct Look {
+    /// The map takes the player's input.
+    live: bool,
+    /// The hardware cursor chosen.
+    hardware: bool,
+    /// The frame's size.
+    frame: [u32; 2],
+}
+
+impl Look {
+    /// The cursor drawn in the frame for the timeline's.
+    fn cursor(self, cursor: Cursor) -> Cursor {
+        let [x, y] = cursor.at;
+        let on = u32::try_from(x).is_ok_and(|x| x < self.frame[0])
+            && u32::try_from(y).is_ok_and(|y| y < self.frame[1]);
+        Cursor {
+            shown: cursor.shown && (!self.live || (!self.hardware && on)),
+            ..cursor
+        }
+    }
+
+    /// Whether the hardware cursor shows the timeline's.
+    fn hardware(self) -> bool {
+        self.live && self.hardware
+    }
+}
+
+/// A frame composed ahead of its time: the change it shows, the cursor drawn in it, the frame and
+/// the frame widened.
 struct Frame {
     change: Change,
+    cursor: Cursor,
     screen: Screen,
     xrgb: Vec<u32>,
 }
 
 impl Frame {
-    fn of(painter: &mut Painter<'_>, change: Change) -> Result<Self, String> {
-        let screen = painter.frame(&change.drawn, change.cursor)?;
+    fn of(painter: &mut Painter<'_>, change: Change, look: Look) -> Result<Self, String> {
+        let cursor = look.cursor(change.cursor);
+        let screen = painter.frame(&change.drawn, cursor)?;
         let xrgb = screen.xrgb();
         Ok(Self {
             change,
+            cursor,
             screen,
             xrgb,
         })
     }
 
-    /// Whether it shows what `change` shows.
-    fn shows(&self, change: &Change) -> bool {
-        self.change.drawn == change.drawn && self.change.cursor == change.cursor
+    /// Whether it shows what `change` shows as `look` draws it.
+    fn shows(&self, change: &Change, look: Look) -> bool {
+        self.change.drawn == change.drawn && self.cursor == look.cursor(change.cursor)
     }
+}
+
+/// Sets the hardware cursor to the timeline's (`None`: the system's hidden over the window, as the
+/// cursor a walk hides), unless `set` holds it already; whether SDL made it (if not, the system's
+/// is hidden and `set` is `None`).
+fn hardware(
+    win: &mut Window,
+    painter: &mut Painter<'_>,
+    set: &mut Option<(u32, bool)>,
+    cursor: Option<Cursor>,
+) -> Result<bool, String> {
+    let want = cursor.map(|c| (c.frame, c.shown));
+    if *set == want {
+        return Ok(true);
+    }
+    let image = match cursor {
+        Some(c) if c.shown => {
+            let image = painter.cursor_image(c.frame)?;
+            Some(CursorImage {
+                width: image.width,
+                height: image.height,
+                hot_x: image.hot.0,
+                hot_y: image.hot.1,
+                rgba: image.rgba,
+            })
+        }
+        _ => None,
+    };
+    let made = win.set_cursor(image).is_ok();
+    *set = if made { want } else { None };
+    Ok(made)
 }
 
 /// A replay's error as a message.
@@ -241,6 +326,9 @@ fn unplayable((t, why): (u32, Unplayable)) -> String {
 struct Report {
     /// Per frame shown at its time: how late, in microseconds.
     late_us: Vec<u64>,
+    /// The same for the frames at a millisecond the player's input was given at (composed once it
+    /// came, not ahead).
+    input_late_us: Vec<u64>,
     /// Frames passed over because a later one was due already.
     skipped: usize,
     /// Frames read back, and those that matched.
@@ -250,6 +338,37 @@ struct Report {
     difference: Option<String>,
     /// The last read-back's output, the frame's place in it and its scale.
     geometry: Option<String>,
+}
+
+/// The changes shown checked against a headless play of the same start and actions: how many are
+/// the headless loop's at their times, and the first that is not.
+fn headless(
+    rules: &Rules,
+    start: &Start,
+    actions: &BTreeMap<u32, Vec<Action>>,
+    shown: &[Change],
+) -> Result<(usize, Option<String>), String> {
+    let until = shown.iter().map(|c| c.t).max().unwrap_or(0);
+    let states = timeline::play(rules.clone(), start, actions, until).map_err(unplayable)?;
+    let mut same = 0;
+    let mut first = None;
+    for c in shown {
+        let s = usize::try_from(c.t).ok().and_then(|t| states.get(t));
+        if s.is_some_and(|s| s.drawn == c.drawn && s.cursor == c.cursor) {
+            same += 1;
+        } else {
+            first.get_or_insert_with(|| {
+                format!(
+                    "{} ms: shown {:?} {:?}, headless {:?}",
+                    c.t,
+                    c.drawn,
+                    c.cursor,
+                    s.map(|s| (&s.drawn, s.cursor))
+                )
+            });
+        }
+    }
+    Ok((same, first))
 }
 
 /// Opens the window and plays the map until a quit, a close, or the unattended run's end.
@@ -272,12 +391,17 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
     let (setup, what) = set_up(&assets, options)?;
     let Setup {
         mut painter,
-        start,
+        mut start,
         actions,
         ..
     } = setup;
+    start.live = true;
     let rules = Rules::new(&tables, &layout, options.bugs);
-    let mut replay = Replay::new(rules, &start, actions).map_err(|why| unplayable((0, why)))?;
+    let new_replay =
+        || Replay::new(rules.clone(), &start, actions.clone()).map_err(|why| unplayable((0, why)));
+    let mut replay = new_replay()?;
+    // The map is live after a sequence's last input (from the start without one).
+    let live_after = actions.keys().next_back().copied();
     let [width, height] = layout.frame;
     let mut win = Window::open(&Config {
         title: format!("h3-map-view — {}", options.id),
@@ -287,21 +411,48 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
         vsync: options.vsync,
         fullscreen: options.fullscreen,
     })?;
+    win.set_key_repeats(true);
+    let mut look = Look {
+        live: live_after.is_none(),
+        hardware: !options.drawn_cursor,
+        frame: layout.frame,
+    };
+    // The hardware cursor as set (`None`: the system's hidden, as `Window::open` leaves it).
+    let mut hw: Option<(u32, bool)> = None;
     let mut clock = Clock::new(win.ticks_ns(), 0);
     let mut shown: Option<Frame> = None;
-    let mut next = Some(Frame::of(&mut painter, replay.at(0).map_err(unplayable)?)?);
-    // Either Control key held.
+    let mut next = Some(Frame::of(
+        &mut painter,
+        replay.at(0).map_err(unplayable)?,
+        look,
+    )?);
+    // Either Control key held; the keys held (a key down again before its release repeats).
     let mut ctrl = [false, false];
+    let mut held: BTreeSet<Key> = BTreeSet::new();
+    // The mouse's last point, and the changes shown (the headless check's).
+    let mut mouse: Option<[i32; 2]> = None;
+    let mut log: Vec<Change> = Vec::new();
+    // The actions given: scrolls, steps, the pointer's moves, clicks.
+    let mut given = [0_usize; 4];
+    let mut given_at: BTreeSet<u32> = BTreeSet::new();
+    let mut renew = look.live;
     let mut report = Report::default();
     let started = win.ticks_ns();
     let stop_ns = options
         .run
         .map(|(seconds, _)| u64::from(seconds) * 1_000_000_000);
     let read = options.run.is_some_and(|(_, read)| read);
+    let unattended = options.run.is_some();
     'run: loop {
         let now = win.ticks_ns();
         if stop_ns.is_some_and(|s| now.saturating_sub(started) >= s) {
             break;
+        }
+        let mut input: Vec<Action> = Vec::new();
+        if !look.live && live_after.is_some_and(|t| clock.ms(now) > t) {
+            look.live = true;
+            renew = true;
+            input.extend(mouse.map(Action::Pointer));
         }
         let timeout = next
             .as_ref()
@@ -312,6 +463,8 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                     .min(WAIT_MS)
             });
         let mut redraw = false;
+        // The pointer's last move not yet given (a batch's moves are one).
+        let mut pointer: Option<[i32; 2]> = None;
         for event in win.wait(timeout) {
             let now = win.ticks_ns();
             let key = match event {
@@ -320,20 +473,47 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                     redraw = true;
                     continue;
                 }
-                Event::Key(k @ (Key::LeftCtrl | Key::RightCtrl))
-                | Event::KeyUp(k @ (Key::LeftCtrl | Key::RightCtrl)) => {
-                    ctrl[usize::from(k == Key::RightCtrl)] = matches!(event, Event::Key(_));
+                Event::Pointer(p) => {
+                    let at = p.map_or(OFF, |(x, y)| [x, y]);
+                    (mouse, pointer) = (Some(at), Some(at));
+                    continue;
+                }
+                Event::Click {
+                    down: true,
+                    at: (x, y),
+                } => {
+                    // The click's own move is the click's.
+                    (mouse, pointer) = (Some([x, y]), None);
+                    input.push(Action::Click([x, y]));
+                    continue;
+                }
+                Event::Click { down: false, .. } => continue,
+                Event::KeyUp(k) => {
+                    held.remove(&k);
+                    if matches!(k, Key::LeftCtrl | Key::RightCtrl) {
+                        ctrl[usize::from(k == Key::RightCtrl)] = false;
+                    }
                     continue;
                 }
                 Event::Key(k) => k,
-                // The mouse and the keys' releases: the map's live input, T4b.
-                Event::KeyUp(_) | Event::Pointer(_) | Event::Click { .. } => continue,
             };
+            let repeat = !held.insert(key);
+            if matches!(key, Key::LeftCtrl | Key::RightCtrl) {
+                ctrl[usize::from(key == Key::RightCtrl)] = true;
+                continue;
+            }
             let command = keys.command(ctrl.contains(&true), key.name());
+            // The map's keys, repeats too; the window's own once a press.
+            if let Some(action) = command.and_then(Command::action) {
+                input.extend(pointer.take().map(Action::Pointer));
+                input.push(action);
+                continue;
+            }
             match command {
+                _ if repeat => {}
                 Some(Command::Quit) => break 'run,
-                // Unattended, the other keys do nothing.
-                _ if options.run.is_some() => {}
+                // Unattended, the window's other keys do nothing.
+                _ if unattended => {}
                 Some(Command::Pause) => clock.toggle(now),
                 Some(Command::Frame) if clock.paused() => {
                     if let Some(f) = &next {
@@ -341,10 +521,17 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                     }
                 }
                 Some(Command::Restart) => {
-                    replay.restart();
+                    replay = new_replay()?;
                     clock.seek(now, 0);
-                    shown = None;
-                    next = Some(Frame::of(&mut painter, replay.at(0).map_err(unplayable)?)?);
+                    look.live = live_after.is_none();
+                    (shown, renew) = (None, true);
+                    log.clear();
+                    input.clear();
+                    pointer = None;
+                }
+                Some(Command::Cursor) => {
+                    look.hardware = !look.hardware;
+                    renew = true;
                 }
                 Some(Command::Fullscreen) => {
                     let on = !win.fullscreen();
@@ -354,50 +541,111 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                     let on = !win.vsync();
                     win.set_vsync(on);
                 }
-                // The map's scroll and the hero's steps: T4b; a frame on while running: nothing.
+                // A frame on while running: nothing.
                 Some(Command::Scroll(_) | Command::Hero(_) | Command::Frame) | None => {}
             }
         }
+        input.extend(pointer.map(Action::Pointer));
         let ms = clock.ms(win.ticks_ns());
-        // A later change may be due already: show the latest instead; if it shows what shows,
-        // nothing new is presented (a redraw still is).
-        let due = match next.take_if(|f| f.change.t <= ms) {
-            None => None,
-            Some(d) => {
-                let latest = replay.at(ms).map_err(unplayable)?;
-                if latest.t <= d.change.t {
-                    Some(d)
+        // The player's input, after the change shown.
+        if look.live && !input.is_empty() {
+            let t = ms.max(shown.as_ref().map_or(0, |f| f.change.t).saturating_add(1));
+            given_at.insert(t);
+            for action in input {
+                given[match action {
+                    Action::Scroll(_) => 0,
+                    Action::Step(_) => 1,
+                    Action::Pointer(_) => 2,
+                    Action::Click(_) => 3,
+                }] += 1;
+                replay.give(t, action);
+            }
+            renew = true;
+        }
+        // A hardware cursor SDL could not remake (a new scale) is drawn instead.
+        if look.hardware() && hw.is_some_and(|(_, on)| on) && !win.hardware_cursor() {
+            lines.push("hardware cursor lost; drawn instead".to_owned());
+            look.hardware = false;
+            renew = true;
+        }
+        if std::mem::take(&mut renew) {
+            // The cursor as the look has it, the frame shown again if it changes, the next made
+            // again.
+            let current = shown.as_ref().map(|f| f.change.cursor);
+            if !hardware(
+                &mut win,
+                &mut painter,
+                &mut hw,
+                current.filter(|_| look.hardware()),
+            )? {
+                lines.push("hardware cursor: SDL could not make it; drawn instead".to_owned());
+                look.hardware = false;
+            }
+            if let Some(f) = shown.take() {
+                let again = if f.shows(&f.change, look) {
+                    f
                 } else {
-                    report.skipped += 1;
-                    match shown.as_mut().filter(|s| s.shows(&latest)) {
-                        Some(s) => {
-                            s.change.t = latest.t;
-                            next = replay
-                                .after(latest.t, LOOK_AHEAD_MS)
-                                .map_err(unplayable)?
-                                .map(|c| Frame::of(&mut painter, c))
-                                .transpose()?;
-                            None
-                        }
-                        None => Some(Frame::of(&mut painter, latest)?),
+                    let again = Frame::of(&mut painter, f.change, look)?;
+                    if let Some(back) = show(&mut win, &again, read)? {
+                        compare(&back, &again, &mut report);
                     }
+                    again
+                };
+                shown = Some(again);
+            }
+            let change = match &shown {
+                Some(f) => replay.after(f.change.t, LOOK_AHEAD_MS),
+                None => replay.at(0).map(Some),
+            }
+            .map_err(unplayable)?;
+            next = match (next.take(), change) {
+                (Some(n), Some(c)) if n.change == c && n.shows(&c, look) => Some(n),
+                (_, c) => c.map(|c| Frame::of(&mut painter, c, look)).transpose()?,
+            };
+        }
+        // A later change may be due already: the latest is shown instead; if it shows what shows,
+        // nothing new is presented (a redraw still is).
+        if let Some(d) = next.take_if(|f| f.change.t <= ms) {
+            let latest = replay.at(ms).map_err(unplayable)?;
+            let change = if latest.t <= d.change.t {
+                d.change.clone()
+            } else {
+                report.skipped += 1;
+                latest
+            };
+            if look.hardware() && !hardware(&mut win, &mut painter, &mut hw, Some(change.cursor))? {
+                lines.push("hardware cursor: SDL could not make it; drawn instead".to_owned());
+                look.hardware = false;
+            }
+            if read {
+                log.push(change.clone());
+            }
+            match &mut shown {
+                Some(s) if s.shows(&change, look) => s.change = change,
+                _ => {
+                    let due = if d.change == change && d.shows(&change, look) {
+                        d
+                    } else {
+                        Frame::of(&mut painter, change, look)?
+                    };
+                    let back = show(&mut win, &due, read)?;
+                    let late = clock.late(win.ticks_ns(), due.change.t) / 1000;
+                    report.late_us.push(late);
+                    if given_at.contains(&due.change.t) {
+                        report.input_late_us.push(late);
+                    }
+                    if let Some(back) = back {
+                        compare(&back, &due, &mut report);
+                    }
+                    shown = Some(due);
                 }
             }
-        };
-        if let Some(due) = due {
-            let back = show(&mut win, &due, read)?;
-            report
-                .late_us
-                .push(clock.late(win.ticks_ns(), due.change.t) / 1000);
-            if let Some(back) = back {
-                compare(&back, &due, &mut report);
-            }
+            let t = shown.as_ref().map_or(0, |f| f.change.t);
             next = replay
-                .after(due.change.t, LOOK_AHEAD_MS)
+                .after(t, LOOK_AHEAD_MS)
                 .map_err(unplayable)?
-                .map(|c| Frame::of(&mut painter, c))
+                .map(|c| Frame::of(&mut painter, c, look))
                 .transpose()?;
-            shown = Some(due);
         } else if redraw && let Some(f) = &shown {
             show(&mut win, f, false)?;
         }
@@ -405,18 +653,28 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
     let seconds = win.ticks_ns().saturating_sub(started) / 1_000_000;
     lines.push(win.describe());
     drop(win);
+    let [scrolls, steps, moves, clicks] = given;
+    let view = shown
+        .as_ref()
+        .map(|f| f.change.drawn.view)
+        .unwrap_or(start.view);
     lines.push(format!(
         "{what}, keys: {keys_from}; {} frames shown in {seconds} ms, {} passed over, the map run \
-         to {} ms",
+         to {} ms; given: {scrolls} scrolls, {steps} steps, {moves} moves, {clicks} clicks; the \
+         view at ({}, {}, {})",
         report.late_us.len(),
         report.skipped,
-        replay.ran()
+        replay.ran(),
+        view.x,
+        view.y,
+        view.z
     ));
     lines.push(format!(
-        "frame after its time (ms): {}",
-        summary(&mut report.late_us)
+        "frame after its time (ms): {}; at an input's time: {}",
+        summary(&mut report.late_us),
+        summary(&mut report.input_late_us)
     ));
-    let ok = report.difference.is_none();
+    let mut ok = report.difference.is_none();
     if read {
         lines.push(format!(
             "read back: {} of {} frames exact ({}){}",
@@ -425,6 +683,15 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
             report.geometry.unwrap_or_default(),
             report
                 .difference
+                .map(|d| format!("; the first difference: {d}"))
+                .unwrap_or_default()
+        ));
+        let (same, first) = headless(&rules, &start, replay.actions(), &log)?;
+        ok &= first.is_none();
+        lines.push(format!(
+            "headless: {same} of {} changes shown as the headless loop's{}",
+            log.len(),
+            first
                 .map(|d| format!("; the first difference: {d}"))
                 .unwrap_or_default()
         ));
@@ -511,6 +778,7 @@ mod tests {
             "0",
             "--vsync",
             "--fullscreen",
+            "--drawn-cursor",
             "--bugs",
             "original",
             "--map",
@@ -523,13 +791,14 @@ mod tests {
         .unwrap();
         assert_eq!(o.id, "walk-1");
         assert_eq!(o.keys, Some(PathBuf::from("mine.toml")));
-        assert!(o.vsync && o.fullscreen);
+        assert!(o.vsync && o.fullscreen && o.drawn_cursor);
         assert_eq!(
             (o.scale, o.bugs, o.run),
             (Some(1), Bugs::Original, Some((20, true)))
         );
         assert_eq!((o.map, o.install), (PathBuf::from("m"), PathBuf::from("i")));
         let m = Options::parse(&args(&["boats", "--measure", "5"])).unwrap();
+        assert!(!m.drawn_cursor);
         assert_eq!(
             (m.scale, m.bugs, m.run),
             (None, Bugs::Fixed, Some((5, false)))
@@ -571,6 +840,38 @@ mod tests {
             Chord::parse("Ctrl+Up").map(|c| Keys::original().command(c.ctrl, &c.key)),
             Ok(Some(Command::Scroll(Direction::North)))
         );
+    }
+
+    #[test]
+    fn the_cursor_in_the_frame_by_the_look() {
+        let cursor = Cursor {
+            frame: 33,
+            at: [10, 20],
+            shown: true,
+        };
+        let hidden = Cursor {
+            shown: false,
+            ..cursor
+        };
+        let mut look = Look {
+            live: false,
+            hardware: true,
+            frame: [800, 600],
+        };
+        // The recording's, as it is.
+        assert_eq!(look.cursor(cursor), cursor);
+        assert!(look.cursor(Cursor { at: OFF, ..cursor }).shown);
+        assert!(!look.hardware());
+        // Live: the hardware one, none in the frame; or drawn while its point is on the frame.
+        look.live = true;
+        assert!(look.hardware());
+        assert_eq!(look.cursor(cursor), hidden);
+        look.hardware = false;
+        assert_eq!(look.cursor(cursor), cursor);
+        for at in [OFF, [800, 5], [5, 600], [-1, 5]] {
+            assert!(!look.cursor(Cursor { at, ..cursor }).shown, "{at:?}");
+        }
+        assert_eq!(look.cursor(hidden), hidden);
     }
 
     #[test]

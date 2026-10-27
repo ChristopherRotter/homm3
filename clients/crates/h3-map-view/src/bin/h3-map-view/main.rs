@@ -73,22 +73,28 @@ commands:
           lane's writer, the shipped maps its copies name read from <dir>/Maps (a situation
           that names a shipped map whole, `map`, is the harness's to load: refused).
   window <sequence | situation> [--keys <file>] [--scale <n>] [--vsync] [--fullscreen]
-         [--bugs fixed|original] [--install <dir>] [--map <dir>] [--check <s> | --measure <s>]
+         [--drawn-cursor] [--bugs fixed|original] [--install <dir>] [--map <dir>]
+         [--check <s> | --measure <s>]
           shows a recorded sequence (<map>/sequences.toml: its inputs replayed at their times,
-          then the map standing still on) or a situation (<map>/situations/<id>.toml, with its
-          kept live part if any: standing still) in a window at the original's frame times, as
-          `sequences` draws it (the cursor the replay's, drawn in the frame). Every key goes
-          through a table of commands (E24 M2 T4a, provisional): F5 pauses, F6 shows the next
-          frame while paused, F7 restarts, F8 turns vsync on or off, F11 fullscreen, Esc quits;
-          the original's map keys (Ctrl and a direction key scroll, a direction key steps the
-          selected hero) are bound but take no effect yet (E24 M2 T4b). A user's file
-          (--keys, else keys.toml in the working directory when there is one) overrides the
-          defaults command by command, e.g. `pause = [\"Space\"]`, `quit = [\"Escape\", \"Ctrl+F12\"]`
-          (the commands: scroll-north ... scroll-north-west, hero-north ... hero-north-west,
-          pause, frame, restart, vsync, fullscreen, quit; [] unbinds one). --bugs defaults to
-          fixed. --check <s> and --measure <s> run unattended for <s> seconds and report when
-          each frame showed against its time; --check also reads every frame back and compares
-          it with the frame composed (exit 1 on a difference).
+          the cursor the recording's) or a situation (<map>/situations/<id>.toml, with its kept
+          live part if any; the viewer's hero selected when it has one only) in a window at the
+          original's frame times, as `sequences` draws it; past a sequence's inputs, and in a
+          situation from the start, the map takes the keys and the mouse (E24 M2 T4b): Ctrl and
+          a direction key (the keypad's too) scroll, a direction key steps the selected hero (a
+          held key repeats), the pointer at the frame's edges scrolls with the edge cursors, a
+          click shows a path the map knows and on its destination walks it; the cursor is the
+          hardware one (--drawn-cursor or F9: drawn in the frame at the mouse poll's point). Every
+          key goes through a table of commands (E24 M2 T4a, provisional): F5 pauses, F6 shows the
+          next frame while paused, F7 restarts, F8 turns vsync on or off, F9 the cursor's kind,
+          F11 fullscreen, Esc quits. A user's file (--keys, else keys.toml in the working
+          directory when there is one) overrides the defaults command by command, e.g.
+          `pause = [\"Space\"]`, `quit = [\"Escape\", \"Ctrl+F12\"]` (the commands: scroll-north ...
+          scroll-north-west, hero-north ... hero-north-west, pause, frame, restart, vsync,
+          cursor, fullscreen, quit; [] unbinds one). --bugs defaults to fixed. --check <s> and
+          --measure <s> run unattended for <s> seconds (the window's own keys but Esc do
+          nothing; the map's input is taken) and report when each frame showed against its time;
+          --check also reads every frame back and compares it with the frame composed, and plays
+          every action headless to check each change shown (exit 1 on a difference).
 ";
 
 fn main() -> ExitCode {

@@ -166,6 +166,8 @@ fn start(situation: &str, speed: usize) -> Start {
         pointer: PARK,
         hero: None,
         paths: Vec::new(),
+        path: Vec::new(),
+        live: false,
     }
 }
 
@@ -257,6 +259,8 @@ fn looped(bugs: Bugs, speed: usize) -> Loop {
         pointer: PARK,
         hero: None,
         paths: Vec::new(),
+        path: Vec::new(),
+        live: false,
     };
     Loop::start(rules(bugs), &start).unwrap()
 }
@@ -447,6 +451,8 @@ fn what_it_cannot_play_yet() {
         pointer: [300, 300],
         hero: None,
         paths: Vec::new(),
+        path: Vec::new(),
+        live: false,
     };
     assert_eq!(
         Loop::start(rules(Bugs::Fixed), &over),
@@ -547,6 +553,8 @@ fn walking(speed: usize, paths: Vec<Vec<Arrow>>) -> Loop {
             facing: Direction::East,
         }),
         paths,
+        path: Vec::new(),
+        live: false,
     };
     Loop::start(rules(Bugs::Fixed), &start).unwrap()
 }
@@ -766,4 +774,96 @@ fn a_paths_order() {
     };
     assert_eq!(chain(from, &[below]), None);
     assert_eq!(Direction::between(from, Pos { x: 2, y: 0, z: 0 }), None);
+}
+
+/// A live start (the window's, E24 M2 T4b): `walking`'s map, hero and paths, the pointer at a
+/// point, a path shown at 0.
+fn live(pointer: [i32; 2], hero: bool, path: Vec<Arrow>) -> Start {
+    Start {
+        view: ViewAt { x: 8, y: 9, z: 0 },
+        size: 36,
+        scroll_speed: 1,
+        hero_speed: 2,
+        pointer,
+        hero: hero.then_some(Hero {
+            at: Pos { x: 17, y: 17, z: 0 },
+            facing: Direction::East,
+        }),
+        paths: vec![east()],
+        path,
+        live: true,
+    }
+}
+
+#[test]
+fn live_the_pointer_over_the_view_shows_the_arrow() {
+    let r = rules(Bugs::Fixed);
+    let mut l = Loop::start(r.clone(), &live([300, 300], false, Vec::new())).unwrap();
+    assert_eq!(l.state(0).cursor.frame, r.arrow);
+    // Over the view in the west zone: the edge scroll, its cursor, 70 ms after the idle message
+    // before the move.
+    l.run(1, &[Action::Pointer([10, 300])]).unwrap();
+    for t in 2..71 {
+        l.run(t, &[]).unwrap();
+    }
+    assert_eq!(l.state(70).view.x, 8);
+    l.run(71, &[]).unwrap();
+    let s = l.state(71);
+    assert_eq!((s.view.x, s.cursor.frame), (6, r.edges + 6));
+    // Out of the zone over the view: the arrow, no scroll.
+    l.run(72, &[Action::Pointer([300, 300])]).unwrap();
+    for t in 73..200 {
+        l.run(t, &[]).unwrap();
+    }
+    let s = l.state(199);
+    assert_eq!((s.view.x, s.cursor.frame), (6, r.arrow));
+    // Not live, the same start is refused.
+    let mut strict = live([300, 300], false, Vec::new());
+    strict.live = false;
+    assert_eq!(
+        Loop::start(r, &strict),
+        Err(Unplayable::OverView([300, 300]))
+    );
+}
+
+#[test]
+fn live_a_click_the_loop_cannot_play_only_moves_the_pointer() {
+    for hero in [true, false] {
+        let mut l = Loop::start(rules(Bugs::Fixed), &live(PARK, hero, Vec::new())).unwrap();
+        let before = l.state(0).drawn;
+        l.run(1, &[Action::Click([700, 2])]).unwrap();
+        l.run(2, &[Action::Click(tile(21, 19))]).unwrap();
+        let s = l.state(2);
+        assert_eq!(s.drawn, before, "{hero}");
+        assert!(s.arrows.is_empty() && s.cursor.shown, "{hero}");
+        // The path's destination: shown with a hero, nothing without.
+        l.run(3, &[Action::Click(tile(21, 17))]).unwrap();
+        assert_eq!(l.state(3).arrows.len(), if hero { 4 } else { 0 }, "{hero}");
+    }
+}
+
+#[test]
+fn a_path_shown_at_0() {
+    let r = rules(Bugs::Fixed);
+    let mut l = Loop::start(r.clone(), &live(PARK, true, east())).unwrap();
+    let s = l.state(0);
+    assert_eq!((s.arrows.len(), s.drawn.path.len()), (4, 4));
+    assert_eq!(s.drawn.path, s.arrows);
+    // Its destination clicked: the walk at once.
+    l.run(1, &[Action::Click(tile(21, 17))]).unwrap();
+    let s = l.state(1);
+    assert!(!s.cursor.shown);
+    assert_eq!(s.hero.unwrap().at, Pos { x: 18, y: 17, z: 0 });
+    // A path that does not lead from the hero, or no hero: none shown.
+    let mut away = live(PARK, true, vec![arrow(5, 5, 1)]);
+    assert!(
+        Loop::start(r.clone(), &away)
+            .unwrap()
+            .state(0)
+            .arrows
+            .is_empty()
+    );
+    away.hero = None;
+    away.path = east();
+    assert!(Loop::start(r, &away).unwrap().state(0).arrows.is_empty());
 }

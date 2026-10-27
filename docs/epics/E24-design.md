@@ -1193,7 +1193,7 @@ frames recorded. The first draw differed only at the walks' ends (the late redra
   still. Past a sequence's inputs the map stands still on; a restart plays it again from 0.
 - **The cursor** in a replay is the timeline's, drawn in the frame at its point, as the headless
   frames have it; the system's is hidden over the window (`Window::open`), the mouse does nothing
-  (T4b: the live pointer, the hardware or drawn cursor).
+  (since T4b1 past a sequence's inputs the live pointer, the hardware or drawn cursor: §3.10).
 - **The keys** (the user, 2026-10-26; `h3_map_view::keys`): one table of commands, each with its
   chords (a key by `h3_sdl::Key`'s name, `Ctrl+` holding either Control key). Defaults: the
   original's eight direction keys (§3.4) for the hero's steps and with Ctrl for the scroll; the
@@ -1206,3 +1206,62 @@ frames recorded. The first draw differed only at the walks' ends (the late redra
 - **Measured** (the sandbox, Xvfb, scale 1): a frame shows a median 5 to 9 ms after its time, p95
   8 to 11 ms (the software renderer's present; at scale 2, 21 and 35); every frame read back
   exact (log: M2 T4a).
+
+### 3.10 The window's live input (M2 T4b1)
+
+No new reading but `input_key_message` 0x4EC0E0's (T1a2: the message's code is lParam's bits 16 to
+23); the rest is the timeline's (§3.4, §3.5) given as the player gives it (*provisional*).
+
+- **When.** A sequence plays its recorded inputs as before (§3.9); after its last one, and in a
+  situation (or a sequence without inputs) from the start, the map is live: the keys and the
+  mouse are the timeline's actions (`Action`), given at the clock's millisecond, at least one
+  after the change shown (`Replay::give`). Pointer moves of one batch of events are one move; a
+  key's or a click's goes first. A restart plays the recording again, the input given forgotten.
+- **The replay given actions as they come.** The window composes the next change's frame ahead,
+  so the loop has run past the clock (up to 180 ms standing still). Each change keeps the loop as
+  of its millisecond; an action at a time the loop ran runs it again from the latest change
+  kept before that time (the one shown at least), the later changes forgotten, the next frame
+  made again if it changed. Given so, the changes are a headless play's of every action (the
+  replay's tests give five sequences' actions this way, the loop behind each at least once).
+- **Live in the timeline** (`Start::live`): the pointer over the view is played (the recorded
+  sequences refuse it: `Unplayable::OverView`): the edge zones that overlap the view (x 8 to 15,
+  y 8 to 15) scroll there too, and the cursor is the arrow outside a zone (M3: the cursor by the
+  tile under the pointer); a click off the view or on a tile no given path leads to only moves
+  the pointer (M3: the panels; M4: the engine's paths). A click is the left button's press (which
+  of press and release the original acts on is not read: M3).
+- **A situation's hero.** The viewer's hero is selected when the live part holds one only
+  (*provisional*: M4 selects by the game; `heroes-classes-*` have several, so no hero steps
+  there); its path, as the still shows it (`path-objects`), is the timeline's at 0
+  (`Start::path`, chained from the hero) and one of the paths a click shows: its destination
+  clicked walks it, to its first red arrow (the points the situation gives).
+- **The keys.** A held key's repeats are given (`Window::set_key_repeats`), as the original
+  queues every WM_KEYDOWN (§3.4): a direction key held walks the hero on at the system's rate, the
+  steps queued during a step as the timeline queues them; the window's own commands act once a
+  press. The keypad's eight keys are bound with the direction keys: the original's code is the
+  scan code, the keypad's the same in either NumLock state, and SDL 3 gives the keypad's own
+  keycodes in both (its default `SDL_HINT_KEYCODE_OPTIONS`), so the adapter names them
+  `Keypad1` to `Keypad9` (no 5). F9 switches the cursor's kind.
+- **The cursor.** The hardware cursor (default) shows the timeline's frame (the arrow, the edge
+  cursors), set when its change falls due, hidden while a walk hides it; the frame draws none,
+  and a change that moves only the cursor's point presents nothing. Drawn (`--drawn-cursor`, F9),
+  it is drawn in the frame at the mouse poll's point (§3.4), not while that point lies off the
+  frame (the window's black border, the pointer outside: `(-1, -1)`, where no edge scrolls). SDL's
+  failure to make the hardware one falls back to the drawn.
+- **Checked** (Xvfb, two cores, scale 1, driven by `xdotool`): `--check` reads every frame back
+  and at the end plays every action headless (`timeline::play`) and compares each change shown;
+  both exact in every run: `path-objects` with Ctrl and Right, Ctrl and the keypad's Right
+  (NumLock off) and 6 (on), Ctrl and Down (the view (0, 0) to (6, 2)); the east edge, then the
+  west zone over the view; the path's destination clicked (the walk to its first red arrow, the
+  view centred at (−1, −5)) and Down; Right held 1.5 s (23 steps, the hero walking on to the
+  map's side); the same with the drawn cursor; `walk-1` with the mouse at the east edge and
+  Ctrl+Down during its inputs (not taken), live after them (the pointer given where it lay: the
+  view scrolled to the limit, (26, 9)); `walk-sail` at scale 2 with the drawn cursor. F9 three
+  times: drawn. The 13 sequences as recorded, `drawn` the same (the window's changes do not
+  touch `sequences`).
+- **Measured** there: a frame a median 5 to 7 ms after its time; a frame at an input's time
+  (composed once the input came) 37 to 60 ms, the view's composition in this sandbox (30 to
+  60 ms for a whole view, the scene and the compositor of M1; a scroll redraws it whole); a walk
+  at hero speed 2 frames late as much, its frames due faster than they compose here. The user's
+  machine measures it in T4b2. An incremental scroll (the view moved by whole tiles, only the
+  new strip drawn) would cut the input's delay: not needed for M2 (*provisional*).
+

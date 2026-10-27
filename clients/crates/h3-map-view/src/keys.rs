@@ -1,8 +1,9 @@
 //! The window's keys (E24 M2 T4a, *provisional*; the user, 2026-10-26: no key hard-coded in the
 //! client): every key the window takes goes through this one table of commands. Its defaults are
 //! the original's keys on the adventure map (`docs/epics/E24-design.md` §3.4: Ctrl and a direction
-//! key scroll the view, a direction key alone steps the selected hero) and the window's own (pause,
-//! a frame on, restart, vsync, fullscreen, quit), which take the function keys and Esc, keys the
+//! key scroll the view, a direction key alone steps the selected hero; the keypad's eight give the
+//! same scan codes in either NumLock state, §3.10) and the window's own (pause, a frame on, restart,
+//! vsync, the cursor's kind, fullscreen, quit), which take the function keys and Esc, keys the
 //! original's map leaves to nothing else. A user's file overrides the defaults command by command
 //! ([`Keys::with_file`]). A key is named as the adapter names it (`h3-sdl`'s `Key::name`: `Up`,
 //! `PageUp`, `F5`, …), `Ctrl+` holding either Control key with it; the adapter checks the names
@@ -33,6 +34,8 @@ pub enum Command {
     Restart,
     /// Vsync on or off.
     Vsync,
+    /// The hardware cursor or the drawn one (E24 M2 T4b).
+    Cursor,
     /// Fullscreen on or off.
     Fullscreen,
     /// The window closed.
@@ -40,18 +43,24 @@ pub enum Command {
 }
 
 /// The original's direction keys by the adapter's names, north clockwise to north-west: the scan
-/// codes 72, 73, 77, 81, 80, 79, 75, 71 (`adventure_key_down` 0x408C40; the keypad's with NumLock
-/// off give the same codes).
+/// codes 72, 73, 77, 81, 80, 79, 75, 71 (`adventure_key_down` 0x408C40).
 const DIRECTION_KEYS: [&str; 8] = [
     "Up", "PageUp", "Right", "PageDown", "Down", "End", "Left", "Home",
 ];
 
+/// The keypad's keys giving the same scan codes, in the same order: the message's code is
+/// lParam's bits 16 to 23 (`input_key_message` 0x4EC0E0), the keypad's in either NumLock state.
+const KEYPAD_KEYS: [&str; 8] = [
+    "Keypad8", "Keypad9", "Keypad6", "Keypad3", "Keypad2", "Keypad1", "Keypad4", "Keypad7",
+];
+
 /// The window's own commands and their keys.
-const WINDOW_KEYS: [(Command, &str); 6] = [
+const WINDOW_KEYS: [(Command, &str); 7] = [
     (Command::Pause, "F5"),
     (Command::Frame, "F6"),
     (Command::Restart, "F7"),
     (Command::Vsync, "F8"),
+    (Command::Cursor, "F9"),
     (Command::Fullscreen, "F11"),
     (Command::Quit, "Escape"),
 ];
@@ -77,6 +86,7 @@ impl Command {
             Self::Frame => "frame".into(),
             Self::Restart => "restart".into(),
             Self::Vsync => "vsync".into(),
+            Self::Cursor => "cursor".into(),
             Self::Fullscreen => "fullscreen".into(),
             Self::Quit => "quit".into(),
         }
@@ -166,13 +176,19 @@ impl Keys {
     #[must_use]
     pub fn original() -> Self {
         let mut bound = BTreeMap::new();
-        for (d, key) in Direction::ALL.into_iter().zip(DIRECTION_KEYS) {
-            let chord = |ctrl| Chord {
-                ctrl,
-                key: key.to_string(),
+        for ((d, key), pad) in Direction::ALL
+            .into_iter()
+            .zip(DIRECTION_KEYS)
+            .zip(KEYPAD_KEYS)
+        {
+            let chords = |ctrl| {
+                [key, pad].map(|k| Chord {
+                    ctrl,
+                    key: k.to_string(),
+                })
             };
-            bound.insert(Command::Scroll(d), Vec::from([chord(true)]));
-            bound.insert(Command::Hero(d), Vec::from([chord(false)]));
+            bound.insert(Command::Scroll(d), Vec::from(chords(true)));
+            bound.insert(Command::Hero(d), Vec::from(chords(false)));
         }
         for (command, key) in WINDOW_KEYS {
             bound.insert(
