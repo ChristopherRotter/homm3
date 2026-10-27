@@ -11,7 +11,7 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   dependencies the user's at T6 and T7. **T1a, T1b and T2a done** (the playhead; the timeline
   that grows, `live.rs`; the click's command, `mouse::click` and `button`). T2 cut in two by the
   user (T2a, T2b; the Faerie Dragon's cast into T3). **Next: M5 T2b** (hot seat in the window).
-  Open PR: the T2a one (check it first). Workspace `clients/` (`clients/README.md`), gates
+  Open PR: #515 (T2a; check it first). Workspace `clients/` (`clients/README.md`), gates
   `clients/scripts/check.sh`; ADR-0020 (+ drafts in `adr-drafts/`), ADR-0024; the harness
   `clients/capture/README.md`; design §3–§10; records in `E17-log.md`.
 - **Captures** (the user, 2026-10-20): `h3drive.py drawn` first (no Wine); capture what it lists or the task changes, all at a milestone's closure or a harness change (runbook); a capture not as recorded leaves `kept/` (T9b: record, then `--reuse`); later tasks' detail in `NOTES.md`.
@@ -38,7 +38,7 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
 
 ## Recent sessions
 
-- **2026-10-27, E17 M5 T2a (done; PR open: check it first).** T2 cut in two by the user (T2a,
+- **2026-10-27, E17 M5 T2a (done; #515 open: check it first).** T2 cut in two by the user (T2a,
   T2b; the Faerie Dragon's cast into T3). Read (design §9.11): the press by the cursor's kind,
   the slots' from-hexes, the input queue emptied at every turn's start (T6c-2's queued moves
   corrected). `mouse::click`, `button`, `attack_slots`; CLT-Q24's switch; `clicks.rs`: presses
