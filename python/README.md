@@ -187,7 +187,9 @@ reproducible from its record (the segments' seeds), not bitwise equal to an unin
 Older checkpoints (formats 1 and 2, before T4a's league) do not resume: start a new run
 `--init-from` their `best.pt`.
 On Windows a file another process holds open (a ladder reading `best.pt`) is kept as it was after
-five refused replaces, with a warning; the run goes on.
+five refused replaces, with a warning; the run goes on. A refused `best.pt` is written again at
+each checkpoint until it is; a refused `checkpoint.pt` keeps the retired snapshots' files it names
+until a checkpoint is written (E06 T9b).
 
 A checkpoint against Random, the baseline bots (E05 T7) and the system actor (E06 T7c), on a
 held-out set (E06 T3a): the report set v1 by default (500 battles per kind with a player on both
