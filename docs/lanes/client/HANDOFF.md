@@ -9,7 +9,7 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   here, the adventure map client the map-client lane's E24). **M5 (live play) refined at T3c:
   T1 to T8** (QUEUE, the epic's M5): hot seat in-process first, then a game on a server and
   accounts; the new dependencies the user's at T6 and T7. **Next: M5 T1** (the timeline that
-  grows, R2-7). Open PR: #PR (T3c; check it first). Workspace `clients/`
+  grows, R2-7). Open PR: #503 (T3c; check it first). Workspace `clients/`
   (`clients/README.md`), gates `clients/scripts/check.sh`; ADR-0020 (+ drafts in
   `adr-drafts/`), ADR-0024; the harness `clients/capture/README.md`; design §3–§10; records in
   `E17-log.md`.
@@ -36,7 +36,7 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
 
 ## Recent sessions
 
-- **2026-10-27, E17 M4 T3c (done; #PR open: check it first).** The M4 checkpoint, the user
+- **2026-10-27, E17 M4 T3c (done; #503 open: check it first).** The M4 checkpoint, the user
   present; docs only. Review items 1 to 14 accepted, 15 (the recipes' starting bonus Gold) at M5's
   closure; CLT-Q22 to Q24 answered (a), Q24's switch in M5 T2; M5 refined as drafted (T1 to T8;
   the inbox entries it takes moved into its tasks, their text in `QUEUE-ARCHIVE.md`). **M4
