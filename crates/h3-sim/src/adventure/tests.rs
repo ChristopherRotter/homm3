@@ -90,6 +90,7 @@ fn chart_setup(rules: &GameRuleset, difficulty: u8) -> Arc<GameSetup> {
             drawn: TileMask::default(),
             monster: None,
             guards: None,
+            holds: Default::default(),
         });
     }
     Arc::new(setup)

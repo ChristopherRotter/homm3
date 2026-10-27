@@ -75,13 +75,16 @@ pub use ruleset::{
     TerrainWalkerDef, Turn, TurnDef, Visit,
 };
 pub use setup::{
-    AdventureSetup, ArmyError, Guards, HeroSetup, MapSetup, MonsterSetup, ObjectSetup, Pos,
-    Scenery, SetupError, StandError, TileMask, TileSetup,
+    AdventureSetup, ArmyError, EventSetup, Guards, HeroSetup, Holds, MapSetup, MonsterSetup,
+    ObjectSetup, Pos, RewardRecord, Scenery, SetupError, StandError, TileMask, TileSetup,
 };
 pub use split::{TileRand, split};
 
-/// The primary skills a gift's choice names ([`Gives::Choice`]): the hero model's.
-pub use h3_heroes::PrimarySkill;
+/// The hero model's types the setup and the kinds name (E08 T61a): a gift's choice of primary
+/// skills ([`Gives::Choice`]), an artifact on an object ([`Holds::Artifact`]), a reward record's
+/// hero half ([`RewardRecord::hero`]) and a Scholar's gift ([`Holds::Gift`]), so the import needs
+/// no edge to the hero model.
+pub use h3_heroes::{ArtifactInstance, HeroReward, PrimarySkill, ScholarGift};
 pub use state::{
     AdventureState, BACKGROUND_RADIUS, HeroOnMap, MapObject, Monster, StaticMap, StaticTile,
 };
@@ -95,8 +98,9 @@ pub use state::{
 /// tile of the static map is on the coast. v9 (E08 T20a2a): the tiles each object lies on, each
 /// monster's creature, count, aggression, flags and treasure, the armies battles left on objects
 /// and the game's difficulty. v10 (E08 T21a): each guarded pile's guards. v11 (E08 T50): each
-/// hero's tactics flag. v12 (E08 T54): each object's scenery.
-pub const ADVENTURE_STATE_HASH_VERSION: u32 = 12;
+/// hero's tactics flag. v12 (E08 T54): each object's scenery. v13 (E08 T61a): what each object
+/// holds from the map (increment 7's kinds) and a monster's treasure artifact.
+pub const ADVENTURE_STATE_HASH_VERSION: u32 = 13;
 
 /// Version of the adventure ruleset part's canonical hash encoding (ADR-0015 point 2; owned by the
 /// adventure lane). v2 (E08 T5a): the setup bounds and the army slots. v3 (E08 T6b): the starting

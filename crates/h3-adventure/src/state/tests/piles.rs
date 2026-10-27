@@ -61,6 +61,7 @@ fn pile_at(x: u16, object_type: ObjectTypeId, guards: Option<Guards>) -> ObjectS
         drawn: TileMask::default(),
         monster: None,
         guards,
+        holds: Default::default(),
     }
 }
 
@@ -143,6 +144,7 @@ fn guards_stand_on_piles_only_as_a_valid_army() {
             never_flees: false,
             no_growth: false,
             treasure: vec![],
+            artifact: None,
         }),
         ..pile_at(2, MONSTER, guards(the_guards(), true))
     });
@@ -318,6 +320,7 @@ fn the_guards_battle_leaves_their_survivors_or_gives_the_pile() {
                     never_flees: false,
                     no_growth: false,
                     treasure: vec![(GOLD, 50)],
+                    artifact: None,
                 }),
                 ..pile_at(4, MONSTER, None)
             },

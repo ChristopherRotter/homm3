@@ -431,6 +431,7 @@ fn object(rules: &GameRuleset, key: &str, anchor: Pos, monster: MonsterSetup) ->
         drawn: TileMask::default(),
         monster: Some(monster),
         guards: None,
+        holds: Default::default(),
     }
 }
 
@@ -458,6 +459,7 @@ fn dialog_game(rules: &GameRuleset, army: Vec<ArmyStack>) -> GameState {
             never_flees: false,
             no_growth: false,
             treasure: vec![(GOLD, 100)],
+            artifact: None,
         },
     )];
     GameState::new(rules, &setup, 7).unwrap()

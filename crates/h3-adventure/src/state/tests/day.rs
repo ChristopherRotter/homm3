@@ -192,6 +192,7 @@ fn ground(ty: ObjectTypeId, anchor: Pos) -> ObjectSetup {
         drawn: TileMask::from_bits(0x707),
         monster: None,
         guards: None,
+        holds: Default::default(),
     }
 }
 
