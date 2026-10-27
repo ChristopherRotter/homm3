@@ -960,7 +960,11 @@ struct Cursors {
 impl Cursors {
     /// The cursor `look` (the combat cursor's frame, or the spell book's default cursor's: E17
     /// M5 T3a) with its hot spot.
-    fn get(&mut self, battle: &Battle<'_>, look: &CursorLook) -> Result<(Cursor, CursorImage), String> {
+    fn get(
+        &mut self,
+        battle: &Battle<'_>,
+        look: &CursorLook,
+    ) -> Result<(Cursor, CursorImage), String> {
         if let Some(made) = self.made.get(look) {
             return Ok(made.clone());
         }

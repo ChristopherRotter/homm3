@@ -649,9 +649,12 @@ impl<'g> Battle<'g> {
         }
         let names = (&ground.tables, &writer.catalogue);
         let manifest = &self.record.header.manifest;
-        let Some(hero) =
-            crate::spellbook::hero(&observation, (manifest, ruleset), names, &ground.layout.book)
-        else {
+        let Some(hero) = crate::spellbook::hero(
+            &observation,
+            (manifest, ruleset),
+            names,
+            &ground.layout.book,
+        ) else {
             return false;
         };
         let open = h3_view::book::Open::new(&mut self.book_memory, hero, &writer.catalogue);
@@ -730,7 +733,8 @@ impl<'g> Battle<'g> {
     /// changed.
     pub fn book_hover(&mut self, point: [i32; 2]) -> bool {
         let ground = self.ground;
-        let (Some(writer), Some((open, _, _))) = (ground.writer.as_ref(), self.book.as_mut()) else {
+        let (Some(writer), Some((open, _, _))) = (ground.writer.as_ref(), self.book.as_mut())
+        else {
             return false;
         };
         open.hover(
@@ -879,7 +883,10 @@ impl<'g> Battle<'g> {
     /// battle played on first if `t` is at or past its timeline's end).
     pub fn list_at(&mut self, t: u32) -> Result<Vec<Draw>, String> {
         // Behind the open spell book the battle stands as it was when it opened (E17 M5 T3a).
-        let at = self.book.as_ref().map_or(t, |&(_, opened, _)| opened.min(t));
+        let at = self
+            .book
+            .as_ref()
+            .map_or(t, |&(_, opened, _)| opened.min(t));
         self.grow(at)?;
         let timeline = self
             .entered

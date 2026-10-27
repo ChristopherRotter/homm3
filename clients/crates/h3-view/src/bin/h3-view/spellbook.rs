@@ -249,7 +249,12 @@ mod tests {
     fn played(actions: &[&str], hero: Option<Hero>) -> Result<Still, String> {
         let actions: Vec<String> = actions.iter().map(|a| (*a).to_owned()).collect();
         let catalogue = Catalogue::default();
-        still(&actions, crate::pointer::PARK, || hero, (&layout(), &catalogue))
+        still(
+            &actions,
+            crate::pointer::PARK,
+            || hero,
+            (&layout(), &catalogue),
+        )
     }
 
     #[test]
@@ -271,7 +276,11 @@ mod tests {
             &["key:c", "key:Escape"],
             &["key:c", "click:246,123"],
         ] {
-            assert_eq!(played(actions, Some(hero())).unwrap().open, None, "{actions:?}");
+            assert_eq!(
+                played(actions, Some(hero())).unwrap().open,
+                None,
+                "{actions:?}"
+            );
         }
         // No book to open: nothing open.
         assert_eq!(played(&["key:c"], None).unwrap().open, None);
