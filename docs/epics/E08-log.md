@@ -6440,3 +6440,7 @@ stale lock of the session's own fetch removed). No original data staged (none ne
 - **Docs**: the design note's §1, §2 and §5 (what T60a built, removed; §5's game half stays for
   T63), §6, §17; decision 147 and the tasks' lines; the queue (T60b); the HANDOFF; the battle and
   AI lanes' inboxes.
+- **Verify** (scoped, no original data staged): every step passed but clippy (an unused import in
+  the new tests, fixed, clippy re-run clean over the lane's crates and `h3-pack-battle`, `h3-sim`,
+  `h3-cli`) and `check-lane` (`cross-lane` by design; `check-lane --cross-lane` ok); coverage,
+  determinism and bench-check passed.
