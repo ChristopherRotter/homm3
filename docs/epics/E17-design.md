@@ -1990,8 +1990,7 @@ resistance roll, if any (category 3, 0x5A0331); Curse's is named `Curse`, withou
   harvested from the descriptors. Not built: the sample's wait; Land Mine's blast (57) and a
   Fire Wall's burn when a stack steps in (`ObstacleTriggered`: no record steps on one); Dispel's
   and Remove Obstacle's removals as their handlers order them (the vanish plays where the event
-  comes); a hidden object's hiding on the other human's turn (a record holds only what its viewer
-  sees). Recorded (`sequences.toml`): `obstacles` (seed 517 487 719: the engine draws the
+  comes). A hidden object's hiding on the other human's turn: built at M5 T2b (§9.12). Recorded (`sequences.toml`): `obstacles` (seed 517 487 719: the engine draws the
   original's four pits in its order), as recorded on the first run. The frame check: 84 frames,
   all as the original's; the boxes listed at 7 800 ms (memory holds the counts the tail reset).
 - **Read at T7c-3** (Chain Lightning's rays, the raises, Fire Shield's return, the explosions):
@@ -2989,6 +2988,62 @@ and CLT-Q24's answer.
   only).
 - **Not modelled:** the press's hiding of the panel's items, the right button's popups (0x4769C0),
   the dialogs (the stack's and the turret's: the inbox; the spell book: M5 T3), the hex shade.
+
+### 9.12 Hot seat in the window (M5 T2b)
+
+The window plays a scenario's battle with a human on a side or both (`h3-view window --human
+attacker|defender|both`, *provisional*: the bot plays the others). Built: `anim::Growing::waiting`
+and `push_seen`, `anim::Object::owner`, `Timeline::humans` and `screen`; the binary's
+`live::Live` (seats, `play`, `choice`, `obstacles`, every side's events), `Battle::command`,
+`press`, `button`, `takes`, `press_for`, `pointer::press_points` (moved from T2a's `clicks`).
+
+- **The seats.** The sides a human plays here are the battle's human players (`setup.human`), the
+  others the computer's (*provisional*, the M5 review list): the panel takes the colours of the
+  last human turn (§9.8), the mouse follows a human's turns (§9.10), the end's tune is the human
+  side's (§8.2), and the engine's computer-only rules apply to the bot's side (the bad-morale freeze's let-off,
+  BAT-QUIRK-27; the computer's difficulty branches are the original's computer's, which the bot is
+  not). Without `--human` the bot plays both as at M5 T1b, the scenario's `human` kept.
+- **The battle waits.** On a human's turn the battle waits at its timeline's end: the timeline
+  shown is `Growing::waiting`'s, what the last command left to the next redraw shown with the first
+  idle step after the end, the idle steps (the outline's pulse, the heroes) and the viewer's
+  fidgets going on. The command given at `t` grows the timeline with the same moments before `t`
+  (`push`'s idle steps run from the end, the first showing what was left): the replays' tests
+  check it before every command given at a time. After it, the window's playhead starts afresh.
+- **Input.** The battle takes a press or one of its keys only while it waits for a human's
+  command and the last action played (the clock at the timeline's end or past it): a left press
+  over the battlefield gives `mouse::click`'s command as the button goes down, the panel's Wait or
+  Defend `mouse::button`'s when clicked (released over it, or its hotkey W, D or Space released).
+  A press or key made earlier (during an action, the computer's turn) is dropped, its release then
+  doing nothing (§9.11: the queue emptied at the turn's start; the button never went down); the
+  viewer's own keys (pause, restart, the music) always work. Each command is sent from the side
+  to act's seat in the session in-process, which validates it as a server does (a rejected one
+  changes nothing), then the copy the bot decides on plays it; its action starts at the press's
+  time, the mouse's `Act` input with it (§9.10).
+- **The side to act's view.** `battle_redraw` draws an object whose +0xA (revealed) is clear only
+  for the screen's side: the acting side when a human here plays it, else the other one
+  (0x49460A to 0x49463A; §7.16). A battle a human plays here grows from every side's events
+  (`Live`: the engine's events, each with the side that alone sees it, `push_seen`): an object an
+  event one side alone sees places is that side's (`Object::owner`) until an `ObstacleRevealed`
+  shows it to both from the next frame drawn; the opening's are both sides' (`Live::obstacles`:
+  a Tower's mines). `Timeline::screen` names the screen's side at a time by the turn's stack's side
+  (*provisional*: Hypnotize's controller not followed, R3-1, M5 T5); without a human here every
+  object shows, as a record holds only what its viewer sees (`render --seat`, the Tower's still:
+  the keep's turn, the defender's screen). The placing animations play on every screen: Land
+  Mine's handler tests only whether the battle is hidden before its sample and each mine's
+  animation (0x5A060F to 0x5A063D), so a spectator's record, which lacks a hidden mine's
+  placement, shows less than either player's screen.
+- **Unattended** (`--check`, `--measure` with `--human`): 400 ms after a human's turn started the
+  window presses the bot's choice where a press gives it (`Battle::press_for`: the panel's Wait or
+  Defend, else a hex's point or one of its slots, else the siege's rectangles; the mouse moved
+  there first), or gives it without a press where none does (a hero's cast, the tactics phase's
+  end: M5 T3, T4; CLT-Q25's step back); at the end it checks that the record is the start of the
+  battle the bot fights at once with the same setup.
+- **Checked:** `window --check` under Xvfb on `scenarios/battle.toml`: hot seat and a human
+  attacker against the bot played to the battle's end by presses (24 commands; 1 281 and 1 248
+  frames, every one exact), the battle the bot's at once; real X clicks (`xdotool`): a flight, a
+  Defend by its key, Wait by its button, a walk, the panel's colours the defender's on its turn;
+  the Tower's siege in hot seat: its mines on the keep's and the towers' turns, none on the
+  Catapult's.
 
 ## 10. The siege (M4)
 

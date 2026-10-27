@@ -35,6 +35,13 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   is read: a stage lookup that depends on the record's events (`motion::magic`, `motion::casts`)
   needs its `every` branch. A frame at or past a playing timeline's end is drawn only after the
   next command (`Battle::grow`).
+- A battle a human plays in the window (`--human`, E17 M5 T2b) grows from every side's events
+  (`Live`, `Growing::push_seen`), not the spectator's: an event one side alone sees (a hidden
+  obstacle's placement or removal, a Faerie Dragon's `SpellDrawn`) reaches `anim`'s player there;
+  an object's sight is `Object::owner` with `Timeline::screen`. While it waits for a human the
+  timeline shown is `Growing::waiting`'s copy, so a command starts a fresh playhead
+  (`Battle::command`); presses and the battle's keys count only while it waits, at or past the
+  timeline's end (`Battle::takes`).
 - The viewer reads `clients/layouts/*.toml` at run time: a layout change made while a batch
   runs breaks (or changes) the release binary's comparisons of the batch (M4 T3b-1: an unknown
   field); keep the layout with the binary it was built for until the batch ends.

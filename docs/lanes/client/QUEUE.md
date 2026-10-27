@@ -8,8 +8,8 @@ Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12, M1 2026-10-13, M2 2026-10
 2026-10-23, M4 2026-10-27; ADR-0020, ADR-0024; the battle client since the split of 2026-10-23,
 the adventure map client being the map-client lane's E24). M5 (live play) refined at M4's
 closure (T3c, 2026-10-27, with the user): hot seat in-process first, then a game on a server;
-its tasks below, in order (T3 and T4 need T2b; T1a and T1b done 2026-10-27; T2 cut into T2a
-and T2b by the user, 2026-10-27). The original
+its tasks below, in order (T1 and T2 done 2026-10-27, each cut in two by the user; T2b whole,
+the user). The original
 files: stage them from the user's `original-data/install/` (one large file per staging call; the
 user's computer must be online); never from the installation. The captures need the five DLLs,
 `Heroes3.snd`, `H3ab_ahd.snd` and `H3ab_ahd.vid` too; the harness's runbook:
@@ -17,28 +17,6 @@ user's computer must be online); never from the installation. The captures need 
 check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gate` from
 `clients/`. An asset fix gets its mechanism (ADR-0020 point 6: the entry's flag, the
 `faithful`/`fixed` profile) with the first one a task finds.
-
-### E17 M5 T2b — hot seat in the window
-
-T2 cut in two by the user (2026-10-27): T2a the library's (done 2026-10-27), T2b the window's;
-the Faerie Dragon's cast moved to T3 (its F key enters the hero's aim, 0x59EC50 from
-`battle_buttons` 0x475CD8).
-
-- **Scope:** each seat a human or the Greedy bot (a flag); a human's command through
-  `crate::live` (both seats held there; the bot's now), the engine validating it as a server's:
-  a left press over the battlefield gives `h3_view::mouse::click`'s command (on the button's
-  down, by the field the tracker's turn asks), Wait and Defend `mouse::button`'s when their
-  button is clicked or their hotkey released (the layout's keys, until E24 M3 T0's common key
-  table: the inbox); the window's input dropped while the battle does not take it (design
-  §9.11: every stack's turn start empties the queue; a hero's cast keeps it). A human's command
-  arrives after the timeline's end, so the window shows the tail while it waits: what the last
-  command left to the next redraw (`anim::Growing`) shows with the first idle step after the end
-  (the timeline grown with the command's time, `Command::at`, gives the same), and a playhead
-  past the old end starts over (`Playhead::extend`). Hot seat shows the side to act's view (the
-  panel's colours, runbook "A siege").
-- **Acceptance:** a scenario's battle played to its end by clicks in hot seat and against the
-  bot; the recorded sequences and frames unchanged; `window --check`; the Definition of Done.
-- **Depends on:** T2a (done 2026-10-27). **Status:** ready.
 
 ### E17 M5 T3 — the spell book and the hero's aim
 
@@ -54,7 +32,7 @@ the Faerie Dragon's cast moved to T3 (its F key enters the hero's aim, 0x59EC50 
 - **Acceptance:** a hero casts through the book in the window, a Faerie Dragon by its key; the
   book's stills and the aim's
   sequence as recorded, or each difference listed; the Definition of Done.
-- **Depends on:** T2b. **Status:** ready after T2b.
+- **Depends on:** T2b (done 2026-10-27). **Status:** ready.
 
 ### E17 M5 T4 — the battle's dialogs
 
@@ -67,7 +45,7 @@ the Faerie Dragon's cast moved to T3 (its F key enters the hero's aim, 0x59EC50 
 - **Acceptance:** each dialog's still and a sequence through it as recorded, or each difference
   listed; battles ended by a surrender, a retreat and a victory in the window; the Definition of
   Done.
-- **Depends on:** T2b. **Status:** ready after T2b.
+- **Depends on:** T2b (done 2026-10-27). **Status:** ready.
 
 ### E17 M5 T5 — what a played battle shows
 
@@ -97,8 +75,8 @@ the Faerie Dragon's cast moved to T3 (its F key enters the hero's aim, 0x59EC50 
 - **Acceptance:** a battle played to its end in two windows on a local `h3-server`, a seat each;
   a drop and a re-join; both outcomes of the content check; tests over loopback where the
   adapter allows; the Definition of Done.
-- **Depends on:** T2b; the user's choice of the dependency. **Status:** ready after T2b (the
-  dependency asked at the task).
+- **Depends on:** T2b (done 2026-10-27); the user's choice of the dependency. **Status:** ready
+  (the dependency asked at the task).
 
 ### E17 M5 T7 — accounts
 
