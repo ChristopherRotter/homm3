@@ -14,8 +14,9 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   §14): T8a, T6f (the turn order, observation v22) and T8b (the plumbing, #493) done; T6g (the
   user's run `order-1`) done 2026-10-27: negative, `t7-1`'s ladder, the trunk drops the order.
   **In progress:** T8c in the sandbox with `order-1`'s best (the user's upload; `t7-1`'s is not
-  here), N 16 on the report set against the system actor and Greedy and on the neutral set
-  (`python/runs/t8c/`, ignored). At T8b's checkpoint the user reviews AI-STUB-1.
+  here; `python/runs/t8c/`, ignored): the search's σ fixed (it moved 1 % of the choices); at N 16
+  no gain against the system actor (0.371, the sampled 0.374); N 64 on 200 per kind running.
+  At T8b's checkpoint the user reviews AI-STUB-1.
 - **Versions:** battle action encoding v13, observation encoding v22, replay format v31
   (CLT-Q4/Q6), the adventure env's action encoding v4 (E08 T45), C ABI v34 (T6f and T8b: the turn
   order, the worlds) (`docs/08-work-process.md`, "Versions"). Next ids: AI-Q10, AI-QUIRK-1,
