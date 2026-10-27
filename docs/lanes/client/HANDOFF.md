@@ -10,7 +10,7 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   epic's M5): hot seat in-process first, then a game on a server and accounts; the new
   dependencies the user's at T6 and T7. **T1, T2 and T3a done** (the playhead; the timeline that
   grows, `live.rs`; the click's command; hot seat in the window; the spell book drawn and used,
-  design §7.17). **Next: M5 T3b** (the hero's aim, the Faerie Dragon's key). Open PR: T3a's
+  design §7.17). **Next: M5 T3b** (the hero's aim, the Faerie Dragon's key). Open PR: #529, T3a's
   (`client/e17-m5-t3a`; check it first). Workspace `clients/` (`clients/README.md`), gates
   `clients/scripts/check.sh`; ADR-0020 (+ drafts in `adr-drafts/`), ADR-0024; the harness
   `clients/capture/README.md`; design §3–§10; records in `E17-log.md`.
@@ -38,7 +38,7 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
 
 ## Recent sessions
 
-- **2026-10-27, E17 M5 T3a (done; its PR open: check it first).** T3 cut in two with the user
+- **2026-10-27, E17 M5 T3a (done; #529 open: check it first).** T3 cut in two with the user
   (the book; the aim T3b). Read the book's dialog, page, keys, hover and shadow (design §7.17);
   `h3_view::book`, `ui`'s DEF items, texts alone, areas, `repeat`, `shadow`; `spellbook`, the
   window's book (C or its button; a spell without a target cast at once); situations' `actions`.
