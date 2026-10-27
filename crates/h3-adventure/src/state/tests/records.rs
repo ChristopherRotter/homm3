@@ -382,3 +382,31 @@ fn a_won_pyramids_spell_is_lost_to_a_hero_who_cannot_learn_it() {
     );
     assert!(!s.knows(RED, 0));
 }
+
+// covers: ADV-RWD-001
+#[test]
+fn every_box_holds_its_own_record() {
+    // A record per object, with no bound on their number (A-19 not reproduced): the second box
+    // gives its own record, not the first one's.
+    let rules = rules(true);
+    let gold = |amount| RewardRecord {
+        resources: vec![(GOLD, amount)],
+        ..RewardRecord::default()
+    };
+    let far = Pos::new(4, 0, 0);
+    let mut s = map_of(
+        &rules,
+        vec![
+            object(&rules, AT.x, "t:box", Holds::Record(Box::new(gold(100)))),
+            object(&rules, far.x, "t:box", Holds::Record(Box::new(gold(200)))),
+        ],
+    );
+    let open = offer(&rules, "t:box", OfferKind::OpenBox);
+    let other = Offer {
+        anchor: far,
+        ..open.clone()
+    };
+    assert_eq!(accept(&rules, &mut s, &[], &other).0.gains, [(GOLD, 200)]);
+    assert_eq!(accept(&rules, &mut s, &[], &open).0.gains, [(GOLD, 100)]);
+    assert!(s.is_removed(0) && s.is_removed(1));
+}

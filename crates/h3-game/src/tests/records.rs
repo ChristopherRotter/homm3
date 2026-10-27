@@ -180,7 +180,7 @@ fn a_won_guarded_boxs_record_reaches_the_treasury() {
     assert!(state.adventure().is_removed(0));
 }
 
-// covers: ADV-TCH-008, ADV-MON-012, ADV-QUIRK-6, HER-ADV-008
+// covers: ADV-TCH-008, ADV-MON-012, HER-ADV-008
 #[test]
 fn the_pyramid_fights_two_creatures_split_by_its_tile_and_a_looted_one_costs_luck() {
     let rules = valued("t:split");
