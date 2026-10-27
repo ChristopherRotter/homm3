@@ -875,3 +875,38 @@ folder's terrain tracks staged with the rest). Design §3.11.
 - **Not checked here:** the original's cues (the harness's settings have no sound; Miles under
   Wine without a device untried); `drawn` (no drawing changed; the original's screens are not in
   this sandbox); a hero flying (none in M2's situations).
+
+### M2 T4b2 — the Windows build tried on the user's machine (2026-10-27)
+
+The user at the machine (the link to the user's computer). No code changed; design §3.10 ("On
+the user's machine"), §3.4 (the input ring's bound).
+
+- **Built:** `cargo build --release -p h3-map-view --target x86_64-pc-windows-gnu` in the sandbox
+  (`rustup target add`, apt's `mingw-w64` after an `apt-get update`; 3 min 21 s from scratch,
+  SDL included), `h3-map-view.exe` 9.0 MB importing system DLLs only; put into the user's
+  `clients/out/win/` with `map-measure.cmd` (five runs: `walk-1` `--check 20`, `--measure 20`
+  with vsync off and on; `path-objects` `--check 30` and `--measure 30` while the user uses the
+  keys and the mouse; each run's output and exit code into `map-measure.txt`) and `map-play.cmd`
+  (a sequence or a situation, `path-objects` by default). Both name `--map map` and `--install
+  ..\original-data\install` (the exe's defaults are where it was built: the review list).
+- **Measured** (design §3.10): every frame read back exact (203, 345) and every change shown the
+  headless loop's; a quiet walk's frames 0.4 ms after their time (p95 0.6); `path-objects` with
+  input p95 99 ms late, 87 to 109 frames passed over in 30 s, an input's frame a median 13.5 ms
+  (p95 66). Callgrind (sandbox, `render` of `path-objects`): `compose` 775 million instructions
+  of 1514 (the PNG's deflate 508, the archives' inflate 115), `draw::flagged` 392 and
+  `draw::shadow_pass` 326 of them: every pixel of every frame visited through a closure, its
+  place found by a division and a modulo, each written through `Screen::set`'s checks.
+- **The user's findings:** the sound's transitions not clean, little fading (built as the
+  original's: the music's fade 900 ms by tenths, the loops and step sounds cut and their
+  volumes set at once; compared by ear on a whole map, M4, the user); the hero stepping through
+  obstacles and a click showing no new path (the engine's, M4 and M5: the epic's known gaps);
+  a held key walking the hero on well after its release (the original queues every repeat:
+  **MCL-Q10**, kept, the user; Space cancels it in the original, not read); the frames lagging
+  among many objects (**T4b3**, the user: "the client should run on really old hardware too,
+  and given the simple 2D graphics we have absolutely no business having performance issues").
+- **Read:** `input_key_message`'s ring (0x4EC1D9: a write meeting the read index drops the
+  oldest; 63 messages kept); `wait_until` dispatches the window's messages during a step's
+  frames (its map entry), so the repeats queue during a step.
+- **Found on the way:** a `git fetch` through the link left `.git/objects/maintenance.lock`
+  again (moved aside: `.git/stale-maintenance-lock-2026-10-27b`); apt's `mingw-w64` needs an
+  `apt-get update` first in a fresh sandbox.

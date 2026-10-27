@@ -828,8 +828,11 @@ dialog beyond its speed buttons.
   +0xC and 0xC) a step that way, without the edge cursor; **without Ctrl** the selected hero
   steps that way (`hero_move_step` 0x4805E0: M2 T1b), nothing without a selected hero. A key-down
   message is one step at once, no delay of its own; Windows repeats a held key's WM_KEYDOWN and
-  every one is queued (`input_key_message`, its repeat flag not looked at), so a held key steps at
-  the system's keyboard rate. The game has no repeat of its own: the harness turns the display's
+  every one is queued (`input_key_message`, its repeat flag not looked at; the waits of a step's
+  frames dispatch the window's messages, `wait_until` 0x4F82F0), so a held key steps at the
+  system's keyboard rate and the repeats that come during a step wait in the ring (64 messages,
+  key-ups too; a write that meets the read index drops the oldest, 0x4EC1D9: 63 kept): the hero
+  walks on after the key's release until they are used up, its points permitting (MCL-Q10). The game has no repeat of its own: the harness turns the display's
   repeat off (it repeats in real time, which one step of the virtual clock spans many times
   over), so in a sequence a key held is one press.
 - **The edge** (`edge_scroll`, called before every message the adventure manager gets, idle
@@ -1236,7 +1239,8 @@ No new reading but `input_key_message` 0x4EC0E0's (T1a2: the message's code is l
   clicked walks it, to its first red arrow (the points the situation gives).
 - **The keys.** A held key's repeats are given (`Window::set_key_repeats`), as the original
   queues every WM_KEYDOWN (§3.4): a direction key held walks the hero on at the system's rate, the
-  steps queued during a step as the timeline queues them; the window's own commands act once a
+  steps queued during a step as the timeline queues them (no bound yet: the original's ring keeps
+  63 messages and the hero's points end the walk, M4; MCL-Q10); the window's own commands act once a
   press. The keypad's eight keys are bound with the direction keys: the original's code is the
   scan code, the keypad's the same in either NumLock state, and SDL 3 gives the keypad's own
   keycodes in both (its default `SDL_HINT_KEYCODE_OPTIONS`), so the adapter names them
@@ -1261,9 +1265,26 @@ No new reading but `input_key_message` 0x4EC0E0's (T1a2: the message's code is l
 - **Measured** there: a frame a median 5 to 7 ms after its time; a frame at an input's time
   (composed once the input came) 37 to 60 ms, the view's composition in this sandbox (30 to
   60 ms for a whole view, the scene and the compositor of M1; a scroll redraws it whole); a walk
-  at hero speed 2 frames late as much, its frames due faster than they compose here. The user's
-  machine measures it in T4b2. An incremental scroll (the view moved by whole tiles, only the
-  new strip drawn) would cut the input's delay: not needed for M2 (*provisional*).
+  at hero speed 2 frames late as much, its frames due faster than they compose here. An
+  incremental scroll (the view moved by whole tiles, only the new strip drawn) would cut the
+  input's delay (*provisional*; T4b3 makes the whole view's drawing fast first).
+- **On the user's machine** (M2 T4b2: Windows, 2560 × 1440 at 100 %; the cross-built
+  `h3-map-view.exe`, 9.0 MB, system DLLs only; `clients/out/win/map-measure.cmd`, five runs,
+  the `.cmd` naming `--map` and `--install`, as the exe looks for its data where it was built):
+  SDL took Direct3D 11 at scale 2 (1600 × 1200) and WASAPI (48 kHz, 480 frames a buffer).
+  `--check`: `walk-1` 203 of 203 frames read back exact, `path-objects` with the user's keys,
+  clicks and edge scrolls 345 of 345, each change shown the headless loop's (both runs).
+  `walk-1` (vsync off and on): a frame a median 0.4 ms after its time, p95 0.6, the start's
+  26 to 32 ms. `path-objects` with the user's input (vsync off): a median 2.6 ms, **p95 99 ms**,
+  87 frames passed over in 30 s; a frame at an input's time a median 13.5 ms, p95 66; with
+  `--check` (the read-back) a median 32 and 49. The view's composition is the cost: one view
+  of `path-objects` (1564 draws) takes 775 million instructions (callgrind, sandbox), 92 % of
+  them `draw::flagged` and `draw::shadow_pass` visiting every pixel of every frame, transparent
+  ones included, with a division per pixel; a walk's frames are due every 50 ms. **T4b3** makes
+  it fast, its frames unchanged. The user, watching and listening: a held direction key walks
+  the hero on well after its release (the original's too: MCL-Q10), the keys step through
+  obstacles and a click shows no new path (the engine's from M4 and M5), the sound's
+  transitions not clean (compared by ear once whole maps load: M4).
 
 
 ### 3.11 The map's sound (M2 T5)
