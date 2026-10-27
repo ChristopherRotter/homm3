@@ -74,6 +74,26 @@ def test_the_improved_policy_follows_the_completed_values() -> None:
     assert node.select(np.array([True, False, True])) != 1
 
 
+def test_small_value_differences_decide_once_rescaled() -> None:
+    # A battle's values differ by hundredths between actions: rescaled by their least and
+    # greatest, the best one still outweighs a prior that prefers another (E06-log T8c).
+    actions = np.zeros((3, 4), np.uint32)
+    node = Node(0, actions, np.log(np.array([0.5, 0.3, 0.2])), value=0.0)
+    legal = np.ones(3, bool)
+    for i, value in enumerate((0.0, 0.01, 0.0)):
+        node.backup(i, value, 0)
+    sigma = node.sigma(legal)
+    assert np.allclose(sigma, [0.0, (50 + 1) * 0.1, 0.0])
+    assert node.select(legal) == 1
+    # Equal values add nothing; the illegal candidates do not set the scale.
+    flat = Node(0, actions, np.log(np.array([0.5, 0.3, 0.2])), value=0.0)
+    for i in range(3):
+        flat.backup(i, 0.2, 0)
+    assert np.allclose(flat.sigma(legal), 0.0) and flat.select(legal) == 0
+    flat.backup(2, -5.0, 0)
+    assert np.allclose(flat.sigma(np.array([True, True, False]))[:2], 0.0)
+
+
 def test_a_search_chooses_legal_actions_and_a_seed_gives_the_same() -> None:
     choices = []
     for _ in range(2):
