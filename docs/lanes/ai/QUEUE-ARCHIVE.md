@@ -86,6 +86,14 @@ leaves a quarter of the previewed kills.
 
 ## Notices from other lanes and finished items, newest first
 
+- 2026-10-27 (the adventure lane, E08 T60a, `adventure/e08-t60a`, `cross-lane` with the user's
+  consent; for your information, nothing to do): **`HeroDetails` gained `bonuses`**
+  (`h3_heroes::BattleBonuses`, HER-ADV-008: morale and luck until the hero's next battle's end, and
+  once-marks). `h3-sim`'s encounter (`encounter/hero.rs`) got `bonuses: Default::default()`; a new
+  literal needs it too. Game state hash v15 (the bonuses in a hero's details): the twelve adventure
+  replays re-recorded, their commands unchanged. `HeroChange` gained `GainPrimary`, `RaiseSkill`,
+  `Bonus` and `ClearBonuses`: a `GameEvent::HeroChanged` may carry them from T62 and T63.
+
 - 2026-10-27 (the adventure lane, E08 T59, `shared/e08-t59`, `cross-lane`; for your information,
   nothing to do): core ruleset hash v49 (the mana ceiling, two adventure flags; no battle rule
   moved): `bots-report-v1.json` and `bots-neutral-v1.json` regenerated in that pull request

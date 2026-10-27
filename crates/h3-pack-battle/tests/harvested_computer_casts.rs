@@ -65,6 +65,7 @@ fn mage(r: &BattleRuleset, spells: &[&str], power: u8) -> BattleHero {
         backpack: vec![],
         spells: spells.iter().map(|s| r.spell_by_key(s).unwrap()).collect(),
         mana: 100,
+        bonuses: Default::default(),
     };
     h3_heroes::validate(&d, r).unwrap();
     derive_battle_hero(&d, r).unwrap()

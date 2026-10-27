@@ -13,8 +13,9 @@
 //! [`situation`] is a still of the capture set: a map built with the writer, its view and the
 //! tiles left unexplored. [`timeline`] is the map over time (E24 M2 T2): the original's loop on a
 //! clock of milliseconds, its redraws, palette steps, scroll and cursor; [`sequence`] the recorded
-//! sequences it replays. The adapters (the gate, `render`, `situation`, `sequences`) are the
-//! binary's modules, not this library.
+//! sequences it replays. For the window (E24 M2 T4a): [`replay`] runs the timeline forward as its
+//! clock ([`clock`]) needs, [`keys`] is the table of what each key does. The adapters (the gate,
+//! `render`, `situation`, `sequences`, `window`) are the binary's modules, not this library.
 //!
 //! Pure: no I/O, clock, threads or globals, `no_std` + `alloc`; time is an input. The header below
 //! is checked by `tests/purity.rs`.
@@ -39,12 +40,15 @@ extern crate alloc;
 pub mod art;
 pub mod batch;
 pub mod check;
+pub mod clock;
 pub mod compose;
 pub mod cursor;
 pub mod draw;
+pub mod keys;
 pub mod layout;
 pub mod live;
 pub mod objects;
+pub mod replay;
 pub mod scene;
 pub mod sequence;
 pub mod situation;

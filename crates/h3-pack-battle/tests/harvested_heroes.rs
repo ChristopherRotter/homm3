@@ -43,6 +43,7 @@ fn details(r: &BattleRuleset, rng: &mut Rng) -> HeroDetails {
         backpack: vec![],
         spells: vec![],
         mana: 0,
+        bonuses: Default::default(),
     };
     let skills = pick(rng, 9);
     while d.skills.len() < skills {
@@ -439,6 +440,7 @@ fn wearing(sod: &BattleRuleset, worn: &[ArtifactInstance], skills: &[(&str, u8)]
         backpack: vec![],
         spells: vec![sod.spell_by_key("base:magic_arrow").unwrap()],
         mana: 0,
+        bonuses: Default::default(),
     }
 }
 

@@ -984,11 +984,12 @@ impl CanonicalHash for GameState {
 }
 
 /// A hero's details in the game state's hash (v5; v9: the offers' levels after the experience;
-/// v12: the worn artifacts by position): hero type, level, experience, the levels at which
+/// v12: the worn artifacts by position; v15: the battle bonuses): hero type, level, experience, the levels at which
 /// Wisdom and a school were last offered, the primary skills, the secondary skills (length, then
 /// skill and level), the worn positions (length, then per position 0 for empty, else 1 and the
 /// artifact), the backpack (length, then the artifacts), the learned spells (length, then spell),
-/// the spell points; an artifact is its type and spell, 0 for none, else 1 and the spell.
+/// the spell points, and since v15 the battle bonuses (morale, luck, the once-marks);
+/// an artifact is its type and spell, 0 for none, else 1 and the spell.
 fn hash_details(details: &HeroDetails, h: &mut StateHasher) {
     details.hero_type.hash_into(h);
     h.write_u8(details.level);
@@ -1020,6 +1021,9 @@ fn hash_details(details: &HeroDetails, h: &mut StateHasher) {
         spell.hash_into(h);
     }
     h.write_u16(details.mana);
+    h.write_i32(i32::from(details.bonuses.morale));
+    h.write_i32(i32::from(details.bonuses.luck));
+    h.write_u8(details.bonuses.marks);
 }
 
 /// An artifact in a hero's details' hash: its type, then 0 for no spell, else 1 and the spell.
@@ -1065,5 +1069,16 @@ impl GameState {
     /// A player's stream as it stands.
     pub(crate) fn stream(&self, player: PlayerId) -> Rng {
         self.players[player.index()].rng.clone()
+    }
+
+    /// Applies a change to a hero of the store, telling no one (tests of what the hash covers
+    /// before a rule gives the change).
+    pub(crate) fn apply_hero_change(
+        &mut self,
+        core: &h3_content::Ruleset,
+        hero: HeroId,
+        change: HeroChange,
+    ) {
+        self.update_hero(core, hero, change);
     }
 }

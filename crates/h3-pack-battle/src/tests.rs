@@ -1616,6 +1616,7 @@ fn harvested_magic_derives() {
         backpack: vec![],
         spells: vec![spell("base:magic_arrow"), spell("base:chain_lightning")],
         mana: 50,
+        bonuses: Default::default(),
     };
     let school = |k: &str| {
         let i = sod.spell_schools().iter().position(|s| s.key.as_str() == k);
@@ -1710,6 +1711,7 @@ fn hero_details_fit_the_harvested_slots() {
             backpack: backpack.iter().map(art).map(Into::into).collect(),
             spells: vec![r.spell_by_key("base:magic_arrow").unwrap()],
             mana: 20,
+            bonuses: Default::default(),
         }
     };
     let machines = [
@@ -1950,6 +1952,7 @@ fn the_data_quirks_are_fixed_in_strict_fixed() {
             backpack: vec![],
             spells: vec![],
             mana: 0,
+            bonuses: Default::default(),
         };
         derive_battle_hero(&details, r).unwrap().effects
     };
@@ -2022,6 +2025,7 @@ fn harvested_hero_effects_reproduce_the_experiments() {
             backpack: vec![],
             spells: vec![],
             mana: 0,
+            bonuses: Default::default(),
         };
         let setup = BattleSetup {
             attacker: to_army(army),

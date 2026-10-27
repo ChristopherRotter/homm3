@@ -211,6 +211,11 @@ states; the Tower 26, without the moat).
   item per step; the status line settled (the panel's picture entered once after the opening,
   `aim`'s exception with it; the viewer tracks the hovered item, the hot-seat proxy gone); the
   stills and 18 sequences captured afresh, as recorded but `aim`'s ` log` masks; review item 13.
+- **T3b-2 done 2026-10-27** ([log](E17-log.md#m4-t3b-2--the-other-captures-afresh-2026-10-27);
+  not cut): the other 29 sequences captured afresh, all as recorded (`strike`, `luck` and `bolt`
+  at a rerun: the original's own variation, the starting bonus likely; `sacrifice` with the
+  engine's seed searched again for the original's 23); the casts' hovered item fits T3b-1's
+  rule (the book's forgetting still *provisional*); `drawn` recorded; review items 14 and 15.
 
 ### The adventure lane's harness (H1, H2: its batch E3)
 
@@ -326,3 +331,11 @@ M3 at its review, T9b). The next milestone's list starts here.
     the tracker writes a panel item's hint only as the mouse enters it, the first input (the
     mouse resting where it was placed before the battle) entering none, and a spell book's close
     forgetting the hovered item (*provisional*, not read per frame); the hot-seat proxy removed.
+14. `sacrifice`'s engine seed 9 for 5 (T3b-2): the original's Grand Elves did 23 in all three of
+    T3b-2's runs, 22 at T9d's (not explained: the map and the battle's harness the same); the
+    seed is the first whose record strikes 23 with the recorded timeline.
+15. **Proposed, not built** (T3b-2): the battle recipes (`to_scenario`, hot seat) leave the
+    scenario list's starting bonus random, which can give the hero an artifact for one run
+    (T3b-2: luck 0 and 4, spell power 2, each gone at a rerun). Choosing Gold (no battle effect)
+    in the recipes would remove that variation; it changes the original's side, so every capture
+    afresh after it (about 4 hours): at M5's closure, or as its own task.

@@ -324,6 +324,7 @@ fn details(r: &Ruleset) -> HeroDetails {
         backpack: vec![art(r, "t:helm"), art(r, "t:grail"), art(r, "t:eye")],
         spells: vec![spell_id(r, "t:portal"), spell_id(r, "t:bolt")],
         mana: u16::MAX,
+        bonuses: Default::default(),
     }
 }
 
@@ -692,6 +693,7 @@ proptest! {
             backpack: backpack.iter().map(|&a| ArtifactTypeId::from_raw(a).into()).collect(),
             spells: spells.iter().map(|&s| SpellId::from_raw(s)).collect(),
             mana: 0,
+            bonuses: Default::default(),
         };
         let result = validate(&d, &r);
         let slots = positions(&r);
@@ -725,3 +727,4 @@ mod derive;
 mod level;
 mod movement;
 mod outcome;
+mod rewards;

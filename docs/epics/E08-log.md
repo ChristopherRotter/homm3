@@ -6387,3 +6387,60 @@ LODs, `maps.tar`, `extracted.tar`).
   35 KB aim (decisions 125–128, 137, 142, 143, the cuts of done tasks, moved verbatim to
   `E08-archive.md`); decision 146 and the task's line; the queue (T59 out, T60 queued from design
   §19); the battle lane's inbox and HANDOFF versions, the AI lane's inbox.
+
+### Increment 7, round 4: T60a, the battle bonuses and the four changes (2026-10-27, `adventure/e08-t60a`, `cross-lane`)
+
+**The cut** (decision 147; asked at the start, `AskUserQuestion`): T60 in two, T60a here (what
+reaches outside `h3-heroes`: the field, the hash, the replays, the other lanes' literals), T60b
+next (`grant` and the teachers, inside the crate, no version); not chosen: T60 whole, or three
+parts. The other lanes' literals with the user's consent (`cross-lane`). **Baseline:** `master`
+46f7d62 (#497 and #498 merged; CI green on 1c99f41, the code's last run; the sandbox's light
+gates passed, the code verified by CI). The user's repo folder fast-forwarded to `master` (one
+stale lock of the session's own fetch removed). No original data staged (none needed).
+
+- **The data** (design §1; ADR-0013 point 1): `h3_heroes::BattleBonuses { morale: i8, luck: i8,
+  marks: u8 }` (`Default` none; `MARKS` 8 kinds; `has_mark`, false for a mark of no kind),
+  `HeroDetails::bonuses`; `validate` accepts any value. The map's import (`h3-game`'s setup)
+  gives none.
+- **The changes** (design §2; ADR-0013 point 2; HER-CHG-001): `GainPrimary([u8; 4])` (each
+  added, at most `primary_max`, saturating), `RaiseSkill { skill, level }` (a known skill below
+  the level rises to it in its place, one at or above it stays; a new one at the level after the
+  others; checked: the ruleset's skill, else `CannotLearn`; Basic to Expert, else the new
+  `ChangeError::SkillLevel`; a new one only below eight, else `CannotLearn`), `Bonus { morale,
+  luck, mark: Option<u8> }` (both added, saturating; with a mark only while it is clear, then
+  set; a mark of 8 or more the new `ChangeError::Mark`), `ClearBonuses` (all to none). The
+  emitter leaves out a change that would do nothing (the design's rule; the check passes it).
+- **In battle** (design §5; HER-ADV-008): `morale_and_luck` takes the bonuses and adds them to
+  the own side's morale and luck sums, so the battle gets one effect of each as from any source
+  (a sum of 0 left out, as before). The clearing at a battle's end is the game's (GAM-BAT-014,
+  T63).
+- **The hash**: `h3-game`'s `hash_details` adds morale and luck (`write_i32`) and the marks;
+  `GAME_STATE_HASH_VERSION` 15. A test-only `GameState::apply_hero_change`.
+- **Replays**: the twelve adventure goldens re-recorded with their options (the ten duels with
+  their seeds, days, profile and difficulty; the two scripted with `--script` of themselves),
+  their commands unchanged, every checkpoint and final hash moved, the header's version 15;
+  `adventure_replays.rs`' history. The battle replays are untouched (no battle hash changes:
+  every bonus is 0).
+- **Cross-lane** (the user's consent, decision 147): `bonuses: Default::default()` in the battle
+  lane's `h3-pack-battle` tests (`src/tests.rs`, eleven `tests/harvested_*.rs`) and the AI lane's
+  `h3-sim` encounter (`encounter/hero.rs`); both inboxes told. The lane's own: `h3-adventure`'s
+  `testing.rs` and two tests, `h3-map`'s `e4_score` example and `play.rs` (a battle tells none of
+  the new changes).
+- **Tests**: `primary_skills_gained_saturate_at_the_limit`,
+  `a_skill_rises_to_its_level_and_never_falls`,
+  `bonuses_add_up_saturate_and_once_marks_gate_them` (E7-11's two Tombs −3, E7-21's two looted
+  Pyramids −2, saturation both ways, the bad mark, the clearing, any value valid),
+  `the_new_change_errors_have_texts` (`tests/rewards.rs`);
+  `the_battle_bonuses_join_the_own_sides_morale_and_luck` (−3 with Leadership's +1 and the
+  circle's +2: left out; design §5's −2; the bonuses alone; cleared, none) and the derivation
+  property with random bonuses (`tests/derive.rs`); the hash test covers morale, luck and a mark
+  (`h3-game`'s `the_store_is_in_the_hash_and_shared_by_forks`).
+- **Rules**: HER-ADV-008 (new, implemented: the code reading, batch E7's E7-11 and E7-21, the
+  wiki, VCMI); HER-CHG-001's summary (the four changes).
+- **Docs**: the design note's §1, §2 and §5 (what T60a built, removed; §5's game half stays for
+  T63), §6, §17; decision 147 and the tasks' lines; the queue (T60b); the HANDOFF; the battle and
+  AI lanes' inboxes.
+- **Verify** (scoped, no original data staged): every step passed but clippy (an unused import in
+  the new tests, fixed, clippy re-run clean over the lane's crates and `h3-pack-battle`, `h3-sim`,
+  `h3-cli`) and `check-lane` (`cross-lane` by design; `check-lane --cross-lane` ok); coverage,
+  determinism and bench-check passed.
