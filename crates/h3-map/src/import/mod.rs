@@ -11,7 +11,10 @@ pub(crate) mod codes;
 use std::fmt;
 
 use h3_adventure::ObjectKind;
-use h3_adventure::{Guards, MapSetup, MonsterSetup, ObjectSetup, Pos, TileMask, TileSetup};
+use h3_adventure::{
+    ArtifactInstance, EventSetup, Guards, HeroReward, Holds, MapSetup, MonsterSetup, ObjectSetup,
+    Pos, PrimarySkill, RewardRecord, ScholarGift, TileMask, TileSetup,
+};
 use h3_content::{CreatureTypeId, Formation, ResourceId, SkillId, SpellId};
 use h3_contracts::{ArmyStack, HeroSex, PlayerId};
 use h3_game::{
@@ -20,8 +23,8 @@ use h3_game::{
 };
 
 use crate::model::{
-    Army, Artifacts, Bits, Body, CustomHero, HeroBody, MonsterBody, Object, RawMap, Stack,
-    Template, Version,
+    Army, Artifacts, Bits, Body, CustomHero, HeroBody, Message, MonsterBody, Object, RawMap,
+    Rewards, Stack, Template, Version,
 };
 
 /// Object classes the import tells apart beside the typed ones (`codes::object_type`); every other
@@ -51,9 +54,10 @@ pub enum Unsupported {
     /// (towns: E09; VCMI 1.7.5 `CGameState::placeHeroesInTowns` moves it to its own town's
     /// entrance, an "H3M format quirk").
     HeroInTown(usize),
-    /// The monster at this index holds an artifact in its treasure (artifacts on the map:
-    /// increment 5's sketch, E08 decisions 22 and 48). Its static layer keeps it without the artifact.
-    MonsterArtifact(usize),
+    /// The Pandora's Box or event at this index gives more creature stacks than an army's slots
+    /// (A-24, always fixed: E08 decision 133; T61a). Its static layer keeps it without its
+    /// creatures.
+    RewardArmy(usize),
 }
 
 impl Unsupported {
@@ -63,9 +67,11 @@ impl Unsupported {
             Self::HeroAtMainTown(_) => "a hero generated at a main town",
             Self::RandomHero(_) => "a random hero",
             Self::HeroPlaceholder(_) => "a campaign hero placeholder",
-            Self::RandomStack(_) => "a random stack in a hero's army or a pile's guards",
+            Self::RandomStack(_) => {
+                "a random stack in a hero's army, an object's guards or a reward's creatures"
+            }
             Self::HeroInTown(_) => "a hero standing in a town",
-            Self::MonsterArtifact(_) => "a monster with an artifact in its treasure",
+            Self::RewardArmy(_) => "a reward of more creature stacks than an army's slots",
         }
     }
 }
@@ -138,8 +144,8 @@ impl From<Unsupported> for ImportError {
 /// # Errors
 ///
 /// The first [`ImportError`] found: the players (a hero generated at a main town), the static
-/// map, its first guarded pile or monster with an artifact, then the hero objects in the map's
-/// order.
+/// map, its first object with guards or reward creatures it cannot represent, then the hero
+/// objects in the map's order.
 pub fn import(map: &RawMap, rules: &GameRuleset) -> Result<GameSetup, ImportError> {
     let (players, colours) = players(map)?;
     let (static_map, unsupported) = static_layer(map, rules)?;
@@ -192,7 +198,12 @@ pub fn import(map: &RawMap, rules: &GameRuleset) -> Result<GameSetup, ImportErro
 /// each set bit's code, the original's skill ids (the pack order, HER-LVL-003); a set bit past
 /// them is an unknown code.
 fn banned_skills(map: &RawMap, rules: &GameRuleset) -> Result<Vec<SkillId>, ImportError> {
-    let bits = &map.banned_skills;
+    skill_set(rules, &map.banned_skills)
+}
+
+/// The skills of a stored set: the skill of each set bit's code; a set bit past them is an
+/// unknown code.
+fn skill_set(rules: &GameRuleset, bits: &Bits) -> Result<Vec<SkillId>, ImportError> {
     (0..bits.bytes().len().saturating_mul(8))
         .filter(|&code| bits.get(code))
         .map(|code| skill(rules, u8::try_from(code).unwrap_or(u8::MAX)))
@@ -202,9 +213,10 @@ fn banned_skills(map: &RawMap, rules: &GameRuleset) -> Result<Vec<SkillId>, Impo
 /// Imports the static map (E08 T5a, T12a): the size, every tile's terrain, road and river, and
 /// every object but the heroes with its footprint (ADV-OBJ-001) and, for the typed classes, its
 /// object type and fixed amount (ADV-OBJ-002), a monster's data (ADV-MON-001, E08 T20a2a), a
-/// special ground's tiles (ADV-GRD-001) and a pile's guards (ADV-PIK-004, E08 T21a); every other
-/// object is a blocker (the whole [`import`] refuses a monster with an artifact, which this keeps
-/// without it, and a pile's guards with a random stack, which this leaves unguarded).
+/// special ground's tiles (ADV-GRD-001), a guarded object's guards (ADV-PIK-004, E08 T21a) and,
+/// since E08 T61a, what increment 7's objects hold; every other object is a blocker (the whole
+/// [`import`] refuses guards or reward creatures with a random stack and reward creatures beyond
+/// an army's slots, which this leaves out).
 ///
 /// # Errors
 ///
@@ -214,8 +226,8 @@ pub fn import_map(map: &RawMap, rules: &GameRuleset) -> Result<MapSetup, ImportE
     static_layer(map, rules).map(|(setup, _)| setup)
 }
 
-/// [`import_map`] with what the first monster with an artifact or pile's guards with a random
-/// stack makes unsupported.
+/// [`import_map`] with what the first object's guards or reward creatures with a random stack, or
+/// reward creatures beyond an army's slots, make unsupported.
 fn static_layer(
     map: &RawMap,
     rules: &GameRuleset,
@@ -247,9 +259,11 @@ fn static_layer(
 }
 
 /// An object with its footprint and, for a typed class, its object type and the amount the map
-/// fixes (0 is none: drawn when the game is built), a monster's data, a special ground's tiles and
-/// a pile's guards ([`guards`]); what it makes unsupported: a monster with an artifact, kept
-/// without it, or a pile's guards with a random stack, kept unguarded.
+/// fixes (0 is none: drawn when the game is built), a monster's data, a special ground's tiles, a
+/// guarded object's guards ([`message_guards`]) and, since E08 T61a, what the map puts in an
+/// object of increment 7's kinds ([`Holds`]); what it makes unsupported: guards with a random
+/// stack, kept unguarded, or a reward's creatures with a random stack or beyond an army's slots,
+/// kept without them ([`record`]).
 // rule: ADV-OBJ-002
 fn typed(
     rules: &GameRuleset,
@@ -266,27 +280,63 @@ fn typed(
         .adventure()
         .object_type_by_key(key)
         .ok_or(ImportError::MissingContent(key))?;
+    let has_text = |m: &Message| !m.text.as_bytes().is_empty();
+    let guarded = |message: Option<&Message>, ask: &dyn Fn(&Message) -> bool| {
+        message_guards(rules, version, index, message, ask)
+    };
     let mut unsupported = None;
     match &object.body {
         Body::Resource { message, amount } => {
             setup.amount = (*amount != 0).then_some(*amount);
-            if let Some(message) = message {
-                let army = message.guards.as_deref().unwrap_or_default();
-                if army
-                    .iter()
-                    .flatten()
-                    .any(|s| random_stack(version, s.creature))
-                {
-                    unsupported = Some(Unsupported::RandomStack(index));
-                } else {
-                    setup.guards = guards(rules, army, !message.text.as_bytes().is_empty())?;
-                }
-            }
+            (setup.guards, unsupported) = guarded(message.as_ref(), &has_text)?;
         }
-        Body::Monster(body) => {
-            let (monster, artifact) = monster(rules, template, body)?;
-            setup.monster = Some(monster);
-            unsupported = artifact.then_some(Unsupported::MonsterArtifact(index));
+        Body::Monster(body) => setup.monster = Some(monster(rules, template, body)?),
+        // E08 T61a (design §7): a placed artifact's is its subclass; a guarded artifact always
+        // asks (D-29), a random one is drawn when the game is built.
+        Body::Artifact(message) => {
+            if template.class == codes::ARTIFACT {
+                let code = u16::try_from(template.subclass).unwrap_or(u16::MAX);
+                setup.holds = Holds::Artifact(artifact(rules, code)?.into());
+            }
+            (setup.guards, unsupported) = guarded(message.as_ref(), &|_| true)?;
+        }
+        // The spell is the format's u32's low byte (`load_scroll_body` 0x4FF2F0); its guards ask
+        // only with a text (survey `E08-rewards.md` §4).
+        Body::Scroll {
+            message,
+            spell: code,
+        } => {
+            let scroll = artifact(rules, codes::SPELL_SCROLL)?;
+            let spell = spell(rules, code.to_le_bytes()[0])?;
+            setup.holds = Holds::Artifact(ArtifactInstance::scroll(scroll, spell));
+            (setup.guards, unsupported) = guarded(message.as_ref(), &has_text)?;
+        }
+        Body::Shrine { spell: code } => {
+            setup.holds = Holds::Spell(
+                (*code != u32::from(u8::MAX))
+                    .then(|| spell(rules, u16::try_from(*code).unwrap_or(u16::MAX)))
+                    .transpose()?,
+            );
+        }
+        Body::WitchHut(mask) => setup.holds = Holds::Skills(witch_hut(version, rules, mask)?),
+        Body::Scholar { kind, code } => setup.holds = Holds::Gift(scholar(rules, *kind, *code)?),
+        // A box's and an event's guards are announced, never asked (survey §7.2, §7.3).
+        Body::Pandora { message, rewards } => {
+            let (record, what) = record(rules, version, index, rewards)?;
+            setup.holds = Holds::Record(Box::new(record));
+            (setup.guards, unsupported) = guarded(message.as_ref(), &|_| false)?;
+            unsupported = unsupported.or(what);
+        }
+        Body::Event(event) => {
+            let (record, what) = record(rules, version, index, &event.rewards)?;
+            setup.holds = Holds::Event(Box::new(EventSetup {
+                record,
+                colours: event.players,
+                computer: event.computer,
+                remove: event.remove_after_visit,
+            }));
+            (setup.guards, unsupported) = guarded(event.message.as_ref(), &|_| false)?;
+            unsupported = unsupported.or(what);
         }
         _ => {}
     }
@@ -306,13 +356,13 @@ fn typed(
 /// A wandering monster's data (ADV-MON-001, E08 T20a2a; `docs/formats/h3m.md`, "Import"): the
 /// creature of class 54's subclass (a random monster's is drawn when the game is built), the count
 /// (0 drawn), the disposition code, never flees, does not grow, and the treasure's resources that
-/// are above 0 (its message is presentation); whether the treasure holds an artifact.
+/// are above 0 (its message is presentation) and, since E08 T61a, its artifact (ADV-MON-011).
 // rule: ADV-MON-001
 fn monster(
     rules: &GameRuleset,
     template: &Template,
     body: &MonsterBody,
-) -> Result<(MonsterSetup, bool), ImportError> {
+) -> Result<MonsterSetup, ImportError> {
     let creature = (template.class == codes::MONSTER)
         .then(|| {
             let code = u16::try_from(template.subclass).unwrap_or(u16::MAX);
@@ -330,29 +380,169 @@ fn monster(
                     .filter(|&a| a > 0)
                     .map(|a| (key, a))
             })
-            .map(|(key, amount)| {
-                rules
-                    .core()
-                    .resources()
-                    .iter()
-                    .position(|r| r.key.as_str() == key)
-                    .and_then(ResourceId::from_index)
-                    .map(|resource| (resource, amount))
-                    .ok_or(ImportError::MissingContent(key))
-            })
-            .collect()
+            .map(|(key, amount)| Ok((resource(rules, key)?, amount)))
+            .collect::<Result<_, ImportError>>()
     })?;
+    Ok(MonsterSetup {
+        creature,
+        count: u32::from(body.count),
+        disposition: body.disposition,
+        never_flees: body.never_flees,
+        no_growth: body.no_growth,
+        treasure: resources,
+        artifact: treasure
+            .and_then(|t| t.artifact)
+            .map(|code| artifact(rules, code))
+            .transpose()?,
+    })
+}
+
+/// The resource of a key of [`codes::RESOURCES`].
+fn resource(rules: &GameRuleset, key: &'static str) -> Result<ResourceId, ImportError> {
+    rules
+        .core()
+        .resources()
+        .iter()
+        .position(|r| r.key.as_str() == key)
+        .and_then(ResourceId::from_index)
+        .ok_or(ImportError::MissingContent(key))
+}
+
+/// A guarded object's guards from its message (ADV-PIK-004; E08 T61a beyond piles): none without
+/// a message or stacks; whether they ask, `ask`'s answer for the message (a pile and a scroll:
+/// it has a text; an artifact: always, D-29; a box and an event: never); with a random stack,
+/// none, and the object unsupported.
+fn message_guards(
+    rules: &GameRuleset,
+    version: Version,
+    index: usize,
+    message: Option<&Message>,
+    ask: &dyn Fn(&Message) -> bool,
+) -> Result<(Option<Guards>, Option<Unsupported>), ImportError> {
+    let Some(message) = message else {
+        return Ok((None, None));
+    };
+    let army = message.guards.as_deref().unwrap_or_default();
+    if army
+        .iter()
+        .flatten()
+        .any(|s| random_stack(version, s.creature))
+    {
+        return Ok((None, Some(Unsupported::RandomStack(index))));
+    }
+    Ok((guards(rules, army, ask(message))?, None))
+}
+
+/// A Pandora's Box's or an event's reward record (ADV-RWD-001, E08 T61a; survey `E08-rewards.md`
+/// §7.1, `docs/formats/h3m.md`, "Import"): the map's values as they are (the experience's u32,
+/// the primary skills' bytes as signed, the mana, morale and luck), its skills, artifacts and
+/// spells by code, the resources that are not 0, the creatures by slot in the list's order. What
+/// it makes unsupported, its creatures left out: a random stack among them, or more stacks than an
+/// army's slots (A-24).
+// rule: ADV-OBJ-002
+fn record(
+    rules: &GameRuleset,
+    version: Version,
+    index: usize,
+    rewards: &Rewards,
+) -> Result<(RewardRecord, Option<Unsupported>), ImportError> {
+    let hero = HeroReward {
+        experience: rewards.experience,
+        primary: rewards.primary.map(|byte| i8::from_le_bytes([byte])),
+        skills: rewards
+            .skills
+            .iter()
+            .map(|&(code, level)| Ok((skill(rules, code)?, level)))
+            .collect::<Result<_, ImportError>>()?,
+        mana: rewards.mana,
+        morale: rewards.morale,
+        luck: rewards.luck,
+        artifacts: rewards
+            .artifacts
+            .iter()
+            .map(|&code| artifact(rules, code))
+            .collect::<Result<_, _>>()?,
+        spells: rewards
+            .spells
+            .iter()
+            .map(|&code| spell(rules, code))
+            .collect::<Result<_, _>>()?,
+    };
+    let resources = codes::RESOURCES
+        .iter()
+        .zip(rewards.resources)
+        .filter(|&(_, amount)| amount != 0)
+        .map(|(&key, amount)| Ok((resource(rules, key)?, amount)))
+        .collect::<Result<_, ImportError>>()?;
+    let slots = usize::from(rules.adventure().params().army_slots());
+    let (creatures, unsupported) = if rewards
+        .creatures
+        .iter()
+        .any(|s| random_stack(version, s.creature))
+    {
+        (Vec::new(), Some(Unsupported::RandomStack(index)))
+    } else if rewards.creatures.len() > slots {
+        (Vec::new(), Some(Unsupported::RewardArmy(index)))
+    } else {
+        let army: Army = rewards.creatures.iter().copied().map(Some).collect();
+        (stacks(rules, &army)?, None)
+    };
     Ok((
-        MonsterSetup {
-            creature,
-            count: u32::from(body.count),
-            disposition: body.disposition,
-            never_flees: body.never_flees,
-            no_growth: body.no_growth,
-            treasure: resources,
+        RewardRecord {
+            hero,
+            resources,
+            creatures,
         },
-        treasure.is_some_and(|t| t.artifact.is_some()),
+        unsupported,
     ))
+}
+
+/// A Witch Hut's skills (ADV-TCH-005, E08 T61a; survey `E08-rewards.md` §6.6): none on an RoE
+/// map, which stores no mask (its type's skills by the profile, A-21); else the skill of each set
+/// bit's code, and every skill for an empty mask (the original's new game draws among all 28
+/// then, 0x4C207D).
+fn witch_hut(
+    version: Version,
+    rules: &GameRuleset,
+    mask: &Bits,
+) -> Result<Option<Vec<SkillId>>, ImportError> {
+    if version == Version::RoE {
+        return Ok(None);
+    }
+    let skills = skill_set(rules, mask)?;
+    if !skills.is_empty() {
+        return Ok(Some(skills));
+    }
+    (0..codes::SKILLS.len())
+        .map(|code| skill(rules, u8::try_from(code).unwrap_or(u8::MAX)))
+        .collect::<Result<_, _>>()
+        .map(Some)
+}
+
+/// A Scholar's gift (ADV-TCH-006, E08 T61a; survey `E08-rewards.md` §6.7): none for the kind
+/// −1 (drawn when the game is built); kind 0 the primary skill of its code (0 to 3), 1 the
+/// secondary skill, 2 the spell; another kind an unknown code.
+fn scholar(rules: &GameRuleset, kind: i8, code: u8) -> Result<Option<ScholarGift>, ImportError> {
+    let unknown = |what| ImportError::UnknownCode {
+        what,
+        code: code.into(),
+    };
+    Ok(Some(match kind {
+        -1 => return Ok(None),
+        0 => ScholarGift::Primary(
+            *PrimarySkill::ALL
+                .get(usize::from(code))
+                .ok_or_else(|| unknown("primary skill"))?,
+        ),
+        1 => ScholarGift::Skill(skill(rules, code)?),
+        2 => ScholarGift::Spell(spell(rules, code)?),
+        _ => {
+            return Err(ImportError::UnknownCode {
+                what: "scholar kind",
+                code: kind.to_le_bytes()[0].into(),
+            });
+        }
+    }))
 }
 
 /// A pile's guards (ADV-PIK-004, E08 T21a; `docs/formats/h3m.md`, "Import"): the guards record's
@@ -495,6 +685,7 @@ fn footprint(object: &Object, template: &Template) -> ObjectSetup {
         drawn: TileMask::default(),
         monster: None,
         guards: None,
+        holds: Holds::Nothing,
     }
 }
 

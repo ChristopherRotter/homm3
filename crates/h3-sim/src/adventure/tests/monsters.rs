@@ -44,8 +44,10 @@ pub(super) fn monster_setup(rules: &GameRuleset, difficulty: u8) -> (Arc<GameSet
             never_flees: true,
             no_growth: false,
             treasure: vec![],
+            artifact: None,
         }),
         guards: None,
+        holds: Default::default(),
     });
     (Arc::new(setup), near)
 }

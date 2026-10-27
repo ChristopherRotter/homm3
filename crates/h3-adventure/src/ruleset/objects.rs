@@ -11,9 +11,17 @@ use alloc::string::String;
 use alloc::vec::Vec;
 use core::num::NonZeroU32;
 
-use h3_content::{ContentKey, CreatureFlag, CreatureTypeId, ResourceId, Ruleset, TerrainId};
+use h3_content::{
+    ArtifactClass, ContentKey, CreatureFlag, CreatureTypeId, ResourceId, Ruleset, SkillId,
+    TerrainId,
+};
 use h3_kernel::{CanonicalHash, Handle, StateHasher};
 
+use super::rewards::{
+    Chest, ChestDef, Find, FindDef, Gift, GiftDef, Pyramid, PyramidDef, Resources, check_pyramid,
+    compile_artifact_classes, compile_chest, compile_find, compile_gift, compile_pyramid,
+    compile_resources, hash_classes, hash_resources,
+};
 use super::{AdventureCompileError, check_namespace, insert_unique};
 
 /// The key colours of Keymaster's tents, border guards and border gates (survey `E08-objects.md`
@@ -121,6 +129,51 @@ pub enum ObjectKind {
         /// native price (Cursed Ground, ADV-MOV-004, E08 T40).
         no_native: bool,
     },
+    /// A treasure chest (ADV-PIK-005, E08 T61a): gold or an artifact, drawn when the game is
+    /// built.
+    Chest(Chest),
+    /// An artifact as a pickup (ADV-PIK-006, ADV-PIK-007, E08 T61a): the map's artifact, or one
+    /// drawn among these classes when the game is built (a random artifact, ADV-OBJ-006).
+    Artifact {
+        /// The classes of a random artifact; none for a placed one, whose artifact the map names.
+        classes: Option<Vec<ArtifactClass>>,
+    },
+    /// A Spell Scroll as a pickup, its spell the map's (ADV-PIK-008, E08 T61a).
+    Scroll,
+    /// A once-per-hero gift (ADV-TCH-001 to -003, E08 T61a).
+    Gift(Gift),
+    /// A Shrine (ADV-TCH-004, E08 T61a): a spell of this level, the map's or drawn.
+    Shrine {
+        /// The spell's level.
+        level: u8,
+    },
+    /// A Witch Hut (ADV-TCH-005, E08 T61a): a skill drawn among the map's mask; an RoE map has
+    /// none, and its huts draw among these skills by the profile (A-21, `ADV-QUIRK-21`).
+    WitchHut {
+        /// The skills under `faithful`: the original's fixed mask 0xEFBF (14 skills).
+        roe: Vec<SkillId>,
+        /// The skills under `strict-fixed`: every skill but Leadership and Necromancy.
+        roe_fixed: Vec<SkillId>,
+    },
+    /// A Scholar (ADV-TCH-006, E08 T61a): its gift the map's or drawn.
+    Scholar,
+    /// A University (ADV-TCH-007, E08 T61a): skills drawn when the game is built, each sold at
+    /// the price.
+    University {
+        /// How many skills it offers.
+        offers: u8,
+        /// The price of each.
+        price: Resources,
+    },
+    /// A find, emptied by its first visit (ADV-PIK-009 to -012, E08 T61a).
+    Find(Find),
+    /// Pandora's Box (ADV-PIK-013, E08 T61a): the map's reward record behind a question.
+    PandoraBox,
+    /// An event (ADV-OBJ-007, E08 T61a): the map's reward record, fired by a step onto its tile;
+    /// never visited through [`ObjectKind::effect`] (design §12).
+    Event,
+    /// The Pyramid (ADV-TCH-008, E08 T61a).
+    Pyramid(Pyramid),
 }
 
 /// What a visit of an object does, for the kinds whose visit is built ([`ObjectKind::effect`]):
@@ -161,7 +214,20 @@ impl ObjectKind {
             Self::KeyGuard { key } => Some(Effect::Guard(*key)),
             Self::KeyGate { key } => Some(Effect::Gate(*key)),
             Self::Monster { .. } => Some(Effect::Monster),
-            Self::Ground { .. } => None,
+            // E08 T61a: increment 7's kinds are typed; their visits come with T62.
+            Self::Ground { .. }
+            | Self::Chest(_)
+            | Self::Artifact { .. }
+            | Self::Scroll
+            | Self::Gift(_)
+            | Self::Shrine { .. }
+            | Self::WitchHut { .. }
+            | Self::Scholar
+            | Self::University { .. }
+            | Self::Find(_)
+            | Self::PandoraBox
+            | Self::Event
+            | Self::Pyramid(_) => None,
         }
     }
 
@@ -279,6 +345,48 @@ pub enum ObjectKindDef {
         /// Whether it takes the native price away (E08 T40).
         no_native: bool,
     },
+    /// [`ObjectKind::Chest`].
+    Chest(ChestDef),
+    /// [`ObjectKind::Artifact`]: a random artifact's classes distinct, at least one, never
+    /// Special.
+    Artifact {
+        /// The classes.
+        classes: Option<Vec<ArtifactClass>>,
+    },
+    /// [`ObjectKind::Scroll`].
+    Scroll,
+    /// [`ObjectKind::Gift`].
+    Gift(GiftDef),
+    /// [`ObjectKind::Shrine`]: a level from 1.
+    Shrine {
+        /// The level.
+        level: u8,
+    },
+    /// [`ObjectKind::WitchHut`]: core skills, each list distinct.
+    WitchHut {
+        /// Under `faithful`.
+        roe: Vec<ContentKey>,
+        /// Under `strict-fixed`.
+        roe_fixed: Vec<ContentKey>,
+    },
+    /// [`ObjectKind::Scholar`].
+    Scholar,
+    /// [`ObjectKind::University`]: offers from 1; a price of distinct core resources, each
+    /// amount from 1 to [`MAX_GAIN`].
+    University {
+        /// The offers.
+        offers: u8,
+        /// The price.
+        price: Vec<(ContentKey, u32)>,
+    },
+    /// [`ObjectKind::Find`].
+    Find(FindDef),
+    /// [`ObjectKind::PandoraBox`].
+    PandoraBox,
+    /// [`ObjectKind::Event`].
+    Event,
+    /// [`ObjectKind::Pyramid`].
+    Pyramid(PyramidDef),
 }
 
 /// An object type as a pack defines it.
@@ -338,6 +446,48 @@ impl Scope<'_> {
         self.core
             .terrain_by_key(key.as_str())
             .ok_or_else(|| AdventureCompileError::UnknownTerrain(String::from(key.as_str())))
+    }
+
+    pub(super) fn creature(
+        &self,
+        key: &ContentKey,
+    ) -> Result<CreatureTypeId, AdventureCompileError> {
+        self.reach(key)?;
+        self.core
+            .creature_by_key(key.as_str())
+            .ok_or_else(|| AdventureCompileError::UnknownCreature(String::from(key.as_str())))
+    }
+
+    /// Whether the creature is a war machine.
+    pub(super) fn war_machine(&self, creature: CreatureTypeId) -> bool {
+        self.core
+            .creature(creature)
+            .is_some_and(|c| c.flags.contains(CreatureFlag::WarMachine))
+    }
+
+    fn skill(&self, key: &ContentKey) -> Result<SkillId, AdventureCompileError> {
+        self.reach(key)?;
+        self.core
+            .skill_by_key(key.as_str())
+            .ok_or_else(|| AdventureCompileError::UnknownSkill(String::from(key.as_str())))
+    }
+
+    /// Distinct skills, in the list's order.
+    fn skills(
+        &self,
+        keys: &[ContentKey],
+    ) -> Result<Result<Vec<SkillId>, &'static str>, AdventureCompileError> {
+        let list = keys
+            .iter()
+            .map(|key| self.skill(key))
+            .collect::<Result<Vec<_>, _>>()?;
+        Ok(
+            if list.iter().collect::<BTreeSet<_>>().len() == list.len() {
+                Ok(list)
+            } else {
+                Err("skills name a skill twice")
+            },
+        )
     }
 }
 
@@ -403,14 +553,24 @@ pub(super) fn compile_object_types(
     Ok(())
 }
 
-/// Checks, once every pack is in, that each [`Pickup::OneOf`] names resource pickups only and
-/// that each random monster has a creature to draw ([`random_monsters`]).
+/// Checks, once every pack is in, that each [`Pickup::OneOf`] names resource pickups only, that
+/// each random monster has a creature to draw ([`random_monsters`]) and that a Pyramid's second
+/// creature leaves its first a slot of the army's (E08 T61a).
 pub(super) fn check_object_types(
     core: &Ruleset,
     types: &[ObjectType],
     excluded: &BTreeSet<CreatureTypeId>,
+    army_slots: u8,
 ) -> Result<(), AdventureCompileError> {
     for ty in types {
+        if let ObjectKind::Pyramid(pyramid) = &ty.kind {
+            check_pyramid(pyramid, army_slots).map_err(|reason| {
+                AdventureCompileError::InvalidObjectType {
+                    key: String::from(ty.key.as_str()),
+                    reason,
+                }
+            })?;
+        }
         if let ObjectKind::Monster {
             levels: Some(levels),
         } = &ty.kind
@@ -572,6 +732,36 @@ fn compile_kind(
                 no_native: *no_native,
             })
         }
+        ObjectKindDef::Chest(def) => compile_chest(scope, def)?.map(ObjectKind::Chest),
+        ObjectKindDef::Artifact { classes } => compile_artifact_classes(classes.as_ref())
+            .map(|classes| ObjectKind::Artifact { classes }),
+        ObjectKindDef::Scroll => Ok(ObjectKind::Scroll),
+        ObjectKindDef::Gift(def) => compile_gift(scope, def)?.map(ObjectKind::Gift),
+        ObjectKindDef::Shrine { level } => {
+            if *level == 0 {
+                Err("a Shrine's level is 0")
+            } else {
+                Ok(ObjectKind::Shrine { level: *level })
+            }
+        }
+        ObjectKindDef::WitchHut { roe, roe_fixed } => {
+            match (scope.skills(roe)?, scope.skills(roe_fixed)?) {
+                (Ok(roe), Ok(roe_fixed)) => Ok(ObjectKind::WitchHut { roe, roe_fixed }),
+                (Err(reason), _) | (_, Err(reason)) => Err(reason),
+            }
+        }
+        ObjectKindDef::Scholar => Ok(ObjectKind::Scholar),
+        ObjectKindDef::University { offers, price } => {
+            match (compile_resources(scope, price)?, *offers) {
+                (Err(reason), _) => Err(reason),
+                (Ok(_), 0) => Err("a University offers nothing"),
+                (Ok(price), offers) => Ok(ObjectKind::University { offers, price }),
+            }
+        }
+        ObjectKindDef::Find(def) => compile_find(scope, def)?.map(ObjectKind::Find),
+        ObjectKindDef::PandoraBox => Ok(ObjectKind::PandoraBox),
+        ObjectKindDef::Event => Ok(ObjectKind::Event),
+        ObjectKindDef::Pyramid(def) => compile_pyramid(scope, def)?.map(ObjectKind::Pyramid),
     })
 }
 
@@ -601,9 +791,13 @@ fn check_key(key: u8) -> Result<u8, &'static str> {
 impl CanonicalHash for ObjectType {
     /// Key, name, visit (0 enter, 1 neighbour), from above, then the kind: its tag (0 pickup,
     /// 1 reveal terrain, 2 reveal area, 3 key tent, 4 key guard, 5 key gate; since part v7 6
-    /// monster, 7 ground) and parameters (a pickup's own tag, 0 resource, 1 one of, 2 paired,
-    /// then its fields in order; a monster's levels as 0 for none, else 1, low, high; a ground's
-    /// battlefield key, since part v10 whether it takes the native price away).
+    /// monster, 7 ground; since part v12 8 chest, 9 artifact, 10 scroll, 11 gift, 12 Shrine,
+    /// 13 Witch Hut, 14 Scholar, 15 University, 16 find, 17 Pandora's Box, 18 event, 19 Pyramid)
+    /// and parameters (a pickup's own tag, 0 resource, 1 one of, 2 paired, then its fields in
+    /// order; a monster's levels as 0 for none, else 1, low, high; a ground's battlefield key,
+    /// since part v10 whether it takes the native price away; an artifact's classes as 0 for
+    /// none, else 1 and the classes; a Witch Hut's two skill lists; a University's offers and
+    /// price; the others' fields in order).
     fn hash_into(&self, h: &mut StateHasher) {
         self.key.as_str().hash_into(h);
         self.name.as_str().hash_into(h);
@@ -660,6 +854,50 @@ impl CanonicalHash for ObjectType {
                 h.write_u8(7);
                 battlefield.as_str().hash_into(h);
                 h.write_bool(*no_native);
+            }
+            ObjectKind::Chest(chest) => {
+                h.write_u8(8);
+                chest.hash_into(h);
+            }
+            ObjectKind::Artifact { classes } => {
+                h.write_u8(9);
+                match classes {
+                    None => h.write_u8(0),
+                    Some(classes) => {
+                        h.write_u8(1);
+                        hash_classes(classes, h);
+                    }
+                }
+            }
+            ObjectKind::Scroll => h.write_u8(10),
+            ObjectKind::Gift(gift) => {
+                h.write_u8(11);
+                gift.hash_into(h);
+            }
+            ObjectKind::Shrine { level } => {
+                h.write_u8(12);
+                h.write_u8(*level);
+            }
+            ObjectKind::WitchHut { roe, roe_fixed } => {
+                h.write_u8(13);
+                roe.hash_into(h);
+                roe_fixed.hash_into(h);
+            }
+            ObjectKind::Scholar => h.write_u8(14),
+            ObjectKind::University { offers, price } => {
+                h.write_u8(15);
+                h.write_u8(*offers);
+                hash_resources(price, h);
+            }
+            ObjectKind::Find(find) => {
+                h.write_u8(16);
+                find.hash_into(h);
+            }
+            ObjectKind::PandoraBox => h.write_u8(17),
+            ObjectKind::Event => h.write_u8(18),
+            ObjectKind::Pyramid(pyramid) => {
+                h.write_u8(19);
+                pyramid.hash_into(h);
             }
         }
     }

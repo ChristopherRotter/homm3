@@ -12,7 +12,7 @@ use alloc::vec;
 use alloc::vec::Vec;
 
 use h3_content::{
-    ContentKey, CreatureFlag, CreatureTypeId, FRINGE_SHOWS_OBJECTS, Formation,
+    ArtifactTypeId, ContentKey, CreatureFlag, CreatureTypeId, FRINGE_SHOWS_OBJECTS, Formation,
     RADIUS_WAITS_FOR_A_STEP, ResourceId, Ruleset, TerrainId,
 };
 use h3_contracts::{ArmyStack, HeroId, PlayerId};
@@ -35,7 +35,7 @@ use crate::ruleset::{
     ObjectType, ObjectTypeId, Passage, Pickup, RiverId, RoadId, Visit,
 };
 use crate::setup::{
-    AdventureSetup, ArmyError, Guards, HeroSetup, MapSetup, MonsterSetup, ObjectSetup, Pos,
+    AdventureSetup, ArmyError, Guards, HeroSetup, Holds, MapSetup, MonsterSetup, ObjectSetup, Pos,
     Scenery, SetupError, StandError, TileMask,
 };
 
@@ -74,6 +74,7 @@ impl StaticTile {
 }
 
 mod flags;
+mod holds;
 mod manage;
 mod monsters;
 mod occupancy;
@@ -111,6 +112,8 @@ pub struct MapObject {
     pub guards: Option<Guards>,
     /// What it is among a battle's surroundings (GAM-BAT-011, E08 T54).
     pub scenery: Scenery,
+    /// What the map put in it (E08 T61a; [`Holds`]).
+    pub holds: Holds,
 }
 
 /// A wandering monster of the static map (ADV-MON-001, E08 T20a2a): the map's data with what the
@@ -129,6 +132,9 @@ pub struct Monster {
     pub no_growth: bool,
     /// What the player that beats it or that it joins gains.
     pub treasure: Vec<(ResourceId, u32)>,
+    /// The artifact its treasure holds for the hero that beats it or that it joins (ADV-MON-011,
+    /// E08 T61a).
+    pub artifact: Option<ArtifactTypeId>,
 }
 
 impl MapObject {
@@ -316,19 +322,27 @@ impl StaticMap {
                 return Err(SetupError::Monster(index));
             }
             // rule: ADV-PIK-004
-            let pile = ty.is_some_and(|ty| {
+            // E08 T61a: an artifact, a scroll, Pandora's Box and an event take guards too.
+            let guarded = ty.is_some_and(|ty| {
                 matches!(
                     ty.kind,
                     ObjectKind::Pickup(Pickup::Resource { .. } | Pickup::OneOf(_))
+                        | ObjectKind::Artifact { .. }
+                        | ObjectKind::Scroll
+                        | ObjectKind::PandoraBox
+                        | ObjectKind::Event
                 )
             });
             let guards = object
                 .guards
                 .as_ref()
                 .map(|guards| {
-                    check_guards(core, part, pile, guards).ok_or(SetupError::Guards(index))
+                    check_guards(core, part, guarded, guards).ok_or(SetupError::Guards(index))
                 })
                 .transpose()?;
+            if !holds::check_holds(core, part, ty.map(|ty| &ty.kind), &object.holds) {
+                return Err(SetupError::Holds(index));
+            }
             map.place(object, guards);
         }
         map.resolve(core, part, &setup.objects, draws);
@@ -552,6 +566,7 @@ impl StaticMap {
                 never_flees: monster.never_flees,
                 no_growth: monster.no_growth,
                 treasure: monster.treasure.clone(),
+                artifact: monster.artifact,
             });
         }
     }
@@ -587,6 +602,7 @@ impl StaticMap {
             monster: None,
             guards,
             scenery: object.scenery,
+            holds: object.holds.clone(),
         });
     }
 
@@ -686,8 +702,9 @@ impl CanonicalHash for StaticMap {
     /// monster: creature, count, aggression, never flees, does not grow, the treasure as length
     /// and entries; since v10, as 0 for none or 1 and its fields, its guards: whether they ask,
     /// the stacks as length and slot, creature and count each; since v12 its scenery, 0 other, 1
-    /// ownable, 2 a tree, 3 a mountain, 4 dead vegetation). The per-tile object flags follow from
-    /// the objects.
+    /// ownable, 2 a tree, 3 a mountain, 4 dead vegetation; since v13 a monster's treasure artifact
+    /// after its treasure, and after the scenery what the object holds, [`Holds`]' encoding). The
+    /// per-tile object flags follow from the objects.
     fn hash_into(&self, h: &mut StateHasher) {
         h.write_u16(self.width);
         h.write_u16(self.height);
@@ -725,6 +742,7 @@ impl CanonicalHash for StaticMap {
                         resource.hash_into(h);
                         h.write_u32(*amount);
                     }
+                    monster.artifact.hash_into(h);
                 }
             }
             match &object.guards {
@@ -747,6 +765,7 @@ impl CanonicalHash for StaticMap {
                 Scenery::Mountain => 3,
                 Scenery::DeadVegetation => 4,
             });
+            object.holds.hash_into(h);
         }
     }
 }
@@ -2177,7 +2196,7 @@ mod tests;
 /// is no monster, which has no data. A fixed monster names a creature of the core that is no war
 /// machine, a random one none; the count is at most [`MAX_MONSTER_COUNT`]; the monsters'
 /// parameters know the disposition; the treasure names known resources once each, each amount
-/// from 1 to [`MAX_GAIN`].
+/// from 1 to [`MAX_GAIN`], and an artifact a hero may hold (E08 T61a).
 fn check_monster(
     core: &Ruleset,
     part: &AdventureRuleset,
@@ -2212,14 +2231,16 @@ fn check_monster(
         && monster.treasure.iter().all(|&(resource, amount)| {
             usize::from(resource.raw()) < core.resources().len() && (1..=MAX_GAIN).contains(&amount)
         })
+        && holds::check_treasure_artifact(core, monster.artifact)
 }
 
-/// A guarded pile's guards checked (ADV-PIK-004, E08 T21a): on a pile (`pile`), their stacks valid
-/// as a hero's army ([`check_army`]) with no war machine; the stacks in slot order.
+/// A guarded object's guards checked (ADV-PIK-004, E08 T21a): on an object that takes them
+/// (`guarded`: a pile; since E08 T61a an artifact, a scroll, Pandora's Box, an event), their
+/// stacks valid as a hero's army ([`check_army`]) with no war machine; the stacks in slot order.
 fn check_guards(
     core: &Ruleset,
     part: &AdventureRuleset,
-    pile: bool,
+    guarded: bool,
     guards: &Guards,
 ) -> Option<Guards> {
     let army = check_army(core, part, &guards.army).ok()?;
@@ -2227,7 +2248,7 @@ fn check_guards(
         core.creature(stack.creature)
             .is_some_and(|c| c.flags.contains(CreatureFlag::WarMachine))
     });
-    (pile && !machine).then_some(Guards {
+    (guarded && !machine).then_some(Guards {
         army,
         question: guards.question,
     })

@@ -6496,3 +6496,83 @@ CI). No original data staged (none needed).
   before the catalog had HER-CHG-003 and -004 (the markers' ids unknown); re-run after the
   catalog's entries, ok, with check-docs, check-exe-map, check-stubs and doc-drift; coverage,
   determinism and bench-check passed.
+
+### Increment 7, round 5: T61a, the import and the kinds (2026-10-27, `adventure/e08-t61a`)
+
+**The cut** (decision 148, asked at the start): T61 in two as the design proposed, T61a the
+import and the kinds; the agent's recommendation was three (the kinds alone first). **Baseline:**
+`master` 94a5039 (#504 merged, CI green on it; 94a5039 a map-client change); the sandbox's light
+gates passed (the code verified by CI). No original data staged: the user's computer was not
+reachable when the census was due (below).
+
+- **The kinds** (design §8; ADR-0016 point 4; ruleset part v12): `ObjectKind::Chest(Chest)`,
+  `Artifact { classes: Option<Vec<ArtifactClass>> }` (none: the map names it), `Scroll`,
+  `Gift(Gift)` (`Gives::Primary`, `Choice { skills, amount }`, `Experience`, `Level`; `prices`,
+  none free, several drawn; `admits`, the Library's level for `library_admits`; `leave`),
+  `Shrine { level }`, `WitchHut { roe, roe_fixed }` (A-21's two lists, flag 37 picks one at the
+  draw), `Scholar`, `University { offers, price }`, `Find(Find)` (`draws` by chance:
+  `FindContent::Nothing`, `Artifact(classes)`, `Resources { amount, resources }`; the full
+  backpack's `Turn::Give`, `Drawn`, `Stays`; `question`; `bonus: OnceBonus`), `PandoraBox`,
+  `Event`, `Pyramid(Pyramid)` (`split`, `fixed` stacks, `level`, `looted`). Their defs with keys
+  in `ruleset/rewards.rs`, every parameter checked (chances, amounts against `MAX_GAIN`, classes
+  distinct and never Special, marks below `BattleBonuses::MARKS`, prices of distinct resources);
+  `AdventureCompileError::UnknownSkill`; a Pyramid's fixed stacks leave the split creature a slot,
+  checked once the parameters are in (`check_object_types` now runs after them). The hash's tags
+  8 to 19. `ObjectKind::effect` gives none for them: their visits are T62's, so a step onto one
+  is refused as a blocker's was. The pack format (`h3-pack-adventure`): one table per kind
+  (`chest`, `artifact`, `scroll`, `gift` with `gives` as `{ primary = [...] }`, `{ choice = {...}
+  }`, `{ experience = n }` or `"level"`, `shrine`, `witch_hut`, `scholar`, `university`, `find`
+  with `holds`, `pandora_box`, `event`, `pyramid`), primary skills and classes by name. The base
+  pack's 31 types with their sources (survey §2 to §7), the visit modes from the original's two
+  lists (0x63AA58, 0x63AB00).
+- **The import** (design §7; map import v12): `codes.rs` types the 31 classes (5 by any subclass,
+  its artifact). `ObjectSetup::holds` (`Holds::Nothing`, `Artifact(ArtifactInstance)`,
+  `Spell(Option<SpellId>)`, `Skills(Option<Vec<SkillId>>)`, `Gift(Option<ScholarGift>)`,
+  `Record(Box<RewardRecord>)`, `Event(Box<EventSetup>)`), `RewardRecord { hero: HeroReward,
+  resources: Vec<(ResourceId, i32)>, creatures: Vec<ArmyStack> }`, `EventSetup { record,
+  colours, computer, remove }`, `MonsterSetup::artifact`. Guards from the message records of
+  artifacts (always asking, D-29), scrolls (asking with a text), boxes and events (never asking);
+  a random stack among them unsupported, kept unguarded by `import_map`. A record's creatures with
+  a random code or more stacks than the army's slots unsupported (`Unsupported::RewardArmy`, A-24),
+  kept without them; `Unsupported::MonsterArtifact` gone (the 8 maps move on).
+- **The setup** (`state/holds.rs`; `SetupError::Holds`): each holding against its kind; a placed
+  artifact and a scroll one a hero may hold (`h3_heroes::validate_artifact`, new: HER-ART-003's
+  test of one item), the scroll's with a spell, the artifact's without; a Shrine's spell and a
+  Scholar's a hero spell; a Witch Hut's skills distinct; a record's skills at Basic to Expert,
+  artifacts known (a Spell Scroll without a spell is a valid gift: `grant` loses it), spells hero
+  spells, resources distinct and not 0, creatures an army's without the "no stack" error and no
+  war machine. Guards on artifacts, scrolls, boxes and events too (ADV-PIK-004). A monster's
+  treasure artifact one a hero may hold. `MapObject::holds`, `Monster::artifact`; the static
+  map's hash adds both (adventure state hash v13).
+- *Agent's calls (change freely):* one `Holds` enum on `ObjectSetup` rather than a field per
+  kind (40 struct literals took one line each); a scroll holds its `ArtifactInstance` (the import,
+  which alone knows code 1, resolves the Spell Scroll), so `ObjectKind::Scroll` has no parameter;
+  an empty Witch Hut mask imports as every skill (the original's draw reads it so, 0x4C207D), an
+  RoE map's as none; a Scholar kind other than −1 to 2 and a primary code above 3 are unknown
+  codes; a record's stack of 0 creatures stays for the setup to refuse (as an army's); the hero
+  model's types the setup names (`ArtifactInstance`, `HeroReward`, `PrimarySkill`, `ScholarGift`)
+  re-exported by `h3-adventure`, since `arch.toml` gives `h3-map` and `h3-pack-adventure` no edge
+  to `h3-heroes`; the bans moved to T61b (decision 148); a typed event still blocks a walk until
+  T62's event tile (design §12), as the blocker it was.
+- **Tests**: `ruleset/tests/rewards.rs` (every kind compiled, every check, the references, the
+  hash per parameter), `state/tests/holds.rs` (each holding against each kind, the records'
+  checks, guards by kind, a monster's artifact, the hash), `h3-pack-adventure`'s
+  `parses_the_reward_kinds` and `the_base_pack_types_the_rewards_of_increment_7`, `h3-map`'s
+  `increment_7_bodies_import_with_their_guards_and_records` and the writer's reward maps (T56's)
+  now importing whole, `h3-heroes`' `validate_artifact` cases.
+- **Replays**: the twelve re-recorded with their options, their commands unchanged (neither map
+  holds increment 7's classes): every hash moved; the headers' import v12, adventure state hash
+  v13, the ruleset part's hash.
+- **Rules**: ADV-OBJ-002, ADV-PIK-004 and ADV-MON-001 amended; the visits' ids (ADV-PIK-005 and
+  on) stay for T62. `docs/formats/h3m.md`, "Import" (v12).
+- **For other lanes**: the AI lane's inbox: `h3 ai census` counts every object with guards as a
+  guarded pile; since T61a artifacts, scrolls, boxes and events carry guards too. **Cross-lane**
+  (the user's consent, decision 148): `holds: Default::default()` and `artifact: None` in the AI
+  lane's `h3-sim` adventure tests (`src/adventure/tests.rs`, `tests/monsters.rs`; three lines).
+- **Not run**: `--with-original-data` (the user's computer was not reachable to stage
+  `maps.tar`): the census of what imports whole after T61a and whether every static layer still
+  validates with the 31 classes' bodies (survey §1 found nothing out of range) are the next
+  session's with the original data, before T61b builds on it.
+- **Verify** (scoped, no original data staged): every step passed but check-lane, which flags the
+  two AI-lane test files (the consented `cross-lane` lines); coverage, determinism and bench-check
+  passed; check-docs, check-rules, check-stubs and doc-drift re-run after the docs, ok.

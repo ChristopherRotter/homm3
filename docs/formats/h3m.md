@@ -126,7 +126,7 @@ every one reads to its padding, and every body kind but the hero placeholder occ
 Versions the reader rejects: Heroes Chronicles (`0x1D`), HotA (`0x20`), WoG (`0x33`) and every
 other code.
 
-## Import (E08 T5a, T6a, T12a, T13a, T18b, T19a, T20a2a, T21a, T29, T49a, T49b, T54; `MAP_IMPORT_VERSION` 11)
+## Import (E08 T5a, T6a, T12a, T13a, T18b, T19a, T20a2a, T21a, T29, T49a, T49b, T54, T61a; `MAP_IMPORT_VERSION` 12)
 
 `h3_map::import` turns a raw map and the game's rules into `h3_game::GameSetup`, which the game
 then validates (ADR-0015 point 4); `import_map` is its static layer. The import maps codes to
@@ -162,7 +162,17 @@ content and draws nothing; it rejects what the current increment cannot represen
   (`Subclass`); classes 12, 58, 60 and 76 ignore it. A resource body's amount (76, 79) is the
   pile's fixed amount (0 is none: drawn when the game is built; gold counts in hundreds, the type
   multiplies), which the setup bounds at 0x7FFFF; its message's text is presentation. Every other
-  class is a blocker. Since v11 (E08 T54, GAM-BAT-011) every object keeps its scenery by class
+  class is a blocker. Since v12 (E08 T61a, increment 7; design §7 of `docs/epics/E08-design.md`
+  until T61a, then `E08-log.md`) 31 more classes, each to one type: 101 → `base:treasure_chest`,
+  5 → `base:artifact` (its subclass the artifact), 65–69 → `base:random_artifact`,
+  `_treasure_artifact`, `_minor_artifact`, `_major_artifact`, `_relic_artifact`, 93 →
+  `base:spell_scroll`, 4 `base:arena`, 23 `base:marletto_tower`, 32 `base:garden_of_revelation`,
+  41 `base:library_of_enlightenment`, 47 `base:school_of_magic`, 51 `base:mercenary_camp`, 61
+  `base:star_axis`, 100 `base:learning_stone`, 102 `base:tree_of_knowledge`, 107
+  `base:school_of_war`, 88–90 → `base:shrine_of_magic_incantation`, `_gesture`, `_thought`, 113
+  `base:witch_hut`, 81 `base:scholar`, 104 `base:university`, 22 `base:corpse`, 39
+  `base:lean_to`, 105 `base:wagon`, 108 `base:warriors_tomb`, 6 `base:pandoras_box`, 26
+  `base:event`, 63 `base:pyramid`; every subclass of these but 5's is ignored. Since v11 (E08 T54, GAM-BAT-011) every object keeps its scenery by class
   (`ObjectSetup.scenery`, `codes::scenery`): trees 114, 115, 135, 137, 155, 159, 160, mountains
   123, 133, 134, 136, 157, 158, dead vegetation 119, ownable 17, 20, 33, 42, 53, 77, 87, 98.
 - **Guarded piles** (v7, E08 T21a, ADV-PIK-004): a pile's or random resource's guards record gives
@@ -171,6 +181,25 @@ content and draws nothing; it rejects what the current increment cannot represen
   without stacks is a plain pile, as the original's stack count reads it (0x4A47E0). Unsupported:
   a random stack among the guards (the 14 codes below "none", as a hero's); `import_map` keeps
   that pile unguarded. The setup checks the stacks as a hero's army, no war machine among them.
+  Since v12 (E08 T61a) an artifact's (placed or random), a scroll's, a Pandora's Box's and an
+  event's message record give guards the same way: an artifact's always ask (D-29), a scroll's
+  only with a text (as a pile's), a box's and an event's never (announced).
+- **What increment 7's objects hold** (v12, E08 T61a; `ObjectSetup.holds`, `h3_adventure::Holds`,
+  checked against the type's kind when the game is built): a placed artifact (5) its subclass's
+  artifact; a scroll (93) the Spell Scroll (artifact code 1) with the spell of its u32's low byte;
+  a Shrine (88–90) its spell, 255 none (drawn when the game is built); a Witch Hut (113) its mask's
+  skills, each set bit the skill of its code (a bit past the 28 codes an unknown code), an empty
+  mask every skill (the original's new game, 0x4C207D), none on an RoE map, which stores no mask
+  (its type's skills by the profile, A-21); a Scholar (81) its gift, kind −1 none (drawn), 0 the
+  primary skill of its code (0–3, else an unknown code), 1 the skill, 2 the spell, another kind an
+  unknown code; Pandora's Box (6) and an event (26) a reward record (`RewardRecord`): the
+  experience's u32 as it is (2³¹ and above gives none), the primary skills' bytes as signed, the
+  mana, morale and luck, the skills (code, level), artifacts and spells by code, the resources that
+  are not 0 (negative a loss), the creatures by slot in the list's order; an event also its colours,
+  computer flag and removal flag. Unsupported: a record's creature list longer than an army's
+  slots (A-24, always fixed) or with a random code; `import_map` keeps the record without its
+  creatures. The other classes hold nothing: their contents are drawn when the game is built
+  (T61b).
 - **Monsters** (v6, E08 T20a2a, ADV-MON-001): class 54 → `base:monster` with the creature its
   subclass names (by original id, as a hero's stacks; 122, 124, 126 and 128 are unknown codes);
   71 → `base:random_monster`, 72–75 → `base:random_monster_1` to `_4`, 162–164 →
@@ -178,8 +207,9 @@ content and draws nothing; it rejects what the current increment cannot represen
   The body's count (0 drawn, ADV-MON-004; the setup bounds it at 4 095, the original's 12 bits),
   disposition code (0 compliant to 4 savage, a row of the monsters' aggression, ADV-MON-002),
   never flees and does not grow; the treasure's resources above 0 in resource order (its text is
-  presentation; no shipped map has one below 0). Unsupported: a treasure with an artifact
-  (the artifacts' increment, E08 decisions 22 and 48); `import_map` keeps the monster without it.
+  presentation; no shipped map has one below 0). Until v12 a treasure with an artifact was
+  unsupported (E08 decisions 22 and 48); since v12 (E08 T61a) its artifact is kept
+  (`MonsterSetup.artifact`; the setup takes one a hero may hold, without a spell).
 - **Special grounds** (v6, E08 T20a2a, ADV-GRD-001): 21 → `base:cursed_ground`, 46 →
   `base:magic_plains`, 222–224 and 226–231 → `sod:clover_field`, `sod:cursed_ground`,
   `sod:evil_fog`, `sod:fiery_fields`, `sod:holy_ground`, `sod:lucid_pools`, `sod:magic_clouds`,
@@ -274,7 +304,10 @@ the 39 guards records as T21a's. E08 T29's run (import v8): 5 import and validat
 an artifact, 1 for a hero in a town. No map has a level limit; 19 ban skills, none past the 28
 codes. E08 T49a's run (import v9): the same 5 import and validate whole with the same levels
 at load; the Tutorial's second hero leaves its Shackles of War out (stored on the left hand,
-which the first version of v9 refused to validate); the other outcomes as T29's.
+which the first version of v9 refused to validate); the other outcomes as T29's. E08 T61a
+(import v12, the 31 classes and the monsters' artifacts): its run was not made (the user's computer
+was not reachable that session); the next with the original data counts what imports whole now
+that the 8 maps refused for a monster's artifact move on (design §20).
 
 ## The subset we write (E04a T2)
 

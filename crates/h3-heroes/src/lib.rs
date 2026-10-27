@@ -66,7 +66,8 @@ pub use derive::{
     gained_experience, join_bonus, max_mana, necromancy,
 };
 pub use details::{
-    ArtifactInstance, BattleBonuses, HeroDetails, OfferLevels, PrimarySkill, validate, war_machines,
+    ArtifactInstance, BattleBonuses, HeroDetails, OfferLevels, PrimarySkill, validate,
+    validate_artifact, war_machines,
 };
 pub use error::{ChangeError, CombineError, DetailsError, MoveError};
 pub use level::{

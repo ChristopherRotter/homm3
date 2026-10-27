@@ -146,6 +146,7 @@ fn a_water_walk_crosses_plain_water_and_lands_on_the_far_shore() {
         drawn: TileMask::default(),
         monster: None,
         guards: None,
+        holds: Default::default(),
     });
     let mut state = crate::testing::started(&rules, &setup).unwrap();
     assert_eq!(
