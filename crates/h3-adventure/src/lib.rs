@@ -66,17 +66,22 @@ pub use persistent::BitGrid;
 pub use reach::Reach;
 pub use ruleset::{
     AdventureCompileError, AdventurePack, AdventureParams, AdventureParamsDef, AdventureRuleset,
-    BattleTerrains, BattleTerrainsDef, KEY_COLOURS, MAX_DIFFICULTIES, MAX_GAIN, MAX_LAND_POINTS,
+    BattleTerrains, BattleTerrainsDef, Chest, ChestDef, Find, FindContent, FindContentDef, FindDef,
+    Gift, GiftDef, Gives, KEY_COLOURS, MAX_DIFFICULTIES, MAX_GAIN, MAX_LAND_POINTS,
     MAX_MONSTER_COUNT, MAX_PICKUP_AMOUNT, MAX_PLAYERS, MonsterParams, MonsterParamsDef, ObjectKind,
-    ObjectKindDef, ObjectType, ObjectTypeDef, ObjectTypeId, Passage, Pickup, PickupDef, RiverDef,
-    RiverId, RiverKind, RoadDef, RoadId, RoadKind, StartingResources, StartingResourcesDef,
-    TerrainMovement, TerrainMovementDef, TerrainWalker, TerrainWalkerDef, Visit,
+    ObjectKindDef, ObjectType, ObjectTypeDef, ObjectTypeId, OnceBonus, Passage, Pickup, PickupDef,
+    Pyramid, PyramidDef, RiverDef, RiverId, RiverKind, RoadDef, RoadId, RoadKind,
+    StartingResources, StartingResourcesDef, TerrainMovement, TerrainMovementDef, TerrainWalker,
+    TerrainWalkerDef, Turn, TurnDef, Visit,
 };
 pub use setup::{
     AdventureSetup, ArmyError, Guards, HeroSetup, MapSetup, MonsterSetup, ObjectSetup, Pos,
     Scenery, SetupError, StandError, TileMask, TileSetup,
 };
 pub use split::{TileRand, split};
+
+/// The primary skills a gift's choice names ([`Gives::Choice`]): the hero model's.
+pub use h3_heroes::PrimarySkill;
 pub use state::{
     AdventureState, BACKGROUND_RADIUS, HeroOnMap, MapObject, Monster, StaticMap, StaticTile,
 };
@@ -101,5 +106,5 @@ pub const ADVENTURE_STATE_HASH_VERSION: u32 = 12;
 /// T20b1): the resource a monster's price to join is paid in. v9 (E08 T29): the terrains' costs
 /// by Pathfinding level. v10 (E08 T40): the fly and water-walk prices, the terrain walkers and a
 /// ground's loss of the native price (Cursed Ground's `no_native`). v11 (E08 T50): a stack's most
-/// creatures.
-pub const ADVENTURE_RULESET_HASH_VERSION: u32 = 11;
+/// creatures. v12 (E08 T61a): increment 7's kinds and their parameters.
+pub const ADVENTURE_RULESET_HASH_VERSION: u32 = 12;

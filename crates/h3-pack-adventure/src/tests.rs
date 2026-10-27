@@ -2,8 +2,10 @@
 
 use std::error::Error;
 
-use h3_adventure::{KEY_COLOURS, ObjectKind, Pickup};
-use h3_content::ResourceId;
+use h3_adventure::{
+    Chest, Find, FindContent, Gift, Gives, KEY_COLOURS, ObjectKind, Pickup, Pyramid, Turn,
+};
+use h3_content::{ResourceId, SkillId};
 
 use super::*;
 
@@ -272,8 +274,282 @@ fn the_base_pack_types_the_objects_of_increment_2() {
         assert_eq!(guard.kind, ObjectKind::KeyGuard { key });
         assert_eq!((guard.visit, guard.from_above), (Visit::Neighbour, true));
     }
-    assert_eq!(part.object_types().len(), 7 + 1 + 1 + 3 + 2 + 8 + 8 + 9 + 2);
+    // E08 T61a: increment 7's 31 types after them.
+    assert_eq!(
+        part.object_types().len(),
+        7 + 1 + 1 + 3 + 2 + 8 + 8 + 9 + 2 + 31
+    );
     assert!(part.object_type_by_key("base:border_gate_red").is_none());
+}
+
+// covers: ADV-OBJ-002
+#[test]
+fn the_base_pack_types_the_rewards_of_increment_7() {
+    // E08 T61a (design §8): the classes' kinds and parameters as the survey read them.
+    let (core, part) = compile(&ORIGINAL_PACKS[..1], PROFILE).unwrap();
+    let ty = |key: &str| {
+        part.object_type(part.object_type_by_key(key).unwrap())
+            .unwrap()
+    };
+    let resource = |key: &str| {
+        let index = core
+            .resources()
+            .iter()
+            .position(|r| r.key.as_str() == key)
+            .unwrap();
+        ResourceId::from_index(index).unwrap()
+    };
+    let skill = |key: &str| core.skill_by_key(&format!("base:{key}")).unwrap();
+    let gold = resource("base:gold");
+    let neighbour = [
+        "treasure_chest",
+        "artifact",
+        "random_artifact",
+        "random_treasure_artifact",
+        "random_minor_artifact",
+        "random_major_artifact",
+        "random_relic_artifact",
+        "spell_scroll",
+        "scholar",
+        "corpse",
+        "pandoras_box",
+        "event",
+    ];
+    let entered = [
+        "arena",
+        "marletto_tower",
+        "garden_of_revelation",
+        "library_of_enlightenment",
+        "mercenary_camp",
+        "star_axis",
+        "school_of_magic",
+        "school_of_war",
+        "learning_stone",
+        "tree_of_knowledge",
+        "shrine_of_magic_incantation",
+        "shrine_of_magic_gesture",
+        "shrine_of_magic_thought",
+        "witch_hut",
+        "university",
+        "wagon",
+        "warriors_tomb",
+        "lean_to",
+        "pyramid",
+    ];
+    assert_eq!(neighbour.len() + entered.len(), 31);
+    for id in neighbour {
+        let t = ty(&format!("base:{id}"));
+        assert_eq!((t.visit, t.from_above), (Visit::Neighbour, true), "{id}");
+    }
+    for id in entered {
+        let t = ty(&format!("base:{id}"));
+        assert_eq!((t.visit, t.from_above), (Visit::Enter, false), "{id}");
+    }
+    assert_eq!(
+        ty("base:treasure_chest").kind,
+        ObjectKind::Chest(Chest {
+            resource: gold,
+            gold: vec![(32, 1000), (32, 1500), (31, 2000)],
+            artifact: vec![ArtifactClass::Treasure],
+            full_backpack: 1000,
+            experience_offset: 500,
+        })
+    );
+    assert_eq!(
+        ty("base:artifact").kind,
+        ObjectKind::Artifact { classes: None }
+    );
+    let classes = [
+        (
+            "random_artifact",
+            &[
+                ArtifactClass::Treasure,
+                ArtifactClass::Minor,
+                ArtifactClass::Major,
+            ][..],
+        ),
+        ("random_treasure_artifact", &[ArtifactClass::Treasure]),
+        ("random_minor_artifact", &[ArtifactClass::Minor]),
+        ("random_major_artifact", &[ArtifactClass::Major]),
+        ("random_relic_artifact", &[ArtifactClass::Relic]),
+    ];
+    for (id, list) in classes {
+        assert_eq!(
+            ty(&format!("base:{id}")).kind,
+            ObjectKind::Artifact {
+                classes: Some(list.to_vec())
+            }
+        );
+    }
+    let gift = |gives, prices: Vec<Vec<(ResourceId, u32)>>, admits, leave| {
+        ObjectKind::Gift(Gift {
+            gives,
+            prices,
+            admits,
+            leave,
+        })
+    };
+    let primary = |gains| gift(Gives::Primary(gains), vec![], None, false);
+    assert_eq!(ty("base:marletto_tower").kind, primary([0, 1, 0, 0]));
+    assert_eq!(ty("base:garden_of_revelation").kind, primary([0, 0, 0, 1]));
+    assert_eq!(ty("base:mercenary_camp").kind, primary([1, 0, 0, 0]));
+    assert_eq!(ty("base:star_axis").kind, primary([0, 0, 1, 0]));
+    assert_eq!(
+        ty("base:library_of_enlightenment").kind,
+        gift(Gives::Primary([2; 4]), vec![], Some(10), false)
+    );
+    let choice = |skills, amount| Gives::Choice { skills, amount };
+    use h3_adventure::PrimarySkill::{Attack, Defense, Knowledge, Power};
+    assert_eq!(
+        ty("base:arena").kind,
+        gift(choice([Attack, Defense], 2), vec![], None, false)
+    );
+    assert_eq!(
+        ty("base:school_of_magic").kind,
+        gift(
+            choice([Power, Knowledge], 1),
+            vec![vec![(gold, 1000)]],
+            None,
+            true
+        )
+    );
+    assert_eq!(
+        ty("base:school_of_war").kind,
+        gift(
+            choice([Attack, Defense], 1),
+            vec![vec![(gold, 1000)]],
+            None,
+            true
+        )
+    );
+    assert_eq!(
+        ty("base:learning_stone").kind,
+        gift(Gives::Experience(1000), vec![], None, false)
+    );
+    assert_eq!(
+        ty("base:tree_of_knowledge").kind,
+        gift(
+            Gives::Level,
+            vec![
+                vec![],
+                vec![(gold, 2000)],
+                vec![(resource("base:gems"), 10)]
+            ],
+            None,
+            false
+        )
+    );
+    for (level, id) in (1..).zip(["incantation", "gesture", "thought"]) {
+        assert_eq!(
+            ty(&format!("base:shrine_of_magic_{id}")).kind,
+            ObjectKind::Shrine { level }
+        );
+    }
+    // A-21 (`ADV-QUIRK-21`): 0xEFBF is skills 0 to 15 but Leadership (6) and Necromancy (12).
+    let ObjectKind::WitchHut { roe, roe_fixed } = &ty("base:witch_hut").kind else {
+        panic!("not a Witch Hut");
+    };
+    let mask: Vec<_> = (0..16_u16)
+        .filter(|bit| 0xEFBF_u16 >> bit & 1 == 1)
+        .map(|bit| SkillId::from_index(usize::from(bit)).unwrap())
+        .collect();
+    assert_eq!(*roe, mask);
+    let all_but: Vec<_> = (0..28)
+        .map(|i| SkillId::from_index(i).unwrap())
+        .filter(|&s| s != skill("leadership") && s != skill("necromancy"))
+        .collect();
+    assert_eq!(*roe_fixed, all_but);
+    assert_eq!(ty("base:scholar").kind, ObjectKind::Scholar);
+    assert_eq!(
+        ty("base:university").kind,
+        ObjectKind::University {
+            offers: 4,
+            price: vec![(gold, 2000)]
+        }
+    );
+    let six = ["wood", "mercury", "ore", "sulfur", "crystal", "gems"]
+        .map(|r| resource(&format!("base:{r}")))
+        .to_vec();
+    let small = vec![ArtifactClass::Treasure, ArtifactClass::Minor];
+    assert_eq!(
+        ty("base:corpse").kind,
+        ObjectKind::Find(Find {
+            draws: vec![
+                (20, FindContent::Artifact(small.clone())),
+                (80, FindContent::Nothing)
+            ],
+            full_backpack: Some(Turn::Give(vec![(gold, 1000)])),
+            question: false,
+            bonus: None,
+        })
+    );
+    assert_eq!(
+        ty("base:wagon").kind,
+        ObjectKind::Find(Find {
+            draws: vec![
+                (10, FindContent::Nothing),
+                (40, FindContent::Artifact(small)),
+                (
+                    50,
+                    FindContent::Resources {
+                        amount: [2, 5],
+                        resources: six.clone()
+                    }
+                ),
+            ],
+            full_backpack: Some(Turn::Drawn),
+            question: false,
+            bonus: None,
+        })
+    );
+    let ObjectKind::Find(tomb) = &ty("base:warriors_tomb").kind else {
+        panic!("not a find");
+    };
+    let chances: Vec<_> = tomb.draws.iter().map(|(c, _)| *c).collect();
+    assert_eq!(chances, [30, 50, 15, 5]);
+    assert_eq!(
+        (&tomb.full_backpack, tomb.question, tomb.bonus),
+        (
+            &Some(Turn::Stays),
+            true,
+            Some(OnceBonus {
+                morale: -3,
+                luck: 0,
+                mark: 0
+            })
+        )
+    );
+    assert_eq!(
+        ty("base:lean_to").kind,
+        ObjectKind::Find(Find {
+            draws: vec![(
+                100,
+                FindContent::Resources {
+                    amount: [1, 5],
+                    resources: six
+                }
+            )],
+            full_backpack: None,
+            question: false,
+            bonus: None,
+        })
+    );
+    assert_eq!(ty("base:pandoras_box").kind, ObjectKind::PandoraBox);
+    assert_eq!(ty("base:event").kind, ObjectKind::Event);
+    let creature = |key: &str| core.creature_by_key(&format!("base:{key}")).unwrap();
+    assert_eq!(
+        ty("base:pyramid").kind,
+        ObjectKind::Pyramid(Pyramid {
+            split: (creature("gold_golem"), 40),
+            fixed: (creature("diamond_golem"), vec![10, 10]),
+            level: 5,
+            looted: OnceBonus {
+                morale: 0,
+                luck: -2,
+                mark: 1
+            },
+        })
+    );
 }
 
 // covers: ADV-MON-001, ADV-MON-002, ADV-MON-003, ADV-GRD-001
@@ -814,6 +1090,203 @@ fn parses_every_field() {
         }]
     );
     assert_eq!(parse("").unwrap(), AdventurePack::new(manifest("p")));
+}
+
+// E08 T61a: increment 7's kind tables, their references resolved in the pack's namespace.
+#[test]
+fn parses_the_reward_kinds() {
+    let kind = |table: &str| {
+        let text = format!(
+            "[[object_type]]\nid = \"o\"\nname = \"O\"\nvisit = \"enter\"\nfrom_above = false\n{table}"
+        );
+        parse(&text).unwrap().object_types.remove(0).kind
+    };
+    let k = key_of;
+    assert_eq!(
+        kind(
+            "chest = { resource = \"coin\", gold = [[90, 10]], artifact = [\"relic\", \"special\"], full_backpack = 7, experience_offset = 5 }"
+        ),
+        ObjectKindDef::Chest(ChestDef {
+            resource: k("p:coin"),
+            gold: vec![(90, 10)],
+            artifact: vec![ArtifactClass::Relic, ArtifactClass::Special],
+            full_backpack: 7,
+            experience_offset: 5,
+        })
+    );
+    assert_eq!(
+        kind(
+            "chest = { resource = \"coin\", gold = [[100, 10]], full_backpack = 7, experience_offset = 5 }"
+        ),
+        ObjectKindDef::Chest(ChestDef {
+            resource: k("p:coin"),
+            gold: vec![(100, 10)],
+            artifact: vec![],
+            full_backpack: 7,
+            experience_offset: 5,
+        })
+    );
+    assert_eq!(
+        kind("artifact = {}"),
+        ObjectKindDef::Artifact { classes: None }
+    );
+    assert_eq!(
+        kind("artifact = { classes = [\"treasure\", \"minor\", \"major\"] }"),
+        ObjectKindDef::Artifact {
+            classes: Some(vec![
+                ArtifactClass::Treasure,
+                ArtifactClass::Minor,
+                ArtifactClass::Major
+            ])
+        }
+    );
+    assert_eq!(kind("scroll = {}"), ObjectKindDef::Scroll);
+    assert_eq!(
+        kind("gift = { gives = { primary = [1, 2, 3, 4] } }"),
+        ObjectKindDef::Gift(GiftDef {
+            gives: Gives::Primary([1, 2, 3, 4]),
+            prices: vec![],
+            admits: None,
+            leave: false,
+        })
+    );
+    assert_eq!(
+        kind(
+            "gift = { gives = { choice = { skills = [\"power\", \"knowledge\"], amount = 3 } }, prices = [{}, { coin = 2, \"other:gem\" = 1 }], admits = 9, leave = true }"
+        ),
+        ObjectKindDef::Gift(GiftDef {
+            gives: Gives::Choice {
+                skills: [PrimarySkill::Power, PrimarySkill::Knowledge],
+                amount: 3
+            },
+            prices: vec![vec![], vec![(k("p:coin"), 2), (k("other:gem"), 1)]],
+            admits: Some(9),
+            leave: true,
+        })
+    );
+    let gives = |table: &str| match kind(&format!("gift = {{ gives = {table} }}")) {
+        ObjectKindDef::Gift(gift) => gift.gives,
+        other => panic!("{other:?}"),
+    };
+    assert_eq!(gives("{ experience = 12 }"), Gives::Experience(12));
+    assert_eq!(gives("\"level\""), Gives::Level);
+    assert_eq!(
+        gives("{ choice = { skills = [\"attack\", \"defense\"], amount = 1 } }"),
+        Gives::Choice {
+            skills: [PrimarySkill::Attack, PrimarySkill::Defense],
+            amount: 1
+        }
+    );
+    assert_eq!(
+        kind("shrine = { level = 2 }"),
+        ObjectKindDef::Shrine { level: 2 }
+    );
+    assert_eq!(
+        kind("witch_hut = { roe = [\"a\"], roe_fixed = [\"a\", \"other:b\"] }"),
+        ObjectKindDef::WitchHut {
+            roe: vec![k("p:a")],
+            roe_fixed: vec![k("p:a"), k("other:b")],
+        }
+    );
+    assert_eq!(kind("scholar = {}"), ObjectKindDef::Scholar);
+    assert_eq!(
+        kind("university = { offers = 4, price = { coin = 20 } }"),
+        ObjectKindDef::University {
+            offers: 4,
+            price: vec![(k("p:coin"), 20)],
+        }
+    );
+    assert_eq!(
+        kind(
+            "find = { draws = [{ chance = 10, holds = \"nothing\" }, { chance = 40, holds = { artifact = [\"minor\"] } }, { chance = 50, holds = { resources = { amount = [2, 5], resources = [\"wood\"] } } }], full_backpack = { give = { coin = 3 } }, question = true, bonus = { morale = -3, luck = 1, mark = 0 } }"
+        ),
+        ObjectKindDef::Find(FindDef {
+            draws: vec![
+                (10, FindContentDef::Nothing),
+                (40, FindContentDef::Artifact(vec![ArtifactClass::Minor])),
+                (
+                    50,
+                    FindContentDef::Resources {
+                        amount: [2, 5],
+                        resources: vec![k("p:wood")],
+                    }
+                ),
+            ],
+            full_backpack: Some(TurnDef::Give(vec![(k("p:coin"), 3)])),
+            question: true,
+            bonus: Some(OnceBonus {
+                morale: -3,
+                luck: 1,
+                mark: 0
+            }),
+        })
+    );
+    let turn = |table: &str| match kind(&format!(
+        "find = {{ draws = [{{ chance = 100, holds = \"nothing\" }}]{table} }}"
+    )) {
+        ObjectKindDef::Find(find) => (find.full_backpack, find.question, find.bonus),
+        other => panic!("{other:?}"),
+    };
+    assert_eq!(turn(""), (None, false, None));
+    assert_eq!(turn(", full_backpack = \"drawn\"").0, Some(TurnDef::Drawn));
+    assert_eq!(turn(", full_backpack = \"stays\"").0, Some(TurnDef::Stays));
+    assert_eq!(kind("pandora_box = {}"), ObjectKindDef::PandoraBox);
+    assert_eq!(kind("event = {}"), ObjectKindDef::Event);
+    assert_eq!(
+        kind(
+            "pyramid = { split = { creature = \"golem\", count = 40 }, fixed = { creature = \"other:gem_golem\", stacks = [10, 10] }, level = 5, looted = { luck = -2, mark = 1 } }"
+        ),
+        ObjectKindDef::Pyramid(PyramidDef {
+            split: (k("p:golem"), 40),
+            fixed: (k("other:gem_golem"), vec![10, 10]),
+            level: 5,
+            looted: OnceBonus {
+                morale: 0,
+                luck: -2,
+                mark: 1
+            },
+        })
+    );
+    // Malformed tables: unknown fields, an unknown class or skill name, two ways to give.
+    let syntax = |table: &str| {
+        let text = format!(
+            "[[object_type]]\nid = \"o\"\nname = \"O\"\nvisit = \"enter\"\nfrom_above = false\n{table}"
+        );
+        matches!(parse(&text), Err(AdventurePackError::Syntax(_)))
+    };
+    for table in [
+        "scroll = { spell = 1 }",
+        "artifact = { classes = [\"legendary\"] }",
+        "gift = { gives = { primary = [1, 0, 0, 0], experience = 5 } }",
+        "gift = { gives = { choice = { skills = [\"luck\", \"attack\"], amount = 1 } } }",
+        "gift = { gives = \"levels\" }",
+        "find = { draws = [{ chance = 100, holds = \"everything\" }] }",
+        "find = { draws = [], full_backpack = \"lost\" }",
+        "find = { draws = [], bonus = { morale = 1 } }",
+        "pyramid = { split = { creature = \"g\", count = 1 }, fixed = { creature = \"g\", stacks = [1] }, level = 1, looted = { mark = 1 }, extra = 1 }",
+    ] {
+        assert!(syntax(table), "{table}");
+    }
+    // A bad key in every reference.
+    let key = |table: &str| {
+        let text = format!(
+            "[[object_type]]\nid = \"o\"\nname = \"O\"\nvisit = \"enter\"\nfrom_above = false\n{table}"
+        );
+        matches!(parse(&text), Err(AdventurePackError::Key(_)))
+    };
+    for table in [
+        "chest = { resource = \"Bad\", gold = [[1, 1]], full_backpack = 1, experience_offset = 0 }",
+        "gift = { gives = \"level\", prices = [{ Bad = 1 }] }",
+        "witch_hut = { roe = [\"Bad\"], roe_fixed = [] }",
+        "witch_hut = { roe = [], roe_fixed = [\"Bad\"] }",
+        "university = { offers = 1, price = { Bad = 1 } }",
+        "find = { draws = [{ chance = 100, holds = { resources = { amount = [1, 1], resources = [\"Bad\"] } } }] }",
+        "find = { draws = [], full_backpack = { give = { Bad = 1 } } }",
+        "pyramid = { split = { creature = \"Bad\", count = 1 }, fixed = { creature = \"g\", stacks = [1] }, level = 1, looted = { mark = 1 } }",
+        "pyramid = { split = { creature = \"g\", count = 1 }, fixed = { creature = \"Bad\", stacks = [1] }, level = 1, looted = { mark = 1 } }",
+    ] {
+        assert!(key(table), "{table}");
+    }
 }
 
 #[test]
