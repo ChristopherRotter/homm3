@@ -2919,6 +2919,72 @@ callers), `battle_cursor`'s target (+0x10, +0x14 of the acting stack), `battle_m
   (the option "Show Combat Mouse Hex", off in the harness; its call on every move not read),
   casters' and sieges' cursors, network play, the redraw's leftover pixels (above).
 
+### 9.11 The click (M5 T2a)
+
+Read: `battle_buttons`' head (the message's type: 1 a key down, 4 a move, 0x200 an item's
+message; its subtype 12 the left button pressed, 13 an item's command, 14 the right button
+pressed), the press over the battlefield (0x475290), the action it gives by the cursor's kind
+(`battle_click_action` 0x476BD0), the panel's commands (the switch 0x474E53), the attack's
+from-hexes (`cursor_attack_slots` 0x474690 whole, `cursor_attack_from_hex` 0x474A00), the reach
+map's front hexes (0x4B2E69 to 0x4B2EF4), who takes input when (`battle_controls_state`'s head,
+0x4782D0 to 0x478301, and 0x478445; `input_flush` 0x4EC570; `battle_loop_turn` 0x4741F9 to
+0x47425B). Built: `h3_view::mouse::click` and `button`, `mouse::attack_slots` (`Slot`), `Legal`'s
+shots with their aims and its Wait and Defend; in the tracker, the queue emptied at a turn's start
+and CLT-Q24's answer.
+
+- **Who takes input.** `battle_controls_state` sets +0x132B4 when the side to act is played on
+  this computer (0x47844D; a human elsewhere, 0x478445, clears it). The battle takes a click or a
+  button's command only while it is set. Its head (0x4782FB, unless Auto Combat +0x132C4 is on or
+  the turn is remote) moves Windows' pending messages into the input queue and empties it
+  (`input_flush` 0x4EC570: `pump_messages`, then the read and write indices 0): a click, a key or
+  a move made during an action or a computer's turn is dropped at the next stack's turn start,
+  and a human's turn then posts the mouse where it rests (0x478857). This corrects §9.10: the moves
+  that waited are not taken first, the resting point alone is (the recorded sequences unchanged).
+  A hero's cast returns to the same stack's turn without the flush (0x479195 posts the mouse
+  again): what was pressed during the cast acts after it (M3 T7b-1's key). Under Auto Combat a key
+  down or a mouse button (types 1, 8, 16, 32, 64) empties the queue and ends it (0x4741F9 to
+  0x47425B; M5 T4's).
+- **A press over the battlefield** (subtype 12 on the battlefield's items 0 and 1) acts at once
+  by the cursor's kind (+0x132E0) the last move left; the panel's items +0x74 to +0x88 are hidden
+  and the battle redrawn first (not read further). By kind (0x476FBC, the kind less 1):
+  - a walk or a flight (1, 2): action 2 to the mouse's hex; for a two-hex stack whose reach map
+    marks the hex as a front hex (+0x20F: the hex beside a reachable position on its facing's
+    side, 0x4B2EF4, not in a side column) to that position, the hex less 1 facing right, plus 1
+    facing left (0x476C5F), even where the hex is a reachable position too;
+  - a shot (3, 15): action 7 at the mouse's hex (the engine's aim: the hex for an area shot,
+    else the target's front hex);
+  - an attack (7): action 6, the target on the mouse's hex, from the slot's from-hex (+0x132D8);
+  - a wall-shot target (16): action 9; the First Aid Tent's heal (17): action 11;
+  - the acting side's hero (4): its spell book (`hero_book_button` 0x59E900, M5 T3); a creature's
+    cast (20, the Faerie Dragon's after its key): action 10 (M5 T3);
+  - a stack to look at (5): its stats dialog (`stack_stats_dialog` 0x468860, modal); a turret
+    (22): its info (0x47A380); none of them a command (the inbox);
+  - anything else, the other side's hero (21) and nothing (0) among them: nothing.
+- **The attack's from-hex** (`cursor_attack_slots`): each slot s takes the neighbour n in
+  direction s / 2 when the reach map marks it, the stack fits and none of its hexes is a stop: its
+  from-hex n. A two-hex stack also tries m, n less 1 facing right (plus 1 facing left): for the
+  directions right and left (1, 4) m when it is taken, else n; for the others the preferred one
+  (m facing left up right and down right, or facing right down left and up left; else n) when
+  taken, the other with a vertical sword when only it is taken or both are and s is 0, 5, 6 or
+  11. A slot without a sword copies the nearest's frame and from-hex together (the measure of
+  §9.9).
+- **A panel button** gives its command when it is clicked (the mouse's button released inside
+  it, or its hotkey's key up: `def_button_message` 0x456190); a disabled one gives none: Wait
+  (2009; 2300 too, the tactics phase's panel's, not read) action 8, Defend (2010) action 3.
+- **The viewer** (`mouse::click`, `mouse::button`): the command a press gives at a point in a
+  turn's battle (its legal commands, the stacks' facing): the engine's `Move`, `Shoot` (the
+  mouse's hex as its aim when listed, else the target's listed aim), `Attack` (the slot's
+  from-hex), `ShootWall`, `Heal`; a panel button's `Wait` and `Defend` when listed. The window
+  sends them (M5 T2b). In the client's profile the tracker forgets the hovered panel item when
+  the battle takes a move over the battlefield, so the panel's picture writes its empty line again
+  (CLT-Q24, answered (a)); `Bugs::Original` keeps the original's.
+- **Checked:** scripted presses at every hex (each slot of a stack's hexes) and the wall
+  rectangles, and the two buttons, over every turn of every scenario fought by the bot give
+  exactly the engine's legal walks, strikes, shots, wall shots, heals, Wait and Defend
+  (`h3-view`'s `clicks` test).
+- **Not modelled:** the press's hiding of the panel's items, the right button's popups (0x4769C0),
+  the dialogs (the stack's and the turret's: the inbox; the spell book: M5 T3), the hex shade.
+
 ## 10. The siege (M4)
 
 ### 10.1 The siege still (M4 T1a)
