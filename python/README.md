@@ -235,6 +235,7 @@ uv run --group train python -m h3env.search --report --best runs/t7-1/best.pt --
 of a held-out set (`--set report-v1` or `neutral-v1`, `--per-kind` of its 500) and prints and
 writes their rates, values and the search's costs (decisions, simulations, fallbacks: a chosen
 action the true battle refuses, replaced by the network's own). Measured at E06 T8c with
-`order-1`'s network: no gain over the sampled policy (`records/search/`, `E06-log.md`); the
-search in Rust trained on its own choices is E25's candidate (ADR-0025 point 12a, AI-STUB-1).
+`order-1`'s network: no gain over the sampled policy (`records/search/`, `E06-log.md`), a verdict
+T9b made inconclusive (a terminal scored ±1, not reward v1; escapes below the root, fixed): E25
+measures again (ADR-0025 point 12a, AI-STUB-1).
 

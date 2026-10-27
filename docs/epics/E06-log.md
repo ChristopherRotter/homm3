@@ -1171,3 +1171,60 @@ entry only where a task builds on it.
 - **The Python READMEs:** `python/README.md` gained the kill preview in the network, the system
   actor's share, the behaviour analysis, the battle AI v1 and the search's outcome;
   `records/README.md`'s lineage `t7-1` as the battle AI v1 and the three A/B runs.
+
+## T9b — The independent review (2026-10-27)
+
+Three fresh read-only reviewers, one slice each, run one after another; every finding with a
+failure path, verified against the code by the agent, then fixed with a test that fails before
+the fix, or kept with its reason.
+
+- **r1, the trainer** (`h3env.train`; 4 findings, 4 doubts, 7 test gaps): **fixed:** on Windows a
+  refused `checkpoint.pt` replace (another process holding it, `run.atomic_write`) still deleted
+  the retired snapshots' files the old checkpoint names, so `--resume` failed in `restore`; a
+  promotion's refused `best.pt` was never written again (a user's upload of `best.pt` then the
+  network before); an update of fewer than twice `minibatches` samples normalized a single
+  advantage (NaN weights: `--set env.envs=1`). `save` returns whether it wrote, the files go
+  after a written checkpoint, a refused best is written at each checkpoint until it is,
+  minibatches hold two samples at least (`test_a_refused_replace_keeps_what_the_old_checkpoint_names`,
+  `test_an_update_of_fewer_samples_than_minibatches_stays_finite`). **Kept:** the kill preview
+  stored in half precision (kills above 2 048 round, the first epoch's ratio off by that; the
+  preview is off by default, T6e); the record's ladder table without `skipped` and `games`
+  (`metrics.jsonl` keeps them; every set's games are fixed). Doubts not traced: promotion files
+  ahead of a checkpoint and a resume that rejects; a gate looping on a skipped episode (both
+  seats external: none known); a very large `pfsp_power` underflowing every weight. Sound: the
+  resumable state, the SPRT, the league, PPO's masks, GAE and seats, the held-out check.
+- **r2, the search and its worlds** (`h3env.search`, T8b's part of `h3-battle`, `h3-sim`,
+  `h3-ffi`; 7 findings, 4 doubts): **fixed:** below the root a node took its entries from the
+  world's single-env mask, which keeps Retreat and Surrender (ADR-0025 point 7 masks them in the
+  batch): an opponent's node could retreat and give the viewer a win (masked now,
+  `test_no_node_takes_an_escape_a_worlds_own_mask_allows`); `h3_batch_determinize` made a world
+  for either side, though a world of the side not to move holds that side's own hero as it is
+  (refused now, as its documentation said; `h3.h`, the binding); the docstring's "reward v1 at a
+  terminal" and "Gumbel-perturbed cast heads at the root" (neither built: corrected).
+  **Kept, the user's decisions (2026-10-27):** a world's step scores a decided battle ±1 (a single
+  env's reward) where the value head learned reward v1 (about ±0.2 to 0.4), so a terminal inside
+  the horizon outweighs every leaf and, with the escapes, distorted T8c's search: **T8c's verdict
+  is inconclusive**, not negative; a terminal scored by reward v1 and T8c again are E25's first
+  step (the AI queue's "For E25"; E06 closes on `t7-1`, whose targets the search does not touch).
+  Three gaps of a world against ADR-0025 point 12a.2 (the other hero's morale and luck modifiers
+  kept, the magic limits recomputed with the guess, a commanded war machine automatic without a
+  guess) join AI-STUB-1 (E25); T9d's shared part amends point 12a's "one known gap". Doubts: a
+  world copies the env's step count; re-placed obstacles avoid every occupied hex; a past summon
+  the guessed book lacks; a failed `determinize` stops the evaluation. Sound: sequential halving,
+  Gumbel-top-k, completed Q, σ's rescaling, the backed-up signs, determinism, `reseed`, the hidden
+  obstacles cleared, the C ABI's checks.
+- **r3, the batch since E05** (C ABI v31 to v34; 3 findings, 3 doubts): **fixed:** a scenario
+  with retreat facts (a Tavern) let the system actor retreat inside a batch call, which point 7
+  rules out for every seat (the encounters leave them unset: training unaffected):
+  `Scenario::new` drops them, as it sets both sides human; a run's record names
+  `ENCOUNTERS_VERSION`, not the two data files the distribution is built from: a test pins their
+  bytes to the version (`encounter::tests::the_shipped_data_are_their_version`; TRAPS). **Kept:**
+  r1's half-precision preview again. Doubts: `play_internal` has no progress guard if the system
+  actor's command were refused; the record's commit is the Python tree's, the library names only
+  its ABI version (the AI queue's "Any time"); the turn order's side by owner, not controller (a
+  hypnotized stack). Sound: no thread-count dependence (threads 0 to 7, bit for bit), the pool,
+  the buffers' checks, the layouts (`h3.h`, Rust, `_ffi.py`), refusals leave state, the preview
+  rewritten every call, the turn order from the viewer's observation (`ORDER` 8 882 in both).
+- **The Python tests** (the lane command, `uv run --group train pytest` in the sandbox): two
+  failures before the fixes, the bots' tables' adventure hash stale since E08 T61 (the Python
+  tests are no CI gate): both regenerated, every number the same.

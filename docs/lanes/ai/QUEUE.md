@@ -10,15 +10,19 @@ Pre-refined tasks of the AI lane, in order, then the inbox of discovered work. T
 pattern). T9a, the audit, done 2026-10-27 (`E06-log.md`): exit criteria 1 to 5 met, E06's
 leftovers sorted into the inbox below.
 
-- **T9b The independent review** (the sandbox; next): at most three fresh read-only reviewers,
-  one slice each (the trainer; the search and its worlds; the batch since E05, C ABI v31 to v34),
-  each finding with a failure path, verified, then fixed.
-- **T9c The verifies** (the user's machine; exit criterion 6): `cargo xtask verify
-  --with-original-data` and `uv run --group train pytest` on Windows; on Linux CI's full verify
-  and a sandbox with the user's files staged. With them, `t7-1`'s final ladder again on today's
-  engine (T9a: it played the system actor's `POLICY_VERSION` 18, the bots' tables 19).
-- **T9d The closure:** `shared/e06-closure` first (BACKLOG E06 done, the env doc's training
-  pipeline as built, ADR-0026's detail line), the design note at closure, the epic file done.
+T9b, the review, done 2026-10-27 (`E06-log.md`): 14 findings verified, the fixable ones
+fixed; the user: T8c inconclusive (E25 measures again), the world's gaps to AI-STUB-1.
+
+- **T9c The verifies** (the user's machine, next; exit criterion 6 as amended 2026-10-27):
+  `cargo xtask verify --with-original-data` and `uv run --group train pytest` on Windows (Linux:
+  CI's full verify and the sandbox's Python tests, T9b), and `t7-1`'s final ladder again on
+  today's engine (T9a: it played the system actor's `POLICY_VERSION` 18, the bots' tables 19),
+  one PowerShell script once this pull request merged; the user uploads its summary, logs and the
+  two ladder files.
+- **T9d The closure:** `shared/e06-closure` first (BACKLOG E06 done and its E25 row and note:
+  T8c inconclusive; the env doc's training pipeline as built; ADR-0026's detail line; ADR-0025
+  point 12a: "one known gap" becomes AI-STUB-1's gaps, and the C ABI refuses a world of the side
+  not to move), the design note at closure, the epic file done.
 
 ## Inbox
 
@@ -54,7 +58,14 @@ lane's turret preview (its open point below), the baselines and AI-Q7.
   found: the tactics phase's placements and moves cost nothing at γ 1); the 60 M run at T7's mix
   (`configs/e06-t7.toml --set samples=60_000_000`, about 4 hours); the mana-price run `t5-4`
   (`configs/e06-mana.toml`, about 75 minutes; T5's experiment, prepared, never run).
-- **The search** (E06 T8, ADR-0025 point 12a): AI-STUB-1 (`docs/stubs.toml`); T8c's optional
+- **The search** (E06 T8, ADR-0025 point 12a): T8c's verdict is **inconclusive** (T9b, the
+  user, 2026-10-27): a world's step scores a decided battle ±1 (a single env's reward) where the
+  value head learned reward v1, and nodes below the root could take an escape (fixed in T9b).
+  First, before any search work: a terminal scored by reward v1 (the single env has none: a C ABI
+  addition, or the search in Rust reads `h3_sim::reward`), then T8c measured again. AI-STUB-1
+  (`docs/stubs.toml`: the hidden obstacles' number, and T9b's three gaps of a world: the other
+  hero's morale and luck modifiers, the magic limits, a commanded war machine without a guess);
+  the cast heads at the root unperturbed (design §14's Gumbel heads not built); T8c's optional
   Greedy rows on the user's machine (`uv run --group train python -m h3env.search --report
   --best runs/t7-1/best.pt --device cuda --opponent greedy --simulations 64 --json
   runs/t8c-greedy-64.json`). Evaluation: greedy play (the most likely heads) repeats itself
@@ -100,5 +111,9 @@ its step; the current state's queries belong in the env (the adventure lane, E08
   leak, which the sim's `step` closes); it leaks nothing today (E04b T11b, the battle lane).
 - **The C ABI** (E05 T9b): `h3env.tools.Env` keeps its handle after `H3_ERR_PANIC` (tests only;
   `h3_batch_create`'s unchecked N closed by E06 T2c).
+- **The engine's identity** (E06 T9b, r3): a run's record takes `commit` from the Python tree,
+  while the library names only its ABI version, so a stale `target/release` build or an
+  `$H3_LIBRARY` at the same ABI is recorded under the wrong code (a build identity read back
+  from the library would close it); `test_the_layouts_match_h3_h` compares sizes, not offsets.
 
 Archive of the lane's finished and informational entries: `QUEUE-ARCHIVE.md` (grep it for an id or a task a doc cites). Keep this file to what is open: a done task leaves it, a notice nobody has to act on goes to the archive at once (`docs/08-work-process.md`, "Keeping the start-of-session reading small").

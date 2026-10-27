@@ -24,6 +24,6 @@ args = [
     "1",
 ]
 collect = "*BattleBatch>::step"
-instructions = 12304893092
+instructions = 12564556113
 threshold_percent = 2
 lane_only = true
