@@ -8,7 +8,7 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   map client the map-client lane's E24); **M4 (sieges): T0 to T3b-1 done** (§10.1, §10.2; T3
   cut in three by the user: T3a the review, T3b the captures, cut in two, T3c the review list
   and M5 with the user); **next T3b-2** (the other 29 sequences); M5 live play after M4. Open
-  PR: T3b-1's (`client/e17-m4-t3b1`; check it first). Workspace `clients/`
+  PR: #492 (T3b-1; check it first). Workspace `clients/`
   (`clients/README.md`), gates `clients/scripts/check.sh`; ADR-0020 (+ drafts in
   `adr-drafts/`), ADR-0024; the harness `clients/capture/README.md`; design §3–§10; records in
   `E17-log.md`.
@@ -35,7 +35,7 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
 
 ## Recent sessions
 
-- **2026-10-27, E17 M4 T3b-1 (done; its PR open: check it first).** T3b cut in two (the
+- **2026-10-27, E17 M4 T3b-1 (done; #492 open: check it first).** T3b cut in two (the
   user). The harness reads `hovered_item` per step: the park point is the panel's picture,
   entered once after the opening; the viewer tracks the hovered item (the hot-seat proxy
   gone; review item 13), `aim`'s exception explained. The 72 stills and 18 sequences as
