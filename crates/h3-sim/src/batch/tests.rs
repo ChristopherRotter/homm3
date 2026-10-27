@@ -5,7 +5,7 @@
 use std::sync::Arc;
 
 use h3_battle::LegalCommands;
-use h3_contracts::{BattleSetup, BattleSide};
+use h3_contracts::{BattleSetup, BattleSide, RetreatFacts};
 use h3_kernel::{Rng, StreamId};
 use proptest::prelude::*;
 
@@ -536,13 +536,20 @@ fn escapes_are_never_legal_and_refused() {
 
 #[test]
 fn every_side_plays_as_a_human_players() {
+    // With no retreat facts either (E06 T9b): a Tavern would let the system actor retreat.
     let (ruleset, setup) = h3_pack_battle::synthetic(TEXTS[2]).unwrap();
+    let facts = RetreatFacts {
+        tavern: true,
+        ..RetreatFacts::default()
+    };
     let setup = BattleSetup {
         human: [false, false],
+        retreat: [facts; 2],
         ..setup
     };
     let s = Scenario::new(Arc::new(ruleset), &setup, false, 1, EXTERNAL).unwrap();
     assert_eq!(s.setup().unwrap().human, [true, true]);
+    assert_eq!(s.setup().unwrap().retreat, [RetreatFacts::default(); 2]);
     assert!(Arc::ptr_eq(s.ruleset(), s.env(0, 0).unwrap().ruleset()));
     assert_eq!(s.seats(), Some(EXTERNAL));
     assert!(s.sampler().is_none());

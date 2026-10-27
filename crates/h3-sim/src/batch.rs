@@ -32,7 +32,7 @@ use std::sync::Arc;
 
 use h3_battle::{Command, LegalCommands, SetupError};
 use h3_content_battle::BattleRuleset;
-use h3_contracts::{BattleResult, BattleSetup, BattleSide};
+use h3_contracts::{BattleResult, BattleSetup, BattleSide, RetreatFacts};
 use h3_kernel::{Rng, StreamId};
 
 use crate::action::{
@@ -196,7 +196,9 @@ impl Scenario {
     /// A scenario of `setup` on `ruleset`, drawn with `weight`, its sides played by `seats`
     /// (indexed by [`BattleSide::index`]). Obstacles are generated for each episode from its seed
     /// when `random_obstacles` is set (as [`BattleEnv::with_random_obstacles`]). Both sides play
-    /// as human players' whatever `setup.human` says (ADR-0025 point 6).
+    /// as human players' whatever `setup.human` says (ADR-0025 point 6), and with no retreat facts
+    /// whatever `setup.retreat` says: the system actor's retreat test then never says yes, so no
+    /// seat escapes (point 7; E06 T9b).
     ///
     /// # Errors
     /// [`BatchError::NoExternalSeat`], [`BatchError::ZeroWeight`], or [`BatchError::Setup`] when
@@ -216,6 +218,7 @@ impl Scenario {
         }
         let setup = Arc::new(BattleSetup {
             human: [true, true],
+            retreat: [RetreatFacts::default(); 2],
             ..setup.clone()
         });
         let scenario = Self {

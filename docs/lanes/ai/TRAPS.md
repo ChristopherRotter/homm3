@@ -18,7 +18,11 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
 - The batch workloads count inside `*BattleBatch>::step` (v0 symbol names; `BattleBatch::step` is `#[inline(never)]`) with `--threads 0`: callgrind toggles per thread, and a pattern ending in `*` also matches the closures nested in `step` and turns the count off inside them.
 - The census counts through `h3_map::import_map`, a `GameState` and `battle_ground`: a change to
   them changes it; rerun `h3 ai census original-data/install/Maps --out
-  crates/h3-sim/data/census-v1.toml` (`CENSUS_VERSION` when a number changes meaning).
+  crates/h3-sim/data/census-v1.toml` (`CENSUS_VERSION` when a number changes meaning); a changed
+  file fails `encounter::tests::the_shipped_data_are_their_version` until `ENCOUNTERS_VERSION`
+  is decided (a run's record names the version, not the files; E06 T9b).
+- A batch scenario's sides play with no retreat facts (`Scenario::new`, E06 T9b): the system
+  actor's retreat test needs a Tavern, so no seat escapes (ADR-0025 point 7).
 - A batch entry is a fixed battle or the encounter distribution (`Scenario::encounters`): its
   `setup()` and `seats()` are `None`, each episode's come from `Scenario::episode` (stream
   `ENCOUNTER` of the episode's seed, never `SETUP`, which draws the entry).
