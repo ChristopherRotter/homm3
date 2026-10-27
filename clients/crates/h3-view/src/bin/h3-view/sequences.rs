@@ -105,6 +105,19 @@ struct Frames {
     /// `xdd.dll`'s log; the frame check's timeline draws the same rays).
     #[serde(default)]
     rays: Vec<i32>,
+    /// A situation's actions after the mouse's move (E17 M5 T3a: the spell book's stills;
+    /// `crate::spellbook::still`).
+    #[serde(default)]
+    actions: Vec<String>,
+}
+
+/// A situation's mouse and actions as the harness kept them in `here`'s `frames.toml` (E17 M5
+/// T3a).
+pub(crate) fn situation_inputs(here: &Path) -> Result<(Option<[i32; 2]>, Vec<String>), String> {
+    let path = here.join("frames.toml");
+    let text = fs::read_to_string(&path).map_err(|e| format!("{}: {e}", path.display()))?;
+    let kept: Frames = toml::from_str(&text).map_err(|e| format!("{}: {e}", path.display()))?;
+    Ok((kept.mouse, kept.actions))
 }
 
 /// What the frames draw below and over the battlefield: the panel over the battle and the mouse:
@@ -120,6 +133,9 @@ pub(crate) struct Interface<'a> {
     /// A siege's wall states in place of the record's (E17 M4 T1b: the harness writes them
     /// into the original before its first frame; *provisional*).
     pub walls: Option<Walls>,
+    /// What a situation's actions left of the spell book (E17 M5 T3a): drawn over the panel, its
+    /// cursor over all at the mouse they left.
+    pub book: Option<&'a crate::spellbook::Still>,
 }
 
 /// One kept frame: its time, the stacks the original shows fidgeting then (the viewer draws
@@ -385,6 +401,7 @@ fn sequences(options: &Options) -> Result<usize, String> {
                 legal: &Legal::default(),
                 shown: Some(&shown),
                 walls: None,
+                book: None,
             };
             let drawn = draw_frames(
                 &here,
@@ -612,7 +629,29 @@ pub(crate) fn draw_frames(
         if let Some(steps) = moment.shake {
             list = vec![scene::shaken(list, steps, layout)];
         }
-        if let Some(shown) = interface.shown {
+        // The spell book a situation's actions opened (E17 M5 T3a), in its hero's player's
+        // colours (the record names none: red for the attacker, blue for the defender, CLT-Q6).
+        let book = interface
+            .book
+            .and_then(|b| Some((b.open.as_ref()?, b.mouse)));
+        if let Some((open, _)) = book {
+            let index = usize::from(snapshot.viewer == Side::Defender);
+            let player = snapshot.sides[index]
+                .colour
+                .unwrap_or_else(|| u8::try_from(index).unwrap_or(0));
+            list.extend(open.draws(&layout.book, &layout.player_palette, player));
+        }
+        if let Some((open, mouse)) = book {
+            // The cursor the book set, else the battle's where the actions left the mouse.
+            match open.cursor_draw(&layout.book, mouse) {
+                Some(cursor) => list.push(cursor),
+                None => {
+                    if let Some((_, p)) = &pointer {
+                        list.push(p.cursor(layout, mouse));
+                    }
+                }
+            }
+        } else if let Some(shown) = interface.shown {
             // The cursor's frame now, drawn where the original's is (its memory), else at the
             // mouse; none while a ray hides it.
             let point = frame.cursor.or_else(|| shown.point(frame.t));

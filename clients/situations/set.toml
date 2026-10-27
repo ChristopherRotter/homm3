@@ -926,3 +926,32 @@ walls = { parts = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], gate =
 at = 0
 differing = 0
 why = "exact: as siege-castle-ruined, Conflux's pictures (M4 T1b)"
+
+# E17 M5 T3a: the hero's spell book (book.toml; design §7.17), opened by its key C at the opening
+# (the Champions' turn, Orrin's book; the attacker's record, which holds the hero's spells), the
+# clock frozen: page 0 of all schools; its second page by
+# the corner; the fire tab (its emblem, five spells); the mouse over place 1 (Magic Arrow: the
+# status line's hint, the cursor over an item).
+[[situation]]
+id = "book"
+scenario = "book.toml"
+seat = "attacker"
+actions = ["key:c"]
+
+[[situation]]
+id = "book-page"
+scenario = "book.toml"
+seat = "attacker"
+actions = ["key:c", "click:591,92"]
+
+[[situation]]
+id = "book-fire"
+scenario = "book.toml"
+seat = "attacker"
+actions = ["key:c", "click:654,228"]
+
+[[situation]]
+id = "book-hint"
+scenario = "book.toml"
+seat = "attacker"
+actions = ["key:c", "move:332,123"]

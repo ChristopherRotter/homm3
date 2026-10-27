@@ -1,0 +1,63 @@
+# E17 M5 T3a: the hero's spell book (design §7.17). The armies, ground and obstacles of `cast`
+# (seq-cast.toml): at the opening the Champions' turn, Red human. Orrin with 20 spell points
+# (Knowledge 2), Expert Air and Basic Fire Magic (the masteries ask them of the original's map, the
+# situation's school skills), 20 combat spells of the four schools (two pages of all schools:
+# Magic Arrow under Air, the school he knows best; Implosion and Clone above his spell points, so
+# greyed) and two adventure spells.
+
+[scenario]
+id = "book"
+human = ["attacker"]
+packs = ["base"]
+profile = "base:faithful"
+terrain = "base:grass"
+obstacles = [
+    { hexes = [75, 76, 77, 78, 61, 60, 59, 58], anchor = 74, kind = "base:obstacle_22" },
+    { hexes = [91, 92], anchor = 91, kind = "base:obstacle_20" },
+    { hexes = [122, 123], anchor = 122, kind = "base:obstacle_19" },
+]
+
+[[attacker]]
+slot = 0
+creature = "base:champion"
+count = 5
+
+[[attacker]]
+slot = 2
+creature = "base:marksman"
+count = 10
+
+[[defender]]
+slot = 0
+creature = "base:wolf_rider"
+count = 8
+
+[[defender]]
+slot = 2
+creature = "base:goblin"
+count = 15
+
+[scenario.attacker_hero]
+hero_type = "base:orrin"
+attack = 1
+defense = 1
+power = 1
+knowledge = 2
+mana = 20
+max_mana = 20
+spell_book = [
+    "base:haste", "base:magic_arrow", "base:lightning_bolt", "base:disrupting_ray",
+    "base:precision", "base:chain_lightning", "base:hypnotize",
+    "base:bloodlust", "base:curse", "base:blind", "base:fireball", "base:armageddon",
+    "base:bless", "base:cure", "base:ice_bolt", "base:clone",
+    "base:slow", "base:shield", "base:death_ripple", "base:implosion",
+    "base:summon_boat", "base:view_air",
+]
+masteries = { "base:haste" = 3, "base:magic_arrow" = 3, "base:lightning_bolt" = 3, "base:disrupting_ray" = 3, "base:precision" = 3, "base:chain_lightning" = 3, "base:hypnotize" = 3, "base:view_air" = 3, "base:bloodlust" = 1, "base:curse" = 1, "base:blind" = 1, "base:fireball" = 1, "base:armageddon" = 1 }
+
+[scenario.defender_hero]
+hero_type = "base:crag_hack"
+attack = 1
+defense = 1
+power = 1
+knowledge = 1

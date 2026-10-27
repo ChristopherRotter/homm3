@@ -2,11 +2,14 @@
 //! executable builds every screen's controls from a few kinds of dialog item, each drawn by its
 //! kind's own drawer whatever the screen: a picture (H3API's `H3DlgPcx`), a button of DEF frames
 //! (`H3DlgDefButton`, and its kin `H3DlgCustomButton` and `H3DlgCaptionButton`, which share its
-//! drawer 0x456940) and a text over a picture (`H3DlgTextPcx`). A layout file lists a dialog's
-//! items in the order the executable adds them, which is the order they are drawn, each with the
-//! executable's control id; a screen's logic sets the items' states by id ([`Shown`]), and
-//! [`Dialog::draws`] turns both into the draw list. The battle's panel is the first dialog
-//! (`crate::panel`). The format is *provisional* (the M3 review list).
+//! drawer 0x456940), a text over a picture (`H3DlgTextPcx`); since E17 M5 T3a a DEF's frame
+//! (`H3DlgDef`), a text alone (`H3DlgText`) and an area that takes the mouse and draws nothing
+//! (`H3DlgTransparentItem`). A layout file lists a dialog's items in the order the executable adds
+//! them, which is the order they are drawn, each with the executable's control id (a loop's items
+//! as one entry with its `repeat`, [`Dialog::expanded`]); a screen's logic sets the items' states
+//! by id ([`Shown`]), and [`Dialog::draws`] turns both into the draw list. The battle's panel is the
+//! first dialog (`crate::panel`), the spell book the second (`crate::book`). The format is
+//! *provisional* (the M3 review list).
 
 use alloc::collections::BTreeMap;
 use alloc::string::String;
@@ -21,6 +24,10 @@ use crate::scene::{Draw, PlayerColours};
 pub struct Dialog {
     /// The dialog's top-left corner on the screen; each item's place is from it.
     pub place: [i32; 2],
+    /// The dialog's width and height when it casts a shadow (its flag 0x10, `vShow` 0x5FEAE0; E17
+    /// M5 T3a): none for none.
+    #[serde(default)]
+    pub shadow: Option<[i32; 2]>,
     /// Its items, in the order the executable adds them: the order they are drawn.
     pub items: Vec<Item>,
 }
@@ -35,6 +42,12 @@ pub enum Item {
     Button(Button),
     /// A text over a picture (`H3DlgTextPcx`).
     Text(Text),
+    /// A DEF's frame (`H3DlgDef`; E17 M5 T3a).
+    Def(Def),
+    /// A text alone (`H3DlgText`; E17 M5 T3a).
+    Label(Label),
+    /// An area that takes the mouse and draws nothing (`H3DlgTransparentItem`; E17 M5 T3a).
+    Area(Area),
 }
 
 impl Item {
@@ -51,6 +64,9 @@ impl Item {
             Self::Picture(_) => None,
             Self::Button(b) => Some((b.at, b.size)),
             Self::Text(t) => Some((t.at, t.size)),
+            Self::Def(d) => Some((d.at, d.size)),
+            Self::Label(l) => Some((l.at, l.size)),
+            Self::Area(a) => Some((a.at, a.size)),
         }
     }
 
@@ -58,9 +74,12 @@ impl Item {
     #[must_use]
     pub fn hint(&self) -> Option<&str> {
         match self {
-            Self::Picture(_) => None,
+            Self::Picture(p) => p.hint.as_deref(),
             Self::Button(b) => b.hint.as_deref(),
             Self::Text(t) => t.hint.as_deref(),
+            Self::Def(_) => None,
+            Self::Label(l) => l.hint.as_deref(),
+            Self::Area(a) => a.hint.as_deref(),
         }
     }
 
@@ -71,7 +90,76 @@ impl Item {
             Self::Picture(p) => p.id,
             Self::Button(b) => b.id,
             Self::Text(t) => t.id,
+            Self::Def(d) => d.id,
+            Self::Label(l) => l.id,
+            Self::Area(a) => a.id,
         }
+    }
+
+    /// The items a layout entry stands for: itself, or its `repeat`'s copies ([`Repeat::places`]).
+    fn copies(self) -> Vec<Self> {
+        match self {
+            Self::Def(d) => match d.repeat {
+                Some(r) => r
+                    .places(d.id, d.at)
+                    .into_iter()
+                    .map(|(id, at)| {
+                        Self::Def(Def {
+                            id,
+                            at,
+                            repeat: None,
+                            ..d.clone()
+                        })
+                    })
+                    .collect(),
+                None => alloc::vec![Self::Def(d)],
+            },
+            Self::Label(l) => match l.repeat {
+                Some(r) => r
+                    .places(l.id, l.at)
+                    .into_iter()
+                    .map(|(id, at)| {
+                        Self::Label(Label {
+                            id,
+                            at,
+                            repeat: None,
+                            ..l.clone()
+                        })
+                    })
+                    .collect(),
+                None => alloc::vec![Self::Label(l)],
+            },
+            other => alloc::vec![other],
+        }
+    }
+}
+
+/// A layout entry's loop (E17 M5 T3a): its copies' columns and rows and the steps between them.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Repeat {
+    /// The columns and the rows.
+    pub count: [i32; 2],
+    /// A column's step in x and a row's in y.
+    pub step: [i32; 2],
+}
+
+impl Repeat {
+    /// The copies' ids and places from the first's: row by row, columns inside rows (a
+    /// constructor's loops: the spell book's places, 0x59BF90), the ids following on.
+    #[must_use]
+    pub fn places(self, id: u16, at: [i32; 2]) -> Vec<(u16, [i32; 2])> {
+        let mut out = Vec::new();
+        for row in 0..self.count[1] {
+            for column in 0..self.count[0] {
+                let place = [at[0] + self.step[0] * column, at[1] + self.step[1] * row];
+                out.push((
+                    id.wrapping_add(u16::try_from(out.len()).unwrap_or(u16::MAX)),
+                    place,
+                ));
+            }
+        }
+        out
     }
 }
 
@@ -92,6 +180,10 @@ pub struct Picture {
     /// (*provisional*, design §9.9).
     #[serde(default)]
     pub size: Option<[i32; 2]>,
+    /// The key of the status line's text while the mouse is over it, none for none (E17 M5 T3a:
+    /// the spell book's corners).
+    #[serde(default)]
+    pub hint: Option<String>,
 }
 
 /// A button of DEF frames (`H3DlgDefButton` 0x455EF0, drawn by 0x456940): a frame of the DEF's
@@ -174,6 +266,74 @@ pub struct Text {
     pub hint: Option<String>,
 }
 
+/// A DEF's frame (`H3DlgDef`, 0x4EA720; E17 M5 T3a, design §7.17): its frame of group 0 at its
+/// corner, drawn by the DEF's type (0x4EAB40 with the flags 0x10): an interface DEF's (type 0x47,
+/// the spell book's) by the buttons' frame drawer (0x47BF00), runs skipped. A screen may give it
+/// another DEF (0x4EB030) and frame (0x4EAFF0) by id ([`Shown`]).
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Def {
+    /// The control id (a `repeat`'s first).
+    pub id: u16,
+    /// The DEF, none until the screen gives one.
+    #[serde(default)]
+    pub def: Option<String>,
+    /// Its top-left corner from the dialog's.
+    pub at: [i32; 2],
+    /// Its width and height, where it takes the mouse.
+    pub size: [i32; 2],
+    /// The frame of group 0.
+    #[serde(default)]
+    pub frame: u32,
+    /// The constructor's loop, if the entry stands for several.
+    #[serde(default)]
+    pub repeat: Option<Repeat>,
+}
+
+/// A text alone (`H3DlgText`, 0x5BC280, drawn by 0x5BC5F0; E17 M5 T3a): the text in its box by the
+/// text drawer (§3.6) with the item's alignment and its colour, 2 more while it is disabled (its
+/// state's bit 8, 0x5BC641). Its background colour, 0 in every one built, fills nothing.
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Label {
+    /// The control id (a `repeat`'s first).
+    pub id: u16,
+    /// Its top-left corner from the dialog's.
+    pub at: [i32; 2],
+    /// Its width and height: the text's box.
+    pub size: [i32; 2],
+    /// The font.
+    pub font: String,
+    /// The palette the font's colours come from.
+    pub font_palette: String,
+    /// The text drawer's colour argument.
+    pub colour: u32,
+    /// The text drawer's alignment.
+    pub align: u32,
+    /// The key of the status line's text while the mouse is over it, none for none.
+    #[serde(default)]
+    pub hint: Option<String>,
+    /// The constructor's loop, if the entry stands for several.
+    #[serde(default)]
+    pub repeat: Option<Repeat>,
+}
+
+/// An area that takes the mouse and draws nothing (`H3DlgTransparentItem`, 0x44FF10; E17 M5 T3a:
+/// the spell book's tabs, bookmarks and close).
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Area {
+    /// The control id.
+    pub id: u16,
+    /// Its top-left corner from the dialog's.
+    pub at: [i32; 2],
+    /// Its width and height.
+    pub size: [i32; 2],
+    /// The key of the status line's text while the mouse is over it, none for none.
+    #[serde(default)]
+    pub hint: Option<String>,
+}
+
 /// A control's state, the flags of the item's +0x16 its drawer reads: shown (bit 4), pressed
 /// (bit 1), disabled (bit 8, which the state 0x1000 of `AddControlState` sets: 0x5FE560), selected
 /// (bit 0x10). The default: shown, released, enabled, not selected.
@@ -210,19 +370,41 @@ impl Button {
     }
 }
 
-/// What a dialog's items show, by control id; an item without an entry shows its default: a
-/// button in the default [`State`], a picture in its own colours, a text empty.
+/// What a dialog's items show, by control id; an item without an entry shows its default: in the
+/// default [`State`], a picture in its own colours, a text empty, a DEF item its own DEF and frame.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct Shown {
-    /// The buttons' states.
+    /// The items' states (a button's frame; any item hidden; a text alone's colour when
+    /// disabled).
     pub states: BTreeMap<u16, State>,
     /// The pictures in a player's colours: the player's colour (0 red to 7 pink).
     pub players: BTreeMap<u16, u8>,
     /// The texts.
     pub texts: BTreeMap<u16, String>,
+    /// The DEF items' DEFs the screen gave them (0x4EB030; E17 M5 T3a).
+    pub defs: BTreeMap<u16, String>,
+    /// The DEF items' frames the screen gave them (0x4EAFF0; E17 M5 T3a).
+    pub frames: BTreeMap<u16, u32>,
+}
+
+impl Shown {
+    /// The state of item `id`.
+    #[must_use]
+    pub fn state(&self, id: u16) -> State {
+        self.states.get(&id).copied().unwrap_or_default()
+    }
 }
 
 impl Dialog {
+    /// The dialog with each entry's `repeat` made into its copies ([`Repeat`]), in order.
+    #[must_use]
+    pub fn expanded(self) -> Self {
+        Self {
+            items: self.items.into_iter().flat_map(Item::copies).collect(),
+            ..self
+        }
+    }
+
     /// The item with control id `id`.
     #[must_use]
     pub fn item(&self, id: u16) -> Option<&Item> {
@@ -251,6 +433,23 @@ impl Dialog {
         })
     }
 
+    /// The item that takes the mouse at `point` (on the screen) as `shown` (`ItemAtPosition`
+    /// 0x5FF3E0, read at E17 M5 T3a: the spell book's): the last in the executable's order whose
+    /// area holds it and which is shown and enabled (bit 2) and not disabled (bits 8 and 0x1000).
+    #[must_use]
+    pub fn item_taking(&self, point: [i32; 2], shown: &Shown) -> Option<&Item> {
+        let [x, y] = [point[0] - self.place[0], point[1] - self.place[1]];
+        self.items.iter().rev().find(|item| {
+            let state = shown.state(item.id());
+            !state.hidden
+                && !state.disabled
+                && item.area().is_some_and(|([left, top], [w, h])| {
+                    (left..left.saturating_add(w)).contains(&x)
+                        && (top..top.saturating_add(h)).contains(&y)
+                })
+        })
+    }
+
     /// The button under the mouse at `point` ([`Dialog::item_at`]), if a button is there (E17
     /// M3 T6c-2: the one a click presses).
     #[must_use]
@@ -270,14 +469,38 @@ impl Dialog {
         })
     }
 
-    /// The draw list of the dialog's items as `shown`, in their order; a player's colours come
-    /// from the players' palette `players` (`PLAYERS.PAL`, 32 entries a player).
+    /// The shadow a dialog with one casts as it shows (`vShow` 0x5FEAE0 with the flag 0x10):
+    /// `screen_darken` four times, a strip right of it 8 wide from 8 below its top and one below
+    /// it 8 high from 8 right of its left, each again 7 wide or high one further in: their
+    /// insides darkened twice.
+    #[must_use]
+    pub fn shadow_draws(&self) -> Vec<Draw> {
+        let Some([w, h]) = self.shadow else {
+            return Vec::new();
+        };
+        let [x, y] = self.place;
+        [
+            [x + w, y + 9, 7, h - 9],
+            [x + w, y + 8, 8, h - 8],
+            [x + 9, y + h, w - 2, 7],
+            [x + 8, y + h, w, 8],
+        ]
+        .into_iter()
+        .map(|rect| Draw::Darken { rect })
+        .collect()
+    }
+
+    /// The draw list of the dialog: its shadow ([`Dialog::shadow_draws`]), then its items as
+    /// `shown`, in their order; a player's colours come from the players' palette `players`
+    /// (`PLAYERS.PAL`, 32 entries a player).
     #[must_use]
     pub fn draws(&self, shown: &Shown, players: &str) -> Vec<Draw> {
         let [x, y] = self.place;
         let place = |at: [i32; 2]| [x.saturating_add(at[0]), y.saturating_add(at[1])];
-        self.items
+        let items = self
+            .items
             .iter()
+            .filter(|item| !shown.state(item.id()).hidden)
             .filter_map(|item| match item {
                 Item::Picture(p) => {
                     let [x, y] = place(p.at);
@@ -292,7 +515,7 @@ impl Dialog {
                     })
                 }
                 Item::Button(b) => {
-                    let state = shown.states.get(&b.id).copied().unwrap_or_default();
+                    let state = shown.state(b.id);
                     let [x, y] = place(b.at);
                     b.frame(state).map(|frame| Draw::Button {
                         def: b.def.clone(),
@@ -310,8 +533,29 @@ impl Dialog {
                         text: shown.texts.get(&t.id).cloned().unwrap_or_default(),
                     })
                 }
-            })
-            .collect()
+                Item::Def(d) => {
+                    let [x, y] = place(d.at);
+                    let def = shown.defs.get(&d.id).or(d.def.as_ref())?;
+                    Some(Draw::Button {
+                        def: def.clone(),
+                        frame: shown.frames.get(&d.id).copied().unwrap_or(d.frame),
+                        x,
+                        y,
+                    })
+                }
+                Item::Label(l) => {
+                    let [x, y] = place(l.at);
+                    Some(Draw::Label {
+                        item: l.clone(),
+                        x,
+                        y,
+                        text: shown.texts.get(&l.id).cloned().unwrap_or_default(),
+                        disabled: shown.state(l.id).disabled,
+                    })
+                }
+                Item::Area(_) => None,
+            });
+        self.shadow_draws().into_iter().chain(items).collect()
     }
 }
 

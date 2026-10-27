@@ -204,6 +204,27 @@ pub fn draw_image_keyed_clipped(screen: &mut Screen, image: &Pcx, x: i32, y: i32
     put_image_in(screen, image, None, (x, y), true, clip);
 }
 
+/// Draws an image as [`draw_image`] does, but only its pixels inside the screen's rectangle `clip`
+/// (left, top, right, bottom; the last two excluded): a dialog's text item draws at most the item's
+/// size of its picture (0x5BC7F0; E17 M5 T3a: the spell book's `spelroll.pcx`, a column wider).
+pub fn draw_image_clipped(screen: &mut Screen, image: &Pcx, x: i32, y: i32, clip: [i32; 4]) {
+    put_image_in(screen, image, None, (x, y), false, clip);
+}
+
+/// Darkens the screen's rectangle `rect` (left, top, width, height; what lies outside the screen
+/// left alone): each channel halved, rounded down (`screen_darken` 0x44E5F0, H3API's
+/// `DrawShadow`; E17 M5 T3a: a dialog's shadow, `vShow` 0x5FEAE0).
+pub fn darken(screen: &mut Screen, [x, y, width, height]: [i32; 4]) {
+    let format = screen.format();
+    for py in i64::from(y)..i64::from(y) + i64::from(height) {
+        for px in i64::from(x)..i64::from(x) + i64::from(width) {
+            if let Some(p) = screen.pixel_mut(px, py) {
+                *p = format.shadow_body(*p);
+            }
+        }
+    }
+}
+
 fn put_image(
     screen: &mut Screen,
     image: &Pcx,

@@ -19,6 +19,7 @@ mod scenario;
 mod sequences;
 mod situation;
 mod sounds;
+mod spellbook;
 mod sprite;
 mod text;
 mod window;

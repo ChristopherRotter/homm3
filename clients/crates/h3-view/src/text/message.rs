@@ -147,6 +147,15 @@ impl Message {
         out
     }
 
+    /// A message of `text` as it is: no placeholders, every character its own (E17 M5 T3a: an
+    /// original row shown without `printf`).
+    #[must_use]
+    pub fn literal_text(text: &str) -> Self {
+        let mut message = Self::default();
+        message.literal(text);
+        message
+    }
+
     fn literal(&mut self, text: &str) {
         if text.is_empty() {
             return;

@@ -91,6 +91,10 @@ pub struct Family {
     /// Its id and the list's: `creature` (the asset tables' creatures, keys
     /// `creature.<table>:<key>`).
     pub id: String,
+    /// The list of entries its keys are made for when not its id's (E17 M5 T3a: the spells'
+    /// descriptions, `spell-text`, over the spells).
+    #[serde(default)]
+    pub list: Option<String>,
     /// The table holding a record per original id.
     pub table: String,
     /// The first record of those: the table's non-blank records from it are the original ids in
@@ -100,6 +104,10 @@ pub struct Family {
     /// and [`Family::column`] holds its keys' only form (E17 M3 T7b-1).
     #[serde(default)]
     pub forms: BTreeMap<String, usize>,
+    /// The columns of the forms by context (`none = 29`; E17 M5 T3a: a spell's description by the
+    /// hero's mastery): the family's keys take their form by the argument `context`.
+    #[serde(default)]
+    pub contexts: BTreeMap<String, usize>,
     /// The column of a single-form family's keys (the spells' and heroes' names).
     #[serde(default)]
     pub column: Option<usize>,
@@ -107,6 +115,10 @@ pub struct Family {
     /// rows fill only their first); none: every non-blank record.
     #[serde(default)]
     pub by: Option<usize>,
+    /// Its texts are shown as they are, not through `printf` (E17 M5 T3a: the spells'
+    /// descriptions, 0x59BAA0).
+    #[serde(default)]
+    pub raw: bool,
 }
 
 /// A family's entry: its key's last part and its original id.
@@ -141,6 +153,9 @@ pub struct Source {
     pub row: Row,
     /// The column, from 0.
     pub column: usize,
+    /// The text is shown as it is, not through `printf` (E17 M5 T3a: a spell's description, whose
+    /// `%` is a percent sign).
+    pub raw: bool,
 }
 
 /// A source's row.
@@ -212,13 +227,23 @@ impl Keys {
             keys.insert(key.id, resolved)?;
         }
         for family in file.family {
+            let named = family.list.as_ref().unwrap_or(&family.id);
             let list = entries
-                .get(&family.id)
-                .ok_or_else(|| KeysError::Family(family.id.clone()))?;
-            let single = match (family.forms.is_empty(), family.column) {
-                (true, Some(column)) => Some(column),
-                (false, None) => None,
-                _ => return form_error(&family.id, "a family has forms or a column, not both"),
+                .get(named)
+                .ok_or_else(|| KeysError::Family(named.clone()))?;
+            let single = match (
+                family.forms.is_empty(),
+                family.contexts.is_empty(),
+                family.column,
+            ) {
+                (true, true, Some(column)) => Some(column),
+                (false, true, None) | (true, false, None) => None,
+                _ => {
+                    return form_error(
+                        &family.id,
+                        "a family has forms, contexts or a column, one of them",
+                    );
+                }
             };
             for entry in list {
                 let id = format!("{}.{}", family.id, entry.key);
@@ -230,6 +255,7 @@ impl Keys {
                         by: family.by,
                     },
                     column,
+                    raw: family.raw,
                 };
                 let resolved = match single {
                     Some(column) => Resolved {
@@ -237,6 +263,16 @@ impl Keys {
                         plural: false,
                         contexts: Vec::new(),
                         original: vec![(String::new(), source(column), Vec::new())],
+                    },
+                    None if family.forms.is_empty() => Resolved {
+                        args: BTreeMap::new(),
+                        plural: false,
+                        contexts: family.contexts.keys().cloned().collect(),
+                        original: family
+                            .contexts
+                            .iter()
+                            .map(|(context, &column)| (context.clone(), source(column), Vec::new()))
+                            .collect(),
                     },
                     None => {
                         let mut original = Vec::new();
@@ -356,6 +392,7 @@ fn source(id: &str, at: &str) -> Result<Source, KeysError> {
                 table: EXECUTABLE.into(),
                 row: Row::Address(address),
                 column: 1,
+                raw: false,
             }),
             Err(_) => form_error(id, &format!("`{at}` is not EXE:0x<address>")),
         };
@@ -368,11 +405,13 @@ fn source(id: &str, at: &str) -> Result<Source, KeysError> {
             table: table.into(),
             row: Row::Record(record),
             column: 0,
+            raw: false,
         }),
         (false, Some(&[record, column])) => Ok(Source {
             table: table.into(),
             row: Row::Record(record),
             column,
+            raw: false,
         }),
         _ => form_error(id, &format!("`{at}` is not <TABLE>:<record>[:<column>]")),
     }

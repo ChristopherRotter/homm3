@@ -383,6 +383,31 @@ fn a_clipped_image_draws_only_inside_its_rectangle() {
 }
 
 #[test]
+fn an_opaque_clipped_image_draws_its_index_0_too() {
+    // E17 M5 T3a: a text item's picture, at most the item's size of it.
+    let indexed = Pcx::Indexed(Box::new(IndexedImage {
+        width: 3,
+        height: 1,
+        pixels: vec![0, 7, 8],
+        palette: palette_of_greys(),
+    }));
+    let mut s = screen(4, 1);
+    draw_image_clipped(&mut s, &indexed, 0, 0, [0, 0, 2, 1]);
+    assert_eq!(row(&s, 0), [grey(0), grey(7), WHITE, WHITE]);
+}
+
+#[test]
+fn a_darkened_rectangle_halves_each_channel_inside_the_screen() {
+    // E17 M5 T3a: `screen_darken` 0x44E5F0, a dialog's shadow; twice a quarter.
+    let mut s = screen(3, 2);
+    darken(&mut s, [1, 0, 5, 1]);
+    darken(&mut s, [2, -1, 1, 2]);
+    let half = s.format().shadow_body(WHITE);
+    assert_eq!(row(&s, 0), [WHITE, half, s.format().shadow_body(half)]);
+    assert_eq!(row(&s, 1), [WHITE; 3]);
+}
+
+#[test]
 fn a_frame_cut_to_its_canvas_s_top_rows() {
     // E17 M4 T1b: a turret's shooter, its canvas's top 232 rows (0x495090).
     let f = frame(1, 0, 0, (1, 3), vec![10, 20, 30], vec![]);

@@ -196,3 +196,208 @@ def = "ComSlide.def"
 at = [624, 24]
 size = [18, 17]
 frames = { normal = 2, pressed = 3, disabled = 3 }
+
+# The hero's spell book (`spell_book_dialog` 0x59BDF0; E17 M5 T3a, design §7.17): a 620 x 595
+# dialog at (90, 2), its items in the order the constructor adds them (the order they are drawn),
+# each loop's items as one entry with its `repeat` (columns inside rows, the ids following on).
+# `crate::book` sets what they show: the picture in the hero's player's colours, each place's
+# ribbon (its school's DEF of `ribbons`, its frame the mastery), icon (its frame the spell) and text,
+# the emblem, the tabs' frame, the corners, the spell points and the status line. The hints of the
+# items other than the places are `Help.txt`'s records 450 to 460 (copied to 0x6A52D0 by 0x5B98B0;
+# the handler's switch 0x59D864 picks them by id).
+[book]
+# The schools by the book's index: its bits air 1, fire 2, water 4, earth 8 (the spell record's +0x1C,
+# `hero_best_school` 0x4E51C0), the order of the ribbons (0x641D94), the emblems and the tabs.
+schools = ["air", "fire", "water", "earth"]
+ribbons = ["SPLEVA.def", "SPLEVF.def", "SPLEVW.def", "SPLEVE.def"]
+# The cursor the book sets as the mouse enters an item (frame 1) or leaves them (0) (0x59D712:
+# `SetCursor(frame, 0)`, the default cursor's DEF), its frames' hot spots (0x67FF50).
+cursor = "crdeflt.def"
+hot = [[0, 0], [0, 0]]
+
+# The dialog casts its shadow (0x59BE23: the base dialog's flag 0x12, 0x10 the shadow; design
+# §7.17).
+[book.dialog]
+place = [90, 2]
+shadow = [620, 595]
+
+# The book (0x59BF37), in the hero's owner's colours (0x450520), the whole dialog's size.
+[[book.dialog.items]]
+kind = "picture"
+id = 200
+picture = "Spelback.pcx"
+at = [0, 0]
+size = [620, 595]
+
+# The mastery ribbons, 78 x 65, left page then right (0x59BFD1, 0x59C04E): no DEF until a spell's
+# school gives one.
+[[book.dialog.items]]
+kind = "def"
+id = 201
+at = [117, 89]
+size = [78, 65]
+repeat = { count = [2, 3], step = [86, 96] }
+
+[[book.dialog.items]]
+kind = "def"
+id = 207
+at = [333, 89]
+size = [78, 65]
+repeat = { count = [2, 3], step = [86, 96] }
+
+# The spells' icons at the same places (0x59C0E5, 0x59C165), their frame the spell's number.
+[[book.dialog.items]]
+kind = "def"
+id = 213
+def = "spells.def"
+at = [117, 89]
+size = [78, 65]
+repeat = { count = [2, 3], step = [86, 96] }
+
+[[book.dialog.items]]
+kind = "def"
+id = 219
+def = "spells.def"
+at = [333, 89]
+size = [78, 65]
+repeat = { count = [2, 3], step = [86, 96] }
+
+# The places' texts, 86 x 36 below the icons (0x59C1FC, 0x59C27C): `tiny.fnt`, colour 1 (3
+# greyed), alignment 1 (each line centred, from the top).
+[[book.dialog.items]]
+kind = "label"
+id = 237
+at = [113, 154]
+size = [86, 36]
+font = "tiny.fnt"
+font_palette = "game.pal"
+colour = 1
+align = 1
+repeat = { count = [2, 3], step = [86, 96] }
+
+[[book.dialog.items]]
+kind = "label"
+id = 243
+at = [329, 154]
+size = [86, 36]
+font = "tiny.fnt"
+font_palette = "game.pal"
+colour = 1
+align = 1
+repeat = { count = [2, 3], step = [86, 96] }
+
+# A school's emblem over places 0 and 1 of its first page (0x59C2EE).
+[[book.dialog.items]]
+kind = "def"
+id = 236
+def = "schools.def"
+at = [117, 74]
+size = [160, 96]
+
+# The tabs (0x59C355), their frame the tab's school (4: all), and the areas a click on a tab takes
+# (0x59C3A3 to 0x59C4CF): air, fire, water, earth, all; from the top air, earth, fire, water, all.
+[[book.dialog.items]]
+kind = "def"
+id = 225
+def = "SpelTab.def"
+at = [524, 88]
+size = [83, 294]
+
+[[book.dialog.items]]
+kind = "area"
+id = 226
+at = [523, 87]
+size = [83, 43]
+hint = "book.hint.air"
+
+[[book.dialog.items]]
+kind = "area"
+id = 227
+at = [523, 205]
+size = [83, 43]
+hint = "book.hint.fire"
+
+[[book.dialog.items]]
+kind = "area"
+id = 228
+at = [523, 268]
+size = [83, 43]
+hint = "book.hint.water"
+
+[[book.dialog.items]]
+kind = "area"
+id = 229
+at = [523, 145]
+size = [83, 43]
+hint = "book.hint.earth"
+
+[[book.dialog.items]]
+kind = "area"
+id = 230
+at = [523, 329]
+size = [83, 43]
+hint = "book.hint.all"
+
+# The pages' corners (0x59C51D, 0x59C574): shown where there is a page before or spells after.
+[[book.dialog.items]]
+kind = "picture"
+id = 234
+picture = "SpelTrnL.pcx"
+at = [97, 77]
+size = [33, 39]
+hint = "book.hint.previous"
+
+[[book.dialog.items]]
+kind = "picture"
+id = 235
+picture = "SpelTrnR.pcx"
+at = [487, 74]
+size = [29, 32]
+hint = "book.hint.next"
+
+# The bookmarks (0x59C5C5, 0x59C610): the combat spells', the adventure spells'.
+[[book.dialog.items]]
+kind = "area"
+id = 231
+at = [219, 404]
+size = [37, 47]
+hint = "book.hint.combat"
+
+[[book.dialog.items]]
+kind = "area"
+id = 232
+at = [353, 405]
+size = [35, 41]
+hint = "book.hint.adventure"
+
+# The hero's spell points (0x59C683): `smalfont.fnt`, colour 7, alignment 5 (centred both ways).
+[[book.dialog.items]]
+kind = "label"
+id = 233
+at = [417, 405]
+size = [36, 45]
+font = "smalfont.fnt"
+font_palette = "game.pal"
+colour = 7
+align = 5
+hint = "book.hint.points"
+
+# The close (0x59C6CE): the dialog's result 0x7801.
+[[book.dialog.items]]
+kind = "area"
+id = 30721
+at = [478, 407]
+size = [35, 42]
+hint = "book.hint.close"
+
+# The status line (0x59C728): `smalfont.fnt` over `spelroll.pcx`, colour 1, alignment 1.
+[[book.dialog.items]]
+kind = "text"
+id = 249
+picture = "spelroll.pcx"
+at = [8, 569]
+size = [605, 19]
+font = "smalfont.fnt"
+font_palette = "game.pal"
+colour = 1
+align = 1

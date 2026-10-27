@@ -258,7 +258,8 @@ fn keys_resolve_forms_and_families() {
         Source {
             table: s("T"),
             row: Row::Record(3),
-            column: 1
+            column: 1,
+            raw: false
         }
     );
     let ogre = &keys.keys["creature.base:ogre"];
@@ -273,7 +274,8 @@ fn keys_resolve_forms_and_families() {
                     id: 1,
                     by: None
                 },
-                column: 0
+                column: 0,
+                raw: false
             },
             Vec::new()
         )
@@ -650,14 +652,64 @@ fn a_single_form_family_counts_the_records_its_column_fills() {
         vec![lit("Arrow")]
     );
     assert_eq!(pack.messages["spell.base:bolt"].segments, vec![lit("Bolt")]);
-    // Forms and a column, or neither: refused.
-    for body in ["forms = { one = 0 }\ncolumn = 0", ""] {
+    // Two of forms, contexts and a column, or none of them: refused.
+    for body in [
+        "forms = { one = 0 }\ncolumn = 0",
+        "contexts = { none = 0 }\ncolumn = 0",
+        "forms = { one = 0 }\ncontexts = { none = 0 }",
+        "",
+    ] {
         let text = format!("[[family]]\nid = \"spell\"\ntable = \"S\"\nfirst = 1\n{body}\n");
         assert_eq!(
             Keys::parse(&text, &entries).unwrap_err(),
-            KeysError::Form(s("spell"), s("a family has forms or a column, not both"))
+            KeysError::Form(
+                s("spell"),
+                s("a family has forms, contexts or a column, one of them")
+            )
         );
     }
+}
+
+#[test]
+fn a_family_of_contexts_over_another_family_s_list() {
+    // E17 M5 T3a: a spell's description by the hero's mastery (SPTRAITS.TXT's columns 29 to 32),
+    // its keys made for the spells' list.
+    let catalogue = "[[family]]\nid = \"spell-text\"\nlist = \"spell\"\ntable = \"S\"\nfirst = 0\nraw = true\ncontexts = { none = 1, expert = 2 }\n";
+    let entries = BTreeMap::from([(
+        s("spell"),
+        vec![Entry {
+            key: s("base:arrow"),
+            id: 0,
+        }],
+    )]);
+    let keys = Keys::parse(catalogue, &entries).unwrap();
+    let arrow = &keys.keys["spell-text.base:arrow"];
+    assert!(!arrow.plural);
+    assert_eq!(arrow.contexts, [s("expert"), s("none")]);
+    let row = |fields: &[&str]| fields.iter().map(|f| s(f)).collect::<Vec<_>>();
+    // Raw: a percent sign is text (0x59BAA0 shows the record as it is).
+    let tables = BTreeMap::from([(
+        s("S"),
+        vec![row(&["Arrow", "{Arrow}", "{Expert Arrow} 5%"])],
+    )]);
+    let (pack, problems) = Pack::original(&keys, &tables);
+    assert_eq!(problems, Vec::<Problem>::new());
+    let catalogue = Catalogue { packs: vec![pack] };
+    let text = |context| catalogue.text("spell-text.base:arrow", &Args::new().context(context));
+    assert_eq!(
+        (text("none"), text("expert")),
+        (s("{Arrow}"), s("{Expert Arrow} 5%"))
+    );
+    // A list nobody gave: refused.
+    let other = catalogue_with_list("nothing");
+    assert_eq!(
+        Keys::parse(&other, &entries).unwrap_err(),
+        KeysError::Family(s("nothing"))
+    );
+}
+
+fn catalogue_with_list(list: &str) -> String {
+    format!("[[family]]\nid = \"t\"\nlist = \"{list}\"\ntable = \"S\"\nfirst = 0\ncolumn = 0\n")
 }
 
 #[test]

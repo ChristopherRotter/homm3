@@ -227,6 +227,7 @@ pub fn shown(
         states,
         players: players_of,
         texts,
+        ..Shown::default()
     }
 }
 

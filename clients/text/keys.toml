@@ -352,6 +352,105 @@ original = [
     { form = "female", at = "GENRLTXT:541" },
 ]
 
+# The spell book (E17 M5 T3a; design §7.17). A place's text (`spell_book_page` 0x59CE19, 0x59CEE1:
+# the executable's own formats): the spell's name, its level, the hero's mastery's short name when
+# it has one, the spell points' word and the cost.
+[[key]]
+id = "book.place"
+args = { spell = "text", level = "text", mastery = "text", points = "text", cost = "number" }
+original = [{ at = "EXE:0x684BEC", printf = ["spell", "level", "mastery", "points", "cost"] }]
+
+[[key]]
+id = "book.place-unskilled"
+args = { spell = "text", level = "text", points = "text", cost = "number" }
+original = [{ at = "EXE:0x684BDC", printf = ["spell", "level", "points", "cost"] }]
+
+# The spell points' word (0x59CD56: GENRLTXT's record 388).
+[[key]]
+id = "book.points"
+original = [{ at = "GENRLTXT:388" }]
+
+# A spell's level, 1 to 5 (0x6A34F8 to 0x6A3508, from GENRLTXT's records 173 to 177).
+[[key]]
+id = "book.level.1"
+original = [{ at = "GENRLTXT:173" }]
+
+[[key]]
+id = "book.level.2"
+original = [{ at = "GENRLTXT:174" }]
+
+[[key]]
+id = "book.level.3"
+original = [{ at = "GENRLTXT:175" }]
+
+[[key]]
+id = "book.level.4"
+original = [{ at = "GENRLTXT:176" }]
+
+[[key]]
+id = "book.level.5"
+original = [{ at = "GENRLTXT:177" }]
+
+# A mastery's short name (0x6A5D4C to 0x6A5D54, SKILLLEV.TXT's records 3 to 5 by 0x5B93F0).
+[[key]]
+id = "book.mastery.basic"
+original = [{ at = "SKILLLEV:3" }]
+
+[[key]]
+id = "book.mastery.advanced"
+original = [{ at = "SKILLLEV:4" }]
+
+[[key]]
+id = "book.mastery.expert"
+original = [{ at = "SKILLLEV:5" }]
+
+# The book's items' hints (`Help.txt`'s first column, records 450 to 460 by h3-formats' count, as
+# 0x5B98B0 copies them to 0x6A52D0; the handler's switch 0x59D864 picks them by id): the corners,
+# the bookmarks, the tabs, the spell points, the close.
+[[key]]
+id = "book.hint.previous"
+original = [{ at = "HELP:450" }]
+
+[[key]]
+id = "book.hint.next"
+original = [{ at = "HELP:451" }]
+
+[[key]]
+id = "book.hint.adventure"
+original = [{ at = "HELP:452" }]
+
+[[key]]
+id = "book.hint.combat"
+original = [{ at = "HELP:453" }]
+
+[[key]]
+id = "book.hint.air"
+original = [{ at = "HELP:454" }]
+
+[[key]]
+id = "book.hint.fire"
+original = [{ at = "HELP:455" }]
+
+[[key]]
+id = "book.hint.water"
+original = [{ at = "HELP:456" }]
+
+[[key]]
+id = "book.hint.earth"
+original = [{ at = "HELP:457" }]
+
+[[key]]
+id = "book.hint.all"
+original = [{ at = "HELP:458" }]
+
+[[key]]
+id = "book.hint.points"
+original = [{ at = "HELP:459" }]
+
+[[key]]
+id = "book.hint.close"
+original = [{ at = "HELP:460" }]
+
 # A creature's names, singular and plural (CRTRAITS.TXT's first two columns; its non-blank records
 # from record 2 are the original ids in order, as the harvesters read them).
 [[family]]
@@ -369,6 +468,19 @@ table = "SPTRAITS"
 first = 2
 by = 1
 column = 0
+
+# A spell's description by the hero's mastery (SPTRAITS.TXT's columns 29 to 32, the spell record's
+# +0x78; E17 M5 T3a): the spell book's status line shows its first line (0x59BAA0), its message box
+# the whole. A key per spell of the asset tables, `spell-text.<table>:<key>`, its form by the
+# argument `context`.
+[[family]]
+id = "spell-text"
+list = "spell"
+table = "SPTRAITS"
+first = 2
+by = 1
+raw = true
+contexts = { none = 29, basic = 30, advanced = 31, expert = 32 }
 
 # A town's moat, which names its damage in the battle's log (ARRAYTXT.TXT's nine records after its
 # "Moat Names" row, by town type, as `moat_names` 0x6A5D60 is loaded by 0x5B9CC0; E17 M4 T2c-1): a

@@ -85,6 +85,19 @@ pub fn executable(install: &Path) -> Result<Vec<u8>, String> {
     fs::read(&path).map_err(|e| format!("{}: {e}", path.display()))
 }
 
+/// The executable's string at file offset `at` (E17 M5 T3a: `h3_formats`' `c_string` with line
+/// breaks, which the spell book's formats hold): at most 256 bytes to a NUL, each printable
+/// ASCII, a space or a line break; none for any other or without the NUL.
+fn exe_string(exe: &[u8], at: Option<usize>) -> Option<String> {
+    let tail = exe.get(at?..)?;
+    let len = tail.iter().take(256).position(|&b| b == 0)?;
+    let bytes = &tail[..len];
+    bytes
+        .iter()
+        .all(|b| b.is_ascii_graphic() || matches!(b, b' ' | b'\n'))
+        .then(|| bytes.iter().map(|&b| char::from(b)).collect())
+}
+
 /// The text tables the keys name, each entry's bytes from `entry` (by its name, `GENRLTXT.TXT`);
 /// the executable's strings they name from `exe`'s bytes (the table [`EXECUTABLE`]: a record of
 /// each string's address and its text; a build `h3_formats::exe` knows).
@@ -107,9 +120,8 @@ pub fn tables(
             let mut records = Vec::new();
             for source in sources() {
                 if let Row::Address(va) = source.row {
-                    let text = image
-                        .c_string(va)
-                        .map_err(|e| format!("Heroes3.exe: 0x{va:X}: {e:?}"))?;
+                    let text = exe_string(exe, image.file_offset(va))
+                        .ok_or_else(|| format!("Heroes3.exe: 0x{va:X}: not a string"))?;
                     records.push(vec![address_field(va), text]);
                 }
             }
@@ -489,7 +501,8 @@ mod tests {
         // E17 M3 T7b-2b-3: the executable's own strings too (Acid Breath's line); E17 M4 T2c-1
         // the moats' names; E17 M4 T2c-2 the walls' parts (WALLS.TXT).
         let tables = [
-            "ARRAYTXT", "CRTRAITS", "EXE", "GENRLTXT", "HELP", "HOTRAITS", "SPTRAITS", "WALLS",
+            "ARRAYTXT", "CRTRAITS", "EXE", "GENRLTXT", "HELP", "HOTRAITS", "SKILLLEV", "SPTRAITS",
+            "WALLS",
         ];
         assert_eq!(names, BTreeSet::from(tables));
     }
