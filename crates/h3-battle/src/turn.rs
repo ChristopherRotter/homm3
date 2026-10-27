@@ -20,19 +20,24 @@ use crate::observe::Observation;
 use crate::state::{BattleState, STACK_CAPACITY, Stack, StackFlags, StackId, StackTraits};
 use crate::{control, effects, morale, obstacles, war};
 
-/// Whether stack `s` loses its turns (blind, petrified, paralysed) and its turn has passed this
-/// round (BAT-MAG-024, BAT-MAG-043): it is passed over until the effect ends.
-fn passed_without_turns(s: &Stack) -> bool {
-    s.spells.status.contains(Status::NO_TURNS) && s.flags.contains(StackFlags::STARTED)
-}
-
 /// Whether stack `s` may still be picked this round: alive, not done, not an ammunition supply
 /// (they never act, BAT-WAR-004) and not passed over losing its turns.
 fn pickable(s: &Stack) -> bool {
+    pickable_as(
+        s,
+        s.flags.contains(StackFlags::ACTED),
+        s.flags.contains(StackFlags::STARTED),
+    )
+}
+
+/// [`pickable`] with the stack's acted and started marks as given (a new round clears both): a
+/// stack that loses its turns (blind, petrified, paralysed) and whose turn has passed this round
+/// is passed over until the effect ends (BAT-MAG-024, BAT-MAG-043).
+fn pickable_as(s: &Stack, acted: bool, started: bool) -> bool {
     s.is_alive()
-        && !s.flags.contains(StackFlags::ACTED)
+        && !acted
         && !s.has(StackTraits::AMMO_SUPPLY)
-        && !passed_without_turns(s)
+        && !(started && s.spells.status.contains(Status::NO_TURNS))
 }
 
 /// The side the speed tie-break prefers after `last_side_acted` (BAT-TRN-001): the other one, the
@@ -50,6 +55,8 @@ struct OrderKey {
     side: BattleSide,
     /// The army slot, then the id.
     tail: (u8, u8),
+    /// The side the tie-break counts as activated last after the stack's turn ([`acted_side`]).
+    acted: BattleSide,
 }
 
 impl Default for OrderKey {
@@ -58,6 +65,7 @@ impl Default for OrderKey {
             head: (0, false, false, 0),
             side: BattleSide::Attacker,
             tail: (0, 0),
+            acted: BattleSide::Attacker,
         }
     }
 }
@@ -65,13 +73,19 @@ impl Default for OrderKey {
 impl OrderKey {
     /// The key of stack `s` with id `id`, the round's wait phase begun if `wait_phase`.
     fn new(id: u8, s: &Stack, wait_phase: bool) -> Self {
-        // Phases: normal, waited during a good-morale turn, waited (BAT-MOR-003). Once the
-        // wait phase has begun every stack not done is a waited one (the original's pick
-        // clears the waited bits there and orders all alike, 0x4652A7, 0x464FDB): a stack
+        // Once the wait phase has begun every stack not done is a waited one (the original's
+        // pick clears the waited bits there and orders all alike, 0x4652A7, 0x464FDB): a stack
         // created in the wait phase takes its place by its speed, the slower first (batch 2g
         // WP: the Pikemen before the elementals summoned there).
         let waited = s.flags.contains(StackFlags::WAITED) || wait_phase;
-        let phase = match (waited, s.flags.contains(StackFlags::HAD_MORALE)) {
+        Self::with(id, s, waited, s.flags.contains(StackFlags::HAD_MORALE))
+    }
+
+    /// The key of stack `s` with id `id` as a waited stack if `waited`, one that had good morale
+    /// this round if `had_morale` (a new round clears both).
+    fn with(id: u8, s: &Stack, waited: bool, had_morale: bool) -> Self {
+        // Phases: normal, waited during a good-morale turn, waited (BAT-MOR-003).
+        let phase = match (waited, had_morale) {
             (false, _) => 0,
             (true, true) => 1,
             (true, false) => 2,
@@ -91,6 +105,7 @@ impl OrderKey {
             head: (phase, turret, catapult, speed),
             side: s.side,
             tail: (s.turn_slot(), id),
+            acted: acted_side(s),
         }
     }
 
@@ -142,7 +157,7 @@ pub fn turn_order(obs: &Observation) -> TurnOrder {
     if obs.tactics.is_some() {
         // The phase's placements are no turns: its end starts the first round (BAT-TAC-002).
         let first = keys(stacks, false, true);
-        last = fill(&mut order.round, first.as_slice(), 0, last, stacks);
+        last = fill(&mut order.round, first.as_slice(), 0, last);
     } else {
         let mut done = 0u64;
         if let Some((active, s)) = obs
@@ -154,59 +169,60 @@ pub fn turn_order(obs: &Observation) -> TurnOrder {
             last = Some(acted_side(s));
         }
         let round = keys(stacks, obs.wait_phase, false);
-        last = fill(&mut order.round, round.as_slice(), done, last, stacks);
+        last = fill(&mut order.round, round.as_slice(), done, last);
     }
     let next = keys(stacks, false, true);
-    fill(&mut order.next, next.as_slice(), 0, last, stacks);
+    fill(&mut order.next, next.as_slice(), 0, last);
     order
 }
 
-/// The keys of the stacks that may take a turn, by id: in a new round (`fresh`) with the flags
-/// its start clears (BAT-TRN-003), else in this round, its wait phase begun if `wait_phase`. A
-/// stack that loses its turns passes without one, so it takes no place.
-fn keys(
-    stacks: &[Stack],
-    wait_phase: bool,
-    fresh: bool,
-) -> FixedVec<(u8, OrderKey), STACK_CAPACITY> {
+/// The keys of the stacks that may take a turn, sorted by their key without the side tie-break
+/// (unique: it ends with the id): in a new round (`fresh`) with the marks its start clears
+/// (BAT-TRN-003), else in this round, its wait phase begun if `wait_phase`. A stack that loses
+/// its turns passes without one, so it takes no place.
+fn keys(stacks: &[Stack], wait_phase: bool, fresh: bool) -> FixedVec<OrderKey, STACK_CAPACITY> {
     let mut out = FixedVec::new();
     for (id, s) in (0u8..).zip(stacks) {
-        let mut s = *s;
-        if fresh {
-            for flag in [
-                StackFlags::ACTED,
-                StackFlags::WAITED,
-                StackFlags::HAD_MORALE,
-                StackFlags::STARTED,
-            ] {
-                s.flags.set(flag, false);
-            }
-        }
-        if pickable(&s) && !s.spells.status.contains(Status::NO_TURNS) {
+        let takes = if fresh {
+            pickable_as(s, false, false)
+        } else {
+            pickable(s)
+        };
+        if takes && !s.spells.status.contains(Status::NO_TURNS) {
+            let key = if fresh {
+                OrderKey::with(id, s, false, false)
+            } else {
+                OrderKey::new(id, s, wait_phase)
+            };
             // At most STACK_CAPACITY stacks.
-            let _ = out.push((id, OrderKey::new(id, &s, wait_phase)));
+            let _ = out.push(key);
         }
     }
+    out.as_mut_slice()
+        .sort_unstable_by_key(|k| (k.head, k.tail));
     out
 }
 
-/// Appends to `out` the stacks of `keys` not in `done` (a bit per id) in the order the picks
-/// take them, the tie-break starting from `last`; returns the tie-break's side after them.
+/// Appends to `out` the stacks of `keys` (sorted as [`keys`] sorts them) not in `done` (a bit per
+/// id) in the order the picks take them, the tie-break starting from `last`; returns the
+/// tie-break's side after them. Each pick is the first left of the smallest head, its preferred
+/// side's first if it has one there: the smallest [`OrderKey::rank`].
 fn fill(
     out: &mut FixedVec<StackId, STACK_CAPACITY>,
-    keys: &[(u8, OrderKey)],
+    keys: &[OrderKey],
     mut done: u64,
     mut last: Option<BattleSide>,
-    stacks: &[Stack],
 ) -> Option<BattleSide> {
-    while let Some(&(id, _)) = keys
-        .iter()
-        .filter(|(id, _)| done & (1u64 << id) == 0)
-        .min_by_key(|(_, key)| key.rank(preferred(last)))
-    {
-        push(out, StackId(id));
-        done |= 1u64 << id;
-        last = Some(acted_side(&stacks[usize::from(id)]));
+    let left = |done: u64| keys.iter().filter(move |k| done & (1u64 << k.tail.1) == 0);
+    while let Some(first) = left(done).next() {
+        let side = preferred(last);
+        let pick = left(done)
+            .take_while(|k| k.head == first.head)
+            .find(|k| k.side == side)
+            .unwrap_or(first);
+        push(out, StackId(pick.tail.1));
+        done |= 1u64 << pick.tail.1;
+        last = Some(pick.acted);
     }
     last
 }
