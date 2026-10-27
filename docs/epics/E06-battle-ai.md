@@ -114,7 +114,8 @@ T6e; measure a decision-time search before any training change; determinized fro
 the tree in Python first; `h3-battle`'s part `cross-lane` in T8b; design §14):
 
 - [x] **T8a The design** — done 2026-10-26: design §14, ADR-0025 point 12's amendment as a
-  draft (`docs/lanes/ai/adr-drafts/0025-amendment-search.md`); the record in `E06-log.md`.
+  draft (`docs/lanes/ai/adr-drafts/0025-amendment-search.md`, accepted by the user the same day);
+  the record in `E06-log.md`.
 - [ ] **T8b The plumbing** — C ABI v34 (`h3_batch_determinize`, `h3_env_reseed`), `h3-battle`'s
   `BattleState::determinized` and `reseed` (`cross-lane`), `h3env.search`; the tests of §14.
 - [ ] **T8c The measurement** — the search agent with `t7-1`'s best at N 16 and 64 against the

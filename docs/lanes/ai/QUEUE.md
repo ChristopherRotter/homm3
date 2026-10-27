@@ -12,13 +12,20 @@ negative, the system actor as an opponent (T6c, `t6b-1`) and the kill preview in
 default).
 
 **Increment 7, T8 the search** (refined 2026-10-26, the user: the plateau taken as shown; design
-§14): T8a (the design, ADR-0025 point 12's amendment as a draft) done 2026-10-26. **Next: T8b,
-the plumbing**, once the user accepts the draft
-(`docs/lanes/ai/adr-drafts/0025-amendment-search.md`): C ABI v34 (`h3_batch_determinize`, `h3_env_reseed`), `h3-battle`'s
-`BattleState::determinized` and `reseed` (`cross-lane`, the user's consent 2026-10-26; the PR
-label), `h3env.search` and §14's tests; one pull request. Then T8c (the measurement on the
+§14): T8a (the design, ADR-0025 point 12's amendment as a draft) done 2026-10-26; the user
+accepted the draft (`docs/lanes/ai/adr-drafts/0025-amendment-search.md`) the same day, its move
+into ADR-0025 due with the next `shared/` change. **Next: T8b, the plumbing:** C ABI v34
+(`h3_batch_determinize`, `h3_env_reseed`), `h3-battle`'s `BattleState::determinized` and
+`reseed` (`cross-lane`, the user's consent 2026-10-26 for both; the PR label), `h3env.search`
+and §14's tests; one pull request. Then T8c (the measurement on the
 user's machine with `t7-1`'s best), T8d only if T8c gains.
 
+- **Candidate, the turn order as an input** (the user's question, 2026-10-26; E06-log "The
+  turn-order probe"): the trunk does not know which stack acts next (0.18 against the order
+  rule's 0.89). Options: per stack its place in the remaining order, the engine's (exact; a
+  batch output, C ABI, or observation v22, `cross-lane` with the battle lane) or computed from
+  v21 in Python (no ABI change; the probe's rule is 0.89); then an A/B against `t7-1`. The
+  user decides at T8b's checkpoint whether it comes first.
 - **Candidates kept** (not now): potential-based shaping (also against the wandering T6e found:
   the tactics phase's placements and moves cost nothing at γ 1); the 60 M run at T7's mix
   (`configs/e06-t7.toml --set samples=60_000_000`, about 4 hours); the mana run `t5-4`
@@ -30,6 +37,10 @@ user's machine with `t7-1`'s best), T8d only if T8c gains.
 Sorted by destination at E05's audit (T9a, 2026-10-19); the origin stays in brackets. Dropped as
 done: BAT-Q33's point for E05 (AI-Q3, ADR-0025 point 6), the `h3-game` coverage gap of a pending
 Pass offer (fixed by the adventure lane's fixed tests, #266).
+
+- 2026-10-26 (this lane, E06 T8a; for the next `shared/` change): **ADR-0025 point 12a** from
+  the draft the user accepted (`docs/lanes/ai/adr-drafts/0025-amendment-search.md`: a search
+  agent's worlds), then the draft deleted; T8b builds on it either way.
 
 - 2026-10-26 (the adventure lane, E08 T55b, `adventure/e08-t55b`; decisions 138–141; **for you,
   when the adventure lane's T63 lands**): **answers typed by decision.** `h3_game::Answer` becomes

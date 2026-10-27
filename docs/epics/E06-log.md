@@ -880,3 +880,40 @@ entry only where a task builds on it.
   `observe.rs`); `h3_env_fork` forks a single env only, nothing forks a batch's env; the
   encounter sampler draws a hero by faction and week (`h3-sim`'s `encounter/hero.rs`), so the
   guess fixes the hero type and draws the rest.
+
+## The turn-order probe (2026-10-26)
+
+- **The user's question:** how well observation v21 tells the agent the round's state: whose
+  stack acts, which have acted, in which order the next go. **The encoding:** the active stack
+  (`active`), the viewer to act, per stack acted, waited, defending, retaliated, good morale
+  this round and its turn started, the round, the wait phase begun and the side the speed
+  tie-break counts as last; the order itself is not given, only derivable (BAT-TRN-001 to 003:
+  each stack's current speed, the flags, the tie side, the slot).
+- **The probe** (`python/records/inspect/probe_order.py`, a one-off script; the result
+  `inspect/t6d-1-order-probe.json`): `t6d-1`'s best plays itself (both seats external, the
+  player kinds, 600 calls of 256 envs, the sandbox's CPU); at each decision after the tactics
+  phase that is not a Wait, a sample of the trunk's output (512) and two labels from the later
+  decisions of the same battle: the stack acting next (a morale repeat left out) and the
+  opponent's stack acting next. Linear and MLP (256) probes masked to the candidates, trained on
+  192 envs' samples, tested on the other 64's (107 131 and 123 790 labelled). Controls: the
+  same probes on an untrained network's trunk and on the observation's order columns alone, an
+  order rule computed from the observation, the naive "fastest stack yet to act".
+
+  | Test accuracy | next stack | the opponent's next stack |
+  |---|---|---|
+  | chance (uniform over the candidates) | 0.10 | 0.24 |
+  | the trained trunk, linear / MLP probe | 0.18 / 0.19 | 0.34 / 0.35 |
+  | an untrained trunk, linear / MLP probe | 0.24 / 0.26 | 0.41 / 0.42 |
+  | the order columns alone, linear / MLP probe | 0.65 / 0.72 | 0.76 / 0.78 |
+  | the order rule from the observation | 0.89 | 0.91 |
+  | the fastest stack yet to act | 0.79 | – |
+
+- **Read:** the network does not represent the turn order. Its trunk predicts the next stack
+  barely above chance and worse than an untrained network's (whose random projection keeps
+  more of the input: training discarded what the order needs), while the order is in the
+  observation (the rule 0.89 to 0.91; the probes learn 0.72 to 0.78 from the columns alone).
+  It fits T6a's (the agent waits and defends less than the system actor) and T6e's (the
+  wandering). `t6d-1`'s network, not `t7-1`'s (not in the sandbox): the same MLP and settings
+  but the preview. Candidate lever (QUEUE): the order as an input, the engine's own (exact,
+  re-evaluated before every activation) or computed from v21 in Python, then an A/B against
+  `t7-1`; T8's search plays the true order through its forks either way.
