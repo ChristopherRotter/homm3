@@ -4,7 +4,7 @@
 
 use std::collections::BTreeSet;
 
-use h3_protocol::wire::{Command, Observation, Side, Stack};
+use h3_protocol::wire::{Command, Manifest, Observation, Side, Stack};
 use h3_render::Bugs;
 use h3_view::anim::Timeline;
 use h3_view::layout::BattleLayout;
@@ -185,10 +185,10 @@ fn cast(arg: &str, (now, spell): (u32, u16), layout: &BattleLayout) -> Result<Ve
 
 /// The acting stack's legal commands `commands` in `observation` as the cursor asks them, with
 /// what its own tests need of the stack (E17 M4 T2c-2): the Catapult, whether the walls halve its
-/// shots (its creature's original id by the asset tables `tables`, its hero's bow by the wire's
-/// `no_distance_penalty`).
+/// shots (its creature's original id by the record's `manifest` and the asset tables `tables`, its
+/// hero's bow by the wire's `no_distance_penalty`).
 pub fn legal(
-    record: &Record,
+    manifest: &Manifest,
     tables: &Tables,
     observation: &Observation,
     commands: &[Command],
@@ -198,9 +198,7 @@ pub fn legal(
         .active
         .and_then(|id| observation.stacks.iter().find(|s| s.id == id));
     if let Some(s) = acting {
-        let original = record
-            .header
-            .manifest
+        let original = manifest
             .keys
             .creatures
             .get(usize::from(s.creature))
@@ -242,7 +240,7 @@ pub fn shown(
             Some(i) => {
                 next = i + 1;
                 let (observation, commands) = &turned[i];
-                let legal = legal(record, tables, observation, commands);
+                let legal = legal(&record.header.manifest, tables, observation, commands);
                 (observation.clone(), legal)
             }
             None => {
@@ -417,7 +415,7 @@ mod tests {
             let mut o = o.clone();
             o.stacks[at].creature = creature;
             o.stacks[at].no_distance_penalty = bow;
-            let l = legal(&record, &tables, &o, &[]);
+            let l = legal(&record.header.manifest, &tables, &o, &[]);
             (l.catapult, l.wall_exempt)
         };
         assert_eq!(tested(handle("base:catapult"), false), (true, false));
