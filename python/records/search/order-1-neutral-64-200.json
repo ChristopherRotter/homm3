@@ -1,0 +1,140 @@
+{
+ "settings": {
+  "best": "runs/order-1/best.pt",
+  "simulations": 64,
+  "worlds": 8,
+  "k": 16,
+  "opponent": "system",
+  "per_kind": 200,
+  "held_out": "neutral-v1"
+ },
+ "search": {
+  "win_rate": 0.9656060606060606,
+  "interval": 0.022416827161017738,
+  "value": 0.25035701859890525,
+  "kinds": {
+   "wandering": 0.97,
+   "guards": 0.97,
+   "siege_neutral": 0.825
+  },
+  "games": 600,
+  "skipped": 0,
+  "truncated": 0.0,
+  "seconds": 514.5058247599991,
+  "by_kind": {
+   "wandering": {
+    "attacker": {
+     "episodes": 200,
+     "skipped": 0,
+     "win_rate": 0.97,
+     "reward": 0.25405018489807846,
+     "truncated": 0.0,
+     "by_kind": {
+      "wandering": {
+       "episodes": 200,
+       "win_rate": 0.97
+      }
+     }
+    }
+   },
+   "guards": {
+    "attacker": {
+     "episodes": 200,
+     "skipped": 0,
+     "win_rate": 0.97,
+     "reward": 0.24373213456070517,
+     "truncated": 0.0,
+     "by_kind": {
+      "guards": {
+       "episodes": 200,
+       "win_rate": 0.97
+      }
+     }
+    }
+   },
+   "siege_neutral": {
+    "attacker": {
+     "episodes": 200,
+     "skipped": 0,
+     "win_rate": 0.825,
+     "reward": 0.14043013729526138,
+     "truncated": 0.0,
+     "by_kind": {
+      "siege_neutral": {
+       "episodes": 200,
+       "win_rate": 0.825
+      }
+     }
+    }
+   }
+  },
+  "costs": {
+   "decisions": 15676,
+   "simulations": 1002368,
+   "evaluations": 951805,
+   "fallbacks": 0,
+   "ms_per_decision": 32.82124424342938
+  }
+ },
+ "sampled": {
+  "win_rate": 0.965030303030303,
+  "interval": 0.02242175098690201,
+  "value": 0.23842260442712962,
+  "kinds": {
+   "wandering": 0.97,
+   "guards": 0.965,
+   "siege_neutral": 0.81
+  },
+  "games": 600,
+  "skipped": 0,
+  "truncated": 0.0,
+  "seconds": 11.1036959439989,
+  "by_kind": {
+   "wandering": {
+    "attacker": {
+     "episodes": 200,
+     "skipped": 0,
+     "win_rate": 0.97,
+     "reward": 0.2421047795936465,
+     "truncated": 0.0,
+     "by_kind": {
+      "wandering": {
+       "episodes": 200,
+       "win_rate": 0.97
+      }
+     }
+    }
+   },
+   "guards": {
+    "attacker": {
+     "episodes": 200,
+     "skipped": 0,
+     "win_rate": 0.965,
+     "reward": 0.23144098756834863,
+     "truncated": 0.0,
+     "by_kind": {
+      "guards": {
+       "episodes": 200,
+       "win_rate": 0.965
+      }
+     }
+    }
+   },
+   "siege_neutral": {
+    "attacker": {
+     "episodes": 200,
+     "skipped": 0,
+     "win_rate": 0.81,
+     "reward": 0.12912403271882794,
+     "truncated": 0.0,
+     "by_kind": {
+      "siege_neutral": {
+       "episodes": 200,
+       "win_rate": 0.81
+      }
+     }
+    }
+   }
+  }
+ }
+}
