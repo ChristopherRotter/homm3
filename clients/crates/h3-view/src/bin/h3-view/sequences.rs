@@ -269,9 +269,9 @@ fn sequences(options: &Options) -> Result<usize, String> {
             .map_or("", |p| p.id.as_str());
         let tables = assets::load(&assets::default_dir(), top)?;
         let looks = motion::looks(&record, &tables, &archives)?;
-        let magic = motion::magic(&record, &tables, &archives)?;
+        let magic = motion::magic(&record, &tables, &archives, false)?;
         let siege = motion::siege(&record, &tables, &archives)?;
-        let mut casts = motion::casts(&record, &tables, &archives, &options.packs)?;
+        let mut casts = motion::casts(&record, &tables, &archives, &options.packs, false)?;
         // The frame check draws Chain Lightning's rays from the original's draws (E17 M3 T7c-3).
         if let Some(dir) = &options.frames {
             casts.rays = kept_rays(&dir.join(&sequence.id))?;

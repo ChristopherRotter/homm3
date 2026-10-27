@@ -1,7 +1,8 @@
 //! `h3-view window` (E17 M2 T5a, ADR-0024): a battle in a window at the original's frame times,
 //! M2's exit. The battle is loaded as `play` loads it ([`crate::battle`]): a scenario fought by
-//! the bot or a record read, its commands timed by `h3_view::anim`, every asset of its frames in
-//! one checkpoint batch. The window shows the frame of the latest change at or before the
+//! the bot as it plays (E17 M5 T1b: each command when the window reaches the timeline's end) or a
+//! record read, its commands timed by `h3_view::anim`, the assets of its frames in one checkpoint
+//! batch as they are first drawn. The window shows the frame of the latest change at or before the
 //! battle's clock (`h3_view::clock`), composed and widened ahead of its time, presented when it
 //! falls due; past the end the battle idles. Keys: P pauses, → steps a frame while paused, Home
 //! restarts, F fullscreen, V vsync, H the hardware or the drawn cursor, M the music, E the
@@ -37,10 +38,11 @@ use h3_view::compose::FORMAT;
 use h3_view::cursor::Cursor;
 use h3_view::mouse::track::Input;
 use h3_view::scene::Draw;
+use h3_view::sound::Tune;
 
 use crate::assets;
 use crate::audio::{Library, Player};
-use crate::battle::{Battle, Source};
+use crate::battle::{Battle, Ground, Source};
 
 /// How far past the last change the window looks for the next one before it waits for input
 /// only (a battle that no longer changes).
@@ -51,6 +53,17 @@ const IDLE_SPAN_MS: u32 = 60_000;
 
 /// The longest wait for input, so that the clock is read now and then.
 const WAIT_MS: u32 = 250;
+
+/// The tunes a battle may end with (E17 M5 T1b: decoded before a battle fought as it is played
+/// ends).
+const TUNES: [Tune; 6] = [
+    Tune::Win,
+    Tune::Lose,
+    Tune::DefendCastle,
+    Tune::Retreat,
+    Tune::Surrender,
+    Tune::LoseCastle,
+];
 
 /// The command's options.
 #[derive(Debug, PartialEq, Eq)]
@@ -163,7 +176,9 @@ struct Frame {
     xrgb: Vec<u32>,
 }
 
-/// The times at which the battle may change, timed as far as needed.
+/// The times at which the battle may change, timed as far as needed: a battle still played is
+/// played on before a change at or past its timeline's end is given (E17 M5 T1b: what comes then
+/// is the next command's).
 #[derive(Debug)]
 struct Changes {
     times: Vec<u32>,
@@ -171,48 +186,64 @@ struct Changes {
 }
 
 impl Changes {
-    fn new(battle: &Battle) -> Self {
-        let until = battle.timeline.end;
+    fn new(battle: &Battle<'_>) -> Self {
+        let until = battle.timeline().end;
         Self {
-            times: battle.timeline.changes(until),
+            times: battle.timeline().changes(until),
             until,
         }
     }
 
-    /// Times at least up to `t`.
-    fn reach(&mut self, battle: &Battle, t: u32) {
+    /// The times again after the battle grew.
+    fn grown(&mut self, battle: &Battle<'_>) {
+        self.until = self.until.max(battle.timeline().end);
+        self.times = battle.timeline().changes(self.until);
+    }
+
+    /// Times at least up to `t`, the battle played on while its timeline ends by then.
+    fn reach(&mut self, battle: &mut Battle<'_>, t: u32) -> Result<(), String> {
+        if battle.grow(t)? {
+            self.grown(battle);
+        }
         while self.until < t {
             self.until = self.until.saturating_add(IDLE_SPAN_MS);
-            self.times = battle.timeline.changes(self.until);
+            self.times = battle.timeline().changes(self.until);
         }
+        Ok(())
     }
 
     /// The latest change at or before `t`.
-    fn latest(&mut self, battle: &Battle, t: u32) -> u32 {
-        self.reach(battle, t);
+    fn latest(&mut self, battle: &mut Battle<'_>, t: u32) -> Result<u32, String> {
+        self.reach(battle, t)?;
         let i = self.times.partition_point(|&c| c <= t);
-        self.times.get(i.wrapping_sub(1)).copied().unwrap_or(0)
+        Ok(self.times.get(i.wrapping_sub(1)).copied().unwrap_or(0))
     }
 
     /// The first change after `t` (none within [`LOOK_AHEAD_MS`]).
-    fn after(&mut self, battle: &Battle, t: u32) -> Option<u32> {
+    fn after(&mut self, battle: &mut Battle<'_>, t: u32) -> Result<Option<u32>, String> {
         let limit = t.saturating_add(LOOK_AHEAD_MS);
         loop {
             let i = self.times.partition_point(|&c| c <= t);
-            if let Some(&next) = self.times.get(i) {
-                return Some(next);
+            let next = self.times.get(i).copied();
+            if battle.playing() && next.is_none_or(|n| n >= battle.timeline().end) {
+                battle.grow_one()?;
+                self.grown(battle);
+                continue;
+            }
+            if next.is_some() {
+                return Ok(next);
             }
             if self.until >= limit {
-                return None;
+                return Ok(None);
             }
             let more = self.until.saturating_add(1);
-            self.reach(battle, more);
+            self.reach(battle, more)?;
         }
     }
 }
 
 /// The frame of the change at `t`.
-fn frame_at(battle: &Battle, t: u32) -> Result<Frame, String> {
+fn frame_at(battle: &mut Battle<'_>, t: u32) -> Result<Frame, String> {
     let list = battle.list_at(t)?;
     let screen = battle.compose(t, &list)?;
     let xrgb = screen.xrgb();
@@ -226,14 +257,14 @@ fn frame_at(battle: &Battle, t: u32) -> Result<Frame, String> {
 
 /// The next frame after `shown`: the first later change that draws something else.
 fn next_frame(
-    battle: &Battle,
+    battle: &mut Battle<'_>,
     changes: &mut Changes,
     shown: &Frame,
 ) -> Result<Option<Frame>, String> {
     let mut t = shown.t;
-    while let Some(next) = changes.after(battle, t) {
+    while let Some(next) = changes.after(battle, t)? {
         // Past the end of a still battle only the idle steps come, each drawing the same.
-        if next > battle.timeline.end && battle.timeline.still() {
+        if !battle.playing() && next > battle.timeline().end && battle.timeline().still() {
             return Ok(None);
         }
         let list = battle.list_at(next)?;
@@ -272,13 +303,11 @@ struct Report {
 fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
     let mut lines = Vec::new();
     let source = &options.source;
-    let mut battle = Battle::load(source, None, &mut lines)?;
-    // The checkpoint batch: every frame's names to the end, and the cursor.
-    let frames = battle.frames(battle.timeline.end)?;
+    let ground = Ground::load(source)?;
+    let mut battle = Battle::new(&ground)?;
+    // The checkpoint batch: the cursor now, each frame's names as it is first drawn.
     let combat = battle.layout().mouse.cursor.clone();
-    battle.load_batch(frames.iter().map(|(_, _, l)| l.as_slice()), &[&combat])?;
-    let count = frames.len();
-    drop(frames);
+    battle.load_batch(std::iter::empty(), &[&combat])?;
     // The combat cursor's frames as the mouse manager draws them (E17 M3 T6c-2), made as shown.
     let mut cursors = Cursors::default();
     let mut frame_now = battle.cursor_frame(options.from);
@@ -312,7 +341,7 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
             &source.install,
             opening,
             sounds,
-            battle.end_tune().map(|(_, tune)| tune),
+            &TUNES,
             &mut lines,
         )?)
     };
@@ -324,9 +353,8 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
         }
         None => None,
     };
-    let mut cue = battle.timeline.cue_from(options.from);
-    // The battle's end (E17 M3 T8): when its tune starts; whether it has.
-    let ending = battle.end_tune().map(|(at, _)| at);
+    let mut cue = battle.timeline().cue_from(options.from);
+    // Whether the battle's end's tune started (E17 M3 T8).
     let mut ended = false;
 
     let mut changes = Changes::new(&battle);
@@ -344,7 +372,8 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
         }
     }
     let mut shown: Option<Frame> = None;
-    let mut next = Some(frame_at(&battle, changes.latest(&battle, options.from))?);
+    let from = changes.latest(&mut battle, options.from)?;
+    let mut next = Some(frame_at(&mut battle, from)?);
     let mut pointer: Option<(i32, i32)> = None;
     // The mouse's moves, the log's scrolls and the button held (E17 M3 T6c-2).
     let mut inputs: Vec<Input> = Vec::new();
@@ -403,7 +432,7 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                         // The sounds of the frames stepped over are dropped; the next frame's,
                         // cued as this one shows, play when the battle runs again.
                         clock.seek(now, f.t);
-                        cue = battle.timeline.cue_from(f.t);
+                        cue = battle.timeline().cue_from(f.t);
                         if let Some(p) = player.as_mut() {
                             p.silence();
                         }
@@ -418,8 +447,9 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                     scrolls.retain(|&(t, _)| t <= options.from);
                     mouse_changed = true;
                     shown = None;
-                    next = Some(frame_at(&battle, changes.latest(&battle, options.from))?);
-                    cue = battle.timeline.cue_from(options.from);
+                    let from = changes.latest(&mut battle, options.from)?;
+                    next = Some(frame_at(&mut battle, from)?);
+                    cue = battle.timeline().cue_from(options.from);
                     if let Some(p) = player.as_mut() {
                         p.silence();
                         // The end's tune gives way to the battle's music again.
@@ -530,7 +560,8 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
             if changed {
                 let ms = clock.ms(win.ticks_ns());
                 changes = Changes::new(&battle);
-                next = Some(frame_at(&battle, changes.latest(&battle, ms))?);
+                let latest = changes.latest(&mut battle, ms)?;
+                next = Some(frame_at(&mut battle, latest)?);
                 shown = None;
             }
         }
@@ -538,7 +569,7 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
         // it changes.
         let ms = clock.ms(win.ticks_ns());
         let frame = battle.cursor_frame(ms);
-        let visible = !battle.timeline.cursor_hidden(ms);
+        let visible = !battle.timeline().cursor_hidden(ms);
         if (frame, visible) != (frame_now, cursor_visible) {
             (frame_now, cursor_visible) = (frame, visible);
             if drawn_cursor {
@@ -573,12 +604,20 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
         let battle_ms = clock.ms(now);
         if let (Some(p), Some(lib)) = (player.as_mut(), library.as_ref()) {
             if !clock.paused() {
-                while let Some(c) = battle.timeline.cues.get(cue).filter(|c| c.at <= battle_ms) {
+                while let Some(c) = battle
+                    .timeline()
+                    .cues
+                    .get(cue)
+                    .filter(|c| c.at <= battle_ms)
+                {
                     p.cue(lib, c);
                     cue += 1;
                 }
-                if !ended && ending.is_some_and(|at| at <= battle_ms) {
-                    p.end(lib);
+                if let Some((_, tune)) = battle
+                    .end_tune()
+                    .filter(|(at, _)| !ended && *at <= battle_ms)
+                {
+                    p.end(lib, tune);
                     ended = true;
                 }
             }
@@ -589,16 +628,16 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
         let due = match next.take_if(|f| f.t <= battle_ms) {
             None => None,
             Some(d) => {
-                let latest = changes.latest(&battle, battle_ms);
+                let latest = changes.latest(&mut battle, battle_ms)?;
                 if latest <= d.t {
                     Some(d)
                 } else {
                     report.skipped += 1;
-                    let late = frame_at(&battle, latest)?;
+                    let late = frame_at(&mut battle, latest)?;
                     match shown.as_mut().filter(|s| s.list == late.list) {
                         Some(s) => {
                             s.t = latest;
-                            next = next_frame(&battle, &mut changes, s)?;
+                            next = next_frame(&mut battle, &mut changes, s)?;
                             None
                         }
                         None => Some(late),
@@ -622,7 +661,7 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
             if let Some((back, presented)) = back {
                 compare(&back, &due, &presented, &mut report);
             }
-            next = next_frame(&battle, &mut changes, &due)?;
+            next = next_frame(&mut battle, &mut changes, &due)?;
             shown = Some(due);
         } else if redraw && let Some(f) = &shown {
             show(
@@ -647,10 +686,9 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
     drop(player);
     drop(win);
     lines.push(format!(
-        "{} commands, {} ms at speed {}; {count} frames to the end; {} shown in {} ms, {} \
-         passed over",
-        battle.commands,
-        battle.timeline.end,
+        "{} commands, {} ms at speed {}; {} shown in {} ms, {} passed over",
+        battle.commands(),
+        battle.timeline().end,
         source.speed.setting(),
         report.late_us.len(),
         seconds,
@@ -703,7 +741,7 @@ struct Cursors {
 
 impl Cursors {
     /// Frame `frame` of the battle's combat cursor with its hot spot (the layout's).
-    fn get(&mut self, battle: &Battle, frame: u32) -> Result<(Cursor, CursorImage), String> {
+    fn get(&mut self, battle: &Battle<'_>, frame: u32) -> Result<(Cursor, CursorImage), String> {
         if let Some(made) = self.made.get(&frame) {
             return Ok(made.clone());
         }

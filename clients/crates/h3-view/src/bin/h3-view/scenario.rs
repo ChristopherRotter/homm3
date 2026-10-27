@@ -7,17 +7,14 @@ use std::collections::BTreeMap;
 use std::fs;
 use std::path::Path;
 
-use h3_battle::{BattleSetup, BattleSide, BattleState, LegalCommands, NoopSink, Viewer};
+use h3_battle::{BattleSetup, BattleState, NoopSink, Viewer};
 use h3_content::{CompiledHeroEffect, HeroEffect};
 use h3_content_battle::BattleRuleset;
 use h3_contracts::{BattleEffect, FortLevel, MachineControl};
 use h3_kernel::{Rng, StreamId};
-use h3_protocol::session::Bot as _;
 use h3_protocol::session::{ConnId, GameConfig, SeatKind, Session};
 use h3_protocol::wire::{ClientMessage, Command, Manifest, Observation, Seat, ServerMessage};
 use h3_protocol::{codec, map};
-
-use crate::bot::Greedy;
 
 /// The game's id in the in-process session.
 const GAME: u32 = 1;
@@ -473,18 +470,24 @@ pub fn turned(
 }
 
 /// The most commands a fought battle may take.
-const FOUGHT_LIMIT: usize = 5_000;
+pub(crate) const FOUGHT_LIMIT: usize = 5_000;
 
 /// The record of a spectator of the battle `scenario` sets up with `seed`, fought to its end by
 /// [`Greedy`] for both sides (E17 M2 T4b-2a, `h3-view play`): the engine plays the battle, then
 /// the session replays its commands from the seats, as [`played`] does.
 /// With it the commands each seat sent (E17 M3 T6c-2: the window asks the battle at each turn,
-/// [`turned`]).
+/// [`turned`]). Since E17 M5 T1b `play` and `window` fight it as they play it (`crate::live`):
+/// this is the reference its test compares with.
+#[cfg(test)]
 pub fn fought(
     scenario: &Path,
     packs: &Path,
     seed: u64,
 ) -> Result<(String, Vec<(Seat, Command)>), String> {
+    use crate::bot::Greedy;
+    use h3_battle::{BattleSide, LegalCommands};
+    use h3_protocol::session::Bot as _;
+
     let (ruleset, setup) = battle(scenario, packs, seed)?;
     let mut state =
         BattleState::new(&ruleset, &setup, seed).map_err(|e| format!("the setup: {e:?}"))?;
@@ -524,7 +527,7 @@ fn config(setup: BattleSetup, seed: u64) -> GameConfig {
 }
 
 /// The record of the spectator on `viewer`.
-fn fetch_record(session: &mut Session<'_>, viewer: ConnId) -> Result<String, String> {
+pub(crate) fn fetch_record(session: &mut Session<'_>, viewer: ConnId) -> Result<String, String> {
     let mut out = Vec::new();
     session.handle(viewer, ClientMessage::FetchRecord { seq: 1 }, &mut out);
     for frame in out {
@@ -557,34 +560,11 @@ fn played_as(
     seat: Seat,
 ) -> Result<String, String> {
     let (ruleset, setup) = battle(scenario, packs, seed)?;
-    let config = config(setup, seed);
-    let seats = ["attacker", "defender"].map(|token| SeatKind::Player {
-        token: token.to_owned(),
-    });
-    let mut session =
-        Session::new(&ruleset, config, seats).map_err(|e| format!("the setup: {e:?}"))?;
-    let (viewer, mut out) = (ConnId(1), Vec::new());
-    let join = ClientMessage::Join {
-        game: GAME,
-        seat: Seat::Spectator,
-        token: None,
-    };
-    session.handle(viewer, join, &mut out);
-    if !commands.is_empty() || seat != Seat::Spectator {
-        for (conn, seat, token) in [
-            (2, Seat::Attacker, "attacker"),
-            (3, Seat::Defender, "defender"),
-        ] {
-            let join = ClientMessage::Join {
-                game: GAME,
-                seat,
-                token: Some(token.to_owned()),
-            };
-            session.handle(ConnId(conn), join, &mut out);
-        }
-    }
+    let seated = !commands.is_empty() || seat != Seat::Spectator;
+    let mut session = hosted(&ruleset, setup, seed, seated)?;
+    let viewer = VIEWER;
     for (seq, &(seat, command)) in (1..).zip(commands) {
-        let conn = ConnId(if seat == Seat::Attacker { 2 } else { 3 });
+        let conn = seat_conn(seat);
         let mut replies = Vec::new();
         session.handle(conn, ClientMessage::Command { seq, command }, &mut replies);
         for frame in &replies {
@@ -596,11 +576,53 @@ fn played_as(
         }
     }
     let reader = match seat {
-        Seat::Attacker => ConnId(2),
-        Seat::Defender => ConnId(3),
         Seat::Spectator => viewer,
+        seat => seat_conn(seat),
     };
     fetch_record(&mut session, reader)
+}
+
+/// The spectator's connection in the in-process session.
+pub(crate) const VIEWER: ConnId = ConnId(1);
+
+/// The connection that holds `seat` (the attacker's or the defender's) in the in-process session.
+pub(crate) fn seat_conn(seat: Seat) -> ConnId {
+    ConnId(if seat == Seat::Attacker { 2 } else { 3 })
+}
+
+/// The battle `setup` with `seed` hosted by the session in-process (`ruleset` compiled from its
+/// packs): a spectator joined on [`VIEWER`] (its record every message), both seats taken by
+/// their tokens on their connections ([`seat_conn`]) when `seated` (the game then starts).
+pub(crate) fn hosted<'r>(
+    ruleset: &'r BattleRuleset,
+    setup: BattleSetup,
+    seed: u64,
+    seated: bool,
+) -> Result<Session<'r>, String> {
+    let config = config(setup, seed);
+    let seats = ["attacker", "defender"].map(|token| SeatKind::Player {
+        token: token.to_owned(),
+    });
+    let mut session =
+        Session::new(ruleset, config, seats).map_err(|e| format!("the setup: {e:?}"))?;
+    let mut out = Vec::new();
+    let join = ClientMessage::Join {
+        game: GAME,
+        seat: Seat::Spectator,
+        token: None,
+    };
+    session.handle(VIEWER, join, &mut out);
+    if seated {
+        for (seat, token) in [(Seat::Attacker, "attacker"), (Seat::Defender, "defender")] {
+            let join = ClientMessage::Join {
+                game: GAME,
+                seat,
+                token: Some(token.to_owned()),
+            };
+            session.handle(seat_conn(seat), join, &mut out);
+        }
+    }
+    Ok(session)
 }
 
 #[cfg(test)]

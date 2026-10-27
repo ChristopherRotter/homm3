@@ -266,13 +266,20 @@ fn missile(
 /// after a strike's, the bolt from the sky ([`BOLT`], the Thunderbird's [`THUNDERBOLT`] after it),
 /// Life Drain's, Death Stare's and the acid's ([`LIFE_DRAIN`], [`DEATH_STARE`], [`ACID`]); since
 /// E17 M3 T7c-2 each spell object's placing and vanishing ones; since E17 M4 T2c-1 a Land Mine's
-/// blast ([`MINE_BLAST`]); each with its DEF's frames and size.
+/// blast ([`MINE_BLAST`]); each with its DEF's frames and size. With `every` (E17 M5 T1b: a
+/// battle fought as it is played, whose events are not known yet), every magic animation of the
+/// asset tables.
 pub fn magic(
     record: &Record,
     tables: &Tables,
     archives: &[(&str, LodArchive<'_>)],
+    every: bool,
 ) -> Result<BTreeMap<u8, MagicLook>, String> {
     let mut numbers = std::collections::BTreeSet::new();
+    if every {
+        let all = u8::try_from(tables.battle.magic.len()).unwrap_or(u8::MAX);
+        numbers.extend(0..all);
+    }
     // The objects a spell places, the snapshot's too (E17 M3 T7c-2): placed and gone.
     let placed = record
         .first_snapshot()
@@ -395,12 +402,15 @@ pub fn magic(
 /// each side's hero's mastery, from the ruleset the record's packs compile to (`packs`; the
 /// mastery of the viewer's own hero, none for the other side's, which the record does not show:
 /// *provisional*); with a stack frightened, the record's creatures that frighten (the ruleset's
-/// `fear`, E17 M3 T7b-2b-2b: Fear's line names them).
+/// `fear`, E17 M3 T7b-2b-2b: Fear's line names them). With `every` (E17 M5 T1b: a battle fought
+/// as it is played), every spell's, as if each were cast and a stack frightened and a shield
+/// returned.
 pub fn casts(
     record: &Record,
     tables: &Tables,
     archives: &[(&str, LodArchive<'_>)],
     packs: &Path,
+    every: bool,
 ) -> Result<Casts, String> {
     let groups = tables.battle.hero_groups;
     let mut casts = Casts {
@@ -410,9 +420,7 @@ pub fn casts(
     let snapshot = record
         .first_snapshot()
         .ok_or("the record holds no snapshot")?;
-    let mut cast = false;
-    let mut frightened = false;
-    let mut reflected = false;
+    let (mut cast, mut frightened, mut reflected) = (every, every, every);
     let mut spells: Vec<u16> = snapshot
         .stacks
         .iter()
@@ -456,6 +464,10 @@ pub fn casts(
             Event::StrikeDamage { .. } => spells.extend(numbered(ACID_BREATH)),
             _ => {}
         }
+    }
+    if every {
+        let count = u16::try_from(record.header.manifest.keys.spells.len()).unwrap_or(u16::MAX);
+        spells.extend(0..count);
     }
     spells.sort_unstable();
     spells.dedup();

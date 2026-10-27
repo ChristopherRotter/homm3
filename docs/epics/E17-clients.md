@@ -142,10 +142,11 @@ the stacks created mid-battle.
   timeline forward, a frame costing what changed since the one before (0.3 to 1 µs, against
   `Moment::at`'s 1.6 to 7 µs over `play`'s 82 seconds and 306 µs half an hour after its end; the
   2.3 ms a frame was the composing); `play`, `window` and `sequences` draw through it.
-- **T1b, the timeline that grows** (T1 cut in two, the user, 2026-10-27): the timeline takes
-  commands as they arrive; the window plays the bot's battle with its commands arriving while it
-  plays, the batch, the sounds, the panel and the mouse growing with them; every recorded
-  sequence's timeline and frames unchanged (`sequences`, `drawn`).
+- **T1b, the timeline that grows** (T1 cut in two, the user; done 2026-10-27): `anim::Growing`
+  takes the commands as they arrive (its lists only appended to); `play` and the window fight a
+  scenario as they play it (`live.rs`: the session in-process, both seats held, the bot's
+  command asked for when a frame reaches the timeline's end), the record, the panel, the mouse
+  and the batch growing with it; `play`'s output byte for byte as fought at once.
 - **T2, hot seat: the player's commands:** a click does what the cursor shows (a walk, an attack
   from the cursor's side, a shot, the Catapult's target, a Faerie Dragon's cast), Wait and Defend
   and their keys (the window's, until E24 M3 T0's common key table: QUEUE's inbox); the input

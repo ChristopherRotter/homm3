@@ -90,8 +90,10 @@ search the parent directories).
   in hot seat (`situation --hot-seat`; E17 M3 T1a, the runbook's "A battle in progress").
 - **A whole battle, frame by frame** (E17 M2 T4b-2a, design §7.10): `cargo run --release -p h3-view
   -- play scenarios/battle.toml [--seed <n>] [--png] [--from <ms>] [--to <ms>]` (from `clients/`)
-  has a simple bot fight the scenario to its end in-process (or reads a record file), plays its
-  commands at the original's timing with the viewer's own fidgets and draws every distinct frame:
+  has a simple bot fight the scenario to its end in-process (or reads a record file), as it is
+  played since E17 M5 T1b (each command asked for when the frames reach the timeline's end, sent
+  from its seat through `h3-protocol`'s session: `live.rs`), plays its commands at the
+  original's timing with the viewer's own fidgets and draws every distinct frame:
   `clients/out/play/<stem>-s<seed>/` holds the record, `frames.txt` (each frame's moment),
   `cues.txt` (the creatures' sounds as they start and stop, T5b) and, with `--png`, `f<ms>.png`;
   `--to` past the end lets the battle idle. `--moments` (E17 M5 T1a) times a frame's moment for

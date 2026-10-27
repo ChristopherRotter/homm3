@@ -8,9 +8,9 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   accepted, CLT-Q22 to Q24 answered (a); the lane split at M3 T9c, CLT-Q18: the battle client
   here, the adventure map client the map-client lane's E24). **M5 (live play)** (QUEUE, the
   epic's M5): hot seat in-process first, then a game on a server and accounts; the new
-  dependencies the user's at T6 and T7. T1 cut in two (the user): **T1a done** (the playhead,
-  `anim::Playhead`). **Next: M5 T1b** (the timeline that grows, the window's live source). Open
-  PR: #506 (T1a; check it first). Workspace `clients/`
+  dependencies the user's at T6 and T7. **T1a and T1b done** (the playhead; the timeline that
+  grows, `play` and the window fighting a scenario as they play it, `live.rs`). **Next: M5 T2**
+  (hot seat: the player's commands). Open PR: #509 (T1b; check it first). Workspace `clients/`
   (`clients/README.md`), gates `clients/scripts/check.sh`; ADR-0020 (+ drafts in
   `adr-drafts/`), ADR-0024; the harness `clients/capture/README.md`; design §3–§10; records in
   `E17-log.md`.
@@ -37,7 +37,13 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
 
 ## Recent sessions
 
-- **2026-10-27, E17 M5 T1a (done; #506 open: check it first).** T1 cut in two (the user: T1a,
+- **2026-10-27, E17 M5 T1b (done; #509 open: check it first).** Whole, as cut at T1a.
+  `anim::Growing` (the timeline a command at a time, only appended to; a drawbridge span open
+  until the next redraw), `Playhead::extend`; `battle.rs` as `Ground` and `Battle<'g>`,
+  `live.rs` (the session in-process, the bot's command when a frame reaches the timeline's end);
+  `motion`'s `every`; the panel's reads logarithmic. `play` byte for byte as fought at once;
+  `window --check` 1 094 frames exact. No new question.
+- **2026-10-27, E17 M5 T1a (done; #506 merged).** T1 cut in two (the user: T1a,
   T1b). The sandbox new, the original files staged again before the computer disconnected.
   Measured: R2-7's 2.3 ms was the composing; `Moment::at` 1.6 to 7 µs over `play`'s battle,
   306 µs half an hour into its idle end. `anim::Playhead` reads the timeline forward (0.3 to
@@ -49,9 +55,3 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
   closure; CLT-Q22 to Q24 answered (a), Q24's switch in M5 T2; M5 refined as drafted (T1 to T8;
   the inbox entries it takes moved into its tasks, their text in `QUEUE-ARCHIVE.md`). **M4
   done.** The original files staged into the sandbox before the user's computer disconnected.
-- **2026-10-27, E17 M4 T3b-2 (done; #501 merged).** Not cut (the user). The 29
-  sequences captured afresh, all as recorded: 25 at once, `strike`, `luck` and `bolt` at a rerun
-  (the original's luck and spell power varied: the starting bonus likely, runbook "Traps",
-  review item 15 a proposed fix), `sacrifice` with the engine's seed 9 (the original's 23 in
-  three runs; review item 14). The casts' `hovered` fits T3b-1's rule (the book still
-  *provisional*). `drawn` recorded (`sacrifice`). No new question.

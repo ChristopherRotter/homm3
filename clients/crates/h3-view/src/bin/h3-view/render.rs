@@ -273,9 +273,9 @@ fn render(options: &Options) -> Result<Vec<String>, String> {
         // commands at the original's timing without fidgets of the viewer's own, each frame with
         // the fidgets the original showed then, as the frame check draws a sequence's.
         let looks = motion::looks(&record, &tables, &archives)?;
-        let magic = motion::magic(&record, &tables, &archives)?;
+        let magic = motion::magic(&record, &tables, &archives, false)?;
         let siege = motion::siege(&record, &tables, &archives)?;
-        let casts = motion::casts(&record, &tables, &archives, &options.packs)?;
+        let casts = motion::casts(&record, &tables, &archives, &options.packs, false)?;
         let stage = motion::stage(&record, &tables, &layout, (&magic, &casts, siege.as_ref()));
         let commands = anim::commands(&record.messages);
         let timeline = anim::timeline(
@@ -334,9 +334,9 @@ fn render(options: &Options) -> Result<Vec<String>, String> {
         Some(t) => {
             // The record's commands at the original's timing (E17 M2 T4a, `h3_view::anim`).
             let looks = motion::looks(&record, &tables, &archives)?;
-            let magic = motion::magic(&record, &tables, &archives)?;
+            let magic = motion::magic(&record, &tables, &archives, false)?;
             let siege = motion::siege(&record, &tables, &archives)?;
-            let casts = motion::casts(&record, &tables, &archives, &options.packs)?;
+            let casts = motion::casts(&record, &tables, &archives, &options.packs, false)?;
             let stage = motion::stage(&record, &tables, &layout, (&magic, &casts, siege.as_ref()));
             let commands = anim::commands(&record.messages);
             // With the viewer's own fidgets, from the seed (T4b-2a), and its heroes' (E17 M3

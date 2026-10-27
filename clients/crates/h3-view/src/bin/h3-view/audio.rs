@@ -53,8 +53,9 @@ pub struct Library {
     clips: BTreeMap<String, Pcm>,
     /// The music: its rate, channels and samples.
     music: Option<Music>,
-    /// The end's tune, if the battle ends (E17 M3 T8).
-    tune: Option<Music>,
+    /// The end's tunes (E17 M3 T8), each the battle may end with (E17 M5 T1b: a battle fought
+    /// as it is played does not know which yet).
+    tunes: Vec<(Tune, Music)>,
     /// The start sound's name.
     start: String,
     /// How long the decoding took, in ms.
@@ -68,17 +69,17 @@ pub struct Library {
 
 impl Library {
     /// Decodes the start sound, every sound of `stacks` and the battle's own sounds `named` by cue
-    /// from the sound archives of `install`, and the music and the end's `tune` from its `MP3`
+    /// from the sound archives of `install`, and the music and the end's `tunes` from its `MP3`
     /// folder. A missing or undecodable sound costs that sound, noted in `lines`.
     pub fn load(
         install: &Path,
         opening: Opening,
         (stacks, named): (BTreeMap<u8, Sounds>, BTreeMap<Sound, String>),
-        tune: Option<Tune>,
+        tunes: &[Tune],
         lines: &mut Vec<String>,
     ) -> Result<Self, String> {
         let (result, took) =
-            crate::gate::timed(|| Self::decode(install, opening, (stacks, named), tune, lines));
+            crate::gate::timed(|| Self::decode(install, opening, (stacks, named), tunes, lines));
         let mut library = result?;
         library.took = took.as_millis();
         Ok(library)
@@ -89,7 +90,7 @@ impl Library {
         install: &Path,
         opening: Opening,
         (stacks, named): (BTreeMap<u8, Sounds>, BTreeMap<Sound, String>),
-        tune: Option<Tune>,
+        tunes: &[Tune],
         lines: &mut Vec<String>,
     ) -> Result<Self, String> {
         let start = opening.start_sound();
@@ -138,19 +139,26 @@ impl Library {
             lines.push(format!("sound: not found: {}", missing.join(", ")));
         }
         let music = mp3(install, &opening.music_file(), lines)?;
-        let tune = match tune {
-            Some(t) => mp3(install, t.file(), lines)?,
-            None => None,
-        };
+        let mut decoded = Vec::new();
+        for &tune in tunes {
+            if let Some(music) = mp3(install, tune.file(), lines)? {
+                decoded.push((tune, music));
+            }
+        }
         Ok(Self {
             clips,
             music,
-            tune,
+            tunes: decoded,
             start: start.to_ascii_uppercase(),
             took: 0,
             stacks,
             named,
         })
+    }
+
+    /// The end's `tune`, if it was decoded.
+    fn tune(&self, tune: Tune) -> Option<&Music> {
+        self.tunes.iter().find(|(t, _)| *t == tune).map(|(_, m)| m)
     }
 
     /// The clip of `stack`'s `sound`, if the creature has it and it was found.
@@ -171,10 +179,10 @@ impl Library {
                 format!("music {rate} Hz × {channels}, {seconds} s")
             },
         );
-        let tune = if self.tune.is_some() {
-            ", the end's tune"
-        } else {
-            ""
+        let tune = match self.tunes.len() {
+            0 => String::new(),
+            1 => ", the end's tune".to_owned(),
+            n => format!(", the end's {n} tunes"),
         };
         format!(
             "sound: {} clips, {music}{tune}, decoded in {} ms",
@@ -209,8 +217,8 @@ pub struct Player {
     music: Option<(u64, usize)>,
     /// The music's format on its stream.
     music_format: (u32, u16),
-    /// The end's tune playing instead of the music: the next sample to queue (E17 M3 T8).
-    tune: Option<usize>,
+    /// The end's tune playing instead of the music, and its next sample to queue (E17 M3 T8).
+    tune: Option<(Tune, usize)>,
     /// Since when the sound is held.
     paused: Option<u64>,
     /// Whether the music and the effects are heard (the keys M and E).
@@ -286,15 +294,15 @@ impl Player {
 
     /// The battle's end (E17 M3 T8, design §8.2): every effect ends, the start sound's stream
     /// too, and the end's tune replaces the music, played once from its start at the music's
-    /// volume (`play_music` with a loop count of 1: no fade-in).
-    pub fn end(&mut self, library: &Library) {
+    /// volume (`play_music` with a loop count of 1: no fade-in): `tune`, if it was decoded.
+    pub fn end(&mut self, library: &Library, tune: Tune) {
         self.silence();
         self.out.clear(self.start_stream);
         self.out.clear(self.music_stream);
         self.music = None;
-        if let Some((rate, channels, _)) = library.tune.as_ref() {
+        if let Some((rate, channels, _)) = library.tune(tune) {
             self.out.set_format(self.music_stream, *rate, *channels);
-            self.tune = Some(0);
+            self.tune = Some((tune, 0));
         }
     }
 
@@ -411,9 +419,8 @@ impl Player {
                 let _ = self.out.put(c.stream, &clip.samples, false);
             }
         }
-        if let (Some(next), Some((rate, channels, samples))) =
-            (self.tune.as_mut(), library.tune.as_ref())
-        {
+        let playing = self.tune.and_then(|(t, _)| library.tune(t));
+        if let (Some((_, next)), Some((rate, channels, samples))) = (self.tune.as_mut(), playing) {
             let volume = if self.music_on { MUSIC_VOLUME } else { 0 };
             self.out.set_gain(self.music_stream, gain(volume));
             // Once: queued up to its end, never from its start again.

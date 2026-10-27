@@ -10,8 +10,8 @@ use h3_protocol::wire::{Stack, Strike, WireU64};
 use crate::record::tests::observation;
 use crate::scene::tests::{layout, stack, tables};
 
-/// [`super::timeline`], its playhead checked against [`crate::scene::Moment::at`] (E17 M5 T1a):
-/// every replay of the tests is.
+/// [`super::timeline`], its playhead checked against [`crate::scene::Moment::at`] (E17 M5 T1a)
+/// and grown a command at a time (T1b): every replay of the tests is.
 fn timeline(
     snapshot: &Observation,
     commands: &[Command<'_>],
@@ -19,7 +19,10 @@ fn timeline(
     stage: Stage<'_>,
     speed: Speed,
 ) -> Result<Timeline, AnimError> {
-    super::timeline(snapshot, commands, looks, stage, speed).inspect(playhead::agrees)
+    super::timeline(snapshot, commands, looks, stage, speed).inspect(|whole| {
+        playhead::agrees(whole);
+        playhead::grows((snapshot, commands, looks), stage, (speed, None), whole);
+    })
 }
 
 /// [`super::fidgeting`], its playhead checked as [`timeline`]'s.
@@ -31,7 +34,15 @@ fn fidgeting(
     speed: Speed,
     seed: u32,
 ) -> Result<Timeline, AnimError> {
-    super::fidgeting(snapshot, commands, looks, stage, speed, seed).inspect(playhead::agrees)
+    super::fidgeting(snapshot, commands, looks, stage, speed, seed).inspect(|whole| {
+        playhead::agrees(whole);
+        playhead::grows(
+            (snapshot, commands, looks),
+            stage,
+            (speed, Some(seed)),
+            whole,
+        );
+    })
 }
 
 /// The recorded timelines (design §7.6).

@@ -116,15 +116,32 @@ pub struct Kept {
 /// buttons enabled once a human's turn started outside the tactics phase.
 #[must_use]
 pub fn kept(observation: &Observation, started: &[(Side, bool)], built: Side) -> Kept {
-    let human = |s: Side| observation.sides[usize::from(s == Side::Defender)].human;
-    let colours = started
-        .iter()
-        .rev()
-        .map(|&(s, _)| s)
-        .find(|&s| human(s))
-        .unwrap_or(built);
-    let scroll = started.iter().any(|&(s, tactics)| human(s) && !tactics);
-    Kept { colours, scroll }
+    started.iter().fold(Kept::built(built), |kept, &turn| {
+        kept.then(observation, turn)
+    })
+}
+
+impl Kept {
+    /// What a panel built for the side `built` keeps before any turn ([`kept`]).
+    #[must_use]
+    pub fn built(built: Side) -> Self {
+        Self {
+            colours: built,
+            scroll: false,
+        }
+    }
+
+    /// What it keeps after one more turn started: its acting side (the stack's controller) and
+    /// whether the tactics phase ran, in the battle `observation` (E17 M5 T1b: [`kept`] turn by
+    /// turn).
+    #[must_use]
+    pub fn then(self, observation: &Observation, (side, tactics): (Side, bool)) -> Self {
+        let human = observation.sides[usize::from(side == Side::Defender)].human;
+        Self {
+            colours: if human { side } else { self.colours },
+            scroll: self.scroll || (human && !tactics),
+        }
+    }
 }
 
 /// What the panel shows when the stacks of `side` (the active stack's controller; none before a

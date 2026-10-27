@@ -74,7 +74,8 @@ pub const DRAWBRIDGE_RECT: [i32; 4] = [365, 211, 543, 381];
 pub struct BridgeKey {
     /// When the first redraw shows.
     pub from: u32,
-    /// When the next frame shows the battle beyond the rectangle.
+    /// When the next frame shows the battle beyond the rectangle ([`u32::MAX`]: not yet known,
+    /// a growing timeline's last span, `crate::anim::Growing`).
     pub until: u32,
 }
 
