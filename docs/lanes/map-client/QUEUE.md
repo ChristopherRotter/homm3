@@ -21,22 +21,9 @@ the walk's timing headless, and T3b, the walk drawn (taken whole), both done 202
 at its seam before it started (the user, 2026-10-27): T4a, the window replaying and the key
 table (done 2026-10-27), then T4b, the map's live input and the Windows build, cut at its seam
 before it started (the user, 2026-10-27): T4b1, the live input in the sandbox (done 2026-10-27),
-then T4b2, the Windows build on the user's machine. T5, the sound, done whole 2026-10-27 (the
-user chose it over a cut).
-
-### E24 M2 T4b2 — the Windows build tried on the user's machine
-
-- **Scope:** the Windows cross-build of `h3-map-view` (`--target x86_64-pc-windows-gnu`,
-  `mingw-w64`, as E17 design §8.1: `rustup target add` worked in the sandbox on 2026-10-27), a
-  `.cmd` for the user (as E17's `clients/out/win/measure.cmd`: a situation and a sequence, each
-  `--check` and `--measure`, the output written to a file), the build and the `.cmd` put into
-  the user's `clients/out/win/` (the link to the user's computer; else sent in the conversation),
-  the user watching the window and trying the keys and the mouse (design §3.10); the frame and
-  input delays recorded; what the user finds fixed or queued.
-- **Acceptance:** the Windows build's `--check` exact on the user's machine (the read-back and the
-  headless check); the delays recorded in design §3.10; the Definition of Done.
-- **Depends on:** T4b1 (done). **Status:** ready; needs the user at the machine (or the user
-  runs the `.cmd` and pastes its output).
+then T4b2, the Windows build on the user's machine (done 2026-10-27), which found the view's
+drawing too slow: T4b3 (the user, 2026-10-27; done 2026-10-27). T5, the sound, done whole 2026-10-27 (the user
+chose it over a cut).
 
 ### E24 M2 T6 — M2's closure
 
@@ -46,12 +33,21 @@ user chose it over a cut).
   user; M2's section moved to `E24-archive.md`; M3 T0 queued (the common crate proposed to the
   client lane first: the epic's M2 decision).
 - **Acceptance:** the review list accepted by the user; the Definition of Done.
-- **Depends on:** T1a1 to T5 (T4b1 and T4b2). **Status:** ready after them.
+- **Depends on:** T1a1 to T5 (T4b1 to T4b3). **Status:** ready.
 
 ## Inbox
 
 Other lanes add entries here. The map client lane turns each into a task, or keeps one line here
 while the work waits.
+
+- 2026-10-27 (this lane, E24 M2 T4b3; the user: "it will do for now, but we should check back in
+  at some point"): **a frame's fixed cost.** A frame takes 4 to 6 ms to make on the user's machine
+  (5.7 in the sandbox), about 4 even for a near-empty view: the frame picture's and the terrain's
+  pixels drawn every frame, the widening to 32 bits, the painter's two copies of the screen, the
+  scene built afresh, the objects' transparent pixels still visited (design §3.12, "Left"). Take
+  it up with the next work that touches the drawing (M3's panels at the latest): spans of a
+  frame's drawn pixels made once, the frame picture converted once a viewer, no screen copies, a
+  scroll or a walk redrawing only what moved; measure with `map-measure.cmd`'s "a frame made in".
 
 - 2026-10-26 (the adventure lane, E08 T57; for information, nothing to do): the harness's
   reads and steps for batch E7 (`clients/capture/README.md`, "Rewards on the map"). Behaviour that

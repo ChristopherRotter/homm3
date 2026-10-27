@@ -22,7 +22,8 @@
 //! one); each key it names must be one the adapter knows (`h3_sdl::Key`), Control held with
 //! `Ctrl+`. `--check <s>` and `--measure <s>` run unattended for that many seconds (the window's
 //! own keys but quit do nothing; the map's input is taken) and report when each frame showed
-//! against its time; `--check` also reads every frame back before presenting it and compares it
+//! against its time and how long the frames took to make (the view composed, the cursor drawn,
+//! the frame widened: E24 M2 T4b3); `--check` also reads every frame back before presenting it and compares it
 //! with the composed frame at the window's scale (the black around it included), and at the end
 //! plays every action (the recorded and the given) headless (`timeline::play`) and compares each
 //! change shown with the headless loop's at its time. An adapter: the window is `h3-sdl`'s.
@@ -278,10 +279,18 @@ struct Frame {
 }
 
 impl Frame {
-    fn of(painter: &mut Painter<'_>, change: Change, look: Look) -> Result<Self, String> {
+    /// The frame `look` shows `change` in, the microseconds it took to make pushed to `made`.
+    fn of(
+        painter: &mut Painter<'_>,
+        change: Change,
+        look: Look,
+        (win, made): (&Window, &mut Vec<u64>),
+    ) -> Result<Self, String> {
+        let started = win.ticks_ns();
         let cursor = look.cursor(change.cursor);
         let screen = painter.frame(&change.drawn, cursor)?;
         let xrgb = screen.xrgb();
+        made.push(win.ticks_ns().saturating_sub(started) / 1000);
         Ok(Self {
             change,
             cursor,
@@ -454,10 +463,12 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
     let mut hw: Option<(u32, bool)> = None;
     let mut clock = Clock::new(win.ticks_ns(), 0);
     let mut shown: Option<Frame> = None;
+    let mut made_us = Vec::new();
     let mut next = Some(Frame::of(
         &mut painter,
         replay.at(0).map_err(unplayable)?,
         look,
+        (&win, &mut made_us),
     )?);
     // Either Control key held; the keys held (a key down again before its release repeats).
     let mut ctrl = [false, false];
@@ -650,7 +661,7 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                 let again = if f.shows(&f.change, look) {
                     f
                 } else {
-                    let again = Frame::of(&mut painter, f.change, look)?;
+                    let again = Frame::of(&mut painter, f.change, look, (&win, &mut made_us))?;
                     if let Some(back) = show(&mut win, &again, read)? {
                         compare(&back, &again, &mut report);
                     }
@@ -665,7 +676,9 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
             .map_err(unplayable)?;
             next = match (next.take(), change) {
                 (Some(n), Some(c)) if n.change == c && n.shows(&c, look) => Some(n),
-                (_, c) => c.map(|c| Frame::of(&mut painter, c, look)).transpose()?,
+                (_, c) => c
+                    .map(|c| Frame::of(&mut painter, c, look, (&win, &mut made_us)))
+                    .transpose()?,
             };
         }
         // A later change may be due already: the latest is shown instead; if it shows what shows,
@@ -691,7 +704,7 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                     let due = if d.change == change && d.shows(&change, look) {
                         d
                     } else {
-                        Frame::of(&mut painter, change, look)?
+                        Frame::of(&mut painter, change, look, (&win, &mut made_us))?
                     };
                     let back = show(&mut win, &due, read)?;
                     let late = clock.late(win.ticks_ns(), due.change.t) / 1000;
@@ -709,7 +722,7 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
             next = replay
                 .after(t, LOOK_AHEAD_MS)
                 .map_err(unplayable)?
-                .map(|c| Frame::of(&mut painter, c, look))
+                .map(|c| Frame::of(&mut painter, c, look, (&win, &mut made_us)))
                 .transpose()?;
         } else if redraw && let Some(f) = &shown {
             show(&mut win, f, false)?;
@@ -749,9 +762,10 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
         view.z
     ));
     lines.push(format!(
-        "frame after its time (ms): {}; at an input's time: {}",
+        "frame after its time (ms): {}; at an input's time: {}; a frame made in: {}",
         summary(&mut report.late_us),
-        summary(&mut report.input_late_us)
+        summary(&mut report.input_late_us),
+        summary(&mut made_us)
     ));
     let mut ok = report.difference.is_none();
     if read {

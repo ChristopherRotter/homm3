@@ -125,6 +125,68 @@ fn raw_clips_to_the_rectangle_and_the_canvas() {
 }
 
 #[test]
+fn a_frame_across_the_screens_sides_keeps_what_lies_on_it() {
+    // The clip wider than the screen: the screen cuts. Row 0 above the screen, column 2 past its
+    // right side.
+    let f = frame([1, 2, 3, 4, 5, 6], [false; 6]);
+    let wide = [-20, -20, 20, 20];
+    let mut s = screen(0);
+    let at = Place {
+        x: 3,
+        y: -1,
+        ..Place::default()
+    };
+    raw(&mut s, &f, &palette(), at, wide);
+    assert_eq!(rows(&s), [[0, 0, 0, 4, 5], [0; 5], [0; 5], [0; 5]]);
+    // Mirrored at x −1: column 2 left of the screen; row 1 below it.
+    let mut s = screen(0);
+    let at = Place {
+        x: -1,
+        y: 3,
+        mirror_x: true,
+        mirror_y: false,
+    };
+    raw(&mut s, &f, &palette(), at, wide);
+    assert_eq!(rows(&s), [[0; 5], [0; 5], [0; 5], [2, 1, 0, 0, 0]]);
+    // Its rows on the screen, its columns all past its right side: nothing.
+    let mut s = screen(0);
+    let at = Place {
+        x: 5,
+        ..Place::default()
+    };
+    raw(&mut s, &f, &palette(), at, wide);
+    assert!(s.pixels().iter().all(|&p| p == 0));
+}
+
+#[test]
+fn pixels_past_the_frames_runs_are_literal() {
+    // Runs for the first four pixels only: the last two literal; none at all (encoding 0).
+    let mut f = frame([5, 2, 5, 7, 5, 6], [false; 6]);
+    f.runs = vec![true, false, true, true];
+    let flag = Some(0x1234);
+    let draw = |f: &Frame, mirror_x| {
+        let mut s = screen(0);
+        let at = Place {
+            mirror_x,
+            ..Place::default()
+        };
+        flagged(&mut s, f, &palette(), at, ALL, flag);
+        rows(&s)
+    };
+    assert_eq!(
+        draw(&f, false)[..2],
+        [[0x1234, 2, 0x1234, 0, 0], [0, 5, 6, 0, 0]]
+    );
+    assert_eq!(
+        draw(&f, true)[..2],
+        [[0x1234, 2, 0x1234, 0, 0], [6, 5, 0, 0, 0]]
+    );
+    f.runs.clear();
+    assert_eq!(draw(&f, false)[..2], [[5, 2, 5, 0, 0], [7, 5, 6, 0, 0]]);
+    assert_eq!(draw(&f, true)[..2], [[5, 2, 5, 0, 0], [6, 5, 7, 0, 0]]);
+}
+
+#[test]
 fn shadows_darken_under_runs_of_one_to_four() {
     let white = FORMAT.pack(Rgb {
         r: 255,

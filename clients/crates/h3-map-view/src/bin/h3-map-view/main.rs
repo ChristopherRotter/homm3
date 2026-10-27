@@ -99,7 +99,8 @@ commands:
           scroll-north-west, hero-north ... hero-north-west, music, effects, pause, frame,
           restart, vsync, cursor, fullscreen, quit; [] unbinds one). --bugs defaults to fixed. --check <s> and
           --measure <s> run unattended for <s> seconds (the window's own keys but Esc do
-          nothing; the map's input is taken) and report when each frame showed against its time;
+          nothing; the map's input is taken) and report when each frame showed against its time
+          and how long the frames took to make;
           --check also reads every frame back and compares it with the frame composed, and plays
           every action headless to check each change shown (exit 1 on a difference).
 ";

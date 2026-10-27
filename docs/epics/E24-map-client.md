@@ -151,7 +151,12 @@ battle.
   §3.9); T4b cut at its seam before it started (the user, 2026-10-27): T4b1, the live input
   (**done** 2026-10-27: the keys, the keypad's and their repeats, the edge scroll, the clicks, the
   hardware or drawn cursor, `Replay::give`, every change shown checked against a headless play;
-  design §3.10), T4b2, the Windows build tried on the user's machine; T5, the sound (**done**
+  design §3.10), T4b2, the Windows build tried on the user's machine (**done** 2026-10-27:
+  every frame read back exact on Windows, the delays measured, the user's findings; design
+  §3.10; MCL-Q10 asked and answered), T4b3, the view's drawing made fast (the user, at T4b2:
+  "the client should run on really old hardware too"; **done** 2026-10-27: the drawers by rows,
+  31 times fewer instructions a view, every frame unchanged, none passed over on the user's
+  machine; design §3.12; MCL-Q11 asked); T5, the sound (**done**
   2026-10-27, whole: the terrain music, the step sounds and the ambient loops read;
   `h3_map_view::sound`, cued by the timeline and the replay, played by the window; the gate's
   check of the sounds; design §3.11; MCL-Q8, MCL-Q9 open); T6, M2's closure.
@@ -165,13 +170,17 @@ battle.
   resource bar and the date, the buttons, the mouse and its cursor; the string catalogue's keys.
   Needs `h3-view`'s `ui`, `text`, `layout`, `mouse` and the `clock` and `cursor` M2 copied in
   one common crate: a `lanes.toml` change (shared) agreed with the client lane, proposed at M3
-  T0 (M2 T0's decision); T4's key bindings move there too (the client lane's inbox).
+  T0 (M2 T0's decision); T4's key bindings move there too (the client lane's inbox). The keys
+  during a walk (MCL-Q10): Space's cancel of the queued steps (the user: "perhaps by other means
+  too"; not read) and the input ring's bound of 63 messages.
 - **M4, the engine's games shown:** a whole game's record and replay viewer; the live part from
   the engine (`h3_game`'s observation needs an object identity matching the map's object list:
   the adventure lane's inbox), the protocol's adventure messages (the server lane, E16); a battle
   handed to the battle client's viewer (CLT-Q4's background variant and CLT-Q6's colours then
   come from the map); a loaded saved game's draw lists (the objects gone before the save: not
-  read, M1 T6b).
+  read, M1 T6b); the map's sound compared by ear with the original's on a whole map (the user,
+  at M2 T4b2: the transitions sounded unclean, perhaps the lag's doing; the harness's recordings
+  have no sound).
 - **M5, hot seat:** whole games played in-process: the handover screen when the player who must
   act changes, the level-up dialog (the inbox), the hero and town screens as play needs them;
   then live play against the server.
@@ -199,6 +208,10 @@ battle.
   situation waits for its merge.
 - **Wine is not Windows** (E17's risk): a difference only Wine could cause needs a check on
   Windows.
+- **The map's input without the engine** (M2): a direction key steps the hero through obstacles
+  (the original's `hero_step_allowed` is the engine's rules, M5), a click shows only a path a
+  recording or a situation gave (the engine's paths: M4, M5), and no step costs points (the
+  walk on after a held key's release has no end but the queue's: MCL-Q10).
 
 ## Review lists
 
@@ -233,3 +246,11 @@ reviewers'):
   category of eight handles, at most four used); a flying hero's step sound unused until M4 (the
   engine's); the cues not compared with the original (the harness plays without sound); an
   abandoned mine by H3API's flag (the map's 220 or subclass 7, its set-up not read).
+- **M2 T4b2, the Windows build:** `h3-map-view.exe` looks for `clients/map` and the installation
+  copy where it was built (`CARGO_MANIFEST_DIR`), so the user's `.cmd` files name `--map` and
+  `--install` (`h3-view` looks above the exe; one way for both in M3 T0's common crate).
+- **M2 T4b3, the view drawn fast** (*provisional*): `h3-render`'s `Screen::pixels_mut`
+  (additive, the foundation's); every asset a view of the map draws at 0 decoded when the map
+  loads (a big map's load longer, no decoding during a walk); the window's report gives how long
+  each frame took to make; a frame of a near-empty view still about 4 ms on the user's machine
+  (the inbox: the user, "we should check back in at some point").
