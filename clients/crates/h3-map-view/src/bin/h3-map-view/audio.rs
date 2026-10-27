@@ -10,8 +10,9 @@
 //!   are queued, so they follow the device's time (paused with it), as the original's thread
 //!   follows real time; a track asked for takes back what is queued of the old one, its fade-out
 //!   starting at what plays. A track is decoded
-//!   on a thread of its own when first asked for (during the old one's fade-out; the map's first
-//!   before the window opens).
+//!   on a thread of its own when first asked for (during the old one's fade-out; with none
+//!   playing, it starts once decoded, the frames going on; the map's first before the window
+//!   opens).
 //! - **The step sound** on one stream (category 0's one sample), looping, at 127.
 //! - **The ambient loops**, a stream per slot (4; the original's category 3 takes 8 handles, its
 //!   slots at most 4 of them), looping, each at its cue's volume (32, 28, 20 or 10 by distance).
@@ -201,6 +202,9 @@ pub struct Player {
     /// The music's format on its stream.
     music_format: (u32, u16),
     music: Option<Track>,
+    /// A track asked for while none played, started once decoded (M2 T6a, the reviewer's R2-6:
+    /// waiting for it stopped the frames).
+    pending: Option<String>,
     /// The track playing fading out for the one asked for (its samples scaled as they are
     /// queued, so the fade follows the device's time).
     fading: Option<FadeOut>,
@@ -238,6 +242,7 @@ impl Player {
             music_stream,
             music_format: (44_100, 2),
             music: None,
+            pending: None,
             fading: None,
             places: BTreeMap::new(),
             step,
@@ -272,8 +277,11 @@ impl Player {
                         done: 0,
                         next: name.clone(),
                     });
-                } else {
+                } else if library.ready(name) {
+                    self.pending = None;
                     self.start_music(library, name, lines);
+                } else {
+                    self.pending = Some(name.clone());
                 }
             }
             Cue::Step(name) => {
@@ -324,6 +332,7 @@ impl Player {
     pub fn reset(&mut self) {
         self.out.clear(self.music_stream);
         self.music = None;
+        self.pending = None;
         self.fading = None;
         self.places.clear();
         stop(&mut self.out, &mut self.step);
@@ -361,6 +370,13 @@ impl Player {
             self.music_stream,
             gain(if self.music_on { FULL } else { 0 }),
         );
+        if let Some(name) = self.pending.take() {
+            if library.ready(&name) {
+                self.start_music(library, &name, lines);
+            } else {
+                self.pending = Some(name);
+            }
+        }
         let (rate, channels) = self.music_format;
         let ahead = ahead(rate, channels);
         let step = fade_step(rate, channels);
@@ -386,7 +402,13 @@ impl Player {
                 };
                 let n = (whole - fade.done)
                     .min(ahead)
-                    .min(samples.len() - fade.old.next);
+                    .min(samples.len().saturating_sub(fade.old.next));
+                if n == 0 {
+                    // Nothing left to fade (R2-1): the fade ends.
+                    fade.done = whole;
+                    self.fading = Some(fade);
+                    continue;
+                }
                 let chunk = samples
                     .get(fade.old.next..fade.old.next + n)
                     .unwrap_or_default();

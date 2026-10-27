@@ -378,6 +378,8 @@ pub struct Window {
     hardware: Option<Hardware>,
     /// Whether a held key's repeats come as keys (E24 M2 T4b).
     repeats: bool,
+    /// Whether the window has the keyboard's focus, by SDL's focus events (E24 M2 T6a).
+    focused: bool,
 }
 
 /// The room left for the window's title bar and frame when it is sized to fit, in points.
@@ -466,6 +468,7 @@ impl Window {
                 cursor: None,
                 hardware: None,
                 repeats: false,
+                focused: true,
             };
             // The window's pixels per point, from its size at one point per frame pixel: the
             // display's usable area in pixels decides the scale (integers only).
@@ -532,6 +535,15 @@ impl Window {
         self.repeats = on;
     }
 
+    /// Whether the window has the keyboard's focus (E24 M2 T6a: the original scrolls the map at
+    /// the screen's edges only while it is the active application). True when it opens and until
+    /// SDL says the focus left, so a system that sends no focus events (Xvfb without a window
+    /// manager) keeps it.
+    #[must_use]
+    pub fn focused(&self) -> bool {
+        self.focused
+    }
+
     /// SDL's clock: nanoseconds since SDL started.
     #[must_use]
     pub fn ticks_ns(&self) -> u64 {
@@ -588,6 +600,10 @@ impl Window {
                     Some(Event::Pointer(Some((x as i32, y as i32))))
                 }
                 SDL_EVENT_WINDOW_MOUSE_LEAVE => Some(Event::Pointer(None)),
+                SDL_EVENT_WINDOW_FOCUS_LOST | SDL_EVENT_WINDOW_FOCUS_GAINED => {
+                    self.focused = ty == SDL_EVENT_WINDOW_FOCUS_GAINED;
+                    None
+                }
                 SDL_EVENT_WINDOW_EXPOSED
                 | SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED
                 | SDL_EVENT_WINDOW_DISPLAY_SCALE_CHANGED

@@ -47,7 +47,7 @@ compared pixel for pixel outside the masks of what the viewer does not draw yet.
       view, the objects' steps, the palette steps and where the screen changed) against
       clients/map/timelines/<id>.txt (`ok`, `CHANGED`, `new`), and the viewer's frame at 0
       drawn with the live part read then against the original's; exit 1 unless each is as
-      recorded and exact at 0. A run as recorded or new keeps that live part
+      recorded and exact at 0. A run as recorded or new and exact at 0 keeps that live part
       (timelines/<id>-live.toml). Since E24 M2 T1a2 a sequence's options (the scroll and hero
       speeds) are written once it is staged and its inputs (keys pressed and released, the
       pointer moved) given at their milliseconds; the timeline has the cursor too. Since E24 M2
@@ -617,6 +617,15 @@ OPTIONS = {"scroll_speed": (h3mem.SCROLL_SPEED, range(0, 3)),
 # click at a point (the pointer moved there, the button pressed and released: a tile clicked
 # shows the selected hero's path to it, clicked again it walks).
 INPUTS = ("keydown", "keyup", "pointer", "click")
+# The keys a sequence may press (M2 T6a, the reviewer's R3-7: xdotool only warns about a name it
+# does not know and exits 0, so a typo recorded a sequence without its input): the eight
+# direction keys, as `h3_map_view::sequence`'s DIRECTION_KEYS, with or without `ctrl+`.
+DIRECTION_KEYS = ("Up", "Prior", "Right", "Next", "Down", "End", "Left", "Home")
+
+
+def known_key(name):
+    """Whether `name` is a key a sequence may press: a direction key, `ctrl+` before it or not."""
+    return name.removeprefix("ctrl+") in DIRECTION_KEYS
 
 
 def sequence_inputs(entry):
@@ -639,6 +648,9 @@ def sequence_inputs(entry):
         if len(kinds) != 1 or set(i) != {"at", kinds[0]}:
             raise ValueError(f"{entry['id']}: an input is `at` and one of {INPUTS}: {i}")
         kind, value, t = kinds[0], i[kinds[0]], i["at"]
+        if kind in ("keydown", "keyup") and not known_key(value):
+            raise ValueError(f"{entry['id']}: the key `{value}` at {t}: not one of {DIRECTION_KEYS} "
+                             f"(with `ctrl+` or not)")
         if not last <= t <= entry["ms"]:
             raise ValueError(f"{entry['id']}: an input at {t}: out of order or outside 1 to "
                              f"{entry['ms']}")
@@ -672,9 +684,9 @@ def sequence(entry, out):
     """One sequence in the original (E24 M2 T1a1): its situation staged as `still` stages it, the
     clock frozen once both the palette tick and the view's redraw lie ahead of it; then the
     sequence's 0 set to the next millisecond: the tick's and the redraw's next times written
-    there, and the mouse poll's and (T1a2) the scroll's last time (the harness's own timers, as
-    E17's `align_mouse_poll`: the original's phase between them is the map's load's real time,
-    so a run starts like every other). Its options (T1a2: the speeds; T1b: the selected hero's
+    there, and the mouse poll's (the harness's own timers, as E17's `align_mouse_poll`: the
+    original's phase between them is the map's load's real time, so a run starts like every
+    other; the scroll's last time is the clock's while the pointer is parked). Its options (T1a2: the speeds; T1b: the selected hero's
     points) are written before. Then `ms` + 1 steps of 1 ms (0 to `ms`), each followed by the
     inputs at that millisecond (T1a2; the game then reads the frozen clock 500 times more: it
     handles them at that time)
@@ -688,13 +700,20 @@ def sequence(entry, out):
     pixels."""
     situation_path = SITUATIONS / f"{entry['situation']}.toml"
     options, inputs = sequence_inputs(entry)
-    game, mem, sit, turn = stage(situation_path, out)
+    # An earlier run's files go first (M2 T6a, the reviewer's R3-3): a run that failed midway
+    # left them beside its own partial screens, and `--reuse` took the mix as one run.
     kept = out / "frames"
     shutil.rmtree(kept, ignore_errors=True)
-    kept.mkdir()
-    (out / "frames.jsonl").unlink(missing_ok=True)
+    for name in ("frames.jsonl", "states.jsonl", "live.toml", "timeline.txt", "ours.png",
+                 "diff.png"):
+        (out / name).unlink(missing_ok=True)
+    game, mem, sit, turn = stage(situation_path, out)
     down = set()
     try:
+        kept.mkdir(parents=True)
+        # Keys a killed run left down stay down on the display (M2 T6a, the reviewer's R3-4):
+        # Control would turn the walks' keys into scrolls.
+        h3drive.run("xdotool", "keyup", "ctrl", *DIRECTION_KEYS)
         # The objects' phases fixed (T1b): the load gives each a random one (design §1.6), and
         # where an object's frames repeat a picture the screen's changed box at a redraw moved
         # with it from run to run (the frame steps too: below). The live part at 0 reads them.
@@ -722,7 +741,9 @@ def sequence(entry, out):
         mem.write_frame_steps(0)
         mem.write_u32(h3mem.PALETTE_TICK_TIME, t0)
         mem.write_u32(h3mem.FRAME_DEADLINE, t0)
-        mem.write_u32(h3mem.SCROLL_TIME, t0)
+        # The scroll's last time is not written (M2 T6a, the reviewer's R3-10): with the pointer
+        # parked outside the edge zones `edge_scroll` sets it to the clock at every call
+        # (0x419978), so the 70 ms run from the millisecond the pointer enters a zone.
         mem.align_mouse_poll(t0)
         if game.clock("step 1", settle_reads=500) != t0:
             raise RuntimeError("the clock did not step to the sequence's 0")
@@ -753,8 +774,12 @@ def sequence(entry, out):
 
         first = game.settled()
         states, last = [state(t0, first, None)], first
-        for _ in range(entry["ms"]):
+        for i in range(entry["ms"]):
             t = game.clock("step 1", settle_reads=500)
+            # Each step one millisecond (M2 T6a, the reviewer's R3-6): an input at a skipped one
+            # would be lost unseen.
+            if t != t0 + i + 1:
+                raise RuntimeError(f"the clock stepped to {t - t0}, not {i + 1}")
             for kind, value in inputs.get(t - t0, []):
                 give_input(game, kind, value)
                 if kind in ("keydown", "keyup"):
@@ -771,11 +796,14 @@ def sequence(entry, out):
             if "frame" in states[-1]:
                 last = pix
     finally:
-        # A key left down stays down on the display for the next game (T1a2).
-        for value in down:
-            h3drive.run("xdotool", "keyup", value)
-        game.move(*h3adv.PARK)
-        game.stop()
+        # A key left down stays down on the display for the next game (T1a2); the game stopped
+        # whatever the release meets (M2 T6a, the reviewer's R3-4).
+        try:
+            for value in down:
+                h3drive.run("xdotool", "keyup", value)
+            game.move(*h3adv.PARK)
+        finally:
+            game.stop()
     (out / "live.toml").write_text("# The original's live part at the sequence's 0 (h3map.py "
                                    "frames).\n" + live)
     with open(out / "states.jsonl", "w") as f, open(out / "frames.jsonl", "w") as g:
@@ -840,11 +868,17 @@ def frame_check(entry, here):
 def reused(entry, here):
     """An earlier run's states and its frame at 0 compared again (`--reuse`, E24 M2 T2): the
     original's screens, states and live part at 0 as that run kept them under `here`."""
-    if not (here / "states.jsonl").exists() or not (here / "frames" / "t00000.npz").exists():
-        raise RuntimeError(f"no earlier run under {here} (run `frames --only {entry['id']}`)")
+    if not all((here / name).exists() for name in ("states.jsonl", "live.toml",
+                                                     "frames/t00000.npz")):
+        raise RuntimeError(f"no whole earlier run under {here} (run `frames --only "
+                           f"{entry['id']}`)")
+    sit = tomllib.loads((SITUATIONS / f"{entry['situation']}.toml").read_text())
+    # The situation as that run staged it (M2 T6a, the reviewer's R3-3).
+    if tomllib.loads((here / "live.toml").read_text()).get("situation") != situation_digest(sit):
+        raise RuntimeError(f"STALE: the situation changed since the run under {here} (run "
+                           f"`frames --only {entry['id']}`)")
     states = [json.loads(line) for line in (here / "states.jsonl").read_text().splitlines()]
     (here / "timeline.txt").write_text("\n".join(map_timeline(states)) + "\n")
-    sit = tomllib.loads((SITUATIONS / f"{entry['situation']}.toml").read_text())
     first = np.load(here / "frames" / "t00000.npz")["screen"]
     draw_ours(here / "map.h3m", sit, here / "live.toml", here / "ours.png")
     n, _ = h3cap.compare(first, h3cap.png565(here / "ours.png"), masked(["panels"], first.shape),
@@ -857,8 +891,9 @@ def run_frames(rest):
     one) recorded (`sequence`); its timeline against the one recorded in
     `clients/map/timelines/<id>.txt` (`ok`, `CHANGED`, `new`), and the viewer's frame at 0 against
     the original's (the live part at 0 is a still's: exact, as the capture set). A run as recorded
-    or new keeps its live part at 0 as `timelines/<id>-live.toml` (for the frame check, M2 T2).
-    Exit 1 unless every sequence is as recorded and its frame at 0 exact."""
+    or new and exact at 0 keeps its live part at 0 as `timelines/<id>-live.toml` (for the frame
+    check, M2 T2). Exit 1 unless every sequence is as recorded, its frame at 0 exact, its frames
+    as recorded and the viewer's timeline as recorded."""
     only = rest[rest.index("--only") + 1] if "--only" in rest else None
     base = Path(rest[rest.index("--out") + 1]) if "--out" in rest else OUT_FRAMES
     reuse = "--reuse" in rest
@@ -884,9 +919,11 @@ def run_frames(rest):
         print(f"{e['id']}: {len(got.splitlines())} changes, {frames} screens kept in {e['ms']} ms "
               f"{verdict}; the frame at 0: {n} differing", flush=True)
         failed += verdict != "ok" or n != 0
-        if verdict == "CHANGED":
-            print(f"{e['id']}: not as recorded, its live part not kept ({here / 'timeline.txt'})",
-                  flush=True)
+        if verdict == "CHANGED" or n != 0:
+            # Only a run exact at 0 keeps its live part (M2 T6a, the reviewer's R3-5): `drawn`
+            # takes it as its reference.
+            why = "not as recorded" if verdict == "CHANGED" else "its frame at 0 not exact"
+            print(f"{e['id']}: {why}, its live part not kept ({here})", flush=True)
         else:
             TIMELINES.mkdir(exist_ok=True)
             shutil.copy(here / "live.toml", TIMELINES / f"{e['id']}-live.toml")
@@ -901,7 +938,8 @@ def run_frames(rest):
         print(f"{e['id']}: the viewer: {said}", flush=True)
         print(f"{e['id']}: the frame check: {frames} frames, {differ} differing, {checked} "
               f"({here / 'frames.txt'})", flush=True)
-        failed += checked != "ok"
+        # The viewer's own timeline counts too (M2 T6a, the reviewer's R3-1).
+        failed += checked != "ok" or not said.endswith("as recorded")
     print(f"frames: {len(entries)} sequences, {failed} not as recorded; under {base}")
     return 1 if failed else 0
 
@@ -1095,12 +1133,17 @@ def drawn_sequences(rest, base, record):
             continue
         mine = {(ident, png.stem): h3drive.png_digest(png, MASKS["panels"])
                 for png in sorted((here / "ours").glob("t*.png"))}
-        got.update(mine)
         before = {k: v for k, v in recorded.items() if k[0] == ident}
         verdict = ("new" if not before else "same" if before == mine else "CHANGED")
         timeline_same = said.endswith("as recorded")
         failed += verdict != "same" or not timeline_same
         print(f"sequences/{ident}: {len(mine)} frames {verdict}; the viewer: {said}", flush=True)
+        # A viewer's run not as recorded, or one that failed partway, is not recorded (M2 T6a,
+        # the reviewer's R3-2): its digests stay as they were.
+        if timeline_same:
+            got.update(mine)
+        else:
+            broken += 1
     if record and got:
         kept_ids = {ident for ident, _ in got}
         recorded = {k: v for k, v in recorded.items() if k[0] not in kept_ids}

@@ -25,15 +25,35 @@ then T4b2, the Windows build on the user's machine (done 2026-10-27), which foun
 drawing too slow: T4b3 (the user, 2026-10-27; done 2026-10-27). T5, the sound, done whole 2026-10-27 (the user
 chose it over a cut).
 
-### E24 M2 T6 — M2's closure
+T6, M2's closure, cut at its seam before it started (the user, 2026-10-27): T6a, the reviewers
+and their fixes (done 2026-10-27: 24 of 29 fixed; `E24-log.md`), its five music findings cut out
+as T6a2 (the user), then T6b, the closure.
 
-- **Scope:** M2's exit (the epic) checked on `master`; fresh reviewer agents, one per area, in
-  parallel; each finding checked against the code and the executable, fixed or queued; R2-8's
-  one-line `cross-lane` pull request if no task took it (the inbox); the review list to the
-  user; M2's section moved to `E24-archive.md`; M3 T0 queued (the common crate proposed to the
-  client lane first: the epic's M2 decision).
+### E24 M2 T6a2 — the music player as the original's music thread
+
+- **Scope:** T6a's five music findings (R2-2 to R2-5, R2-11; each with its addresses in
+  `E24-log.md`, "M2 T6a"): the original's music thread read where T5 and the reviewer did not
+  (`play_music` 0x59ACB0, `music_thread` 0x59A840, `music_stop_fade` 0x59B080: the critical
+  sections, the pending and playing names, the place saved before the fade, a request during a
+  fade-in); the window's music player rebuilt on a pure model of it (requests, fades, places and
+  the queue's take-back, driven by the samples queued and heard), tested without a device; design
+  §3.11 and its review-list entry updated; the battle client's music (`h3_view::sound`, the same
+  `play_music`) noted in the client lane's inbox if it shares a finding.
+- **Acceptance:** each finding fixed with a test, or an `MCL-Q<n>` for an oddity of the original;
+  `clients/scripts/check.sh` green; the Definition of Done.
+- **Depends on:** T6a. **Status:** ready once T6a merged.
+
+### E24 M2 T6b — M2's closure
+
+- **Scope:** M2's exit (the epic) checked on `master` after T6a's and T6a2's fixes: the 13
+  sequences recorded again (T6a's harness changes run for the first time), every line and frame;
+  the window's T6a fixes by hand on the user's machine (Alt+Tab with the pointer at an edge,
+  fullscreen's bars, F7 in a situation) and T6a2's music by ear; M1's R2-8 (the writer's
+  edge bound) as its one-line `cross-lane` pull request if no task took it (the inbox); the review list to the user; M2's
+  section moved to `E24-archive.md`; M3 T0 queued (the common crate proposed to the client lane
+  first: the epic's M2 decision).
 - **Acceptance:** the review list accepted by the user; the Definition of Done.
-- **Depends on:** T1a1 to T5 (T4b1 to T4b3). **Status:** ready.
+- **Depends on:** T6a2. **Status:** ready once T6a2 merged.
 
 ## Inbox
 
