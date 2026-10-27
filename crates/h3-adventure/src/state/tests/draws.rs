@@ -50,6 +50,15 @@ const GOLD: ResourceId = ResourceId::from_raw(1);
 /// storm, the level-5 bolt (granted by name only) and doom;
 /// [`hero_skills`]; and one object type of each kind that draws.
 fn rules(faithful: bool) -> Rules {
+    rules_with(faithful, |_| {}, |_| {})
+}
+
+/// [`rules`] with the core changed by `edit_core` and `more` object types after its own.
+pub(super) fn rules_with(
+    faithful: bool,
+    edit_core: impl FnOnce(&mut ContentPack),
+    more: impl FnOnce(&mut Vec<ObjectTypeDef>),
+) -> Rules {
     movement_rules_with(
         faithful,
         16,
@@ -109,6 +118,7 @@ fn rules(faithful: bool) -> Rules {
                 spell("t:doom", SpellCategory::Combat, 5, true, false),
             ];
             core.skills = hero_skills();
+            edit_core(core);
         },
         |part: &mut AdventurePack| {
             let ty = |k: &str, kind| ObjectTypeDef {
@@ -227,12 +237,13 @@ fn rules(faithful: bool) -> Rules {
                     }),
                 ),
             ]);
+            more(&mut part.object_types);
         },
     )
 }
 
 /// An object of type `k` at `(x, 0)`, blocking and visited there, holding `holds`.
-fn object(rules: &Rules, x: u16, k: &str, holds: Holds) -> ObjectSetup {
+pub(super) fn object(rules: &Rules, x: u16, k: &str, holds: Holds) -> ObjectSetup {
     ObjectSetup {
         scenery: Default::default(),
         anchor: Pos::new(x, 0, 0),

@@ -63,6 +63,12 @@ where  = "crates/h3-game/src/state/battle.rs::start_battle"
 reason = "A battle from the map leaves BattleSetup.retreat (ADR-0027 point 14: each hero's experience, its artifacts' worth, a Tavern town of its player to hire it again, whether the scenario's victory condition wants it defeated) at its default, which never retreats: the facts are read only for a computer player's hero, which the engine gets with E10, and the Tavern needs towns (E09) and the condition E10's scenarios (E08 decision 123, T54)"
 epic   = "E10"
 
+[[stub]]
+id     = "ADV-STUB-10"
+where  = "crates/h3-game/src/state.rs::choose_by_default"
+reason = "Increment 7's new decisions wait for T63's typed answers (E08 decision 150, T62a): a visit's choice is answered at once with its default (the chest's gold, the Arena's first skill, a School left; ADR-0017 point 6) and a University is left at once, instead of opening as their owner's decisions (GAM-DEC-005, GAM-DEC-006); a won guarded artifact's or scroll's pickup is given before the winner's level-ups (`state/battle.rs::end_battle`), not as the visit's rest after them (GAM-DEC-007, E08 decision 141)"
+epic   = "E08"
+
 # --- server (SRV-STUB-<n>) ---
 
 # --- client (CLT-STUB-<n>) ---

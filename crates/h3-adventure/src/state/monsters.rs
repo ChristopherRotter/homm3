@@ -225,33 +225,35 @@ impl AdventureState {
         }
     }
 
-    /// Applies the end of a battle against the monster visited at `tile` (ADV-MON-010, E08
-    /// T20b2; the original's `monster_fight`, 0x4A6C60, after `monster_battle`'s count of the
-    /// survivors, 0x4AC905): the monster's `survivors`, every stack it has left, count as its own
-    /// creature (A-6 fixed, E08 decision 23: the original counts its own type only, so an
-    /// upgraded stack's survivors vanished). None left: the monster leaves the map, told to the
-    /// players that see it there, and when the visitor's side `won` its treasure's resources are
-    /// the returned gains (a draw gives none); else it stays with that count, which its next
+    /// Applies the end of a battle of the hero `hero` against the monster visited at `tile`
+    /// (ADV-MON-010, E08 T20b2; the original's `monster_fight`, 0x4A6C60, after
+    /// `monster_battle`'s count of the survivors, 0x4AC905): the monster's `survivors`, every
+    /// stack it has left, count as its own creature (A-6 fixed, E08 decision 23: the original
+    /// counts its own type only, so an upgraded stack's survivors vanished). None left: the
+    /// monster leaves the map, told to the players that see it there, and when the visitor's side
+    /// `won` its treasure is the outcome's (a draw gives none): its artifact to the hero first
+    /// when it can receive it (ADV-MON-011, E08 T62a: [`Self::treasure_artifact`]), then its
+    /// resources, the gains; else it stays with that count, which its next
     /// answer, battle and the word a viewer sees read ([`Self::monster_count`]), the word's change
     /// told to the players that see it (E08 T20b3b1). Infallible: nothing when no monster is
     /// visited at `tile`.
-    // rule: ADV-MON-010
+    // rule: ADV-MON-010, ADV-MON-011
     pub fn end_monster_battle<S: Sink>(
         &mut self,
-        (core, part): (&Ruleset, &AdventureRuleset),
-        tile: Pos,
+        (core, part, heroes): (&Ruleset, &AdventureRuleset, &[Arc<HeroDetails>]),
+        (hero, tile): (HeroId, Pos),
         (survivors, won): (&[ArmyStack], bool),
         sink: &mut S,
-    ) -> Vec<(ResourceId, u32)> {
+    ) -> AdventureOutcome {
         let found = self
             .tile_object(part, tile)
             .filter(|(_, _, ty)| matches!(ty.kind, ObjectKind::Monster { .. }))
             .and_then(|(index, id, _)| {
                 let monster = self.map.objects()[index].monster.as_ref();
-                monster.map(|m| (index, id, m.creature, m.treasure.clone()))
+                monster.map(|m| (index, id, m.creature, (m.treasure.clone(), m.artifact)))
             });
-        let Some((index, object_type, creature, treasure)) = found else {
-            return Vec::new();
+        let Some((index, object_type, creature, (treasure, artifact))) = found else {
+            return AdventureOutcome::default();
         };
         let left = survivors
             .iter()
@@ -280,10 +282,17 @@ impl AdventureState {
                     seen_by: self.object_viewers(core, object),
                 });
             }
-            return Vec::new();
+            return AdventureOutcome::default();
         }
         self.take_object(core, (index, object_type), sink);
-        if won { treasure } else { Vec::new() }
+        if !won {
+            return AdventureOutcome::default();
+        }
+        AdventureOutcome {
+            gains: treasure,
+            hero: Self::treasure_artifact(core, heroes, hero, artifact),
+            ..AdventureOutcome::default()
+        }
     }
 
     /// Declines `offer`, made by a visit (ADR-0017 points 6 and 10; E08 T20b1): a
@@ -322,15 +331,17 @@ impl AdventureState {
     /// An accepted offer to join (ADV-MON-008, E08 T20b1; the original's `monster_join_free`
     /// 0x4A7000 and `monster_join_for_gold` 0x4A7250, the price paid by the game): the whole
     /// group joins the hero's army as one stack ([`add_stack`]), told to the player; its
-    /// treasure's resources are the player's gains; the monster leaves the map, told to the
+    /// treasure's artifact goes to the hero when it can receive it (ADV-MON-011, E08 T62a:
+    /// [`Self::treasure_artifact`]) and its resources are the player's gains; the monster leaves
+    /// the map, told to the
     /// players that see it there. A group that finds no room ([`room`]) joins nothing and is
     /// reported as [`AdventureOutcome::no_room`] (E08 T50), the rest as for a join: the game opens
     /// the army dialog with it (GAM-DEC-004, E08 T51b), as the original's after its yes. Nothing
     /// happens when the monster or the hero is gone.
-    // rule: ADV-MON-008, ADV-ARM-007
+    // rule: ADV-MON-008, ADV-MON-011, ADV-ARM-007
     pub(super) fn join<S: Sink>(
         &mut self,
-        (core, part): (&Ruleset, &AdventureRuleset),
+        (core, part, heroes): (&Ruleset, &AdventureRuleset, &[Arc<HeroDetails>]),
         player: PlayerId,
         offer: &Offer,
         sink: &mut S,
@@ -356,14 +367,16 @@ impl AdventureState {
                 seen_by: Viewers::NONE.with(player),
             });
         }
-        let gains = self.map.objects()[index]
+        let (gains, artifact) = self.map.objects()[index]
             .monster
             .as_ref()
-            .map(|m| m.treasure.clone())
+            .map(|m| (m.treasure.clone(), m.artifact))
             .unwrap_or_default();
+        let artifact = Self::treasure_artifact(core, heroes, offer.hero, artifact);
         self.take_object(core, (index, offer.object_type), sink);
         AdventureOutcome {
             gains,
+            hero: artifact,
             no_room: (!joined).then_some(NoRoom {
                 hero: offer.hero,
                 creature: monster.creature,

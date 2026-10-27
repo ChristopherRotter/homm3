@@ -36,6 +36,7 @@ pub use objects::{
     ObjectTypeId, Pickup, PickupDef, Visit,
 };
 use objects::{ObjectTables, Scope, check_object_types, compile_object_types, random_monsters};
+pub(crate) use rewards::Resources;
 pub use rewards::{
     Chest, ChestDef, Find, FindContent, FindContentDef, FindDef, Gift, GiftDef, Gives, OnceBonus,
     Pyramid, PyramidDef, Turn, TurnDef,

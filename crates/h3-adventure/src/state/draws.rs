@@ -51,6 +51,24 @@ pub enum Resolved {
     Skills(Vec<SkillId>),
 }
 
+impl Resolved {
+    /// The artifact drawn, if one ([`Self::Artifact`]).
+    pub const fn artifact(&self) -> Option<ArtifactTypeId> {
+        match self {
+            Self::Artifact(artifact) => Some(*artifact),
+            _ => None,
+        }
+    }
+
+    /// A University's skills ([`Self::Skills`]); none for every other draw.
+    pub fn skills(&self) -> &[SkillId] {
+        match self {
+            Self::Skills(skills) => skills,
+            _ => &[],
+        }
+    }
+}
+
 impl CanonicalHash for Resolved {
     /// Its tag (0 nothing, 1 an artifact, 2 a price's index, 3 a spell, 4 a skill, 5 a Scholar's
     /// gift with its tag (0 a primary skill, 1 a skill, 2 a spell), its value and the fallback, 6

@@ -918,42 +918,42 @@ commands = [
     "1 end-turn",
 ]
 checkpoints = [
-    "0xd3a3546148cc6f03",
-    "0x9e1ff8dbff87a385",
-    "0xd98e4a1b07e9b1c7",
-    "0x1ce00d84f58f8628",
-    "0xef27d32e85ec39ec",
-    "0x8891d0041708eceb",
-    "0xbb69ad9754bdb348",
-    "0xfe0d790fe4696a69",
-    "0x7da5ec514ff13f24",
-    "0x118d2943191980b7",
-    "0x1a90b8ab62b5636c",
-    "0xb6b745a740cd7d85",
-    "0x4cd51606b2226eb9",
-    "0x698336e912c8af5d",
-    "0xb7f74ec068453f0d",
-    "0xaeaca9e2a74686f0",
-    "0x5941efe457f0d32d",
-    "0xe793c0e6669f671b",
-    "0xcc258afcdc560202",
-    "0xcc91f95f0c312134",
-    "0xe68bba9514b9b1c3",
-    "0xb22e66ad92ddf2d0",
-    "0x60a066e1dc049026",
-    "0x5e44aa2378d73ee0",
-    "0x00228bfb462fcfe6",
-    "0xc74b016cc694e43c",
-    "0xd72acd271db0a02e",
-    "0x0ecc4da343f724fa",
-    "0x2a1f1264deca1b6b",
-    "0xa17c77f3f5cbd331",
-    "0xd8c9e8ba62524988",
-    "0xe01f973789a09603",
-    "0x590c002fd0347293",
-    "0x9bd9ce187bccecf1",
-    "0x335ab9dd8b2c91fd",
-    "0xe6337e19d3ff956f",
+    "0x966342d76f15a064",
+    "0xaf1f49f4d64e77be",
+    "0xa9b834795b5f8b00",
+    "0xac2bc6a4e7f3e4ff",
+    "0x6d105264b9bbaf1b",
+    "0x3c7269f1b16ba338",
+    "0xf89e0d951e4dbfd7",
+    "0x53ec5fb68522b86e",
+    "0x5b5120493b1e13cf",
+    "0x0df3b75c6dc78340",
+    "0xf34c8bd84d49fceb",
+    "0xc39f1fd2581e708e",
+    "0xedaadd6dbc76bffa",
+    "0xf2a0a97b92a0452e",
+    "0x856ff450bae2dc8e",
+    "0xde876023f26d15d7",
+    "0xdb829d7eb1c7ae82",
+    "0x8e44b805d1b9a464",
+    "0x26f583daf151e9dd",
+    "0x746226a184653ce3",
+    "0x4f3e7a0f3c3f1034",
+    "0xd4560ec85264c33f",
+    "0x32542154ff429c41",
+    "0x4988fe60011f76d3",
+    "0x833d8631563ace1f",
+    "0x4827b52865fefc05",
+    "0xef20ee83e9e5954b",
+    "0x552e7055aa9ca6a7",
+    "0xea284b0eb313ea62",
+    "0x30da84a229243546",
+    "0x4b49727aed2c2be3",
+    "0x06ab83880f1c78ea",
+    "0xfa9f542e79584eb6",
+    "0x78ec0e05fdec5204",
+    "0x5d9a0dbb7b5f48b6",
+    "0x50baa9fb340e4c58",
 ]
 
 [replay]
@@ -982,7 +982,7 @@ rng = "xoshiro256starstar+splitmix64"
 rng_version = 1
 hash = "fnv1a64-le"
 hash_version = 1
-game_state_hash_version = 15
+game_state_hash_version = 16
 adventure_state_hash_version = 14
 checkpoint_every = 25
 
@@ -993,4 +993,4 @@ import_version = 13
 
 [result]
 day = 29
-final_hash = "0x2028aa8deeb79bce"
+final_hash = "0xb112d372bf426885"

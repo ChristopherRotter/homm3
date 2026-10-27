@@ -1438,7 +1438,7 @@ id       = "ADV-OBJ-006"
 title    = "Random artifacts when the game is built: the classes and the pool"
 context  = "adventure"
 status   = "implemented"
-summary  = "When the game is built, after the piles' and the monsters' draws and before every other draw of increment 7's objects, each random artifact (classes 65 to 69: treasure, minor and major together; treasure; minor; major; relic) gets an artifact, in object order, with equal chances among the ruleset's artifacts of its classes that carry no mark (D-31: no relic for class 65). The marks start as the scenario's banned artifacts and every placed artifact (a class-5 object's), and each draw marks the one it gives, so no artifact repeats nor duplicates a placed one (D-32); a draw that finds none left restarts the marks from the bans, and with still none draws from every class but Special (the restart then repeats). Every artifact banned: none. The chests' and the finds' artifacts draw from the same pool and marks, after the random artifacts. The pool is the ruleset's packs, not the map's edition (E08 decisions 104 and 136). Drawn from the setup stream (GAM-SET-001's), in the engine's order (decision 17). The visit: ADV-PIK-006, ADV-PIK-007 (T62). E08 T61b: `h3_adventure::Resolved::Artifact`."
+summary  = "When the game is built, after the piles' and the monsters' draws and before every other draw of increment 7's objects, each random artifact (classes 65 to 69: treasure, minor and major together; treasure; minor; major; relic) gets an artifact, in object order, with equal chances among the ruleset's artifacts of its classes that carry no mark (D-31: no relic for class 65). The marks start as the scenario's banned artifacts and every placed artifact (a class-5 object's), and each draw marks the one it gives, so no artifact repeats nor duplicates a placed one (D-32); a draw that finds none left restarts the marks from the bans, and with still none draws from every class but Special (the restart then repeats). Every artifact banned: none. The chests' and the finds' artifacts draw from the same pool and marks, after the random artifacts. The pool is the ruleset's packs, not the map's edition (E08 decisions 104 and 136). Drawn from the setup stream (GAM-SET-001's), in the engine's order (decision 17). The visit: ADV-PIK-006, ADV-PIK-007 (E08 T62a); a random artifact whose draw found none holds nothing and leaves the map at its visit, giving nothing. E08 T61b: `h3_adventure::Resolved::Artifact`."
 numeric  = "integer"
 
   [[rule.source]]
@@ -1464,8 +1464,9 @@ id       = "ADV-PIK-005"
 title    = "The treasure chest: its contents drawn when the game is built"
 context  = "adventure"
 status   = "implemented"
-summary  = "When the game is built (after the random artifacts, ADV-OBJ-006), each treasure chest draws r in 0 to 99 from the setup stream: below its type's first chance its first gold, below the first two together its second, and so on (the base pack: 32, 32 and 31 for 1 000, 1 500 and 2 000 gold), the gold its contents; else an artifact of its classes (treasure) from the random artifacts' pool and marks. The tutorial is not modelled (E08 decision 134: its chests draw as any chest's). The visit (the gold or the experience, the full backpack's 1 000 gold): E08 T62. E08 T61b: `MapObject::contents`, `Resolved::Artifact`."
+summary  = "When the game is built (after the random artifacts, ADV-OBJ-006), each treasure chest draws r in 0 to 99 from the setup stream: below its type's first chance its first gold, below the first two together its second, and so on (the base pack: 32, 32 and 31 for 1 000, 1 500 and 2 000 gold), the gold its contents; else an artifact of its classes (treasure) from the random artifacts' pool and marks. The tutorial is not modelled (E08 decision 134: its chests draw as any chest's). The visit (E08 T62a, `AdventureState::visit_chest`): an artifact the hero can receive (`h3_heroes::can_receive_artifact`: under ADV-QUIRK-22's flag a full backpack refuses even with a body position free) goes to the hero; else the choice between the gold and its experience (the gold less the type's offset, 500, times the hero's Learning), the gold the chest's or, for an artifact the hero cannot receive or a draw that found none, the type's 1 000; never refused; the chest leaves the map with the visit, whatever the answer. Until T63 the game answers the choice with its default, the gold (ADV-STUB-10). E08 T61b: `MapObject::contents`, `Resolved::Artifact`."
 numeric  = "integer"
+quirks   = ["ADV-QUIRK-22"]
 
   [[rule.source]]
   kind       = "original-data"
@@ -1483,7 +1484,7 @@ id       = "ADV-TCH-003"
 title    = "The Tree of Knowledge's price drawn when the game is built"
 context  = "adventure"
 status   = "implemented"
-summary  = "A once-per-hero gift whose type has several prices draws one of them with equal chances when the game is built, from the setup stream after the random artifacts (the Tree of Knowledge: free, 2 000 gold or 10 gems); a gift of one price or none draws nothing. The visits of the Learning Stone and the Tree (the experience, the level without Learning, the price's refusal): E08 T62. E08 T61b: `Resolved::Price`."
+summary  = "A once-per-hero gift whose type has several prices draws one of them with equal chances when the game is built, from the setup stream after the random artifacts (the Tree of Knowledge: free, 2 000 gold or 10 gems); a gift of one price or none draws nothing. The visit (E08 T62a, `AdventureState::visit_gift`): a hero holding the gift's once-per-hero mark is refused; a type that draws its price tells the visitor's owner the drawn price (ADV-VIS-006), then a price opens as its offer to pay (`OfferKind::Gift`, opened only when the treasury can pay, else refused; declined, no mark); accepted or free, the Learning Stone gives 1 000 experience times the hero's Learning, the Tree the experience to the next level without Learning (`h3_heroes::next_level_experience`), which the game gives with its level-up, and the hero is marked. E08 T61b: `Resolved::Price`."
 numeric  = "integer"
 
   [[rule.source]]
@@ -1503,7 +1504,7 @@ id       = "ADV-TCH-004"
 title    = "The Shrines: a random Shrine's spell drawn when the game is built"
 context  = "adventure"
 status   = "implemented"
-summary  = "A Shrine holds the map's spell, or, without one, draws a spell of its type's level when the game is built, in object order after the random artifacts: with equal chances among the level's hero spells that are not banned, not granted by name only and carry no Shrine mark; the drawn spell is marked; when none of the level is left, the level's marks clear and the draw starts again (D-34: the random Shrines of a level repeat no spell until each of its spells is out). The map's spell marks nothing. A level without a spell to give: none (A-18 fixed, E08 decision 133: the Shrine refuses every visit). The visit (the book, the Wisdom limit, a known spell): E08 T62. E08 T61b: `Resolved::Spell`."
+summary  = "A Shrine holds the map's spell, or, without one, draws a spell of its type's level when the game is built, in object order after the random artifacts: with equal chances among the level's hero spells that are not banned, not granted by name only and carry no Shrine mark; the drawn spell is marked; when none of the level is left, the level's marks clear and the draw starts again (D-34: the random Shrines of a level repeat no spell until each of its spells is out). The map's spell marks nothing. A level without a spell to give: none (A-18 fixed, E08 decision 133: the Shrine refuses every visit). The visit (E08 T62a, `AdventureState::visit_shrine`): the visitor's owner learns the spell first (ADV-VIS-006); a hero without a Spell Book, of a learnable level below the spell's or knowing it is refused (`h3_heroes::can_learn_spell`), as by a Shrine without a spell; else it learns it; no mark, every visit. E08 T61b: `Resolved::Spell`."
 numeric  = "integer"
 
   [[rule.source]]
@@ -1529,7 +1530,7 @@ id       = "ADV-TCH-005"
 title    = "The Witch Hut: its skill drawn when the game is built"
 context  = "adventure"
 status   = "implemented"
-summary  = "A Witch Hut draws its skill when the game is built, in object order after the random artifacts: the r-th, with equal chances, of its mask's skills in id order less the banned skills (an empty mask in the file imports as every skill); every skill banned: none (it refuses every visit). An RoE map's hut has no mask in the file: under ADV-QUIRK-21's flag (faithful) it draws among the original's fixed mask 0xEFBF (the skills 0 to 15 but Leadership and Necromancy, 14), off (strict-fixed) among every skill but Leadership and Necromancy (the kind's two lists, the base pack's). The visit (Basic, a known skill or eight skills refuse): E08 T62. E08 T61b: `Resolved::Skill`."
+summary  = "A Witch Hut draws its skill when the game is built, in object order after the random artifacts: the r-th, with equal chances, of its mask's skills in id order less the banned skills (an empty mask in the file imports as every skill); every skill banned: none (it refuses every visit). An RoE map's hut has no mask in the file: under ADV-QUIRK-21's flag (faithful) it draws among the original's fixed mask 0xEFBF (the skills 0 to 15 but Leadership and Necromancy, 14), off (strict-fixed) among every skill but Leadership and Necromancy (the kind's two lists, the base pack's). The visit (E08 T62a, `AdventureState::visit_witch_hut`): the visitor's owner learns the skill first (ADV-VIS-006); a known skill, eight skills (`h3_heroes::hut_teaches`; no class test) or a hut without a skill refuse; else the skill at Basic; no mark, every visit. E08 T61b: `Resolved::Skill`."
 numeric  = "integer"
 quirks   = ["ADV-QUIRK-21"]
 
@@ -1549,7 +1550,7 @@ id       = "ADV-TCH-006"
 title    = "The Scholar: its gift and fallback drawn when the game is built"
 context  = "adventure"
 status   = "implemented"
-summary  = "A Scholar holds the map's gift, or draws one when the game is built, in object order after the random artifacts: a kind with equal chances among a primary skill, a secondary skill and a spell, then a primary skill among the four, a skill among the unbanned ones or a spell among the unbanned hero spells of any level that are not granted by name only (an empty pool: a primary skill instead); a skill or a spell, the map's or drawn, then draws the primary skill it raises instead when the hero cannot take it, among the four (a primary skill's gift is its own). The visit (the gift or +1 to the fallback, the removal; HER-CHG-004's scholar_reward): E08 T62. E08 T61b: `Resolved::Scholar`."
+summary  = "A Scholar holds the map's gift, or draws one when the game is built, in object order after the random artifacts: a kind with equal chances among a primary skill, a secondary skill and a spell, then a primary skill among the four, a skill among the unbanned ones or a spell among the unbanned hero spells of any level that are not granted by name only (an empty pool: a primary skill instead); a skill or a spell, the map's or drawn, then draws the primary skill it raises instead when the hero cannot take it, among the four (a primary skill's gift is its own). The visit (E08 T62a, `AdventureState::visit_scholar`): its gift, or +1 to the fallback primary skill for a skill or spell the hero cannot take (HER-CHG-004's `scholar_reward`); then it leaves the map. E08 T61b: `Resolved::Scholar`."
 numeric  = "integer"
 
   [[rule.source]]
@@ -1569,7 +1570,7 @@ id       = "ADV-TCH-007"
 title    = "The University: its skills drawn when the game is built"
 context  = "adventure"
 status   = "implemented"
-summary  = "A University draws its type's number of distinct skills (four) when the game is built, in object order after the random artifacts: each with equal chances among the unbanned skills not yet drawn, in the draw's order, Necromancy among them (D-36: the code's side; only a class that weighs it can buy it); fewer left than offers: all of them (A-22 fixed, E08 decision 133). The visit and its purchases (GAM-DEC-006, HER-CHG-004's university_slot): E08 T62, T63. E08 T61b: `Resolved::Skills`."
+summary  = "A University draws its type's number of distinct skills (four) when the game is built, in object order after the random artifacts: each with equal chances among the unbanned skills not yet drawn, in the draw's order, Necromancy among them (D-36: the code's side; only a class that weighs it can buy it); fewer left than offers: all of them (A-22 fixed, E08 decision 133). The visit (E08 T62a, `AdventureState::visit_university`): the visitor's owner learns its skills (ADV-VIS-006) and it opens over them at the type's price (`AdventureOutcome::university`), every visit; its decision and purchases (GAM-DEC-006, HER-CHG-004's `university_slot`) come with T63, the game leaving it at once until then (ADV-STUB-10). E08 T61b: `Resolved::Skills`."
 numeric  = "integer"
 
   [[rule.source]]
@@ -1608,8 +1609,9 @@ id       = "ADV-PIK-009"
 title    = "The Corpse: its contents drawn when the game is built"
 context  = "adventure"
 status   = "implemented"
-summary  = "A find draws its contents when the game is built, in object order after the random artifacts: r in 0 to 99 picks the entry of its type's table by the chances in order; an artifact entry draws from the random artifacts' pool and marks among its classes as one pool (weighted by the classes' sizes, D-35); a resources entry draws an amount between its bounds, then one of its resources with equal chances (its contents); nothing holds nothing. The Corpse (the base pack): 20 % a treasure or minor artifact, 80 % nothing. The visit (the artifact, 1 000 gold with a full backpack, emptied): E08 T62. E08 T61b: `Resolved::Artifact`."
+summary  = "A find draws its contents when the game is built, in object order after the random artifacts: r in 0 to 99 picks the entry of its type's table by the chances in order; an artifact entry draws from the random artifacts' pool and marks among its classes as one pool (weighted by the classes' sizes, D-35); a resources entry draws an amount between its bounds, then one of its resources with equal chances (its contents); nothing holds nothing. The Corpse (the base pack): 20 % a treasure or minor artifact, 80 % nothing. The visit (E08 T62a, `AdventureState::visit_find`): the visitor's owner learns whether it is emptied (ADV-VIS-006); not emptied yet, an artifact the hero can receive (ADV-QUIRK-22) is given, one it cannot receive turns as its type says (the Corpse's 1 000 gold to the owner), else its resources or nothing; then it is emptied, and a later visit gives nothing. E08 T61b: `Resolved::Artifact`."
 numeric  = "integer"
+quirks   = ["ADV-QUIRK-22"]
 
   [[rule.source]]
   kind       = "original-data"
@@ -1627,8 +1629,9 @@ id       = "ADV-PIK-010"
 title    = "The Wagon: its contents drawn when the game is built"
 context  = "adventure"
 status   = "implemented"
-summary  = "The Wagon draws as any find (ADV-PIK-009): 10 % nothing, 40 % a treasure or minor artifact, 50 % 2 to 5 of one of wood, mercury, ore, sulfur, crystal and gems (the amount first, then the resource; D-35 with the wiki's 2 to 5); a Wagon with an artifact also draws its resources, which a full backpack gets instead of the artifact (the turn `drawn`). The visit: E08 T62. E08 T61b: `MapObject::contents`, `Resolved::Artifact`."
+summary  = "The Wagon draws as any find (ADV-PIK-009): 10 % nothing, 40 % a treasure or minor artifact, 50 % 2 to 5 of one of wood, mercury, ore, sulfur, crystal and gems (the amount first, then the resource; D-35 with the wiki's 2 to 5); a Wagon with an artifact also draws its resources, which a full backpack gets instead of the artifact (the turn `drawn`). The visit (E08 T62a): as any find's (ADV-PIK-009), a Wagon's artifact the hero cannot receive turning into its drawn resources. E08 T61b: `MapObject::contents`, `Resolved::Artifact`."
 numeric  = "integer"
+quirks   = ["ADV-QUIRK-22"]
 
   [[rule.source]]
   kind       = "original-data"
@@ -1646,8 +1649,9 @@ id       = "ADV-PIK-011"
 title    = "The Warrior's Tomb: its artifact drawn when the game is built"
 context  = "adventure"
 status   = "implemented"
-summary  = "The Warrior's Tomb draws as any find (ADV-PIK-009): 30 % a treasure artifact, 50 % a minor one, 15 % a major one, 5 % a relic. The visit (the question, the artifact left with a full backpack, -3 morale once until the next battle): E08 T62. E08 T61b: `Resolved::Artifact`."
+summary  = "The Warrior's Tomb draws as any find (ADV-PIK-009): 30 % a treasure artifact, 50 % a minor one, 15 % a major one, 5 % a relic. The visit (E08 T62a): its question (`OfferKind::Search`, every visit; declined, nothing); accepted, the visitor's owner learns whether it is emptied, the artifact goes to a hero who can receive it (ADV-QUIRK-22), or stays in the tomb, which is then not emptied, and the hero takes -3 morale once until its next battle (`HeroChange::Bonus` with the once-mark 0, HER-ADV-008) whether or not the tomb held anything. E08 T61b: `Resolved::Artifact`."
 numeric  = "integer"
+quirks   = ["ADV-QUIRK-22"]
 
   [[rule.source]]
   kind       = "original-data"
@@ -1666,10 +1670,169 @@ id       = "ADV-PIK-012"
 title    = "The Lean To: its resources drawn when the game is built"
 context  = "adventure"
 status   = "implemented"
-summary  = "The Lean To draws as any find (ADV-PIK-009): 1 to 5 of one of wood, mercury, ore, sulfur, crystal and gems (the amount first, then the resource), its contents. The visit (to the owner, emptied): E08 T62. E08 T61b: `MapObject::contents`."
+summary  = "The Lean To draws as any find (ADV-PIK-009): 1 to 5 of one of wood, mercury, ore, sulfur, crystal and gems (the amount first, then the resource), its contents. The visit (E08 T62a): its resources to the owner, then emptied (ADV-PIK-009). E08 T61b: `MapObject::contents`."
 numeric  = "integer"
 
   [[rule.source]]
   kind       = "original-data"
   ref        = "Heroes3.exe code reading (E08 T55a2; survey E08-rewards.md §6.9): setup_map_objects case 0x4C157A: a resource random_between(0, 5) and an amount random_between(1, 5); visit_lean_to 0x4A31A0"
+  confidence = "high"
+
+[[rule]]
+id       = "ADV-PIK-006"
+title    = "An artifact's pickup; a full backpack refuses"
+context  = "adventure"
+status   = "verified"
+summary  = "A step toward a placed or random artifact (classes 5 and 65 to 69) visits it: a hero who cannot receive it (`h3_heroes::can_receive_artifact`: under ADV-QUIRK-22's flag, faithful, a full backpack of 64 refuses even with a body position free; in either profile no room at all) is refused, nothing changes and the object stays; else, without guards standing, the hero receives it (`HeroChange::AddArtifact`: the first body position that takes it, else the backpack, HER-CHG-002) and the object leaves the map, told to the players that see it there. A random artifact whose draw found none (every artifact banned, ADV-OBJ-006) holds nothing: it leaves the map giving nothing. E08 T62a: `AdventureState::visit_artifact`, `pick_up`."
+numeric  = "integer"
+quirks   = ["ADV-QUIRK-22"]
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E08 T55a1; survey E08-rewards.md §3.2): visit_artifact 0x49F7E0 tests hero_backpack_count 0x4D90C0 >= 64 first (a message, nothing changes, the object stays); the plain pickup gives hero_give_artifact 0x4E3070 and removes the object (0x49E170)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-7a.md E7-2 (the capture harness, Complete 4.0 Heroes3.exe under Wine, 2026-10-27; survey E08-rewards.md §15, T58): the axe picked up and worn in the right hand (position 3)"
+  retrieved  = "2026-10-27"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "lib/mapObjects/MiscObjects.cpp CGArtifact::onHeroVisit, pick: the artifact to the first free slot or the backpack, the object removed (VCMI's backpack unbounded: no full backpack, survey §3.4)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/mapObjects/MiscObjects.cpp"
+  retrieved  = "2026-10-26"
+  confidence = "medium"
+
+[[rule]]
+id       = "ADV-PIK-007"
+title    = "A guarded artifact: always a question, a win gives it"
+context  = "adventure"
+status   = "verified"
+summary  = "An artifact with guards (its message record's stacks) asks its visitor first whatever its text (D-29: the import gives an artifact's guards the question), after the full-backpack test of ADV-PIK-006: a guarded pile's question (`OfferKind::Fight`, ADV-PIK-004): declined, nothing; accepted, the battle against the guards unsplit, fought at the artifact's tile; lost, their survivors stay with it; won, the hero receives the artifact and it leaves the map. Until T63 the win's pickup is given before the winner's level-ups, not after them (GAM-DEC-007; ADV-STUB-10). E08 T62a: `AdventureState::visit_artifact`, `end_unowned_battle`."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E08 T55a1; survey E08-rewards.md §3.2): a message record (bit 31) goes to visit_guarded_artifact 0x49F070: guards ask a yes-or-no question (the record's text or a built 'guarded by'), yes is adventure_battle 0x4AD470 as a guarded pile's, a win gives the levels (0x4DA720), then the artifact and the removal"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-7a.md E7-1 (2026-10-27; survey E08-rewards.md §15): a question first; No: the axe stays, no battle; Yes: the battle, won, the axe then worn (D-29: the reading)"
+  retrieved  = "2026-10-27"
+  confidence = "high"
+
+[[rule]]
+id       = "ADV-PIK-008"
+title    = "A Spell Scroll: the pickup with its spell; guarded, a question only with a text"
+context  = "adventure"
+status   = "verified"
+summary  = "A Spell Scroll on the map (class 93) is picked up as an artifact (ADV-PIK-006: a full backpack refuses under ADV-QUIRK-22's flag), the hero receiving the Spell Scroll with the map's spell (its spell usable while it is worn, without a book or Wisdom, HER-SPL-002); its guards ask only when its message has a text, else fight at once, as a guarded pile's (ADV-PIK-004), a win picking it up. E08 T62a: `AdventureState::visit_artifact` with `Holds::Artifact`."
+numeric  = "integer"
+quirks   = ["ADV-QUIRK-22"]
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E08 T55a1; survey E08-rewards.md §4): visit_spell_scroll 0x4A5EA0: a full backpack refuses as an artifact's; visit_guarded_scroll 0x4A5A80 asks with a text, fights at once without one (0x4A5AFE); the hero gets artifact 1 with the spell"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-7a.md E7-2 (2026-10-27; survey E08-rewards.md §15): the scroll worn at misc 1 (position 9), no spell learned without a book (D-30: the reading)"
+  retrieved  = "2026-10-27"
+  confidence = "high"
+
+[[rule]]
+id       = "ADV-MON-011"
+title    = "A monster's treasure artifact after a win or a join"
+context  = "adventure"
+status   = "verified"
+summary  = "A wandering monster whose treasure holds an artifact gives it, before the treasure's resources, to the hero that beat it (its side won and the monster has nothing left) or that it joined (an accepted offer to join, free or for gold, room or not), when the hero can receive it (`h3_heroes::can_receive_artifact`; under ADV-QUIRK-22's flag a full backpack loses it even with a body position free); else it is lost. A draw, a lost battle or a monster that flees gives none of it. E08 T62a: `AdventureState::end_monster_battle`, `join`."
+numeric  = "integer"
+quirks   = ["ADV-QUIRK-22"]
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E08 T55a1; survey E08-rewards.md §5): monster_treasure 0x4A6B30, after monster_fight 0x4A6C60 or a join (0x4A7000, 0x4A7250): the record's artifact (+0x2C) first, lost with a full backpack (>= 64), then each resource that is not 0"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-7a.md E7-6 (2026-10-27; survey E08-rewards.md §15): the treasure's 1 000 gold given, the axe lost with the backpack at 64"
+  retrieved  = "2026-10-27"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "lib/mapObjects/CGCreature.cpp giveReward: the resources, then the artifact to the first available slot; no full-backpack case (consensus on the gift; the order of the two is presentation)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/mapObjects/CGCreature.cpp"
+  retrieved  = "2026-10-26"
+  confidence = "medium"
+
+[[rule]]
+id       = "ADV-TCH-001"
+title    = "The once-per-hero gifts of primary skills: Marletto Tower, Garden, Mercenary Camp, Star Axis, Arena, Library"
+context  = "adventure"
+status   = "implemented"
+summary  = "A once-per-hero gift refuses a hero that holds its mark (set when it gives; no bound on how many objects of a class a hero marks, A-17 not reproduced: ADV-QUIRK-27). Marletto Tower, the Garden of Revelation, the Mercenary Camp and the Star Axis add 1 to Defense, Knowledge, Attack and Spell Power (`HeroChange::GainPrimary`, at most primary_max: A-9's class). The Arena opens the choice of +2 Attack or Defense with no way to leave (`Choice` of `ChoiceKind::Primary`, answered by `AdventureState::choose`, which marks the hero); until T63 the game answers it with the first, Attack (ADV-STUB-10). The Library of Enlightenment refuses, without a mark, a hero whose level plus twice its Diplomacy is below 10 (`h3_heroes::library_admits`), else adds 2 to all four. E08 T62a: `AdventureState::visit_gift`."
+numeric  = "integer"
+quirks   = ["ADV-QUIRK-27"]
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E08 T55a2; survey E08-rewards.md §6.1, §6.2): visit_marletto_tower 0x4A2050 (and 0x4A2710, 0x4A38B0, 0x4A3DC0 with their fields), visit_arena 0x49E7D0 (two pictures, Cancel is Attack), the Library 0x4A3280 (level +0x55 + 2 x Diplomacy +0xCD below 10 refuses, no mark); each tests and sets the hero's per-class mark bit"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "config/objects/rewardableOncePerHero.json: the same gifts, the Arena's selectPlayer with no refusal, the Library's limiter (level 10, or 8, 6, 4 with Diplomacy 1 to 3); consensus"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/config/objects/rewardableOncePerHero.json"
+  retrieved  = "2026-10-26"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Arena - Heroes 3 wiki: 'It is not possible to leave the arena without accepting one of these bonuses'"
+  url        = "https://heroes.thelazy.net/index.php/Arena"
+  retrieved  = "2026-10-26"
+  confidence = "medium"
+
+[[rule]]
+id       = "ADV-TCH-002"
+title    = "The Schools of Magic and War"
+context  = "adventure"
+status   = "implemented"
+summary  = "A School of Magic or War, once per hero (ADV-TCH-001's mark), opens the choice of +1 to one of its two primary skills (Spell Power or Knowledge; Attack or Defense) for its price (1 000 gold), or leaving without paying or a mark (`ChoiceKind::Primary` with `leave`); the game opens it only when the treasury can pay, and a pick pays the price and marks the hero (`AdventureState::choose`). Until T63 the game answers it with its default, leaving (ADV-STUB-10). E08 T62a: `AdventureState::visit_gift`."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E08 T55a2; survey E08-rewards.md §6.3): visit_school_of_magic 0x4A33E0 and the School of War 0x4A7A40: visited, a message; the gold below 1 000 refuses (no mark); the choice or leave (0x7801: nothing paid, no mark); +1, the mark, -1 000 gold"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "config/objects/rewardableOncePerHero.json schoolOfMagic, schoolOfWar: two rewards with the gold limiter and -1 000 gold, canRefuse; consensus"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/config/objects/rewardableOncePerHero.json"
+  retrieved  = "2026-10-26"
+  confidence = "medium"
+
+[[rule]]
+id       = "ADV-VIS-006"
+title    = "What a player knows of a visited object, and of its heroes' marks"
+context  = "adventure"
+status   = "implemented"
+summary  = "A visit tells its hero's owner, where the original sets the visitor's team's mark (the team's marks are the owner's knowledge until E10's teams), what the build drew for the object: a Shrine's spell and a Witch Hut's skill before their tests, a gift's drawn price (the Tree of Knowledge's) before its test, a University's skills when it opens, whether a Corpse, Wagon or Lean To is emptied at its visit and a Warrior's Tomb after its question; the owner keeps it (`AdventureObservation::known`: the object by type and anchor, while it is on the map; a find's emptying as it stands now). No other player learns it. The owner also sees each of its heroes' once-per-hero marks (`OwnHeroView::marks`, by type and anchor: a marked object stood on a tile the hero explored). E08 T62a: the state's visits' block (`Visits`), `AdventureState::observe`."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E08 T55a2, T55a4; survey E08-rewards.md §6.1, §8.4): kinds_visited (game +0x4E344), tile_mark_visited_by_team 0x4FBF90 (the tile word's bits 5 to 12: the Tree, the Shrines, the Witch Hut, the Wagon, the Tomb), the player's record +0xC0, +0xC4 (the Corpse, the Lean To); set before a refusal at the Shrines, the Witch Hut, the Schools and the Tree; read by the right-click"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "design"
+  ref        = "E08 decision 135 (ADV-Q28): the team's marks as the visitor's owner's knowledge until E10; design §13 of docs/epics/E08-design.md"
   confidence = "high"
