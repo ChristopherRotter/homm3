@@ -101,6 +101,9 @@ class Config:
     #: each legal strike's previewed kills, `policy`'s documentation); every batch the network
     #: plays then writes it.
     preview: bool = field(default=False, metadata=_in("network"))
+    #: Whether the MLP's trunk reads the turn order (observation v22's last block, each stack
+    #: slot's places; the turn-order probe, E06-log); else v21's prefix, as before v22.
+    order: bool = field(default=False, metadata=_in("network"))
     rollout: int = field(default=128, metadata=_in("ppo"))
     #: 1.0 since E06 T5a (AI-Q9: γ 0.995 let the winner stall, `t4-1` against `t4-2`).
     gamma: float = field(default=1.0, metadata=_in("ppo"))
@@ -322,6 +325,8 @@ def resolve(config: Config) -> Config:
         problems.append(f"`kind` is one of {', '.join(NETWORK_KINDS)}")
     elif c.preview and c.kind != "mlp":
         problems.append('`preview` is the MLP\'s (`kind = "mlp"`)')
+    elif c.order and c.kind != "mlp":
+        problems.append('`order` is the MLP\'s (`kind = "mlp"`)')
     if min(c.embed, c.width, c.layers, c.heads) <= 0 or c.width % c.heads:
         problems.append(
             "`embed`, `width`, `layers` and `heads` are positive, `width` a multiple of `heads`"

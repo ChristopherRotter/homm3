@@ -56,6 +56,7 @@ mod terrain;
 mod turn;
 mod vitality;
 mod war;
+mod world;
 
 pub use casters::{CastSpell, creature_cast_spell, creature_cast_targets, stack_spell};
 pub use combat::DamagePreview;
@@ -83,6 +84,7 @@ pub use state::{
 };
 pub use tactics::{TacticsPhase, TacticsRounds};
 pub use terrain::{generate_battlefield_obstacles, generate_obstacles, generate_setup_obstacles};
+pub use turn::{TurnOrder, turn_order};
 
 #[cfg(test)]
 mod tests;

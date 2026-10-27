@@ -1,7 +1,8 @@
-"""The trainer's networks behind one interface (`Policy`): each reads the flat observation v21,
-gives a value and the factorized action's heads, each cast head conditioned on the earlier choices
-and masked by the batch's head calls. Two kinds (`[network] kind`, E06 T5a, design §11): `Mlp`, the
-smoke run's (E05 T8, `docs/epics/E05-log.md` §8.3), and the entity network (`entity.Entity`).
+"""The trainer's networks behind one interface (`Policy`): each reads the flat observation v22
+(without `[network] order` only v21's prefix, `layout.ORDER`, as before v22), gives a value and
+the factorized action's heads, each cast head conditioned on the earlier choices and masked by the
+batch's head calls. Two kinds (`[network] kind`, E06 T5a, design §11): `Mlp`, the smoke run's
+(E05 T8, `docs/epics/E05-log.md` §8.3), and the entity network (`entity.Entity`).
 
 A row's action is its entry and, only where the entry is a cast, the spell, the target and the
 second target, chosen one head after another; its log-probability is the sum over the heads it
@@ -14,6 +15,11 @@ to that entry's logit, `φ(f) · u(h)`: `f` the entry's features (the least and 
 share of the target stack they are, the hit points they are), `φ` a small network shared by the
 entries, `u` a linear map of the trunk's output, so the state decides how much a kill counts.
 Only the entry head reads it; the value and the cast heads do not.
+
+The turn order (`[network] order`, the MLP's; the turn-order probe, E06-log): the MLP's trunk reads
+the whole observation v22, each stack slot's places in the turn order (`layout.ORDER_ROUND` to
+`ORDER_NEXT`) with it; without it the trunk reads v21's prefix, so a network saved before v22
+plays on.
 """
 
 from __future__ import annotations
@@ -306,7 +312,7 @@ class Mlp(Policy):
     """The MLP (E05 T8): `symlog`, a trunk of two `hidden`-unit layers, the value and entry heads
     on it; the spell head takes the trunk and which cast, the target head also the spell's
     embedding, the second head also the target's. With `preview` (E06 T6d) the entry head reads
-    the kill preview (the module's documentation)."""
+    the kill preview, with `order` the trunk the turn order (the module's documentation)."""
 
     def __init__(
         self,
@@ -317,11 +323,15 @@ class Mlp(Policy):
         hidden: int = 512,
         embed: int = 32,
         preview: tuple[int, int] | None = None,
+        order: bool = False,
     ) -> None:
         super().__init__()
         root2 = float(np.sqrt(2.0))
+        #: Whether the trunk reads the turn order; else only v21's prefix of the observation.
+        self.reads_order = order
+        self.inputs = observation_len if order else min(observation_len, L.ORDER)
         self.trunk = nn.Sequential(
-            init(nn.Linear(observation_len, hidden), root2),
+            init(nn.Linear(self.inputs, hidden), root2),
             nn.ReLU(),
             init(nn.Linear(hidden, hidden), root2),
             nn.ReLU(),
@@ -351,9 +361,15 @@ class Mlp(Policy):
 
     @classmethod
     def for_batch(
-        cls, batch: BattleBatch, hidden: int = 512, embed: int = 32, preview: bool = False
+        cls,
+        batch: BattleBatch,
+        hidden: int = 512,
+        embed: int = 32,
+        preview: bool = False,
+        order: bool = False,
     ) -> Mlp:
-        """A network sized for `batch`'s encodings (with `preview`, for its kill preview)."""
+        """A network sized for `batch`'s encodings (with `preview`, for its kill preview; with
+        `order`, reading the turn order)."""
         return cls(
             batch.observation_len,
             batch.action_count,
@@ -362,6 +378,7 @@ class Mlp(Policy):
             hidden,
             embed,
             (batch.preview_base, batch.preview_entries) if preview else None,
+            order,
         )
 
     def with_preview(self, logits, encoding, obs, preview, mask):
@@ -399,7 +416,7 @@ class Mlp(Policy):
         )
 
     def encode(self, obs: torch.Tensor) -> Encoding:
-        return (self.trunk(symlog(obs)),)
+        return (self.trunk(symlog(obs[:, : self.inputs])),)
 
     def value(self, encoding: Encoding) -> torch.Tensor:
         return self.value_head(encoding[0]).squeeze(1)
@@ -424,10 +441,17 @@ class Mlp(Policy):
 def build(config: dict[str, Any], batch: BattleBatch) -> Policy:
     """The network a run's config names (`asdict(Config)`, as every saved file holds it), sized
     for `batch`'s encodings. A config without `kind` (before E06 T5a) names an MLP, one without
-    `preview` (before E06 T6d) a network that does not read the kill preview."""
+    `preview` (before E06 T6d) a network that does not read the kill preview, one without `order`
+    (before v22) one that reads v21's prefix of the observation."""
     kind = config.get("kind", "mlp")
     if kind == "mlp":
-        return Mlp.for_batch(batch, config["hidden"], config["embed"], config.get("preview", False))
+        return Mlp.for_batch(
+            batch,
+            config["hidden"],
+            config["embed"],
+            config.get("preview", False),
+            config.get("order", False),
+        )
     if kind == "entity":
         from .entity import Entity
 

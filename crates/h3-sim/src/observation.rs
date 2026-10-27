@@ -1,11 +1,12 @@
-//! Flat observation encoding (version 21) of a per-viewer [`Observation`].
+//! Flat observation encoding (version 22) of a per-viewer [`Observation`].
 //!
 //! Layout, in this order: [`GLOBALS`] global features; the public part of the two heroes,
 //! [`HERO_PUBLIC_FEATURES`] each (the viewer's, then the opponent's); the private part of the
 //! viewer's own hero, [`OWN_HERO_FEATURES`]; the battlefield, [`HEX_PLANES`] planes of
 //! [`MAX_FIELD_HEXES`] features (one per hex index, as the action encoding's hex targets; plane
 //! after plane); then [`STACK_FEATURES`] features for each of the [`STACK_CAPACITY`] stack slots
-//! (zeros for unused slots). Values are raw game quantities as `f32` (normalisation is the
+//! (zeros for unused slots); then the turn order, [`ORDER_FEATURES`] features for each stack slot
+//! (v22, after the rest so that v21's layout is its prefix). Values are raw game quantities as `f32` (normalisation is the
 //! trainer's business). Stacks, sides and obstacles are described relative to the viewer ("own"
 //! flag, "viewer"/"opponent"), so one policy can play both sides; a spectator's observation
 //! (SRV-Q4) is seen from the attacker's seat and has no private part. The encoding is complete
@@ -94,6 +95,11 @@
 //! battle), the mastery]`, the stack's first effects by spell handle. Attack, defense, speed,
 //! morale and luck are the values now, with the effects (attack without the melee or ranged
 //! bonus; attack and defense may be below 0).
+//! The turn order per stack slot (`h3_battle::turn_order`, BAT-TRN-001 to BAT-TRN-003: the turns
+//! as they come, no wait, morale or death foreseen; the same for every viewer): `[its place in
+//! the rest of the round's turns (1: the active stack; 0: none), its place among its side's turns
+//! in the rest of the round (1: its side's next), its place in the next round's turns (0:
+//! none)]`; in the tactics phase the round is the first.
 //!
 //! v3 (E03 T9): the two hero globals and the per-stack features from `morale` on. v4 (E04a
 //! T11b): the tactics, retreat and surrender globals, the hero blocks (instead of the two hero
@@ -117,11 +123,12 @@
 //! before the wall-shot targets (ADR-0023 point 7). v20 (E04c T7e): the own hero's Artillery
 //! level as its last scalar (ADR-0013 point 4). v21 (E04c T10b): the layout unchanged; at a town
 //! the opponent-may-retreat global of the attacker's and a spectator's observation is 0, as the
-//! defender's Escape Tunnel shows to the defender only (BAT-Q50 (4)).
+//! defender's Escape Tunnel shows to the defender only (BAT-Q50 (4)). v22 (E06, the turn-order
+//! probe): the turn order block after the stack slots, v21's layout unchanged before it.
 
 use h3_battle::{
     DamageRoll, HeroView, MAX_OPENING_SPELLS, MAX_SPELL_BONUSES, Observation, OwnHeroView,
-    STACK_CAPACITY, SpellObstacle, StackFlags, StackTraits, Status,
+    STACK_CAPACITY, SpellObstacle, StackFlags, StackTraits, Status, turn_order,
 };
 use h3_content::{MAX_SPELL_SCHOOLS, MAX_SPELLS};
 use h3_content_battle::{MAX_FIELD_HEXES, MAX_WALL_TARGETS, ObstacleKind};
@@ -129,7 +136,7 @@ use h3_contracts::BattleSide;
 
 /// Version of this encoding; bump on any change of the layout above (and bump the C ABI
 /// version with it, ADR-0011).
-pub const OBSERVATION_ENCODING_VERSION: u32 = 21;
+pub const OBSERVATION_ENCODING_VERSION: u32 = 22;
 
 /// Global features.
 pub const GLOBALS: usize = 30 + MAX_WALL_TARGETS;
@@ -168,8 +175,12 @@ pub const OWN_HERO: usize = HEROES + 2 * HERO_PUBLIC_FEATURES;
 pub const FIELD: usize = OWN_HERO + OWN_HERO_FEATURES;
 /// Offset of the first stack slot.
 pub const STACKS: usize = FIELD + HEX_PLANES * MAX_FIELD_HEXES;
+/// Features per stack slot of the turn order.
+pub const ORDER_FEATURES: usize = 3;
+/// Offset of the turn order, after the stack slots: the length of v21's layout.
+pub const ORDER: usize = STACKS + STACK_FEATURES * STACK_CAPACITY;
 /// Length of the encoded observation.
-pub const OBSERVATION_LEN: usize = STACKS + STACK_FEATURES * STACK_CAPACITY;
+pub const OBSERVATION_LEN: usize = ORDER + ORDER_FEATURES * STACK_CAPACITY;
 
 /// The statuses of a stack's effects, in their encoded order.
 const STATUSES: [Status; 8] = [
@@ -508,7 +519,25 @@ pub fn encode(obs: &Observation, field_width: u8, out: &mut [f32]) -> Result<(),
             ]);
         }
     }
+    encode_order(obs, &mut out[ORDER..]);
     Ok(())
+}
+
+/// Writes each stack's places in the turn order into `out` (the order block).
+// rule: BAT-TRN-001, BAT-TRN-002, BAT-TRN-003
+fn encode_order(obs: &Observation, out: &mut [f32]) {
+    let order = turn_order(obs);
+    let mut sides = [0u8; 2];
+    for (place, id) in (1u8..).zip(order.round.iter()) {
+        let side = obs.stacks.as_slice()[id.index()].side.index();
+        sides[side] += 1;
+        let f = &mut out[id.index() * ORDER_FEATURES..];
+        f[0] = f32::from(place);
+        f[1] = f32::from(sides[side]);
+    }
+    for (place, id) in (1u8..).zip(order.next.iter()) {
+        out[id.index() * ORDER_FEATURES + 2] = f32::from(place);
+    }
 }
 
 #[cfg(test)]
@@ -558,14 +587,21 @@ mod tests {
             ("MAX_FIELD_HEXES", MAX_FIELD_HEXES),
             ("STACK_FEATURES", STACK_FEATURES),
             ("STACK_CAPACITY", STACK_CAPACITY),
+            ("ORDER_FEATURES", ORDER_FEATURES),
+            ("ORDER_ROUND", 0),
+            ("ORDER_SIDE", 1),
+            ("ORDER_NEXT", 2),
         ] {
             assert_eq!(python(name), value, "{name}");
         }
-        // The offsets follow from the sizes in the same order there.
+        // The offsets follow from the sizes in the same order there; v21's layout is v22's
+        // prefix, the turn order last.
         assert_eq!(
             (HEROES, OWN_HERO, FIELD),
             (GLOBALS, GLOBALS + 28, GLOBALS + 28 + OWN_HERO_FEATURES)
         );
+        assert_eq!(ORDER, 8_882);
+        assert_eq!(OBSERVATION_LEN, ORDER + ORDER_FEATURES * STACK_CAPACITY);
         let (r, setup) = h3_pack_battle::synthetic(h3_pack_battle::SYNTHETIC_DUEL).unwrap();
         let s = BattleState::new(&r, &setup, 1).unwrap();
         let obs = observe(&s, &r, BattleSide::Defender);
@@ -727,16 +763,35 @@ mod tests {
         assert!(s0[STACK_VALUES + 13..].iter().all(|v| *v == 0.0));
         // Unused slots are zero; the tail beyond OBSERVATION_LEN is untouched.
         assert!(
-            out[STACKS + 2 * STACK_FEATURES..OBSERVATION_LEN]
+            out[STACKS + 2 * STACK_FEATURES..ORDER]
                 .iter()
                 .all(|v| *v == 0.0)
         );
         assert_eq!(out[OBSERVATION_LEN], 9.0);
+        // The turn order (BAT-TRN-001): the active brute first, then the defender's stack, each
+        // its side's next; the next round's places as the order tells them.
+        let next = turn_order(&obs).next;
+        let place = |i: u8| {
+            (1u8..)
+                .zip(next.iter())
+                .find(|(_, id)| id.0 == i)
+                .map_or(0.0, |(p, _)| f32::from(p))
+        };
+        assert_eq!(
+            out[ORDER..ORDER + 2 * ORDER_FEATURES],
+            [1.0, 1.0, place(0), 2.0, 1.0, place(1)]
+        );
+        assert_eq!(place(0) + place(1), 3.0);
+        assert!(
+            out[ORDER + 2 * ORDER_FEATURES..OBSERVATION_LEN]
+                .iter()
+                .all(|v| *v == 0.0)
+        );
         let mut short = vec![0.0; 3];
         assert_eq!(encode(&obs, 17, &mut short), Err(OBSERVATION_LEN));
         assert_eq!(
             OBSERVATION_LEN,
-            38 + 2 * 14 + (66 + 4 * 128) + 16 * 255 + (48 + 27 + 3 * 8) * 42
+            38 + 2 * 14 + (66 + 4 * 128) + 16 * 255 + (48 + 27 + 3 * 8) * 42 + 3 * 42
         );
         assert_eq!(coords(20, 0), (0.0, 20.0));
         // A clone with three rounds left (BAT-MAG-038).

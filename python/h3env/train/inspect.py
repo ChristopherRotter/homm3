@@ -132,7 +132,7 @@ def view(obs: np.ndarray) -> dict[str, np.ndarray]:
     creature stacks whose turn started this round and of them those that waited and that defend;
     per stack slot its count, hit points per creature, retaliations left and the opponent's turn
     flags (0 for no opponent stack)."""
-    s = obs[:, L.STACKS : L.OBSERVATION_LEN].reshape(len(obs), L.STACK_CAPACITY, L.STACK_FEATURES)
+    s = obs[:, L.STACKS : L.ORDER].reshape(len(obs), L.STACK_CAPACITY, L.STACK_FEATURES)
     present = s[..., L.PRESENT] > 0
     army = present & (s[..., L.WAR_MACHINE] == 0) & (s[..., L.TURRET] == 0)
     own = s[..., L.OWN] > 0

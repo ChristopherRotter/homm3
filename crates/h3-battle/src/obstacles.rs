@@ -410,6 +410,43 @@ pub(crate) fn random_hexes(
     out
 }
 
+/// Places the obstacles `viewer` does not see (the other side's hidden ones, BAT-MAG-031) again,
+/// for a world of the battle (E06 T8, ADR-0025 point 12a): their hexes are first cleared, so no
+/// draw reads them, then each in its place takes as many hexes as it covered from the battle's
+/// stream, as its cast draws them ([`random_hexes`], BAT-MAG-032); its spell, kind, rounds and
+/// value stay. One left without a hex is gone.
+// rule: BAT-MAG-031, BAT-MAG-032
+pub(crate) fn place_unseen_again(
+    state: &mut BattleState,
+    ruleset: &BattleRuleset,
+    viewer: BattleSide,
+) {
+    let hidden: Vec<(usize, u32)> = (0..)
+        .zip(&state.spell_obstacles.list)
+        .filter(|(_, o)| !sees(viewer, o))
+        .map(|(i, o)| (i, o.hexes.len()))
+        .collect();
+    if hidden.is_empty() {
+        return;
+    }
+    for &(i, _) in &hidden {
+        state.spell_obstacles.list[i].hexes = HexSet::new();
+    }
+    state.spell_obstacles.refresh();
+    for (i, count) in hidden {
+        let side = state.spell_obstacles.list[i].side;
+        let mut hexes = HexSet::new();
+        let count = u8::try_from(count).unwrap_or(u8::MAX);
+        random_hexes(state, ruleset, side, count)
+            .iter()
+            .for_each(|&h| hexes.insert(h));
+        state.spell_obstacles.list[i].hexes = hexes;
+        state.spell_obstacles.refresh();
+    }
+    state.spell_obstacles.list.retain(|o| !o.hexes.is_empty());
+    state.spell_obstacles.refresh();
+}
+
 /// Places the obstacles of kind `kind` and shape `shape` of `side`'s cast of `id` on `hexes` with
 /// the value `value` (BAT-MAG-027): one per hex for a separate shape (Fire Wall, Quicksand, Land
 /// Mine), else one over all; each reported to the sides that see it (BAT-MAG-031). A hidden kind

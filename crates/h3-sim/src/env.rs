@@ -8,7 +8,7 @@ use h3_battle::{
     generate_setup_obstacles, observe,
 };
 use h3_content_battle::BattleRuleset;
-use h3_contracts::{BattleResult, BattleSetup, BattleSide};
+use h3_contracts::{BattleHero, BattleResult, BattleSetup, BattleSide, RetreatFacts};
 use h3_kernel::{Rng, StreamId};
 
 use crate::action::{self, Action, ActionMask, SpellMask, TargetMask};
@@ -261,6 +261,49 @@ impl BattleEnv {
     /// An independent copy (for search and rollouts).
     pub fn fork(&self) -> Self {
         self.clone()
+    }
+
+    /// A world of the battle for `viewer` (E06 T8, ADR-0025 point 12a;
+    /// [`BattleState::determinized`]): the other side's hero's private part from `guess` (`None`:
+    /// a hero of its type alone), the stream from `seed`; its steps and step limit are this
+    /// env's. Its setup is this env's without what `viewer` may not know (the other side's hero
+    /// the guess, its funds 0, its retreat facts the default, a town's Escape Tunnel as `viewer`
+    /// sees it), so a reset of the world starts nothing hidden either.
+    ///
+    /// # Errors
+    /// [`SetupError::InvalidHero`] for a guess the battle refuses.
+    pub fn world(
+        &self,
+        viewer: BattleSide,
+        guess: Option<&BattleHero>,
+        seed: u64,
+    ) -> Result<Self, SetupError> {
+        let state = self
+            .state
+            .determinized(&self.ruleset, viewer, guess, seed)?;
+        let other = viewer.opponent().index();
+        let mut setup = (*self.setup).clone();
+        setup.heroes[other] = setup.heroes[other].as_ref().map(|hero| {
+            guess
+                .cloned()
+                .unwrap_or_else(|| BattleHero::new(hero.hero_type))
+        });
+        setup.funds[other] = 0;
+        setup.retreat[other] = RetreatFacts::default();
+        if let Some(siege) = setup.siege.as_mut() {
+            siege.escape_tunnel &= viewer == BattleSide::Defender;
+        }
+        Ok(Self {
+            setup: Arc::new(setup),
+            state,
+            ..self.clone()
+        })
+    }
+
+    /// Re-seeds the battle's stream (E06 T8: each of a world's simulations draws its own rolls;
+    /// [`BattleState::reseed`]).
+    pub fn reseed(&mut self, seed: u64) {
+        self.state.reseed(seed);
     }
 
     /// Canonical hash of the battle state.

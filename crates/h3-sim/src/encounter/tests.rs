@@ -483,3 +483,56 @@ fn guards_divide_evenly() {
     assert_eq!(counts(10, 3), [4, 3, 3]);
     assert_eq!(counts(2, 3), [1, 1]);
 }
+
+/// E06 T8b: a world's guess of a hero (`Sampler::guess`, design §14): of the observed type, the
+/// nearest of its candidates in primary skills (best of eight no farther than the first, drawn
+/// alike), commanding each war machine the view shows it commands; none for a type the
+/// distribution does not know.
+#[test]
+fn a_guess_is_of_the_observed_type_near_its_primary_skills() {
+    let sampler = SAMPLER.clone().with_weights([0, 0, 1, 0, 0, 0]).unwrap();
+    let mut seen = 0;
+    for seed in 0..12 {
+        let encounter = sampler.sample(seed);
+        let Some(hero) = encounter.setup.heroes[1].clone() else {
+            continue;
+        };
+        let mut view = h3_battle::HeroView {
+            hero_type: hero.hero_type,
+            attack: hero.attack,
+            defense: hero.defense,
+            power: hero.power,
+            knowledge: hero.knowledge,
+            mana: hero.magic.mana,
+            max_mana: hero.magic.max_mana,
+            casts: 0,
+            commands_ballista: true,
+            commands_tent: true,
+            commands_catapult: true,
+            spell_book: true,
+            sex: hero.sex,
+        };
+        let distance = |h: &h3_contracts::BattleHero| {
+            [h.attack, h.defense, h.power, h.knowledge]
+                .iter()
+                .zip([view.attack, view.defense, view.power, view.knowledge])
+                .map(|(&a, b)| u32::from(a.abs_diff(b)))
+                .sum::<u32>()
+        };
+        let guess = |view: &h3_battle::HeroView, n| {
+            let mut rng = Rng::for_stream(seed, StreamId::ENCOUNTER);
+            sampler.guess(&mut rng, view, false, n).unwrap()
+        };
+        let (one, eight) = (guess(&view, 1), guess(&view, 8));
+        assert_eq!(eight.hero_type, hero.hero_type);
+        assert!(distance(&eight) <= distance(&one));
+        let machines = &eight.war_machines;
+        assert!(machines.ballista.is_some() && machines.tent.is_some());
+        assert!(machines.catapult.is_some());
+        seen += 1;
+        view.hero_type = HeroTypeId::from_index(sampler.core().hero_types().len()).unwrap();
+        let mut rng = Rng::for_stream(seed, StreamId::ENCOUNTER);
+        assert!(sampler.guess(&mut rng, &view, true, 8).is_none());
+    }
+    assert!(seen >= 6, "{seen}");
+}

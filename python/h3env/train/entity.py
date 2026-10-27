@@ -144,10 +144,10 @@ class Entity(Policy):
         vectors [rows, 255, HEX_WIDTH]."""
         rows = obs.shape[0]
         x = symlog(obs)
-        raw = obs[:, L.STACKS :].view(rows, L.STACK_CAPACITY, L.STACK_FEATURES)
+        raw = obs[:, L.STACKS : L.ORDER].view(rows, L.STACK_CAPACITY, L.STACK_FEATURES)
         present = raw[..., L.PRESENT] > 0.5
         stacks = (
-            self.stack_in(x[:, L.STACKS :].view(rows, L.STACK_CAPACITY, L.STACK_FEATURES))
+            self.stack_in(x[:, L.STACKS : L.ORDER].view(rows, L.STACK_CAPACITY, L.STACK_FEATURES))
             + self.creature_embed(raw[..., L.CREATURE].long().clamp(0, CREATURES - 1))
             + self.column_embed(raw[..., L.X].long().clamp(0, COLUMNS - 1))
             + self.row_embed(raw[..., L.Y].long().clamp(0, ROWS - 1))

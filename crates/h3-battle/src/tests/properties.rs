@@ -3291,3 +3291,105 @@ fn extreme_sieges_play_without_failures() {
         "{reach:?}"
     );
 }
+
+proptest! {
+    #![proptest_config(Config { cases: 64, ..Config::default() })]
+
+    /// The turn order (BAT-TRN-001 to BAT-TRN-003) is the same for both viewers, starts with the
+    /// active stack and foretells the next turn: in arbitrary games (sieges, war machines,
+    /// turrets, created stacks, effects, morale), after a Defend whose step holds nothing but
+    /// turns (no morale, Fear, regeneration, effect, obstacle or automatic action), the stack
+    /// activated is the one the order told next: the round's second, or the next round's first.
+    #[test]
+    fn the_turn_order_foretells_the_next_turn(
+        (att, def, ground, seed, steps, hidden) in arb_game(),
+    ) {
+        let r = lively();
+        let setup = game_setup(&r, (&att, &def, &ground), seed, &hidden);
+        let mut state = BattleState::new(&r, &setup, seed).unwrap();
+        let mut legal = LegalCommands::new();
+        let mut events = Vec::new();
+        for step in &steps {
+            let (actor, cmd) = resolve(&state, &r, step, &mut legal);
+            let obs = observe(&state, &r, BattleSide::Attacker);
+            let told = crate::turn_order(&obs);
+            prop_assert_eq!(&told, &crate::turn_order(&observe(&state, &r, BattleSide::Defender)));
+            if obs.tactics.is_none() {
+                prop_assert_eq!(told.round.as_slice().first().copied(), state.active());
+            }
+            events.clear();
+            let applied = apply(&mut state, &r, actor, cmd, &mut events).is_ok();
+            if !applied || obs.tactics.is_some() || cmd != Command::Defend || state.result().is_some() {
+                continue;
+            }
+            let quiet = events.iter().all(|e| {
+                matches!(
+                    e.kind,
+                    EventKind::Defended { .. }
+                        | EventKind::TurnStarted { .. }
+                        | EventKind::RoundStarted { .. }
+                )
+            });
+            if quiet {
+                // The turns started, an automatic one that did nothing among them, follow the
+                // order: the round's rest, then the next round's.
+                let started: Vec<StackId> = events
+                    .iter()
+                    .filter_map(|e| match e.kind {
+                        EventKind::TurnStarted { stack } => Some(stack),
+                        _ => None,
+                    })
+                    .collect();
+                let ahead: Vec<StackId> = told.round.as_slice()[1..]
+                    .iter()
+                    .chain(told.next.iter())
+                    .copied()
+                    .take(started.len())
+                    .collect();
+                prop_assert_eq!(&started, &ahead);
+                prop_assert_eq!(state.active(), started.last().copied());
+            }
+        }
+    }
+}
+
+proptest! {
+    #![proptest_config(Config { cases: 48, ..Config::default() })]
+
+    /// A world (E06 T8, ADR-0025 point 12a) at every step of arbitrary games, for both sides: its
+    /// viewer's observation is the battle's; a twin that differs in the stream, the other side's
+    /// hero's private part and the templates its book gives makes the same world; the world
+    /// plays the step on.
+    #[test]
+    fn a_world_shows_its_viewer_the_battle_and_reads_nothing_hidden(
+        (att, def, ground, seed, steps, hidden) in arb_game(),
+    ) {
+        let r = lively();
+        let setup = game_setup(&r, (&att, &def, &ground), seed, &hidden);
+        let mut state = BattleState::new(&r, &setup, seed).unwrap();
+        let mut legal = LegalCommands::new();
+        for (turn, step) in (0u64..).zip(&steps) {
+            let (actor, cmd) = resolve(&state, &r, step, &mut legal);
+            for viewer in BattleSide::BOTH {
+                let other = viewer.opponent();
+                let world = state.determinized(&r, viewer, None, turn).unwrap();
+                prop_assert_eq!(observe(&world, &r, viewer), observe(&state, &r, viewer));
+                let mut twin = state.clone();
+                twin.reseed(seed ^ 0x5eed);
+                if let Some(h) = twin.heroes[other.index()].as_mut() {
+                    h.tactics = 3 - h.tactics.min(3);
+                    h.funds = h.funds.wrapping_add(1);
+                    h.surrender_discount_bp ^= 1;
+                    h.magic.book = SpellSet::default();
+                    h.magic.duration_bonus = h.magic.duration_bonus.wrapping_add(1);
+                    twin.created.set_templates(other, h3_kernel::FixedVec::new());
+                }
+                let seen = twin.determinized(&r, viewer, None, turn).unwrap();
+                prop_assert_eq!(world.state_hash(), seen.state_hash());
+                let mut world = world;
+                let _ = apply(&mut world, &r, actor, cmd, &mut crate::NoopSink);
+            }
+            let _ = apply(&mut state, &r, actor, cmd, &mut crate::NoopSink);
+        }
+    }
+}

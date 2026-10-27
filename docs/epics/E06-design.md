@@ -447,7 +447,7 @@ encodings are unchanged.
   the agent strikes less and wanders (moves, the tactics phase's placements), its battles
   longer; AI-Q7 closed (the user, 2026-10-26).
 
-## 14. The search (T8) — designed (T8a)
+## 14. The search (T8) — designed (T8a), its plumbing built (T8b)
 
 Decision 2's last increment (the user, 2026-10-26, after T6e: the plateau taken as shown). The
 seam (the user): T8a this design; T8b the plumbing; T8c a decision-time search with `t7-1`'s
@@ -504,15 +504,32 @@ only if T8d needs the throughput.
   50 µs, E05 T5b2). T8c's report set (3 000 battles per opponent, about 28 decisions each) at
   N 32 is about 2.7 M simulations: tens of minutes on the user's machine; the sandbox plays a
   subset.
-- **T8b, the plumbing:** C ABI v34 (`h3_batch_determinize`, `h3_env_reseed`), `h3-battle`'s
-  `determinized` and `reseed` (`cross-lane`), the bindings in `h3env.tools`, `h3env.search` (the
-  tree, the batched leaves, a `report` agent `search(policy, simulations, worlds, k)`). Tests:
-  a world is the same from states that differ only in the hidden part; a world plays to its end;
-  the guess agrees with the public part; a seed gives the same choices; `python -m
-  h3env.search --time` times a decision.
+- **T8b, the plumbing — built** (E06-log T8b): C ABI v34 (with T6f's observation v22),
+  `determinized`, `reseed`, the guess, `h3env.search` with `--time` and `--report`. Beyond the
+  above: the root's candidates are the entries the true battle allows, a chosen cast it refuses
+  gives way to the network's most likely action; a world in which another side moves after the
+  same actions evaluates its position without a node. Gap: AI-STUB-1 (the hidden obstacles'
+  number and value).
 - **T8c, the measurement:** the search agent with `t7-1`'s best (the user's file) at N 16 and 64
   against the system actor and Greedy on the report set, and on the neutral set, beside the
-  sampled policy on the same episodes: win rate, value, cost per decision. T8d only if the search
-  gains beyond the intervals.
+  sampled policy on the same episodes: win rate, value, cost per decision (`python -m
+  h3env.search --report --best <best.pt> --device cuda --opponent system --simulations 16
+  --json …`; `--set neutral-v1`; `--per-kind`: the sets' 500 by default). T8d only if the
+  search gains beyond the intervals.
 - **T8d, expert iteration** (designed after T8c): the search's improved policy and value as the
   trainer's targets.
+
+## 15. The turn order as an input (T6f) — built, its A/B run the user's (T6g)
+
+The turn-order probe (E06-log) showed the trunk does not know which stack acts next. The user
+(2026-10-26): the engine's own order in the observation, v22, before T8b.
+
+- **The order:** `h3_battle::turn_order` (`turn.rs`, sharing `next_active`'s key): the rest of the
+  round's turns as they come (no wait, morale or death foreseen), then the next round's.
+- **The encoding:** per stack slot its place in the rest of the round (1: the active stack), its
+  place among its side's turns there (1: its side's next), its place in the next round; appended
+  after v21's layout, which stays its prefix.
+- **The network:** `[network] order` (the MLP's): the trunk reads the whole observation, else
+  v21's prefix (every network saved before v22). The entity network reads v21's slots as before.
+- **The run** (T6g, the user's machine): `configs/e06-order.toml`, `t7-1`'s settings with the
+  order; read against `t7-1`'s ladder and with `inspect` (the waits, defends and wandering).

@@ -105,8 +105,12 @@ pub use batch::{
 /// random seat), and `h3_system_policy_version`; the encodings unchanged. v33 (E06 T5, AI-Q7
 /// (b)): `H3BatchBuffers.preview` (the acting side's previewed kills per attack and shot entry,
 /// [N, `h3_preview_len()`]; the struct grows by one pointer at its end), `h3_preview_base` and
-/// `h3_preview_len`; the encodings unchanged.
-pub const H3_ABI_VERSION: u32 = 33;
+/// `h3_preview_len`; the encodings unchanged. v34 (E06, the turn order and T8b): observation
+/// encoding v22 (each stack slot's places in the turn order, `h3_sim::observation::ORDER`,
+/// appended: v21's layout is its prefix; `h3_observation_len` grows), and a search agent's
+/// worlds (ADR-0025 point 12a): `h3_batch_determinize` (a single env of an env's battle with
+/// what a side may not know replaced) and `h3_env_reseed`; the action encoding unchanged.
+pub const H3_ABI_VERSION: u32 = 34;
 
 /// `H3StepResult.result`: the battle is not decided (still running, or truncated).
 pub const H3_RESULT_NONE: i32 = -1;
@@ -392,6 +396,23 @@ pub unsafe extern "C" fn h3_env_fork(env: *const H3Env) -> *mut H3Env {
     forked.map_or(std::ptr::null_mut(), Box::into_raw)
 }
 
+/// Re-seeds the battle's stream (v34, E06 T8: each of a world's simulations draws its own rolls;
+/// `h3_battle::BattleState::reseed`). `H3_ERR_NULL` for a null handle.
+///
+/// # Safety
+/// `env` must be null or a live handle not used concurrently.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn h3_env_reseed(env: *mut H3Env, seed: u64) -> i32 {
+    // SAFETY: per the contract.
+    let Some(e) = (unsafe { env.as_mut() }) else {
+        return H3_ERR_NULL;
+    };
+    guard(|| {
+        e.env.reseed(seed);
+        H3_OK
+    })
+}
+
 /// Restarts the battle with a new seed.
 ///
 /// # Safety
@@ -669,7 +690,7 @@ mod tests {
 
     #[test]
     fn abi_smoke_create_step_destroy() {
-        assert_eq!(h3_abi_version(), 33);
+        assert_eq!(h3_abi_version(), 34);
         assert_eq!(
             h3_observation_encoding_version(),
             OBSERVATION_ENCODING_VERSION

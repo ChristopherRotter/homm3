@@ -65,6 +65,15 @@ impl Created {
             .find(|t| t.creature == creature)
     }
 
+    /// Replaces `side`'s templates (a world's guessed hero, E06 T8).
+    pub(crate) fn set_templates(
+        &mut self,
+        side: BattleSide,
+        templates: FixedVec<Stack, TEMPLATES>,
+    ) {
+        self.templates[side.index()] = templates;
+    }
+
     /// Nothing created yet; the sides' summon `templates`.
     pub(crate) const fn new(templates: [FixedVec<Stack, TEMPLATES>; 2]) -> Self {
         Self {

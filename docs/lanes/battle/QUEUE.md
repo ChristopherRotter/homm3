@@ -12,6 +12,20 @@ E23, the original's battle AI, is **closed** (2026-10-24; `docs/epics/E23-origin
 
 Consolidated on 2026-10-19 (the user): the entries from E01 to E04c's closure are merged below by kind, done and duplicate parts dropped; the origin stays in brackets (an epic and task, a review report such as r3 or F-r2b-2). History: git. Items for other lanes went into their inboxes; the First Aid Tent became BAT-Q51. The addresses are readings of the executable, the reviews' not read a second time. Where the readings stand: `installation.md` §7.8–§7.33; the reviews' reports stay on `battle/e04b-t11b-review-reports` and `battle/e04c-t10b-review-reports`; their experiment candidates are in `docs/experiments/README.md` ("From the battle queue's inbox", "From the E04b review", "From E04c").
 
+- 2026-10-27 (the AI lane, E06 T6f and T8b, `claude/jolly-volta-qejdfa`, `cross-lane` with the
+  user's consent; **for you**): two additions to `h3-battle` the AI lane made and reads.
+  **`h3_battle::turn_order(&Observation) -> TurnOrder`** (`turn.rs`): the rest of the round's
+  turns and the next round's, sharing `next_active`'s key (`OrderKey`), so a change of the order
+  rules (BAT-TRN-001..003, BAT-SIE-011/016) changes both at once; the AI lane's observation v22
+  encodes it per stack, and a battle client could show it as a queue. **A search agent's worlds,
+  `BattleState::determinized` and `reseed`** (`world.rs`, ADR-0025 point 12a): a copy with
+  everything a side may not know (`observe_as`'s list) replaced; `state::world_templates`,
+  `obstacles::place_unseen_again` and `Created::set_templates` serve it, and `templates` takes
+  the armies' creatures. **A change of what a side may not know** (a new hidden field, a new
+  hidden obstacle kind) **changes `world.rs` in the same change** (the ADR's point 2), as it
+  changes `observe_as`; the property `a_world_shows_its_viewer_the_battle_and_reads_nothing_hidden`
+  catches most. A trap for your `TRAPS.md` ("Battle code"). Known gap: AI-STUB-1.
+
 - 2026-10-24 (the E11 refinement, `shared/e11-refinement`, Q58): **E11 is yours to lead**
   (`docs/epics/E11-historical-rules.md`): the historical rules of RoE and AB from the user's own
   original media. **The order (the user, 2026-10-24):** E23 closed first (`battle/e23-closure`),
