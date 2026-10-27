@@ -2713,7 +2713,7 @@ files staged again from the user's `original-data/install/` (the same 26 files a
   after going back, through the tests' `timeline` and `fidgeting`; the heroes' tests with their
   heroes; keys held out of the order they show), checked to fail with a fault put in; coverage
   100 %; `play`'s `frames.txt` and `cues.txt` byte for byte as before; `drawn` all 119 the same,
-  `sequences`' playhead check passing on all 31.
+  `sequences`' playhead check passing on all 47 recorded sequences (each as recorded).
 
 ## Accepted review lists (M1 to M4)
 
