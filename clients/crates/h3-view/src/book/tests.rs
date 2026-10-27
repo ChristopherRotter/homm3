@@ -141,6 +141,14 @@ fn the_best_school_is_tried_air_fire_earth_water() {
 }
 
 #[test]
+fn a_school_s_index_is_its_first_bit_all_of_them_4_and_none_0() {
+    assert_eq!(index_of(ALL), 4);
+    assert_eq!(index_of(2 | 8), 1);
+    assert_eq!(index_of(8), 3);
+    assert_eq!(index_of(0), 0);
+}
+
+#[test]
 fn a_page_holds_twelve_places_a_school_s_first_its_emblem() {
     let hero = many();
     let catalogue = catalogue();
