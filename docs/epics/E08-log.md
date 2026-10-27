@@ -6766,3 +6766,64 @@ green on it); the sandbox's light gates passed; the original data staged from th
   `cargo check --workspace --all-targets` and `h3-map`'s and `h3-sim`'s tests. A smoke run, not
   committed: random play on the eight shipped maps that run whole (the seven `.h3m` and the
   Tutorial; three seeds each, 14 days, at most 3 000 steps), no failure.
+
+### Increment 7, round 6: T62b2, events and the move (2026-10-27, `adventure/e08-t62b2`)
+
+**The cut** (decision 152): whole, the user's choice (the agent recommended two parts, the static
+layer, the views and the property first). **Baseline:** `master` 8ef8244 (#521 merged, CI green on
+it); the sandbox's full verify passed (no CI fingerprint on `master` yet when it started); the
+original data staged from the user's computer.
+
+- **The census first** (`h3-map`'s `original_data`, new counts): 486 events on the 160 shipped
+  maps, 460 removed after they fire, 60 firing for computers too, 87 guarded, each with one
+  visitable tile; **every one's template blocks its tile** (the draft left those tiles blocked: on
+  a real map no hero could have stepped onto an event), none on another object's visitable or
+  blocked tile, no tile with two events, 9 on water, 59 within one step of a monster.
+- **The static map** (`state.rs`): `place` keeps an event apart from both masks (the original's
+  placement clears the blocked and the visitable bit of its tile, 0x505C78): its tiles go to
+  `StaticMap::events` and a bit per tile (`events_at`), never to the tiles' `blocked`/`visitable`
+  nor the visits; `MapObject::event`, and `covers` answers neither for an event, so the
+  occupancy's removals and the battle background's scan (GAM-BAT-011) pass it as the original's
+  `place_object_tiles` does (no tile record for class 26). The map's masks stay on the object (the
+  static hash's encoding unchanged).
+- **The seats** (`setup.rs`, `Seat`): each player's colour and human flag by player id, which the
+  game gives from its `PlayerSetup`s (`SetupError::Seats` when not one per player); a fixed array in
+  the state, so a fork copies it; adventure state hash v15.
+- **The move** (`move_hero`): the path is checked and priced whole as before, so nothing in its
+  acceptance or price tells of an event; the first step onto a stop that visits nothing (a
+  flyer's free tile mid-flight too, not a tile it only passes over) that fires an event ends the
+  move there with that step's points left; the outcome's new `dropped` counts the steps not taken.
+  A hero's start is no step.
+- **The fire** (`state/events.rs`): `event_at` (the last live event of the tile in map order),
+  `firing_event` (the seat's colour bit in the event's colours, a non-human only with the computer
+  flag; none on a guarded tile until T63: `ADV-STUB-10`), `fire_event` (`EventFired { hero, tile }`
+  to the owner alone, then the guards' battle at once through `guards_battle`, else
+  `give_event`), `give_event` (the record by `give_record`, then the removal with the flag, told to
+  nobody), `end_event_battle` (reached from `end_unowned_battle` when no object at the tile takes
+  the battle: lost, the survivors stay; won, the guards are gone for good and the record follows).
+- **The views** (`observe.rs`): an event is never an object view, and its tile is no object's in
+  the tile views (it never was: before T62b2 its template made the tile blocked and visitable).
+- **The game:** `GameSetup::adventure_setup` passes the seats; a won event's record before the winner's
+  levels as a box's (`ADV-STUB-10`).
+- **Rules:** ADV-OBJ-007 and ADV-MOV-011 (new, `verified`: E7-17, E7-18, E7-23), ADV-FOG-007 (new);
+  A-26 as `ADV-QUIRK-29` (exploit-fix, no flag); `ADV-STUB-10` amended (the event on a guarded tile
+  neither fires nor stops a flyer until T63).
+- *Agent's calls (change freely):* the seats as a static setup input (the adventure has no other
+  source of a player's colour or human flag); `EventFired` carries the tile for a client's message;
+  a draw against an event's guards leaves none, so the next entry gives the record (the original's
+  "lost: return"; VCMI removes a non-repeatable event after a draw); on a tile with several events
+  the last live one in map order is the tile's (the original keeps one word, the last placed; none
+  on the shipped maps); an event on another object's blocked tile does not unblock it as the
+  original's placement would (none on the shipped maps); an event on water fires only once boats
+  exist (9 on the shipped maps; the queue's inbox).
+- **Tests:** `h3-adventure`'s `state/tests/events.rs` (7: the fire and the stop, the colours and
+  the computer flag, the repeats and the start, the guards' battle lost and won, a guarded tile,
+  a flyer stopped or passing, nothing seen, the paths and reach alike), `state/tests.rs` (the
+  seats' error and hash); `h3-game`'s `tests/events.rs` (the record through `MoveHero`, the firing
+  told to red alone, a guarded event's battle and win) with **the hidden-event property** (48 cases:
+  an event anywhere a hero may stand, any colours and flags, guarded or not, blue human or not;
+  every player's observation, legal commands, legal moves and told events the same as without it
+  until it fires; checked to fail at once with events shown in the views); `h3-map`'s view
+  property takes `EventFired`.
+- **Replays**: the twelve re-recorded with their options, their commands and days unchanged (neither
+  map has an event): the version and every hash moved.
