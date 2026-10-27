@@ -211,15 +211,25 @@ fn its_cues_are_handed_out_once() {
             at: h3_map::model::Pos { x: 17, y: 17, z: 0 },
             facing: Direction::East,
         }),
-        paths: vec![vec![arrow(18, 12), arrow(19, 12), arrow(20, 12), arrow(21, 1)]],
+        paths: vec![vec![
+            arrow(18, 12),
+            arrow(19, 12),
+            arrow(20, 12),
+            arrow(21, 1),
+        ]],
         path: Vec::new(),
         live: false,
         sound: Some(crate::sound::tests::sound(tiles)),
     };
-    let actions = BTreeMap::from([(1, vec![Action::Click(dest)]), (2, vec![Action::Click(dest)])]);
+    let actions = BTreeMap::from([
+        (1, vec![Action::Click(dest)]),
+        (2, vec![Action::Click(dest)]),
+    ]);
     let mut r = Replay::new(rules(Bugs::Fixed), &start, actions).unwrap();
     let lines = |cues: Vec<(u32, Cue)>| -> Vec<alloc::string::String> {
-        cues.iter().map(|(t, c)| crate::sound::line(*t, c)).collect()
+        cues.iter()
+            .map(|(t, c)| crate::sound::line(*t, c))
+            .collect()
     };
     let at_0 = [
         "0 music Grass",

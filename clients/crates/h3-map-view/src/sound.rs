@@ -195,7 +195,9 @@ impl SoundRules {
             ));
         }
         let by_class = |list: &[ClassSound]| -> Result<BTreeMap<u32, u8>, String> {
-            list.iter().map(|c| Ok((c.class, index(&c.sound)?))).collect()
+            list.iter()
+                .map(|c| Ok((c.class, index(&c.sound)?)))
+                .collect()
         };
         let mut creatures = BTreeMap::new();
         for c in &art.creatures {
@@ -212,7 +214,11 @@ impl SoundRules {
             volumes: art.volumes.clone(),
             shore: index(&art.shore)?,
             shore_pictures: art.shore_pictures,
-            loaded_as: art.loaded_as.iter().map(|&[map, game]| (map, game)).collect(),
+            loaded_as: art
+                .loaded_as
+                .iter()
+                .map(|&[map, game]| (map, game))
+                .collect(),
             ownable: art.ownable.clone(),
             hole: art.hole,
             objects: art
@@ -253,7 +259,10 @@ impl SoundRules {
     /// A loop's volume at `distance` (0 at a distance the table lacks).
     #[must_use]
     pub fn volume(&self, distance: u8) -> u8 {
-        self.volumes.get(usize::from(distance)).copied().unwrap_or(0)
+        self.volumes
+            .get(usize::from(distance))
+            .copied()
+            .unwrap_or(0)
     }
 
     /// An entrance tile's loop: by its object's game class, subclass and map class (an abandoned
@@ -365,9 +374,7 @@ impl TileSounds {
     /// The terrain of a tile on the map.
     #[must_use]
     pub fn terrain(&self, tile: [i32; 3]) -> Option<u8> {
-        self.index(tile)
-            .and_then(|i| self.terrains.get(i))
-            .copied()
+        self.index(tile).and_then(|i| self.terrains.get(i)).copied()
     }
 
     /// The ambient sound of a tile on the map: none where a hero stands (`standing`, the selected
@@ -420,11 +427,7 @@ fn tile_sound(
         .find(|e| class_of(e).is_some_and(|c| rules.ownable.contains(&c)))
         .or_else(|| top().find(blocks))
         .and_then(class_of)
-        .or_else(|| {
-            top()
-                .filter_map(class_of)
-                .find(|&c| c == rules.hole)
-        })
+        .or_else(|| top().filter_map(class_of).find(|&c| c == rules.hole))
         .unwrap_or(if tile.coast() { COAST_CLASS } else { NO_CLASS });
     if class == NO_CLASS {
         // The special ground (`tile_special_ground` 0x4FCE20): the first from the top.
@@ -708,7 +711,14 @@ impl Sound {
             .cloned()
             .unwrap_or_default();
         let volume = self.rules.volume(distance);
-        self.cues.push((t, Cue::Loop { slot: i, name, volume }));
+        self.cues.push((
+            t,
+            Cue::Loop {
+                slot: i,
+                name,
+                volume,
+            },
+        ));
         self.found ^= bit(sound);
     }
 }

@@ -63,7 +63,10 @@ fn names(cues: &[(u32, Cue)]) -> Vec<String> {
 fn the_tables_sounds_are_the_originals() {
     let r = rules();
     assert_eq!(r.loops.len(), 70);
-    assert_eq!((r.loops[0].as_str(), r.loops[69].as_str()), ("LoopAnim.wav", "loopocea.wav"));
+    assert_eq!(
+        (r.loops[0].as_str(), r.loops[69].as_str()),
+        ("LoopAnim.wav", "loopocea.wav")
+    );
     let music: Vec<(u8, &str)> = r.music.iter().map(|(c, n)| (*c, n.as_str())).collect();
     assert_eq!(
         music,
@@ -80,7 +83,10 @@ fn the_tables_sounds_are_the_originals() {
         ]
     );
     assert_eq!(r.steps.len(), 10);
-    assert_eq!((r.steps[&0].as_str(), r.steps[&9].as_str()), ("horse00.wav", "horse09.wav"));
+    assert_eq!(
+        (r.steps[&0].as_str(), r.steps[&9].as_str()),
+        ("horse00.wav", "horse09.wav")
+    );
     assert_eq!(r.flying, "horse10.wav");
     assert_eq!(r.wavs().len(), 81);
     let volumes: Vec<u8> = (0..5).map(|d| r.volume(d)).collect();
@@ -113,7 +119,11 @@ fn the_tables_sounds_are_the_originals() {
         (53, 0, 220, Some(7)),
         (53, 9, 53, None),
     ] {
-        assert_eq!(r.entrance(class, subclass, map_class), want, "{class}, {subclass}");
+        assert_eq!(
+            r.entrance(class, subclass, map_class),
+            want,
+            "{class}, {subclass}"
+        );
     }
 }
 
@@ -128,7 +138,10 @@ fn the_tables_sounds_break_no_rule() {
         fails(|a| a.loops[0] = "LoopAnim".into()),
         "`LoopAnim` is not a .WAV name"
     );
-    assert_eq!(fails(|a| a.flying = ".wav".into()), "`.wav` is not a .WAV name");
+    assert_eq!(
+        fails(|a| a.flying = ".wav".into()),
+        "`.wav` is not a .WAV name"
+    );
     assert_eq!(
         fails(|a| a.creature_default = "nope.wav".into()),
         "`nope.wav` is not one of the loops"
@@ -170,7 +183,11 @@ fn the_tables_with_and_without_sound() {
     cut.replace_range(start..end, "");
     let t = tables::load(&[tables::parse(&cut).unwrap()], "base").unwrap();
     assert!(t.sound.is_none() && t.sounds().is_empty() && t.tracks().is_empty());
-    let river = text.replacen("def = \"clrrvr.def\"", "def = \"clrrvr.def\"\nmusic = \"Dirt\"", 1);
+    let river = text.replacen(
+        "def = \"clrrvr.def\"",
+        "def = \"clrrvr.def\"\nmusic = \"Dirt\"",
+        1,
+    );
     assert_eq!(
         tables::load(&[tables::parse(&river).unwrap()], "base")
             .unwrap_err()
@@ -214,10 +231,7 @@ fn template(
 }
 
 /// An 8 × 8 grass map with these objects (template, anchor), every DEF one tile but `wide`'s two.
-fn map_with(
-    objects: &[(TemplateArt, (u8, u8))],
-    wide: &[usize],
-) -> (MapArt, Live, Shapes) {
+fn map_with(objects: &[(TemplateArt, (u8, u8))], wide: &[usize]) -> (MapArt, Live, Shapes) {
     let grass = TileArt {
         terrain: Piece {
             code: 2,
@@ -387,7 +401,10 @@ fn each_tiles_sound_is_its_recorded_objects() {
         (Some(WATER), Some(2), None, None, None)
     );
     let bare = TileSounds::build(&art, &live, &[], &r, None);
-    assert_eq!((bare.sound([3, 1, 0], None), bare.sound([0, 0, 0], None)), (None, Some(69)));
+    assert_eq!(
+        (bare.sound([3, 1, 0], None), bare.sound([0, 0, 0], None)),
+        (None, Some(69))
+    );
 }
 
 #[test]
