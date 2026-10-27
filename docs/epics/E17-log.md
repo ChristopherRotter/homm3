@@ -2547,6 +2547,49 @@ user's `original-data/install/`.
   all 119 the same; `clippy`, `fmt`; under Wine with the new `xdd.dll`, `frames --only quake`
   (a forced list) and `missed` (a failed roll): as recorded, nothing refused (the rest in T3b).
 
+### M4 T3b-1 — The hovered item, the stills and the siege sequences afresh (2026-10-27)
+
+On `client/e17-m4-t3b1`, the user present at the start. **T3b cut in two by the user** (the
+agent's proposal, the status line first): T3b-1 the hovered item read, the 72 stills, the 15
+siege sequences and `walk`, `turn`, `climb` (the status line's cases), the rule settled; T3b-2
+the other 29 sequences and `drawn --record`. The original files staged from the user's
+`original-data/install/`; the captures ran in the sandbox under Wine, the machine otherwise idle.
+
+- **Starting point:** `master` at `568a54c` (#485 merged; CI's Clients run green on it); the
+  client gates on that code (`verify-once clients`: CI's fingerprint, the light gates); `drawn`
+  all 119 the same.
+- **The harness:** `h3mem.Mem.hovered_item` reads `hovered_item` 0x6AAC68 and the item's id,
+  vtable, dialog (+0x4, the combat dialog's or not), box (+0x18), state (+0x16) and hint
+  (+0x20); `sequence` records it per step (`states.jsonl`, `frames.jsonl`; not `kept/`).
+  Read-only and not on the original's side (no harness check needed: `h3adv` untouched).
+- **Read per step:** the park point's item is the panel's picture 2000 (0x4502D0's vtable, box
+  (0, 556, 800, 44), state 6, no hint). `hovered_item` is 0 at every opening; the first move into
+  the panel after it enters the picture and writes an empty line (nothing while new log entries
+  show): `walk` 2 592, `turn` 2 648, `climb` 2 396 (their one human turn after the click),
+  `keep` 1 654 (the second human turn), `hit`, `missed`, `automatic` at 0 (the turn after the
+  opening's defend), `aim` 8 176 (its mouse over the battlefield only until the Catapult's shot:
+  the park queued after it). From then on the park point writes nothing.
+- **The viewer:** `track::Handler` keeps the hovered panel item (`hovered`) and writes an item's
+  hint, an empty line without one, only as the mouse enters it; the first input (the mouse
+  resting where it was placed before the battle) enters none (`items`); `Input::Book` forgets it
+  (the book's items destroyed as it closes, *provisional*); the hot-seat flag gone from
+  `follow`. The layouts' picture gains `size` (where it takes the mouse; the panel's 800 × 44).
+  Tests: the hovered item's (replacing the hot-seat one), the book's forgetting, a sized
+  picture; four tests' expectations without the opening's empty line. Review item 13.
+- **Captured:** batch A (`walk` alone, then `turn` to `cyclops`, 47 minutes) under the old
+  viewer: all as recorded (`missed` and `automatic` compared with `--reuse` after the new
+  layout file had broken the old binary's run: the layout is read at run time, keep it with
+  its binary while a batch runs); all ten again with `--reuse` under the new viewer: as
+  recorded. Batch B (`aim` to `through`, 76 minutes) under the new viewer: as recorded but
+  `aim`, whose last 8 frames (8 175 to 8 875) lost their ` log` masks, the counts the same:
+  recorded again, kept with `--reuse`. `set`: 72 situations, 99 frames, as recorded (12
+  minutes). `kept/` unchanged throughout.
+- **`drawn`:** all 119 the same but `aim` (its 8 frames from 8 175): `drawn --record --only
+  aim`. So the new rule draws every other sequence, the M3 casts with the book among them, as
+  the hot-seat proxy did.
+- **Asked:** CLT-Q24 (the battlefield's last hint kept over the panel's background; built as the
+  original's).
+
 ## Accepted review lists (M1, M2, M3)
 
 M1 and M2 moved from the epic file on 2026-10-20 (less start-up reading), unchanged; M3 at its

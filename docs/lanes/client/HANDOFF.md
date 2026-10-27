@@ -5,16 +5,17 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 ## Current state
 
 - **E17 M0–M3 done** (the lane split at M3 T9c, CLT-Q18: the battle client here, the adventure
-  map client the map-client lane's E24); **M4 (sieges): T0 to T2c-2 done** (§10.1, §10.2,
-  CLT-Q19 to Q21); **T3 cut in three** (the user, 2026-10-26: T3a the reviewers' findings
-  fixed, T3b every capture afresh with the hovered item read, T3c the review list and M5 with
-  the user); **T3a done; next T3b**; M5 live play after M4. Open PR: #485 (T3a; check it
-  first). Workspace `clients/` (`clients/README.md`), gates `clients/scripts/check.sh`; ADR-0020 (+ drafts in `adr-drafts/`), ADR-0024; the harness
-  `clients/capture/README.md`; design §3–§10; records in `E17-log.md`.
+  map client the map-client lane's E24); **M4 (sieges): T0 to T3b-1 done** (§10.1, §10.2; T3
+  cut in three by the user: T3a the review, T3b the captures, cut in two, T3c the review list
+  and M5 with the user); **next T3b-2** (the other 29 sequences); M5 live play after M4. Open
+  PR: T3b-1's (`client/e17-m4-t3b1`; check it first). Workspace `clients/`
+  (`clients/README.md`), gates `clients/scripts/check.sh`; ADR-0020 (+ drafts in
+  `adr-drafts/`), ADR-0024; the harness `clients/capture/README.md`; design §3–§10; records in
+  `E17-log.md`.
 - **Captures** (the user, 2026-10-20): `h3drive.py drawn` first (no Wine); capture what it lists or the task changes, all at a milestone's closure or a harness change (runbook); a capture not as recorded leaves `kept/` (T9b: record, then `--reuse`); later tasks' detail in `NOTES.md`.
 - **The user's requirements** (epic, "Decisions"): a string catalogue (JSON packs, no committed translation, CLT-Q7); graphics options (`faithful` default); exhaustive diffs; drawing bugs fixed, the original's only for comparisons (`Bugs`).
 - The lane owns `clients/` but the map-client lane's paths and the common ones (`lanes.toml`: the foundation, `text/`, the harness; an additive change freely, a change in behaviour into the map-client lane's inbox), plus `docs/epics/E17*` and this folder; branches `client/<task>`; ids `CLT-Q<n>`, `CLT-QUIRK-<n>` (asset fixes), `CLT-STUB-<n>`; ADR drafts in `adr-drafts/`, numbered when accepted.
-- **Checkpoints** per milestone (below), a fresh reviewer agent first. **Open:** CLT-Q4–Q6, Q22, Q23.
+- **Checkpoints** per milestone (below), a fresh reviewer agent first. **Open:** CLT-Q5, Q22–Q24.
 - Stage from `original-data/install/`: the four LODs (one per call), `h3maped.exe`, both `.snd`, `MP3/COMBAT01`–`04` and the end tunes, `Heroes3.exe`, the five DLLs, `H3ab_ahd.vid`; `cp -rn` the staged `original-data/.` into the clone. Frames stay in the sandbox.
 
 ## Autonomy contract (agreed by the user, 2026-10-12)
@@ -34,19 +35,15 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
 
 ## Recent sessions
 
-- **2026-10-26/27, E17 M4 T3b-1 (in progress; `client/e17-m4-t3b1`).** T3b cut in two (the
-  user: T3b-1 the hovered item read, the stills, the 15 siege sequences and `walk`, `turn`,
-  `climb`, the status line settled; T3b-2 the other 29 sequences, `drawn --record`). Done:
-  the harness reads `hovered_item`; the status line settled (the panel's picture entered once
-  after the opening; viewer and docs pushed); the 18 sequences as recorded (`aim`'s ` log`
-  masks gone, recorded). Next: `set`, `drawn`, verify, PR.
+- **2026-10-27, E17 M4 T3b-1 (done; its PR open: check it first).** T3b cut in two (the
+  user). The harness reads `hovered_item` per step: the park point is the panel's picture,
+  entered once after the opening; the viewer tracks the hovered item (the hot-seat proxy
+  gone; review item 13), `aim`'s exception explained. The 72 stills and 18 sequences as
+  recorded but `aim`'s ` log` masks (recorded); `drawn` the same but `aim`. CLT-Q24 asked.
 - **2026-10-26, E17 M4 T3a (done; #485 merged).** T3 cut in three (the user).
   Three fresh reviewers one at a time (R1 drawing and timeline, R2 mouse and adapters, R3
   harness): 16 of 17 findings fixed, R1-3 queued (QUEUE's inbox); review items 10 to 12. The
   harness now refuses rolls it cannot force (`xdd.dll`'s ack: a 7th field). `drawn` unchanged.
-- **2026-10-26, E17 M4 T2c-2 (done; #483 merged; not cut: the user).** Earthquake,
-  the end tune at a town, the siege's mouse (16, 22, the broken arrow); `quake`, `defended`,
-  `aim`, `through` as recorded, frames exact but listed differences; T2b's and T2c-1's nine
-  recaptured without their ` log` masks. Found: the status line kept at a hot-seat human turn
-  with the mouse parked (built as found, *provisional*; `aim`'s exception and the dispatch
-  reading in QUEUE's inbox). CLT-Q22 and Q23 still open.
+- **2026-10-26, E17 M4 T2c-2 (done; #483 merged).** Earthquake, the end tune at a town, the
+  siege's mouse; `quake`, `defended`, `aim`, `through` recorded; the status line kept at a
+  hot-seat human turn found (settled at T3b-1).

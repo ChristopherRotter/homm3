@@ -3447,9 +3447,9 @@ read, the stills, the 15 siege sequences and `walk`, `turn`, `climb`; T3b-2 the 
 harness reads `hovered_item` 0x6AAC68 per step (`h3mem.Mem.hovered_item`: the item's id, kind,
 dialog, box, state and hint, in `states.jsonl` and `frames.jsonl`), read-only.
 
-- **The hovered item at the park point** is the panel's picture, item 2000 (vtable 0x63BA94, its
-  dialog the combat dialog, its box (0, 556, 800, 44), state 6, no hint): no control lies under
-  (618, 593). The opening enters no item: `hovered_item` is 0 in every sequence until the first
+- **The hovered item at the park point** is the panel's picture, item 2000 (the vtable
+  `dialog_picture_create` 0x4502D0 gives; its dialog the combat dialog, its box (0, 556, 800,
+  44), state 6, no hint): no control lies under (618, 593). The opening enters no item: `hovered_item` is 0 in every sequence until the first
   move into the panel after it, the mouse resting where the harness placed it before the battle.
   That first move enters the picture and writes an empty line (nothing while the log's new
   entries show, 0x472B80): a human turn's post of the parked mouse (`walk` 2 592, `turn`
@@ -3471,4 +3471,5 @@ dialog, box, state and hint, in `states.jsonl` and `frames.jsonl`), read-only.
   asked (recommended: the client forgets the hovered item over the battlefield, the original's
   for the comparisons); built as the original's meanwhile.
 - **Captured:** the 15 siege sequences and `walk`, `turn`, `climb` as recorded but `aim`, whose
-  last 8 frames' ` log` masks are gone (its counts recorded again); the stills below.
+  last 8 frames' ` log` masks are gone (its counts recorded again); the 72 stills (99 frames) as
+  recorded; `drawn` the same for all but `aim`.
