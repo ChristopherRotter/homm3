@@ -17,23 +17,7 @@ T1a was cut at its seam before it started (the user, 2026-10-26): T1a1 the recor
 standing still, T1a2 the scroll; T1b, the walk, done whole (all three done 2026-10-26:
 `E24-log.md`); T2, the map over time headless, done whole (2026-10-27: the user chose it over a
 cut before the frame check); T3 cut at its seam before it started (the user, 2026-10-27): T3a,
-the walk's timing headless, done 2026-10-27; T3b, the walk drawn.
-
-### E24 M2 T3b — the walk drawn
-
-- **Scope:** T3a's timeline (`E24-design.md` §3.7: `timeline::Draw` gives each draw's view
-  offset, selected hero, lifted hero's group and frame and path's arrows, `Cursor` its `shown`)
-  drawn: the walk sequences recorded again in a fresh sandbox first (`h3map.py frames --only
-  walk-…`, about 35 minutes; the original's screens live only in the sandbox that recorded them);
-  the scene with the lifted hero at the view's fixed place (passes 5, 7 and 9, the last a blend:
-  `draw_frame_blend` 0x47D4F0 read if the frames need it) instead of on its tile, the view's
-  offset added to every pass, a boat's waves, flag and boat for the sailing hero, the arrows
-  shown; the hero DEFs' groups 5 to 9 in the gate (`HeroArt::drawn_groups`); the `sequences`
-  adapter draws the walks (their `screen` lines; `--frames`), the harness's frame check and
-  `drawn` over them (`h3map.py`'s `walks` no longer excludes them).
-- **Acceptance:** T1b's sequences as recorded, every line and every frame (or each difference an
-  `MCL-Q<n>`); the Definition of Done.
-- **Depends on:** T3a (done). **Status:** ready.
+the walk's timing headless, and T3b, the walk drawn (taken whole), both done 2026-10-27.
 
 ### E24 M2 T4 — the window
 
@@ -52,7 +36,7 @@ the walk's timing headless, done 2026-10-27; T3b, the walk drawn.
   options dialog, later.
 - **Acceptance:** a situation and a walk sequence play in the window; `--check` exact; the
   Definition of Done.
-- **Depends on:** T2 (done), T3b. **Status:** ready after T3b.
+- **Depends on:** T2 and T3b (done). **Status:** ready.
 
 ### E24 M2 T5 — the map's sound
 
