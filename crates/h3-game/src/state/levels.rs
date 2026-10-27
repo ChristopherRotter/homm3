@@ -178,7 +178,9 @@ impl GameState {
     /// ([`Self::answer_level_up`]); one with one offer learns it and one with none raises the
     /// primary skill only, at once (`LevelGained`), and the next is drawn. The decision holds
     /// the game until its answer ([`Self::check_held`]), so no other gain reaches the hero
-    /// meanwhile.
+    /// meanwhile. While the hero's level-up is open nothing is given here: its answer gives the
+    /// next pending levels, the experience gained since among them (E08 T62b1: a won Pandora's
+    /// Box's record before the battle's levels, `ADV-STUB-10`), so no level is drawn twice.
     // rule: GAM-DEC-002
     pub(crate) fn give_levels<S: Sink>(
         &mut self,
@@ -186,6 +188,12 @@ impl GameState {
         hero: (HeroId, PlayerId),
         sink: &mut S,
     ) {
+        let open = self.decisions.as_deref().unwrap_or_default().iter().any(
+            |decision| matches!(decision, Decision::LevelUp { view, .. } if view.hero == hero.0),
+        );
+        if open {
+            return;
+        }
         let open = self.next_level_up(rules, hero, sink);
         open.into_iter()
             .for_each(|decision| self.push_decision(decision));

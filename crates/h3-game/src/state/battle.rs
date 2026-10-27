@@ -9,7 +9,9 @@ use alloc::sync::Arc;
 use alloc::vec::Vec;
 use core::cmp::Ordering;
 
-use h3_adventure::{BattleStart, Combatant, Defender, Pos, TileRand, Viewers, split};
+use h3_adventure::{
+    BattleStart, Combatant, Defender, Pos, TileRand, Viewers, split, split_with_second,
+};
 use h3_battle::{BattleState, Command, Event, Visibility, generate_setup_obstacles};
 use h3_content::{FULL_BP, OBSTACLES_FROM_TILE, Ruleset, SINGLE_PRECISION_RATES, SPLIT_FROM_TILE};
 use h3_contracts::{
@@ -197,7 +199,7 @@ impl GameState {
         let core = rules.core();
         let defending = match &start.defender {
             Defender::Hero(hero) => Some(hero),
-            Defender::Monster { .. } | Defender::Guards { .. } => None,
+            Defender::Monster { .. } | Defender::Guards { .. } | Defender::Monsters { .. } => None,
         };
         let sides: [Option<&Combatant>; 2] = [Some(&start.attacker), defending];
         let resource = rules.battle().battle().surrender.map(|s| s.resource);
@@ -250,6 +252,22 @@ impl GameState {
             }
             // rule: ADV-PIK-004
             Defender::Guards { army } => army.clone(),
+            // rule: ADV-MON-012
+            Defender::Monsters {
+                split: first,
+                fixed: (second, stacks),
+            } => {
+                let from_tile = core.quirks().is_enabled(SPLIT_FROM_TILE);
+                let mut tile = TileRand::new(start.tile);
+                let second = (*second, &stacks[..]);
+                split_with_second(core, &start.attacker.army, *first, second, || {
+                    if from_tile {
+                        tile.percent()
+                    } else {
+                        stream.range_inclusive(1, 100)
+                    }
+                })
+            }
         };
         let mut setup = BattleSetup {
             attacker: Army {

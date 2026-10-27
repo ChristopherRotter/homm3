@@ -2,7 +2,8 @@
 //! `docs/rules/surveys/E08-battles.md` §4.1; the executable's `monster_battle`, 0x4AC580): the
 //! number of stacks from the visitor's army against the monster's strength by the original's
 //! table, two draws of 1 to 100 (one stack more or fewer; a town creature's middle stack
-//! upgraded), even stacks. The draws are the caller's: under `ADV-QUIRK-6` (`faithful`) the C
+//! upgraded), even stacks; since E08 T62b1 the form with a second creature (ADV-MON-012, the
+//! Pyramid's guards). The draws are the caller's: under `ADV-QUIRK-6` (`faithful`) the C
 //! runtime's generator seeded by the monster's tile ([`TileRand`]), else the attacking player's
 //! stream (ADR-0017 point 4).
 
@@ -72,7 +73,8 @@ const UPGRADE_AT_MOST: u32 = 50;
 /// the original's 0x47B120) and there are at least two stacks, a second draw at most 50 turns the
 /// middle stack (`n / 2`) into its first upgrade, of the same count. `percent` gives the draws,
 /// each from 1 to 100; the second is taken only when its condition holds, as the original's. The
-/// original's three-type form (its other callers) is not built.
+/// form with a second creature is [`split_with_second`]; the original's third creature (no
+/// caller of the engine's) is not built.
 // rule: ADV-MON-009
 pub fn split(
     core: &Ruleset,
@@ -80,11 +82,97 @@ pub fn split(
     (creature, count): (CreatureTypeId, u32),
     mut percent: impl FnMut() -> u32,
 ) -> Vec<ArmyStack> {
-    let ai_value = |c: CreatureTypeId| core.creature(c).map_or(0, |info| u64::from(info.ai_value));
+    let strength = ai_value(core, creature) * u64::from(count);
+    let stacks = stack_count(core, visitor, strength, &mut percent).clamp(1, count.max(1));
+    let mut army = even(creature, count, stacks);
+    let upgrade = core
+        .creature(creature)
+        .filter(|info| info.faction.is_some())
+        .and_then(|_| core.upgrades(creature).first().copied());
+    if let Some(upgrade) = upgrade.filter(|_| stacks > 1)
+        && percent() <= UPGRADE_AT_MOST
+    {
+        army[usize::try_from(stacks / 2).unwrap_or(0)].creature = upgrade;
+    }
+    army
+}
+
+/// The original's order of the slots of monsters with a second creature (`monster_stack_order`,
+/// 0x63DF94, the rows 7 n with no third creature): for `n` stacks of the first creature (1 to 6),
+/// slot `j` holds the stack the row names at `j`, the first creature's stacks numbered from 0,
+/// the second's after them, a number past them an empty slot.
+const SECOND_ORDER: [[u8; 7]; 6] = [
+    [1, 2, 3, 0, 4, 5, 6],
+    [2, 3, 0, 4, 1, 5, 6],
+    [3, 0, 4, 1, 5, 2, 6],
+    [0, 4, 1, 5, 2, 6, 3],
+    [0, 1, 5, 2, 6, 3, 4],
+    [0, 1, 2, 6, 3, 4, 5],
+];
+
+/// How monsters of two creatures split into stacks for a battle with a hero whose army is
+/// `visitor` (ADV-MON-012, E08 T62b1; the executable's `monster_battle` 0x4AC580 with a second
+/// creature, survey `E08-rewards.md` §7.5, D-40): the strength sums both creatures' (each AI
+/// value times its count, the second's count its stacks' sum); the number of stacks n as
+/// [`split`]'s from that strength and the first draw, **less the second creature's stacks**, at
+/// least one and at most the first creature's count; the first creature's count divides evenly
+/// into n stacks (the first `count mod n` one more), the second creature keeps its stacks' counts
+/// in order, no stack is upgraded and no second draw is taken; then the slots in the original's
+/// order ([`SECOND_ORDER`]'s row for n, the first creature's stacks numbered first). `percent`
+/// gives the draw, from 1 to 100. The second creature fills fewer slots than an army's (the
+/// ruleset checks it), so n plus its stacks fit in seven.
+// rule: ADV-MON-012
+pub fn split_with_second(
+    core: &Ruleset,
+    visitor: &[ArmyStack],
+    (creature, count): (CreatureTypeId, u32),
+    (second, stacks): (CreatureTypeId, &[u32]),
+    mut percent: impl FnMut() -> u32,
+) -> Vec<ArmyStack> {
+    let total = stacks
+        .iter()
+        .fold(0u64, |sum, &each| sum.saturating_add(u64::from(each)));
+    let strength = (ai_value(core, creature) * u64::from(count))
+        .saturating_add(ai_value(core, second).saturating_mul(total));
+    let fixed = u32::try_from(stacks.len()).unwrap_or(MOST_STACKS);
+    let n = stack_count(core, visitor, strength, &mut percent)
+        .saturating_sub(fixed)
+        .clamp(1, count.max(1));
+    let mut numbered = even(creature, count, n);
+    numbered.extend(stacks.iter().map(|&each| ArmyStack {
+        slot: 0,
+        creature: second,
+        count: each,
+    }));
+    let row = SECOND_ORDER[usize::try_from(n.clamp(1, 6) - 1).unwrap_or(0)];
+    row.iter()
+        .zip(0u8..)
+        .filter_map(|(&from, slot)| {
+            numbered
+                .get(usize::from(from))
+                .map(|stack| ArmyStack { slot, ..*stack })
+        })
+        .collect()
+}
+
+/// A creature's AI value (0 for one the ruleset does not have).
+fn ai_value(core: &Ruleset, creature: CreatureTypeId) -> u64 {
+    core.creature(creature)
+        .map_or(0, |info| u64::from(info.ai_value))
+}
+
+/// The number of stacks before the clamps (ADV-MON-009; 0x4AC671 to 0x4AC6C7): by the table from
+/// the ratio of the visitor's army value to `strength`, as doubles, then one fewer when the
+/// first draw is at most 20 and one more when it is at least 80 and fewer than seven.
+fn stack_count(
+    core: &Ruleset,
+    visitor: &[ArmyStack],
+    strength: u64,
+    percent: &mut impl FnMut() -> u32,
+) -> u32 {
     let value = visitor.iter().fold(0u64, |sum, stack| {
-        sum.saturating_add(ai_value(stack.creature) * u64::from(stack.count))
+        sum.saturating_add(ai_value(core, stack.creature) * u64::from(stack.count))
     });
-    let strength = ai_value(creature) * u64::from(count);
     let worthless = if value == 0 { MOST_STACKS } else { 2 };
     let base = X87::int(value)
         .over(X87::int(strength))
@@ -104,25 +192,20 @@ pub fn split(
     if first >= MORE_AT_LEAST && stacks < MOST_STACKS {
         stacks += 1;
     }
-    let stacks = stacks.clamp(1, count.max(1));
+    stacks
+}
+
+/// `count` of `creature` divided evenly into `stacks` stacks in slots from 0, the first
+/// `count mod stacks` one more.
+fn even(creature: CreatureTypeId, count: u32, stacks: u32) -> Vec<ArmyStack> {
     let (each, more) = (count / stacks, count % stacks);
-    let mut army: Vec<ArmyStack> = (0..stacks)
+    (0..stacks)
         .map(|i| ArmyStack {
             slot: u8::try_from(i).unwrap_or(u8::MAX),
             creature,
             count: each + u32::from(i < more),
         })
-        .collect();
-    let upgrade = core
-        .creature(creature)
-        .filter(|info| info.faction.is_some())
-        .and_then(|_| core.upgrades(creature).first().copied());
-    if let Some(upgrade) = upgrade.filter(|_| stacks > 1)
-        && percent() <= UPGRADE_AT_MOST
-    {
-        army[usize::try_from(stacks / 2).unwrap_or(0)].creature = upgrade;
-    }
-    army
+        .collect()
 }
 
 #[cfg(test)]

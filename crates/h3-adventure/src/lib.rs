@@ -82,7 +82,7 @@ pub use setup::{
     AdventureSetup, ArmyError, Bans, EventSetup, Guards, HeroSetup, Holds, MapSetup, MonsterSetup,
     ObjectSetup, Pos, RewardRecord, Scenery, SetupError, StandError, TileMask, TileSetup,
 };
-pub use split::{TileRand, split};
+pub use split::{TileRand, split, split_with_second};
 
 /// The hero model's types the setup and the kinds name (E08 T61a): a gift's choice of primary
 /// skills ([`Gives::Choice`]), an artifact on an object ([`Holds::Artifact`]), a reward record's

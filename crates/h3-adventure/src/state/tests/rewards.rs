@@ -26,27 +26,27 @@ use crate::testing::{
     LOGISTICS, PATHFINDING, PEASANT, PIKEMAN, hero_at, hero_details, key, started, world,
 };
 
-type Rules = (Ruleset, AdventureRuleset);
+pub(super) type Rules = (Ruleset, AdventureRuleset);
 
-const RED: PlayerId = PlayerId::new(0);
-const BLUE: PlayerId = PlayerId::new(1);
-const HERO: HeroId = HeroId::new(1);
+pub(super) const RED: PlayerId = PlayerId::new(0);
+pub(super) const BLUE: PlayerId = PlayerId::new(1);
+pub(super) const HERO: HeroId = HeroId::new(1);
 /// The tile every object of these tests stands on: beside the hero's (1, 1).
-const AT: Pos = Pos::new(2, 0, 0);
+pub(super) const AT: Pos = Pos::new(2, 0, 0);
 
-const RING: ArtifactTypeId = ArtifactTypeId::from_raw(0);
-const CHARM: ArtifactTypeId = ArtifactTypeId::from_raw(1);
-const BOOK: ArtifactTypeId = ArtifactTypeId::from_raw(6);
+pub(super) const RING: ArtifactTypeId = ArtifactTypeId::from_raw(0);
+pub(super) const CHARM: ArtifactTypeId = ArtifactTypeId::from_raw(1);
+pub(super) const BOOK: ArtifactTypeId = ArtifactTypeId::from_raw(6);
 const SCROLL: ArtifactTypeId = ArtifactTypeId::from_raw(7);
-const GUST: SpellId = SpellId::from_raw(0);
-const DOOM: SpellId = SpellId::from_raw(6);
-const WOOD: ResourceId = ResourceId::from_raw(0);
-const GOLD: ResourceId = ResourceId::from_raw(1);
+pub(super) const GUST: SpellId = SpellId::from_raw(0);
+pub(super) const DOOM: SpellId = SpellId::from_raw(6);
+pub(super) const WOOD: ResourceId = ResourceId::from_raw(0);
+pub(super) const GOLD: ResourceId = ResourceId::from_raw(1);
 
 /// The draws' rules (`t:faithful` with `ADV-QUIRK-21` and `ADV-QUIRK-22` on, or `t:strict`) with
 /// the book a spell book, hero parameters (a backpack of two, spells to level 2 without Wisdom,
 /// level 2 at 1 000 experience) and the gifts, finds and the scroll the draws do not use.
-fn rules(faithful: bool) -> Rules {
+pub(super) fn rules(faithful: bool) -> Rules {
     rules_with(
         faithful,
         |core| {
@@ -153,19 +153,21 @@ fn rules(faithful: bool) -> Rules {
                     }),
                 ),
                 ty("t:scroll", ObjectKindDef::Scroll),
+                // E08 T62b1 (`records.rs`).
+                ty("t:box", ObjectKindDef::PandoraBox),
             ]);
         },
     )
 }
 
 /// The object type of key `k`.
-fn type_of(rules: &Rules, k: &str) -> ObjectTypeId {
+pub(super) fn type_of(rules: &Rules, k: &str) -> ObjectTypeId {
     rules.1.object_type_by_key(k).unwrap()
 }
 
 /// A started 16 × 2 grass map with these objects (each [`object`] on the top row), red's hero 1
 /// at (1, 1) and blue's hero 2 at (14, 1).
-fn map_of(rules: &Rules, objects: Vec<ObjectSetup>) -> AdventureState {
+pub(super) fn map_of(rules: &Rules, objects: Vec<ObjectSetup>) -> AdventureState {
     let mut setup = world(
         &["gggggggggggggggg", "gggggggggggggggg"],
         1,
@@ -179,12 +181,12 @@ fn map_of(rules: &Rules, objects: Vec<ObjectSetup>) -> AdventureState {
 }
 
 /// [`map_of`] with one object of type `k` holding `holds` at [`AT`].
-fn one(rules: &Rules, k: &str, holds: Holds) -> AdventureState {
+pub(super) fn one(rules: &Rules, k: &str, holds: Holds) -> AdventureState {
     map_of(rules, vec![object(rules, AT.x, k, holds)])
 }
 
 /// Sets what the build drew for the object at `index`.
-fn draw(
+pub(super) fn draw(
     state: &mut AdventureState,
     index: usize,
     resolved: Resolved,
@@ -196,7 +198,7 @@ fn draw(
 }
 
 /// Hero 1's details: one free finger, nothing else.
-fn hero() -> HeroDetails {
+pub(super) fn hero() -> HeroDetails {
     HeroDetails {
         worn: vec![None],
         ..hero_details(&[])
@@ -204,7 +206,7 @@ fn hero() -> HeroDetails {
 }
 
 /// `details` wearing the spell book.
-fn with_book(details: HeroDetails) -> HeroDetails {
+pub(super) fn with_book(details: HeroDetails) -> HeroDetails {
     HeroDetails {
         worn: vec![Some(BOOK.into())],
         ..details
@@ -212,7 +214,7 @@ fn with_book(details: HeroDetails) -> HeroDetails {
 }
 
 /// `details` with a full backpack (two charms) and its finger free.
-fn full(details: HeroDetails) -> HeroDetails {
+pub(super) fn full(details: HeroDetails) -> HeroDetails {
     HeroDetails {
         backpack: vec![CHARM.into(), CHARM.into()],
         ..details
@@ -220,7 +222,7 @@ fn full(details: HeroDetails) -> HeroDetails {
 }
 
 /// The store of heroes with hero 1's details `details`.
-fn store(details: HeroDetails) -> Vec<Arc<HeroDetails>> {
+pub(super) fn store(details: HeroDetails) -> Vec<Arc<HeroDetails>> {
     vec![
         Arc::new(hero_details(&[])),
         Arc::new(details),
@@ -229,7 +231,7 @@ fn store(details: HeroDetails) -> Vec<Arc<HeroDetails>> {
 }
 
 /// Red's hero steps toward [`AT`], visiting the object there.
-fn visit(
+pub(super) fn visit(
     rules: &Rules,
     state: &mut AdventureState,
     heroes: &[Arc<HeroDetails>],
@@ -244,7 +246,7 @@ fn visit(
 }
 
 /// The outcome giving hero 1 these changes.
-fn gives(changes: &[HeroChange]) -> AdventureOutcome {
+pub(super) fn gives(changes: &[HeroChange]) -> AdventureOutcome {
     AdventureOutcome {
         hero: Some(HeroGains {
             hero: HERO,
@@ -275,7 +277,7 @@ fn gains(gains: &[(ResourceId, u32)]) -> AdventureOutcome {
     }
 }
 
-fn add(artifact: ArtifactTypeId) -> HeroChange {
+pub(super) fn add(artifact: ArtifactTypeId) -> HeroChange {
     HeroChange::AddArtifact(artifact.into())
 }
 

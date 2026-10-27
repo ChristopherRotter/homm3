@@ -302,6 +302,17 @@ pub enum GameEvent {
         /// The secondary skill it learned or advanced; none when the level offered none.
         skill: Option<SkillId>,
     },
+    /// A player's treasury lost a resource a reward record takes (GAM-RES-001, ADV-RWD-001; E08
+    /// T62b1): one event per resource of the loss, in the record's order, after the gains; never
+    /// below 0, so the amount actually taken. Seen by the owner.
+    ResourceLost {
+        /// The player.
+        player: PlayerId,
+        /// The resource.
+        resource: ResourceId,
+        /// The amount the treasury actually lost.
+        amount: u32,
+    },
     /// A player's treasury paid a resource of an accepted offer's price (GAM-RES-001): one event
     /// per resource of the price, in its order; or a surrender's price (GAM-BAT-005, E08 T19a).
     ResourcePaid {
@@ -349,14 +360,16 @@ pub enum GameEvent {
         /// The visitor, then the visited hero.
         heroes: [HeroId; 2],
     },
-    /// An army dialog opened (GAM-DEC-004; E08 T51b): the group of an accepted join its hero's
-    /// army had no room for, as one stack in the group's slot 0. Seen by the owner.
+    /// An army dialog opened (GAM-DEC-004; E08 T51b): one event per stack of its group at its
+    /// opening, in slot order, the first opening it: an accepted join's group its hero's army had
+    /// no room for, as one stack in the group's slot 0; since E08 T62b1 a reward record's stacks
+    /// that found no room, at their slots (ADV-RWD-001). Seen by the owner.
     ArmyDialogOpened {
         /// The hero's owner.
         player: PlayerId,
         /// The hero the group joined.
         hero: HeroId,
-        /// The group's stack.
+        /// A stack of the group, at its slot.
         stack: ArmyStack,
     },
     /// The player's meeting or army dialog closed (its `Decline`; E08 T51b). Seen by the owner.

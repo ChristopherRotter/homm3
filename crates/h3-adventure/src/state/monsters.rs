@@ -377,10 +377,13 @@ impl AdventureState {
         AdventureOutcome {
             gains,
             hero: artifact,
-            no_room: (!joined).then_some(NoRoom {
+            no_room: (!joined).then(|| NoRoom {
                 hero: offer.hero,
-                creature: monster.creature,
-                count: monster.count,
+                group: vec![ArmyStack {
+                    slot: 0,
+                    creature: monster.creature,
+                    count: monster.count,
+                }],
             }),
             ..AdventureOutcome::default()
         }

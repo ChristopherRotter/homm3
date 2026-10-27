@@ -81,6 +81,7 @@ mod monsters;
 mod occupancy;
 mod passage;
 mod piles;
+mod records;
 mod rewards;
 mod visits;
 
@@ -1641,6 +1642,8 @@ impl AdventureState {
                 outcome = self.visit_university((player, hero), object, price);
             }
             Effect::Find(find) => outcome = self.visit_find(rules, (player, hero), object, find),
+            Effect::PandoraBox => outcome = self.ask(hero, object, OfferKind::OpenBox),
+            Effect::Pyramid => outcome = self.ask(hero, object, OfferKind::SearchPyramid),
         }
         outcome
     }
@@ -1696,8 +1699,12 @@ impl AdventureState {
     /// E08 T21a): the hero fights its guards as they stand, or picks it up when none stand any
     /// more ([`Self::fight_or_pick`]; since E08 T62a a guarded artifact's or scroll's too). A
     /// gift's price (ADV-TCH-003, E08 T62a): the gift given, the hero marked. A find's question
-    /// (ADV-PIK-011): the find searched. Infallible; the outcome is what the game applies after.
+    /// (ADV-PIK-011): the find searched. Pandora's Box's (ADV-PIK-013, E08 T62b1): its guards'
+    /// battle or its record ([`Self::open_box`]). The Pyramid's (ADV-TCH-008, E08 T62b1): a
+    /// looted one's luck or its guards' battle ([`Self::search_pyramid`]). Infallible; the outcome
+    /// is what the game applies after.
     // rule: ADV-VIS-001, ADV-VIS-004, ADV-MON-008, ADV-PIK-004, ADV-TCH-003, ADV-PIK-011
+    // rule: ADV-PIK-013, ADV-TCH-008
     pub fn accept_offer<S: Sink>(
         &mut self,
         rules: (&Ruleset, &AdventureRuleset, &[Arc<HeroDetails>]),
@@ -1730,6 +1737,8 @@ impl AdventureState {
                 .unwrap_or_default(),
             OfferKind::Gift { .. } => self.accept_gift(rules, offer),
             OfferKind::Search => self.accept_search(rules, player, offer),
+            OfferKind::OpenBox => self.open_box(rules, offer, sink),
+            OfferKind::SearchPyramid => self.search_pyramid(part, player, offer),
         }
     }
 

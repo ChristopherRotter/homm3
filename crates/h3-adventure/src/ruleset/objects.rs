@@ -212,6 +212,12 @@ pub(crate) enum Effect<'k> {
     University(&'k Resources),
     /// Its contents, once (a find, ADV-PIK-009 to -012, E08 T62a).
     Find(&'k Find),
+    /// Its question, then its guards or its reward record (Pandora's Box, ADV-PIK-013, E08
+    /// T62b1).
+    PandoraBox,
+    /// Its question at every visit, then its guards or a looted one's luck (the Pyramid,
+    /// ADV-TCH-008, E08 T62b1).
+    Pyramid,
 }
 
 impl ObjectKind {
@@ -221,7 +227,8 @@ impl ObjectKind {
     /// T14b: the Cartographer, entered, with its offer; T15a: the observatories, the tents and the
     /// guards with their offer; T15b: the gates, which are not visited by their key's holders;
     /// T20b1: the wandering monsters, whose visit is their answer; T62a: the chests, artifacts,
-    /// scrolls, gifts, Shrines, Witch Huts, Scholars, Universities and finds.
+    /// scrolls, gifts, Shrines, Witch Huts, Scholars, Universities and finds; T62b1: Pandora's
+    /// Box and the Pyramid.
     pub(crate) fn effect(&self) -> Option<Effect<'_>> {
         match self {
             Self::Pickup(_) => Some(Effect::Pickup),
@@ -239,8 +246,10 @@ impl ObjectKind {
             Self::Scholar => Some(Effect::Scholar),
             Self::University { price, .. } => Some(Effect::University(price)),
             Self::Find(find) => Some(Effect::Find(find)),
-            // E08 T61a: typed; the boxes', events' and the Pyramid's visits come with T62b.
-            Self::Ground { .. } | Self::PandoraBox | Self::Event | Self::Pyramid(_) => None,
+            Self::PandoraBox => Some(Effect::PandoraBox),
+            Self::Pyramid(_) => Some(Effect::Pyramid),
+            // E08 T61a: typed; an event is fired by a step, never visited (T62b2).
+            Self::Ground { .. } | Self::Event => None,
         }
     }
 

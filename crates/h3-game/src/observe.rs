@@ -232,6 +232,7 @@ pub fn project(event: &GameEvent, viewer: Viewer) -> Option<GameEvent> {
             seen_by: alone,
         }),
         GameEvent::ResourceGained { player: owner, .. }
+        | GameEvent::ResourceLost { player: owner, .. }
         | GameEvent::ResourcePaid { player: owner, .. }
         | GameEvent::HeroChanged { player: owner, .. }
         | GameEvent::CreaturesRaised { player: owner, .. }

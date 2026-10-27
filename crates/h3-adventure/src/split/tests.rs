@@ -1,5 +1,6 @@
 //! Tests of a wandering monster's split (ADV-MON-009, E08 T20b2): the tile's generator, the
-//! table, the draws, the even stacks and the upgraded middle stack.
+//! table, the draws, the even stacks and the upgraded middle stack; since E08 T62b1 the split with
+//! a second creature (ADV-MON-012): its stacks taken off, its order.
 
 extern crate std;
 
@@ -202,4 +203,105 @@ fn a_monster_of_no_strength_splits_as_the_fpus_infinity_or_nan() {
     // A strength of 0 against an army worth something: 2 stacks; worth nothing too: 7.
     assert_eq!(split_with(&peasants(5), (STONE, 10), &[50]).0.len(), 2);
     assert_eq!(split_with(&[], (STONE, 10), &[50]).0.len(), 7);
+}
+
+/// The split of 40 pikemen with peasants in `fixed` stacks against `visitor` with these draws, as
+/// (slot, creature, count), and how many draws it took.
+fn split_second(
+    visitor: &[ArmyStack],
+    first: u32,
+    fixed: &[u32],
+    draws: &[u32],
+) -> (Vec<(u8, CreatureTypeId, u32)>, usize) {
+    let core = core();
+    let mut taken = 0;
+    let army = split_with_second(&core, visitor, (PIKEMAN, first), (PEASANT, fixed), || {
+        taken += 1;
+        draws[taken - 1]
+    });
+    let army = army
+        .into_iter()
+        .map(|s| (s.slot, s.creature, s.count))
+        .collect();
+    (army, taken)
+}
+
+// covers: ADV-MON-012
+#[test]
+fn a_second_creatures_stacks_come_off_the_first_and_the_slots_follow_the_originals_order() {
+    // 40 pikemen (4 000) and 20 peasants in 2 stacks (200): a strength of 4 200. The visitor's
+    // peasants set the ratio: base 7, 6, 5, 4, 3 less the 2 stacks gives 5 to 1 stacks of
+    // pikemen, ordered by 0x63DF94's rows 35, 28, 21, 14, 7 (survey E08-rewards.md section 7.5).
+    let (g, d) = (PIKEMAN, PEASANT);
+    let rows = [
+        (
+            200,
+            vec![
+                (0, g, 8),
+                (1, g, 8),
+                (2, d, 10),
+                (3, g, 8),
+                (4, d, 10),
+                (5, g, 8),
+                (6, g, 8),
+            ],
+        ),
+        (
+            250,
+            vec![
+                (0, g, 10),
+                (1, d, 10),
+                (2, g, 10),
+                (3, d, 10),
+                (4, g, 10),
+                (6, g, 10),
+            ],
+        ),
+        (
+            400,
+            vec![(0, d, 10), (1, g, 14), (2, d, 10), (3, g, 13), (5, g, 13)],
+        ),
+        (500, vec![(0, d, 10), (1, d, 10), (2, g, 20), (4, g, 20)]),
+        (700, vec![(0, d, 10), (1, d, 10), (3, g, 40)]),
+        // Base 2 less 2: at least one stack.
+        (1_000, vec![(0, d, 10), (1, d, 10), (3, g, 40)]),
+    ];
+    for (peasants_count, expected) in rows {
+        let (army, taken) = split_second(&peasants(peasants_count), 40, &[10, 10], &[50]);
+        assert_eq!(army, expected, "{peasants_count}");
+        // One draw: no upgrade of the town's pikemen beside a second creature.
+        assert_eq!(taken, 1);
+    }
+}
+
+// covers: ADV-MON-012
+#[test]
+fn the_draw_and_the_count_bound_the_first_creatures_stacks() {
+    let pikemen =
+        |army: &[(u8, CreatureTypeId, u32)]| army.iter().filter(|&&(_, c, _)| c == PIKEMAN).count();
+    // Base 6 (250 peasants), one more on 80: 5 stacks; one fewer on 20: 3.
+    assert_eq!(
+        pikemen(&split_second(&peasants(250), 40, &[10, 10], &[90]).0),
+        5
+    );
+    assert_eq!(
+        pikemen(&split_second(&peasants(250), 40, &[10, 10], &[20]).0),
+        3
+    );
+    // At most the first creature's count.
+    let (army, _) = split_second(&peasants(1), 2, &[10, 10], &[50]);
+    assert_eq!(pikemen(&army), 2);
+    // One second stack: up to 6 of the first, row 42.
+    let (army, _) = split_second(&peasants(1), 60, &[5], &[50]);
+    let slots: Vec<(u8, CreatureTypeId)> = army.iter().map(|&(s, c, _)| (s, c)).collect();
+    let g = PIKEMAN;
+    assert_eq!(
+        slots,
+        [(0, g), (1, g), (2, g), (3, PEASANT), (4, g), (5, g), (6, g)]
+    );
+    assert!(
+        army.iter()
+            .filter(|&&(_, c, _)| c == g)
+            .all(|&(_, _, n)| n == 10)
+    );
 }

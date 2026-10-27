@@ -2352,15 +2352,23 @@ fn check_groups(
         let mut lost = Vec::new();
         for event in events {
             match *event {
+                // E08 T62b1: one event per stack of the group at its opening, in slot order (a
+                // join's one stack in slot 0; a reward record's at their slots).
                 GameEvent::ArmyDialogOpened {
                     player: owner,
                     hero,
                     stack,
-                } if owner == player => {
-                    prop_assert!(expected.is_none(), "{:?} with a dialog open", event);
-                    prop_assert_eq!(stack.slot, 0);
-                    expected = Some((hero, vec![stack]));
-                }
+                } if owner == player => match &mut expected {
+                    Some((open, group))
+                        if *open == hero && group.last().is_some_and(|s| s.slot < stack.slot) =>
+                    {
+                        group.push(stack);
+                    }
+                    _ => {
+                        prop_assert!(expected.is_none(), "{:?} with a dialog open", event);
+                        expected = Some((hero, vec![stack]));
+                    }
+                },
                 GameEvent::StackChanged {
                     player: owner,
                     at:
@@ -3390,9 +3398,15 @@ fn check_decisions(
                             .any(|e| matches!(e, GameEvent::BattleStarted { .. }));
                         prop_assert!(fought, "{:?} without its battle", event);
                     }
-                    // E08 T62a: a gift's price and a find's question; no plan lays out their
-                    // kinds yet (T64's rewards map).
-                    (true, OfferKind::Gift { .. } | OfferKind::Search) => {}
+                    // E08 T62a, T62b1: a gift's price, a find's, a box's and the Pyramid's
+                    // questions; no plan lays out their kinds yet (T64's rewards map).
+                    (
+                        true,
+                        OfferKind::Gift { .. }
+                        | OfferKind::Search
+                        | OfferKind::OpenBox
+                        | OfferKind::SearchPyramid,
+                    ) => {}
                     (false, _) => {}
                 }
             }

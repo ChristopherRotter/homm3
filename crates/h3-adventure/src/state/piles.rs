@@ -57,13 +57,10 @@ impl AdventureState {
     }
 
     /// The pile at object index `index` fought for or picked up by the hero `hero` (ADV-PIK-004):
-    /// while its guards stand, the battle the game opens at once — the hero's side attacking as it
-    /// stands, the guards' stacks defending unsplit and unowned, fought at the pile's tile
-    /// ([`Self::pile_tile`], [`Self::battle_ground`]; the original passes the visited tile and the
-    /// map's army to the battle, 0x4A4886) — none when the hero is not on the map; else the pickup
-    /// ([`Self::pick_up`]: a pile's contents are the gains, an artifact or a scroll the hero's)
-    /// and it leaves the map (ADV-OBJ-005). An accepted question comes here too (the guards a
-    /// battle of another player's left, or none after a draw, are what it meets).
+    /// while its guards stand, the battle the game opens at once ([`Self::guards_battle`]); else
+    /// the pickup ([`Self::pick_up`]: a pile's contents are the gains, an artifact or a scroll the
+    /// hero's) and it leaves the map (ADV-OBJ-005). An accepted question comes here too (the
+    /// guards a battle of another player's left, or none after a draw, are what it meets).
     // rule: ADV-PIK-001, ADV-PIK-003, ADV-PIK-004, ADV-OBJ-005
     pub(super) fn fight_or_pick<S: Sink>(
         &mut self,
@@ -73,22 +70,30 @@ impl AdventureState {
         (index, object_type): (usize, ObjectTypeId),
         sink: &mut S,
     ) -> AdventureOutcome {
-        let guards = self.guards_left(index);
-        if guards.is_empty() {
+        if self.guards_left(index).is_empty() {
             return self.pick_up(core, hero, (index, object_type), sink);
         }
+        self.guards_battle(part, hero, index)
+    }
+
+    /// The battle against the guards of the object at index `index` as they stand (ADV-PIK-004;
+    /// since E08 T62b1 Pandora's Box's too, ADV-PIK-013): the hero `hero`'s side attacking as it
+    /// stands, the guards' stacks defending unsplit and unowned, fought at the object's tile
+    /// ([`Self::pile_tile`], [`Self::battle_ground`]; the original passes the visited tile and
+    /// the map's army to the battle, 0x4A4886); none when the hero is not on the map.
+    // rule: ADV-PIK-004
+    pub(super) fn guards_battle(
+        &self,
+        part: &AdventureRuleset,
+        hero: HeroId,
+        index: usize,
+    ) -> AdventureOutcome {
+        let army = self.guards_left(index).to_vec();
         let battle = self
             .hero(hero)
             .zip(self.pile_tile(index))
             .map(|(attacker, tile)| {
-                self.battle_at(
-                    part,
-                    attacker,
-                    Defender::Guards {
-                        army: guards.to_vec(),
-                    },
-                    tile,
-                )
+                self.battle_at(part, attacker, Defender::Guards { army }, tile)
             });
         AdventureOutcome {
             battle,
@@ -97,8 +102,9 @@ impl AdventureState {
     }
 
     /// The tile the pile at object index `index` is visited from: its first visitable tile on the
-    /// map, in its mask's order (a pile's template has one).
-    fn pile_tile(&self, index: usize) -> Option<Pos> {
+    /// map, in its mask's order (a pile's template has one; Pandora's Box's and the Pyramid's
+    /// too).
+    pub(super) fn pile_tile(&self, index: usize) -> Option<Pos> {
         let object = &self.map.objects()[index];
         object
             .visitable
@@ -108,35 +114,45 @@ impl AdventureState {
 
     /// Applies the end of a battle no player's side defended, fought by the visitor's hero `hero`
     /// at `tile` (ADR-0017 point 11), by the object visited there: a wandering monster's
-    /// ([`Self::end_monster_battle`], ADV-MON-010) or a guarded object's (ADV-PIK-004, E08 T21a;
-    /// an artifact's or a scroll's since T62a, ADV-PIK-007, ADV-PIK-008). After the visitor's side
-    /// `won` against an object's guards it is picked up ([`Self::pick_up`]): a pile's contents
-    /// are the outcome's gains, an artifact or a scroll goes to the hero, and it leaves the map,
-    /// told to the players that see it there; else the guards' `survivors`, by slot, stay as its
-    /// guards (none after a draw: the next visit picks it up), unseen by every player (the guards
-    /// are hidden). Infallible: nothing when neither is visited at `tile`.
-    // rule: ADV-PIK-004, ADV-MON-010
+    /// ([`Self::end_monster_battle`], ADV-MON-010), a guarded object's (ADV-PIK-004, E08 T21a; an
+    /// artifact's or a scroll's since T62a, ADV-PIK-007, ADV-PIK-008; Pandora's Box's since
+    /// T62b1, ADV-PIK-013) or the Pyramid's (ADV-TCH-008, E08 T62b1). After the visitor's side
+    /// `won` against an object's guards it is picked up ([`Self::pick_up`]: a pile's contents are
+    /// the outcome's gains, an artifact or a scroll goes to the hero) or a box gives its record
+    /// ([`Self::give_box`]), and it leaves the map, told to the players that see it there; else
+    /// the guards' `survivors`, by slot, stay as its guards (none after a draw: the next visit
+    /// picks it up, or opens the box), unseen by every player (the guards are hidden). A won
+    /// Pyramid is looted and teaches its spell ([`Self::loot_pyramid`]); after any other end
+    /// nothing changes (its guards' losses are not kept). Until T63 what a win gives comes before
+    /// the winner's levels (`ADV-STUB-10`). Infallible: nothing when none of them is visited at
+    /// `tile`.
+    // rule: ADV-PIK-004, ADV-MON-010, ADV-PIK-013, ADV-TCH-008
     pub fn end_unowned_battle<S: Sink>(
         &mut self,
-        (core, part, heroes): (&Ruleset, &AdventureRuleset, &[Arc<HeroDetails>]),
+        rules: (&Ruleset, &AdventureRuleset, &[Arc<HeroDetails>]),
         (hero, tile): (HeroId, Pos),
         (survivors, won): (&[ArmyStack], bool),
         sink: &mut S,
     ) -> AdventureOutcome {
-        let found = self
-            .tile_object(part, tile)
-            .map(|(index, id, ty)| (index, id, matches!(ty.kind, ObjectKind::Monster { .. })));
-        match found {
-            Some((_, _, true)) => {
-                self.end_monster_battle((core, part, heroes), (hero, tile), (survivors, won), sink)
+        let (core, part, _) = rules;
+        let Some((index, object_type, ty)) = self.tile_object(part, tile) else {
+            return AdventureOutcome::default();
+        };
+        match ty.kind {
+            ObjectKind::Monster { .. } => {
+                self.end_monster_battle(rules, (hero, tile), (survivors, won), sink)
             }
-            Some((index, object_type, false)) if self.map.objects()[index].guards.is_some() => {
+            ObjectKind::Pyramid(_) if won => self.loot_pyramid(rules, hero, index),
+            _ if self.map.objects()[index].guards.is_some() => {
                 self.army_left
                     .set(index, (!won).then(|| survivors.to_vec()));
-                if !won {
-                    return AdventureOutcome::default();
+                match (won, &ty.kind) {
+                    (false, _) => AdventureOutcome::default(),
+                    (true, ObjectKind::PandoraBox) => {
+                        self.give_box(rules, hero, (index, object_type), sink)
+                    }
+                    (true, _) => self.pick_up(core, hero, (index, object_type), sink),
                 }
-                self.pick_up(core, hero, (index, object_type), sink)
             }
             _ => AdventureOutcome::default(),
         }
