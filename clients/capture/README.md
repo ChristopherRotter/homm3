@@ -858,7 +858,13 @@ design §7.1.
   run played magic 18 over the Archers as they shot; in one `climb` run the computer's stack
   walked at 2 396 ms. Run again: a `CHANGED` whose timeline shows such a roll or move is that,
   not a change of the viewer. A sequence's `fail` (M3 T7b-2b-1, "Forced rolls") keeps morale,
-  luck and the abilities' rolls from falling; the damage rolls stay free.
+  luck and the abilities' rolls from falling; the damage rolls stay free. A hero's own numbers
+  vary too (E17 M4 T3b-2, each gone at a rerun): `luck` stopped once with its forced draw
+  untaken, memory reading every stack's luck 0 (Expert Luck's 3 expected), `morale` read luck 4,
+  and `bolt`'s line showed Orrin's spell power 2 (Lightning Bolt 60, not 35). Likely the
+  starting bonus: the recipes leave the scenario list's at random, and a bonus artifact on the
+  hero changes it for that run (E08 T32b2 saw one; not read in these runs). Stacks' `luck` and
+  `morale` in `states.jsonl` show it.
 - An XWD file's colour map holds bytes the X server leaves unset: compare pixels, never files.
 - The menus run in real time; only the battle runs on the stepped clock. Two runs still agree:
   the battle's setup does not depend on the clock (observed: the obstacles follow the tile).

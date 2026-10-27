@@ -3473,3 +3473,11 @@ dialog, box, state and hint, in `states.jsonl` and `frames.jsonl`), read-only.
 - **Captured:** the 15 siege sequences and `walk`, `turn`, `climb` as recorded but `aim`, whose
   last 8 frames' ` log` masks are gone (its counts recorded again); the 72 stills (99 frames) as
   recorded; `drawn` the same for all but `aim`.
+- **T3b-2 (2026-10-27): the other 29 sequences** as recorded, `strike`, `luck` and `bolt` at a
+  rerun (the original's variation between runs: a hero's reaction read a step late; the stacks'
+  luck 0, then 3; Orrin's spell power 2, then 1: the starting bonus likely, runbook "Traps"),
+  `sacrifice` with the engine's seed 9 (the original's Grand Elves 23 in three runs, 22 at
+  T9d's). The hovered item changes once in every sequence, from 0 to the panel's picture at the
+  first move into the panel; `states.jsonl` is read after each action, never inside a cast, so
+  the 11 casts' sequences show the picture after each cast's park whether the book forgot it or
+  not: the book's forgetting stays *provisional*, every frame as recorded either way.

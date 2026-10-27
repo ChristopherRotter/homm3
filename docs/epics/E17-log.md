@@ -2590,6 +2590,54 @@ the other 29 sequences and `drawn --record`. The original files staged from the 
 - **Asked:** CLT-Q24 (the battlefield's last hint kept over the panel's background; built as the
   original's).
 
+### M4 T3b-2 — The other captures afresh (2026-10-27)
+
+On `client/e17-m4-t3b2`, the user present at the start (T3b-2 taken whole, a cut to be
+confirmed only if a capture needed a fix of the viewer: none did). The original files staged
+again from the user's `original-data/install/`; the captures ran in the sandbox under Wine, the
+machine otherwise idle.
+
+- **Starting point:** `master` at `d1b263e` (#492 merged; CI's Clients run green on it); the
+  baseline (`verify-once clients`) ran the full client check: all gates passed; `drawn` all 119
+  the same.
+- **Captured** (`frames --only <id>` in background batches that start no new sequence after 75
+  minutes): batch 1 `shot` to `cast` (58 minutes), batch 2 `resist` to `acid` (74), batch 3 the
+  reruns of `luck` and `strike`, then `stare` to `sacrifice` (68), then `bolt` and `sacrifice`
+  again (10) and `sacrifice` a third time (6). 25 of the 29 as recorded at their first run; four
+  differed:
+  - `strike`: 3 730 ms, 2 400 pixels on the left hero (memory read it standing while the screen
+    showed its reaction): the runbook's trap; the rerun as recorded.
+  - `luck`: stopped, its forced luck draw untaken: the original's memory read every stack's luck
+    0 (Orrin's Expert Luck gives the Archangel 3), so the draw (only with luck above 0) never
+    came. The rerun read 3 and was as recorded. `morale` (as recorded) read the attacker's luck 4
+    where T7b-2b-2a read 3.
+  - `bolt`: the line and two count boxes masked from 1 720 ms: the original's Lightning Bolt did
+    60 and its Chain Lightning 105 (the viewer's 35 and 65: Orrin's spell power 2, not 1); the
+    rerun as recorded.
+  - `sacrifice`: the line masked from 1 312 to 1 712 ms in all three runs: the original's Grand
+    Elves did 23 (22 at T9d's one capture, the engine's seed 5 searched for it), the frames, the
+    fidgets and the heroes as kept. The map `h3-view situation` writes is byte for byte T9d's (a
+    worktree of `06793ae6` built for it), and the harness's changes since are the sieges' or
+    read-only: not explained. The engine's seed searched again (the first from 0 whose record
+    strikes 23 and kills one, raises one Pikeman, sacrifices one Archer and keeps the
+    recorded timeline): **9**; the third run's frames compared with `--reuse`: as recorded.
+- **Likely cause of the three stat changes** (`luck` 0 and 4, spell power 2; not read in these
+  runs): the battle recipes leave the scenario list's starting bonus at its default, random
+  (design §6.3), and a bonus artifact on the hero (E08 T32b2 saw one on a hot-seat hero) changes
+  its luck or primary skills for that run. Runbook, "Traps"; the fix proposed as M4 review item
+  15.
+- **The casts' hovered item** (`states.jsonl`, the 11 sequences with a book: `cast`, `resist`,
+  `arrow`, `haste`, `dispel`, `lightning`, `mass`, `obstacles`, `raise`, `bolt`, `sacrifice`):
+  read after each action only, never inside a cast, so they show the panel's picture (2000)
+  after every cast's park, as after any other action; 0 before the first move into the panel
+  (`hovered` changes once per sequence, 0 to 2000, in all 29). Both a book that forgets the
+  hovered item and one that keeps it fit; every frame compared as recorded, so the rule stays
+  *provisional* (design §10.2).
+- **`kept/`:** unchanged but `raise`'s `before` at 1 312 ms (frame 0 again for T9a's 1: the
+  runbook's trap; no compared pixel depends on it).
+- **`drawn`:** all 119 the same but `sacrifice`'s five frames from 1 312 ms (its line now
+  "23"): `drawn --record --only sacrifice`.
+
 ## Accepted review lists (M1, M2, M3)
 
 M1 and M2 moved from the epic file on 2026-10-20 (less start-up reading), unchanged; M3 at its

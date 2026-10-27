@@ -4,31 +4,18 @@ Pre-refined tasks of the client lane, in order, then the inbox of discovered wor
 
 ## Tasks
 
-Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12, M1 2026-10-13, M2 2026-10-14; ADR-0020, ADR-0024; the battle client since the split of 2026-10-23, the adventure map client being the map-client lane's E24). M3 (fidelity) done 2026-10-23 with T9d; M4 (sieges) refined at T0 (2026-10-23, with the user); T1a, T1b, T2a and T2b done (2026-10-23), T2c-1 (2026-10-24, T2c cut in two by the user), T2c-2 (2026-10-26), T3a (2026-10-26; T3 cut in three), T3b-1 (2026-10-27; T3b cut in two); T3b-2 and T3c below. The original files: stage them from the user's `original-data/install/` (one large file per staging call; the user's computer must be online); never from the installation. The captures need the five DLLs, `Heroes3.snd`, `H3ab_ahd.snd` and `H3ab_ahd.vid` too; the harness's runbook: `clients/capture/README.md`. The client's gates: `clients/scripts/check.sh` (the full local check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gate` from `clients/`. An asset fix gets its mechanism (ADR-0020 point 6: the entry's flag, the `faithful`/`fixed` profile) with the first one a task finds.
+Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12, M1 2026-10-13, M2 2026-10-14; ADR-0020, ADR-0024; the battle client since the split of 2026-10-23, the adventure map client being the map-client lane's E24). M3 (fidelity) done 2026-10-23 with T9d; M4 (sieges) refined at T0 (2026-10-23, with the user); T1a, T1b, T2a and T2b done (2026-10-23), T2c-1 (2026-10-24, T2c cut in two by the user), T2c-2 (2026-10-26), T3a (2026-10-26; T3 cut in three), T3b-1 and T3b-2 (2026-10-27; T3b cut in two); T3c below. The original files: stage them from the user's `original-data/install/` (one large file per staging call; the user's computer must be online); never from the installation. The captures need the five DLLs, `Heroes3.snd`, `H3ab_ahd.snd` and `H3ab_ahd.vid` too; the harness's runbook: `clients/capture/README.md`. The client's gates: `clients/scripts/check.sh` (the full local check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gate` from `clients/`. An asset fix gets its mechanism (ADR-0020 point 6: the entry's flag, the `faithful`/`fixed` profile) with the first one a task finds.
 
 M4's closure, T3, cut in three by the user (2026-10-26): the review first (T3a, done), so that
 every capture afresh also captures its fixes.
 
-### E17 M4 T3b-2 — The other captures afresh
-
-T3b cut in two by the user (2026-10-26): T3b-1 (done 2026-10-27) the harness's hovered item read,
-the 72 stills, the 15 siege sequences and `walk`, `turn`, `climb`, the status line settled (design
-§10.2, "Recorded afresh").
-
-- **Scope:** the other 29 sequences (`shot` to `sacrifice` in `sequences.toml`, but `walk`, `turn`
-  and `climb`) under Wine, in batches (the runbook's "Traps"); their status lines checked against
-  T3b-1's rule (the spell book forgetting the hovered item is *provisional*: the casts' sequences
-  read `hovered` in `states.jsonl`); `drawn --record`.
-- **Acceptance:** M4's exit (the epic file): each capture as recorded or its difference a listed
-  fix or a classified quirk.
-- **Depends on:** T3b-1. **Status:** ready (the original files staged again: the HANDOFF's list).
-
 ### E17 M4 T3c — M4's review list, M5 refined
 
-- **Scope:** the review list with the user (the epic's "Review lists", T3a's queued findings),
-  CLT-Q22 to Q24, M5 (live play) refined with the user.
+- **Scope:** the review list with the user (the epic's "Review lists", T3a's queued findings;
+  item 15 a proposal: the recipes' starting bonus, T3b-2), CLT-Q22 to Q24, M5 (live play)
+  refined with the user.
 - **Acceptance:** the review list accepted; M5's tasks in this queue; M4 done.
-- **Depends on:** T3b-2. **Status:** ready after T3b-2; the user present.
+- **Depends on:** T3b-2 (done 2026-10-27). **Status:** ready; the user present.
 
 ## Inbox
 
