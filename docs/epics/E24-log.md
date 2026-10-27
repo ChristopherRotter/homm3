@@ -941,3 +941,79 @@ performance issues"); taken whole. Design §3.12.
   terrain-specific samples which the original doesn't seem to play": `HORSE20` to `HORSE27` and
   `HORSE29` in `Heroes3.snd`, never loaded (**MCL-Q11**; the 20 files in the user's
   `clients/out/win/horses/`).
+
+### M2 T6a — the reviewers and their fixes (2026-10-27)
+
+On `map-client/e24-m2-t6a`, the user present. T6 cut by the user before it started (T6a the
+reviewers and their fixes, T6b the closure); MCL-Q11 answered at the start (the original's sounds
+now, the unused set an option later; the direction keys' steps kept silent); the music player's
+findings cut out as T6a2 by the user once they were checked.
+
+- **Starting point:** `master` at #512 (CI green); `clients/scripts/check.sh` in the sandbox, all
+  gates passed (code 8764120, the baseline).
+- **The reviewers:** three fresh read-only sub-agents in parallel, one per area (R1 the map over
+  time and its drawing; R2 the window, the input and the sound; R3 the harness and the
+  recordings), each against the design's readings and the epic's review list; 8, 11 and 10
+  findings, each checked against the code and, where it named the original, the executable
+  (`scripts/exe.py`: `hero_move_loop` 0x407E87, 0x407F80 to 0x4080CE; `sub_4EC570`, now
+  `input_queue_flush`; `edge_scroll` 0x419978; `play_music` 0x59AD0D to 0x59ADA6; the settings'
+  names at 0x63FF74, 0x698774 `option_show_route`). R1 also compared T4b3's row drawers with the
+  slow ones in 200 000 random cases (clips, sides, mirrors, offsets): no pixel differs.
+- **Fixed, the library** (each new test fails on the old code): R1-1, a scroll's key-down (Ctrl
+  and a direction key) during a path's walk was dropped: it ends the walk as a step's and a
+  click's do (kinds 1, 8, 0x20, 0x200 at 0x407FA7); R1-2, the walk dropped every message given
+  during a step: it reads up to the first that ends it, those behind it wait for the loop's turn
+  (no flush on the way out); R1-3, a message taken after a walk set the pointer back to its own
+  point, which the edge scroll then read: the mouse's point now (GetCursorPos), a click's tile its
+  own; R1-4, a walk a message ended drew the path's redraw with the walking pose: `hero_walk_end`
+  first (0x408002, then `make_hero_path` 0x4080C9); R1-5, a path's walk empties the input queue
+  at its start (`input_queue_flush` at 0x407E87): the messages queued behind its click during a
+  key's step are gone; R1-6, the stop's test checked no drawn pose and locked in R1-2 (rewritten,
+  four tests added); R1-7, a speed out of range is the original's default (scroll 1, hero 2,
+  `settings_check`), not a tile and an instant walk; R1-8, a situation's view far off the map
+  overflowed the tile under a click: `Situation::parse` refuses a corner more than the map's side
+  off it, `tile_at` saturates. Design §3.7's paragraph on actions during a walk corrected.
+- **Fixed, the window and its sound:** R2-1, a track whose frames do not decode (an empty decode)
+  hung the window in the music's fade: refused by `sounds::mp3`, a fade with nothing left ends;
+  R2-6, a track asked for with none playing was decoded on the frame loop's thread: it starts once
+  its thread has decoded it; R2-7, the view scrolled at the edges without the focus (the original
+  only while `app_active`): `h3-sdl`'s `Window::focused()` (additive; true until SDL says the
+  focus left) and the pointer given off the frame without it; R2-8, fullscreen's bars lay off the
+  frame, where no edge scrolls: a point off the frame is the frame's nearest; R2-9, a hidden
+  cursor's moves presented the same frame again: one hidden cursor; R2-10, F7 in a situation left
+  the pointer parked: the mouse's point given anew.
+- **Fixed, the harness** (not run: no game staged; T6b's recordings run it; the 13 sequences'
+  inputs pass the new check): R3-1, `frames` ignored the viewer's own timeline verdict; R3-2,
+  `drawn --record` kept the digests of a viewer's run not as recorded or failed partway; R3-3, a
+  run that failed midway left the last run's states and live part beside its screens and
+  `--reuse` took the mix: cleared first, `reused` needs the live part and its situation's digest;
+  R3-4, a failing clean-up left Wine running and a killed run's keys stayed down: nested, the
+  keys released at a run's start; R3-5, a live part from a run not exact at 0 became `drawn`'s
+  reference; R3-6, a step that skipped a millisecond lost its inputs unseen; R3-7, a key name
+  xdotool does not know was ignored with a warning: the eight direction keys checked; R3-8,
+  `h3mem`'s docstrings denied M2's writes; R3-9, the runbook's cursor-free frames have the speed-4
+  exception (`walk-4` at 2700); R3-10, the scroll's time written at 0 had no effect (the parked
+  pointer sets it at every call, 0x419978): no longer written, the runbook says why.
+- **Cut out as T6a2** (the user), the music player against the original's music thread, each
+  checked in the code: R2-2, a track asked for during a fade-in cuts it and fades out from 114
+  at once, where the original's `music_thread` holds the manager's critical section (+0xA8) from
+  0x59A859 through the fade-in (0x59AB42 to 0x59ABB1, to 0x59ABE7): the request waits for the
+  fade-in's end and `music_stop_fade` fades from `AIL_stream_volume`, 127 then (0x59B09E,
+  0x59B1E2); R2-3, `end_fade` ends a fade-out once its 900 ms are queued and the next track
+  decoded, so a cue within the next 900 ms takes back the old track's tail as the new one's
+  (the new track's `next` wraps, its place saved near its end): take back at most what the new
+  track queued, and a cue while the old fade is still queued is one during the fade; R2-4,
+  `play_music` drops a request whose name is the pending one (0x6A3394, 0x59AD0D) or the playing
+  stream's while `AIL_stream_status` is 4 (0x6A3290, 0x59AD43 to 0x59ADA6; the thread copies the
+  pending name at 0x59A96A): the client filters only by the last track asked for (`Sound::asked`),
+  so grass, dirt, grass 150 ms apart resumes Grass where the original keeps Dirt; R2-5, the old
+  track's place is saved after its fade, the original's before it (`AIL_stream_position` at
+  0x59B146 to 0x59B15A, stored 0x59B19B to 0x59B1A8; the fade from 0x59B1E2): it resumes where
+  its fade began; R2-11, the music queue's bookkeeping has no test (a pure model driven by a fake
+  stream's queued count, the reviewer's suggestion). The battle client's music (`h3_view::sound`,
+  E17 §8.2) plays through the same `play_music`.
+- **Checked:** `h3-map-view`'s tests (the 13 recorded timelines line by line among them), clippy
+  and fmt over the client workspace, the lane's scoped verify; `scripts/exe.py check` and
+  `cited` (every cited address covered). Not yet: the window's R2-7, R2-8 and R2-10 by hand (T6b,
+  on the user's machine: Alt+Tab with the pointer at an edge, fullscreen's bars, F7 in a
+  situation).

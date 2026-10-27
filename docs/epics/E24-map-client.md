@@ -159,7 +159,11 @@ battle.
   machine; design §3.12; MCL-Q11 asked); T5, the sound (**done**
   2026-10-27, whole: the terrain music, the step sounds and the ambient loops read;
   `h3_map_view::sound`, cued by the timeline and the replay, played by the window; the gate's
-  check of the sounds; design §3.11; MCL-Q8, MCL-Q9 open); T6, M2's closure.
+  check of the sounds; design §3.11; MCL-Q8, MCL-Q9 open); T6, M2's closure, cut at its seam
+  before it started (the user, 2026-10-27): T6a, the reviewers and their fixes (**done**
+  2026-10-27: three reviewers, 29 findings, 24 fixed; the music player's five cut out as T6a2 by
+  the user; design §3.7 corrected; MCL-Q11 answered), T6a2, the music player as the original's
+  music thread, T6b, the closure.
 - **Exit:** every recorded sequence as recorded, line by line and frame by frame (or each
   difference an `MCL-Q<n>`); a situation and a sequence play in the window at the original's
   frame times, with its sound, and render headless frame by frame.
@@ -255,3 +259,13 @@ reviewers'):
   loads (a big map's load longer, no decoding during a walk); the window's report gives how long
   each frame took to make; a frame of a near-empty view still about 4 ms on the user's machine
   (the inbox: the user, "we should check back in at some point").
+- **M2 T6a, the reviewers' findings** (*provisional*): a key without a binding (Ctrl alone, M3's
+  hotkeys) ends no path's walk yet (the adapter's keys only; the original's any key-down does);
+  the option Show Route taken on (a walk a message ended shows the rest of its path again); the
+  actions of one millisecond handled one after another, as the harness gives them (a click's
+  walk empties only what waited behind it during a key's step); a situation's view at most the
+  map's side off the map (the original's own range the harness's check); `h3-sdl`'s
+  `Window::focused()` (additive; true until SDL says the focus left: Xvfb without a window
+  manager sends none) and the pointer given off the frame without the focus; a point on the
+  window off the frame taken as the frame's nearest (fullscreen's bars); `frames` writes no
+  scroll time and releases the direction keys and Ctrl at a run's start.
