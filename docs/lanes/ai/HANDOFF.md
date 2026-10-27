@@ -17,7 +17,7 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   plumbing) done on this branch. **Next, the user's machine:** T6g (the A/B run `order-1`,
   `configs/e06-order.toml`) and T8c (`python -m h3env.search --report` with `t7-1`'s
   `best.pt`); the commands in QUEUE. At T8b's checkpoint the user reviews AI-STUB-1.
-- **Open pull request** (`claude/jolly-volta-qejdfa`, `cross-lane`: T6f and T8b, `h3-battle`'s
+- **Open pull request #493** (`claude/jolly-volta-qejdfa`, `cross-lane`: T6f and T8b, `h3-battle`'s
   `turn_order`, `determinized`, `reseed`): watch it to its merge.
 - **Versions:** battle action encoding v13, observation encoding v22, replay format v31
   (CLT-Q4/Q6), the adventure env's action encoding v4 (E08 T45), C ABI v34 (T6f and T8b: the turn
