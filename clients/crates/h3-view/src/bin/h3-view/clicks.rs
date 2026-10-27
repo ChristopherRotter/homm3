@@ -4,7 +4,7 @@
 //! exactly the engine's legal walks, strikes, shots, wall shots, heals, Wait and Defend
 //! (`h3_view::mouse::click`, `button`), each stack facing its side's way as the engine has it;
 //! but the original's one gap, a two-hex stack's step back by one hex where two are open too
-//! (CLT-Q25).
+//! (CLT-Q25, copied: an option later).
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::fs;

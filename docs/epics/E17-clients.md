@@ -203,7 +203,8 @@ it (`docs/rules/surveys/E08-battles.md` §13; the requests in the queue's inbox 
 
 After M5 (live play, above): the ladders, the pause by agreement and the server browser (the
 user, 2026-10-27, M4 T3c; the server lane's notes in `NOTES.md`, "The live client"). Later: HD
-layouts, graphics options beyond `faithful`, the client's options (volumes), video. The
+layouts, graphics options beyond `faithful`, the client's options (volumes; a two-hex stack's
+step one hex back by the mouse as a gameplay option, off by default: CLT-Q25), video. The
 adventure map and the full game viewer: E24, the map-client lane.
 
 ## Research items from the asset notes

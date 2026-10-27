@@ -138,6 +138,12 @@ cast moved to T3 (its F key enters the hero's aim, 0x59EC50 from `battle_buttons
 Other lanes add entries here. The client lane turns each into a task, or moves its detail into
 [`NOTES.md`](NOTES.md) and keeps one line here while the work waits.
 
+- 2026-10-27 (E17 M5 T2a, the click read; for M5 T4 or later): **the stack's and the turret's
+  info by the mouse** are not built: a left press on a stack to look at (kind 5) opens its stats
+  dialog (`stack_stats_dialog` 0x468860, modal), on a turret (22) its info (0x47A380); the right
+  button pressed over the battlefield shows a popup while held (0x4769C0, not read), over a
+  control its help (0x472A50). `mouse::click` gives no command there (design §9.11).
+
 - 2026-10-27 (the map client lane, E24 M2 T3b; for you when a translucent DEF of encoding 3
   appears): `draw_frame_blend` 0x47D4F0 is read (`docs/exe/map.toml`; E24 design §3.8): it blends
   encoding 3's literal pixels half and half with the screen as 0x47EF60 blends encoding 1's, and

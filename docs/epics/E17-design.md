@@ -2978,10 +2978,15 @@ and CLT-Q24's answer.
   sends them (M5 T2b). In the client's profile the tracker forgets the hovered panel item when
   the battle takes a move over the battlefield, so the panel's picture writes its empty line again
   (CLT-Q24, answered (a)); `Bugs::Original` keeps the original's.
-- **Checked:** scripted presses at every hex (each slot of a stack's hexes) and the wall
-  rectangles, and the two buttons, over every turn of every scenario fought by the bot give
-  exactly the engine's legal walks, strikes, shots, wall shots, heals, Wait and Defend
-  (`h3-view`'s `clicks` test).
+- **Checked:** scripted presses at every hex (in each slot of a hex the acting stack may
+  strike), on the wall rectangles and on the two buttons, over every turn of every scenario the
+  bot fights (the situations', the sequences' and the packs' synthetic ones: 1 455 turns, 76 162
+  commands) give exactly the engine's legal walks, strikes, shots, wall shots, heals, Wait and
+  Defend but one walk (`h3-view`'s `clicks` test): a two-hex stack's step one hex back, whose
+  position's front hex is its own position, while it may walk two back too (157 turns; a press
+  on that position walks two back). CLT-Q25: the original's copied, the fix an option later.
+  The recorded sequences unchanged (the queue emptied, CLT-Q24's switch in the client's profile
+  only).
 - **Not modelled:** the press's hiding of the panel's items, the right button's popups (0x4769C0),
   the dialogs (the stack's and the turret's: the inbox; the spell book: M5 T3), the hex shade.
 

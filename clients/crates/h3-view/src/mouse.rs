@@ -925,7 +925,8 @@ pub const DEFEND: u16 = 2010;
 /// to the hex (a two-hex stack's to the position beside it when the hex is that position's front
 /// hex, 0x476C5F), a shot at the stack (its aim the hex where the target may be aimed at there),
 /// a strike from the slot's position, a wall shot, a heal; none for the others (the stack's info,
-/// the spell book: their dialogs) and outside the battlefield.
+/// the spell book: their dialogs) and outside the battlefield. As the original's, no press walks a
+/// two-hex stack one hex back where it may walk two (CLT-Q25: copied, an option later).
 #[must_use]
 pub fn click(field: &Field<'_>, layout: &BattleLayout, point: [i32; 2]) -> Option<Command> {
     let [width, height] = layout.mouse.field;
