@@ -34,8 +34,12 @@ compared pixel for pixel outside the masks of what the viewer does not draw yet.
       pixels outside the masks against kept/drawn.txt (`same`, `CHANGED`, `new`; `STALE` when the
       situation changed since its capture: its staging is no longer what was kept, T6b); exit 1
       unless every one is the same; --record writes the digests (E24 M1 T6a; the runbook, "Which
-      captures a change needs"). <dir> defaults to clients/out/map-drawn.
-  h3map.py frames [--only <id>] [--out <dir>]
+      captures a change needs"). Since E24 M2 T2 the recorded sequences too: each one's frames
+      drawn by the viewer from its kept live part (timelines/<id>-live.toml) at the times its
+      screen changes (`h3-map-view sequences <id> --frames`, which also checks its timeline), the
+      digests against clients/map/timelines/drawn.txt; a walk is M2 T3's. <dir> defaults to
+      clients/out/map-drawn.
+  h3map.py frames [--only <id>] [--out <dir>] [--reuse]
       every sequence of clients/map/sequences.toml (or one; E24 M2 T1a1): its situation staged
       as `still` stages it, its 0 set to the next millisecond (the palette tick's, the redraw's
       and the mouse poll's next times written there), then 1-ms steps to its `ms`, each screen
@@ -46,8 +50,12 @@ compared pixel for pixel outside the masks of what the viewer does not draw yet.
       recorded and exact at 0. A run as recorded or new keeps that live part
       (timelines/<id>-live.toml). Since E24 M2 T1a2 a sequence's options (the scroll and hero
       speeds) are written once it is staged and its inputs (keys pressed and released, the
-      pointer moved) given at their milliseconds; the timeline has the cursor too. <dir>
-      defaults to clients/out/map-frames.
+      pointer moved) given at their milliseconds; the timeline has the cursor too. Since E24 M2
+      T2 the frame check: the viewer's frames at the times the original's screen changed
+      (`h3-map-view sequences <id> --frames`), each against the original's outside the panels,
+      the counts (`frames.txt`) against clients/map/timelines/<id>-frames.txt; a walk's is M2
+      T3's. --reuse keeps the original's run of an earlier `frames` (its screens, its live part)
+      and only compares again. <dir> defaults to clients/out/map-frames.
 
 Needs `clients/capture/setup.sh` and `cargo build --release -p h3-map-view` (from clients/).
 """
@@ -782,6 +790,77 @@ def sequence(entry, out):
     return states, n
 
 
+def walks(entry):
+    """Whether a sequence walks a hero (M2 T3's: its frame check waits for the walk drawn): the
+    hero's options, a click, a direction key without Ctrl (`h3_map_view::sequence`'s `walks`)."""
+    keys = [i["keydown"] for i in entry.get("inputs", []) if "keydown" in i]
+    return ("hero_speed" in entry or "points" in entry
+            or any("click" in i for i in entry.get("inputs", []))
+            or any(not k.startswith("ctrl+") for k in keys))
+
+
+def ours_frames(ident, here, live):
+    """The viewer's frames of a sequence (E24 M2 T2): `h3-map-view sequences <id> --frames
+    <here> --live <live>` writes `<here>/ours/t<ms>.png` at every time its screen changed and
+    every time `<here>/frames/` holds one of the original's, and its timeline (`ours.txt`); its
+    own verdict on the timeline is its first line. Returns that line."""
+    shutil.rmtree(here / "ours", ignore_errors=True)
+    done = subprocess.run([str(MAP_VIEW), "sequences", ident, "--frames", str(here),
+                           "--live", str(live)], capture_output=True, text=True)
+    said = (done.stdout.strip() or done.stderr.strip()).splitlines()
+    if done.returncode not in (0, 1) or not said:
+        raise RuntimeError(f"h3-map-view sequences {ident}: {done.stderr.strip()}")
+    return said[0]
+
+
+def frame_check(entry, here):
+    """The frame check (E24 M2 T2; the epic's M2 decision): the viewer's frames at the times the
+    original kept a screen (`ours_frames` with this run's live part at 0), each against the
+    original's outside the panels: `frames.txt`, a line `<ms> <differing pixels>` per kept
+    screen, `diff/t<ms>.png` for one that differs (red the differing pixels, blue the masked
+    ones), against `timelines/<id>-frames.txt` (`ok`, `CHANGED`, `new`: a new one is copied there
+    by hand once a second run gives the same). Returns the verdict, the viewer's line on its
+    timeline, the frames and how many differ."""
+    said = ours_frames(entry["id"], here, here / "live.toml")
+    diffs = here / "diff"
+    shutil.rmtree(diffs, ignore_errors=True)
+    lines, differ = [], 0
+    for npz in sorted((here / "frames").glob("t*.npz")):
+        cap = np.load(npz)["screen"]
+        png = here / "ours" / f"{npz.stem}.png"
+        if not png.exists():
+            raise RuntimeError(f"the viewer drew no frame at {npz.stem}")
+        ours = h3cap.png565(png)
+        mask = masked(["panels"], cap.shape)
+        n, _ = h3cap.compare(cap, ours, mask)
+        if n:
+            diffs.mkdir(exist_ok=True)
+            h3cap.compare(cap, ours, mask, diffs / f"{npz.stem}.png")
+            differ += 1
+        lines.append(f"{int(npz.stem[1:])} {n}")
+    text = "\n".join(lines) + "\n"
+    (here / "frames.txt").write_text(text)
+    recorded = TIMELINES / f"{entry['id']}-frames.txt"
+    verdict = ("new" if not recorded.exists()
+               else "ok" if recorded.read_text() == text else "CHANGED")
+    return verdict, said, len(lines), differ
+
+
+def reused(entry, here):
+    """An earlier run's states and its frame at 0 compared again (`--reuse`, E24 M2 T2): the
+    original's screens, states and live part at 0 as that run kept them under `here`."""
+    if not (here / "states.jsonl").exists() or not (here / "frames" / "t00000.npz").exists():
+        raise RuntimeError(f"no earlier run under {here} (run `frames --only {entry['id']}`)")
+    states = [json.loads(line) for line in (here / "states.jsonl").read_text().splitlines()]
+    (here / "timeline.txt").write_text("\n".join(map_timeline(states)) + "\n")
+    sit = tomllib.loads((SITUATIONS / f"{entry['situation']}.toml").read_text())
+    first = np.load(here / "frames" / "t00000.npz")["screen"]
+    draw_ours(here / "map.h3m", sit, here / "live.toml", here / "ours.png")
+    n, _ = h3cap.compare(first, h3cap.png565(here / "ours.png"), masked(["panels"], first.shape),
+                         here / "diff.png")
+    return states, n
+
+
 def run_frames(rest):
     """`frames [--only <id>] [--out <dir>]`: each sequence of `clients/map/sequences.toml` (or
     one) recorded (`sequence`); its timeline against the one recorded in
@@ -791,6 +870,7 @@ def run_frames(rest):
     Exit 1 unless every sequence is as recorded and its frame at 0 exact."""
     only = rest[rest.index("--only") + 1] if "--only" in rest else None
     base = Path(rest[rest.index("--out") + 1]) if "--out" in rest else OUT_FRAMES
+    reuse = "--reuse" in rest
     entries = tomllib.loads(SEQUENCES.read_text())["sequence"]
     if only:
         entries = [e for e in entries if e["id"] == only]
@@ -800,7 +880,7 @@ def run_frames(rest):
     for e in entries:
         here = base / e["id"]
         try:
-            states, n = sequence(e, here)
+            states, n = reused(e, here) if reuse else sequence(e, here)
         except Exception as err:  # noqa: BLE001 (any failure fails this sequence alone)
             failed += 1
             print(f"{e['id']}: FAILED ({type(err).__name__}: {err})", flush=True)
@@ -819,6 +899,20 @@ def run_frames(rest):
         else:
             TIMELINES.mkdir(exist_ok=True)
             shutil.copy(here / "live.toml", TIMELINES / f"{e['id']}-live.toml")
+        # The frame check (T2): every kept screen against the viewer's at its time.
+        if walks(e):
+            print(f"{e['id']}: the frame check of a walk is M2 T3's", flush=True)
+            continue
+        try:
+            checked, said, frames, differ = frame_check(e, here)
+        except Exception as err:  # noqa: BLE001 (any failure fails this sequence alone)
+            failed += 1
+            print(f"{e['id']}: the frame check FAILED ({type(err).__name__}: {err})", flush=True)
+            continue
+        print(f"{e['id']}: the viewer: {said}", flush=True)
+        print(f"{e['id']}: the frame check: {frames} frames, {differ} differing, {checked} "
+              f"({here / 'frames.txt'})", flush=True)
+        failed += checked != "ok"
     print(f"frames: {len(entries)} sequences, {failed} not as recorded; under {base}")
     return 1 if failed else 0
 
@@ -905,8 +999,9 @@ def run_drawn(rest):
     entries = tomllib.loads((SITUATIONS / "set.toml").read_text())["situation"]
     if only:
         entries = [e for e in entries if e["id"] == only]
-        if not entries:
-            sys.exit(f"no situation `{only}` in set.toml")
+        sequences = [e["id"] for e in tomllib.loads(SEQUENCES.read_text())["sequence"]]
+        if not entries and only not in sequences:
+            sys.exit(f"no situation or sequence `{only}` (set.toml, sequences.toml)")
     digests_path = SITUATIONS / "kept" / "drawn.txt"
     recorded = {}
     if digests_path.exists():
@@ -949,18 +1044,85 @@ def run_drawn(rest):
         verdict = "new" if before is None else ("same" if before == got[ident] else "CHANGED")
         failed += verdict != "same"
         print(f"{ident}: {verdict}", flush=True)
+    seq_failed, seq_broken = drawn_sequences(rest, base, record)
+    failed += seq_failed
+    broken += seq_broken
     if record:
-        recorded.update(got)
-        lines = ["# Ours at each situation's last kept live part (h3map.py drawn --record): the",
-                 "# digest of its pixels outside the masks (h3drive.png_digest, h3map.MASKS),",
-                 "# `<id> <sha1, 16 digits>`."]
-        lines += [f"{ident} {recorded[ident]}" for ident in sorted(recorded)]
-        digests_path.write_text("\n".join(lines) + "\n")
-        print(f"drawn: {len(got)} recorded in {digests_path}"
+        if got:
+            recorded.update(got)
+            lines = ["# Ours at each situation's last kept live part (h3map.py drawn --record): "
+                     "the",
+                     "# digest of its pixels outside the masks (h3drive.png_digest, h3map.MASKS),",
+                     "# `<id> <sha1, 16 digits>`."]
+            lines += [f"{ident} {recorded[ident]}" for ident in sorted(recorded)]
+            digests_path.write_text("\n".join(lines) + "\n")
+        print(f"drawn: {len(got)} situations recorded in {digests_path}"
               + (f"; {broken} not drawn, their digests left as they were" if broken else ""))
         return 1 if broken else 0
-    print(f"drawn: {len(entries)} situations, {failed} not the same; under {base}")
+    print(f"drawn: {len(entries)} situations and the sequences, {failed} not the same; under "
+          f"{base}")
     return 1 if failed else 0
+
+
+def drawn_sequences(rest, base, record):
+    """`drawn` over the recorded sequences (E24 M2 T2): each one's frames drawn by the viewer from
+    its kept live part (`timelines/<id>-live.toml`, written by `frames` from a run as recorded or
+    new) at the times its own screen changes (`ours_frames`: `h3-map-view sequences` without the
+    original's frames, which also checks the timeline against the recorded one), each frame's
+    digest outside the panels against `timelines/drawn.txt` (`<id> t<ms> <digest>`). A walk is M2
+    T3's. `--only` names a situation or a sequence. Returns how many are not the same and how
+    many could not be drawn (with `--record`, the digests of those drawn are written)."""
+    only = rest[rest.index("--only") + 1] if "--only" in rest else None
+    entries = [e for e in tomllib.loads(SEQUENCES.read_text())["sequence"]
+               if not walks(e) and only in (None, e["id"])]
+    digests_path = TIMELINES / "drawn.txt"
+    recorded = {}
+    if digests_path.exists():
+        for line in digests_path.read_text().splitlines():
+            if line and not line.startswith("#"):
+                ident, frame, digest = line.split()
+                recorded[(ident, frame)] = digest
+    got, failed, broken = {}, 0, 0
+    for e in entries:
+        ident = e["id"]
+        kept = TIMELINES / f"{ident}-live.toml"
+        sit = tomllib.loads((SITUATIONS / f"{e['situation']}.toml").read_text())
+        if not kept.exists() or tomllib.loads(kept.read_text()).get("situation") != \
+                situation_digest(sit):
+            why = "no kept live part" if not kept.exists() else "STALE (the situation changed)"
+            print(f"sequences/{ident}: {why}: `frames --only {ident}`", flush=True)
+            failed += 1
+            broken += 1
+            continue
+        here = base / "sequences" / ident
+        shutil.rmtree(here, ignore_errors=True)
+        here.mkdir(parents=True)
+        try:
+            said = ours_frames(ident, here, kept)
+        except RuntimeError as err:
+            print(f"sequences/{ident}: the viewer failed ({last_lines(err)})", flush=True)
+            failed += 1
+            broken += 1
+            continue
+        mine = {(ident, png.stem): h3drive.png_digest(png, MASKS["panels"])
+                for png in sorted((here / "ours").glob("t*.png"))}
+        got.update(mine)
+        before = {k: v for k, v in recorded.items() if k[0] == ident}
+        verdict = ("new" if not before else "same" if before == mine else "CHANGED")
+        timeline_same = said.endswith("as recorded")
+        failed += verdict != "same" or not timeline_same
+        print(f"sequences/{ident}: {len(mine)} frames {verdict}; the viewer: {said}", flush=True)
+    if record and got:
+        kept_ids = {ident for ident, _ in got}
+        recorded = {k: v for k, v in recorded.items() if k[0] not in kept_ids}
+        recorded.update(got)
+        lines = ["# Ours at each sequence's kept live part at the times its screen changes",
+                 "# (h3map.py drawn --record; E24 M2 T2): the digest of each frame's pixels",
+                 "# outside the panels (h3drive.png_digest), `<id> t<ms> <sha1, 16 digits>`."]
+        lines += [f"{i} {f} {recorded[(i, f)]}" for i, f in sorted(recorded)]
+        digests_path.write_text("\n".join(lines) + "\n")
+        print(f"drawn: {len(got)} frames of {len(kept_ids)} sequences recorded in {digests_path}")
+    return failed, broken
 
 
 def main(args):

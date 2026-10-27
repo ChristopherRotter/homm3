@@ -85,6 +85,15 @@ adds or changes (its count recorded with why); 3. `h3map.py drawn --record`, `ke
 the task (`set` keeps a capture's live part only when it is as recorded or new); 4. the whole
 set at a milestone's closure and after a harness change that can alter the original's side.
 
+Since E24 M2 T2 `drawn` covers the map's recorded sequences too: each one's frames drawn from
+its kept live part at 0 (`map/timelines/<id>-live.toml`, which `frames` keeps from a run as
+recorded or new, with the digest of the situation it showed: `STALE` when that changed) at the
+times its screen changes (`h3-map-view sequences <id> --frames`, which also checks the timeline:
+a timeline not as recorded fails the sequence), their digests outside the panels against
+`map/timelines/drawn.txt` (`<id> t<ms> <digest>`); `frames --only <id>` for a sequence it lists
+as `CHANGED`, `new` or `STALE` (and its counts recorded), then `drawn --record`. A walk is M2
+T3's.
+
 `drawn` reporting every one the same (a change that reaches no reference frame) needs no Wine
 setup at all. Its digests are of the PNG files' pixels (`h3_render::png`'s unfiltered rows): a
 change of the viewer's PNG encoder's format shows every frame as changed; then `drawn --record`
@@ -583,7 +592,7 @@ never assumed.
 `clients/`, after `cargo build --release -p h3-map-view`,
 
 ```
-python3 capture/h3map.py frames [--only <id>] [--out <dir>]   # the recorded sequences
+python3 capture/h3map.py frames [--only <id>] [--out <dir>] [--reuse]   # the recorded sequences
 ```
 
 A sequence (`map/sequences.toml`: its id, a situation of `map/situations/`, one of the capture
@@ -641,6 +650,22 @@ frame steps (+0x100) 0 with the timers before the sequence's 0 (`Mem.write_frame
 load gives each object a random phase and the steps count the load's real time, and where an
 object's frames repeat a picture the box the screen changed in at a redraw moved with them from
 run to run (two mines did); the live part at 0 reads them back.
+
+**The frame check** (E24 M2 T2, design §3.6): after each run `frames` has the viewer replay the
+sequence without the original (`h3-map-view sequences <id> --frames <out>/<id> --live
+<out>/<id>/live.toml`: the map's timeline from the situation, this run's live part at 0 and the
+inputs, its frame at every time its own screen changed and at every time `frames/` holds one of
+the original's, `ours/t<ms>.png`, its timeline `ours.txt`; it prints its verdict on the timeline
+against the recorded one, every line, the `screen` boxes from its own frames included) and
+compares each kept screen with ours outside the panels: `frames.txt`, a line `<ms> <differing
+pixels>` per kept screen, `diff/t<ms>.png` for one that differs, against
+`map/timelines/<id>-frames.txt` (`ok`, `CHANGED`, `new`: copied there by hand once a second run
+gives the same, as the timeline). A walk's frame check is M2 T3's (`walks`: the hero's options,
+a click or a direction key without Ctrl). `--reuse` takes the original's screens, states and live
+part from an earlier run under `<out>` and compares again (after a change to the viewer; the
+original's frames stay only in the sandbox that recorded them). `h3-map-view sequences` alone
+(no Wine; the assets only) checks every sequence's timeline; `drawn` covers the sequences too
+(below).
 
 ## The recipes' coordinates (800 × 600)
 

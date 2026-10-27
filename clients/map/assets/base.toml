@@ -16,6 +16,13 @@ path = "adag.def"
 road_offset = 16
 cycle_ms = 200
 frame_ms = 180
+# The scroll and the mouse over time (E24 M2 T2; design §3.4): the tiles a scroll step moves the
+# view at the scroll speeds 0 to 2 (scroll_steps 0x63A66C), the edge scroll's time between steps
+# (edge_scroll 0x419820), the mouse poll's (mouse_poll 0x50D680: the cursor is drawn where it
+# last read the mouse, E17 design §9.10).
+scroll_steps = [1, 2, 3]
+scroll_ms = 70
+poll_ms = 33
 
 [map.shroud]
 full = "tshrc.def"

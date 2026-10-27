@@ -4,6 +4,7 @@
 mod files;
 mod gate;
 mod render;
+mod sequences;
 mod situation;
 
 use std::process::ExitCode;
@@ -47,6 +48,21 @@ commands:
           reproduces the original's drawing bugs (for the comparisons; MCL-Q2, MCL-Q3, MCL-Q4).
           --list prints the draw list.
           The assets come from the installation copy's archives (<dir> as for gate).
+  sequences [<id>] [--frames <dir>] [--live <live.toml>] [--bugs fixed|original]
+            [--install <dir>] [--map <dir>]
+          replays the recorded sequences (<map>/sequences.toml, E24 M2) without the original:
+          each one's situation built as `situation` builds it, its live part at 0
+          (<map>/timelines/<id>-live.toml, or --live) drawn as `render --live` draws it, its
+          inputs played by the map's timeline (the redraws every 180 ms, the palette steps every
+          200 ms, the scroll by Ctrl and the direction keys and at the frame's edges, the cursor)
+          and the screen drawn wherever it can change: the timeline (the view, the objects' and
+          palette steps, the cursor and the box the screen changed in outside the panels) is
+          compared line by line with <map>/timelines/<id>.txt. A walk is M2 T3's: listed, not
+          played. With --frames (one sequence) the frame at each time the screen changed and at
+          each time <dir>/frames/ holds the original's (t<ms>.npz, h3map.py frames) is written
+          as <dir>/ours/t<ms>.png, the timeline as <dir>/ours.txt. --bugs defaults to original
+          (the comparisons: the original's edge zones, MCL-Q6, and its cursor's even x). It
+          exits 1 unless every sequence played is as recorded.
   situation <situation.toml> --out <map.h3m> [--install <dir>]
           writes a situation's map (clients/map/situations/; E24 M1 T3b2) with the adventure
           lane's writer, the shipped maps its copies name read from <dir>/Maps (a situation
@@ -65,6 +81,13 @@ fn main() -> ExitCode {
         },
         Some((command, rest)) if command == "render" => match render::Options::parse(rest) {
             Ok(options) => render::run(&options),
+            Err(message) => {
+                eprintln!("{message}");
+                ExitCode::from(2)
+            }
+        },
+        Some((command, rest)) if command == "sequences" => match sequences::Options::parse(rest) {
+            Ok(options) => sequences::run(&options),
             Err(message) => {
                 eprintln!("{message}");
                 ExitCode::from(2)

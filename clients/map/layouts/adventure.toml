@@ -25,3 +25,27 @@ gems = [
     { def = "agemll.def", at = [6, 508] },
     { def = "agemlr.def", at = [556, 508] },
 ]
+
+# The view's scroll (E24 M2 T2; view_scroll 0x4195C0, edge_scroll 0x419820; design §3.4): the
+# map's first and last column and row stop at the view's tile `middle` (its corner within -9 to
+# the map's width less 10, -8 to its height less 9); the view scrolls while the pointer lies
+# within `edge` pixels of a side of the frame (MCL-Q6: 16 on every side; the original's 16, 14, 16
+# and 15 only for the comparisons).
+[scroll]
+middle = [9, 8]
+edge = 16
+
+# The adventure cursor (the mouse manager's type 1, cursor_defs 0x67FF38): the arrow's frame, the
+# first of the eight edge cursors (north clockwise to north-west), every frame's hot spot
+# (cursor_hot_spots 0x67FF50 + (144 + frame) x 8: the canvas's corner is the mouse less these).
+[cursor]
+def = "cradvntr.def"
+arrow = 0
+edges = 32
+hot = [
+    [0, 0], [10, 12], [12, 10], [12, 12], [14, 13], [12, 13], [20, 22], [12, 16], [8, 9],
+    [14, 14], [14, 13], [12, 13], [20, 22], [12, 16], [8, 9], [14, 14], [14, 13], [12, 13],
+    [20, 22], [12, 16], [8, 9], [14, 14], [14, 13], [12, 13], [20, 22], [12, 16], [8, 9],
+    [14, 14], [20, 22], [20, 22], [20, 22], [20, 22], [6, 0], [16, 1], [22, 6], [16, 17],
+    [6, 22], [0, 17], [0, 5], [0, 1], [0, 0], [12, 14], [20, 26],
+]

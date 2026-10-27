@@ -2,7 +2,7 @@
 
 Status: **refined** (2026-10-23, T0, with the user); **M1 closed** (2026-10-24, T6b: the
 reviewers, the review list accepted by the user); **M2 refined** (2026-10-26, M2 T0, with the
-user); next M2 T1a2 (`docs/lanes/map-client/QUEUE.md`).
+user); next M2 T3 (`docs/lanes/map-client/QUEUE.md`).
 Lane: map-client (`docs/lanes/map-client/HANDOFF.md`: the autonomy contract, the user's asset
 notes). Opened 2026-10-23 when the user split the client lane at E17 M3's closure (CLT-Q18).
 Decisions so far live here (no ADR of its own yet; ADR-0020 and ADR-0024 bind it as they bind
@@ -137,8 +137,11 @@ battle.
   2026-10-26: Ctrl and the direction keys, the edge every 70 ms, the limits, the edge cursors,
   four sequences; design §3.4, MCL-Q6 answered); T1b, the walk
   read and recorded (**done** 2026-10-26, whole: the lifted hero at the view's centre, the view
-  sliding by pixels, seven sequences; design §3.5); T2, the map over time headless (idle and scroll exact); T3, the walk drawn
-  (exact); T4, the window; T5, the sound; T6, M2's closure.
+  sliding by pixels, seven sequences; design §3.5); T2, the map over time headless (**done**
+  2026-10-27, whole: `h3_map_view::timeline`, `h3-map-view sequences`, the edge cursors, the
+  harness's frame check, `drawn` over the sequences; T1a's six sequences exact line by line and
+  frame by frame; design §3.6); T3, the walk drawn (exact); T4, the window; T5, the sound; T6,
+  M2's closure.
 - **Exit:** every recorded sequence as recorded, line by line and frame by frame (or each
   difference an `MCL-Q<n>`); a situation and a sequence play in the window at the original's
   frame times, with its sound, and render headless frame by frame.
