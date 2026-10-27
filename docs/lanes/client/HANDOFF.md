@@ -10,7 +10,7 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   epic's M5): hot seat in-process first, then a game on a server and accounts; the new
   dependencies the user's at T6 and T7. T1 cut in two (the user): **T1a done** (the playhead,
   `anim::Playhead`). **Next: M5 T1b** (the timeline that grows, the window's live source). Open
-  PR: the T1a one (check it first). Workspace `clients/`
+  PR: #506 (T1a; check it first). Workspace `clients/`
   (`clients/README.md`), gates `clients/scripts/check.sh`; ADR-0020 (+ drafts in
   `adr-drafts/`), ADR-0024; the harness `clients/capture/README.md`; design §3–§10; records in
   `E17-log.md`.
@@ -37,7 +37,7 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
 
 ## Recent sessions
 
-- **2026-10-27, E17 M5 T1a (done; PR open: check it first).** T1 cut in two (the user: T1a,
+- **2026-10-27, E17 M5 T1a (done; #506 open: check it first).** T1 cut in two (the user: T1a,
   T1b). The sandbox new, the original files staged again before the computer disconnected.
   Measured: R2-7's 2.3 ms was the composing; `Moment::at` 1.6 to 7 µs over `play`'s battle,
   306 µs half an hour into its idle end. `anim::Playhead` reads the timeline forward (0.3 to
