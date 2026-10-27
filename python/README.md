@@ -77,7 +77,7 @@ uv run --group train python -m h3env.train --resume runs/t4-1 --set samples=80_0
 uv run --group train python -m h3env.train --config configs/e06-t4.toml --out runs/t4-3 --init-from runs/t4-1/best.pt
 ```
 
-A run's settings come from a TOML config (E06 T2a, ADR-0026; `docs/epics/E06-design.md` §1): the
+A run's settings come from a TOML config (E06 T2a, ADR-0026; `docs/epics/E06-log.md` §1): the
 file states only what differs from `h3env.train.run.Config`'s defaults, grouped in tables (`[env]`,
 `[network]`, `[ppo]`, `[league]`, `[gate]`, `[ladder]`, `[checkpoint]`, `[device]`); `--set
 table.key=value` overrides one key; an unknown key is an error. Committed configs live in
@@ -86,7 +86,7 @@ decisions that trained): `samples`, the learning rate's linear decay over `lr_ho
 by default), the league's snapshots and live draws (`snapshot_every`, `live_every`), the gates
 (`gate_every`); wall time sets only the checkpoints.
 
-**The networks** (E06 T5a, `docs/epics/E06-design.md` §11): `network.kind` is `"mlp"` (E05's,
+**The networks** (E06 T5a, `docs/epics/E06-log.md` §11): `network.kind` is `"mlp"` (E05's,
 the default: `hidden` 512) or `"entity"`, observation v21 read as entities by `h3env.train.layout`
 (a token per stack slot, the globals, the own hero, the field; `layers` 2 transformer blocks of
 `width` 128 with `heads` 4; pointer heads at the hexes and stacks); `embed` (32) sizes both
@@ -167,7 +167,7 @@ atomically), `checkpoint.pt` (the whole training state, E06 T2b1), `promoted/<n>
 promoted network, kept), `best.pt` (the latest) and `league/<id>.pt` (the league's snapshots).
 A record a result cites is committed as `records/<run>.json` (`records/README.md`).
 
-**Interrupting and resuming** (E06 T2b1, T3b, T4a; `docs/epics/E06-design.md` §3): the
+**Interrupting and resuming** (E06 T2b1, T3b, T4a; `docs/epics/E06-log.md` §3): the
 checkpoint (format 3: the network, the optimizer, the league's members (their networks stay in
 their files), the counters, the schedule, the promoted networks' entries, what is pending, the
 random generators, the metrics' length) is written atomically at the start, every `checkpoint.checkpoint_minutes` (5) of wall time at the next
