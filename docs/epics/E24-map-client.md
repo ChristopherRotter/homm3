@@ -180,7 +180,8 @@ battle.
   come from the map); a loaded saved game's draw lists (the objects gone before the save: not
   read, M1 T6b); the map's sound compared by ear with the original's on a whole map (the user,
   at M2 T4b2: the transitions sounded unclean, perhaps the lag's doing; the harness's recordings
-  have no sound).
+  have no sound); the nine step sounds the original ships but never plays (`HORSE20` to `HORSE29`,
+  perhaps the roads') as a sound option once their purpose is known (MCL-Q11).
 - **M5, hot seat:** whole games played in-process: the handover screen when the player who must
   act changes, the level-up dialog (the inbox), the hero and town screens as play needs them;
   then live play against the server.

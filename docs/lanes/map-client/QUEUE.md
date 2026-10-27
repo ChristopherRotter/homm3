@@ -25,15 +25,29 @@ then T4b2, the Windows build on the user's machine (done 2026-10-27), which foun
 drawing too slow: T4b3 (the user, 2026-10-27; done 2026-10-27). T5, the sound, done whole 2026-10-27 (the user
 chose it over a cut).
 
-### E24 M2 T6 — M2's closure
+T6, M2's closure, cut at its seam before it started (the user, 2026-10-27): T6a, the reviewers
+and their fixes, then T6b, the closure.
 
-- **Scope:** M2's exit (the epic) checked on `master`; fresh reviewer agents, one per area, in
-  parallel; each finding checked against the code and the executable, fixed or queued; R2-8's
-  one-line `cross-lane` pull request if no task took it (the inbox); the review list to the
-  user; M2's section moved to `E24-archive.md`; M3 T0 queued (the common crate proposed to the
-  client lane first: the epic's M2 decision).
+### E24 M2 T6a — the reviewers and their fixes
+
+- **Scope:** three fresh reviewer agents in parallel, one per area (the map over time and its
+  drawing; the window, the input and the sound; the harness and the recordings); each finding
+  checked against the code and, where it names the original, the executable; fixed with a test,
+  or queued with its reason; the findings and their outcome in the log, the review list's T6a
+  entry.
+- **Acceptance:** the lane's scoped verify without a failing step, CI green; the Definition of
+  Done.
+- **Depends on:** T1a1 to T5 (T4b1 to T4b3). **Status:** in progress (2026-10-27).
+
+### E24 M2 T6b — M2's closure
+
+- **Scope:** M2's exit (the epic) checked on `master` after T6a's fixes: the 13 sequences
+  recorded again or compared again (`frames --reuse`), every line and frame; R2-8's one-line
+  `cross-lane` pull request if no task took it (the inbox); the review list to the user; M2's
+  section moved to `E24-archive.md`; M3 T0 queued (the common crate proposed to the client lane
+  first: the epic's M2 decision).
 - **Acceptance:** the review list accepted by the user; the Definition of Done.
-- **Depends on:** T1a1 to T5 (T4b1 to T4b3). **Status:** ready.
+- **Depends on:** T6a. **Status:** ready once T6a merged.
 
 ## Inbox
 
