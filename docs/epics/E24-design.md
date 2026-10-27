@@ -1101,9 +1101,19 @@ sequences, every line but the `screen` ones (the walk drawn is T3b's). Read this
 - **The tile clicked:** the view's corner plus the point's x and y divided by 32 (§1.2's open
   point, M3's; the sequences click tiles' middles).
 - **Actions given during a walk** wait; the mouse's point is read at once. A key's step leaves
-  them to the loop's turn at its end, before the idle message; the path's walk drains them after
-  each step, a key or a click ending it after that step, the rest dropped (0x407FA7). Not
-  recorded: the sequences give only the parked pointer after a click.
+  them to the loop's turn at its end, before the idle message; the path's walk empties the queue
+  at its start (`input_flush` 0x4EC570 at 0x407E87, after `mouse_hide`: the messages behind its click
+  gone) and after each step reads the messages up to the first key-down (a step's, a scroll's,
+  Ctrl's alone), mouse button or control's message (kinds 1, 8, 0x20, 0x200: 0x407FA7), which
+  ends it after that step: those before it are dropped, the one itself taken, those behind it
+  left for the loop's turn after the walk (no flush on the way out); a hero flying over a tile it
+  cannot stop on reads none (0x407F4D). Taken after the walk, a message's edge scroll and cursor
+  read the mouse's point now, a click its own tile. A walk a message ended stands the hero
+  (`hero_walk_end` 0x408002) before `make_hero_path` redraws the path left (0x4080C9; with the
+  option Show Route, 0x698774, off it clears the path instead). M2 T6a (the reviewer's R1-1 to
+  R1-5) corrected this paragraph, which had all the messages dropped. Not recorded: the
+  sequences give only the parked pointer after a click; a key without a binding (Ctrl alone,
+  M3's hotkeys) is no action of the client's yet.
 - A key's step off the map's side does nothing (the engine's `hero_step_allowed` from M4; not
   recorded). The hero speed is 2 when a sequence gives none (`option_walk_speed`).
 

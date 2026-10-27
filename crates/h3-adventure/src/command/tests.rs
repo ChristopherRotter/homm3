@@ -770,7 +770,7 @@ fn a_chart_offers_its_reveal_once_per_player_and_type() {
         .collect();
     assert!(new > 20 && !hidden.is_empty(), "{new} {hidden:?}");
     let mut events = Vec::new();
-    state.accept_offer(&rules.0, &rules.1, RED, &offer, &mut events);
+    state.accept_offer((&rules.0, &rules.1, &[]), RED, &offer, &mut events);
     assert_eq!(
         events,
         vec![AdventureEvent {
@@ -815,22 +815,22 @@ fn a_chart_offers_its_reveal_once_per_player_and_type() {
         .unwrap();
     assert_eq!((open.object_type, open.anchor), (OPEN_CHART, p(13, 1)));
     // Blue buys the open chart, then the chart; red's purchase stays its own.
-    state.accept_offer(&rules.0, &rules.1, BLUE, &open, &mut Vec::new());
+    state.accept_offer((&rules.0, &rules.1, &[]), BLUE, &open, &mut Vec::new());
     let chart = Offer {
         hero: HeroId::new(2),
         ..offer.clone()
     };
-    state.accept_offer(&rules.0, &rules.1, BLUE, &chart, &mut Vec::new());
+    state.accept_offer((&rules.0, &rules.1, &[]), BLUE, &chart, &mut Vec::new());
     assert_eq!(state.bought(BLUE).collect::<Vec<_>>(), [CHART, OPEN_CHART]);
     assert_eq!(state.bought(RED).collect::<Vec<_>>(), [CHART]);
     assert!(!state.has_bought(RED, OPEN_CHART));
     // Equal purchases hash equal, whatever their order.
     let mut other = reveal_world(&rules);
-    other.accept_offer(&rules.0, &rules.1, BLUE, &chart, &mut Vec::new());
-    other.accept_offer(&rules.0, &rules.1, RED, &offer, &mut Vec::new());
-    other.accept_offer(&rules.0, &rules.1, BLUE, &open, &mut Vec::new());
+    other.accept_offer((&rules.0, &rules.1, &[]), BLUE, &chart, &mut Vec::new());
+    other.accept_offer((&rules.0, &rules.1, &[]), RED, &offer, &mut Vec::new());
+    other.accept_offer((&rules.0, &rules.1, &[]), BLUE, &open, &mut Vec::new());
     let mut moved = reveal_world(&rules);
-    moved.accept_offer(&rules.0, &rules.1, RED, &offer, &mut Vec::new());
+    moved.accept_offer((&rules.0, &rules.1, &[]), RED, &offer, &mut Vec::new());
     assert_eq!(other.bought(RED).collect::<Vec<_>>(), [CHART]);
     assert_ne!(other.state_hash(), moved.state_hash());
     // A kind other than a Cartographer reveals nothing by terrain.
@@ -1217,7 +1217,7 @@ fn a_border_guard_offers_its_key_s_holders_to_pass() {
     // Accepted: the guard leaves the map for everyone, told to the players that see it (red
     // alone: blue's hero, nine columns off, has not explored its tile), and its tile is free.
     let mut events = Vec::new();
-    state.accept_offer(&rules.0, &rules.1, RED, &offer, &mut events);
+    state.accept_offer((&rules.0, &rules.1, &[]), RED, &offer, &mut events);
     assert_eq!(
         events,
         [AdventureEvent {
@@ -1263,7 +1263,7 @@ fn a_border_guard_offers_its_key_s_holders_to_pass() {
     // first, ADR-0017 point 10).
     let gone = state.clone();
     let mut events = Vec::new();
-    state.accept_offer(&rules.0, &rules.1, RED, &offer, &mut events);
+    state.accept_offer((&rules.0, &rules.1, &[]), RED, &offer, &mut events);
     assert!(events.is_empty());
     assert_eq!(state, gone);
     // Declining needs nothing of the context: the guard stays until a key holder accepts.

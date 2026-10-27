@@ -19,14 +19,17 @@
 
 use alloc::vec::Vec;
 
-use h3_content::{CreatureTypeId, FRINGE_SHOWS_OBJECTS, Formation, Ruleset, TerrainId};
+use h3_content::{
+    CreatureTypeId, FRINGE_SHOWS_OBJECTS, Formation, ResourceId, Ruleset, SkillId, SpellId,
+    TerrainId,
+};
 use h3_contracts::{ArmyStack, HeroId, PlayerId};
 
 use crate::command::{AdventureEvent, AdventureEventKind, Viewers};
 use crate::fog::Sight;
-use crate::ruleset::{AdventureRuleset, ObjectTypeId, RiverId, RoadId};
+use crate::ruleset::{AdventureRuleset, ObjectKind, ObjectTypeId, RiverId, RoadId};
 use crate::setup::{Pos, TileMask};
-use crate::state::{AdventureState, StaticTile};
+use crate::state::{AdventureState, Resolved, StaticTile};
 
 /// What one player may know of the adventure map.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -60,6 +63,9 @@ pub struct AdventureObservation {
     /// The keys the viewer holds, bit `c` for the colour `c` (ADV-VIS-003, E08 T15a); other
     /// players' keys never show (ADR-0016 point 6).
     pub keys: u8,
+    /// What the viewer learned of objects still on the map by its own visits (ADV-VIS-006, E08
+    /// T62a), in the map's order; other players' knowledge never shows.
+    pub known: Vec<KnownObject>,
 }
 
 impl AdventureObservation {
@@ -138,6 +144,35 @@ pub struct MonsterView {
     pub count_word: u8,
 }
 
+/// What a viewer learned of an object by a visit of its own (ADV-VIS-006, E08 T62a), named by its
+/// type and anchor as [`ObjectView`] names it.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct KnownObject {
+    /// Its object type.
+    pub object_type: ObjectTypeId,
+    /// Its anchor.
+    pub anchor: Pos,
+    /// What the viewer knows of it.
+    pub known: Known,
+}
+
+/// What a visit told its hero's owner of an object (ADV-VIS-006; survey `E08-rewards.md` §8.4,
+/// design §13): what the build drew for it, or whether it is emptied, as the original's
+/// right-click shows it to the visitor's team.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Known {
+    /// A Shrine's spell; none for one without a spell to give.
+    Spell(Option<SpellId>),
+    /// A Witch Hut's skill; none for one whose every skill is banned.
+    Skill(Option<SkillId>),
+    /// A gift's drawn price, by resource (the Tree of Knowledge's; empty: free).
+    Price(Vec<(ResourceId, u32)>),
+    /// A University's skills, in the draw's order.
+    Skills(Vec<SkillId>),
+    /// Whether a find is emptied, as it stands now.
+    Emptied(bool),
+}
+
 /// What a viewer sees of a tile.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TileView {
@@ -182,6 +217,9 @@ pub struct OwnHeroView {
     pub formation: Formation,
     /// Its tactics flag (ADV-ARM-006, E08 T50).
     pub tactics: bool,
+    /// The objects it holds the once-per-hero mark of (ADV-VIS-006, E08 T62a), by type and
+    /// anchor in the map's order: each stood on a tile the hero explored, so nothing hidden shows.
+    pub marks: Vec<(ObjectTypeId, Pos)>,
 }
 
 impl AdventureState {
@@ -216,6 +254,7 @@ impl AdventureState {
             objects: Vec::new(),
             bought: self.bought(viewer).collect(),
             keys: self.keys(viewer),
+            known: Vec::new(),
         };
         let row_tiles = usize::from(width);
         // A tile as it stands now; only a tile an object covered can differ from the static map's.
@@ -266,6 +305,7 @@ impl AdventureState {
                     movement: hero.movement,
                     formation: hero.formation,
                     tactics: hero.tactics,
+                    marks: self.marks_of(hero.id),
                 }),
             })
             .collect();
@@ -300,7 +340,65 @@ impl AdventureState {
                 })
                 .collect();
         observation.objects = objects;
+        observation.known = self.known_by(part, viewer);
         observation
+    }
+
+    /// The objects `hero` holds the once-per-hero mark of, by type and anchor in the map's order
+    /// ([`OwnHeroView::marks`]); none without the visits' block.
+    fn marks_of(&self, hero: HeroId) -> Vec<(ObjectTypeId, Pos)> {
+        let Some(visits) = self.visits() else {
+            return Vec::new();
+        };
+        self.map()
+            .objects()
+            .iter()
+            .enumerate()
+            .filter(|&(index, _)| visits.is_marked(hero, index))
+            .filter_map(|(_, object)| object.object_type.map(|ty| (ty, object.anchor)))
+            .collect()
+    }
+
+    /// What `viewer` learned of the objects still on the map by its own visits (ADV-VIS-006,
+    /// [`AdventureObservation::known`]): a Shrine's spell, a Witch Hut's skill, a gift's drawn
+    /// price, a University's skills, whether a find is emptied; none without the visits' block.
+    // rule: ADV-VIS-006
+    fn known_by(&self, part: &AdventureRuleset, viewer: PlayerId) -> Vec<KnownObject> {
+        if self.visits().is_none() {
+            return Vec::new();
+        }
+        self.map()
+            .objects()
+            .iter()
+            .enumerate()
+            .filter(|&(index, _)| self.knows(viewer, index) && !self.is_removed(index))
+            .filter_map(|(index, object)| {
+                let typed = object
+                    .object_type
+                    .and_then(|id| part.object_type(id).map(|ty| (id, ty)));
+                typed.map(|(object_type, ty)| KnownObject {
+                    object_type,
+                    anchor: object.anchor,
+                    known: match (&ty.kind, &object.resolved) {
+                        (ObjectKind::Shrine { .. }, &Resolved::Spell(spell)) => {
+                            Known::Spell(Some(spell))
+                        }
+                        (ObjectKind::Shrine { .. }, _) => Known::Spell(None),
+                        (ObjectKind::WitchHut { .. }, &Resolved::Skill(skill)) => {
+                            Known::Skill(Some(skill))
+                        }
+                        (ObjectKind::WitchHut { .. }, _) => Known::Skill(None),
+                        (ObjectKind::Gift(gift), _) => {
+                            Known::Price(self.gift_price(index, gift).clone())
+                        }
+                        (ObjectKind::University { .. }, resolved) => {
+                            Known::Skills(resolved.skills().to_vec())
+                        }
+                        _ => Known::Emptied(self.is_emptied(index)),
+                    },
+                })
+            })
+            .collect()
     }
 }
 

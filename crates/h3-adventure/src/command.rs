@@ -9,8 +9,9 @@
 use alloc::vec::Vec;
 use core::fmt;
 
-use h3_content::{ContentKey, CreatureTypeId, Formation, ResourceId, TerrainId};
+use h3_content::{ContentKey, CreatureTypeId, Formation, ResourceId, SkillId, TerrainId};
 use h3_contracts::{ArmyStack, HeroId, PlayerId};
+use h3_heroes::{HeroChange, PrimarySkill};
 
 use crate::ruleset::ObjectTypeId;
 use crate::setup::{Pos, StandError};
@@ -161,6 +162,152 @@ pub struct AdventureOutcome {
     /// T50): its treasure was given and the monster left the map as for any join; the game opens
     /// the army dialog with it (GAM-DEC-004, T51b).
     pub no_room: Option<NoRoom>,
+    /// What the visit gives its hero (ADR-0017 point 10, increment 7; E08 T62a): the artifacts,
+    /// spells, skills, primary skills, spell points, bonuses and experience of a pickup, a
+    /// teacher or a find, checked against the details the visit read; the game applies them.
+    pub hero: Option<HeroGains>,
+    /// The choice the visit opens for the player (E08 T62a): a treasure chest's gold or
+    /// experience (ADV-PIK-005), the Arena's or a School's primary skill (ADV-TCH-001,
+    /// ADV-TCH-002). The game opens it as the player's decision when its treasury can pay the
+    /// price, and gives the answer to [`crate::AdventureState::choose`].
+    pub choice: Option<Choice>,
+    /// The University the visit opens (ADV-TCH-007, E08 T62a): the game opens it as the player's
+    /// decision, its purchases made through `h3_heroes::university_slot` (GAM-DEC-006).
+    pub university: Option<UniversityVisit>,
+}
+
+/// What a visit gives its hero (ADR-0017 point 10, increment 7; E08 T62a): each change passes
+/// `h3_heroes::check_change` once the earlier ones are applied, against the details the visit
+/// read; then the experience, which the game gives last as `HeroChange::GainExperience` under the
+/// scenario's level limit, with the levels it brings (GAM-DEC-002).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct HeroGains {
+    /// The hero.
+    pub hero: HeroId,
+    /// The changes, in order.
+    pub changes: Vec<HeroChange>,
+    /// The experience, 0 for none.
+    pub experience: u32,
+}
+
+impl HeroGains {
+    /// These changes to `hero`, without experience.
+    pub(crate) fn changes(hero: HeroId, changes: Vec<HeroChange>) -> Self {
+        Self {
+            hero,
+            changes,
+            experience: 0,
+        }
+    }
+
+    /// This experience to `hero`, without changes.
+    pub(crate) const fn experience(hero: HeroId, experience: u32) -> Self {
+        Self {
+            hero,
+            changes: Vec::new(),
+            experience,
+        }
+    }
+}
+
+/// A choice a visit opens for its hero's owner (ADR-0017 point 6, increment 7; E08 T62a), named
+/// by the object's type and anchor as an offer names it ([`Offer`]); the answer is a [`Pick`].
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Choice {
+    /// The hero whose visit opened it.
+    pub hero: HeroId,
+    /// The object's type.
+    pub object_type: ObjectTypeId,
+    /// The object's anchor.
+    pub anchor: Pos,
+    /// What is chosen between.
+    pub kind: ChoiceKind,
+}
+
+impl Choice {
+    /// The price the first or second pick costs, by resource: a School's, none for the others.
+    pub fn price(&self) -> &[(ResourceId, u32)] {
+        match &self.kind {
+            ChoiceKind::Chest { .. } => &[],
+            ChoiceKind::Primary { price, .. } => price,
+        }
+    }
+
+    /// Whether `pick` answers the choice: the first and the second always, leaving only a
+    /// choice that may be left (a School's; the chest's and the Arena's may not).
+    pub const fn allows(&self, pick: Pick) -> bool {
+        match (&self.kind, pick) {
+            (_, Pick::First | Pick::Second) => true,
+            (ChoiceKind::Primary { leave, .. }, Pick::Leave) => *leave,
+            (ChoiceKind::Chest { .. }, Pick::Leave) => false,
+        }
+    }
+
+    /// The pick the system actor gives (ADR-0017 point 6's defaults): leaving where the choice
+    /// may be left (a School), else the first (the chest's gold, the original's plain OK; the
+    /// Arena's first skill, its Cancel).
+    pub const fn default_pick(&self) -> Pick {
+        if self.allows(Pick::Leave) {
+            Pick::Leave
+        } else {
+            Pick::First
+        }
+    }
+}
+
+/// What a [`Choice`] chooses between.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ChoiceKind {
+    /// A treasure chest's (ADV-PIK-005): first its gold to the player, second the experience to
+    /// the hero (the gold less the type's offset, times the hero's Learning). The chest left the
+    /// map with the visit.
+    Chest {
+        /// The gold: its resource and amount.
+        gold: (ResourceId, u32),
+        /// The experience.
+        experience: u32,
+    },
+    /// A once-per-hero gift's (ADV-TCH-001: the Arena; ADV-TCH-002: the Schools): `amount` added
+    /// to the first or the second skill for the price, which marks the hero; with `leave`, the
+    /// player may take neither, without paying or a mark.
+    Primary {
+        /// The two skills, in the dialog's order.
+        skills: [PrimarySkill; 2],
+        /// The gain.
+        amount: u8,
+        /// The price, by resource (empty: free).
+        price: Vec<(ResourceId, u32)>,
+        /// Whether the player may leave the choice.
+        leave: bool,
+    },
+}
+
+/// An answer to a [`Choice`] (E08 T62a): its first or second option, or leaving without either.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Pick {
+    /// The first option.
+    First,
+    /// The second option.
+    Second,
+    /// Neither (only a choice that [`Choice::allows`] it).
+    Leave,
+}
+
+/// A University a visit opens (ADV-TCH-007, E08 T62a): its skills in the draw's order, each sold
+/// at the price for the hero to learn at Basic while its slot is open
+/// (`h3_heroes::university_slot`).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct UniversityVisit {
+    /// The hero whose visit opened it.
+    pub hero: HeroId,
+    /// The object's type.
+    pub object_type: ObjectTypeId,
+    /// The object's anchor.
+    pub anchor: Pos,
+    /// The skills.
+    pub skills: Vec<SkillId>,
+    /// The price of each, by resource.
+    pub price: Vec<(ResourceId, u32)>,
 }
 
 /// Two heroes of one player met by a step (GAM-MET-001, E08 T50): the visitor's move ended on the
@@ -273,8 +420,14 @@ impl Offer {
     /// The price, by resource in the core's order: a Cartographer's, none for a border guard's.
     pub fn price(&self) -> &[(ResourceId, u32)] {
         match &self.kind {
-            OfferKind::Reveal { price } | OfferKind::JoinForGold { price } => price,
-            OfferKind::Pass | OfferKind::Join | OfferKind::Pursue | OfferKind::Fight => &[],
+            OfferKind::Reveal { price }
+            | OfferKind::JoinForGold { price }
+            | OfferKind::Gift { price } => price,
+            OfferKind::Pass
+            | OfferKind::Join
+            | OfferKind::Pursue
+            | OfferKind::Fight
+            | OfferKind::Search => &[],
         }
     }
 }
@@ -308,8 +461,19 @@ pub enum OfferKind {
     /// and fights it; declined, it leaves the map without its treasure.
     Pursue,
     /// A guarded pile's question (ADV-PIK-004, E08 T21a): accepted, the hero fights its guards;
-    /// declined, nothing happens.
+    /// declined, nothing happens. Since E08 T62a a guarded artifact's (ADV-PIK-007) and a guarded
+    /// scroll's with a text (ADV-PIK-008) too.
     Fight,
+    /// A once-per-hero gift's price (ADV-TCH-003, E08 T62a: the Tree of Knowledge's drawn one),
+    /// each amount at least 1: accepted, the gift is given and marks the hero; declined, nothing
+    /// (no mark).
+    Gift {
+        /// The price, by resource in the core's order.
+        price: Vec<(ResourceId, u32)>,
+    },
+    /// A find's question (ADV-PIK-011, E08 T62a: the Warrior's Tomb's "search?"): accepted, its
+    /// contents and its bonus; declined, nothing.
+    Search,
 }
 
 /// The players who may see an event (ADR-0016 point 6): a set of players, resolved when the event

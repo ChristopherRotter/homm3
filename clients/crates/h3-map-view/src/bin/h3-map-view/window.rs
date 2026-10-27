@@ -239,6 +239,17 @@ fn set_up<'a>(assets: &'a Assets<'a>, options: &Options) -> Result<(Setup<'a>, S
     Ok((setup, format!("the situation {}", options.id)))
 }
 
+/// A coordinate held on the frame (0 to `size` - 1).
+fn clamp(v: i32, size: u32) -> i32 {
+    v.clamp(
+        0,
+        i32::try_from(size)
+            .unwrap_or(i32::MAX)
+            .saturating_sub(1)
+            .max(0),
+    )
+}
+
 /// How a frame shows the cursor: the recording's in the frame until the map is live, then the
 /// hardware cursor (none in the frame) or the drawn one (not while its point lies off the frame).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -252,14 +263,21 @@ struct Look {
 }
 
 impl Look {
-    /// The cursor drawn in the frame for the timeline's.
+    /// The cursor drawn in the frame for the timeline's; one drawn nowhere is one hidden cursor,
+    /// whatever the timeline's point and frame (M2 T6a, the reviewer's R2-9: a hidden cursor's
+    /// moves made frames the same as the one shown).
     fn cursor(self, cursor: Cursor) -> Cursor {
         let [x, y] = cursor.at;
         let on = u32::try_from(x).is_ok_and(|x| x < self.frame[0])
             && u32::try_from(y).is_ok_and(|y| y < self.frame[1]);
-        Cursor {
-            shown: cursor.shown && (!self.live || (!self.hardware && on)),
-            ..cursor
+        if cursor.shown && (!self.live || (!self.hardware && on)) {
+            cursor
+        } else {
+            Cursor {
+                shown: false,
+                at: OFF,
+                frame: 0,
+            }
         }
     }
 
@@ -475,6 +493,8 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
     let mut held: BTreeSet<Key> = BTreeSet::new();
     // The mouse's last point, and the changes shown (the headless check's).
     let mut mouse: Option<[i32; 2]> = None;
+    // Whether the window had the focus at the last look (the edge scroll's `app_active`).
+    let mut focused = true;
     let mut log: Vec<Change> = Vec::new();
     // The actions given: scrolls, steps, the pointer's moves, clicks.
     let mut given = [0_usize; 4];
@@ -519,7 +539,12 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                     continue;
                 }
                 Event::Pointer(p) => {
-                    let at = p.map_or(OFF, |(x, y)| [x, y]);
+                    // A point on the window but off the frame (fullscreen's or a large window's
+                    // bars) is the frame's nearest: the original's screen is the display, the
+                    // mouse held at its sides (M2 T6a, the reviewer's R2-8).
+                    let at = p.map_or(OFF, |(x, y)| {
+                        [clamp(x, look.frame[0]), clamp(y, look.frame[1])]
+                    });
                     (mouse, pointer) = (Some(at), Some(at));
                     continue;
                 }
@@ -591,7 +616,9 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                     (shown, renew) = (None, true);
                     log.clear();
                     input.clear();
-                    pointer = None;
+                    // A situation is live again at once: the mouse's point given anew (M2 T6a, the
+                    // reviewer's R2-10).
+                    pointer = if look.live { mouse } else { None };
                 }
                 Some(Command::Cursor) => {
                     look.hardware = !look.hardware;
@@ -609,6 +636,16 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                 Some(Command::Scroll(_) | Command::Hero(_) | Command::Frame) | None => {}
             }
         }
+        // The original scrolls at the edges only while it is the active application (`app_active`
+        // 0x6783D0, WM_ACTIVATEAPP; design §3.4): without the focus the pointer is given off the
+        // frame, with it again the mouse's point (M2 T6a, the reviewer's R2-7).
+        let has_focus = win.focused();
+        if !has_focus {
+            pointer = focused.then_some(OFF);
+        } else if !focused {
+            pointer = pointer.or(mouse);
+        }
+        focused = has_focus;
         input.extend(pointer.map(Action::Pointer));
         let ms = clock.ms(win.ticks_ns());
         // The player's input, after the change shown.
@@ -946,9 +983,11 @@ mod tests {
             at: [10, 20],
             shown: true,
         };
+        // Drawn nowhere: one hidden cursor, whatever its point and frame (R2-9).
         let hidden = Cursor {
             shown: false,
-            ..cursor
+            at: OFF,
+            frame: 0,
         };
         let mut look = Look {
             live: false,
@@ -969,6 +1008,35 @@ mod tests {
             assert!(!look.cursor(Cursor { at, ..cursor }).shown, "{at:?}");
         }
         assert_eq!(look.cursor(hidden), hidden);
+        assert_eq!(
+            look.cursor(Cursor {
+                shown: false,
+                ..cursor
+            }),
+            hidden
+        );
+        look.hardware = true;
+        assert_eq!(
+            look.cursor(Cursor {
+                at: [99, 99],
+                ..cursor
+            }),
+            hidden
+        );
+    }
+
+    #[test]
+    fn a_point_off_the_frame_is_its_nearest() {
+        assert_eq!(
+            [
+                clamp(-240, 800),
+                clamp(5, 800),
+                clamp(900, 800),
+                clamp(700, 600)
+            ],
+            [0, 5, 799, 599]
+        );
+        assert_eq!(clamp(3, 0), 0);
     }
 
     #[test]

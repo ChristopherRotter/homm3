@@ -439,9 +439,11 @@ impl GameState {
     /// guarded pile's guards (E08 T21a), whose defending side has no hero, then ends in the
     /// adventure (`AdventureState::end_unowned_battle`): the monster's survivors stay on the map as
     /// its count, or it leaves the map, and after the visitor's victory its treasure's resources
-    /// enter the visitor's owner's treasury (ADV-MON-010); the guards' survivors stay with the
-    /// pile, or after the visitor's victory the pile is picked up, its contents entering the
-    /// treasury (ADV-PIK-004). Last (E08 T30) the winner's hero gets its pending levels
+    /// enter the visitor's owner's treasury (ADV-MON-010), its artifact the hero's when it can
+    /// receive it (ADV-MON-011, E08 T62a); the guards' survivors stay with the object, or after
+    /// the visitor's victory a pile is picked up, its contents entering the treasury
+    /// (ADV-PIK-004), an artifact or a scroll going to the hero (ADV-PIK-007, ADV-PIK-008: until
+    /// T63 before the winner's levels, `ADV-STUB-10`), applied as a command's outcome. Last (E08 T30) the winner's hero gets its pending levels
     /// ([`Self::give_levels`], GAM-BAT-008): after the whole outcome, Necromancy and Eagle Eye
     /// included, as the original gives a human player's after the battle's screen (0x4AE324).
     // rule: GAM-BAT-002, GAM-BAT-003, GAM-BAT-005, GAM-BAT-008, ADV-MON-010, ADV-PIK-004
@@ -493,17 +495,19 @@ impl GameState {
                 amount,
             });
         }
-        // rule: ADV-MON-010, ADV-PIK-004
-        if let (Some(visitor), None) = (owners[0], heroes[1]) {
+        // rule: ADV-MON-010, ADV-MON-011, ADV-PIK-004
+        if let (Some(visitor), Some(hero), None) = (owners[0], heroes[0], heroes[1]) {
             let won = result.winner() == Some(BattleSide::Attacker);
             let survivors = &outcome.survivors[BattleSide::Defender.index()].stacks;
-            let gains = self.adventure.end_unowned_battle(
-                (rules.core(), rules.adventure()),
-                tile,
+            let (adventure, store) = self.adventure_with_heroes();
+            let ended = adventure.end_unowned_battle(
+                (rules.core(), rules.adventure(), store),
+                (hero, tile),
                 (survivors, won),
                 &mut AdventureSink(&mut *sink),
             );
-            self.gain(visitor, &gains, sink);
+            // stub: ADV-STUB-10 (a won guarded artifact or scroll before the winner's levels)
+            self.settle_outcome(rules, visitor, ended, sink);
         }
         // rule: GAM-BAT-008
         let levelled = winner.and_then(|w| heroes[w.index()].zip(owners[w.index()]));

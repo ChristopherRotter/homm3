@@ -3390,6 +3390,9 @@ fn check_decisions(
                             .any(|e| matches!(e, GameEvent::BattleStarted { .. }));
                         prop_assert!(fought, "{:?} without its battle", event);
                     }
+                    // E08 T62a: a gift's price and a find's question; no plan lays out their
+                    // kinds yet (T64's rewards map).
+                    (true, OfferKind::Gift { .. } | OfferKind::Search) => {}
                     (false, _) => {}
                 }
             }

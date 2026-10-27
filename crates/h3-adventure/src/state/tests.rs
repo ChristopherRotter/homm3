@@ -879,4 +879,5 @@ mod flight;
 mod holds;
 mod monsters;
 mod piles;
+mod rewards;
 mod visits;

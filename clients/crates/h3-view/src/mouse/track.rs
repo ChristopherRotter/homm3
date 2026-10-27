@@ -1,8 +1,8 @@
 //! The mouse over time (E17 M3 T6c-2; `docs/epics/E17-design.md` §9.10): the battle's mouse
 //! handler (`battle_buttons`' mouse move 0x4753A4) takes a move while a human's turn waits; while
-//! an action plays the moves wait in the input queue, which the battle takes when the next human
-//! turn starts (`battle_controls_state` 0x4782D0: the mouse's hex forgotten, the mouse posted
-//! again, 0x4ECC00). The cursor's frame, the stack the mouse marks, the stacks it enters (their
+//! an action plays the moves wait in the input queue, which every stack's turn start empties
+//! (`battle_controls_state` 0x4782D0, `input_flush` 0x4EC570; E17 M5 T2a, design §9.11): a human's
+//! turn forgets the mouse's hex and posts the mouse where it rests (0x4ECC00). The cursor's frame, the stack the mouse marks, the stacks it enters (their
 //! group 1, `battle_mouse_stack` 0x477C20) and the status line's hints follow, the hints into the
 //! battle's log where the battle writes them (`battle_log_add` with its second argument 0: an
 //! attack's and a shot's forced over the log's new lines, the others not).
@@ -12,6 +12,7 @@ use alloc::string::String;
 use alloc::vec::Vec;
 
 use h3_protocol::wire::Observation;
+use h3_render::Bugs;
 
 use super::{Field, Hint, Kind, Spot, pointer_in, slot, slots_in, spot};
 use crate::battle_log::Logged;
@@ -142,8 +143,8 @@ struct Handler<'l> {
     marked: Option<u8>,
     /// Each acting stack's target (its +0x10, +0x14).
     aims: BTreeMap<u8, Option<u8>>,
-    /// The moves waiting while an action plays.
-    queued: Vec<[i32; 2]>,
+    /// An action plays: the moves wait in the input queue (and are dropped as the next turn
+    /// starts).
     busy: bool,
     /// The hero's spell being aimed (E17 M3 T7b-1).
     aiming: Option<u16>,
@@ -153,6 +154,8 @@ struct Handler<'l> {
     /// The panel's items take the battle's moves: not the move of the mouse resting where it was
     /// placed before the battle (E17 M4 T3b: the opening enters no item).
     items: bool,
+    /// The profile: the client's forgets the hovered item over the battlefield (CLT-Q24).
+    bugs: Bugs,
     shown: Shown,
 }
 
@@ -200,8 +203,8 @@ impl Handler<'_> {
             // the panel's picture 2000 entered at the first move into the panel after the
             // opening, so `walk`'s next human turn empties the line and `hit`'s keeps the
             // Catapult's hint; `aim`'s mouse rests over the field until its shot). The
-            // battlefield's last hint so stays over the panel's picture: the original's in both
-            // profiles, CLT-Q24 asked.
+            // battlefield's last hint so stays over the panel's picture: the original's, kept in
+            // its profile (CLT-Q24, answered (a)).
             self.set_marked(now, None);
             let item = if self.items {
                 self.layout.panel.item_at(point)
@@ -221,6 +224,11 @@ impl Handler<'_> {
             self.hex = None;
             self.written = None;
             return;
+        }
+        // The client's profile forgets the hovered item as the battle takes a move over the
+        // battlefield, so the panel's picture writes its empty line again (CLT-Q24, E17 M5 T2a).
+        if self.bugs == Bugs::Fixed {
+            self.hovered = None;
         }
         let Some(field) = field else {
             return;
@@ -308,11 +316,11 @@ pub fn follow(
         frame: None,
         marked: None,
         aims: BTreeMap::new(),
-        queued: Vec::new(),
         busy: false,
         aiming: None,
         hovered: None,
         items: false,
+        bugs: turns.first().map_or(Bugs::Fixed, |t| t.field.bugs),
         shown: Shown::default(),
     };
     let mut at = Cursor::default();
@@ -360,10 +368,11 @@ pub fn follow(
                     h.shown.points.push((now, to));
                 }
                 h.point = Some(to);
+                // Else it waits in the input queue, to be dropped as the next turn starts.
                 match turns.get(at.turn) {
                     Some(turn) if turn.human && !h.busy => h.take(now, to, Some(&turn.field), name),
                     None if !h.busy => h.take(now, to, None, name),
-                    _ => h.queued.push(to),
+                    _ => {}
                 }
                 h.items = true;
             }
@@ -410,11 +419,10 @@ impl Handler<'_> {
                     return;
                 };
                 if turn.human {
-                    // The mouse's hex forgotten (0x47883E), the waiting moves taken, then the
-                    // mouse posted where it rests (0x478857).
+                    // The waiting moves dropped (0x478301; E17 M5 T2a), the mouse's hex forgotten
+                    // (0x47883E) and the mouse posted where it rests (0x478857).
                     self.hex = None;
-                    let queued = core::mem::take(&mut self.queued);
-                    for point in queued.into_iter().chain(self.point) {
+                    if let Some(point) = self.point {
                         self.take(now, point, Some(&turn.field), name);
                     }
                 } else {

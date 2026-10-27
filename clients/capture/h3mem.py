@@ -6,7 +6,10 @@ gives its globals and records at their addresses (docs/exe/map.toml, structs.tom
 but for the harness's own timers, a siege's wall states before its first frame (E17 M4 T1b,
 `write_walls`), a map still's explored tiles (E24 M1 T3b2, `write_explored`), its heroes' and
 boats' facings (E24 M1 T5a, `write_facing`) and its boarded boats' flag colours (E24 M1 T5b2,
-`write_boat_colour`).
+`write_boat_colour`), and a map sequence's set-up at its 0 (E24 M2: the speeds in the settings,
+`write_u32`; the selected hero's movement points, `write_points`; every object's animation phase,
+`write_phases`; the objects' frame steps, `write_frame_steps`; the palette tick's and the
+redraw's next times).
 
   h3mem.py            print the battle's clocks, its stacks' animation state, its log and the
                       hovered dialog item as JSON
@@ -295,9 +298,11 @@ class Mem:
         return self.file.read(size)
 
     def write_u32(self, address, value):
-        """Writes a u32 into the game's memory: only the harness's own timers (M3 T6c-2,
-        `align_mouse_poll`) and the game's settings (E24 M2 T1a2: a sequence's speeds), never
-        the game's state."""
+        """Writes a u32 into the game's memory: the harness's own timers (M3 T6c-2,
+        `align_mouse_poll`; E24 M2 T1a1: the palette tick's and the redraw's next times), the
+        game's settings (E24 M2 T1a2: a sequence's speeds) and, through `write_points` and
+        `write_frame_steps`, a sequence's set-up at its 0 (E24 M2 T1b; M2 T6a, the reviewer's
+        R3-8: game state, before the sequence's 0 only)."""
         with open(f"/proc/{self.pid}/mem", "r+b", buffering=0) as f:
             f.seek(address)
             f.write(struct.pack("<I", value))
