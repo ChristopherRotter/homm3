@@ -1302,8 +1302,8 @@ No new reading but `input_key_message` 0x4EC0E0's (T1a2: the message's code is l
 Path read: the terrain music's requests (`music_track_play` 0x59A1E0 and its callers on the map:
 the manager's start 0x419990, `hero_select` 0x417B20, `hero_move_step` 0x4805E0, the walk's and
 the key's ends) and the music's thread (M2 T6a2: `play_music` 0x59ACB0, `music_thread`
-0x59A840, `music_stop_fade` 0x59B080; E17 §8.2 for the rest); the step sounds' loads (`adventure_manager_start`
-0x407474) and plays (0x407CD0, 0x481344, pass 9's 0x47FF88, `hero_walk_end` 0x47F7D0); the
+0x59A840, `music_stop_fade` 0x59B080; E17 §8.2 for the rest); the step sounds' loads
+(`adventure_manager_start` 0x407474) and plays (0x407CD0, 0x481344, pass 9's 0x47FF88, `hero_walk_end` 0x47F7D0); the
 ambient sounds (`ambient_sounds_at` 0x4183D0, `ambient_sound_visit` 0x418C10, `tile_ambient_sound`
 0x418620, `sample_control` 0x599F40) and their callers. Not read: the mine record's set-up (its
 `abandoned` byte +2 as H3API names it), a network game's turn start (0x419E00: the music and the
