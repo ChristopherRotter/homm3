@@ -56,6 +56,7 @@ mod terrain;
 mod turn;
 mod vitality;
 mod war;
+mod world;
 
 pub use casters::{CastSpell, creature_cast_spell, creature_cast_targets, stack_spell};
 pub use combat::DamagePreview;

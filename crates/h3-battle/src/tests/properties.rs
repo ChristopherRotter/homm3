@@ -3352,3 +3352,44 @@ proptest! {
         }
     }
 }
+
+proptest! {
+    #![proptest_config(Config { cases: 48, ..Config::default() })]
+
+    /// A world (E06 T8, ADR-0025 point 12a) at every step of arbitrary games, for both sides: its
+    /// viewer's observation is the battle's; a twin that differs in the stream, the other side's
+    /// hero's private part and the templates its book gives makes the same world; the world
+    /// plays the step on.
+    #[test]
+    fn a_world_shows_its_viewer_the_battle_and_reads_nothing_hidden(
+        (att, def, ground, seed, steps, hidden) in arb_game(),
+    ) {
+        let r = lively();
+        let setup = game_setup(&r, (&att, &def, &ground), seed, &hidden);
+        let mut state = BattleState::new(&r, &setup, seed).unwrap();
+        let mut legal = LegalCommands::new();
+        for (turn, step) in (0u64..).zip(&steps) {
+            let (actor, cmd) = resolve(&state, &r, step, &mut legal);
+            for viewer in BattleSide::BOTH {
+                let other = viewer.opponent();
+                let world = state.determinized(&r, viewer, None, turn).unwrap();
+                prop_assert_eq!(observe(&world, &r, viewer), observe(&state, &r, viewer));
+                let mut twin = state.clone();
+                twin.reseed(seed ^ 0x5eed);
+                if let Some(h) = twin.heroes[other.index()].as_mut() {
+                    h.tactics = 3 - h.tactics.min(3);
+                    h.funds = h.funds.wrapping_add(1);
+                    h.surrender_discount_bp ^= 1;
+                    h.magic.book = SpellSet::default();
+                    h.magic.duration_bonus = h.magic.duration_bonus.wrapping_add(1);
+                    twin.created.set_templates(other, h3_kernel::FixedVec::new());
+                }
+                let seen = twin.determinized(&r, viewer, None, turn).unwrap();
+                prop_assert_eq!(world.state_hash(), seen.state_hash());
+                let mut world = world;
+                let _ = apply(&mut world, &r, actor, cmd, &mut crate::NoopSink);
+            }
+            let _ = apply(&mut state, &r, actor, cmd, &mut crate::NoopSink);
+        }
+    }
+}

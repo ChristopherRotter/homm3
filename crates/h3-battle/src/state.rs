@@ -12,7 +12,7 @@ use h3_content_battle::{
 };
 
 use h3_contracts::{
-    Army, ArmyStack, BattleOutcome, BattleResult, BattleSetup, BattleSide, HeroOutcome,
+    Army, ArmyStack, BattleHero, BattleOutcome, BattleResult, BattleSetup, BattleSide, HeroOutcome,
     RetreatFacts, StackOrigin, StackRecord,
 };
 use h3_kernel::{CanonicalHash, FixedVec, Rng, StateHasher, StreamId};
@@ -559,23 +559,22 @@ fn turrets(
 /// battle's start (the side's hero's bonuses, the native terrain; the original's 0x43D8B0 at the
 /// cast, `docs/formats/installation.md` §7.19, §7.21): one per summon spell of its hero's book,
 /// for Summon Elemental (BAT-MAG-039), then one of each creature the corpse raisers of either
-/// army raise (BAT-MAG-052: a hypnotized raiser raises for the other side).
+/// army raise (BAT-MAG-052: a hypnotized raiser raises for the other side); `armies` are the
+/// creatures of both armies' stacks.
 fn templates(
     ruleset: &BattleRuleset,
     setup: &BattleSetup,
     side: BattleSide,
     hero: Option<&HeroRecord>,
+    armies: impl Iterator<Item = CreatureTypeId>,
 ) -> FixedVec<Stack, TEMPLATES> {
     let mut out = FixedVec::new();
     let book = hero.map(|h| h.magic.book).unwrap_or_default();
     let summoned = book
         .iter()
         .filter_map(|id| ruleset.spell(id).and_then(|s| s.summons));
-    let armies = [&setup.attacker, &setup.defender];
     let raised = armies
-        .into_iter()
-        .flat_map(|army| &army.stacks)
-        .flat_map(|s| ruleset.abilities(s.creature))
+        .flat_map(|creature| ruleset.abilities(creature))
         .filter_map(|a| match *a {
             Ability::CorpseRaiser { creature, .. } => Some(creature),
             _ => None,
@@ -601,6 +600,32 @@ fn templates(
         let _ = out.push(stack);
     }
     out
+}
+
+/// `side`'s templates in a world of the battle whose `side` hero is `hero` with the record
+/// `record` (E06 T8, ADR-0025 point 12a): as [`templates`] makes them at the start, from the
+/// battle's terrain and battlefield and its army stacks (neither created nor raised), all public.
+pub(crate) fn world_templates(
+    state: &BattleState,
+    ruleset: &BattleRuleset,
+    side: BattleSide,
+    (hero, record): (&BattleHero, &HeroRecord),
+) -> FixedVec<Stack, TEMPLATES> {
+    let mut setup = BattleSetup {
+        terrain: state.terrain,
+        battlefield: state
+            .battlefield
+            .and_then(|b| ruleset.battlefield(b))
+            .map(|b| b.key.clone()),
+        ..BattleSetup::default()
+    };
+    setup.heroes[side.index()] = Some(hero.clone());
+    let armies = state
+        .stacks
+        .iter()
+        .filter(|s| !s.is_created() && !s.has(StackTraits::RAISED))
+        .map(|s| s.creature);
+    templates(ruleset, &setup, side, Some(record), armies)
 }
 
 /// `Stack::retaliations` value for unlimited retaliations (BAT-RET-003).
@@ -1262,10 +1287,16 @@ impl BattleState {
             effects: Effects::new(),
             spell_obstacles: SpellObstacles::new(),
             raised: Raised::default(),
-            created: Created::new(
-                BattleSide::BOTH
-                    .map(|side| templates(ruleset, setup, side, heroes[side.index()].as_ref())),
-            ),
+            created: Created::new(BattleSide::BOTH.map(|side| {
+                let armies = setup.attacker.stacks.iter().chain(&setup.defender.stacks);
+                templates(
+                    ruleset,
+                    setup,
+                    side,
+                    heroes[side.index()].as_ref(),
+                    armies.map(|s| s.creature),
+                )
+            })),
             vitality: Vitality::default(),
             binds: Binds::default(),
             casts: Casts::at_start(ruleset, &placed[..len]),
