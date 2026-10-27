@@ -283,7 +283,7 @@ fn the_hash_sees_each_kind_of_a_monsters_offer() {
 
 /// The rules with AI values (the imp 50, the gog 100: E08 T20b2) and the profile `profile`
 /// (`t:faithful`, or `t:split` with ADV-QUIRK-6).
-fn valued(profile: &str) -> GameRuleset {
+pub(super) fn valued(profile: &str) -> GameRuleset {
     let mut pack = core_pack(false);
     pack.creatures[0].info.ai_value = 50;
     pack.creatures[1].info.ai_value = 100;
@@ -295,7 +295,7 @@ fn valued(profile: &str) -> GameRuleset {
 
 /// Plays red's battle to its end: the system actor for the monster's side, red for its own, each
 /// the last legal command that stays in the battle; the events of the last command.
-fn fight_out(state: &mut GameState, rules: &GameRuleset) -> Vec<GameEvent> {
+pub(super) fn fight_out(state: &mut GameState, rules: &GameRuleset) -> Vec<GameEvent> {
     for _ in 0..2000 {
         let actor = if state.unowned_battle().is_some() {
             Actor::System
