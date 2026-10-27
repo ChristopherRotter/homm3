@@ -1083,3 +1083,7 @@ entry only where a task builds on it.
   longer battles), 26 ms a decision, 45 minutes on the sandbox's 4 threads. At N 16 and k 16
   sequential halving gives each candidate one visit, in one world, and its one step holds the
   damage rolls: the comparison is mostly noise.
+- **N 64** (rescaled; the report set's first 200 per kind against the system actor, 1 199
+  battles): 0.384 ± 0.028, value −0.092 (the sampled 0.381, −0.095 on the same episodes): no
+  gain beyond the intervals (per kind and side within 5 of 200 battles). 60 ms a decision, 49
+  minutes.

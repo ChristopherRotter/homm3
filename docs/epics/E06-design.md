@@ -447,7 +447,7 @@ encodings are unchanged.
   the agent strikes less and wanders (moves, the tactics phase's placements), its battles
   longer; AI-Q7 closed (the user, 2026-10-26).
 
-## 14. The search (T8) — designed (T8a), its plumbing built (T8b)
+## 14. The search (T8) — designed (T8a), its plumbing built (T8b), measured (T8c)
 
 Decision 2's last increment (the user, 2026-10-26, after T6e: the plateau taken as shown). The
 seam (the user): T8a this design; T8b the plumbing; T8c a decision-time search with `t7-1`'s
@@ -490,13 +490,14 @@ only if T8d needs the throughput.
   planning with Gumbel", ICLR 2022), fit for a pretrained prior, few simulations and many
   actions. At the root, Gumbel-top-k (16) full actions: entries by Gumbel-top-k over the entry
   logits, a cast's heads by their Gumbel-perturbed argmax in order; sequential halving over them,
-  the action of the largest `g + logits + σ(q̂)`. Below the root, the deterministic selection of
-  the completed-Q improved policy. Chance and the hidden part are averaged open-loop: the tree is
-  keyed by action histories; a simulation takes a world (round robin over W) with a fresh stream
-  from the agent's own, forks it (`h3_env_fork`) and replays its path (`h3_env_step`); a node
-  keeps its first evaluation's prior and selects among the actions legal in the simulation's
-  world, renormalized. Values are the side to move's: reward v1 at a terminal, the value head at
-  a leaf.
+  the action of the largest `g + logits + σ(q̂)`, the completed values rescaled by their least
+  and greatest over the node's candidates (T8c: a fixed scale left the prior alone). Below the
+  root, the deterministic selection of the completed-Q improved policy. Chance and the hidden
+  part are averaged open-loop: the tree is keyed by action histories; a simulation takes a world
+  (round robin over W) with a fresh stream from the agent's own, forks it (`h3_env_fork`) and
+  replays its path (`h3_env_step`); a node keeps its first evaluation's prior and selects among
+  the actions legal in the simulation's world, renormalized. Values are the side to move's:
+  reward v1 at a terminal, the value head at a leaf.
 - **Batching:** the agent searches every env it moves at once: each simulation round evaluates
   one leaf per env in one network call (the GPU's), so a decision costs N calls for the batch.
 - **Cost** (measured in T8b): a simulation steps its path through ctypes (a few steps) and reads
