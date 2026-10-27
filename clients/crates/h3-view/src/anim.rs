@@ -994,7 +994,7 @@ pub struct Cue {
 }
 
 /// The poses of a record's stacks over time.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct Timeline {
     /// The stacks living at the start, by id.
     pub members: Vec<Member>,
@@ -1679,7 +1679,8 @@ pub fn fidgeting(
     played(snapshot, commands, looks, stage, speed, Some(seed))
 }
 
-/// [`timeline`] or [`fidgeting`].
+/// [`timeline`] or [`fidgeting`]: the commands grown one by one, the next one's being the
+/// computer's when it has no time ([`Growing::push`]).
 fn played(
     snapshot: &Observation,
     commands: &[Command<'_>],
@@ -1688,190 +1689,267 @@ fn played(
     speed: Speed,
     seed: Option<u32>,
 ) -> Result<Timeline, AnimError> {
-    let standing = u32::from(stage.groups.standing);
-    let mut members = Vec::new();
-    // The stacks whose DEF has a fidget (group 1).
-    let mut fidgeters = Vec::new();
-    let mut stacks = BTreeMap::new();
-    let mut records = [0u8; 2];
-    // The harness's records follow the original's setup: each side's army, then its war
-    // machines in `battle_war_machine_stacks`' order (E17 M3 T3b). A siege's turrets are the
-    // defender's last (E17 M4 T2b): off the field, their shooters drawn by the town's records
-    // (`crate::siege`), never fidgeting.
-    let mut living: Vec<&Stack> = snapshot.stacks.iter().filter(|s| s.alive).collect();
-    living.sort_by_key(|s| {
-        (
-            s.side == Side::Defender,
-            s.war_machine,
-            setup_order(s.slot),
-            s.id,
-        )
-    });
-    for s in living {
-        let look = looks.get(&s.creature).ok_or(AnimError::Look(s.creature))?;
-        let side = usize::from(s.side == Side::Defender);
-        let start = Pose {
-            mirrored: s.side == Side::Defender,
-            ..still(standing, s.hex)
-        };
-        members.push(Member {
-            stack: s.id,
-            side: s.side,
-            record: records[side],
-            start,
-        });
-        records[side] += 1;
-        let frames = look.count(stage.groups.mouse_over);
-        let turret = turret_record(s.hex).filter(|_| s.hex >= FIELD_HEXES);
-        if frames > 0 && turret.is_none() {
-            fidgeters.push(Fidget {
-                stack: s.id,
-                interval: look.times[0],
-                frames,
-                clock: 0,
-                frame: None,
-                base: start,
-            });
-        }
-        stacks.insert(
-            s.id,
-            Live {
-                side: s.side,
-                hex: s.hex,
-                count: s.count,
-                flies: s.flies,
-                two_hex: s.two_hex,
-                defending: s.defending,
-                war_machine: s.war_machine,
-                right: s.side == Side::Attacker,
-                boxless: false,
-                look: look.clone(),
-                spells: s.effects.iter().map(|e| e.spell).collect(),
-                defense: s.defense,
-                frightens: stage.casts.frighteners.contains(&s.creature),
-                shielded: stage.casts.shielded.contains(&s.creature),
-                turret,
-            },
-        );
+    let mut growing = Growing::new(snapshot, looks, stage, speed, seed)?;
+    for (i, command) in commands.iter().enumerate() {
+        let computer = commands.get(i + 1).is_some_and(|c| c.at.is_none());
+        growing.push(command, computer);
     }
-    let grid = speed.scale(TICK).max(1);
-    let mut player = Player {
-        stage,
-        speed,
-        clock: Clock {
-            now: 0,
-            deadline: 0,
-            grid,
-        },
-        stacks,
-        keys: Vec::new(),
-        pending: Vec::new(),
-        turns: Vec::new(),
-        flights: Vec::new(),
-        beams: Vec::new(),
-        magics: Vec::new(),
-        spots: Vec::new(),
-        hero_keys: Vec::new(),
-        counts: Vec::new(),
-        tints: Vec::new(),
-        pending_tints: Vec::new(),
-        outlined: Vec::new(),
-        machine: None,
-        idle: Idle::default(),
-        steps: Vec::new(),
-        cues: Vec::new(),
-        happenings: Vec::new(),
-        log: Vec::new(),
-        outcome: None,
-        tactics: snapshot.tactics.is_some(),
-        acting: snapshot.active,
-        strike_casts: Vec::new(),
-        vanishing: BTreeSet::new(),
-        erasing: Vec::new(),
-        pending_counts: Vec::new(),
-        objects: Vec::new(),
-        pending_objects: Vec::new(),
-        placed: BTreeMap::new(),
-        kept: None,
-        fields: Vec::new(),
-        field_kept: None,
-        corpses: BTreeMap::new(),
-        draws: chain::Draws::new(&stage.casts.rays),
-        siege: None,
-        turret_keys: Vec::new(),
-        wall_keys: Vec::new(),
-        blasts: Vec::new(),
-        blast_count: 0,
-        bridges: Vec::new(),
-        bridge_from: None,
-        quakes: Vec::new(),
-    };
-    // A siege with a fort (E17 M4 T2b): the walls' states and hit points, each turret standing.
-    if let Some(s) = snapshot.siege.as_ref().filter(|s| s.fort > 0) {
-        let mut hit_points = [0; 8];
-        for (hp, &v) in hit_points.iter_mut().zip(&s.parts) {
-            *hp = v;
-        }
-        let walls = Walls::of(s);
-        player.siege = Some(siege::Siege { walls, hit_points });
-        player.wall_keys.push(WallKey {
-            drawn: 0,
-            shown: 0,
-            walls,
+    Ok(growing.finish())
+}
+
+/// A timeline grown a command at a time (E17 M5 T1b): the commands of a battle being fought
+/// played as they arrive, the timeline growing with each (its lists only appended to, nothing
+/// before the last command's end changed), and finished when the battle is or the record ends.
+/// [`timeline`] and [`fidgeting`] grow theirs at once.
+///
+/// What a command's last frames leave to the battle's next redraw (the layer changes, the counts,
+/// the hues, an erasure: [`Timeline::changes`]) shows with the next command's first idle step,
+/// or at the end when it finishes (*provisional*); until then [`Growing::timeline`] does not show
+/// it, so a frame past its end waits for the next command or the finish. The drawbridge's
+/// redraws that began (CLT-Q23) show the rectangle alone until that redraw: their span is open
+/// until then ([`BridgeKey::until`] at its greatest), the one entry a later command changes.
+#[derive(Debug)]
+pub struct Growing<'a> {
+    player: Player<'a>,
+    timeline: Timeline,
+    /// The commands played.
+    commands: usize,
+    /// The stack whose turn the computer plays next (outlined at the loop's tick as it acts).
+    waiting: Option<u8>,
+    /// The timeline's last drawbridge span is open (its end at the next redraw).
+    open_bridge: bool,
+}
+
+impl<'a> Growing<'a> {
+    /// The battle `snapshot` shows, before its first command, at combat speed `speed`; `looks`
+    /// holds each creature's numbers by its handle; the stacks fidget while it idles, from the
+    /// viewer's own generator seeded with `seed` (none: no fidgets, [`Fidgets`]).
+    ///
+    /// # Errors
+    /// A living stack whose creature has no [`Look`].
+    pub fn new(
+        snapshot: &Observation,
+        looks: &BTreeMap<u16, Look>,
+        stage: Stage<'a>,
+        speed: Speed,
+        seed: Option<u32>,
+    ) -> Result<Self, AnimError> {
+        let standing = u32::from(stage.groups.standing);
+        let mut members = Vec::new();
+        // The stacks whose DEF has a fidget (group 1).
+        let mut fidgeters = Vec::new();
+        let mut stacks = BTreeMap::new();
+        let mut records = [0u8; 2];
+        // The harness's records follow the original's setup: each side's army, then its war
+        // machines in `battle_war_machine_stacks`' order (E17 M3 T3b). A siege's turrets are the
+        // defender's last (E17 M4 T2b): off the field, their shooters drawn by the town's records
+        // (`crate::siege`), never fidgeting.
+        let mut living: Vec<&Stack> = snapshot.stacks.iter().filter(|s| s.alive).collect();
+        living.sort_by_key(|s| {
+            (
+                s.side == Side::Defender,
+                s.war_machine,
+                setup_order(s.slot),
+                s.id,
+            )
         });
-        let standing = TurretPose {
-            group: u32::from(stage.groups.standing),
-            frame: 0,
-            right: false,
+        for s in living {
+            let look = looks.get(&s.creature).ok_or(AnimError::Look(s.creature))?;
+            let side = usize::from(s.side == Side::Defender);
+            let start = Pose {
+                mirrored: s.side == Side::Defender,
+                ..still(standing, s.hex)
+            };
+            members.push(Member {
+                stack: s.id,
+                side: s.side,
+                record: records[side],
+                start,
+            });
+            records[side] += 1;
+            let frames = look.count(stage.groups.mouse_over);
+            let turret = turret_record(s.hex).filter(|_| s.hex >= FIELD_HEXES);
+            if frames > 0 && turret.is_none() {
+                fidgeters.push(Fidget {
+                    stack: s.id,
+                    interval: look.times[0],
+                    frames,
+                    clock: 0,
+                    frame: None,
+                    base: start,
+                });
+            }
+            stacks.insert(
+                s.id,
+                Live {
+                    side: s.side,
+                    hex: s.hex,
+                    count: s.count,
+                    flies: s.flies,
+                    two_hex: s.two_hex,
+                    defending: s.defending,
+                    war_machine: s.war_machine,
+                    right: s.side == Side::Attacker,
+                    boxless: false,
+                    look: look.clone(),
+                    spells: s.effects.iter().map(|e| e.spell).collect(),
+                    defense: s.defense,
+                    frightens: stage.casts.frighteners.contains(&s.creature),
+                    shielded: stage.casts.shielded.contains(&s.creature),
+                    turret,
+                },
+            );
+        }
+        let grid = speed.scale(TICK).max(1);
+        let mut player = Player {
+            stage,
+            speed,
+            clock: Clock {
+                now: 0,
+                deadline: 0,
+                grid,
+            },
+            stacks,
+            keys: Vec::new(),
+            pending: Vec::new(),
+            turns: Vec::new(),
+            flights: Vec::new(),
+            beams: Vec::new(),
+            magics: Vec::new(),
+            spots: Vec::new(),
+            hero_keys: Vec::new(),
+            counts: Vec::new(),
+            tints: Vec::new(),
+            pending_tints: Vec::new(),
+            outlined: Vec::new(),
+            machine: None,
+            idle: Idle::default(),
+            steps: Vec::new(),
+            cues: Vec::new(),
+            happenings: Vec::new(),
+            log: Vec::new(),
+            outcome: None,
+            tactics: snapshot.tactics.is_some(),
+            acting: snapshot.active,
+            strike_casts: Vec::new(),
+            vanishing: BTreeSet::new(),
+            erasing: Vec::new(),
+            pending_counts: Vec::new(),
+            objects: Vec::new(),
+            pending_objects: Vec::new(),
+            placed: BTreeMap::new(),
+            kept: None,
+            fields: Vec::new(),
+            field_kept: None,
+            corpses: BTreeMap::new(),
+            draws: chain::Draws::new(&stage.casts.rays),
+            siege: None,
+            turret_keys: Vec::new(),
+            wall_keys: Vec::new(),
+            blasts: Vec::new(),
+            blast_count: 0,
+            bridges: Vec::new(),
+            bridge_from: None,
+            quakes: Vec::new(),
         };
-        for record in player.stacks.values().filter_map(|l| l.turret) {
-            player.turret_keys.push(TurretKey {
-                record,
+        // A siege with a fort (E17 M4 T2b): the walls' states and hit points, each turret standing.
+        if let Some(s) = snapshot.siege.as_ref().filter(|s| s.fort > 0) {
+            let mut hit_points = [0; 8];
+            for (hp, &v) in hit_points.iter_mut().zip(&s.parts) {
+                *hp = v;
+            }
+            let walls = Walls::of(s);
+            player.siege = Some(siege::Siege { walls, hit_points });
+            player.wall_keys.push(WallKey {
                 drawn: 0,
                 shown: 0,
-                pose: standing,
+                walls,
             });
+            let standing = TurretPose {
+                group: u32::from(stage.groups.standing),
+                frame: 0,
+                right: false,
+            };
+            for record in player.stacks.values().filter_map(|l| l.turret) {
+                player.turret_keys.push(TurretKey {
+                    record,
+                    drawn: 0,
+                    shown: 0,
+                    pose: standing,
+                });
+            }
         }
+        let mut fidgets = seed.map(|rng| Fidgets {
+            rng,
+            group: stage.groups.mouse_over,
+            stacks: fidgeters,
+        });
+        if let Some(f) = fidgets.as_mut() {
+            f.reset(0, &player.bases(), &[]);
+        }
+        // The snapshot's spells tint their boxes from the start (E17 M3 T7b-2a).
+        let casts = player.stage.casts;
+        player.pending_tints = player
+            .stacks
+            .iter()
+            .filter(|(_, l)| !l.spells.is_empty())
+            .map(|(&id, l)| (id, hue(l, casts)))
+            .collect();
+        // The snapshot's battlefield objects show from the start (E17 M3 T7c-2).
+        for o in &snapshot.spell_obstacles {
+            player.place(o.spell, &o.hexes);
+        }
+        player.flush(0, 0);
+        let timeline = Timeline {
+            members,
+            outlines: vec![(0, snapshot.active)],
+            fidgets,
+            ..Timeline::default()
+        };
+        let mut growing = Self {
+            player,
+            timeline,
+            commands: 0,
+            waiting: snapshot.active,
+            open_bridge: false,
+        };
+        growing.hand_over();
+        Ok(growing)
     }
-    let mut actions = Vec::new();
-    let mut fidgets = seed.map(|rng| Fidgets {
-        rng,
-        group: stage.groups.mouse_over,
-        stacks: fidgeters,
-    });
-    if let Some(f) = fidgets.as_mut() {
-        f.reset(0, &player.bases(), &[]);
-    }
-    // The snapshot's spells tint their boxes from the start (E17 M3 T7b-2a).
-    let casts = player.stage.casts;
-    player.pending_tints = player
-        .stacks
-        .iter()
-        .filter(|(_, l)| !l.spells.is_empty())
-        .map(|(&id, l)| (id, hue(l, casts)))
-        .collect();
-    // The snapshot's battlefield objects show from the start (E17 M3 T7c-2).
-    for o in &snapshot.spell_obstacles {
-        player.place(o.spell, &o.hexes);
-    }
-    player.flush(0, 0);
-    let mut outlines = vec![(0, snapshot.active)];
-    let mut waiting = snapshot.active;
-    let mut ended = None;
-    for (i, command) in commands.iter().enumerate() {
-        let default = if i == 0 { 0 } else { player.clock.now };
+
+    /// Plays `command` after those before it (a command without a time as soon as the previous
+    /// one's last frame showed; *provisional*, [`timeline`]); `computer`: the next command is the
+    /// computer's (a turn this one starts is then not outlined: the computer's stack is outlined
+    /// at the loop's tick as it acts, §7.9).
+    pub fn push(&mut self, command: &Command<'_>, computer: bool) {
+        let Self {
+            player,
+            timeline,
+            commands,
+            waiting,
+            ..
+        } = self;
+        let Timeline {
+            outlines,
+            fidgets,
+            actions,
+            ended,
+            ..
+        } = timeline;
+        let first = *commands == 0;
+        let default = if first { 0 } else { player.clock.now };
         player.clock.start(command.at.unwrap_or(default));
         // A command without a time after the first is the computer's: the loop did not tick
         // since the last one ended, but once when it acts, which outlines its stack until its
         // first frame shows (*provisional*, §7.9).
         let ran = player.steps.len();
         let now = player.clock.now;
-        if i > 0 && command.at.is_none() {
+        if !first && command.at.is_none() {
             if player.idle.once(now, &mut player.steps) {
-                outlines.push((now, waiting));
+                outlines.push((now, *waiting));
             }
         } else {
-            let Player { idle, steps, .. } = &mut player;
+            let Player { idle, steps, .. } = player;
             idle.run(now, |t| steps.push(t));
         }
         // The last command's layer changes show with the battle's next redraw: the first idle
@@ -1929,16 +2007,15 @@ fn played(
         }
         outlines.append(&mut player.outlined);
         if let Some(&(at, stack)) = player.turns.get(turns..).and_then(<[_]>::last) {
-            let computer = commands.get(i + 1).is_some_and(|c| c.at.is_none());
             outlines.push((at, (!computer).then_some(stack)));
-            waiting = Some(stack);
+            *waiting = Some(stack);
         } else if cast {
-            outlines.push((player.clock.now, waiting));
+            outlines.push((player.clock.now, *waiting));
         }
         player.idle.from = player.clock.now;
         // The battle decided: `battle_end` follows the action's last frame (design §8.2).
         let now = player.clock.now;
-        ended = ended.or_else(|| player.outcome.map(|o| (now, o)));
+        *ended = ended.or_else(|| player.outcome.map(|o| (now, o)));
         let (stands, unmarks) = calms(command.events, player.stage.bugs);
         actions.push(Action {
             start: started,
@@ -1951,39 +2028,77 @@ fn played(
             let drawn: Vec<u8> = player.keys[before..].iter().map(|k| k.stack).collect();
             f.reset(player.clock.now, &player.bases(), &drawn);
         }
+        *commands += 1;
+        self.hand_over();
     }
-    // The last layer changes show with the battle's next redraw (*provisional*).
-    let now = player.clock.now;
-    player.flush(now, now);
-    Ok(Timeline {
-        members,
-        keys: player.keys,
-        turns: player.turns,
-        flights: player.flights,
-        beams: player.beams,
-        magics: player.magics,
-        spots: player.spots,
-        objects: player.objects,
-        fields: player.fields,
-        hero_keys: player.hero_keys,
-        counts: player.counts,
-        tints: player.tints,
-        outlines,
-        steps: player.steps,
-        idle: player.idle,
-        fidgets,
-        cues: player.cues,
-        actions,
-        heroes: None,
-        log: player.log,
-        ended,
-        turrets: player.turret_keys,
-        walls: player.wall_keys,
-        blasts: player.blasts,
-        bridges: player.bridges,
-        quakes: player.quakes,
-        end: player.clock.now,
-    })
+
+    /// The timeline of the commands played so far ([`Growing`]: what their last frames leave to
+    /// the next redraw not shown yet).
+    #[must_use]
+    pub fn timeline(&self) -> &Timeline {
+        &self.timeline
+    }
+
+    /// How many commands were played.
+    #[must_use]
+    pub fn commands(&self) -> usize {
+        self.commands
+    }
+
+    /// With its battle's heroes drawn (E17 M3 T3a, [`Timeline::with_heroes`]).
+    #[must_use]
+    pub fn with_heroes(mut self, heroes: Heroes) -> Self {
+        self.timeline.heroes = Some(heroes);
+        self
+    }
+
+    /// The timeline finished: the last layer changes show with the battle's next redraw, at its
+    /// end (*provisional*).
+    #[must_use]
+    pub fn finish(mut self) -> Timeline {
+        let now = self.player.clock.now;
+        self.player.flush(now, now);
+        self.hand_over();
+        self.timeline
+    }
+
+    /// Moves what the player drew into the timeline: only the command under way reads its own
+    /// keys back; the idle steps' state and the end with them.
+    fn hand_over(&mut self) {
+        let (p, t) = (&mut self.player, &mut self.timeline);
+        // The open drawbridge span gives way to its end, or stays open.
+        if core::mem::take(&mut self.open_bridge) {
+            t.bridges.pop();
+        }
+        t.keys.append(&mut p.keys);
+        t.turns.append(&mut p.turns);
+        t.flights.append(&mut p.flights);
+        t.beams.append(&mut p.beams);
+        t.magics.append(&mut p.magics);
+        t.spots.append(&mut p.spots);
+        t.objects.append(&mut p.objects);
+        t.fields.append(&mut p.fields);
+        t.hero_keys.append(&mut p.hero_keys);
+        t.counts.append(&mut p.counts);
+        t.tints.append(&mut p.tints);
+        t.steps.append(&mut p.steps);
+        t.cues.append(&mut p.cues);
+        t.log.append(&mut p.log);
+        t.turrets.append(&mut p.turret_keys);
+        t.walls.append(&mut p.wall_keys);
+        t.blasts.append(&mut p.blasts);
+        t.bridges.append(&mut p.bridges);
+        if let Some(from) = p.bridge_from {
+            t.bridges.push(BridgeKey {
+                from,
+                until: u32::MAX,
+            });
+            self.open_bridge = true;
+        }
+        t.quakes.append(&mut p.quakes);
+        t.idle = p.idle;
+        t.end = p.clock.now;
+    }
 }
 
 /// The hue of `live`'s box by its active spells' signs in `casts` (none: no spell active, the
