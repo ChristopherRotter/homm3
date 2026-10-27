@@ -27,6 +27,8 @@ use crate::scene::Moment;
 pub struct Playhead {
     /// The time reached.
     at: u32,
+    /// The end of the timeline as far as it was read (E17 M5 T1b: a grown one goes on from it).
+    end: u32,
     /// The stacks' poses: each stack's last key shown by then.
     keys: Sweep,
     posed: BTreeMap<u8, usize>,
@@ -83,6 +85,7 @@ impl Playhead {
     pub fn new(timeline: &Timeline) -> Self {
         let mut head = Self {
             at: 0,
+            end: timeline.end,
             keys: Sweep::new(timeline.keys.iter().map(|k| k.shown)),
             posed: BTreeMap::new(),
             steps: 0,
@@ -143,6 +146,69 @@ impl Playhead {
             *self = Self::new(timeline);
         }
         self.reach(timeline, t);
+    }
+
+    /// Follows `timeline` grown from the one it was read from ([`super::Growing`], E17 M5 T1b):
+    /// its lists only appended to, what was added showing from the old end on, which joins what
+    /// is still to take. A playhead that reached the old end (the idle steps after it may have
+    /// run) or the time something added shows starts over, at the time it reached.
+    pub fn extend(&mut self, timeline: &Timeline) {
+        let at = self.at;
+        let grown = [
+            at < self.end,
+            self.keys.extend(timeline.keys.iter().map(|k| k.shown), at),
+            self.turns
+                .extend(timeline.turns.iter().map(|(t, _)| *t), at),
+            self.outlines
+                .extend(timeline.outlines.iter().map(|(t, _)| *t), at),
+            self.magics
+                .extend(timeline.magics.iter().map(|k| k.shown), at),
+            self.spots
+                .extend(timeline.spots.iter().map(|k| k.shown), at),
+            self.fields
+                .extend(timeline.fields.iter().map(|k| k.shown), at),
+            self.walls
+                .extend(timeline.walls.iter().map(|k| k.shown), at),
+            self.objects
+                .extend(timeline.objects.iter().map(|k| k.shown), at),
+            self.counts
+                .extend(timeline.counts.iter().map(|k| k.shown), at),
+            self.tints
+                .extend(timeline.tints.iter().map(|k| k.shown), at),
+            self.turrets
+                .extend(timeline.turrets.iter().map(|k| k.shown), at),
+            self.blasts
+                .extend(timeline.blasts.iter().map(|k| k.shown), at),
+            self.flights
+                .extend(timeline.flights.iter().map(|f| (f.from, f.until())), at),
+            self.beams.extend(
+                timeline.beams.iter().map(|b| (b.from, u64::from(b.until))),
+                at,
+            ),
+            self.shakes
+                .extend(timeline.quakes.iter().map(|q| (q.from, q.shaken())), at),
+            self.bridges.extend(
+                timeline
+                    .bridges
+                    .iter()
+                    .map(|b| (b.from, u64::from(b.until))),
+                at,
+            ),
+            // The battle before a redraw added is kept as the playhead passes it, even now.
+            self.befores.extend(
+                timeline.bridges.iter().map(|b| b.from.saturating_sub(1)),
+                at.saturating_sub(1),
+            ),
+        ];
+        if grown.into_iter().all(|g| g) {
+            // No idle step after the old end has run: they go on from the new one.
+            self.idle = timeline.idle;
+            self.fidgets.clone_from(&timeline.fidgets);
+            self.end = timeline.end;
+        } else {
+            *self = Self::new(timeline);
+            self.reach(timeline, at);
+        }
     }
 
     /// Moves forward to `t`, keeping the battle as it stands before each drawbridge's redraws on
@@ -329,6 +395,18 @@ impl Sweep {
         Self { order, next: 0 }
     }
 
+    /// Adds the keys of the list `times` past those it holds (its old length on), to be taken
+    /// in the order they show; whether each shows after `at` (else nothing is added).
+    fn extend(&mut self, times: impl Iterator<Item = u32>, at: u32) -> bool {
+        let added: Vec<(u32, usize)> = times.zip(0..).skip(self.order.len()).collect();
+        let after = added.iter().all(|&(t, _)| t > at);
+        if after {
+            self.order.extend(added);
+            self.order[self.next..].sort_unstable();
+        }
+        after
+    }
+
     /// The next key to take, if it shows by `t`.
     fn next_by(&self, t: u32) -> Option<&(u32, usize)> {
         self.order.get(self.next).filter(|(at, _)| *at <= t)
@@ -361,6 +439,15 @@ impl Spans {
             ends,
             open: BTreeSet::new(),
         }
+    }
+
+    /// Adds the spans of the list `spans` past those it holds (the ends of all read again: an
+    /// open one's may be known now); whether each added begins after `at` (else the playhead
+    /// starts over).
+    fn extend(&mut self, spans: impl Iterator<Item = (u32, u64)>, at: u32) -> bool {
+        let (starts, ends): (Vec<u32>, Vec<u64>) = spans.unzip();
+        self.ends = ends;
+        self.starts.extend(starts.into_iter(), at)
     }
 
     /// Moves to `t`: the spans begun by then open, those ended by then close.

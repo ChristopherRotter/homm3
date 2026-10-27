@@ -126,7 +126,7 @@ every one reads to its padding, and every body kind but the hero placeholder occ
 Versions the reader rejects: Heroes Chronicles (`0x1D`), HotA (`0x20`), WoG (`0x33`) and every
 other code.
 
-## Import (E08 T5a, T6a, T12a, T13a, T18b, T19a, T20a2a, T21a, T29, T49a, T49b, T54, T61a; `MAP_IMPORT_VERSION` 12)
+## Import (E08 T5a, T6a, T12a, T13a, T18b, T19a, T20a2a, T21a, T29, T49a, T49b, T54, T61a, T61b; `MAP_IMPORT_VERSION` 13)
 
 `h3_map::import` turns a raw map and the game's rules into `h3_game::GameSetup`, which the game
 then validates (ADR-0015 point 4); `import_map` is its static layer. The import maps codes to
@@ -142,6 +142,13 @@ content and draws nothing; it rejects what the current increment cannot represen
   limit (AB and SoD; 0 none, always 0 in RoE) and SoD's banned skills, each set bit the skill of
   its code (`SSTRAITS.TXT` order; a set bit past the 28 codes is an unknown code; none in the
   shipped maps).
+- **The scenario's banned spells and artifacts** (v13, E08 T61b, GAM-SET-003): SoD's banned
+  spells, each set bit the spell of its code (none past the 70 hero spells in the shipped maps),
+  and AB's and SoD's banned artifacts, each set bit among the edition's artifacts (127, 129, 144)
+  that the codes name (141) the artifact of its code; the bits past them ban nothing: an AB set's
+  7 padding bits and the original's three unused records 141 to 143, which the editor bans by
+  default on a SoD map (123 such bits on 41 shipped maps). The game passes them, with the banned
+  skills, to the adventure's build, whose draws give none of them (design §9).
 - **Difficulty** (v3): `h3_game::DEFAULT_DIFFICULTY`, normal. The game's difficulty is chosen when a
   game starts; the header's difficulty byte is the map's rating and is not read into the setup
   (survey `E08-objects.md` §7.2).
@@ -306,8 +313,17 @@ codes. E08 T49a's run (import v9): the same 5 import and validate whole with the
 at load; the Tutorial's second hero leaves its Shackles of War out (stored on the left hand,
 which the first version of v9 refused to validate); the other outcomes as T29's. E08 T61a
 (import v12, the 31 classes and the monsters' artifacts): its run was not made (the user's computer
-was not reachable that session); the next with the original data counts what imports whole now
-that the 8 maps refused for a monster's artifact move on (design §20).
+was not reachable that session). E08 T61b's run (import v12, then v13 with the bans; the 160
+shipped maps): every static layer imports and validates; 8 import and validate whole (`Adventures
+of Jared Haret`, `Faeries`, `Knee Deep in the Dead`, `Myth and Legend`, `Pandora's Box `, `Race
+for Ardintinny`, `Tutorial.tut`, `Unholy Quest`): of the 8 maps refused for a monster's artifact
+before, 3 import whole, 3 stop at a random hero and 2 at a hero in a town; 128 are unsupported for
+a hero generated at a main town, 21 for a random hero, 3 for a hero in a town. The monsters' and
+grounds' census as T21b's. The guarded objects by kind (T61a's guards): 36 piles (30 ask first, 9
+with two stacks, the 39 guards records as before), 33 artifacts (all ask, 18 with two or more
+stacks), 3 scrolls (all ask: each has a text), 12 boxes and 87 events (none asks). 26 maps ban
+spells (210 bits), 111 ban artifacts (1 061 bits); every map that imports whole validates with its
+bans.
 
 ## The subset we write (E04a T2)
 

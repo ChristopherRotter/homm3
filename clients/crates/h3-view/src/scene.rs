@@ -424,14 +424,23 @@ fn pressed_panel(
 /// The panel over a battle (E17 M3 T6b, design §9.8): the battle as each turn's start found it
 /// (`crate::panel::turns`) and the text its log's item shows from each time on
 /// (`crate::battle_log::texts`), drawn at any time of the battle by [`Panels::at`].
+///
+/// A frame reads it without going over the battle (E17 M5 T1b): what the panel keeps after each
+/// number of turns started, and the texts by time, are made once.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Panels {
     /// The battle at each `TurnStarted`'s turn, in order.
     turns: Vec<Observation>,
     /// The log item's text from each time on.
     texts: Vec<(u32, String)>,
-    /// When each hero's cast started, and its side (E17 M3 T7b-1).
+    /// When each hero's cast started, and its side (E17 M3 T7b-1), in time order.
     casts: Vec<(u32, Side)>,
+    /// What the panel keeps after each number of turns started (`crate::panel::kept`), from
+    /// none: the opening's, then each turn's.
+    kept: Vec<crate::panel::Kept>,
+    /// The texts' times in order, each with the last text of the list shown by then (the list
+    /// need not be in time order: a shot's line has its start's time).
+    by_time: Vec<(u32, usize)>,
 }
 
 impl Panels {
@@ -439,10 +448,31 @@ impl Panels {
     /// show, its log's item showing `texts`.
     #[must_use]
     pub fn new(snapshot: &Observation, events: &[Event], texts: Vec<(u32, String)>) -> Self {
+        let turns = crate::panel::turns(snapshot, events);
+        // The opening's side the panel was built for (*provisional*), then each turn's.
+        let built = controller(snapshot, snapshot).unwrap_or(Side::Attacker);
+        let mut kept = alloc::vec![crate::panel::Kept::built(built)];
+        for o in core::iter::once(snapshot).chain(&turns) {
+            let last = kept[kept.len() - 1];
+            let now = controller(snapshot, o)
+                .map_or(last, |s| last.then(snapshot, (s, o.tactics.is_some())));
+            kept.push(now);
+        }
+        // The opening's own controller comes with the opening: none before it.
+        kept.remove(0);
+        let mut by_time: Vec<(u32, usize)> = texts.iter().map(|(at, _)| *at).zip(0..).collect();
+        by_time.sort_unstable();
+        let mut last = 0;
+        for (_, i) in &mut by_time {
+            last = last.max(*i);
+            *i = last;
+        }
         Self {
-            turns: crate::panel::turns(snapshot, events),
+            turns,
             texts,
             casts: Vec::new(),
+            kept,
+            by_time,
         }
     }
 
@@ -454,10 +484,15 @@ impl Panels {
         Self { casts, ..self }
     }
 
-    /// The text the log's item shows at `t`.
+    /// The text the log's item shows at `t` (`crate::battle_log::text_at`'s: the last of the list
+    /// shown by then).
     #[must_use]
     pub fn text(&self, t: u32) -> &str {
-        crate::battle_log::text_at(&self.texts, t)
+        let shown = self.by_time.partition_point(|(at, _)| *at <= t);
+        shown
+            .checked_sub(1)
+            .and_then(|k| self.texts.get(self.by_time[k].1))
+            .map_or("", |(_, text)| text.as_str())
     }
 
     /// What the panel draws at `t` of the battle `snapshot` opens, whose turns started at the
@@ -500,14 +535,15 @@ impl Panels {
         text: &str,
         pressed: Option<u16>,
     ) -> Vec<Draw> {
-        let (kept, turns) = self.kept_at(snapshot, started, t);
+        let (kept, turns) = self.kept_at(started, t);
         let since = started
-            .iter()
-            .rev()
-            .find(|(at, _)| *at <= t)
+            .get(..started.partition_point(|(at, _)| *at <= t))
+            .and_then(<[_]>::last)
             .map_or(0, |(at, _)| *at);
         let mut now = turns.last().unwrap_or(snapshot).clone();
-        for &(_, side) in self.casts.iter().filter(|(at, _)| (since..=t).contains(at)) {
+        let from = self.casts.partition_point(|(at, _)| *at < since);
+        let to = self.casts.partition_point(|(at, _)| *at <= t);
+        for &(_, side) in self.casts.get(from..to).unwrap_or_default() {
             if let Some(hero) = now.sides[usize::from(side == Side::Defender)].hero.as_mut() {
                 hero.casts = hero.casts.max(1);
             }
@@ -525,25 +561,16 @@ impl Panels {
     /// Whether the log's scroll buttons are enabled at `t` ([`Panels::at`]'s arguments): a click
     /// on a disabled one scrolls nothing (design §9.10, 0x4562DD; E17 M3 T9b, the reviewer).
     #[must_use]
-    pub fn scrolls(&self, snapshot: &Observation, started: &[(u32, u8)], t: u32) -> bool {
-        self.kept_at(snapshot, started, t).0.scroll
+    pub fn scrolls(&self, started: &[(u32, u8)], t: u32) -> bool {
+        self.kept_at(started, t).0.scroll
     }
 
-    /// What the panel kept from the turns started by `t` (`crate::panel::kept`), and those turns.
-    fn kept_at(
-        &self,
-        snapshot: &Observation,
-        started: &[(u32, u8)],
-        t: u32,
-    ) -> (crate::panel::Kept, &[Observation]) {
-        let started = started.iter().filter(|(at, _)| *at <= t).count();
+    /// What the panel kept from the turns started by `t` (`crate::panel::kept`), and those turns;
+    /// `started` in time order (a timeline's turns are).
+    fn kept_at(&self, started: &[(u32, u8)], t: u32) -> (crate::panel::Kept, &[Observation]) {
+        let started = started.partition_point(|(at, _)| *at <= t);
         let turns = self.turns.get(..started).unwrap_or(&self.turns);
-        let sides: Vec<(Side, bool)> = core::iter::once(snapshot)
-            .chain(turns)
-            .filter_map(|o| controller(snapshot, o).map(|s| (s, o.tactics.is_some())))
-            .collect();
-        let built = controller(snapshot, snapshot).unwrap_or(Side::Attacker);
-        (crate::panel::kept(snapshot, &sides, built), turns)
+        (self.kept[turns.len()], turns)
     }
 }
 

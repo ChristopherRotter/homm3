@@ -257,20 +257,16 @@ impl AdventureState {
             .iter()
             .fold(0u32, |sum, stack| sum.saturating_add(stack.count));
         let had = self.monster_count(index).unwrap_or_default();
-        let mut armies = self.army_left.as_deref().cloned().unwrap_or_default();
-        if left == 0 {
-            armies.remove(&index);
-        } else {
-            armies.insert(
-                index,
+        self.army_left.set(
+            index,
+            (left > 0).then(|| {
                 vec![ArmyStack {
                     slot: 0,
                     creature,
                     count: left,
-                }],
-            );
-        }
-        self.army_left = (!armies.is_empty()).then(|| Arc::new(armies));
+                }]
+            }),
+        );
         if left > 0 {
             let word = |count| part.params().monsters().map_or(0, |w| w.count_word(count));
             if word(left) != word(had) {

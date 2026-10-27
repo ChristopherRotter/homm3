@@ -22,6 +22,14 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   `anim::Playhead` too (E17 M5 T1a; the frames are drawn through it): the tests check the two at
   every change of every replay (`anim/tests/playhead.rs`), `h3-view sequences` at every recorded
   sequence's.
+- The timeline grows a command at a time (E17 M5 T1b, `anim::Growing`): `Player` may read back
+  only what the command under way drew (its lists are handed over after each), and a later
+  command adds only from the last one's end (the drawbridge's open span the one exception), or
+  the playhead and `play`'s frames stop matching; the tests grow every replay and check it.
+- A battle fought as it is played (`play`, the window: `live.rs`) has no events when its stage
+  is read: a stage lookup that depends on the record's events (`motion::magic`, `motion::casts`)
+  needs its `every` branch. A frame at or past a playing timeline's end is drawn only after the
+  next command (`Battle::grow`).
 - The viewer reads `clients/layouts/*.toml` at run time: a layout change made while a batch
   runs breaks (or changes) the release binary's comparisons of the batch (M4 T3b-1: an unknown
   field); keep the layout with the binary it was built for until the batch ends.

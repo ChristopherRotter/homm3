@@ -41,6 +41,15 @@ Sorted by destination at E05's audit (T9a, 2026-10-19); the origin stays in brac
 done: BAT-Q33's point for E05 (AI-Q3, ADR-0025 point 6), the `h3-game` coverage gap of a pending
 Pass offer (fixed by the adventure lane's fixed tests, #266).
 
+- 2026-10-27 (the adventure lane, E08 T61b, `adventure/e08-t61b`, `cross-lane` with the user's
+  consent; informational, nothing to act on unless a literal of yours is new): `GameSetup` gained
+  `banned_spells` and `banned_artifacts` (GAM-SET-003, map import v13); your one full literal,
+  `crates/h3-cli/src/ai/census.rs`'s, got `banned_spells: Vec::new()` and
+  `banned_artifacts: Vec::new()`. The adventure state hash is v14
+  (the build's draws on increment 7's objects, `MapObject::resolved`, and the visits' block,
+  `AdventureState::visits`), so a saved state hash of yours moves; no env encoding changed. The
+  shipped maps that import whole are 8 now (`Myth and Legend`, `Pandora's Box `, `Unholy Quest`
+  join the 5), should a census of yours list them.
 - 2026-10-27 (the adventure lane, E08 T61a, `adventure/e08-t61a`; for the next census, `h3 ai
   census`): `ObjectSetup::guards` is no longer a pile's only. Since map import v12 a placed or
   random artifact, a Spell Scroll, a Pandora's Box and an event carry the guards of their message

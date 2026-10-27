@@ -1,6 +1,7 @@
 //! `h3-view play` (E17 M2 T4b-2a): a whole battle, frame by frame, headless (M2's headless
 //! exit). A scenario is fought to its end in-process by the bot in both seats ([`crate::bot`]),
-//! or a record file is read; its commands are played at the original's timing
+//! as it is played since E17 M5 T1b (each command when the frames reach the timeline's end,
+//! `crate::live`), or a record file is read; its commands are played at the original's timing
 //! (`h3_view::anim`) and every distinct frame is drawn. An adapter: it reads files and the
 //! archives, and writes the frames.
 
@@ -12,7 +13,7 @@ use h3_view::anim::{Playhead, Speed, Timeline};
 use h3_view::scene::Moment;
 
 use crate::assets;
-use crate::battle::{Battle, Source};
+use crate::battle::{Battle, Ground, Source};
 use crate::gate::timed;
 use crate::render::write;
 
@@ -118,12 +119,17 @@ pub fn run(options: &Options) -> ExitCode {
 fn play(options: &Options) -> Result<Vec<String>, String> {
     let dir = options.dir();
     let mut lines = Vec::new();
-    let record_to = options.source.scenario().then(|| dir.join("record.jsonl"));
-    let mut battle = Battle::load(&options.source, record_to.as_deref(), &mut lines)?;
-    // Past the last command the battle idles: the outline pulses and the stacks fidget.
-    let until = options.to.unwrap_or(battle.timeline.end);
-    let (frames, listed) = timed(|| battle.frames(until));
+    let ground = Ground::load(&options.source)?;
+    let mut battle = Battle::new(&ground)?;
+    // A scenario is fought as its frames are drawn; past the last command the battle idles: the
+    // outline pulses and the stacks fidget.
+    let (frames, listed) = timed(|| battle.frames(options.to));
     let frames = frames?;
+    if let Some(text) = battle.record_text() {
+        let path = dir.join("record.jsonl");
+        write(&path, text?.as_bytes())?;
+        lines.push(format!("record: {}", path.display()));
+    }
     lines.push(format!(
         "{} frames' moments and draw lists in {} ms",
         frames.len(),
@@ -131,7 +137,7 @@ fn play(options: &Options) -> Result<Vec<String>, String> {
     ));
     if options.moments {
         let times: Vec<u32> = frames.iter().map(|(t, ..)| *t).collect();
-        lines.extend(moments(&battle.timeline, &times));
+        lines.extend(moments(battle.timeline(), &times));
     }
     let mut log = String::new();
     for (t, moment, _) in &frames {
@@ -142,7 +148,7 @@ fn play(options: &Options) -> Result<Vec<String>, String> {
     let sounds = battle.stack_sounds();
     let named = battle.battle_sounds();
     let mut cues = String::new();
-    for c in &battle.timeline.cues {
+    for c in &battle.timeline().cues {
         // The heal's sound is the battle's (E17 M3 T3b), as the casts' are (T7b-1).
         let name = match named.get(&c.sound) {
             Some(name) => Some(name.as_str()),
@@ -172,8 +178,8 @@ fn play(options: &Options) -> Result<Vec<String>, String> {
     lines.push(format!(
         "{} commands, {} ms at speed {}; {} frames ({drawn} drawn{} in {} ms), \
          their moments in {}, the sounds' cues in cues.txt",
-        battle.commands,
-        battle.timeline.end,
+        battle.commands(),
+        battle.timeline().end,
         options.source.speed.setting(),
         frames.len(),
         if options.png { " as PNGs" } else { "" },

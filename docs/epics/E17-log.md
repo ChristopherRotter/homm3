@@ -2715,6 +2715,80 @@ files staged again from the user's `original-data/install/` (the same 26 files a
   100 %; `play`'s `frames.txt` and `cues.txt` byte for byte as before; `drawn` all 119 the same,
   `sequences`' playhead check passing on all 47 recorded sequences (each as recorded).
 
+### M5 T1b — The timeline that grows: the battle fought as it is played (2026-10-27)
+
+On `client/e17-m5-t1b`, the user present at the start (T1b whole, as cut at T1a). The sandbox of
+T1a kept (the original files staged, the baseline green).
+
+- **Starting point:** `master` at `dbc0464` (#506 merged).
+- **The library:**
+  - `anim::Growing`: `played()` is `new`, a `push` per command and `finish`. The player hands
+    what it drew over to the timeline after each command: it reads back only what the command
+    under way drew (checked in the code: the siege's wall keys and explosions, a ray's cursor,
+    within one shot or cast). Whether the turn a command starts is outlined (the computer acts
+    next or not) comes with the push instead of from the next command's `at` (a live seat's
+    controller is known as its command arrives; the record's build still reads `at`). A growing
+    timeline only appends, from the last command's end. What a command leaves to the next redraw
+    (the layer changes, counts, hues, erasures) shows with the next command's first idle step or
+    at the finish. A drawbridge span that began stays open (`until` at its greatest) until then:
+    the one entry a later command changes (the replays found it).
+  - `Playhead::extend` follows a grown timeline: what was added joins what is still to take, the
+    spans' ends are read again; a playhead past the old end, or past the time of something added,
+    starts over.
+  - The panel's per-frame reads (QUEUE's T1b): what it keeps per number of turns started
+    (`panel::Kept::then`, `kept` a fold of it), the log's texts by time with the last of the list
+    shown by then (the log is not in time order: a shot's line has its start's time), the turns
+    started and the casts by partition (both in time order). `Panels::scrolls` lost its unused
+    snapshot.
+  - Tests: every replay of the anim tests is grown command by command. Each step's timeline
+    begins with the one before (a drawbridge span's end excepted); a playhead extended along shows
+    the whole battle's moment at every change before the step's end; the finished one is the one
+    built at once. A playhead past the old end starts over; the panel's texts out of time order.
+- **The binary:**
+  - `battle.rs`: `Ground`, read once (the record or a scenario's opening, the tables, the
+    layout, the archives, the stage's numbers, the heroes, the writer), and `Battle<'g>` over it
+    (the record so far, the timeline played, the mouse's timeline, the playhead, the panel, each
+    turn's battle, the batch). A scenario's next command is played when a frame at or past the
+    timeline's end is asked for (`grow`, `grow_one`); a record file's all at once, as before.
+  - `live.rs`: the scenario hosted by `h3-protocol`'s session in-process (`scenario::hosted`,
+    shared with `played`), both seats held by their tokens and a spectator joined. Each command
+    is the Greedy bot's on a copy of the battle kept by the same commands, sent from its seat
+    (the session validates it); the spectator's messages grow the record; the copy gives the
+    mouse each turn's battle and legal commands (what `scenario::turned` fought again). Its test:
+    the duel fought command by command records what `fought` (now the test's reference) records
+    at once.
+  - A battle fought as it is played has no events when its stage is read: `motion::magic` and
+    `motion::casts` take `every` (every magic animation; every spell, as if each were cast, a
+    stack frightened and a shield returned). The stage's entries are read only when their event
+    happens, so the frames are the same (below). Its named sounds are all it may play while it
+    is played (the cues' only once finished, as before); the window decodes the six end tunes and
+    plays the one the end chooses.
+  - The batch takes the assets as the frames name them (`Battle::compose`); the window preloads
+    the cursor only. `battle.toml`: after the opening frame 4 loads in 82 seconds, about 1 ms
+    each.
+  - `play` writes the record at the end; the window's report drops "frames to the end" (not
+    known before the battle is fought).
+- **Checks:**
+  - `play` fought as it plays, byte for byte as before (`frames.txt`, `cues.txt`,
+    `record.jsonl`): `battle.toml` to its end and ten minutes on, `heroes-castle-rampart.toml`
+    the same, and `play` of the record file.
+  - `window --check 95` under Xvfb (SDL's `disk` audio), fought as it plays: 1 094 of 1 094
+    frames exact, as `master`'s viewer. Late by a median of 6.0 to 6.9 ms and a p95 of 9.2 to
+    9.8 ms over four runs (`master`: 6.4 and 9.2); the worst frame 54.5 to 92.5 ms (`master`'s
+    59.1 in one run), one run passing over 2 frames: the sandbox's noise (two CPUs, software
+    OpenGL). The sounds decoded in 418 to 489 ms (`master`: 355; 123 clips and six tunes against
+    45 and one; one cold run 4.7 s).
+  - `play --moments`: the playhead 447 to 481 ns a frame over the battle (`Moment::at` 1.3 to
+    5.6 µs).
+  - The library's tests (285: every replay grown command by command, as above) and the
+    binary's (37, the live battle's among them); coverage 100 % (`Growing::with_heroes` needed
+    a test of its own); `drawn` all 119 the same; `sequences` all 47 as recorded, the
+    playhead's check passing; clippy; the scoped verify without a failing step.
+- **Left as they are** (*provisional*): per command the window computes its change times again
+  (`Timeline::changes`), the panel and the mouse's hints over the whole record, and the mouse's
+  timeline afresh when it entered stacks (a clone and `enter`): the battle's length per command,
+  not per frame.
+
 ## Accepted review lists (M1 to M4)
 
 M1 and M2 moved from the epic file on 2026-10-20 (less start-up reading), unchanged; M3 at its

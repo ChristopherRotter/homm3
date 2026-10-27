@@ -772,36 +772,36 @@ commands = [
     "1 end-turn",
 ]
 checkpoints = [
-    "0xe43f11bb8c2be257",
-    "0x924ddf05c9c7faac",
-    "0x734f05e346bf433f",
-    "0x5907d596df0c497d",
-    "0x8d0b096e7f66ad4b",
-    "0x9800de21f75fbb61",
-    "0xa9387d62fd2f9890",
-    "0xaf822bd1fddef937",
-    "0xc7578aa3ccce4420",
-    "0x5d08e040a54e874a",
-    "0x1289ee3151e01f8c",
-    "0x467f8f0171ea2401",
-    "0x602c983c05a448c2",
-    "0x9bc1c3fad3611c38",
-    "0x9e4dfdc621b47bfd",
-    "0x124418384d7c58fe",
-    "0x977e0c15618ded70",
-    "0x604fe8a4b246361f",
-    "0x87d38ff1e0b4c0f6",
-    "0xfcc0d787cae224cd",
-    "0x3346459d10a25726",
-    "0x433db2cc469c22c0",
-    "0x1ac477cf214ae56b",
-    "0xafb82b8ec16f6a8a",
-    "0x97945277bf277202",
-    "0xa05010e0912a73c6",
-    "0x9bb9e6c679ea933b",
-    "0x11ed70183f318698",
-    "0x9fce60ea75d8c555",
-    "0x3d850298731c66c1",
+    "0x2dc3102a9d82f573",
+    "0xa6ac5706de137cd6",
+    "0xa62083a87e6a396d",
+    "0x0848f8b4e880cf83",
+    "0x4e9548bee88db561",
+    "0xf5631c5c7b56f9ef",
+    "0xed10ba4015a86e82",
+    "0x0860f472f9661bc5",
+    "0xb107a8c28a61c112",
+    "0x6cef059b2241d9d4",
+    "0xb9bafca80a83c336",
+    "0x73673d7c329efd50",
+    "0x52ac4541230940df",
+    "0xbd5d2161b73049f9",
+    "0xf468f619b1acae24",
+    "0x4f3d49918f73ae23",
+    "0xf330543cc5cf0072",
+    "0x75e2a1dfcc5f8dac",
+    "0x12ef01af09bcff95",
+    "0x99ab730d5a3ea12e",
+    "0x76f072e209eb15a5",
+    "0x74fc14c0c827e9df",
+    "0x4ba26211099e9316",
+    "0x8f01ed3bd431cb86",
+    "0x97f5d94c9c6b6bae",
+    "0xca9331fe7fb7b5e2",
+    "0x682f3a8e9fd5de57",
+    "0x5d0a2ff2f3820f8c",
+    "0xc6a740750e77c481",
+    "0x4781a5da2037877d",
 ]
 
 [replay]
@@ -831,14 +831,14 @@ rng_version = 1
 hash = "fnv1a64-le"
 hash_version = 1
 game_state_hash_version = 15
-adventure_state_hash_version = 13
+adventure_state_hash_version = 14
 checkpoint_every = 25
 
 [map]
 path = "fixtures/maps/e08-duel-36.h3m"
 hash = "0x37d348cff2785a01"
-import_version = 12
+import_version = 13
 
 [result]
 day = 29
-final_hash = "0x242d2c620947cb21"
+final_hash = "0x5d6e15ffa459d988"
