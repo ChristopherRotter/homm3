@@ -1,6 +1,6 @@
 # E06 — Battle AI v1 and the local training pipeline v0
 
-Status: **in progress**, refined 2026-10-20 (AI-Q8); increment 1 (T1, T2a, T2b1, T2c) done; increment 2 (T3a, T3b) done; increment 3 (T4a, T4b) done; increment 4 (T5a to T5d) done 2026-10-23; increment 5 (T7a to T7d) done 2026-10-23, with T5's mana preparation and AI-Q7 (b) part 1; T6a (the behaviour analysis) done 2026-10-23; increment 6 (T6b to T6e) done 2026-10-26; increment 7 (T8, the search) refined 2026-10-26, T8a done · Lane: **ai** · Follows E05 (closed
+Status: **in progress**, refined 2026-10-20 (AI-Q8); increment 1 (T1, T2a, T2b1, T2c) done; increment 2 (T3a, T3b) done; increment 3 (T4a, T4b) done; increment 4 (T5a to T5d) done 2026-10-23; increment 5 (T7a to T7d) done 2026-10-23, with T5's mana preparation and AI-Q7 (b) part 1; T6a (the behaviour analysis) done 2026-10-23; increment 6 (T6b to T6e) done 2026-10-26; increment 7 (T8, the search) refined 2026-10-26, T8a, T6f (the turn order as an input) and T8b done · Lane: **ai** · Follows E05 (closed
 2026-10-20) · Runs beside E23 (the battle lane: the original's battle AI, the system actor's
 policy), whose neutral side opens E06's neutral share (decision 1)
 
@@ -36,6 +36,8 @@ on held-out encounters.
    progress: it moves to a budget in samples).
 5. **Network:** observation v21 stays as it is. Besides E05's MLP, an entity network reads v21's
    stack slots and hex planes as entities (attention), in Python, with no encoding change.
+   **Amended 2026-10-26** (the user, after the turn-order probe): observation v22 appends the
+   engine's turn order (T6f); a network reads it only with `[network] order`.
 6. **AI-Q7, option (b) as an experiment:** the kills of each attack and shot entry (the engine's
    preview, BAT-DMG-011) as features beside the entry mask, a new output of the batch, the
    encodings unchanged; kept only if it measurably helps. **Closed 2026-10-26** (T6e, the
@@ -116,10 +118,17 @@ the tree in Python first; `h3-battle`'s part `cross-lane` in T8b; design §14):
 - [x] **T8a The design** — done 2026-10-26: design §14, ADR-0025 point 12's amendment as a
   draft (`docs/lanes/ai/adr-drafts/0025-amendment-search.md`, accepted by the user the same day);
   the record in `E06-log.md`.
-- [ ] **T8b The plumbing** — C ABI v34 (`h3_batch_determinize`, `h3_env_reseed`), `h3-battle`'s
-  `BattleState::determinized` and `reseed` (`cross-lane`), `h3env.search`; the tests of §14.
+- [x] **T6f The turn order as an input** (the user, 2026-10-26, before T8b; after the
+  turn-order probe) — done 2026-10-26: `h3_battle::turn_order` (`cross-lane`), observation
+  v22, `[network] order`, `configs/e06-order.toml`; the record in `E06-log.md`.
+- [ ] **T6g The A/B run `order-1`** — the user's machine: `configs/e06-order.toml` against
+  `t7-1` (20 M), with the behaviour analysis.
+- [x] **T8b The plumbing** — done 2026-10-27: C ABI v34 (`h3_batch_determinize`,
+  `h3_env_reseed`), `h3-battle`'s `BattleState::determinized` and `reseed` (`cross-lane`),
+  `h3env.search` with `--time` and `--report`; one gap (AI-STUB-1); the record in `E06-log.md`.
 - [ ] **T8c The measurement** — the search agent with `t7-1`'s best at N 16 and 64 against the
-  system actor and Greedy (report set) and on the neutral set, beside the sampled policy.
+  system actor and Greedy (report set) and on the neutral set, beside the sampled policy
+  (`python -m h3env.search --report`, design §14).
 - [ ] **T8d Expert iteration** — only if T8c gains: the search's targets in training.
 
 **Later increments** (cut at each checkpoint; proposed in design §10):

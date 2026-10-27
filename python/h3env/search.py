@@ -438,7 +438,7 @@ def parser() -> argparse.ArgumentParser:
     p.add_argument("--decisions", type=int, default=2, help="--time: batch calls to time")
     p.add_argument("--opponent", default="system", help="--report: an engine seat")
     p.add_argument("--set", default="report-v1", help="--report: report-v1 or neutral-v1")
-    p.add_argument("--per-kind", type=int, default=100, help="--report: episodes per kind")
+    p.add_argument("--per-kind", type=int, default=500, help="--report: episodes per kind")
     p.add_argument("--no-sampled", action="store_true", help="--report: the search alone")
     p.add_argument("--json", help="--report: write the results here")
     return p

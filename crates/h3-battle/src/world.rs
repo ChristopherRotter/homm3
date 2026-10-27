@@ -15,7 +15,7 @@
 //! one the hero cast before; whether its opening spells are still due follows the public turns
 //! (a side's first stack activated outside the tactics phase); the number and value of its
 //! hidden obstacles stay (the cast is public, the hexes are not; their number follows the
-//! caster's mastery).
+//! caster's mastery: AI-STUB-1, with the last drawn spells of the stacks not active).
 
 use alloc::vec::Vec;
 
@@ -71,6 +71,8 @@ impl BattleState {
             world.created.set_templates(other, templates);
         }
         // rule: BAT-MAG-031
+        // stub: AI-STUB-1
+        // The hidden obstacles keep their number and value (the caster's mastery, private).
         obstacles::place_unseen_again(&mut world, ruleset, viewer);
         // rule: BAT-MAG-049
         if let Some((drawer, _)) = world

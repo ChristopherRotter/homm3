@@ -102,6 +102,12 @@ prints each part's parameters, output shape and multiply-adds per decision (a ca
 apart), with `--time` the microseconds per decision of a forward and a training pass (`--device
 cuda` on the GPU), and `--mermaid` writes the table with the data flow as a Mermaid diagram.
 
+**The turn order** (E06 T6f, design §15): observation v22 appends each stack slot's places in
+the engine's turn order (`h3_battle::turn_order`: the rest of the round, its side's, the next
+round) after v21's layout; `[network] order = true` (the MLP's) has the trunk read them, else
+it reads v21's prefix, as every network saved before v22 does (`configs/e06-order.toml`:
+`t7-1`'s settings with the order, the A/B run `order-1`).
+
 **A battle cut at `env.max_steps`** (2 000) costs each learning side `ppo.truncation_penalty`
 (1.0) and ends its trajectory there (E06 T5c; reward v1 lies in about (−1, 1), so stalling to
 the limit never pays); with 0 the trainer bootstraps from the final observation's value instead,
@@ -187,3 +193,23 @@ results.
 ```sh
 uv run --group train python -m h3env.train.ladder --checkpoint runs/t4-1/best.pt [--episodes 250]
 ```
+
+## Search (E06 T8, design §14)
+
+`h3env.search` searches each decision over W determinized *worlds* of the battle
+(`BattleBatch.determinize`, C ABI v34: the other side's hero guessed, its hidden obstacles and a
+drawn spell drawn again, the stream re-seeded; ADR-0025 point 12a), Gumbel AlphaZero at the root
+and the completed-Q improved policy below, with a saved network's heads as the prior and its
+value at a leaf. `search(policy, simulations, worlds, k)` gives `evaluate.report`'s agents.
+
+```sh
+uv run --group train python -m h3env.search --time --simulations 16
+uv run --group train python -m h3env.search --report --best runs/t7-1/best.pt --device cuda --opponent system --simulations 16 --json runs/t8c-system-16.json
+```
+
+`--time` times decisions of a batch of encounters (an untrained MLP without `--best`);
+`--report` plays the search and the sampled policy (unless `--no-sampled`) on the same episodes
+of a held-out set (`--set report-v1` or `neutral-v1`, `--per-kind` of its 500) and prints and
+writes their rates, values and the search's costs (decisions, simulations, fallbacks: a chosen
+action the true battle refuses, replaced by the network's own).
+

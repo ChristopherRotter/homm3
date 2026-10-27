@@ -917,3 +917,95 @@ entry only where a task builds on it.
   but the preview. Candidate lever (QUEUE): the order as an input, the engine's own (exact,
   re-evaluated before every activation) or computed from v21 in Python, then an A/B against
   `t7-1`; T8's search plays the true order through its forks either way.
+
+## T6f — The turn order as an input (2026-10-26)
+
+- **The user's choices** (before T8b, after the turn-order probe; asked at the session's start):
+  the turn order first, as observation v22 with the engine's own order (`h3-battle` `cross-lane`,
+  the user's consent), not a Python copy of BAT-TRN-001..003 (the probe's rule, 0.89) nor a batch
+  output (the search's single envs would lack it); one pull request with T8b (one C ABI bump,
+  v34); a 20 M A/B against `t7-1` prepared for the user's machine.
+- **Built:** `h3_battle::turn_order(&Observation) -> TurnOrder` (`turn.rs`): the rest of the
+  round's turns, the active stack first, then the next round's, as `next_active`'s picks give
+  them if each stack takes its turn as it comes; it shares `next_active`'s key (`OrderKey`: the
+  phase, the turrets, the Catapult, the speed, then the side tie-break by `rank(preferred)`, the
+  slot, the id), so the rule stays in one place; the tie-break's side moves with each foretold
+  turn (the Catapult's counts as the defender's). A stack that loses its turns (blind, petrified,
+  paralysed) and an ammunition supply take no place; in the tactics phase the round is the first
+  (its end starts round 1 fresh); an ended battle has none. Observation encoding v22
+  (`h3-sim`): per stack slot `[its place in the rest of the round's turns (1: the active stack),
+  among its side's (1: its side's next), in the next round's]`, 3 × 42 features appended after
+  v21's layout (`ORDER` = 8 882, v21's length; `OBSERVATION_LEN` 9 008). C ABI v34.
+  `[network] order` (the MLP's, off by default): the trunk reads the whole observation; without
+  it v21's prefix, so every saved network (`t7-1`'s too) plays on. `configs/e06-order.toml`:
+  `t7-1`'s settings with the order.
+- **Agent's choices (change freely):** places, not one-hots (the MLP reads `symlog`); the side's
+  place so that "the opponent's next stack" needs no minimum over slots; the next round's order
+  with every flag cleared and nothing else changed (an effect ending at the round's start is not
+  foreseen); the block appended (v21's layout as a prefix) rather than per slot. Not in v22:
+  BAT-STUB-1's field (it needs an `Observation` field, a server-lane mapping).
+- **Tests:** `h3-battle` `tests/turn_order.rs` (the order foretells every turn of defending
+  battles with speed ties across rounds; waits go to the round's end, slowest first; a stack
+  without turns; the tactics phase; an ended battle) and the property
+  `the_turn_order_foretells_the_next_turn` (arbitrary games, sieges and war machines included:
+  the turns a quiet Defend starts follow the order told, 146 turns over 43 games; both viewers
+  alike). `h3-sim`: the block's columns, the layout pinned against `layout.py`. Python: a network
+  with `order` reads the block, one without (and a saved config from before v22) does not; a
+  run with it resumes and its files read the order.
+- **The A/B run** (the user's machine; T6g):
+  `uv run --group train python -m h3env.train --config configs/e06-order.toml --out runs/order-1`
+  (about 1 h 45 min, as `t7-1`); then the ladder against `t7-1`'s and `python -m
+  h3env.train.inspect` (the waits, defends and wandering T6a and T6e measured).
+
+## T8b — The plumbing (2026-10-27)
+
+- **Built** (design §14): `BattleState::determinized(ruleset, viewer, guess, seed)` and
+  `reseed` (`h3-battle` `world.rs`, `cross-lane`, the user's consent): the stream re-seeded; the
+  other side's hero rebuilt from the guess through the setup's check (BAT-HER-001) with its
+  public part kept (the view, no retreat, the cost change), its limits and the templates of the
+  stacks its spells would create rebuilt from it (`state::world_templates`: the battle's terrain,
+  battlefield and army stacks), its opening spells due only before its first public turn; its
+  hidden obstacles placed again (`obstacles::place_unseen_again`: their hexes cleared first, so
+  no draw reads them); a drawn spell the viewer does not control drawn again (`casters::
+  activated`); the Escape Tunnel and the retreat facts as the viewer knows them. `h3-sim`:
+  `Sampler::guess` (of 8 heroes of the observed type drawn as an encounter draws one, the week
+  by a hero battle's or a siege's prior, the nearest in primary skills; the skill of each war
+  machine the view shows it commands learnt at Basic, room made from the skills that command
+  none; `HeroData::details_of` split out with the draw order unchanged, so every encounter is
+  the same), `BattleEnv::world` (its setup without what the viewer may not know, so a reset
+  starts nothing hidden either), `BattleBatch::determinize` (the guess from the env's encounter
+  distribution, stream `ENCOUNTER` of the seed; a type alone outside it), `BattleEnv::reseed`.
+  C ABI v34: `h3_batch_determinize`, `h3_env_reseed`. Python: `BattleBatch.determinize`,
+  `Env.reseed`, `h3env.search` (the module's documentation): Gumbel-top-k at the root with
+  sequential halving (`considered_visits`, `mctx`'s schedule), the completed-Q improved policy
+  below, open-loop over W worlds, one network call per simulation round for every env searched
+  (and one per head for the leaves with a legal cast); `search(policy, simulations, worlds, k)`
+  as `report`'s agents; `python -m h3env.search --time` and `--report` (T8c's measurement: the
+  search and the sampled policy on the same held-out episodes, `--json`).
+- **Agent's choices (change freely):** the root's candidates among the entries the true battle
+  allows (a world's legal set may differ by the guessed hero's defences, BAT-Q26); a chosen cast
+  the true battle refuses gives way to the network's most likely action (`stats["fallbacks"]`);
+  below the root every entry legal at a node's first evaluation, a cast's heads the network's
+  most likely there; an action a world refuses backs up the node's value (the schedule moves
+  on); a world where another side moves after the same actions (morale, a death) evaluates its
+  position without a node; values of reward v1 scaled to [0, 1] as (q + 1) / 2 for σ; the
+  paper's `c_visit` 50, `c_scale` 0.1; the envs past `limit` episodes (one: `report`'s battles)
+  take a random action, unsearched.
+- **Gaps** (AI-STUB-1): a world keeps the number and value of the other side's hidden obstacles
+  (the caster's mastery decides them, private; only their hexes are drawn again) and the last
+  drawn spells of the stacks not active (read only by the computer's cast choice). The state
+  keeps no list of a hero's cast spells, so a guessed book may lack one the hero cast.
+- **Cost** (the sandbox's CPU, 4 threads, an untrained MLP of `t7-1`'s size, 16 envs of the
+  player kinds, N 16, W 8, k 16): 17.7 ms a decision, 1.1 ms a simulation; of a decision about
+  0.37 ms a world (8 hero draws), the network's passes most of the rest, the tree's walk and
+  steps 0.2 ms a simulation.
+- **Tests:** `h3-battle` `tests/world.rs` (twins differing in the stream, the hidden pits' hexes,
+  the hero's private part and its templates give the same world; the viewer's observation of
+  the world is the battle's; a seed's world, another's; re-seeding; no guess; a refused guess)
+  and the property `a_world_shows_its_viewer_the_battle_and_reads_nothing_hidden` (arbitrary
+  games, both viewers, every step). `h3-sim`: a batch env's world shows its viewer the battle,
+  holds a guess of the observed type, a setup without the funds, plays to its end; the guess's
+  type, distance and machines. `h3-ffi`: the ABI's worlds are the Rust batch's; the C smoke
+  test plays a world of each env. Python `tests/test_search.py`: the binding's worlds, the
+  schedule, the improved policy, legal and repeatable choices, battles to their end, refusals,
+  `--report`.

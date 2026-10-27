@@ -39,6 +39,13 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   and `src/ai/eval.rs`, pinned by an `h3-cli` test.
 - Reward v1 reads the war machines from the outcome's records (what the battle placed: a
   siege's Catapult in, a Ballista BAT-QUIRK-23 leaves out not), never `setup.war_machines`.
+- A world (`BattleBatch::determinize`, C ABI v34, ADR-0025 point 12a) is a search agent's: its
+  battle holds nothing its side may not know (`h3-battle`'s `world.rs`) and its setup none
+  either (`BattleEnv::world`); a new hidden field or setup value changes both. The true env's
+  fork and hash stay trusted tooling. Gap: AI-STUB-1.
+- Observation v22 appends the turn order after v21's layout (`layout.ORDER`, v21's length): a
+  network reads it only with `[network] order` (else the prefix, as every network saved before
+  v22); slices of the stack slots end at `ORDER` (`entity.py`, `inspect.py`), never at the end.
 - `h3env.BattleBatch`'s output arrays are read-only attributes (the engine holds their
   addresses): copy or write into them, never rebind; its head arrays must be N long.
 
@@ -54,6 +61,7 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   (to block it: a `torch.py` raising `ModuleNotFoundError` first on `PYTHONPATH`; pytest 9). In a background shell `cd`
   may not hold: run `uv --directory python run …` (a plain `uv run` from the root takes the
   system Python). A run in the sandbox competes with a verify for the 4 cores: run one at a time.
+- `h3env.search` imports torch (a search needs a network); `h3env` itself stays free of it.
 - `python/` is a uv project (`uv sync`, `uv run pytest`, `uv run python -m h3env.bench`); its
   tests are a lane command, not a gate (the user, 2026-10-18), and need the release library
   (`cargo build --release -p h3-ffi`, else `$H3_LIBRARY`). A C ABI bump changes `h3env`'s

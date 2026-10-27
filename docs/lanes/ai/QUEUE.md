@@ -14,18 +14,20 @@ default).
 **Increment 7, T8 the search** (refined 2026-10-26, the user: the plateau taken as shown; design
 §14): T8a (the design, ADR-0025 point 12's amendment as a draft) done 2026-10-26; the user
 accepted the draft (`docs/lanes/ai/adr-drafts/0025-amendment-search.md`) the same day, its move
-into ADR-0025 due with the next `shared/` change. **Next: T8b, the plumbing:** C ABI v34
-(`h3_batch_determinize`, `h3_env_reseed`), `h3-battle`'s `BattleState::determinized` and
-`reseed` (`cross-lane`, the user's consent 2026-10-26 for both; the PR label), `h3env.search`
-and §14's tests; one pull request. Then T8c (the measurement on the
-user's machine with `t7-1`'s best), T8d only if T8c gains.
+into ADR-0025 due with the next `shared/` change. T6f (the turn order as an input, observation
+v22; the user, 2026-10-26: before T8b) and T8b (the plumbing: C ABI v34, `determinized` and
+`reseed` `cross-lane`, `h3env.search`) done 2026-10-27, one pull request (E06-log). **Next, on
+the user's machine:**
 
-- **Candidate, the turn order as an input** (the user's question, 2026-10-26; E06-log "The
-  turn-order probe"): the trunk does not know which stack acts next (0.18 against the order
-  rule's 0.89). Options: per stack its place in the remaining order, the engine's (exact; a
-  batch output, C ABI, or observation v22, `cross-lane` with the battle lane) or computed from
-  v21 in Python (no ABI change; the probe's rule is 0.89); then an A/B against `t7-1`. The
-  user decides at T8b's checkpoint whether it comes first.
+- **T6g, the A/B run `order-1`:** `uv run --group train python -m h3env.train --config
+  configs/e06-order.toml --out runs/order-1` (about 1 h 45 min), then its ladder against
+  `t7-1`'s and `python -m h3env.train.inspect`; upload `record.json`, `metrics.jsonl`, `best.pt`.
+- **T8c, the measurement** (design §14), with `t7-1`'s `best.pt`: `uv run --group train python -m
+  h3env.search --report --best runs/t7-1/best.pt --device cuda --opponent system --simulations
+  16 --json runs/t8c-system-16.json`, then `--opponent greedy`, `--set neutral-v1` (its opponent
+  the system actor) and `--simulations 64`; T8d only if the search gains beyond the intervals.
+  At T8b's checkpoint the user reviews AI-STUB-1 (a world's gap against ADR-0025 point 12a).
+
 - **Candidates kept** (not now): potential-based shaping (also against the wandering T6e found:
   the tactics phase's placements and moves cost nothing at γ 1); the 60 M run at T7's mix
   (`configs/e06-t7.toml --set samples=60_000_000`, about 4 hours); the mana run `t5-4`
@@ -37,6 +39,12 @@ user's machine with `t7-1`'s best), T8d only if T8c gains.
 Sorted by destination at E05's audit (T9a, 2026-10-19); the origin stays in brackets. Dropped as
 done: BAT-Q33's point for E05 (AI-Q3, ADR-0025 point 6), the `h3-game` coverage gap of a pending
 Pass offer (fixed by the adventure lane's fixed tests, #266).
+
+- 2026-10-27 (this lane, E06 T6f and T8b; for the next `shared/` change):
+  `docs/07-simulation-and-ai.md` (shared) should name observation v22 (the turn order block
+  after v21's layout, `[network] order`) and C ABI v34's worlds (`h3_batch_determinize`,
+  `h3_env_reseed`, a search agent's under ADR-0025 point 12a) under "The batch" and
+  "Information"; ADR-0025 point 12a's text with the draft's "As built" (AI-STUB-1).
 
 - 2026-10-26 (this lane, E06 T8a; for the next `shared/` change): **ADR-0025 point 12a** from
   the draft the user accepted (`docs/lanes/ai/adr-drafts/0025-amendment-search.md`: a search

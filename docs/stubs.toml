@@ -68,3 +68,11 @@ epic   = "E10"
 # --- client (CLT-STUB-<n>) ---
 
 # --- map-client (MCL-STUB-<n>) ---
+
+# --- ai (AI-STUB-<n>) ---
+
+[[stub]]
+id     = "AI-STUB-1"
+where  = "crates/h3-battle/src/world.rs::determinized"
+reason = "A search agent's world (E06 T8b, ADR-0025 point 12a) places the other side's hidden spell obstacles again by their rule, but keeps their number and value: the cast is public, while the number of pits or mines and a mine's value follow the caster's mastery, which is private. A world should take them from the guessed hero's mastery (the cast's rule) instead; the twin tests vary only the hexes. Also kept: a random caster's last drawn spell for stacks other than the active one (Casts::last), which only the computer's cast choice reads, never a rule or a search"
+epic   = "E06"
