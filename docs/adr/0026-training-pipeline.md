@@ -4,8 +4,11 @@
 - Date: 2026-10-20
 - Deciders: user + AI lane session
 
-Detail: [`docs/epics/E06-design.md`](../epics/E06-design.md) (the run §1 to §4, the held-out
-sets §5, the gate §6, the ladder §7, the league §8).
+Detail: the code documentation (`python/h3env/train/`), `python/README.md`,
+`docs/07-simulation-and-ai.md` §1.2 and [`docs/epics/E06-log.md`](../epics/E06-log.md) (the design
+note `E06-design.md` was deleted when E06 closed, 2026-10-27; its text is kept there, "The design
+note at closure": the run §1 to §4, the held-out sets §5, the gate §6, the ladder §7, the league
+§8).
 
 ## Context
 
@@ -85,3 +88,4 @@ evaluates against Random alone and writes its records into an ignored directory.
 ## Revision history
 
 - 2026-10-20: Accepted (E06 T1 review: every point of the design note's §11 as proposed).
+- 2026-10-27: The working-detail line after E06's closure (the design note deleted).
