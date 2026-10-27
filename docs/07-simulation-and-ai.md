@@ -67,7 +67,8 @@ design note kept in `docs/epics/E05-log.md` (§1 to §9).
   12a; C ABI v34, E06 T8b): copies of the battle in which what its side may not know is replaced
   by a guess drawn from the world's seed (`h3_batch_determinize`, the engine's
   `BattleState::determinized`; the stream re-seeded, `h3_env_reseed`), which it may fork and
-  step; the true state's fork and hash stay tooling.
+  step, for its side to move only (E06 T9b); the true state's fork and hash stay tooling. Its
+  known gaps are AI-STUB-1's (E25).
 - **Python** (`python/`, package `h3env`): ctypes over the C ABI, the caller's numpy arrays
   written in place, the library's ABI version checked, short arrays refused and the outputs read-only; uv with
   CPython 3.12 (on the user's machine a conda Python); PyTorch 2.14 (CUDA 12.6) in the opt-in
@@ -83,7 +84,7 @@ design note kept in `docs/epics/E05-log.md` (§1 to §9).
   Glicko-2 period per run. On 1 000 held-out encounters per pair (v0): Greedy 0.828 and Aggressor
   0.800 against Random, Greedy 0.519 against Aggressor; the smoke network 0.802 against Random,
   0.498 against Aggressor, 0.479 against Greedy.
-- **Held-out sets** (E06 T3a, `docs/epics/E06-design.md` §5): `h3 ai eval --set` and the Python
+- **Held-out sets** (E06 T3a, `docs/epics/E06-log.md`, the design note's §5): `h3 ai eval --set` and the Python
   ladder play the report set v1 (by default: per kind with a player on both sides 500 battles
   from both sides, the kinds weighed 4 : 2 : 1, the win rate with its 95 % interval) or E05's v0;
   the trainer checks every training episode against both and the gate set v1. The bots' table on
@@ -95,13 +96,64 @@ design note kept in `docs/epics/E05-log.md` (§1 to §9).
   24 at 1 024 envs (233 000 on 6); Python's binding is within 2 to 7 % of Rust inside the step
   (`E05-log.md`, T9c).
 
+### 1.2 The training pipeline as built (E06, ADR-0026)
+
+E06 (closed 2026-10-27) trained the battle AI v1 on the user's machine (GTX 1070, Ryzen 9 3900X)
+with a pipeline that runs, records, evaluates and promotes on its own. The decisions are
+ADR-0026's (the batch's ADR-0025's); the detail is in `python/h3env/train/`'s documentation,
+`python/README.md` and the design note kept in `docs/epics/E06-log.md` (§1 to §15).
+
+- **Runs** (`python -m h3env.train`): a TOML config (`python/configs/`, `--set table.key=value`);
+  the budget and every cadence in samples (the learner's decisions), wall time only for
+  checkpoints. A run's directory holds its config, `metrics.jsonl`, `record.json`, the
+  checkpoint, the promoted networks and the league's snapshots; a record a result cites is
+  committed (`python/records/`: the config, the commit, the engine's identity read back from
+  the library, the curve, the gates, promotions and ladders).
+- **Interruption** (decision 4): the checkpoint holds the whole training state (the network, the
+  optimizer, the counters and schedule, the league, the random generators, what is pending, the
+  metrics' length), written atomically every 5 minutes and around each gate and ladder; a stop,
+  a crash or a kill loses at most the time since; `--resume` continues in a new segment with its
+  own batch seed, the budget extensible: reproducible from the record, not bitwise.
+- **PPO** (E05's own, over the factorized heads): an MLP over `symlog` of the observation (the
+  default) or an entity network (attention over the stack slots, the hexes and the heroes;
+  parked, slower and no better); γ 1, and a battle cut at the step limit costs each learning
+  side 1.0 (against stalling). Off by default after A/B runs that showed no gain: the kill
+  preview as a bias of the strike entries (`[network] preview`, AI-Q7 closed) and the turn order
+  in the trunk (`[network] order`).
+- **The league** (decision 9): prioritized fictitious self-play; half the episodes self-play,
+  the rest against one of 4 live members drawn by (1 − p)², p the learner's decayed score
+  against it, among at most 16 (a snapshot every 1 M samples and every promoted network; the
+  most beaten retires). In the neutral kinds (`[env] kinds`) the system actor defends;
+  `[league] system_share` gives it a share of the player kinds too (off by default).
+- **The gate** (decision 8): every 10 M samples the learner plays the current best on the gate
+  set v1, in pairs of one battle from both sides, until an SPRT decides (Elo 0 against 20, α
+  and β 0.05, at most 4 000 pairs); a promoted learner becomes the next best and a league
+  member. A training episode on a held-out seed stops the run.
+- **The ladder:** each promoted network, playing its sampled policy, against Random, Aggressor,
+  Greedy, the system actor and the promoted network before it on the report set v1, and
+  attacking the system actor on the neutral set v1, scored at reward v1's settings; the final
+  best's on 500 battles per kind. `h3env.train.inspect` sorts a network's battles by kind, side
+  and outcome and reads its play (E06 T6a).
+- **The battle AI v1** is `t7-1`'s best (20 M samples, a third neutral, 79 minutes; its networks
+  on the user's machine). On the closing engine (E06 T9c): 0.830, 0.550, 0.530 against Random,
+  Aggressor, Greedy at values +0.273, +0.029, +0.010; on the neutral set 0.970 at +0.244 (Greedy
+  +0.224, Aggressor +0.217): decision 7's targets as revised 2026-10-27, "beat every heuristic
+  bot". Six levers (γ, the league, the entity network, the system actor as an opponent, the kill
+  preview, the turn order) left PPO on the flat observation at the bots' level; the system
+  actor, 0.628 against `t7-1`, is E25's target.
+- **The search** (`h3env.search`, E06 T8): Gumbel AlphaZero at the root over determinized worlds
+  (ADR-0025 point 12a), a saved network's heads as its prior and its value at a leaf. Measured at
+  T8c with no gain over the network, a verdict E06's review made inconclusive (a terminal
+  scored ±1 against the value head's reward v1; escapes reachable below the root, fixed): E25
+  measures again.
+
 ## 2. Baselines (needed before RL)
 
 Scripted bots are baselines for evaluation only; training uses self-play and the system actor alone (AI-Q1):
 
 - random legal agent (also the benchmark workload; built, `Policy::Random`),
 - simple heuristic battle bots (built in E05: Aggressor and Greedy value, §1.1),
-- later: stronger scripted bots, search-based agents (MCTS with the forkable env; E06 T8 built a determinized Gumbel search over worlds, `h3env.search`, which gained nothing over its network, `docs/epics/E06-log.md` T8c), and references such as the original game's AI and other open-source AIs where comparison is feasible.
+- later: stronger scripted bots, search-based agents (MCTS with the forkable env; E06 T8 built a determinized Gumbel search over worlds, `h3env.search`, whose measurement, no gain over its network, E06's review made inconclusive, `docs/epics/E06-log.md` T8c and T9b; E25 measures again), and references such as the original game's AI and other open-source AIs where comparison is feasible.
 
 ## 3. Strategy per problem
 
