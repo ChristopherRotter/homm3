@@ -270,5 +270,5 @@ A candidate becomes an entry here only once it is confirmed for SoD (by an exper
 - Sources: code reading (E08 T55a1 to T55a4, survey §2.2, §5, §6.9, §7.4); batch E7's E7-5, E7-6, E7-10 and E7-19 (`experiments/results/E08-batch-7a.md`, `-7b.md`: heroes with free positions and a full backpack lost or converted every artifact; survey §15, T58).
 - Flag: `quirk.adventure.full_backpack_refuses` (registry position 38, E08 T59)
 - Defaults: faithful = on (the count first), strict-fixed = off (the placement first)
-- Regression test: with `h3-heroes`' rewards (E08 T60) and the visits (E08 T62)
+- Regression test: `h3-heroes`' `a_full_backpack_refuses_an_artifact_in_faithful_only` (`src/tests/grant.rs`, E08 T60b: `can_receive_artifact` and `grant` in both profiles); the visits' with E08 T62
 - Decided by / date: the user 2026-10-27 (ADV-Q30; decision 145); the flag added by E08 T59

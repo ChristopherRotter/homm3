@@ -14,8 +14,9 @@
 //! disassembly, Titan's Thunder's Spell Book and Scholar at a meeting (ADR-0013 point 14), and
 //! since E08 T60a the battle bonuses until the next battle's end and the rewards' changes: primary
 //! skills gained, a skill raised to a level, a bonus with its once-mark, the bonuses cleared
-//! (ADR-0013 points 1, 2). No commands and no
-//! map or battle state: who levels a hero up, when, and equipping and learning arrive with the
+//! (ADR-0013 points 1, 2), and since E08 T60b a reward record's hero half (`grant`), whether a hero
+//! can receive an artifact (A-25) and what a teacher may teach (ADR-0013 point 15). No commands
+//! and no map or battle state: who levels a hero up, when, and equipping and learning arrive with the
 //! adventure and game epics (E08–E10); the battle never depends on this crate and reads only the
 //! battle hero of the seam (`h3_contracts::BattleHero`).
 //!
@@ -50,7 +51,9 @@ mod level_up;
 mod movement;
 mod moves;
 mod positions;
+mod reward;
 mod spells;
+mod teach;
 
 pub use change::{
     ArtifactPlace, HeroChange, apply_change, apply_change_limited, check_change, lost_war_machine,
@@ -73,7 +76,14 @@ pub use level_up::{Choice, Draws, LevelUp, Offers, OriginalDraws, draw_level_up}
 pub use movement::{Movement, land_points, movement, movement_speed, scouting_radius};
 pub use moves::{ArtifactMove, MoveChanges, check_move, move_changes};
 pub use positions::{Position, equip, first_position, positions, takes, wearing};
-pub use spells::{available_spells, learn_level, learns_spell, meeting_spells, spell_masteries};
+pub use reward::{Granted, HeroReward, can_receive_artifact, grant};
+pub use spells::{
+    available_spells, can_learn_spell, learn_level, learns_spell, meeting_spells, spell_masteries,
+};
+pub use teach::{
+    ScholarGift, SlotState, hut_teaches, learning_experience, library_admits,
+    next_level_experience, scholar_reward, university_slot,
+};
 
 #[cfg(test)]
 mod tests;

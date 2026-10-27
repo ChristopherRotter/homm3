@@ -11,9 +11,8 @@ use h3_content::{
     HeroEffect, MAX_SKILL_LEVEL, MAX_SPELL_LEVEL, MAX_SPELL_SCHOOLS, Ruleset, SpellId,
 };
 
-use crate::change::{HeroChange, check_change};
 use crate::derive::{Count, effects};
-use crate::details::{HeroDetails, check};
+use crate::details::{HeroDetails, check, hero_spell};
 use crate::error::DetailsError;
 
 /// The highest spell level the hero may learn (HER-SPL-005, E08 T19a2b): the hero parameters'
@@ -38,16 +37,38 @@ pub fn learn_level(details: &HeroDetails, ruleset: &Ruleset) -> u8 {
 
 /// Whether the hero learns `spell`, an Eagle Eye pick, after a battle its side won (HER-SPL-006,
 /// BAT-Q24; E08 T19a2b): while it wears a spell book (an effect gives one), a hero spell of the
-/// ruleset it has not learned ([`HeroChange::LearnSpell`]'s check), of a level at most its
-/// [`learn_level`]. The original's `eagle_eye_learn` (0x469FE0): the Spell Book worn and the level
-/// at most Wisdom + 2, which batch 2f observed (a winner with its book in the backpack learned
-/// nothing; one without Wisdom learned a level 1 spell, not a level 3 one).
+/// ruleset it has not learned, of a level at most its [`learn_level`]: [`can_learn_spell`] with
+/// the known spells counting. The original's `eagle_eye_learn` (0x469FE0): the Spell Book worn and
+/// the level at most Wisdom + 2, which batch 2f observed (a winner with its book in the backpack
+/// learned nothing; one without Wisdom learned a level 1 spell, not a level 3 one).
 pub fn learns_spell(details: &HeroDetails, ruleset: &Ruleset, spell: SpellId) -> bool {
     // rule: HER-SPL-006
+    can_learn_spell(details, ruleset, spell, true)
+}
+
+/// Whether a teacher's spell reaches the hero (HER-CHG-004, E08 T60b; ADR-0013 point 15.3): while
+/// it wears a spell book (an effect gives one), a hero spell of the ruleset of a level at most its
+/// [`learn_level`] (HER-SPL-005), and with `known_counts` one it has not learned. A Shrine, a
+/// Scholar and a reward record pass `known_counts` (a known spell refuses: a Shrine's message,
+/// a Scholar's fallback, a box's skipped spell); the Pyramid does not, since relearning changes
+/// nothing (survey `E08-rewards.md` §7.5), and the caller gives
+/// [`crate::HeroChange::LearnSpell`] only for a spell not learned. The map's spell bans are not
+/// tested (one shipped box gives a spell its map bans). The original's `visit_shrine`
+/// (0x4A5610), `visit_scholar` (0x4A4DC0) and `grant_rewards` (0x49FA90, part 8): the Spell Book
+/// worn and the level at most Wisdom + 2.
+pub fn can_learn_spell(
+    details: &HeroDetails,
+    ruleset: &Ruleset,
+    spell: SpellId,
+    known_counts: bool,
+) -> bool {
+    // rule: HER-CHG-004
     let level = ruleset.spell(spell).map(|s| s.level);
+    let fresh = !known_counts || !details.spells.contains(&spell);
     wears_book(details, ruleset)
         && level.is_some_and(|level| level <= learn_level(details, ruleset))
-        && check_change(details, ruleset, HeroChange::LearnSpell(spell)).is_ok()
+        && hero_spell(spell, ruleset).is_ok()
+        && fresh
 }
 
 /// The spells two meeting heroes teach each other (HER-SPL-007, E08 T49b; Scholar): `s` is the
@@ -56,9 +77,9 @@ pub fn learns_spell(details: &HeroDetails, ruleset: &Ruleset, spell: SpellId) ->
 /// spell `b` has learned (its learned spells, not an artifact's or a scroll's) that it has not,
 /// of a level at most the lesser of its learnable level ([`learn_level`], HER-SPL-005) and `s`,
 /// in spell order; `b` alike from `a`. The game applies them as
-/// [`HeroChange::LearnSpell`] changes. The original's 0x4A2940, at every meeting of two heroes of
-/// one player before the exchange screen: each limit the lesser of Wisdom + 2 and the Scholar
-/// level + 1, both Spell Books worn, the 70 spells walked by id (the same sets).
+/// [`crate::HeroChange::LearnSpell`] changes. The original's 0x4A2940, at every meeting of two
+/// heroes of one player before the exchange screen: each limit the lesser of Wisdom + 2 and the
+/// Scholar level + 1, both Spell Books worn, the 70 spells walked by id (the same sets).
 pub fn meeting_spells(
     a: &HeroDetails,
     b: &HeroDetails,
