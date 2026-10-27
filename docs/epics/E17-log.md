@@ -2638,10 +2638,37 @@ machine otherwise idle.
 - **`drawn`:** all 119 the same but `sacrifice`'s five frames from 1 312 ms (its line now
   "23"): `drawn --record --only sacrifice`.
 
-## Accepted review lists (M1, M2, M3)
+### M4 T3c — M4's review list, M5 refined (2026-10-27)
+
+On `client/e17-m4-t3c`, the user present (the M4 checkpoint). Docs only. The original files
+staged into the sandbox at the user's word before the computer disconnected (the four LODs, both
+sound archives, `H3ab_ahd.vid`, both executables, the five DLLs, the battle and end tunes,
+`extracted.tar`, `maps.tar`), for M5.
+
+- **Starting point:** `master` at `c637652` (#501 merged; CI's Clients run green on it); no
+  client pull request open.
+- **The review list** (summarised in the session, an item a line): **items 1 to 14 accepted as
+  built**; **item 15** (the recipes' starting bonus Gold) **built at M5's closure** (T8), whose
+  captures afresh it needs anyway (the user, over doing it now or not at all).
+- **CLT-Q22 to Q24 answered (a)** (the user): the explosion cut at the top edge, the
+  drawbridge's rectangle alone and the battlefield's hint kept over the panel are fixed in what
+  the client draws, the original's drawn for the comparisons only (`h3_render::Bugs`). Q22 and
+  Q23 were built so; Q24's switch (the hovered item forgotten over the battlefield in the client's
+  profile) goes into M5 T2.
+- **M5 refined** (the agent's draft accepted as it stood): hot seat in-process first, then a
+  game on a server; T1 the timeline that grows (R2-7), T2 hot seat's commands (with Q24), T3 the
+  spell book and the hero's aim, T4 the battle's dialogs, T5 the created stacks and the panel's
+  side by the controller (R3-1), T6 a game on a server by a seat token (R2-8 with R1-3), T7
+  accounts, T8 the closure; the ladders, the pause and the server browser after M5. The new
+  dependencies (a WebSocket client with TLS; argon2id and Ed25519) are put to the user at T6 and
+  T7. The inbox entries the tasks take moved into them (QUEUE; their detail kept in
+  `QUEUE-ARCHIVE.md`).
+- **M4 done.** M4's scope and tasks moved to `E17-archive.md`, its review list below.
+
+## Accepted review lists (M1 to M4)
 
 M1 and M2 moved from the epic file on 2026-10-20 (less start-up reading), unchanged; M3 at its
-review (T9b, 2026-10-23).
+review (T9b, 2026-10-23); M4 at its review (T3c, 2026-10-27).
 
 ### M1 review list
 
@@ -3131,3 +3158,63 @@ queued (QUEUE, T9d).
   the striker's neighbours (the record does not name the ability; confirmed in M3 T1b-2), the asset
   tables' `breath = [17, 18, 19]`; a strike or shot by a stack the timeline does not know plays
   its targets' reactions alone; `Timeline::still`, which ends the window's look-ahead.
+
+### M4 review list
+
+**Accepted by the user, 2026-10-27 (T3c), items 1 to 14 as listed; item 15 built at M5's
+closure (T8).** CLT-Q22 to Q24 answered (a) at the same review (the lane's
+`QUESTIONS-ANSWERED.md`).
+
+1. The asset tables' `[[town]]` (T1b, `clients/README.md`): the background, the turrets (the
+   shooter by its original id, its drawer's `shift` harvested as one number, 44 for a two-hex
+   creature less the Medusa's 5) and the 18 parts by index with five pictures each, an empty
+   name for none.
+2. The capture set's siege keys (T1b, the runbook): `key` (the step into the battle), `seat` (a
+   side's record), `walls` (the wall states written into the original, the viewer's override
+   `h3-view render --walls`; *provisional* until a record carries a hit part's state, T2b).
+3. The siege situations are hot seat with both heroes commanding their war machines (T1b): the
+   record opens after the machines' own acts (`BattleState::new` drops the start's events).
+4. A record's hit points give a part's picture state only whole or destroyed (`Walls::of`): a
+   hit (1) needs the timeline (T2b).
+5. The asset tables' `siege_sounds` (T2c-1: the drawbridge's and a mine's blast's, harvested by
+   name) and the key family `moat` (ARRAYTXT's nine moat names by town type, keyed by faction).
+6. A siege's sounds in the window (T2c-1): the drawbridge's and the blast's play in category 2;
+   T2b's `WallHit` and `WallMiss` (category 0) are cued but not played yet (*provisional*);
+   Earthquake's spell sound and `WallHit` are cued on no stack (T2c-2).
+7. The siege's mouse (T2c-2): the cursor's own tests know the acting stack by the asset tables'
+   original ids (the Catapult 145; the shooters the walls never halve, 34, 35, 136, 137, 149) and
+   the bows by the wire's `no_distance_penalty` (`pointer::legal`, the binary); a wire flag for
+   the walls' exemption would replace the ids (a protocol change, the server and battle lanes).
+   The wall-shot targets the cursor offers are the server's `ShootWall` commands.
+8. The key family `wall` (WALLS.TXT's parts by town type, `wall.<faction>.<part>` for the eight
+   targets' parts) and `battle.hint.turret` (GENRLTXT 157); the harness's forced values in order
+   (`roll:<name>:<a>,<b>,...`, `xdd.c`'s queue of 8) and its roll `quake_target` (T2c-2).
+9. Earthquake with the slip fixed (T2c-2): the damage before frame 5's redraw and shown everywhere
+   from it, as a wall shot's (the original's: after it, the new pictures from frame 6).
+10. The siege's mouse rectangles at a town without a fort (T3a, R2-2): none in the client's
+    profile, as outside a town (CLT-Q21's "a siege only" read as a town with a fort, as the
+    drawing reads it); the original's everywhere for the comparisons.
+11. The recorded siege timelines in the unit tests (T3a, R1-5): `keep`, `hit`, `missed`,
+    `automatic`, `quake`, `gate`, `moat` and `mine` replayed (CI, without the original data);
+    the others (`tower`, `cyclops`, `breach`, `gate-fortress`, `defended`, `aim`, `through`) by
+    `drawn`'s timeline check only (the original data); a turret facing right and the leftward
+    rows' wall strips tested on their own instead.
+12. The harness refuses what it cannot force (T3a, R3-1 to R3-4): `xdd.dll`'s ack gains a 7th
+    field, the refused roll commands and forced values; a forced value outside its call's
+    `random(a, b)` range is replaced by the call's own draw and fails the sequence; a new list
+    over a roll's undrawn one is refused; the wall states checked before a game starts (R3-5).
+    Queued (QUEUE's inbox, with a record that opens mid-battle): R1-3, the moat's strip by the
+    fixed moat rows.
+13. The status line by the hovered panel item (T3b-1, design §10.2 "Recorded afresh"): the
+    layouts' picture gains `size`, where it takes the mouse (the battle panel's 2000, 800 × 44);
+    the tracker writes a panel item's hint only as the mouse enters it, the first input (the
+    mouse resting where it was placed before the battle) entering none, and a spell book's close
+    forgetting the hovered item (*provisional*, not read per frame); the hot-seat proxy removed.
+14. `sacrifice`'s engine seed 9 for 5 (T3b-2): the original's Grand Elves did 23 in all three of
+    T3b-2's runs, 22 at T9d's (not explained: the map and the battle's harness the same); the
+    seed is the first whose record strikes 23 with the recorded timeline.
+15. **Proposed, not built** (T3b-2): the battle recipes (`to_scenario`, hot seat) leave the
+    scenario list's starting bonus random, which can give the hero an artifact for one run
+    (T3b-2: luck 0 and 4, spell power 2, each gone at a rerun). Choosing Gold (no battle effect)
+    in the recipes would remove that variation; it changes the original's side, so every capture
+    afresh after it (about 4 hours): at M5's closure, or as its own task.

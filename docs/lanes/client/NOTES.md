@@ -138,3 +138,5 @@ a line there while the work waits.
 - 2026-10-13 (E17 M1 T8, the reviewer): an HD layout needs the battlefield's origin and viewport in the layout format (the heroes, war machines and the water and rock battles went into M3 T2 and T3 at T5c).
 - 2026-10-23 (E17 M3 T9c): the adventure map's object draw order (research item 9) went to the
   map-client lane with the split (its queue's inbox).
+- 2026-10-21 (E17 M3 T8; from the queue's inbox at M4 T3c): the volume settings (0x5996C0) and
+  a track resuming where it stopped (0x59AA82), with the client's options and a second battle.
