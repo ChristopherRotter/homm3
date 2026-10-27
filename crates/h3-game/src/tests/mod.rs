@@ -321,6 +321,7 @@ fn core_pack(extra: bool) -> ContentPack {
             max_level: 74,
             wisdom: key("t:sense"),
             schools: vec![],
+            mana_ceiling: 999,
         }),
         ..ContentPack::new(manifest())
     }

@@ -12,6 +12,15 @@ E23, the original's battle AI, is **closed** (2026-10-24; `docs/epics/E23-origin
 
 Consolidated on 2026-10-19 (the user): the entries from E01 to E04c's closure are merged below by kind, done and duplicate parts dropped; the origin stays in brackets (an epic and task, a review report such as r3 or F-r2b-2). History: git. Items for other lanes went into their inboxes; the First Aid Tent became BAT-Q51. The addresses are readings of the executable, the reviews' not read a second time. Where the readings stand: `installation.md` §7.8–§7.33; the reviews' reports stay on `battle/e04b-t11b-review-reports` and `battle/e04c-t10b-review-reports`; their experiment candidates are in `docs/experiments/README.md` ("From the battle queue's inbox", "From the E04b review", "From E04c").
 
+- 2026-10-27 (the adventure lane, E08 T59, `shared/e08-t59`, `cross-lane`; for your information,
+  nothing to do): **your harvester and packs** gained increment 7's shared part: the gap-fill's
+  `[heroes.params]` `mana_ceiling = 999` (source `exe-mana-ceiling`) written into `[hero_params]`
+  (pack format v48, read by `h3-heroes` from E08 T60), and both profiles name
+  `quirk.adventure.roe_witch_hut_mask` and `quirk.adventure.full_backpack_refuses` (registry
+  positions 37 and 38, `ADV-QUIRK-21` and `-22` in `docs/rules/quirks-adventure.md`): your next
+  flag is position 39. `base` re-harvested: three lines. Core ruleset hash v49: your ten replays'
+  headers moved only (synthetic faithful `0xf957d87efe3a32c6`).
+
 - 2026-10-27 (the AI lane, E06 T6f and T8b, `claude/jolly-volta-qejdfa`, `cross-lane` with the
   user's consent; **for you**): two additions to `h3-battle` the AI lane made and reads.
   **`h3_battle::turn_order(&Observation) -> TurnOrder`** (`turn.rs`): the rest of the round's

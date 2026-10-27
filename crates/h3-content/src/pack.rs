@@ -378,6 +378,9 @@ pub struct HeroParamsDef {
     /// The skills a level-up draws from when the class's school interval is due (pack format
     /// v44; distinct).
     pub schools: Vec<ContentKey>,
+    /// The most spell points a reward record leaves a hero (pack format v48, E08 T59;
+    /// HER-CHG-003).
+    pub mana_ceiling: u16,
 }
 
 /// A profile: a named selection of quirk flags (ADR-0007).

@@ -1056,6 +1056,7 @@ experience = [0, 500, 1200, 2000]   # format v44 (E08 T26b): levels 1-4; later s
 max_level = 20
 wisdom = "channeling"               # offered when the class's first interval is due
 schools = ["stormcraft"]            # drawn from when the second is due
+mana_ceiling = 450                  # format v48 (E08 T59): a reward record's mana held in 0-450 (HER-CHG-003); above primary_max x 10
 
 [[profile]]
 id = "faithful"        # default: preserve/fix-optional quirks on

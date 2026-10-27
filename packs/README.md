@@ -785,12 +785,15 @@ without a `learn_level` effect). Since v44 (E08 T26b): `experience` (the experie
 to n: at least two, the first 0, rising strictly), `max_level` (the highest level; `experience`
 lists at most `max_level + 1` levels), `wisdom` (the skill a level-up offers when the class's
 first interval is due) and `schools` (distinct skills, drawn from when the second is due; HER-LVL-004).
+Since v48 (E08 T59): `mana_ceiling` (the most spell points a reward record leaves a hero: its
+mana is added and the total held between 0 and this, so a hero above it falls to it; HER-CHG-003,
+read from E08 T60).
 The compiler continues the experience table to level `max_level + 1`, each step the previous
 one + a fifth of it, rounded down (HER-EXP-002), and refuses a table above 32 bits (a
 `max_level` above 78 with the base pack's levels); the last threshold bounds a hero's experience.
 Rules HER-DET-001 and HER-ART-002; the base pack's values come from the gap-fill file
 (`[heroes.params]`: 0/0/1/1, 99, 64, 2; the original's levels 1–12, 74, Wisdom, the four magic
-schools), the classes' intervals from `[heroes.offer_intervals]` (3 and 3 for the eight classes
+schools; 999, `grant_rewards` 0x49FA90), the classes' intervals from `[heroes.offer_intervals]` (3 and 3 for the eight classes
 the executable lists, 6 and 4 for the others).
 
 **Profiles** (`[[profile]]` with `quirks = { "quirk.<context>.<name>" = true | false }`; unlisted

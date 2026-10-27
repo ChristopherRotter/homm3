@@ -210,6 +210,10 @@ pub struct HeroParams {
     pub wisdom: SkillId,
     /// The skills a level-up draws from when the class's school interval is due, in pack order.
     pub schools: Vec<SkillId>,
+    /// The most spell points a reward record leaves a hero (E08 T59, pack format v48; the
+    /// original's 999, HER-CHG-003): its mana is added and the total held between 0 and this, so
+    /// a hero above it falls to it (D-38). It bounds no other gain.
+    pub mana_ceiling: u16,
 }
 
 /// The experience of levels 1 to `max_level + 1` from the pack's first levels (E08 T26b): at
@@ -271,6 +275,7 @@ fn compile_params(
         max_level: def.max_level,
         wisdom: refs.resolve(&def.wisdom, skills, "secondary skill")?,
         schools: distinct(refs, &def.schools, skills, "secondary skill")?,
+        mana_ceiling: def.mana_ceiling,
     })
 }
 
@@ -783,6 +788,7 @@ impl CanonicalHash for HeroContent {
             h.write_u8(p.max_level);
             p.wisdom.hash_into(h);
             p.schools.hash_into(h);
+            h.write_u16(p.mana_ceiling);
         }
     }
 }
