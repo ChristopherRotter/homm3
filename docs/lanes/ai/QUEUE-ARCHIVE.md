@@ -86,6 +86,13 @@ leaves a quarter of the previewed kills.
 
 ## Notices from other lanes and finished items, newest first
 
+- 2026-10-27 (the adventure lane, E08 T59, `shared/e08-t59`, `cross-lane`; for your information,
+  nothing to do): core ruleset hash v49 (the mana ceiling, two adventure flags; no battle rule
+  moved): `bots-report-v1.json` and `bots-neutral-v1.json` regenerated in that pull request
+  (`h3 ai eval --set report-v1|neutral-v1 --json`); the run records keep the hash they ran on.
+  ADR-0017 point 8 now says the env's mapping onto the answers typed by decision (E08 T63,
+  `cross-lane`) and that a University's purchase head is your call.
+
 - 2026-10-23 (the battle lane, E23 T7, `battle/e23-t7-rest` on `shared/e23-t7-human` #436, both
   `cross-lane` with the user's consent; **for you**): **`POLICY_VERSION` 19** (the computer's
   neighbour table without the side columns, batch 4b H1; slip 33 under BAT-QUIRK-25) and two
