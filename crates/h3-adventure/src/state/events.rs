@@ -37,9 +37,9 @@ impl AdventureState {
     /// original's `event_fires_for` 0x4FCDC0, tested at 0x4811A3): the event on the tile
     /// ([`Self::event_at`]) whose colours hold the player's seat's colour, for a player that does
     /// not count as human only with its computer flag. On a tile a monster guards none fires
-    /// until T63 (`ADV-STUB-10`): the original lets the guard visit first and fires the event
+    /// until T63b (`ADV-STUB-10`): the original lets the guard visit first and fires the event
     /// after it (0x48169D, 0x481741), for a hero still on its tile only (A-26 fixed,
-    /// `ADV-QUIRK-29`); the wait across the guard's decisions is T63's rest (GAM-DEC-007).
+    /// `ADV-QUIRK-29`); the wait across the guard's decisions is T63b's rest (GAM-DEC-007).
     // rule: ADV-OBJ-007
     pub(crate) fn firing_event(
         &self,
@@ -55,7 +55,7 @@ impl AdventureState {
                     u16::from(event.colours) & colour != 0 && (seat.human || event.computer)
                 })
             })
-            // stub: ADV-STUB-10 (an event on a guarded tile fires after the guard's visit, T63)
+            // stub: ADV-STUB-10 (an event on a guarded tile fires after the guard's visit, T63b)
             .filter(|_| self.guard_at(part, pos).is_none())
     }
 
@@ -110,7 +110,7 @@ impl AdventureState {
     /// The end of the battle `hero` fought at `tile` against the guards of the event lying there
     /// ([`Self::event_at`]; ADV-OBJ-007, the original's `event_fire` after its battle): lost, the
     /// guards' `survivors`, by slot, stay as its guards (none after a draw); won, its guards are
-    /// gone for good and its reward record follows ([`Self::give_event`]; until T63 before the
+    /// gone for good and its reward record follows ([`Self::give_event`]; until T63b before the
     /// winner's levels, `ADV-STUB-10`). Nothing when no event with guards lies at `tile`.
     // rule: ADV-OBJ-007
     pub(super) fn end_event_battle<S: Sink>(

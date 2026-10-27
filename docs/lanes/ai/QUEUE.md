@@ -17,24 +17,25 @@ origin stays in brackets. Moved to `QUEUE-ARCHIVE.md` as done or informational: 
 E08 T45, T51b, T52, T58 (folded into T55b's below), E23 T4c and T6's last part, the battle
 lane's turret preview (its open point below), the baselines and AI-Q7.
 
-**The adventure env** (yours since E08 T45; when the adventure lane's T63 lands):
+**The adventure env** (yours since E08 T45):
 
-- 2026-10-26 (the adventure lane, E08 T55b, `adventure/e08-t55b`; decisions 138–141; **for you,
-  when the adventure lane's T63 lands**): **answers typed by decision.** `h3_game::Answer` becomes
-  an enum by decision kind, each variant with its own type: `Offer(Consent)` (`Accept`,
-  `Decline`: every yes-or-no offer), `LevelUp(SkillOffer)` (`First`, `Second`), `Close` (a
-  meeting, an army dialog; today's `Decline` there), and increment 7's `Chest` (`Gold`,
-  `Experience`), `Arena` (`Attack`, `Defense`), `School` (`First`, `Second`, `Leave`) and
-  `University` (`Buy(slot)`, `Leave`). T63 migrates every caller, `h3-sim`'s
-  `src/adventure/action.rs` mapping of your entries included (`cross-lane`, the user's consent):
-  accept and decline onto `Offer` or `Close` by the open decision, the first and second entries
-  onto `LevelUp` and the new two-way choices. Yours to decide after it: whether a University's
-  purchase gets a head (until then the masks allow its `Leave`), and whether the new decisions'
-  views enter the observation. Your masks must allow at least one answer per decision (the system
-  actor's defaults: `Gold`, `Attack`, `Leave`, `Decline`, `Close`). **A-23 withdrawn** (E08 T58, 2026-10-27: an event's tile is no stop for the
-  original's pathfinder, so `legal_moves` never reads events and your tile masks reveal nothing
-  of them; survey `docs/rules/surveys/E08-rewards.md` §15). Design: `docs/epics/E08-design.md`
-  §12, §14, §16; ADR-0017's draft point 6, 8.
+- 2026-10-27 (the adventure lane, E08 T63a, `adventure/e08-t63a`, `cross-lane` with the user's
+  consent; decision 153; **for you**): **the answers are typed and your action mapping moved with
+  them (encoding v5).** `h3_game::Answer` is an enum by decision kind: `Offer(Consent)`
+  (`Accept`, `Decline`), `LevelUp(SkillOffer)`, `Close` (a meeting, an army dialog), `Chest`
+  (`Gold`, `Experience`), `Arena` (`Attack`, `Defense`), `School` (`First`, `Second`, `Leave`),
+  `University` (`Buy(slot)`, `Leave`). `src/adventure/action.rs` maps answers onto entries by role
+  (`answer_entry`): 9 an offer's acceptance; 10 a declined offer, a closed meeting or army dialog,
+  a School or University left; 11 and 12 the first and second of a level-up's, a chest's, the
+  Arena's and a School's answers; **13 to 16 (new) a University's purchase of slot 0 to 3**
+  (`BUY_BASE`, `UNIVERSITY_SLOTS`; the user chose the entries now). `decode` takes the listed
+  answer of the entry's role, else the offer's or level-up's answer or the purchase, which the game
+  rejects; the masks come from `legal_commands` as before, so every decision has a legal entry.
+  The new decisions' views (`DecisionView::Choice`, `DecisionView::University { visit, slots }`)
+  are in the observation; whether your encoding reads them is yours (this replaces T55b's notice
+  of 2026-10-26). The rollout's legal-command order keeps the old games' draws: the twelve golden
+  replays recorded the same commands. **A-23 withdrawn** (E08 T58: `legal_moves` never reads events). Design:
+  `docs/epics/E08-design.md` §14, §16; ADR-0017 points 6, 8.
 
 **For E25** (Battle AI v2, BACKLOG; E06's leftovers, T9a; nothing runs before E25 is refined):
 

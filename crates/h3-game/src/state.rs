@@ -84,7 +84,7 @@ enum Decision {
         offered: OfferLevels,
     },
     /// A meeting of two heroes of one player (GAM-DEC-003, E08 T51b), closed by its owner's
-    /// `Decline`.
+    /// `Close`.
     Meeting {
         /// The heroes' owner, who closes it.
         owner: PlayerId,
@@ -93,7 +93,7 @@ enum Decision {
     },
     /// An army dialog (GAM-DEC-004, E08 T51b): the group of an accepted join its hero's army had
     /// no room for, held as a small army without a hero (the original's local army) until its
-    /// owner's `Decline`, which loses what is left in it.
+    /// owner's `Close`, which loses what is left in it.
     ArmyDialog {
         /// The hero's owner, who closes it.
         owner: PlayerId,
@@ -915,7 +915,7 @@ impl GameState {
 
     /// The two heroes of `player`'s first open decision, if it is a meeting (GAM-DEC-003, E08
     /// T51b): the visitor, then the visited hero. While it is open the player manages both
-    /// (GAM-MAN-001) and closes it with `Decline`.
+    /// (GAM-MAN-001) and closes it with `Close`.
     pub fn meeting(&self, player: PlayerId) -> Option<[HeroId; 2]> {
         match self.first_decision(player)? {
             Decision::Meeting { heroes, .. } => Some(*heroes),
@@ -925,7 +925,7 @@ impl GameState {
 
     /// The hero and the group of `player`'s first open decision, if it is an army dialog
     /// (GAM-DEC-004, E08 T51b): the group's stacks by slot. While it is open the player manages
-    /// the hero and the group (GAM-MAN-001) and closes it with `Decline`, losing the group's rest.
+    /// the hero and the group (GAM-MAN-001) and closes it with `Close`, losing the group's rest.
     pub fn army_dialog(&self, player: PlayerId) -> Option<(HeroId, &[ArmyStack])> {
         match self.first_decision(player)? {
             Decision::ArmyDialog { hero, group, .. } => Some((*hero, group)),
