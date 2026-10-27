@@ -149,11 +149,11 @@ the stacks created mid-battle.
   and the batch growing with it; `play`'s output byte for byte as fought at once.
 - **T2, hot seat: the player's commands** (cut in two by the user, 2026-10-27; the Faerie
   Dragon's cast moved to T3, its key entering the hero's aim):
-  - **T2a, the click's command:** a click does what the cursor shows (a walk, an attack from the
-    cursor's side, a shot, a heal, the Catapult's target), Wait and Defend and their keys (the
-    window's, until E24 M3 T0's common key table: QUEUE's inbox), in the library; when the
-    original takes input (read). CLT-Q24's answer built: the hovered item forgotten over the
-    battlefield in the client's profile.
+  - **T2a, the click's command** (done 2026-10-27): `mouse::click` and `button` (a walk, a
+    strike from the slot's from-hex, a shot, a heal, a wall shot, Wait and Defend), read (design
+    §9.11: the input queue emptied at every turn's start); CLT-Q24's switch; scripted presses
+    over every scenario's turns give the engine's legal commands but a two-hex stack's step one
+    hex back (CLT-Q25: the original's copied).
   - **T2b, hot seat in the window:** each seat a human or the Greedy bot; the human's command
     through the in-process session, the window waiting at the timeline's end.
 - **T3, the spell book and the hero's aim:** the book (`spell_book_dialog` 0x59BDF0, read at M3

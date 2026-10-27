@@ -18,30 +18,19 @@ check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gat
 `clients/`. An asset fix gets its mechanism (ADR-0020 point 6: the entry's flag, the
 `faithful`/`fixed` profile) with the first one a task finds.
 
-### E17 M5 T2a — the click's command
-
-T2 cut in two by the user (2026-10-27): T2a the library's, T2b the window's; the Faerie Dragon's
-cast moved to T3 (its F key enters the hero's aim, 0x59EC50 from `battle_buttons` 0x475CD8).
-
-- **Scope:** the command a left click gives where the cursor shows it (`h3_view::mouse`, the
-  kinds of `pointer::legal`): a walk, a flight, an attack from the cursor's side (the from-hex
-  `cursor_attack_slots` 0x474690 takes for the slot, `cursor_attack_from_hex` 0x474A00), a shot,
-  a heal, the Catapult's wall target; the panel's Wait and Defend by their buttons and keys (the
-  layout's, until E24 M3 T0's common key table: the inbox). Read: `battle_buttons`' click branch
-  (what a click on the field does by the cursor's kind, on the button's down or up) and when the
-  battle takes a click (during an action, a computer's turn: queued or dropped; the key that
-  acts at a cast's end, M3 T7b-1). CLT-Q24's answer: the tracker forgets the hovered item over
-  the battlefield in the client's profile, `Bugs::Original` keeping the original's.
-- **Acceptance:** scripted clicks over every scenario's turns give exactly the engine's legal
-  list (every walk, strike, shot, heal and wall shot reached, no click an illegal command); the
-  recorded sequences and frames unchanged (the comparisons' profile); the Definition of Done.
-- **Depends on:** T1b (done 2026-10-27). **Status:** ready.
-
 ### E17 M5 T2b — hot seat in the window
 
-- **Scope:** each seat a human or the Greedy bot (a flag); a human's command (T2a's) through
-  `crate::live` (both seats held there; the bot's now), the engine validating it as a server's;
-  the window's input closed while the battle does not take it (T2a's reading). A human's command
+T2 cut in two by the user (2026-10-27): T2a the library's (done 2026-10-27), T2b the window's;
+the Faerie Dragon's cast moved to T3 (its F key enters the hero's aim, 0x59EC50 from
+`battle_buttons` 0x475CD8).
+
+- **Scope:** each seat a human or the Greedy bot (a flag); a human's command through
+  `crate::live` (both seats held there; the bot's now), the engine validating it as a server's:
+  a left press over the battlefield gives `h3_view::mouse::click`'s command (on the button's
+  down, by the field the tracker's turn asks), Wait and Defend `mouse::button`'s when their
+  button is clicked or their hotkey released (the layout's keys, until E24 M3 T0's common key
+  table: the inbox); the window's input dropped while the battle does not take it (design
+  §9.11: every stack's turn start empties the queue; a hero's cast keeps it). A human's command
   arrives after the timeline's end, so the window shows the tail while it waits: what the last
   command left to the next redraw (`anim::Growing`) shows with the first idle step after the end
   (the timeline grown with the command's time, `Command::at`, gives the same), and a playhead
@@ -49,7 +38,7 @@ cast moved to T3 (its F key enters the hero's aim, 0x59EC50 from `battle_buttons
   panel's colours, runbook "A siege").
 - **Acceptance:** a scenario's battle played to its end by clicks in hot seat and against the
   bot; the recorded sequences and frames unchanged; `window --check`; the Definition of Done.
-- **Depends on:** T2a. **Status:** ready after T2a.
+- **Depends on:** T2a (done 2026-10-27). **Status:** ready.
 
 ### E17 M5 T3 — the spell book and the hero's aim
 
