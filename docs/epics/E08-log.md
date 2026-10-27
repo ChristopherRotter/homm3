@@ -6317,3 +6317,22 @@ no re-run (the other colour rests on the code, which tests none).
   to T63 write them (§15 lists them).
 - **For T59:** the drafts carry A-23's outcome (ADR-0016 point 4: `Reach` never reads events); the
   mana ceiling and A-21's flag as design §17.
+
+### Increment 7, round 2: T58b, `h3-map`'s view property's random failure; A-25 (2026-10-27, `adventure/e08-t58b`)
+
+Decision 144 (next after T58, the user: "You can fix the random test failure now"), in the same
+session after #494 merged (2969de0). **The failure** (the queue's inbox, T57's scoped verify):
+`views_move_as_the_events_say` with the seed `cc debe5cd4…` reproduced at once. In `strict-fixed`,
+player 3's end of turn started day 2; the new day's reveal (E08 T40, `ADV-QUIRK-18` off: each hero
+reveals around it to its owner) widened player 2's hero's radius, grown to 8 by an Expert Scouting
+taken since its last step, onto (6, 2), which went from the fringe to seen, with player 1's hero
+standing on it. No event names a hero shown by a reveal, as for one the viewer's own move reveals.
+**Not a leak** (the tile is explored, ADV-FOG-004), **the oracle's gap**: `check_told` let the
+planes grow at a new day (T40) but let a hero show without a step only after the viewer's own
+command. Now `own || after.day != before.day`, with the tile's not-seen-before test as it was;
+the seed committed with a comment. `PROPTEST_CASES=1000` of the property passed.
+
+**A-25** (ADV-Q30, decision 145; the user on T58's report: "sounds like a bug to me"): a full
+backpack tested before a free position is a quirk with a flag, `faithful` the original's,
+`strict-fixed` the placement first; survey `E08-rewards.md` §15, design §17 (`ADV-QUIRK-22`, flag
+38 if free), T59's queue entry.

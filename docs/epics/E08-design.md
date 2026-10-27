@@ -368,7 +368,7 @@ through `split` with the first creature's count, n less the second creature's st
 
 | Version | Change | Task |
 |---|---|---|
-| core ruleset hash, pack format (next: v49, v48) | the mana ceiling; A-21's flag (A-23 withdrawn, T58) | T59 |
+| core ruleset hash, pack format (next: v49, v48) | the mana ceiling; A-21's and A-25's flags (A-23 withdrawn, T58) | T59 |
 | details' hash, game state hash | the battle bonuses | T60 |
 | adventure ruleset part v12 | the kinds | T61 |
 | map import v12 | the classes, bodies, records, bans, the monster's artifact | T61 |
@@ -378,8 +378,10 @@ through `split` with the first creature's count, n less the second creature's st
 
 Ids beyond survey §12: **GAM-SET-003** (the scenario's spell and artifact bans as setup inputs),
 **GAM-DEC-007** (the rest), **GAM-BAT-014** (the bonuses cleared at a battle's end). Quirks:
-A-21 → `ADV-QUIRK-21` (flag 37 if no other lane takes it first); A-23 withdrawn (T58: no quirk,
-no flag); A-17 to A-20, A-22 and A-24 recorded in the ledger as not reproduced or fixed
+A-21 → `ADV-QUIRK-21` (flag 37 if no other lane takes it first); A-25 (a full backpack tested
+before a free position, decision 145) → `ADV-QUIRK-22` (flag 38 if free): `faithful` the count
+test, `strict-fixed` the placement first (survey §15); A-23 withdrawn (T58: no quirk, no flag);
+A-17 to A-20, A-22 and A-24 recorded in the ledger as not reproduced or fixed
 (no flags).
 
 ### 18. Batch E7
@@ -421,7 +423,7 @@ increment 6 the shared task came first; here the batch decides an ADR clause, A-
 |---|---|---|
 | 1 | **T56** | Batch E7's maps: the writer's bodies and the RoE format (§18), the spec's fields (`cross-lane`), the two specs and templates. Likely cut in two at its start (the writer; the spec) |
 | 2 | **T57** + **T58** | T57: the harness's reads and clicks, the recipes, the runs E7a and E7b (as T47: cut at its start). T58: scored (survey §15); A-23 settled (decision 131); an `ADV-Q` if a row contradicts the reading |
-| 3 | **T59** | `shared/`: the three ADRs amended (with T58's outcome: A-23 withdrawn, events blind to `Reach`), the mana ceiling, A-21's flag, the glossary |
+| 3 | **T59** | `shared/`: the three ADRs amended (with T58's outcome: A-23 withdrawn, events blind to `Reach`), the mana ceiling, A-21's and A-25's flags, the glossary |
 | 4 | **T60** | `h3-heroes`: part A (§1–§6): the bonuses, the changes, `grant`, the teachers' functions; the details' hash |
 | 5 | **T61** | `h3-map` and `h3-adventure`: the import (§7), the kinds (§8), the draws (§9), the state (§10); map import v12, ruleset part v12, adventure state hash v13. Likely cut in two (the import and kinds; the draws and state) |
 | 6 | **T62** | `h3-adventure`: the visits (§11), events and the move (§12), information (§13). Likely cut in two (pickups, teachers, finds; boxes, events, the Pyramid) |
@@ -448,8 +450,8 @@ increment 6 the shared task came first; here the batch decides an ADR clause, A-
 6. Contents and draws stay hidden until a visit; the visitor's owner keeps what it learned; events
    are never observed and blind to `Reach` (A-23 withdrawn by batch E7; ADV-VIS-006, ADV-FOG-007, ADV-MOV-011); a map with
    a box on every tile builds, plays and forks (decision 133).
-7. Every new rule has its id, source and tests; A-21 in the ledger with its flag (A-23
-   withdrawn, T58), A-17 to A-20, A-22, A-24 recorded; the gates pass (coverage, determinism with the
+7. Every new rule has its id, source and tests; A-21 and A-25 in the ledger with their flags
+   (A-23 withdrawn, T58), A-17 to A-20, A-22, A-24 recorded; the gates pass (coverage, determinism with the
    re-recorded and new replays, the benchmarks at their baselines and the new ones baselined); the
    env plays on through every new decision.
 8. Batch E7 run and scored; D-29 to D-31, D-33, D-34, D-36 to D-40 and the consensus rows

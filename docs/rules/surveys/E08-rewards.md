@@ -1347,7 +1347,8 @@ corridor run would only confirm it.
 
 **What else the rows show:**
 
-- **A full backpack is tested before the placement** (§2.2, §5, §6.9, §7.4 as read): E7-6's and
+- **A full backpack is tested before the placement** (§2.2, §5, §6.9, §7.4 as read; **A-25**, a
+  quirk with a flag, decision 145, below): E7-6's and
   E7-19's heroes wore nothing but the Catapult, E7-5's and E7-10's no artifact (their specs), and
   every artifact was lost or turned into gold or resources, not worn in a free right hand: the count
   (≥ 64) decides.
@@ -1362,6 +1363,15 @@ corridor run would only confirm it.
   recorded game by the results' words (T57's log entry says 7). Within chance of 40 %.
 - **The version field:** game +0x1F698 read 2 (SoD) on the RoE map (E7-7): it is not the map's
   format (T57).
+
+**A-25** (T58b, after the user's "sounds like a bug to me"; ADV-Q30, decision 145): the visits
+test the backpack's count (≥ 64) before `hero_give_artifact` places anything (a chest's artifact,
+a Corpse's, a Wagon's, a Tomb's, a box's or an event's, a monster's treasure), so a free body
+position never takes the artifact. Reachable on any map, only with a full backpack. **A quirk with
+a flag:** `faithful` the original's count test; `strict-fixed` the placement first (HER-CHG-002: a
+free position that takes it, else the backpack), and only an artifact that finds no room is lost
+or turned into the gold or resources the original gives. The flag in T59's shared part, beside
+A-21's (design §17).
 
 **The rules** (§12): the rows become the observations of the rules T60 to T63 write, `verified`
 where the row matches: ADV-PIK-005 (E7-4, E7-5), -006 and -008 (E7-2), -007 (E7-1), -009 to -011
