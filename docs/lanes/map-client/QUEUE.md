@@ -27,19 +27,18 @@ chose it over a cut).
 
 T6, M2's closure, cut at its seam before it started (the user, 2026-10-27): T6a, the reviewers
 and their fixes (done 2026-10-27: 24 of 29 fixed; `E24-log.md`), its five music findings cut out
-as T6a2 (the user; done 2026-10-27, whole), then T6b, the closure.
+as T6a2 (the user; done 2026-10-27, whole), then T6b, the closure, cut at its seam before it
+started (the user, 2026-10-27): T6b1, the recordings again and R2-8 (done 2026-10-27: every
+sequence and still exact; R2-8 as #523), then T6b2, the user's.
 
-### E24 M2 T6b — M2's closure
+### E24 M2 T6b2 — M2's closure with the user
 
-- **Scope:** M2's exit (the epic) checked on `master` after T6a's and T6a2's fixes: the 13
-  sequences recorded again (T6a's harness changes run for the first time), every line and frame;
-  the window's T6a fixes by hand on the user's machine (Alt+Tab with the pointer at an edge,
-  fullscreen's bars, F7 in a situation) and T6a2's music by ear; M1's R2-8 (the writer's
-  edge bound) as its one-line `cross-lane` pull request if no task took it (the inbox); the review list to the user; M2's
-  section moved to `E24-archive.md`; M3 T0 queued (the common crate proposed to the client lane
-  first: the epic's M2 decision).
+- **Scope:** the window's T6a fixes by hand on the user's machine (Alt+Tab with the pointer at
+  an edge, fullscreen's bars, F7 in a situation) and T6a2's music by ear; the review list to the
+  user; M2's section moved to `E24-archive.md`; M3 T0 queued (the common crate proposed to the
+  client lane first: the epic's M2 decision).
 - **Acceptance:** the review list accepted by the user; the Definition of Done.
-- **Depends on:** T6a2. **Status:** ready once T6a2 merged.
+- **Depends on:** T6b1. **Status:** ready once T6b1's pull request merged; the user at the machine.
 
 ## Inbox
 
@@ -72,12 +71,6 @@ while the work waits.
   `dialog_pictures`, `open_tiles`, `map_kind`, a hero's spell points, bonuses and status flags, a
   stack's army slot; `h3adv`'s `each`/`select` grids, list records and `+` fields, `once`,
   `days`, `near` and `[[require]]`. The harness check gained Win's chest and Warrior's Tomb.
-
-- 2026-10-24 (this lane, E24 M1 T6b's reviewer, R2-8; with the next writer pull request): the
-  writer's edge bound for an object (`crates/h3-map/src/writer/extras.rs` `PAST_RIGHT`, `PAST_BOTTOM`, its test
-  at 799) lets an anchor lie 7 past the map's side, where an 8-wide template covers no cell on
-  the map: one too generous, its comment off by one (6 and 4, or the comment). The adventure
-  lane's crate: a `cross-lane` change, so it waits for the next addition the situations need.
 
 - 2026-10-23 (the client lane, E17 M3 T9c, at the split): moved here from the client lane's
   inbox, the adventure lane's entry of 2026-10-21 (E08 T30, decision 65, ADR-0017 point 6 amended
