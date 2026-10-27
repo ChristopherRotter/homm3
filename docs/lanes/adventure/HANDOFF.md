@@ -19,6 +19,10 @@ Moved to `TRAPS.md`: forks without deep copies, RNG seeds server-only, template 
 
 ## Recent sessions
 
+### 2026-10-27 — increment 7, round 6: T62a, the pickups, the teachers and the finds
+
+Baseline 54b9264 (#511 merged, CI green; the sandbox's light gates passed; the original data staged from the user's computer). The user's cut (decision 150): T62 in two, T62a the pickups, teachers and finds; `h3-game` applies the simple parts now (hero changes, experience), the new choices answered by their defaults until T63 (a stub). **In progress** (`adventure/e08-t62a`): the decision recorded; next the outcome's new parts and the visits in `h3-adventure`.
+
 ### 2026-10-27 — increment 7, round 5: T61b, the bans, the draws and the state
 
 Baseline c94a5ab (#507 merged, CI green; the sandbox's light gates passed; the original data staged from the user's computer). The census first: nothing broke, 8 maps import whole. The user's cut: whole (decision 149); `cross-lane` (consented): the bans' two default lines in the AI lane's `census.rs`. `h3-game`/`h3-map`: GAM-SET-003 (map import v13; the SoD editor's default artifact bans 141 to 143 ban nothing). `h3-adventure`: `state/draws.rs` (`Resolved`, twelve rules), `persistent::Table` for the army left, `state/visits.rs` (`Visits`, none until T62), adventure state hash v14; `ADV-QUIRK-23` to `-26`; the twelve replays re-recorded. The scoped verify with the original data passed but `check-lane` (the label). Pull request: see "Current state".
@@ -26,7 +30,3 @@ Baseline c94a5ab (#507 merged, CI green; the sandbox's light gates passed; the o
 ### 2026-10-27 — increment 7, round 5: T61a, the import and the kinds
 
 Baseline 94a5039 (#504 merged, CI green; the sandbox's light gates passed). The user's cut: T61 in two as designed (decision 148). `h3-adventure`: `ruleset/rewards.rs` and twelve kinds (ruleset part v12), `Holds`/`RewardRecord`/`EventSetup` on the setup, `state/holds.rs` (`SetupError::Holds`), guards on more kinds, `Monster::artifact` (state hash v13); `h3-map`: the 31 classes and their bodies (import v12, A-24); `h3_heroes::validate_artifact`; the twelve replays re-recorded; the AI lane's inbox (the census's guarded piles); `cross-lane` (consented): three default lines in the AI lane's `h3-sim` adventure tests. Not run: `--with-original-data` (the user's computer was not reachable); the bans moved to T61b.
-
-### 2026-10-27 — increment 7, round 4: T60b, `grant` and the teachers
-
-Baseline c637652 (#500 merged as 40151d3, CI green on it; the sandbox's light gates passed). T60b whole (decision 147; no split needed). `h3-heroes`: `reward.rs` (`grant`, `HeroReward`, `Granted`, `can_receive_artifact` under flag 38), `teach.rs` (the teachers, `SlotState`, `ScholarGift`), `can_learn_spell` beside `learns_spell` (which delegates; `h3-game` untouched); HER-CHG-003, HER-CHG-004 (new id); `ADV-QUIRK-22`'s test in both profiles; T61 queued.
