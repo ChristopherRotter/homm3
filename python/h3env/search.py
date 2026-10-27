@@ -9,12 +9,16 @@ spell drawn again, the stream re-seeded) and runs N simulations over them. The t
 keyed by action histories, each simulation takes a world (round robin), forks it with a fresh
 stream from the agent's own and replays its path; a node keeps its first evaluation's prior and
 selects among the actions legal in the simulation's world. Inside the tree the network plays both
-sides, each from its own observation of the world. Values are the side to move's: reward v1 at a
-terminal, the value head at a leaf.
+sides, each from its own observation of the world. Values are the side to move's: the value head
+at a leaf, and at a terminal the world's step reward, ±1 by the winner (a single env's; not
+reward v1, the value head's scale: E06 T9b found it, a fix needs the single env's reward v1 and
+is E25's).
 
-The root takes the Gumbel-top-k of the legal entries (a cast's heads by their Gumbel-perturbed
-argmax in order) and sequential halving over them; a node below it every entry legal at its first
-evaluation (a cast's heads the network's most likely there). Every env the agent moves is
+The root takes the Gumbel-top-k of the legal entries and sequential halving over them; a node
+below it every entry legal at its first evaluation; a cast's heads, at the root as below, are the
+network's most likely in order (one spell and target per cast entry: the design's Gumbel-perturbed
+heads at the root were not built, E06 T9b). Neither takes an escape (the batch's masks, ADR-0025
+point 7). Every env the agent moves is
 searched at once: a simulation round evaluates one leaf per env in one network call. A chosen
 action the true battle refuses (a cast whose target the world's guess made legal) gives way to
 the network's own most likely action.
@@ -38,6 +42,9 @@ from ._ffi import H3Error
 from .batch import BattleBatch
 from .tools import Env
 from .train.policy import CASTS, Policy, masked
+
+#: The entries the batch masks out (ADR-0025 point 7), which a world's own mask keeps.
+ESCAPES = [_ffi.RETREAT, _ffi.SURRENDER]
 
 #: The completed-Q transform's constants (the paper's `c_visit`, `c_scale`).
 C_VISIT = 50.0
@@ -303,6 +310,9 @@ class Searcher:
         policy = self.policy
         obs = np.stack([leaf.world.observe(leaf.side) for leaf in leaves])
         masks = np.stack([leaf.world.legal_mask(leaf.side) for leaf in leaves])
+        # A world is a single env, whose mask keeps the escapes the batch never allows
+        # (ADR-0025 point 7): no side retreats or surrenders in the tree either (E06 T9b).
+        masks[:, ESCAPES] = 0
         h = policy.encode(torch.from_numpy(obs).to(self.device))
         values = policy.value(h).cpu().numpy().astype(np.float64)
         legal = torch.from_numpy(masks).to(self.device).bool()

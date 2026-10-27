@@ -844,7 +844,14 @@ fn a_world_through_the_abi_is_the_rust_batchs() {
         );
         unsafe { crate::h3_env_destroy(world) };
     }
-    for (batch, env, viewer) in [(b, n, 0), (b, 0, 2), (std::ptr::null_mut(), 0, 0)] {
+    // The side not to move gets no world: it would hold that side's own hero as it is (T9b).
+    let other = 1 - i32::from(arrays.to_move[0]);
+    for (batch, env, viewer) in [
+        (b, n, 0),
+        (b, 0, 2),
+        (b, 0, other),
+        (std::ptr::null_mut(), 0, 0),
+    ] {
         assert!(unsafe { h3_batch_determinize(batch, env, viewer, 5) }.is_null());
     }
     assert_eq!(
