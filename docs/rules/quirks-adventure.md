@@ -246,3 +246,29 @@ A candidate becomes an entry here only once it is confirmed for SoD (by an exper
 - Defaults: faithful = the original's, strict-fixed = the original's
 - Regression test: `crates/h3-adventure/src/army/tests.rs`, `a_split_leaves_both_stacks_within_one_and_the_most`
 - Decided by / date: the user 2026-10-23 (ADV-Q24; decision 98); confirmed by batch E6's E6-4 (T48); built by E08 T50
+
+### ADV-QUIRK-21 — An RoE map's Witch Hut teaches only 14 skills
+- Class: fix-optional (the user, 2026-10-26, ADV-Q28, A-21; the epic's decision 130)
+- Context / rules affected: adventure, the Witch Hut's skill drawn at the build (ADV-TCH-, E08 design §8, §9; E08 T61)
+- Original behavior: an RoE map's file holds no Witch Hut mask, and the load (0x5034BD) gives every such hut the fixed mask 0xEFBF, the editor's default (every skill but Leadership and Necromancy, 0x0FFFEFBF) cut to 16 bits: the skills 0 to 15 but Leadership and Necromancy, so an RoE hut never teaches Water Magic, Earth Magic, Scholar, Tactics, Artillery, Learning, Offense, Armorer, Intelligence, Sorcery, Resistance or First Aid (survey `E08-rewards.md` §9, D-33).
+- Intended/expected behavior: every skill but Leadership and Necromancy, the editor's default and VCMI's 26.
+- Impact: gameplay: 191 huts on the shipped RoE maps draw from 14 skills instead of 26.
+- Community status: not documented (the wiki names the editor's default; RoE not addressed); VCMI uses the default.
+- Sources: code reading (E08 T55a2, the second reading T55a4; survey §9, §13); batch E7's E7-7 (`experiments/results/E08-batch-7a-roe.md`: the fixed mask on an RoE map; survey §15, T58).
+- Flag: `quirk.adventure.roe_witch_hut_mask` (registry position 37, E08 T59)
+- Defaults: faithful = on (the mask 0xEFBF), strict-fixed = off (every skill but Leadership and Necromancy)
+- Regression test: with the build's draws (E08 T61)
+- Decided by / date: the user 2026-10-26 (ADV-Q28; decision 130); confirmed by batch E7's E7-7 (T58); the flag added by E08 T59
+
+### ADV-QUIRK-22 — A full backpack refuses an artifact whatever the free positions
+- Class: fix-optional (the user, 2026-10-27, ADV-Q30, A-25: "sounds like a bug to me"; the epic's decision 145)
+- Context / rules affected: `h3-heroes`' receiving an artifact (ADR-0013 point 15.4, HER-CHG-002, HER-CHG-003; E08 T60) and the adventure's visits that give one (a chest, a Corpse, a Wagon, a Tomb, a box, an event, a monster's treasure; ADR-0016 point 4; E08 T62)
+- Original behavior: the visits test the backpack's count (64 or more) before `hero_give_artifact` places anything, so a hero with a full backpack receives no artifact even with a free body position: the artifact is lost, or turned into a chest's gold, a Corpse's gold or a Wagon's resources, or left in a Tomb (survey `E08-rewards.md` §2.2, §5, §6.9, §7.4, §8.2).
+- Intended/expected behavior: the artifact goes to the first position that takes it, else the backpack (HER-CHG-002); only an artifact that finds no room is lost or turned into gold or resources.
+- Impact: gameplay, rare: only a hero carrying 64 artifacts.
+- Community status: not documented.
+- Sources: code reading (E08 T55a1 to T55a4, survey §2.2, §5, §6.9, §7.4); batch E7's E7-5, E7-6, E7-10 and E7-19 (`experiments/results/E08-batch-7a.md`, `-7b.md`: heroes with free positions and a full backpack lost or converted every artifact; survey §15, T58).
+- Flag: `quirk.adventure.full_backpack_refuses` (registry position 38, E08 T59)
+- Defaults: faithful = on (the count first), strict-fixed = off (the placement first)
+- Regression test: with `h3-heroes`' rewards (E08 T60) and the visits (E08 T62)
+- Decided by / date: the user 2026-10-27 (ADV-Q30; decision 145); the flag added by E08 T59

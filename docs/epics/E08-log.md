@@ -6336,3 +6336,54 @@ the seed committed with a comment. `PROPTEST_CASES=1000` of the property passed.
 backpack tested before a free position is a quirk with a flag, `faithful` the original's,
 `strict-fixed` the placement first; survey `E08-rewards.md` §15, design §17 (`ADV-QUIRK-22`, flag
 38 if free), T59's queue entry.
+
+### Increment 7, round 3: T59, increment 7's shared part (2026-10-27, `shared/e08-t59`, `cross-lane`)
+
+**The cut** (decision 146; asked at the start, `AskUserQuestion`): T59 whole, one `shared/` pull
+request, as T45; not chosen: the docs half or the code half alone (a session's shared changes go
+in one pull request, so a split takes two sessions). **Baseline:** `master` 18f3cb1 (#496
+merged; CI green on it; the sandbox's light gates passed, the code verified by CI). The user's PC
+was linked: the original data staged from the repository's `original-data` (the executable, both
+LODs, `maps.tar`, `extracted.tar`).
+
+- **The ADRs** (the three accepted drafts applied, then deleted with their folder): ADR-0013
+  points 1 (the battle bonuses and once-marks), 2 (four hero changes; rewards among what is
+  derived once) and 15 added (the bonuses as the hero's own effects, the reward record's hero
+  half with the mana ceiling, what a teacher may teach, receiving an artifact); ADR-0016 points 1
+  (increment 7's block: emptied, the army left, the once-per-hero marks by hero id, the players'
+  knowledge), 3, 4 (the 31 classes' kinds, events blind to the reachable-tiles query, visits'
+  refusals, the draws at the build, A-21) and 6 (knowledge, events never observed); ADR-0017
+  points 1 (the human flag, the bans), 4, 6 (answers typed by decision, pointed to from
+  increment 2's sentence), 8, 9, 10 and 11 (T54's setup facts, increment 7's guards, the bonuses
+  cleared); each ADR's consequences, alternatives and history; the index's three Read-when
+  cells. **A-25's flag written in** (decision 145 came after the drafts): ADR-0013 point 15.4 (the
+  count first with the flag on, the placement first with it off), point 15.2 and ADR-0016 point
+  4's refusals point to it. A-23's withdrawal was already in the drafts (T58).
+- **The mana ceiling**: `HeroParams::mana_ceiling` and `HeroParamsDef::mana_ceiling` (`u16`, as
+  the details' mana) in `h3-content`, hashed after the schools: **core ruleset hash v49** (the
+  golden base hash `0xc62d83f6389d8ef4`); `h3-pack`'s `[hero_params]` requires it: **pack format
+  v48** (`the_mana_ceiling_parses_and_is_required`: 999 parses, missing or 65 536 is a syntax
+  error, the harvested base holds 999); the synthetic pack 450 (above its 40 × 10 maximum, as the
+  original's 999 above 990). The harvester (battle-owned, `cross-lane`): the gap-fill's
+  `[heroes.params]` `mana_ceiling = 999` with the source `exe-mana-ceiling` (`grant_rewards`
+  0x49FA90, survey §7.4, §13, batch E7's E7-13), written into `[hero_params]`.
+- **The flags**: `quirk.adventure.roe_witch_hut_mask` (37, `ROE_WITCH_HUT_MASK`, `ADV-QUIRK-21`)
+  and `quirk.adventure.full_backpack_refuses` (38, `FULL_BACKPACK_REFUSES`, `ADV-QUIRK-22`) in
+  the registry, exported, on in the harvested `base:faithful` and off in `strict-fixed`
+  (`the_harvested_flags_of_increment_7`; the synthetic packs name no adventure flag, so both are
+  off there); the two entries in `docs/rules/quirks-adventure.md` (regression tests with T60 to
+  T62, which read them). `base` re-harvested from the staged installation: three lines changed
+  (the ceiling, the two profiles).
+- **Replays and records**: the 22 golden replays keep commands and state hashes; only
+  `ruleset_hash` in their headers moved (synthetic faithful `0xf957d87efe3a32c6`, base faithful
+  `0x026155eb7308da0f`, strict-fixed `0x242432fb9f5bf302`), each verified by `h3 verify` and
+  `h3 adventure verify`. The AI lane's `bots-report-v1.json` and `bots-neutral-v1.json`
+  regenerated (`h3 ai eval --json`, release). The run records (`t6b-1`, `t6d-1`) keep the hash
+  they ran on.
+- **Docs**: `docs/03-domain.md`'s glossary (battle bonuses and once-marks, the mana ceiling, reward
+  record, map event, once-per-hero mark, knowledge); `packs/README.md` (v48's field, the base
+  pack's 999); the design note's §1, §3, §4, §6 and §17 (what T59 built removed, A-25's flag in
+  `can_receive_artifact`, the drafts' points now the ADRs'); the epic file trimmed under its
+  35 KB aim (decisions 125–128, 137, 142, 143, the cuts of done tasks, moved verbatim to
+  `E08-archive.md`); decision 146 and the task's line; the queue (T59 out, T60 queued from design
+  §19); the battle lane's inbox and HANDOFF versions, the AI lane's inbox.

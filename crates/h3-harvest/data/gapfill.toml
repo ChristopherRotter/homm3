@@ -1731,7 +1731,10 @@ experience = [0, 1000, 2000, 3200, 4600, 6200, 8000, 10000, 12200, 14700, 17500,
 max_level = 74
 wisdom = "Wisdom"
 schools = ["Fire Magic", "Air Magic", "Water Magic", "Earth Magic"]
-sources = ["wiki-primary-skill", "vcmi-game-config", "wiki-artifact", "exe-wisdom", "wiki-wisdom", "vcmi-wisdom", "exe-experience", "wiki-experience", "exe-offers"]
+# E08 T59 (pack format v48; HER-CHG-003, D-38): a reward record's mana is added and the total held
+# between 0 and 999, so a hero above it falls to it (grant_rewards 0x49FA90; batch E7's E7-13).
+mana_ceiling = 999
+sources = ["wiki-primary-skill", "vcmi-game-config", "wiki-artifact", "exe-wisdom", "wiki-wisdom", "vcmi-wisdom", "exe-experience", "wiki-experience", "exe-offers", "exe-mana-ceiling"]
 
 # The level-up's intervals (E08 T26b, pack format v44; HER-LVL-004): the levels after which Wisdom
 # and a magic school are offered, `[wisdom, school]`. The executable lists the classes on the short
@@ -1741,6 +1744,13 @@ short = [3, 3]
 long = [6, 4]
 short_classes = ["Cleric", "Druid", "Wizard", "Heretic", "Necromancer", "Warlock", "Battle Mage", "Witch"]
 sources = ["exe-offers", "wiki-secondary-skill", "vcmi-level-up"]
+
+[[source]]
+id = "exe-mana-ceiling"
+kind = "original-data"
+ref = "Heroes3.exe code reading (E08 T55a3, the second reading T55a4; survey docs/rules/surveys/E08-rewards.md §7.4, §13; docs/exe/map.toml 0x49FA90 grant_rewards): a Pandora's Box's or an event's mana is added and the total held between 0 and 999, a sum past 999 set to 999, so a hero above it falls to it; VCMI keeps it at the hero's maximum (D-38); batch E7's E7-13 showed 100 + 500 = 600 (E08 T58, survey §15)"
+url = "docs/rules/surveys/E08-rewards.md"
+retrieved = "2026-10-26"
 
 [[source]]
 id = "exe-experience"

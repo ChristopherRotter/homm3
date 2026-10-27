@@ -421,6 +421,8 @@ pub struct HeroParams {
     pub wisdom: String,
     /// The skills drawn on the school interval, by name (E08 T26b).
     pub schools: Vec<String>,
+    /// The most spell points a reward record leaves a hero (E08 T59).
+    pub mana_ceiling: u16,
     /// Source ids.
     pub sources: Vec<String>,
 }

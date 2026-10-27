@@ -4,21 +4,18 @@ Pre-refined tasks of the adventure lane, in order, then the inbox of discovered 
 
 ## Tasks
 
-Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T51b (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 6 are closed (2026-10-12, -13, -20, -21, -23, -26; increment 6, army and hero management, by T53's audit). **Increment 7, rewards on the map**, refined with the user at T53 (ADV-Q26; decisions 121 to 123): T54 (the battle seam's facts) done; the survey and the ADR amendment drafts (T55a, T55b) done, each task's cut confirmed with the user at its start. T55a is cut in four (decision 125): all four done (survey `docs/rules/surveys/E08-rewards.md`; decisions 126 to 128 the cuts, its checkpoint ADV-Q28 decisions 129 to 136); T55b done (decision 137; its checkpoint ADV-Q29 decisions 138 to 141: the drafts accepted with typed answers, eight rounds with batch E7 first, design §19). T56 done (decision 142: whole, batch E7's maps and specs). Round 2: T57 done (decision 143: whole, the harness's reads, the recipes and the three runs), T58 done (decision 144: scored, A-23 withdrawn). T58b done (decision 144: `h3-map`'s view test's oracle; ADV-Q30, decision 145: A-25 a quirk with a flag). Round 3: T59 below. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
+Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T51b (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 6 are closed (2026-10-12, -13, -20, -21, -23, -26; increment 6, army and hero management, by T53's audit). **Increment 7, rewards on the map**, refined with the user at T53 (ADV-Q26; decisions 121 to 123): T54 (the battle seam's facts) done; the survey and the ADR amendment drafts (T55a, T55b) done, each task's cut confirmed with the user at its start. T55a is cut in four (decision 125): all four done (survey `docs/rules/surveys/E08-rewards.md`; decisions 126 to 128 the cuts, its checkpoint ADV-Q28 decisions 129 to 136); T55b done (decision 137; its checkpoint ADV-Q29 decisions 138 to 141: the drafts accepted with typed answers, eight rounds with batch E7 first, design §19). T56 done (decision 142: whole, batch E7's maps and specs). Round 2: T57 done (decision 143: whole, the harness's reads, the recipes and the three runs), T58 done (decision 144: scored, A-23 withdrawn). T58b done (decision 144: `h3-map`'s view test's oracle; ADV-Q30, decision 145: A-25 a quirk with a flag). Round 3: T59 done (decision 146: whole, `shared/e08-t59`). Round 4: T60 below. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
 
-### E08 T59 — Increment 7's shared part (`shared/`)
+### E08 T60 — `h3-heroes`: the rewards on the hero (design part A)
 
-- **Scope** (design §19, round 3; decision 139): a `shared/` pull request, merged before the
-  build: the three drafts `docs/lanes/adventure/adr-drafts/{0013,0016,0017}-increment-7.md`
-  applied to ADR-0013, -0016 and -0017 (with T58's outcome: A-23 withdrawn, `Reach` never reads
-  events), then the drafts deleted; the mana ceiling (design §1: `[hero_params]` `mana_ceiling`
-  999 in `h3-content`, `h3-pack` and the packs' `core.toml`; pack format and core ruleset hash,
-  design §17); A-21's flag (`ADV-QUIRK-21`, flag 37 if free; `faithful` 0xEFBF, `strict-fixed`
-  every skill but Leadership and Necromancy); A-25's (decision 145: `ADV-QUIRK-22`, flag 38 if
-  free; `faithful` a full backpack tested before a free position, `strict-fixed` the placement
-  first; survey §15); `docs/03-domain.md`'s terms (reward record,
-  once-per-hero mark, knowledge, battle bonuses, event).
-- **Depends on:** T58 (done). **Status:** ready; its cut confirmed with the user at its start.
+- **Scope** (design §1–§6, round 4; ADR-0013 points 1, 2, 15): `HeroDetails`' battle bonuses
+  (`BattleBonuses { morale, luck, marks }`, saturating; the details' hash and the game state
+  hash); the hero changes `GainPrimary`, `RaiseSkill`, `Bonus`, `ClearBonuses`; `grant` (the
+  reward record's hero half in the original's order, the mana held under
+  `HeroParams::mana_ceiling`); the teachers' functions (§4), `can_receive_artifact` under
+  `FULL_BACKPACK_REFUSES` (A-25, flag 38); `derive_battle_hero` folding the bonuses in (§5);
+  HER-CHG-003, HER-ADV-008, HER-CHG-001's summary.
+- **Depends on:** T59 (done). **Status:** ready; its cut confirmed with the user at its start.
 
 ## Inbox
 

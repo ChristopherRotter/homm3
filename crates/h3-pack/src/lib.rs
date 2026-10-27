@@ -359,6 +359,8 @@ struct HeroParamsDto {
     wisdom: String,
     /// Pack format v44: the skills drawn on the school interval.
     schools: Vec<String>,
+    /// Pack format v48 (E08 T59): the most spell points a reward record leaves a hero.
+    mana_ceiling: u16,
 }
 
 /// `[[artifact_slot_override]]`: changes to a slot of the closure.
@@ -1169,6 +1171,7 @@ pub fn parse_pack(text: &str) -> Result<ContentPack, PackError> {
                 max_level: p.max_level,
                 wisdom: reference(&pack_id, &p.wisdom)?,
                 schools: references(&pack_id, &p.schools)?,
+                mana_ceiling: p.mana_ceiling,
             })
         })
         .transpose()?;
