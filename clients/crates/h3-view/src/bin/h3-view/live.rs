@@ -100,6 +100,25 @@ impl<'r> Live<'r> {
         ))
     }
 
+    /// Whether the side to act's hero may cast `spell` without a target now (E17 M5 T3a: the
+    /// spell book's choice cast at once; the engine's `cast_targets`, BAT-MAG-001).
+    pub fn casts_untargeted(&self, spell: u16) -> bool {
+        let Some(side) = self.state.side_to_act() else {
+            return false;
+        };
+        let mut targets = h3_battle::CastTargets::new();
+        let id = h3_kernel::Handle::from_raw(spell);
+        h3_battle::cast_targets(&self.state, self.ruleset, side, id, &mut targets);
+        targets.iter().any(|t| *t == h3_battle::CastTarget::None)
+    }
+
+    /// The side to act's own observation (E17 M5 T3a: its hero's spell book, as its seat is sent
+    /// it), none once the battle is over.
+    pub fn own_view(&self) -> Option<Observation> {
+        let side = self.state.side_to_act()?;
+        Some(map::observe(&self.state, self.ruleset, Viewer::Side(side)))
+    }
+
     /// The spell obstacles on the battlefield, each side's own hidden ones among them (E17 M5
     /// T2b): the attacker's view, then the defender's hidden ones.
     pub fn obstacles(&self) -> Vec<SpellObstacle> {

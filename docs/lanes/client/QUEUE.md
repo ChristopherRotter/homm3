@@ -9,7 +9,7 @@ Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12, M1 2026-10-13, M2 2026-10
 the adventure map client being the map-client lane's E24). M5 (live play) refined at M4's
 closure (T3c, 2026-10-27, with the user): hot seat in-process first, then a game on a server;
 its tasks below, in order (T1 and T2 done 2026-10-27, each cut in two by the user; T2b whole,
-the user). The original
+the user; T3 cut in two, T3a done 2026-10-27). The original
 files: stage them from the user's `original-data/install/` (one large file per staging call; the
 user's computer must be online); never from the installation. The captures need the five DLLs,
 `Heroes3.snd`, `H3ab_ahd.snd` and `H3ab_ahd.vid` too; the harness's runbook:
@@ -18,21 +18,20 @@ check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gat
 `clients/`. An asset fix gets its mechanism (ADR-0020 point 6: the entry's flag, the
 `faithful`/`fixed` profile) with the first one a task finds.
 
-### E17 M5 T3 — the spell book and the hero's aim
+### E17 M5 T3b — the hero's aim
 
-- **Scope:** the spell book (`spell_book_dialog` 0x59BDF0, read at M3 T7a-2a, design §7.16: the
-  places, the tabs, the bookmark, the pages, the mastery ribbons, the costs greyed) drawn and
-  used, a spell above the hero's mana refused with its message; the aim: `enter_player_cast`
-  0x59EC50's loop read (the targets it offers, `crspell.DEF`'s cursor, the status line GENRLTXT
-  28 "Cast %s on %s" and 27, the cancel) and built; the Faerie Dragon's cast through it (its F
-  key, `battle_buttons` 0x475C17 to 0x475CD8: the drawn spell aimed as the hero's, action 10;
-  moved here from T2 by the user, 2026-10-27); `cast`'s 71 pixels (the battlefield redrawn
-  over a rock's top for the click's frame, 0x479038's path). The detail: `QUEUE-ARCHIVE.md`,
-  2026-10-21 (T7b-1). Recorded: the book's stills (a page, a tab) and an aimed cast.
-- **Acceptance:** a hero casts through the book in the window, a Faerie Dragon by its key; the
-  book's stills and the aim's
-  sequence as recorded, or each difference listed; the Definition of Done.
-- **Depends on:** T2b (done 2026-10-27). **Status:** ready.
+- **Scope:** `enter_player_cast` 0x59EC50's loop read (the targets it offers, `crspell.DEF`'s
+  cursor and its frames, the status line GENRLTXT 28 "Cast %s on %s" and 27, the cancel) and
+  built: a book's spell that takes a target aimed in the window (T3a closes the book on it and
+  casts nothing; design §7.17); the Faerie Dragon's cast through it (its F key, `battle_buttons`
+  0x475C17 to 0x475CD8: the drawn spell aimed as the hero's, action 10; moved here from T2 by the
+  user, 2026-10-27); `cast`'s 71 pixels (the battlefield redrawn over a rock's top for the
+  click's frame, 0x479038's path); unattended runs press a hero's casts through the book and the
+  aim (T3a gives them without a press). The detail: `QUEUE-ARCHIVE.md`, 2026-10-21 (T7b-1).
+  Recorded: an aimed cast (the cursor, the status line).
+- **Acceptance:** a hero's aimed cast through the book and a Faerie Dragon's by its key in the
+  window; the aim's sequence as recorded, or each difference listed; the Definition of Done.
+- **Depends on:** T3a (done 2026-10-27). **Status:** ready.
 
 ### E17 M5 T4 — the battle's dialogs
 
@@ -40,8 +39,10 @@ check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gat
   (`battle_result_dialog` 0x4702D0: the heroes, the texts, the casualties, OK; the screen
   darkened under it, 0x44E5F0 from 0x47782C: `end`'s last frame differs by them now), Auto Combat
   (its button selected, the panel dimmed while the stacks play themselves), the tactics phase's
-  panel (0x46C050) and its end; read, drawn, recorded. The detail: `QUEUE-ARCHIVE.md`,
-  2026-10-21 (T8) and 2026-10-20 (T6a).
+  panel (0x46C050) and its end, the message box (`message_box_build` 0x4F6990: the spell book's
+  refusals, a spell above the hero's mana GENRLTXT 207 and `hero_book_button` 0x59E900's, and an
+  adventure spell's description, T3a's; design §7.17); read, drawn, recorded. The detail:
+  `QUEUE-ARCHIVE.md`, 2026-10-21 (T8) and 2026-10-20 (T6a).
 - **Acceptance:** each dialog's still and a sequence through it as recorded, or each difference
   listed; battles ended by a surrender, a retreat and a victory in the window; the Definition of
   Done.

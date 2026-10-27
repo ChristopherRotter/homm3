@@ -96,6 +96,8 @@ pub enum Key {
     W,
     /// The left arrow.
     Left,
+    /// Enter (E17 M5 T3a: the spell book closes by it).
+    Return,
     /// Page Up.
     PageUp,
     /// Page Down.
@@ -172,6 +174,7 @@ impl Key {
             SDLK_V => Self::V,
             SDLK_W => Self::W,
             SDLK_LEFT => Self::Left,
+            SDLK_RETURN => Self::Return,
             SDLK_PAGEUP => Self::PageUp,
             SDLK_PAGEDOWN => Self::PageDown,
             SDLK_END => Self::End,
@@ -225,6 +228,7 @@ impl Key {
             Self::V => "V",
             Self::W => "W",
             Self::Left => "Left",
+            Self::Return => "Return",
             Self::PageUp => "PageUp",
             Self::PageDown => "PageDown",
             Self::End => "End",

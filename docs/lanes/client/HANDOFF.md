@@ -8,18 +8,17 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   accepted, CLT-Q22 to Q24 answered (a); the lane split at M3 T9c, CLT-Q18: the battle client
   here, the adventure map client the map-client lane's E24). **M5 (live play)** (QUEUE, the
   epic's M5): hot seat in-process first, then a game on a server and accounts; the new
-  dependencies the user's at T6 and T7. **T1 and T2 done** (the playhead; the timeline that
-  grows, `live.rs`; the click's command; hot seat in the window: `--human`, the battle waiting
-  at its end, the screen's hidden objects). **Next: M5 T3** (the spell book and the hero's aim,
-  the Faerie Dragon's cast). Open PR: T2b's (`client/e17-m5-t2b`; check it first). Workspace
-  `clients/` (`clients/README.md`), gates `clients/scripts/check.sh`; ADR-0020 (+ drafts in
-  `adr-drafts/`), ADR-0024; the harness `clients/capture/README.md`; design §3–§10; records in
-  `E17-log.md`.
+  dependencies the user's at T6 and T7. **T1, T2 and T3a done** (the playhead; the timeline that
+  grows, `live.rs`; the click's command; hot seat in the window; the spell book drawn and used,
+  design §7.17). **Next: M5 T3b** (the hero's aim, the Faerie Dragon's key). Open PR: T3a's
+  (`client/e17-m5-t3a`; check it first). Workspace `clients/` (`clients/README.md`), gates
+  `clients/scripts/check.sh`; ADR-0020 (+ drafts in `adr-drafts/`), ADR-0024; the harness
+  `clients/capture/README.md`; design §3–§10; records in `E17-log.md`.
 - **Captures** (the user, 2026-10-20): `h3drive.py drawn` first (no Wine); capture what it lists or the task changes, all at a milestone's closure or a harness change (runbook); a capture not as recorded leaves `kept/` (T9b: record, then `--reuse`); later tasks' detail in `NOTES.md`.
 - **The user's requirements** (epic, "Decisions"): a string catalogue (JSON packs, no committed translation, CLT-Q7); graphics options (`faithful` default); exhaustive diffs; drawing bugs fixed, the original's only for comparisons (`Bugs`).
 - The lane owns `clients/` but the map-client lane's paths and the common ones (`lanes.toml`: the foundation, `text/`, the harness; an additive change freely, a change in behaviour into the map-client lane's inbox), plus `docs/epics/E17*` and this folder; branches `client/<task>`; ids `CLT-Q<n>`, `CLT-QUIRK-<n>` (asset fixes), `CLT-STUB-<n>`; ADR drafts in `adr-drafts/`, numbered when accepted.
-- **Checkpoints** per milestone (below), a fresh reviewer agent first. **Open:** CLT-Q5. Next
-  id: CLT-Q26.
+- **Checkpoints** per milestone (below), a fresh reviewer agent first. **Open:** CLT-Q5,
+  CLT-Q26. Next id: CLT-Q27.
 - Stage from `original-data/install/`: the four LODs (one per call), `h3maped.exe`, both `.snd`, `MP3/COMBAT01`–`04` and the end tunes, `Heroes3.exe`, the five DLLs, `H3ab_ahd.vid`; `cp -rn` the staged `original-data/.` into the clone. Frames stay in the sandbox.
 
 ## Autonomy contract (agreed by the user, 2026-10-12)
@@ -39,7 +38,13 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
 
 ## Recent sessions
 
-- **2026-10-27, E17 M5 T2b (done; its PR open: check it first).** Whole (the user, against the
+- **2026-10-27, E17 M5 T3a (done; its PR open: check it first).** T3 cut in two with the user
+  (the book; the aim T3b). Read the book's dialog, page, keys, hover and shadow (design §7.17);
+  `h3_view::book`, `ui`'s DEF items, texts alone, areas, `repeat`, `shadow`; `spellbook`, the
+  window's book (C or its button; a spell without a target cast at once); situations' `actions`.
+  `book`, `book-page`, `book-fire`, `book-hint` exact; `drawn` the other 119 the same. CLT-Q26
+  (the last hovered item never reset); the message boxes moved to T4; M5 review list items 2–4.
+- **2026-10-27, E17 M5 T2b (done; #518 merged).** Whole (the user, against the
   cut proposed). `Growing::waiting`, `push_seen`, `Object::owner`, `Timeline::screen`; `--human`,
   `Live`'s seats and every side's events, `Battle::command`, `press`, `button`, `takes`;
   unattended runs press the bot's choices. Read: Land Mine's placings show on every screen
@@ -52,9 +57,3 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
   corrected). `mouse::click`, `button`, `attack_slots`; CLT-Q24's switch; `clicks.rs`: presses
   over 1 455 turns give the legal commands but CLT-Q25's walk (asked and answered: the
   original's copied, an option later). `sequences` all 47 as recorded.
-- **2026-10-27, E17 M5 T1b (done; #509 merged).** Whole, as cut at T1a.
-  `anim::Growing` (the timeline a command at a time, only appended to; a drawbridge span open
-  until the next redraw), `Playhead::extend`; `battle.rs` as `Ground` and `Battle<'g>`,
-  `live.rs` (the session in-process, the bot's command when a frame reaches the timeline's end);
-  `motion`'s `every`; the panel's reads logarithmic. `play` byte for byte as fought at once;
-  `window --check` 1 094 frames exact. No new question.

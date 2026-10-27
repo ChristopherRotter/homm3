@@ -23,7 +23,7 @@ adventure).
 
 | File | What it does |
 |---|---|
-| `setup.sh [copy]` | Installs 32-bit Wine, Xvfb, xdotool, xset, ImageMagick and mingw-w64; makes the run directory `original-data/wine/game` from the copy (default `original-data/install`); builds `xdd.dll`; writes the game's settings (no intro, no grid, no sound, full screen, a hero's path shown before it walks, auto combat playing the creatures) into the Wine prefix (`$WINEPREFIX`, default `~/.wine-h3`, in a directory the shell's user owns). |
+| `setup.sh [copy]` | Installs 32-bit Wine, Xvfb, xdotool, xset, ImageMagick and mingw-w64; makes the run directory `original-data/wine/game` from the copy (default `original-data/install`); builds `xdd.dll`; writes the game's settings (no intro, no grid, no sound, full screen, a hero's path shown before it walks, auto combat playing the creatures, the spell book's page turns without their videos) into the Wine prefix (`$WINEPREFIX`, default `~/.wine-h3`, in a directory the shell's user owns). |
 | `xdd.c`, `xdd.def` | Our `xdd.dll`: forwards the GOG executable's `DirectDrawCreate` to Wine's ddraw, the **virtual clock** and the **forced rolls** (below). |
 | `h3drive.py` | The driver: starts the game, the recipes (fixed coordinates, screens by probes), the clock, dumps; the commands `battle`, `set`, `learn`, `shot`, `sequence`, `sequences`, `frames`. |
 | `screens.toml` | The screens the driver recognises: 12 probes `[x, y, 5-6-5 value]` each (numbers only). |
@@ -40,7 +40,7 @@ adventure).
 Before the first run: stage the copy's files (`Heroes3.exe`, the five DLLs `BINKW32.DLL`,
 `IFC20.dll`, `MP3DEC.ASI`, `MSS32.DLL`, `SMACKW32.DLL`, `Data/` with the four LODs, `Heroes3.snd`,
 `H3ab_ahd.snd`, `H3ab_ahd.vid`; one large file per staging call), run `clients/capture/setup.sh`,
-and build `cargo build --release -p h3-view` in `clients/`. A run of the whole set (72 situations since M4 T1b) takes about 15 minutes.
+and build `cargo build --release -p h3-view` in `clients/`. A run of the whole set (76 situations since M5 T3a) takes about 16 minutes.
 
 ## Which captures a change needs
 
@@ -184,6 +184,16 @@ into the original once its setup has set them and before the battle screen shows
 +0x53A4, the hit points left, or a destroyed turret's turn would pass), and the viewer draws the
 same (`h3-view render --walls`, *provisional*); the states are checked before the game starts
 (E17 M4 T3a: each part's 0 to 4, the gate's 0 to 3; one past them reads another part's picture).
+
+**A dialog's still** (E17 M5 T3a, design §7.17): an entry's `actions` (the sequences' `key:`,
+`click:` and `move:`) run after the mouse's move, at the frozen clock, and go into the kept
+`frames.toml`; `h3-view render --frames` plays them into the dialog (the spell book: `key:c` opens
+it, a `click:` presses there and parks the mouse, a `move:` rests it). The book needs the hero's
+spells, so its stills render the attacker's record (`seat = "attacker"`). After a `move:` the
+original's cursor stays where it was until the clock steps (its status line follows at once):
+take such frames from 100 ms. The setup turns "Animate SpellBook" off (the page turn's videos,
+which the run directory's empty `VIDEO.VID` lacks and the client does not play); nothing recorded
+before it turned a page.
 
 **Another battlefield:** the original's obstacles depend on the battle's tile, the background on
 what stands around it (§4.4): `--tile x,y` (the set's `tile`) moves the battle. At (20, 20) on dirt

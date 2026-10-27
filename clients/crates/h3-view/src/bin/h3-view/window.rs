@@ -56,7 +56,7 @@ use h3_view::ui::Item;
 
 use crate::assets;
 use crate::audio::{Library, Player};
-use crate::battle::{Battle, Ground, Press, Source};
+use crate::battle::{Battle, BookDid, CursorLook, Ground, Press, Source};
 
 /// How far past the last change the window looks for the next one before it waits for input
 /// only (a battle that no longer changes).
@@ -294,6 +294,10 @@ fn next_frame(
     changes: &mut Changes,
     shown: &Frame,
 ) -> Result<Option<Frame>, String> {
+    // Behind the open spell book the battle stands still (E17 M5 T3a): only an input changes it.
+    if battle.book_open() {
+        return Ok(None);
+    }
     let mut t = shown.t;
     while let Some(next) = changes.after(battle, t)? {
         // Past the end of a still battle only the idle steps come, each drawing the same.
@@ -339,13 +343,15 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
     let ground = Ground::load(source)?;
     let mut battle = Battle::new(&ground)?;
     // The checkpoint batch: the cursor now, each frame's names as it is first drawn.
+    // The spell book's default cursor too (E17 M5 T3a).
     let combat = battle.layout().mouse.cursor.clone();
-    battle.load_batch(std::iter::empty(), &[&combat])?;
+    let book_cursor = battle.layout().book.cursor.clone();
+    battle.load_batch(std::iter::empty(), &[&combat, &book_cursor])?;
     // The combat cursor's frames as the mouse manager draws them (E17 M3 T6c-2), made as shown.
     let mut cursors = Cursors::default();
-    let mut frame_now = battle.cursor_frame(options.from);
+    let mut frame_now = battle.cursor(options.from);
     let mut cursor_visible = true;
-    let (_, hardware) = cursors.get(&battle, frame_now)?;
+    let (_, hardware) = cursors.get(&battle, &frame_now)?;
     let [width, height] = battle.frame_size();
     let mut win = Window::open(&Config {
         title: format!("h3-view — {}", source.stem()),
@@ -440,6 +446,8 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
         let mut redraw = false;
         let mut mouse_changed = false;
         let mut grew = false;
+        // The spell book opened, closed or changed (E17 M5 T3a).
+        let mut book_changed = false;
         if let Some(p) = presser.as_mut() {
             grew |= p.press(&mut battle, &mut inputs, clock.ms(win.ticks_ns()))?;
         }
@@ -460,7 +468,32 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
             }
             let at = clock.ms(now);
             match event {
-                Event::Quit | Event::Key(Key::Escape) => break 'run,
+                Event::Quit => break 'run,
+                // The spell book open over the battle takes the mouse and its own keys (E17 M5
+                // T3a): Escape closes the book, not the window; the viewer's keys stay its own.
+                Event::Key(key)
+                    if battle.book_open() && options.run.is_none() && book_key(key).is_some() =>
+                {
+                    let did = battle.book_key(book_key(key).unwrap_or_default());
+                    grew |= book_did(&mut battle, &mut inputs, at, did, &mut book_changed)?;
+                }
+                Event::Pointer(p) if battle.book_open() => {
+                    pointer = p;
+                    redraw |= drawn_cursor;
+                    if let Some((x, y)) = p {
+                        book_changed |= battle.book_hover([x, y]);
+                    }
+                }
+                Event::Click {
+                    down: true,
+                    at: (x, y),
+                } if battle.book_open() => {
+                    let did = battle.book_press([x, y]);
+                    grew |= book_did(&mut battle, &mut inputs, at, did, &mut book_changed)?;
+                }
+                Event::Click { down: false, .. } | Event::KeyUp(_) if battle.book_open() => {}
+                Event::Key(Key::Home) if battle.book_open() => {}
+                Event::Key(Key::Escape) => break 'run,
                 // Unattended, the keys do nothing (the mouse still moves the battle's).
                 Event::Key(_) | Event::KeyUp(_) if options.run.is_some() => {}
                 Event::Key(Key::P) => {
@@ -527,7 +560,7 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                     let image = if drawn_cursor {
                         None
                     } else {
-                        Some(cursors.get(&battle, frame_now)?.1)
+                        Some(cursors.get(&battle, &frame_now)?.1)
                     };
                     if win.set_cursor(image).is_err() {
                         drawn_cursor = true;
@@ -579,6 +612,9 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                         if let Some(command) = battle.button(at, h.id).filter(|_| h.over) {
                             grew |= give(&mut battle, &mut inputs, at, command)?;
                         }
+                        // The spell book opens as its button is released over it (E17 M5 T3a).
+                        book_changed |=
+                            h.over && h.id == h3_view::panel::SPELL_BOOK && battle.open_book(at);
                         mouse_changed = true;
                     }
                 }
@@ -604,6 +640,8 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                         if let Some(command) = battle.button(at, h.id) {
                             grew |= give(&mut battle, &mut inputs, at, command)?;
                         }
+                        // C opens the spell book (E17 M5 T3a).
+                        book_changed |= h.id == h3_view::panel::SPELL_BOOK && battle.open_book(at);
                         mouse_changed = true;
                     }
                 }
@@ -612,11 +650,11 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
         }
         // The mouse, a button held, the log scrolled (E17 M3 T6c-2), a command given (E17 M5
         // T2b): the battle follows them and the frame now is made again.
-        if mouse_changed || grew {
+        if mouse_changed || grew || book_changed {
             let pressed = held.filter(|h| h.over).map(|h| h.id);
             let changed = battle.mouse(&inputs, &scrolls)? || battle.pressed != pressed;
             battle.pressed = pressed;
-            if changed || grew {
+            if changed || grew || book_changed {
                 let ms = clock.ms(win.ticks_ns());
                 changes = Changes::new(&battle);
                 let latest = changes.latest(&mut battle, ms)?;
@@ -627,18 +665,18 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
         // The cursor's frame now, none while a ray hides it: the hardware cursor made again when
         // it changes.
         let ms = clock.ms(win.ticks_ns());
-        let frame = battle.cursor_frame(ms);
+        let frame = battle.cursor(ms);
         let visible = !battle.timeline().cursor_hidden(ms);
-        if (frame, visible) != (frame_now, cursor_visible) {
+        if (&frame, visible) != (&frame_now, cursor_visible) {
+            let image = if visible && !drawn_cursor {
+                Some(cursors.get(&battle, &frame)?.1)
+            } else {
+                None
+            };
             (frame_now, cursor_visible) = (frame, visible);
             if drawn_cursor {
                 redraw = true;
             } else {
-                let image = if visible {
-                    Some(cursors.get(&battle, frame)?.1)
-                } else {
-                    None
-                };
                 if win.set_cursor(image).is_err() {
                     drawn_cursor = true;
                     redraw = true;
@@ -711,7 +749,7 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                 (drawn_cursor && cursor_visible)
                     .then_some(pointer)
                     .flatten(),
-                &cursors.get(&battle, frame_now)?.0,
+                &cursors.get(&battle, &frame_now)?.0,
                 read,
             )?;
             report
@@ -729,7 +767,7 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                 (drawn_cursor && cursor_visible)
                     .then_some(pointer)
                     .flatten(),
-                &cursors.get(&battle, frame_now)?.0,
+                &cursors.get(&battle, &frame_now)?.0,
                 false,
             )?;
         }
@@ -784,6 +822,43 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
         ));
     }
     Ok((lines, ok))
+}
+
+/// The spell book's name of a key it takes (E17 M5 T3a, `h3_view::book::Book::key`).
+fn book_key(key: Key) -> Option<&'static str> {
+    match key {
+        Key::Escape
+        | Key::Return
+        | Key::A
+        | Key::C
+        | Key::Left
+        | Key::Right
+        | Key::Up
+        | Key::Down => Some(key.name()),
+        _ => None,
+    }
+}
+
+/// What the spell book `did` at `at` (E17 M5 T3a): a change to draw, or the cast it closed on
+/// given; whether the battle took a command.
+fn book_did(
+    battle: &mut Battle<'_>,
+    inputs: &mut Vec<Input>,
+    at: u32,
+    did: BookDid,
+    changed: &mut bool,
+) -> Result<bool, String> {
+    match did {
+        BookDid::Nothing => Ok(false),
+        BookDid::Changed => {
+            *changed = true;
+            Ok(false)
+        }
+        BookDid::Cast(command) => {
+            *changed = true;
+            give(battle, inputs, at, command)
+        }
+    }
 }
 
 /// Gives a human's `command` at `at` (E17 M5 T2b): the mouse's inputs after it gone, its
@@ -879,22 +954,19 @@ fn scroll_by(id: u16) -> Option<i64> {
 /// The combat cursor's frames made so far: each drawn and as the hardware cursor's image.
 #[derive(Default)]
 struct Cursors {
-    made: std::collections::BTreeMap<u32, (Cursor, CursorImage)>,
+    made: std::collections::BTreeMap<CursorLook, (Cursor, CursorImage)>,
 }
 
 impl Cursors {
-    /// Frame `frame` of the battle's combat cursor with its hot spot (the layout's).
-    fn get(&mut self, battle: &Battle<'_>, frame: u32) -> Result<(Cursor, CursorImage), String> {
-        if let Some(made) = self.made.get(&frame) {
+    /// The cursor `look` (the combat cursor's frame, or the spell book's default cursor's: E17
+    /// M5 T3a) with its hot spot.
+    fn get(&mut self, battle: &Battle<'_>, look: &CursorLook) -> Result<(Cursor, CursorImage), String> {
+        if let Some(made) = self.made.get(look) {
             return Ok(made.clone());
         }
-        let layout = battle.layout();
-        let [x, y] = usize::try_from(frame)
-            .ok()
-            .and_then(|f| layout.mouse.hot.get(f).copied())
-            .unwrap_or_default();
+        let [x, y] = look.hot;
         let hot = (u32::try_from(x).unwrap_or(0), u32::try_from(y).unwrap_or(0));
-        let def = &layout.mouse.cursor;
+        let (def, frame) = (&look.def, look.frame);
         let cursor = battle
             .sprite(def)
             .and_then(|s| Cursor::read(s, frame, hot, FORMAT))
@@ -907,7 +979,8 @@ impl Cursors {
             hot_y: image.hot.1,
             rgba: image.rgba,
         };
-        self.made.insert(frame, (cursor.clone(), hardware.clone()));
+        self.made
+            .insert(look.clone(), (cursor.clone(), hardware.clone()));
         Ok((cursor, hardware))
     }
 }

@@ -535,7 +535,14 @@ pub(crate) fn draw_frames(
     // The frames' times are read forward (E17 M5 T1a; one earlier than the last starts over).
     let mut head = Playhead::new(timeline);
     for frame in &kept.frame {
-        head.seek(timeline, frame.t);
+        // While the spell book is open the battle behind it stands as it was when the book opened
+        // (E17 M5 T3a: the dialog's modal loop runs no idle step; the original's frames are the
+        // same 100 ms and a second after).
+        let at = interface
+            .book
+            .and_then(|b| b.open.as_ref().map(|_| b.at))
+            .map_or(frame.t, |at| at.min(frame.t));
+        head.seek(timeline, at);
         let mut moment = head.moment(timeline);
         moment.walls = interface.walls.or(moment.walls);
         moment.marked = match interface.shown {
@@ -623,8 +630,8 @@ pub(crate) fn draw_frames(
         // The panel as its last turn's start set it, its log's item as the battle's lines and
         // turns left it (E17 M3 T6b), or the status line's hint where the mouse is (T6c-1:
         // *provisional*, the situations' battles write no lines; T6c-2 times it).
-        let text = status.as_deref().unwrap_or_else(|| panels.text(frame.t));
-        list.extend(panels.at_showing(snapshot, &timeline.turns, frame.t, layout, text));
+        let text = status.as_deref().unwrap_or_else(|| panels.text(at));
+        list.extend(panels.at_showing(snapshot, &timeline.turns, at, layout, text));
         // Earthquake's shake (E17 M4 T2c-2): the screen as it was, shifted; the cursor hidden.
         if let Some(steps) = moment.shake {
             list = vec![scene::shaken(list, steps, layout)];

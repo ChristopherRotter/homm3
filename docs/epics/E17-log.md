@@ -2881,6 +2881,48 @@ the user's `original-data/` first; the baseline (the client check) green, CI's `
   record on the keep's turn, among them). The library's tests and the binary's (39); clippy; the
   client check; the scoped verify.
 
+### M5 T3a — The spell book (2026-10-27)
+
+On `client/e17-m5-t3a`, the user present. T3 proposed cut in two (the book; the aim, the Faerie
+Dragon's key, `cast`'s 71 pixels): the user agreed. The sandbox new, the original files staged
+from the user's `original-data/` first; CI's `master` run green (the baseline's coverage step
+was cut short by the task's first edits; its fmt, clippy and deny steps passed).
+
+- **Starting point:** `master` at `9263fc8` (#518 merged), `8ef8244` merged in.
+- **Read** (design §7.17): the dialog's items (0x59BDF0), the page (0x59C9A0: the entries, their
+  school, the sort, the emblem, the texts' two formats and words, the greyed texts, the corners),
+  the handler (0x59D040: the presses, the keys by scan code, the move's item, cursor and status
+  line, the right button's boxes), a spell's hint (0x59BAA0), the DEF item's drawer (0x4EAB40),
+  `ItemAtPosition` (0x5FF3E0), the dialog's shadow (`vShow` 0x5FEAE0 with the flag 0x10),
+  SKILLLEV's short names (0x5B93F0), the option "Animate SpellBook" (0x698788: the page turn's
+  videos). 20 map entries.
+- **The library:** `ui`'s `Def`, `Label`, `Area`, `repeat`, every item's state, `Shown::defs`
+  and `frames`, `Dialog::item_taking`, `Dialog::shadow`; `Draw::Label`, `Draw::Darken` (and
+  `h3_render::blit::darken`, `draw_image_clipped`: a text item's picture cut to its size); `book`
+  (`Book`, `Memory`, `Page`, `Open`); the layout's `[book]`; the catalogue's `book.*` keys, the
+  family `spell-text` (a family's `list`, `contexts` and `raw`; the executable's strings with line
+  breaks read by the client, `h3_formats`' `c_string` taking none). Tests: the page's entries,
+  sort, places, emblem, texts and greying; the items shown; presses, keys and moves on the real
+  layout; the memory between openings and heroes; the shadow; the new draws; the catalogue's
+  families.
+- **The binary:** `spellbook` (the book's hero from the side to act's own observation, the
+  ruleset and the names; `still`, a situation's actions; `takes`); `Live::own_view`,
+  `casts_untargeted`; `Battle`'s book (opened by the panel's button or C on release, the battle
+  behind it standing still, its cursor, a spell without a target cast at once); the window's
+  cursors by look (`CursorLook`), the book taking the mouse and its keys, `next_frame` idle while
+  it is open (it scanned the idle steps forever: the window hung); `Key::Return`. The harness:
+  a situation's `actions` (after its mouse, at the frozen clock; written to `frames.toml`),
+  "Animate SpellBook" set off (nothing recorded turns a page: no recapture).
+- **Checks:** `book`, `book-page`, `book-fire` (0 ms) and `book-hint` (100 ms, 1 s) exact, new in
+  `set.toml`; `drawn` the other 119 the same. The window under Xvfb with `xdotool`: C opens the
+  book, the hint over Magic Arrow, the corner to page 2, Death Ripple cast from it (its ripple, the
+  log's lines, the panel's book button disabled). The library's tests (307) and the binary's (41);
+  clippy; the client check; the scoped verify.
+- **Found:** the book's last hovered item is never reset (0x684B4C): an opening over the item the
+  mouse was last over shows no hint until it moves to another (CLT-Q26, built as the original's).
+  The message boxes (a spell above the mana, an adventure spell's description, the book button's
+  refusals) moved to T4 with the battle's other dialogs (the generic message box, 0x4F6990).
+
 ## Accepted review lists (M1 to M4)
 
 M1 and M2 moved from the epic file on 2026-10-20 (less start-up reading), unchanged; M3 at its

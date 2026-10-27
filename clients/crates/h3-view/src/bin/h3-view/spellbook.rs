@@ -128,6 +128,9 @@ pub struct Still {
     pub open: Option<Open>,
     /// The mouse after the actions.
     pub mouse: [i32; 2],
+    /// When the actions were made (ms after the opening: a situation's at once, 0); the battle
+    /// behind the open book stands as it was then.
+    pub at: u32,
 }
 
 /// A situation's `actions` played at its opening (`h3drive.py`'s `act` at the frozen clock, after
@@ -144,7 +147,11 @@ pub fn still(
 ) -> Result<Still, String> {
     let mut memory = Memory::default();
     let mut hero = Some(hero);
-    let mut still = Still { open: None, mouse };
+    let mut still = Still {
+        open: None,
+        mouse,
+        at: 0,
+    };
     let point = |arg: &str| -> Result<[i32; 2], String> {
         let (x, y) = arg
             .split_once(',')
@@ -207,4 +214,74 @@ pub fn still(
         }
     }
     Ok(still)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use h3_view::layout::parse_battle;
+
+    fn layout() -> BookLayout {
+        parse_battle(include_str!("../../../../../layouts/battle.toml"))
+            .unwrap()
+            .book
+    }
+
+    fn hero() -> Hero {
+        Hero {
+            id: 1,
+            mana: 10,
+            schools: [0; 4],
+            spells: vec![Spell {
+                handle: 3,
+                original: 3,
+                name: "Dart".into(),
+                description: "{Dart}\n\nIt hits.".into(),
+                level: 1,
+                schools: 1,
+                kind: Kind::Combat,
+                mastery: 0,
+                cost: 5,
+            }],
+        }
+    }
+
+    fn played(actions: &[&str], hero: Option<Hero>) -> Result<Still, String> {
+        let actions: Vec<String> = actions.iter().map(|a| (*a).to_owned()).collect();
+        let catalogue = Catalogue::default();
+        still(&actions, crate::pointer::PARK, || hero, (&layout(), &catalogue))
+    }
+
+    #[test]
+    fn a_situation_s_actions_open_turn_and_hover_the_book() {
+        // C opens it; the mouse over place 0's icon: its hint (the catalogue's key, no pack here),
+        // the book's cursor over an item.
+        let still = played(&["key:c", "move:246,123"], Some(hero())).unwrap();
+        assert_eq!(still.mouse, [246, 123]);
+        let open = still.open.unwrap();
+        assert_eq!(open.cursor, Some(1));
+        assert!(open.status.starts_with("{Dart} ("));
+        // The fire tab clicked: the book turned, the mouse parked; Down: the next tab.
+        let still = played(&["key:c", "click:654,228", "key:Down"], Some(hero())).unwrap();
+        assert_eq!(still.mouse, crate::pointer::PARK);
+        assert_eq!(still.open.unwrap().book.tab, 4);
+        // The close clicked, Escape, the place's spell chosen: the book closed.
+        for actions in [
+            &["key:c", "click:585,430"][..],
+            &["key:c", "key:Escape"],
+            &["key:c", "click:246,123"],
+        ] {
+            assert_eq!(played(actions, Some(hero())).unwrap().open, None, "{actions:?}");
+        }
+        // No book to open: nothing open.
+        assert_eq!(played(&["key:c"], None).unwrap().open, None);
+    }
+
+    #[test]
+    fn a_situation_s_other_actions_are_errors() {
+        assert!(played(&["key:w"], Some(hero())).is_err());
+        assert!(played(&["hex:40"], Some(hero())).is_err());
+        assert!(played(&["key:c", "click:1"], Some(hero())).is_err());
+        assert!(played(&["move:a,2"], Some(hero())).is_err());
+    }
 }
