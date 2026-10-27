@@ -27,19 +27,28 @@ chose it over a cut).
 
 T6, M2's closure, cut at its seam before it started (the user, 2026-10-27): T6a, the reviewers
 and their fixes (done 2026-10-27: 24 of 29 fixed; `E24-log.md`), its five music findings cut out
-as T6a2 (the user; done 2026-10-27, whole), then T6b, the closure.
+as T6a2 (the user; done 2026-10-27, whole), then T6b, the closure, cut at its seam before it
+started (the user, 2026-10-27): T6b1, the sandbox's part, then T6b2, the user's.
 
-### E24 M2 T6b — M2's closure
+### E24 M2 T6b1 — the recordings again *(in progress, 2026-10-27)*
 
-- **Scope:** M2's exit (the epic) checked on `master` after T6a's and T6a2's fixes: the 13
-  sequences recorded again (T6a's harness changes run for the first time), every line and frame;
-  the window's T6a fixes by hand on the user's machine (Alt+Tab with the pointer at an edge,
-  fullscreen's bars, F7 in a situation) and T6a2's music by ear; M1's R2-8 (the writer's
-  edge bound) as its one-line `cross-lane` pull request if no task took it (the inbox); the review list to the user; M2's
-  section moved to `E24-archive.md`; M3 T0 queued (the common crate proposed to the client lane
-  first: the epic's M2 decision).
+- **Scope:** on `master` after T6a's and T6a2's fixes, the runbook's "everything" at a
+  milestone's closure: the 13 sequences (`frames`) and the 40 stills (`set`) recorded again
+  (T6a's harness changes run for the first time), every line and frame; each difference fixed or
+  an `MCL-Q<n>`; `drawn --record`. M1's R2-8 (the writer's edge bound, the inbox) as its
+  one-line `cross-lane` pull request, noted in the adventure lane's inbox.
+- **Acceptance:** every sequence and still as recorded (or each difference a question); the
+  Definition of Done.
+- **Depends on:** T6a2. **Status:** in progress.
+
+### E24 M2 T6b2 — M2's closure with the user
+
+- **Scope:** the window's T6a fixes by hand on the user's machine (Alt+Tab with the pointer at
+  an edge, fullscreen's bars, F7 in a situation) and T6a2's music by ear; the review list to the
+  user; M2's section moved to `E24-archive.md`; M3 T0 queued (the common crate proposed to the
+  client lane first: the epic's M2 decision).
 - **Acceptance:** the review list accepted by the user; the Definition of Done.
-- **Depends on:** T6a2. **Status:** ready once T6a2 merged.
+- **Depends on:** T6b1. **Status:** ready once T6b1 merged; the user at the machine.
 
 ## Inbox
 
