@@ -182,7 +182,8 @@ impl SoundRules {
                 .map(|(i, _)| i)
                 .collect();
             match found[..] {
-                [i] => u8::try_from(i).map_err(|_| format!("`{name}`: past 256 loops")),
+                // At most 256 loops (above): every index fits.
+                [i] => Ok(u8::try_from(i).unwrap_or(u8::MAX)),
                 [] => Err(format!("`{name}` is not one of the loops")),
                 _ => Err(format!("`{name}` is named twice among the loops")),
             }
@@ -333,18 +334,18 @@ impl TileSounds {
         let levels = i32::try_from(art.levels).unwrap_or(0);
         let mut terrains = Vec::with_capacity(art.tiles.len());
         let mut sounds = Vec::with_capacity(art.tiles.len());
-        for z in 0..levels {
-            let list = usize::try_from(z).ok().and_then(|z| lists.get(z));
-            for y in 0..size {
-                for x in 0..size {
-                    let Some(tile) = u8::try_from(z).ok().and_then(|z| art.tile(x, y, z)) else {
-                        continue;
-                    };
-                    terrains.push(tile.terrain.code);
-                    let entries = list.map_or(&[][..], |l| l.at(x, y));
-                    sounds.push(tile_sound(art, live, rules, tile, entries));
-                }
-            }
+        // The tiles level by level, row by row (`MapArt::tile`'s order).
+        let side = art.size.max(1);
+        for (i, tile) in art.tiles.iter().enumerate() {
+            let (x, y, z) = (i % side, i / side % side, i / (side * side));
+            let entries = lists.get(z).map_or(&[][..], |l| {
+                l.at(
+                    i32::try_from(x).unwrap_or(-1),
+                    i32::try_from(y).unwrap_or(-1),
+                )
+            });
+            terrains.push(tile.terrain.code);
+            sounds.push(tile_sound(art, live, rules, tile, entries));
         }
         let mut heroes: Vec<[i32; 3]> = live
             .heroes
@@ -406,10 +407,11 @@ fn tile_sound(
     }
     // The object a tile records (0x505610): the topmost whose cell there is visitable.
     let classes = |e: &Entry| {
-        let t = template(art, e.object)?;
-        let drawn = live.objects.get(e.object).and_then(|o| o.drawn.as_ref());
-        let (class, subclass) = drawn.map_or((t.class, t.subclass), |d| (d.class, d.subclass));
-        Some((rules.game_class(class), subclass, class))
+        template(art, e.object).map(|t| {
+            let drawn = live.objects.get(e.object).and_then(|o| o.drawn.as_ref());
+            let (class, subclass) = drawn.map_or((t.class, t.subclass), |d| (d.class, d.subclass));
+            (rules.game_class(class), subclass, class)
+        })
     };
     let blocks = |e: &&Entry| template(art, e.object).is_some_and(|t| !t.passable(e.dx, e.dy));
     let top = || entries.iter().rev();
@@ -591,8 +593,9 @@ impl Sound {
 
     /// A hero's step sound on `hero`'s tile (M2: no hero flies; M4 the engine's).
     fn step_sound(&self, hero: Pos) -> Option<String> {
-        let terrain = self.tiles.terrain(at(hero))?;
-        self.rules.steps.get(&terrain).cloned()
+        self.tiles
+            .terrain(at(hero))
+            .and_then(|terrain| self.rules.steps.get(&terrain).cloned())
     }
 
     fn play_step(&mut self, t: u32, sound: Option<String>) {
@@ -653,19 +656,17 @@ impl Sound {
                 }
             }
         }
-        for i in 0..SLOTS {
-            let Some(slot) = self.slots.get_mut(i) else {
-                continue;
-            };
+        let (rules, found, cues) = (&self.rules, self.found, &mut self.cues);
+        for (i, slot) in self.slots.iter_mut().enumerate() {
             let Some(sound) = slot.sound else {
                 continue;
             };
             if slot.distance > KEPT {
                 slot.sound = None;
-                self.cues.push((t, Cue::LoopStop { slot: i }));
-            } else if self.found & bit(sound) != 0 {
-                let volume = self.rules.volume(slot.distance);
-                self.cues.push((t, Cue::LoopVolume { slot: i, volume }));
+                cues.push((t, Cue::LoopStop { slot: i }));
+            } else if found & bit(sound) != 0 {
+                let volume = rules.volume(slot.distance);
+                cues.push((t, Cue::LoopVolume { slot: i, volume }));
             }
         }
     }

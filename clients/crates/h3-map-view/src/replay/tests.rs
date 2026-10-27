@@ -248,10 +248,12 @@ fn its_cues_are_handed_out_once() {
         ]
     );
     // The loop run ahead, then given an action at 2: run again from 0, the cues taken not given
-    // again; a key at 102 ends the walk after its second step.
+    // again. Run ahead past 202 (its cues waiting), then a key at 150: run again from the change
+    // before it, the cues after it forgotten; the key ends the walk after its second step.
     assert!(r.after(102, 1_000).unwrap().is_some());
     r.give(2, Action::Pointer([700, 300]));
-    r.give(102, Action::Step(Direction::North));
+    r.at(250).unwrap();
+    r.give(150, Action::Step(Direction::North));
     assert_eq!(
         lines(r.take_cues(300).unwrap()),
         ["202 music Dirt", "202 loop-volume 0 10", "202 step-stop"]
@@ -262,4 +264,8 @@ fn its_cues_are_handed_out_once() {
     r.restart();
     assert_eq!(lines(r.take_cues(0).unwrap()), at_0);
     assert!(r.take_cues(0).unwrap().is_empty());
+    // An action the loop cannot play: no cues, its millisecond.
+    let refused = BTreeMap::from([(5, vec![Action::Click([700, 300])])]);
+    let mut r = Replay::new(rules(Bugs::Fixed), &start, refused).unwrap();
+    assert_eq!(r.take_cues(10).unwrap_err().0, 5);
 }

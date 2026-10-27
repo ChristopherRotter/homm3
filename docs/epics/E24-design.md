@@ -1336,8 +1336,8 @@ ambient sounds again 6 s later, 0x4088F9), the visits', battles' and the compute
   sounds 32 apart share a bit: one's XOR in the second pass clears the other's, which then keeps
   its earlier volume (**MCL-Q8**).
 - **A tile's sound** (`tile_ambient_sound` 0x418620, on the tile's record: §2.1, the E08 survey's
-  §2.5 for which object a tile records): water (terrain 8) of a picture below 21 (the shore's)
-  `loopocea` (69), before any object; else on an entrance tile (+0xD bit 0x10) by the class
+  §2.5 for which object a tile records): water (terrain 8) of a picture below 21 (the shore's,
+  one more than the coast's 20: **MCL-Q9**) `loopocea` (69), before any object; else on an entrance tile (+0xD bit 0x10) by the class
   +0x1E as the game loads it (`object_class_values` 0x63A6E4: 219 as 33, 220 as 53, 221 as 99,
   223 as 21, 230 as 46, 165–189 as 114–138, 190–205 as 143–161) and the subclass +0x22: the
   table's `classes` (`clients/map/assets/base.toml`, `[map.sound]`); a creature bank (16), the
@@ -1356,3 +1356,21 @@ ambient sounds again 6 s later, 0x4088F9), the visits', battles' and the compute
   the music asked for, a step sound started or stopped, a slot's loop started, stopped or its
   volume) with their milliseconds. The window plays them (below); `sequences` does not write
   them (no recording to compare with). A hero flies in no situation (M4: the engine's).
+- **The window** (`audio`, *provisional*; E17 §8.2's way): the WAVs the tables name decoded when
+  the map loads, a track on a thread of its own when first asked for (the map's first before
+  the window opens; a new one during the old one's fade-out, waited for only when the fade has
+  nearly played out); one stream for the music, one for the step sound, one per ambient slot;
+  the volumes as SDL gains of v / 127 (both settings at their highest); the fades applied to the
+  music's samples as they are queued (taking back what is queued of the old track, its place
+  kept from what plays), so they follow the device's time, as the original's thread follows real
+  time. F2 and F3 switch the music and the effects (their gains held at 0, the loops running on),
+  `--mute` plays nothing, `--cues` writes each cue played.
+- **Checked** (Xvfb, SDL's `disk` driver writing the mix; the tracks decoded by `ffmpeg` and
+  aligned with the mix, correlation 1.0): `objects-myth` the Dirt track fading in by 100 ms steps
+  to its whole after 900 ms (each step's gain measured on the samples); `seq-walk` driven by
+  `xdotool` (three steps north-west and one west onto the dirt patch): the Grass track's fade-out
+  114 … 12 by 100 ms steps, then the Dirt track from its start fading in, sample-exact; the step
+  sound's beats from its cue to its stop (`walk-follow`); the cues of the shore (`walk-sail`:
+  `horse08` sailing, `loopocea` restarted by the lift), the volcano and medusas
+  (`objects-flat`), the gold and gem mines (`owners-objects`); every frame read back exact and
+  every change shown the headless loop's in each run.

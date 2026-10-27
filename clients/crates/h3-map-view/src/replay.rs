@@ -139,12 +139,8 @@ impl Replay {
     /// As [`Replay::at`].
     pub fn take_cues(&mut self, t: u32) -> Result<Vec<(u32, Cue)>, (u32, Unplayable)> {
         self.run_to(t)?;
-        let mut out = Vec::new();
-        while self.cues.front().is_some_and(|(c, _)| *c <= t) {
-            if let Some(cue) = self.cues.pop_front() {
-                out.push(cue);
-            }
-        }
+        let due = self.cues.iter().take_while(|(c, _)| *c <= t).count();
+        let out: Vec<(u32, Cue)> = self.cues.drain(..due).collect();
         let at_t = out.iter().filter(|(c, _)| *c == t).count();
         self.taken = match self.taken {
             Some((taken, n)) if taken == t => Some((t, n + at_t)),

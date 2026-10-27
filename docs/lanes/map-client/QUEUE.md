@@ -21,7 +21,8 @@ the walk's timing headless, and T3b, the walk drawn (taken whole), both done 202
 at its seam before it started (the user, 2026-10-27): T4a, the window replaying and the key
 table (done 2026-10-27), then T4b, the map's live input and the Windows build, cut at its seam
 before it started (the user, 2026-10-27): T4b1, the live input in the sandbox (done 2026-10-27),
-then T4b2, the Windows build on the user's machine.
+then T4b2, the Windows build on the user's machine. T5, the sound, done whole 2026-10-27 (the
+user chose it over a cut).
 
 ### E24 M2 T4b2 — the Windows build tried on the user's machine
 
@@ -36,18 +37,6 @@ then T4b2, the Windows build on the user's machine.
   headless check); the delays recorded in design §3.10; the Definition of Done.
 - **Depends on:** T4b1 (done). **Status:** ready; needs the user at the machine (or the user
   runs the `.cmd` and pastes its output).
-
-### E24 M2 T5 — the map's sound
-
-- **Scope:** readings (`E24-design.md` §3): the adventure music (which file, by what terrain,
-  when it changes, its fade), the objects' ambient loops (which objects and sounds, the volume
-  by distance, how many at once), the hero's step sounds (T1b's calls; by terrain); the map's
-  asset tables' sounds and the gate's check of them; built in the window (`--mute`, keys for the
-  music and the effects), on E17's pieces (`h3_assets::snd`, `wav`, `nanomp3`, `h3-sdl`); the
-  cues recorded in the original if the harness can tell them (E17 M2 T5b's way).
-- **Acceptance:** the sounds as read, the gate's check; the Definition of Done.
-- **Depends on:** T4a and T4b1 (the window), T1b (the step sounds' calls: design §3.5, done).
-  **Status:** ready (T4b2 may come first or after: it needs the user's machine).
 
 ### E24 M2 T6 — M2's closure
 

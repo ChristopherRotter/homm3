@@ -668,12 +668,12 @@ pub fn load(files: &[TableFile], top: &str) -> Result<Tables, TableError> {
         let music = tables
             .terrains
             .iter()
-            .filter_map(|(code, t)| Some((*code, t.music.clone()?)))
+            .filter_map(|(code, t)| t.music.clone().map(|m| (*code, m)))
             .collect();
         let steps = tables
             .terrains
             .iter()
-            .filter_map(|(code, t)| Some((*code, t.step.clone()?)))
+            .filter_map(|(code, t)| t.step.clone().map(|m| (*code, m)))
             .collect();
         tables.sound =
             Some(SoundRules::new(sound, music, steps).map_err(|rule| entry("sound", &rule))?);

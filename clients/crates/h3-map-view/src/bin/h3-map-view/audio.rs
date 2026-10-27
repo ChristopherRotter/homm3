@@ -104,6 +104,10 @@ impl Library {
     }
 
     /// A track's decoding started on a thread of its own, unless it is decoded or being decoded.
+    #[expect(
+        clippy::disallowed_methods,
+        reason = "an adapter's thread: a track decodes while the window runs (clippy.toml forbids threads in logic)"
+    )]
     pub fn request(&mut self, name: &str) {
         if self.tracks.contains_key(name) || self.decoding.contains_key(name) {
             return;

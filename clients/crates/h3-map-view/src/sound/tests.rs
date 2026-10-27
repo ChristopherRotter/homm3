@@ -150,6 +150,17 @@ fn the_tables_sounds_break_no_rule() {
         fails(|a| a.loops.push("LOOPANIM.WAV".into())),
         "`LoopAnim.wav` is named twice among the loops"
     );
+    for change in [
+        |a: &mut SoundArt| a.shore = "x.wav".into(),
+        |a: &mut SoundArt| a.objects[0].sound = "x.wav".into(),
+        |a: &mut SoundArt| a.mines[0] = "x.wav".into(),
+        |a: &mut SoundArt| a.abandoned = "x.wav".into(),
+        |a: &mut SoundArt| a.blocking[0].sound = "x.wav".into(),
+        |a: &mut SoundArt| a.ground_loops[0].sound = "x.wav".into(),
+        |a: &mut SoundArt| a.creatures[0].sound = "x.wav".into(),
+    ] {
+        assert_eq!(fails(change), "`x.wav` is not one of the loops");
+    }
     assert_eq!(
         fails(|a| a.volumes = vec![1, 2, 3]),
         "3 volumes, not one for each distance 0 to 3"
@@ -568,6 +579,28 @@ fn the_music_and_the_step_sounds_follow_the_terrain() {
     s.walk_end(85);
     s.wrap(90);
     assert_eq!(names(&s.take()), ["80 music Dirt"]);
+    // Grass, rock (no music), grass again: the track asked for already plays on; a hero off the
+    // map has no step sound.
+    s.walk_start(100, pos(5, 2));
+    s.step_end(110, [4, 2, 0], pos(4, 2), false, 0);
+    s.step_end(120, [6, 2, 0], pos(6, 2), false, 0);
+    s.step_end(130, [4, 2, 0], pos(4, 2), false, 0);
+    s.walk_end(135);
+    s.walk_start(140, pos(200, 1));
+    assert_eq!(
+        names(&s.take()),
+        [
+            "100 step horse00.wav",
+            "110 music Grass",
+            "110 step-stop",
+            "110 step horse02.wav",
+            "120 step-stop",
+            "120 step horse09.wav",
+            "130 step-stop",
+            "130 step horse02.wav",
+            "135 step-stop",
+        ]
+    );
     assert_eq!(
         line(1, &Cue::LoopStop { slot: 2 }),
         "1 loop-stop 2".to_string()
