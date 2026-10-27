@@ -9,7 +9,9 @@
 //! ported here. Over time (E17 M3 T6c-2, design §9.10: the hint against the log's new lines, a
 //! stack marked starting its fidget, a target left over from the last hex, the turns): [`track`].
 //! A siege's (E17 M4 T2c-2, design §10.2): the keep's and the upper tower's rectangles, the
-//! Catapult's targets (16), the turrets' info (22) and the walls' broken arrow (15).
+//! Catapult's targets (16), the turrets' info (22) and the walls' broken arrow (15). The command a
+//! press gives (E17 M5 T2a, design §9.11): [`click`] over the battlefield (`battle_click_action`
+//! 0x476BD0), [`button`] for the panel's Wait and Defend.
 
 use alloc::collections::BTreeSet;
 use alloc::string::String;
@@ -167,13 +169,18 @@ pub struct Legal {
     moves: BTreeSet<u8>,
     /// The stacks it may strike in melee, each with a position to strike from.
     attacks: BTreeSet<(u8, u8)>,
-    /// The stacks it may shoot.
-    shots: BTreeSet<u8>,
+    /// The stacks it may shoot, each with a hex to aim at (an area shot's: either of a two-hex
+    /// target's).
+    shots: BTreeSet<(u8, u8)>,
     /// The stacks it may heal.
     heals: BTreeSet<u8>,
     /// The wall-shot targets it may shoot (a wall shooter of the attacker's: the targets
     /// standing).
     walls: BTreeSet<u8>,
+    /// It may wait (E17 M5 T2a: the panel's button gives it).
+    wait: bool,
+    /// It may defend.
+    defend: bool,
     /// It is the Catapult (its original id [`CATAPULT`]).
     pub catapult: bool,
     /// The walls never halve its shots (`shot_wall_test`'s shooters, [`WALL_EXEMPT`], or its
@@ -194,8 +201,8 @@ impl Legal {
                 Command::Attack { target, from } => {
                     legal.attacks.insert((target, from));
                 }
-                Command::Shoot { target, .. } => {
-                    legal.shots.insert(target);
+                Command::Shoot { target, at } => {
+                    legal.shots.insert((target, at));
                 }
                 Command::Heal { target } => {
                     legal.heals.insert(target);
@@ -203,10 +210,33 @@ impl Legal {
                 Command::ShootWall { part } => {
                     legal.walls.insert(part);
                 }
+                Command::Wait {} => legal.wait = true,
+                Command::Defend {} => legal.defend = true,
                 _ => {}
             }
         }
         legal
+    }
+
+    /// Whether it may shoot `target`.
+    fn shoots(&self, target: u8) -> bool {
+        self.shots
+            .range((target, 0)..=(target, u8::MAX))
+            .next()
+            .is_some()
+    }
+
+    /// The hex to aim a shot at `target` at with the mouse over `hex`: that hex where it is one
+    /// (an area shot's), else the target's (E17 M5 T2a: the original's shot is at the mouse's hex,
+    /// 0x476C7C).
+    fn aim(&self, target: u8, hex: u8) -> Option<u8> {
+        if self.shots.contains(&(target, hex)) {
+            return Some(hex);
+        }
+        self.shots
+            .range((target, 0)..=(target, u8::MAX))
+            .next()
+            .map(|&(_, at)| at)
     }
 }
 
@@ -645,7 +675,7 @@ fn kind(field: &Field<'_>, spot: Spot, aim: &mut Option<u8>) -> (Kind, Option<u8
             return (kind, id);
         }
         *aim = id;
-        if legal.shots.contains(&stack.id) {
+        if legal.shoots(stack.id) {
             // The arrow tower shoots in full (0x4767B4); a stack off the field is a turret.
             let kind = if acting.hex < FIELD_HEXES && halved(field, acting, (stack, hex)) {
                 Kind::BrokenArrow
@@ -780,14 +810,38 @@ pub fn slots(observation: &Observation, legal: &Legal, hex: u8) -> [u32; 12] {
 /// stack tries (E17 M3 T6c-2).
 #[must_use]
 pub fn slots_in(field: &Field<'_>, hex: u8) -> [u32; 12] {
+    attack_slots(field, hex).map(|s| s.frame)
+}
+
+/// A slot of the acting stack's attack on a stack (`cursor_attack_slots` 0x474690): the cursor's
+/// frame (+0x133CC; 0 for none) and the position the attack is made from (+0x133FC; E17 M5 T2a).
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct Slot {
+    /// The combat cursor's frame.
+    pub frame: u32,
+    /// The position to strike from.
+    pub from: Option<u8>,
+}
+
+/// The twelve slots of the acting stack's attack on the stack on `hex` in `field` ([`slots`];
+/// design §9.11): a slot's position is the neighbour it tries, a two-hex stack's the one beside it
+/// for the directions right and left when that is taken, else the preferred one (its sword) or
+/// the other (a vertical sword); a slot without one copies the nearest slot's frame and position
+/// together.
+#[must_use]
+pub fn attack_slots(field: &Field<'_>, hex: u8) -> [Slot; 12] {
     let legal = field.legal;
-    let mut frames = [0_u32; 12];
+    let mut slots = [Slot::default(); 12];
     let (Some(acting), Some(target)) = (field.acting(), field.at(hex)) else {
-        return frames;
+        return slots;
     };
-    let ok = |p: i32| u8::try_from(p).is_ok_and(|p| legal.attacks.contains(&(target.id, p)));
+    let ok = |p: i32| {
+        u8::try_from(p)
+            .ok()
+            .filter(|&p| legal.attacks.contains(&(target.id, p)))
+    };
     let right = !field.facing.left(acting);
-    for (s, frame) in frames.iter_mut().enumerate() {
+    for (s, slot) in slots.iter_mut().enumerate() {
         let direction = u8::try_from(s / 2).unwrap_or(0);
         let Some(next) = neighbour(hex, direction) else {
             continue;
@@ -795,19 +849,24 @@ pub fn slots_in(field: &Field<'_>, hex: u8) -> [u32; 12] {
         let next = i32::from(next);
         let first = ok(next);
         let sword = 7 + (u32::from(direction) + 3) % 6;
-        if first {
-            *frame = sword;
+        if first.is_some() {
+            *slot = Slot {
+                frame: sword,
+                from: first,
+            };
         }
         if !acting.two_hex {
             continue;
         }
         let beside = next - if right { 1 } else { -1 };
         let second = ok(beside);
-        if !first && !second {
+        if first.is_none() && second.is_none() {
             continue;
         }
-        *frame = sword;
+        slot.frame = sword;
         if direction == 1 || direction == 4 {
+            // Right and left: the position beside when it is taken (0x47494E).
+            slot.from = second.or(first);
             continue;
         }
         // The position by facing and side first (0x4748E0): whether the beside one is preferred.
@@ -822,12 +881,20 @@ pub fn slots_in(field: &Field<'_>, hex: u8) -> [u32; 12] {
         } else {
             14
         };
-        if !preferred || (other && matches!(s, 0 | 5 | 6 | 11)) {
-            *frame = vertical;
-        }
+        *slot = if preferred.is_none() || (other.is_some() && matches!(s, 0 | 5 | 6 | 11)) {
+            Slot {
+                frame: vertical,
+                from: other,
+            }
+        } else {
+            Slot {
+                frame: sword,
+                from: preferred,
+            }
+        };
     }
     for s in 0..12 {
-        if frames[s] != 0 {
+        if slots[s].frame != 0 {
             continue;
         }
         let mut best = 12;
@@ -839,13 +906,74 @@ pub fn slots_in(field: &Field<'_>, hex: u8) -> [u32; 12] {
             if d > 6 {
                 d = 6 - d;
             }
-            if frames[j] != 0 && d < best {
+            if slots[j].frame != 0 && d < best {
                 best = d;
-                frames[s] = frames[j];
+                slots[s] = slots[j];
             }
         }
     }
-    frames
+    slots
+}
+
+/// The panel's Wait button (`battle_buttons` 0x4751B8: action 8).
+pub const WAIT: u16 = 2009;
+/// The panel's Defend button (0x474EEE: action 3).
+pub const DEFEND: u16 = 2010;
+
+/// The command a left press at `point` gives in `field` (E17 M5 T2a; `battle_click_action`
+/// 0x476BD0, design §9.11): over the battlefield by the cursor's kind there, a walk or a flight
+/// to the hex (a two-hex stack's to the position beside it when the hex is that position's front
+/// hex, 0x476C5F), a shot at the stack (its aim the hex where the target may be aimed at there),
+/// a strike from the slot's position, a wall shot, a heal; none for the others (the stack's info,
+/// the spell book: their dialogs) and outside the battlefield.
+#[must_use]
+pub fn click(field: &Field<'_>, layout: &BattleLayout, point: [i32; 2]) -> Option<Command> {
+    let [width, height] = layout.mouse.field;
+    if !(0..width).contains(&point[0]) || !(0..height).contains(&point[1]) {
+        return None;
+    }
+    let spot = spot(layout, point, field.rects());
+    let (kind, target) = kind(field, spot, &mut None);
+    let legal = field.legal;
+    match (kind, spot) {
+        (Kind::Move | Kind::Fly, Spot::Hex(hex)) => {
+            let acting = field.acting()?;
+            let [position, front] = field.hexes(acting);
+            let back = i32::from(hex) - (i32::from(front) - i32::from(position));
+            let to = u8::try_from(back)
+                .ok()
+                .filter(|b| acting.two_hex && legal.moves.contains(b))
+                .unwrap_or(hex);
+            Some(Command::Move { to })
+        }
+        (Kind::Shoot | Kind::BrokenArrow, Spot::Hex(hex)) => {
+            let target = target?;
+            let at = legal.aim(target, hex)?;
+            Some(Command::Shoot { target, at })
+        }
+        (Kind::Attack, Spot::Hex(hex)) => {
+            let from = attack_slots(field, hex)[slot(layout, point, hex)].from?;
+            Some(Command::Attack {
+                target: target?,
+                from,
+            })
+        }
+        (Kind::Wall, _) => Some(Command::ShootWall { part: target? }),
+        (Kind::Heal, _) => Some(Command::Heal { target: target? }),
+        _ => None,
+    }
+}
+
+/// The command the panel's button `id` gives when it is clicked (its hotkey's release too:
+/// `def_button_message` 0x456190) for the acting stack's commands `legal` (E17 M5 T2a): Wait and
+/// Defend when listed (a disabled button gives none).
+#[must_use]
+pub fn button(legal: &Legal, id: u16) -> Option<Command> {
+    match id {
+        WAIT if legal.wait => Some(Command::Wait {}),
+        DEFEND if legal.defend => Some(Command::Defend {}),
+        _ => None,
+    }
 }
 
 #[cfg(test)]

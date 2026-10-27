@@ -9,8 +9,8 @@ use h3_protocol::wire::{Command, Hero, Observation, Side, Siege, Stack, Tactics}
 use h3_render::Bugs;
 
 use super::{
-    Facing, Field, Hint, Kind, Legal, Pointer, Spot, distance, neighbour, pointer, pointer_in,
-    slot, slots, spot, walls_halve,
+    DEFEND, Facing, Field, Hint, Kind, Legal, Pointer, Slot, Spot, WAIT, attack_slots, button,
+    click, distance, neighbour, pointer, pointer_in, slot, slots, spot, walls_halve,
 };
 use crate::layout::{BattleLayout, parse_battle};
 use crate::record::tests::observation;
@@ -618,4 +618,220 @@ fn the_siege_s_hints_name_the_walls_and_the_turrets() {
     let text = |o: &Observation, h: Hint| h.text(&c, o, (&|_| None, &|_| None, &|_, _| None));
     assert_eq!(text(&plain, Hint::Wall(1)), "Hit ");
     assert_eq!(text(&o, Hint::Wall(9)), "Hit ");
+}
+
+/// A point of `hex` in its slot `s` (the first of its box, row by row).
+pub(super) fn slot_point(hex: u8, s: usize) -> [i32; 2] {
+    let l = layout();
+    let [left, top] = l.hex_box(hex / 17, hex % 17);
+    (top..top + 52)
+        .flat_map(|y| (left..left + 44).map(move |x| [x, y]))
+        .find(|&p| spot(&l, p, false) == Spot::Hex(hex) && slot(&l, p, hex) == s)
+        .unwrap()
+}
+
+/// The command a press at `point` gives in `o` for `commands`, each stack facing its side's way.
+fn press(o: &Observation, commands: &[Command], point: [i32; 2]) -> Option<Command> {
+    let legal = Legal::new(commands);
+    let field = Field {
+        observation: o,
+        legal: &legal,
+        facing: &Facing::Sides,
+        bugs: Bugs::Fixed,
+    };
+    click(&field, &layout(), point)
+}
+
+#[test]
+fn a_press_gives_the_command_the_cursor_shows() {
+    // E17 M5 T2a (`battle_click_action` 0x476BD0, design §9.11).
+    let o = battle();
+    let moves = [Command::Move { to: 87 }, Command::Move { to: 103 }];
+    // A walk or a flight to the hex; nothing where the cursor shows nothing, itself, outside the
+    // battlefield or with no stack acting.
+    assert_eq!(
+        press(&o, &moves, centre(87)),
+        Some(Command::Move { to: 87 })
+    );
+    let mut flier = o.clone();
+    flier.stacks[0].flies = true;
+    assert_eq!(
+        press(&flier, &moves, centre(103)),
+        Some(Command::Move { to: 103 })
+    );
+    assert_eq!(press(&o, &moves, centre(88)), None);
+    assert_eq!(press(&o, &moves, centre(86)), None);
+    assert_eq!(press(&o, &moves, [700, 570]), None);
+    assert_eq!(press(&o, &moves, [20, 60]), None);
+    let mut idle = o.clone();
+    idle.active = None;
+    assert_eq!(press(&idle, &moves, centre(87)), None);
+    // A two-hex stack facing right: a reached position's front hex walks to the position, even
+    // where the hex is a reached position too (0x476C5F: the reach map's +0x20F first).
+    let mut wide = o.clone();
+    wide.stacks[0].two_hex = true;
+    assert_eq!(
+        press(&wide, &moves, centre(104)),
+        Some(Command::Move { to: 103 })
+    );
+    let both = [Command::Move { to: 103 }, Command::Move { to: 104 }];
+    assert_eq!(
+        press(&wide, &both, centre(104)),
+        Some(Command::Move { to: 103 })
+    );
+    assert_eq!(
+        press(&wide, &both, centre(103)),
+        Some(Command::Move { to: 103 })
+    );
+    assert_eq!(press(&wide, &both, centre(87)), None);
+    // A shot at the stack: the hex aimed at where the target may be aimed at there (an area
+    // shot's), else the target's.
+    let mut wide_target = o.clone();
+    wide_target.stacks[1].two_hex = true;
+    let front = [Command::Shoot { target: 1, at: 90 }];
+    assert_eq!(
+        press(&wide_target, &front, centre(89)),
+        Some(Command::Shoot { target: 1, at: 90 })
+    );
+    let area = [
+        Command::Shoot { target: 1, at: 90 },
+        Command::Shoot { target: 1, at: 89 },
+    ];
+    assert_eq!(
+        press(&wide_target, &area, centre(89)),
+        Some(Command::Shoot { target: 1, at: 89 })
+    );
+    assert_eq!(
+        press(&o, &[Command::Shoot { target: 3, at: 100 }], centre(100)),
+        Some(Command::Shoot { target: 3, at: 100 })
+    );
+    // A strike from the slot's position.
+    let strikes = [
+        Command::Attack {
+            target: 1,
+            from: 73,
+        },
+        Command::Attack {
+            target: 1,
+            from: 106,
+        },
+    ];
+    assert_eq!(
+        press(&o, &strikes, slot_point(90, 0)),
+        Some(Command::Attack {
+            target: 1,
+            from: 73
+        })
+    );
+    assert_eq!(
+        press(&o, &strikes, slot_point(90, 7)),
+        Some(Command::Attack {
+            target: 1,
+            from: 106
+        })
+    );
+    // The tent's heal; its own side's stack without one, nothing.
+    assert_eq!(
+        press(&o, &[Command::Heal { target: 2 }], centre(120)),
+        Some(Command::Heal { target: 2 })
+    );
+    assert_eq!(press(&o, &[], centre(120)), None);
+    // A wall shot at a standing target.
+    let s = siege(3);
+    let all = catapult(&[0, 1, 2, 3, 4, 5, 6, 7]);
+    let field = Field {
+        observation: &s,
+        legal: &all,
+        facing: &Facing::Sides,
+        bugs: Bugs::Fixed,
+    };
+    let l = layout();
+    assert_eq!(
+        click(&field, &l, KEEP),
+        Some(Command::ShootWall { part: 7 })
+    );
+    assert_eq!(
+        click(&field, &l, centre(29)),
+        Some(Command::ShootWall { part: 1 })
+    );
+    assert_eq!(click(&field, &l, centre(88)), None);
+}
+
+#[test]
+fn a_slot_strikes_from_the_position_the_executable_takes() {
+    // E17 M5 T2a (`cursor_attack_slots` 0x474690 whole): each slot's frame with its position, a
+    // slot without one copying both.
+    let o = battle();
+    let legal = |c: &[(u8, u8)]| {
+        Legal::new(
+            &c.iter()
+                .map(|&(target, from)| Command::Attack { target, from })
+                .collect::<Vec<_>>(),
+        )
+    };
+    let field = |o: &Observation, legal: &Legal| -> [Slot; 12] {
+        let f = Field {
+            observation: o,
+            legal,
+            facing: &Facing::Sides,
+            bugs: Bugs::Fixed,
+        };
+        attack_slots(&f, 90)
+    };
+    let froms = |slots: [Slot; 12]| slots.map(|s| s.from.unwrap_or(0));
+    let one = field(&o, &legal(&[(1, 73), (1, 106)]));
+    let by_frame = one.map(|s| if s.frame == 10 { 73 } else { 106 });
+    assert_eq!(froms(one), by_frame);
+    assert_eq!(field(&o, &legal(&[])), [Slot::default(); 12]);
+    // A two-hex stack facing right: up right from 73 (the sword) or 72 (the vertical one).
+    let mut wide = o.clone();
+    wide.stacks[0].two_hex = true;
+    let both = field(&wide, &legal(&[(1, 73), (1, 72)]));
+    assert_eq!(
+        both[..2],
+        [
+            Slot {
+                frame: 14,
+                from: Some(72)
+            },
+            Slot {
+                frame: 10,
+                from: Some(73)
+            }
+        ]
+    );
+    // From the left: the position beside (88) when taken, else the neighbour (89).
+    assert_eq!(froms(field(&wide, &legal(&[(1, 88)]))), [88; 12]);
+    assert_eq!(froms(field(&wide, &legal(&[(1, 88), (1, 89)])))[8], 88);
+    assert_eq!(froms(field(&wide, &legal(&[(1, 89)]))), [89; 12]);
+    // Facing left: down right only the neighbour (107, vertical), down left both (slot 6 the
+    // vertical from 107, slot 7 the sword from 106).
+    let mut left = wide.clone();
+    left.stacks[0].side = Side::Defender;
+    left.stacks[0].controller = Side::Defender;
+    left.stacks[1].side = Side::Attacker;
+    left.stacks[1].controller = Side::Attacker;
+    let slots = field(&left, &legal(&[(1, 106), (1, 107)]));
+    assert_eq!(
+        slots.map(|s| s.frame),
+        [7, 7, 7, 7, 13, 13, 13, 7, 7, 7, 7, 7]
+    );
+    assert_eq!(
+        froms(slots),
+        [106, 106, 106, 106, 107, 107, 107, 106, 106, 106, 106, 106]
+    );
+    // From the right facing left: the position beside (92) when taken.
+    assert_eq!(froms(field(&left, &legal(&[(1, 91), (1, 92)])))[2], 92);
+}
+
+#[test]
+fn the_panel_s_wait_and_defend_give_their_commands_when_listed() {
+    let both = Legal::new(&[Command::Wait {}, Command::Defend {}]);
+    assert_eq!(button(&both, WAIT), Some(Command::Wait {}));
+    assert_eq!(button(&both, DEFEND), Some(Command::Defend {}));
+    assert_eq!(button(&both, 2001), None);
+    // Waited already (or the Catapult): no Wait; neither without a turn.
+    let defend = Legal::new(&[Command::Defend {}]);
+    assert_eq!(button(&defend, WAIT), None);
+    assert_eq!(button(&Legal::default(), DEFEND), None);
 }

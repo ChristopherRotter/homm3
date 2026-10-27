@@ -584,3 +584,91 @@ fn the_spell_book_empties_the_status_line() {
     assert_eq!(texts[4], (4, empty));
     assert_eq!(Input::Book { at: 4 }.at(), 4);
 }
+
+#[test]
+fn moves_made_while_an_action_plays_are_dropped_as_the_next_turn_starts() {
+    // E17 M5 T2a (`input_flush` 0x4EC570 from `battle_controls_state` 0x478301, design §9.11):
+    // the move over the attacker's stack 2 made during the action neither marks nor enters it nor
+    // writes its hint; the next human turn takes only the mouse where it rests.
+    let (o, legal) = (battle(), legal());
+    let mut next = battle();
+    next.active = Some(2);
+    let none = Legal::default();
+    let turn = |observation, legal| Turn {
+        field: Field {
+            observation,
+            legal,
+            facing: &Facing::Sides,
+            bugs: Bugs::Fixed,
+        },
+        human: true,
+    };
+    let turns = [turn(&o, &legal), turn(&next, &none)];
+    let inputs = [
+        Input::Move {
+            at: 0,
+            to: centre(87),
+        },
+        Input::Act { at: 100 },
+        Input::Move {
+            at: 200,
+            to: centre(120),
+        },
+        Input::Move {
+            at: 300,
+            to: centre(88),
+        },
+    ];
+    let log = [(100, Logged::Action), (500, Logged::Turn(2))];
+    let shown = run(&log, &[Start { unmarks: true }], &turns, &inputs);
+    assert_eq!(shown.marked, []);
+    assert_eq!(shown.entered, []);
+    assert_eq!(
+        shown.log,
+        [
+            (0, status("Move(0)", false)),
+            (100, Logged::Action),
+            (500, Logged::Turn(2)),
+            (500, status("Empty", false)),
+        ]
+    );
+    assert_eq!(shown.point(400), Some(centre(88)));
+}
+
+#[test]
+fn the_client_forgets_the_hovered_item_over_the_battlefield() {
+    // CLT-Q24, answered (a) (E17 M5 T2a): back on the panel's picture from the battlefield, the
+    // client's profile writes its empty line again; the original's keeps the battlefield's hint.
+    let (o, legal) = (battle(), legal());
+    let inputs = [
+        Input::Move { at: 0, to: PARK },
+        Input::Move {
+            at: 100,
+            to: [700, 570],
+        },
+        Input::Move { at: 200, to: PARK },
+        Input::Move {
+            at: 300,
+            to: centre(87),
+        },
+        Input::Move { at: 400, to: PARK },
+    ];
+    let shown = |bugs| {
+        let field = Field {
+            observation: &o,
+            legal: &legal,
+            facing: &Facing::Sides,
+            bugs,
+        };
+        run(&[], &[], &[Turn { field, human: true }], &inputs).log
+    };
+    let common = [
+        (100, status("Control(\"battle.control.wait\")", false)),
+        (200, status("Empty", false)),
+        (300, status("Move(0)", false)),
+    ];
+    assert_eq!(shown(Bugs::Original), common);
+    let mut fixed = common.to_vec();
+    fixed.push((400, status("Empty", false)));
+    assert_eq!(shown(Bugs::Fixed), fixed);
+}
