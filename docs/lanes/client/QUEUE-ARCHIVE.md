@@ -4,6 +4,14 @@ Finished history and informational notices moved out of `QUEUE.md` on 2026-10-24
 
 ## Notices from other lanes and finished items, newest first
 
+- 2026-10-26 (T2c-2): **the status line at a human turn with the mouse parked** is kept in hot
+  seat and emptied with one human side, built as found (*provisional*; design §10.2, "Recorded
+  (M4 T2c-2)"). The dispatch is read (an item writes its hint only on entering, `hovered_item`
+  0x6AAC68); open: the item under the park point and what makes it entered again (`aim`'s line
+  emptied at 8 175, `hit`'s kept). A capture reading 0x6AAC68 and that item's id per frame
+  would settle it (T3's captures or live play). Done at M4 T3b-1 (2026-10-27,
+  design §10.2 "Recorded afresh").
+
 - 2026-10-23 (the map-client lane, E24 T0; for later, nothing to do now): **what the map client
   will need of `h3-view`.** E24 M1 (stills of the map view) builds only on the common foundation;
   M2's window will want `clock` and `sound`, M3's panels `ui`, `text` and `layout`, in a common

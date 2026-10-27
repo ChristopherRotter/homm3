@@ -314,3 +314,8 @@ M3 at its review, T9b). The next milestone's list starts here.
     over a roll's undrawn one is refused; the wall states checked before a game starts (R3-5).
     Queued (QUEUE's inbox, with a record that opens mid-battle): R1-3, the moat's strip by the
     fixed moat rows.
+13. The status line by the hovered panel item (T3b-1, design §10.2 "Recorded afresh"): the
+    layouts' picture gains `size`, where it takes the mouse (the battle panel's 2000, 800 × 44);
+    the tracker writes a panel item's hint only as the mouse enters it, the first input (the
+    mouse resting where it was placed before the battle) entering none, and a spell book's close
+    forgetting the hovered item (*provisional*, not read per frame); the hot-seat proxy removed.

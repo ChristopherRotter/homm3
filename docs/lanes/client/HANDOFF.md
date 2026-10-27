@@ -34,11 +34,12 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
 
 ## Recent sessions
 
-- **2026-10-26, E17 M4 T3b-1 (in progress; `client/e17-m4-t3b1`).** T3b cut in two (the
+- **2026-10-26/27, E17 M4 T3b-1 (in progress; `client/e17-m4-t3b1`).** T3b cut in two (the
   user: T3b-1 the hovered item read, the stills, the 15 siege sequences and `walk`, `turn`,
-  `climb`, the status line settled; T3b-2 the other 29 sequences, `drawn --record`). Done: the
-  harness reads `hovered_item` per step (pushed); `drawn` all 119 the same; `walk` as recorded.
-  Running: batch A (`turn` to `cyclops`); next batch B (`gate` to `through`), then `set`.
+  `climb`, the status line settled; T3b-2 the other 29 sequences, `drawn --record`). Done:
+  the harness reads `hovered_item`; the status line settled (the panel's picture entered once
+  after the opening; viewer and docs pushed); the 18 sequences as recorded (`aim`'s ` log`
+  masks gone, recorded). Next: `set`, `drawn`, verify, PR.
 - **2026-10-26, E17 M4 T3a (done; #485 merged).** T3 cut in three (the user).
   Three fresh reviewers one at a time (R1 drawing and timeline, R2 mouse and adapters, R3
   harness): 16 of 17 findings fixed, R1-3 queued (QUEUE's inbox); review items 10 to 12. The

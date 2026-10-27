@@ -3432,7 +3432,8 @@ the siege's mouse (not cut, the user). The viewer plays and draws the reading:
   back over the item the mouse last entered writes nothing, the hint stays. Not read: which item
   lies under the park point, and what makes it entered again. One case the rule misses: `aim`'s
   line emptied at the Pikemen's turn after the Catapult's shot (8 175: its last 8 frames listed
-  ` log`), where `hit`'s, the same shot, keeps it.
+  ` log`), where `hit`'s, the same shot, keeps it. **Settled at M4 T3b-1** (below): the
+  hovered item, read per step.
 - **Differences listed** (the frame check's `frames` files): the acting shooter's first frame
   leaves its standing frame's outline top row (T2b's: the Catapult's 11 pixels in `quake`, `aim`
   at 4 500 and `through`, `through`'s Archers' again at 6 991; the keep's 4 in `defended`);
@@ -3440,3 +3441,31 @@ the siege's mouse (not cut, the user). The viewer plays and draws the reading:
   last 8 frames' ` log` (above). The rest exact: Earthquake's shake and explosions, the broken
   arrow, the end tune's frames. T2b's and T2c-1's nine with the Catapult's hint, recaptured:
   their ` log` masks gone, every other count as recorded.
+
+**Recorded afresh (M4 T3b-1, 2026-10-27).** T3b cut in two by the user (T3b-1: the hovered item
+read, the stills, the 15 siege sequences and `walk`, `turn`, `climb`; T3b-2 the other 29). The
+harness reads `hovered_item` 0x6AAC68 per step (`h3mem.Mem.hovered_item`: the item's id, kind,
+dialog, box, state and hint, in `states.jsonl` and `frames.jsonl`), read-only.
+
+- **The hovered item at the park point** is the panel's picture, item 2000 (vtable 0x63BA94, its
+  dialog the combat dialog, its box (0, 556, 800, 44), state 6, no hint): no control lies under
+  (618, 593). The opening enters no item: `hovered_item` is 0 in every sequence until the first
+  move into the panel after it, the mouse resting where the harness placed it before the battle.
+  That first move enters the picture and writes an empty line (nothing while the log's new
+  entries show, 0x472B80): a human turn's post of the parked mouse (`walk` 2 592, `turn`
+  2 648, `climb` 2 396, `keep` 1 654: the second human turn; `hit`, `missed`, `automatic` at 0,
+  the turn after the opening's defend) or the queued park after a click. From then on the park
+  point writes nothing, the hint kept, until another item is entered (a control's hint) or the
+  hovered one is destroyed (the spell book's items as it closes, 0x5FE442).
+- **`aim`'s exception explained:** its mouse moves over the battlefield only (600, 40 to
+  630, 532) until the Catapult's click, so the panel is first entered by the park queued after
+  the shot, at the Pikemen's turn (8 176): the line emptied. `hit`'s defends park the mouse at
+  the opening's turns, so its Griffins' turn finds the picture hovered and keeps the hint.
+- **The viewer** (`mouse::track`): the hot-seat proxy gone; the tracker keeps the hovered panel
+  item (`Handler::hovered`) and writes an item's hint, an empty line without one, only as the
+  mouse enters it; the first input (the mouse resting where it was placed before the battle, the
+  harness's park) enters none; a book (`Input::Book`) forgets it (*provisional*: the book's
+  items not read per frame; the M3 sequences with casts, T3b-2). The panel's picture takes the
+  mouse by its layout's `size` (`ui::Picture::size`, the layouts' format: the M4 review list).
+- **Captured:** the 15 siege sequences and `walk`, `turn`, `climb` as recorded but `aim`, whose
+  last 8 frames' ` log` masks are gone (its counts recorded again); the stills below.
