@@ -17,8 +17,7 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   negative, no gain at N 16 or 64. **Next: the user's checkpoint** (E06-log T8c, "Put to the
   user"; QUEUE): close increment 7 and decide E06's end, or T8d, or the true-world diagnostic;
   AI-STUB-1 matters only for T8d.
-- **Open pull request:** this session's (`claude/zealous-cray-5ct70h`, T6g and T8c): watch it to
-  its merge.
+- **Open pull request #502** (`claude/zealous-cray-5ct70h`, T6g and T8c): watch it to its merge.
 - **Versions:** battle action encoding v13, observation encoding v22, replay format v31
   (CLT-Q4/Q6), the adventure env's action encoding v4 (E08 T45), C ABI v34 (T6f and T8b: the turn
   order, the worlds) (`docs/08-work-process.md`, "Versions"). Next ids: AI-Q10, AI-QUIRK-1,
