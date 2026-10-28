@@ -106,8 +106,9 @@ commands:
           --check <s> and --measure <s> run unattended for <s> seconds (the window's own keys but Esc do
           nothing; the map's input is taken) and report when each frame showed against its time
           and how long the frames took to make;
-          --check also reads every frame back and compares it with the frame composed, and plays
-          every action headless to check each change shown (exit 1 on a difference).
+          --check also reads every frame back and compares it with the frame composed, compares
+          each frame made with the screen's own pixels widened one by one, and plays every
+          action headless to check each change shown (exit 1 on a difference).
 ";
 
 fn main() -> ExitCode {

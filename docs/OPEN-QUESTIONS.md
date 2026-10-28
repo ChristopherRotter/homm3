@@ -83,7 +83,7 @@ The review's fix C3 follows the reading of 0x47A100: a created stack whose round
 
 #### CLT-Q5 — Boats in `h3-map`'s writer, for the deck and the two boats (E17 M3 T2; for the adventure lane)
 
-**Context.** The capture set shows the original every battlefield the harness can set up through `h3-map`'s writer (`h3-view situation`, `clients/situations/set.toml`); since E17 M3 T2 the shore and the nine special grounds, all exact (`docs/epics/E17-design.md` §5, §6.2). Two special battlefields need boats on the map (survey `E04c-battlefields.md` §1): a ship's deck (`base:deck`, `CmBkDeck.pcx`: a hero in a boat against one on land, or the guards of a Derelict Ship, class 24, or a Shipwreck, class 85) and two boats (`base:boats`, `CmBkBoat.pcx`: both heroes in boats). The writer has neither a boat (class 8, `AVXboat0`–`2`), a hero placed in one, nor those two locations (its objects: heroes, monsters, piles, grounds, towns). The client draws both from a scenario (`h3-view render`: the deck's water obstacles, the boats' fixed hexes), but cannot compare them with the original. **Options:** (a) the writer gains boats (an empty boat and a hero standing in one on water) when the adventure lane builds boats (GAM-BAT-001: "Boats … come with the increments that build them"); (b) a Derelict Ship or Shipwreck only (the deck alone); (c) leave both unchecked. **Recommendation:** (a), whenever boats come; the client lane then adds the two situations (`set.toml` entries) without further reading. Not urgent: both pictures are whole PCX files, drawn as every other background is. **2026-10-28 (the adventure lane, E08 T65, decision 158):** increment 8 builds boats, so (a): the writer gains an empty boat and a hero standing in one; the adventure lane tells the client lane's inbox when they land.
+**Context.** The capture set shows the original every battlefield the harness can set up through `h3-map`'s writer (`h3-view situation`, `clients/situations/set.toml`); since E17 M3 T2 the shore and the nine special grounds, all exact (`docs/epics/E17-design.md` §5, §6.2). Two special battlefields need boats on the map (survey `E04c-battlefields.md` §1): a ship's deck (`base:deck`, `CmBkDeck.pcx`: a hero in a boat against one on land, or the guards of a Derelict Ship, class 24, or a Shipwreck, class 85) and two boats (`base:boats`, `CmBkBoat.pcx`: both heroes in boats). The writer has neither a boat (class 8, `AVXboat0`–`2`), a hero placed in one, nor those two locations (its objects: heroes, monsters, piles, grounds, towns). The client draws both from a scenario (`h3-view render`: the deck's water obstacles, the boats' fixed hexes), but cannot compare them with the original. **Options:** (a) the writer gains boats (an empty boat and a hero standing in one on water) when the adventure lane builds boats (GAM-BAT-001: "Boats … come with the increments that build them"); (b) a Derelict Ship or Shipwreck only (the deck alone); (c) leave both unchecked. **Recommendation:** (a), whenever boats come; the client lane then adds the two situations (`set.toml` entries) without further reading. Not urgent: both pictures are whole PCX files, drawn as every other background is. **2026-10-28 (the adventure lane, E08 T65, decision 158):** increment 8 builds boats, so (a): the writer gains an empty boat and a hero standing in one; the adventure lane tells the client lane's inbox when they land. **2026-10-28 (E08 T67):** the empty boat landed (`writer::PLAIN_OBJECTS`, class 8); a hero standing in one cannot be written (the original gives a hero placed on water no boat, survey `E08-sea.md` §2): a hero beside an empty boat boards it in the game (the client lane's inbox has the setups).
 
 #### CLT-Q26 — The spell book's last hovered item is never reset (E17 M5 T3a)
 
@@ -99,7 +99,20 @@ The review's fix C3 follows the reading of 0x47A100: a created stack whose round
 
 ### Map client lane (`MCL-Q<n>`)
 
-(no open questions)
+#### MCL-Q13 — A monster's head under the Dragon Utopia (E24 M3 T2b1; the user, 2026-10-28)
+
+The user saw, in the window on `path-objects` (map-measure's runs 5 and 6), the Gold Dragon's
+head drawn under the Dragon Utopia. The dragon (`AVWdrax0.def`, 2 × 2 at the map's (10, 10) and
+(11, 11)) stands on cells of the Utopia's picture (`AVSutop0.def`); on those four tiles the draw
+lists hold the dragon's body before the Utopia's (`tile_draw_insert` 0x505230's order by layer and
+height, design §2.2), so the Utopia's base covers the dragon's upper half. **The original draws
+the same:** the spot is in `path-objects`' start view, a still compared exact with the original's
+capture (`set.toml`: 0 pixels differing). An oddity of the original (a guard placed on another
+object's picture), not of the client. **Options:** (a) keep the original's drawing; (b) a client
+rule drawing a monster over the object whose picture it stands on (the draw lists' order changed
+for such cells: the stills' comparisons then need `--bugs original` for it). **Recommendation:**
+(a): the order is the rule every still is checked against, and the map's author placed it so.
+**Blocked:** nothing.
 
 ## Answered
 

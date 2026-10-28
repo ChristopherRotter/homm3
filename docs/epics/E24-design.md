@@ -1582,3 +1582,52 @@ checked against the running original's dialog (`h3mem.dialog_items` on `heroes-o
   then (a still) the cursor at the live part's pointer. Not drawn yet: the lists' contents (T4),
   the minimap (T3), the status window, the amounts and the date (T5), the hints (T6):
   `h3map.py`'s `panels` mask keeps their rectangles.
+
+### 4.2 The frame made once (M3 T2b1)
+
+No reading; every frame as before, pixel for pixel (*provisional* in what follows). The user's
+asks at the cut (2026-10-28): a spatial structure for the draw objects (a jump to a town or
+anywhere on the map, HotA's 252 × 252 maps and larger), the widening computed once.
+
+- **Measured before** (callgrind, the window's frames on `path-objects`, 111 frames): 101 million
+  instructions a frame: the widening to 32 bits 63 (`PixelFormat::unpack`'s per-channel loops,
+  pixel by pixel), the composition 28.5 (the frame picture, the dialog's items and the resource
+  bar about 9 of it; the view's drawers 19), the scene 7.3 (each object's shape found by its
+  DEF's name for every piece, the draw lists built over the whole level), the painter's two
+  copies of the screen 1.3. The sandbox: a 144 × 144 map 3.5 ms a frame more than `path-objects`.
+  The user's machine (`map-measure-t2b-before.txt`): a frame made in a median 4.2 ms on `walk-1`,
+  3.3 (p95 11.3) on *Tale of two lands*, 3.3 (p95 7.3) on `path-objects` with the user's input.
+- **The widening** (`h3_render::screen::Widening`): every pixel of a format widened once, a table
+  of 65 536 entries (256 KiB), `Screen::xrgb`'s values; `widen` into a kept vector, `widen_onto`
+  a screen onto a part of a frame. The window makes each frame into a vector a frame no longer
+  shown gave back (`Maker`), none allocated afresh.
+- **The composer** (`compose::Composer`, the painter's): the scene's leading draws that do not
+  move with the view (the frame's picture, the dialog's items and the resource bar) are drawn on
+  black once as the background while they stay the same (they change with the buttons' states:
+  at a walk's start and end, a selection); each scene restores from it the rectangle its other
+  draws and the last scene's cover (the view's clip and the gems': (6, 6) to (602, 554)) and draws
+  them over it. Each DEF's palette is kept for its cycles' steps (made again when they step), its
+  sprite and palette looked up once a scene by the name as spelled. `compose` is a new composer's
+  first scene.
+- **The spatial index** (`scene::TileIndex`): a level's draw lists in a dense grid of its tiles
+  (the map is a bounded grid: a tile's list at once, whatever the map's size, a perfect hash) and
+  each listed object's look (its DEF, shape, flatness, flag's entry and phase), worked out once,
+  the level's map-wide checks (every listed object's shape) made as it is built. `scene_in`
+  visits only the view's tiles: a jump costs a scroll's frame, a 252 × 252 map a 36 × 36 one's.
+  `scene` builds the view's level's index and calls it. The painter builds every level's at the
+  map's load; it holds while the live part's objects stay as they were (their pictures, owners,
+  phases and whether they stand: no draw changes them before M4, which builds it again or
+  updates a tile's list).
+- **The painter and the window:** the view drawn into the composer's frame, no copy of it kept;
+  a frame is that frame widened, then the cursor's rectangle cut out, the cursor drawn on it and
+  widened over the frame (`Cursor::rect`, `Screen::cut`). A scene's names are decoded only when
+  a spelling is new (`batch::spelled`). The shadows' masks are worked out once a draw.
+  `--check` also compares each frame made with the screen's own pixels widened one by one (the
+  line `widened`).
+- **Measured after:** callgrind on `path-objects` 25.2 million instructions a frame (101): the
+  view's drawers 16 (the shadow pass 6.5, the flagged drawer 6.3, the raw one 3.4), the widening
+  3.9, the scene 2.3. The sandbox's medians: `walk-1` 6.4 → 1.3 ms, `path-objects` 10.8 → 4.5,
+  *Tale of two lands* 14.3 → 4.2 (the map's size no longer counts).
+- **Left** (T2b2): the drawers visit every pixel of a piece, transparent ones included; every
+  frame draws the whole view and widens and uploads the whole screen, though an idle frame changes
+  only the animated objects and the cycling water and a scroll moves what it keeps.

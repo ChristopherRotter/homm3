@@ -4,6 +4,22 @@ Finished history and informational notices moved out of `QUEUE.md` on 2026-10-24
 
 ## Notices from other lanes and finished items, newest first
 
+- 2026-10-28 (this lane, E24 M3 T2b1): T2b cut with the user into T2b1 (the frame's fixed cost,
+  done: the log's "M3 T2b1") and T2b2 (a frame redrawing only what changed, queued), the user
+  adding a spatial structure for the draw objects (a jump and HotA's large maps) and the
+  widening computed once; the queue's entry, verbatim:
+
+  ### E24 M3 T2b — the frame's fixed cost (cut into T2b1 and T2b2)
+
+  - **Scope:** cut from T2 with the user (2026-10-28; T2a, the panels right, done: the epic's
+    log, "M3 T2a"): the frame's fixed cost (the inbox's, `QUEUE-ARCHIVE.md` 2026-10-27, E24 M2
+    T4b3): the frame picture and the panels converted and drawn once a viewer, no screen copies, a
+    frame redrawing what changed (a scroll or a walk only what moved; the buttons a walk sets);
+    measured with `map-measure.cmd`'s "a frame made in" before and after on the user's machine.
+  - **Acceptance:** every situation and sequence as recorded (`h3map.py drawn` all the same, the
+    frame checks exact); a frame's fixed cost measured before and after; the Definition of Done.
+  - **Depends on:** T2a. **Status:** ready.
+
 - 2026-10-28 (this lane, E24 M3 T2a): T2 cut with the user into T2a (the panels right, done:
   the log's "M3 T2a") and T2b (the frame's fixed cost, queued); the queue's entry, verbatim:
 

@@ -23,6 +23,11 @@
 //! Witch Huts, Pandora's Boxes and events), a monster's [`Treasure`], increment 7's objects
 //! without a body as [`Plain`] objects, and, through [`write_in`], a map in the RoE format
 //! ([`Format::RoE`], version `0x0E`).
+//!
+//! Since E08 T67 (batch E8's maps, survey `docs/rules/surveys/E08-sea.md` §5) it writes the sea's
+//! objects: empty boats, Flotsam, the Sea Chest, the Shipwreck Survivor and holes as [`Plain`]
+//! objects, an Ocean Bottle (or a sign) with its text ([`RewardBody::Sign`]); Favorable Winds is a
+//! special ground ([`GROUND_OBJECTS`]), and a hero or a monster may stand on water.
 
 mod extras;
 mod rewards;
@@ -32,7 +37,7 @@ use std::fmt;
 pub use extras::{AnyObject, Extras, GivenTile, RiverKind};
 pub use rewards::{
     ARTIFACT_OBJECT, EVENT_OBJECT, Event, Message, PANDORA_OBJECT, RANDOM_ARTIFACT_OBJECTS,
-    RewardBody, RewardObject, SCROLL_OBJECT, SHRINE_OBJECTS, SPELL_COUNT, Treasure,
+    RewardBody, RewardObject, SCROLL_OBJECT, SHRINE_OBJECTS, SIGN_OBJECTS, SPELL_COUNT, Treasure,
     WITCH_HUT_OBJECT, WITCH_HUT_SKILLS,
 };
 
@@ -204,8 +209,15 @@ pub const GROUND_OBJECTS: [u32; 12] = [21, 46, 222, 223, 224, 225, 226, 227, 228
 /// 155), and the Border Gates (212; subclass the key's colour, 0 light blue … 7 black), visited
 /// from the tile before (batch E5's flights over a tree line and a gate); since E08 T56 increment
 /// 7's (batch E7): the Corpse (22), the Pyramid (63), the Learning Stone (100), the Treasure
-/// Chest (101), the University (104), the Wagon (105) and the Warrior's Tomb (108).
-pub const PLAIN_OBJECTS: [u32; 12] = [13, 22, 63, 100, 101, 104, 105, 108, 135, 137, 155, 212];
+/// Chest (101), the University (104), the Wagon (105) and the Warrior's Tomb (108); since E08 T67
+/// increment 8's (batch E8; survey `docs/rules/surveys/E08-sea.md` §5, CLT-Q5): an empty boat (8;
+/// subclass the boat's type 0 to 2, `AVXboat0` to `AVXboat2`, its one visitable tile on water),
+/// Flotsam (29), the Sea Chest (82), the Shipwreck Survivor (86) and holes (124). A hero stands
+/// in no boat a map writes: one placed on water has none (survey §2), so a hero "in a boat" is a
+/// hero beside an empty boat that boards it in the game.
+pub const PLAIN_OBJECTS: [u32; 17] = [
+    8, 13, 22, 29, 63, 82, 86, 100, 101, 104, 105, 108, 124, 135, 137, 155, 212,
+];
 /// Object class of a town of a fixed faction (subclass = faction, `TOWNTYPE.TXT` order: Castle 0
 /// … Conflux 8; E04c T5b).
 pub const TOWN_OBJECT: u32 = 98;
@@ -425,7 +437,8 @@ pub struct HeroArtifacts {
 /// A hero placed on the map. Every `Option` is "use the hero type's default".
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Hero {
-    /// Tile the hero stands on.
+    /// Tile the hero stands on, of any terrain: the original gives a hero placed on water no boat
+    /// (E08 T67: batch E8's row E8-5, survey `docs/rules/surveys/E08-sea.md` §2, D-44).
     pub tile: (u8, u8),
     /// Owning player (0 = red … 7 = pink).
     pub owner: u8,
@@ -454,7 +467,8 @@ pub struct Hero {
 /// A wandering monster placed on the map.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Monster {
-    /// Tile the monster stands on.
+    /// Tile the monster stands on, of any terrain: on water it guards its water neighbours (E08
+    /// T67: batch E8's row E8-13).
     pub tile: (u8, u8),
     /// Template (class 54 and the creature id as subclass for a fixed creature).
     pub template: ObjectTemplate,
@@ -578,11 +592,13 @@ pub enum MapObject {
     /// A special ground.
     Ground(Ground),
     /// An object without a body (E08 T32a): a Cartographer, a tree, a Border Gate; since E08 T56
-    /// increment 7's (a chest, a Corpse, the Pyramid, …).
+    /// increment 7's (a chest, a Corpse, the Pyramid, …), since E08 T67 increment 8's (a boat,
+    /// the sea's pickups but the Ocean Bottle, a hole).
     Plain(Plain),
     /// A town.
     Town(Town),
-    /// An object that hands a visiting hero something, with its body (E08 T56).
+    /// An object that hands a visiting hero something, with its body (E08 T56; since E08 T67 an
+    /// Ocean Bottle's or a sign's message).
     Reward(RewardObject),
 }
 

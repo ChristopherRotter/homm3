@@ -3,7 +3,8 @@
 //! Spell Scrolls, Shrines, Witch Huts, Pandora's Boxes and events, each with the body the
 //! format gives it (`docs/formats/h3m.md`, "Rewards"), and a monster's treasure. The objects
 //! without a body among increment 7's (a chest, a Corpse, the Pyramid, …) are
-//! [`Plain`](super::Plain) objects.
+//! [`Plain`](super::Plain) objects. Since E08 T67 (batch E8) an Ocean Bottle's or a sign's
+//! message ([`RewardBody::Sign`]).
 
 use super::{ARMY_SLOTS, Codes, Format, ObjectTemplate, Out, WriteError, out_of_range};
 use crate::model::Rewards;
@@ -26,6 +27,9 @@ pub const SHRINE_OBJECTS: [u32; 3] = [88, 89, 90];
 pub const SCROLL_OBJECT: u32 = 93;
 /// The object class of a Witch Hut.
 pub const WITCH_HUT_OBJECT: u32 = 113;
+/// The object classes whose body is a message alone: the Ocean Bottle (59) and the sign (91)
+/// (`docs/formats/h3m.md`, "Object bodies by class": a string, 4 unused bytes; E08 T67).
+pub const SIGN_OBJECTS: [u32; 2] = [59, 91];
 /// A Witch Hut's possible skills as the editor sets them: all 28 but Leadership (6) and
 /// Necromancy (12); 213 of the 259 witch huts in the game's 56 SoD maps (E24 M1 T3a).
 pub const WITCH_HUT_SKILLS: [u8; 4] = [0xbf, 0xef, 0xff, 0x0f];
@@ -87,6 +91,10 @@ pub enum RewardBody {
     },
     /// An event (26).
     Event(Event),
+    /// An Ocean Bottle (59) or a sign (91): its text (Windows-1252, at most Latin-1), shown at the
+    /// visit; an empty one leaves the text to the game (survey `docs/rules/surveys/E08-sea.md`
+    /// §8.5: a bottle's default text by its column; E08 T67).
+    Sign(String),
 }
 
 /// An object that hands a visiting hero something (E08 T56): its template and its body.
@@ -124,6 +132,7 @@ pub(super) fn validate(object: &RewardObject, codes: &Codes) -> Result<(), Write
         RewardBody::WitchHut(_) => class == WITCH_HUT_OBJECT,
         RewardBody::Pandora { .. } => class == PANDORA_OBJECT,
         RewardBody::Event(_) => class == EVENT_OBJECT,
+        RewardBody::Sign(_) => SIGN_OBJECTS.contains(&class),
     };
     if !fits {
         return Err(out_of_range("reward object class", class));
@@ -156,6 +165,7 @@ pub(super) fn validate(object: &RewardObject, codes: &Codes) -> Result<(), Write
             validate_message(event.message.as_ref(), codes)?;
             validate_rewards(&event.rewards, codes)
         }
+        RewardBody::Sign(_) => Ok(()),
     }
 }
 
@@ -244,6 +254,11 @@ pub(super) fn write_body(out: &mut Out, body: &RewardBody) -> Result<(), WriteEr
             out.u8(event.players);
             out.bool(event.computer);
             out.bool(event.removed_after_visit);
+            out.bytes(&[0; 4]);
+            Ok(())
+        }
+        RewardBody::Sign(text) => {
+            out.string(text)?;
             out.bytes(&[0; 4]);
             Ok(())
         }
@@ -440,6 +455,16 @@ mod tests {
         let bytes = written(reward(26, 0, event), Format::Sod).unwrap();
         expected.extend([0b101, 1, 0, 0, 0, 0, 0]);
         assert_eq!(last_body(&bytes, expected.len()), expected);
+        // An Ocean Bottle's or a sign's text, then 4 unused bytes, in every format (E08 T67).
+        for format in [Format::Sod, Format::RoE] {
+            let bottle = written(reward(59, 0, RewardBody::Sign("Ahoy".into())), format).unwrap();
+            assert_eq!(
+                last_body(&bottle, 12),
+                [4, 0, 0, 0, b'A', b'h', b'o', b'y', 0, 0, 0, 0]
+            );
+            let sign = written(reward(91, 0, RewardBody::Sign(String::new())), format).unwrap();
+            assert_eq!(last_body(&sign, 8), [0; 8]);
+        }
     }
 
     #[test]
@@ -513,6 +538,11 @@ mod tests {
             spell,
         };
         refused(reward(88, 0, scroll(0)), "reward object class", 88);
+        refused(
+            reward(29, 0, RewardBody::Sign(String::new())),
+            "reward object class",
+            29,
+        );
         refused(reward(5, 144, RewardBody::Artifact(None)), "artifact", 144);
         refused(reward(93, 0, scroll(SPELL_COUNT)), "spell", 70);
         refused(reward(89, 0, RewardBody::Shrine(Some(70))), "spell", 70);

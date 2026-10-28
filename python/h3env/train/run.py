@@ -111,6 +111,10 @@ class Config:
     #: Whether the MLP's trunk reads the turn order (observation v22's last block, each stack
     #: slot's places; the turn-order probe, E06-log); else v21's prefix, as before v22.
     order: bool = field(default=False, metadata=_in("network"))
+    #: The agent's tactics bound (E25 T4a, any kind; `policy`'s documentation): the rounds of its
+    #: own tactics phase it plays before End tactics is its only entry, wherever it plays (0: no
+    #: bound; the rules set none, BAT-TAC-002).
+    tactics_rounds: int = field(default=0, metadata=_in("network"))
     rollout: int = field(default=128, metadata=_in("ppo"))
     #: 1.0 since E06 T5a (AI-Q9: γ 0.995 let the winner stall, `t4-1` against `t4-2`).
     gamma: float = field(default=1.0, metadata=_in("ppo"))
@@ -355,6 +359,7 @@ def resolve(config: Config) -> Config:
         "gate_every",
         "torch_threads",
         "ladder_promoted",
+        "tactics_rounds",
     ):
         if getattr(c, key) < 0:
             problems.append(f"`{key}` must not be negative")

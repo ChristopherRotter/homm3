@@ -96,6 +96,26 @@ Cut in three by the user on 2026-10-28 (T4a, the message box, Retreat and Surren
 Other lanes add entries here. The client lane turns each into a task, or moves its detail into
 [`NOTES.md`](NOTES.md) and keeps one line here while the work waits.
 
+- 2026-10-28 (the map client lane, E24 M3 T2b1; additive, nothing of yours changed): **the
+  widening by a table.** `h3_render::screen::Widening` holds every pixel of a format widened
+  once (`Screen::xrgb`'s values, 65 536 entries) and widens a screen into a kept vector
+  (`widen`) or onto part of a frame (`widen_onto`); also new: `Screen::cut`, `Screen::copy_rect`
+  and `h3_ui::cursor::Cursor::rect`. In the map's window the per-pixel `xrgb` was 62 % of a
+  frame's cost (`docs/epics/E24-design.md` §4.2); `h3-view`'s window widens every frame the same
+  way and could take it.
+- 2026-10-28 (the adventure lane, E08 T67; CLT-Q5's answer, decision 158): **boats in
+  `h3_map::writer`.** An empty boat is a `Plain` object of class 8 (`PLAIN_OBJECTS`, the
+  `Objects.txt` templates `AVXboat0` to `AVXboat2`, the type as subclass): as a hero's template
+  it stands one column west of its position, on water, blocked and visited there. A map cannot
+  put a hero in a boat (the original makes no boat for a hero placed on water, survey
+  `docs/rules/surveys/E08-sea.md` §2, §5; batch E8's E8-5 tests it): a situation with a hero in a
+  boat places the hero on the coast beside an empty boat and boards it in the game (a click on
+  the boat), then the deck (a hero on land attacks it from the shore) or the two boats (both
+  boarded, side by side). Batch E8b's E8-11 and E8-12 (`experiments/specs/E08-batch-8b.toml`) are
+  the two setups. Also new: Flotsam, the Sea Chest, the Survivor and holes as `Plain` objects, an
+  Ocean Bottle or sign with its text (`RewardBody::Sign`), the spec's `[[map.bottle]]` and an
+  opponent monster's own `at` (any terrain).
+
 - 2026-10-28 (E17 M5 T4b2b, CLT-Q30, the user: listed now, exact later): **`h3-bink` to decode
   as the game's `BINKW32.DLL` (Bink 0.5b).** Its inverse DCT is x87 single-precision floating
   point (`ExpandPlane`'s 8 × 8 transform: √2, 1.848, 2.613 and 1.082 as floats, float

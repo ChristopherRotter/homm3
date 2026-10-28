@@ -7,7 +7,7 @@ import numpy as np
 import pytest
 from conftest import bits, scenario
 
-from h3env import BattleBatch, H3Error, _ffi, episode_seed
+from h3env import BattleBatch, H3Error, _ffi, episode_seed, sample
 from h3env.tools import Env
 
 
@@ -174,6 +174,49 @@ def test_escapes_are_refused_and_change_nothing() -> None:
     batch.actions["entry"][1] = _ffi.SURRENDER
     assert batch.step(check=False) == _ffi.ERR_REJECTED
     np.testing.assert_array_equal(bits(batch.obs[1]), obs[1])
+
+
+def test_the_binding_counts_the_rounds_of_a_tactics_phase() -> None:
+    # E25 T4a (an agent's tactics bound): `full`'s attacker places its seven stacks in a tactics
+    # phase, whose rounds hand each stack of its army one turn (a stack that waited is called
+    # again within it, BAT-TAC-002). Env 2 may end its phase (round 0 after it), the others never
+    # do: the step limit cuts their battles, and each next episode counts from round 1 again.
+    from h3env.train import layout as L
+
+    n = 3
+    batch = BattleBatch(n, seed=5, max_steps=40)
+    batch.add_scenario(scenario("full"))
+    batch.reset()
+    rng = np.random.default_rng(2)
+    starts, episode, highest, outside = np.zeros(n, np.int64), batch.episode.copy(), 0, 0
+    for _ in range(120):
+        phase = batch.entry_mask[:, L.END_TACTICS] == 1
+        stacks = batch.obs[:, L.STACKS : L.ORDER].reshape(n, L.STACK_CAPACITY, -1)
+        army = ((stacks[:, :, L.OWN] == 1) & (stacks[:, :, L.WAR_MACHINE] == 0)).sum(1)
+        active = stacks[:, :, L.ACTIVE].argmax(1)
+        fresh = stacks[np.arange(n), active, L.WAITED] == 0
+        starts[batch.episode != episode] = 0
+        episode = batch.episode.copy()
+        starts += phase & fresh
+        expected = np.where(phase, -(-starts // army), 0)
+        np.testing.assert_array_equal(batch.tactics_round, expected)
+        np.testing.assert_array_equal(batch.tactics_turns.sum(1)[phase], starts[phase])
+        highest = max(highest, int(expected.max()))
+        outside += int((~phase & (batch.to_move >= 0)).sum())
+        mask = batch.entry_mask.copy()
+        mask[:2, L.END_TACTICS] = 0
+        mask[:, [_ffi.HERO_CAST, _ffi.CREATURE_CAST]] = 0
+        batch.actions["entry"] = sample(mask, rng)
+        batch.step()
+    assert highest >= 3 and (batch.episode[:2] >= 2).all() and outside > 0
+    # A refused action changes no count; a reset starts every phase again.
+    rounds, turns = batch.tactics_round.copy(), batch.tactics_turns.copy()
+    batch.actions["entry"][0] = _ffi.RETREAT
+    assert batch.step(check=False) == _ffi.ERR_REJECTED
+    assert batch.tactics_round[0] == rounds[0]
+    np.testing.assert_array_equal(batch.tactics_turns[0], turns[0])
+    batch.reset()
+    assert (batch.tactics_round == 1).all() and (batch.tactics_turns.sum(1) == 1).all()
 
 
 def test_the_binding_refuses_what_the_engine_would_misread() -> None:

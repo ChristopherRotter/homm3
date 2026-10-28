@@ -230,3 +230,37 @@ an entry only where a task builds on it.
   better settings (T5, 60 M proposed). **`e25-shaping-1` is the lineage's current best** (#2,
   20 M; the network the exit criteria are judged on), `t7-1` stays the battle AI v1 and the
   baseline. Increment 1 closed (its task list in `E25-archive.md`).
+
+## T4a — The tactics bound (2026-10-28)
+
+- **The form** (the agent's choice, change freely; the user's proposal): `[network]
+  tactics_rounds` (0, off, by default; `configs/e25-bound.toml` 1) is the rounds of its own
+  tactics phase the agent plays: once its active stack would start a turn of a later round, End
+  tactics is its only entry. A round of the phase hands each stack of the army one turn
+  (BAT-TAC-002): it places, or waits and is called again within the same round (then places or
+  passes), so one round is at most 2 n + 1 decisions for n stacks, End tactics included. The
+  rules are unchanged; the original's computer stops after three rounds or a round without a
+  placement (its tactics rule, BAT-AI): `tactics_rounds = 3` is its cap, not its early stop.
+- **Python only:** no observation shows the phase's round (the battle's `TacticsRounds` is the
+  computer's and is not observed), so the binding counts it from the observations it shows,
+  without an encoding or ABI change: `BattleBatch.tactics_turns` [N, 42], the turns each stack
+  started in the env's current phase (a turn starts where the active stack has not waited), and
+  `tactics_round` [N], its active stack's (0 outside a phase), after every `reset` and `step`
+  (`count_tactics_turns`; a refused env unchanged, a new episode from zero). About 50 µs a call
+  at 256 envs (a step about 10 ms in the sandbox). Not taken: the agent's decisions in the phase
+  (no army size), or the round in observation v23 (every network's input).
+- **The agent's:** `policy.build` sets `Policy.tactics_rounds` from a file's config (a file
+  without it, `e25-shaping-1`'s and every older one, plays unbounded), and `Policy.act` draws
+  from `bounded(entry_mask, …)`, so rollouts, league members (each its own file's bound), gates
+  (`duel`), ladders and `inspect` (`sampled`) play it. `Choice.entry_mask` is the mask drawn
+  from; the rollout stores it, so the update recomputes the same certain probability (log 0) for
+  an entry the bound forced. `h3env.search`: the root takes the batch's count, each node counts
+  its observation onto its parent's (`Node.turns`; the phase draws nothing, so every world's
+  path counts the same), and every node past the bound holds End tactics alone.
+- **Tests:** `test_batch.py` (the count against the army's turns over waits, a cut battle's next
+  episode, a refused action, a reset), `test_train.py` (the bound leaves End tactics alone past
+  it and every other choice as unbounded on the same draws; a bounded attacker's `duel` ends its
+  phase at its first turn of round 2; a rollout stores the bounded masks and updates),
+  `test_search.py` (the tree's nodes past the bound, and the root, bounded or not by the
+  network's config; it fails with the tree unbounded), `test_run.py` (`e25-bound.toml` is
+  `e25-shaping.toml` with the bound; negative refused; a resume keeps it).
