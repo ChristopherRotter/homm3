@@ -74,6 +74,14 @@ fn row(columns: &[i32; 64], y: usize) -> [i32; 8] {
     transform(values).map(|v| (v + 0x7F) >> 8)
 }
 
+/// Stores `value` at `at`; nothing outside `pixels` (the decoder's writes always lie inside: its
+/// planes and bundles are sized for every block and value).
+pub(crate) fn set(pixels: &mut [u8], at: usize, value: u8) {
+    if let Some(slot) = pixels.get_mut(at) {
+        *slot = value;
+    }
+}
+
 /// Each pixel of the 8 × 8 block at `at` (rows `stride` apart) through `f`; a pixel outside
 /// `pixels` is left alone (the callers' blocks always lie inside).
 fn each(pixels: &mut [u8], at: usize, stride: usize, mut f: impl FnMut(usize, u8) -> u8) {
@@ -190,7 +198,11 @@ mod tests {
         assert_eq!(pixels[..8], [0; 8], "outside the block");
         assert_eq!(pixels[8], row(&columns, 0)[0] as u8);
         assert_eq!(pixels[8 + 9 * 7 + 7], row(&columns, 7)[7] as u8);
-        // A block running past the pixels' end is cut there.
+        // A block running past the pixels' end is cut there, as is a single store.
+        let mut one = [1u8];
+        set(&mut one, 1, 9);
+        set(&mut one, 0, 2);
+        assert_eq!(one, [2]);
         let mut short = [7u8; 10];
         idct_put(&mut short, 0, 8, &block);
         assert_eq!(short[9], row(&columns, 1)[1] as u8);

@@ -268,6 +268,9 @@ mod tests {
             ]
         );
         assert_eq!(INTER_QUANT[15][60..], [335_913, 171_247, 189_595, 102_890]);
+        // The same function at run time (the constants are the compiler's evaluation).
+        assert_eq!(quantizers(&INTRA_SEED), INTRA_QUANT);
+        assert_eq!(quantizers(&INTER_SEED), INTER_QUANT);
     }
 
     #[test]

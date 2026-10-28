@@ -158,11 +158,12 @@ impl<'a> Clip<'a> {
     /// Frame `n`'s video packet: its bytes past its audio tracks' packets (`read_packet`).
     pub fn video(&self, n: usize) -> Result<&'a [u8], Error> {
         let entry = self.frames.get(n).ok_or(Error::Field("frame"))?;
+        // Inside the file: `parse` checked every frame's range.
         let mut data = self
             .bytes
             .get(entry.offset..)
             .and_then(|rest| rest.get(..entry.size))
-            .ok_or(Error::Truncated)?;
+            .unwrap_or_default();
         for _ in 0..self.audio_tracks {
             let size = index(word(data, 0).ok_or(Error::Truncated)?);
             data = data
@@ -281,6 +282,8 @@ mod tests {
         assert_eq!(with(4, 1000), Some(Error::Truncated));
         // The size's wrap: 0xFFFF_FFF8 + 8 is 0, before the frame.
         assert_eq!(with(4, u32::MAX - 7), Some(Error::Field("largest frame")));
+        // The index past the file's end (the audio tracks' descriptions take it all).
+        assert_eq!(with(40, MAX_AUDIO_TRACKS), Some(Error::Truncated));
         // Cut anywhere in the header or the index.
         for cut in [0, 10, 43, 44, 47] {
             assert_eq!(

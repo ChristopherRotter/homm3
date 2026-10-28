@@ -17,10 +17,19 @@
 //! revision `b` without an alpha plane, frame by frame into the same planes, including FFmpeg's
 //! handling of malformed data (bits past a packet's end read as 0; a motion vector out of the
 //! plane leaves the block as it was; a bundle's values once used up are read again as they were
-//! left). Where FFmpeg's planes are wider than their block grid (a width not a multiple of 16, or
-//! 32 for the chroma) a reference crossing a row's end reads other pixels than here; the game's
-//! clips are 256 pixels wide. Not ported: the other revisions (`f` to `k`, Huffman-coded), the
-//! alpha plane, the audio (its packets are skipped), Bink 2 and Smacker.
+//! left). Checked against FFmpeg's decoder on the game's ten battle clips and on synthetic clips
+//! of every block type (`clients/scripts/bink-check.sh`; [`build::sample`]). Two differences
+//! lie in FFmpeg's buffers, not its decoding: (1) FFmpeg pads a plane's rows to its SIMD
+//! alignment (64 bytes in the build checked: a 64-pixel-wide clip's luma rows take 128), so
+//! where its rows are longer than the block grid's, a motion vector crossing a row's end reads
+//! other pixels than here; the game's clips are 256 pixels wide, whose rows it does not pad.
+//! (2) Revision `b` decodes in place over the frame before; while the caller still holds that
+//! frame (the `ffmpeg` command line does), FFmpeg decodes into a new buffer with only the
+//! picture's rows copied (`ff_reget_buffer`), so the block grid's rows below the picture (the
+//! chroma's rows 60 to 63 of a 120-row clip) hold another frame's pixels, which motion vectors
+//! copy into the picture. Here they keep the frame before's, as in FFmpeg when each frame is
+//! released before the next is decoded. Not ported: the other revisions (`f` to `k`,
+//! Huffman-coded), the alpha plane, the audio (its packets are skipped), Bink 2 and Smacker.
 //!
 //! Pure: no I/O, clock, threads or globals, `no_std` + `alloc`; never panics on any input (the
 //! property tests). Fixed-size tables and blocks are indexed directly where the index is bounded

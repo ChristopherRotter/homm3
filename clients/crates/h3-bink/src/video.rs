@@ -181,9 +181,7 @@ impl Bundles {
         for _ in 0..count {
             let value = bits.read(width).wrapping_sub(half) as u16;
             for byte in value.to_le_bytes().into_iter().take(bytes) {
-                if let Some(slot) = self.data.get_mut(at) {
-                    *slot = byte;
-                }
+                dsp::set(&mut self.data, at, byte);
                 at += 1;
             }
         }
@@ -335,9 +333,7 @@ fn block_at(
     // The pixel at position `p` of the block (`coordmap`), its row the position's high bits.
     let put = |pixels: &mut [u8], p: u8, value: u8| {
         let p = usize::from(p & 63);
-        if let Some(slot) = pixels.get_mut(at + (p & 7) + (p >> 3) * stride) {
-            *slot = value;
-        }
+        dsp::set(pixels, at + (p & 7) + (p >> 3) * stride, value);
     };
     match bundles.take(BLOCK_TYPES) {
         0 => {}
@@ -433,9 +429,7 @@ fn motion(bundles: &mut Bundles, pixels: &mut [u8], grid: Grid, at: usize, ybias
         *slot = pixels.get(from + offset).copied().unwrap_or(0);
     }
     for (i, &value) in copy.iter().enumerate() {
-        if let Some(slot) = pixels.get_mut(at + (i & 7) + (i >> 3) * grid.stride) {
-            *slot = value;
-        }
+        dsp::set(pixels, at + (i & 7) + (i >> 3) * grid.stride, value);
     }
 }
 
@@ -669,5 +663,526 @@ fn residue(bits: &mut Bits<'_>, block: &mut [i16; 64], count: i32) {
             }
         }
         mask >>= 1;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::build::{self, BitWriter, Block, Header, Run};
+    use crate::check;
+    use alloc::vec;
+    use proptest::prelude::*;
+
+    /// A decoder for a `width` × `height` clip of revision `b`.
+    fn decoder(width: u32, height: u32) -> Decoder {
+        let bytes = build::file(&Header::new(width, height), &[vec![0, 0]]);
+        Decoder::new(&Clip::parse(&bytes).unwrap()).unwrap()
+    }
+
+    /// Decodes one frame of the given blocks per plane.
+    fn decode(d: &mut Decoder, planes: [&[Block]; 3]) -> Result<Frame, Error> {
+        let packet = build::frame(d.width, d.height, planes);
+        d.decode(&packet).cloned()
+    }
+
+    fn at(plane: &Plane, x: usize, y: usize) -> u8 {
+        plane.pixels()[y * plane.stride() + x]
+    }
+
+    /// Plane `p`'s 8 × 8 block at block column `bx` (block row 0), row by row.
+    fn block(frame: &Frame, p: usize, bx: usize) -> [u8; 64] {
+        core::array::from_fn(|i| at(&frame.planes()[p], 8 * bx + i % 8, i / 8))
+    }
+
+    const NONE: &[Block] = &[];
+
+    #[test]
+    fn fills_patterns_raw_blocks_and_skips() {
+        let mut d = decoder(32, 8);
+        let raw: [u8; 64] = core::array::from_fn(|i| i as u8);
+        let mut rows = [0b1010_1010; 8];
+        rows[7] = 0b0000_0001;
+        let luma = [
+            Block::Fill(7),
+            Block::Pattern {
+                colours: [1, 2],
+                rows,
+            },
+            Block::Raw(raw),
+            Block::Skip,
+        ];
+        let frame = decode(&mut d, [&luma, &[Block::Fill(3)], &[Block::Fill(9)]]).unwrap();
+        assert_eq!(block(&frame, 0, 0), [7; 64]);
+        let pattern = block(&frame, 0, 1);
+        assert_eq!(
+            pattern[..8],
+            [1, 2, 1, 2, 1, 2, 1, 2],
+            "the lowest bit leftmost"
+        );
+        assert_eq!(pattern[56..], [2, 1, 1, 1, 1, 1, 1, 1]);
+        assert_eq!(block(&frame, 0, 2), raw);
+        assert_eq!(block(&frame, 0, 3), [0; 64], "skipped over the black frame");
+        assert_eq!(block(&frame, 1, 0), [3; 64]);
+        assert_eq!(block(&frame, 2, 0), [9; 64]);
+        // The next frame decodes over this one: skipped blocks keep it, a motion block copies.
+        let frame = decode(
+            &mut d,
+            [&[Block::Skip, Block::Motion { x: -8, y: 0 }], NONE, NONE],
+        )
+        .unwrap();
+        assert_eq!(block(&frame, 0, 0), [7; 64]);
+        assert_eq!(block(&frame, 0, 1), [7; 64]);
+        assert_eq!(block(&frame, 0, 2), raw);
+        assert_eq!(block(&frame, 1, 0), [3; 64]);
+        assert_eq!(d.frame(), &frame);
+    }
+
+    #[test]
+    fn runs_follow_their_scan_order() {
+        let mut d = decoder(16, 8);
+        let pixels: Vec<u8> = (1..=8).collect();
+        let runs = vec![
+            Run::Fill(5, 8),
+            Run::Pixels(pixels.clone()),
+            Run::Fill(6, 47),
+        ];
+        // 63 pixels by the runs, the last one's colour after them; then 64 by the runs alone.
+        let luma = [
+            Block::Run {
+                order: 0,
+                runs,
+                last: 9,
+            },
+            Block::Run {
+                order: 1,
+                runs: vec![Run::Fill(4, 60), Run::Fill(8, 4)],
+                last: 99,
+            },
+        ];
+        let frame = decode(&mut d, [&luma, NONE, NONE]).unwrap();
+        let first = block(&frame, 0, 0);
+        let order = PATTERNS[0];
+        for (i, &p) in order.iter().enumerate() {
+            let expected = match i {
+                0..8 => 5,
+                8..16 => pixels[i - 8],
+                16..63 => 6,
+                _ => 9,
+            };
+            assert_eq!(first[usize::from(p)], expected, "scan index {i}");
+        }
+        let second = block(&frame, 0, 1);
+        for (i, &p) in PATTERNS[1].iter().enumerate() {
+            assert_eq!(second[usize::from(p)], if i < 60 { 4 } else { 8 });
+        }
+    }
+
+    /// The pixels `block` (AC coefficients by scan position, the DC apart) gives through
+    /// unquantization and the inverse DCT put on black, or added to `base`.
+    fn transformed(
+        dc: i32,
+        quant: &[i32; 64],
+        coefficients: &[i16; 64],
+        base: Option<u8>,
+    ) -> [u8; 64] {
+        let mut block = [0; 64];
+        block[0] = dc;
+        let mut read = Vec::new();
+        for (p, &c) in coefficients.iter().enumerate().skip(1) {
+            if c != 0 {
+                block[usize::from(SCAN[p])] = i32::from(c);
+                read.push(p as u8);
+            }
+        }
+        dsp::unquantize(&mut block, quant, &read);
+        let mut pixels = [base.unwrap_or(0); 64];
+        match base {
+            None => dsp::idct_put(&mut pixels, 0, 8, &block),
+            Some(_) => dsp::idct_add(&mut pixels, 0, 8, &block),
+        }
+        pixels
+    }
+
+    #[test]
+    fn dct_blocks_decode_their_coefficients() {
+        let mut d = decoder(24, 8);
+        let mut coefficients = [0i16; 64];
+        // Coefficients of every magnitude band and both signs, spread over the lists' groups.
+        for (p, v) in [
+            (1, 1),
+            (2, -1),
+            (3, 300),
+            (5, -2),
+            (9, 7),
+            (30, -1000),
+            (63, 12),
+        ] {
+            coefficients[p] = v;
+        }
+        let luma = [
+            Block::Intra {
+                dc: 800,
+                q: 0,
+                coefficients: [0; 64],
+            },
+            Block::Intra {
+                dc: 1234,
+                q: 7,
+                coefficients,
+            },
+            Block::Fill(50),
+        ];
+        let frame = decode(&mut d, [&luma, NONE, NONE]).unwrap();
+        // A DC alone: 800 × 65536 >> 11, then (v + 127) >> 8 everywhere.
+        assert_eq!(block(&frame, 0, 0), [100; 64]);
+        assert_eq!(
+            block(&frame, 0, 1),
+            transformed(1234, &INTRA_QUANT[7], &coefficients, None)
+        );
+        let inter = [
+            Block::Skip,
+            Block::Skip,
+            Block::Inter {
+                x: 0,
+                y: 0,
+                dc: -300,
+                q: 15,
+                coefficients,
+            },
+        ];
+        let frame = decode(&mut d, [&inter, NONE, NONE]).unwrap();
+        assert_eq!(
+            block(&frame, 0, 2),
+            transformed(-300, &INTER_QUANT[15], &coefficients, Some(50))
+        );
+    }
+
+    #[test]
+    fn residues_are_added_to_the_copy() {
+        let mut d = decoder(32, 8);
+        decode(&mut d, [&[Block::Fill(100), Block::Fill(10)], NONE, NONE]).unwrap();
+        let mut coefficients = [0i16; 64];
+        for (p, v) in [(0, 5), (3, -3), (20, 128), (40, 1), (63, -77)] {
+            coefficients[p] = v;
+        }
+        let mut all = [0i16; 64];
+        all.fill(-255);
+        let luma = [
+            Block::Residue {
+                x: 8,
+                y: 0,
+                coefficients,
+            },
+            Block::Residue {
+                x: 0,
+                y: 0,
+                coefficients: [0; 64],
+            },
+            // 512 events: the count stops it after 128; the stream stays in step.
+            Block::Residue {
+                x: 0,
+                y: 0,
+                coefficients: all,
+            },
+            Block::Fill(42),
+        ];
+        let frame = decode(&mut d, [&luma, NONE, NONE]).unwrap();
+        let mut expected = [10u8; 64];
+        for (p, &v) in coefficients.iter().enumerate() {
+            let at = usize::from(SCAN[p]);
+            expected[at] = expected[at].wrapping_add(v as u8);
+        }
+        assert_eq!(block(&frame, 0, 0), expected);
+        assert_eq!(block(&frame, 0, 1), [10; 64]);
+        assert_eq!(block(&frame, 0, 3), [42; 64]);
+    }
+
+    #[test]
+    fn a_residue_stops_at_its_count_wherever_it_falls() {
+        let mut d = decoder(24, 8);
+        // One event, in a group; two events, the last a single entry; the count then a refinement.
+        let mut group = [0i16; 64];
+        group[5] = 1;
+        let mut single = [0i16; 64];
+        single[0] = 2;
+        single[1] = -1;
+        let mut refined = [0i16; 64];
+        refined[2] = 3;
+        let luma: Vec<Block> = [group, single, refined]
+            .into_iter()
+            .map(|coefficients| Block::Residue {
+                x: 0,
+                y: 0,
+                coefficients,
+            })
+            .collect();
+        let frame = decode(&mut d, [&luma, NONE, NONE]).unwrap();
+        for (bx, coefficients) in [group, single, refined].iter().enumerate() {
+            let pixels = block(&frame, 0, bx);
+            for (p, &v) in coefficients.iter().enumerate() {
+                assert_eq!(
+                    pixels[usize::from(SCAN[p])],
+                    v as u8,
+                    "block {bx}, position {p}"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn the_key_frame_biases_vectors_15_rows_up_and_motion_copies_as_before() {
+        let mut d = decoder(8, 32);
+        let column = [
+            Block::Fill(10),
+            Block::Fill(20),
+            Block::Motion { x: 0, y: 0 },
+            // Out of the plane: before its start, then past its last block.
+            Block::Motion { x: -16, y: -16 },
+        ];
+        let frame = decode(&mut d, [&column, NONE, NONE]).unwrap();
+        let y = &frame.planes()[0];
+        // Block 2 (rows 16 to 23) from row 1: rows 1 to 7 are 10, row 8 is 20.
+        assert!((16..23).all(|r| at(y, 3, r) == 10));
+        assert_eq!(at(y, 3, 23), 20);
+        assert_eq!(
+            at(y, 0, 24),
+            0,
+            "the vector reaches row 9 - 15 - 16: left alone"
+        );
+        let column = [
+            Block::Raw(core::array::from_fn(|i| (i / 8) as u8)),
+            Block::Motion { x: 0, y: -4 },
+            Block::Skip,
+            Block::Motion { x: 1, y: 0 },
+        ];
+        let frame = decode(&mut d, [&column, NONE, NONE]).unwrap();
+        let y = &frame.planes()[0];
+        // Rows 8 to 11 from rows 4 to 7, rows 12 to 15 from rows 8 to 11 as they were.
+        let rows: Vec<u8> = (8..16).map(|r| at(y, 0, r)).collect();
+        assert_eq!(rows, [4, 5, 6, 7, 20, 20, 20, 20]);
+        assert_eq!(
+            at(y, 0, 24),
+            0,
+            "past the last block's top left: left alone"
+        );
+    }
+
+    /// A packet of one block row per plane written by hand: the ten bundles' counts and values
+    /// (`(count, values)` each), then `inline`.
+    fn by_hand(bundles: &[(u32, &[u32])], inline: &BitWriter) -> BitWriter {
+        let mut w = BitWriter::new();
+        for b in 0..BUNDLES {
+            let (count, values) = bundles.get(b).copied().unwrap_or((0, &[]));
+            w.put(count, COUNT_BITS);
+            for &v in values {
+                w.put(v, WIDTH[b]);
+            }
+        }
+        w.append(inline);
+        w.align32();
+        w
+    }
+
+    #[test]
+    fn an_ended_bundle_gives_its_values_as_left_and_an_overfull_one_fails() {
+        let mut d = decoder(8, 8);
+        decode(
+            &mut d,
+            [&[Block::Fill(77)], &[Block::Fill(1)], &[Block::Fill(2)]],
+        )
+        .unwrap();
+        // A fill whose colour bundle ends at once: it takes the colour left there, the V plane's.
+        let mut packet = by_hand(&[(1, &[5])], &BitWriter::new());
+        for _ in 0..2 {
+            packet.append(&by_hand(&[], &BitWriter::new()));
+        }
+        assert!(packet.len() > 0 && !packet.is_empty());
+        let frame = d.decode(&packet.into_bytes()).unwrap();
+        assert_eq!(block(frame, 0, 0), [2; 64]);
+        // 65 colours do not fit a bundle of one block's 64 bytes.
+        let values = [0; 65];
+        let packet = by_hand(&[(1, &[5]), (65, &values)], &BitWriter::new());
+        assert_eq!(
+            d.decode(&packet.into_bytes()),
+            Err(Error::Invalid("bundle overflow"))
+        );
+    }
+
+    #[test]
+    fn a_packet_ending_after_a_plane_leaves_the_others() {
+        let mut d = decoder(8, 8);
+        let plane = by_hand(&[(1, &[5]), (1, &[33])], &BitWriter::new());
+        assert_eq!(plane.len(), 160);
+        let frame = d.decode(&plane.into_bytes()).unwrap();
+        assert_eq!(block(frame, 0, 0), [33; 64]);
+        // Decoded, U would take the type and colour left in the bundles: a fill of 33.
+        assert_eq!(block(frame, 1, 0), [0; 64]);
+    }
+
+    #[test]
+    fn bad_blocks_fail_the_frame() {
+        let mut d = decoder(8, 8);
+        assert_eq!(
+            decode(&mut d, [&[Block::Unknown(9)], NONE, NONE]),
+            Err(Error::Invalid("block type"))
+        );
+        // At 49 pixels a run has 4 bits: 16 more is 65.
+        let run = Block::Run {
+            order: 0,
+            runs: vec![Run::Fill(1, 49), Run::Fill(2, 16)],
+            last: 0,
+        };
+        assert_eq!(
+            decode(&mut d, [&[run], NONE, NONE]),
+            Err(Error::Invalid("run"))
+        );
+        // A DCT block with fewer than 4 bits left, intra then inter: the packet cut after the
+        // bundles (130 bits of counts, 4 of type, 11 of DC, 4 of quantizer; inter 10 of vector).
+        let intra = Block::Intra {
+            dc: 1,
+            q: 1,
+            coefficients: [0; 64],
+        };
+        let packet = build::frame(8, 8, [&[intra], NONE, NONE]);
+        assert_eq!(d.decode(&packet[..19]), Err(Error::Invalid("coefficients")));
+        let inter = Block::Inter {
+            x: 0,
+            y: 0,
+            dc: 1,
+            q: 1,
+            coefficients: [0; 64],
+        };
+        let packet = build::frame(8, 8, [&[inter], NONE, NONE]);
+        assert_eq!(d.decode(&packet[..20]), Err(Error::Invalid("coefficients")));
+    }
+
+    #[test]
+    fn only_revision_b_without_alpha_and_of_a_bounded_size_is_taken() {
+        let file = |header: &Header| build::file(header, &[vec![0, 0]]);
+        let mut header = Header::new(8, 8);
+        header.revision = b'f';
+        let bytes = file(&header);
+        assert_eq!(
+            Decoder::new(&Clip::parse(&bytes).unwrap()).err(),
+            Some(Error::Revision(b'f'))
+        );
+        let mut header = Header::new(8, 8);
+        header.flags = FLAG_ALPHA;
+        let bytes = file(&header);
+        assert_eq!(
+            Decoder::new(&Clip::parse(&bytes).unwrap()).err(),
+            Some(Error::Alpha)
+        );
+        for (w, h) in [(MAX_WIDTH + 1, 8), (8, MAX_HEIGHT + 1)] {
+            let bytes = file(&Header::new(w, h));
+            assert_eq!(
+                Decoder::new(&Clip::parse(&bytes).unwrap()).err(),
+                Some(Error::Size)
+            );
+        }
+        let bytes = file(&Header::new(8, 8));
+        let mut clip = Clip::parse(&bytes).unwrap();
+        clip.width = 0;
+        assert_eq!(Decoder::new(&clip).err(), Some(Error::Size));
+    }
+
+    #[test]
+    fn planes_cover_the_block_grid_and_show_the_picture() {
+        let d = decoder(15, 9);
+        let [y, u, v] = d.frame().planes();
+        assert_eq!((y.width(), y.height(), y.stride()), (15, 9, 16));
+        assert_eq!(y.pixels().len(), 16 * 16);
+        assert_eq!((u.width(), u.height(), u.stride()), (8, 5, 8));
+        assert_eq!(u.pixels().len(), 64);
+        assert_eq!(u, v);
+        assert_eq!(y.row(0).len(), 15);
+        assert_eq!(y.row(8).len(), 15);
+        assert!(y.row(9).is_empty());
+        assert!(
+            y.pixels().iter().all(|&p| p == 0),
+            "black before the first frame"
+        );
+    }
+
+    /// The hashes of the samples' frames as FFmpeg 6.1.1's decoder gives them (`bink-check.sh`
+    /// at E17 M5 T4b2a, through PyAV; seeds 1 to 8 checked there).
+    #[test]
+    fn the_samples_decode_as_ffmpeg_decodes_them() {
+        for (seed, hash) in [
+            (1, 0x474c_73f5_718c_0ddc_u64),
+            (2, 0x6329_f584_b68e_62e6),
+            (3, 0x5542_c890_ab86_20a4),
+        ] {
+            let frames = check::frames(&build::sample(seed)).unwrap();
+            assert_eq!(frames.len(), build::SAMPLE_FRAMES);
+            assert_eq!(check::hash(&frames), hash, "seed {seed}");
+        }
+    }
+
+    #[test]
+    fn checks_report_what_fails() {
+        assert_eq!(check::frames(b"junk").err(), Some(Error::Truncated));
+        let mut header = Header::new(8, 8);
+        header.revision = b'g';
+        let bytes = build::file(&header, &[vec![0, 0]]);
+        assert_eq!(check::frames(&bytes).err(), Some(Error::Revision(b'g')));
+        let mut header = Header::new(8, 8);
+        header.audio_tracks = 1;
+        let bytes = build::file(&header, &[vec![99, 0, 0, 0]]);
+        assert_eq!(
+            check::frames(&bytes).err(),
+            Some(Error::Field("audio size"))
+        );
+        // A failing frame is left out; the others stay.
+        let bad = build::frame(8, 8, [&[Block::Unknown(15)], NONE, NONE]);
+        let good = build::frame(8, 8, [&[Block::Fill(3)], NONE, NONE]);
+        let bytes = build::file(&Header::new(8, 8), &[good, bad]);
+        assert_eq!(check::frames(&bytes).unwrap().len(), 1);
+    }
+
+    #[test]
+    fn the_writer_counts_its_bits() {
+        let mut w = BitWriter::new();
+        assert!(w.is_empty());
+        w.put(0b101, 3);
+        w.flag(true);
+        assert_eq!(w.len(), 4);
+        w.align32();
+        assert_eq!(w.into_bytes(), [0b1101, 0, 0, 0]);
+        let mut rng = build::Random::new(0);
+        assert_eq!(rng.below(0), 0);
+        assert!((0..100).all(|_| (-3..=3).contains(&rng.range(-3, 3))));
+    }
+
+    proptest! {
+        #![proptest_config(ProptestConfig::with_cases(64))]
+
+        #[test]
+        fn decoding_never_panics_on_mutated_samples(
+            seed in 1u64..1000,
+            flips in proptest::collection::vec((any::<usize>(), any::<u8>()), 1..40),
+        ) {
+            let mut bytes = build::sample(seed);
+            let clip = Clip::parse(&bytes).unwrap();
+            let start = clip.frames()[0].offset;
+            let len = bytes.len() - start;
+            for (at, value) in flips {
+                bytes[start + at % len] ^= value;
+            }
+            let _ = check::frames(&bytes);
+        }
+
+        #[test]
+        fn decoding_never_panics_on_random_packets(
+            width in 1u32..40,
+            height in 1u32..40,
+            packets in proptest::collection::vec(proptest::collection::vec(any::<u8>(), 0..300), 1..4),
+        ) {
+            let mut d = decoder(width, height);
+            for packet in packets {
+                let _ = d.decode(&packet);
+            }
+        }
     }
 }

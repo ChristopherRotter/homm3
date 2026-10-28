@@ -101,14 +101,14 @@ mod tests {
     fn entries_run_to_the_next_offset_and_are_found_ignoring_case() {
         let bytes = build::vid(&[
             ("WIN3.BIK", b"abc"),
-            ("surrender.bik", b""),
+            ("surrender.bik", b"s"),
             ("x.smk", b"12"),
         ]);
         let archive = VidArchive::parse(&bytes).unwrap();
         let names: Vec<_> = archive.entries().iter().map(|e| e.name.as_str()).collect();
         assert_eq!(names, ["WIN3.BIK", "surrender.bik", "x.smk"]);
         assert_eq!(archive.find("win3.bik"), Some(&b"abc"[..]));
-        assert_eq!(archive.find("SURRENDER.BIK"), Some(&b""[..]));
+        assert_eq!(archive.find("SURRENDER.BIK"), Some(&b"s"[..]));
         assert_eq!(archive.find("X.SMK"), Some(&b"12"[..]));
         assert_eq!(archive.find("WIN3"), None);
         assert_eq!(archive.entries()[2].size, 2);
