@@ -1252,8 +1252,9 @@ generic key table), the user chose one pull request for all of T1a.
   message-box draws wrapped as `Draw::Dialog`. Its inbox entry to this lane taken (T1a's part
   here, T1b's into its scope) and archived.
 - **Checked:** `clients/scripts/check.sh` all gates passed, coverage 100 % (regions, functions,
-  lines); `h3drive.py drawn` and `h3map.py drawn` all the same (no capture: nothing drawn or
-  played changed); the scoped verify (`--with-original-data`) no failing step but `check-lane`,
+  lines), before and after the merge; `h3drive.py drawn` (130 sequences and situations, #542's
+  six message boxes among them) and `h3map.py drawn` (40 situations, 13 sequences) all the same
+  (no capture: nothing drawn or played changed); the scoped verify (`--with-original-data`) no failing step but `check-lane`,
   which passes with `--cross-lane` against #541's branch (the label and `master` after #541 on
   the pull request). The container restarted during the setup's
   baseline (its run gone): `master`'s client code was CI's (`Clients` green on 78f4aaa9), so the
