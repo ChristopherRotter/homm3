@@ -5,7 +5,7 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 ## Current state
 
 - **E08**: increments 1 to 6 **closed**. **Increment 7: rewards on the map** (decisions 121–154, ADV-Q26 to ADV-Q30): T54 to T63b done (T63a #530 merged; **T63b** `adventure/e08-t63b`, decision 154, whole: the visit's rests, the guard's wait fixed, `ClearBonuses`, the event after the guard; `ADV-STUB-10` closed). **T63 done.** Records: `E08-log.md`; increment 6's in `E08-archive.md`.
-- **Open pull requests:** T63b's `adventure/e08-t63b` (see the newest session).
+- **Open pull requests:** #533 (`adventure/e08-t63b`, T63b).
 - **Next:** merge T63b's pull request; then round 8: T64 (`QUEUE.md`: replays, fixtures, properties, benchmarks; design §16) and T65 (the audit, increment 7 closed), each cut confirmed at its start.
 - **Versions** (`docs/08-work-process.md`, "Versions"): game state hash v19 (T63b), adventure state hash v15 (T62b2), adventure ruleset part v12 (T61a), map import v13 (`MAP_IMPORT_VERSION`, T61b), adventure replay format v7 (T63a); the env's action encoding v5 is the AI lane's (T63a's `cross-lane` bump). Built so far, by area: `OVERVIEW.md`; ownership: `lanes.toml` (the details are in `OVERVIEW.md`, "Ownership").
 - **ADRs accepted**: ADR-0015 to -0017 (2026-10-10), amended for increments 2 to 7 (last: T59, with ADR-0013).
@@ -21,7 +21,7 @@ Moved to `TRAPS.md`: forks without deep copies, RNG seeds server-only, template 
 
 ### 2026-10-28 — increment 7, round 7: T63b, the rest
 
-Baseline fdf002f (#530 merged, CI green on its merge; the sandbox's light gates passed; the original data staged from the user's computer). The user's cut (decision 154): whole, with a bug found while sizing it fixed in it (a guard's visit started beside what an object's answer opened; since T63a an entered gift's level-up opened beside the guard's battle). `h3-game`: the rests (`state/rests.rs`, GAM-DEC-007), `ClearBonuses` after every battle (GAM-BAT-014), game state hash v19; `h3-adventure`: `guard_after` the hero for every visited object, `reward_after` and `give_won`, `event_after` and `fire_held_event` (`ADV-QUIRK-29`); `ADV-STUB-10` closed; the twelve replays re-recorded (commands unchanged). The scoped verify with the original data passed. Pull request: see "Current state".
+Baseline fdf002f (#530 merged, CI green on its merge; the sandbox's light gates passed; the original data staged from the user's computer). The user's cut (decision 154): whole, with a bug found while sizing it fixed in it (a guard's visit started beside what an object's answer opened; since T63a an entered gift's level-up opened beside the guard's battle). `h3-game`: the rests (`state/rests.rs`, GAM-DEC-007), `ClearBonuses` after every battle (GAM-BAT-014), game state hash v19; `h3-adventure`: `guard_after` the hero for every visited object, `reward_after` and `give_won`, `event_after` and `fire_held_event` (`ADV-QUIRK-29`); `ADV-STUB-10` closed; the twelve replays re-recorded (commands unchanged). The scoped verify with the original data passed. Pull request #533.
 
 ### 2026-10-27 — increment 7, round 7: T63a, the typed answers and increment 7's decisions
 
