@@ -23,6 +23,9 @@ pub enum Asked {
         /// The side's gold.
         funds: u32,
     },
+    /// The battle's result window (E17 M5 T4b1, `crate::results`): its OK (Enter or Escape)
+    /// closes the battle's screen.
+    Result,
 }
 
 /// How the side to act may leave the battle by the panel's buttons: whether it may retreat (the

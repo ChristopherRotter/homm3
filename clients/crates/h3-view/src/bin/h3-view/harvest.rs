@@ -136,6 +136,8 @@ const FLAGS: [u32; 2] = [0x66_FF04, 0x66_FEF8];
 /// +8 class), its class's town (the class table 0x67D868, records of 0x40 bytes, +0), and loads
 /// the DEF named first in record town × 2 + female of 18 records of 0x10 bytes at 0x63BD40.
 const HERO_INFO: (u32, usize, usize) = (0x67_9DD0, 156, 0x5C);
+/// A hero record's large portrait's name (+0x34; E17 M5 T4b1: the result window, 0x47055A).
+const HERO_PORTRAIT: usize = 0x34;
 const HERO_CLASSES: (u32, usize, usize) = (0x67_D868, 18, 0x40);
 const HERO_DEFS: (u32, usize, usize) = (0x63_BD40, 18, 0x10);
 /// The magic animations (E17 M3 T3b, design §7.15): `PlayMagicAnimation` 0x496840's table, 83
@@ -297,6 +299,8 @@ struct Harvest {
     /// +0xC), and `hotraits.txt`'s names, by hero type.
     hero_defs: Vec<String>,
     hero_casts: Vec<([i32; 2], u32)>,
+    /// The heroes' large portraits (the static hero table's +0x34; E17 M5 T4b1), by hero type.
+    hero_portraits: Vec<String>,
     hero_names: Vec<String>,
     flags: [String; 2],
     /// The magic animations: DEF, place, translucent.
@@ -509,8 +513,15 @@ fn read_harvest(
     }
     let mut hero_defs = Vec::new();
     let mut hero_casts = Vec::new();
+    let mut hero_portraits = Vec::new();
     for id in 0..HERO_INFO.1 {
-        let info = bytes(&image, exe, HERO_INFO.0 + to_u32(id * HERO_INFO.2), 12)?;
+        let info = bytes(
+            &image,
+            exe,
+            HERO_INFO.0 + to_u32(id * HERO_INFO.2),
+            HERO_PORTRAIT + 4,
+        )?;
+        hero_portraits.push(string(u32_at(&info, HERO_PORTRAIT))?);
         let (female, class) = (u32_at(&info, 0), u32_at(&info, 8) as usize);
         if female > 1 || class >= HERO_CLASSES.1 {
             return Err(format!("hero {id}: female {female}, class {class}"));
@@ -663,6 +674,7 @@ fn read_harvest(
         names: creature_names(crtraits)?,
         hero_defs,
         hero_casts,
+        hero_portraits,
         hero_names: hero_names(hotraits),
         flags: [string(FLAGS[0])?, string(FLAGS[1])?],
         magic,
@@ -1007,8 +1019,9 @@ fn write_table(
             .hero_defs
             .get(n)
             .zip(h.hero_casts.get(n))
+            .zip(h.hero_portraits.get(n))
             .filter(|_| h.hero_names.get(n).map(String::as_str) == Some(name));
-        let Some((def, (point, frames))) = def else {
+        let Some(((def, (point, frames)), portrait)) = def else {
             gaps.push(format!(
                 "{id}:{}: `{name}` is not hero type {n} of hotraits.txt",
                 hero.id
@@ -1017,10 +1030,11 @@ fn write_table(
         };
         let _ = write!(
             t,
-            "\n[[hero]]\nkey = \"{}\"\noriginal = {n}\ndef = \"{}\"\ncast = [{}]\ncast_frames = {frames}\n",
+            "\n[[hero]]\nkey = \"{}\"\noriginal = {n}\ndef = \"{}\"\ncast = [{}]\ncast_frames = {frames}\nportrait = \"{}\"\n",
             plain(&hero.id)?,
             plain(def)?,
-            numbers(point)
+            numbers(point),
+            plain(portrait)?
         );
     }
     // The spells (E17 M3 T7b-1): by `sptraits.txt`'s name, as the packs' harvester numbers them.

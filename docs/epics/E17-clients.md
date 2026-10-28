@@ -176,8 +176,14 @@ the stacks created mid-battle.
     box's layout, frame, items and input, the text tables' quotes), built (`h3_view::message`,
     the window's and the stills' boxes: Retreat's and Surrender's questions and refusal, the
     book's refusal and description, "affects no one"); six stills exact; CLT-Q28.
-  - **T4b, the result window:** `battle_result_dialog` 0x4702D0, the screen darkened under it by
-    0x44E5F0.
+  - **T4b, the result window** (cut in two by the user, 2026-10-28):
+    - **T4b1, the window without its clip** (done 2026-10-28): read (design §7.20: the items, a
+      hero-less side's face, the losses, the text, the experience, the handler), built
+      (`h3_view::result`, a DEF item's mirror, the heroes' portraits; the window's result opened
+      as the battle is decided, its OK closing the battle's screen); `result-retreat`,
+      `result-surrender` and `end`'s last frame exact, `defended`'s but 122 artifacts.
+    - **T4b2, the clip:** its slot's Bink clips (a port of FFmpeg's decoder, the user's choice,
+      CLT-Q29), the harness given them.
   - **T4c, Auto Combat and the tactics phase:** the panel dimmed, the tactics phase's panel
     (0x46C050).
 - **T5, what a played battle shows:** the created stacks (`StackCreated`: Summon Elemental,
@@ -308,3 +314,14 @@ M3 at its review, T9b, M4 at its review, T3c). The next milestone's list starts 
     tables (T4a; `text::pack`): `h3_formats::text` keeps them (the battle lane's inbox).
 11. The window while a box is open (T4a): every key but the viewer's own goes to the box (Escape
     is its Cancel's, never the window's quit); unattended runs' `--leave retreat|surrender`.
+12. The result window's formats (T4b1, design §7.20): the layout's `[result]` (its assets by
+    name; the window laid out in code, `h3_view::result`), the asset tables' heroes' `portrait`
+    (harvested), a DEF item's `mirrored` (and `Draw::Button`'s), the items the executable gives
+    the id 200 given ids of their own.
+13. The window's derivations in the client (T4b1): the experience a copy of `battle_experience`
+    0x46A350 over the engine's `BattleOutcome`, without Learning (the client's heroes have none;
+    `h3-game`'s is private: a public one would replace it), a hero's portrait its type's (a
+    map's own portrait not known), a hero-less side's face from the reading only (the harness's
+    maps give both sides a hero, so no capture shows one).
+14. The window's battle ends with the result's OK (T4b1): the window's run ends there, as the
+    original leaves the battle's screen.

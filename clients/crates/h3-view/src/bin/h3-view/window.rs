@@ -33,6 +33,11 @@
 //! the timeline's cues. When the battle is decided (T8), every effect ends and its end's tune
 //! replaces the music, once. `--mute` (or no sound device) plays none and does not wait.
 //!
+//! The battle's end (E17 M5 T4b1, [`crate::results`]): a battle fought here opens its result
+//! window as it is decided, over the whole screen darkened, the battle standing behind it; its
+//! OK (a click, Enter or Escape) closes the window's battle, as the original's leaves the battle's
+//! screen.
+//!
 //! `--check <s>` and `--measure <s>` run unattended for that many seconds and report when each
 //! frame showed against its time; `--check` also reads every frame back before presenting it and
 //! compares it with the composed frame at the window's scale (the black around it included). An
@@ -468,6 +473,12 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
         let mut grew = false;
         // The spell book opened, closed or changed (E17 M5 T3a).
         let mut book_changed = false;
+        // The result window opens at the battle's end (E17 M5 T4b1).
+        let ms = clock.ms(win.ticks_ns());
+        if battle.open_result(ms) {
+            lines.push(format!("the result window opened at {ms} ms"));
+            book_changed = true;
+        }
         if let Some(p) = presser.as_mut() {
             grew |= p.press(&mut battle, &mut inputs, clock.ms(win.ticks_ns()))?;
         }
@@ -744,6 +755,10 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                 Event::Redraw => redraw = true,
             }
         }
+        // The result window's OK closes the battle's screen (E17 M5 T4b1).
+        if battle.result_closed() {
+            break;
+        }
         // The mouse, a button held, the log scrolled (E17 M3 T6c-2), a command given (E17 M5
         // T2b): the battle follows them and the frame now is made again.
         if mouse_changed || grew || book_changed {
@@ -994,7 +1009,7 @@ fn message_did(
     *changed |= did != MessageDid::Nothing;
     match did {
         MessageDid::Give(command) => give(battle, inputs, at, command),
-        MessageDid::Nothing | MessageDid::Changed => Ok(false),
+        MessageDid::Nothing | MessageDid::Changed | MessageDid::Ended => Ok(false),
     }
 }
 
@@ -1046,6 +1061,10 @@ impl Presser {
         inputs: &mut Vec<Input>,
         now: u32,
     ) -> Result<bool, String> {
+        // The result window stays until the run's end (E17 M5 T4b1: its frames read back too).
+        if battle.result_open() {
+            return Ok(false);
+        }
         if battle.message_open() {
             return self.answer(battle, inputs, now);
         }
@@ -1121,7 +1140,7 @@ impl Presser {
                 self.left = Some(command);
                 give(battle, inputs, now, command)
             }
-            MessageDid::Changed | MessageDid::Nothing => Ok(true),
+            MessageDid::Changed | MessageDid::Nothing | MessageDid::Ended => Ok(true),
         }
     }
 

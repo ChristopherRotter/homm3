@@ -1202,7 +1202,7 @@ sequences/defended t01087 7abb860f1c526378
 sequences/defended t01187 b7524bc3dec84e4b
 sequences/defended t01287 caddeb84b1442686
 sequences/defended t01387 3dcc0c6ce34b2285
-sequences/defended t01487 52fb6e2711877306
+sequences/defended t01487 5af3cb8626b4ba59
 sequences/dispel t00000b 50e59f6af5282325
 sequences/dispel t00100 58f60a9cb6d955a4
 sequences/dispel t00200 3093629e8b3ff4f3
@@ -1574,7 +1574,7 @@ sequences/end t03330 3a3e9c5eae853aea
 sequences/end t03430 a9276b0ef6d9edfe
 sequences/end t03530 24cb1e3e6c0844b3
 sequences/end t03630 862d3750eb5ba769
-sequences/end t03730 329a338b5614a392
+sequences/end t03730 5fe80ef86e80bd60
 sequences/fear t00000b 9164b88402946110
 sequences/fear t00100 3448f9f13ae56727
 sequences/fear t00200 2c5b9190461268bd
@@ -4655,6 +4655,8 @@ set/msg-poor t00100 0e55781ba38fcc16
 set/msg-retreat t00000 4c801d813e2bf4b8
 set/msg-retreat t00100 4c801d813e2bf4b8
 set/msg-surrender t00100 6b45834ead620dd2
+set/result-retreat t00100 f8fd92e30f66a531
+set/result-surrender t00100 a5f109e13d6b5ff7
 set/rocklands t00000 aea2b2b52584aec1
 set/rough t00000 abe3ed4ae93166c2
 set/sand t00000 faa23af0012b04ec

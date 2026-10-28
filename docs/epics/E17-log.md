@@ -3033,6 +3033,55 @@ during the session (the baseline check died; the client check ran on the branch)
   A window left hanging by the first `--leave` run (before `next_frame` learnt the box) spun for an
   hour beside the captures: `pgrep -x h3-view` after such a run.
 
+### M5 T4b1 — The result window without its clip (2026-10-28)
+
+On `client/e17-m5-t4b1`, the user present at the start. The sandbox new; the original files staged
+from the user's `original-data/` first (the user's computer went offline during the session);
+`master` at `e8a7990` (#542 merged by the user). The reading found the window's clip (a Bink clip
+from `VIDEO.VID`, which the harness blanks): T4b cut in two with the user (CLT-Q29: T4b1 here,
+T4b2 the clip by a port of FFmpeg's Bink decoder); the twelve clips (9 MB) copied from the
+user's `VIDEO.VID` into `original-data/battle-videos.vid` before the computer went offline.
+
+- **Read** (design §7.20): `battle_result_dialog` 0x4702D0 whole (its items in order, a hero-less
+  side's face, the losses, the text and the clip's index), its handler 0x471B90, `battle_end`'s
+  calls (the cursor, the darkening, the arguments, the experience given after), the experience
+  `battle_experience` 0x46A350, the DEF item's constructor 0x4EA720 and its drawer's flag-0x10
+  path (0x4EAE6C: the mirror to 0x47BF00), the hero table's portraits. 2 new map entries
+  (0x471B90, 0x597570 and 0x5FE9F0 inferred, the deadline 0x697784), 3 updated.
+- **The library:** `result` (`ResultLayout`, `Face`, `Side`, `Texts`, `layout`: the items in the
+  executable's order, the id-200 items given ids of their own; `text`, `shown_side`, `backdrop`,
+  `behind`, `CURSOR_FRAME`); a DEF item's `mirrored` and `h3-ui`'s `Draw::Button`'s (merged after
+  E24 M3 T1a moved `ui` there: an additive field of the common crate); the asset tables' heroes'
+  `portrait` (harvested: `hero_table` +0x34); the layout's `[result]`; the catalogue's 16
+  `result.*` keys. Tests: the layout (heroes; creatures, the defender's mirrored; losses
+  centred, at most seven), the shown side, the texts, the flags behind.
+- **The binary:** `results` (`window`; `losses`, `strongest`, `experience` over the engine's
+  `StackRecord`s, kept out of the pure library, whose purity test admits no engine crate; tests),
+  from the engine's `BattleOutcome`, the opening, the tables, the ruleset's hit points and AI
+  values, the catalogue; `scenario::outcome`, `Live::outcome`;
+  `Battle`'s result (opened as the battle is decided, `Asked::Result`, the combat cursor's
+  pointer, the battle frozen at its end with its flags as last shown, the OK closing the
+  battle's screen: `MessageDid::Ended`), the window (opens it, quits at its OK; unattended runs
+  leave it open); a still's box OK that gives a command ends in it (`spellbook::Boxes::result`,
+  `render --frames`); `sequences` draws it from the timeline's end.
+- **Checks:** the capture set's `result-retreat` (dialogs.toml) and `result-surrender`
+  (result.toml, new: grass's battle with Red's 20 000 gold) exact at once; `end`'s last frame
+  from 478 876 differing pixels to 0 (first 225, the flags: the original darkens the screen as
+  last shown, before the end's idle step turns them; then 660 with the battle frozen 1 ms before
+  the end, the dying Pikemen; then 0 with the end's moment and the flags before it);
+  `defended`'s end (a town defended) from 478 538 to 122, all redraw artifacts of the keep's
+  shooter (its shot's climax frame as last shown, CLT-Q19 (5)), recorded. `drawn` the other 128
+  the same, then recorded (132). The window under Xvfb (`--check`, `--mute`): `smoke` in hot seat
+  left by `--leave retreat` (8 of 8 frames exact), `result.toml` by `--leave surrender` (7 of 7),
+  `seq-end.toml` in hot seat won by the presses (58 of 58), each to its result window ("the result
+  window opened at <ms> ms" in the report); a bot-fought `seq-end.toml` with Enter by `xdotool`:
+  the window closed, the run over. The library's tests (299; `h3-ui`'s 56), the binary's (46); the client
+  check (coverage 100 %); the scoped verify with the original data. `master` merged in after
+  #545 (E24 M3 T1a, `h3-ui`): `drawn` all 132 the same after it.
+- **Found:** the clip (T4b2). Nothing of the original to ask about: the two text items it leaves
+  empty (0xCB, 0xCE) draw nothing. A hero-less side's face is read but not captured (the
+  harness's maps give both sides a hero).
+
 ## Accepted review lists (M1 to M4)
 
 M1 and M2 moved from the epic file on 2026-10-20 (less start-up reading), unchanged; M3 at its
