@@ -5,9 +5,9 @@
 //! batch as they are first drawn. The window shows the frame of the latest change at or before the
 //! battle's clock (`h3_view::clock`), composed and widened ahead of its time, presented when it
 //! falls due; past the end the battle idles. Keys: P pauses, → steps a frame while paused, Home
-//! restarts, F fullscreen, V vsync, H the hardware or the drawn cursor, M the music, E the
-//! creatures' sounds, Esc quits (*provisional*: since E17 M3 T6c-2, as the battle's own keys
-//! took Space, R and C).
+//! restarts, F11 fullscreen (F until E17 M5 T3b: the Faerie Dragon's key now), V vsync, H the
+//! hardware or the drawn cursor, M the music, E the creatures' sounds, Esc quits (*provisional*:
+//! since E17 M3 T6c-2, as the battle's own keys took Space, R and C).
 //!
 //! The mouse (T6c-2, `crate::pointer`): the battle takes it as the original does
 //! (`h3_view::mouse::track`): its cursor (the combat cursor's frame, the hardware cursor or drawn),
@@ -41,7 +41,7 @@
 use std::path::PathBuf;
 use std::process::ExitCode;
 
-use h3_protocol::wire::Command;
+use h3_protocol::wire::{Command, Target};
 use h3_render::screen::Screen;
 use h3_sdl::{Config, CursorImage, Event, Key, ReadBack, Window};
 use h3_view::anim::Speed;
@@ -71,6 +71,10 @@ const WAIT_MS: u32 = 250;
 /// How long after a human's turn started an unattended run presses its command (E17 M5 T2b):
 /// a few idle steps show first.
 const PRESS_AFTER_MS: u32 = 400;
+
+/// The most pages and tabs an unattended run turns the spell book through to find a spell (E17
+/// M5 T3b).
+const BOOK_TURNS: usize = 64;
 
 /// The tunes a battle may end with (E17 M5 T1b: decoded before a battle fought as it is played
 /// ends).
@@ -482,6 +486,9 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                     redraw |= drawn_cursor;
                     if let Some((x, y)) = p {
                         book_changed |= battle.book_hover([x, y]);
+                        // The battle keeps where the mouse is, to aim from there (E17 M5 T3b).
+                        inputs.push(Input::Move { at, to: [x, y] });
+                        mouse_changed = true;
                     }
                 }
                 Event::Click {
@@ -493,6 +500,27 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                 }
                 Event::Click { down: false, .. } | Event::KeyUp(_) if battle.book_open() => {}
                 Event::Key(Key::Home) if battle.book_open() => {}
+                // A spell aimed (E17 M5 T3b; the aim's loop 0x5A3070): Escape or the right button
+                // (0x5A3184) gives it up, a
+                // press casts at the hex the cursor took; the battle's other keys and buttons
+                // take nothing meanwhile (the viewer's own still work).
+                Event::Key(Key::Escape | Key::RightButton) if battle.aiming() => {
+                    battle.cancel_aim();
+                    inputs.push(Input::Cancel { at });
+                    mouse_changed = true;
+                }
+                Event::Click { down: true, .. } if battle.aiming() => {
+                    if let Some(command) = battle.aim_press(at) {
+                        grew |= give(&mut battle, &mut inputs, at, command)?;
+                    }
+                }
+                Event::Click { down: false, .. } | Event::KeyUp(_) if battle.aiming() => {}
+                Event::Key(key)
+                    if battle.aiming()
+                        && !matches!(
+                            key,
+                            Key::P | Key::M | Key::E | Key::F11 | Key::V | Key::H
+                        ) => {}
                 Event::Key(Key::Escape) => break 'run,
                 // Unattended, the keys do nothing (the mouse still moves the battle's).
                 Event::Key(_) | Event::KeyUp(_) if options.run.is_some() => {}
@@ -547,7 +575,19 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                         }
                     }
                 }
+                // The Faerie Dragon's key F aims its drawn spell (E17 M5 T3b, 0x475C17).
                 Event::Key(Key::F) => {
+                    if let Some(spell) = battle.dragon_aim(at) {
+                        inputs.push(Input::Aim {
+                            at,
+                            spell,
+                            creature: true,
+                        });
+                        mouse_changed = true;
+                    }
+                }
+                // Full screen (F11 since E17 M5 T3b: F is the Faerie Dragon's).
+                Event::Key(Key::F11) => {
                     let on = !win.fullscreen();
                     win.set_fullscreen(on);
                 }
@@ -613,8 +653,10 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                             grew |= give(&mut battle, &mut inputs, at, command)?;
                         }
                         // The spell book opens as its button is released over it (E17 M5 T3a).
-                        book_changed |=
-                            h.over && h.id == h3_view::panel::SPELL_BOOK && battle.open_book(at);
+                        if h.over && h.id == h3_view::panel::SPELL_BOOK && battle.open_book(at) {
+                            inputs.push(Input::Book { at });
+                            book_changed = true;
+                        }
                         mouse_changed = true;
                     }
                 }
@@ -641,7 +683,10 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                             grew |= give(&mut battle, &mut inputs, at, command)?;
                         }
                         // C opens the spell book (E17 M5 T3a).
-                        book_changed |= h.id == h3_view::panel::SPELL_BOOK && battle.open_book(at);
+                        if h.id == h3_view::panel::SPELL_BOOK && battle.open_book(at) {
+                            inputs.push(Input::Book { at });
+                            book_changed = true;
+                        }
                         mouse_changed = true;
                     }
                 }
@@ -839,8 +884,8 @@ fn book_key(key: Key) -> Option<&'static str> {
     }
 }
 
-/// What the spell book `did` at `at` (E17 M5 T3a): a change to draw, or the cast it closed on
-/// given; whether the battle took a command.
+/// What the spell book `did` at `at` (E17 M5 T3a): a change to draw, the cast it closed on
+/// given, or the aim it closed on started (E17 M5 T3b); whether the battle took a command.
 fn book_did(
     battle: &mut Battle<'_>,
     inputs: &mut Vec<Input>,
@@ -848,15 +893,24 @@ fn book_did(
     did: BookDid,
     changed: &mut bool,
 ) -> Result<bool, String> {
+    *changed |= did != BookDid::Nothing;
     match did {
         BookDid::Nothing => Ok(false),
         BookDid::Changed => {
-            *changed = true;
+            // Closed without a spell, the battle takes the mouse again.
+            if !battle.book_open() {
+                inputs.push(Input::Cancel { at });
+            }
             Ok(false)
         }
-        BookDid::Cast(command) => {
-            *changed = true;
-            give(battle, inputs, at, command)
+        BookDid::Cast(command) => give(battle, inputs, at, command),
+        BookDid::Aim(spell) => {
+            inputs.push(Input::Aim {
+                at,
+                spell,
+                creature: false,
+            });
+            Ok(false)
         }
     }
 }
@@ -899,6 +953,10 @@ impl Presser {
         }
         let wanted = battle.choice().ok_or("no command for the turn waiting")?;
         inputs.retain(|i| i.at() <= now);
+        // A hero's cast through its book and the aim, a Faerie Dragon's by its key (E17 M5 T3b).
+        if matches!(wanted, Command::Cast { .. } | Command::CreatureCast { .. }) {
+            return self.cast(battle, inputs, now, wanted);
+        }
         let to = match battle.press_for(now, wanted, &self.points) {
             Some(Press::At(point)) => {
                 self.at += 1;
@@ -917,6 +975,90 @@ impl Presser {
             inputs.push(Input::Move { at: now, to });
         }
         give(battle, inputs, now, wanted)
+    }
+}
+
+impl Presser {
+    /// Presses the bot's cast `wanted` at `now` (E17 M5 T3b): a hero's opens its book, turns to
+    /// the spell (the next pages, then the tabs in turn) and presses its place, then aims it at
+    /// the target's hex if it takes one; a Faerie Dragon's aims by its key F. A press that would
+    /// give another command (two stacks on the hex) gives the bot's without one.
+    fn cast(
+        &mut self,
+        battle: &mut Battle<'_>,
+        inputs: &mut Vec<Input>,
+        now: u32,
+        wanted: Command,
+    ) -> Result<bool, String> {
+        let target = match wanted {
+            Command::Cast { spell, target, .. } => {
+                if !battle.open_book(now) {
+                    return Err("the spell book does not open for a cast".to_owned());
+                }
+                inputs.push(Input::Book { at: now });
+                let mut place = battle.book_place_of(spell);
+                for _ in 0..BOOK_TURNS {
+                    if place.is_some() {
+                        break;
+                    }
+                    let key = if battle.book_next() { "Right" } else { "Down" };
+                    battle.book_key(key);
+                    place = battle.book_place_of(spell);
+                }
+                let place = place.ok_or("the spell is on no page of the book")?;
+                inputs.push(Input::Move { at: now, to: place });
+                let mut changed = false;
+                match battle.book_press(place) {
+                    BookDid::Aim(spell) => inputs.push(Input::Aim {
+                        at: now,
+                        spell,
+                        creature: false,
+                    }),
+                    did => {
+                        self.at += 1;
+                        return book_did(battle, inputs, now, did, &mut changed);
+                    }
+                }
+                target
+            }
+            Command::CreatureCast { target } => {
+                let spell = battle
+                    .dragon_aim(now)
+                    .ok_or("no Faerie Dragon's aim for its cast")?;
+                inputs.push(Input::Aim {
+                    at: now,
+                    spell,
+                    creature: true,
+                });
+                target
+            }
+            _ => return Ok(false),
+        };
+        let hex = match target {
+            Target::Stack { stack } => battle.stack_hex(stack),
+            Target::Hex { hex } => Some(hex),
+            Target::None {} => None,
+        }
+        .ok_or("a cast aimed at nothing")?;
+        let to = self
+            .points
+            .get(usize::from(hex))
+            .map(|(centre, _)| *centre)
+            .ok_or("a hex off the field")?;
+        inputs.push(Input::Move { at: now, to });
+        battle.mouse(inputs, &[])?;
+        match battle.aim_press(now).filter(|c| *c == wanted) {
+            Some(command) => {
+                self.at += 1;
+                give(battle, inputs, now, command)
+            }
+            None => {
+                battle.cancel_aim();
+                inputs.push(Input::Cancel { at: now });
+                self.given += 1;
+                give(battle, inputs, now, wanted)
+            }
+        }
     }
 }
 

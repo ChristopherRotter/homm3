@@ -515,6 +515,7 @@ fn a_moment_draws_each_stack_in_its_pose() {
         hues: BTreeMap::new(),
         // E17 M3 T6c-1: the mouse marks the walking Pikemen.
         marked: Some(0),
+        area: Vec::new(),
         walls: None,
         turrets: [None; 3],
         blast: None,

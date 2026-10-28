@@ -104,7 +104,7 @@ search the parent directories).
   -- window scenarios/battle.toml [--seed <n>] [--scale <n>] [--vsync] [--drawn-cursor]
   [--fullscreen]` (from `clients/`) loads the battle as `play` does and shows each frame when it
   falls due, at the largest integer scale that fits the display; P pauses, → steps a frame
-  while paused, Home restarts, F, V and H switch fullscreen, vsync and the cursor's kind, M and E
+  while paused, Home restarts, F11, V and H switch fullscreen, vsync and the cursor's kind, M and E
   the music and the creatures' sounds, Esc quits. The mouse is the battle's (E17 M3 T6c-2,
   design §9.10): its cursor, the stack it marks and enters, its hints in the log; a panel button
   shows its click frame while the mouse or its hotkey (S, R, O, A, C, W, D, Space) holds it, the

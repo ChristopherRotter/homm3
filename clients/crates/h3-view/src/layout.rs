@@ -104,6 +104,16 @@ pub struct Mouse {
     pub hot: Vec<[i32; 2]>,
     /// The frame over the panel (6, 0x47551F).
     pub panel_frame: u32,
+    /// The spell cursor (E17 M5 T3b, design §7.18): `crspell.DEF`, the mouse manager's type 3
+    /// (0x67FF38), set by the aim over a hex it takes (`spell_target_cursor` 0x59F700).
+    pub spell_cursor: String,
+    /// Its frames' hot spot, the same for each (0x67FF50 + (3 × 144 + frame) × 8: (18, 27)).
+    pub spell_hot: [i32; 2],
+    /// Its frames (group 0's 20): the mouse's poll steps it through them in turn
+    /// (`mouse_poll` 0x50D838).
+    pub spell_frames: u32,
+    /// The time between its frames (the poll's second grid, 100 ms: 0x50D827).
+    pub spell_step: u32,
 }
 
 /// A stack's count box (`draw_battle_stack`'s part 1, 0x43E568; design §4.3): its picture beside

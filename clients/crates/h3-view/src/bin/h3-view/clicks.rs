@@ -141,7 +141,7 @@ fn check(path: &Path, with: &mut With, out: &mut Checked) {
     while let Some(side) = state.side_to_act() {
         let observation = map::observe(&state, ruleset, Viewer::Spectator);
         let commands = map::legal_commands(&state, ruleset, side);
-        let legal = crate::pointer::legal(&manifest, &with.tables, &observation, &commands);
+        let legal = crate::pointer::legal(&manifest, &with.tables, &observation, (&commands, &[]));
         let field = Field {
             observation: &observation,
             legal: &legal,

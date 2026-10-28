@@ -15,6 +15,7 @@
 
 use alloc::collections::BTreeSet;
 use alloc::string::String;
+use alloc::vec::Vec;
 
 use h3_protocol::wire::{Command, Observation, Side, Siege, Stack};
 use h3_render::Bugs;
@@ -26,6 +27,7 @@ use crate::siege::{
 };
 use crate::text::{Args, Catalogue};
 
+pub mod aim;
 pub mod line;
 pub mod track;
 
@@ -46,6 +48,8 @@ const CITADEL: u8 = 2;
 pub const WALL_EXEMPT: [u16; 5] = [34, 35, 136, 137, 149];
 /// The Catapult's original id: over a stack it aims as over an empty hex (0x4766B2).
 pub const CATAPULT: u16 = 145;
+/// A number whose plural form is the creatures' plural name (E17 M5 T3b).
+const PLURAL_COUNT: i64 = 2;
 
 /// Where the mouse is over the battlefield (`screen_to_hex`).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -186,6 +190,9 @@ pub struct Legal {
     /// The walls never halve its shots (`shot_wall_test`'s shooters, [`WALL_EXEMPT`], or its
     /// hero's bow: the wire's `no_distance_penalty`).
     pub wall_exempt: bool,
+    /// The spells its side may aim now, each with what the engine lets it be cast at (E17 M5
+    /// T3b: the hero's book's choice, a Faerie Dragon's drawn spell by its key F).
+    pub aims: Vec<aim::Aim>,
 }
 
 impl Legal {
@@ -397,10 +404,25 @@ pub enum Hint {
     NoShots,
     /// A control's hint: its key.
     Control(String),
-    /// A hero's spell aimed (E17 M3 T7b-1, *provisional*: `enter_player_cast` 0x59EC50's loop
-    /// is not read): "Cast %s on %s" (28) over a stack by its number, "Cast %s" (27) elsewhere on
-    /// the battlefield; the spell by its handle.
+    /// A spell aimed over a hex its cursor takes (E17 M3 T7b-1; read at M5 T3b, 0x5A8690):
+    /// "Cast %s on %s" (28) with a stack by its number, "Cast %s" (27) without one; the spell by
+    /// its handle.
     Cast(u16, Option<u8>),
+    /// Remove Obstacle aimed over an obstacle (551; E17 M5 T3b).
+    RemoveObstacle,
+    /// A spell aimed elsewhere ("Select Spell Target", 24; E17 M5 T3b, `spell_fails_message`
+    /// 0x5A2880's default).
+    SelectTarget,
+    /// "%s protects the %s" (171): Anti-Magic's name (its handle) and the stack's by its number.
+    Protects(u16, u8),
+    /// "%s can only be cast on hostile creatures" (172), the spell.
+    HostileOnly(u16),
+    /// "%s can only be cast on friendly creatures" (178), the spell.
+    FriendlyOnly(u16),
+    /// "%s does not work on %s" (180): the spell, the stack's plural name (a raising spell).
+    NotOn(u16, u8),
+    /// "%s are immune to %s" (181): the stack's plural name, the spell.
+    Immune(u8, u16),
     /// A wall-shot target (E17 M4 T2c-2): "Attack %s" (221) with the target's part's name for the
     /// town's type (WALLS.TXT, the parts' +0x1C, 0x492E70).
     Wall(u8),
@@ -439,6 +461,18 @@ impl Hint {
             let creature = name(id, single).unwrap_or_default();
             catalogue.text(key, &Args::new().text("creature", &creature))
         };
+        let spell_name = |handle: u16| {
+            spell(handle).map_or_else(String::new, |key| catalogue.text(&key, &Args::new()))
+        };
+        // A stack's plural name whatever its number (the creature table's +0x18: 0x5A2AD7, E17
+        // M5 T3b): the form of a number other than one.
+        let plural = |id: u8| {
+            stack(id)
+                .and_then(|s| creature(s))
+                .map_or_else(String::new, |key| {
+                    catalogue.text(&key, &Args::new().count(PLURAL_COUNT))
+                })
+        };
         match self {
             Self::Empty => String::new(),
             Self::Move(id) => with("battle.hint.move", *id, false),
@@ -460,6 +494,35 @@ impl Hint {
             Self::EnemyHero => catalogue.text("battle.hint.enemy-hero", &Args::new()),
             Self::NoShots => catalogue.text("battle.hint.no-shots", &Args::new()),
             Self::Control(key) => catalogue.text(key, &Args::new()),
+            Self::RemoveObstacle => catalogue.text("battle.hint.remove-obstacle", &Args::new()),
+            Self::SelectTarget => catalogue.text("battle.hint.select-target", &Args::new()),
+            Self::Protects(anti_magic, id) => {
+                let creature = name(*id, false).unwrap_or_default();
+                let args = Args::new()
+                    .text("spell", &spell_name(*anti_magic))
+                    .text("creature", &creature);
+                catalogue.text("battle.hint.protects", &args)
+            }
+            Self::HostileOnly(handle) => {
+                let args = Args::new().text("spell", &spell_name(*handle));
+                catalogue.text("battle.hint.hostile-only", &args)
+            }
+            Self::FriendlyOnly(handle) => {
+                let args = Args::new().text("spell", &spell_name(*handle));
+                catalogue.text("battle.hint.friendly-only", &args)
+            }
+            Self::NotOn(handle, id) => {
+                let args = Args::new()
+                    .text("spell", &spell_name(*handle))
+                    .text("creature", &plural(*id));
+                catalogue.text("battle.hint.not-on", &args)
+            }
+            Self::Immune(id, handle) => {
+                let args = Args::new()
+                    .text("spell", &spell_name(*handle))
+                    .text("creature", &plural(*id));
+                catalogue.text("battle.hint.immune", &args)
+            }
             Self::Cast(handle, target) => {
                 let spell = spell(*handle)
                     .map_or_else(String::new, |key| catalogue.text(&key, &Args::new()));
@@ -526,6 +589,22 @@ pub fn cursor(layout: &BattleLayout, frame: u32, [x, y]: [i32; 2]) -> Draw {
         x,
         y,
         hot,
+    }
+}
+
+/// The cursor `look` at `point` (E17 M5 T3b): the combat cursor's frame ([`cursor`]), or the
+/// spell cursor's frame with its one hot spot.
+#[must_use]
+pub fn look_cursor(layout: &BattleLayout, look: track::Look, [x, y]: [i32; 2]) -> Draw {
+    match look {
+        track::Look::Combat(frame) => cursor(layout, frame, [x, y]),
+        track::Look::Spell(frame) => Draw::Cursor {
+            def: layout.mouse.spell_cursor.clone(),
+            frame,
+            x,
+            y,
+            hot: layout.mouse.spell_hot,
+        },
     }
 }
 

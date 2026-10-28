@@ -75,6 +75,13 @@ hot = [
     [0, 21], [0, 6], [0, 0], [6, 0], [6, 31], [14, 0], [12, 12], [12, 10], [12, 12], [12, 12],
 ]
 panel_frame = 6
+# The spell cursor (E17 M5 T3b): the mouse manager's type 3, set by a spell's aim over a hex it
+# takes (0x59F700); its frames' hot spot (0x67FF50: the same for all), its frames (group 0's) and
+# the time between them (the mouse poll's second grid, 0x50D827).
+spell_cursor = "CRSPELL.DEF"
+spell_hot = [18, 27]
+spell_frames = 20
+spell_step = 100
 
 # The panel below the battlefield (design §9.5, §9.7; E17 M3 T4b-2b-1, T6a): a dialog of the
 # executable's items, each `kind` drawn by its own drawer (h3_view::ui), in the order the

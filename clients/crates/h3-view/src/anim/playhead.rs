@@ -343,6 +343,7 @@ impl Playhead {
                 .filter_map(|(&s, &i)| timeline.tints[i].hue.map(|h| (s, h)))
                 .collect(),
             marked: None,
+            area: Vec::new(),
             walls: self.wall.map(|i| timeline.walls[i].walls),
             turrets: self.turret.map(|k| k.map(|i| timeline.turrets[i].pose)),
             blast: self.blast(timeline),

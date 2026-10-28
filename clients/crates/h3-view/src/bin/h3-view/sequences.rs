@@ -20,7 +20,7 @@ use h3_view::batch::{self, Batch};
 use h3_view::compose::compose;
 use h3_view::hero::HeroPose;
 use h3_view::layout::BattleLayout;
-use h3_view::mouse::track::Shown;
+use h3_view::mouse::track::{Input, Shown};
 use h3_view::mouse::{self, Legal};
 use h3_view::record::Record;
 use h3_view::scene::Panels;
@@ -324,8 +324,6 @@ fn sequences(options: &Options) -> Result<usize, String> {
         // The mouse as the harness moved it (E17 M3 T6c-2): its cursor, the stack it marks and
         // enters, the status line's hints, each turn's battle from the engine.
         let scenario_path = dir.join(&sequence.scenario);
-        let turned = scenario::turned(&scenario_path, &options.packs, sequence.seed, &steps)
-            .map_err(|e| format!("{}: {e}", sequence.id))?;
         // The heroes' casts in order, which the `cast:` actions aim (E17 M3 T7b-1).
         let spells: Vec<u16> = record
             .messages
@@ -340,11 +338,33 @@ fn sequences(options: &Options) -> Result<usize, String> {
                 _ => None,
             })
             .collect();
+        // A spell by its number in the original (an `aim:` action's, E17 M5 T3b).
+        let keys = &record.header.manifest.keys.spells;
+        let handle =
+            |original: u16| motion::spell_numbered_in(keys, &tables, original).map(|(h, _)| h);
         let inputs = pointer::inputs(
             &sequence.actions,
             sequence.pre,
             &layout,
-            (&timeline, &spells),
+            (&timeline, &spells, &handle),
+        )
+        .map_err(|e| format!("{}: {e}", sequence.id))?;
+        // The spells the actions aim, each turn's aims of them (E17 M5 T3b).
+        let mut aimed: Vec<u16> = inputs
+            .iter()
+            .filter_map(|i| match *i {
+                Input::Aim { spell, .. } => Some(spell),
+                _ => None,
+            })
+            .collect();
+        aimed.sort_unstable();
+        aimed.dedup();
+        let turned = scenario::turned(
+            &scenario_path,
+            &options.packs,
+            sequence.seed,
+            &steps,
+            &aimed,
         )
         .map_err(|e| format!("{}: {e}", sequence.id))?;
         let catalogue = log::catalogue(&tables, &archives, &exe)?;
@@ -549,6 +569,10 @@ pub(crate) fn draw_frames(
             Some(shown) => shown.marked(frame.t),
             None => pointer.as_ref().and_then(|(_, p)| p.marked),
         };
+        // The stacks an area spell's aim marks (E17 M5 T3b).
+        if let Some(shown) = interface.shown {
+            moment.area = shown.area(frame.t).to_vec();
+        }
         for &[side, index, group, f] in &frame.fidgets {
             let side = if side == 0 {
                 Side::Attacker
@@ -663,8 +687,9 @@ pub(crate) fn draw_frames(
             // mouse; none while a ray hides it.
             let point = frame.cursor.or_else(|| shown.point(frame.t));
             let visible = !timeline.cursor_hidden(frame.t);
-            if let (Some(f), Some(point), true) = (shown.frame(frame.t), point, visible) {
-                list.push(mouse::cursor(layout, f, point));
+            let look = shown.look(frame.t, &layout.mouse);
+            if let (Some(look), Some(point), true) = (look, point, visible) {
+                list.push(mouse::look_cursor(layout, look, point));
             }
         } else if let Some((point, p)) = &pointer {
             list.push(p.cursor(layout, *point));

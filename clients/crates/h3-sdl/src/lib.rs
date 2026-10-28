@@ -148,6 +148,9 @@ pub enum Key {
     Keypad8,
     /// The keypad's 9 (E24 M2 T4b: in either NumLock state, as SDL 3 names them).
     Keypad9,
+    /// The mouse's right button, down and up as a key's (E17 M5 T3b: it gives a spell's aim up),
+    /// wherever the mouse is.
+    RightButton,
 }
 
 impl Key {
@@ -254,11 +257,12 @@ impl Key {
             Self::Keypad7 => "Keypad7",
             Self::Keypad8 => "Keypad8",
             Self::Keypad9 => "Keypad9",
+            Self::RightButton => "RightButton",
         }
     }
 
     /// Every key, in the enum's order.
-    pub const ALL: [Self; 45] = [
+    pub const ALL: [Self; 46] = [
         Self::Escape,
         Self::Space,
         Self::Right,
@@ -304,6 +308,7 @@ impl Key {
         Self::Keypad7,
         Self::Keypad8,
         Self::Keypad9,
+        Self::RightButton,
     ];
 
     /// The key a name gives ([`Key::name`]'s), if any.
@@ -593,6 +598,16 @@ impl Window {
                     Some(Event::Click {
                         down: ty == SDL_EVENT_MOUSE_BUTTON_DOWN,
                         at: (x as i32, y as i32),
+                    })
+                }
+                SDL_EVENT_MOUSE_BUTTON_DOWN | SDL_EVENT_MOUSE_BUTTON_UP
+                    if i32::from(ev.button.button) == SDL_BUTTON_RIGHT =>
+                {
+                    let key = Key::RightButton;
+                    Some(if ty == SDL_EVENT_MOUSE_BUTTON_DOWN {
+                        Event::Key(key)
+                    } else {
+                        Event::KeyUp(key)
                     })
                 }
                 SDL_EVENT_MOUSE_MOTION => {

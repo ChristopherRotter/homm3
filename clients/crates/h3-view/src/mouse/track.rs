@@ -7,16 +7,18 @@
 //! battle's log where the battle writes them (`battle_log_add` with its second argument 0: an
 //! attack's and a shot's forced over the log's new lines, the others not).
 
-use alloc::collections::BTreeMap;
+use alloc::collections::{BTreeMap, BTreeSet};
 use alloc::string::String;
 use alloc::vec::Vec;
 
-use h3_protocol::wire::Observation;
+use h3_protocol::wire::{Observation, Side};
 use h3_render::Bugs;
 
+use super::aim::Aim;
+use super::aim::screen_hex;
 use super::{Field, Hint, Kind, Spot, pointer_in, slot, slots_in, spot};
 use crate::battle_log::Logged;
-use crate::layout::BattleLayout;
+use crate::layout::{BattleLayout, Mouse};
 
 /// What the mouse does, in time order (the harness's actions, the window's events).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -34,18 +36,27 @@ pub enum Input {
         /// When.
         at: u32,
     },
-    /// The hero's spell book closed on a spell (E17 M3 T7b-1): the mouse aims it until the next
-    /// `Act`, its hint the cast's ([`Hint::Cast`]).
+    /// A spell's aim starts (E17 M3 T7b-1; read at M5 T3b, design §7.18): the hero's book closed
+    /// on a spell that takes a target, or a Faerie Dragon's key F; the mouse aims it until a
+    /// click on a hex it takes (an `Act`) or a `Cancel` (`enter_player_cast` 0x59EC50's loop).
     Aim {
         /// When.
         at: u32,
         /// The spell's handle.
         spell: u16,
+        /// A creature's cast (the Faerie Dragon's: action 10), not the hero's.
+        creature: bool,
     },
     /// The hero's spell book opened over the battle (E17 M3 T7c-1): its dialog takes the mouse,
     /// so the status line is empty (a spell without a target is cast from it at once, its line
-    /// the next the log shows).
+    /// the next the log shows), and the battle takes no move until it closes (E17 M5 T3b).
     Book {
+        /// When.
+        at: u32,
+    },
+    /// The book closed without a spell, or the aim was given up (Escape, the right button:
+    /// 0x5A317A, 0x5A3184; E17 M5 T3b): the battle takes the mouse again.
+    Cancel {
         /// When.
         at: u32,
     },
@@ -56,9 +67,11 @@ impl Input {
     #[must_use]
     pub const fn at(&self) -> u32 {
         match *self {
-            Self::Move { at, .. } | Self::Act { at } | Self::Aim { at, .. } | Self::Book { at } => {
-                at
-            }
+            Self::Move { at, .. }
+            | Self::Act { at }
+            | Self::Aim { at, .. }
+            | Self::Book { at }
+            | Self::Cancel { at } => at,
         }
     }
 }
@@ -97,6 +110,24 @@ pub struct Shown {
     pub entered: Vec<(u32, u8)>,
     /// The battle's log with the status line's hints written where the battle writes them.
     pub log: Vec<(u32, Logged)>,
+    /// The spell cursor from a time on (E17 M5 T3b): the time its frames start from (the
+    /// aim's `SetCursor(spell + 1, 3)`), none while the combat cursor shows.
+    pub spell: Vec<(u32, Option<u32>)>,
+    /// The stacks an area spell's aim marks from a time on (their outline the mouse's, 0x43E268;
+    /// E17 M5 T3b), in order.
+    pub area: Vec<(u32, Vec<u8>)>,
+    /// The hex an aim's cursor took from a time on (0x688324: a click casts there; E17 M5 T3b),
+    /// none outside an aim or over a hex it does not take.
+    pub aimed: Vec<(u32, Option<u8>)>,
+}
+
+/// A cursor's look: the combat cursor's frame, or the spell cursor's (E17 M5 T3b).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Look {
+    /// `crcombat.DEF`'s frame (the mouse manager's type 2).
+    Combat(u32),
+    /// `crspell.DEF`'s frame (type 3).
+    Spell(u32),
 }
 
 impl Shown {
@@ -117,6 +148,40 @@ impl Shown {
     pub fn marked(&self, t: u32) -> Option<u8> {
         last(&self.marked, t).copied().flatten()
     }
+
+    /// The cursor's look at `t` (none before the mouse is anywhere): the spell cursor's frame by
+    /// the poll's grid (`mouse_poll` 0x50D838: a frame on at each `step` of the clock after it
+    /// was set, round its `frames`), else the combat cursor's.
+    #[must_use]
+    pub fn look(&self, t: u32, mouse: &Mouse) -> Option<Look> {
+        match last(&self.spell, t).copied().flatten() {
+            Some(since) => Some(Look::Spell(spell_frame(since, t, mouse))),
+            None => self.frame(t).map(Look::Combat),
+        }
+    }
+
+    /// The stacks an area spell's aim marks at `t`.
+    #[must_use]
+    pub fn area(&self, t: u32) -> &[u8] {
+        last(&self.area, t).map_or(&[], Vec::as_slice)
+    }
+
+    /// The hex the aim's cursor took at `t`, where a click casts (none: no aim, or a hex it does
+    /// not take).
+    #[must_use]
+    pub fn aimed(&self, t: u32) -> Option<u8> {
+        last(&self.aimed, t).copied().flatten()
+    }
+}
+
+/// The spell cursor's frame at `t` when set at `since`: one frame on at each point of the
+/// poll's grid after `since` up to `t` (the grid's points the multiples of `step` from the
+/// opening, as the harness aligns it: `mouse_poll` 0x50D827), round the DEF's frames.
+#[must_use]
+pub fn spell_frame(since: u32, t: u32, mouse: &Mouse) -> u32 {
+    let step = mouse.spell_step.max(1);
+    let steps = (t / step).saturating_sub(since / step);
+    steps % mouse.spell_frames.max(1)
 }
 
 /// The value of the last change at or before `t`.
@@ -146,8 +211,14 @@ struct Handler<'l> {
     /// An action plays: the moves wait in the input queue (and are dropped as the next turn
     /// starts).
     busy: bool,
-    /// The hero's spell being aimed (E17 M3 T7b-1).
-    aiming: Option<u16>,
+    /// The spell being aimed (E17 M3 T7b-1; M5 T3b).
+    aiming: Option<Aiming>,
+    /// The hero's spell book is open: the battle takes no move (E17 M5 T3b).
+    book: bool,
+    /// The spell cursor's start (none: the combat cursor; E17 M5 T3b).
+    spell_since: Option<u32>,
+    /// The stacks an area spell's aim marks (+0x4F1; E17 M5 T3b).
+    area: BTreeSet<u8>,
     /// The panel's item the mouse last entered (`hovered_item` 0x6AAC68; E17 M4 T3b): a move
     /// inside it writes no hint.
     hovered: Option<u16>,
@@ -159,12 +230,102 @@ struct Handler<'l> {
     shown: Shown,
 }
 
+/// A spell's aim under way (`enter_player_cast` 0x59EC50's loop, its handler 0x5A3070).
+#[derive(Debug, Clone)]
+struct Aiming {
+    aim: Aim,
+    /// The hex the cursor took at the last move (0x688324; none: −1): a click casts at it.
+    last: Option<u8>,
+}
+
 impl Handler<'_> {
+    /// The combat cursor's `frame` (`SetCursor(frame, 2)`): the spell cursor's type gives way to
+    /// it, so its frame is drawn again (0x50CD03).
     fn set_frame(&mut self, now: u32, frame: u32) {
+        if self.spell_since.take().is_some() {
+            self.shown.spell.push((now, None));
+            self.frame = None;
+        }
         if self.frame != Some(frame) {
             self.frame = Some(frame);
             self.shown.frames.push((now, frame));
         }
+    }
+
+    /// The spell cursor (`SetCursor(spell + 1, 3)`, E17 M5 T3b): its frame 0 drawn now unless
+    /// it shows already at the frame `asked` (0x50CD37: type 3 draws its frame 0 whatever is
+    /// asked, and keeps it as the frame shown, which the poll then steps).
+    fn set_spell(&mut self, now: u32, asked: u32) {
+        let shown = self
+            .spell_since
+            .map(|since| spell_frame(since, now, &self.layout.mouse));
+        if shown != Some(asked) {
+            self.spell_since = Some(now);
+            self.shown.spell.push((now, Some(now)));
+        }
+    }
+
+    /// The stacks an area spell's aim marks (`set_area_mark` 0x43EFE0 for each living stack):
+    /// a stack newly marked starts its group 1 as the mouse's does.
+    fn set_area(&mut self, now: u32, marked: BTreeSet<u8>) {
+        if marked == self.area {
+            return;
+        }
+        for &id in marked.difference(&self.area) {
+            self.shown.entered.push((now, id));
+        }
+        self.shown
+            .area
+            .push((now, marked.iter().copied().collect()));
+        self.area = marked;
+    }
+
+    /// The aim's cursor over the screen hex `hex` (`spell_target_cursor` 0x59F700): the hex it
+    /// takes, else none.
+    fn aim_at(
+        &mut self,
+        now: u32,
+        (aim, hex): (&Aim, i32),
+        field: &Field<'_>,
+        name: &dyn Fn(&Hint, &Observation) -> String,
+    ) -> Option<u8> {
+        let taken = aim.takes(field, hex);
+        if let Some(h) = taken {
+            self.set_spell(now, u32::from(aim.original) + 1);
+            self.write(now, &aim.line(field, h), Some(field), name);
+            if aim.area.is_some() {
+                self.set_area(now, aim.marks(field, hex));
+            } else {
+                // `battle_mouse_stack`: nothing over the stack already marked.
+                let stack = field.at(h).map(|s| s.id);
+                if stack.is_none() || stack != self.marked {
+                    self.set_marked(now, stack);
+                    if let Some(id) = stack {
+                        self.shown.entered.push((now, id));
+                    }
+                }
+            }
+        } else {
+            self.set_frame(now, 0);
+            // The side to act (+0x132C0): the acting stack's controller.
+            let side = field.acting().map_or(Side::Attacker, |s| s.controller);
+            self.write(now, &aim.refusal(field, hex, side), Some(field), name);
+            // `battle_clear_highlight` 0x477E10.
+            self.set_marked(now, None);
+            if aim.area.is_some() {
+                self.set_area(now, aim.marks(field, hex));
+            }
+        }
+        taken
+    }
+
+    /// The aim ends (a click's cast or a cancel: 0x5A3109, 0x5A31A3): no stack keeps an area's
+    /// mark.
+    fn end_aim(&mut self, now: u32) {
+        if self.aiming.take().is_some() {
+            self.shown.aimed.push((now, None));
+        }
+        self.set_area(now, BTreeSet::new());
     }
 
     fn set_marked(&mut self, now: u32, marked: Option<u8>) {
@@ -194,6 +355,18 @@ impl Handler<'_> {
         field: Option<&Field<'_>>,
         name: &dyn Fn(&Hint, &Observation) -> String,
     ) {
+        if let (Some(aiming), Some(field)) = (&self.aiming, field) {
+            // The aim takes every move, the panel's points too (0x5A309D): the cursor again only
+            // over another hex than the one it last took (0x5A30C4).
+            let hex = screen_hex(spot(self.layout, point, field.rects()));
+            if aiming.last.map_or(-1, i32::from) != hex {
+                let aim = aiming.aim.clone();
+                let last = self.aim_at(now, (&aim, hex), field, name);
+                self.aiming = self.aiming.take().map(|a| Aiming { last, ..a });
+                self.shown.aimed.push((now, last));
+            }
+            return;
+        }
         let [width, height] = self.layout.mouse.field;
         if !(0..width).contains(&point[0]) || !(0..height).contains(&point[1]) {
             // Outside the battlefield: unmarked, the items' hints, the pointer (0x475402). The
@@ -237,18 +410,6 @@ impl Handler<'_> {
             Spot::Nothing => None,
             other => Some(other),
         };
-        if let Some(spell) = self.aiming {
-            // Aiming a hero's spell (E17 M3 T7b-1, *provisional*): its hint over the battlefield,
-            // the cursor and the marked stack as they were (not read).
-            let hint = match at {
-                Some(Spot::Hex(hex)) => Hint::Cast(spell, field.at(hex).map(|s| s.id)),
-                _ => Hint::Empty,
-            };
-            self.write(now, &hint, Some(field), name);
-            self.hex = None;
-            self.written = None;
-            return;
-        }
         if at.is_some() && at == self.hex {
             // The same hex: only an attack's slot again (0x475553).
             let mut changed = false;
@@ -318,6 +479,9 @@ pub fn follow(
         aims: BTreeMap::new(),
         busy: false,
         aiming: None,
+        book: false,
+        spell_since: None,
+        area: BTreeSet::new(),
         hovered: None,
         items: false,
         bugs: turns.first().map_or(Bugs::Fixed, |t| t.field.bugs),
@@ -343,8 +507,35 @@ pub fn follow(
         let Some(input) = input else { break };
         j += 1;
         match *input {
-            Input::Aim { spell, .. } => h.aiming = Some(spell),
+            Input::Aim {
+                at: now,
+                spell,
+                creature,
+            } => {
+                h.book = false;
+                let turn = turns.get(at.turn);
+                let aim = turn.and_then(|t| {
+                    t.field
+                        .legal
+                        .aims
+                        .iter()
+                        .find(|a| a.spell == spell && a.creature == creature)
+                });
+                if let (Some(turn), Some(aim)) = (turn, aim) {
+                    h.aiming = Some(Aiming {
+                        aim: aim.clone(),
+                        last: None,
+                    });
+                    // The cursor where the mouse is now (0x59EE2E), the hex it takes not kept
+                    // (0x59EE56): a click before the next move casts nothing.
+                    let hex = h
+                        .point
+                        .map_or(-1, |p| screen_hex(spot(layout, p, turn.field.rects())));
+                    h.aim_at(now, (aim, hex), &turn.field, name);
+                }
+            }
             Input::Book { at: now } => {
+                h.book = true;
                 h.write(now, &Hint::Empty, None, name);
                 h.hex = None;
                 h.written = None;
@@ -353,8 +544,30 @@ pub fn follow(
                 // frame).
                 h.hovered = None;
             }
+            Input::Cancel { at: now } => {
+                let aimed = h.aiming.as_ref().map(|a| a.aim.creature);
+                h.end_aim(now);
+                h.book = false;
+                if aimed.is_some() {
+                    // `enter_player_cast`'s end (0x59F65C).
+                    h.set_frame(now, layout.mouse.panel_frame);
+                }
+                if aimed != Some(true) {
+                    // The book's button's end (0x47519A): the mouse's hex forgotten and the
+                    // mouse posted where it rests (0x4ECC00); the key F's posts nothing.
+                    h.hex = None;
+                    if let (Some(point), Some(turn)) = (h.point, turns.get(at.turn)) {
+                        h.take(now, point, Some(&turn.field), name);
+                    }
+                }
+            }
             Input::Act { at: now } => {
-                h.aiming = None;
+                // In the aim a click casts only at the hex the last move took (0x5A30E9).
+                if h.aiming.as_ref().is_some_and(|a| a.last.is_none()) {
+                    continue;
+                }
+                h.end_aim(now);
+                h.book = false;
                 // The action it gives starts now (none: a key that gives nothing).
                 if let Some((t, entry @ Logged::Action)) = log.get(i)
                     && *t == now
@@ -368,8 +581,10 @@ pub fn follow(
                     h.shown.points.push((now, to));
                 }
                 h.point = Some(to);
-                // Else it waits in the input queue, to be dropped as the next turn starts.
+                // Else it waits in the input queue, to be dropped as the next turn starts; the
+                // spell book open takes it (E17 M5 T3b).
                 match turns.get(at.turn) {
+                    _ if h.book => {}
                     Some(turn) if turn.human && !h.busy => h.take(now, to, Some(&turn.field), name),
                     None if !h.busy => h.take(now, to, None, name),
                     _ => {}
