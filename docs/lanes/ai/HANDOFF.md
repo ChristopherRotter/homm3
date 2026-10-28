@@ -15,10 +15,11 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   more** (ADR-0026 point 8 as amended; no neutral battles in training for now, the user at T2a).
   **Done 2026-10-28:** T1a, T1b (a world's reward v1, the true world), T2a (shaping, the refused
   mixes, T2b's configs), all C ABI v35; T1c (the search gains nothing with either world: the
-  network's evaluation limits it). **Next:** T2b's two runs on the user's machine (their length
-  agreed first: `configs/e25-control.toml`, `e25-shaping.toml`), then T3, the checkpoint.
-- **Open pull requests:** #534 (E25 T1a to T1c, T2a; `claude/adoring-turing-5sit47`): watch it to
-  its merge. Merged: #539 (`shared/e25-worlds`, ADR-0025 point 12a.3), #528.
+  network's evaluation limits it); T2b (`e25-control-1`, `e25-shaping-1`: shaping about +0.04
+  against Aggressor, Greedy and the system actor, 0.409; a tail of long battles). **Next:** T3,
+  the checkpoint: the user chooses increment 2 (`E25-log.md` T1c, T2b).
+- **Open pull requests:** none (#534 and #539 merged); this session's branch
+  `claude/e25-training-runs-cyvj0l` (T2b's records and read) until its pull request.
 - **Versions:** battle action encoding v13, observation encoding v22, replay format v31
   (CLT-Q4/Q6), the adventure env's action encoding v5 (E08 T63a), C ABI v35 (E25 T1a, T1b, T2a:
   a world's reward, the true world, the potential) (`docs/08-work-process.md`, "Versions"). Next
@@ -30,6 +31,13 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 Moved to `TRAPS.md`, in three groups: **Ownership** (cross-lane encodings and replays, what `--scope ai` skips), **Environment** (what an agent sees, the batch, the pool's `unsafe`, benchmarks, the census, the encounter sampler, bots' tables) and **Python** (the trainer's resumable state, uv, PyTorch's pinned build, the sandbox's network).
 
 ## Recent sessions
+
+### 2026-10-28 — E25 T2b
+
+- The user ran both configs at 20 M samples and uploaded both records and metrics and the
+  control's `best.pt` (shaping's stays on their machine). The records committed and read
+  (`E25-log.md` T2b): shaping is the first lever past the runs' spread since E06 T5d; its long
+  battles (0.2 % cut in training, ladders three to four times slower) are open.
 
 ### 2026-10-28 — E25 T1a, T1b, T2a (C ABI v35), T1c
 
@@ -47,11 +55,3 @@ Moved to `TRAPS.md`, in three groups: **Ownership** (cross-lane encodings and re
   may not (the hidden part listed in AI-Q10): it trains no agent any more, a fair variant goes to
   the battle lane's inbox, imitating that one is a candidate. Done: the epic file, increment 1's
   tasks, #525 (the shared part).
-
-### 2026-10-27 — E06's closure: T9a the audit, T9b the review, T9c, T9d
-
-- T9a: criteria 1 to 5 met, the inbox sorted. T9b: three reviewers, 14 findings, the fixable
-  fixed with tests (#519); the user: T8c inconclusive (a terminal scored ±1), the world's gaps
-  to AI-STUB-1, T9c on Windows only. T9c (the user): the verify with the original data and the
-  Python tests green, `t7-1` played again (the targets hold). T9d: #522, the design note into
-  the log, E06 closed.

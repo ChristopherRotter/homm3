@@ -139,3 +139,51 @@ an entry only where a task builds on it.
   to its value. Too rare to move the rows (1.5 % of games scored 0 instead of about −0.3 is about
   +0.005 of value), but a search that trains or plays should score a world's cut as the trainer
   does (the AI queue's inbox, the search).
+
+## T2b — The A/B runs (2026-10-28)
+
+- **The runs** (the user's machine; `python/records/e25-control-1.json`, `e25-shaping-1.json`;
+  commit `e5cfa46`, #534's merge, clean, C ABI v35; seed 1, 20 M samples each, the configs'
+  length): the control (`configs/e25-control.toml`) 73 minutes, 9 of them the gates and ladders;
+  shaping (`e25-shaping.toml`) 90, 25 of them evaluation. Both promoted at both gates, best #2
+  at 20 M. The final ladders (the full report set and the neutral set; win rate, value; the
+  intervals ±0.013 against Random, ±0.018 to 0.019 otherwise):
+
+  | Run | Random | Aggressor | Greedy | System actor | Neutral set |
+  |---|---|---|---|---|---|
+  | `t7-1` (E06) | 0.828, +0.273 | 0.551, +0.029 | 0.528, +0.010 | 0.374, −0.101 | 0.972, +0.245 |
+  | `e25-control-1` | 0.829, +0.271 | 0.548, +0.026 | 0.529, +0.008 | 0.371, −0.104 | 0.968, +0.230 |
+  | `e25-shaping-1` | 0.835, +0.283 | **0.589, +0.063** | **0.566, +0.045** | **0.409, −0.066** | 0.973, +0.238 |
+
+  E06's five seed-1 runs at 20 M (`t5-3`, `t7-1`, `t6b-1`, `t6d-1`, `order-1`) and the control
+  lie within 0.539 to 0.557 against Aggressor, 0.526 to 0.533 against Greedy and 0.365 to 0.374
+  against the system actor: shaping is 0.03 to 0.035 above each range's top, its intervals clear
+  of the control's. Per side (`metrics.jsonl`'s final ladder, attacker / defender) the gain is on
+  both sides of the hero kinds and none in the garrison siege: against the system actor the hero
+  battles 0.541 / 0.174 → 0.585 / 0.210, the siege with a hero 0.416 / 0.272 → 0.472 / 0.316,
+  the garrison 0.918 / 0.044 → 0.922 / 0.046. It learns faster too: at 10 M (250 per kind)
+  shaping's ladder read 0.829, 0.559, 0.549, 0.393, the control's 0.815, 0.522, 0.489, 0.333.
+- **The neutral set without neutral battles** (T2a's mix; the epic's risk): the control's
+  +0.230 is E06's runs' +0.245 to +0.253 less about 0.015, at 0.968; shaping's +0.238. Both
+  below the system actor's own +0.285, as `t7-1` was.
+- **Shaping's cost: a tail of long battles.** In the second half its self-play battles ran 70
+  and 63 samples an episode (10 to 15 M, 15 to 20 M) against the control's 53 and 54, and 0.24 %
+  and 0.20 % of them were cut at the step limit against 0.01 % (the first half: 0.05 % at most
+  for either). Its
+  ladders took three to four times the control's (the final: 83 s against Aggressor where the
+  control took 23, 192 s against the system actor where 41): a kind's ladder plays its 500
+  episodes as one batch, so its time is its longest battle's; the ladders cut one battle in 1 500
+  per opponent (the control none). Only the training batch computes the potential
+  (`potential=c.shaping`), so the time is the policy's, not the code's. Why is open: a side's
+  shaped return is reward v1 exactly (T2a), so a cut costs what it did. A guess: Φ pays each loss
+  at once, so within GAE's horizon (λ 0.95, about 20 decisions) keeping a losing side's stacks
+  out of reach pays, while the episode's end that takes it back lies beyond. The behaviour
+  analysis (`h3env.train.inspect`) on shaping's `best.pt` would show which battles drag; the user
+  uploaded the control's (its file names `e25-control-1`), shaping's is on their machine. The
+  value head's explained variance also fell, 0.51 to 0.68 against 0.77 to 0.79.
+- **The read:** shaping is the first lever since the truncation penalty (E06 T5d) to move the
+  ladder past the runs' spread, against every scripted opponent and the system actor (+0.04 in
+  win rate and value; 0.409 against the target's 0.5), and it learns faster. Dropping the
+  faithful system actor and the neutral battles costs nothing against the player kinds and about
+  0.015 of value on the neutral set. Before a longer run builds on shaping, its long battles
+  want a look.

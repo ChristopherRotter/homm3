@@ -1,6 +1,6 @@
 # E25 — Battle AI v2
 
-Status: **in progress**, refined 2026-10-27 (AI-Q10); increment 1: T1a to T1c, T2a done · Lane: **ai** ·
+Status: **in progress**, refined 2026-10-27 (AI-Q10); increment 1: T1a to T2b done, T3 next · Lane: **ai** ·
 Follows E06 (closed 2026-10-27: `t7-1` the battle AI v1, record `E06-log.md`)
 
 ## Goal
@@ -107,9 +107,10 @@ evidence asks for one (then a `cross-lane` change with the battle lane, after th
   by default; Φ the batch's potential, `H3BatchBuffers.potential`, C ABI v35), the faithful
   system actor's mixes refused (`run.trainable`: no `system_share`, no neutral kind; the user:
   no neutral battles for now), T2b's configs `e25-control.toml`, `e25-shaping.toml`.
-- [ ] **T2b The A/B runs** (the user's machine; each run's length agreed when prepared): a control
-  (`t7-1`'s settings without the faithful system actor in training) and the same with shaping;
-  their ladders (the system actor and the neutral set included) against `t7-1`.
+- [x] **T2b The A/B runs** (2026-10-28; `E25-log.md` T2b; `e25-control-1`, `e25-shaping-1`, 20 M
+  each): the control matches `t7-1` against the player kinds, the neutral set's value 0.015
+  lower; shaping gains about +0.04 against Aggressor, Greedy and the system actor (0.409, −0.066)
+  and learns faster, but drags a tail of battles (0.2 % cut in training).
 - [ ] **T3 Increment 1's checkpoint:** T1c's and T2b's reads; the user chooses increment 2.
 
 ## Exit criteria

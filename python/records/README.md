@@ -123,3 +123,11 @@ its `parent`.
   in the network; the turn order in the trunk), 20 M samples, best #2 each; none measurably
   better (`docs/epics/E06-log.md`), so none continues the lineage. Their networks are on the
   user's machine; `order-1`'s best played the search's measurements (`search/`).
+- `e25-control-1`, `e25-shaping-1` (E25 T2b, 2026-10-28; `configs/e25-control.toml`,
+  `e25-shaping.toml`: `t7-1`'s settings with the player kinds alone, the second with `[ppo]
+  shaping`; 20 M samples, 73 and 90 minutes): best #2 each. The control on the full report set
+  0.829, 0.548, 0.529 against Random, Aggressor, Greedy, 0.371 against the system actor, the
+  neutral set +0.230; shaping 0.835, 0.589, 0.566, 0.409, +0.238, ahead of `t7-1` against every
+  opponent, a little behind on the neutral set (`docs/epics/E25-log.md` T2b; whether it
+  continues the lineage is E25 T3's). Their networks
+  are on the user's machine.
