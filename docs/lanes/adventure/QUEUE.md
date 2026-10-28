@@ -6,7 +6,7 @@ Pre-refined tasks of the adventure lane, in order, then the inbox of discovered 
 
 Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T65 (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 7 are closed (2026-10-12, -13, -20, -21, -23, -26, -28; increment 7, rewards on the map, by T65's audit). **Increment 8, boats and the sea**, refined with the user at T65 (ADV-Q31; decisions 158, 159): the survey and the ADR amendment drafts first (T66a, T66b), each task's cut confirmed with the user at its start. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
 
-### E08 T66a — The boats and sea survey
+### E08 T66a — The boats and sea survey (in two, decision 160: T66a1 points 1, 2, 3, 6 — **in progress**, `adventure/e08-t66a1`; T66a2 points 4, 5, 7, 8)
 
 - **Scope** (decisions 158, 159): a survey `docs/rules/surveys/E08-sea.md` (as T17a, T24a, T34a,
   T44a and T55a): the original's rules for boats and the sea, by code reading
@@ -32,8 +32,10 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
 - **Not in it** (decision 158): Shipyards (87) and Lighthouses (42), item 9; Whirlpools, Buoys,
   Mermaids, Sirens; the Derelict Ship and the Shipwreck (item 10); Summon Boat and Scuttle Boat
   (the adventure spells); a town's shipyard (E09).
-- **Depends on:** T65 (done). **Status:** ready; its cut confirmed with the user at its start; a
-  user checkpoint at its end (decision 159).
+- **Depends on:** T65 (done). **Status:** T66a1 in progress (the census, boats, boarding, landing,
+  sailing, the events on water, the writer); T66a2 after it (the battle at sea, the four pickups,
+  the commands and the observation, batch E8's plan, the rule ids, the second reading, the
+  checkpoint's `ADV-Q`); a user checkpoint at T66a2's end (decision 159).
 
 ### E08 T66b — The ADR amendment drafts, the design note and the cut
 
