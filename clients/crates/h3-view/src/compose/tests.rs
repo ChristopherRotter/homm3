@@ -1050,11 +1050,22 @@ fn a_clip_copies_its_frame_on_the_screen_cut_to_it() {
             .collect()
     };
     let at = |list: &[Draw]| compose(list, &batch, &layout).unwrap().pixels().to_vec();
+    let original = |list: &[Draw]| {
+        super::compose(list, &batch, &layout, Bugs::Original)
+            .unwrap()
+            .pixels()
+            .to_vec()
+    };
     // Its frame 0 at the opening, cut at the screen's top left and right and bottom.
     assert_eq!(at(&[clip(0, -10, -20)]), expected("s.bik", 0, 10, 20));
-    // Its frame 1 from 200 ms; the loop's frame 0 once the start's 8 frames are done (600 ms).
-    assert_eq!(at(&[clip(200, -3, -4)]), expected("s.bik", 1, 3, 4));
-    assert_eq!(at(&[clip(600, 0, 0)]), expected("l.bik", 0, 0, 0));
+    // The client's: frame 1 from 66 ms, the start's last (7) from 466, the loop's first from
+    // 533; the original's (CLT-Q31): frame 1 from 200 ms, the loop's first from 600.
+    assert_eq!(at(&[clip(66, -3, -4)]), expected("s.bik", 1, 3, 4));
+    assert_eq!(at(&[clip(466, 0, 0)]), expected("s.bik", 7, 0, 0));
+    assert_eq!(at(&[clip(533, 0, 0)]), expected("l.bik", 0, 0, 0));
+    assert_eq!(original(&[clip(199, -3, -4)]), expected("s.bik", 0, 3, 4));
+    assert_eq!(original(&[clip(200, -3, -4)]), expected("s.bik", 1, 3, 4));
+    assert_eq!(original(&[clip(600, 0, 0)]), expected("l.bik", 0, 0, 0));
     // Partly off the screen to the right and below: the rest left black.
     let screen = compose(&[clip(0, 1, 1)], &batch, &layout).unwrap();
     assert_eq!(screen.pixel(0, 0), Some(0));

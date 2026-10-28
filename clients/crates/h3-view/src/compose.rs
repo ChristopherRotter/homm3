@@ -391,7 +391,8 @@ pub fn compose(
                 };
                 let first = video(start)?;
                 let second = looped.as_ref().map(video).transpose()?;
-                let on = clip::shown(*since, first.timing(), second.map(clip::Video::timing));
+                let timing = second.map(clip::Video::timing);
+                let on = clip::shown(*since, first.timing(), timing, bugs);
                 let (shown, frame) = on.map_or((first, usize::MAX), |(part, frame)| {
                     let shown = if part == clip::Part::Loop {
                         second.unwrap_or(first)

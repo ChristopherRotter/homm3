@@ -8,3 +8,18 @@ actions = ["key:r", "key:Return"]
 t = 100
 file = "t00100.xwd"
 fidgets = []
+
+[[frame]]
+t = 2700
+file = "t02700.xwd"
+fidgets = []
+
+[[frame]]
+t = 2733
+file = "t02733.xwd"
+fidgets = []
+
+[[frame]]
+t = 3000
+file = "t03000.xwd"
+fidgets = []

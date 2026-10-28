@@ -1567,7 +1567,9 @@ impl<'g> Battle<'g> {
             return Ok(None);
         };
         let second = looped.as_deref().and_then(timing);
-        let (began, next) = h3_view::clip::decodes(t.saturating_sub(opened), first, second);
+        // The window's own drawing: the clip's slips fixed (CLT-Q31).
+        let since = t.saturating_sub(opened);
+        let (began, next) = h3_view::clip::decodes(since, first, second, Bugs::Fixed);
         Ok(Some((
             opened.saturating_add(began),
             next.map(|n| opened.saturating_add(n)),

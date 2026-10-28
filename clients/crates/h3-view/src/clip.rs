@@ -23,7 +23,10 @@
 //! is there from that time + ⌊1000 j / rate⌋, the loop circling on. A start without a loop circles
 //! itself the same way, its last frame shown. Not modelled: a redraw of the window while a clip is
 //! at its first frame decodes it once more and delays the rest by a frame (none happens in the
-//! window's own course; a press over the window may).
+//! window's own course; a press over the window may). The client fixes both slips (CLT-Q31, the
+//! user, 2026-10-28): frame 0 is on the screen for one period as every other frame, the start's
+//! last frame for its period before the loop's first; the comparisons with the original's
+//! captures play its timing (`h3_render::Bugs::Original`).
 //!
 //! **The colours** (`BinkCopyToBuffer` into the 5-6-5 screen, surface type 3; found by running the
 //! DLL on every combination of Y, U and V and read in its colour tables, with the user's leave of
@@ -39,6 +42,7 @@
 use alloc::vec::Vec;
 
 use h3_bink::{Clip as BinkClip, Decoder, Error, Frame};
+use h3_render::Bugs;
 
 use crate::sound::Tune;
 
@@ -50,7 +54,7 @@ pub struct Clip {
     /// The clip played first.
     pub start: &'static str,
     /// The clip that takes over at the start's last frame and circles, if any (the table's empty
-    /// name, 0x691210, none).
+    /// name: none).
     pub looped: Option<&'static str>,
 }
 
@@ -129,6 +133,17 @@ impl Timing {
     }
 }
 
+/// How a profile plays a start of `frames` frames (CLT-Q31): its decodes before the first tick,
+/// and the decode at which the loop takes over.
+const fn schedule(bugs: Bugs, frames: u64) -> (u64, u64) {
+    match bugs {
+        // The two redraws; the hand-over at the start's last decode, which never shows.
+        Bugs::Original => (REDRAWS, frames + REDRAWS - 1),
+        // Frame 0 its one period as every other, the start's last frame shown its period too.
+        Bugs::Fixed => (0, frames),
+    }
+}
+
 /// Which clip of the window's a frame is from.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Part {
@@ -139,41 +154,53 @@ pub enum Part {
 }
 
 /// The frame on the screen `since` ms after the window opened, of a start with `start`'s timing
-/// and its loop with `looped`'s (module doc): which clip, which frame. None for a start without
-/// frames, or a loop without frames once the start hands over.
+/// and its loop with `looped`'s (module doc), in the profile `bugs` (CLT-Q31): which clip, which
+/// frame. None for a start without frames, or a loop without frames once the start hands over.
 #[must_use]
-pub fn shown(since: u32, start: Timing, looped: Option<Timing>) -> Option<(Part, usize)> {
+pub fn shown(
+    since: u32,
+    start: Timing,
+    looped: Option<Timing>,
+    bugs: Bugs,
+) -> Option<(Part, usize)> {
     if start.frames == 0 {
         return None;
     }
     let p = start.due(since);
     let n = u64::try_from(start.frames).unwrap_or(u64::MAX);
+    let (redraws, switch) = schedule(bugs, n);
     match looped {
-        // The start's last frame, decoded at p = n + 1, hands over at once.
-        Some(looped) if p > n => {
-            let handed = start.at(n + 1);
+        Some(looped) if p >= switch => {
+            let handed = start.at(switch);
             let since = u32::try_from(u64::from(since).saturating_sub(handed)).unwrap_or(u32::MAX);
             let j = usize::try_from(looped.due(since)).unwrap_or(usize::MAX);
             j.checked_rem(looped.frames).map(|j| (Part::Loop, j))
         }
         _ => {
-            let k = usize::try_from(p.saturating_sub(REDRAWS)).unwrap_or(usize::MAX);
+            let k = usize::try_from(p.saturating_sub(redraws)).unwrap_or(usize::MAX);
             Some((Part::Start, k % start.frames))
         }
     }
 }
 
 /// When the frame on the screen `since` ms after the window opened was decoded, and when the next
-/// decode comes (none: never), both in ms after the opening: the times a viewer draws the clip
-/// at. A decode may give the frame already shown (the start's first, at its tick).
+/// decode comes (none: never), both in ms after the opening, in the profile `bugs`: the times a
+/// viewer draws the clip at. A decode may give the frame already shown (the original's start's
+/// first, at its tick).
 #[must_use]
-pub fn decodes(since: u32, start: Timing, looped: Option<Timing>) -> (u32, Option<u32>) {
+pub fn decodes(
+    since: u32,
+    start: Timing,
+    looped: Option<Timing>,
+    bugs: Bugs,
+) -> (u32, Option<u32>) {
     let time = |t: u64| u32::try_from(t).ok();
     let p = start.due(since);
     let n = u64::try_from(start.frames).unwrap_or(u64::MAX);
+    let (redraws, switch) = schedule(bugs, n);
     let (began, next) = match looped {
-        Some(looped) if p > n => {
-            let handed = start.at(n + 1);
+        Some(looped) if p >= switch => {
+            let handed = start.at(switch);
             let after = u32::try_from(u64::from(since).saturating_sub(handed)).unwrap_or(u32::MAX);
             let j = looped.due(after);
             (
@@ -181,10 +208,11 @@ pub fn decodes(since: u32, start: Timing, looped: Option<Timing>) -> (u32, Optio
                 handed.saturating_add(looped.at(j + 1)),
             )
         }
-        // The two redraws decode at the opening itself, whatever the DLL's schedule says.
+        // The original's two redraws decode at the opening itself, whatever the DLL's schedule
+        // says.
         _ => {
-            let p = p.max(REDRAWS - 1);
-            let began = if p < REDRAWS { 0 } else { start.at(p) };
+            let p = p.max(redraws.saturating_sub(1));
+            let began = if p < redraws { 0 } else { start.at(p) };
             (began, start.at(p + 1))
         }
     };

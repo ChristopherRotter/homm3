@@ -1,6 +1,7 @@
 use super::*;
 
 const RATE: [u32; 2] = [15, 1];
+const ORIGINAL: Bugs = Bugs::Original;
 
 fn timing(frames: usize) -> Timing {
     Timing { frames, rate: RATE }
@@ -26,7 +27,7 @@ fn the_first_frame_stays_three_frames_and_the_rest_follow_at_the_rate() {
     // The retreat's clips, 40 frames each, as captured (100 ms: frame 0; 200 ms: 1; 300 ms: 2;
     // 2 700 ms: 38) and as binkprobe measured the DLL (two redraws, then ticks).
     let (start, looped) = (timing(40), Some(timing(40)));
-    let at = |since| shown(since, start, looped);
+    let at = |since| shown(since, start, looped, ORIGINAL);
     assert_eq!(at(0), Some((Part::Start, 0)));
     assert_eq!(at(199), Some((Part::Start, 0)));
     assert_eq!(at(200), Some((Part::Start, 1)));
@@ -50,45 +51,48 @@ fn a_start_without_a_loop_circles_its_last_frame_shown() {
     // `Win3`, 73 frames: its frame 72 from 4 933 ms (75 × 66.7 − 66.7), its frame 0 again from
     // 5 000 ms.
     let start = timing(73);
-    assert_eq!(shown(4932, start, None), Some((Part::Start, 71)));
-    assert_eq!(shown(4933, start, None), Some((Part::Start, 72)));
-    assert_eq!(shown(4999, start, None), Some((Part::Start, 72)));
-    assert_eq!(shown(5000, start, None), Some((Part::Start, 0)));
-    assert_eq!(shown(5066, start, None), Some((Part::Start, 1)));
+    assert_eq!(shown(4932, start, None, ORIGINAL), Some((Part::Start, 71)));
+    assert_eq!(shown(4933, start, None, ORIGINAL), Some((Part::Start, 72)));
+    assert_eq!(shown(4999, start, None, ORIGINAL), Some((Part::Start, 72)));
+    assert_eq!(shown(5000, start, None, ORIGINAL), Some((Part::Start, 0)));
+    assert_eq!(shown(5066, start, None, ORIGINAL), Some((Part::Start, 1)));
 }
 
 #[test]
 fn a_one_frame_start_hands_over_at_its_tick() {
     let (start, looped) = (timing(1), Some(timing(3)));
-    assert_eq!(shown(132, start, looped), Some((Part::Start, 0)));
-    assert_eq!(shown(133, start, looped), Some((Part::Loop, 0)));
-    assert_eq!(shown(199, start, looped), Some((Part::Loop, 1)));
+    assert_eq!(shown(132, start, looped, ORIGINAL), Some((Part::Start, 0)));
+    assert_eq!(shown(133, start, looped, ORIGINAL), Some((Part::Loop, 0)));
+    assert_eq!(shown(199, start, looped, ORIGINAL), Some((Part::Loop, 1)));
 }
 
 #[test]
 fn empty_clips_and_a_rate_of_zero_show_nothing_or_stand_still() {
-    assert_eq!(shown(0, timing(0), None), None);
-    assert_eq!(shown(5000, timing(2), Some(timing(0))), None);
+    assert_eq!(shown(0, timing(0), None, ORIGINAL), None);
+    assert_eq!(shown(5000, timing(2), Some(timing(0)), ORIGINAL), None);
     let still = Timing {
         frames: 5,
         rate: [0, 1],
     };
     assert_eq!(
-        shown(100_000, still, Some(timing(5))),
+        shown(100_000, still, Some(timing(5)), ORIGINAL),
         Some((Part::Start, 0))
     );
     let halted = Timing {
         frames: 5,
         rate: [15, 0],
     };
-    assert_eq!(shown(100_000, halted, None), Some((Part::Start, 0)));
+    assert_eq!(
+        shown(100_000, halted, None, ORIGINAL),
+        Some((Part::Start, 0))
+    );
     // Another rate: 10 a second (frame 1 from 300 ms).
     let slow = Timing {
         frames: 5,
         rate: [10, 1],
     };
-    assert_eq!(shown(299, slow, None), Some((Part::Start, 0)));
-    assert_eq!(shown(300, slow, None), Some((Part::Start, 1)));
+    assert_eq!(shown(299, slow, None, ORIGINAL), Some((Part::Start, 0)));
+    assert_eq!(shown(300, slow, None, ORIGINAL), Some((Part::Start, 1)));
 }
 
 #[test]
@@ -150,26 +154,59 @@ fn a_frame_takes_its_blocks_chroma_and_decodes_as_a_clip() {
 fn decodes_are_the_times_to_draw_at() {
     let (start, looped) = (timing(40), Some(timing(40)));
     // The two redraws at the opening, the tick's re-decode of frame 0 at 133, frame 1 at 200.
-    assert_eq!(decodes(0, start, looped), (0, Some(133)));
-    assert_eq!(decodes(150, start, looped), (133, Some(200)));
-    assert_eq!(decodes(200, start, looped), (200, Some(266)));
+    assert_eq!(decodes(0, start, looped, ORIGINAL), (0, Some(133)));
+    assert_eq!(decodes(150, start, looped, ORIGINAL), (133, Some(200)));
+    assert_eq!(decodes(200, start, looped, ORIGINAL), (200, Some(266)));
     // The hand-over at 2 733 ms, the loop's frame 1 at 2 799.
-    assert_eq!(decodes(2700, start, looped), (2666, Some(2733)));
-    assert_eq!(decodes(2733, start, looped), (2733, Some(2799)));
-    assert_eq!(decodes(2800, start, looped), (2799, Some(2866)));
+    assert_eq!(decodes(2700, start, looped, ORIGINAL), (2666, Some(2733)));
+    assert_eq!(decodes(2733, start, looped, ORIGINAL), (2733, Some(2799)));
+    assert_eq!(decodes(2800, start, looped, ORIGINAL), (2799, Some(2866)));
     // Without a loop the start's decodes go on; a rate of 0 never decodes again.
-    assert_eq!(decodes(5000, timing(73), None), (5000, Some(5066)));
+    assert_eq!(
+        decodes(5000, timing(73), None, ORIGINAL),
+        (5000, Some(5066))
+    );
     let still = Timing {
         frames: 5,
         rate: [0, 1],
     };
-    assert_eq!(decodes(9000, still, None), (0, None));
+    assert_eq!(decodes(9000, still, None, ORIGINAL), (0, None));
     // Past what a u32 holds the next is none.
-    assert_eq!(decodes(u32::MAX, timing(73), None).1, None);
+    assert_eq!(decodes(u32::MAX, timing(73), None, ORIGINAL).1, None);
     let slow = Timing {
         frames: 2,
         rate: [1, 100_000],
     };
     // One frame in 100 000 s: the loop's from 300 000 000 ms, its 39th after it.
-    assert_eq!(decodes(u32::MAX, slow, Some(slow)), (4_200_000_000, None));
+    assert_eq!(
+        decodes(u32::MAX, slow, Some(slow), ORIGINAL),
+        (4_200_000_000, None)
+    );
+}
+
+#[test]
+fn the_client_fixes_the_slips_frame_0_one_period_the_last_shown() {
+    // CLT-Q31: every frame its period from the opening, the start's last before the loop's first.
+    let (start, looped) = (timing(40), Some(timing(40)));
+    let at = |since| shown(since, start, looped, Bugs::Fixed);
+    assert_eq!(at(0), Some((Part::Start, 0)));
+    assert_eq!(at(65), Some((Part::Start, 0)));
+    assert_eq!(at(66), Some((Part::Start, 1)));
+    assert_eq!(at(2599), Some((Part::Start, 38)));
+    assert_eq!(at(2600), Some((Part::Start, 39)));
+    assert_eq!(at(2666), Some((Part::Loop, 0)));
+    assert_eq!(at(2733), Some((Part::Loop, 1)));
+    assert_eq!(
+        shown(4866, timing(73), None, Bugs::Fixed),
+        Some((Part::Start, 0))
+    );
+    assert_eq!(decodes(0, start, looped, Bugs::Fixed), (0, Some(66)));
+    assert_eq!(
+        decodes(2650, start, looped, Bugs::Fixed),
+        (2600, Some(2666))
+    );
+    assert_eq!(
+        decodes(2700, start, looped, Bugs::Fixed),
+        (2666, Some(2732))
+    );
 }
