@@ -224,12 +224,14 @@ command = [
 # the result's window and plays its tune then, hot seat's winner a human: `win battle`. Since E17
 # M5 T4b1 the frame at the end is exact: the window (A glorious victory, Orrin's 600 experience,
 # the defender's 10 Pikemen lost) over the screen darkened as last shown (the flags unturned).
+# Since E17 M5 T4b2b the sequence runs a second on (`ms` 4 800): the window's clip, `Win3`, its
+# frame 0 from 3 730, then frame k from 3 730 + ⌊1000 (k + 2) / 15⌋ (14 frames), all exact.
 [[sequence]]
 id = "end"
 scenario = "seq-end.toml"
 hot_seat = true
 actions = ["click:678,322"]
-ms = 3800
+ms = 4800
 timeline = "timelines/end.txt"
 frames = "timelines/end-frames.txt"
 boxes = true
@@ -1137,6 +1139,10 @@ command = [
 # pixels of the keep's shooter differ, all redraw artifacts: the screen darkened as last shown
 # keeps its shot's climax frame (its later frames never shown, CLT-Q19 (5)), where the viewer
 # draws it standing as the action ends (memory's last frame, 1 010 pixels, is not it either).
+# Since E17 M5 T4b2b the window plays its clip, `Defendall` (frame 1 from 1 687 ms, then every 66
+# or 67): each of its 36 frames differs by the same 122 artifacts outside the clip's slot and,
+# inside it, by exactly the pixels where `h3-bink`'s integer inverse DCT rounds otherwise than
+# BINKW32's float one (CLT-Q30; 200 to 300 a frame).
 [[sequence]]
 id = "defended"
 scenario = "seq-defended.toml"

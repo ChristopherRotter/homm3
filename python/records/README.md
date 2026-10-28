@@ -75,6 +75,11 @@ the battles' groups (`h3env.train.inspect`; the findings in `docs/epics/E06-log.
 are the device's: a CPU's differ from the GPU ladder's in a few battles. `t7-1`'s on both
 stratified sets (the sandbox's CPU, 4 threads).
 
+`inspect/battles.py` (E25 T2b, a one-off script like `probe_order.py`): every battle of the
+report set as `inspect` records it, one JSON line each, and the tactics phase's decisions per
+battle (`--summary`); its files stay outside git (7 MB a run), the findings in
+`docs/epics/E25-log.md` T2b.
+
 `inspect/<run>-order-probe.json` (E06, the turn-order probe, 2026-10-26): whether the run's
 trunk knows which stack acts next, from `inspect/probe_order.py` (a one-off script, not a module:
 `uv run --group train python records/inspect/probe_order.py runs/<run>/best.pt 600` from
@@ -116,10 +121,18 @@ its `parent`.
   minutes): best #2 at 20 M, on the full report set 0.828, 0.551, 0.528 against Random,
   Aggressor, Greedy and 0.374 against the system actor; on the neutral set 0.972, value +0.245.
   Its networks are on the user's machine (`python/runs/t7-1/`). **The battle AI v1** (E06's
-  closure, decision 7 as revised 2026-10-27) and the current best.
+  closure, decision 7 as revised 2026-10-27) and E25's baseline; the current best until E25 T3.
 - `t6b-1`, `t6d-1`, `order-1` (E06 T6c, T6e, T6g, 2026-10-26 and 27; `configs/e06-t6b.toml`,
   `e06-t6d.toml`, `e06-order.toml`): A/B runs against `t7-1`'s settings, each from scratch with
   one lever (the system actor as an opponent in a quarter of the player kinds; the kill preview
   in the network; the turn order in the trunk), 20 M samples, best #2 each; none measurably
   better (`docs/epics/E06-log.md`), so none continues the lineage. Their networks are on the
   user's machine; `order-1`'s best played the search's measurements (`search/`).
+- `e25-control-1`, `e25-shaping-1` (E25 T2b, 2026-10-28; `configs/e25-control.toml`,
+  `e25-shaping.toml`: `t7-1`'s settings with the player kinds alone, the second with `[ppo]
+  shaping`; 20 M samples, 73 and 90 minutes): best #2 each. The control on the full report set
+  0.829, 0.548, 0.529 against Random, Aggressor, Greedy, 0.371 against the system actor, the
+  neutral set +0.230; shaping 0.835, 0.589, 0.566, 0.409, +0.238, ahead of `t7-1` against every
+  opponent, a little behind on the neutral set (`docs/epics/E25-log.md` T2b). **`e25-shaping-1`
+  #2 is the current best** (E25 T3, the user, 2026-10-28). Their networks
+  are on the user's machine.

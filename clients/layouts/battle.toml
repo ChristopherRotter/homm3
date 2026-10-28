@@ -429,3 +429,5 @@ creatures = "TwCrPort.def"
 losses = "cprsmall.def"
 button_back = "Box64x30.pcx"
 ok = "iOkay.def"
+# The clip's corner on the screen (E17 M5 T4b2b: 0x471A1D).
+clip = [272, 89]
