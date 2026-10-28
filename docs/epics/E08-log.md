@@ -7007,5 +7007,8 @@ its code (CI's fingerprint); the original data staged from the user's computer.
   `shared/e08-t64a-benches`.
 - *Agent's calls (change freely):* decision 155's.
 - **Versions:** none.
+- **Gates:** the scoped verify with the original data passed every step (coverage, determinism
+  with the 21 replays, `bench-check` with the eight workloads, the original data); `clippy -p
+  h3-cli --all-targets` clean (the scope builds no `h3-cli`).
 - **The epic file** stays above its aim (48 KB of 35): all of it is the open increment 7, which
   T65 moves to the archive.
