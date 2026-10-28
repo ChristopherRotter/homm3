@@ -1,6 +1,6 @@
 # E25 — Battle AI v2
 
-Status: **in progress**, refined 2026-10-27 (AI-Q10); increment 1: T1a to T2b done, T3 next · Lane: **ai** ·
+Status: **in progress**, refined 2026-10-27 (AI-Q10); increment 1 closed 2026-10-28, increment 2 refined · Lane: **ai** ·
 Follows E06 (closed 2026-10-27: `t7-1` the battle AI v1, record `E06-log.md`)
 
 ## Goal
@@ -90,29 +90,33 @@ evidence asks for one (then a `cross-lane` change with the battle lane, after th
 
 ## Tasks (outline; refine at the start of each increment; keep status current)
 
-**Increment 1: the diagnostics and shaping** (refined 2026-10-27, AI-Q10; the AI queue's tasks):
+**Closed increments** (their task lists verbatim in `E25-archive.md`; the records in
+`E25-log.md`):
 
-- [x] **T1a The search's terminal by reward v1** (2026-10-28; `E25-log.md` T1a): a world scores
-  a decided battle by its batch's reward v1 (`BattleEnv::with_reward`; the agent's choice: the
-  world, no new function), its setup keeps the other hero's starting mana (reward v1's mana
-  term); C ABI v35.
-- [x] **T1b The true-world search** (2026-10-28; `E25-log.md` T1b): `BattleBatch::true_world`,
-  `h3_batch_true_world` (C ABI v35 with T1a; trusted tooling, a diagnostic), `h3env.search
-  --true-worlds` (the flag spelled so, `--worlds` stays the count).
-- [x] **T1c T8c again** (2026-10-28; `E25-log.md` T1c; `t7-1`'s `best.pt`): no gain at N 16 or
-  64 against the system actor or on the neutral set, with guessed or true worlds (the guess
-  costs at most +0.012 in value, within the intervals): the network's evaluation limits the
-  search, not the terminal or the hidden information.
-- [x] **T2a Shaping and the training mix** (2026-10-28; `E25-log.md` T2a): `[ppo] shaping` (off
-  by default; Φ the batch's potential, `H3BatchBuffers.potential`, C ABI v35), the faithful
-  system actor's mixes refused (`run.trainable`: no `system_share`, no neutral kind; the user:
-  no neutral battles for now), T2b's configs `e25-control.toml`, `e25-shaping.toml`.
-- [x] **T2b The A/B runs** (2026-10-28; `E25-log.md` T2b; `e25-control-1`, `e25-shaping-1`, 20 M
-  each): the control matches `t7-1` against the player kinds, the neutral set's value 0.015
-  lower; shaping gains about +0.04 against Aggressor, Greedy and the system actor (0.409, −0.066)
-  and learns faster, but loops in the tactics phase (its placements 24 to 28 % of its decisions,
-  the control's 10 to 12 %; 0.2 % of training battles cut).
-- [ ] **T3 Increment 1's checkpoint:** T1c's and T2b's reads; the user chooses increment 2.
+| Increment | Closed | Tasks | Content |
+|---|---|---|---|
+| 1 | 2026-10-28 | T1a–T1c, T2a, T2b, T3 | the search's terminal by reward v1 and the true world (no gain: the evaluation limits it), shaping (+0.04, a tactics-phase loop), the faithful actor out of training; C ABI v35 |
+
+**At increment 1's checkpoint** (the user, 2026-10-28, T3): increment 2 is shaping, bounded,
+then scale; `e25-shaping-1` (#2, 20 M) is the lineage's current best, the network the exit
+criteria are judged on; `t7-1` stays the battle AI v1 and the baseline.
+
+**Increment 2: shaping, bounded, then scale** (refined 2026-10-28; the AI queue's tasks):
+
+- [ ] **T4a The tactics bound** (the sandbox): the agent bounds its own tactics phase, the rules
+  unchanged (BAT-TAC-002 has no limit): its mask, a config key off by default, leaves only
+  `EndTactics` once the bound is reached (the proposal: after its stacks' first round of the
+  phase, each placed or passed once; the original's computer stops after three rounds or a
+  round without a placement, BAT-AI's tactics rule). It is part of the agent: wherever the
+  network plays (rollouts and league members, gates, ladders, `inspect`, the search) it plays
+  bounded, from its checkpoint's config. Tests; T4b's config `configs/e25-bound.toml`
+  (`e25-shaping.toml` with the bound).
+- [ ] **T4b The A/B** (the user's machine, 20 M unless agreed otherwise): `e25-bound-1` against
+  `e25-shaping-1`: the ladders, the tactics share and the cut battles
+  (`records/inspect/battles.py`), samples per second.
+- [ ] **T5 The scale run** (the user's machine, its length agreed when prepared: 60 M, about 4
+  hours): T4b's better settings; the ladders against `e25-shaping-1` and `t7-1`.
+- [ ] **T6 Increment 2's checkpoint:** T4b's and T5's reads; the user chooses increment 3.
 
 ## Exit criteria
 

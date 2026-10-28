@@ -4,6 +4,14 @@ Finished history and informational notices moved out of `QUEUE.md` on 2026-10-24
 
 ## Completed tasks (the "Tasks" text as it stood on 2026-10-24)
 
+**E25 increment 1, T3** (moved 2026-10-28, done: `E25-log.md` T3):
+
+- **T3 Increment 1's checkpoint.** *Scope:* T1c's read (`E25-log.md` T1c: no gain, the guess
+  costs nothing measurable, the network's evaluation limits the search) and T2b's put to the
+  user; increment 2 chosen among the epic's candidates and refined. *Depends on:* T2b (done
+  2026-10-28: shaping +0.04 against Aggressor, Greedy and the system actor, a tail of long
+  battles; `E25-log.md` T2b). *Status:* next (the user).
+
 **E25 increment 1, T2b** (moved 2026-10-28, done: `E25-log.md` T2b):
 
 - **T2b The A/B runs.** *Scope:* on the user's machine, the control (`configs/e25-control.toml`:

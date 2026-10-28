@@ -121,7 +121,7 @@ its `parent`.
   minutes): best #2 at 20 M, on the full report set 0.828, 0.551, 0.528 against Random,
   Aggressor, Greedy and 0.374 against the system actor; on the neutral set 0.972, value +0.245.
   Its networks are on the user's machine (`python/runs/t7-1/`). **The battle AI v1** (E06's
-  closure, decision 7 as revised 2026-10-27) and the current best.
+  closure, decision 7 as revised 2026-10-27) and E25's baseline; the current best until E25 T3.
 - `t6b-1`, `t6d-1`, `order-1` (E06 T6c, T6e, T6g, 2026-10-26 and 27; `configs/e06-t6b.toml`,
   `e06-t6d.toml`, `e06-order.toml`): A/B runs against `t7-1`'s settings, each from scratch with
   one lever (the system actor as an opponent in a quarter of the player kinds; the kill preview
@@ -133,6 +133,6 @@ its `parent`.
   shaping`; 20 M samples, 73 and 90 minutes): best #2 each. The control on the full report set
   0.829, 0.548, 0.529 against Random, Aggressor, Greedy, 0.371 against the system actor, the
   neutral set +0.230; shaping 0.835, 0.589, 0.566, 0.409, +0.238, ahead of `t7-1` against every
-  opponent, a little behind on the neutral set (`docs/epics/E25-log.md` T2b; whether it
-  continues the lineage is E25 T3's). Their networks
+  opponent, a little behind on the neutral set (`docs/epics/E25-log.md` T2b). **`e25-shaping-1`
+  #2 is the current best** (E25 T3, the user, 2026-10-28). Their networks
   are on the user's machine.

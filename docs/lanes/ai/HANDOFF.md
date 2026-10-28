@@ -16,8 +16,10 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   **Done 2026-10-28:** T1a, T1b (a world's reward v1, the true world), T2a (shaping, the refused
   mixes, T2b's configs), all C ABI v35; T1c (the search gains nothing with either world: the
   network's evaluation limits it); T2b (`e25-control-1`, `e25-shaping-1`: shaping about +0.04
-  against Aggressor, Greedy and the system actor, 0.409; loops in the tactics phase). **Next:** T3,
-  the checkpoint: the user chooses increment 2 (`E25-log.md` T1c, T2b).
+  against Aggressor, Greedy and the system actor, 0.409; loops in the tactics phase); T3 (the
+  user: increment 2 is shaping, bounded, then scale; `e25-shaping-1` the current best; increment 1
+  in `E25-archive.md`). **Next:** T4a, the agent's tactics bound (the sandbox), then T4b's run on
+  the user's machine.
 - **Open pull requests:** none (#534 and #539 merged); this session's branch
   `claude/e25-training-runs-cyvj0l` (T2b's records and read; `cross-lane`, the user: AI-STUB-1's
   magic limits fixed in `h3-battle`'s `world.rs`, which turned `master`'s verify red at random)
@@ -42,6 +44,7 @@ Moved to `TRAPS.md`, in three groups: **Ownership** (cross-lane encodings and re
   battles (0.2 % cut in training, ladders three to four times slower) are a placement loop in
   the tactics phase (both `best.pt`s, `records/inspect/battles.py`). `master`'s CI
   red since #534's merge: a world's property test hit AI-STUB-1's magic limits; fixed here.
+  T3: the user chose increment 2 (shaping, bounded, then scale), refined.
 
 ### 2026-10-28 — E25 T1a, T1b, T2a (C ABI v35), T1c
 

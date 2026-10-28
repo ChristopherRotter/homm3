@@ -7,16 +7,30 @@ Pre-refined tasks of the AI lane, in order, then the inbox of discovered work. T
 **E05** (`docs/epics/E05-battle-env.md`) closed 2026-10-20 (record: `E05-log.md`; the environment as built: `docs/07-simulation-and-ai.md` §1.1). **E06** (`docs/epics/E06-battle-ai.md`, AI-Q8) closed 2026-10-27 (T1 to T9 in 8 increments; record `E06-log.md`, the design note kept there; the training pipeline as built: `docs/07-simulation-and-ai.md` §1.2): the battle AI v1 is `t7-1`, on the closing engine 0.830, 0.550, 0.530 against Random, Aggressor, Greedy at +0.273, +0.029, +0.010 and the neutral set's value +0.244 (decision 7's targets as revised, met), the system actor 0.628 against it (E25's target). The tasks' history is in `QUEUE-ARCHIVE.md`.
 
 **E25** (`docs/epics/E25-battle-ai-v2.md`, AI-Q10; record `E25-log.md`), refined
-2026-10-27; T1a to T2b done 2026-10-28 (T2b: `e25-control-1`, `e25-shaping-1`, `E25-log.md`).
-**Increment 1, the diagnostics and shaping:** the faithful system actor is the target and trains
-no agent (decision 2; no neutral battles in training for now, the user at T2a); each run's
-length is agreed with the user (decision 5).
+2026-10-27; increment 1 closed 2026-10-28 (`E25-archive.md`; T3: the user chose increment 2,
+and `e25-shaping-1` is the lineage's current best). **Increment 2, shaping, bounded, then
+scale:** the faithful system actor still trains no agent and no neutral battles train (decision
+2, the user at T2a); each run's length is agreed with the user (decision 5).
 
-- **T3 Increment 1's checkpoint.** *Scope:* T1c's read (`E25-log.md` T1c: no gain, the guess
-  costs nothing measurable, the network's evaluation limits the search) and T2b's put to the
-  user; increment 2 chosen among the epic's candidates and refined. *Depends on:* T2b (done
-  2026-10-28: shaping +0.04 against Aggressor, Greedy and the system actor, a tail of long
-  battles; `E25-log.md` T2b). *Status:* next (the user).
+- **T4a The tactics bound.** *Scope:* the agent bounds its own tactics phase (its mask; the rules
+  unchanged, BAT-TAC-002 has no limit): a config key, off by default, after which only
+  `EndTactics` is left (proposed: after its stacks' first round of the phase, each placed or
+  passed once; its exact form the agent's choice, tell the user). The bound is part of the agent:
+  rollouts and league members, gates, ladders, `inspect` and the search play the network
+  bounded from its checkpoint's config. Python only, unless the observation lacks what the bound
+  needs (then say so first: an encoding or ABI change). T4b's config `configs/e25-bound.toml`
+  (`e25-shaping.toml` with the bound). *Acceptance:* tests that a bounded agent ends its phase at
+  the bound in rollouts and evaluation, that unbounded play is unchanged, and the config's
+  load; `E25-log.md` T4a. *Depends on:* T3 (done 2026-10-28). *Status:* next.
+- **T4b The A/B.** *Scope:* on the user's machine, `e25-bound-1` (20 M unless agreed otherwise)
+  against `e25-shaping-1`: the record committed and read, the ladders, the tactics share and
+  cuts (`records/inspect/battles.py` on both networks), samples per second. *Depends on:* T4a;
+  the user. *Status:* waiting.
+- **T5 The scale run.** *Scope:* on the user's machine, T4b's better settings at the agreed
+  length (60 M proposed, about 4 hours); the record committed and read, the ladders against
+  `e25-shaping-1` and `t7-1`. *Depends on:* T4b; the user. *Status:* waiting.
+- **T6 Increment 2's checkpoint.** *Scope:* T4b's and T5's reads put to the user; increment 3
+  chosen among the epic's candidates. *Depends on:* T5. *Status:* waiting.
 
 ## Inbox
 

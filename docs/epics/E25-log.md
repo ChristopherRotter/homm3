@@ -217,3 +217,16 @@ an entry only where a task builds on it.
   `guards` from the guess); both fail without the fix; the property clean in nine further runs.
   AI-STUB-1 keeps the other hero's morale and luck modifiers and a commanded war machine without
   a guess.
+
+## T3 — Increment 1's checkpoint (2026-10-28)
+
+- **Put to the user:** T1c (the search gains nothing over its network, even over the true
+  battle: the network's evaluation limits it) and T2b (shaping about +0.04 against Aggressor,
+  Greedy and the system actor and faster, at the cost of a placement loop in the tactics phase;
+  the faithful actor's and the neutral battles' absence costs about 0.015 of neutral value).
+- **The user's choices** (the agent's recommendations): increment 2 is **shaping, bounded,
+  then scale**: the agent bounds its own tactics phase (T4a; its mask, the rules unchanged,
+  wherever the network plays), an A/B against `e25-shaping-1` (T4b), then a long run with the
+  better settings (T5, 60 M proposed). **`e25-shaping-1` is the lineage's current best** (#2,
+  20 M; the network the exit criteria are judged on), `t7-1` stays the battle AI v1 and the
+  baseline. Increment 1 closed (its task list in `E25-archive.md`).
