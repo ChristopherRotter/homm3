@@ -145,6 +145,19 @@ fn the_names_a_scene_draws() {
             "PLAYERS.PAL"
         ]
     );
+    // As spelled, each once (E24 M3 T2b1).
+    let spelled: Vec<&str> = spelled(&scene).into_iter().collect();
+    assert_eq!(
+        spelled,
+        [
+            "AdvMap.pcx",
+            "Players.pal",
+            "agemul.def",
+            "avmgems0.def",
+            "game.pal",
+            "grastl.def"
+        ]
+    );
 }
 
 #[test]
@@ -187,4 +200,11 @@ fn holds_a_font_and_gives_the_dialogs_drawers_its_assets() {
     });
     let names: Vec<String> = names.into_iter().collect();
     assert_eq!(names, ["IAM002.DEF", "PLAYERS.PAL"]);
+    let scene = Scene {
+        draws: vec![Draw::Dialog(h3_ui::ui::Draw::Darken { rect: [0; 4] })],
+        cycles: vec![],
+        flags: "game.pal".to_string(),
+        bugs: h3_render::Bugs::Fixed,
+    };
+    assert!(spelled(&scene).is_empty());
 }

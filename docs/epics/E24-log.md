@@ -1387,3 +1387,32 @@ sequences' button changes during a walk should go to a task of their own, kept T
   (regions, functions, lines); after merging `master` (#549 to #551) check.sh again and `h3map.py
   drawn` all the same; the scoped verify (`--with-original-data`) without a failing step.
 - **Not done (T2b):** the frame's fixed cost, measured before and after on the user's machine.
+
+### M3 T2b1 — the frame made once (2026-10-28)
+
+On `map-client/e24-m3-t2b1`, the user present; `master` at 2e5cf6a (#553 found merged). The
+original data staged from the user's repo folder (the exe, the four LODs, both `.snd`, `maps.tar`,
+`extracted.tar`, the nine terrain tracks). Profiled first (design §4.2): T2b was too big for one
+task, so the user cut it (T2b1 what every frame pays, T2b2 a frame redrawing only what changed)
+and asked for a spatial structure for the draw objects (a jump anywhere, HotA's large maps) and
+the widening computed once. `map-measure.cmd` gained a hands-off run on *Tale of two lands*
+(144 × 144); the user's checkout at #545, so the exe read `master`'s map data from
+`clients/out/win/map`.
+
+- **Built** (*provisional*): `h3_render::screen::Widening` (the table), `Screen::cut`,
+  `Screen::copy_rect`; `h3_ui::cursor::Cursor::rect`; `compose::Composer` (`compose` its first
+  scene); `scene::TileIndex` and `scene_in` (`scene` through them; `check_shapes` split into the
+  index's objects and the scene's heroes); `batch::spelled`; the shadows' masks once a draw; the
+  painter's composer, levels' indexes and `frame_into` (the cursor's rectangle widened over the
+  frame), `Painter::screen` for `sequences`; the window's frames into kept vectors (`Maker`) and
+  `--check`'s `widened` line.
+- **Checked:** `h3map.py drawn` all 40 situations and 13 sequences' frames the same; `sequences`
+  13 of 13 as recorded; the window under Xvfb (`walk-1`, `path-objects` and *Tale of two lands*,
+  hardware and drawn cursor): every frame read back exact, every frame made as the screen's own
+  pixels widened one by one, every change the headless loop's; `clients/scripts/check.sh`.
+- **Measured:** callgrind on `path-objects` 101 → 25.2 million instructions a frame; the
+  sandbox's medians `walk-1` 6.4 → 1.3 ms, `path-objects` 10.8 → 4.5, *Tale of two lands* 14.3 →
+  4.2. The user's machine: before (`map-measure-t2b-before.txt`) a median 4.2 ms on `walk-1`, 3.3
+  (p95 11.3) on *Tale of two lands*, 3.3 (p95 7.3) on `path-objects` with input.
+- **The user's finding:** the Gold Dragon's head under the Dragon Utopia on `path-objects`: the
+  original's own drawing (the start view's still is exact), **MCL-Q13** (keep, recommended).

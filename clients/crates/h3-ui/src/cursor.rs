@@ -87,6 +87,22 @@ impl Cursor {
         draw_frame(screen, &self.frame, &self.palette, at, self.drawer);
     }
 
+    /// The rectangle (left, top, right, bottom; the last two exclusive) its frame's canvas covers
+    /// with its hot spot at `(x, y)`: all [`Cursor::draw`] can change (E24 M3 T2b1).
+    #[must_use]
+    pub fn rect(&self, x: i32, y: i32) -> [i64; 4] {
+        let (left, top) = (
+            i64::from(x) - i64::from(self.hot.0),
+            i64::from(y) - i64::from(self.hot.1),
+        );
+        [
+            left,
+            top,
+            left + i64::from(self.frame.full_width),
+            top + i64::from(self.frame.full_height),
+        ]
+    }
+
     /// The cursor as an image over nothing: drawn once over black and once over white. A pixel
     /// drawn alike over both is opaque; one that kept both backgrounds is transparent; one a
     /// shadow darkened is black, as opaque as the shadow made white dark (an approximation: the
@@ -180,6 +196,7 @@ mod tests {
         screen.fill(0xFFFF);
         cursor.draw(&mut screen, 2, 2);
         // The canvas's top-left corner at (1, 1): its second row is the screen's third.
+        assert_eq!(cursor.rect(2, 2), [1, 1, 4, 3]);
         assert_eq!(screen.pixel(1, 2), Some(0xF800));
         assert_eq!(screen.pixel(2, 2), Some(0xFFFF));
         assert_eq!(screen.pixel(3, 2), Some(format.shadow_body(0xFFFF)));

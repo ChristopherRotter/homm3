@@ -349,6 +349,13 @@ fn refuses_a_frame_too_large_or_a_missing_asset() {
         y: 0,
     };
     assert_eq!(missing(gem), "not in the batch: gem.def group 0 frame 9");
+    let gem = Draw::Gem {
+        def: "x.def".to_string(),
+        frame: 0,
+        x: 0,
+        y: 0,
+    };
+    assert_eq!(missing(gem), "not in the batch: x.def");
     assert_eq!(
         ComposeError::Frame([5, 6]).to_string(),
         "a 5 x 6 frame is too large"
@@ -377,5 +384,73 @@ fn the_dialogs_items_by_their_own_drawers() {
     assert_eq!(
         compose(&scene(list), &batch(), [4, 2]),
         Err(ComposeError::Missing("none.pcx".to_string()))
+    );
+}
+
+#[test]
+fn a_kept_frame_draws_each_scene_as_a_fresh_one() {
+    // E24 M3 T2b1: the background drawn once while it stays, the rectangle the last scene's and
+    // this scene's other draws cover restored from it, the palettes kept for their steps.
+    let b = batch();
+    let with = |draws: Vec<Draw>, steps: u32| {
+        let mut s = scene(draws);
+        s.cycles = vec![Cycle {
+            def: "terrain.def".to_string(),
+            ranges: vec![[1, 4]],
+            steps,
+        }];
+        s
+    };
+    let left = piece(Pass::Terrain, "terrain.def", 0, 0, 0, [0, 0, 2, 2]);
+    let right = piece(Pass::Terrain, "terrain.def", 1, 2, 0, [2, 0, 4, 2]);
+    let gem = Draw::Gem {
+        def: "gem.def".to_string(),
+        frame: 1,
+        x: 2,
+        y: 1,
+    };
+    let scenes = [
+        with(vec![frame_of_viewer(0), left.clone()], 1),
+        // The piece moved: where it was shows the background again.
+        with(vec![frame_of_viewer(0), right.clone()], 1),
+        // Its cycles' steps changed: its palette made again.
+        with(vec![frame_of_viewer(0), right], 2),
+        // Nothing but the background: the last scene's rectangle restored; then nothing to.
+        with(vec![frame_of_viewer(0)], 2),
+        with(vec![frame_of_viewer(0)], 2),
+        // A gem, and a frame's picture after a piece: the whole frame.
+        with(vec![frame_of_viewer(0), left, gem, frame_of_viewer(1)], 2),
+        // Another viewer: the background drawn again.
+        with(
+            vec![
+                frame_of_viewer(2),
+                piece(Pass::Shroud, "shroud.def", 0, 0, 0, ALL),
+            ],
+            2,
+        ),
+    ];
+    let mut composer = Composer::new([4, 2]).unwrap();
+    for s in &scenes {
+        let fresh = compose(s, &b, [4, 2]).unwrap();
+        assert_eq!(composer.compose(s, &b).unwrap(), &fresh);
+        assert_eq!(composer.screen(), &fresh);
+    }
+    // A scene that fails leaves the next to draw everything again.
+    let bad = with(
+        vec![frame_of_viewer(2), piece(Pass::Road, "x.def", 0, 0, 0, ALL)],
+        2,
+    );
+    assert_eq!(
+        composer.compose(&bad, &b),
+        Err(ComposeError::Missing("x.def".to_string()))
+    );
+    let s = &scenes[1];
+    assert_eq!(
+        composer.compose(s, &b).unwrap(),
+        &compose(s, &b, [4, 2]).unwrap()
+    );
+    assert_eq!(
+        Composer::new([1 << 15, 1]).unwrap_err(),
+        ComposeError::Frame([1 << 15, 1])
     );
 }

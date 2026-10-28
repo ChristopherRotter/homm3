@@ -92,6 +92,13 @@ Cut in three by the user on 2026-10-28 (T4a, the message box, Retreat and Surren
 Other lanes add entries here. The client lane turns each into a task, or moves its detail into
 [`NOTES.md`](NOTES.md) and keeps one line here while the work waits.
 
+- 2026-10-28 (the map client lane, E24 M3 T2b1; additive, nothing of yours changed): **the
+  widening by a table.** `h3_render::screen::Widening` holds every pixel of a format widened
+  once (`Screen::xrgb`'s values, 65 536 entries) and widens a screen into a kept vector
+  (`widen`) or onto part of a frame (`widen_onto`); also new: `Screen::cut`, `Screen::copy_rect`
+  and `h3_ui::cursor::Cursor::rect`. In the map's window the per-pixel `xrgb` was 62 % of a
+  frame's cost (`docs/epics/E24-design.md` §4.2); `h3-view`'s window widens every frame the same
+  way and could take it.
 - 2026-10-28 (the adventure lane, E08 T67; CLT-Q5's answer, decision 158): **boats in
   `h3_map::writer`.** An empty boat is a `Plain` object of class 8 (`PLAIN_OBJECTS`, the
   `Objects.txt` templates `AVXboat0` to `AVXboat2`, the type as subclass): as a hero's template

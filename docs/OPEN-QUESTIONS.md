@@ -99,7 +99,20 @@ The review's fix C3 follows the reading of 0x47A100: a created stack whose round
 
 ### Map client lane (`MCL-Q<n>`)
 
-(no open questions)
+#### MCL-Q13 — A monster's head under the Dragon Utopia (E24 M3 T2b1; the user, 2026-10-28)
+
+The user saw, in the window on `path-objects` (map-measure's runs 5 and 6), the Gold Dragon's
+head drawn under the Dragon Utopia. The dragon (`AVWdrax0.def`, 2 × 2 at the map's (10, 10) and
+(11, 11)) stands on cells of the Utopia's picture (`AVSutop0.def`); on those four tiles the draw
+lists hold the dragon's body before the Utopia's (`tile_draw_insert` 0x505230's order by layer and
+height, design §2.2), so the Utopia's base covers the dragon's upper half. **The original draws
+the same:** the spot is in `path-objects`' start view, a still compared exact with the original's
+capture (`set.toml`: 0 pixels differing). An oddity of the original (a guard placed on another
+object's picture), not of the client. **Options:** (a) keep the original's drawing; (b) a client
+rule drawing a monster over the object whose picture it stands on (the draw lists' order changed
+for such cells: the stills' comparisons then need `--bugs original` for it). **Recommendation:**
+(a): the order is the rule every still is checked against, and the map's author placed it so.
+**Blocked:** nothing.
 
 ## Answered
 

@@ -158,5 +158,33 @@ pub fn names(scene: &Scene) -> BTreeSet<String> {
     names
 }
 
+/// Every asset `scene` draws as the scene spells it, once each (E24 M3 T2b1: no upper-cased copy
+/// a piece; a viewer keeps those it decoded by this spelling and decodes only the new ones).
+#[must_use]
+pub fn spelled(scene: &Scene) -> BTreeSet<&str> {
+    let mut names = BTreeSet::new();
+    for draw in &scene.draws {
+        match draw {
+            Draw::Frame {
+                picture, players, ..
+            } => {
+                names.insert(picture.as_str());
+                names.insert(players.as_str());
+            }
+            Draw::Piece { def, flag, .. } => {
+                names.insert(def.as_str());
+                if flag.is_some() {
+                    names.insert(scene.flags.as_str());
+                }
+            }
+            Draw::Gem { def, .. } => {
+                names.insert(def.as_str());
+            }
+            Draw::Dialog(draw) => names.extend(h3_ui::paint::names(draw)),
+        }
+    }
+    names
+}
+
 #[cfg(test)]
 pub(crate) mod tests;

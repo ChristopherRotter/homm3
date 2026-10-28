@@ -198,7 +198,7 @@ impl Context<'_> {
             let now = (s.drawn.clone(), s.buttons, s.cursor);
             if shown.as_ref() != Some(&now) {
                 shown = Some(now);
-                current = Some(painter.frame(&s.drawn, s.buttons, s.cursor)?);
+                current = Some(painter.screen(&s.drawn, s.buttons, s.cursor)?);
             }
             let Some(frame) = &current else { continue };
             let new = match kept.as_ref().map(|k| timeline::changed(k, frame, &masked)) {

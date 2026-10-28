@@ -1722,3 +1722,60 @@ fn a_lifted_hero_that_is_none_of_the_heroes_has_no_scene() {
         SceneError::Live("the lifted hero 0 of 0 heroes".to_string())
     );
 }
+
+#[test]
+fn a_levels_index_gives_each_view_the_scenes_draws() {
+    // E24 M3 T2b1: the level's objects indexed once; every view drawn from the index is the
+    // scene's. A two-level map, a tree on each level: the surface's index lists its own.
+    let mut two = map();
+    two.underground = Some(writer::Underground {
+        terrain: Terrain::Subterranean,
+        patches: vec![],
+        objects: vec![],
+    });
+    let under = AnyObject {
+        level: 1,
+        ..object("tree.def", 6, 6, 0)
+    };
+    let extras = Extras {
+        tiles: vec![],
+        objects: vec![object("tree.def", 5, 5, 0), under],
+    };
+    let bytes = writer::write_with(&two, &extras).unwrap();
+    let raw = h3_map::parse(&bytes, &Limits::default()).unwrap();
+    let art = MapArt::from_raw(&raw).unwrap();
+    let mut live = Live::at_start(&raw, &art, 0, &tables().map.towns);
+    live.heroes.clear();
+    let shapes = with_shape(&art, "tree.def", [0xff; 6], [0xff; 6], 2);
+    let (t, l) = (tables(), layout());
+    for z in [0, 1] {
+        let index = TileIndex::build(&art, &live, &t, &shapes, z, Bugs::Fixed).unwrap();
+        assert_eq!(index.level(), z);
+        for view in [at(0, 0), at(3, 2), at(-9, -8)] {
+            let view = ViewAt { z, ..view };
+            let fresh = scene(&art, &live, &t, &l, &shapes, view, Bugs::Fixed).unwrap();
+            let from = scene_in(&index, &art, &live, &t, &l, &shapes, view, Bugs::Fixed);
+            assert_eq!(from.unwrap(), fresh);
+        }
+        // Another level's view is not the index's.
+        let other = ViewAt {
+            z: 1 - z,
+            ..at(0, 0)
+        };
+        assert_eq!(
+            scene_in(&index, &art, &live, &t, &l, &shapes, other, Bugs::Fixed),
+            Err(SceneError::Level(1 - z))
+        );
+    }
+    // The checks a scene makes first, and an object without its shape.
+    let index = TileIndex::build(&art, &live, &t, &shapes, 0, Bugs::Fixed).unwrap();
+    let off = ViewAt { z: 2, ..at(0, 0) };
+    assert_eq!(
+        scene_in(&index, &art, &live, &t, &l, &shapes, off, Bugs::Fixed),
+        Err(SceneError::Level(2))
+    );
+    assert!(matches!(
+        TileIndex::build(&art, &live, &t, &Shapes::default(), 1, Bugs::Fixed),
+        Err(SceneError::Objects(ObjectsError::Shape(_, _)))
+    ));
+}

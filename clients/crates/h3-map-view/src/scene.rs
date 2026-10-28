@@ -30,7 +30,7 @@ use h3_ui::ui;
 use crate::art::{Layer, MapArt};
 use crate::layout::AdventureLayout;
 use crate::live::{Facing, Lifted, Live, LiveBoat, LiveHero};
-use crate::objects::{self, DrawLists, Entry, ObjectsError, Shapes};
+use crate::objects::{self, DrawLists, Entry, ObjectsError, Shape, Shapes};
 use crate::panels;
 use crate::tables::{ShroudPiece, Tables};
 
@@ -223,22 +223,124 @@ pub fn scene(
     at: ViewAt,
     bugs: Bugs,
 ) -> Result<Scene, SceneError> {
+    check_view(art, live, at)?;
+    let index = TileIndex::build(art, live, tables, shapes, at.z, bugs)?;
+    scene_in(&index, art, live, tables, layout, shapes, at, bugs)
+}
+
+/// The view's level on the map, the viewer a colour, the live part fitting the map.
+fn check_view(art: &MapArt, live: &Live, at: ViewAt) -> Result<(), SceneError> {
     if usize::from(at.z) >= art.levels {
         return Err(SceneError::Level(at.z));
     }
     if live.viewer > 7 {
         return Err(SceneError::Viewer(live.viewer));
     }
-    check_live(art, live)?;
-    let lists = DrawLists::build(art, live, shapes, at.z).map_err(SceneError::Objects)?;
-    check_shapes(art, live, tables, shapes, at.z, bugs)?;
+    check_live(art, live)
+}
+
+/// A level's objects as the view's passes look them up (E24 M3 T2b1, *provisional*; design
+/// §4.2): the level's spatial index, each tile's draw list in a dense grid of the map's tiles (a
+/// tile's list found at once whatever the map's size), and each listed object's look (its DEF,
+/// its shape, whether it is flat, its flag's entry, its phase), worked out once for a live part's
+/// objects, the level's map-wide checks done as it is built. A view then visits only its own
+/// tiles ([`scene_in`]). It holds while the live part's objects stay as they were (their
+/// pictures, owners, phases and whether they stand; none change before M4): built again when they
+/// change.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TileIndex {
+    z: u8,
+    lists: DrawLists,
+    looks: Vec<Option<Look>>,
+}
+
+/// How a listed object is drawn (what [`View::object_piece`] took from the map and the live part
+/// for each piece).
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct Look {
+    def: String,
+    shape: Shape,
+    flat: bool,
+    flag: Option<u8>,
+    phase: u8,
+}
+
+impl TileIndex {
+    /// Level `z`'s index for `live`'s objects, with the original's drawing bugs fixed or
+    /// reproduced (`bugs`: MCL-Q3's random artifact's picture, MCL-Q4's flag).
+    ///
+    /// # Errors
+    /// [`SceneError::Objects`]: an object of the level with entries whose picture has no shape.
+    pub fn build(
+        art: &MapArt,
+        live: &Live,
+        tables: &Tables,
+        shapes: &Shapes,
+        z: u8,
+        bugs: Bugs,
+    ) -> Result<Self, SceneError> {
+        let lists = DrawLists::build(art, live, shapes, z).map_err(SceneError::Objects)?;
+        check_object_shapes(art, live, shapes, z, bugs)?;
+        let looks = (0..art.objects.len())
+            .map(|index| {
+                let on_level = art.objects.get(index).is_some_and(|o| o.anchor.z == z);
+                let listed = objects::template(art, index)
+                    .filter(|t| on_level && !objects::NO_ENTRIES.contains(&t.class));
+                let ((template, shape), def) = listed
+                    .zip(objects::shape(art, live, shapes, index, bugs))
+                    .zip(objects::def(art, live, index, bugs))?;
+                let flag = objects::class(art, live, index).and_then(|c| {
+                    let owner = objects::flag_owner(art, live, index, bugs);
+                    tables.map.owners.entry(c, owner)
+                });
+                Some(Look {
+                    def: String::from(def),
+                    shape,
+                    flat: template.flat(),
+                    flag,
+                    phase: live.objects.get(index).map_or(0, |o| o.phase),
+                })
+            })
+            .collect();
+        Ok(Self { z, lists, looks })
+    }
+
+    /// Its level.
+    #[must_use]
+    pub fn level(&self) -> u8 {
+        self.z
+    }
+}
+
+/// [`scene`] with level `at.z`'s objects looked up in `index` ([`TileIndex::build`] for the same
+/// map, live part's objects and bugs): only the view's tiles are visited (E24 M3 T2b1).
+///
+/// # Errors
+/// As [`scene`] but the objects' shapes, which `index` checked; [`SceneError::Level`] as well for
+/// an index of another level.
+#[expect(clippy::too_many_arguments, reason = "scene's, with the index")]
+pub fn scene_in(
+    index: &TileIndex,
+    art: &MapArt,
+    live: &Live,
+    tables: &Tables,
+    layout: &AdventureLayout,
+    shapes: &Shapes,
+    at: ViewAt,
+    bugs: Bugs,
+) -> Result<Scene, SceneError> {
+    check_view(art, live, at)?;
+    if index.z != at.z {
+        return Err(SceneError::Level(at.z));
+    }
+    check_hero_frames(live, tables, shapes, at.z)?;
     let view = View {
         art,
         live,
         tables,
         layout,
         shapes,
-        lists,
+        index,
         standing: standing(live, at.z),
         lifted: lifted(live),
         arrows: arrows(live, at.z),
@@ -317,7 +419,7 @@ struct View<'a> {
     tables: &'a Tables,
     layout: &'a AdventureLayout,
     shapes: &'a Shapes,
-    lists: DrawLists,
+    index: &'a TileIndex,
     standing: BTreeMap<(i32, i32), Standing<'a>>,
     /// The lifted hero and its group and frame (`check_live` found it).
     lifted: Option<(&'a LiveHero, Lifted)>,
@@ -403,14 +505,12 @@ fn check_live(art: &MapArt, live: &Live) -> Result<(), SceneError> {
     Ok(())
 }
 
-/// Every picture level `z` draws has its shape or frames (E24 M1 T6b, the reviewer's R1-4): each
-/// object with entries the one it is drawn with ([`objects::shape`]: a random object's drawn or
-/// own DEF too; [`DrawLists::build`] checked its template's), and while a hero or boat stands on
-/// the level every DEF of the tables' heroes.
-fn check_shapes(
+/// Every object level `z` draws has its shape (E24 M1 T6b, the reviewer's R1-4): each object
+/// with entries the one it is drawn with ([`objects::shape`]: a random object's drawn or own DEF
+/// too; [`DrawLists::build`] checked its template's).
+fn check_object_shapes(
     art: &MapArt,
     live: &Live,
-    tables: &Tables,
     shapes: &Shapes,
     z: u8,
     bugs: Bugs,
@@ -423,6 +523,17 @@ fn check_shapes(
             return Err(SceneError::Objects(ObjectsError::Shape(index, def.into())));
         }
     }
+    Ok(())
+}
+
+/// While a hero or boat stands on level `z`, every DEF of the tables' heroes has its frames
+/// (the reviewer's R1-4).
+fn check_hero_frames(
+    live: &Live,
+    tables: &Tables,
+    shapes: &Shapes,
+    z: u8,
+) -> Result<(), SceneError> {
     let standing = live
         .heroes
         .iter()
@@ -677,7 +788,7 @@ impl<'a> View<'a> {
     /// lifted hero's cell (0x411396).
     fn bodies(&self, x: i32, y: i32, place: [i32; 2], out: &mut Vec<Draw>) {
         let cell = self.lifted_cell(x, y);
-        if self.lists.at(x, y).is_empty() {
+        if self.index.lists.at(x, y).is_empty() {
             self.standing(x, y, place, out, Pass::Body, 0..SLOTS);
             if let Some(cell) = cell {
                 self.lifted_piece(cell, Pass::Body, out);
@@ -1010,13 +1121,13 @@ impl<'a> View<'a> {
         let Some(clip) = self.clip(place, 0) else {
             return;
         };
-        let entries = self.lists.at(x, y).iter();
+        let entries = self.index.lists.at(x, y).iter();
         for entry in entries.filter(|e| layer.is_none_or(|l| e.layer == l)) {
             out.extend(self.object_piece(entry, place, clip, pass));
         }
     }
 
-    /// An entry's piece in a pass, if the pass draws it.
+    /// An entry's piece in a pass, if the pass draws it (its object's look from the index).
     fn object_piece(
         &self,
         entry: &Entry,
@@ -1024,35 +1135,37 @@ impl<'a> View<'a> {
         clip: [i32; 4],
         pass: Pass,
     ) -> Option<Draw> {
-        let index = entry.object;
-        let template = objects::template(self.art, index);
-        let shape = objects::shape(self.art, self.live, self.shapes, index, self.bugs);
-        let def = objects::def(self.art, self.live, index, self.bugs);
-        let (dx, dy) = (entry.dx, entry.dy);
-        let drawn = template
-            .zip(shape)
-            .zip(def)
-            .filter(|((t, s), _)| match pass {
-                Pass::Flat => t.flat(),
-                Pass::Shadow => !t.flat() && s.shadow(dx, dy),
-                _ => !t.flat() && s.body(dx, dy),
-            });
+        let look = self.index.looks.get(entry.object).and_then(Option::as_ref);
+        look.and_then(|look| self.look_piece(look, entry, place, clip, pass))
+    }
+
+    /// A listed object's piece of `entry` in a pass, if the pass draws it.
+    fn look_piece(
+        &self,
+        look: &Look,
+        entry: &Entry,
+        place: [i32; 2],
+        clip: [i32; 4],
+        pass: Pass,
+    ) -> Option<Draw> {
+        let (shape, dx, dy) = (&look.shape, entry.dx, entry.dy);
+        let drawn = match pass {
+            Pass::Flat => look.flat,
+            Pass::Shadow => !look.flat && shape.shadow(dx, dy),
+            _ => !look.flat && shape.body(dx, dy),
+        };
         let flag = match pass {
-            Pass::Flat | Pass::Body => objects::class(self.art, self.live, index).and_then(|c| {
-                let owner = objects::flag_owner(self.art, self.live, index, self.bugs);
-                self.tables.map.owners.entry(c, owner)
-            }),
+            Pass::Flat | Pass::Body => look.flag,
             _ => None,
         };
-        drawn.map(|((_, shape), def)| {
+        drawn.then(|| {
             let tile = self.layout.view.tile;
-            let phase = self.live.objects.get(index).map_or(0, |o| o.phase);
-            let step = u64::from(phase) + u64::from(self.live.moment.frames);
+            let step = u64::from(look.phase) + u64::from(self.live.moment.frames);
             let frame = step.checked_rem(u64::from(shape.frames)).unwrap_or(0);
             let (columns, rows) = (i32::from(shape.width), i32::from(shape.height));
             Draw::Piece {
                 pass,
-                def: String::from(def),
+                def: look.def.clone(),
                 group: 0,
                 frame: u32::try_from(frame).unwrap_or(0),
                 x: place[0] - tile * (columns - 1 - i32::from(dx)),

@@ -39,7 +39,6 @@ use h3_map_view::sequence::Sequences;
 use h3_map_view::sound;
 use h3_map_view::timeline::{self, Action, Cursor, Rules, Start, Unplayable};
 use h3_render::Bugs;
-use h3_render::screen::Screen;
 use h3_sdl::{Config, CursorImage, Event, Key, ReadBack, Window};
 use h3_ui::clock::Clock;
 use h3_ui::keys::Window as Own;
@@ -261,32 +260,55 @@ impl Look {
     }
 }
 
-/// A frame composed ahead of its time: the change it shows, the cursor drawn in it, the frame and
-/// the frame widened.
+/// A frame composed ahead of its time: the change it shows, the cursor drawn in it and the frame
+/// widened.
 struct Frame {
     change: Change,
     cursor: Cursor,
-    screen: Screen,
     xrgb: Vec<u32>,
 }
 
+/// What making frames keeps (E24 M3 T2b1): the microseconds each took, the widened frames' vectors
+/// no longer shown (made again into, not allocated afresh), and with `--check` the frames compared
+/// with the screen's own pixels widened one by one (`Screen::xrgb`), and those the same.
+#[derive(Debug, Default)]
+struct Maker {
+    made_us: Vec<u64>,
+    spare: Vec<Vec<u32>>,
+    check: bool,
+    widened: [usize; 2],
+}
+
+impl Maker {
+    /// A frame no longer kept: its vector made into again.
+    fn recycle(&mut self, frame: Option<Frame>) {
+        self.spare.extend(frame.map(|f| f.xrgb));
+    }
+}
+
 impl Frame {
-    /// The frame `look` shows `change` in, the microseconds it took to make pushed to `made`.
+    /// The frame `look` shows `change` in, the microseconds it took to make pushed to the maker's.
     fn of(
         painter: &mut Painter<'_>,
         change: Change,
         look: Look,
-        (win, made): (&Window, &mut Vec<u64>),
+        (win, maker): (&Window, &mut Maker),
     ) -> Result<Self, String> {
         let started = win.ticks_ns();
         let cursor = look.cursor(change.cursor);
-        let screen = painter.frame(&change.drawn, change.buttons, cursor)?;
-        let xrgb = screen.xrgb();
-        made.push(win.ticks_ns().saturating_sub(started) / 1000);
+        let mut xrgb = maker.spare.pop().unwrap_or_default();
+        painter.frame_into(&change.drawn, change.buttons, cursor, &mut xrgb)?;
+        maker
+            .made_us
+            .push(win.ticks_ns().saturating_sub(started) / 1000);
+        if maker.check {
+            let screen = painter.screen(&change.drawn, change.buttons, cursor)?;
+            maker.widened[0] += 1;
+            maker.widened[1] += usize::from(screen.xrgb() == xrgb);
+        }
         Ok(Self {
             change,
             cursor,
-            screen,
             xrgb,
         })
     }
@@ -455,12 +477,16 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
     let mut hw: Option<(u32, bool)> = None;
     let mut clock = Clock::new(win.ticks_ns(), 0);
     let mut shown: Option<Frame> = None;
-    let mut made_us = Vec::new();
+    let read = options.run.is_some_and(|(_, read)| read);
+    let mut maker = Maker {
+        check: read,
+        ..Maker::default()
+    };
     let mut next = Some(Frame::of(
         &mut painter,
         replay.at(0).map_err(unplayable)?,
         look,
-        (&win, &mut made_us),
+        (&win, &mut maker),
     )?);
     // Either Control key held; the keys held (a key down again before its release repeats).
     let mut ctrl = [false, false];
@@ -479,7 +505,6 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
     let stop_ns = options
         .run
         .map(|(seconds, _)| u64::from(seconds) * 1_000_000_000);
-    let read = options.run.is_some_and(|(_, read)| read);
     let unattended = options.run.is_some();
     'run: loop {
         let now = win.ticks_ns();
@@ -673,9 +698,11 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                 let again = if f.shows(&f.change, look) {
                     f
                 } else {
-                    let again = Frame::of(&mut painter, f.change, look, (&win, &mut made_us))?;
+                    let again =
+                        Frame::of(&mut painter, f.change.clone(), look, (&win, &mut maker))?;
+                    maker.recycle(Some(f));
                     if let Some(back) = show(&mut win, &again, read)? {
-                        compare(&back, &again, &mut report);
+                        compare(&back, &again, look.frame, &mut report);
                     }
                     again
                 };
@@ -688,9 +715,11 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
             .map_err(unplayable)?;
             next = match (next.take(), change) {
                 (Some(n), Some(c)) if n.change == c && n.shows(&c, look) => Some(n),
-                (_, c) => c
-                    .map(|c| Frame::of(&mut painter, c, look, (&win, &mut made_us)))
-                    .transpose()?,
+                (old, c) => {
+                    maker.recycle(old);
+                    c.map(|c| Frame::of(&mut painter, c, look, (&win, &mut maker)))
+                        .transpose()?
+                }
             };
         }
         // A later change may be due already: the latest is shown instead; if it shows what shows,
@@ -711,12 +740,16 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                 log.push(change.clone());
             }
             match &mut shown {
-                Some(s) if s.shows(&change, look) => s.change = change,
+                Some(s) if s.shows(&change, look) => {
+                    s.change = change;
+                    maker.recycle(Some(d));
+                }
                 _ => {
                     let due = if d.change == change && d.shows(&change, look) {
                         d
                     } else {
-                        Frame::of(&mut painter, change, look, (&win, &mut made_us))?
+                        maker.recycle(Some(d));
+                        Frame::of(&mut painter, change, look, (&win, &mut maker))?
                     };
                     let back = show(&mut win, &due, read)?;
                     let late = clock.late(win.ticks_ns(), due.change.t) / 1000;
@@ -725,16 +758,17 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                         report.input_late_us.push(late);
                     }
                     if let Some(back) = back {
-                        compare(&back, &due, &mut report);
+                        compare(&back, &due, look.frame, &mut report);
                     }
-                    shown = Some(due);
+                    let old = shown.replace(due);
+                    maker.recycle(old);
                 }
             }
             let t = shown.as_ref().map_or(0, |f| f.change.t);
             next = replay
                 .after(t, LOOK_AHEAD_MS)
                 .map_err(unplayable)?
-                .map(|c| Frame::of(&mut painter, c, look, (&win, &mut made_us)))
+                .map(|c| Frame::of(&mut painter, c, look, (&win, &mut maker)))
                 .transpose()?;
         } else if redraw && let Some(f) = &shown {
             show(&mut win, f, false)?;
@@ -777,7 +811,7 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
         "frame after its time (ms): {}; at an input's time: {}; a frame made in: {}",
         summary(&mut report.late_us),
         summary(&mut report.input_late_us),
-        summary(&mut made_us)
+        summary(&mut maker.made_us)
     ));
     let mut ok = report.difference.is_none();
     if read {
@@ -790,6 +824,12 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                 .difference
                 .map(|d| format!("; the first difference: {d}"))
                 .unwrap_or_default()
+        ));
+        let [checked, widened] = maker.widened;
+        ok &= checked == widened;
+        lines.push(format!(
+            "widened: {widened} of {checked} frames made as the screen's own pixels widened one by \
+             one"
         ));
         let (same, first) = headless(&rules, &start, replay.actions(), &log)?;
         ok &= first.is_none();
@@ -813,14 +853,15 @@ fn show(win: &mut Window, frame: &Frame, read: bool) -> Result<Option<ReadBack>,
     }
 }
 
-/// Compares what the window read back with `frame` at its scale, the black around it included.
-fn compare(back: &ReadBack, frame: &Frame, report: &mut Report) {
+/// Compares what the window read back with `frame` (of `size`) at its scale, the black around it
+/// included.
+fn compare(back: &ReadBack, frame: &Frame, size: [u32; 2], report: &mut Report) {
     report.read += 1;
     report.geometry = Some(format!(
         "output {} × {}, the frame at ({}, {}), scale {}",
         back.width, back.height, back.left, back.top, back.scale
     ));
-    let (fw, fh) = (frame.screen.width(), frame.screen.height());
+    let [fw, fh] = size;
     let s = back.scale.max(1);
     let inside = |x: u32, y: u32| {
         let (dx, dy) = (x.checked_sub(back.left)? / s, y.checked_sub(back.top)? / s);

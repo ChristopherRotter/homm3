@@ -16,16 +16,22 @@ the original a reading or a capture finds is an `MCL-Q<n>` in the same task (the
 autonomy contract). Each panel drawn leaves `h3map.py`'s `panels` mask, and `drawn` then
 compares it on every situation and sequence.
 
-### E24 M3 T2b — the frame's fixed cost
+### E24 M3 T2b2 — a frame redrawing only what changed
 
-- **Scope:** cut from T2 with the user (2026-10-28; T2a, the panels right, done: the epic's
-  log, "M3 T2a"): the frame's fixed cost (the inbox's, `QUEUE-ARCHIVE.md` 2026-10-27, E24 M2
-  T4b3): the frame picture and the panels converted and drawn once a viewer, no screen copies, a
-  frame redrawing what changed (a scroll or a walk only what moved; the buttons a walk sets);
-  measured with `map-measure.cmd`'s "a frame made in" before and after on the user's machine.
-- **Acceptance:** every situation and sequence as recorded (`h3map.py drawn` all the same, the
-  frame checks exact); a frame's fixed cost measured before and after; the Definition of Done.
-- **Depends on:** T2a. **Status:** ready.
+- **Scope:** cut from T2b with the user (2026-10-28; T2b1, the frame's fixed cost, done: the
+  log's "M3 T2b1", design §4.2). The user's asks: draw efficiently whatever moves, the draw
+  objects found by a spatial structure (T2b1's `TileIndex`). A frame redrawing only what changed:
+  the view by tiles (an idle frame only the animated objects and the cycling water; a scroll
+  moves what stays and draws the strip it brings in; a jump to a town or anywhere the whole view);
+  the cursor's rectangle; each piece drawn by its spans (a frame's drawn pixels per row made once,
+  its transparent ones never visited: the shadow pass, the flagged and the raw drawers were 16 of
+  T2b1's 25 million instructions a frame); the widening and the texture's upload only the changed
+  rectangles (`h3-sdl`: a rectangle's update, additive). Measured with `map-measure.cmd`
+  (T2b1's run the before).
+- **Acceptance:** every situation and sequence as recorded (`h3map.py drawn` all the same); the
+  window's `--check` exact, each frame also as composed afresh; a frame's cost measured before
+  and after; the Definition of Done.
+- **Depends on:** T2b1. **Status:** ready.
 
 ### E24 M3 T3 — the minimap
 
@@ -35,7 +41,7 @@ compares it on every situation and sequence.
   and a selection as the original does (its callers). Recorded: the sequences show it scrolling.
 - **Acceptance:** the minimap exact on every situation and sequence (`panels` without it);
   the Definition of Done.
-- **Depends on:** T2a. **Status:** ready (T2b's change of how a frame is made first, or after).
+- **Depends on:** T2a. **Status:** ready (T2b2's change of how a frame is made first, or after).
 
 ### E24 M3 T4 — the hero and town lists
 
@@ -46,7 +52,7 @@ compares it on every situation and sequence.
   order, a hero's movement and mana and the one selected (`h3mem.py`, additive). Situations with
   more heroes and towns than the lists' slots.
 - **Acceptance:** both lists exact on every situation and the new ones; the Definition of Done.
-- **Depends on:** T2a. **Status:** ready (T2b's change of how a frame is made first, or after).
+- **Depends on:** T2a. **Status:** ready (T2b2's change of how a frame is made first, or after).
 
 ### E24 M3 T5 — the status window, the resource bar and the date
 
