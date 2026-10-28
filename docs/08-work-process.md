@@ -110,7 +110,8 @@ time per lane**. A lane owns paths; everything else it may not change in its own
   changes its dependencies updates it too; the verify's `clients-lock` gate; user, 2026-10-14),
   the survey index `docs/rules/surveys/README.md` (one section
   per epic), **the client foundation and the capture harness** (the user, 2026-10-23, CLT-Q18:
-  `h3-assets`, `h3-render`, `h3-sdl`, the client workspace's `Cargo.toml`, `deny.toml`,
+  `h3-assets`, `h3-render`, `h3-sdl`, `h3-ui` (both viewers' common parts, the user, 2026-10-28,
+  E24 M3 T0), the client workspace's `Cargo.toml`, `deny.toml`,
   `.gitignore`, `README.md`, `scripts/`, the string catalogue `clients/text/`, and
   `clients/capture/`: a client lane changes them in its own pull request, an additive change
   freely, a change in behaviour noted in the other client lane's inbox; `clients/scripts/check.sh`
