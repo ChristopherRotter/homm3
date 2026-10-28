@@ -1,5 +1,5 @@
-//! The visits' block (ADR-0016 point 1, E08 decision 133; design §10 of
-//! `docs/epics/E08-design.md`): what visits leave on the map's objects beyond their removal
+//! The visits' block (ADR-0016 point 1, E08 decision 133; increment 7's design note §10 in
+//! `E08-log.md`): what visits leave on the map's objects beyond their removal
 //! (`Occupancy`'s), with no bound of the original's on how many objects carry it (A-17's 32 marks
 //! per class not reproduced): each hero's once-per-hero marks, each player's knowledge of what a
 //! visit left (ADV-VIS-006, §13) and the objects emptied (a find searched, a Pyramid looted). The

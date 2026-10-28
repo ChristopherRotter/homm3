@@ -543,12 +543,12 @@ from_above = true
 ground = { battlefield = "magic_plains" }
 
 # E08 T61a, increment 7 (ADR-0016 point 4; survey docs/rules/surveys/E08-rewards.md, design
-# docs/epics/E08-design.md section 8): the objects that hand a visiting hero something. The visit
-# modes are the original's per-class lists (0x63AA58 "cannot be entered", 0x63AB00 "visitable from
-# above"): classes 5, 6, 22, 26, 65-69, 81, 93 and 101 are visited from a neighbour and from above,
-# every other class here is entered and not visitable from above. The visits come with T62, the
-# draws when the game is built with T61b; until then a step onto these objects is refused as a
-# blocker's (ADV-OBJ-003).
+# section 8 of increment 7's note in docs/epics/E08-log.md): the objects that hand a visiting hero
+# something. The visit modes are the original's per-class lists (0x63AA58 "cannot be entered",
+# 0x63AB00 "visitable from above"): classes 5, 6, 22, 26, 65-69, 81, 93 and 101 are visited from a
+# neighbour and from above, every other class here is entered and not visitable from above. The
+# visits come with T62, the draws when the game is built with T61b; until then a step onto these
+# objects is refused as a blocker's (ADV-OBJ-003).
 
 # ADV-PIK-005: a treasure chest (class 101). setup_map_objects (0x4C0CC0, case 101 at 0x4C1DD8)
 # draws r in 0-99: below 32 1 000 gold, below 64 1 500, below 95 2 000, else a treasure artifact
