@@ -323,6 +323,27 @@ pub fn snd(entries: &[(&str, &[u8])]) -> Vec<u8> {
     out
 }
 
+/// A video archive of `entries` (name, bytes) in order: the directory, then each entry's bytes.
+#[must_use]
+pub fn vid(entries: &[(&str, &[u8])]) -> Vec<u8> {
+    let mut out = Vec::new();
+    put_u32(&mut out, word(entries.len()));
+    let mut offset = 4 + entries.len() * 44;
+    for (name, bytes) in entries {
+        let mut field = [0u8; 40];
+        for (f, b) in field.iter_mut().zip(name.bytes()) {
+            *f = b;
+        }
+        out.extend_from_slice(&field);
+        put_u32(&mut out, word(offset));
+        offset += bytes.len();
+    }
+    for (_, bytes) in entries {
+        out.extend_from_slice(bytes);
+    }
+    out
+}
+
 /// A RIFF file of form `WAVE` holding `chunks` in order, each padded to an even length.
 #[must_use]
 pub fn riff_wave(chunks: &[(&[u8; 4], &[u8])]) -> Vec<u8> {

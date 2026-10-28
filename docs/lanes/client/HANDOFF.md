@@ -8,12 +8,13 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   accepted, CLT-Q22 to Q24 answered (a); the lane split at M3 T9c, CLT-Q18: the battle client
   here, the adventure map client the map-client lane's E24). **M5 (live play)** (QUEUE, the
   epic's M5): hot seat in-process first, then a game on a server and accounts; the new
-  dependencies the user's at T6 and T7. **T1 to T3, T4a and T4b1 done** (the playhead; the
-  timeline that grows, `live.rs`; the click's command; hot seat in the window; the spell book,
-  design §7.17; the hero's aim, §7.18; the message box, Retreat and Surrender, §7.19; the result
-  window without its clip, §7.20). T4 cut in three, T4b in two by the user (2026-10-28). **Next:
-  M5 T4b2** (the window's Bink clip: a port of FFmpeg's decoder, CLT-Q29), then T4c (Auto Combat,
-  the tactics phase). Open PR: #547, T4b1's (`client/e17-m5-t4b1`; check it first).
+  dependencies the user's at T6 and T7. **T1 to T3, T4a, T4b1 and T4b2a done** (the playhead;
+  the timeline that grows, `live.rs`; the click's command; hot seat in the window; the spell
+  book, design §7.17; the hero's aim, §7.18; the message box, Retreat and Surrender, §7.19; the
+  result window without its clip, §7.20; the Bink decoder `h3-bink`, a port of FFmpeg's,
+  CLT-Q29). T4 cut in three, T4b and T4b2 in two by the user (2026-10-28). **Next: M5 T4b2b**
+  (the clip in the window: the playback read, BINKW32's colours, the captures), then T4c (Auto
+  Combat, the tactics phase). Open PR: T4b2a's (`client/e17-m5-t4b2a`; check it first).
   Workspace `clients/` (`clients/README.md`), gates `clients/scripts/check.sh`; ADR-0020 (+ drafts
   in `adr-drafts/`), ADR-0024; the harness `clients/capture/README.md`; design §3–§10; records in
   `E17-log.md`.
@@ -41,7 +42,14 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
 
 ## Recent sessions
 
-- **2026-10-28, E17 M5 T4b1 (done; #547 open: check it first).** T4b cut in two with the
+- **2026-10-28, E17 M5 T4b2a (done; PR open: check it first).** T4b2 cut in two with the
+  user (T4b2a the decoder, T4b2b the clip in the window). `h3-bink` (pure, no dependency): a
+  port of FFmpeg 6.1.1's Bink demuxer and revision-`b` decoder; `h3_assets::vid`; `h3-view
+  video` and `bink-check.sh` (FFmpeg through PyAV). The ten clips and eight samples byte for
+  byte as FFmpeg; its command line loses the chroma's hidden rows (three clips, review item 16).
+  Review items 15 to 18.
+
+- **2026-10-28, E17 M5 T4b1 (done; #547 merged).** T4b cut in two with the
   user (CLT-Q29: the clip T4b2, a port of FFmpeg's Bink decoder; the twelve clips copied to
   `original-data/battle-videos.vid`). Read the window (design §7.20: 0x4702D0 whole, its handler
   0x471B90, `battle_end`'s calls, `battle_experience` 0x46A350, the DEF item's mirror). Built
@@ -57,11 +65,3 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
   `h3_view::message`, the binary's `boxes`, the window's and the stills' boxes, `--leave`.
   `msg-*` (six) exact; `drawn` the other 124 the same; window checks by `--leave` and real keys.
   CLT-Q28; review items 8–11; the battle lane's inbox (`h3_formats`' quotes).
-
-- **2026-10-28, E17 M5 T3b (done; #536 merged).** Whole (the user). Read the
-  aim (design §7.18: 0x59EC50's handlers and ends, the loop 0x602520 with 0x5A3070, the cursor
-  0x59F700, the cast's line 0x5A8690, the refusals 0x5A2880, the area's marks 0x59F8A0 and
-  0x43EFE0, the spell cursor's frames in `mouse_poll`, the key F). Built `mouse::aim`, the aim in
-  `track`, the binary's `aims`, the window's aim (F, Escape, the right button, F11 full screen),
-  unattended casts through the book and the aim; the harness's `aim:` and the 100 ms grid.
-  `spell-aim` recorded; `cast`'s 71 pixels a listed redraw artifact; CLT-Q27; review items 5–7.

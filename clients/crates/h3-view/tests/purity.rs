@@ -10,13 +10,15 @@ use std::path::{Path, PathBuf};
 
 /// The pure crates (their libraries; `h3-view`'s binary under `src/bin/` is an adapter), each with
 /// the dependencies it may have. A new dependency of a pure crate is added here deliberately.
-const PURE: [(&str, &[&str]); 3] = [
+const PURE: [(&str, &[&str]); 4] = [
     ("h3-assets", &["h3-formats"]),
+    ("h3-bink", &[]),
     ("h3-render", &["h3-assets", "miniz_oxide"]),
     (
         "h3-view",
         &[
             "h3-assets",
+            "h3-bink",
             "h3-protocol",
             "h3-render",
             "h3-ui",
