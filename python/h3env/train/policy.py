@@ -20,6 +20,13 @@ The turn order (`[network] order`, the MLP's; the turn-order probe, E06-log): th
 the whole observation v22, each stack slot's places in the turn order (`layout.ORDER_ROUND` to
 `ORDER_NEXT`) with it; without it the trunk reads v21's prefix, so a network saved before v22
 plays on.
+
+The tactics bound (`[network] tactics_rounds`, E25 T4a, any kind): the agent ends its own tactics
+phase after that many rounds of it, the rules unchanged (BAT-TAC-002 has no limit): once its
+active stack would start a later round (`BattleBatch.tactics_round`), End tactics is its only
+entry (`bounded`). It is the agent's, so wherever the network plays (`act`: rollouts, league
+members, gates, ladders, `inspect`; `h3env.search`'s tree) it plays bounded, from its file's
+config; a file without the key plays unbounded, as before.
 """
 
 from __future__ import annotations
@@ -61,6 +68,19 @@ def pick(logits: torch.Tensor, generator: torch.Generator | None, greedy: bool) 
     return (logits + gumbel).argmax(dim=1)
 
 
+def bounded(mask: np.ndarray, rounds: np.ndarray, limit: int) -> np.ndarray:
+    """The entry mask `mask` [rows, entries] with the tactics bound `limit` (0: none): a row whose
+    active stack plays a round of its tactics phase past it (`rounds`, the batch's
+    `tactics_round` of the rows) keeps End tactics alone. `mask` itself when no row is past it."""
+    over = rounds > limit
+    if not limit or not over.any():
+        return mask
+    out = mask.copy()
+    out[over] = 0
+    out[over, L.END_TACTICS] = 1
+    return out
+
+
 def chosen(logits: torch.Tensor, index: torch.Tensor) -> torch.Tensor:
     """The log-probability of `index` under each row's (masked) `logits`."""
     return torch.log_softmax(logits, dim=1).gather(1, index.unsqueeze(1)).squeeze(1)
@@ -91,6 +111,9 @@ class Choice:
     cast: np.ndarray
     logprob: np.ndarray
     value: np.ndarray
+    #: The entry mask the entries were drawn from: the batch's with the network's tactics bound
+    #: (`bounded`; the batch's own array when it bounded no row: copy what you keep).
+    entry_mask: np.ndarray
     #: The head masks of the cast rows (zero rows elsewhere).
     spell_mask: np.ndarray
     target_mask: np.ndarray
@@ -115,6 +138,9 @@ class Policy(nn.Module):
 
     #: Whether the entry head reads the batch's kill preview (`BattleBatch(preview=True)`).
     reads_preview = False
+    #: The rounds of its own tactics phase the network plays (`[network] tactics_rounds`; 0: no
+    #: bound, as every network before E25 T4a).
+    tactics_rounds = 0
 
     def with_preview(
         self,
@@ -169,16 +195,20 @@ class Policy(nn.Module):
         rows: np.ndarray | None = None,
     ) -> Choice:
         """Chooses an action for every row of `batch` (or only `rows`, the `Choice` then holding
-        theirs in that order) from its current observation and masks: the entry, then for the
-        rows that chose a cast its heads through the batch's head calls."""
+        theirs in that order) from its current observation and masks (the entry mask with the
+        network's tactics bound): the entry, then for the rows that chose a cast its heads
+        through the batch's head calls."""
         device = next(self.parameters()).device
         n = batch.envs
         if rows is None:
             rows = np.arange(n)
             obs, entry_mask, preview = batch.obs, batch.entry_mask, batch.preview
+            rounds = batch.tactics_round
         else:
             obs, entry_mask = batch.obs[rows], batch.entry_mask[rows]
             preview = None if batch.preview is None else batch.preview[rows]
+            rounds = batch.tactics_round[rows]
+        entry_mask = bounded(entry_mask, rounds, self.tactics_rounds)
         m = len(rows)
         x = torch.from_numpy(obs).to(device)
         h = self.encode(x)
@@ -238,6 +268,7 @@ class Policy(nn.Module):
             cast=cast,
             logprob=logprob.cpu().numpy(),
             value=value.cpu().numpy(),
+            entry_mask=entry_mask,
             spell_mask=spell_mask,
             target_mask=target_mask,
             second_mask=second_mask,
@@ -442,20 +473,24 @@ def build(config: dict[str, Any], batch: BattleBatch) -> Policy:
     """The network a run's config names (`asdict(Config)`, as every saved file holds it), sized
     for `batch`'s encodings. A config without `kind` (before E06 T5a) names an MLP, one without
     `preview` (before E06 T6d) a network that does not read the kill preview, one without `order`
-    (before v22) one that reads v21's prefix of the observation."""
+    (before v22) one that reads v21's prefix of the observation, one without `tactics_rounds`
+    (before E25 T4a) one without the tactics bound."""
     kind = config.get("kind", "mlp")
     if kind == "mlp":
-        return Mlp.for_batch(
+        policy: Policy = Mlp.for_batch(
             batch,
             config["hidden"],
             config["embed"],
             config.get("preview", False),
             config.get("order", False),
         )
-    if kind == "entity":
+    elif kind == "entity":
         from .entity import Entity
 
-        return Entity.for_batch(
+        policy = Entity.for_batch(
             batch, config["width"], config["layers"], config["heads"], config["embed"]
         )
-    raise ValueError(f"no network kind {kind!r} (one of {NETWORK_KINDS})")
+    else:
+        raise ValueError(f"no network kind {kind!r} (one of {NETWORK_KINDS})")
+    policy.tactics_rounds = int(config.get("tactics_rounds", 0))
+    return policy

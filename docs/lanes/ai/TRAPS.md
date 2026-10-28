@@ -65,6 +65,12 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   (E06-log T6g).
 - `h3env.BattleBatch`'s output arrays are read-only attributes (the engine holds their
   addresses): copy or write into them, never rebind; its head arrays must be N long.
+- The agent's tactics bound (E25 T4a, `[network] tactics_rounds`) lives in Python: the binding
+  counts a phase's turns after each `reset` and `step` (`tactics_round`, `tactics_turns`; no
+  observation shows them) and `Policy.act` bounds the entry mask. Code that draws the network's
+  entries itself bounds them too (`policy.bounded`; single envs count with
+  `count_tactics_turns`, as the search's nodes), and a training sample keeps the mask drawn
+  from, `Choice.entry_mask`, never `batch.entry_mask`.
 
 **Python**
 - The trainer (`h3env.train`, ADR-0026): its tests are in the lane command (`uv run --group

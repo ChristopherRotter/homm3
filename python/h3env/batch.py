@@ -46,6 +46,28 @@ def sample(mask: np.ndarray, rng: np.random.Generator) -> np.ndarray:
     return out
 
 
+def count_tactics_turns(turns: np.ndarray, obs: np.ndarray, phase: np.ndarray) -> np.ndarray:
+    """Counts the turns of a tactics phase (E25 T4a), which no single observation shows: `turns`
+    [M, stack slots] holds the turns each stack has started in the phase so far (updated in
+    place), `obs` [M, …] the acting side's observations, `phase` [M] whether that side plays its
+    tactics phase (its End tactics is legal). An active stack that has not waited starts a turn;
+    one that has waited is called again within the same one (BAT-TAC-002: a round of the phase
+    hands each stack one turn and clears the flags after it). Returns, per row, the round of the
+    phase its active stack plays (1 the first; 0 outside a phase)."""
+    # Here, not at the top: `h3env.train` imports this module.
+    from .train import layout as L
+
+    out = np.zeros(len(obs), np.uint16)
+    rows = np.flatnonzero(phase)
+    if rows.size:
+        stacks = obs[rows, L.STACKS : L.ORDER].reshape(len(rows), L.STACK_CAPACITY, -1)
+        slot = stacks[:, :, L.ACTIVE].argmax(1)
+        fresh = stacks[np.arange(len(rows)), slot, L.WAITED] == 0
+        turns[rows[fresh], slot[fresh]] += 1
+        out[rows] = turns[rows, slot]
+    return out
+
+
 def _seat(seat: int | str) -> int:
     return SEATS[seat] if isinstance(seat, str) else int(seat)
 
@@ -106,6 +128,11 @@ class BattleBatch:
     - `potential` [N, 2] float32 (v35, E25 T2a; None without `potential=True`): each side's
       reward v1 as if the battle ended now (0 at an episode's start and for an env that gave up),
       a training's shaping potential; it reads the whole state, never an agent's input.
+
+    The binding adds what it counts from the acting side's observations (E25 T4a, an agent's
+    tactics bound): `tactics_round` [N] uint16, the round of its tactics phase the acting side's
+    active stack plays (1 the first; 0 outside a phase), and `tactics_turns` [N, stack slots]
+    uint16, the turns each stack has started in the env's current phase (`count_tactics_turns`).
 
     A handle must not be used from two threads at once; the engine's own threads (`threads`) run
     inside each call, without the GIL.
@@ -169,6 +196,13 @@ class BattleBatch:
             *(None if a is None else a.ctypes.data for a in map(self._out.get, _OUTPUTS))
         )
         self.actions = np.zeros(n, _ffi.ACTION_DTYPE)
+        from .train.layout import END_TACTICS, STACK_CAPACITY
+
+        self._end_tactics = END_TACTICS
+        self._tactics_turns = np.zeros((n, STACK_CAPACITY), np.uint16)
+        self._tactics_round = np.zeros(n, np.uint16)
+        #: The episode each env's turns belong to.
+        self._tactics_episode = np.zeros(n, np.uint32)
         self._spell_mask = np.zeros((n, self.spell_count), np.uint8)
         self._target_mask = np.zeros((n, self.target_count), np.uint8)
         self._second_mask = np.zeros((n, self.target_count), np.uint8)
@@ -295,6 +329,18 @@ class BattleBatch:
     def reset(self) -> None:
         """Starts every env's first episode (a later reset replays the same episodes)."""
         self._check(self._lib.h3_batch_reset(self._live(), byref(self._buffers)))
+        self._tactics_turns.fill(0)
+        self._count_tactics(np.ones(self.envs, bool))
+
+    def _count_tactics(self, shown: np.ndarray) -> None:
+        """Counts the tactics phase's turns of the envs whose rows show a new observation
+        (`shown`; a refused action's env is unchanged), from zero at each new episode."""
+        new = shown & (self.episode != self._tactics_episode)
+        self._tactics_turns[new] = 0
+        self._tactics_episode[shown] = self.episode[shown]
+        phase = shown & (self.entry_mask[:, self._end_tactics] != 0)
+        rounds = count_tactics_turns(self._tactics_turns, self.obs, phase)
+        self._tactics_round[shown] = rounds[shown]
 
     def determinize(self, env: int, viewer: int, seed: int) -> Env:
         """A world of env `env`'s battle for side `viewer` from `seed` (C ABI v34, E06 T8;
@@ -393,6 +439,8 @@ class BattleBatch:
             if values is not None:
                 a[name] = values
         code = self._lib.h3_batch_step(self._live(), a.ctypes.data, byref(self._buffers))
+        # An env that gave up refuses silently: its row shows no phase.
+        self._count_tactics((self.status == _ffi.OK) | (self.to_move < 0))
         if code == _ffi.ERR_REJECTED:
             if check:
                 refused = np.nonzero((self.status != _ffi.OK) & (self.to_move >= 0))[0]
@@ -431,3 +479,9 @@ def _output(name: str) -> property:
 
 for _name in _OUTPUTS:
     setattr(BattleBatch, _name, _output(_name))
+BattleBatch.tactics_round = property(
+    lambda self: self._tactics_round, doc="The binding's `tactics_round` array (read-only)."
+)
+BattleBatch.tactics_turns = property(
+    lambda self: self._tactics_turns, doc="The binding's `tactics_turns` array (read-only)."
+)

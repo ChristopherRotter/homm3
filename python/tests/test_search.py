@@ -137,6 +137,53 @@ def test_no_node_takes_an_escape_a_worlds_own_mask_allows() -> None:
     b.close()
 
 
+@pytest.mark.parametrize("tactics_rounds", [0, 1])
+def test_the_tree_keeps_its_networks_tactics_bound(monkeypatch, tactics_rounds: int) -> None:
+    # E25 T4a: a bounded network's search ends its tactics phase where the network would: past
+    # the bound a node (the root too) holds End tactics alone. `full`'s attacker has placed six
+    # of its seven stacks: the root's children start round 2.
+    from conftest import scenario
+
+    from h3env.train import layout as L
+
+    b = BattleBatch(2, seed=3, max_steps=300)
+    b.add_scenario(scenario("full"))
+    b.reset()
+
+    def place() -> None:
+        # The last free position (the first ones fill the zone so that a stack cannot place).
+        moves = b.entry_mask[:, L.ATTACK_BASE - 1 : L.MOVE_BASE - 1 : -1]
+        b.actions["entry"] = L.ATTACK_BASE - 1 - moves.argmax(1)
+        b.step()
+
+    for _ in range(6):
+        place()
+    assert (b.tactics_round == 1).all() and (b.tactics_turns.sum(1) == 7).all()
+    policy = network(b)
+    policy.tactics_rounds = tactics_rounds
+    nodes = []
+
+    class Recorded(Node):
+        def __post_init__(self) -> None:
+            super().__post_init__()
+            nodes.append(self)
+
+    monkeypatch.setattr("h3env.search.Node", Recorded)
+    searcher = Searcher(policy, simulations=16, worlds=2, k=4, rng=np.random.default_rng(1))
+    rows = np.arange(b.envs)
+    searcher.decide(b, rows)
+    past = [n for n in nodes if n.turns.max() > 1 and L.END_TACTICS in n.actions[:, 0]]
+    assert past
+    only = [len(n.actions) == 1 for n in past]
+    assert all(only) if tactics_rounds else not any(only)
+    # One more placement each: the root is past the bound.
+    place()
+    chosen = searcher.decide(b, rows)
+    assert (b.tactics_round == 2).all()
+    assert (chosen["entry"] == L.END_TACTICS).all() == bool(tactics_rounds)
+    b.close()
+
+
 def test_a_search_agent_plays_its_battles_to_the_end() -> None:
     b = batch()
     net = network(b)

@@ -1627,7 +1627,12 @@ anywhere on the map, HotA's 252 × 252 maps and larger), the widening computed o
 - **Measured after:** callgrind on `path-objects` 25.2 million instructions a frame (101): the
   view's drawers 16 (the shadow pass 6.5, the flagged drawer 6.3, the raw one 3.4), the widening
   3.9, the scene 2.3. The sandbox's medians: `walk-1` 6.4 → 1.3 ms, `path-objects` 10.8 → 4.5,
-  *Tale of two lands* 14.3 → 4.2 (the map's size no longer counts).
+  *Tale of two lands* 14.3 → 4.2 (the map's size no longer counts). The user's machine
+  (`map-measure-t2b1.txt`): a frame made in a median 0.7 ms on `walk-1` (4.2; p95 0.9 to 1.0,
+  4.5 to 4.8), 2.3 on *Tale of two lands* (3.3; p95 2.7, 11.3), 1.7 and 0.2 on `path-objects`
+  with the user's input (3.4 and 3.3; p95 2.9 and 2.5, 7.1 and 7.3); an input's frame shown a
+  median 3.5 ms after its time (8.8); every frame read back exact and widened as the screen's own
+  (1 051 on `path-objects`).
 - **Left** (T2b2): the drawers visit every pixel of a piece, transparent ones included; every
   frame draws the whole view and widens and uploads the whole screen, though an idle frame changes
   only the animated objects and the cycling water and a scroll moves what it keeps.
