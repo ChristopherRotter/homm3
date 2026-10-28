@@ -115,6 +115,12 @@ preview=True)`, above) as a bias of those entries alone; every batch the network
 writes the preview (`configs/e06-t6d.toml`, the A/B run `t6d-1`). No measurable gain (E06 T6e,
 AI-Q7 closed): off by default.
 
+**The tactics bound** (E25 T4a): `[network] tactics_rounds = n` (any kind; 0, off, by default)
+has the agent play n rounds of its own tactics phase, then End tactics alone, wherever the
+network plays (its file's config; the rules set no limit, BAT-TAC-002). No observation shows the
+phase's round: the binding counts it after each call (`batch.tactics_round`, `tactics_turns`).
+`configs/e25-bound.toml`: `e25-shaping.toml` with one round (T4b).
+
 **A battle cut at `env.max_steps`** (2 000) costs each learning side `ppo.truncation_penalty`
 (1.0) and ends its trajectory there (E06 T5c; reward v1 lies in about (−1, 1), so stalling to
 the limit never pays); with 0 the trainer bootstraps from the final observation's value instead,

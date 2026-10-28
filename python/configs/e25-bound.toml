@@ -1,0 +1,34 @@
+# E25 T4b's run (T4a): `e25-shaping.toml` with the agent's tactics bound (`[network]
+# tactics_rounds`): it plays one round of its own tactics phase, each stack placed or passed once,
+# then End tactics is its only entry, wherever the network plays (rollouts, league members, gates,
+# ladders, `inspect`, the search). The rules keep the phase unlimited (BAT-TAC-002). Against
+# `e25-shaping-1`'s placement loop (T2b). The run's length is the A/B's, agreed with the user:
+#
+#   uv run --group train python -m h3env.train --config configs/e25-bound.toml --out runs/e25-bound-1
+#   uv run --group train python -m h3env.train --resume runs/e25-bound-1
+
+seed = 1
+samples = 20_000_000
+
+[env]
+kinds = [0, 0, 100, 50, 25, 0]
+
+[network]
+tactics_rounds = 1
+
+[ppo]
+shaping = true
+
+[league]
+self_play = 0.5
+snapshot_every = 1_000_000
+max_members = 16
+live = 4
+live_every = 250_000
+
+[gate]
+gate_every = 10_000_000
+
+[ladder]
+ladder_episodes = 250
+ladder_final_episodes = 500

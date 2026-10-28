@@ -18,11 +18,11 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   network's evaluation limits it); T2b (`e25-control-1`, `e25-shaping-1`: shaping about +0.04
   against Aggressor, Greedy and the system actor, 0.409; loops in the tactics phase); T3 (the
   user: increment 2 is shaping, bounded, then scale; `e25-shaping-1` the current best; increment 1
-  in `E25-archive.md`). **Next:** T4a, the agent's tactics bound (the sandbox), then T4b's run on
-  the user's machine.
-- **Open pull requests:** #555 (E25 T2b, T3; `claude/e25-training-runs-cyvj0l`; `cross-lane`, the
-  user: AI-STUB-1's magic limits fixed in `h3-battle`'s `world.rs`, which turned `master`'s
-  verify red at random): watch it to its merge. Merged: #534, #539.
+  in `E25-archive.md`); T4a (`[network] tactics_rounds`, the agent's tactics bound, Python only;
+  T4b's `configs/e25-bound.toml`). **Next:** T4b, `e25-bound-1` on the user's machine (20 M
+  proposed), then T5's scale run.
+- **Open pull requests:** E25 T4a's (`claude/practical-fermat-xmv41h`): watch it to its merge.
+  Merged: #534, #539, #555.
 - **Versions:** battle action encoding v13, observation encoding v22, replay format v31
   (CLT-Q4/Q6), the adventure env's action encoding v5 (E08 T63a), C ABI v35 (E25 T1a, T1b, T2a:
   a world's reward, the true world, the potential) (`docs/08-work-process.md`, "Versions"). Next
@@ -34,6 +34,13 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 Moved to `TRAPS.md`, in three groups: **Ownership** (cross-lane encodings and replays, what `--scope ai` skips), **Environment** (what an agent sees, the batch, the pool's `unsafe`, benchmarks, the census, the encounter sampler, bots' tables) and **Python** (the trainer's resumable state, uv, PyTorch's pinned build, the sandbox's network).
 
 ## Recent sessions
+
+### 2026-10-28 — E25 T4a
+
+- #555 merged before the start (`master` green). T4a: the binding counts a tactics phase's
+  turns from the observations (`BattleBatch.tactics_round`), `Policy.act` and the search's
+  nodes bound the entry mask by the network's `tactics_rounds`; tests, `configs/e25-bound.toml`.
+  The form put to the user: one round, each stack placed or passed once.
 
 ### 2026-10-28 — E25 T2b
 
@@ -52,12 +59,3 @@ Moved to `TRAPS.md`, in three groups: **Ownership** (cross-lane encodings and re
   `best.pt` uploaded, no neutral battles for now, a second branch for the shared docs (#539).
   T2a: the batch's potential, `[ppo] shaping`, `run.trainable`, T2b's configs. T1c (six runs,
   about five hours in the sandbox): no gain with guessed or true worlds.
-
-### 2026-10-27 — E25's refinement (AI-Q10)
-
-- E06's lane closure (T9c, T9d), left unopened on `claude/kind-bohr-wfa9oq`, merged as #524
-  meanwhile. The user: target the faithful system actor; increment 1 the search's
-  diagnostics and shaping; run lengths per run; asked what the system actor reads that a player
-  may not (the hidden part listed in AI-Q10): it trains no agent any more, a fair variant goes to
-  the battle lane's inbox, imitating that one is a candidate. Done: the epic file, increment 1's
-  tasks, #525 (the shared part).

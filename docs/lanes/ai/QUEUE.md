@@ -12,20 +12,11 @@ and `e25-shaping-1` is the lineage's current best). **Increment 2, shaping, boun
 scale:** the faithful system actor still trains no agent and no neutral battles train (decision
 2, the user at T2a); each run's length is agreed with the user (decision 5).
 
-- **T4a The tactics bound.** *Scope:* the agent bounds its own tactics phase (its mask; the rules
-  unchanged, BAT-TAC-002 has no limit): a config key, off by default, after which only
-  `EndTactics` is left (proposed: after its stacks' first round of the phase, each placed or
-  passed once; its exact form the agent's choice, tell the user). The bound is part of the agent:
-  rollouts and league members, gates, ladders, `inspect` and the search play the network
-  bounded from its checkpoint's config. Python only, unless the observation lacks what the bound
-  needs (then say so first: an encoding or ABI change). T4b's config `configs/e25-bound.toml`
-  (`e25-shaping.toml` with the bound). *Acceptance:* tests that a bounded agent ends its phase at
-  the bound in rollouts and evaluation, that unbounded play is unchanged, and the config's
-  load; `E25-log.md` T4a. *Depends on:* T3 (done 2026-10-28). *Status:* next.
-- **T4b The A/B.** *Scope:* on the user's machine, `e25-bound-1` (20 M unless agreed otherwise)
-  against `e25-shaping-1`: the record committed and read, the ladders, the tactics share and
-  cuts (`records/inspect/battles.py` on both networks), samples per second. *Depends on:* T4a;
-  the user. *Status:* waiting.
+- **T4b The A/B.** *Scope:* on the user's machine, `e25-bound-1` (`configs/e25-bound.toml`, T4a:
+  `[network] tactics_rounds = 1`; 20 M unless agreed otherwise) against `e25-shaping-1`: the
+  record committed and read, the ladders, the tactics share and cuts
+  (`records/inspect/battles.py` on both networks), samples per second. *Depends on:* T4a (done
+  2026-10-28); the user. *Status:* next (the user's run).
 - **T5 The scale run.** *Scope:* on the user's machine, T4b's better settings at the agreed
   length (60 M proposed, about 4 hours); the record committed and read, the ladders against
   `e25-shaping-1` and `t7-1`. *Depends on:* T4b; the user. *Status:* waiting.
