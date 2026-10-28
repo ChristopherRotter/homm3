@@ -7661,5 +7661,7 @@ on coastal land, Favorable Winds on 3 maps; Race for Ardintinny imports whole wi
 
 **CI on `master`:** the run on e5cfa46 (#534, the ai lane's E25 T1a to T2a, merged after #546)
 failed in `cargo xtask verify` (the log is not reachable from the sandbox; its annotations say
-only "exit code 1"). This task changes docs only. The sandbox's full verify of that code ran
-during the session (results in the lane HANDOFF's session entry).
+only "exit code 1"). This task changes docs only. The sandbox's full verify of the same code
+(fingerprint 7c14229…, without the original LODs) passed all fifteen steps (`verify-once:
+verified (sandbox) code 7c1422972258263eff244e4168c2e132cfdec7b7 on 317cd61`), so the failure looks
+like the runner's, not the code's; a re-run of CI's job on `master` would tell.
