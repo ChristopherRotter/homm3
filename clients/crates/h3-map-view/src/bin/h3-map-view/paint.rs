@@ -9,7 +9,8 @@
 //! every tile explored but its `hidden` rectangles; a shipped map's (`map`) read from the
 //! installation copy's `Maps`.
 
-use std::collections::{BTreeMap, BTreeSet, VecDeque};
+use std::collections::btree_map::Entry;
+use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
 use std::path::Path;
 use std::sync::Arc;
@@ -20,18 +21,18 @@ use h3_map::model::Pos;
 use h3_map::writer::ObjectTemplate;
 use h3_map_view::art::MapArt;
 use h3_map_view::batch::{self, Batch};
-use h3_map_view::compose::{FORMAT, compose};
-use h3_map_view::layout::AdventureLayout;
+use h3_map_view::compose::{Composer, FORMAT};
+use h3_map_view::layout::{AdventureLayout, CursorArt};
 use h3_map_view::live::{Buttons, Facing, Lifted, Live, Moment, Walking};
 use h3_map_view::objects::{self, DrawLists, Shapes};
-use h3_map_view::scene::{self, ViewAt};
+use h3_map_view::scene::{self, TileIndex, ViewAt};
 use h3_map_view::sequence::{self, DEFAULT_HERO_SPEED, DEFAULT_SCROLL_SPEED, Sequence};
 use h3_map_view::situation::Situation;
 use h3_map_view::sound::{Sound, TileSounds};
 use h3_map_view::tables::Tables;
 use h3_map_view::timeline::{Action, Cursor, Draw, Start};
 use h3_render::Bugs;
-use h3_render::screen::Screen;
+use h3_render::screen::{Screen, Widening};
 use h3_ui::cursor::{Cursor as Sprite, Image};
 
 use crate::{files, render, situation};
@@ -202,7 +203,8 @@ fn view_at([x, y, z]: [i32; 3], path: &Path) -> Result<ViewAt, String> {
 }
 
 /// A map's drawing: its art, its live part at 0, the shapes and the assets decoded as the draws
-/// need them; the last view drawn kept.
+/// need them, each level's objects indexed by their tiles; the last view drawn kept in the
+/// composer's frame (E24 M3 T2b1: no copy of it).
 pub struct Painter<'a> {
     assets: &'a Assets<'a>,
     art: MapArt,
@@ -210,11 +212,17 @@ pub struct Painter<'a> {
     /// The live part's moment at 0: the draws' steps count from it.
     base: Moment,
     shapes: Shapes,
+    /// Each level's objects by their tiles, for the live part's objects at 0 (which no draw
+    /// changes).
+    index: Vec<TileIndex>,
     batch: Batch,
     added: BTreeSet<String>,
-    /// The last two views drawn (the window's frame shown and the one composed ahead), by their
-    /// draw and buttons (E24 M3 T2a).
-    views: VecDeque<((Draw, Buttons), Screen)>,
+    /// The names decoded as the scenes spell them (E24 M3 T2b1).
+    spelled: BTreeSet<String>,
+    /// The frame the last view was drawn into, and that view's draw and buttons.
+    composer: Composer,
+    shown: Option<(Draw, Buttons)>,
+    widening: Widening,
     cursors: BTreeMap<u32, Sprite>,
     /// A walk's hero (its index in the live part's heroes): each draw puts it where the draw has
     /// it, lifted or on its tile; none for a map that walks no hero.
@@ -261,15 +269,27 @@ impl<'a> Painter<'a> {
             .collect();
         files::load_frames(archives, &heroes, &mut shapes)?;
         let base = start.moment;
+        let index = (0..art.levels)
+            .map(|z| {
+                let z = u8::try_from(z).map_err(|_| format!("level {z}"))?;
+                TileIndex::build(&art, &start, tables, &shapes, z, assets.bugs)
+                    .map_err(|e| e.to_string())
+            })
+            .collect::<Result<Vec<_>, String>>()?;
+        let composer = Composer::new(assets.layout.frame).map_err(|e| e.to_string())?;
         let mut painter = Self {
             assets,
             art,
             live: start,
             base,
             shapes,
+            index,
             batch: Batch::default(),
             added: BTreeSet::new(),
-            views: VecDeque::new(),
+            spelled: BTreeSet::new(),
+            composer,
+            shown: None,
+            widening: Widening::new(FORMAT),
             cursors: BTreeMap::new(),
             selected: None,
         };
@@ -290,13 +310,15 @@ impl<'a> Painter<'a> {
             (view.rows[1] - view.rows[0]).max(1),
         );
         let size = i32::try_from(self.art.size).map_err(|_| "the map's size".to_owned())?;
-        for z in 0..self.art.levels {
-            let z = u8::try_from(z).map_err(|_| format!("level {z}"))?;
+        let mut names = BTreeSet::new();
+        for index in &self.index {
+            let z = index.level();
             let mut y = 0;
             while y < size {
                 let mut x = 0;
                 while x < size {
-                    let scene = scene::scene(
+                    let scene = scene::scene_in(
+                        index,
                         &self.art,
                         &self.live,
                         assets.tables,
@@ -306,13 +328,13 @@ impl<'a> Painter<'a> {
                         assets.bugs,
                     )
                     .map_err(|e| e.to_string())?;
-                    self.add(batch::names(&scene))?;
+                    names.extend(batch::names(&scene));
                     x += across;
                 }
                 y += down;
             }
         }
-        Ok(())
+        self.add(names)
     }
 
     /// The map's sound from 0 (E24 M2 T5; design §3.11): each tile's ambient sound from every
@@ -350,12 +372,14 @@ impl<'a> Painter<'a> {
         Ok(())
     }
 
-    /// The view as a draw shows it, with the buttons a walk sets (the last two kept).
-    fn view(&mut self, draw: &Draw, buttons: Buttons) -> Result<Screen, String> {
+    /// The view as a draw shows it, with the buttons a walk sets, drawn into the composer's
+    /// frame unless it holds that view already.
+    fn view(&mut self, draw: &Draw, buttons: Buttons) -> Result<&Screen, String> {
         let key = (draw.clone(), buttons);
-        if let Some((_, screen)) = self.views.iter().find(|(k, _)| *k == key) {
-            return Ok(screen.clone());
+        if self.shown.as_ref() == Some(&key) {
+            return Ok(self.composer.screen());
         }
+        self.shown = None;
         let base = self.base;
         self.live.moment = Moment {
             cycles: base.cycles.wrapping_add(draw.cycles),
@@ -367,7 +391,13 @@ impl<'a> Painter<'a> {
         }
         self.live.buttons = Some(buttons);
         let assets = self.assets;
-        let scene = scene::scene(
+        let z = draw.view.z;
+        let index = self
+            .index
+            .get(usize::from(z))
+            .ok_or(format!("level {z} is not on the map"))?;
+        let scene = scene::scene_in(
+            index,
             &self.art,
             &self.live,
             assets.tables,
@@ -377,14 +407,20 @@ impl<'a> Painter<'a> {
             assets.bugs,
         )
         .map_err(|e| e.to_string())?;
-        self.add(batch::names(&scene))?;
-        let screen =
-            compose(&scene, &self.batch, assets.layout.frame).map_err(|e| e.to_string())?;
-        if self.views.len() == 2 {
-            self.views.pop_front();
+        // Only names not seen as the scene spells them are upper-cased and looked for.
+        let new: Vec<&str> = batch::spelled(&scene)
+            .into_iter()
+            .filter(|n| !self.spelled.contains(*n))
+            .collect();
+        if !new.is_empty() {
+            self.add(new.iter().map(|n| n.to_ascii_uppercase()))?;
+            self.spelled.extend(new.into_iter().map(String::from));
         }
-        self.views.push_back((key, screen.clone()));
-        Ok(screen)
+        self.composer
+            .compose(&scene, &self.batch)
+            .map_err(|e| e.to_string())?;
+        self.shown = Some(key);
+        Ok(self.composer.screen())
     }
 
     /// A walk's part of a draw in the live part: the selected hero's tile and facing, lifted at
@@ -409,35 +445,77 @@ impl<'a> Painter<'a> {
 
     /// The screen a draw, the buttons and a cursor show: the view and the panels, the cursor over
     /// them.
-    pub fn frame(
+    pub fn screen(
         &mut self,
         drawn: &Draw,
         buttons: Buttons,
         cursor: Cursor,
     ) -> Result<Screen, String> {
-        let mut screen = self.view(drawn, buttons)?;
+        let mut screen = self.view(drawn, buttons)?.clone();
+        let Cursor {
+            frame,
+            at: [x, y],
+            shown,
+        } = cursor;
+        if shown {
+            let assets = self.assets;
+            let cursor = cursor_in(&mut self.cursors, &self.batch, &assets.layout.cursor, frame)?;
+            cursor.draw(&mut screen, x, y);
+        }
+        Ok(screen)
+    }
+
+    /// [`Painter::screen`] widened into `out` (E24 M3 T2b1, *provisional*): the view's frame
+    /// widened by the table, then only what lies under the cursor cut out, drawn on and widened
+    /// over it; no copy of the frame.
+    pub fn frame_into(
+        &mut self,
+        drawn: &Draw,
+        buttons: Buttons,
+        cursor: Cursor,
+        out: &mut Vec<u32>,
+    ) -> Result<(), String> {
+        self.view(drawn, buttons)?;
+        let screen = self.composer.screen();
+        self.widening.widen(screen, out);
         let Cursor {
             frame,
             at: [x, y],
             shown,
         } = cursor;
         if !shown {
-            return Ok(screen);
+            return Ok(());
         }
-        let cursor = self.cursor(frame)?;
-        cursor.draw(&mut screen, x, y);
-        Ok(screen)
+        let assets = self.assets;
+        let sprite = cursor_in(&mut self.cursors, &self.batch, &assets.layout.cursor, frame)?;
+        let rect = sprite.rect(x, y);
+        if let Some(mut under) = screen.cut(rect) {
+            let (left, top) = (rect[0].max(0), rect[1].max(0));
+            let at = |v: i32, from: i64| i32::try_from(i64::from(v) - from).unwrap_or(i32::MIN);
+            sprite.draw(&mut under, at(x, left), at(y, top));
+            self.widening
+                .widen_onto(&under, [left, top], out, screen.width());
+        }
+        Ok(())
     }
 
     /// The cursor's frame as an image (the hardware cursor's, E24 M2 T4b).
     pub fn cursor_image(&mut self, frame: u32) -> Result<Image, String> {
-        Ok(self.cursor(frame)?.image(FORMAT))
+        let assets = self.assets;
+        Ok(cursor_in(&mut self.cursors, &self.batch, &assets.layout.cursor, frame)?.image(FORMAT))
     }
+}
 
-    /// The layout's cursor's frame, read once.
-    fn cursor(&mut self, frame: u32) -> Result<&Sprite, String> {
-        let art = &self.assets.layout.cursor;
-        if !self.cursors.contains_key(&frame) {
+/// The layout's cursor's frame, read once into `cursors`.
+fn cursor_in<'c>(
+    cursors: &'c mut BTreeMap<u32, Sprite>,
+    batch: &Batch,
+    art: &CursorArt,
+    frame: u32,
+) -> Result<&'c Sprite, String> {
+    match cursors.entry(frame) {
+        Entry::Occupied(known) => Ok(known.into_mut()),
+        Entry::Vacant(new) => {
             let [hx, hy] = usize::try_from(frame)
                 .ok()
                 .and_then(|f| art.hot.get(f).copied())
@@ -446,15 +524,11 @@ impl<'a> Painter<'a> {
                 u32::try_from(hx).unwrap_or(0),
                 u32::try_from(hy).unwrap_or(0),
             );
-            let sprite = self
-                .batch
+            let sprite = batch
                 .sprite(&art.def.to_ascii_uppercase())
                 .and_then(|s| Sprite::read(s, frame, hot, FORMAT))
                 .ok_or_else(|| format!("{}: no frame {frame}", art.def))?;
-            self.cursors.insert(frame, sprite);
+            Ok(new.insert(sprite))
         }
-        self.cursors
-            .get(&frame)
-            .ok_or_else(|| format!("{}: no frame {frame}", art.def))
     }
 }

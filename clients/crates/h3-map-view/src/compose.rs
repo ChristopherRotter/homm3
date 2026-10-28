@@ -13,6 +13,7 @@
 //! palette is cycled once per scene (design §1.6).
 
 use alloc::collections::BTreeMap;
+use alloc::collections::btree_map::Entry;
 use alloc::format;
 use alloc::string::String;
 use alloc::vec::Vec;
@@ -58,13 +59,140 @@ impl fmt::Display for ComposeError {
 /// A frame too large, or anything the scene names missing from `batch` (a picture past its DEF's
 /// frames among them: the viewer refuses such a map, design §1.3).
 pub fn compose(scene: &Scene, batch: &Batch, frame: [u32; 2]) -> Result<Screen, ComposeError> {
-    let [width, height] = frame;
-    let mut screen = Screen::new(width, height, FORMAT).ok_or(ComposeError::Frame(frame))?;
-    // Each DEF's palette cycled once, by its name as the scene spells it (one name in two
-    // spellings only cycles twice), and the flag palette's colours once (E24 M2 T4b3).
-    let mut palettes: BTreeMap<&str, ScreenPalette> = BTreeMap::new();
+    let mut composer = Composer::new(frame)?;
+    composer.compose(scene, batch)?;
+    Ok(composer.screen)
+}
+
+/// A frame kept from scene to scene (E24 M3 T2b1, *provisional*; design §4.2): the scene's
+/// leading draws that do not move with the view (the frame's picture and the dialog's items) are
+/// drawn on black once as the background while they stay the same, and each scene restores from
+/// it only the rectangle its other draws and the last scene's covered before drawing those; each
+/// DEF's palette in the screen's format is kept for its cycle steps. What it draws is
+/// [`compose`]'s, pixel for pixel.
+#[derive(Debug, Clone)]
+pub struct Composer {
+    screen: Screen,
+    /// The leading draws that do not move as last drawn, and what they drew on black.
+    background: Option<(Vec<Draw>, Screen)>,
+    /// The rectangle the last scene's other draws covered.
+    covered: Option<[i64; 4]>,
+    /// Each DEF's palette (by its name as the scenes spell it) for its cycles' steps.
+    palettes: BTreeMap<String, (Vec<u32>, ScreenPalette)>,
+}
+
+impl Composer {
+    /// A black `frame`-sized screen.
+    ///
+    /// # Errors
+    /// A frame too large.
+    pub fn new(frame: [u32; 2]) -> Result<Self, ComposeError> {
+        let [width, height] = frame;
+        let screen = Screen::new(width, height, FORMAT).ok_or(ComposeError::Frame(frame))?;
+        Ok(Self {
+            screen,
+            background: None,
+            covered: None,
+            palettes: BTreeMap::new(),
+        })
+    }
+
+    /// The frame as the last scene left it.
+    #[must_use]
+    pub fn screen(&self) -> &Screen {
+        &self.screen
+    }
+
+    /// Draws `scene` over the kept frame: the background again only when its draws changed.
+    ///
+    /// # Errors
+    /// As [`compose`]; the next scene then draws everything again.
+    pub fn compose(&mut self, scene: &Scene, batch: &Batch) -> Result<&Screen, ComposeError> {
+        let drawn = self.draw(scene, batch);
+        if drawn.is_err() {
+            self.background = None;
+        }
+        drawn.map(|()| &self.screen)
+    }
+
+    fn draw(&mut self, scene: &Scene, batch: &Batch) -> Result<(), ComposeError> {
+        let still = scene
+            .draws
+            .iter()
+            .take_while(|d| matches!(d, Draw::Frame { .. } | Draw::Dialog(_)))
+            .count();
+        let (still, moving) = scene.draws.split_at(still);
+        let covered = covered(moving, batch)?;
+        match &self.background {
+            Some((draws, background)) if draws.as_slice() == still => {
+                if let Some(rect) = union(covered, self.covered) {
+                    self.screen.copy_rect(background, rect);
+                }
+            }
+            _ => {
+                let mut background = self.screen.clone();
+                background.fill(0);
+                draw_all(&mut background, still, scene, batch, &mut self.palettes)?;
+                self.screen.clone_from(&background);
+                self.background = Some((still.to_vec(), background));
+            }
+        }
+        self.covered = covered;
+        draw_all(&mut self.screen, moving, scene, batch, &mut self.palettes)
+    }
+}
+
+/// The rectangle `draws` can change (left, top, right, bottom), if any: a piece's clip, a gem's
+/// frame's canvas, the whole screen for a frame's picture or a dialog's item.
+fn covered(draws: &[Draw], batch: &Batch) -> Result<Option<[i64; 4]>, ComposeError> {
+    let mut rect = None;
+    for item in draws {
+        let r = match item {
+            Draw::Piece { clip, .. } => clip.map(i64::from),
+            Draw::Gem { def, frame, x, y } => {
+                let (_, f) = frame_of(batch, def, 0, *frame)?;
+                let (x, y) = (i64::from(*x), i64::from(*y));
+                [
+                    x,
+                    y,
+                    x + i64::from(f.full_width),
+                    y + i64::from(f.full_height),
+                ]
+            }
+            Draw::Frame { .. } | Draw::Dialog(_) => [0, 0, i64::MAX, i64::MAX],
+        };
+        rect = union(rect, Some(r));
+    }
+    Ok(rect)
+}
+
+/// The smallest rectangle holding both.
+fn union(a: Option<[i64; 4]>, b: Option<[i64; 4]>) -> Option<[i64; 4]> {
+    match (a, b) {
+        (Some(a), Some(b)) => Some([
+            a[0].min(b[0]),
+            a[1].min(b[1]),
+            a[2].max(b[2]),
+            a[3].max(b[3]),
+        ]),
+        (a, b) => a.or(b),
+    }
+}
+
+/// Draws `draws` in order onto `screen` (the scene's cycles, flag palette and bugs), each DEF's
+/// palette cycled once a scene from the kept `palettes`, the flag palette's colours once (E24
+/// M2 T4b3).
+fn draw_all(
+    screen: &mut Screen,
+    draws: &[Draw],
+    scene: &Scene,
+    batch: &Batch,
+    kept: &mut BTreeMap<String, (Vec<u32>, ScreenPalette)>,
+) -> Result<(), ComposeError> {
+    // Each DEF's sprite and palette looked up once a scene, by its name as the scene spells it.
+    let mut defs: BTreeMap<&str, (&Sprite, ScreenPalette)> = BTreeMap::new();
     let mut flag_colours = None;
-    for item in &scene.draws {
+    for item in draws {
         match item {
             Draw::Frame {
                 picture,
@@ -77,7 +205,7 @@ pub fn compose(scene: &Scene, batch: &Batch, frame: [u32; 2]) -> Result<Screen, 
                 let players = batch
                     .palette(players)
                     .ok_or_else(|| ComposeError::Missing(players.clone()))?;
-                frame_picture(&mut screen, image, players, *viewer);
+                frame_picture(screen, image, players, *viewer);
             }
             Draw::Piece {
                 pass,
@@ -91,10 +219,19 @@ pub fn compose(scene: &Scene, batch: &Batch, frame: [u32; 2]) -> Result<Screen, 
                 clip,
                 flag,
             } => {
-                let (sprite, f) = frame_of(batch, def, *group, *frame)?;
-                let palette = palettes
-                    .entry(def.as_str())
-                    .or_insert_with(|| cycled(sprite, def, &scene.cycles));
+                let (sprite, palette) = match defs.entry(def.as_str()) {
+                    Entry::Occupied(known) => known.into_mut(),
+                    Entry::Vacant(new) => {
+                        let sprite = batch
+                            .sprite(def)
+                            .ok_or_else(|| ComposeError::Missing(def.clone()))?;
+                        new.insert((sprite, cycled_kept(kept, sprite, def, &scene.cycles)))
+                    }
+                };
+                let f = sprite.frame(*group, *frame).ok_or_else(|| {
+                    ComposeError::Missing(format!("{def} group {group} frame {frame}"))
+                })?;
+                let palette = &*palette;
                 let at = Place {
                     x: *x,
                     y: *y,
@@ -104,15 +241,15 @@ pub fn compose(scene: &Scene, batch: &Batch, frame: [u32; 2]) -> Result<Screen, 
                 match pass {
                     Pass::Flat | Pass::Body => {
                         let colour = flag_colour(batch, &scene.flags, *flag, &mut flag_colours)?;
-                        draw::flagged(&mut screen, f, palette, at, *clip, colour);
+                        draw::flagged(screen, f, palette, at, *clip, colour);
                     }
-                    Pass::Shadow => draw::shadow_pass(&mut screen, f, at, *clip),
-                    Pass::PathShadow => draw::shadows(&mut screen, f, at, *clip),
-                    Pass::Blend => draw::blend(&mut screen, f, palette, at, *clip),
-                    _ => draw::raw(&mut screen, f, palette, at, *clip),
+                    Pass::Shadow => draw::shadow_pass(screen, f, at, *clip),
+                    Pass::PathShadow => draw::shadows(screen, f, at, *clip),
+                    Pass::Blend => draw::blend(screen, f, palette, at, *clip),
+                    _ => draw::raw(screen, f, palette, at, *clip),
                 }
                 if *pass == Pass::Shroud {
-                    draw::shadows(&mut screen, f, at, *clip);
+                    draw::shadows(screen, f, at, *clip);
                 }
             }
             Draw::Gem { def, frame, x, y } => {
@@ -127,16 +264,40 @@ pub fn compose(scene: &Scene, batch: &Batch, frame: [u32; 2]) -> Result<Screen, 
                     skip_runs: true,
                     colour: None,
                 };
-                draw_frame(&mut screen, f, &palette, at, plain);
+                draw_frame(screen, f, &palette, at, plain);
             }
             Draw::Dialog(draw) => {
                 // The dialog's items by their own drawers (E24 M3 T2a, design §4.1).
-                h3_ui::paint::draw(&mut screen, draw, batch, scene.bugs)
+                h3_ui::paint::draw(screen, draw, batch, scene.bugs)
                     .map_err(ComposeError::Missing)?;
             }
         }
     }
-    Ok(screen)
+    Ok(())
+}
+
+/// [`cycled`], kept by the DEF's name for the steps of its cycles: made again only when they
+/// change (E24 M3 T2b1).
+fn cycled_kept(
+    kept: &mut BTreeMap<String, (Vec<u32>, ScreenPalette)>,
+    sprite: &Sprite,
+    def: &str,
+    cycles: &[Cycle],
+) -> ScreenPalette {
+    let steps = || {
+        cycles
+            .iter()
+            .filter(|c| c.def.eq_ignore_ascii_case(def))
+            .map(|c| c.steps)
+    };
+    if let Some((was, palette)) = kept.get(def)
+        && was.iter().copied().eq(steps())
+    {
+        return palette.clone();
+    }
+    let palette = cycled(sprite, def, cycles);
+    kept.insert(def.into(), (steps().collect(), palette.clone()));
+    palette
 }
 
 /// The screen colour of entry `flag` of the flag palette `flags`, `None` without an entry or for

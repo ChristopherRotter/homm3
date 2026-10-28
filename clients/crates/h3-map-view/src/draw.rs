@@ -63,14 +63,43 @@ pub fn raw(screen: &mut Screen, frame: &Frame, palette: &ScreenPalette, at: Plac
 /// Darkens the screen under `frame`'s runs of index 1 and 2 as a shadow's border, 3 and 4 as its
 /// body (0x47E820).
 pub fn shadows(screen: &mut Screen, frame: &Frame, at: Place, clip: [i32; 4]) {
-    let format = screen.format();
+    let shade = Shade::of(screen);
     each_pixel(screen, frame, at, clip, |p, index, run| {
         match (run, index) {
-            (true, 1 | 2) => *p = format.shadow_border(*p),
-            (true, 3 | 4) => *p = format.shadow_body(*p),
+            (true, 1 | 2) => *p = shade.border(*p),
+            (true, 3 | 4) => *p = shade.body(*p),
             _ => {}
         }
     });
+}
+
+/// A shadow's masks worked out once a draw, not once a pixel (E24 M3 T2b1): what
+/// [`PixelFormat::shadow_body`](h3_render::screen::PixelFormat::shadow_body) and `shadow_border`
+/// compute.
+#[derive(Debug, Clone, Copy)]
+struct Shade {
+    half: u16,
+    quarter: u16,
+}
+
+impl Shade {
+    fn of(screen: &Screen) -> Self {
+        let format = screen.format();
+        Self {
+            half: format.half_mask(),
+            quarter: format.quarter_mask(),
+        }
+    }
+
+    /// Each channel halved.
+    fn body(self, pixel: u16) -> u16 {
+        (pixel >> 1) & self.half
+    }
+
+    /// Each channel's quarter plus its half.
+    fn border(self, pixel: u16) -> u16 {
+        ((pixel >> 2) & self.quarter) + ((pixel >> 1) & self.half)
+    }
 }
 
 /// Draws `frame`'s literal pixels in `palette`'s colours and its runs of index 5 in `colour`, if
@@ -95,11 +124,11 @@ pub fn flagged(
 /// Darkens the screen under `frame`'s runs of index 1 as a shadow's border, 4 as its body
 /// (0x47D930).
 pub fn shadow_pass(screen: &mut Screen, frame: &Frame, at: Place, clip: [i32; 4]) {
-    let format = screen.format();
+    let shade = Shade::of(screen);
     each_pixel(screen, frame, at, clip, |p, index, run| {
         match (run, index) {
-            (true, 1) => *p = format.shadow_border(*p),
-            (true, 4) => *p = format.shadow_body(*p),
+            (true, 1) => *p = shade.border(*p),
+            (true, 4) => *p = shade.body(*p),
             _ => {}
         }
     });

@@ -205,11 +205,61 @@ impl Screen {
     pub fn xrgb(&self) -> Vec<u32> {
         self.pixels
             .iter()
-            .map(|&p| {
-                let c = self.format.unpack(p);
-                u32::from(c.r) << 16 | u32::from(c.g) << 8 | u32::from(c.b)
-            })
+            .map(|&p| xrgb_of(self.format, p))
             .collect()
+    }
+
+    /// The pixels of `rect` (left, top, right, bottom; the last two exclusive) as a screen of
+    /// their own; `None` for a rectangle that shares no pixel with this screen. The rectangle is
+    /// cut to the screen first (E24 M3 T2b1: what a window's cursor is drawn over).
+    #[must_use]
+    pub fn cut(&self, rect: [i64; 4]) -> Option<Self> {
+        let [left, top, right, bottom] = self.inside(rect)?;
+        let width = right - left;
+        let mut out = Self::new(width, bottom - top, self.format)?;
+        let (w, from) = (index(width), index(self.width));
+        for (row, y) in out.pixels.chunks_mut(w.max(1)).zip(top..bottom) {
+            let start = index(y) * from + index(left);
+            row.copy_from_slice(self.pixels.get(start..start + w).unwrap_or_default());
+        }
+        Some(out)
+    }
+
+    /// Copies `from`'s pixels in `rect` (left, top, right, bottom; the last two exclusive) to the
+    /// same place here, the rectangle cut to both screens (E24 M3 T2b1: a kept frame's view
+    /// restored from what lies under it). Nothing for screens of other formats.
+    pub fn copy_rect(&mut self, from: &Self, rect: [i64; 4]) {
+        if from.format != self.format {
+            return;
+        }
+        let Some([left, top, right, bottom]) = self
+            .inside(rect)
+            .and_then(|r| from.inside(r.map(i64::from)))
+        else {
+            return;
+        };
+        let w = index(right - left);
+        for y in top..bottom {
+            let (to, at) = (
+                index(y) * index(self.width) + index(left),
+                index(y) * index(from.width) + index(left),
+            );
+            let src = from.pixels.get(at..at + w).unwrap_or_default();
+            let dst = self.pixels.get_mut(to..to + src.len()).unwrap_or_default();
+            dst.copy_from_slice(src.get(..dst.len()).unwrap_or_default());
+        }
+    }
+
+    /// `rect` cut to the screen, if anything of it is on it.
+    fn inside(&self, [left, top, right, bottom]: [i64; 4]) -> Option<[u32; 4]> {
+        let side = |v: i64, max: u32| u32::try_from(v.clamp(0, i64::from(max))).unwrap_or(0);
+        let r = [
+            side(left, self.width),
+            side(top, self.height),
+            side(right, self.width),
+            side(bottom, self.height),
+        ];
+        (r[0] < r[2] && r[1] < r[3]).then_some(r)
     }
 
     /// Sets every pixel.
@@ -240,6 +290,83 @@ impl Screen {
 /// A `u32` as an index (the client's targets have at least 32-bit `usize`).
 pub(crate) fn index(value: u32) -> usize {
     usize::try_from(value).unwrap_or(usize::MAX)
+}
+
+/// A pixel of `format` widened to `0x00RRGGBB` ([`PixelFormat::unpack`]).
+fn xrgb_of(format: PixelFormat, pixel: u16) -> u32 {
+    let c = format.unpack(pixel);
+    u32::from(c.r) << 16 | u32::from(c.g) << 8 | u32::from(c.b)
+}
+
+/// Every pixel of a format widened to `0x00RRGGBB`, worked out once (E24 M3 T2b1,
+/// *provisional*): what [`Screen::xrgb`] gives pixel by pixel, for a window that widens each
+/// frame it shows (the per-channel loops of [`PixelFormat::unpack`] were most of a frame's cost).
+/// 65 536 entries, 256 KiB.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Widening {
+    format: PixelFormat,
+    table: Vec<u32>,
+}
+
+impl Widening {
+    /// The table of `format`.
+    #[must_use]
+    pub fn new(format: PixelFormat) -> Self {
+        Self {
+            format,
+            table: (0..=u16::MAX).map(|p| xrgb_of(format, p)).collect(),
+        }
+    }
+
+    /// The format it widens.
+    #[must_use]
+    pub fn format(&self) -> PixelFormat {
+        self.format
+    }
+
+    /// A pixel widened.
+    #[must_use]
+    pub fn pixel(&self, pixel: u16) -> u32 {
+        self.table.get(usize::from(pixel)).copied().unwrap_or(0)
+    }
+
+    /// `screen` widened into `out`, which is made its size: [`Screen::xrgb`] without a new
+    /// vector.
+    pub fn widen(&self, screen: &Screen, out: &mut Vec<u32>) {
+        out.resize(screen.pixels.len(), 0);
+        self.widen_onto(screen, [0, 0], out, screen.width);
+    }
+
+    /// `screen` widened onto `out`, a frame `width` pixels wide, its top-left corner at `at`, cut
+    /// to `out`'s rows and columns (a screen of another format by [`PixelFormat::unpack`]).
+    pub fn widen_onto(&self, screen: &Screen, at: [i64; 2], out: &mut [u32], width: u32) {
+        let (w, sw) = (i64::from(width), index(screen.width).max(1));
+        let rows = i64::try_from(out.len()).unwrap_or(i64::MAX) / w.max(1);
+        let (left, right) = (at[0].max(0), (at[0] + i64::from(screen.width)).min(w));
+        if left >= right {
+            return;
+        }
+        let from = usize::try_from(left - at[0]).unwrap_or(0);
+        let n = usize::try_from(right - left).unwrap_or(0);
+        for (r, row) in screen.pixels.chunks(sw).enumerate() {
+            let y = at[1] + i64::try_from(r).unwrap_or(i64::MAX);
+            if !(0..rows).contains(&y) {
+                continue;
+            }
+            let start = usize::try_from(y * w + left).unwrap_or(0);
+            let dst = out.get_mut(start..start + n).unwrap_or_default();
+            let src = row.get(from..from + n).unwrap_or_default();
+            if screen.format == self.format {
+                for (d, &p) in dst.iter_mut().zip(src) {
+                    *d = self.pixel(p);
+                }
+            } else {
+                for (d, &p) in dst.iter_mut().zip(src) {
+                    *d = xrgb_of(screen.format, p);
+                }
+            }
+        }
+    }
 }
 
 #[cfg(test)]
@@ -366,6 +493,80 @@ mod tests {
         *s.pixel_mut(2, 0).unwrap() = 0x0841;
         // As the PNG widens: each channel's bits repeated downwards.
         assert_eq!(s.xrgb(), [0x00FF_FFFF, 0x00FF_0000, 0x0008_0808]);
+    }
+
+    #[test]
+    fn the_widening_table_is_the_screens_own() {
+        for format in [PixelFormat::RGB565, PixelFormat::RGB555] {
+            let table = Widening::new(format);
+            assert_eq!(table.format(), format);
+            let mut every = Screen::new(256, 256, format).unwrap();
+            for (i, p) in every.pixels_mut().iter_mut().enumerate() {
+                *p = u16::try_from(i).unwrap();
+            }
+            // A vector of another size is made the screen's.
+            let mut out = vec![7; 3];
+            table.widen(&every, &mut out);
+            assert_eq!(out, every.xrgb());
+            assert_eq!(table.pixel(0xFFFF), 0x00FF_FFFF);
+        }
+    }
+
+    #[test]
+    fn a_screen_widens_onto_a_larger_frame_cut_to_it() {
+        let table = Widening::new(PixelFormat::RGB565);
+        let mut s = Screen::new(2, 2, PixelFormat::RGB565).unwrap();
+        s.pixels_mut()
+            .copy_from_slice(&[0xFFFF, 0xF800, 0x001F, 0x07E0]);
+        let (white, red, blue, green) = (0x00FF_FFFF, 0x00FF_0000, 0x0000_00FF, 0x0000_FF00);
+        // A 3 x 2 frame: the screen at (2, 1) keeps its top-left pixel only.
+        let mut out = vec![0; 6];
+        table.widen_onto(&s, [2, 1], &mut out, 3);
+        assert_eq!(out, [0, 0, 0, 0, 0, white]);
+        // At (-1, -1) only its bottom-right one.
+        let mut out = vec![0; 6];
+        table.widen_onto(&s, [-1, -1], &mut out, 3);
+        assert_eq!(out, [green, 0, 0, 0, 0, 0]);
+        // Wholly off the frame's sides, above or below it: nothing.
+        let mut out = vec![0; 6];
+        for at in [[3, 0], [-2, 0], [0, -2], [0, 2]] {
+            table.widen_onto(&s, at, &mut out, 3);
+        }
+        assert_eq!(out, [0; 6]);
+        // Inside, every pixel.
+        table.widen_onto(&s, [0, 0], &mut out, 3);
+        assert_eq!(out, [white, red, 0, blue, green, 0]);
+        // A screen of another format widens as its own.
+        let mut other = Screen::new(1, 1, PixelFormat::RGB555).unwrap();
+        other.fill(0x7C00);
+        table.widen_onto(&other, [2, 0], &mut out, 3);
+        assert_eq!(out[2], red);
+    }
+
+    #[test]
+    fn rectangles_are_cut_out_and_copied_in_place() {
+        let mut s = Screen::new(3, 2, PixelFormat::RGB565).unwrap();
+        s.pixels_mut().copy_from_slice(&[1, 2, 3, 4, 5, 6]);
+        let cut = s.cut([1, 0, 9, 1]).unwrap();
+        assert_eq!(
+            (cut.width(), cut.height(), cut.pixels()),
+            (2, 1, &[2, 3][..])
+        );
+        assert_eq!(s.cut([-5, -5, 1, 1]).unwrap().pixels(), [1]);
+        for off in [[3, 0, 5, 2], [0, 2, 3, 4], [2, 0, 2, 2], [-3, -3, 0, 0]] {
+            assert!(s.cut(off).is_none());
+        }
+        let mut to = Screen::new(3, 2, PixelFormat::RGB565).unwrap();
+        to.copy_rect(&s, [1, 1, 3, 2]);
+        assert_eq!(to.pixels(), [0, 0, 0, 0, 5, 6]);
+        // Cut to the smaller screen.
+        to.copy_rect(&cut, [0, 0, 3, 2]);
+        assert_eq!(to.pixels(), [2, 3, 0, 0, 5, 6]);
+        // Off both, or from another format: nothing.
+        to.copy_rect(&s, [3, 0, 4, 2]);
+        let other = Screen::new(3, 2, PixelFormat::RGB555).unwrap();
+        to.copy_rect(&other, [0, 0, 3, 2]);
+        assert_eq!(to.pixels(), [2, 3, 0, 0, 5, 6]);
     }
 
     #[test]
