@@ -242,7 +242,10 @@ fn render(options: &Options) -> Result<PathBuf, String> {
             .ok()
             .and_then(|f| art.hot.get(f).copied())
             .unwrap_or_default();
-        let hot = (u32::try_from(hx).unwrap_or(0), u32::try_from(hy).unwrap_or(0));
+        let hot = (
+            u32::try_from(hx).unwrap_or(0),
+            u32::try_from(hy).unwrap_or(0),
+        );
         let cursor = batch
             .sprite(&name)
             .and_then(|s| h3_ui::cursor::Cursor::read(s, art.arrow, hot, screen.format()))
@@ -553,7 +556,6 @@ pub fn read_live(
             .ok_or_else(|| failed("`pointer` is not [x, y]"))
     })
 }
-
 
 /// A TOML list of lists of `N` integers.
 fn rows<const N: usize>(value: &toml::Value) -> Option<Vec<[i64; N]>> {

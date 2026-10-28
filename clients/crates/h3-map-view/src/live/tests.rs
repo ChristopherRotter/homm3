@@ -350,7 +350,8 @@ fn a_live_parts_kingdom_read() {
         let table: toml::Table = toml::from_str(&alloc::format!("kingdom = {text}")).unwrap();
         Kingdom::read(&table["kingdom"])
     };
-    let all = "{ heroes = [[0, 1], [1, 0]], towns = 2, selected = [1, 1], tops = [0, 1], quests = 1 }";
+    let all =
+        "{ heroes = [[0, 1], [1, 0]], towns = 2, selected = [1, 1], tops = [0, 1], quests = 1 }";
     assert_eq!(
         read(all),
         Some(Kingdom {

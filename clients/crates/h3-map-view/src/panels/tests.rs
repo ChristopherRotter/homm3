@@ -88,7 +88,13 @@ fn move_hero_needs_a_green_arrow_or_the_timeline_s_word() {
         next_hero: true,
     };
     assert!(!moved(vec![arrow(1)], Some(off)));
-    assert!(moved(vec![], Some(Buttons { move_hero: true, ..off })));
+    assert!(moved(
+        vec![],
+        Some(Buttons {
+            move_hero: true,
+            ..off
+        })
+    ));
 }
 
 #[test]

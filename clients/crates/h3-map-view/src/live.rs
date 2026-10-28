@@ -491,7 +491,10 @@ impl Live {
             .zip(&art.objects)
             .filter(|(o, a)| {
                 o.owner == Some(viewer)
-                    && art.templates.get(a.template).is_some_and(|t| t.class == TOWN_CLASS)
+                    && art
+                        .templates
+                        .get(a.template)
+                        .is_some_and(|t| t.class == TOWN_CLASS)
             })
             .count();
         let selected = match (mine, towns) {

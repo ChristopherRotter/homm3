@@ -147,7 +147,11 @@ pub fn names(scene: &Scene) -> BTreeSet<String> {
                 names.insert(def.to_ascii_uppercase());
             }
             Draw::Dialog(draw) => {
-                names.extend(h3_ui::paint::names(draw).into_iter().map(str::to_ascii_uppercase));
+                names.extend(
+                    h3_ui::paint::names(draw)
+                        .into_iter()
+                        .map(str::to_ascii_uppercase),
+                );
             }
         }
     }

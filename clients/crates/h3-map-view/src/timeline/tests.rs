@@ -4,7 +4,7 @@ use alloc::string::ToString;
 use alloc::vec;
 
 use crate::layout::AdventureLayout;
-use crate::live::{Facing, Kingdom, LiveHero};
+use crate::live::{Facing, Kingdom, KingdomHero, LiveHero};
 use crate::sequence::{self, Sequences};
 use crate::situation::Situation;
 use crate::tables;
@@ -569,7 +569,10 @@ fn the_box_two_frames_differ_in() {
     after.set(9, 7, 1);
     assert_eq!(changed(&before, &after, &[]), Some([2, 1, 10, 8]));
     // Inside the masked rectangles nothing counts (E24 M3 T2a).
-    assert_eq!(changed(&before, &after, &[[9, 7, 10, 8]]), Some([2, 1, 7, 4]));
+    assert_eq!(
+        changed(&before, &after, &[[9, 7, 10, 8]]),
+        Some([2, 1, 7, 4])
+    );
     let all = [[0, 0, 7, 8], [7, 0, 10, 8]];
     assert_eq!(changed(&before, &after, &all), None);
     // Frames of other sizes differ in all of the later one.
@@ -1082,4 +1085,64 @@ fn a_path_shown_at_0() {
     away.hero = None;
     away.path = east();
     assert!(Loop::start(r, &away).unwrap().state(0).arrows.is_empty());
+}
+
+#[test]
+fn move_hero_and_next_hero_through_a_walk() {
+    // E24 M3 T2a (design §4.1): a path whose last two steps the points do not pay.
+    let path = vec![
+        arrow(18, 17, 12),
+        arrow(19, 17, 12),
+        arrow(20, 17, 37),
+        arrow(21, 17, 26),
+    ];
+    let awake = KingdomHero {
+        asleep: false,
+        movable: true,
+    };
+    let start = |heroes: Vec<KingdomHero>| {
+        let mut s = Start {
+            kingdom: Kingdom {
+                heroes,
+                selected: Selected::Hero(0),
+                ..Kingdom::default()
+            },
+            ..live(PARK, true, Vec::new())
+        };
+        s.live = false;
+        s.paths = vec![path.clone()];
+        s.hero_speed = 4;
+        Loop::start(rules(Bugs::Fixed), &s).unwrap()
+    };
+    let buttons = |move_hero, next_hero| Buttons {
+        move_hero,
+        next_hero,
+    };
+    let mut l = start(vec![awake]);
+    assert_eq!(l.state(0).buttons, buttons(false, true));
+    // The click shows the path: move hero by its green arrows.
+    l.run(1, &[Action::Click(tile(21, 17))]).unwrap();
+    assert_eq!(l.state(1).buttons, buttons(true, true));
+    // The walk: move hero off at its start; it ends on the red arrows, the hero unable to move,
+    // next hero off with no other hero.
+    l.run(2, &[Action::Click(tile(21, 17))]).unwrap();
+    for t in 3..=400 {
+        l.run(t, &[]).unwrap();
+    }
+    let s = l.state(400);
+    assert_eq!(s.hero.unwrap().at, Pos { x: 19, y: 17, z: 0 });
+    assert_eq!(s.buttons, buttons(false, false));
+    // Another hero awake and able to move keeps next hero on.
+    let mut l = start(vec![awake, awake]);
+    l.run(1, &[Action::Click(tile(21, 17))]).unwrap();
+    l.run(2, &[Action::Click(tile(21, 17))]).unwrap();
+    for t in 3..=400 {
+        l.run(t, &[]).unwrap();
+    }
+    assert_eq!(l.state(400).buttons, buttons(false, true));
+    // A key's step turns move hero off.
+    let mut l = start(vec![awake]);
+    l.run(1, &[Action::Click(tile(21, 17))]).unwrap();
+    l.run(2, &[Action::Step(Direction::North)]).unwrap();
+    assert!(!l.state(2).buttons.move_hero);
 }

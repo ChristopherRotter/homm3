@@ -25,7 +25,6 @@ use h3_render::screen::Screen;
 use crate::files;
 use crate::paint::{self, Assets};
 
-
 /// The command's options.
 #[derive(Debug, PartialEq, Eq)]
 pub struct Options {

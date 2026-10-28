@@ -59,9 +59,15 @@ pub fn dialog(layout: &AdventureLayout, live: &Live, levels: usize, z: u8) -> Sh
         (id::CAST, hero.is_none()),
         (id::NEXT_HERO, !buttons.next_hero),
         (id::HEROES[0], heroes_top == 0),
-        (id::HEROES[1], kingdom.heroes.len() <= heroes_top.saturating_add(SLOTS)),
+        (
+            id::HEROES[1],
+            kingdom.heroes.len() <= heroes_top.saturating_add(SLOTS),
+        ),
         (id::TOWNS[0], towns_top == 0),
-        (id::TOWNS[1], kingdom.towns <= towns_top.saturating_add(SLOTS)),
+        (
+            id::TOWNS[1],
+            kingdom.towns <= towns_top.saturating_add(SLOTS),
+        ),
     ];
     let states = disabled
         .into_iter()
@@ -83,7 +89,11 @@ pub fn dialog(layout: &AdventureLayout, live: &Live, levels: usize, z: u8) -> Sh
     ]);
     Shown {
         states,
-        players: panels.coloured.iter().map(|&id| (id, live.viewer)).collect(),
+        players: panels
+            .coloured
+            .iter()
+            .map(|&id| (id, live.viewer))
+            .collect(),
         defs,
         ..Shown::default()
     }

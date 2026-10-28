@@ -154,8 +154,11 @@ viewers share.
 - **Tasks** (the queue has each in full): T0, M3 refined (**done** 2026-10-28; MCL-Q9's fix
   built); T1a, `h3-ui` and the move (**done** 2026-10-28: #541's `lanes.toml`, the move's
   `cross-lane` pull request; the log); T1b, the battle window's keys through the table (**done**
-2026-10-28: every key of both windows through `h3_ui::keys`, by context; the log); T2, the
-  adventure screen's dialog at a map's start and the frame's cost; T3, the minimap; T4, the hero
+2026-10-28: every key of both windows through `h3_ui::keys`, by context; the log); T2 cut with
+  the user (2026-10-28): T2a, the adventure screen's dialog at a map's start, right (**done**
+  2026-10-28: the dialog and the resource bar drawn, the buttons' states, the parked cursor, the
+  mask in `clients/map/masks.toml`, the 40 situations and 13 sequences compared; the log), T2b,
+  the frame's fixed cost; T3, the minimap; T4, the hero
   and town lists; T5, the status window, the resource bar and the date; T6, the mouse, the keys
   during a walk, the sound without the focus; T7, M3's closure. A task that grows is cut at a
   seam agreed with the user.
@@ -229,3 +232,19 @@ M1's review lists (three reviewers, T6b; the list accepted) and M2's (accepted a
   panel's letters and the dragon's F reached the battle under it before); unattended, Esc quits
   whatever is open (the aim's and the box's Esc before) and the right button no longer gives an
   aim up; a chord with Ctrl held gives nothing unless bound (Ctrl and ↑ scrolled the log before).
+- **M3 T2a, the mask's file** (*provisional*): `clients/map/masks.toml`'s `panels`, the rectangles
+  M3's later tasks draw, read by `h3map.py` and by the viewer's `sequences` (its `screen` lines:
+  the box of the change outside them, the whole screen otherwise).
+- **M3 T2a, the live part's kingdom and pointer** (*provisional*): `kingdom = { heroes =
+  [[asleep, movable], ...], towns, selected = [kind, place], tops, quests }`, `pointer = [x, y]`
+  (a still's cursor, the arrow); a hero's `movable` read as points left (a step leaves 0 or at
+  least the cheapest step, 0x481182), the quest log's test without the quest's text;
+  `Live::at_start` the viewer's heroes in the map's order, the first selected.
+- **M3 T2a, the buttons in a walk** (*provisional*): move hero set at a path's click, a walk's and
+  a key's step's start and a walk's end (its rest's green arrows); a walk whose rest has no green
+  arrow leaves its hero unable to move (the step set its points to 0) and next hero follows the
+  kingdom; a key's step's end does not set next hero (no recording shows one that ends the
+  points); the engine's from M4.
+- **M3 T2a, `h3_ui::paint`**: the dialog items' drawers moved into the common crate (an `Assets`
+  trait each viewer's batch implements); `h3-view` keeps its copy until the client lane takes
+  this one (its inbox); a button takes a player's colours and a DEF from `Shown` by its id.

@@ -151,16 +151,16 @@ fn the_names_a_scene_draws() {
 fn holds_a_font_and_gives_the_dialogs_drawers_its_assets() {
     // E24 M3 T2a: the dialog's texts' fonts; the batch is `h3_ui::paint`'s assets.
     use h3_ui::paint::Assets;
-    let font = h3_assets::fnt::Font {
+    let font = Font {
         height: 1,
         y_offset: 0,
         glyphs: vec![h3_assets::fnt::Glyph::default(); 256],
     };
     let mut batch = Batch::default();
+    batch.add("smalfont.fnt", &build::fnt(&font)).unwrap();
     batch
-        .add("smalfont.fnt", &h3_assets::build::fnt(&font))
+        .add("Players.pal", &build::pal(&grey(), &[0; 256], 0, &[]))
         .unwrap();
-    batch.add("Players.pal", &h3_assets::build::pal(&grey(), &[0; 256], 0, &[])).unwrap();
     assert_eq!(Assets::font(&batch, "SMALFONT.FNT"), Some(&font));
     assert_eq!(Assets::palette(&batch, "players.pal"), Some(&grey()));
     assert!(Assets::picture(&batch, "a.pcx").is_none());

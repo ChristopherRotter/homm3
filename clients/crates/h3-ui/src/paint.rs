@@ -51,7 +51,9 @@ pub fn names(draw: &Draw) -> Vec<&str> {
     match draw {
         Draw::Picture {
             picture, player: p, ..
-        } => core::iter::once(picture.as_str()).chain(player(p)).collect(),
+        } => core::iter::once(picture.as_str())
+            .chain(player(p))
+            .collect(),
         Draw::Button { def, player: p, .. } => {
             core::iter::once(def.as_str()).chain(player(p)).collect()
         }
@@ -122,7 +124,9 @@ pub fn draw(
             };
             let (sprite, frame) = frame_of(assets, def, frame)?;
             let palette = match player {
-                Some(colours) => with_player_colours(&sprite.def.palette, &colours_of(assets, colours)?),
+                Some(colours) => {
+                    with_player_colours(&sprite.def.palette, &colours_of(assets, colours)?)
+                }
                 None => sprite.def.palette.clone(),
             };
             let at = Placement {
@@ -131,7 +135,13 @@ pub fn draw(
                 mirrored: *mirrored,
             };
             let format = screen.format();
-            draw_frame(screen, frame, &ScreenPalette::new(&palette, format), at, PLAIN);
+            draw_frame(
+                screen,
+                frame,
+                &ScreenPalette::new(&palette, format),
+                at,
+                PLAIN,
+            );
         }
         Draw::Darken { rect } => darken(screen, *rect),
         Draw::Text { item, x, y, text } => {
@@ -147,7 +157,15 @@ pub fn draw(
                 height: item.size[1],
             };
             let font = (&item.font, &item.font_palette);
-            text_in(screen, assets, font, (item.colour, item.align), area, text, bugs)?;
+            text_in(
+                screen,
+                assets,
+                font,
+                (item.colour, item.align),
+                area,
+                text,
+                bugs,
+            )?;
         }
         Draw::Label {
             item,

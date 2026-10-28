@@ -34,7 +34,7 @@ fn read(text: &str) -> Result<(MapArt, Live), String> {
     let read = read_live(&path, ViewAt::default(), &mut art, &mut live, &[]);
     fs::remove_file(&path).unwrap();
     let prefix = format!("{}: ", path.display());
-    read.map(|()| (art, live))
+    read.map(|_| (art, live))
         .map_err(|e| e.strip_prefix(&prefix).unwrap_or(&e).to_string())
 }
 
@@ -88,4 +88,36 @@ fn the_objects_must_be_the_maps() {
         read(&text).unwrap_err(),
         "the original's objects are not the map's (`anchors`: object 0)"
     );
+}
+
+#[test]
+fn the_kingdom_and_the_pointer() {
+    // E24 M3 T2a: the panels' kingdom (`Kingdom::read`) and the parked mouse's point.
+    let (_, live) =
+        read("kingdom = { heroes = [[0, 1]], towns = 0, selected = [1, 0], tops = [0, 0], quests = 0 }\n")
+            .unwrap();
+    assert_eq!(live.kingdom.heroes.len(), 1);
+    assert!(
+        read("kingdom = { heroes = [] }\n")
+            .unwrap_err()
+            .starts_with("`kingdom` is not")
+    );
+    let (mut art, mut live) = map();
+    let path =
+        std::env::temp_dir().join(format!("h3-map-view-pointer-{}.toml", std::process::id()));
+    fs::write(&path, "pointer = [700, 300]\n").unwrap();
+    let pointer = read_live(&path, ViewAt::default(), &mut art, &mut live, &[]);
+    fs::remove_file(&path).unwrap();
+    assert_eq!(pointer, Ok(Some([700, 300])));
+    for wrong in [
+        "pointer = [700]\n",
+        "pointer = 1\n",
+        "pointer = [1, \"a\"]\n",
+    ] {
+        assert_eq!(
+            read(wrong).unwrap_err(),
+            "`pointer` is not [x, y]",
+            "{wrong}"
+        );
+    }
 }

@@ -214,14 +214,42 @@ fn refuses_a_layout_that_breaks_its_rules() {
             "edge zones of 301 pixels in a frame of [800, 600]",
         ),
         // The dialog's names (E24 M3 T2a).
-        ("\"iam002.def\"", "\"iam002\"", "`iam002` is not a .DEF name"),
-        ("\"itpa.def\"", "\"itpa.pcx\"", "`itpa.pcx` is not a .DEF name"),
-        ("\"AdRollvr.pcx\"", "\"AdRollvr\"", "`AdRollvr` is not a .PCX name"),
-        ("\"smalfont.fnt\"", "\"smalfont\"", "`smalfont` is not a .FNT name"),
-        ("\"medfont.fnt\"", "\"medfont\"", "`medfont` is not a .FNT name"),
+        (
+            "\"iam002.def\"",
+            "\"iam002\"",
+            "`iam002` is not a .DEF name",
+        ),
+        (
+            "\"itpa.def\"",
+            "\"itpa.pcx\"",
+            "`itpa.pcx` is not a .DEF name",
+        ),
+        (
+            "\"AdRollvr.pcx\"",
+            "\"AdRollvr\"",
+            "`AdRollvr` is not a .PCX name",
+        ),
+        (
+            "\"smalfont.fnt\"",
+            "\"smalfont\"",
+            "`smalfont` is not a .FNT name",
+        ),
+        (
+            "\"medfont.fnt\"",
+            "\"medfont\"",
+            "`medfont` is not a .FNT name",
+        ),
         ("\"game.pal\"", "\"game\"", "`game` is not a .PAL name"),
-        ("\"AResBar.pcx\"", "\"AResBar\"", "`AResBar` is not a .PCX name"),
-        ("\"iam011.def\"", "\"iam011\"", "`iam011` is not a .DEF name"),
+        (
+            "\"AResBar.pcx\"",
+            "\"AResBar\"",
+            "`AResBar` is not a .PCX name",
+        ),
+        (
+            "\"iam011.def\"",
+            "\"iam011\"",
+            "`iam011` is not a .DEF name",
+        ),
     ] {
         let text = LAYOUT.replacen(from, to, 1);
         assert_eq!(AdventureLayout::parse(&text).unwrap_err(), message, "{to}");

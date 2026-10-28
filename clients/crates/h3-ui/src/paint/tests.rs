@@ -112,8 +112,13 @@ fn store() -> Store {
     other.def.groups[0].id = 1;
     s.sprites.insert("g1.def".into(), other);
     let picture = |pixels: &[u8]| {
-        decode_pcx(&build::pcx_indexed(2, 1, pixels, &palette(&[(1, BLUE), (224, RED)])))
-            .unwrap()
+        decode_pcx(&build::pcx_indexed(
+            2,
+            1,
+            pixels,
+            &palette(&[(1, BLUE), (224, RED)]),
+        ))
+        .unwrap()
     };
     s.pictures.insert("p.pcx".into(), picture(&[0, 224]));
     s.pictures.insert("q.pcx".into(), picture(&[1, 1]));
@@ -122,9 +127,11 @@ fn store() -> Store {
         decode_pcx(&build::pcx_rgb(1, 1, &[GREEN])).unwrap(),
     );
     // The players' palette: player 1's entries 32 to 63, its first green.
-    s.palettes.insert("players.pal".into(), palette(&[(32, GREEN)]));
+    s.palettes
+        .insert("players.pal".into(), palette(&[(32, GREEN)]));
     // TextDraw's colour 0 draws entry 9 of `game.pal`, 2 entry 11 (h3_render::text).
-    s.palettes.insert("game.pal".into(), palette(&[(9, WHITE), (11, BLUE)]));
+    s.palettes
+        .insert("game.pal".into(), palette(&[(9, WHITE), (11, BLUE)]));
     s.fonts.insert("f.fnt".into(), font());
     s
 }
@@ -224,14 +231,32 @@ fn a_picture_is_keyed_clipped_and_in_a_players_colours() {
     draw(&mut out, &picture("p.pcx", 1, None, None), &s, Bugs::Fixed).unwrap();
     assert_eq!(out.pixels(), [blue, blue, red]);
     // The player's colours over 224-255; at most the item's size of it.
-    draw(&mut out, &picture("p.pcx", 0, green_of_1(), None), &s, Bugs::Fixed).unwrap();
+    draw(
+        &mut out,
+        &picture("p.pcx", 0, green_of_1(), None),
+        &s,
+        Bugs::Fixed,
+    )
+    .unwrap();
     assert_eq!(out.pixels(), [blue, green, red]);
     let mut cut = screen(3);
-    draw(&mut cut, &picture("q.pcx", 0, None, Some([1, 1])), &s, Bugs::Fixed).unwrap();
+    draw(
+        &mut cut,
+        &picture("q.pcx", 0, None, Some([1, 1])),
+        &s,
+        Bugs::Fixed,
+    )
+    .unwrap();
     assert_eq!(cut.pixels(), [blue, 0, 0]);
     // A picture of its own colours takes none.
     let mut rgb = screen(1);
-    draw(&mut rgb, &picture("rgb.pcx", 0, green_of_1(), None), &s, Bugs::Fixed).unwrap();
+    draw(
+        &mut rgb,
+        &picture("rgb.pcx", 0, green_of_1(), None),
+        &s,
+        Bugs::Fixed,
+    )
+    .unwrap();
     assert_eq!(rgb.pixels(), [green]);
     // What the assets lack.
     let missing = draw(&mut out, &picture("no.pcx", 0, None, None), &s, Bugs::Fixed);
@@ -246,7 +271,10 @@ fn a_picture_is_keyed_clipped_and_in_a_players_colours() {
         }),
         size: None,
     };
-    assert_eq!(draw(&mut out, &no_players, &s, Bugs::Fixed), Err("no.pal".to_string()));
+    assert_eq!(
+        draw(&mut out, &no_players, &s, Bugs::Fixed),
+        Err("no.pal".to_string())
+    );
 }
 
 #[test]
@@ -268,15 +296,37 @@ fn a_button_draws_its_frame_or_frame_0_plain_in_a_players_colours() {
     draw(&mut out, &button("b.def", 1, true, None), &s, Bugs::Fixed).unwrap();
     assert_eq!(out.pixels(), [red, white]);
     let mut fresh = screen(2);
-    draw(&mut fresh, &button("b.def", 1, false, None), &s, Bugs::Fixed).unwrap();
+    draw(
+        &mut fresh,
+        &button("b.def", 1, false, None),
+        &s,
+        Bugs::Fixed,
+    )
+    .unwrap();
     assert_eq!(fresh.pixels(), [white, 0]);
     // Past the group's frames: frame 0; in player 1's colours (224 its green).
-    draw(&mut out, &button("b.def", 9, false, green_of_1()), &s, Bugs::Fixed).unwrap();
+    draw(
+        &mut out,
+        &button("b.def", 9, false, green_of_1()),
+        &s,
+        Bugs::Fixed,
+    )
+    .unwrap();
     assert_eq!(out.pixels(), [red, green]);
     // What the assets lack: the DEF, group 0, the players' palette.
-    let gone = |def: &str, player| draw(&mut screen(2), &button(def, 0, false, player), &s, Bugs::Fixed);
+    let gone = |def: &str, player| {
+        draw(
+            &mut screen(2),
+            &button(def, 0, false, player),
+            &s,
+            Bugs::Fixed,
+        )
+    };
     assert_eq!(gone("no.def", None), Err("no.def".to_string()));
-    assert_eq!(gone("g1.def", None), Err("g1.def group 0 frame 0".to_string()));
+    assert_eq!(
+        gone("g1.def", None),
+        Err("g1.def group 0 frame 0".to_string())
+    );
     let no_players = Some(PlayerColours {
         palette: "no.pal".into(),
         player: 0,
@@ -288,7 +338,13 @@ fn a_button_draws_its_frame_or_frame_0_plain_in_a_players_colours() {
 fn darken_halves_a_rectangle() {
     let mut out = screen(2);
     out.fill(FORMAT.pack(WHITE));
-    draw(&mut out, &Draw::Darken { rect: [1, 0, 1, 1] }, &store(), Bugs::Fixed).unwrap();
+    draw(
+        &mut out,
+        &Draw::Darken { rect: [1, 0, 1, 1] },
+        &store(),
+        Bugs::Fixed,
+    )
+    .unwrap();
     assert_eq!(out.pixel(0, 0), Some(FORMAT.pack(WHITE)));
     assert_ne!(out.pixel(1, 0), Some(FORMAT.pack(WHITE)));
 }
@@ -304,12 +360,27 @@ fn a_text_is_its_picture_opaque_then_the_text() {
     };
     let [blue, white] = [BLUE, WHITE].map(|c| FORMAT.pack(c));
     let mut out = screen(2);
-    draw(&mut out, &text(text_item("q.pcx", "f.fnt", "game.pal"), "1"), &s, Bugs::Fixed).unwrap();
+    draw(
+        &mut out,
+        &text(text_item("q.pcx", "f.fnt", "game.pal"), "1"),
+        &s,
+        Bugs::Fixed,
+    )
+    .unwrap();
     assert_eq!(out.pixels(), [white, blue]);
     let failing = |item| draw(&mut screen(2), &text(item, ""), &s, Bugs::Fixed);
-    assert_eq!(failing(text_item("no.pcx", "f.fnt", "game.pal")), Err("no.pcx".to_string()));
-    assert_eq!(failing(text_item("q.pcx", "no.fnt", "game.pal")), Err("no.fnt".to_string()));
-    assert_eq!(failing(text_item("q.pcx", "f.fnt", "no.pal")), Err("no.pal".to_string()));
+    assert_eq!(
+        failing(text_item("no.pcx", "f.fnt", "game.pal")),
+        Err("no.pcx".to_string())
+    );
+    assert_eq!(
+        failing(text_item("q.pcx", "no.fnt", "game.pal")),
+        Err("no.fnt".to_string())
+    );
+    assert_eq!(
+        failing(text_item("q.pcx", "f.fnt", "no.pal")),
+        Err("no.pal".to_string())
+    );
 }
 
 #[test]

@@ -218,7 +218,13 @@ impl AdventureLayout {
             }
         }
         let panels = &self.panels;
-        out.extend(panels.underground.iter().chain(&panels.sleep).map(|d| (d.as_str(), ".DEF")));
+        out.extend(
+            panels
+                .underground
+                .iter()
+                .chain(&panels.sleep)
+                .map(|d| (d.as_str(), ".DEF")),
+        );
         out
     }
 

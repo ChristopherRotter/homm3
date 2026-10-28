@@ -823,7 +823,9 @@ impl Loop {
 
     /// Whether the path shown holds a green arrow, a step the hero pays today.
     fn green(&self) -> bool {
-        self.path.iter().any(|(_, a)| (1..=GREEN).contains(&a.arrow))
+        self.path
+            .iter()
+            .any(|(_, a)| (1..=GREEN).contains(&a.arrow))
     }
 
     /// A click the loop cannot play: refused, or live the pointer's move only.
@@ -1215,7 +1217,11 @@ pub fn lines(states: &[State], screens: &BTreeMap<u32, [i32; 4]>) -> Vec<String>
         };
         let buttons = |s: &State| {
             let b = s.buttons;
-            format!("buttons {} {}", u8::from(b.move_hero), u8::from(b.next_hero))
+            format!(
+                "buttons {} {}",
+                u8::from(b.move_hero),
+                u8::from(b.next_hero)
+            )
         };
         for f in [view, objects, cycles, cursor, buttons] {
             if changed(f) {
