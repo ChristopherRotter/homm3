@@ -429,6 +429,14 @@ writer refuses in RoE what it cannot hold: a level limit, banned skills, a town,
 artifact or creature past RoE's (128, 127, 118), a hero's spells, primary skills or fifth misc
 artifact, a Witch Hut's skills. `h3-map`'s `tests/rewards.rs` reads both back and imports them.
 
+**Increment 8's objects** (E08 T67, batch E8's maps; survey `docs/rules/surveys/E08-sea.md` §5,
+CLT-Q5): plain objects without a body: an empty boat (8, the boat's type 0 to 2 as subclass,
+`AVXboat0` to `AVXboat2`), Flotsam (29), the Sea Chest (82), the Shipwreck Survivor (86) and holes
+(124); an Ocean Bottle (59) or a sign (91) with its text (`writer::RewardBody::Sign`: the string
+and 4 zero bytes). Favorable Winds (225) is a special ground (no body). A hero or a monster may
+stand on a water tile (the writer checks no terrain under an object); a hero placed on water stands
+in no boat (§2). `h3-map`'s `tests/sea.rs` reads them back and imports the map.
+
 **The map client's additions** (E24 M1 T3a, `writer::write_with` and its `Extras`; the map client
 lane's additive change, the user's consent of 2026-10-23; a map without them is written byte for
 byte as before, a test pins one map of every kind by its CRC-32): **tiles as given**, the seven

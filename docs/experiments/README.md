@@ -214,6 +214,19 @@ only Red's); the battle log's entries read as empty strings this way. Batches 4a
   `experience`, `mana`, `morale`, `luck`, `resources = { gold = 100 }`, `primary`, `skills`,
   `artifacts`, `spells`, `creatures`). The template does not list them: the procedures say where
   they are.
+  **Increment 8's objects** (E08 T67, batch E8; survey `docs/rules/surveys/E08-sea.md` §5, §11):
+  `[[map.object]]` takes an empty boat (`AVXboat0` to `AVXboat2`, the boat's type 0 to 2: as a
+  hero's template, the boat stands on the tile west of `at`, on water, which it blocks and where
+  it is visited: a hero on land beside it clicks it to board), Flotsam `AVAflot0`, the Sea Chest
+  `AVXccht0`, the Shipwreck Survivor `AVAsurv0` (each on `at`, visited from a neighbour) and the
+  holes (`AVLholg0` grass, `AVLhold0` dirt, `AVLhlds0` sand, `AVLhlsn0` snow, `AVLhols0` swamp,
+  `AVLholr0` rough, `AVLholx0` subterranean, `AVLholl0` lava: passable, nothing visited, 1 × 1
+  by their `.msk`, read in T67); `[[map.bottle]]` an Ocean Bottle (one tile, as Flotsam) with its `text`
+  (empty, the default: the game's own); `[[map.ground]]` Favorable Winds (`AVXfw0` to `AVXfw7`,
+  water only; their `.msk` sizes 6 × 4, 8 × 6, 6 × 6, 8 × 3, 3 × 6, 3 × 3, 5 × 2 and 2 × 5, as the
+  Clover Field's eight). A hero (`at`) or an opponent monster (its own `at`, below) may stand on
+  water: the original gives a hero placed there no boat (D-44); a hero "in a boat" is one beside
+  an empty boat that boards it in play.
 - `[[encounter]]`: `id` (also the hero's name in the game), `title`, `questions`, `level` (E08
   T22a1: 1 puts the encounter's heroes and opponent on the underground; the template says so),
   `procedure`
@@ -236,7 +249,8 @@ only Red's); the battle log's entries read as empty strings this way. Batches 4a
   names, ids below 70; needs a worn `spell book`, E04b batch 2a). Skills, artifacts and spells
   replace the hero type's defaults, so heroes have no spell book unless one is listed. A hero
   starts with full mana: 10 × knowledge (no Intelligence), so knowledge sets the mana.
-- `[encounter.opponent]`: `monster` + `count` (a wandering monster one column east of the hero; savage
+- `[encounter.opponent]`: `monster` + `count` (a wandering monster one column east of the hero, or
+  on E08 T67's `at = [column, row]`, of any terrain; savage
   and never fleeing unless E08 T22a1's `disposition`, `compliant` … `savage`, and `flees = true`
   say otherwise; it does not grow; E08 T56's `treasure = { text, resources = { gold = 1000 },
   artifact }`, given when it is beaten),

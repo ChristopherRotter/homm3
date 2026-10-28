@@ -23,8 +23,8 @@ use h3_map::writer::{
     ARMY_SLOTS, ARTIFACT_OBJECT, ARTIFACT_SLOTS, EVENT_OBJECT, Event, Format, Ground, Guards, Hero,
     HeroArtifacts, Map, MapObject, Message, Monster, ObjectTemplate, PANDORA_OBJECT, PLAYERS,
     Patch, Pile, Plain, Player, RANDOM_ARTIFACT_OBJECTS, RewardBody, RewardObject, Road, RoadKind,
-    SCROLL_OBJECT, SHRINE_OBJECTS, Terrain, Town, TownBuildings, Treasure, Underground,
-    WITCH_HUT_OBJECT,
+    SCROLL_OBJECT, SHRINE_OBJECTS, SIGN_OBJECTS, Terrain, Town, TownBuildings, Treasure,
+    Underground, WITCH_HUT_OBJECT,
 };
 use serde::Deserialize;
 
@@ -38,6 +38,8 @@ const COLUMN_STEP: u8 = 6;
 const ROW_STEP: u8 = 5;
 /// First encounter column and row.
 const ORIGIN: u8 = 3;
+/// The Ocean Bottle's object class (E08 T67).
+const OCEAN_BOTTLE: u32 = SIGN_OBJECTS[0];
 /// Slot names of a hero's artifacts, in map slot order.
 pub const SLOT_NAMES: [&str; ARTIFACT_SLOTS] = [
     "head",
@@ -255,6 +257,9 @@ pub struct MapSpec {
     /// Events (`[[map.event]]`, E08 T56).
     #[serde(default)]
     pub event: Vec<EventSpec>,
+    /// Ocean Bottles (`[[map.bottle]]`, E08 T67: batch E8's row E8-9).
+    #[serde(default)]
+    pub bottle: Vec<BottleSpec>,
 }
 
 /// Where copies of an object stand (E08 T56): the first on `at`, then `columns` × `rows` of them
@@ -419,6 +424,21 @@ pub struct EventSpec {
 
 fn yes() -> bool {
     true
+}
+
+/// An Ocean Bottle (class 59) with its text (E08 T67).
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct BottleSpec {
+    /// The (first) object's position: its one tile, blocked and visited from a neighbour.
+    pub at: [u8; 2],
+    /// More copies.
+    #[serde(default)]
+    pub grid: Grid,
+    /// The text shown at the visit; empty (the default) leaves it to the game (survey
+    /// `docs/rules/surveys/E08-sea.md` §8.5: a default text by the bottle's column).
+    #[serde(default)]
+    pub text: String,
 }
 
 /// A reward record: what a box or an event gives (E08 T56; negative resources, mana, morale or
@@ -734,6 +754,11 @@ pub struct Opponent {
     /// A monster's message and treasure, given when it is beaten (E08 T56).
     #[serde(default)]
     pub treasure: Option<TreasureSpec>,
+    /// A monster's tile, `[column, row]`, of any terrain (E08 T67: batch E8's monster on water,
+    /// row E8-13); default: one column east of the encounter's hero. A hero opponent takes its
+    /// own [`HeroSpec::at`].
+    #[serde(default)]
+    pub at: Option<[u8; 2]>,
 }
 
 /// A town of the opponent's (E04c T5b). Its picture covers 8 columns and 6 rows up to two columns
@@ -983,6 +1008,7 @@ pub fn build_only(
                 hero: None,
                 town: None,
                 treasure,
+                at,
             }) => {
                 let id = lookup(&tables.creatures, creature, "creature").map_err(ctx)?;
                 let template = tables
@@ -1003,7 +1029,10 @@ pub fn build_only(
                             .ok_or_else(|| ctx(format!("unknown disposition `{d}`")))
                     })
                     .transpose()?;
-                let tile = (x.saturating_add(1), y);
+                let tile = at.map_or((x.saturating_add(1), y), |[x, y]| (x, y));
+                if tile.0 >= size || tile.1 >= size {
+                    return Err(ctx(format!("the monster at {tile:?}: off the map")));
+                }
                 // Savage unless given: it never joins.
                 let kind = disposition.map_or(4, |d| d as u8);
                 let treasure = treasure
@@ -1035,6 +1064,7 @@ pub fn build_only(
                 hero: Some(h),
                 town: None,
                 treasure: None,
+                at: None,
             }) => Some(add_hero(
                 h,
                 (x.saturating_add(1), y),
@@ -1049,6 +1079,7 @@ pub fn build_only(
                 hero,
                 town: Some(t),
                 treasure: None,
+                at: None,
             }) => {
                 let entrance = (x, y.saturating_sub(1));
                 let (town, mut summary) = town_object(t, tables, entrance, size).map_err(ctx)?;
@@ -1076,7 +1107,7 @@ pub fn build_only(
             Some(_) => {
                 return Err(ctx(
                     "an opponent is `monster` + `count`, `hero`, or `town` with or without `hero` \
-                     (`disposition`, `flees` and `treasure` with a monster only)"
+                     (`disposition`, `flees`, `treasure` and `at` with a monster only)"
                         .into(),
                 ));
             }
@@ -1817,7 +1848,7 @@ fn reward_template(tables: &Tables, class: u32, subclass: u32) -> Result<ObjectT
 }
 
 /// The map's objects that hand a visiting hero something (E08 T56), in the spec's order of kinds:
-/// artifacts, scrolls, shrines, huts, boxes, events.
+/// artifacts, scrolls, shrines, huts, boxes, events, bottles (E08 T67).
 fn reward_objects(map: &MapSpec, tables: &Tables) -> Result<Vec<MapObject>, String> {
     let mut objects = Vec::new();
     let mut place = |at: [u8; 2], grid: Grid, template: ObjectTemplate, body: RewardBody| {
@@ -1928,6 +1959,11 @@ fn reward_objects(map: &MapSpec, tables: &Tables) -> Result<Vec<MapObject>, Stri
         };
         let template = reward_template(tables, EVENT_OBJECT, 0).map_err(ctx)?;
         place(e.at, e.grid, template, RewardBody::Event(event)).map_err(ctx)?;
+    }
+    for b in &map.bottle {
+        let ctx = |err: String| format!("the bottle at {:?}: {err}", b.at);
+        let template = reward_template(tables, OCEAN_BOTTLE, 0).map_err(ctx)?;
+        place(b.at, b.grid, template, RewardBody::Sign(b.text.clone())).map_err(ctx)?;
     }
     Ok(objects)
 }
@@ -2134,13 +2170,15 @@ mod tests {
                     )
                 })
                 .to_vec(),
-            grounds: vec![
-                ObjectTemplate::from_objects_txt(
-                    "AVXcf0.def 111111111111111111111111111111111111111111111111 \
-                     000000000000000000000000000000000000000000000000 111111111 011111111 222 0 0 1",
-                )
-                .expect("template"),
-            ],
+            // A Clover Field; Favorable Winds' 3 × 3 picture (E08 T67).
+            grounds: [
+                "AVXcf0.def 111111111111111111111111111111111111111111111111 \
+                 000000000000000000000000000000000000000000000000 111111111 011111111 222 0 0 1",
+                "AVXfw5.def 111111111111111111111111111111111111111111111111 \
+                 000000000000000000000000000000000000000000000000 100000000 100000000 225 0 0 1",
+            ]
+            .map(|line| ObjectTemplate::from_objects_txt(line).expect("template"))
+            .to_vec(),
             // The land Cartographer (E08 T32a), a tree and the light blue Border Gate (E08 T36a),
             // the game's lines.
             plains: [
@@ -2153,6 +2191,11 @@ mod tests {
                 // The Treasure Chest (E08 T56).
                 "AVTchst0.def 011111111111111111111111111111111111111111111111 \
                  100000000000000000000000000000000000000000000000 111111111 011111111 101 0 5 0",
+                // A boat and Flotsam (E08 T67).
+                "AVXboat1.def 101111111111111111111111111111111111111111111111 \
+                 010000000000000000000000000000000000000000000000 100000000 100000000 8 1 0 0",
+                "AVAflot0.def 011111111111111111111111111111111111111111111111 \
+                 100000000000000000000000000000000000000000000000 100000000 100000000 29 0 0 0",
             ]
             .map(|line| ObjectTemplate::from_objects_txt(line).expect("template"))
             .to_vec(),
@@ -2183,6 +2226,9 @@ mod tests {
                  100000000000000000000000000000000000000000000000 111111111 000000001 6 0 4 0",
                 "AVZevnt0.def 011111111111111111111111111111111111111111111111 \
                  100000000000000000000000000000000000000000000000 111111111 111111111 26 0 0 0",
+                // The Ocean Bottle (E08 T67).
+                "AVXbttl0.def 011111111111111111111111111111111111111111111111 \
+                 100000000000000000000000000000000000000000000000 100000000 100000000 59 0 0 0",
             ]
             .map(|line| ObjectTemplate::from_objects_txt(line).expect("template"))
             .to_vec(),
@@ -3393,7 +3439,7 @@ mod tests {
         );
         assert!(
             fails("monster = \"Pikeman\"\n        count = 10\n", "")
-                .contains("`treasure` with a monster only")
+                .contains("`treasure` and `at` with a monster only")
         );
     }
 
@@ -3435,5 +3481,132 @@ mod tests {
         assert!(h3_map::writer::write_in(&map, Format::RoE).is_err());
         let sod = text.replacen(" RoE ", "sod", 1);
         assert_eq!(map_format(&parse(&sod).expect("spec")), Ok(Format::Sod));
+    }
+
+    /// Batch E8's objects (E08 T67): water, a boat, Flotsam in a grid, Favorable Winds, two
+    /// bottles and a monster on water, beside a hero on the shore.
+    const SEA: &str = r#"
+        [map]
+        name = "Sea"
+        description = "d"
+        terrain = "grass"
+
+        [[map.patch]]
+        terrain = "water"
+        from = [12, 0]
+        to = [35, 35]
+
+        [[map.ground]]
+        picture = "AVXfw5"
+        at = [26, 18]
+
+        [[map.object]]
+        picture = "avxboat1.def"
+        at = [13, 3]
+
+        [[map.object]]
+        picture = "AVAflot0"
+        at = [16, 8]
+        grid = { columns = 3, step = [2, 1] }
+
+        [[map.bottle]]
+        at = [16, 12]
+        text = "Ahoy"
+
+        [[map.bottle]]
+        at = [18, 12]
+        grid = { columns = 2, step = [1, 1] }
+
+        [[encounter]]
+        id = "W1"
+        title = "A boat and a monster on water"
+        [encounter.hero]
+        type = "Orrin"
+        specialty = "skill Archery"
+        at = [11, 3]
+        primary = [1, 1, 1, 1]
+        skills = [["Armorer", 2]]
+        army = [["Pikeman", 10]]
+        [encounter.opponent]
+        monster = "Pikeman"
+        count = 20
+        at = [14, 5]
+    "#;
+
+    #[test]
+    fn builds_the_sea_s_objects() {
+        let spec = parse(SEA).expect("spec");
+        let (map, _) = build(&spec, &tables(), "s.h3m").expect("build");
+        let bytes = h3_map::writer::write(&map).expect("writes");
+        let raw = h3_map::parse(&bytes, &h3_map::Limits::default()).expect("reads back");
+        assert_eq!(raw.objects.len(), map.objects.len());
+        let placed: Vec<(u32, u32, (u8, u8))> = map
+            .objects
+            .iter()
+            .filter_map(|o| match o {
+                MapObject::Ground(g) => Some((g.template.class, 0, g.tile)),
+                MapObject::Plain(p) => Some((p.template.class, p.template.subclass, p.tile)),
+                MapObject::Reward(r) => Some((r.template.class, 0, r.tile)),
+                MapObject::Monster(m) => Some((m.template.class, 0, m.tile)),
+                _ => None,
+            })
+            .collect();
+        assert_eq!(
+            placed,
+            [
+                (225, 0, (26, 18)),
+                (8, 1, (13, 3)),
+                (29, 0, (16, 8)),
+                (29, 0, (18, 8)),
+                (29, 0, (20, 8)),
+                (59, 0, (16, 12)),
+                (59, 0, (18, 12)),
+                (59, 0, (19, 12)),
+                (54, 0, (14, 5)),
+            ]
+        );
+        let texts: Vec<&RewardBody> = map
+            .objects
+            .iter()
+            .filter_map(|o| match o {
+                MapObject::Reward(r) => Some(&r.body),
+                _ => None,
+            })
+            .collect();
+        assert_eq!(
+            texts,
+            [
+                &RewardBody::Sign("Ahoy".into()),
+                &RewardBody::Sign(String::new()),
+                &RewardBody::Sign(String::new()),
+            ]
+        );
+    }
+
+    #[test]
+    fn rejects_mistakes_in_the_sea_s_objects() {
+        let t = tables();
+        let fails = |from: &str, to: &str| {
+            assert!(SEA.contains(from), "{from}");
+            let spec = parse(&SEA.replacen(from, to, 1)).expect("spec");
+            build(&spec, &t, "s.h3m").expect_err(to)
+        };
+        assert!(fails("at = [14, 5]", "at = [36, 5]").contains("the monster at (36, 5): off"));
+        // A boat's blocked tile under the monster.
+        assert!(fails("at = [14, 5]", "at = [12, 3]").contains("two objects on the tile (12, 3)"));
+        assert!(fails("at = [18, 12]", "at = [35, 12]").contains("the bottle at [35, 12]"));
+        assert!(fails("picture = \"avxboat1.def\"", "picture = \"avxboat2\"").contains("avxboat2"));
+        // `at` belongs to a monster: a hero opponent takes its own.
+        let hero = "monster = \"Pikeman\"\n        count = 20";
+        let as_hero = "[encounter.opponent.hero]\n        type = \"Sylvia\"";
+        assert!(SEA.contains(hero));
+        let spec = SEA
+            .replacen(hero, "", 1)
+            .replacen("        at = [14, 5]\n", "", 1)
+            + "        at = [14, 5]\n        "
+            + as_hero
+            + "\n        specialty = \"resource gold\"\n        defaults = true\n";
+        let err = build(&parse(&spec).expect("spec"), &t, "s.h3m").expect_err("hero with at");
+        assert!(err.contains("`at` with a monster only"), "{err}");
     }
 }
