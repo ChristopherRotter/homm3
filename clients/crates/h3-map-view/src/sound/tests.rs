@@ -361,7 +361,8 @@ fn each_tiles_sound_is_its_recorded_objects() {
         boat: None,
     });
     let lists = [DrawLists::build(&art, &live, &shapes, 0).unwrap()];
-    let tiles = TileSounds::build(&art, &live, &lists, &r, Some(pos(3, 1)));
+    // The original's shore (MCL-Q9): water below picture 21.
+    let tiles = TileSounds::build(&art, &live, &lists, &r, Some(pos(3, 1)), Bugs::Original);
     let at = |x, y| tiles.sound([x, y, 0], None);
     assert_eq!(
         [
@@ -401,9 +402,16 @@ fn each_tiles_sound_is_its_recorded_objects() {
             None
         ]
     );
+    // The client's shore (MCL-Q9): the coast's water only, so picture 20's buoy sounds as on
+    // open water; the shore's own water is the shore's in both.
+    let fixed = TileSounds::build(&art, &live, &lists, &r, Some(pos(3, 1)), Bugs::Fixed);
+    assert_eq!(
+        [0, 1, 2].map(|x| fixed.sound([x, 0, 0], None)),
+        [Some(69), Some(5), Some(5)]
+    );
     // The selected hero on its tile hides its sound; another hero's tile is always silent.
     assert_eq!(tiles.sound([3, 1, 0], Some(pos(3, 1))), None);
-    let others = TileSounds::build(&art, &live, &lists, &r, None);
+    let others = TileSounds::build(&art, &live, &lists, &r, None, Bugs::Fixed);
     assert_eq!(others.sound([3, 1, 0], None), None);
     // Terrains, and a tile off the map; a level without draw lists sounds as its terrain.
     assert_eq!(
@@ -416,10 +424,14 @@ fn each_tiles_sound_is_its_recorded_objects() {
         ),
         (Some(WATER), Some(2), None, None, None)
     );
-    let bare = TileSounds::build(&art, &live, &[], &r, None);
+    let bare = TileSounds::build(&art, &live, &[], &r, None, Bugs::Fixed);
     assert_eq!(
-        (bare.sound([3, 1, 0], None), bare.sound([0, 0, 0], None)),
-        (None, Some(69))
+        (
+            bare.sound([3, 1, 0], None),
+            bare.sound([0, 0, 0], None),
+            bare.sound([2, 0, 0], None)
+        ),
+        (None, Some(69), None)
     );
 }
 

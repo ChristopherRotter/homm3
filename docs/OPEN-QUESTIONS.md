@@ -95,9 +95,7 @@ The review's fix C3 follows the reading of 0x47A100: a created stack whose round
 
 ### Map client lane (`MCL-Q<n>`)
 
-#### MCL-Q9 — The shore's ambient sound takes one water picture more than the coast (E24 M2 T5)
-
-**Context.** A water tile sounds as the shore (`loopocea.wav`, before any object) when its picture is below 21 (`tile_ambient_sound` 0x418620, 0x41865A), while the map's load takes water below picture 20 as the coast (`map_tiles_load` 0x4FE220: the boats' waves, the shore battlefield; `docs/epics/E24-design.md` §2.8, §3.11). So water of picture 20, open water to every other test, plays the shore's loop within three tiles of the view's middle. **Options:** (a) the client takes the coast's 20 for the sound too; the comparisons reproduce the original's 21 (`h3_render::Bugs`); (b) the client copies 21 always (as built: the asset table's `shore_pictures`); (c) an option. **Recommendation:** (b): which pictures sound as the shore is a matter of sound only, and the table holds the number; built as the original's (both profiles). Asked again at M2's closure (E24 M2 T6b2a, 2026-10-27): the user decides later.
+(no open questions)
 
 ## Answered
 

@@ -91,16 +91,20 @@ check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gat
 Other lanes add entries here. The client lane turns each into a task, or moves its detail into
 [`NOTES.md`](NOTES.md) and keeps one line here while the work waits.
 
-- 2026-10-27 (the map client lane, E24 M2 T6b2a; **for you to answer before E24 M3 T0**):
-  **the common crate, proposed.** E24's M2 decision moves what both viewers need into one crate
-  of the client workspace common to both lanes (`lanes.toml`'s foundation list: a `shared/`
-  pull request), at E24 M3 T0 (queued behind M2's closure): `h3-view`'s `clock` and `cursor`
-  (copied into `h3-map-view` at M2: the copies go), `ui`, `text`, `layout` and the parts of
-  `mouse` that are not the battle's (`screen_to_hex` and the battle's cursor stay); from
-  `h3-map-view` the key table `keys` (both viewers' keys through it: the 2026-10-26 entry below)
-  and perhaps `music` (the 2026-10-27 entry). Asked of you: what you would rather keep in
-  `h3-view`, what E17 M5's tasks will change in these meanwhile (the move then waits for a quiet
-  point), and a name if you have one; answer in the map client lane's inbox.
+- 2026-10-28 (the map client lane, E24 M3 T0; **decided by the user for both lanes**; the
+  proposal of 2026-10-27 as it stood: `docs/lanes/map-client/QUEUE-ARCHIVE.md`): **the common crate
+  `h3-ui`** (`clients/crates/h3-ui`, common to both client lanes as the foundation is: a
+  `shared/` pull request for `lanes.toml` first) takes `h3-view`'s `clock`, `cursor` with
+  `batch::Sprite`, `ui` (with draw items of its own instead of `scene::Draw`'s) and `text`, and
+  `h3-map-view`'s `keys` (generic over a viewer's commands) and `music`; `layout` and `mouse`
+  stay in `h3-view` (battle-only). The map client lane moves it as **E24 M3 T1a** in a
+  `cross-lane` pull request (the user's consent): `h3-view`'s imports change, nothing it draws
+  or plays. Then **E24 M3 T1b** takes `h3-view window`'s keys through the table (the 2026-10-26
+  entry below), **both windows' own keys the map's** (the user: F2 music, F3 effects, F5 pause,
+  F6 the next frame, F7 restart, F8 vsync, F9 the cursor's kind, F11 fullscreen, Esc quit; P,
+  →, Home, M, E, F, V and H gone), so M5 T3b's F key is free. Starting M5 T3b before T1a and
+  T1b merge means merging `master` in after them (the imports); the map client lane tells you
+  here when each merges.
 
 - 2026-10-27 (the map client lane, E24 M2 T6a2; for the battle's end tune when its sound is next
   touched): **the music thread read whole** (`docs/exe/map.toml`: `play_music` 0x59ACB0,
