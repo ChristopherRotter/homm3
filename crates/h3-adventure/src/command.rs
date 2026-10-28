@@ -189,6 +189,11 @@ pub struct AdventureOutcome {
     /// or an event's record, a Pyramid's loot and spell. The game holds it as a rest of the visit
     /// and gives it with [`crate::AdventureState::give_won`] once the player has no open decision.
     pub reward_after: Option<(HeroId, Pos)>,
+    /// The hero and the tile of an event that fires after the visit of the monster guarding its
+    /// tile (ADV-OBJ-007, `ADV-QUIRK-29`; E08 T63b): the step onto it ended the move, the guard's
+    /// visit is the outcome's. The game holds it as a rest of the visit (GAM-DEC-007) and fires
+    /// it with [`crate::AdventureState::fire_held_event`] once the player has no open decision.
+    pub event_after: Option<(HeroId, Pos)>,
 }
 
 /// What a visit gives its hero (ADR-0017 point 10, increment 7; E08 T62a): each change passes

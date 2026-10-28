@@ -2991,10 +2991,12 @@ fn check_battle_end(
 /// battle's tile, a wandering monster (E08 T20b3b1; ADV-MON-010) or a guarded pile (E08 T21a;
 /// ADV-PIK-004). A monster: a victory of the visitor's side removes it, told as its removal, and
 /// gives the visitor's owner exactly its treasure; a draw removes it without one; else it stays
-/// with between one and the creatures it had. A pile: a victory picks it up, told as its removal,
-/// and gives the visitor's owner exactly its contents; else it stays, its guards' survivors by
-/// slot each of its stack's creature and at most its count (none after a draw). No treasury
-/// changes otherwise; no side surrenders to them or pays them.
+/// with between one and the creatures it had. A pile: a victory picks it up after the winner's
+/// levels (E08 T63b, GAM-DEC-007): in the battle's last command, told as its removal and giving
+/// the visitor's owner exactly its contents, unless the winner's level-up is left open, its
+/// guards beaten meanwhile; else it stays, its guards' survivors by slot each of its stack's
+/// creature and at most its count (none after a draw). No treasury changes otherwise; no side
+/// surrenders to them or pays them.
 fn check_unowned_battle_end(
     before: &GameState,
     after: &GameState,
@@ -3058,7 +3060,11 @@ fn check_unowned_battle_end(
             );
             prop_assert_eq!(left.is_empty(), result == BattleResult::Draw);
         }
-        (won, won.then(|| object.contents.clone()))
+        let picked = won && after.level_up(owner).is_none();
+        if won && !picked {
+            prop_assert!(after.adventure().guards_left(index).is_empty());
+        }
+        (picked, picked.then(|| object.contents.clone()))
     };
     prop_assert_eq!(after.adventure().is_removed(index), removed, "{:?}", result);
     prop_assert_eq!(removals, usize::from(removed));

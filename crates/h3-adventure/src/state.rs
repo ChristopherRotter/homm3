@@ -1207,8 +1207,10 @@ impl AdventureState {
     /// onto a tile the hero stands on (a stop, nothing visited) that fires an event
     /// ([`Self::firing_event`]) ends the move there with the points left after it, the rest of
     /// the path dropped ([`AdventureOutcome::dropped`]), and the event fires
-    /// ([`Self::fire_event`]). The hero's start is no step: a hero that starts on an event does
-    /// not fire it.
+    /// ([`Self::fire_event`]); on a tile a monster guards (a flyer stopped there is at its move's
+    /// end for the guard test) the guard visits first and the event waits for the guard's visit
+    /// ([`AdventureOutcome::event_after`], E08 T63b, `ADV-QUIRK-29`). The hero's start is no step:
+    /// a hero that starts on an event does not fire it.
     // rule: ADV-MOV-006, ADV-MOV-007, ADV-MOV-009, ADV-MOV-010, ADV-FOG-003
     // rule: ADV-OBJ-003, ADV-MON-006, GAM-MET-001, ADV-MOV-011
     fn move_hero<S: Sink>(
@@ -1273,7 +1275,7 @@ impl AdventureState {
             }
             if fired.is_none() && met.is_none() && kind == Node::Stop {
                 fired = self
-                    .firing_event(part, player, next)
+                    .firing_event(player, next)
                     .map(|event| (step, event, points));
             }
             visit = met;
@@ -1310,9 +1312,19 @@ impl AdventureState {
         }
         let rules = (core, part, heroes);
         if let Some((step, event, _)) = fired {
+            // On a guarded tile the guard visits first (a flyer stopped there is at its move's
+            // end for the guard test, 0x48147D) and the event waits for the guard's visit
+            // (0x48169D, 0x481741; E08 T63b, `ADV-QUIRK-29`).
+            let outcome = match self.guard_at(part, at) {
+                Some(guard) => AdventureOutcome {
+                    event_after: Some((id, at)),
+                    ..self.visit_monster(rules, id, guard)
+                },
+                None => self.fire_event(rules, (player, id), (event, at), sink),
+            };
             return Ok(AdventureOutcome {
                 dropped: path.len() - step - 1,
-                ..self.fire_event(rules, (player, id), (event, at), sink)
+                ..outcome
             });
         }
         let visited = visit.is_some();

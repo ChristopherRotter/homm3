@@ -29,6 +29,9 @@ pub(super) enum Rest {
     /// levels (the original's visit goes on after 0x4DA720): a pickup, a box's or an event's
     /// record, the Pyramid's loot and spell (`AdventureState::give_won`).
     Won(Pos),
+    /// The event at this tile, after the visit of the monster guarding it, for a hero still on
+    /// the tile (ADV-OBJ-007, `ADV-QUIRK-29`: `AdventureState::fire_held_event`).
+    Event(Pos),
 }
 
 /// A rest held for `owner`'s `hero`.
@@ -44,7 +47,7 @@ pub(super) struct Held {
 
 impl CanonicalHash for Held {
     /// The owner, the hero, then the rest's kind: 0 the guard's visit, 1 an experience (its
-    /// amount), 2 a won battle's reward (its tile).
+    /// amount), 2 a won battle's reward (its tile), 3 an event (its tile).
     fn hash_into(&self, h: &mut StateHasher) {
         h.write_u8(self.owner.raw());
         h.write_u16(self.hero.raw());
@@ -56,6 +59,10 @@ impl CanonicalHash for Held {
             }
             Rest::Won(tile) => {
                 h.write_u8(2);
+                tile.hash_into(h);
+            }
+            Rest::Event(tile) => {
+                h.write_u8(3);
                 tile.hash_into(h);
             }
         }
@@ -86,8 +93,9 @@ impl GameState {
 
     /// Runs one rest: the guard's visit ([`Self::visit_guard`]; nothing for a hero that left the
     /// map or a tile no monster guards any more), the experience with its levels
-    /// ([`Self::give_hero`]), or a won battle's reward (`AdventureState::give_won`; nothing when
-    /// the object left the map meanwhile), each applied as a command's outcome.
+    /// ([`Self::give_hero`]), a won battle's reward (`AdventureState::give_won`; nothing when
+    /// the object left the map meanwhile), or a held event (`AdventureState::fire_held_event`:
+    /// nothing for a hero no longer on its tile), each applied as a command's outcome.
     // rule: ADV-MON-006, ADV-RWD-001, ADV-PIK-004, ADV-PIK-013, ADV-TCH-008, ADV-OBJ-007
     fn run_rest<S: Sink>(&mut self, rules: &GameRuleset, held: Held, sink: &mut S) {
         let Held { owner, hero, rest } = held;
@@ -108,6 +116,13 @@ impl GameState {
                 let (adventure, store) = self.adventure_with_heroes();
                 let context = (rules.core(), rules.adventure(), store);
                 let outcome = adventure.give_won(context, (hero, tile), &mut AdventureSink(sink));
+                self.settle_outcome(rules, owner, outcome, sink);
+            }
+            Rest::Event(tile) => {
+                let (adventure, store) = self.adventure_with_heroes();
+                let context = (rules.core(), rules.adventure(), store);
+                let events = &mut AdventureSink(&mut *sink);
+                let outcome = adventure.fire_held_event(context, (owner, hero), tile, events);
                 self.settle_outcome(rules, owner, outcome, sink);
             }
         }

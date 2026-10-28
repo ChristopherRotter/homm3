@@ -13,8 +13,8 @@ use h3_adventure::{
 use proptest::collection::vec;
 use proptest::prelude::*;
 
-use super::decisions::{GOLD, RED, move_hero, play};
-use super::rewards::{HERO, gold, won};
+use super::decisions::{ACCEPT, GOLD, RED, move_hero, play};
+use super::rewards::{HERO, gold, guard, won};
 use super::*;
 
 const BLUE: PlayerId = PlayerId::new(1);
@@ -63,6 +63,42 @@ fn evented(rules: &GameRuleset, guarded: bool) -> GameState {
     let at = Pos::new(1, 0, 0);
     setup.map.objects = vec![event_at(rules, at, (0b01, false, true), guarded)];
     GameState::new(rules, &setup, 7).unwrap()
+}
+
+// covers: ADV-OBJ-007, ADV-MON-006, GAM-DEC-007
+#[test]
+fn an_event_on_a_guarded_tile_fires_once_the_guards_visit_is_over() {
+    let rules = rules();
+    let at = Pos::new(1, 0, 0);
+    // Two imps beside it that offer to join red's hero.
+    let mut joiner = guard(&rules);
+    if let Some(monster) = joiner.monster.as_mut() {
+        monster.disposition = 0;
+    }
+    let mut setup = setup();
+    setup.map.objects = vec![event_at(&rules, at, (0b01, false, true), false), joiner];
+    let mut state = GameState::new(&rules, &setup, 7).unwrap();
+    // The step: the guard's offer first, the event held (before E08 T63b it never fired,
+    // `ADV-STUB-10`).
+    let fired = |events: &[GameEvent]| {
+        events.iter().any(|e| {
+            matches!(
+                e,
+                GameEvent::Adventure(AdventureEvent {
+                    kind: AdventureEventKind::EventFired { .. },
+                    ..
+                })
+            )
+        })
+    };
+    let events = play(&mut state, &rules, RED, move_hero(0, &[at])).unwrap();
+    assert!(state.decision(RED).is_some() && !fired(&events));
+    assert_eq!((gold(&state), state.held_rests()), (2000, 1));
+    // Joined: the guard's visit is over, and the event fires for the hero on its tile.
+    let events = play(&mut state, &rules, RED, ACCEPT).unwrap();
+    assert!(fired(&events), "{events:?}");
+    assert_eq!((gold(&state), state.held_rests()), (2300, 0));
+    assert!(state.adventure().is_removed(0));
 }
 
 // covers: ADV-OBJ-007, ADV-MOV-011, ADV-FOG-007, GAM-RES-001
