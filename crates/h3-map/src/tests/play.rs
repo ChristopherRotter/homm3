@@ -2483,10 +2483,16 @@ fn check_conservation(
                     prop_assert_eq!(Some(player), owner);
                     prop_assert!(after.adventure().hero(id).is_some(), "{:?} levelled", id);
                     prop_assert_eq!(level, told.level + 1);
+                    // The offers' levels after the last level told are the hero's (one command
+                    // may give several levels).
                     let change = HeroChange::GainLevel {
                         primary,
                         learned: skill,
-                        offered: a.offered,
+                        offered: if level == a.level {
+                            a.offered
+                        } else {
+                            told.offered
+                        },
                     };
                     let checked = h3_heroes::check_change(&told, rules.core(), change);
                     prop_assert!(checked.is_ok(), "{:?}: {:?}", change, checked);
@@ -3898,10 +3904,16 @@ fn check_heroes_after_battle(
                     prop_assert!(stays, "{:?} levelled", id);
                     prop_assert_eq!(player, before.adventure().hero(id).unwrap().owner);
                     prop_assert_eq!(level, told.level + 1);
+                    // The offers' levels after the last level told are the hero's (one command
+                    // may give several levels).
                     let change = HeroChange::GainLevel {
                         primary,
                         learned: skill,
-                        offered: a.offered,
+                        offered: if level == a.level {
+                            a.offered
+                        } else {
+                            told.offered
+                        },
                     };
                     told.experience = experience;
                     let checked = h3_heroes::check_change(&told, rules.core(), change);
