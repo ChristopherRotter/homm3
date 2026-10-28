@@ -4,6 +4,26 @@ Finished history and informational notices moved out of `QUEUE.md` on 2026-10-24
 
 ## Notices from other lanes and finished items, newest first
 
+- 2026-10-28 (this lane, E24 M3 T1b): every key of both windows through the table (the user:
+  no cut; the log's "M3 T1b"); the queue's entry, verbatim:
+
+  ### E24 M3 T1b — the battle window's keys through the table
+
+  - **Scope:** `h3-view window`'s keys (matched in its event loop, `window.rs`) as the battle
+    viewer's commands through `h3_ui::keys`, the user's file (`--keys`, `keys.toml`: each viewer's
+    commands in its own table, *provisional*); both windows' own keys the map's (the user, T0: F2
+    music, F3 effects, F5 pause, F6 the next frame, F7 restart, F8 vsync, F9 the cursor's kind,
+    F11 fullscreen, Esc quit; the battle's P, →, Home, M, E, F, V and H gone); the battle's own
+    keys (the log's Up and Down, the book's; since E17 M5 T4a, #542, Retreat's R and Surrender's S
+    and the message box's, whose Escape is its Cancel and never the window's quit while a box, the
+    book or an aim is open; while a box is open every key but the viewer's own goes to it:
+    `viewer_key` in `window.rs`, the set this task replaces) and `h3_sdl::Key` as they are,
+    additively. The client lane's inbox told (its M5 T3b's F key then free).
+  - **Acceptance:** every key of both windows through the table; `h3-view window --check` and a
+    sequence in the window as before; check.sh green; the Definition of Done.
+  - **Depends on:** T1a (built 2026-10-28, its pull request open). **Status:** ready once T1a's
+    pull request merges.
+
 - 2026-10-28 (this lane, E24 M3 T1a, merging `master` after #542): the client lane's inbox entry
   below, taken: T1a's part merged into the move (`h3_ui::ui::Draw`'s `size` and `player`,
   `h3_view::message` on `h3_ui::{ui, text}`, `text::pack` carried by the rename), T1b's into its

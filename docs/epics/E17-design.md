@@ -3284,11 +3284,13 @@ callers), `battle_cursor`'s target (+0x10, +0x14 of the acting stack), `battle_m
   the combat cursor's frame (hardware or drawn, `Cursor::read`: 0x50D8B0's plain drawer, runs
   skipped), the marked and entered stacks and the hints re-made on a move. A panel button shows
   its click frame while the mouse holds it (and is on it) or one of its hotkeys is down (the
-  layout's `keys`: S, R, O, A, C, W, D and Space, the scan codes 0x1F, 0x13, 0x18, 0x1E, 0x2E,
+  layout's `keys`, since E24 M3 T1b the battle window's table `h3_view::keys`: S, R, O, A, C, W,
+  D and Space, the scan codes 0x1F, 0x13, 0x18, 0x1E, 0x2E,
   0x11, 0x20, 0x39; the key down presses, the key up releases: 0x4565E7, 0x4564D6); a disabled
   one takes none (0x4562DD). A replay takes no command, but the log's scroll buttons (2006, 2007)
   and the arrow keys (the battle's own, 0x4758FB) scroll it (`Logged::Scroll`). The viewer's own
-  keys moved: P pauses, Home restarts, H the cursor's kind. Not modelled there: the viewer's own
+  keys moved: P pauses, Home restarts, H the cursor's kind (since E24 M3 T1b the map window's
+  F-keys). Not modelled there: the viewer's own
   fidgets meeting the mouse's.
 - **The harness** (`capture/`): `h3mem`'s battle state reads the mouse's hex, the cursor's kind,
   type, frame and drawn point; a sequence keeps a frame where only the cursor changes too (its

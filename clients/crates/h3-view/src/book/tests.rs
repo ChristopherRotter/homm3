@@ -79,7 +79,10 @@ fn the_first_opening_shows_page_0_of_all_schools_and_the_memory_keeps_the_rest()
     assert_eq!(Book::open(&mut memory, 7), book);
     assert_eq!((book.tab, book.page), (2, 1));
     // An adventure bookmark last: the next opening shows combat spells of all schools, page 0.
-    assert_eq!(book.key(&mut memory, "A", &page), Outcome::Turned);
+    assert_eq!(
+        book.key(&mut memory, Key::Adventure, &page),
+        Outcome::Turned
+    );
     assert_eq!(Book::open(&mut memory, 7).tab, ALL);
     // Another hero forgets the last one's page and tab.
     let mut book = Book::open(&mut memory, 7);
@@ -299,17 +302,19 @@ fn the_keys_close_take_bookmarks_turn_pages_and_go_round_the_tabs() {
     let mut memory = Memory::default();
     let mut book = Book::open(&mut memory, 7);
     let first = book.page(&hero, &catalogue);
-    assert_eq!(book.key(&mut memory, "Escape", &first), Outcome::Closed);
-    assert_eq!(book.key(&mut memory, "Return", &first), Outcome::Closed);
-    assert_eq!(book.key(&mut memory, "C", &first), Outcome::Nothing);
-    assert_eq!(book.key(&mut memory, "Left", &first), Outcome::Nothing);
-    assert_eq!(book.key(&mut memory, "Right", &first), Outcome::Turned);
+    assert_eq!(book.key(&mut memory, Key::Close, &first), Outcome::Closed);
+    assert_eq!(book.key(&mut memory, Key::Combat, &first), Outcome::Nothing);
+    assert_eq!(
+        book.key(&mut memory, Key::Previous, &first),
+        Outcome::Nothing
+    );
+    assert_eq!(book.key(&mut memory, Key::Next, &first), Outcome::Turned);
     let last = book.page(&hero, &catalogue);
-    assert_eq!(book.key(&mut memory, "Right", &last), Outcome::Nothing);
-    assert_eq!(book.key(&mut memory, "Left", &last), Outcome::Turned);
+    assert_eq!(book.key(&mut memory, Key::Next, &last), Outcome::Nothing);
+    assert_eq!(book.key(&mut memory, Key::Previous, &last), Outcome::Turned);
     assert_eq!(book.page, 0);
     // From all schools up: water, fire, earth, air, all again; down from all: air.
-    let tabs: Vec<u8> = ["Up", "Up", "Up", "Up", "Up"]
+    let tabs: Vec<u8> = [Key::TabUp; 5]
         .into_iter()
         .map(|k| {
             book.key(&mut memory, k, &first);
@@ -317,11 +322,13 @@ fn the_keys_close_take_bookmarks_turn_pages_and_go_round_the_tabs() {
         })
         .collect();
     assert_eq!(tabs, [4, 2, 8, 1, ALL]);
-    book.key(&mut memory, "Down", &first);
+    book.key(&mut memory, Key::TabDown, &first);
     assert_eq!(book.tab, 1);
-    assert_eq!(book.key(&mut memory, "A", &first), Outcome::Turned);
-    assert_eq!(book.key(&mut memory, "C", &first), Outcome::Turned);
-    assert_eq!(book.key(&mut memory, "W", &first), Outcome::Nothing);
+    assert_eq!(
+        book.key(&mut memory, Key::Adventure, &first),
+        Outcome::Turned
+    );
+    assert_eq!(book.key(&mut memory, Key::Combat, &first), Outcome::Turned);
 }
 
 fn layout() -> BookLayout {
@@ -360,9 +367,11 @@ fn the_open_book_takes_presses_keys_and_the_mouse() {
         open.press(&mut memory, (&layout, &catalogue), [20, 300]),
         Outcome::Nothing
     );
-    assert_eq!(open.key(&mut memory, "Right", &catalogue), Outcome::Turned);
+    assert_eq!(
+        open.key(&mut memory, Key::Next, &catalogue),
+        Outcome::Turned
+    );
     assert_eq!(open.page.places[0].as_ref().map(|p| p.handle), Some(10));
-    assert_eq!(open.key(&mut memory, "W", &catalogue), Outcome::Nothing);
     // The mouse over place 0's icon (its centre (246, 123)): its hint, the cursor over an item.
     assert!(open.hover(&mut memory, (&layout, &catalogue), [246, 123]));
     assert_eq!((open.status.as_str(), open.cursor), ("[f10] (L1)", Some(1)));
@@ -379,7 +388,7 @@ fn the_open_book_takes_presses_keys_and_the_mouse() {
     assert_eq!((open.status.as_str(), open.cursor), ("", Some(0)));
     // On the air tab the emblem takes the mouse over place 0, whose icon is hidden.
     let mut open = Open::new(&mut memory, many(), &catalogue);
-    open.key(&mut memory, "Down", &catalogue);
+    open.key(&mut memory, Key::TabDown, &catalogue);
     assert!(open.hover(&mut memory, (&layout, &catalogue), [246, 123]));
     // Reopened, the mouse resting on the item it was over last: no hint (0x684B4C is never
     // reset; CLT-Q26).
