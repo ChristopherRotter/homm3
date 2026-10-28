@@ -2,7 +2,8 @@
 
 Status: **refined** (2026-10-23, T0, with the user); **M1 closed** (2026-10-24, T6b: the
 reviewers, the review list accepted by the user); **M2 refined** (2026-10-26, M2 T0, with the
-user); next M2 T6b2c (`docs/lanes/map-client/QUEUE.md`).
+user); **M2 closed** (2026-10-28, T6b2c: the user's hand test, the review list accepted at
+T6b2a); next M3 T0 (`docs/lanes/map-client/QUEUE.md`).
 Lane: map-client (`docs/lanes/map-client/HANDOFF.md`: the autonomy contract, the user's asset
 notes). Opened 2026-10-23 when the user split the client lane at E17 M3's closure (CLT-Q18).
 Decisions so far live here (no ADR of its own yet; ADR-0020 and ADR-0024 bind it as they bind
@@ -80,101 +81,14 @@ autonomy contract (lane HANDOFF) says what the agent decides alone in between. T
 
 Tasks T0 to T6b and the exit record: `E24-archive.md` (verbatim); the build record: `E24-log.md`; the design: `E24-design.md` §1, §2. The set of 40 captured situations (`clients/map/situations/`) is exact; a change to the viewer runs `h3map.py drawn` first (the runbook).
 
-### M2 — the map moving (refined 2026-10-26, M2 T0, with the user)
+### M2 — the map moving (closed 2026-10-28)
 
-The objects' animations and the terrain's colour cycles over time, the view scrolling, a hero's
-walk along its path (the path's arrows), in a window at the original's frame times (`h3-sdl`)
-with the map's sound, checked frame by frame against recorded sequences as E17 M2 did for the
-battle.
-
-- **Scope:** the map standing still over time (the objects' step at each redraw, every 180 ms;
-  the colour cycles' ticks every 200 ms, shown at the next redraw: `E24-design.md` §1.6); the
-  scroll, by whole tiles (the manager's pixel offset only a walk writes: design §3.5), by
-  Ctrl and the arrow keys and the mouse at the screen's edges, at each map scroll speed, with the
-  edge cursors; a hero's walk along its path: its groups and frames, its pixel steps, the timing at
-  each hero speed (the enemy speed read with it), the view following it, the path's arrows
-  taken away step by step, on land in the eight directions and a boat sailing; the map's sound;
-  the window. **Not in M2:** boarding and landing, teleports, visits and their dialogs,
-  battles, the computer's heroes moving (M4); the rest of the mouse (M3).
-- **Decisions (the user, M2 T0; every recommendation taken):**
-  - **Walks are scripted in M2.** The walk is built for real (its input: a hero walks along
-    these tiles; M4 and M5 reuse it unchanged); in M2 its tiles come from the recorded
-    sequences (the original's path, read from its memory). The engine supplies them from M4 (a
-    game's record) and M5 (the player's click, the engine's path and move): the path always
-    comes from the engine (server-authoritative), never from a pathfinder in the client.
-  - **The map's sound is in M2** (T5): the terrain music, the objects' ambient loops, the hero's
-    step sounds; the map's own (`h3_view::sound` is the battle's opening and end), on E17's
-    pieces (`h3_assets::snd`, `wav`, `nanomp3`, `h3-sdl`'s audio).
-  - **`h3-view`'s `clock` and `cursor` are copied** into `h3-map-view` (*provisional*, an origin
-    comment each); M3 T0 proposes one common crate for both lanes (`clock`, `cursor`, `ui`,
-    `text`, `layout`, `mouse`) in one `shared/` pull request agreed with the client lane, and
-    the copies go.
-  - **Recorded and compared as E17 M2: every frame.** `clients/map/sequences.toml`: each
-    sequence a situation (of the set or its own), its options (hero speed, scroll speed) and its
-    inputs with their times (a key held and released, the pointer at a place, a tile clicked
-    twice), until a time. `h3map.py frames [--only <id>]` plays it in the original on the virtual
-    clock 1 ms at a time and keeps every screen whose view changed, with its time and the
-    state read from memory (the view's corner, the objects' step, both palette steps, the
-    moving hero's tile, offset, group and frame, the arrows left): the timeline committed
-    (`clients/map/timelines/<id>.txt`, numbers only), the screens local. `h3-map-view
-    sequences [<id>]` makes the viewer's timeline from the situation and the inputs (every line
-    as recorded, exit 1 on a difference; the unit tests replay the timelines without the
-    original files) and with `--frames <dir>` draws its frame at each kept time; compared pixel
-    by pixel outside the panels (the original's until M3), each frame's count recorded
-    (`timelines/<id>-frames.txt`); `drawn` covers the sequences (`STALE` when one changed).
-  - **Key bindings** (the user, 2026-10-26, at T1b's start): no key hard-coded in the client;
-    T4's window takes every key through a table of actions, the original's keys as its defaults,
-    a user file overriding them; M3 T0 moves the table into the common crate (the battle
-    viewer's keys too); a screen to rebind them comes with the options dialog.
-  - **The edge scroll's zones** (MCL-Q6, the user, 2026-10-26): 16 pixels on every side, the
-    original's 16, 14, 16 and 15 for the comparisons only (`--bugs original`).
-- **The queued M1 items:** R2-8 (the writer's edge bound): no task needed the writer, so T6b1
-  made its one-line `cross-lane` pull request (#523). A loaded saved game's draw lists: M4.
-- **Tasks** (the queue has each in full): T1a1, the recording and the map standing still
-  (**done** 2026-10-26: `h3map.py frames`, two idle sequences; `E24-log.md`, design §3), and
-  T1a2, the scroll (T1a cut at its seam before it started, the user, 2026-10-26; **done**
-  2026-10-26: Ctrl and the direction keys, the edge every 70 ms, the limits, the edge cursors,
-  four sequences; design §3.4, MCL-Q6 answered); T1b, the walk
-  read and recorded (**done** 2026-10-26, whole: the lifted hero at the view's centre, the view
-  sliding by pixels, seven sequences; design §3.5); T2, the map over time headless (**done**
-  2026-10-27, whole: `h3_map_view::timeline`, `h3-map-view sequences`, the edge cursors, the
-  harness's frame check, `drawn` over the sequences; T1a's six sequences exact line by line and
-  frame by frame; design §3.6); T3, the walk, cut at its seam before it started (the user,
-  2026-10-27): T3a, its timing headless (**done** 2026-10-27: the walk in `h3_map_view::timeline`,
-  T1b's seven sequences exact line by line but the `screen` boxes; design §3.7), T3b, the walk
-  drawn (**done** 2026-10-27, whole: the lifted hero at the view's middle and its blended pass 9,
-  the view's offset, the late redraw drawn again; T1b's seven recorded again, every line and all
-  269 frames exact; design §3.8; MCL-Q7 open); T4, the window, cut at its seam before it started
-  (the user, 2026-10-27): T4a, the window replaying and the key table (**done** 2026-10-27:
-  `h3-map-view window`, `h3_map_view::keys` and `replay`, every frame read back exact; design
-  §3.9); T4b cut at its seam before it started (the user, 2026-10-27): T4b1, the live input
-  (**done** 2026-10-27: the keys, the keypad's and their repeats, the edge scroll, the clicks, the
-  hardware or drawn cursor, `Replay::give`, every change shown checked against a headless play;
-  design §3.10), T4b2, the Windows build tried on the user's machine (**done** 2026-10-27:
-  every frame read back exact on Windows, the delays measured, the user's findings; design
-  §3.10; MCL-Q10 asked and answered), T4b3, the view's drawing made fast (the user, at T4b2:
-  "the client should run on really old hardware too"; **done** 2026-10-27: the drawers by rows,
-  31 times fewer instructions a view, every frame unchanged, none passed over on the user's
-  machine; design §3.12; MCL-Q11 asked); T5, the sound (**done**
-  2026-10-27, whole: the terrain music, the step sounds and the ambient loops read;
-  `h3_map_view::sound`, cued by the timeline and the replay, played by the window; the gate's
-  check of the sounds; design §3.11; MCL-Q8, MCL-Q9 open); T6, M2's closure, cut at its seam
-  before it started (the user, 2026-10-27): T6a, the reviewers and their fixes (**done**
-  2026-10-27: three reviewers, 29 findings, 24 fixed; the music player's five cut out as T6a2 by
-  the user; design §3.7 corrected; MCL-Q11 answered), T6a2, the music player as the original's
-  music thread (**done** 2026-10-27, whole: `play_music`, `music_thread` and `music_stop_fade`
-  read; `h3_map_view::music` and the window's music on it, the five findings fixed; design §3.11;
-  MCL-Q12 asked), T6b, the closure, cut at its seam before it started (the user, 2026-10-27):
-  T6b1, the recordings again (**done** 2026-10-27: the 13 sequences, every line and all 450
-  frames exact, T6a's harness changes run; the 40 stills exact; R2-8 as #523), T6b2, the
-  closure with the user, cut at its seam (the user, 2026-10-27): T6b2a, the review list and the
-  questions (**done** 2026-10-27: the review list accepted; MCL-Q7, Q8 and Q12 answered, MCL-Q9
-  left open; a build of `master` and a checklist on the user's machine), T6b2b, the answers
-  built (**done** 2026-10-28: MCL-Q7, Q8 and Q12 the client's, the original's behind `--bugs
-  original`; design §3.8, §3.11), T6b2c, the hand test and M2 archived.
-- **Exit:** every recorded sequence as recorded, line by line and frame by frame (or each
-  difference an `MCL-Q<n>`); a situation and a sequence play in the window at the original's
-  frame times, with its sound, and render headless frame by frame.
+Scope, decisions, tasks T1a1 to T6b2c and the exit record: `E24-archive.md` (verbatim); the build
+record: `E24-log.md`; the design: `E24-design.md` §3. Its decisions that bind later milestones
+(in the archive): the walk's path always the engine's (M4, M5), never a client pathfinder; M3
+T0's common crate for both lanes, the key table moved into it; the edge scroll's 16 pixels
+(MCL-Q6). The 13 recorded sequences (`clients/map/sequences.toml`, `timelines/`) are exact; a
+change to the viewer runs `h3map.py drawn` first (it checks every timeline too).
 
 ### Later (refined when they come)
 
@@ -228,58 +142,5 @@ battle.
 
 ## Review lists
 
-M1's review lists (three reviewers, T6b; the list accepted): `E24-archive.md`. Later milestones add theirs here.
-
-**M2's review list** (the autonomy contract's "queue for the milestone review"; T6a's 29
-findings all fixed, none added; **accepted by the user** at T6b2a, 2026-10-27):
-
-- **M2 T4a, the key table** (*provisional*): the user's file a TOML table of commands by name
-  (`scroll-north` … `hero-north-west`, `pause`, `frame`, `restart`, `vsync`, `fullscreen`,
-  `quit`), each with its list of chords (`"Ctrl+Up"`), replacing that command's defaults, `[]`
-  unbinding it; its place `--keys`, else `keys.toml` in the working directory; a chord matches
-  exactly (Ctrl and a key is not the key).
-- **M2 T4a, the window's own keys:** F5 pause, F6 the next frame while paused, F7 restart, F8
-  vsync, F11 fullscreen, Esc quit, not `h3-view window`'s P, →, Home, F and V: the original's
-  map takes the direction keys and nearly every letter (design §3.9). M3 T0's common table
-  decides both viewers'.
-- **M2 T4a, the replay's cursor:** drawn in the frame at the recorded point, the system's pointer
-  hidden over the window and the mouse doing nothing until T4b.
-- **M2 T4b1, the live input** (*provisional*): a held key's repeats are the system's (the
-  original's way); the keypad's eight keys bound with the direction keys in either NumLock
-  state; F9 the cursor's kind, the hardware cursor the default; the pointer over the view the
-  arrow (M3's tile cursors), a click on the button's press; a situation's hero the viewer's only
-  one; the pointer off the window parked off the frame (no edge scrolls); the view composed whole
-  after an input (30 to 60 ms in the sandbox; an incremental scroll left for later); a user's
-  file binds only the adapter's keys (`h3_sdl::Key`: 13 letters, M3's hotkeys add the rest).
-- **M2 T5, the sound** (*provisional*): the tables' `[map.sound]` and a terrain's `music` and
-  `step` (the format: `clients/README.md`); the volumes as gains at the settings' highest (no
-  settings yet); F2 the music and F3 the effects (effects off holds the gains at 0, the loops
-  running on); the music's fades applied to its samples as queued (the device's time); a track
-  decoded on a thread when first asked for; the ambient slots on four streams (the original's
-  category of eight handles, at most four used); a flying hero's step sound unused until M4 (the
-  engine's); the cues not compared with the original (the harness plays without sound); an
-  abandoned mine by H3API's flag (the map's 220 or subclass 7, its set-up not read).
-- **M2 T4b2, the Windows build:** `h3-map-view.exe` looks for `clients/map` and the installation
-  copy where it was built (`CARGO_MANIFEST_DIR`), so the user's `.cmd` files name `--map` and
-  `--install` (`h3-view` looks above the exe; one way for both in M3 T0's common crate).
-- **M2 T4b3, the view drawn fast** (*provisional*): `h3-render`'s `Screen::pixels_mut`
-  (additive, the foundation's); every asset a view of the map draws at 0 decoded when the map
-  loads (a big map's load longer, no decoding during a walk); the window's report gives how long
-  each frame took to make; a frame of a near-empty view still about 4 ms on the user's machine
-  (the inbox: the user, "we should check back in at some point").
-- **M2 T6a, the reviewers' findings** (*provisional*): a key without a binding (Ctrl alone, M3's
-  hotkeys) ends no path's walk yet (the adapter's keys only; the original's any key-down does);
-  the option Show Route taken on (a walk a message ended shows the rest of its path again); the
-  actions of one millisecond handled one after another, as the harness gives them (a click's
-  walk empties only what waited behind it during a key's step); a situation's view at most the
-  map's side off the map (the original's own range the harness's check); `h3-sdl`'s
-  `Window::focused()` (additive; true until SDL says the focus left: Xvfb without a window
-  manager sends none) and the pointer given off the frame without the focus; a point on the
-  window off the frame taken as the frame's nearest (fullscreen's bars); `frames` writes no
-  scroll time and releases the direction keys and Ctrl at a run's start.
-- **M2 T6a2, the music** (*provisional*): `h3_map_view::music` on a clock of the frames the
-  device has played, a second queued ahead and taken back when a request is taken; a track still
-  being decoded holds the music (silence; the original opens its file at once) and counts as
-  playing for a request of its name; a track not of 44.1 kHz stereo refused (one stream format);
-  a track's place what is heard where its fade began (Miles' position not read); the sound
-  without the focus not built (the inbox).
+M1's review lists (three reviewers, T6b; the list accepted) and M2's (accepted at T6b2a):
+`E24-archive.md`. Later milestones add theirs here.

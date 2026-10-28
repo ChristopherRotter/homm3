@@ -1139,3 +1139,24 @@ default to the fixes.
 - **For T6b2c:** `h3-map-view.exe` of this branch cross-built into the user's `clients/out/win/`
   (T6b2a's kept as `h3-map-view-t6b2a.exe`); `map-try.cmd`'s item 2c and the notes' line now
   say Grass comes back (the notes were still blank).
+
+### M2 T6b2c — the hand test and M2 archived (2026-10-28)
+
+On `map-client/e24-m2-t6b2c` (docs only, on T6b2b's branch, #532), the user at the machine.
+
+- **The hand test** (`clients/out/win/map-try.cmd`, the `h3-map-view.exe` of T6b2b's branch): a
+  first run stopped by Ctrl+C after run 1 (the console's Ctrl+C ends the script, and the window
+  without its report; Esc closes a window), then run again whole. Run 1, `path-objects` (Alt+Tab
+  with the pointer at an edge, fullscreen's bars, F7 at an edge): the user, "everything in
+  map-try worked for me". Run 2, `seq-walk`: "sound seems fine". Its cues: Dirt asked for at
+  9 606 ms and Grass 231 ms later, Dirt at 11 415 and Grass 635 ms later, each within Grass's
+  900 ms fade-out, so with MCL-Q12's fix Grass came back after its fade both times and Dirt was
+  never heard. A plain switch with Dirt fading in (items 2a and 2b) did not happen in this run;
+  its path is Grass's fade-in from its place, which was heard, and T6a2 checked it
+  sample-exact in the sandbox. The window's figures on Windows (direct3d11, WASAPI): a frame
+  made in 5.3 and 3.3 ms (median), shown at most 27.5 ms after its time.
+- **No finding, no new question.** M2's exit holds; its review list was accepted at T6b2a.
+- **M2 archived:** its section (scope, decisions, task list, exit) and its review list moved
+  verbatim to `E24-archive.md`, a stub with the decisions that bind later milestones left in the
+  epic; the queue's M2 history and T6b2c's entry to `QUEUE-ARCHIVE.md`; the HANDOFF's M2 lines
+  trimmed. Next: M3 T0 with the user.
