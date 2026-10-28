@@ -5,7 +5,7 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 ## Current state
 
 - **E08**: increments 1 to 6 **closed**. **Increment 7: rewards on the map** (decisions 121–156, ADV-Q26 to ADV-Q30): T54 to T64a done (T64a #538 merged); round 8: **T64b** done (`adventure/e08-t64b`, decision 156, whole: increment 7's kinds in `h3-map`'s property plans with their checks and `check_rewards`, the cover test, the hidden-event property with a guard, decision 133's maps `fixtures/maps/e08-{boxes,stones}-144.h3m` and `fork-boxes-xl-144`, `fork-stones-xl-144`). **T64 done.** Records: `E08-log.md`; increment 6's in `E08-archive.md`.
-- **Open pull requests:** T64b's, from `adventure/e08-t64b`, and #543 (`shared/e08-t64b-benches`: the benches README's two rows for its workloads).
+- **Open pull requests:** #544 (`adventure/e08-t64b`, T64b) and #543 (`shared/e08-t64b-benches`: the benches README's two rows for its workloads).
 - **Next:** merge T64b's pull requests; then T65 (`QUEUE.md`: the audit of increment 7's exit criteria, increment 7 closed, increment 8 refined with the user), its cut confirmed at its start.
 - **Versions** (`docs/08-work-process.md`, "Versions"): game state hash v19 (T63b), adventure state hash v15 (T62b2), adventure ruleset part v12 (T61a), map import v13 (`MAP_IMPORT_VERSION`, T61b), adventure replay format v7 (T63a); the env's action encoding v5 is the AI lane's (T63a's `cross-lane` bump). Built so far, by area: `OVERVIEW.md`; ownership: `lanes.toml` (the details are in `OVERVIEW.md`, "Ownership").
 - **ADRs accepted**: ADR-0015 to -0017 (2026-10-10), amended for increments 2 to 7 (last: T59, with ADR-0013).
@@ -21,7 +21,7 @@ Moved to `TRAPS.md`: forks without deep copies, RNG seeds server-only, template 
 
 ### 2026-10-28 — increment 7, round 8: T64b, the properties and the 144 × 144 maps
 
-Baseline c4ae2fa (#537, #538 merged, CI green; the sandbox's light gates passed; the original data staged from the user's computer). The user's cut (decision 156): whole. `h3-map`: 35 kinds of increment 7 in the property plans (`REWARDS`), the driver's checks taught their offers, choices, gains, losses and levels, `check_rewards`, `the_plans_visit_every_kind_and_answer_every_decision` (512 cases), the view property's end at a visit's contents, `the_plans_meet_and_manage` at 320 cases; `tests/full_maps.rs` with `e08-{boxes,stones}-144.h3m`; `h3-game`'s hidden-event property with a guard; `fork-boxes-xl-144`, `fork-stones-xl-144` (2 367 Ir a fork); no version, no engine bug found (long runs up to 4 000 cases). The scoped verify with the original data passed. Pull requests: see "Current state".
+Baseline c4ae2fa (#537, #538 merged, CI green; the sandbox's light gates passed; the original data staged from the user's computer). The user's cut (decision 156): whole. `h3-map`: 35 kinds of increment 7 in the property plans (`REWARDS`), the driver's checks taught their offers, choices, gains, losses and levels, `check_rewards`, `the_plans_visit_every_kind_and_answer_every_decision` (512 cases), the view property's end at a visit's contents, `the_plans_meet_and_manage` at 320 cases; `tests/full_maps.rs` with `e08-{boxes,stones}-144.h3m`; `h3-game`'s hidden-event property with a guard; `fork-boxes-xl-144`, `fork-stones-xl-144` (2 367 Ir a fork); no version, no engine bug found (long runs up to 4 000 cases). The scoped verify with the original data passed. Pull requests #544 and #543.
 
 ### 2026-10-28 — increment 7, round 8: T64a, the rewards map, its replays and benchmarks
 
