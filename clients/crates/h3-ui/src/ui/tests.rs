@@ -415,3 +415,27 @@ fn a_dialog_with_a_shadow_darkens_two_strips_twice_inside() {
     let draws = d.draws(&Shown::default(), "P.pal");
     assert!(matches!(draws[4], Draw::Picture { .. }));
 }
+
+#[test]
+fn a_button_takes_a_players_colours_and_a_def_by_its_id() {
+    // The adventure screen's buttons in the viewer's colours (0x4569E0) and its underground's
+    // DEF by the level (0x403C40; E24 M3 T2a).
+    let shown = Shown {
+        players: BTreeMap::from([(2, 5)]),
+        defs: BTreeMap::from([(3, "t.def".to_string())]),
+        ..Shown::default()
+    };
+    let draws = dialog().draws(&shown, "players.pal");
+    let buttons: Vec<_> = draws
+        .iter()
+        .filter_map(|d| match d {
+            Draw::Button { def, player, .. } => Some((def.as_str(), player.clone())),
+            _ => None,
+        })
+        .collect();
+    let five = PlayerColours {
+        palette: "players.pal".to_string(),
+        player: 5,
+    };
+    assert_eq!(buttons, [("b.def", Some(five)), ("t.def", None)]);
+}

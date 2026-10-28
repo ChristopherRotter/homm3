@@ -604,9 +604,13 @@ set goes on (E24 M1 T6b). Before any write into the game's memory `still` checks
 redirected every roll's call (the executable read) and that the process it reads is the game it
 started; after the dump it checks that the facings and boats' colours it staged are what memory
 holds, and that `still.xwd` is the screen compared (T6b). A capture run alone:
-T4b's runs beside a build failed so. Masked (`h3map.MASKS`): the panels right of x 608 and below y 552 (M3 draws them)
-and the cursor parked over the right panel. Every situation of T3b2 is exact; `set.toml` records
-the counts. The menus run in real time, so each run's k and frame steps differ: they are read,
+T4b's runs beside a build failed so. Masked (`h3map.MASKS`, since E24 M3 T2a read from
+`map/masks.toml`, which the viewer's `sequences` reads too): until M3 T2a the panels right of x
+608 and below y 552 and the cursor parked over the right panel; since then only what M3's later
+tasks draw (the minimap, the lists' contents, the status window, the amounts and the date, the
+status bar's hint): the frame picture, the buttons, the status bar's and the resource bar's
+pictures and the parked cursor (the live part's `pointer`) are compared. Every situation of T3b2
+is exact; `set.toml` records the counts. The menus run in real time, so each run's k and frame steps differ: they are read,
 never assumed.
 
 **The map's sequences** (E24 M2 T1a1, the map client lane; `docs/epics/E24-design.md` §3): from
@@ -625,11 +629,12 @@ harness's own timers: the phase between them is the map's load's real time) and 
 tick and the redraw ran at 0. Then 1-ms steps (each waits for 500 clock reads, as E17's
 sequences) to `ms`, each followed by the state memory holds (the view, the frame steps, both
 kinds' palette steps by `cycle_now`, the next times) and the screen (`Game.settled`): each screen
-whose pixels outside the panels changed is kept (`<out>/<id>/frames/t<ms>.npz`, its state in
+whose pixels outside the panels' mask changed is kept (`<out>/<id>/frames/t<ms>.npz`, its state in
 `frames.jsonl`, every step's in `states.jsonl`; local, never in git). Written: the timeline
 (`timeline.txt`, numbers only: the changes of the view, the objects' steps and the palette steps,
-each counted from 0 since each run's own start differs, and where the screen changed: E24
-design §3.2) against the one recorded in
+each counted from 0 since each run's own start differs, since E24 M3 T2a move hero's and next
+hero's states (`buttons`, `Mem.buttons`), and where the screen changed: E24 design §3.2) against
+the one recorded in
 `map/timelines/<id>.txt` (`ok`, `CHANGED`, `new`), and the live part the screen shows at 0
 (`live.toml`, a still's), with which the viewer's frame at 0 is drawn and compared (`ours.png`,
 `diff.png`; it must be exact). A run as recorded or new keeps that live part as

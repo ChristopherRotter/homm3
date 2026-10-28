@@ -2,6 +2,7 @@
 0 objects 0
 0 cycles 0 0
 0 cursor 1 0 700 300
+0 buttons 0 1
 180 objects 1
 200 cycles 1 1
 360 objects 2

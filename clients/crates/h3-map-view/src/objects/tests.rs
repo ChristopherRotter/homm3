@@ -81,6 +81,8 @@ fn live(objects: usize) -> Live {
         path: Vec::new(),
         moment: Moment::default(),
         walking: crate::live::Walking::default(),
+        kingdom: crate::live::Kingdom::default(),
+        buttons: None,
     }
 }
 

@@ -308,6 +308,8 @@ fn map_with(objects: &[(TemplateArt, (u8, u8))], wide: &[usize]) -> (MapArt, Liv
         path: Vec::new(),
         moment: Moment::default(),
         walking: Walking::default(),
+        kingdom: crate::live::Kingdom::default(),
+        buttons: None,
     };
     (art, live, shapes)
 }
