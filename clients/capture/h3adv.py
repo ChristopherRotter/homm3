@@ -37,7 +37,11 @@ first click only), `days` (wait for the hero's next turns), `each` with `walk = 
 `select` (a grid of tiles), a list of observations per field, `+<field>`, `[[require]]` (a new game
 started again until its draws hold an artifact in each grid), and the observations word:x,y,
 object:x,y, choice, message_pictures, level_up_dialogs, treasury, offering:<skill>, map_kind,
-opening:rows, morale:start, luck:start (the README's "Rewards on the map").
+opening:rows, morale:start, luck:start (the README's "Rewards on the map"). Since E08 T68a
+(batch E8a): `key` (a key pressed for the selected hero), `again_if = { marks = <n> }` (the second
+click only after that many marks), `only_if = "aboard"`, and the observations boat, boat[<hero>],
+boat:x,y, boats:used, drawn, opening:field, battlefield:ship, blocked, again, key and a Flotsam's
+object:x,y (the README's "Boats and the sea").
 
 Library use: to_hot_seat, dismiss, end_turn, select, centre, hover, walk, observe,
 open_hero_screen, equip; since E08 T47a screen_kind, click_item, right_click, run_actions,
@@ -538,6 +542,8 @@ def fight(game, mem, plan, limit=300.0):
     wait_for(lambda: mem.stacks(), "the battle's stacks", 10)
     time.sleep(0.5)
     record = {"plan": plan, "field": mem.battlefield(), "start": stacks(mem),
+              # E08 T68a: the hexes an obstacle blocks at the opening (batch E8's openings).
+              "blocked": mem.obstacle_hexes(),
               # E08 T57: every stack's record at the opening (army slot, morale, luck, ...).
               "opening": [{k: st[k] for k in ("side", "army_slot", "hex", "creature", "count",
                                                 "morale", "luck")} for st in mem.stacks()]}
@@ -833,11 +839,13 @@ def ready(game, mem, name, target, days=0, near=False):
 
 
 def walk(game, mem, name, target, answer=None, battle=None, level_up="left", actions=None,
-         choice=None, once=False):
+         choice=None, once=False, again_if=None):
     """Selects the hero, clicks the target tile once (the path shows: its marks are read) and
     again (the hero goes, or not, or visits what stands there), waits until it rests, answering
     questions and playing battles on the way (settle); returns the observation. With `once`
-    (E08 T57, batch E7's E7-23) only the first click: the path is read and the hero stays."""
+    (E08 T57, batch E7's E7-23) only the first click: the path is read and the hero stays. With
+    `again_if = { marks = <n> }` (E08 T68a, batch E8a's E8-4) the second click only when the first
+    showed that many marks (`again`: yes or no)."""
     hero = select(game, mem, name)
     index = hero["index"]
     x, y, z = (*target, 0) if len(target) == 2 else target
@@ -850,7 +858,8 @@ def walk(game, mem, name, target, answer=None, battle=None, level_up="left", act
     # The game walks on a click on the hero's current destination: a path to this tile set
     # before makes the first click walk.
     first_walked = observe(mem, index) != before
-    if not first_walked and not once:
+    again = not once and (again_if is None or len(path) == again_if["marks"])
+    if not first_walked and again:
         game.click(*hover(game, mem, x, y, z), 0.3)
         game.move(*PARK)
     after, events = settle(game, mem, index, answer, battle, level_up, actions, choice)
@@ -861,8 +870,28 @@ def walk(game, mem, name, target, answer=None, battle=None, level_up="left", act
         "path": colours, "tiles": sorted(path, key=lambda t: (t[2], t[1], t[0])),
         "arrived": after["tile"] == [x, y, z],
         "moved": after["tile"] != before["tile"], "points_before": before["points"],
-        "points": after["points"], "first_click_walked": first_walked, **events,
+        "points": after["points"], "first_click_walked": first_walked,
+        "again": "yes" if again else "no", **events,
     }
+
+
+def press(game, mem, name, key):
+    """Selects the hero, centres the view on it and presses `key` once (E08 T68a, batch E8a's
+    E8-7: the arrow key that steps the selected hero), waiting until it rests (settle); returns
+    the observation: `key` says whether the hero stepped, the view scrolled or nothing moved."""
+    hero = select(game, mem, name)
+    index = hero["index"]
+    centre(game, mem, *hero["tile"])
+    game.move(*PARK)
+    time.sleep(0.3)
+    before, view = observe(mem, index), mem.view()
+    game.key(key, 0.5)
+    after, events = settle(game, mem, index)
+    moved = after["tile"] != before["tile"]
+    return {"hero": name, "index": index, "from": before["tile"], "tile": after["tile"],
+            "key": "stepped" if moved else "scrolled" if mem.view() != view else "nothing",
+            "moved": moved, "points_before": before["points"], "points": after["points"],
+            **events}
 
 
 # -- the hero screen (E08 T37a: batch E5's E5-3b and E5-10b) --------------------------------------
@@ -1382,6 +1411,49 @@ def held_artifact(tile):
     return None
 
 
+# A Flotsam's gains by its word (E08 T68a; survey E08-sea.md §8.2: the visit's switch 0x4A2470).
+FLOTSAM = {0: "nothing", 1: "5 wood", 2: "5 wood, 200 gold", 3: "10 wood, 500 gold"}
+
+
+def boat_text(mem, boat):
+    """A boat's record (E08 T68a; structs.toml "boat"): `tile 20,4,0; in use 1; type 0; facing 2;
+    owner red; captain E8-1; aboard 1` (the owner `none` for -1, the captain by its hero's name
+    among the 156, `none` for -1)."""
+    captain, colour = boat["hero"], boat["colour"]
+    return (f"tile {','.join(map(str, boat['tile']))}; in use {boat['used']}; type {boat['type']}; "
+            f"facing {boat['facing']}; owner {COLOURS[colour] if 0 <= colour < 8 else 'none'}; "
+            f"captain {mem.hero(captain)['name'] if 0 <= captain < h3mem.HERO_COUNT else 'none'}"
+            f"; aboard {boat['aboard']}")
+
+
+def boat_value(mem, hero, what):
+    """`boat` (the boat in use whose captain is the step's hero, the one aboard first, else the
+    last: E08 T68a), `boat[<hero>]` the same for a hero named, `boat:x,y[,z]` the boat in use
+    whose record stands on the tile, `boats:used` how many are in use; `none` for no boat."""
+    boats = mem.boats()
+    if what == "boats:used":
+        return str(sum(1 for b in boats if b["used"]))
+    if m := re.match(r"boat:(\d+),(\d+)(?:,(\d))?$", what):
+        tile = [int(m.group(1)), int(m.group(2)), int(m.group(3) or 0)]
+        found = [b for b in boats if b["used"] and b["tile"] == tile]
+    else:
+        found = sorted((b for b in boats if b["used"] and b["hero"] == hero["index"]),
+                       key=lambda b: b["aboard"])
+    return boat_text(mem, found[-1]) if found else "none"
+
+
+def drawn_text(mem, hero):
+    """What the view draws on the hero's tile (E08 T68a, batch E8a-water's E8-5): `a hero in a
+    boat (type t, flag c)`, `a hero` or `no hero` (h3mem.map_heroes)."""
+    x, y, z = hero["tile"]
+    heroes, _ = mem.map_heroes(z)
+    found = [h for h in heroes if h[:2] == [x, y]]
+    if not found:
+        return "no hero"
+    boat_type, flag = found[0][6:8]
+    return f"a hero in a boat (type {boat_type}, flag {flag})" if boat_type >= 0 else "a hero"
+
+
 def object_text(mem, x, y, z=0):
     """What the object anchored at (x, y, z) holds, from its word (E08 T57, batch E7; survey
     E08-rewards.md and map.toml's visit functions): an artifact's name (5, the subclass); a
@@ -1391,7 +1463,8 @@ def object_text(mem, x, y, z=0):
     Tomb's `artifact <name>` or `empty` (bit 0, bits 13-22); a Shrine's spell (88-90, bits 13-22
     signed); a Witch Hut's skill (113, bits 13-19 signed); a University's four skills (104, the
     game's Universities at bits 13-24); a Pyramid's `guarded` or `looted` and its spell (63, bit 0,
-    bits 13-20); `Pandora's Box`, `event`, `Spell Scroll`; `none` without an object (class 0)."""
+    bits 13-20); `Pandora's Box`, `event`, `Spell Scroll`; `none` without an object (class 0).
+    Since E08 T68a a Flotsam's gains (29, the word 0-3: survey E08-sea.md §8.2)."""
     tile = mem.object_at(x, y, z)
     kind, word = tile["class"], tile["word"]
     artifact = held_artifact(tile)
@@ -1421,13 +1494,16 @@ def object_text(mem, x, y, z=0):
         return ", ".join(h3mem.SKILLS[k] for k in found[index])
     if kind == 63:
         return f"{'guarded' if word & 1 else 'looted'}, {mem.spell_name(word >> 13 & 0xFF)}"
+    if kind == 29:
+        return "Flotsam: " + FLOTSAM.get(word, f"word {word} (nothing)")
     return {6: "Pandora's Box", 26: "event", 93: "Spell Scroll"}.get(kind, f"class {kind}")
 
 
 # The observations read from the game's memory as it stands, not from a step's snapshot: under
 # `before:` they are read right before the step (E08 T57: `pre_read`), else they would show the
 # state after it.
-LIVE_READS = ("explored", "word", "object", "monster", "aggression", "never_flees")
+LIVE_READS = ("explored", "word", "object", "monster", "aggression", "never_flees", "boat",
+              "boats", "drawn")
 
 
 def pre_read(step, before, mem):
@@ -1620,6 +1696,29 @@ def value(obs, what, mem):
         if colour < 0:
             raise ValueError(f"`{what}`: the step's hero is off the map; name the player")
         return yes[mem.explored(int(m.group(1)), int(m.group(2)), int(m.group(3) or 0), colour)]
+    # E08 T68a (batch E8a): the boats' records (boat_value), what the view draws on a hero's
+    # tile, the last battle's opening (terrain, special field, ship flag, the obstacles' hexes),
+    # whether a walk's second click was made (`again_if`) and what an arrow key did (`key`).
+    if what in ("boat", "boats:used") or re.match(r"boat(:\d+,\d+(,\d)?|\[.+\])$", what):
+        hero = after["hero"]
+        if m := re.match(r"boat\[(.+)\]$", what):
+            hero, what = mem.hero_named(m.group(1)), "boat"
+        return boat_value(mem, hero, what)
+    if what == "drawn":
+        return drawn_text(mem, after["hero"])
+    if what in ("opening:field", "battlefield:ship", "blocked"):
+        if not battles:
+            return "no battle"
+        fought = battles[-1]
+        field, blocked = fought["field"], ", ".join(map(str, fought["blocked"])) or "none"
+        if what == "battlefield:ship":
+            return str(field["ship"])
+        if what == "blocked":
+            return blocked
+        return (f"terrain {field['terrain']}, special field {field['special'] or 'none'}, "
+                f"ship flag {field['ship']}, blocked hexes {blocked}")
+    if what in ("again", "key"):
+        return obs.get(what, "none")
     if m := re.match(r"(monster|aggression|never_flees):(\d+),(\d+)(?:,(\d))?$", what):
         found = mem.monster(int(m.group(2)), int(m.group(3)), int(m.group(4) or 0))
         if found is None:
@@ -1850,18 +1949,31 @@ def batch(recipe_path, map_path=None, out=None):
                 index = select(game, mem, step["hero"])["index"]
                 before = snapshot(mem, index)
                 pre = pre_read(step, before, mem)
-                if sum(k in step for k in ("walk", "equip", "screen")) > 1:
-                    raise ValueError("a step walks, equips or opens a screen (E08 T37a, T47a)")
+                if sum(k in step for k in ("walk", "equip", "screen", "key")) > 1:
+                    raise ValueError("a step walks, equips, opens a screen or presses a key "
+                                     "(E08 T37a, T47a, T68a)")
+                # E08 T68a (batch E8a's E8-3): `only_if = "aboard"` plays the step only while its
+                # hero is in a boat (status bit 18); else its fields read `not played`.
+                skip = None
+                if step.get("only_if") not in (None, "aboard"):
+                    raise ValueError(f"`only_if = {step['only_if']!r}`: only \"aboard\"")
+                if step.get("only_if") == "aboard" and not before["hero"]["status"] & h3mem.IN_BOAT:
+                    skip = f"not played: {step['hero']} is not in a boat"
                 if "actions" in step and "walk" not in step and "screen" not in step:
                     raise ValueError("`actions` play in a screen a walk or `screen` opens")
-                if "walk" in step:
+                if skip:
+                    obs = {"hero": step["hero"], "skipped": skip}
+                elif "walk" in step:
                     obs = walk(game, mem, step["hero"], step["walk"], step.get("answer"),
                                step.get("battle"), step.get("level_up", "left"),
-                               step.get("actions"), step.get("choice"), step.get("once", False))
+                               step.get("actions"), step.get("choice"), step.get("once", False),
+                               step.get("again_if"))
                     if prepared:
                         # E08 T57: the route set by `ready` makes the first click walk.
                         obs["first_click_walked"] &= not prepared.pop("clicked")
                         obs.update({k: v for k, v in prepared.items() if v})
+                elif "key" in step:
+                    obs = press(game, mem, step["hero"], step["key"])
                 elif "equip" in step:
                     obs = equip(game, mem, step["hero"], step["equip"])
                 elif "screen" in step:
@@ -1878,7 +1990,8 @@ def batch(recipe_path, map_path=None, out=None):
             for done in obs.get("actions", []):
                 obs["record"].update(done["record"])
                 notes.setdefault(step["encounter"], []).extend(done["notes"])
-            obs["record"].update({field: value(obs, what, mem)
+            obs["record"].update({field: obs["skipped"] if obs.get("skipped")
+                                  else value(obs, what, mem)
                                   for field, what in step.get("record", {}).items()})
             steps.append(obs)
             log.write(json.dumps(obs) + "\n")
