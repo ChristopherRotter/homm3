@@ -1097,3 +1097,45 @@ between them as T6b2b. No code changed.
   them.
 - **M3 T0 queued** (behind T6b2c); the common crate proposed in the client lane's inbox, its
   answer asked before M3 T0.
+
+### M2 T6b2b — the answers built: MCL-Q7, Q8 and Q12 (2026-10-28)
+
+On `map-client/e24-m2-t6b2b`, the sandbox's work (the user present in the chat). Each answer the
+client's by default and the original's behind `--bugs original` (`h3_render::Bugs`, as MCL-Q2 to
+Q6): `sequences` and `drawn` compare with `--bugs original` as before, the window and `render`
+default to the fixes.
+
+- **Starting point:** `master` at #528 (#531 merged; CI green on #530's code, #531 and #528
+  docs only); `clients/scripts/check.sh` in the sandbox, all gates passed, coverage 100 %.
+- **MCL-Q7** (`scene`, design §3.8): the map's rectangle on the screen (`map_shown`: the map's
+  tiles' places moved by the walk's offset); with the fixes passes 5 and 7 take every cell of
+  the lifted hero's picture, on the map or not, each cut to that rectangle, and pass 9 its
+  picture cut to it; with the original's bugs the cells of the tiles on the map whole and pass
+  9's own cut (rewritten as a rectangle: the moved side on the left and the top past a side, the
+  tiles' on the right and the bottom past one). At offset 0 both the same. Tested on five steps
+  at the sides in both profiles (east from column 0, east onto the last column, west onto the
+  first, south from row 0, north onto it), the cells' and pass 9's clips.
+- **MCL-Q8** (`sound`): the found set in 128 bits, a bit for each sound with the fixes, the
+  original's `1 << (s mod 32)` with its bugs (a sound past 127 has none: the loops are 70). The
+  test's kept loop 1 takes its distance 1's volume (28) with the fixes, keeps its earlier one
+  with the original's (its XOR by 33).
+- **MCL-Q12** (`music`): with the fixes the track opened last asked for again while another is
+  pending is not dropped: during its fade-out it becomes the pending one (`Request::Taken`: it
+  comes back where its fade began, after the fade; grass, dirt and grass 150 ms apart now end on
+  Grass, Dirt never heard); during its fade-in or its opening the pending one is dropped
+  (`Request::Kept`, *provisional*: the same slip a fade-in later, which the answer's wording did
+  not name; dropping keeps it playing without a second fade, where taking it would fade it out
+  and in again from the same place; the thread waiting finds no pending name, 0x59A883).
+  `Request::changed` tells the queue and the window to queue the stream again (both kinds). The
+  window's `Player::open` takes `--bugs`; `Sound::new`, `Music::new` and `Queue::new` take it.
+- **Each new test fails on the old code** (the fixes made inert: the seven tests of the three
+  answers failed, and MCL-Q2's, whose fixed branch the substitution also disabled).
+- **Checked:** `clients/scripts/check.sh` all gates passed, coverage 100 % (regions, functions,
+  lines); `h3map.py drawn` all the same (the 40 situations; the 13 sequences' 450 frames and
+  every timeline line by line as recorded); `window seq-walk --check 4` under Xvfb in both
+  profiles (every frame read back exact, every change shown the headless loop's). The music's
+  fix by ear is T6b2c's hand test (the window's part: the profile handed to the player, the
+  stream queued again on `Kept` as on `Taken`).
+- **For T6b2c:** `h3-map-view.exe` of this branch cross-built into the user's `clients/out/win/`
+  (T6b2a's kept as `h3-map-view-t6b2a.exe`); `map-try.cmd`'s item 2c and the notes' line now
+  say Grass comes back (the notes were still blank).
