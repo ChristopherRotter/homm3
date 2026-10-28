@@ -2288,6 +2288,93 @@ binary's `aims` (the engine's part), the window's aim, the key F, the right butt
   harness); the Faerie Dragon's cast by the mouse (its cursor kind 20: once its side's hero has
   cast, the key does nothing, as the original's, and the window gives no cast then).
 
+### 7.19 The message box, Retreat and Surrender (M5 T4a)
+
+T4 cut in three by the user on 2026-10-28 (here the box and the two buttons; the result window
+T4b; Auto Combat and the tactics phase T4c). Read: `message_box` 0x4F6570, `message_box_build`
+0x4F6990, its layout 0x4F5D80, the frame's builder 0x48FF00 (from 0x48FDC0), the font's measures
+0x4B5A10, 0x4B5990 and 0x4B5A80, the picture slot 0x4F4EB0 (its spell case and common tail), the
+handlers 0x4F08D0 and 0x4F0FC0, the DEF item's colour message (0x4EA810's subtype 0xD); the
+panel's Surrender and Retreat (`battle_buttons` 0x474FA1 to 0x475151); the book's message boxes
+(0x59D415 to 0x59D4E4) and the aim's entry's (0x59F085 to 0x59F135).
+
+- **The call** (`message_box`, fastcall: the text, the style; on the stack x, y, three pictures'
+  type and subtype, a "waiting" flag and a network timeout): it fills a record (0x2A0 bytes: the
+  text; x, y; the box's width 256 and height 128; the text's corner (20, 30) and size; the
+  scroll flag; eight picture slots of 0x4C; the style) and lays it out (0x4F5D80) before
+  building the dialog. Every battle caller passes x = y = −1 and no timeout (the timeout counts
+  only in a network game).
+- **The layout** (0x4F5D80), with the medium font (`medfont.fnt`, 0x698A0C): the text's width
+  starts at the widest word's (0x4B5A10: the glyphs' advances of a run without spaces and line
+  breaks, `{` and `}` not counted), at least 256; while the widest line (0x4B5990: by the line
+  breaks alone) is wider than it and it is below 578: the lines at that width (`text_line_count`)
+  × the font's height, and when that is above 200 or 3 × it above 2 × the width, the width
+  becomes min(578, 3 × width / 2) and the test again; else (or at 578) the width is the widest
+  line once broken at it (0x4B5A80: a line's width without the space it breaks at; a word longer
+  than the width counts 0, which never happens here). When the widest line fits, the width is
+  it. The height is the lines × the font's height, at most 200 (then a scrolling text: the
+  scroll flag). The box's width: the text's + 50 (at least 40 + the pictures' row, below)
+  rounded up to 64, at least 256 (128 for style 4, the right button's popup); the text's width
+  then the box's − 50. The box's height: the text's + 60, + 50 for the buttons (not style 4), +
+  20 and each picture row's height and its caption's (+ 20 between rows) with pictures; rounded
+  up to 64, at least 128; the text's top 30 + (box − that sum) / 2 (C division). The place: when
+  x is −1 or x + width ≥ 799, (800 − width) / 2; when y is −1 or y + height ≥ 599,
+  (600 − height) / 2.
+- **The picture slot** (0x4F4EB0, type 9 a spell): the DEF `spellScr.def`, its frame the spell's
+  number, its caption the spell's name; the slot's size the DEF's width and height + 2 (85 × 63);
+  the caption's width the widest of 50, the picture's and its words' (each 2 + its glyphs in
+  `smalfont.fnt`), at most 110, its height its lines there × the small font's height (widened by
+  half, to at most 110, while it takes more than one line and more than 2/3 of its width). One
+  picture: its slot centred ((box − slot width) / 2), its bottom at box height − caption height −
+  30 − 50; its caption below it, centred on it. (Two to eight pictures in up to two rows of four,
+  the caption's overhang and 40 between them: not needed by the battle, not built.)
+- **The frame** (0x48FF00 with the box's corner and size, flags 0x12): `diboxbck.pcx` (256 ×
+  256) tiled from the box's corner over its size, each tile a picture item (ids from 200, flags
+  0x800) cut to what is left of the box (a picture item draws at most its size of its picture
+  from the picture's corner: `dialog_picture_draw` 0x450450 passes the item's width and height);
+  then `dialgbox.def` (an interface DEF, 64 × 64) frames as DEF items, flags 0x10: 0 at (0, 0),
+  1 at (w − 64, 0), 2 at (0, h − 64), 3 at (w − 64, h − 64), then for each x = 64 to w − 128 by 64
+  frame 6 at (x, 0) and 7 at (x, h − 64), then for each y = 64 to h − 128 frame 4 at (0, y) and
+  5 at (w − 64, y). Their ids (the dialog's +0x4C to +0x50) take the colours of the player whose
+  view the screen shows (`viewing_player` 0x4CEA20: in a hot seat game the adventure map's
+  current player when human, else the highest human colour; 0x4F6B5D sends each the message
+  0x200/0xD, which the DEF item answers with the players' palette's 32 colours over its DEF's
+  entries 224–255, 0x4EAA4A); the tiles keep theirs. The base dialog's flag 0x10 casts the
+  shadow (§7.17).
+- **The items** (0x4F6990): the text, a text item at (20, top) of the text's size, medfont,
+  colour 1, alignment 1 (centred, from the top), id 1 (a scrolling text in its place above 200:
+  not needed, not built); the buttons by the style: the button's back `Box64x30.pcx` (66 × 32)
+  at (x, h − 62) and the DEF button (64 × 30, frames 0 and 1, one hotkey) at (x + 1, h − 61).
+  Style 1 (and 5, 7) an OK alone, `iOkay.def`, id 0x7802, Enter (scan code 0x1C), at x =
+  (w − 66) / 2; style 2 OK (id 0x7805, Enter) at x = max(1, w / 2 − 74) and Cancel
+  (`iCancel.def`, id 0x7806, Escape) at min(w / 2 + 8, w − 66); styles 3 and 10 the same with
+  OK 0x7802 and Cancel 0x7801; 4, 8, 9 none. Then each picture: its DEF item at the slot's corner
+  of its size, its caption (`smalfont.fnt`, colour 1, alignment 1) and a frame item around it,
+  hidden (a choice's mark). The cursor: the default one's frame 0 (`mouse_set_cursor(0, 0)` at
+  0x4F74AC), the one before restored at the end.
+- **Its input** (the modal loop 0x602520 with 0x4F08D0, then 0x4F0FC0): the input queue emptied
+  as it opens; the battle stands still behind it; a button's command (its click: released over
+  it, or its hotkey released) of id 0x7800 to 0x7806 closes the box, the window manager's +0x38
+  that id (0x7802 the picture chosen in styles 7 and 10). A style-1 box has no hotkey but Enter.
+- **Retreat** (2002, `R`): style 2 with GENRLTXT 29 ("Are you sure you want to retreat?"); OK
+  (0x7805) makes the action 4. **Surrender** (2001, `S`): the price (`surrender_price`
+  0x695030, as the computer's), then style 2 with GENRLTXT 33 formatted with the other side's
+  hero's name and the price; OK: when the side's player's gold (game +0x20B84 by player) is below
+  the price, style 1 with GENRLTXT 30 ("You don't have enough gold!") and nothing else, else the
+  action 5 with the price. Both buttons are enabled as §9.7 says (`battle_controls_state`).
+- **The book's boxes** (style 1, no picture unless said): a spell above the hero's spell points
+  with the combat bookmark, GENRLTXT 207 formatted with the cost and the points (0x59D462); an
+  adventure spell clicked in battle, its whole description at the hero's mastery
+  (`spell_book_text` with the flag 0) with the spell's picture (type 9, 0x59D4DC). The aim's
+  entry (0x59F085): a stack spell (15 to 19, 24 to 39, 41 to 58, 60 to 62) or Teleport with no
+  inner hex its target test passes, GENRLTXT 186 ("That spell will affect no one!"). *Not
+  built:* the other entry refusals (Sacrifice's twice, GENRLTXT 186; Remove Obstacle's 713;
+  Clone's and the Summons' limits, formatted; Earthquake outside a siege; Land Mine against
+  natives) and `hero_book_button` 0x59E900's (an anti-magic garrison GENRLTXT 685, the Orb of
+  Inhibition 684 formatted with the hero and the artifact, a spell above level 1 on Cursed Ground
+  748, Recanter's Cloak): they need facts the client lacks (the engine refuses those casts);
+  the right button's popups (style 4: the book's 0x59D0EC and 0x59D19B).
+
 ## 8. The window, input and audio evaluation (M2 T2)
 
 ADR-0020 point 4 left the library to a measured evaluation at M2; the choice, the user's
