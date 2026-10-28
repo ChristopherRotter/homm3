@@ -12,7 +12,7 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   grows, `live.rs`; the click's command; hot seat in the window; the spell book, design §7.17;
   the hero's aim and the Faerie Dragon's key F, §7.18). **Next: M5 T4** (the battle's dialogs:
   surrender, retreat, the result window, Auto Combat, the tactics panel, the message box). Open
-  PR: T3b's (`client/e17-m5-t3b`; check it first). Workspace `clients/` (`clients/README.md`),
+  PR: #536, T3b's (`client/e17-m5-t3b`; check it first). Workspace `clients/` (`clients/README.md`),
   gates `clients/scripts/check.sh`; ADR-0020 (+ drafts in `adr-drafts/`), ADR-0024; the harness
   `clients/capture/README.md`; design §3–§10; records in `E17-log.md`.
 - **Captures** (the user, 2026-10-20): `h3drive.py drawn` first (no Wine); capture what it lists or the task changes, all at a milestone's closure or a harness change (runbook); a capture not as recorded leaves `kept/` (T9b: record, then `--reuse`); later tasks' detail in `NOTES.md`.
@@ -39,7 +39,7 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
 
 ## Recent sessions
 
-- **2026-10-28, E17 M5 T3b (done; its PR open: check it first).** Whole (the user). Read the
+- **2026-10-28, E17 M5 T3b (done; #536 open: check it first).** Whole (the user). Read the
   aim (design §7.18: 0x59EC50's handlers and ends, the loop 0x602520 with 0x5A3070, the cursor
   0x59F700, the cast's line 0x5A8690, the refusals 0x5A2880, the area's marks 0x59F8A0 and
   0x43EFE0, the spell cursor's frames in `mouse_poll`, the key F). Built `mouse::aim`, the aim in
