@@ -19,6 +19,7 @@ mod monsters;
 mod moves;
 mod observe;
 mod records;
+mod rests;
 mod rewards;
 mod state;
 
@@ -356,6 +357,14 @@ fn reward(k: &str, kind: ObjectKindDef) -> ObjectTypeDef {
     }
 }
 
+/// [`reward`] entered rather than visited from the tile beside it (E08 T63a).
+fn entered(k: &str, kind: ObjectKindDef) -> ObjectTypeDef {
+    ObjectTypeDef {
+        visit: Visit::Enter,
+        ..reward(k, kind)
+    }
+}
+
 /// A once-per-hero gift (E08 T62a).
 fn gift(gives: Gives, prices: Vec<Vec<(ContentKey, u32)>>, leave: bool) -> ObjectKindDef {
     ObjectKindDef::Gift(GiftDef {
@@ -530,6 +539,32 @@ fn part_with(core: &Ruleset, chances: Vec<u8>, slots: u8) -> AdventureRuleset {
             ),
             // E08 T62b2 (`events.rs`).
             reward("t:event", ObjectKindDef::Event),
+            // E08 T63a: gifts and a University entered, as the base pack's are, for a guard's
+            // visit after them (`rewards.rs`).
+            entered(
+                "t:in_arena",
+                gift(
+                    choice(PrimarySkill::Attack, PrimarySkill::Defense, 2),
+                    vec![],
+                    false,
+                ),
+            ),
+            entered(
+                "t:in_school",
+                gift(
+                    choice(PrimarySkill::Power, PrimarySkill::Knowledge, 1),
+                    vec![vec![(key("t:gold"), 1000)]],
+                    true,
+                ),
+            ),
+            entered(
+                "t:in_university",
+                ObjectKindDef::University {
+                    offers: 2,
+                    price: vec![(key("t:gold"), 2000)],
+                },
+            ),
+            entered("t:in_stone", gift(Gives::Experience(1000), vec![], false)),
         ],
         params: Some(AdventureParamsDef {
             native_cost: cost,

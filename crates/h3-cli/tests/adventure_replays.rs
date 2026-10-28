@@ -107,7 +107,16 @@
 //! question among the offer kinds, neither map has one) re-recorded all twelve with their options,
 //! their commands unchanged: every hash moved. E08 T62b1 (game state hash v17: Pandora's Box's and
 //! the Pyramid's questions among the offer kinds, neither map has one) re-recorded all twelve with
-//! their options, their commands unchanged: every hash moved.
+//! their options, their commands unchanged: every hash moved. E08 T62b2 (adventure state hash
+//! v15: each player's colour and human flag) re-recorded all twelve with their options, their
+//! commands and days unchanged: every hash moved. E08 T63a (adventure replay format
+//! v7: the answers typed by the decision's kind, `answer offer accept`, `answer level-up first`,
+//! `answer close` for a meeting or an army dialog; game state hash v18: the choices and the
+//! Universities among the decisions, neither map has one) re-recorded all twelve with their
+//! options (the scripted two from their commands in v7's words), their commands unchanged but for
+//! their words: every hash moved. E08 T63b (game state hash v19: the rests, GAM-DEC-007, the
+//! guard's wait no longer in a decision; a won guards' battle's pickup after the winner's levels)
+//! re-recorded all twelve with their options, their commands unchanged: every hash moved.
 //!
 //! **Scripted** (E08 T52, increment 6: the random agent manages nothing), on the generated
 //! `fixtures/maps/e08-army-12.h3m` (red's Valeska, hero 0, with a full army and twelve artifacts

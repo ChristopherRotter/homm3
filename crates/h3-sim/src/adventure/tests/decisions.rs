@@ -3,7 +3,7 @@
 //! tile 0 alone, the answers step through the env, a fork carries the open decision, the
 //! random agent answers, and a replay records the answers and the game's difficulty.
 
-use h3_game::{Answer, DecisionView, GameEvent, GameSetupError};
+use h3_game::{Answer, Consent, DecisionView, GameEvent, GameSetupError};
 
 use super::*;
 
@@ -58,8 +58,14 @@ fn actions_and_commands_round_trip() {
     let (state, rules) = (e.state(), e.rules());
     for (action, command) in [
         (Action::end_turn(), GameCommand::EndTurn),
-        (Action::accept(), GameCommand::Answer(Answer::Accept)),
-        (Action::decline(), GameCommand::Answer(Answer::Decline)),
+        (
+            Action::accept(),
+            GameCommand::Answer(Answer::Offer(Consent::Accept)),
+        ),
+        (
+            Action::decline(),
+            GameCommand::Answer(Answer::Offer(Consent::Decline)),
+        ),
     ] {
         assert_eq!(
             action::decode(state, rules, RED, action),
@@ -288,7 +294,8 @@ fn a_replay_records_the_answers_and_the_difficulty() {
     let blue_chart = tile_index(env.state(), charts[1]).unwrap();
     play(&mut env, BLUE, Action::move_to(0, blue_chart));
     play(&mut env, BLUE, Action::decline());
-    let answers = [Answer::Accept, Answer::Decline].map(GameCommand::Answer);
+    let answers =
+        [Consent::Accept, Consent::Decline].map(|c| GameCommand::Answer(Answer::Offer(c)));
     assert_eq!(
         commands.iter().filter(|(_, c)| answers.contains(c)).count(),
         2
@@ -344,4 +351,99 @@ fn a_replay_records_the_answers_and_the_difficulty() {
     let random = replay::Replay::record_random(&FAITHFUL, setup, duel_map(), options).unwrap();
     assert_eq!(random.difficulty, 0);
     assert_eq!(random.verify(&FAITHFUL, &duel_map(), &imported), Ok(()));
+}
+
+/// The duel with [`beside`]'s objects of `key`, seed 1, after red's hero in slot 0 entered its
+/// own (E08 T63a).
+fn visited(key: &str) -> AdventureEnv {
+    let setup = beside(&FAITHFUL, h3_game::DEFAULT_DIFFICULTY, key);
+    let at = charts(&setup)[0];
+    let mut env = AdventureEnv::new(FAITHFUL.clone(), setup, 1, 0).unwrap();
+    let tile = tile_index(env.state(), at).unwrap();
+    entered(&mut env, tile);
+    env
+}
+
+/// Each legal entry of `player` decodes to the legal answer of its role, which encodes back to
+/// it, with tile 0 alone; the entries are those of the listed answers.
+fn check_answers(env: &AdventureEnv, player: PlayerId) {
+    let (state, rules) = (env.state(), env.rules());
+    let listed = legal_commands(state, rules, Actor::Player(player));
+    let mut entries: Vec<usize> = listed
+        .iter()
+        .map(|command| match command {
+            GameCommand::Answer(answer) => answer_entry(*answer).unwrap(),
+            other => panic!("{other:?} listed with a decision open"),
+        })
+        .collect();
+    entries.sort_unstable();
+    assert_eq!(legal_entries(env, player), entries);
+    let tiles = legal_tiles(env, player);
+    for &entry in &entries {
+        assert_eq!(tiles[entry], [0], "{entry}");
+        let action = Action::map(entry, 0);
+        let command = action::decode(state, rules, player, action).unwrap();
+        assert!(listed.contains(&command), "{entry}: {command:?}");
+        assert_eq!(action::encode(state, rules, player, &command), Some(action));
+    }
+}
+
+// covers: GAM-DEC-005, GAM-DEC-006
+/// E08 T63a (encoding v5): a University's purchases are answered by their slots' entries and its
+/// leaving by `DECLINE`; a purchase keeps it open. An Arena's two skills by `FIRST` and `SECOND`;
+/// an entry of no listed answer decodes to an answer the game rejects.
+#[test]
+fn increment_7s_decisions_are_answered_through_the_env() {
+    let mut env = visited("base:university");
+    let visit = env.state().university(RED).unwrap().clone();
+    assert!(matches!(
+        env.observation(RED).decision,
+        Some(DecisionView::University { .. })
+    ));
+    check_answers(&env, RED);
+    let entries = legal_entries(&env, RED);
+    let buys: Vec<usize> = entries.iter().copied().filter(|&e| e >= BUY_BASE).collect();
+    assert_eq!(entries[0], DECLINE);
+    assert!(!buys.is_empty(), "{visit:?}");
+    // An entry of a slot that is not open is the purchase, which the game refuses.
+    let closed = (BUY_BASE..ENTRY_COUNT).find(|e| !buys.contains(e));
+    if let Some(entry) = closed {
+        let (state, rules) = (env.state(), env.rules());
+        let command = action::decode(state, rules, RED, Action::map(entry, 0)).unwrap();
+        let slot = u8::try_from(entry - BUY_BASE).unwrap();
+        let buy = Answer::University(h3_game::UniversityAnswer::Buy(slot));
+        assert_eq!(command, GameCommand::Answer(buy));
+        let refused = env.step(RED, Action::map(entry, 0));
+        assert!(
+            matches!(refused, Err(StepError::Rejected(_))),
+            "{refused:?}"
+        );
+    }
+    env.step(RED, Action::map(buys[0], 0)).unwrap();
+    assert!(env.state().university(RED).is_some());
+    check_answers(&env, RED);
+    env.step(RED, Action::decline()).unwrap();
+    assert!(!env.state().has_decision(RED));
+    // The Arena: its two answers, `FIRST` the first skill; `DECLINE` is no answer of it.
+    let mut env = visited("base:arena");
+    assert!(env.state().choice(RED).is_some());
+    check_answers(&env, RED);
+    assert_eq!(legal_entries(&env, RED), [FIRST, SECOND]);
+    let (state, rules) = (env.state(), env.rules());
+    let decline = action::decode(state, rules, RED, Action::decline()).unwrap();
+    assert_eq!(
+        decline,
+        GameCommand::Answer(Answer::Offer(Consent::Decline))
+    );
+    let refused = env.step(RED, Action::decline());
+    assert!(
+        matches!(refused, Err(StepError::Rejected(_))),
+        "{refused:?}"
+    );
+    let attack = env.state().hero(visit.hero).unwrap().primary[0];
+    env.step(RED, Action::first()).unwrap();
+    assert_eq!(env.state().hero(visit.hero).unwrap().primary[0], attack + 2);
+    // A purchase of a slot past the encoding's has no entry.
+    let far = Answer::University(h3_game::UniversityAnswer::Buy(4));
+    assert_eq!(answer_entry(far), None);
 }

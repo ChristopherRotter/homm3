@@ -260,9 +260,15 @@ fn a_guarded_box_fights_at_once_and_gives_its_record_after_a_win() {
     let (outcome, _) = ended(&mut s, &left, false);
     assert_eq!(outcome, AdventureOutcome::default());
     assert_eq!((s.guards_left(0), s.is_removed(0)), (&left[..], false));
-    // Won: the record, the box gone.
+    // Won: after the winner's levels (E08 T63b, GAM-DEC-007: `give_won`) the record, the box
+    // gone.
     let mut won = s.clone();
     let (outcome, events) = ended(&mut won, &[], true);
+    assert_eq!((outcome.reward_after, events.len()), (Some((HERO, AT)), 0));
+    assert!(!won.is_removed(0));
+    let mut events = Vec::new();
+    let context = (&rules.0, &rules.1, &heroes[..]);
+    let outcome = won.give_won(context, (HERO, AT), &mut events);
     assert_eq!(outcome.gains, [(GOLD, 500)]);
     assert_eq!(joined(&events).len(), 2);
     assert!(won.is_removed(0));
@@ -327,10 +333,18 @@ fn the_pyramid_asks_at_every_visit_and_fights_with_a_second_creature() {
     );
     assert_eq!(s.army_left(0), None);
     assert_eq!(visit(&rules, &mut s, &heroes).offer, Some(search.clone()));
-    // Won: looted, and its spell taught (a book, its level within the hero's).
+    // Won: after the winner's levels (E08 T63b, GAM-DEC-007: `give_won`) looted, and its spell
+    // taught (a book, its level within the hero's); a second `give_won` finds it looted.
     let won = s.end_unowned_battle(context, (HERO, AT), (&[], true), &mut events);
+    assert_eq!(
+        (won.reward_after, s.is_emptied(0)),
+        (Some((HERO, AT)), false)
+    );
+    let won = s.give_won(context, (HERO, AT), &mut events);
     assert_eq!(won, gives(&[HeroChange::LearnSpell(GUST)]));
     assert!(s.is_emptied(0) && !s.is_removed(0));
+    let again = s.give_won(context, (HERO, AT), &mut events);
+    assert_eq!((again, events.len()), (AdventureOutcome::default(), 0));
     // Looted: still asked; accepted, −2 luck once by its mark (the hero model gates it).
     assert_eq!(visit(&rules, &mut s, &heroes).offer, Some(search.clone()));
     let looted = HeroChange::Bonus {
@@ -357,12 +371,7 @@ fn a_won_pyramids_spell_is_lost_to_a_hero_who_cannot_learn_it() {
     let rules = rules(true);
     let context = |spell, heroes: &[Arc<HeroDetails>]| -> Vec<HeroChange> {
         let mut s = pyramid(&rules, Some(spell));
-        let outcome = s.end_unowned_battle(
-            (&rules.0, &rules.1, heroes),
-            (HERO, AT),
-            (&[], true),
-            &mut Vec::new(),
-        );
+        let outcome = s.give_won((&rules.0, &rules.1, heroes), (HERO, AT), &mut Vec::new());
         assert!(s.is_emptied(0), "looted either way");
         outcome.hero.map(|g| g.changes).unwrap_or_default()
     };
@@ -378,10 +387,9 @@ fn a_won_pyramids_spell_is_lost_to_a_hero_who_cannot_learn_it() {
     assert!(context(GUST, &store(known)).is_empty());
     // A Pyramid without a spell (A-20 fixed): nothing.
     let mut s = pyramid(&rules, None);
-    let outcome = s.end_unowned_battle(
+    let outcome = s.give_won(
         (&rules.0, &rules.1, &store(with_book(hero()))),
         (HERO, AT),
-        (&[], true),
         &mut Vec::new(),
     );
     assert_eq!(outcome, AdventureOutcome::default());

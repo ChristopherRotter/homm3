@@ -29,16 +29,54 @@ T6, M2's closure, cut at its seam before it started (the user, 2026-10-27): T6a,
 and their fixes (done 2026-10-27: 24 of 29 fixed; `E24-log.md`), its five music findings cut out
 as T6a2 (the user; done 2026-10-27, whole), then T6b, the closure, cut at its seam before it
 started (the user, 2026-10-27): T6b1, the recordings again and R2-8 (done 2026-10-27: every
-sequence and still exact; R2-8 as #523), then T6b2, the user's.
+sequence and still exact; R2-8 as #523), then T6b2, the user's, cut at its seam (the user,
+2026-10-27, away from the machine): T6b2a, the review list and the questions (done 2026-10-27:
+the review list accepted, MCL-Q7, Q8 and Q12 answered, a build and a checklist on the user's
+machine), then T6b2b, the answers built, and T6b2c, the hand test and M2 archived.
 
-### E24 M2 T6b2 — M2's closure with the user
+### E24 M2 T6b2b — the answers built: MCL-Q7, Q8 and Q12
 
-- **Scope:** the window's T6a fixes by hand on the user's machine (Alt+Tab with the pointer at
-  an edge, fullscreen's bars, F7 in a situation) and T6a2's music by ear; the review list to the
-  user; M2's section moved to `E24-archive.md`; M3 T0 queued (the common crate proposed to the
-  client lane first: the epic's M2 decision).
-- **Acceptance:** the review list accepted by the user; the Definition of Done.
-- **Depends on:** T6b1. **Status:** ready once T6b1's pull request merged; the user at the machine.
+- **Scope:** the three answers of M2's closure (the lane's `QUESTIONS-ANSWERED.md`), each the
+  client's by default and the original's behind `--bugs original` (`h3_render::Bugs`, as
+  MCL-Q2 to Q6): MCL-Q7, the lifted hero cut at the map's side moved by the offset in passes 5,
+  7 and 9 (design §3.8); MCL-Q8, a set of the 70 ambient loops instead of 32 bits (design
+  §3.11); MCL-Q12, a track asked for during its own fade-out kept (`h3_map_view::music`'s
+  filter: Grass resumes where its fade began). The design's paragraphs say which profile does
+  what.
+- **Acceptance:** each case tested in both profiles (each new test failing on the old code); the
+  13 recorded timelines line by line and `h3map.py drawn` the same (no recorded sequence meets
+  these cases); the Definition of Done.
+- **Depends on:** T6b2a. **Status:** ready; the sandbox's work, no user needed.
+
+### E24 M2 T6b2c — the hand test and M2 archived
+
+- **Scope:** the window by hand on the user's machine: `clients/out/win/map-try.cmd` (the T6a
+  fixes: Alt+Tab with the pointer at an edge, fullscreen's bars, F7 in a situation; T6a2's
+  music by ear in `seq-walk`), the user's notes in `map-try-notes.txt` beside it; T6b2a put
+  there the build of `master` at #527: build again after T6b2b (`--target
+  x86_64-pc-windows-gnu`) and change item 2c's text (Grass comes back) before the user tries it,
+  unless the notes are already written. Each finding checked (fixed, queued or an `MCL-Q<n>`);
+  then M2's section moved verbatim to `E24-archive.md` (scope, decisions, task list, the
+  accepted review list; a row and a pointer left) and the HANDOFF's M2 lines trimmed.
+- **Acceptance:** no finding of the hand test left unrecorded; M2 archived; the Definition of
+  Done.
+- **Depends on:** T6b2b. **Status:** the user at the machine (or the notes file written).
+
+### E24 M3 T0 — M3 refined with the user
+
+- **Scope:** first the common crate, proposed to the client lane (its inbox, since T6b2a): one
+  crate of the client workspace both lanes share, holding `h3-view`'s `clock`, `cursor`, `ui`,
+  `text`, `layout` and the parts of `mouse` that are not the battle's, and `h3-map-view`'s
+  `keys` (both viewers' keys through it) and perhaps `music`; one `shared/` pull request for
+  `lanes.toml`, then the move, `h3-map-view`'s copies gone (the epic's M2 decision). Then M3 with
+  the user: its scope, decisions and exit (the epic's "Later": the minimap, the hero and town
+  lists, the status window, the resource bar and the date, the buttons, the mouse and its
+  cursor; the string catalogue's keys), MCL-Q10's keys during a walk (Space's cancel, the
+  input ring's bound), MCL-Q9 if still open, the inbox's frame cost and the sound without the
+  focus placed; M3's tasks queued.
+- **Acceptance:** M3's section refined in the epic; the common crate agreed with the client lane
+  (or its question asked); M3's tasks queued.
+- **Depends on:** T6b2c (M2 archived). **Status:** the user present.
 
 ## Inbox
 

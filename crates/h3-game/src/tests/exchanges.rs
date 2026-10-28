@@ -10,7 +10,7 @@ use h3_adventure::{
 };
 use h3_heroes::{ArtifactInstance, ArtifactPlace, Position, wearing};
 
-use super::decisions::{ACCEPT, DECLINE, GOLD, after_steps, move_hero};
+use super::decisions::{ACCEPT, CLOSE, DECLINE, GOLD, after_steps, move_hero};
 use super::manage::{
     BLUE, BLUE_HERO, RED, RED_HERO, SECOND, accepts, army, art, artifact_move, group, imp,
     manage_error, manage_rules, manage_setup, refused, run, slot,
@@ -58,9 +58,9 @@ fn a_step_toward_an_own_hero_opens_a_meeting_its_decline_closes() {
     assert_eq!(seen(BLUE), None);
     let view = seen(RED).unwrap();
     assert_eq!((view.offer(), view.level_up()), (None, None));
-    // `Decline` alone is listed and the default; no move, no end of the turn.
-    assert_eq!(legal_commands(&game, &rules, RED_ACTOR), [DECLINE]);
-    assert_eq!(default_answer(&game, &rules, RED), Some(Answer::Decline));
+    // `Close` alone is listed and the default; no move, no end of the turn.
+    assert_eq!(legal_commands(&game, &rules, RED_ACTOR), [CLOSE]);
+    assert_eq!(default_answer(&game, &rules, RED), Some(Answer::Close));
     assert!(legal_moves(&game, &rules, RED_ACTOR, RED_HERO).is_none());
     for command in [GameCommand::EndTurn, move_hero(0, &[Pos::new(0, 1, 0)])] {
         assert_eq!(
@@ -68,7 +68,11 @@ fn a_step_toward_an_own_hero_opens_a_meeting_its_decline_closes() {
             GameCommandError::DecisionOpen
         );
     }
-    for answer in [ACCEPT, GameCommand::Answer(Answer::First)] {
+    for answer in [
+        ACCEPT,
+        DECLINE,
+        GameCommand::Answer(Answer::LevelUp(SkillOffer::First)),
+    ] {
         assert_eq!(
             refused(&mut game, &rules, RED_ACTOR, answer),
             GameCommandError::WrongAnswer
@@ -77,7 +81,7 @@ fn a_step_toward_an_own_hero_opens_a_meeting_its_decline_closes() {
     // The hash sees it.
     let mut fresh = self::game(&rules);
     assert_ne!(game.state_hash(), fresh.state_hash());
-    let closed = run(&mut game, &rules, RED_ACTOR, DECLINE).unwrap();
+    let closed = run(&mut game, &rules, RED_ACTOR, CLOSE).unwrap();
     assert_eq!(closed, [GameEvent::DecisionClosed { player: RED }]);
     assert_eq!(project(&closed[0], Viewer::Player(BLUE)), None);
     assert_eq!(game.meeting(RED), None);
@@ -159,7 +163,7 @@ fn scholar_teaches_both_heroes_before_the_meeting_opens_the_visitors_first() {
     assert_eq!(spells(RED_HERO), [spell("t:gust"), spell("t:gate")]);
     assert_eq!(spells(SECOND), [spell("t:gate"), spell("t:gust")]);
     // A second meeting teaches nothing more.
-    run(&mut game, &rules, RED_ACTOR, DECLINE).unwrap();
+    run(&mut game, &rules, RED_ACTOR, CLOSE).unwrap();
     assert_eq!(after_steps(meet(&mut game, &rules)).len(), 1);
 }
 
@@ -279,7 +283,7 @@ fn in_a_meeting_stacks_and_artifacts_move_between_its_two_heroes() {
         assert_eq!(refused(&mut game, &rules, RED_ACTOR, command), error);
     }
     // Closed, two heroes are apart again.
-    run(&mut game, &rules, RED_ACTOR, DECLINE).unwrap();
+    run(&mut game, &rules, RED_ACTOR, CLOSE).unwrap();
     let back = ArmyCommand::Move {
         from: slot(SECOND, 0),
         to: slot(RED_HERO, 1),
@@ -555,8 +559,8 @@ fn a_join_without_room_is_offered_and_opens_the_army_dialog() {
         })
     );
     assert_eq!(observe(&game, &rules, Viewer::Player(BLUE)).decision, None);
-    assert_eq!(legal_commands(&game, &rules, RED_ACTOR), [DECLINE]);
-    assert_eq!(default_answer(&game, &rules, RED), Some(Answer::Decline));
+    assert_eq!(legal_commands(&game, &rules, RED_ACTOR), [CLOSE]);
+    assert_eq!(default_answer(&game, &rules, RED), Some(Answer::Close));
     assert!(legal_moves(&game, &rules, RED_ACTOR, HERO).is_none());
     assert_eq!(
         refused(&mut game, &rules, RED_ACTOR, ACCEPT),
@@ -622,7 +626,7 @@ fn a_join_without_room_is_offered_and_opens_the_army_dialog() {
         GameCommandError::DecisionOpen
     );
     // Closed: the group's rest is lost, told after the closing.
-    let closed = run(&mut game, &rules, RED_ACTOR, DECLINE).unwrap();
+    let closed = run(&mut game, &rules, RED_ACTOR, CLOSE).unwrap();
     assert_eq!(
         closed,
         [
@@ -645,7 +649,7 @@ fn a_join_without_room_is_offered_and_opens_the_army_dialog() {
     // Closed at once, the whole group is lost.
     let mut game = dialog_game(&rules, vec![gogs(0, 2), gogs(1, 5)]);
     join(&mut game, &rules);
-    let closed = run(&mut game, &rules, RED_ACTOR, DECLINE).unwrap();
+    let closed = run(&mut game, &rules, RED_ACTOR, CLOSE).unwrap();
     assert_eq!(
         closed[1],
         GameEvent::GroupLost {

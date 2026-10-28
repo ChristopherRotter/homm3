@@ -34,9 +34,10 @@ use h3_battle::{
 use h3_content::{ArtifactTypeId, CreatureTypeId, Formation, ResourceId};
 use h3_contracts::{BattleResult, BattleSide, HeroId, PlayerId};
 use h3_game::{
-    Actor, Answer, ArmyCommand, ArmyRef, ArmySlot, ArtifactPlace, GameCommand, GameCommandError,
-    GameEvent, GameRuleset, GameState, HeroChange, Manage, OpenBattle, Position, Sink, apply,
-    legal_commands, legal_management, legal_moves, split_range,
+    Actor, Answer, ArenaChoice, ArmyCommand, ArmyRef, ArmySlot, ArtifactPlace, ChestChoice,
+    ChoiceKind, Consent, GameCommand, GameCommandError, GameEvent, GameRuleset, GameState,
+    HeroChange, Manage, OpenBattle, Position, SchoolChoice, Sink, SkillOffer, SlotState,
+    UniversityAnswer, apply, legal_commands, legal_management, legal_moves, split_range,
 };
 use h3_pack_adventure::{ORIGINAL_PACKS, compile};
 use proptest::collection::vec;
@@ -964,7 +965,7 @@ pub(super) enum Free {
         hero: Who,
         to: (u16, u16),
     },
-    /// An answer to a pending decision (E08 T14b).
+    /// An answer to a pending decision (E08 T14b), of any kind (T63a: [`ANY_ANSWERS`]).
     Answer(Answer),
     /// (E08 T52) A management command of arbitrary heroes, slots, places and counts.
     Manage(Arbitrary),
@@ -1111,11 +1112,7 @@ pub(super) fn step() -> impl Strategy<Value = Step> {
             }),
         (who(), (0u16..MAX_SIDE.into(), 0u16..MAX_SIDE.into()))
             .prop_map(|(hero, to)| Free::Line { hero, to }),
-        any::<bool>().prop_map(|yes| Free::Answer(if yes {
-            Answer::Accept
-        } else {
-            Answer::Decline
-        })),
+        (0..ANY_ANSWERS.len()).prop_map(|i| Free::Answer(ANY_ANSWERS[i])),
         arbitrary().prop_map(Free::Manage),
     ];
     prop_oneof![
@@ -1154,19 +1151,34 @@ pub(super) fn steps() -> impl Strategy<Value = Vec<Step>> {
     .prop_map(|runs: Vec<Vec<Step>>| runs.into_iter().flatten().collect())
 }
 
-/// On the map (E08 T19b2): the acting player's open offer, meeting or army dialog declined (E08
-/// T51b), its open level-up's first offer taken (E08 T30); else the `n`-th of its
+/// On the map (E08 T19b2): the acting player's open offer declined, its meeting or army dialog
+/// closed (E08 T51b), its open level-up's first offer taken (E08 T30), its choice or University
+/// answered with the `n`-th of its answers (E08 T63a); else the `n`-th of its
 /// options that end nearest to another player's hero on the hero's level, nearer than the hero
 /// stands (an attack, on the other hero's tile, is nearest of all; the heroes seek each other as
 /// the fork benchmark's do: random play seldom meets); `EndTurn` when none gets nearer.
-fn seek(state: &GameState, legal: &[GameCommand], n: u16) -> GameCommand {
+/// The acting player's answer to its open decision but a battle, if it has one (E08 T63a): an
+/// offer declined, a level-up's first offer taken, a meeting or an army dialog closed, a choice
+/// or a University answered with the `n`-th of its legal answers.
+fn settle(state: &GameState, legal: &[GameCommand], n: u16) -> Option<GameCommand> {
     let actor = acting(state);
-    let exchanging = state.meeting(actor).is_some() || state.army_dialog(actor).is_some();
-    if state.decision(actor).is_some() || exchanging {
-        return GameCommand::Answer(Answer::Decline);
+    if state.decision(actor).is_some() {
+        return Some(ANSWERS[1].clone());
     }
     if state.level_up(actor).is_some() {
-        return GameCommand::Answer(Answer::First);
+        return Some(LEVEL_ANSWERS[0].clone());
+    }
+    if state.meeting(actor).is_some() || state.army_dialog(actor).is_some() {
+        return Some(CLOSE);
+    }
+    (state.choice(actor).is_some() || state.university(actor).is_some())
+        .then(|| legal[usize::from(n) % legal.len()].clone())
+}
+
+fn seek(state: &GameState, legal: &[GameCommand], n: u16) -> GameCommand {
+    let actor = acting(state);
+    if let Some(answer) = settle(state, legal, n) {
+        return answer;
     }
     let heroes = state.adventure().heroes();
     let distance = |pos: TilePos| {
@@ -1316,16 +1328,12 @@ fn join(state: &GameState, rules: &GameRuleset, legal: &[GameCommand], n: u16) -
     let actor = acting(state);
     match state.decision(actor).map(|offer| &offer.kind) {
         Some(OfferKind::Join | OfferKind::JoinForGold { .. }) => {
-            return GameCommand::Answer(Answer::Accept);
+            return ANSWERS[0].clone();
         }
-        Some(_) => return GameCommand::Answer(Answer::Decline),
+        Some(_) => return ANSWERS[1].clone(),
         None => {}
     }
-    if battle_of(state, self::actor(state)).is_none()
-        && state.level_up(actor).is_none()
-        && state.meeting(actor).is_none()
-        && state.army_dialog(actor).is_none()
-    {
+    if battle_of(state, self::actor(state)).is_none() && !state.has_decision(actor) {
         let adventure = state.adventure();
         let monster = |pos: TilePos| {
             adventure.map().visited_from(pos).iter().any(|&i| {
@@ -1359,7 +1367,8 @@ fn join(state: &GameState, rules: &GameRuleset, legal: &[GameCommand], n: u16) -
 }
 
 /// On the map (E08 T52): the acting player's open offer declined, its level-up's first offer
-/// taken, its meeting or army dialog managed (the `n`-th of [`managing`], `Decline` if none);
+/// taken, its meeting or army dialog managed (the `n`-th of [`managing`], `Close` if none), its
+/// choice or University answered as [`settle`] does (E08 T63a);
 /// else the `n`-th of its options that end nearest to another of its own heroes on the hero's
 /// level, nearer than the hero stands (a step onto the other's tile meets it, nearest of all);
 /// `EndTurn` when none gets nearer. In a battle, as `Legal(n)`.
@@ -1368,14 +1377,11 @@ fn meet(state: &GameState, rules: &GameRuleset, legal: &[GameCommand], n: u16) -
     if battle_of(state, self::actor(state)).is_some() {
         return legal[usize::from(n) % legal.len()].clone();
     }
-    if state.decision(actor).is_some() {
-        return GameCommand::Answer(Answer::Decline);
-    }
-    if state.level_up(actor).is_some() {
-        return GameCommand::Answer(Answer::First);
-    }
     if state.meeting(actor).is_some() || state.army_dialog(actor).is_some() {
-        return pick(&managing(state, rules), n).unwrap_or(GameCommand::Answer(Answer::Decline));
+        return pick(&managing(state, rules), n).unwrap_or(CLOSE);
+    }
+    if let Some(answer) = settle(state, legal, n) {
+        return answer;
     }
     let heroes = state.adventure().heroes();
     let distance = |mover: HeroId, pos: TilePos| {
@@ -1829,17 +1835,85 @@ fn reach_of(reaches: &[(HeroId, Reach)], hero: HeroId) -> &Reach {
     &reaches.iter().find(|(id, _)| *id == hero).unwrap().1
 }
 
-/// The answers to a pending decision, as `legal_commands` lists them (GAM-DEC-001).
+/// The answers to a pending offer, as `legal_commands` lists them (GAM-DEC-001).
 const ANSWERS: [GameCommand; 2] = [
-    GameCommand::Answer(Answer::Accept),
-    GameCommand::Answer(Answer::Decline),
+    GameCommand::Answer(Answer::Offer(Consent::Accept)),
+    GameCommand::Answer(Answer::Offer(Consent::Decline)),
 ];
 
 /// The answers to a level-up, as `legal_commands` lists them (GAM-DEC-002, E08 T30).
 const LEVEL_ANSWERS: [GameCommand; 2] = [
-    GameCommand::Answer(Answer::First),
-    GameCommand::Answer(Answer::Second),
+    GameCommand::Answer(Answer::LevelUp(SkillOffer::First)),
+    GameCommand::Answer(Answer::LevelUp(SkillOffer::Second)),
 ];
+
+/// The answer that closes a meeting or an army dialog (GAM-DEC-003, GAM-DEC-004; E08 T63a).
+const CLOSE: GameCommand = GameCommand::Answer(Answer::Close);
+
+/// An answer of every kind (E08 T63a), the University's purchases of the slots a University may
+/// have and one beyond: the free answers' pool.
+const ANY_ANSWERS: [Answer; 17] = [
+    Answer::Offer(Consent::Accept),
+    Answer::Offer(Consent::Decline),
+    Answer::LevelUp(SkillOffer::First),
+    Answer::LevelUp(SkillOffer::Second),
+    Answer::Chest(ChestChoice::Gold),
+    Answer::Chest(ChestChoice::Experience),
+    Answer::Arena(ArenaChoice::Attack),
+    Answer::Arena(ArenaChoice::Defense),
+    Answer::School(SchoolChoice::First),
+    Answer::School(SchoolChoice::Second),
+    Answer::School(SchoolChoice::Leave),
+    Answer::University(UniversityAnswer::Buy(0)),
+    Answer::University(UniversityAnswer::Buy(1)),
+    Answer::University(UniversityAnswer::Buy(3)),
+    Answer::University(UniversityAnswer::Buy(4)),
+    Answer::University(UniversityAnswer::Leave),
+    Answer::Close,
+];
+
+/// The answers to the acting player's open choice or University as `legal_commands` must list
+/// them (GAM-DEC-005, GAM-DEC-006; E08 T63a), from the decision and the slots' states read
+/// independently: a chest's gold then experience, the Arena's two skills, a School's two and
+/// leaving, a University's purchase of each slot open for the hero while the treasury holds the
+/// price, then leaving. None without such a decision.
+fn choice_answers(state: &GameState, rules: &GameRuleset, player: PlayerId) -> Vec<GameCommand> {
+    let answers: Vec<Answer> = if let Some(choice) = state.choice(player) {
+        match choice.kind {
+            ChoiceKind::Chest { .. } => vec![
+                Answer::Chest(ChestChoice::Gold),
+                Answer::Chest(ChestChoice::Experience),
+            ],
+            ChoiceKind::Primary { leave: false, .. } => vec![
+                Answer::Arena(ArenaChoice::Attack),
+                Answer::Arena(ArenaChoice::Defense),
+            ],
+            ChoiceKind::Primary { leave: true, .. } => vec![
+                Answer::School(SchoolChoice::First),
+                Answer::School(SchoolChoice::Second),
+                Answer::School(SchoolChoice::Leave),
+            ],
+        }
+    } else if let Some(visit) = state.university(player) {
+        let treasury = state.treasury(player).unwrap();
+        let pays = visit
+            .price
+            .iter()
+            .all(|&(r, amount)| treasury[usize::from(r.raw())] >= amount);
+        let hero = state.hero(visit.hero).unwrap();
+        (0u8..)
+            .zip(&visit.skills)
+            .filter(|&(_, &skill)| {
+                pays && h3_heroes::university_slot(hero, rules.core(), skill) == SlotState::Open
+            })
+            .map(|(slot, _)| Answer::University(UniversityAnswer::Buy(slot)))
+            .chain([Answer::University(UniversityAnswer::Leave)])
+            .collect()
+    } else {
+        Vec::new()
+    };
+    answers.into_iter().map(GameCommand::Answer).collect()
+}
 
 /// Legality consistency, before a step: only the actor has legal commands, `EndTurn`, or with an
 /// open decision (only ever the acting player's in sequential play) its answers and nothing else
@@ -1865,8 +1939,10 @@ fn check_legal(
     let fighting = battle_of(state, who).is_some();
     let decided = state.decision(actor).is_some();
     let levelling = state.level_up(actor).is_some();
-    // E08 T51b: a meeting or an army dialog, closed by `Decline` alone.
+    // E08 T51b: a meeting or an army dialog, closed by `Close` alone (T63a).
     let exchanging = state.meeting(actor).is_some() || state.army_dialog(actor).is_some();
+    // E08 T63a: a choice or a University.
+    let choosing = state.choice(actor).is_some() || state.university(actor).is_some();
     let system = legal_commands(state, rules, Actor::System);
     prop_assert_eq!(system.is_empty(), who != Actor::System);
     prop_assert!(system.iter().all(|c| matches!(c, GameCommand::Battle(_))));
@@ -1892,7 +1968,9 @@ fn check_legal(
             } else if decided {
                 answers.to_vec()
             } else if exchanging {
-                vec![GameCommand::Answer(Answer::Decline)]
+                vec![CLOSE]
+            } else if choosing {
+                choice_answers(state, rules, player)
             } else {
                 vec![GameCommand::EndTurn]
             };
@@ -1903,6 +1981,7 @@ fn check_legal(
             let own = me
                 && !decided
                 && !exchanging
+                && !choosing
                 && !levelling
                 && !fighting
                 && state.adventure().hero(*hero).map(|h| h.owner) == Some(actor);
@@ -1957,7 +2036,7 @@ fn check_legal(
                     OfferKind::Join | OfferKind::JoinForGold { .. } | OfferKind::Pursue
                 )
             };
-            let flees = *answer == GameCommand::Answer(Answer::Decline)
+            let flees = *answer == ANSWERS[1]
                 && matches!(open.kind, OfferKind::Join | OfferKind::JoinForGold { .. })
                 && next.is_some_and(|n| {
                     (n.object_type, n.anchor, &n.kind)
@@ -1983,18 +2062,41 @@ fn check_legal(
         return Ok(());
     }
     if exchanging {
-        let decline = GameCommand::Answer(Answer::Decline);
-        prop_assert_eq!(legal, &[decline.clone()][..]);
+        prop_assert_eq!(legal, &[CLOSE][..]);
         let mut probe = state.clone();
         let result = apply(
             &mut probe,
             rules,
             Actor::Player(actor),
-            decline,
+            CLOSE,
             &mut Vec::new(),
         );
-        prop_assert!(result.is_ok(), "Decline rejected: {:?}", result);
+        prop_assert!(result.is_ok(), "Close rejected: {:?}", result);
         prop_assert!(!probe.has_decision(actor));
+        return Ok(());
+    }
+    if choosing {
+        // E08 T63a: every listed answer applies; a purchase keeps the University open, every
+        // other answer closes the decision (what follows may open another: a level-up, a guard's
+        // offer or battle).
+        prop_assert_eq!(legal, &choice_answers(state, rules, actor)[..]);
+        for answer in legal {
+            let mut probe = state.clone();
+            let result = apply(
+                &mut probe,
+                rules,
+                Actor::Player(actor),
+                answer.clone(),
+                &mut Vec::new(),
+            );
+            prop_assert!(result.is_ok(), "legal {:?} rejected: {:?}", answer, result);
+            let buys = matches!(
+                answer,
+                GameCommand::Answer(Answer::University(UniversityAnswer::Buy(_)))
+            );
+            prop_assert_eq!(probe.university(actor).is_some(), buys);
+            prop_assert!(probe.choice(actor).is_none());
+        }
         return Ok(());
     }
     prop_assert_eq!(legal.first(), Some(&GameCommand::EndTurn));
@@ -2889,10 +2991,12 @@ fn check_battle_end(
 /// battle's tile, a wandering monster (E08 T20b3b1; ADV-MON-010) or a guarded pile (E08 T21a;
 /// ADV-PIK-004). A monster: a victory of the visitor's side removes it, told as its removal, and
 /// gives the visitor's owner exactly its treasure; a draw removes it without one; else it stays
-/// with between one and the creatures it had. A pile: a victory picks it up, told as its removal,
-/// and gives the visitor's owner exactly its contents; else it stays, its guards' survivors by
-/// slot each of its stack's creature and at most its count (none after a draw). No treasury
-/// changes otherwise; no side surrenders to them or pays them.
+/// with between one and the creatures it had. A pile: a victory picks it up after the winner's
+/// levels (E08 T63b, GAM-DEC-007): in the battle's last command, told as its removal and giving
+/// the visitor's owner exactly its contents, unless the winner's level-up is left open, its
+/// guards beaten meanwhile; else it stays, its guards' survivors by slot each of its stack's
+/// creature and at most its count (none after a draw). No treasury changes otherwise; no side
+/// surrenders to them or pays them.
 fn check_unowned_battle_end(
     before: &GameState,
     after: &GameState,
@@ -2956,7 +3060,11 @@ fn check_unowned_battle_end(
             );
             prop_assert_eq!(left.is_empty(), result == BattleResult::Draw);
         }
-        (won, won.then(|| object.contents.clone()))
+        let picked = won && after.level_up(owner).is_none();
+        if won && !picked {
+            prop_assert!(after.adventure().guards_left(index).is_empty());
+        }
+        (picked, picked.then(|| object.contents.clone()))
     };
     prop_assert_eq!(after.adventure().is_removed(index), removed, "{:?}", result);
     prop_assert_eq!(removals, usize::from(removed));

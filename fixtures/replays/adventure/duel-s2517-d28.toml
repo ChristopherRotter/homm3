@@ -580,7 +580,7 @@ commands = [
     "1 battle move 120",
     "system battle move 174",
     "1 battle attack 5 157",
-    "1 answer second",
+    "1 answer level-up second",
     "1 end-turn",
     "0 end-turn",
     "1 move 1 32,32,0 31,31,0 30,30,0",
@@ -727,7 +727,7 @@ commands = [
     "1 battle attack 1 76",
     "1 end-turn",
     "0 move 0 10,7,0 9,7,0 8,6,0 7,5,0 6,4,0",
-    "0 accept",
+    "0 answer offer accept",
     "0 move 0 7,4,0 6,3,0",
     "0 end-turn",
     "1 end-turn",
@@ -764,7 +764,7 @@ commands = [
     "0 end-turn",
     "1 end-turn",
     "0 move 2 5,34,1 5,33,1",
-    "0 decline",
+    "0 answer offer decline",
     "0 move 0 24,12,0 25,13,0 26,14,0 27,15,0 28,16,0 29,17,0 30,17,0 31,18,0 32,19,0 33,20,0 34,21,0",
     "0 move 0 34,20,0 35,19,0",
     "0 move 2 6,34,1 7,35,1 8,35,1 9,34,1 10,33,1 11,32,1 11,31,1 10,30,1",
@@ -872,7 +872,7 @@ commands = [
     "0 battle move 94",
     "system battle move 27",
     "0 battle attack 3 9",
-    "0 answer first",
+    "0 answer level-up first",
     "0 end-turn",
     "1 end-turn",
     "0 move 0 23,30,0 23,31,0 22,32,0 21,33,0 20,34,0",
@@ -880,7 +880,7 @@ commands = [
     "1 move 3 20,20,1 19,20,1 18,20,1 17,20,1 16,20,1 15,20,1 14,20,1",
     "1 end-turn",
     "0 move 0 21,34,0 22,34,0 23,35,0",
-    "0 accept",
+    "0 answer offer accept",
     "0 move 0 24,35,0 25,35,0 26,35,0 27,35,0 28,35,0 29,35,0",
     "0 end-turn",
     "1 move 3 15,20,1 16,20,1 17,20,1 18,20,1 19,20,1 20,21,1 21,22,1",
@@ -918,46 +918,46 @@ commands = [
     "1 end-turn",
 ]
 checkpoints = [
-    "0xe0200360ddb08b79",
-    "0xbec542062048113f",
-    "0x10871902fbf23a75",
-    "0xa87daa2b4523004e",
-    "0xee6fb834163805c6",
-    "0x3dd2e3437af27439",
-    "0x6057b411583c393a",
-    "0xd8c083cfc35200cf",
-    "0xd62cf78c6eecb382",
-    "0x12fd1644116514f5",
-    "0xe5261ec3f73e6a2a",
-    "0xa7fb2e9272ced46b",
-    "0x0894993c7057f92b",
-    "0xc8454d64ec6d3ec7",
-    "0x1d54ad5d842778ab",
-    "0x6c5cd5cb0ac5a3f2",
-    "0xd1fb15a7e6476da7",
-    "0x250932be805303f9",
-    "0x1728884a33e22668",
-    "0x9f1650c7e17049d2",
-    "0xb377045ad3c4fbbd",
-    "0xcb324938f0d8e5fa",
-    "0x17ad4dc32f593b6c",
-    "0xd3b03b5962383bcc",
-    "0xb541c7c64a556b38",
-    "0xd8df4b66e2c7a4a2",
-    "0xfeb6daea882ae080",
-    "0x82cb1819e2827d90",
-    "0x71b715288e185b21",
-    "0x615464fef1f7f6f9",
-    "0xbfb5e5e80f08ac2d",
-    "0xddffcc831d298794",
-    "0x96a9548368146f34",
-    "0x3d52cf7cb154f372",
-    "0xafd1e4a4139065cb",
-    "0x1daf5a1d896ad2fb",
+    "0x4ffeebc170fb0adf",
+    "0x881c04b6fedd7d35",
+    "0xd81446c488b86fcb",
+    "0xe3f4309ecadf4e28",
+    "0xa739f288757715b4",
+    "0x2fc4679cec41d627",
+    "0x413ff79151e324a8",
+    "0x548b6e31ecfe8d71",
+    "0xe898284f3f66585c",
+    "0xe50e781dcd8ac473",
+    "0x99b6d11d1c39097c",
+    "0xed7dc66d7b37425d",
+    "0x5380f05a2f4a5871",
+    "0x8c51056556a64d75",
+    "0x93e8692cb79b26fd",
+    "0x82527be27438ecc8",
+    "0x79e4e518490218b5",
+    "0xcf13ee5d30d2972f",
+    "0x695ec55899ce29fe",
+    "0x39229d866fdee2c4",
+    "0xb5ff6988a521e5cf",
+    "0xdc6af9fd11cae5c0",
+    "0x3f0acd12e41e5192",
+    "0x6804dabd86316c3a",
+    "0x956d20b2f3748a06",
+    "0x0f85318e3070fb64",
+    "0x841668f89c193af6",
+    "0xd47e7d40e995c5d2",
+    "0x80fd108613b82cdf",
+    "0x13ed3b57422fedbf",
+    "0x400e3e0cc0db492f",
+    "0xa9bdc9c99f047636",
+    "0x75c6095d3e32a756",
+    "0x270a5281601ebdd4",
+    "0x38f125a1bd199519",
+    "0x92fab87448f60fad",
 ]
 
 [replay]
-format = 6
+format = 7
 engine = "0.1.0"
 seed = "2517"
 difficulty = 1
@@ -982,7 +982,7 @@ rng = "xoshiro256starstar+splitmix64"
 rng_version = 1
 hash = "fnv1a64-le"
 hash_version = 1
-game_state_hash_version = 17
+game_state_hash_version = 19
 adventure_state_hash_version = 15
 checkpoint_every = 25
 
@@ -993,4 +993,4 @@ import_version = 13
 
 [result]
 day = 29
-final_hash = "0xadc34d2e9e6178c2"
+final_hash = "0xaef7c0d1c3ddcbec"

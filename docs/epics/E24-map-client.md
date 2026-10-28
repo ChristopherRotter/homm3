@@ -167,7 +167,10 @@ battle.
   MCL-Q12 asked), T6b, the closure, cut at its seam before it started (the user, 2026-10-27):
   T6b1, the recordings again (**done** 2026-10-27: the 13 sequences, every line and all 450
   frames exact, T6a's harness changes run; the 40 stills exact; R2-8 as #523), T6b2, the
-  closure with the user.
+  closure with the user, cut at its seam (the user, 2026-10-27): T6b2a, the review list and the
+  questions (**done** 2026-10-27: the review list accepted; MCL-Q7, Q8 and Q12 answered, MCL-Q9
+  left open; a build of `master` and a checklist on the user's machine), T6b2b, the answers
+  built, T6b2c, the hand test and M2 archived.
 - **Exit:** every recorded sequence as recorded, line by line and frame by frame (or each
   difference an `MCL-Q<n>`); a situation and a sequence play in the window at the original's
   frame times, with its sound, and render headless frame by frame.
@@ -226,8 +229,8 @@ battle.
 
 M1's review lists (three reviewers, T6b; the list accepted): `E24-archive.md`. Later milestones add theirs here.
 
-**M2's review list** (the autonomy contract's "queue for the milestone review"; T6 adds the
-reviewers'):
+**M2's review list** (the autonomy contract's "queue for the milestone review"; T6a's 29
+findings all fixed, none added; **accepted by the user** at T6b2a, 2026-10-27):
 
 - **M2 T4a, the key table** (*provisional*): the user's file a TOML table of commands by name
   (`scroll-north` … `hero-north-west`, `pause`, `frame`, `restart`, `vsync`, `fullscreen`,

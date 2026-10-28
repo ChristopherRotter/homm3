@@ -13,11 +13,13 @@
 //! starting resources of the game's difficulty (T13a) and the gains of visits (T13b); pending
 //! decisions, the Cartographer's offer, and their answers ([`Answer`], T14b); the border guard's
 //! offer, whose acceptance checks that it still stands (T15a); battles (T19a); the heroes'
-//! progression (T29) and the level-ups as decisions ([`Answer::First`], [`Answer::Second`],
+//! progression (T29) and the level-ups as decisions ([`Answer::LevelUp`],
 //! [`default_answer`]; T30); the management commands ([`Manage`]) with their per-hero listing
 //! ([`legal_management`], [`split_range`]) and the tactics flag in battle (T51a); the meetings
 //! with Scholar and the army dialogs as decisions, during which the management commands name
-//! two armies ([`GameState::meeting`], [`GameState::army_dialog`]; T51b).
+//! two armies ([`GameState::meeting`], [`GameState::army_dialog`]; T51b); the answers typed by
+//! the decision's kind, the choices (a treasure chest's, the Arena's, a School's) and the
+//! University as decisions ([`GameState::choice`], [`GameState::university`]; T63a).
 //!
 //! Logic crate: pure, deterministic, `no_std` + `alloc` (ADR-0003, ADR-0005). The lint header
 //! below is required and checked by `cargo xtask check-arch`.
@@ -51,9 +53,18 @@ mod treasury;
 #[cfg(test)]
 mod tests;
 
-pub use command::{Actor, Answer, GameCommand, GameCommandError, GameEvent, NoopSink, Sink, apply};
+pub use command::{
+    Actor, Answer, ArenaChoice, ChestChoice, Consent, GameCommand, GameCommandError, GameEvent,
+    NoopSink, SchoolChoice, Sink, SkillOffer, UniversityAnswer, apply,
+};
 /// The army commands a [`Manage::Army`] carries (E08 T51a; `h3_adventure`'s, ADR-0016 point 3).
 pub use h3_adventure::{ArmyCommand, ArmyCommandError, ArmyRef, ArmySlot};
+/// A choice's and a University's views (E08 T63a; `h3_adventure`'s types): what
+/// [`DecisionView::Choice`] and [`DecisionView::University`] show.
+pub use h3_adventure::{Choice, ChoiceKind, UniversityVisit};
+/// A University's slot state for a hero (`h3_heroes`' derivation, HER-CHG-004), which
+/// [`DecisionView::University`] shows (E08 T63a).
+pub use h3_heroes::SlotState;
 /// The hero changes a battle's outcome applies, which [`GameEvent::HeroChanged`] carries (E08
 /// T19a2a; `h3_heroes`' types).
 pub use h3_heroes::{ArtifactPlace, HeroChange};
@@ -89,4 +100,7 @@ pub use state::{GameState, OpenBattle};
 /// T54): whether each player counts as human, each hero's sex the map gave. v15 (E08 T60a): a
 /// hero's battle bonuses. v16 (E08 T62a): a gift's price and a find's question among the offer
 /// kinds. v17 (E08 T62b1): Pandora's Box's and the Pyramid's questions among the offer kinds.
-pub const GAME_STATE_HASH_VERSION: u32 = 17;
+/// v18 (E08 T63a): the choices (a chest's, the Arena's, a School's) and the Universities among
+/// the decisions. v19 (E08 T63b): the rests (GAM-DEC-007), the guard's wait no longer in a
+/// decision.
+pub const GAME_STATE_HASH_VERSION: u32 = 19;

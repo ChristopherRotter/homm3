@@ -6832,3 +6832,133 @@ original data staged from the user's computer.
   then `cargo check --workspace --all-targets` and `h3-sim`'s tests. A smoke run, not committed:
   random play on the eight shipped maps that run whole (three seeds each, 14 days, at most 3 000
   steps), no failure.
+
+### Increment 7, round 7: T63a, the typed answers and increment 7's decisions (2026-10-27, `adventure/e08-t63a`, `cross-lane`)
+
+**The cut** (decision 153): T63 in two, the design's (the agent recommended three, the typed
+answers alone first); the user's consent to the `cross-lane` change of `h3-sim`'s action mapping
+with a University's purchase entries now. **Baseline:** `master` dc4d7e6 (#526 merged); the
+sandbox's light gates passed on its code (CI's fingerprint); the original data staged from the
+user's computer.
+
+- **The answers** (`command.rs`): `Answer` typed by the decision's kind (ADR-0017 point 6,
+  decision 138): `Offer(Consent)`, `LevelUp(SkillOffer)`, `Chest(ChestChoice)`,
+  `Arena(ArenaChoice)`, `School(SchoolChoice)`, `University(UniversityAnswer)`, `Close`; an answer
+  of another kind is `WrongAnswer`; `SlotClosed` and `CannotPay` for a purchase; the events
+  `ChoiceOpened` and `UniversityOpened` (the owner's alone); `DecisionClosed` also closes a choice
+  and a University; `OfferRefused` also tells a School the treasury cannot pay.
+- **The decisions** (`state.rs`): `Decision::Choice` (the adventure's `Choice`, with
+  `guard_after`) opened by `open_choice` when the treasury can pay its price, answered by
+  `answer_choice` (the price, then `AdventureState::choose`, then a waiting guard's visit);
+  `Decision::University` opened by `open_university` whatever the treasury holds, `buy` (the slot
+  open for the hero by `university_slot`, the price, `RaiseSkill` at Basic; it stays open) and its
+  leaving (then a waiting guard's visit); `pick_of` types a choice's answer (a chest's; the Arena's
+  for a choice that cannot be left; a School's for one that can); both hashed (tags 5 and 6; game
+  state hash v18); `GameState::choice`, `university`, `slot_state`, `can_pay`; the defaults'
+  `choose_by_default` gone.
+- **Legal commands and defaults** (`legal.rs`): `answers` lists each kind's in a fixed order (an
+  offer's accept then decline, a level-up's first then second, `Close`, a chest's gold then
+  experience, the Arena's two, a School's two then leave, a University's purchases of the open
+  slots it can pay in slot order then leave); `default_answer` per kind (`Decline`, the original's
+  choice, `Close`, `Gold`, `Attack`, `Leave`, `Leave`).
+- **The views** (`observe.rs`): `DecisionView::Choice(Choice)` and `DecisionView::University {
+  visit, slots }` (each skill's `SlotState` for the hero).
+- **A bug found and fixed** (`h3-adventure`, `state.rs`'s move): a monster guarding an entered
+  object's tile answered instead of the object's outcome but its resources, so since T62a a
+  Learning Stone, a Shrine, a Witch Hut, a gift or a find entered on a guarded tile marked or
+  emptied it and gave the hero nothing. Now the guard waits for an offer, a choice or a University
+  (`AdventureOutcome::waits`) and otherwise follows the object's resources, losses and hero gains
+  (ADV-MON-006 amended).
+- **The env** (`h3-sim`, the AI lane's, `cross-lane`): answers by role (`answer_entry`; 9 accept,
+  10 decline, close or leave, 11 and 12 the first and second of a level-up, a chest, the Arena, a
+  School), a University's purchases of slots 0 to 3 at 13 to 16 (`BUY_BASE`,
+  `UNIVERSITY_SLOTS`); `decode` takes the listed answer of the entry's role, else the offer's or
+  level-up's or the purchase (rejected by the game); action encoding v5. The AI lane's inbox told.
+- **Replays:** format v7 (`answer <kind> <answer>`, `answer close`); the twelve re-recorded with
+  their options (the scripted two from their commands in v7's words), their commands unchanged
+  but for their words: every hash moved.
+- **Rules:** GAM-DEC-005 and GAM-DEC-006 new; GAM-DEC-001 to -004, ADV-PIK-005, ADV-TCH-001,
+  -002, -007 and ADV-MON-006 amended; `ADV-STUB-10` narrowed to the rest (T63b).
+- *Agent's calls (change freely):* decision 153's.
+- **Tests:** `h3-game`'s `tests/rewards.rs` (the chest's, the Arena's, a School's and a
+  University's decisions with every other kind's answer rejected, their views, legal answers,
+  defaults, events and hashes; a guard waiting for each and following a Learning Stone's
+  experience, which failed before the fix); the test rules' entered gifts and University; `h3-map`'s
+  play property lists and applies the new answers (`choice_answers`), its free answers of every
+  kind, its view property the new events; `h3-cli`'s words of every answer and the bad ones;
+  `h3-sim`'s entries of a University's purchases and leaving and of the Arena through the env.
+- **Gates:** the scoped verify with the original data: its first run failed coverage (the new
+  decisions' hash arms, a School's first answer, two errors' text, an unreachable empty answer
+  list), all fixed; the second passed every step but `check-lane` (the `cross-lane` change, by
+  design); `bench-check` at its baselines (`random-play-duel-36` −0.47 %, `fork-xl-144` +0.76 %,
+  `manage-army-12` +0.35 %); `cargo clippy --workspace --all-targets` clean; `h3-sim`'s,
+  `h3-cli`'s and `h3-map`'s tests. A smoke run, not committed: random play on the eight shipped
+  maps that run whole (three seeds each, 14 days, at most 3 000 steps), no failure.
+
+### Increment 7, round 7: T63b, the rest (2026-10-28, `adventure/e08-t63b`)
+
+**The cut** (decision 154): whole (the agent recommended three parts), with a bug found while
+sizing it fixed in it. **Baseline:** `master` fdf002f (#530 merged, CI green on its merge); the
+sandbox's light gates passed on its code (CI's fingerprint); the original data staged from the
+user's computer.
+
+- **The rests** (`h3-game`, `state/rests.rs`; GAM-DEC-007 new): what a visit still owes its hero,
+  held in a list beside the decisions (`GameState::rests`, `Held { owner, hero, rest }`) and run by
+  `run_rests` after every command (`apply`), the last held first, each once its owner has no open
+  decision; after every command each held rest's owner has one. Four kinds: `Guard` (the visit of
+  the monster guarding the hero's tile after the visit of the tile's object), `Experience(u32)` (a
+  reward record's experience after its army dialog, with its levels), `Won(Pos)` (a won guards'
+  battle's reward after the winner's levels), `Event(Pos)` (an event on a guarded tile after the
+  guard's visit). Hashed after the decisions (game state hash v19: tags 0 to 3); the decisions'
+  `guard_after` flags gone (`Decision::{Offer, Choice, University}`, their hash's booleans).
+- **A bug found and fixed** (ADV-MON-006 amended): the guard's visit that waited for an object's
+  decision started as soon as the decision closed, beside what its answer opened; and since T63a
+  an entered gift's experience (a Learning Stone; a Tree of Knowledge's level) opened its level-up
+  with the guard's battle in one outcome: two decisions open (ADR-0017 point 6's one), the
+  battle's hero read before the level. Now the adventure's move sets `guard_after` (the hero) for
+  every visited object on a guarded tile and the game holds the guard's visit as a rest, so it
+  waits for the whole visit (its questions, choices, University, levels and battles). The test
+  `a_guard_waits_for_a_choice_or_a_university_and_follows_a_gift` failed before the fix (the
+  battle opened beside the level-up, its hero's primary skills before the level). A box and a
+  chest are visited from the tile beside them, so no guard waits on them (the question to the user
+  named them wrongly: corrected under decision 154).
+- **The record's experience** (`settle_outcome`): with a group without room the record's
+  experience is held and given with its levels after the army dialog closes (ADV-RWD-001, D-39).
+- **The won guards' battle** (`h3-adventure`, `piles.rs`, `events.rs`): `end_unowned_battle` marks
+  a won object's guards beaten at once (`army_left` empty) and names the reward
+  (`AdventureOutcome::reward_after`); `AdventureState::give_won` gives it later, read again when
+  given: a guarded pile's, artifact's or scroll's pickup, a box's record, an event's record, a
+  Pyramid's loot and spell (its Wisdom test after the levels, E7-22); nothing when the object left
+  the map meanwhile. `end_event_battle` no longer gives the record.
+- **The event on a guarded tile** (`state.rs`'s move, `events.rs`; `ADV-QUIRK-29`):
+  `firing_event` no longer skips a guarded tile; a step that fires an event on a guarded tile ends
+  the move there (a flyer's too, at its move's end for the guard test), the guard visits, and the
+  event is named (`AdventureOutcome::event_after`); `AdventureState::fire_held_event` fires it once
+  the guard's visit is over, for a hero still on its tile that it still fires for (A-26 fixed).
+- **The battle bonuses** (`state/battle.rs`'s `end_battle`; GAM-BAT-014 new): every hero of a
+  battle loses its bonuses and once-marks (`HeroChange::ClearBonuses`) after the heroes' part and
+  before the winner's levels, told to its owner when it had any.
+- **Replays:** the twelve re-recorded with their options (the scripted two from their commands),
+  their commands unchanged: every hash moved (game state hash v19).
+- **Rules:** GAM-DEC-007 (verified: E7-22) and GAM-BAT-014 (verified: E7-11, E7-21) new;
+  ADV-MON-006, ADV-OBJ-007, ADV-MOV-011, ADV-PIK-004, -007, -008, -013, ADV-TCH-008, ADV-RWD-001,
+  GAM-DEC-004, -006, GAM-BAT-008 and HER-ADV-008 amended; `ADV-QUIRK-29`'s ledger entry (its
+  regression tests); `ADV-STUB-10` closed.
+- *Agent's calls (change freely):* decision 154's.
+- **Tests:** `h3-game`'s `tests/rests.rs` (a record's experience after its dialog; a won guarded
+  artifact after the winner's level-up; the hash sees each kind of rest), `tests/rewards.rs` (the
+  gift's level-up before the guard's battle, the battle reading the levelled hero),
+  `tests/events.rs` (an event on a guarded tile fires once a joining guard's visit is over),
+  `tests/aftermath.rs` (the bonuses cleared for both heroes whatever the result, before the
+  winner's levels, untold without bonuses); `h3-adventure`'s piles, records, rewards and events
+  tests through `give_won` and `fire_held_event` (a flyer stopped on a guarded event); `h3-map`'s
+  play property: a won pile is picked up in the battle's last command unless a level-up is left
+  open (its seed committed).
+- **Gates:** the scoped verify with the original data: its first run failed coverage (a held event's
+  hash arm), fixed in the game's event test; the second passed every step; `bench-check` at its
+  baselines (`fork-xl-144` +1.35 % and `fork-meeting-xl-144` +1.29 %, T63a's +0.76 % on the
+  first: likely the empty list of rests each fork copies; `manage-army-12` +0.34 %,
+  `random-play-duel-36` −0.46 %, the reach workloads −0.24 % and −0.99 %); `cargo clippy
+  --workspace --all-targets` clean; `h3-sim`'s tests, `h3-cli`'s adventure replays and `h3-map`'s
+  tests. A smoke run, not committed: random play on the eight shipped maps that run whole (the Tutorial and seven `.h3m`; three seeds each, 14 days,
+  at most 3 000 steps), no failure.

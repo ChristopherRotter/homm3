@@ -1,7 +1,7 @@
 //! Tests of events (E08 T62b2; design §12, §13): the step that fires one and ends the move there,
 //! the colours and the computer flag, the repeats, the guards at once and their battle's end, an
-//! event on a guarded tile until T63 (`ADV-STUB-10`), a flyer stopped on one, and what no player
-//! sees of one: never in a view, nothing in the paths or the reachable tiles.
+//! event on a guarded tile after its guard's visit (E08 T63b), a flyer stopped on one, and what no
+//! player sees of one: never in a view, nothing in the paths or the reachable tiles.
 
 use std::boxed::Box;
 use std::sync::Arc;
@@ -222,21 +222,27 @@ fn an_events_guards_fight_at_once_and_its_record_follows_a_win() {
     let mut lost = s.clone();
     assert_eq!(ended(&mut lost, &left, false), AdventureOutcome::default());
     assert_eq!(lost.guards_left(0), left);
-    // Won: the record; the guards gone for good, so the next entry gives it without a battle.
-    assert_eq!(ended(&mut s, &[], true).gains, [(GOLD, 100)]);
+    // Won: the guards gone for good, the record after the winner's levels (E08 T63b,
+    // GAM-DEC-007: `give_won`), so the next entry gives it without a battle.
+    let after = AdventureOutcome {
+        reward_after: Some((HERO, tile)),
+        ..AdventureOutcome::default()
+    };
+    assert_eq!(ended(&mut s, &[], true), after);
+    let parts = (&rules.0, &rules.1, &heroes[..]);
+    assert_eq!(
+        s.give_won(parts, (HERO, tile), &mut Vec::new()).gains,
+        [(GOLD, 100)]
+    );
     assert!(s.guards_left(0).is_empty() && !s.is_removed(0));
     walk(&rules, &mut s, &heroes, &row(4..=4));
     let (outcome, _) = walk(&rules, &mut s, &heroes, &[tile]);
     assert_eq!((outcome.battle, outcome.gains), (None, vec![(GOLD, 100)]));
 }
 
-// covers: ADV-OBJ-007, ADV-MON-005
-#[test]
-fn an_event_on_a_guarded_tile_does_not_fire_until_the_rest() {
-    let rules = rules(true);
-    let heroes = store(hero());
-    // A monster at (5, 0) guards (4, 1): its visit comes, the event stays (ADV-STUB-10).
-    let monster = ObjectSetup {
+/// Five savage pikemen at (5, 0), guarding (4, 1) and (6, 1) (ADV-MON-005).
+fn pikemen(rules: &Rules) -> ObjectSetup {
+    ObjectSetup {
         anchor: Pos::new(5, 0, 0),
         object_type: Some(MONSTER),
         monster: Some(MonsterSetup {
@@ -248,17 +254,76 @@ fn an_event_on_a_guarded_tile_does_not_fire_until_the_rest() {
             treasure: vec![],
             artifact: None,
         }),
-        ..object(&rules, 5, "t:event", Holds::Nothing)
-    };
+        ..object(rules, 5, "t:event", Holds::Nothing)
+    }
+}
+
+// covers: ADV-OBJ-007, ADV-MON-005, ADV-MON-006
+#[test]
+fn an_event_on_a_guarded_tile_fires_after_the_guards_visit() {
+    let rules = rules(true);
+    let heroes = store(hero());
+    let parts = (&rules.0, &rules.1, &heroes[..]);
+    let tile = Pos::new(4, 1, 0);
     let mut s = map(
         &rules,
-        vec![monster, event(&rules, 4, RED_ONLY, false, true)],
+        vec![pikemen(&rules), event(&rules, 4, RED_ONLY, false, true)],
         true,
     );
+    // The step onto it: the guard's battle, the event held (E08 T63b; before it, the event did
+    // not fire, `ADV-STUB-10`), nothing fired yet.
     let (outcome, events) = walk(&rules, &mut s, &heroes, &row(2..=4));
+    let battle = outcome.battle.unwrap();
+    assert_eq!(
+        (outcome.event_after, outcome.gains, fired(&events).len()),
+        (Some((HERO, tile)), vec![], 0)
+    );
+    // The guard beaten: the held event fires for the hero still on its tile.
+    let ended = (HERO, battle.tile);
+    s.end_unowned_battle(parts, ended, (&[], true), &mut Vec::new());
+    let mut held = s.clone();
+    let mut events = Vec::new();
+    let outcome = held.fire_held_event(parts, (RED, HERO), tile, &mut events);
+    assert_eq!(
+        (outcome.gains, fired(&events).len()),
+        (vec![(GOLD, 100)], 1)
+    );
+    assert!(held.is_removed(1));
+    // Gone, off its tile, or another player's hero: nothing (A-26 fixed, `ADV-QUIRK-29`).
+    let mut quiet = Vec::new();
+    let elsewhere = Pos::new(3, 1, 0);
+    let blue = PlayerId::new(1);
+    for (player, at) in [(RED, tile), (RED, elsewhere), (blue, tile)] {
+        let mut state = if at == tile && player == RED {
+            held.clone()
+        } else {
+            s.clone()
+        };
+        let outcome = state.fire_held_event(parts, (player, HERO), at, &mut quiet);
+        assert_eq!(outcome, AdventureOutcome::default());
+    }
+    assert!(quiet.is_empty());
+}
+
+// covers: ADV-MOV-011, ADV-MOV-009, ADV-MON-006
+#[test]
+fn a_flyer_stopped_on_a_guarded_event_meets_its_guard() {
+    let rules = rules(true);
+    let flyer = store(hero_details(&[(FLYING, 3)]));
+    let mut s = map(
+        &rules,
+        vec![pikemen(&rules), event(&rules, 4, RED_ONLY, false, true)],
+        true,
+    );
+    // Over (4, 1) toward (6, 1): the event's tile ends the move, and there the guard visits
+    // (before E08 T63b the flyer flew on to (6, 1) and met it there).
+    let (outcome, events) = walk(&rules, &mut s, &flyer, &row(2..=6));
+    assert_eq!(standing(&s).0, Pos::new(4, 1, 0));
+    assert_eq!(
+        (outcome.dropped, outcome.event_after, fired(&events).len()),
+        (2, Some((HERO, Pos::new(4, 1, 0))), 0)
+    );
     assert!(outcome.battle.is_some());
-    assert_eq!((outcome.gains, fired(&events).len()), (vec![], 0));
-    assert!(!s.is_removed(1));
 }
 
 // covers: ADV-MOV-011, ADV-MOV-009

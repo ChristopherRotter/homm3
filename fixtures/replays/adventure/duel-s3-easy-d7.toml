@@ -297,7 +297,7 @@ commands = [
     "system battle move 125",
     "1 battle move 3",
     "1 battle shoot 3 125",
-    "1 answer first",
+    "1 answer level-up first",
     "1 move 1 33,31,0 32,31,0 31,32,0 30,33,0 29,34,0",
     "1 end-turn",
     "0 move 2 7,27,1 6,27,1 5,27,1 4,27,1 3,27,1 2,27,1 1,27,1 0,27,1",
@@ -313,22 +313,22 @@ commands = [
     "1 end-turn",
 ]
 checkpoints = [
-    "0xcf68fe3b463cc913",
-    "0x5d17926a95b81087",
-    "0xb9c5f2146df9aa22",
-    "0x88fb84586d10b678",
-    "0x46b36a84b892476d",
-    "0x1888e13d2f56c60a",
-    "0x190807e605603271",
-    "0x6793d10835b4761c",
-    "0xbfd71fa34a4a5abb",
-    "0xf10ffd84a67ac3e2",
-    "0xc54336b9123eb634",
-    "0x91d8b3fff0f2cb68",
+    "0x48d6b849ff92b79d",
+    "0xe35a6f884ceffe1d",
+    "0x8969821a6c53c660",
+    "0x9cefa0adab458e66",
+    "0x7c6904b698c7635f",
+    "0xa43411d34eddc458",
+    "0xee18e3aa5e6e2acf",
+    "0x7e5050ab5d21501a",
+    "0x73140abd33e1b2f9",
+    "0x28ee496142ef7f5c",
+    "0x7f80c9e38bfde85a",
+    "0xb129678fc9bba91e",
 ]
 
 [replay]
-format = 6
+format = 7
 engine = "0.1.0"
 seed = "3"
 difficulty = 0
@@ -353,7 +353,7 @@ rng = "xoshiro256starstar+splitmix64"
 rng_version = 1
 hash = "fnv1a64-le"
 hash_version = 1
-game_state_hash_version = 17
+game_state_hash_version = 19
 adventure_state_hash_version = 15
 checkpoint_every = 25
 
@@ -364,4 +364,4 @@ import_version = 13
 
 [result]
 day = 8
-final_hash = "0x37de4a313c513942"
+final_hash = "0x48eb3c3a9d278688"

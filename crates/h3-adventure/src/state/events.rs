@@ -36,27 +36,42 @@ impl AdventureState {
     /// The event a step of `player`'s hero onto `pos` fires, if one does (ADV-OBJ-007; the
     /// original's `event_fires_for` 0x4FCDC0, tested at 0x4811A3): the event on the tile
     /// ([`Self::event_at`]) whose colours hold the player's seat's colour, for a player that does
-    /// not count as human only with its computer flag. On a tile a monster guards none fires
-    /// until T63 (`ADV-STUB-10`): the original lets the guard visit first and fires the event
-    /// after it (0x48169D, 0x481741), for a hero still on its tile only (A-26 fixed,
-    /// `ADV-QUIRK-29`); the wait across the guard's decisions is T63's rest (GAM-DEC-007).
+    /// not count as human only with its computer flag. On a tile a monster guards the original
+    /// lets the guard visit first and fires the event after it (0x48169D, 0x481741): the move
+    /// asks the guard and holds the event ([`AdventureOutcome::event_after`], E08 T63b), fired
+    /// for a hero still on its tile only ([`Self::fire_held_event`]; A-26 fixed, `ADV-QUIRK-29`).
     // rule: ADV-OBJ-007
-    pub(crate) fn firing_event(
-        &self,
-        part: &AdventureRuleset,
-        player: PlayerId,
-        pos: Pos,
-    ) -> Option<usize> {
+    pub(crate) fn firing_event(&self, player: PlayerId, pos: Pos) -> Option<usize> {
         let seat = self.seats[usize::from(player.raw())];
         let colour = 1u16 << seat.colour.min(8);
-        self.event_at(pos)
-            .filter(|&index| {
-                self.map.objects()[index].event().is_some_and(|event| {
-                    u16::from(event.colours) & colour != 0 && (seat.human || event.computer)
-                })
+        self.event_at(pos).filter(|&index| {
+            self.map.objects()[index].event().is_some_and(|event| {
+                u16::from(event.colours) & colour != 0 && (seat.human || event.computer)
             })
-            // stub: ADV-STUB-10 (an event on a guarded tile fires after the guard's visit, T63)
-            .filter(|_| self.guard_at(part, pos).is_none())
+        })
+    }
+
+    /// The event at `tile` held while the monster guarding it visited `player`'s hero `hero`
+    /// (ADV-OBJ-007, E08 T63b; [`AdventureOutcome::event_after`]): once the guard's visit is over
+    /// (its offers answered, its battle and the levels it gave), it fires ([`Self::fire_event`])
+    /// for a hero still on its tile that it still fires for ([`Self::firing_event`]). The
+    /// original fires it whatever the guard's visit ended in, for a hero the battle took off the
+    /// map too (A-26, state-corrupting: fixed, `ADV-QUIRK-29`). Nothing otherwise.
+    // rule: ADV-OBJ-007, ADV-MON-006
+    pub fn fire_held_event<S: Sink>(
+        &mut self,
+        rules: Rules<'_>,
+        (player, hero): (PlayerId, HeroId),
+        tile: Pos,
+        sink: &mut S,
+    ) -> AdventureOutcome {
+        let on_tile = self
+            .hero(hero)
+            .is_some_and(|h| h.owner == player && h.pos == tile);
+        match self.firing_event(player, tile).filter(|_| on_tile) {
+            Some(index) => self.fire_event(rules, (player, hero), (index, tile), sink),
+            None => AdventureOutcome::default(),
+        }
     }
 
     /// Fires the event at `index` for `player`'s hero `hero`, which a step brought onto its tile
@@ -110,15 +125,14 @@ impl AdventureState {
     /// The end of the battle `hero` fought at `tile` against the guards of the event lying there
     /// ([`Self::event_at`]; ADV-OBJ-007, the original's `event_fire` after its battle): lost, the
     /// guards' `survivors`, by slot, stay as its guards (none after a draw); won, its guards are
-    /// gone for good and its reward record follows ([`Self::give_event`]; until T63 before the
-    /// winner's levels, `ADV-STUB-10`). Nothing when no event with guards lies at `tile`.
-    // rule: ADV-OBJ-007
-    pub(super) fn end_event_battle<S: Sink>(
+    /// gone for good and its reward record follows after the winner's levels
+    /// ([`AdventureOutcome::reward_after`], GAM-DEC-007, E08 T63b: [`Self::give_won`]). Nothing
+    /// when no event with guards lies at `tile`.
+    // rule: ADV-OBJ-007, GAM-DEC-007
+    pub(super) fn end_event_battle(
         &mut self,
-        rules: Rules<'_>,
         (hero, tile): (HeroId, Pos),
         (survivors, won): (&[ArmyStack], bool),
-        sink: &mut S,
     ) -> AdventureOutcome {
         let Some(index) = self
             .event_at(tile)
@@ -128,10 +142,9 @@ impl AdventureState {
         };
         let left = if won { Vec::new() } else { survivors.to_vec() };
         self.army_left.set(index, Some(left));
-        if won {
-            self.give_event(rules, hero, index, sink)
-        } else {
-            AdventureOutcome::default()
+        AdventureOutcome {
+            reward_after: won.then_some((hero, tile)),
+            ..AdventureOutcome::default()
         }
     }
 }

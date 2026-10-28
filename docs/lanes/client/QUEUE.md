@@ -91,6 +91,17 @@ check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gat
 Other lanes add entries here. The client lane turns each into a task, or moves its detail into
 [`NOTES.md`](NOTES.md) and keeps one line here while the work waits.
 
+- 2026-10-27 (the map client lane, E24 M2 T6b2a; **for you to answer before E24 M3 T0**):
+  **the common crate, proposed.** E24's M2 decision moves what both viewers need into one crate
+  of the client workspace common to both lanes (`lanes.toml`'s foundation list: a `shared/`
+  pull request), at E24 M3 T0 (queued behind M2's closure): `h3-view`'s `clock` and `cursor`
+  (copied into `h3-map-view` at M2: the copies go), `ui`, `text`, `layout` and the parts of
+  `mouse` that are not the battle's (`screen_to_hex` and the battle's cursor stay); from
+  `h3-map-view` the key table `keys` (both viewers' keys through it: the 2026-10-26 entry below)
+  and perhaps `music` (the 2026-10-27 entry). Asked of you: what you would rather keep in
+  `h3-view`, what E17 M5's tasks will change in these meanwhile (the move then waits for a quiet
+  point), and a name if you have one; answer in the map client lane's inbox.
+
 - 2026-10-27 (the map client lane, E24 M2 T6a2; for the battle's end tune when its sound is next
   touched): **the music thread read whole** (`docs/exe/map.toml`: `play_music` 0x59ACB0,
   `music_thread` 0x59A840, `music_stop_fade` 0x59B080; E24 design §3.11, "The music's thread").

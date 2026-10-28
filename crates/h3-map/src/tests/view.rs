@@ -343,6 +343,9 @@ enum Open {
     LevelUp(LevelUpView),
     Meeting([HeroId; 2]),
     Dialog(HeroId, Vec<ArmyStack>),
+    // E08 T63a: a choice and a University, named by the hero and the object.
+    Choice(HeroId, h3_adventure::ObjectTypeId, TilePos),
+    University(HeroId, h3_adventure::ObjectTypeId, TilePos),
 }
 
 fn check_told(
@@ -371,6 +374,10 @@ fn check_told(
         DecisionView::LevelUp(view) => Open::LevelUp(*view),
         DecisionView::Meeting { heroes } => Open::Meeting(*heroes),
         DecisionView::ArmyDialog { hero, group } => Open::Dialog(*hero, group.clone()),
+        DecisionView::Choice(c) => Open::Choice(c.hero, c.object_type, c.anchor),
+        DecisionView::University { visit: v, .. } => {
+            Open::University(v.hero, v.object_type, v.anchor)
+        }
     };
     // E08 T51b: the group of the army dialog the viewer is told closed, whose stacks are lost.
     let mut lost: Vec<ArmyStack> = Vec::new();
@@ -486,6 +493,27 @@ fn check_told(
                 decision = Some(Open::Offer(hero, object_type, anchor));
             }
             GameEvent::OfferRefused { player, .. } => prop_assert_eq!(player, viewer),
+            // E08 T63a: a choice and a University open as the viewer's decision.
+            GameEvent::ChoiceOpened {
+                player,
+                hero,
+                object_type,
+                anchor,
+            } => {
+                prop_assert_eq!(player, viewer);
+                prop_assert!(decision.is_none());
+                decision = Some(Open::Choice(hero, object_type, anchor));
+            }
+            GameEvent::UniversityOpened {
+                player,
+                hero,
+                object_type,
+                anchor,
+            } => {
+                prop_assert_eq!(player, viewer);
+                prop_assert!(decision.is_none());
+                decision = Some(Open::University(hero, object_type, anchor));
+            }
             // E08 T51a: the management's events are the owner's (the plans manage since T52); a
             // slot of an army dialog's group changes its group (T51b).
             GameEvent::StackChanged { player, at, stack } => {
@@ -529,7 +557,14 @@ fn check_told(
                 prop_assert_eq!(player, viewer);
                 match decision.take() {
                     Some(Open::Dialog(_, group)) => lost = group,
-                    open => prop_assert!(matches!(open, Some(Open::Meeting(_))), "{:?}", open),
+                    open => prop_assert!(
+                        matches!(
+                            open,
+                            Some(Open::Meeting(_) | Open::Choice(..) | Open::University(..))
+                        ),
+                        "{:?}",
+                        open
+                    ),
                 }
             }
             GameEvent::GroupLost { player, stack, .. } => {

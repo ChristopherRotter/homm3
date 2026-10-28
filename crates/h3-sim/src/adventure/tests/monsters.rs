@@ -100,7 +100,7 @@ fn the_neutral_seat_waits_outside_a_monsters_battle() {
     }
     for command in [
         GameCommand::EndTurn,
-        GameCommand::Answer(h3_game::Answer::Decline),
+        GameCommand::Answer(h3_game::Answer::Offer(h3_game::Consent::Decline)),
     ] {
         assert_eq!(action::encode(state, rules, Seat::Neutral, &command), None);
     }

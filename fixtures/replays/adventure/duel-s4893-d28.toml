@@ -8,7 +8,7 @@ commands = [
     "1 move 3 30,6,1 30,7,1 30,8,1 29,9,1 28,9,1 27,9,1 26,9,1",
     "1 end-turn",
     "0 move 2 9,34,1 8,35,1 7,35,1 6,34,1 5,33,1",
-    "0 accept",
+    "0 answer offer accept",
     "0 battle move 21",
     "system battle move 66",
     "0 battle move 121",
@@ -265,7 +265,7 @@ commands = [
     "system battle move 121",
     "0 battle move 14",
     "0 battle attack 3 138",
-    "0 answer second",
+    "0 answer level-up second",
     "0 move 0 12,6,0 11,6,0 10,6,0 9,6,0 8,6,0 7,6,0 6,6,0 5,6,0 4,7,0 3,8,0 2,9,0 1,9,0",
     "0 move 2 7,34,1",
     "0 end-turn",
@@ -451,7 +451,7 @@ commands = [
     "0 battle move 96",
     "0 battle attack 4 114",
     "system battle attack 0 64",
-    "0 answer first",
+    "0 answer level-up first",
     "0 end-turn",
     "1 move 1 33,35,0 34,35,0",
     "1 move 3 21,6,1 20,7,1 19,8,1",
@@ -462,7 +462,7 @@ commands = [
     "0 move 0 18,11,0 17,11,0 16,11,0 15,11,0 14,11,0 13,11,0 12,11,0 11,11,0 10,11,0 9,11,0 8,10,0 7,9,0 6,8,0 5,7,0 4,6,0",
     "0 move 0 4,5,0",
     "0 move 2 6,27,1 5,27,1 4,28,1 5,29,1 6,30,1 7,30,1 8,29,1",
-    "0 decline",
+    "0 answer offer decline",
     "0 move 2 9,28,1 10,27,1",
     "0 move 2 9,28,1",
     "0 end-turn",
@@ -499,7 +499,7 @@ commands = [
     "0 end-turn",
     "1 end-turn",
     "0 move 2 10,31,1 11,31,1 12,31,1 13,31,1 14,31,1 15,31,1 16,31,1 17,32,1 17,33,1",
-    "0 accept",
+    "0 answer offer accept",
     "0 move 2 18,32,1",
     "0 move 0 24,13,0 23,13,0 22,13,0 21,13,0 20,13,0 19,12,0",
     "0 move 0 19,11,0 19,10,0 19,9,0 19,8,0 19,7,0 19,6,0 19,5,0 20,4,0",
@@ -517,7 +517,7 @@ commands = [
     "1 move 1 25,23,0 26,22,0 27,21,0 28,20,0 28,19,0",
     "1 end-turn",
     "0 move 0 10,15,0 9,14,0 8,13,0 7,12,0 6,11,0 5,10,0 4,9,0 3,8,0 2,7,0",
-    "0 accept",
+    "0 answer offer accept",
     "0 end-turn",
     "1 end-turn",
     "0 move 0 3,7,0 4,7,0 5,7,0 6,7,0 7,7,0 8,7,0 9,7,0 10,7,0 11,7,0 12,7,0 13,8,0 14,9,0 15,10,0 16,11,0 17,12,0 18,13,0",
@@ -569,8 +569,8 @@ commands = [
     "1 end-turn",
     "0 end-turn",
     "1 move 1 21,19,0 21,20,0 22,21,0 23,22,0 24,23,0 25,24,0 26,25,0 26,26,0 26,27,0 26,28,0 26,29,0 26,30,0 25,31,0 24,32,0 23,33,0",
-    "1 decline",
-    "1 accept",
+    "1 answer offer decline",
+    "1 answer offer accept",
     "1 battle move 174",
     "system battle move 98",
     "1 battle move 38",
@@ -603,34 +603,34 @@ commands = [
     "1 end-turn",
 ]
 checkpoints = [
-    "0x31865b5b38c2de1b",
-    "0x0bed7eaca67db9d0",
-    "0x9e4c7fc36a1710d3",
-    "0x1abb64c0c7412601",
-    "0xfb479850deac4176",
-    "0xc1c6a94aeddece61",
-    "0xb39d955f571c8d57",
-    "0xaed6984057d2d9ce",
-    "0x3e8aaa34688febef",
-    "0x815a17b32413a46a",
-    "0xc078468d919cd3c8",
-    "0x06397858831e48d7",
-    "0xe133b74b42741b47",
-    "0x7669cfa46c2536c3",
-    "0x75352c59d242d027",
-    "0x96a7b651c98becd2",
-    "0xd766e0aa70207a84",
-    "0x66046e5f8b1c8a54",
-    "0x8de49545a16f872e",
-    "0xb2faa067ec0d24bf",
-    "0xcd8800b25cb474fa",
-    "0x1229e46283a261b3",
-    "0x14bc43b6cc43690d",
-    "0x8d5d875180d84bb9",
+    "0xbf9f669bcc83e365",
+    "0xffff531197c57376",
+    "0x8bcb222d8400fa8d",
+    "0xd256bd5961709227",
+    "0xbabcfd06aea56fbc",
+    "0xed61df3d61f39f73",
+    "0xc869ef99a7ca0e4d",
+    "0x55f4e8c801806684",
+    "0x7279a928e6831421",
+    "0xbfead83f408ff19c",
+    "0x9958e139c2953e7e",
+    "0xd453f221d7909d49",
+    "0xe8efd875941083d1",
+    "0x90dd22eb368072c9",
+    "0x65aee20de971fabd",
+    "0x15c60a78bb9f37a0",
+    "0xd1970bb577309d9e",
+    "0xd01f295c6cd461be",
+    "0x434fbef54f20a481",
+    "0x851f91adfad04fa7",
+    "0xcb5c4ff00097e393",
+    "0x05b01d10c806969f",
+    "0xdbeac64ab0b2713c",
+    "0x471e501a65508cb7",
 ]
 
 [replay]
-format = 6
+format = 7
 engine = "0.1.0"
 seed = "4893"
 difficulty = 1
@@ -655,7 +655,7 @@ rng = "xoshiro256starstar+splitmix64"
 rng_version = 1
 hash = "fnv1a64-le"
 hash_version = 1
-game_state_hash_version = 17
+game_state_hash_version = 19
 adventure_state_hash_version = 15
 checkpoint_every = 25
 
@@ -666,4 +666,4 @@ import_version = 13
 
 [result]
 day = 29
-final_hash = "0xf5957e0dc0e81ff0"
+final_hash = "0xc26cc5cfec7678e5"

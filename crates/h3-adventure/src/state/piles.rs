@@ -3,6 +3,7 @@
 //! [`OfferKind::Fight`] offer) or fights at once; once they are beaten it is picked up as any pile.
 
 use alloc::sync::Arc;
+use alloc::vec::Vec;
 
 use h3_content::Ruleset;
 use h3_contracts::{ArmyStack, HeroId};
@@ -117,17 +118,15 @@ impl AdventureState {
     /// ([`Self::end_monster_battle`], ADV-MON-010), a guarded object's (ADV-PIK-004, E08 T21a; an
     /// artifact's or a scroll's since T62a, ADV-PIK-007, ADV-PIK-008; Pandora's Box's since
     /// T62b1, ADV-PIK-013) or the Pyramid's (ADV-TCH-008, E08 T62b1). After the visitor's side
-    /// `won` against an object's guards it is picked up ([`Self::pick_up`]: a pile's contents are
-    /// the outcome's gains, an artifact or a scroll goes to the hero) or a box gives its record
-    /// ([`Self::give_box`]), and it leaves the map, told to the players that see it there; else
-    /// the guards' `survivors`, by slot, stay as its guards (none after a draw: the next visit
-    /// picks it up, or opens the box), unseen by every player (the guards are hidden). A won
-    /// Pyramid is looted and teaches its spell ([`Self::loot_pyramid`]); after any other end
-    /// nothing changes (its guards' losses are not kept). Until T63 what a win gives comes before
-    /// the winner's levels (`ADV-STUB-10`). Else, since E08 T62b2, an event's guards' battle at
-    /// its tile, where its visitor stands ([`Self::end_event_battle`], ADV-OBJ-007). Infallible:
-    /// nothing when none of them is at `tile`.
-    // rule: ADV-PIK-004, ADV-MON-010, ADV-PIK-013, ADV-TCH-008, ADV-OBJ-007
+    /// `won` against an object's guards they are beaten for good, and what the object gives comes
+    /// after the winner's levels ([`AdventureOutcome::reward_after`], GAM-DEC-007, E08 T63b:
+    /// [`Self::give_won`]); else the guards' `survivors`, by slot, stay as its guards (none after
+    /// a draw: the next visit picks it up, or opens the box), unseen by every player (the guards
+    /// are hidden). A won Pyramid's loot and spell come after the levels too; after any other end
+    /// nothing changes (its guards' losses are not kept). Else, since E08 T62b2, an event's
+    /// guards' battle at its tile, where its visitor stands ([`Self::end_event_battle`],
+    /// ADV-OBJ-007). Infallible: nothing when none of them is at `tile`.
+    // rule: ADV-PIK-004, ADV-MON-010, ADV-PIK-013, ADV-TCH-008, ADV-OBJ-007, GAM-DEC-007
     pub fn end_unowned_battle<S: Sink>(
         &mut self,
         rules: (&Ruleset, &AdventureRuleset, &[Arc<HeroDetails>]),
@@ -135,27 +134,65 @@ impl AdventureState {
         (survivors, won): (&[ArmyStack], bool),
         sink: &mut S,
     ) -> AdventureOutcome {
-        let (core, part, _) = rules;
-        let Some((index, object_type, ty)) = self.tile_object(part, tile) else {
-            return self.end_event_battle(rules, (hero, tile), (survivors, won), sink);
+        let part = rules.1;
+        let Some((index, _, ty)) = self.tile_object(part, tile) else {
+            return self.end_event_battle((hero, tile), (survivors, won));
+        };
+        let reward = AdventureOutcome {
+            reward_after: won.then_some((hero, tile)),
+            ..AdventureOutcome::default()
         };
         match ty.kind {
             ObjectKind::Monster { .. } => {
                 self.end_monster_battle(rules, (hero, tile), (survivors, won), sink)
             }
-            ObjectKind::Pyramid(_) if won => self.loot_pyramid(rules, hero, index),
+            ObjectKind::Pyramid(_) => reward,
             _ if self.map.objects()[index].guards.is_some() => {
-                self.army_left
-                    .set(index, (!won).then(|| survivors.to_vec()));
-                match (won, &ty.kind) {
-                    (false, _) => AdventureOutcome::default(),
-                    (true, ObjectKind::PandoraBox) => {
-                        self.give_box(rules, hero, (index, object_type), sink)
-                    }
-                    (true, _) => self.pick_up(core, hero, (index, object_type), sink),
+                let left = if won { Vec::new() } else { survivors.to_vec() };
+                self.army_left.set(index, Some(left));
+                reward
+            }
+            _ => self.end_event_battle((hero, tile), (survivors, won)),
+        }
+    }
+
+    /// What a won battle against the guards of the object at `tile` gives the hero `hero` after
+    /// the winner's levels (GAM-DEC-007, E08 T63b; [`AdventureOutcome::reward_after`]): a guarded
+    /// pile, artifact or scroll is picked up ([`Self::pick_up`]: a pile's contents are the
+    /// outcome's gains, an artifact or a scroll goes to the hero) or a box gives its record
+    /// ([`Self::give_box`]), and it leaves the map, told to the players that see it there; a
+    /// Pyramid not looted is looted and teaches its spell ([`Self::loot_pyramid`]); an event whose
+    /// guards are beaten gives its record ([`Self::give_event`]). Read when it is given: the
+    /// levels' skills decide what the hero can receive or learn (the Pyramid's spell, E7-22).
+    /// Nothing when none of them is at `tile` any more.
+    // rule: GAM-DEC-007, ADV-PIK-004, ADV-PIK-013, ADV-TCH-008, ADV-OBJ-007
+    pub fn give_won<S: Sink>(
+        &mut self,
+        rules: (&Ruleset, &AdventureRuleset, &[Arc<HeroDetails>]),
+        (hero, tile): (HeroId, Pos),
+        sink: &mut S,
+    ) -> AdventureOutcome {
+        let (core, part, _) = rules;
+        let beaten = |s: &Self, index: usize| {
+            s.map.objects()[index].guards.is_some() && s.guards_left(index).is_empty()
+        };
+        match self.tile_object(part, tile) {
+            Some((index, _, ty)) if matches!(ty.kind, ObjectKind::Pyramid(_)) => {
+                if self.is_emptied(index) {
+                    AdventureOutcome::default()
+                } else {
+                    self.loot_pyramid(rules, hero, index)
                 }
             }
-            _ => self.end_event_battle(rules, (hero, tile), (survivors, won), sink),
+            Some((index, object_type, ty)) if beaten(self, index) => match ty.kind {
+                ObjectKind::PandoraBox => self.give_box(rules, hero, (index, object_type), sink),
+                _ => self.pick_up(core, hero, (index, object_type), sink),
+            },
+            _ => self
+                .event_at(tile)
+                .filter(|&index| beaten(self, index))
+                .map(|index| self.give_event(rules, hero, index, sink))
+                .unwrap_or_default(),
         }
     }
 }

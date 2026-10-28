@@ -9,7 +9,8 @@
 use core::fmt;
 
 use h3_adventure::{
-    AdventureCommand, AdventureCommandError, AdventureEvent, ArmySlot, ObjectTypeId, Pos, Viewers,
+    AdventureCommand, AdventureCommandError, AdventureEvent, ArmySlot, ObjectTypeId, Pick, Pos,
+    Viewers,
 };
 use h3_content::{CreatureTypeId, Formation, ResourceId, SkillId};
 use h3_contracts::{ArmyStack, BattleResult, HeroId, PlayerId};
@@ -49,38 +50,138 @@ pub enum GameCommand {
     Manage(Manage),
 }
 
-/// An answer to a pending decision (ADR-0017 point 6): increments 2's and 3's decisions are
-/// offers, answered yes or no; increment 4's level-ups (GAM-DEC-002, E08 T30) one of two offers.
-/// An answer of the other kind is rejected (`WrongAnswer`).
+/// An answer to a pending decision, typed by the decision's kind (ADR-0017 point 6; E08 decision
+/// 138, T63a): each variant names a kind of decision and carries that kind's own answer. An answer
+/// of another kind than the actor's first open decision is rejected (`WrongAnswer`) and changes
+/// nothing. The system actor's default for each kind is [`crate::default_answer`]'s.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Answer {
+    /// A yes-or-no offer's (GAM-DEC-001): the Cartographer's, the border guard's, a wandering
+    /// monster's join, join for gold and pursuit, a guarded object's fight; increment 7's open a
+    /// Pandora's Box, search a Pyramid or a Warrior's Tomb, pay a Tree of Knowledge.
+    Offer(Consent),
+    /// A level-up's with two offers (GAM-DEC-002, E08 T30).
+    LevelUp(SkillOffer),
+    /// A treasure chest's choice of its gold or its experience (GAM-DEC-005, ADV-PIK-005).
+    Chest(ChestChoice),
+    /// The Arena's choice of its two primary skills, without leaving (GAM-DEC-005, ADV-TCH-001).
+    Arena(ArenaChoice),
+    /// A School's choice of its two primary skills for its price, or leaving (GAM-DEC-005,
+    /// ADV-TCH-002).
+    School(SchoolChoice),
+    /// A University's purchase or leaving (GAM-DEC-006, ADV-TCH-007).
+    University(UniversityAnswer),
+    /// Closes a meeting (GAM-DEC-003) or an army dialog (GAM-DEC-004; increment 6's `Decline`).
+    Close,
+}
+
+/// An offer's answer (ADR-0017 point 6; GAM-DEC-001).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Consent {
     /// Yes: the offer's price is paid and the offer carried out.
     Accept,
     /// No: the decision closes; nothing else changes but a wandering monster's answer, which
     /// goes on (its next offer or a fight after a declined join, its leaving after a declined
     /// flight; ADV-MON-007, ADV-MON-008). A later visit asks again.
     Decline,
-    /// A level-up's first offer (the original's dialog's left; E08 T30).
+}
+
+/// A level-up's answer (GAM-DEC-002, E08 T30): which of its two offers the hero learns.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SkillOffer {
+    /// The first offer (the original's dialog's left).
     First,
-    /// A level-up's second offer (the dialog's right; E08 T30).
+    /// The second offer (the dialog's right).
     Second,
 }
 
-impl Answer {
-    /// The offer a level-up's answer takes; none for an offer's answer.
-    pub(crate) const fn choice(self) -> Option<Choice> {
+impl SkillOffer {
+    /// The level-up's offer this answer takes.
+    pub(crate) const fn choice(self) -> Choice {
         match self {
-            Self::First => Some(Choice::First),
-            Self::Second => Some(Choice::Second),
-            Self::Accept | Self::Decline => None,
+            Self::First => Choice::First,
+            Self::Second => Choice::Second,
         }
     }
 
-    /// The answer that takes `choice`'s offer of a level-up.
+    /// The answer that takes `choice`'s offer.
     pub(crate) const fn of(choice: Choice) -> Self {
         match choice {
             Choice::First => Self::First,
             Choice::Second => Self::Second,
+        }
+    }
+}
+
+/// A treasure chest's answer (GAM-DEC-005, ADV-PIK-005).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ChestChoice {
+    /// Its gold to the player (the original's plain OK).
+    Gold,
+    /// Its experience to the hero.
+    Experience,
+}
+
+/// The Arena's answer (GAM-DEC-005, ADV-TCH-001): the first or the second of its type's two
+/// primary skills (the base pack's Attack, then Defense); it cannot be left.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ArenaChoice {
+    /// The first skill (the base pack's Attack; the original's Cancel takes it).
+    Attack,
+    /// The second skill (the base pack's Defense).
+    Defense,
+}
+
+/// A School's answer (GAM-DEC-005, ADV-TCH-002): the first or the second of its type's two
+/// primary skills, for its price, or leaving without paying.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SchoolChoice {
+    /// The first skill.
+    First,
+    /// The second skill.
+    Second,
+    /// Neither: nothing paid, no mark.
+    Leave,
+}
+
+/// A University's answer (GAM-DEC-006, ADV-TCH-007): a purchase, which keeps it open, or leaving.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum UniversityAnswer {
+    /// Buys the skill of this slot (its index among the University's skills, in the draw's order)
+    /// for the type's price, learned at Basic, while the slot is open for the hero
+    /// (`h3_heroes::university_slot`) and the treasury can pay.
+    Buy(u8),
+    /// Closes the University.
+    Leave,
+}
+
+impl ChestChoice {
+    /// The adventure's pick of this answer.
+    pub(crate) const fn pick(self) -> Pick {
+        match self {
+            Self::Gold => Pick::First,
+            Self::Experience => Pick::Second,
+        }
+    }
+}
+
+impl ArenaChoice {
+    /// The adventure's pick of this answer.
+    pub(crate) const fn pick(self) -> Pick {
+        match self {
+            Self::Attack => Pick::First,
+            Self::Defense => Pick::Second,
+        }
+    }
+}
+
+impl SchoolChoice {
+    /// The adventure's pick of this answer.
+    pub(crate) const fn pick(self) -> Pick {
+        match self {
+            Self::First => Pick::First,
+            Self::Second => Pick::Second,
+            Self::Leave => Pick::Leave,
         }
     }
 }
@@ -115,14 +216,21 @@ pub enum GameCommandError {
     /// A command the system actor does not issue: its commands are an unowned side's battle
     /// commands (E08 T20b2).
     NotForSystem,
-    /// An answer of the wrong kind for the actor's first open decision (E08 T30): `First` or
-    /// `Second` for an offer, `Accept` or `Decline` for a level-up.
+    /// An answer of another kind than the actor's first open decision (E08 T30; typed by kind
+    /// since T63a): a level-up's for an offer, an offer's for a level-up, anything but `Close`
+    /// for a meeting or an army dialog.
     WrongAnswer,
     /// The game waits for this player's answer to its level-up (ADR-0017 point 6, GAM-DEC-002;
     /// E08 T30): until it answers, no other actor's command is accepted.
     WaitingForLevelUp(PlayerId),
     /// The management command was refused (GAM-MAN-001; E08 T51a).
     Manage(ManageError),
+    /// A University's purchase of a slot that is not open for the hero (GAM-DEC-006, E08 T63a):
+    /// the hero knows its skill, knows eight skills, or its class weighs the skill 0
+    /// (`h3_heroes::university_slot`), or the University has no such slot.
+    SlotClosed,
+    /// A University's purchase the treasury cannot pay (GAM-DEC-006, E08 T63a).
+    CannotPay,
 }
 
 impl fmt::Display for GameCommandError {
@@ -146,6 +254,8 @@ impl fmt::Display for GameCommandError {
                 write!(f, "the game waits for player {}'s level-up", p.raw())
             }
             Self::Manage(error) => write!(f, "{error}"),
+            Self::SlotClosed => f.write_str("the University's slot is not open for the hero"),
+            Self::CannotPay => f.write_str("the treasury cannot pay the price"),
         }
     }
 }
@@ -199,7 +309,8 @@ pub enum GameEvent {
         anchor: Pos,
     },
     /// A visit's offer did not open: its player's treasury cannot pay the price (ADR-0017 point
-    /// 10; ADV-VIS-001, the original's message).
+    /// 10; ADV-VIS-001, the original's message); since E08 T63a also a School's choice
+    /// (GAM-DEC-005, ADV-TCH-002).
     OfferRefused {
         /// The player.
         player: PlayerId,
@@ -372,7 +483,35 @@ pub enum GameEvent {
         /// A stack of the group, at its slot.
         stack: ArmyStack,
     },
-    /// The player's meeting or army dialog closed (its `Decline`; E08 T51b). Seen by the owner.
+    /// A visit's choice opened as a pending decision of its player (GAM-DEC-005, E08 T63a): a
+    /// treasure chest's, the Arena's, or a School's when the treasury can pay its price; what it
+    /// chooses between is its view ([`crate::DecisionView::Choice`]). Seen by the owner.
+    ChoiceOpened {
+        /// The player.
+        player: PlayerId,
+        /// The hero whose visit opened it.
+        hero: HeroId,
+        /// The object's type.
+        object_type: ObjectTypeId,
+        /// The object's anchor.
+        anchor: Pos,
+    },
+    /// A University opened as a pending decision of its player (GAM-DEC-006, E08 T63a): its
+    /// skills and their slots' states are its view ([`crate::DecisionView::University`]). Seen
+    /// by the owner.
+    UniversityOpened {
+        /// The player.
+        player: PlayerId,
+        /// The hero whose visit opened it.
+        hero: HeroId,
+        /// The object's type.
+        object_type: ObjectTypeId,
+        /// The object's anchor.
+        anchor: Pos,
+    },
+    /// The player's meeting or army dialog closed (its `Close`; E08 T51b); since E08 T63a also
+    /// its choice once answered (the answer's payment and effects follow) and its University
+    /// left. Seen by the owner.
     DecisionClosed {
         /// Its owner.
         player: PlayerId,
@@ -430,7 +569,8 @@ impl<S: Sink> h3_adventure::Sink for AdventureSink<'_, S> {
 /// the trusted actor, then applied; the events go to `sink`. The system actor issues only an
 /// unowned side's battle commands ([`Actor::System`], E08 T20b2). While a level-up is open the
 /// game waits for its owner: every other actor's command is rejected (E08 T30, GAM-DEC-002).
-// rule: GAM-DEC-002
+/// After the command the rests whose owners have no open decision run (GAM-DEC-007, E08 T63b).
+// rule: GAM-DEC-002, GAM-DEC-007
 ///
 /// # Errors
 ///
@@ -443,6 +583,19 @@ pub fn apply<S: Sink>(
     sink: &mut S,
 ) -> Result<(), GameCommandError> {
     state.check_held(actor)?;
+    run(state, rules, actor, command, sink)?;
+    state.run_rests(rules, sink);
+    Ok(())
+}
+
+/// [`apply`]'s command, checked by the game's hold.
+fn run<S: Sink>(
+    state: &mut GameState,
+    rules: &GameRuleset,
+    actor: Actor,
+    command: GameCommand,
+    sink: &mut S,
+) -> Result<(), GameCommandError> {
     let (player, command) = match (actor, command) {
         (Actor::System, GameCommand::Battle(command)) => {
             return state.system_battle_command(rules, command, sink);
