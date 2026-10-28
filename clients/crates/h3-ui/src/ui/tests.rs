@@ -20,7 +20,6 @@ def = "b.def"
 at = [3, 4]
 size = [48, 36]
 hint = "k.two"
-keys = ["W", "Space"]
 
 [[items]]
 kind = "button"
@@ -100,12 +99,11 @@ fn the_item_under_the_mouse_gives_its_hint() {
     let hints: Vec<Option<&str>> = d.items.iter().map(Item::hint).collect();
     assert_eq!(hints, [None, Some("k.two"), None, None]);
     assert_eq!(d.items[0].area(), None);
-    // E17 M3 T6c-2: the button a click presses, the one a hotkey does.
+    // E17 M3 T6c-2: the button a click presses (a hotkey's: the viewer's table of keys, E24 M3
+    // T1b).
     assert_eq!(d.button_at([13, 24]), Some(2));
     assert_eq!(d.button_at([20, 30]), None);
     assert_eq!(d.button_at([61, 59]), None);
-    assert_eq!(d.button_for_key("Space"), Some(2));
-    assert_eq!(d.button_for_key("X"), None);
 }
 
 #[test]

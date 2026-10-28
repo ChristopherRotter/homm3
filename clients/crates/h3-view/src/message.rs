@@ -72,6 +72,16 @@ pub enum Style {
     OkCancel,
 }
 
+/// What a key does in an open box (E24 M3 T1b; its keys the battle's table's, `crate::keys`: the
+/// buttons' hotkeys `message_box_build` 0x4F6990 gives, Enter the OK's and Escape the Cancel's).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub enum Key {
+    /// The OK ([`OK`] or [`YES`]) pressed.
+    Ok,
+    /// The Cancel ([`NO`]) pressed, when the box has one.
+    Cancel,
+}
+
 /// A picture under the text (a slot of 0x4F4EB0): its DEF's frame and caption.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Picture {
@@ -191,30 +201,17 @@ pub fn layout(
     match style {
         Style::Ok => {
             let x = (i32_of(width) - BACK[0]) / 2;
-            items.extend(button(
-                layout,
-                (0x7866, OK),
-                &layout.ok,
-                [x, back_y],
-                "Return",
-            ));
+            items.extend(button(layout, (0x7866, OK), &layout.ok, [x, back_y]));
         }
         Style::OkCancel => {
             let left = (half - 74).max(1);
             let right = (half + 8).min(i32_of(width) - BACK[0]);
-            items.extend(button(
-                layout,
-                (0x7869, YES),
-                &layout.ok,
-                [left, back_y],
-                "Return",
-            ));
+            items.extend(button(layout, (0x7869, YES), &layout.ok, [left, back_y]));
             items.extend(button(
                 layout,
                 (0x786A, NO),
                 &layout.cancel,
                 [right, back_y],
-                "Escape",
             ));
         }
     }
@@ -392,15 +389,9 @@ fn frame(layout: &MessageLayout, [width, height]: [i64; 2]) -> Vec<Item> {
     items
 }
 
-/// A button's back (`Box64x30.pcx`) at `at` and its DEF button one in, frames 0 and 1, with its
-/// hotkey `key`.
-fn button(
-    layout: &MessageLayout,
-    (back, id): (u16, u16),
-    def: &str,
-    at: [i32; 2],
-    key: &str,
-) -> [Item; 2] {
+/// A button's back (`Box64x30.pcx`) at `at` and its DEF button one in, frames 0 and 1 (its hotkey
+/// the battle's table's, [`Key`]).
+fn button(layout: &MessageLayout, (back, id): (u16, u16), def: &str, at: [i32; 2]) -> [Item; 2] {
     [
         Item::Picture(Image {
             id: back,
@@ -416,7 +407,6 @@ fn button(
             size: BUTTON,
             frames: Frames::default(),
             hint: None,
-            keys: alloc::vec![String::from(key)],
         }),
     ]
 }
@@ -515,15 +505,27 @@ impl Open {
         }
     }
 
-    /// A key down (its name, as the buttons' hotkeys: `Return`, `Escape`): its button goes down.
-    pub fn key(&mut self, key: &str) -> Outcome {
+    /// A key down giving `key` (the adapter's name of the key `by`, whose release clicks): its
+    /// button goes down.
+    pub fn key(&mut self, key: Key, by: &str) -> Outcome {
         if self.held.is_some() {
             return Outcome::Nothing;
         }
-        match self.message.dialog.button_for_key(key) {
-            Some(id) => self.hold(Held {
+        let ids: &[u16] = match key {
+            Key::Ok => &[OK, YES],
+            Key::Cancel => &[NO],
+        };
+        let has = |id: &&u16| {
+            self.message
+                .dialog
+                .items
+                .iter()
+                .any(|i| matches!(i, Item::Button(b) if b.id == **id))
+        };
+        match ids.iter().find(has) {
+            Some(&id) => self.hold(Held {
                 id,
-                key: Some(String::from(key)),
+                key: Some(String::from(by)),
                 over: true,
             }),
             None => Outcome::Nothing,

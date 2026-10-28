@@ -29,7 +29,13 @@ impl Command for Test {
     const TABLE: &'static str = "battle";
 
     fn all() -> Vec<Self> {
-        vec![Self::Go(0), Self::Go(1), Self::Pause, Self::Quit, Self::Close]
+        vec![
+            Self::Go(0),
+            Self::Go(1),
+            Self::Pause,
+            Self::Quit,
+            Self::Close,
+        ]
     }
 
     fn name(self) -> String {
@@ -254,7 +260,15 @@ fn a_users_file_is_checked() {
 
 #[test]
 fn the_keys_bound_are_the_adapters() {
-    let known = ["Up", "Down", "F5", "Escape", "Return", "LeftCtrl", "RightCtrl"];
+    let known = [
+        "Up",
+        "Down",
+        "F5",
+        "Escape",
+        "Return",
+        "LeftCtrl",
+        "RightCtrl",
+    ];
     assert_eq!(Keys::<Test>::original().check(&known), Ok(()));
     let unknown = Keys::<Test>::with_file("[battle]\npause = [\"Backspace\"]").unwrap();
     assert_eq!(

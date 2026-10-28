@@ -607,7 +607,8 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                     win.set_vsync(on);
                 }
                 // A frame on while running: nothing.
-                Some(Command::Scroll(_) | Command::Hero(_) | Command::Window(Own::Frame)) | None => {}
+                Some(Command::Scroll(_) | Command::Hero(_) | Command::Window(Own::Frame))
+                | None => {}
             }
         }
         // The original scrolls at the edges only while it is the active application (`app_active`

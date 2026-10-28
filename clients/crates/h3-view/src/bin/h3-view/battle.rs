@@ -875,9 +875,8 @@ impl<'g> Battle<'g> {
         Some(command)
     }
 
-    /// A key down while the book is open (its name, as the book's: `C`, `Escape`, `Return`,
-    /// the arrows).
-    pub fn book_key(&mut self, key: &str) -> BookDid {
+    /// A key down giving the book's `key` while it is open (E24 M3 T1b: by the table of keys).
+    pub fn book_key(&mut self, key: h3_view::book::Key) -> BookDid {
         let Some(writer) = self.ground.writer.as_ref() else {
             return BookDid::Nothing;
         };
@@ -1013,9 +1012,10 @@ impl<'g> Battle<'g> {
         self.message_did(h3_view::message::Open::release)
     }
 
-    /// A key down while a message box is open (its name: `Return`, `Escape`).
-    pub fn message_key(&mut self, key: &str) -> MessageDid {
-        self.message_did(|open| open.key(key))
+    /// A key down giving the box's `key` while one is open (E24 M3 T1b: by the table of keys; `by`
+    /// the key's name, whose release clicks).
+    pub fn message_key(&mut self, key: h3_view::message::Key, by: &str) -> MessageDid {
+        self.message_did(|open| open.key(key, by))
     }
 
     /// A key up while a message box is open.

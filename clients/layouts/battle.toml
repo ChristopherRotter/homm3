@@ -90,10 +90,8 @@ spell_step = 100
 # them). A button's frames default to the constructor's: 0 normal, 1 pressed, 2 disabled, 3
 # selected. A `hint` is the key of the status line's text while the mouse is over the item
 # (`SetHints` 0x5FE840, from `Help.txt`; E17 M3 T6c-1): the log's item and its scroll buttons have
-# none (their rows' first field is empty). A button's `keys` are its hotkeys by name (its +0x48,
-# the scan codes `battle_panel_base` adds: 0x1F S, 0x13 R, 0x18 O, 0x1E A, 0x2E C, 0x11 W, 0x20 D
-# and 0x39 Space; E17 M3 T6c-2): a key down presses it, the key up releases it (0x45659F,
-# 0x4564D6).
+# none (their rows' first field is empty). A button's hotkeys (its +0x48, the scan codes
+# `battle_panel_base` adds) are the battle window's table of keys' (h3_view::keys, E24 M3 T1b).
 [panel]
 place = [0, 556]
 
@@ -115,7 +113,6 @@ def = "icm001.def"
 at = [54, 5]
 size = [48, 36]
 hint = "battle.control.surrender"
-keys = ["S"]
 
 [[panel.items]]
 kind = "button"
@@ -124,7 +121,6 @@ def = "icm002.def"
 at = [105, 5]
 size = [48, 36]
 hint = "battle.control.retreat"
-keys = ["R"]
 
 [[panel.items]]
 kind = "button"
@@ -133,7 +129,6 @@ def = "icm003.def"
 at = [3, 5]
 size = [48, 36]
 hint = "battle.control.options"
-keys = ["O"]
 
 [[panel.items]]
 kind = "button"
@@ -142,7 +137,6 @@ def = "icm004.def"
 at = [156, 5]
 size = [48, 36]
 hint = "battle.control.auto"
-keys = ["A"]
 
 # The hero's spell book, Wait, Defend.
 [[panel.items]]
@@ -152,7 +146,6 @@ def = "icm005.def"
 at = [645, 5]
 size = [48, 36]
 hint = "battle.control.spell-book"
-keys = ["C"]
 
 [[panel.items]]
 kind = "button"
@@ -161,7 +154,6 @@ def = "icm006.def"
 at = [696, 5]
 size = [48, 36]
 hint = "battle.control.wait"
-keys = ["W"]
 
 [[panel.items]]
 kind = "button"
@@ -170,7 +162,6 @@ def = "icm007.def"
 at = [747, 5]
 size = [48, 36]
 hint = "battle.control.defend"
-keys = ["D", "Space"]
 
 # The battle log's item (0x46BCBE; §9.5): its picture opaque, at most the item's 400 x 32 of it,
 # then the shown entries in the font over it, the text drawer's colour 1 and alignment 1

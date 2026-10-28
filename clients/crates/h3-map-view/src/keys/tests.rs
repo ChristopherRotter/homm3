@@ -96,8 +96,14 @@ fn a_users_file_overrides_command_by_command() {
          scroll-north = [\"Ctrl+W\", \"Ctrl+Up\"]\n",
     )
     .unwrap();
-    assert_eq!(keys.command((), false, "Space"), Some(Command::Window(Window::Pause)));
-    assert_eq!(keys.command((), false, "P"), Some(Command::Window(Window::Pause)));
+    assert_eq!(
+        keys.command((), false, "Space"),
+        Some(Command::Window(Window::Pause))
+    );
+    assert_eq!(
+        keys.command((), false, "P"),
+        Some(Command::Window(Window::Pause))
+    );
     assert_eq!(keys.command((), false, "F5"), None);
     // Unbound.
     assert_eq!(keys.command((), false, "Escape"), None);
@@ -116,18 +122,22 @@ fn a_users_file_overrides_command_by_command() {
         Some(Command::Scroll(Direction::North))
     );
     // The rest kept.
-    assert_eq!(keys.command((), false, "F6"), Some(Command::Window(Window::Frame)));
+    assert_eq!(
+        keys.command((), false, "F6"),
+        Some(Command::Window(Window::Frame))
+    );
     let chords = keys.chords();
     assert_eq!(chords.len(), 41);
-    assert!(chords.iter().all(|&(c, _)| c != Command::Window(Window::Quit)));
+    assert!(
+        chords
+            .iter()
+            .all(|&(c, _)| c != Command::Window(Window::Quit))
+    );
     assert_eq!(chords[0].1.to_string(), "Ctrl+W");
     // An empty file is the defaults.
     assert_eq!(Keys::with_file(""), Ok(Keys::original()));
     // The battle's table is the battle's.
-    assert_eq!(
-        Keys::with_file("[battle]\nquit = []"),
-        Ok(Keys::original())
-    );
+    assert_eq!(Keys::with_file("[battle]\nquit = []"), Ok(Keys::original()));
 }
 
 #[test]

@@ -270,7 +270,9 @@ pub struct Picture {
 
 /// A button of DEF frames (`H3DlgDefButton` 0x455EF0, drawn by 0x456940): a frame of the DEF's
 /// group 0 by the button's state, its canvas's corner at the button's, by the plain drawer with
-/// runs skipped (0x47BF00 → 0x47C570). A frame beyond the group's is drawn as frame 0.
+/// runs skipped (0x47BF00 → 0x47C570). A frame beyond the group's is drawn as frame 0. Its
+/// hotkeys (its +0x48, the screens' scan codes) are the viewer's table of keys' (`keys`; E24 M3
+/// T1b: until then the layout's `keys`).
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Button {
@@ -289,10 +291,6 @@ pub struct Button {
     /// M3 T6c-1), none for none.
     #[serde(default)]
     pub hint: Option<String>,
-    /// Its hotkeys, by name (`S`, `Space`; its +0x48, the screens' scan codes, E17 M3 T6c-2): a
-    /// key down presses it, the key up releases it and clicks (0x45659F, 0x4564D6).
-    #[serde(default)]
-    pub keys: Vec<String>,
 }
 
 /// A button's frame in each state: the constructor's frame (+0x34) and click frame (+0x38), the
@@ -541,15 +539,6 @@ impl Dialog {
             Item::Button(b) => Some(b.id),
             _ => None,
         }
-    }
-
-    /// The first button whose hotkeys hold `key` (E17 M3 T6c-2).
-    #[must_use]
-    pub fn button_for_key(&self, key: &str) -> Option<u16> {
-        self.items.iter().find_map(|item| match item {
-            Item::Button(b) if b.keys.iter().any(|k| k == key) => Some(b.id),
-            _ => None,
-        })
     }
 
     /// The shadow a dialog with one casts as it shows (`vShow` 0x5FEAE0 with the flag 0x10):

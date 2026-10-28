@@ -169,6 +169,27 @@ pub struct Page {
     pub next: bool,
 }
 
+/// What a key does in the open book (E24 M3 T1b; its keys the battle's table's, `crate::keys`: the
+/// original's 0x59D1B4 by the screens' scan codes, Escape and Enter close, A and C the bookmarks,
+/// the left and right arrows the pages, the up and down arrows the tabs).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub enum Key {
+    /// The book closed.
+    Close,
+    /// The adventure spells' bookmark.
+    Adventure,
+    /// The combat spells' bookmark.
+    Combat,
+    /// The page before, where its corner shows.
+    Previous,
+    /// The page after, where its corner shows.
+    Next,
+    /// The tab above (from the first, the last).
+    TabUp,
+    /// The tab below (from the last, the first).
+    TabDown,
+}
+
 /// What a click or a key did to the book.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Outcome {
@@ -388,26 +409,26 @@ impl Book {
         }
     }
 
-    /// A key down (0x59D1B4, by the screens' scan codes): Escape and Enter close the book, A and C
-    /// take a bookmark, the left and right arrows turn a page where the corner shows, the up and
-    /// down arrows take the tab above or below (round to the other end).
-    pub fn key(&mut self, memory: &mut Memory, key: &str, page: &Page) -> Outcome {
+    /// A key down giving `key` (0x59D1B4; the keys the battle's table's, `crate::keys`): the book
+    /// closed, a bookmark taken, a page turned where the corner shows, the tab above or below taken
+    /// (round to the other end).
+    pub fn key(&mut self, memory: &mut Memory, key: Key, page: &Page) -> Outcome {
         match key {
-            "Escape" | "Return" => Outcome::Closed,
-            "A" => self.turn_to_kind(memory, Kind::Adventure),
-            "C" => self.turn_to_kind(memory, Kind::Combat),
-            "Left" if page.previous => self.turn_to_page(memory, self.page - 1),
-            "Right" if page.next => self.turn_to_page(memory, self.page + 1),
-            "Up" | "Down" => {
+            Key::Close => Outcome::Closed,
+            Key::Adventure => self.turn_to_kind(memory, Kind::Adventure),
+            Key::Combat => self.turn_to_kind(memory, Kind::Combat),
+            Key::Previous if page.previous => self.turn_to_page(memory, self.page - 1),
+            Key::Next if page.next => self.turn_to_page(memory, self.page + 1),
+            Key::TabUp | Key::TabDown => {
                 let at = TAB_PLACE[index_of(self.tab)];
-                let to = if key == "Up" {
+                let to = if key == Key::TabUp {
                     at.checked_sub(1).unwrap_or(4)
                 } else {
                     (at + 1) % 5
                 };
                 self.turn_to_tab(memory, TAB_AT[to])
             }
-            _ => Outcome::Nothing,
+            Key::Previous | Key::Next => Outcome::Nothing,
         }
     }
 
@@ -538,7 +559,7 @@ impl Open {
     }
 
     /// A key down ([`Book::key`]); a turned book's page is made again.
-    pub fn key(&mut self, memory: &mut Memory, key: &str, catalogue: &Catalogue) -> Outcome {
+    pub fn key(&mut self, memory: &mut Memory, key: Key, catalogue: &Catalogue) -> Outcome {
         let outcome = self.book.key(memory, key, &self.page);
         self.turned(outcome, catalogue)
     }
