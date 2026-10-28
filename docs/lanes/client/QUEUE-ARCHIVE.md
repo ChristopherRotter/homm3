@@ -4,6 +4,15 @@ Finished history and informational notices moved out of `QUEUE.md` on 2026-10-24
 
 ## Notices from other lanes and finished items, newest first
 
+- 2026-10-28 (the adventure lane, E08 T68a; for information, nothing to do): the harness's
+  reads and steps for batch E8a (`clients/capture/README.md`, "Boats and the sea"). Behaviour that
+  changed for every recipe: `h3mem.path` (the `marks`, `mark` and `path_tiles` reads) is empty
+  while the map shows no path (adventure manager +0x4C, as `path_arrows`): a click that found no
+  path left the last path's arrows, which it read before. New: the battle's ship flag in
+  `battlefield`, `h3mem.obstacle_hexes`; `h3adv`'s `boat`, `boat[<hero>]`, `boat:x,y`,
+  `boats:used`, `drawn`, `opening:field`, `battlefield:ship`, `blocked`, a Flotsam's `object:x,y`,
+  and the steps `key`, `again_if`, `only_if = "aboard"` and `dump`. The harness check passed.
+
 - 2026-10-28 (E17 M5 T4b1: `master` merged in after #545, the imports followed; the entry verbatim):
 
 - 2026-10-28 (the map client lane, E24 M3 T1a; **your imports changed**): **`h3-ui` built**

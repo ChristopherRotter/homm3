@@ -7793,3 +7793,68 @@ instead of a step.
 
 T68 (the harness and runs) and T69 (the scoring) queued; the client lane's inbox has the boat
 (CLT-Q5).
+
+### Increment 8, round 3: T68a, batch E8a's harness and runs (2026-10-28, `adventure/e08-t68a`)
+
+**The cut** (decision 175): T68 in two by batch, this part E8a and its water map (recommended);
+T68b the E8b part. **Baseline:** `master` 1788858 (the sandbox's light gates passed; CI on
+`master` green at 580747c). The installation's files staged from the user's computer for the
+harness (`Heroes3.exe`, the five DLLs, the four LODs, the sound and video archives,
+`battle-videos.vid`, `maps.tar`, `extracted.tar`).
+
+**The reads and steps** (`clients/capture/`, common; README "Boats and the sea"): `h3mem`: the
+battle's ship flag (manager +0x53C6, in `battlefield`), `obstacle_hexes` (the hex records' flag
+0x2 on a hex no stack stands on), and `path` read only while the map shows a path (+0x4C, as
+`path_arrows`: a click that found no path left the last path's arrows, which the second E8a run
+read as E8-7d's marks). `h3adv`: the observations `boat` (the step's hero's: the boat in use whose
+captain it is, the one aboard first), `boat[<hero>]`, `boat:x,y`, `boats:used` (`tile 44,6,0; in
+use 1; type 1; facing 2; owner blue; captain E8-16; aboard 1`), `drawn` (how the view draws the
+hero, from its record: a turn's start lifts the selected hero off its tile, so the tile read "no
+hero" in the water map's first run), `opening:field`, `battlefield:ship`, `blocked`, `again`,
+`key`, a Flotsam's `object:x,y`; the steps `key = "<name>"` (the hero selected, the view on it,
+the key pressed once, then a walk's wait: stepped, scrolled or nothing), `again_if = { marks = n }`
+(the second click only after n marks), `only_if = "aboard"` (E8-3's landings after the first) and
+`dump = "<name>"` (the screen kept for an agent to look at). The existing day's maximum (+0x49),
+status flags and boat records (E24 M1 T5a) served the rest; boarding and landing are walks
+(`arrived` holds either way). The harness check passed after the last change.
+
+**The recipes** (`clients/capture/batches/`): `E08-batch-8a.toml` (59 steps in the spec's order:
+every hero's day-2 reads at the turn's start, the legs' points the template has no row for under
+"anything odd"; after each E8-7 row a control: a first click only on a land tile whose cheapest
+path crosses water for a flyer or a water walker and not for a walker, and E8-7b's left arrow and
+keypad left; E8-4's diagonal clicked once only, below) and `E08-batch-8a-water.toml` (E8-5, its
+first screen kept).
+
+**The runs** (Easy, hot seat, under Wine; the results in `experiments/results/`): the water map
+twice (the second recorded, `drawn` from the hero's record), E8a three times, each whole (the
+first as the procedure is written; the second with the controls and E8-4's single diagonal click,
+its E8-7d marks stale; the third, recorded, after the path fix); every record the same in the
+three but the random draws and E8-4's last two clicks.
+
+**What the runs showed** (for T69; not scored here): E8-1 boarded with **0** from 600 before its
+last leg (three swamp steps: 75 by the prices; the control from 600, one step: 425 → **637**), the
+day's maximum 3 000 and bit 18; day 2 3 000 each; after the
+landing E8-1 **0** (59 before it), E8-1c **333**, the maximum 2 000, the boats left on the water
+tile behind facing east (2), aboard 0, owner and captain kept. E8-3 **no path** to the hole nor to
+the event (gold unchanged), the free tile landed in three steps, 0 left. E8-4 legs 1 000, 500,
+266, **80**; the diagonal a single **red** mark (not affordable today); the first run's second
+click left the hero on (34, 30) and **set its 80 points to 0** (the procedure expected 80 kept;
+the straight click then moved nothing); the third run's straight click a green single step,
+taken, **0** left. E8-5 (the water map) the game took the hero on water: drawn **on horseback on
+the water**, no boat record, bit 18 clear, 2 000 points and maximum; no path west onto water; the
+step east to land taken, **1 900** left. E8-7 the flyer's click on its Flotsam **no path, nothing
+taken** (the reading's D-45 has it taken), though its control path flew over water; the right
+arrow did **nothing** (the left and the keypad's stepped the same hero west); the water walker
+and the walker no path (their controls: over water, and on land). E8-10 day 2 **4 000** and
+**2 000**; after the landings 0, the maximum **kept** (4 000, 2 000; A-28), also 1 560 kept at the
+boarding without a Hat; day 3 1 560 each. E8-15 one mark, no message, the battle at once, won;
+its opening **grass, no special field**, ship flag 0, 13 obstacle hexes (the prediction said the
+shore's sand: the battle's tile is the Pikemen's (50, 16), not a coastal one); after it E8-15 on
+(50, 15) with 0, the boat on (50, 14) **facing south (4)**, aboard 0, owner and captain kept. E8-16
+the boat Red left: **owner Blue, captain E8-16, aboard 1**, 0 points, the land's maximum 1 560,
+bit 18.
+
+**A trap found** (`TRAPS.md`, experiments): a second click on a path whose first step the hero
+cannot pay today keeps the hero where it is and zeroes its points.
+
+T68b (batch E8b) and T69 (the scoring) queued.
