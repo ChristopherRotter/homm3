@@ -12,7 +12,7 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   grows, `live.rs`; the click's command; hot seat in the window; the spell book, design §7.17;
   the hero's aim, §7.18; the message box, Retreat and Surrender, §7.19). T4 cut in three by the
   user (2026-10-28). **Next: M5 T4b** (the result window, the screen darkened under it), then
-  T4c (Auto Combat, the tactics phase). Open PR: T4a's (`client/e17-m5-t4a`; check it first).
+  T4c (Auto Combat, the tactics phase). Open PR: #542, T4a's (`client/e17-m5-t4a`; check it first).
   Workspace `clients/` (`clients/README.md`), gates `clients/scripts/check.sh`; ADR-0020 (+ drafts
   in `adr-drafts/`), ADR-0024; the harness `clients/capture/README.md`; design §3–§10; records in
   `E17-log.md`.
@@ -40,7 +40,7 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
 
 ## Recent sessions
 
-- **2026-10-28, E17 M5 T4a (done; its PR open: check it first).** T4 cut in three with the
+- **2026-10-28, E17 M5 T4a (done; #542 open: check it first).** T4 cut in three with the
   user. Read the box (design §7.19: 0x4F6570, 0x4F6990, the layout 0x4F5D80, the frame 0x48FF00,
   the font's measures, the picture slot, the handlers), Retreat and Surrender (0x474FA1 to
   0x475151), the book's and the aim's boxes, the text tables' quotes (0x5BBBA0). Built

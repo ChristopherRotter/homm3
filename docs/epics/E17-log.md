@@ -2998,7 +2998,7 @@ during the session (the baseline check died; the client check ran on the branch)
   player's colours) and the base item 0x5FE340 (state 6); `battle_buttons`' Retreat and
   Surrender (0x474FA1 to 0x475151); the book's boxes (0x59D415 to 0x59D4E4) and
   `hero_book_button`'s refusals; the aim's entry's messages (0x59F085 to 0x59F657); the text
-  tables' reader 0x5BBBA0 (a run of quotes made one). 16 new map entries, 2 updated.
+  tables' reader 0x5BBBA0 (a run of quotes made one). 18 new map entries, 2 updated.
 - **The foundation:** `h3_render::text`'s `widest_word`, `widest_line`, `wrapped_width`;
   `blit::draw_image_keyed_in_clipped`.
 - **The library:** `message` (`MessageLayout`, `Style`, `Picture`, `layout`: the text's width and
