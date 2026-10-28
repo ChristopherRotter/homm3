@@ -398,4 +398,15 @@ fn a_label_takes_its_colour_two_more_when_disabled() {
     assert_eq!(out.pixels(), [FORMAT.pack(WHITE), 0]);
     draw(&mut out, &label(true), &s, Bugs::Fixed).unwrap();
     assert_eq!(out.pixels(), [FORMAT.pack(BLUE), 0]);
+    let no_font = Draw::Label {
+        item: label_item("no.fnt", "game.pal"),
+        x: 0,
+        y: 0,
+        text: "1".into(),
+        disabled: false,
+    };
+    assert_eq!(
+        draw(&mut out, &no_font, &s, Bugs::Fixed),
+        Err("no.fnt".to_string())
+    );
 }

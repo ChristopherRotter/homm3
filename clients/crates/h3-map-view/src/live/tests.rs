@@ -393,6 +393,14 @@ fn a_live_parts_kingdom_read() {
         ("tops = [0, 1]", "tops = [0, -1]"),
         ("quests = 1", "quests = 2"),
         ("quests = 1", "missing = 1"),
+        ("[[0, 1], [1, 0]]", "[[2, 1]]"),
+        ("heroes = ", "people = "),
+        ("towns = 2", "cities = 2"),
+        ("selected = [1, 1]", "chosen = [1, 1]"),
+        ("selected = [1, 1]", "selected = 1"),
+        ("selected = [1, 1]", "selected = [1, -1]"),
+        ("tops = [0, 1]", "top = [0, 1]"),
+        ("tops = [0, 1]", "tops = [-1, 1]"),
     ] {
         assert_eq!(read(&all.replace(from, to)), None, "{to}");
     }
