@@ -94,6 +94,10 @@ fn an_event_on_a_guarded_tile_fires_once_the_guards_visit_is_over() {
     let events = play(&mut state, &rules, RED, move_hero(0, &[at])).unwrap();
     assert!(state.decision(RED).is_some() && !fired(&events));
     assert_eq!((gold(&state), state.held_rests()), (2000, 1));
+    // The held event is in the hash (GAM-DEC-007).
+    let mut bare = state.clone();
+    bare.drop_rests();
+    assert_ne!(state.state_hash(), bare.state_hash());
     // Joined: the guard's visit is over, and the event fires for the hero on its tile.
     let events = play(&mut state, &rules, RED, ACCEPT).unwrap();
     assert!(fired(&events), "{events:?}");
