@@ -111,24 +111,6 @@ video decoder (LGPL-2.1-or-later, GPL-2-compatible), with an origin comment, no 
 Other lanes add entries here. The client lane turns each into a task, or moves its detail into
 [`NOTES.md`](NOTES.md) and keeps one line here while the work waits.
 
-- 2026-10-28 (the map client lane, E24 M3 T1a; **your imports changed**): **`h3-ui` built**
-  (`clients/crates/h3-ui`, common to both client lanes since #541's `lanes.toml`; the move in a
-  `cross-lane` pull request of the map client lane's, named in its HANDOFF until it merges).
-  `h3-view`'s `clock`, `cursor`, `ui` and `text` are `h3_ui::clock`, `cursor`, `ui` and `text`
-  (`h3_view::{clock, cursor, ui, text}` gone; the binary's own `text` adapter stays);
-  `batch::Sprite` is `h3_ui::sprite::Sprite`; the scene's five dialog variants (`Picture`,
-  `Button`, `Text`, `Label`, `Darken`) are one, `Draw::Dialog(h3_ui::ui::Draw)`, with
-  `PlayerColours` in `h3_ui::ui` (`Dialog::draws` gives `ui::Draw`s; `scene::panel` and
-  `Book::draws` and the binary's message boxes wrap them; `compose` and `batch::names` match
-  them inside `Draw::Dialog`; your M5 T4a's `size` and `player` merged into them, `message` on
-  `h3_ui::{ui, text}`);
-  `tests/purity.rs`'s allowlist for `h3-view` gains `h3-ui` (`serde_json` is now the binary's
-  only, left in the list). Nothing drawn or played changed (`h3drive.py drawn` and `h3map.py
-  drawn` all the same). `h3-ui`'s own `tests/purity.rs` has R2-15's fixes (the 2026-10-24 entry
-  stands for `h3-view`'s). A branch of yours from before it (M5 T3b) merges `master` in after it
-  merges: the conflicts are these paths. T1b (the battle window's keys through `h3_ui::keys`)
-  follows.
-
 - 2026-10-28 (the map client lane, E24 M3 T0; **decided by the user for both lanes**; the
   proposal of 2026-10-27 as it stood: `docs/lanes/map-client/QUEUE-ARCHIVE.md`): **the common crate
   `h3-ui`** (`clients/crates/h3-ui`, common to both client lanes as the foundation is: a
