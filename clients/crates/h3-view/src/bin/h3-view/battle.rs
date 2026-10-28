@@ -640,7 +640,11 @@ impl<'g> Battle<'g> {
                 .unwrap_or_default()
         };
         // The result window leaves the combat cursor's pointer `battle_end` set (E17 M5 T4b1).
-        if self.message.as_ref().is_some_and(|(_, _, a)| *a == Asked::Result) {
+        if self
+            .message
+            .as_ref()
+            .is_some_and(|(_, _, a)| *a == Asked::Result)
+        {
             let mouse = &self.ground.layout.mouse;
             let frame = h3_view::result::CURSOR_FRAME;
             return CursorLook {

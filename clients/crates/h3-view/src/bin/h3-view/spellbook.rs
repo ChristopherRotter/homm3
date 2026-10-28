@@ -172,7 +172,7 @@ pub struct Boxes<'a> {
 
 /// What a box's click leads to in a still: another box (or none), or a command given.
 enum Next {
-    Box(Option<Asking>),
+    Box(Option<Box<Asking>>),
     Give(Command),
 }
 
@@ -265,7 +265,7 @@ pub fn still(
     };
     // A box's button clicked: what follows (another box at once, a command, or nothing).
     let answered = |id: u16, asked: Asked| match crate::boxes::answered(asked, id, catalogue) {
-        Answered::Tell(text) => Next::Box(tell(&text, Style::Ok, None, Asked::Told)),
+        Answered::Tell(text) => Next::Box(tell(&text, Style::Ok, None, Asked::Told).map(Box::new)),
         Answered::Give(command) => Next::Give(command),
         Answered::Closed => Next::Box(None),
     };
@@ -297,7 +297,7 @@ pub fn still(
                     if let h3_view::message::Outcome::Closed(id) = a.open.key_up(&key) {
                         let asked = a.asked;
                         match answered(id, asked) {
-                            Next::Box(next) => asking = next,
+                            Next::Box(next) => asking = next.map(|a| *a),
                             Next::Give(command) => {
                                 asking = None;
                                 result = ended(command);
@@ -343,7 +343,7 @@ pub fn still(
                     if let h3_view::message::Outcome::Closed(id) = a.open.release() {
                         let asked = a.asked;
                         match answered(id, asked) {
-                            Next::Box(next) => asking = next,
+                            Next::Box(next) => asking = next.map(|a| *a),
                             Next::Give(command) => {
                                 asking = None;
                                 result = ended(command);
@@ -492,9 +492,8 @@ mod tests {
     fn a_box_s_command_ends_the_still_in_the_result_window() {
         // Retreat's question (its OK by Enter or a click) gives the command; the result window
         // follows, which a key or a click on its OK closes again.
-        let tell = |_: &str, _, _: Option<&Picture>| {
-            Some(one_button(h3_view::message::YES, &["Return"]))
-        };
+        let tell =
+            |_: &str, _, _: Option<&Picture>| Some(one_button(h3_view::message::YES, &["Return"]));
         let given = std::cell::RefCell::new(Vec::new());
         let result = |command| {
             given.borrow_mut().push(command);
@@ -524,8 +523,12 @@ mod tests {
         };
         let still = played(&["key:r", "key:Return"]);
         assert!(still.result.is_some() && still.message.is_none() && still.dialog());
-        assert_eq!(*given.borrow(), [h3_protocol::wire::Command::Retreat {}]);
-        assert!(played(&["key:r", "key:Return", "key:Escape"]).result.is_none());
+        assert_eq!(*given.borrow(), [Command::Retreat {}]);
+        assert!(
+            played(&["key:r", "key:Return", "key:Escape"])
+                .result
+                .is_none()
+        );
         let still = played(&["key:r", "click:20,20", "move:30,30"]);
         assert_eq!(still.mouse, [30, 30]);
         assert!(still.result.is_some());

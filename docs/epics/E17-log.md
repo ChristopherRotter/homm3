@@ -3069,7 +3069,11 @@ user's `VIDEO.VID` into `original-data/battle-videos.vid` before the computer we
   the end, the dying Pikemen; then 0 with the end's moment and the flags before it);
   `defended`'s end (a town defended) from 478 538 to 122, all redraw artifacts of the keep's
   shooter (its shot's climax frame as last shown, CLT-Q19 (5)), recorded. `drawn` the other 128
-  the same, then recorded (132).
+  the same, then recorded (132). The window under Xvfb (`--check`, `--mute`): `smoke` in hot seat
+  left by `--leave retreat` (8 of 8 frames exact), `result.toml` by `--leave surrender` (7 of 7),
+  `seq-end.toml` in hot seat won by the presses (58 of 58), each to its result window ("the result
+  window opened at <ms> ms" in the report); a bot-fought `seq-end.toml` with Enter by `xdotool`:
+  the window closed, the run over.
 - **Found:** the clip (T4b2). Nothing of the original to ask about: the two text items it leaves
   empty (0xCB, 0xCE) draw nothing. A hero-less side's face is read but not captured (the
   harness's maps give both sides a hero).

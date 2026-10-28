@@ -474,7 +474,11 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
         // The spell book opened, closed or changed (E17 M5 T3a).
         let mut book_changed = false;
         // The result window opens at the battle's end (E17 M5 T4b1).
-        book_changed |= battle.open_result(clock.ms(win.ticks_ns()));
+        let ms = clock.ms(win.ticks_ns());
+        if battle.open_result(ms) {
+            lines.push(format!("the result window opened at {ms} ms"));
+            book_changed = true;
+        }
         if let Some(p) = presser.as_mut() {
             grew |= p.press(&mut battle, &mut inputs, clock.ms(win.ticks_ns()))?;
         }

@@ -185,9 +185,27 @@ pub fn layout(layout: &ResultLayout, texts: &Texts, sides: &[Side; 2], player: u
         hint: None,
     }));
     // The titles (0x4703BA to 0x4704BC): records 408 to 410, the big font.
-    items.push(label(OWN_IDS, [0, 290], [466, 100], (big, 8, 1), &texts.title));
-    items.push(label(OWN_IDS + 1, [0, 320], [466, 100], (big, 4, 1), &texts.attacker));
-    items.push(label(OWN_IDS + 2, [0, 412], [466, 100], (big, 4, 1), &texts.defender));
+    items.push(label(
+        OWN_IDS,
+        [0, 290],
+        [466, 100],
+        (big, 8, 1),
+        &texts.title,
+    ));
+    items.push(label(
+        OWN_IDS + 1,
+        [0, 320],
+        [466, 100],
+        (big, 4, 1),
+        &texts.attacker,
+    ));
+    items.push(label(
+        OWN_IDS + 2,
+        [0, 412],
+        [466, 100],
+        (big, 4, 1),
+        &texts.defender,
+    ));
     // Each side's name and portrait (0x4704DD to 0x470962), and the text item beside it the
     // executable leaves empty.
     let [attacker, defender] = sides;
@@ -198,7 +216,13 @@ pub fn layout(layout: &ResultLayout, texts: &Texts, sides: &[Side; 2], player: u
         (small, 4, 0),
         face_name(&attacker.face),
     ));
-    items.push(portrait(layout, ATTACKER_PORTRAIT, [21, 38], &attacker.face, false));
+    items.push(portrait(
+        layout,
+        ATTACKER_PORTRAIT,
+        [21, 38],
+        &attacker.face,
+        false,
+    ));
     items.push(label(0xCB, [83, 112], [65, 20], (small, 4, 2), ""));
     items.push(label(
         DEFENDER_NAME,
@@ -207,7 +231,13 @@ pub fn layout(layout: &ResultLayout, texts: &Texts, sides: &[Side; 2], player: u
         (small, 4, 2),
         face_name(&defender.face),
     ));
-    items.push(portrait(layout, DEFENDER_PORTRAIT, [392, 38], &defender.face, true));
+    items.push(portrait(
+        layout,
+        DEFENDER_PORTRAIT,
+        [392, 38],
+        &defender.face,
+        true,
+    ));
     items.push(label(0xCE, [266, 38], [115, 20], (small, 4, 0), ""));
     // Each side's word (0x4709D5, 0x470A49).
     let word = |s: &Side| {
@@ -217,17 +247,41 @@ pub fn layout(layout: &ResultLayout, texts: &Texts, sides: &[Side; 2], player: u
             &texts.defeated
         }
     };
-    items.push(label(OWN_IDS + 3, [17, 116], [84, 20], (small, 1, 1), word(attacker)));
-    items.push(label(OWN_IDS + 4, [367, 116], [84, 20], (small, 1, 1), word(defender)));
+    items.push(label(
+        OWN_IDS + 3,
+        [17, 116],
+        [84, 20],
+        (small, 1, 1),
+        word(attacker),
+    ));
+    items.push(label(
+        OWN_IDS + 4,
+        [367, 116],
+        [84, 20],
+        (small, 1, 1),
+        word(defender),
+    ));
     // The result's text (0x470D1E): centred both ways.
-    items.push(label(TEXT, [68, 202], [332, 70], (small, 4, 5), &texts.result));
+    items.push(label(
+        TEXT,
+        [68, 202],
+        [332, 70],
+        (small, 4, 5),
+        &texts.result,
+    ));
     // Each side's losses (0x470E5C to 0x47140C): "None", or at most seven pictures centred in the
     // row, each with its count under it.
     for (index, side) in sides.iter().enumerate() {
         let top = LOSSES_TOP[index];
         let first = LOSSES + 0x10 * u16::try_from(index).unwrap_or(0);
         if side.losses.is_empty() {
-            items.push(label(first, [42, top + 10], [384, 36], (small, 1, 1), &texts.none));
+            items.push(label(
+                first,
+                [42, top + 10],
+                [384, 36],
+                (small, 1, 1),
+                &texts.none,
+            ));
             continue;
         }
         let shown = side.losses.len().min(LOSSES_SHOWN);
@@ -413,7 +467,10 @@ const HERO_POINTS: i64 = 500;
 /// order) creatures lost (`start − end`), each creature's sum in the order it first lost some, by
 /// its original id (`original`; a creature without one is left out).
 #[must_use]
-pub fn losses(stacks: &[StackRecord], original: impl Fn(CreatureTypeId) -> Option<u32>) -> Vec<(u32, u32)> {
+pub fn losses(
+    stacks: &[StackRecord],
+    original: impl Fn(CreatureTypeId) -> Option<u32>,
+) -> Vec<(u32, u32)> {
     let mut out: Vec<(u32, u32)> = Vec::new();
     for record in stacks.iter().take(RECORDS) {
         let lost = record.start.saturating_sub(record.end);

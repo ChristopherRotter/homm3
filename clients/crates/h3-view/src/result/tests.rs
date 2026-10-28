@@ -86,7 +86,10 @@ fn the_window_is_laid_out_as_the_executable_builds_it() {
         ]
     );
     // The heroes' portraits as pictures; the OK with its back, Enter and Escape.
-    for (id, at) in [(ATTACKER_PORTRAIT, [21, 38]), (DEFENDER_PORTRAIT, [392, 38])] {
+    for (id, at) in [
+        (ATTACKER_PORTRAIT, [21, 38]),
+        (DEFENDER_PORTRAIT, [392, 38]),
+    ] {
         assert!(matches!(
             window.dialog.item(id),
             Some(Item::Picture(p)) if p.at == at && p.picture == "HPL000Kn.PCX"
@@ -127,8 +130,14 @@ fn a_side_without_a_hero_shows_its_creature_the_defender_s_mirrored() {
         Some(Item::Def(d)) => Some((d.def.as_deref(), d.frame, d.mirrored)),
         _ => None,
     };
-    assert_eq!(def(ATTACKER_PORTRAIT), Some((Some("TwCrPort.def"), 2, false)));
-    assert_eq!(def(DEFENDER_PORTRAIT), Some((Some("TwCrPort.def"), 15, true)));
+    assert_eq!(
+        def(ATTACKER_PORTRAIT),
+        Some((Some("TwCrPort.def"), 2, false))
+    );
+    assert_eq!(
+        def(DEFENDER_PORTRAIT),
+        Some((Some("TwCrPort.def"), 15, true))
+    );
     // The mirror reaches the draw list.
     let draws = window.dialog.draws(&window.shown, "PLAYERS.PAL");
     assert!(draws.iter().any(|d| matches!(

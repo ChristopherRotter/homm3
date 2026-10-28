@@ -715,7 +715,10 @@ pub(crate) fn draw_frames(
             .and_then(|b| Some((b.message.as_ref()?, b.mouse)));
         // The result window (E17 M5 T4b1): a still's at once, a sequence's from its battle's end;
         // over the whole screen darkened, the combat cursor's pointer at the mouse.
-        let result = match interface.book.and_then(|b| Some((b.result.as_ref()?, b.mouse))) {
+        let result = match interface
+            .book
+            .and_then(|b| Some((b.result.as_ref()?, b.mouse)))
+        {
             Some((window, mouse)) => Some((window, Some(mouse))),
             None => interface
                 .result

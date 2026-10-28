@@ -5,8 +5,8 @@
 //! AI values) and the catalogue. Shared by the window's battle (`crate::battle`) and the capture
 //! set's stills and sequences (`crate::spellbook`, `crate::sequences`).
 
-use h3_content_battle::BattleRuleset;
 use h3_content::{CreatureTypeId, Ruleset};
+use h3_content_battle::BattleRuleset;
 use h3_contracts::{BattleOutcome, BattleResult, BattleSide};
 use h3_protocol::wire::{Manifest, Observation};
 use h3_view::layout::BattleLayout;
@@ -58,7 +58,11 @@ pub fn window(
         result::experience(
             outcome.stacks.get(loser).map_or(&[], Vec::as_slice),
             hit_points,
-            (names[loser].is_some(), gave_up.is_some(), town && shown == 0),
+            (
+                names[loser].is_some(),
+                gave_up.is_some(),
+                town && shown == 0,
+            ),
         )
     } else {
         0
@@ -72,7 +76,11 @@ pub fn window(
     );
     let original = |c: CreatureTypeId| {
         let key = sources.manifest.keys.creatures.get(usize::from(c.raw()))?;
-        sources.tables.creatures.get(key).map(|e| u32::from(e.original))
+        sources
+            .tables
+            .creatures
+            .get(key)
+            .map(|e| u32::from(e.original))
     };
     let ai_value = |c: CreatureTypeId| core.creature(c).map_or(0, |t| t.ai_value);
     let mut sides = Vec::with_capacity(2);
@@ -85,7 +93,11 @@ pub fn window(
             },
             None => {
                 let (creature, several) = result::strongest(stacks, original, ai_value)?;
-                let key = sources.manifest.keys.creatures.get(usize::from(creature.raw()))?;
+                let key = sources
+                    .manifest
+                    .keys
+                    .creatures
+                    .get(usize::from(creature.raw()))?;
                 let count = if several { 2 } else { 1 };
                 Face::Creature {
                     name: sources
