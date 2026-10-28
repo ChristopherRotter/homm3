@@ -128,8 +128,8 @@ pub struct ObjectSetup {
     pub holds: Holds,
 }
 
-/// What the map puts in an object of increment 7's kinds (E08 T61a; design §7 of
-/// `docs/epics/E08-design.md`), checked against its type's kind when the game is built; what
+/// What the map puts in an object of increment 7's kinds (E08 T61a; increment 7's design note §7 in
+/// `E08-log.md`), checked against its type's kind when the game is built; what
 /// the build draws comes beside it (T61b).
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub enum Holds {
@@ -305,8 +305,8 @@ pub struct Seat {
     pub human: bool,
 }
 
-/// The scenario's bans as the build's draws read them (GAM-SET-003, E08 T61b; design §9 of
-/// `docs/epics/E08-design.md`): no draw gives a banned skill, spell or artifact. The game checks
+/// The scenario's bans as the build's draws read them (GAM-SET-003, E08 T61b; increment 7's design
+/// note §9 in `E08-log.md`): no draw gives a banned skill, spell or artifact. The game checks
 /// each against the ruleset; their order and repeats do not matter, and one the ruleset lacks
 /// bans nothing. The original's game bans every spell with the flag 0x2000 besides the map's
 /// (`new_game_bans`; Titan's Lightning Bolt), which the draws leave out as

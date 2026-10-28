@@ -1,5 +1,5 @@
-//! The visits of increment 7's pickups, teachers and finds (E08 T62a; design §11 and §13 of
-//! `docs/epics/E08-design.md`, survey `docs/rules/surveys/E08-rewards.md` §2 to §6, §8): what
+//! The visits of increment 7's pickups, teachers and finds (E08 T62a; increment 7's design note §11
+//! and §13 in `E08-log.md`, survey `docs/rules/surveys/E08-rewards.md` §2 to §6, §8): what
 //! each kind gives its visitor, asks, refuses or turns into something else, in the original's
 //! order, as the outcome's hero changes, gains, offers and choices the game applies (ADR-0017
 //! point 10). What a visit leaves on the objects goes into the state's visits' block ([`Visits`]):

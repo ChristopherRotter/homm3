@@ -1,4 +1,4 @@
-//! The rests (GAM-DEC-007, E08 T63b; design §14 of `docs/epics/E08-design.md`, survey
+//! The rests (GAM-DEC-007, E08 T63b; increment 7's design note §14 in `E08-log.md`, survey
 //! `docs/rules/surveys/E08-rewards.md` §8.1): what a visit still owes its hero once a decision of
 //! the visit closes or a battle's levels are given. The original's visit runs its dialogs, its
 //! battle and the levels the battle gave inside the visit and goes on after them; a player of the

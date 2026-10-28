@@ -1,5 +1,5 @@
-//! What the map puts in an object of increment 7's kinds (E08 T61a; design §7 of
-//! `docs/epics/E08-design.md`): checked against the object's kind when the game is built, and
+//! What the map puts in an object of increment 7's kinds (E08 T61a; increment 7's design note §7 in
+//! `E08-log.md`): checked against the object's kind when the game is built, and
 //! written into the static map's hash. The visits that read it come with T62.
 
 use alloc::collections::BTreeSet;

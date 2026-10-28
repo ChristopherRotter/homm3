@@ -6,50 +6,22 @@ Pre-refined tasks of the AI lane, in order, then the inbox of discovered work. T
 
 **E05** (`docs/epics/E05-battle-env.md`) closed 2026-10-20 (record: `E05-log.md`; the environment as built: `docs/07-simulation-and-ai.md` §1.1). **E06** (`docs/epics/E06-battle-ai.md`, AI-Q8) closed 2026-10-27 (T1 to T9 in 8 increments; record `E06-log.md`, the design note kept there; the training pipeline as built: `docs/07-simulation-and-ai.md` §1.2): the battle AI v1 is `t7-1`, on the closing engine 0.830, 0.550, 0.530 against Random, Aggressor, Greedy at +0.273, +0.029, +0.010 and the neutral set's value +0.244 (decision 7's targets as revised, met), the system actor 0.628 against it (E25's target). The tasks' history is in `QUEUE-ARCHIVE.md`.
 
-**E25** (`docs/epics/E25-battle-ai-v2.md`, AI-Q10; record `E25-log.md` from T1a on), refined
-2026-10-27. **Increment 1, the diagnostics and shaping:** the faithful system actor is the
-target and trains no agent (decision 2); each run's length is agreed with the user (decision
-5). The adventure env's typed answers wait for the adventure lane's T63.
+**E25** (`docs/epics/E25-battle-ai-v2.md`, AI-Q10; record `E25-log.md`), refined
+2026-10-27; T1a, T1b, T1c and T2a done 2026-10-28. **Increment 1, the diagnostics and
+shaping:** the faithful system actor is the target and trains no agent (decision 2; no neutral
+battles in training for now, the user at T2a); each run's length is agreed with the user
+(decision 5).
 
-- **T1a The search's terminal by reward v1.** *Scope:* a world's step (`h3_env_step` on a
-  `h3_batch_determinize` world) scores a decided battle ±1 where the value head learned reward
-  v1 (E06 T9b). Score it by reward v1 for the side to move. Either the single env reports reward
-  v1 (a C ABI addition, v35, `h3.h` and `h3env` together) or the world reads `h3_sim::reward`;
-  choose, record it in a new `docs/epics/E25-log.md`. `h3env.search` uses it at a terminal.
-  *Acceptance:* a world's terminal value equals the batch's reward v1 for the same battle and
-  side (Rust and Python tests); the search's tests pass; scoped verify. *Depends on:* none.
-  *Status:* ready.
-- **T1b The true-world search.** *Scope:* a copy of the env's true battle with its stream
-  re-seeded and nothing guessed (a C ABI addition beside `h3_batch_determinize`, documented as a
-  trusted diagnostic: it reads the hidden part, ADR-0025 point 12a), and `h3env.search --worlds
-  true|guessed` (guessed the default). *Acceptance:* the true world equals the env's state but
-  its stream (test); the search runs with either; no agent path or config reaches it without the
-  flag. *Depends on:* T1a (one ABI bump for both if they land together). *Status:* ready.
-- **T1c T8c again.** *Scope:* E06 T8c's measurement (`E06-log.md` T8c) with T1a's terminal: the
-  search with guessed and with true worlds, beside the sampled policy on the same episodes,
-  against the system actor at N 16 and 64 and on the neutral set (subsets as T8c's if the sandbox's
-  time asks). The network: `t7-1`'s `best.pt` if the user uploads it, else `order-1`'s. Results
-  into `python/records/search/`, the read into the log. *Acceptance:* the rows recorded with their
-  intervals; the read says whether a search gains and what the guess costs. *Depends on:* T1a,
-  T1b; the user's upload (optional). *Status:* ready.
-- **T2a Shaping and the training mix.** *Scope:* `[ppo] shaping` (off by default): each learning
-  side's transition gains Φ(s′) − Φ(s), Φ its reward v1 if the battle ended there, 0 at a
-  terminal; Φ from the batch (an output, C ABI) or from Python, the agent's choice. The training
-  mix without the faithful system actor (ADR-0026 point 8 as amended): a config with
-  `system_share` above 0 or the system actor as the neutral defender in training is refused;
-  the neutral kinds either in self-play (the league plays the neutral side; the batch must offer
-  that seat) or at weight 0, **asked of the user at the start** (the agent's proposal: self-play).
-  A config for T2b's two runs. *Acceptance:* tests of the shaped returns (the sum equals reward v1
-  over an episode at γ 1), of the refused configs and of the chosen mix; scoped verify; the
-  Python tests. *Depends on:* the user's choice of the mix. *Status:* waiting (the user, at the
-  start).
-- **T2b The A/B runs.** *Scope:* on the user's machine, a control (`t7-1`'s settings without the
-  faithful system actor) and the same with shaping, their length agreed when prepared; the
-  records committed, the ladders (the system actor and the neutral set included) against
-  `t7-1`'s. *Acceptance:* both records committed and read in the log. *Depends on:* T2a; the
-  user. *Status:* waiting.
-- **T3 Increment 1's checkpoint.** *Scope:* T1c's and T2b's reads put to the user; increment 2
-  chosen among the epic's candidates and refined. *Depends on:* T1c, T2b. *Status:* waiting.
+- **T2b The A/B runs.** *Scope:* on the user's machine, the control (`configs/e25-control.toml`:
+  `t7-1`'s settings with the player kinds alone, no neutral battles, the user at T2a) and the
+  same with shaping (`configs/e25-shaping.toml`), their length agreed when prepared (20 M
+  samples in the files, `t7-1`'s); the records committed, the ladders (the system actor and the
+  neutral set included) against `t7-1`'s. *Acceptance:* both records committed and read in the
+  log. *Depends on:* T2a (done 2026-10-28); the user. *Status:* waiting (the user's machine).
+- **T3 Increment 1's checkpoint.** *Scope:* T1c's read (`E25-log.md` T1c: no gain, the guess
+  costs nothing measurable, the network's evaluation limits the search) and T2b's put to the
+  user; increment 2 chosen among the epic's candidates and refined. *Depends on:* T2b. *Status:*
+  waiting.
 
 ## Inbox
 
@@ -88,7 +60,10 @@ parts are its tasks above):
   (`configs/e06-t7.toml --set samples=60_000_000`, about 4 hours; without the faithful system
   actor now, E25 decision 2); the mana-price run `t5-4` (`configs/e06-mana.toml`, about 75
   minutes; T5's experiment, prepared, never run).
-- **The search** (E06 T8, ADR-0025 point 12a; its terminal and T8c again are T1a to T1c). AI-STUB-1
+- **The search** (E06 T8, ADR-0025 point 12a; its terminal and T8c again were T1a to T1c): a
+  world scores a cut at the step limit 0 where the trainer charges `-truncation_penalty`, so the
+  tree's losing side stalls (T1c: up to 1.5 % of the true worlds' battles cut); a search that
+  trains or plays scores it as the trainer does (`E25-log.md` T1c). AI-STUB-1
   (`docs/stubs.toml`: the hidden obstacles' number, and T9b's three gaps of a world: the other
   hero's morale and luck modifiers, the magic limits, a commanded war machine without a guess);
   the cast heads at the root unperturbed (design §14's Gumbel heads not built); T8c's optional

@@ -37,6 +37,7 @@ struct Arrays {
     status: Vec<i32>,
     encounter: Vec<i8>,
     preview: Vec<f32>,
+    potential: Vec<f32>,
 }
 
 impl Arrays {
@@ -56,6 +57,7 @@ impl Arrays {
             status: vec![0; n],
             encounter: vec![0; n],
             preview: vec![0.0; n * PREVIEW_LEN],
+            potential: vec![0.0; n * 2],
         }
     }
 
@@ -75,6 +77,7 @@ impl Arrays {
             status: self.status.as_mut_ptr(),
             encounter: self.encounter.as_mut_ptr(),
             preview: self.preview.as_mut_ptr(),
+            potential: self.potential.as_mut_ptr(),
         }
     }
 }
@@ -206,6 +209,7 @@ struct RustArrays {
     obs: Vec<f32>,
     mask: Vec<u8>,
     final_obs: Vec<f32>,
+    potential: Vec<f32>,
     preview: Vec<f32>,
     reports: Vec<EnvReport>,
 }
@@ -217,6 +221,7 @@ impl RustArrays {
             mask: vec![0; n * ACTION_COUNT],
             final_obs: vec![0.0; n * 2 * OBSERVATION_LEN],
             preview: vec![0.0; n * PREVIEW_LEN],
+            potential: vec![0.0; n * 2],
             reports: vec![EnvReport::default(); n],
         }
     }
@@ -227,6 +232,7 @@ impl RustArrays {
             entry_mask: Some(&mut self.mask),
             final_obs: Some(&mut self.final_obs),
             preview: Some(&mut self.preview),
+            potential: Some(&mut self.potential),
             reports: Some(&mut self.reports),
         }
     }
@@ -238,6 +244,7 @@ fn same(arrays: &Arrays, rust: &RustArrays) {
     assert_eq!(bits(&arrays.obs), bits(&rust.obs));
     assert_eq!(arrays.mask, rust.mask);
     assert_eq!(bits(&arrays.preview), bits(&rust.preview));
+    assert_eq!(bits(&arrays.potential), bits(&rust.potential));
     let rows = 2 * OBSERVATION_LEN;
     for (i, r) in reports.iter().enumerate() {
         assert_eq!(arrays.to_move[i] as i32, side_code(r.to_move), "env {i}");
@@ -858,5 +865,33 @@ fn a_world_through_the_abi_is_the_rust_batchs() {
         unsafe { crate::h3_env_reseed(std::ptr::null_mut(), 9) },
         H3_ERR_NULL
     );
+    unsafe { h3_batch_destroy(b) };
+}
+
+/// v35 (E25 T1b): a true world through the ABI is the Rust batch's (`BattleBatch::true_world`):
+/// the env's battle with its stream re-seeded, nothing guessed; refused arguments give null.
+#[test]
+fn a_true_world_through_the_abi_is_the_rust_batchs() {
+    let n = 4;
+    let b = create(&config(n, 0, 6, 400)).unwrap();
+    assert_eq!(add_encounters(b, 1, Some([0, 0, 1, 1, 0, 0])).0, H3_OK);
+    assert!(unsafe { h3_batch_true_world(b, 0, 5) }.is_null());
+    let mut arrays = Arrays::new(n as usize);
+    let buffers = arrays.buffers();
+    assert_eq!(unsafe { h3_batch_reset(b, &buffers) }, H3_OK);
+    let h = unsafe { &*b };
+    for i in 0..n {
+        let world = unsafe { h3_batch_true_world(b, i, 5) };
+        assert!(!world.is_null());
+        let mut env = h.batch.env(i as usize).unwrap().fork();
+        env.reseed(5);
+        assert_eq!(unsafe { crate::h3_env_state_hash(world) }, env.state_hash());
+        let rust = h.batch.true_world(i as usize, 5).unwrap();
+        assert_eq!(rust.state_hash(), env.state_hash());
+        unsafe { crate::h3_env_destroy(world) };
+    }
+    for (batch, env) in [(b, n), (std::ptr::null_mut(), 0)] {
+        assert!(unsafe { h3_batch_true_world(batch, env, 5) }.is_null());
+    }
     unsafe { h3_batch_destroy(b) };
 }

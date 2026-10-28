@@ -1,5 +1,6 @@
 """The search over determinized worlds (E06 T8b, design §14; ADR-0025 point 12a): the worlds
-through the binding, the schedule and selection rules, and the search agent's choices."""
+through the binding, the schedule and selection rules, and the search agent's choices; the true
+worlds of the diagnostic (E25 T1b)."""
 
 from __future__ import annotations
 
@@ -146,6 +147,26 @@ def test_a_search_agent_plays_its_battles_to_the_end() -> None:
     assert result["defender"]["episodes"] + result["defender"]["skipped"] == 2
 
 
+def test_a_search_takes_true_worlds_only_when_asked(monkeypatch) -> None:
+    # E25 T1b: the true battle's copies are a trusted diagnostic's (`--true-worlds`); a search
+    # without the flag never reads one, and one with it never guesses.
+    def refused(*_args):
+        raise AssertionError("not this kind of world")
+
+    for true_worlds, other in [(False, "true_world"), (True, "determinize")]:
+        b = batch()
+        make = search(network(b), simulations=4, worlds=2, k=4, limit=10, true_worlds=true_worlds)
+        agent = make(5)
+        with monkeypatch.context() as m:
+            m.setattr(BattleBatch, other, refused)
+            for _ in range(3):
+                agent(b)
+                b.step()
+                assert (b.status == _ffi.OK).all()
+        assert make.searchers[-1].stats["simulations"] > 0
+        b.close()
+
+
 def test_the_search_refuses_a_preview_network_and_empty_budgets() -> None:
     b = BattleBatch(2, preview=True)
     preview = Mlp.for_batch(b, hidden=8, embed=4, preview=True)
@@ -183,5 +204,10 @@ def test_the_report_plays_the_search_and_the_sampled_policy_on_the_same_episodes
     assert set(search_["kinds"]) == set(sampled_["kinds"])
     costs = search_["costs"]
     assert costs["decisions"] > 0 and costs["simulations"] > 0 and costs["fallbacks"] >= 0
+    assert result["settings"]["true_worlds"] is False
+    # E25 T1b: the diagnostic over the true battle's copies, the search alone.
+    truth = main([*args, "--worlds", "1", "--k", "2", "--true-worlds", "--no-sampled"])
+    assert truth["settings"]["true_worlds"] is True and "sampled" not in truth
+    assert truth["search"]["games"] == search_["games"]
     with pytest.raises(SystemExit):
         main(["--report", "--per-kind", "1"])

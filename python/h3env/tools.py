@@ -5,7 +5,8 @@
 flags: for tests, tools and training infrastructure, never for an agent's input and never to be
 forwarded to a client. The exception is a *world* (`BattleBatch.determinize`, C ABI v34, ADR-0025
 point 12a): an env whose battle holds nothing its side may not know, a search agent's to fork,
-step and observe.
+step and observe, and which scores a decided battle by its batch's reward v1 (v35, E25 T1a) where
+any other env scores ±1 by the winner.
 """
 
 from __future__ import annotations
@@ -117,7 +118,9 @@ class Env:
     def step(
         self, actor: int, entry: int, spell: int = 0, target: int = 0, second: int = 0
     ) -> _ffi.H3StepResult:
-        """Plays an action for `actor`; raises if it is refused (the env is then unchanged)."""
+        """Plays an action for `actor`; raises if it is refused (the env is then unchanged). The
+        result's rewards: ±1 by the winner when the step decides the battle, a world's reward v1
+        (C ABI v35), else 0."""
         result = _ffi.H3StepResult()
         action = _ffi.H3Action(entry, spell, target, second)
         _ffi.check(self._lib.h3_env_step(self._handle, actor, action, byref(result)))

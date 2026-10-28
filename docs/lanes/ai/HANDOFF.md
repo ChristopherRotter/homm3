@@ -10,18 +10,19 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 - **E06 closed 2026-10-27** (AI-Q8; `docs/epics/E06-battle-ai.md`, record and design note
   `E06-log.md`, closed increments `E06-archive.md`; the pipeline as built:
   `docs/07-simulation-and-ai.md` §1.2): `t7-1` is the battle AI v1 and the baseline.
-- **E25 refined 2026-10-27** (AI-Q10; `docs/epics/E25-battle-ai-v2.md`): the target is beating
-  the faithful system actor (`t7-1`: 0.372); it **trains no agent any more** (ADR-0026 point 8
-  as amended; a fair variant is the battle lane's, later). **Next: increment 1's T1a** (QUEUE:
-  T1a to T1c the search's terminal, the true world, T8c again; T2a asks the user the neutral
-  kinds' training mix first). The adventure env's typed answers wait for E08 T63.
-- **Open pull requests:** this lane's E25 refinement (`claude/cool-sagan-qdfznc`): watch it to
-  its merge. Merged: #524 (E06 T9c, T9d), #525 (the refinement's shared part,
-  `shared/e25-refinement`, a second branch the user allowed).
+- **E25 refined 2026-10-27** (AI-Q10; `docs/epics/E25-battle-ai-v2.md`, record `E25-log.md`):
+  the target is beating the faithful system actor (`t7-1`: 0.372); it **trains no agent any
+  more** (ADR-0026 point 8 as amended; no neutral battles in training for now, the user at T2a).
+  **Done 2026-10-28:** T1a, T1b (a world's reward v1, the true world), T2a (shaping, the refused
+  mixes, T2b's configs), all C ABI v35; T1c (the search gains nothing with either world: the
+  network's evaluation limits it). **Next:** T2b's two runs on the user's machine (their length
+  agreed first: `configs/e25-control.toml`, `e25-shaping.toml`), then T3, the checkpoint.
+- **Open pull requests:** #534 (E25 T1a to T1c, T2a; `claude/adoring-turing-5sit47`): watch it to
+  its merge. Merged: #539 (`shared/e25-worlds`, ADR-0025 point 12a.3), #528.
 - **Versions:** battle action encoding v13, observation encoding v22, replay format v31
-  (CLT-Q4/Q6), the adventure env's action encoding v4 (E08 T45), C ABI v34 (T6f and T8b: the turn
-  order, the worlds) (`docs/08-work-process.md`, "Versions"). Next ids: AI-Q11, AI-QUIRK-1,
-  AI-STUB-2.
+  (CLT-Q4/Q6), the adventure env's action encoding v5 (E08 T63a), C ABI v35 (E25 T1a, T1b, T2a:
+  a world's reward, the true world, the potential) (`docs/08-work-process.md`, "Versions"). Next
+  ids: AI-Q11, AI-QUIRK-1, AI-STUB-2.
 - Working agreement: increments with a user checkpoint (Q41's pattern); the user reviews ADRs and seams.
 
 ## Standing traps
@@ -29,6 +30,14 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 Moved to `TRAPS.md`, in three groups: **Ownership** (cross-lane encodings and replays, what `--scope ai` skips), **Environment** (what an agent sees, the batch, the pool's `unsafe`, benchmarks, the census, the encounter sampler, bots' tables) and **Python** (the trainer's resumable state, uv, PyTorch's pinned build, the sandbox's network).
 
 ## Recent sessions
+
+### 2026-10-28 — E25 T1a, T1b, T2a (C ABI v35), T1c
+
+- T1a: a world scores a decided battle by its batch's reward v1 (found with it: a world's setup
+  held the guess's starting mana). T1b: the true world, `--true-worlds`. The user: `t7-1`'s
+  `best.pt` uploaded, no neutral battles for now, a second branch for the shared docs (#539).
+  T2a: the batch's potential, `[ppo] shaping`, `run.trainable`, T2b's configs. T1c (six runs,
+  about five hours in the sandbox): no gain with guessed or true worlds.
 
 ### 2026-10-27 — E25's refinement (AI-Q10)
 
@@ -46,10 +55,3 @@ Moved to `TRAPS.md`, in three groups: **Ownership** (cross-lane encodings and re
   to AI-STUB-1, T9c on Windows only. T9c (the user): the verify with the original data and the
   Python tests green, `t7-1` played again (the targets hold). T9d: #522, the design note into
   the log, E06 closed.
-
-### 2026-10-27 — Increment 7's checkpoint: E06 to its closure, the targets revised
-
-- The user: close E06 with `t7-1` as the battle AI v1, decision 7 revised to "beat every
-  heuristic bot", a stronger agent as E25; both docs parts now. Done: the epic file, the archive,
-  the log, the design's §14, AI-STUB-1 to E25, the draft retired (this lane's PR); ADR-0025
-  point 12a, the env doc, BACKLOG (`shared/e06-search-docs`, a second branch the user allowed).

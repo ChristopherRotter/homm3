@@ -4,29 +4,55 @@ Pre-refined tasks of the adventure lane, in order, then the inbox of discovered 
 
 ## Tasks
 
-Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T51b (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 6 are closed (2026-10-12, -13, -20, -21, -23, -26; increment 6, army and hero management, by T53's audit). **Increment 7, rewards on the map**, refined with the user at T53 (ADV-Q26; decisions 121 to 123): T54 (the battle seam's facts) done; the survey and the ADR amendment drafts (T55a, T55b) done, each task's cut confirmed with the user at its start. T55a is cut in four (decision 125): all four done (survey `docs/rules/surveys/E08-rewards.md`; decisions 126 to 128 the cuts, its checkpoint ADV-Q28 decisions 129 to 136); T55b done (decision 137; its checkpoint ADV-Q29 decisions 138 to 141: the drafts accepted with typed answers, eight rounds with batch E7 first, design §19). T56 done (decision 142: whole, batch E7's maps and specs). Round 2: T57 done (decision 143: whole, the harness's reads, the recipes and the three runs), T58 done (decision 144: scored, A-23 withdrawn). T58b done (decision 144: `h3-map`'s view test's oracle; ADV-Q30, decision 145: A-25 a quirk with a flag). Round 3: T59 done (decision 146: whole, `shared/e08-t59`). Round 4: T60 in two (decision 147): T60a done (`adventure/e08-t60a`, the bonuses and the four changes), T60b done (`adventure/e08-t60b`, `grant` and the teachers). Round 5: T61 in two (decision 148): T61a done (`adventure/e08-t61a`, the import and the kinds), T61b done (`adventure/e08-t61b`, decision 149: whole, the bans, the draws and the state). Round 6: T62 in two (decision 150): T62a done (`adventure/e08-t62a`, the pickups, teachers and finds), T62b in two (decision 151: the rest stays in T63): T62b1 done (`adventure/e08-t62b1`, the record, the box and the Pyramid), T62b2 done (`adventure/e08-t62b2`, decision 152: whole, events and the move). Round 7: T63 in two (decision 153): T63a done (`adventure/e08-t63a`, `cross-lane`: the typed answers, the choices and the University, the env's purchase entries), T63b done (`adventure/e08-t63b`; decision 154, whole: the visit's rests, the guard's wait fixed, `ClearBonuses`, the event after the guard). Round 8: T64 in two (decision 155): T64a done (`adventure/e08-t64a`, the rewards map, its replays and benchmarks), T64b done (`adventure/e08-t64b`; decision 156, whole: the properties, the hidden-event property with a guard, decision 133's 144 × 144 maps and their forks); T65 below. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
+Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T65 (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 7 are closed (2026-10-12, -13, -20, -21, -23, -26, -28; increment 7, rewards on the map, by T65's audit). **Increment 8, boats and the sea**, refined with the user at T65 (ADV-Q31; decisions 158, 159): the survey and the ADR amendment drafts first (T66a, T66b), each task's cut confirmed with the user at its start. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
 
-### E08 T65 — the audit (design §19)
+### E08 T66a — The boats and sea survey
 
-- **Scope:** increment 7's eight exit criteria (design §19) audited, the rules' statuses and
-  observations checked; increment 7 closed (its scope, decisions and tasks to `E08-archive.md`);
-  increment 8 refined with the user (the epic's sketch: boats, Navigation and the sea).
-- **Depends on:** T64b (`adventure/e08-t64b`). **Status:** ready once T64b merges.
+- **Scope** (decisions 158, 159): a survey `docs/rules/surveys/E08-sea.md` (as T17a, T24a, T34a,
+  T44a and T55a): the original's rules for boats and the sea, by code reading
+  (`docs/exe/README.md`; what is read already: `hero_boards_boat` 0x4A1010, `hero_lands_from_boat`
+  0x49E670 and the boat's points in survey `E08-hero-movement.md` §1.1, §1.4, §2.1, §3.1 and §6,
+  the boats' drawing in `docs/epics/E24-design.md` §2.3) with VCMI 1.7.5 and the wiki, and a census
+  of the 160 shipped maps. (1) **Boats** (class 8): how many, their subclasses, heroes placed in
+  one, what a map leaves reachable only by sea; the body and the import. (2) **Boarding and
+  landing:** which steps board and land, the points they cost and leave (the Admiral's Hat), what
+  boarding clears (Fly, Water Walk), where the boat stays, a guarded or blocked shore. (3)
+  **Sailing:** the step's price at sea and the day's points (Navigation, the Necklace of Ocean
+  Guidance, the Sea Captain's Hat; a Lighthouse's bonus stays with item 9), Favorable Winds (225),
+  what a hero in a boat visits and how (the sea's objects, another hero, the events on water of
+  the inbox's note below), scouting at sea, what another player sees of a boat. (4) **A battle
+  with a hero in a boat** (against a hero; the ship's deck and the two boats battlefields,
+  GAM-BAT-001; whether anything else fights a hero at sea). (5) **The sea's pickups:** Sea Chest
+  (82), Shipwreck Survivor (86), Flotsam (29), Ocean Bottle (59): their contents, draws at a new
+  game and visits. (6) **The writer:** an empty boat and a hero standing in one (CLT-Q5). (7) The
+  commands, decisions, events, the observation, replays and benchmarks it changes; **batch E8's
+  plan** on the client lane's harness (decision 159's agent's call). (8) The proposed rule ids,
+  quirk candidates and disputes; a fresh agent's second reading of the code; the checkpoint's
+  questions (an `ADV-Q`).
+- **Not in it** (decision 158): Shipyards (87) and Lighthouses (42), item 9; Whirlpools, Buoys,
+  Mermaids, Sirens; the Derelict Ship and the Shipwreck (item 10); Summon Boat and Scuttle Boat
+  (the adventure spells); a town's shipyard (E09).
+- **Depends on:** T65 (done). **Status:** ready; its cut confirmed with the user at its start; a
+  user checkpoint at its end (decision 159).
+
+### E08 T66b — The ADR amendment drafts, the design note and the cut
+
+- **Scope:** from T66a's survey and the answers at its checkpoint: the amendment drafts of the
+  ADRs it touches (ADR-0016 for boats, the sea and a visit from a boat,
+  `docs/lanes/adventure/adr-drafts/`; ADR-0017 for the commands, decisions and battles; ADR-0013
+  if `h3-heroes` gains rules, such as the day's points at sea), `E08-design.md` rewritten for
+  increment 8 (the hero side, the map, the game, the batch and the cut, with increment 8's exit
+  criteria), the building tasks cut in rounds; the checkpoint's questions (an `ADV-Q`). The user
+  accepts the drafts and the cut before anything is built (decision 159).
+- **Depends on:** T66a and its checkpoint. **Status:** waiting for T66a.
 
 ## Inbox
 
-- 2026-10-27 (the map client lane, E24 M2 T6b1, `map-client/e24-r2-8`, `cross-lane` with the
-  user's consent at E24 T0; for your information, nothing to do): **the writer's edge bound one
-  tighter** (E24 M1's reviewer, R2-8): `h3_map::writer::write_with` took an object anchored up to
-  `side + 7` columns and `side + 5` rows, where an 8-wide or 6-high template has no cell on the
-  map; now `side + 6` and `side + 4` (7 and 5 past the last column and row, as its doc comment
-  and `docs/formats/h3m.md` already said). `crates/h3-map/src/writer/extras.rs`, its tests moved
-  with it.
-
-- 2026-10-27 (E08 T62b2's census; **for the increment that builds boats**): 9 events of the shipped
-  maps lie on water. The engine fires an event only for a hero that stands on its tile, so these
-  fire once a hero in a boat can step onto them (the original's `hero_move_step` tests every tile a
-  step enters, at sea too). Check the boat's step against `AdventureState::firing_event` then.
+- 2026-10-27 (E08 T62b2's census; **for T66a**, increment 8 builds boats, decision 158): 9 events of
+  the shipped maps lie on water. The engine fires an event only for a hero that stands on its tile,
+  so these fire once a hero in a boat can step onto them (the original's `hero_move_step` tests
+  every tile a step enters, at sea too). Check the boat's step against
+  `AdventureState::firing_event` then.
 
 - 2026-10-23 (T42, measured; for a performance task): **a flyer's or water walker's reach costs
   about 1.9 times a walker's query** on the XL map (`reach-lifted-xl-144`: 279 k Ir a query

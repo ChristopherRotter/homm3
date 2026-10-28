@@ -256,8 +256,8 @@ type Mid<T> = [Option<Arc<Leaf<T>>>; MID];
 /// The top table of a [`Table`]: its mid tables.
 type Top<T> = Vec<Option<Arc<Mid<T>>>>;
 
-/// A sparse table of values by index, persistent (E08 T61b; design §10 of
-/// `docs/epics/E08-design.md`, decision 133): a top table of mid tables of 64 leaves of 16
+/// A sparse table of values by index, persistent (E08 T61b; increment 7's design note §10 in
+/// `E08-log.md`, decision 133): a top table of mid tables of 64 leaves of 16
 /// entries, each value shared, so a fork ([`Clone`]) is a reference count (none for an empty
 /// table) and a write copies at most the top table, a mid table and a leaf, pointers only,
 /// whatever the number of entries (the armies battles left on objects: T55b's measurement, about

@@ -1,7 +1,7 @@
-//! The draws when the game is built (E08 T61b; design §9 of `docs/epics/E08-design.md`, ADR-0016
-//! point 4, ADR-0017 point 4): what increment 7's objects hold that the map leaves to chance,
-//! drawn from the setup stream after the piles' and the monsters' draws, in two walks in object
-//! order, as the original resolves the random artifacts (`resolve_random_objects` 0x4C9DD0)
+//! The draws when the game is built (E08 T61b; increment 7's design note §9 in `E08-log.md`,
+//! ADR-0016 point 4, ADR-0017 point 4): what increment 7's objects hold that the map leaves to
+//! chance, drawn from the setup stream after the piles' and the monsters' draws, in two walks in
+//! object order, as the original resolves the random artifacts (`resolve_random_objects` 0x4C9DD0)
 //! before its new game's pass over the rest (`setup_map_objects` 0x4C0CC0; survey
 //! `E08-rewards.md` §3.1). Within an object the draws' order is the engine's (E08 decision 17),
 //! so the original's dropped draws (a placed artifact's, §3.1) have no counterpart. No draw gives

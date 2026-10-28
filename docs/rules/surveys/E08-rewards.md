@@ -1085,9 +1085,10 @@ modelled (decision 134).
 
 T55a1 to T55a3 collected here what each left for T55a4. T55a4 took the questions, refusals,
 derived properties, knowledge, the move and the decisions into §8, the batch rows into §11 and
-the rule ids into §12. What stays is T55b's (*taken by T55b*, 2026-10-26, into
-`docs/epics/E08-design.md` part B: the import §7, the kinds §8, the draws §9, the state §10, the
-battles §11.2 and §15; A-20 and A-22 fixed there as no spell and what is left):
+the rule ids into §12. What stays is T55b's (*taken by T55b*, 2026-10-26, into increment 7's
+design note's part B, in `docs/epics/E08-log.md` since T65: the import §7, the kinds §8, the draws
+§9, the state §10, the battles §11.2 and §15; A-20 and A-22 fixed there as no spell and what is
+left):
 
 - **The import's changes:** the classes 5, 65 to 69, 93 and 101 (T55a1), the 20 classes of §6
   (T55a2) and 6, 26 and 63 (T55a3) typed; they are blockers today. The guarded artifact's record

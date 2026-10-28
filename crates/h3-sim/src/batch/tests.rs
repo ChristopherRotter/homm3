@@ -42,6 +42,7 @@ struct Arrays {
     mask: Vec<u8>,
     final_obs: Vec<f32>,
     preview: Vec<f32>,
+    potential: Vec<f32>,
     reports: Vec<EnvReport>,
 }
 
@@ -52,6 +53,7 @@ impl Arrays {
             mask: vec![0; n * ACTION_COUNT],
             final_obs: vec![0.0; n * 2 * OBSERVATION_LEN],
             preview: vec![0.0; n * PREVIEW_LEN],
+            potential: vec![0.0; n * 2],
             reports: vec![EnvReport::default(); n],
         }
     }
@@ -62,6 +64,7 @@ impl Arrays {
             entry_mask: Some(&mut self.mask),
             final_obs: Some(&mut self.final_obs),
             preview: Some(&mut self.preview),
+            potential: Some(&mut self.potential),
             reports: Some(&mut self.reports),
         }
     }
@@ -1186,9 +1189,12 @@ fn a_world_of_an_env_shows_its_viewer_the_battle_and_plays_to_its_end() {
             let (setup, guess) = (world.setup(), &world.setup().heroes[other.index()]);
             assert_eq!(setup.funds[other.index()], 0);
             if let Some(view) = env.state().hero(other) {
-                // The guess is of the observed type; the world shows its public part.
+                // The guess is of the observed type; the world shows its public part, and its
+                // setup the battle's starting mana (shown at the start; reward v1 reads it).
                 assert_eq!(guess.as_ref().map(|h| h.hero_type), Some(view.hero_type));
                 assert_eq!(world.state().hero(other), Some(view));
+                let start = env.setup().heroes[other.index()].as_ref().unwrap();
+                assert_eq!(guess.as_ref().unwrap().magic.mana, start.magic.mana);
                 guessed += 1;
             }
             let mut w = world.fork();
@@ -1210,9 +1216,118 @@ fn a_world_of_an_env_shows_its_viewer_the_battle_and_plays_to_its_end() {
     assert!(matches!(refused, Err(SetupError::InvalidHero { .. })));
     let bare = env.world(BattleSide::Attacker, None, 1).unwrap();
     let hero = bare.setup().heroes[1].as_ref().unwrap();
-    assert_eq!(*hero, h3_contracts::BattleHero::new(view.hero_type));
+    let mut alone = h3_contracts::BattleHero::new(view.hero_type);
+    alone.magic.mana = env.setup().heroes[1].as_ref().unwrap().magic.mana;
+    assert_eq!(*hero, alone);
     assert_eq!(
         bare.observation(BattleSide::Attacker),
         env.observation(BattleSide::Attacker)
     );
+}
+
+/// E25 T1a: a world scores a decided battle by the batch's reward v1 (its currency and mana
+/// price), the scale of a value head trained on it, not ±1. A world of a battle that hides
+/// nothing (the duel: no hero) on its episode's seed is the env's battle: played as the batch
+/// plays the env, it ends at the same step with the batch's reward for each side (a single env
+/// keeps ±1: `env::tests::rewards_on_decision`).
+#[test]
+fn a_world_scores_a_decided_battle_by_the_batchs_reward_v1() {
+    let n = 6;
+    let reward = RewardConfig {
+        currency: Currency::AiValue,
+        mana_price: 3,
+    };
+    let config = BatchConfig {
+        envs: n as u32,
+        threads: 0,
+        seed: 11,
+        max_steps: 0,
+        reward,
+    };
+    let mut batch = BattleBatch::new(config).unwrap();
+    let duel = scenario(h3_pack_battle::SYNTHETIC_DUEL, 1, EXTERNAL);
+    batch.add_scenario(duel).unwrap();
+    let mut arrays = Arrays::new(n);
+    batch.reset(&mut arrays.outputs()).unwrap();
+    let mut worlds: Vec<Option<BattleEnv>> = (0..n)
+        .map(|i| {
+            let r = &arrays.reports[i];
+            let world = batch.determinize(i, r.to_move.unwrap(), r.episode_seed);
+            let world = world.unwrap();
+            assert_eq!(world.state_hash(), batch.env(i).unwrap().state_hash());
+            Some(world)
+        })
+        .collect();
+    let mut rng = Rng::for_stream(2, StreamId::AGENT);
+    let mut decided = 0;
+    for _ in 0..5_000 {
+        let actions = actions(&mut batch, &arrays, &mut rng);
+        let mut ends = vec![None; n];
+        for (i, world) in worlds.iter_mut().enumerate() {
+            if let Some(w) = world {
+                let side = arrays.reports[i].to_move.unwrap();
+                let step = w.step(side, actions[i]).unwrap();
+                if !step.done {
+                    assert_eq!(step.reward, [0.0; 2]);
+                }
+                ends[i] = Some(step).filter(|s| s.done);
+            }
+        }
+        batch.step(&actions, &mut arrays.outputs()).unwrap();
+        for (i, end) in ends.iter().enumerate() {
+            if worlds[i].is_none() {
+                continue;
+            }
+            let report = &arrays.reports[i];
+            assert_eq!(report.done, end.is_some(), "env {i}");
+            if let Some(step) = end {
+                assert!(step.result.is_some() && !step.truncated, "env {i}");
+                assert_eq!(step.reward, report.reward, "env {i}");
+                assert_eq!(step.reward[0], -step.reward[1]);
+                assert!(step.reward[0].abs() < 1.0, "env {i}: {:?}", step.reward);
+                worlds[i] = None;
+                decided += 1;
+            }
+        }
+        if decided == n {
+            break;
+        }
+    }
+    assert_eq!(decided, n);
+}
+
+/// E25 T2a: the batch writes each env's potential (`reward::potential` at its reward settings:
+/// each side's reward v1 as if the battle ended now) after every call, 0 at an episode's start.
+#[test]
+fn the_batch_writes_each_envs_potential() {
+    let reward = RewardConfig {
+        currency: Currency::AiValue,
+        mana_price: 3,
+    };
+    let config = BatchConfig {
+        envs: 4,
+        threads: 2,
+        seed: 9,
+        max_steps: 0,
+        reward,
+    };
+    let mut batch = BattleBatch::new(config).unwrap();
+    let full = scenario(h3_pack_battle::SYNTHETIC_FULL, 1, EXTERNAL);
+    batch.add_scenario(full).unwrap();
+    let mut arrays = Arrays::new(4);
+    batch.reset(&mut arrays.outputs()).unwrap();
+    assert!(arrays.potential.iter().all(|&p| p == 0.0));
+    let mut rng = Rng::for_stream(4, StreamId::AGENT);
+    let mut moved = false;
+    for _ in 0..300 {
+        let actions = actions(&mut batch, &arrays, &mut rng);
+        batch.step(&actions, &mut arrays.outputs()).unwrap();
+        for i in 0..4 {
+            let env = batch.env(i).unwrap();
+            let expected = reward::potential(reward, env.ruleset(), env.setup(), env.state());
+            assert_eq!(arrays.potential[2 * i..2 * i + 2], expected, "env {i}");
+            moved |= expected[0] != 0.0;
+        }
+    }
+    assert!(moved);
 }
