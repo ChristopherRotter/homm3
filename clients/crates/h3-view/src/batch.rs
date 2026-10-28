@@ -18,6 +18,7 @@ use h3_assets::pcx::{Pcx, decode_pcx};
 use h3_ui::sprite::Sprite;
 use h3_ui::ui;
 
+use crate::clip::Video;
 use crate::layout::BattleLayout;
 use crate::scene::Draw;
 
@@ -28,12 +29,14 @@ pub struct Batch {
     pictures: BTreeMap<String, Pcx>,
     palettes: BTreeMap<String, Palette>,
     fonts: BTreeMap<String, Font>,
+    /// The result window's clips, decoded (E17 M5 T4b2b).
+    videos: BTreeMap<String, Video>,
 }
 
 /// Why an asset is not in the batch.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum BatchError {
-    /// The name's extension is not one a batch holds (`.DEF`, `.PCX`, `.PAL`, `.FNT`).
+    /// The name's extension is not one a batch holds (`.DEF`, `.PCX`, `.PAL`, `.FNT`, `.BIK`).
     Kind(String),
     /// The bytes do not decode: the name and the decoder's error.
     Decode(String, String),
@@ -42,7 +45,7 @@ pub enum BatchError {
 impl fmt::Display for BatchError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Kind(name) => write!(f, "{name}: not a DEF, PCX, PAL or FNT"),
+            Self::Kind(name) => write!(f, "{name}: not a DEF, PCX, PAL, FNT or BIK"),
             Self::Decode(name, why) => write!(f, "{name}: {why}"),
         }
     }
@@ -74,6 +77,10 @@ impl Batch {
         } else if upper.ends_with(".FNT") {
             let font = decode_fnt(bytes).map_err(failed)?;
             self.fonts.insert(upper, font);
+        } else if upper.ends_with(".BIK") {
+            let video = Video::decode(bytes)
+                .map_err(|e| BatchError::Decode(upper.clone(), format!("{e:?}")))?;
+            self.videos.insert(upper, video);
         } else {
             return Err(BatchError::Kind(upper));
         }
@@ -98,6 +105,11 @@ impl Batch {
     /// The font `name`, any case (E17 M3 T4a).
     pub fn font(&self, name: &str) -> Option<&Font> {
         self.fonts.get(&name.to_ascii_uppercase())
+    }
+
+    /// The clip `name`, any case (E17 M5 T4b2b).
+    pub fn video(&self, name: &str) -> Option<&Video> {
+        self.videos.get(&name.to_ascii_uppercase())
     }
 }
 
@@ -137,6 +149,11 @@ pub fn names(list: &[Draw], layout: &BattleLayout) -> BTreeSet<String> {
             vec![&item.picture, &item.font, &item.font_palette]
         }
         Draw::Dialog(ui::Draw::Label { item, .. }) => vec![&item.font, &item.font_palette],
+        Draw::Video { start, looped, .. } => {
+            let mut names = vec![start];
+            names.extend(looped.as_ref());
+            names
+        }
         Draw::Ray(_)
         | Draw::Within { .. }
         | Draw::Shaken { .. }
@@ -357,6 +374,14 @@ mod tests {
                     y: 0,
                 }],
             },
+            // The result window's clips, a start and its loop (E17 M5 T4b2b).
+            Draw::Video {
+                start: "rtstart.bik".to_string(),
+                looped: Some("rtloop.bik".to_string()),
+                since: 0,
+                x: 0,
+                y: 0,
+            },
         ];
         let names: Vec<String> = names(&list, &layout).into_iter().collect();
         assert_eq!(
@@ -381,6 +406,8 @@ mod tests {
                 "OTHER.PCX",
                 "PLAYERS.PAL",
                 "PLCBOWX.DEF",
+                "RTLOOP.BIK",
+                "RTSTART.BIK",
                 "SGCSTW21.PCX",
                 "SGEXPL.DEF",
                 "SHAKEN.PCX",
@@ -419,12 +446,15 @@ mod tests {
         assert_eq!(sprite.frame(9, 0), None);
         assert!(batch.picture("b.PCX").is_some());
         assert_eq!(batch.palette("GAME.PAL"), Some(&Palette::default()));
+        // A clip (E17 M5 T4b2b), decoded whole.
+        batch.add("w.bik", &h3_bink::build::sample(1)).unwrap();
+        assert_eq!(batch.video("W.BIK").map(|v| v.frames.len()), Some(8));
         assert_eq!(batch.sprite("t.def"), None);
         assert_eq!(
             batch.add("x.txt", b""),
             Err(BatchError::Kind("X.TXT".to_string()))
         );
-        for name in ["Y.DEF", "Y.PCX", "Y.PAL", "Y.FNT"] {
+        for name in ["Y.DEF", "Y.PCX", "Y.PAL", "Y.FNT", "Y.BIK"] {
             let error = batch.add(name, b"bad").unwrap_err().to_string();
             assert!(error.starts_with(&format!("{name}: ")), "{error}");
         }
@@ -437,7 +467,7 @@ mod tests {
         assert!(error.starts_with("Z.DEF: "), "{error}");
         assert_eq!(
             BatchError::Kind("A".to_string()).to_string(),
-            "A: not a DEF, PCX, PAL or FNT"
+            "A: not a DEF, PCX, PAL, FNT or BIK"
         );
         assert_eq!(
             BatchError::Decode("A".to_string(), "b".to_string()).to_string(),

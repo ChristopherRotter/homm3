@@ -94,6 +94,8 @@ pub struct Ground {
     layout: BattleLayout,
     /// The archives' bytes (CLT-Q2: whole archives): the batch takes the assets the frames name.
     archives: Vec<(&'static str, Vec<u8>)>,
+    /// The video archives' directories (E17 M5 T4b2b): the result window's clips.
+    videos: crate::videos::Videos,
     /// The executable's own strings (a panel made without the text tables).
     exe: Vec<u8>,
     /// The stage's numbers: each creature's, the magic animations', the casts', a siege's.
@@ -158,6 +160,7 @@ impl Ground {
         )
         .map_err(|e| format!("{}: {e}", layout_path.display()))?;
         let archives = read_archives(&source.install)?;
+        let videos = crate::videos::Videos::open(&source.install);
         let parsed = parse(&archives)?;
         // The executable's own strings: read only when a line needs them.
         let exe = crate::text::executable(&source.install).unwrap_or_default();
@@ -185,6 +188,7 @@ impl Ground {
             tables,
             layout,
             archives,
+            videos,
             exe,
             looks,
             magic,
@@ -1106,7 +1110,7 @@ impl<'g> Battle<'g> {
             layout: &self.ground.layout,
         };
         let player = self.viewing_player();
-        let Some(window) = crate::results::window(&sources, opening, &outcome, player) else {
+        let Some((window, _)) = crate::results::window(&sources, opening, &outcome, player) else {
             return false;
         };
         self.message = Some((h3_view::message::Open::new(window), ended, Asked::Result));
@@ -1337,7 +1341,7 @@ impl<'g> Battle<'g> {
             let layout = &self.ground.layout;
             list.extend(open.draws(&layout.book, &layout.player_palette, *player));
         }
-        if let Some((open, _, asked)) = &self.message {
+        if let Some((open, opened, asked)) = &self.message {
             // The result window over the whole screen darkened (E17 M5 T4b1).
             if *asked == Asked::Result {
                 list.push(h3_view::result::backdrop(self.ground.layout.frame));
@@ -1350,6 +1354,10 @@ impl<'g> Battle<'g> {
                     .into_iter()
                     .map(Draw::Dialog),
             );
+            // Its clip over its slot from the moment it opened (E17 M5 T4b2b).
+            if *asked == Asked::Result {
+                list.extend(self.clip(t.saturating_sub(*opened)));
+            }
         }
         Ok(list)
     }
@@ -1416,9 +1424,13 @@ impl<'g> Battle<'g> {
         }
         let parsed = parse(&self.ground.archives)?;
         for name in &names {
-            self.batch
-                .add(name, &lookup(&parsed, name)?)
-                .map_err(|e| e.to_string())?;
+            // A clip from the video archives (E17 M5 T4b2b), every other asset from the LODs.
+            let bytes = if name.ends_with(".BIK") {
+                self.ground.videos.read(name)?
+            } else {
+                lookup(&parsed, name)?
+            };
+            self.batch.add(name, &bytes).map_err(|e| e.to_string())?;
         }
         Ok(())
     }
@@ -1517,6 +1529,49 @@ impl<'g> Battle<'g> {
             .filter(|(cue, _)| fought || cued(cue))
             .filter_map(|(cue, name)| Some((cue, name?)))
             .collect()
+    }
+
+    /// The result window's clip `since` ms after it opened (E17 M5 T4b2b): the one its tune's
+    /// branch picks, when the video archives hold it (else the slot stays bare, as the
+    /// original's does without them).
+    fn clip(&self, since: u32) -> Option<Draw> {
+        let (_, tune) = self.end_tune()?;
+        let clip = h3_view::clip::of(tune);
+        let held = std::iter::once(clip.start)
+            .chain(clip.looped)
+            .all(|name| self.ground.videos.has(name));
+        held.then(|| h3_view::result::clip(&self.ground.layout.result, tune, since))
+    }
+
+    /// When the result window's clip frame on the screen at `t` was decoded and when the next
+    /// decode comes (E17 M5 T4b2b; `h3_view::clip::decodes`), the clips loaded first: the times
+    /// the window draws at while the result window stands. None without the window or its clip.
+    pub fn clip_times(&mut self, t: u32) -> Result<Option<(u32, Option<u32>)>, String> {
+        let Some(opened) = self
+            .message
+            .as_ref()
+            .filter(|(_, _, asked)| *asked == Asked::Result)
+            .map(|&(_, opened, _)| opened)
+        else {
+            return Ok(None);
+        };
+        let Some(Draw::Video { start, looped, .. }) = self.clip(0) else {
+            return Ok(None);
+        };
+        let names: Vec<&str> = std::iter::once(start.as_str())
+            .chain(looped.as_deref())
+            .collect();
+        self.load_batch(std::iter::empty(), &names)?;
+        let timing = |name: &str| self.batch.video(name).map(h3_view::clip::Video::timing);
+        let Some(first) = timing(&start) else {
+            return Ok(None);
+        };
+        let second = looped.as_deref().and_then(timing);
+        let (began, next) = h3_view::clip::decodes(t.saturating_sub(opened), first, second);
+        Ok(Some((
+            opened.saturating_add(began),
+            next.map(|n| opened.saturating_add(n)),
+        )))
     }
 
     /// When the battle is decided and the tune its end plays then (E17 M3 T8, design §8.2): the

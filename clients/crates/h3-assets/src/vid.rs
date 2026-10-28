@@ -34,38 +34,55 @@ pub struct VidArchive<'a> {
     entries: Vec<VidEntry>,
 }
 
-impl<'a> VidArchive<'a> {
-    /// Parses the directory. Every entry's offset must lie inside the archive (at its end, the
-    /// entry is empty).
-    pub fn parse(bytes: &'a [u8]) -> Result<Self, Error> {
-        let count = index(u32_at(bytes, 0).ok_or(Error::Truncated)?);
-        let table = slice(bytes, 4, count.saturating_mul(ENTRY_BYTES)).ok_or(Error::Truncated)?;
-        let end = u32::try_from(bytes.len()).unwrap_or(u32::MAX);
-        let mut fields = Vec::with_capacity(count);
-        for record in table.chunks_exact(ENTRY_BYTES) {
-            let field = record.get(..NAME_BYTES).unwrap_or_default();
-            let name = field.split(|&b| b == 0).next().unwrap_or_default();
-            let offset = u32_at(record, NAME_BYTES).unwrap_or_default();
-            if offset > end {
-                return Err(Error::Truncated);
-            }
-            fields.push((String::from_utf8_lossy(name).into_owned(), offset));
+/// How many bytes an archive's directory takes, its count included, by the count its first four
+/// bytes give (none when they are missing): what to read of a large archive before
+/// [`directory`] (E17 M5 T4b2b: `VIDEO.VID` is 629 MB).
+#[must_use]
+pub fn directory_bytes(head: &[u8]) -> Option<usize> {
+    let count = index(u32_at(head, 0)?);
+    count.checked_mul(ENTRY_BYTES)?.checked_add(4)
+}
+
+/// The directory of an archive of `end` bytes from its first bytes `head` (at least
+/// [`directory_bytes`] of them; E17 M5 T4b2b): the entries [`VidArchive::parse`] finds, without
+/// the rest of the archive. Every entry's offset must lie inside the archive (at its end, the
+/// entry is empty).
+pub fn directory(head: &[u8], end: u32) -> Result<Vec<VidEntry>, Error> {
+    let count = index(u32_at(head, 0).ok_or(Error::Truncated)?);
+    let table = slice(head, 4, count.saturating_mul(ENTRY_BYTES)).ok_or(Error::Truncated)?;
+    let mut fields = Vec::with_capacity(count);
+    for record in table.chunks_exact(ENTRY_BYTES) {
+        let field = record.get(..NAME_BYTES).unwrap_or_default();
+        let name = field.split(|&b| b == 0).next().unwrap_or_default();
+        let offset = u32_at(record, NAME_BYTES).unwrap_or_default();
+        if offset > end {
+            return Err(Error::Truncated);
         }
-        // The offsets in order, each entry ending where the next larger one starts.
-        let mut starts: Vec<u32> = fields.iter().map(|&(_, offset)| offset).collect();
-        starts.sort_unstable();
-        let entries = fields
-            .into_iter()
-            .map(|(name, offset)| {
-                let next = starts.partition_point(|&s| s <= offset);
-                let until = starts.get(next).copied().unwrap_or(end);
-                VidEntry {
-                    name,
-                    offset,
-                    size: until - offset,
-                }
-            })
-            .collect();
+        fields.push((String::from_utf8_lossy(name).into_owned(), offset));
+    }
+    // The offsets in order, each entry ending where the next larger one starts.
+    let mut starts: Vec<u32> = fields.iter().map(|&(_, offset)| offset).collect();
+    starts.sort_unstable();
+    let entries = fields
+        .into_iter()
+        .map(|(name, offset)| {
+            let next = starts.partition_point(|&s| s <= offset);
+            let until = starts.get(next).copied().unwrap_or(end);
+            VidEntry {
+                name,
+                offset,
+                size: until - offset,
+            }
+        })
+        .collect();
+    Ok(entries)
+}
+
+impl<'a> VidArchive<'a> {
+    /// Parses the directory ([`directory`] over the whole archive).
+    pub fn parse(bytes: &'a [u8]) -> Result<Self, Error> {
+        let len = u32::try_from(bytes.len()).unwrap_or(u32::MAX);
+        let entries = directory(bytes, len)?;
         Ok(Self { bytes, entries })
     }
 
@@ -96,6 +113,19 @@ mod tests {
     use super::*;
     use crate::build;
     use proptest::prelude::*;
+
+    #[test]
+    fn the_directory_reads_from_the_head_alone() {
+        let bytes = build::vid(&[("WIN3.BIK", b"abc"), ("x.smk", b"12")]);
+        let head = directory_bytes(&bytes).unwrap();
+        assert_eq!(head, 4 + 2 * 44);
+        let len = u32::try_from(bytes.len()).unwrap();
+        let entries = directory(&bytes[..head], len).unwrap();
+        assert_eq!(entries, VidArchive::parse(&bytes).unwrap().entries());
+        assert_eq!(directory_bytes(&[1, 0]), None);
+        assert_eq!(directory_bytes(&[0xFF; 4]), Some(4 + 0xFFFF_FFFF * 44));
+        assert_eq!(directory(&bytes[..head - 1], len), Err(Error::Truncated));
+    }
 
     #[test]
     fn entries_run_to_the_next_offset_and_are_found_ignoring_case() {

@@ -1025,3 +1025,53 @@ fn a_shaken_list_is_copied_at_each_offset_over_the_step_before() {
     }];
     assert!(compose(&missing, &batch(), &small()).is_err());
 }
+
+#[test]
+fn a_clip_copies_its_frame_on_the_screen_cut_to_it() {
+    // A start and its loop (E17 M5 T4b2b), each the 256 x 48 sample of 8 frames.
+    let mut batch = batch();
+    batch.add("s.bik", &h3_bink::build::sample(1)).unwrap();
+    batch.add("l.bik", &h3_bink::build::sample(2)).unwrap();
+    let clip = |since, x, y| Draw::Video {
+        start: "s.bik".to_string(),
+        looped: Some("l.bik".to_string()),
+        since,
+        x,
+        y,
+    };
+    let layout = small();
+    let [w, h] = layout.frame.map(|v| usize::try_from(v).unwrap());
+    // The frame's pixels from (`fx`, `fy`) at the screen's corner.
+    let expected = |name: &str, frame: usize, fx: usize, fy: usize| -> Vec<u16> {
+        let video = batch.video(name).unwrap();
+        (0..h)
+            .flat_map(|y| (0..w).map(move |x| (x, y)))
+            .map(|(x, y)| video.frames[frame][(fy + y) * 256 + fx + x])
+            .collect()
+    };
+    let at = |list: &[Draw]| compose(list, &batch, &layout).unwrap().pixels().to_vec();
+    // Its frame 0 at the opening, cut at the screen's top left and right and bottom.
+    assert_eq!(at(&[clip(0, -10, -20)]), expected("s.bik", 0, 10, 20));
+    // Its frame 1 from 200 ms; the loop's frame 0 once the start's 8 frames are done (600 ms).
+    assert_eq!(at(&[clip(200, -3, -4)]), expected("s.bik", 1, 3, 4));
+    assert_eq!(at(&[clip(600, 0, 0)]), expected("l.bik", 0, 0, 0));
+    // Partly off the screen to the right and below: the rest left black.
+    let screen = compose(&[clip(0, 1, 1)], &batch, &layout).unwrap();
+    assert_eq!(screen.pixel(0, 0), Some(0));
+    assert_eq!(
+        screen.pixel(1, 1),
+        Some(batch.video("s.bik").unwrap().frames[0][0])
+    );
+    // A clip the batch lacks.
+    let lost = Draw::Video {
+        start: "no.bik".to_string(),
+        looped: None,
+        since: 0,
+        x: 0,
+        y: 0,
+    };
+    assert_eq!(
+        compose(&[lost], &batch, &layout).unwrap_err(),
+        ComposeError::Missing("no.bik".to_string())
+    );
+}

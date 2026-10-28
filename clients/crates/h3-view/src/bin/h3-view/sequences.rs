@@ -137,8 +137,10 @@ pub(crate) struct Interface<'a> {
     /// cursor over all at the mouse they left.
     pub book: Option<&'a crate::spellbook::Still>,
     /// The result window a sequence's battle ends with (E17 M5 T4b1): drawn from the timeline's
-    /// end on.
-    pub result: Option<&'a h3_view::message::MessageBox>,
+    /// end on; with its tune (E17 M5 T4b2b: its clip's).
+    pub result: Option<&'a (h3_view::message::MessageBox, h3_view::sound::Tune)>,
+    /// The video archives the result window's clip comes from (E17 M5 T4b2b; none: no clip).
+    pub videos: Option<&'a crate::videos::Videos>,
 }
 
 /// One kept frame: its time, the stacks the original shows fidgeting then (the viewer draws
@@ -248,6 +250,7 @@ fn sequences(options: &Options) -> Result<usize, String> {
     )
     .map_err(|e| format!("{}: {e}", layout_path.display()))?;
     let bytes = read_archives(&options.install)?;
+    let videos = crate::videos::Videos::open(&options.install);
     // The executable's own strings: read only when a line needs them.
     let exe = crate::text::executable(&options.install).unwrap_or_default();
     let archives = bytes
@@ -447,6 +450,7 @@ fn sequences(options: &Options) -> Result<usize, String> {
                 walls: None,
                 book: None,
                 result: result.as_ref(),
+                videos: Some(&videos),
             };
             let drawn = draw_frames(
                 &here,
@@ -715,23 +719,24 @@ pub(crate) fn draw_frames(
             .and_then(|b| Some((b.message.as_ref()?, b.mouse)));
         // The result window (E17 M5 T4b1): a still's at once, a sequence's from its battle's end;
         // over the whole screen darkened, the combat cursor's pointer at the mouse.
+        // With it the time it opened, for its clip (E17 M5 T4b2b).
         let result = match interface
             .book
-            .and_then(|b| Some((b.result.as_ref()?, b.mouse)))
+            .and_then(|b| Some((b.result.as_ref()?, b.mouse, b.at)))
         {
-            Some((window, mouse)) => Some((window, Some(mouse))),
+            Some((window, mouse, at)) => Some((window, Some(mouse), at)),
             None => interface
                 .result
-                .filter(|_| timeline.ended.is_some_and(|(t, _)| frame.t >= t))
-                .map(|window| {
+                .zip(timeline.ended.filter(|&(t, _)| frame.t >= t))
+                .map(|(window, (end, _))| {
                     let point = interface
                         .shown
                         .and_then(|shown| frame.cursor.or_else(|| shown.point(frame.t)))
                         .or_else(|| pointer.as_ref().map(|(p, _)| *p));
-                    (window, point)
+                    (window, point, end)
                 }),
         };
-        if let Some((window, mouse)) = result {
+        if let Some(((window, tune), mouse, opened)) = result {
             list.push(h3_view::result::backdrop(layout.frame));
             list.extend(
                 window
@@ -740,6 +745,17 @@ pub(crate) fn draw_frames(
                     .into_iter()
                     .map(scene::Draw::Dialog),
             );
+            // Its clip over its slot, when the video archives hold it (E17 M5 T4b2b).
+            let clip = h3_view::clip::of(*tune);
+            let held = |videos: &crate::videos::Videos| {
+                std::iter::once(clip.start)
+                    .chain(clip.looped)
+                    .all(|name| videos.has(name))
+            };
+            if interface.videos.is_some_and(held) {
+                let since = frame.t.saturating_sub(opened);
+                list.push(h3_view::result::clip(&layout.result, *tune, since));
+            }
             if let Some(point) = mouse {
                 list.push(mouse::cursor(layout, h3_view::result::CURSOR_FRAME, point));
             }
@@ -793,9 +809,12 @@ pub(crate) fn draw_frames(
     }
     let mut batch = Batch::default();
     for name in &names {
-        batch
-            .add(name, &lookup(archives, name)?)
-            .map_err(|e| e.to_string())?;
+        // A clip from the video archives (E17 M5 T4b2b), every other asset from the LODs.
+        let bytes = match interface.videos {
+            Some(videos) if name.ends_with(".BIK") => videos.read(name)?,
+            _ => lookup(archives, name)?,
+        };
+        batch.add(name, &bytes).map_err(|e| e.to_string())?;
     }
     for (frame, list) in &lists {
         // Compared with the original's captures: its drawing bugs reproduced (E17 M3 T4a).
