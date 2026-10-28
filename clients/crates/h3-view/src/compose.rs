@@ -306,11 +306,13 @@ pub fn compose(
                 frame,
                 x,
                 y,
+                mirrored,
                 player,
             } => {
                 // 0x456940: group 0's frame, frame 0 when the group has no such frame; the plain
                 // drawer with runs skipped (0x47BF00 → 0x47C570; §9.7); a DEF item's entries
-                // 224-255 in a player's colours when it has one (0x4EAA4A; E17 M5 T4a).
+                // 224-255 in a player's colours when it has one (0x4EAA4A; E17 M5 T4a), mirrored
+                // as its +0x3C says (E17 M5 T4b1).
                 let count = batch
                     .sprite(def)
                     .and_then(|s| s.def.groups.iter().find(|g| g.id == 0))
@@ -334,7 +336,7 @@ pub fn compose(
                 let at = Placement {
                     x: *x,
                     y: *y,
-                    mirrored: false,
+                    mirrored: *mirrored,
                 };
                 draw_frame(
                     &mut screen,

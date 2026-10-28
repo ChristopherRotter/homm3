@@ -934,6 +934,7 @@ fn the_panel_draws_its_items_as_the_turn_sets_them() {
         frame,
         x,
         y: 561,
+        mirrored: false,
         player: None,
     };
     let scroll = |frame, y| Draw::Button {
@@ -941,6 +942,7 @@ fn the_panel_draws_its_items_as_the_turn_sets_them() {
         frame,
         x: 624,
         y,
+        mirrored: false,
         player: None,
     };
     assert_eq!(

@@ -355,6 +355,10 @@ pub enum Draw {
         x: i32,
         /// The canvas's top edge.
         y: i32,
+        /// Whether the frame is reflected across its canvas's width (a DEF item's +0x3C, passed
+        /// to the plain drawer 0x47C570 by 0x47BF00; E17 M5 T4b1: the result window's defending
+        /// creature's portrait).
+        mirrored: bool,
         /// The player's colours over the DEF's entries 224–255, if any.
         player: Option<PlayerColours>,
     },

@@ -515,6 +515,82 @@ original = [{ at = "GENRLTXT:207", printf = ["cost", "mana"] }]
 id = "aim.no-one"
 original = [{ at = "GENRLTXT:186" }]
 
+# The battle's result window (E17 M5 T4b1; design §7.20; `battle_result_dialog` 0x4702D0): its
+# titles (GENRLTXT's records 408 to 410), a side's word by its fate (411, 412) and a side's row
+# without losses (record 32).
+[[key]]
+id = "result.title"
+original = [{ at = "GENRLTXT:408" }]
+
+[[key]]
+id = "result.attacker"
+original = [{ at = "GENRLTXT:409" }]
+
+[[key]]
+id = "result.defender"
+original = [{ at = "GENRLTXT:410" }]
+
+[[key]]
+id = "result.victorious"
+original = [{ at = "GENRLTXT:411" }]
+
+[[key]]
+id = "result.defeated"
+original = [{ at = "GENRLTXT:412" }]
+
+[[key]]
+id = "result.none"
+original = [{ at = "GENRLTXT:32" }]
+
+# The window's text when the side it shows won (0x470AB4): the enemy surrendered (303), fled
+# (304) or fell (305); the side's hero's experience after it (306 with the hero's name and the
+# points; the record starts with two line breaks).
+[[key]]
+id = "result.won.surrendered"
+original = [{ at = "GENRLTXT:303" }]
+
+[[key]]
+id = "result.won.fled"
+original = [{ at = "GENRLTXT:304" }]
+
+[[key]]
+id = "result.won"
+original = [{ at = "GENRLTXT:305" }]
+
+[[key]]
+id = "result.experience"
+args = { hero = "text", experience = "number" }
+original = [{ at = "GENRLTXT:306", printf = ["hero", "experience"] }]
+
+# The window's text when the side it shows lost (0x470B9E): with a hero, it surrendered (307),
+# fled (308) or fell (309), the hero named; without one, 310 to 312.
+[[key]]
+id = "result.lost.surrendered"
+args = { hero = "text" }
+original = [{ at = "GENRLTXT:307", printf = ["hero"] }]
+
+[[key]]
+id = "result.lost.fled"
+args = { hero = "text" }
+original = [{ at = "GENRLTXT:308", printf = ["hero"] }]
+
+[[key]]
+id = "result.lost"
+args = { hero = "text" }
+original = [{ at = "GENRLTXT:309", printf = ["hero"] }]
+
+[[key]]
+id = "result.lost.surrendered-army"
+original = [{ at = "GENRLTXT:310" }]
+
+[[key]]
+id = "result.lost.fled-army"
+original = [{ at = "GENRLTXT:311" }]
+
+[[key]]
+id = "result.lost-army"
+original = [{ at = "GENRLTXT:312" }]
+
 # A creature's names, singular and plural (CRTRAITS.TXT's first two columns; its non-blank records
 # from record 2 are the original ids in order, as the harvesters read them).
 [[family]]

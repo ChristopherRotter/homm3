@@ -1059,3 +1059,14 @@ actions = ["key:c", "click:332,123"]
 at = 100
 differing = 0
 why = "exact: Animate Dead with no corpse: \"That spell will affect no one!\" over the battle, the book closed (E17 M5 T4a)"
+
+[[situation]]
+id = "result-retreat"
+scenario = "dialogs.toml"
+seat = "attacker"
+actions = ["key:r", "key:Return"]
+
+[[situation.frame]]
+at = 100
+differing = 0
+why = "pending"

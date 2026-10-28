@@ -815,6 +815,7 @@ fn a_button_draws_its_frame_or_frame_0() {
         frame,
         x: 1,
         y: 0,
+        mirrored: false,
         player: None,
     };
     let [r, w] = [RED, WHITE].map(|c| FORMAT.pack(c));
@@ -831,6 +832,7 @@ fn a_button_draws_its_frame_or_frame_0() {
                 frame: 0,
                 x: 0,
                 y: 0,
+                mirrored: false,
                 player: None,
             }],
             &batch,
@@ -856,6 +858,7 @@ fn a_def_item_takes_its_players_colours_and_a_picture_its_size() {
         frame: 0,
         x: 1,
         y: 0,
+        mirrored: false,
         player: Some(crate::scene::PlayerColours {
             palette: palette.to_string(),
             player: 1,

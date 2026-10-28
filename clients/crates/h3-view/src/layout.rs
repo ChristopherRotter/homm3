@@ -61,6 +61,9 @@ pub struct BattleLayout {
     /// The message box's assets and fonts (E17 M5 T4a; design §7.19; `crate::message` lays it
     /// out).
     pub message: crate::message::MessageLayout,
+    /// The result window's assets and fonts (E17 M5 T4b1; design §7.20; `crate::result` lays it
+    /// out).
+    pub result: crate::result::ResultLayout,
 }
 
 /// The hero's spell book (`spell_book_dialog` 0x59BDF0; E17 M5 T3a, design §7.17): its dialog and
