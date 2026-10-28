@@ -7665,3 +7665,26 @@ only "exit code 1"). This task changes docs only. The sandbox's full verify of t
 (fingerprint 7c14229…, without the original LODs) passed all fifteen steps (`verify-once:
 verified (sandbox) code 7c1422972258263eff244e4168c2e132cfdec7b7 on 317cd61`), so the failure looks
 like the runner's, not the code's; a re-run of CI's job on `master` would tell.
+
+### Increment 8, round 1: T66a2, the boats and sea survey's second part (2026-10-28, `adventure/e08-t66a2`)
+
+Baseline: `master` at 86c2d35 (#550 merged; CI's run on e5cfa46, #534, shows success now and every
+later run on `master` passed, so T66a1's reported failure is settled). Original files staged from
+the user's computer: `Heroes3.exe`, `maps.tar`, `extracted.tar`. At the task's start the user took
+T66a2 whole (decision 161, `AskUserQuestion`; not chosen: two parts, the reading then the plan;
+three parts).
+
+**Done:** survey `docs/rules/surveys/E08-sea.md` §7 to §14 and §0's T66a2 part: the battle at
+sea (the deck by either hero's boat, the two boats by both, nothing else in a battle tests a boat:
+every use of the in-boat bit listed), who fights a hero at sea, the boat gone with its hero, VCMI
+and the wiki in consensus; the four pickups' draws and visits read whole (Flotsam, Sea Chest,
+Shipwreck Survivor, Ocean Bottle with the signs' loader and default texts), who visits them (a
+boat; a flyer or water walker from the shore: D-45), VCMI and the wiki; the interfaces (no new
+command or decision, `Reach`'s boat layer, the state, the observation, the env); batch E8's plan
+(16 rows in two runs, the harness's and the spec's gaps); the proposed rule ids (`ADV-SEA-001` to
+`-007`, ADV-PIK-014 to -018, HER-ADV-009, amendments); the second reading by two fresh agents;
+the checkpoint's questions (ADV-Q32 in `OPEN-QUESTIONS.md`). The census grew (§1: objects on water
+by class, 55 monsters on water, 3 guarded events on water, 395 pickups beside land, the bottles'
+texts). The address map: `visit_flotsam` 0x4A2230, `visit_sea_chest` 0x4A5030,
+`visit_shipwreck_survivor` 0x4A52A0, `load_message_body` 0x501270, `hero_step_or_meet_allowed`
+0x481AD0, `sign_default_texts` 0x696C74 (read), six entries amended. No code, no version.
