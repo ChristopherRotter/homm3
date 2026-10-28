@@ -171,10 +171,15 @@ the stacks created mid-battle.
     window's aim by the book or a Faerie Dragon's F, Escape or the right button giving it up,
     unattended casts pressed through the book and the aim); `spell-aim` recorded; `cast`'s 71
     pixels found to be the book's closing, a redraw artifact (listed); CLT-Q27.
-- **T4, the battle's dialogs:** surrender (its price) and retreat, the result window
-  (`battle_result_dialog` 0x4702D0, the screen darkened under it by 0x44E5F0), Auto Combat, the
-  tactics phase's panel (0x46C050), the message box (0x4F6990: the book's refusals and an
-  adventure spell's description, T3a's); read, drawn, recorded.
+- **T4, the battle's dialogs** (cut in three by the user, 2026-10-28): read, drawn, recorded.
+  - **T4a, the message box, Retreat and Surrender** (done 2026-10-28): read (design §7.19: the
+    box's layout, frame, items and input, the text tables' quotes), built (`h3_view::message`,
+    the window's and the stills' boxes: Retreat's and Surrender's questions and refusal, the
+    book's refusal and description, "affects no one"); six stills exact; CLT-Q28.
+  - **T4b, the result window:** `battle_result_dialog` 0x4702D0, the screen darkened under it by
+    0x44E5F0.
+  - **T4c, Auto Combat and the tactics phase:** the panel dimmed, the tactics phase's panel
+    (0x46C050).
 - **T5, what a played battle shows:** the created stacks (`StackCreated`: Summon Elemental,
   Clone; a Pit Lord's `RoseFromCorpse`) with their dissolve (`screen_dissolve` 0x602DC0's blend,
   Sacrifice's victim's too), a clone's `Vanished`, Teleport's dissolve; the panel's side by each
@@ -288,3 +293,18 @@ M3 at its review, T9b, M4 at its review, T3c). The next milestone's list starts 
    set at a sequence's opening with the poll's: it changes only frames that show a type-3 cursor
    for a grid point, which no capture before `spell-aim` did, so the captures were not all taken
    again (M5's closure takes them).
+8. The message box's formats (T4a, design §7.19): the layout's `[message]` (the box's assets,
+   fonts and cursor by name; the box itself laid out in code from its text, `h3_view::message`),
+   a picture item drawn at most its size (`ui::Picture::size`, the mouse's area until then) and a
+   DEF item in a player's colours (`Draw::Button`'s `player`).
+9. The box's derivations in the client (T4a): the viewing player as the attacker's when a human
+   plays it here, else the defender's (CLT-Q28 (2)); Surrender enabled when the side's own view
+   prices it (the engine's terms), Retreat when the engine lists it; not built, as the engine
+   refuses those casts without telling why: `hero_book_button`'s refusals (an anti-magic
+   garrison, the Orb of Inhibition, Cursed Ground, Recanter's Cloak) and the aim's entry's other
+   messages (Sacrifice, Remove Obstacle, Clone's and the Summons' limits, Earthquake outside a
+   siege, Land Mine against natives).
+10. The catalogue makes each run of quotes in a table's field one, as the executable reads its
+    tables (T4a; `text::pack`): `h3_formats::text` keeps them (the battle lane's inbox).
+11. The window while a box is open (T4a): every key but the viewer's own goes to the box (Escape
+    is its Cancel's, never the window's quit); unattended runs' `--leave retreat|surrender`.

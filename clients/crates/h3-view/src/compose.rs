@@ -13,7 +13,7 @@ use h3_assets::palette::{Palette, Rgb};
 use h3_render::Bugs;
 use h3_render::blit::{
     Drawer, Placement, darken, draw_frame, draw_frame_rows, draw_image, draw_image_clipped,
-    draw_image_keyed, draw_image_keyed_clipped, draw_image_keyed_in,
+    draw_image_keyed, draw_image_keyed_clipped, draw_image_keyed_in_clipped,
 };
 use h3_render::palette::{ScreenPalette, with_player_colours};
 use h3_render::screen::{PixelFormat, Screen};
@@ -283,10 +283,15 @@ pub fn compose(
                 x,
                 y,
                 player,
+                size,
             }) => {
                 // `H3DlgPcx` (0x450450 → 0x44FDB0): index 0 transparent, the picture's entries
-                // 224-255 in the player's colours (0x450520) when it has one (§9.7).
+                // 224-255 in the player's colours (0x450520) when it has one (§9.7), at most the
+                // item's size of it from its corner (E17 M5 T4a).
                 let image = picture_of(batch, picture)?;
+                let clip = size.map_or([i32::MIN, i32::MIN, i32::MAX, i32::MAX], |[w, h]| {
+                    [*x, *y, x.saturating_add(w), y.saturating_add(h)]
+                });
                 match (player, image) {
                     (Some(colours), h3_assets::pcx::Pcx::Indexed(indexed)) => {
                         let players = batch
@@ -294,14 +299,21 @@ pub fn compose(
                             .ok_or_else(|| ComposeError::Missing(colours.palette.clone()))?;
                         let of = player_colours(players, colours.player);
                         let palette = with_player_colours(&indexed.palette, &of);
-                        draw_image_keyed_in(&mut screen, image, &palette, *x, *y);
+                        draw_image_keyed_in_clipped(&mut screen, image, &palette, (*x, *y), clip);
                     }
-                    _ => draw_image_keyed(&mut screen, image, *x, *y),
+                    _ => draw_image_keyed_clipped(&mut screen, image, *x, *y, clip),
                 }
             }
-            Draw::Dialog(ui::Draw::Button { def, frame, x, y }) => {
+            Draw::Dialog(ui::Draw::Button {
+                def,
+                frame,
+                x,
+                y,
+                player,
+            }) => {
                 // 0x456940: group 0's frame, frame 0 when the group has no such frame; the plain
-                // drawer with runs skipped (0x47BF00 → 0x47C570; §9.7).
+                // drawer with runs skipped (0x47BF00 → 0x47C570; §9.7); a DEF item's entries
+                // 224-255 in a player's colours when it has one (0x4EAA4A; E17 M5 T4a).
                 let count = batch
                     .sprite(def)
                     .and_then(|s| s.def.groups.iter().find(|g| g.id == 0))
@@ -311,7 +323,29 @@ pub fn compose(
                 } else {
                     0
                 };
-                plain(&mut screen, batch, def, (0, frame), *x, *y, false)?;
+                let (sprite, frame) = frame_of(batch, def, 0, frame)?;
+                let palette = match player {
+                    Some(colours) => {
+                        let players = batch
+                            .palette(&colours.palette)
+                            .ok_or_else(|| ComposeError::Missing(colours.palette.clone()))?;
+                        let of = player_colours(players, colours.player);
+                        with_player_colours(&sprite.def.palette, &of)
+                    }
+                    None => sprite.def.palette.clone(),
+                };
+                let at = Placement {
+                    x: *x,
+                    y: *y,
+                    mirrored: false,
+                };
+                draw_frame(
+                    &mut screen,
+                    frame,
+                    &ScreenPalette::new(&palette, FORMAT),
+                    at,
+                    PLAIN,
+                );
             }
             Draw::Cursor {
                 def,

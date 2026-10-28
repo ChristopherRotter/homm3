@@ -408,3 +408,21 @@ font = "smalfont.fnt"
 font_palette = "game.pal"
 colour = 1
 align = 1
+
+# The message box (E17 M5 T4a; design §7.19): laid out by its text (`message_box_layout`
+# 0x4F5D80) and built of these (the frame 0x48FF00, the items 0x4F6990). The background's tile and
+# the frame's pieces (0 to 3 the corners, 4 to 7 the left, right, top and bottom edges, in the
+# viewing player's colours); a button's back and the two buttons; the text's font (0x698A0C) and a
+# picture's caption's (0x698A08), their colours' palette; the spells' pictures (a slot of type 9,
+# 0x4F52FA); the cursor while it is open (frame 0, 0x4F74AC).
+[message]
+background = "diboxbck.pcx"
+frame = "dialgbox.def"
+button_back = "Box64x30.pcx"
+ok = "iOkay.def"
+cancel = "iCancel.def"
+font = "medfont.fnt"
+caption_font = "smalfont.fnt"
+font_palette = "game.pal"
+spell_pictures = "spellScr.def"
+cursor = "crdeflt.def"

@@ -1244,6 +1244,13 @@ generic key table), the user chose one pull request for all of T1a.
   `h3-ui`, both purity allowlists name it (`h3-view`'s `serde_json` is its binary's only now, left
   in the list). `clients/README.md`'s crate table and foundation list; `E24-design.md`'s two
   `music` paths; the client lane's inbox told (its imports, the scene's variant).
+- **`master` merged after #541 and #542** (the client lane's E17 M5 T4a, the message box): six
+  conflicts in `h3-view` (`lib`, `batch`, `compose`, `scene` and their tests), resolved with the
+  branch's structure and #542's content: `h3_ui::ui::Draw::Picture`'s `size` and `Button`'s
+  `player` (their docs as #542 wrote them); #542's edits of `ui`, `text::pack` and their tests
+  came through the rename; its new `message` and `boxes` on `h3_ui`'s paths, the binary's two
+  message-box draws wrapped as `Draw::Dialog`. Its inbox entry to this lane taken (T1a's part
+  here, T1b's into its scope) and archived.
 - **Checked:** `clients/scripts/check.sh` all gates passed, coverage 100 % (regions, functions,
   lines); `h3drive.py drawn` and `h3map.py drawn` all the same (no capture: nothing drawn or
   played changed); the scoped verify (`--with-original-data`) no failing step but `check-lane`,

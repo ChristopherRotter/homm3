@@ -1,0 +1,30 @@
+# Instruction-count baseline of one `cargo xtask bench-check` workload (valgrind/callgrind, event
+# Ir); the directory names the owning lane (lanes.toml). Counts are deterministic for a given
+# toolchain + target + source and are compared only when both match this file. A change above
+# `threshold_percent` fails verify. Update intentionally with
+# `cargo xtask bench-check --update --workload <name>` and state the reason in the commit message.
+
+toolchain = "rustc 1.97.0 (2d8144b78 2026-07-07)"
+target = "x86_64-unknown-linux-gnu"
+
+[workload]
+description = "100 000 forks of the env after 7 days of random play on the 144 x 144 two-level map with a Pandora's Box on every free tile (E08 T64b, decision 133: 41 468 boxes, the forks carrying the state the game's 52 steps left; 2 367 Ir a fork, fork-xl-144's 3 564: a fork stays one reference count of the map's objects); counts only inside h3_cli::adventure::bench::fork_workload"
+args = [
+    "adventure",
+    "bench",
+    "--map",
+    "fixtures/maps/e08-boxes-144.h3m",
+    "--workload",
+    "fork",
+    "--games",
+    "1",
+    "--days",
+    "7",
+    "--forks",
+    "100000",
+    "--seed",
+    "1",
+]
+collect = "*fork_workload*"
+instructions = 236700024
+threshold_percent = 2

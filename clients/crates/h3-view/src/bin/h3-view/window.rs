@@ -56,7 +56,7 @@ use h3_view::sound::Tune;
 
 use crate::assets;
 use crate::audio::{Library, Player};
-use crate::battle::{Battle, BookDid, CursorLook, Ground, Press, Source};
+use crate::battle::{Battle, BookDid, CursorLook, Ground, MessageDid, Press, Source};
 
 /// How far past the last change the window looks for the next one before it waits for input
 /// only (a battle that no longer changes).
@@ -99,6 +99,9 @@ pub struct Options {
     mute: bool,
     /// Unattended for this many seconds; whether each frame is read back.
     run: Option<(u32, bool)>,
+    /// Unattended, the human side leaves at its first turn it may by this panel button
+    /// (Surrender or Retreat, through its question: E17 M5 T4a).
+    leave: Option<u16>,
 }
 
 /// The sides `name` names (`attacker`, `defender`, `both`).
@@ -121,6 +124,7 @@ impl Options {
         let (mut input, mut seed, mut speed, mut packs, mut install) = (None, 1, 0, None, None);
         let (mut scale, mut vsync, mut drawn_cursor, mut fullscreen) = (None, false, false, false);
         let (mut from, mut run, mut mute, mut humans) = (0, None, false, [false; 2]);
+        let mut leave = None;
         let mut rest = args.iter();
         while let Some(arg) = rest.next() {
             let mut value = || {
@@ -154,6 +158,13 @@ impl Options {
                 "--mute" => mute = true,
                 "--check" => run = Some((number(value()?)?, true)),
                 "--measure" => run = Some((number(value()?)?, false)),
+                "--leave" => {
+                    leave = Some(match value()?.as_str() {
+                        "retreat" => h3_view::panel::RETREAT,
+                        "surrender" => h3_view::panel::SURRENDER,
+                        v => return Err(format!("window: no way to leave `{v}`")),
+                    });
+                }
                 flag if flag.starts_with("--") => {
                     return Err(format!("window: unknown option `{flag}`"));
                 }
@@ -179,6 +190,7 @@ impl Options {
             from,
             mute,
             run,
+            leave,
         })
     }
 }
@@ -298,8 +310,9 @@ fn next_frame(
     changes: &mut Changes,
     shown: &Frame,
 ) -> Result<Option<Frame>, String> {
-    // Behind the open spell book the battle stands still (E17 M5 T3a): only an input changes it.
-    if battle.book_open() {
+    // Behind the open spell book or a message box the battle stands still (E17 M5 T3a, T4a):
+    // only an input changes it.
+    if battle.book_open() || battle.message_open() {
         return Ok(None);
     }
     let mut t = shown.t;
@@ -428,6 +441,7 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
     // An unattended run presses a human's commands itself (E17 M5 T2b).
     let mut presser = (options.run.is_some() && source.humans.contains(&true)).then(|| Presser {
         points: crate::pointer::press_points(battle.layout()),
+        leave: options.leave,
         ..Presser::default()
     });
     let started = win.ticks_ns();
@@ -475,6 +489,37 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
             let at = clock.ms(now);
             match event {
                 Event::Quit => break 'run,
+                // A message box over the battle (and the book) takes the mouse and every key but
+                // the viewer's own (E17 M5 T4a): Escape is its Cancel's, never the window's.
+                Event::Key(key)
+                    if battle.message_open() && options.run.is_none() && !viewer_key(key) =>
+                {
+                    let did = battle.message_key(key.name());
+                    grew |= message_did(&mut battle, &mut inputs, at, did, &mut book_changed)?;
+                }
+                Event::KeyUp(key) if battle.message_open() && options.run.is_none() => {
+                    let did = battle.message_key_up(key.name());
+                    grew |= message_did(&mut battle, &mut inputs, at, did, &mut book_changed)?;
+                }
+                Event::Pointer(p) if battle.message_open() => {
+                    pointer = p;
+                    redraw |= drawn_cursor;
+                    if let Some((x, y)) = p {
+                        book_changed |= battle.message_moved([x, y]);
+                    }
+                }
+                Event::Click {
+                    down: true,
+                    at: (x, y),
+                } if battle.message_open() => {
+                    let did = battle.message_press([x, y]);
+                    grew |= message_did(&mut battle, &mut inputs, at, did, &mut book_changed)?;
+                }
+                Event::Click { down: false, .. } if battle.message_open() => {
+                    let did = battle.message_release();
+                    grew |= message_did(&mut battle, &mut inputs, at, did, &mut book_changed)?;
+                }
+                Event::Key(key) if battle.message_open() && !viewer_key(key) => {}
                 // The spell book open over the battle takes the mouse and its own keys (E17 M5
                 // T3a): Escape closes the book, not the window; the viewer's keys stay its own.
                 Event::Key(key)
@@ -659,6 +704,8 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                             inputs.push(Input::Book { at });
                             book_changed = true;
                         }
+                        // Surrender and Retreat ask first (E17 M5 T4a).
+                        book_changed |= h.over && battle.ask_leave(at, h.id);
                         mouse_changed = true;
                     }
                 }
@@ -689,6 +736,8 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                             inputs.push(Input::Book { at });
                             book_changed = true;
                         }
+                        // S and R ask first (E17 M5 T4a).
+                        book_changed |= battle.ask_leave(at, h.id);
                         mouse_changed = true;
                     }
                 }
@@ -849,12 +898,28 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
              a press",
             p.at, p.buttons, p.given
         ));
-        let same = battle.as_the_bot_fights().unwrap_or(Ok(false))?;
-        lines.push(format!(
-            "the battle so far is the bot's at once: {}",
-            if same { "yes" } else { "no" }
-        ));
-        ok &= same;
+        let yes = |b: bool| if b { "yes" } else { "no" };
+        if let Some(left) = p.left {
+            // Left through its question (E17 M5 T4a): the bot's battle up to the question, and
+            // the battle over by the leaving.
+            let before = p.before_leaving == Some(true);
+            let over = !battle.playing();
+            lines.push(format!(
+                "left by {left:?} after {} commands: the battle before it the bot's at once: {}, \
+                 over: {}",
+                battle.commands().saturating_sub(1),
+                yes(before),
+                yes(over)
+            ));
+            ok &= before && over;
+        } else {
+            let same = battle.as_the_bot_fights().unwrap_or(Ok(false))?;
+            lines.push(format!(
+                "the battle so far is the bot's at once: {}",
+                yes(same)
+            ));
+            ok &= same;
+        }
     }
     if read {
         lines.push(format!(
@@ -917,6 +982,28 @@ fn book_did(
     }
 }
 
+/// What a message box `did` at `at` (E17 M5 T4a): a change to draw, or the command its OK gave
+/// (Retreat, Surrender); whether the battle took a command.
+fn message_did(
+    battle: &mut Battle<'_>,
+    inputs: &mut Vec<Input>,
+    at: u32,
+    did: MessageDid,
+    changed: &mut bool,
+) -> Result<bool, String> {
+    *changed |= did != MessageDid::Nothing;
+    match did {
+        MessageDid::Give(command) => give(battle, inputs, at, command),
+        MessageDid::Nothing | MessageDid::Changed => Ok(false),
+    }
+}
+
+/// The viewer's own keys, which work whatever is open over the battle: pause, the music, the
+/// creatures' sounds, full screen, vsync, the cursor's kind.
+const fn viewer_key(key: Key) -> bool {
+    matches!(key, Key::P | Key::M | Key::E | Key::F11 | Key::V | Key::H)
+}
+
 /// Gives a human's `command` at `at` (E17 M5 T2b): the mouse's inputs after it gone, its
 /// action's start taken; whether the battle took it.
 fn give(
@@ -939,6 +1026,15 @@ struct Presser {
     at: usize,
     buttons: usize,
     given: usize,
+    /// The panel button the human side leaves by (E17 M5 T4a: `--leave`), until it left or was
+    /// told it cannot pay.
+    leave: Option<u16>,
+    /// When the message box it opened showed.
+    asked: Option<u32>,
+    /// Whether the battle was the bot's at once when the side asked to leave, and the command
+    /// it left by.
+    before_leaving: Option<bool>,
+    left: Option<Command>,
 }
 
 impl Presser {
@@ -950,8 +1046,24 @@ impl Presser {
         inputs: &mut Vec<Input>,
         now: u32,
     ) -> Result<bool, String> {
+        if battle.message_open() {
+            return self.answer(battle, inputs, now);
+        }
         if !battle.waiting() || now < battle.timeline().end.saturating_add(PRESS_AFTER_MS) {
             return Ok(false);
+        }
+        // Leaving: the panel's button clicked, its question shown (E17 M5 T4a).
+        if let Some(id) = self.leave {
+            if let Some(to) = button_centre(battle.layout(), id) {
+                inputs.retain(|i| i.at() <= now);
+                inputs.push(Input::Move { at: now, to });
+            }
+            let before = battle.as_the_bot_fights();
+            if battle.ask_leave(now, id) {
+                self.asked = Some(now);
+                self.before_leaving = Some(before.unwrap_or(Ok(false))?);
+                return Ok(true);
+            }
         }
         let wanted = battle.choice().ok_or("no command for the turn waiting")?;
         inputs.retain(|i| i.at() <= now);
@@ -981,6 +1093,38 @@ impl Presser {
 }
 
 impl Presser {
+    /// The open message box's OK clicked [`PRESS_AFTER_MS`] after it showed (E17 M5 T4a): the
+    /// command it gives, or the box it gives way to (a surrender the side cannot pay, which
+    /// ends the leaving); whether a command was given or the screen changed.
+    fn answer(
+        &mut self,
+        battle: &mut Battle<'_>,
+        inputs: &mut Vec<Input>,
+        now: u32,
+    ) -> Result<bool, String> {
+        let asked = *self.asked.get_or_insert(now);
+        if now < asked.saturating_add(PRESS_AFTER_MS) {
+            return Ok(false);
+        }
+        let ok = battle
+            .message_button(h3_view::message::YES)
+            .or_else(|| battle.message_button(h3_view::message::OK))
+            .ok_or("the message box has no OK")?;
+        let _ = battle.message_press(ok);
+        let did = battle.message_release();
+        self.asked = battle.message_open().then_some(now);
+        if !battle.message_open() && did != MessageDid::Give(Command::Retreat {}) {
+            self.leave = None;
+        }
+        match did {
+            MessageDid::Give(command) => {
+                self.left = Some(command);
+                give(battle, inputs, now, command)
+            }
+            MessageDid::Changed | MessageDid::Nothing => Ok(true),
+        }
+    }
+
     /// Presses the bot's cast `wanted` at `now` (E17 M5 T3b): a hero's opens its book, turns to
     /// the spell (the next pages, then the tabs in turn) and presses its place, then aims it at
     /// the target's hex if it takes one; a Faerie Dragon's aims by its key F. A press that would

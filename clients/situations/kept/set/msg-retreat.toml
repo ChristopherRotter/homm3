@@ -1,0 +1,15 @@
+# The original's kept frames (h3drive.py frames): numbers only.
+
+mouse = [618, 593]
+
+actions = ["key:r"]
+
+[[frame]]
+t = 0
+file = "t00000.xwd"
+fidgets = []
+
+[[frame]]
+t = 100
+file = "t00100.xwd"
+fidgets = []

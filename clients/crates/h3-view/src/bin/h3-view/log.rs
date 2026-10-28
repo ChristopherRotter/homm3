@@ -146,6 +146,9 @@ pub struct Writer {
     font: Font,
     width: i32,
     bugs: Bugs,
+    /// The message box's fonts: its text's and a picture's caption's (E17 M5 T4a; none in an
+    /// installation without them, as the tests' synthetic one: then no box shows).
+    message_fonts: Option<(Font, Font)>,
 }
 
 impl Writer {
@@ -167,14 +170,40 @@ impl Writer {
         bugs: Bugs,
     ) -> Result<Self, String> {
         let item = layout.log().ok_or("the layout's panel has no log item")?;
-        let font = h3_assets::fnt::decode_fnt(&lookup(archives, &item.font)?)
-            .map_err(|e| format!("{}: {e:?}", item.font))?;
+        let font = |name: &str| {
+            h3_assets::fnt::decode_fnt(&lookup(archives, name)?)
+                .map_err(|e| format!("{name}: {e:?}"))
+        };
         Ok(Self {
             catalogue,
-            font,
+            font: font(&item.font)?,
             width: item.size[0],
             bugs,
+            message_fonts: font(&layout.message.font)
+                .ok()
+                .zip(font(&layout.message.caption_font).ok()),
         })
+    }
+
+    /// A message box of `style` showing `text` and `picture`, its frame in `player`'s colours, laid
+    /// out in the layout's fonts (E17 M5 T4a; design §7.19); none without them.
+    pub fn message(
+        &self,
+        layout: &BattleLayout,
+        text: &str,
+        style: h3_view::message::Style,
+        picture: Option<&h3_view::message::Picture>,
+        player: u8,
+    ) -> Option<h3_view::message::MessageBox> {
+        let (medium, small) = self.message_fonts.as_ref()?;
+        Some(h3_view::message::layout(
+            &layout.message,
+            (medium, small),
+            text,
+            style,
+            picture,
+            player,
+        ))
     }
 
     /// The panel over the record's battle through `logged` ([`panels`]).

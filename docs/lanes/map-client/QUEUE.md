@@ -23,8 +23,11 @@ compares it on every situation and sequence.
   commands in its own table, *provisional*); both windows' own keys the map's (the user, T0: F2
   music, F3 effects, F5 pause, F6 the next frame, F7 restart, F8 vsync, F9 the cursor's kind,
   F11 fullscreen, Esc quit; the battle's P, →, Home, M, E, F, V and H gone); the battle's own
-  keys (the log's Up and Down, the book's) and `h3_sdl::Key` as they are, additively. The client
-  lane's inbox told (its M5 T3b's F key then free).
+  keys (the log's Up and Down, the book's; since E17 M5 T4a, #542, Retreat's R and Surrender's S
+  and the message box's, whose Escape is its Cancel and never the window's quit while a box, the
+  book or an aim is open; while a box is open every key but the viewer's own goes to it:
+  `viewer_key` in `window.rs`, the set this task replaces) and `h3_sdl::Key` as they are,
+  additively. The client lane's inbox told (its M5 T3b's F key then free).
 - **Acceptance:** every key of both windows through the table; `h3-view window --check` and a
   sequence in the window as before; check.sh green; the Definition of Done.
 - **Depends on:** T1a (built 2026-10-28, its pull request open). **Status:** ready once T1a's

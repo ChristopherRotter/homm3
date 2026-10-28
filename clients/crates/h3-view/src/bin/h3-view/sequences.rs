@@ -560,8 +560,8 @@ pub(crate) fn draw_frames(
         // same 100 ms and a second after).
         let at = interface
             .book
-            .and_then(|b| b.open.as_ref().map(|_| b.at))
-            .map_or(frame.t, |at| at.min(frame.t));
+            .filter(|b| b.dialog())
+            .map_or(frame.t, |b| b.at.min(frame.t));
         head.seek(timeline, at);
         let mut moment = head.moment(timeline);
         moment.walls = interface.walls.or(moment.walls);
@@ -672,7 +672,27 @@ pub(crate) fn draw_frames(
                 .unwrap_or_else(|| u8::try_from(index).unwrap_or(0));
             list.extend(open.draws(&layout.book, &layout.player_palette, player));
         }
-        if let Some((open, mouse)) = book {
+        // A message box the actions left open (E17 M5 T4a), over the book and the battle, the
+        // default cursor's frame 0 at the mouse (0x4F74AC).
+        let message = interface
+            .book
+            .and_then(|b| Some((b.message.as_ref()?, b.mouse)));
+        if let Some((message, mouse)) = message {
+            list.extend(
+                message
+                    .dialog
+                    .draws(&message.shown, &layout.player_palette)
+                    .into_iter()
+                    .map(scene::Draw::Dialog),
+            );
+            list.push(scene::Draw::Cursor {
+                def: layout.message.cursor.clone(),
+                frame: 0,
+                x: mouse[0],
+                y: mouse[1],
+                hot: layout.book.hot.first().copied().unwrap_or_default(),
+            });
+        } else if let Some((open, mouse)) = book {
             // The cursor the book set, else the battle's where the actions left the mouse.
             match open.cursor_draw(&layout.book, mouse) {
                 Some(cursor) => list.push(cursor),

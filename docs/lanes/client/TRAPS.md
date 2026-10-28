@@ -56,6 +56,12 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   (the battle takes none meanwhile), so a sequence's `cast:`/`aim:` start with `Book`. The aims'
   targets are the engine's, computed where the battle is (`scenario::Turned::of`, `Live`): a
   turn's `aims` hold only the spells asked (the window adds the book's choice as it closes).
+- A message box (E17 M5 T4a) is modal as the book: while `Battle::message_open` the window's
+  `next_frame` returns at once (else it hangs scanning idle steps), every key but the viewer's
+  own goes to the box (Escape is Cancel's, never the window's quit) and the mouse's moves reach
+  neither the book behind it nor the battle; the battle stands as it was when the box (or the
+  book under it) opened. In a still the harness's park move after a `click:` that opened a box
+  goes to the box: the book keeps its hint (`msg-mana`).
 - `h3_formats`' `c_string` takes printable ASCII alone: an executable string with line breaks
   (the book's place formats) is read by the client's `text::exe_string`.
 - The viewer reads `clients/layouts/*.toml` at run time: a layout change made while a batch

@@ -4648,6 +4648,13 @@ set/mouse-walk-far t00100 44e8e51b6857dc99
 set/mouse-wolves-above t00100 7782be72b5de970b
 set/mouse-wolves-below t00100 d2c7eaee000fafb1
 set/mouse-wolves-sw t00100 1fc3d56d976d58a8
+set/msg-describe t00100 56c8e0c3eef20e14
+set/msg-mana t00100 749bcd220e6dd888
+set/msg-no-one t00100 a4e8baccaad2f1c7
+set/msg-poor t00100 0e55781ba38fcc16
+set/msg-retreat t00000 4c801d813e2bf4b8
+set/msg-retreat t00100 4c801d813e2bf4b8
+set/msg-surrender t00100 6b45834ead620dd2
 set/rocklands t00000 aea2b2b52584aec1
 set/rough t00000 abe3ed4ae93166c2
 set/sand t00000 faa23af0012b04ec

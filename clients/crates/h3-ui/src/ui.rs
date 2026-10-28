@@ -22,7 +22,9 @@ use serde::Deserialize;
 /// scene's until E24 M3 T1a, which made them the dialog's own).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Draw {
-    /// A dialog's picture (`H3DlgPcx`): index 0 transparent, in its own colours or a player's.
+    /// A dialog's picture (`H3DlgPcx`): index 0 transparent, in its own colours or a player's, at
+    /// most its item's size of it from its corner (`dialog_picture_draw` 0x450450; E17 M5 T4a: a
+    /// message box's background tiles cut to the box).
     Picture {
         /// The picture.
         picture: String,
@@ -32,9 +34,13 @@ pub enum Draw {
         y: i32,
         /// The player's colours over its entries 224–255, if any.
         player: Option<PlayerColours>,
+        /// The item's width and height, none for the whole picture.
+        size: Option<[i32; 2]>,
     },
-    /// A dialog's button (`H3DlgDefButton`) or DEF item (`H3DlgDef`): a frame of its DEF's group 0
-    /// (frame 0 when the group has no such frame), by the plain drawer with runs skipped.
+    /// A dialog's button (`H3DlgDefButton`) or DEF item (`H3DlgDef`, E17 M5 T3a): a frame of its
+    /// DEF's group 0 (frame 0 when the group has no such frame), by the plain drawer with runs
+    /// skipped; a DEF item in a player's colours once the screen gives it one (the message
+    /// 0x200/0xD, `dialog_def_message` 0x4EA810; E17 M5 T4a: a message box's frame).
     Button {
         /// The DEF.
         def: String,
@@ -44,6 +50,8 @@ pub enum Draw {
         x: i32,
         /// The canvas's top edge.
         y: i32,
+        /// The player's colours over the DEF's entries 224–255, if any.
+        player: Option<PlayerColours>,
     },
     /// A dialog's text over a picture (`H3DlgTextPcx`; the battle log's item, E17-design §9.5; E17
     /// M3 T4b-2b-1, T6a): the item's picture, then the text in its font over it.
@@ -80,8 +88,8 @@ pub enum Draw {
     },
 }
 
-/// A picture's player colours (0x450520): the players' palette and the player's colour (0 red to
-/// 7 pink), whose 32 entries of that palette replace the picture's 224–255.
+/// A picture's or a DEF item's player colours (0x450520, 0x4EAA4A): the players' palette and the
+/// player's colour (0 red to 7 pink), whose 32 entries of that palette replace its 224–255.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PlayerColours {
     /// The players' palette (`PLAYERS.PAL`).
@@ -248,7 +256,9 @@ pub struct Picture {
     /// Its top-left corner from the dialog's.
     pub at: [i32; 2],
     /// Its size where it takes the mouse (its picture's; E17 M4 T3b: the battle's panel picture
-    /// is entered as the hovered item, `hovered_item` 0x6AAC68); none: it takes none
+    /// is entered as the hovered item, `hovered_item` 0x6AAC68), and the most of its picture it
+    /// draws from the picture's corner (`dialog_picture_draw` 0x450450; E17 M5 T4a: a message
+    /// box's background tiles); none: it takes none and draws the whole picture
     /// (*provisional*, design §9.9).
     #[serde(default)]
     pub size: Option<[i32; 2]>,
@@ -449,7 +459,8 @@ pub struct Shown {
     /// The items' states (a button's frame; any item hidden; a text alone's colour when
     /// disabled).
     pub states: BTreeMap<u16, State>,
-    /// The pictures in a player's colours: the player's colour (0 red to 7 pink).
+    /// The pictures and DEF items in a player's colours: the player's colour (0 red to 7 pink; a
+    /// DEF item's since E17 M5 T4a, the message 0x200/0xD of `dialog_def_message` 0x4EA810).
     pub players: BTreeMap<u16, u8>,
     /// The texts.
     pub texts: BTreeMap<u16, String>,
@@ -569,6 +580,12 @@ impl Dialog {
     pub fn draws(&self, shown: &Shown, players: &str) -> Vec<Draw> {
         let [x, y] = self.place;
         let place = |at: [i32; 2]| [x.saturating_add(at[0]), y.saturating_add(at[1])];
+        let colours = |id: u16| {
+            shown.players.get(&id).map(|&player| PlayerColours {
+                palette: players.into(),
+                player,
+            })
+        };
         let items = self
             .items
             .iter()
@@ -580,10 +597,8 @@ impl Dialog {
                         picture: p.picture.clone(),
                         x,
                         y,
-                        player: shown.players.get(&p.id).map(|&player| PlayerColours {
-                            palette: players.into(),
-                            player,
-                        }),
+                        player: colours(p.id),
+                        size: p.size,
                     })
                 }
                 Item::Button(b) => {
@@ -594,6 +609,7 @@ impl Dialog {
                         frame,
                         x,
                         y,
+                        player: None,
                     })
                 }
                 Item::Text(t) => {
@@ -613,6 +629,7 @@ impl Dialog {
                         frame: shown.frames.get(&d.id).copied().unwrap_or(d.frame),
                         x,
                         y,
+                        player: colours(d.id),
                     })
                 }
                 Item::Label(l) => {

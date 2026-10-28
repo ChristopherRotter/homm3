@@ -20,6 +20,12 @@ const DUEL: &str = "fixtures/maps/e08-duel-36.h3m";
 const ARMY: &str = "fixtures/maps/e08-army-12.h3m";
 /// The rewards map (E08 T64a): every object class of increment 7.
 const REWARDS: &str = "fixtures/maps/e08-rewards-36.h3m";
+/// Decision 133's maps (E08 T64b): 144 × 144 with an underground, a Pandora's Box or a Learning
+/// Stone on every free tile.
+const FULL: [&str; 2] = [
+    "fixtures/maps/e08-boxes-144.h3m",
+    "fixtures/maps/e08-stones-144.h3m",
+];
 
 fn options(days: u32) -> RunOptions {
     RunOptions {
@@ -788,6 +794,35 @@ fn the_benchmark_workloads_run_and_count_what_they_say() {
     )
     .unwrap();
     assert_eq!((rewards.operations, rewards.visits), (3, 1), "{rewards:?}");
+    // E08 T64b: on decision 133's maps (`fork-boxes-xl-144`, `fork-stones-xl-144`) the boxes
+    // opened leave the map (no visits block), the stones entered mark their heroes (the block).
+    for (map, block) in FULL.into_iter().zip([0, 1]) {
+        let full = bench::run(
+            &root().join("packs"),
+            &root(),
+            &bench::BenchOptions {
+                map: map.to_owned(),
+                profile: DEFAULT_PROFILE.to_owned(),
+                difficulty: h3_game::DEFAULT_DIFFICULTY,
+                workload: bench::Workload::Fork,
+                games: 1,
+                days: 7,
+                seed: 1,
+                forks: 3,
+                observe: false,
+                masks: false,
+                battle: false,
+                meeting: false,
+                queries: 0,
+            },
+        )
+        .unwrap();
+        assert_eq!(
+            (full.operations, full.visits),
+            (3, block),
+            "{map}: {full:?}"
+        );
+    }
     // E08 T19b1: with `battle` the heroes seek each other and the forks carry the open battle.
     let fight = bench::run(
         &root().join("packs"),

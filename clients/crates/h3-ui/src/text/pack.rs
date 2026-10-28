@@ -99,10 +99,16 @@ impl Pack {
                     format!("{id}_{form}")
                 };
                 match cell(source, tables).and_then(|text| {
+                    // A table's field as the executable reads it: a run of quotes is one
+                    // (0x5BBD29; the executable's own strings have none).
+                    let text = match source.row {
+                        Row::Address(_) => String::from(text),
+                        _ => one_quote(text),
+                    };
                     if source.raw {
-                        return Ok(Message::literal_text(text));
+                        return Ok(Message::literal_text(&text));
                     }
-                    Message::from_printf(text, printf, |n| key.args.get(n).copied())
+                    Message::from_printf(&text, printf, |n| key.args.get(n).copied())
                         .map_err(|e| format!("{e:?} in {text:?}"))
                 }) {
                     Ok(message) => {
@@ -144,6 +150,22 @@ impl Pack {
         }
         problems
     }
+}
+
+/// `text` with each run of quotes made one, as the executable's text tables' reader does once it
+/// has cut a quoted field's closing quote (`text_table_records` 0x5BBD29 to 0x5BBD6A, and its
+/// columns' kin 0x5BC0AE; E17 M5 T4a: GENRLTXT's record 33 quotes the surrendering's terms as
+/// `""…""`). `h3_formats`' table parser keeps them as the file has them.
+fn one_quote(text: &str) -> String {
+    let mut out = String::with_capacity(text.len());
+    let mut quote = false;
+    for c in text.chars() {
+        if !(c == '"' && quote) {
+            out.push(c);
+        }
+        quote = c == '"';
+    }
+    out
 }
 
 /// A source's text in the user's tables.

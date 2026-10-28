@@ -6,6 +6,7 @@ mod assets;
 mod audio;
 mod battle;
 mod bot;
+mod boxes;
 #[cfg(test)]
 mod clicks;
 mod gate;
@@ -81,6 +82,7 @@ commands:
   window <scenario.toml | record.jsonl> [--seed <n>] [--speed <0-2>] [--packs <dir>]
          [--install <dir>] [--human attacker|defender|both] [--scale <n>] [--vsync]
          [--drawn-cursor] [--fullscreen] [--from <ms>] [--mute] [--check <s> | --measure <s>]
+         [--leave retreat|surrender]
           a battle in a window (SDL 3, h3-sdl), as `play` loads it, at the original's frame
           times from --from ms: each frame is shown when it falls due, at the largest integer
           scale that fits the display (--scale), vsync off unless --vsync, the game's cursor as
@@ -89,7 +91,9 @@ commands:
           the others; on a human's turn the battle waits for a left press over the battlefield
           or the panel's Wait or Defend (their buttons or their keys W, D and Space), the spell
           book (its button or C; a spell that takes a target aimed: a press casts, Esc or the
-          right button gives it up) or a Faerie Dragon's spell (F aims it). With sound
+          right button gives it up), a Faerie Dragon's spell (F aims it), Retreat or Surrender
+          (their buttons or R and S, then the question's OK or Enter; Cancel or Esc keeps
+          fighting). With sound
           (the installation's sound archives and MP3 folder; none with --mute): from the
           battle's start its start sound plays while the clock waits, then the battle music
           loops and the creatures' sounds follow their animations. Keys: P pause, Right a frame
@@ -98,7 +102,8 @@ commands:
           <s> seconds unattended and prints how late each frame showed; --check also reads
           every frame back and compares it with the frame drawn headless (exit 1 on a
           difference); unattended, a human's commands are the bot's choices pressed by the
-          window, the battle checked against the bot's at once.
+          window, the battle checked against the bot's at once; --leave makes the human side
+          retreat or surrender through its question at its first turn it may.
   situation <scenario.toml> [--packs <dir>] [--install <dir>] [--out <file.h3m>]
           writes the original's map for a scenario's battle, for the capture harness
           (clients/capture/README.md): Red's hero (human) just west of Blue's (computer) on the

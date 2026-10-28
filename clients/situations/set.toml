@@ -983,3 +983,79 @@ why = "exact: the hint over place 1, the book's cursor at the mouse (E17 M5 T3a)
 at = 1000
 differing = 0
 why = "exact: the battle behind the book still (E17 M5 T3a)"
+
+# E17 M5 T4a: the battle's message boxes (dialogs.toml; design §7.19), at the opening (the
+# Archangels' turn, Orrin's): Retreat's question by R; Surrender's by S (the price, Crag Hack's
+# name), its OK by Enter telling Red it cannot pay; the book's refusal of Implosion (30 points
+# against 20), View Air's description (the adventure bookmark), Animate Dead with no corpse. The
+# battle behind stands still; the cursor the default one's frame 0.
+[[situation]]
+id = "msg-retreat"
+scenario = "dialogs.toml"
+seat = "attacker"
+actions = ["key:r"]
+
+[[situation.frame]]
+at = 0
+differing = 0
+why = "exact: Retreat's question over the battle, its frame in Red's colours, its shadow, the default cursor at once (E17 M5 T4a)"
+
+[[situation.frame]]
+at = 100
+differing = 0
+why = "exact: the battle behind the box still (E17 M5 T4a)"
+
+[[situation]]
+id = "msg-surrender"
+scenario = "dialogs.toml"
+seat = "attacker"
+actions = ["key:s"]
+
+[[situation.frame]]
+at = 100
+differing = 0
+why = "exact: Surrender's question, Crag Hack's terms in single quotes, the price 25 750 (E17 M5 T4a)"
+
+[[situation]]
+id = "msg-poor"
+scenario = "dialogs.toml"
+seat = "attacker"
+actions = ["key:s", "key:Return"]
+
+[[situation.frame]]
+at = 100
+differing = 0
+why = "exact: its OK by Enter: \"You don't have enough gold!\" at once (E17 M5 T4a)"
+
+[[situation]]
+id = "msg-mana"
+scenario = "dialogs.toml"
+seat = "attacker"
+actions = ["key:c", "click:246,219"]
+
+[[situation.frame]]
+at = 100
+differing = 0
+why = "exact: the book's refusal of Implosion over the book, whose status line keeps the hint (E17 M5 T4a)"
+
+[[situation]]
+id = "msg-describe"
+scenario = "dialogs.toml"
+seat = "attacker"
+actions = ["key:c", "key:a", "click:246,123"]
+
+[[situation.frame]]
+at = 100
+differing = 0
+why = "exact: View Air's description with its picture and caption over the book (E17 M5 T4a)"
+
+[[situation]]
+id = "msg-no-one"
+scenario = "dialogs.toml"
+seat = "attacker"
+actions = ["key:c", "click:332,123"]
+
+[[situation.frame]]
+at = 100
+differing = 0
+why = "exact: Animate Dead with no corpse: \"That spell will affect no one!\" over the battle, the book closed (E17 M5 T4a)"

@@ -488,6 +488,33 @@ original = [{ at = "HELP:459" }]
 id = "book.hint.close"
 original = [{ at = "HELP:460" }]
 
+# The message boxes (E17 M5 T4a; design §7.19). Retreat's question (`battle_retreat_button`
+# 0x474FA1: GENRLTXT's record 29); Surrender's (0x4750A0: record 33 with the other side's hero's
+# name and the price) and its refusal when the side cannot pay (0x475119: record 30).
+[[key]]
+id = "battle.retreat.ask"
+original = [{ at = "GENRLTXT:29" }]
+
+[[key]]
+id = "battle.surrender.ask"
+args = { hero = "text", price = "number" }
+original = [{ at = "GENRLTXT:33", printf = ["hero", "price"] }]
+
+[[key]]
+id = "battle.surrender.poor"
+original = [{ at = "GENRLTXT:30" }]
+
+# The spell book's refusal of a spell above the hero's spell points (0x59D46D: record 207 with the
+# cost and the points) and the aim's of a stack spell no hex takes (0x59F122: record 186).
+[[key]]
+id = "book.refused"
+args = { cost = "number", mana = "number" }
+original = [{ at = "GENRLTXT:207", printf = ["cost", "mana"] }]
+
+[[key]]
+id = "aim.no-one"
+original = [{ at = "GENRLTXT:186" }]
+
 # A creature's names, singular and plural (CRTRAITS.TXT's first two columns; its non-blank records
 # from record 2 are the original ids in order, as the harvesters read them).
 [[family]]

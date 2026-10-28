@@ -40,7 +40,7 @@ adventure).
 Before the first run: stage the copy's files (`Heroes3.exe`, the five DLLs `BINKW32.DLL`,
 `IFC20.dll`, `MP3DEC.ASI`, `MSS32.DLL`, `SMACKW32.DLL`, `Data/` with the four LODs, `Heroes3.snd`,
 `H3ab_ahd.snd`, `H3ab_ahd.vid`; one large file per staging call), run `clients/capture/setup.sh`,
-and build `cargo build --release -p h3-view` in `clients/`. A run of the whole set (76 situations since M5 T3a) takes about 16 minutes.
+and build `cargo build --release -p h3-view` in `clients/`. A run of the whole set (82 situations since M5 T4a) takes about 17 minutes.
 
 ## Which captures a change needs
 
@@ -193,7 +193,12 @@ spells, so its stills render the attacker's record (`seat = "attacker"`). After 
 original's cursor stays where it was until the clock steps (its status line follows at once):
 take such frames from 100 ms. The setup turns "Animate SpellBook" off (the page turn's videos,
 which the run directory's empty `VIDEO.VID` lacks and the client does not play); nothing recorded
-before it turned a page.
+before it turned a page. Since E17 M5 T4a (design §7.19) `key:r` and `key:s` open Retreat's and
+Surrender's questions, and an open message box takes the `key:` (`key:Return`, `key:Escape`: down
+and up, its button's click) and the `click:` (press and release on its button); the park move
+after a `click:` that opened a box goes to the box, so the book behind keeps its hint
+(`msg-mana`). A battle's gold is the Normal difficulty's (Red 20 000): `dialogs.toml` prices its
+surrender above it.
 
 **Another battlefield:** the original's obstacles depend on the battle's tile, the background on
 what stands around it (§4.4): `--tile x,y` (the set's `tile`) moves the battle. At (20, 20) on dirt

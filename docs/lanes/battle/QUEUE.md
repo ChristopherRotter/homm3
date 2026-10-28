@@ -12,6 +12,17 @@ E23, the original's battle AI, is **closed** (2026-10-24; `docs/epics/E23-origin
 
 Consolidated on 2026-10-19 (the user): the entries from E01 to E04c's closure are merged below by kind, done and duplicate parts dropped; the origin stays in brackets (an epic and task, a review report such as r3 or F-r2b-2). History: git. Items for other lanes went into their inboxes; the First Aid Tent became BAT-Q51. The addresses are readings of the executable, the reviews' not read a second time. Where the readings stand: `installation.md` §7.8–§7.33; the reviews' reports stay on `battle/e04b-t11b-review-reports` and `battle/e04c-t10b-review-reports`; their experiment candidates are in `docs/experiments/README.md` ("From the battle queue's inbox", "From the E04b review", "From E04c").
 
+- 2026-10-28 (the client lane, E17 M5 T4a; **for you to judge: `h3_formats::text` and quotes**):
+  the executable's text-table readers make each run of quotes in a field one, after cutting a
+  quoted field's closing quote (`text_table_records` 0x5BBBA0 at 0x5BBD29 to 0x5BBD6A; the
+  columns' reader 0x5BBE70 has the same code; `docs/epics/E17-design.md` §7.19).
+  `h3_formats::text::TextTable::parse` keeps them as the file has them (its test
+  `quoted_fields_span_lines_and_keep_inner_quotes`), so GENRLTXT's record 33 reads
+  `""I will accept…""` where the game shows `"I will accept…"`. The client's catalogue makes the
+  runs one where it reads a field (`h3_view::text::pack`), so nothing of yours has to change for
+  it; a harvested name or text with doubled quotes would differ from the game's. Your call
+  whether the parser should follow the executable.
+
 - 2026-10-27 (the AI lane, E25's refinement, AI-Q10; **for you, later: a fair system actor**):
   the user decided that an actor reading hidden facts must not train agents, and that a **fair
   variant** of the system actor is phased in, for you to design and build at a later time

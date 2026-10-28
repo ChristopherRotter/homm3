@@ -127,7 +127,12 @@ pub fn names(list: &[Draw], layout: &BattleLayout) -> BTreeSet<String> {
             names.extend(player.as_ref().map(|p| &p.palette));
             names
         }
-        Draw::Dialog(ui::Draw::Button { def, .. }) | Draw::Cursor { def, .. } => vec![def],
+        Draw::Dialog(ui::Draw::Button { def, player, .. }) => {
+            let mut names = vec![def];
+            names.extend(player.as_ref().map(|p| &p.palette));
+            names
+        }
+        Draw::Cursor { def, .. } => vec![def],
         Draw::Dialog(ui::Draw::Text { item, .. }) => {
             vec![&item.picture, &item.font, &item.font_palette]
         }
@@ -291,18 +296,21 @@ mod tests {
                     palette: "Players.pal".to_string(),
                     player: 0,
                 }),
+                size: None,
             }),
             Draw::Dialog(ui::Draw::Picture {
                 picture: "other.pcx".to_string(),
                 x: 0,
                 y: 0,
                 player: None,
+                size: None,
             }),
             Draw::Dialog(ui::Draw::Button {
                 def: "icm001.def".to_string(),
                 frame: 0,
                 x: 0,
                 y: 0,
+                player: None,
             }),
             Draw::Cursor {
                 def: "CrCombat.def".to_string(),
