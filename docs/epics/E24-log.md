@@ -1074,3 +1074,26 @@ before it started (the user): T6b1 the sandbox's part, T6b2 the closure with the
   (the furthest (40, 40) on a 36 map). The adventure lane's inbox notes it.
 - **No new question.** M2's exit holds in the sandbox: every recorded sequence as recorded, line
   by line and frame by frame; T6b2 tries the window and its sound on the user's machine.
+
+### M2 T6b2a — the review list and the questions (2026-10-27)
+
+On `map-client/e24-m2-t6b2a`, the user present in the chat but away from the machine soon: T6b2
+cut at its seam by the user (T6b2a now, the hand test later); the answers' build then queued
+between them as T6b2b. No code changed.
+
+- **Starting point:** `master` at #527 (#523 and #527 merged; CI green on #527's code). The
+  original data staged again from the user's machine (the LODs, the sounds, the nine terrain
+  tracks, the maps, the text tables, the harness's DLLs).
+- **The build:** `h3-map-view.exe` of `master` at #527 cross-built (`x86_64-pc-windows-gnu`,
+  4 min 12 s from scratch, 9.1 MB) into the user's `clients/out/win/` (T4b3's kept as
+  `h3-map-view-t4b3.exe`) with `map-try.cmd`: `path-objects` (Alt+Tab with the pointer at an
+  edge, fullscreen's bars, F7 resting at an edge) and `seq-walk` with `--cues` (grass to dirt,
+  back after a while, back within a second), its output in `map-try.txt` and `map-try-cues.txt`,
+  the user's findings in `map-try-notes.txt` (a template).
+- **The review list** (M2's six items, summarised in the chat) **accepted** by the user.
+- **The questions:** MCL-Q7 and MCL-Q8 answered (a), the client's fix with the original's
+  behind `--bugs original`; MCL-Q12 answered (a), the request kept; MCL-Q9 left open (the user
+  decides later). The answered entries moved to the lane's `QUESTIONS-ANSWERED.md`; T6b2b builds
+  them.
+- **M3 T0 queued** (behind T6b2c); the common crate proposed in the client lane's inbox, its
+  answer asked before M3 T0.
