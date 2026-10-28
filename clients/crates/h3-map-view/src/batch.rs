@@ -1,7 +1,7 @@
 //! The assets a scene needs, decoded once before it is drawn (E24 M1 T3b1, *provisional*; as
 //! `h3-view`'s checkpoint batch, ADR-0020 point 7, which is the client lane's; the decoded DEF,
-//! [`Sprite`], is the common crate's since E24 M3 T1a). The adapter reads the bytes from the archives and adds them by name;
-//! [`names`] says which a scene needs.
+//! [`Sprite`], is the common crate's since E24 M3 T1a). The adapter reads the bytes from the
+//! archives and adds them by name; [`names`] says which a scene needs.
 
 use alloc::collections::{BTreeMap, BTreeSet};
 use alloc::format;

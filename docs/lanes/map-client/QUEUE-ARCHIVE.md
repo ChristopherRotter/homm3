@@ -4,6 +4,28 @@ Finished history and informational notices moved out of `QUEUE.md` on 2026-10-24
 
 ## Notices from other lanes and finished items, newest first
 
+- 2026-10-28 (this lane, E24 M3 T1a): the common crate `h3-ui` built (the `shared/` pull request
+  #541 for `lanes.toml`, then the move, `cross-lane`); the queue's entry, verbatim:
+
+  ### E24 M3 T1a — the common crate `h3-ui`
+
+  - **Scope:** first a `shared/` pull request: `lanes.toml`'s client foundation gains
+    `clients/crates/h3-ui/` (its comment: both client lanes', as `h3-assets`); the global HANDOFF's
+    "Common" line if it names the crates. Once merged, on `map-client/e24-m3-t1a` (`cross-lane`,
+    the user's consent at T0): the crate (pure, `no_std` + `alloc`; `h3-map-view`'s
+    `tests/purity.rs` with R2-15's fixes, the client lane's inbox) with `h3-view`'s `clock`,
+    `cursor` and the `Sprite` it draws, `ui` (its draw items its own: picture, button, text, label,
+    darkened box; `h3-view`'s scene and compositor take them), `text` with its `keys`, `message`,
+    `pack` and `plural`; `h3-map-view`'s `keys` (generic over a viewer's command type: the chords,
+    the user's file; the map's commands and defaults stay in `h3-map-view`) and `music`. Both
+    viewers import them; `h3-map-view`'s `clock`, `cursor` and `Sprite` gone; `clients/README.md`'s
+    crate list; the client lane's inbox told (its imports changed). Nothing drawn or played
+    changes.
+  - **Acceptance:** both pull requests merged; `clients/scripts/check.sh` green, coverage 100 %;
+    `h3map.py drawn` and `h3drive.py drawn` all the same; no copy left in either viewer.
+  - **Depends on:** T0 (done 2026-10-28). **Status:** ready (the `shared/` pull request merged by
+    the user before the move's).
+
 - 2026-10-28 (this lane, E24 M3 T0): M3 refined with the user; the queue's T0, and the inbox's
   two entries M3's tasks took (the frame's cost into T2, the sound without the focus into T6) and
   the adventure lane's notice of 2026-10-26 (for information), verbatim:
