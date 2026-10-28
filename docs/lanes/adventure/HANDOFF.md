@@ -21,7 +21,7 @@ Moved to `TRAPS.md`: forks without deep copies, RNG seeds server-only, template 
 
 ### 2026-10-28 — increment 7 closed, increment 8 refined: T65, the audit
 
-Baseline e8a7990 (#544, #543 merged). The user's cut (decision 157): whole; increment 8's content and first round (ADV-Q31, decisions 158, 159): boats and the sea with the sea's pickups, a survey then the drafts. The audit: the eight exit criteria met; ten rules `verified` with batch E7's rows (nine cited them, ADV-PIK-011 gained E7-10 and E7-11), three observations' files corrected, rows added to ADV-TCH-003, GAM-DEC-004, -005. Increment 7 to `E08-archive.md`, its design note to `E08-log.md` (eleven code comments, the pack's comment and the catalog's design sources repointed); T66a, T66b queued; no version. In progress: the scoped verify, then the pull request.
+Baseline e8a7990 (#544, #543 merged). The user's cut (decision 157): whole; increment 8's content and first round (ADV-Q31, decisions 158, 159): boats and the sea with the sea's pickups, a survey then the drafts. The audit: the eight exit criteria met; ten rules `verified` with batch E7's rows (nine cited them, ADV-PIK-011 gained E7-10 and E7-11), three observations' files corrected, rows added to ADV-TCH-003, GAM-DEC-004, -005. Increment 7 to `E08-archive.md`, its design note to `E08-log.md` (eleven code comments, the pack's comment and the catalog's design sources repointed); T66a, T66b queued; no version. The scoped verify passed (no original data: docs and comments only). Pull request: see "Current state".
 
 ### 2026-10-28 — increment 7, round 8: T64b, the properties and the 144 × 144 maps
 

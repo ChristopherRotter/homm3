@@ -7176,7 +7176,12 @@ amendment drafts with the design note and the cut (T66a, T66b), not the survey a
 the map client lane's note of the writer's edge (2026-10-27, nothing to do) to the archive; the
 events on water re-tagged for T66a; CLT-Q5 told of decision 158.
 
-**Verify:** (in progress)
+**Verify:** the scoped `cargo xtask verify --scope adventure --summary` passed every step it runs
+(fmt, clippy, check-arch, check-rules, check-stubs, check-docs, check-exe-map, clients-lock,
+check-lane, test, coverage, determinism, bench-check, doc-drift; deny and ffi-smoke skipped by the
+scope; exit 2, its normal result); no original data staged (no step needs them for comments and
+docs). CI's full verify on the pull request is the record. The sandbox restarted once during the
+session (its background baseline died with it; CI's run on `master` e8a7990 was green).
 
 #### Increment 7's design note at its closure (moved by T65)
 

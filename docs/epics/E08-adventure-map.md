@@ -71,7 +71,7 @@ Refined with the user on 2026-10-28 (T65; ADV-Q31). Built like increments 1 to 7
 
 The order and the cut of each are decided at its refinement (decision 48).
 
-9. Mines and the week, monster growth, flaggable objects, weekly objects (windmill, water wheel, mystical garden), the Refugee Camp (78, with the dwellings' hire dialog; decision 127), more visitable objects; simultaneous play once the contact rule is surveyed and the commutation target is decided (the sketch's increment 5 until decision 48, its 6 until decision 71, its 7 until decision 90, its 8 until decision 121).
+9. Mines and the week, monster growth, flaggable objects (Shipyards 87 and Lighthouses 42 among them, decision 158), weekly objects (windmill, water wheel, mystical garden), the Refugee Camp (78, with the dwellings' hire dialog; decision 127), more visitable objects; simultaneous play once the contact rule is surveyed and the commutation target is decided (the sketch's increment 5 until decision 48, its 6 until decision 71, its 7 until decision 90, its 8 until decision 121).
 10. Creature banks (16, 24, 25, 84, 85; decision 127): their guards and rewards drawn at a new game, the visit, the battle with the battle lane's bank flag (no war machines, no tactics phase, the guards' layout; the battle lane's queue, "War machines"), the reward's creatures through the army dialog (0x4ABDC0).
 11. Quests, after E09 and E10 (decision 127): Seer's Huts and quest guards (83, 215), their nine missions and the Seer's Hut's reward (its creatures through the army dialog, 0x573C80).
 
