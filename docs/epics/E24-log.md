@@ -1245,6 +1245,8 @@ generic key table), the user chose one pull request for all of T1a.
   `music` paths; the client lane's inbox told (its imports, the scene's variant).
 - **Checked:** `clients/scripts/check.sh` all gates passed, coverage 100 % (regions, functions,
   lines); `h3drive.py drawn` and `h3map.py drawn` all the same (no capture: nothing drawn or
-  played changed); the scoped verify no failing step. The container restarted during the setup's
+  played changed); the scoped verify (`--with-original-data`) no failing step but `check-lane`,
+  which passes with `--cross-lane` against #541's branch (the label and `master` after #541 on
+  the pull request). The container restarted during the setup's
   baseline (its run gone): `master`'s client code was CI's (`Clients` green on 78f4aaa9), so the
   gates ran on the branch only.
