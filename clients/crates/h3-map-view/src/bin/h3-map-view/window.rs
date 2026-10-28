@@ -42,7 +42,7 @@ use h3_render::Bugs;
 use h3_render::screen::Screen;
 use h3_sdl::{Config, CursorImage, Event, Key, ReadBack, Window};
 use h3_ui::clock::Clock;
-use h3_ui::keys::Command as _;
+use h3_ui::keys::Window as Own;
 
 use crate::audio::{Library, Player};
 use crate::files;
@@ -163,8 +163,8 @@ pub fn run(options: &Options) -> ExitCode {
     }
 }
 
-/// The table of keys: the user's file (`--keys`, else `keys.toml` here if there is one) over the
-/// defaults, every key it binds one the adapter knows; and where it came from.
+/// The table of keys: the user's file (`--keys`, else `keys.toml` here if there is one; its `[map]`
+/// table) over the defaults, every key it binds one the adapter knows; and where it came from.
 fn load_keys(path: Option<&Path>) -> Result<(Keys, String), String> {
     let here = Path::new(KEYS_FILE);
     let path = path.or_else(|| here.exists().then_some(here));
@@ -176,36 +176,9 @@ fn load_keys(path: Option<&Path>) -> Result<(Keys, String), String> {
         }
         None => (Keys::original(), "the defaults".to_owned()),
     };
-    check_keys(&keys).map_err(|e| format!("{from}: {e}"))?;
+    let known: Vec<&str> = Key::ALL.iter().map(|k| k.name()).collect();
+    keys.check(&known).map_err(|e| format!("{from}: {e}"))?;
     Ok((keys, from))
-}
-
-/// Every key the table binds is one of the adapter's, and not Control alone (Ctrl+ holds it).
-fn check_keys(keys: &Keys) -> Result<(), String> {
-    for (command, chord) in keys.chords() {
-        match Key::from_name(&chord.key) {
-            Some(Key::LeftCtrl | Key::RightCtrl) => {
-                return Err(format!(
-                    "`{}`: {chord}: Control is held with a key (`Ctrl+`), not bound alone",
-                    command.name()
-                ));
-            }
-            Some(_) => {}
-            None => {
-                let names: Vec<&str> = Key::ALL
-                    .iter()
-                    .filter(|k| !matches!(k, Key::LeftCtrl | Key::RightCtrl))
-                    .map(|k| k.name())
-                    .collect();
-                return Err(format!(
-                    "`{}`: {chord}: no such key; the keys: {}",
-                    command.name(),
-                    names.join(", ")
-                ));
-            }
-        }
-    }
-    Ok(())
 }
 
 /// The map `id` names set up: a recorded sequence of `<map>/sequences.toml`, else a situation of
@@ -573,7 +546,7 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                 ctrl[usize::from(key == Key::RightCtrl)] = true;
                 continue;
             }
-            let command = keys.command(ctrl.contains(&true), key.name());
+            let command = keys.command((), ctrl.contains(&true), key.name());
             // The map's keys, repeats too; the window's own once a press.
             if let Some(action) = command.and_then(Command::action) {
                 input.extend(pointer.take().map(Action::Pointer));
@@ -582,32 +555,32 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
             }
             match command {
                 _ if repeat => {}
-                Some(Command::Quit) => break 'run,
+                Some(Command::Window(Own::Quit)) => break 'run,
                 // Unattended, the window's other keys do nothing.
                 _ if unattended => {}
-                Some(Command::Pause) => {
+                Some(Command::Window(Own::Pause)) => {
                     clock.toggle(now);
                     if let Some((_, player)) = &mut audio {
                         player.pause(clock.paused());
                     }
                 }
-                Some(Command::Music) => {
+                Some(Command::Window(Own::Music)) => {
                     if let Some((_, player)) = &mut audio {
                         player.music_on = !player.music_on;
                     }
                 }
-                Some(Command::Effects) => {
+                Some(Command::Window(Own::Effects)) => {
                     if let Some((_, player)) = &mut audio {
                         let on = !player.effects_on;
                         player.set_effects(on);
                     }
                 }
-                Some(Command::Frame) if clock.paused() => {
+                Some(Command::Window(Own::Frame)) if clock.paused() => {
                     if let Some(f) = &next {
                         clock.seek(now, f.change.t);
                     }
                 }
-                Some(Command::Restart) => {
+                Some(Command::Window(Own::Restart)) => {
                     replay = new_replay()?;
                     if let Some((_, player)) = &mut audio {
                         player.reset();
@@ -621,20 +594,20 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                     // reviewer's R2-10).
                     pointer = if look.live { mouse } else { None };
                 }
-                Some(Command::Cursor) => {
+                Some(Command::Window(Own::Cursor)) => {
                     look.hardware = !look.hardware;
                     renew = true;
                 }
-                Some(Command::Fullscreen) => {
+                Some(Command::Window(Own::Fullscreen)) => {
                     let on = !win.fullscreen();
                     win.set_fullscreen(on);
                 }
-                Some(Command::Vsync) => {
+                Some(Command::Window(Own::Vsync)) => {
                     let on = !win.vsync();
                     win.set_vsync(on);
                 }
                 // A frame on while running: nothing.
-                Some(Command::Scroll(_) | Command::Hero(_) | Command::Frame) | None => {}
+                Some(Command::Scroll(_) | Command::Hero(_) | Command::Window(Own::Frame)) | None => {}
             }
         }
         // The original scrolls at the edges only while it is the active application (`app_active`
@@ -952,27 +925,23 @@ mod tests {
 
     #[test]
     fn the_keys_bound_are_the_adapters() {
-        assert_eq!(check_keys(&Keys::original()), Ok(()));
-        let keys = Keys::with_file("pause = [\"Space\"]\nquit = [\"Ctrl+F12\"]").unwrap();
-        assert_eq!(check_keys(&keys), Ok(()));
-        assert_eq!(keys.command(true, "F12"), Some(Command::Quit));
-        let unknown = Keys::with_file("restart = [\"Backspace\"]").unwrap();
-        let message = check_keys(&unknown).unwrap_err();
+        let known: Vec<&str> = Key::ALL.iter().map(|k| k.name()).collect();
+        assert_eq!(Keys::original().check(&known), Ok(()));
+        let keys = Keys::with_file("[map]\npause = [\"Space\"]\nquit = [\"Ctrl+F12\"]").unwrap();
+        assert_eq!(keys.check(&known), Ok(()));
+        assert_eq!(
+            keys.command((), true, "F12"),
+            Some(Command::Window(Own::Quit))
+        );
+        let unknown = Keys::with_file("[map]\nrestart = [\"Backspace\"]").unwrap();
+        let message = unknown.check(&known).unwrap_err();
         assert!(
             message.starts_with("`restart`: Backspace: no such key; the keys: Escape, Space,"),
             "{message}"
         );
         assert!(!message.contains("LeftCtrl"), "{message}");
-        let alone = Keys::with_file("hero-north = [\"LeftCtrl\"]").unwrap();
         assert_eq!(
-            check_keys(&alone),
-            Err(
-                "`hero-north`: LeftCtrl: Control is held with a key (`Ctrl+`), not bound alone"
-                    .to_owned()
-            )
-        );
-        assert_eq!(
-            Chord::parse("Ctrl+Up").map(|c| Keys::original().command(c.ctrl, &c.key)),
+            Chord::parse("Ctrl+Up").map(|c| Keys::original().command((), c.ctrl, &c.key)),
             Ok(Some(Command::Scroll(Direction::North)))
         );
     }
