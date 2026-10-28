@@ -1492,3 +1492,82 @@ No reading; the frames as before, pixel for pixel (*provisional* in what follows
   pixel, transparent ones included. Spans of a frame's drawn pixels made once, the frame picture
   converted once a viewer, the screen not copied, and a scroll or a walk redrawing only what
   moved are the next steps (the queue's inbox).
+
+## 4. The adventure screen (M3, from T2a, 2026-10-28)
+
+### 4.1 The dialog at a map's start (M3 T2a)
+
+Read: `adventure_dialog_create` 0x401510 in full, `adventure_full_update` 0x417420's panel calls,
+the resource bar's constructor 0x558BA0, and every site that sets a button's state (below);
+checked against the running original's dialog (`h3mem.dialog_items` on `heroes-objects` and
+`path-objects`: every item's id, box and state as read). *Provisional* where marked.
+
+- **The dialog** (the manager's +0x44, H3API's `H3AdventureMgrDlg`; vtable 0x63A5E4): the base
+  dialog at (0, 0), 800 × 600 (0x5FE9F0 with flags 1), its items added in this order (0x402157:
+  `AddItem` with -1, each in turn; draw order, E17-design §9.7). Areas (0x44FF10: draw nothing):
+  0 the map (8, 8, 592 × 544; +0x50), 1 the minimap (630, 26, 144 × 144; +0x4C), 2 the status
+  window (605, 389, 188 × 182). Buttons (0x455EF0: frame 0, click frame 1, flags 2; the hotkey a
+  scan code into +0x48, 0x404200): 3 the kingdom overview `iam002.def` (679, 196; K 0x25), 4 the
+  underground `iam010.def` (711, 196; U 0x16), 5 the quest log `iam004.def` (679, 228; Q 0x10),
+  6 sleep `iam005.def` (711, 228; Z 0x2C), 7 move hero `iam006.def` (679, 260; M 0x32), 8 cast a
+  spell `iam007.def` (711, 260; C 0x2E), 9 the adventure options `iam008.def` (679, 292; A 0x1E),
+  10 the system options `iam009.def` (711, 292; O 0x18), each 32 × 32; 11 next hero `iam000.def`
+  (679, 324; H 0x23) and 12 end turn `iam001.def` (679, 356; E 0x12), 64 × 32; 13 and 14 the hero
+  list's arrows `iam012.def` (609, 196) and `iam013.def` (609, 372), 64 × 16. The hero list: five
+  pictures without a picture (0x4502D0, flags 0x800) at (617, 212 + 32 i), 48 × 32, ids 15 to 19
+  (+0x70: the portraits, `hpsxxx.pcx` in an empty slot, 0x403662) and five more there, ids 39 to
+  43 (+0x84: the selection's frame `hpsyyy.pcx`, 0x4033D7); DEF items (0x4EA720, flags 0x10) of
+  `imobil.def` at (610, 213 + 32 i), 8 × 32, ids 20 to 24, and `imana.def` at (666, 213 + 32 i),
+  ids 25 to 29. The town list: its arrows `iam014.def` (747, 196) and `iam015.def` (747, 372),
+  48 × 16, ids 30 and 31; DEF items of `itpa.def` at (747, 212 + 32 i), 48 × 32, ids 32 to 36. Then
+  the status bar 200 (0x5BC760: `AdRollvr.pcx` behind `smalfont.fnt`, colour 1, centred, at (8,
+  556), 592 × 18; +0x60), a text 37 (0x5BC280: `medfont.fnt` at (54, 100), 520 × 440, empty;
+  +0x54) and the chat's edit 38 over the status bar (0x5541A0; +0x58; draws nothing while not
+  editing, not read). The status window's panel (+0x98) is built later (0x415DE0: a hero's, a
+  town's, the kingdom's; T5); the resource bar is a panel of its own (+0x5C, 0x558BA0): at (3,
+  575), 794 × 22, its picture 1000 `aresbar.pcx` from its corner in the viewer's colours
+  (0x450520), the seven amounts 1001 to 1007 at (37 + 84 i, 3), 50 × 18, and the date 1008 at
+  (607, 3), 180 × 18 (texts in `smalfont.fnt`, T5), and seven areas 1009 to 1015 for the hints.
+- **A full update** (0x417420, after `AdvMap.pcx`): the buttons 3 to 12 in the viewer's colours
+  (0x403F60: 0x4569E0 puts the players' palette's 32 entries of the viewer over the DEF's
+  224–255), the hero list (0x4032E0) and the town list (0x403420) rebuilt, the quest log's state
+  (0x4039B0), the status window chosen (0x415DE0), the resource bar (0x403F00), the dialog's items
+  redrawn (vtable +0x14 with the ids −65535 to 65535: all, in order), the selection's frames
+  (0x4038C0); then the view and the minimap. Neither the lists' arrows nor the status bar take the
+  viewer's colours.
+- **The buttons' states** at the human player's turn (a state's bit 8 or 0x20 draws the disabled
+  frame 2, E17-design §9.7): the kingdom overview, both options and end turn enabled; the
+  underground disabled on a map of one level (`adventure_manager_start` 0x4070ED: state 8), its DEF
+  `iam010.def` on the surface and `iam003.def` underground (0x403C40, table 0x65F22C; the view's
+  level, then the viewer's colours again); the quest log disabled (0x4039B0: its vtable +0x24,
+  state 0x20) unless a seer hut's or quest guard's quest (game +0x1FBD4, +0x1FBE4) was visited by
+  the viewer; sleep (0x403BA0) and cast a spell (0x403BF0) enabled with a hero selected, disabled
+  with a town selected (`town_select` 0x417830), sleep's DEF `iam011.def` while the hero sleeps
+  (+0x11C; 0x403CC0, table 0x65F238, the hotkey W 0x11 instead); move hero enabled when the
+  selected hero's path has a green arrow, a step it pays today (`make_hero_path` 0x418DD0 with its
+  third argument: 0x4191A2), disabled without a destination (0x418EB7) or a path (0x4191ED), with a
+  town selected and at a walk's start (0x407E2C, a key's step 0x408D06); next hero enabled when a
+  hero of the player's is awake and can still move (`next_hero_find` 0x4BAA40: from the one after
+  the selected, round to it; `hero_can_move` 0x4E5F30: its points at least the cheapest step from
+  its tile, 0x4B1880), set at the view's entry (0x419C53), after 0x40EC90 rebuilds a path (0x40F208)
+  and at a walk's end when the hero cannot move on (0x4081C4); the hero list's up arrow disabled at its top
+  (+0x64 0), its down arrow when the list has no more than five heroes below the top (the player's
+  +0x1 heroes, 0x4032E0), the town list's the same (+0x68, the player's +0x3E towns, 0x403420).
+  A change is sent with the state 0x4008 or 0x4000: the item redrawn and its rectangle shown at
+  once (0x602370 through the window manager for move hero; 0x5FEED0, 0x5FEF60 for the rest).
+  VCMI 1.7.5 (`client/adventureMap/AdventureMapShortcuts.cpp`) agrees on each:
+  `optionCanToggleLevel` (two levels), `optionCanViewQuests` (quests not empty),
+  `optionHeroSelected` (sleep, cast), `optionHeroCanMove` (a path whose next node is this turn's),
+  `optionHasNextHero` (a next wandering hero), the rest `optionInMapView`.
+- **Seen** (the captures): the disabled buttons show frame 2 (a blank red plate where
+  `AdvMap.pcx` paints the enabled icon), the list arrows' frame 2 a plain plate; the cursor
+  parked at (700, 300) is drawn over the adventure options' button (the arrow, frame 0), and the
+  status bar shows that button's hint (T6).
+- **Built** (*provisional*): `adventure.toml`'s `[dialog]` (h3_ui::ui's format) and
+  `[resource_bar]`; `h3_map_view::panels` turns the live part's `kingdom` (the viewer's heroes in
+  the list's order, each asleep or not and able to move or not, its towns, the one selected, the
+  lists' tops, whether it has a quest) and the view's level into the items' states, DEFs and
+  colours; the scene draws `AdvMap.pcx`, the dialog's items, the resource bar's picture, the view,
+  then (a still) the cursor at the live part's pointer. Not drawn yet: the lists' contents (T4),
+  the minimap (T3), the status window, the amounts and the date (T5), the hints (T6):
+  `h3map.py`'s `panels` mask keeps their rectangles.
