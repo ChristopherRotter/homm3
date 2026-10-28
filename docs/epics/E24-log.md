@@ -1418,3 +1418,29 @@ the widening computed once. `map-measure.cmd` gained a hands-off run on *Tale of
   Merged as #557 (after `master`'s #556, its inbox note beside ours).
 - **The user's finding:** the Gold Dragon's head under the Dragon Utopia on `path-objects`: the
   original's own drawing (the start view's still is exact), **MCL-Q13** (keep, recommended).
+
+### M3 T2b2 — a frame redrawing only what changed (2026-10-28)
+
+On `map-client/e24-m3-t2b2`, the user present; `master` at 1788858 (#557 found merged; the
+previous session's commit of T2b1's numbers on this branch merged in). The cut proposed (the
+drawers' spans, the view's cells, the changed rectangles widened and uploaded) declined by the
+user: "no cut". The original data staged from the user's repo folder as for T2b1.
+
+- **Built** (*provisional*, design §4.3): `draw::Spans` and the drawers by spans,
+  `Batch::drawable`; the gems through the raw drawer; `scene::ViewPlace` (`Scene::view`);
+  `compose::Composer`'s cells, the move of the clip's pixels, `damage` and `compose_owned`;
+  `damage::History` and `tidy`; `h3_render::screen::Widening::widen_rect` and
+  `h3_sdl::Window::present_part`, `present_read_part` (additive); the painter's history,
+  `Widened`, `fresh`, assets decoded when found missing; the window's texture state, `--check`'s
+  `afresh` line and the `uploaded` report.
+- **Checked:** `h3map.py drawn` all 40 situations and 13 sequences' frames the same; the window
+  under Xvfb (`walk-1`, `path-objects` and *Tale of two lands*, standing and with input driven by
+  `xdotool`, hardware and drawn cursor): every frame read back exact, every frame made as the same
+  frame composed afresh, every change the headless loop's; `clients/scripts/check.sh`.
+- **Measured** (the sandbox): callgrind 25.1 → 5.6 million instructions a frame on
+  `path-objects` standing, 10.1 → 3.2 on `walk-1`; a frame made in a median 0.9 → 0.3 ms on
+  `walk-1`, 4.0 → 1.0 on `path-objects` and 3.2 → 1.3 on *Tale of two lands* standing, 1.4 → 0.6
+  and 1.9 → 1.5 with input; a quarter of `walk-1`'s pixels uploaded, 5 to 11 % standing. The
+  window cross-built for the user's machine (`clients/out/win/h3-map-view.exe`, also
+  `h3-map-view-t2b2.exe`); `map-measure.cmd`'s run asked of the user.
+

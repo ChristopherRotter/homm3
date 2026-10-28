@@ -153,11 +153,10 @@ impl Composer {
     /// # Errors
     /// As [`compose`]; the next scene then draws everything again.
     pub fn compose(&mut self, scene: &Scene, batch: &Batch) -> Result<&Screen, ComposeError> {
-        let still = self.drawn(scene, batch)?;
-        if let Some(last) = &mut self.last {
-            last.draws = scene.draws.get(still..).unwrap_or_default().to_vec();
-            last.from = 0;
-        }
+        let mut last = self.drawn(scene, batch)?;
+        last.draws = scene.draws.get(last.from..).unwrap_or_default().to_vec();
+        last.from = 0;
+        self.last = Some(last);
         Ok(&self.screen)
     }
 
@@ -167,17 +166,15 @@ impl Composer {
     /// # Errors
     /// As [`compose`]; the next scene then draws everything again.
     pub fn compose_owned(&mut self, scene: Scene, batch: &Batch) -> Result<&Screen, ComposeError> {
-        let still = self.drawn(&scene, batch)?;
-        if let Some(last) = &mut self.last {
-            last.draws = scene.draws;
-            last.from = still;
-        }
+        let mut last = self.drawn(&scene, batch)?;
+        last.draws = scene.draws;
+        self.last = Some(last);
         Ok(&self.screen)
     }
 
-    /// Draws `scene`; how many of its leading draws are the background's. A scene that fails
-    /// leaves the next to draw everything.
-    fn drawn(&mut self, scene: &Scene, batch: &Batch) -> Result<usize, ComposeError> {
+    /// Draws `scene`; what it drew over the background, its draws the caller's to keep (from
+    /// `from`, the background's count). A scene that fails leaves the next to draw everything.
+    fn drawn(&mut self, scene: &Scene, batch: &Batch) -> Result<Last, ComposeError> {
         self.damage.clear();
         let drawn = self.draw(scene, batch);
         if drawn.is_err() {
@@ -189,7 +186,7 @@ impl Composer {
         drawn
     }
 
-    fn draw(&mut self, scene: &Scene, batch: &Batch) -> Result<usize, ComposeError> {
+    fn draw(&mut self, scene: &Scene, batch: &Batch) -> Result<Last, ComposeError> {
         let still = scene
             .draws
             .iter()
@@ -264,16 +261,14 @@ impl Composer {
                 damage.push(all);
             }
         }
-        // The draws are the caller's to keep.
-        self.last = Some(Last {
+        Ok(Last {
             draws: Vec::new(),
-            from: 0,
+            from: still.len(),
             rects,
             view: scene.view,
             cycles: scene.cycles.clone(),
             flags: scene.flags.clone(),
-        });
-        Ok(still.len())
+        })
     }
 }
 
@@ -379,11 +374,10 @@ impl<'s> Changed<'s> {
             }
             indices.sort_unstable();
             indices.dedup();
+            // Each draw cut to the rectangle (one meeting its cells only off the screen draws
+            // nothing).
             for &i in &indices {
-                let i = to_index(i);
-                if meet(self.rects[i], rect).is_some() {
-                    pen.draw(screen, &self.moving[i], Some(rect))?;
-                }
+                pen.draw(screen, &self.moving[to_index(i)], Some(rect))?;
             }
         }
         Ok(())
@@ -429,9 +423,6 @@ impl Grid {
     /// The columns and rows of the cells `rect` meets (none for an empty one).
     fn span(&self, [l, t, r, b]: [i32; 4]) -> Option<([usize; 2], [usize; 2])> {
         let (l, t, r, b) = (i64::from(l), i64::from(t), i64::from(r), i64::from(b));
-        if l >= r || t >= b {
-            return None;
-        }
         let cut = |v: i64, n: usize| usize::try_from(v.max(0)).unwrap_or(0).min(n);
         let columns = [
             cut((l - self.left).div_euclid(self.tile), self.columns),
@@ -853,10 +844,8 @@ impl<'s, 'k> Pen<'s, 'k> {
             Draw::Gem { def, frame, x, y } => {
                 // The plain drawer with runs skipped, unmirrored, on the screen (0x40F2F0): the
                 // raw drawer's literal pixels (design §1.1), in the DEF's own palette.
-                let all = whole(screen);
-                let Some(clip) = cut.map_or(Some(all), |c| meet(all, c)) else {
-                    return Ok(());
-                };
+                // A cut lies on the screen (a cell's rectangle).
+                let clip = cut.unwrap_or_else(|| whole(screen));
                 let (f, sprite) = gem_frame(batch, def, *frame)?;
                 let palette = ScreenPalette::new(&sprite.def.palette, FORMAT);
                 let at = Place {

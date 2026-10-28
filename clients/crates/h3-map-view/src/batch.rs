@@ -22,9 +22,8 @@ use crate::scene::{Draw, Scene};
 /// The decoded assets, by upper-cased name.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct Batch {
-    sprites: BTreeMap<String, Sprite>,
-    /// Each DEF's frames' spans, by the frames' offsets (E24 M3 T2b2).
-    spans: BTreeMap<String, BTreeMap<u32, Spans>>,
+    /// Each DEF with its frames' spans, by the frames' offsets (E24 M3 T2b2).
+    sprites: BTreeMap<String, (Sprite, BTreeMap<u32, Spans>)>,
     pictures: BTreeMap<String, Pcx>,
     palettes: BTreeMap<String, Palette>,
     fonts: BTreeMap<String, Font>,
@@ -63,8 +62,7 @@ impl Batch {
                 frames.insert(offset, decode_frame(bytes, offset).map_err(failed)?);
             }
             let spans = frames.iter().map(|(&o, f)| (o, Spans::of(f))).collect();
-            self.spans.insert(upper.clone(), spans);
-            self.sprites.insert(upper, Sprite { def, frames });
+            self.sprites.insert(upper, (Sprite { def, frames }, spans));
         } else if upper.ends_with(".PCX") {
             let picture = decode_pcx(bytes).map_err(failed)?;
             self.pictures.insert(upper, picture);
@@ -83,16 +81,13 @@ impl Batch {
     /// The DEF `name`.
     #[must_use]
     pub fn sprite(&self, name: &str) -> Option<&Sprite> {
-        upper(&self.sprites, name)
+        upper(&self.sprites, name).map(|(sprite, _)| sprite)
     }
 
     /// The DEF `name` as the view's drawers take it: its frames with their spans.
     #[must_use]
     pub fn drawable(&self, name: &str) -> Option<Drawable<'_>> {
-        Some(Drawable {
-            sprite: upper(&self.sprites, name)?,
-            spans: upper(&self.spans, name)?,
-        })
+        upper(&self.sprites, name).map(|(sprite, spans)| Drawable { sprite, spans })
     }
 
     /// The picture `name`.
@@ -130,10 +125,11 @@ impl<'b> Drawable<'b> {
         let at = group
             .frames
             .get(usize::try_from(index).unwrap_or(usize::MAX))?;
-        Some((
-            self.sprite.frames.get(&at.offset)?,
-            self.spans.get(&at.offset)?,
-        ))
+        // Both hold every offset the groups name.
+        self.sprite
+            .frames
+            .get(&at.offset)
+            .zip(self.spans.get(&at.offset))
     }
 }
 

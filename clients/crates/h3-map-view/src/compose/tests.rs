@@ -633,6 +633,84 @@ fn a_view_draws_only_what_changed_and_keeps_what_a_move_keeps() {
         .map(|&(o, t)| view_at(o, t, [0, 0, 14, 12]))
         .collect();
     as_fresh(&scenes, &view_batch(), [14, 12]);
+    // A clip past the screen's sides, a gem off it and a piece with nothing to clip: what meets a
+    // cell only off the screen draws nothing.
+    let scenes: Vec<Scene> = moves
+        .iter()
+        .map(|&(o, t)| {
+            let mut s = view_at(o, t, [-1, 3, 15, 13]);
+            s.draws.push(Draw::Gem {
+                def: "gem.def".to_string(),
+                frame: 0,
+                x: 14,
+                y: 9,
+            });
+            s.draws
+                .push(piece(Pass::Path, "shroud.def", 0, 4, 4, [4, 4, 4, 6]));
+            s
+        })
+        .collect();
+    as_fresh(&scenes, &view_batch(), [14, 12]);
+}
+
+#[test]
+fn a_drawable_frame_by_its_group_and_index() {
+    let b = batch();
+    let terrain = b.drawable("Terrain.def").unwrap();
+    let (frame, spans) = terrain.frame(0, 1).unwrap();
+    assert_eq!(
+        (frame.pixels.as_slice(), spans),
+        (&[5, 6, 7, 8][..], &draw::Spans::of(frame))
+    );
+    assert!(terrain.frame(9, 0).is_none());
+    assert!(terrain.frame(0, 2).is_none());
+    assert!(b.drawable("none.def").is_none());
+}
+
+#[test]
+fn the_cells_comparisons() {
+    let gem = Draw::Gem {
+        def: "gem.def".to_string(),
+        frame: 0,
+        x: 0,
+        y: 0,
+    };
+    let terrain = piece(Pass::Terrain, "terrain.def", 0, 0, 0, ALL);
+    // A piece is no gem; a gem moved is the gem moved.
+    assert!(!same_moved(&terrain, &gem, [0, 0]));
+    let moved = Draw::Gem {
+        def: "gem.def".to_string(),
+        frame: 0,
+        x: 2,
+        y: -1,
+    };
+    assert!(same_moved(&moved, &gem, [2, -1]));
+    // A frame's picture or a dialog's item counts as changed whatever cycles.
+    assert!(uses(&frame_of_viewer(0), &[]));
+    assert!(!uses(&gem, &["terrain.def".to_string()]));
+    assert!(uses(&terrain, &["TERRAIN.DEF".to_string()]));
+    // A gem the batch lacks does not draw.
+    let b = batch();
+    let lacking = scene(vec![]);
+    let mut kept = BTreeMap::new();
+    let mut s = Screen::new(2, 2, FORMAT).unwrap();
+    let mut pen = Pen::new(&lacking, &b, &mut kept);
+    let none = Draw::Gem {
+        def: "none.def".to_string(),
+        frame: 0,
+        x: 0,
+        y: 0,
+    };
+    assert_eq!(
+        pen.draw(&mut s, &none, None),
+        Err(ComposeError::Missing("none.def".to_string()))
+    );
+    // A clip off the screen is one colour; a screen of two colours across it is not.
+    let mut s = Screen::new(2, 2, FORMAT).unwrap();
+    assert!(one_colour(&s, [5, 5, 9, 9]));
+    assert!(one_colour(&s, ALL));
+    s.set(1, 1, 7);
+    assert!(!one_colour(&s, ALL));
 }
 
 #[test]
@@ -677,8 +755,30 @@ fn a_view_draws_everything_again_when_the_rest_changes() {
         view_at([2, 1], 1, clip),
     ];
     as_fresh(&scenes, &b2, [14, 12]);
-    // A scene that fails leaves the next to draw everything again.
+    // Nothing over the background, then another flag palette: nothing to restore.
+    let mut other_flags = scene(vec![frame_of_viewer(0)]);
+    other_flags.flags = "other.pal".to_string();
+    as_fresh(
+        &[scene(vec![frame_of_viewer(0)]), other_flags],
+        &b2,
+        [14, 12],
+    );
+    // A view moved whose clip lies off the screen: nothing moves.
+    let off = [20, 3, 30, 11];
+    as_fresh(
+        &[view_at([0, 0], 0, off), view_at([1, 0], 0, off)],
+        &b2,
+        [14, 12],
+    );
+    // A scene that fails leaves the next to draw everything again: by reference, kept, after
+    // another flag palette.
     let mut composer = Composer::new([14, 12]).unwrap();
+    let mut bad = view_at([1, 0], 0, clip);
+    bad.draws.push(piece(Pass::Road, "x.def", 0, 0, 0, clip));
+    assert!(composer.compose_owned(bad.clone(), &b2).is_err());
+    composer.compose(&view_at([0, 0], 0, clip), &b2).unwrap();
+    bad.flags = "other.pal".to_string();
+    assert!(composer.compose(&bad, &b2).is_err());
     composer.compose(&view_at([0, 0], 0, clip), &b2).unwrap();
     let mut bad = view_at([1, 0], 0, clip);
     bad.draws.push(piece(Pass::Road, "x.def", 0, 0, 0, clip));
