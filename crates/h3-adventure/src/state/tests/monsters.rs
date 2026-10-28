@@ -606,7 +606,7 @@ fn a_visit_from_a_guarded_tile_tests_no_guard() {
     assert_eq!(outcome.gains.len(), 1);
     assert_eq!(
         (outcome.offer, outcome.battle, outcome.guard_after),
-        (None, None, false)
+        (None, None, None)
     );
     assert_eq!(s.hero(HeroId::new(1)).unwrap().pos, p(2, 1));
     // The other monster beside it: that monster answers, the guard does not visit after.
@@ -614,7 +614,7 @@ fn a_visit_from_a_guarded_tile_tests_no_guard() {
     let offer = outcome
         .offer
         .expect("the gnolls' answer to a stronger hero");
-    assert_eq!((offer.anchor, outcome.guard_after), (p(3, 2), false));
+    assert_eq!((offer.anchor, outcome.guard_after), (p(3, 2), None));
     assert_eq!(s.hero(HeroId::new(1)).unwrap().pos, p(2, 1));
 }
 

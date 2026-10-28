@@ -101,5 +101,6 @@ pub use state::{GameState, OpenBattle};
 /// hero's battle bonuses. v16 (E08 T62a): a gift's price and a find's question among the offer
 /// kinds. v17 (E08 T62b1): Pandora's Box's and the Pyramid's questions among the offer kinds.
 /// v18 (E08 T63a): the choices (a chest's, the Arena's, a School's) and the Universities among
-/// the decisions.
-pub const GAME_STATE_HASH_VERSION: u32 = 18;
+/// the decisions. v19 (E08 T63b): the rests (GAM-DEC-007), the guard's wait no longer in a
+/// decision.
+pub const GAME_STATE_HASH_VERSION: u32 = 19;

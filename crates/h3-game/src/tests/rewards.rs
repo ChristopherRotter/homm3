@@ -547,9 +547,24 @@ fn a_guard_waits_for_a_choice_or_a_university_and_follows_a_gift() {
     let events = visit(&mut state, &rules);
     assert!(matches!(events[0], GameEvent::OfferRefused { .. }) && starts_battle(&events));
     // A gift without a decision: its experience, then the guard's battle (before E08 T63a the
-    // monster's answer dropped the hero's gains).
+    // monster's answer dropped the hero's gains), once the level-up it brings is answered (before
+    // E08 T63b the battle opened beside it, its hero read before the level).
     let mut state = with_guard("t:in_stone");
     let events = visit(&mut state, &rules);
     assert!(events.contains(&changed(HeroChange::GainExperience(1000))));
+    assert!(
+        state.level_up(RED).is_some() && !starts_battle(&events),
+        "{events:?}"
+    );
+    let first = Answer::LevelUp(SkillOffer::First);
+    let events = play(&mut state, &rules, RED, answered(first)).unwrap();
     assert!(starts_battle(&events), "{events:?}");
+    let primary = state.hero(HERO).unwrap().primary;
+    let fought = state
+        .battle(RED)
+        .unwrap()
+        .state()
+        .hero(BattleSide::Attacker);
+    let fought = fought.map(|h| [h.attack, h.defense, h.power, h.knowledge]);
+    assert_eq!(fought, Some(primary));
 }

@@ -1315,6 +1315,7 @@ impl AdventureState {
                 ..self.fire_event(rules, (player, id), (event, at), sink)
             });
         }
+        let visited = visit.is_some();
         let outcome = match visit {
             None => AdventureOutcome::default(),
             Some(Meets::Object(visit)) => self.visit(rules, (player, id), visit, sink),
@@ -1330,26 +1331,19 @@ impl AdventureState {
                 ..AdventureOutcome::default()
             },
         };
-        // The guard visits after the tile's own object (ADV-MON-006); after the answer to its
-        // offer (E08 T20b1), its choice or its University (T63a) when it made one. Otherwise the
-        // monster's answer (an offer or a battle) follows what the object gave (its resources,
-        // losses and hero's gains; E08 T63a: before it the monster's answer replaced all but the
-        // resources). A step that does not enter tests no guard (T20b3a).
+        // The guard visits after the tile's own object (ADV-MON-006): once the object's visit is
+        // over, with everything it opened (E08 T63b: the game holds it as a rest of the visit,
+        // GAM-DEC-007; before it the guard came after an offer's answer, E08 T20b1, a choice's or
+        // a University's, T63a, or at once beside what the visit gave). On a tile without an
+        // object the guard's visit is the step's. A step that does not enter tests no guard
+        // (T20b3a).
         Ok(match guard {
             None => outcome,
-            Some(_) if outcome.waits() => AdventureOutcome {
-                guard_after: true,
+            Some(_) if visited => AdventureOutcome {
+                guard_after: Some(id),
                 ..outcome
             },
-            Some(guard) => {
-                let answer = self.visit_monster(rules, id, guard);
-                AdventureOutcome {
-                    gains: outcome.gains.into_iter().chain(answer.gains).collect(),
-                    losses: outcome.losses,
-                    hero: outcome.hero,
-                    ..answer
-                }
-            }
+            Some(guard) => self.visit_monster(rules, id, guard),
         })
     }
 

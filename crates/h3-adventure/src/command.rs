@@ -152,13 +152,14 @@ pub struct AdventureOutcome {
     /// The battle the command's visit starts, if any: another player's hero's (GAM-BAT-004, E08
     /// T19a), which the game opens at once (ADR-0017 point 11).
     pub battle: Option<BattleStart>,
-    /// Whether the visit of a monster guarding the hero's tile waits for the answer to
-    /// [`Self::offer`] (ADV-MON-006, E08 T20b1), or since E08 T63a to [`Self::choice`] or the
-    /// leaving of [`Self::university`]: the step entered a guarded tile whose own object made it.
-    /// The original asks the object's question first and tests the guard after it; a player has
-    /// at most one open decision (ADR-0017 point 6), so the game asks
-    /// [`crate::AdventureState::visit_guard`] once the decision closes, or when it does not open.
-    pub guard_after: bool,
+    /// The hero whose tile's guard visits after this outcome (ADV-MON-006; E08 T20b1, since E08
+    /// T63b for every visited object): the step entered a guarded tile and visited the tile's own
+    /// object. The original tests the guard once the object's visit returns, after its questions,
+    /// choices and dialogs, its guards' battle and the levels they gave; a player has at most one
+    /// open decision (ADR-0017 point 6), so the game holds the guard's visit as a rest of the
+    /// visit (GAM-DEC-007) and asks [`crate::AdventureState::visit_guard`] once the player has no
+    /// open decision, at once when the outcome opens none.
+    pub guard_after: Option<HeroId>,
     /// The meeting the command's step toward an own hero makes (GAM-MET-001, E08 T50): the game
     /// opens it as the owner's decision (T51b).
     pub meeting: Option<Meeting>,
@@ -182,15 +183,6 @@ pub struct AdventureOutcome {
     /// The steps of the move's path not taken (ADV-MOV-011, E08 T62b2): an event fired on the
     /// tile of an earlier step and ended the move there; 0 for every other outcome.
     pub dropped: usize,
-}
-
-impl AdventureOutcome {
-    /// Whether the outcome opens a decision of its player that the visit of a monster guarding
-    /// the hero's tile waits for (ADV-MON-006): an offer (E08 T20b1), a choice or a University
-    /// (E08 T63a).
-    pub(crate) const fn waits(&self) -> bool {
-        self.offer.is_some() || self.choice.is_some() || self.university.is_some()
-    }
 }
 
 /// What a visit gives its hero (ADR-0017 point 10, increment 7; E08 T62a): each change passes
