@@ -1412,7 +1412,9 @@ the widening computed once. `map-measure.cmd` gained a hands-off run on *Tale of
   pixels widened one by one, every change the headless loop's; `clients/scripts/check.sh`.
 - **Measured:** callgrind on `path-objects` 101 → 25.2 million instructions a frame; the
   sandbox's medians `walk-1` 6.4 → 1.3 ms, `path-objects` 10.8 → 4.5, *Tale of two lands* 14.3 →
-  4.2. The user's machine: before (`map-measure-t2b-before.txt`) a median 4.2 ms on `walk-1`, 3.3
-  (p95 11.3) on *Tale of two lands*, 3.3 (p95 7.3) on `path-objects` with input.
+  4.2. The user's machine (`map-measure-t2b-before.txt`, `map-measure-t2b1.txt`): a median 4.2 →
+  0.7 ms on `walk-1`, 3.3 → 2.3 on *Tale of two lands* (p95 11.3 → 2.7), 3.3 → 0.2 on
+  `path-objects` with input (p95 7.3 → 2.5; the check's run 3.4 → 1.7); every frame exact.
+  Merged as #557 (after `master`'s #556, its inbox note beside ours).
 - **The user's finding:** the Gold Dragon's head under the Dragon Utopia on `path-objects`: the
   original's own drawing (the start view's still is exact), **MCL-Q13** (keep, recommended).
