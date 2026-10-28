@@ -2173,6 +2173,121 @@ again; built: `h3_view::book`, `ui`'s new kinds, the layout's `[book]`, the bina
   page turn's video; the aim (T3b); the book on the adventure map; an unattended run's casts
   through the book (they are given without a press).
 
+### 7.18 The hero's aim (M5 T3b)
+
+T3b whole (the user, 2026-10-28, against a cut into the aim and the Faerie Dragon's key). Read:
+`enter_player_cast` 0x59EC50's handlers and end, its loop (the modal loop 0x602520 with the
+handler 0x5A3070), `spell_target_cursor` 0x59F700, the cast's line 0x5A8690, the refusal's
+`spell_fails_message` 0x5A2880 (through 0x5A2C60), the area's marks 0x59F8A0 and
+`set_area_mark` 0x43EFE0, `mouse_set_cursor` 0x50CCA0 and `mouse_poll` 0x50D680 for the spell
+cursor, the callers' ends (the book's command 0x474F6D, the key F 0x475C17 to 0x475CF3), the
+cast action's start (0x479036, `battle_stand_fidgets` 0x479DE0, `battle_refresh_creatures`
+0x495BF0). Built: `h3_view::mouse::aim`, the aim in `mouse::track` (`Input::Aim`, `Cancel`,
+`Book` taking the moves), `Shown`'s spell cursor, area marks and aimed hex, `Moment::area`; the
+binary's `aims` (the engine's part), the window's aim, the key F, the right button
+(`h3_sdl::Key::RightButton`), unattended casts pressed through the book and the aim.
+
+- **Entering it** (0x59EC50): nothing while the acting side's hero has cast this round (+0x54B4,
+  0x59EC76). The action and its fields cleared (+0x3C, +0x40 to +0x48); the mastery the acting
+  side's hero's (0x59ECB4, read with no test that there is a hero). By the spell's number
+  (0x59F6AC): Quicksand and Land Mine cast at once; Earthquake at once in a siege, else a
+  message; the stack spells (15 to 19, 24 to 39, 41 to 58, 60 to 62) scan the field's inner hexes
+  for one the target test 0x5A39C0 accepts (Chain Lightning leaving out the side's own stacks),
+  none: "That spell will affect no one!" (GENRLTXT 186, a message box); a mass spell at the
+  mastery (0x59E060) cast at once; else the aim. The area spells (20 to 23 and Berserk) aim at
+  once (no scan). Force Field and Fire Wall (0x5A3250), Teleport (0x5A3570, 0x5A37D0) and
+  Sacrifice (0x5A2D00, 0x5A2E90) have aims of their own (not read); Remove Obstacle and Clone the
+  common one after their tests; the Summons cast at once. Every end sets the combat cursor's
+  frame 6 (0x59F65C). The action is 1 (the hero's) or 10 (a creature's: the second argument).
+- **The aim** (0x602520 with 0x5A3070): the input queue flushed as it starts; each turn of the
+  loop the mouse polled and the handler called with the next message or none, and the handler
+  first runs the battle's tick (0x474040): the battle idles (fidgets, the outline's pulse) while
+  aimed. A move takes the screen's hex (`screen_to_hex`: the heroes' rectangles 0xFC and 0xFD,
+  nothing −1) and calls the cursor only when it differs from the hex the cursor last took
+  (0x688324, −1 none). The cursor is called once as the aim starts, at the mouse's point
+  (0x50D500), its answer not kept: a click before the next move casts nothing. A left press
+  casts at the hex last taken (none: nothing, the aim goes on); Escape (scan code 1) or the right
+  button gives the aim up. Either end takes every stack's area mark off and forgets the hex.
+- **The cursor** (0x59F700) at a hex of the field outside the side columns the target test
+  accepts (and for Chain Lightning no own stack there): `SetCursor(spell + 1, 3)`, the cast's
+  line, then the stack there marked (`battle_mouse_stack`: outline 0x70, its group 1) or, for an
+  area spell (the spell record's flags 0x280: Frost Ring, Fireball, Inferno, Meteor Shower; and
+  Berserk), the area's marks. Elsewhere `SetCursor(0, 2)` (the combat cursor's frame 0), the
+  refusal as the line, the mouse's stack unmarked (`battle_clear_highlight` with a redraw) and an
+  area spell's marks for that hex too (a side column's hex marks its area's stacks).
+- **The spell cursor** (`crspell.DEF`, 20 frames, every hot spot (18, 27)): the mouse manager
+  draws a type-3 cursor's frame 0 whatever frame is asked (0x50CD41) and keeps 0 as the frame
+  shown, so a later `SetCursor(spell + 1, 3)` starts it again unless the frame then shown is
+  spell + 1. The poll (0x50D804) steps it a frame on, round its 20, on a second grid of 100 ms
+  (0x69CA1C, its next time moved on by max(the time since, 100)); the harness sets that grid from
+  the opening as it does the 33 ms one (E17 M5 T3b, `h3mem.align_mouse_poll`).
+- **The cast's line** (0x5A8690, not forced; none while the battle is hidden): "Cast %s" (27)
+  for Force Field, Fire Wall and the four area spells; Resurrection and Animate Dead "Cast %s on
+  %s" (28) with the stack they raise there, by its number (+0x4C: one the singular, else the
+  plural), else 27; Sacrifice 549 and 550, Teleport's second hex 26 (their aims); Remove
+  Obstacle "Remove this obstacle" (551); any other 28 with the living stack there, else 27.
+- **The refusal** (0x5A2880 with "Select Spell Target", 24): for a spell aimed at a stack (flags
+  0x70) with a stack on the hex, in order: Anti-Magic (+0x220 and a level below +0x460) "%s
+  protects the %s" (171: Anti-Magic's name, the stack's by its number); a hostile spell (the
+  record's +0 below 0) at an own stack, "%s can only be cast on hostile creatures" (172); a
+  friendly one at an enemy, "... friendly creatures" (178); the creature's factor 0 (0x44A4D0):
+  Resurrection, Animate Dead and Sacrifice "%s does not work on %s" (180), any other "%s are
+  immune to %s" (181), both with the plural name; else 24. Force Field and Fire Wall: 182.
+- **The area's marks** (0x59F8A0): the stacks of the area (`area_stacks` 0x5A46F0: radius 2 for
+  Inferno, else 1, the centre left out for Frost Ring; Berserk's by the mastery, 0x5A4810), each
+  living stack the spell may affect (0x5A8090 above 0) given the mark +0x4F1 (0x43EFE0): newly
+  marked it starts its group 1 as the mouse's stack does; marked, its outline is the mouse's 0x70
+  even when it is the active stack (0x43E268). With the option 0x6987C0 (off in the harness) the
+  area's other hexes are shaded too (0x493EA0, not read).
+- **After it:** the book's command (0x474F72): the mouse's hex forgotten (+0x132D4 −1) and the
+  mouse posted where it rests (0x4ECC00), so a given-up aim shows the battle's cursor and hint
+  there at once; after a cast the post waits in the queue and the next turn drops it. The key F
+  (0x475CE8) makes a 1 into 10 and posts nothing: after a given-up aim the cursor stays the
+  pointer (frame 6) and the line the aim's until the mouse moves to another hex than the battle
+  last took (CLT-Q27).
+- **The Faerie Dragon's key F** (0x475C17, key code 33): outside the tactics phase, for an
+  active creature 134 with casts left (+0xDC), its drawn spell (+0x4E0) through the same aim as a
+  creature's (installation.md §7.21); nothing once the side's hero has cast this round. The
+  client offers the engine's targets (`creature_cast_targets`: the stacks the spell may affect,
+  BAT-MAG-049; the legal list holds no cast); the original's key aims an area spell at any inner
+  hex (BAT-Q32, open).
+- **`cast`'s 71 pixels** (M3 T7b-1's listed difference, there taken for the cast's start): the
+  book's closing, not the cast. `spell-aim` (the same battlefield) shows the same 71 pixels (x
+  342–352, y 287–298: the top of the rock, obstacle 22, as the terrain) from its book's closing at
+  0 ms until the redraw of the Marksmen's fidget at 200 ms; in `cast` the click in the same
+  millisecond starts the cast, whose redraw (`battle_stand_fidgets` 0x479DE0: the background
+  restored in `battle_refresh_creatures` 0x495BF0's rectangle, each item meeting it drawn whole)
+  covers them at once. A redraw artifact of the original's buffers (§7.11: what the back buffer
+  holds under the dialog comes back; not read further), not copied (the user, 2026-10-14):
+  listed, as the projectile's hole in the rocks.
+- **Checked:** `spell-aim` (`sequences.toml`) recorded: its timeline (42 changes) as recorded;
+  62 frames, 59 exact (the spell cursor's frames and restarts, the cast's lines and the
+  refusals, the area's outline and fidget, the Escape's posted move, the cast), the other 3 the
+  book's 71 pixels (above). In the window (Xvfb, `xdotool`): C, Fireball's place, the Wolf
+  Riders' area, the side column, Escape; Magic Arrow's place, a press there (nothing), the
+  Champions (nothing), the right button; again, the Wolf Riders and the press: the cast; a
+  Faerie Dragon's F and its Ice Bolt pressed on a Swordsmen stack. Unattended runs with a bot
+  made to cast for the check (not kept): `spell-aim`'s scenario, `seq-dragon` and `seq-arrow`
+  with both sides human, every cast pressed through the book and the aim or F, every frame read
+  back exact.
+- **Built:** `h3_view::mouse::aim` (`Aim`: the engine's targets, the area, whether it is aimed at
+  a stack, the original's number, polarity and level, Anti-Magic's handle; `takes`, `line`,
+  `refusal`, `marks`; `screen_hex`), `track` (the aim's state: its last hex, the spell cursor's
+  start, the area's marks; `Input::Aim` with `creature`, `Input::Cancel`; the book's moves not
+  taken by the battle), `Shown::look`, `area`, `aimed`, `Moment::area` (the outline), the layout's
+  spell cursor; the binary's `aims` (the hero's targets from `cast_targets`, the dragon's from its
+  legal casts, the area from the ruleset's `area`, a stack spell by its `target` and `mass_from`;
+  the original's numbers from the asset tables), `Turned`'s aims, `Battle`'s aim (the book's
+  choice, the key F, the press, the cancel), the window's keys (Escape and the right button give
+  it up, F11 for full screen), an unattended run's casts pressed through the book (turned to the
+  spell's page) and the aim. *Provisional:* the refusal's immunity (the client takes any refusal
+  the engine makes that the other reasons do not explain for it), the area's marks of stacks the
+  spell would not affect, Berserk's area in the side columns.
+- **Not modelled:** the aims of Force Field, Fire Wall, Teleport and Sacrifice (the book closes
+  on them and casts nothing); the message boxes (T4); the area's shading (an option off in the
+  harness); the Faerie Dragon's cast by the mouse (its cursor kind 20: once its side's hero has
+  cast, the key does nothing, as the original's, and the window gives no cast then).
+
 ## 8. The window, input and audio evaluation (M2 T2)
 
 ADR-0020 point 4 left the library to a measured evaluation at M2; the choice, the user's

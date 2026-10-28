@@ -7,7 +7,7 @@ use std::collections::BTreeMap;
 use std::fs;
 use std::path::Path;
 
-use h3_battle::{BattleSetup, BattleState, NoopSink, Viewer};
+use h3_battle::{BattleSetup, BattleSide, BattleState, NoopSink, Viewer};
 use h3_content::{CompiledHeroEffect, HeroEffect};
 use h3_content_battle::BattleRuleset;
 use h3_contracts::{BattleEffect, FortLevel, MachineControl};
@@ -16,6 +16,7 @@ use h3_pack_battle::ScenarioDef;
 use h3_protocol::session::{ConnId, GameConfig, SeatKind, Session};
 use h3_protocol::wire::{ClientMessage, Command, Manifest, Observation, Seat, ServerMessage};
 use h3_protocol::{codec, map};
+use h3_view::mouse::aim::Aim;
 
 /// The game's id in the in-process session.
 const GAME: u32 = 1;
@@ -456,23 +457,61 @@ pub fn opening_legal(scenario: &Path, packs: &Path, seed: u64) -> Result<Vec<Com
         .unwrap_or_default())
 }
 
+/// A turn of a battle as the mouse asks it (E17 M3 T6c-2; M5 T3b): a spectator's observation,
+/// the side to act's legal commands and the spells it may aim there (their engine parts,
+/// [`crate::aims`]).
+#[derive(Debug, Clone, PartialEq)]
+pub struct Turned {
+    /// The spectator's observation.
+    pub observation: Observation,
+    /// The side to act's legal commands.
+    pub commands: Vec<Command>,
+    /// The spells it may aim: its hero's of the ones asked, its Faerie Dragon's drawn one.
+    pub aims: Vec<Aim>,
+}
+
+impl Turned {
+    /// The turn of the side `side` to act in `state`, its hero's aims of `spells`.
+    pub fn of(
+        state: &BattleState,
+        ruleset: &BattleRuleset,
+        side: BattleSide,
+        spells: &[u16],
+    ) -> Self {
+        let observation = map::observe(state, ruleset, Viewer::Spectator);
+        let commands = map::legal_commands(state, ruleset, side);
+        let own = map::observe(state, ruleset, Viewer::Side(side));
+        let mut aims: Vec<Aim> = spells
+            .iter()
+            .filter_map(|&spell| crate::aims::hero(state, ruleset, side, spell))
+            .collect();
+        aims.extend(crate::aims::dragon(state, ruleset, side, &own));
+        Self {
+            observation,
+            commands,
+            aims,
+        }
+    }
+}
+
 /// The battle `scenario` sets up with `seed` before each of `commands` and after the last, while
 /// a side is to act (E17 M3 T6c-2: what the mouse's cursor asks at each turn): a spectator's
-/// observation and the legal commands of the side to act. A rejected command is an error.
+/// observation and the legal commands of the side to act, with the aims of `spells` (E17 M5 T3b).
+/// A rejected command is an error.
 pub fn turned(
     scenario: &Path,
     packs: &Path,
     seed: u64,
     commands: &[(Seat, Command)],
-) -> Result<Vec<(Observation, Vec<Command>)>, String> {
+    spells: &[u16],
+) -> Result<Vec<Turned>, String> {
     let (ruleset, setup) = battle(scenario, packs, seed)?;
     let mut state =
         BattleState::new(&ruleset, &setup, seed).map_err(|e| format!("the setup: {e:?}"))?;
     let mut out = Vec::new();
     let mut commands = commands.iter();
     while let Some(side) = state.side_to_act() {
-        let observation = map::observe(&state, &ruleset, Viewer::Spectator);
-        out.push((observation, map::legal_commands(&state, &ruleset, side)));
+        out.push(Turned::of(&state, &ruleset, side, spells));
         let Some(&(_, command)) = commands.next() else {
             break;
         };

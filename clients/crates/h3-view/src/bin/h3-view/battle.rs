@@ -15,7 +15,7 @@ use std::path::PathBuf;
 use h3_battle::BattleSetup;
 use h3_content_battle::BattleRuleset;
 use h3_formats::lod::LodArchive;
-use h3_protocol::wire::{Command, Observation, ServerMessage};
+use h3_protocol::wire::{Command, ServerMessage};
 use h3_render::Bugs;
 use h3_render::screen::Screen;
 use h3_view::anim::Timeline;
@@ -25,6 +25,7 @@ use h3_view::battle_log::Logged;
 use h3_view::compose::compose;
 use h3_view::hero::Heroes;
 use h3_view::layout::{self, BattleLayout};
+use h3_view::mouse::aim::Target;
 use h3_view::mouse::track::{Input, Shown};
 use h3_view::mouse::{self, Field};
 use h3_view::record::{self, Record};
@@ -236,7 +237,7 @@ pub struct Battle<'g> {
     /// The panel over the battle: its turns and its log (E17 M3 T6b).
     pub panels: Panels,
     /// The battle and its legal commands at each turn (a fought scenario's; none for a record).
-    turned: Vec<(Observation, Vec<Command>)>,
+    turned: Vec<crate::scenario::Turned>,
     /// The assets the frames drew so far.
     batch: Batch,
     /// The mouse over the battle: its moves and what they showed.
@@ -252,7 +253,14 @@ pub struct Battle<'g> {
     book: Option<(h3_view::book::Open, u32, u8)>,
     /// What the book remembers between openings (the original's globals: one per game).
     book_memory: h3_view::book::Memory,
+    /// The spell aimed (E17 M5 T3b): its handle and whether a creature casts it (the Faerie
+    /// Dragon's key F), from the book's or the key's choice to the click's cast or a cancel.
+    aiming: Option<(u16, bool)>,
 }
+
+/// The original's spells aimed at a second target too (Sacrifice, Teleport): their aims are not
+/// built (E17 M5 T3b).
+const SECOND_TARGET: [u16; 2] = [40, 63];
 
 /// A cursor's look (E17 M5 T3a): its DEF, its frame and the frame's hot spot (the combat cursor
 /// over the battle, the default one the spell book sets).
@@ -275,6 +283,8 @@ pub enum BookDid {
     Changed,
     /// The book closed on a spell without a target: the cast to give.
     Cast(Command),
+    /// The book closed on a spell that takes a target: its aim starts (E17 M5 T3b).
+    Aim(u16),
 }
 
 impl<'g> Battle<'g> {
@@ -360,6 +370,7 @@ impl<'g> Battle<'g> {
             pressed: None,
             book: None,
             book_memory: h3_view::book::Memory::default(),
+            aiming: None,
         };
         battle.follow()?;
         Ok(battle)
@@ -614,11 +625,24 @@ impl<'g> Battle<'g> {
             };
         }
         let mouse = &self.ground.layout.mouse;
-        let frame = self.shown.frame(t).unwrap_or(mouse.panel_frame);
-        CursorLook {
-            def: mouse.cursor.clone(),
-            frame,
-            hot: hot_of(&mouse.hot, frame),
+        match self.shown.look(t, mouse) {
+            // The spell cursor while an aim takes the hex (E17 M5 T3b).
+            Some(mouse::track::Look::Spell(frame)) => CursorLook {
+                def: mouse.spell_cursor.clone(),
+                frame,
+                hot: mouse.spell_hot,
+            },
+            look => {
+                let frame = match look {
+                    Some(mouse::track::Look::Combat(frame)) => frame,
+                    _ => mouse.panel_frame,
+                };
+                CursorLook {
+                    def: mouse.cursor.clone(),
+                    frame,
+                    hot: hot_of(&mouse.hot, frame),
+                }
+            }
         }
     }
 
@@ -686,17 +710,117 @@ impl<'g> Battle<'g> {
                     target: h3_protocol::wire::Target::None {},
                     second: h3_protocol::wire::Target::None {},
                 };
-                let takes = self
-                    .live
-                    .as_ref()
-                    .is_some_and(|live| live.casts_untargeted(spell));
-                if takes {
-                    BookDid::Cast(untargeted)
-                } else {
-                    BookDid::Changed
+                let Some(live) = self.live.as_ref() else {
+                    return BookDid::Changed;
+                };
+                if live.casts_untargeted(spell) {
+                    return BookDid::Cast(untargeted);
+                }
+                // A spell with a second target (Teleport, Sacrifice) has aims of its own (not
+                // built); one the engine casts at nothing shows a message (T4's).
+                let keys = &self.record.header.manifest.keys.spells;
+                let second = motion::spell_entry_in(keys, &self.ground.tables, spell)
+                    .is_some_and(|e| SECOND_TARGET.contains(&e.original));
+                match live.hero_aim(spell).filter(|_| !second) {
+                    Some(aim) => {
+                        if let Some(turn) = self.turned.last_mut() {
+                            turn.aims.retain(|a| a.spell != spell || a.creature);
+                            turn.aims.push(aim);
+                        }
+                        self.aiming = Some((spell, false));
+                        BookDid::Aim(spell)
+                    }
+                    None => BookDid::Changed,
                 }
             }
         }
+    }
+
+    /// The Faerie Dragon's key F at `at` (E17 M5 T3b; `battle_buttons` 0x475C17): its drawn
+    /// spell's aim starts while the battle waits for a human whose acting stack may cast it
+    /// (`enter_player_cast` returns at once once its side's hero cast this round: the engine
+    /// lists no cast then). The spell aimed, if any.
+    pub fn dragon_aim(&mut self, at: u32) -> Option<u16> {
+        if self.aiming.is_some() || self.book.is_some() || !self.takes(at) {
+            return None;
+        }
+        let turn = self.turned.last()?;
+        // The acting side's hero cast this round: the key does nothing (0x59EC76).
+        let o = &turn.observation;
+        let side = o
+            .active
+            .and_then(|id| o.stacks.iter().find(|s| s.id == id))
+            .map(|s| usize::from(s.controller == h3_protocol::wire::Side::Defender))?;
+        if o.sides[side].hero.as_ref().is_some_and(|h| h.casts > 0) {
+            return None;
+        }
+        let spell = turn.aims.iter().find(|a| a.creature)?.spell;
+        self.aiming = Some((spell, true));
+        Some(spell)
+    }
+
+    /// The screen's centre of the open book's place showing `spell`, if its page shows it (E17
+    /// M5 T3b: an unattended run's press).
+    pub fn book_place_of(&self, spell: u16) -> Option<[i32; 2]> {
+        let (open, _, _) = self.book.as_ref()?;
+        let k = open
+            .page
+            .places
+            .iter()
+            .position(|p| p.as_ref().is_some_and(|p| p.handle == spell))?;
+        Some(crate::pointer::book_place(u8::try_from(k).ok()?))
+    }
+
+    /// Whether the open book's page has a next one.
+    pub fn book_next(&self) -> bool {
+        self.book
+            .as_ref()
+            .is_some_and(|(open, _, _)| open.page.next)
+    }
+
+    /// The hex of the stack `id` in the battle waiting (its position).
+    pub fn stack_hex(&self, id: u8) -> Option<u8> {
+        let turn = self.turned.last()?;
+        Some(turn.observation.stacks.iter().find(|s| s.id == id)?.hex)
+    }
+
+    /// Whether a spell is being aimed (E17 M5 T3b).
+    pub fn aiming(&self) -> bool {
+        self.aiming.is_some()
+    }
+
+    /// The aim given up (Escape, the right button; E17 M5 T3b).
+    pub fn cancel_aim(&mut self) {
+        self.aiming = None;
+    }
+
+    /// A left press at `at` while a spell is aimed (E17 M5 T3b; 0x5A30E4): the cast at the hex the
+    /// last move's cursor took, none over a hex it does not take (the aim goes on).
+    pub fn aim_press(&mut self, at: u32) -> Option<Command> {
+        let (spell, creature) = self.aiming?;
+        let hex = self.shown.aimed(at)?;
+        let command = self.taken(at, |field| {
+            let aim = field
+                .legal
+                .aims
+                .iter()
+                .find(|a| a.spell == spell && a.creature == creature)?;
+            let target = match aim.target(field, hex)? {
+                Target::Stack(stack) => h3_protocol::wire::Target::Stack { stack },
+                Target::Hex(hex) => h3_protocol::wire::Target::Hex { hex },
+            };
+            Some(if creature {
+                Command::CreatureCast { target }
+            } else {
+                Command::Cast {
+                    spell,
+                    target,
+                    second: h3_protocol::wire::Target::None {},
+                }
+            })
+        })?;
+        self.aiming = None;
+        Some(command)
     }
 
     /// A key down while the book is open (its name, as the book's: `C`, `Escape`, `Return`,
@@ -760,6 +884,7 @@ impl<'g> Battle<'g> {
         // The stack the mouse marks (E17 M3 T6c-2).
         let mut moment = moment.clone();
         moment.marked = self.shown.marked(t);
+        moment.area = self.shown.area(t).to_vec();
         let mut list = scene::battle_at(
             snapshot,
             &moment,
@@ -861,10 +986,12 @@ impl<'g> Battle<'g> {
         if self.live.is_none() || !self.takes(at) {
             return None;
         }
-        let (observation, commands) = self.turned.last()?;
+        let turn = self.turned.last()?;
+        let observation = &turn.observation;
         let tables = &self.ground.tables;
         let manifest = &self.record.header.manifest;
-        let legal = crate::pointer::legal(manifest, tables, observation, commands);
+        let legal =
+            crate::pointer::legal(manifest, tables, observation, (&turn.commands, &turn.aims));
         let facing = crate::pointer::facing(self.timeline(), at);
         give(&Field {
             observation,

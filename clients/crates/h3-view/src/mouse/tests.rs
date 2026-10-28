@@ -8,9 +8,11 @@ use alloc::vec::Vec;
 use h3_protocol::wire::{Command, Hero, Observation, Side, Siege, Stack, Tactics};
 use h3_render::Bugs;
 
+use super::track::Look;
 use super::{
     DEFEND, Facing, Field, Hint, Kind, Legal, Pointer, Slot, Spot, WAIT, attack_slots, button,
-    click, distance, neighbour, pointer, pointer_in, slot, slots, spot, walls_halve,
+    click, cursor, distance, look_cursor, neighbour, pointer, pointer_in, slot, slots, spot,
+    walls_halve,
 };
 use crate::layout::{BattleLayout, parse_battle};
 use crate::record::tests::observation;
@@ -32,7 +34,14 @@ const PACK: &str = r#"{
             "no-shots": "Empty!",
             "cast-on": "Zap {{creature}} with {{spell}}",
             "cast": "Zap {{spell}}",
-            "turret": "Tower."
+            "turret": "Tower.",
+            "remove-obstacle": "Clear.",
+            "select-target": "Pick.",
+            "protects": "{{spell}} keeps {{creature}}",
+            "hostile-only": "{{spell}}: foes",
+            "friendly-only": "{{spell}}: friends",
+            "not-on": "{{spell}} not on {{creature}}",
+            "immune": "{{creature}} shrug {{spell}}"
         },
         "control": { "wait": "Hold" }
     },
@@ -402,6 +411,17 @@ fn hints_are_worded_by_the_catalogue() {
     assert_eq!(text(Hint::Cast(54, None)), "Zap Slow");
     assert_eq!(text(Hint::Cast(7, None)), "Zap ");
     assert!(!Hint::Cast(54, Some(1)).forced());
+    // E17 M5 T3b: the aim's other lines; the reasons name a stack by its number (Anti-Magic's)
+    // or by its plural name whatever its number, a stack without a name by nothing.
+    assert_eq!(text(Hint::RemoveObstacle), "Clear.");
+    assert_eq!(text(Hint::SelectTarget), "Pick.");
+    assert_eq!(text(Hint::Protects(54, 1)), "Slow keeps Ants");
+    assert_eq!(text(Hint::HostileOnly(54)), "Slow: foes");
+    assert_eq!(text(Hint::FriendlyOnly(7)), ": friends");
+    assert_eq!(text(Hint::NotOn(54, 1)), "Slow not on Ants");
+    assert_eq!(text(Hint::Immune(1, 54)), "Ants shrug Slow");
+    assert_eq!(text(Hint::Immune(2, 54)), " shrug Slow");
+    assert_eq!(text(Hint::Immune(9, 54)), " shrug Slow");
     assert_eq!(text(Hint::Move(0)), "Walk Ants.");
     assert_eq!(text(Hint::Fly(0)), "Fly Ants.");
     assert_eq!(text(Hint::Attack(1)), "Hit Ants");
@@ -416,6 +436,26 @@ fn hints_are_worded_by_the_catalogue() {
     assert_eq!(text(Hint::View(2)), "See .");
     assert_eq!(text(Hint::View(9)), "See .");
     assert!(!Hint::Move(0).forced());
+}
+
+#[test]
+fn a_look_draws_its_cursor() {
+    // E17 M5 T3b: the combat cursor's frame with its hot spot, the spell cursor's with its one.
+    let l = layout();
+    assert_eq!(
+        look_cursor(&l, Look::Combat(6), [5, 7]),
+        cursor(&l, 6, [5, 7])
+    );
+    assert_eq!(
+        look_cursor(&l, Look::Spell(3), [5, 7]),
+        Draw::Cursor {
+            def: "CRSPELL.DEF".into(),
+            frame: 3,
+            x: 5,
+            y: 7,
+            hot: [18, 27],
+        }
+    );
 }
 
 /// A siege of a town of `fort` (E17 M4 T2c-2): the attacker's Catapult (4, its war machine on

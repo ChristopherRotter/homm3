@@ -222,7 +222,8 @@ python3 capture/h3drive.py sequences [--only walk]
 
 `sequence` opens the battle, steps the clock `--pre` ms, performs the actions at the frozen clock
 (`hex:<n>` clicks a hex at `hex_point`, `key:d` defends, `click:x,y`, `move:x,y`, `step:<ms>`,
-`cast:<k>[:<hex>]` casts a spell from the hero's book, below) and
+`cast:<k>[:<hex>]` casts a spell from the hero's book, below; `aim:<k>:<n>` aims one, E17 M5
+T3b) and
 then steps 1 ms at a time, reading the game's state after each step: `<out>/states.jsonl` (every
 state, with `--screen` a digest of the battlefield's pixels) and `<out>/timeline.txt` (one line per
 change of a stack's group, frame or hex, by the original's records: each side's army, then its
@@ -239,6 +240,11 @@ situation` refuses other mana, writes the book into slot 17 and numbers its spel
 (0 to 11: row by row, the left page first; the first opening shows the combat spells of all
 schools, sorted by level, then school, then name) and then the target hex if the spell takes one.
 A Faerie Dragon casts its drawn spell by a click on its target (`hex:<n>`: the cursor's cast).
+`aim:<k>:<n>` (E17 M5 T3b, design §7.18) opens the book and clicks its place `k`, whose spell
+(numbered `n` in the original: the viewer's, the harness ignores it) takes a target: the aim is
+left under way with the mouse at the place, for `move:`, `at:` (its frames: the spell cursor's
+step every 100 ms, on a grid `align_mouse_poll` sets from the opening as the poll's), `key:Escape`
+(given up) or `hex:<n>` (cast).
 `--heroes` (an entry's `heroes = true`) adds each change of a hero's group or frame to the
 timeline (`<ms> hero <side> g<group> f<frame>`): a hero's cast. `--screens` (an entry's
 `screens = true`, M3 T7a-2b) ends each time whose screen differs from the step before with

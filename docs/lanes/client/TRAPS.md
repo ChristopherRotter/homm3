@@ -49,6 +49,13 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   `own_hero`. Casts are not in the engine's legal list: ask `h3_battle::cast_targets`
   (`Live::casts_untargeted`). A situation's `actions` run at the frozen clock: after a `move:` the
   original's cursor stays where it was until the clock steps (compare from 100 ms).
+- A spell's aim (E17 M5 T3b) is a modal loop of its own: while `Battle::aiming` the window
+  takes only moves, a press (the cast at the hex the last move's cursor took, `Shown::aimed`),
+  Escape and the right button (`Key::RightButton`), the viewer's own keys still; the battle
+  idles behind it. The book takes the mouse's moves as `Input::Book` to `Aim`, `Act` or `Cancel`
+  (the battle takes none meanwhile), so a sequence's `cast:`/`aim:` start with `Book`. The aims'
+  targets are the engine's, computed where the battle is (`scenario::Turned::of`, `Live`): a
+  turn's `aims` hold only the spells asked (the window adds the book's choice as it closes).
 - `h3_formats`' `c_string` takes printable ASCII alone: an executable string with line breaks
   (the book's place formats) is read by the client's `text::exe_string`.
 - The viewer reads `clients/layouts/*.toml` at run time: a layout change made while a batch

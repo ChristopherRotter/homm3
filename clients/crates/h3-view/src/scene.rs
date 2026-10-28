@@ -68,6 +68,9 @@ pub struct Moment {
     /// The stack the mouse marks (E17 M3 T6c-1, `crate::mouse`): its outline the mouse's unless
     /// it is the active stack (0x43E23A to 0x43E261, §4.2).
     pub marked: Option<u8>,
+    /// The stacks an area spell's aim marks (E17 M5 T3b, +0x4F1): their outline the mouse's, the
+    /// active stack's too (0x43E268).
+    pub area: Vec<u8>,
     /// A siege's picture states, when they are not the record's own (E17 M4 T1b: a hit part's;
     /// *provisional*, [`crate::siege::Walls::of`]; E17 M4 T2b: the timeline's).
     pub walls: Option<Walls>,
@@ -103,6 +106,7 @@ impl Moment {
             counts: timeline.counts(t),
             hues: timeline.hues(t),
             marked: None,
+            area: Vec::new(),
             walls: timeline.walls(t),
             turrets: timeline.turrets(t),
             blast: timeline.blast(t),
@@ -1241,7 +1245,9 @@ fn creature(
         frame: pose.frame,
         anchor,
         mirrored: pose.mirrored,
-        outline: if moment.active == Some(stack.id) {
+        outline: if moment.area.contains(&stack.id) {
+            Some(layout.mouse_outline_after(moment.pulse))
+        } else if moment.active == Some(stack.id) {
             Some(layout.outline_after(moment.pulse))
         } else {
             (moment.marked == Some(stack.id)).then(|| layout.mouse_outline_after(moment.pulse))

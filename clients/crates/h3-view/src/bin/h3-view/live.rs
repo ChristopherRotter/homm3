@@ -19,7 +19,7 @@ use h3_protocol::wire::{
 use h3_protocol::{codec, map};
 
 use crate::bot::Greedy;
-use crate::scenario::{FOUGHT_LIMIT, VIEWER, fetch_record, hosted, seat_conn};
+use crate::scenario::{FOUGHT_LIMIT, Turned, VIEWER, fetch_record, hosted, seat_conn};
 
 /// The battle being fought: the session, the copy the bot decides on, the commands sent.
 #[derive(Debug)]
@@ -91,13 +91,16 @@ impl<'r> Live<'r> {
 
     /// The battle at the turn to come, a spectator's view, and the legal commands of the side to
     /// act (E17 M3 T6c-2: what the mouse's cursor asks); none when the battle is over.
-    pub fn turn(&self) -> Option<(Observation, Vec<Command>)> {
+    pub fn turn(&self) -> Option<Turned> {
         let side = self.state.side_to_act()?;
-        let observation = map::observe(&self.state, self.ruleset, Viewer::Spectator);
-        Some((
-            observation,
-            map::legal_commands(&self.state, self.ruleset, side),
-        ))
+        Some(Turned::of(&self.state, self.ruleset, side, &[]))
+    }
+
+    /// The engine's part of the side to act's hero's aim of `spell` now (E17 M5 T3b): none when
+    /// the engine casts it without a target or at nothing.
+    pub fn hero_aim(&self, spell: u16) -> Option<h3_view::mouse::aim::Aim> {
+        let side = self.state.side_to_act()?;
+        crate::aims::hero(&self.state, self.ruleset, side, spell)
     }
 
     /// Whether the side to act's hero may cast `spell` without a target now (E17 M5 T3a: the

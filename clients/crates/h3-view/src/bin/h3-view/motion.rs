@@ -612,13 +612,16 @@ fn spell_entry<'t>(
     tables: &'t Tables,
     handle: u16,
 ) -> Option<&'t h3_view::tables::Spell> {
-    let key = record
-        .header
-        .manifest
-        .keys
-        .spells
-        .get(usize::from(handle))?;
-    tables.spells.get(key)
+    spell_entry_in(&record.header.manifest.keys.spells, tables, handle)
+}
+
+/// As [`spell_entry`] by the spells' `keys` (E17 M5 T3b).
+pub fn spell_entry_in<'t>(
+    keys: &[String],
+    tables: &'t Tables,
+    handle: u16,
+) -> Option<&'t h3_view::tables::Spell> {
+    tables.spells.get(keys.get(usize::from(handle))?)
 }
 
 /// The record's spell numbered `original` in the executable: its handle and its entry.
@@ -627,9 +630,18 @@ fn spell_numbered<'t>(
     tables: &'t Tables,
     original: u16,
 ) -> Option<(u16, &'t h3_view::tables::Spell)> {
-    let count = u16::try_from(record.header.manifest.keys.spells.len()).unwrap_or(u16::MAX);
+    spell_numbered_in(&record.header.manifest.keys.spells, tables, original)
+}
+
+/// As [`spell_numbered`] by the spells' `keys` (E17 M5 T3b).
+pub fn spell_numbered_in<'t>(
+    keys: &[String],
+    tables: &'t Tables,
+    original: u16,
+) -> Option<(u16, &'t h3_view::tables::Spell)> {
+    let count = u16::try_from(keys.len()).unwrap_or(u16::MAX);
     (0..count).find_map(|h| {
-        let entry = spell_entry(record, tables, h)?;
+        let entry = spell_entry_in(keys, tables, h)?;
         (entry.original == original).then_some((h, entry))
     })
 }

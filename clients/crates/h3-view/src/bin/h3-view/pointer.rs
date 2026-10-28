@@ -8,11 +8,14 @@ use h3_protocol::wire::{Command, Manifest, Observation, Side, Stack};
 use h3_render::Bugs;
 use h3_view::anim::Timeline;
 use h3_view::layout::BattleLayout;
+use h3_view::mouse::aim::Aim;
 use h3_view::mouse::track::{self, Input, Shown, Start, Turn};
 use h3_view::mouse::{self, CATAPULT, Facing, Field, Hint, Legal, Spot, WALL_EXEMPT};
 use h3_view::record::Record;
 use h3_view::tables::Tables;
 use h3_view::text::Catalogue;
+
+use crate::scenario::Turned;
 
 /// Where the harness parks the mouse (`h3drive.py`'s `PARK`): in the panel beside the log's item,
 /// over nothing that has a hint.
@@ -91,13 +94,15 @@ const BOOK_PLACES: u8 = 12;
 /// `turn:<side>.<record>` when that stack's next turn starts (the timeline's, after the turn the
 /// last `turn:` named; a first one naming the opening's active stack at once, T7b-1),
 /// `step:<ms>` that much later; `roll:<name>[:fail]` (E17 M3 T7b-2b-1) forces the original's
-/// next draw of a roll and moves nothing (the engine's rolls are its seed's). *Not modelled:* the
-/// book over the battlefield.
+/// next draw of a roll and moves nothing (the engine's rolls are its seed's); `aim:<k>:<n>` (E17
+/// M5 T3b) opens the book and clicks its place `k`, whose spell numbered `n` in the original
+/// (`handle` gives its handle) takes a target: the aim starts with the mouse there; `key:Escape`
+/// gives an aim up. *Not modelled:* the book over the battlefield.
 pub fn inputs(
     actions: &[String],
     pre: u32,
     layout: &BattleLayout,
-    (timeline, spells): (&Timeline, &[u16]),
+    (timeline, spells, handle): (&Timeline, &[u16], &dyn Fn(u16) -> Option<u16>),
 ) -> Result<Vec<Input>, String> {
     let mut spells = spells.iter().copied();
     let mut cast_pending = false;
@@ -132,6 +137,32 @@ pub fn inputs(
                 at: now,
                 to: point(arg)?,
             }),
+            // Escape gives an aim up (E17 M5 T3b, 0x5A317A).
+            "key" if arg == "Escape" => out.push(Input::Cancel { at: now }),
+            "aim" => {
+                let (place, original) = arg
+                    .split_once(':')
+                    .ok_or_else(|| format!("`{action}`: not aim:<place>:<spell>"))?;
+                let original = original
+                    .parse::<u16>()
+                    .map_err(|e| format!("`{action}`: {e}"))?;
+                let spell = handle(original)
+                    .ok_or_else(|| format!("`{action}`: no spell numbered {original}"))?;
+                let place = place_of(place).map_err(|e| format!("`{action}`: {e}"))?;
+                // The aim goes on: no click yet, the mouse left where the place was.
+                out.extend([
+                    Input::Book { at: now },
+                    Input::Move {
+                        at: now,
+                        to: book_place(place),
+                    },
+                    Input::Aim {
+                        at: now,
+                        spell,
+                        creature: false,
+                    },
+                ]);
+            }
             "key" => {
                 // A key pressed at the frozen clock right after a hero's cast acts once the cast
                 // has played (the harness's runbook; E17 M3 T7b-1): at the end of the action the
@@ -186,37 +217,45 @@ pub fn inputs(
     Ok(out)
 }
 
-/// The mouse's inputs of a hero's cast `<k>[:<hex>]` of `spell` at `now` (`inputs`): the book's
-/// place, the spell aimed (E17 M3 T7b-1), the target; without one the book's empty status line
-/// (E17 M3 T7c-1).
+/// The mouse's inputs of a hero's cast `<k>[:<hex>]` of `spell` at `now` (`inputs`): the book
+/// opened, its place, the spell aimed (E17 M3 T7b-1) and the target; without one cast from the
+/// book at once (E17 M3 T7c-1). The book takes the mouse's moves until it closes (E17 M5 T3b).
 fn cast(arg: &str, (now, spell): (u32, u16), layout: &BattleLayout) -> Result<Vec<Input>, String> {
     let (place, target) = arg
         .split_once(':')
         .map_or((arg, None), |(p, t)| (p, Some(t)));
-    let place = place
-        .parse::<u8>()
-        .ok()
-        .filter(|&k| k < BOOK_PLACES)
-        .ok_or("the book has the places 0 to 11")?;
+    let place = place_of(place)?;
     let mut out = vec![
+        Input::Book { at: now },
         Input::Move {
             at: now,
             to: book_place(place),
         },
-        Input::Aim { at: now, spell },
     ];
     if let Some(target) = target {
         let hex = target.parse::<u8>().map_err(|e| e.to_string())?;
-        out.push(Input::Move {
-            at: now,
-            to: hex_point(layout, hex),
-        });
-    } else {
-        // Cast from the book at once (E17 M3 T7c-1): the status line as the book left it.
-        out.insert(1, Input::Book { at: now });
+        out.extend([
+            Input::Aim {
+                at: now,
+                spell,
+                creature: false,
+            },
+            Input::Move {
+                at: now,
+                to: hex_point(layout, hex),
+            },
+        ]);
     }
     out.extend([Input::Act { at: now }, Input::Move { at: now, to: PARK }]);
     Ok(out)
+}
+
+/// The spell book's place `arg` (0 to 11).
+fn place_of(arg: &str) -> Result<u8, String> {
+    arg.parse::<u8>()
+        .ok()
+        .filter(|&k| k < BOOK_PLACES)
+        .ok_or_else(|| "the book has the places 0 to 11".to_owned())
 }
 
 /// The acting stack's legal commands `commands` in `observation` as the cursor asks them, with
@@ -227,9 +266,18 @@ pub fn legal(
     manifest: &Manifest,
     tables: &Tables,
     observation: &Observation,
-    commands: &[Command],
+    (commands, aims): (&[Command], &[Aim]),
 ) -> Legal {
     let mut legal = Legal::new(commands);
+    // The spells the side may aim, with the original's numbers (E17 M5 T3b).
+    legal.aims = aims
+        .iter()
+        .map(|a| {
+            let mut aim = a.clone();
+            crate::aims::name(&mut aim, &manifest.keys.spells, tables);
+            aim
+        })
+        .collect();
     let acting = observation
         .active
         .and_then(|id| observation.stacks.iter().find(|s| s.id == id));
@@ -255,7 +303,7 @@ pub fn legal(
 pub fn shown(
     record: &Record,
     timeline: &Timeline,
-    turned: &[(Observation, Vec<Command>)],
+    turned: &[Turned],
     inputs: &[Input],
     (layout, catalogue): (&BattleLayout, &Catalogue),
     (tables, bugs): (&Tables, Bugs),
@@ -271,13 +319,18 @@ pub fn shown(
     let mut battles: Vec<(Observation, Legal, Facing)> = Vec::new();
     let mut next = 0;
     for &(t, stack) in &times {
-        let found = (next..turned.len()).find(|&i| turned[i].0.active == stack);
+        let found = (next..turned.len()).find(|&i| turned[i].observation.active == stack);
         let (observation, legal) = match found {
             Some(i) => {
                 next = i + 1;
-                let (observation, commands) = &turned[i];
-                let legal = legal(&record.header.manifest, tables, observation, commands);
-                (observation.clone(), legal)
+                let turn = &turned[i];
+                let legal = legal(
+                    &record.header.manifest,
+                    tables,
+                    &turn.observation,
+                    (&turn.commands, &turn.aims),
+                );
+                (turn.observation.clone(), legal)
             }
             None => {
                 let Some(mut observation) = snapshot.cloned() else {
@@ -405,11 +458,16 @@ mod tests {
         assert_eq!(
             cast("3:49", (7, 54), &layout).unwrap(),
             vec![
+                Input::Book { at: 7 },
                 Input::Move {
                     at: 7,
                     to: [332, 219]
                 },
-                Input::Aim { at: 7, spell: 54 },
+                Input::Aim {
+                    at: 7,
+                    spell: 54,
+                    creature: false
+                },
                 Input::Move {
                     at: 7,
                     to: hex_point(&layout, 49)
@@ -421,8 +479,8 @@ mod tests {
         // A spell without a target is cast at its place, the book's status line empty (E17 M3
         // T7c-1).
         let untargeted = cast("0", (0, 54), &layout).unwrap();
-        assert_eq!(untargeted.len(), 5);
-        assert_eq!(untargeted[1], Input::Book { at: 0 });
+        assert_eq!(untargeted.len(), 4);
+        assert_eq!(untargeted[0], Input::Book { at: 0 });
         for bad in ["12", "x", "0:x", "-1:4"] {
             assert!(cast(bad, (0, 54), &layout).is_err(), "{bad}");
         }
@@ -456,7 +514,7 @@ mod tests {
             let mut o = o.clone();
             o.stacks[at].creature = creature;
             o.stacks[at].no_distance_penalty = bow;
-            let l = legal(&record.header.manifest, &tables, &o, &[]);
+            let l = legal(&record.header.manifest, &tables, &o, (&[], &[]));
             (l.catapult, l.wall_exempt)
         };
         assert_eq!(tested(handle("base:catapult"), false), (true, false));
