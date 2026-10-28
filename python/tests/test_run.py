@@ -39,6 +39,7 @@ from h3env.train.run import (
     atomic_write_text,
     by_table,
     check_record,
+    key_path,
     learning_rate,
     load_config,
     resumed,
@@ -649,6 +650,24 @@ def test_e25s_configs_train_and_e06s_mixes_do_not() -> None:
         with pytest.raises(ConfigError, match="trains no agent"):
             trainable(load_config((configs / f"{name}.toml").read_text()))
     trainable(load_config(""))  # the distribution's defaults weigh no neutral kind
+
+
+def test_t4bs_config_is_shaping_with_the_tactics_bound() -> None:
+    # E25 T4a: `e25-bound.toml` is `e25-shaping.toml` with one round of the agent's own tactics
+    # phase; the bound is off by default, never negative, and a resume keeps it.
+    configs = PYTHON / "configs"
+    shaping, bound = (
+        load_config((configs / f"e25-{n}.toml").read_text()) for n in ("shaping", "bound")
+    )
+    trainable(bound)
+    assert (Config().tactics_rounds, shaping.tactics_rounds, bound.tactics_rounds) == (0, 0, 1)
+    assert dataclasses.replace(bound, tactics_rounds=0) == shaping
+    assert key_path("tactics_rounds") == "network.tactics_rounds"
+    assert load_config("", ["network.tactics_rounds=3"]).tactics_rounds == 3
+    with pytest.raises(ConfigError, match="`tactics_rounds` must not be negative"):
+        load_config("[network]\ntactics_rounds = -1\n")
+    with pytest.raises(ConfigError, match="network.tactics_rounds would change the training"):
+        resumed(bound, ["network.tactics_rounds=2"])
 
 
 def test_the_league_draws_scores_and_retires() -> None:

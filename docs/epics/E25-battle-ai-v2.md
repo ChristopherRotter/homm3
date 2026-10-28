@@ -103,14 +103,10 @@ criteria are judged on; `t7-1` stays the battle AI v1 and the baseline.
 
 **Increment 2: shaping, bounded, then scale** (refined 2026-10-28; the AI queue's tasks):
 
-- [ ] **T4a The tactics bound** (the sandbox): the agent bounds its own tactics phase, the rules
-  unchanged (BAT-TAC-002 has no limit): its mask, a config key off by default, leaves only
-  `EndTactics` once the bound is reached (the proposal: after its stacks' first round of the
-  phase, each placed or passed once; the original's computer stops after three rounds or a
-  round without a placement, BAT-AI's tactics rule). It is part of the agent: wherever the
-  network plays (rollouts and league members, gates, ladders, `inspect`, the search) it plays
-  bounded, from its checkpoint's config. Tests; T4b's config `configs/e25-bound.toml`
-  (`e25-shaping.toml` with the bound).
+- [x] **T4a The tactics bound** (2026-10-28; `E25-log.md` T4a): `[network] tactics_rounds`
+  (off by default; T4b's `configs/e25-bound.toml` 1): past that many rounds of its own phase End
+  tactics is the agent's only entry, wherever the network plays; the binding counts the phase's
+  turns from the observations (Python only, no ABI change).
 - [ ] **T4b The A/B** (the user's machine, 20 M unless agreed otherwise): `e25-bound-1` against
   `e25-shaping-1`: the ladders, the tactics share and the cut battles
   (`records/inspect/battles.py`), samples per second.

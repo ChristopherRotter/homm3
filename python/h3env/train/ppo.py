@@ -148,7 +148,8 @@ class Rollout:
         """Call `t`'s samples: the batch's outputs before the step, the chosen actions and each
         row's learning side (-1 where none: no side to move, or a frozen network's move)."""
         self.obs[t] = batch.obs
-        self.entry_mask[t] = batch.entry_mask
+        # The mask the learner drew from (its tactics bound's, E25 T4a).
+        self.entry_mask[t] = choice.entry_mask
         if self.preview is not None:
             self.preview[t] = batch.preview
         self.side[t] = side

@@ -29,6 +29,7 @@ from h3env.train.evaluate import (  # noqa: E402
     NEUTRAL_V1_SEED,
     REPORT_V1_SEED,
     Stopped,
+    duel,
     episode_seeds,
     ladder,
     load,
@@ -152,6 +153,106 @@ def test_choices_keep_to_the_masks_and_recompute_their_log_probabilities(kind) -
     np.testing.assert_allclose(logp.numpy(), flat(rollout.logprob).numpy(), atol=1e-4)
     np.testing.assert_allclose(value.numpy(), flat(rollout.value).numpy(), atol=1e-5)
     assert torch.isfinite(ent).all() and (ent >= -1e-5).all()
+
+
+def placing_policy(batch: BattleBatch, tactics_rounds: int = 0) -> Policy:
+    """A small MLP that never ends a tactics phase on its own, with the tactics bound
+    `tactics_rounds` (E25 T4a)."""
+    torch.manual_seed(0)
+    policy = Mlp.for_batch(batch, hidden=32, embed=8)
+    with torch.no_grad():
+        policy.entry_head.bias[L.END_TACTICS] = -30.0
+    policy.tactics_rounds = tactics_rounds
+    return policy
+
+
+def tactics_batch(envs: int = 4) -> BattleBatch:
+    """`full`: its attacker places its seven stacks in a tactics phase."""
+    batch = BattleBatch(envs, threads=2, seed=3, max_steps=300)
+    batch.add_scenario(scenario("full"))
+    batch.reset()
+    return batch
+
+
+def test_the_tactics_bound_leaves_end_tactics_past_it_and_changes_no_other_choice() -> None:
+    # E25 T4a: a network bounded to one round of its tactics phase chooses End tactics alone
+    # (certain, so its log-probability is 0) once its active stack would start the second; every
+    # other row chooses as the same network unbounded, on the same draws. Unbounded, a network
+    # draws from the batch's own mask, as before the bound. Played by the unbounded one, the
+    # phase goes on past the bound.
+    batch = tactics_batch()
+    free, bound = placing_policy(batch), placing_policy(batch, tactics_rounds=1)
+    only = np.zeros(batch.action_count, np.uint8)
+    only[L.END_TACTICS] = 1
+    past_seen = 0
+    for t in range(30):
+        a = free.act(batch, torch.Generator().manual_seed(t))
+        b = bound.act(batch, torch.Generator().manual_seed(t))
+        assert a.entry_mask is batch.entry_mask
+        past = batch.tactics_round > 1
+        past_seen += int(past.sum())
+        assert (b.entry[past] == L.END_TACTICS).all() and (b.entry_mask[past] == only).all()
+        np.testing.assert_allclose(b.logprob[past], 0.0, atol=1e-6)
+        np.testing.assert_array_equal(b.entry_mask[~past], batch.entry_mask[~past])
+        for name in ("entry", "spell", "target", "second", "cast", "logprob"):
+            np.testing.assert_array_equal(getattr(b, name)[~past], getattr(a, name)[~past])
+        assert (a.entry != L.END_TACTICS).all()
+        batch.actions["entry"], batch.actions["spell"] = a.entry, a.spell
+        batch.actions["target"], batch.actions["second"] = a.target, a.second
+        batch.step()
+    assert past_seen > 0 and (batch.tactics_round >= 3).all()
+
+
+def test_a_bounded_network_ends_its_tactics_phase_at_the_bound_in_a_duel() -> None:
+    # E25 T4a: the evaluation's agents (`duel`: the gates; `sampled`: the ladders, `inspect`) act
+    # through `Policy.act`, so a bounded attacker ends its phase at its first turn of round 2,
+    # however little its network wants to; the unbounded defender has no phase.
+    batch = tactics_batch()
+    agent = duel(placing_policy(batch, 1), placing_policy(batch), "attacker", seed=5)
+    phase = np.zeros(batch.envs, np.int64)
+    for _ in range(40):
+        rounds = batch.tactics_round.copy()
+        phase += (rounds > 0) & (batch.episode == 0)
+        agent(batch)
+        entry = batch.actions["entry"]
+        assert (entry[rounds == 2] == L.END_TACTICS).all()
+        assert (entry[rounds == 1] != L.END_TACTICS).all()
+        assert rounds.max() <= 2
+        batch.step()
+    # Each phase: the seven stacks' turns (and any waits of round 1), then End tactics.
+    assert (batch.episode == 0).all() and (batch.tactics_round == 0).all()
+    assert (phase >= 8).all() and (phase <= 15).all()
+
+
+def test_a_bounded_learner_ends_its_tactics_phases_at_the_bound_in_its_rollouts(
+    monkeypatch,
+) -> None:
+    # E25 T4a: the trainer's rollouts store the bounded mask the learner drew from, so its
+    # update recomputes the same (certain) probabilities.
+    trainer = Trainer(Config(**SMALL, tactics_rounds=1))
+    assert trainer.policy.tactics_rounds == 1 and trainer.policy.frozen().tactics_rounds == 1
+    trainer.batch.close()
+    trainer.batch = BattleBatch(8, threads=2, seed=trainer.batch_seed, max_steps=300)
+    trainer.batch.add_scenario(scenario("full"))
+    trainer.batch.reset()
+    with torch.no_grad():
+        trainer.policy.entry_head.bias[L.END_TACTICS] = -30.0
+    seen = []
+    act = Policy.act
+
+    def spy(self, batch, *args, **kwargs):
+        seen.append(batch.tactics_round.copy())
+        return act(self, batch, *args, **kwargs)
+
+    monkeypatch.setattr(Policy, "act", spy)
+    trainer.collect()
+    r, rounds = trainer.rollout, np.stack(seen)
+    past = rounds > 1
+    assert past.any() and (r.side[past] >= 0).all()
+    assert (r.entry[past] == L.END_TACTICS).all() and (r.entry[rounds == 1] != L.END_TACTICS).all()
+    assert (r.entry_mask[past].sum(1) == 1).all() and r.entry_mask[past][:, L.END_TACTICS].all()
+    np.testing.assert_allclose(r.logprob[past], 0.0, atol=1e-6)
+    assert np.isfinite(trainer.update(1e-4)["policy_loss"])
 
 
 def test_gae_over_two_sides_by_hand() -> None:
