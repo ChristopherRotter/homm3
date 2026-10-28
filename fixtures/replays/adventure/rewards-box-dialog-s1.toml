@@ -1,0 +1,50 @@
+commands = [
+    "0 move 0 7,4,0 8,4,0 9,4,0",
+    "0 answer offer accept",
+    "0 army dismiss 0:6",
+    "0 army move g:0 0:6",
+    "0 answer close",
+    "0 answer level-up first",
+    "0 end-turn",
+    "1 end-turn",
+]
+checkpoints = ["0xb23fc5728189e8f6"]
+
+[replay]
+format = 7
+engine = "0.1.0"
+seed = "1"
+difficulty = 1
+packs = [
+    [
+    "base",
+    "harvest-1",
+],
+    [
+    "ab",
+    "harvest-1",
+],
+    [
+    "sod",
+    "harvest-1",
+],
+]
+profile = "base:faithful"
+ruleset_hash = "0x026155eb7308da0f"
+adventure_ruleset_hash = "0x0d26ccf1412ed8dc"
+rng = "xoshiro256starstar+splitmix64"
+rng_version = 1
+hash = "fnv1a64-le"
+hash_version = 1
+game_state_hash_version = 19
+adventure_state_hash_version = 15
+checkpoint_every = 5
+
+[map]
+path = "fixtures/maps/e08-rewards-36.h3m"
+hash = "0x776d6b23b0ba2d87"
+import_version = 13
+
+[result]
+day = 2
+final_hash = "0x4adec0a3ee8bd0ed"

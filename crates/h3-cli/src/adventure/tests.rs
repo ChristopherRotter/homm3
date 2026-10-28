@@ -18,6 +18,8 @@ fn root() -> PathBuf {
 const DUEL: &str = "fixtures/maps/e08-duel-36.h3m";
 /// E08 T52's map: a meeting and an army dialog one step away.
 const ARMY: &str = "fixtures/maps/e08-army-12.h3m";
+/// The rewards map (E08 T64a): every object class of increment 7.
+const REWARDS: &str = "fixtures/maps/e08-rewards-36.h3m";
 
 fn options(days: u32) -> RunOptions {
     RunOptions {
@@ -762,7 +764,30 @@ fn the_benchmark_workloads_run_and_count_what_they_say() {
     }
     let fork = bench(bench::Workload::Fork, false, false);
     assert_eq!((fork.operations, fork.steps), (14, play.steps));
-    assert_eq!(fork.battles, 0);
+    assert_eq!((fork.battles, fork.visits), (0, 0));
+    // E08 T64a: on the rewards map the game's visits write the visits block the forks carry (as
+    // in `fork-rewards-36`'s game).
+    let rewards = bench::run(
+        &root().join("packs"),
+        &root(),
+        &bench::BenchOptions {
+            map: REWARDS.to_owned(),
+            profile: DEFAULT_PROFILE.to_owned(),
+            difficulty: h3_game::DEFAULT_DIFFICULTY,
+            workload: bench::Workload::Fork,
+            games: 1,
+            days: 7,
+            seed: 1,
+            forks: 3,
+            observe: false,
+            masks: false,
+            battle: false,
+            meeting: false,
+            queries: 0,
+        },
+    )
+    .unwrap();
+    assert_eq!((rewards.operations, rewards.visits), (3, 1), "{rewards:?}");
     // E08 T19b1: with `battle` the heroes seek each other and the forks carry the open battle.
     let fight = bench::run(
         &root().join("packs"),

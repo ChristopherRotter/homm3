@@ -1,0 +1,58 @@
+commands = [
+    "0 move 2 6,29,0 7,29,0 8,29,0 9,29,0 10,29,0",
+    "0 move 2 11,29,0 12,28,0 13,27,0 13,26,0",
+    "0 answer university buy 0",
+    "0 answer university buy 2",
+    "0 answer university leave",
+    "0 end-turn",
+    "1 end-turn",
+    "0 move 2 13,27,0",
+    "0 move 2 13,26,0",
+    "0 answer university buy 3",
+    "0 answer university leave",
+    "0 end-turn",
+    "1 end-turn",
+]
+checkpoints = [
+    "0xcc3680d5bc3939d5",
+    "0xbfd1c30e154286b3",
+]
+
+[replay]
+format = 7
+engine = "0.1.0"
+seed = "1"
+difficulty = 1
+packs = [
+    [
+    "base",
+    "harvest-1",
+],
+    [
+    "ab",
+    "harvest-1",
+],
+    [
+    "sod",
+    "harvest-1",
+],
+]
+profile = "base:faithful"
+ruleset_hash = "0x026155eb7308da0f"
+adventure_ruleset_hash = "0x0d26ccf1412ed8dc"
+rng = "xoshiro256starstar+splitmix64"
+rng_version = 1
+hash = "fnv1a64-le"
+hash_version = 1
+game_state_hash_version = 19
+adventure_state_hash_version = 15
+checkpoint_every = 5
+
+[map]
+path = "fixtures/maps/e08-rewards-36.h3m"
+hash = "0x776d6b23b0ba2d87"
+import_version = 13
+
+[result]
+day = 3
+final_hash = "0xf15731dedd79f80c"

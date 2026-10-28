@@ -323,7 +323,7 @@ impl<'a> Painter<'a> {
                 DrawLists::build(&self.art, &self.live, &self.shapes, z).map_err(|e| e.to_string())
             })
             .collect::<Result<Vec<_>, String>>()?;
-        let tiles = TileSounds::build(&self.art, &self.live, &lists, rules, hero);
+        let tiles = TileSounds::build(&self.art, &self.live, &lists, rules, hero, self.assets.bugs);
         Ok(Some(Sound::new(
             Arc::new(rules.clone()),
             Arc::new(tiles),

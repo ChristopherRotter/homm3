@@ -139,6 +139,51 @@
 //!   Elves, takes four goblins by a split from the group into the freed slot and moves her Monks
 //!   into the group; closed, the group's two goblins and the Monks are lost; both players end
 //!   their turns.
+//!
+//! **Rewards** (E08 T64a, increment 7), on `fixtures/maps/e08-rewards-36.h3m` (every object class
+//! of increment 7, written by `h3_map::writer`; `fixtures/maps/README.md`): red's Orrin (hero 0,
+//! a full army), Adela (hero 1, basic Wisdom alone, a Spell Book, 950 experience) and Mephala
+//! (hero 2), blue's two heroes. Random play, recorded with `--map
+//! fixtures/maps/e08-rewards-36.h3m --seed N --agent-seed N --days 28`: the three of a search
+//! over the seeds 1 to 400 (a scratch probe noting the objects each game's moves end on and the
+//! decisions it opens, not committed; one game visits 3 to 9 of the 31 classes, every class in
+//! some game) whose union meets the most:
+//!
+//! - `rewards-s162-d28`: a Learning Stone's level-up, the box east of Orrin accepted without room
+//!   (its army dialog closed, the wood elves lost, then its experience and level-up), a Witch Hut,
+//!   a chest's gold, a meeting, Marletto Tower, a School of Magic paid, a random major and minor
+//!   artifact picked up, a guard's battle won, blue's event with guards (its battle won, then its
+//!   artifact).
+//! - `rewards-s243-d28`: the event east of Mephala, a Star Axis, a Spell Scroll, a Shrine, the
+//!   pursuit of the fleeing gnolls with an artifact declined (they leave), the event for everyone
+//!   (morale and luck), a Warrior's Tomb searched (its artifact and −3 morale), a School of War
+//!   left, the Pyramid declined.
+//! - `rewards-s88-d28`: a Scholar, a guard's battle and days later the event it guarded, Adela on
+//!   the guarded Learning Stone (its level-up, then the guard's battle), a School of Magic paid,
+//!   the University's four purchases, a chest's experience and its level-up, a Witch Hut.
+//!
+//! **Scripted** (E08 T64a: the order-dependent paths of design §16), on the same map, recorded with
+//! `h3 adventure run --map fixtures/maps/e08-rewards-36.h3m --seed 1 --checkpoint-every 5 --script
+//! <script> --record <replay>` (the battles' commands from a scratch driver that attacks or shoots
+//! when it can, else defends; not committed); each ends with both players' turns:
+//!
+//! - `rewards-box-dialog-s1`: Orrin opens the box east of him (ADV-PIK-013) with no room: the army
+//!   dialog opens with the ten wood elves (GAM-DEC-004); he dismisses his cavaliers and takes the
+//!   elves; only once it is closed does the box's experience come, with its level-up (ADV-RWD-001,
+//!   GAM-DEC-007, D-39).
+//! - `rewards-event-stop-s1`: Mephala's move east stops on red's event (ADV-MOV-011, ADV-OBJ-007),
+//!   which fires (500 gold) and is removed; her next move crosses its tile.
+//! - `rewards-university-s1`: Mephala reaches the University in two moves (the second past her
+//!   first reveal), buys two of its four skills and leaves; the next day she enters again and only
+//!   the other two are offered; she buys one (ADV-TCH-007, GAM-DEC-006).
+//! - `rewards-guarded-box-s1`: Adela opens the box on (31, 4); its ten pikemen fight at once, she
+//!   wins, and her level-up (advanced Wisdom first) comes before the box's spells: Bless and
+//!   Prayer, a level-4 spell her Wisdom now allows (GAM-DEC-007, HER-SPL-005).
+//! - `rewards-event-guard-s1`: Orrin steps onto the event on (6, 8): the gnolls guarding it fight
+//!   first, then the event fires for him (five crystals; `ADV-QUIRK-29`).
+//! - `rewards-stone-guard-s1`: Orrin enters the Learning Stone on (3, 8): its 1 000 experience and
+//!   level-up first; only once he answers do the gnolls guarding it fight (ADV-MON-006,
+//!   GAM-DEC-007).
 
 use std::path::PathBuf;
 
@@ -153,7 +198,7 @@ fn golden_adventure_replays_reproduce_their_hashes() {
         .collect();
     files.sort();
     assert!(
-        files.len() >= 12,
+        files.len() >= 21,
         "expected the E08 replay fixtures in {}",
         dir.display()
     );

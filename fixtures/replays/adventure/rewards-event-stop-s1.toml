@@ -1,0 +1,46 @@
+commands = [
+    "0 move 2 6,28,0 7,28,0 8,28,0 9,28,0 10,28,0",
+    "0 move 2 9,28,0 10,28,0",
+    "0 end-turn",
+    "1 end-turn",
+]
+checkpoints = []
+
+[replay]
+format = 7
+engine = "0.1.0"
+seed = "1"
+difficulty = 1
+packs = [
+    [
+    "base",
+    "harvest-1",
+],
+    [
+    "ab",
+    "harvest-1",
+],
+    [
+    "sod",
+    "harvest-1",
+],
+]
+profile = "base:faithful"
+ruleset_hash = "0x026155eb7308da0f"
+adventure_ruleset_hash = "0x0d26ccf1412ed8dc"
+rng = "xoshiro256starstar+splitmix64"
+rng_version = 1
+hash = "fnv1a64-le"
+hash_version = 1
+game_state_hash_version = 19
+adventure_state_hash_version = 15
+checkpoint_every = 5
+
+[map]
+path = "fixtures/maps/e08-rewards-36.h3m"
+hash = "0x776d6b23b0ba2d87"
+import_version = 13
+
+[result]
+day = 2
+final_hash = "0xe6d3421e3c6d9598"

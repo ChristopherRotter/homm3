@@ -6,60 +6,124 @@ Pre-refined tasks of the map client lane, in order, then the inbox of discovered
 
 Epic: E24, the adventure map client. **M1 (stills of the map view) closed 2026-10-24**; **M2
 (the map moving) closed 2026-10-28** (its scope, decisions, tasks and review list:
-`docs/epics/E24-archive.md`; its cuts' history: `QUEUE-ARCHIVE.md`). Tasks in order, each about
-half a context; a task that grows is cut at a seam agreed with the user. Code readings in the
-sandbox (`docs/exe/README.md`; every address cited needs a map entry), their detail in
-`docs/epics/E24-design.md`; captures by the harness (`clients/capture/README.md`), never in git.
-Every oddity of the original a reading or a capture finds is an `MCL-Q<n>` in the same task (the
-HANDOFF's autonomy contract).
+`docs/epics/E24-archive.md`; its cuts' history: `QUEUE-ARCHIVE.md`); **M3 (the adventure
+screen) refined 2026-10-28** (M3 T0, with the user: `docs/epics/E24-map-client.md`, M3's scope,
+decisions and exit). Tasks in order, each about half a context; a task that grows is cut at a
+seam agreed with the user. Code readings in the sandbox (`docs/exe/README.md`; every address
+cited needs a map entry), their detail in `docs/epics/E24-design.md` (§4 from T2: the adventure
+screen); captures by the harness (`clients/capture/README.md`), never in git. Every oddity of
+the original a reading or a capture finds is an `MCL-Q<n>` in the same task (the HANDOFF's
+autonomy contract). Each panel drawn leaves `h3map.py`'s `panels` mask, and `drawn` then
+compares it on every situation and sequence.
 
-### E24 M3 T0 — M3 refined with the user
+### E24 M3 T1a — the common crate `h3-ui`
 
-- **Scope:** first the common crate, proposed to the client lane (its inbox, since T6b2a): one
-  crate of the client workspace both lanes share, holding `h3-view`'s `clock`, `cursor`, `ui`,
-  `text`, `layout` and the parts of `mouse` that are not the battle's, and `h3-map-view`'s
-  `keys` (both viewers' keys through it) and perhaps `music`; one `shared/` pull request for
-  `lanes.toml`, then the move, `h3-map-view`'s copies gone (the epic's M2 decision). Then M3 with
-  the user: its scope, decisions and exit (the epic's "Later": the minimap, the hero and town
-  lists, the status window, the resource bar and the date, the buttons, the mouse and its
-  cursor; the string catalogue's keys), MCL-Q10's keys during a walk (Space's cancel, the
-  input ring's bound), MCL-Q9 if still open, the inbox's frame cost and the sound without the
-  focus placed; M3's tasks queued.
-- **Acceptance:** M3's section refined in the epic; the common crate agreed with the client lane
-  (or its question asked); M3's tasks queued.
-- **Depends on:** M2 closed (2026-10-28). **Status:** the user present.
+- **Scope:** first a `shared/` pull request: `lanes.toml`'s client foundation gains
+  `clients/crates/h3-ui/` (its comment: both client lanes', as `h3-assets`); the global HANDOFF's
+  "Common" line if it names the crates. Once merged, on `map-client/e24-m3-t1a` (`cross-lane`,
+  the user's consent at T0): the crate (pure, `no_std` + `alloc`; `h3-map-view`'s
+  `tests/purity.rs` with R2-15's fixes, the client lane's inbox) with `h3-view`'s `clock`,
+  `cursor` and the `Sprite` it draws, `ui` (its draw items its own: picture, button, text, label,
+  darkened box; `h3-view`'s scene and compositor take them), `text` with its `keys`, `message`,
+  `pack` and `plural`; `h3-map-view`'s `keys` (generic over a viewer's command type: the chords,
+  the user's file; the map's commands and defaults stay in `h3-map-view`) and `music`. Both
+  viewers import them; `h3-map-view`'s `clock`, `cursor` and `Sprite` gone; `clients/README.md`'s
+  crate list; the client lane's inbox told (its imports changed). Nothing drawn or played
+  changes.
+- **Acceptance:** both pull requests merged; `clients/scripts/check.sh` green, coverage 100 %;
+  `h3map.py drawn` and `h3drive.py drawn` all the same; no copy left in either viewer.
+- **Depends on:** T0 (done 2026-10-28). **Status:** ready (the `shared/` pull request merged by
+  the user before the move's).
+
+### E24 M3 T1b — the battle window's keys through the table
+
+- **Scope:** `h3-view window`'s keys (matched in its event loop, `window.rs`) as the battle
+  viewer's commands through `h3_ui::keys`, the user's file (`--keys`, `keys.toml`: each viewer's
+  commands in its own table, *provisional*); both windows' own keys the map's (the user, T0: F2
+  music, F3 effects, F5 pause, F6 the next frame, F7 restart, F8 vsync, F9 the cursor's kind,
+  F11 fullscreen, Esc quit; the battle's P, →, Home, M, E, F, V and H gone); the battle's own
+  keys (the log's Up and Down, the book's) and `h3_sdl::Key` as they are, additively. The client
+  lane's inbox told (its M5 T3b's F key then free).
+- **Acceptance:** every key of both windows through the table; `h3-view window --check` and a
+  sequence in the window as before; check.sh green; the Definition of Done.
+- **Depends on:** T1a. **Status:** ready after T1a.
+
+### E24 M3 T2 — the adventure screen's dialog at a map's start
+
+- **Scope:** read `adventure_full_update` 0x417420's panels (the manager's +0x44) and the
+  adventure dialog +0x50: its items in the order added and drawn, each one's id, place, picture
+  or DEF and states; the buttons (`iam000` to `iam015`), the status bar (`AdRollvr.pcx`), the
+  resource bar (`AResBar.pcx`), the status window's and the lists' frames as at a map's start;
+  `h3_map_view::layout` gains the dialog (`h3_ui::ui`'s format), the screen drawn with it. The
+  frame's fixed cost (the inbox's, `QUEUE-ARCHIVE.md` 2026-10-27, E24 M2 T4b3): the frame
+  picture and the panels converted and drawn once a viewer, no screen copies, a frame redrawing
+  what changed; measured with `map-measure.cmd`'s "a frame made in". The parked cursor drawn
+  (the mask's). Recorded: the situations' screens with the panels; `panels` reduced to what
+  T3 to T5 draw.
+- **Acceptance:** the static panels exact on the 40 situations and the 13 sequences; a frame's
+  fixed cost measured before and after; the Definition of Done.
+- **Depends on:** T1a. **Status:** ready after T1a.
+
+### E24 M3 T3 — the minimap
+
+- **Scope:** `minimap_draw` 0x412C40 read (13 callers) and built: each tile's colour (the
+  terrain's DEF's palette entry 22, design §1.8), the owners' colours, the unexplored tiles, the
+  view's box, the map's size scaled to its square, the underground's; redrawn at a scroll, a step
+  and a selection as the original does (its callers). Recorded: the sequences show it scrolling.
+- **Acceptance:** the minimap exact on every situation and sequence (`panels` without it);
+  the Definition of Done.
+- **Depends on:** T2. **Status:** ready after T2.
+
+### E24 M3 T4 — the hero and town lists
+
+- **Scope:** read and built: the hero list (a hero's small portrait `HPS*.pcx`, the movement and
+  mana bars `imobil.def` and `imana.def`, the selection's frame, the scroll arrows, empty slots)
+  and the town list (`ITPA.def`: a town's picture by its kind, fort and the build of the day; the
+  selection, the scroll); `live` gains the viewing player's heroes and towns in their lists'
+  order, a hero's movement and mana and the one selected (`h3mem.py`, additive). Situations with
+  more heroes and towns than the lists' slots.
+- **Acceptance:** both lists exact on every situation and the new ones; the Definition of Done.
+- **Depends on:** T2. **Status:** ready after T2.
+
+### E24 M3 T5 — the status window, the resource bar and the date
+
+- **Scope:** read and built: the status window's kinds (`AdStatHr`, `AdStatCs`, `AdStatOt`,
+  `ADSTATIN`, `ADSTATNX`: a hero's portrait, skills, morale, luck and army; a town's; the
+  kingdom's and the date's) and when each shows; the resource bar's seven amounts and the date
+  (the fonts, the string catalogue's keys from the original's tables); `live` gains the
+  resources and the date. Situations for each kind.
+- **Acceptance:** the status window, the resource bar and the date exact on every situation and
+  the new ones (no `panels` mask left but the status bar's hints); the Definition of Done.
+- **Depends on:** T2 (T4 for a hero's or a town's army and portraits). **Status:** ready after T4.
+
+### E24 M3 T6 — the mouse, the keys during a walk, the sound without the focus
+
+- **Scope:** `adventure_mouse_move` 0x40E360's unread part and `view_mouse_tile` 0x40DEB0 (the
+  8-pixel question, design §1.8): the cursor over the map by its tile (`cradvntr.def`'s kinds;
+  the reach and its days given: a recording's from the original's memory), the status bar's
+  hints over the map's objects and the panels (the catalogue's keys); the view-only clicks (a
+  hero or a town chosen, the lists scrolled, Next Hero, the underground, the minimap, the status
+  window) and the other buttons' press; the panels' hotkeys through the key table; MCL-Q10's
+  keys during a walk (Space's cancel, the input ring's bound of 63); the sound without the focus
+  (`QUEUE-ARCHIVE.md` 2026-10-27, E24 M2 T6a2: the rest read, the window by
+  `Window::focused()`). Recorded: sequences with the clicks and the cursor's kinds.
+- **Acceptance:** the new sequences as recorded, every frame; the clicks in the window; the
+  Definition of Done.
+- **Depends on:** T3 to T5. **Status:** ready after T5.
+
+### E24 M3 T7 — M3's closure
+
+- **Scope:** fresh reviewers (one per area), their fixes; every situation and sequence recorded
+  again; the review list with the user; the window cross-built for the user's machine and a
+  hand test (`clients/out/win/`, a `.cmd` with the checks on screen and a notes file); M3
+  archived; M4 refined with the user.
+- **Acceptance:** the review list accepted; the hand test passed; M3 archived; M4's tasks queued.
+- **Depends on:** T1a to T6. **Status:** waiting (the user, at its checkpoint).
 
 ## Inbox
 
 Other lanes add entries here. The map client lane turns each into a task, or keeps one line here
 while the work waits.
-
-- 2026-10-27 (this lane, E24 M2 T6a2): **the sound without the focus** is not built. The original
-  on losing it (`window_procedure` 0x4F7E88, `sound_focus_lost` 0x599C40, read in part) stops
-  every effect sample and fades the music out (the stub 0x59A830: `music_stop_fade`, its place
-  kept); on regaining it `music_resume` 0x59AC00 asks for the track again (it fades in where it
-  faded out) and the effects come back by 0x4F7E2E (not read). The window plays on without the
-  focus. With M3's settings or the next sound task: read the rest, then `h3_map_view::music`'s
-  model takes a fade without a pending track and the window follows `Window::focused()`.
-
-- 2026-10-27 (this lane, E24 M2 T4b3; the user: "it will do for now, but we should check back in
-  at some point"): **a frame's fixed cost.** A frame takes 4 to 6 ms to make on the user's machine
-  (5.7 in the sandbox), about 4 even for a near-empty view: the frame picture's and the terrain's
-  pixels drawn every frame, the widening to 32 bits, the painter's two copies of the screen, the
-  scene built afresh, the objects' transparent pixels still visited (design §3.12, "Left"). Take
-  it up with the next work that touches the drawing (M3's panels at the latest): spans of a
-  frame's drawn pixels made once, the frame picture converted once a viewer, no screen copies, a
-  scroll or a walk redrawing only what moved; measure with `map-measure.cmd`'s "a frame made in".
-
-- 2026-10-26 (the adventure lane, E08 T57; for information, nothing to do): the harness's
-  reads and steps for batch E7 (`clients/capture/README.md`, "Rewards on the map"). Behaviour that
-  changed for every recipe: `before:<observation>` is now read right before the step (any
-  observation, tiles too; it was the step's snapshot), a message box whose OK waits for one of two
-  pictures is answered by `choice` (it stopped the batch before), and each message closed with its
-  OK keeps its pictures (`message_pictures`). New: `h3mem.object_at`, `universities`,
-  `dialog_pictures`, `open_tiles`, `map_kind`, a hero's spell points, bonuses and status flags, a
-  stack's army slot; `h3adv`'s `each`/`select` grids, list records and `+` fields, `once`,
-  `days`, `near` and `[[require]]`. The harness check gained Win's chest and Warrior's Tomb.
 
 - 2026-10-23 (the client lane, E17 M3 T9c, at the split): moved here from the client lane's
   inbox, the adventure lane's entry of 2026-10-21 (E08 T30, decision 65, ADR-0017 point 6 amended

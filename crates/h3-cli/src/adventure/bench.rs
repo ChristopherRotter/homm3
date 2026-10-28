@@ -12,7 +12,9 @@
 //!   `--battle 1` (E08 T19b1) the heroes seek each other instead and the play stops at the step
 //!   that opens a battle, so the forks carry an open battle; with `--meeting 1` (E08 T52) a
 //!   player's heroes seek each other and the play stops when a meeting opens, so the forks carry
-//!   the open meeting.
+//!   the open meeting. On a map with increment 7's objects (E08 T64a: `e08-rewards-36.h3m`) a
+//!   game's visits write the state's visits block, which the forks then carry (counted in
+//!   [`BenchResult::visits`]).
 //! * `manage` (E08 T52): a player's heroes seek each other until a meeting opens, then both
 //!   heroes' management listing `--queries` times, inside [`management_queries`]
 //!   (`h3_game::legal_management` and every split range between the two armies).
@@ -96,6 +98,9 @@ pub struct BenchResult {
     pub battles: u64,
     /// `fork` and `manage`: the games whose forks or listings had a meeting open (E08 T52).
     pub meetings: u64,
+    /// `fork`: the games whose forks carried the visits block (E08 T64a: a visit wrote a mark,
+    /// knowledge or a find's emptying).
+    pub visits: u64,
 }
 
 /// Runs a workload on a map below `root` with the packs of `packs_dir`.
@@ -116,6 +121,7 @@ pub fn run(packs_dir: &Path, root: &Path, options: &BenchOptions) -> Result<Benc
         seconds: 0.0,
         battles: 0,
         meetings: 0,
+        visits: 0,
     };
     for g in 0..options.games {
         // The setup built the first game: a reset cannot fail.
@@ -143,6 +149,7 @@ pub fn run(packs_dir: &Path, root: &Path, options: &BenchOptions) -> Result<Benc
                 let open = env.to_move().any(|p| env.phase(p) == Phase::Battle);
                 result.battles += u64::from(open);
                 result.meetings += u64::from(meeting(&env).is_some());
+                result.visits += u64::from(env.state().adventure().visits().is_some());
                 let start = Instant::now();
                 black_box(fork_workload(&env, options.forks));
                 (

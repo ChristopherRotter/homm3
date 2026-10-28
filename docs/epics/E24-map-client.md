@@ -3,7 +3,8 @@
 Status: **refined** (2026-10-23, T0, with the user); **M1 closed** (2026-10-24, T6b: the
 reviewers, the review list accepted by the user); **M2 refined** (2026-10-26, M2 T0, with the
 user); **M2 closed** (2026-10-28, T6b2c: the user's hand test, the review list accepted at
-T6b2a); next M3 T0 (`docs/lanes/map-client/QUEUE.md`).
+T6b2a); **M3 refined** (2026-10-28, M3 T0, with the user); next M3 T1a
+(`docs/lanes/map-client/QUEUE.md`).
 Lane: map-client (`docs/lanes/map-client/HANDOFF.md`: the autonomy contract, the user's asset
 notes). Opened 2026-10-23 when the user split the client lane at E17 M3's closure (CLT-Q18).
 Decisions so far live here (no ADR of its own yet; ADR-0020 and ADR-0024 bind it as they bind
@@ -90,15 +91,79 @@ T0's common crate for both lanes, the key table moved into it; the edge scroll's
 (MCL-Q6). The 13 recorded sequences (`clients/map/sequences.toml`, `timelines/`) are exact; a
 change to the viewer runs `h3map.py drawn` first (it checks every timeline too).
 
+### M3 — the adventure screen (refined 2026-10-28, M3 T0, with the user)
+
+The panels right of and below the map view drawn and working as the original's: the minimap,
+the hero and town lists, the buttons, the status window, the resource bar and the date, the
+status bar's hints; the mouse over the map and the panels with its cursor; on one crate both
+viewers share.
+
+- **Scope:** the common crate `clients/crates/h3-ui` (T1a, T1b); the adventure screen's dialog
+  (`adventure_full_update` 0x417420's panels, the manager's +0x44 and the dialog +0x50: its
+  items' ids, places, pictures and order) drawn at a map's start, the frame's fixed cost taken
+  down with it (T2); the minimap (`minimap_draw` 0x412C40: the terrains' colours, the owners',
+  the unexplored tiles, the view's box, the underground; T3); the hero list (portraits, the
+  movement and mana bars, the selection, the scroll) and the town list (T4); the status window
+  (a hero's, a town's, the kingdom's), the resource bar and the date (T5); the mouse (T6): the
+  status bar's hints over the panels and the map, the cursor over the map by its tile, the
+  clicks below; the keys during a walk (MCL-Q10: Space's cancel of the queued steps, the input
+  ring's bound of 63 messages), the panels' hotkeys through the key table; the sound without the
+  focus (the inbox's). Every text through the string catalogue's keys. **Not in M3:** the
+  dialogs the buttons open (the kingdom overview, the quest log, the options, the spell book on
+  the map, the hero and town screens), End Turn, Sleep, Move Hero and every other action of the
+  engine's (M4, M5); the engine's live part (M4).
+- **Decisions (the user, M3 T0, 2026-10-28; every recommendation taken):**
+  - **The common crate `h3-ui`** (T6b2a's proposal in the client lane's inbox, decided by the
+    user for both lanes): a crate of the client workspace common to both client lanes, as the
+    foundation is (`lanes.toml`: a `shared/` pull request first). It holds `h3-view`'s `clock`,
+    `cursor` (with the decoded DEF it draws, `Sprite`), `ui` (with draw items of its own, no
+    longer the battle scene's `Draw`) and `text` (the string catalogue and its packs), and
+    `h3-map-view`'s `keys` (the table generic over a viewer's commands) and `music` (the music
+    thread's model, for the battle's end tune too). `h3-view`'s `layout` and `mouse` stay the
+    battle's (the hexes, the battle's and the book's layouts, the battle's cursor; a dialog's
+    format goes with `ui`). This lane moves it as T1a in a `cross-lane` pull request (the user's
+    consent: the client lane's crate changes by its imports only), nothing drawn or played
+    changed, `h3-map-view`'s copies of `clock`, `cursor` and `Sprite` gone; T1b takes `h3-view
+    window`'s keys through the table (the client lane's inbox, 2026-10-26), **both windows'
+    own keys the map's** (F2 the music, F3 the effects, F5 pause, F6 the next frame, F7 restart,
+    F8 vsync, F9 the cursor's kind, F11 fullscreen, Esc quit), the letters left to the
+    original's hotkeys (F the Faerie Dragon's, the client lane's M5 T3b).
+  - **The panels' live part as M1's** (the epic's two inputs): what the panels show of the game
+    (the viewing player's heroes and towns in their lists' order, a hero's movement and mana,
+    the resources, the date, the hero or town selected) is `h3_map_view::live`'s, from the
+    original's memory for the comparisons (`h3mem.py`, additive) or from the map's start; the
+    engine fills it from M4.
+  - **The clicks:** what changes only the view works in M3: a hero or a town chosen in its list
+    and the lists scrolled, Next Hero, the underground's button, a click on the minimap, the
+    status window's own; every other button shows its press and does nothing (its dialog or the
+    engine's action: M4, M5).
+  - **The cursor over the map** is read and built in M3 from given inputs: what the tile holds
+    (the live part) and whether and in how many days the selected hero reaches it (the path's,
+    never computed by the client: M2's decision), from the original's memory in a recording,
+    from the engine in M4 and M5.
+  - **The frame's fixed cost** (the inbox's, the user at M2 T4b3) is taken down in T2, where
+    the panels change how a frame is made.
+  - **MCL-Q12's provisional part confirmed:** the track asked for again during its own fade-in
+    plays on, no second fade.
+  - **MCL-Q9 answered** (after its context): the shore's loop on the coast's water pictures only
+    (below 20), the original's 21 behind `--bugs original`; built at T0.
+- **Recorded and compared as M1 and M2:** `h3map.py`'s `panels` mask shrinks by each panel
+  drawn, so the 40 situations and the 13 sequences compare it from then on (`drawn` with them);
+  new situations and sequences for what those do not show (several heroes and towns, the lists'
+  scroll, the status window's kinds, the clicks, the cursor's kinds).
+- **Tasks** (the queue has each in full): T0, M3 refined (**done** 2026-10-28; MCL-Q9's fix
+  built); T1a, `h3-ui` and the move; T1b, the battle window's keys through the table; T2, the
+  adventure screen's dialog at a map's start and the frame's cost; T3, the minimap; T4, the hero
+  and town lists; T5, the status window, the resource bar and the date; T6, the mouse, the keys
+  during a walk, the sound without the focus; T7, M3's closure. A task that grows is cut at a
+  seam agreed with the user.
+- **Exit:** every situation and sequence as recorded on the whole screen (no `panels` mask
+  left, or each difference an `MCL-Q<n>`); the view-only clicks, the hints and the cursor in the
+  window; `h3-ui` the only copy of what both viewers share; M3's review list accepted; a hand
+  test on the user's machine.
+
 ### Later (refined when they come)
 
-- **M3, the adventure screen:** the minimap, the hero and town lists, the status window, the
-  resource bar and the date, the buttons, the mouse and its cursor; the string catalogue's keys.
-  Needs `h3-view`'s `ui`, `text`, `layout`, `mouse` and the `clock` and `cursor` M2 copied in
-  one common crate: a `lanes.toml` change (shared) agreed with the client lane, proposed at M3
-  T0 (M2 T0's decision); T4's key bindings move there too (the client lane's inbox). The keys
-  during a walk (MCL-Q10): Space's cancel of the queued steps (the user: "perhaps by other means
-  too"; not read) and the input ring's bound of 63 messages.
 - **M4, the engine's games shown:** a whole game's record and replay viewer; the live part from
   the engine (`h3_game`'s observation needs an object identity matching the map's object list:
   the adventure lane's inbox), the protocol's adventure messages (the server lane, E16); a battle

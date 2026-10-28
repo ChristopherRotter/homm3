@@ -63,6 +63,11 @@ Increment 3 (battles on the map; ADR-0013 point 9, ADR-0016 point 6, ADR-0017 po
 - **The heroes after a battle** (E08 T19a2a, T19a2b): each change to a hero's details (spell points, experience, an artifact lost with a destroyed war machine, an artifact received or taken in the capture, a spell learned by Eagle Eye) and the creatures its Necromancy raises into its army are told to the hero's owner only (`HeroChanged`): the winner's owner learns the artifacts it captured, as the original's message shows them, and the loser's owner what it lost. Other players see neither, as they never see another player's hero's details (ADV-FOG-006).
 - **A player's management of its heroes** (E08 T51a, GAM-MAN-001, GAM-MAN-002): each slot an army command changes, a formation or a tactics flag set and each artifact change are told to the hero's owner only (`StackChanged`, `FormationSet`, `TacticsSet`, `HeroChanged`); the per-hero listing (`legal_management`, `split_range`) answers the actor about its own heroes in its turn and is empty otherwise. Other players learn nothing of it; a meeting's step is a step (its viewers as for any step).
 
+Increment 7 (rewards on the map; `docs/epics/E08-design.md` §13, survey `rules/surveys/E08-rewards.md`) adds:
+
+- **Its own:** what its heroes' visits learned of an object (ADV-VIS-006, E08 T62a): what the game's build drew for it (a Shrine's spell, a Witch Hut's skill, a gift's drawn price, a University's skills) and whether a find is emptied, kept while the object is on the map; and its heroes' once-per-hero marks. No other player learns it. What a chest, an artifact, a box or the Pyramid holds and what the build drew for it are hidden from every player; a visit tells the visitor's owner what it gives.
+- **Events** (ADV-FOG-007, E08 T62b2): an event is never observed, whatever the player explored, and nothing tells of one before it fires (paths are blind to it, ADV-MOV-011); its firing is told to the mover's owner alone, then what its guards' battle or its record gives as any visit's.
+
 ## Denial of service and resource limits
 
 - Bounded command size and count per turn; bounded work per command (path search limits, list lengths).
