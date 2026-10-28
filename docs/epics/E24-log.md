@@ -1383,4 +1383,7 @@ sequences' button changes during a walk should go to a task of their own, kept T
   again, each timeline (now with `buttons` lines and the smaller mask's screen boxes) the viewer's
   line for line, all 459 frames exact (`timelines/` and the `-frames.txt` counts recorded);
   `h3drive.py drawn` 132 of the battle's sequences and situations the same (the common crate's
-  change draws nothing new there); CHECKS
+  change draws nothing new there); `clients/scripts/check.sh` all gates passed, coverage 100 %
+  (regions, functions, lines); after merging `master` (#549 to #551) check.sh again and `h3map.py
+  drawn` all the same; the scoped verify (`--with-original-data`) without a failing step.
+- **Not done (T2b):** the frame's fixed cost, measured before and after on the user's machine.
