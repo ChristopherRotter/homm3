@@ -20,10 +20,9 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   user: increment 2 is shaping, bounded, then scale; `e25-shaping-1` the current best; increment 1
   in `E25-archive.md`). **Next:** T4a, the agent's tactics bound (the sandbox), then T4b's run on
   the user's machine.
-- **Open pull requests:** none (#534 and #539 merged); this session's branch
-  `claude/e25-training-runs-cyvj0l` (T2b's records and read; `cross-lane`, the user: AI-STUB-1's
-  magic limits fixed in `h3-battle`'s `world.rs`, which turned `master`'s verify red at random)
-  until its pull request.
+- **Open pull requests:** #555 (E25 T2b, T3; `claude/e25-training-runs-cyvj0l`; `cross-lane`, the
+  user: AI-STUB-1's magic limits fixed in `h3-battle`'s `world.rs`, which turned `master`'s
+  verify red at random): watch it to its merge. Merged: #534, #539.
 - **Versions:** battle action encoding v13, observation encoding v22, replay format v31
   (CLT-Q4/Q6), the adventure env's action encoding v5 (E08 T63a), C ABI v35 (E25 T1a, T1b, T2a:
   a world's reward, the true world, the potential) (`docs/08-work-process.md`, "Versions"). Next
