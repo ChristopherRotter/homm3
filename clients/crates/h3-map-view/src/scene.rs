@@ -1135,7 +1135,19 @@ impl<'a> View<'a> {
         clip: [i32; 4],
         pass: Pass,
     ) -> Option<Draw> {
-        let look = self.index.looks.get(entry.object)?.as_ref()?;
+        let look = self.index.looks.get(entry.object).and_then(Option::as_ref);
+        look.and_then(|look| self.look_piece(look, entry, place, clip, pass))
+    }
+
+    /// A listed object's piece of `entry` in a pass, if the pass draws it.
+    fn look_piece(
+        &self,
+        look: &Look,
+        entry: &Entry,
+        place: [i32; 2],
+        clip: [i32; 4],
+        pass: Pass,
+    ) -> Option<Draw> {
         let (shape, dx, dy) = (&look.shape, entry.dx, entry.dy);
         let drawn = match pass {
             Pass::Flat => look.flat,

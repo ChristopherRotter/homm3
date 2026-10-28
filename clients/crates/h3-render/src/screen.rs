@@ -215,8 +215,13 @@ impl Screen {
     #[must_use]
     pub fn cut(&self, rect: [i64; 4]) -> Option<Self> {
         let [left, top, right, bottom] = self.inside(rect)?;
-        let width = right - left;
-        let mut out = Self::new(width, bottom - top, self.format)?;
+        let (width, height) = (right - left, bottom - top);
+        let mut out = Self {
+            width,
+            height,
+            format: self.format,
+            pixels: vec![0; index(width) * index(height)],
+        };
         let (w, from) = (index(width), index(self.width));
         for (row, y) in out.pixels.chunks_mut(w.max(1)).zip(top..bottom) {
             let start = index(y) * from + index(left);

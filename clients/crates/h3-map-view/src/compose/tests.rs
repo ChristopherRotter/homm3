@@ -349,6 +349,13 @@ fn refuses_a_frame_too_large_or_a_missing_asset() {
         y: 0,
     };
     assert_eq!(missing(gem), "not in the batch: gem.def group 0 frame 9");
+    let gem = Draw::Gem {
+        def: "x.def".to_string(),
+        frame: 0,
+        x: 0,
+        y: 0,
+    };
+    assert_eq!(missing(gem), "not in the batch: x.def");
     assert_eq!(
         ComposeError::Frame([5, 6]).to_string(),
         "a 5 x 6 frame is too large"

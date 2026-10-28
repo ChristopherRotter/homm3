@@ -122,7 +122,7 @@ impl Composer {
             .take_while(|d| matches!(d, Draw::Frame { .. } | Draw::Dialog(_)))
             .count();
         let (still, moving) = scene.draws.split_at(still);
-        let covered = covered(moving, batch)?;
+        let covered = covered(moving, batch);
         match &self.background {
             Some((draws, background)) if draws.as_slice() == still => {
                 if let Some(rect) = union(covered, self.covered) {
@@ -143,14 +143,17 @@ impl Composer {
 }
 
 /// The rectangle `draws` can change (left, top, right, bottom), if any: a piece's clip, a gem's
-/// frame's canvas, the whole screen for a frame's picture or a dialog's item.
-fn covered(draws: &[Draw], batch: &Batch) -> Result<Option<[i64; 4]>, ComposeError> {
+/// frame's canvas (none for a gem the batch lacks: drawing it fails), the whole screen for a
+/// frame's picture or a dialog's item.
+fn covered(draws: &[Draw], batch: &Batch) -> Option<[i64; 4]> {
     let mut rect = None;
     for item in draws {
         let r = match item {
             Draw::Piece { clip, .. } => clip.map(i64::from),
             Draw::Gem { def, frame, x, y } => {
-                let (_, f) = frame_of(batch, def, 0, *frame)?;
+                let Ok((_, f)) = frame_of(batch, def, 0, *frame) else {
+                    continue;
+                };
                 let (x, y) = (i64::from(*x), i64::from(*y));
                 [
                     x,
@@ -163,7 +166,7 @@ fn covered(draws: &[Draw], batch: &Batch) -> Result<Option<[i64; 4]>, ComposeErr
         };
         rect = union(rect, Some(r));
     }
-    Ok(rect)
+    rect
 }
 
 /// The smallest rectangle holding both.
