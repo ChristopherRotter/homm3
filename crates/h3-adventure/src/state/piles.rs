@@ -123,7 +123,7 @@ impl AdventureState {
     /// the guards' `survivors`, by slot, stay as its guards (none after a draw: the next visit
     /// picks it up, or opens the box), unseen by every player (the guards are hidden). A won
     /// Pyramid is looted and teaches its spell ([`Self::loot_pyramid`]); after any other end
-    /// nothing changes (its guards' losses are not kept). Until T63 what a win gives comes before
+    /// nothing changes (its guards' losses are not kept). Until T63b what a win gives comes before
     /// the winner's levels (`ADV-STUB-10`). Else, since E08 T62b2, an event's guards' battle at
     /// its tile, where its visitor stands ([`Self::end_event_battle`], ADV-OBJ-007). Infallible:
     /// nothing when none of them is at `tile`.

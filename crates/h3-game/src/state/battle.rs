@@ -462,7 +462,7 @@ impl GameState {
     /// the visitor's victory a pile is picked up, its contents entering the treasury
     /// (ADV-PIK-004), an artifact or a scroll going to the hero (ADV-PIK-007, ADV-PIK-008), a
     /// Pandora's Box giving its record (ADV-PIK-013, E08 T62b1), a won Pyramid looted and its
-    /// spell taught (ADV-TCH-008), an event giving its record (ADV-OBJ-007, E08 T62b2): until T63
+    /// spell taught (ADV-TCH-008), an event giving its record (ADV-OBJ-007, E08 T62b2): until T63b
     /// before the winner's levels (`ADV-STUB-10`), applied
     /// as a command's outcome. Last (E08 T30) the winner's hero gets its pending levels
     /// ([`Self::give_levels`], GAM-BAT-008): after the whole outcome, Necromancy and Eagle Eye

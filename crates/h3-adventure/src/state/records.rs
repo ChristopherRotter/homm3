@@ -211,7 +211,7 @@ impl AdventureState {
     /// learned when the hero can learn it without the known test (`h3_heroes::can_learn_spell`:
     /// a Spell Book, Wisdom for the level; the change only for a spell not learned yet, since
     /// relearning changes nothing), else lost (ADVEVENT 108, 109). A Pyramid without a spell (A-20
-    /// fixed) gives nothing. Until T63 before the winner's levels (`ADV-STUB-10`).
+    /// fixed) gives nothing. Until T63b before the winner's levels (`ADV-STUB-10`).
     // rule: ADV-TCH-008
     pub(super) fn loot_pyramid(
         &mut self,

@@ -6832,3 +6832,65 @@ original data staged from the user's computer.
   then `cargo check --workspace --all-targets` and `h3-sim`'s tests. A smoke run, not committed:
   random play on the eight shipped maps that run whole (three seeds each, 14 days, at most 3 000
   steps), no failure.
+
+### Increment 7, round 7: T63a, the typed answers and increment 7's decisions (2026-10-27, `adventure/e08-t63a`, `cross-lane`)
+
+**The cut** (decision 153): T63 in two, the design's (the agent recommended three, the typed
+answers alone first); the user's consent to the `cross-lane` change of `h3-sim`'s action mapping
+with a University's purchase entries now. **Baseline:** `master` dc4d7e6 (#526 merged); the
+sandbox's light gates passed on its code (CI's fingerprint); the original data staged from the
+user's computer.
+
+- **The answers** (`command.rs`): `Answer` typed by the decision's kind (ADR-0017 point 6,
+  decision 138): `Offer(Consent)`, `LevelUp(SkillOffer)`, `Chest(ChestChoice)`,
+  `Arena(ArenaChoice)`, `School(SchoolChoice)`, `University(UniversityAnswer)`, `Close`; an answer
+  of another kind is `WrongAnswer`; `SlotClosed` and `CannotPay` for a purchase; the events
+  `ChoiceOpened` and `UniversityOpened` (the owner's alone); `DecisionClosed` also closes a choice
+  and a University; `OfferRefused` also tells a School the treasury cannot pay.
+- **The decisions** (`state.rs`): `Decision::Choice` (the adventure's `Choice`, with
+  `guard_after`) opened by `open_choice` when the treasury can pay its price, answered by
+  `answer_choice` (the price, then `AdventureState::choose`, then a waiting guard's visit);
+  `Decision::University` opened by `open_university` whatever the treasury holds, `buy` (the slot
+  open for the hero by `university_slot`, the price, `RaiseSkill` at Basic; it stays open) and its
+  leaving (then a waiting guard's visit); `pick_of` types a choice's answer (a chest's; the Arena's
+  for a choice that cannot be left; a School's for one that can); both hashed (tags 5 and 6; game
+  state hash v18); `GameState::choice`, `university`, `slot_state`, `can_pay`; the defaults'
+  `choose_by_default` gone.
+- **Legal commands and defaults** (`legal.rs`): `answers` lists each kind's in a fixed order (an
+  offer's accept then decline, a level-up's first then second, `Close`, a chest's gold then
+  experience, the Arena's two, a School's two then leave, a University's purchases of the open
+  slots it can pay in slot order then leave); `default_answer` per kind (`Decline`, the original's
+  choice, `Close`, `Gold`, `Attack`, `Leave`, `Leave`).
+- **The views** (`observe.rs`): `DecisionView::Choice(Choice)` and `DecisionView::University {
+  visit, slots }` (each skill's `SlotState` for the hero).
+- **A bug found and fixed** (`h3-adventure`, `state.rs`'s move): a monster guarding an entered
+  object's tile answered instead of the object's outcome but its resources, so since T62a a
+  Learning Stone, a Shrine, a Witch Hut, a gift or a find entered on a guarded tile marked or
+  emptied it and gave the hero nothing. Now the guard waits for an offer, a choice or a University
+  (`AdventureOutcome::waits`) and otherwise follows the object's resources, losses and hero gains
+  (ADV-MON-006 amended).
+- **The env** (`h3-sim`, the AI lane's, `cross-lane`): answers by role (`answer_entry`; 9 accept,
+  10 decline, close or leave, 11 and 12 the first and second of a level-up, a chest, the Arena, a
+  School), a University's purchases of slots 0 to 3 at 13 to 16 (`BUY_BASE`,
+  `UNIVERSITY_SLOTS`); `decode` takes the listed answer of the entry's role, else the offer's or
+  level-up's or the purchase (rejected by the game); action encoding v5. The AI lane's inbox told.
+- **Replays:** format v7 (`answer <kind> <answer>`, `answer close`); the twelve re-recorded with
+  their options (the scripted two from their commands in v7's words), their commands unchanged
+  but for their words: every hash moved.
+- **Rules:** GAM-DEC-005 and GAM-DEC-006 new; GAM-DEC-001 to -004, ADV-PIK-005, ADV-TCH-001,
+  -002, -007 and ADV-MON-006 amended; `ADV-STUB-10` narrowed to the rest (T63b).
+- *Agent's calls (change freely):* decision 153's.
+- **Tests:** `h3-game`'s `tests/rewards.rs` (the chest's, the Arena's, a School's and a
+  University's decisions with every other kind's answer rejected, their views, legal answers,
+  defaults, events and hashes; a guard waiting for each and following a Learning Stone's
+  experience, which failed before the fix); the test rules' entered gifts and University; `h3-map`'s
+  play property lists and applies the new answers (`choice_answers`), its free answers of every
+  kind, its view property the new events; `h3-cli`'s words of every answer and the bad ones;
+  `h3-sim`'s entries of a University's purchases and leaving and of the Arena through the env.
+- **Gates:** the scoped verify with the original data: its first run failed coverage (the new
+  decisions' hash arms, a School's first answer, two errors' text, an unreachable empty answer
+  list), all fixed; the second passed every step but `check-lane` (the `cross-lane` change, by
+  design); `bench-check` at its baselines (`random-play-duel-36` −0.47 %, `fork-xl-144` +0.76 %,
+  `manage-army-12` +0.35 %); `cargo clippy --workspace --all-targets` clean; `h3-sim`'s,
+  `h3-cli`'s and `h3-map`'s tests. A smoke run, not committed: random play on the eight shipped
+  maps that run whole (three seeds each, 14 days, at most 3 000 steps), no failure.

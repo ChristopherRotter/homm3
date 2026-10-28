@@ -216,7 +216,7 @@ fn only_the_owner_of_the_side_to_act_commands_the_battle() {
     assert_eq!(rejected(RED, GameCommand::EndTurn), E::DecisionOpen);
     assert_eq!(rejected(RED, attack()), E::DecisionOpen);
     assert_eq!(
-        rejected(owner, GameCommand::Answer(Answer::Accept)),
+        rejected(owner, GameCommand::Answer(Answer::Offer(Consent::Accept))),
         E::BattleOpen
     );
     let any = listed[0].clone();
@@ -727,7 +727,7 @@ fn a_battle_command_with_an_offer_open_is_refused() {
         &mut game,
         &rules,
         Actor::Player(GREEN),
-        GameCommand::Answer(Answer::Decline),
+        GameCommand::Answer(Answer::Offer(Consent::Decline)),
         &mut NoopSink,
     )
     .unwrap();

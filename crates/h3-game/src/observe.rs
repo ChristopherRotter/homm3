@@ -2,7 +2,7 @@
 //! `docs/06-security.md`, "Information hiding"): the game's public facts (the day, the players'
 //! colours, whose turn is running), the viewer's own treasury (E08 T13a; other players' never
 //! show) and open decision (T14b; since T30 an offer or a level-up, since T51b a meeting or an
-//! army dialog), the heroes it sees with their types and its own heroes'
+//! army dialog, since T63a a choice or a University), the heroes it sees with their types and its own heroes'
 //! details (T18b, GAM-HER-001), each context's observation for the viewer (since T19a its
 //! battle's, as its side sees it), and the projection of the game's events. The seed, the streams and the state hash never show
 //! (ADR-0017 point 5).
@@ -10,10 +10,10 @@
 use alloc::sync::Arc;
 use alloc::vec::Vec;
 
-use h3_adventure::{AdventureObservation, Offer, Viewers};
+use h3_adventure::{AdventureObservation, Choice, Offer, UniversityVisit, Viewers};
 use h3_content::{HeroTypeId, SkillId};
 use h3_contracts::{ArmyStack, HeroId, PlayerId};
-use h3_heroes::{HeroDetails, PrimarySkill};
+use h3_heroes::{HeroDetails, PrimarySkill, SlotState};
 
 use crate::command::GameEvent;
 use crate::{GameRuleset, GameState};
@@ -41,9 +41,10 @@ pub struct GameObservation {
     /// that is not a player of the game.
     pub treasury: Vec<u32>,
     /// The viewer's first open decision but a battle (GAM-DEC-001, E08 T14b; GAM-DEC-002, T30;
-    /// GAM-DEC-003, GAM-DEC-004, T51b): an offer, its object named by type and anchor, with its
-    /// price, a level-up with its offers, a meeting's two heroes, or an army dialog's hero and
-    /// group; other players' never show. While it is open the viewer's only legal commands are
+    /// GAM-DEC-003, GAM-DEC-004, T51b; GAM-DEC-005, GAM-DEC-006, T63a): an offer, its object
+    /// named by type and anchor, with its price, a level-up with its offers, a meeting's two
+    /// heroes, an army dialog's hero and group, a choice, or a University with its slots; other
+    /// players' never show. While it is open the viewer's only legal commands are
     /// its answers, and in a meeting or an army dialog the management commands on what it holds.
     pub decision: Option<DecisionView>,
     /// The heroes the viewer sees on the adventure map (its own and the others its explored tiles
@@ -61,23 +62,36 @@ pub struct GameObservation {
 /// An open decision as its owner sees it (E08 T30): a battle is [`GameObservation::battle`].
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DecisionView {
-    /// An offer (GAM-DEC-001), answered `Accept` or `Decline`.
+    /// An offer (GAM-DEC-001), answered `Offer`.
     Offer(Offer),
-    /// A level-up with two offers (GAM-DEC-002), answered `First` or `Second`.
+    /// A level-up with two offers (GAM-DEC-002), answered `LevelUp`.
     LevelUp(LevelUpView),
-    /// A meeting of two of the viewer's heroes (GAM-DEC-003, E08 T51b), closed with `Decline`;
+    /// A meeting of two of the viewer's heroes (GAM-DEC-003, E08 T51b), closed with `Close`;
     /// meanwhile the viewer manages both, also between them.
     Meeting {
         /// The visitor, then the visited hero.
         heroes: [HeroId; 2],
     },
-    /// An army dialog (GAM-DEC-004, E08 T51b), closed with `Decline`, which loses the group's
+    /// An army dialog (GAM-DEC-004, E08 T51b), closed with `Close`, which loses the group's
     /// rest; meanwhile the viewer manages the hero and the group, also between them.
     ArmyDialog {
         /// The hero the group joined.
         hero: HeroId,
         /// The group's stacks, by slot.
         group: Vec<ArmyStack>,
+    },
+    /// A visit's choice (GAM-DEC-005, E08 T63a): a treasure chest's gold and experience
+    /// (answered `Chest`), the Arena's two skills and their gain (`Arena`), or a School's two
+    /// skills, gain and price (`School`).
+    Choice(Choice),
+    /// A University (GAM-DEC-006, E08 T63a): its skills in the draw's order with their price,
+    /// and each slot's state for the hero (`h3_heroes::university_slot`: an open one may be
+    /// bought while the treasury can pay), answered `University`.
+    University {
+        /// The University.
+        visit: UniversityVisit,
+        /// Each skill's slot state for the hero, in the skills' order.
+        slots: Vec<SlotState>,
     },
 }
 
@@ -172,6 +186,18 @@ pub fn observe(state: &GameState, rules: &GameRuleset, viewer: Viewer) -> GameOb
                     hero,
                     group: group.to_vec(),
                 })
+            })
+            .or_else(|| state.choice(player).cloned().map(DecisionView::Choice))
+            .or_else(|| {
+                let visit = state.university(player)?;
+                Some(DecisionView::University {
+                    slots: visit
+                        .skills
+                        .iter()
+                        .map(|&skill| state.slot_state(rules, visit.hero, skill))
+                        .collect(),
+                    visit: visit.clone(),
+                })
             }),
         heroes: adventure
             .heroes
@@ -197,7 +223,7 @@ pub fn observe(state: &GameState, rules: &GameRuleset, viewer: Viewer) -> GameOb
 /// The event as `viewer` may see it, or `None` if it is hidden from it: the game's own events are
 /// public but a treasury's change, an offer's, a hero's change and its level-ups, which show to
 /// their owner only (E08 T13b, T14b, T19a2a, T30; a management command's since T51a, a meeting's
-/// and an army dialog's since T51b), and a battle's, which show to the owners that see them (E08 T19a); an adventure or a
+/// and an army dialog's since T51b, a choice's and a University's since T63a), and a battle's, which show to the owners that see them (E08 T19a); an adventure or a
 /// battle event shows to the players who see it, naming the viewer alone among them
 /// ([`h3_adventure::AdventureEvent::project`]).
 pub fn project(event: &GameEvent, viewer: Viewer) -> Option<GameEvent> {
@@ -246,6 +272,8 @@ pub fn project(event: &GameEvent, viewer: Viewer) -> Option<GameEvent> {
         | GameEvent::TacticsSet { player: owner, .. }
         | GameEvent::MeetingOpened { player: owner, .. }
         | GameEvent::ArmyDialogOpened { player: owner, .. }
+        | GameEvent::ChoiceOpened { player: owner, .. }
+        | GameEvent::UniversityOpened { player: owner, .. }
         | GameEvent::DecisionClosed { player: owner }
         | GameEvent::GroupLost { player: owner, .. } => (owner == player).then_some(*event),
         GameEvent::TurnEnded { .. }

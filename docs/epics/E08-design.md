@@ -251,6 +251,11 @@ as the find stands now), `OwnHeroView::marks`. Events (ADV-FOG-007) are T62b's.
 
 ### 14. The decisions and their answers (`h3-game`; GAM-DEC-005, -006, -004 amended)
 
+Built by T63a (decision 153) but the rest (T63b) and the army dialog's rest field: the typed
+answers, the choices and the University (`Decision::Choice`, `Decision::University`; the views
+`DecisionView::Choice`, `DecisionView::University { visit, slots }`), the env's answers by role
+with four purchase entries (action encoding v5). The record's group dialog came with T62b1.
+
 - **Typed answers** (decision 138; ADR-0017 point 6): `Answer` becomes an enum by
   decision kind, each variant carrying its kind's own type; every decision's answers move,
   increments 2 to 6's with increment 7's, in one replay format bump (v7):

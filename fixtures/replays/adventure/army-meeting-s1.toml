@@ -12,19 +12,19 @@ commands = [
     "0 assemble 2 7",
     "0 formation 2 tight",
     "0 tactics 0 off",
-    "0 decline",
+    "0 answer close",
     "0 move 0 4,4,0",
     "0 end-turn",
     "1 end-turn",
 ]
 checkpoints = [
-    "0x4d4e38773199b82b",
-    "0xf4b8288f30c6cdbb",
-    "0x39334e2ec88ca1c8",
+    "0x4c7a4d4149ff85da",
+    "0xb826e845b0c29d3e",
+    "0xb4b83a5953c631b9",
 ]
 
 [replay]
-format = 6
+format = 7
 engine = "0.1.0"
 seed = "1"
 difficulty = 1
@@ -49,7 +49,7 @@ rng = "xoshiro256starstar+splitmix64"
 rng_version = 1
 hash = "fnv1a64-le"
 hash_version = 1
-game_state_hash_version = 17
+game_state_hash_version = 18
 adventure_state_hash_version = 15
 checkpoint_every = 5
 
@@ -60,4 +60,4 @@ import_version = 13
 
 [result]
 day = 2
-final_hash = "0xca81dbfec42221b7"
+final_hash = "0xeef87d730bfbe07e"

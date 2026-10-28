@@ -1,17 +1,17 @@
 commands = [
     "0 move 0 2,5,0",
-    "0 accept",
+    "0 answer offer accept",
     "0 army dismiss 0:6",
     "0 army split g:0 0:6 4",
     "0 army move 0:3 g:1",
-    "0 decline",
+    "0 answer close",
     "0 end-turn",
     "1 end-turn",
 ]
-checkpoints = ["0xc9611dec1ab10dee"]
+checkpoints = ["0x3447f59fa9a660cf"]
 
 [replay]
-format = 6
+format = 7
 engine = "0.1.0"
 seed = "1"
 difficulty = 1
@@ -36,7 +36,7 @@ rng = "xoshiro256starstar+splitmix64"
 rng_version = 1
 hash = "fnv1a64-le"
 hash_version = 1
-game_state_hash_version = 17
+game_state_hash_version = 18
 adventure_state_hash_version = 15
 checkpoint_every = 5
 
@@ -47,4 +47,4 @@ import_version = 13
 
 [result]
 day = 2
-final_hash = "0xa780c5d1e661ada5"
+final_hash = "0x149e67adc0051688"

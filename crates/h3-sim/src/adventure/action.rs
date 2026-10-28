@@ -10,10 +10,11 @@
 //! |---|---|
 //! | 0 | End the turn |
 //! | 1 + s, s < 8 | Move the player's hero in slot `s` to the tile in the tile head |
-//! | 9 | Accept the player's open decision (E08 T14b: a Cartographer's offer) |
-//! | 10 | Decline it |
-//! | 11 | Take the first offer of the player's open level-up (E08 T30: the dialog's left) |
-//! | 12 | Take its second offer (the dialog's right) |
+//! | 9 | Accept the player's open offer (E08 T14b: a Cartographer's offer) |
+//! | 10 | Decline it, or close or leave the player's open decision (E08 T63a) |
+//! | 11 | The open decision's first answer (E08 T30: a level-up's left offer; T63a) |
+//! | 12 | Its second answer (E08 T30: a level-up's right offer; T63a) |
+//! | 13 + s, s < 4 | Buy the skill in slot `s` of the player's open University (E08 T63a) |
 //!
 //! A player's hero slots are its heroes on the map in the order of their ids, the first
 //! [`HERO_SLOTS`] (the original allows a player eight heroes on the map); a hero's slot changes
@@ -30,8 +31,14 @@
 //! conditioned on the entry ([`legal_mask`], [`tile_mask`]); an illegal entry's tile mask is
 //! empty. While the player has an open decision its answers are its only legal entries
 //! (GAM-DEC-001: `h3_game::legal_commands` lists them alone and `h3_game::legal_moves` gives
-//! nothing), each with tile 0 alone: `Accept` and `Decline` for an offer, `First` and `Second`
-//! for a level-up (GAM-DEC-002).
+//! nothing), each with tile 0 alone. The game's answers are typed by the decision's kind
+//! (`h3_game::Answer`, E08 T63a); an entry names the open decision's answer of its role
+//! ([`answer_entry`]): an offer's `Accept` and `Decline`, a level-up's two offers (GAM-DEC-002), a
+//! meeting's or an army dialog's `Close` (GAM-DEC-003, GAM-DEC-004), a chest's, the Arena's and a
+//! School's two answers and a School's leaving (GAM-DEC-005), a University's purchases of the
+//! first [`UNIVERSITY_SLOTS`] slots and its leaving (GAM-DEC-006). With no open decision of that
+//! role the entry decodes to the offer's or the level-up's answer, or the purchase, which `apply`
+//! rejects.
 //!
 //! In the battle phase an action is one of the battle lane's encoding (`crate::action`, its own
 //! version: entries and the spell and target heads), for the side the player owns; its masks
@@ -48,17 +55,22 @@
 //! Version 2 (E08 T14b) appended the answers. Version 3 (E08 T19b1) added the battle phase: since
 //! E08 T19a a move onto another player's hero starts a battle, which version 2 could not play, so
 //! it left such tiles out of the masks and the decoder (`ADV-STUB-4`, closed). Version 4 (E08
-//! T30) appended a level-up's two answers.
+//! T30) appended a level-up's two answers. Version 5 (E08 T63a, the adventure lane's `cross-lane`
+//! change with the user's consent) moved the answers onto the typed ones by role and appended a
+//! University's purchases.
 
 use h3_adventure::{AdventureCommand, Pos, Reach};
 use h3_battle::{BattleState, LegalCommands};
 use h3_contracts::{BattleSide, HeroId, PlayerId};
-use h3_game::{Actor, Answer, GameCommand, GameRuleset, GameState, legal_commands, legal_moves};
+use h3_game::{
+    Actor, Answer, ArenaChoice, ChestChoice, Consent, GameCommand, GameRuleset, GameState,
+    SchoolChoice, SkillOffer, UniversityAnswer, legal_commands, legal_moves,
+};
 
 use crate::action as battle;
 
 /// Version of this encoding; bump on any change of the layout above.
-pub const ACTION_ENCODING_VERSION: u32 = 4;
+pub const ACTION_ENCODING_VERSION: u32 = 5;
 
 /// Hero slots per player: the most heroes the original allows a player on the map.
 pub const HERO_SLOTS: usize = 8;
@@ -69,20 +81,31 @@ pub const END_TURN: usize = 0;
 /// The entry of the hero in slot 0's move; slot `s` is `MOVE_BASE + s`.
 pub const MOVE_BASE: usize = 1;
 
-/// The entry that accepts the player's open decision.
+/// The entry that accepts the player's open offer.
 pub const ACCEPT: usize = MOVE_BASE + HERO_SLOTS;
 
-/// The entry that declines the player's open decision.
+/// The entry that declines the player's open offer, closes its meeting or army dialog, or leaves
+/// its School or University (E08 T63a).
 pub const DECLINE: usize = ACCEPT + 1;
 
-/// The entry that takes the first offer of the player's open level-up (E08 T30).
+/// The entry of the first answer of the player's open two-way decision: a level-up's first offer
+/// (E08 T30), a chest's gold, the Arena's first skill, a School's first skill (E08 T63a).
 pub const FIRST: usize = DECLINE + 1;
 
-/// The entry that takes the second offer of the player's open level-up (E08 T30).
+/// The entry of the second answer of the player's open two-way decision: a level-up's second
+/// offer (E08 T30), a chest's experience, the Arena's second skill, a School's second (E08 T63a).
 pub const SECOND: usize = FIRST + 1;
 
+/// The University's slots the entries buy (E08 T63a): the original's dialog's four (a pack's
+/// University with more offers sells the rest to no agent of this encoding).
+pub const UNIVERSITY_SLOTS: usize = 4;
+
+/// The entry that buys the skill in slot 0 of the player's open University; slot `s` is
+/// `BUY_BASE + s` (E08 T63a).
+pub const BUY_BASE: usize = SECOND + 1;
+
 /// Number of entries.
-pub const ENTRY_COUNT: usize = SECOND + 1;
+pub const ENTRY_COUNT: usize = BUY_BASE + UNIVERSITY_SLOTS;
 
 /// Which entries are legal.
 pub type EntryMask = [bool; ENTRY_COUNT];
@@ -170,14 +193,19 @@ impl Action {
         Self::map(DECLINE, 0)
     }
 
-    /// Takes the open level-up's first offer (E08 T30).
+    /// Takes the open two-way decision's first answer (E08 T30, T63a).
     pub const fn first() -> Self {
         Self::map(FIRST, 0)
     }
 
-    /// Takes the open level-up's second offer (E08 T30).
+    /// Takes the open two-way decision's second answer (E08 T30, T63a).
     pub const fn second() -> Self {
         Self::map(SECOND, 0)
+    }
+
+    /// Buys the skill in `slot` of the open University (E08 T63a).
+    pub const fn buy(slot: usize) -> Self {
+        Self::map(BUY_BASE + slot, 0)
     }
 
     /// The map phase's action of `entry` with `tile`.
@@ -301,8 +329,10 @@ pub fn tile_mask(
     let seat = seat.into();
     mask.clear();
     mask.resize(tile_count(state), false);
-    if let Some(command) = tileless(entry) {
-        mask[0] = legal_commands(state, rules, seat.actor()).contains(&command);
+    if tileless(entry) {
+        mask[0] = legal_commands(state, rules, seat.actor())
+            .iter()
+            .any(|command| tileless_entry(command) == Some(entry));
     } else if let Some(reach) = entry
         .checked_sub(MOVE_BASE)
         .and_then(|slot| moves(state, rules, seat, slot))
@@ -379,26 +409,68 @@ pub fn second_mask(
     }
 }
 
-/// The command of an entry that takes no tile: `EndTurn` or an answer.
-const fn tileless(entry: usize) -> Option<GameCommand> {
-    match entry {
-        END_TURN => Some(GameCommand::EndTurn),
-        ACCEPT => Some(GameCommand::Answer(Answer::Accept)),
-        DECLINE => Some(GameCommand::Answer(Answer::Decline)),
-        FIRST => Some(GameCommand::Answer(Answer::First)),
-        SECOND => Some(GameCommand::Answer(Answer::Second)),
-        _ => None,
+/// Whether `entry` takes no tile: `EndTurn` or an answer.
+const fn tileless(entry: usize) -> bool {
+    entry == END_TURN || (entry >= ACCEPT && entry < ENTRY_COUNT)
+}
+
+/// The entry of `answer` by its role (E08 T63a; the module's table): an offer's acceptance; a
+/// declined offer, a closed meeting or army dialog, a School or a University left; the first or
+/// the second of a level-up's, a chest's, the Arena's or a School's answers; a University's
+/// purchase of one of its first [`UNIVERSITY_SLOTS`] slots (none for a later one).
+pub const fn answer_entry(answer: Answer) -> Option<usize> {
+    match answer {
+        Answer::Offer(Consent::Accept) => Some(ACCEPT),
+        Answer::Offer(Consent::Decline)
+        | Answer::Close
+        | Answer::School(SchoolChoice::Leave)
+        | Answer::University(UniversityAnswer::Leave) => Some(DECLINE),
+        Answer::LevelUp(SkillOffer::First)
+        | Answer::Chest(ChestChoice::Gold)
+        | Answer::Arena(ArenaChoice::Attack)
+        | Answer::School(SchoolChoice::First) => Some(FIRST),
+        Answer::LevelUp(SkillOffer::Second)
+        | Answer::Chest(ChestChoice::Experience)
+        | Answer::Arena(ArenaChoice::Defense)
+        | Answer::School(SchoolChoice::Second) => Some(SECOND),
+        Answer::University(UniversityAnswer::Buy(slot)) => {
+            let slot = slot as usize;
+            if slot < UNIVERSITY_SLOTS {
+                Some(BUY_BASE + slot)
+            } else {
+                None
+            }
+        }
     }
 }
 
-/// The entry of a command that takes no tile: `EndTurn` or an answer.
+/// The answer an answer entry names for `seat`'s player (E08 T63a): the answer of its role that
+/// [`legal_commands`] lists for its open decision, else the entry's answer to an offer or a
+/// level-up, or its purchase, which `apply` rejects with the reason (no decision, the wrong
+/// kind, the slot or the price).
+fn answer_of(state: &GameState, rules: &GameRuleset, seat: Seat, entry: usize) -> Option<Answer> {
+    legal_commands(state, rules, seat.actor())
+        .into_iter()
+        .find_map(|command| match command {
+            GameCommand::Answer(answer) if answer_entry(answer) == Some(entry) => Some(answer),
+            _ => None,
+        })
+        .or(match entry {
+            ACCEPT => Some(Answer::Offer(Consent::Accept)),
+            DECLINE => Some(Answer::Offer(Consent::Decline)),
+            FIRST => Some(Answer::LevelUp(SkillOffer::First)),
+            SECOND => Some(Answer::LevelUp(SkillOffer::Second)),
+            _ => u8::try_from(entry - BUY_BASE)
+                .ok()
+                .map(|slot| Answer::University(UniversityAnswer::Buy(slot))),
+        })
+}
+
+/// The entry of a command that takes no tile: `EndTurn` or an answer ([`answer_entry`]).
 const fn tileless_entry(command: &GameCommand) -> Option<usize> {
     match command {
         GameCommand::EndTurn => Some(END_TURN),
-        GameCommand::Answer(Answer::Accept) => Some(ACCEPT),
-        GameCommand::Answer(Answer::Decline) => Some(DECLINE),
-        GameCommand::Answer(Answer::First) => Some(FIRST),
-        GameCommand::Answer(Answer::Second) => Some(SECOND),
+        GameCommand::Answer(answer) => answer_entry(*answer),
         // E08 T51a: the management commands have no entry (decision 99: the AI lane's call).
         GameCommand::Adventure(_) | GameCommand::Battle(_) | GameCommand::Manage(_) => None,
     }
@@ -425,8 +497,14 @@ pub fn decode(
         }
     };
     let player = seat.player()?;
-    if let Some(command) = tileless(action.entry) {
-        return (action.tile == 0).then_some(command);
+    if tileless(action.entry) {
+        if action.tile != 0 {
+            return None;
+        }
+        if action.entry == END_TURN {
+            return Some(GameCommand::EndTurn);
+        }
+        return answer_of(state, rules, seat, action.entry).map(GameCommand::Answer);
     }
     let hero = hero_in_slot(state, player, action.entry.checked_sub(MOVE_BASE)?)?;
     let to = tile_pos(state, action.tile)?;
