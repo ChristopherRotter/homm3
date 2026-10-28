@@ -1213,9 +1213,10 @@ dropped later, as the user expected. Asked whether to cut the move at the seam b
 moves (`clock`, `cursor`, `Sprite`, `text`, `music`) and its two redesigns (`ui`'s draw items, the
 generic key table), the user chose one pull request for all of T1a.
 
-- **#541** (`shared/`): `lanes.toml`'s client foundation gains `clients/crates/h3-ui/` (its
-  comment names the crate's parts and the decision); `docs/08-work-process.md`'s Common list names
-  it. The global HANDOFF names no foundation crate: unchanged.
+- **#541** (`shared/`, merged by the user as b833af15): `lanes.toml`'s client foundation gains
+  `clients/crates/h3-ui/` (its comment names the crate's parts and the decision);
+  `docs/08-work-process.md`'s Common list names it. The global HANDOFF names no foundation crate:
+  unchanged.
 - **The crate** (`clients/crates/h3-ui`, pure, `no_std` + `alloc`, the workspace's lint header;
   depends on `h3-assets`, `h3-render`, `serde`, `serde_json`, `toml`): `git mv` of `h3-view`'s
   `clock`, `cursor`, `ui` (with its tests) and `text` (`keys`, `message`, `pack`, `plural`, tests)
