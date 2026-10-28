@@ -7665,3 +7665,75 @@ only "exit code 1"). This task changes docs only. The sandbox's full verify of t
 (fingerprint 7c14229…, without the original LODs) passed all fifteen steps (`verify-once:
 verified (sandbox) code 7c1422972258263eff244e4168c2e132cfdec7b7 on 317cd61`), so the failure looks
 like the runner's, not the code's; a re-run of CI's job on `master` would tell.
+
+### Increment 8, round 1: T66a2, the boats and sea survey's second part (2026-10-28, `adventure/e08-t66a2`)
+
+Baseline: `master` at 86c2d35 (#550 merged; CI's run on e5cfa46, #534, shows success now and every
+later run on `master` passed, so T66a1's reported failure is settled). Original files staged from
+the user's computer: `Heroes3.exe`, `maps.tar`, `extracted.tar`. At the task's start the user took
+T66a2 whole (decision 161, `AskUserQuestion`; not chosen: two parts, the reading then the plan;
+three parts).
+
+**Done:** survey `docs/rules/surveys/E08-sea.md` §7 to §14 and §0's T66a2 part: the battle at
+sea (the deck by either hero's boat, the two boats by both, nothing else in a battle tests a boat:
+every use of the in-boat bit listed), who fights a hero at sea, the boat gone with its hero, VCMI
+and the wiki in consensus; the four pickups' draws and visits read whole (Flotsam, Sea Chest,
+Shipwreck Survivor, Ocean Bottle with the signs' loader and default texts), who visits them (a
+boat; a flyer from the shore by a click: D-45), VCMI and the wiki; the interfaces (no new
+command or decision, `Reach`'s boat layer, the state, the observation, the env); batch E8's plan
+(16 rows in two runs, the harness's and the spec's gaps); the proposed rule ids (`ADV-SEA-001` to
+`-007`, ADV-PIK-014 to -018, HER-ADV-009, amendments); the second reading by two fresh agents;
+the checkpoint's questions (ADV-Q32 in `OPEN-QUESTIONS.md`). The second reading corrected three
+points: the day's maximum is kept without the Admiral's Hat (A-28), the drop at sea is 66 on a
+Favorable Winds tile, and a water walker never takes a sea pickup from the shore. The census grew (§1: objects on water
+by class, 55 monsters on water, 3 guarded events on water, 395 pickups beside land, the bottles'
+texts). The address map: `visit_flotsam` 0x4A2230, `visit_sea_chest` 0x4A5030,
+`visit_shipwreck_survivor` 0x4A52A0, `load_message_body` 0x501270, `hero_step_or_meet_allowed`
+0x481AD0, `sign_default_texts` 0x696C74 (read), six entries amended. No code, no version.
+
+### Increment 8, round 1: T66b, the ADR amendment drafts, the design note and the cut (2026-10-28, `adventure/e08-t66b`)
+
+Baseline: `master` at 346100c (#551 merged; the sandbox's baseline found its code verified and
+ran only the light gates, which passed). Original file staged from the user's computer:
+`Heroes3.exe` (one reading, below). At the task's start the user answered ADV-Q32 (decisions
+162–168, two rounds of `AskUserQuestion`, every point as recommended) and took **T66b whole**
+(decision 169; recommended was two parts by crate; not chosen either: three parts).
+
+**The drafts** (`docs/lanes/adventure/adr-drafts/*-increment-8.md`): ADR-0013 points 3 and 13 (the
+kinds `navigation`, `sea_movement_points`, `free_boarding`; the day's sea points from the part's
+table by the Navigation level, a specialist's flat points, the sea artifacts'; the free boarding
+test); ADR-0016 points 1, 3, 4, 6 (boats as records in a persistent table with a tile layer, no
+original bound; a hero in a boat with its day's maximum; boarding and landing with the Admiral's
+Hat's conversion after the step's drop; the boat's passage and the free coastal tile; Favorable
+Winds as a ground of the sea and holes; the four pickups; a flyer's visit from the shore; a hero
+placed on water refused; what a viewer sees of boats); ADR-0017 points 1, 8, 10, 11 (no new
+command or decision; the env's observation with the boats, `cross-lane`; the battle at sea by the
+heroes' boats; a boat leaving with its beaten hero).
+
+**The design note** `E08-design.md` written for increment 8: part A (§1 the data, §2 the sea
+points and free boarding, §3 ids), part B (§4 the import, §5 the kinds and parameters, §6 the
+state, §7 the passage table with a fourth mode, §8 the prices, the drop and the conversion, §9
+`Reach`, §10 visits at sea, §11 the pickups, §12 information), part C (§13 the battle at sea, §14
+the game, §15 the env, replays, fixtures, properties and benchmarks, §16 versions, ids and quirks,
+§17 batch E8, §18 the cut and the exit criteria, §19 risks).
+
+**A reading of its own** (`Heroes3.exe`, `scripts/exe.py`): the diagonal's side-tile test in
+`hero_step_allowed` (0x481D33) runs only on the branch of a water destination (0x481CDB), and in
+`pathfinder_expand` only water to water (0x4B2703; the land branch 0x4B2867 has none): **a
+diagonal landing needs no side test** (the survey's §4.1 left it open). The original's lists
+(0x63AA58, 0x63AB00) put the boat (8) among the classes not entered, so a pass node never boards
+it: **a boat is boarded only from a stop node**, from land; the four pickups are on both lists
+(visited from the neighbour, also from above). `Objects.txt`: the eight hole pictures (124) pass
+everywhere and have no visitable tile; the eight Favorable Winds pictures (225) lie on water only.
+Two map entries amended (0x481BE0, 0x4B2300).
+
+**The cut** (§18): eight rounds, batch E8 first and before the `shared/` task (T67 the maps and
+specs; T68 the harness and runs + T69 the scoring; T70 `shared/`; T71 `h3-heroes` + T72 the
+import, kinds and state; T73 moving and `Reach`; T74 the pickups, the battle at sea, the game and
+the env; T75 the replays and gates + T76 the audit). T67 queued; the AI lane's inbox told of the
+observation's change.
+
+**The checkpoint** (ADV-Q33, asked interactively with the four files sent to the user; decisions
+170–173): the drafts and the design accepted as written; batch E8, then shared, then the build;
+the env's encoding `cross-lane` in T74; the four agent's calls accepted. **T66b done**; T67 is
+ready.

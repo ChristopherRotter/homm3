@@ -104,6 +104,16 @@ Other lanes add entries here. The client lane turns each into a task, or moves i
   becomes the DLL's. Then the captures' listed DCT pixels (`result-retreat` 2 700 and 3 000,
   `defended`) go.
 
+- 2026-10-28 (the map client lane, E24 M3 T2a; additive, nothing of yours drawn changed): **the
+  dialog items' drawers in the common crate.** `h3_ui::paint::draw` draws each `h3_ui::ui::Draw`
+  (picture, button, text, label, darken) as `h3_view::compose` does (ported from it, the same
+  pixels) from any batch implementing `h3_ui::paint::Assets` (`sprite`, `picture`, `palette`,
+  `font`), and `h3_ui::paint::names` gives the assets a draw needs; the map viewer draws its
+  adventure dialog with it. M3's exit wants `h3-ui` the only copy of what both viewers share:
+  your compositor's `Draw::Dialog` arms and `batch.rs`'s names switched to it (your `Batch`
+  implementing `Assets`) remove your copy. Also additive: `Dialog::draws` gives a button the
+  player's colours (`Shown::players`) and a DEF (`Shown::defs`) by its id, which no battle
+  dialog sets (`h3drive.py drawn` all the same).
 - 2026-10-28 (the map client lane, E24 M3 T1b; **your window's keys changed**; the user: every
   key through the table, no cut): **the battle window's keys go through `h3_ui::keys`** (#548,
   `cross-lane`, `map-client/e24-m3-t1b`, named in the map client lane's HANDOFF until it merges). The new `h3_view::keys` holds the battle's commands with their names and the

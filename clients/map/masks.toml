@@ -1,0 +1,28 @@
+# What the map viewer does not draw yet, left out of every comparison with the original (E24 M1
+# T3b2 on): `h3map.py`'s stills, sequences and `drawn` digests, and the `sequences` command's
+# `screen` lines. Rectangles [x0, y0, x1, y1], the last two excluded.
+#
+# `panels` (E24 M3 T2a, design §4.1): what T3 to T6 draw of the adventure screen's panels; the
+# frame picture, the buttons, the status bar's and the resource bar's pictures and the parked
+# cursor are drawn and compared.
+panels = [
+    # The minimap (T3: the dialog's area 1).
+    [630, 26, 774, 170],
+    # The hero list's portraits, frames and bars (T4: items 15-29, 39-43).
+    [610, 212, 674, 373],
+    # The town list's pictures (T4: items 32-36).
+    [747, 212, 795, 372],
+    # The status window (T5: the dialog's area 2).
+    [605, 389, 793, 571],
+    # The resource bar's amounts and the date (T5: its items 1001-1008).
+    [40, 578, 90, 596],
+    [124, 578, 174, 596],
+    [208, 578, 258, 596],
+    [292, 578, 342, 596],
+    [376, 578, 426, 596],
+    [460, 578, 510, 596],
+    [544, 578, 594, 596],
+    [610, 578, 790, 596],
+    # The status bar's hint (T6: item 200's text).
+    [8, 556, 600, 574],
+]

@@ -9,9 +9,11 @@ use alloc::string::String;
 use core::fmt;
 
 use h3_assets::def::{decode_frame, parse_def};
+use h3_assets::fnt::{Font, decode_fnt};
 use h3_assets::palette::{Palette, decode_pal};
 use h3_assets::pcx::{Pcx, decode_pcx};
 
+use h3_ui::paint::Assets;
 use h3_ui::sprite::Sprite;
 
 use crate::scene::{Draw, Scene};
@@ -22,12 +24,13 @@ pub struct Batch {
     sprites: BTreeMap<String, Sprite>,
     pictures: BTreeMap<String, Pcx>,
     palettes: BTreeMap<String, Palette>,
+    fonts: BTreeMap<String, Font>,
 }
 
 /// Why an asset is not in the batch.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum BatchError {
-    /// The name's extension is not one a batch holds (`.DEF`, `.PCX`, `.PAL`).
+    /// The name's extension is not one a batch holds (`.DEF`, `.PCX`, `.PAL`, `.FNT`).
     Kind(String),
     /// The bytes do not decode: the name and the decoder's error.
     Decode(String, String),
@@ -36,7 +39,7 @@ pub enum BatchError {
 impl fmt::Display for BatchError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Kind(name) => write!(f, "{name}: not a DEF, PCX or PAL"),
+            Self::Kind(name) => write!(f, "{name}: not a DEF, PCX, PAL or FNT"),
             Self::Decode(name, why) => write!(f, "{name}: {why}"),
         }
     }
@@ -63,6 +66,9 @@ impl Batch {
         } else if upper.ends_with(".PAL") {
             let palette = decode_pal(bytes).map_err(failed)?.palette;
             self.palettes.insert(upper, palette);
+        } else if upper.ends_with(".FNT") {
+            let font = decode_fnt(bytes).map_err(failed)?;
+            self.fonts.insert(upper, font);
         } else {
             return Err(BatchError::Kind(upper));
         }
@@ -85,6 +91,27 @@ impl Batch {
     #[must_use]
     pub fn palette(&self, name: &str) -> Option<&Palette> {
         upper(&self.palettes, name)
+    }
+
+    /// The font `name` (E24 M3 T2a: the dialog's texts).
+    #[must_use]
+    pub fn font(&self, name: &str) -> Option<&Font> {
+        upper(&self.fonts, name)
+    }
+}
+
+impl Assets for Batch {
+    fn sprite(&self, name: &str) -> Option<&Sprite> {
+        Batch::sprite(self, name)
+    }
+    fn picture(&self, name: &str) -> Option<&Pcx> {
+        Batch::picture(self, name)
+    }
+    fn palette(&self, name: &str) -> Option<&Palette> {
+        Batch::palette(self, name)
+    }
+    fn font(&self, name: &str) -> Option<&Font> {
+        Batch::font(self, name)
     }
 }
 
@@ -118,6 +145,13 @@ pub fn names(scene: &Scene) -> BTreeSet<String> {
             }
             Draw::Gem { def, .. } => {
                 names.insert(def.to_ascii_uppercase());
+            }
+            Draw::Dialog(draw) => {
+                names.extend(
+                    h3_ui::paint::names(draw)
+                        .into_iter()
+                        .map(str::to_ascii_uppercase),
+                );
             }
         }
     }

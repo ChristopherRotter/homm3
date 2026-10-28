@@ -2,14 +2,16 @@
 //! layout are data, never literals in code): `clients/map/layouts/adventure.toml` at the native
 //! resolution (`docs/epics/E24-design.md` §1.1, §1.2, §1.9). An HD layout is another file of the
 //! same format: the view's place, its clip and its loops are the immediates an HD layout
-//! changes (§1.2). The panels (the minimap, the lists, the status window, the buttons) come with
-//! M3. The format is *provisional* until the M1 review.
+//! changes (§1.2). The panels come with M3: the dialog and the resource bar since T2a (§4.1, in
+//! `h3_ui::ui`'s format), the minimap, the lists' contents and the status window later. The format
+//! is *provisional* until the M3 review.
 
 use alloc::collections::BTreeSet;
 use alloc::format;
 use alloc::string::{String, ToString};
 use alloc::vec::Vec;
 
+use h3_ui::ui::{Dialog, Item};
 use serde::Deserialize;
 
 /// The adventure screen's layout.
@@ -30,6 +32,26 @@ pub struct AdventureLayout {
     pub scroll: Scroll,
     /// The adventure cursor (E24 M2 T2, design §3.4).
     pub cursor: CursorArt,
+    /// The adventure screen's dialog (E24 M3 T2a, design §4.1: `adventure_dialog_create`
+    /// 0x401510), its items in the executable's order.
+    pub dialog: Dialog,
+    /// The resource bar's panel (`resource_bar_create` 0x558BA0).
+    pub resource_bar: Dialog,
+    /// What the panels' logic needs of the dialog (E24 M3 T2a).
+    pub panels: Panels,
+}
+
+/// What the panels' logic needs of the dialog's items (E24 M3 T2a, design §4.1).
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Panels {
+    /// The items drawn in the viewer's colours (0x403F60: the buttons 3 to 12; the resource
+    /// bar's picture, 0x558C99, is the resource bar's own).
+    pub coloured: Vec<u16>,
+    /// The underground button's DEF on the surface and underground (0x65F22C).
+    pub underground: [String; 2],
+    /// Sleep's DEF while the hero is awake and asleep (0x65F238).
+    pub sleep: [String; 2],
 }
 
 /// The view's scroll (`view_scroll` 0x4195C0, `edge_scroll` 0x419820; design §3.4).
@@ -116,7 +138,9 @@ impl AdventureLayout {
     /// # Errors
     /// The parser's message, or the rule the layout breaks.
     pub fn parse(text: &str) -> Result<Self, String> {
-        let layout: Self = toml::from_str(text).map_err(|e| e.to_string())?;
+        let mut layout: Self = toml::from_str(text).map_err(|e| e.to_string())?;
+        layout.dialog = layout.dialog.expanded();
+        layout.resource_bar = layout.resource_bar.expanded();
         layout.check()?;
         Ok(layout)
     }
@@ -167,16 +191,51 @@ impl AdventureLayout {
                 self.scroll.edge, self.frame
             ));
         }
+        for (named, ext) in self.dialog_names() {
+            name(named, ext)?;
+        }
         Ok(())
+    }
+
+    /// Every name the dialog, the resource bar and the panels' data mention, with the extension
+    /// each must have.
+    fn dialog_names(&self) -> Vec<(&str, &'static str)> {
+        let items = self.dialog.items.iter().chain(&self.resource_bar.items);
+        let mut out = Vec::new();
+        for item in items {
+            match item {
+                Item::Picture(p) => out.push((p.picture.as_str(), ".PCX")),
+                Item::Button(b) => out.push((b.def.as_str(), ".DEF")),
+                Item::Text(t) => {
+                    out.extend([(t.picture.as_str(), ".PCX"), (t.font.as_str(), ".FNT")]);
+                    out.push((t.font_palette.as_str(), ".PAL"));
+                }
+                Item::Def(d) => out.extend(d.def.as_deref().map(|d| (d, ".DEF"))),
+                Item::Label(l) => {
+                    out.extend([(l.font.as_str(), ".FNT"), (l.font_palette.as_str(), ".PAL")]);
+                }
+                Item::Area(_) => {}
+            }
+        }
+        let panels = &self.panels;
+        out.extend(
+            panels
+                .underground
+                .iter()
+                .chain(&panels.sleep)
+                .map(|d| (d.as_str(), ".DEF")),
+        );
+        out
     }
 
     /// Every archive entry name the layout mentions, upper-cased, each once.
     #[must_use]
     pub fn names(&self) -> BTreeSet<String> {
-        core::iter::once(&self.picture)
-            .chain([&self.player_palette, &self.cursor.def])
-            .chain(self.view.gems.iter().map(|g| &g.def))
-            .map(|n| n.to_ascii_uppercase())
+        core::iter::once(self.picture.as_str())
+            .chain([self.player_palette.as_str(), self.cursor.def.as_str()])
+            .chain(self.view.gems.iter().map(|g| g.def.as_str()))
+            .chain(self.dialog_names().into_iter().map(|(n, _)| n))
+            .map(str::to_ascii_uppercase)
             .collect()
     }
 }

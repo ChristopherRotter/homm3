@@ -9,8 +9,8 @@
 //! ([`crate::draw::flagged`]; an owned object's flag pixels in its entry of the flag palette,
 //! E24 M1 T5b1, design §2.9), their shadows through
 //! the shadow pass ([`crate::draw::shadow_pass`], §2.2), the gems through the plain drawer with
-//! runs skipped (`h3_render::blit`). A DEF's palette is cycled once per scene
-//! (design §1.6).
+//! runs skipped (`h3_render::blit`), the dialog's items by `h3_ui::paint` (E24 M3 T2a). A DEF's
+//! palette is cycled once per scene (design §1.6).
 
 use alloc::collections::BTreeMap;
 use alloc::format;
@@ -128,6 +128,11 @@ pub fn compose(scene: &Scene, batch: &Batch, frame: [u32; 2]) -> Result<Screen, 
                     colour: None,
                 };
                 draw_frame(&mut screen, f, &palette, at, plain);
+            }
+            Draw::Dialog(draw) => {
+                // The dialog's items by their own drawers (E24 M3 T2a, design §4.1).
+                h3_ui::paint::draw(&mut screen, draw, batch, scene.bugs)
+                    .map_err(ComposeError::Missing)?;
             }
         }
     }

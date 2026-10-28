@@ -4,51 +4,20 @@ Pre-refined tasks of the adventure lane, in order, then the inbox of discovered 
 
 ## Tasks
 
-Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T65 (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 7 are closed (2026-10-12, -13, -20, -21, -23, -26, -28; increment 7, rewards on the map, by T65's audit). **Increment 8, boats and the sea**, refined with the user at T65 (ADV-Q31; decisions 158, 159): the survey and the ADR amendment drafts first (T66a, T66b), each task's cut confirmed with the user at its start. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
+Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T65 (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 7 are closed (2026-10-12, -13, -20, -21, -23, -26, -28; increment 7, rewards on the map, by T65's audit). **Increment 8, boats and the sea**, refined with the user at T65 (ADV-Q31; decisions 158, 159): the survey and the ADR amendment drafts first (T66a, T66b), each task's cut confirmed with the user at its start. T66a in two (decision 160): T66a1 done (`adventure/e08-t66a1`, #550: survey `E08-sea.md` §0 to §6), T66a2 done (`adventure/e08-t66a2`, decision 161: whole; §7 to §14, the checkpoint's ADV-Q32); T66b done (`adventure/e08-t66b`, decision 169: whole; the drafts, `E08-design.md` and the cut in eight rounds, ADV-Q33 accepted: decisions 170–173). Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
 
-### E08 T66a — The boats and sea survey (in two, decision 160: T66a1 points 1, 2, 3, 6 done, survey `E08-sea.md` §0 to §6; **T66a2** points 4, 5, 7, 8 next)
+### E08 T67 — Batch E8's maps and specs
 
-- **Scope** (decisions 158, 159): a survey `docs/rules/surveys/E08-sea.md` (as T17a, T24a, T34a,
-  T44a and T55a): the original's rules for boats and the sea, by code reading
-  (`docs/exe/README.md`; what is read already: `hero_boards_boat` 0x4A1010, `hero_lands_from_boat`
-  0x49E670 and the boat's points in survey `E08-hero-movement.md` §1.1, §1.4, §2.1, §3.1 and §6,
-  the boats' drawing in `docs/epics/E24-design.md` §2.3) with VCMI 1.7.5 and the wiki, and a census
-  of the 160 shipped maps. (1) **Boats** (class 8): how many, their subclasses, heroes placed in
-  one, what a map leaves reachable only by sea; the body and the import. (2) **Boarding and
-  landing:** which steps board and land, the points they cost and leave (the Admiral's Hat), what
-  boarding clears (Fly, Water Walk), where the boat stays, a guarded or blocked shore. (3)
-  **Sailing:** the step's price at sea and the day's points (Navigation, the Necklace of Ocean
-  Guidance, the Sea Captain's Hat; a Lighthouse's bonus stays with item 9), Favorable Winds (225),
-  what a hero in a boat visits and how (the sea's objects, another hero, the events on water of
-  the inbox's note below), scouting at sea, what another player sees of a boat. (4) **A battle
-  with a hero in a boat** (against a hero; the ship's deck and the two boats battlefields,
-  GAM-BAT-001; whether anything else fights a hero at sea). (5) **The sea's pickups:** Sea Chest
-  (82), Shipwreck Survivor (86), Flotsam (29), Ocean Bottle (59): their contents, draws at a new
-  game and visits. (6) **The writer:** an empty boat and a hero standing in one (CLT-Q5). (7) The
-  commands, decisions, events, the observation, replays and benchmarks it changes; **batch E8's
-  plan** on the client lane's harness (decision 159's agent's call). (8) The proposed rule ids,
-  quirk candidates and disputes; a fresh agent's second reading of the code; the checkpoint's
-  questions (an `ADV-Q`).
-- **Not in it** (decision 158): Shipyards (87) and Lighthouses (42), item 9; Whirlpools, Buoys,
-  Mermaids, Sirens; the Derelict Ship and the Shipwreck (item 10); Summon Boat and Scuttle Boat
-  (the adventure spells); a town's shipyard (E09).
-- **Depends on:** T65 (done). **Status:** T66a1 done (2026-10-28: the census, boats, boarding,
-  landing, sailing, the events on water, the writer; disputes D-41 to D-44 for the checkpoint);
-  **T66a2 ready** (the battle at sea, the four pickups, the commands and the observation, batch
-  E8's plan, the rule ids, the second reading of §2 to §4's deciding code, the checkpoint's
-  `ADV-Q` with D-41 to D-44), its cut confirmed at its start; a user checkpoint at its end
-  (decision 159).
-
-### E08 T66b — The ADR amendment drafts, the design note and the cut
-
-- **Scope:** from T66a's survey and the answers at its checkpoint: the amendment drafts of the
-  ADRs it touches (ADR-0016 for boats, the sea and a visit from a boat,
-  `docs/lanes/adventure/adr-drafts/`; ADR-0017 for the commands, decisions and battles; ADR-0013
-  if `h3-heroes` gains rules, such as the day's points at sea), `E08-design.md` rewritten for
-  increment 8 (the hero side, the map, the game, the batch and the cut, with increment 8's exit
-  criteria), the building tasks cut in rounds; the checkpoint's questions (an `ADV-Q`). The user
-  accepts the drafts and the cut before anything is built (decision 159).
-- **Depends on:** T66a and its checkpoint. **Status:** waiting for T66a.
+- **Scope** (design §17, decision 171): `h3_map::writer` gains an empty boat (class 8 by kind, in
+  `PLAIN_OBJECTS`; CLT-Q5), the four sea pickups (29, 82, 86 without a body, 59 with its text),
+  holes (124) and Favorable Winds (225, its picture's tiles), a hero and a monster on a water tile
+  (E8-5, E8-13); `h3-experiment`'s spec gains the rows' fields (`cross-lane`, battle-owned: boats,
+  pickups, holes, winds, heroes on water, the sea artifacts, Navigation, 64-artifact backpacks, a
+  hero walked a computed number of steps first); the two specs E8a and E8b with their results
+  templates (`experiments/results/E08-batch-8a.md`, `-8b.md`), from survey `E08-sea.md` §11. The
+  client lane's inbox told when the writer's boat lands (CLT-Q5's answer).
+- **Depends on:** T66b (done; ADV-Q33 answered). **Status:** ready; its cut confirmed at its start
+  (increment 7's T56 was measured first: the writer's bodies, the spec's fields, the specs).
 
 ## Inbox
 

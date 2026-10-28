@@ -465,12 +465,14 @@ pub struct Shown {
     /// The items' states (a button's frame; any item hidden; a text alone's colour when
     /// disabled).
     pub states: BTreeMap<u16, State>,
-    /// The pictures and DEF items in a player's colours: the player's colour (0 red to 7 pink; a
-    /// DEF item's since E17 M5 T4a, the message 0x200/0xD of `dialog_def_message` 0x4EA810).
+    /// The pictures, DEF items and buttons in a player's colours: the player's colour (0 red to 7
+    /// pink; a DEF item's since E17 M5 T4a, the message 0x200/0xD of `dialog_def_message`
+    /// 0x4EA810; a button's since E24 M3 T2a, 0x4569E0: the adventure screen's).
     pub players: BTreeMap<u16, u8>,
     /// The texts.
     pub texts: BTreeMap<u16, String>,
-    /// The DEF items' DEFs the screen gave them (0x4EB030; E17 M5 T3a).
+    /// The DEF items' DEFs the screen gave them (0x4EB030; E17 M5 T3a), and the buttons' (the
+    /// message 0x200/9, 0x403C40: the adventure screen's underground and sleep; E24 M3 T2a).
     pub defs: BTreeMap<u16, String>,
     /// The DEF items' frames the screen gave them (0x4EAFF0; E17 M5 T3a).
     pub frames: BTreeMap<u16, u32>,
@@ -602,12 +604,12 @@ impl Dialog {
                     let state = shown.state(b.id);
                     let [x, y] = place(b.at);
                     b.frame(state).map(|frame| Draw::Button {
-                        def: b.def.clone(),
+                        def: shown.defs.get(&b.id).unwrap_or(&b.def).clone(),
                         frame,
                         x,
                         y,
                         mirrored: false,
-                        player: None,
+                        player: colours(b.id),
                     })
                 }
                 Item::Text(t) => {

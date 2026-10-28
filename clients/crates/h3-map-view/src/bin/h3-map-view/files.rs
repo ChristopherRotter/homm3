@@ -64,6 +64,21 @@ pub fn load_layout(map: &Path) -> Result<AdventureLayout, String> {
         .map_err(|e| format!("{}: {e}", path.display()))
 }
 
+/// The panels' mask (`<map>/masks.toml`'s `panels`, E24 M3 T2a; `h3map.py` reads it too): what
+/// the viewer does not draw yet, rectangles [x0, y0, x1, y1], the last two excluded.
+pub fn load_masks(map: &Path) -> Result<Vec<[i32; 4]>, String> {
+    #[derive(serde::Deserialize)]
+    struct Masks {
+        panels: Vec<[i32; 4]>,
+    }
+    let path = map.join("masks.toml");
+    fs::read_to_string(&path)
+        .map_err(|e| e.to_string())
+        .and_then(|t| toml::from_str::<Masks>(&t).map_err(|e| e.to_string()))
+        .map(|m| m.panels)
+        .map_err(|e| format!("{}: {e}", path.display()))
+}
+
 /// The four archives' bytes, in [`ARCHIVES`]' order.
 pub fn read_archives(install: &Path) -> Result<Vec<Vec<u8>>, String> {
     let data = install.join("Data");
