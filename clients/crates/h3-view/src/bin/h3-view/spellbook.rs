@@ -8,6 +8,7 @@ use h3_kernel::Handle;
 use h3_protocol::wire::{Command, Manifest, Observation};
 use h3_ui::text::{Args, Catalogue};
 use h3_view::book::{Hero, Kind, Memory, Open, Outcome, Spell};
+use h3_view::keys::{Command as Do, Context, Keys};
 use h3_view::layout::BookLayout;
 use h3_view::message::{MessageBox, Picture, Style};
 use h3_view::tables::Tables;
@@ -210,6 +211,7 @@ pub fn still(
     };
     let mut result: Option<h3_view::message::Open> = None;
     let mut asking: Option<Asking> = None;
+    let keys = Keys::original();
     let point = |arg: &str| -> Result<[i32; 2], String> {
         let (x, y) = arg
             .split_once(',')
@@ -277,57 +279,66 @@ pub fn still(
         let (kind, arg) = action.split_once(':').unwrap_or((action, ""));
         match kind {
             "key" => {
-                // The harness's key names (xdotool's) as the book's: a letter upper-cased.
+                // The harness's key names (xdotool's) as the adapter's: a letter upper-cased; what
+                // it does the original's keys' (the table's defaults, E24 M3 T1b).
                 let key = if arg.len() == 1 {
                     arg.to_ascii_uppercase()
                 } else {
                     arg.to_owned()
                 };
-                if let Some(r) = result.as_mut() {
-                    // The result window's OK by its key: the window closed.
-                    let _ = r.key(&key);
-                    if let h3_view::message::Outcome::Closed(_) = r.key_up(&key) {
-                        result = None;
-                    }
-                    continue;
-                }
-                if let Some(a) = asking.as_mut() {
-                    // A key down and up: its button clicked.
-                    let _ = a.open.key(&key);
-                    if let h3_view::message::Outcome::Closed(id) = a.open.key_up(&key) {
-                        let asked = a.asked;
-                        match answered(id, asked) {
-                            Next::Box(next) => asking = next.map(|a| *a),
-                            Next::Give(command) => {
-                                asking = None;
-                                result = ended(command);
+                let context = Context::of(
+                    result.is_some(),
+                    asking.is_some(),
+                    still.open.is_some(),
+                    false,
+                );
+                match (keys.command(context, false, &key), still.open.as_mut()) {
+                    (Some(Do::ResultOk), _) => {
+                        if let Some(r) = result.as_mut() {
+                            // The result window's OK by its key: the window closed.
+                            let _ = r.key(h3_view::message::Key::Ok, &key);
+                            if let h3_view::message::Outcome::Closed(_) = r.key_up(&key) {
+                                result = None;
                             }
                         }
                     }
-                    continue;
-                }
-                match still.open.as_mut() {
-                    Some(open) => {
-                        let outcome = open.key(&mut memory, &key, catalogue);
+                    (Some(Do::Message(k)), _) => {
+                        if let Some(a) = asking.as_mut() {
+                            // A key down and up: its button clicked.
+                            let _ = a.open.key(k, &key);
+                            if let h3_view::message::Outcome::Closed(id) = a.open.key_up(&key) {
+                                let asked = a.asked;
+                                match answered(id, asked) {
+                                    Next::Box(next) => asking = next.map(|a| *a),
+                                    Next::Give(command) => {
+                                        asking = None;
+                                        result = ended(command);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    (Some(Do::Book(k)), Some(open)) => {
+                        let outcome = open.key(&mut memory, k, catalogue);
                         asking = booked(&mut still, outcome);
                     }
-                    None if key == "C" => {
+                    _ if context != Context::Battle => {}
+                    (Some(Do::Button(h3_view::panel::SPELL_BOOK)), _) => {
                         if let Some(h) = hero.take().and_then(|f| f()) {
                             still.open = Some(Open::new(&mut memory, h, catalogue));
                         }
                     }
-                    None if (key == "R" || key == "S") && boxes.is_some() => {
-                        let id = if key == "R" {
-                            h3_view::panel::RETREAT
-                        } else {
-                            h3_view::panel::SURRENDER
-                        };
+                    (Some(Do::Button(id)), _)
+                        if boxes.is_some()
+                            && (id == h3_view::panel::RETREAT
+                                || id == h3_view::panel::SURRENDER) =>
+                    {
                         let asked = boxes.and_then(|b| b.leave.ask(catalogue, id));
                         if let Some((text, asked)) = asked {
                             asking = tell(&text, Style::OkCancel, None, asked);
                         }
                     }
-                    None => return Err(format!("`{action}`: only the book's keys in a situation")),
+                    _ => return Err(format!("`{action}`: only the book's keys in a situation")),
                 }
             }
             "click" => {
@@ -467,8 +478,8 @@ mod tests {
         assert_eq!(played(&["key:c"], None).unwrap().open, None);
     }
 
-    /// A box of one button `id` at (10, 10), 64 × 30, with the hotkeys `keys`.
-    fn one_button(id: u16, keys: &[&str]) -> MessageBox {
+    /// A box of one button `id` at (10, 10), 64 × 30 (its keys the table's).
+    fn one_button(id: u16) -> MessageBox {
         use h3_ui::ui::{Button, Dialog, Frames, Item, Shown};
         MessageBox {
             dialog: Dialog {
@@ -481,7 +492,6 @@ mod tests {
                     size: [64, 30],
                     frames: Frames::default(),
                     hint: None,
-                    keys: keys.iter().map(|k| (*k).to_owned()).collect(),
                 })],
             },
             shown: Shown::default(),
@@ -492,12 +502,11 @@ mod tests {
     fn a_box_s_command_ends_the_still_in_the_result_window() {
         // Retreat's question (its OK by Enter or a click) gives the command; the result window
         // follows, which a key or a click on its OK closes again.
-        let tell =
-            |_: &str, _, _: Option<&Picture>| Some(one_button(h3_view::message::YES, &["Return"]));
+        let tell = |_: &str, _, _: Option<&Picture>| Some(one_button(h3_view::message::YES));
         let given = std::cell::RefCell::new(Vec::new());
         let result = |command| {
             given.borrow_mut().push(command);
-            Some(one_button(h3_view::result::OK, &["Return", "Escape"]))
+            Some(one_button(h3_view::result::OK))
         };
         let boxes = Boxes {
             tell: &tell,

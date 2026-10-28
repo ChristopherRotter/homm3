@@ -101,9 +101,8 @@ fn the_window_is_laid_out_as_the_executable_builds_it() {
     ));
     assert!(matches!(
         &window.dialog.items[n - 1],
-        Item::Button(b) if b.id == OK && b.at == [385, 507] && b.keys == ["Return", "Escape"]
+        Item::Button(b) if b.id == OK && b.at == [385, 507]
     ));
-    assert_eq!(window.dialog.button_for_key("Escape"), Some(OK));
 }
 
 #[test]

@@ -207,7 +207,7 @@ impl Key {
         })
     }
 
-    /// The key's name (the layout's hotkeys: `S`, `Space`, …).
+    /// The key's name (the key tables' chords' keys: `S`, `Space`, `F5`, …).
     #[must_use]
     pub const fn name(self) -> &'static str {
         match self {
@@ -262,7 +262,7 @@ impl Key {
     }
 
     /// Every key, in the enum's order.
-    pub const ALL: [Self; 46] = [
+    pub const ALL: [Self; 47] = [
         Self::Escape,
         Self::Space,
         Self::Right,
@@ -283,6 +283,7 @@ impl Key {
         Self::V,
         Self::W,
         Self::Left,
+        Self::Return,
         Self::PageUp,
         Self::PageDown,
         Self::End,

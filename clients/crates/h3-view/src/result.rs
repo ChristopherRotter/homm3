@@ -24,7 +24,8 @@ use crate::scene::{Draw, Moment};
 use h3_ui::text::{Args, Catalogue};
 use h3_ui::ui::{self, Button, Def, Dialog, Frames, Item, Label, Picture, Shown};
 
-/// The OK (`iOkay.def`, 0x4715C3: id 0x7802, Enter and Escape).
+/// The OK (`iOkay.def`, 0x4715C3: id 0x7802, Enter and Escape, the battle's table's
+/// `result-ok`: `crate::keys`).
 pub const OK: u16 = 0x7802;
 /// The background (`CPResult.pcx`, id 200), in the viewing player's colours (0x4703A0).
 pub const BACKGROUND: u16 = 200;
@@ -308,7 +309,8 @@ pub fn layout(layout: &ResultLayout, texts: &Texts, sides: &[Side; 2], player: u
             x += LOSS_STEP;
         }
     }
-    // The OK (0x471427, 0x4715B4): its back, the button with Enter and Escape.
+    // The OK (0x471427, 0x4715B4): its back, the button (its keys Enter and Escape: the battle's
+    // table's, `crate::keys`).
     items.push(Item::Picture(Picture {
         id: OWN_IDS + 5,
         picture: layout.button_back.clone(),
@@ -323,7 +325,6 @@ pub fn layout(layout: &ResultLayout, texts: &Texts, sides: &[Side; 2], player: u
         size: [64, 30],
         frames: Frames::default(),
         hint: None,
-        keys: alloc::vec![String::from("Return"), String::from("Escape")],
     }));
     let mut players = BTreeMap::new();
     players.insert(BACKGROUND, player);

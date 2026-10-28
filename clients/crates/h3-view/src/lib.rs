@@ -5,7 +5,8 @@
 //! [`compose`] draws the list into a frame; [`tables`] and [`layout`] are the asset tables and
 //! the screen layouts, made of the dialog items of the common crate (`h3_ui::ui`), [`panel`] the
 //! battle's panel of them, [`message`] the message box laid out as them and [`result`] the
-//! battle's result window; [`mouse`] is what the
+//! battle's result window; [`keys`] is what the battle window's keys do (through the common
+//! table, `h3_ui::keys`); [`mouse`] is what the
 //! mouse shows over the battle (the cursor's kind, the status line's hint, the stack it marks);
 //! [`sound`] is what a battle's opening plays; [`battle_log`] the battle log's lines composed from
 //! the string catalogue (`h3_ui::text`). What both viewers share is the common crate `h3-ui`'s
@@ -39,6 +40,7 @@ pub mod battle_log;
 pub mod book;
 pub mod compose;
 pub mod hero;
+pub mod keys;
 pub mod layout;
 pub mod message;
 pub mod mouse;

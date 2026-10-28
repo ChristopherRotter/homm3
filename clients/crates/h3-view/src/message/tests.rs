@@ -103,11 +103,9 @@ fn a_short_text_takes_the_least_box() {
         (1, 1, "medfont.fnt")
     );
     assert_eq!(m.shown.texts[&TEXT], "x");
-    // The OK alone, centred, Enter its hotkey; its back one out.
+    // The OK alone, centred (Enter its hotkey: the battle's table); its back one out.
     let ok = m.dialog.item(OK).unwrap();
-    assert!(
-        matches!(ok, Item::Button(b) if b.at == [96, 67] && b.keys == ["Return"] && b.def == "iOkay.def")
-    );
+    assert!(matches!(ok, Item::Button(b) if b.at == [96, 67] && b.def == "iOkay.def"));
     assert!(
         matches!(m.dialog.item(0x7866), Some(Item::Picture(p)) if p.at == [95, 66] && p.size == Some([66, 32]))
     );
@@ -123,12 +121,10 @@ fn a_question_has_an_ok_and_a_cancel() {
     let small = font(5, 10);
     let m = layout(&assets(), (&medium, &small), "x", Style::OkCancel, None, 0);
     assert!(matches!(m.dialog.item(0x7869), Some(Item::Picture(p)) if p.at == [54, 66]));
-    assert!(
-        matches!(m.dialog.item(YES), Some(Item::Button(b)) if b.at == [55, 67] && b.keys == ["Return"])
-    );
+    assert!(matches!(m.dialog.item(YES), Some(Item::Button(b)) if b.at == [55, 67]));
     assert!(matches!(m.dialog.item(0x786A), Some(Item::Picture(p)) if p.at == [136, 66]));
     assert!(
-        matches!(m.dialog.item(NO), Some(Item::Button(b)) if b.at == [137, 67] && b.keys == ["Escape"] && b.def == "iCancel.def")
+        matches!(m.dialog.item(NO), Some(Item::Button(b)) if b.at == [137, 67] && b.def == "iCancel.def")
     );
     assert!(m.dialog.item(OK).is_none());
 }
@@ -280,13 +276,13 @@ fn a_button_clicks_when_released_over_it_or_by_its_key() {
     assert_eq!(open.press([x + 5, y + 5]), Outcome::Nothing);
     assert_eq!(open.release(), Outcome::Nothing);
     assert_eq!(open.moved(ok), Outcome::Nothing);
-    assert_eq!(open.key("A"), Outcome::Nothing);
+    assert_eq!(open.key_up("A"), Outcome::Nothing);
     assert_eq!(open.key_up("Return"), Outcome::Nothing);
     // Pressed: down; off it: up; back on: down; released over it: clicked.
     assert_eq!(open.press(ok), Outcome::Changed);
     assert!(open.message.shown.state(YES).pressed);
     assert_eq!(open.press(cancel), Outcome::Nothing);
-    assert_eq!(open.key("Escape"), Outcome::Nothing);
+    assert_eq!(open.key(Key::Cancel, "Escape"), Outcome::Nothing);
     assert_eq!(open.moved([x + 61, y + 71]), Outcome::Nothing);
     assert_eq!(open.moved(cancel), Outcome::Changed);
     assert!(!open.message.shown.state(YES).pressed);
@@ -298,12 +294,23 @@ fn a_button_clicks_when_released_over_it_or_by_its_key() {
     assert_eq!(open.release(), Outcome::Changed);
     assert!(!open.message.shown.state(NO).pressed);
     // Its key: down, then its key's release clicks; another key's release does nothing.
-    assert_eq!(open.key("Escape"), Outcome::Changed);
+    assert_eq!(open.key(Key::Cancel, "Escape"), Outcome::Changed);
     assert!(open.message.shown.state(NO).pressed);
     assert_eq!(open.moved(ok), Outcome::Nothing);
     assert_eq!(open.release(), Outcome::Nothing);
     assert_eq!(open.key_up("Return"), Outcome::Nothing);
     assert_eq!(open.key_up("Escape"), Outcome::Closed(NO));
+    // The OK by whatever key gives it.
+    assert_eq!(open.key(Key::Ok, "Space"), Outcome::Changed);
+    assert!(open.message.shown.state(YES).pressed);
+    assert_eq!(open.key_up("Return"), Outcome::Nothing);
+    assert_eq!(open.key_up("Space"), Outcome::Closed(YES));
+    // A box of OK alone: no Cancel; its OK by OK's key.
+    let alone = layout(&assets(), (&medium, &small), "x", Style::Ok, None, 0);
+    let mut open = Open::new(alone);
+    assert_eq!(open.key(Key::Cancel, "Escape"), Outcome::Nothing);
+    assert_eq!(open.key(Key::Ok, "Return"), Outcome::Changed);
+    assert_eq!(open.key_up("Return"), Outcome::Closed(OK));
 }
 
 #[test]
