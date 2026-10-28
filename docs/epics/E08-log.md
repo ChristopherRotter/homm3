@@ -7075,3 +7075,13 @@ user's computer.
   `shared/e08-t64b-benches`.
 - *Agent's calls (change freely):* decision 156's.
 - **Versions:** none.
+- **Long runs** (release, not committed, fresh seeds each): the step, fork and both view properties
+  over 1 500 to 4 000 cases, until clean; the hidden-event property over 3 000. Each failure was
+  the tests' oracle, never the engine: two placed artifacts on one anchor (`SharedAnchor`), an
+  event held mid-path on a guarded tile, a find's artifact against its resources, levels given at
+  once, a meeting read as a visit, a chest's choice in the view property, a monster's treasure and
+  a held event's record out of order, several levels in one command. No engine bug found.
+- **Gates:** the scoped verify with the original data passed every step (coverage, determinism,
+  `bench-check` with the ten workloads, the original data); `clippy -p h3-cli --all-targets`
+  clean and the CLI's tests passed (the scope builds no `h3-cli`). The lane's lasting trap of the
+  plans' draws: `TRAPS.md`.
