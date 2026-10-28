@@ -144,7 +144,12 @@ pub fn names(list: &[Draw], layout: &BattleLayout) -> BTreeSet<String> {
             names.extend(player.as_ref().map(|p| &p.palette));
             names
         }
-        Draw::Button { def, .. } | Draw::Cursor { def, .. } => vec![def],
+        Draw::Button { def, player, .. } => {
+            let mut names = vec![def];
+            names.extend(player.as_ref().map(|p| &p.palette));
+            names
+        }
+        Draw::Cursor { def, .. } => vec![def],
         Draw::Text { item, .. } => vec![&item.picture, &item.font, &item.font_palette],
         Draw::Label { item, .. } => vec![&item.font, &item.font_palette],
         Draw::Ray(_) | Draw::Within { .. } | Draw::Shaken { .. } | Draw::Darken { .. } => {
@@ -305,18 +310,21 @@ mod tests {
                     palette: "Players.pal".to_string(),
                     player: 0,
                 }),
+                size: None,
             },
             Draw::Picture {
                 picture: "other.pcx".to_string(),
                 x: 0,
                 y: 0,
                 player: None,
+                size: None,
             },
             Draw::Button {
                 def: "icm001.def".to_string(),
                 frame: 0,
                 x: 0,
                 y: 0,
+                player: None,
             },
             Draw::Cursor {
                 def: "CrCombat.def".to_string(),

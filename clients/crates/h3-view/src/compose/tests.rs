@@ -770,6 +770,7 @@ fn a_picture_is_keyed_and_takes_its_players_colours() {
             palette: "Players.pal".to_string(),
             player,
         }),
+        size: None,
     };
     let [bg, r, y, w, g] = [BLUE, RED, YELLOW, WHITE, GREEN].map(|c| FORMAT.pack(c));
     let list = [Draw::Background {
@@ -814,6 +815,7 @@ fn a_button_draws_its_frame_or_frame_0() {
         frame,
         x: 1,
         y: 0,
+        player: None,
     };
     let [r, w] = [RED, WHITE].map(|c| FORMAT.pack(c));
     let first = compose(&[button(0)], &batch, &small()).unwrap();
@@ -828,13 +830,58 @@ fn a_button_draws_its_frame_or_frame_0() {
                 def: "no.def".to_string(),
                 frame: 0,
                 x: 0,
-                y: 0
+                y: 0,
+                player: None,
             }],
             &batch,
             &small()
         ),
         Err(ComposeError::Missing("no.def".to_string()))
     );
+}
+
+/// A DEF item in a player's colours (E17 M5 T4a: a message box's frame, 0x4EAA4A): its entries
+/// 224-255 the player's of the players' palette; a picture cut to its item's size.
+#[test]
+fn a_def_item_takes_its_players_colours_and_a_picture_its_size() {
+    let mut batch = batch();
+    let p = palette(&[(3, RED), (224, RED)]);
+    let frames = [row(&[3, 224], &[false, false])];
+    let def = build::def(0x47, (2, 1), &p, &[(0, &[("a", 0)])], &frames);
+    batch.add("frame.def", &def).unwrap();
+    let players = build::pal(&palette(&[(32, YELLOW)]), &[0; 256], 0, &[]);
+    batch.add("Players.pal", &players).unwrap();
+    let piece = |palette: &str| Draw::Button {
+        def: "frame.def".to_string(),
+        frame: 0,
+        x: 1,
+        y: 0,
+        player: Some(crate::scene::PlayerColours {
+            palette: palette.to_string(),
+            player: 1,
+        }),
+    };
+    let [r, y] = [RED, YELLOW].map(|c| FORMAT.pack(c));
+    let drawn = compose(&[piece("Players.pal")], &batch, &small()).unwrap();
+    assert_eq!(drawn.pixels()[..4], [0, r, y, 0]);
+    assert_eq!(
+        compose(&[piece("no.pal")], &batch, &small()),
+        Err(ComposeError::Missing("no.pal".to_string()))
+    );
+    // A picture item of a size draws that much of its picture from its corner.
+    let own = palette(&[(5, RED)]);
+    batch
+        .add("tile.pcx", &build::pcx_indexed(3, 1, &[5, 5, 5], &own))
+        .unwrap();
+    let tile = Draw::Picture {
+        picture: "tile.pcx".to_string(),
+        x: 1,
+        y: 0,
+        player: None,
+        size: Some([2, 1]),
+    };
+    let drawn = compose(&[tile], &batch, &small()).unwrap();
+    assert_eq!(drawn.pixels()[..5], [0, r, r, 0, 0]);
 }
 
 #[test]

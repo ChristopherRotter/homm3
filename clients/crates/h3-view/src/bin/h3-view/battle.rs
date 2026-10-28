@@ -25,6 +25,7 @@ use h3_view::battle_log::Logged;
 use h3_view::compose::compose;
 use h3_view::hero::Heroes;
 use h3_view::layout::{self, BattleLayout};
+use h3_view::message::{Picture, Style};
 use h3_view::mouse::aim::Target;
 use h3_view::mouse::track::{Input, Shown};
 use h3_view::mouse::{self, Field};
@@ -34,6 +35,7 @@ use h3_view::scene::{self, Draw, Moment};
 use h3_view::sound::Tune;
 use h3_view::tables::{Sounds, Tables};
 
+use crate::boxes::{Answered, Asked, Leave};
 use crate::live::Live;
 use crate::render::{lookup, read_archives};
 use crate::{assets, motion};
@@ -256,6 +258,21 @@ pub struct Battle<'g> {
     /// The spell aimed (E17 M5 T3b): its handle and whether a creature casts it (the Faerie
     /// Dragon's key F), from the book's or the key's choice to the click's cast or a cancel.
     aiming: Option<(u16, bool)>,
+    /// A message box open over the battle (E17 M5 T4a; design §7.19): the box, when it opened
+    /// and what its OK does. The battle (and the book, when the box is the book's) stands still
+    /// behind it (its modal loop runs no idle step).
+    message: Option<(h3_view::message::Open, u32, Asked)>,
+}
+
+/// What a message box did with an input (E17 M5 T4a).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum MessageDid {
+    /// Nothing the screen shows.
+    Nothing,
+    /// The box changed, closed or gave way to another: draw again.
+    Changed,
+    /// The box's OK gave a command: Retreat or Surrender.
+    Give(Command),
 }
 
 /// The original's spells aimed at a second target too (Sacrifice, Teleport): their aims are not
@@ -371,6 +388,7 @@ impl<'g> Battle<'g> {
             book: None,
             book_memory: h3_view::book::Memory::default(),
             aiming: None,
+            message: None,
         };
         battle.follow()?;
         Ok(battle)
@@ -616,6 +634,15 @@ impl<'g> Battle<'g> {
                 .and_then(|f| hot.get(f).copied())
                 .unwrap_or_default()
         };
+        // A message box sets the default cursor's frame 0 (0x4F74AC; E17 M5 T4a).
+        if self.message.is_some() {
+            let book = &self.ground.layout.book;
+            return CursorLook {
+                def: self.ground.layout.message.cursor.clone(),
+                frame: 0,
+                hot: hot_of(&book.hot, 0),
+            };
+        }
         if let Some(frame) = self.book.as_ref().and_then(|(open, _, _)| open.cursor) {
             let book = &self.ground.layout.book;
             return CursorLook {
@@ -693,18 +720,27 @@ impl<'g> Battle<'g> {
 
     /// The open book's answer to `outcome` (E17 M5 T3a): closed, or closed on a spell, whose cast
     /// is given when the engine takes it without a target (one that takes a target is aimed first:
-    /// T3b's); a refusal's and a description's message boxes are T4's.
+    /// T3b's); a refusal or a description shows its message box over the book, a stack spell
+    /// that no hex takes "That spell will affect no one!" over the battle (E17 M5 T4a).
     fn book_did(&mut self, outcome: h3_view::book::Outcome) -> BookDid {
         use h3_view::book::Outcome;
         match outcome {
-            Outcome::Nothing | Outcome::Refused { .. } | Outcome::Described(_) => BookDid::Nothing,
+            Outcome::Nothing => BookDid::Nothing,
+            Outcome::Refused { .. } | Outcome::Described(_) => {
+                self.book_box(outcome);
+                if self.message.is_some() {
+                    BookDid::Changed
+                } else {
+                    BookDid::Nothing
+                }
+            }
             Outcome::Turned => BookDid::Changed,
             Outcome::Closed => {
                 self.book = None;
                 BookDid::Changed
             }
             Outcome::Chosen(spell) => {
-                self.book = None;
+                let opened = self.book.take().map_or(0, |(_, at, _)| at);
                 let untargeted = Command::Cast {
                     spell,
                     target: h3_protocol::wire::Target::None {},
@@ -717,11 +753,26 @@ impl<'g> Battle<'g> {
                     return BookDid::Cast(untargeted);
                 }
                 // A spell with a second target (Teleport, Sacrifice) has aims of its own (not
-                // built); one the engine casts at nothing shows a message (T4's).
+                // built); a stack spell or Teleport the engine casts at nothing tells so
+                // (GENRLTXT 186, 0x59F135; E17 M5 T4a).
                 let keys = &self.record.header.manifest.keys.spells;
-                let second = motion::spell_entry_in(keys, &self.ground.tables, spell)
-                    .is_some_and(|e| SECOND_TARGET.contains(&e.original));
-                match live.hero_aim(spell).filter(|_| !second) {
+                let original =
+                    motion::spell_entry_in(keys, &self.ground.tables, spell).map(|e| e.original);
+                let second = original.is_some_and(|o| SECOND_TARGET.contains(&o));
+                let aim = live.hero_aim(spell);
+                if aim.is_none()
+                    && original.is_some_and(|o| crate::boxes::affects_someone_only(u32::from(o)))
+                {
+                    let text = self
+                        .ground
+                        .writer
+                        .as_ref()
+                        .map(|w| crate::boxes::no_one(&w.catalogue))
+                        .unwrap_or_default();
+                    self.tell(opened, &text, (Style::Ok, None), Asked::Told);
+                    return BookDid::Changed;
+                }
+                match aim.filter(|_| !second) {
                     Some(aim) => {
                         if let Some(turn) = self.turned.last_mut() {
                             turn.aims.retain(|a| a.spell != spell || a.creature);
@@ -868,6 +919,184 @@ impl<'g> Battle<'g> {
         )
     }
 
+    /// Whether a message box is open over the battle (E17 M5 T4a).
+    pub fn message_open(&self) -> bool {
+        self.message.is_some()
+    }
+
+    /// The colour whose view the screen shows (`viewing_player` 0x4CEA20; E17 M5 T4a): in hot
+    /// seat the adventure map's current player when human, which the client takes as the
+    /// attacker's when a human plays it here, else the defender's when one does, else red
+    /// (*provisional*: the client knows no adventure map's turn, and the executable falls back on
+    /// the game's highest human colour, not the battle's).
+    fn viewing_player(&self) -> u8 {
+        let colour = |index: usize| {
+            self.record
+                .first_snapshot()
+                .and_then(|s| s.sides.get(index))
+                .and_then(|side| side.colour)
+                .unwrap_or_else(|| u8::try_from(index).unwrap_or(0))
+        };
+        match self.ground.humans {
+            [true, _] => colour(0),
+            [false, true] => colour(1),
+            [false, false] => 0,
+        }
+    }
+
+    /// Opens a message box of `style` showing `text` and `picture` (E17 M5 T4a), the battle
+    /// standing still behind it from `at`; what its OK does is `asked`. Whether it opened (not
+    /// without the text tables).
+    fn tell(
+        &mut self,
+        at: u32,
+        text: &str,
+        (style, picture): (Style, Option<&Picture>),
+        asked: Asked,
+    ) -> bool {
+        let Some(writer) = self.ground.writer.as_ref() else {
+            return false;
+        };
+        let player = self.viewing_player();
+        let Some(message) = writer.message(&self.ground.layout, text, style, picture, player)
+        else {
+            return false;
+        };
+        self.message = Some((h3_view::message::Open::new(message), at, asked));
+        true
+    }
+
+    /// The panel's Surrender or Retreat clicked at `at` (E17 M5 T4a; `battle_surrender_button`
+    /// 0x474FE9, `battle_retreat_button` 0x474FA1): while the battle waits for a human whose side
+    /// may leave, the question (GENRLTXT 29 to retreat; 33 with the other side's hero's name and
+    /// the price to surrender), its OK the command. The side may retreat when the engine lists
+    /// it, surrender at all when its own view prices it (whether it can pay is told after the
+    /// OK, as the original's). Whether a box opened.
+    pub fn ask_leave(&mut self, at: u32, id: u16) -> bool {
+        if self.message.is_some()
+            || self.book.is_some()
+            || self.aiming.is_some()
+            || self.live.is_none()
+            || !self.takes(at)
+        {
+            return false;
+        }
+        let (Some(writer), Some(view), Some(turn)) = (
+            self.ground.writer.as_ref(),
+            self.live.as_ref().and_then(Live::own_view),
+            self.turned.last(),
+        ) else {
+            return false;
+        };
+        let catalogue = &writer.catalogue;
+        let keys = &self.record.header.manifest.keys;
+        let leave = Leave::of(&view, &turn.commands, &keys.hero_types, catalogue);
+        match leave.ask(catalogue, id) {
+            Some((text, asked)) => self.tell(at, &text, (Style::OkCancel, None), asked),
+            None => false,
+        }
+    }
+
+    /// A left press at `point` while a message box is open (E17 M5 T4a).
+    pub fn message_press(&mut self, point: [i32; 2]) -> MessageDid {
+        self.message_did(|open| open.press(point))
+    }
+
+    /// The mouse moved to `point` while a message box is open: whether its button changed.
+    pub fn message_moved(&mut self, point: [i32; 2]) -> bool {
+        self.message_did(|open| open.moved(point)) != MessageDid::Nothing
+    }
+
+    /// The left button released while a message box is open.
+    pub fn message_release(&mut self) -> MessageDid {
+        self.message_did(h3_view::message::Open::release)
+    }
+
+    /// A key down while a message box is open (its name: `Return`, `Escape`).
+    pub fn message_key(&mut self, key: &str) -> MessageDid {
+        self.message_did(|open| open.key(key))
+    }
+
+    /// A key up while a message box is open.
+    pub fn message_key_up(&mut self, key: &str) -> MessageDid {
+        self.message_did(|open| open.key_up(key))
+    }
+
+    /// The open box's answer to an input (E17 M5 T4a): a click on a button closes it; Retreat's
+    /// OK retreats, Surrender's surrenders or, when the side's gold is below the price, tells it
+    /// so (GENRLTXT 30, 0x475119) at once, the battle still standing.
+    fn message_did(
+        &mut self,
+        input: impl FnOnce(&mut h3_view::message::Open) -> h3_view::message::Outcome,
+    ) -> MessageDid {
+        use h3_view::message::Outcome;
+        let Some((open, at, asked)) = self.message.as_mut() else {
+            return MessageDid::Nothing;
+        };
+        let (at, asked) = (*at, *asked);
+        let id = match input(open) {
+            Outcome::Nothing => return MessageDid::Nothing,
+            Outcome::Changed => return MessageDid::Changed,
+            Outcome::Closed(id) => id,
+        };
+        self.message = None;
+        let Some(writer) = self.ground.writer.as_ref() else {
+            return MessageDid::Changed;
+        };
+        match crate::boxes::answered(asked, id, &writer.catalogue) {
+            Answered::Give(command) => MessageDid::Give(command),
+            Answered::Tell(text) => {
+                self.tell(at, &text, (Style::Ok, None), Asked::Told);
+                MessageDid::Changed
+            }
+            Answered::Closed => MessageDid::Changed,
+        }
+    }
+
+    /// The centre of the open box's button `id` on the screen, if it has one (E17 M5 T4a: an
+    /// unattended run's press).
+    pub fn message_button(&self, id: u16) -> Option<[i32; 2]> {
+        let (open, _, _) = self.message.as_ref()?;
+        let dialog = &open.message.dialog;
+        let (at, size) = dialog.item(id)?.area()?;
+        Some([
+            dialog.place[0] + at[0] + size[0] / 2,
+            dialog.place[1] + at[1] + size[1] / 2,
+        ])
+    }
+
+    /// The box the book's refusal of a spell above the hero's spell points shows (GENRLTXT 207
+    /// with the cost and the points, 0x59D462), or an adventure spell's description with its
+    /// picture and name (0x59D4DC), over the book (E17 M5 T4a).
+    fn book_box(&mut self, outcome: h3_view::book::Outcome) {
+        let Some(&(_, opened, _)) = self.book.as_ref() else {
+            return;
+        };
+        // The spells' pictures' DEF, for its size (a description's picture).
+        let def = self.ground.layout.message.spell_pictures.clone();
+        let size = match outcome {
+            h3_view::book::Outcome::Described(_) => {
+                if self.load_names(vec![def.to_ascii_uppercase()]).is_err() {
+                    return;
+                }
+                self.batch.sprite(&def).map_or([0, 0], |s| {
+                    [s.def.width, s.def.height].map(|v| i32::try_from(v).unwrap_or(i32::MAX))
+                })
+            }
+            _ => [0, 0],
+        };
+        let (Some(writer), Some((open, _, _))) = (self.ground.writer.as_ref(), self.book.as_ref())
+        else {
+            return;
+        };
+        let Some((text, picture)) =
+            crate::boxes::book_box(outcome, &open.hero, &writer.catalogue, (&def, size))
+        else {
+            return;
+        };
+        self.tell(opened, &text, (Style::Ok, picture.as_ref()), Asked::Told);
+    }
+
     /// The battle's layout.
     pub fn layout(&self) -> &BattleLayout {
         &self.ground.layout
@@ -1009,11 +1238,15 @@ impl<'g> Battle<'g> {
     /// The draw list of the battle at `t` (the playhead's moment: going back starts it over; the
     /// battle played on first if `t` is at or past its timeline's end).
     pub fn list_at(&mut self, t: u32) -> Result<Vec<Draw>, String> {
-        // Behind the open spell book the battle stands as it was when it opened (E17 M5 T3a).
-        let at = self
-            .book
-            .as_ref()
-            .map_or(t, |&(_, opened, _)| opened.min(t));
+        // Behind the open spell book the battle stands as it was when it opened (E17 M5 T3a),
+        // behind a message box as it was when the box opened (E17 M5 T4a).
+        let book = self.book.as_ref().map(|&(_, opened, _)| opened);
+        let message = self.message.as_ref().map(|&(_, opened, _)| opened);
+        let at = [Some(t), book, message]
+            .into_iter()
+            .flatten()
+            .min()
+            .unwrap_or(t);
         self.grow(at)?;
         let timeline = self
             .entered
@@ -1025,6 +1258,14 @@ impl<'g> Battle<'g> {
         if let Some((open, _, player)) = &self.book {
             let layout = &self.ground.layout;
             list.extend(open.draws(&layout.book, &layout.player_palette, *player));
+        }
+        if let Some((open, _, _)) = &self.message {
+            let message = &open.message;
+            list.extend(
+                message
+                    .dialog
+                    .draws(&message.shown, &self.ground.layout.player_palette),
+            );
         }
         Ok(list)
     }

@@ -108,13 +108,17 @@ search the parent directories).
   the music and the creatures' sounds, Esc quits. The mouse is the battle's (E17 M3 T6c-2,
   design §9.10): its cursor, the stack it marks and enters, its hints in the log; a panel button
   shows its click frame while the mouse or its hotkey (S, R, O, A, C, W, D, Space) holds it, the
-  log's scroll buttons and ↑ ↓ scroll the log. The sound (T5b, design §8.2; the installation's
+  log's scroll buttons and ↑ ↓ scroll the log. Retreat and Surrender (their buttons, R and S; E17
+  M5 T4a, design §7.19) ask first in a message box (the price, then "You don't have enough gold!"
+  when the side cannot pay), its OK or Enter leaving the battle, Cancel or Esc fighting on; while
+  a box is open every key but the viewer's own is its. The sound (T5b, design §8.2; the installation's
   `Data/*.snd` and `MP3/`): from the battle's start its start sound plays while the clock waits,
   then the battle music loops, and every stack's sounds follow its animations; once the battle
   is decided its end's tune plays once instead (M3 T8); `--mute` plays none (in a sandbox: `SDL_AUDIO_DRIVER=disk` writes the mix to `./sdlaudio.raw`).
   `--measure <s>` runs unattended and prints how late the frames showed; `--check <s>` also reads
   every frame back and compares it with the frame drawn headless (exit 1 on a difference; in a
-  sandbox under Xvfb). Building it builds SDL 3 from its sources: CMake, a C compiler and, on
+  sandbox under Xvfb); `--leave retreat|surrender` makes an unattended run's human side leave at
+  its first turn it may, through the question, the battle checked against the bot's up to it. Building it builds SDL 3 from its sources: CMake, a C compiler and, on
   Linux, the X11 headers (`.github/workflows/clients.yml` lists them; ALSA's and Pulse's for the
   sound). A Windows build cross-compiles (`rustup target add x86_64-pc-windows-gnu`, `mingw-w64`,
   `cargo build --release -p h3-view --target x86_64-pc-windows-gnu`); copied anywhere inside a

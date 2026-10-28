@@ -9,7 +9,8 @@ Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12, M1 2026-10-13, M2 2026-10
 the adventure map client being the map-client lane's E24). M5 (live play) refined at M4's
 closure (T3c, 2026-10-27, with the user): hot seat in-process first, then a game on a server;
 its tasks below, in order (T1 and T2 done 2026-10-27, each cut in two by the user; T2b whole,
-the user; T3 cut in two, T3a done 2026-10-27, T3b 2026-10-28). The original
+the user; T3 cut in two, T3a done 2026-10-27, T3b 2026-10-28; T4 cut in three, T4a done
+2026-10-28). The original
 files: stage them from the user's `original-data/install/` (one large file per staging call; the
 user's computer must be online); never from the installation. The captures need the five DLLs,
 `Heroes3.snd`, `H3ab_ahd.snd` and `H3ab_ahd.vid` too; the harness's runbook:
@@ -20,17 +21,26 @@ check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gat
 
 ### E17 M5 T4 — the battle's dialogs
 
-- **Scope:** surrender (its price) and retreat with their confirmations, the result window
-  (`battle_result_dialog` 0x4702D0: the heroes, the texts, the casualties, OK; the screen
-  darkened under it, 0x44E5F0 from 0x47782C: `end`'s last frame differs by them now), Auto Combat
-  (its button selected, the panel dimmed while the stacks play themselves), the tactics phase's
-  panel (0x46C050) and its end, the message box (`message_box_build` 0x4F6990: the spell book's
-  refusals, a spell above the hero's mana GENRLTXT 207 and `hero_book_button` 0x59E900's, and an
-  adventure spell's description, T3a's; design §7.17); read, drawn, recorded. The detail:
-  `QUEUE-ARCHIVE.md`, 2026-10-21 (T8) and 2026-10-20 (T6a).
-- **Acceptance:** each dialog's still and a sequence through it as recorded, or each difference
-  listed; battles ended by a surrender, a retreat and a victory in the window; the Definition of
-  Done.
+Cut in three by the user on 2026-10-28 (T4a, the message box, Retreat and Surrender, done
+2026-10-28; T4b and T4c below, in order). The detail: `QUEUE-ARCHIVE.md`, 2026-10-21 (T8) and
+2026-10-20 (T6a).
+
+#### T4b — the result window
+
+- **Scope:** the result window (`battle_result_dialog` 0x4702D0: the heroes, the texts, the
+  casualties, OK; the screen darkened under it, 0x44E5F0 from 0x47782C: `end`'s last frame
+  differs by them now); read, drawn, recorded, with sequences through a retreat and a surrender.
+- **Acceptance:** its still and sequences through it as recorded, or each difference listed;
+  battles ended by a surrender, a retreat and a victory in the window, each to its window; the
+  Definition of Done.
+- **Depends on:** T4a (done 2026-10-28). **Status:** ready.
+
+#### T4c — Auto Combat and the tactics phase
+
+- **Scope:** Auto Combat (its button selected, the panel dimmed while the stacks play
+  themselves), the tactics phase's panel (0x46C050) and its end; read, drawn, recorded.
+- **Acceptance:** each still and a sequence through each as recorded, or each difference
+  listed; the Definition of Done.
 - **Depends on:** T2b (done 2026-10-27). **Status:** ready.
 
 ### E17 M5 T5 — what a played battle shows

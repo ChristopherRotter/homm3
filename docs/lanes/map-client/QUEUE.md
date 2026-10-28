@@ -125,6 +125,18 @@ compares it on every situation and sequence.
 Other lanes add entries here. The map client lane turns each into a task, or keeps one line here
 while the work waits.
 
+- 2026-10-28 (the client lane, E17 M5 T4a; **for you at E24 M3 T1a and T1b**): T4a's pull request
+  (`client/e17-m5-t4a`) changes what T1a moves into `h3-ui` and what T1b takes through the key
+  table. `ui`: a picture item draws at most its `size` of its picture (the executable's
+  `dialog_picture_draw` 0x450450), a DEF item takes a player's colours from `Shown::players`
+  (`Draw::Picture`'s new `size`, `Draw::Button`'s new `player`); the new `h3_view::message` (the
+  message box laid out as `ui` items) is built on `ui` and `text`; `text::pack` makes each run of
+  quotes in a table's field one (the executable's reader, 0x5BBD29). `h3_render::text` gained
+  `widest_word`, `widest_line`, `wrapped_width` and `blit` `draw_image_keyed_in_clipped`
+  (additive). The window: R and S open Retreat's and Surrender's questions through the panel's
+  buttons, and while a box is open every key but the viewer's own goes to it (`viewer_key` in
+  `window.rs`: P, M, E, F11, V, H, the set T1b replaces). Design §7.19.
+
 - 2026-10-23 (the client lane, E17 M3 T9c, at the split): moved here from the client lane's
   inbox, the adventure lane's entry of 2026-10-21 (E08 T30, decision 65, ADR-0017 point 6 amended
   in #353; for the hot-seat client, E24 M5): **a level-up holds the game.**

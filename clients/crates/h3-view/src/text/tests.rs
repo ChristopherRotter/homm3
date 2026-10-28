@@ -390,7 +390,8 @@ fn tables() -> Tables {
         row(&["%s hits for %d!"]),
         row(&["x", "%s hit for %d!"]),
         row(&["his"]),
-        row(&["her"]),
+        // A run of quotes is one, as the executable reads a table (E17 M5 T4a).
+        row(&["\"\"her\"\"\""]),
     ];
     let c = vec![
         row(&["Singular", "Plural"]),
@@ -433,6 +434,10 @@ fn the_original_pack_reads_the_tables() {
     assert_eq!(
         pack.messages["creature.base:ogre_other"].segments,
         vec![lit("Ogres")]
+    );
+    assert_eq!(
+        pack.messages["pronoun_female"].segments,
+        vec![lit("\"her\"")]
     );
     assert_eq!(pack.check(&keys()), Vec::<Problem>::new());
 }

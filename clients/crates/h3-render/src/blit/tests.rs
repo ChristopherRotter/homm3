@@ -380,6 +380,18 @@ fn a_clipped_image_draws_only_inside_its_rectangle() {
     draw_image_keyed_clipped(&mut s, &indexed, 1, 0, [i32::MIN, 0, i32::MAX, 1]);
     assert_eq!(row(&s, 0), [WHITE, grey(5), WHITE, grey(7)]);
     assert_eq!(row(&s, 1), [WHITE; 4]);
+    // Through another palette (E17 M5 T4a: a dialog's picture in a player's colours, cut to the
+    // item's size): its index 9 green.
+    let mut green = palette_of_greys();
+    green.0[9] = Rgb {
+        r: 0,
+        g: 0xFF,
+        b: 0,
+    };
+    let mut s = screen(4, 2);
+    draw_image_keyed_in_clipped(&mut s, &indexed, &green, (1, 0), [1, 1, 3, 2]);
+    assert_eq!(row(&s, 0), [WHITE; 4]);
+    assert_eq!(row(&s, 1), [WHITE, grey(8), 0x07E0, WHITE]);
 }
 
 #[test]

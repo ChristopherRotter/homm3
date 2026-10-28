@@ -1,0 +1,56 @@
+# E17 M5 T4a: the battle's message boxes (design §7.19). The ground and obstacles of `book`
+# (book.toml): at the opening the Archangels' turn, Red human. Orrin with 20 spell points
+# (Knowledge 2) and four spells: Magic Arrow, Animate Dead (no corpse: "That spell will affect no
+# one!"), Implosion (30 points: refused) and View Air (an adventure spell: its description). Ten
+# Archangels price the surrender at 25 750 gold, above the 20 000 a Normal game gives Red: its OK
+# answers "You don't have enough gold!".
+
+[scenario]
+id = "dialogs"
+human = ["attacker"]
+packs = ["base"]
+profile = "base:faithful"
+terrain = "base:grass"
+attacker_funds = 20000
+obstacles = [
+    { hexes = [75, 76, 77, 78, 61, 60, 59, 58], anchor = 74, kind = "base:obstacle_22" },
+    { hexes = [91, 92], anchor = 91, kind = "base:obstacle_20" },
+    { hexes = [122, 123], anchor = 122, kind = "base:obstacle_19" },
+]
+
+[[attacker]]
+slot = 0
+creature = "base:archangel"
+count = 10
+
+[[attacker]]
+slot = 2
+creature = "base:marksman"
+count = 10
+
+[[defender]]
+slot = 0
+creature = "base:wolf_rider"
+count = 8
+
+[[defender]]
+slot = 2
+creature = "base:goblin"
+count = 15
+
+[scenario.attacker_hero]
+hero_type = "base:orrin"
+attack = 1
+defense = 1
+power = 1
+knowledge = 2
+mana = 20
+max_mana = 20
+spell_book = ["base:magic_arrow", "base:animate_dead", "base:implosion", "base:view_air"]
+
+[scenario.defender_hero]
+hero_type = "base:crag_hack"
+attack = 1
+defense = 1
+power = 1
+knowledge = 1

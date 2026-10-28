@@ -8,8 +8,11 @@ use h3_kernel::Handle;
 use h3_protocol::wire::{Manifest, Observation};
 use h3_view::book::{Hero, Kind, Memory, Open, Outcome, Spell};
 use h3_view::layout::BookLayout;
+use h3_view::message::{MessageBox, Picture, Style};
 use h3_view::tables::Tables;
 use h3_view::text::{Args, Catalogue};
+
+use crate::boxes::{Answered, Asked, Leave};
 
 /// The forms of a spell's description by mastery (the catalogue's family `spell-text`).
 const MASTERY_FORMS: [&str; 4] = ["none", "basic", "advanced", "expert"];
@@ -121,37 +124,77 @@ pub fn hero(
 }
 
 /// What a capture-set situation's actions leave of the spell book over its opening (E17 M5 T3a):
-/// the book open, if any, and where the mouse is.
+/// the book open, if any, a message box over it and the battle (E17 M5 T4a), and where the mouse
+/// is.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Still {
     /// The book left open.
     pub open: Option<Open>,
+    /// The message box left open (E17 M5 T4a).
+    pub message: Option<MessageBox>,
     /// The mouse after the actions.
     pub mouse: [i32; 2],
     /// When the actions were made (ms after the opening: a situation's at once, 0); the battle
-    /// behind the open book stands as it was then.
+    /// behind the open book or box stands as it was then.
     pub at: u32,
+}
+
+impl Still {
+    /// Whether a dialog (the book, a box) is open over the battle.
+    pub const fn dialog(&self) -> bool {
+        self.open.is_some() || self.message.is_some()
+    }
+}
+
+/// Lays out a message box: its text, its style, its picture (none without its fonts).
+pub type Tell<'a> = dyn Fn(&str, Style, Option<&Picture>) -> Option<MessageBox> + 'a;
+
+/// What a situation's message boxes need (E17 M5 T4a; `crate::boxes`): how a box is laid out
+/// (its text, style and picture), how the side to act may leave, which of its hero's spells (by
+/// handle) no hex takes now (a stack spell's or Teleport's "affects no one"), the spells'
+/// pictures' DEF and size.
+pub struct Boxes<'a> {
+    /// Lays out a box (none without its fonts).
+    pub tell: &'a Tell<'a>,
+    /// How the side to act may leave.
+    pub leave: Leave,
+    /// Whether the aim's entry tells that the spell affects no one.
+    pub no_one: &'a dyn Fn(u16) -> bool,
+    /// The spells' pictures' DEF and its size.
+    pub pictures: (String, [i32; 2]),
+}
+
+/// A box open in a still: its button states and what it asks.
+struct Asking {
+    open: h3_view::message::Open,
+    asked: Asked,
 }
 
 /// A situation's `actions` played at its opening (`h3drive.py`'s `act` at the frozen clock, after
 /// the mouse's move to `mouse`): `key:<k>` opens the book of the hero `hero` gives (while the
-/// panel's spell book button takes it) by its key C, or is the open book's key; `click:<x>,<y>`
-/// moves the mouse there, presses (the open book's) and parks it; `move:<x>,<y>` moves it, over
-/// the open book its hover (0x59D6C4). A move to the park point after a click is a move as the
-/// harness's is. Nothing else may come in a situation's actions.
+/// panel's spell book button takes it) by its key C, Surrender's or Retreat's question by S or R
+/// (E17 M5 T4a, with `boxes`), or is the open box's key or the open book's; `click:<x>,<y>`
+/// moves the mouse there, presses and releases (the open box's or book's) and parks it;
+/// `move:<x>,<y>` moves it, over the open book its hover (0x59D6C4). The book's refusal and
+/// description open their boxes over it, a spell no hex takes "affects no one" over the battle.
+/// A move to the park point after a click is a move as the harness's is. Nothing else may come in
+/// a situation's actions.
 pub fn still(
     actions: &[String],
     mouse: [i32; 2],
     hero: impl FnOnce() -> Option<Hero>,
     (layout, catalogue): (&BookLayout, &Catalogue),
+    boxes: Option<&Boxes<'_>>,
 ) -> Result<Still, String> {
     let mut memory = Memory::default();
     let mut hero = Some(hero);
     let mut still = Still {
         open: None,
+        message: None,
         mouse,
         at: 0,
     };
+    let mut asking: Option<Asking> = None;
     let point = |arg: &str| -> Result<[i32; 2], String> {
         let (x, y) = arg
             .split_once(',')
@@ -165,6 +208,51 @@ pub fn still(
             open.hover(memory, (layout, catalogue), to);
         }
     };
+    // A box laid out and shown.
+    let tell = |text: &str, style, picture: Option<&Picture>, asked| -> Option<Asking> {
+        let message = (boxes?.tell)(text, style, picture)?;
+        Some(Asking {
+            open: h3_view::message::Open::new(message),
+            asked,
+        })
+    };
+    // What the book's outcome leaves: the book, a box over it, or a box over the battle.
+    let booked = |still: &mut Still, outcome: Outcome| -> Option<Asking> {
+        match outcome {
+            Outcome::Nothing | Outcome::Turned => None,
+            Outcome::Refused { .. } | Outcome::Described(_) => {
+                let boxes = boxes?;
+                let open = still.open.as_ref()?;
+                let (def, size) = &boxes.pictures;
+                let (text, picture) =
+                    crate::boxes::book_box(outcome, &open.hero, catalogue, (def, *size))?;
+                tell(&text, Style::Ok, picture.as_ref(), Asked::Told)
+            }
+            Outcome::Closed => {
+                still.open = None;
+                None
+            }
+            Outcome::Chosen(spell) => {
+                still.open = None;
+                let boxes = boxes?;
+                (boxes.no_one)(spell)
+                    .then(|| {
+                        tell(
+                            &crate::boxes::no_one(catalogue),
+                            Style::Ok,
+                            None,
+                            Asked::Told,
+                        )
+                    })
+                    .flatten()
+            }
+        }
+    };
+    // A box's button clicked: what follows (another box at once, or nothing in a still).
+    let answered = |id: u16, asked: Asked| match crate::boxes::answered(asked, id, catalogue) {
+        Answered::Tell(text) => tell(&text, Style::Ok, None, Asked::Told),
+        Answered::Give(_) | Answered::Closed => None,
+    };
     for action in actions {
         let (kind, arg) = action.split_once(':').unwrap_or((action, ""));
         match kind {
@@ -175,18 +263,34 @@ pub fn still(
                 } else {
                     arg.to_owned()
                 };
+                if let Some(a) = asking.as_mut() {
+                    // A key down and up: its button clicked.
+                    let _ = a.open.key(&key);
+                    if let h3_view::message::Outcome::Closed(id) = a.open.key_up(&key) {
+                        let asked = a.asked;
+                        asking = answered(id, asked);
+                    }
+                    continue;
+                }
                 match still.open.as_mut() {
                     Some(open) => {
-                        if !matches!(
-                            open.key(&mut memory, &key, catalogue),
-                            Outcome::Nothing | Outcome::Turned
-                        ) {
-                            still.open = None;
-                        }
+                        let outcome = open.key(&mut memory, &key, catalogue);
+                        asking = booked(&mut still, outcome);
                     }
                     None if key == "C" => {
                         if let Some(h) = hero.take().and_then(|f| f()) {
                             still.open = Some(Open::new(&mut memory, h, catalogue));
+                        }
+                    }
+                    None if (key == "R" || key == "S") && boxes.is_some() => {
+                        let id = if key == "R" {
+                            h3_view::panel::RETREAT
+                        } else {
+                            h3_view::panel::SURRENDER
+                        };
+                        let asked = boxes.and_then(|b| b.leave.ask(catalogue, id));
+                        if let Some((text, asked)) = asked {
+                            asking = tell(&text, Style::OkCancel, None, asked);
                         }
                     }
                     None => return Err(format!("`{action}`: only the book's keys in a situation")),
@@ -195,17 +299,36 @@ pub fn still(
             "click" => {
                 let to = point(arg)?;
                 moved(&mut still, &mut memory, to);
-                if let Some(open) = still.open.as_mut()
-                    && !matches!(
-                        open.press(&mut memory, (layout, catalogue), to),
-                        Outcome::Nothing | Outcome::Turned
-                    )
-                {
-                    still.open = None;
+                if let Some(a) = asking.as_mut() {
+                    let _ = a.open.press(to);
+                    if let h3_view::message::Outcome::Closed(id) = a.open.release() {
+                        let asked = a.asked;
+                        asking = answered(id, asked);
+                    }
+                } else if let Some(open) = still.open.as_mut() {
+                    let outcome = open.press(&mut memory, (layout, catalogue), to);
+                    asking = booked(&mut still, outcome);
                 }
-                moved(&mut still, &mut memory, crate::pointer::PARK);
+                // Parked: a box the click opened takes the move, the book behind it none (its
+                // status line keeps the hint).
+                match asking.as_mut() {
+                    Some(a) => {
+                        still.mouse = crate::pointer::PARK;
+                        let _ = a.open.moved(crate::pointer::PARK);
+                    }
+                    None => moved(&mut still, &mut memory, crate::pointer::PARK),
+                }
             }
-            "move" => moved(&mut still, &mut memory, point(arg)?),
+            "move" => {
+                let to = point(arg)?;
+                match asking.as_mut() {
+                    Some(a) => {
+                        still.mouse = to;
+                        let _ = a.open.moved(to);
+                    }
+                    None => moved(&mut still, &mut memory, to),
+                }
+            }
             _ => {
                 return Err(format!(
                     "`{action}`: a situation's actions are key:, click: and move:"
@@ -213,6 +336,7 @@ pub fn still(
             }
         }
     }
+    still.message = asking.map(|a| a.open.message);
     Ok(still)
 }
 
@@ -254,6 +378,7 @@ mod tests {
             crate::pointer::PARK,
             || hero,
             (&layout(), &catalogue),
+            None,
         )
     }
 
