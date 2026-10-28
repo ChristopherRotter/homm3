@@ -12,7 +12,7 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   that grows, `live.rs`; the click's command; hot seat in the window; the spell book, design
   §7.17; the hero's aim, §7.18; the message box, Retreat and Surrender, §7.19; the result window,
   §7.20, its Bink decoder `h3-bink`, CLT-Q29, and its clip, §7.21). **Next: M5 T4c** (Auto Combat,
-  the tactics phase), then T5. Open PR: T4b2b's (`client/e17-m5-t4b2b`; check it first). The
+  the tactics phase), then T5. Open PR: #554, T4b2b's (`client/e17-m5-t4b2b`; check it first). The
   inbox's CLT-Q30 task (`h3-bink` as BINKW32's float DCT) waits for a free slot.
   Workspace `clients/` (`clients/README.md`), gates `clients/scripts/check.sh`; ADR-0020 (+ drafts
   in `adr-drafts/`), ADR-0024; the harness `clients/capture/README.md`; design §3–§10; records in
@@ -41,7 +41,7 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
 
 ## Recent sessions
 
-- **2026-10-28, E17 M5 T4b2b (done; PR open: check it first).** T4b2b kept whole by the user;
+- **2026-10-28, E17 M5 T4b2b (done; #554 open: check it first).** T4b2b kept whole by the user;
   `BINKW32.DLL` found by captures and black-box runs (`binkprobe.exe`), its colour tables and DCT
   read with the user's leave. Read the playback (design §7.21). Built `h3_view::clip`,
   `Draw::Video`, `videos.rs`; the harness's clips and the DLL's clock. CLT-Q30 (the DLL's float
