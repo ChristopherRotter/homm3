@@ -62,6 +62,11 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   neither the book behind it nor the battle; the battle stands as it was when the box (or the
   book under it) opened. In a still the harness's park move after a `click:` that opened a box
   goes to the box: the book keeps its hint (`msg-mana`).
+- The result window (E17 M5 T4b1) is a message box (`Asked::Result`): modal, its OK (Enter,
+  Escape) ends the window's run, unattended runs leave it open (the presser skips it). Behind it
+  the battle stands at its end with the heroes' flags of the moment before (`result::behind`):
+  frozen 1 ms earlier, the end's last action is lost. The harness's `VIDEO.VID` is empty, so the
+  original shows no clip in its slot (T4b2 gives the harness the clips).
 - `h3_formats`' `c_string` takes printable ASCII alone: an executable string with line breaks
   (the book's place formats) is read by the client's `text::exe_string`.
 - The viewer reads `clients/layouts/*.toml` at run time: a layout change made while a batch

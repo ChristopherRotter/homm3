@@ -181,7 +181,7 @@ the stacks created mid-battle.
       hero-less side's face, the losses, the text, the experience, the handler), built
       (`h3_view::result`, a DEF item's mirror, the heroes' portraits; the window's result opened
       as the battle is decided, its OK closing the battle's screen); `result-retreat`,
-      `result-surrender` exact, `end`'s last frame as recorded.
+      `result-surrender` and `end`'s last frame exact, `defended`'s but 122 artifacts.
     - **T4b2, the clip:** its slot's Bink clips (a port of FFmpeg's decoder, the user's choice,
       CLT-Q29), the harness given them.
   - **T4c, Auto Combat and the tactics phase:** the panel dimmed, the tactics phase's panel

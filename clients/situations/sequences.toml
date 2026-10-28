@@ -1132,7 +1132,11 @@ command = [
 # (the keep commanded). At the opening the keep shoots the attacker's one Pikeman (hex 86):
 # killed, the attacker keeps only its Catapult and the battle is over. The result's window shows
 # the defender's side, its player human here: the tune `defend castle` (the manager's +0x53C8,
-# the record's `Siege`). `seed`: the engine's, whose damage is the original's.
+# the record's `Siege`). `seed`: the engine's, whose damage is the original's. Since E17 M5 T4b1
+# the end's frame draws the window (Ufretin's 510 experience, the attacker's Pikeman lost): 122
+# pixels of the keep's shooter differ, all redraw artifacts: the screen darkened as last shown
+# keeps its shot's climax frame (its later frames never shown, CLT-Q19 (5)), where the viewer
+# draws it standing as the action ends (memory's last frame, 1 010 pixels, is not it either).
 [[sequence]]
 id = "defended"
 scenario = "seq-defended.toml"

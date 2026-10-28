@@ -47,7 +47,8 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
   0x471B90, `battle_end`'s calls, `battle_experience` 0x46A350, the DEF item's mirror). Built
   `h3_view::result`, `results::window` (the engine's outcome), the window's, stills' and
   sequences' result; the heroes' portraits, a DEF item's mirror. `result-retreat`,
-  `result-surrender` exact; `end`'s last frame recorded; review items 12–14.
+  `result-surrender` exact; `end`'s last frame exact, `defended`'s but 122 artifacts; review
+  items 12–14.
 
 - **2026-10-28, E17 M5 T4a (done; #542 merged).** T4 cut in three with the
   user. Read the box (design §7.19: 0x4F6570, 0x4F6990, the layout 0x4F5D80, the frame 0x48FF00,

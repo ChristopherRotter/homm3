@@ -2465,7 +2465,14 @@ without its clip; the clip T4b2, by a port of FFmpeg's Bink decoder). Read: `bat
   deadline presses it (0x697784: 15 s, 2 s after a remote turn; not built).
 - **Captured** (the harness's original, `VIDEO.VID` empty: the clip's slot shows the picture's own
   black panel): `result-retreat` (dialogs.toml: R, Enter) and `result-surrender` (result.toml: S,
-  Enter) exact; the screen halved, the shadow's strips darkened twice more.
+  Enter) exact; the screen halved, the shadow's strips darkened twice more. `end`'s last frame
+  (3 730 ms, a victory: 600 experience, the defender's 10 Pikemen) exact once the battle behind
+  stands at its end with the heroes' flags as the frame before showed them: the end's last action
+  is drawn, but the idle step that would turn the flags at that moment never runs before
+  `battle_end` darkens the screen as shown (`h3_view::result::behind`). `defended`'s end (1 487
+  ms, a town defended: Ufretin's 510 experience) all but 122 pixels of the keep's shooter, redraw
+  artifacts: the screen keeps its shot's climax frame (its later frames never shown, CLT-Q19 (5)),
+  where the viewer draws it standing; memory's last frame (1 010 pixels) is not it either.
 - **Built:** `h3_view::result` (`layout`: the items in the executable's order; `text`,
   `shown_side`, `losses`, `strongest`, `experience`, `backdrop`, `CURSOR_FRAME`), a DEF item's
   `mirrored` and `Draw::Button`'s, the asset tables' heroes' `portrait`, the layout's `[result]`,
