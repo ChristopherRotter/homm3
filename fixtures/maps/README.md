@@ -6,7 +6,8 @@ that tests, golden replays and benchmarks play a real map file without the origi
 
 Each file is laid out by `crates/h3-map/src/tests/fixtures.rs` from a plan built with a fixed
 generator, written gzip-compressed as the game stores maps; the rewards map (E08 T64a) is written
-by `h3_map::writer` instead, object by object, in `crates/h3-map/src/tests/rewards_map.rs`. The typed objects (E08 T16a) are
+by `h3_map::writer` instead, object by object, in `crates/h3-map/src/tests/rewards_map.rs`, and so
+are decision 133's two full maps (E08 T64b) in `crates/h3-map/src/tests/full_maps.rs`. The typed objects (E08 T16a) are
 drawn after the terrain and the blockers, so those stayed as they were; each object's tiles are
 free land off the roads (a guard's or a gate's on them), its visitable tile keeps two free
 neighbours it is reached from not from above, and none covers a hero or another object. Increment
@@ -15,7 +16,8 @@ monsters, guarded piles and special grounds (`play.rs`), no monster within two t
 file's test reads each committed map and checks that it is still its plan's map and imports. A
 change of a committed map changes its content hash and so invalidates every replay that names it
 (ADV-Q2): regenerate only on purpose, with `H3_WRITE_FIXTURES=1 cargo test -p h3-map --lib
-tests::fixtures` (the rewards map: `tests::rewards_map`), and say why in the commit message.
+tests::fixtures` (the rewards map: `tests::rewards_map`; the full maps: `tests::full_maps`), and
+say why in the commit message.
 
 | File | Map | Played by |
 |---|---|---|
@@ -23,6 +25,8 @@ tests::fixtures` (the rewards map: `tests::rewards_map`), and say why in the com
 | `e08-xl-144.h3m` | SoD, 144 × 144 with an underground (41 472 tiles); red and blue with four heroes each, two per level; since E08 T31 the duel's experience for the first four, a little below level 2 for the others; the same patchwork, 1 152 blockers; since E08 T16a 16 times the duel's typed objects (1 056, 3.0 % of the land tiles): the same four beside each hero, four green guards and gates on the surface road and four red ones underground, the rest anywhere on their level (tents, guards and gates green on the surface, red underground; Cartographers and observatories on the surface, Pillars of Fire underground) or the map; since E08 T20b3b2 increment 3's as the duel's, 16 times as many anywhere (168 monsters, 72 guarded piles, 68 grounds); since E08 T42 each player's flyer and water walker, one per level, and the other four artifacts and the three skills among the others (`XL_KITS`), blue's last hero with nothing of its own | the path-search and fork benchmarks (`benches/adventure/`; E08 T9b, decision 11; since E08 T42 the walkers' and the flyers' and water walkers' queries apart) |
 | `e08-army-12.h3m` | E08 T52 (increment 6): SoD, 12 × 12 of grass, no underground, no blockers; red's Valeska at (3, 5) with a full army (`fixtures.rs`' `ARMY_FULL`: archers, griffins, swordsmen, monks, cavaliers, dwarves, wood elves) and twelve artifacts in her backpack (`ARMY_BACKPACK`), her mate Caitlin east of her (`play.rs`' `Exchange`: expert Scholar, advanced Wisdom, a Spell Book and six spells of her own, Elixir of Life's three parts worn), six compliant goblins west of her; blue's Rion at (9, 9) | the scripted golden replays `army-meeting-s1` and `army-dialog-s1` (a meeting with Scholar, an army dialog), the management benchmark (`benches/adventure/`) |
 | `e08-rewards-36.h3m` | E08 T64a (increment 7): SoD, 36 × 36 of grass, no underground, written by `h3_map::writer` with the original's templates; every object class of increment 7 (`codes.rs`' 31: chests, artifacts placed, guarded and random, a Spell Scroll, Pandora's Boxes, events, the Pyramid, the ten gifts, the Shrines, a Witch Hut, a Scholar, a University, the four finds) and gnolls with an artifact. Red's Orrin (hero 0) at (6, 4) with a full army of seven kinds (archangels first): a box east of him gives ten wood elves and 1 000 experience, an event south of him on (6, 8) is guarded by two gnolls, a Learning Stone on (3, 8) entered from (4, 8) by two others; red's Adela (hero 1) at (28, 4), basic Wisdom alone, a Spell Book, twenty archangels and 950 experience: a box on (31, 4) guarded by ten pikemen gives Bless and Prayer; red's Mephala (hero 2) at (5, 28): an event for red on (8, 28) east of her, the University's entrance on (13, 26); blue's two heroes at (32, 30) and (32, 18), their types' own (`rewards_map.rs` lists the rest by row) | the rewards replays in `fixtures/replays/adventure/` (random play and the scripted order-dependent paths), the rewards benchmarks (`benches/adventure/`) |
+| `e08-boxes-144.h3m` | E08 T64b (decision 133: no original limit on objects and their state): SoD, 144 × 144 of grass over an underground of subterranean ground (41 472 tiles), written by `h3_map::writer` with the original's template; red's heroes on (8, 8) of each level, blue's on (135, 135); a Pandora's Box giving 100 experience and 100 gold on every other tile (41 468), each asking first and leaving the map once opened | `full_maps.rs`' test (it builds, plays 300 steps that open boxes, forks), the benchmark `fork-boxes-xl-144` (`benches/adventure/`) |
+| `e08-stones-144.h3m` | E08 T64b: the same map with a Learning Stone on every other tile, entered, so a hero walks from stone to stone and each marks it once (the visits' block) | `full_maps.rs`' test (the marks), the benchmark `fork-stones-xl-144` (the forks carrying the visits block) |
 
 E08 T49a regenerated both: a hero with skills of its own wears its Spell Book on the map's book
 entry (17), not the head's (0), now that the import keeps the map's positions (import v9); nothing

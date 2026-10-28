@@ -6,6 +6,7 @@
 
 mod encode;
 mod fixtures;
+mod full_maps;
 mod import;
 mod play;
 mod rewards;

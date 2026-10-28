@@ -7013,3 +7013,75 @@ its code (CI's fingerprint); the original data staged from the user's computer.
   h3-cli --all-targets` clean (the scope builds no `h3-cli`).
 - **The epic file** stays above its aim (48 KB of 35): all of it is the open increment 7, which
   T65 moves to the archive.
+
+### Increment 7, round 8: T64b, the properties and the 144 × 144 maps (2026-10-28, `adventure/e08-t64b`)
+
+**The cut** (decision 156): whole, the user's "Whole in one" (the agent recommended two parts, the
+properties first). **Baseline:** `master` c4ae2fa (#537, #538 merged, CI green on T64a's merge);
+the sandbox's light gates passed on its code (CI's fingerprint); the original data staged from the
+user's computer.
+
+- **The plans** (`h3-map`'s `tests/play.rs`): 35 kinds appended to `KINDS` (`REWARDS`,
+  `reward_body`): the Arena, Centaur's Axe, a box (500 experience, 500 gold, Magic Arrow, four
+  pikemen), a Corpse, Marletto Tower, an event (300 experience and gold for every colour, removed),
+  the Garden, a Lean To, the Library, the two Schools, the Mercenary Camp, the Star Axis, the
+  Pyramid, the five random artifacts, a Scholar, the three Shrines (drawn), a scroll, a Learning
+  Stone, a chest, a Tree of Knowledge, a University, a Wagon, a Warrior's Tomb, a Witch Hut of
+  every skill; a box two gnolls guard (1 500 experience, Bless, Prayer), an event two gnolls
+  guard that stays (Attack, luck), Blackshard whose gnolls ask, three savage gnolls with Centaur's
+  Axe. `rewards()` is drawn last (the committed maps and the regression files' maps kept): up to
+  six within two tiles of a hero in seven plans of eight. A placed artifact's type is one type
+  whatever its artifact (`lay_out`'s twin rule; two on one anchor were `SharedAnchor`).
+- **The checks** (every step of `every_step_keeps_the_commands_invariants`): the offers of
+  increment 7 (`check_decisions`: a guarded artifact's or scroll's question, a gift's price and a
+  School's refusal by `gift_price`, the Tomb's, a box's and the Pyramid's questions; a choice and
+  a University open and close as told), management closed while a choice or a University is
+  open; the gains and losses (`check_conservation`: `visit_gains` for a chest's gold and a find
+  emptied, by its artifact received or its turn; `records` for a box's and a fired event's record
+  in the events' order; `ResourceLost`; the School's and the University's payments); a hero's
+  changes and levels applied in the order told (several levels in one command); a won guards'
+  battle's gift (`check_unowned_battle_end`: a guarded artifact, box, the Pyramid, a guarded
+  event; held only by a level-up the battle's own experience opens before anything of the gift);
+  an event's stop, fired or held for its tile's guard (`landing`, `check_legal`: `Reach` crosses
+  events, design §12); an artifact appears only as one an object that left held (`left_with`).
+  New: `check_rewards` (removals, marks of heroes on the map, knowledge and the emptied objects
+  only grow; an emptied find or a looted Pyramid gives no resource, artifact or spell at a later
+  visit, `visited`).
+- **The view property** (`view.rs`): a visit that shows what the build drew (gains, a choice or
+  University opened, a price refused, the viewer's knowledge grown) ends the comparison as a
+  pickup does, its contents' events left out (their number too).
+- **The cover test** (`the_plans_visit_every_kind_and_answer_every_decision`, 512 fixed cases,
+  its own step mix): every one of the 31 classes visited 9 to 79 times; both answers of a Tree's
+  price (1 decline), the Tomb's, a box's, the Pyramid's and a guarded artifact's questions; a
+  chest's gold and experience, the Arena's two skills, a School's two and leaving (1), a
+  University's four purchases and leaving, a box's army dialog closed.
+  `the_plans_meet_and_manage` goes from 96 to 320 cases: the plans' new draw moved its army
+  dialogs' cover (taken stacks 0 at 96 and 192 cases, with or without the new objects).
+- **The hidden-event property** (`h3-game`'s `tests/events.rs`): in half the cases a wandering
+  monster of any disposition in both games, which guards the event's tile when beside it (the
+  guard's visit first, the event held: GAM-DEC-007); 48 cases, 1 000 run once.
+- **Decision 133's maps** (`tests/full_maps.rs`): `e08-boxes-144.h3m` (98 KB) and
+  `e08-stones-144.h3m` (72 KB), SoD, 144 × 144 with an underground, red's heroes on (8, 8) of
+  each level and blue's on (135, 135), a box (100 experience, 100 gold) or a Learning Stone on
+  each of the other 41 468 tiles, written by `h3_map::writer`; `the_full_maps_are_committed_as_written`
+  imports each (41 468 objects, 4 heroes); `a_map_full_of_boxes_or_stones_builds_plays_and_forks`
+  plays 300 steps (54 boxes opened; 54 stones marked, the heroes walking from stone to stone, the
+  stones entered), forks, and checks the fork against its parent.
+- **The benchmarks:** `fork-boxes-xl-144` and `fork-stones-xl-144` (100 000 forks after 7 days of
+  random play, 52 and 46 steps): 236 700 024 Ir each, 2 367 a fork (`fork-xl-144` with a battle
+  open: 3 564; `fork-rewards-36`: 2 576); only the stones' forks carry the visits block (boxes
+  leave the map), and it adds nothing to a fork (design §10's estimate: about 20 Ir). The CLI's
+  bench test checks the block on the stones' forks, none on the boxes'. The benches README's rows:
+  `shared/e08-t64b-benches`.
+- *Agent's calls (change freely):* decision 156's.
+- **Versions:** none.
+- **Long runs** (release, not committed, fresh seeds each): the step, fork and both view properties
+  over 1 500 to 4 000 cases, until clean; the hidden-event property over 3 000. Each failure was
+  the tests' oracle, never the engine: two placed artifacts on one anchor (`SharedAnchor`), an
+  event held mid-path on a guarded tile, a find's artifact against its resources, levels given at
+  once, a meeting read as a visit, a chest's choice in the view property, a monster's treasure and
+  a held event's record out of order, several levels in one command. No engine bug found.
+- **Gates:** the scoped verify with the original data passed every step (coverage, determinism,
+  `bench-check` with the ten workloads, the original data); `clippy -p h3-cli --all-targets`
+  clean and the CLI's tests passed (the scope builds no `h3-cli`). The lane's lasting trap of the
+  plans' draws: `TRAPS.md`.
