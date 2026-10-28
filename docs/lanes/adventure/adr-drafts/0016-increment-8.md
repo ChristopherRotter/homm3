@@ -70,16 +70,19 @@ record at a fork, and decision 164 allows a boat on every water tile (the XL map
 >   - **A hero's passage in a boat** (the fourth mode beside walking, flying and water walking):
 >     water steps only, at water's price from the source tile (100, 141 diagonally, Favorable
 >     Winds as above), with neither roads, nor native terrain, nor Pathfinding; a diagonal step
->     only when both side tiles are water; never onto an empty boat's tile nor a blocked water
+>     from water to water only when both side tiles are water (a diagonal landing needs no such
+>     test: E08 T66b's reading of 0x4B2867 and 0x481CDB); never onto an empty boat's tile nor a blocked water
 >     tile; onto land only by a **landing** onto a **free coastal tile** (the map's coast flag; no
 >     object blocking it or visited from it, no event, no hole, no hero: D-42, the original's
 >     class 3, with the wiki). The diagonal exception (ADV-MOV-005) compares the points left with
 >     water's price, never the winds' (D-43). The drop to 0 after a step prices the cheapest step
 >     from the new tile as the original's `cheapest_step_from` (100 at sea, 66 on Favorable Winds;
 >     on the coast its road's price, else the native price).
->   - **From land onto water:** an empty boat's tile is a step for every mode, from any node
->     (boarding: the move ends there; no guard attacks on it); a hero in a boat is visited from a
->     stop node (a battle or a meeting); an object visited from the neighbouring tile on water is
+>   - **From land onto water:** an empty boat's tile is a step for every mode from a stop node,
+>     so from land (boarding: the move ends there; no guard attacks on it; a flight or a water walk
+>     over water passes no boat it could board, the boat being on the original's list of classes
+>     not entered, 0x63AA58); a hero in a boat is visited from a stop node (a battle or a
+>     meeting); an object visited from the neighbouring tile on water is
 >     visited by a **flying** hero from a stop node (D-45, the original's click; a flight still
 >     passes it), never by a walking or water-walking one; plain water stays a flight's or a water
 >     walk's pass. Disputes D-41 to D-43 and D-45 take the code's side until batch E8's rows
