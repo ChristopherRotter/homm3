@@ -71,7 +71,8 @@ are the adventure's (§6).
   eight holes' (`AVLhlds0`, `AVLhlsn0`, `AVLhold0`, `AVLholg0`, `AVLholl0`, `AVLholr0`,
   `AVLhols0`, `AVLholx0`: passable everywhere, no visitable tile, land only, `Objects.txt`) and the
   eight Favorable Winds pictures (`AVXfw0` to `AVXfw7`: water only); read from the sprite
-  archives at the build task's start, as T20a2a read the grounds'.
+  archives by T67 (`H3sprite.lod`, as T20a2a read the grounds'): every hole 1 × 1, the winds 6 × 4,
+  8 × 6, 6 × 6, 8 × 3, 3 × 6, 3 × 3, 5 × 2, 2 × 5 in that order (§19).
 - **D-44** (decision 163): a hero object (34) on a water tile is `Unsupported::HeroOnWater(index)`
   (counted by reason in `examples/original_data.rs`: none of the 160 shipped maps, §1).
 - **The boats' bound** (decision 164): the setup refuses a boat off water, two boats on one tile,
@@ -316,15 +317,11 @@ SoD on Easy, hot seat, from maps `h3-experiment` writes: **E8a** movement and th
 E8-5, E8-7, E8-10, E8-15, E8-16), **E8b** the pickups and the battles (E8-6, E8-8, E8-9, E8-11 to
 E8-14).
 
-- **The writer** (`h3_map::writer`, this lane's; CLT-Q5): an empty boat (class 8 by kind,
-  `PLAIN_OBJECTS`), the four pickups (29, 82, 86 without a body; 59 with its text), holes (124),
-  Favorable Winds (225) and a hero and a monster on a water tile (E8-5, E8-13). The client lane's
-  inbox is told when the boat lands (CLT-Q5's answer).
-- **The spec** (`h3-experiment`, battle-owned: `cross-lane`): the rows' boats, pickups, holes,
-  winds, heroes on water, the heroes' artifacts (the Admiral's Hat, the Necklace, the Sea Captain's
-  Hat, Angel Wings, Boots of Levitation), Navigation, 64-artifact backpacks; heroes walked a
-  computed number of steps first (E8-1, E8-2, E8-4: exact points, as batch E2); the results
-  templates `experiments/results/E08-batch-8a.md`, `-8b.md`.
+- **The writer and the specs:** built by T67 (`E08-log.md`, T67): the writer's boat, pickups,
+  holes and bottle text, the spec's `[[map.bottle]]` and a monster's own `at`, the specs
+  `E08-batch-8a`, `-8a-water` (E8-5 on its own map) and `-8b` with their templates; the
+  predictions correct two of survey §11's rows (E8-4: the drop to 0 after the straight winds step;
+  E8-13: no path goes on past a guarded tile).
 - **The harness** (common; CLT-Q18: this lane builds it with its check and tells the client and
   map-client lanes' inboxes): reads of the boats' records (game +0x4E3BC, `structs.toml` "boat"),
   a hero's in-boat bit (+0x105 bit 18) and day's maximum (+0x49), the battle's ship flag
@@ -392,9 +389,11 @@ increment 7's decision 139), so the ADRs are applied once with the disputes' ver
   invariants are checked after every command in the properties, and the hash covers all three.
 - **A third search** in `Reach`: its cost on the sea XL is new (`reach-sea-xl-144`); the walker's
   boat test must stay out of the hot loop (`bench-check` on `reach-xl-144`).
-- **The pictures' sizes** of the holes and Favorable Winds are read at T72's start; a hole on a
-  coastal tile was not counted in the shipped maps (§1), nor a boat sharing a tile with another
-  object (§4): the build's census.
+- **The pictures' sizes** (read by T67 from the sprite archives' `.msk`): every hole 1 × 1;
+  Favorable Winds `AVXfw0` to `AVXfw7` 6 × 4, 8 × 6, 6 × 6, 8 × 3, 3 × 6, 3 × 3, 5 × 2, 2 × 5 (the
+  Clover Field's eight sizes): T72 adds them to `GROUND_PICTURES`. A hole on a coastal tile was
+  not counted in the shipped maps (§1), nor a boat sharing a tile with another object (§4): the
+  build's census.
 - **The facing's order:** the original's facing numbers against the engine's `DIRECTIONS` (§6),
   for the view only; E8-15 records a landing's facing.
 - **D-45's flyer against a monster on water** (§13) follows the pickups' rule, which E8-7 tests
