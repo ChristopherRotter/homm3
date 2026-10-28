@@ -11,6 +11,7 @@ use h3_view::book::{Hero, Kind, Memory, Open, Outcome, Spell};
 use h3_view::keys::{Command as Do, Context, Keys};
 use h3_view::layout::BookLayout;
 use h3_view::message::{MessageBox, Picture, Style};
+use h3_view::sound::Tune;
 use h3_view::tables::Tables;
 
 use crate::boxes::{Answered, Asked, Leave};
@@ -134,8 +135,8 @@ pub struct Still {
     /// The message box left open (E17 M5 T4a).
     pub message: Option<MessageBox>,
     /// The result window a box's OK ended the battle with (E17 M5 T4b1: Retreat's, Surrender's),
-    /// over the whole screen darkened.
-    pub result: Option<MessageBox>,
+    /// over the whole screen darkened, with its tune (E17 M5 T4b2b: its clip's).
+    pub result: Option<(MessageBox, Tune)>,
     /// The mouse after the actions.
     pub mouse: [i32; 2],
     /// When the actions were made (ms after the opening: a situation's at once, 0); the battle
@@ -167,8 +168,8 @@ pub struct Boxes<'a> {
     pub no_one: &'a dyn Fn(u16) -> bool,
     /// The spells' pictures' DEF and its size.
     pub pictures: (String, [i32; 2]),
-    /// The result window after a command (none: the battle goes on, or no window).
-    pub result: &'a dyn Fn(Command) -> Option<MessageBox>,
+    /// The result window after a command and its tune (none: the battle goes on, or no window).
+    pub result: &'a dyn Fn(Command) -> Option<(MessageBox, Tune)>,
 }
 
 /// What a box's click leads to in a still: another box (or none), or a command given.
@@ -209,7 +210,7 @@ pub fn still(
         mouse,
         at: 0,
     };
-    let mut result: Option<h3_view::message::Open> = None;
+    let mut result: Option<(h3_view::message::Open, Tune)> = None;
     let mut asking: Option<Asking> = None;
     let keys = Keys::original();
     let point = |arg: &str| -> Result<[i32; 2], String> {
@@ -272,8 +273,8 @@ pub fn still(
         Answered::Closed => Next::Box(None),
     };
     // The result window a command ends the battle with.
-    let ended = |command: Command| -> Option<h3_view::message::Open> {
-        (boxes?.result)(command).map(h3_view::message::Open::new)
+    let ended = |command: Command| -> Option<(h3_view::message::Open, Tune)> {
+        (boxes?.result)(command).map(|(window, tune)| (h3_view::message::Open::new(window), tune))
     };
     for action in actions {
         let (kind, arg) = action.split_once(':').unwrap_or((action, ""));
@@ -294,7 +295,7 @@ pub fn still(
                 );
                 match (keys.command(context, false, &key), still.open.as_mut()) {
                     (Some(Do::ResultOk), _) => {
-                        if let Some(r) = result.as_mut() {
+                        if let Some((r, _)) = result.as_mut() {
                             // The result window's OK by its key: the window closed.
                             let _ = r.key(h3_view::message::Key::Ok, &key);
                             if let h3_view::message::Outcome::Closed(_) = r.key_up(&key) {
@@ -344,7 +345,7 @@ pub fn still(
             "click" => {
                 let to = point(arg)?;
                 moved(&mut still, &mut memory, to);
-                if let Some(r) = result.as_mut() {
+                if let Some((r, _)) = result.as_mut() {
                     let _ = r.press(to);
                     if let h3_view::message::Outcome::Closed(_) = r.release() {
                         result = None;
@@ -367,7 +368,7 @@ pub fn still(
                 }
                 // Parked: a box the click opened takes the move, the book behind it none (its
                 // status line keeps the hint).
-                if let Some(r) = result.as_mut() {
+                if let Some((r, _)) = result.as_mut() {
                     still.mouse = crate::pointer::PARK;
                     let _ = r.moved(crate::pointer::PARK);
                     continue;
@@ -382,7 +383,7 @@ pub fn still(
             }
             "move" => {
                 let to = point(arg)?;
-                if let Some(r) = result.as_mut() {
+                if let Some((r, _)) = result.as_mut() {
                     still.mouse = to;
                     let _ = r.moved(to);
                     continue;
@@ -403,7 +404,7 @@ pub fn still(
         }
     }
     still.message = asking.map(|a| a.open.message);
-    still.result = result.map(|r| r.message);
+    still.result = result.map(|(r, tune)| (r.message, tune));
     Ok(still)
 }
 
@@ -506,7 +507,7 @@ mod tests {
         let given = std::cell::RefCell::new(Vec::new());
         let result = |command| {
             given.borrow_mut().push(command);
-            Some(one_button(h3_view::result::OK))
+            Some((one_button(h3_view::result::OK), Tune::Retreat))
         };
         let boxes = Boxes {
             tell: &tell,
@@ -532,6 +533,7 @@ mod tests {
         };
         let still = played(&["key:r", "key:Return"]);
         assert!(still.result.is_some() && still.message.is_none() && still.dialog());
+        assert_eq!(still.result.map(|(_, tune)| tune), Some(Tune::Retreat));
         assert_eq!(*given.borrow(), [Command::Retreat {}]);
         assert!(
             played(&["key:r", "key:Return", "key:Escape"])

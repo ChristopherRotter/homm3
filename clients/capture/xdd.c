@@ -1,6 +1,6 @@
 /* xdd.dll for the reference captures (clients/capture/README.md). Built by setup.sh with
    mingw-w64; our own code. The original's files never change; in its memory only the import
-   slot of 2 and the roll calls of 3.
+   slots of 2 and 5 and the roll calls of 3.
 
    1. A forwarder (E17 M1 T8): the GOG Heroes3.exe imports DirectDrawCreate from xdd.dll, its
       DDrawCompat wrapper, which does not run under Wine; this xdd.dll hands the call to Wine's own
@@ -35,7 +35,11 @@
    4. Logged draws (E17 M3 T7c-3, *provisional*): a site marked `logged` (Chain Lightning's
       rays turning in `ray_aim`) appends each of its draws, as returned, to <H3CLOCK>\draws, one
       line "<site> <value>", so the frame check can draw the same rays; the file starts empty
-      with the game. Nothing is forced there unless the harness asks, as at any site. */
+      with the game. Nothing is forced there unless the harness asks, as at any site.
+   5. The clips' clock (E17 M5 T4b2b, *provisional*): BINKW32.DLL reads WINMM's timeGetTime
+      itself to pace a clip (`BinkWait`), so its import slot is pointed at the same clock
+      (bink_time, which does not count as the game's reads); the ack's eighth field is 1 when
+      it is. Without it a clip ran in real time while the game's clock stood still. */
 #include <windows.h>
 #include <stdio.h>
 #include <string.h>
@@ -127,6 +131,16 @@ static DWORD WINAPI virtual_time(void)
 {
     DWORD t;
     InterlockedIncrement(&reads);
+    EnterCriticalSection(&lock);
+    t = now();
+    LeaveCriticalSection(&lock);
+    return t;
+}
+
+/* The clips' clock (5.): the same time, not counted as the game's reads. */
+static DWORD WINAPI bink_time(void)
+{
+    DWORD t;
     EnterCriticalSection(&lock);
     t = now();
     LeaveCriticalSection(&lock);
@@ -301,6 +315,7 @@ static int redirect(void)
 }
 
 static int redirected;
+static int bink_clock; /* 5.: BINKW32.DLL's clock redirected */
 
 /* Polls the command file and writes the acknowledgement, every 2 ms. */
 static DWORD WINAPI control(LPVOID unused)
@@ -333,8 +348,9 @@ static DWORD WINAPI control(LPVOID unused)
         LeaveCriticalSection(&lock);
         f = fopen(tmp_path, "w");
         if (f) {
-            fprintf(f, "%lu %lu %ld %ld %ld %d %ld\n", applied, (unsigned long)t, (long)reads,
-                    (long)forced_draws, waiting, redirected, (long)refused);
+            fprintf(f, "%lu %lu %ld %ld %ld %d %ld %d\n", applied, (unsigned long)t,
+                    (long)reads, (long)forced_draws, waiting, redirected, (long)refused,
+                    bink_clock);
             fclose(f);
             MoveFileExA(tmp_path, ack_path, MOVEFILE_REPLACE_EXISTING);
         }
@@ -343,15 +359,16 @@ static DWORD WINAPI control(LPVOID unused)
     return 0;
 }
 
-/* Points Heroes3.exe's timeGetTime import slot at virtual_time. */
-static int hook(void)
+/* Points a module's timeGetTime import slot at `clock` (Heroes3.exe's at virtual_time;
+   BINKW32.DLL's, 5., at bink_time). */
+static int hook(HMODULE module, time_fn clock)
 {
-    BYTE *base = (BYTE *)GetModuleHandleA(NULL);
+    BYTE *base = (BYTE *)module;
     IMAGE_NT_HEADERS32 *nt = (IMAGE_NT_HEADERS32 *)(base + ((IMAGE_DOS_HEADER *)base)->e_lfanew);
     IMAGE_DATA_DIRECTORY dir = nt->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_IMPORT];
     IMAGE_IMPORT_DESCRIPTOR *d = (IMAGE_IMPORT_DESCRIPTOR *)(base + dir.VirtualAddress);
     FARPROC target = GetProcAddress(GetModuleHandleA("winmm.dll"), "timeGetTime");
-    if (!target)
+    if (!base || !target)
         return 0;
     for (; d->Name; d++) {
         DWORD *slot = (DWORD *)(base + d->FirstThunk);
@@ -364,7 +381,7 @@ static int hook(void)
             if (!VirtualProtect(slot, sizeof *slot, PAGE_READWRITE, &old))
                 return 0;
             real_time = (time_fn)target;
-            *slot = (DWORD)virtual_time;
+            *slot = (DWORD)clock;
             VirtualProtect(slot, sizeof *slot, old, &old);
             return 1;
         }
@@ -393,8 +410,10 @@ BOOL WINAPI DllMain(HINSTANCE instance, DWORD reason, LPVOID reserved)
             fclose(f);
     }
     InitializeCriticalSection(&lock);
-    if (hook()) {
+    if (hook(GetModuleHandleA(NULL), virtual_time)) {
         redirected = redirect();
+        /* Heroes3.exe imports BINKW32.DLL, so it is mapped and bound before this runs. */
+        bink_clock = hook(GetModuleHandleA("BINKW32.DLL"), bink_time);
         CreateThread(NULL, 0, control, NULL, 0, NULL);
     }
     return TRUE;

@@ -12,6 +12,7 @@ fn assets() -> ResultLayout {
         losses: "cprsmall.def".to_string(),
         button_back: "Box64x30.pcx".to_string(),
         ok: "iOkay.def".to_string(),
+        clip: [272, 89],
     }
 }
 
@@ -254,4 +255,22 @@ fn behind_the_window_the_flags_stay_as_shown() {
     };
     behind(&mut now, &before);
     assert_eq!(now.heroes, [Some(pose(3, 4)), None]);
+}
+
+#[test]
+fn the_clip_is_the_tunes_over_the_slot() {
+    assert_eq!(
+        clip(&assets(), Tune::Retreat, 250),
+        Draw::Video {
+            start: "rtstart.bik".into(),
+            looped: Some("rtloop.bik".into()),
+            since: 250,
+            x: 272,
+            y: 89,
+        }
+    );
+    let Draw::Video { looped, .. } = clip(&assets(), Tune::Win, 0) else {
+        panic!("not a clip");
+    };
+    assert_eq!(looped, None);
 }

@@ -26,6 +26,7 @@ mod spellbook;
 mod sprite;
 mod text;
 mod video;
+mod videos;
 mod window;
 
 use std::process::ExitCode;
