@@ -21,7 +21,7 @@ Moved to `TRAPS.md`: forks without deep copies, RNG seeds server-only, template 
 
 ### 2026-10-28 — increment 8, round 1: T66a2, the boats and sea survey's second part
 
-Baseline 86c2d35 (#550 merged; CI on `master` green again, e5cfa46's run included: T66a1's report settled). The original data staged from the user's computer (`Heroes3.exe`, `maps.tar`, `extracted.tar`). The user's cut (decision 161): whole. Survey `E08-sea.md` §7 to §14: the battle at sea (the deck by either hero's boat, the two boats by both; nothing else tests a boat), the four pickups read whole (draws, visits, the full backpack, the bottle's text), who takes them (D-45: a flyer or water walker from the shore), the interfaces, batch E8's plan (16 rows), the `ADV-SEA` ids, two fresh agents' second reading (A-28 and the winds' drop corrected), ADV-Q32. Docs only, no version. Pull request: see "Current state".
+Baseline 86c2d35 (#550 merged; CI on `master` green again, e5cfa46's run included: T66a1's report settled). The original data staged from the user's computer (`Heroes3.exe`, `maps.tar`, `extracted.tar`). The user's cut (decision 161): whole. Survey `E08-sea.md` §7 to §14: the battle at sea (the deck by either hero's boat, the two boats by both; nothing else tests a boat), the four pickups read whole (draws, visits, the full backpack, the bottle's text), who takes them (D-45: a flyer from the shore by a click), the interfaces, batch E8's plan (16 rows), the `ADV-SEA` ids, two fresh agents' second reading (A-28 and the winds' drop corrected), ADV-Q32. Docs only, no version. Pull request: see "Current state".
 
 ### 2026-10-28 — increment 8, round 1: T66a1, the boats and sea survey's first part
 

@@ -7679,11 +7679,13 @@ sea (the deck by either hero's boat, the two boats by both, nothing else in a ba
 every use of the in-boat bit listed), who fights a hero at sea, the boat gone with its hero, VCMI
 and the wiki in consensus; the four pickups' draws and visits read whole (Flotsam, Sea Chest,
 Shipwreck Survivor, Ocean Bottle with the signs' loader and default texts), who visits them (a
-boat; a flyer or water walker from the shore: D-45), VCMI and the wiki; the interfaces (no new
+boat; a flyer from the shore by a click: D-45), VCMI and the wiki; the interfaces (no new
 command or decision, `Reach`'s boat layer, the state, the observation, the env); batch E8's plan
 (16 rows in two runs, the harness's and the spec's gaps); the proposed rule ids (`ADV-SEA-001` to
 `-007`, ADV-PIK-014 to -018, HER-ADV-009, amendments); the second reading by two fresh agents;
-the checkpoint's questions (ADV-Q32 in `OPEN-QUESTIONS.md`). The census grew (§1: objects on water
+the checkpoint's questions (ADV-Q32 in `OPEN-QUESTIONS.md`). The second reading corrected three
+points: the day's maximum is kept without the Admiral's Hat (A-28), the drop at sea is 66 on a
+Favorable Winds tile, and a water walker never takes a sea pickup from the shore. The census grew (§1: objects on water
 by class, 55 monsters on water, 3 guarded events on water, 395 pickups beside land, the bottles'
 texts). The address map: `visit_flotsam` 0x4A2230, `visit_sea_chest` 0x4A5030,
 `visit_shipwreck_survivor` 0x4A52A0, `load_message_body` 0x501270, `hero_step_or_meet_allowed`
