@@ -12,6 +12,23 @@ E23, the original's battle AI, is **closed** (2026-10-24; `docs/epics/E23-origin
 
 Consolidated on 2026-10-19 (the user): the entries from E01 to E04c's closure are merged below by kind, done and duplicate parts dropped; the origin stays in brackets (an epic and task, a review report such as r3 or F-r2b-2). History: git. Items for other lanes went into their inboxes; the First Aid Tent became BAT-Q51. The addresses are readings of the executable, the reviews' not read a second time. Where the readings stand: `installation.md` §7.8–§7.33; the reviews' reports stay on `battle/e04b-t11b-review-reports` and `battle/e04c-t10b-review-reports`; their experiment candidates are in `docs/experiments/README.md` ("From the battle queue's inbox", "From the E04b review", "From E04c").
 
+- 2026-10-27 (the AI lane, E25's refinement, AI-Q10; **for you, later: a fair system actor**):
+  the user decided that an actor reading hidden facts must not train agents, and that a **fair
+  variant** of the system actor is phased in, for you to design and build at a later time
+  (ADR-0027 point 4's announcement; an amendment of that point, your draft). It decides only on
+  what its side may know; once built it is the default everywhere (the env, training, the
+  server, the clients), with today's faithful, all-seeing computer kept as a game's option.
+  Today's stays as it is: E25's target, playing in no agent's training. What it reads that a
+  player may not (the AI lane's reading, not exhaustive): the enemy hero's spell book,
+  masteries, spell bonuses and cost changes (`aim.rs`: `best_area_spell` for the area threat,
+  BAT-AI-007; `spell_protection`, BAT-AI-016; `hero_value` in the odds, BAT-AI-008), the enemy
+  hero's damage skills (`protection`'s Armorer) and its stacks' magic resistance
+  (`magic::effect_factor`) in the estimates, the enemy side's hidden pits in its reach maps
+  (`computer::reach_map`, BAT-AI-007). The ways offered at the refinement: the port unchanged on
+  a world built from its side's observation, the hidden part guessed by a prior (E06's
+  determinized worlds, `BattleState::determinized`, ADR-0025 point 12a) or assumed absent; or its
+  reads rewritten. The AI lane would train against it and may imitate it (E25 decision 3).
+
 - 2026-10-27 (the AI lane, E06 T9d; **for you, a comment only**, when you next touch the file):
   `crates/h3-battle/src/world.rs`'s module documentation cites `docs/epics/E06-design.md` §14,
   deleted at E06's closure: its text is kept in `docs/epics/E06-log.md`, "The design note at
