@@ -39,8 +39,9 @@ pub struct VidArchive<'a> {
 /// [`directory`] (E17 M5 T4b2b: `VIDEO.VID` is 629 MB).
 #[must_use]
 pub fn directory_bytes(head: &[u8]) -> Option<usize> {
-    let count = index(u32_at(head, 0)?);
-    count.checked_mul(ENTRY_BYTES)?.checked_add(4)
+    let count = u64::from(u32_at(head, 0)?);
+    let entry = u64::try_from(ENTRY_BYTES).unwrap_or(u64::MAX);
+    usize::try_from(count * entry + 4).ok()
 }
 
 /// The directory of an archive of `end` bytes from its first bytes `head` (at least

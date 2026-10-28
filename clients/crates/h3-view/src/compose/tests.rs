@@ -1073,7 +1073,18 @@ fn a_clip_copies_its_frame_on_the_screen_cut_to_it() {
         screen.pixel(1, 1),
         Some(batch.video("s.bik").unwrap().frames[0][0])
     );
-    // A clip the batch lacks.
+    // A clip the batch lacks, its loop too.
+    let no_loop = Draw::Video {
+        start: "s.bik".to_string(),
+        looped: Some("gone.bik".to_string()),
+        since: 0,
+        x: 0,
+        y: 0,
+    };
+    assert_eq!(
+        compose(&[no_loop], &batch, &layout).unwrap_err(),
+        ComposeError::Missing("gone.bik".to_string())
+    );
     let lost = Draw::Video {
         start: "no.bik".to_string(),
         looped: None,

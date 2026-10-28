@@ -2518,8 +2518,8 @@ under Wine (`clients/capture/binkprobe.c`) and, where that stalled, read in its 
   allowed once the clock reaches the first one's time + ⌊1000 p / rate⌋ ms, every decode counted,
   a redraw's too. So the window's clip shows frame 0 from the opening, frame k ≥ 1 from
   ⌊1000 (k + 2) / 15⌋ ms (200, 266, 333, ...); at the start's last decode (⌊1000 (n + 1) / 15⌋)
-  the loop's rectangles are empty (no frame decoded yet) and its first frame comes in the same
-  tick, so **the start's last frame never reaches the screen**; the loop's frame j from that time
+  the loop's rectangles are empty (no frame decoded yet) and its first frame comes at the next
+  tick, in the same millisecond, so **the start's last frame never reaches the screen**; the loop's frame j from that time
   + ⌊1000 j / 15⌋, circling. Both slips (frame 0 three periods, the start's last frame lost) are
   **CLT-Q31**: fixed in what the client draws (frame k from ⌊1000 k / 15⌋, the start's last its
   period, the loop from ⌊1000 n / 15⌋), the original's for the comparisons (`h3_render::Bugs`).

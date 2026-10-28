@@ -147,6 +147,31 @@ fn a_frame_takes_its_blocks_chroma_and_decodes_as_a_clip() {
         assert_eq!(video.frames[0][row * 256 + col], expected);
     }
     assert!(Video::decode(b"BIKb").is_err());
+    // A file that parses with a video the decoder refuses (revision f), a frame whose audio
+    // packet runs out, a frame of an unknown block type.
+    use h3_bink::build::{Block, Header, file, frame as packet};
+    let header = Header::new(16, 16);
+    let skip = |n| alloc::vec![Block::Skip; n];
+    let good = packet(16, 16, [&skip(4), &skip(1), &skip(1)]);
+    let other = Header {
+        revision: b'f',
+        ..header.clone()
+    };
+    assert_eq!(
+        Video::decode(&file(&other, &[good])),
+        Err(Error::Revision(b'f'))
+    );
+    let audio = Header {
+        audio_tracks: 1,
+        ..header.clone()
+    };
+    assert!(Video::decode(&file(&audio, &[alloc::vec![0, 0]])).is_err());
+    let bad = packet(
+        16,
+        16,
+        [&alloc::vec![Block::Unknown(9); 4], &skip(0), &skip(0)],
+    );
+    assert!(Video::decode(&file(&header, &[bad])).is_err());
     assert_eq!(Video::default().timing().frames, 0);
 }
 
