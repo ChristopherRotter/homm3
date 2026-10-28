@@ -75,6 +75,11 @@ the battles' groups (`h3env.train.inspect`; the findings in `docs/epics/E06-log.
 are the device's: a CPU's differ from the GPU ladder's in a few battles. `t7-1`'s on both
 stratified sets (the sandbox's CPU, 4 threads).
 
+`inspect/battles.py` (E25 T2b, a one-off script like `probe_order.py`): every battle of the
+report set as `inspect` records it, one JSON line each, and the tactics phase's decisions per
+battle (`--summary`); its files stay outside git (7 MB a run), the findings in
+`docs/epics/E25-log.md` T2b.
+
 `inspect/<run>-order-probe.json` (E06, the turn-order probe, 2026-10-26): whether the run's
 trunk knows which stack acts next, from `inspect/probe_order.py` (a one-off script, not a module:
 `uv run --group train python records/inspect/probe_order.py runs/<run>/best.pt 600` from

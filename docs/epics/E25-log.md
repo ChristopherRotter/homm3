@@ -169,24 +169,35 @@ an entry only where a task builds on it.
 - **Shaping's cost: a tail of long battles.** In the second half its self-play battles ran 70
   and 63 samples an episode (10 to 15 M, 15 to 20 M) against the control's 53 and 54, and 0.24 %
   and 0.20 % of them were cut at the step limit against 0.01 % (the first half: 0.05 % at most
-  for either). Its
-  ladders took three to four times the control's (the final: 83 s against Aggressor where the
-  control took 23, 192 s against the system actor where 41): a kind's ladder plays its 500
-  episodes as one batch, so its time is its longest battle's; the ladders cut one battle in 1 500
-  per opponent (the control none). Only the training batch computes the potential
-  (`potential=c.shaping`), so the time is the policy's, not the code's. Why is open: a side's
-  shaped return is reward v1 exactly (T2a), so a cut costs what it did. A guess: Φ pays each loss
-  at once, so within GAE's horizon (λ 0.95, about 20 decisions) keeping a losing side's stacks
-  out of reach pays, while the episode's end that takes it back lies beyond. The behaviour
-  analysis (`h3env.train.inspect`) on shaping's `best.pt` would show which battles drag; the user
-  uploaded the control's (its file names `e25-control-1`), shaping's is on their machine. The
-  value head's explained variance also fell, 0.51 to 0.68 against 0.77 to 0.79.
+  for either). Its ladders took three to four times the control's (the final: 83 s against
+  Aggressor where the control took 23, 192 s against the system actor where 41): a kind's ladder
+  plays its 500 episodes as one batch, so its time is its longest battle's; the ladders cut one
+  battle in 1 500 per opponent (the control none). Only the training batch computes the
+  potential (`potential=c.shaping`), so the time is the policy's, not the code's. The value
+  head's explained variance also fell, 0.51 to 0.68 against 0.77 to 0.79.
+- **The long battles are the tactics phase** (both `best.pt`s, the user's uploads;
+  `records/inspect/battles.py`, a one-off script: every battle of the report set against the
+  system actor, Greedy and Aggressor as `h3env.train.inspect` records it, on the sandbox's CPU,
+  whose ladder rows lie within 0.01 of the GPU's). In the 616 battles of 3 000 where the agent
+  has a tactics phase (a hero with Tactics), the control placed its stacks 17 to 19 times on
+  average (median 4, the 99th percentile 209 to 262, none cut), shaping 42 to 47 times (median
+  5, the 99th percentile 723 to 928; 25 to 28 battles above 200 placements, 1 to 4 cut at the
+  step limit inside the phase); the phase is 10 to 12 % of the control's decisions (`t7-1`'s 11 %,
+  `t6d-1`'s 25 %, E06 T6e) and 24 to 28 % of shaping's. Battles of 50 rounds or more are as rare
+  in both (1 to 5 in 3 000). Outside the phase shaping fights more directly: it strikes at 55 to
+  58 % of its decisions (melee and shots; the control 45 to 48 %), moves at 24 to 27 % (31 to
+  34 %), waits at 1 % (3 %), and its battles take 25 to 28 such decisions (27 to 32). The
+  phase's rounds have no limit (BAT-TAC-002) and its
+  placements cost nothing at γ 1 (E06 T6e): its potential does not move, so shaping adds nothing
+  there while it sharpens the advantages elsewhere; the entropy bonus keeps the placement heads
+  broad, and ending the phase is one entry among many. Not stalling: a placement loop.
 - **The read:** shaping is the first lever since the truncation penalty (E06 T5d) to move the
   ladder past the runs' spread, against every scripted opponent and the system actor (+0.04 in
   win rate and value; 0.409 against the target's 0.5), and it learns faster. Dropping the
   faithful system actor and the neutral battles costs nothing against the player kinds and about
-  0.015 of value on the neutral set. Before a longer run builds on shaping, its long battles
-  want a look.
+  0.015 of value on the neutral set. Its cost is the tactics phase's placement loop, which a
+  longer run would carry (training time, truncations): a bound on the phase in training is the
+  candidate fix before one builds on shaping.
 
 ## AI-STUB-1's magic limits: `master`'s red verify (2026-10-28)
 

@@ -110,7 +110,8 @@ evidence asks for one (then a `cross-lane` change with the battle lane, after th
 - [x] **T2b The A/B runs** (2026-10-28; `E25-log.md` T2b; `e25-control-1`, `e25-shaping-1`, 20 M
   each): the control matches `t7-1` against the player kinds, the neutral set's value 0.015
   lower; shaping gains about +0.04 against Aggressor, Greedy and the system actor (0.409, −0.066)
-  and learns faster, but drags a tail of battles (0.2 % cut in training).
+  and learns faster, but loops in the tactics phase (its placements 24 to 28 % of its decisions,
+  the control's 10 to 12 %; 0.2 % of training battles cut).
 - [ ] **T3 Increment 1's checkpoint:** T1c's and T2b's reads; the user chooses increment 2.
 
 ## Exit criteria

@@ -16,7 +16,7 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   **Done 2026-10-28:** T1a, T1b (a world's reward v1, the true world), T2a (shaping, the refused
   mixes, T2b's configs), all C ABI v35; T1c (the search gains nothing with either world: the
   network's evaluation limits it); T2b (`e25-control-1`, `e25-shaping-1`: shaping about +0.04
-  against Aggressor, Greedy and the system actor, 0.409; a tail of long battles). **Next:** T3,
+  against Aggressor, Greedy and the system actor, 0.409; loops in the tactics phase). **Next:** T3,
   the checkpoint: the user chooses increment 2 (`E25-log.md` T1c, T2b).
 - **Open pull requests:** none (#534 and #539 merged); this session's branch
   `claude/e25-training-runs-cyvj0l` (T2b's records and read; `cross-lane`, the user: AI-STUB-1's
@@ -39,7 +39,8 @@ Moved to `TRAPS.md`, in three groups: **Ownership** (cross-lane encodings and re
 - The user ran both configs at 20 M samples and uploaded both records and metrics and the
   control's `best.pt` (shaping's stays on their machine). The records committed and read
   (`E25-log.md` T2b): shaping is the first lever past the runs' spread since E06 T5d; its long
-  battles (0.2 % cut in training, ladders three to four times slower) are open. `master`'s CI
+  battles (0.2 % cut in training, ladders three to four times slower) are a placement loop in
+  the tactics phase (both `best.pt`s, `records/inspect/battles.py`). `master`'s CI
   red since #534's merge: a world's property test hit AI-STUB-1's magic limits; fixed here.
 
 ### 2026-10-28 — E25 T1a, T1b, T2a (C ABI v35), T1c
