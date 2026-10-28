@@ -1,5 +1,5 @@
-//! Pandora's Box, the Pyramid and the reward record (E08 T62b1; design §11, §11.1 and §11.2 of
-//! `docs/epics/E08-design.md`, survey `docs/rules/surveys/E08-rewards.md` §7.1, §7.2, §7.4 and
+//! Pandora's Box, the Pyramid and the reward record (E08 T62b1; increment 7's design note §11,
+//! §11.1 and §11.2 in `E08-log.md`, survey `docs/rules/surveys/E08-rewards.md` §7.1, §7.2, §7.4 and
 //! §7.5): the box's question, its guards' battle as a guarded pile's and its record; the
 //! Pyramid's question at every visit, a looted one's luck, its battle with a second creature and
 //! the spell a win gives; the record's adventure half (ADV-RWD-001), which an event gives too

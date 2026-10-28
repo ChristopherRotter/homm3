@@ -356,7 +356,7 @@ numeric  = "integer"
 
   [[rule.source]]
   kind       = "design"
-  ref        = "ADR-0017 point 6 (E08 decision 93: a meeting is a pending decision per step, during which the two heroes' exchange commands are legal, closed by an answer); E08-design.md section 8"
+  ref        = "ADR-0017 point 6 (E08 decision 93: a meeting is a pending decision per step, during which the two heroes' exchange commands are legal, closed by an answer); increment 6's design note section 8 in E08-log.md"
   confidence = "high"
 
 [[rule]]
@@ -387,7 +387,13 @@ numeric  = "integer"
 
   [[rule.source]]
   kind       = "design"
-  ref        = "ADR-0017 point 6 (E08 decision 94: the army dialog is a decision with the group as a small army, the stack commands between the hero and the group, closed by an answer, the rest lost); E08 decision 115 (a join at the cap: a free slot, else the army dialog); E08-design.md section 9"
+  ref        = "ADR-0017 point 6 (E08 decision 94: the army dialog is a decision with the group as a small army, the stack commands between the hero and the group, closed by an answer, the rest lost); E08 decision 115 (a join at the cap: a free slot, else the army dialog); increment 6's design note section 9 in E08-log.md"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-7b.md E7-20 (2026-10-27; survey E08-rewards.md §15; E08 T65): a Pandora's Box's three stacks for a hero with seven opened the army dialog (GENRLTXT 36) with the three at their slots; the Monks dismissed, the Wood Elves taken into slot 4, the rest lost with the dialog's close, the box removed"
+  retrieved  = "2026-10-27"
   confidence = "high"
 
 [[rule]]
@@ -405,7 +411,13 @@ numeric  = "integer"
 
   [[rule.source]]
   kind       = "design"
-  ref        = "ADR-0017 point 6 (the answers typed by the decision's kind, E08 decision 138; the defaults); E08-design.md section 14"
+  ref        = "ADR-0017 point 6 (the answers typed by the decision's kind, E08 decision 138; the defaults); increment 7's design note section 14 in E08-log.md"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-7a.md E7-4 and E7-5 (2026-10-27; survey E08-rewards.md §15; E08 T65): a chest's two pictures, its gold and its experience, either taken; an artifact chest with the backpack at 64 offered 1 000 gold or 500 experience; the Arena's and the Schools' choices had no row"
+  retrieved  = "2026-10-27"
   confidence = "high"
 
 [[rule]]
@@ -423,7 +435,7 @@ numeric  = "integer"
 
   [[rule.source]]
   kind       = "design"
-  ref        = "ADR-0017 point 6 (the University a decision like a meeting, open until Leave, each Buy checked against the slot's state and the treasury; E08 decision 138); E08-design.md section 14"
+  ref        = "ADR-0017 point 6 (the University a decision like a meeting, open until Leave, each Buy checked against the slot's state and the treasury; E08 decision 138); increment 7's design note section 14 in E08-log.md"
   confidence = "high"
 
 [[rule]]
@@ -447,7 +459,7 @@ quirks   = ["ADV-QUIRK-29"]
 
   [[rule.source]]
   kind       = "design"
-  ref        = "ADR-0017 points 6 (the visit's rest after an army dialog and after a won guards' battle, held by the game) and 10; E08 decisions 141, 154 (the guard's visit and the event after the guard held the same way); E08-design.md sections 14, 15"
+  ref        = "ADR-0017 points 6 (the visit's rest after an army dialog and after a won guards' battle, held by the game) and 10; E08 decisions 141, 154 (the guard's visit and the event after the guard held the same way); increment 7's design note sections 14, 15 in E08-log.md"
   confidence = "high"
 
 [[rule]]
@@ -787,7 +799,7 @@ numeric  = "integer"
 
   [[rule.source]]
   kind       = "design"
-  ref        = "ADR-0017 point 6 as amended at T51's start (E08 decision 117: a flat list would grow every call in a player's turn by up to a few thousand commands, and the env's random rollout picks among its entries); E08-design.md section 16's fallback"
+  ref        = "ADR-0017 point 6 as amended at T51's start (E08 decision 117: a flat list would grow every call in a player's turn by up to a few thousand commands, and the env's random rollout picks among its entries); increment 6's design note section 16's fallback in E08-log.md"
   confidence = "high"
 
 [[rule]]
@@ -914,5 +926,5 @@ numeric  = "integer"
 
   [[rule.source]]
   kind       = "design"
-  ref        = "ADR-0017 point 11 (every hero in a battle loses its battle bonuses when it ends, as the original's battle_end); ADR-0013 point 15.1; E08-design.md sections 5, 15"
+  ref        = "ADR-0017 point 11 (every hero in a battle loses its battle bonuses when it ends, as the original's battle_end); ADR-0013 point 15.1; increment 7's design note sections 5, 15 in E08-log.md"
   confidence = "high"

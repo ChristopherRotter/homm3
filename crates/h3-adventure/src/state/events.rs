@@ -1,4 +1,4 @@
-//! Events (E08 T62b2; design §12 and §13 of `docs/epics/E08-design.md`, survey
+//! Events (E08 T62b2; increment 7's design note §12 and §13 in `E08-log.md`, survey
 //! `docs/rules/surveys/E08-rewards.md` §7.3 and §8.5): the step that fires one, its guards at once,
 //! its reward record and its removal, and what its visitor's owner is told. An event is never
 //! visited and never observed: it lies on its tile apart from the tiles objects are visited from

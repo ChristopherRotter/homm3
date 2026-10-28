@@ -1476,7 +1476,7 @@ numeric  = "integer"
 id       = "ADV-OBJ-006"
 title    = "Random artifacts when the game is built: the classes and the pool"
 context  = "adventure"
-status   = "implemented"
+status   = "verified"
 summary  = "When the game is built, after the piles' and the monsters' draws and before every other draw of increment 7's objects, each random artifact (classes 65 to 69: treasure, minor and major together; treasure; minor; major; relic) gets an artifact, in object order, with equal chances among the ruleset's artifacts of its classes that carry no mark (D-31: no relic for class 65). The marks start as the scenario's banned artifacts and every placed artifact (a class-5 object's), and each draw marks the one it gives, so no artifact repeats nor duplicates a placed one (D-32); a draw that finds none left restarts the marks from the bans, and with still none draws from every class but Special (the restart then repeats). Every artifact banned: none. The chests' and the finds' artifacts draw from the same pool and marks, after the random artifacts. The pool is the ruleset's packs, not the map's edition (E08 decisions 104 and 136). Drawn from the setup stream (GAM-SET-001's), in the engine's order (decision 17). The visit: ADV-PIK-006, ADV-PIK-007 (E08 T62a); a random artifact whose draw found none holds nothing and leaves the map at its visit, giving nothing. E08 T61b: `h3_adventure::Resolved::Artifact`."
 numeric  = "integer"
 
@@ -1535,7 +1535,7 @@ numeric  = "integer"
 id       = "ADV-PIK-005"
 title    = "The treasure chest: its contents drawn when the game is built"
 context  = "adventure"
-status   = "implemented"
+status   = "verified"
 summary  = "When the game is built (after the random artifacts, ADV-OBJ-006), each treasure chest draws r in 0 to 99 from the setup stream: below its type's first chance its first gold, below the first two together its second, and so on (the base pack: 32, 32 and 31 for 1 000, 1 500 and 2 000 gold), the gold its contents; else an artifact of its classes (treasure) from the random artifacts' pool and marks. The tutorial is not modelled (E08 decision 134: its chests draw as any chest's). The visit (E08 T62a, `AdventureState::visit_chest`): an artifact the hero can receive (`h3_heroes::can_receive_artifact`: under ADV-QUIRK-22's flag a full backpack refuses even with a body position free) goes to the hero; else the choice between the gold and its experience (the gold less the type's offset, 500, times the hero's Learning), the gold the chest's or, for an artifact the hero cannot receive or a draw that found none, the type's 1 000; never refused; the chest leaves the map with the visit, whatever the answer. The choice is its visitor's owner's decision (GAM-DEC-005, E08 T63a: `Answer::Chest`, `Gold` its default). E08 T61b: `MapObject::contents`, `Resolved::Artifact`."
 numeric  = "integer"
 quirks   = ["ADV-QUIRK-22"]
@@ -1571,11 +1571,17 @@ numeric  = "integer"
   retrieved  = "2026-10-26"
   confidence = "medium"
 
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-7a.md E7-4 (2026-10-27; survey E08-rewards.md §15; E08 T65): a Learning Stone gave a hero with Basic Learning 1 050 experience, its Learning still Basic; the Tree of Knowledge's price had no row"
+  retrieved  = "2026-10-27"
+  confidence = "high"
+
 [[rule]]
 id       = "ADV-TCH-004"
 title    = "The Shrines: a random Shrine's spell drawn when the game is built"
 context  = "adventure"
-status   = "implemented"
+status   = "verified"
 summary  = "A Shrine holds the map's spell, or, without one, draws a spell of its type's level when the game is built, in object order after the random artifacts: with equal chances among the level's hero spells that are not banned, not granted by name only and carry no Shrine mark; the drawn spell is marked; when none of the level is left, the level's marks clear and the draw starts again (D-34: the random Shrines of a level repeat no spell until each of its spells is out). The map's spell marks nothing. A level without a spell to give: none (A-18 fixed, E08 decision 133: the Shrine refuses every visit). The visit (E08 T62a, `AdventureState::visit_shrine`): the visitor's owner learns the spell first (ADV-VIS-006); a hero without a Spell Book, of a learnable level below the spell's or knowing it is refused (`h3_heroes::can_learn_spell`), as by a Shrine without a spell; else it learns it; no mark, every visit. E08 T61b: `Resolved::Spell`."
 numeric  = "integer"
 
@@ -1601,7 +1607,7 @@ numeric  = "integer"
 id       = "ADV-TCH-005"
 title    = "The Witch Hut: its skill drawn when the game is built"
 context  = "adventure"
-status   = "implemented"
+status   = "verified"
 summary  = "A Witch Hut draws its skill when the game is built, in object order after the random artifacts: the r-th, with equal chances, of its mask's skills in id order less the banned skills (an empty mask in the file imports as every skill); every skill banned: none (it refuses every visit). An RoE map's hut has no mask in the file: under ADV-QUIRK-21's flag (faithful) it draws among the original's fixed mask 0xEFBF (the skills 0 to 15 but Leadership and Necromancy, 14), off (strict-fixed) among every skill but Leadership and Necromancy (the kind's two lists, the base pack's). The visit (E08 T62a, `AdventureState::visit_witch_hut`): the visitor's owner learns the skill first (ADV-VIS-006); a known skill, eight skills (`h3_heroes::hut_teaches`; no class test) or a hut without a skill refuse; else the skill at Basic; no mark, every visit. E08 T61b: `Resolved::Skill`."
 numeric  = "integer"
 quirks   = ["ADV-QUIRK-21"]
@@ -1641,7 +1647,7 @@ numeric  = "integer"
 id       = "ADV-TCH-007"
 title    = "The University: its skills drawn when the game is built"
 context  = "adventure"
-status   = "implemented"
+status   = "verified"
 summary  = "A University draws its type's number of distinct skills (four) when the game is built, in object order after the random artifacts: each with equal chances among the unbanned skills not yet drawn, in the draw's order, Necromancy among them (D-36: the code's side; only a class that weighs it can buy it); fewer left than offers: all of them (A-22 fixed, E08 decision 133). The visit (E08 T62a, `AdventureState::visit_university`): the visitor's owner learns its skills (ADV-VIS-006) and it opens over them at the type's price (`AdventureOutcome::university`), every visit; it is its visitor's owner's decision, its purchases by HER-CHG-004's `university_slot` (GAM-DEC-006, E08 T63a). E08 T61b: `Resolved::Skills`."
 numeric  = "integer"
 
@@ -1652,7 +1658,7 @@ numeric  = "integer"
 
   [[rule.source]]
   kind       = "observation"
-  ref        = "experiments/results/E08-batch-7b.md E7-9 (2026-10-27; survey E08-rewards.md §15): Necromancy offered in 4 of 30 Universities"
+  ref        = "experiments/results/E08-batch-7a.md E7-9 (2026-10-27; survey E08-rewards.md §15): Necromancy offered in 4 of 30 Universities"
   retrieved  = "2026-10-27"
   confidence = "high"
 
@@ -1693,7 +1699,7 @@ numeric  = "integer"
 id       = "ADV-PIK-009"
 title    = "The Corpse: its contents drawn when the game is built"
 context  = "adventure"
-status   = "implemented"
+status   = "verified"
 summary  = "A find draws its contents when the game is built, in object order after the random artifacts: r in 0 to 99 picks the entry of its type's table by the chances in order; an artifact entry draws from the random artifacts' pool and marks among its classes as one pool (weighted by the classes' sizes, D-35); a resources entry draws an amount between its bounds, then one of its resources with equal chances (its contents); nothing holds nothing. The Corpse (the base pack): 20 % a treasure or minor artifact, 80 % nothing. The visit (E08 T62a, `AdventureState::visit_find`): the visitor's owner learns whether it is emptied (ADV-VIS-006); not emptied yet, an artifact the hero can receive (ADV-QUIRK-22) is given, one it cannot receive turns as its type says (the Corpse's 1 000 gold to the owner), else its resources or nothing; then it is emptied, and a later visit gives nothing. E08 T61b: `Resolved::Artifact`."
 numeric  = "integer"
 quirks   = ["ADV-QUIRK-22"]
@@ -1705,7 +1711,7 @@ quirks   = ["ADV-QUIRK-22"]
 
   [[rule.source]]
   kind       = "observation"
-  ref        = "experiments/results/E08-batch-7b.md E7-10 (2026-10-27; survey E08-rewards.md §15): 5 of 20 Corpses held an artifact"
+  ref        = "experiments/results/E08-batch-7a.md E7-10 (2026-10-27; survey E08-rewards.md §15): 5 of 20 Corpses held an artifact"
   retrieved  = "2026-10-27"
   confidence = "medium"
 
@@ -1713,7 +1719,7 @@ quirks   = ["ADV-QUIRK-22"]
 id       = "ADV-PIK-010"
 title    = "The Wagon: its contents drawn when the game is built"
 context  = "adventure"
-status   = "implemented"
+status   = "verified"
 summary  = "The Wagon draws as any find (ADV-PIK-009): 10 % nothing, 40 % a treasure or minor artifact, 50 % 2 to 5 of one of wood, mercury, ore, sulfur, crystal and gems (the amount first, then the resource; D-35 with the wiki's 2 to 5); a Wagon with an artifact also draws its resources, which a full backpack gets instead of the artifact (the turn `drawn`). The visit (E08 T62a): as any find's (ADV-PIK-009), a Wagon's artifact the hero cannot receive turning into its drawn resources. E08 T61b: `MapObject::contents`, `Resolved::Artifact`."
 numeric  = "integer"
 quirks   = ["ADV-QUIRK-22"]
@@ -1725,7 +1731,7 @@ quirks   = ["ADV-QUIRK-22"]
 
   [[rule.source]]
   kind       = "observation"
-  ref        = "experiments/results/E08-batch-7b.md E7-10 (2026-10-27; survey E08-rewards.md §15): 5 of 10 Wagons held an artifact, each giving its drawn resources (2 sulfur, 4 crystal, ...) with a full backpack"
+  ref        = "experiments/results/E08-batch-7a.md E7-10 (2026-10-27; survey E08-rewards.md §15): 5 of 10 Wagons held an artifact, each giving its drawn resources (2 sulfur, 4 crystal, ...) with a full backpack"
   retrieved  = "2026-10-27"
   confidence = "medium"
 
@@ -1733,7 +1739,7 @@ quirks   = ["ADV-QUIRK-22"]
 id       = "ADV-PIK-011"
 title    = "The Warrior's Tomb: its artifact drawn when the game is built"
 context  = "adventure"
-status   = "implemented"
+status   = "verified"
 summary  = "The Warrior's Tomb draws as any find (ADV-PIK-009): 30 % a treasure artifact, 50 % a minor one, 15 % a major one, 5 % a relic. The visit (E08 T62a): its question (`OfferKind::Search`, every visit; declined, nothing); accepted, the visitor's owner learns whether it is emptied, the artifact goes to a hero who can receive it (ADV-QUIRK-22), or stays in the tomb, which is then not emptied, and the hero takes -3 morale once until its next battle (`HeroChange::Bonus` with the once-mark 0, HER-ADV-008) whether or not the tomb held anything. E08 T61b: `Resolved::Artifact`."
 numeric  = "integer"
 quirks   = ["ADV-QUIRK-22"]
@@ -1749,6 +1755,12 @@ quirks   = ["ADV-QUIRK-22"]
   url        = "https://heroes.thelazy.net/index.php/Warrior%27s_Tomb"
   retrieved  = "2026-10-26"
   confidence = "medium"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-7a.md E7-10 and E7-11 (2026-10-27; survey E08-rewards.md §15; E08 T65): both Tombs searched (the question answered yes) kept their artifacts with the backpack at 64, -3 morale after each (status 0x200000), -3 at the next battle's opening for both stacks, 0 and no flag after it"
+  retrieved  = "2026-10-27"
+  confidence = "high"
 
 [[rule]]
 id       = "ADV-PIK-012"
@@ -1979,7 +1991,7 @@ numeric  = "integer"
 
   [[rule.source]]
   kind       = "design"
-  ref        = "E08 decision 135 (ADV-Q28): the team's marks as the visitor's owner's knowledge until E10; design §13 of docs/epics/E08-design.md"
+  ref        = "E08 decision 135 (ADV-Q28): the team's marks as the visitor's owner's knowledge until E10; increment 7's design note §13 in docs/epics/E08-log.md"
   confidence = "high"
 
 [[rule]]

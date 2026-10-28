@@ -1,5 +1,5 @@
-//! The parameters of increment 7's object kinds (E08 T61a; ADR-0016 point 4, design §8 of
-//! `docs/epics/E08-design.md`): what a type of treasure chest, once-per-hero gift, find or Pyramid
+//! The parameters of increment 7's object kinds (E08 T61a; ADR-0016 point 4, increment 7's design
+//! note §8 in `E08-log.md`): what a type of treasure chest, once-per-hero gift, find or Pyramid
 //! holds as data, and their compilation from the packs' keys. The visits that read them come with
 //! T62 (ADV-PIK-005 to -013, ADV-TCH-001 to -008), the draws when the game is built with T61b
 //! (ADR-0016 point 4, GAM-SET-001's stream). The kinds without parameters of their own (a Spell
