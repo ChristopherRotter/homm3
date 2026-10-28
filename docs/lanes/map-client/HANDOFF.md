@@ -29,6 +29,6 @@ The user's dictation (2026-10-12): `docs/lanes/client/ASSET-NOTES.md`; this lane
 
 ## Recent sessions
 
-- **2026-10-28, E24 M3 T1b** (the user present: "no cut", every key through the table): the original data staged; #545 found merged; T1b built (the log's "M3 T1b"): `h3_ui::keys` contexts and `Window`, `h3_view::keys`, the layouts' `keys` gone, `h3_sdl::Key::ALL`'s missing `Return`. Next: its pull request merged, then T2.
+- **2026-10-28, E24 M3 T1b** (the user present: "no cut", every key through the table): the original data staged; #545 found merged; T1b built (the log's "M3 T1b"): `h3_ui::keys` contexts and `Window`, `h3_view::keys`, the layouts' `keys` gone, `h3_sdl::Key::ALL`'s missing `Return`; `master` merged in after #547 (the result window: `result-ok`). Next: its pull request merged, then T2.
 - **2026-10-28, E24 M3 T1a** (the user present at the start): the original data staged (with the whole `MP3/` folder and the harness's DLLs); #541 (`lanes.toml`) merged by the user; the move in one pull request (the user's choice): `h3-ui` built (the log's "M3 T1a"); check.sh green, coverage 100 %; both `drawn` all the same. Next: T1a's pull request merged, then T1b.
 - **2026-10-28, E24 M3 T0** (the user present): M3 refined with the user (the common crate `h3-ui`, T1a to T7 queued); MCL-Q12's provisional part confirmed; MCL-Q9 answered and built.

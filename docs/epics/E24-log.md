@@ -1323,7 +1323,14 @@ in two), the user answered **no cut**: every key of both windows through the tab
   the first Esc closes it and the window runs on, the next Esc quits; a user's file
   (`quit = ["Ctrl+F12"]`, `pause = ["P"]`): Esc no longer quits, Ctrl+F12 does; `pause =
   ["Space"]` refused (Defend's); `h3-map-view window walk-1 --check 10` with the same file 98 of
-  98 exact. DRAWN_RESULTS
+  98 exact. After merging `master` (#547): check.sh again all gates passed, coverage 100 %;
+  `h3drive.py drawn` all 133 the same (the book's, the boxes' and the result window's stills,
+  whose `key:` actions now go through the table, included; 131 before the merge); `h3map.py
+  drawn` (before the merge, which does not touch the map) 40 situations and every sequence the
+  same; `smoke` `--leave retreat` with the result window open to the run's end, 8 of 8 exact;
+  real keys on `smoke` in hot seat: R asks, Enter retreats, the result window opens, Esc (its
+  `result-ok`) closes the battle's screen. The scoped verify (`--with-original-data`): no failing step but `check-lane`, which passes with
+  `--cross-lane` (the pull request's label).
 - **Docs:** `clients/README.md` (both windows' keys, the crates' rows), both usages, the E17
   design note's two mentions of the layout's `keys` and the moved keys; M3's review list opened
   (the file's tables, the contexts, the behaviour changed); the client lane's inbox told (its
