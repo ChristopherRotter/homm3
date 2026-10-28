@@ -1,7 +1,7 @@
 use super::*;
 use alloc::vec;
 
-use crate::text::pack::Pack;
+use h3_ui::text::pack::Pack;
 
 const PACK: &str = r#"{
     "book": {
@@ -400,14 +400,13 @@ fn the_open_book_takes_presses_keys_and_the_mouse() {
     ));
     // Its draws: the dialog's shadow, then its items as shown.
     let draws = again.draws(&layout, "PLAYERS.PAL", 2);
-    assert!(
-        draws[..4]
-            .iter()
-            .all(|d| matches!(d, crate::scene::Draw::Darken { .. }))
-    );
+    assert!(draws[..4].iter().all(|d| matches!(
+        d,
+        crate::scene::Draw::Dialog(h3_ui::ui::Draw::Darken { .. })
+    )));
     assert!(matches!(
         &draws[4],
-        crate::scene::Draw::Picture { picture, player: Some(p), .. }
+        crate::scene::Draw::Dialog(h3_ui::ui::Draw::Picture { picture, player: Some(p), .. })
             if picture == "Spelback.pcx" && p.player == 2
     ));
 }

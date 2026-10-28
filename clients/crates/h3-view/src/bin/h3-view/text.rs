@@ -9,11 +9,11 @@ use std::process::ExitCode;
 
 use h3_formats::lod::LodArchive;
 use h3_formats::text::TextTable;
+use h3_ui::text::keys::{EXECUTABLE, Entry, Keys, Row, address_field};
+use h3_ui::text::pack::{Pack, Problem, Tables};
+use h3_ui::text::{Args, Catalogue};
 use h3_view::battle_log::{self, Hit, Spread, Stack};
 use h3_view::tables::{SIEGE_PARTS, Tables as AssetTables};
-use h3_view::text::keys::{EXECUTABLE, Entry, Keys, Row, address_field};
-use h3_view::text::pack::{Pack, Problem, Tables};
-use h3_view::text::{Args, Catalogue};
 
 use crate::assets;
 use crate::gate::find_ci;

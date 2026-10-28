@@ -6,6 +6,7 @@ use h3_assets::build;
 use h3_assets::def::Encoding;
 use h3_assets::palette::{Palette, Rgb};
 use h3_render::screen::MAX_SIDE;
+use h3_ui::ui;
 
 use crate::scene::tests::layout;
 
@@ -606,7 +607,7 @@ fn a_count_box_is_its_picture_tinted_with_the_count_over_it() {
 fn a_text_item_is_its_picture_with_the_text_over_it() {
     let mut layout = small();
     layout.frame = [8, 4];
-    let item = crate::ui::Text {
+    let item = h3_ui::ui::Text {
         id: 1,
         picture: "Roll.pcx".to_string(),
         at: [0, 0],
@@ -634,11 +635,13 @@ fn a_text_item_is_its_picture_with_the_text_over_it() {
         glyphs,
     };
     batch.add("Small.fnt", &build::fnt(&font)).unwrap();
-    let draw = |item: &crate::ui::Text, text: &str| Draw::Text {
-        item: item.clone(),
-        x: 2,
-        y: 1,
-        text: text.into(),
+    let draw = |item: &h3_ui::ui::Text, text: &str| {
+        Draw::Dialog(ui::Draw::Text {
+            item: item.clone(),
+            x: 2,
+            y: 1,
+            text: text.into(),
+        })
     };
     let screen = compose(&[draw(&item, "a\u{e9}")], &batch, &layout).unwrap();
     let [b, w, g] = [BLUE, WHITE, GREEN].map(|c| FORMAT.pack(c));
@@ -657,7 +660,7 @@ fn a_text_item_is_its_picture_with_the_text_over_it() {
     assert_eq!(empty.pixel(3, 3), Some(0));
     // At most the item's size of its picture (E17 M5 T3a): a box 3 wide cuts the picture's last
     // column.
-    let narrow = crate::ui::Text {
+    let narrow = h3_ui::ui::Text {
         size: [3, 3],
         ..item.clone()
     };
@@ -665,7 +668,10 @@ fn a_text_item_is_its_picture_with_the_text_over_it() {
     assert_eq!((cut.pixel(4, 1), cut.pixel(5, 1)), (Some(b), Some(0)));
     // A darkened rectangle (E17 M5 T3a): each channel halved over what is drawn.
     let dark = compose(
-        &[draw(&item, ""), Draw::Darken { rect: [0, 1, 3, 1] }],
+        &[
+            draw(&item, ""),
+            Draw::Dialog(ui::Draw::Darken { rect: [0, 1, 3, 1] }),
+        ],
         &batch,
         &layout,
     )
@@ -674,7 +680,7 @@ fn a_text_item_is_its_picture_with_the_text_over_it() {
     assert_eq!(dark.pixel(3, 1), Some(b));
     // What the batch lacks: the font, its palette, the picture.
     let gone = |what: &str| Err(ComposeError::Missing(what.to_string()));
-    let lacking = |change: fn(&mut crate::ui::Text)| {
+    let lacking = |change: fn(&mut h3_ui::ui::Text)| {
         let mut other = item.clone();
         change(&mut other);
         compose(&[draw(&other, "a")], &batch, &layout)
@@ -696,7 +702,7 @@ fn a_text_item_is_its_picture_with_the_text_over_it() {
 fn a_text_alone_is_its_text_greyed_while_disabled() {
     let mut layout = small();
     layout.frame = [8, 4];
-    let item = crate::ui::Label {
+    let item = h3_ui::ui::Label {
         id: 1,
         at: [0, 0],
         size: [4, 3],
@@ -719,12 +725,14 @@ fn a_text_alone_is_its_text_greyed_while_disabled() {
         glyphs,
     };
     batch.add("Small.fnt", &build::fnt(&font)).unwrap();
-    let draw = |item: &crate::ui::Label, disabled| Draw::Label {
-        item: item.clone(),
-        x: 2,
-        y: 1,
-        text: "a".into(),
-        disabled,
+    let draw = |item: &h3_ui::ui::Label, disabled| {
+        Draw::Dialog(ui::Draw::Label {
+            item: item.clone(),
+            x: 2,
+            y: 1,
+            text: "a".into(),
+            disabled,
+        })
     };
     let [w, r] = [WHITE, RED].map(|c| FORMAT.pack(c));
     let shown = compose(&[draw(&item, false)], &batch, &layout).unwrap();
@@ -735,7 +743,7 @@ fn a_text_alone_is_its_text_greyed_while_disabled() {
     let greyed = compose(&[draw(&item, true)], &batch, &layout).unwrap();
     assert_eq!(greyed.pixel(3, 3), Some(r));
     let gone = |what: &str| Err(ComposeError::Missing(what.to_string()));
-    let lacking = |change: fn(&mut crate::ui::Label)| {
+    let lacking = |change: fn(&mut h3_ui::ui::Label)| {
         let mut other = item.clone();
         change(&mut other);
         compose(&[draw(&other, false)], &batch, &layout)
@@ -762,15 +770,17 @@ fn a_picture_is_keyed_and_takes_its_players_colours() {
     // The players' palette: player 1's entries 32 and 33 yellow and white.
     let players = build::pal(&palette(&[(32, YELLOW), (33, WHITE)]), &[0; 256], 0, &[]);
     batch.add("Players.pal", &players).unwrap();
-    let picture = |name: &str, player: Option<u8>| Draw::Picture {
-        picture: name.to_string(),
-        x: 1,
-        y: 0,
-        player: player.map(|player| crate::scene::PlayerColours {
-            palette: "Players.pal".to_string(),
-            player,
-        }),
-        size: None,
+    let picture = |name: &str, player: Option<u8>| {
+        Draw::Dialog(ui::Draw::Picture {
+            picture: name.to_string(),
+            x: 1,
+            y: 0,
+            player: player.map(|player| ui::PlayerColours {
+                palette: "Players.pal".to_string(),
+                player,
+            }),
+            size: None,
+        })
     };
     let [bg, r, y, w, g] = [BLUE, RED, YELLOW, WHITE, GREEN].map(|c| FORMAT.pack(c));
     let list = [Draw::Background {
@@ -792,9 +802,9 @@ fn a_picture_is_keyed_and_takes_its_players_colours() {
         gone("no.pcx")
     );
     let mut no_players = picture("bar.pcx", Some(0));
-    if let Draw::Picture {
+    if let Draw::Dialog(ui::Draw::Picture {
         player: Some(p), ..
-    } = &mut no_players
+    }) = &mut no_players
     {
         p.palette = "no.pal".to_string();
     }
@@ -810,12 +820,14 @@ fn a_button_draws_its_frame_or_frame_0() {
     let frames = [row(&[3, 0], &[false, true]), row(&[4, 4], &[false, false])];
     let def = build::def(0x47, (2, 1), &p, &[(0, &[("a", 0), ("b", 1)])], &frames);
     batch.add("btn.def", &def).unwrap();
-    let button = |frame| Draw::Button {
-        def: "btn.def".to_string(),
-        frame,
-        x: 1,
-        y: 0,
-        player: None,
+    let button = |frame| {
+        Draw::Dialog(ui::Draw::Button {
+            def: "btn.def".to_string(),
+            frame,
+            x: 1,
+            y: 0,
+            player: None,
+        })
     };
     let [r, w] = [RED, WHITE].map(|c| FORMAT.pack(c));
     let first = compose(&[button(0)], &batch, &small()).unwrap();
@@ -826,13 +838,13 @@ fn a_button_draws_its_frame_or_frame_0() {
     assert_eq!(beyond, first);
     assert_eq!(
         compose(
-            &[Draw::Button {
+            &[Draw::Dialog(ui::Draw::Button {
                 def: "no.def".to_string(),
                 frame: 0,
                 x: 0,
                 y: 0,
                 player: None,
-            }],
+            })],
             &batch,
             &small()
         ),
@@ -851,15 +863,17 @@ fn a_def_item_takes_its_players_colours_and_a_picture_its_size() {
     batch.add("frame.def", &def).unwrap();
     let players = build::pal(&palette(&[(32, YELLOW)]), &[0; 256], 0, &[]);
     batch.add("Players.pal", &players).unwrap();
-    let piece = |palette: &str| Draw::Button {
-        def: "frame.def".to_string(),
-        frame: 0,
-        x: 1,
-        y: 0,
-        player: Some(crate::scene::PlayerColours {
-            palette: palette.to_string(),
-            player: 1,
-        }),
+    let piece = |palette: &str| {
+        Draw::Dialog(ui::Draw::Button {
+            def: "frame.def".to_string(),
+            frame: 0,
+            x: 1,
+            y: 0,
+            player: Some(ui::PlayerColours {
+                palette: palette.to_string(),
+                player: 1,
+            }),
+        })
     };
     let [r, y] = [RED, YELLOW].map(|c| FORMAT.pack(c));
     let drawn = compose(&[piece("Players.pal")], &batch, &small()).unwrap();
@@ -873,13 +887,13 @@ fn a_def_item_takes_its_players_colours_and_a_picture_its_size() {
     batch
         .add("tile.pcx", &build::pcx_indexed(3, 1, &[5, 5, 5], &own))
         .unwrap();
-    let tile = Draw::Picture {
+    let tile = Draw::Dialog(ui::Draw::Picture {
         picture: "tile.pcx".to_string(),
         x: 1,
         y: 0,
         player: None,
         size: Some([2, 1]),
-    };
+    });
     let drawn = compose(&[tile], &batch, &small()).unwrap();
     assert_eq!(drawn.pixels()[..5], [0, r, r, 0, 0]);
 }

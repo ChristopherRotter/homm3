@@ -678,7 +678,13 @@ pub(crate) fn draw_frames(
             .book
             .and_then(|b| Some((b.message.as_ref()?, b.mouse)));
         if let Some((message, mouse)) = message {
-            list.extend(message.dialog.draws(&message.shown, &layout.player_palette));
+            list.extend(
+                message
+                    .dialog
+                    .draws(&message.shown, &layout.player_palette)
+                    .into_iter()
+                    .map(scene::Draw::Dialog),
+            );
             list.push(scene::Draw::Cursor {
                 def: layout.message.cursor.clone(),
                 frame: 0,

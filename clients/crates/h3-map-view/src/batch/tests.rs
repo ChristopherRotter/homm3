@@ -4,7 +4,7 @@ use alloc::vec;
 use alloc::vec::Vec;
 
 use h3_assets::build;
-use h3_assets::def::Encoding;
+use h3_assets::def::{Encoding, Frame};
 use h3_assets::palette::Rgb;
 
 use crate::scene::Pass;

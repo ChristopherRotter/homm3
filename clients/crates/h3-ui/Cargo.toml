@@ -1,0 +1,22 @@
+[package]
+name = "h3-ui"
+description = "What both viewers share (E24 M3 T1a, the user's decision at T0): the clock in the window, the mouse cursor and the decoded DEF it draws, the dialog items, the string catalogue, the table of the keys and the music thread's model (pure, no_std + alloc)."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+# The decoded DEF and its frames (the cursor's `Sprite`).
+h3-assets.workspace = true
+# The cursor's drawer and image, the screen's formats; `Bugs`, the original's profile (the music).
+h3-render.workspace = true
+# The dialogs' layouts (`ui`) and the string catalogue's keys (`text`); the user's key file
+# (`keys`); the language packs (`text::pack`, nested JSON).
+serde.workspace = true
+serde_json.workspace = true
+toml.workspace = true
+
+[lints]
+workspace = true

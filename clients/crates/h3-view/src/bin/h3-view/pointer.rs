@@ -6,6 +6,7 @@ use std::collections::BTreeSet;
 
 use h3_protocol::wire::{Command, Manifest, Observation, Side, Stack};
 use h3_render::Bugs;
+use h3_ui::text::Catalogue;
 use h3_view::anim::Timeline;
 use h3_view::layout::BattleLayout;
 use h3_view::mouse::aim::Aim;
@@ -13,7 +14,6 @@ use h3_view::mouse::track::{self, Input, Shown, Start, Turn};
 use h3_view::mouse::{self, CATAPULT, Facing, Field, Hint, Legal, Spot, WALL_EXEMPT};
 use h3_view::record::Record;
 use h3_view::tables::Tables;
-use h3_view::text::Catalogue;
 
 use crate::scenario::Turned;
 

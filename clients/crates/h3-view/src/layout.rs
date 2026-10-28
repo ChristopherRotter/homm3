@@ -7,7 +7,7 @@ use alloc::string::{String, ToString};
 use alloc::vec::Vec;
 use serde::Deserialize;
 
-use crate::ui::{Dialog, Text};
+use h3_ui::ui::{Dialog, Text};
 
 /// The battle screen's layout: the frame, the hex grid and where sprites stand.
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
@@ -305,7 +305,7 @@ mod tests {
         assert_eq!((book.dialog.place, book.dialog.items.len()), ([90, 2], 51));
         assert_eq!((book.schools.len(), book.ribbons.len()), (4, 4));
         assert_eq!((book.cursor.as_str(), book.hot.len()), ("crdeflt.def", 2));
-        let area = |id| book.dialog.item(id).and_then(crate::ui::Item::area);
+        let area = |id| book.dialog.item(id).and_then(h3_ui::ui::Item::area);
         assert_eq!(area(224), Some(([419, 281], [78, 65])));
         assert_eq!(area(248), Some(([415, 346], [86, 36])));
         assert_eq!(area(0x7801), Some(([478, 407], [35, 42])));

@@ -1,39 +1,20 @@
 //! The assets a scene needs, decoded once before it is drawn (E24 M1 T3b1, *provisional*; as
-//! `h3-view`'s checkpoint batch, ADR-0020 point 7, which is the client lane's: M3's common crate
-//! may merge the two). The adapter reads the bytes from the archives and adds them by name;
-//! [`names`] says which a scene needs.
+//! `h3-view`'s checkpoint batch, ADR-0020 point 7, which is the client lane's; the decoded DEF,
+//! [`Sprite`], is the common crate's since E24 M3 T1a). The adapter reads the bytes from the
+//! archives and adds them by name; [`names`] says which a scene needs.
 
 use alloc::collections::{BTreeMap, BTreeSet};
 use alloc::format;
 use alloc::string::String;
 use core::fmt;
 
-use h3_assets::def::{Def, Frame, decode_frame, parse_def};
+use h3_assets::def::{decode_frame, parse_def};
 use h3_assets::palette::{Palette, decode_pal};
 use h3_assets::pcx::{Pcx, decode_pcx};
 
+use h3_ui::sprite::Sprite;
+
 use crate::scene::{Draw, Scene};
-
-/// A DEF with every frame decoded.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Sprite {
-    /// The DEF's header, palette and groups.
-    pub def: Def,
-    /// Its frames, by their offset in the DEF.
-    pub frames: BTreeMap<u32, Frame>,
-}
-
-impl Sprite {
-    /// Frame `index` of the group of id `group`.
-    #[must_use]
-    pub fn frame(&self, group: u32, index: u32) -> Option<&Frame> {
-        let group = self.def.groups.iter().find(|g| g.id == group)?;
-        let at = group
-            .frames
-            .get(usize::try_from(index).unwrap_or(usize::MAX))?;
-        self.frames.get(&at.offset)
-    }
-}
 
 /// The decoded assets, by upper-cased name.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]

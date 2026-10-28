@@ -17,7 +17,7 @@ use alloc::string::String;
 use alloc::vec;
 use alloc::vec::Vec;
 
-use crate::text::{Args, Catalogue};
+use h3_ui::text::{Args, Catalogue};
 
 /// What the battle writes into its log, or does to it, at a time (E17 M3 T6b, design §9.8): the
 /// timeline's record of it (`crate::anim::Timeline::log`), each stack by its id and its number

@@ -3,8 +3,8 @@
 Status: **refined** (2026-10-23, T0, with the user); **M1 closed** (2026-10-24, T6b: the
 reviewers, the review list accepted by the user); **M2 refined** (2026-10-26, M2 T0, with the
 user); **M2 closed** (2026-10-28, T6b2c: the user's hand test, the review list accepted at
-T6b2a); **M3 refined** (2026-10-28, M3 T0, with the user); next M3 T1a
-(`docs/lanes/map-client/QUEUE.md`).
+T6b2a); **M3 refined** (2026-10-28, M3 T0, with the user); M3 T1a built (2026-10-28, the
+common crate `h3-ui`); next M3 T1b (`docs/lanes/map-client/QUEUE.md`).
 Lane: map-client (`docs/lanes/map-client/HANDOFF.md`: the autonomy contract, the user's asset
 notes). Opened 2026-10-23 when the user split the client lane at E17 M3's closure (CLT-Q18).
 Decisions so far live here (no ADR of its own yet; ADR-0020 and ADR-0024 bind it as they bind
@@ -152,7 +152,8 @@ viewers share.
   new situations and sequences for what those do not show (several heroes and towns, the lists'
   scroll, the status window's kinds, the clicks, the cursor's kinds).
 - **Tasks** (the queue has each in full): T0, M3 refined (**done** 2026-10-28; MCL-Q9's fix
-  built); T1a, `h3-ui` and the move; T1b, the battle window's keys through the table; T2, the
+  built); T1a, `h3-ui` and the move (**done** 2026-10-28: #541's `lanes.toml`, the move's
+  `cross-lane` pull request; the log); T1b, the battle window's keys through the table; T2, the
   adventure screen's dialog at a map's start and the frame's cost; T3, the minimap; T4, the hero
   and town lists; T5, the status window, the resource bar and the date; T6, the mouse, the keys
   during a walk, the sound without the focus; T7, M3's closure. A task that grows is cut at a

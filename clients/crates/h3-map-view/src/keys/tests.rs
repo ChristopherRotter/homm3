@@ -1,6 +1,8 @@
 use alloc::string::ToString;
 use alloc::vec::Vec;
 
+use h3_ui::keys::Command as _;
+
 use super::*;
 
 #[test]
@@ -84,34 +86,6 @@ fn every_command_has_a_name_and_the_maps_its_action() {
         Some(Action::Step(Direction::SouthEast))
     );
     assert_eq!(Command::Pause.action(), None);
-}
-
-#[test]
-fn chords_read_and_write() {
-    assert_eq!(
-        Chord::parse("Ctrl+Up"),
-        Ok(Chord {
-            ctrl: true,
-            key: "Up".into()
-        })
-    );
-    assert_eq!(
-        Chord::parse("F5"),
-        Ok(Chord {
-            ctrl: false,
-            key: "F5".into()
-        })
-    );
-    for text in ["Ctrl+Up", "F5", "Escape"] {
-        assert_eq!(Chord::parse(text).unwrap().to_string(), text);
-    }
-    for bad in ["", "Ctrl+", "Shift+Up", "Page Up", "Ctrl+Ctrl+Up"] {
-        assert_eq!(
-            Chord::parse(bad),
-            Err(format!("`{bad}` is not a key, or Ctrl+ and a key")),
-            "{bad}"
-        );
-    }
 }
 
 #[test]

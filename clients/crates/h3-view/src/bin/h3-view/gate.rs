@@ -20,8 +20,8 @@ use h3_assets::archive;
 use h3_assets::check::{Decoded, EntryCheck, check_entry};
 use h3_assets::survey::{self, Mention, Mentions};
 use h3_formats::lod::LodArchive;
-use h3_view::text::Catalogue;
-use h3_view::text::pack::Pack;
+use h3_ui::text::Catalogue;
+use h3_ui::text::pack::Pack;
 
 use crate::{assets, sounds, text};
 

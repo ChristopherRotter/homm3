@@ -20,10 +20,13 @@ use h3_render::screen::{PixelFormat, Screen};
 use h3_render::text::{TextBox, TextStyle, draw_text};
 use h3_render::tint::{Tint, adjust_hue_saturation};
 
-use crate::batch::{Batch, Sprite};
+use h3_ui::sprite::Sprite;
+use h3_ui::text::encode_1252;
+use h3_ui::ui;
+
+use crate::batch::Batch;
 use crate::layout::BattleLayout;
 use crate::scene::Draw;
-use crate::text::encode_1252;
 
 /// The screen's pixel format (design §3.2: the executable's 16-bit 5-6-5 screen).
 pub const FORMAT: PixelFormat = PixelFormat::RGB565;
@@ -275,13 +278,13 @@ pub fn compose(
                 };
                 draw_text(&mut screen, text.as_bytes(), area, style);
             }
-            Draw::Picture {
+            Draw::Dialog(ui::Draw::Picture {
                 picture,
                 x,
                 y,
                 player,
                 size,
-            } => {
+            }) => {
                 // `H3DlgPcx` (0x450450 → 0x44FDB0): index 0 transparent, the picture's entries
                 // 224-255 in the player's colours (0x450520) when it has one (§9.7), at most the
                 // item's size of it from its corner (E17 M5 T4a).
@@ -301,13 +304,13 @@ pub fn compose(
                     _ => draw_image_keyed_clipped(&mut screen, image, *x, *y, clip),
                 }
             }
-            Draw::Button {
+            Draw::Dialog(ui::Draw::Button {
                 def,
                 frame,
                 x,
                 y,
                 player,
-            } => {
+            }) => {
                 // 0x456940: group 0's frame, frame 0 when the group has no such frame; the plain
                 // drawer with runs skipped (0x47BF00 → 0x47C570; §9.7); a DEF item's entries
                 // 224-255 in a player's colours when it has one (0x4EAA4A; E17 M5 T4a).
@@ -370,8 +373,8 @@ pub fn compose(
                     false,
                 )?;
             }
-            Draw::Darken { rect } => darken(&mut screen, *rect),
-            Draw::Text { item, x, y, text } => {
+            Draw::Dialog(ui::Draw::Darken { rect }) => darken(&mut screen, *rect),
+            Draw::Dialog(ui::Draw::Text { item, x, y, text }) => {
                 // 0x5BC7F0: the item's picture, opaque (0x44FDB0), at most the item's size of it
                 // (E17 M5 T3a: `spelroll.pcx` is a column wider), then its text (0x5BC5F0 →
                 // 0x4B5490) in the item's box, the colour and alignment it was made with.
@@ -399,13 +402,13 @@ pub fn compose(
                 };
                 draw_text(&mut screen, &encode_1252(text).0, area, style);
             }
-            Draw::Label {
+            Draw::Dialog(ui::Draw::Label {
                 item,
                 x,
                 y,
                 text,
                 disabled,
-            } => {
+            }) => {
                 // 0x5BC5F0 (E17 M5 T3a): the text in the item's box, its colour 2 more with the
                 // state's bit 8 (0x5BC641); the background colour, 0 in every one built, fills
                 // nothing.

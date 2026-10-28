@@ -8,6 +8,8 @@ members = [
     "crates/h3-assets",
     "crates/h3-render",
     "crates/h3-sdl",
+    # What both viewers share (E24 M3 T1a, the user's decision at T0): common to both client lanes.
+    "crates/h3-ui",
     "crates/h3-view",
     # The adventure map client (the map-client lane, E24).
     "crates/h3-map-view",
@@ -25,6 +27,7 @@ publish = false
 h3-assets = { path = "crates/h3-assets" }
 h3-render = { path = "crates/h3-render" }
 h3-sdl = { path = "crates/h3-sdl" }
+h3-ui = { path = "crates/h3-ui" }
 # Engine crates (public crates only, ADR-0020 point 1). A change the client needs in one of them
 # goes through that crate's lane.
 h3-formats = { path = "../crates/h3-formats" }

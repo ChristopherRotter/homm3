@@ -1355,8 +1355,8 @@ it, the track asked for again; the effects' return not read).
   during a fade-out replaces the pending one; and the old track asked for again during its own
   fade-out is dropped: grass, dirt and grass again within 900 ms keeps Dirt playing on grass
   until the music's terrain next changes (**MCL-Q12**). **Built at T6b2b** (the user's answer,
-  `h3_map_view::music`'s filter; the original's behind `--bugs original`): the client drops the
-  track opened last only while nothing else is pending; during its own fade-out it becomes the
+  `h3_ui::music`'s filter, `h3_map_view::music`'s until M3 T1a; the original's behind `--bugs
+  original`): the client drops the track opened last only while nothing else is pending; during its own fade-out it becomes the
   pending one (it comes back where its fade began, after the fade); during its fade-in or while
   it is opened (the same slip a fade-in later: grass, dirt during Grass's fade-in, grass again;
   *provisional* at T6b2b, confirmed by the user at M3 T0) the pending one is dropped and it plays
@@ -1433,8 +1433,8 @@ it, the track asked for again; the effects' return not read).
   the map loads, a track on a thread of its own when first asked for (the map's first before
   the window opens); one stream for the music, one for the step sound, one per ambient slot;
   the volumes as SDL gains of v / 127 (both settings at their highest). The music (M2 T6a2):
-  `h3_map_view::music` models the thread above on a clock of the frames the device has played
-  (`Music`: the pending and playing names, the stream opening, fading in, playing or fading out,
+  `h3_ui::music` (`h3_map_view::music` until M3 T1a) models the thread above on a clock of the
+  frames the device has played (`Music`: the pending and playing names, the stream opening, fading in, playing or fading out,
   the places; `Queue`: the model at the frames heard and a copy at the frames queued, a second
   ahead), its runs' samples scaled by their volume; a request lands at the frames heard and,
   taken, takes back what is queued (the stream cleared, queued again from there), so the fades

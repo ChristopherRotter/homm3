@@ -15,6 +15,9 @@ h3-render.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 toml.workspace = true
+# What both viewers share (E24 M3 T1a): the clock, the cursor and its `Sprite`, the dialog items,
+# the string catalogue.
+h3-ui.workspace = true
 # The binary's adapters only (`tests/purity.rs`: the library never names them).
 h3-battle.workspace = true
 h3-kernel.workspace = true

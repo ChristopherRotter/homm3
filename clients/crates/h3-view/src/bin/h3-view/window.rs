@@ -3,7 +3,7 @@
 //! the bot as it plays (E17 M5 T1b: each command when the window reaches the timeline's end) or a
 //! record read, its commands timed by `h3_view::anim`, the assets of its frames in one checkpoint
 //! batch as they are first drawn. The window shows the frame of the latest change at or before the
-//! battle's clock (`h3_view::clock`), composed and widened ahead of its time, presented when it
+//! battle's clock (`h3_ui::clock`), composed and widened ahead of its time, presented when it
 //! falls due; past the end the battle idles. Keys: P pauses, → steps a frame while paused, Home
 //! restarts, F11 fullscreen (F until E17 M5 T3b: the Faerie Dragon's key now), V vsync, H the
 //! hardware or the drawn cursor, M the music, E the creatures' sounds, Esc quits (*provisional*:
@@ -44,15 +44,15 @@ use std::process::ExitCode;
 use h3_protocol::wire::{Command, Target};
 use h3_render::screen::Screen;
 use h3_sdl::{Config, CursorImage, Event, Key, ReadBack, Window};
+use h3_ui::clock::Clock;
+use h3_ui::cursor::Cursor;
+use h3_ui::ui::Item;
 use h3_view::anim::Speed;
-use h3_view::clock::Clock;
 use h3_view::compose::FORMAT;
-use h3_view::cursor::Cursor;
 use h3_view::layout::BattleLayout;
 use h3_view::mouse::track::Input;
 use h3_view::scene::Draw;
 use h3_view::sound::Tune;
-use h3_view::ui::Item;
 
 use crate::assets;
 use crate::audio::{Library, Player};

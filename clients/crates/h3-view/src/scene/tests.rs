@@ -2,6 +2,7 @@ use super::*;
 use alloc::string::ToString;
 use alloc::vec;
 use h3_protocol::wire::{DamageRoll, KeyTables, RemovableObstacle};
+use h3_ui::ui;
 
 use crate::layout::parse_battle;
 use crate::ray::Stroke;
@@ -929,33 +930,37 @@ fn the_panel_draws_its_items_as_the_turn_sets_them() {
         scroll: false,
     };
     let list = panel(&o, Some(Side::Attacker), kept, "a\nb", &layout);
-    let button = |def: &str, frame, x| Draw::Button {
-        def: def.to_string(),
-        frame,
-        x,
-        y: 561,
-        player: None,
+    let button = |def: &str, frame, x| {
+        Draw::Dialog(ui::Draw::Button {
+            def: def.to_string(),
+            frame,
+            x,
+            y: 561,
+            player: None,
+        })
     };
-    let scroll = |frame, y| Draw::Button {
-        def: "ComSlide.def".to_string(),
-        frame,
-        x: 624,
-        y,
-        player: None,
+    let scroll = |frame, y| {
+        Draw::Dialog(ui::Draw::Button {
+            def: "ComSlide.def".to_string(),
+            frame,
+            x: 624,
+            y,
+            player: None,
+        })
     };
     assert_eq!(
         list,
         [
-            Draw::Picture {
+            Draw::Dialog(ui::Draw::Picture {
                 picture: "cbar.pcx".to_string(),
                 x: 0,
                 y: 556,
-                player: Some(PlayerColours {
+                player: Some(ui::PlayerColours {
                     palette: "PLAYERS.PAL".to_string(),
                     player: 0
                 }),
                 size: Some([800, 44]),
-            },
+            }),
             // No heroes: no surrender, no retreat, no book.
             button("icm001.def", 2, 54),
             button("icm002.def", 2, 105),
@@ -964,12 +969,12 @@ fn the_panel_draws_its_items_as_the_turn_sets_them() {
             button("icm005.def", 2, 645),
             button("icm006.def", 0, 696),
             button("icm007.def", 0, 747),
-            Draw::Text {
+            Draw::Dialog(ui::Draw::Text {
                 item: layout.log().unwrap().clone(),
                 x: 214,
                 y: 563,
                 text: "a\nb".to_string()
-            },
+            }),
             scroll(0, 561),
             scroll(2, 580),
         ]
@@ -990,11 +995,11 @@ fn the_panel_over_time_follows_the_turns_and_the_log() {
     let panels = Panels::new(&o, &events, texts);
     let started = [(100, 2), (300, 0)];
     let picture = |list: &[Draw]| match &list[0] {
-        Draw::Picture { player, .. } => player.as_ref().map(|p| p.player),
+        Draw::Dialog(ui::Draw::Picture { player, .. }) => player.as_ref().map(|p| p.player),
         _ => None,
     };
     let wait = |list: &[Draw]| match &list[6] {
-        Draw::Button { frame, .. } => *frame,
+        Draw::Dialog(ui::Draw::Button { frame, .. }) => *frame,
         _ => 9,
     };
     // Red's opening: lit; the computer's turn: dimmed in Red's colours, the log's line shown.
@@ -1003,7 +1008,7 @@ fn the_panel_over_time_follows_the_turns_and_the_log() {
     let computer = panels.at(&o, &started, 200, &layout);
     assert_eq!((picture(&computer), wait(&computer)), (Some(0), 2));
     assert_eq!(panels.text(200), "hit");
-    assert!(matches!(&computer[8], Draw::Text { text, .. } if text == "hit"));
+    assert!(matches!(&computer[8], Draw::Dialog(ui::Draw::Text { text, .. }) if text == "hit"));
     assert_eq!(wait(&panels.at(&o, &started, 300, &layout)), 0);
     // E17 M3 T6c-2: Wait pressed shows its click frame; a disabled one takes no press.
     let pressed = panels.at_pressed(&o, &started, 300, &layout, "", Some(2009));
@@ -1058,7 +1063,7 @@ fn a_heros_cast_disables_its_spell_book_for_the_turn() {
     let panels = Panels::new(&o, &events, Vec::new()).with_casts(casts);
     let started = [(100, 0)];
     let book = |t| match &panels.at(&o, &started, t, &layout)[5] {
-        Draw::Button { frame, .. } => *frame,
+        Draw::Dialog(ui::Draw::Button { frame, .. }) => *frame,
         _ => 9,
     };
     assert_eq!([book(100), book(199), book(200)], [0, 0, 2]);
