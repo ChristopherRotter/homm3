@@ -15,7 +15,8 @@
 //! [`TileSounds`] each tile's ambient sound and terrain (`tile_ambient_sound` 0x418620 on the
 //! object a tile records, 0x505610's walks), [`Sound`] the original's state, driven by the
 //! timeline's loop at the moments above and giving its [`Cue`]s. The effects' and the music's
-//! settings are taken as on (nothing plays at 0 in the original).
+//! settings are taken as on (nothing plays at 0 in the original). The client keeps a bit for each
+//! ambient sound found, the comparisons the original's 32 (MCL-Q8, [`Bugs`]).
 
 use alloc::collections::BTreeMap;
 use alloc::format;
@@ -24,6 +25,7 @@ use alloc::sync::Arc;
 use alloc::vec::Vec;
 
 use h3_map::model::Pos;
+use h3_render::Bugs;
 use serde::Deserialize;
 
 use crate::art::{MapArt, TileArt, WATER};
@@ -491,8 +493,11 @@ pub struct Sound {
     /// The track asked for last.
     asked: Option<String>,
     slots: [Slot; SLOTS],
-    /// The sounds found by the last scan (+0x224): bit `1 << sound`, the count mod 32 (x86's).
-    found: u32,
+    /// The sounds found by the last scan (+0x224): a bit a sound, or with the original's bugs
+    /// bit `1 << sound` of 32, the count mod 32 (x86's: MCL-Q8).
+    found: u128,
+    /// The original's shared bits or the client's set (MCL-Q8).
+    bugs: Bugs,
     /// The step sound playing (`step_sound_playing` 0x6968E0) and queued (0x6968E4).
     step: Option<String>,
     next: Option<String>,
@@ -500,9 +505,10 @@ pub struct Sound {
 }
 
 impl Sound {
-    /// Silence, before the map's screen starts.
+    /// Silence, before the map's screen starts; the found sounds kept as the original keeps them
+    /// or as the client does (`bugs`, MCL-Q8).
     #[must_use]
-    pub fn new(rules: Arc<SoundRules>, tiles: Arc<TileSounds>) -> Self {
+    pub fn new(rules: Arc<SoundRules>, tiles: Arc<TileSounds>, bugs: Bugs) -> Self {
         Self {
             rules,
             tiles,
@@ -513,6 +519,7 @@ impl Sound {
                 distance: FAR,
             }; SLOTS],
             found: 0,
+            bugs,
             step: None,
             next: None,
             cues: Vec::new(),
@@ -656,7 +663,7 @@ impl Sound {
                 }
             }
         }
-        let (rules, found, cues) = (&self.rules, self.found, &mut self.cues);
+        let (rules, found, bugs, cues) = (&self.rules, self.found, self.bugs, &mut self.cues);
         for (i, slot) in self.slots.iter_mut().enumerate() {
             let Some(sound) = slot.sound else {
                 continue;
@@ -664,7 +671,7 @@ impl Sound {
             if slot.distance > KEPT {
                 slot.sound = None;
                 cues.push((t, Cue::LoopStop { slot: i }));
-            } else if found & bit(sound) != 0 {
+            } else if found & bit(sound, bugs) != 0 {
                 let volume = rules.volume(slot.distance);
                 cues.push((t, Cue::LoopVolume { slot: i, volume }));
             }
@@ -679,7 +686,7 @@ impl Sound {
         if let Some(slot) = self.slots.iter_mut().find(|s| s.sound == Some(sound)) {
             if slot.distance > distance {
                 slot.distance = distance;
-                self.found |= bit(sound);
+                self.found |= bit(sound, self.bugs);
             }
             return;
         }
@@ -720,13 +727,20 @@ impl Sound {
                 volume,
             },
         ));
-        self.found ^= bit(sound);
+        self.found ^= bit(sound, self.bugs);
     }
 }
 
-/// A sound's bit in the found set: x86 takes a shift's count mod 32 (MCL-Q8).
-fn bit(sound: u8) -> u32 {
-    1u32 << (u32::from(sound) % 32)
+/// A sound's bit in the found set: its own (the client's: the 70 loops in 128 bits, one past
+/// them none), or as the original's `1 << sound` in 32 bits, where x86 takes the shift's count
+/// mod 32 and sounds 32 apart share a bit (MCL-Q8: one's XOR clears the other's, which keeps its
+/// earlier volume).
+fn bit(sound: u8, bugs: Bugs) -> u128 {
+    let at = match bugs {
+        Bugs::Fixed => u32::from(sound),
+        Bugs::Original => u32::from(sound) % 32,
+    };
+    1u128.checked_shl(at).unwrap_or(0)
 }
 
 /// A cue as a line of text (`h3-map-view`'s reports): the millisecond and what it asks.

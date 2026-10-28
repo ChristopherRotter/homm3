@@ -32,30 +32,18 @@ started (the user, 2026-10-27): T6b1, the recordings again and R2-8 (done 2026-1
 sequence and still exact; R2-8 as #523), then T6b2, the user's, cut at its seam (the user,
 2026-10-27, away from the machine): T6b2a, the review list and the questions (done 2026-10-27:
 the review list accepted, MCL-Q7, Q8 and Q12 answered, a build and a checklist on the user's
-machine), then T6b2b, the answers built, and T6b2c, the hand test and M2 archived.
-
-### E24 M2 T6b2b — the answers built: MCL-Q7, Q8 and Q12
-
-- **Scope:** the three answers of M2's closure (the lane's `QUESTIONS-ANSWERED.md`), each the
-  client's by default and the original's behind `--bugs original` (`h3_render::Bugs`, as
-  MCL-Q2 to Q6): MCL-Q7, the lifted hero cut at the map's side moved by the offset in passes 5,
-  7 and 9 (design §3.8); MCL-Q8, a set of the 70 ambient loops instead of 32 bits (design
-  §3.11); MCL-Q12, a track asked for during its own fade-out kept (`h3_map_view::music`'s
-  filter: Grass resumes where its fade began). The design's paragraphs say which profile does
-  what.
-- **Acceptance:** each case tested in both profiles (each new test failing on the old code); the
-  13 recorded timelines line by line and `h3map.py drawn` the same (no recorded sequence meets
-  these cases); the Definition of Done.
-- **Depends on:** T6b2a. **Status:** ready; the sandbox's work, no user needed.
+machine), then T6b2b, the answers built (done 2026-10-28: MCL-Q7, Q8 and Q12 the client's, the
+original's behind `--bugs original`), and T6b2c, the hand test and M2 archived.
 
 ### E24 M2 T6b2c — the hand test and M2 archived
 
 - **Scope:** the window by hand on the user's machine: `clients/out/win/map-try.cmd` (the T6a
   fixes: Alt+Tab with the pointer at an edge, fullscreen's bars, F7 in a situation; T6a2's
-  music by ear in `seq-walk`), the user's notes in `map-try-notes.txt` beside it; T6b2a put
-  there the build of `master` at #527: build again after T6b2b (`--target
-  x86_64-pc-windows-gnu`) and change item 2c's text (Grass comes back) before the user tries it,
-  unless the notes are already written. Each finding checked (fixed, queued or an `MCL-Q<n>`);
+  music by ear in `seq-walk`, T6b2b's MCL-Q12 in item 2c: Grass comes back), the user's notes
+  in `map-try-notes.txt` beside it; T6b2b put there the build of its branch (`--target
+  x86_64-pc-windows-gnu`; T6b2a's kept as `h3-map-view-t6b2a.exe`): build again only if the
+  viewer changed on `master` since and the notes are not written yet. Each finding checked
+  (fixed, queued or an `MCL-Q<n>`);
   then M2's section moved verbatim to `E24-archive.md` (scope, decisions, task list, the
   accepted review list; a row and a pointer left) and the HANDOFF's M2 lines trimmed.
 - **Acceptance:** no finding of the hand test left unrecorded; M2 archived; the Definition of

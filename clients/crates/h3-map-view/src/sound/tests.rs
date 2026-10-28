@@ -48,7 +48,12 @@ pub(crate) fn tiles(
 
 /// A sound state over `tiles` with the committed rules.
 pub(crate) fn sound(tiles: TileSounds) -> Sound {
-    Sound::new(Arc::new(rules()), Arc::new(tiles))
+    sound_with(tiles, Bugs::Fixed)
+}
+
+/// The same with the original's shared bits or the client's set (MCL-Q8).
+fn sound_with(tiles: TileSounds, bugs: Bugs) -> Sound {
+    Sound::new(Arc::new(rules()), Arc::new(tiles), bugs)
 }
 
 fn pos(x: u8, y: u8) -> Pos {
@@ -496,23 +501,43 @@ fn the_ambient_slots_take_the_nearest_sounds() {
 }
 
 #[test]
-fn two_sounds_32_apart_share_a_bit() {
-    // MCL-Q8: sound 1 found again nearer, then sound 33 started: its XOR clears bit 1, so neither
-    // takes a volume after the scan (1 keeps its distance 2's).
+fn two_sounds_32_apart_share_a_bit_in_the_original() {
+    // MCL-Q8: sound 1 found again nearer, then sound 33 started: with the original's bits its
+    // XOR clears bit 1, so neither takes a volume after the scan (1 keeps its distance 2's); the
+    // client's set gives 1 its distance 1's and 33 its own again.
     let placed = [((7, 5), 1), ((9, 5), 33)];
-    let mut s = sound(tiles(
-        20,
-        |_, _| 2,
-        |x, y| placed.iter().find(|(p, _)| *p == (x, y)).map(|(_, s)| *s),
-    ));
-    s.start(0, [5, 5, 0], None);
-    assert_eq!(
-        names(&s.take())[1..],
-        ["0 loop 0 LoopArch.wav 20", "0 loop-volume 0 20"]
-    );
-    s.step_end(1, [6, 5, 0], pos(6, 5), false, 0);
-    assert_eq!(names(&s.take()), ["1 loop 1 LoopMons.wav 10"]);
-    assert_eq!(bit(33), bit(1));
+    for (bugs, last) in [
+        (Bugs::Original, vec!["1 loop 1 LoopMons.wav 10"]),
+        (
+            Bugs::Fixed,
+            vec![
+                "1 loop 1 LoopMons.wav 10",
+                "1 loop-volume 0 28",
+                "1 loop-volume 1 10",
+            ],
+        ),
+    ] {
+        let mut s = sound_with(
+            tiles(
+                20,
+                |_, _| 2,
+                |x, y| placed.iter().find(|(p, _)| *p == (x, y)).map(|(_, s)| *s),
+            ),
+            bugs,
+        );
+        s.start(0, [5, 5, 0], None);
+        assert_eq!(
+            names(&s.take())[1..],
+            ["0 loop 0 LoopArch.wav 20", "0 loop-volume 0 20"]
+        );
+        s.step_end(1, [6, 5, 0], pos(6, 5), false, 0);
+        assert_eq!(names(&s.take()), last, "{bugs:?}");
+    }
+    assert_eq!(bit(33, Bugs::Original), bit(1, Bugs::Original));
+    assert_ne!(bit(33, Bugs::Fixed), bit(1, Bugs::Fixed));
+    assert_eq!(bit(69, Bugs::Fixed), 1 << 69);
+    // A sound past the set's 128 bits has none (the loops are 70).
+    assert_eq!(bit(200, Bugs::Fixed), 0);
 }
 
 #[test]

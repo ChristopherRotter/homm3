@@ -75,7 +75,12 @@ fn fade_out(name: &str, from: u64) -> Vec<Item<'_>> {
 
 /// A model with A asked for and heard for `frames` (its fade-in included).
 fn playing_a(frames: u64) -> Music {
-    let mut m = Music::new(RATE);
+    playing_a_with(frames, Bugs::Fixed)
+}
+
+/// The same with the original's filter of the requests or the client's (MCL-Q12).
+fn playing_a_with(frames: u64, bugs: Bugs) -> Music {
+    let mut m = Music::new(RATE, bugs);
     assert_eq!(m.request("A"), Request::Taken);
     let _ = m.advance(frames, &tracks);
     m
@@ -83,7 +88,7 @@ fn playing_a(frames: u64) -> Music {
 
 #[test]
 fn a_first_track_fades_in_from_its_start_then_plays_whole() {
-    let mut m = Music::new(RATE);
+    let mut m = Music::new(RATE, Bugs::Fixed);
     assert_eq!(m.playing(), None);
     assert_eq!(m.request("A"), Request::Taken);
     assert_eq!(m.pending(), Some("A"));
@@ -94,13 +99,13 @@ fn a_first_track_fades_in_from_its_start_then_plays_whole() {
     assert_eq!(m.playing(), Some("A"));
     assert_eq!(m.pending(), None);
     // A step of 100 ms at the stream's rate; at least one frame.
-    assert_eq!(Music::new(44_100).step, 4_410);
-    assert_eq!(Music::new(0).step, 1);
+    assert_eq!(Music::new(44_100, Bugs::Fixed).step, 4_410);
+    assert_eq!(Music::new(0, Bugs::Fixed).step, 1);
 }
 
 #[test]
 fn a_track_starts_again_at_its_end() {
-    let mut m = Music::new(RATE);
+    let mut m = Music::new(RATE, Bugs::Fixed);
     m.request("short");
     let runs = m.advance(60, &tracks);
     assert_eq!(
@@ -179,10 +184,10 @@ fn the_track_opened_is_the_last_asked_for_during_the_fade_out() {
 }
 
 /// R2-4: `play_music` drops a request for the pending name and for the track opened last while
-/// its stream plays, a fading one included (MCL-Q12).
+/// its stream plays, a fading one included (MCL-Q12, the original's).
 #[test]
 fn a_request_for_the_pending_or_the_playing_track_is_dropped() {
-    let mut m = playing_a(200);
+    let mut m = playing_a_with(200, Bugs::Original);
     assert_eq!(m.request("A"), Request::Playing);
     assert_eq!(m.request("B"), Request::Taken);
     assert_eq!(m.request("B"), Request::Pending);
@@ -197,15 +202,44 @@ fn a_request_for_the_pending_or_the_playing_track_is_dropped() {
     assert_eq!(m.request("A"), Request::Taken);
 }
 
-/// Grass, dirt and grass again 150 ms apart (MCL-Q12): the original keeps Dirt.
+/// The client's filter (MCL-Q12): the pending name and the track playing with nothing pending
+/// are dropped; the track fading out asked for again comes back.
 #[test]
-fn grass_dirt_grass_keeps_dirt() {
-    let both = |name: &str| match name {
+fn the_client_drops_only_what_will_play() {
+    let mut m = playing_a(200);
+    assert_eq!(m.request("A"), Request::Playing);
+    assert_eq!(m.request("B"), Request::Taken);
+    assert_eq!(m.request("B"), Request::Pending);
+    let _ = m.advance(15, &tracks);
+    // A fading out, asked for again: it replaces B and opens where its fade began.
+    assert_eq!(m.request("A"), Request::Taken);
+    assert_eq!(m.pending(), Some("A"));
+    assert_eq!(m.request("A"), Request::Pending);
+    let runs = m.advance(75 + 20, &tracks);
+    let mut want = vec![("A", 215, 5, FADE_OUT[1])];
+    want.extend(fade_out("A", 200).into_iter().skip(2));
+    want.extend(fade_in("A", 200).into_iter().take(2));
+    assert_eq!(line(&runs), join(want));
+    assert_eq!(
+        (m.playing(), m.pending(), m.place("B")),
+        (Some("A"), None, None)
+    );
+}
+
+/// The two tracks of grass and dirt.
+fn grass_and_dirt(name: &str) -> Track {
+    match name {
         "Grass" => Track::Frames(1000),
         "Dirt" => Track::Frames(800),
         other => tracks(other),
-    };
-    let mut m2 = Music::new(RATE);
+    }
+}
+
+/// Grass, dirt and grass again 150 ms apart (MCL-Q12): the original keeps Dirt.
+#[test]
+fn grass_dirt_grass_keeps_dirt() {
+    let both = grass_and_dirt;
+    let mut m2 = Music::new(RATE, Bugs::Original);
     m2.request("Grass");
     let _ = m2.advance(200, &both);
     assert_eq!(m2.request("Dirt"), Request::Taken);
@@ -217,9 +251,75 @@ fn grass_dirt_grass_keeps_dirt() {
     assert_eq!(m2.playing(), Some("Dirt"));
 }
 
+/// The same with the client's filter (MCL-Q12): Grass comes back where its fade began, after it,
+/// and Dirt never plays.
+#[test]
+fn grass_dirt_grass_brings_grass_back() {
+    let mut m = Music::new(RATE, Bugs::Fixed);
+    m.request("Grass");
+    let _ = m.advance(200, &grass_and_dirt);
+    assert_eq!(m.request("Dirt"), Request::Taken);
+    let _ = m.advance(15, &grass_and_dirt);
+    assert_eq!(m.request("Grass"), Request::Taken);
+    let runs = m.advance(75 + 100, &grass_and_dirt);
+    let mut want = vec![("Grass", 215, 5, FADE_OUT[1])];
+    want.extend(fade_out("Grass", 200).into_iter().skip(2));
+    want.extend(fade_in("Grass", 200));
+    want.push(("Grass", 290, 10, FULL));
+    assert_eq!(line(&runs), join(want));
+    assert_eq!(m.playing(), Some("Grass"));
+    assert!(runs.iter().all(|r| r.name == "Grass"));
+}
+
+/// The track fading in or being opened asked for again while another is pending (MCL-Q12): the
+/// original drops the request and the pending track follows; the client drops the pending one.
+#[test]
+fn the_track_fading_in_asked_for_again_while_another_is_pending() {
+    // A fading in, B asked for, then A again.
+    let mut m = playing_a_with(45, Bugs::Original);
+    assert_eq!(m.request("B"), Request::Taken);
+    assert_eq!(m.request("A"), Request::Playing);
+    let runs = m.advance(45 + 90 + 20, &tracks);
+    let mut want = vec![("A", 45, 5, 63)];
+    want.extend(fade_in("A", 0).into_iter().skip(5));
+    want.extend(fade_out("A", 90));
+    want.extend(fade_in("B", 0).into_iter().take(2));
+    assert_eq!(line(&runs), join(want));
+    let mut m = playing_a_with(45, Bugs::Fixed);
+    assert_eq!(m.request("B"), Request::Taken);
+    assert_eq!(m.request("A"), Request::Kept);
+    assert_eq!(m.pending(), None);
+    let runs = m.advance(45 + 90 + 20, &tracks);
+    let mut want = vec![("A", 45, 5, 63)];
+    want.extend(fade_in("A", 0).into_iter().skip(5));
+    want.push(("A", 90, 110, FULL));
+    assert_eq!(line(&runs), join(want));
+    assert_eq!((m.playing(), m.place("A")), (Some("A"), None));
+    // A track being decoded, A asked for, then the first again: the original opens A after it,
+    // the client plays it on.
+    let ready = |name: &str| match name {
+        "slow" => Track::Frames(400),
+        other => tracks(other),
+    };
+    for (bugs, request, last) in [
+        (Bugs::Original, Request::Playing, "A"),
+        (Bugs::Fixed, Request::Kept, "slow"),
+    ] {
+        let mut m = Music::new(RATE, bugs);
+        m.request("slow");
+        assert!(m.advance(10, &tracks).is_empty());
+        assert_eq!(m.request("A"), Request::Taken);
+        assert_eq!(m.request("slow"), request, "{bugs:?}");
+        let _ = m.advance(90 + 90 + 10, &ready);
+        assert_eq!(m.playing(), Some(last), "{bugs:?}");
+    }
+    assert!(Request::Taken.changed() && Request::Kept.changed());
+    assert!(!Request::Playing.changed() && !Request::Pending.changed());
+}
+
 #[test]
 fn a_missing_track_plays_nothing_and_the_next_one_opens() {
-    let mut m = Music::new(RATE);
+    let mut m = Music::new(RATE, Bugs::Fixed);
     m.request("gone");
     assert!(m.advance(50, &tracks).is_empty());
     assert_eq!(m.playing(), None);
@@ -240,7 +340,7 @@ fn a_missing_track_plays_nothing_and_the_next_one_opens() {
 
 #[test]
 fn a_track_being_decoded_holds_the_clock() {
-    let mut m = Music::new(RATE);
+    let mut m = Music::new(RATE, Bugs::Fixed);
     m.request("slow");
     assert!(m.advance(50, &tracks).is_empty());
     assert_eq!(m.playing(), Some("slow"));
@@ -320,10 +420,10 @@ fn service(q: &mut Queue, s: &mut Device, tracks: &impl Fn(&str) -> Track) {
     s.put(runs);
 }
 
-/// The window's cue: the request, the stream cleared when it is taken.
+/// The window's cue: the request, the stream cleared when it changed the music to come.
 fn cue(q: &mut Queue, s: &mut Device, name: &str) -> Request {
     let request = q.request(name, s.queued(), &tracks);
-    if request == Request::Taken {
+    if request.changed() {
         s.queue.clear();
     }
     request
@@ -341,7 +441,7 @@ fn run(q: &mut Queue, s: &mut Device, frames: u64, turn: u64) {
 /// queued is taken back and queued again from there, so the stream plays as the model would.
 #[test]
 fn the_queue_plays_what_the_model_hears() {
-    let (mut q, mut s) = (Queue::new(RATE), Device::default());
+    let (mut q, mut s) = (Queue::new(RATE, Bugs::Fixed), Device::default());
     assert_eq!(cue(&mut q, &mut s, "A"), Request::Taken);
     run(&mut q, &mut s, 200, 20);
     assert_eq!(s.queued(), AHEAD - 20);
@@ -363,7 +463,7 @@ fn the_queue_plays_what_the_model_hears() {
     want.extend(fade_in("B", 0).into_iter().take(2));
     assert_eq!(line(&s.heard), join(want));
     // The model alone, asked at the same frames heard, hears the same.
-    let mut m = Music::new(RATE);
+    let mut m = Music::new(RATE, Bugs::Fixed);
     let mut alone = Vec::new();
     for (frames, name) in [(0, "A"), (200, "B"), (40, "C"), (80, "B")] {
         alone.extend(m.advance(frames, &tracks));
@@ -379,7 +479,7 @@ fn the_queue_plays_what_the_model_hears() {
 /// the frames heard, as if it had not been.
 #[test]
 fn a_cleared_stream_plays_on_as_before() {
-    let (mut q, mut s) = (Queue::new(RATE), Device::default());
+    let (mut q, mut s) = (Queue::new(RATE, Bugs::Fixed), Device::default());
     cue(&mut q, &mut s, "A");
     run(&mut q, &mut s, 150, 25);
     let before = s.queued();
@@ -393,10 +493,29 @@ fn a_cleared_stream_plays_on_as_before() {
     assert_eq!(line(&s.heard), join(want));
 }
 
+/// The client's (MCL-Q12): the track fading in asked for again while another is pending takes
+/// back what is queued (its fade-out, the other's fade-in) and plays on.
+#[test]
+fn a_track_kept_plays_on_in_the_queue() {
+    let (mut q, mut s) = (Queue::new(RATE, Bugs::Fixed), Device::default());
+    cue(&mut q, &mut s, "A");
+    run(&mut q, &mut s, 40, 20);
+    assert_eq!(cue(&mut q, &mut s, "B"), Request::Taken);
+    run(&mut q, &mut s, 20, 20);
+    // A's fade-out queued (past its fade-in's frame 90, below the whole).
+    assert!(s.queue.iter().any(|r| r.from >= 90 && r.volume < FULL));
+    assert_eq!(cue(&mut q, &mut s, "A"), Request::Kept);
+    assert_eq!(s.queued(), 0);
+    run(&mut q, &mut s, 200, 20);
+    let mut want = fade_in("A", 0);
+    want.push(("A", 90, 170, FULL));
+    assert_eq!(line(&s.heard), join(want));
+}
+
 /// A track still being decoded: nothing is queued, the clock holds, and it fades in once decoded.
 #[test]
 fn the_queue_waits_for_a_track_being_decoded() {
-    let (mut q, mut s) = (Queue::new(RATE), Device::default());
+    let (mut q, mut s) = (Queue::new(RATE, Bugs::Fixed), Device::default());
     cue(&mut q, &mut s, "slow");
     run(&mut q, &mut s, 50, 25);
     assert_eq!((s.queued(), q.heard_at()), (0, 0));

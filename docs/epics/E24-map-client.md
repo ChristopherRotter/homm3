@@ -2,7 +2,7 @@
 
 Status: **refined** (2026-10-23, T0, with the user); **M1 closed** (2026-10-24, T6b: the
 reviewers, the review list accepted by the user); **M2 refined** (2026-10-26, M2 T0, with the
-user); next M2 T3b (`docs/lanes/map-client/QUEUE.md`).
+user); next M2 T6b2c (`docs/lanes/map-client/QUEUE.md`).
 Lane: map-client (`docs/lanes/map-client/HANDOFF.md`: the autonomy contract, the user's asset
 notes). Opened 2026-10-23 when the user split the client lane at E17 M3's closure (CLT-Q18).
 Decisions so far live here (no ADR of its own yet; ADR-0020 and ADR-0024 bind it as they bind
@@ -170,7 +170,8 @@ battle.
   closure with the user, cut at its seam (the user, 2026-10-27): T6b2a, the review list and the
   questions (**done** 2026-10-27: the review list accepted; MCL-Q7, Q8 and Q12 answered, MCL-Q9
   left open; a build of `master` and a checklist on the user's machine), T6b2b, the answers
-  built, T6b2c, the hand test and M2 archived.
+  built (**done** 2026-10-28: MCL-Q7, Q8 and Q12 the client's, the original's behind `--bugs
+  original`; design §3.8, §3.11), T6b2c, the hand test and M2 archived.
 - **Exit:** every recorded sequence as recorded, line by line and frame by frame (or each
   difference an `MCL-Q<n>`); a situation and a sequence play in the window at the original's
   frame times, with its sound, and render headless frame by frame.

@@ -324,7 +324,11 @@ impl<'a> Painter<'a> {
             })
             .collect::<Result<Vec<_>, String>>()?;
         let tiles = TileSounds::build(&self.art, &self.live, &lists, rules, hero);
-        Ok(Some(Sound::new(Arc::new(rules.clone()), Arc::new(tiles))))
+        Ok(Some(Sound::new(
+            Arc::new(rules.clone()),
+            Arc::new(tiles),
+            self.assets.bugs,
+        )))
     }
 
     /// Decodes the named assets not decoded yet.
