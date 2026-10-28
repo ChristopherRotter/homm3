@@ -13,7 +13,7 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   design §7.17; the hero's aim, §7.18; the message box, Retreat and Surrender, §7.19; the result
   window without its clip, §7.20). T4 cut in three, T4b in two by the user (2026-10-28). **Next:
   M5 T4b2** (the window's Bink clip: a port of FFmpeg's decoder, CLT-Q29), then T4c (Auto Combat,
-  the tactics phase). Open PR: T4b1's (`client/e17-m5-t4b1`; check it first).
+  the tactics phase). Open PR: #547, T4b1's (`client/e17-m5-t4b1`; check it first).
   Workspace `clients/` (`clients/README.md`), gates `clients/scripts/check.sh`; ADR-0020 (+ drafts
   in `adr-drafts/`), ADR-0024; the harness `clients/capture/README.md`; design §3–§10; records in
   `E17-log.md`.
@@ -41,7 +41,7 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
 
 ## Recent sessions
 
-- **2026-10-28, E17 M5 T4b1 (done; PR open: check it first).** T4b cut in two with the
+- **2026-10-28, E17 M5 T4b1 (done; #547 open: check it first).** T4b cut in two with the
   user (CLT-Q29: the clip T4b2, a port of FFmpeg's Bink decoder; the twelve clips copied to
   `original-data/battle-videos.vid`). Read the window (design §7.20: 0x4702D0 whole, its handler
   0x471B90, `battle_end`'s calls, `battle_experience` 0x46A350, the DEF item's mirror). Built
