@@ -18,9 +18,10 @@ use h3_formats::lod::LodArchive;
 use h3_protocol::wire::{Command, ServerMessage};
 use h3_render::Bugs;
 use h3_render::screen::Screen;
+use h3_ui::sprite::Sprite;
 use h3_view::anim::Timeline;
 use h3_view::anim::{self, Casts, Growing, Look, MagicLook, Playhead, SiegeStage, Sound, Speed};
-use h3_view::batch::{self, Batch, Sprite};
+use h3_view::batch::{self, Batch};
 use h3_view::battle_log::Logged;
 use h3_view::compose::compose;
 use h3_view::hero::Heroes;
@@ -1345,7 +1346,9 @@ impl<'g> Battle<'g> {
             list.extend(
                 message
                     .dialog
-                    .draws(&message.shown, &self.ground.layout.player_palette),
+                    .draws(&message.shown, &self.ground.layout.player_palette)
+                    .into_iter()
+                    .map(Draw::Dialog),
             );
         }
         Ok(list)

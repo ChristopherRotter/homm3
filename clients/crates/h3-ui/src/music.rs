@@ -1,7 +1,8 @@
 //! The terrain music as the original's music thread plays it (E24 M2 T6a2, *provisional*;
 //! `docs/epics/E24-design.md` §3.11): a model of `play_music` 0x59ACB0, `music_thread` 0x59A840
 //! and `music_stop_fade` 0x59B080 on a clock of the frames heard, which the window's music
-//! stream follows.
+//! stream follows. Common to both viewers since E24 M3 T1a (the battle's end tune when its sound
+//! is next touched: the client lane's inbox, 2026-10-27).
 //!
 //! - **A request** (`play_music`) is dropped when its name is the one pending (0x59AD0D) or the
 //!   one the thread opened last while its stream plays (0x59AD43 to 0x59ADA6: a fade-out's track

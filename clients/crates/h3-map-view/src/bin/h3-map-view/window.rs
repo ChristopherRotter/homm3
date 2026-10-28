@@ -2,7 +2,7 @@
 //! recorded sequence or a situation in a window at the original's frame times. The map is set up
 //! as `sequences` sets it up (`crate::paint`): a sequence's inputs replayed at their milliseconds
 //! (its scrolls, edge cursors and walks), a situation standing still. The timeline runs forward as
-//! the map's clock needs (`h3_map_view::replay`, `h3_map_view::clock`); the frame of each change is
+//! the map's clock needs (`h3_map_view::replay`, `h3_ui::clock`); the frame of each change is
 //! composed and widened ahead of its time and presented when it falls due, a change overtaken by a
 //! later one passed over. During a sequence's inputs the cursor is the recording's, drawn in the
 //! frame (the system's is hidden over the window).
@@ -17,8 +17,8 @@
 //! timeline's frame (hidden while a walk hides it), or drawn in the frame at the timeline's point
 //! (`--drawn-cursor`; not while that point lies off the frame); the cursor command switches.
 //!
-//! Every key goes through the table of commands (`h3_map_view::keys`; *provisional*): the defaults,
-//! or a user's file over them (`--keys`, else `keys.toml` in the working directory when there is
+//! Every key goes through the table of commands (`h3_map_view::keys` in the common `h3_ui::keys`;
+//! *provisional*): the defaults, or a user's file over them (`--keys`, else `keys.toml` in the working directory when there is
 //! one); each key it names must be one the adapter knows (`h3_sdl::Key`), Control held with
 //! `Ctrl+`. `--check <s>` and `--measure <s>` run unattended for that many seconds (the window's
 //! own keys but quit do nothing; the map's input is taken) and report when each frame showed
@@ -33,7 +33,6 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
-use h3_map_view::clock::Clock;
 use h3_map_view::keys::{Command, Keys};
 use h3_map_view::replay::{Change, Replay};
 use h3_map_view::sequence::Sequences;
@@ -42,6 +41,8 @@ use h3_map_view::timeline::{self, Action, Cursor, Rules, Start, Unplayable};
 use h3_render::Bugs;
 use h3_render::screen::Screen;
 use h3_sdl::{Config, CursorImage, Event, Key, ReadBack, Window};
+use h3_ui::clock::Clock;
+use h3_ui::keys::Command as _;
 
 use crate::audio::{Library, Player};
 use crate::files;
@@ -891,8 +892,8 @@ fn summary(us: &mut [u64]) -> String {
 mod tests {
     use super::*;
 
-    use h3_map_view::keys::Chord;
     use h3_map_view::timeline::Direction;
+    use h3_ui::keys::Chord;
 
     fn args(list: &[&str]) -> Vec<String> {
         list.iter().map(|s| (*s).to_owned()).collect()

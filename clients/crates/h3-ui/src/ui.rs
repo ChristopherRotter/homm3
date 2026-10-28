@@ -7,16 +7,100 @@
 //! (`H3DlgTransparentItem`). A layout file lists a dialog's items in the order the executable adds
 //! them, which is the order they are drawn, each with the executable's control id (a loop's items
 //! as one entry with its `repeat`, [`Dialog::expanded`]); a screen's logic sets the items' states
-//! by id ([`Shown`]), and [`Dialog::draws`] turns both into the draw list. The battle's panel is the
-//! first dialog (`crate::panel`), the spell book the second (`crate::book`). The format is
-//! *provisional* (the M3 review list).
+//! by id ([`Shown`]), and [`Dialog::draws`] turns both into the draw list, of the dialog's own draw
+//! items ([`Draw`]: a viewer's scene takes them into its list and its compositor draws them). The
+//! battle's panel is the first dialog (`h3-view`'s `panel`), the spell book the second (its
+//! `book`). The format is *provisional* (E17's M3 review list). Common to both viewers since E24
+//! M3 T1a (the adventure screen's dialog, E24 M3 T2).
 
 use alloc::collections::BTreeMap;
 use alloc::string::String;
 use alloc::vec::Vec;
 use serde::Deserialize;
 
-use crate::scene::{Draw, PlayerColours};
+/// One thing a dialog draws, in the order of its list (E17 M3 T6a, E17-design §9.7; the battle
+/// scene's until E24 M3 T1a, which made them the dialog's own).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Draw {
+    /// A dialog's picture (`H3DlgPcx`): index 0 transparent, in its own colours or a player's, at
+    /// most its item's size of it from its corner (`dialog_picture_draw` 0x450450; E17 M5 T4a: a
+    /// message box's background tiles cut to the box).
+    Picture {
+        /// The picture.
+        picture: String,
+        /// Its left edge.
+        x: i32,
+        /// Its top edge.
+        y: i32,
+        /// The player's colours over its entries 224–255, if any.
+        player: Option<PlayerColours>,
+        /// The item's width and height, none for the whole picture.
+        size: Option<[i32; 2]>,
+    },
+    /// A dialog's button (`H3DlgDefButton`) or DEF item (`H3DlgDef`, E17 M5 T3a): a frame of its
+    /// DEF's group 0 (frame 0 when the group has no such frame), by the plain drawer with runs
+    /// skipped; a DEF item in a player's colours once the screen gives it one (the message
+    /// 0x200/0xD, `dialog_def_message` 0x4EA810; E17 M5 T4a: a message box's frame).
+    Button {
+        /// The DEF.
+        def: String,
+        /// The frame in group 0 its state shows.
+        frame: u32,
+        /// The canvas's left edge.
+        x: i32,
+        /// The canvas's top edge.
+        y: i32,
+        /// Whether the frame is reflected across its canvas's width (a DEF item's +0x3C, passed
+        /// to the plain drawer 0x47C570 by 0x47BF00; E17 M5 T4b1: the battle's result window's
+        /// defending creature's portrait).
+        mirrored: bool,
+        /// The player's colours over the DEF's entries 224–255, if any.
+        player: Option<PlayerColours>,
+    },
+    /// A dialog's text over a picture (`H3DlgTextPcx`; the battle log's item, E17-design §9.5; E17
+    /// M3 T4b-2b-1, T6a): the item's picture, then the text in its font over it.
+    Text {
+        /// The item: its picture, size, font and how the text is drawn.
+        item: Text,
+        /// Its left edge.
+        x: i32,
+        /// Its top edge.
+        y: i32,
+        /// The text (the battle log's: its shown entries, one per line, 0x472C30; the status
+        /// line's text instead when it shows).
+        text: String,
+    },
+    /// A rectangle of the screen darkened (`screen_darken` 0x44E5F0: each channel halved; E17 M5
+    /// T3a: a dialog's shadow, [`Dialog::shadow_draws`]).
+    Darken {
+        /// Its left edge, top edge, width and height.
+        rect: [i32; 4],
+    },
+    /// A dialog's text alone (`H3DlgText`, E17 M5 T3a: the spell book's): the text in the item's
+    /// box in its font, its colour 2 more while disabled (0x5BC5F0).
+    Label {
+        /// The item: its size, font and how the text is drawn.
+        item: Label,
+        /// Its left edge.
+        x: i32,
+        /// Its top edge.
+        y: i32,
+        /// The text.
+        text: String,
+        /// The item is disabled (its state's bit 8).
+        disabled: bool,
+    },
+}
+
+/// A picture's or a DEF item's player colours (0x450520, 0x4EAA4A): the players' palette and the
+/// player's colour (0 red to 7 pink), whose 32 entries of that palette replace its 224–255.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PlayerColours {
+    /// The players' palette (`PLAYERS.PAL`).
+    pub palette: String,
+    /// The player's colour.
+    pub player: u8,
+}
 
 /// A dialog: its corner on the screen and its items.
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]

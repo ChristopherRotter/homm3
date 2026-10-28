@@ -3049,14 +3049,16 @@ user's `VIDEO.VID` into `original-data/battle-videos.vid` before the computer we
   path (0x4EAE6C: the mirror to 0x47BF00), the hero table's portraits. 2 new map entries
   (0x471B90, 0x597570 inferred), 3 updated.
 - **The library:** `result` (`ResultLayout`, `Face`, `Side`, `Texts`, `layout`: the items in the
-  executable's order, the id-200 items given ids of their own; `text`, `shown_side`, `losses`,
-  `strongest`, `experience`, `backdrop`, `behind`, `CURSOR_FRAME`); a DEF item's `mirrored` and
-  `Draw::Button`'s; the asset tables' heroes' `portrait` (harvested: `hero_table` +0x34); the
-  layout's `[result]`; the catalogue's 16 `result.*` keys. Tests: the layout (heroes; creatures,
-  the defender's mirrored; losses centred, at most seven), the shown side, the texts, the losses,
-  the strongest creature, the experience, the flags behind.
-- **The binary:** `results::window` (from the engine's `BattleOutcome`, the opening, the tables,
-  the ruleset's hit points and AI values, the catalogue), `scenario::outcome`, `Live::outcome`;
+  executable's order, the id-200 items given ids of their own; `text`, `shown_side`, `backdrop`,
+  `behind`, `CURSOR_FRAME`); a DEF item's `mirrored` and `h3-ui`'s `Draw::Button`'s (merged after
+  E24 M3 T1a moved `ui` there: an additive field of the common crate); the asset tables' heroes'
+  `portrait` (harvested: `hero_table` +0x34); the layout's `[result]`; the catalogue's 16
+  `result.*` keys. Tests: the layout (heroes; creatures, the defender's mirrored; losses
+  centred, at most seven), the shown side, the texts, the flags behind.
+- **The binary:** `results` (`window`; `losses`, `strongest`, `experience` over the engine's
+  `StackRecord`s, kept out of the pure library, whose purity test admits no engine crate; tests),
+  from the engine's `BattleOutcome`, the opening, the tables, the ruleset's hit points and AI
+  values, the catalogue; `scenario::outcome`, `Live::outcome`;
   `Battle`'s result (opened as the battle is decided, `Asked::Result`, the combat cursor's
   pointer, the battle frozen at its end with its flags as last shown, the OK closing the
   battle's screen: `MessageDid::Ended`), the window (opens it, quits at its OK; unattended runs

@@ -3,9 +3,9 @@
 //! set's stills (`crate::spellbook::still`), which lay them out with `crate::log::Writer`.
 
 use h3_protocol::wire::{Command, Observation, Side};
+use h3_ui::text::{Args, Catalogue};
 use h3_view::book;
 use h3_view::message::{Picture, YES};
-use h3_view::text::{Args, Catalogue};
 
 /// What a message box asks.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

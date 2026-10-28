@@ -3,7 +3,8 @@
 //! each side's fate, the result's text, each side's losses and an OK, over the whole screen
 //! darkened (`battle_end` 0x47782C). [`layout`] builds its items as `ui` items in the executable's
 //! order from what it shows; [`text`] picks the result's text, [`shown_side`] the side whose view it
-//! shows, [`experience`] the points the text names and [`losses`] a side's row of losses. The
+//! shows (the binary's `results` derives the rest from the engine's outcome: the points the text
+//! names, each side's face and row of losses). The
 //! window takes input as a message box does (`crate::message::Open`): its OK (Enter or Escape)
 //! closes it.
 //!
@@ -16,14 +17,12 @@ use alloc::collections::BTreeMap;
 use alloc::format;
 use alloc::string::String;
 use alloc::vec::Vec;
-use h3_content::CreatureTypeId;
-use h3_contracts::{StackOrigin, StackRecord};
 use serde::Deserialize;
 
 use crate::message::MessageBox;
 use crate::scene::{Draw, Moment};
-use crate::text::{Args, Catalogue};
-use crate::ui::{Button, Def, Dialog, Frames, Item, Label, Picture, Shown};
+use h3_ui::text::{Args, Catalogue};
+use h3_ui::ui::{self, Button, Def, Dialog, Frames, Item, Label, Picture, Shown};
 
 /// The OK (`iOkay.def`, 0x4715C3: id 0x7802, Enter and Escape).
 pub const OK: u16 = 0x7802;
@@ -86,8 +85,8 @@ pub enum Face {
         /// The portrait (`HPL*.pcx`).
         portrait: String,
     },
-    /// Its strongest creature ([`strongest`]): its name, the plural when the side had more than
-    /// one stack, and its original id.
+    /// Its strongest creature (the binary's `results::strongest`): its name, the plural when the
+    /// side had more than one stack, and its original id.
     Creature {
         /// The name.
         name: String,
@@ -103,7 +102,8 @@ pub struct Side {
     pub face: Face,
     /// Whether it won (its word "Victorious", else "Defeated").
     pub victorious: bool,
-    /// Its losses ([`losses`]): each creature's original id and how many it lost.
+    /// Its losses (the binary's `results::losses`): each creature's original id and how many it
+    /// lost.
     pub losses: Vec<(u32, u32)>,
 }
 
@@ -346,7 +346,7 @@ pub fn layout(layout: &ResultLayout, texts: &Texts, sides: &[Side; 2], player: u
 #[must_use]
 pub fn backdrop(frame: [u32; 2]) -> Draw {
     let [w, h] = frame.map(|v| i32::try_from(v).unwrap_or(i32::MAX));
-    Draw::Darken { rect: [0, 0, w, h] }
+    Draw::Dialog(ui::Draw::Darken { rect: [0, 0, w, h] })
 }
 
 /// The battle behind the window (`battle_end` darkens the screen as shown): the moment at the
@@ -452,93 +452,6 @@ pub fn text(
             None => "result.lost-army",
         }),
     }
-}
-
-/// The records the window reads of a side: its first 20 (the executable's loops run over 20 of a
-/// side's 21 stack slots).
-const RECORDS: usize = 20;
-/// The arrow tower (149), which a side's strongest creature never is (0x4705BD).
-const ARROW_TOWER: u32 = 149;
-/// The points a beaten hero gives (0x46A3DF), taken back after a retreat or a surrender
-/// (0x46A3FC), and given to an attacker that took a town (0x46A416).
-const HERO_POINTS: i64 = 500;
-
-/// A side's losses (0x470D89 to 0x470E48): over its records' (`stacks`, the engine's, in stack
-/// order) creatures lost (`start − end`), each creature's sum in the order it first lost some, by
-/// its original id (`original`; a creature without one is left out).
-#[must_use]
-pub fn losses(
-    stacks: &[StackRecord],
-    original: impl Fn(CreatureTypeId) -> Option<u32>,
-) -> Vec<(u32, u32)> {
-    let mut out: Vec<(u32, u32)> = Vec::new();
-    for record in stacks.iter().take(RECORDS) {
-        let lost = record.start.saturating_sub(record.end);
-        let Some(id) = original(record.creature).filter(|_| lost > 0) else {
-            continue;
-        };
-        match out.iter_mut().find(|(o, _)| *o == id) {
-            Some((_, sum)) => *sum = sum.saturating_add(lost),
-            None => out.push((id, lost)),
-        }
-    }
-    out
-}
-
-/// A side without a hero's face (0x4705A2 to 0x470627): of its records but the arrow towers, the
-/// first with the highest AI value (`ai_value`), its name plural when there are several
-/// (`more`), as the executable reads them; its creature and whether there are several.
-#[must_use]
-pub fn strongest(
-    stacks: &[StackRecord],
-    original: impl Fn(CreatureTypeId) -> Option<u32>,
-    ai_value: impl Fn(CreatureTypeId) -> u32,
-) -> Option<(CreatureTypeId, bool)> {
-    let mut best: Option<(CreatureTypeId, u32)> = None;
-    let mut count = 0;
-    for record in stacks.iter().take(RECORDS) {
-        if original(record.creature) == Some(ARROW_TOWER) {
-            continue;
-        }
-        count += 1;
-        let value = ai_value(record.creature);
-        if best.is_none_or(|(_, b)| value > b) {
-            best = Some((record.creature, value));
-        }
-    }
-    best.map(|(creature, _)| (creature, count > 1))
-}
-
-/// The points the result's text says the winner's hero receives (`battle_experience` 0x46A350):
-/// the hit points (`hit_points`) of the creatures the loser's army and raised stacks lost
-/// (`loser`, its records; not its war machines nor the stacks the battle created, which the
-/// engine's [`StackOrigin`] tells as the executable's flags do), 500 more when the loser had a
-/// hero (`beaten_hero`) unless a side gave up (`gave_up`), 500 more when the attacker took a town
-/// (`town_taken`). *Not built:* the winner's Learning (×, `crt_ftol`): the client's heroes have
-/// none (*provisional*: the scenarios name no Learning).
-#[must_use]
-pub fn experience(
-    loser: &[StackRecord],
-    hit_points: impl Fn(CreatureTypeId) -> u32,
-    (beaten_hero, gave_up, town_taken): (bool, bool, bool),
-) -> u32 {
-    let killed: i64 = loser
-        .iter()
-        .take(RECORDS)
-        .filter(|s| matches!(s.origin, StackOrigin::Army(_) | StackOrigin::Raised(_)))
-        .map(|s| i64::from(s.start.saturating_sub(s.end)) * i64::from(hit_points(s.creature)))
-        .sum();
-    let mut points = killed;
-    if beaten_hero {
-        points += HERO_POINTS;
-    }
-    if gave_up {
-        points -= HERO_POINTS;
-    }
-    if town_taken {
-        points += HERO_POINTS;
-    }
-    u32::try_from(points.max(0)).unwrap_or(u32::MAX)
 }
 
 #[cfg(test)]

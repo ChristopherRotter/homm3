@@ -733,12 +733,24 @@ pub(crate) fn draw_frames(
         };
         if let Some((window, mouse)) = result {
             list.push(h3_view::result::backdrop(layout.frame));
-            list.extend(window.dialog.draws(&window.shown, &layout.player_palette));
+            list.extend(
+                window
+                    .dialog
+                    .draws(&window.shown, &layout.player_palette)
+                    .into_iter()
+                    .map(scene::Draw::Dialog),
+            );
             if let Some(point) = mouse {
                 list.push(mouse::cursor(layout, h3_view::result::CURSOR_FRAME, point));
             }
         } else if let Some((message, mouse)) = message {
-            list.extend(message.dialog.draws(&message.shown, &layout.player_palette));
+            list.extend(
+                message
+                    .dialog
+                    .draws(&message.shown, &layout.player_palette)
+                    .into_iter()
+                    .map(scene::Draw::Dialog),
+            );
             list.push(scene::Draw::Cursor {
                 def: layout.message.cursor.clone(),
                 frame: 0,

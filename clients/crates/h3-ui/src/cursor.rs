@@ -1,10 +1,12 @@
-//! The game's mouse cursor (E17 M2 T5a): a DEF frame drawn into the frame at the pointer (the
-//! drawn cursor) or handed to the window as an image (the hardware cursor, ADR-0024 point 4).
+//! The game's mouse cursor (E17 M2 T5a; common to both viewers since E24 M3 T1a, the map's edge
+//! cursors since E24 M2 T2): a DEF frame drawn into the frame at the pointer (the drawn cursor) or
+//! handed to the window as an image (the hardware cursor, ADR-0024 point 4).
 //!
 //! Which frame, its hot spot and its drawer are *provisional*: the executable's cursor code is not
-//! read yet (M3, the battle interface's cursors). As T2's spikes showed it: [`DEFAULT`]'s first
-//! frame, its hot spot at the canvas's top-left corner, index 0 and the keyed indices not drawn
-//! (here: the battle's drawer without an outline, so a shadow would darken what is under it).
+//! read yet (E17 M3, the battle interface's cursors). As E17 M2 T2's spikes showed it:
+//! [`DEFAULT`]'s first frame, its hot spot at the canvas's top-left corner, index 0 and the keyed
+//! indices not drawn (here: the battle's drawer without an outline, so a shadow would darken what
+//! is under it).
 
 use alloc::vec::Vec;
 
@@ -14,7 +16,7 @@ use h3_render::blit::{Drawer, Placement, draw_frame};
 use h3_render::palette::ScreenPalette;
 use h3_render::screen::{PixelFormat, Screen};
 
-use crate::batch::Sprite;
+use crate::sprite::Sprite;
 
 /// The default cursor's DEF (in `H3sprite.lod`).
 pub const DEFAULT: &str = "CRDEFLT.DEF";
@@ -62,7 +64,8 @@ impl Cursor {
     }
 
     /// As [`Cursor::new`], drawn as the mouse manager draws a cursor's frame (0x50D8B0: the plain
-    /// drawer with runs skipped, E17 M3 T6c-1): the battle's cursors (`crcombat.def`, T6c-2).
+    /// drawer with runs skipped, E17 M3 T6c-1): the battle's cursors (`crcombat.def`, T6c-2), the
+    /// map's (`cradvntr.def`'s frames and hot spots from its layout's `[cursor]`, E24 M2 T2).
     #[must_use]
     pub fn read(sprite: &Sprite, index: u32, hot: (u32, u32), format: PixelFormat) -> Option<Self> {
         Some(Self {

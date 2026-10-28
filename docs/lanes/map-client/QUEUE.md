@@ -16,25 +16,6 @@ the original a reading or a capture finds is an `MCL-Q<n>` in the same task (the
 autonomy contract). Each panel drawn leaves `h3map.py`'s `panels` mask, and `drawn` then
 compares it on every situation and sequence.
 
-### E24 M3 T1a — the common crate `h3-ui`
-
-- **Scope:** first a `shared/` pull request: `lanes.toml`'s client foundation gains
-  `clients/crates/h3-ui/` (its comment: both client lanes', as `h3-assets`); the global HANDOFF's
-  "Common" line if it names the crates. Once merged, on `map-client/e24-m3-t1a` (`cross-lane`,
-  the user's consent at T0): the crate (pure, `no_std` + `alloc`; `h3-map-view`'s
-  `tests/purity.rs` with R2-15's fixes, the client lane's inbox) with `h3-view`'s `clock`,
-  `cursor` and the `Sprite` it draws, `ui` (its draw items its own: picture, button, text, label,
-  darkened box; `h3-view`'s scene and compositor take them), `text` with its `keys`, `message`,
-  `pack` and `plural`; `h3-map-view`'s `keys` (generic over a viewer's command type: the chords,
-  the user's file; the map's commands and defaults stay in `h3-map-view`) and `music`. Both
-  viewers import them; `h3-map-view`'s `clock`, `cursor` and `Sprite` gone; `clients/README.md`'s
-  crate list; the client lane's inbox told (its imports changed). Nothing drawn or played
-  changes.
-- **Acceptance:** both pull requests merged; `clients/scripts/check.sh` green, coverage 100 %;
-  `h3map.py drawn` and `h3drive.py drawn` all the same; no copy left in either viewer.
-- **Depends on:** T0 (done 2026-10-28). **Status:** ready (the `shared/` pull request merged by
-  the user before the move's).
-
 ### E24 M3 T1b — the battle window's keys through the table
 
 - **Scope:** `h3-view window`'s keys (matched in its event loop, `window.rs`) as the battle
@@ -42,11 +23,15 @@ compares it on every situation and sequence.
   commands in its own table, *provisional*); both windows' own keys the map's (the user, T0: F2
   music, F3 effects, F5 pause, F6 the next frame, F7 restart, F8 vsync, F9 the cursor's kind,
   F11 fullscreen, Esc quit; the battle's P, →, Home, M, E, F, V and H gone); the battle's own
-  keys (the log's Up and Down, the book's) and `h3_sdl::Key` as they are, additively. The client
-  lane's inbox told (its M5 T3b's F key then free).
+  keys (the log's Up and Down, the book's; since E17 M5 T4a, #542, Retreat's R and Surrender's S
+  and the message box's, whose Escape is its Cancel and never the window's quit while a box, the
+  book or an aim is open; while a box is open every key but the viewer's own goes to it:
+  `viewer_key` in `window.rs`, the set this task replaces) and `h3_sdl::Key` as they are,
+  additively. The client lane's inbox told (its M5 T3b's F key then free).
 - **Acceptance:** every key of both windows through the table; `h3-view window --check` and a
   sequence in the window as before; check.sh green; the Definition of Done.
-- **Depends on:** T1a. **Status:** ready after T1a.
+- **Depends on:** T1a (built 2026-10-28, its pull request open). **Status:** ready once T1a's
+  pull request merges.
 
 ### E24 M3 T2 — the adventure screen's dialog at a map's start
 
@@ -62,7 +47,8 @@ compares it on every situation and sequence.
   T3 to T5 draw.
 - **Acceptance:** the static panels exact on the 40 situations and the 13 sequences; a frame's
   fixed cost measured before and after; the Definition of Done.
-- **Depends on:** T1a. **Status:** ready after T1a.
+- **Depends on:** T1a (built 2026-10-28, its pull request open). **Status:** ready once T1a's
+  pull request merges.
 
 ### E24 M3 T3 — the minimap
 
@@ -124,18 +110,6 @@ compares it on every situation and sequence.
 
 Other lanes add entries here. The map client lane turns each into a task, or keeps one line here
 while the work waits.
-
-- 2026-10-28 (the client lane, E17 M5 T4a; **for you at E24 M3 T1a and T1b**): T4a's pull request
-  (`client/e17-m5-t4a`) changes what T1a moves into `h3-ui` and what T1b takes through the key
-  table. `ui`: a picture item draws at most its `size` of its picture (the executable's
-  `dialog_picture_draw` 0x450450), a DEF item takes a player's colours from `Shown::players`
-  (`Draw::Picture`'s new `size`, `Draw::Button`'s new `player`); the new `h3_view::message` (the
-  message box laid out as `ui` items) is built on `ui` and `text`; `text::pack` makes each run of
-  quotes in a table's field one (the executable's reader, 0x5BBD29). `h3_render::text` gained
-  `widest_word`, `widest_line`, `wrapped_width` and `blit` `draw_image_keyed_in_clipped`
-  (additive). The window: R and S open Retreat's and Surrender's questions through the panel's
-  buttons, and while a box is open every key but the viewer's own goes to it (`viewer_key` in
-  `window.rs`: P, M, E, F11, V, H, the set T1b replaces). Design §7.19.
 
 - 2026-10-23 (the client lane, E17 M3 T9c, at the split): moved here from the client lane's
   inbox, the adventure lane's entry of 2026-10-21 (E08 T30, decision 65, ADR-0017 point 6 amended

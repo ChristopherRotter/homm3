@@ -1,7 +1,6 @@
 use super::*;
 use alloc::string::ToString;
 use alloc::vec;
-use h3_kernel::Handle;
 
 fn assets() -> ResultLayout {
     ResultLayout {
@@ -142,7 +141,7 @@ fn a_side_without_a_hero_shows_its_creature_the_defender_s_mirrored() {
     let draws = window.dialog.draws(&window.shown, "PLAYERS.PAL");
     assert!(draws.iter().any(|d| matches!(
         d,
-        Draw::Button { def, frame: 15, mirrored: true, x: 557, y: 57, .. } if def == "TwCrPort.def"
+        ui::Draw::Button { def, frame: 15, mirrored: true, x: 557, y: 57, .. } if def == "TwCrPort.def"
     )));
 }
 
@@ -187,9 +186,9 @@ fn losses_are_centred_seven_at_most_their_counts_under_them() {
 fn the_backdrop_darkens_the_whole_screen() {
     assert_eq!(
         backdrop([800, 600]),
-        Draw::Darken {
+        Draw::Dialog(ui::Draw::Darken {
             rect: [0, 0, 800, 600]
-        }
+        })
     );
 }
 
@@ -236,71 +235,6 @@ fn the_text_follows_the_shown_side_s_fate() {
         text(&c, false, Some(GaveUp::Surrender), None, 0),
         "result.lost.surrendered-army"
     );
-}
-
-fn record(origin: StackOrigin, creature: u16, start: u32, end: u32) -> StackRecord {
-    StackRecord {
-        origin,
-        creature: Handle::from_raw(creature),
-        start,
-        end,
-    }
-}
-
-#[test]
-fn losses_sum_by_creature_in_the_order_they_first_lost() {
-    let stacks = vec![
-        record(StackOrigin::Army(0), 5, 10, 10),
-        record(StackOrigin::Army(1), 3, 10, 4),
-        record(StackOrigin::Army(2), 5, 8, 0),
-        record(StackOrigin::WarMachine, 7, 1, 0),
-        record(StackOrigin::Army(3), 3, 2, 1),
-        record(StackOrigin::Created, 9, 4, 0),
-    ];
-    let original = |c: CreatureTypeId| (c.raw() != 9).then_some(u32::from(c.raw()) * 10);
-    assert_eq!(losses(&stacks, original), vec![(30, 7), (50, 8), (70, 1)]);
-}
-
-#[test]
-fn the_strongest_creature_is_the_first_of_the_highest_value_without_the_towers() {
-    let stacks = vec![
-        record(StackOrigin::Army(0), 1, 10, 0),
-        record(StackOrigin::Army(1), 2, 10, 0),
-        record(StackOrigin::Army(2), 3, 10, 0),
-        record(StackOrigin::WarMachine, 149, 1, 1),
-    ];
-    let original = |c: CreatureTypeId| Some(u32::from(c.raw()));
-    let value = |c: CreatureTypeId| match c.raw() {
-        2 | 3 => 50,
-        149 => 1000,
-        _ => 10,
-    };
-    assert_eq!(
-        strongest(&stacks, original, value),
-        Some((Handle::from_raw(2), true))
-    );
-    assert_eq!(
-        strongest(&stacks[..1], original, value),
-        Some((Handle::from_raw(1), false))
-    );
-    assert_eq!(strongest(&[], original, value), None);
-}
-
-#[test]
-fn experience_counts_the_loser_s_army_and_the_heroes() {
-    let loser = vec![
-        record(StackOrigin::Army(0), 1, 10, 0),
-        record(StackOrigin::Raised(1), 2, 4, 1),
-        record(StackOrigin::WarMachine, 3, 1, 0),
-        record(StackOrigin::Created, 4, 5, 0),
-    ];
-    let hp = |c: CreatureTypeId| u32::from(c.raw()) * 10;
-    // 10 × 10 + 3 × 20; the machine and the created stack give nothing.
-    assert_eq!(experience(&loser, hp, (false, false, false)), 160);
-    assert_eq!(experience(&loser, hp, (true, false, false)), 660);
-    assert_eq!(experience(&loser, hp, (true, true, false)), 160);
-    assert_eq!(experience(&loser, hp, (true, false, true)), 1160);
-    assert_eq!(experience(&[], hp, (false, true, false)), 0);
 }
 
 #[test]

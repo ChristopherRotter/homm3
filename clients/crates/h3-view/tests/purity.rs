@@ -19,6 +19,7 @@ const PURE: [(&str, &[&str]); 3] = [
             "h3-assets",
             "h3-protocol",
             "h3-render",
+            "h3-ui",
             "serde",
             "serde_json",
             "toml",

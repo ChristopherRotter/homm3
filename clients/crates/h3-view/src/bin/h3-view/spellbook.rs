@@ -6,11 +6,11 @@ use h3_content::SpellCategory;
 use h3_content_battle::BattleRuleset;
 use h3_kernel::Handle;
 use h3_protocol::wire::{Command, Manifest, Observation};
+use h3_ui::text::{Args, Catalogue};
 use h3_view::book::{Hero, Kind, Memory, Open, Outcome, Spell};
 use h3_view::layout::BookLayout;
 use h3_view::message::{MessageBox, Picture, Style};
 use h3_view::tables::Tables;
-use h3_view::text::{Args, Catalogue};
 
 use crate::boxes::{Answered, Asked, Leave};
 
@@ -469,7 +469,7 @@ mod tests {
 
     /// A box of one button `id` at (10, 10), 64 × 30, with the hotkeys `keys`.
     fn one_button(id: u16, keys: &[&str]) -> MessageBox {
-        use h3_view::ui::{Button, Dialog, Frames, Item, Shown};
+        use h3_ui::ui::{Button, Dialog, Frames, Item, Shown};
         MessageBox {
             dialog: Dialog {
                 place: [0, 0],

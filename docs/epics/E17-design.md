@@ -2474,10 +2474,11 @@ without its clip; the clip T4b2, by a port of FFmpeg's Bink decoder). Read: `bat
   artifacts: the screen keeps its shot's climax frame (its later frames never shown, CLT-Q19 (5)),
   where the viewer draws it standing; memory's last frame (1 010 pixels) is not it either.
 - **Built:** `h3_view::result` (`layout`: the items in the executable's order; `text`,
-  `shown_side`, `losses`, `strongest`, `experience`, `backdrop`, `CURSOR_FRAME`), a DEF item's
-  `mirrored` and `Draw::Button`'s, the asset tables' heroes' `portrait`, the layout's `[result]`,
-  the catalogue's `result.*` keys; the binary's `results::window` (from the engine's
-  `BattleOutcome`), the window's result (opened as the battle is decided, its OK closing the
+  `shown_side`, `backdrop`, `behind`, `CURSOR_FRAME`), a DEF item's `mirrored` and
+  `h3_ui::ui::Draw::Button`'s, the asset tables' heroes' `portrait`, the layout's `[result]`, the
+  catalogue's `result.*` keys; the binary's `results` (`window`, `losses`, `strongest`,
+  `experience`: from the engine's `BattleOutcome`, which the pure library does not name), the
+  window's result (opened as the battle is decided, its OK closing the
   battle's screen), the stills' (a box's OK that gives a command) and the sequences' (from the
   timeline's end). *Provisional:* a hero's portrait its type's (a map's own portrait not known),
   no Learning (the client's heroes have none), a hero-less side's face not captured (the

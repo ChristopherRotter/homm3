@@ -18,8 +18,8 @@ use h3_render::Bugs;
 use h3_render::text::{line_count, widest_line, widest_word, wrapped_width};
 use serde::Deserialize;
 
-use crate::text::encode_1252;
-use crate::ui::{Button, Def, Dialog, Frames, Item, Label, Picture as Image, Shown, State};
+use h3_ui::text::encode_1252;
+use h3_ui::ui::{Button, Def, Dialog, Frames, Item, Label, Picture as Image, Shown, State};
 
 /// The text's item.
 pub const TEXT: u16 = 1;

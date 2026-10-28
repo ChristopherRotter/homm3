@@ -2,7 +2,7 @@
 //! state (its tab, bookmark and page, and the memory of them between openings), the page a state
 //! shows (`spell_book_page` 0x59C9A0), what its items show ([`Book::shown`]), and what a click on
 //! an item or a key does (`spell_book_proc` 0x59D040). The dialog's items are the layout's
-//! `[book]` (`crate::ui`); the spells come from the battle (the caller's [`Hero`]), the words from
+//! `[book]` (`h3_ui::ui`); the spells come from the battle (the caller's [`Hero`]), the words from
 //! the catalogue.
 //!
 //! *Not modelled* (later tasks): the page turns' animation (the videos `PgTrnLft` and
@@ -16,8 +16,8 @@ use alloc::vec::Vec;
 use core::cmp::Ordering;
 
 use crate::layout::BookLayout;
-use crate::text::{Args, Catalogue};
-use crate::ui::{Shown, State};
+use h3_ui::text::{Args, Catalogue};
+use h3_ui::ui::{Shown, State};
 
 /// The book's picture (`Spelback.pcx`), in the hero's player's colours.
 pub const BACKGROUND: u16 = 200;
@@ -486,7 +486,12 @@ impl Open {
     /// The dialog's draws over the battle, the players' palette `players`.
     #[must_use]
     pub fn draws(&self, layout: &BookLayout, players: &str, player: u8) -> Vec<crate::scene::Draw> {
-        layout.dialog.draws(&self.shown(layout, player), players)
+        layout
+            .dialog
+            .draws(&self.shown(layout, player), players)
+            .into_iter()
+            .map(crate::scene::Draw::Dialog)
+            .collect()
     }
 
     /// The cursor the book set, at the mouse's `point` (none before it set one): its frame of the
@@ -514,7 +519,7 @@ impl Open {
         layout
             .dialog
             .item_taking(point, &shown)
-            .map(crate::ui::Item::id)
+            .map(h3_ui::ui::Item::id)
     }
 
     /// A left press at `point` ([`Book::click`] on the item that takes it); a turned book's page is
@@ -567,7 +572,7 @@ impl Open {
             Some(id) => layout
                 .dialog
                 .item(id)
-                .and_then(crate::ui::Item::hint)
+                .and_then(h3_ui::ui::Item::hint)
                 .map(|key| catalogue.text(key, &Args::new()))
                 .unwrap_or_default(),
             None => String::new(),

@@ -25,7 +25,9 @@ use h3_render::blit::{Drawer, Placement, draw_frame, draw_image};
 use h3_render::palette::{ScreenPalette, with_player_colours};
 use h3_render::screen::{PixelFormat, Screen};
 
-use crate::batch::{Batch, Sprite};
+use h3_ui::sprite::Sprite;
+
+use crate::batch::Batch;
 use crate::draw::{self, Place};
 use crate::scene::{Cycle, Draw, Pass, Scene};
 
