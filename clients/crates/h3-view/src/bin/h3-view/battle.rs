@@ -1601,6 +1601,7 @@ fn held(batch: &Batch, name: &str) -> bool {
         || batch.picture(name).is_some()
         || batch.palette(name).is_some()
         || batch.font(name).is_some()
+        || batch.video(name).is_some()
 }
 
 /// The archives' directories.

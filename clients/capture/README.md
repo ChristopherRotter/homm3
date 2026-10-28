@@ -23,8 +23,9 @@ adventure).
 
 | File | What it does |
 |---|---|
-| `setup.sh [copy]` | Installs 32-bit Wine, Xvfb, xdotool, xset, ImageMagick and mingw-w64; makes the run directory `original-data/wine/game` from the copy (default `original-data/install`); builds `xdd.dll`; writes the game's settings (no intro, no grid, no sound, full screen, a hero's path shown before it walks, auto combat playing the creatures, the spell book's page turns without their videos) into the Wine prefix (`$WINEPREFIX`, default `~/.wine-h3`, in a directory the shell's user owns). |
-| `xdd.c`, `xdd.def` | Our `xdd.dll`: forwards the GOG executable's `DirectDrawCreate` to Wine's ddraw, the **virtual clock** and the **forced rolls** (below). |
+| `setup.sh [copy]` | Installs 32-bit Wine, Xvfb, xdotool, xset, ImageMagick and mingw-w64; makes the run directory `original-data/wine/game` from the copy (default `original-data/install`), its `VIDEO.VID` the user's `original-data/battle-videos.vid` (the result window's clips, E17 M5 T4b2b; an empty archive without it); builds `xdd.dll` and `binkprobe.exe`; writes the game's settings (no intro, no grid, no sound, full screen, a hero's path shown before it walks, auto combat playing the creatures, the spell book's page turns without their videos) into the Wine prefix (`$WINEPREFIX`, default `~/.wine-h3`, in a directory the shell's user owns). |
+| `xdd.c`, `xdd.def` | Our `xdd.dll`: forwards the GOG executable's `DirectDrawCreate` to Wine's ddraw, the **virtual clock** (BINKW32.DLL's too) and the **forced rolls** (below). |
+| `binkprobe.c` | Our `binkprobe.exe` (E17 M5 T4b2b): the game's `BINKW32.DLL` run on a video archive's clips as a black box, its clock ours: every frame as the DLL copies it (5-6-5, YUY2, …), the result window's playback by the millisecond (below, "The clips"). |
 | `h3drive.py` | The driver: starts the game, the recipes (fixed coordinates, screens by probes), the clock, dumps; the commands `battle`, `set`, `learn`, `shot`, `sequence`, `sequences`, `frames`. |
 | `screens.toml` | The screens the driver recognises: 12 probes `[x, y, 5-6-5 value]` each (numbers only). |
 | `h3cap.py` | `diff` (our render against a capture, with masks) and `find` (the original's obstacles in a capture); `compare` and `boxes_at` for the frame check. |
@@ -39,7 +40,8 @@ adventure).
 
 Before the first run: stage the copy's files (`Heroes3.exe`, the five DLLs `BINKW32.DLL`,
 `IFC20.dll`, `MP3DEC.ASI`, `MSS32.DLL`, `SMACKW32.DLL`, `Data/` with the four LODs, `Heroes3.snd`,
-`H3ab_ahd.snd`, `H3ab_ahd.vid`; one large file per staging call), run `clients/capture/setup.sh`,
+`H3ab_ahd.snd`, `H3ab_ahd.vid`, and `original-data/battle-videos.vid`; one large file per staging
+call), run `clients/capture/setup.sh`,
 and build `cargo build --release -p h3-view` in `clients/`. A run of the whole set (82 situations since M5 T4a) takes about 17 minutes.
 
 ## Which captures a change needs
@@ -192,8 +194,8 @@ it, a `click:` presses there and parks the mouse, a `move:` rests it). The book 
 spells, so its stills render the attacker's record (`seat = "attacker"`). After a `move:` the
 original's cursor stays where it was until the clock steps (its status line follows at once):
 take such frames from 100 ms. The setup turns "Animate SpellBook" off (the page turn's videos,
-which the run directory's empty `VIDEO.VID` lacks and the client does not play); nothing recorded
-before it turned a page. Since E17 M5 T4a (design §7.19) `key:r` and `key:s` open Retreat's and
+Smacker clips of `battle-videos.vid` the client does not play); nothing recorded before it turned
+a page. Since E17 M5 T4a (design §7.19) `key:r` and `key:s` open Retreat's and
 Surrender's questions, and an open message box takes the `key:` (`key:Return`, `key:Escape`: down
 and up, its button's click) and the `click:` (press and release on its button); the park move
 after a `click:` that opened a box goes to the box, so the book behind keeps its hint
@@ -741,9 +743,35 @@ they are. With `H3CLOCK` set to a directory (a Windows path; the driver uses `Z:
 folder's `clock/`), it runs in real time until a command arrives in `ctl`, one line
 `<seq> freeze | step <ms> | run`; a new `<seq>` applies once. Every 2 ms it writes `ack`:
 `<seq> <time> <reads>`, the reads of the clock since the command (then the forced rolls'
-three numbers, below). A game that keeps reading a stopped clock is idle at that time:
+three numbers, below; since E17 M5 T4b2b an eighth, 1 when `BINKW32.DLL`'s own `timeGetTime`
+import points at the same clock: the result window's clip plays on the virtual clock, its reads
+not counted as the game's). A game that keeps reading a stopped clock is idle at that time:
 `Game.clock` waits for 20 reads, `Game.settled` for two equal dumps (Wine may draw a moment
 later).
+
+## The clips
+
+E17 M5 T4b2b (`docs/epics/E17-design.md` §7.21): the run directory's `VIDEO.VID` is the user's
+`battle-videos.vid`, so the result window plays its clip (`result-retreat`, `result-surrender`,
+`end`, `defended`): frame 0 from the window's opening, frame k from ⌊1000 (k + 2) / 15⌋ ms, a loop's
+first at the start's last decode. `binkprobe.exe` (beside the game; Wine's prefix as the
+harness's) runs the DLL alone, its clock ours:
+
+```
+cd original-data/wine/game
+wine binkprobe.exe frames Data/VIDEO.VID rtstart 3 rtstart.565   # every frame, surface type 3
+wine binkprobe.exe frames Data/VIDEO.VID rtstart 7 rtstart.yuy2  # the DLL's own planes, YUY2
+wine binkprobe.exe play Data/VIDEO.VID rtstart rtloop 3 4000 rt.play 100 2  # the window's
+```
+
+`frames` writes each frame's pixels (the clip's size, little-endian words; YUY2 two bytes a
+pixel) and `<out>.rects` (the DLL's rectangles); `play` opens the loop, then the start, at the
+clock's 0, makes the `<redraws>` decodes the window's show makes at `<first>` (2 for the result
+window), then ticks every millisecond: one line per frame drawn, `<ms> <clip> <frame> <rects>`
+(clip 0 the start, 1 the loop), and `<out>.screen` the slot as the screen shows it. A clip of
+every colour (`h3_bink::build` raw blocks, 256 frames of 256 × 256) in an archive of its own gave
+the colour tables. The DLL's frames match `h3-bink`'s converted (`h3_view::clip::rgb565`) but
+where the inverse DCT rounds otherwise (CLT-Q30).
 
 ## Forced rolls
 

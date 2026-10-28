@@ -3133,6 +3133,52 @@ word longer than FFmpeg reads) and the spell book's two page turns, Smacker (`SM
   the client check.
 - **Found:** nothing of the original to ask about (no reading in this part). Review items 15 to 18.
 
+### M5 T4b2b — The result window's clip (2026-10-28)
+
+On `client/e17-m5-t4b2b`, the user present. The sandbox new; every file staged (the four LODs,
+the executable, the five DLLs, both `.snd`, `H3ab_ahd.vid`, the tunes, `extracted.tar`,
+`maps.tar`, `battle-videos.vid`); `master` at `86c2d35` (#549 merged). Asked at the start: the
+user kept T4b2b whole (not cut at the colours) and allowed finding `BINKW32.DLL`'s conversion by
+the captures and black-box runs of the DLL, reading its code if that did not settle it fast.
+
+- **Read** (design §7.21): `video_play_in_dialog` 0x597570, `video_open_in_dialog` 0x44D830,
+  `video_open` 0x44D5A0 (the lookup: Complete edition `data\Video.vid`, the CD's, `data\h3ab_ahd.vid`),
+  `video_archives_open` 0x598210, `video_service` 0x5976E0, `video_tick` 0x44DAA0, `video_redraw`
+  0x44D9E0 (from `video_redraw_any` 0x597740: `dialog_show`, `dialog_redraw`, the result window's
+  show 0x471AF0), `video_show` 0x5979D0, `video_close` 0x44DCC0, `video_rewind` 0x44DA50, the clip
+  table 0x6839C0, `battle_end`'s order (the window built, its tune, its loop). 20 map entries.
+- **The DLL as a black box** (`clients/capture/binkprobe.c`, our code: the DLL's exports the
+  game calls, its `timeGetTime` import pointed at our clock): every frame of the ten clips in
+  5-6-5 and YUY2 (its own planes), the playback by the millisecond. Its timing: the p-th decode
+  at the first's time + ⌊1000 p / 15⌋, redraws counted (two in the window's show: frame 0 for
+  200 ms; the start's last frame lost at the hand-over: CLT-Q31). Its colours: a clip of every
+  (Y, U, V) (`h3_bink::build`'s raw blocks, 256 frames of 256 × 256) gave the tables; the fit
+  left a few cases out of the clips' range, read in the DLL's `YUV_init` (its constants 38 154,
+  66 101, 26 639, 12 837, 52 299 over 32 768): exact on all clips' values. The hidden rows: as
+  `h3-bink`'s. The decoder: its inverse DCT x87 floats (read in the DLL: `ExpandPlane`'s
+  transform, float quantizers), so five clips differ by one level on a few pixels a frame
+  (CLT-Q30, the user: listed now, exact later; the inbox).
+- **The original's timing found:** a still's frames at 1, 30, 60, 66, 67, 133, 134, 140 to 300
+  and 2 700 ms (`clip-probe`, a scratch entry) showed frame 0 to 200 ms, then the rate; a debug
+  `xdd.dll` logging the DLL's clock reads showed it read from the opening on; the probe with two
+  redraws gave the same schedule; the reading found the two redraws.
+- **Built:** `h3_view::clip` (the table, `of`, `Timing`, `shown` and `decodes` in both profiles,
+  `Video`, `rgb565`); `Draw::Video`, the batch's `.BIK`, the compositor's copy;
+  `h3_view::result::clip`, the layout's `clip`; `h3_assets::vid::directory`, `directory_bytes`;
+  the binary: `videos.rs` (the archives by entry), the window's frames at the decodes
+  (`Battle::clip_times`; an input does not restart the clip), the stills' (`spellbook::Still`'s
+  result with its tune) and the sequences' clip, `results::window`'s tune (tested equal to
+  `sound::end_tune`). The harness: `xdd.dll` redirects BINKW32's clock (the ack's eighth field),
+  `setup.sh` gives the run directory `battle-videos.vid` as `VIDEO.VID` and builds
+  `binkprobe.exe`. Tests: the measured schedules, the DLL's pixels, the decodes, the
+  compositor's clip cut to the screen, the archives entry by entry.
+- **Captured:** `result-retreat` at 100, 2 700, 2 733 and 3 000 ms (0, 1, 0, 9: the 1 and the 9 the
+  DCT's pixels of `rtstart`'s frame 38 and `rtloop`'s 4); `result-surrender` at 100 and 6 866 (0,
+  0); `end` to 4 800 ms (its 53 frames as before, the clip's 14 exact); `defended` (its window's
+  36 frames: the same 122 artifacts outside the slot, inside exactly the DCT's pixels, 200 to
+  300). The whole situation set again for the harness's change (below).
+- **Found:** CLT-Q30 and CLT-Q31 (asked and answered). Review items 19 to 23.
+
 ## Accepted review lists (M1 to M4)
 
 M1 and M2 moved from the epic file on 2026-10-20 (less start-up reading), unchanged; M3 at its

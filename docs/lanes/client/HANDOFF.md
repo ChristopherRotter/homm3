@@ -8,13 +8,12 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   accepted, CLT-Q22 to Q24 answered (a); the lane split at M3 T9c, CLT-Q18: the battle client
   here, the adventure map client the map-client lane's E24). **M5 (live play)** (QUEUE, the
   epic's M5): hot seat in-process first, then a game on a server and accounts; the new
-  dependencies the user's at T6 and T7. **T1 to T3, T4a, T4b1 and T4b2a done** (the playhead;
-  the timeline that grows, `live.rs`; the click's command; hot seat in the window; the spell
-  book, design §7.17; the hero's aim, §7.18; the message box, Retreat and Surrender, §7.19; the
-  result window without its clip, §7.20; the Bink decoder `h3-bink`, a port of FFmpeg's,
-  CLT-Q29). T4 cut in three, T4b and T4b2 in two by the user (2026-10-28). **Next: M5 T4b2b**
-  (the clip in the window: the playback read, BINKW32's colours, the captures), then T4c (Auto
-  Combat, the tactics phase). Open PR: T4b2a's (`client/e17-m5-t4b2a`; check it first).
+  dependencies the user's at T6 and T7. **T1 to T3, T4a, T4b done** (the playhead; the timeline
+  that grows, `live.rs`; the click's command; hot seat in the window; the spell book, design
+  §7.17; the hero's aim, §7.18; the message box, Retreat and Surrender, §7.19; the result window,
+  §7.20, its Bink decoder `h3-bink`, CLT-Q29, and its clip, §7.21). **Next: M5 T4c** (Auto Combat,
+  the tactics phase), then T5. Open PR: T4b2b's (`client/e17-m5-t4b2b`; check it first). The
+  inbox's CLT-Q30 task (`h3-bink` as BINKW32's float DCT) waits for a free slot.
   Workspace `clients/` (`clients/README.md`), gates `clients/scripts/check.sh`; ADR-0020 (+ drafts
   in `adr-drafts/`), ADR-0024; the harness `clients/capture/README.md`; design §3–§10; records in
   `E17-log.md`.
@@ -22,8 +21,8 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 - **The user's requirements** (epic, "Decisions"): a string catalogue (JSON packs, no committed translation, CLT-Q7); graphics options (`faithful` default); exhaustive diffs; drawing bugs fixed, the original's only for comparisons (`Bugs`).
 - The lane owns `clients/` but the map-client lane's paths and the common ones (`lanes.toml`: the foundation, `text/`, the harness; an additive change freely, a change in behaviour into the map-client lane's inbox), plus `docs/epics/E17*` and this folder; branches `client/<task>`; ids `CLT-Q<n>`, `CLT-QUIRK-<n>` (asset fixes), `CLT-STUB-<n>`; ADR drafts in `adr-drafts/`, numbered when accepted.
 - **Checkpoints** per milestone (below), a fresh reviewer agent first. **Open:** CLT-Q5,
-  CLT-Q26, CLT-Q27, CLT-Q28. Next id: CLT-Q30.
-- Stage from `original-data/install/`: the four LODs (one per call), `h3maped.exe`, both `.snd`, `MP3/COMBAT01`–`04` and the end tunes, `Heroes3.exe`, the five DLLs, `H3ab_ahd.vid`, for T4b2 `original-data/battle-videos.vid` (the result window's clips); `cp -rn` the staged `original-data/.` into the clone. Frames stay in the sandbox.
+  CLT-Q26, CLT-Q27, CLT-Q28. Next id: CLT-Q32.
+- Stage from `original-data/install/`: the four LODs (one per call), `h3maped.exe`, both `.snd`, `MP3/COMBAT01`–`04` and the end tunes, `Heroes3.exe`, the five DLLs, `H3ab_ahd.vid`, and `original-data/battle-videos.vid` (the result window's clips: the harness's `VIDEO.VID`, the viewer's stand-in); `cp -rn` the staged `original-data/.` into the clone. Frames stay in the sandbox.
 
 ## Autonomy contract (agreed by the user, 2026-10-12)
 
@@ -42,7 +41,14 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
 
 ## Recent sessions
 
-- **2026-10-28, E17 M5 T4b2a (done; PR open: check it first).** T4b2 cut in two with the
+- **2026-10-28, E17 M5 T4b2b (done; PR open: check it first).** T4b2b kept whole by the user;
+  `BINKW32.DLL` found by captures and black-box runs (`binkprobe.exe`), its colour tables and DCT
+  read with the user's leave. Read the playback (design §7.21). Built `h3_view::clip`,
+  `Draw::Video`, `videos.rs`; the harness's clips and the DLL's clock. CLT-Q30 (the DLL's float
+  DCT: listed, the inbox) and CLT-Q31 (two timing slips: fixed, the original's for the
+  comparisons). `result-*` and `end` exact but the DCT's pixels; review items 19 to 23.
+
+- **2026-10-28, E17 M5 T4b2a (done; #549 merged).** T4b2 cut in two with the
   user (T4b2a the decoder, T4b2b the clip in the window). `h3-bink` (pure, no dependency): a
   port of FFmpeg 6.1.1's Bink demuxer and revision-`b` decoder; `h3_assets::vid`; `h3-view
   video` and `bink-check.sh` (FFmpeg through PyAV). The ten clips and eight samples byte for
@@ -57,11 +63,3 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
   sequences' result; the heroes' portraits, a DEF item's mirror. `result-retreat`,
   `result-surrender` exact; `end`'s last frame exact, `defended`'s but 122 artifacts; review
   items 12–14.
-
-- **2026-10-28, E17 M5 T4a (done; #542 merged).** T4 cut in three with the
-  user. Read the box (design §7.19: 0x4F6570, 0x4F6990, the layout 0x4F5D80, the frame 0x48FF00,
-  the font's measures, the picture slot, the handlers), Retreat and Surrender (0x474FA1 to
-  0x475151), the book's and the aim's boxes, the text tables' quotes (0x5BBBA0). Built
-  `h3_view::message`, the binary's `boxes`, the window's and the stills' boxes, `--leave`.
-  `msg-*` (six) exact; `drawn` the other 124 the same; window checks by `--leave` and real keys.
-  CLT-Q28; review items 8–11; the battle lane's inbox (`h3_formats`' quotes).

@@ -77,7 +77,9 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   never by comparing lists. Its pixels differ from the original's only where `h3-bink`'s integer
   DCT rounds otherwise than the DLL's float one (CLT-Q30: five clips, listed); the colours are
   exact. The clips come from the video archives entry by entry (`videos.rs`; an installation
-  copy without `VIDEO.VID` takes `original-data/battle-videos.vid`), never from the LODs.
+  copy without `VIDEO.VID` takes `original-data/battle-videos.vid`), never from the LODs. A
+  new kind of asset in the batch needs its line in `battle.rs`'s `held`, or the window decodes
+  it again at every frame (the clip did: 119 ms late a frame).
 - `h3_formats`' `c_string` takes printable ASCII alone: an executable string with line breaks
   (the book's place formats) is read by the client's `text::exe_string`.
 - The viewer reads `clients/layouts/*.toml` at run time: a layout change made while a batch
