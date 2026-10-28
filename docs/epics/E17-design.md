@@ -2623,7 +2623,13 @@ kinds), `ai_battle_action` 0x477EE0's head, `ai_hero_cast_turn` 0x422DA0's head.
   artifacts as `melee`'s, the strike's start at 2 730 (435 pixels, 222 counted as artifacts: the
   original's partial redraw of the count boxes, as `strike`'s, §4.3) and, at 7 530, Orrin's
   victory (2 400 pixels) whose first frame the screen shows a step before memory holds it (the
-  frame check draws memory's heroes).
+  frame check draws memory's heroes). `auto-stop` (`seq-auto-stop.toml`: Royal Griffins for the
+  Pikemen, their turn after the Angels'): a click on hex 120 at 1 500 ms stops it as the
+  Griffins' turn starts (5 130 ms), walking nobody; the mouse moved after it to (300, 350) shows
+  their flight's cursor there from 5 230 (the turn's posted move, the poll's grid), the panel lit
+  and the Griffins outlined from the turn's start. The timeline as recorded (73 changes); its 80
+  frames exact but the same artifacts of the flight and the strike's start and the log's rolled
+  lines.
 
 ## 8. The window, input and audio evaluation (M2 T2)
 
