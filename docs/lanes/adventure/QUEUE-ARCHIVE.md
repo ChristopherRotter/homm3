@@ -16,6 +16,20 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
 
 ## Notices from other lanes and finished items, newest first
 
+- 2026-10-28 (T66b done, the drafts, the design note and the cut; T67 queued): the T66b entry as it stood:
+
+  **E08 T66b — The ADR amendment drafts, the design note and the cut**
+
+  - **Scope:** from T66a's survey and the answers at its checkpoint: the amendment drafts of the
+    ADRs it touches (ADR-0016 for boats, the sea and a visit from a boat,
+    `docs/lanes/adventure/adr-drafts/`; ADR-0017 for the commands, decisions and battles; ADR-0013
+    if `h3-heroes` gains rules, such as the day's points at sea), `E08-design.md` rewritten for
+    increment 8 (the hero side, the map, the game, the batch and the cut, with increment 8's exit
+    criteria), the building tasks cut in rounds; the checkpoint's questions (an `ADV-Q`). The user
+    accepts the drafts and the cut before anything is built (decision 159).
+  - **Depends on:** T66a (done) and its checkpoint (ADV-Q32, the survey's §14). **Status:** waiting
+    for the user's answers to ADV-Q32; its cut confirmed at its start.
+
 - 2026-10-28 (T66a2 done, the survey `E08-sea.md` complete; T66b waits for ADV-Q32): the T66a entry as it stood:
 
   **E08 T66a — The boats and sea survey** (in two, decision 160: T66a1 points 1, 2, 3, 6 done, survey `E08-sea.md` §0 to §6; T66a2 points 4, 5, 7, 8 next)

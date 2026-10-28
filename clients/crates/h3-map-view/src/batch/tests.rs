@@ -62,10 +62,10 @@ fn holds_sprites_pictures_and_palettes_by_any_case() {
 fn refuses_what_it_does_not_hold_or_cannot_decode() {
     let mut batch = Batch::default();
     assert_eq!(
-        batch.add("font.fnt", &[]),
-        Err(BatchError::Kind("FONT.FNT".to_string()))
+        batch.add("sound.wav", &[]),
+        Err(BatchError::Kind("SOUND.WAV".to_string()))
     );
-    for name in ["a.def", "a.pcx", "a.pal"] {
+    for name in ["a.def", "a.pcx", "a.pal", "a.fnt"] {
         assert!(matches!(
             batch.add(name, &[1, 2, 3]),
             Err(BatchError::Decode(n, _)) if n == name.to_ascii_uppercase()
@@ -80,7 +80,7 @@ fn refuses_what_it_does_not_hold_or_cannot_decode() {
     ));
     assert_eq!(
         BatchError::Kind("X".to_string()).to_string(),
-        "X: not a DEF, PCX or PAL"
+        "X: not a DEF, PCX, PAL or FNT"
     );
     assert_eq!(
         BatchError::Decode("X".to_string(), "why".to_string()).to_string(),
@@ -130,6 +130,7 @@ fn the_names_a_scene_draws() {
         ],
         cycles: vec![],
         flags: "game.pal".to_string(),
+        bugs: h3_render::Bugs::Fixed,
     };
     // The flag palette with them, since a piece takes an entry of it.
     let got: Vec<String> = names(&scene).into_iter().collect();
@@ -144,4 +145,46 @@ fn the_names_a_scene_draws() {
             "PLAYERS.PAL"
         ]
     );
+}
+
+#[test]
+fn holds_a_font_and_gives_the_dialogs_drawers_its_assets() {
+    // E24 M3 T2a: the dialog's texts' fonts; the batch is `h3_ui::paint`'s assets.
+    use h3_ui::paint::Assets;
+    let font = Font {
+        height: 1,
+        y_offset: 0,
+        glyphs: vec![h3_assets::fnt::Glyph::default(); 256],
+    };
+    let mut batch = Batch::default();
+    batch.add("smalfont.fnt", &build::fnt(&font)).unwrap();
+    batch
+        .add("Players.pal", &build::pal(&grey(), &[0; 256], 0, &[]))
+        .unwrap();
+    assert_eq!(Assets::font(&batch, "SMALFONT.FNT"), Some(&font));
+    assert_eq!(Assets::palette(&batch, "players.pal"), Some(&grey()));
+    assert!(Assets::picture(&batch, "a.pcx").is_none());
+    assert!(Assets::sprite(&batch, "a.def").is_none());
+    let button = h3_ui::ui::Draw::Button {
+        def: "iam002.def".to_string(),
+        frame: 0,
+        x: 0,
+        y: 0,
+        mirrored: false,
+        player: Some(h3_ui::ui::PlayerColours {
+            palette: "Players.pal".to_string(),
+            player: 1,
+        }),
+    };
+    let names = names(&Scene {
+        draws: vec![
+            Draw::Dialog(h3_ui::ui::Draw::Darken { rect: [0; 4] }),
+            Draw::Dialog(button),
+        ],
+        cycles: vec![],
+        flags: "game.pal".to_string(),
+        bugs: h3_render::Bugs::Fixed,
+    });
+    let names: Vec<String> = names.into_iter().collect();
+    assert_eq!(names, ["IAM002.DEF", "PLAYERS.PAL"]);
 }

@@ -41,6 +41,15 @@ lane's turret preview (its open point below), the baselines and AI-Q7.
 
 **The adventure env** (yours since E08 T45):
 
+- 2026-10-28 (the adventure lane, E08 T66b, `adventure/e08-t66b`; decision 172; **for you, no
+  action yet**): increment 8 (boats and the sea) changes the adventure observation: the views gain
+  the empty boats on the viewer's explored tiles (tile, kind, facing), each seen hero's boat
+  (`HeroView::boat`) and an own hero's day's maximum (`OwnHeroView::max_movement`); the action
+  encoding keeps v5 (a boarding or a landing is a tile among `legal_moves`). The user chose that
+  the adventure lane makes your observation encoding's change `cross-lane` in its task T74, with
+  the user's consent, as T63a's; the notice of that pull request will name the version. Design:
+  `docs/epics/E08-design.md` §12, §15; the ADR-0017 draft's point 8
+  (`docs/lanes/adventure/adr-drafts/0017-increment-8.md`).
 - 2026-10-27 (the adventure lane, E08 T63a, `adventure/e08-t63a`, `cross-lane` with the user's
   consent; decision 153; **for you**): **the answers are typed and your action mapping moved with
   them (encoding v5).** `h3_game::Answer` is an enum by decision kind: `Offer(Consent)`

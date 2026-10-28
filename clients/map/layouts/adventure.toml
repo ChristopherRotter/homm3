@@ -1,7 +1,9 @@
 # The adventure screen's layout at the native resolution (E24 M1 T2; ADR-0020 point 3). The numbers
 # are the executable's (docs/epics/E24-design.md §1.1, §1.2, §1.9, read 2026-10-23); an HD layout
 # is another file of this format. Loader: h3_map_view::layout (the format is provisional until the
-# M1 review). The panels right of and below the view come with M3.
+# M1 review). The panels right of and below the view come with M3: the dialog and the resource
+# bar since M3 T2a (design §4.1, in h3_ui::ui's format), the lists' contents (T4), the minimap
+# (T3) and the status window (T5) later.
 
 frame = [800, 600]
 # Drawn opaque at (0, 0) before the view, entries 224-255 of its palette the viewing player's
@@ -49,3 +51,174 @@ hot = [
     [14, 14], [20, 22], [20, 22], [20, 22], [20, 22], [6, 0], [16, 1], [22, 6], [16, 17],
     [6, 22], [0, 17], [0, 5], [0, 1], [0, 0], [12, 14], [20, 26],
 ]
+
+# The adventure screen's dialog (E24 M3 T2a; design §4.1: adventure_dialog_create 0x401510, the
+# manager's +0x44): at (0, 0), its items in the executable's order, each with its control id. The
+# hero list's pictures, bars and frames (ids 15-29, 39-43) and the town list's pictures (32-36)
+# come with T4 at their places below; the chat's edit (38, 0x5541A0) draws nothing outside a chat.
+[dialog]
+place = [0, 0]
+
+# The map (+0x50), the minimap (+0x4C) and the status window: areas, drawing nothing.
+[[dialog.items]]
+kind = "area"
+id = 0
+at = [8, 8]
+size = [592, 544]
+
+[[dialog.items]]
+kind = "area"
+id = 1
+at = [630, 26]
+size = [144, 144]
+
+[[dialog.items]]
+kind = "area"
+id = 2
+at = [605, 389]
+size = [188, 182]
+
+# The buttons: frame 0, its click frame 1, the disabled 2 (0x455EF0); their hotkeys are the key
+# table's (T6).
+# The kingdom overview.
+[[dialog.items]]
+kind = "button"
+id = 3
+def = "iam002.def"
+at = [679, 196]
+size = [32, 32]
+# The underground (iam003.def underground: [panels]).
+[[dialog.items]]
+kind = "button"
+id = 4
+def = "iam010.def"
+at = [711, 196]
+size = [32, 32]
+# The quest log.
+[[dialog.items]]
+kind = "button"
+id = 5
+def = "iam004.def"
+at = [679, 228]
+size = [32, 32]
+# Sleep (iam011.def while the hero sleeps: [panels]).
+[[dialog.items]]
+kind = "button"
+id = 6
+def = "iam005.def"
+at = [711, 228]
+size = [32, 32]
+# Move hero.
+[[dialog.items]]
+kind = "button"
+id = 7
+def = "iam006.def"
+at = [679, 260]
+size = [32, 32]
+# Cast a spell.
+[[dialog.items]]
+kind = "button"
+id = 8
+def = "iam007.def"
+at = [711, 260]
+size = [32, 32]
+# The adventure options.
+[[dialog.items]]
+kind = "button"
+id = 9
+def = "iam008.def"
+at = [679, 292]
+size = [32, 32]
+# The system options.
+[[dialog.items]]
+kind = "button"
+id = 10
+def = "iam009.def"
+at = [711, 292]
+size = [32, 32]
+# Next hero.
+[[dialog.items]]
+kind = "button"
+id = 11
+def = "iam000.def"
+at = [679, 324]
+size = [64, 32]
+# End turn.
+[[dialog.items]]
+kind = "button"
+id = 12
+def = "iam001.def"
+at = [679, 356]
+size = [64, 32]
+# The hero list up.
+[[dialog.items]]
+kind = "button"
+id = 13
+def = "iam012.def"
+at = [609, 196]
+size = [64, 16]
+# The hero list down.
+[[dialog.items]]
+kind = "button"
+id = 14
+def = "iam013.def"
+at = [609, 372]
+size = [64, 16]
+# The town list's arrows.
+[[dialog.items]]
+kind = "button"
+id = 30
+def = "iam014.def"
+at = [747, 196]
+size = [48, 16]
+
+[[dialog.items]]
+kind = "button"
+id = 31
+def = "iam015.def"
+at = [747, 372]
+size = [48, 16]
+
+# The status bar (+0x60, 0x5BC760): its picture opaque, then the hint (T6) centred in smalfont.fnt,
+# colour 1.
+[[dialog.items]]
+kind = "text"
+id = 200
+picture = "AdRollvr.pcx"
+at = [8, 556]
+size = [592, 18]
+font = "smalfont.fnt"
+font_palette = "game.pal"
+colour = 1
+align = 1
+
+# A text (+0x54, 0x5BC280), empty at a map's start.
+[[dialog.items]]
+kind = "label"
+id = 37
+at = [54, 100]
+size = [520, 440]
+font = "medfont.fnt"
+font_palette = "game.pal"
+colour = 13
+align = 8
+
+# The resource bar (the dialog's +0x5C, resource_bar_create 0x558BA0): at (3, 575), its picture in
+# the viewer's colours; the amounts (1001-1007) and the date (1008) come with T5.
+[resource_bar]
+place = [3, 575]
+
+[[resource_bar.items]]
+kind = "picture"
+id = 1000
+picture = "AResBar.pcx"
+at = [0, 0]
+size = [794, 22]
+
+# What the panels' logic needs (E24 M3 T2a, design §4.1): the buttons in the viewer's colours
+# (0x403F60), the underground button's DEF on the surface and underground (0x65F22C), sleep's while
+# the hero is awake and asleep (0x65F238).
+[panels]
+coloured = [3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+underground = ["iam010.def", "iam003.def"]
+sleep = ["iam005.def", "iam011.def"]

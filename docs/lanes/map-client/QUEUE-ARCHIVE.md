@@ -4,6 +4,26 @@ Finished history and informational notices moved out of `QUEUE.md` on 2026-10-24
 
 ## Notices from other lanes and finished items, newest first
 
+- 2026-10-28 (this lane, E24 M3 T2a): T2 cut with the user into T2a (the panels right, done:
+  the log's "M3 T2a") and T2b (the frame's fixed cost, queued); the queue's entry, verbatim:
+
+  ### E24 M3 T2 — the adventure screen's dialog at a map's start (cut into T2a and T2b)
+
+  - **Scope:** read `adventure_full_update` 0x417420's panels (the manager's +0x44) and the
+    adventure dialog +0x50: its items in the order added and drawn, each one's id, place, picture
+    or DEF and states; the buttons (`iam000` to `iam015`), the status bar (`AdRollvr.pcx`), the
+    resource bar (`AResBar.pcx`), the status window's and the lists' frames as at a map's start;
+    `h3_map_view::layout` gains the dialog (`h3_ui::ui`'s format), the screen drawn with it. The
+    frame's fixed cost (the inbox's, `QUEUE-ARCHIVE.md` 2026-10-27, E24 M2 T4b3): the frame
+    picture and the panels converted and drawn once a viewer, no screen copies, a frame redrawing
+    what changed; measured with `map-measure.cmd`'s "a frame made in". The parked cursor drawn
+    (the mask's). Recorded: the situations' screens with the panels; `panels` reduced to what
+    T3 to T5 draw.
+  - **Acceptance:** the static panels exact on the 40 situations and the 13 sequences; a frame's
+    fixed cost measured before and after; the Definition of Done.
+  - **Depends on:** T1a (merged, #545). **Status:** ready (T1b's pull request merged first, or
+    `master` merged in after it: both touch `h3-ui`).
+
 - 2026-10-28 (this lane, E24 M3 T1b): every key of both windows through the table (the user:
   no cut; the log's "M3 T1b"); the queue's entry, verbatim:
 

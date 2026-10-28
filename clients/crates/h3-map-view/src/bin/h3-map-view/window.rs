@@ -280,7 +280,7 @@ impl Frame {
     ) -> Result<Self, String> {
         let started = win.ticks_ns();
         let cursor = look.cursor(change.cursor);
-        let screen = painter.frame(&change.drawn, cursor)?;
+        let screen = painter.frame(&change.drawn, change.buttons, cursor)?;
         let xrgb = screen.xrgb();
         made.push(win.ticks_ns().saturating_sub(started) / 1000);
         Ok(Self {
