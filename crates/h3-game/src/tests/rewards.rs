@@ -76,7 +76,7 @@ fn a_gifts_experience_reaches_the_hero_with_its_level() {
 }
 
 /// The answer command of `answer`.
-const fn answered(answer: Answer) -> GameCommand {
+pub(super) const fn answered(answer: Answer) -> GameCommand {
     GameCommand::Answer(answer)
 }
 
@@ -476,6 +476,7 @@ fn a_won_guarded_artifact_and_a_beaten_monsters_artifact_reach_the_hero() {
         let mut state = game(&rules, object);
         let mut events = Vec::new();
         state.end_battle(&rules, sides, &won(), &mut events);
+        state.run_rests(&rules, &mut events);
         let ring = ArtifactInstance::from(RING);
         assert!(events.contains(&changed(HeroChange::AddArtifact(ring))));
         assert!(state.hero(HERO).unwrap().worn.contains(&Some(ring)));
@@ -486,7 +487,7 @@ fn a_won_guarded_artifact_and_a_beaten_monsters_artifact_reach_the_hero() {
 
 /// A savage wandering monster of two imps at (2, 0), which guards [`AT`] (ADV-MON-005) and always
 /// fights.
-fn guard(rules: &GameRuleset) -> ObjectSetup {
+pub(super) fn guard(rules: &GameRuleset) -> ObjectSetup {
     ObjectSetup {
         anchor: Pos::new(2, 0, 0),
         monster: Some(MonsterSetup {
@@ -503,7 +504,7 @@ fn guard(rules: &GameRuleset) -> ObjectSetup {
 }
 
 /// Whether `events` start a battle.
-fn starts_battle(events: &[GameEvent]) -> bool {
+pub(super) fn starts_battle(events: &[GameEvent]) -> bool {
     events
         .iter()
         .any(|e| matches!(e, GameEvent::BattleStarted { .. }))

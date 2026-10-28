@@ -222,8 +222,18 @@ fn an_events_guards_fight_at_once_and_its_record_follows_a_win() {
     let mut lost = s.clone();
     assert_eq!(ended(&mut lost, &left, false), AdventureOutcome::default());
     assert_eq!(lost.guards_left(0), left);
-    // Won: the record; the guards gone for good, so the next entry gives it without a battle.
-    assert_eq!(ended(&mut s, &[], true).gains, [(GOLD, 100)]);
+    // Won: the guards gone for good, the record after the winner's levels (E08 T63b,
+    // GAM-DEC-007: `give_won`), so the next entry gives it without a battle.
+    let after = AdventureOutcome {
+        reward_after: Some((HERO, tile)),
+        ..AdventureOutcome::default()
+    };
+    assert_eq!(ended(&mut s, &[], true), after);
+    let parts = (&rules.0, &rules.1, &heroes[..]);
+    assert_eq!(
+        s.give_won(parts, (HERO, tile), &mut Vec::new()).gains,
+        [(GOLD, 100)]
+    );
     assert!(s.guards_left(0).is_empty() && !s.is_removed(0));
     walk(&rules, &mut s, &heroes, &row(4..=4));
     let (outcome, _) = walk(&rules, &mut s, &heroes, &[tile]);

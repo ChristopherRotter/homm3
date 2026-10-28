@@ -110,15 +110,14 @@ impl AdventureState {
     /// The end of the battle `hero` fought at `tile` against the guards of the event lying there
     /// ([`Self::event_at`]; ADV-OBJ-007, the original's `event_fire` after its battle): lost, the
     /// guards' `survivors`, by slot, stay as its guards (none after a draw); won, its guards are
-    /// gone for good and its reward record follows ([`Self::give_event`]; until T63b before the
-    /// winner's levels, `ADV-STUB-10`). Nothing when no event with guards lies at `tile`.
-    // rule: ADV-OBJ-007
-    pub(super) fn end_event_battle<S: Sink>(
+    /// gone for good and its reward record follows after the winner's levels
+    /// ([`AdventureOutcome::reward_after`], GAM-DEC-007, E08 T63b: [`Self::give_won`]). Nothing
+    /// when no event with guards lies at `tile`.
+    // rule: ADV-OBJ-007, GAM-DEC-007
+    pub(super) fn end_event_battle(
         &mut self,
-        rules: Rules<'_>,
         (hero, tile): (HeroId, Pos),
         (survivors, won): (&[ArmyStack], bool),
-        sink: &mut S,
     ) -> AdventureOutcome {
         let Some(index) = self
             .event_at(tile)
@@ -128,10 +127,9 @@ impl AdventureState {
         };
         let left = if won { Vec::new() } else { survivors.to_vec() };
         self.army_left.set(index, Some(left));
-        if won {
-            self.give_event(rules, hero, index, sink)
-        } else {
-            AdventureOutcome::default()
+        AdventureOutcome {
+            reward_after: won.then_some((hero, tile)),
+            ..AdventureOutcome::default()
         }
     }
 }

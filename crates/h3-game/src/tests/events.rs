@@ -110,6 +110,7 @@ fn a_guarded_events_battle_opens_at_once_and_a_win_gives_its_record() {
     let sides = ([Some(RED), None], [Some(HERO), None], Pos::new(1, 0, 0));
     let mut events = Vec::new();
     state.end_battle(&rules, sides, &won(), &mut events);
+    state.run_rests(&rules, &mut events);
     assert_eq!(gold(&state), 2300);
     assert!(state.adventure().is_removed(0));
 }

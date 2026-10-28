@@ -427,8 +427,9 @@ fn the_system_actors_default_takes_the_offer_the_original_chooses() {
 // covers: GAM-DEC-002
 #[test]
 fn a_heros_open_level_up_is_not_drawn_again() {
-    // E08 T62b1: a won box's record gives experience before the battle's own levels are given
-    // (ADV-STUB-10); the second call finds the hero's level-up open and draws nothing.
+    // A guard for any gain that would reach a hero while its level-up is open (E08 T62b1: a won
+    // box's record before the battle's own levels; since E08 T63b's rests none does): the second
+    // call finds the hero's level-up open and draws nothing.
     let rules = rules();
     let game = game(&rules, 950, &[]);
     let (mut ended, _) = end(&game, &rules, &won_by(BattleSide::Attacker, 2));

@@ -400,7 +400,8 @@ impl GameState {
     /// Applies what the adventure left of a command of `player` or of its answer (ADR-0017
     /// point 10): first the visit of the monster guarding the hero's tile held as a rest of the
     /// visit (`AdventureOutcome::guard_after`, ADV-MON-006, GAM-DEC-007; E08 T63b), so that it
-    /// waits for whatever the outcome opens; then the gains (GAM-RES-001), the losses
+    /// waits for whatever the outcome opens, and a won guards' battle's reward held the same way
+    /// (`AdventureOutcome::reward_after`); then the gains (GAM-RES-001), the losses
     /// ([`Self::lose`], E08 T62b1), the hero's gains ([`Self::give_hero`], E08 T62a; with a group
     /// without room a reward record's experience held as a rest, given after its army dialog
     /// closes, ADV-RWD-001, E08 T63b), then
@@ -421,6 +422,9 @@ impl GameState {
         while let Some(outcome) = next.take() {
             if let Some(hero) = outcome.guard_after {
                 self.hold(player, hero, Rest::Guard);
+            }
+            if let Some((hero, tile)) = outcome.reward_after {
+                self.hold(player, hero, Rest::Won(tile));
             }
             self.gain(player, &outcome.gains, sink);
             self.lose(player, &outcome.losses, sink);
@@ -1411,6 +1415,16 @@ impl GameState {
     /// A player's stream as it stands.
     pub(crate) fn stream(&self, player: PlayerId) -> Rng {
         self.players[player.index()].rng.clone()
+    }
+
+    /// The number of held rests (GAM-DEC-007).
+    pub(crate) fn held_rests(&self) -> usize {
+        self.rests.len()
+    }
+
+    /// Drops every held rest (GAM-DEC-007), for the hash's test.
+    pub(crate) fn drop_rests(&mut self) {
+        self.rests.clear();
     }
 
     /// Applies a change to a hero of the store, telling no one (tests of what the hash covers

@@ -7,13 +7,13 @@
 
 use alloc::vec::Vec;
 
-use h3_adventure::HeroGains;
+use h3_adventure::{HeroGains, Pos};
 use h3_contracts::{HeroId, PlayerId};
 use h3_kernel::{CanonicalHash, StateHasher};
 
 use super::GameState;
 use crate::GameRuleset;
-use crate::command::Sink;
+use crate::command::{AdventureSink, Sink};
 
 /// What a visit still owes its hero (GAM-DEC-007).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -25,6 +25,10 @@ pub(super) enum Rest {
     /// A reward record's experience (ADV-RWD-001, HER-CHG-003: computed with the record), given
     /// with its levels once the record's army dialog closes (the original's order, D-39).
     Experience(u32),
+    /// What a won battle against the guards of the object at this tile gives, after the winner's
+    /// levels (the original's visit goes on after 0x4DA720): a pickup, a box's or an event's
+    /// record, the Pyramid's loot and spell (`AdventureState::give_won`).
+    Won(Pos),
 }
 
 /// A rest held for `owner`'s `hero`.
@@ -40,7 +44,7 @@ pub(super) struct Held {
 
 impl CanonicalHash for Held {
     /// The owner, the hero, then the rest's kind: 0 the guard's visit, 1 an experience (its
-    /// amount).
+    /// amount), 2 a won battle's reward (its tile).
     fn hash_into(&self, h: &mut StateHasher) {
         h.write_u8(self.owner.raw());
         h.write_u16(self.hero.raw());
@@ -49,6 +53,10 @@ impl CanonicalHash for Held {
             Rest::Experience(experience) => {
                 h.write_u8(1);
                 h.write_u32(experience);
+            }
+            Rest::Won(tile) => {
+                h.write_u8(2);
+                tile.hash_into(h);
             }
         }
     }
@@ -77,9 +85,10 @@ impl GameState {
     }
 
     /// Runs one rest: the guard's visit ([`Self::visit_guard`]; nothing for a hero that left the
-    /// map or a tile no monster guards any more), or the experience with its levels
-    /// ([`Self::give_hero`]).
-    // rule: ADV-MON-006, ADV-RWD-001
+    /// map or a tile no monster guards any more), the experience with its levels
+    /// ([`Self::give_hero`]), or a won battle's reward (`AdventureState::give_won`; nothing when
+    /// the object left the map meanwhile), each applied as a command's outcome.
+    // rule: ADV-MON-006, ADV-RWD-001, ADV-PIK-004, ADV-PIK-013, ADV-TCH-008, ADV-OBJ-007
     fn run_rest<S: Sink>(&mut self, rules: &GameRuleset, held: Held, sink: &mut S) {
         let Held { owner, hero, rest } = held;
         match rest {
@@ -94,6 +103,12 @@ impl GameState {
                     experience,
                 };
                 self.give_hero(rules, owner, gains, sink);
+            }
+            Rest::Won(tile) => {
+                let (adventure, store) = self.adventure_with_heroes();
+                let context = (rules.core(), rules.adventure(), store);
+                let outcome = adventure.give_won(context, (hero, tile), &mut AdventureSink(sink));
+                self.settle_outcome(rules, owner, outcome, sink);
             }
         }
     }

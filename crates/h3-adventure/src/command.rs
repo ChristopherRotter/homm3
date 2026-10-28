@@ -183,6 +183,12 @@ pub struct AdventureOutcome {
     /// The steps of the move's path not taken (ADV-MOV-011, E08 T62b2): an event fired on the
     /// tile of an earlier step and ended the move there; 0 for every other outcome.
     pub dropped: usize,
+    /// The hero and the tile of a won battle against an object's guards whose reward comes after
+    /// the winner's levels (GAM-DEC-007, E08 T63b; survey `E08-rewards.md` §8.1, the original's
+    /// visit after 0x4DA720): a guarded artifact's, scroll's or pile's pickup, a Pandora's Box's
+    /// or an event's record, a Pyramid's loot and spell. The game holds it as a rest of the visit
+    /// and gives it with [`crate::AdventureState::give_won`] once the player has no open decision.
+    pub reward_after: Option<(HeroId, Pos)>,
 }
 
 /// What a visit gives its hero (ADR-0017 point 10, increment 7; E08 T62a): each change passes
