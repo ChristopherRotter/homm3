@@ -6,10 +6,10 @@ use h3_content::SpellCategory;
 use h3_content_battle::BattleRuleset;
 use h3_kernel::Handle;
 use h3_protocol::wire::{Manifest, Observation};
+use h3_ui::text::{Args, Catalogue};
 use h3_view::book::{Hero, Kind, Memory, Open, Outcome, Spell};
 use h3_view::layout::BookLayout;
 use h3_view::tables::Tables;
-use h3_view::text::{Args, Catalogue};
 
 /// The forms of a spell's description by mastery (the catalogue's family `spell-text`).
 const MASTERY_FORMS: [&str; 4] = ["none", "basic", "advanced", "expert"];

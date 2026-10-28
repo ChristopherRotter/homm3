@@ -18,8 +18,8 @@ use crate::layout::{BattleLayout, parse_battle};
 use crate::record::tests::observation;
 use crate::scene::Draw;
 use crate::scene::tests::stack;
-use crate::text::Catalogue;
-use crate::text::pack::Pack;
+use h3_ui::text::Catalogue;
+use h3_ui::text::pack::Pack;
 
 const PACK: &str = r#"{
     "battle": {

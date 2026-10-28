@@ -9,8 +9,8 @@ use super::{
     Hit, Log, Logged, NEW_FOR, Name, Named, Spread, Stack, defend, entries, fear, heal, luck_good,
     morale_bad, morale_good, shown, strike, text_at, texts, wait, word,
 };
-use crate::text::Catalogue;
-use crate::text::pack::Pack;
+use h3_ui::text::Catalogue;
+use h3_ui::text::pack::Pack;
 
 const PACK: &str = r#"{
     "battle": { "log": {

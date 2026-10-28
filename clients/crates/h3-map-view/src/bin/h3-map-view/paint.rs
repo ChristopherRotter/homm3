@@ -21,7 +21,6 @@ use h3_map::writer::ObjectTemplate;
 use h3_map_view::art::MapArt;
 use h3_map_view::batch::{self, Batch};
 use h3_map_view::compose::{FORMAT, compose};
-use h3_map_view::cursor::{Cursor as Sprite, Image};
 use h3_map_view::layout::AdventureLayout;
 use h3_map_view::live::{Facing, Lifted, Live, Moment, Walking};
 use h3_map_view::objects::{self, DrawLists, Shapes};
@@ -33,6 +32,7 @@ use h3_map_view::tables::Tables;
 use h3_map_view::timeline::{Action, Cursor, Draw, Start};
 use h3_render::Bugs;
 use h3_render::screen::Screen;
+use h3_ui::cursor::{Cursor as Sprite, Image};
 
 use crate::{files, render, situation};
 

@@ -3,7 +3,7 @@
 //! SDL mixing them; `h3-view`'s battle sound the model, E17 design §8.2).
 //!
 //! - **The music** on one stream as the original's music thread plays it (M2 T6a2:
-//!   `h3_map_view::music`, the model of `play_music` 0x59ACB0, `music_thread` 0x59A840 and
+//!   `h3_ui::music`, the model of `play_music` 0x59ACB0, `music_thread` 0x59A840 and
 //!   `music_stop_fade` 0x59B080): a request dropped for the name pending or playing, the old track
 //!   faded out (its place kept where the fade began) after any fade-in under way, then the last
 //!   asked for faded in where its name last faded out. The model runs on the frames the device
@@ -28,10 +28,10 @@ use std::path::{Path, PathBuf};
 use std::thread::{self, JoinHandle};
 
 use h3_assets::wav::Pcm;
-use h3_map_view::music::{FULL, Queue, Run, Track};
 use h3_map_view::sound::{Cue, SLOTS, SoundRules};
 use h3_render::Bugs;
 use h3_sdl::Audio;
+use h3_ui::music::{FULL, Queue, Run, Track};
 
 use crate::sounds::{self, Music};
 

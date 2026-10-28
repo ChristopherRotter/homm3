@@ -10,33 +10,16 @@ use alloc::vec;
 use alloc::vec::Vec;
 use core::fmt;
 
-use h3_assets::def::{Def, Frame, decode_frame, parse_def};
+use h3_assets::def::{decode_frame, parse_def};
 use h3_assets::fnt::{Font, decode_fnt};
 use h3_assets::palette::{Palette, decode_pal};
 use h3_assets::pcx::{Pcx, decode_pcx};
 
+use h3_ui::sprite::Sprite;
+use h3_ui::ui;
+
 use crate::layout::BattleLayout;
 use crate::scene::Draw;
-
-/// A DEF with every frame decoded.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Sprite {
-    /// The DEF's header, palette and groups.
-    pub def: Def,
-    /// Its frames, by their offset in the DEF.
-    pub frames: BTreeMap<u32, Frame>,
-}
-
-impl Sprite {
-    /// Frame `index` of group `group` (by the group's id).
-    pub fn frame(&self, group: u32, index: u32) -> Option<&Frame> {
-        let group = self.def.groups.iter().find(|g| g.id == group)?;
-        let at = group
-            .frames
-            .get(usize::try_from(index).unwrap_or(usize::MAX))?;
-        self.frames.get(&at.offset)
-    }
-}
 
 /// The decoded assets, by upper-cased name.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -137,19 +120,22 @@ pub fn names(list: &[Draw], layout: &BattleLayout) -> BTreeSet<String> {
         | Draw::Tiled { def, .. } => vec![def],
         Draw::Flag { def, palette, .. } => vec![def, palette],
         Draw::CountBox { .. } => vec![&boxes.picture, &boxes.font, &boxes.font_palette],
-        Draw::Picture {
+        Draw::Dialog(ui::Draw::Picture {
             picture, player, ..
-        } => {
+        }) => {
             let mut names = vec![picture];
             names.extend(player.as_ref().map(|p| &p.palette));
             names
         }
-        Draw::Button { def, .. } | Draw::Cursor { def, .. } => vec![def],
-        Draw::Text { item, .. } => vec![&item.picture, &item.font, &item.font_palette],
-        Draw::Label { item, .. } => vec![&item.font, &item.font_palette],
-        Draw::Ray(_) | Draw::Within { .. } | Draw::Shaken { .. } | Draw::Darken { .. } => {
-            Vec::new()
+        Draw::Dialog(ui::Draw::Button { def, .. }) | Draw::Cursor { def, .. } => vec![def],
+        Draw::Dialog(ui::Draw::Text { item, .. }) => {
+            vec![&item.picture, &item.font, &item.font_palette]
         }
+        Draw::Dialog(ui::Draw::Label { item, .. }) => vec![&item.font, &item.font_palette],
+        Draw::Ray(_)
+        | Draw::Within { .. }
+        | Draw::Shaken { .. }
+        | Draw::Dialog(ui::Draw::Darken { .. }) => Vec::new(),
     });
     let mut all: BTreeSet<String> = named
         .chain(core::iter::once(&layout.outline_palette))
@@ -170,7 +156,7 @@ mod tests {
     use alloc::string::ToString;
     use alloc::vec;
     use h3_assets::build;
-    use h3_assets::def::Encoding;
+    use h3_assets::def::{Encoding, Frame};
 
     /// A one-pixel frame of index `i`.
     pub(crate) fn pixel(i: u8) -> Frame {
@@ -272,15 +258,15 @@ mod tests {
                 tint: [0, 0],
             },
             // A dialog's text item its picture, font and its palette (M3 T4b-2b-1, T6a).
-            Draw::Text {
+            Draw::Dialog(ui::Draw::Text {
                 item: layout.log().unwrap().clone(),
                 x: 0,
                 y: 0,
                 text: "x".to_string(),
-            },
+            }),
             // A text alone its font and its palette (E17 M5 T3a).
-            Draw::Label {
-                item: crate::ui::Label {
+            Draw::Dialog(ui::Draw::Label {
+                item: ui::Label {
                     id: 1,
                     at: [0, 0],
                     size: [1, 1],
@@ -295,29 +281,29 @@ mod tests {
                 y: 0,
                 text: String::new(),
                 disabled: false,
-            },
+            }),
             // A picture its own name and the players' palette; a button its DEF (M3 T6a).
-            Draw::Picture {
+            Draw::Dialog(ui::Draw::Picture {
                 picture: "cbar.pcx".to_string(),
                 x: 0,
                 y: 0,
-                player: Some(crate::scene::PlayerColours {
+                player: Some(ui::PlayerColours {
                     palette: "Players.pal".to_string(),
                     player: 0,
                 }),
-            },
-            Draw::Picture {
+            }),
+            Draw::Dialog(ui::Draw::Picture {
                 picture: "other.pcx".to_string(),
                 x: 0,
                 y: 0,
                 player: None,
-            },
-            Draw::Button {
+            }),
+            Draw::Dialog(ui::Draw::Button {
                 def: "icm001.def".to_string(),
                 frame: 0,
                 x: 0,
                 y: 0,
-            },
+            }),
             Draw::Cursor {
                 def: "CrCombat.def".to_string(),
                 frame: 6,

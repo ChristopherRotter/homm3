@@ -22,7 +22,6 @@ use crate::hero::{FLAG_START, HeroPose};
 use crate::layout::BattleLayout;
 use crate::siege::{AFTER_ROWS, BEFORE_ROWS, Context, GATE_ROW, SiegeLook, Walls};
 use crate::tables::{ObstacleArt, Tables};
-use crate::ui::Text;
 
 /// The row passes of the battle's redraw (0x494440, §4.6): for each row, passes 0–7, each over
 /// the row's columns left to right.
@@ -327,30 +326,9 @@ pub enum Draw {
         /// The list.
         list: Vec<Draw>,
     },
-    /// A dialog's picture (`H3DlgPcx`, E17 M3 T6a; §9.7): index 0 transparent, in its own colours
-    /// or a player's.
-    Picture {
-        /// The picture.
-        picture: String,
-        /// Its left edge.
-        x: i32,
-        /// Its top edge.
-        y: i32,
-        /// The player's colours over its entries 224–255, if any.
-        player: Option<PlayerColours>,
-    },
-    /// A dialog's button (`H3DlgDefButton`, E17 M3 T6a; §9.7): a frame of its DEF's group 0 (frame
-    /// 0 when the group has no such frame), by the plain drawer with runs skipped.
-    Button {
-        /// The DEF.
-        def: String,
-        /// The frame in group 0 its state shows.
-        frame: u32,
-        /// The canvas's left edge.
-        x: i32,
-        /// The canvas's top edge.
-        y: i32,
-    },
+    /// What a dialog draws (E17 M3 T6a; §9.7): its picture, button, DEF item, text over a picture,
+    /// text alone or shadow, the dialog's own draw items since E24 M3 T1a (`h3_ui::ui::Draw`).
+    Dialog(h3_ui::ui::Draw),
     /// The mouse's cursor, over everything (E17 M3 T6c-1, design §9.9): a frame of its DEF's group
     /// 0, its canvas's corner at the mouse less the frame's hot spot, by the plain drawer with runs
     /// skipped (0x50D8B0 → 0x47BEB0 → 0x47C570). The original's drawing bug, the mouse's x
@@ -367,49 +345,6 @@ pub enum Draw {
         /// The frame's hot spot in its canvas.
         hot: [i32; 2],
     },
-    /// A dialog's text over a picture (`H3DlgTextPcx`; the battle log's item, §9.5; E17 M3
-    /// T4b-2b-1, T6a): the item's picture, then the text in its font over it.
-    Text {
-        /// The item: its picture, size, font and how the text is drawn.
-        item: Text,
-        /// Its left edge.
-        x: i32,
-        /// Its top edge.
-        y: i32,
-        /// The text (the log's: its shown entries, one per line, 0x472C30; the status line's
-        /// text instead when it shows).
-        text: String,
-    },
-    /// A rectangle of the screen darkened (`screen_darken` 0x44E5F0: each channel halved; E17 M5
-    /// T3a: a dialog's shadow, [`crate::ui::Dialog::shadow`]).
-    Darken {
-        /// Its left edge, top edge, width and height.
-        rect: [i32; 4],
-    },
-    /// A dialog's text alone (`H3DlgText`, E17 M5 T3a: the spell book's): the text in the item's
-    /// box in its font, its colour 2 more while disabled (0x5BC5F0).
-    Label {
-        /// The item: its size, font and how the text is drawn.
-        item: crate::ui::Label,
-        /// Its left edge.
-        x: i32,
-        /// Its top edge.
-        y: i32,
-        /// The text.
-        text: String,
-        /// The item is disabled (its state's bit 8).
-        disabled: bool,
-    },
-}
-
-/// A picture's player colours (0x450520): the players' palette and the player's colour (0 red to
-/// 7 pink), whose 32 entries of that palette replace the picture's 224–255.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct PlayerColours {
-    /// The players' palette (`PLAYERS.PAL`).
-    pub palette: String,
-    /// The player's colour.
-    pub player: u8,
 }
 
 /// What the panel below the battlefield draws, after the battlefield (E17 M3 T4b-2b-1, T6a; §9.7):
@@ -442,7 +377,12 @@ fn pressed_panel(
         let state = shown.states.entry(id).or_default();
         state.pressed = !state.disabled;
     }
-    layout.panel.draws(&shown, &layout.player_palette)
+    layout
+        .panel
+        .draws(&shown, &layout.player_palette)
+        .into_iter()
+        .map(Draw::Dialog)
+        .collect()
 }
 
 /// The panel over a battle (E17 M3 T6b, design §9.8): the battle as each turn's start found it

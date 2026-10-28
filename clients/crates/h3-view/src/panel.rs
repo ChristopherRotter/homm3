@@ -1,6 +1,6 @@
 //! The battle's panel below the battlefield (E17 M3 T6a; `docs/epics/E17-design.md` §9.7): its
 //! controls' states as the executable sets them when a stack's turn starts, from what a viewer
-//! knows of the battle. The panel is a [`crate::ui::Dialog`] of the layout; this module names its
+//! knows of the battle. The panel is a [`h3_ui::ui::Dialog`] of the layout; this module names its
 //! controls by the executable's ids and decides what each shows.
 //!
 //! The executable builds the panel once (`battle_panel_base` 0x46B610 and `battle_panel_create`
@@ -21,7 +21,7 @@ use alloc::string::String;
 use alloc::vec::Vec;
 use h3_protocol::wire::{Event, Observation, Side};
 
-use crate::ui::{Shown, State};
+use h3_ui::ui::{Shown, State};
 
 /// The panel's picture (`cbar.pcx`).
 pub const PICTURE: u16 = 2000;

@@ -12,10 +12,11 @@ use std::path::{Path, PathBuf};
 /// it may have. A new dependency is added here deliberately. `h3-view`'s `tests/purity.rs` checks
 /// the client lane's crates and the foundation; this copy of it checks this lane's crate. `h3-map`
 /// gives the raw map's model (its parser reads bytes; the crate has no I/O); `h3-render` the
-/// compositor (pure, E17's foundation; since T3b1).
+/// compositor (pure, E17's foundation; since T3b1); `h3-ui` what both viewers share (E24 M3 T1a,
+/// pure: its own `tests/purity.rs`).
 const PURE: [(&str, &[&str]); 1] = [(
     "h3-map-view",
-    &["h3-assets", "h3-map", "h3-render", "serde", "toml"],
+    &["h3-assets", "h3-map", "h3-render", "h3-ui", "serde", "toml"],
 )];
 
 /// Dependencies of the package that only its binary (an adapter) uses: Cargo has no binary-only

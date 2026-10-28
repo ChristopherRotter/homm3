@@ -25,7 +25,7 @@ use crate::scene::Draw;
 use crate::siege::{
     FIELD_HEXES, GATE_HEX, KEEP_TARGET, TARGET_AIMS, TARGET_PARTS, TOWER_TARGETS, WALL_HEXES,
 };
-use crate::text::{Args, Catalogue};
+use h3_ui::text::{Args, Catalogue};
 
 pub mod aim;
 pub mod line;
@@ -644,7 +644,7 @@ pub fn pointer_in(
         let hint = layout
             .panel
             .item_at(point)
-            .and_then(crate::ui::Item::hint)
+            .and_then(h3_ui::ui::Item::hint)
             .map_or(Hint::Empty, |key| Hint::Control(key.into()));
         return Pointer {
             kind: Kind::Pointer,

@@ -8,13 +8,13 @@ use h3_assets::fnt::Font;
 use h3_formats::lod::LodArchive;
 use h3_protocol::wire::{Event, ServerMessage};
 use h3_render::Bugs;
+use h3_ui::text::pack::Pack;
+use h3_ui::text::{Catalogue, encode_1252};
 use h3_view::battle_log::{self, Named};
 use h3_view::layout::BattleLayout;
 use h3_view::record::Record;
 use h3_view::scene::Panels;
 use h3_view::tables::Tables;
-use h3_view::text::pack::Pack;
-use h3_view::text::{Catalogue, encode_1252};
 
 use crate::render::lookup;
 use crate::text;

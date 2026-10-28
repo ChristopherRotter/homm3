@@ -14,9 +14,11 @@
 //! tiles left unexplored. [`timeline`] is the map over time (E24 M2 T2): the original's loop on a
 //! clock of milliseconds, its redraws, palette steps, scroll and cursor; [`sequence`] the recorded
 //! sequences it replays. For the window (E24 M2 T4a): [`replay`] runs the timeline forward as its
-//! clock ([`clock`]) needs, [`keys`] is the table of what each key does; [`sound`] the map's
-//! sound as cues (M2 T5), [`music`] the original's music thread for the window's music stream
-//! (M2 T6a2). The adapters (the gate,
+//! clock (`h3_ui::clock`) needs, [`keys`] are the window's commands (the table of what each key
+//! does: `h3_ui::keys`); [`sound`] the map's sound as cues (M2 T5), its music the original's music
+//! thread (`h3_ui::music`, M2 T6a2). What both viewers share is the common crate `h3-ui`'s (E24
+//! M3 T1a: the clock, the cursor, the dialog items, the string catalogue, the key table, the
+//! music). The adapters (the gate,
 //! `render`, `situation`, `sequences`, `window`) are the binary's modules, not this library.
 //!
 //! Pure: no I/O, clock, threads or globals, `no_std` + `alloc`; time is an input. The header below
@@ -42,14 +44,11 @@ extern crate alloc;
 pub mod art;
 pub mod batch;
 pub mod check;
-pub mod clock;
 pub mod compose;
-pub mod cursor;
 pub mod draw;
 pub mod keys;
 pub mod layout;
 pub mod live;
-pub mod music;
 pub mod objects;
 pub mod replay;
 pub mod scene;
