@@ -70,12 +70,18 @@ const fn first_seed() -> u64 {
 
 impl Sequence {
     /// When the harness's recording ends: `ms` after its last actions (`pre`, or the last
-    /// command's `at` in a battle in progress, M3 T1a).
+    /// command's `at` in a battle in progress, M3 T1a; or the last `at:<ms>` action's time, E17
+    /// M5 T4c1: a key pressed while the computer plays).
     fn until(&self) -> u32 {
+        let at = self
+            .actions
+            .iter()
+            .filter_map(|a| a.strip_prefix("at:")?.parse::<u32>().ok());
         let last = self
             .command
             .iter()
             .filter_map(|c| c.at)
+            .chain(at)
             .fold(self.pre, u32::max);
         last + self.ms
     }
@@ -435,6 +441,7 @@ fn sequences(options: &Options) -> Result<usize, String> {
                     crate::render::viewing_player(snapshot),
                 )
             });
+            // Auto Combat as the actions switched it (E17 M5 T4c1).
             let panels = log::panels(
                 &record,
                 &shown.log,
@@ -442,7 +449,8 @@ fn sequences(options: &Options) -> Result<usize, String> {
                 &layout,
                 (&archives, &exe),
                 Bugs::Original,
-            )?;
+            )?
+            .with_auto(snapshot, pointer::auto(&inputs, &timeline));
             let interface = Interface {
                 panels: &panels,
                 legal: &Legal::default(),

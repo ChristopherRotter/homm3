@@ -85,7 +85,7 @@ commands:
   window <scenario.toml | record.jsonl> [--seed <n>] [--speed <0-2>] [--packs <dir>]
          [--install <dir>] [--human attacker|defender|both] [--keys <file>] [--scale <n>]
          [--vsync] [--drawn-cursor] [--fullscreen] [--from <ms>] [--mute]
-         [--check <s> | --measure <s>] [--leave retreat|surrender]
+         [--check <s> | --measure <s>] [--leave retreat|surrender] [--auto <n>]
           a battle in a window (SDL 3, h3-sdl), as `play` loads it, at the original's frame
           times from --from ms: each frame is shown when it falls due, at the largest integer
           scale that fits the display (--scale), vsync off unless --vsync, the game's cursor as
@@ -96,7 +96,9 @@ commands:
           book (its button or C; a spell that takes a target aimed: a press casts, Esc or the
           right button gives it up), a Faerie Dragon's spell (F aims it), Retreat or Surrender
           (their buttons or R and S, then the question's OK or Enter; Cancel or Esc keeps
-          fighting). A battle fought here ends in its result window over the screen darkened;
+          fighting), Auto Combat (its button or A, against the bot: the bot plays the human's
+          stacks too, the panel dimmed but its button, selected; any key or press of the battle
+          stops it as the next turn starts). A battle fought here ends in its result window over the screen darkened;
           its OK (or Enter or Esc) closes the window. With sound
           (the installation's sound archives and MP3 folder; none with --mute): from the
           battle's start its start sound plays while the clock waits, then the battle music
@@ -116,7 +118,9 @@ commands:
           every frame back and compares it with the frame drawn headless (exit 1 on a
           difference); unattended, a human's commands are the bot's choices pressed by the
           window, the battle checked against the bot's at once; --leave makes the human side
-          retreat or surrender through its question at its first turn it may.
+          retreat or surrender through its question at its first turn it may; --auto switches
+          Auto Combat on at the human's turn of that number (from 1) and stops it by a press
+          two commands later.
   situation <scenario.toml> [--packs <dir>] [--install <dir>] [--out <file.h3m>]
           writes the original's map for a scenario's battle, for the capture harness
           (clients/capture/README.md): Red's hero (human) just west of Blue's (computer) on the

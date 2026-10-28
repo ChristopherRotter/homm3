@@ -8,6 +8,7 @@ use h3_protocol::wire::{Command, Manifest, Observation, Side, Stack};
 use h3_render::Bugs;
 use h3_ui::text::Catalogue;
 use h3_view::anim::Timeline;
+use h3_view::auto::Auto;
 use h3_view::layout::BattleLayout;
 use h3_view::mouse::aim::Aim;
 use h3_view::mouse::track::{self, Input, Shown, Start, Turn};
@@ -97,7 +98,10 @@ const BOOK_PLACES: u8 = 12;
 /// next draw of a roll and moves nothing (the engine's rolls are its seed's); `aim:<k>:<n>` (E17
 /// M5 T3b) opens the book and clicks its place `k`, whose spell numbered `n` in the original
 /// (`handle` gives its handle) takes a target: the aim starts with the mouse there; `key:Escape`
-/// gives an aim up. *Not modelled:* the book over the battlefield.
+/// gives an aim up. E17 M5 T4c1 (design §7.22): Auto Combat's key (`key:a`, the original's
+/// table) switches it on ([`Input::Auto`]); while it plays, a `key:`, `hex:` or `click:` stops it
+/// ([`Input::Stop`]: the click moves the mouse and gives nothing). *Not modelled:* the book over
+/// the battlefield.
 pub fn inputs(
     actions: &[String],
     pre: u32,
@@ -105,7 +109,7 @@ pub fn inputs(
     (timeline, spells, handle): (&Timeline, &[u16], &dyn Fn(u16) -> Option<u16>),
 ) -> Result<Vec<Input>, String> {
     let mut spells = spells.iter().copied();
-    let mut cast_pending = false;
+    let (mut cast_pending, mut auto) = (false, false);
     let mut out = vec![Input::Move { at: 0, to: PARK }];
     let (mut now, mut turns) = (pre, 0);
     // The stack whose turn the battle opens with (E17 M3 T7b-1): a first `turn:` naming it acts
@@ -130,8 +134,18 @@ pub fn inputs(
                     point(arg)?
                 };
                 out.push(Input::Move { at: now, to });
-                out.push(Input::Act { at: now });
+                out.push(if core::mem::take(&mut auto) {
+                    Input::Stop { at: now }
+                } else {
+                    Input::Act { at: now }
+                });
                 out.push(Input::Move { at: now, to: PARK });
+            }
+            // A key while Auto Combat plays stops it (E17 M5 T4c1).
+            "key" if core::mem::take(&mut auto) => out.push(Input::Stop { at: now }),
+            "key" if auto_combat(arg) => {
+                auto = true;
+                out.push(Input::Auto { at: now });
             }
             "move" => out.push(Input::Move {
                 at: now,
@@ -215,6 +229,20 @@ pub fn inputs(
         }
     }
     Ok(out)
+}
+
+/// Whether the harness's key `name` (xdotool's: `a`, `space`) is Auto Combat's in the original's
+/// table (E17 M5 T4c1).
+fn auto_combat(name: &str) -> bool {
+    let mut chars = name.chars();
+    let key: String = chars
+        .next()
+        .map(|c| c.to_ascii_uppercase())
+        .into_iter()
+        .chain(chars)
+        .collect();
+    h3_view::keys::Keys::original().command(h3_view::keys::Context::Battle, false, &key)
+        == Some(h3_view::keys::Command::Button(h3_view::panel::AUTO_COMBAT))
 }
 
 /// The mouse's inputs of a hero's cast `<k>[:<hex>]` of `spell` at `now` (`inputs`): the book
@@ -342,16 +370,20 @@ pub fn shown(
         };
         battles.push((observation, legal, facing(timeline, t)));
     }
+    // A turn Auto Combat plays from its start is the computer's (E17 M5 T4c1).
+    let starts: Vec<u32> = times.iter().map(|&(t, _)| t).collect();
+    let auto = Auto::of(inputs, &starts);
     let turns: Vec<Turn<'_>> = battles
         .iter()
-        .map(|(observation, legal, facing)| Turn {
+        .enumerate()
+        .map(|(k, (observation, legal, facing))| Turn {
             field: Field {
                 observation,
                 legal,
                 facing,
                 bugs,
             },
-            human: human(observation),
+            human: human(observation) && !auto.from_start(k),
         })
         .collect();
     let starts: Vec<Start> = timeline
@@ -362,6 +394,15 @@ pub fn shown(
     let name =
         |hint: &Hint, observation: &Observation| hint_text(record, catalogue, hint, observation);
     track::follow(&timeline.log, &starts, &turns, inputs, layout, &name)
+}
+
+/// When Auto Combat plays `timeline`'s turns (the opening's, then each one started) by the mouse's
+/// and the keys' `inputs` (E17 M5 T4c1).
+pub fn auto(inputs: &[Input], timeline: &Timeline) -> Auto {
+    let starts: Vec<u32> = core::iter::once(0)
+        .chain(timeline.turns.iter().map(|&(t, _)| t))
+        .collect();
+    Auto::of(inputs, &starts)
 }
 
 /// Which way the stacks face at `t` of `timeline`: those its poses then mirror face left.
@@ -445,6 +486,38 @@ mod tests {
     fn layout() -> BattleLayout {
         let path = concat!(env!("CARGO_MANIFEST_DIR"), "/../../layouts/battle.toml");
         parse_battle(&std::fs::read_to_string(path).unwrap()).unwrap()
+    }
+
+    #[test]
+    fn auto_combat_s_key_switches_it_on_and_a_press_then_stops_it() {
+        // E17 M5 T4c1: A switches it on; while it plays a key or a click stops it, the click
+        // giving nothing; then A switches it on again and a key gives a command once it is off.
+        let layout = layout();
+        let timeline = Timeline::default();
+        let actions: Vec<String> = ["key:a", "at:10", "hex:40", "key:a", "key:Escape", "key:d"]
+            .map(String::from)
+            .into();
+        let got = inputs(&actions, 0, &layout, (&timeline, &[], &|_| None)).unwrap();
+        assert_eq!(
+            got,
+            vec![
+                Input::Move { at: 0, to: PARK },
+                Input::Auto { at: 0 },
+                Input::Move {
+                    at: 10,
+                    to: hex_point(&layout, 40)
+                },
+                Input::Stop { at: 10 },
+                Input::Move { at: 10, to: PARK },
+                Input::Auto { at: 10 },
+                Input::Stop { at: 10 },
+                Input::Act { at: 10 },
+            ]
+        );
+        assert!(auto_combat("a") && auto_combat("A") && !auto_combat("d") && !auto_combat(""));
+        // When it plays the timeline's turns: the opening's from 0.
+        let auto = auto(&got, &timeline);
+        assert!(auto.plays(0, 0) && !auto.from_start(0));
     }
 
     #[test]

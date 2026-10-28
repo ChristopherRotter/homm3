@@ -60,6 +60,19 @@ pub enum Input {
         /// When.
         at: u32,
     },
+    /// Auto Combat switched on (E17 M5 T4c1, design §7.22): its button clicked (or its key's
+    /// release) on a human's turn; the computer plays the turn from now ([`crate::auto`]). The
+    /// mouse sees the computer's action that starts then.
+    Auto {
+        /// When.
+        at: u32,
+    },
+    /// A key or a mouse button pressed while Auto Combat plays (E17 M5 T4c1): it stops as the
+    /// next turn starts ([`crate::auto`]); nothing else.
+    Stop {
+        /// When.
+        at: u32,
+    },
 }
 
 impl Input {
@@ -71,7 +84,9 @@ impl Input {
             | Self::Act { at }
             | Self::Aim { at, .. }
             | Self::Book { at }
-            | Self::Cancel { at } => at,
+            | Self::Cancel { at }
+            | Self::Auto { at }
+            | Self::Stop { at } => at,
         }
     }
 }
@@ -561,6 +576,9 @@ pub fn follow(
                     }
                 }
             }
+            // Auto Combat's turns are the computer's (`Turn::human`); its switch shows with the
+            // action it starts, its stop with the turn it stops at.
+            Input::Auto { .. } | Input::Stop { .. } => {}
             Input::Act { at: now } => {
                 // In the aim a click casts only at the hex the last move took (0x5A30E9).
                 if h.aiming.as_ref().is_some_and(|a| a.last.is_none()) {

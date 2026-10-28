@@ -18,8 +18,10 @@ use crate::anim::{
     Blast, DRAWBRIDGE_RECT, Field, GONE, Magic, Object, Pose, Projectile, Ray, Spot, Timeline,
     TurretPose,
 };
+use crate::auto::Auto;
 use crate::hero::{FLAG_START, HeroPose};
 use crate::layout::BattleLayout;
+use crate::panel::Autoplay;
 use crate::siege::{AFTER_ROWS, BEFORE_ROWS, Context, GATE_ROW, SiegeLook, Walls};
 use crate::tables::{ObstacleArt, Tables};
 
@@ -374,7 +376,14 @@ pub fn panel(
     log: &str,
     layout: &BattleLayout,
 ) -> Vec<Draw> {
-    pressed_panel(observation, side, kept, log, layout, None)
+    pressed_panel(
+        observation,
+        side,
+        (kept, Autoplay::default()),
+        log,
+        layout,
+        None,
+    )
 }
 
 /// As [`panel`], the button `pressed` (the mouse's or a hotkey's, E17 M3 T6c-2) showing its
@@ -382,7 +391,7 @@ pub fn panel(
 fn pressed_panel(
     observation: &Observation,
     side: Option<Side>,
-    kept: crate::panel::Kept,
+    kept: (crate::panel::Kept, Autoplay),
     log: &str,
     layout: &BattleLayout,
     pressed: Option<u16>,
@@ -420,6 +429,9 @@ pub struct Panels {
     /// The texts' times in order, each with the last text of the list shown by then (the list
     /// need not be in time order: a shot's line has its start's time).
     by_time: Vec<(u32, usize)>,
+    /// When Auto Combat plays the turns (E17 M5 T4c1), and before each turn (from none: the
+    /// opening's) whether its button is selected from the human players' last turn.
+    auto: (Auto, Vec<bool>),
 }
 
 impl Panels {
@@ -452,6 +464,25 @@ impl Panels {
             casts: Vec::new(),
             kept,
             by_time,
+            auto: (Auto::default(), Vec::new()),
+        }
+    }
+
+    /// The panel with Auto Combat playing as `auto` says (E17 M5 T4c1, design §7.22): a turn it
+    /// plays dims the panel, its button enabled and selected; the button stays selected through
+    /// the other sides' turns until a human's turn it does not play.
+    #[must_use]
+    pub fn with_auto(self, snapshot: &Observation, auto: Auto) -> Self {
+        let mut selected = alloc::vec![false];
+        for (k, o) in core::iter::once(snapshot).chain(&self.turns).enumerate() {
+            let last = selected[k];
+            let human = controller(snapshot, o)
+                .is_some_and(|s| snapshot.sides[usize::from(s == Side::Defender)].human);
+            selected.push(if human { auto.played(k) } else { last });
+        }
+        Self {
+            auto: (auto, selected),
+            ..self
         }
     }
 
@@ -527,10 +558,17 @@ impl Panels {
                 hero.casts = hero.casts.max(1);
             }
         }
+        // Auto Combat on the turn under way (E17 M5 T4c1).
+        let (auto, selected) = &self.auto;
+        let k = turns.len();
+        let autoplay = Autoplay {
+            plays: auto.plays(k, t),
+            selected: selected.get(k).copied().unwrap_or_default(),
+        };
         pressed_panel(
             &now,
             controller(snapshot, &now),
-            kept,
+            (kept, autoplay),
             text,
             layout,
             pressed,

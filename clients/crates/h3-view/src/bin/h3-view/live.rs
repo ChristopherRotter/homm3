@@ -31,6 +31,8 @@ pub struct Live<'r> {
     legal: LegalCommands,
     /// The sides a human plays here (the bot plays the others).
     humans: [bool; 2],
+    /// Auto Combat plays the turn to come (E17 M5 T4c1): the bot plays the humans' sides too.
+    auto: bool,
     sent: u32,
 }
 
@@ -62,6 +64,7 @@ impl<'r> Live<'r> {
             bot: Greedy,
             legal: LegalCommands::new(),
             humans,
+            auto: false,
             sent: 0,
         })
     }
@@ -82,12 +85,20 @@ impl<'r> Live<'r> {
         self.state.side_to_act().is_none()
     }
 
-    /// Whether the side to act is a human's here: the battle waits for its command
-    /// ([`Live::play`]).
+    /// Whether the side to act is a human's here and Auto Combat does not play it: the battle
+    /// waits for its command ([`Live::play`]).
     pub fn waiting(&self) -> bool {
-        self.state
-            .side_to_act()
-            .is_some_and(|side| self.humans[side.index()])
+        !self.auto
+            && self
+                .state
+                .side_to_act()
+                .is_some_and(|side| self.humans[side.index()])
+    }
+
+    /// Auto Combat on or off for the turns to come (E17 M5 T4c1): while on, the bot plays the
+    /// humans' sides too ([`Live::next`]).
+    pub fn set_auto(&mut self, on: bool) {
+        self.auto = on;
     }
 
     /// Whether a human plays here any side.
@@ -146,7 +157,11 @@ impl<'r> Live<'r> {
     /// none when the battle is over or waits for a human ([`Live::waiting`]). A command the
     /// session rejects, or one too many ([`FOUGHT_LIMIT`]), is an error.
     pub fn next(&mut self) -> Result<Option<Played>, String> {
-        let Some(side) = self.state.side_to_act().filter(|s| !self.humans[s.index()]) else {
+        let Some(side) = self
+            .state
+            .side_to_act()
+            .filter(|s| self.auto || !self.humans[s.index()])
+        else {
             return Ok(None);
         };
         h3_battle::legal_commands(&self.state, self.ruleset, side, &mut self.legal);
@@ -309,8 +324,23 @@ mod tests {
             }
         }
         assert!(waits > 0);
-        let bot = bot_record(&ruleset, setup, 1).unwrap();
+        let bot = bot_record(&ruleset, setup.clone(), 1).unwrap();
         assert_eq!(live.record().unwrap(), bot);
         assert!(live.obstacles().is_empty());
+        // E17 M5 T4c1: Auto Combat on, the bot plays the human's side too; off, it waits again.
+        let mut auto = Live::new(&ruleset, setup, 1, [true, false]).unwrap();
+        assert!(auto.waiting() && auto.next().unwrap().is_none());
+        auto.set_auto(true);
+        assert!(!auto.waiting());
+        auto.next().unwrap().unwrap();
+        auto.set_auto(false);
+        while !auto.waiting() && !auto.over() {
+            auto.next().unwrap().unwrap();
+        }
+        assert!(auto.over() || auto.next().unwrap().is_none());
+        auto.set_auto(true);
+        while auto.next().unwrap().is_some() {}
+        assert!(auto.over());
+        assert_eq!(auto.record().unwrap(), bot);
     }
 }

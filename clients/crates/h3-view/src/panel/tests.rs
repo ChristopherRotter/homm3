@@ -6,6 +6,12 @@ use crate::record::tests::observation;
 
 const RED_BLUE: [u8; 2] = [0, 1];
 
+/// Auto Combat neither playing nor selected.
+const NO_AUTO: Autoplay = Autoplay {
+    plays: false,
+    selected: false,
+};
+
 /// What the panel keeps before any human turn: `side`'s colours, the scroll buttons as built.
 fn by(side: Side) -> Kept {
     Kept {
@@ -59,7 +65,7 @@ fn a_humans_turn_enables_what_the_battle_allows() {
     let red = shown(
         &o,
         Some(Side::Attacker),
-        by(Side::Attacker),
+        (by(Side::Attacker), NO_AUTO),
         "a\nb",
         RED_BLUE,
     );
@@ -75,7 +81,7 @@ fn a_humans_turn_enables_what_the_battle_allows() {
     let blue = shown(
         &both,
         Some(Side::Defender),
-        by(Side::Defender),
+        (by(Side::Defender), NO_AUTO),
         "",
         RED_BLUE,
     );
@@ -89,7 +95,7 @@ fn a_humans_turn_enables_what_the_battle_allows() {
         disabled(&shown(
             &cast,
             Some(Side::Attacker),
-            by(Side::Attacker),
+            (by(Side::Attacker), NO_AUTO),
             "",
             RED_BLUE
         )),
@@ -102,7 +108,7 @@ fn a_humans_turn_enables_what_the_battle_allows() {
         disabled(&shown(
             &alone,
             Some(Side::Attacker),
-            by(Side::Attacker),
+            (by(Side::Attacker), NO_AUTO),
             "",
             RED_BLUE
         )),
@@ -113,7 +119,7 @@ fn a_humans_turn_enables_what_the_battle_allows() {
         disabled(&shown(
             &alone,
             Some(Side::Attacker),
-            by(Side::Attacker),
+            (by(Side::Attacker), NO_AUTO),
             "",
             RED_BLUE
         )),
@@ -135,16 +141,34 @@ fn at_a_town_the_defender_neither_surrenders_nor_retreats_without_its_tunnel() {
     });
     o.sides[1].human = true;
     o.sides[1].may_retreat = false;
-    let defender = shown(&o, Some(Side::Defender), by(Side::Defender), "", RED_BLUE);
+    let defender = shown(
+        &o,
+        Some(Side::Defender),
+        (by(Side::Defender), NO_AUTO),
+        "",
+        RED_BLUE,
+    );
     assert_eq!(
         disabled(&defender),
         [SURRENDER, RETREAT, AUTO_COMBAT, SPELL_BOOK]
     );
     o.sides[1].may_retreat = true;
-    let tunnel = shown(&o, Some(Side::Defender), by(Side::Defender), "", RED_BLUE);
+    let tunnel = shown(
+        &o,
+        Some(Side::Defender),
+        (by(Side::Defender), NO_AUTO),
+        "",
+        RED_BLUE,
+    );
     assert_eq!(disabled(&tunnel), [SURRENDER, AUTO_COMBAT, SPELL_BOOK]);
     // The attacker may do both.
-    let attacker = shown(&o, Some(Side::Attacker), by(Side::Attacker), "", RED_BLUE);
+    let attacker = shown(
+        &o,
+        Some(Side::Attacker),
+        (by(Side::Attacker), NO_AUTO),
+        "",
+        RED_BLUE,
+    );
     assert_eq!(disabled(&attacker), [AUTO_COMBAT]);
 }
 
@@ -160,7 +184,7 @@ fn the_tactics_phase_disables_the_book_wait_and_defend() {
         disabled(&shown(
             &o,
             Some(Side::Attacker),
-            by(Side::Attacker),
+            (by(Side::Attacker), NO_AUTO),
             "",
             RED_BLUE
         )),
@@ -172,7 +196,13 @@ fn the_tactics_phase_disables_the_book_wait_and_defend() {
 fn a_computers_turn_disables_the_seven_buttons() {
     let o = battle();
     // Red's colours kept from its turn (0x46BF90 leaves the picture).
-    let blue = shown(&o, Some(Side::Defender), by(Side::Attacker), "", RED_BLUE);
+    let blue = shown(
+        &o,
+        Some(Side::Defender),
+        (by(Side::Attacker), NO_AUTO),
+        "",
+        RED_BLUE,
+    );
     assert_eq!(
         disabled(&blue),
         [
@@ -193,12 +223,18 @@ fn a_computers_turn_disables_the_seven_buttons() {
 #[test]
 fn before_a_turn_the_panel_is_as_built() {
     let mut o = battle();
-    let built = shown(&o, None, by(Side::Attacker), "", RED_BLUE);
+    let built = shown(&o, None, (by(Side::Attacker), NO_AUTO), "", RED_BLUE);
     assert_eq!(disabled(&built), [LOG_UP, LOG_DOWN]);
     assert_eq!(built.players.get(&PICTURE), Some(&0));
     o.sides[1].human = true;
     assert_eq!(
-        disabled(&shown(&o, None, by(Side::Attacker), "", RED_BLUE)),
+        disabled(&shown(
+            &o,
+            None,
+            (by(Side::Attacker), NO_AUTO),
+            "",
+            RED_BLUE
+        )),
         [AUTO_COMBAT, LOG_UP, LOG_DOWN]
     );
 }
@@ -299,7 +335,58 @@ fn the_panel_keeps_the_last_human_turns_colours_and_scroll_buttons() {
         colours: Side::Attacker,
         scroll: true,
     };
-    let blue = shown(&o, Some(Side::Defender), after, "", RED_BLUE);
+    let blue = shown(&o, Some(Side::Defender), (after, NO_AUTO), "", RED_BLUE);
     assert_eq!(disabled(&blue).len(), 7);
     assert!(!disabled(&blue).contains(&LOG_UP));
+}
+
+#[test]
+fn auto_combat_dims_the_turn_it_plays_and_keeps_its_button_selected() {
+    // E17 M5 T4c1 (design §7.22): Red's turn played by Auto Combat: the seven dimmed but Auto
+    // Combat, enabled and selected (0x4784F9); the scroll buttons as Red's turns left them.
+    let o = battle();
+    let red = (by(Side::Attacker), NO_AUTO);
+    let playing = Autoplay {
+        plays: true,
+        selected: false,
+    };
+    let auto = shown(&o, Some(Side::Attacker), (red.0, playing), "", RED_BLUE);
+    assert_eq!(
+        disabled(&auto),
+        [
+            SURRENDER, RETREAT, OPTIONS, LOG_UP, LOG_DOWN, SPELL_BOOK, WAIT, DEFEND
+        ]
+    );
+    let button = auto.state(AUTO_COMBAT);
+    assert!(button.selected && !button.disabled);
+    // The computer's turn after it: dimmed, Auto Combat still selected (0x46BF90 sets the
+    // disabled state only, the selected frame drawn over it).
+    let kept = Autoplay {
+        plays: false,
+        selected: true,
+    };
+    let blue = shown(&o, Some(Side::Defender), (red.0, kept), "", RED_BLUE);
+    assert_eq!(disabled(&blue).len(), 9);
+    assert!(blue.state(AUTO_COMBAT).selected);
+    // Before a turn, as built with its selection; a human's turn it does not play unselects it
+    // (0x47864A).
+    assert!(
+        shown(&o, None, (red.0, kept), "", RED_BLUE)
+            .state(AUTO_COMBAT)
+            .selected
+    );
+    let human = shown(&o, Some(Side::Attacker), (red.0, kept), "", RED_BLUE);
+    assert!(!human.state(AUTO_COMBAT).selected && disabled(&human).is_empty());
+    // Blue a computer with Auto Combat on: its turn as any computer's.
+    assert_eq!(
+        disabled(&shown(
+            &o,
+            Some(Side::Defender),
+            (red.0, playing),
+            "",
+            RED_BLUE
+        ))
+        .len(),
+        9
+    );
 }
