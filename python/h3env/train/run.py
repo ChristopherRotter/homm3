@@ -33,7 +33,14 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import IO, Any
 
-from .evaluate import HELD_OUT_BATCH_SEEDS, OPPONENTS, PLAYER_KINDS, REPORT_V1_ENVS
+from .. import _ffi
+from .evaluate import (
+    HELD_OUT_BATCH_SEEDS,
+    NEUTRAL_KINDS,
+    OPPONENTS,
+    PLAYER_KINDS,
+    REPORT_V1_ENVS,
+)
 
 #: The version of `record.json`'s layout (`check_record`); 2: its segments (T2b1); 3: the
 #: engine's identity (the encodings' and encounters' versions, the batch's entries, T2c); 4: the
@@ -126,6 +133,12 @@ class Config:
     #: bootstrapping from the final observation (0: the bootstrap, as before T5c). Reward v1 lies
     #: in about (-1, 1), so 1.0 makes stalling to the limit worse than any decided battle.
     truncation_penalty: float = field(default=1.0, metadata=_in("ppo"))
+    #: Potential-based shaping (E25 T2a; Ng et al. 1999): each learning side's transition gains
+    #: Φ(s′) − Φ(s), Φ its reward v1 as if the battle ended there (the batch's `potential`), 0 at
+    #: the episode's end and at its start, so an episode's shaped return is its reward v1 at
+    #: γ 1. Needs `truncation_penalty` above 0: a cut episode ends at Φ 0 too (the batch reports
+    #: no potential of a truncated battle's last state to bootstrap beside).
+    shaping: bool = field(default=False, metadata=_in("ppo"))
     #: The league (design §8, `league`): the share of self-play episodes (else a live member plays
     #: one side, drawn per episode).
     self_play: float = field(default=0.5, metadata=_in("league"))
@@ -359,6 +372,8 @@ def resolve(config: Config) -> Config:
         problems.append("`system_share` needs `[env] kinds` (the player kinds' weights to split)")
     elif c.system_share and not any(c.kinds[k] for k in PLAYER_KINDS):
         problems.append("`system_share` needs a player kind (hero, siege_hero, siege_garrison)")
+    if c.shaping and not c.truncation_penalty:
+        problems.append("`shaping` needs `truncation_penalty` above 0 (a cut ends at Φ 0)")
     if c.seed in HELD_OUT_BATCH_SEEDS:
         problems.append("`seed` is a held-out set's batch seed (v0's, the v1 sets')")
     if not (0.0 < c.alpha < 0.5 and 0.0 < c.beta < 0.5 and c.elo0 < c.elo1):
@@ -370,6 +385,26 @@ def resolve(config: Config) -> Config:
     if problems:
         raise ConfigError("; ".join(problems))
     return c
+
+
+def trainable(config: Config) -> None:
+    """Refuses a training mix with the faithful system actor (E25 decision 2, ADR-0026 point 8 as
+    amended): it reads the whole state, so it trains no agent: no `system_share`, and no neutral
+    kind (wandering, guards, a neutral town), whose defender it is (the user, E25 T2a: no neutral
+    battles for now). A config may still name them: E06's runs did, and their configs and
+    records stay valid; the trainer starts or resumes none of them (`ppo.train`, `ppo.resume`)."""
+    problems = []
+    if config.system_share:
+        problems.append("`system_share` above 0 trains against the faithful system actor")
+    neutral = [k for k in sorted(NEUTRAL_KINDS) if config.kinds and config.kinds[k]]
+    if neutral:
+        names = ", ".join(_ffi.ENCOUNTER_KINDS[k] for k in neutral)
+        problems.append(f"`[env] kinds` weighs {names}, whose defender is the system actor")
+    if problems:
+        raise ConfigError(
+            "; ".join(problems)
+            + " (E25: the faithful system actor trains no agent, ADR-0026 point 8 as amended)"
+        )
 
 
 def by_table(config: Config) -> dict[str, Any]:

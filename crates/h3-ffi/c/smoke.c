@@ -183,7 +183,7 @@ static int play_batch(Batched *out) {
     uint8_t *heads = malloc((size_t)BATCH * (n_spells > n_targets ? n_spells : n_targets));
     CHECK(obs && final_obs && preview && mask && heads);
     int8_t to_move[BATCH], result[BATCH];
-    float reward[2 * BATCH];
+    float reward[2 * BATCH], potential[2 * BATCH];
     uint8_t done[BATCH], truncated[BATCH];
     uint32_t episode[BATCH], scenario[BATCH], entries[BATCH];
     uint16_t spells[BATCH], targets[BATCH];
@@ -191,8 +191,9 @@ static int play_batch(Batched *out) {
     int32_t status[BATCH];
     int8_t encounter[BATCH];
     H3Action actions[BATCH];
-    H3BatchBuffers buffers = {obs,     mask,     to_move, reward, done,     truncated, result,
-                              final_obs, episode, scenario, seed, status, encounter, preview};
+    H3BatchBuffers buffers = {obs,     mask,     to_move, reward,    done,     truncated,
+                              result,  final_obs, episode, scenario, seed,  status,
+                              encounter, preview, potential};
     CHECK(h3_batch_reset(batch, &buffers) == H3_OK);
     uint64_t lcg = 777;
     memset(out, 0, sizeof *out);
@@ -220,6 +221,7 @@ static int play_batch(Batched *out) {
         for (int i = 0; i < BATCH; i++) {
             CHECK(status[i] == H3_OK);
             CHECK(reward[2 * i] == -reward[2 * i + 1]); /* zero-sum */
+            CHECK(potential[2 * i] == -potential[2 * i + 1]); /* v35 (E25 T2a): zero-sum */
             out->episodes += done[i];
             out->decided += done[i] && !truncated[i];
             CHECK(done[i] ? result[i] != H3_RESULT_NONE || truncated[i] : reward[2 * i] == 0);

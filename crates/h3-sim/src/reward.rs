@@ -19,9 +19,10 @@
 //! integers (`i128`: no overflow for any setup), divided once in `f64` and reported as `f32`, so
 //! `r_o = −r_s` exactly (zero-sum). It never feeds back into the battle (ADR-0003).
 
+use h3_battle::{BattleState, StackTraits};
 use h3_content::CreatureTypeId;
 use h3_content_battle::BattleRuleset;
-use h3_contracts::{Army, BattleOutcome, BattleSetup, StackOrigin, StackRecord};
+use h3_contracts::{Army, BattleOutcome, BattleSetup, BattleSide, StackOrigin, StackRecord};
 
 /// The default price of a spell point: 10 `ai_value` (provisional, tuned in E06).
 pub const DEFAULT_MANA_PRICE: u32 = 10;
@@ -113,6 +114,53 @@ impl Balance {
         }
     }
 
+    /// A running battle's balance as if it ended now (E25 T2a: the potential of the training's
+    /// shaping, [`potential`]): each side's losses by its stacks' current counts (its army's and
+    /// raised stacks' and its war machines'; a created stack or a turret counts nothing), its
+    /// hero's mana spent so far. At a decided battle's end it is [`Balance::of`]'s but for the
+    /// end's own corrections (a temporary resurrection's creatures leave, a side left with only
+    /// those keeps one: BAT-MAG-035, BAT-MAG-038), which reward v1 then pays. `state` must have
+    /// started from `setup` on `ruleset`.
+    pub fn standing(
+        ruleset: &BattleRuleset,
+        setup: &BattleSetup,
+        state: &BattleState,
+        currency: Currency,
+    ) -> Self {
+        let value = |creature: CreatureTypeId| creature_value(ruleset, currency, creature);
+        let mut lost = [0; 2];
+        let mut mana = [0; 2];
+        let mut scale = 0;
+        for side in BattleSide::BOTH {
+            let i = side.index();
+            let mut start: i128 = [&setup.attacker, &setup.defender][i]
+                .stacks
+                .iter()
+                .map(|s| i128::from(s.count) * value(s.creature))
+                .sum();
+            let mut now = 0;
+            let own = state.stacks().iter().filter(|s| s.side == side);
+            for s in own.filter(|s| !s.is_turret() && !s.is_created()) {
+                let v = value(s.creature);
+                if s.has(StackTraits::WAR_MACHINE) {
+                    start += i128::from(s.base_count) * v;
+                }
+                now += i128::from(s.count) * v;
+            }
+            lost[i] = start - now;
+            scale += start;
+            mana[i] = setup.heroes[i].as_ref().map_or(0, |hero| {
+                let left = state.hero(side).map_or(0, |h| h.mana);
+                i128::from(hero.magic.mana) - i128::from(left)
+            });
+        }
+        Self {
+            lost,
+            mana,
+            scale: scale.max(1),
+        }
+    }
+
     /// Each side's reward with `mana_price` per spell point: `(K_o − K_s − p · (m_s − m_o)) / S`.
     pub fn rewards(&self, mana_price: u32) -> [f32; 2] {
         let p = i128::from(mana_price);
@@ -153,6 +201,19 @@ pub fn rewards(
     outcome: &BattleOutcome,
 ) -> [f32; 2] {
     Balance::of(ruleset, setup, outcome, config.currency).rewards(config.mana_price)
+}
+
+/// Each side's potential in a running battle `state` that started from `setup` on `ruleset`
+/// (E25 T2a): its reward v1 with `config` as if the battle ended now ([`Balance::standing`]), 0
+/// at the start. A training's potential-based shaping adds its differences; it reads the whole
+/// state, as the reward does, and is never an agent's input.
+pub fn potential(
+    config: RewardConfig,
+    ruleset: &BattleRuleset,
+    setup: &BattleSetup,
+    state: &BattleState,
+) -> [f32; 2] {
+    Balance::standing(ruleset, setup, state, config.currency).rewards(config.mana_price)
 }
 
 #[cfg(test)]

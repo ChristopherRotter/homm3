@@ -391,3 +391,52 @@ fn empty_armies_scale_by_one_and_the_default_is_ai_value_at_ten() {
     );
     assert_eq!(Currency::default(), Currency::AiValue);
 }
+
+#[test]
+fn the_potential_is_the_balance_so_far_and_reward_v1s_at_the_end() {
+    // E25 T2a: a running battle's balance (`Balance::standing`, the shaping's potential) is 0 at
+    // the start and zero-sum; at a decided battle's end it is the outcome's (none of these 40
+    // sampled encounters of every kind, played at random to their end, meets the end's own
+    // corrections of a temporary resurrection, BAT-MAG-035, -038).
+    let sampler = crate::encounter::tests::SAMPLER.clone().with_shares();
+    let rules = sampler.battle();
+    let config = RewardConfig::default();
+    let mut ended = 0;
+    for seed in 0..40 {
+        let encounter = sampler.sample(seed);
+        let scenario = crate::batch::Scenario::new(
+            Arc::clone(rules),
+            &encounter.setup,
+            true,
+            1,
+            encounter.seats,
+        );
+        let mut env = scenario.unwrap().env(seed, 0).unwrap();
+        let start = potential(config, rules, env.setup(), env.state());
+        assert_eq!(start, [0.0, 0.0], "seed {seed}");
+        let mut rng = h3_kernel::Rng::for_stream(seed, h3_kernel::StreamId::AGENT);
+        let mut legal = h3_battle::LegalCommands::new();
+        while let Some(side) = env.to_move() {
+            let command = crate::rollout::pick(&env, side, &mut rng, &mut legal);
+            let _ = crate::rollout::step_command(&mut env, side, command);
+            let now = potential(config, rules, env.setup(), env.state());
+            assert_eq!(now[0], -now[1], "seed {seed}");
+        }
+        let end = env.state().outcome().unwrap();
+        ended += 1;
+        let standing = Balance::standing(rules, env.setup(), env.state(), Currency::AiValue);
+        let of = Balance::of(rules, env.setup(), &end, Currency::AiValue);
+        assert_eq!(standing, of, "seed {seed}");
+        assert_eq!(
+            potential(config, rules, env.setup(), env.state()),
+            end_reward(&env)
+        );
+    }
+    assert_eq!(ended, 40);
+}
+
+/// Reward v1 of `env`'s decided battle at the default settings.
+fn end_reward(env: &crate::BattleEnv) -> [f32; 2] {
+    let end = env.state().outcome().unwrap();
+    rewards(RewardConfig::default(), env.ruleset(), env.setup(), &end)
+}

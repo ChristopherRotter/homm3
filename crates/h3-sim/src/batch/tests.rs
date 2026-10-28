@@ -42,6 +42,7 @@ struct Arrays {
     mask: Vec<u8>,
     final_obs: Vec<f32>,
     preview: Vec<f32>,
+    potential: Vec<f32>,
     reports: Vec<EnvReport>,
 }
 
@@ -52,6 +53,7 @@ impl Arrays {
             mask: vec![0; n * ACTION_COUNT],
             final_obs: vec![0.0; n * 2 * OBSERVATION_LEN],
             preview: vec![0.0; n * PREVIEW_LEN],
+            potential: vec![0.0; n * 2],
             reports: vec![EnvReport::default(); n],
         }
     }
@@ -62,6 +64,7 @@ impl Arrays {
             entry_mask: Some(&mut self.mask),
             final_obs: Some(&mut self.final_obs),
             preview: Some(&mut self.preview),
+            potential: Some(&mut self.potential),
             reports: Some(&mut self.reports),
         }
     }
@@ -1291,4 +1294,40 @@ fn a_world_scores_a_decided_battle_by_the_batchs_reward_v1() {
         }
     }
     assert_eq!(decided, n);
+}
+
+/// E25 T2a: the batch writes each env's potential (`reward::potential` at its reward settings:
+/// each side's reward v1 as if the battle ended now) after every call, 0 at an episode's start.
+#[test]
+fn the_batch_writes_each_envs_potential() {
+    let reward = RewardConfig {
+        currency: Currency::AiValue,
+        mana_price: 3,
+    };
+    let config = BatchConfig {
+        envs: 4,
+        threads: 2,
+        seed: 9,
+        max_steps: 0,
+        reward,
+    };
+    let mut batch = BattleBatch::new(config).unwrap();
+    let full = scenario(h3_pack_battle::SYNTHETIC_FULL, 1, EXTERNAL);
+    batch.add_scenario(full).unwrap();
+    let mut arrays = Arrays::new(4);
+    batch.reset(&mut arrays.outputs()).unwrap();
+    assert!(arrays.potential.iter().all(|&p| p == 0.0));
+    let mut rng = Rng::for_stream(4, StreamId::AGENT);
+    let mut moved = false;
+    for _ in 0..300 {
+        let actions = actions(&mut batch, &arrays, &mut rng);
+        batch.step(&actions, &mut arrays.outputs()).unwrap();
+        for i in 0..4 {
+            let env = batch.env(i).unwrap();
+            let expected = reward::potential(reward, env.ruleset(), env.setup(), env.state());
+            assert_eq!(arrays.potential[2 * i..2 * i + 2], expected, "env {i}");
+            moved |= expected[0] != 0.0;
+        }
+    }
+    assert!(moved);
 }

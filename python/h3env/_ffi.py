@@ -177,6 +177,7 @@ class H3BatchBuffers(ctypes.Structure):
         ("status", c_void_p),
         ("encounter", c_void_p),
         ("preview", c_void_p),
+        ("potential", c_void_p),
     ]
 
 

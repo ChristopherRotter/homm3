@@ -12,20 +12,19 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   `docs/07-simulation-and-ai.md` §1.2): `t7-1` is the battle AI v1 and the baseline.
 - **E25 refined 2026-10-27** (AI-Q10; `docs/epics/E25-battle-ai-v2.md`, record `E25-log.md`):
   the target is beating the faithful system actor (`t7-1`: 0.372); it **trains no agent any
-  more** (ADR-0026 point 8 as amended; a fair variant is the battle lane's, later). **T1a, T1b
-  done 2026-10-28** (C ABI v35: a world scores by its batch's reward v1, `h3_batch_true_world`).
-  **Next:** T1c waits for a network (no `best.pt` in the sandbox: the user uploads `t7-1`'s or
-  `order-1`'s); T2a for the user's choice of the neutral kinds' training mix (QUEUE). The
-  adventure env's typed answers (E08 T63a) are in the inbox.
-- **Waiting for a `shared/` change** (a second branch needs the user's consent): ADR-0025 point
-  12a and `docs/07-simulation-and-ai.md` §1.1's "Information" to name v35 (a world's reward v1,
-  the true world as trusted tooling, a diagnostic; E25 decision 6 approved it).
-- **Open pull requests:** E25 T1a, T1b (`claude/adoring-turing-5sit47`): watch it to its merge.
-  Merged: #528 (the E25 refinement).
+  more** (ADR-0026 point 8 as amended; no neutral battles in training for now, the user at T2a).
+  **Done 2026-10-28:** T1a, T1b (a world's reward v1, the true world), T2a (shaping, the refused
+  mixes, T2b's configs); C ABI v35 for all three. **In progress:** T1c, the search measured again
+  with `t7-1`'s `best.pt` (the user's upload, in `python/runs/t7-1/`, not committed): six runs
+  into `python/records/search/t7-1-*.json`. **Next:** T2b's two runs on the user's machine
+  (their length agreed first), then T3, the checkpoint.
+- **Open pull requests:** #534 (E25 T1a, T1b, then T2a and T1c on the same branch,
+  `claude/adoring-turing-5sit47`), #539 (`shared/e25-worlds`: ADR-0025 point 12a.3 and the env
+  doc, a second branch the user allowed): watch both to their merge. Merged: #528.
 - **Versions:** battle action encoding v13, observation encoding v22, replay format v31
-  (CLT-Q4/Q6), the adventure env's action encoding v5 (E08 T63a), C ABI v35 (E25 T1a, T1b: a
-  world's reward, the true world) (`docs/08-work-process.md`, "Versions"). Next ids: AI-Q11,
-  AI-QUIRK-1, AI-STUB-2.
+  (CLT-Q4/Q6), the adventure env's action encoding v5 (E08 T63a), C ABI v35 (E25 T1a, T1b, T2a:
+  a world's reward, the true world, the potential) (`docs/08-work-process.md`, "Versions"). Next
+  ids: AI-Q11, AI-QUIRK-1, AI-STUB-2.
 - Working agreement: increments with a user checkpoint (Q41's pattern); the user reviews ADRs and seams.
 
 ## Standing traps

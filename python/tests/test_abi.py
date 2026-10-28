@@ -56,7 +56,9 @@ def test_the_layouts_match_h3_h() -> None:
         assert getattr(_ffi.H3Action, field).offset == h3env.ACTION_DTYPE.fields[field][1]
     assert ctypes.sizeof(_ffi.H3StepResult) == 16
     assert ctypes.sizeof(_ffi.H3BatchConfig) == 32
-    assert ctypes.sizeof(_ffi.H3BatchBuffers) == 14 * ctypes.sizeof(ctypes.c_void_p)
+    # v35 (E25 T2a): `potential` at its end.
+    assert ctypes.sizeof(_ffi.H3BatchBuffers) == 15 * ctypes.sizeof(ctypes.c_void_p)
+    assert _ffi.H3BatchBuffers.potential.offset == 14 * ctypes.sizeof(ctypes.c_void_p)
     assert ctypes.sizeof(_ffi.H3ScenarioInfo) == 32
 
 

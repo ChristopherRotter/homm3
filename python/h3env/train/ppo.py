@@ -42,6 +42,15 @@ share of the player kinds' episodes has the system actor on a uniformly drawn si
 batch (`episode_entries`: the player kinds' own entry beside one per side), so the learner plays
 the other and the league draws no member; the update record's `system` gives the learner's score
 there by its side.
+
+Since E25 (decision 2, ADR-0026 point 8 as amended) the faithful system actor trains no agent:
+`train` and `resume` refuse a `system_share` or a neutral kind's weight (`run.trainable`); the
+two mechanisms above stay for E06's records and a fair system actor later.
+
+Shaping (E25 T2a, `[ppo] shaping`): each learning side's transition gains Φ(s′) − Φ(s), Φ the
+batch's potential (reward v1 as if the battle ended now) at the side's decisions, 0 at its
+episode's start and end (`Trainer.shape`), so an episode's shaped return is its reward v1 (with
+a cut's `-truncation_penalty`).
 """
 
 from __future__ import annotations
@@ -57,7 +66,7 @@ import torch
 
 from .. import _ffi
 from ..batch import BattleBatch
-from ..seats import SeatBook
+from ..seats import Closed, SeatBook
 from .evaluate import (
     NEUTRAL_KINDS,
     PLAYER_KINDS,
@@ -85,6 +94,7 @@ from .run import (
     resumed,
     segment_seed,
     source,
+    trainable,
 )
 
 #: The version of `checkpoint.pt`'s layout (`Trainer.state`); 2: the gate's state instead of the
@@ -294,6 +304,7 @@ class Trainer:
             currency=c.currency,
             mana_price=c.mana_price,
             preview=c.preview,
+            potential=c.shaping,
         )
         entries = episode_entries(c)
         for weight, kinds, side in entries:
@@ -314,6 +325,10 @@ class Trainer:
         self.staging = Staging(self.device)
         #: Where each (env, side)'s open transition sits in the rollout (-1: none, or earlier).
         self.opened = np.full((c.envs, 2), -1, np.int64)
+        #: With `shaping` (E25 T2a): each (env, side)'s potential its next closed transition
+        #: subtracts, its last decision's (0 at its episode's start); the episodes in flight's,
+        #: so a resume (a fresh batch) starts it at 0.
+        self.phi = np.zeros((c.envs, 2), np.float32)
         self.samples = 0
         self.updates = 0
         self.episodes = 0
@@ -575,11 +590,12 @@ class Trainer:
             kinds, entries = b.encounter.copy(), b.scenario.copy()
             b.step()
             closed = self.book.settle(b)
+            shaped = self.shape(closed)
             e, s = np.nonzero(closed.closed)
             at = self.opened[e, s]
             mine = at >= 0
             e, s, at = e[mine], s[mine], at[mine]
-            r.reward[at, e] = closed.reward[e, s]
+            r.reward[at, e] = closed.reward[e, s] + shaped[e, s]
             r.closed[at, e] = True
             r.terminal[at, e] = closed.terminal[e, s]
             trunc = closed.truncated[e, s]
@@ -668,6 +684,21 @@ class Trainer:
                 if n
             },
         }
+
+    def shape(self, closed: Closed) -> np.ndarray:
+        """[N, 2]: each closed transition's shaping (E25 T2a, `[ppo] shaping`; 0 without it):
+        Φ(s′) − Φ(s), Φ the batch's potential at the side's next decision, 0 at the episode's end
+        (decided or cut), and its last decision's potential, 0 at the episode's start. A side's
+        shaping thus sums to 0 over an episode: its shaped return is its reward v1."""
+        if not self.config.shaping:
+            return np.zeros_like(self.phi)
+        b = self.batch
+        now = np.where(closed.terminal, 0.0, b.potential).astype(np.float32)
+        shaped = np.where(closed.closed, now - self.phi, 0.0).astype(np.float32)
+        self.phi = np.where(closed.closed, now, self.phi)
+        # An episode that ended starts the next at 0 for both sides (one that never acted too).
+        self.phi[b.done.astype(bool)] = 0.0
+        return shaped
 
     def update(self, lr: float) -> dict:
         """PPO's update over the rollout's samples."""
@@ -797,6 +828,7 @@ def train(
     Ctrl+C (or `stop`'s request) stops the run at the next batch call (of a rollout, a gate or a
     ladder) or update boundary, saved (`run.Stop`): `resume` continues it."""
     config = resolve(config)
+    trainable(config)
     trainer = Trainer(config)
     parent = None if init_from is None else trainer.init_from(Path(init_from))
     ident = identity(trainer)
@@ -833,6 +865,7 @@ def resume(
             "league, E06 T4a: start a new run, --init-from its best.pt)"
         )
     config, changed = resumed(Config(**state["config"]), sets)
+    trainable(config)
     if state["finished"] and state["samples"] >= config.samples:
         raise ResumeError(
             f"the run in {out} reached its budget ({config.samples} samples): extend it with "

@@ -343,6 +343,28 @@ def test_a_true_world_is_the_battle_with_its_stream_reseeded() -> None:
     batch.close()
 
 
+def test_the_potential_is_written_on_request_zero_sum_and_0_at_an_episodes_start() -> None:
+    # E25 T2a (C ABI v35): `potential=True` writes each side's reward v1 as if the battle ended
+    # now: 0 at the reset and at each new episode's start, zero-sum, moving as the armies do.
+    assert BattleBatch(2).potential is None
+    batch = BattleBatch(6, seed=3, max_steps=60, mana_price=3, potential=True)
+    batch.add_encounters(kinds=[0, 0, 1, 0, 0, 0])
+    batch.reset()
+    assert (batch.potential == 0).all()
+    rng = np.random.default_rng(2)
+    moved = ended = 0
+    for _ in range(400):
+        batch.random_actions(rng)
+        batch.step()
+        assert (batch.potential[:, 0] == -batch.potential[:, 1]).all()
+        done = batch.done.astype(bool)
+        assert (batch.potential[done] == 0).all()
+        moved += int((batch.potential[~done, 0] != 0).sum())
+        ended += int(done.sum())
+    assert moved > 0 and ended > 0
+    batch.close()
+
+
 def test_refused_calls_raise_with_the_engines_message() -> None:
     with pytest.raises(H3Error, match="H3_ERR_ARGUMENT: .+"):
         BattleBatch(0)

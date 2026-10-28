@@ -417,7 +417,8 @@ pub struct EnvReport {
 /// `entry_mask` N × [`ACTION_COUNT`] (0/1), `final_obs` N × 2 × [`OBSERVATION_LEN`] (both sides'
 /// last observations, written only for envs whose episode was truncated in this call, for
 /// bootstrapping), `preview` N × [`PREVIEW_LEN`] (the acting seat's previewed kills per attack
-/// and shot entry, [`crate::action::preview_kills`]), `reports` N.
+/// and shot entry, [`crate::action::preview_kills`]), `potential` N × 2 (each side's,
+/// [`reward::potential`]), `reports` N.
 #[derive(Debug, Default)]
 pub struct Outputs<'a> {
     /// The acting seat's observation per env.
@@ -428,6 +429,9 @@ pub struct Outputs<'a> {
     pub final_obs: Option<&'a mut [f32]>,
     /// The acting seat's previewed kills per attack and shot entry (AI-Q7 (b)).
     pub preview: Option<&'a mut [f32]>,
+    /// Each side's potential per env (E25 T2a, [`reward::potential`]): reward v1 at the batch's
+    /// settings as if the battle ended now, for a training's shaping; 0 for an env that gave up.
+    pub potential: Option<&'a mut [f32]>,
     /// What happened per env.
     pub reports: Option<&'a mut [EnvReport]>,
 }
@@ -463,6 +467,7 @@ struct Rows<'a> {
     mask: Option<&'a mut [u8]>,
     final_obs: Option<&'a mut [f32]>,
     preview: Option<&'a mut [f32]>,
+    potential: Option<&'a mut [f32]>,
     report: Option<&'a mut EnvReport>,
 }
 
@@ -650,7 +655,7 @@ impl BattleBatch {
                 slot.seeds = Rng::for_stream(seed, StreamId::env(slot.index));
                 slot.started = 0;
                 begin(slot, source);
-                write_state(slot, rows, &mut EnvReport::default());
+                write_state(slot, rows, &mut EnvReport::default(), source.reward);
             }
         });
         self.reset = true;
@@ -809,6 +814,9 @@ impl BattleBatch {
         if let Some(preview) = &out.preview {
             check("preview", preview.len(), n * PREVIEW_LEN)?;
         }
+        if let Some(potential) = &out.potential {
+            check("potential", potential.len(), n * 2)?;
+        }
         if let Some(reports) = &out.reports {
             check("reports", reports.len(), n)?;
         }
@@ -835,6 +843,7 @@ fn parts<'a>(
     let mask = split_optional(out.entry_mask.as_deref_mut(), ACTION_COUNT, ranges);
     let final_obs = split_optional(out.final_obs.as_deref_mut(), 2 * OBSERVATION_LEN, ranges);
     let preview = split_optional(out.preview.as_deref_mut(), PREVIEW_LEN, ranges);
+    let potential = split_optional(out.potential.as_deref_mut(), 2, ranges);
     let reports = split_optional(out.reports.as_deref_mut(), 1, ranges);
     split(slots, 1, ranges)
         .into_iter()
@@ -842,14 +851,16 @@ fn parts<'a>(
         .zip(mask)
         .zip(final_obs)
         .zip(preview)
+        .zip(potential)
         .zip(reports)
         .map(
-            |(((((slots, obs), entry_mask), final_obs), preview), reports)| {
+            |((((((slots, obs), entry_mask), final_obs), preview), potential), reports)| {
                 let out = Outputs {
                     obs,
                     entry_mask,
                     final_obs,
                     preview,
+                    potential,
                     reports,
                 };
                 (slots, out)
@@ -877,6 +888,7 @@ fn rows<'a>(out: &'a mut Outputs<'_>) -> impl Iterator<Item = Rows<'a>> {
         .preview
         .as_deref_mut()
         .map(|p| p.chunks_exact_mut(PREVIEW_LEN));
+    let mut potential = out.potential.as_deref_mut().map(|p| p.chunks_exact_mut(2));
     let mut reports = out.reports.as_deref_mut().map(|r| r.iter_mut());
     std::iter::from_fn(move || {
         Some(Rows {
@@ -884,6 +896,7 @@ fn rows<'a>(out: &'a mut Outputs<'_>) -> impl Iterator<Item = Rows<'a>> {
             mask: mask.as_mut().and_then(Iterator::next),
             final_obs: final_obs.as_mut().and_then(Iterator::next),
             preview: preview.as_mut().and_then(Iterator::next),
+            potential: potential.as_mut().and_then(Iterator::next),
             report: reports.as_mut().and_then(Iterator::next),
         })
     })
@@ -967,6 +980,7 @@ fn step_slot(slot: &mut Slot, source: Source<'_>, action: Action, rows: Rows<'_>
         mask,
         final_obs,
         preview,
+        potential,
         report: row,
     } = rows;
     let mut report = EnvReport::default();
@@ -976,9 +990,10 @@ fn step_slot(slot: &mut Slot, source: Source<'_>, action: Action, rows: Rows<'_>
         mask,
         final_obs: None,
         preview,
+        potential,
         report: row,
     };
-    write_state(slot, rows, &mut report);
+    write_state(slot, rows, &mut report, source.reward);
 }
 
 /// Plays the acting seat's `action` and the internal seats after it; when the episode ends,
@@ -1019,10 +1034,10 @@ fn advance(
 }
 
 /// Writes the slot's current state (the acting seat's observation, entry mask without the
-/// escapes, and previewed kills) and `report` with its episode into `rows`. The slot keeps that
-/// entry mask for the head calls ([`plain_head`]): an escape's later heads are as refused as the
-/// escape.
-fn write_state(slot: &mut Slot, rows: Rows<'_>, report: &mut EnvReport) {
+/// escapes, previewed kills, and both sides' potentials by `reward`) and `report` with its
+/// episode into `rows`. The slot keeps that entry mask for the head calls ([`plain_head`]): an
+/// escape's later heads are as refused as the escape.
+fn write_state(slot: &mut Slot, rows: Rows<'_>, report: &mut EnvReport, reward: RewardConfig) {
     slot.mask.fill(false);
     let acting = acting(slot.env.as_ref());
     if let Some((env, side)) = acting {
@@ -1046,6 +1061,12 @@ fn write_state(slot: &mut Slot, rows: Rows<'_>, report: &mut EnvReport) {
             }
             None => obs.fill(0.0),
         }
+    }
+    if let Some(potential) = rows.potential {
+        let value = slot.env.as_ref().map_or([0.0; 2], |env| {
+            reward::potential(reward, env.ruleset(), env.setup(), env.state())
+        });
+        potential.copy_from_slice(&value);
     }
     report.to_move = acting.map(|(_, side)| side);
     report.episode = slot.started.saturating_sub(1);

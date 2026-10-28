@@ -50,6 +50,12 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   batch's reward v1 (C ABI v35, E25 T1a), every other single env ±1: a comparison of their
   rewards compares two scales. `BattleBatch::true_world` (`h3_batch_true_world`, T1b) reads the
   whole state: a diagnostic's, reached only by `h3env.search --true-worlds`, never an agent's.
+- The batch's `potential` (C ABI v35, E25 T2a; `reward::potential`) mirrors reward v1's
+  accounting from the stacks' current counts: a change to reward v1 (what K counts, the war
+  machines, the mana) changes `Balance::standing` too, or shaping no longer sums to reward v1
+  (`reward::tests::the_potential_is_the_balance_so_far_and_reward_v1s_at_the_end`). Since E25
+  `ppo.train` and `ppo.resume` refuse the faithful system actor's mixes (`run.trainable`): a test
+  run needs the player kinds alone, or `kinds` None.
 - Observation v22 appends the turn order after v21's layout (`layout.ORDER`, v21's length): a
   network reads it only with `[network] order` (else the prefix, as every network saved before
   v22); slices of the stack slots end at `ORDER` (`entity.py`, `inspect.py`), never at the end.

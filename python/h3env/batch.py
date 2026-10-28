@@ -74,6 +74,7 @@ _OUTPUTS = (
     "status",
     "encounter",
     "preview",
+    "potential",
 )
 
 
@@ -101,7 +102,10 @@ class BattleBatch:
     - `preview` [N, `preview_entries`, 2] float32 (v33, AI-Q7 (b); None without `preview=True`):
       the acting side's least and greatest kills of each attack and shot entry from
       `preview_base` (the engine's damage preview of the entry's first strike, what the
-      original shows a player), 0 for an entry not legal.
+      original shows a player), 0 for an entry not legal;
+    - `potential` [N, 2] float32 (v35, E25 T2a; None without `potential=True`): each side's
+      reward v1 as if the battle ended now (0 at an episode's start and for an env that gave up),
+      a training's shaping potential; it reads the whole state, never an agent's input.
 
     A handle must not be used from two threads at once; the engine's own threads (`threads`) run
     inside each call, without the GIL.
@@ -118,6 +122,7 @@ class BattleBatch:
         mana_price: int = 10,
         final_obs: bool = True,
         preview: bool = False,
+        potential: bool = False,
     ) -> None:
         h = _ffi.lib()
         self._lib = h
@@ -158,6 +163,7 @@ class BattleBatch:
             "status": np.zeros(n, np.int32),
             "encounter": np.full(n, _ffi.ENCOUNTER_NONE, np.int8),
             "preview": np.zeros((n, self.preview_entries, 2), np.float32) if preview else None,
+            "potential": np.zeros((n, 2), np.float32) if potential else None,
         }
         self._buffers = _ffi.H3BatchBuffers(
             *(None if a is None else a.ctypes.data for a in map(self._out.get, _OUTPUTS))

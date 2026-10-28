@@ -113,9 +113,10 @@ pub use batch::{
 /// (E25 T1a): a world's `h3_env_step` (and its forks') reports a decided battle's reward v1 by
 /// the batch's `H3RewardConfig` in `H3StepResult`'s rewards (the batch's reward for the same
 /// battle; every other single env ±1 by the winner), and its setup keeps the other hero's
-/// starting mana (reward v1's mana term); and (E25 T1b) `h3_batch_true_world`, a trusted
-/// diagnostic: a world with nothing guessed, its stream re-seeded; no layout changes, the
-/// encodings unchanged.
+/// starting mana (reward v1's mana term); (E25 T1b) `h3_batch_true_world`, a trusted
+/// diagnostic: a world with nothing guessed, its stream re-seeded; and (E25 T2a)
+/// `H3BatchBuffers.potential` (each side's reward v1 as if the battle ended now, [N, 2], for a
+/// training's shaping; the struct grows by one pointer at its end); the encodings unchanged.
 pub const H3_ABI_VERSION: u32 = 35;
 
 /// `H3StepResult.result`: the battle is not decided (still running, or truncated).

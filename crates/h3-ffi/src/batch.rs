@@ -138,6 +138,10 @@ pub struct H3BatchBuffers {
     /// entry's first strike, what the original shows a player; 0 for an entry not legal or without
     /// a side to move; C ABI v33, AI-Q7 (b)).
     pub preview: *mut f32,
+    /// [N, 2]: each side's potential, reward v1 at the batch's settings as if the battle ended
+    /// now (attacker, defender; 0 for an env that gave up), for a training's shaping (C ABI v35,
+    /// E25 T2a; `h3_sim::reward::potential`).
+    pub potential: *mut f32,
 }
 
 /// An episode source entry's engine identity (v31, E06 T2c): what a training run's record names,
@@ -245,6 +249,7 @@ unsafe fn with_outputs(
             entry_mask: rows(b.entry_mask, n * ACTION_COUNT),
             final_obs: rows(b.final_obs, n * 2 * OBSERVATION_LEN),
             preview: rows(b.preview, n * PREVIEW_LEN),
+            potential: rows(b.potential, n * 2),
             reports: None,
         }
     });

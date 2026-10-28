@@ -59,3 +59,45 @@ an entry only where a task builds on it.
   with it none is guessed; the report with `--true-worlds`). 140 Python tests with torch on the
   CPU (the CUDA one skipped); the scoped verify, `determinism` and `bench-check --workload
   random-rollouts-full` (−0.01 %) green.
+
+## T2a — Shaping and the training mix (2026-10-28)
+
+- **The mix** (the user, 2026-10-28: "no neutral battles for now"): the faithful system actor
+  trains no agent (decision 2). `run.trainable` refuses a `system_share` above 0 and any neutral
+  kind's weight (wandering, guards, a neutral town: its defender is the system actor);
+  `ppo.train` and `ppo.resume` call it. A config may still name them, so E06's configs
+  (`e06-t6b`, `e06-t7`, `e06-mana`, `e06-order`) and records stay valid documents; the trainer
+  starts or resumes none of them. The mechanisms (`system_share`'s entries, the neutral share)
+  stay in the code for a fair system actor later. The agent's proposal, the neutral side in
+  self-play, was not taken: it needs a batch seat for it, a later choice.
+- **Φ from the batch** (the agent's choice, change freely; the queue left it open): Python cannot
+  compute it (the observation holds no creature values), so `h3_sim::reward::potential`
+  (`Balance::standing`: each side's losses by its stacks' current counts, its hero's mana spent
+  so far, reward v1's scale) is a batch output, `Outputs::potential` / `H3BatchBuffers.potential`
+  ([N, 2], written only when asked, as the kill preview; C ABI v35 with T1a, T1b, since v35 is
+  not merged yet), `BattleBatch(potential=True)`. It reads the whole state, as the reward does,
+  and is never an agent's input. At a decided battle's end it is reward v1's balance but for the
+  end's corrections (a temporary resurrection, BAT-MAG-035, -038; none of the test's 40 sampled
+  battles meets one).
+- **The shaping** (`[ppo] shaping`, off by default; `Trainer.shape`): a learning side's
+  transition gains Φ(s′) − Φ(s), Φ the batch's potential at the side's next decision, 0 at the
+  episode's end (decided or cut), and for its first transition the episode's start (Φ 0, not its
+  first decision's: the opponent may have struck first). So each side's shaping sums to 0 and an
+  episode's shaped return is its reward v1 (with a cut's `-truncation_penalty`) exactly; the part
+  before a side's first decision only shifts its first value target. Refused with
+  `truncation_penalty` 0: the batch reports no potential of a truncated battle's last state to
+  bootstrap beside. Its per-(env, side) state lives with the episodes in flight (a resume starts
+  it at 0), so the checkpoint format is unchanged.
+- **T2b's configs:** `configs/e25-control.toml` (`t7-1`'s settings with the player kinds alone at
+  its 4 : 2 : 1, `kinds = [0, 0, 100, 50, 25, 0]`; the ladders still play the neutral set and the
+  system actor) and `configs/e25-shaping.toml` (the same with `shaping = true`), 20 M samples
+  each until the length is agreed (decision 5).
+- **Tests:** `h3-sim` `the_potential_is_the_balance_so_far_and_reward_v1s_at_the_end` (40
+  sampled encounters of every kind played at random: 0 at the start, zero-sum at every step,
+  `Balance::of`'s at the end), `the_batch_writes_each_envs_potential`; `h3-ffi` (the ABI's
+  potential is the Rust batch's), the C smoke test (zero-sum); Python `test_abi.py` (the
+  buffers' layout), `test_batch.py` (written on request, 0 at an episode's start, zero-sum),
+  `test_run.py` (the refused mixes, E06's configs refused and T2b's trainable, `shaping` without
+  the penalty refused), `test_train.py` (`Trainer.shape` by hand; two trainers alike but for
+  `shaping` play the same rollout, and each side's ended episode returns the same). 148 Python
+  tests with torch on the CPU (the CUDA one skipped).

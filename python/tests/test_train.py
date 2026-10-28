@@ -655,6 +655,79 @@ def test_the_system_actor_plays_a_share_of_the_player_kinds_against_the_learner(
     assert stats["update_samples"] > 0 and np.isfinite(stats["policy_loss"])
 
 
+def test_shaping_adds_the_potentials_differences_and_sums_to_0_over_an_episode() -> None:
+    # E25 T2a: `Trainer.shape` on hand-made calls of one env: the attacker's transitions close at
+    # its next decisions (Φ 0.2, then 0.5) and at the episode's end (Φ 0), the defender's first
+    # (opened at Φ 0, the start's) at the end. Each side's shaping sums to 0 over the episode, and
+    # the next episode starts at 0.
+    from h3env.seats import Closed
+
+    trainer = Trainer(Config(**{**SMALL, "envs": 1}, shaping=True))
+
+    class Batch:
+        def __init__(self, potential: float, done: bool) -> None:
+            self.potential = np.array([[potential, -potential]], np.float32)
+            self.done = np.array([done], np.uint8)
+
+    def call(potential: float, attacker: bool, defender: bool, done: bool) -> np.ndarray:
+        trainer.batch = Batch(potential, done)
+        closed = np.array([[attacker, defender]])
+        terminal = closed & done
+        return trainer.shape(Closed(closed, np.zeros((1, 2), np.float32), terminal, terminal))
+
+    steps = [
+        call(0.2, True, False, False),
+        call(0.5, True, False, False),
+        call(0.9, True, True, True),
+    ]
+    assert [round(float(x[0, 0]), 6) for x in steps] == [0.2, 0.3, -0.5]
+    assert [round(float(x[0, 1]), 6) for x in steps] == [0.0, 0.0, 0.0]
+    assert sum(float(x[0, 0]) for x in steps) == pytest.approx(0.0, abs=1e-7)
+    assert (trainer.phi == 0).all()
+    # A defender that closed once mid-episode (Φ −0.4 from its side) and then at the end.
+    defender = [call(0.4, False, True, False), call(0.7, False, True, True)]
+    assert [round(float(x[0, 1]), 6) for x in defender] == [-0.4, 0.4]
+    # Without shaping: nothing.
+    plain = Trainer(Config(**{**SMALL, "envs": 1}))
+    plain.batch = Batch(0.3, False)
+    none = np.zeros((1, 2), bool)
+    assert (plain.shape(Closed(~none, np.zeros((1, 2), np.float32), none, none)) == 0).all()
+
+
+def test_a_shaped_episodes_return_is_its_reward_v1() -> None:
+    # E25 T2a (the acceptance): two trainers alike but for `shaping` play the same rollout (the
+    # potential is an output only); each side's episode that ends in it returns the same at γ 1,
+    # decided or cut (its `-truncation_penalty`), while the shaped rewards differ on the way.
+    def rollout(shaping: bool):
+        config = Config(
+            **{**SMALL, "max_steps": 40, "rollout": 96},
+            self_play=1.0,
+            kinds=[0, 0, 1, 0, 0, 0],
+            shaping=shaping,
+        )
+        trainer = Trainer(config)
+        trainer.collect()
+        return trainer.rollout
+
+    plain, shaped = rollout(False), rollout(True)
+    assert np.array_equal(plain.entry, shaped.entry) and np.array_equal(plain.side, shaped.side)
+    ended, moved = 0, False
+    for e in range(SMALL["envs"]):
+        for side in (0, 1):
+            sums = [0.0, 0.0]
+            for t in range(plain.side.shape[0]):
+                if plain.side[t, e] != side or not plain.closed[t, e]:
+                    continue
+                sums[0] += float(plain.reward[t, e])
+                sums[1] += float(shaped.reward[t, e])
+                moved |= plain.reward[t, e] != shaped.reward[t, e]
+                if plain.terminal[t, e]:
+                    assert sums[1] == pytest.approx(sums[0], abs=1e-5), (e, side)
+                    ended += 1
+                    sums = [0.0, 0.0]
+    assert ended >= 8 and moved
+
+
 def test_the_ladder_scores_at_reward_v1s_settings_whatever_the_run_trains_with() -> None:
     # The mana-price experiment (decision 10): `[env] currency` and `mana_price` shape the
     # training's reward only; the ladders score at reward v1's, as the bots' tables do.

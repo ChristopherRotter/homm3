@@ -1,6 +1,6 @@
 # E25 — Battle AI v2
 
-Status: **in progress**, refined 2026-10-27 (AI-Q10); increment 1: T1a, T1b done · Lane: **ai** ·
+Status: **in progress**, refined 2026-10-27 (AI-Q10); increment 1: T1a, T1b, T2a done · Lane: **ai** ·
 Follows E06 (closed 2026-10-27: `t7-1` the battle AI v1, record `E06-log.md`)
 
 ## Goal
@@ -103,13 +103,10 @@ evidence asks for one (then a `cross-lane` change with the battle lane, after th
   search with determinized and with true worlds, beside the sampled policy on the same episodes,
   against the system actor at N 16 and 64, and on the neutral set. The read: whether a search
   gains at all, and what the guess costs.
-- [ ] **T2a Shaping and the training mix** (the sandbox): `[ppo] shaping`, off by default: each
-  learning side's transition gains Φ(s′) − Φ(s), with Φ its reward v1 if the battle ended there
-  and 0 at a terminal (Ng et al. 1999: at γ 1 the optimal policies are unchanged). Φ comes from
-  the batch or from Python: the agent's choice. With it, the training mix without the faithful
-  system actor (decision 2). The agent proposes self-play on the neutral side (the league plays
-  it as any side; the batch must offer that seat) or the neutral kinds at weight 0, decided with
-  the user at T2a's start. A config with `system_share` above 0 is refused.
+- [x] **T2a Shaping and the training mix** (2026-10-28; `E25-log.md` T2a): `[ppo] shaping` (off
+  by default; Φ the batch's potential, `H3BatchBuffers.potential`, C ABI v35), the faithful
+  system actor's mixes refused (`run.trainable`: no `system_share`, no neutral kind; the user:
+  no neutral battles for now), T2b's configs `e25-control.toml`, `e25-shaping.toml`.
 - [ ] **T2b The A/B runs** (the user's machine; each run's length agreed when prepared): a control
   (`t7-1`'s settings without the faithful system actor in training) and the same with shaping;
   their ladders (the system actor and the neutral set included) against `t7-1`.

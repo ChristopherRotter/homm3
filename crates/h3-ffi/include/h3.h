@@ -178,6 +178,8 @@ typedef struct H3BatchBuffers {
     float *preview;         /* [N, h3_preview_len()] (v33): the acting side's previewed kills of
                                each attack and shot entry from h3_preview_base(), the least and
                                the greatest; 0 for an entry not legal */
+    float *potential;       /* [N, 2] (v35, E25 T2a): each side's reward v1 as if the battle
+                               ended now (a training's shaping); 0 for an env that gave up */
 } H3BatchBuffers;
 
 /* NULL on error, its message written into error[0..error_len] as for h3_env_create_scenario. */
