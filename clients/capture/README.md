@@ -477,7 +477,7 @@ the same way:
 | `treasury[:<colour>]`, `offering:<skill>`, `map_kind` | since E08 T57: a player's seven resources (`40 wood, …, 30900 gold`), how many of the game's Universities offer the skill (`2 of 30`), the game's version (`RoE`, `AB`, `SoD`: game +0x1F698) |
 | `opening:rows`, `morale:start[:<side>]`, `luck:start[:<side>]` | since E08 T57: the last battle's stacks at its opening as table rows (side, army slot, hex, creature, count; a `rows` record), and each stack's morale or luck as set at the start (`20 Pikemen -3, 10 Centaurs -3`) |
 | `boat`, `boat[<hero>]`, `boat:x,y[,level]`, `boats:used` | since E08 T68a: a boat's record (game +0x4E3BC, `structs.toml` "boat": `tile 20,4,0; in use 1; type 0; facing 2; owner red; captain E8-1; aboard 1`): the step's hero's (the boat in use whose captain it is, the one it is aboard first), a hero's by name, the one in use whose record stands on a tile; `none`; how many records are in use |
-| `drawn` | since E08 T68a: what the view draws on the step's hero's tile (`h3mem.map_heroes`): `a hero in a boat (type 0, flag 0)`, `a hero`, `no hero` |
+| `drawn` | since E08 T68a: how the view draws the step's hero, by `h3mem.map_heroes`' rule read from its record (a turn's start lifts the selected hero off its tile): `in a boat (type 0, flag 0)`, `in a boat (no boat record)`, `on foot` |
 | `opening:field`, `battlefield:ship`, `blocked` | since E08 T68a: the last battle's opening in one line (`terrain sand, special field shore, ship flag 0, blocked hexes 23, 24`), its ship flag (battle manager +0x53C6: 0 or 1), the hexes an obstacle blocks (the hex records' flag 0x2 on a hex no stack stands on; `none`) |
 | `again`, `key` | since E08 T68a: whether a walk with `again_if` clicked a second time (yes or no); what a `key` step did: `stepped`, `scrolled` (the view moved, the hero did not) or `nothing` |
 
@@ -543,6 +543,11 @@ only when its first showed that many path marks (E8-4: the diagonal clicked agai
 marks are the single step). `only_if = "aboard"` plays a step only while its hero is in a boat
 (status bit 18); otherwise its fields read `not played: <hero> is not in a boat` (E8-3's landings
 after the first). A battle's record keeps its ship flag and the obstacles' hexes at the opening.
+Since T68a the path's marks (`marks`, `mark`, `path_tiles`) are read only while the map shows a
+path (adventure manager +0x4C, as `path_arrows`): a click that finds no path leaves the last
+path's arrows in memory, and batch E8a's second run read them as a walker's marks.
+`dump = "<name>"` saves the screen after the step as `<out>/<name>.xwd` (`convert` makes a PNG of
+it) for an agent to look at: E8-5's hero on water.
 
 **A new screen** (another recipe): get there by hand once with `Game.click`/`key`, then
 `python3 capture/h3drive.py learn <name> --in x0,y0,x1,y1 [--avoid …] [--also other-state.xwd]`

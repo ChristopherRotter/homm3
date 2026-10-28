@@ -729,7 +729,12 @@ class Mem:
         return 2 if self.read(self.game() + TWO_LEVELS, 1)[0] else 1
 
     def path(self):
-        """The selected hero's path as the map shows it: {(x, y, level): "green" | "red"}."""
+        """The selected hero's path as the map shows it: {(x, y, level): "green" | "red"}; since
+        E08 T68a {} while the manager's +0x4C shows no path (as path_arrows): a click that finds
+        no path leaves the last path's arrows in the array (batch E8a's second run read E8-7c's
+        path as E8-7d's)."""
+        if not self.manager_field(PATH_SHOWN):
+            return {}
         side = self.i32(self.game() + MAP_SIDE)
         tiles = side * side * self.levels()
         frames = struct.unpack(f"<{tiles}H", self.read(self.manager_field(PATH), 2 * tiles))

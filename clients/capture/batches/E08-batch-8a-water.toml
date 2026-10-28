@@ -8,9 +8,11 @@ spec = "experiments/specs/E08-batch-8a-water.toml"
 players = ["Red", "Blue"]
 difficulty = "easy"
 
+# The first step's screen is kept (`dump`): an agent looks at what the view draws under E8-5.
 [[step]]
 encounter = "E8-5"
 hero = "E8-5"
+dump = "E8-5-start"
 record = { "what the screen shows under E8-5 (a boat or not)" = "drawn", "day 1 start: tile, movement points, day's maximum, status flags; boats in use" = ["hero:tile", "hero:points", "hero:day_points", "hero:status", "boats:used"] }
 note = { "worn at the start (the starting bonus)" = "hero:equipment", "backpack at the start" = "hero:backpack", "E8-5's boat" = "boat" }
 

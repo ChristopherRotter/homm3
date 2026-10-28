@@ -85,6 +85,10 @@ Refined with the user on 2026-10-28 (T65; ADV-Q31). Built like increments 1 to 7
 
 174. **T67 whole** (the user's choice of three, 2026-10-28, `AskUserQuestion`: "Whole (Recommended)"): the writer's sea objects, the spec's fields (`h3-experiment`, `cross-lane` as decisions 170 and 171 accepted), the specs E8a and E8b with their templates and a fresh agent's review in one pull request, as T56 (decision 142). Not chosen: in two (the code; the specs and the review) or in three.
 
+**Round 3** (T68, at its start):
+
+175. **T68 in two parts by batch** (the user's choice of three, 2026-10-28, `AskUserQuestion`: "Two parts by batch (Recommended)"): **T68a** the boat, day's-maximum and in-boat reads, boarding and landing clicks, the arrow key (E8-7), the land battle's opening (E8-15), the harness check, the E8a and E8a-water recipes and runs; **T68b** the sea pickups' words, the restart rule over chest kinds, visits from a boat, a bottle's whole text, the ship flag and blocked hexes at sea, E8-12's defend and retreat, the E8b recipe and run. Each part's runs test the harness code it adds. Not chosen: whole, as T57; the code first and the runs second.
+
 ### Tasks (queue entries in `docs/lanes/adventure/QUEUE.md`; one or two per round, the cut confirmed at each checkpoint)
 
 - **T65 Increment 8 refined** (with increment 7's closure). Done (2026-10-28, `adventure/e08-t65`; decisions 157–159): boats and the sea with the sea's pickups, the first round queued (T66a, T66b).

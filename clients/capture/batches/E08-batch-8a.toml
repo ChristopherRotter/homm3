@@ -103,12 +103,24 @@ end_turn = true
 
 # The marks' cell of E8-7b holds what its key did (no click): stepped, scrolled or nothing.
 
+# After each row a control (T68a's first run): a first click only (`once`) on a land tile whose
+# cheapest path crosses water for a flyer or a water walker and not for a walker, so the record
+# shows the hero's movement in force; E8-7b presses the left arrow, then the keypad's, toward the
+# land west of it (a key that moves nothing there moves nothing anywhere).
+
 [[step]]
 encounter = "E8-7"
 hero = "E8-7a"
 walk = [31, 41]
 record = { "E8-7a (wings, click) | the Flotsam's word before" = ["before:word:31,41", "before:object:31,41"], "E8-7a (wings, click) | the marks (or none)" = "path_tiles", "E8-7a (wings, click) | tile after" = "hero:tile", "E8-7a (wings, click) | movement points before / after" = ["before:hero:points", "hero:points"], "E8-7a (wings, click) | wood, gold before / after" = ["before:resource:wood", "before:resource:gold", "resource:wood", "resource:gold"], "E8-7a (wings, click) | the Flotsam after (word, or gone)" = ["word:31,41", "object:31,41"] }
 note = { "worn at the start (the starting bonus)" = "hero:equipment", "backpack at the start" = "hero:backpack", "E8-7a's messages" = "messages" }
+
+[[step]]
+encounter = "E8-7"
+hero = "E8-7a"
+walk = [32, 39]
+once = true
+note = { "control: E8-7a's path to (32, 39) at a first click (over (31, 40) if it flies): tiles, mark" = ["path_tiles", "mark"] }
 
 [[step]]
 encounter = "E8-7"
@@ -119,6 +131,18 @@ note = { "worn at the start (the starting bonus)" = "hero:equipment", "backpack 
 
 [[step]]
 encounter = "E8-7"
+hero = "E8-7b"
+key = "Left"
+note = { "control: E8-7b's key Left (stepped, scrolled or nothing; tile after)" = ["key", "hero:tile"] }
+
+[[step]]
+encounter = "E8-7"
+hero = "E8-7b"
+key = "KP_Left"
+note = { "control: E8-7b's key KP_Left (stepped, scrolled or nothing; tile after)" = ["key", "hero:tile"] }
+
+[[step]]
+encounter = "E8-7"
 hero = "E8-7c"
 walk = [31, 45]
 record = { "E8-7c (levitation, click) | the Flotsam's word before" = ["before:word:31,45", "before:object:31,45"], "E8-7c (levitation, click) | the marks (or none)" = "path_tiles", "E8-7c (levitation, click) | tile after" = "hero:tile", "E8-7c (levitation, click) | movement points before / after" = ["before:hero:points", "hero:points"], "E8-7c (levitation, click) | wood, gold before / after" = ["before:resource:wood", "before:resource:gold", "resource:wood", "resource:gold"], "E8-7c (levitation, click) | the Flotsam after (word, or gone)" = ["word:31,45", "object:31,45"] }
@@ -126,10 +150,24 @@ note = { "worn at the start (the starting bonus)" = "hero:equipment", "backpack 
 
 [[step]]
 encounter = "E8-7"
+hero = "E8-7c"
+walk = [32, 49]
+once = true
+note = { "control: E8-7c's path to (32, 49) at a first click (over the water if it walks on it): tiles, mark" = ["path_tiles", "mark"] }
+
+[[step]]
+encounter = "E8-7"
 hero = "E8-7d"
 walk = [31, 47]
 record = { "E8-7d (walker, click) | the Flotsam's word before" = ["before:word:31,47", "before:object:31,47"], "E8-7d (walker, click) | the marks (or none)" = "path_tiles", "E8-7d (walker, click) | tile after" = "hero:tile", "E8-7d (walker, click) | movement points before / after" = ["before:hero:points", "hero:points"], "E8-7d (walker, click) | wood, gold before / after" = ["before:resource:wood", "before:resource:gold", "resource:wood", "resource:gold"], "E8-7d (walker, click) | the Flotsam after (word, or gone)" = ["word:31,47", "object:31,47"] }
 note = { "worn at the start (the starting bonus)" = "hero:equipment", "backpack at the start" = "hero:backpack", "E8-7d's messages" = "messages" }
+
+[[step]]
+encounter = "E8-7"
+hero = "E8-7d"
+walk = [32, 49]
+once = true
+note = { "control: E8-7d's path to (32, 49) at a first click (on land: (30, 48), (31, 49)): tiles, mark" = ["path_tiles", "mark"] }
 
 # Blue's day 1 ends: Red's day 2.
 [[step]]
@@ -295,14 +333,16 @@ hero = "E8-4"
 walk = [34, 30]
 record = { "after (34, 30) | tile" = "hero:tile", "after (34, 30) | movement points" = "hero:points" }
 
-# The diagonal (35, 31) is clicked again only when its first click showed the single step
-# (`again_if`); the straight (35, 30) the same way.
+# The diagonal (35, 31) is clicked once only (`once`): T68a's first run clicked it again (its
+# marks the single step, in the next day's colour), the hero stayed and its 80 points became 0,
+# so the straight step was never tried with 80. The straight (35, 30) is clicked again only when
+# its first click shows the single step (`again_if`).
 
 [[step]]
 encounter = "E8-4"
 hero = "E8-4"
 walk = [35, 31]
-again_if = { marks = 1 }
+once = true
 record = { "after the click on (35, 31) | tile" = "hero:tile", "after the click on (35, 31) | movement points" = "hero:points", "+the marks of the click on (35, 31) (tiles, colour; clicked again or not), and of the click on (35, 30)" = ["path_tiles", "mark", "again"] }
 
 [[step]]

@@ -1443,15 +1443,17 @@ def boat_value(mem, hero, what):
 
 
 def drawn_text(mem, hero):
-    """What the view draws on the hero's tile (E08 T68a, batch E8a-water's E8-5): `a hero in a
-    boat (type t, flag c)`, `a hero` or `no hero` (h3mem.map_heroes)."""
-    x, y, z = hero["tile"]
-    heroes, _ = mem.map_heroes(z)
-    found = [h for h in heroes if h[:2] == [x, y]]
+    """How the view draws the hero (E08 T68a, batch E8a-water's E8-5), by h3mem.map_heroes' rule
+    read from the hero's record (the original lifts its selected hero off its tile at a turn's
+    start, so the tile shows no hero then): `in a boat (type t, flag c)` when its status has bit
+    18 and a boat in use names it aboard, `in a boat (no boat record)` for the bit alone, else
+    `on foot`."""
+    if not hero["status"] & h3mem.IN_BOAT:
+        return "on foot"
+    found = [b for b in mem.boats() if b["used"] and b["hero"] == hero["index"] and b["aboard"]]
     if not found:
-        return "no hero"
-    boat_type, flag = found[0][6:8]
-    return f"a hero in a boat (type {boat_type}, flag {flag})" if boat_type >= 0 else "a hero"
+        return "in a boat (no boat record)"
+    return f"in a boat (type {found[0]['type']}, flag {found[0]['colour']})"
 
 
 def object_text(mem, x, y, z=0):
@@ -1984,6 +1986,11 @@ def batch(recipe_path, map_path=None, out=None):
                     obs = {"hero": step["hero"]}
                 obs.update(before=before, after=snapshot(mem, index), pre=pre)
             obs["encounter"] = step.get("encounter")
+            if step.get("dump"):
+                # E08 T68a: the screen after the step (`dump = "<name>"`: <out>/<name>.xwd), for an
+                # agent to look at (batch E8a-water's E8-5: what the view draws under the hero).
+                game.dump(out / f"{step['dump']}.xwd")
+                obs["dump"] = str(out / f"{step['dump']}.xwd")
             # E08 T47a: an action's records and notes were read right after it; the step's
             # after the step.
             obs["record"] = {}

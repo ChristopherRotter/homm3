@@ -20,6 +20,10 @@ Moved to `TRAPS.md`: forks without deep copies, RNG seeds server-only, template 
 
 ## Recent sessions
 
+### 2026-10-28 — increment 8, round 3: T68a, batch E8a's harness and runs (in progress)
+
+Baseline 1788858 (light gates passed; CI on `master` green at 580747c). The user's cut (decision 175): T68 in two by batch. Done: the harness's reads and steps (`adventure/e08-t68a`, pushed), the recipes, E8a-water run (recorded) and E8a run twice; running: E8a's third run (the path marks' fix) and the harness check. Next: the results into `experiments/results/`, the docs, the pull request.
+
 ### 2026-10-28 — increment 8, round 2: T67, batch E8's maps and specs
 
 Baseline 2e5cf6a (#552 merged; CI on `master` green). The original data staged from the user's computer (`Heroes3.exe`, both bitmap archives, `H3sprite.lod`, `maps.tar`, `extracted.tar`). The user's cut (decision 174): whole. `h3_map::writer`: boats, Flotsam, the Sea Chest, the Survivor and holes as plain objects, a bottle's or sign's text (`RewardBody::Sign`), `tests/sea.rs`; `h3-experiment` (`cross-lane`): `[[map.bottle]]`, a monster's own `at`; the specs E8a (eight rows), its water map (E8-5) and E8b (seven rows) with their templates, every route checked by a throwaway cheapest-path search, a fresh agent's review (nine findings, all taken); the holes' and winds' picture sizes read for T72. No version. The scoped verify with the original data: see the pull request. Pull request: `adventure/e08-t67`.
