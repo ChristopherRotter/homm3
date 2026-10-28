@@ -87,9 +87,11 @@ paths = [
     "clients/Cargo.lock",
     # The client foundation both client lanes build on (the user, 2026-10-23, at the client lane's
     # split): the decoders, the compositor, the SDL adapter, the workspace's files and gates, the
-    # string catalogue. Either client lane changes them in its own pull request: an additive change
-    # freely, a change in behaviour noted in the other client lane's inbox; `clients/scripts/check.sh`
-    # runs every client test (docs/08-work-process.md, "Lanes").
+    # string catalogue; and both viewers' common parts `h3-ui` (the clock, the cursor, the dialog
+    # parts, the string catalogue's code, the key table, the music; the user, 2026-10-28, E24 M3
+    # T0). Either client lane changes them in its own pull request: an additive change freely, a
+    # change in behaviour noted in the other client lane's inbox; `clients/scripts/check.sh` runs
+    # every client test (docs/08-work-process.md, "Lanes").
     "clients/Cargo.toml",
     "clients/deny.toml",
     "clients/.gitignore",
@@ -98,6 +100,7 @@ paths = [
     "clients/crates/h3-assets/",
     "clients/crates/h3-render/",
     "clients/crates/h3-sdl/",
+    "clients/crates/h3-ui/",
     "clients/text/",
     # The capture harness (the user, 2026-10-23): any lane changes it, the adventure lane's
     # recipes and reads included, without the `cross-lane` label; a change runs the harness check
