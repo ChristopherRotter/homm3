@@ -16,7 +16,22 @@ the original a reading or a capture finds is an `MCL-Q<n>` in the same task (the
 autonomy contract). Each panel drawn leaves `h3map.py`'s `panels` mask, and `drawn` then
 compares it on every situation and sequence.
 
-### E24 M3 T2 — the adventure screen's dialog at a map's start
+### E24 M3 T2a — the adventure screen's dialog at a map's start, right (in progress)
+
+Cut from T2 with the user (2026-10-28): its first half, kept whole (stills and sequences): the
+reading, the dialog and the resource bar drawn as at a map's start (the buttons' states and
+colours), the parked cursor, `panels` reduced to what T3 to T6 draw, the 40 situations and the 13
+sequences compared again (Move hero's and next hero's changes during a walk replayed). Its
+record: the epic's log, "M3 T2a".
+
+### E24 M3 T2b — the frame's fixed cost
+
+Cut from T2 with the user (2026-10-28): its second half, from the scope below: the frame picture
+and the panels converted and drawn once a viewer, no screen copies, a frame redrawing what
+changed; measured with `map-measure.cmd`'s "a frame made in" before and after on the user's
+machine. **Depends on:** T2a. **Status:** ready after T2a.
+
+### E24 M3 T2 — the adventure screen's dialog at a map's start (cut into T2a and T2b)
 
 - **Scope:** read `adventure_full_update` 0x417420's panels (the manager's +0x44) and the
   adventure dialog +0x50: its items in the order added and drawn, each one's id, place, picture
