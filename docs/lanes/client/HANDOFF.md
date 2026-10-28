@@ -8,12 +8,13 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   accepted, CLT-Q22 to Q24 answered (a); the lane split at M3 T9c, CLT-Q18: the battle client
   here, the adventure map client the map-client lane's E24). **M5 (live play)** (QUEUE, the
   epic's M5): hot seat in-process first, then a game on a server and accounts; the new
-  dependencies the user's at T6 and T7. **T1 to T3, T4a, T4b done** (the playhead; the timeline
-  that grows, `live.rs`; the click's command; hot seat in the window; the spell book, design
-  §7.17; the hero's aim, §7.18; the message box, Retreat and Surrender, §7.19; the result window,
-  §7.20, its Bink decoder `h3-bink`, CLT-Q29, and its clip, §7.21). **Next: M5 T4c** (Auto Combat,
-  the tactics phase), then T5. Open PR: #554, T4b2b's (`client/e17-m5-t4b2b`; check it first). The
-  inbox's CLT-Q30 task (`h3-bink` as BINKW32's float DCT) waits for a free slot.
+  dependencies the user's at T6 and T7. **T1 to T3, T4a, T4b, T4c1 done** (the playhead; the
+  timeline that grows, `live.rs`; the click's command; hot seat in the window; the spell book,
+  design §7.17; the hero's aim, §7.18; the message box, Retreat and Surrender, §7.19; the result
+  window, §7.20, its Bink decoder `h3-bink`, CLT-Q29, and its clip, §7.21; Auto Combat, §7.22,
+  `h3_view::auto`). **Next: M5 T4c2** (the tactics phase), then T5. Open PR: T4c1's
+  (`client/e17-m5-t4c1`; check it first). The inbox's CLT-Q30 task (`h3-bink` as BINKW32's float
+  DCT) waits for a free slot.
   Workspace `clients/` (`clients/README.md`), gates `clients/scripts/check.sh`; ADR-0020 (+ drafts
   in `adr-drafts/`), ADR-0024; the harness `clients/capture/README.md`; design §3–§10; records in
   `E17-log.md`.
@@ -41,7 +42,13 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
 
 ## Recent sessions
 
-- **2026-10-28, E17 M5 T4b2b (done; #554 open: check it first).** T4b2b kept whole by the user;
+- **2026-10-28, E17 M5 T4c1 (done; its PR open: check it first).** T4c cut in two with the
+  user (T4c1 Auto Combat, T4c2 the tactics phase). Read the switch, the stop (the input queue's
+  read as a turn starts), the panel and the mouse (design §7.22). Built `h3_view::auto`, the
+  panel's `Autoplay`, the window's switch and stop (the bot plays the human's side), `--auto`.
+  `auto` and `auto-stop` recorded: panels and cursors exact; review items 24 to 27. No question.
+
+- **2026-10-28, E17 M5 T4b2b (done; #554 merged).** T4b2b kept whole by the user;
   `BINKW32.DLL` found by captures and black-box runs (`binkprobe.exe`), its colour tables and DCT
   read with the user's leave. Read the playback (design §7.21). Built `h3_view::clip`,
   `Draw::Video`, `videos.rs`; the harness's clips and the DLL's clock. CLT-Q30 (the DLL's float
@@ -54,12 +61,3 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
   video` and `bink-check.sh` (FFmpeg through PyAV). The ten clips and eight samples byte for
   byte as FFmpeg; its command line loses the chroma's hidden rows (three clips, review item 16).
   Review items 15 to 18.
-
-- **2026-10-28, E17 M5 T4b1 (done; #547 merged).** T4b cut in two with the
-  user (CLT-Q29: the clip T4b2, a port of FFmpeg's Bink decoder; the twelve clips copied to
-  `original-data/battle-videos.vid`). Read the window (design §7.20: 0x4702D0 whole, its handler
-  0x471B90, `battle_end`'s calls, `battle_experience` 0x46A350, the DEF item's mirror). Built
-  `h3_view::result`, `results::window` (the engine's outcome), the window's, stills' and
-  sequences' result; the heroes' portraits, a DEF item's mirror. `result-retreat`,
-  `result-surrender` exact; `end`'s last frame exact, `defended`'s but 122 artifacts; review
-  items 12–14.

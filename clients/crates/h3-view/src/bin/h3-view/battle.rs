@@ -496,6 +496,17 @@ impl<'g> Battle<'g> {
         Auto::of(&self.inputs, &starts).from_start(starts.len() - 1)
     }
 
+    /// When the first turn started after `at` starts (E17 M5 T4c1: the one a stop pressed at `at`
+    /// comes at), if the battle grew that far.
+    pub fn turn_after(&self, at: u32) -> Option<u32> {
+        self.played
+            .timeline()
+            .turns
+            .iter()
+            .map(|&(t, _)| t)
+            .find(|&t| t > at)
+    }
+
     /// Whether Auto Combat is on for the turns to come (E17 M5 T4c1): a key or a button pressed
     /// now stops it ([`Battle::stop_auto`]).
     pub fn auto_on(&self) -> bool {

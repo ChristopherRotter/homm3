@@ -56,6 +56,13 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   (the battle takes none meanwhile), so a sequence's `cast:`/`aim:` start with `Book`. The aims'
   targets are the engine's, computed where the battle is (`scenario::Turned::of`, `Live`): a
   turn's `aims` hold only the spells asked (the window adds the book's choice as it closes).
+- Auto Combat (E17 M5 T4c1) is the inputs' (`Input::Auto`, `Input::Stop`; `h3_view::auto`): the
+  battle reads them before it decides a turn, so they go through `Battle::switch_auto` and
+  `stop_auto` (which update its own inputs at once), never straight into the window's list. The
+  turn after a command is decided as it starts (`Battle::play_next`), not when the command before
+  it is taken: a stop pressed during that command's action makes a human's turn wait, its outline
+  put back (`Growing::outline_waiting`). While it is on, every key but the window's own and every
+  press is a stop first (the window's event loop).
 - A message box (E17 M5 T4a) is modal as the book: while `Battle::message_open` the window's
   `next_frame` returns at once (else it hangs scanning idle steps), every key but the viewer's
   own goes to the box (Escape is Cancel's, never the window's quit) and the mouse's moves reach

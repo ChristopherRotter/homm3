@@ -195,8 +195,14 @@ the stacks created mid-battle.
         DCT: listed, exact later), CLT-Q31 (two timing slips: fixed, the original's for the
         comparisons); `result-*` and `end` exact but the DCT's pixels, `defended` as before plus
         them.
-  - **T4c, Auto Combat and the tactics phase:** the panel dimmed, the tactics phase's panel
-    (0x46C050).
+  - **T4c, Auto Combat and the tactics phase** (cut in two by the user, 2026-10-28):
+    - **T4c1, Auto Combat** (done 2026-10-28; design §7.22): read (the switch, the stop by the
+      input queue's read at a turn's start, the panel dimmed with its button selected, the
+      mouse), built (`h3_view::auto`, the panel's `Autoplay`, the window's switch and stop, the
+      bot playing the human's side, `--auto`); `auto` and `auto-stop` recorded, their panels and
+      cursors exact.
+    - **T4c2, the tactics phase:** its panel (0x46C050), the stacks placed in the zone, its
+      end.
 - **T5, what a played battle shows:** the created stacks (`StackCreated`: Summon Elemental,
   Clone; a Pit Lord's `RoseFromCorpse`) with their dissolve (`screen_dissolve` 0x602DC0's blend,
   Sacrifice's victim's too), a clone's `Vanished`, Teleport's dissolve; the panel's side by each
@@ -370,3 +376,17 @@ M3 at its review, T9b, M4 at its review, T3c). The next milestone's list starts 
 23. Not modelled (T4b2b): in the original a redraw of the window while its clip stands at its
     first frame (a press over the window in its first 133 ms) delays the clip a frame more; the
     client's own timing (CLT-Q31) has no such delay, the comparisons' none either.
+24. Auto Combat's settings (T4c1): the client's bot plays every stack of the human's side, as the
+    original with all its Auto Combat settings on (`Combat Auto Creatures`, the spells, the
+    Catapult, the Ballista, the tent); no options dialog yet. The bot casts nothing and never
+    leaves, so the computer's casts for the human's hero and its retreat question (design §7.22)
+    are not built.
+25. The window's stop (T4c1): every key but the window's own (the table's `Window` commands: Esc
+    quits even while Auto Combat plays) and every press; the turn after a stop is decided as it
+    starts (`Battle::play_next`), the outline of a human's turn it stops at put back
+    (`Growing::outline_waiting`).
+26. The formats (T4c1): `Input::Auto` and `Input::Stop` in `h3_view::mouse::track`, the
+    sequences' `key:a` read by the original's key table, a sequence's end after its last `at:`
+    action (`hover` compared to 1 500 ms, as the harness records it).
+27. `--auto <n>` (T4c1): an unattended run switches Auto Combat on at the human's n-th turn and
+    stops it by a press two commands later; the battle checked against the bot's at once.

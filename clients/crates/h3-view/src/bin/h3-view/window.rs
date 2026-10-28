@@ -490,6 +490,9 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
     let mut inputs: Vec<Input> = Vec::new();
     let mut scrolls: Vec<(u32, i64)> = Vec::new();
     let mut held: Option<Held> = None;
+    // A battle's own key that stopped Auto Combat, and when (E17 M5 T4c1): it acts on the turn
+    // the stop comes at if a human's (0x474625).
+    let mut stopped_by: Option<(Do, u32)> = None;
     // Either Control key held (E24 M3 T1b: a chord's Ctrl+).
     let mut ctrl = [false; 2];
     let mut report = Report::default();
@@ -533,6 +536,34 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
         if let Some(p) = presser.as_mut() {
             grew |= p.press(&mut battle, &mut inputs, clock.ms(win.ticks_ns()))?;
         }
+        // The key that stopped Auto Combat acts on the turn it stops at, a human's: there the
+        // battle hands it to its key handler (0x474625; E17 M5 T4c1); a computer's drops it.
+        if let Some((command, pressed)) = stopped_by
+            && let Some(start) = battle.turn_after(pressed)
+        {
+            let last = battle.timeline().turns.last().map(|&(t, _)| t);
+            if battle.waiting() && last == Some(start) {
+                stopped_by = None;
+                match command {
+                    Do::LogUp | Do::LogDown => {
+                        scrolls.push((start, if command == Do::LogUp { -1 } else { 1 }));
+                    }
+                    _ => {
+                        let at = clock.ms(win.ticks_ns()).max(start);
+                        if let Some(spell) = battle.dragon_aim(at) {
+                            inputs.push(Input::Aim {
+                                at,
+                                spell,
+                                creature: true,
+                            });
+                        }
+                    }
+                }
+                mouse_changed = true;
+            } else if last > Some(start) {
+                stopped_by = None;
+            }
+        }
         for event in win.wait(timeout) {
             let now = win.ticks_ns();
             let at = clock.ms(now);
@@ -572,6 +603,9 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                         && !matches!(command, Some(Do::Window(_)))
                         && battle.stop_auto(at, &mut inputs)
                     {
+                        stopped_by = command
+                            .filter(|c| matches!(c, Do::LogUp | Do::LogDown | Do::DragonSpell))
+                            .map(|c| (c, at));
                         mouse_changed = true;
                         continue;
                     }

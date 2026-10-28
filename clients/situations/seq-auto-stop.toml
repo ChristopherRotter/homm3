@@ -1,0 +1,53 @@
+# E17 M5 T4c1: Auto Combat stopped on a human's turn (sequences.toml, `auto-stop`): the melee's
+# battle with Royal Griffins for the Pikemen, so that the Griffins' turn (speed 10 on grass, native)
+# follows the Angels'. On grass at the capture set's tile, the obstacles the grass situation's.
+
+[scenario]
+id = "sequence-auto-stop"
+# Red human, Blue a computer, as the original's map (`h3-view situation`): the panel's buttons
+# lit on the human's turn (E17 M3 T6a).
+human = ["attacker"]
+packs = ["base"]
+profile = "base:faithful"
+terrain = "base:grass"
+obstacles = [
+    { hexes = [75, 76, 77, 78, 61, 60, 59, 58], anchor = 74, kind = "base:obstacle_22" },
+    { hexes = [91, 92], anchor = 91, kind = "base:obstacle_20" },
+    { hexes = [122, 123], anchor = 122, kind = "base:obstacle_19" },
+]
+
+[[attacker]]
+slot = 0
+creature = "base:angel"
+count = 2
+
+[[attacker]]
+slot = 2
+creature = "base:royal_griffin"
+count = 5
+
+[[defender]]
+slot = 0
+creature = "base:wolf_rider"
+count = 30
+
+[[defender]]
+slot = 2
+creature = "base:goblin"
+count = 15
+
+# The heroes (E17 M3 T3a), as the original's map gets them (`h3-view situation`): Orrin, a
+# Knight, and Crag Hack, a Barbarian, each with 1 in every primary skill.
+[scenario.attacker_hero]
+hero_type = "base:orrin"
+attack = 1
+defense = 1
+power = 1
+knowledge = 1
+
+[scenario.defender_hero]
+hero_type = "base:crag_hack"
+attack = 1
+defense = 1
+power = 1
+knowledge = 1

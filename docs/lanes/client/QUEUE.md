@@ -10,7 +10,7 @@ the adventure map client being the map-client lane's E24). M5 (live play) refine
 closure (T3c, 2026-10-27, with the user): hot seat in-process first, then a game on a server;
 its tasks below, in order (T1 and T2 done 2026-10-27, each cut in two by the user; T2b whole,
 the user; T3 cut in two, T3a done 2026-10-27, T3b 2026-10-28; T4 cut in three, T4a done
-2026-10-28, T4b cut in two, T4b1 done 2026-10-28). The original
+2026-10-28, T4b cut in two, T4b1 done 2026-10-28, T4b2 and T4c1 done 2026-10-28). The original
 files: stage them from the user's `original-data/install/` (one large file per staging call; the
 user's computer must be online); never from the installation. The captures need the five DLLs,
 `Heroes3.snd`, `H3ab_ahd.snd` and `H3ab_ahd.vid` too; the harness's runbook:
@@ -23,15 +23,19 @@ check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gat
 
 Cut in three by the user on 2026-10-28 (T4a, the message box, Retreat and Surrender, done
 2026-10-28; T4b cut in two, T4b1 done 2026-10-28; T4b2 cut in two, T4b2a and T4b2b done
-2026-10-28; T4c below). The detail: `QUEUE-ARCHIVE.md`, 2026-10-21 (T8) and
-2026-10-20 (T6a).
+2026-10-28; T4c cut in two, T4c1 Auto Combat done 2026-10-28; T4c2 below). The detail:
+`QUEUE-ARCHIVE.md`, 2026-10-21 (T8) and 2026-10-20 (T6a).
 
-#### T4c — Auto Combat and the tactics phase
+#### T4c2 — the tactics phase
 
-- **Scope:** Auto Combat (its button selected, the panel dimmed while the stacks play
-  themselves), the tactics phase's panel (0x46C050) and its end; read, drawn, recorded.
-- **Acceptance:** each still and a sequence through each as recorded, or each difference
-  listed; the Definition of Done.
+- **Scope:** the tactics phase's panel (0x46C050: the spell book, Wait and Defend disabled, the
+  controls 2300 and 30722 enabled by `battle_controls_state` in the phase; its vtable 0x63D430,
+  +0xC 0x46C290), the stacks placed in the zone (the cursor, the zone's hexes), the phase's end
+  and round 1's start; read, drawn, recorded (a hero with Tactics; `h3adv.py` ends a tactics
+  phase, E08 T47a). Auto Combat in the phase (`stack_automatic`: no war machine plays itself
+  then) with it.
+- **Acceptance:** each still and a sequence through it as recorded, or each difference listed;
+  the Definition of Done.
 - **Depends on:** T2b (done 2026-10-27). **Status:** ready.
 
 ### E17 M5 T5 — what a played battle shows

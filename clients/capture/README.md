@@ -247,6 +247,11 @@ situation` refuses other mana, writes the book into slot 17 and numbers its spel
 (0 to 11: row by row, the left page first; the first opening shows the combat spells of all
 schools, sorted by level, then school, then name) and then the target hex if the spell takes one.
 A Faerie Dragon casts its drawn spell by a click on its target (`hex:<n>`: the cursor's cast).
+`key:a` (E17 M5 T4c1, design §7.22) switches Auto Combat on at a human's turn: the computer acts
+in the same millisecond; while it plays, a `key:` or a click (`hex:`, `click:`) stops it as the next
+turn starts and does nothing else (`auto`, `auto-stop`). Press during an action after an `at:<ms>`,
+never a `step:<ms>`: a step jumps the clock and the action's frames with it (the sequence then ends
+`ms` after the `at:`).
 `aim:<k>:<n>` (E17 M5 T3b, design §7.18) opens the book and clicks its place `k`, whose spell
 (numbered `n` in the original: the viewer's, the harness ignores it) takes a target: the aim is
 left under way with the mouse at the place, for `move:`, `at:` (its frames: the spell cursor's

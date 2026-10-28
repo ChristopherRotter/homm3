@@ -3179,6 +3179,47 @@ the captures and black-box runs of the DLL, reading its code if that did not set
   300). The whole situation set again for the harness's change (below).
 - **Found:** CLT-Q30 and CLT-Q31 (asked and answered). Review items 19 to 23.
 
+### M5 T4c1 — Auto Combat (2026-10-28)
+
+On `client/e17-m5-t4c1`, the user present. The sandbox new; every file staged as for T4b2b;
+`master` at `e69bc15`. Asked at the start: the user cut T4c in two (T4c1 Auto Combat, T4c2 the
+tactics phase).
+
+- **Read** (design §7.22): `battle_buttons`' 2004 (0x474E5A: +0x132C4 toggled), `battle_loop_turn`
+  from the tick to its action (the stop's read 0x47419B to 0x47425B; the computer's action
+  0x4744CF; the message handed to `battle_buttons` 0x474625), `battle_controls_state`'s Auto
+  Combat paths (the flush skipped, the dimming and the selection 0x4784CA to 0x478520, the
+  unselection 0x47864A, the end's cursor and mouse), `battle_panel_disable` 0x46BF90, the panels'
+  vtables, the input manager's mouse messages 0x4EC290 (`input_mouse_message`: the kinds 4, 8,
+  0x10, 0x20, 0x40), `ai_battle_action`'s question (+0x1402F), `ai_hero_cast_turn`'s gate (the
+  setting 0x698798). Six map entries amended, one new.
+- **Explored** (scratch runs, not committed): A at the melee's opening plays the Angels at once;
+  `step:` jumps hide the timing (an `at:` steps 1 ms at a time); A again during the flight stops
+  it as the Wolf Riders' turn starts; on a variant with Royal Griffins after the Angels, D or a
+  click on a hex pressed during the flight stops it as the Griffins' turn starts and gives no
+  Defend, no walk.
+- **Built:** `h3_view::auto` (`Auto::of`, `plays`, `played`, `from_start`), `Input::Auto` and
+  `Input::Stop`, the panel's `Autoplay` (`panel::shown`'s third argument with `Kept`),
+  `Panels::with_auto`, `Growing::outline_waiting`; the binary: `pointer::inputs`' `key:a` by the
+  original's table and the stop by a key or a click, `pointer::auto`, the mouse's automatic turns,
+  `Sequence::until` after an `at:` action (`hover`'s 1 300 to 1 500 ms: as the harness records
+  it, as recorded), `Live::set_auto`, `Battle::switch_auto`, `stop_auto`, `auto_on`,
+  `turn_after`, the turn to come decided as it starts (`play_next`: a stopped human's turn
+  waits, outlined), the window's switch (the button, A) and stop (every key but the window's own,
+  every press; ↑, ↓ and F acting on the human's turn the stop comes at), `--auto <n>`. Tests:
+  `auto`'s, the panel's and the panels' over time, the outline, the inputs, `Live`'s.
+- **Recorded:** `auto` (the melee's battle: A at 0, the mouse to (400, 300), A at 1 500; 9 000
+  ms) and `auto-stop` (`seq-auto-stop.toml`: A at 0, a click on hex 120 at 1 500, the mouse to
+  (300, 350); 6 500 ms): timelines as recorded (101 and 73 changes); 106 and 80 frames, the panel
+  and the cursor exact in every one; the rest exact but the log's rolled lines (listed), the
+  flight's redraw artifacts (as `melee`'s), the strike's start at 2 730 (435 pixels, 222 of them
+  counted as artifacts: the count boxes' partial redraw, as `strike`'s) and `auto`'s 7 530
+  (Orrin's victory, its first frame on the screen a step before memory: 2 400 pixels).
+- **Checked:** `window --check 45 --human attacker --auto 2` on `scenarios/battle.toml` under Xvfb
+  (speed 2): switched on after 1 command, stopped after 3, the battle the bot's at once, 903 of 903
+  frames exact. `drawn`: the 131 others the same.
+- **Found:** no open question; review items 24 to 27.
+
 ## Accepted review lists (M1 to M4)
 
 M1 and M2 moved from the epic file on 2026-10-20 (less start-up reading), unchanged; M3 at its
