@@ -493,9 +493,12 @@ artifacts as on land (GAM-BAT-004). A monster's or an event's survivors stay on 
 water tile takes water's one battlefield `ship` (the deck, `CMBKDECK`), both heroes in boats
 `ship_to_ship` with the same 32 `impassableHexes`; a water tile is never "coastal"
 (`CMap::isCoastalTile`). The tile decides in VCMI, the heroes' flag in the original; they differ
-only where a battle at sea has no hero in a boat (none on the paths above: a water walker never
-stops on water) or a hero in a boat fights on land (none: the landing's battle comes after the
-landing). "If hero on Boat is removed, the Boat disappears" (`GameStatePackVisitor`). `wiki`
+only where a battle on water has no hero in a boat or a hero in a boat fights on land. The second
+never happens (the landing's battle comes after the landing); the first only on D-45's path (§8.1):
+a flyer or water walker on the coast that attacks a monster on the water beside it (4 such
+monsters, §1) fights in the original on the water tile's coast mark (+0xD bit 0x02, a shore
+picture on water: sand and the shore) or, without it, on water's own terrain, in VCMI on the
+deck. "If hero on Boat is removed, the Boat disappears" (`GameStatePackVisitor`). `wiki`
 (Combat; `E04c-battlefields.md` §1): the "Boat" battlefield when "both heroes are in boats", the
 "Boat (Deck)" one for "a hero in a boat against one on land", monsters or locations on a boat;
 (Boat) "the boat disappears" with its defeated hero. **Consensus** on every point.
