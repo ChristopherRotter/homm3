@@ -21,7 +21,7 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   in `E25-archive.md`); T4a (`[network] tactics_rounds`, the agent's tactics bound, Python only;
   T4b's `configs/e25-bound.toml`). **Next:** T4b, `e25-bound-1` on the user's machine (20 M
   proposed), then T5's scale run.
-- **Open pull requests:** E25 T4a's (`claude/practical-fermat-xmv41h`): watch it to its merge.
+- **Open pull requests:** #558 (E25 T4a; `claude/practical-fermat-xmv41h`): watch it to its merge.
   Merged: #534, #539, #555.
 - **Versions:** battle action encoding v13, observation encoding v22, replay format v31
   (CLT-Q4/Q6), the adventure env's action encoding v5 (E08 T63a), C ABI v35 (E25 T1a, T1b, T2a:
