@@ -3047,7 +3047,7 @@ user's `VIDEO.VID` into `original-data/battle-videos.vid` before the computer we
   calls (the cursor, the darkening, the arguments, the experience given after), the experience
   `battle_experience` 0x46A350, the DEF item's constructor 0x4EA720 and its drawer's flag-0x10
   path (0x4EAE6C: the mirror to 0x47BF00), the hero table's portraits. 2 new map entries
-  (0x471B90, 0x597570 inferred), 3 updated.
+  (0x471B90, 0x597570 and 0x5FE9F0 inferred, the deadline 0x697784), 3 updated.
 - **The library:** `result` (`ResultLayout`, `Face`, `Side`, `Texts`, `layout`: the items in the
   executable's order, the id-200 items given ids of their own; `text`, `shown_side`, `backdrop`,
   `behind`, `CURSOR_FRAME`); a DEF item's `mirrored` and `h3-ui`'s `Draw::Button`'s (merged after
@@ -3075,7 +3075,9 @@ user's `VIDEO.VID` into `original-data/battle-videos.vid` before the computer we
   left by `--leave retreat` (8 of 8 frames exact), `result.toml` by `--leave surrender` (7 of 7),
   `seq-end.toml` in hot seat won by the presses (58 of 58), each to its result window ("the result
   window opened at <ms> ms" in the report); a bot-fought `seq-end.toml` with Enter by `xdotool`:
-  the window closed, the run over.
+  the window closed, the run over. The library's tests (299; `h3-ui`'s 56), the binary's (46); the client
+  check (coverage 100 %); the scoped verify with the original data. `master` merged in after
+  #545 (E24 M3 T1a, `h3-ui`): `drawn` all 132 the same after it.
 - **Found:** the clip (T4b2). Nothing of the original to ask about: the two text items it leaves
   empty (0xCB, 0xCE) draw nothing. A hero-less side's face is read but not captured (the
   harness's maps give both sides a hero).
