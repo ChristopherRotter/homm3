@@ -2401,8 +2401,16 @@ panel's Surrender and Retreat (`battle_buttons` 0x474FA1 to 0x475151); the book'
   actions `key:r`, `key:s`, a box's `key:` and `click:` (`spellbook::still`). *Provisional:* the
   viewing player taken as the attacker's when a human plays it here, else the defender's (the
   client knows no adventure map's turn; the executable falls back on the game's highest human
-  colour); Surrender enabled by the engine's price (it also needs the side to be able to retreat:
-  the Shackles of War disable it where the original's panel, 0x478573, may not).
+  colour); Surrender enabled when the engine prices it (its terms: the side may retreat, the
+  enemy has a hero, the ruleset prices it), the original's panel by a hero on both sides outside
+  a town's defence (0x478573): they differ where the side may not retreat.
+- **Checked:** the capture set's `msg-retreat` (0 and 100 ms: the default cursor shows at once),
+  `msg-surrender` (Crag Hack's terms in single quotes, the price 25 750), `msg-poor` (its OK by
+  Enter), `msg-mana` (the book's status line keeps the clicked place's hint: the harness's park
+  move goes to the box), `msg-describe`, `msg-no-one`: exact (`dialogs.toml`, Normal: Red's 20 000
+  gold). `drawn` the other 124 the same. The window (Xvfb, `--check`): `smoke` in hot seat left
+  by Retreat and by Surrender (5 000 gold each) through their questions, every frame read back
+  exact; without gold the surrender's refusal shows and the run fights on.
 
 ## 8. The window, input and audio evaluation (M2 T2)
 

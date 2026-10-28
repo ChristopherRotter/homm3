@@ -191,13 +191,31 @@ pub fn layout(
     match style {
         Style::Ok => {
             let x = (i32_of(width) - BACK[0]) / 2;
-            items.extend(button(layout, (0x7866, OK), &layout.ok, [x, back_y], "Return"));
+            items.extend(button(
+                layout,
+                (0x7866, OK),
+                &layout.ok,
+                [x, back_y],
+                "Return",
+            ));
         }
         Style::OkCancel => {
             let left = (half - 74).max(1);
             let right = (half + 8).min(i32_of(width) - BACK[0]);
-            items.extend(button(layout, (0x7869, YES), &layout.ok, [left, back_y], "Return"));
-            items.extend(button(layout, (0x786A, NO), &layout.cancel, [right, back_y], "Escape"));
+            items.extend(button(
+                layout,
+                (0x7869, YES),
+                &layout.ok,
+                [left, back_y],
+                "Return",
+            ));
+            items.extend(button(
+                layout,
+                (0x786A, NO),
+                &layout.cancel,
+                [right, back_y],
+                "Escape",
+            ));
         }
     }
     let mut texts = BTreeMap::new();
@@ -216,7 +234,10 @@ pub fn layout(
         }));
         items.push(Item::Label(Label {
             id: PICTURE,
-            at: [i32_of(x + (s.size[0] - s.caption[0]) / 2), i32_of(caption_top)],
+            at: [
+                i32_of(x + (s.size[0] - s.caption[0]) / 2),
+                i32_of(caption_top),
+            ],
             size: [i32_of(s.caption[0]), i32_of(s.caption[1])],
             font: layout.caption_font.clone(),
             font_palette: layout.font_palette.clone(),
@@ -348,7 +369,12 @@ fn frame(layout: &MessageLayout, [width, height]: [i64; 2]) -> Vec<Item> {
         })
     };
     let (right, bottom) = (width - PIECE, height - PIECE);
-    for (at, f) in [([0, 0], 0), ([right, 0], 1), ([0, bottom], 2), ([right, bottom], 3)] {
+    for (at, f) in [
+        ([0, 0], 0),
+        ([right, 0], 1),
+        ([0, bottom], 2),
+        ([right, bottom], 3),
+    ] {
         items.push(piece(at, f, id()));
     }
     let mut x = PIECE;

@@ -491,7 +491,9 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                 Event::Quit => break 'run,
                 // A message box over the battle (and the book) takes the mouse and every key but
                 // the viewer's own (E17 M5 T4a): Escape is its Cancel's, never the window's.
-                Event::Key(key) if battle.message_open() && options.run.is_none() && !viewer_key(key) => {
+                Event::Key(key)
+                    if battle.message_open() && options.run.is_none() && !viewer_key(key) =>
+                {
                     let did = battle.message_key(key.name());
                     grew |= message_did(&mut battle, &mut inputs, at, did, &mut book_changed)?;
                 }
@@ -912,7 +914,10 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
             ok &= before && over;
         } else {
             let same = battle.as_the_bot_fights().unwrap_or(Ok(false))?;
-            lines.push(format!("the battle so far is the bot's at once: {}", yes(same)));
+            lines.push(format!(
+                "the battle so far is the bot's at once: {}",
+                yes(same)
+            ));
             ok &= same;
         }
     }

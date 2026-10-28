@@ -9,7 +9,8 @@ Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12, M1 2026-10-13, M2 2026-10
 the adventure map client being the map-client lane's E24). M5 (live play) refined at M4's
 closure (T3c, 2026-10-27, with the user): hot seat in-process first, then a game on a server;
 its tasks below, in order (T1 and T2 done 2026-10-27, each cut in two by the user; T2b whole,
-the user; T3 cut in two, T3a done 2026-10-27, T3b 2026-10-28; T4 cut in three, 2026-10-28). The original
+the user; T3 cut in two, T3a done 2026-10-27, T3b 2026-10-28; T4 cut in three, T4a done
+2026-10-28). The original
 files: stage them from the user's `original-data/install/` (one large file per staging call; the
 user's computer must be online); never from the installation. The captures need the five DLLs,
 `Heroes3.snd`, `H3ab_ahd.snd` and `H3ab_ahd.vid` too; the harness's runbook:
@@ -20,19 +21,9 @@ check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gat
 
 ### E17 M5 T4 — the battle's dialogs
 
-Cut in three by the user on 2026-10-28 (T4a, T4b, T4c below, in order). The detail:
-`QUEUE-ARCHIVE.md`, 2026-10-21 (T8) and 2026-10-20 (T6a).
-
-#### T4a — the message box, Retreat and Surrender
-
-- **Scope:** the message box (`message_box_build` 0x4F6990: its frame, text, buttons and
-  picture), the spell book's refusals (a spell above the hero's mana GENRLTXT 207, "That spell
-  will affect no one!" GENRLTXT 186) and an adventure spell's description (T3a's; design §7.17);
-  Retreat and Surrender with their confirmations and the surrender's price; read, drawn,
-  recorded. `hero_book_button` 0x59E900's refusals need facts the client lacks: listed.
-- **Acceptance:** each box's still as recorded, or each difference listed; battles ended by a
-  surrender and a retreat in the window; the Definition of Done.
-- **Depends on:** T2b (done 2026-10-27). **Status:** in progress (2026-10-28).
+Cut in three by the user on 2026-10-28 (T4a, the message box, Retreat and Surrender, done
+2026-10-28; T4b and T4c below, in order). The detail: `QUEUE-ARCHIVE.md`, 2026-10-21 (T8) and
+2026-10-20 (T6a).
 
 #### T4b — the result window
 
@@ -42,7 +33,7 @@ Cut in three by the user on 2026-10-28 (T4a, T4b, T4c below, in order). The deta
 - **Acceptance:** its still and sequences through it as recorded, or each difference listed;
   battles ended by a surrender, a retreat and a victory in the window, each to its window; the
   Definition of Done.
-- **Depends on:** T4a. **Status:** ready after T4a.
+- **Depends on:** T4a (done 2026-10-28). **Status:** ready.
 
 #### T4c — Auto Combat and the tactics phase
 

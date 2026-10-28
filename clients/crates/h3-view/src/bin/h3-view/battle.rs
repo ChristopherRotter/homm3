@@ -25,13 +25,13 @@ use h3_view::battle_log::Logged;
 use h3_view::compose::compose;
 use h3_view::hero::Heroes;
 use h3_view::layout::{self, BattleLayout};
+use h3_view::message::{Picture, Style};
 use h3_view::mouse::aim::Target;
 use h3_view::mouse::track::{Input, Shown};
 use h3_view::mouse::{self, Field};
 use h3_view::record::{self, Record};
 use h3_view::scene::Panels;
 use h3_view::scene::{self, Draw, Moment};
-use h3_view::message::{Picture, Style};
 use h3_view::sound::Tune;
 use h3_view::tables::{Sounds, Tables};
 
@@ -756,8 +756,8 @@ impl<'g> Battle<'g> {
                 // built); a stack spell or Teleport the engine casts at nothing tells so
                 // (GENRLTXT 186, 0x59F135; E17 M5 T4a).
                 let keys = &self.record.header.manifest.keys.spells;
-                let original = motion::spell_entry_in(keys, &self.ground.tables, spell)
-                    .map(|e| e.original);
+                let original =
+                    motion::spell_entry_in(keys, &self.ground.tables, spell).map(|e| e.original);
                 let second = original.is_some_and(|o| SECOND_TARGET.contains(&o));
                 let aim = live.hero_aim(spell);
                 if aim.is_none()
@@ -958,7 +958,10 @@ impl<'g> Battle<'g> {
             return false;
         };
         let player = self.viewing_player();
-        let message = writer.message(&self.ground.layout, text, style, picture, player);
+        let Some(message) = writer.message(&self.ground.layout, text, style, picture, player)
+        else {
+            return false;
+        };
         self.message = Some((h3_view::message::Open::new(message), at, asked));
         true
     }
@@ -1239,7 +1242,11 @@ impl<'g> Battle<'g> {
         // behind a message box as it was when the box opened (E17 M5 T4a).
         let book = self.book.as_ref().map(|&(_, opened, _)| opened);
         let message = self.message.as_ref().map(|&(_, opened, _)| opened);
-        let at = [Some(t), book, message].into_iter().flatten().min().unwrap_or(t);
+        let at = [Some(t), book, message]
+            .into_iter()
+            .flatten()
+            .min()
+            .unwrap_or(t);
         self.grow(at)?;
         let timeline = self
             .entered

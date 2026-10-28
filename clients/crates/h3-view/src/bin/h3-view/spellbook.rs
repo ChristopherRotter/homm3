@@ -8,8 +8,8 @@ use h3_kernel::Handle;
 use h3_protocol::wire::{Manifest, Observation};
 use h3_view::book::{Hero, Kind, Memory, Open, Outcome, Spell};
 use h3_view::layout::BookLayout;
-use h3_view::tables::Tables;
 use h3_view::message::{MessageBox, Picture, Style};
+use h3_view::tables::Tables;
 use h3_view::text::{Args, Catalogue};
 
 use crate::boxes::{Answered, Asked, Leave};
@@ -146,13 +146,16 @@ impl Still {
     }
 }
 
+/// Lays out a message box: its text, its style, its picture (none without its fonts).
+pub type Tell<'a> = dyn Fn(&str, Style, Option<&Picture>) -> Option<MessageBox> + 'a;
+
 /// What a situation's message boxes need (E17 M5 T4a; `crate::boxes`): how a box is laid out
 /// (its text, style and picture), how the side to act may leave, which of its hero's spells (by
 /// handle) no hex takes now (a stack spell's or Teleport's "affects no one"), the spells'
 /// pictures' DEF and size.
 pub struct Boxes<'a> {
-    /// Lays out a box.
-    pub tell: &'a dyn Fn(&str, Style, Option<&Picture>) -> MessageBox,
+    /// Lays out a box (none without its fonts).
+    pub tell: &'a Tell<'a>,
     /// How the side to act may leave.
     pub leave: Leave,
     /// Whether the aim's entry tells that the spell affects no one.
@@ -207,9 +210,9 @@ pub fn still(
     };
     // A box laid out and shown.
     let tell = |text: &str, style, picture: Option<&Picture>, asked| -> Option<Asking> {
-        let boxes = boxes?;
+        let message = (boxes?.tell)(text, style, picture)?;
         Some(Asking {
-            open: h3_view::message::Open::new((boxes.tell)(text, style, picture)),
+            open: h3_view::message::Open::new(message),
             asked,
         })
     };
@@ -233,7 +236,14 @@ pub fn still(
                 still.open = None;
                 let boxes = boxes?;
                 (boxes.no_one)(spell)
-                    .then(|| tell(&crate::boxes::no_one(catalogue), Style::Ok, None, Asked::Told))
+                    .then(|| {
+                        tell(
+                            &crate::boxes::no_one(catalogue),
+                            Style::Ok,
+                            None,
+                            Asked::Told,
+                        )
+                    })
                     .flatten()
             }
         }

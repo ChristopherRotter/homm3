@@ -2982,6 +2982,57 @@ before the change.
   timeline check leaves out. `aim` was already a sequence's id (a siege's): the new one is
   `spell-aim`.
 
+### M5 T4a — The message box, Retreat and Surrender (2026-10-28)
+
+On `client/e17-m5-t4a`, the user present at the start. T4 cut in three with the user (T4a the
+message box, Retreat and Surrender; T4b the result window; T4c Auto Combat and the tactics
+phase). The sandbox new, the original files staged from the user's `original-data/` first (the
+user's computer went offline soon after); `master` at `422e9b3` (#536 merged). The VM restarted
+during the session (the baseline check died; the client check ran on the branch).
+
+- **Read** (design §7.19): `message_box` 0x4F6570 (its record) and `message_box_build` 0x4F6990
+  (the dialog, the text, the buttons by style, the pictures, the colours, the cursor, the modal
+  loop); the layout 0x4F5D80; the frame 0x48FF00 (from 0x48FDC0); the font's measures 0x4B5A10,
+  0x4B5990, 0x4B5A80 and a glyph's 0x4B57A0; the picture slot 0x4F4EB0 (a spell's, the tail);
+  the handlers 0x4F08D0 and 0x4F0FC0 (which ids close); the DEF item's messages 0x4EA810 (0xD a
+  player's colours) and the base item 0x5FE340 (state 6); `battle_buttons`' Retreat and
+  Surrender (0x474FA1 to 0x475151); the book's boxes (0x59D415 to 0x59D4E4) and
+  `hero_book_button`'s refusals; the aim's entry's messages (0x59F085 to 0x59F657); the text
+  tables' reader 0x5BBBA0 (a run of quotes made one). 16 new map entries, 2 updated.
+- **The foundation:** `h3_render::text`'s `widest_word`, `widest_line`, `wrapped_width`;
+  `blit::draw_image_keyed_in_clipped`.
+- **The library:** `message` (`MessageLayout`, `Style`, `Picture`, `layout`: the text's width and
+  height, the box's size and place, the frame's tiles and pieces, the text, one picture and its
+  caption, the buttons, the pieces in the viewing player's colours; `Open`: press, move,
+  release, key down and up); `Draw::Picture`'s `size` (a picture item drawn at most its size),
+  `Draw::Button`'s `player` (a DEF item in a player's colours, `Shown::players`); the layout's
+  `[message]`; the catalogue's five keys and its quotes (`text::pack`: a table's run of quotes
+  made one). Tests: the box's sizes and items for a short text, a question, a widened and wrapped
+  text, the widest and the highest, a picture, a caption's widening; its buttons' input; the
+  measures; the clipped drawer.
+- **The binary:** `boxes` (`Leave`: Retreat when the engine lists it, Surrender when the side's
+  own view prices it, the other hero's name; `answered`; the book's boxes; the stack spells and
+  Teleport that "affect no one"), `Writer::message`, `Battle`'s box (`ask_leave`, the book's
+  refusal and description, "affects no one", its input, its drawing over the book and the
+  battle frozen at its opening, its cursor), the window (the box's keys and mouse, the panel's
+  Surrender and Retreat, `next_frame` idle while a box is open, `--leave`), `spellbook::still`'s
+  boxes and `render --frames`' (`scenario::opening_no_one`), `sequences`' drawing of a still's box.
+- **Checks:** the capture set's `msg-retreat`, `msg-surrender`, `msg-poor`, `msg-mana`,
+  `msg-describe`, `msg-no-one` exact (`msg-mana` and `msg-describe` first 436 and 362 pixels
+  off: the book's status line, which the original keeps under the box; the still's park move
+  now goes to the box); `drawn` the other 124 the same, then recorded (130). The window under
+  Xvfb: `--check 8 --leave retreat` and `--leave surrender` (5 000 gold) on `smoke` in hot seat,
+  75 of 75 frames exact each, the battle the bot's up to the question and over by it; without
+  gold the refusal shows and the run fights on; real keys (`xdotool`): R shows the question
+  (Blue's turn, the frame in Red's colours), Enter retreats; R then Escape gives nothing, S then
+  Enter surrenders, Escape quits. The library's tests (326), the binary's (42), `h3-render`'s
+  (44); the client check (coverage 100 %); the scoped verify.
+- **Found:** CLT-Q28 (the text 5 pixels left of the box's centre; the frame in the viewing
+  player's colours, not the acting side's, in hot seat), built as the original's. `h3_formats`
+  keeps a table's doubled quotes where the executable makes them one: the battle lane's inbox.
+  A window left hanging by the first `--leave` run (before `next_frame` learnt the box) spun for an
+  hour beside the captures: `pgrep -x h3-view` after such a run.
+
 ## Accepted review lists (M1 to M4)
 
 M1 and M2 moved from the epic file on 2026-10-20 (less start-up reading), unchanged; M3 at its

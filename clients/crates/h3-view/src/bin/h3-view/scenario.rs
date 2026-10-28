@@ -479,7 +479,11 @@ pub fn opening_no_one(
 }
 
 /// The ruleset and the opening state of `scenario`'s battle.
-fn opening(scenario: &Path, packs: &Path, seed: u64) -> Result<(BattleRuleset, BattleState), String> {
+fn opening(
+    scenario: &Path,
+    packs: &Path,
+    seed: u64,
+) -> Result<(BattleRuleset, BattleState), String> {
     let (ruleset, setup) = battle(scenario, packs, seed)?;
     let state =
         BattleState::new(&ruleset, &setup, seed).map_err(|e| format!("the setup: {e:?}"))?;

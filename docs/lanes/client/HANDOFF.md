@@ -8,18 +8,19 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   accepted, CLT-Q22 to Q24 answered (a); the lane split at M3 T9c, CLT-Q18: the battle client
   here, the adventure map client the map-client lane's E24). **M5 (live play)** (QUEUE, the
   epic's M5): hot seat in-process first, then a game on a server and accounts; the new
-  dependencies the user's at T6 and T7. **T1 to T3 done** (the playhead; the timeline that
+  dependencies the user's at T6 and T7. **T1 to T3 and T4a done** (the playhead; the timeline that
   grows, `live.rs`; the click's command; hot seat in the window; the spell book, design §7.17;
-  the hero's aim and the Faerie Dragon's key F, §7.18). **Next: M5 T4** (the battle's dialogs:
-  surrender, retreat, the result window, Auto Combat, the tactics panel, the message box). Open
-  PR: #536, T3b's (`client/e17-m5-t3b`; check it first). Workspace `clients/` (`clients/README.md`),
-  gates `clients/scripts/check.sh`; ADR-0020 (+ drafts in `adr-drafts/`), ADR-0024; the harness
-  `clients/capture/README.md`; design §3–§10; records in `E17-log.md`.
+  the hero's aim, §7.18; the message box, Retreat and Surrender, §7.19). T4 cut in three by the
+  user (2026-10-28). **Next: M5 T4b** (the result window, the screen darkened under it), then
+  T4c (Auto Combat, the tactics phase). Open PR: T4a's (`client/e17-m5-t4a`; check it first).
+  Workspace `clients/` (`clients/README.md`), gates `clients/scripts/check.sh`; ADR-0020 (+ drafts
+  in `adr-drafts/`), ADR-0024; the harness `clients/capture/README.md`; design §3–§10; records in
+  `E17-log.md`.
 - **Captures** (the user, 2026-10-20): `h3drive.py drawn` first (no Wine); capture what it lists or the task changes, all at a milestone's closure or a harness change (runbook); a capture not as recorded leaves `kept/` (T9b: record, then `--reuse`); later tasks' detail in `NOTES.md`.
 - **The user's requirements** (epic, "Decisions"): a string catalogue (JSON packs, no committed translation, CLT-Q7); graphics options (`faithful` default); exhaustive diffs; drawing bugs fixed, the original's only for comparisons (`Bugs`).
 - The lane owns `clients/` but the map-client lane's paths and the common ones (`lanes.toml`: the foundation, `text/`, the harness; an additive change freely, a change in behaviour into the map-client lane's inbox), plus `docs/epics/E17*` and this folder; branches `client/<task>`; ids `CLT-Q<n>`, `CLT-QUIRK-<n>` (asset fixes), `CLT-STUB-<n>`; ADR drafts in `adr-drafts/`, numbered when accepted.
 - **Checkpoints** per milestone (below), a fresh reviewer agent first. **Open:** CLT-Q5,
-  CLT-Q26, CLT-Q27. Next id: CLT-Q28.
+  CLT-Q26, CLT-Q27, CLT-Q28. Next id: CLT-Q29.
 - Stage from `original-data/install/`: the four LODs (one per call), `h3maped.exe`, both `.snd`, `MP3/COMBAT01`–`04` and the end tunes, `Heroes3.exe`, the five DLLs, `H3ab_ahd.vid`; `cp -rn` the staged `original-data/.` into the clone. Frames stay in the sandbox.
 
 ## Autonomy contract (agreed by the user, 2026-10-12)
@@ -39,11 +40,13 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
 
 ## Recent sessions
 
-- **2026-10-28, E17 M5 T4a (in progress, `client/e17-m5-t4a`).** T4 cut in three with the user
-  (T4a the message box, Retreat and Surrender; T4b the result window; T4c Auto Combat and the
-  tactics phase). Read: the box (0x4F6570, 0x4F6990, its layout 0x4F5D80, its frame 0x48FF00,
-  the font measures 0x4B5A10/0x4B5990/0x4B5A80, the picture slot 0x4F4EB0), Retreat and
-  Surrender (0x474FA1 to 0x475151). Next: design §7.19, then `h3_view::message`.
+- **2026-10-28, E17 M5 T4a (done; its PR open: check it first).** T4 cut in three with the
+  user. Read the box (design §7.19: 0x4F6570, 0x4F6990, the layout 0x4F5D80, the frame 0x48FF00,
+  the font's measures, the picture slot, the handlers), Retreat and Surrender (0x474FA1 to
+  0x475151), the book's and the aim's boxes, the text tables' quotes (0x5BBBA0). Built
+  `h3_view::message`, the binary's `boxes`, the window's and the stills' boxes, `--leave`.
+  `msg-*` (six) exact; `drawn` the other 124 the same; window checks by `--leave` and real keys.
+  CLT-Q28; review items 8–11; the battle lane's inbox (`h3_formats`' quotes).
 
 - **2026-10-28, E17 M5 T3b (done; #536 merged).** Whole (the user). Read the
   aim (design §7.18: 0x59EC50's handlers and ends, the loop 0x602520 with 0x5A3070, the cursor
@@ -59,10 +62,3 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
   window's book (C or its button; a spell without a target cast at once); situations' `actions`.
   `book`, `book-page`, `book-fire`, `book-hint` exact; `drawn` the other 119 the same. CLT-Q26
   (the last hovered item never reset); the message boxes moved to T4; M5 review list items 2–4.
-- **2026-10-27, E17 M5 T2b (done; #518 merged).** Whole (the user, against the
-  cut proposed). `Growing::waiting`, `push_seen`, `Object::owner`, `Timeline::screen`; `--human`,
-  `Live`'s seats and every side's events, `Battle::command`, `press`, `button`, `takes`;
-  unattended runs press the bot's choices. Read: Land Mine's placings show on every screen
-  (0x5A060F). `window --check` hot seat and against the bot to the battle's end, every frame
-  exact; real X clicks; the Tower's mines on the defender's turns only. `sequences` 47, `drawn`
-  119 the same. No new question; the M5 review list's item 1.

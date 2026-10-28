@@ -98,12 +98,19 @@ fn a_short_text_takes_the_least_box() {
     // The text: 20 in, the box's width less 50, its top shared from 30.
     let text = label(&m, TEXT);
     assert_eq!((text.at, text.size), ([20, 31], [206, 16]));
-    assert_eq!((text.colour, text.align, text.font.as_str()), (1, 1, "medfont.fnt"));
+    assert_eq!(
+        (text.colour, text.align, text.font.as_str()),
+        (1, 1, "medfont.fnt")
+    );
     assert_eq!(m.shown.texts[&TEXT], "x");
     // The OK alone, centred, Enter its hotkey; its back one out.
     let ok = m.dialog.item(OK).unwrap();
-    assert!(matches!(ok, Item::Button(b) if b.at == [96, 67] && b.keys == ["Return"] && b.def == "iOkay.def"));
-    assert!(matches!(m.dialog.item(0x7866), Some(Item::Picture(p)) if p.at == [95, 66] && p.size == Some([66, 32])));
+    assert!(
+        matches!(ok, Item::Button(b) if b.at == [96, 67] && b.keys == ["Return"] && b.def == "iOkay.def")
+    );
+    assert!(
+        matches!(m.dialog.item(0x7866), Some(Item::Picture(p)) if p.at == [95, 66] && p.size == Some([66, 32]))
+    );
     // The frame's pieces in the viewing player's colours, the tiles in their own.
     assert_eq!(m.shown.players.len(), 8);
     assert!(m.shown.players.values().all(|&p| p == 3));
@@ -116,9 +123,13 @@ fn a_question_has_an_ok_and_a_cancel() {
     let small = font(5, 10);
     let m = layout(&assets(), (&medium, &small), "x", Style::OkCancel, None, 0);
     assert!(matches!(m.dialog.item(0x7869), Some(Item::Picture(p)) if p.at == [54, 66]));
-    assert!(matches!(m.dialog.item(YES), Some(Item::Button(b)) if b.at == [55, 67] && b.keys == ["Return"]));
+    assert!(
+        matches!(m.dialog.item(YES), Some(Item::Button(b)) if b.at == [55, 67] && b.keys == ["Return"])
+    );
     assert!(matches!(m.dialog.item(0x786A), Some(Item::Picture(p)) if p.at == [136, 66]));
-    assert!(matches!(m.dialog.item(NO), Some(Item::Button(b)) if b.at == [137, 67] && b.keys == ["Escape"] && b.def == "iCancel.def"));
+    assert!(
+        matches!(m.dialog.item(NO), Some(Item::Button(b)) if b.at == [137, 67] && b.keys == ["Escape"] && b.def == "iCancel.def")
+    );
     assert!(m.dialog.item(OK).is_none());
 }
 
@@ -153,11 +164,14 @@ fn a_long_text_widens_then_wraps() {
     // Two full tiles across a box 640 wide.
     let text = vec!["xxxx"; 600].join(" ");
     let m = layout(&assets(), (&medium, &small), &text, Style::Ok, None, 0);
-    assert_eq!(tiles(&m)[..3], [
-        (200, [0, 0], [256, 256]),
-        (201, [256, 0], [256, 256]),
-        (202, [512, 0], [128, 256]),
-    ]);
+    assert_eq!(
+        tiles(&m)[..3],
+        [
+            (200, [0, 0], [256, 256]),
+            (201, [256, 0], [256, 256]),
+            (202, [512, 0], [128, 256]),
+        ]
+    );
 }
 
 #[test]
@@ -171,7 +185,7 @@ fn a_text_at_its_widest_wraps_there_and_its_height_stops_at_200() {
     assert_eq!(t.size, [590, 200]);
     assert_eq!(m.dialog.shadow, Some([640, 320]));
     // Wider than high enough: wrapped at the width it reached (3 x height above 2 x width).
-    let text = vec!["xxxxxxxxxxxxxxx"; 5].join(" ");
+    let text = ["xxxxxxxxxxxxxxx"; 5].join(" ");
     let m = layout(&assets(), (&medium, &small), &text, Style::Ok, None, 0);
     // At 256: 2 words a line (248 wide), 3 lines, 48 high: 144 <= 512, wrapped; 298 rounded up
     // to 320.
@@ -247,7 +261,7 @@ fn a_caption_widens_while_it_is_too_high() {
         slot("xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx", [10, 10]).caption,
         [110, 40]
     );
-    let many = vec!["xxxxx"; 12].join(" ");
+    let many = ["xxxxx"; 12].join(" ");
     assert_eq!(slot(&many, [10, 10]).caption, [110, 80]);
     // Not below the picture's width + 2.
     assert_eq!(slot("x", [70, 10]).caption, [72, 20]);

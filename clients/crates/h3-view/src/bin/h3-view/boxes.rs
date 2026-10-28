@@ -39,7 +39,12 @@ pub struct Leave {
 impl Leave {
     /// The side's ways to leave in its own view `own` with its legal commands `legal`, the
     /// heroes' names from the manifest's `hero_types` through `catalogue`.
-    pub fn of(own: &Observation, legal: &[Command], hero_types: &[String], catalogue: &Catalogue) -> Self {
+    pub fn of(
+        own: &Observation,
+        legal: &[Command],
+        hero_types: &[String],
+        catalogue: &Catalogue,
+    ) -> Self {
         let surrender = own
             .own_hero
             .as_ref()
@@ -166,23 +171,47 @@ mod tests {
             retreat: true,
             surrender: Some((300, 200, "Crag Hack".into())),
         };
-        assert!(matches!(leave.ask(&c, h3_view::panel::RETREAT), Some((_, Asked::Retreat))));
+        assert!(matches!(
+            leave.ask(&c, h3_view::panel::RETREAT),
+            Some((_, Asked::Retreat))
+        ));
         assert!(matches!(
             leave.ask(&c, h3_view::panel::SURRENDER),
-            Some((_, Asked::Surrender { price: 300, funds: 200 }))
+            Some((
+                _,
+                Asked::Surrender {
+                    price: 300,
+                    funds: 200
+                }
+            ))
         ));
         assert_eq!(leave.ask(&c, h3_view::panel::AUTO_COMBAT), None);
         assert_eq!(Leave::default().ask(&c, h3_view::panel::RETREAT), None);
         assert_eq!(Leave::default().ask(&c, h3_view::panel::SURRENDER), None);
         let no = h3_view::message::NO;
-        assert_eq!(answered(Asked::Retreat, YES, &c), Answered::Give(Command::Retreat {}));
+        assert_eq!(
+            answered(Asked::Retreat, YES, &c),
+            Answered::Give(Command::Retreat {})
+        );
         assert_eq!(answered(Asked::Retreat, no, &c), Answered::Closed);
-        let rich = Asked::Surrender { price: 300, funds: 300 };
-        let poor = Asked::Surrender { price: 300, funds: 299 };
-        assert_eq!(answered(rich, YES, &c), Answered::Give(Command::Surrender {}));
+        let rich = Asked::Surrender {
+            price: 300,
+            funds: 300,
+        };
+        let poor = Asked::Surrender {
+            price: 300,
+            funds: 299,
+        };
+        assert_eq!(
+            answered(rich, YES, &c),
+            Answered::Give(Command::Surrender {})
+        );
         assert!(matches!(answered(poor, YES, &c), Answered::Tell(_)));
         assert_eq!(answered(poor, no, &c), Answered::Closed);
-        assert_eq!(answered(Asked::Told, h3_view::message::OK, &c), Answered::Closed);
+        assert_eq!(
+            answered(Asked::Told, h3_view::message::OK, &c),
+            Answered::Closed
+        );
         assert!(affects_someone_only(39) && affects_someone_only(63) && !affects_someone_only(40));
         assert!(!affects_someone_only(20) && !affects_someone_only(59));
     }

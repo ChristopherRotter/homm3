@@ -329,12 +329,8 @@ fn render(options: &Options) -> Result<Vec<String>, String> {
             let tell = |text: &str, style, picture: Option<&h3_view::message::Picture>| {
                 writer.message(&layout, text, style, picture, viewing)
             };
-            let leave = crate::boxes::Leave::of(
-                observation,
-                &legal,
-                &manifest.keys.hero_types,
-                &catalogue,
-            );
+            let leave =
+                crate::boxes::Leave::of(observation, &legal, &manifest.keys.hero_types, &catalogue);
             let spells: Vec<(u16, u32)> = observation
                 .own_hero
                 .iter()
@@ -345,7 +341,12 @@ fn render(options: &Options) -> Result<Vec<String>, String> {
                 })
                 .collect();
             let no_one = if options.scenario() {
-                crate::scenario::opening_no_one(&options.input, &options.packs, options.seed, &spells)?
+                crate::scenario::opening_no_one(
+                    &options.input,
+                    &options.packs,
+                    options.seed,
+                    &spells,
+                )?
             } else {
                 Vec::new()
             };
@@ -489,7 +490,6 @@ fn render(options: &Options) -> Result<Vec<String>, String> {
     }
     Ok(lines)
 }
-
 
 /// The colour whose view the screen shows in `observation`'s battle (`viewing_player` 0x4CEA20;
 /// E17 M5 T4a, as the window's battle takes it): the attacker's when human, else the defender's
