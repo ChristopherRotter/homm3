@@ -1197,3 +1197,8 @@ merged). The original data staged from the user's repo folder first (the exe, th
   inbox's frame cost (T2) and the sound without the focus (T6) and the adventure lane's notice
   moved to `QUEUE-ARCHIVE.md`; the client lane's inbox told the decision (its proposal entry
   replaced, the old one archived here); MCL-Q9 answered, MCL-Q12's entry notes the confirmation.
+- **Checked:** `clients/scripts/check.sh` all gates passed, coverage 100 % (regions, functions,
+  lines); `h3map.py drawn` all the same (the 40 situations; the 13 sequences' frames and
+  timelines as recorded); the scoped verify no failing step. The sandbox's container restarted
+  during the setup's baseline (its background run gone, the files kept): the gates run again on
+  the branch.

@@ -107,7 +107,8 @@ capitol = ["AVCcasz0.def", "AVCramz0.def", "AVCtowz0.def", "AVCinfz0.def", "AVCn
 
 # The map's sounds (E24 M2 T5; design §3.11): the ambient loops by the original's index
 # (ambient_loop_names 0x65F794) and their volume by distance 0 to 3 (ambient_volumes 0x63A64C);
-# a tile's loop (tile_ambient_sound 0x418620): water below picture 21 the shore's, else by the
+# a tile's loop (tile_ambient_sound 0x418620): the coast's water the shore's (the client's: below
+# picture 20, as the map's load; MCL-Q9: the original's test below `shore_pictures`, 21), else by the
 # object the tile records (0x505610) as the game loads its class (object_class_values 0x63A6E4):
 # an entrance's by class (its switch 0x41868B; a bank, the fourth dwelling and a garrison by
 # subclass), a dwelling's by its creature (dwelling_creatures 0x63D570, the switch 0x418809), a
