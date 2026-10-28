@@ -4,12 +4,12 @@
 use std::vec::Vec;
 
 use h3_content_battle::{BattleRuleset, ObstacleKind};
-use h3_contracts::{BattleHero, BattleSide};
+use h3_contracts::{BattleEffect, BattleHero, BattleSide};
 use h3_kernel::{FixedVec, Rng, StreamId};
 
 use super::spells::{arena, mage, spell};
 use super::support::*;
-use crate::{BattleState, Command, Hex, SetupError, SpellSet, observe};
+use crate::{BattleState, Command, Hex, SetupError, SpellSet, castable_spells, observe};
 
 /// Places `side`'s Quicksand pits on `cells` as its cast would (its hexes are drawn there).
 fn pits(s: &mut BattleState, r: &BattleRuleset, side: BattleSide, cells: &[(i32, i32)]) {
@@ -90,6 +90,48 @@ fn a_world_reads_nothing_the_viewer_may_not_know() {
         assert_eq!(own.len(), 1);
         assert!(own[0].contains(at(&r, 6, 3)));
     }
+}
+
+// covers: BAT-MAG-061, BAT-MAG-062
+#[test]
+fn a_world_keeps_what_the_other_hero_forbids_every_caster() {
+    // The defender wears an Orb of Inhibition or Recanter's Cloak, the guess neither: the
+    // attacker meets either in its own casts, so its world keeps it (AI-STUB-1's magic limits,
+    // found by `a_world_shows_its_viewer_the_battle_and_reads_nothing_hidden`).
+    let r = ruleset();
+    for effect in [
+        BattleEffect::NoCasting,
+        BattleEffect::SpellLevelLimit { max_level: 2 },
+    ] {
+        let mut wearer = mage(&r, &["haste"]);
+        wearer.effects.push(effect);
+        let s = arena(
+            &r,
+            [Some(mage(&r, &["bolt"])), Some(wearer)],
+            &[("fixed", 5, 2, 5)],
+            &[("fixed", 5, 12, 5)],
+            7,
+        );
+        let w = world(&s, &r, &mage(&r, &["bolt"]), 1);
+        assert_eq!(w.limits, s.limits);
+        assert_eq!(
+            castable_spells(&w, &r, BattleSide::Attacker),
+            castable_spells(&s, &r, BattleSide::Attacker)
+        );
+        assert_eq!(
+            observe(&w, &r, BattleSide::Attacker),
+            observe(&s, &r, BattleSide::Attacker)
+        );
+    }
+    // Whether a stack's guard is looked at follows the guessed hero's private defences.
+    let s = battle(&r, &[], &["haste"]);
+    let mut guarded = mage(&r, &["bolt"]);
+    guarded
+        .effects
+        .push(BattleEffect::SpellLevelImmunity { max_level: 1 });
+    assert!(!s.limits.guards);
+    assert!(world(&s, &r, &guarded, 1).limits.guards);
+    assert!(!world(&s, &r, &mage(&r, &["bolt"]), 1).limits.guards);
 }
 
 // covers: BAT-MAG-031
