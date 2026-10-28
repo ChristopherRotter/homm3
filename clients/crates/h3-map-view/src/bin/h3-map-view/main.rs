@@ -51,7 +51,8 @@ commands:
           apart; the frame step; the viewer; every object's anchor, phase, template and owner,
           what the random ones became; the heroes and boats; the explored tiles; the path's
           arrows); its steps and viewer override --cycles, --at and --viewer. --bugs original
-          reproduces the original's drawing bugs (for the comparisons; MCL-Q2, MCL-Q3, MCL-Q4).
+          reproduces the original's drawing bugs (for the comparisons; MCL-Q2, MCL-Q3, MCL-Q4,
+          MCL-Q7).
           --list prints the draw list.
           The assets come from the installation copy's archives (<dir> as for gate).
   sequences [<id>] [--frames <dir>] [--live <live.toml>] [--bugs fixed|original]
@@ -97,8 +98,10 @@ commands:
           directory when there is one) overrides the defaults command by command, e.g.
           `pause = [\"Space\"]`, `quit = [\"Escape\", \"Ctrl+F12\"]` (the commands: scroll-north ...
           scroll-north-west, hero-north ... hero-north-west, music, effects, pause, frame,
-          restart, vsync, cursor, fullscreen, quit; [] unbinds one). --bugs defaults to fixed. --check <s> and
-          --measure <s> run unattended for <s> seconds (the window's own keys but Esc do
+          restart, vsync, cursor, fullscreen, quit; [] unbinds one). --bugs defaults to fixed;
+          original reproduces the original's bugs (the drawing's as for render, the edge zones,
+          MCL-Q8's ambient loops sharing a bit, MCL-Q12's music kept on the wrong terrain).
+          --check <s> and --measure <s> run unattended for <s> seconds (the window's own keys but Esc do
           nothing; the map's input is taken) and report when each frame showed against its time
           and how long the frames took to make;
           --check also reads every frame back and compares it with the frame composed, and plays

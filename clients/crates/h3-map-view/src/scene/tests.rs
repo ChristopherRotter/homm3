@@ -981,7 +981,12 @@ fn hero_shapes(art: &MapArt, frames: &[(&str, u32)]) -> Shapes {
 }
 
 fn drawn(art: &MapArt, live: &Live, shapes: &Shapes, view: ViewAt) -> Scene {
-    scene(art, live, &tables(), &layout(), shapes, view, Bugs::Fixed).unwrap()
+    drawn_with(art, live, shapes, view, Bugs::Fixed)
+}
+
+/// The same with the original's bugs or the client's fixes.
+fn drawn_with(art: &MapArt, live: &Live, shapes: &Shapes, view: ViewAt, bugs: Bugs) -> Scene {
+    scene(art, live, &tables(), &layout(), shapes, view, bugs).unwrap()
 }
 
 #[test]
@@ -1515,32 +1520,143 @@ fn an_empty_lists_heroes_come_before_the_lifted_heros_cell() {
 
 #[test]
 fn the_lifted_hero_beyond_the_maps_sides_is_cut() {
-    // The map is 36 × 36. Its cells off the map are not drawn; pass 9's picture is cut by whole
-    // tiles past a side, less the offset on the left and the top.
+    // The map is 36 × 36. With the original's bugs its cells off the map are not drawn; pass 9's
+    // picture is cut by whole tiles past a side, less the offset on the left and the top (MCL-Q7).
+    // At offset 0 the client's cut is the same.
     let (art, mut live) = art_with(vec![]);
     live.heroes = vec![land_hero(0, 0, 0, 0, Facing::Right)];
     let shapes = hero_shapes(&art, &[]);
-    let blend_clip = |view: ViewAt, offset: [i32; 2]| {
-        let s = drawn(&art, &walking(&live, 0, 7, 0, offset), &shapes, view);
+    let blend_clip = |view: ViewAt, offset: [i32; 2], bugs: Bugs| {
+        let s = drawn_with(&art, &walking(&live, 0, 7, 0, offset), &shapes, view, bugs);
         grouped(&s, Pass::Blend).first().map(|p| p.5)
     };
+    let original = |view, offset| blend_clip(view, offset, Bugs::Original);
     // The view at (−10, −8): the picture's first map column −2, its first row −1.
-    let s = drawn(&art, &walking(&live, 0, 7, 0, [0, 0]), &shapes, at(-10, -8));
-    let clips: BTreeSet<[i32; 4]> = heroes_of(&s, Pass::Body).iter().map(|p| p.5).collect();
-    assert_eq!(clips, BTreeSet::from([cell(2, 1)]));
-    assert_eq!(blend_clip(at(-10, -8), [0, 0]), Some([320, 264, 352, 296]));
-    assert_eq!(
-        blend_clip(at(-10, -8), [-10, 22]),
-        Some([310, 286, 352, 296])
-    );
+    for bugs in [Bugs::Fixed, Bugs::Original] {
+        let s = drawn_with(
+            &art,
+            &walking(&live, 0, 7, 0, [0, 0]),
+            &shapes,
+            at(-10, -8),
+            bugs,
+        );
+        let clips: BTreeSet<[i32; 4]> = heroes_of(&s, Pass::Body).iter().map(|p| p.5).collect();
+        assert_eq!(clips, BTreeSet::from([cell(2, 1)]));
+        assert_eq!(
+            blend_clip(at(-10, -8), [0, 0], bugs),
+            Some([320, 264, 352, 296])
+        );
+        assert_eq!(
+            blend_clip(at(26, 28), [0, 0], bugs),
+            Some([256, 232, 320, 264])
+        );
+        // Nothing left: no draw.
+        assert_eq!(blend_clip(at(-11, -8), [0, 22], bugs), None);
+    }
+    assert_eq!(original(at(-10, -8), [-10, 22]), Some([310, 286, 352, 296]));
     // Past the right and the bottom sides by a column and a row: no offset there.
-    assert_eq!(blend_clip(at(26, 28), [0, 0]), Some([256, 232, 320, 264]));
+    assert_eq!(original(at(26, 28), [10, -22]), Some([256, 232, 320, 264]));
+}
+
+#[test]
+fn a_lifted_hero_during_a_step_is_cut_at_the_maps_side_moved_by_the_offset() {
+    // MCL-Q7, the map 36 × 36, the hero lifted at the view's (9, 8), a step's frame 8 pixels in
+    // (the offset 24 from 32). The client cuts its cells and its blended copy at the map's side
+    // moved by the offset; the original draws the cells of the tiles on the map whole and cuts
+    // the copy by its own rule.
+    let (art, mut live) = art_with(vec![]);
+    live.heroes = vec![land_hero(0, 0, 0, 0, Facing::Right)];
+    let shapes = hero_shapes(&art, &[]);
+    let cut = |view: ViewAt, offset: [i32; 2], bugs: Bugs| {
+        let s = drawn_with(&art, &walking(&live, 0, 7, 0, offset), &shapes, view, bugs);
+        let clips =
+            |pass| -> BTreeSet<[i32; 4]> { heroes_of(&s, pass).iter().map(|p| p.5).collect() };
+        let cells = clips(Pass::Body);
+        assert_eq!(clips(Pass::Shadow), cells, "{view:?} {offset:?} {bugs:?}");
+        (cells, grouped(&s, Pass::Blend).first().map(|p| p.5))
+    };
+    let all = |f: &dyn Fn(i32, i32) -> [i32; 4]| -> BTreeSet<[i32; 4]> {
+        [(0, 0), (1, 0), (2, 0), (0, 1), (1, 1), (2, 1)]
+            .iter()
+            .map(|&(a, b)| f(a, b))
+            .collect()
+    };
+    let whole = [256, 232, 352, 296];
+    // East from column 0 to 1 (the view at x −8): the map's side 24 pixels into the left cells.
+    // The original draws the hero over the map's edge.
     assert_eq!(
-        blend_clip(at(26, 28), [10, -22]),
-        Some([256, 232, 320, 264])
+        cut(at(-8, 2), [24, 0], Bugs::Original),
+        (all(&cell), Some(whole))
     );
-    // Nothing left: no draw.
-    assert_eq!(blend_clip(at(-11, -8), [0, 22]), None);
+    let left = |a, b| {
+        let [l, t, r, bottom] = cell(a, b);
+        [if a == 0 { l + 24 } else { l }, t, r, bottom]
+    };
+    assert_eq!(
+        cut(at(-8, 2), [24, 0], Bugs::Fixed),
+        (all(&left), Some([280, 232, 352, 296]))
+    );
+    // East from column 34 to 35, the last (the view at x 26): the map ends 24 pixels into the
+    // right cells, on tile 36. The original leaves that strip undrawn.
+    let some = |cells: &[(i32, i32)], f: &dyn Fn(i32, i32) -> [i32; 4]| -> BTreeSet<[i32; 4]> {
+        cells.iter().map(|&(a, b)| f(a, b)).collect()
+    };
+    let on_map = [(0, 0), (1, 0), (0, 1), (1, 1)];
+    assert_eq!(
+        cut(at(26, 2), [24, 0], Bugs::Original),
+        (some(&on_map, &cell), Some([256, 232, 320, 296]))
+    );
+    let right = |a, b| {
+        let [l, t, r, bottom] = cell(a, b);
+        [l, t, if a == 2 { l + 24 } else { r }, bottom]
+    };
+    assert_eq!(
+        cut(at(26, 2), [24, 0], Bugs::Fixed),
+        (all(&right), Some([256, 232, 344, 296]))
+    );
+    // West from column 1 to 0, the first (the view at x −9, the offset −24): the map begins 8
+    // pixels into the left cells, on tile −1. The original shows that strip by pass 9 alone.
+    let left_strip = |a, b| {
+        let [l, t, r, bottom] = cell(a, b);
+        [if a == 0 { l + 8 } else { l }, t, r, bottom]
+    };
+    let past_left = [(1, 0), (2, 0), (1, 1), (2, 1)];
+    assert_eq!(
+        cut(at(-9, 2), [-24, 0], Bugs::Original),
+        (some(&past_left, &cell), Some([264, 232, 352, 296]))
+    );
+    assert_eq!(
+        cut(at(-9, 2), [-24, 0], Bugs::Fixed),
+        (all(&left_strip), Some([264, 232, 352, 296]))
+    );
+    // South from row 0 to 1 (the view at y −7): the map's top 24 pixels into the upper cells.
+    let top = |a, b| {
+        let [l, t, r, bottom] = cell(a, b);
+        [l, if b == 0 { t + 24 } else { t }, r, bottom]
+    };
+    assert_eq!(
+        cut(at(2, -7), [0, 24], Bugs::Original),
+        (all(&cell), Some(whole))
+    );
+    assert_eq!(
+        cut(at(2, -7), [0, 24], Bugs::Fixed),
+        (all(&top), Some([256, 256, 352, 296]))
+    );
+    // North from row 1 to 0, the first (the view at y −8, the offset −24): the map begins 8
+    // pixels into the upper cells, on row −1.
+    let top_strip = |a, b| {
+        let [l, t, r, bottom] = cell(a, b);
+        [l, if b == 0 { t + 8 } else { t }, r, bottom]
+    };
+    let lower = [(0, 1), (1, 1), (2, 1)];
+    assert_eq!(
+        cut(at(2, -8), [0, -24], Bugs::Original),
+        (some(&lower, &cell), Some([256, 240, 352, 296]))
+    );
+    assert_eq!(
+        cut(at(2, -8), [0, -24], Bugs::Fixed),
+        (all(&top_strip), Some([256, 240, 352, 296]))
+    );
 }
 
 #[test]

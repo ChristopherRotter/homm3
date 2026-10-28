@@ -442,7 +442,7 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
     // tables' sounds, or without a device (noted).
     let mut audio = match (&tables.sound, options.mute) {
         (Some(rules), false) => match Library::load(&options.install, rules, &mut lines)
-            .and_then(|library| Ok((library, Player::open()?)))
+            .and_then(|library| Ok((library, Player::open(options.bugs)?)))
         {
             Ok(audio) => Some(audio),
             Err(e) => {

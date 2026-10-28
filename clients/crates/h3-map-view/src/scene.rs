@@ -196,7 +196,8 @@ impl fmt::Display for SceneError {
 
 /// The scene of the adventure screen at view `at`, with the original's drawing bugs fixed or,
 /// for the comparisons, reproduced (`bugs`: MCL-Q2's road on the map's last row, MCL-Q3's random
-/// artifact's picture, MCL-Q4's flag of an object without an entrance on the map). `shapes` gives
+/// artifact's picture, MCL-Q4's flag of an object without an entrance on the map, MCL-Q7's lifted
+/// hero at the map's side during a step). `shapes` gives
 /// the objects' templates their `.msk` and frames ([`objects::pictures`] names them), and the
 /// heroes' and boats' DEFs their frames.
 ///
@@ -430,6 +431,17 @@ const SLOTS: usize = 6;
 /// The lifted hero's picture in tiles, columns and rows (96 × 64: design §3.5).
 const LIFTED: [i32; 2] = [3, 2];
 
+/// The rectangle two rectangles share, if it is not empty.
+fn meet(a: [i32; 4], b: [i32; 4]) -> Option<[i32; 4]> {
+    let rect = [
+        a[0].max(b[0]),
+        a[1].max(b[1]),
+        a[2].min(b[2]),
+        a[3].min(b[3]),
+    ];
+    (rect[0] < rect[2] && rect[1] < rect[3]).then_some(rect)
+}
+
 /// A cell of the lifted hero's picture over a tile: the hero, its group and frame, the cell's
 /// column (0 to 2) and row (0 or 1).
 #[derive(Debug, Clone, Copy)]
@@ -500,6 +512,17 @@ impl<'a> View<'a> {
     /// The map's side: every map is square (the bounds' height and width; MCL-Q1).
     fn side(&self) -> i32 {
         i32::try_from(self.art.size).unwrap_or(i32::MAX)
+    }
+
+    /// The map's rectangle on the screen: its tiles' places moved by the walk's offset (MCL-Q7's
+    /// cut of the lifted hero).
+    fn map_shown(&self) -> [i32; 4] {
+        let view = &self.layout.view;
+        let [ox, oy] = self.live.walking.offset;
+        let side = self.side();
+        let [left, top] = view.place(-self.at.x, -self.at.y);
+        let [right, bottom] = view.place(side - self.at.x, side - self.at.y);
+        [left + ox, top + oy, right + ox, bottom + oy]
     }
 
     /// The tile's rectangle `down` pixels below its place, inside the view's clip; `None` if
@@ -662,11 +685,14 @@ impl<'a> View<'a> {
     }
 
     /// The cell (column 0 to 2, row 0 or 1) of the lifted hero's picture over the map's tile
-    /// (x, y), if a hero is lifted and the tile is on the map (passes 5 and 7 draw no piece off
-    /// it: 0x4115A1, 0x410C13).
+    /// (x, y), if a hero is lifted: with the original's bugs only on the map (passes 5 and 7 draw
+    /// no piece off it: 0x4115A1, 0x410C13); the client's on every tile, cut where it lies off the
+    /// map ([`View::lifted_piece`], MCL-Q7).
     fn lifted_cell(&self, x: i32, y: i32) -> Option<Cell<'a>> {
         let (hero, lifted) = self.lifted?;
-        self.art.tile(x, y, self.at.z)?;
+        if self.bugs == Bugs::Original {
+            self.art.tile(x, y, self.at.z)?;
+        }
         let ([ci, cj], _) = self.lifted_corner();
         let (a, b) = (x - self.at.x - ci, y - self.at.y - cj);
         ((0..LIFTED[0]).contains(&a) && (0..LIFTED[1]).contains(&b)).then_some(Cell {
@@ -682,7 +708,11 @@ impl<'a> View<'a> {
     /// shadow is the hero's or the boat's alone; the pictures on land its flag and the hero, in
     /// a boat the waves (not on the coast), the boat's flag by its type and colour, the boat. A
     /// flag's frame is the objects' frame step plus the hero's, modulo the walk's frames. The cell
-    /// lies inside the view's clip (the original clips it to the screen alone).
+    /// lies inside the view's clip (the original clips it to the screen alone). The client cuts it
+    /// at the map's side moved by the walk's offset, as a standing hero is cut at the map's side;
+    /// the original draws the whole cell of a tile on the map, at a place the offset does not move
+    /// (MCL-Q7: a step's frames at a side draw the hero over the map's edge or leave a strip of
+    /// it undrawn).
     fn lifted_piece(&self, cell: Cell<'_>, pass: Pass, out: &mut Vec<Draw>) {
         let Cell {
             hero,
@@ -692,7 +722,14 @@ impl<'a> View<'a> {
         let tile = self.layout.view.tile;
         let (_, [cx, cy]) = self.lifted_corner();
         let (left, top) = (cx + tile * a, cy + tile * b);
-        let clip = [left, top, left + tile, top + tile];
+        let square = [left, top, left + tile, top + tile];
+        let clip = match self.bugs {
+            Bugs::Fixed => meet(square, self.map_shown()),
+            Bugs::Original => Some(square),
+        };
+        let Some(clip) = clip else {
+            return;
+        };
         let defs = match pass {
             Pass::Shadow => self.lifted_defs(hero, lifted, Picture::Shadow),
             _ => self.lifted_defs(hero, lifted, Picture::Cell),
@@ -715,42 +752,44 @@ impl<'a> View<'a> {
 
     /// Pass 9 (`view_moving_hero_step` 0x47FC80; design §3.5, §3.8): the lifted hero's flag, then
     /// the hero or its boat, whole, blended over everything drawn, at the fixed place; a boat's
-    /// flag by its type and the hero's owner. The part beyond the map's sides is cut: by whole
-    /// tiles past the side, on the left and the top less the walk's offset there too, on the right
-    /// and the bottom not (the original's cut; with passes 5 and 7's cells, cut at the view's
-    /// tiles, it leaves a strip off during a step at the map's side: MCL-Q7, built as the
-    /// original's in both profiles until answered).
+    /// flag by its type and the hero's owner. The client cuts it at the map's side moved by the
+    /// walk's offset, as its cells (MCL-Q7). The original cuts it by whole tiles past a side, on
+    /// the left and the top less the walk's offset there too, on the right and the bottom not:
+    /// with passes 5 and 7's cells, cut at the view's tiles, a step's frames at a side leave a
+    /// strip of the hero half transparent or undrawn, or draw it over the map's edge.
     fn lifted_whole(&self, out: &mut Vec<Draw>) {
         let Some((hero, lifted)) = self.lifted else {
             return;
         };
         let tile = self.layout.view.tile;
         let ([ci, cj], [cx, cy]) = self.lifted_corner();
-        let [ox, oy] = self.live.walking.offset;
-        let side = self.side();
-        let (first_x, first_y) = (self.at.x + ci, self.at.y + cj);
-        let (end_x, end_y) = (first_x + LIFTED[0], first_y + LIFTED[1]);
-        let left = if first_x < 0 { -first_x * tile + ox } else { 0 };
-        let top = if first_y < 0 { -first_y * tile + oy } else { 0 };
-        let right = if end_x >= side {
-            (end_x - side) * tile
-        } else {
-            0
+        let picture = [cx, cy, cx + LIFTED[0] * tile, cy + LIFTED[1] * tile];
+        let map = self.map_shown();
+        let bounds = match self.bugs {
+            Bugs::Fixed => map,
+            Bugs::Original => {
+                let [ox, oy] = self.live.walking.offset;
+                let side = self.side();
+                let (first_x, first_y) = (self.at.x + ci, self.at.y + cj);
+                [
+                    if first_x < 0 { map[0] } else { i32::MIN },
+                    if first_y < 0 { map[1] } else { i32::MIN },
+                    if first_x + LIFTED[0] >= side {
+                        map[2] - ox
+                    } else {
+                        i32::MAX
+                    },
+                    if first_y + LIFTED[1] >= side {
+                        map[3] - oy
+                    } else {
+                        i32::MAX
+                    },
+                ]
+            }
         };
-        let bottom = if end_y >= side {
-            (end_y - side) * tile
-        } else {
-            0
-        };
-        let clip = [
-            cx + left,
-            cy + top,
-            cx + LIFTED[0] * tile - right,
-            cy + LIFTED[1] * tile - bottom,
-        ];
-        if clip[0] >= clip[2] || clip[1] >= clip[3] {
+        let Some(clip) = meet(picture, bounds) else {
             return;
-        }
+        };
         for (def, frame) in self
             .lifted_defs(hero, lifted, Picture::Whole)
             .into_iter()
