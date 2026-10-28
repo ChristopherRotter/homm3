@@ -29,7 +29,7 @@ from pathlib import Path
 import numpy as np
 
 #: The C ABI version this binding speaks (`h3_abi_version()`).
-ABI_VERSION = 34
+ABI_VERSION = 35
 
 #: The most envs a batch holds (`H3_BATCH_MAX_ENVS`, v31): the engine refuses more.
 BATCH_MAX_ENVS = 1 << 16
@@ -238,6 +238,7 @@ _SIGNATURES = {
     "h3_batch_scenario_count": (c_uint32, [_batch]),
     "h3_batch_scenario_info": (c_int32, [_batch, c_uint32, POINTER(H3ScenarioInfo)]),
     "h3_batch_determinize": (_env, [_batch, c_uint32, c_int32, c_uint64]),
+    "h3_batch_true_world": (_env, [_batch, c_uint32, c_uint64]),
 }
 
 

@@ -579,7 +579,9 @@ impl BattleBatch {
     /// env's encounter distribution ([`Sampler::guess`] of [`GUESS_CANDIDATES`] heroes, from
     /// stream `ENCOUNTER` of `seed`; a hero of its type alone outside the distribution or for a
     /// type it lacks), the battle's stream `BATTLE` of `seed`. The world is the agent's to fork
-    /// and step; it reads nothing `viewer` may not know.
+    /// and step; it reads nothing `viewer` may not know. It scores a decided battle by the
+    /// batch's reward v1 ([`BattleEnv::with_reward`], E25 T1a): the batch's reward for the same
+    /// battle, the scale of a value head trained on it.
     ///
     /// # Errors
     /// [`BatchError::NotReset`], [`BatchError::NoEnv`], or [`BatchError::Setup`] for a guess the
@@ -604,7 +606,24 @@ impl BattleBatch {
             sampler.guess(&mut rng, &view, siege, GUESS_CANDIDATES)
         });
         env.world(viewer, guess.as_ref(), seed)
+            .map(|world| world.with_reward(self.config.reward))
             .map_err(BatchError::Setup)
+    }
+
+    /// A *true* world of env `index`'s battle (E25 T1b): a copy of it with nothing guessed, the
+    /// battle's stream `BATTLE` of `seed`, scored as a world ([`Self::determinize`]). A trusted
+    /// diagnostic, never an agent's input: it reads the whole state (the other side's hero, its
+    /// hidden obstacles, a drawn spell), so a search over it bounds what a world's guess costs
+    /// (ADR-0025 point 12a; E25 decision 6).
+    ///
+    /// # Errors
+    /// [`BatchError::NotReset`] or [`BatchError::NoEnv`].
+    pub fn true_world(&self, index: usize, seed: u64) -> Result<BattleEnv, BatchError> {
+        self.check_ready()?;
+        let env = self.env(index).ok_or(BatchError::NoEnv(index))?;
+        let mut world = env.fork().with_reward(self.config.reward);
+        world.reseed(seed);
+        Ok(world)
     }
 
     /// Starts every env's first episode (and again from the start on a later call: the batch

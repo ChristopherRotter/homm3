@@ -1,6 +1,6 @@
 # E25 — Battle AI v2
 
-Status: **in progress**, refined 2026-10-27 (AI-Q10); increment 1 refined · Lane: **ai** ·
+Status: **in progress**, refined 2026-10-27 (AI-Q10); increment 1: T1a, T1b done · Lane: **ai** ·
 Follows E06 (closed 2026-10-27: `t7-1` the battle AI v1, record `E06-log.md`)
 
 ## Goal
@@ -92,13 +92,13 @@ evidence asks for one (then a `cross-lane` change with the battle lane, after th
 
 **Increment 1: the diagnostics and shaping** (refined 2026-10-27, AI-Q10; the AI queue's tasks):
 
-- [ ] **T1a The search's terminal by reward v1** (the sandbox): a world's step scores a decided
-  battle by reward v1 for the side to move, the value head's scale, not ±1. Either the single env
-  reports reward v1 (a C ABI addition) or the world reads `h3_sim::reward`: the agent's choice,
-  recorded in the log. Tested against the batch's reward v1 on the same battle.
-- [ ] **T1b The true-world search** (the sandbox): a copy of the env's true battle with its
-  stream re-seeded, nothing guessed (a C ABI addition beside `h3_batch_determinize`, its caller
-  trusted: it reads the hidden part); `h3env.search --worlds true`. A diagnostic only.
+- [x] **T1a The search's terminal by reward v1** (2026-10-28; `E25-log.md` T1a): a world scores
+  a decided battle by its batch's reward v1 (`BattleEnv::with_reward`; the agent's choice: the
+  world, no new function), its setup keeps the other hero's starting mana (reward v1's mana
+  term); C ABI v35.
+- [x] **T1b The true-world search** (2026-10-28; `E25-log.md` T1b): `BattleBatch::true_world`,
+  `h3_batch_true_world` (C ABI v35 with T1a; trusted tooling, a diagnostic), `h3env.search
+  --true-worlds` (the flag spelled so, `--worlds` stays the count).
 - [ ] **T1c T8c again** (the sandbox; `t7-1`'s `best.pt` from the user, else `order-1`'s): the
   search with determinized and with true worlds, beside the sampled policy on the same episodes,
   against the system actor at N 16 and 64, and on the neutral set. The read: whether a search

@@ -295,10 +295,22 @@ class BattleBatch:
         ADR-0025 point 12a): a single env whose battle is the env's with everything `viewer` may
         not know replaced (the other side's hero guessed by the env's encounter distribution, its
         hidden obstacles and a drawn spell drawn again, the stream re-seeded): a search agent's
-        to fork, step and observe. Only for the env's side to move (`to_move`, E06 T9b)."""
+        to fork, step and observe. Only for the env's side to move (`to_move`, E06 T9b). Its steps
+        score a decided battle by this batch's reward v1 (C ABI v35, E25 T1a): the batch's reward
+        for the same battle, where any other `Env` scores ±1."""
         handle = self._lib.h3_batch_determinize(self._live(), env, viewer, seed)
         if not handle:
             raise H3Error(_ffi.ERR_ARGUMENT, f"no world of env {env} for side {viewer}")
+        return Env(handle)
+
+    def true_world(self, env: int, seed: int) -> Env:
+        """A *true* world of env `env`'s battle from `seed` (C ABI v35, E25 T1b): the battle with
+        nothing guessed, the stream re-seeded, scored as a world. Trusted tooling, a diagnostic:
+        it reads the whole state, never an agent's input (ADR-0025 point 12a); `h3env.search`
+        takes it only with `--true-worlds`."""
+        handle = self._lib.h3_batch_true_world(self._live(), env, seed)
+        if not handle:
+            raise H3Error(_ffi.ERR_ARGUMENT, f"no true world of env {env}")
         return Env(handle)
 
     def spell_mask(self, entries: np.ndarray) -> np.ndarray:

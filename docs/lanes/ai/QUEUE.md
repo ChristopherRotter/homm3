@@ -6,32 +6,22 @@ Pre-refined tasks of the AI lane, in order, then the inbox of discovered work. T
 
 **E05** (`docs/epics/E05-battle-env.md`) closed 2026-10-20 (record: `E05-log.md`; the environment as built: `docs/07-simulation-and-ai.md` §1.1). **E06** (`docs/epics/E06-battle-ai.md`, AI-Q8) closed 2026-10-27 (T1 to T9 in 8 increments; record `E06-log.md`, the design note kept there; the training pipeline as built: `docs/07-simulation-and-ai.md` §1.2): the battle AI v1 is `t7-1`, on the closing engine 0.830, 0.550, 0.530 against Random, Aggressor, Greedy at +0.273, +0.029, +0.010 and the neutral set's value +0.244 (decision 7's targets as revised, met), the system actor 0.628 against it (E25's target). The tasks' history is in `QUEUE-ARCHIVE.md`.
 
-**E25** (`docs/epics/E25-battle-ai-v2.md`, AI-Q10; record `E25-log.md` from T1a on), refined
-2026-10-27. **Increment 1, the diagnostics and shaping:** the faithful system actor is the
+**E25** (`docs/epics/E25-battle-ai-v2.md`, AI-Q10; record `E25-log.md`), refined
+2026-10-27; T1a and T1b done 2026-10-28. **Increment 1, the diagnostics and shaping:** the faithful system actor is the
 target and trains no agent (decision 2); each run's length is agreed with the user (decision
 5). The adventure env's typed answers wait for the adventure lane's T63.
 
-- **T1a The search's terminal by reward v1.** *Scope:* a world's step (`h3_env_step` on a
-  `h3_batch_determinize` world) scores a decided battle ±1 where the value head learned reward
-  v1 (E06 T9b). Score it by reward v1 for the side to move. Either the single env reports reward
-  v1 (a C ABI addition, v35, `h3.h` and `h3env` together) or the world reads `h3_sim::reward`;
-  choose, record it in a new `docs/epics/E25-log.md`. `h3env.search` uses it at a terminal.
-  *Acceptance:* a world's terminal value equals the batch's reward v1 for the same battle and
-  side (Rust and Python tests); the search's tests pass; scoped verify. *Depends on:* none.
-  *Status:* ready.
-- **T1b The true-world search.** *Scope:* a copy of the env's true battle with its stream
-  re-seeded and nothing guessed (a C ABI addition beside `h3_batch_determinize`, documented as a
-  trusted diagnostic: it reads the hidden part, ADR-0025 point 12a), and `h3env.search --worlds
-  true|guessed` (guessed the default). *Acceptance:* the true world equals the env's state but
-  its stream (test); the search runs with either; no agent path or config reaches it without the
-  flag. *Depends on:* T1a (one ABI bump for both if they land together). *Status:* ready.
 - **T1c T8c again.** *Scope:* E06 T8c's measurement (`E06-log.md` T8c) with T1a's terminal: the
-  search with guessed and with true worlds, beside the sampled policy on the same episodes,
-  against the system actor at N 16 and 64 and on the neutral set (subsets as T8c's if the sandbox's
-  time asks). The network: `t7-1`'s `best.pt` if the user uploads it, else `order-1`'s. Results
+  search with guessed and with true worlds (`--true-worlds`, T1b), beside the sampled policy on
+  the same episodes, against the system actor at N 16 and 64 and on the neutral set (subsets as
+  T8c's if the sandbox's time asks). The network: `t7-1`'s `best.pt` if the user uploads it, else
+  `order-1`'s. Results
   into `python/records/search/`, the read into the log. *Acceptance:* the rows recorded with their
-  intervals; the read says whether a search gains and what the guess costs. *Depends on:* T1a,
-  T1b; the user's upload (optional). *Status:* ready.
+  intervals; the read says whether a search gains and what the guess costs; a truncated world
+  scores 0, not the trainer's penalty (`E25-log.md` T1a): count the truncations. *Depends on:*
+  T1a, T1b (done 2026-10-28, C ABI v35); a network: no `best.pt` is in the sandbox (checkpoints
+  stay outside git), so the user's upload of `t7-1`'s or `order-1`'s. *Status:* waiting (the
+  upload).
 - **T2a Shaping and the training mix.** *Scope:* `[ppo] shaping` (off by default): each learning
   side's transition gains Φ(s′) − Φ(s), Φ its reward v1 if the battle ended there, 0 at a
   terminal; Φ from the batch (an output, C ABI) or from Python, the agent's choice. The training

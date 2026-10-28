@@ -1,5 +1,5 @@
 /*
- * h3 engine C ABI, version 34 (see crates/h3-ffi/src/lib.rs and ADR-0011; the batch: ADR-0025).
+ * h3 engine C ABI, version 35 (see crates/h3-ffi/src/lib.rs and ADR-0011; the batch: ADR-0025).
  * SPDX-License-Identifier: GPL-2.0-or-later
  *
  * Handles are opaque. Functions return H3_OK (0) or a negative error code; they never unwind.
@@ -11,7 +11,9 @@
  * forwarded to a client. An agent sees the projected observations only (h3_env_observe, obs).
  * A search agent's worlds (v34, ADR-0025 point 12a): h3_batch_determinize makes a single env of an
  * env's battle with everything one side may not know replaced (a guess, a fresh stream); a world's
- * forks, steps and h3_env_reseed are that agent's to use.
+ * forks, steps and h3_env_reseed are that agent's to use. v35 (E25 T1a): a world scores a decided
+ * battle by its batch's reward v1, the scale of a value trained on the batch; h3_batch_true_world
+ * (E25 T1b) is trusted tooling, a diagnostic's world with nothing guessed.
  */
 #ifndef H3_H
 #define H3_H
@@ -55,6 +57,8 @@ typedef struct H3Action {
     uint16_t second;
 } H3Action;
 
+/* The rewards: +1 the winner, -1 the loser, else 0; a world's (v35, h3_batch_determinize) reward
+ * v1 by its batch's H3RewardConfig at the step that decides the battle, else 0. */
 typedef struct H3StepResult {
     uint8_t done;
     uint8_t truncated;
@@ -215,11 +219,17 @@ uint32_t h3_encounters_version(void);
 /* v32 (E06 T7): the behaviour version of H3_SEAT_SYSTEM's policy (ADR-0027 point 12). */
 uint32_t h3_system_policy_version(void);
 /* v34 (E06 T8): a world of env `env`'s battle for side `viewer` from `seed`, a new single env
- * (h3_env_destroy it): the other side's hero guessed by the env's encounter distribution, its
- * hidden spell obstacles and a drawn spell drawn again, the stream re-seeded. NULL for a null or
+ * (h3_env_destroy it): the other side's hero guessed by the env's encounter distribution (its
+ * starting mana kept, v35), its hidden spell obstacles and a drawn spell drawn again, the stream
+ * re-seeded; its steps score a decided battle by the batch's reward v1 (v35). NULL for a null or
  * not reset batch, an env past it or not playing, or a viewer other than the env's side to move
  * (E06 T9b). */
 H3Env *h3_batch_determinize(const H3Batch *batch, uint32_t env, int32_t viewer, uint64_t seed);
+/* v35 (E25 T1b): a true world of env `env`'s battle from `seed`, a new single env: the battle
+ * with nothing guessed, its stream re-seeded, scored as a world. Trusted tooling, a diagnostic
+ * (it reads the whole state): never an agent's input. NULL for a null or not reset batch, or an
+ * env past it or not playing. */
+H3Env *h3_batch_true_world(const H3Batch *batch, uint32_t env, uint64_t seed);
 
 #ifdef __cplusplus
 }

@@ -860,3 +860,31 @@ fn a_world_through_the_abi_is_the_rust_batchs() {
     );
     unsafe { h3_batch_destroy(b) };
 }
+
+/// v35 (E25 T1b): a true world through the ABI is the Rust batch's (`BattleBatch::true_world`):
+/// the env's battle with its stream re-seeded, nothing guessed; refused arguments give null.
+#[test]
+fn a_true_world_through_the_abi_is_the_rust_batchs() {
+    let n = 4;
+    let b = create(&config(n, 0, 6, 400)).unwrap();
+    assert_eq!(add_encounters(b, 1, Some([0, 0, 1, 1, 0, 0])).0, H3_OK);
+    assert!(unsafe { h3_batch_true_world(b, 0, 5) }.is_null());
+    let mut arrays = Arrays::new(n as usize);
+    let buffers = arrays.buffers();
+    assert_eq!(unsafe { h3_batch_reset(b, &buffers) }, H3_OK);
+    let h = unsafe { &*b };
+    for i in 0..n {
+        let world = unsafe { h3_batch_true_world(b, i, 5) };
+        assert!(!world.is_null());
+        let mut env = h.batch.env(i as usize).unwrap().fork();
+        env.reseed(5);
+        assert_eq!(unsafe { crate::h3_env_state_hash(world) }, env.state_hash());
+        let rust = h.batch.true_world(i as usize, 5).unwrap();
+        assert_eq!(rust.state_hash(), env.state_hash());
+        unsafe { crate::h3_env_destroy(world) };
+    }
+    for (batch, env) in [(b, n), (std::ptr::null_mut(), 0)] {
+        assert!(unsafe { h3_batch_true_world(batch, env, 5) }.is_null());
+    }
+    unsafe { h3_batch_destroy(b) };
+}

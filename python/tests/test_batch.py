@@ -276,6 +276,73 @@ def test_encounter_seats_replace_the_encounters_own() -> None:
         batch.step()
 
 
+def test_a_world_scores_a_decided_battle_by_the_batchs_reward_v1() -> None:
+    # E25 T1a (C ABI v35): a world of a battle that hides nothing (the duel: no hero) on its
+    # episode's seed is the env's battle; played as the batch plays the env, it ends at the same
+    # step with the batch's reward v1 for each side (its currency and mana price), not ±1.
+    text, n, seed = scenario("duel"), 6, 11
+    batch = BattleBatch(n, seed=seed, mana_price=3)
+    batch.add_scenario(text)
+    batch.reset()
+    worlds = {}
+    for e in range(n):
+        side = int(batch.to_move[e])
+        world = batch.determinize(e, side, int(batch.episode_seed[e]))
+        single = Env.scenario(scenario("duel", human=True), episode_seed(seed, e, 0))
+        assert world.state_hash() == single.state_hash()
+        assert np.array_equal(world.observe(side), batch.obs[e])
+        single.close()
+        worlds[e] = world
+    rng = np.random.default_rng(3)
+    for _ in range(5_000):
+        if not worlds:
+            break
+        actions = batch.random_actions(rng)
+        ends = {}
+        for e, world in worlds.items():
+            r = world.step(int(batch.to_move[e]), *heads(actions[e]))
+            if r.done:
+                ends[e] = np.array([r.reward_attacker, r.reward_defender], np.float32)
+            else:
+                assert (r.reward_attacker, r.reward_defender) == (0.0, 0.0)
+        batch.step()
+        for e in list(worlds):
+            assert bool(batch.done[e]) == (e in ends)
+            if e in ends:
+                assert np.array_equal(bits(ends[e]), bits(batch.reward[e]))
+                assert abs(ends[e][0]) < 1 and ends[e][0] == -ends[e][1]
+                worlds.pop(e).close()
+    assert not worlds
+
+
+def test_a_true_world_is_the_battle_with_its_stream_reseeded() -> None:
+    # E25 T1b (C ABI v35): a trusted diagnostic's world: the env's battle with nothing guessed
+    # (the full armies' heroes as they are, where a determinized world guesses the other one),
+    # its stream re-seeded; refused arguments raise.
+    text, n, seed = scenario("full"), 3, 8
+    batch = BattleBatch(n, seed=seed, max_steps=300)
+    batch.add_scenario(text)
+    with pytest.raises(H3Error, match="no true world"):
+        batch.true_world(0, 5)
+    batch.reset()
+    for e in range(n):
+        side = int(batch.to_move[e])
+        single = Env.scenario(scenario("full", human=True), episode_seed(seed, e, 0), 300)
+        world = batch.true_world(e, 5)
+        assert world.state_hash() != single.state_hash()
+        single.reseed(5)
+        assert world.state_hash() == single.state_hash()
+        for viewer in (0, 1):
+            assert np.array_equal(world.observe(viewer), single.observe(viewer))
+        guessed = batch.determinize(e, side, 5)
+        assert guessed.state_hash() != world.state_hash()
+        for env in (single, world, guessed):
+            env.close()
+    with pytest.raises(H3Error, match="no true world"):
+        batch.true_world(n, 5)
+    batch.close()
+
+
 def test_refused_calls_raise_with_the_engines_message() -> None:
     with pytest.raises(H3Error, match="H3_ERR_ARGUMENT: .+"):
         BattleBatch(0)

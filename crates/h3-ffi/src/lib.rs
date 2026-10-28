@@ -109,8 +109,14 @@ pub use batch::{
 /// encoding v22 (each stack slot's places in the turn order, `h3_sim::observation::ORDER`,
 /// appended: v21's layout is its prefix; `h3_observation_len` grows), and a search agent's
 /// worlds (ADR-0025 point 12a): `h3_batch_determinize` (a single env of an env's battle with
-/// what a side may not know replaced) and `h3_env_reseed`; the action encoding unchanged.
-pub const H3_ABI_VERSION: u32 = 34;
+/// what a side may not know replaced) and `h3_env_reseed`; the action encoding unchanged. v35
+/// (E25 T1a): a world's `h3_env_step` (and its forks') reports a decided battle's reward v1 by
+/// the batch's `H3RewardConfig` in `H3StepResult`'s rewards (the batch's reward for the same
+/// battle; every other single env ±1 by the winner), and its setup keeps the other hero's
+/// starting mana (reward v1's mana term); and (E25 T1b) `h3_batch_true_world`, a trusted
+/// diagnostic: a world with nothing guessed, its stream re-seeded; no layout changes, the
+/// encodings unchanged.
+pub const H3_ABI_VERSION: u32 = 35;
 
 /// `H3StepResult.result`: the battle is not decided (still running, or truncated).
 pub const H3_RESULT_NONE: i32 = -1;
@@ -157,9 +163,11 @@ pub struct H3StepResult {
     /// side's retreat or surrender (`H3_RESULT_*_RETREATED`, `H3_RESULT_*_SURRENDERED`), or
     /// `H3_RESULT_NONE` while it is not decided.
     pub result: i32,
-    /// Reward of the attacker.
+    /// Reward of the attacker: +1 if it won, −1 if it lost, else 0; a world's (v35,
+    /// `h3_batch_determinize`) reward v1 by its batch's `H3RewardConfig` when the step decides
+    /// the battle, else 0.
     pub reward_attacker: f32,
-    /// Reward of the defender.
+    /// Reward of the defender (as the attacker's).
     pub reward_defender: f32,
 }
 
@@ -690,7 +698,7 @@ mod tests {
 
     #[test]
     fn abi_smoke_create_step_destroy() {
-        assert_eq!(h3_abi_version(), 34);
+        assert_eq!(h3_abi_version(), 35);
         assert_eq!(
             h3_observation_encoding_version(),
             OBSERVATION_ENCODING_VERSION
