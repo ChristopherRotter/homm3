@@ -276,13 +276,19 @@ fn the_guards_battle_leaves_their_survivors_or_gives_the_pile() {
             army: left.to_vec()
         })
     );
-    // Won: the pile is picked up, told to the players that see it.
-    let gains = s
-        .end_unowned_battle(parts, (HERO, TILE), (&[], true), &mut events)
-        .gains;
+    // Won: the guards beaten; after the winner's levels (E08 T63b, GAM-DEC-007: `give_won`) the
+    // pile is picked up, told to the players that see it.
+    let won = s.end_unowned_battle(parts, (HERO, TILE), (&[], true), &mut events);
+    assert_eq!((won.gains, won.reward_after), (vec![], Some((HERO, TILE))));
+    assert!(!s.is_removed(0) && s.guards_left(0).is_empty() && events.is_empty());
+    let gains = s.give_won(parts, (HERO, TILE), &mut events).gains;
     assert_eq!(gains, [(GOLD, 700)]);
     assert!(s.is_removed(0));
-    assert_eq!(s.army_left(0), None);
+    assert_eq!(s.army_left(0), Some(&[][..]));
+    // Nothing more once it is gone.
+    let mut quiet = Vec::new();
+    let again = s.give_won(parts, (HERO, TILE), &mut quiet);
+    assert_eq!((again, quiet), (AdventureOutcome::default(), vec![]));
     assert_eq!(
         events,
         [AdventureEvent {

@@ -76,7 +76,7 @@ fn a_gifts_experience_reaches_the_hero_with_its_level() {
 }
 
 /// The answer command of `answer`.
-const fn answered(answer: Answer) -> GameCommand {
+pub(super) const fn answered(answer: Answer) -> GameCommand {
     GameCommand::Answer(answer)
 }
 
@@ -476,6 +476,7 @@ fn a_won_guarded_artifact_and_a_beaten_monsters_artifact_reach_the_hero() {
         let mut state = game(&rules, object);
         let mut events = Vec::new();
         state.end_battle(&rules, sides, &won(), &mut events);
+        state.run_rests(&rules, &mut events);
         let ring = ArtifactInstance::from(RING);
         assert!(events.contains(&changed(HeroChange::AddArtifact(ring))));
         assert!(state.hero(HERO).unwrap().worn.contains(&Some(ring)));
@@ -486,7 +487,7 @@ fn a_won_guarded_artifact_and_a_beaten_monsters_artifact_reach_the_hero() {
 
 /// A savage wandering monster of two imps at (2, 0), which guards [`AT`] (ADV-MON-005) and always
 /// fights.
-fn guard(rules: &GameRuleset) -> ObjectSetup {
+pub(super) fn guard(rules: &GameRuleset) -> ObjectSetup {
     ObjectSetup {
         anchor: Pos::new(2, 0, 0),
         monster: Some(MonsterSetup {
@@ -503,7 +504,7 @@ fn guard(rules: &GameRuleset) -> ObjectSetup {
 }
 
 /// Whether `events` start a battle.
-fn starts_battle(events: &[GameEvent]) -> bool {
+pub(super) fn starts_battle(events: &[GameEvent]) -> bool {
     events
         .iter()
         .any(|e| matches!(e, GameEvent::BattleStarted { .. }))
@@ -547,9 +548,24 @@ fn a_guard_waits_for_a_choice_or_a_university_and_follows_a_gift() {
     let events = visit(&mut state, &rules);
     assert!(matches!(events[0], GameEvent::OfferRefused { .. }) && starts_battle(&events));
     // A gift without a decision: its experience, then the guard's battle (before E08 T63a the
-    // monster's answer dropped the hero's gains).
+    // monster's answer dropped the hero's gains), once the level-up it brings is answered (before
+    // E08 T63b the battle opened beside it, its hero read before the level).
     let mut state = with_guard("t:in_stone");
     let events = visit(&mut state, &rules);
     assert!(events.contains(&changed(HeroChange::GainExperience(1000))));
+    assert!(
+        state.level_up(RED).is_some() && !starts_battle(&events),
+        "{events:?}"
+    );
+    let first = Answer::LevelUp(SkillOffer::First);
+    let events = play(&mut state, &rules, RED, answered(first)).unwrap();
     assert!(starts_battle(&events), "{events:?}");
+    let primary = state.hero(HERO).unwrap().primary;
+    let fought = state
+        .battle(RED)
+        .unwrap()
+        .state()
+        .hero(BattleSide::Attacker);
+    let fought = fought.map(|h| [h.attack, h.defense, h.power, h.knowledge]);
+    assert_eq!(fought, Some(primary));
 }

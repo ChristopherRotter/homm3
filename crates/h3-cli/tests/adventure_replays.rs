@@ -114,7 +114,9 @@
 //! `answer close` for a meeting or an army dialog; game state hash v18: the choices and the
 //! Universities among the decisions, neither map has one) re-recorded all twelve with their
 //! options (the scripted two from their commands in v7's words), their commands unchanged but for
-//! their words: every hash moved.
+//! their words: every hash moved. E08 T63b (game state hash v19: the rests, GAM-DEC-007, the
+//! guard's wait no longer in a decision; a won guards' battle's pickup after the winner's levels)
+//! re-recorded all twelve with their options, their commands unchanged: every hash moved.
 //!
 //! **Scripted** (E08 T52, increment 6: the random agent manages nothing), on the generated
 //! `fixtures/maps/e08-army-12.h3m` (red's Valeska, hero 0, with a full army and twelve artifacts

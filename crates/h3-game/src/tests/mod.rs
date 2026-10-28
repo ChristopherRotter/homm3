@@ -19,6 +19,7 @@ mod monsters;
 mod moves;
 mod observe;
 mod records;
+mod rests;
 mod rewards;
 mod state;
 
