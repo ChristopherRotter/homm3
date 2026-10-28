@@ -86,7 +86,10 @@ trunk knows which stack acts next, from `inspect/probe_order.py` (a one-off scri
 runs/<run>/best.pt --opponent <seat> --set <set> --simulations <N> [--per-kind <n>] --json …`,
 the search and the sampled policy on the same held-out episodes (the settings, both rows, the
 search's costs; the findings in `docs/epics/E06-log.md`). `-fixedscale`: before the search's σ
-rescaled the completed values (T8c), when the search played as the sampled policy.
+rescaled the completed values (T8c), when the search played as the sampled policy. From E25 T1c
+(`t7-1-*`, the findings in `docs/epics/E25-log.md`) a world scores a decided battle by reward v1
+(T1a), and `-true` is the search over the true battle's copies (`--true-worlds --no-sampled`,
+T1b; its sampled row is the run without the suffix, on the same episodes).
 
 ## Lineage
 

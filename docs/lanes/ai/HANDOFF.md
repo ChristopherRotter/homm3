@@ -14,13 +14,11 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   the target is beating the faithful system actor (`t7-1`: 0.372); it **trains no agent any
   more** (ADR-0026 point 8 as amended; no neutral battles in training for now, the user at T2a).
   **Done 2026-10-28:** T1a, T1b (a world's reward v1, the true world), T2a (shaping, the refused
-  mixes, T2b's configs); C ABI v35 for all three. **In progress:** T1c, the search measured again
-  with `t7-1`'s `best.pt` (the user's upload, in `python/runs/t7-1/`, not committed): six runs
-  into `python/records/search/t7-1-*.json`. **Next:** T2b's two runs on the user's machine
-  (their length agreed first), then T3, the checkpoint.
-- **Open pull requests:** #534 (E25 T1a, T1b, then T2a and T1c on the same branch,
-  `claude/adoring-turing-5sit47`), #539 (`shared/e25-worlds`: ADR-0025 point 12a.3 and the env
-  doc, a second branch the user allowed): watch both to their merge. Merged: #528.
+  mixes, T2b's configs), all C ABI v35; T1c (the search gains nothing with either world: the
+  network's evaluation limits it). **Next:** T2b's two runs on the user's machine (their length
+  agreed first: `configs/e25-control.toml`, `e25-shaping.toml`), then T3, the checkpoint.
+- **Open pull requests:** #534 (E25 T1a to T1c, T2a; `claude/adoring-turing-5sit47`): watch it to
+  its merge. Merged: #539 (`shared/e25-worlds`, ADR-0025 point 12a.3), #528.
 - **Versions:** battle action encoding v13, observation encoding v22, replay format v31
   (CLT-Q4/Q6), the adventure env's action encoding v5 (E08 T63a), C ABI v35 (E25 T1a, T1b, T2a:
   a world's reward, the true world, the potential) (`docs/08-work-process.md`, "Versions"). Next
@@ -33,13 +31,13 @@ Moved to `TRAPS.md`, in three groups: **Ownership** (cross-lane encodings and re
 
 ## Recent sessions
 
-### 2026-10-28 — E25 T1a, T1b (C ABI v35)
+### 2026-10-28 — E25 T1a, T1b, T2a (C ABI v35), T1c
 
-- T1a: a world scores a decided battle by its batch's reward v1 (`BattleEnv::with_reward`, set
-  by `determinize`; the agent's choice over a new function); found and fixed with it: a world's
-  setup held the guess's starting mana, which reward v1's mana term reads. T1b:
-  `BattleBatch::true_world`, `h3_batch_true_world`, `h3env.search --true-worlds`. Rust, C and
-  Python tests; the scoped verify; the Python tests with torch.
+- T1a: a world scores a decided battle by its batch's reward v1 (found with it: a world's setup
+  held the guess's starting mana). T1b: the true world, `--true-worlds`. The user: `t7-1`'s
+  `best.pt` uploaded, no neutral battles for now, a second branch for the shared docs (#539).
+  T2a: the batch's potential, `[ppo] shaping`, `run.trainable`, T2b's configs. T1c (six runs,
+  about five hours in the sandbox): no gain with guessed or true worlds.
 
 ### 2026-10-27 — E25's refinement (AI-Q10)
 

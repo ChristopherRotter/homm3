@@ -1,6 +1,6 @@
 # E25 — Battle AI v2
 
-Status: **in progress**, refined 2026-10-27 (AI-Q10); increment 1: T1a, T1b, T2a done · Lane: **ai** ·
+Status: **in progress**, refined 2026-10-27 (AI-Q10); increment 1: T1a to T1c, T2a done · Lane: **ai** ·
 Follows E06 (closed 2026-10-27: `t7-1` the battle AI v1, record `E06-log.md`)
 
 ## Goal
@@ -99,10 +99,10 @@ evidence asks for one (then a `cross-lane` change with the battle lane, after th
 - [x] **T1b The true-world search** (2026-10-28; `E25-log.md` T1b): `BattleBatch::true_world`,
   `h3_batch_true_world` (C ABI v35 with T1a; trusted tooling, a diagnostic), `h3env.search
   --true-worlds` (the flag spelled so, `--worlds` stays the count).
-- [ ] **T1c T8c again** (the sandbox; `t7-1`'s `best.pt` from the user, else `order-1`'s): the
-  search with determinized and with true worlds, beside the sampled policy on the same episodes,
-  against the system actor at N 16 and 64, and on the neutral set. The read: whether a search
-  gains at all, and what the guess costs.
+- [x] **T1c T8c again** (2026-10-28; `E25-log.md` T1c; `t7-1`'s `best.pt`): no gain at N 16 or
+  64 against the system actor or on the neutral set, with guessed or true worlds (the guess
+  costs at most +0.012 in value, within the intervals): the network's evaluation limits the
+  search, not the terminal or the hidden information.
 - [x] **T2a Shaping and the training mix** (2026-10-28; `E25-log.md` T2a): `[ppo] shaping` (off
   by default; Φ the batch's potential, `H3BatchBuffers.potential`, C ABI v35), the faithful
   system actor's mixes refused (`run.trainable`: no `system_share`, no neutral kind; the user:
