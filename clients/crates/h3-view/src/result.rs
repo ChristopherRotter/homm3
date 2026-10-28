@@ -21,7 +21,7 @@ use h3_contracts::{StackOrigin, StackRecord};
 use serde::Deserialize;
 
 use crate::message::MessageBox;
-use crate::scene::Draw;
+use crate::scene::{Draw, Moment};
 use crate::text::{Args, Catalogue};
 use crate::ui::{Button, Def, Dialog, Frames, Item, Label, Picture, Shown};
 
@@ -49,6 +49,9 @@ const OWN_IDS: u16 = 0x100;
 const LOSSES: u16 = 0x110;
 /// The most losses a row shows (0x47102D).
 pub const LOSSES_SHOWN: usize = 7;
+/// The combat cursor's frame while the window is open (the pointer: `battle_end` sets it,
+/// `SetCursor(6, 2)` at 0x4777FC, and the window sets none).
+pub const CURSOR_FRAME: u32 = 6;
 
 /// The window's assets and fonts (the layout's `[result]`): the executable's literals.
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
@@ -290,6 +293,17 @@ pub fn layout(layout: &ResultLayout, texts: &Texts, sides: &[Side; 2], player: u
 pub fn backdrop(frame: [u32; 2]) -> Draw {
     let [w, h] = frame.map(|v| i32::try_from(v).unwrap_or(i32::MAX));
     Draw::Darken { rect: [0, 0, w, h] }
+}
+
+/// The battle behind the window (`battle_end` darkens the screen as shown): the moment at the
+/// battle's end `now`, its heroes' flags as the moment just before showed them (`before`): the
+/// end's last action is drawn, but the idle step that would turn the flags then never runs.
+pub fn behind(now: &mut Moment, before: &Moment) {
+    for (hero, shown) in now.heroes.iter_mut().zip(&before.heroes) {
+        if let (Some(hero), Some(shown)) = (hero.as_mut(), shown) {
+            hero.flag = shown.flag;
+        }
+    }
 }
 
 /// A side's name.

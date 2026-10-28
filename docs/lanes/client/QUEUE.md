@@ -10,7 +10,7 @@ the adventure map client being the map-client lane's E24). M5 (live play) refine
 closure (T3c, 2026-10-27, with the user): hot seat in-process first, then a game on a server;
 its tasks below, in order (T1 and T2 done 2026-10-27, each cut in two by the user; T2b whole,
 the user; T3 cut in two, T3a done 2026-10-27, T3b 2026-10-28; T4 cut in three, T4a done
-2026-10-28). The original
+2026-10-28, T4b cut in two, T4b1 done 2026-10-28). The original
 files: stage them from the user's `original-data/install/` (one large file per staging call; the
 user's computer must be online); never from the installation. The captures need the five DLLs,
 `Heroes3.snd`, `H3ab_ahd.snd` and `H3ab_ahd.vid` too; the harness's runbook:
@@ -22,18 +22,28 @@ check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gat
 ### E17 M5 T4 — the battle's dialogs
 
 Cut in three by the user on 2026-10-28 (T4a, the message box, Retreat and Surrender, done
-2026-10-28; T4b and T4c below, in order). The detail: `QUEUE-ARCHIVE.md`, 2026-10-21 (T8) and
+2026-10-28; T4b cut in two, T4b1 done 2026-10-28; T4b2 and T4c below, in order). The detail: `QUEUE-ARCHIVE.md`, 2026-10-21 (T8) and
 2026-10-20 (T6a).
 
-#### T4b — the result window
+#### T4b2 — the result window's clip
 
-- **Scope:** the result window (`battle_result_dialog` 0x4702D0: the heroes, the texts, the
-  casualties, OK; the screen darkened under it, 0x44E5F0 from 0x47782C: `end`'s last frame
-  differs by them now); read, drawn, recorded, with sequences through a retreat and a surrender.
-- **Acceptance:** its still and sequences through it as recorded, or each difference listed;
-  battles ended by a surrender, a retreat and a victory in the window, each to its window; the
-  Definition of Done.
-- **Depends on:** T4a (done 2026-10-28). **Status:** ready.
+T4b cut in two by the user on 2026-10-28 (T4b1, the window without its clip, done 2026-10-28;
+design §7.20). The user's choice for the decoder (2026-10-28, CLT-Q29): a port of FFmpeg's Bink
+video decoder (LGPL-2.1-or-later, GPL-2-compatible), with an origin comment, no new dependency.
+
+- **Scope:** the clip the window plays in its slot (`video_play_in_dialog` 0x597570 from
+  0x471A24, its index by the shown side's fate: `WIN3`, `LBSTART` then `LBLOOP`, `RTSTART` then
+  `RTLOOP`, `surrender`, `defendall` then `defendloop`, `LOSECSTL` then `LOSECSLP`; 256 × 120 at
+  the screen's (272, 89); Bink revision `b`, 15 fps; in `VIDEO.VID`): the clip table and the
+  loop read, the decoder ported into a client crate (the video frames only: the clips' audio, if
+  any, read first), drawn in the window and the captures; the harness's run directory given the
+  clips (the user's `original-data/battle-videos.vid`, 9 MB, the twelve clips in a `VIDEO.VID`
+  of their own since 2026-10-28: stage it; the spell book's two page turns are in it too, which
+  "Animate SpellBook" off keeps unplayed).
+- **Acceptance:** the decoder's frames checked against the original's captures (or a reference
+  decode); the window's clip as recorded in a still and a sequence, or each difference listed;
+  T4b1's stills taken again with the clips; the Definition of Done.
+- **Depends on:** T4b1 (done 2026-10-28). **Status:** ready.
 
 #### T4c — Auto Combat and the tactics phase
 

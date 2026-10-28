@@ -1060,6 +1060,9 @@ at = 100
 differing = 0
 why = "exact: Animate Dead with no corpse: \"That spell will affect no one!\" over the battle, the book closed (E17 M5 T4a)"
 
+# E17 M5 T4b1: the battle's result window (design §7.20), over the whole screen darkened, the
+# combat cursor's pointer at the park point. Retreat's question answered OK (dialogs.toml): Red's
+# side shown, the loser; no losses. Surrender's (result.toml: grass's battle, Red able to pay).
 [[situation]]
 id = "result-retreat"
 scenario = "dialogs.toml"
@@ -1069,4 +1072,15 @@ actions = ["key:r", "key:Return"]
 [[situation.frame]]
 at = 100
 differing = 0
-why = "pending"
+why = "exact: the retreat's window: Orrin's and Crag Hack's portraits and names, Defeated and Victorious, \"The cowardly Orrin flees from battle.\", None twice; the screen darkened, the shadow, the clip's slot bare (E17 M5 T4b1)"
+
+[[situation]]
+id = "result-surrender"
+scenario = "result.toml"
+seat = "attacker"
+actions = ["key:s", "key:Return"]
+
+[[situation.frame]]
+at = 100
+differing = 0
+why = "exact: the surrender's window: \"Orrin surrenders to the enemy, and departs in shame.\", None twice (E17 M5 T4b1)"

@@ -136,6 +136,9 @@ pub(crate) struct Interface<'a> {
     /// What a situation's actions left of the spell book (E17 M5 T3a): drawn over the panel, its
     /// cursor over all at the mouse they left.
     pub book: Option<&'a crate::spellbook::Still>,
+    /// The result window a sequence's battle ends with (E17 M5 T4b1): drawn from the timeline's
+    /// end on.
+    pub result: Option<&'a h3_view::message::MessageBox>,
 }
 
 /// One kept frame: its time, the stacks the original shows fidgeting then (the viewer draws
@@ -408,6 +411,27 @@ fn sequences(options: &Options) -> Result<usize, String> {
         write(&ours_path, ours.as_bytes())?;
         if let Some(dir) = &options.frames {
             let here = dir.join(&sequence.id);
+            // The result window the battle ends with (E17 M5 T4b1): the engine's outcome after
+            // the sequence's commands.
+            let played: Vec<Command> = steps.iter().map(|&(_, c)| c).collect();
+            let (ruleset, outcome) =
+                scenario::outcome(&scenario_path, &options.packs, sequence.seed, &played)
+                    .map_err(|e| format!("{}: {e}", sequence.id))?;
+            let sources = crate::results::Sources {
+                manifest: &record.header.manifest,
+                tables: &tables,
+                ruleset: &ruleset,
+                catalogue: &catalogue,
+                layout: &layout,
+            };
+            let result = outcome.and_then(|o| {
+                crate::results::window(
+                    &sources,
+                    snapshot,
+                    &o,
+                    crate::render::viewing_player(snapshot),
+                )
+            });
             let panels = log::panels(
                 &record,
                 &shown.log,
@@ -422,6 +446,7 @@ fn sequences(options: &Options) -> Result<usize, String> {
                 shown: Some(&shown),
                 walls: None,
                 book: None,
+                result: result.as_ref(),
             };
             let drawn = draw_frames(
                 &here,
@@ -562,8 +587,19 @@ pub(crate) fn draw_frames(
             .book
             .filter(|b| b.dialog())
             .map_or(frame.t, |b| b.at.min(frame.t));
+        // Behind the result window the battle stands as it ended, its flags as last shown (E17 M5
+        // T4b1, `h3_view::result::behind`).
+        let ended = match (interface.result, timeline.ended) {
+            (Some(_), Some((end, _))) if frame.t >= end => Some(end),
+            _ => None,
+        };
+        let at = ended.map_or(at, |end| at.min(end));
         head.seek(timeline, at);
         let mut moment = head.moment(timeline);
+        if let Some(end) = ended {
+            let before = scene::Moment::at(timeline, end.saturating_sub(1));
+            h3_view::result::behind(&mut moment, &before);
+        }
         moment.walls = interface.walls.or(moment.walls);
         moment.marked = match interface.shown {
             Some(shown) => shown.marked(frame.t),
@@ -677,7 +713,28 @@ pub(crate) fn draw_frames(
         let message = interface
             .book
             .and_then(|b| Some((b.message.as_ref()?, b.mouse)));
-        if let Some((message, mouse)) = message {
+        // The result window (E17 M5 T4b1): a still's at once, a sequence's from its battle's end;
+        // over the whole screen darkened, the combat cursor's pointer at the mouse.
+        let result = match interface.book.and_then(|b| Some((b.result.as_ref()?, b.mouse))) {
+            Some((window, mouse)) => Some((window, Some(mouse))),
+            None => interface
+                .result
+                .filter(|_| timeline.ended.is_some_and(|(t, _)| frame.t >= t))
+                .map(|window| {
+                    let point = interface
+                        .shown
+                        .and_then(|shown| frame.cursor.or_else(|| shown.point(frame.t)))
+                        .or_else(|| pointer.as_ref().map(|(p, _)| *p));
+                    (window, point)
+                }),
+        };
+        if let Some((window, mouse)) = result {
+            list.push(h3_view::result::backdrop(layout.frame));
+            list.extend(window.dialog.draws(&window.shown, &layout.player_palette));
+            if let Some(point) = mouse {
+                list.push(mouse::cursor(layout, h3_view::result::CURSOR_FRAME, point));
+            }
+        } else if let Some((message, mouse)) = message {
             list.extend(message.dialog.draws(&message.shown, &layout.player_palette));
             list.push(scene::Draw::Cursor {
                 def: layout.message.cursor.clone(),

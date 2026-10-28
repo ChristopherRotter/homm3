@@ -358,11 +358,34 @@ fn render(options: &Options) -> Result<Vec<String>, String> {
                 .map_or([0, 0], |d| {
                     [d.width, d.height].map(|v| i32::try_from(v).unwrap_or(i32::MAX))
                 });
+            // The result window a box's OK ends the battle with (E17 M5 T4b1): the engine's
+            // outcome of the opening's command.
+            let result = |command| {
+                if !options.scenario() {
+                    return None;
+                }
+                let (ruleset, outcome) = crate::scenario::outcome(
+                    &options.input,
+                    &options.packs,
+                    options.seed,
+                    &[command],
+                )
+                .ok()?;
+                let sources = crate::results::Sources {
+                    manifest,
+                    tables: &tables,
+                    ruleset: &ruleset,
+                    catalogue: &catalogue,
+                    layout: &layout,
+                };
+                crate::results::window(&sources, observation, &outcome?, viewing)
+            };
             let boxes = crate::spellbook::Boxes {
                 tell: &tell,
                 leave,
                 no_one: &no_one,
                 pictures: (def, size),
+                result: &result,
             };
             Some(crate::spellbook::still(
                 &actions,
@@ -383,6 +406,7 @@ fn render(options: &Options) -> Result<Vec<String>, String> {
             shown: None,
             walls: options.walls,
             book: book.as_ref(),
+            result: None,
         };
         let drawn = crate::sequences::draw_frames(
             dir,
@@ -494,7 +518,7 @@ fn render(options: &Options) -> Result<Vec<String>, String> {
 /// The colour whose view the screen shows in `observation`'s battle (`viewing_player` 0x4CEA20;
 /// E17 M5 T4a, as the window's battle takes it): the attacker's when human, else the defender's
 /// when human, else red (the record names none: red for the attacker, blue for the defender).
-fn viewing_player(observation: &h3_protocol::wire::Observation) -> u8 {
+pub fn viewing_player(observation: &h3_protocol::wire::Observation) -> u8 {
     let colour = |index: usize| {
         observation.sides[index]
             .colour

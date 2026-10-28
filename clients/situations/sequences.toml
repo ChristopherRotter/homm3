@@ -221,8 +221,9 @@ command = [
 # place); the Archangel flies beside them (its rear hex 98, the cursor left of their centre) and
 # kills all ten. The battle is decided as the strike ends, when the next turn would start
 # (`<ms> end`: the harness reads the manager's +0x132F8): `battle_end` darkens the screen, opens
-# the result's window and plays its tune then, hot seat's winner a human: `win battle`. The frame
-# at the end differs by the result's window, which the viewer does not draw yet.
+# the result's window and plays its tune then, hot seat's winner a human: `win battle`. Since E17
+# M5 T4b1 the frame at the end is exact: the window (A glorious victory, Orrin's 600 experience,
+# the defender's 10 Pikemen lost) over the screen darkened as last shown (the flags unturned).
 [[sequence]]
 id = "end"
 scenario = "seq-end.toml"

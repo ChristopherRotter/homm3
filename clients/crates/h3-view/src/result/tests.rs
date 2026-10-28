@@ -293,3 +293,23 @@ fn experience_counts_the_loser_s_army_and_the_heroes() {
     assert_eq!(experience(&loser, hp, (true, false, true)), 1160);
     assert_eq!(experience(&[], hp, (false, true, false)), 0);
 }
+
+#[test]
+fn behind_the_window_the_flags_stay_as_shown() {
+    use crate::hero::HeroPose;
+    let pose = |group, flag| HeroPose {
+        group,
+        frame: 0,
+        flag,
+    };
+    let mut now = Moment {
+        heroes: [Some(pose(3, 5)), None],
+        ..Moment::default()
+    };
+    let before = Moment {
+        heroes: [Some(pose(0, 4)), Some(pose(0, 2))],
+        ..Moment::default()
+    };
+    behind(&mut now, &before);
+    assert_eq!(now.heroes, [Some(pose(3, 4)), None]);
+}

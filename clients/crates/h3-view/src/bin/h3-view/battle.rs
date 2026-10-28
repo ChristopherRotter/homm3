@@ -262,6 +262,8 @@ pub struct Battle<'g> {
     /// and what its OK does. The battle (and the book, when the box is the book's) stands still
     /// behind it (its modal loop runs no idle step).
     message: Option<(h3_view::message::Open, u32, Asked)>,
+    /// The result window was closed (E17 M5 T4b1): the battle's screen is done.
+    result_closed: bool,
 }
 
 /// What a message box did with an input (E17 M5 T4a).
@@ -273,6 +275,8 @@ pub enum MessageDid {
     Changed,
     /// The box's OK gave a command: Retreat or Surrender.
     Give(Command),
+    /// The result window's OK closed the battle's screen (E17 M5 T4b1).
+    Ended,
 }
 
 /// The original's spells aimed at a second target too (Sacrifice, Teleport): their aims are not
@@ -389,6 +393,7 @@ impl<'g> Battle<'g> {
             book_memory: h3_view::book::Memory::default(),
             aiming: None,
             message: None,
+            result_closed: false,
         };
         battle.follow()?;
         Ok(battle)
@@ -634,6 +639,16 @@ impl<'g> Battle<'g> {
                 .and_then(|f| hot.get(f).copied())
                 .unwrap_or_default()
         };
+        // The result window leaves the combat cursor's pointer `battle_end` set (E17 M5 T4b1).
+        if self.message.as_ref().is_some_and(|(_, _, a)| *a == Asked::Result) {
+            let mouse = &self.ground.layout.mouse;
+            let frame = h3_view::result::CURSOR_FRAME;
+            return CursorLook {
+                def: mouse.cursor.clone(),
+                frame,
+                hot: hot_of(&mouse.hot, frame),
+            };
+        }
         // A message box sets the default cursor's frame 0 (0x4F74AC; E17 M5 T4a).
         if self.message.is_some() {
             let book = &self.ground.layout.book;
@@ -1040,6 +1055,10 @@ impl<'g> Battle<'g> {
             Outcome::Closed(id) => id,
         };
         self.message = None;
+        if asked == Asked::Result {
+            self.result_closed = true;
+            return MessageDid::Ended;
+        }
         let Some(writer) = self.ground.writer.as_ref() else {
             return MessageDid::Changed;
         };
@@ -1051,6 +1070,54 @@ impl<'g> Battle<'g> {
             }
             Answered::Closed => MessageDid::Changed,
         }
+    }
+
+    /// Opens the battle's result window once `at` reaches the battle's end (E17 M5 T4b1; design
+    /// §7.20): as `battle_end` 0x477470 opens it as the battle is decided, over the whole screen
+    /// darkened, the battle standing as it ended; from the engine's outcome of the battle fought
+    /// here (none for a record file's). Whether it opened.
+    pub fn open_result(&mut self, at: u32) -> bool {
+        if self.result_closed || self.message.is_some() {
+            return false;
+        }
+        let Some((ended, _)) = self.timeline().ended.filter(|&(t, _)| t <= at) else {
+            return false;
+        };
+        let (Some(live), Some(writer), Some(opening)) = (
+            self.live.as_ref(),
+            self.ground.writer.as_ref(),
+            self.record.first_snapshot(),
+        ) else {
+            return false;
+        };
+        let Some((outcome, ruleset)) = live.outcome() else {
+            return false;
+        };
+        let sources = crate::results::Sources {
+            manifest: &self.record.header.manifest,
+            tables: &self.ground.tables,
+            ruleset,
+            catalogue: &writer.catalogue,
+            layout: &self.ground.layout,
+        };
+        let player = self.viewing_player();
+        let Some(window) = crate::results::window(&sources, opening, &outcome, player) else {
+            return false;
+        };
+        self.message = Some((h3_view::message::Open::new(window), ended, Asked::Result));
+        true
+    }
+
+    /// Whether the result window is open (E17 M5 T4b1).
+    pub fn result_open(&self) -> bool {
+        self.message
+            .as_ref()
+            .is_some_and(|(_, _, asked)| *asked == Asked::Result)
+    }
+
+    /// Whether the result window was closed (E17 M5 T4b1): the battle's screen is done.
+    pub const fn result_closed(&self) -> bool {
+        self.result_closed
     }
 
     /// The centre of the open box's button `id` on the screen, if it has one (E17 M5 T4a: an
@@ -1253,13 +1320,23 @@ impl<'g> Battle<'g> {
             .as_ref()
             .unwrap_or_else(|| self.played.timeline());
         self.head.seek(timeline, at);
-        let moment = self.head.moment(timeline);
+        let mut moment = self.head.moment(timeline);
+        // Behind the result window the battle stands as it ended, its flags as last shown (E17 M5
+        // T4b1, `h3_view::result::behind`).
+        if self.result_open() {
+            let before = Moment::at(timeline, at.saturating_sub(1));
+            h3_view::result::behind(&mut moment, &before);
+        }
         let mut list = self.list(at, &moment)?;
         if let Some((open, _, player)) = &self.book {
             let layout = &self.ground.layout;
             list.extend(open.draws(&layout.book, &layout.player_palette, *player));
         }
-        if let Some((open, _, _)) = &self.message {
+        if let Some((open, _, asked)) = &self.message {
+            // The result window over the whole screen darkened (E17 M5 T4b1).
+            if *asked == Asked::Result {
+                list.push(h3_view::result::backdrop(self.ground.layout.frame));
+            }
             let message = &open.message;
             list.extend(
                 message
