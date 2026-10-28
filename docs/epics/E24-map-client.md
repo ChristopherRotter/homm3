@@ -160,7 +160,8 @@ viewers share.
   mask in `clients/map/masks.toml`, the 40 situations and 13 sequences compared; the log); T2b
   cut with the user (2026-10-28): T2b1, the frame's fixed cost (**done** 2026-10-28: the
   widening by a table, the background drawn once, the levels' spatial index; the log), T2b2, a
-  frame redrawing only what changed; T3, the minimap; T4, the hero and town lists; T5, the status
+  frame redrawing only what changed (kept whole by the user; **done** 2026-10-28: the drawers'
+  spans, the view's cells, the changed rectangles widened and uploaded; the log); T3, the minimap; T4, the hero and town lists; T5, the status
   window, the resource bar and the date; T6, the mouse, the keys during a walk, the sound without
   the focus; T7, M3's closure. A task that grows is cut at a seam agreed with the user.
 - **Exit:** every situation and sequence as recorded on the whole screen (no `panels` mask
@@ -255,6 +256,17 @@ M1's review lists (three reviewers, T6b; the list accepted) and M2's (accepted a
   while the frame's picture and the dialog's draws stay, the rectangle the view's draws cover
   restored from it); `scene::TileIndex` and `scene_in` (a level's spatial index, built at the
   load and again when the live part's objects change); the window's `--check` line `widened`.
+- **M3 T2b2, a frame redrawing only what changed** (*provisional*, design §4.3): `draw::Spans`
+  (each frame's rows as spans of literal pixels and of runs, made as its DEF is decoded;
+  `Batch::drawable`), the gems through the raw drawer (so a cell cuts them); `scene::ViewPlace`
+  (`Scene::view`: the view's clip, origin and tile); `compose::Composer`'s 32 × 32 cells compared
+  with the last scene's, the clip's pixels moved with the view (only on a background of one
+  colour across the clip), `damage`, `compose_owned`; `damage::History` and `tidy`;
+  `h3_render::screen::Widening::widen_rect`, `h3_sdl::Window::present_part` and
+  `present_read_part` (additive, the common foundation's); the painter's assets decoded when the
+  composer finds one missing (no scene's names collected a frame); the window's `--check` line
+  `afresh` (T2b1's `widened`: each frame made against the same frame composed afresh) and its
+  timing line's `uploaded`.
 - **M3 T2a, `h3_ui::paint`**: the dialog items' drawers moved into the common crate (an `Assets`
   trait each viewer's batch implements); `h3-view` keeps its copy until the client lane takes
   this one (its inbox); a button takes a player's colours and a DEF from `Shown` by its id.

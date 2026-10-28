@@ -16,12 +16,15 @@ use h3_assets::pcx::{Pcx, decode_pcx};
 use h3_ui::paint::Assets;
 use h3_ui::sprite::Sprite;
 
+use crate::draw::{FrameSpans, Spans};
 use crate::scene::{Draw, Scene};
 
 /// The decoded assets, by upper-cased name.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct Batch {
     sprites: BTreeMap<String, Sprite>,
+    /// Each DEF's frames' spans, by the frames' offsets (E24 M3 T2b2).
+    spans: BTreeMap<String, BTreeMap<u32, Spans>>,
     pictures: BTreeMap<String, Pcx>,
     palettes: BTreeMap<String, Palette>,
     fonts: BTreeMap<String, Font>,
@@ -59,6 +62,8 @@ impl Batch {
             for offset in def.offsets() {
                 frames.insert(offset, decode_frame(bytes, offset).map_err(failed)?);
             }
+            let spans = frames.iter().map(|(&o, f)| (o, Spans::of(f))).collect();
+            self.spans.insert(upper.clone(), spans);
             self.sprites.insert(upper, Sprite { def, frames });
         } else if upper.ends_with(".PCX") {
             let picture = decode_pcx(bytes).map_err(failed)?;
@@ -81,6 +86,15 @@ impl Batch {
         upper(&self.sprites, name)
     }
 
+    /// The DEF `name` as the view's drawers take it: its frames with their spans.
+    #[must_use]
+    pub fn drawable(&self, name: &str) -> Option<Drawable<'_>> {
+        Some(Drawable {
+            sprite: upper(&self.sprites, name)?,
+            spans: upper(&self.spans, name)?,
+        })
+    }
+
     /// The picture `name`.
     #[must_use]
     pub fn picture(&self, name: &str) -> Option<&Pcx> {
@@ -97,6 +111,29 @@ impl Batch {
     #[must_use]
     pub fn font(&self, name: &str) -> Option<&Font> {
         upper(&self.fonts, name)
+    }
+}
+
+/// A DEF as the view's drawers take it (E24 M3 T2b2): its frames and their spans.
+#[derive(Debug, Clone, Copy)]
+pub struct Drawable<'b> {
+    /// The DEF.
+    pub sprite: &'b Sprite,
+    spans: &'b BTreeMap<u32, Spans>,
+}
+
+impl<'b> Drawable<'b> {
+    /// Frame `index` of the group of id `group`, with its spans.
+    #[must_use]
+    pub fn frame(&self, group: u32, index: u32) -> Option<FrameSpans<'b>> {
+        let group = self.sprite.def.groups.iter().find(|g| g.id == group)?;
+        let at = group
+            .frames
+            .get(usize::try_from(index).unwrap_or(usize::MAX))?;
+        Some((
+            self.sprite.frames.get(&at.offset)?,
+            self.spans.get(&at.offset)?,
+        ))
     }
 }
 
@@ -163,27 +200,34 @@ pub fn names(scene: &Scene) -> BTreeSet<String> {
 #[must_use]
 pub fn spelled(scene: &Scene) -> BTreeSet<&str> {
     let mut names = BTreeSet::new();
+    each_spelled(scene, |name| {
+        names.insert(name);
+    });
+    names
+}
+
+/// Hands `visit` every asset `scene` draws as the scene spells it, in order, as often as drawn.
+fn each_spelled<'s>(scene: &'s Scene, mut visit: impl FnMut(&'s str)) {
     for draw in &scene.draws {
         match draw {
             Draw::Frame {
                 picture, players, ..
             } => {
-                names.insert(picture.as_str());
-                names.insert(players.as_str());
+                visit(picture.as_str());
+                visit(players.as_str());
             }
             Draw::Piece { def, flag, .. } => {
-                names.insert(def.as_str());
+                visit(def.as_str());
                 if flag.is_some() {
-                    names.insert(scene.flags.as_str());
+                    visit(scene.flags.as_str());
                 }
             }
             Draw::Gem { def, .. } => {
-                names.insert(def.as_str());
+                visit(def.as_str());
             }
-            Draw::Dialog(draw) => names.extend(h3_ui::paint::names(draw)),
+            Draw::Dialog(draw) => h3_ui::paint::names(draw).into_iter().for_each(&mut visit),
         }
     }
-    names
 }
 
 #[cfg(test)]

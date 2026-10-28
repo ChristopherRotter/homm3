@@ -646,8 +646,11 @@ impl Window {
         fit(i64::from(ow), i64::from(oh), self.width, self.height)
     }
 
-    /// Draws `frame` (`width × height` pixels, `0x00RRGGBB`) into the back buffer.
-    fn draw(&mut self, frame: &[u32]) -> Result<(), String> {
+    /// Draws `frame` (`width × height` pixels, `0x00RRGGBB`) into the back buffer: the whole
+    /// frame uploaded to the texture, or only the rectangles `changed` gives (left, top, right,
+    /// bottom; the last two exclusive), the texture holding the rest from the frame before (E24 M3
+    /// T2b2).
+    fn draw(&mut self, frame: &[u32], changed: Option<&[[u32; 4]]>) -> Result<(), String> {
         let pixels = usize::try_from(u64::from(self.width) * u64::from(self.height)).unwrap_or(0);
         if frame.len() != pixels {
             return Err(format!(
@@ -657,15 +660,38 @@ impl Window {
                 self.height
             ));
         }
-        // SAFETY: the texture is `width × height` XRGB8888; `frame` holds that many pixels.
+        let pitch = int(self.width.saturating_mul(4));
+        // SAFETY: the texture is `width × height` XRGB8888; `frame` holds that many pixels, and
+        // each rectangle is cut to the frame before its first pixel is pointed at.
         unsafe {
-            if !SDL_UpdateTexture(
-                self.texture,
-                null(),
-                frame.as_ptr().cast(),
-                int(self.width.saturating_mul(4)),
-            ) {
-                return Err(failed("SDL_UpdateTexture"));
+            match changed {
+                None => {
+                    if !SDL_UpdateTexture(self.texture, null(), frame.as_ptr().cast(), pitch) {
+                        return Err(failed("SDL_UpdateTexture"));
+                    }
+                }
+                Some(rects) => {
+                    for &[left, top, right, bottom] in rects {
+                        let (right, bottom) = (right.min(self.width), bottom.min(self.height));
+                        if left >= right || top >= bottom {
+                            continue;
+                        }
+                        let rect = SDL_Rect {
+                            x: int(left),
+                            y: int(top),
+                            w: int(right - left),
+                            h: int(bottom - top),
+                        };
+                        let first = usize::try_from(
+                            u64::from(top) * u64::from(self.width) + u64::from(left),
+                        )
+                        .unwrap_or(0);
+                        let at = frame.as_ptr().add(first);
+                        if !SDL_UpdateTexture(self.texture, &rect, at.cast(), pitch) {
+                            return Err(failed("SDL_UpdateTexture"));
+                        }
+                    }
+                }
             }
             SDL_SetRenderDrawColor(self.renderer, 0, 0, 0, 255);
             SDL_RenderClear(self.renderer);
@@ -681,13 +707,21 @@ impl Window {
     /// # Errors
     /// A frame of another size, or SDL's error.
     pub fn present(&mut self, frame: &[u32]) -> Result<(), String> {
-        self.draw(frame)?;
-        // SAFETY: a plain SDL call on the window's renderer.
-        if unsafe { SDL_RenderPresent(self.renderer) } {
-            Ok(())
-        } else {
-            Err(failed("SDL_RenderPresent"))
-        }
+        self.present_part(frame, None)
+    }
+
+    /// Shows `frame`, uploading only the rectangles `changed` gives when it gives them (E24 M3
+    /// T2b2): the caller vouches that the rest is the frame shown before.
+    ///
+    /// # Errors
+    /// As [`Window::present`].
+    pub fn present_part(
+        &mut self,
+        frame: &[u32],
+        changed: Option<&[[u32; 4]]>,
+    ) -> Result<(), String> {
+        self.draw(frame, changed)?;
+        self.present_drawn()
     }
 
     /// As [`Window::present`], reading the whole output back first (the window's check).
@@ -695,7 +729,19 @@ impl Window {
     /// # Errors
     /// As [`Window::present`], or when the output cannot be read.
     pub fn present_read(&mut self, frame: &[u32]) -> Result<ReadBack, String> {
-        self.draw(frame)?;
+        self.present_read_part(frame, None)
+    }
+
+    /// As [`Window::present_part`], reading the whole output back first (the window's check).
+    ///
+    /// # Errors
+    /// As [`Window::present_read`].
+    pub fn present_read_part(
+        &mut self,
+        frame: &[u32],
+        changed: Option<&[[u32; 4]]>,
+    ) -> Result<ReadBack, String> {
+        self.draw(frame, changed)?;
         let back = self.read_back();
         self.present_drawn()?;
         back
