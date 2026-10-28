@@ -1259,3 +1259,70 @@ generic key table), the user chose one pull request for all of T1a.
   the pull request). The container restarted during the setup's
   baseline (its run gone): `master`'s client code was CI's (`Clients` green on 78f4aaa9), so the
   gates ran on the branch only.
+
+### M3 T1b — the battle window's keys through the table (2026-10-28)
+
+On `map-client/e24-m3-t1b` (`cross-lane`: `h3-view`'s window, book and box keys, the user's
+consent at T0), the user present at the start; `master` at 59105b2e (#545 found merged at
+15:17 UTC). The original data staged from the user's repo folder first (the exe, the four LODs,
+both `.snd`, `H3ab_ahd.vid`, `h3maped.exe`, the five DLLs, `maps.tar`, `extracted.tar`,
+`battle-videos.vid`, the nine terrain tracks, the combat tracks and the end tunes). The queue's
+entry said both "the battle's own keys as they are" and "every key of both windows through the
+table"; asked how far to go (the window's keys only; with the battle's flat keys; everything cut
+in two), the user answered **no cut**: every key of both windows through the table, in one task.
+
+- **`h3_ui::keys`:** a viewer's `Command` gains its `Context` (what is open over its screen; the
+  map's `()`), its `TABLE` in the user's file and `context()` (`None`: every context); a chord
+  is refused on two commands one context can take (`together`), so one key may give a command in
+  each; `Keys::command(context, ctrl, key)`. The user's file is a TOML file of viewers' tables
+  (`VIEWERS`: `[map]`, `[battle]`; another name, or a top-level command as M2's file had, is
+  refused; a file without the viewer's table is the defaults), errors prefixed by the table.
+  `Window`: both windows' own nine commands (names, the F-keys and Esc, `everywhere()`: all but
+  quit, a frame on and restart). `Keys::check(known)`: every chord's key one of the adapter's
+  names, never Control alone (`CONTROL`), the windows' `check_keys` moved here. `Chord::new`.
+- **`h3_map_view::keys`:** the nine window commands are `Command::Window(Window)`; names and
+  defaults unchanged; `Context = ()`, `TABLE = "map"`. The window's matches and its usage (the
+  file's `[map]` table) follow.
+- **`h3_view::keys`** (new, *provisional*): `Context` (`of(message, book, aim)`: a box, else the
+  book, else an aim, else the battle) and `Command`: `Window(_)`; with nothing open `LogUp`,
+  `LogDown` (↑ ↓, 0x4758FB), `DragonSpell` (F, 0x475C17), `Button(id)` (`BUTTONS`: the panel's
+  seven, S, R, O, A, C, W, D and Space, `battle_panel_base` 0x46B610's scan codes, the layout's
+  `keys` until now); `Book(book::Key)` (Esc and Enter close, A, C, ← → ↑ ↓; 0x59D1B4);
+  `Message(message::Key)` (Enter OK, Esc Cancel; 0x4F6990); `AimCancel` (Esc 0x5A317A, the right
+  button 0x5A3184). Names: the window's own, `log-up`, `log-down`, `dragon-spell`, `surrender`,
+  `retreat`, `options`, `auto-combat`, `spell-book`, `wait`, `defend`, `book-close`,
+  `book-adventure`, `book-combat`, `book-previous`, `book-next`, `book-tab-up`,
+  `book-tab-down`, `box-ok`, `box-cancel`, `aim-cancel`.
+- **The library's keys typed:** `Book::key` and `book::Open::key` take a `book::Key` (the key
+  names gone); `message::Open::key(key, by)` a `message::Key` and the key's name (its release
+  still by name; the OK is `OK` or `YES`, whichever the box has, Cancel `NO` when it has one).
+  `h3_ui::ui::Button`'s `keys` and `Dialog::button_for_key` gone, the battle layout's seven panel
+  `keys` with them (the table's defaults their only copy), the message box's buttons built
+  without.
+- **The battle window** (`window.rs`): `--keys <file>` (else `keys.toml` here), its `[battle]`
+  table, checked against `h3_sdl::Key::ALL`, "keys: …" in its report; Ctrl tracked for chords;
+  every key looked up in the context of what is open; the window's own (the map's F-keys: P, →,
+  Home, M, E, V, H and F11's old places gone), the box's, the book's, the aim's, the log's, the
+  dragon's and the buttons' each as before; the opening ended by pause, a frame on or restart as
+  by P, → and Home. `viewer_key` and `book_key` gone. Unattended every key but quit does nothing
+  (quit looked up as the battle's). The stills' `key:` actions (`spellbook::still`) go through
+  `Keys::original()` in the still's context (the harness's keys are the original's); the
+  presser turns the book by `book::Key`. `h3_sdl::Key::ALL` lacked `Return` (the variant and
+  its SDL key existed; the check of the battle's defaults found it): added.
+- **Behaviour changed** (M3's review list): the book takes every key while open (the panel's
+  letters and F reached the battle under it); unattended, Esc quits whatever is open (it gave the
+  aim up or did nothing under a box) and the right button gives no aim up; a chord with Ctrl held
+  gives nothing unless bound (Ctrl and ↑ scrolled the log).
+- **Checked:** `clients/scripts/check.sh` all gates passed, coverage 100 % (regions, functions,
+  lines); under Xvfb `h3-view window scenarios/battle.toml --human both --check 20` 295 of 295
+  frames exact, the battle the bot's; `smoke` `--leave retreat` and (5 000 gold) `--leave
+  surrender` 75 of 75 each, left and over; `situations/book.toml --check 15` 220 of 220; real keys
+  (`xdotool`) on the book's situation: C opens the book, F5 pauses under it, → turns its page,
+  the first Esc closes it and the window runs on, the next Esc quits; a user's file
+  (`quit = ["Ctrl+F12"]`, `pause = ["P"]`): Esc no longer quits, Ctrl+F12 does; `pause =
+  ["Space"]` refused (Defend's); `h3-map-view window walk-1 --check 10` with the same file 98 of
+  98 exact. DRAWN_RESULTS
+- **Docs:** `clients/README.md` (both windows' keys, the crates' rows), both usages, the E17
+  design note's two mentions of the layout's `keys` and the moved keys; M3's review list opened
+  (the file's tables, the contexts, the behaviour changed); the client lane's inbox told (its
+  2026-10-26 entry done by this).

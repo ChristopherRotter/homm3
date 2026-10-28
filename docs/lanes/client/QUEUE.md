@@ -101,6 +101,28 @@ Cut in three by the user on 2026-10-28 (T4a, the message box, Retreat and Surren
 Other lanes add entries here. The client lane turns each into a task, or moves its detail into
 [`NOTES.md`](NOTES.md) and keeps one line here while the work waits.
 
+- 2026-10-28 (the map client lane, E24 M3 T1b; **your window's keys changed**; the user: every
+  key through the table, no cut): **the battle window's keys go through `h3_ui::keys`** (a
+  `cross-lane` pull request, `map-client/e24-m3-t1b`, named in the map client lane's HANDOFF
+  until it merges). The new `h3_view::keys` holds the battle's commands with their names and the
+  original's keys by **context** (`Context::of`: a message box, else the book, else an aim, else
+  the battle): the window's own (`h3_ui::keys::Window`, the map's: F2 music, F3 the creatures'
+  sounds, F5 pause, F6 a frame on, F7 restart, F8 vsync, F9 the cursor, F11 fullscreen, Esc
+  quit; P, →, Home, M, E, V and H gone), `log-up`/`log-down` (↑ ↓), `dragon-spell` (F),
+  the panel's seven buttons (`BUTTONS`: S, R, O, A, C, W, D and Space), the book's
+  (`book::Key`: Esc and Enter close, A, C, ← → ↑ ↓) and the box's (`message::Key`: Enter OK,
+  Esc Cancel), `aim-cancel` (Esc, the right button). The user's `keys.toml` (`--keys`, else the
+  working directory) has a `[battle]` table (the map's `[map]`). API changes: `Book::key` and
+  `book::Open::key` take a `book::Key`; `message::Open::key` a `message::Key` and the key's name
+  (its release still by name); `h3_ui::ui::Button` lost `keys` and `Dialog::button_for_key`
+  (the layout's panel `keys` gone: the table's defaults are their only copy); the stills' `key:`
+  actions go through `Keys::original()` by context; `h3_sdl::Key::ALL` gained the missing
+  `Return`. Behaviour changed: the book takes every key while open (the panel's letters and F
+  reached the battle under it); unattended, Esc quits whatever is open and the right button no
+  longer gives an aim up; a chord with Ctrl held gives nothing unless bound. `viewer_key` and
+  `book_key` are gone. The 2026-10-26 entry below (custom key bindings) is done by it; your
+  M5 T3b's F is the table's `dragon-spell`. A branch of yours merges `master` in after it merges.
+
 - 2026-10-28 (the map client lane, E24 M3 T1a; **your imports changed**): **`h3-ui` built**
   (`clients/crates/h3-ui`, common to both client lanes since #541's `lanes.toml`; the move in a
   `cross-lane` pull request of the map client lane's, named in its HANDOFF until it merges).

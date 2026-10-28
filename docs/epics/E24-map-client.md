@@ -153,7 +153,8 @@ viewers share.
   scroll, the status window's kinds, the clicks, the cursor's kinds).
 - **Tasks** (the queue has each in full): T0, M3 refined (**done** 2026-10-28; MCL-Q9's fix
   built); T1a, `h3-ui` and the move (**done** 2026-10-28: #541's `lanes.toml`, the move's
-  `cross-lane` pull request; the log); T1b, the battle window's keys through the table; T2, the
+  `cross-lane` pull request; the log); T1b, the battle window's keys through the table (**done**
+2026-10-28: every key of both windows through `h3_ui::keys`, by context; the log); T2, the
   adventure screen's dialog at a map's start and the frame's cost; T3, the minimap; T4, the hero
   and town lists; T5, the status window, the resource bar and the date; T6, the mouse, the keys
   during a walk, the sound without the focus; T7, M3's closure. A task that grows is cut at a
@@ -210,3 +211,21 @@ viewers share.
 
 M1's review lists (three reviewers, T6b; the list accepted) and M2's (accepted at T6b2a):
 `E24-archive.md`. Later milestones add theirs here.
+
+**M3's review list** (the autonomy contract's "queue for the milestone review"; open):
+
+- **M3 T1b, the key file's tables** (*provisional*): one `keys.toml` for both windows, a TOML
+  table per viewer (`[map]`, `[battle]`; anything else refused, M2's top-level commands too),
+  each window reading its own; the battle's commands named `log-up`, `dragon-spell`,
+  `surrender` … `defend`, `book-close` … `book-tab-down`, `box-ok`, `box-cancel`, `aim-cancel`
+  and the window's own as the map's.
+- **M3 T1b, the contexts** (*provisional*): a command is taken everywhere (the window's own but
+  quit, a frame on and restart) or in one context (the battle's: nothing open, the spell book, a
+  message box, an aim; the map: one); a chord is refused on two commands one context takes, so
+  Esc is quit, the book's close, the box's Cancel and the aim's give-up at once, and a user's
+  pause on Space is refused in the battle (Defend's). The hotkeys left the dialogs' layouts
+  (`h3_ui::ui::Button`'s `keys`): the table's defaults are their only copy.
+- **M3 T1b, behaviour changed in the battle window:** the book takes every key while open (the
+  panel's letters and the dragon's F reached the battle under it before); unattended, Esc quits
+  whatever is open (the aim's and the box's Esc before) and the right button no longer gives an
+  aim up; a chord with Ctrl held gives nothing unless bound (Ctrl and ↑ scrolled the log before).
