@@ -81,12 +81,17 @@ Refined with the user on 2026-10-28 (T65; ADV-Q31). Built like increments 1 to 7
 172. **The env's observation encoding `cross-lane` in T74** (the user's choice of two): the boats and the in-boat bit in `h3-sim`'s encoding in the game's task, with the user's consent, as T63a (decision 138). Not chosen: the AI lane's inbox after the build.
 173. **The agent's calls accepted** (the user's choice of two): the sea's three pickups as finds that leave (design §5), boats as a persistent table with a tile layer (§6), the Navigation level into the part's sea table (§2), the day's maximum on the hero on the map (§8). Not chosen: changes.
 
+**Round 2** (T67, at its start):
+
+174. **T67 whole** (the user's choice of three, 2026-10-28, `AskUserQuestion`: "Whole (Recommended)"): the writer's sea objects, the spec's fields (`h3-experiment`, `cross-lane` as decisions 170 and 171 accepted), the specs E8a and E8b with their templates and a fresh agent's review in one pull request, as T56 (decision 142). Not chosen: in two (the code; the specs and the review) or in three.
+
 ### Tasks (queue entries in `docs/lanes/adventure/QUEUE.md`; one or two per round, the cut confirmed at each checkpoint)
 
 - **T65 Increment 8 refined** (with increment 7's closure). Done (2026-10-28, `adventure/e08-t65`; decisions 157–159): boats and the sea with the sea's pickups, the first round queued (T66a, T66b).
 - **T66a The boats and sea survey** (decision 159), in two (decision 160): **T66a1** done (2026-10-28, `adventure/e08-t66a1`: survey `E08-sea.md` §0 to §6, the census, boats, boarding, landing, sailing, the events on water, the writer; D-41 to D-44); **T66a2** done (2026-10-28, `adventure/e08-t66a2`, decision 161: survey §7 to §14, the battle at sea, the four pickups, the interfaces, batch E8's plan, the rule ids, the second reading; D-45, A-27, A-28; the checkpoint's ADV-Q32).
 - **T66b The ADR amendment drafts, the design note and the cut.** Done whole (2026-10-28, `adventure/e08-t66b`; decisions 162–173): ADV-Q32 answered at its start; the drafts of ADR-0013, -0016 and -0017 (`docs/lanes/adventure/adr-drafts/*-increment-8.md`), `E08-design.md` written for increment 8 with the cut and the exit criteria (§18), a reading of the diagonal landing (map entries 0x481BE0, 0x4B2300); the checkpoint ADV-Q33 accepted as written (log).
-- **T67 to T76** (decision 171; design §18): batch E8's maps and specs (T67), its harness and runs (T68) and scoring (T69), the `shared/` task (T70), `h3-heroes` (T71), the import, kinds and state (T72), moving and `Reach` (T73), the pickups, the battle at sea and the game (T74), the replays and gates (T75), the audit (T76). T67 queued.
+- **T67 Batch E8's maps and specs.** Done whole (2026-10-28, `adventure/e08-t67`, `cross-lane`; decision 174): the writer's boats, sea pickups, holes and bottle texts, the spec's `[[map.bottle]]` and a monster's own `at`; the specs `E08-batch-8a`, `-8a-water` (E8-5) and `-8b` with their templates, reviewed (nine findings taken); the holes' and the winds' picture sizes read (log).
+- **T68 to T76** (decision 171; design §18): its harness and runs (T68) and scoring (T69), the `shared/` task (T70), `h3-heroes` (T71), the import, kinds and state (T72), moving and `Reach` (T73), the pickups, the battle at sea and the game (T74), the replays and gates (T75), the audit (T76). T68 and T69 queued.
 
 ## Later increments (sketch)
 

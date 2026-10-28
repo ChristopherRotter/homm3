@@ -2,7 +2,7 @@
 
 Map file: `E08-batch-8a.h3m`. Fill in the blanks below and keep this file; an agent records the results (`docs/experiments/README.md`).
 
-**Stamp `0f049abe`.** The map's description in the scenario list starts with "Stamp 0f049abe.": compare the two before you play. If they differ, the map is not this template's build: do not play it, ask for the map again.
+**Stamp `dbdf491f`.** The map's description in the scenario list starts with "Stamp dbdf491f.": compare the two before you play. If they differ, the map is not this template's build: do not play it, ask for the map again.
 
 **Difficulty: Easy.** Choose it in the scenario list before you start.
 
@@ -58,15 +58,15 @@ Map file: `E08-batch-8a.h3m`. Fill in the blanks below and keep this file; an ag
 
 1. Day 1, Red's turn: E8-3 stands at (29, 14); its boat at (30, 14), the west end of a small sea whose notch (33, 14) has three coastal tiles: (33, 13) north (a hidden event of Red's, 100 gold), (34, 14) east (a hole) and (33, 15) south (free). Click the boat: E8-3 boards it (and has no points left).
 2. Day 2, Red's turn: read E8-3's tile and movement points and Red's gold.
-3. Click (33, 13) once and note the path's marks (none, or the tiles); click it again. Read E8-3's tile and movement points and Red's gold; note any message.
-4. Then (34, 14) the same way, then (33, 15).
+3. Click the hole's tile (34, 14) once and note the path's marks (none, or the tiles); click it again. Read E8-3's tile and movement points and Red's gold; note any message.
+4. Then the event's tile (33, 13) the same way, then the free tile (33, 15) (each only if E8-3 is still in its boat).
 
 **Record**
 
 | target | the path's marks (tiles, or none) | tile after | movement points after | gold after | message |
 |---|---|---|---|---|---|
-| (33, 13) the event |   |   |   |   |   |
 | (34, 14) the hole |   |   |   |   |   |
+| (33, 13) the event |   |   |   |   |   |
 | (33, 15) free |   |   |   |   |   |
 
 - day 2 start: tile, movement points, gold: 
@@ -78,7 +78,7 @@ Map file: `E08-batch-8a.h3m`. Fill in the blanks below and keep this file; an ag
 
 1. Day 1, Red's turn: E8-4 stands at (19, 26); its boat at (20, 26), on open sea. Favorable Winds cover columns 31 to 36, rows 27 to 32. Click the boat: E8-4 boards it.
 2. Day 2, Red's turn: read E8-4's tile and movement points (1 500 expected). Sail in legs: (25, 26), (30, 26), then the winds tiles (32, 28) and (34, 30). Read the points after each leg.
-3. On (34, 30): click (35, 31) (south-east) once, note the path's marks and their colour, click it again. Read the tile and movement points.
+3. On (34, 30): click (35, 31) (south-east) once and note the path's marks and their colour (today's or the next day's; the tiles). Click it again **only if** the marks are the single diagonal step; otherwise leave it. Read the tile and movement points.
 4. Then click (35, 30) (east) the same way. Read the tile and movement points.
 
 **Record**
@@ -93,7 +93,7 @@ Map file: `E08-batch-8a.h3m`. Fill in the blanks below and keep this file; an ag
 | after the click on (35, 31) |   |   |
 | after the click on (35, 30) |   |   |
 
-- the marks of the click on (35, 31) (tiles, colour), and of the click on (35, 30): 
+- the marks of the click on (35, 31) (tiles, colour; clicked again or not), and of the click on (35, 30): 
 - anything odd: 
 
 ## E8-10 — The day's sea points: Advanced Navigation and the Necklace of Ocean Guidance; the Sea Captain's Hat (HER-ADV-009, ADV-MOV-001, ADV-MOV-002, A-28)
@@ -147,7 +147,7 @@ Map file: `E08-batch-8a.h3m`. Fill in the blanks below and keep this file; an ag
 1. Day 1, Blue's turn: four Blue heroes stand on the coast at (30, 41), (30, 43), (30, 45) and (30, 47), each with a Flotsam on the water east of it: E8-7a and E8-7b wear Angel Wings, E8-7c Boots of Levitation, E8-7d nothing.
 2. Read each Flotsam's word on its tile and Blue's treasury (wood and gold).
 3. E8-7a: click its Flotsam (31, 41) once (note the marks), then again. Read E8-7a's tile and movement points, Blue's wood and gold, the Flotsam's word; note any message.
-4. E8-7b: select it and press the **right arrow key** once (no click). The same reads.
+4. E8-7b: select it and press the key that steps the selected hero east (the **right arrow**) once, no click; note whether it stepped, scrolled the view or did nothing (a scroll leaves the row open, not "no move"). The same reads.
 5. E8-7c and E8-7d: click their Flotsams as E8-7a did. The same reads.
 
 **Record**

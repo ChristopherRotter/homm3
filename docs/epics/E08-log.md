@@ -7737,3 +7737,59 @@ observation's change.
 170–173): the drafts and the design accepted as written; batch E8, then shared, then the build;
 the env's encoding `cross-lane` in T74; the four agent's calls accepted. **T66b done**; T67 is
 ready.
+
+### Increment 8, round 2: T67, batch E8's maps and specs (2026-10-28, `adventure/e08-t67`, `cross-lane`)
+
+**The cut** (decision 174): measured at the start (the writer about 300 to 400 lines with tests,
+the spec's fields 100 to 200 in the battle-owned `h3-experiment`, the specs about 1 000 lines of
+TOML), the user took T67 whole, as T56.
+
+**The writer** (`h3_map::writer`): an empty boat (8), Flotsam (29), the Sea Chest (82), the
+Shipwreck Survivor (86) and holes (124) join `PLAIN_OBJECTS` (17 classes); an Ocean Bottle (59) or a
+sign (91) with its text, `RewardBody::Sign` (`SIGN_OBJECTS`: the string and 4 zero bytes, every
+format). Favorable Winds was already a ground; a hero or a monster on water needed nothing (the
+writer tests no terrain under an object). A boat's `Objects.txt` template, as a hero's, blocks
+and is visited one column west of its position. Tests: the bottle's and the sign's layout in SoD
+and RoE, a wrong class refused, and `tests/sea.rs` (the three boats, the pickups, two bottles, a
+hole, the winds, a hero and a Pikeman on water read back with their tiles and bodies; the map
+imports: the setup's check refuses the hero on water, `StandError::Terrain`, which T72's import
+refuses first, D-44; without it the map validates, increment 8's classes blockers until T72).
+
+**The spec** (`h3-experiment`, battle-owned, `cross-lane` by decisions 170 and 171): `[[map.bottle]]`
+(`at`, `grid`, `text`), an opponent monster's own `at` (any terrain; a hero opponent keeps its
+`HeroSpec::at`), the tables' reward classes with the bottle and the sign; `docs/experiments/README.md`
+documents increment 8's objects (the boats, pickups, holes by terrain, winds) and lists batch E8 as
+staged.
+
+**The pictures' sizes** (the sprite archive's `.msk`, `H3sprite.lod`; for T72's `GROUND_PICTURES`
+and design §4): every hole 1 × 1; `AVXfw0` to `AVXfw7` 6 × 4, 8 × 6, 6 × 6, 8 × 3, 3 × 6, 3 × 3, 5 × 2,
+2 × 5 (the Clover Field's sizes); a boat's picture 3 × 2, the pickups' 1 × 1 but Flotsam's 2 × 2.
+
+**The specs** (compiled with the staged tables; each route checked by a throwaway cheapest-path
+search over the written map, not committed): `E08-batch-8a` (72 × 72; E8-1 with E8-2 on two heroes
+with the Admiral's Hat and one Angel, on swamp corridors walled by rock so the boats are reached
+only along them: 75 and 425 left after boarding, 59 and 500 after the landings; E8-3's notch with
+the hole, the event and the free tile; E8-4's 80 points on a 6 × 6 winds block after legs of 500,
+500, 234 and 186; E8-7's four Blue heroes; E8-10 with Pikemen for 1 560 on land; E8-15's guarded
+landing; E8-16's Blue hero beside E8-1c's landing; Red 7 heroes, Blue 5), `-8a-water` (36 × 36:
+E8-5 alone, so that a game refusing a hero on water costs the main map nothing) and `-8b` (72 × 72;
+E8-6's thirty chests and three Survivors, E8-8's 40 + 40 + 40 around an island start, E8-9's
+bottles at columns 24, 25, 49 and 34, E8-11's and E8-12's ponds, E8-13's channel three wide and
+E8-14's one wide; Red 7, Blue 3). Every target farther than the scouting radius is reached in
+legs (the original draws no path onto an unexplored tile). The predictions correct two of survey
+§11's rows: **E8-4** ends at 0, not 14 (the drop at sea after the straight winds step, §4.1 point
+5); **E8-13** cannot sail past a guarded tile (the pathfinder never goes on from one, E08-battles
+§2.2): it clicks past the guards (no path), then onto a guarded tile.
+
+**The review** (a fresh agent against survey §11 and the sections the rows cite; nine findings,
+all taken): (1) Blue's last two heroes fell in E8-11 and E8-12, which would end the game before
+E8-13 and E8-14: a Blue spare (E8-0b) and E8-13, E8-14 first; (2) 8b's far targets need legs (the
+sentence and E8-9's legs); (3) E8-8's points: an island start between the groups, the chest last;
+(4) E8-6's table 16 rows, a day 3 allowed; (5) E8-4's diagonal may be drawn as two straight steps
+(more points at tomorrow's arrival): clicked again only if the marks are the single diagonal;
+(6) E8-3's hole first (the reading and the wiki agree on it), then the event; (7) E8-9's VCMI line
+named the right bottles; (8) a restart checks that the words changed; (9) E8-7b notes a scroll
+instead of a step.
+
+T68 (the harness and runs) and T69 (the scoring) queued; the client lane's inbox has the boat
+(CLT-Q5).

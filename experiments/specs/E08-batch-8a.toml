@@ -298,13 +298,13 @@ questions = ["D-42", "ADV-SEA-003"]
 procedure = [
     "Day 1, Red's turn: E8-3 stands at (29, 14); its boat at (30, 14), the west end of a small sea whose notch (33, 14) has three coastal tiles: (33, 13) north (a hidden event of Red's, 100 gold), (34, 14) east (a hole) and (33, 15) south (free). Click the boat: E8-3 boards it (and has no points left).",
     "Day 2, Red's turn: read E8-3's tile and movement points and Red's gold.",
-    "Click (33, 13) once and note the path's marks (none, or the tiles); click it again. Read E8-3's tile and movement points and Red's gold; note any message.",
-    "Then (34, 14) the same way, then (33, 15).",
+    "Click the hole's tile (34, 14) once and note the path's marks (none, or the tiles); click it again. Read E8-3's tile and movement points and Red's gold; note any message.",
+    "Then the event's tile (33, 13) the same way, then the free tile (33, 15) (each only if E8-3 is still in its boat).",
 ]
 record = [
     { table = ["target", "the path's marks (tiles, or none)", "tile after", "movement points after", "gold after", "message"], labels = [
-        "(33, 13) the event",
         "(34, 14) the hole",
+        "(33, 13) the event",
         "(33, 15) free",
     ] },
     { field = "day 2 start: tile, movement points, gold" },
@@ -313,12 +313,12 @@ record = [
 predictions = """
 - **The code** (survey §3.2; the pathfinder 0x4B2867 to 0x4B2886): a boat lands only on a land tile
   of class 3, a coastal tile no object records; an event (recorded though not visitable) and a
-  hole replace the class. So **no path** to (33, 13) or (34, 14): nothing moves, the event does not
+  hole replace the class. So **no path** to (34, 14) or (33, 13): nothing moves, the event does not
   fire, the gold unchanged. (33, 15): a path of three steps (341, whichever way), the hero lands
   there; **0** points after (no Hat), the boat on its last water tile.
 - **VCMI** (`moveHero`, D-42): disembarks onto any land tile that is not blocked, an event's too,
-  and visits it: the first click lands E8-3 on (33, 13), **+100 gold**, and the rest of the row
-  cannot be played (no points left).
+  and visits it: the event's click lands E8-3 on (33, 13), **+100 gold**, and the free tile cannot
+  be played (no points left). The hole goes first: the reading and the wiki agree there.
 - **The wiki** (Boat): "any clear land square, but not on a square with a hole".
 """
 [encounter.hero]
@@ -337,7 +337,7 @@ questions = ["D-43", "ADV-SEA-004"]
 procedure = [
     "Day 1, Red's turn: E8-4 stands at (19, 26); its boat at (20, 26), on open sea. Favorable Winds cover columns 31 to 36, rows 27 to 32. Click the boat: E8-4 boards it.",
     "Day 2, Red's turn: read E8-4's tile and movement points (1 500 expected). Sail in legs: (25, 26), (30, 26), then the winds tiles (32, 28) and (34, 30). Read the points after each leg.",
-    "On (34, 30): click (35, 31) (south-east) once, note the path's marks and their colour, click it again. Read the tile and movement points.",
+    "On (34, 30): click (35, 31) (south-east) once and note the path's marks and their colour (today's or the next day's; the tiles). Click it again **only if** the marks are the single diagonal step; otherwise leave it. Read the tile and movement points.",
     "Then click (35, 30) (east) the same way. Read the tile and movement points.",
 ]
 record = [
@@ -350,7 +350,7 @@ record = [
         "after the click on (35, 31)",
         "after the click on (35, 30)",
     ] },
-    { field = "the marks of the click on (35, 31) (tiles, colour), and of the click on (35, 30)" },
+    { field = "the marks of the click on (35, 31) (tiles, colour; clicked again or not), and of the click on (35, 30)" },
     { field = "anything odd" },
 ]
 predictions = """
@@ -360,13 +360,17 @@ predictions = """
   (34, 30). Every path to these targets is the cheapest one (the winds' straight 66 twice costs 132
   against a diagonal's 93), so the pathfinder's own choice does not change the points.
 - **The code** (the diagonal exception, ADV-MOV-005, compares the points with the source
-  terrain's table price, water's 100, never the winds' 66: D-43): **the diagonal (93) is refused**,
-  the hero stays on (34, 30) with 80. **The straight step (66) is taken**: 80 − 66 = 14, then the
+  terrain's table price, water's 100, never the winds' 66: D-43): **the diagonal (93) is not
+  affordable today**: the marks show either the single diagonal in the next day's colour (a
+  second click moves nothing: 80 on (34, 30)) or a route of two straight steps around it (66
+  today, 66 tomorrow: more points at the arrival than the diagonal tomorrow, if the search keeps
+  those), not clicked again. Either way the hero stays on (34, 30) with 80. **The straight step (66) is taken**: 80 − 66 = 14, then the
   drop: fewer than 66, the cheapest step from the winds tile (35, 30) (survey §4.1 point 5, the
   second reading's correction), so **0** on (35, 30). (Survey §11's row says "14 left": it left
   out the drop at sea, which its own §4.1 point 5 states.)
 - **VCMI** (`getMovementCost`: the exception against the straight price after the winds, 66):
-  **the diagonal taken, 0 left** on (35, 31); the straight click then moves nothing.
+  the single diagonal in **today's** colour, **taken, 0 left** on (35, 31); the straight click then
+  moves nothing.
 - A winds price other than 66 and 93 shows in the legs' points (not 266 and 80): then the row
   reads the exception from the points the hero has on (34, 30).
 """
@@ -478,7 +482,7 @@ procedure = [
     "Day 1, Blue's turn: four Blue heroes stand on the coast at (30, 41), (30, 43), (30, 45) and (30, 47), each with a Flotsam on the water east of it: E8-7a and E8-7b wear Angel Wings, E8-7c Boots of Levitation, E8-7d nothing.",
     "Read each Flotsam's word on its tile and Blue's treasury (wood and gold).",
     "E8-7a: click its Flotsam (31, 41) once (note the marks), then again. Read E8-7a's tile and movement points, Blue's wood and gold, the Flotsam's word; note any message.",
-    "E8-7b: select it and press the **right arrow key** once (no click). The same reads.",
+    "E8-7b: select it and press the key that steps the selected hero east (the **right arrow**) once, no click; note whether it stepped, scrolled the view or did nothing (a scroll leaves the row open, not \"no move\"). The same reads.",
     "E8-7c and E8-7d: click their Flotsams as E8-7a did. The same reads.",
 ]
 record = [
