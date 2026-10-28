@@ -154,8 +154,8 @@
 //!   a chest's gold, a meeting, Marletto Tower, a School of Magic paid, a random major and minor
 //!   artifact picked up, a guard's battle won, blue's event with guards (its battle won, then its
 //!   artifact).
-//! - `rewards-s243-d28`: the event east of Mephala, a Star Axis, a Spell Scroll, a Shrine, an
-//!   offer of gnolls with an artifact declined (they flee), the event for everyone (morale and
+//! - `rewards-s243-d28`: the event east of Mephala, a Star Axis, a Spell Scroll, a Shrine, the
+//!   pursuit of the fleeing gnolls with an artifact declined (they leave), the event for everyone (morale and
 //!   luck), a Warrior's Tomb searched (its artifact and −3 morale), a School of War left, the
 //!   Pyramid declined.
 //! - `rewards-s88-d28`: a Scholar, a guard's battle and the guarded event after it, Adela on the
