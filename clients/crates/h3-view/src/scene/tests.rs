@@ -584,6 +584,30 @@ fn a_moment_draws_each_stack_in_its_pose() {
             ..
         }
     )));
+    // E17 M5 T3b: the stacks an area spell's aim marks take the mouse's outline, the active
+    // stack's too.
+    let mut aimed = moment.clone();
+    aimed.area = vec![2];
+    let area = battle_at(&battle_view(), &aimed, &keys(), &tables(), &layout).unwrap();
+    assert!(!area.iter().any(|d| matches!(
+        d,
+        Draw::Creature {
+            outline: Some(0x65),
+            ..
+        }
+    )));
+    assert_eq!(
+        area.iter()
+            .filter(|d| matches!(
+                d,
+                Draw::Creature {
+                    outline: Some(0x75),
+                    ..
+                }
+            ))
+            .count(),
+        2
+    );
     let creatures: Vec<(String, u32, u32, [i32; 2], bool)> = list
         .iter()
         .filter_map(|d| match d {

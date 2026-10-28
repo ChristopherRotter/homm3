@@ -165,10 +165,12 @@ the stacks created mid-battle.
     the keys, the move's hint and cursor, the shadow), drawn (`h3_view::book`, `ui`'s DEF items,
     texts alone and areas) and used in the window (its button or C, a spell without a target
     cast at once); its stills (`book`, `book-page`, `book-fire`, `book-hint`) exact; CLT-Q26.
-  - **T3b, the hero's aim:** the aim's loop read (`enter_player_cast` 0x59EC50: the targets it
-    offers, the cursor `crspell.DEF`, the status line GENRLTXT 27 and 28, the cancel) and built,
-    a book's spell aimed and a Faerie Dragon's cast through it (its F key), `cast`'s 71 pixels;
-    an aimed cast recorded.
+  - **T3b, the hero's aim** (done 2026-10-28; whole, the user): read (design §7.18: the aim's
+    loop and cursor, the cast's line and the refusals, the area's marks, the spell cursor's
+    frames, the callers' ends, the cast's start), built (`mouse::aim`, the aim in `track`, the
+    window's aim by the book or a Faerie Dragon's F, Escape or the right button giving it up,
+    unattended casts pressed through the book and the aim); `spell-aim` recorded; `cast`'s 71
+    pixels found to be the book's closing, a redraw artifact (listed); CLT-Q27.
 - **T4, the battle's dialogs:** surrender (its price) and retreat, the result window
   (`battle_result_dialog` 0x4702D0, the screen darkened under it by 0x44E5F0), Auto Combat, the
   tactics phase's panel (0x46C050), the message box (0x4F6990: the book's refusals and an
@@ -274,3 +276,15 @@ M3 at its review, T9b, M4 at its review, T3c). The next milestone's list starts 
    turn's videos, which the client does not play): the stills of a dialog.
 4. The layout format's new kinds (T3a: `def`, `label`, `area`, an entry's `repeat`, a dialog's
    `shadow`; the `[book]` section) and the catalogue's (a family's `list`, `contexts`, `raw`).
+5. The aim's derivations in the client (T3b, design §7.18): a refusal's reason by elimination
+   (any refusal of the engine's that Anti-Magic and the polarity do not explain reads as the
+   immunity: the engine's tests are not public), an area's marks on every living stack of it (the
+   original's only on those the spell may affect), Berserk's area cut at the side columns as the
+   other areas'; the aims of Force Field, Fire Wall, Teleport and Sacrifice not built (the book
+   closes on them).
+6. The window's keys and the adapter (T3b): F aims a Faerie Dragon's spell, full screen moved to
+   F11; the right button comes as a key, `h3_sdl::Key::RightButton` (a common path, additive).
+7. The harness (T3b): the action `aim:<k>:<n>`, and the spell cursor's 100 ms grid (0x69CA1C)
+   set at a sequence's opening with the poll's: it changes only frames that show a type-3 cursor
+   for a grid point, which no capture before `spell-aim` did, so the captures were not all taken
+   again (M5's closure takes them).

@@ -1,59 +1,55 @@
-# E17 M5 T3b: a hero's aim (design §7.18): at the opening the Champions' turn (speed 9, as `cast`),
-# and Orrin aims Fireball from his spell book (place 1: the first page shows Magic Arrow, level 1,
-# then Fireball, level 3) over an empty hex, over the Wolf Riders (its area marks them) and over a
-# side column (refused), gives it up by Escape, then aims Magic Arrow (place 0) over nobody, over
-# his own Champions (refused) and over the Wolf Riders, and casts it. On grass at the capture set's
-# tile (grass.toml's obstacles), as `cast`.
+# E17 M4 T2c-2: the recorded sequence `aim` (sequences.toml; design §10.2, "The mouse"): a siege
+# of a Castle town with a Castle (the keep, both towers, a damaging moat), both heroes human (hot
+# seat). On the keep's turn (the defender's) the mouse rests over the upper tower's rectangle
+# (0xFF), the keep's (0xFE) and the lower tower's hex 183: "View arrow tower info" (22). The
+# turrets defend; on the Catapult's turn (Basic Ballistics) the mouse rests over the same two
+# rectangles and each wall target's aim hex: the Catapult's target (16) and "Attack %s" with the
+# part's name. Then the Catapult hits the upper wall.
 
 [scenario]
 id = "sequence-aim"
-# Red human, Blue a computer, as the original's map (`h3-view situation`).
-human = ["attacker"]
+# Both human (hot seat): the defender commands the turrets, the attacker the Catapult.
+human = ["attacker", "defender"]
 packs = ["base"]
 profile = "base:faithful"
 terrain = "base:grass"
-obstacles = [
-    { hexes = [75, 76, 77, 78, 61, 60, 59, 58], anchor = 74, kind = "base:obstacle_22" },
-    { hexes = [91, 92], anchor = 91, kind = "base:obstacle_20" },
-    { hexes = [122, 123], anchor = 122, kind = "base:obstacle_19" },
-]
+
+# The town: a Castle has the keep, both towers and a moat; the turrets' counts (BAT-SIE-016).
+[scenario.siege]
+faction = "base:castle"
+fort = "castle"
+moat = "damaging"
+structures = 1
 
 [[attacker]]
 slot = 0
-creature = "base:champion"
-count = 5
-
-[[attacker]]
-slot = 2
-creature = "base:marksman"
-count = 10
+creature = "base:pikeman"
+count = 12
 
 [[defender]]
 slot = 0
-creature = "base:wolf_rider"
-count = 8
-
-[[defender]]
-slot = 2
 creature = "base:goblin"
 count = 15
 
-# The heroes (E17 M3 T3a) with 1 in every primary skill but Orrin's knowledge 2, for Fireball's
-# 15 spell points; his spell book Magic Arrow and Fireball: the original's hero starts with 10
-# spell points per knowledge.
+# The heroes, each with 1 in every primary skill (`h3-view situation` writes them so).
 [scenario.attacker_hero]
-hero_type = "base:orrin"
-attack = 1
-defense = 1
-power = 1
-knowledge = 2
-mana = 20
-max_mana = 20
-spell_book = ["base:magic_arrow", "base:fireball"]
-
-[scenario.defender_hero]
-hero_type = "base:crag_hack"
+hero_type = "base:valeska"
 attack = 1
 defense = 1
 power = 1
 knowledge = 1
+# Basic Ballistics: the Catapult waits for its command.
+catapult = 1
+
+[scenario.defender_hero]
+hero_type = "base:ufretin"
+attack = 1
+defense = 1
+power = 1
+knowledge = 1
+
+# Artillery (the situation writes it): the turrets wait for their commands.
+[scenario.defender_hero.ballista]
+level = 1
+shots = 1
+double_damage_chance_bp = 5000

@@ -742,6 +742,47 @@ fn an_area_s_stacks_are_marked_and_an_aim_given_up() {
 }
 
 #[test]
+fn an_aim_at_an_empty_hex_marks_nothing() {
+    // A cancel before the mouse is anywhere posts nothing; a hex target the aim takes with no
+    // stack on it unmarks the mouse's stack and enters none.
+    let o = battle();
+    let mut legal = legal();
+    legal.aims = vec![Aim {
+        targets: vec![Target::Hex(87)],
+        stacks: false,
+        ..arrow(false)
+    }];
+    let field = Field {
+        observation: &o,
+        legal: &legal,
+        facing: &Facing::Sides,
+        bugs: Bugs::Fixed,
+    };
+    let turns = [Turn { field, human: true }];
+    let inputs = [
+        Input::Cancel { at: 0 },
+        Input::Move {
+            at: 1,
+            to: centre(90),
+        },
+        Input::Aim {
+            at: 2,
+            spell: 7,
+            creature: false,
+        },
+        Input::Move {
+            at: 3,
+            to: centre(87),
+        },
+    ];
+    let shown = run(&[], &[], &turns, &inputs);
+    assert_eq!(shown.marked, [(1, Some(1)), (2, None)]);
+    assert_eq!(shown.entered, [(1, 1)]);
+    assert_eq!(shown.aimed, [(3, Some(87))]);
+    assert_eq!(shown.spell, [(3, Some(3))]);
+}
+
+#[test]
 fn the_spell_book_empties_the_status_line() {
     // E17 M3 T7c-1: the book over the battle takes the mouse (a spell without a target is cast
     // from it at once); E17 M5 T3b: it takes the moves until it closes, the battle then posted

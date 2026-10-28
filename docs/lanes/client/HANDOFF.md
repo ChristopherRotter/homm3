@@ -8,17 +8,18 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   accepted, CLT-Q22 to Q24 answered (a); the lane split at M3 T9c, CLT-Q18: the battle client
   here, the adventure map client the map-client lane's E24). **M5 (live play)** (QUEUE, the
   epic's M5): hot seat in-process first, then a game on a server and accounts; the new
-  dependencies the user's at T6 and T7. **T1, T2 and T3a done** (the playhead; the timeline that
-  grows, `live.rs`; the click's command; hot seat in the window; the spell book drawn and used,
-  design §7.17). **Next: M5 T3b** (the hero's aim, the Faerie Dragon's key). Open PR: #529, T3a's
-  (`client/e17-m5-t3a`; check it first). Workspace `clients/` (`clients/README.md`), gates
-  `clients/scripts/check.sh`; ADR-0020 (+ drafts in `adr-drafts/`), ADR-0024; the harness
+  dependencies the user's at T6 and T7. **T1 to T3 done** (the playhead; the timeline that
+  grows, `live.rs`; the click's command; hot seat in the window; the spell book, design §7.17;
+  the hero's aim and the Faerie Dragon's key F, §7.18). **Next: M5 T4** (the battle's dialogs:
+  surrender, retreat, the result window, Auto Combat, the tactics panel, the message box). Open
+  PR: T3b's (`client/e17-m5-t3b`; check it first). Workspace `clients/` (`clients/README.md`),
+  gates `clients/scripts/check.sh`; ADR-0020 (+ drafts in `adr-drafts/`), ADR-0024; the harness
   `clients/capture/README.md`; design §3–§10; records in `E17-log.md`.
 - **Captures** (the user, 2026-10-20): `h3drive.py drawn` first (no Wine); capture what it lists or the task changes, all at a milestone's closure or a harness change (runbook); a capture not as recorded leaves `kept/` (T9b: record, then `--reuse`); later tasks' detail in `NOTES.md`.
 - **The user's requirements** (epic, "Decisions"): a string catalogue (JSON packs, no committed translation, CLT-Q7); graphics options (`faithful` default); exhaustive diffs; drawing bugs fixed, the original's only for comparisons (`Bugs`).
 - The lane owns `clients/` but the map-client lane's paths and the common ones (`lanes.toml`: the foundation, `text/`, the harness; an additive change freely, a change in behaviour into the map-client lane's inbox), plus `docs/epics/E17*` and this folder; branches `client/<task>`; ids `CLT-Q<n>`, `CLT-QUIRK-<n>` (asset fixes), `CLT-STUB-<n>`; ADR drafts in `adr-drafts/`, numbered when accepted.
 - **Checkpoints** per milestone (below), a fresh reviewer agent first. **Open:** CLT-Q5,
-  CLT-Q26. Next id: CLT-Q27.
+  CLT-Q26, CLT-Q27. Next id: CLT-Q28.
 - Stage from `original-data/install/`: the four LODs (one per call), `h3maped.exe`, both `.snd`, `MP3/COMBAT01`–`04` and the end tunes, `Heroes3.exe`, the five DLLs, `H3ab_ahd.vid`; `cp -rn` the staged `original-data/.` into the clone. Frames stay in the sandbox.
 
 ## Autonomy contract (agreed by the user, 2026-10-12)
@@ -38,6 +39,14 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
 
 ## Recent sessions
 
+- **2026-10-28, E17 M5 T3b (done; its PR open: check it first).** Whole (the user). Read the
+  aim (design §7.18: 0x59EC50's handlers and ends, the loop 0x602520 with 0x5A3070, the cursor
+  0x59F700, the cast's line 0x5A8690, the refusals 0x5A2880, the area's marks 0x59F8A0 and
+  0x43EFE0, the spell cursor's frames in `mouse_poll`, the key F). Built `mouse::aim`, the aim in
+  `track`, the binary's `aims`, the window's aim (F, Escape, the right button, F11 full screen),
+  unattended casts through the book and the aim; the harness's `aim:` and the 100 ms grid.
+  `spell-aim` recorded; `cast`'s 71 pixels a listed redraw artifact; CLT-Q27; review items 5–7.
+
 - **2026-10-27, E17 M5 T3a (done; #529 open: check it first).** T3 cut in two with the user
   (the book; the aim T3b). Read the book's dialog, page, keys, hover and shadow (design §7.17);
   `h3_view::book`, `ui`'s DEF items, texts alone, areas, `repeat`, `shadow`; `spellbook`, the
@@ -51,9 +60,3 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
   (0x5A060F). `window --check` hot seat and against the bot to the battle's end, every frame
   exact; real X clicks; the Tower's mines on the defender's turns only. `sequences` 47, `drawn`
   119 the same. No new question; the M5 review list's item 1.
-- **2026-10-27, E17 M5 T2a (done; #515 merged).** T2 cut in two by the user (T2a,
-  T2b; the Faerie Dragon's cast into T3). Read (design §9.11): the press by the cursor's kind,
-  the slots' from-hexes, the input queue emptied at every turn's start (T6c-2's queued moves
-  corrected). `mouse::click`, `button`, `attack_slots`; CLT-Q24's switch; `clicks.rs`: presses
-  over 1 455 turns give the legal commands but CLT-Q25's walk (asked and answered: the
-  original's copied, an option later). `sequences` all 47 as recorded.

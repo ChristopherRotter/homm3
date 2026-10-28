@@ -2247,17 +2247,29 @@ binary's `aims` (the engine's part), the window's aim, the key F, the right butt
   last took (CLT-Q27).
 - **The Faerie Dragon's key F** (0x475C17, key code 33): outside the tactics phase, for an
   active creature 134 with casts left (+0xDC), its drawn spell (+0x4E0) through the same aim as a
-  creature's (installation.md §7.21). The client offers the engine's targets (its legal
-  `CreatureCast`s: the stacks the spell may affect, BAT-MAG-049); the original's key aims an area
-  spell at any inner hex (BAT-Q32, open).
-- **The cast's start** (`cast`'s 71 pixels, M3 T7b-1's listed difference): the hero's action
-  (0x479036) stands every fidgeting stack first (`battle_stand_fidgets` 0x479DE0, the stack the
-  aim marked among them), which redraws the battle with the background restored inside the dirty
-  rectangle of `battle_refresh_creatures` (0x495BF0: the flagged stacks', the heroes' and the
-  animated objects' rectangles) and each item meeting it drawn whole; the rock's top (obstacle
-  22) inside it is left as the terrain for that one frame (x 342–352, y 287–298). A redraw
-  artifact of the original's (§7.11; not copied, the user 2026-10-14), listed: the exact
-  rectangle is not read.
+  creature's (installation.md §7.21); nothing once the side's hero has cast this round. The
+  client offers the engine's targets (`creature_cast_targets`: the stacks the spell may affect,
+  BAT-MAG-049; the legal list holds no cast); the original's key aims an area spell at any inner
+  hex (BAT-Q32, open).
+- **`cast`'s 71 pixels** (M3 T7b-1's listed difference, there taken for the cast's start): the
+  book's closing, not the cast. `spell-aim` (the same battlefield) shows the same 71 pixels (x
+  342–352, y 287–298: the top of the rock, obstacle 22, as the terrain) from its book's closing at
+  0 ms until the redraw of the Marksmen's fidget at 200 ms; in `cast` the click in the same
+  millisecond starts the cast, whose redraw (`battle_stand_fidgets` 0x479DE0: the background
+  restored in `battle_refresh_creatures` 0x495BF0's rectangle, each item meeting it drawn whole)
+  covers them at once. A redraw artifact of the original's buffers (§7.11: what the back buffer
+  holds under the dialog comes back; not read further), not copied (the user, 2026-10-14):
+  listed, as the projectile's hole in the rocks.
+- **Checked:** `spell-aim` (`sequences.toml`) recorded: its timeline (42 changes) as recorded;
+  62 frames, 59 exact (the spell cursor's frames and restarts, the cast's lines and the
+  refusals, the area's outline and fidget, the Escape's posted move, the cast), the other 3 the
+  book's 71 pixels (above). In the window (Xvfb, `xdotool`): C, Fireball's place, the Wolf
+  Riders' area, the side column, Escape; Magic Arrow's place, a press there (nothing), the
+  Champions (nothing), the right button; again, the Wolf Riders and the press: the cast; a
+  Faerie Dragon's F and its Ice Bolt pressed on a Swordsmen stack. Unattended runs with a bot
+  made to cast for the check (not kept): `spell-aim`'s scenario, `seq-dragon` and `seq-arrow`
+  with both sides human, every cast pressed through the book and the aim or F, every frame read
+  back exact.
 - **Built:** `h3_view::mouse::aim` (`Aim`: the engine's targets, the area, whether it is aimed at
   a stack, the original's number, polarity and level, Anti-Magic's handle; `takes`, `line`,
   `refusal`, `marks`; `screen_hex`), `track` (the aim's state: its last hex, the spell cursor's
@@ -2272,9 +2284,9 @@ binary's `aims` (the engine's part), the window's aim, the key F, the right butt
   the engine makes that the other reasons do not explain for it), the area's marks of stacks the
   spell would not affect, Berserk's area in the side columns.
 - **Not modelled:** the aims of Force Field, Fire Wall, Teleport and Sacrifice (the book closes
-  on them and casts nothing); the message boxes (T4); the area's shading (an option off by
-  default in the harness); the original's key F for a side whose hero has cast (the engine lists
-  the dragon's cast then).
+  on them and casts nothing); the message boxes (T4); the area's shading (an option off in the
+  harness); the Faerie Dragon's cast by the mouse (its cursor kind 20: once its side's hero has
+  cast, the key does nothing, as the original's, and the window gives no cast then).
 
 ## 8. The window, input and audio evaluation (M2 T2)
 

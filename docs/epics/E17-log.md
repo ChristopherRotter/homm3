@@ -2924,6 +2924,64 @@ was cut short by the task's first edits; its fmt, clippy and deny steps passed).
   The message boxes (a spell above the mana, an adventure spell's description, the book button's
   refusals) moved to T4 with the battle's other dialogs (the generic message box, 0x4F6990).
 
+### M5 T3b — The hero's aim (2026-10-28)
+
+On `client/e17-m5-t3b`, the user present at the start. T3b proposed cut in two (the aim; the
+Faerie Dragon's key with `cast`'s 71 pixels): the user chose it whole. The sandbox new, the
+original files staged from the user's `original-data/` first (the user's computer went offline
+soon after); `master` at `23c0569` (#529 merged); the client check and the scoped verify green
+before the change.
+
+- **Read** (design §7.18): `enter_player_cast` 0x59EC50's dispatch, scan, handlers and end; the
+  modal loop 0x602520 and the aim's handler 0x5A3070 (the battle's tick each turn, the move, the
+  left and right buttons, Escape); `spell_target_cursor` 0x59F700; the cast's line 0x5A8690; the
+  refusal 0x5A2880 through 0x5A2C60; the area's marks 0x59F8A0 and 0x43EFE0 (the mark +0x4F1,
+  the outline 0x70 over the active one at 0x43E268); `mouse_set_cursor`'s type 3 and the poll's
+  second grid (0x69CA1C, 100 ms) for `crspell.DEF`'s 20 frames, hot spot (18, 27); the callers'
+  ends (the book's command posts the mouse, the key F does not; the key's case and its test of
+  the side's hero's casts); the hero's action's start (`battle_stand_fidgets`'s redraw,
+  `battle_refresh_creatures` 0x495BF0). 13 new map entries, 7 updated.
+- **The library:** `mouse::aim` (`Aim`, `Area`, `Target`, `screen_hex`; `takes`, `target`,
+  `line`, `refusal`, `marks`), the new hints (`RemoveObstacle`, `SelectTarget`, `Protects`,
+  `HostileOnly`, `FriendlyOnly`, `NotOn`, `Immune`; the catalogue's seven keys), `Legal::aims`,
+  `look_cursor`; `track`'s aim (`Input::Aim` with `creature`, `Input::Cancel`, `Input::Book` taking
+  the moves until it closes; the aim's last hex, the spell cursor's start and its restart rule,
+  the area's marks entering their stacks), `Shown::spell`, `area`, `aimed`, `look`,
+  `spell_frame`; `Moment::area` (the outline); the layout's spell cursor. Tests: the aim's
+  targets, lines, reasons and areas; a hero's aim over time (the book's moves, the start's hex not
+  kept, the click on nothing, the refusals, the cast); the spell cursor's steps and restart; an
+  area's marks, the hero's and the key's cancels, a spell not offered; the hints' words; the area's
+  outline.
+- **The binary:** `aims` (the hero's targets from `cast_targets` with the area, the stack kind and
+  the level from the ruleset; the Faerie Dragon's from `creature_cast_targets`, the legal list
+  holding no cast; the original's numbers from the asset tables), `scenario::Turned` (a turn's
+  observation, legal commands and aims; `turned` takes the spells to aim), `Live::hero_aim`;
+  `Battle`'s aim (the book's choice of a spell with a target, the key F refused once the side's
+  hero cast, the press at the aimed hex, the cancel; Teleport and Sacrifice not aimed); the window
+  (the book's opening, moves and closing as inputs; F aims, F11 for full screen; Escape and the
+  right button give an aim up; the spell cursor in the batch); the presser (a hero's cast through
+  the book, turned to the spell's page, and the aim; the dragon's by F); `pointer`'s `aim:` and
+  `key:Escape`; `sequences` asking the actions' aims. The foundation: `h3_sdl::Key::RightButton`
+  (the right button down and up as a key). The harness: `aim:<k>:<n>`, the spell cursor's grid
+  set with the poll's at the opening.
+- **Checks:** `spell-aim` recorded (its timeline, 42 changes, as recorded; 62 frames, 59 exact,
+  3 the book's 71 pixels at 0, 33 and 100 ms: `cast`'s, which come from the book's closing, not
+  the cast, design §7.18); `drawn` the other 122 the same (the siege's `aim` among them, its
+  scenario overwritten for a while by the new one's and restored from `master`). The window under Xvfb with `xdotool`: Fireball aimed and given
+  up by Escape, Magic Arrow's presses over nothing and the Champions casting nothing, the right
+  button giving it up, Magic Arrow cast at the Wolf Riders; a Faerie Dragon's F and its Ice Bolt
+  pressed on a stack. Unattended (`--human both --check 30`, a bot made to cast first for the
+  check, not kept): the aim's scenario 7 commands pressed, 416 of 416 frames exact; `seq-dragon`
+  10 pressed, 464 of 464; `seq-arrow` 316 of 316. The library's tests (317) and the binary's
+  (41); the client check (coverage 100 %); the scoped verify.
+- **Found:** CLT-Q27 (the key's cancel posts no mouse, the start's hex is not kept, the spell
+  cursor's restart, a side column's area marks), built as the original's. The idle step's fidget
+  stalls (8 %) come from the original's draws, which the harness repeats run after run: `spell-aim`
+  first marked the Wolf Riders on a step whose two next draws stalled them (the viewer draws no
+  stalls in a check); entered 50 ms earlier the stalls fall on the Marksmen's own fidget, which the
+  timeline check leaves out. `aim` was already a sequence's id (a siege's): the new one is
+  `spell-aim`.
+
 ## Accepted review lists (M1 to M4)
 
 M1 and M2 moved from the epic file on 2026-10-20 (less start-up reading), unchanged; M3 at its

@@ -1215,24 +1215,25 @@ command = [
     { seat = "Attacker", at = 11300, command = { Shoot = { target = 2, at = 98 } } },
 ]
 
-# E17 M5 T3b (design §7.18): a hero's aim, Orrin's at the opening (`seq-aim.toml`, the Champions'
-# turn): Fireball from the book's place 1 aimed over an empty hex (hex 6, where the place is),
-# over the Wolf Riders (hex 48: its area marks them) and over a side column (hex 50: refused, the
-# area's marks kept), given up by Escape (the battle's cursor and hint where the mouse rests); then
-# Magic Arrow from place 0 over nobody (hex 4), over the Champions (hex 35: refused, a hostile
-# spell) and over the Wolf Riders, cast there. The spell cursor's frames step every 100 ms.
+# E17 M5 T3b (design §7.18): a hero's aim, Orrin's at the opening (`seq-spell-aim.toml`, the
+# Champions' turn): Fireball from the book's place 1 aimed over an empty hex (hex 6, where the
+# place is: the spell cursor's frames), over the Wolf Riders at 250 (hex 48: its area marks them,
+# their fidget timed so that none of the original's draws stalls it) and over a side column (hex
+# 50: refused, the area's marks kept), given up by Escape (the battle's cursor and hint where the
+# mouse rests); then Magic Arrow from place 0 over nobody (hex 4) and over the Champions (hex 35:
+# refused, a hostile spell), and cast at the Wolf Riders at 1 500 (entered as clicked).
 [[sequence]]
-id = "aim"
-scenario = "seq-aim.toml"
+id = "spell-aim"
+scenario = "seq-spell-aim.toml"
 actions = [
-    "aim:1:21", "at:300", "move:674,196", "at:650", "move:762,196", "at:900", "key:Escape",
-    "at:1100", "aim:0:15", "move:102,196", "at:1350", "move:718,196", "at:1800", "hex:49",
+    "aim:1:21", "at:250", "move:674,196", "at:650", "move:762,196", "at:900", "key:Escape",
+    "at:1100", "aim:0:15", "move:102,196", "at:1500", "hex:49",
 ]
 ms = 2500
 heroes = true
-timeline = "timelines/aim.txt"
-frames = "timelines/aim-frames.txt"
+timeline = "timelines/spell-aim.txt"
+frames = "timelines/spell-aim-frames.txt"
 boxes = true
 command = [
-    { seat = "Attacker", at = 1800, command = { Cast = { spell = 15, target = { Stack = { stack = 2 } }, second = { None = {} } } } },
+    { seat = "Attacker", at = 1500, command = { Cast = { spell = 15, target = { Stack = { stack = 2 } }, second = { None = {} } } } },
 ]
