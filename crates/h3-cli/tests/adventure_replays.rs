@@ -155,12 +155,12 @@
 //!   artifact picked up, a guard's battle won, blue's event with guards (its battle won, then its
 //!   artifact).
 //! - `rewards-s243-d28`: the event east of Mephala, a Star Axis, a Spell Scroll, a Shrine, the
-//!   pursuit of the fleeing gnolls with an artifact declined (they leave), the event for everyone (morale and
-//!   luck), a Warrior's Tomb searched (its artifact and −3 morale), a School of War left, the
-//!   Pyramid declined.
-//! - `rewards-s88-d28`: a Scholar, a guard's battle and the guarded event after it, Adela on the
-//!   guarded Learning Stone (its level-up, then the guard's battle), a School of Magic paid, the
-//!   University's four purchases, a chest's experience and its level-up, a Witch Hut.
+//!   pursuit of the fleeing gnolls with an artifact declined (they leave), the event for everyone
+//!   (morale and luck), a Warrior's Tomb searched (its artifact and −3 morale), a School of War
+//!   left, the Pyramid declined.
+//! - `rewards-s88-d28`: a Scholar, a guard's battle and days later the event it guarded, Adela on
+//!   the guarded Learning Stone (its level-up, then the guard's battle), a School of Magic paid,
+//!   the University's four purchases, a chest's experience and its level-up, a Witch Hut.
 //!
 //! **Scripted** (E08 T64a: the order-dependent paths of design §16), on the same map, recorded with
 //! `h3 adventure run --map fixtures/maps/e08-rewards-36.h3m --seed 1 --checkpoint-every 5 --script
