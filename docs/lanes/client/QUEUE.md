@@ -22,32 +22,9 @@ check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gat
 ### E17 M5 T4 — the battle's dialogs
 
 Cut in three by the user on 2026-10-28 (T4a, the message box, Retreat and Surrender, done
-2026-10-28; T4b cut in two, T4b1 done 2026-10-28; T4b2 cut in two, T4b2a done 2026-10-28;
-T4b2b and T4c below, in order). The detail: `QUEUE-ARCHIVE.md`, 2026-10-21 (T8) and
+2026-10-28; T4b cut in two, T4b1 done 2026-10-28; T4b2 cut in two, T4b2a and T4b2b done
+2026-10-28; T4c below). The detail: `QUEUE-ARCHIVE.md`, 2026-10-21 (T8) and
 2026-10-20 (T6a).
-
-#### T4b2b — the result window's clip in the window
-
-T4b cut in two by the user on 2026-10-28 (T4b1, the window without its clip, done 2026-10-28;
-design §7.20), T4b2 in two the same day (T4b2a, the decoder, done 2026-10-28: `h3-bink`, a port
-of FFmpeg's Bink video decoder, CLT-Q29; `h3_assets::vid`; `h3-view video`;
-`clients/scripts/bink-check.sh`; E17-log, "M5 T4b2a").
-
-- **Scope:** the clip the window plays in its slot (`video_play_in_dialog` 0x597570 from
-  0x471A24, its index by the shown side's fate: `WIN3`, `LBSTART` then `LBLOOP`, `RTSTART` then
-  `RTLOOP`, `surrender`, `defendall` then `defendloop`, `LOSECSTL` then `LOSECSLP`; 256 × 120 at
-  the screen's (272, 89); 15 fps): the clip table, the start-then-loop switch and the frame
-  timing read; where the game finds the clips (`VIDEO.VID`, `H3ab_ahd.vid`: the name and
-  extension it asks for); the colours as `BINKW32.DLL` converts YUV to the 16-bit screen (fitted
-  from the captures' frames; reading the DLL is a licence question: ask first); drawn in the
-  window, the stills and the sequences; the harness's run directory given the clips (the user's
-  `original-data/battle-videos.vid`, 9 MB, a `VIDEO.VID` of their own since 2026-10-28: stage it;
-  the spell book's two page turns are in it too, Smacker, which "Animate SpellBook" off keeps
-  unplayed). Whether the original's decoder keeps the chroma's hidden rows (rows 60 to 63) as
-  `h3-bink` does: `RTLOOP`'s frames 12 to 15 and `RTSTART`'s from 23 show it (review item 16).
-- **Acceptance:** the window's clip as recorded in a still and a sequence, or each difference
-  listed; T4b1's stills taken again with the clips; the Definition of Done.
-- **Depends on:** T4b2a (done 2026-10-28). **Status:** ready.
 
 #### T4c — Auto Combat and the tactics phase
 
@@ -127,6 +104,18 @@ Other lanes add entries here. The client lane turns each into a task, or moves i
   the two setups. Also new: Flotsam, the Sea Chest, the Survivor and holes as `Plain` objects, an
   Ocean Bottle or sign with its text (`RewardBody::Sign`), the spec's `[[map.bottle]]` and an
   opponent monster's own `at` (any terrain).
+
+- 2026-10-28 (E17 M5 T4b2b, CLT-Q30, the user: listed now, exact later): **`h3-bink` to decode
+  as the game's `BINKW32.DLL` (Bink 0.5b).** Its inverse DCT is x87 single-precision floating
+  point (`ExpandPlane`'s 8 × 8 transform: √2, 1.848, 2.613 and 1.082 as floats, float
+  quantizers), FFmpeg's integer, so five clips differ by one level on a few pixels (`rtstart`,
+  `rtloop`, `Surrender`, `defendloop`; `Defendall` up to 388 a frame; design §7.21). The task:
+  the DLL's transform and quantization in integer arithmetic (no floats in the client: exact
+  binary32 emulation or a proof that a fixed-point form rounds alike on every input the
+  bundles allow), checked against the DLL's own planes (`binkprobe frames <vid> <clip> 7`:
+  YUY2) on the ten clips and the synthetic samples; FFmpeg's check (`bink-check.sh`) then
+  becomes the DLL's. Then the captures' listed DCT pixels (`result-retreat` 2 700 and 3 000,
+  `defended`) go.
 
 - 2026-10-28 (the map client lane, E24 M3 T2a; additive, nothing of yours drawn changed): **the
   dialog items' drawers in the common crate.** `h3_ui::paint::draw` draws each `h3_ui::ui::Draw`

@@ -65,8 +65,21 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
 - The result window (E17 M5 T4b1) is a message box (`Asked::Result`): modal, its OK (Enter,
   Escape) ends the window's run, unattended runs leave it open (the presser skips it). Behind it
   the battle stands at its end with the heroes' flags of the moment before (`result::behind`):
-  frozen 1 ms earlier, the end's last action is lost. The harness's `VIDEO.VID` is empty, so the
-  original shows no clip in its slot (T4b2 gives the harness the clips).
+  frozen 1 ms earlier, the end's last action is lost. Since T4b2b the harness's `VIDEO.VID` is
+  the user's `battle-videos.vid` (`setup.sh`; an empty one without it: no clip), so the original
+  plays the window's clip.
+- The result window's clip (E17 M5 T4b2b, design §7.21): `BINKW32.DLL` reads `timeGetTime`
+  through its own import, which `xdd.dll` redirects too (the ack's eighth field 1): an `xdd.dll`
+  without it runs the clip in real time under the frozen clock. The DLL counts every decode, a
+  redraw's too: two before the first tick put the original's clip two frames late (CLT-Q31,
+  `Bugs::Original` only). `Draw::Video` carries the time since the window opened, so the draw
+  list changes every millisecond: the window draws the clip at its decodes (`Battle::clip_times`),
+  never by comparing lists. Its pixels differ from the original's only where `h3-bink`'s integer
+  DCT rounds otherwise than the DLL's float one (CLT-Q30: five clips, listed); the colours are
+  exact. The clips come from the video archives entry by entry (`videos.rs`; an installation
+  copy without `VIDEO.VID` takes `original-data/battle-videos.vid`), never from the LODs. A
+  new kind of asset in the batch needs its line in `battle.rs`'s `held`, or the window decodes
+  it again at every frame (the clip did: 119 ms late a frame).
 - `h3_formats`' `c_string` takes printable ASCII alone: an executable string with line breaks
   (the book's place formats) is read by the client's `text::exe_string`.
 - The viewer reads `clients/layouts/*.toml` at run time: a layout change made while a batch

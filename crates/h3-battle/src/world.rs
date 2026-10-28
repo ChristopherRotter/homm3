@@ -4,12 +4,13 @@
 //! beside `observe`: a change of what a side may not know changes this file in the same change.
 //!
 //! The other side's hero keeps its public part ([`HeroView`]: type, primary skills, mana, the
-//! round's casts, the war machines it commands, whether it carries a book) and whatever the
-//! battle shows of it (no retreat, its spell-cost change); its private part comes from the
-//! guess. Its stream is re-seeded, its hidden spell obstacles are placed again by their rule, a
-//! spell a random caster the viewer does not control drew is drawn again, its Escape Tunnel
-//! and its retreat facts are what the viewer may know of them (none). The templates of the
-//! stacks its spells would create follow the guessed hero.
+//! round's casts, the war machines it commands, whether it carries a book) and whatever the battle
+//! shows of it (no retreat, its spell-cost change, what it forbids every caster: no cast, no spell
+//! above a level, which the viewer meets in its own casts); its private part comes from the guess.
+//! Its stream is re-seeded, its hidden spell obstacles are placed again by their rule, a spell a
+//! random caster the viewer does not control drew is drawn again, its Escape Tunnel and its retreat
+//! facts are what the viewer may know of them (none). The templates of the stacks its spells would
+//! create follow the guessed hero.
 //!
 //! Known gaps: the state keeps no list of the spells a hero cast, so a guessed book may lack
 //! one the hero cast before; whether its opening spells are still due follows the public turns
@@ -62,11 +63,15 @@ impl BattleState {
             // rule: BAT-MAG-068
             guessed.magic.opening_due &= !first_turn_taken(self, other);
             world.heroes[other.index()] = Some(guessed);
-            world.limits = MagicLimits::of(
+            // What binds every cast stays the battle's (BAT-MAG-061, BAT-MAG-062: an Orb of
+            // Inhibition, Recanter's Cloak; the viewer meets it in its own casts); whether a
+            // stack's guard is looked at follows the guessed hero's defences.
+            world.limits.guards = MagicLimits::of(
                 &world.heroes,
                 world.battlefield.and_then(|b| ruleset.battlefield(b)),
                 world.anti_magic,
-            );
+            )
+            .guards;
             let templates = state::world_templates(&world, ruleset, other, (&hero, &guessed));
             world.created.set_templates(other, templates);
         }

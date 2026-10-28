@@ -187,9 +187,14 @@ the stacks created mid-battle.
       - **T4b2a, the decoder** (done 2026-10-28): `h3-bink` (the Bink file, the video of revision
         `b`), `h3_assets::vid`, `h3-view video` and `bink-check.sh`; the ten clips and eight
         synthetic samples as FFmpeg decodes them, byte for byte.
-      - **T4b2b, the clip in the window:** the playback read (0x597570, the start clip then the
-        loop, the timing), the colours (as `BINKW32.DLL` converts them, from the captures),
-        drawn in the window, the stills and the sequences; the harness given the clips.
+      - **T4b2b, the clip in the window** (done 2026-10-28; design §7.21): the playback read
+        (0x597570 to 0x44DAA0, the archives' lookup), the timing and the colours found by
+        running `BINKW32.DLL` as a black box (`binkprobe.exe`) and in its tables (the user's
+        leave), drawn in the window, the stills and the sequences (`h3_view::clip`,
+        `Draw::Video`); the harness given the clips and the DLL's clock; CLT-Q30 (the DLL's float
+        DCT: listed, exact later), CLT-Q31 (two timing slips: fixed, the original's for the
+        comparisons); `result-*` and `end` exact but the DCT's pixels, `defended` as before plus
+        them.
   - **T4c, Auto Combat and the tactics phase:** the panel dimmed, the tactics phase's panel
     (0x46C050).
 - **T5, what a played battle shows:** the created stacks (`StackCreated`: Summon Elemental,
@@ -345,3 +350,23 @@ M3 at its review, T9b, M4 at its review, T3c). The next milestone's list starts 
     dependency; the synthetic samples 256 pixels wide, as the clips (FFmpeg pads narrower rows).
 18. `VIDEO.VID`'s entries sized by the next larger offset (T4b2a, `h3_assets::vid`): no size is
     stored, so entries sharing an offset read the same bytes.
+19. The harness's clip tools (T4b2b): `binkprobe.exe` (our code, built by `setup.sh` with
+    mingw-w64) runs the game's `BINKW32.DLL` outside the game under Wine as a black box, its
+    clock import ours; `xdd.dll` points the DLL's `timeGetTime` import at the virtual clock
+    (its reads not the game's); the run directory's `VIDEO.VID` is the user's
+    `battle-videos.vid`.
+20. The clip's draw (T4b2b): `Draw::Video` names the start and the loop and carries the time
+    since the window opened, the compositor picking the frame from the batch's decoded clips
+    (`clip::shown`); the batch holds a clip decoded whole, 5-6-5 (`LoseCstl` 10.7 MB); the
+    window draws at the clip's decodes (`clip::decodes`, `Battle::clip_times`), the draw list
+    changing every millisecond.
+21. The video archives in the binary (T4b2b, `videos.rs`): only the directories read
+    (`h3_assets::vid::directory`, `directory_bytes`), an entry when a batch takes it; an
+    installation copy without `VIDEO.VID` takes `original-data/battle-videos.vid` (a cloud
+    sandbox's), one without either shows the slot bare.
+22. The result window's clip in the formats (T4b2b): the layout's `[result]` `clip` (the slot's
+    corner), `results::window` returning its tune (the clip by the same branches; a test keeps
+    it equal to `sound::end_tune`'s).
+23. Not modelled (T4b2b): in the original a redraw of the window while its clip stands at its
+    first frame (a press over the window in its first 133 ms) delays the clip a frame more; the
+    client's own timing (CLT-Q31) has no such delay, the comparisons' none either.

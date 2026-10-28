@@ -13,6 +13,7 @@ use h3_ui::text::{Args, Catalogue};
 use h3_view::layout::BattleLayout;
 use h3_view::message::MessageBox;
 use h3_view::result::{self, Face, GaveUp, Side, Texts};
+use h3_view::sound::Tune;
 use h3_view::tables::Tables;
 
 /// What the window is made from besides the battle: the record's manifest, the asset tables, the
@@ -33,13 +34,14 @@ pub struct Sources<'a> {
 /// The result window of the battle that opened as `opening` (the record's first snapshot) and
 /// ended as `outcome`, shown as `battle_end` 0x477470 shows it: the winner's side when its player
 /// is a human here (`opening`'s sides' `human`), else the other one; its background in the
-/// colours of `player` (the viewing player's). None when a hero's or creature's entry is missing.
+/// colours of `player` (the viewing player's); with the tune it plays, which picks its clip too
+/// (E17 M5 T4b2b, [`tune`]). None when a hero's or creature's entry is missing.
 pub fn window(
     sources: &Sources<'_>,
     opening: &Observation,
     outcome: &BattleOutcome,
     player: u8,
-) -> Option<MessageBox> {
+) -> Option<(MessageBox, Tune)> {
     let winner = outcome.result.winner().map(BattleSide::index);
     let gave_up = match outcome.result {
         BattleResult::Retreat(_) => Some(GaveUp::Retreat),
@@ -115,12 +117,24 @@ pub fn window(
     }
     let sides: [Side; 2] = sides.try_into().ok()?;
     let texts = Texts::of(sources.catalogue, text);
-    Some(result::layout(
-        &sources.layout.result,
-        &texts,
-        &sides,
-        player,
-    ))
+    let window = result::layout(&sources.layout.result, &texts, &sides, player);
+    Some((window, tune(won, shown, town, gave_up)))
+}
+
+/// The window's tune, and so its clip (`h3_view::clip::of`), by the branches that pick its text
+/// (0x470B68 to 0x470CFF; `h3_view::sound::end_tune` picks the same from the record's outcome):
+/// the shown side won, [`Tune::DefendCastle`] for a town's defender, else [`Tune::Win`]; it lost,
+/// [`Tune::LoseCastle`] for a town's defender, else the way a side gave up, else [`Tune::Lose`].
+pub fn tune(won: bool, shown: usize, town: bool, gave_up: Option<GaveUp>) -> Tune {
+    let defender_at_town = town && shown == 1;
+    match (won, gave_up) {
+        (true, _) if defender_at_town => Tune::DefendCastle,
+        (true, _) => Tune::Win,
+        (false, _) if defender_at_town => Tune::LoseCastle,
+        (false, Some(GaveUp::Surrender)) => Tune::Surrender,
+        (false, Some(GaveUp::Retreat)) => Tune::Retreat,
+        (false, None) => Tune::Lose,
+    }
 }
 
 /// The hero type's key of side `index`'s hero, if it has one.
@@ -246,6 +260,44 @@ mod tests {
             creature: Handle::from_raw(creature),
             start,
             end,
+        }
+    }
+
+    #[test]
+    fn the_windows_tune_is_the_one_the_battles_end_plays() {
+        use h3_protocol::wire::{Outcome, Side as Seat};
+        let seat = |i: usize| {
+            if i == 0 {
+                Seat::Attacker
+            } else {
+                Seat::Defender
+            }
+        };
+        for human in [[true, true], [true, false], [false, true], [false, false]] {
+            for town in [false, true] {
+                for winner in [None, Some(0), Some(1)] {
+                    for gave_up in [None, Some(GaveUp::Retreat), Some(GaveUp::Surrender)] {
+                        let outcome = match (winner, gave_up) {
+                            (None, _) => Outcome::Draw {},
+                            (Some(w), None) => Outcome::Victory { side: seat(w) },
+                            (Some(w), Some(GaveUp::Retreat)) => {
+                                Outcome::Retreat { side: seat(1 - w) }
+                            }
+                            (Some(w), Some(GaveUp::Surrender)) => {
+                                Outcome::Surrender { side: seat(1 - w) }
+                            }
+                        };
+                        let gave_up = winner.and(gave_up);
+                        let shown = result::shown_side(winner, human);
+                        let won = winner == Some(shown);
+                        assert_eq!(
+                            tune(won, shown, town, gave_up),
+                            h3_view::sound::end_tune(outcome, human, town),
+                            "{human:?} {town} {winner:?} {gave_up:?}"
+                        );
+                    }
+                }
+            }
         }
     }
 

@@ -25,6 +25,7 @@ use h3_ui::text::encode_1252;
 use h3_ui::ui;
 
 use crate::batch::Batch;
+use crate::clip;
 use crate::layout::BattleLayout;
 use crate::scene::Draw;
 
@@ -375,6 +376,34 @@ pub fn compose(
                     false,
                 )?;
             }
+            Draw::Video {
+                start,
+                looped,
+                since,
+                x,
+                y,
+            } => {
+                // `BinkCopyToBuffer` (0x44DB19): the frame's pixels as they are (E17 M5 T4b2b).
+                let video = |name: &String| {
+                    batch
+                        .video(name)
+                        .ok_or_else(|| ComposeError::Missing(name.clone()))
+                };
+                let first = video(start)?;
+                let second = looped.as_ref().map(video).transpose()?;
+                let timing = second.map(clip::Video::timing);
+                let on = clip::shown(*since, first.timing(), timing, bugs);
+                let (shown, frame) = on.map_or((first, usize::MAX), |(part, frame)| {
+                    let shown = if part == clip::Part::Loop {
+                        second.unwrap_or(first)
+                    } else {
+                        first
+                    };
+                    (shown, frame)
+                });
+                let pixels = shown.frames.get(frame).map_or(&[][..], Vec::as_slice);
+                copy_pixels(&mut screen, pixels, shown.width, (*x, *y));
+            }
             Draw::Dialog(ui::Draw::Darken { rect }) => darken(&mut screen, *rect),
             Draw::Dialog(ui::Draw::Text { item, x, y, text }) => {
                 // 0x5BC7F0: the item's picture, opaque (0x44FDB0), at most the item's size of it
@@ -611,6 +640,27 @@ fn player_colours(players: &Palette, player: u8) -> Vec<Rgb> {
         .take(32)
         .copied()
         .collect()
+}
+
+/// Rows of `width` 5-6-5 pixels copied onto the screen with their corner at `at`, clipped to it.
+fn copy_pixels(screen: &mut Screen, pixels: &[u16], width: usize, at: (i32, i32)) {
+    let screen_width = usize::try_from(screen.width()).unwrap_or(0);
+    let screen_height = i64::from(screen.height());
+    let out = screen.pixels_mut();
+    for (row, line) in pixels.chunks(width.max(1)).enumerate() {
+        let y = i64::from(at.1) + i64::try_from(row).unwrap_or(i64::MAX);
+        if !(0..screen_height).contains(&y) {
+            continue;
+        }
+        for (column, &pixel) in line.iter().enumerate() {
+            let x = i64::from(at.0) + i64::try_from(column).unwrap_or(i64::MAX);
+            let inside = usize::try_from(x).ok().filter(|&x| x < screen_width);
+            let at = inside.and_then(|x| usize::try_from(y).ok().map(|y| y * screen_width + x));
+            if let Some(slot) = at.and_then(|i| out.get_mut(i)) {
+                *slot = pixel;
+            }
+        }
+    }
 }
 
 fn picture_of<'b>(batch: &'b Batch, name: &str) -> Result<&'b h3_assets::pcx::Pcx, ComposeError> {

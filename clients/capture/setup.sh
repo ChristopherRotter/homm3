@@ -7,9 +7,11 @@
 #
 # INSTALL_COPY (default original-data/install) must hold Heroes3.exe, its five DLLs (BINKW32.DLL,
 # IFC20.dll, MP3DEC.ASI, MSS32.DLL, SMACKW32.DLL, copied from the installation) and Data/ with the
-# four LODs, Heroes3.snd, H3ab_ahd.snd and H3ab_ahd.vid. VIDEO.VID (intro videos only) is replaced
-# by an empty archive. The run directory is original-data/wine/game (gitignored), the Wine prefix
-# $WINEPREFIX (default ~/.wine-h3).
+# four LODs, Heroes3.snd, H3ab_ahd.snd and H3ab_ahd.vid. VIDEO.VID (629 MB) is replaced by the
+# user's original-data/battle-videos.vid when it is there (E17 M5 T4b2b: the result window's ten
+# clips and the spell book's two page turns, a VIDEO.VID of its own; H3_VIDEOS names another),
+# else by an empty archive (no clip plays). The run directory is original-data/wine/game
+# (gitignored), the Wine prefix $WINEPREFIX (default ~/.wine-h3).
 set -euo pipefail
 root="$(cd "$(dirname "$0")/../.." && pwd)"
 install="${1:-$root/original-data/install}"
@@ -41,12 +43,19 @@ for f in H3bitmap.lod H3sprite.lod H3ab_bmp.lod H3ab_spr.lod Heroes3.snd H3ab_ah
     H3ab_ahd.vid; do
     cp "$install/Data/$f" "$game/Data/"
 done
-printf '\0\0\0\0' > "$game/Data/VIDEO.VID"
+videos="${H3_VIDEOS:-$root/original-data/battle-videos.vid}"
+if [ -f "$videos" ]; then
+    cp "$videos" "$game/Data/VIDEO.VID"
+else
+    printf '\0\0\0\0' > "$game/Data/VIDEO.VID"
+fi
 chmod -R u+w "$game"
 
 # 3. xdd.dll: DirectDrawCreate forwarded to Wine's ddraw, and the virtual clock (xdd.c).
 i686-w64-mingw32-gcc -O2 -Wall -shared -o "$game/xdd.dll" "$root/clients/capture/xdd.c" \
     "$root/clients/capture/xdd.def" -Wl,--enable-stdcall-fixup
+# binkprobe.exe (E17 M5 T4b2b): BINKW32.DLL run on the clips as a black box (binkprobe.c).
+i686-w64-mingw32-gcc -O2 -Wall -o "$game/binkprobe.exe" "$root/clients/capture/binkprobe.c"
 
 # 4. The prefix, drive D: = the run directory, and the game's settings (the value names are the
 #    executable's): no intro, no combat grid, hex shade or movement shade, full screen, no sound.
@@ -76,7 +85,8 @@ key="HKEY_LOCAL_MACHINE\\SOFTWARE\\New World Computing\\Heroes of Might and Magi
     # 0x474CDF). The capture set never turns auto combat on.
     printf '"Combat Auto Creatures"=dword:00000001\r\n'
     # The spell book turns its pages without the videos (E17 M5 T3a: PgTrnLft and PgTrnRgh, which
-    # the run directory's empty VIDEO.VID lacks; 0x59D1E0): the viewer draws none.
+    # an empty VIDEO.VID lacks; 0x59D1E0; battle-videos.vid has them, Smacker): the viewer draws
+    # none.
     printf '"Animate SpellBook"=dword:00000000\r\n'
     printf '"Main Game Full Screen"=dword:00000001\r\n\r\n'
     printf '[HKEY_CURRENT_USER\\Software\\Wine\\Drivers]\r\n"Audio"=""\r\n'

@@ -139,3 +139,94 @@ an entry only where a task builds on it.
   to its value. Too rare to move the rows (1.5 % of games scored 0 instead of about −0.3 is about
   +0.005 of value), but a search that trains or plays should score a world's cut as the trainer
   does (the AI queue's inbox, the search).
+
+## T2b — The A/B runs (2026-10-28)
+
+- **The runs** (the user's machine; `python/records/e25-control-1.json`, `e25-shaping-1.json`;
+  commit `e5cfa46`, #534's merge, clean, C ABI v35; seed 1, 20 M samples each, the configs'
+  length): the control (`configs/e25-control.toml`) 73 minutes, 9 of them the gates and ladders;
+  shaping (`e25-shaping.toml`) 90, 25 of them evaluation. Both promoted at both gates, best #2
+  at 20 M. The final ladders (the full report set and the neutral set; win rate, value; the
+  intervals ±0.013 against Random, ±0.018 to 0.019 otherwise):
+
+  | Run | Random | Aggressor | Greedy | System actor | Neutral set |
+  |---|---|---|---|---|---|
+  | `t7-1` (E06) | 0.828, +0.273 | 0.551, +0.029 | 0.528, +0.010 | 0.374, −0.101 | 0.972, +0.245 |
+  | `e25-control-1` | 0.829, +0.271 | 0.548, +0.026 | 0.529, +0.008 | 0.371, −0.104 | 0.968, +0.230 |
+  | `e25-shaping-1` | 0.835, +0.283 | **0.589, +0.063** | **0.566, +0.045** | **0.409, −0.066** | 0.973, +0.238 |
+
+  E06's five seed-1 runs at 20 M (`t5-3`, `t7-1`, `t6b-1`, `t6d-1`, `order-1`) and the control
+  lie within 0.539 to 0.557 against Aggressor, 0.526 to 0.533 against Greedy and 0.365 to 0.374
+  against the system actor: shaping is 0.03 to 0.035 above each range's top, its intervals clear
+  of the control's. Per side (`metrics.jsonl`'s final ladder, attacker / defender) the gain is on
+  both sides of the hero kinds and none in the garrison siege: against the system actor the hero
+  battles 0.541 / 0.174 → 0.585 / 0.210, the siege with a hero 0.416 / 0.272 → 0.472 / 0.316,
+  the garrison 0.918 / 0.044 → 0.922 / 0.046. It learns faster too: at 10 M (250 per kind)
+  shaping's ladder read 0.829, 0.559, 0.549, 0.393, the control's 0.815, 0.522, 0.489, 0.333.
+- **The neutral set without neutral battles** (T2a's mix; the epic's risk): the control's
+  +0.230 is E06's runs' +0.245 to +0.253 less about 0.015, at 0.968; shaping's +0.238. Both
+  below the system actor's own +0.285, as `t7-1` was.
+- **Shaping's cost: a tail of long battles.** In the second half its self-play battles ran 70
+  and 63 samples an episode (10 to 15 M, 15 to 20 M) against the control's 53 and 54, and 0.24 %
+  and 0.20 % of them were cut at the step limit against 0.01 % (the first half: 0.05 % at most
+  for either). Its ladders took three to four times the control's (the final: 83 s against
+  Aggressor where the control took 23, 192 s against the system actor where 41): a kind's ladder
+  plays its 500 episodes as one batch, so its time is its longest battle's; the ladders cut one
+  battle in 1 500 per opponent (the control none). Only the training batch computes the
+  potential (`potential=c.shaping`), so the time is the policy's, not the code's. The value
+  head's explained variance also fell, 0.51 to 0.68 against 0.77 to 0.79.
+- **The long battles are the tactics phase** (both `best.pt`s, the user's uploads;
+  `records/inspect/battles.py`, a one-off script: every battle of the report set against the
+  system actor, Greedy and Aggressor as `h3env.train.inspect` records it, on the sandbox's CPU,
+  whose ladder rows lie within 0.01 of the GPU's). In the 616 battles of 3 000 where the agent
+  has a tactics phase (a hero with Tactics), the control placed its stacks 17 to 19 times on
+  average (median 4, the 99th percentile 209 to 262, none cut), shaping 42 to 47 times (median
+  5, the 99th percentile 723 to 928; 25 to 28 battles above 200 placements, 1 to 4 cut at the
+  step limit inside the phase); the phase is 10 to 12 % of the control's decisions (`t7-1`'s 11 %,
+  `t6d-1`'s 25 %, E06 T6e) and 24 to 28 % of shaping's. Battles of 50 rounds or more are as rare
+  in both (1 to 5 in 3 000). Outside the phase shaping fights more directly: it strikes at 55 to
+  58 % of its decisions (melee and shots; the control 45 to 48 %), moves at 24 to 27 % (31 to
+  34 %), waits at 1 % (3 %), and its battles take 25 to 28 such decisions (27 to 32). The
+  phase's rounds have no limit (BAT-TAC-002) and its
+  placements cost nothing at γ 1 (E06 T6e): its potential does not move, so shaping adds nothing
+  there while it sharpens the advantages elsewhere; the entropy bonus keeps the placement heads
+  broad, and ending the phase is one entry among many. Not stalling: a placement loop.
+- **The read:** shaping is the first lever since the truncation penalty (E06 T5d) to move the
+  ladder past the runs' spread, against every scripted opponent and the system actor (+0.04 in
+  win rate and value; 0.409 against the target's 0.5), and it learns faster. Dropping the
+  faithful system actor and the neutral battles costs nothing against the player kinds and about
+  0.015 of value on the neutral set. Its cost is the tactics phase's placement loop, which a
+  longer run would carry (training time, truncations): a bound on the phase in training is the
+  candidate fix before one builds on shaping.
+
+## AI-STUB-1's magic limits: `master`'s red verify (2026-10-28)
+
+- **Found:** CI's full verify on `master` failed at #534's merge (`e5cfa46`; #534 changed no
+  `h3-battle` code): `h3-battle`'s `a_world_shows_its_viewer_the_battle_and_reads_nothing_hidden`
+  drew a case whose attacker wore a hidden Orb of Inhibition, and the defender's world showed its
+  own random caster four candidate spells where the battle showed none. A world recomputed the
+  magic limits from the guessed hero (`MagicLimits::of`), AI-STUB-1's gap from E06 T9b; the
+  property's random cases reach it only now and then (it failed in the sandbox's coverage run and
+  passed in its test run and CI's).
+- **The fix** (the user: on this branch, `cross-lane`): a world keeps what the battle forbids
+  every caster, no casting and the highest spell level (BAT-MAG-061, -062), which each side meets
+  in its own casts and legal mask; only `guards`, whether a stack's guard is looked at, follows
+  the guessed hero's private defences (`h3-battle`'s `world.rs`). Tests: the failing case pinned
+  in `proptest-regressions/tests/properties.txt`;
+  `a_world_keeps_what_the_other_hero_forbids_every_caster` (an Orb and a Cloak the guess lacks;
+  `guards` from the guess); both fail without the fix; the property clean in nine further runs.
+  AI-STUB-1 keeps the other hero's morale and luck modifiers and a commanded war machine without
+  a guess.
+
+## T3 — Increment 1's checkpoint (2026-10-28)
+
+- **Put to the user:** T1c (the search gains nothing over its network, even over the true
+  battle: the network's evaluation limits it) and T2b (shaping about +0.04 against Aggressor,
+  Greedy and the system actor and faster, at the cost of a placement loop in the tactics phase;
+  the faithful actor's and the neutral battles' absence costs about 0.015 of neutral value).
+- **The user's choices** (the agent's recommendations): increment 2 is **shaping, bounded,
+  then scale**: the agent bounds its own tactics phase (T4a; its mask, the rules unchanged,
+  wherever the network plays), an A/B against `e25-shaping-1` (T4b), then a long run with the
+  better settings (T5, 60 M proposed). **`e25-shaping-1` is the lineage's current best** (#2,
+  20 M; the network the exit criteria are judged on), `t7-1` stays the battle AI v1 and the
+  baseline. Increment 1 closed (its task list in `E25-archive.md`).

@@ -8,10 +8,10 @@
 //! window takes input as a message box does (`crate::message::Open`): its OK (Enter or Escape)
 //! closes it.
 //!
-//! *Not built:* the clip it plays in its slot at (107, 70), 256 × 120 (`video_play` 0x597570 from
-//! 0x471A24: `WIN3`, `LBSTART`, `RTSTART`, `surrender`, `defendall`, `LOSECSTL` by the shown side's
-//! fate, from `VIDEO.VID`; T4b2): the background's slot is drawn bare, as the original shows it
-//! without its videos; a network game's timeout (0x471BBB).
+//! The clip it plays in its slot at (107, 70), 256 × 120 (`video_play_in_dialog` 0x597570 from
+//! 0x471A24; E17 M5 T4b2b): [`clip`] its draw, `crate::clip` which and when; without the video
+//! archives the slot stays bare, as the original shows it then. *Not built:* a network game's
+//! timeout (0x471BBB).
 
 use alloc::collections::BTreeMap;
 use alloc::format;
@@ -21,6 +21,7 @@ use serde::Deserialize;
 
 use crate::message::MessageBox;
 use crate::scene::{Draw, Moment};
+use crate::sound::Tune;
 use h3_ui::text::{Args, Catalogue};
 use h3_ui::ui::{self, Button, Def, Dialog, Frames, Item, Label, Picture, Shown};
 
@@ -74,6 +75,8 @@ pub struct ResultLayout {
     pub button_back: String,
     /// The OK (`iOkay.def`).
     pub ok: String,
+    /// The clip's corner on the screen (E17 M5 T4b2b: 0x471A1D, (272, 89); `crate::clip`).
+    pub clip: [i32; 2],
 }
 
 /// What a side's corner shows.
@@ -339,6 +342,21 @@ pub fn layout(layout: &ResultLayout, texts: &Texts, sides: &[Side; 2], player: u
             players,
             ..Shown::default()
         },
+    }
+}
+
+/// The window's clip `since` ms after it opened, over its slot (E17 M5 T4b2b): the clip its
+/// tune's branch picks (`crate::clip::of`), drawn after the window's own draws (the tick copies
+/// it onto the screen's surface, 0x44DB19).
+#[must_use]
+pub fn clip(layout: &ResultLayout, tune: Tune, since: u32) -> Draw {
+    let clip = crate::clip::of(tune);
+    Draw::Video {
+        start: clip.start.into(),
+        looped: clip.looped.map(Into::into),
+        since,
+        x: layout.clip[0],
+        y: layout.clip[1],
     }
 }
 

@@ -2446,7 +2446,7 @@ without its clip; the clip T4b2, by a port of FFmpeg's Bink decoder). Read: `bat
   1, centred; `Box64x30.pcx` at (384, 506) and the OK (`iOkay.def`, id 0x7802) at (385, 507), its
   hotkeys Enter and Escape. The executable gives most items the id 200; the client gives each of
   those its own (their texts by id). Then the clip (0x597570 with its index, at the screen's
-  (272, 89), 256 × 120: T4b2).
+  (272, 89), 256 × 120: §7.21).
 - **A side without a hero** (0x4705A2, 0x470810): of its first 20 records but the arrow towers,
   the first with the highest AI value (the creature record's +0x40 at the stack's +0xB4); its
   name the plural when the side had more than one such record (dead ones counted), else the
@@ -2483,6 +2483,78 @@ without its clip; the clip T4b2, by a port of FFmpeg's Bink decoder). Read: `bat
   timeline's end). *Provisional:* a hero's portrait its type's (a map's own portrait not known),
   no Learning (the client's heroes have none), a hero-less side's face not captured (the
   harness's maps give both sides a hero).
+
+### 7.21 The result window's clip (M5 T4b2b)
+
+Read: `video_play_in_dialog` 0x597570 whole, `video_open_in_dialog` 0x44D830, `video_open`
+0x44D5A0, `video_tick` 0x44DAA0, `video_redraw` 0x44D9E0, `video_show` 0x5979D0, `video_close`
+0x44DCC0, `video_service` 0x5976E0, `video_redraw_any` 0x597740, `video_archives_open` 0x598210,
+the result window's show 0x471AF0, `dialog_show` 0x5FEAE0 from 0x5FEBB8, `dialog_redraw` 0x5FF020
+to 0x5FF0B0, the clip table 0x6839C0. `BINKW32.DLL` (RAD's Bink 0.5b, 1998) run as a black box
+under Wine (`clients/capture/binkprobe.c`) and, where that stalled, read in its colour tables
+(the user, 2026-10-28: captures and black-box runs, its code read if they do not settle it fast).
+
+- **The clip** (0x471A24): the window's last act plays clip *i* of the table (20 bytes an entry:
+  the start's name, the loop's, flags) at (272, 89) in the clip's own size, playing on at its end
+  and shown; *i* by the branches of its tune (§7.20; `h3_view::clip::of`): 0 `Win3`, 1 `LoseCstl`
+  then `LoseCslp`, 2 `rtstart` then `rtloop`, 3 `Surrender`, 4 `Defendall` then `defendloop`, 5
+  `lbstart` then `lbloop`. 0x44D830 opens the loop first (flags 0x400000), then the start, its
+  frames copied into the back buffer at that point.
+- **Where it is found** (0x44D5A0, the archives opened at 0x598210): `<name>.bik`, compared
+  ignoring case with the directories (a count, then 44-byte entries of a 40-byte name and an
+  offset); the Complete edition (3) searches `data\Video.vid`, then the CD's archive when one is
+  open, then `data\h3ab_ahd.vid`; BinkOpen on the archive's handle at the entry's offset. The
+  client (`videos.rs`) reads only the directories (the user's `VIDEO.VID` is 629 MB) and a clip's
+  bytes when a batch takes it; an installation copy without `VIDEO.VID` takes the user's
+  `original-data/battle-videos.vid`, as the harness's run directory does.
+- **The playback:** each pass of a message pump or wait (`video_service`) ticks the clip
+  (`video_tick`): when BinkWait lets it, BinkDoFrame, BinkCopyToBuffer, then at the start's last
+  frame the start closed and the loop's handle the one playing (the table's +9 0: its first frame
+  not drawn now), else BinkNextFrame (a clip without a loop circles), then `video_show`: BinkGetRects
+  of the handle playing, their union shown. Showing the window (0x471AF0: `dialog_show`'s call at
+  0x5FEBD4, then its own at 0x471B17) redraws the clip twice (`video_redraw`: BinkDoFrame while
+  at the first frame, BinkCopyToBuffer), so frame 0 is on the screen at once.
+- **The DLL's timing** (black box, its clock ours): the p-th BinkDoFrame of a clip (from 0) is
+  allowed once the clock reaches the first one's time + ⌊1000 p / rate⌋ ms, every decode counted,
+  a redraw's too. So the window's clip shows frame 0 from the opening, frame k ≥ 1 from
+  ⌊1000 (k + 2) / 15⌋ ms (200, 266, 333, ...); at the start's last decode (⌊1000 (n + 1) / 15⌋)
+  the loop's rectangles are empty (no frame decoded yet) and its first frame comes at the next
+  tick, in the same millisecond, so **the start's last frame never reaches the screen**; the loop's frame j from that time
+  + ⌊1000 j / 15⌋, circling. Both slips (frame 0 three periods, the start's last frame lost) are
+  **CLT-Q31**: fixed in what the client draws (frame k from ⌊1000 k / 15⌋, the start's last its
+  period, the loop from ⌊1000 n / 15⌋), the original's for the comparisons (`h3_render::Bugs`).
+  Not modelled: a redraw while a clip stands at its first frame (a press over the window before
+  its first tick) delays it a frame more.
+- **The colours** (BinkCopyToBuffer into the 5-6-5 screen, BinkDDSurfaceType 3): the DLL's YUV
+  tables, checked on all 2^24 combinations (a synthetic clip of every Y, U, V: `binkprobe frames`
+  in 5-6-5 and YUY2): each pixel takes its 2 × 2 block's chroma unchanged; L = 0 for Y ≤ 16, else
+  ⌊38 154 (Y − 16) / 32 768⌋; top five bits clamp(L + t(66 101 (V − 128))) / 8, middle six
+  clamp(L − t(26 639 (U − 128)) − t(12 837 (V − 128))) / 4, low five
+  clamp(L + t(52 299 (U − 128))) / 8, t a division by 32 768 rounded toward zero, U and V
+  `h3-bink`'s planes 1 and 2. Exact but where a sum leaves −256 to 511 (the DLL then reads its
+  neighbouring tables; the clips' sums never do) and, in the synthetic clip only, a frame's first
+  ten pixels where V is 0 (the clips' V is 87 to 205). `h3_view::clip::rgb565`.
+- **The decoder against the DLL's:** `binkprobe frames` in YUY2 gives the DLL's own planes. The
+  chroma's hidden rows (60 to 63, review item 16): the DLL keeps them as `h3-bink` does (RTLOOP
+  from frame 12 and LBSTART's frame 46 as `h3-bink`'s). But Bink 0.5b's inverse DCT is x87
+  floating point (`ExpandPlane`'s 8 × 8 transform; single-precision constants √2, 1.848, 1.082,
+  2.613; its quantizers floats), FFmpeg's integer: an intra or inter DCT block can differ by 1
+  in a pixel, which motion carries on. Five clips are exact in every frame (`Win3`, `lbstart`,
+  `lbloop`, `LoseCstl`, `LoseCslp`); `rtstart` (31 of 40 frames, at most 49 pixels a frame),
+  `rtloop` (10 of 40, 39), `Surrender` (74 of 100, 3), `defendloop` (66 of 102, 3) and
+  `Defendall` (all 99, up to 388) differ by 1 in a channel. **CLT-Q30** (the user, 2026-10-28):
+  listed now, `h3-bink` made to decode as the DLL later (an inbox task).
+- **The harness:** `setup.sh` copies `battle-videos.vid` into the run directory as `VIDEO.VID`
+  (an empty one without it); `xdd.dll` points BINKW32's own `timeGetTime` import at the virtual
+  clock (else the clip ran in real time under the frozen clock); `binkprobe.exe` beside the game.
+- **Captured:** `result-retreat` at 100 (frame 0), 2 700 (rtstart's 38: 1 pixel, the DCT's), 2 733
+  (rtloop's 0, exact) and 3 000 (rtloop's 4: 9 pixels, the DCT's); `result-surrender` at 100 and 6 866
+  (its second round's frame 1), exact; `end` to 4 800 ms: its 53 frames as before, the window's
+  14 frames of `Win3` from 3 930 every 66 or 67 ms exact; `defended` (below).
+- **Built:** `h3_view::clip` (the table, `of`, `shown`, `decodes`, `Video`, `rgb565`), the scene's
+  `Draw::Video`, the batch's `.BIK`, the compositor's copy; `h3_view::result::clip` and the
+  layout's `clip`; `h3_assets::vid::directory`; the binary's `videos.rs`, the window (a frame at
+  each decode while the window stands), the stills' and sequences' clip.
 
 ## 8. The window, input and audio evaluation (M2 T2)
 

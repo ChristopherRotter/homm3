@@ -329,6 +329,21 @@ pub enum Draw {
     /// What a dialog draws (E17 M3 T6a; §9.7): its picture, button, DEF item, text over a picture,
     /// text alone or shadow, the dialog's own draw items since E24 M3 T1a (`h3_ui::ui::Draw`).
     Dialog(h3_ui::ui::Draw),
+    /// The result window's clip (E17 M5 T4b2b, §7.21): the frame on the screen `since` ms after
+    /// the window opened (`crate::clip::shown`), the start's and then its loop's, its pixels
+    /// straight onto the screen with its corner at (`x`, `y`) (`BinkCopyToBuffer`).
+    Video {
+        /// The start's file (in the video archives).
+        start: String,
+        /// The loop's, if any.
+        looped: Option<String>,
+        /// How long the window has been open.
+        since: u32,
+        /// The left edge.
+        x: i32,
+        /// The top edge.
+        y: i32,
+    },
     /// The mouse's cursor, over everything (E17 M3 T6c-1, design §9.9): a frame of its DEF's group
     /// 0, its canvas's corner at the mouse less the frame's hot spot, by the plain drawer with runs
     /// skipped (0x50D8B0 → 0x47BEB0 → 0x47C570). The original's drawing bug, the mouse's x

@@ -4,6 +4,23 @@ Finished history and informational notices moved out of `QUEUE.md` on 2026-10-24
 
 ## Completed tasks (the "Tasks" text as it stood on 2026-10-24)
 
+**E25 increment 1, T3** (moved 2026-10-28, done: `E25-log.md` T3):
+
+- **T3 Increment 1's checkpoint.** *Scope:* T1c's read (`E25-log.md` T1c: no gain, the guess
+  costs nothing measurable, the network's evaluation limits the search) and T2b's put to the
+  user; increment 2 chosen among the epic's candidates and refined. *Depends on:* T2b (done
+  2026-10-28: shaping +0.04 against Aggressor, Greedy and the system actor, a tail of long
+  battles; `E25-log.md` T2b). *Status:* next (the user).
+
+**E25 increment 1, T2b** (moved 2026-10-28, done: `E25-log.md` T2b):
+
+- **T2b The A/B runs.** *Scope:* on the user's machine, the control (`configs/e25-control.toml`:
+  `t7-1`'s settings with the player kinds alone, no neutral battles, the user at T2a) and the
+  same with shaping (`configs/e25-shaping.toml`), their length agreed when prepared (20 M
+  samples in the files, `t7-1`'s); the records committed, the ladders (the system actor and the
+  neutral set included) against `t7-1`'s. *Acceptance:* both records committed and read in the
+  log. *Depends on:* T2a (done 2026-10-28); the user. *Status:* waiting (the user's machine).
+
 **E06 increment 8, T9 the closure** (moved 2026-10-27 at T9d, E06 closed):
 
 **E05** (`docs/epics/E05-battle-env.md`) closed 2026-10-20 (record: `E05-log.md`; the environment as built: `docs/07-simulation-and-ai.md` §1.1). **E06** (`docs/epics/E06-battle-ai.md`, AI-Q8; design `E06-design.md`, record `E06-log.md`): increments 1 to 7 done by 2026-10-27; the battle AI v1 is `t7-1` (20 M samples, a third neutral): 0.828, 0.551, 0.528 against Random, Aggressor, Greedy at +0.273, +0.029, +0.010, the neutral set's value +0.245 (decision 7's targets as revised 2026-10-27, met), the system actor 0.374 (E25's target). The tasks' history is in `QUEUE-ARCHIVE.md`.

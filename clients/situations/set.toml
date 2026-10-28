@@ -1069,10 +1069,28 @@ scenario = "dialogs.toml"
 seat = "attacker"
 actions = ["key:r", "key:Return"]
 
+# E17 M5 T4b2b: the run directory's VIDEO.VID holds the clips, so the slot plays the retreat's
+# (rtstart, then rtloop; design §7.21): its frame 0 from the opening until 200 ms, frame k from
+# ⌊1000 (k + 2) / 15⌋, the loop's first at 2 733 ms (rtstart's last never shown).
 [[situation.frame]]
 at = 100
 differing = 0
-why = "exact: the retreat's window: Orrin's and Crag Hack's portraits and names, Defeated and Victorious, \"The cowardly Orrin flees from battle.\", None twice; the screen darkened, the shadow, the clip's slot bare (E17 M5 T4b1)"
+why = "the retreat's window: Orrin's and Crag Hack's portraits and names, Defeated and Victorious, \"The cowardly Orrin flees from battle.\", None twice; the screen darkened, the shadow (E17 M5 T4b1); exact with the clip's frame 0 (T4b2b)"
+
+[[situation.frame]]
+at = 2700
+differing = 1
+why = "rtstart's frame 38, its last shown: 1 pixel, the inverse DCT's rounding (CLT-Q30) (T4b2b)"
+
+[[situation.frame]]
+at = 2733
+differing = 0
+why = "exact: rtloop's frame 0, at once at rtstart's last decode (T4b2b, CLT-Q31)"
+
+[[situation.frame]]
+at = 3000
+differing = 9
+why = "rtloop's frame 4: 9 pixels, the inverse DCT's rounding (CLT-Q30) (T4b2b)"
 
 [[situation]]
 id = "result-surrender"
@@ -1083,4 +1101,11 @@ actions = ["key:s", "key:Return"]
 [[situation.frame]]
 at = 100
 differing = 0
-why = "exact: the surrender's window: \"Orrin surrenders to the enemy, and departs in shame.\", None twice (E17 M5 T4b1)"
+why = "the surrender's window: \"Orrin surrenders to the enemy, and departs in shame.\", None twice (E17 M5 T4b1); exact with the clip's frame 0 (T4b2b)"
+
+# E17 M5 T4b2b: `surrender` has no loop and circles itself: its 100 frames, frame 0 again at
+# 6 800 ms, frame 1 at 6 866.
+[[situation.frame]]
+at = 6866
+differing = 0
+why = "exact: surrender's frame 1 in its second round (T4b2b)"
