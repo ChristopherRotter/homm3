@@ -16,6 +16,12 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
 
 ## Notices from other lanes and finished items, newest first
 
+- 2026-10-27 (E08 T62b2's census; **for T66a**, increment 8 builds boats, decision 158): 9 events of
+  the shipped maps lie on water. The engine fires an event only for a hero that stands on its tile,
+  so these fire once a hero in a boat can step onto them (the original's `hero_move_step` tests
+  every tile a step enters, at sea too). Check the boat's step against
+  `AdventureState::firing_event` then. *(2026-10-28, T66a1: confirmed, survey `E08-sea.md` §1 and §4.3; the survey carries it to T66b.)*
+
 - 2026-10-28 (T65, increment 7 closed): the entry below moved from the inbox, nothing left to act on (the map client lane's change of the writer's edge bound, merged with its tests).
 
 - 2026-10-27 (the map client lane, E24 M2 T6b1, `map-client/e24-r2-8`, `cross-lane` with the

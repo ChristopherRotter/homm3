@@ -65,7 +65,7 @@ Refined with the user on 2026-10-28 (T65; ADV-Q31). Built like increments 1 to 7
 ### Tasks (queue entries in `docs/lanes/adventure/QUEUE.md`; one or two per round, the cut confirmed at each checkpoint)
 
 - **T65 Increment 8 refined** (with increment 7's closure). Done (2026-10-28, `adventure/e08-t65`; decisions 157–159): boats and the sea with the sea's pickups, the first round queued (T66a, T66b).
-- **T66a The boats and sea survey** (decision 159), in two (decision 160): **T66a1** the census, boats, boarding, landing, sailing, the events on water, the writer; **T66a2** the battle at sea, the four pickups, the commands and the observation, batch E8's plan, the rule ids, a second reading, the checkpoint's questions.
+- **T66a The boats and sea survey** (decision 159), in two (decision 160): **T66a1** done (2026-10-28, `adventure/e08-t66a1`: survey `E08-sea.md` §0 to §6, the census, boats, boarding, landing, sailing, the events on water, the writer; D-41 to D-44); **T66a2** the battle at sea, the four pickups, the commands and the observation, batch E8's plan, the rule ids, a second reading, the checkpoint's questions.
 - **T66b The ADR amendment drafts, the design note and the cut** (decision 159): from T66a and its checkpoint; the user accepts the drafts and the cut before anything is built.
 
 ## Later increments (sketch)

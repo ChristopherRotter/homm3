@@ -7632,3 +7632,34 @@ increment 6 the shared task came first; here the batch decides an ADR clause, A-
 - **Not in increment 7** (decisions 127, 136): the creature banks, the Refugee Camp, Seer's Huts
   and quest guards, the map's timed events, the computer's answers and the end-of-game tests after
   an event (E10), casting the adventure spells scrolls hold, teams (allies' knowledge, E10).
+
+### Increment 8, round 1: T66a1, the boats and sea survey's first part (2026-10-28, `adventure/e08-t66a1`)
+
+Baseline: `master` at e5cfa46 (#546 and #534 merged; CI's run on it failed in the ai lane's
+code, below). Original files staged from the user's computer: `Heroes3.exe`, `maps.tar`,
+`extracted.tar`. At the task's start the user cut T66a in two (decision 160, `AskUserQuestion`;
+measured on the human player's path, about 2 300 to 2 800 instructions not read: 1 600 to 2 000
+for the boats, about 700 for the pickups; not chosen: whole, three parts).
+
+**Done:** survey `docs/rules/surveys/E08-sea.md` §0 to §6 (the census of the 160 maps with a
+throwaway example; the boats' records and import, boarding, landing, the guards, sailing, the
+day's points at sea, what a boat visits, events on water, scouting, what another player sees, the
+writer's boat; disputes D-41 to D-44); the address map (`create_boat` 0x4BB250,
+`boat_free_record` 0x4BB170, `summon_boat_choice` 0x4E54A0 read; `hero_boards_boat` and
+`hero_lands_from_boat` read whole; `hero_step_allowed` read for its boat and water branches;
+`pathfinder_run`'s boat leaf, `pathfinder_expand`'s boat node, the move step's boat sites, the
+loader's case 8, the coast's class 3; nine inferred entries for the paths not followed) and
+`structs.toml` (the boat's fields, the tile's class 3). A first reading of the boat's search had a
+quirk candidate (a boat's path crossing a coastal strip); `pathfinder_run` expands a boat node only
+on water (0x56BBC1), so it was dropped before it got a number (A-27 stays free). No code, no
+version, no rule id (T66a2 proposes them).
+
+**The census in short:** 118 boats on 41 maps (at most 15), no hero placed on water, 9 events
+on water (the queue inbox's note of 2026-10-27, confirmed and moved to `QUEUE-ARCHIVE.md`), 48
+on coastal land, Favorable Winds on 3 maps; Race for Ardintinny imports whole with 5 boats and
+128 of the sea's pickups.
+
+**CI on `master`:** the run on e5cfa46 (#534, the ai lane's E25 T1a to T2a, merged after #546)
+failed in `cargo xtask verify` (the log is not reachable from the sandbox; its annotations say
+only "exit code 1"). This task changes docs only. The sandbox's full verify of that code ran
+during the session (results in the lane HANDOFF's session entry).
