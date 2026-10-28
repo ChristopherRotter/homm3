@@ -1289,10 +1289,12 @@ in two), the user answered **no cut**: every key of both windows through the tab
   seven, S, R, O, A, C, W, D and Space, `battle_panel_base` 0x46B610's scan codes, the layout's
   `keys` until now); `Book(book::Key)` (Esc and Enter close, A, C, ← → ↑ ↓; 0x59D1B4);
   `Message(message::Key)` (Enter OK, Esc Cancel; 0x4F6990); `AimCancel` (Esc 0x5A317A, the right
-  button 0x5A3184). Names: the window's own, `log-up`, `log-down`, `dragon-spell`, `surrender`,
+  button 0x5A3184); merged with #547 (the client lane's result window, mid-task), `ResultOk` in
+  `Context::Result` (Enter and Escape, 0x4715C3; its `keys` in `result::window` gone).
+  Names: the window's own, `log-up`, `log-down`, `dragon-spell`, `surrender`,
   `retreat`, `options`, `auto-combat`, `spell-book`, `wait`, `defend`, `book-close`,
   `book-adventure`, `book-combat`, `book-previous`, `book-next`, `book-tab-up`,
-  `book-tab-down`, `box-ok`, `box-cancel`, `aim-cancel`.
+  `book-tab-down`, `box-ok`, `box-cancel`, `aim-cancel`, `result-ok`.
 - **The library's keys typed:** `Book::key` and `book::Open::key` take a `book::Key` (the key
   names gone); `message::Open::key(key, by)` a `message::Key` and the key's name (its release
   still by name; the OK is `OK` or `YES`, whichever the box has, Cancel `NO` when it has one).

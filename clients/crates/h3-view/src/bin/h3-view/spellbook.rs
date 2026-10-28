@@ -5,10 +5,10 @@
 use h3_content::SpellCategory;
 use h3_content_battle::BattleRuleset;
 use h3_kernel::Handle;
-use h3_protocol::wire::{Manifest, Observation};
+use h3_protocol::wire::{Command, Manifest, Observation};
 use h3_ui::text::{Args, Catalogue};
 use h3_view::book::{Hero, Kind, Memory, Open, Outcome, Spell};
-use h3_view::keys::{Command, Context, Keys};
+use h3_view::keys::{Command as Do, Context, Keys};
 use h3_view::layout::BookLayout;
 use h3_view::message::{MessageBox, Picture, Style};
 use h3_view::tables::Tables;
@@ -133,6 +133,9 @@ pub struct Still {
     pub open: Option<Open>,
     /// The message box left open (E17 M5 T4a).
     pub message: Option<MessageBox>,
+    /// The result window a box's OK ended the battle with (E17 M5 T4b1: Retreat's, Surrender's),
+    /// over the whole screen darkened.
+    pub result: Option<MessageBox>,
     /// The mouse after the actions.
     pub mouse: [i32; 2],
     /// When the actions were made (ms after the opening: a situation's at once, 0); the battle
@@ -143,7 +146,7 @@ pub struct Still {
 impl Still {
     /// Whether a dialog (the book, a box) is open over the battle.
     pub const fn dialog(&self) -> bool {
-        self.open.is_some() || self.message.is_some()
+        self.open.is_some() || self.message.is_some() || self.result.is_some()
     }
 }
 
@@ -153,7 +156,8 @@ pub type Tell<'a> = dyn Fn(&str, Style, Option<&Picture>) -> Option<MessageBox> 
 /// What a situation's message boxes need (E17 M5 T4a; `crate::boxes`): how a box is laid out
 /// (its text, style and picture), how the side to act may leave, which of its hero's spells (by
 /// handle) no hex takes now (a stack spell's or Teleport's "affects no one"), the spells'
-/// pictures' DEF and size.
+/// pictures' DEF and size; the result window the battle ends with after a command a box's OK
+/// gives (E17 M5 T4b1).
 pub struct Boxes<'a> {
     /// Lays out a box (none without its fonts).
     pub tell: &'a Tell<'a>,
@@ -163,6 +167,14 @@ pub struct Boxes<'a> {
     pub no_one: &'a dyn Fn(u16) -> bool,
     /// The spells' pictures' DEF and its size.
     pub pictures: (String, [i32; 2]),
+    /// The result window after a command (none: the battle goes on, or no window).
+    pub result: &'a dyn Fn(Command) -> Option<MessageBox>,
+}
+
+/// What a box's click leads to in a still: another box (or none), or a command given.
+enum Next {
+    Box(Option<Box<Asking>>),
+    Give(Command),
 }
 
 /// A box open in a still: its button states and what it asks.
@@ -178,8 +190,9 @@ struct Asking {
 /// moves the mouse there, presses and releases (the open box's or book's) and parks it;
 /// `move:<x>,<y>` moves it, over the open book its hover (0x59D6C4). The book's refusal and
 /// description open their boxes over it, a spell no hex takes "affects no one" over the battle.
-/// A move to the park point after a click is a move as the harness's is. Nothing else may come in
-/// a situation's actions.
+/// A box's OK that gives a command (Retreat's, Surrender's) ends the battle in its result window
+/// (E17 M5 T4b1), which a later key or click takes as the box's. A move to the park point after a
+/// click is a move as the harness's is. Nothing else may come in a situation's actions.
 pub fn still(
     actions: &[String],
     mouse: [i32; 2],
@@ -192,9 +205,11 @@ pub fn still(
     let mut still = Still {
         open: None,
         message: None,
+        result: None,
         mouse,
         at: 0,
     };
+    let mut result: Option<h3_view::message::Open> = None;
     let mut asking: Option<Asking> = None;
     let keys = Keys::original();
     let point = |arg: &str| -> Result<[i32; 2], String> {
@@ -250,10 +265,15 @@ pub fn still(
             }
         }
     };
-    // A box's button clicked: what follows (another box at once, or nothing in a still).
+    // A box's button clicked: what follows (another box at once, a command, or nothing).
     let answered = |id: u16, asked: Asked| match crate::boxes::answered(asked, id, catalogue) {
-        Answered::Tell(text) => tell(&text, Style::Ok, None, Asked::Told),
-        Answered::Give(_) | Answered::Closed => None,
+        Answered::Tell(text) => Next::Box(tell(&text, Style::Ok, None, Asked::Told).map(Box::new)),
+        Answered::Give(command) => Next::Give(command),
+        Answered::Closed => Next::Box(None),
+    };
+    // The result window a command ends the battle with.
+    let ended = |command: Command| -> Option<h3_view::message::Open> {
+        (boxes?.result)(command).map(h3_view::message::Open::new)
     };
     for action in actions {
         let (kind, arg) = action.split_once(':').unwrap_or((action, ""));
@@ -266,29 +286,49 @@ pub fn still(
                 } else {
                     arg.to_owned()
                 };
-                let context = Context::of(asking.is_some(), still.open.is_some(), false);
+                let context = Context::of(
+                    result.is_some(),
+                    asking.is_some(),
+                    still.open.is_some(),
+                    false,
+                );
                 match (keys.command(context, false, &key), still.open.as_mut()) {
-                    (Some(Command::Message(k)), _) => {
+                    (Some(Do::ResultOk), _) => {
+                        if let Some(r) = result.as_mut() {
+                            // The result window's OK by its key: the window closed.
+                            let _ = r.key(h3_view::message::Key::Ok, &key);
+                            if let h3_view::message::Outcome::Closed(_) = r.key_up(&key) {
+                                result = None;
+                            }
+                        }
+                    }
+                    (Some(Do::Message(k)), _) => {
                         if let Some(a) = asking.as_mut() {
                             // A key down and up: its button clicked.
                             let _ = a.open.key(k, &key);
                             if let h3_view::message::Outcome::Closed(id) = a.open.key_up(&key) {
                                 let asked = a.asked;
-                                asking = answered(id, asked);
+                                match answered(id, asked) {
+                                    Next::Box(next) => asking = next.map(|a| *a),
+                                    Next::Give(command) => {
+                                        asking = None;
+                                        result = ended(command);
+                                    }
+                                }
                             }
                         }
                     }
-                    (Some(Command::Book(k)), Some(open)) => {
+                    (Some(Do::Book(k)), Some(open)) => {
                         let outcome = open.key(&mut memory, k, catalogue);
                         asking = booked(&mut still, outcome);
                     }
                     _ if context != Context::Battle => {}
-                    (Some(Command::Button(h3_view::panel::SPELL_BOOK)), _) => {
+                    (Some(Do::Button(h3_view::panel::SPELL_BOOK)), _) => {
                         if let Some(h) = hero.take().and_then(|f| f()) {
                             still.open = Some(Open::new(&mut memory, h, catalogue));
                         }
                     }
-                    (Some(Command::Button(id)), _)
+                    (Some(Do::Button(id)), _)
                         if boxes.is_some()
                             && (id == h3_view::panel::RETREAT
                                 || id == h3_view::panel::SURRENDER) =>
@@ -304,11 +344,22 @@ pub fn still(
             "click" => {
                 let to = point(arg)?;
                 moved(&mut still, &mut memory, to);
-                if let Some(a) = asking.as_mut() {
+                if let Some(r) = result.as_mut() {
+                    let _ = r.press(to);
+                    if let h3_view::message::Outcome::Closed(_) = r.release() {
+                        result = None;
+                    }
+                } else if let Some(a) = asking.as_mut() {
                     let _ = a.open.press(to);
                     if let h3_view::message::Outcome::Closed(id) = a.open.release() {
                         let asked = a.asked;
-                        asking = answered(id, asked);
+                        match answered(id, asked) {
+                            Next::Box(next) => asking = next.map(|a| *a),
+                            Next::Give(command) => {
+                                asking = None;
+                                result = ended(command);
+                            }
+                        }
                     }
                 } else if let Some(open) = still.open.as_mut() {
                     let outcome = open.press(&mut memory, (layout, catalogue), to);
@@ -316,6 +367,11 @@ pub fn still(
                 }
                 // Parked: a box the click opened takes the move, the book behind it none (its
                 // status line keeps the hint).
+                if let Some(r) = result.as_mut() {
+                    still.mouse = crate::pointer::PARK;
+                    let _ = r.moved(crate::pointer::PARK);
+                    continue;
+                }
                 match asking.as_mut() {
                     Some(a) => {
                         still.mouse = crate::pointer::PARK;
@@ -326,6 +382,11 @@ pub fn still(
             }
             "move" => {
                 let to = point(arg)?;
+                if let Some(r) = result.as_mut() {
+                    still.mouse = to;
+                    let _ = r.moved(to);
+                    continue;
+                }
                 match asking.as_mut() {
                     Some(a) => {
                         still.mouse = to;
@@ -342,6 +403,7 @@ pub fn still(
         }
     }
     still.message = asking.map(|a| a.open.message);
+    still.result = result.map(|r| r.message);
     Ok(still)
 }
 
@@ -414,6 +476,74 @@ mod tests {
         }
         // No book to open: nothing open.
         assert_eq!(played(&["key:c"], None).unwrap().open, None);
+    }
+
+    /// A box of one button `id` at (10, 10), 64 × 30 (its keys the table's).
+    fn one_button(id: u16) -> MessageBox {
+        use h3_ui::ui::{Button, Dialog, Frames, Item, Shown};
+        MessageBox {
+            dialog: Dialog {
+                place: [0, 0],
+                shadow: None,
+                items: vec![Item::Button(Button {
+                    id,
+                    def: "iOkay.def".into(),
+                    at: [10, 10],
+                    size: [64, 30],
+                    frames: Frames::default(),
+                    hint: None,
+                })],
+            },
+            shown: Shown::default(),
+        }
+    }
+
+    #[test]
+    fn a_box_s_command_ends_the_still_in_the_result_window() {
+        // Retreat's question (its OK by Enter or a click) gives the command; the result window
+        // follows, which a key or a click on its OK closes again.
+        let tell = |_: &str, _, _: Option<&Picture>| Some(one_button(h3_view::message::YES));
+        let given = std::cell::RefCell::new(Vec::new());
+        let result = |command| {
+            given.borrow_mut().push(command);
+            Some(one_button(h3_view::result::OK))
+        };
+        let boxes = Boxes {
+            tell: &tell,
+            leave: Leave {
+                retreat: true,
+                surrender: None,
+            },
+            no_one: &|_| false,
+            pictures: (String::new(), [0, 0]),
+            result: &result,
+        };
+        let catalogue = Catalogue::default();
+        let played = |actions: &[&str]| {
+            let actions: Vec<String> = actions.iter().map(|a| (*a).to_owned()).collect();
+            still(
+                &actions,
+                crate::pointer::PARK,
+                || None,
+                (&layout(), &catalogue),
+                Some(&boxes),
+            )
+            .unwrap()
+        };
+        let still = played(&["key:r", "key:Return"]);
+        assert!(still.result.is_some() && still.message.is_none() && still.dialog());
+        assert_eq!(*given.borrow(), [Command::Retreat {}]);
+        assert!(
+            played(&["key:r", "key:Return", "key:Escape"])
+                .result
+                .is_none()
+        );
+        let still = played(&["key:r", "click:20,20", "move:30,30"]);
+        assert_eq!(still.mouse, [30, 30]);
+        assert!(still.result.is_some());
+        let still = played(&["key:r", "click:20,20", "click:20,20"]);
+        assert!(still.result.is_none() && !still.dialog());
+        assert_eq!(still.mouse, crate::pointer::PARK);
     }
 
     #[test]

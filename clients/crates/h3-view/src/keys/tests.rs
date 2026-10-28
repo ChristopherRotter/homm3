@@ -17,7 +17,12 @@ fn the_defaults_are_the_windows_and_the_originals_by_context() {
             None
         };
         assert_eq!(on(Context::Battle, w.key()), Some(Command::Window(w)));
-        for context in [Context::Book, Context::Message, Context::Aim] {
+        for context in [
+            Context::Book,
+            Context::Message,
+            Context::Aim,
+            Context::Result,
+        ] {
             let got = on(context, w.key());
             if w == Window::Quit {
                 assert_ne!(got, Some(Command::Window(w)), "{context:?}");
@@ -80,6 +85,10 @@ fn the_defaults_are_the_windows_and_the_originals_by_context() {
     assert_eq!(on(Context::Aim, "Escape"), Some(Command::AimCancel));
     assert_eq!(on(Context::Aim, "RightButton"), Some(Command::AimCancel));
     assert_eq!(on(Context::Aim, "Up"), None);
+    // The result window's OK by Enter or Escape.
+    assert_eq!(on(Context::Result, "Return"), Some(Command::ResultOk));
+    assert_eq!(on(Context::Result, "Escape"), Some(Command::ResultOk));
+    assert_eq!(on(Context::Result, "S"), None);
     // The defaults bind no key twice in one context.
     assert_eq!(Keys::with_file(""), Ok(keys));
 }
@@ -87,7 +96,7 @@ fn the_defaults_are_the_windows_and_the_originals_by_context() {
 #[test]
 fn every_command_has_a_name_in_the_tables_order() {
     let all = Command::all();
-    assert_eq!(all.len(), 29);
+    assert_eq!(all.len(), 30);
     let mut sorted = all.clone();
     sorted.sort_unstable();
     assert_eq!(sorted, all);
@@ -117,7 +126,8 @@ fn every_command_has_a_name_in_the_tables_order() {
             "book-tab-down",
             "box-ok",
             "box-cancel",
-            "aim-cancel"
+            "aim-cancel",
+            "result-ok"
         ]
     );
     assert_eq!(names[..2], ["music", "effects"]);
@@ -127,20 +137,22 @@ fn every_command_has_a_name_in_the_tables_order() {
     // Every command bound by default, in the table's order.
     let keys = Keys::original();
     let chords = keys.chords();
-    assert_eq!(chords.len(), 32);
+    assert_eq!(chords.len(), 34);
     let mut commands: Vec<Command> = chords.iter().map(|&(c, _)| c).collect();
     commands.dedup();
     assert_eq!(commands, all);
     assert_eq!(chords[0].1.to_string(), "F2");
     assert_eq!(chords[31].1.to_string(), "RightButton");
+    assert_eq!(chords[33].1.to_string(), "Escape");
 }
 
 #[test]
 fn the_context_is_the_topmost_thing_open() {
-    assert_eq!(Context::of(false, false, false), Context::Battle);
-    assert_eq!(Context::of(false, false, true), Context::Aim);
-    assert_eq!(Context::of(false, true, true), Context::Book);
-    assert_eq!(Context::of(true, true, false), Context::Message);
+    assert_eq!(Context::of(false, false, false, false), Context::Battle);
+    assert_eq!(Context::of(false, false, false, true), Context::Aim);
+    assert_eq!(Context::of(false, false, true, true), Context::Book);
+    assert_eq!(Context::of(false, true, true, false), Context::Message);
+    assert_eq!(Context::of(true, true, false, false), Context::Result);
 }
 
 #[test]

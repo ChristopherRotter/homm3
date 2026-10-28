@@ -2412,6 +2412,78 @@ panel's Surrender and Retreat (`battle_buttons` 0x474FA1 to 0x475151); the book'
   by Retreat and by Surrender (5 000 gold each) through their questions, every frame read back
   exact; without gold the surrender's refusal shows and the run fights on.
 
+
+### 7.20 The result window (M5 T4b1)
+
+T4b cut in two by the user on 2026-10-28 (here the window as the captures' original shows it,
+without its clip; the clip T4b2, by a port of FFmpeg's Bink decoder). Read: `battle_result_dialog`
+0x4702D0 whole, its handler 0x471B90, `battle_end`'s calls (0x4777E9 to 0x4779CE), the experience
+`battle_experience` 0x46A350, the DEF item's constructor 0x4EA720 and drawer 0x4EAB40 (the flag
+0x10's path by the DEF's type, the mirror passed to 0x47BF00).
+
+- **The call** (`battle_end`): once the battle is decided, its last log line, the combat cursor's
+  pointer (`SetCursor(6, 2)` at 0x4777FC, shown), the whole screen darkened (`screen_darken`
+  0x44E5F0 over 800 × 600, 0x47782C) and shown, then the window built with the attacker's and the
+  defender's heroes (the manager's +0x53CC, +0x53D0), the shown side (the winner's when its player
+  is a human here, else the other one; a draw: 2, read as the defender's), the winner (−1 none),
+  whether the battle is at a town (+0x53C8) and the experience (`battle_experience`'s, 0 when the
+  shown side lost); its tune (§8.2), the modal loop (0x471B70); the experience given after it
+  closes (0x477948), then Eagle Eye's message.
+- **The dialog** (0x5FE9F0): at (165, 19), 470 × 561, the flag 0x10 (its shadow, §7.17). Its
+  items in order: `CPResult.pcx` at (0, 0) in the viewing player's colours (0x4703A0); the texts
+  (x, y, w × h, font, colour, alignment) GENRLTXT 408 at (0, 290, 466 × 100, `BigFont.fnt`, 8,
+  centred), 409 at (0, 320) and 410 at (0, 412), both colour 4; the attacker's name at (89, 37,
+  115 × 20, `smalfont.fnt`, 4, left), its portrait at (21, 38, 58 × 64): a hero's large portrait
+  (`hero_table` +0x34 by the hero's portrait byte +0x34), else `TwCrPort.def` with the frame of its
+  strongest creature + 2 (below); an empty text (83, 112, 65 × 20, right); the defender's name at
+  (266, 37, right), portrait at (392, 38), the creature's frame **mirrored** (the constructor's
+  `mirror` 1, 0x4708F6), an empty text (266, 38, left); each side's word (411 "Victorious" for the
+  winner, else 412) at (17, 116) and (367, 116), 84 × 20, colour 1, centred; the result's text at
+  (68, 202, 332 × 70), colour 4, centred both ways (alignment 5); each side's losses (the
+  attacker's row from y 343, the defender's from 440): none, record 32 at (42, y + 10, 384 × 36),
+  colour 1, centred; else at most 7, from x = (468 − 42n) / 2 + 11 by 42: `cprsmall.def`'s frame
+  of the creature + 2 at (x, y), 32 × 32, and its count (`%d`) at (x − 5, y + 38, 32 × 32), colour
+  1, centred; `Box64x30.pcx` at (384, 506) and the OK (`iOkay.def`, id 0x7802) at (385, 507), its
+  hotkeys Enter and Escape. The executable gives most items the id 200; the client gives each of
+  those its own (their texts by id). Then the clip (0x597570 with its index, at the screen's
+  (272, 89), 256 × 120: T4b2).
+- **A side without a hero** (0x4705A2, 0x470810): of its first 20 records but the arrow towers,
+  the first with the highest AI value (the creature record's +0x40 at the stack's +0xB4); its
+  name the plural when the side had more than one such record (dead ones counted), else the
+  singular.
+- **The losses** (0x470D89): each side's first 20 records, `start − count` (+0x60, +0x4C) where
+  positive, summed by creature in the order the creatures first lost some.
+- **The text** (into the message buffer): the shown side won: 303 (the enemy surrendered), 304
+  (fled) or 305, then with the shown side's hero 306 with its name and the experience; it lost:
+  with a hero 307, 308 or 309 with the hero's name; without, 310, 311 or 312 (the flags 0x697744
+  and 0x6985A3, set by either side). The clip's index and the tune by the same branches.
+- **The experience** (0x46A350): the loser's first 20 records without the summoned and war
+  machine flags, `(start − count) × hit points`; 500 more for the loser's hero, 500 less when a side
+  retreated or surrendered, 500 more for the attacker at a town; with a hero, `crt_ftol(Learning
+  × f32(points))`.
+- **Its input** (0x471B90): the OK's command (0x200/0xD of 0x7802) closes it; in a network game a
+  deadline presses it (0x697784: 15 s, 2 s after a remote turn; not built).
+- **Captured** (the harness's original, `VIDEO.VID` empty: the clip's slot shows the picture's own
+  black panel): `result-retreat` (dialogs.toml: R, Enter) and `result-surrender` (result.toml: S,
+  Enter) exact; the screen halved, the shadow's strips darkened twice more. `end`'s last frame
+  (3 730 ms, a victory: 600 experience, the defender's 10 Pikemen) exact once the battle behind
+  stands at its end with the heroes' flags as the frame before showed them: the end's last action
+  is drawn, but the idle step that would turn the flags at that moment never runs before
+  `battle_end` darkens the screen as shown (`h3_view::result::behind`). `defended`'s end (1 487
+  ms, a town defended: Ufretin's 510 experience) all but 122 pixels of the keep's shooter, redraw
+  artifacts: the screen keeps its shot's climax frame (its later frames never shown, CLT-Q19 (5)),
+  where the viewer draws it standing; memory's last frame (1 010 pixels) is not it either.
+- **Built:** `h3_view::result` (`layout`: the items in the executable's order; `text`,
+  `shown_side`, `backdrop`, `behind`, `CURSOR_FRAME`), a DEF item's `mirrored` and
+  `h3_ui::ui::Draw::Button`'s, the asset tables' heroes' `portrait`, the layout's `[result]`, the
+  catalogue's `result.*` keys; the binary's `results` (`window`, `losses`, `strongest`,
+  `experience`: from the engine's `BattleOutcome`, which the pure library does not name), the
+  window's result (opened as the battle is decided, its OK closing the
+  battle's screen), the stills' (a box's OK that gives a command) and the sequences' (from the
+  timeline's end). *Provisional:* a hero's portrait its type's (a map's own portrait not known),
+  no Learning (the client's heroes have none), a hero-less side's face not captured (the
+  harness's maps give both sides a hero).
+
 ## 8. The window, input and audio evaluation (M2 T2)
 
 ADR-0020 point 4 left the library to a measured evaluation at M2; the choice, the user's

@@ -217,11 +217,11 @@ M1's review lists (three reviewers, T6b; the list accepted) and M2's (accepted a
 - **M3 T1b, the key file's tables** (*provisional*): one `keys.toml` for both windows, a TOML
   table per viewer (`[map]`, `[battle]`; anything else refused, M2's top-level commands too),
   each window reading its own; the battle's commands named `log-up`, `dragon-spell`,
-  `surrender` … `defend`, `book-close` … `book-tab-down`, `box-ok`, `box-cancel`, `aim-cancel`
-  and the window's own as the map's.
+  `surrender` … `defend`, `book-close` … `book-tab-down`, `box-ok`, `box-cancel`, `aim-cancel`,
+  `result-ok` and the window's own as the map's.
 - **M3 T1b, the contexts** (*provisional*): a command is taken everywhere (the window's own but
   quit, a frame on and restart) or in one context (the battle's: nothing open, the spell book, a
-  message box, an aim; the map: one); a chord is refused on two commands one context takes, so
+  message box, an aim, the result window; the map: one); a chord is refused on two commands one context takes, so
   Esc is quit, the book's close, the box's Cancel and the aim's give-up at once, and a user's
   pause on Space is refused in the battle (Defend's). The hotkeys left the dialogs' layouts
   (`h3_ui::ui::Button`'s `keys`): the table's defaults are their only copy.

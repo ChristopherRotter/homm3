@@ -183,7 +183,7 @@ static int play_batch(Batched *out) {
     uint8_t *heads = malloc((size_t)BATCH * (n_spells > n_targets ? n_spells : n_targets));
     CHECK(obs && final_obs && preview && mask && heads);
     int8_t to_move[BATCH], result[BATCH];
-    float reward[2 * BATCH];
+    float reward[2 * BATCH], potential[2 * BATCH];
     uint8_t done[BATCH], truncated[BATCH];
     uint32_t episode[BATCH], scenario[BATCH], entries[BATCH];
     uint16_t spells[BATCH], targets[BATCH];
@@ -191,8 +191,9 @@ static int play_batch(Batched *out) {
     int32_t status[BATCH];
     int8_t encounter[BATCH];
     H3Action actions[BATCH];
-    H3BatchBuffers buffers = {obs,     mask,     to_move, reward, done,     truncated, result,
-                              final_obs, episode, scenario, seed, status, encounter, preview};
+    H3BatchBuffers buffers = {obs,     mask,     to_move, reward,    done,     truncated,
+                              result,  final_obs, episode, scenario, seed,  status,
+                              encounter, preview, potential};
     CHECK(h3_batch_reset(batch, &buffers) == H3_OK);
     uint64_t lcg = 777;
     memset(out, 0, sizeof *out);
@@ -220,6 +221,7 @@ static int play_batch(Batched *out) {
         for (int i = 0; i < BATCH; i++) {
             CHECK(status[i] == H3_OK);
             CHECK(reward[2 * i] == -reward[2 * i + 1]); /* zero-sum */
+            CHECK(potential[2 * i] == -potential[2 * i + 1]); /* v35 (E25 T2a): zero-sum */
             out->episodes += done[i];
             out->decided += done[i] && !truncated[i];
             CHECK(done[i] ? result[i] != H3_RESULT_NONE || truncated[i] : reward[2 * i] == 0);
@@ -253,6 +255,21 @@ static int play_batch(Batched *out) {
     CHECK(h3_batch_determinize(batch, 0, 2, 5) == NULL);
     CHECK(h3_batch_determinize(NULL, 0, 0, 5) == NULL);
     CHECK(h3_env_reseed(NULL, 5) == H3_ERR_NULL);
+    /* v35 (E25 T1b): a true world, the trusted diagnostic's: a seed gives the same, played on. */
+    for (int i = 0; i < BATCH; i++) {
+        if (to_move[i] < 0)
+            continue;
+        H3Env *world = h3_batch_true_world(batch, (uint32_t)i, 5);
+        H3Env *again = h3_batch_true_world(batch, (uint32_t)i, 5);
+        CHECK(world != NULL && again != NULL && h3_env_to_move(world) == to_move[i]);
+        CHECK(h3_env_state_hash(world) == h3_env_state_hash(again));
+        Played played;
+        CHECK(play(world, &played) == 0);
+        h3_env_destroy(world);
+        h3_env_destroy(again);
+    }
+    CHECK(h3_batch_true_world(batch, BATCH, 5) == NULL);
+    CHECK(h3_batch_true_world(NULL, 0, 5) == NULL);
     free(obs);
     free(final_obs);
     free(preview);
@@ -263,7 +280,7 @@ static int play_batch(Batched *out) {
 }
 
 int main(void) {
-    CHECK(h3_abi_version() == 34);
+    CHECK(h3_abi_version() == 35);
     CHECK(h3_observation_encoding_version() == 22 && h3_action_encoding_version() == 13);
     CHECK(h3_encounters_version() == 1);
     CHECK(h3_system_policy_version() > 0); /* v32 */

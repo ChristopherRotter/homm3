@@ -221,8 +221,9 @@ command = [
 # place); the Archangel flies beside them (its rear hex 98, the cursor left of their centre) and
 # kills all ten. The battle is decided as the strike ends, when the next turn would start
 # (`<ms> end`: the harness reads the manager's +0x132F8): `battle_end` darkens the screen, opens
-# the result's window and plays its tune then, hot seat's winner a human: `win battle`. The frame
-# at the end differs by the result's window, which the viewer does not draw yet.
+# the result's window and plays its tune then, hot seat's winner a human: `win battle`. Since E17
+# M5 T4b1 the frame at the end is exact: the window (A glorious victory, Orrin's 600 experience,
+# the defender's 10 Pikemen lost) over the screen darkened as last shown (the flags unturned).
 [[sequence]]
 id = "end"
 scenario = "seq-end.toml"
@@ -1131,7 +1132,11 @@ command = [
 # (the keep commanded). At the opening the keep shoots the attacker's one Pikeman (hex 86):
 # killed, the attacker keeps only its Catapult and the battle is over. The result's window shows
 # the defender's side, its player human here: the tune `defend castle` (the manager's +0x53C8,
-# the record's `Siege`). `seed`: the engine's, whose damage is the original's.
+# the record's `Siege`). `seed`: the engine's, whose damage is the original's. Since E17 M5 T4b1
+# the end's frame draws the window (Ufretin's 510 experience, the attacker's Pikeman lost): 122
+# pixels of the keep's shooter differ, all redraw artifacts: the screen darkened as last shown
+# keeps its shot's climax frame (its later frames never shown, CLT-Q19 (5)), where the viewer
+# draws it standing as the action ends (memory's last frame, 1 010 pixels, is not it either).
 [[sequence]]
 id = "defended"
 scenario = "seq-defended.toml"

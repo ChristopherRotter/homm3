@@ -17,6 +17,7 @@ mod motion;
 mod play;
 mod pointer;
 mod render;
+mod results;
 mod scenario;
 mod sequences;
 mod situation;
@@ -93,7 +94,8 @@ commands:
           book (its button or C; a spell that takes a target aimed: a press casts, Esc or the
           right button gives it up), a Faerie Dragon's spell (F aims it), Retreat or Surrender
           (their buttons or R and S, then the question's OK or Enter; Cancel or Esc keeps
-          fighting). With sound
+          fighting). A battle fought here ends in its result window over the screen darkened;
+          its OK (or Enter or Esc) closes the window. With sound
           (the installation's sound archives and MP3 folder; none with --mute): from the
           battle's start its start sound plays while the clock waits, then the battle music
           loops and the creatures' sounds follow their animations. Every key goes through a table
@@ -106,8 +108,8 @@ commands:
           (the commands: music, effects, pause, frame, restart, vsync, cursor, fullscreen, quit,
           log-up, log-down, dragon-spell, surrender, retreat, options, auto-combat, spell-book,
           wait, defend, book-close, book-adventure, book-combat, book-previous, book-next,
-          book-tab-up, book-tab-down, box-ok, box-cancel, aim-cancel; [] unbinds one; a key may
-          be the battle's and a dialog's at once, Esc is). --measure runs
+          book-tab-up, book-tab-down, box-ok, box-cancel, aim-cancel, result-ok; [] unbinds one;
+          a key may be the battle's and a dialog's at once, Esc is). --measure runs
           <s> seconds unattended and prints how late each frame showed; --check also reads
           every frame back and compares it with the frame drawn headless (exit 1 on a
           difference); unattended, a human's commands are the bot's choices pressed by the

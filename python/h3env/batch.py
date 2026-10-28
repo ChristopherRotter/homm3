@@ -74,6 +74,7 @@ _OUTPUTS = (
     "status",
     "encounter",
     "preview",
+    "potential",
 )
 
 
@@ -101,7 +102,10 @@ class BattleBatch:
     - `preview` [N, `preview_entries`, 2] float32 (v33, AI-Q7 (b); None without `preview=True`):
       the acting side's least and greatest kills of each attack and shot entry from
       `preview_base` (the engine's damage preview of the entry's first strike, what the
-      original shows a player), 0 for an entry not legal.
+      original shows a player), 0 for an entry not legal;
+    - `potential` [N, 2] float32 (v35, E25 T2a; None without `potential=True`): each side's
+      reward v1 as if the battle ended now (0 at an episode's start and for an env that gave up),
+      a training's shaping potential; it reads the whole state, never an agent's input.
 
     A handle must not be used from two threads at once; the engine's own threads (`threads`) run
     inside each call, without the GIL.
@@ -118,6 +122,7 @@ class BattleBatch:
         mana_price: int = 10,
         final_obs: bool = True,
         preview: bool = False,
+        potential: bool = False,
     ) -> None:
         h = _ffi.lib()
         self._lib = h
@@ -158,6 +163,7 @@ class BattleBatch:
             "status": np.zeros(n, np.int32),
             "encounter": np.full(n, _ffi.ENCOUNTER_NONE, np.int8),
             "preview": np.zeros((n, self.preview_entries, 2), np.float32) if preview else None,
+            "potential": np.zeros((n, 2), np.float32) if potential else None,
         }
         self._buffers = _ffi.H3BatchBuffers(
             *(None if a is None else a.ctypes.data for a in map(self._out.get, _OUTPUTS))
@@ -295,10 +301,22 @@ class BattleBatch:
         ADR-0025 point 12a): a single env whose battle is the env's with everything `viewer` may
         not know replaced (the other side's hero guessed by the env's encounter distribution, its
         hidden obstacles and a drawn spell drawn again, the stream re-seeded): a search agent's
-        to fork, step and observe. Only for the env's side to move (`to_move`, E06 T9b)."""
+        to fork, step and observe. Only for the env's side to move (`to_move`, E06 T9b). Its steps
+        score a decided battle by this batch's reward v1 (C ABI v35, E25 T1a): the batch's reward
+        for the same battle, where any other `Env` scores ±1."""
         handle = self._lib.h3_batch_determinize(self._live(), env, viewer, seed)
         if not handle:
             raise H3Error(_ffi.ERR_ARGUMENT, f"no world of env {env} for side {viewer}")
+        return Env(handle)
+
+    def true_world(self, env: int, seed: int) -> Env:
+        """A *true* world of env `env`'s battle from `seed` (C ABI v35, E25 T1b): the battle with
+        nothing guessed, the stream re-seeded, scored as a world. Trusted tooling, a diagnostic:
+        it reads the whole state, never an agent's input (ADR-0025 point 12a); `h3env.search`
+        takes it only with `--true-worlds`."""
+        handle = self._lib.h3_batch_true_world(self._live(), env, seed)
+        if not handle:
+            raise H3Error(_ffi.ERR_ARGUMENT, f"no true world of env {env}")
         return Env(handle)
 
     def spell_mask(self, entries: np.ndarray) -> np.ndarray:

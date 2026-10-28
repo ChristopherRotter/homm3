@@ -186,6 +186,10 @@ pub struct Hero {
     /// The frames of its cast group played before the spell.
     #[serde(default)]
     pub cast_frames: u8,
+    /// Its large portrait (`hero_table` 0x679DD0's +0x34, 58 × 64; E17 M5 T4b1: the battle's
+    /// result window, 0x47055A), none if not harvested.
+    #[serde(default)]
+    pub portrait: Option<String>,
 }
 
 /// A spell's sign, sound and magic animation (`spell_table` 0x685450, its records' +0, +4 and +8;

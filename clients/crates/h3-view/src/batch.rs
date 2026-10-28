@@ -310,6 +310,7 @@ mod tests {
                 frame: 0,
                 x: 0,
                 y: 0,
+                mirrored: false,
                 player: None,
             }),
             Draw::Cursor {

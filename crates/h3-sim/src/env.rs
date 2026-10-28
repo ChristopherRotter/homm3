@@ -13,6 +13,7 @@ use h3_kernel::{Rng, StreamId};
 
 use crate::action::{self, Action, ActionMask, SpellMask, TargetMask};
 use crate::observation;
+use crate::reward::{self, RewardConfig};
 
 /// Result of one environment step.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -24,7 +25,9 @@ pub struct StepResult {
     /// How the battle ended, if it did (a victory, a draw, a retreat or a surrender).
     pub result: Option<BattleResult>,
     /// Reward per side, indexed by [`BattleSide::index`]: +1 win, −1 loss (a side that retreats
-    /// or surrenders loses), 0 otherwise (also for a draw, where both armies are gone).
+    /// or surrenders loses), 0 otherwise (also for a draw, where both armies are gone); for an
+    /// env scored by reward v1 ([`BattleEnv::with_reward`], a world's) reward v1 at the step
+    /// that decides the battle, 0 otherwise.
     pub reward: [f32; 2],
 }
 
@@ -75,6 +78,9 @@ pub struct BattleEnv {
     steps: u32,
     max_steps: u32,
     truncated: bool,
+    /// How a decided battle is scored: `None` ±1 by the winner, else reward v1 with these
+    /// settings ([`Self::with_reward`]).
+    reward: Option<RewardConfig>,
 }
 
 impl BattleEnv {
@@ -119,7 +125,20 @@ impl BattleEnv {
             steps: 0,
             max_steps,
             truncated: false,
+            reward: None,
         })
+    }
+
+    /// This env with a decided battle scored by reward v1 with `config` ([`reward::rewards`]
+    /// from its setup and the battle's outcome, as the batch scores an episode) instead of ±1:
+    /// a world's (E25 T1a), whose search compares it with a value head trained on reward v1.
+    /// Its forks and worlds keep it.
+    #[must_use]
+    pub fn with_reward(self, config: RewardConfig) -> Self {
+        Self {
+            reward: Some(config),
+            ..self
+        }
     }
 
     /// The first state of an episode with `seed`.
@@ -250,11 +269,18 @@ impl BattleEnv {
         if result.is_none() && self.max_steps != 0 && self.steps >= self.max_steps {
             self.truncated = true;
         }
+        let reward = match self.reward {
+            // A decided battle has an outcome; a running or truncated one gets 0.
+            Some(config) => self.state.outcome().map_or([0.0; 2], |outcome| {
+                reward::rewards(config, &self.ruleset, &self.setup, &outcome)
+            }),
+            None => rewards(result),
+        };
         Ok(StepResult {
             done: self.is_done(),
             truncated: self.truncated,
             result,
-            reward: rewards(result),
+            reward,
         })
     }
 
@@ -265,10 +291,11 @@ impl BattleEnv {
 
     /// A world of the battle for `viewer` (E06 T8, ADR-0025 point 12a;
     /// [`BattleState::determinized`]): the other side's hero's private part from `guess` (`None`:
-    /// a hero of its type alone), the stream from `seed`; its steps and step limit are this
-    /// env's. Its setup is this env's without what `viewer` may not know (the other side's hero
-    /// the guess, its funds 0, its retreat facts the default, a town's Escape Tunnel as `viewer`
-    /// sees it), so a reset of the world starts nothing hidden either.
+    /// a hero of its type alone), the stream from `seed`; its steps, step limit and scoring are
+    /// this env's. Its setup is this env's without what `viewer` may not know (the other side's
+    /// hero the guess with the battle's starting mana, which its view showed at the start and
+    /// reward v1's mana term reads, E25 T1a; its funds 0, its retreat facts the default, a town's
+    /// Escape Tunnel as `viewer` sees it), so a reset of the world starts nothing hidden either.
     ///
     /// # Errors
     /// [`SetupError::InvalidHero`] for a guess the battle refuses.
@@ -284,9 +311,11 @@ impl BattleEnv {
         let other = viewer.opponent().index();
         let mut setup = (*self.setup).clone();
         setup.heroes[other] = setup.heroes[other].as_ref().map(|hero| {
-            guess
+            let mut guessed = guess
                 .cloned()
-                .unwrap_or_else(|| BattleHero::new(hero.hero_type))
+                .unwrap_or_else(|| BattleHero::new(hero.hero_type));
+            guessed.magic.mana = hero.magic.mana;
+            guessed
         });
         setup.funds[other] = 0;
         setup.retreat[other] = RetreatFacts::default();

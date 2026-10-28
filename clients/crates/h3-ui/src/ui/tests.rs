@@ -171,6 +171,7 @@ fn a_dialog_draws_its_items_as_shown() {
         frame,
         x,
         y,
+        mirrored: false,
         player: None,
     };
     let picture = |player: Option<u8>| Draw::Picture {
@@ -370,6 +371,7 @@ fn the_book_s_kinds_draw_as_shown() {
                 frame: 2,
                 x: 105,
                 y: 16,
+                mirrored: false,
                 player: None,
             },
             Draw::Button {
@@ -377,6 +379,7 @@ fn the_book_s_kinds_draw_as_shown() {
                 frame: 4,
                 x: 300,
                 y: 10,
+                mirrored: false,
                 player: None,
             },
             label(30, 105, 22, "x", false),

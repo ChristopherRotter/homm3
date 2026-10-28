@@ -11,8 +11,8 @@
 //! restart, F8 vsync, F9 the hardware or the drawn cursor, F11 fullscreen, Esc quit; until T1b P,
 //! →, Home, M, E, V, H and F11), the battle's the original's hotkeys by what is open over it:
 //! nothing (the log's arrows, the Faerie Dragon's F, the panel's letters), the spell book, a
-//! message box or an aim (each its own and the window's that work whatever is open, Esc its
-//! close, Cancel or give-up). Unattended, the keys do nothing but quit.
+//! message box, an aim or the result window (each its own and the window's that work whatever is
+//! open, Esc its close, Cancel, give-up or OK). Unattended, the keys do nothing but quit.
 //!
 //! The mouse (T6c-2, `crate::pointer`): the battle takes it as the original does
 //! (`h3_view::mouse::track`): its cursor (the combat cursor's frame, the hardware cursor or drawn),
@@ -37,6 +37,11 @@
 //! then the music starts, looping and fading in, and the clock with it; the stacks' sounds follow
 //! the timeline's cues. When the battle is decided (T8), every effect ends and its end's tune
 //! replaces the music, once. `--mute` (or no sound device) plays none and does not wait.
+//!
+//! The battle's end (E17 M5 T4b1, [`crate::results`]): a battle fought here opens its result
+//! window as it is decided, over the whole screen darkened, the battle standing behind it; its
+//! OK (a click, Enter or Escape) closes the window's battle, as the original's leaves the battle's
+//! screen.
 //!
 //! `--check <s>` and `--measure <s>` run unattended for that many seconds and report when each
 //! frame showed against its time; `--check` also reads every frame back before presenting it and
@@ -506,6 +511,12 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
         let mut grew = false;
         // The spell book opened, closed or changed (E17 M5 T3a).
         let mut book_changed = false;
+        // The result window opens at the battle's end (E17 M5 T4b1).
+        let ms = clock.ms(win.ticks_ns());
+        if battle.open_result(ms) {
+            lines.push(format!("the result window opened at {ms} ms"));
+            book_changed = true;
+        }
         if let Some(p) = presser.as_mut() {
             grew |= p.press(&mut battle, &mut inputs, clock.ms(win.ticks_ns()))?;
         }
@@ -535,8 +546,12 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                 // whatever is open; its Esc is its close, Cancel or give-up, never the window's
                 // quit.
                 Event::Key(key) => {
-                    let context =
-                        Context::of(battle.message_open(), battle.book_open(), battle.aiming());
+                    let context = Context::of(
+                        battle.result_open(),
+                        battle.message_open(),
+                        battle.book_open(),
+                        battle.aiming(),
+                    );
                     let Some(command) = keys.command(context, ctrl.contains(&true), key.name())
                     else {
                         continue;
@@ -638,6 +653,13 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                         // down, its key's release clicking it.
                         Do::Message(k) => {
                             let did = battle.message_key(k, key.name());
+                            grew |=
+                                message_did(&mut battle, &mut inputs, at, did, &mut book_changed)?;
+                        }
+                        // The result window's OK (E17 M5 T4b1): down, its key's release closing
+                        // the battle's screen.
+                        Do::ResultOk => {
+                            let did = battle.message_key(h3_view::message::Key::Ok, key.name());
                             grew |=
                                 message_did(&mut battle, &mut inputs, at, did, &mut book_changed)?;
                         }
@@ -802,6 +824,10 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                 }
                 Event::Redraw => redraw = true,
             }
+        }
+        // The result window's OK closes the battle's screen (E17 M5 T4b1).
+        if battle.result_closed() {
+            break;
         }
         // The mouse, a button held, the log scrolled (E17 M3 T6c-2), a command given (E17 M5
         // T2b): the battle follows them and the frame now is made again.
@@ -1039,7 +1065,7 @@ fn message_did(
     *changed |= did != MessageDid::Nothing;
     match did {
         MessageDid::Give(command) => give(battle, inputs, at, command),
-        MessageDid::Nothing | MessageDid::Changed => Ok(false),
+        MessageDid::Nothing | MessageDid::Changed | MessageDid::Ended => Ok(false),
     }
 }
 
@@ -1085,6 +1111,10 @@ impl Presser {
         inputs: &mut Vec<Input>,
         now: u32,
     ) -> Result<bool, String> {
+        // The result window stays until the run's end (E17 M5 T4b1: its frames read back too).
+        if battle.result_open() {
+            return Ok(false);
+        }
         if battle.message_open() {
             return self.answer(battle, inputs, now);
         }
@@ -1160,7 +1190,7 @@ impl Presser {
                 self.left = Some(command);
                 give(battle, inputs, now, command)
             }
-            MessageDid::Changed | MessageDid::Nothing => Ok(true),
+            MessageDid::Changed | MessageDid::Nothing | MessageDid::Ended => Ok(true),
         }
     }
 

@@ -1,0 +1,29 @@
+# E25 T2b's control (T2a; E25 decision 2, the user's choice at T2a, 2026-10-28): `t7-1`'s
+# settings (`e06-t7.toml`) without the faithful system actor, which trains no agent any more
+# (ADR-0026 point 8 as amended): no neutral battles for now, so the player kinds alone at `t7-1`'s
+# 4 : 2 : 1 (hero, siege_hero, siege_garrison). Every ladder still plays the neutral set v1 and
+# the system actor on the report set (evaluation, not training). The run's length is agreed with
+# the user when it is prepared (decision 5):
+#
+#   uv run --group train python -m h3env.train --config configs/e25-control.toml --out runs/e25-control-1
+#   uv run --group train python -m h3env.train --resume runs/e25-control-1
+
+seed = 1
+samples = 20_000_000
+
+[env]
+kinds = [0, 0, 100, 50, 25, 0]
+
+[league]
+self_play = 0.5
+snapshot_every = 1_000_000
+max_members = 16
+live = 4
+live_every = 250_000
+
+[gate]
+gate_every = 10_000_000
+
+[ladder]
+ladder_episodes = 250
+ladder_final_episodes = 500

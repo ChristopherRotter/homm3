@@ -4,8 +4,9 @@
 //! the function keys and Esc, the user at E24 M3 T0); the battle's defaults are the original's
 //! hotkeys, by where the battle takes them ([`Context`]): with nothing over it the log's arrows, the
 //! Faerie Dragon's F and the panel's buttons' letters; the spell book's (`book::Key`), a message
-//! box's (`message::Key`) and an aim's while one is open. Esc quits only with nothing over the
-//! battle: over it, it is the book's close, the box's Cancel and the aim's give-up.
+//! box's (`message::Key`), an aim's and the result window's while one is open. Esc quits only
+//! with nothing over the battle: over it, it is the book's close, the box's Cancel, the aim's
+//! give-up and the result window's OK.
 
 use alloc::format;
 use alloc::string::String;
@@ -29,14 +30,18 @@ pub enum Context {
     Message,
     /// A spell aimed (E17 M5 T3b).
     Aim,
+    /// The battle's result window (E17 M5 T4b1), the battle over.
+    Result,
 }
 
 impl Context {
-    /// What takes the keys: a message box when one is open, else the book, else an aim, else the
-    /// battle.
+    /// What takes the keys: the result window when it is open, else a message box, else the book,
+    /// else an aim, else the battle.
     #[must_use]
-    pub const fn of(message: bool, book: bool, aim: bool) -> Self {
-        if message {
+    pub const fn of(result: bool, message: bool, book: bool, aim: bool) -> Self {
+        if result {
+            Self::Result
+        } else if message {
             Self::Message
         } else if book {
             Self::Book
@@ -68,6 +73,9 @@ pub enum Command {
     Message(message::Key),
     /// The aim given up.
     AimCancel,
+    /// The result window's OK pressed (its id `result::OK`), the battle's screen left as it is
+    /// released.
+    ResultOk,
 }
 
 /// The panel's buttons with a hotkey, by id, with their names and the original's keys
@@ -130,6 +138,8 @@ impl Command {
                 .unwrap_or_default(),
             // Escape (0x5A317A) or the right button (0x5A3184) in the aim's loop 0x5A3070.
             Self::AimCancel => ("aim-cancel".into(), plain(&["Escape", "RightButton"])),
+            // Enter and Escape, its OK's hotkeys (0x4715C3).
+            Self::ResultOk => ("result-ok".into(), plain(&["Return", "Escape"])),
         };
         (name, keys)
     }
@@ -140,14 +150,14 @@ impl keys::Command for Command {
     const TABLE: &'static str = "battle";
 
     /// Every command, in the table's order: the window's own, the log's, the dragon's, the panel's
-    /// buttons, the book's, the box's, the aim's.
+    /// buttons, the book's, the box's, the aim's, the result window's.
     fn all() -> Vec<Self> {
         let mut all: Vec<Self> = Window::ALL.map(Self::Window).into();
         all.extend([Self::LogUp, Self::LogDown, Self::DragonSpell]);
         all.extend(BUTTONS.map(|(id, _, _)| Self::Button(id)));
         all.extend(BOOK.map(|(k, _, _)| Self::Book(k)));
         all.extend(MESSAGE.map(|(k, _, _)| Self::Message(k)));
-        all.push(Self::AimCancel);
+        all.extend([Self::AimCancel, Self::ResultOk]);
         all
     }
 
@@ -162,8 +172,8 @@ impl keys::Command for Command {
     }
 
     /// Everywhere the window's own that work whatever is open; with nothing over the battle quit,
-    /// a frame on, restart, the log's, the dragon's and the buttons'; the book's, the box's and
-    /// the aim's in theirs.
+    /// a frame on, restart, the log's, the dragon's and the buttons'; the book's, the box's, the
+    /// aim's and the result window's in theirs.
     fn context(self) -> Option<Context> {
         match self {
             Self::Window(w) if w.everywhere() => None,
@@ -173,6 +183,7 @@ impl keys::Command for Command {
             Self::Book(_) => Some(Context::Book),
             Self::Message(_) => Some(Context::Message),
             Self::AimCancel => Some(Context::Aim),
+            Self::ResultOk => Some(Context::Result),
         }
     }
 }
