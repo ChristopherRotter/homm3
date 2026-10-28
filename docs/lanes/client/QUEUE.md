@@ -22,28 +22,32 @@ check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gat
 ### E17 M5 T4 — the battle's dialogs
 
 Cut in three by the user on 2026-10-28 (T4a, the message box, Retreat and Surrender, done
-2026-10-28; T4b cut in two, T4b1 done 2026-10-28; T4b2 and T4c below, in order). The detail: `QUEUE-ARCHIVE.md`, 2026-10-21 (T8) and
+2026-10-28; T4b cut in two, T4b1 done 2026-10-28; T4b2 cut in two, T4b2a done 2026-10-28;
+T4b2b and T4c below, in order). The detail: `QUEUE-ARCHIVE.md`, 2026-10-21 (T8) and
 2026-10-20 (T6a).
 
-#### T4b2 — the result window's clip
+#### T4b2b — the result window's clip in the window
 
 T4b cut in two by the user on 2026-10-28 (T4b1, the window without its clip, done 2026-10-28;
-design §7.20). The user's choice for the decoder (2026-10-28, CLT-Q29): a port of FFmpeg's Bink
-video decoder (LGPL-2.1-or-later, GPL-2-compatible), with an origin comment, no new dependency.
+design §7.20), T4b2 in two the same day (T4b2a, the decoder, done 2026-10-28: `h3-bink`, a port
+of FFmpeg's Bink video decoder, CLT-Q29; `h3_assets::vid`; `h3-view video`;
+`clients/scripts/bink-check.sh`; E17-log, "M5 T4b2a").
 
 - **Scope:** the clip the window plays in its slot (`video_play_in_dialog` 0x597570 from
   0x471A24, its index by the shown side's fate: `WIN3`, `LBSTART` then `LBLOOP`, `RTSTART` then
   `RTLOOP`, `surrender`, `defendall` then `defendloop`, `LOSECSTL` then `LOSECSLP`; 256 × 120 at
-  the screen's (272, 89); Bink revision `b`, 15 fps; in `VIDEO.VID`): the clip table and the
-  loop read, the decoder ported into a client crate (the video frames only: the clips' audio, if
-  any, read first), drawn in the window and the captures; the harness's run directory given the
-  clips (the user's `original-data/battle-videos.vid`, 9 MB, the twelve clips in a `VIDEO.VID`
-  of their own since 2026-10-28: stage it; the spell book's two page turns are in it too, which
-  "Animate SpellBook" off keeps unplayed).
-- **Acceptance:** the decoder's frames checked against the original's captures (or a reference
-  decode); the window's clip as recorded in a still and a sequence, or each difference listed;
-  T4b1's stills taken again with the clips; the Definition of Done.
-- **Depends on:** T4b1 (done 2026-10-28). **Status:** ready.
+  the screen's (272, 89); 15 fps): the clip table, the start-then-loop switch and the frame
+  timing read; where the game finds the clips (`VIDEO.VID`, `H3ab_ahd.vid`: the name and
+  extension it asks for); the colours as `BINKW32.DLL` converts YUV to the 16-bit screen (fitted
+  from the captures' frames; reading the DLL is a licence question: ask first); drawn in the
+  window, the stills and the sequences; the harness's run directory given the clips (the user's
+  `original-data/battle-videos.vid`, 9 MB, a `VIDEO.VID` of their own since 2026-10-28: stage it;
+  the spell book's two page turns are in it too, Smacker, which "Animate SpellBook" off keeps
+  unplayed). Whether the original's decoder keeps the chroma's hidden rows (rows 60 to 63) as
+  `h3-bink` does: `RTLOOP`'s frames 12 to 15 and `RTSTART`'s from 23 show it (review item 16).
+- **Acceptance:** the window's clip as recorded in a still and a sequence, or each difference
+  listed; T4b1's stills taken again with the clips; the Definition of Done.
+- **Depends on:** T4b2a (done 2026-10-28). **Status:** ready.
 
 #### T4c — Auto Combat and the tactics phase
 

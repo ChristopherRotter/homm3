@@ -972,11 +972,11 @@ mod tests {
     /// (`(count, values)` each), then `inline`.
     fn by_hand(bundles: &[(u32, &[u32])], inline: &BitWriter) -> BitWriter {
         let mut w = BitWriter::new();
-        for b in 0..BUNDLES {
+        for (b, &width) in WIDTH.iter().enumerate() {
             let (count, values) = bundles.get(b).copied().unwrap_or((0, &[]));
             w.put(count, COUNT_BITS);
             for &v in values {
-                w.put(v, WIDTH[b]);
+                w.put(v, width);
             }
         }
         w.append(inline);
@@ -997,7 +997,6 @@ mod tests {
         for _ in 0..2 {
             packet.append(&by_hand(&[], &BitWriter::new()));
         }
-        assert!(packet.len() > 0 && !packet.is_empty());
         let frame = d.decode(&packet.into_bytes()).unwrap();
         assert_eq!(block(frame, 0, 0), [2; 64]);
         // 65 colours do not fit a bundle of one block's 64 bytes.
