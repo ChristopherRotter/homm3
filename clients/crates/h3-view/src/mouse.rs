@@ -468,7 +468,7 @@ impl Hint {
         // M5 T3b): the form of a number other than one.
         let plural = |id: u8| {
             stack(id)
-                .and_then(|s| creature(s))
+                .and_then(creature)
                 .map_or_else(String::new, |key| {
                     catalogue.text(&key, &Args::new().count(PLURAL_COUNT))
                 })

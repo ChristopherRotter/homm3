@@ -7,7 +7,7 @@ use h3_battle::{BattleSide, BattleState, CastTarget, CastTargets, Viewer};
 use h3_content_battle::BattleRuleset;
 use h3_content_battle::SpellTarget;
 use h3_protocol::map;
-use h3_protocol::wire::{Command, Observation, Target as WireTarget};
+use h3_protocol::wire::Observation;
 use h3_view::mouse::aim::{Aim, Area, Target};
 use h3_view::tables::Tables;
 
@@ -36,14 +36,7 @@ pub fn hero(
     if found.is_empty() || found.iter().any(|t| *t == CastTarget::None) {
         return None;
     }
-    let mut targets: Vec<Target> = found
-        .iter()
-        .filter_map(|t| match *t {
-            CastTarget::Stack(s) => Some(Target::Stack(s.0)),
-            CastTarget::Hex(h) => Some(Target::Hex(h.0)),
-            CastTarget::None => None,
-        })
-        .collect();
+    let mut targets = targets_of(&found);
     targets.sort_unstable();
     // The hero's mastery of it, as its side's own view shows it.
     let own = map::observe(state, ruleset, Viewer::Side(side));
@@ -55,26 +48,21 @@ pub fn hero(
     Some(engine_part(ruleset, spell, mastery, targets, false))
 }
 
-/// The engine's part of the Faerie Dragon's aim of its drawn spell (the key F, 0x475C17): its
-/// legal casts' targets in `commands`, the spell `observation` names as drawn; none without one.
+/// The engine's part of the Faerie Dragon's aim of its drawn spell (the key F, 0x475C17) for
+/// `side` in `state`: the engine's targets of its cast (`creature_cast_targets`, BAT-MAG-049),
+/// the spell `own` (the side's own view) names as drawn; none for another stack (only a random
+/// caster draws) or one that may not cast.
 #[must_use]
 pub fn dragon(
+    state: &BattleState,
     ruleset: &BattleRuleset,
-    observation: &Observation,
-    commands: &[Command],
+    side: BattleSide,
+    own: &Observation,
 ) -> Option<Aim> {
-    let spell = observation.drawn?;
-    let mut targets: Vec<Target> = commands
-        .iter()
-        .filter_map(|c| match *c {
-            Command::CreatureCast { target } => match target {
-                WireTarget::Stack { stack } => Some(Target::Stack(stack)),
-                WireTarget::Hex { hex } => Some(Target::Hex(hex)),
-                WireTarget::None {} => None,
-            },
-            _ => None,
-        })
-        .collect();
+    let spell = own.drawn?;
+    let mut found = CastTargets::new();
+    h3_battle::creature_cast_targets(state, ruleset, side, &mut found);
+    let mut targets = targets_of(&found);
     if targets.is_empty() {
         return None;
     }
@@ -82,6 +70,18 @@ pub fn dragon(
     // The original asks the acting side's hero's mastery (0x59F74D); the areas a Faerie Dragon
     // draws are the same at every mastery.
     Some(engine_part(ruleset, spell, 0, targets, true))
+}
+
+/// The engine's targets as the aim's (a cast at nothing left out).
+fn targets_of(found: &CastTargets) -> Vec<Target> {
+    found
+        .iter()
+        .filter_map(|t| match *t {
+            CastTarget::Stack(s) => Some(Target::Stack(s.0)),
+            CastTarget::Hex(h) => Some(Target::Hex(h.0)),
+            CastTarget::None => None,
+        })
+        .collect()
 }
 
 /// An aim's engine part: its area (a spell aimed at a hex with an area: the original's flags

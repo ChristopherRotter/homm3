@@ -744,7 +744,17 @@ impl<'g> Battle<'g> {
         if self.aiming.is_some() || self.book.is_some() || !self.takes(at) {
             return None;
         }
-        let spell = self.turned.last()?.aims.iter().find(|a| a.creature)?.spell;
+        let turn = self.turned.last()?;
+        // The acting side's hero cast this round: the key does nothing (0x59EC76).
+        let o = &turn.observation;
+        let side = o
+            .active
+            .and_then(|id| o.stacks.iter().find(|s| s.id == id))
+            .map(|s| usize::from(s.controller == h3_protocol::wire::Side::Defender))?;
+        if o.sides[side].hero.as_ref().is_some_and(|h| h.casts > 0) {
+            return None;
+        }
+        let spell = turn.aims.iter().find(|a| a.creature)?.spell;
         self.aiming = Some((spell, true));
         Some(spell)
     }

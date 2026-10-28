@@ -485,7 +485,7 @@ impl Turned {
             .iter()
             .filter_map(|&spell| crate::aims::hero(state, ruleset, side, spell))
             .collect();
-        aims.extend(crate::aims::dragon(ruleset, &own, &commands));
+        aims.extend(crate::aims::dragon(state, ruleset, side, &own));
         Self {
             observation,
             commands,

@@ -350,7 +350,9 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
     // The spell book's default cursor too (E17 M5 T3a).
     let combat = battle.layout().mouse.cursor.clone();
     let book_cursor = battle.layout().book.cursor.clone();
-    battle.load_batch(std::iter::empty(), &[&combat, &book_cursor])?;
+    // The spell cursor too (E17 M5 T3b).
+    let spell_cursor = battle.layout().mouse.spell_cursor.clone();
+    battle.load_batch(std::iter::empty(), &[&combat, &book_cursor, &spell_cursor])?;
     // The combat cursor's frames as the mouse manager draws them (E17 M3 T6c-2), made as shown.
     let mut cursors = Cursors::default();
     let mut frame_now = battle.cursor(options.from);
@@ -1022,9 +1024,12 @@ impl Presser {
                 target
             }
             Command::CreatureCast { target } => {
-                let spell = battle
-                    .dragon_aim(now)
-                    .ok_or("no Faerie Dragon's aim for its cast")?;
+                // The key does nothing once the side's hero cast this round (the original's
+                // cursor casts then, which the client does not build): given without a press.
+                let Some(spell) = battle.dragon_aim(now) else {
+                    self.given += 1;
+                    return give(battle, inputs, now, wanted);
+                };
                 inputs.push(Input::Aim {
                     at: now,
                     spell,
