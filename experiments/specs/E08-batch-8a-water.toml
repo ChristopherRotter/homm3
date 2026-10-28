@@ -1,0 +1,81 @@
+# Experiment batch E8a, its water map (E08 T67; decisions 163, 165): row E8-5 of increment 8's plan
+# (survey docs/rules/surveys/E08-sea.md §11; docs/epics/E08-design.md §17), a hero written on a
+# water tile with no boat there (D-44), on a map of its own: no shipped map places a hero on water
+# (survey §1), so the game may refuse the map or stop on it, and the main map E08-batch-8a keeps
+# its other rows. In SoD on Easy, hot seat. Build: docs/experiments/README.md. Predictions are for
+# the agent who evaluates the results; the template never shows them.
+#
+# | row  | settles               | the reading (faithful)                               | the other source(s)                     |
+# | E8-5 | D-44: a hero on water | no boat (bit 18 clear), the land's 2 000; a step     | VCMI: a boat under it, the sea's 1 500; |
+# |      |                       | onto water refused, one onto land taken (1 900 left) | a landing: 0 left                       |
+#
+# Blue's hero (E8-5b) stands on land far away and never moves: it makes the map a two-player one
+# for hot seat, as the other batches.
+
+[map]
+name = "E08 batch E8a water"
+description = "Engine-generated experiment map (E08, batch E8a, its water map): a hero written on a water tile with no boat. Hot seat, Red and Blue human, difficulty Easy; follow the results template."
+size = 36
+terrain = "grass"
+difficulty = "easy"
+instructions = [
+    "Copy `E08-batch-8a-water.h3m` into `D:\\Heroes3\\HoMM 3 Complete\\Maps`.",
+    "Use the HD launcher with plain HD (HD+ off).",
+    "Start the map in hot seat: *New Game → Multiplayer → Hot Seat*, two players, Red and Blue both human, difficulty **Easy**. If the scenario's options let you, set both players' starting bonus to gold. Before you start it, compare the stamp at the start of the map's description with the stamp above. If the game refuses the map, stops or crashes, note where and stop: that is this row's result. Save right away (save 1).",
+    "Most records are the game's memory: a hero's tile, movement points (+0x4D), day's maximum (+0x49) and status flags (+0x105; bit 18, 0x40000, is the hero in a boat), the boats' records (game +0x4E3BC, `docs/exe/structs.toml` \"boat\"), the path marks (batch E1a's). The capture harness reads them (`clients/capture/batches/E08-batch-8a-water.toml`, E08 T68). Played by hand, read the screens instead and leave the memory-only lines empty.",
+    "Tiles are (column, row) from 0 at the top left. A walk: click the target once (the path's marks show; note them), then again (the hero goes).",
+    "Order: day 1, Red's turn: E8-5. Then the map is done (Blue does nothing).",
+    "Fill in this file (anything unexpected goes into the encounter's last line) and keep it in the repo.",
+]
+
+# Water on columns 2 to 10: E8-5 stands on its east edge, (10, 10); the land begins at column 11.
+[[map.patch]]
+terrain = "water"
+from = [2, 2]
+to = [10, 20]
+
+[[encounter]]
+id = "E8-5"
+title = "A hero written on a water tile, no boat there"
+questions = ["D-44", "ADV-SEA-007"]
+procedure = [
+    "Day 1, Red's turn: E8-5 stands on the water tile (10, 10), one Angel in its army (2 000 points on land, 1 500 at sea). Note what the screen shows under it (a boat or not).",
+    "Read E8-5's tile, movement points, day's maximum and status flags, and the boats' records (how many in use).",
+    "Click the water tile (9, 10) west of it once (note the marks), then again. Read its tile and movement points.",
+    "Click the land tile east of it, (11, 10) (from (9, 10) if it moved: the tile two east), once (note the marks), then again. Read its tile, movement points, day's maximum and status flags.",
+]
+record = [
+    { field = "what the screen shows under E8-5 (a boat or not)" },
+    { field = "day 1 start: tile, movement points, day's maximum, status flags; boats in use" },
+    { field = "the click on (9, 10): marks; tile and movement points after" },
+    { field = "the click on (11, 10): marks; tile, movement points, day's maximum, status flags after" },
+    { field = "anything odd" },
+]
+predictions = """
+- **The code** (survey §2: nothing on a rule's path makes a boat for a placed hero; its day's
+  points are the land's): no boat drawn, **bit 18 clear**, no boat record in use, **2 000** points
+  and maximum (one Angel). The step west onto water: **refused** (`hero_step_allowed`: a walker
+  enters water only onto a boat's or a class-85 entrance; no path). The step east onto land:
+  **taken**, priced by the tile left: water's table price 100, so **1 900** left, nothing else
+  changed.
+- **VCMI** (`CGameState::initHeroes`, "generate boats for all heroes on water"): a boat under it,
+  **bit 18 set**, the sea's **1 500**; the step west sails (1 400 left); the step east is a landing:
+  **0** left (no Admiral's Hat).
+- D-44's engine refuses such a hero at the import (decision 163) until this row says what the
+  original does.
+"""
+[encounter.hero]
+type = "Orrin"
+specialty = "skill Archery"
+at = [10, 10]
+primary = [1, 1, 1, 1]
+army = [["Angel", 1]]
+
+[[encounter.also]]
+type = "Valeska"
+specialty = "creature Archer"
+owner = "blue"
+name = "E8-5b"
+at = [30, 30]
+primary = [1, 1, 1, 1]
+army = [["Pikeman", 10]]

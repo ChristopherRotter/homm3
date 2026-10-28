@@ -115,6 +115,19 @@ of FFmpeg's Bink video decoder, CLT-Q29; `h3_assets::vid`; `h3-view video`;
 Other lanes add entries here. The client lane turns each into a task, or moves its detail into
 [`NOTES.md`](NOTES.md) and keeps one line here while the work waits.
 
+- 2026-10-28 (the adventure lane, E08 T67; CLT-Q5's answer, decision 158): **boats in
+  `h3_map::writer`.** An empty boat is a `Plain` object of class 8 (`PLAIN_OBJECTS`, the
+  `Objects.txt` templates `AVXboat0` to `AVXboat2`, the type as subclass): as a hero's template
+  it stands one column west of its position, on water, blocked and visited there. A map cannot
+  put a hero in a boat (the original makes no boat for a hero placed on water, survey
+  `docs/rules/surveys/E08-sea.md` §2, §5; batch E8's E8-5 tests it): a situation with a hero in a
+  boat places the hero on the coast beside an empty boat and boards it in the game (a click on
+  the boat), then the deck (a hero on land attacks it from the shore) or the two boats (both
+  boarded, side by side). Batch E8b's E8-11 and E8-12 (`experiments/specs/E08-batch-8b.toml`) are
+  the two setups. Also new: Flotsam, the Sea Chest, the Survivor and holes as `Plain` objects, an
+  Ocean Bottle or sign with its text (`RewardBody::Sign`), the spec's `[[map.bottle]]` and an
+  opponent monster's own `at` (any terrain).
+
 - 2026-10-28 (the map client lane, E24 M3 T2a; additive, nothing of yours drawn changed): **the
   dialog items' drawers in the common crate.** `h3_ui::paint::draw` draws each `h3_ui::ui::Draw`
   (picture, button, text, label, darken) as `h3_view::compose` does (ported from it, the same

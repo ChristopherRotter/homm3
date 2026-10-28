@@ -1,0 +1,571 @@
+# Experiment batch E8a (E08 T67; decisions 158, 162, 163, 165, 171): rows E8-1 to E8-4, E8-7,
+# E8-10, E8-15 and E8-16 of increment 8's plan (survey docs/rules/surveys/E08-sea.md §11;
+# docs/epics/E08-design.md §17), movement and the shore, in SoD on Easy, hot seat, on one map; row
+# E8-5 (a hero written on water) is the map `E08-batch-8a-water` of its own, so that a game that
+# refuses such a hero costs this map nothing. Build: docs/experiments/README.md. Predictions are
+# for the agent who evaluates the results; the template never shows them.
+#
+# | row   | settles                                   | the reading (faithful)                       | the other source(s)                     |
+# | E8-1  | D-41: the Hat's conversion at boarding    | 75 left after the step: dropped to 0, then   | VCMI: 75 × 3000 ÷ 2000 = 112            |
+# |       |                                           | 0 × 3000 ÷ 2000 = 0; the control 637          | the control: 637                        |
+# | E8-2  | D-41: the Hat's conversion at landing     | 59 left: dropped to 0, then 0; control 333    | VCMI: 59 × 2000 ÷ 3000 = 39; 333        |
+# | E8-3  | D-42: where a boat lands                  | no path to the event's or the hole's tile;    | VCMI: lands on the event and fires it   |
+# |       |                                           | the free tile lands                           | (the wiki: "not on a hole")             |
+# | E8-4  | D-43: the diagonal exception on the winds | 80 on a winds tile: the diagonal (93)         | VCMI: the diagonal taken, 0 left        |
+# |       |                                           | refused; the straight one (66) taken, then 0  |                                         |
+# | E8-7  | D-45: a sea pickup from the shore         | the clicking flyer takes its Flotsam; the     | the wiki: only boats; VCMI: the walker  |
+# |       |                                           | key's flyer, the water walker, the walker not | and the water walker not                |
+# | E8-10 | §4.2: the day's sea points                | 4 000 and 2 000; after the landing 0 and the  | consensus on 4 000 and 2 000 (A-28 the  |
+# |       |                                           | maximum kept (A-28); 1 560 the next day       | reading's alone)                        |
+# | E8-15 | §3.2, §3.3: a guarded landing             | the battle on the shore after the landing;    | consensus                               |
+# |       |                                           | the boat on the water tile, facing south      |                                         |
+# | E8-16 | §2: any hero boards any boat              | the boat Red left: owner and captain Blue's   | consensus                               |
+#
+# **The points.** A day's land points from the slowest speed (packs/base/adventure.toml
+# `land_points`): one Angel (speed 12) 2 000, ten Pikemen (speed 4) 1 560. Sea points (survey
+# §4.2): 1 500, Navigation +50, 100, 150 %, the Necklace of Ocean Guidance +1 000, the Sea
+# Captain's Hat +500, the Admiral's Hat +1 500 (through its two parts). A step is priced by the
+# tile left (batch E1a): grass 100, swamp 175 for Castle creatures (native grass), water 100, 141
+# diagonally, from a Favorable Winds tile 66 and 93; the step onto a boat by the land tile left. The
+# drop (D-3, ADV-MOV-006): after a step the points become 0 when fewer remain than the cheapest
+# straight step from the new tile, 100 on land without a road and on water, 66 on a winds tile.
+#
+# **The corridors** (E8-1): rock rows 3, 5 and 7 beside the swamp rows 4 and 6, so that a boat at
+# (20, 4) or (20, 6) is reached only along its swamp row (a detour over the grass would be
+# cheaper). Every path a row predicts is the cheapest one, so the legs the procedures name (at
+# most five tiles: the original draws no path onto an unexplored tile, ADV-MOV-008, the scouting
+# radius is 5) give the same points as one long walk.
+#
+# **The boats** (`AVXboat0` to `AVXboat2`): as a hero, a boat stands one column west of its
+# `at`; it blocks its tile and is boarded by a click on it from a land tile beside it.
+#
+# The trap of the starting bonus: a hot-seat player's random starting bonus may give a hero an
+# artifact. The template asks for gold; an artifact the spec does not give goes under "anything
+# odd".
+
+[map]
+name = "E08 batch E8a"
+description = "Engine-generated experiment map (E08, batch E8a): boats and the sea, movement and the shore: the Admiral's Hat at boarding and landing, where a boat lands, the diagonal on Favorable Winds, a sea pickup from the shore, the day's sea points, a guarded landing, any hero boards any boat. Hot seat, Red and Blue human, difficulty Easy; follow the results template."
+size = 72
+terrain = "grass"
+difficulty = "easy"
+instructions = [
+    "Copy `E08-batch-8a.h3m` into `D:\\Heroes3\\HoMM 3 Complete\\Maps`.",
+    "Use the HD launcher with plain HD (HD+ off).",
+    "Start the map in hot seat: *New Game → Multiplayer → Hot Seat*, two players, Red and Blue both human, difficulty **Easy**. If the scenario's options let you, set both players' starting bonus to gold. Before you start it, compare the stamp at the start of the map's description with the stamp above. Save right away (save 1), and at the start of each later turn (save 2 Blue's day 1, save 3 Red's day 2, save 4 Blue's day 2, save 5 Red's day 3).",
+    "Most records are the game's memory: a hero's tile, movement points (+0x4D) and day's maximum (+0x49), its status flags (+0x105; bit 18, 0x40000, is the hero in a boat), the boats' records (game +0x4E3BC, 0x28 bytes each: tile, in use +0x18, type +0x1A, facing +0x1B, owner +0x1C, captain +0x20, aboard +0x24; `docs/exe/structs.toml` \"boat\"), an object's word on its tile, the players' treasuries, a battle's terrain, special field, ship flag (`battle_manager` +0x53C6) and blocked hexes at its opening, the path marks (batch E1a's). The capture harness reads them (`clients/capture/batches/E08-batch-8a.toml`, E08 T68). Played by hand, read the screens instead and leave the memory-only lines empty.",
+    "Tiles are (column, row) from 0 at the top left. A walk: click the target once (the path's marks show; note them where asked), then again (the hero goes). A walk the procedure splits into legs goes leg by leg, each leg's target clicked twice: the original draws no path onto a tile not yet explored.",
+    "A boat stands on water beside the hero's tile; a click on it from the land beside it boards it (the walk ends there). A click on a land tile beside a hero's boat lands it (the walk ends there).",
+    "Each battle by auto combat; a tactics phase is ended at once (its Start button).",
+    "Order: day 1, Red's turn: E8-1 (both heroes board), E8-3, E8-4, E8-10 (both board), E8-15 (boards); end the turn. Blue's turn: E8-7; end the turn. Day 2, Red's turn: E8-1's day 2 (both land), E8-3, E8-4, E8-10, E8-15; end the turn. Blue's turn: E8-16; end the turn. Day 3, Red's turn: E8-10's last reads. Then the map is done.",
+    "Fill in this file (anything unexpected goes into the encounter's last line) and keep it in the repo.",
+]
+
+# --- E8-1, E8-2: the swamp corridors and the sea east of them ------------------------------------
+
+[[map.patch]]
+terrain = "rock"
+from = [8, 3]
+to = [19, 3]
+
+[[map.patch]]
+terrain = "rock"
+from = [8, 5]
+to = [19, 5]
+
+[[map.patch]]
+terrain = "rock"
+from = [10, 7]
+to = [19, 7]
+
+[[map.patch]]
+terrain = "swamp"
+from = [9, 4]
+to = [19, 4]
+
+[[map.patch]]
+terrain = "swamp"
+from = [11, 6]
+to = [19, 6]
+
+# Rows 2 to 4 water from column 20 to 55; row 5 to 48 (E8-1's landing at (49, 5)); row 6 to 44
+# (E8-1c's landing at (45, 6)); rows 7 and 8 to 43 (E8-16's hero on the land at (44, 7)).
+[[map.patch]]
+terrain = "water"
+from = [20, 2]
+to = [55, 4]
+
+[[map.patch]]
+terrain = "water"
+from = [20, 5]
+to = [48, 5]
+
+[[map.patch]]
+terrain = "water"
+from = [20, 6]
+to = [44, 6]
+
+[[map.patch]]
+terrain = "water"
+from = [20, 7]
+to = [43, 8]
+
+# E8-1's boat on (20, 4), E8-1c's on (20, 6).
+[[map.object]]
+picture = "AVXboat0"
+at = [21, 4]
+
+[[map.object]]
+picture = "AVXboat1"
+at = [21, 6]
+
+# --- E8-3: a notch of water and its three coastal tiles ------------------------------------------
+
+[[map.patch]]
+terrain = "water"
+from = [30, 12]
+to = [32, 16]
+
+[[map.patch]]
+terrain = "water"
+from = [33, 14]
+to = [33, 14]
+
+# The boat on (30, 14), beside E8-3's hero on (29, 14).
+[[map.object]]
+picture = "AVXboat2"
+at = [31, 14]
+
+# North of the notch (33, 14): Red's event, 100 gold; east: a grass hole; south (33, 15): free.
+[[map.event]]
+at = [33, 13]
+players = ["red"]
+gives = { resources = { gold = 100 } }
+
+[[map.object]]
+picture = "AVLholg0"
+at = [34, 14]
+
+# --- E8-10: two boats in corners, each with a landing tile south of it ---------------------------
+
+[[map.patch]]
+terrain = "water"
+from = [40, 11]
+to = [43, 12]
+
+[[map.patch]]
+terrain = "water"
+from = [40, 15]
+to = [43, 16]
+
+[[map.object]]
+picture = "AVXboat0"
+at = [41, 12]
+
+[[map.object]]
+picture = "AVXboat1"
+at = [41, 16]
+
+# --- E8-15: a boat beside a coast a monster guards ----------------------------------------------
+
+[[map.patch]]
+terrain = "water"
+from = [50, 12]
+to = [53, 14]
+
+# The boat on (50, 14); the landing tile (50, 15) south of it; the Pikemen on (50, 16).
+[[map.object]]
+picture = "AVXboat2"
+at = [51, 14]
+
+# --- E8-4: open sea with a block of Favorable Winds ---------------------------------------------
+
+[[map.patch]]
+terrain = "water"
+from = [20, 24]
+to = [45, 36]
+
+[[map.object]]
+picture = "AVXboat0"
+at = [21, 26]
+
+# Two 3 × 6 pictures (`.msk` 3 × 6, every cell drawn): the winds on columns 31 to 36, rows 27 to
+# 32.
+[[map.ground]]
+picture = "AVXfw4"
+at = [33, 32]
+
+[[map.ground]]
+picture = "AVXfw4"
+at = [36, 32]
+
+# --- E8-7: a coast with four Flotsams beside it (Blue) -------------------------------------------
+
+[[map.patch]]
+terrain = "water"
+from = [31, 40]
+to = [45, 48]
+
+[[map.object]]
+picture = "AVAflot0"
+at = [31, 41]
+grid = { rows = 4, step = [1, 2] }
+
+# --- E8-1, E8-2: the Admiral's Hat at boarding and landing (Red) ---------------------------------
+
+[[encounter]]
+id = "E8-1"
+title = "The Admiral's Hat at boarding (row E8-1) and landing (row E8-2): about 50 points left after the step, and a control"
+questions = ["D-41", "ADV-SEA-002", "ADV-SEA-003", "HER-ADV-009"]
+procedure = [
+    "Day 1, Red's turn: E8-1 stands at (9, 4) on a swamp corridor with the Admiral's Hat and one Angel (2 000 points on land); its boat stands at (20, 4), the corridor's east end. E8-1c, the control, stands at (11, 6) the same way, its boat at (20, 6).",
+    "Read E8-1's tile, movement points, day's maximum and status flags. Walk it east in three legs: (13, 4), (17, 4), then the boat (20, 4). Read the points after each leg; after boarding read the tile, movement points, day's maximum, status flags and the boat's record.",
+    "The same for E8-1c: legs (15, 6), (19, 6), then the boat (20, 6).",
+    "Day 2, Red's turn: read both heroes' movement points and day's maximum at the turn's start.",
+    "E8-1 (row E8-2): one step south-east to (21, 5); then east along row 5 in legs: (26, 5), (31, 5), (36, 5), (41, 5), (46, 5), then the coast tile (49, 5), which lands it. Read the points after each leg; after the landing read the tile, movement points, day's maximum, status flags and its boat's record.",
+    "E8-1c: east along row 6 in legs: (25, 6), (30, 6), (35, 6), (40, 6), then the coast tile (45, 6), which lands it. The same reads. Leave its boat where it is: E8-16 boards it.",
+]
+record = [
+    { table = ["hero, moment", "tile", "movement points", "day's maximum", "status flags (hex)"], labels = [
+        "E8-1, day 1 start",
+        "E8-1, after (13, 4)",
+        "E8-1, after (17, 4)",
+        "E8-1, after boarding",
+        "E8-1c, day 1 start",
+        "E8-1c, after (15, 6)",
+        "E8-1c, after (19, 6)",
+        "E8-1c, after boarding",
+        "E8-1, day 2 start",
+        "E8-1, after (21, 5)",
+        "E8-1, after (46, 5)",
+        "E8-1, after the landing",
+        "E8-1c, day 2 start",
+        "E8-1c, after (40, 6)",
+        "E8-1c, after the landing",
+    ] },
+    { field = "the boats' records after boarding (E8-1's, E8-1c's: tile, in use, type, facing, owner, captain, aboard)" },
+    { field = "the boats' records after the landings" },
+    { field = "anything odd" },
+]
+predictions = """
+- **Day 1, boarding** (survey §3.1; D-41). The step onto the boat is priced by the swamp tile left
+  (175): E8-1 spends 11 × 175 = 1 925 of 2 000 and has **75** after the step; E8-1c 9 × 175 =
+  1 575, **425**.
+  - **The code** (`hero_move_step` 0x481182, then `hero_boards_boat` 0x4A1010): the step's drop
+    first: 75 is fewer than 100 (the cheapest step from the boat's water tile), so **0**; then
+    the Hat's proportion 0 × 3 000 ÷ 2 000 = **0**. E8-1c: no drop, 425 × 3 000 ÷ 2 000 =
+    **637** (truncated). Both: the day's maximum **3 000** (1 500 + the Hat's 1 500), the status
+    bit 18 set, the boat's owner Red (0), the captain the hero, aboard 1.
+  - **VCMI** (`movementPointsAfterEmbark`, no drop): E8-1 75 × 3 000 ÷ 2 000 = **112**; E8-1c
+    **637**. The wiki: "converts" (silent on the amounts).
+- **Day 2's start** (survey §4.2): both in their boats: **3 000** (both sources).
+- **Day 2, landing** (survey §3.2; D-41). E8-1: the diagonal 141 (both side tiles water), then 27
+  steps on water and the landing step, 100 each: 2 941, **59** after the landing step; E8-1c: 24
+  on water and the landing: 2 500, **500**.
+  - **The code** (the drop: 59 fewer than 100, the cheapest step from a coast tile without a
+    road; then `hero_lands_from_boat` 0x49E670): E8-1 **0** (0 × 2 000 ÷ 3 000); E8-1c 500 ×
+    2 000 ÷ 3 000 = **333**. Both: the day's maximum **2 000**, bit 18 clear; the boat left on the
+    water tile behind (E8-1's (48, 5), E8-1c's (44, 6)), facing east, aboard 0, owner and captain
+    kept.
+  - **VCMI**: E8-1 59 × 2 000 ÷ 3 000 = **39**; E8-1c **333**.
+- A difference in the legs' points (not 1 925 and 1 575 on day 1, not 2 859 after the diagonal on
+  day 2) means a price this map assumes is wrong: the row then reads the conversion from the
+  points the record shows.
+"""
+[encounter.hero]
+type = "Orrin"
+specialty = "skill Archery"
+at = [9, 4]
+primary = [1, 1, 1, 1]
+army = [["Angel", 1]]
+artifacts = { head = "Admiral's Hat" }
+
+[[encounter.also]]
+type = "Valeska"
+specialty = "creature Archer"
+name = "E8-1c"
+at = [11, 6]
+primary = [1, 1, 1, 1]
+army = [["Angel", 1]]
+artifacts = { head = "Admiral's Hat" }
+
+# --- E8-3: where a boat lands (Red) --------------------------------------------------------------
+
+[[encounter]]
+id = "E8-3"
+title = "Where a boat lands: an event's tile, a hole's tile and a free coastal tile"
+questions = ["D-42", "ADV-SEA-003"]
+procedure = [
+    "Day 1, Red's turn: E8-3 stands at (29, 14); its boat at (30, 14), the west end of a small sea whose notch (33, 14) has three coastal tiles: (33, 13) north (a hidden event of Red's, 100 gold), (34, 14) east (a hole) and (33, 15) south (free). Click the boat: E8-3 boards it (and has no points left).",
+    "Day 2, Red's turn: read E8-3's tile and movement points and Red's gold.",
+    "Click (33, 13) once and note the path's marks (none, or the tiles); click it again. Read E8-3's tile and movement points and Red's gold; note any message.",
+    "Then (34, 14) the same way, then (33, 15).",
+]
+record = [
+    { table = ["target", "the path's marks (tiles, or none)", "tile after", "movement points after", "gold after", "message"], labels = [
+        "(33, 13) the event",
+        "(34, 14) the hole",
+        "(33, 15) free",
+    ] },
+    { field = "day 2 start: tile, movement points, gold" },
+    { field = "anything odd" },
+]
+predictions = """
+- **The code** (survey §3.2; the pathfinder 0x4B2867 to 0x4B2886): a boat lands only on a land tile
+  of class 3, a coastal tile no object records; an event (recorded though not visitable) and a
+  hole replace the class. So **no path** to (33, 13) or (34, 14): nothing moves, the event does not
+  fire, the gold unchanged. (33, 15): a path of three steps (341, whichever way), the hero lands
+  there; **0** points after (no Hat), the boat on its last water tile.
+- **VCMI** (`moveHero`, D-42): disembarks onto any land tile that is not blocked, an event's too,
+  and visits it: the first click lands E8-3 on (33, 13), **+100 gold**, and the rest of the row
+  cannot be played (no points left).
+- **The wiki** (Boat): "any clear land square, but not on a square with a hole".
+"""
+[encounter.hero]
+type = "Edric"
+specialty = "creature Griffin"
+at = [29, 14]
+primary = [1, 1, 1, 1]
+army = [["Angel", 1]]
+
+# --- E8-4: the diagonal exception on Favorable Winds (Red) ---------------------------------------
+
+[[encounter]]
+id = "E8-4"
+title = "80 points on a Favorable Winds tile: a diagonal step (93), then a straight one (66)"
+questions = ["D-43", "ADV-SEA-004"]
+procedure = [
+    "Day 1, Red's turn: E8-4 stands at (19, 26); its boat at (20, 26), on open sea. Favorable Winds cover columns 31 to 36, rows 27 to 32. Click the boat: E8-4 boards it.",
+    "Day 2, Red's turn: read E8-4's tile and movement points (1 500 expected). Sail in legs: (25, 26), (30, 26), then the winds tiles (32, 28) and (34, 30). Read the points after each leg.",
+    "On (34, 30): click (35, 31) (south-east) once, note the path's marks and their colour, click it again. Read the tile and movement points.",
+    "Then click (35, 30) (east) the same way. Read the tile and movement points.",
+]
+record = [
+    { table = ["moment", "tile", "movement points"], labels = [
+        "day 2 start",
+        "after (25, 26)",
+        "after (30, 26)",
+        "after (32, 28)",
+        "after (34, 30)",
+        "after the click on (35, 31)",
+        "after the click on (35, 30)",
+    ] },
+    { field = "the marks of the click on (35, 31) (tiles, colour), and of the click on (35, 30)" },
+    { field = "anything odd" },
+]
+predictions = """
+- **The legs** (survey §4.1): 1 500 at the turn start (no Navigation); 10 steps on water at 100
+  (1 000 left at (25, 26), 500 at (30, 26)), the diagonal onto the winds from a plain water tile
+  141 (359 at (31, 27)), then three diagonals from winds tiles at 93: **266** at (32, 28), **80** at
+  (34, 30). Every path to these targets is the cheapest one (the winds' straight 66 twice costs 132
+  against a diagonal's 93), so the pathfinder's own choice does not change the points.
+- **The code** (the diagonal exception, ADV-MOV-005, compares the points with the source
+  terrain's table price, water's 100, never the winds' 66: D-43): **the diagonal (93) is refused**,
+  the hero stays on (34, 30) with 80. **The straight step (66) is taken**: 80 − 66 = 14, then the
+  drop: fewer than 66, the cheapest step from the winds tile (35, 30) (survey §4.1 point 5, the
+  second reading's correction), so **0** on (35, 30). (Survey §11's row says "14 left": it left
+  out the drop at sea, which its own §4.1 point 5 states.)
+- **VCMI** (`getMovementCost`: the exception against the straight price after the winds, 66):
+  **the diagonal taken, 0 left** on (35, 31); the straight click then moves nothing.
+- A winds price other than 66 and 93 shows in the legs' points (not 266 and 80): then the row
+  reads the exception from the points the hero has on (34, 30).
+"""
+[encounter.hero]
+type = "Sorsha"
+specialty = "creature Swordsman"
+at = [19, 26]
+primary = [1, 1, 1, 1]
+army = [["Angel", 1]]
+
+# --- E8-10: the day's sea points (Red) -----------------------------------------------------------
+
+[[encounter]]
+id = "E8-10"
+title = "The day's sea points: Advanced Navigation and the Necklace of Ocean Guidance; the Sea Captain's Hat"
+questions = ["HER-ADV-009", "ADV-MOV-001", "ADV-MOV-002", "A-28"]
+procedure = [
+    "Day 1, Red's turn: E8-10 stands at (39, 12) with Advanced Navigation and the Necklace of Ocean Guidance, its boat at (40, 12); E8-10b at (39, 16) with the Sea Captain's Hat, its boat at (40, 16). Both armies are ten Pikemen (1 560 points on land). Click each one's boat: both board.",
+    "Day 2, Red's turn: read both heroes' movement points, day's maximum and status flags at the turn's start.",
+    "Land each one south of its boat: E8-10 on (40, 13), E8-10b on (40, 17). Read the movement points, day's maximum and status flags after each landing.",
+    "Day 3, Red's turn: read both heroes' movement points and day's maximum at the turn's start.",
+]
+record = [
+    { table = ["hero, moment", "tile", "movement points", "day's maximum", "status flags (hex)"], labels = [
+        "E8-10, day 2 start",
+        "E8-10, after the landing",
+        "E8-10, day 3 start",
+        "E8-10b, day 2 start",
+        "E8-10b, after the landing",
+        "E8-10b, day 3 start",
+    ] },
+    { field = "anything odd" },
+]
+predictions = """
+- **Day 2's start** (survey §4.2, consensus of the code, the wiki and VCMI): E8-10 1 500 + 100 %
+  (Advanced Navigation) + 1 000 (the Necklace) = **4 000**; E8-10b 1 500 + 500 (the Sea Captain's
+  Hat) = **2 000**; the army's speed does not count at sea.
+- **The landings** (one step, 100): no Admiral's Hat, so **0** points (both sources). **The code**
+  (A-28): the day's maximum is set only with the Hat, so it **stays 4 000 and 2 000** until the
+  next turn; VCMI keeps no stored maximum (its land maximum, 1 560). A-28 is not reproduced
+  (decision 166); the row records what the original does.
+- **Day 3's start** on land: **1 560** each (ten Pikemen, speed 4; neither Navigation nor the sea
+  artifacts count on land).
+"""
+[encounter.hero]
+type = "Christian"
+specialty = "creature Ballista"
+at = [39, 12]
+primary = [1, 1, 1, 1]
+skills = [["Navigation", 2]]
+army = [["Pikeman", 10]]
+artifacts = { neck = "Necklace of Ocean Guidance" }
+
+[[encounter.also]]
+type = "Tyris"
+specialty = "creature Cavalier"
+name = "E8-10b"
+at = [39, 16]
+primary = [1, 1, 1, 1]
+army = [["Pikeman", 10]]
+artifacts = { head = "Sea Captain's Hat" }
+
+# --- E8-15: a guarded landing (Red) --------------------------------------------------------------
+
+[[encounter]]
+id = "E8-15"
+title = "A landing on a free coastal tile a monster guards"
+questions = ["ADV-SEA-003", "GAM-BAT-001"]
+procedure = [
+    "Day 1, Red's turn: E8-15 stands at (49, 14) with ten Angels; its boat at (50, 14). Ten savage Pikemen stand on the land at (50, 16): they guard the coastal tile (50, 15) south of the boat. Click the boat: E8-15 boards it.",
+    "Day 2, Red's turn: click (50, 15) once (note the marks), then again: E8-15 lands. Note what follows (a message, the battle) and the battle's opening: terrain, special field, ship flag, blocked hexes.",
+    "After the battle (auto combat): read E8-15's tile, movement points and status flags, and its boat's record.",
+]
+record = [
+    { field = "the path's marks to (50, 15)" },
+    { field = "what follows the landing (a message, the battle)" },
+    { field = "the opening: terrain, special field, ship flag, blocked hexes" },
+    { field = "after: E8-15's tile, movement points, status flags" },
+    { field = "after: the boat's record (tile, in use, facing, owner, captain, aboard)" },
+    { field = "anything odd" },
+]
+predictions = """
+- **The code** (survey §3.2, §3.3): the landing first (the in-boat flag cleared, the boat put on
+  the water tile (50, 14) facing the step's way, **south**, aboard 0, owner Red and captain E8-15
+  kept), then `guard_attack` on the landing tile: the Pikemen attack. The battle is on land: the
+  coast's battlefield, **sand with the shore** (GAM-BAT-001; no special field, no ship flag:
+  neither hero is in a boat). After the win E8-15 stands on (50, 15) with 0 points, bit 18 clear.
+- **VCMI** (`DISEMBARK` with `CHECK_FOR_GUARDS`) and the wiki: the same. The facing's number is
+  the original's (survey §6: the engine's order is the view's; this records it).
+"""
+[encounter.hero]
+type = "Caitlin"
+specialty = "resource gold"
+at = [49, 14]
+primary = [5, 5, 1, 1]
+army = [["Angel", 10]]
+[encounter.opponent]
+monster = "Pikeman"
+count = 10
+at = [50, 16]
+
+# --- E8-7: a sea pickup from the shore (Blue) ----------------------------------------------------
+
+[[encounter]]
+id = "E8-7"
+title = "A Flotsam on the water beside the coast: a flyer's click, a flyer's arrow key, a water walker, a walker"
+questions = ["D-45", "ADV-PIK-018"]
+procedure = [
+    "Day 1, Blue's turn: four Blue heroes stand on the coast at (30, 41), (30, 43), (30, 45) and (30, 47), each with a Flotsam on the water east of it: E8-7a and E8-7b wear Angel Wings, E8-7c Boots of Levitation, E8-7d nothing.",
+    "Read each Flotsam's word on its tile and Blue's treasury (wood and gold).",
+    "E8-7a: click its Flotsam (31, 41) once (note the marks), then again. Read E8-7a's tile and movement points, Blue's wood and gold, the Flotsam's word; note any message.",
+    "E8-7b: select it and press the **right arrow key** once (no click). The same reads.",
+    "E8-7c and E8-7d: click their Flotsams as E8-7a did. The same reads.",
+]
+record = [
+    { table = ["hero", "the Flotsam's word before", "the marks (or none)", "tile after", "movement points before / after", "wood, gold before / after", "the Flotsam after (word, or gone)"], labels = [
+        "E8-7a (wings, click)",
+        "E8-7b (wings, arrow key)",
+        "E8-7c (levitation, click)",
+        "E8-7d (walker, click)",
+    ] },
+    { field = "anything odd" },
+]
+predictions = """
+- **The code** (survey §8.1, D-45): a flyer's search gives a path onto another entrance on water
+  as a stop-only node, and the move's last step visits from the land tile under the flyer (a free
+  land tile): **E8-7a takes its Flotsam**: one mark, the hero stays on (30, 41) and pays the step
+  (100), the gains by the word (0 nothing, 1 five wood, 2 five wood and 200 gold, 3 ten wood and
+  500 gold, survey §8.2), the Flotsam gone. **The arrow key** treats a flyer as a walker (the
+  fourth argument 1, 0x408ED5): **E8-7b takes nothing**, no move. **The water walker** (its search
+  refuses water holding another entrance) **and the walker**: **no path**, nothing.
+- **The wiki** (Flotsam: "picked up by heroes traveling in boats"): nobody on the coast takes one.
+  **VCMI**: the walker and the water walker not (its air layer not followed).
+"""
+[encounter.hero]
+type = "Adela"
+specialty = "spell Bless"
+owner = "blue"
+name = "E8-7a"
+at = [30, 41]
+primary = [1, 1, 1, 1]
+army = [["Pikeman", 10]]
+artifacts = { shoulders = "Angel Wings" }
+
+[[encounter.also]]
+type = "Cuthbert"
+specialty = "spell Weakness"
+owner = "blue"
+name = "E8-7b"
+at = [30, 43]
+primary = [1, 1, 1, 1]
+army = [["Pikeman", 10]]
+artifacts = { shoulders = "Angel Wings" }
+
+[[encounter.also]]
+type = "Adelaide"
+specialty = "spell Frost Ring"
+owner = "blue"
+name = "E8-7c"
+at = [30, 45]
+primary = [1, 1, 1, 1]
+army = [["Pikeman", 10]]
+artifacts = { feet = "Boots of Levitation" }
+
+[[encounter.also]]
+type = "Ingham"
+specialty = "creature Monk"
+owner = "blue"
+name = "E8-7d"
+at = [30, 47]
+primary = [1, 1, 1, 1]
+army = [["Pikeman", 10]]
+
+# --- E8-16: any hero boards any boat (Blue) ------------------------------------------------------
+
+[[encounter]]
+id = "E8-16"
+title = "Blue's hero boards the boat Red's E8-1c left at its landing"
+questions = ["ADV-SEA-001"]
+procedure = [
+    "Day 2, Blue's turn (after E8-1c landed on (45, 6)): E8-16 stands at (44, 7); the boat E8-1c left lies north of it on (44, 6). Read the boat's record.",
+    "Click the boat: E8-16 boards it. Read the boat's record, E8-16's movement points, day's maximum and status flags.",
+]
+record = [
+    { field = "the boat's record before (tile, in use, type, facing, owner, captain, aboard)" },
+    { field = "the boat's record after" },
+    { field = "E8-16 after: movement points, day's maximum, status flags" },
+    { field = "anything odd" },
+]
+predictions = """
+- **The code** (survey §2: `visit_object`'s case 8 tests neither the hero nor the owner): before,
+  owner Red (0), captain E8-1c, aboard 0, facing east; after, **owner Blue (1), captain E8-16,
+  aboard 1**; E8-16's points 0 (no Hat), its day's maximum the land's (A-28), bit 18 set.
+- **VCMI** and **the wiki**: any hero boards an empty boat. Consensus.
+"""
+[encounter.hero]
+type = "Loynis"
+specialty = "spell Prayer"
+owner = "blue"
+at = [44, 7]
+primary = [1, 1, 1, 1]
+army = [["Pikeman", 10]]

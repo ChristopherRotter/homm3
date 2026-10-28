@@ -4,20 +4,32 @@ Pre-refined tasks of the adventure lane, in order, then the inbox of discovered 
 
 ## Tasks
 
-Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T65 (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 7 are closed (2026-10-12, -13, -20, -21, -23, -26, -28; increment 7, rewards on the map, by T65's audit). **Increment 8, boats and the sea**, refined with the user at T65 (ADV-Q31; decisions 158, 159): the survey and the ADR amendment drafts first (T66a, T66b), each task's cut confirmed with the user at its start. T66a in two (decision 160): T66a1 done (`adventure/e08-t66a1`, #550: survey `E08-sea.md` §0 to §6), T66a2 done (`adventure/e08-t66a2`, decision 161: whole; §7 to §14, the checkpoint's ADV-Q32); T66b done (`adventure/e08-t66b`, decision 169: whole; the drafts, `E08-design.md` and the cut in eight rounds, ADV-Q33 accepted: decisions 170–173). Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
+Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T65 (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 7 are closed (2026-10-12, -13, -20, -21, -23, -26, -28; increment 7, rewards on the map, by T65's audit). **Increment 8, boats and the sea**, refined with the user at T65 (ADV-Q31; decisions 158, 159): the survey and the ADR amendment drafts first (T66a, T66b), each task's cut confirmed with the user at its start. T66a in two (decision 160): T66a1 done (`adventure/e08-t66a1`, #550: survey `E08-sea.md` §0 to §6), T66a2 done (`adventure/e08-t66a2`, decision 161: whole; §7 to §14, the checkpoint's ADV-Q32); T66b done (`adventure/e08-t66b`, decision 169: whole; the drafts, `E08-design.md` and the cut in eight rounds, ADV-Q33 accepted: decisions 170–173). Round 2: T67 done (`adventure/e08-t67`, decision 174: whole; the writer's sea objects, the spec's bottles and a monster's own tile, `cross-lane`; the specs E8a, its water map and E8b with their templates). Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
 
-### E08 T67 — Batch E8's maps and specs
+### E08 T68 — Batch E8's harness and runs
 
-- **Scope** (design §17, decision 171): `h3_map::writer` gains an empty boat (class 8 by kind, in
-  `PLAIN_OBJECTS`; CLT-Q5), the four sea pickups (29, 82, 86 without a body, 59 with its text),
-  holes (124) and Favorable Winds (225, its picture's tiles), a hero and a monster on a water tile
-  (E8-5, E8-13); `h3-experiment`'s spec gains the rows' fields (`cross-lane`, battle-owned: boats,
-  pickups, holes, winds, heroes on water, the sea artifacts, Navigation, 64-artifact backpacks, a
-  hero walked a computed number of steps first); the two specs E8a and E8b with their results
-  templates (`experiments/results/E08-batch-8a.md`, `-8b.md`), from survey `E08-sea.md` §11. The
-  client lane's inbox told when the writer's boat lands (CLT-Q5's answer).
-- **Depends on:** T66b (done; ADV-Q33 answered). **Status:** ready; its cut confirmed at its start
-  (increment 7's T56 was measured first: the writer's bodies, the spec's fields, the specs).
+- **Scope** (design §17, decision 171): `clients/capture/` (common; CLT-Q18: this lane builds it
+  with the harness check and tells the client and map-client lanes' inboxes): reads of the boats'
+  records (game +0x4E3BC, `structs.toml` "boat"), a hero's in-boat bit (+0x105 bit 18) and day's
+  maximum (+0x49), the battle's ship flag (`battle_manager` +0x53C6), terrain, special field and
+  blocked hexes at the opening; clicks at a coastal tile from a boat and at a boat from land; an
+  arrow key toward a tile (E8-7); the recipes `clients/capture/batches/E08-batch-8a.toml`,
+  `-8a-water.toml`, `-8b.toml` from the specs T67 staged (`experiments/specs/E08-batch-8a.toml`,
+  `-8a-water.toml`, `-8b.toml`; their legs, the restart rule of E8-6 and E8-8, E8-12's defend
+  and retreat by hand); the runs E8a (with its water map, which may refuse the hero on water: that
+  is E8-5's result) and E8b, the templates `experiments/results/E08-batch-8a.md`, `-8a-water.md`,
+  `-8b.md` filled.
+- **Depends on:** T67 (done). **Status:** ready; its cut confirmed at its start (T57, increment 7's,
+  was taken whole: the reads, the recipes and the runs).
+
+### E08 T69 — Batch E8's scoring
+
+- **Scope** (design §17): survey `E08-sea.md` §15 (new), each row against the specs' predictions
+  (T67's corrections to §11: E8-4's drop to 0, E8-13's path past the guards); a dispute a row
+  contradicts reverts to the other side (decision 162) or becomes an `ADV-Q`; E8-5 decides
+  whether D-44's refusal stays (decision 163); the consensus rows' sources `verified` when the
+  rules are written (T72 to T74).
+- **Depends on:** T68. **Status:** queued.
 
 ## Inbox
 
