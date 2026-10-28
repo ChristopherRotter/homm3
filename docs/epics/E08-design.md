@@ -225,7 +225,8 @@ two of them).
   A-26, state-corrupting); fixed, no flag (`ADV-QUIRK-29`, T62b2): the event fires only for a
   hero still on its tile once the guard's visit is over (its offers answered, its battle and
   levels given), and stays otherwise. The wait across the guard's decisions is T63's rest
-  (GAM-DEC-007); until then a guarded tile's event does not fire (`ADV-STUB-10`, decision 151).
+  (GAM-DEC-007; built by T63b, decision 154: `AdventureOutcome::event_after`; from T62b2 to T63b
+  a guarded tile's event did not fire, `ADV-STUB-10`, decision 151).
 
 ### 13. Information (ADV-VIS-006, ADV-FOG-007)
 
@@ -251,7 +252,9 @@ as the find stands now), `OwnHeroView::marks`. Events (ADV-FOG-007) are T62b's.
 
 ### 14. The decisions and their answers (`h3-game`; GAM-DEC-005, -006, -004 amended)
 
-Built by T63a (decision 153) but the rest (T63b) and the army dialog's rest field: the typed
+Built by T63a (decision 153) and T63b (decision 154: the rest, held by the game in a list beside
+the decisions rather than in the army dialog, the guard's visit after a visited object among the
+rests; `state/rests.rs`): the typed
 answers, the choices and the University (`Decision::Choice`, `Decision::University`; the views
 `DecisionView::Choice`, `DecisionView::University { visit, slots }`), the env's answers by role
 with four purchase entries (action encoding v5). The record's group dialog came with T62b1.
@@ -290,6 +293,9 @@ with four purchase entries (action encoding v5). The record's group dialog came 
   an army dialog.
 
 ### 15. The game's application
+
+Built by T62a, T62b1 and T63b (decision 154: the experience after the army dialog, `ClearBonuses`
+in `end_battle`).
 
 - The adventure's outcome's hero changes applied in order through `h3-heroes` (as today); the
   resources lost floor at 0 (GAM-RES); `Granted::experience` given after the army dialog or at

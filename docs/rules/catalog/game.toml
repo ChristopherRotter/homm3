@@ -364,7 +364,7 @@ id       = "GAM-DEC-004"
 title    = "The army dialog: a joining group without room held as a small army until closed"
 context  = "game"
 status   = "verified"
-summary  = "When an accepted offer to join (ADV-MON-008) finds no room in the hero's army (ADV-ARM-007: no stack of its creature takes it whole within a stack's most and no slot is free), after the treasure and the monster's leaving the game opens the army dialog, a pending decision of the owner (GAM-DEC-001), with the whole group as one stack in slot 0 of a small army of the ruleset's slots without a hero (the original's local army); since E08 T62b1 a reward record's stacks that found no room (ADV-RWD-001), up to seven, at their slots in the record (the original's copy of the record's army, each stack that joined cleared). It is told to the owner alone, one `ArmyDialogOpened` per stack of the group in slot order (the hero, the stack). While it is open its owner's legal commands are `Close` (increment 6's `Decline` until E08 T63a) and the management commands (GAM-MAN-001) on the hero and the group, also between them: the hero's stacks moved, merged, swapped, split or dismissed within its army or into the group (a hero's last stack never leaves its army, ADV-ARM-002), the group's within the group, into the hero's army or dismissed (the group has no protected stack), the hero's formation, flag and artifacts (the original's portrait opens the hero screen); a command naming another hero is `DecisionOpen`, no move and no end of the turn; each slot told as for any army command, the group's as `ArmyRef::Group`. `Close` closes it (`DecisionClosed`): what is left in the group is lost, each stack told after it (`GroupLost`); an answer of another kind is `WrongAnswer`; the system actor's default answer is `Close`. The owner's observation shows the hero and the group (`DecisionView::ArmyDialog`); no other player sees it. The original's order (the dialog, then the treasure and the removal) shows only in the events' order: no other actor acts in between. E08 T51b: `Decision::ArmyDialog`, `GameState::army_dialog`."
+summary  = "When an accepted offer to join (ADV-MON-008) finds no room in the hero's army (ADV-ARM-007: no stack of its creature takes it whole within a stack's most and no slot is free), after the treasure and the monster's leaving the game opens the army dialog, a pending decision of the owner (GAM-DEC-001), with the whole group as one stack in slot 0 of a small army of the ruleset's slots without a hero (the original's local army); since E08 T62b1 a reward record's stacks that found no room (ADV-RWD-001), up to seven, at their slots in the record (the original's copy of the record's army, each stack that joined cleared). It is told to the owner alone, one `ArmyDialogOpened` per stack of the group in slot order (the hero, the stack). While it is open its owner's legal commands are `Close` (increment 6's `Decline` until E08 T63a) and the management commands (GAM-MAN-001) on the hero and the group, also between them: the hero's stacks moved, merged, swapped, split or dismissed within its army or into the group (a hero's last stack never leaves its army, ADV-ARM-002), the group's within the group, into the hero's army or dismissed (the group has no protected stack), the hero's formation, flag and artifacts (the original's portrait opens the hero screen); a command naming another hero is `DecisionOpen`, no move and no end of the turn; each slot told as for any army command, the group's as `ArmyRef::Group`. `Close` closes it (`DecisionClosed`): what is left in the group is lost, each stack told after it (`GroupLost`), then a reward record's experience with its levels (GAM-DEC-007, E08 T63b); an answer of another kind is `WrongAnswer`; the system actor's default answer is `Close`. The owner's observation shows the hero and the group (`DecisionView::ArmyDialog`); no other player sees it. The original's order (the dialog, then the treasure and the removal) shows only in the events' order: no other actor acts in between. E08 T51b: `Decision::ArmyDialog`, `GameState::army_dialog`."
 numeric  = "integer"
 
   [[rule.source]]
@@ -413,7 +413,7 @@ id       = "GAM-DEC-006"
 title    = "The University: a pending decision open for purchases until left"
 context  = "game"
 status   = "implemented"
-summary  = "A University's visit (`AdventureOutcome::university`, ADV-TCH-007) opens as a pending decision of the visitor's owner (GAM-DEC-001) whatever its treasury holds, told to it alone (`UniversityOpened`: the hero, the object's type and anchor); the owner's observation shows its skills in the draw's order, their price and each slot's state for the hero (`DecisionView::University`; `h3_heroes::university_slot`, HER-CHG-004: known, no room at eight skills, barred by the class's weight 0, or open). It is answered with `Answer::University`: `Buy(slot)` buys the slot's skill for the type's price (2 000 gold) and the hero learns it at Basic (`ResourcePaid`, then the hero's `HeroChanged`), the University staying open with its slots evaluated again; a slot that is not open (or that the University lacks) is rejected (`SlotClosed`), a price the treasury cannot pay (`CannotPay`), each changing nothing; `Leave` closes it (`DecisionClosed`). `legal_commands` lists a `Buy` of each open slot while the treasury can pay, in slot order, then `Leave`; any other answer is `WrongAnswer`; the system actor's default is `Leave`. A monster guarding the hero's tile visits once it is left (ADV-MON-006). The computer player's purchases (`ai_university`) are E10's. E08 T63a: `Decision::University`, `GameState::university`, `UniversityOpened`, `GameCommandError::{SlotClosed, CannotPay}`."
+summary  = "A University's visit (`AdventureOutcome::university`, ADV-TCH-007) opens as a pending decision of the visitor's owner (GAM-DEC-001) whatever its treasury holds, told to it alone (`UniversityOpened`: the hero, the object's type and anchor); the owner's observation shows its skills in the draw's order, their price and each slot's state for the hero (`DecisionView::University`; `h3_heroes::university_slot`, HER-CHG-004: known, no room at eight skills, barred by the class's weight 0, or open). It is answered with `Answer::University`: `Buy(slot)` buys the slot's skill for the type's price (2 000 gold) and the hero learns it at Basic (`ResourcePaid`, then the hero's `HeroChanged`), the University staying open with its slots evaluated again; a slot that is not open (or that the University lacks) is rejected (`SlotClosed`), a price the treasury cannot pay (`CannotPay`), each changing nothing; `Leave` closes it (`DecisionClosed`). `legal_commands` lists a `Buy` of each open slot while the treasury can pay, in slot order, then `Leave`; any other answer is `WrongAnswer`; the system actor's default is `Leave`. A monster guarding the hero's tile visits once it is left (ADV-MON-006), and once what its purchases opened is over (GAM-DEC-007, E08 T63b). The computer player's purchases (`ai_university`) are E10's. E08 T63a: `Decision::University`, `GameState::university`, `UniversityOpened`, `GameCommandError::{SlotClosed, CannotPay}`."
 numeric  = "integer"
 
   [[rule.source]]
@@ -424,6 +424,30 @@ numeric  = "integer"
   [[rule.source]]
   kind       = "design"
   ref        = "ADR-0017 point 6 (the University a decision like a meeting, open until Leave, each Buy checked against the slot's state and the treasury; E08 decision 138); E08-design.md section 14"
+  confidence = "high"
+
+[[rule]]
+id       = "GAM-DEC-007"
+title    = "The visit's rest: what a visit still owes runs once its owner has no open decision"
+context  = "game"
+status   = "verified"
+summary  = "The game holds what a visit still owes its hero (a rest) beside the decisions and runs it once the owner has no open decision, after every command (`apply`), the last held first: so a visit's own rests come before those of the visit it is part of, and after every command each held rest's owner has an open decision (a turn never ends with one; the hash covers them; no player sees one but through the decisions it leads to). The rests: (1) the visit of the monster guarding the hero's tile after the visit of the tile's own entered object (ADV-MON-006): after its questions, choices, University, army dialog, the experience and the levels they gave; (2) a reward record's experience, computed with the record (HER-CHG-003), given with its levels once the record's army dialog closes (ADV-RWD-001); (3) what a won battle against an object's guards gives, after the winner's levels: a guarded pile's, artifact's or scroll's pickup, a Pandora's Box's or an event's record, a Pyramid's loot and spell (`AdventureState::give_won`; read when given, so the levels' skills decide what the hero can receive or learn; nothing when the object left the map meanwhile); (4) an event on a guarded tile after the guard's visit, for a hero still on its tile (ADV-OBJ-007, `ADV-QUIRK-29`). The original runs the dialogs, the battle and its levels inside the visit and goes on after them; the engine's player has at most one open decision (ADR-0017 point 6), so the visit's tail waits. Before E08 T63b the guard's visit came as soon as the object's decision closed, beside what its answer opened (a level-up opened with the guard's battle, whose hero was read before the level), and the rewards came before the winner's levels (`ADV-STUB-10`). E08 T63b: `GameState::run_rests`, `AdventureOutcome::{guard_after, reward_after, event_after}`, `AdventureState::{give_won, fire_held_event}`."
+numeric  = "integer"
+quirks   = ["ADV-QUIRK-29"]
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey E08-rewards.md sections 7.4, 7.5, 8.1): inside a visit the question, the guards' battle and the levels it gave (0x4DA720 after the win), then the rewards; a box's or an event's leftover creatures in one army dialog, then the experience and its level-ups (grant_rewards 0x49FA90, D-39); a won Pyramid's levels, then the looting and the spell; the guard of an event's tile visits first and the event fires after it (0x48169D, 0x481741)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-7b.md E7-22 (2026-10-27; survey E08-rewards.md section 15): a hero with a Spell Book and Advanced Wisdom wins a Pyramid: three level-ups, then Dimension Door lost, the Pyramid looted"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "design"
+  ref        = "ADR-0017 points 6 (the visit's rest after an army dialog and after a won guards' battle, held by the game) and 10; E08 decisions 141, 154 (the guard's visit and the event after the guard held the same way); E08-design.md sections 14, 15"
   confidence = "high"
 
 [[rule]]
@@ -675,7 +699,7 @@ id       = "GAM-BAT-008"
 title    = "A battle's winner levels after the outcome"
 context  = "game"
 status   = "verified"
-summary  = "When a battle on the map ends with a winner whose hero stays on the map, its hero's pending levels (the experience it gained under the scenario's level limit, GAM-BAT-002, HER-EXP-003) are given after the whole outcome, Necromancy, Eagle Eye and the capture included (GAM-BAT-006, GAM-BAT-007, GAM-BAT-004), and after a surrender's price and an unowned battle's end (GAM-BAT-005, ADV-MON-010, ADV-PIK-004): as GAM-DEC-002 gives them, one at a time, a level with two offers a pending decision of the hero's owner, also when the owner is the defender outside its turn. The loser leaves the map and gains nothing. E08 T30: `GameState::end_battle`."
+summary  = "When a battle on the map ends with a winner whose hero stays on the map, its hero's pending levels (the experience it gained under the scenario's level limit, GAM-BAT-002, HER-EXP-003) are given after the whole outcome, Necromancy, Eagle Eye and the capture included (GAM-BAT-006, GAM-BAT-007, GAM-BAT-004), and after a surrender's price, the battle bonuses cleared (GAM-BAT-014) and an unowned battle's end (GAM-BAT-005, ADV-MON-010, ADV-PIK-004), before a won guards' battle's reward (GAM-DEC-007, E08 T63b): as GAM-DEC-002 gives them, one at a time, a level with two offers a pending decision of the hero's owner, also when the owner is the defender outside its turn. The loser leaves the map and gains nothing. E08 T30: `GameState::end_battle`."
 numeric  = "integer"
 
   [[rule.source]]
@@ -868,4 +892,27 @@ numeric  = "integer"
   [[rule.source]]
   kind       = "design"
   ref        = "E08 decision 123; ADR-0027 point 14 (the battle lane's seam field, BAT-Q56)"
+  confidence = "high"
+
+[[rule]]
+id       = "GAM-BAT-014"
+title    = "A battle's end clears every hero's battle bonuses, before the winner's levels"
+context  = "game"
+status   = "verified"
+summary  = "When a battle ends, whatever its result, every hero of it, winner and loser, loses its battle bonuses (the morale and luck objects gave until the end of its next battle) and their once-marks (`HeroChange::ClearBonuses`, HER-ADV-008), after the heroes' part of the outcome (GAM-BAT-002, the capture GAM-BAT-004) and before the winner's levels (GAM-BAT-008) and the visit's rest (GAM-DEC-007), so a reward won by the battle (a box's or an event's record) keeps its bonuses for the next battle. Told to the hero's owner when the hero had any; a hero without bonuses is told nothing. E08 T63b: `GameState::end_battle`."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey E08-rewards.md sections 6.9, 7.5, 8.3): hero_battle_bonuses_clear 0x4DA510 (morale +0x11A, luck +0x11B to 0, the status flags of the once-bonuses among them bits 21 and 12) called by battle_end at 0x477792, after the experience, Necromancy, Eagle Eye and the capture (0x477747 to 0x477782); the levels after the battle's screen (0x4AE324)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-7a.md E7-11 and E08-batch-7b.md E7-21 (2026-10-27; survey E08-rewards.md section 15): -3 morale after two Tombs and -2 luck after two visits of a looted Pyramid at the battle's opening, 0 and no flag after the battle"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "design"
+  ref        = "ADR-0017 point 11 (every hero in a battle loses its battle bonuses when it ends, as the original's battle_end); ADR-0013 point 15.1; E08-design.md sections 5, 15"
   confidence = "high"
