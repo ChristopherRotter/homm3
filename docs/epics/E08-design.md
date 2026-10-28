@@ -3,16 +3,17 @@
 A handover, not binding (`docs/adr/README.md`): the working detail behind increment 8's
 amendment drafts of ADR-0013 (points 3, 13), ADR-0016 (points 1, 3, 4, 6) and ADR-0017 (points 1,
 8, 10, 11) in `docs/lanes/adventure/adr-drafts/*-increment-8.md`, written by T66b from T66a's
-survey and the answers at ADV-Q32 (the epic's decisions 162–168), for the user's checkpoint
-ADV-Q33. The task that builds a section deletes it; the file goes when the epic closes. Facts and
-sources: survey `docs/rules/surveys/E08-sea.md` (§ numbers are the survey's unless they name this
-note); the proposed rule ids are the survey's §12.
+survey and the answers at ADV-Q32 (the epic's decisions 162–168), accepted as written with the
+cut at ADV-Q33 (decisions 170–173). The task that builds a section deletes it; the file goes
+when the epic closes. Facts and sources: survey `docs/rules/surveys/E08-sea.md` (§ numbers are the
+survey's unless they name this note); the proposed rule ids are the survey's §12.
 
 Increment 7's note is in `E08-log.md` ("Increment 7's design note at its closure", moved by T65).
 
 Written whole (decision 169): **part A**, the hero side (`h3-heroes`, the core content); **part
 B**, the map (`h3-map`, `h3-adventure`); **part C**, the game, the env, batch E8 and the cut.
-*Agent's call (change freely)* marks a choice the user may change at the checkpoint.
+*Agent's call (change freely)* marks a choice the user accepted at the checkpoint (decision 173)
+and may still change.
 
 ## Part A — the hero side (`h3-heroes`, the core content)
 
@@ -272,8 +273,8 @@ in `check_step` and the walking search):
 
 - **The env** (the AI lane's, ADR-0017 point 8): the observation encoding gains the empty boats on
   explored tiles and each seen hero's in-boat bit (an encoding version bump); the action encoding
-  keeps v5 (a boarding or a landing is a tile). *Agent's call:* `cross-lane` in T74 with the user's
-  consent (ADV-Q33), as T63a's; the AI lane's inbox told now (T66b).
+  keeps v5 (a boarding or a landing is a tile). `cross-lane` in T74 with the user's consent
+  (decision 172), as T63a's; the AI lane's inbox told (T66b).
 - **The sea fixture** `fixtures/maps/e08-sea-36.h3m` (written by `h3_map::writer` in
   `tests/sea_map.rs`): two players; boats of the three kinds beside coasts; the four pickups (a
   hero with a full backpack); events on water with and without guards; a monster on water;

@@ -1,6 +1,7 @@
 # ADR-0013 amendment draft: E08 increment 8, boats and the sea (the hero side)
 
-- Status: Proposed (E08 T66b, 2026-10-28; for the user at ADV-Q33)
+- Status: Proposed (E08 T66b, 2026-10-28); accepted as written by the user at ADV-Q33 (E08
+  decision 170), applied by T70 with batch E8's outcome
 - Amends: ADR-0013 points 3 and 13 (adds 13.6 and 13.7)
 - Sources: survey `docs/rules/surveys/E08-sea.md` §3.1, §3.2, §4.2 (T66a1, T66a2), survey
   `E08-hero-movement.md` §1.1 (T34a); the answers at ADV-Q32 (the epic's decisions 162–168);

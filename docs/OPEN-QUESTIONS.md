@@ -69,9 +69,7 @@ The review's fix C3 follows the reading of 0x47A100: a created stack whose round
 
 ### Adventure lane (`ADV-Q<n>`)
 
-#### ADV-Q33 — Increment 8's drafts, design and cut (E08 T66b)
-
-**Context.** T66b (decision 169, whole) wrote the amendment drafts of ADR-0013 (points 3, 13), ADR-0016 (points 1, 3, 4, 6) and ADR-0017 (points 1, 8, 10, 11) in `docs/lanes/adventure/adr-drafts/*-increment-8.md` and `docs/epics/E08-design.md` for increment 8, from the survey `E08-sea.md` and the answers at ADV-Q32 (decisions 162–168), with one reading of its own (a diagonal landing has no side-tile test; a boat is boarded only from a stop node: design §7). The user accepts the drafts and the cut before anything is built (decision 159). **Questions:** (1) the drafts and the design as written (recommended) or with changes; (2) the cut (design §18): batch E8 first (T67 the maps and specs, T68 the harness and runs, T69 the scoring), then the `shared/` task (T70), then the build (T71 `h3-heroes`, T72 the import, kinds and state, T73 moving and `Reach`, T74 the pickups, the battle and the game, T75 the replays and gates) and the audit (T76), as increment 7's decision 139 (recommended), or the `shared/` task first; (3) the env's observation encoding (the boats, the in-boat bit): `cross-lane` in T74 with the user's consent, as T63a (recommended), or the AI lane's inbox after the build; (4) the agent's calls: the sea's three pickups as finds that leave (not three new kinds), boats as a persistent table with a tile layer (not a plain array), the Navigation level into the part's sea table (not a rate), the day's maximum kept on the hero on the map (recommended: as written). **Blocked:** T67.
+(no open questions)
 
 ### Server lane (`SRV-Q<n>`)
 

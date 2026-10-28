@@ -1,6 +1,7 @@
 # ADR-0017 amendment draft: E08 increment 8, boats and the sea (the game side)
 
-- Status: Proposed (E08 T66b, 2026-10-28; for the user at ADV-Q33)
+- Status: Proposed (E08 T66b, 2026-10-28); accepted as written by the user at ADV-Q33 (E08
+  decision 170), applied by T70 with batch E8's outcome
 - Amends: ADR-0017 points 1, 8, 10 and 11, and its consequences
 - Sources: survey `docs/rules/surveys/E08-sea.md` §7, §9, §11 (T66a2); the answers at ADV-Q32 (the
   epic's decisions 162–168); the working detail in `docs/epics/E08-design.md` part C.
@@ -23,9 +24,9 @@ marks a choice the user may change at the checkpoint.
 > boat; the encoding's change is the AI lane's (point 8's ownership), made `cross-lane` in the
 > game's task with the user's consent, as increment 7's typed answers were (E08 decision 138).
 
-*Agent's call:* `cross-lane` in the task that builds the game's observation (design §15),
-recommended at ADV-Q33 so that the env plays on at sea in the same pull request; the other way is
-the AI lane's inbox after the build, the env encoding no boat until then.
+The user's choice at ADV-Q33 (E08 decision 172): `cross-lane` in the task that builds the game's
+observation (T74, design §15), so that the env plays on at sea in the same pull request; not
+chosen: the AI lane's inbox after the build.
 
 ## Point 10 (gains and costs by outcome): appended
 

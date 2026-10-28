@@ -1,6 +1,7 @@
 # ADR-0016 amendment draft: E08 increment 8, boats and the sea
 
-- Status: Proposed (E08 T66b, 2026-10-28; for the user at ADV-Q33)
+- Status: Proposed (E08 T66b, 2026-10-28); accepted as written by the user at ADV-Q33 (E08
+  decision 170), applied by T70 with batch E8's outcome
 - Amends: ADR-0016 points 1, 3, 4 and 6, and its consequences
 - Sources: survey `docs/rules/surveys/E08-sea.md` (T66a1 §0 to §6, T66a2 §7 to §14); the answers at
   ADV-Q32 (the epic's decisions 162–168); the working detail in `docs/epics/E08-design.md` parts B
