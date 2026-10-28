@@ -19,8 +19,8 @@ use h3_contracts::{
     PlayerId, StackOrigin, StackRecord,
 };
 use h3_heroes::{
-    HeroChange, Necromancy, check_change, derive_battle_hero, gained_experience, learns_spell,
-    lost_war_machine, max_mana, necromancy, next_capture, war_machines,
+    BattleBonuses, HeroChange, Necromancy, check_change, derive_battle_hero, gained_experience,
+    learns_spell, lost_war_machine, max_mana, necromancy, next_capture, war_machines,
 };
 use h3_kernel::arith::{SINGLE_BITS, X87, mul_div_floor};
 use h3_kernel::{CanonicalHash, Rng, StateHasher};
@@ -451,7 +451,11 @@ impl GameState {
     /// whose side won and has army survivors keeps them as its army (a damaged top creature
     /// forgotten), every other hero — lost, retreated, surrendered, in a draw, or left with stacks
     /// created in the battle only (BAT-END-001) — leaves the map; then the heroes' part
-    /// ([`Self::heroes_after_battle`], E08 T19a2a, T19a2b); then a surrender's price leaves the
+    /// ([`Self::heroes_after_battle`], E08 T19a2a, T19a2b); then every hero of the battle, winner
+    /// and loser, loses its battle bonuses and their once-marks (GAM-BAT-014, E08 T63b:
+    /// `HeroChange::ClearBonuses`, told to its owner when it had any; the original's
+    /// `hero_battle_bonuses_clear` from `battle_end`, 0x477792, after the capture); then a
+    /// surrender's price leaves the
     /// surrendering side's owner's treasury and enters the other side's owner's (GAM-BAT-005,
     /// D-13), each told to its owner. A battle against a wandering monster (E08 T20b2) or a
     /// guarded pile's guards (E08 T21a), whose defending side has no hero, then ends in the
@@ -462,12 +466,13 @@ impl GameState {
     /// the visitor's victory a pile is picked up, its contents entering the treasury
     /// (ADV-PIK-004), an artifact or a scroll going to the hero (ADV-PIK-007, ADV-PIK-008), a
     /// Pandora's Box giving its record (ADV-PIK-013, E08 T62b1), a won Pyramid looted and its
-    /// spell taught (ADV-TCH-008), an event giving its record (ADV-OBJ-007, E08 T62b2): until T63b
-    /// before the winner's levels (`ADV-STUB-10`), applied
+    /// spell taught (ADV-TCH-008), an event giving its record (ADV-OBJ-007, E08 T62b2): since E08
+    /// T63b after the winner's levels, held as a rest of the visit (GAM-DEC-007), applied
     /// as a command's outcome. Last (E08 T30) the winner's hero gets its pending levels
     /// ([`Self::give_levels`], GAM-BAT-008): after the whole outcome, Necromancy and Eagle Eye
     /// included, as the original gives a human player's after the battle's screen (0x4AE324).
     // rule: GAM-BAT-002, GAM-BAT-003, GAM-BAT-005, GAM-BAT-008, ADV-MON-010, ADV-PIK-004
+    // rule: GAM-BAT-014, GAM-DEC-007
     pub(crate) fn end_battle<S: Sink>(
         &mut self,
         rules: &GameRuleset,
@@ -493,6 +498,14 @@ impl GameState {
             .end_battle(rules.core(), &changes, &mut AdventureSink(&mut *sink));
         let winner = result.winner().filter(|&side| army(side).is_some());
         self.heroes_after_battle(rules, (owners, heroes), outcome, winner, sink);
+        // rule: GAM-BAT-014
+        for side in BattleSide::BOTH {
+            let (hero, owner) = (heroes[side.index()], owners[side.index()]);
+            let bonuses = hero.and_then(|hero| self.hero(hero).map(|d| (hero, d.bonuses)));
+            if let Some((hero, _)) = bonuses.filter(|(_, b)| *b != BattleBonuses::default()) {
+                self.change_hero(rules.core(), hero, owner, HeroChange::ClearBonuses, sink);
+            }
+        }
         let resource = rules.battle().battle().surrender.map(|s| s.resource);
         let surrendered = match result {
             BattleResult::Surrender(side) => Some(side),
@@ -527,8 +540,6 @@ impl GameState {
                 (survivors, won),
                 &mut AdventureSink(&mut *sink),
             );
-            // stub: ADV-STUB-10 (a won guarded object's pickup, a box's or an event's record,
-            // the Pyramid's spell before the winner's levels)
             self.settle_outcome(rules, visitor, ended, sink);
         }
         // rule: GAM-BAT-008

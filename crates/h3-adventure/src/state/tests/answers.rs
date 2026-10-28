@@ -198,7 +198,7 @@ fn a_step_toward_a_monster_visits_it_from_the_tile_before() {
     assert!(reach.points_left(Pos::new(2, 0, 0)).is_some());
     let (outcome, events) = walk(&rules, &mut s, &[], &[(2, 0)]);
     assert_eq!(outcome.offer, offer(2, 0, OfferKind::Join));
-    assert!(!outcome.guard_after);
+    assert_eq!(outcome.guard_after, None);
     // The hero stays, pays the step and moves nowhere: no step event.
     let hero = s.hero(HERO).unwrap();
     assert_eq!(hero.pos, Pos::new(1, 1, 0));
@@ -551,10 +551,12 @@ fn the_guard_answers_after_the_step_or_after_the_tiles_offer() {
     set_aggression(&mut s, 1, -4);
     let (outcome, _) = walk(&rules, &mut s, &[], &[(2, 1)]);
     assert_eq!(outcome.offer.map(|o| o.object_type), Some(CHART));
-    assert!(outcome.guard_after);
+    assert_eq!(outcome.guard_after, Some(HERO));
     let guard = s.visit_guard(triple(&rules, &[]), HERO);
     assert_eq!(guard.offer, offer(3, 1, OfferKind::Join));
-    // Onto an observatory's tile: its reveal, then the guard's answer in the same outcome.
+    // Onto an observatory's tile: its reveal, and the guard's visit after it (E08 T63b: the game
+    // holds it as a rest of the visit, GAM-DEC-007; before it, the answer came in the same
+    // outcome).
     let mut s = state(
         &rules,
         &["gggggg", "ggOggg", "gggggg"],
@@ -565,8 +567,9 @@ fn the_guard_answers_after_the_step_or_after_the_tiles_offer() {
     );
     set_aggression(&mut s, 1, -4);
     let (outcome, _) = walk(&rules, &mut s, &[], &[(2, 1)]);
-    assert_eq!(outcome.offer, offer(3, 1, OfferKind::Join));
-    assert!(!outcome.guard_after);
+    assert_eq!((outcome.offer, outcome.guard_after), (None, Some(HERO)));
+    let guard = s.visit_guard(triple(&rules, &[]), HERO);
+    assert_eq!(guard.offer, offer(3, 1, OfferKind::Join));
     // No guard, or no hero: nothing.
     assert_eq!(
         s.visit_guard(triple(&rules, &[]), HeroId::new(9)),
