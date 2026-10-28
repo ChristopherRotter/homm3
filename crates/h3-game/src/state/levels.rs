@@ -179,8 +179,9 @@ impl GameState {
     /// primary skill only, at once (`LevelGained`), and the next is drawn. The decision holds
     /// the game until its answer ([`Self::check_held`]), so no other gain reaches the hero
     /// meanwhile. While the hero's level-up is open nothing is given here: its answer gives the
-    /// next pending levels, the experience gained since among them (E08 T62b1: a won Pandora's
-    /// Box's record before the battle's levels, `ADV-STUB-10`), so no level is drawn twice.
+    /// next pending levels, the experience gained since among them, so no level is drawn twice
+    /// (E08 T62b1: a won Pandora's Box's record came before the battle's levels; since E08 T63b's
+    /// rests, GAM-DEC-007, no gain reaches a hero while its level-up is open).
     // rule: GAM-DEC-002
     pub(crate) fn give_levels<S: Sink>(
         &mut self,

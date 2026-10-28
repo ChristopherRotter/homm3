@@ -28,8 +28,9 @@ use std::path::{Path, PathBuf};
 use std::thread::{self, JoinHandle};
 
 use h3_assets::wav::Pcm;
-use h3_map_view::music::{FULL, Queue, Request, Run, Track};
+use h3_map_view::music::{FULL, Queue, Run, Track};
 use h3_map_view::sound::{Cue, SLOTS, SoundRules};
+use h3_render::Bugs;
 use h3_sdl::Audio;
 
 use crate::sounds::{self, Music};
@@ -224,6 +225,8 @@ pub struct Player {
     music_stream: usize,
     /// The music as the original's thread plays it, at the frames heard and queued ahead.
     music: Queue,
+    /// The original's filter of the music's requests or the client's (MCL-Q12).
+    bugs: Bugs,
     step: Lane,
     slots: Vec<Lane>,
     /// Whether the music and the effects are heard.
@@ -235,8 +238,8 @@ pub struct Player {
 
 impl Player {
     /// Opens the default playback device and the streams: the music's, the step sound's and the
-    /// ambient slots'.
-    pub fn open() -> Result<Self, String> {
+    /// ambient slots'; the music's requests filtered as `bugs` says.
+    pub fn open(bugs: Bugs) -> Result<Self, String> {
         let mut out = Audio::open()?;
         let music_stream = out.add_stream(MUSIC_RATE, MUSIC_CHANNELS)?;
         let lane = |out: &mut Audio| -> Result<Lane, String> {
@@ -254,7 +257,8 @@ impl Player {
         Ok(Self {
             out,
             music_stream,
-            music: Queue::new(MUSIC_RATE),
+            music: Queue::new(MUSIC_RATE, bugs),
+            bugs,
             step,
             slots,
             music_on: true,
@@ -278,7 +282,7 @@ impl Player {
                 library.collect(lines);
                 let queued = self.music_queued();
                 let tracks = |n: &str| library.state(n);
-                if self.music.request(name, queued, &tracks) == Request::Taken {
+                if self.music.request(name, queued, &tracks).changed() {
                     // What is queued is taken back: queued again from what was heard.
                     self.out.clear(self.music_stream);
                 }
@@ -312,7 +316,7 @@ impl Player {
     /// Every sound stopped, the music's model afresh (the window's restart).
     pub fn reset(&mut self) {
         self.out.clear(self.music_stream);
-        self.music = Queue::new(MUSIC_RATE);
+        self.music = Queue::new(MUSIC_RATE, self.bugs);
         stop(&mut self.out, &mut self.step);
         for lane in &mut self.slots {
             stop(&mut self.out, lane);

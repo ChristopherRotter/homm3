@@ -31,10 +31,12 @@ use crate::observe::LevelUpView;
 use crate::treasury::Treasuries;
 use crate::{GAME_STATE_HASH_VERSION, GameRuleset, GameSetup, GameSetupError};
 use levels::Progression;
+use rests::{Held, Rest};
 
 mod battle;
 mod levels;
 mod manage;
+mod rests;
 
 pub use battle::OpenBattle;
 #[cfg(test)]
@@ -67,9 +69,6 @@ enum Decision {
         owner: PlayerId,
         /// The offer.
         offer: Offer,
-        /// Whether the visit of a monster guarding the hero's tile waits for the answer
-        /// (`AdventureOutcome::guard_after`, ADV-MON-006; E08 T20b1).
-        guard_after: bool,
     },
     /// A battle (GAM-BAT-001), shared between forks and copied on its first write.
     Battle(Arc<OpenBattle>),
@@ -109,9 +108,6 @@ enum Decision {
         owner: PlayerId,
         /// The choice.
         choice: Choice,
-        /// Whether the visit of a monster guarding the hero's tile waits for the answer
-        /// (`AdventureOutcome::guard_after`, ADV-MON-006).
-        guard_after: bool,
     },
     /// A University (GAM-DEC-006, E08 T63a), open until its owner leaves it: each purchase keeps
     /// it open.
@@ -120,9 +116,6 @@ enum Decision {
         owner: PlayerId,
         /// The University: the hero, the object, its skills and their price.
         visit: UniversityVisit,
-        /// Whether the visit of a monster guarding the hero's tile waits for its leaving
-        /// (ADV-MON-006).
-        guard_after: bool,
     },
 }
 
@@ -218,6 +211,12 @@ pub struct GameState {
     /// costs nothing more without a decision and a reference count with one (`bench-check`; a
     /// list per fork, or one per player, cost the XL fork benchmark 3 to 4 %).
     decisions: Option<Arc<[Decision]>>,
+    /// The rests (GAM-DEC-007, E08 T63b): what visits still owe their heroes, each held until its
+    /// owner has no open decision, in holding order (the last held runs first, so a visit's own
+    /// rests come before the rests of the visit it is part of). After every command each held
+    /// rest's owner has an open decision ([`crate::apply`] runs the others), so a turn never ends
+    /// with one; never seen by a player but through the decisions it leads to.
+    rests: Vec<Held>,
     /// The day's schedule: turn groups in order, each the players who act together
     /// (ADR-0017 point 3). Sequential play, the only schedule of increment 1, is one player per
     /// group in player order.
@@ -306,6 +305,7 @@ impl GameState {
             seed,
             treasuries: Treasuries::new(players.len(), start.human()),
             decisions: None,
+            rests: Vec::new(),
             players,
             groups,
             group: 0,
@@ -398,16 +398,21 @@ impl GameState {
     }
 
     /// Applies what the adventure left of a command of `player` or of its answer (ADR-0017
-    /// point 10): the gains (GAM-RES-001), the losses ([`Self::lose`], E08 T62b1), the hero's
-    /// gains ([`Self::give_hero`], E08 T62a: until T63b a reward record's experience before its
-    /// army dialog closes, `ADV-STUB-10`), then
+    /// point 10): first the visit of the monster guarding the hero's tile held as a rest of the
+    /// visit (`AdventureOutcome::guard_after`, ADV-MON-006, GAM-DEC-007; E08 T63b), so that it
+    /// waits for whatever the outcome opens, a won guards' battle's reward
+    /// (`AdventureOutcome::reward_after`) and an event on a guarded tile
+    /// (`AdventureOutcome::event_after`, `ADV-QUIRK-29`) held the same way; then the gains
+    /// (GAM-RES-001), the losses
+    /// ([`Self::lose`], E08 T62b1), the hero's gains ([`Self::give_hero`], E08 T62a; with a group
+    /// without room a reward record's experience held as a rest, given after its army dialog
+    /// closes, ADV-RWD-001, E08 T63b), then
     /// the offer ([`Self::open`]) with whatever follows one that does not open, then the battle
     /// ([`Self::start_battle`]), the meeting ([`Self::meet`], E08 T51b), the army dialog
-    /// ([`Self::open_army_dialog`], T51b), the choice ([`Self::open_choice`], T63a) with whatever
-    /// follows one that does not open, or the University ([`Self::open_university`], T63a): an
-    /// outcome has at most one of the offer, the battle, the meeting, the group without room, the
-    /// choice and the University.
-    // rule: GAM-DEC-001, GAM-DEC-005, GAM-DEC-006
+    /// ([`Self::open_army_dialog`], T51b), the choice ([`Self::open_choice`], T63a) or the
+    /// University ([`Self::open_university`], T63a): an outcome has at most one of the offer, the
+    /// battle, the meeting, the group without room, the choice and the University.
+    // rule: GAM-DEC-001, GAM-DEC-005, GAM-DEC-006, GAM-DEC-007, ADV-MON-006
     pub(crate) fn settle_outcome<S: Sink>(
         &mut self,
         rules: &GameRuleset,
@@ -417,15 +422,28 @@ impl GameState {
     ) {
         let mut next = Some(outcome);
         while let Some(outcome) = next.take() {
+            if let Some(hero) = outcome.guard_after {
+                self.hold(player, hero, Rest::Guard);
+            }
+            if let Some((hero, tile)) = outcome.reward_after {
+                self.hold(player, hero, Rest::Won(tile));
+            }
+            if let Some((hero, tile)) = outcome.event_after {
+                self.hold(player, hero, Rest::Event(tile));
+            }
             self.gain(player, &outcome.gains, sink);
             self.lose(player, &outcome.losses, sink);
-            // stub: ADV-STUB-10 (a record's experience and its levels before its army dialog)
-            if let Some(gains) = outcome.hero {
+            if let Some(mut gains) = outcome.hero {
+                // rule: ADV-RWD-001
+                if outcome.no_room.is_some() && gains.experience > 0 {
+                    self.hold(player, gains.hero, Rest::Experience(gains.experience));
+                    gains.experience = 0;
+                }
                 self.give_hero(rules, player, gains, sink);
             }
             next = outcome
                 .offer
-                .and_then(|offer| self.open(rules, player, offer, outcome.guard_after, sink));
+                .and_then(|offer| self.open(rules, player, offer, sink));
             if let Some(battle) = outcome.battle {
                 self.start_battle(rules, player, battle, sink);
             }
@@ -436,10 +454,10 @@ impl GameState {
                 self.open_army_dialog(player, group, sink);
             }
             if let Some(choice) = outcome.choice {
-                next = self.open_choice(rules, player, choice, outcome.guard_after, sink);
+                self.open_choice(player, choice, sink);
             }
             if let Some(visit) = outcome.university {
-                self.open_university(player, visit, outcome.guard_after, sink);
+                self.open_university(player, visit, sink);
             }
         }
     }
@@ -471,24 +489,14 @@ impl GameState {
     /// decision of the player when its treasury can pay the choice's price (a School's; a
     /// chest's and the Arena's have none, so they always open), told to it alone
     /// (`ChoiceOpened`). Otherwise it does not open: the refusal is told to the player alone
-    /// (`OfferRefused`, the original's message; ADV-TCH-002: nothing paid, no mark), and the visit
-    /// of a monster guarding the hero's tile that waited for it follows (ADV-MON-006). Returns
-    /// that outcome, for the caller to apply.
-    // rule: GAM-DEC-005, ADV-TCH-002, ADV-MON-006
-    fn open_choice<S: Sink>(
-        &mut self,
-        rules: &GameRuleset,
-        player: PlayerId,
-        choice: Choice,
-        guard_after: bool,
-        sink: &mut S,
-    ) -> Option<AdventureOutcome> {
+    /// (`OfferRefused`, the original's message; ADV-TCH-002: nothing paid, no mark).
+    // rule: GAM-DEC-005, ADV-TCH-002
+    fn open_choice<S: Sink>(&mut self, player: PlayerId, choice: Choice, sink: &mut S) {
         let (hero, object_type, anchor) = (choice.hero, choice.object_type, choice.anchor);
         if self.treasuries.can_pay(player, choice.price()) {
             self.push_decision(Decision::Choice {
                 owner: player,
                 choice,
-                guard_after,
             });
             sink.emit(GameEvent::ChoiceOpened {
                 player,
@@ -496,7 +504,7 @@ impl GameState {
                 object_type,
                 anchor,
             });
-            return None;
+            return;
         }
         sink.emit(GameEvent::OfferRefused {
             player,
@@ -504,25 +512,17 @@ impl GameState {
             object_type,
             anchor,
         });
-        guard_after.then(|| self.visit_guard(rules, hero))
     }
 
     /// Opens the University a visit of `player`'s hero made (GAM-DEC-006, E08 T63a) as a pending
     /// decision of the player, whatever its treasury holds (the original's dialog opens and
     /// disables the purchase it cannot pay), told to it alone (`UniversityOpened`).
     // rule: GAM-DEC-006
-    fn open_university<S: Sink>(
-        &mut self,
-        player: PlayerId,
-        visit: UniversityVisit,
-        guard_after: bool,
-        sink: &mut S,
-    ) {
+    fn open_university<S: Sink>(&mut self, player: PlayerId, visit: UniversityVisit, sink: &mut S) {
         let (hero, object_type, anchor) = (visit.hero, visit.object_type, visit.anchor);
         self.push_decision(Decision::University {
             owner: player,
             visit,
-            guard_after,
         });
         sink.emit(GameEvent::UniversityOpened {
             player,
@@ -532,8 +532,9 @@ impl GameState {
         });
     }
 
-    /// The visit of the monster guarding `hero`'s tile that waited for a decision of its visit
-    /// (ADV-MON-006; [`AdventureState::visit_guard`]): nothing when none guards it now.
+    /// The visit of the monster guarding `hero`'s tile that waited for the visit of the tile's
+    /// object (ADV-MON-006, GAM-DEC-007; [`AdventureState::visit_guard`]): nothing when none
+    /// guards it now or the hero left the map.
     fn visit_guard(&mut self, rules: &GameRuleset, hero: HeroId) -> AdventureOutcome {
         let (adventure, heroes) = self.adventure_with_heroes();
         let context = (rules.core(), rules.adventure(), heroes);
@@ -616,17 +617,14 @@ impl GameState {
     /// always opens, ADV-VIS-004), told to it alone. Otherwise the offer does not open: a
     /// wandering monster's offer to join for its price counts as declined, without an event, and
     /// the monster's answer goes on ([`AdventureState::decline_offer`]; ADV-MON-008, E08 T20b1);
-    /// any other's refusal is told to the player alone (ADV-VIS-001: the original's message), and
-    /// the visit of a monster guarding the hero's tile that waited for it follows
-    /// ([`AdventureState::visit_guard`], ADV-MON-006). Returns that outcome, for the caller to
-    /// apply.
-    // rule: GAM-DEC-001, ADV-VIS-001, ADV-VIS-004, ADV-MON-006, ADV-MON-008
+    /// any other's refusal is told to the player alone (ADV-VIS-001: the original's message).
+    /// Returns the monster's answer, for the caller to apply.
+    // rule: GAM-DEC-001, ADV-VIS-001, ADV-VIS-004, ADV-MON-008
     pub(crate) fn open<S: Sink>(
         &mut self,
         rules: &GameRuleset,
         player: PlayerId,
         offer: Offer,
-        guard_after: bool,
         sink: &mut S,
     ) -> Option<AdventureOutcome> {
         let (hero, object_type, anchor) = (offer.hero, offer.object_type, offer.anchor);
@@ -634,7 +632,6 @@ impl GameState {
             self.push_decision(Decision::Offer {
                 owner: player,
                 offer,
-                guard_after,
             });
             sink.emit(GameEvent::OfferOpened {
                 player,
@@ -644,9 +641,9 @@ impl GameState {
             });
             return None;
         }
-        let (adventure, heroes) = self.adventure_with_heroes();
-        let context = (rules.core(), rules.adventure(), heroes);
         if matches!(offer.kind, OfferKind::JoinForGold { .. }) {
+            let (adventure, heroes) = self.adventure_with_heroes();
+            let context = (rules.core(), rules.adventure(), heroes);
             return Some(adventure.decline_offer(context, &offer, &mut AdventureSink(sink)));
         }
         sink.emit(GameEvent::OfferRefused {
@@ -655,7 +652,7 @@ impl GameState {
             object_type,
             anchor,
         });
-        guard_after.then(|| adventure.visit_guard(context, hero))
+        None
     }
 
     /// `Answer`: answers `player`'s first open decision (GAM-DEC-001), in its turn or not, with
@@ -694,18 +691,13 @@ impl GameState {
                 self.answer_level_up(rules, ((view.hero, player), at), (&level_up, choice), sink);
                 Ok(())
             }
-            (
-                Decision::Offer {
-                    offer, guard_after, ..
-                },
-                Answer::Offer(consent),
-            ) => {
+            (Decision::Offer { offer, .. }, Answer::Offer(consent)) => {
                 let accepted = consent == Consent::Accept;
                 if accepted && !self.adventure.offer_stands(&offer) {
                     return Err(GameCommandError::OfferGone);
                 }
                 self.close(at);
-                self.answer_offer(rules, player, (&offer, guard_after), accepted, sink);
+                self.answer_offer(rules, player, &offer, accepted, sink);
                 Ok(())
             }
             (
@@ -715,35 +707,19 @@ impl GameState {
                 self.close_exchange(player, at, decision, sink);
                 Ok(())
             }
-            (
-                Decision::Choice {
-                    choice,
-                    guard_after,
-                    ..
-                },
-                answer,
-            ) => {
+            (Decision::Choice { choice, .. }, answer) => {
                 let pick = pick_of(&choice, answer).ok_or(GameCommandError::WrongAnswer)?;
                 self.close(at);
-                self.answer_choice(rules, player, (&choice, guard_after), pick, sink);
+                self.answer_choice(rules, player, &choice, pick, sink);
                 Ok(())
             }
             (
                 Decision::University { visit, .. },
                 Answer::University(UniversityAnswer::Buy(slot)),
             ) => self.buy(rules, player, &visit, slot, sink),
-            (
-                Decision::University {
-                    visit, guard_after, ..
-                },
-                Answer::University(UniversityAnswer::Leave),
-            ) => {
+            (Decision::University { .. }, Answer::University(UniversityAnswer::Leave)) => {
                 self.close(at);
                 sink.emit(GameEvent::DecisionClosed { player });
-                if guard_after {
-                    let guard = self.visit_guard(rules, visit.hero);
-                    self.settle_outcome(rules, player, guard, sink);
-                }
                 Ok(())
             }
             _ => Err(GameCommandError::WrongAnswer),
@@ -756,14 +732,13 @@ impl GameState {
     /// commands are its answers and no other player's command changes the owner's treasury), then
     /// what the adventure's answer gives is applied ([`AdventureState::choose`]: the chest's gold
     /// or experience, ADV-PIK-005; the gift's primary skill and the hero's mark, ADV-TCH-001,
-    /// ADV-TCH-002), and the visit of a monster guarding the hero's tile that waited for the
-    /// answer follows (ADV-MON-006).
-    // rule: GAM-DEC-005, ADV-PIK-005, ADV-TCH-001, ADV-TCH-002, ADV-MON-006
+    /// ADV-TCH-002).
+    // rule: GAM-DEC-005, ADV-PIK-005, ADV-TCH-001, ADV-TCH-002
     fn answer_choice<S: Sink>(
         &mut self,
         rules: &GameRuleset,
         player: PlayerId,
-        (choice, guard_after): (&Choice, bool),
+        choice: &Choice,
         pick: Pick,
         sink: &mut S,
     ) {
@@ -773,10 +748,6 @@ impl GameState {
         }
         let outcome = self.adventure.choose(choice, pick);
         self.settle_outcome(rules, player, outcome, sink);
-        if guard_after {
-            let guard = self.visit_guard(rules, choice.hero);
-            self.settle_outcome(rules, player, guard, sink);
-        }
     }
 
     /// A University's purchase of the skill in `slot` (GAM-DEC-006, E08 T63a; the original's
@@ -863,18 +834,17 @@ impl GameState {
     /// ([`AdventureState::decline_offer`]: after a monster's declined offer to join its next
     /// answer, after a declined flight its leaving; nothing for the others). What follows is
     /// applied as a command's outcome ([`Self::settle_outcome`]): a monster's next offer opens in
-    /// the same command, so the player still has at most one open decision. Then the visit of a
-    /// monster guarding the hero's tile that waited for this answer (ADV-MON-006). ADR-0017 point
+    /// the same command, so the player still has at most one open decision. ADR-0017 point
     /// 10's other check, that the treasury can pay, cannot fail and is not made: the decision
     /// opened only when the treasury could pay, and while it is open its owner's only legal
     /// commands are its answers and no other player's command changes the owner's treasury
     /// (ownership isolation; `h3-map`'s play properties check it at every step).
-    // rule: GAM-DEC-001, ADV-VIS-004, ADV-MON-006, ADV-MON-008
+    // rule: GAM-DEC-001, ADV-VIS-004, ADV-MON-008
     fn answer_offer<S: Sink>(
         &mut self,
         rules: &GameRuleset,
         player: PlayerId,
-        (offer, guard_after): (&Offer, bool),
+        offer: &Offer,
         accepted: bool,
         sink: &mut S,
     ) {
@@ -896,10 +866,6 @@ impl GameState {
             adventure.decline_offer(context, offer, &mut events)
         };
         self.settle_outcome(rules, player, outcome, sink);
-        if guard_after {
-            let guard = self.visit_guard(rules, offer.hero);
-            self.settle_outcome(rules, player, guard, sink);
-        }
     }
 
     /// The offer of `player`'s first open decision, if it has one and it is an offer
@@ -1178,9 +1144,9 @@ impl GameState {
 }
 
 impl CanonicalHash for GameState {
-    /// Encoding v17 (E08 T62b1; v1 was T6b's, v2 T13's, v3 T14b's, v4 T15a's, v5 T18b's, v6
+    /// Encoding v19 (E08 T63b; v1 was T6b's, v2 T13's, v3 T14b's, v4 T15a's, v5 T18b's, v6
     /// T19a's, v7 T20b1's, v8 T21a's, v9 T27's, v10 T29's, v11 T30's, v12 T49a's, v13 T51b's, v14
-    /// T54's, v15 T60a's, v16 T62a's):
+    /// T54's, v15 T60a's, v16 T62a's, v17 T62b1's, v18 T63a's):
     /// version; the master seed; the day; the running group's index; the schedule (groups as
     /// length + player ids); the players (colour, since v14 whether it counts as human, acting,
     /// stream state); since v2 the treasuries (the
@@ -1190,14 +1156,19 @@ impl CanonicalHash for GameState {
     /// kind, 0 a reveal, 1 a passage, since v7 2 a join, 3 a join for gold, 4 a flight, since v8
     /// 5 a guarded pile's fight, since v16 6 a gift's price, 7 a find's question, since v17 8
     /// Pandora's Box's question, 9 the Pyramid's, then a reveal's, a join for gold's or a gift's
-    /// price as length and resource–amount pairs, since v7 whether a guard's visit waits for the
-    /// answer;
+    /// price as length and resource–amount pairs, from v7 to v18 whether a guard's visit waits for
+    /// the answer;
     /// a battle's owners and heroes by side (each 0 for none, else 1 and the id), tile and battle
     /// state hash; since v11 (E08 T30) 2 a level-up: its owner, hero, new level, primary skill
     /// (0 attack to 3 knowledge), its two offers, the offers' levels after it (Wisdom's, a
     /// school's); since v13 (E08 T51b) 3 a meeting: its owner, the visitor, the visited hero; 4 an
     /// army dialog: its owner, its hero, the group (length, then each stack's slot, creature and
-    /// count); the game's stream; since v5 the store of heroes (length, then each hero's
+    /// count); since v18 (E08 T63a) 5 a choice: its owner, hero, object type, anchor, 0 a chest
+    /// (its gold's resource and amount, its experience) or 1 two primary skills (each, the amount,
+    /// the price, whether it may be left), in v18 whether a guard's visit waits; 6 a University:
+    /// its owner, hero, object type, anchor, its skills (length, then each), its price, in v18
+    /// whether a guard's visit waits; since v19 (E08 T63b) the rests in holding order, as length
+    /// and entries ([`Held`]'s encoding); the game's stream; since v5 the store of heroes (length, then each hero's
     /// details by id, [`hash_details`]); since v10 (E08 T29) the heroes' progression (the level
     /// limit, the banned skills, the level seeds, since v14 the heroes' sexes: [`Progression`]'s
     /// encoding); the adventure
@@ -1226,11 +1197,7 @@ impl CanonicalHash for GameState {
         h.write_len(decisions.len());
         for decision in decisions {
             match decision {
-                Decision::Offer {
-                    owner,
-                    offer,
-                    guard_after,
-                } => {
+                Decision::Offer { owner, offer } => {
                     h.write_u8(0);
                     h.write_u8(owner.raw());
                     h.write_u16(offer.hero.raw());
@@ -1252,7 +1219,6 @@ impl CanonicalHash for GameState {
                     if let Some(price) = price {
                         hash_price(price, h);
                     }
-                    h.write_bool(*guard_after);
                 }
                 Decision::Battle(battle) => {
                     h.write_u8(1);
@@ -1292,11 +1258,7 @@ impl CanonicalHash for GameState {
                         h.write_u32(stack.count);
                     }
                 }
-                Decision::Choice {
-                    owner,
-                    choice,
-                    guard_after,
-                } => {
+                Decision::Choice { owner, choice } => {
                     h.write_u8(5);
                     h.write_u8(owner.raw());
                     h.write_u16(choice.hero.raw());
@@ -1324,13 +1286,8 @@ impl CanonicalHash for GameState {
                             h.write_bool(*leave);
                         }
                     }
-                    h.write_bool(*guard_after);
                 }
-                Decision::University {
-                    owner,
-                    visit,
-                    guard_after,
-                } => {
+                Decision::University { owner, visit } => {
                     h.write_u8(6);
                     h.write_u8(owner.raw());
                     h.write_u16(visit.hero.raw());
@@ -1341,9 +1298,12 @@ impl CanonicalHash for GameState {
                         skill.hash_into(h);
                     }
                     hash_price(&visit.price, h);
-                    h.write_bool(*guard_after);
                 }
             }
+        }
+        h.write_len(self.rests.len());
+        for held in &self.rests {
+            held.hash_into(h);
         }
         self.rng.hash_into(h);
         h.write_len(self.heroes.len());
@@ -1460,6 +1420,16 @@ impl GameState {
     /// A player's stream as it stands.
     pub(crate) fn stream(&self, player: PlayerId) -> Rng {
         self.players[player.index()].rng.clone()
+    }
+
+    /// The number of held rests (GAM-DEC-007).
+    pub(crate) fn held_rests(&self) -> usize {
+        self.rests.len()
+    }
+
+    /// Drops every held rest (GAM-DEC-007), for the hash's test.
+    pub(crate) fn drop_rests(&mut self) {
+        self.rests.clear();
     }
 
     /// Applies a change to a hero of the store, telling no one (tests of what the hash covers

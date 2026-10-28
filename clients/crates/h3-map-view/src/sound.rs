@@ -15,7 +15,9 @@
 //! [`TileSounds`] each tile's ambient sound and terrain (`tile_ambient_sound` 0x418620 on the
 //! object a tile records, 0x505610's walks), [`Sound`] the original's state, driven by the
 //! timeline's loop at the moments above and giving its [`Cue`]s. The effects' and the music's
-//! settings are taken as on (nothing plays at 0 in the original).
+//! settings are taken as on (nothing plays at 0 in the original). The client keeps a bit for each
+//! ambient sound found, the comparisons the original's 32 (MCL-Q8, [`Bugs`]); the client's shore
+//! is the coast's water, the comparisons' the original's one picture more (MCL-Q9).
 
 use alloc::collections::BTreeMap;
 use alloc::format;
@@ -24,6 +26,7 @@ use alloc::sync::Arc;
 use alloc::vec::Vec;
 
 use h3_map::model::Pos;
+use h3_render::Bugs;
 use serde::Deserialize;
 
 use crate::art::{MapArt, TileArt, WATER};
@@ -68,9 +71,11 @@ pub struct SoundArt {
     pub loops: Vec<String>,
     /// The loops' volume by distance 0 to [`RINGS`] (`ambient_volumes` 0x63A64C).
     pub volumes: Vec<u8>,
-    /// The shore's loop: water of a picture below `shore_pictures`, before any object.
+    /// The shore's loop, before any object: the coast's water (the client's, MCL-Q9), or water of
+    /// a picture below `shore_pictures` (the original's).
     pub shore: String,
-    /// The first water picture that is not the shore's (21).
+    /// The first water picture that is not the shore's in the original's test (21, one more than
+    /// the coast's [`crate::art::SHORE_PICTURES`]: MCL-Q9, the comparisons' only).
     pub shore_pictures: u8,
     /// The map's classes the game loads as others, `[map's, game's]` (`object_class_values`
     /// 0x63A6E4).
@@ -321,7 +326,7 @@ pub struct TileSounds {
 impl TileSounds {
     /// The tiles of `art` with its live part, one draw list per level (`lists[z]`; a level
     /// without one sounds as its tiles' terrain alone), the hero `selected` left to the
-    /// timeline.
+    /// timeline; the shore as the client takes it or as the original does (`bugs`, MCL-Q9).
     #[must_use]
     pub fn build(
         art: &MapArt,
@@ -329,6 +334,7 @@ impl TileSounds {
         lists: &[DrawLists],
         rules: &SoundRules,
         selected: Option<Pos>,
+        bugs: Bugs,
     ) -> Self {
         let size = i32::try_from(art.size).unwrap_or(0);
         let levels = i32::try_from(art.levels).unwrap_or(0);
@@ -345,7 +351,7 @@ impl TileSounds {
                 )
             });
             terrains.push(tile.terrain.code);
-            sounds.push(tile_sound(art, live, rules, tile, entries));
+            sounds.push(tile_sound(art, live, rules, tile, entries, bugs));
         }
         let mut heroes: Vec<[i32; 3]> = live
             .heroes
@@ -401,8 +407,16 @@ fn tile_sound(
     rules: &SoundRules,
     tile: &TileArt,
     entries: &[Entry],
+    bugs: Bugs,
 ) -> Option<u8> {
-    if tile.terrain.code == WATER && tile.terrain.picture < rules.shore_pictures {
+    // The shore (MCL-Q9): the client's the coast's water (below picture 20, as the map's load
+    // takes it); the original's test one picture more (below the tables' 21, 0x41865A), so open
+    // water's first variant sounded as the shore.
+    let shore = match bugs {
+        Bugs::Fixed => tile.coast(),
+        Bugs::Original => tile.terrain.picture < rules.shore_pictures,
+    };
+    if tile.terrain.code == WATER && shore {
         return Some(rules.shore);
     }
     // The object a tile records (0x505610): the topmost whose cell there is visitable.
@@ -491,8 +505,11 @@ pub struct Sound {
     /// The track asked for last.
     asked: Option<String>,
     slots: [Slot; SLOTS],
-    /// The sounds found by the last scan (+0x224): bit `1 << sound`, the count mod 32 (x86's).
-    found: u32,
+    /// The sounds found by the last scan (+0x224): a bit a sound, or with the original's bugs
+    /// bit `1 << sound` of 32, the count mod 32 (x86's: MCL-Q8).
+    found: u128,
+    /// The original's shared bits or the client's set (MCL-Q8).
+    bugs: Bugs,
     /// The step sound playing (`step_sound_playing` 0x6968E0) and queued (0x6968E4).
     step: Option<String>,
     next: Option<String>,
@@ -500,9 +517,10 @@ pub struct Sound {
 }
 
 impl Sound {
-    /// Silence, before the map's screen starts.
+    /// Silence, before the map's screen starts; the found sounds kept as the original keeps them
+    /// or as the client does (`bugs`, MCL-Q8).
     #[must_use]
-    pub fn new(rules: Arc<SoundRules>, tiles: Arc<TileSounds>) -> Self {
+    pub fn new(rules: Arc<SoundRules>, tiles: Arc<TileSounds>, bugs: Bugs) -> Self {
         Self {
             rules,
             tiles,
@@ -513,6 +531,7 @@ impl Sound {
                 distance: FAR,
             }; SLOTS],
             found: 0,
+            bugs,
             step: None,
             next: None,
             cues: Vec::new(),
@@ -656,7 +675,7 @@ impl Sound {
                 }
             }
         }
-        let (rules, found, cues) = (&self.rules, self.found, &mut self.cues);
+        let (rules, found, bugs, cues) = (&self.rules, self.found, self.bugs, &mut self.cues);
         for (i, slot) in self.slots.iter_mut().enumerate() {
             let Some(sound) = slot.sound else {
                 continue;
@@ -664,7 +683,7 @@ impl Sound {
             if slot.distance > KEPT {
                 slot.sound = None;
                 cues.push((t, Cue::LoopStop { slot: i }));
-            } else if found & bit(sound) != 0 {
+            } else if found & bit(sound, bugs) != 0 {
                 let volume = rules.volume(slot.distance);
                 cues.push((t, Cue::LoopVolume { slot: i, volume }));
             }
@@ -679,7 +698,7 @@ impl Sound {
         if let Some(slot) = self.slots.iter_mut().find(|s| s.sound == Some(sound)) {
             if slot.distance > distance {
                 slot.distance = distance;
-                self.found |= bit(sound);
+                self.found |= bit(sound, self.bugs);
             }
             return;
         }
@@ -720,13 +739,20 @@ impl Sound {
                 volume,
             },
         ));
-        self.found ^= bit(sound);
+        self.found ^= bit(sound, self.bugs);
     }
 }
 
-/// A sound's bit in the found set: x86 takes a shift's count mod 32 (MCL-Q8).
-fn bit(sound: u8) -> u32 {
-    1u32 << (u32::from(sound) % 32)
+/// A sound's bit in the found set: its own (the client's: the 70 loops in 128 bits, one past
+/// them none), or as the original's `1 << sound` in 32 bits, where x86 takes the shift's count
+/// mod 32 and sounds 32 apart share a bit (MCL-Q8: one's XOR clears the other's, which keeps its
+/// earlier volume).
+fn bit(sound: u8, bugs: Bugs) -> u128 {
+    let at = match bugs {
+        Bugs::Fixed => u32::from(sound),
+        Bugs::Original => u32::from(sound) % 32,
+    };
+    1u128.checked_shl(at).unwrap_or(0)
 }
 
 /// A cue as a line of text (`h3-map-view`'s reports): the millisecond and what it asks.

@@ -6894,3 +6894,122 @@ user's computer.
   `manage-army-12` +0.35 %); `cargo clippy --workspace --all-targets` clean; `h3-sim`'s,
   `h3-cli`'s and `h3-map`'s tests. A smoke run, not committed: random play on the eight shipped
   maps that run whole (three seeds each, 14 days, at most 3 000 steps), no failure.
+
+### Increment 7, round 7: T63b, the rest (2026-10-28, `adventure/e08-t63b`)
+
+**The cut** (decision 154): whole (the agent recommended three parts), with a bug found while
+sizing it fixed in it. **Baseline:** `master` fdf002f (#530 merged, CI green on its merge); the
+sandbox's light gates passed on its code (CI's fingerprint); the original data staged from the
+user's computer.
+
+- **The rests** (`h3-game`, `state/rests.rs`; GAM-DEC-007 new): what a visit still owes its hero,
+  held in a list beside the decisions (`GameState::rests`, `Held { owner, hero, rest }`) and run by
+  `run_rests` after every command (`apply`), the last held first, each once its owner has no open
+  decision; after every command each held rest's owner has one. Four kinds: `Guard` (the visit of
+  the monster guarding the hero's tile after the visit of the tile's object), `Experience(u32)` (a
+  reward record's experience after its army dialog, with its levels), `Won(Pos)` (a won guards'
+  battle's reward after the winner's levels), `Event(Pos)` (an event on a guarded tile after the
+  guard's visit). Hashed after the decisions (game state hash v19: tags 0 to 3); the decisions'
+  `guard_after` flags gone (`Decision::{Offer, Choice, University}`, their hash's booleans).
+- **A bug found and fixed** (ADV-MON-006 amended): the guard's visit that waited for an object's
+  decision started as soon as the decision closed, beside what its answer opened; and since T63a
+  an entered gift's experience (a Learning Stone; a Tree of Knowledge's level) opened its level-up
+  with the guard's battle in one outcome: two decisions open (ADR-0017 point 6's one), the
+  battle's hero read before the level. Now the adventure's move sets `guard_after` (the hero) for
+  every visited object on a guarded tile and the game holds the guard's visit as a rest, so it
+  waits for the whole visit (its questions, choices, University, levels and battles). The test
+  `a_guard_waits_for_a_choice_or_a_university_and_follows_a_gift` failed before the fix (the
+  battle opened beside the level-up, its hero's primary skills before the level). A box and a
+  chest are visited from the tile beside them, so no guard waits on them (the question to the user
+  named them wrongly: corrected under decision 154).
+- **The record's experience** (`settle_outcome`): with a group without room the record's
+  experience is held and given with its levels after the army dialog closes (ADV-RWD-001, D-39).
+- **The won guards' battle** (`h3-adventure`, `piles.rs`, `events.rs`): `end_unowned_battle` marks
+  a won object's guards beaten at once (`army_left` empty) and names the reward
+  (`AdventureOutcome::reward_after`); `AdventureState::give_won` gives it later, read again when
+  given: a guarded pile's, artifact's or scroll's pickup, a box's record, an event's record, a
+  Pyramid's loot and spell (its Wisdom test after the levels, E7-22); nothing when the object left
+  the map meanwhile. `end_event_battle` no longer gives the record.
+- **The event on a guarded tile** (`state.rs`'s move, `events.rs`; `ADV-QUIRK-29`):
+  `firing_event` no longer skips a guarded tile; a step that fires an event on a guarded tile ends
+  the move there (a flyer's too, at its move's end for the guard test), the guard visits, and the
+  event is named (`AdventureOutcome::event_after`); `AdventureState::fire_held_event` fires it once
+  the guard's visit is over, for a hero still on its tile that it still fires for (A-26 fixed).
+- **The battle bonuses** (`state/battle.rs`'s `end_battle`; GAM-BAT-014 new): every hero of a
+  battle loses its bonuses and once-marks (`HeroChange::ClearBonuses`) after the heroes' part and
+  before the winner's levels, told to its owner when it had any.
+- **Replays:** the twelve re-recorded with their options (the scripted two from their commands),
+  their commands unchanged: every hash moved (game state hash v19).
+- **Rules:** GAM-DEC-007 (verified: E7-22) and GAM-BAT-014 (verified: E7-11, E7-21) new;
+  ADV-MON-006, ADV-OBJ-007, ADV-MOV-011, ADV-PIK-004, -007, -008, -013, ADV-TCH-008, ADV-RWD-001,
+  GAM-DEC-004, -006, GAM-BAT-008 and HER-ADV-008 amended; `ADV-QUIRK-29`'s ledger entry (its
+  regression tests); `ADV-STUB-10` closed.
+- *Agent's calls (change freely):* decision 154's.
+- **Tests:** `h3-game`'s `tests/rests.rs` (a record's experience after its dialog; a won guarded
+  artifact after the winner's level-up; the hash sees each kind of rest), `tests/rewards.rs` (the
+  gift's level-up before the guard's battle, the battle reading the levelled hero),
+  `tests/events.rs` (an event on a guarded tile fires once a joining guard's visit is over),
+  `tests/aftermath.rs` (the bonuses cleared for both heroes whatever the result, before the
+  winner's levels, untold without bonuses); `h3-adventure`'s piles, records, rewards and events
+  tests through `give_won` and `fire_held_event` (a flyer stopped on a guarded event); `h3-map`'s
+  play property: a won pile is picked up in the battle's last command unless a level-up is left
+  open (its seed committed).
+- **Gates:** the scoped verify with the original data: its first run failed coverage (a held event's
+  hash arm), fixed in the game's event test; the second passed every step; `bench-check` at its
+  baselines (`fork-xl-144` +1.35 % and `fork-meeting-xl-144` +1.29 %, T63a's +0.76 % on the
+  first: likely the empty list of rests each fork copies; `manage-army-12` +0.34 %,
+  `random-play-duel-36` −0.46 %, the reach workloads −0.24 % and −0.99 %); `cargo clippy
+  --workspace --all-targets` clean; `h3-sim`'s tests, `h3-cli`'s adventure replays and `h3-map`'s
+  tests. A smoke run, not committed: random play on the eight shipped maps that run whole (the Tutorial and seven `.h3m`; three seeds each, 14 days,
+  at most 3 000 steps), no failure.
+
+### Increment 7, round 8: T64a, the rewards map, its replays and benchmarks (2026-10-28, `adventure/e08-t64a`)
+
+**The cut** (decision 155): T64 in two, the user's "Two parts" (the agent recommended three): T64a
+the test map, its replays and benchmarks; T64b the properties and the 144 × 144 maps.
+**Baseline:** `master` 87613c9 (#533 merged, CI green on it); the sandbox's light gates passed on
+its code (CI's fingerprint); the original data staged from the user's computer.
+
+- **The rewards map** (`fixtures/maps/e08-rewards-36.h3m`; `h3-map`'s `tests/rewards_map.rs`,
+  `the_rewards_map_is_committed_as_written`): SoD, 36 × 36 of grass, one level, written by
+  `h3_map::writer::write_with` (the writer's heroes, monsters, plain and reward objects, and
+  `Extras`' objects with the editor's body for the classes the writer has no type of: the Arena,
+  Marletto Tower, the Garden of Revelation, the Lean-To, the Library, the two Schools, the
+  Mercenary Camp, the Star Axis, a Scholar, the Tree of Knowledge), each object from the
+  original's template line (`Objects.txt`, in the test: its shape and entrance) placed by its
+  entrance. 42 objects: every one of `codes.rs`' 31 classes of increment 7 (the test imports the
+  map and finds each type), gnolls with an artifact, the paths' guards. Red: Orrin (hero 0) at
+  (6, 4) with a full army of seven kinds; Adela (hero 1) at (28, 4), basic Wisdom alone, a Spell
+  Book, no spell, twenty archangels, 950 experience; Mephala (hero 2) at (5, 28). Blue: two heroes
+  of their types' own at (32, 30) and (32, 18). Beside red's heroes: a box giving ten wood elves
+  and 1 000 experience on (9, 4); an event for red on (6, 8) guarded by two savage gnolls on
+  (7, 9); a Learning Stone on (3, 8) guarded by two on (2, 9), entered from (4, 8); a box on
+  (31, 4) guarded by ten pikemen giving Bless and Prayer; an event for red on (8, 28); the
+  University's entrance on (13, 26). The rest in rows (`fixtures/maps/README.md`).
+- **The golden replays** (`adventure_replays.rs` lists what each meets; the test expects 21):
+  random play `rewards-s162-d28`, `-s243-d28` and `-s88-d28` (`--seed N --agent-seed N --days
+  28`), the best cover of three in a scratch search over the seeds 1 to 400 (a game's moves end
+  on 3 to 9 of the 31 classes; every class in some game, the University in 18, its decision in
+  15); scripted (`--seed 1 --checkpoint-every 5 --script`): `rewards-box-dialog-s1`,
+  `-event-stop-s1`, `-university-s1`, `-guarded-box-s1`, `-event-guard-s1` and
+  `-stone-guard-s1`, each design §16's order told by its events: the dialog closes before the
+  box's experience; the step stops on the event; two purchases, the next day's visit offering
+  only the other two; the level-up's advanced Wisdom before the box's Bless and Prayer, Prayer
+  taught (with the other offer, Scouting, Bless alone: the probe's check); the guard's battle
+  before the event; the stone's level-up before the guard's battle. The battles' commands came
+  from a scratch driver (an attack or a shot when listed, else a defence).
+- **The benchmarks:** `random-play-rewards-36` (5 games of 28 days, 1 358 steps, inside
+  `random_rollout`): 1 171 206 348 Ir, about 862 000 a step (the duel's about 305 000);
+  `fork-rewards-36` (100 000 forks after 7 days, 49 steps, inside `fork_workload`): 257 600 397
+  Ir, 2 576 a fork (`fork-xl-144`: 3 564), the forks carrying the visits block;
+  `BenchResult::visits` and the bench's line "forks with the visits block" (the CLI's bench test:
+  none of the duel's forks, the rewards map's game's). The benches README's two rows:
+  `shared/e08-t64a-benches` (#537), with `docs/06-security.md`'s increment 7 block (ADV-VIS-006,
+  ADV-FOG-007), the line T62a left for the next `shared/` change.
+- *Agent's calls (change freely):* decision 155's.
+- **Versions:** none.
+- **Gates:** the scoped verify with the original data passed every step (coverage, determinism
+  with the 21 replays, `bench-check` with the eight workloads, the original data); `clippy -p
+  h3-cli --all-targets` clean (the scope builds no `h3-cli`).
+- **The epic file** stays above its aim (48 KB of 35): all of it is the open increment 7, which
+  T65 moves to the archive.

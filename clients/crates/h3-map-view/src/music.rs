@@ -5,7 +5,11 @@
 //!
 //! - **A request** (`play_music`) is dropped when its name is the one pending (0x59AD0D) or the
 //!   one the thread opened last while its stream plays (0x59AD43 to 0x59ADA6: a fade-out's track
-//!   among them); else it becomes the pending name and starts a thread.
+//!   among them); else it becomes the pending name and starts a thread. The client's (MCL-Q12;
+//!   the original's behind [`Bugs::Original`]): the track opened last asked for again while
+//!   another is pending is not dropped: during its fade-out it becomes the pending one (it comes
+//!   back where its fade began), before (its fade-in, its opening) the pending one is dropped (it
+//!   plays on; the thread waiting finds no pending name, 0x59A883).
 //! - **A thread** (`music_thread`) holds the manager's lock (+0xA8) from its start through the
 //!   new track's fade-in, so a thread started meanwhile waits for it. It fades the track playing
 //!   out (`music_stop_fade`: its place kept first, 0x59B146 to 0x59B1A8; then 9 steps of 100 ms
@@ -22,6 +26,8 @@
 use alloc::collections::BTreeMap;
 use alloc::string::String;
 use alloc::vec::Vec;
+
+use h3_render::Bugs;
 
 /// The music's whole volume on Miles' scale (127, a setting of 10).
 pub const FULL: u8 = 127;
@@ -68,6 +74,17 @@ pub enum Request {
     Pending,
     /// Dropped: the name is the track opened last and its stream plays (0x59ADA6).
     Playing,
+    /// The client's (MCL-Q12): the name is the track opened last, fading in or being opened, and
+    /// another was pending: that one dropped, the track plays on.
+    Kept,
+}
+
+impl Request {
+    /// Whether the music to come changed: the stream queued ahead must be queued again.
+    #[must_use]
+    pub fn changed(self) -> bool {
+        matches!(self, Self::Taken | Self::Kept)
+    }
 }
 
 /// The music stream (the global 0x69FE78 and the manager's +0x8C).
@@ -90,6 +107,8 @@ enum Stream {
 pub struct Music {
     /// A fade's step in frames (100 ms).
     step: u64,
+    /// The original's filter of the requests or the client's (MCL-Q12).
+    bugs: Bugs,
     /// The track asked for and not yet opened (`music_pending_name` 0x6A3394).
     pending: Option<String>,
     /// The track the thread opened last (`music_playing_name` 0x6A3290): kept through its
@@ -101,11 +120,13 @@ pub struct Music {
 }
 
 impl Music {
-    /// No music yet, on a stream of `rate` frames a second.
+    /// No music yet, on a stream of `rate` frames a second, the requests filtered as the
+    /// original does or as the client does (`bugs`, MCL-Q12).
     #[must_use]
-    pub fn new(rate: u32) -> Self {
+    pub fn new(rate: u32, bugs: Bugs) -> Self {
         Self {
             step: (u64::from(rate) / 10).max(1),
+            bugs,
             pending: None,
             playing: None,
             stream: Stream::Closed,
@@ -128,7 +149,15 @@ impl Music {
             Stream::Opening | Stream::Playing { .. } | Stream::Fading { .. }
         );
         if plays && self.playing.as_deref() == Some(name) {
-            return Request::Playing;
+            match (self.bugs, &self.stream) {
+                // Fading out: it becomes the pending one, below.
+                (Bugs::Fixed, Stream::Fading { .. }) => {}
+                (Bugs::Fixed, _) if self.pending.is_some() => {
+                    self.pending = None;
+                    return Request::Kept;
+                }
+                _ => return Request::Playing,
+            }
         }
         self.pending = Some(name.into());
         Request::Taken
@@ -256,12 +285,13 @@ pub struct Queue {
 }
 
 impl Queue {
-    /// No music yet, on a stream of `rate` frames a second.
+    /// No music yet, on a stream of `rate` frames a second, the requests filtered as `bugs` says
+    /// ([`Music::new`]).
     #[must_use]
-    pub fn new(rate: u32) -> Self {
+    pub fn new(rate: u32, bugs: Bugs) -> Self {
         Self {
-            heard: Music::new(rate),
-            ahead: Music::new(rate),
+            heard: Music::new(rate, bugs),
+            ahead: Music::new(rate, bugs),
             put: 0,
             heard_at: 0,
         }
@@ -286,12 +316,13 @@ impl Queue {
         self.heard_at = now;
     }
 
-    /// `name` asked for while the stream holds `queued` frames. Taken, the stream must be cleared:
-    /// what it holds is queued again from the frames heard.
+    /// `name` asked for while the stream holds `queued` frames. When it changed the music to come
+    /// ([`Request::changed`]), the stream must be cleared: what it holds is queued again from the
+    /// frames heard.
     pub fn request(&mut self, name: &str, queued: u64, tracks: &impl Fn(&str) -> Track) -> Request {
         self.hear(queued, tracks);
         let request = self.heard.request(name);
-        if request == Request::Taken {
+        if request.changed() {
             self.cleared();
         }
         request

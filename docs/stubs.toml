@@ -63,12 +63,6 @@ where  = "crates/h3-game/src/state/battle.rs::start_battle"
 reason = "A battle from the map leaves BattleSetup.retreat (ADR-0027 point 14: each hero's experience, its artifacts' worth, a Tavern town of its player to hire it again, whether the scenario's victory condition wants it defeated) at its default, which never retreats: the facts are read only for a computer player's hero, which the engine gets with E10, and the Tavern needs towns (E09) and the condition E10's scenarios (E08 decision 123, T54)"
 epic   = "E10"
 
-[[stub]]
-id     = "ADV-STUB-10"
-where  = "crates/h3-game/src/state/battle.rs::end_battle"
-reason = "Increment 7's rest waits for T63b (E08 decisions 141, 151; GAM-DEC-007): a won guarded artifact's or scroll's pickup, a won Pandora's Box's or event's record and a won Pyramid's spell are given before the winner's level-ups (`state/battle.rs::end_battle`), not as the visit's rest after them; a reward record's experience and its levels are given before its army dialog closes (`state.rs::settle_outcome`, E08 T62b1); and since T62b2 an event on a tile a monster guards neither fires nor stops a flyer's move (`state/events.rs::firing_event`, decision 151), where the original fires it after the guard's visit (`ADV-QUIRK-29`: for a hero still on its tile only). The choices' defaults and the University left at once (T62a) ended with T63a's decisions (GAM-DEC-005, GAM-DEC-006)."
-epic   = "E08"
-
 # --- server (SRV-STUB-<n>) ---
 
 # --- client (CLT-STUB-<n>) ---

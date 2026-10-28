@@ -98,8 +98,12 @@ and ADR-0023 point 7 (`human`, `difficulty`) stay as they are.
         modifiers from its private effects, the magic limits recomputed with the guess (the
         viewer's own casting rights may differ from the true battle's), and without a guess a
         commanded war machine played automatically.
-     3. A world's forks (`h3_env_fork`) and steps are the agent's to use; the true state's fork
-        and hash stay trusted tooling, never an agent's input.
+     3. A world's forks (`h3_env_fork`) and steps are the agent's to use; a world scores a
+        decided battle by its batch's reward v1, the value it is searched for (C ABI v35, E25
+        T1a). The true state's fork and hash stay trusted tooling, never an agent's input, and so
+        does the *true world* (`h3_batch_true_world`, C ABI v35, E25 T1b): the env's battle with
+        nothing guessed and its stream re-seeded, a diagnostic of what the guess costs a search
+        (E25 decision 6), reached only by `h3env.search --true-worlds`.
      4. The guess is the AI lane's (the encounter sampler's hero draws, `h3-sim`'s
         `Sampler::guess`); a better guess changes no other lane.
 13. **Benchmarks:** instruction-count workloads in `benches/ai/` (lane-only): a one-thread batch on
@@ -145,3 +149,5 @@ and ADR-0023 point 7 (`human`, `difficulty`) stay as they are.
 - 2026-10-27: Point 12a's facts after E06 T9b's review (the user): a world through the C ABI for
   the side to move only, the gaps AI-STUB-1 holds; the design note's reference after E06's
   closure (its text kept in `E06-log.md`).
+- 2026-10-28: Point 12a.3 (E25 T1a, T1b; C ABI v35; the user): a world's reward v1, and the true
+  world as trusted tooling, a diagnostic's.

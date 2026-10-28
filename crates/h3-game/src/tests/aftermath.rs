@@ -6,7 +6,7 @@ use h3_adventure::{AdventureEvent, AdventureEventKind};
 use h3_contracts::{
     Army, BattleOutcome, BattleResult, BattleSide, HeroOutcome, StackOrigin, StackRecord,
 };
-use h3_heroes::{ArtifactInstance, ArtifactPlace, HeroChange, Position, wearing};
+use h3_heroes::{ArtifactInstance, ArtifactPlace, BattleBonuses, HeroChange, Position, wearing};
 
 use super::*;
 
@@ -603,4 +603,62 @@ fn the_count_takes_the_shares_own_single_precision_value() {
     assert_eq!(count(&single_rules(), &killed, share(bits)), 6);
     assert_eq!(count(&single_rules(), &killed, share(None)), 6);
     assert_eq!(count(&rules(), &killed, share(bits)), 7);
+}
+
+// covers: GAM-BAT-014, HER-ADV-008
+#[test]
+fn every_heros_battle_bonuses_end_with_the_battle_before_the_winners_levels() {
+    let rules = rules();
+    let tomb = HeroChange::Bonus {
+        morale: -3,
+        luck: 0,
+        mark: Some(0),
+    };
+    let pyramid = HeroChange::Bonus {
+        morale: 0,
+        luck: -2,
+        mark: Some(1),
+    };
+    let cleared = |player, hero| GameEvent::HeroChanged {
+        player,
+        hero,
+        change: HeroChange::ClearBonuses,
+    };
+    for result in [
+        BattleResult::Victory(BattleSide::Attacker),
+        BattleResult::Victory(BattleSide::Defender),
+        BattleResult::Retreat(BattleSide::Attacker),
+        BattleResult::Draw,
+    ] {
+        // Red's hero 950 experience short of its level, so a victory gives it one.
+        let mut setup = setup();
+        setup.heroes[0].details.experience = Some(950);
+        let mut game = GameState::new(&rules, &setup, 5).unwrap();
+        game.apply_hero_change(rules.core(), RED_HERO, tomb);
+        game.apply_hero_change(rules.core(), BLUE_HERO, pyramid);
+        let mut ended = game.clone();
+        let mut events = Vec::new();
+        ended.end_battle(&rules, SIDES, &outcome_of(result), &mut events);
+        for (player, hero) in [(RED, RED_HERO), (BLUE, BLUE_HERO)] {
+            let details = ended.hero(hero).unwrap();
+            assert_eq!(details.bonuses, BattleBonuses::default(), "{result:?}");
+            assert!(events.contains(&cleared(player, hero)), "{result:?}");
+        }
+        // Before the winner's levels.
+        let clear = events.iter().position(|e| *e == cleared(RED, RED_HERO));
+        let level = events.iter().position(|e| {
+            matches!(
+                e,
+                GameEvent::LevelGained { .. } | GameEvent::LevelUpOpened { .. }
+            )
+        });
+        if result == BattleResult::Victory(BattleSide::Attacker) {
+            assert!(clear < level && level.is_some(), "{events:?}");
+        }
+        // A hero without bonuses is told nothing.
+        let mut quiet = GameState::new(&rules, &setup, 5).unwrap();
+        let mut events = Vec::new();
+        quiet.end_battle(&rules, SIDES, &outcome_of(result), &mut events);
+        assert!(!events.contains(&cleared(RED, RED_HERO)));
+    }
 }

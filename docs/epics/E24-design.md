@@ -1159,7 +1159,11 @@ T1b's seven walk sequences recorded again, every line and every frame. Read this
   a strip up to 24 pixels wide (32 less the first frame's pixels): a step away from a side shows
   the hero over the map's edge; one onto the last column or row leaves a strip of it on the map
   undrawn; one onto the first column or row shows that strip half transparent (pass 9's blend
-  alone). A standing hero is cut at the map's side. No sequence walks there.
+  alone). A standing hero is cut at the map's side. No sequence walks there. **Built at T6b2b**
+  (the user's answer): the client cuts all three at the map's side moved by the offset (the
+  map's tiles' places with the offset: `scene`'s `map_shown`), passes 5 and 7 on every cell of the
+  picture, on the map or not, so a strip off the map is cut and one on it drawn; at offset 0 the
+  same as the original's. The original's cut behind `--bugs original` (`sequences` and `drawn`).
 - **A late redraw** (0x408A88 to 0x408B46): each idle redraw steps the objects once, the deadline
   on by the larger of 180 and the lateness; one later than a step (only after a walk, when no idle
   message ran) leaves the deadline at the clock, so the loop's next turn, in the same
@@ -1350,7 +1354,13 @@ it, the track asked for again; the effects' return not read).
   during a fade-in waits for its end, then the new track fades out from the whole; one asked for
   during a fade-out replaces the pending one; and the old track asked for again during its own
   fade-out is dropped: grass, dirt and grass again within 900 ms keeps Dirt playing on grass
-  until the music's terrain next changes (**MCL-Q12**). The fades run on the thread's real time,
+  until the music's terrain next changes (**MCL-Q12**). **Built at T6b2b** (the user's answer,
+  `h3_map_view::music`'s filter; the original's behind `--bugs original`): the client drops the
+  track opened last only while nothing else is pending; during its own fade-out it becomes the
+  pending one (it comes back where its fade began, after the fade); during its fade-in or while
+  it is opened (the same slip a fade-in later: grass, dirt during Grass's fade-in, grass again;
+  *provisional* at T6b2b, confirmed by the user at M3 T0) the pending one is dropped and it plays
+  on, the thread waiting finding no pending name (0x59A883). The fades run on the thread's real time,
   not the game's clock. The place is Miles' stream position, an offset in the file: whether it
   is what is heard or Miles' read point is Miles' own (not read; the viewer keeps what is heard).
 - **The step sounds.** `horse00.wav` to `horse10.wav` loaded into the manager's +0x360 to +0x388
@@ -1393,10 +1403,14 @@ it, the track asked for again; the effects' return not read).
   So at most four loops, the nearest by their tiles; kept loops change only their volume as the
   view moves, unless the stop flag restarts them all. With the shift's count taken mod 32, two
   sounds 32 apart share a bit: one's XOR in the second pass clears the other's, which then keeps
-  its earlier volume (**MCL-Q8**).
+  its earlier volume (**MCL-Q8**). **Built at T6b2b** (the user's answer): the client keeps a bit
+  for each of the 70 loops (`sound`'s set in 128 bits), so each loop found takes its distance's
+  volume; the original's 32 behind `--bugs original`.
 - **A tile's sound** (`tile_ambient_sound` 0x418620, on the tile's record: §2.1, the E08 survey's
   §2.5 for which object a tile records): water (terrain 8) of a picture below 21 (the shore's,
-  one more than the coast's 20: **MCL-Q9**) `loopocea` (69), before any object; else on an entrance tile (+0xD bit 0x10) by the class
+  one more than the coast's 20: **MCL-Q9**; built at M3 T0, the user's answer: the client's the
+  coast's water, below 20, the original's 21 behind `--bugs original`, `TileSounds::build`)
+  `loopocea` (69), before any object; else on an entrance tile (+0xD bit 0x10) by the class
   +0x1E as the game loads it (`object_class_values` 0x63A6E4: 219 as 33, 220 as 53, 221 as 99,
   223 as 21, 230 as 46, 165–189 as 114–138, 190–205 as 143–161) and the subclass +0x22: the
   table's `classes` (`clients/map/assets/base.toml`, `[map.sound]`); a creature bank (16), the

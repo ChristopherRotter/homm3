@@ -233,8 +233,9 @@ id = "battle.log.acid-breath"
 args = { creature = "text", defense = "number" }
 original = [{ at = "EXE:0x688450", printf = ["creature", "defense"] }]
 
-# A hero's spell aimed over a stack (E17 M3 T7b-1, *provisional*: the aiming loop is not read):
-# the spell's name and the stack's by its number; elsewhere on the battlefield the spell's alone.
+# A spell aimed over a hex its cursor takes (E17 M3 T7b-1; read at M5 T3b, `aim_cast_line`
+# 0x5A8690): the spell's name and the stack's there by its number; without one (an area spell's,
+# an empty hex) the spell's alone.
 [[key]]
 id = "battle.hint.cast-on"
 args = { spell = "text", creature = "text" }
@@ -244,6 +245,42 @@ original = [{ at = "GENRLTXT:28", printf = ["spell", "creature"] }]
 id = "battle.hint.cast"
 args = { spell = "text" }
 original = [{ at = "GENRLTXT:27", printf = ["spell"] }]
+
+# The aim's other lines (E17 M5 T3b, design §7.18): Remove Obstacle's over an obstacle; over a hex
+# the aim does not take its reason (`spell_fails_message` 0x5A2880): the default, Anti-Magic's
+# name and the stack's by its number, the spell's alone, the spell's and the stack's plural name.
+[[key]]
+id = "battle.hint.remove-obstacle"
+original = [{ at = "GENRLTXT:551" }]
+
+[[key]]
+id = "battle.hint.select-target"
+original = [{ at = "GENRLTXT:24" }]
+
+[[key]]
+id = "battle.hint.protects"
+args = { spell = "text", creature = "text" }
+original = [{ at = "GENRLTXT:171", printf = ["spell", "creature"] }]
+
+[[key]]
+id = "battle.hint.hostile-only"
+args = { spell = "text" }
+original = [{ at = "GENRLTXT:172", printf = ["spell"] }]
+
+[[key]]
+id = "battle.hint.friendly-only"
+args = { spell = "text" }
+original = [{ at = "GENRLTXT:178", printf = ["spell"] }]
+
+[[key]]
+id = "battle.hint.not-on"
+args = { spell = "text", creature = "text" }
+original = [{ at = "GENRLTXT:180", printf = ["spell", "creature"] }]
+
+[[key]]
+id = "battle.hint.immune"
+args = { spell = "text", creature = "text" }
+original = [{ at = "GENRLTXT:181", printf = ["creature", "spell"] }]
 
 # The status line's hints over the battlefield (`battle_status_line` 0x492840; E17 M3 T6c-1,
 # docs/epics/E17-design.md §9.9): `creature` the acting stack's or the target's name by its number

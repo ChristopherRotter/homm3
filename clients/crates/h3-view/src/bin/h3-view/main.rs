@@ -1,6 +1,7 @@
 //! `h3-view`: the client's command line (E17). An adapter: it reads files, measures time, prints
 //! and opens the window (through `h3-sdl`); what it computes comes from the pure crates.
 
+mod aims;
 mod assets;
 mod audio;
 mod battle;
@@ -86,11 +87,13 @@ commands:
           the hardware cursor (--drawn-cursor: drawn into the frame); past the end the battle
           idles. --human: a scenario's sides a human plays here (hot seat with both), the bot
           the others; on a human's turn the battle waits for a left press over the battlefield
-          or the panel's Wait or Defend (their buttons or their keys W, D and Space). With sound
+          or the panel's Wait or Defend (their buttons or their keys W, D and Space), the spell
+          book (its button or C; a spell that takes a target aimed: a press casts, Esc or the
+          right button gives it up) or a Faerie Dragon's spell (F aims it). With sound
           (the installation's sound archives and MP3 folder; none with --mute): from the
           battle's start its start sound plays while the clock waits, then the battle music
           loops and the creatures' sounds follow their animations. Keys: P pause, Right a frame
-          while paused, Home restart, F fullscreen, V vsync, H the hardware or the drawn cursor,
+          while paused, Home restart, F11 fullscreen, V vsync, H the hardware or the drawn cursor,
           M the music, E the creatures' sounds, Up and Down the log, Esc quit. --measure runs
           <s> seconds unattended and prints how late each frame showed; --check also reads
           every frame back and compares it with the frame drawn headless (exit 1 on a

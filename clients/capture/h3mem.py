@@ -224,6 +224,7 @@ ACTIVE_STACK, MOUSE_HIGHLIGHT, MOUSE_HEX = 0x132C8, 0x132CC, 0x132D0
 MOUSE_AT, CURSOR_KIND, MOUSE_MANAGER, CURSOR_TYPE, CURSOR_FRAME, CURSOR_X, CURSOR_Y = (
     0x132D4, 0x132E0, 0x699260, 0x4C, 0x50, 0x6C, 0x70)
 MOUSE_POLL_NEXT = 0x69CA18  # the mouse poll's next time (0x50D680, a 33 ms grid)
+SPELL_CURSOR_NEXT = 0x69CA1C  # its spell cursor's next frame (0x50D804, a 100 ms grid; E17 M5 T3b)
 # The magic animation (E17 M3 T3b, design §7.15): its number in the table 0x641E08 (+0x132EC,
 # the last loaded) and the frame drawn (+0x132F0); a stack shows it while its byte +0x20 is set
 # (`PlayMagicAnimation` 0x496840, `draw_battle_stack`'s tail 0x43E795).
@@ -313,6 +314,10 @@ class Mem:
         set to `now` (the opening), the grid runs from the opening in every run (M3 T6c-2,
         design §9.10), so the frames a sequence keeps where the cursor moves keep their times."""
         self.write_u32(MOUSE_POLL_NEXT, now)
+        # The spell cursor's frames (`crspell.DEF`, the mouse manager's type 3) step on the poll's
+        # second grid, 100 ms, from the same phase (E17 M5 T3b, design §7.18): only a type-3
+        # cursor reads it.
+        self.write_u32(SPELL_CURSOR_NEXT, now)
 
     def walls(self):
         """A siege's 18 parts' picture states (+0x13FA8, i32 each), their hit points (+0x13F60)

@@ -1097,3 +1097,108 @@ between them as T6b2b. No code changed.
   them.
 - **M3 T0 queued** (behind T6b2c); the common crate proposed in the client lane's inbox, its
   answer asked before M3 T0.
+
+### M2 T6b2b — the answers built: MCL-Q7, Q8 and Q12 (2026-10-28)
+
+On `map-client/e24-m2-t6b2b`, the sandbox's work (the user present in the chat). Each answer the
+client's by default and the original's behind `--bugs original` (`h3_render::Bugs`, as MCL-Q2 to
+Q6): `sequences` and `drawn` compare with `--bugs original` as before, the window and `render`
+default to the fixes.
+
+- **Starting point:** `master` at #528 (#531 merged; CI green on #530's code, #531 and #528
+  docs only); `clients/scripts/check.sh` in the sandbox, all gates passed, coverage 100 %.
+- **MCL-Q7** (`scene`, design §3.8): the map's rectangle on the screen (`map_shown`: the map's
+  tiles' places moved by the walk's offset); with the fixes passes 5 and 7 take every cell of
+  the lifted hero's picture, on the map or not, each cut to that rectangle, and pass 9 its
+  picture cut to it; with the original's bugs the cells of the tiles on the map whole and pass
+  9's own cut (rewritten as a rectangle: the moved side on the left and the top past a side, the
+  tiles' on the right and the bottom past one). At offset 0 both the same. Tested on five steps
+  at the sides in both profiles (east from column 0, east onto the last column, west onto the
+  first, south from row 0, north onto it), the cells' and pass 9's clips.
+- **MCL-Q8** (`sound`): the found set in 128 bits, a bit for each sound with the fixes, the
+  original's `1 << (s mod 32)` with its bugs (a sound past 127 has none: the loops are 70). The
+  test's kept loop 1 takes its distance 1's volume (28) with the fixes, keeps its earlier one
+  with the original's (its XOR by 33).
+- **MCL-Q12** (`music`): with the fixes the track opened last asked for again while another is
+  pending is not dropped: during its fade-out it becomes the pending one (`Request::Taken`: it
+  comes back where its fade began, after the fade; grass, dirt and grass 150 ms apart now end on
+  Grass, Dirt never heard); during its fade-in or its opening the pending one is dropped
+  (`Request::Kept`, *provisional*: the same slip a fade-in later, which the answer's wording did
+  not name; dropping keeps it playing without a second fade, where taking it would fade it out
+  and in again from the same place; the thread waiting finds no pending name, 0x59A883).
+  `Request::changed` tells the queue and the window to queue the stream again (both kinds). The
+  window's `Player::open` takes `--bugs`; `Sound::new`, `Music::new` and `Queue::new` take it.
+- **Each new test fails on the old code** (the fixes made inert: the seven tests of the three
+  answers failed, and MCL-Q2's, whose fixed branch the substitution also disabled).
+- **Checked:** `clients/scripts/check.sh` all gates passed, coverage 100 % (regions, functions,
+  lines); `h3map.py drawn` all the same (the 40 situations; the 13 sequences' 450 frames and
+  every timeline line by line as recorded); `window seq-walk --check 4` under Xvfb in both
+  profiles (every frame read back exact, every change shown the headless loop's). The music's
+  fix by ear is T6b2c's hand test (the window's part: the profile handed to the player, the
+  stream queued again on `Kept` as on `Taken`).
+- **For T6b2c:** `h3-map-view.exe` of this branch cross-built into the user's `clients/out/win/`
+  (T6b2a's kept as `h3-map-view-t6b2a.exe`); `map-try.cmd`'s item 2c and the notes' line now
+  say Grass comes back (the notes were still blank).
+
+### M2 T6b2c — the hand test and M2 archived (2026-10-28)
+
+On `map-client/e24-m2-t6b2c` (docs only, on T6b2b's branch, #532), the user at the machine.
+
+- **The hand test** (`clients/out/win/map-try.cmd`, the `h3-map-view.exe` of T6b2b's branch): a
+  first run stopped by Ctrl+C after run 1 (the console's Ctrl+C ends the script, and the window
+  without its report; Esc closes a window), then run again whole. Run 1, `path-objects` (Alt+Tab
+  with the pointer at an edge, fullscreen's bars, F7 at an edge): the user, "everything in
+  map-try worked for me". Run 2, `seq-walk`: "sound seems fine". Its cues: Dirt asked for at
+  9 606 ms and Grass 231 ms later, Dirt at 11 415 and Grass 635 ms later, each within Grass's
+  900 ms fade-out, so with MCL-Q12's fix Grass came back after its fade both times and Dirt was
+  never heard. A plain switch with Dirt fading in (items 2a and 2b) did not happen in this run;
+  its path is Grass's fade-in from its place, which was heard, and T6a2 checked it
+  sample-exact in the sandbox. The window's figures on Windows (direct3d11, WASAPI): a frame
+  made in 5.3 and 3.3 ms (median), shown at most 27.5 ms after its time.
+- **No finding, no new question.** M2's exit holds; its review list was accepted at T6b2a.
+- **M2 archived:** its section (scope, decisions, task list, exit) and its review list moved
+  verbatim to `E24-archive.md`, a stub with the decisions that bind later milestones left in the
+  epic; the queue's M2 history and T6b2c's entry to `QUEUE-ARCHIVE.md`; the HANDOFF's M2 lines
+  trimmed. Next: M3 T0 with the user.
+
+### M3 T0 — M3 refined with the user, MCL-Q9 built (2026-10-28)
+
+On `map-client/e24-m3-t0`, the user present in the chat; `master` at #535 (#532 and #535
+merged). The original data staged from the user's repo folder first (the exe, the four LODs, both
+`.snd`, `maps.tar`, `extracted.tar`, the nine terrain tracks).
+
+- **The common crate, looked at before proposing:** of what T6b2a's proposal named, `h3-view`'s
+  `layout` (the battle's layout: hexes, stacks, heroes, the count box, the panel's and the
+  book's dialogs) and `mouse` (`screen_to_hex`, the battle's cursor kinds, slots and clicks;
+  `line` and `track` the battle's too) are the battle's through and through; only `ui`'s dialog
+  format is common, and it goes with `ui`. `ui` depends on the battle scene's `Draw` and
+  `PlayerColours` (its `draws` gives `Draw::Picture`, `Button`, `Text`, `Label`, `Darken`): the
+  move gives it draw items of its own. `cursor` depends on `batch::Sprite` (in both viewers, the
+  same type), `clock` on nothing; `text` on `serde_json`, `serde`; `keys` on the map's
+  `timeline::{Action, Direction}` (the table made generic over a viewer's commands); `music` on
+  `h3_render::Bugs` only.
+- **The user's answers** (every recommendation taken): the crate `h3-ui` with `clock`, `cursor`
+  and `Sprite`, `ui`, `text`, `keys` and `music`; this lane moves it as T1a (`cross-lane`, after
+  a `shared/` pull request for `lanes.toml`), T1b the battle window's keys through the table,
+  both windows' own keys the map's F-keys (the battle's letters left to the original's hotkeys:
+  F the Faerie Dragon's, the client lane's M5 T3b); the clicks of M3 the view-only ones; the
+  cursor over the map in M3 from given inputs; the task cut T1a to T7 as proposed;
+  MCL-Q12's provisional part (a track asked for again during its own fade-in plays on)
+  confirmed. MCL-Q9: the user asked what a "picture" is (a tile's frame of its terrain's DEF,
+  fixed by the map; the water moves by its palette: 0 to 19 the coast's pieces, 20 to 32 open
+  water's variants) and took the fix (a).
+- **MCL-Q9 built** (`h3_map_view::sound`): `TileSounds::build` takes the profile; with the fixes
+  a water tile is the shore's when it is the coast (`TileArt::coast`, below picture 20, the map
+  load's test), with the original's bugs below the tables' `shore_pictures` (21) as before. The
+  test's buoy on picture 20 sounds as its buoy (5) with the fixes, as the shore (69) with the
+  original's; without draw lists the tile is silent with the fixes. `paint.rs` hands the
+  window's and `render`'s profile on (`sequences` and `drawn` compare with `--bugs original`).
+- **Docs:** M3's section in the epic (scope, decisions, tasks, exit); the queue's T1a to T7, the
+  inbox's frame cost (T2) and the sound without the focus (T6) and the adventure lane's notice
+  moved to `QUEUE-ARCHIVE.md`; the client lane's inbox told the decision (its proposal entry
+  replaced, the old one archived here); MCL-Q9 answered, MCL-Q12's entry notes the confirmation.
+- **Checked:** `clients/scripts/check.sh` all gates passed, coverage 100 % (regions, functions,
+  lines); `h3map.py drawn` all the same (the 40 situations; the 13 sequences' frames and
+  timelines as recorded); the scoped verify no failing step. The sandbox's container restarted
+  during the setup's baseline (its background run gone, the files kept): the gates run again on
+  the branch.

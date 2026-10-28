@@ -35,6 +35,7 @@ xdd.dll (xdd.c: freeze, step, run), so that every frame is taken at an exact gam
                                             clock (hex:<n> clicks a hex, click:x,y, move:x,y,
                                             key:<name>, step:<ms>, cast:<k>[:<hex>] casts the
                                             spell at the hero's book's place k, M3 T7a-2a;
+                                            aim:<k>:<n> leaves its aim under way, M5 T3b;
                                             roll:<roll>[:fail] forces the roll's next draw to
                                             make it fall or fail, M3 T7b-2b-1, the runbook's
                                             "Forced rolls"; at:<ms> steps 1 ms at a time,
@@ -678,7 +679,8 @@ def book_place(k):
 def act(game, action):
     """One action at the frozen clock: hex:<n>, click:x,y, move:x,y, key:<name>, step:<ms>,
     cast:<k>[:<hex>] (M3 T7a-2a: the hero's spell book by its key C, its place k, then the target
-    hex if the spell takes one), roll:<name>[:fail|:<n>][:<count>] (M3 T7b-2b-1: the roll's
+    hex if the spell takes one), aim:<k>:<n> (E17 M5 T3b: the book's place k, the aim of its
+    spell, numbered n in the original, left under way), roll:<name>[:fail|:<n>][:<count>] (M3 T7b-2b-1: the roll's
     next draw falls, or fails; E17 M4 T2b: or is n; its next <count> draws so; ROLLS; E17 M4
     T2c-2: roll:<name>:<a>,<b>,... its next draws a, b, ... in order)."""
     kind, _, arg = action.partition(":")
@@ -700,6 +702,16 @@ def act(game, action):
                              "nothing, then `:<count>` (at least 1) or nothing")
         game.roll(name, falls=how != "fail", count=int(count or 1),
                   value=int(how) if how.isdigit() else None)
+    elif kind == "aim":
+        # E17 M5 T3b: the book's place k clicked, its spell's aim started where the place is (the
+        # spell's number after it is the viewer's); the mouse stays there.
+        place, _, _ = arg.partition(":")
+        if not 0 <= int(place) < 12:
+            raise ValueError(f"`{action}`: the book has the places 0 to 11")
+        game.key("c", 0.5)
+        game.move(*book_place(int(place)))
+        time.sleep(0.3)
+        game.click(*book_place(int(place)), settle=0.5)
     elif kind == "cast":
         place, _, target = arg.partition(":")
         if not 0 <= int(place) < 12:

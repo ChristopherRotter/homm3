@@ -5,13 +5,15 @@
 use alloc::collections::BTreeSet;
 use alloc::format;
 use alloc::string::String;
+use alloc::vec;
 use alloc::vec::Vec;
 
 use h3_protocol::wire::{Command, Observation, Side};
 use h3_render::Bugs;
 
-use super::{Input, Shown, Start, Turn, follow};
+use super::{Input, Look, Shown, Start, Turn, follow, spell_frame};
 use crate::battle_log::Logged;
+use crate::mouse::aim::{Aim, Area, Target};
 use crate::mouse::tests::{battle, centre, layout};
 use crate::mouse::{Facing, Field, Hint, Legal, Spot, slot, slots, spot};
 
@@ -478,12 +480,157 @@ fn a_two_hex_stack_stays_marked_across_its_hexes() {
     assert_eq!(shown.log.last(), Some(&(20, Logged::Turn(3))));
 }
 
+/// Magic Arrow (its handle 7, its original number 15) aimed at the defender's stack 1, or a
+/// Faerie Dragon's (handle 9) with `creature`.
+fn arrow(creature: bool) -> Aim {
+    Aim {
+        spell: if creature { 9 } else { 7 },
+        original: 15,
+        creature,
+        targets: vec![Target::Stack(1)],
+        area: None,
+        stacks: true,
+        polarity: -1,
+        level: 1,
+        anti_magic: None,
+    }
+}
+
+/// Fireball (its handle 8, its original number 21) aimed at hexes 87 and 90.
+fn fireball() -> Aim {
+    Aim {
+        spell: 8,
+        original: 21,
+        targets: vec![Target::Hex(87), Target::Hex(90)],
+        area: Some(Area {
+            radius: 1,
+            centre: true,
+        }),
+        stacks: false,
+        polarity: 0,
+        ..arrow(false)
+    }
+}
+
+fn texts(shown: &Shown) -> Vec<String> {
+    shown
+        .log
+        .iter()
+        .filter_map(|(_, l)| match l {
+            Logged::Status { text, forced } => {
+                assert!(!forced || text.starts_with("Attack"), "{text}");
+                Some(text.clone())
+            }
+            _ => None,
+        })
+        .collect()
+}
+
 #[test]
-fn an_aimed_spell_hints_its_cast() {
-    // E17 M3 T7b-1: from the book's spell to the click, the cast's hint over the battlefield,
-    // not forced (`arrow`'s frames: the log's new lines stay), the marked stack and the cursor
-    // left as they were; the click ends the aim.
-    let (o, legal) = (battle(), legal());
+fn a_hero_s_aim_follows_the_mouse() {
+    // E17 M5 T3b (design §7.18): the book takes the moves; the aim's cursor at the mouse as it
+    // starts, its hex not kept (a click casts nothing); over a target the spell cursor, the
+    // cast's line and the stack marked; elsewhere frame 0 and the reason, unmarked; the cursor
+    // again only over another hex than the one it took; a click casts at it.
+    let o = battle();
+    let mut legal = legal();
+    legal.aims = vec![arrow(false)];
+    let field = Field {
+        observation: &o,
+        legal: &legal,
+        facing: &Facing::Sides,
+        bugs: Bugs::Fixed,
+    };
+    let turns = [Turn { field, human: true }];
+    let over = |hex: u8, dx: i32| [centre(hex)[0] + dx, centre(hex)[1]];
+    let inputs = [
+        Input::Move { at: 0, to: PARK },
+        Input::Book { at: 0 },
+        Input::Move {
+            at: 0,
+            to: over(87, 0),
+        },
+        Input::Aim {
+            at: 0,
+            spell: 7,
+            creature: false,
+        },
+        Input::Act { at: 0 },
+        Input::Move {
+            at: 100,
+            to: over(90, 0),
+        },
+        Input::Move {
+            at: 150,
+            to: over(90, 5),
+        },
+        Input::Move {
+            at: 200,
+            to: over(86, 0),
+        },
+        Input::Move { at: 250, to: PARK },
+        Input::Move {
+            at: 260,
+            to: over(86, 0),
+        },
+        Input::Move {
+            at: 300,
+            to: over(90, 0),
+        },
+        Input::Act { at: 320 },
+    ];
+    let log = [(320, Logged::Action)];
+    let shown = run(&log, &[Start { unmarks: true }], &turns, &inputs);
+    assert_eq!(
+        texts(&shown),
+        [
+            "",
+            "SelectTarget",
+            "Cast(7, Some(1))",
+            "HostileOnly(7)",
+            "HostileOnly(7)",
+            "Cast(7, Some(1))",
+        ]
+    );
+    assert_eq!(
+        shown.spell,
+        [(100, Some(100)), (200, None), (300, Some(300)), (320, None)]
+    );
+    assert_eq!(shown.frames, [(0, 6), (0, 0), (200, 0), (320, 6)]);
+    assert_eq!(
+        shown.marked,
+        [(100, Some(1)), (200, None), (300, Some(1)), (320, None)]
+    );
+    assert_eq!(shown.entered, [(100, 1), (300, 1)]);
+    assert_eq!(
+        shown.aimed,
+        [
+            (100, Some(90)),
+            (200, None),
+            (260, None),
+            (300, Some(90)),
+            (320, None)
+        ]
+    );
+    let mouse = &layout().mouse;
+    assert_eq!(shown.look(150, mouse), Some(Look::Spell(0)));
+    assert_eq!(shown.look(250, mouse), Some(Look::Combat(0)));
+    assert_eq!(shown.look(319, mouse), Some(Look::Spell(0)));
+    assert_eq!(shown.look(400, mouse), Some(Look::Combat(6)));
+    assert_eq!(shown.aimed(150), Some(90));
+    assert_eq!(shown.aimed(400), None);
+    assert_eq!(Input::Cancel { at: 3 }.at(), 3);
+}
+
+#[test]
+fn the_spell_cursor_steps_and_starts_again() {
+    // `mouse_poll` steps its frame at each 100 ms of the clock; another hex's cursor draws its
+    // frame 0 again unless the frame shown is the one it asks (the spell's number + 1, 16).
+    let o = battle();
+    let mut legal = legal();
+    let mut aim = arrow(false);
+    aim.targets = vec![Target::Stack(1), Target::Stack(3)];
+    legal.aims = vec![aim];
     let field = Field {
         observation: &o,
         legal: &legal,
@@ -492,58 +639,154 @@ fn an_aimed_spell_hints_its_cast() {
     };
     let turns = [Turn { field, human: true }];
     let inputs = [
-        Input::Move { at: 0, to: PARK },
-        Input::Aim { at: 0, spell: 54 },
         Input::Move {
             at: 0,
             to: centre(90),
         },
-        Input::Move {
+        Input::Aim {
             at: 0,
-            to: centre(87),
+            spell: 7,
+            creature: false,
         },
         Input::Move {
-            at: 0,
-            to: [700, 570],
+            at: 1650,
+            to: centre(100),
         },
         Input::Move {
-            at: 0,
-            to: [400, 3],
-        },
-        Input::Act { at: 0 },
-        Input::Move {
-            at: 10,
+            at: 1700,
             to: centre(90),
         },
     ];
     let shown = run(&[], &[], &turns, &inputs);
-    let texts: Vec<(String, bool)> = shown
-        .log
-        .iter()
-        .filter_map(|(_, l)| match l {
-            Logged::Status { text, forced } => Some((text.clone(), *forced)),
-            _ => None,
-        })
-        .collect();
-    let s = |t: &str, f| (String::from(t), f);
+    assert_eq!(shown.spell, [(0, Some(0)), (1700, Some(1700))]);
+    let mouse = &layout().mouse;
+    assert_eq!(shown.look(99, mouse), Some(Look::Spell(0)));
+    assert_eq!(shown.look(100, mouse), Some(Look::Spell(1)));
+    assert_eq!(shown.look(1699, mouse), Some(Look::Spell(16)));
+    assert_eq!(shown.look(2050, mouse), Some(Look::Spell(3)));
+    assert_eq!(shown.look(3700, mouse), Some(Look::Spell(0)));
+    assert_eq!(spell_frame(0, 5, &layout().mouse), 0);
+}
+
+#[test]
+fn an_area_s_stacks_are_marked_and_an_aim_given_up() {
+    // An area spell marks the stacks of its area, over a hex it does not take too; given up, the
+    // marks go, the hero's book posts the mouse again (its hint where it rests), the Faerie
+    // Dragon's key leaves the pointer until another hex; a spell the turn does not offer is not
+    // aimed.
+    let o = battle();
+    let mut legal = legal();
+    legal.aims = vec![fireball(), arrow(true)];
+    let field = Field {
+        observation: &o,
+        legal: &legal,
+        facing: &Facing::Sides,
+        bugs: Bugs::Fixed,
+    };
+    let turns = [Turn { field, human: true }];
+    let aim = |at, spell, creature| Input::Aim {
+        at,
+        spell,
+        creature,
+    };
+    let to = |at, hex: u8| Input::Move {
+        at,
+        to: centre(hex),
+    };
+    let inputs = [
+        to(0, 90),
+        aim(10, 8, false),
+        to(20, 87),
+        to(30, 91),
+        Input::Cancel { at: 40 },
+        aim(50, 9, true),
+        to(60, 90),
+        Input::Cancel { at: 70 },
+        Input::Move {
+            at: 80,
+            to: [centre(90)[0] + 3, centre(90)[1]],
+        },
+        aim(90, 99, false),
+        to(95, 87),
+    ];
+    let shown = run(&[], &[], &turns, &inputs);
     assert_eq!(
-        texts,
+        shown.area,
+        [(10, vec![1]), (20, vec![0]), (30, vec![1]), (40, vec![]),]
+    );
+    assert_eq!(shown.area(25), [0]);
+    assert_eq!(shown.area(45), [] as [u8; 0]);
+    assert_eq!(
+        texts(&shown),
         [
-            s("Cast(54, Some(1))", false),
-            s("Cast(54, None)", false),
-            s("Control(\"battle.control.wait\")", false),
-            s("Empty", false),
-            s("Attack(1)", true),
+            "Attack(1)",
+            "Cast(8, None)",
+            "Cast(8, None)",
+            "SelectTarget",
+            "Empty",
+            "SelectTarget",
+            "Cast(9, Some(1))",
+            "Attack(1)",
+            "Move(0)",
         ]
     );
-    assert_eq!(shown.marked, [(10, Some(1))]);
-    assert_eq!(Input::Aim { at: 3, spell: 1 }.at(), 3);
+    // The marked stack stays through the area's aim; the Faerie Dragon's marks its target.
+    assert_eq!(
+        shown.marked,
+        [(0, Some(1)), (30, None), (60, Some(1)), (95, None)]
+    );
+    // The pointer after the key's aim until the mouse moves (the battle's hex is 91 still).
+    let mouse = &layout().mouse;
+    assert_eq!(shown.look(75, mouse), Some(Look::Combat(6)));
+    assert_eq!(shown.look(96, mouse), Some(Look::Combat(1)));
+}
+
+#[test]
+fn an_aim_at_an_empty_hex_marks_nothing() {
+    // A cancel before the mouse is anywhere posts nothing; a hex target the aim takes with no
+    // stack on it unmarks the mouse's stack and enters none.
+    let o = battle();
+    let mut legal = legal();
+    legal.aims = vec![Aim {
+        targets: vec![Target::Hex(87)],
+        stacks: false,
+        ..arrow(false)
+    }];
+    let field = Field {
+        observation: &o,
+        legal: &legal,
+        facing: &Facing::Sides,
+        bugs: Bugs::Fixed,
+    };
+    let turns = [Turn { field, human: true }];
+    let inputs = [
+        Input::Cancel { at: 0 },
+        Input::Move {
+            at: 1,
+            to: centre(90),
+        },
+        Input::Aim {
+            at: 2,
+            spell: 7,
+            creature: false,
+        },
+        Input::Move {
+            at: 3,
+            to: centre(87),
+        },
+    ];
+    let shown = run(&[], &[], &turns, &inputs);
+    assert_eq!(shown.marked, [(1, Some(1)), (2, None)]);
+    assert_eq!(shown.entered, [(1, 1)]);
+    assert_eq!(shown.aimed, [(3, Some(87))]);
+    assert_eq!(shown.spell, [(3, Some(3))]);
 }
 
 #[test]
 fn the_spell_book_empties_the_status_line() {
     // E17 M3 T7c-1: the book over the battle takes the mouse (a spell without a target is cast
-    // from it at once); a move back over the same hex writes its hint again.
+    // from it at once); E17 M5 T3b: it takes the moves until it closes, the battle then posted
+    // the mouse where it rests (its hint written again).
     let (o, legal) = (battle(), legal());
     let field = Field {
         observation: &o,
@@ -563,7 +806,8 @@ fn the_spell_book_empties_the_status_line() {
             at: 3,
             to: centre(87),
         },
-        Input::Move { at: 4, to: PARK },
+        Input::Cancel { at: 4 },
+        Input::Move { at: 5, to: PARK },
     ];
     let shown = run(&[], &[], &turns, &inputs);
     let texts: Vec<(u32, String)> = shown
@@ -580,8 +824,8 @@ fn the_spell_book_empties_the_status_line() {
     assert_eq!(texts.len(), 5);
     assert_eq!(texts[1], (1, empty.clone()));
     assert_eq!(texts[2], (2, String::new()));
-    assert_eq!(texts[3].1, texts[0].1);
-    assert_eq!(texts[4], (4, empty));
+    assert_eq!(texts[3], (4, texts[0].1.clone()));
+    assert_eq!(texts[4], (5, empty));
     assert_eq!(Input::Book { at: 4 }.at(), 4);
 }
 

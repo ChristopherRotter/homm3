@@ -514,8 +514,14 @@ fn guards_ask_or_fight_and_a_win_gives_the_artifact() {
     let ended = lost.end_unowned_battle(parts, (HERO, AT), (&left, false), &mut events);
     assert_eq!(ended, AdventureOutcome::default());
     assert_eq!(lost.guards_left(0), &left[..]);
+    // Won: the artifact after the winner's levels (E08 T63b, GAM-DEC-007: `give_won`).
     let ended = s.end_unowned_battle(parts, (HERO, AT), (&[], true), &mut events);
-    assert_eq!(ended, gives(&[add(RING)]));
+    assert_eq!(
+        (ended.reward_after, s.is_removed(0)),
+        (Some((HERO, AT)), false)
+    );
+    let won = s.give_won(parts, (HERO, AT), &mut events);
+    assert_eq!(won, gives(&[add(RING)]));
     assert!(s.is_removed(0));
 }
 

@@ -64,11 +64,12 @@ design note kept in `docs/epics/E05-log.md` (§1 to §9).
 - **Information:** only projected observations cross the batch (the acting side's, both sides' at
   a truncation). The fork, the state hash and the episode seeds are trusted tooling (`h3.h`,
   `h3env.tools`), never an agent's input. A search agent also reads *worlds* (ADR-0025 point
-  12a; C ABI v34, E06 T8b): copies of the battle in which what its side may not know is replaced
-  by a guess drawn from the world's seed (`h3_batch_determinize`, the engine's
-  `BattleState::determinized`; the stream re-seeded, `h3_env_reseed`), which it may fork and
-  step, for its side to move only (E06 T9b); the true state's fork and hash stay tooling. Its
-  known gaps are AI-STUB-1's (E25).
+  12a; C ABI v34, E06 T8b; scored by the batch's reward v1 since v35, E25 T1a): copies of the
+  battle in which what its side may not know is replaced by a guess drawn from the world's seed
+  (`h3_batch_determinize`, the engine's `BattleState::determinized`; the stream re-seeded,
+  `h3_env_reseed`), which it may fork and step, for its side to move only (E06 T9b); the true
+  state's fork and hash stay tooling, as does the true world of E25's diagnostic
+  (`h3_batch_true_world`, v35, T1b: nothing guessed). Its known gaps are AI-STUB-1's (E25).
 - **Python** (`python/`, package `h3env`): ctypes over the C ABI, the caller's numpy arrays
   written in place, the library's ABI version checked, short arrays refused and the outputs read-only; uv with
   CPython 3.12 (on the user's machine a conda Python); PyTorch 2.14 (CUDA 12.6) in the opt-in

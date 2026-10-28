@@ -569,7 +569,8 @@ impl<S: Sink> h3_adventure::Sink for AdventureSink<'_, S> {
 /// the trusted actor, then applied; the events go to `sink`. The system actor issues only an
 /// unowned side's battle commands ([`Actor::System`], E08 T20b2). While a level-up is open the
 /// game waits for its owner: every other actor's command is rejected (E08 T30, GAM-DEC-002).
-// rule: GAM-DEC-002
+/// After the command the rests whose owners have no open decision run (GAM-DEC-007, E08 T63b).
+// rule: GAM-DEC-002, GAM-DEC-007
 ///
 /// # Errors
 ///
@@ -582,6 +583,19 @@ pub fn apply<S: Sink>(
     sink: &mut S,
 ) -> Result<(), GameCommandError> {
     state.check_held(actor)?;
+    run(state, rules, actor, command, sink)?;
+    state.run_rests(rules, sink);
+    Ok(())
+}
+
+/// [`apply`]'s command, checked by the game's hold.
+fn run<S: Sink>(
+    state: &mut GameState,
+    rules: &GameRuleset,
+    actor: Actor,
+    command: GameCommand,
+    sink: &mut S,
+) -> Result<(), GameCommandError> {
     let (player, command) = match (actor, command) {
         (Actor::System, GameCommand::Battle(command)) => {
             return state.system_battle_command(rules, command, sink);

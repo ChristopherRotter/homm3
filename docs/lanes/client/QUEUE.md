@@ -9,7 +9,7 @@ Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12, M1 2026-10-13, M2 2026-10
 the adventure map client being the map-client lane's E24). M5 (live play) refined at M4's
 closure (T3c, 2026-10-27, with the user): hot seat in-process first, then a game on a server;
 its tasks below, in order (T1 and T2 done 2026-10-27, each cut in two by the user; T2b whole,
-the user; T3 cut in two, T3a done 2026-10-27). The original
+the user; T3 cut in two, T3a done 2026-10-27, T3b 2026-10-28). The original
 files: stage them from the user's `original-data/install/` (one large file per staging call; the
 user's computer must be online); never from the installation. The captures need the five DLLs,
 `Heroes3.snd`, `H3ab_ahd.snd` and `H3ab_ahd.vid` too; the harness's runbook:
@@ -17,21 +17,6 @@ user's computer must be online); never from the installation. The captures need 
 check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gate` from
 `clients/`. An asset fix gets its mechanism (ADR-0020 point 6: the entry's flag, the
 `faithful`/`fixed` profile) with the first one a task finds.
-
-### E17 M5 T3b — the hero's aim
-
-- **Scope:** `enter_player_cast` 0x59EC50's loop read (the targets it offers, `crspell.DEF`'s
-  cursor and its frames, the status line GENRLTXT 28 "Cast %s on %s" and 27, the cancel) and
-  built: a book's spell that takes a target aimed in the window (T3a closes the book on it and
-  casts nothing; design §7.17); the Faerie Dragon's cast through it (its F key, `battle_buttons`
-  0x475C17 to 0x475CD8: the drawn spell aimed as the hero's, action 10; moved here from T2 by the
-  user, 2026-10-27); `cast`'s 71 pixels (the battlefield redrawn over a rock's top for the
-  click's frame, 0x479038's path); unattended runs press a hero's casts through the book and the
-  aim (T3a gives them without a press). The detail: `QUEUE-ARCHIVE.md`, 2026-10-21 (T7b-1).
-  Recorded: an aimed cast (the cursor, the status line).
-- **Acceptance:** a hero's aimed cast through the book and a Faerie Dragon's by its key in the
-  window; the aim's sequence as recorded, or each difference listed; the Definition of Done.
-- **Depends on:** T3a (done 2026-10-27). **Status:** ready.
 
 ### E17 M5 T4 — the battle's dialogs
 
@@ -106,16 +91,20 @@ check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gat
 Other lanes add entries here. The client lane turns each into a task, or moves its detail into
 [`NOTES.md`](NOTES.md) and keeps one line here while the work waits.
 
-- 2026-10-27 (the map client lane, E24 M2 T6b2a; **for you to answer before E24 M3 T0**):
-  **the common crate, proposed.** E24's M2 decision moves what both viewers need into one crate
-  of the client workspace common to both lanes (`lanes.toml`'s foundation list: a `shared/`
-  pull request), at E24 M3 T0 (queued behind M2's closure): `h3-view`'s `clock` and `cursor`
-  (copied into `h3-map-view` at M2: the copies go), `ui`, `text`, `layout` and the parts of
-  `mouse` that are not the battle's (`screen_to_hex` and the battle's cursor stay); from
-  `h3-map-view` the key table `keys` (both viewers' keys through it: the 2026-10-26 entry below)
-  and perhaps `music` (the 2026-10-27 entry). Asked of you: what you would rather keep in
-  `h3-view`, what E17 M5's tasks will change in these meanwhile (the move then waits for a quiet
-  point), and a name if you have one; answer in the map client lane's inbox.
+- 2026-10-28 (the map client lane, E24 M3 T0; **decided by the user for both lanes**; the
+  proposal of 2026-10-27 as it stood: `docs/lanes/map-client/QUEUE-ARCHIVE.md`): **the common crate
+  `h3-ui`** (`clients/crates/h3-ui`, common to both client lanes as the foundation is: a
+  `shared/` pull request for `lanes.toml` first) takes `h3-view`'s `clock`, `cursor` with
+  `batch::Sprite`, `ui` (with draw items of its own instead of `scene::Draw`'s) and `text`, and
+  `h3-map-view`'s `keys` (generic over a viewer's commands) and `music`; `layout` and `mouse`
+  stay in `h3-view` (battle-only). The map client lane moves it as **E24 M3 T1a** in a
+  `cross-lane` pull request (the user's consent): `h3-view`'s imports change, nothing it draws
+  or plays. Then **E24 M3 T1b** takes `h3-view window`'s keys through the table (the 2026-10-26
+  entry below), **both windows' own keys the map's** (the user: F2 music, F3 effects, F5 pause,
+  F6 the next frame, F7 restart, F8 vsync, F9 the cursor's kind, F11 fullscreen, Esc quit; P,
+  →, Home, M, E, F, V and H gone), so M5 T3b's F key is free. Starting M5 T3b before T1a and
+  T1b merge means merging `master` in after them (the imports); the map client lane tells you
+  here when each merges.
 
 - 2026-10-27 (the map client lane, E24 M2 T6a2; for the battle's end tune when its sound is next
   touched): **the music thread read whole** (`docs/exe/map.toml`: `play_music` 0x59ACB0,

@@ -4,22 +4,29 @@ Pre-refined tasks of the adventure lane, in order, then the inbox of discovered 
 
 ## Tasks
 
-Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T51b (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 6 are closed (2026-10-12, -13, -20, -21, -23, -26; increment 6, army and hero management, by T53's audit). **Increment 7, rewards on the map**, refined with the user at T53 (ADV-Q26; decisions 121 to 123): T54 (the battle seam's facts) done; the survey and the ADR amendment drafts (T55a, T55b) done, each task's cut confirmed with the user at its start. T55a is cut in four (decision 125): all four done (survey `docs/rules/surveys/E08-rewards.md`; decisions 126 to 128 the cuts, its checkpoint ADV-Q28 decisions 129 to 136); T55b done (decision 137; its checkpoint ADV-Q29 decisions 138 to 141: the drafts accepted with typed answers, eight rounds with batch E7 first, design §19). T56 done (decision 142: whole, batch E7's maps and specs). Round 2: T57 done (decision 143: whole, the harness's reads, the recipes and the three runs), T58 done (decision 144: scored, A-23 withdrawn). T58b done (decision 144: `h3-map`'s view test's oracle; ADV-Q30, decision 145: A-25 a quirk with a flag). Round 3: T59 done (decision 146: whole, `shared/e08-t59`). Round 4: T60 in two (decision 147): T60a done (`adventure/e08-t60a`, the bonuses and the four changes), T60b done (`adventure/e08-t60b`, `grant` and the teachers). Round 5: T61 in two (decision 148): T61a done (`adventure/e08-t61a`, the import and the kinds), T61b done (`adventure/e08-t61b`, decision 149: whole, the bans, the draws and the state). Round 6: T62 in two (decision 150): T62a done (`adventure/e08-t62a`, the pickups, teachers and finds), T62b in two (decision 151: the rest stays in T63): T62b1 done (`adventure/e08-t62b1`, the record, the box and the Pyramid), T62b2 done (`adventure/e08-t62b2`, decision 152: whole, events and the move). Round 7: T63 in two (decision 153): T63a done (`adventure/e08-t63a`, `cross-lane`: the typed answers, the choices and the University, the env's purchase entries), T63b below. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
+Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T51b (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 6 are closed (2026-10-12, -13, -20, -21, -23, -26; increment 6, army and hero management, by T53's audit). **Increment 7, rewards on the map**, refined with the user at T53 (ADV-Q26; decisions 121 to 123): T54 (the battle seam's facts) done; the survey and the ADR amendment drafts (T55a, T55b) done, each task's cut confirmed with the user at its start. T55a is cut in four (decision 125): all four done (survey `docs/rules/surveys/E08-rewards.md`; decisions 126 to 128 the cuts, its checkpoint ADV-Q28 decisions 129 to 136); T55b done (decision 137; its checkpoint ADV-Q29 decisions 138 to 141: the drafts accepted with typed answers, eight rounds with batch E7 first, design §19). T56 done (decision 142: whole, batch E7's maps and specs). Round 2: T57 done (decision 143: whole, the harness's reads, the recipes and the three runs), T58 done (decision 144: scored, A-23 withdrawn). T58b done (decision 144: `h3-map`'s view test's oracle; ADV-Q30, decision 145: A-25 a quirk with a flag). Round 3: T59 done (decision 146: whole, `shared/e08-t59`). Round 4: T60 in two (decision 147): T60a done (`adventure/e08-t60a`, the bonuses and the four changes), T60b done (`adventure/e08-t60b`, `grant` and the teachers). Round 5: T61 in two (decision 148): T61a done (`adventure/e08-t61a`, the import and the kinds), T61b done (`adventure/e08-t61b`, decision 149: whole, the bans, the draws and the state). Round 6: T62 in two (decision 150): T62a done (`adventure/e08-t62a`, the pickups, teachers and finds), T62b in two (decision 151: the rest stays in T63): T62b1 done (`adventure/e08-t62b1`, the record, the box and the Pyramid), T62b2 done (`adventure/e08-t62b2`, decision 152: whole, events and the move). Round 7: T63 in two (decision 153): T63a done (`adventure/e08-t63a`, `cross-lane`: the typed answers, the choices and the University, the env's purchase entries), T63b done (`adventure/e08-t63b`; decision 154, whole: the visit's rests, the guard's wait fixed, `ClearBonuses`, the event after the guard). Round 8: T64 in two (decision 155): T64a done (`adventure/e08-t64a`, the rewards map, its replays and benchmarks); T64b + T65 below. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
 
-### E08 T63b — `h3-game`: the rest (design §14, §15)
+### E08 T64b — properties and the 144 × 144 maps (design §16; decision 155)
 
-- **Scope** (design §14's rest, §15; ADR-0017 points 6, 11; decision 141): the rest (GAM-DEC-007):
-  what a visit owes after a decision closes or a battle's levels are given, held by the game beside
-  the decisions and run when the hero has no level-up pending and no army dialog open (at once when
-  none): a record's experience (and its level-ups) after its army dialog closes, a won guarded
-  artifact's or scroll's pickup, a won box's or event's record and a won Pyramid's spell after the
-  winner's levels; `ArmyDialog`'s rest; an event on a guarded tile firing after the guard's visit
-  for a hero still on its tile (`ADV-QUIRK-29`; a flyer stopped there at its move's end for the
-  guard test); `ClearBonuses` after every battle, winner and loser, before the winner's levels
-  (GAM-BAT-014). Closes `ADV-STUB-10`; game state hash (next). The decisions' answers and the env
-  are T63a's (no `cross-lane` change expected).
+- **Scope** (design §16 but T64a's: the rewards map `fixtures/maps/e08-rewards-36.h3m`, its nine
+  replays, `random-play-rewards-36` and `fork-rewards-36`): `h3-map`'s properties (`play.rs`) with
+  increment 7's kinds in the plans (appended to `KINDS`, so the committed maps and the regression
+  files' cases keep theirs), visiting every kind and answering every decision, the invariants
+  after every command (marks only grow, an emptied find gives nothing, a removed object never
+  returns), a rejected command leaving the hash; the hidden-event property with guards; decision
+  133's test (a 144 × 144 two-level map with a box, and one with a Learning Stone, on every free
+  tile: builds, plays a few hundred steps with visits, forks within the gate's cost); the
+  benchmarks on those maps (`fork-xl-144` with the visits block live, a fork of the all-boxes
+  map; the benches README's rows a `shared/` change); `--with-original-data`.
 - **Cut:** confirmed with the user at its start.
-- **Depends on:** T63a (`adventure/e08-t63a`). **Status:** ready once T63a merges.
+- **Depends on:** T64a (`adventure/e08-t64a`). **Status:** ready once T64a merges.
+
+### E08 T65 — the audit (design §19)
+
+- **Scope:** increment 7's eight exit criteria (design §19) audited, the rules' statuses and
+  observations checked; increment 7 closed (its scope, decisions and tasks to `E08-archive.md`);
+  increment 8 refined with the user (the epic's sketch: boats, Navigation and the sea).
+- **Depends on:** T64b.
 
 ## Inbox
 

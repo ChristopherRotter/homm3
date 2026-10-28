@@ -9,6 +9,7 @@ mod fixtures;
 mod import;
 mod play;
 mod rewards;
+mod rewards_map;
 mod strategy;
 mod view;
 
