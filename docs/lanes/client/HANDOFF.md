@@ -39,7 +39,13 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
 
 ## Recent sessions
 
-- **2026-10-28, E17 M5 T3b (done; #536 open: check it first).** Whole (the user). Read the
+- **2026-10-28, E17 M5 T4a (in progress, `client/e17-m5-t4a`).** T4 cut in three with the user
+  (T4a the message box, Retreat and Surrender; T4b the result window; T4c Auto Combat and the
+  tactics phase). Read: the box (0x4F6570, 0x4F6990, its layout 0x4F5D80, its frame 0x48FF00,
+  the font measures 0x4B5A10/0x4B5990/0x4B5A80, the picture slot 0x4F4EB0), Retreat and
+  Surrender (0x474FA1 to 0x475151). Next: design §7.19, then `h3_view::message`.
+
+- **2026-10-28, E17 M5 T3b (done; #536 merged).** Whole (the user). Read the
   aim (design §7.18: 0x59EC50's handlers and ends, the loop 0x602520 with 0x5A3070, the cursor
   0x59F700, the cast's line 0x5A8690, the refusals 0x5A2880, the area's marks 0x59F8A0 and
   0x43EFE0, the spell cursor's frames in `mouse_poll`, the key F). Built `mouse::aim`, the aim in

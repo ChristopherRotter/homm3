@@ -171,10 +171,14 @@ the stacks created mid-battle.
     window's aim by the book or a Faerie Dragon's F, Escape or the right button giving it up,
     unattended casts pressed through the book and the aim); `spell-aim` recorded; `cast`'s 71
     pixels found to be the book's closing, a redraw artifact (listed); CLT-Q27.
-- **T4, the battle's dialogs:** surrender (its price) and retreat, the result window
-  (`battle_result_dialog` 0x4702D0, the screen darkened under it by 0x44E5F0), Auto Combat, the
-  tactics phase's panel (0x46C050), the message box (0x4F6990: the book's refusals and an
-  adventure spell's description, T3a's); read, drawn, recorded.
+- **T4, the battle's dialogs** (cut in three by the user, 2026-10-28): read, drawn, recorded.
+  - **T4a, the message box, Retreat and Surrender:** the box (0x4F6990), the book's refusals
+    and an adventure spell's description (T3a's), Retreat and Surrender with their
+    confirmations and the price.
+  - **T4b, the result window:** `battle_result_dialog` 0x4702D0, the screen darkened under it by
+    0x44E5F0.
+  - **T4c, Auto Combat and the tactics phase:** the panel dimmed, the tactics phase's panel
+    (0x46C050).
 - **T5, what a played battle shows:** the created stacks (`StackCreated`: Summon Elemental,
   Clone; a Pit Lord's `RoseFromCorpse`) with their dissolve (`screen_dissolve` 0x602DC0's blend,
   Sacrifice's victim's too), a clone's `Vanished`, Teleport's dissolve; the panel's side by each
