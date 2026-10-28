@@ -1202,3 +1202,49 @@ merged). The original data staged from the user's repo folder first (the exe, th
   timelines as recorded); the scoped verify no failing step. The sandbox's container restarted
   during the setup's baseline (its background run gone, the files kept): the gates run again on
   the branch.
+
+### M3 T1a — the common crate `h3-ui` (2026-10-28)
+
+On `shared/h3-ui-lane` (#541) and `map-client/e24-m3-t1a` (`cross-lane`, the user's consent at
+T0), the user present at the start; `master` at c4ae2fa1 (#540 merged). The original data staged
+from the user's repo folder first (the exe, the four LODs, both `.snd`, `H3ab_ahd.vid`, the five
+DLLs, `maps.tar`, `extracted.tar`, the whole `MP3/` folder); the link to the user's computer
+dropped later, as the user expected. Asked whether to cut the move at the seam between its plain
+moves (`clock`, `cursor`, `Sprite`, `text`, `music`) and its two redesigns (`ui`'s draw items, the
+generic key table), the user chose one pull request for all of T1a.
+
+- **#541** (`shared/`): `lanes.toml`'s client foundation gains `clients/crates/h3-ui/` (its
+  comment names the crate's parts and the decision); `docs/08-work-process.md`'s Common list names
+  it. The global HANDOFF names no foundation crate: unchanged.
+- **The crate** (`clients/crates/h3-ui`, pure, `no_std` + `alloc`, the workspace's lint header;
+  depends on `h3-assets`, `h3-render`, `serde`, `serde_json`, `toml`): `git mv` of `h3-view`'s
+  `clock`, `cursor`, `ui` (with its tests) and `text` (`keys`, `message`, `pack`, `plural`, tests)
+  and `h3-map-view`'s `keys` and `music` (with their tests); `sprite::Sprite`, the decoded DEF
+  (the two viewers' `batch::Sprite`, the same type, now one); `h3-map-view`'s `clock` and `cursor`
+  deleted. `tests/purity.rs`: `h3-map-view`'s with R2-15's fixes, trimmed to a crate without a
+  binary (no binary-only list; every folder under `src` walked). The headers of `clock`, `cursor`
+  and `music` say they are both viewers'.
+- **`ui`'s own draw items:** `h3_ui::ui::Draw` (`Picture`, `Button`, `Text`, `Darken`, `Label`,
+  as the battle scene's variants were, docs kept) and `PlayerColours`; `Dialog::draws` and
+  `shadow_draws` give them. `h3-view`'s scene takes them as one variant, `Draw::Dialog(ui::Draw)`
+  (`scene::panel` and `Book::draws` wrap the dialog's list); `compose` draws each inside
+  `Draw::Dialog` as before, `batch::names` names their assets as before. The tests' lists wrap
+  them the same way (a brace-matched rewrite of `Draw::<item> { … }`).
+- **The generic key table:** `h3_ui::keys::Command` (a viewer's commands: `all`, `name`,
+  `defaults`, `from_name` from them), `Keys<C>` (`original`, `with_file`, `command`, `chords`),
+  `Chord`; its tests with a small test type of commands (the defaults, the chords, a user's file
+  and its errors). `h3_map_view::keys` keeps the map's `Command` (its directions, the window's own
+  F-keys), its defaults (`DIRECTION_KEYS`, `KEYPAD_KEYS`, `WINDOW_KEYS`) and `action`, and
+  `Keys = h3_ui::keys::Keys<Command>`: the window's call sites as they were (the trait in scope
+  for `name`); its tests the map's defaults, names, actions and a user's file.
+- **The viewers:** `h3-view`'s library paths `crate::{clock, cursor, text, ui}` and its binary's
+  `h3_view::{…}` are `h3_ui::…` (the binary's own `text` adapter stays); `h3-map-view`'s window,
+  `paint` and `audio` take `h3_ui::{clock, cursor, keys::Chord, music}`; both packages depend on
+  `h3-ui`, both purity allowlists name it (`h3-view`'s `serde_json` is its binary's only now, left
+  in the list). `clients/README.md`'s crate table and foundation list; `E24-design.md`'s two
+  `music` paths; the client lane's inbox told (its imports, the scene's variant).
+- **Checked:** `clients/scripts/check.sh` all gates passed, coverage 100 % (regions, functions,
+  lines); `h3drive.py drawn` and `h3map.py drawn` all the same (no capture: nothing drawn or
+  played changed); the scoped verify no failing step. The container restarted during the setup's
+  baseline (its run gone): `master`'s client code was CI's (`Clients` green on 78f4aaa9), so the
+  gates ran on the branch only.
