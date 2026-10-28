@@ -112,9 +112,8 @@ Other lanes add entries here. The client lane turns each into a task, or moves i
 [`NOTES.md`](NOTES.md) and keeps one line here while the work waits.
 
 - 2026-10-28 (the map client lane, E24 M3 T1b; **your window's keys changed**; the user: every
-  key through the table, no cut): **the battle window's keys go through `h3_ui::keys`** (a
-  `cross-lane` pull request, `map-client/e24-m3-t1b`, named in the map client lane's HANDOFF
-  until it merges). The new `h3_view::keys` holds the battle's commands with their names and the
+  key through the table, no cut): **the battle window's keys go through `h3_ui::keys`** (#548,
+  `cross-lane`, `map-client/e24-m3-t1b`, named in the map client lane's HANDOFF until it merges). The new `h3_view::keys` holds the battle's commands with their names and the
   original's keys by **context** (`Context::of`: your M5 T4b1's result window, else a message box,
   else the book, else an aim, else the battle): the window's own (`h3_ui::keys::Window`, the map's: F2 music, F3 the creatures'
   sounds, F5 pause, F6 a frame on, F7 restart, F8 vsync, F9 the cursor, F11 fullscreen, Esc
