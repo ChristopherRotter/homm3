@@ -5,7 +5,7 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 ## Current state
 
 - **E08**: increments 1 to 6 **closed**. **Increment 7: rewards on the map** (decisions 121–155, ADV-Q26 to ADV-Q30): T54 to T63b done (T63b #533 merged); round 8: T64 in two (decision 155), **T64a** done (`adventure/e08-t64a`: the rewards map `fixtures/maps/e08-rewards-36.h3m`, its nine golden replays, `random-play-rewards-36`, `fork-rewards-36`). Records: `E08-log.md`; increment 6's in `E08-archive.md`.
-- **Open pull requests:** T64a's, from `adventure/e08-t64a`, and #537 (`shared/e08-t64a-benches`: the benches README's two rows for its workloads).
+- **Open pull requests:** T64a's, from `adventure/e08-t64a`, and #537 (`shared/e08-t64a-benches`: the benches README's two rows for its workloads, `docs/06-security.md`'s increment 7 block that T62a left for a `shared/` change).
 - **Next:** merge T64a's pull requests; then T64b (`QUEUE.md`: the properties, the hidden-event property with guards, decision 133's 144 × 144 maps and their benchmarks) and T65 (the audit, increment 7 closed), each cut confirmed at its start.
 - **Versions** (`docs/08-work-process.md`, "Versions"): game state hash v19 (T63b), adventure state hash v15 (T62b2), adventure ruleset part v12 (T61a), map import v13 (`MAP_IMPORT_VERSION`, T61b), adventure replay format v7 (T63a); the env's action encoding v5 is the AI lane's (T63a's `cross-lane` bump). Built so far, by area: `OVERVIEW.md`; ownership: `lanes.toml` (the details are in `OVERVIEW.md`, "Ownership").
 - **ADRs accepted**: ADR-0015 to -0017 (2026-10-10), amended for increments 2 to 7 (last: T59, with ADR-0013).

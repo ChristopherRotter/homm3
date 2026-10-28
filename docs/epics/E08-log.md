@@ -7004,7 +7004,8 @@ its code (CI's fingerprint); the original data staged from the user's computer.
   Ir, 2 576 a fork (`fork-xl-144`: 3 564), the forks carrying the visits block;
   `BenchResult::visits` and the bench's line "forks with the visits block" (the CLI's bench test:
   none of the duel's forks, the rewards map's game's). The benches README's two rows:
-  `shared/e08-t64a-benches`.
+  `shared/e08-t64a-benches` (#537), with `docs/06-security.md`'s increment 7 block (ADV-VIS-006,
+  ADV-FOG-007), the line T62a left for the next `shared/` change.
 - *Agent's calls (change freely):* decision 155's.
 - **Versions:** none.
 - **Gates:** the scoped verify with the original data passed every step (coverage, determinism
