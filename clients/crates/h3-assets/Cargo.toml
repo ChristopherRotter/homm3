@@ -1,6 +1,6 @@
 [package]
 name = "h3-assets"
-description = "Pure decoders for the original game's assets: palettes, PCX, DEF, MSK, the bitmap fonts, the sound archives and their WAVs, later video. Bytes in, typed data out; LOD archives through h3-formats."
+description = "Pure decoders for the original game's assets: palettes, PCX, DEF, MSK, the bitmap fonts, the sound archives and their WAVs, the video archives' directories. Bytes in, typed data out; LOD archives through h3-formats."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

@@ -25,6 +25,7 @@ mod sounds;
 mod spellbook;
 mod sprite;
 mod text;
+mod video;
 mod window;
 
 use std::process::ExitCode;
@@ -140,6 +141,14 @@ commands:
           from the installation copy's Heroes3.exe and H3bitmap.lod, keyed by the packs (default
           the repository's packs/); prints the gaps. The committed tables (clients/assets) are
           source edited by hand: diff a fresh harvest against them, never overwrite them.
+  video [<name>...] [--vid <file>] [--out <dir>] [--reference <dir>] [--sample <seed>]...
+          decodes the Bink clips of a video archive (default the repository's
+          original-data/battle-videos.vid; a game's Data/VIDEO.VID) with h3-bink, the named ones
+          (by name or stem) or all, and the synthetic samples of the seeds given (h3_bink's
+          build::sample): writes each to <out> (default clients/out/video) as <name> and its
+          frames as <stem>.yuv (raw YUV 4:2:0, as FFmpeg's rawvideo yuv420p), prints each
+          clip's size, frames and hash; --reference compares each with <dir>/<stem>.yuv (exit 1
+          on a difference). clients/scripts/bink-check.sh runs it against FFmpeg.
   help    show this message
 ";
 
@@ -179,6 +188,10 @@ fn main() -> ExitCode {
             },
             "text" => match text::Options::parse(rest) {
                 Ok(options) => text::run(&options),
+                Err(message) => usage_error(&message),
+            },
+            "video" => match video::Options::parse(rest) {
+                Ok(options) => video::run(&options),
                 Err(message) => usage_error(&message),
             },
             "window" => match window::Options::parse(rest) {

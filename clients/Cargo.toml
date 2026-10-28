@@ -6,6 +6,8 @@
 resolver = "3"
 members = [
     "crates/h3-assets",
+    # The Bink video decoder (E17 M5 T4b2a, CLT-Q29): a port of FFmpeg's, pure.
+    "crates/h3-bink",
     "crates/h3-render",
     "crates/h3-sdl",
     # What both viewers share (E24 M3 T1a, the user's decision at T0): common to both client lanes.
@@ -25,6 +27,7 @@ publish = false
 [workspace.dependencies]
 # Client crates.
 h3-assets = { path = "crates/h3-assets" }
+h3-bink = { path = "crates/h3-bink" }
 h3-render = { path = "crates/h3-render" }
 h3-sdl = { path = "crates/h3-sdl" }
 h3-ui = { path = "crates/h3-ui" }
