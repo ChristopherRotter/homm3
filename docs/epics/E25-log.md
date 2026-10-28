@@ -56,4 +56,6 @@ an entry only where a task builds on it.
   the true world equals a single env of the episode re-seeded, both sides' observations
   included, where a determinized world guesses the other hero), `test_search.py`
   (`test_a_search_takes_true_worlds_only_when_asked`: without the flag no true world is read,
-  with it none is guessed; the report with `--true-worlds`).
+  with it none is guessed; the report with `--true-worlds`). 140 Python tests with torch on the
+  CPU (the CUDA one skipped); the scoped verify, `determinism` and `bench-check --workload
+  random-rollouts-full` (−0.01 %) green.
