@@ -8,8 +8,8 @@ use h3_formats::lod::LodArchive;
 use h3_formats::text::{TextTable, decode_windows_1252};
 use h3_map::writer::{
     ARTIFACT_OBJECT, ARTIFACT_SLOTS, EVENT_OBJECT, GROUND_OBJECTS, ObjectTemplate, PANDORA_OBJECT,
-    PLAIN_OBJECTS, RANDOM_ARTIFACT_OBJECTS, SCROLL_OBJECT, SHRINE_OBJECTS, TOWN_OBJECT,
-    WITCH_HUT_OBJECT,
+    PLAIN_OBJECTS, RANDOM_ARTIFACT_OBJECTS, SCROLL_OBJECT, SHRINE_OBJECTS, SIGN_OBJECTS,
+    TOWN_OBJECT, WITCH_HUT_OBJECT,
 };
 
 /// Object class of a fixed wandering monster (subclass = creature id).
@@ -83,7 +83,8 @@ pub struct Tables {
     /// the file's order.
     pub grounds: Vec<ObjectTemplate>,
     /// Templates of the visitable objects without a body (`Objects.txt`, the classes of
-    /// [`PLAIN_OBJECTS`]: the Cartographers; E08 T32a), in the file's order.
+    /// [`PLAIN_OBJECTS`]: the Cartographers, E08 T32a; since E08 T67 the boats, the sea's
+    /// pickups but the bottle, the holes), in the file's order.
     pub plains: Vec<ObjectTemplate>,
     /// Town templates (`Objects.txt`, class [`TOWN_OBJECT`]) as (faction, template; E04c T5b).
     pub towns: Vec<(u32, ObjectTemplate)>,
@@ -94,7 +95,7 @@ pub struct Tables {
 
 /// Whether the writer's reward objects take this class (E08 T56): an artifact (5), a random
 /// artifact (65–69), Pandora's Box (6), an event (26), a Shrine (88–90), a Spell Scroll (93), a
-/// Witch Hut (113).
+/// Witch Hut (113); since E08 T67 the Ocean Bottle (59) and the sign (91).
 pub fn is_reward(class: u32) -> bool {
     [
         ARTIFACT_OBJECT,
@@ -106,6 +107,7 @@ pub fn is_reward(class: u32) -> bool {
     .contains(&class)
         || RANDOM_ARTIFACT_OBJECTS.contains(&class)
         || SHRINE_OBJECTS.contains(&class)
+        || SIGN_OBJECTS.contains(&class)
 }
 
 impl Tables {
