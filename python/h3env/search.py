@@ -17,7 +17,8 @@ The root takes the Gumbel-top-k of the legal entries and sequential halving over
 below it every entry legal at its first evaluation; a cast's heads, at the root as below, are the
 network's most likely in order (one spell and target per cast entry: the design's Gumbel-perturbed
 heads at the root were not built, E06 T9b). Neither takes an escape (the batch's masks, ADR-0025
-point 7). Every env the agent moves is
+point 7), and both keep the network's tactics bound (`[network] tactics_rounds`, E25 T4a): a node
+counts the phase's turns of its path onto the true battle's. Every env the agent moves is
 searched at once: a simulation round evaluates one leaf per env in one network call. A chosen
 action the true battle refuses (a cast whose target the world's guess made legal) gives way to
 the network's own most likely action.
@@ -40,9 +41,10 @@ import torch
 
 from . import _ffi
 from ._ffi import H3Error
-from .batch import BattleBatch
+from .batch import BattleBatch, count_tactics_turns
 from .tools import Env
-from .train.policy import CASTS, Policy, masked
+from .train import layout as L
+from .train.policy import CASTS, Policy, bounded, masked
 
 #: The entries the batch masks out (ADR-0025 point 7), which a world's own mask keeps.
 ESCAPES = [_ffi.RETREAT, _ffi.SURRENDER]
@@ -87,16 +89,23 @@ def softmax(x: np.ndarray) -> np.ndarray:
     return z / z.sum()
 
 
+def no_turns() -> np.ndarray:
+    """A tactics phase's turns before any (`BattleBatch.tactics_turns`' row)."""
+    return np.zeros(L.STACK_CAPACITY, np.uint16)
+
+
 @dataclass
 class Node:
     """A node of the open-loop tree: the side to move, its candidate actions (`[m, 4]`: entry,
-    spell, target, second) with the prior's log-probabilities, the network's value for that side
-    and each action's visits, summed values (that side's) and child."""
+    spell, target, second) with the prior's log-probabilities, the network's value for that side,
+    the turns of the tactics phase up to it (the phase draws nothing, so every world's path has
+    the same) and each action's visits, summed values (that side's) and child."""
 
     side: int
     actions: np.ndarray
     logits: np.ndarray
     value: float
+    turns: np.ndarray = field(default_factory=no_turns)
     visits: np.ndarray = field(init=False)
     total: np.ndarray = field(init=False)
     children: list = field(init=False)
@@ -157,11 +166,14 @@ class Leaf:
 
 @dataclass
 class Search:
-    """One env's decision: its worlds, side, root, the root's Gumbels and schedule."""
+    """One env's decision: its worlds, side, the tactics phase's turns and round at it (the
+    batch's), its root, the root's Gumbels and schedule."""
 
     env: int
     side: int
     worlds: list
+    turns: np.ndarray = field(default_factory=no_turns)
+    round: int = 0
     root: Node | None = None
     gumbel: np.ndarray | None = None
     sequence: list = field(default_factory=list)
@@ -223,11 +235,15 @@ class Searcher:
         for e in rows:
             side = int(batch.to_move[e])
             worlds = [self.world(batch, int(e), side) for _ in range(self.n_worlds)]
-            searches.append(Search(int(e), side, worlds))
+            turns, round_ = batch.tactics_turns[e].copy(), int(batch.tactics_round[e])
+            searches.append(Search(int(e), side, worlds, turns, round_))
+        legal = bounded(
+            batch.entry_mask[rows], batch.tactics_round[rows], self.policy.tactics_rounds
+        )
         try:
             self.expand([Leaf(s.worlds[0], s.side, [], s, root=True) for s in searches])
-            for s in searches:
-                self.plant(s, batch.entry_mask[s.env].astype(bool))
+            for i, s in enumerate(searches):
+                self.plant(s, legal[i].astype(bool))
             for simulation in range(self.simulations):
                 leaves = []
                 for s in searches:
@@ -330,6 +346,15 @@ class Searcher:
         # A world is a single env, whose mask keeps the escapes the batch never allows
         # (ADR-0025 point 7): no side retreats or surrenders in the tree either (E06 T9b).
         masks[:, ESCAPES] = 0
+        # The tactics bound (E25 T4a): a root's turns are the batch's, a leaf below counts its
+        # observation onto its parent's.
+        root = np.array([leaf.root for leaf in leaves])
+        turns = np.stack(
+            [leaf.search.turns if leaf.root else leaf.path[-1][0].turns for leaf in leaves]
+        )
+        rounds = count_tactics_turns(turns, obs, ~root & (masks[:, L.END_TACTICS] != 0))
+        rounds[root] = [leaf.search.round for leaf in leaves if leaf.root]
+        masks = bounded(masks, rounds, policy.tactics_rounds)
         h = policy.encode(torch.from_numpy(obs).to(self.device))
         values = policy.value(h).cpu().numpy().astype(np.float64)
         legal = torch.from_numpy(masks).to(self.device).bool()
@@ -343,7 +368,9 @@ class Searcher:
                 at = np.nonzero(entries == cast)[0]
                 if len(at):
                     actions[at[0], 1:] = heads[c][r]
-            node = Node(leaf.side, actions, logp[r, entries].astype(np.float64), float(values[r]))
+            node = Node(
+                leaf.side, actions, logp[r, entries].astype(np.float64), float(values[r]), turns[r]
+            )
             if leaf.root:
                 leaf.search.root = node
                 continue
