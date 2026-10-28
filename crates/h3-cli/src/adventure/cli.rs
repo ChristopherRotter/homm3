@@ -296,6 +296,10 @@ fn bench(args: &Args) -> Result<(), String> {
             "forks with a battle open: {} of {} games",
             r.battles, options.games
         );
+        println!(
+            "forks with the visits block: {} of {} games",
+            r.visits, options.games
+        );
     }
     if workload == Workload::Manage || options.meeting {
         println!("a meeting open: {} of {} games", r.meetings, options.games);
