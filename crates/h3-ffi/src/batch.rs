@@ -138,6 +138,10 @@ pub struct H3BatchBuffers {
     /// entry's first strike, what the original shows a player; 0 for an entry not legal or without
     /// a side to move; C ABI v33, AI-Q7 (b)).
     pub preview: *mut f32,
+    /// [N, 2]: each side's potential, reward v1 at the batch's settings as if the battle ended
+    /// now (attacker, defender; 0 for an env that gave up), for a training's shaping (C ABI v35,
+    /// E25 T2a; `h3_sim::reward::potential`).
+    pub potential: *mut f32,
 }
 
 /// An episode source entry's engine identity (v31, E06 T2c): what a training run's record names,
@@ -245,6 +249,7 @@ unsafe fn with_outputs(
             entry_mask: rows(b.entry_mask, n * ACTION_COUNT),
             final_obs: rows(b.final_obs, n * 2 * OBSERVATION_LEN),
             preview: rows(b.preview, n * PREVIEW_LEN),
+            potential: rows(b.potential, n * 2),
             reports: None,
         }
     });
@@ -706,7 +711,9 @@ pub unsafe extern "C" fn h3_batch_scenario_info(
 /// T8; `h3_sim::BattleBatch::determinize`, ADR-0025 point 12a): a new single env (destroy it with
 /// `h3_env_destroy`) whose battle is the env's with everything `viewer` may not know replaced
 /// (the other side's hero guessed by the env's encounter distribution, its hidden obstacles and a
-/// drawn spell drawn again, the stream re-seeded), the agent's to fork, step and observe. Null
+/// drawn spell drawn again, the stream re-seeded), the agent's to fork, step and observe; its
+/// steps (its forks' too) score a decided battle by the batch's reward v1 (v35, E25 T1a), the
+/// batch's reward for the same battle, where any other single env scores ±1. Null
 /// for a null or not reset batch, an env past it or not playing, or a `viewer` other than the
 /// env's side to move (E06 T9b: a world of the other side would hold its own hero as it is, which
 /// its opponent, the agent, may not know).
@@ -730,6 +737,41 @@ pub unsafe extern "C" fn h3_batch_determinize(
             .determinize(env as usize, viewer, seed)
             .ok()
             .filter(|_| acting == Some(viewer))
+            .map(|w| Box::new(H3Env::new(w)))
+    }));
+    world
+        .ok()
+        .flatten()
+        .map_or(std::ptr::null_mut(), Box::into_raw)
+}
+
+/// A true world of env `env`'s battle from `seed` (v35, E25 T1b;
+/// `h3_sim::BattleBatch::true_world`): a new single env (destroy it with `h3_env_destroy`) whose
+/// battle is the env's with nothing guessed, its stream re-seeded, scored as a world. Trusted
+/// tooling, a diagnostic: it reads the whole state, never an agent's input (ADR-0025 point 12a).
+/// Null for a null or not reset batch, or an env past it or not playing.
+///
+/// # Safety
+/// `batch` must be null or a live handle not used concurrently.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn h3_batch_true_world(
+    batch: *const H3Batch,
+    env: u32,
+    seed: u64,
+) -> *mut H3Env {
+    // SAFETY: per the contract.
+    let Some(h) = (unsafe { batch.as_ref() }) else {
+        return std::ptr::null_mut();
+    };
+    let world = catch_unwind(AssertUnwindSafe(|| {
+        let playing = h
+            .batch
+            .env(env as usize)
+            .is_some_and(|e| e.to_move().is_some());
+        h.batch
+            .true_world(env as usize, seed)
+            .ok()
+            .filter(|_| playing)
             .map(|w| Box::new(H3Env::new(w)))
     }));
     world

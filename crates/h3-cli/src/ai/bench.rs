@@ -96,6 +96,7 @@ impl Arrays {
             entry_mask: Some(&mut self.mask),
             final_obs: None,
             preview: (!self.preview.is_empty()).then_some(self.preview.as_mut_slice()),
+            potential: None,
             reports: Some(&mut self.reports),
         }
     }

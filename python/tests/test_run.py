@@ -6,6 +6,7 @@ and config."""
 
 from __future__ import annotations
 
+import dataclasses
 import json
 import signal
 from pathlib import Path
@@ -42,6 +43,7 @@ from h3env.train.run import (
     load_config,
     resumed,
     segment_seed,
+    trainable,
 )
 
 PYTHON = Path(__file__).resolve().parents[1]
@@ -121,6 +123,7 @@ lr_schedule = "constant"
         ("", ["league.system_share=1.5"], "`system_share` lies in"),
         ("", ["league.system_share=0.25"], "needs `\\[env\\] kinds`"),
         ("", ["league.system_share=0.25", "env.kinds=[1, 0, 0, 0, 0, 1]"], "needs a player kind"),
+        ("", ["ppo.shaping=true", "ppo.truncation_penalty=0"], "`shaping` needs"),
         ("", ["ppo.lr"], "table.key=value"),
         ("seed = [", [], "not TOML"),
         ("", ["ppo.lr_schedule=cosine"], "linear or constant"),
@@ -609,6 +612,43 @@ def test_every_committed_record_and_config_is_valid() -> None:
     assert configs
     for path in configs:
         load_config(path.read_text(encoding="utf-8"))
+
+
+@pytest.mark.parametrize(
+    ("sets", "message"),
+    [
+        (["league.system_share=0.25", "env.kinds=[0, 0, 1, 0, 0, 0]"], "`system_share` above 0"),
+        (["env.kinds=[1, 0, 1, 0, 0, 0]"], "weighs wandering, whose defender"),
+        (["env.kinds=[0, 2, 1, 0, 0, 3]"], "weighs guards, siege_neutral"),
+    ],
+)
+def test_a_mix_with_the_faithful_system_actor_trains_nothing(sets: list[str], message: str) -> None:
+    # E25 decision 2 (ADR-0026 point 8 as amended), the user's choice at T2a: no `system_share`,
+    # no neutral kind (its defender is the system actor). Such a config still loads (E06's
+    # configs and records stay valid); `ppo.train` and `ppo.resume` refuse it.
+    config = load_config("", sets)
+    with pytest.raises(ConfigError, match=message):
+        trainable(config)
+
+
+def test_e25s_configs_train_and_e06s_mixes_do_not() -> None:
+    # E25 T2a: the A/B runs' configs (T2b) train on the player kinds alone, `t7-1`'s settings
+    # otherwise, the second with shaping; E06's mixes with the system actor are refused.
+    configs = PYTHON / "configs"
+    control, shaping = (
+        load_config((configs / f"e25-{n}.toml").read_text()) for n in ("control", "shaping")
+    )
+    for config in (control, shaping):
+        trainable(config)
+    assert (control.shaping, shaping.shaping) == (False, True)
+    t7 = load_config((configs / "e06-t7.toml").read_text())
+    assert dataclasses.replace(control, name="", shaping=False) == dataclasses.replace(
+        t7, kinds=[0, 0, 100, 50, 25, 0]
+    )
+    for name in ("e06-t6b", "e06-t7"):
+        with pytest.raises(ConfigError, match="trains no agent"):
+            trainable(load_config((configs / f"{name}.toml").read_text()))
+    trainable(load_config(""))  # the distribution's defaults weigh no neutral kind
 
 
 def test_the_league_draws_scores_and_retires() -> None:

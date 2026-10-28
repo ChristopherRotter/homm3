@@ -1,0 +1,29 @@
+# E25 T2b's shaping run (T2a): `e25-control.toml` with potential-based shaping (`[ppo] shaping`:
+# each learning side's transition gains Φ(s′) − Φ(s), Φ its reward v1 as if the battle ended
+# there; an episode's shaped return is its reward v1 at γ 1). The run's length is the control's:
+#
+#   uv run --group train python -m h3env.train --config configs/e25-shaping.toml --out runs/e25-shaping-1
+#   uv run --group train python -m h3env.train --resume runs/e25-shaping-1
+
+seed = 1
+samples = 20_000_000
+
+[env]
+kinds = [0, 0, 100, 50, 25, 0]
+
+[ppo]
+shaping = true
+
+[league]
+self_play = 0.5
+snapshot_every = 1_000_000
+max_members = 16
+live = 4
+live_every = 250_000
+
+[gate]
+gate_every = 10_000_000
+
+[ladder]
+ladder_episodes = 250
+ladder_final_episodes = 500

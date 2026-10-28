@@ -10,9 +10,8 @@ keyed by action histories, each simulation takes a world (round robin), forks it
 stream from the agent's own and replays its path; a node keeps its first evaluation's prior and
 selects among the actions legal in the simulation's world. Inside the tree the network plays both
 sides, each from its own observation of the world. Values are the side to move's: the value head
-at a leaf, and at a terminal the world's step reward, ±1 by the winner (a single env's; not
-reward v1, the value head's scale: E06 T9b found it, a fix needs the single env's reward v1 and
-is E25's).
+at a leaf, and at a terminal the world's step reward, the batch's reward v1 (C ABI v35, E25 T1a:
+the value head's scale; E06 T8c's worlds scored ±1, which E06 T9b found).
 
 The root takes the Gumbel-top-k of the legal entries and sequential halving over them; a node
 below it every entry legal at its first evaluation; a cast's heads, at the root as below, are the
@@ -24,7 +23,9 @@ action the true battle refuses (a cast whose target the world's guess made legal
 the network's own most likely action.
 
 `python -m h3env.search --time` times a decision; `--report --best <best.pt>` plays the search
-and the sampled policy on the same held-out episodes (E06 T8c).
+and the sampled policy on the same held-out episodes (E06 T8c). With `--true-worlds` (E25 T1b) the
+worlds are the true battle's copies (`BattleBatch.true_world`: nothing guessed, the stream
+re-seeded), a trusted diagnostic of what the guess costs, never an agent: it reads the whole state.
 """
 
 from __future__ import annotations
@@ -185,10 +186,18 @@ class Search:
 
 class Searcher:
     """The search with `policy` (no kill preview: a single env writes none), `simulations` per
-    decision over `worlds` worlds, `k` actions considered at the root; its draws from `rng`."""
+    decision over `worlds` worlds, `k` actions considered at the root; its draws from `rng`. With
+    `true_worlds` the worlds are the true battle's (a trusted diagnostic, E25 T1b), else the
+    side's determinized ones."""
 
     def __init__(
-        self, policy: Policy, simulations: int, worlds: int, k: int, rng: np.random.Generator
+        self,
+        policy: Policy,
+        simulations: int,
+        worlds: int,
+        k: int,
+        rng: np.random.Generator,
+        true_worlds: bool = False,
     ) -> None:
         if policy.reads_preview:
             raise ValueError("the search's network reads no kill preview")
@@ -199,6 +208,7 @@ class Searcher:
         self.n_worlds = worlds
         self.k = k
         self.rng = rng
+        self.true_worlds = true_worlds
         self.device = next(policy.parameters()).device
         self.stats = {"decisions": 0, "simulations": 0, "evaluations": 0, "fallbacks": 0}
 
@@ -212,7 +222,7 @@ class Searcher:
         searches = []
         for e in rows:
             side = int(batch.to_move[e])
-            worlds = [batch.determinize(int(e), side, self.seed()) for _ in range(self.n_worlds)]
+            worlds = [self.world(batch, int(e), side) for _ in range(self.n_worlds)]
             searches.append(Search(int(e), side, worlds))
         try:
             self.expand([Leaf(s.worlds[0], s.side, [], s, root=True) for s in searches])
@@ -235,6 +245,13 @@ class Searcher:
                 for w in s.worlds:
                     w.close()
         return out
+
+    def world(self, batch: BattleBatch, env: int, side: int) -> Env:
+        """A world of env `env`'s battle for its side to move `side`: determinized, or with
+        `true_worlds` the true battle's copy."""
+        if self.true_worlds:
+            return batch.true_world(env, self.seed())
+        return batch.determinize(env, side, self.seed())
 
     def plant(self, s: Search, legal: np.ndarray) -> None:
         """The root's Gumbel-top-k candidates among the entries the true battle allows (`legal`;
@@ -398,17 +415,24 @@ def legal_in(batch: BattleBatch, rows: np.ndarray, actions: np.ndarray) -> np.nd
     return ok
 
 
-def search(policy: Policy, simulations: int = 32, worlds: int = 8, k: int = 16, limit: int = 1):
+def search(
+    policy: Policy,
+    simulations: int = 32,
+    worlds: int = 8,
+    k: int = 16,
+    limit: int = 1,
+    true_worlds: bool = False,
+):
     """The search as `evaluate.report`'s agents (`make_agent(seed, side)`, as `evaluate.sampled`):
     each searches the envs it moves that have played fewer than `limit` episodes (`report`'s
     battles: one each), the others take a random legal action (their battles count for nothing);
-    its draws (Gumbels, worlds, streams) from a generator seeded `seed`. `make.searchers` keeps
-    each agent's `Searcher` (its `stats`)."""
+    its draws (Gumbels, worlds, streams) from a generator seeded `seed`; `true_worlds` the
+    diagnostic's (`Searcher`). `make.searchers` keeps each agent's `Searcher` (its `stats`)."""
     searchers = []
 
     def make(seed: int, side: str = "attacker"):
         rng = np.random.default_rng(seed)
-        searcher = Searcher(policy, simulations, worlds, k, rng)
+        searcher = Searcher(policy, simulations, worlds, k, rng, true_worlds)
         searchers.append(searcher)
 
         def agent(batch: BattleBatch) -> None:
@@ -449,6 +473,11 @@ def parser() -> argparse.ArgumentParser:
     p.add_argument("--simulations", type=int, default=16)
     p.add_argument("--worlds", type=int, default=8)
     p.add_argument("--k", type=int, default=16, help="actions considered at the root")
+    p.add_argument(
+        "--true-worlds",
+        action="store_true",
+        help="search the true battle's copies (a trusted diagnostic, E25 T1b; never an agent)",
+    )
     p.add_argument("--seed", type=int, default=1)
     p.add_argument("--envs", type=int, default=16, help="--time: the batch's envs")
     p.add_argument("--decisions", type=int, default=2, help="--time: batch calls to time")
@@ -482,7 +511,9 @@ def time_decisions(args) -> dict:
     batch = BattleBatch(args.envs, seed=args.seed, max_steps=2000)
     batch.add_encounters(kinds=[0, 0, 2, 1, 1, 0])
     batch.reset()
-    make = search(policy, args.simulations, args.worlds, args.k, limit=10**9)
+    make = search(
+        policy, args.simulations, args.worlds, args.k, limit=10**9, true_worlds=args.true_worlds
+    )
     agent = make(args.seed)
     start = time.perf_counter()
     for _ in range(args.decisions):
@@ -516,12 +547,13 @@ def measure(args) -> dict:
         raise SystemExit("--report needs --best (a saved network)")
     policy = network(args)
     settings = dict(opponent=args.opponent, per_kind=args.per_kind, held_out=args.set)
-    make = search(policy, args.simulations, args.worlds, args.k)
+    make = search(policy, args.simulations, args.worlds, args.k, true_worlds=args.true_worlds)
     out = {
         "settings": {
             "best": args.best,
             "simulations": args.simulations,
             "worlds": args.worlds,
+            "true_worlds": args.true_worlds,
             "k": args.k,
             **settings,
         },
