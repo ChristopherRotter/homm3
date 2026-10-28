@@ -233,8 +233,11 @@ proptest! {
     /// An event anywhere a hero may stand, of any colours and flags, guarded or not, for a blue
     /// that counts as human or not: until it fires, every player's observation, legal commands,
     /// legal moves and told events are those of the game without it (design §12; ADV-FOG-007,
-    /// ADV-MOV-011).
-    // covers: ADV-FOG-007, ADV-MOV-011, ADV-OBJ-007
+    /// ADV-MOV-011). Since E08 T64b in both games a wandering monster of any disposition in half
+    /// the cases, which guards the event's tile when it stands beside it: the event waits for the
+    /// guard's visit (its offers answered, its battle and levels given; GAM-DEC-007) and shows
+    /// nothing while it is held.
+    // covers: ADV-FOG-007, ADV-MOV-011, ADV-OBJ-007, ADV-MON-006, GAM-DEC-007
     #[test]
     fn a_hidden_event_changes_nothing_a_player_sees_until_it_fires(
         tile in 0u16..15,
@@ -243,12 +246,25 @@ proptest! {
         human in any::<bool>(),
         seed in 0u64..64,
         choices in vec(any::<u16>(), 1..48),
+        monster in proptest::option::of((0u16..15, 0u8..5)),
     ) {
         let rules = rules();
         let at = Pos::new(tile % 4, tile / 4, 0);
         prop_assume!(at != Pos::new(0, 0, 0) && at != Pos::new(2, 2, 0));
         let mut setup = setup();
         setup.players[1].human = human;
+        if let Some((tile, disposition)) = monster {
+            let anchor = Pos::new(tile % 4, tile / 4, 0);
+            let taken = [Pos::new(0, 0, 0), Pos::new(2, 2, 0), at];
+            prop_assume!(!taken.contains(&anchor));
+            let mut guard = guard(&rules);
+            guard.anchor = anchor;
+            if let Some(monster) = guard.monster.as_mut() {
+                monster.disposition = disposition;
+                monster.never_flees = false;
+            }
+            setup.map.objects.push(guard);
+        }
         let mut plain = GameState::new(&rules, &setup, seed).unwrap();
         setup.map.objects.push(event_at(&rules, at, flags, guarded));
         let mut hidden = GameState::new(&rules, &setup, seed).unwrap();

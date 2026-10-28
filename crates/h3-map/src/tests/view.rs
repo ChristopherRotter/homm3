@@ -293,6 +293,15 @@ fn check_same(
     Ok(())
 }
 
+/// How many objects `viewer` knows what it learned of (E08 T64b; ADV-VIS-006: its `known`).
+fn known(state: &GameState, viewer: PlayerId) -> usize {
+    let visits = state.adventure().visits();
+    let objects = 0..state.adventure().map().objects().len();
+    objects
+        .filter(|&i| visits.is_some_and(|v| v.knows(viewer, i)))
+        .count()
+}
+
 /// The events as `viewer` is told them.
 fn told(events: &[GameEvent], viewer: PlayerId) -> Vec<GameEvent> {
     events
@@ -992,7 +1001,9 @@ proptest! {
             // T20b3b1): they count as that player's.
             let player = player_of(&a, actor);
             let (from_a, from_b) = (tiles(&a, player), tiles(&b, player));
+            let known_before = (known(&a, viewer), known(&b, viewer));
             let ra = apply(&mut a, rules, actor, command.clone(), &mut ea);
+            let visit = !matches!(command, GameCommand::Manage(_));
             let rb = apply(&mut b, rules, actor, command, &mut eb);
             if actor == Actor::Player(viewer) {
                 prop_assert_eq!(ra, rb);
@@ -1031,22 +1042,53 @@ proptest! {
             let bought = ta
                 .iter()
                 .any(|e| matches!(e, GameEvent::OfferAnswered { accepted: true, .. }));
-            if actor == Actor::Player(viewer) && (ta != tb || bought) {
+            // E08 T64b: a visit of increment 7's objects shows the visitor what the build drew
+            // (a chest's gold, a Shrine's spell, a Tree's price, a University's skills, a random
+            // artifact; design §13): its gains, a choice or University opened, a price refused,
+            // or what its owner now knows.
+            let shows = |events: &[GameEvent]| {
+                visit
+                    && events.iter().any(|e| {
+                        matches!(
+                            e,
+                            GameEvent::HeroChanged { .. }
+                                | GameEvent::ChoiceOpened { .. }
+                                | GameEvent::UniversityOpened { .. }
+                                | GameEvent::OfferRefused { .. }
+                                | GameEvent::LevelUpOpened { .. }
+                        )
+                    })
+            };
+            let learned =
+                known(&a, viewer) != known_before.0 || known(&b, viewer) != known_before.1;
+            if actor == Actor::Player(viewer)
+                && (ta != tb || bought || shows(&ta) || shows(&tb) || learned)
+            {
                 // The viewer learned a pickup's contents or bought a reveal: only what it gained
-                // and how many tiles it explored may differ.
-                let blind = |events: Vec<GameEvent>| -> Vec<Option<GameEvent>> {
+                // and how many tiles it explored may differ; (E08 T64b) or a visit's contents:
+                // what its hero gained and what the visit asked, opened (a chest's choice of
+                // gold, not of an artifact) or refused for its price, so also how many of those
+                // it was told.
+                let blind = |events: Vec<GameEvent>| -> Vec<GameEvent> {
                     events
                         .into_iter()
-                        .map(|e| {
-                            (!matches!(
+                        .filter(|e| {
+                            !matches!(
                                 e,
                                 GameEvent::ResourceGained { .. }
+                                    | GameEvent::ResourcePaid { .. }
+                                    | GameEvent::ResourceLost { .. }
+                                    | GameEvent::HeroChanged { .. }
+                                    | GameEvent::LevelUpOpened { .. }
+                                    | GameEvent::LevelGained { .. }
+                                    | GameEvent::OfferOpened { .. }
+                                    | GameEvent::OfferRefused { .. }
+                                    | GameEvent::ChoiceOpened { .. }
                                     | GameEvent::Adventure(AdventureEvent {
                                         kind: AdventureEventKind::TilesRevealed { .. },
                                         ..
                                     })
-                            ))
-                            .then_some(e)
+                            )
                         })
                         .collect()
                 };

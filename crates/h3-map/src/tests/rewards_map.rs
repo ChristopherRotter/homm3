@@ -498,7 +498,7 @@ fn map() -> (w::Map, w::Extras) {
 }
 
 /// Increment 7's object types (`codes.rs`' 31 classes), each on the map at least once.
-const CLASSES: [&str; 31] = [
+pub(super) const CLASSES: [&str; 31] = [
     "base:arena",
     "base:artifact",
     "base:pandoras_box",

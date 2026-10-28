@@ -18,15 +18,19 @@
 //! T52 with management (increment 6): a mate of the first hero beside it with Scholar, spells and
 //! Elixir of Life's parts, a full army whose join opens the army dialog, the meetings, the
 //! management commands listed and arbitrary ones, the invariants of every state, management's
-//! effects and a move's inverse (`the_plans_meet_and_manage`). What a viewer may learn is T8b2b's
+//! effects and a move's inverse (`the_plans_meet_and_manage`); since T64b with increment 7's
+//! objects, one of each class and guarded ones ([`REWARDS`]): their decisions answered, their
+//! gains conserved, and the invariants of the visits' state ([`check_rewards`],
+//! `the_plans_visit_every_kind_and_answer_every_decision`). What a viewer may learn is T8b2b's
 //! ([`super::view`]), on the same maps and driver.
 
 use std::ops::RangeInclusive;
 use std::sync::{Arc, LazyLock};
 
 use h3_adventure::{
-    AdventureCommand, AdventureCommandError, AdventureEvent, AdventureEventKind, ObjectKind, Offer,
-    OfferKind, Passage, Pos as TilePos, Reach, Viewers,
+    AdventureCommand, AdventureCommandError, AdventureEvent, AdventureEventKind, Gift, Holds,
+    ObjectKind, ObjectTypeId, Offer, OfferKind, Passage, Pos as TilePos, Reach, Resolved,
+    RewardRecord, Turn, Viewers,
 };
 use h3_battle::{
     CastTargets, Command, Event, EventKind, cast_targets, castable_spells, second_targets,
@@ -51,8 +55,8 @@ use super::sample;
 use super::strategy::version;
 use crate::import::codes;
 use crate::model::{
-    Artifacts, Bits, Body, HeroBody, Message, MonsterBody, MonsterTreasure, RawMap, Stack,
-    Template, Text, Tile, Version,
+    Artifacts, Bits, Body, EventBody, HeroBody, Message, MonsterBody, MonsterTreasure, RawMap,
+    Rewards, Stack, Template, Text, Tile, Version,
 };
 use crate::{Limits, import, parse};
 
@@ -103,8 +107,10 @@ pub(super) const BLOCKER_CLASS: u32 = 124;
 /// [`GROUND_OBJECTS`]): appended, so the committed maps keep their templates. No random monster
 /// and no drawn count: the drawn creature and its count's word would show (as a random resource's
 /// pile type). Then (E08 T21a) the plans' guarded piles ([`GUARDED`]): 500 gold whose guards ask
-/// first and four crystals whose guards fight at once.
-pub(super) const KINDS: [(u32, u32, Option<u32>); 29] = [
+/// first and four crystals whose guards fight at once. Then (E08 T64b, design §16) increment 7's
+/// kinds ([`REWARDS`]): one of each of its 31 classes, a guarded box, a guarded event that stays,
+/// a guarded artifact and a monster with a treasure artifact.
+pub(super) const KINDS: [(u32, u32, Option<u32>); 64] = [
     (BLOCKER_CLASS, 0, None),
     (79, 0, Some(0)),
     (79, 6, Some(3)),
@@ -134,7 +140,71 @@ pub(super) const KINDS: [(u32, u32, Option<u32>); 29] = [
     (46, 0, None),
     (79, 6, Some(5)),
     (79, 4, Some(4)),
+    (4, 0, None),
+    (5, 7, None),
+    (6, 0, None),
+    (22, 0, None),
+    (23, 0, None),
+    (26, 0, None),
+    (32, 0, None),
+    (39, 0, None),
+    (41, 0, None),
+    (47, 0, None),
+    (51, 0, None),
+    (61, 0, None),
+    (63, 0, None),
+    (65, 0, None),
+    (66, 0, None),
+    (67, 0, None),
+    (68, 0, None),
+    (69, 0, None),
+    (81, 0, None),
+    (88, 0, None),
+    (89, 0, None),
+    (90, 0, None),
+    (93, 0, None),
+    (100, 0, None),
+    (101, 0, None),
+    (102, 0, None),
+    (104, 0, None),
+    (105, 0, None),
+    (107, 0, None),
+    (108, 0, None),
+    (113, 0, None),
+    (6, 0, None),
+    (26, 0, None),
+    (5, 8, None),
+    (54, 98, None),
 ];
+/// Increment 7's kinds in [`KINDS`] (E08 T64b, design §16): the first of them, and how many. In
+/// order: the Arena, Centaur's Axe, a Pandora's Box (experience, gold, Magic Arrow and four
+/// pikemen, which open the army dialog for a full army), a Corpse, Marletto Tower, an event
+/// (experience and gold for every colour, computers too, removed once it fires), the Garden of
+/// Revelation, a Lean To, the Library of Enlightenment, the School of Magic, the Mercenary Camp,
+/// the Star Axis, the Pyramid, the five random artifacts, a Scholar of a drawn gift, the three
+/// Shrines of a drawn spell, a Magic Arrow scroll, a Learning Stone, a treasure chest, a Tree of
+/// Knowledge, a University, a Wagon, the School of War, a Warrior's Tomb and a Witch Hut of every
+/// skill; then a box whose two gnolls fight at once, which gives a level's experience, Bless and
+/// Prayer (its level-up before its spells, E08 T63b); an event two gnolls guard, which stays and
+/// gives Attack and luck; Blackshard of the Dead Knight, whose gnolls ask first; and three savage
+/// gnolls with Centaur's Axe as their treasure (ADV-MON-011).
+pub(super) const REWARDS: (usize, usize) = (29, 35);
+/// The kinds of [`REWARDS`] whose object has one tile, blocked and visited (as [`masks`] gives
+/// them): the two events and the monster.
+const ONE_TILE_REWARDS: [usize; 3] = [34, 61, 63];
+/// The objects of [`REWARDS`] a plan draws: each kind's of a shape with a visitable tile, the
+/// events' and the monster's of their one tile.
+pub(super) static REWARD_OBJECTS: LazyLock<Vec<usize>> = LazyLock::new(|| {
+    (REWARDS.0..REWARDS.0 + REWARDS.1)
+        .flat_map(|kind| {
+            let one = ONE_TILE_REWARDS.contains(&kind);
+            let shapes: &[usize] = if one { &[0] } else { &[1, 2] };
+            shapes
+                .iter()
+                .map(move |shape| BLOCKERS.len() * kind + shape)
+        })
+        .collect()
+});
 /// The plans' wandering monsters (E08 T20b3b1), by kind: the count, the disposition (0 compliant,
 /// 1 friendly, 2 aggressive, 3 hostile, 4 savage), whether it never flees, and its treasure's
 /// gold. Six compliant goblins join most heroes (aggression −4, ADV-MON-007); fourteen hostile
@@ -205,10 +275,11 @@ pub(super) type Mask = &'static [(u8, u8)];
 
 /// The blocked and visitable masks of object `object` ([`OBJECTS`]): its shape's
 /// ([`BLOCKERS`]), but a monster's one tile, blocked and visited, and nothing of a special
-/// ground's, which neither blocks nor is visited (E08 T20b3b1).
+/// ground's, which neither blocks nor is visited (E08 T20b3b1); an event's one tile too (E08
+/// T64b: as the shipped maps' events, which the import keeps apart from the movement's masks).
 pub(super) fn masks(object: usize) -> (Mask, Mask) {
     match KINDS[object / BLOCKERS.len()].0 {
-        54 => (&[(0, 0)], &[(0, 0)]),
+        54 | 26 => (&[(0, 0)], &[(0, 0)]),
         21 | 46 => (&[], &[]),
         _ => BLOCKERS[object % BLOCKERS.len()],
     }
@@ -216,8 +287,11 @@ pub(super) fn masks(object: usize) -> (Mask, Mask) {
 
 /// The body of an object of kind `kind`: a pile's amount (and since E08 T21a its message with
 /// guards, [`GUARDED`]), a monster's data ([`MONSTERS`]; its identifier, which AB and SoD store,
-/// `identifier`), else none.
+/// `identifier`), (E08 T64b) increment 7's ([`reward_body`]), else none.
 fn body(kind: usize, v: Version, identifier: u32) -> Body {
+    if (REWARDS.0..REWARDS.0 + REWARDS.1).contains(&kind) {
+        return reward_body(kind, v, identifier);
+    }
     if let Some(&(_, count, disposition, never_flees, gold)) = MONSTERS.iter().find(|m| m.0 == kind)
     {
         return Body::Monster(MonsterBody {
@@ -249,6 +323,101 @@ fn body(kind: usize, v: Version, identifier: u32) -> Body {
         .2
         .map_or(Body::None, |amount| Body::Resource { message, amount })
 }
+/// The body of an object of increment 7's kind `kind` ([`REWARDS`]; E08 T64b), of a map of
+/// version `v`, with the monster's `identifier`.
+fn reward_body(kind: usize, v: Version, identifier: u32) -> Body {
+    let gnolls = |count| {
+        let mut guards = vec![None; 7];
+        guards[0] = Some(Stack {
+            creature: 98,
+            count,
+        });
+        guards
+    };
+    let gold = |amount| [0, 0, 0, 0, 0, 0, amount];
+    match kind {
+        30 | 42..=46 => Body::Artifact(None),
+        31 => Body::Pandora {
+            message: None,
+            rewards: Rewards {
+                experience: 500,
+                resources: gold(500),
+                spells: vec![15],
+                creatures: vec![Stack {
+                    creature: 0,
+                    count: 4,
+                }],
+                ..Rewards::default()
+            },
+        },
+        34 => Body::Event(EventBody {
+            message: None,
+            rewards: Rewards {
+                experience: 300,
+                resources: gold(300),
+                ..Rewards::default()
+            },
+            players: u8::MAX,
+            computer: true,
+            remove_after_visit: true,
+        }),
+        47 => Body::Scholar { kind: -1, code: 0 },
+        48..=50 => Body::Shrine {
+            spell: u32::from(u8::MAX),
+        },
+        51 => Body::Scroll {
+            message: None,
+            spell: 15,
+        },
+        59 => Body::WitchHut(Bits(if v == Version::RoE {
+            Vec::new()
+        } else {
+            vec![0xFF, 0xFF, 0xFF, 0x0F]
+        })),
+        60 => Body::Pandora {
+            message: Some(Message {
+                text: Text(Vec::new()),
+                guards: Some(gnolls(2)),
+            }),
+            rewards: Rewards {
+                experience: 1500,
+                spells: vec![41, 48],
+                ..Rewards::default()
+            },
+        },
+        61 => Body::Event(EventBody {
+            message: Some(Message {
+                text: Text(Vec::new()),
+                guards: Some(gnolls(2)),
+            }),
+            rewards: Rewards {
+                luck: 1,
+                primary: [1, 0, 0, 0],
+                ..Rewards::default()
+            },
+            players: u8::MAX,
+            computer: true,
+            remove_after_visit: false,
+        }),
+        62 => Body::Artifact(Some(Message {
+            text: Text(b"Fight?".to_vec()),
+            guards: Some(gnolls(2)),
+        })),
+        63 => Body::Monster(MonsterBody {
+            identifier: (v != Version::RoE).then_some(identifier),
+            count: 3,
+            disposition: 4,
+            treasure: Some(MonsterTreasure {
+                artifact: Some(7),
+                ..MonsterTreasure::default()
+            }),
+            never_flees: true,
+            no_growth: false,
+        }),
+        _ => Body::None,
+    }
+}
+
 /// A tile as column, row and level.
 pub(super) type Spot = (u8, u8, u8);
 /// An army's seven slots as creature code and count (none: the hero type's starting army).
@@ -286,7 +455,8 @@ pub(super) struct Plan {
     /// AB or SoD map (E08 T42: the `ab` pack's terrain walker), its first slot's or its only one.
     pub(super) nomads: Option<(u8, u16)>,
     /// Each object's anchor (modulo the map) and object (shape and kind, [`OBJECTS`]; since E08
-    /// T20b3b1 also the monsters' and grounds', [`MONSTER_OBJECTS`], [`GROUND_OBJECTS`]).
+    /// T20b3b1 also the monsters' and grounds', [`MONSTER_OBJECTS`], [`GROUND_OBJECTS`]; since
+    /// E08 T64b increment 7's, [`REWARD_OBJECTS`]).
     pub(super) blockers: Vec<(Spot, usize)>,
     /// The game's difficulty (E08 T14b), written as the map's (the import's own default is
     /// normal; the tests take the map's): impossible, with no gold to start, in half the cases,
@@ -501,6 +671,8 @@ pub(super) fn plan() -> impl Strategy<Value = Plan> {
                 proptest::option::weighted(0.5, (any::<u8>(), 1u16..=20)),
                 // E08 T52, drawn last for the same reason.
                 proptest::option::weighted(0.5, exchange()),
+                // E08 T64b, drawn last for the same reason.
+                rewards(),
             ),
         ),
     )
@@ -517,7 +689,7 @@ pub(super) fn plan() -> impl Strategy<Value = Plan> {
                 mut blockers,
                 difficulty,
                 keyring,
-                (backpacks, mut skills, beside, pile, (mut kits, lifts, nomads, exchange)),
+                (backpacks, mut skills, beside, pile, (mut kits, lifts, nomads, exchange, rewards)),
             )| {
                 // In three plans of four (E08 T42) a flyer and a water walker: the first two
                 // heroes in either order wear Angel Wings and Boots of Levitation (in place of
@@ -597,6 +769,14 @@ pub(super) fn plan() -> impl Strategy<Value = Plan> {
                     let at = |h: u8, d: u8| (h % side + side + d - 1) % side;
                     blockers.push(((at(hx, dx), at(hy, dy), hz % levels), pile));
                 }
+                // E08 T64b: increment 7's objects within two tiles of a hero, so that random
+                // play visits them and answers what they ask.
+                for ((dx, dy), hero, object) in rewards {
+                    let ((hx, hy, hz), _) = heroes[usize::from(hero) % heroes.len()];
+                    let levels = 1 + u8::from(two_levels);
+                    let at = |h: u8, d: u8| (h % side + side + d - 2) % side;
+                    blockers.push(((at(hx, dx), at(hy, dy), hz % levels), object));
+                }
                 Plan {
                     version,
                     side,
@@ -615,6 +795,17 @@ pub(super) fn plan() -> impl Strategy<Value = Plan> {
                 }
             },
         )
+}
+
+/// Increment 7's objects of a plan (E08 T64b): each one's offset from a hero's tile (two
+/// columns and rows left of it to two right), the hero (modulo the plan's), and the object
+/// ([`REWARD_OBJECTS`]); in seven plans of eight, up to six.
+fn rewards() -> impl Strategy<Value = Vec<((u8, u8), u8, usize)>> {
+    let object = (0..REWARD_OBJECTS.len()).prop_map(|i| REWARD_OBJECTS[i]);
+    prop_oneof![
+        1 => Just(Vec::new()),
+        7 => vec(((0u8..5, 0u8..5), any::<u8>(), object), 1..=6),
+    ]
 }
 
 /// The plan as a raw map of its version: the heroes on distinct land tiles, owners round the
@@ -733,8 +924,13 @@ pub(super) fn lay_out(plan: &Plan) -> RawMap {
         // of other shapes on one anchor). The engine removes the visited one either way.
         let kind = shape / BLOCKERS.len();
         let (class, subclass, _) = KINDS[kind];
-        // Every monster has one type, whatever its creature (E08 T20b3b1).
-        let subclass = if class == 54 { 0 } else { subclass };
+        // Every monster has one type, whatever its creature (E08 T20b3b1); so has every placed
+        // artifact, whatever its artifact (E08 T64b).
+        let subclass = if class == 54 || class == 5 {
+            0
+        } else {
+            subclass
+        };
         let twin = kind > 0 && typed.contains(&((class, subclass), (ax, ay, az)));
         if !twin && !heroes.iter().any(covers) {
             if kind > 0 {
@@ -1213,12 +1409,15 @@ fn seek(state: &GameState, legal: &[GameCommand], n: u16) -> GameCommand {
 
 /// The armies the acting player may manage now (E08 T52; ADR-0017 point 6): a meeting's two
 /// heroes, an army dialog's hero and group, else each of its heroes alone; none while it may
-/// not manage (a battle, an offer or a level-up open, the game waiting for another player).
+/// not manage (a battle, an offer or a level-up open, the game waiting for another player; since
+/// E08 T64b's plans a choice or a University open, GAM-DEC-005, GAM-DEC-006).
 fn managed(state: &GameState) -> Vec<Vec<ArmyRef>> {
     let player = acting(state);
     if actor(state) != Actor::Player(player)
         || state.battle(player).is_some()
         || state.decision(player).is_some()
+        || state.choice(player).is_some()
+        || state.university(player).is_some()
         || state.waiting_for().is_some()
     {
         return Vec::new();
@@ -1508,7 +1707,8 @@ fn ended(events: &[GameEvent]) -> Vec<([Option<HeroId>; 2], BattleResult)> {
 /// steps onto every tile of the path but a neighbour visit's, the last (ADV-OBJ-003), which is a
 /// visitable tile or the other hero's; the move emitted a step event per tile it stepped onto,
 /// then at most one adventure event of the visit (and the removals of a battle that ended at its
-/// start).
+/// start). Since E08 T64b an event stops the move on its tile (ADV-MOV-011), fired or held for
+/// the guard of its tile: the rest of the path is dropped.
 fn landing(
     before: &GameState,
     start: TilePos,
@@ -1531,9 +1731,24 @@ fn landing(
         .take_while(|k| matches!(k, AdventureEventKind::HeroStepped { .. }))
         .count();
     prop_assert!(kinds.len() <= steps + 1, "{:?}", kinds);
-    let stays = steps + 1 == path.len();
+    // A live event on the last tile stepped onto stopped the move: fired, or held on a tile a
+    // monster guards, whose visit comes first (E08 T63b, GAM-DEC-007; the plans' events fire for
+    // every colour, computers too).
+    let adventure = before.adventure();
+    let event = |at: TilePos| {
+        let events = adventure.map().events_at(at);
+        events.iter().any(|&i| !adventure.is_removed(i))
+    };
+    let fired = matches!(
+        kinds.get(steps),
+        Some(AdventureEventKind::EventFired { .. })
+    );
+    let on_event = steps > 0 && event(path[steps - 1]);
+    prop_assert!(!fired || on_event, "{:?}", kinds);
+    let stopped = on_event && steps < path.len();
+    let stays = steps + 1 == path.len() && !stopped;
     prop_assert!(
-        steps == path.len() || stays,
+        steps == path.len() || stays || stopped,
         "{} steps of {:?}",
         steps,
         path
@@ -1550,10 +1765,21 @@ fn landing(
         let heroes = before.adventure().heroes();
         let mover = heroes.iter().find(|h| h.pos == start);
         let other = mover.is_some_and(|m| heroes.iter().any(|h| h.pos == to && h.id != m.id));
-        prop_assert!(visitable || other);
+        prop_assert!(visitable || other, "{:?} {:?}", path, events);
     }
     let walked = &path[..steps];
     Ok((walked.last().copied().unwrap_or(start), stays))
+}
+
+/// The tile of the event that `events` tell fired, if one did (E08 T64b; ADV-OBJ-007).
+fn fired_at(events: &[GameEvent]) -> Option<TilePos> {
+    events.iter().find_map(|e| match *e {
+        GameEvent::Adventure(AdventureEvent {
+            kind: AdventureEventKind::EventFired { tile, .. },
+            ..
+        }) => Some(tile),
+        _ => None,
+    })
 }
 
 /// The live object tile bits of `pos` in `state`: whether an object not removed blocks it, and
@@ -2116,16 +2342,22 @@ fn check_legal(
         prop_assert!(result.is_ok(), "legal {:?} rejected: {:?}", command, result);
         let start = state.adventure().hero(hero).unwrap().pos;
         let (at, visited) = landing(state, start, path, &events)?;
+        // E08 T64b: an event on the way stops the move on its tile (fired, or held where a
+        // monster guards it: `Reach` never reads events, design §12), with the points the query
+        // reports there (ADV-MOV-011).
+        let stopped = !visited && at != to;
+        prop_assert!(!stopped || !state.adventure().map().events_at(at).is_empty());
+        let end = if stopped { at } else { to };
         prop_assert_eq!(
             at,
             if visited {
                 path.len().checked_sub(2).map_or(start, |i| path[i])
             } else {
-                to
+                end
             }
         );
         let moved = probe.adventure().hero(hero).unwrap();
-        let points = reach_of(reaches, hero).points_left(to);
+        let points = reach_of(reaches, hero).points_left(end);
         prop_assert_eq!((moved.pos, Some(moved.movement)), (at, points));
     }
     Ok(())
@@ -2202,53 +2434,68 @@ fn check_unlisted(
 /// price of the decision it answered; and since T19a by a surrender's price, which the
 /// surrendering side's owner pays and the other side's owner gains, as much as was paid. The
 /// heroes' details (E08 T19a2a) change only by a battle's end, and (E08 T30) a hero's by the
-/// levels it is told it gained answering its level-up ([`check_levels`]: its level and skills,
-/// nothing else but the offers' levels). Since E08 T20b3b1 a wandering
+/// levels it is told it gained answering its level-up (its level and skills, nothing else but
+/// the offers' levels). Since E08 T20b3b1 a wandering
 /// monster is a source of creatures and resources: a group that joins goes into its visitor's
 /// army (into the stack of its creature, else the first free slot), all of it, told to the
 /// visitor's owner as the creatures joining, and its treasure is the owner's gains as it leaves
-/// the map; a monster that flees leaves without its treasure.
+/// the map; a monster that flees leaves without its treasure. Since E08 T64b increment 7's
+/// sources and sinks ([`visit_gains`], [`records`]): a chest's gold when its gold is chosen, a box's and a fired
+/// event's record (a positive amount a gain, a negative one a loss the treasury is told it lost,
+/// never below 0), a find's contents at the visit that empties it, and the prices of a School's
+/// choice and a University's purchases; a hero's details change by its changes and its levels
+/// in the order it is told them (a reward's rest after a level-up, GAM-DEC-007).
 fn check_conservation(
     rules: &GameRuleset,
-    before: &GameState,
-    after: &GameState,
+    (before, after): (&GameState, &GameState),
+    command: &GameCommand,
     events: &[GameEvent],
 ) -> Result<(), TestCaseError> {
     let battles = ended(events);
     if !battles.is_empty() {
-        return check_battle_end(rules, before, after, events, &battles);
+        return check_battle_end(rules, (before, after), events, &battles);
     }
     for (i, (b, a)) in before.heroes().iter().zip(after.heroes()).enumerate() {
         let id = HeroId::new(u16::try_from(i).unwrap());
-        let levelled = events
-            .iter()
-            .any(|e| matches!(e, GameEvent::LevelGained { hero, .. } if *hero == id));
         // E08 T52: outside a battle a hero's details change by the changes its owner is told: a
         // meeting's spells (HER-SPL-007), an artifact's move, an assembly and a disassembly
-        // (HER-ART-005, -006), each applied in order.
+        // (HER-ART-005, -006), each applied in order; (E08 T30) by the levels it is told it
+        // gained answering its level-up, each the next level (GAM-DEC-002, HER-LVL-005).
+        let owner = before.adventure().hero(id).map(|h| h.owner);
         let mut told = (**b).clone();
         for event in events {
-            if let GameEvent::HeroChanged {
-                player,
-                hero,
-                change,
-            } = *event
-                && hero == id
-            {
-                prop_assert_eq!(Some(player), before.adventure().hero(id).map(|h| h.owner));
-                prop_assert!(!levelled, "{:?} levelled and changed", id);
-                h3_heroes::apply_change(&mut told, rules.core(), change);
+            match *event {
+                GameEvent::HeroChanged {
+                    player,
+                    hero,
+                    change,
+                } if hero == id => {
+                    prop_assert_eq!(Some(player), owner);
+                    h3_heroes::apply_change(&mut told, rules.core(), change);
+                }
+                GameEvent::LevelGained {
+                    player,
+                    hero,
+                    level,
+                    primary,
+                    skill,
+                } if hero == id => {
+                    prop_assert_eq!(Some(player), owner);
+                    prop_assert!(after.adventure().hero(id).is_some(), "{:?} levelled", id);
+                    prop_assert_eq!(level, told.level + 1);
+                    let change = HeroChange::GainLevel {
+                        primary,
+                        learned: skill,
+                        offered: a.offered,
+                    };
+                    let checked = h3_heroes::check_change(&told, rules.core(), change);
+                    prop_assert!(checked.is_ok(), "{:?}: {:?}", change, checked);
+                    h3_heroes::apply_change(&mut told, rules.core(), change);
+                }
+                _ => {}
             }
         }
-        if levelled {
-            check_levels(rules, (before, after), events, id)?;
-            prop_assert_eq!(
-                (a.experience, a.mana, &a.worn, &a.backpack, &a.spells),
-                (b.experience, b.mana, &b.worn, &b.backpack, &b.spells)
-            );
-        } else {
-            prop_assert_eq!(&told, &**a);
-        }
+        prop_assert_eq!(&told, &**a);
     }
     prop_assert_eq!(before.heroes().len(), after.heroes().len());
     let (map, adventure) = (before.adventure().map(), after.adventure());
@@ -2279,8 +2526,11 @@ fn check_conservation(
         })
         .collect();
     prop_assert!(joined.len() + held.len() <= 1, "{:?} {:?}", joined, held);
-    let mut contents = Vec::new();
+    let mut contents = visit_gains(rules, (before, after), command, events);
+    let mut losses = Vec::new();
     for event in events {
+        // E08 T64b: a box's record as it leaves, an event's as it fires, in the events' order.
+        records((before, after), event, (&mut contents, &mut losses));
         if let GameEvent::Adventure(AdventureEvent {
             kind:
                 AdventureEventKind::ObjectRemoved {
@@ -2296,7 +2546,15 @@ fn check_conservation(
                     && adventure.is_removed(i)
             });
             for (i, o) in left {
-                contents.extend(o.contents.iter().copied());
+                // E08 T64b: a chest leaves the map with the visit, its gold given only when its
+                // choice takes it ([`visit_gains`]; ADV-PIK-005).
+                let chest = matches!(
+                    rules.adventure().object_type(object_type).map(|t| &t.kind),
+                    Some(ObjectKind::Chest(_))
+                );
+                if !chest {
+                    contents.extend(o.contents.iter().copied());
+                }
                 // A monster that joins (all of it, of its creature) gives its treasure; one that
                 // flees gives nothing.
                 if let Some(monster) = &o.monster
@@ -2318,16 +2576,42 @@ fn check_conservation(
             _ => None,
         })
         .collect();
-    prop_assert_eq!(&gains, &contents);
+    prop_assert_eq!(&gains, &contents, "{:?} {:?}", command, events);
+    let lost: Vec<(ResourceId, u32)> = events
+        .iter()
+        .filter_map(|e| match *e {
+            GameEvent::ResourceLost {
+                resource, amount, ..
+            } => Some((resource, amount)),
+            _ => None,
+        })
+        .collect();
+    // A loss takes what the treasury holds, never more (ADV-RWD-001).
+    prop_assert_eq!(lost.len(), losses.len());
+    for (&(resource, amount), &(r, most)) in lost.iter().zip(&losses) {
+        prop_assert!(
+            resource == r && amount <= most,
+            "{:?} of {:?}",
+            lost,
+            losses
+        );
+    }
+    // E08 T64b: a visit's gains come with an object leaving the map, a find emptied or an event
+    // fired.
     let removed = events.iter().any(|e| {
         matches!(
             e,
             GameEvent::Adventure(AdventureEvent {
-                kind: AdventureEventKind::ObjectRemoved { .. },
+                kind: AdventureEventKind::ObjectRemoved { .. }
+                    | AdventureEventKind::EventFired { .. },
                 ..
             })
         )
-    });
+    }) || emptied(before, after).next().is_some()
+        || matches!(
+            command,
+            GameCommand::Answer(Answer::Chest(ChestChoice::Gold))
+        );
     let accepted = events.iter().find_map(|e| match *e {
         GameEvent::OfferAnswered {
             player,
@@ -2356,18 +2640,35 @@ fn check_conservation(
                     resource,
                     amount,
                 } => {
-                    prop_assert_eq!(accepted, Some(owner), "{:?} without an offer", event);
+                    // E08 T64b: or a School's choice (GAM-DEC-005) or a University's purchase
+                    // (GAM-DEC-006) answered.
+                    let answered = matches!(command, GameCommand::Answer(_))
+                        && (before.choice(owner).is_some() || before.university(owner).is_some());
+                    prop_assert!(
+                        accepted == Some(owner) || answered,
+                        "{:?} without an offer",
+                        event
+                    );
                     if owner == player {
                         treasury[usize::from(resource.raw())] -= amount;
                         paid.push((resource, amount));
                     }
                 }
+                GameEvent::ResourceLost {
+                    player: owner,
+                    resource,
+                    amount,
+                } if owner == player => treasury[usize::from(resource.raw())] -= amount,
                 _ => {}
             }
         }
         prop_assert_eq!(after.treasury(player).unwrap(), &treasury[..]);
         if accepted == Some(player) {
             prop_assert_eq!(&paid[..], before.decision(player).unwrap().price());
+        } else if let Some(choice) = before.choice(player).filter(|_| !paid.is_empty()) {
+            prop_assert_eq!(&paid[..], choice.price());
+        } else if let Some(visit) = before.university(player).filter(|_| !paid.is_empty()) {
+            prop_assert_eq!(&paid[..], &visit.price[..]);
         }
     }
     let mut expected = armies(before);
@@ -2433,6 +2734,260 @@ fn check_conservation(
     }
     prop_assert_eq!(expected, armies(after));
     check_groups(before, after, events)
+}
+
+/// The object a step visited (E08 T64b), by index: a move's, the live typed object visited from
+/// its last tile when it stops before it (ADV-OBJ-003) or from the tile it ends on, the event
+/// that fired there; an answer's, the object of the offer, choice or University it answers.
+fn visited(before: &GameState, command: &GameCommand, events: &[GameEvent]) -> Option<usize> {
+    let adventure = before.adventure();
+    let map = adventure.map();
+    let live = |indices: &[usize]| {
+        indices
+            .iter()
+            .rev()
+            .copied()
+            .find(|&i| !adventure.is_removed(i))
+    };
+    let named = |(object_type, anchor): (ObjectTypeId, TilePos)| {
+        let objects = map.objects().iter().enumerate().rev();
+        objects
+            .filter(|&(i, o)| {
+                (o.object_type, o.anchor) == (Some(object_type), anchor) && !adventure.is_removed(i)
+            })
+            .map(|(i, _)| i)
+            .next()
+    };
+    match command {
+        GameCommand::Adventure(AdventureCommand::MoveHero { hero, path }) => {
+            if let Some(tile) = fired_at(events) {
+                return live(map.events_at(tile));
+            }
+            let start = adventure.hero(*hero)?.pos;
+            let steps = events
+                .iter()
+                .filter(|e| {
+                    matches!(
+                        e,
+                        GameEvent::Adventure(AdventureEvent {
+                            kind: AdventureEventKind::HeroStepped { .. },
+                            ..
+                        })
+                    )
+                })
+                .count();
+            // An event held for its tile's guard stopped the move ([`landing`]): the guard's
+            // visit, not an object's.
+            if steps > 0 && steps < path.len() && live(map.events_at(path[steps - 1])).is_some() {
+                return None;
+            }
+            let to = if steps < path.len() {
+                *path.get(steps)?
+            } else {
+                path.last().copied().unwrap_or(start)
+            };
+            // A step toward a hero meets it or fights it: no object is visited there.
+            let met = adventure
+                .heroes()
+                .iter()
+                .any(|h| h.pos == to && h.id != *hero);
+            if met {
+                return None;
+            }
+            live(map.visited_from(to))
+        }
+        GameCommand::Answer(_) => {
+            let player = acting(before);
+            if let Some(offer) = before.decision(player) {
+                named((offer.object_type, offer.anchor))
+            } else if let Some(choice) = before.choice(player) {
+                named((choice.object_type, choice.anchor))
+            } else {
+                let visit = before.university(player)?;
+                named((visit.object_type, visit.anchor))
+            }
+        }
+        _ => None,
+    }
+}
+
+/// Increment 7's invariants after every command (E08 T64b, design §16): a removed object never
+/// returns, a hero's once-per-hero marks (of a hero still on the map), a player's knowledge and
+/// the emptied objects only grow (ADV-VIS-006, ADV-PIK-009 to -012), and an emptied find, or a
+/// looted Pyramid, gives nothing at a later visit: no resource, artifact or spell.
+fn check_rewards(
+    rules: &GameRuleset,
+    (before, after): (&GameState, &GameState),
+    command: &GameCommand,
+    events: &[GameEvent],
+) -> Result<(), TestCaseError> {
+    let (b, a) = (before.adventure(), after.adventure());
+    let objects = 0..b.map().objects().len();
+    let players = 0..u8::try_from(before.players()).unwrap();
+    for i in objects {
+        prop_assert!(!b.is_removed(i) || a.is_removed(i), "object {} returned", i);
+        let (Some(was), Some(is)) = (b.visits(), a.visits()) else {
+            prop_assert!(b.visits().is_none(), "the visits block went");
+            continue;
+        };
+        prop_assert!(
+            !was.is_emptied(i) || is.is_emptied(i),
+            "object {} refilled",
+            i
+        );
+        for player in players.clone().map(PlayerId::new) {
+            prop_assert!(
+                !was.knows(player, i) || is.knows(player, i),
+                "{:?} forgot",
+                player
+            );
+        }
+        for hero in a.heroes().iter().map(|h| h.id) {
+            prop_assert!(
+                !was.is_marked(hero, i) || is.is_marked(hero, i),
+                "{:?} unmarked",
+                hero
+            );
+        }
+    }
+    let Some(index) = visited(before, command, events) else {
+        return Ok(());
+    };
+    let finds = matches!(
+        b.map().objects()[index]
+            .object_type
+            .and_then(|ty| rules.adventure().object_type(ty))
+            .map(|ty| &ty.kind),
+        Some(ObjectKind::Find(_) | ObjectKind::Pyramid(_))
+    );
+    if finds && b.visits().is_some_and(|v| v.is_emptied(index)) {
+        let gives = events.iter().any(|e| {
+            matches!(
+                e,
+                GameEvent::ResourceGained { .. }
+                    | GameEvent::HeroChanged {
+                        change: HeroChange::AddArtifact(_) | HeroChange::LearnSpell(_),
+                        ..
+                    }
+            )
+        });
+        prop_assert!(!gives, "emptied object {} gave {:?}", index, events);
+    }
+    Ok(())
+}
+
+/// The objects a step emptied (E08 T64b; ADV-PIK-009 to -012, ADV-TCH-008): a find searched,
+/// the Pyramid looted, by index.
+fn emptied<'s>(before: &'s GameState, after: &'s GameState) -> impl Iterator<Item = usize> + 's {
+    let is = |state: &GameState, i| state.adventure().visits().is_some_and(|v| v.is_emptied(i));
+    (0..before.adventure().map().objects().len()).filter(move |&i| !is(before, i) && is(after, i))
+}
+
+/// Resources and their amounts, in order.
+type Amounts = Vec<(ResourceId, u32)>;
+
+/// Increment 7's resource gains of a visit outside a battle (E08 T64b; ADV-PIK-005, ADV-PIK-009
+/// to -012): a chest's gold when its choice takes it, a find's at the visit that empties it; the
+/// records' are [`records`]', the piles' and monsters' [`check_conservation`]'s.
+fn visit_gains(
+    rules: &GameRuleset,
+    (before, after): (&GameState, &GameState),
+    command: &GameCommand,
+    events: &[GameEvent],
+) -> Amounts {
+    let map = before.adventure().map();
+    let chest = (0..before.players()).find_map(|p| {
+        let player = PlayerId::new(u8::try_from(p).unwrap());
+        match before.choice(player).map(|c| &c.kind) {
+            Some(&ChoiceKind::Chest { gold, .. }) if after.choice(player).is_none() => Some(gold),
+            _ => None,
+        }
+    });
+    let gold = matches!(
+        command,
+        GameCommand::Answer(Answer::Chest(ChestChoice::Gold))
+    );
+    let mut gains: Amounts = chest.filter(|_| gold).into_iter().collect();
+    // A find's artifact when its hero receives it, else what the artifact turns into (the
+    // Corpse's gold, the Wagon's own resources), or its resources.
+    for i in emptied(before, after) {
+        let o = &map.objects()[i];
+        let ty = o
+            .object_type
+            .and_then(|ty| rules.adventure().object_type(ty));
+        let turn = match ty.map(|ty| &ty.kind) {
+            Some(ObjectKind::Find(find)) => find.full_backpack.as_ref(),
+            _ => None,
+        };
+        let received = |artifact: ArtifactTypeId| {
+            events.iter().any(|e| {
+                matches!(e, GameEvent::HeroChanged {
+                    change: HeroChange::AddArtifact(item), ..
+                } if item.artifact == artifact)
+            })
+        };
+        match (o.resolved.artifact(), turn) {
+            (Some(artifact), _) if received(artifact) => {}
+            (Some(_), Some(Turn::Give(resources))) => gains.extend(resources.iter().copied()),
+            (Some(_), Some(Turn::Stays) | None) => {}
+            (Some(_), Some(Turn::Drawn)) | (None, _) => gains.extend(o.contents.iter().copied()),
+        }
+    }
+    gains
+}
+
+/// A reward record's resources that `event` gives (E08 T64b; ADV-RWD-001, ADV-PIK-013,
+/// ADV-OBJ-007), added to `gains` (its positive amounts) and `losses` (its negative ones): a
+/// box's as it leaves the map, an event's as it fires unless its guards stand (their battle gives
+/// it).
+fn records(
+    (before, after): (&GameState, &GameState),
+    event: &GameEvent,
+    (gains, losses): (&mut Amounts, &mut Amounts),
+) {
+    let map = before.adventure().map();
+    let mut give = |record: &RewardRecord| {
+        for &(resource, amount) in &record.resources {
+            let into = if amount < 0 {
+                &mut *losses
+            } else {
+                &mut *gains
+            };
+            into.push((resource, amount.unsigned_abs()));
+        }
+    };
+    let GameEvent::Adventure(AdventureEvent { kind, .. }) = *event else {
+        return;
+    };
+    match kind {
+        AdventureEventKind::ObjectRemoved {
+            object_type,
+            anchor,
+        } => {
+            let left = map.objects().iter().enumerate().filter(|&(i, o)| {
+                (o.object_type, o.anchor) == (Some(object_type), anchor)
+                    && !before.adventure().is_removed(i)
+                    && after.adventure().is_removed(i)
+            });
+            for (_, o) in left {
+                if let Holds::Record(record) = &o.holds {
+                    give(record);
+                }
+            }
+        }
+        AdventureEventKind::EventFired { tile, .. } => {
+            let live = map.events_at(tile).iter().rev();
+            let fired = live.copied().find(|&i| !before.adventure().is_removed(i));
+            let fired = fired.map(|i| (i, &map.objects()[i]));
+            if let Some((i, o)) = fired
+                && let Holds::Event(event) = &o.holds
+                && before.adventure().guards_left(i).is_empty()
+            {
+                give(&event.record);
+            }
+        }
+        _ => {}
+    }
 }
 
 /// The army dialogs' groups (E08 T52; GAM-DEC-004): a dialog opens with the group whole in its
@@ -2911,8 +3466,7 @@ fn armies(state: &GameState) -> Vec<(HeroId, Vec<h3_contracts::ArmyStack>)> {
 /// T21a; ADV-PIK-004): won, the pile is picked up; else its guards keep their survivors.
 fn check_battle_end(
     rules: &GameRuleset,
-    before: &GameState,
-    after: &GameState,
+    (before, after): (&GameState, &GameState),
     events: &[GameEvent],
     battles: &[([Option<HeroId>; 2], BattleResult)],
 ) -> Result<(), TestCaseError> {
@@ -2938,7 +3492,7 @@ fn check_battle_end(
         .collect();
     let monster = heroes[BattleSide::Defender.index()].is_none();
     if monster {
-        check_unowned_battle_end(before, after, events, heroes, result)?;
+        check_unowned_battle_end(rules, (before, after), events, (heroes, result))?;
     }
     for (side, hero) in heroes.iter().enumerate() {
         let Some(hero) = *hero else {
@@ -2989,20 +3543,22 @@ fn check_battle_end(
 
 /// The unowned side's part of [`check_battle_end`]: the object fought is the one visited at the
 /// battle's tile, a wandering monster (E08 T20b3b1; ADV-MON-010) or a guarded pile (E08 T21a;
-/// ADV-PIK-004). A monster: a victory of the visitor's side removes it, told as its removal, and
-/// gives the visitor's owner exactly its treasure; a draw removes it without one; else it stays
-/// with between one and the creatures it had. A pile: a victory picks it up after the winner's
-/// levels (E08 T63b, GAM-DEC-007): in the battle's last command, told as its removal and giving
-/// the visitor's owner exactly its contents, unless the winner's level-up is left open, its
-/// guards beaten meanwhile; else it stays, its guards' survivors by slot each of its stack's
-/// creature and at most its count (none after a draw). No treasury changes otherwise; no side
-/// surrenders to them or pays them.
+/// ADV-PIK-004), or (E08 T64b) a guarded artifact, scroll or box, the Pyramid, or a guarded
+/// event lying there. A monster: a victory of the visitor's side removes it, told as its removal,
+/// and gives the visitor's owner exactly its treasure; a draw removes it without one; else it
+/// stays with between one and the creatures it had. A guarded object: a victory gives it after
+/// the winner's levels (E08 T63b, GAM-DEC-007): in the battle's last command, told as its removal
+/// (an event only with its flag; the Pyramid stays, looted) and giving the visitor's owner exactly
+/// its contents (a box's and an event's record: its gains, and its losses as lost), unless the
+/// winner's level-up is left open, its guards beaten meanwhile; else it stays, its guards'
+/// survivors by slot each of its stack's creature and at most its count (none after a draw). An
+/// event held on the tile fires after the guard's visit ([`records`]). No treasury changes
+/// otherwise; no side surrenders to them or pays them.
 fn check_unowned_battle_end(
-    before: &GameState,
-    after: &GameState,
+    rules: &GameRuleset,
+    (before, after): (&GameState, &GameState),
     events: &[GameEvent],
-    heroes: [Option<HeroId>; 2],
-    result: BattleResult,
+    (heroes, result): ([Option<HeroId>; 2], BattleResult),
 ) -> Result<(), TestCaseError> {
     let visitor = heroes[BattleSide::Attacker.index()].unwrap();
     let owner = before.adventure().hero(visitor).unwrap().owner;
@@ -3016,13 +3572,29 @@ fn check_unowned_battle_end(
         .or(started)
         .unwrap();
     let map = before.adventure().map();
+    let kind = |i: usize| {
+        let ty = map.objects()[i].object_type;
+        ty.and_then(|ty| rules.adventure().object_type(ty))
+            .map(|t| &t.kind)
+    };
+    let pyramid = |i: usize| matches!(kind(i), Some(ObjectKind::Pyramid(_)));
+    let live = |&i: &usize| !before.adventure().is_removed(i);
     let index = map
         .visited_from(tile)
         .iter()
         .copied()
         .rev()
-        .find(|&i| !before.adventure().is_removed(i))
-        .filter(|&i| map.objects()[i].monster.is_some() || map.objects()[i].guards.is_some())
+        .find(live)
+        .filter(|&i| {
+            let o = &map.objects()[i];
+            o.monster.is_some() || o.guards.is_some() || pyramid(i)
+        })
+        .or_else(|| {
+            let events = map.events_at(tile).iter().copied().rev();
+            events
+                .filter(live)
+                .find(|&i| map.objects()[i].guards.is_some())
+        })
         .ok_or_else(|| fail(format!("no monster or guards fought at {tile:?}")))?;
     let object = &map.objects()[index];
     let removals = events
@@ -3047,7 +3619,7 @@ fn check_unowned_battle_end(
         }
         (beaten, won.then(|| monster.treasure.clone()))
     } else {
-        if !won {
+        if !won && !pyramid(index) {
             let had = before.adventure().guards_left(index);
             let left = after.adventure().guards_left(index);
             prop_assert!(
@@ -3060,19 +3632,71 @@ fn check_unowned_battle_end(
             );
             prop_assert_eq!(left.is_empty(), result == BattleResult::Draw);
         }
-        let picked = won && after.level_up(owner).is_none();
-        if won && !picked {
+        // A level-up the battle's own experience opens holds the gift (E08 T63b, GAM-DEC-007):
+        // opened before anything of the gift is told (its removal, its changes to the winner,
+        // its gains); levels given at once do not hold it, nor does a level-up the gift's record
+        // opens after it (a box's spells wait for that one, the box has left).
+        let ended = events
+            .iter()
+            .position(|e| matches!(e, GameEvent::BattleEnded { .. }))
+            .unwrap_or(0);
+        let gift = |e: &GameEvent| match *e {
+            GameEvent::Adventure(AdventureEvent {
+                kind: AdventureEventKind::ObjectRemoved { anchor, .. },
+                ..
+            }) => anchor == object.anchor,
+            GameEvent::HeroChanged { hero, change, .. } => {
+                hero == visitor
+                    && matches!(
+                        change,
+                        HeroChange::GainPrimary(_)
+                            | HeroChange::RaiseSkill { .. }
+                            | HeroChange::Bonus { .. }
+                            | HeroChange::LearnSpell(_)
+                            | HeroChange::AddArtifact(_)
+                    )
+            }
+            GameEvent::ResourceGained { .. } => true,
+            _ => false,
+        };
+        let after_battle = &events[ended..];
+        let opened = after_battle
+            .iter()
+            .position(|e| matches!(e, GameEvent::LevelUpOpened { hero, .. } if *hero == visitor));
+        let levels = opened.is_some_and(|p| !after_battle[..p].iter().any(gift));
+        let picked = won && !levels;
+        if won && !picked && !pyramid(index) {
             prop_assert!(after.adventure().guards_left(index).is_empty());
         }
-        (picked, picked.then(|| object.contents.clone()))
+        // E08 T64b: a pile's contents; an event's record (it leaves only with its flag); a
+        // box's record comes with its removal ([`rewarded`]); the Pyramid stays, looted.
+        let (gains, removed) = match &object.holds {
+            Holds::Record(_) => (Vec::new(), picked),
+            Holds::Event(event) => {
+                let positive = event.record.resources.iter().filter(|r| r.1 > 0);
+                let gains = positive.map(|&(r, a)| (r, a.unsigned_abs())).collect();
+                (gains, picked && event.remove)
+            }
+            _ if pyramid(index) => (Vec::new(), false),
+            _ => (object.contents.clone(), picked),
+        };
+        (removed, picked.then_some(gains))
     };
     prop_assert_eq!(after.adventure().is_removed(index), removed, "{:?}", result);
-    prop_assert_eq!(removals, usize::from(removed));
+    // An event is in no view: its removal is told to no one (ADV-FOG-007).
+    let event = matches!(object.holds, Holds::Event(_));
+    prop_assert_eq!(removals, usize::from(removed && !event));
     prop_assert!(
         !matches!(result, BattleResult::Surrender(_)),
         "{:?}",
         result
     );
+    // E08 T64b: then a box's record as it leaves, and an event held on the guard's tile, which
+    // fires after its visit ([`records`]).
+    let mut gains = gains.unwrap_or_default();
+    for event in events {
+        records((before, after), event, (&mut gains, &mut Vec::new()));
+    }
     let mut treasury = before.treasury(owner).unwrap().to_vec();
     let mut gained = Vec::new();
     for event in events {
@@ -3086,73 +3710,27 @@ fn check_unowned_battle_end(
                 treasury[usize::from(resource.raw())] += amount;
                 gained.push((resource, amount));
             }
+            GameEvent::ResourceLost {
+                player,
+                resource,
+                amount,
+            } => {
+                prop_assert_eq!(player, owner);
+                treasury[usize::from(resource.raw())] -= amount;
+            }
             GameEvent::ResourcePaid { .. } => {
                 return Err(fail(format!("{event:?} in a battle without an enemy hero")));
             }
             _ => {}
         }
     }
-    prop_assert_eq!(gained, gains.unwrap_or_default());
+    prop_assert_eq!(gained, gains, "{:?}", events);
     prop_assert_eq!(after.treasury(owner).unwrap(), &treasury[..]);
     for player in (0..before.players()).map(|p| PlayerId::new(u8::try_from(p).unwrap())) {
         if player != owner {
             prop_assert_eq!(before.treasury(player), after.treasury(player));
         }
     }
-    Ok(())
-}
-
-/// The heroes' part of [`check_battle_end`] (E08 T19a2a): each change goes to one of the
-/// battle's heroes and is told to its owner; every other hero's details stay; a battle hero's
-/// experience grows by the gains it is told (only one that stays on the map gains), its spell
-/// points become the last it is told, its artifacts change in number by the ones it is told it
-/// received and lost, its level, primary and secondary skills by the levels it is told it gained
-/// (E08 T30: only one that stays on the map, each the next level), and nothing else of it
-/// changes; the two heroes' artifacts only move between them or leave with a destroyed war
-/// machine.
-/// The levels `hero` is told it gained (E08 T30, GAM-DEC-002): each by its owner, of a hero on
-/// the map, the next level, raising the primary skill told (up to the ruleset's maximum) and
-/// learning or advancing the skill told; its level, primary and secondary skills are what they
-/// give, its type as before.
-fn check_levels(
-    rules: &GameRuleset,
-    (before, after): (&GameState, &GameState),
-    events: &[GameEvent],
-    id: HeroId,
-) -> Result<(), TestCaseError> {
-    let (b, a) = (before.hero(id).unwrap(), after.hero(id).unwrap());
-    let (mut level, mut primary, mut skills) = (b.level, b.primary, b.skills.clone());
-    let max = rules.core().hero_params().unwrap().primary_max;
-    for event in events {
-        if let GameEvent::LevelGained {
-            player,
-            hero,
-            level: gained,
-            primary: raised,
-            skill,
-        } = *event
-        {
-            if hero != id {
-                continue;
-            }
-            prop_assert!(after.adventure().hero(id).is_some(), "{:?} levelled", id);
-            prop_assert_eq!(player, before.adventure().hero(id).unwrap().owner);
-            prop_assert_eq!(gained, level + 1);
-            level = gained;
-            let base = &mut primary[raised.index()];
-            *base = base.saturating_add(1).min(max);
-            if let Some(skill) = skill {
-                match skills.iter_mut().find(|(s, _)| *s == skill) {
-                    Some((_, l)) => *l += 1,
-                    None => skills.push((skill, 1)),
-                }
-            }
-        }
-    }
-    prop_assert_eq!(
-        (a.hero_type, a.level, a.primary, &a.skills),
-        (b.hero_type, level, primary, &skills)
-    );
     Ok(())
 }
 
@@ -3233,6 +3811,17 @@ fn experience_cap(rules: &GameRuleset, state: &GameState, level: u8) -> u32 {
     cap.max(threshold(level))
 }
 
+/// The heroes' part of [`check_battle_end`] (E08 T19a2a): each change goes to one of the
+/// battle's heroes and is told to its owner; every other hero's details stay; a battle hero's
+/// experience grows by the gains it is told (only one that stays on the map gains), its spell
+/// points become the last it is told, its artifacts change in number by the ones it is told it
+/// received and lost, its level, primary and secondary skills by the levels it is told it gained
+/// (E08 T30: only one that stays on the map, each the next level), and nothing else of it
+/// changes; the two heroes' artifacts only move between them or leave with a destroyed war
+/// machine. Since E08 T64b the winner that stays also changes by a reward's changes after the
+/// battle (a guarded object's, an event's; GAM-DEC-007), applied in the order told with its
+/// levels, every battle hero's bonuses end (GAM-BAT-014), and an artifact appears only as one an
+/// object that left the map held (a guarded artifact's, a monster's treasure, ADV-MON-011).
 fn check_heroes_after_battle(
     rules: &GameRuleset,
     (before, after): (&GameState, &GameState),
@@ -3240,69 +3829,108 @@ fn check_heroes_after_battle(
     heroes: [Option<HeroId>; 2],
 ) -> Result<(), TestCaseError> {
     let fought: Vec<HeroId> = heroes.iter().flatten().copied().collect();
-    let changes: Vec<(HeroId, HeroChange)> = events
-        .iter()
-        .filter_map(|e| match *e {
-            GameEvent::HeroChanged {
-                player,
-                hero,
-                change,
-            } => Some((player, hero, change)),
-            _ => None,
-        })
-        .map(|(player, hero, change)| {
+    for event in events {
+        if let GameEvent::HeroChanged { player, hero, .. } = *event {
             prop_assert!(fought.contains(&hero), "{:?} changed", hero);
             prop_assert_eq!(player, before.adventure().hero(hero).unwrap().owner);
-            Ok((hero, change))
-        })
-        .collect::<Result<_, TestCaseError>>()?;
+        }
+    }
     for (i, (b, a)) in before.heroes().iter().zip(after.heroes()).enumerate() {
         let id = HeroId::new(u16::try_from(i).unwrap());
         if !fought.contains(&id) {
             prop_assert_eq!(b, a);
             continue;
         }
-        let told = changes
-            .iter()
-            .filter(|(hero, _)| *hero == id)
-            .map(|&(_, c)| c);
         let (mut experience, mut mana, mut items) = (
             b.experience,
             b.mana,
             b.worn.iter().flatten().count() + b.backpack.len(),
         );
-        let mut spells = b.spells.clone();
-        for change in told {
-            match change {
-                // E08 T31: under the bound and the scenario's level limit (HER-EXP-002, -003).
-                HeroChange::GainExperience(points) => {
-                    prop_assert!(after.adventure().hero(id).is_some(), "{:?} gained", id);
-                    let cap = experience_cap(rules, before, b.level);
-                    experience = experience.saturating_add(points).min(cap);
+        // The rest of the details (level, primary and secondary skills, spells, bonuses) by the
+        // changes and levels told, in order.
+        let mut told = (**b).clone();
+        let stays = after.adventure().hero(id).is_some();
+        for event in events {
+            match *event {
+                GameEvent::HeroChanged { hero, change, .. } if hero == id => match change {
+                    // E08 T31: under the bound and the scenario's level limit (HER-EXP-002, -003).
+                    HeroChange::GainExperience(points) => {
+                        prop_assert!(stays, "{:?} gained", id);
+                        let cap = experience_cap(rules, before, b.level);
+                        experience = experience.saturating_add(points).min(cap);
+                    }
+                    HeroChange::SetSpellPoints(points) => mana = points,
+                    HeroChange::AddArtifact(_) => items += 1,
+                    HeroChange::RemoveArtifact(_) => items -= 1,
+                    // E08 T19a2b: only the winner that stays learns (Eagle Eye's picks; since
+                    // E08 T64b a reward's spells after the battle too).
+                    HeroChange::LearnSpell(_) => {
+                        prop_assert!(stays, "{:?} learned", id);
+                        h3_heroes::apply_change(&mut told, rules.core(), change);
+                    }
+                    // E08 T27: a battle tells no level; the game gives them (T30).
+                    HeroChange::GainLevel { .. } => prop_assert!(false, "{:?} told a level", id),
+                    // E08 T49a: nor a placed artifact (a move's).
+                    HeroChange::PlaceArtifact { .. } => {
+                        prop_assert!(false, "{:?} told a place", id);
+                    }
+                    // E08 T64b: a reward's changes after the battle, the winner's that stays (a
+                    // guarded object's, an event's held on the tile; GAM-DEC-007), and the
+                    // bonuses' end (GAM-BAT-014).
+                    HeroChange::GainPrimary(_)
+                    | HeroChange::RaiseSkill { .. }
+                    | HeroChange::Bonus { .. }
+                    | HeroChange::ClearBonuses => {
+                        let bonuses = matches!(change, HeroChange::ClearBonuses);
+                        prop_assert!(stays || bonuses, "{:?} told a reward", id);
+                        h3_heroes::apply_change(&mut told, rules.core(), change);
+                    }
+                },
+                // E08 T30: the levels it is told it gained, each the next level, only one that
+                // stays on the map (GAM-DEC-002, HER-LVL-005).
+                GameEvent::LevelGained {
+                    player,
+                    hero,
+                    level,
+                    primary,
+                    skill,
+                } if hero == id => {
+                    prop_assert!(stays, "{:?} levelled", id);
+                    prop_assert_eq!(player, before.adventure().hero(id).unwrap().owner);
+                    prop_assert_eq!(level, told.level + 1);
+                    let change = HeroChange::GainLevel {
+                        primary,
+                        learned: skill,
+                        offered: a.offered,
+                    };
+                    told.experience = experience;
+                    let checked = h3_heroes::check_change(&told, rules.core(), change);
+                    prop_assert!(checked.is_ok(), "{:?}: {:?}", change, checked);
+                    h3_heroes::apply_change(&mut told, rules.core(), change);
                 }
-                HeroChange::SetSpellPoints(points) => mana = points,
-                HeroChange::AddArtifact(_) => items += 1,
-                HeroChange::RemoveArtifact(_) => items -= 1,
-                // E08 T19a2b: only the winner that stays learns (Eagle Eye's picks).
-                HeroChange::LearnSpell(spell) => {
-                    prop_assert!(after.adventure().hero(id).is_some(), "{:?} learned", id);
-                    spells.push(spell);
-                }
-                // E08 T27: a battle tells no level; the game gives them (T30).
-                HeroChange::GainLevel { .. } => prop_assert!(false, "{:?} told a level", id),
-                // E08 T49a: nor a placed artifact (a move's).
-                HeroChange::PlaceArtifact { .. } => prop_assert!(false, "{:?} told a place", id),
-                // E08 T60a: nor a reward's change or the bonuses (increment 7's, T62 and T63).
-                HeroChange::GainPrimary(_)
-                | HeroChange::RaiseSkill { .. }
-                | HeroChange::Bonus { .. }
-                | HeroChange::ClearBonuses => prop_assert!(false, "{:?} told a reward", id),
+                _ => {}
             }
         }
         prop_assert_eq!((a.experience, a.mana), (experience, mana));
         prop_assert_eq!(a.worn.iter().flatten().count() + a.backpack.len(), items);
-        prop_assert_eq!(&a.spells, &spells);
-        check_levels(rules, (before, after), events, id)?;
+        prop_assert_eq!(
+            (
+                a.hero_type,
+                a.level,
+                a.primary,
+                &a.skills,
+                &a.spells,
+                a.bonuses
+            ),
+            (
+                told.hero_type,
+                told.level,
+                told.primary,
+                &told.skills,
+                &told.spells,
+                told.bonuses
+            )
+        );
     }
     // E08 T19a2b: creatures are raised into the army of a battle hero that stays, told to its
     // owner, as a stack of the creature told with at least that many.
@@ -3347,10 +3975,15 @@ fn check_heroes_after_battle(
         all
     };
     let mut gone = items(before);
+    let mut held = left_with(before, after);
     for item in items(after) {
-        let at = gone.iter().position(|&i| i == item);
+        if let Some(at) = gone.iter().position(|&i| i == item) {
+            gone.remove(at);
+            continue;
+        }
+        let at = held.iter().position(|&i| i == item);
         prop_assert!(at.is_some(), "{:?} appeared", item);
-        gone.remove(at.unwrap());
+        held.remove(at.unwrap());
     }
     for (artifact, _) in gone {
         let lost = rules
@@ -3360,6 +3993,27 @@ fn check_heroes_after_battle(
         prop_assert!(lost.war_machine.is_some(), "{:?} vanished", lost.key);
     }
     Ok(())
+}
+
+/// The artifacts the objects that left the map in a step held, as artifact and spell codes (E08
+/// T64b): a placed or guarded artifact's or a scroll's, a random artifact's drawn one, a
+/// monster's treasure artifact (ADV-MON-011).
+fn left_with(before: &GameState, after: &GameState) -> Vec<(u16, Option<u16>)> {
+    let map = before.adventure().map();
+    let left = map
+        .objects()
+        .iter()
+        .enumerate()
+        .filter(|&(i, _)| !before.adventure().is_removed(i) && after.adventure().is_removed(i));
+    left.filter_map(|(_, o)| match &o.holds {
+        Holds::Artifact(item) => Some((item.artifact.raw(), item.spell.map(|s| s.raw()))),
+        _ => o
+            .resolved
+            .artifact()
+            .or_else(|| o.monster.as_ref().and_then(|m| m.artifact))
+            .map(|artifact| (artifact.raw(), None)),
+    })
+    .collect()
 }
 
 /// The pending decisions (GAM-DEC-001, ADV-VIS-001, ADV-VIS-004; E08 T14b, T15a) and the keys
@@ -3375,7 +4029,10 @@ fn check_heroes_after_battle(
 /// an accepted guard's removes the guard, an accepted join (told as the creatures joining) and a
 /// declined flight the monster, each told as its removal, and an accepted pursuit or question
 /// starts its battle; the actor's keys grow only by the keys it is told it gained, each one it did not hold;
-/// nothing else changes either.
+/// nothing else changes either. Since E08 T64b increment 7's offers too: a guarded artifact's or
+/// scroll's question as a pile's, a gift's price (the Tree of Knowledge's drawn one; a School's
+/// choice refused so when the treasury cannot pay), the Warrior's Tomb's, a box's and the
+/// Pyramid's questions, never refused; a choice and a University open and close as told.
 fn check_decisions(
     rules: &GameRuleset,
     (before, after): (&GameState, &GameState),
@@ -3440,8 +4097,10 @@ fn check_decisions(
                         prop_assert!(keys >> key & 1 == 1, "{:?} without the key", event);
                         OfferKind::Pass
                     }
-                    // E08 T21a: a guarded pile asks while its guards stand, never refused.
-                    ObjectKind::Pickup(_) => {
+                    // E08 T21a: a guarded pile asks while its guards stand, never refused; (E08
+                    // T64b) a guarded artifact (ADV-PIK-007) and a guarded scroll with a text
+                    // (ADV-PIK-008) too.
+                    ObjectKind::Pickup(_) | ObjectKind::Artifact { .. } | ObjectKind::Scroll => {
                         prop_assert!(opened, "{:?}: a pile's question is never refused", event);
                         let map = before.adventure().map();
                         let asks = map.objects().iter().enumerate().any(|(i, o)| {
@@ -3452,6 +4111,22 @@ fn check_decisions(
                         });
                         prop_assert!(asks, "{:?} without guards that ask", event);
                         OfferKind::Fight
+                    }
+                    // E08 T64b (T62a, T63a): a gift's price, the Tree of Knowledge's drawn one,
+                    // refused when the treasury cannot pay it; a School's choice is refused so
+                    // too (its price; ADV-TCH-002), and opens as a choice otherwise.
+                    ObjectKind::Gift(gift) => OfferKind::Gift {
+                        price: gift_price(before, gift, (object_type, anchor)),
+                    },
+                    // E08 T64b (T62a, T62b1): the Warrior's Tomb's, a box's and the Pyramid's
+                    // questions, never refused.
+                    ObjectKind::Find(_) | ObjectKind::PandoraBox | ObjectKind::Pyramid(_) => {
+                        prop_assert!(opened, "{:?}: a question is never refused", event);
+                        match kind {
+                            ObjectKind::Find(_) => OfferKind::Search,
+                            ObjectKind::PandoraBox => OfferKind::OpenBox,
+                            _ => OfferKind::SearchPyramid,
+                        }
                     }
                     _ => return Err(fail(format!("{event:?} offers no offer"))),
                 };
@@ -3507,7 +4182,7 @@ fn check_decisions(
                         prop_assert!(fought, "{:?} without its battle", event);
                     }
                     // E08 T62a, T62b1: a gift's price, a find's, a box's and the Pyramid's
-                    // questions; no plan lays out their kinds yet (T64's rewards map).
+                    // questions (their gains: `check_rewards`, E08 T64b).
                     (
                         true,
                         OfferKind::Gift { .. }
@@ -3543,12 +4218,18 @@ fn check_decisions(
     // E08 T52: a meeting of two of the actor's heroes opens as told (a step toward another of its
     // heroes, GAM-MET-001), an army dialog as told (an accepted join without room), each when
     // neither is open, and each closes as told (its `Decline`; GAM-DEC-003, GAM-DEC-004).
+    // E08 T64b (T63a): a choice and a University open as told, each when nothing of these is
+    // open, and close as told (GAM-DEC-005, GAM-DEC-006).
     let dialog = |state: &GameState| state.army_dialog(actor).map(|(hero, _)| hero);
-    let mut exchange = (before.meeting(actor), dialog(before));
+    let choosing = |state: &GameState| {
+        let hero = state.choice(actor).map(|c| c.hero);
+        hero.or_else(|| state.university(actor).map(|u| u.hero))
+    };
+    let mut exchange = (before.meeting(actor), dialog(before), choosing(before));
     for event in events {
         match *event {
             GameEvent::MeetingOpened { player, heroes } => {
-                prop_assert_eq!((player, exchange), (actor, (None, None)));
+                prop_assert_eq!((player, exchange), (actor, (None, None, None)));
                 for hero in heroes {
                     let owner = after.adventure().hero(hero).map(|h| h.owner);
                     prop_assert_eq!(owner, Some(actor));
@@ -3556,22 +4237,54 @@ fn check_decisions(
                 exchange.0 = Some(heroes);
             }
             GameEvent::ArmyDialogOpened { player, hero, .. } => {
-                prop_assert_eq!((player, exchange), (actor, (None, None)));
+                prop_assert_eq!((player, exchange), (actor, (None, None, None)));
                 exchange.1 = Some(hero);
+            }
+            GameEvent::ChoiceOpened { player, hero, .. }
+            | GameEvent::UniversityOpened { player, hero, .. } => {
+                prop_assert_eq!((player, exchange), (actor, (None, None, None)));
+                prop_assert_eq!(after.adventure().hero(hero).map(|h| h.owner), Some(actor));
+                exchange.2 = Some(hero);
             }
             GameEvent::DecisionClosed { player } => {
                 prop_assert_eq!(player, actor);
-                prop_assert!(exchange != (None, None), "{:?} with nothing open", event);
-                exchange = (None, None);
+                prop_assert!(
+                    exchange != (None, None, None),
+                    "{:?} with nothing open",
+                    event
+                );
+                exchange = (None, None, None);
             }
             _ => {}
         }
     }
-    prop_assert_eq!((after.meeting(actor), dialog(after)), exchange);
+    let open = (after.meeting(actor), dialog(after), choosing(after));
+    prop_assert_eq!(open, exchange);
     prop_assert_eq!(after.decision(actor), decision.as_ref());
     prop_assert!(after.adventure().bought(actor).eq(bought));
     prop_assert_eq!(after.adventure().keys(actor), keys);
     Ok(())
+}
+
+/// The price of the gift `gift` of the object of `object_type` on `anchor` in `state` (E08
+/// T64b; ADV-TCH-003): its one price, or the one the build drew among several (the Tree of
+/// Knowledge's, [`Resolved::Price`]); empty for a free one.
+fn gift_price(
+    state: &GameState,
+    gift: &Gift,
+    (object_type, anchor): (ObjectTypeId, TilePos),
+) -> Vec<(ResourceId, u32)> {
+    let object = state
+        .adventure()
+        .map()
+        .objects()
+        .iter()
+        .find(|o| (o.object_type, o.anchor) == (Some(object_type), anchor));
+    let drawn = match object.map(|o| &o.resolved) {
+        Some(Resolved::Price(drawn)) => usize::from(*drawn),
+        _ => 0,
+    };
+    gift.prices.get(drawn).cloned().unwrap_or_default()
 }
 
 /// Ownership isolation: a command of `actor` moves no other player's hero, changes no other
@@ -3725,9 +4438,10 @@ proptest! {
                 prop_assert!(stops_on(&before, rules, at), "{:?} ends on {:?}", hero, at);
             }
             let player = player_of(&before, actor);
+            check_rewards(rules, (&before, &state), &command, &events)?;
             check_decisions(rules, (&before, &state), player, &events)?;
             check_isolation(&before, &state, player, &events)?;
-            check_conservation(rules, &before, &state, &events)?;
+            check_conservation(rules, (&before, &state), &command, &events)?;
             // E08 T52: management (GAM-MAN-001), and a move's inverse.
             if let GameCommand::Manage(manage) = &command {
                 check_management(rules, (&before, &state), player, manage, &events)?;
@@ -4176,6 +4890,166 @@ impl Managed {
     }
 }
 
+/// What a set of games visited and answered of increment 7 (E08 T64b): the object types visited
+/// ([`visited`]), by key, and the answers applied, by the decision they answered and the answer.
+#[derive(Debug, Default)]
+struct Rewarded {
+    visited: Vec<(String, usize)>,
+    answered: Vec<(&'static str, Answer, usize)>,
+}
+
+impl Rewarded {
+    /// Counts an applied command of `before` and its events.
+    fn count(
+        &mut self,
+        rules: &GameRuleset,
+        before: &GameState,
+        command: &GameCommand,
+        events: &[GameEvent],
+    ) {
+        if let Some(index) = visited(before, command, events) {
+            let ty = before.adventure().map().objects()[index].object_type;
+            let ty = ty.and_then(|ty| rules.adventure().object_type(ty));
+            if let Some(key) = ty.map(|ty| ty.key.as_str().to_owned()) {
+                match self.visited.iter_mut().find(|(k, _)| *k == key) {
+                    Some((_, n)) => *n += 1,
+                    None => self.visited.push((key, 1)),
+                }
+            }
+        }
+        let GameCommand::Answer(answer) = *command else {
+            return;
+        };
+        let player = acting(before);
+        let decision = match before.decision(player).map(|offer| &offer.kind) {
+            Some(OfferKind::Gift { .. }) => "gift",
+            Some(OfferKind::Search) => "search",
+            Some(OfferKind::OpenBox) => "box",
+            Some(OfferKind::SearchPyramid) => "pyramid",
+            Some(OfferKind::Fight) => "fight",
+            Some(_) => "offer",
+            None if before.choice(player).is_some() => "choice",
+            None if before.university(player).is_some() => "university",
+            None if before.army_dialog(player).is_some() => "dialog",
+            None if before.level_up(player).is_some() => "level-up",
+            None => "other",
+        };
+        match self
+            .answered
+            .iter_mut()
+            .find(|(d, a, _)| (*d, *a) == (decision, answer))
+        {
+            Some((_, _, n)) => *n += 1,
+            None => self.answered.push((decision, answer, 1)),
+        }
+    }
+}
+
+/// The plans visit every kind and answer every decision (E08 T64b, design §16; increment 7's
+/// exit criteria): over a fixed set of cases (proptest's deterministic runner), random play
+/// visits an object of each of increment 7's 31 classes ([`super::rewards_map::CLASSES`]) and
+/// answers each of its decisions both ways: a Tree's price, a Warrior's Tomb's, a box's and the
+/// Pyramid's questions and a guarded artifact's accepted and declined, a chest's gold and
+/// experience, the Arena's two skills, a School's two and leaving, a University's purchase and
+/// leaving, and a box's army dialog closed; the properties above check each
+/// (`every_step_keeps_the_commands_invariants`, `check_rewards`).
+// covers: ADV-PIK-005, ADV-PIK-013, ADV-TCH-001, ADV-TCH-002, ADV-TCH-003, ADV-TCH-007
+// covers: ADV-TCH-008, GAM-DEC-005, GAM-DEC-006
+#[test]
+fn the_plans_visit_every_kind_and_answer_every_decision() {
+    use proptest::strategy::ValueTree;
+    let mut runner = proptest::test_runner::TestRunner::deterministic();
+    // Visits and legal commands (their answers among them) more often than `steps` plays them,
+    // and moves across an event's tile (`None`: a step never visits one, `Step::Visit`).
+    let steps = vec(
+        prop_oneof![
+            4 => any::<u16>().prop_map(|n| (Step::Visit(n), false)),
+            4 => any::<u16>().prop_map(|n| (Step::Legal(n), false)),
+            1 => any::<u16>().prop_map(|n| (Step::Legal(n), true)),
+            1 => Just((Step::EndTurn, false)),
+        ],
+        0..120,
+    );
+    let strategy = (plan(), any::<bool>(), any::<u64>(), steps);
+    let mut rewarded = Rewarded::default();
+    for _ in 0..512 {
+        let (plan, strict, seed, steps) = strategy.new_tree(&mut runner).unwrap().current();
+        let rules = if strict { &*STRICT } else { &*FAITHFUL };
+        let mut state = start(&plan, rules, seed);
+        for (step, event) in &steps {
+            let mut legal = options(&state, rules);
+            if *event {
+                let adventure = state.adventure();
+                let live = |&i: &usize| !adventure.is_removed(i);
+                let crosses = |path: &[TilePos]| {
+                    let map = adventure.map();
+                    path.iter().any(|&at| map.events_at(at).iter().any(live))
+                };
+                let across: Vec<GameCommand> = legal
+                    .iter()
+                    .filter(|&c| as_move(c).is_some_and(|(_, path)| crosses(path)))
+                    .cloned()
+                    .collect();
+                if !across.is_empty() {
+                    legal = across;
+                }
+            }
+            let (actor, command) = resolve(&state, rules, &legal, step);
+            let before = state.clone();
+            let mut events = Vec::new();
+            if apply(&mut state, rules, actor, command.clone(), &mut events).is_ok() {
+                rewarded.count(rules, &before, &command, &events);
+            }
+        }
+    }
+    let r = &rewarded;
+    let missed: Vec<_> = super::rewards_map::CLASSES
+        .iter()
+        .filter(|&&key| !r.visited.iter().any(|(v, _)| v == key))
+        .collect();
+    assert!(
+        missed.is_empty(),
+        "never visited: {missed:?} ({:?})",
+        r.visited
+    );
+    let yes = Answer::Offer(Consent::Accept);
+    let no = Answer::Offer(Consent::Decline);
+    let wanted = [
+        ("gift", yes),
+        ("gift", no),
+        ("search", yes),
+        ("search", no),
+        ("box", yes),
+        ("box", no),
+        ("pyramid", yes),
+        ("pyramid", no),
+        ("fight", yes),
+        ("fight", no),
+        ("choice", Answer::Chest(ChestChoice::Gold)),
+        ("choice", Answer::Chest(ChestChoice::Experience)),
+        ("choice", Answer::Arena(ArenaChoice::Attack)),
+        ("choice", Answer::Arena(ArenaChoice::Defense)),
+        ("choice", Answer::School(SchoolChoice::First)),
+        ("choice", Answer::School(SchoolChoice::Second)),
+        ("choice", Answer::School(SchoolChoice::Leave)),
+        ("university", Answer::University(UniversityAnswer::Leave)),
+        ("dialog", Answer::Close),
+    ];
+    let missed: Vec<_> = wanted
+        .iter()
+        .filter(|&&w| !r.answered.iter().any(|&(d, a, _)| (d, a) == w))
+        .collect();
+    assert!(
+        missed.is_empty(),
+        "never answered: {missed:?} ({:?})",
+        r.answered
+    );
+    let bought = r.answered.iter().any(|(d, a, _)| {
+        *d == "university" && matches!(a, Answer::University(UniversityAnswer::Buy(_)))
+    });
+    assert!(bought, "no University purchase: {:?}", r.answered);
+}
+
 /// The plans meet and manage (E08 T52, increment 6's exit criteria 1 to 4): over a fixed set of
 /// cases (proptest's deterministic runner), random play with the management runs ([`steps`])
 /// meets a hero's mate and learns Scholar's spells there, moves, splits and dismisses stacks,
@@ -4190,7 +5064,7 @@ fn the_plans_meet_and_manage() {
     let mut runner = proptest::test_runner::TestRunner::deterministic();
     let strategy = (plan(), any::<bool>(), any::<u64>(), steps());
     let mut managed = Managed::default();
-    for _ in 0..96 {
+    for _ in 0..320 {
         let (plan, strict, seed, steps) = strategy.new_tree(&mut runner).unwrap().current();
         let rules = if strict { &*STRICT } else { &*FAITHFUL };
         let mut state = start(&plan, rules, seed);
