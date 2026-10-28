@@ -98,6 +98,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "h3-bink"
+version = "0.1.0"
+dependencies = [
+ "proptest",
+]
+
+[[package]]
 name = "h3-content"
 version = "0.1.0"
 dependencies = [
@@ -247,6 +254,7 @@ version = "0.1.0"
 dependencies = [
  "h3-assets",
  "h3-battle",
+ "h3-bink",
  "h3-content",
  "h3-content-battle",
  "h3-contracts",

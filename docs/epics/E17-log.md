@@ -3082,6 +3082,57 @@ user's `VIDEO.VID` into `original-data/battle-videos.vid` before the computer we
   empty (0xCB, 0xCE) draw nothing. A hero-less side's face is read but not captured (the
   harness's maps give both sides a hero).
 
+### M5 T4b2a — The Bink decoder (2026-10-28)
+
+On `client/e17-m5-t4b2a`, the user present at the start. The sandbox new; only
+`original-data/battle-videos.vid` staged (no executable reading in this part); `master` at
+`a293177` (#547 merged by the user). T4b2 cut in two with the user at the start: **T4b2a** the
+decoder (here), **T4b2b** the clip in the window (the playback read, the colours, the drawing,
+the captures). The archive's twelve entries: ten Bink clips (`defendall`, `defendloop`,
+`LBLOOP`, `LBSTART`, `LOSECSLP`, `LOSECSTL`, `RTLOOP`, `RTSTART`, `surrender`, `WIN3`; each
+`BIKb`, 256 × 120, 15/1 fps, no audio track, flags 0, only frame 0 a key frame, the index one
+word longer than FFmpeg reads) and the spell book's two page turns, Smacker (`SMK2`, left out).
+
+- **`h3-bink`** (new pure crate, `no_std`, no dependency; a port of FFmpeg 6.1.1 with its
+  copyright lines, LGPL-2.1-or-later taken under the GPL-2.0-or-later, CLT-Q29): `Clip` (the
+  demuxer's `probe` checks and `read_header`: the header, revision `k`'s extra word, the audio
+  tracks' descriptions, the index with its key bits, the last frame ended at the header's size;
+  `video` skips a frame's audio packets as `read_packet`), `Decoder` (the revision-`b` path:
+  `decode_frame`, `binkb_decode_plane`'s nine block types, the ten bundles over one buffer kept
+  from plane to plane, `read_dct_coeffs`, `read_residue`; the frame decoded in place over the
+  one before, the first over black with vectors biased 15 rows up), `Frame`/`Plane` (Y, U, V
+  over the block grid, the picture's rows), `dsp` (`binkdsp.c`'s inverse DCT, put and added,
+  and the residue: unsigned wrapping products, pixels modulo 256), `tables` (`binkdata.h`'s by a
+  script, the quantizers by a `const fn` of `binkb_calc_quant`), `bits` (FFmpeg's checked
+  little-endian reader: zeros past the end, the position stopping 8 bits after it). Errors, no
+  panics: `Truncated`, `Magic`, `Field`, `Revision` (anything but `b`), `Alpha`, `Size` (above
+  800 × 600, *provisional*), `Invalid` (a bundle overflow, a run past 64, a type above 8, fewer
+  than 4 bits for coefficients). `build` (a bit writer, the file, a packet of given blocks per
+  plane with the bundles refilled exactly when the decoder refills them, the DCT's and the
+  residue's coefficient coders, `sample(seed)`: 256 × 48, 8 frames, every block type in random
+  variations), `check` (`frames`, `hash`).
+- **`h3-assets`:** `vid` (`VidArchive`: the count, 44-byte entries of a 40-byte name and an
+  offset, each entry running to the next larger offset or the end), `build::vid`.
+- **`h3-view video`** (the binary): a video archive's Bink clips (default the repository's
+  `original-data/battle-videos.vid`) and samples decoded, written as `<name>` and `<stem>.yuv`
+  (FFmpeg's `rawvideo` `yuv420p` bytes), compared with `--reference`. `clients/scripts/bink-check.sh`
+  runs it against `bink-reference.py` (FFmpeg's libraries through PyAV).
+- **Checks:** all ten clips (759 frames) and eight samples as FFmpeg decodes them, byte for byte.
+  First against the `ffmpeg` command line: the samples, then 64 pixels wide, differed (FFmpeg
+  pads that width's rows to 128 and 64 bytes, its 64-byte alignment, so a vector crossing a
+  row's end reads padding: the samples made 256 wide, as the clips, whose rows it does not
+  pad); `LBSTART` (3 bytes in frame 46), `RTLOOP` (27 frames from 12) and `RTSTART` (17 from
+  23) differed in U at rows 45 to 47, where a vector of +15 copies the chroma's rows 60 to 63,
+  below the 60-row picture. Through PyAV, each frame released before the next is decoded, all
+  three exact; the previous frame held, the command line's differences again: `ff_reget_buffer`
+  decodes into a new buffer with only the picture's rows copied while the caller holds the
+  frame before, so those rows hold another frame's. The decoder keeps the frame before's, as a
+  decoder with its own buffers does; which one RAD's has is T4b2b's captures' to show. FFmpeg's
+  `bink.c` is the same to master but for includes and annotations (PyAV's 9.0.2 checked). The
+  crate's 31 tests (the samples' hashes as FFmpeg's), 100 % of its lines and regions, `vid`'s;
+  the client check.
+- **Found:** nothing of the original to ask about (no reading in this part). Review items 15 to 18.
+
 ## Accepted review lists (M1 to M4)
 
 M1 and M2 moved from the epic file on 2026-10-20 (less start-up reading), unchanged; M3 at its

@@ -413,6 +413,7 @@ fields = [
   { offset = 0x4E364, name = "keys", type = "u8[8]", summary = "per Keymaster colour the bits of the players holding its key (H3API's keymasterVisited)", confidence = "read", refs = ["rules/surveys/E08-objects.md §6"] },
   { offset = 0x4E36C, name = "cartographer_masks", type = "u16[3]", summary = "terrain bits each Cartographer kind reveals: water 0x100, land 0xBF, subterranean 0x40", confidence = "read", refs = ["rules/surveys/E08-objects.md §4"] },
   { offset = 0x4E372, name = "cartographer_bought", type = "u8[3]", summary = "per Cartographer kind the bits of the players who paid", confidence = "read", refs = ["rules/surveys/E08-objects.md §4"] },
+  { offset = 0x4E37C, name = "messages", type = "message*", summary = "the signs' and Ocean Bottles' message records (the vector's begin; its end at +0x4E380), 20 bytes each, indexed by the object's word: +0 set when the map gave a text, the text's characters at +8 (load_message_body 0x501270; visit_object's cases 59 and 91; E08 T66a2)", confidence = "read", refs = ["rules/surveys/E08-sea.md §8.5"] },
   { offset = 0x4E38C, name = "mines", type = "mine*", summary = "the lighthouses' and mines' vector (begin), 0x40 bytes each, the owner at +0x0 (tile_object_owner 0x40FD20 by the tile's word; E24 M1 T5b1)", confidence = "read", refs = ["epics/E24-design.md §2.9"] },
   { offset = 0x4E39C, name = "dwellings", type = "dwelling*", summary = "the dwellings' vector (classes 17 and 20; begin), 0x5C bytes each, the owner at +0x57 (0x40FD20)", confidence = "read", refs = ["epics/E24-design.md §2.9"] },
   { offset = 0x4E3AC, name = "garrisons", type = "garrison*", summary = "the garrisons' vector (class 33; begin), 0x40 bytes each, the owner at +0x0 (0x40FD20)", confidence = "read", refs = ["epics/E24-design.md §2.9"] },
@@ -546,7 +547,7 @@ fields = [
   { offset = 0xC, name = "flags", type = "u8", summary = "bits 0-5 the pictures' mirroring (the map file's flags byte, 0x4FE220): bits 0 and 1 the terrain's left-right and top-bottom, 2 and 3 the river's, 4 and 5 the road's (E24 design §1.3); 0x40 no object blocks the tile: set at load on every tile but rock, cleared by 0x505610 where an object's passability blocks it without an entrance there (not the file's coast bit, which goes to +0xD: E08 T38; the flying price, hero_flight_tile_test and ai_map_terrain_shares read it); 0x80 water, lava, a river or a road", confidence = "read", refs = ["formats/h3m.md", "rules/surveys/E08-hero-movement.md §2.1"] },
   { offset = 0xD, name = "access", type = "u8", summary = "0x01 cannot be entered (rock, or an object blocks it: the opposite of +0xC bit 0x40), 0x02 the coast (the map file's coast bit on land, a shore picture on water: 0x4FE220; the shore battlefield's test), 0x10 an object's entrance (visitable) tile (H3API's names): the pathfinder's stop (pathfinder_relax's stop flag); never set on an event's tile (place_object_tiles clears 0x01 and 0x10 there, 0x505C78; E08 T58)", confidence = "read", refs = ["rules/surveys/E08-objects.md §2", "rules/surveys/E08-rewards.md §15"] },
   { offset = 0xE, name = "draw_list", type = "vector", summary = "the objects drawn on the tile, bottom to top (4-byte entries: object index u16, the cell in the object as dy x 16 + dx from its anchor, the cell's layer 0-6), ordered by layer by tile_draw_insert 0x505230; 0x505610 takes the tile's object from it", confidence = "read", refs = ["rules/surveys/E08-objects.md §2.5", "epics/E24-design.md §2.1"] },
-  { offset = 0x1E, name = "class", type = "i32", summary = "the object class on this tile", confidence = "read", refs = ["rules/surveys/E08-objects.md §2"] },
+  { offset = 0x1E, name = "class", type = "i32", summary = "the object class on this tile; 3 on a land tile with the file's coast bit that records no object (map_tiles_load 0x4FE220, tile_refresh_object 0x505610): the only land a boat lands on (E08 T66a1)", confidence = "read", refs = ["rules/surveys/E08-objects.md §2", "rules/surveys/E08-sea.md §3.2"] },
   { offset = 0x22, name = "subclass", type = "i16", summary = "the object subclass on this tile", confidence = "read", refs = ["rules/surveys/E08-objects.md §2"] },
   { offset = 0x24, name = "object_index", type = "i16", summary = "the index of the tile's object (the topmost drawn one visited from it; -1 none); its class and subclass are +0x1E and +0x22 (H3API's drawnObjectIndex)", confidence = "read", refs = ["rules/surveys/E08-objects.md §2.5"] },
 ]
@@ -707,17 +708,18 @@ fields = [
 [[struct]]
 name = "boat"
 size = 0x28
-summary = "A boat of the game's boats (game +0x4E3BC); only what the docs cite (E24 M1 T5a)."
+summary = "A boat of the game's boats (game +0x4E3BC; at most 64 in use, create_boat 0x4BB250); only what the docs cite (E24 M1 T5a; E08 T66a1)."
 refs = ["epics/E24-design.md §2.8"]
 fields = [
   { offset = 0x0, name = "x", type = "i16", summary = "its tile, x (the low 10 bits, as a hero's; view_boat_piece 0x410760)", confidence = "read", refs = ["epics/E24-design.md §2.8"] },
   { offset = 0x2, name = "y", type = "i16", summary = "its tile, y", confidence = "read", refs = ["epics/E24-design.md §2.8"] },
   { offset = 0x4, name = "level", type = "i16", summary = "its tile's level (the low 4 bits)", confidence = "read", refs = ["epics/E24-design.md §2.8"] },
-  { offset = 0x18, name = "used", type = "u8", summary = "the record is a boat (hero_boat 0x4CE900 skips the others)", confidence = "read", refs = ["epics/E24-design.md §2.8"] },
-  { offset = 0x1A, name = "type", type = "i8", summary = "its type 0-2 (the template's subclass at a new game, observed): its DEFs ab0N_ and waves abm0N_", confidence = "read", refs = ["epics/E24-design.md §2.8"] },
-  { offset = 0x1B, name = "facing", type = "i8", summary = "where an empty boat faces (boat_map_group 0x4D9160); 2 at a new game (observed)", confidence = "read", refs = ["epics/E24-design.md §2.8"] },
-  { offset = 0x1C, name = "colour", type = "i8", summary = "its flag's colour abf0Nc (by type x 8 + colour, view_hero_piece 0x40FE30); -1 for a map's boat at a new game, the boarding hero's owner after (observed)", confidence = "read", refs = ["epics/E24-design.md §2.8"] },
-  { offset = 0x20, name = "hero", type = "i32", summary = "the id (+0x1A) of the hero it carries (hero_boat 0x4CE900), -1 for none (observed)", confidence = "read", refs = ["epics/E24-design.md §2.8"] },
+  { offset = 0x18, name = "used", type = "u8", summary = "the record is a boat (hero_boat 0x4CE900 skips the others); 0 when its hero goes back to the pool (0x4D9EC0)", confidence = "read", refs = ["epics/E24-design.md §2.8", "rules/surveys/E08-sea.md §2"] },
+  { offset = 0x19, name = "index", type = "u8", summary = "the record's own index (create_boat 0x4BB250)", confidence = "read", refs = ["rules/surveys/E08-sea.md §2"] },
+  { offset = 0x1A, name = "type", type = "i8", summary = "its type 0-2 (the template's subclass, load_object_body 0x502F28; E08 T66a1): its DEFs ab0N_ and waves abm0N_; no rule tests it", confidence = "read", refs = ["epics/E24-design.md §2.8"] },
+  { offset = 0x1B, name = "facing", type = "i8", summary = "where an empty boat faces (boat_map_group 0x4D9160); 2 at its creation (create_boat 0x4BB250), the hero's facing when it lands (hero_move_step 0x480A7D)", confidence = "read", refs = ["epics/E24-design.md §2.8"] },
+  { offset = 0x1C, name = "colour", type = "i8", summary = "its flag's colour abf0Nc (by type x 8 + colour, view_hero_piece 0x40FE30); -1 at its creation, the boarding hero's owner after (hero_boards_boat 0x4A10BD; E08 T66a1)", confidence = "read", refs = ["epics/E24-design.md §2.8"] },
+  { offset = 0x20, name = "hero", type = "i32", summary = "the id (+0x1A) of the hero it carries or last carried (hero_boat 0x4CE900; set at boarding, kept at landing; E08 T66a1), -1 at its creation", confidence = "read", refs = ["epics/E24-design.md §2.8"] },
   { offset = 0x24, name = "aboard", type = "u8", summary = "1 with its hero aboard (hero_boat 0x4CE900)", confidence = "read", refs = ["epics/E24-design.md §2.8"] },
 ]
 

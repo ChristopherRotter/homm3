@@ -1,0 +1,16 @@
+[package]
+name = "h3-bink"
+description = "A Bink video decoder for the original game's clips: the .bik container and its video of revision b, ported from FFmpeg 6.1.1 (LGPL-2.1-or-later, here under the GPL-2.0-or-later). Bytes in, YUV 4:2:0 frames out."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+
+[dev-dependencies]
+proptest.workspace = true
+
+[lints]
+workspace = true

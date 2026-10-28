@@ -35,6 +35,7 @@ pub mod pcx;
 mod read;
 pub mod snd;
 pub mod survey;
+pub mod vid;
 pub mod wav;
 
 /// Why a decoder rejected its input. The decoders never panic: every malformed input ends in one

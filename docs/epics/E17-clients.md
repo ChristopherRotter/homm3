@@ -182,8 +182,14 @@ the stacks created mid-battle.
       (`h3_view::result`, a DEF item's mirror, the heroes' portraits; the window's result opened
       as the battle is decided, its OK closing the battle's screen); `result-retreat`,
       `result-surrender` and `end`'s last frame exact, `defended`'s but 122 artifacts.
-    - **T4b2, the clip:** its slot's Bink clips (a port of FFmpeg's decoder, the user's choice,
-      CLT-Q29), the harness given them.
+    - **T4b2, the clip** (cut in two by the user, 2026-10-28; a port of FFmpeg's decoder, the
+      user's choice, CLT-Q29):
+      - **T4b2a, the decoder** (done 2026-10-28): `h3-bink` (the Bink file, the video of revision
+        `b`), `h3_assets::vid`, `h3-view video` and `bink-check.sh`; the ten clips and eight
+        synthetic samples as FFmpeg decodes them, byte for byte.
+      - **T4b2b, the clip in the window:** the playback read (0x597570, the start clip then the
+        loop, the timing), the colours (as `BINKW32.DLL` converts them, from the captures),
+        drawn in the window, the stills and the sequences; the harness given the clips.
   - **T4c, Auto Combat and the tactics phase:** the panel dimmed, the tactics phase's panel
     (0x46C050).
 - **T5, what a played battle shows:** the created stacks (`StackCreated`: Summon Elemental,
@@ -325,3 +331,17 @@ M3 at its review, T9b, M4 at its review, T3c). The next milestone's list starts 
     maps give both sides a hero, so no capture shows one).
 14. The window's battle ends with the result's OK (T4b1): the window's run ends there, as the
     original leaves the battle's screen.
+15. `h3-bink` (T4b2a): a new pure crate, a port of FFmpeg 6.1.1's revision-`b` decoder (CLT-Q29)
+    under the GPL-2.0-or-later with FFmpeg's copyright lines; it indexes its fixed tables and
+    blocks directly where the index is bounded by construction (no `clippy::indexing_slicing`
+    denial, which `h3-assets` has), the planes and bundles only through checked reads and
+    writes; frames above 800 × 600 refused.
+16. The decoder's buffers (T4b2a): the block grid's rows below the picture keep the frame
+    before's, as FFmpeg's decoder when each frame is released (its command line, holding the
+    frame before, loses them: three clips differ there in a few pixels; RAD's decoder's
+    behaviour is T4b2b's captures' to show).
+17. The decoder's check (T4b2a): `clients/scripts/bink-check.sh` takes its reference from PyAV
+    (`pip install av`: BSD-3-Clause, FFmpeg's libraries), a tool of the sandbox's, no crate's
+    dependency; the synthetic samples 256 pixels wide, as the clips (FFmpeg pads narrower rows).
+18. `VIDEO.VID`'s entries sized by the next larger offset (T4b2a, `h3_assets::vid`): no size is
+    stored, so entries sharing an offset read the same bytes.

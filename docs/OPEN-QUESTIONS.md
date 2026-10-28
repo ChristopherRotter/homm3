@@ -69,7 +69,9 @@ The review's fix C3 follows the reading of 0x47A100: a created stack whose round
 
 ### Adventure lane (`ADV-Q<n>`)
 
-(no open questions)
+#### ADV-Q32 — Increment 8's survey checkpoint: the sea's disputes, a hero on water, the boats' cap, batch E8 (E08 T66a2)
+
+**Context.** The boats and sea survey (`docs/rules/surveys/E08-sea.md`, T66a1 and T66a2) is done; T66b writes the ADR amendment drafts, the design note and the cut from it and the answers here (decision 159). The questions in full, with the options and the recommendations, are the survey's §14; in short: (1) the disputes D-41 (the drop to 0 before the Admiral's Hat's proportion), D-42 (no landing on an event's or a hole's coastal tile), D-43 (the diagonal exception on Favorable Winds) and D-45 (a flyer on the coast takes a sea pickup by a click): the code's side built and confirmed or reverted by batch E8, as decision 129 (recommended), or only after the batch, or VCMI's where the wiki agrees; (2) D-44, a hero placed on water: the import refuses it (recommended), VCMI's boat, or the reading's hero without a boat; (3) the original's 64 boats: no limit as decision 133 (recommended) or the cap; (4) batch E8's 16 rows in two runs before the build (recommended), beside it, the disputes' rows only, or none; (5) A-27 (a computer's hero leaves a bottle) and A-28 (the day's maximum kept without the Admiral's Hat): not reproduced (recommended); (6) the common rules of §7 to §9 as written; (7) what stays out of increment 8 confirmed. **Blocked:** T66b.
 
 ### Server lane (`SRV-Q<n>`)
 

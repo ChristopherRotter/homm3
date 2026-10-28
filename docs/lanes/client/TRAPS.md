@@ -77,3 +77,13 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
 - Sieges: machines acting on their own at the opening act before the record opens (CLT-Q20: the
   defender commands its turrets); the turrets' counts need `structures = 1`; in hot seat the
   original shows the side to act's view (runbook, "A siege").
+- The Bink decoder (`h3-bink`, E17 M5 T4b2a) is checked against FFmpeg only through
+  `clients/scripts/bink-reference.py` (PyAV, each frame released before the next): the `ffmpeg`
+  command line holds the frame before, so its decoder copies only the picture's rows into a new
+  buffer and the chroma's hidden rows (60 to 63) differ (`LBSTART`, `RTLOOP`, `RTSTART`); and a
+  test clip is 256 pixels wide, as the game's (FFmpeg pads narrower rows, so a vector crossing
+  a row's end reads its padding).
+- Coverage counts regions: an `if let Some(x) = s.get_mut(i) { … }` without `else` leaves one
+  uncovered when the index is always inside (route such writes through one helper whose outside
+  case a test takes, `h3_bink`'s `dsp::set`), and a `const fn` evaluated only at compile time is
+  uncovered until a test calls it at run time.

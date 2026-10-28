@@ -16,6 +16,47 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
 
 ## Notices from other lanes and finished items, newest first
 
+- 2026-10-28 (T66a2 done, the survey `E08-sea.md` complete; T66b waits for ADV-Q32): the T66a entry as it stood:
+
+  **E08 T66a — The boats and sea survey** (in two, decision 160: T66a1 points 1, 2, 3, 6 done, survey `E08-sea.md` §0 to §6; T66a2 points 4, 5, 7, 8 next)
+
+  - **Scope** (decisions 158, 159): a survey `docs/rules/surveys/E08-sea.md` (as T17a, T24a, T34a,
+    T44a and T55a): the original's rules for boats and the sea, by code reading
+    (`docs/exe/README.md`; what is read already: `hero_boards_boat` 0x4A1010, `hero_lands_from_boat`
+    0x49E670 and the boat's points in survey `E08-hero-movement.md` §1.1, §1.4, §2.1, §3.1 and §6,
+    the boats' drawing in `docs/epics/E24-design.md` §2.3) with VCMI 1.7.5 and the wiki, and a census
+    of the 160 shipped maps. (1) **Boats** (class 8): how many, their subclasses, heroes placed in
+    one, what a map leaves reachable only by sea; the body and the import. (2) **Boarding and
+    landing:** which steps board and land, the points they cost and leave (the Admiral's Hat), what
+    boarding clears (Fly, Water Walk), where the boat stays, a guarded or blocked shore. (3)
+    **Sailing:** the step's price at sea and the day's points (Navigation, the Necklace of Ocean
+    Guidance, the Sea Captain's Hat; a Lighthouse's bonus stays with item 9), Favorable Winds (225),
+    what a hero in a boat visits and how (the sea's objects, another hero, the events on water of
+    the inbox's note below), scouting at sea, what another player sees of a boat. (4) **A battle
+    with a hero in a boat** (against a hero; the ship's deck and the two boats battlefields,
+    GAM-BAT-001; whether anything else fights a hero at sea). (5) **The sea's pickups:** Sea Chest
+    (82), Shipwreck Survivor (86), Flotsam (29), Ocean Bottle (59): their contents, draws at a new
+    game and visits. (6) **The writer:** an empty boat and a hero standing in one (CLT-Q5). (7) The
+    commands, decisions, events, the observation, replays and benchmarks it changes; **batch E8's
+    plan** on the client lane's harness (decision 159's agent's call). (8) The proposed rule ids,
+    quirk candidates and disputes; a fresh agent's second reading of the code; the checkpoint's
+    questions (an `ADV-Q`).
+  - **Not in it** (decision 158): Shipyards (87) and Lighthouses (42), item 9; Whirlpools, Buoys,
+    Mermaids, Sirens; the Derelict Ship and the Shipwreck (item 10); Summon Boat and Scuttle Boat
+    (the adventure spells); a town's shipyard (E09).
+  - **Depends on:** T65 (done). **Status:** T66a1 done (2026-10-28: the census, boats, boarding,
+    landing, sailing, the events on water, the writer; disputes D-41 to D-44 for the checkpoint);
+    **T66a2 ready** (the battle at sea, the four pickups, the commands and the observation, batch
+    E8's plan, the rule ids, the second reading of §2 to §4's deciding code, the checkpoint's
+    `ADV-Q` with D-41 to D-44), its cut confirmed at its start; a user checkpoint at its end
+    (decision 159).
+
+- 2026-10-27 (E08 T62b2's census; **for T66a**, increment 8 builds boats, decision 158): 9 events of
+  the shipped maps lie on water. The engine fires an event only for a hero that stands on its tile,
+  so these fire once a hero in a boat can step onto them (the original's `hero_move_step` tests
+  every tile a step enters, at sea too). Check the boat's step against
+  `AdventureState::firing_event` then. *(2026-10-28, T66a1: confirmed, survey `E08-sea.md` §1 and §4.3; the survey carries it to T66b.)*
+
 - 2026-10-28 (T65, increment 7 closed): the entry below moved from the inbox, nothing left to act on (the map client lane's change of the writer's edge bound, merged with its tests).
 
 - 2026-10-27 (the map client lane, E24 M2 T6b1, `map-client/e24-r2-8`, `cross-lane` with the
