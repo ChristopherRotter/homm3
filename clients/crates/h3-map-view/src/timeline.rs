@@ -31,7 +31,7 @@ use h3_render::Bugs;
 use h3_render::screen::Screen;
 
 use crate::layout::{AdventureLayout, DIRECTIONS};
-use crate::live::Arrow;
+use crate::live::{Arrow, Buttons, Kingdom, Selected};
 use crate::scene::ViewAt;
 use crate::sequence::{DEFAULT_HERO_SPEED, DEFAULT_SCROLL_SPEED};
 use crate::sound::{Cue, Sound};
@@ -42,7 +42,7 @@ use crate::tables::{Tables, WalkArt};
 pub const CURSOR_TYPE: u32 = 1;
 
 /// The last green arrow (1 to 25 green, a step the hero pays today; 26 to 50 red: design §2.10).
-pub const GREEN: u16 = 25;
+pub use crate::live::GREEN;
 
 /// The scroll's and the hero's eight directions, clockwise from north (the original's 0 to 7,
 /// `view_scroll` 0x4195C0; a hero's facing, its record's +0x47).
@@ -342,6 +342,9 @@ pub struct Start {
     /// screen starts, which the loop starts at 0 and drives; none for a map without the tables'
     /// sounds, which gives no cues.
     pub sound: Option<Sound>,
+    /// The viewer's kingdom at 0 (E24 M3 T2a, design §4.1): move hero's and next hero's states
+    /// start from it and the path ([`Buttons::of`]).
+    pub kingdom: Kingdom,
 }
 
 /// The cursor drawn: a frame of the layout's cursor and the point its hot spot is at.
@@ -412,6 +415,9 @@ pub struct State {
     pub walk: Walk,
     /// The path's arrows left, in memory's order (level, row, column: `Mem.path_arrows`).
     pub arrows: Vec<Arrow>,
+    /// Move hero's and next hero's states as the screen shows them (E24 M3 T2a, design §4.1:
+    /// each change drawn and shown at once).
+    pub buttons: Buttons,
 }
 
 /// A walk under way: inside a key's step or the path's walk, which wait for their frames' times.
@@ -475,6 +481,11 @@ pub struct Loop {
     live: bool,
     /// The map's sound and its cues not taken yet ([`Start::sound`]).
     sound: Option<Sound>,
+    /// The viewer's kingdom ([`Start::kingdom`]): a walk the points end leaves its hero unable
+    /// to move.
+    kingdom: Kingdom,
+    /// Move hero's and next hero's states.
+    buttons: Buttons,
 }
 
 impl Loop {
@@ -541,6 +552,8 @@ impl Loop {
             flushed: false,
             live: start.live,
             sound: start.sound.clone(),
+            kingdom: start.kingdom.clone(),
+            buttons: Buttons::of(&start.kingdom, &start.path),
             rules,
         };
         if !l.path.is_empty() {
@@ -576,6 +589,7 @@ impl Loop {
             hero: self.hero,
             walk: self.walk,
             arrows: self.arrows(),
+            buttons: self.buttons,
         }
     }
 
@@ -589,6 +603,12 @@ impl Loop {
     #[must_use]
     pub fn cursor(&self) -> Cursor {
         self.cursor
+    }
+
+    /// Move hero's and next hero's states (E24 M3 T2a).
+    #[must_use]
+    pub fn buttons(&self) -> Buttons {
+        self.buttons
     }
 
     /// The sound's cues given since the last take (E24 M2 T5), with their milliseconds.
@@ -755,6 +775,8 @@ impl Loop {
         let Some(next) = self.hero.and_then(|h| self.next(h.at, direction)) else {
             return;
         };
+        // Move hero disabled and shown at once (0x408D06; design §4.1).
+        self.buttons.move_hero = false;
         if !self.path.is_empty() {
             self.path.clear();
             self.draw();
@@ -793,7 +815,15 @@ impl Loop {
         };
         self.path = path;
         self.draw();
+        // Move hero by the path's green arrows (`make_hero_path` from 0x40AA17, its third argument
+        // set: 0x4191A2; design §4.1).
+        self.buttons.move_hero = self.green();
         Ok(())
+    }
+
+    /// Whether the path shown holds a green arrow, a step the hero pays today.
+    fn green(&self) -> bool {
+        self.path.iter().any(|(_, a)| (1..=GREEN).contains(&a.arrow))
     }
 
     /// A click the loop cannot play: refused, or live the pointer's move only.
@@ -820,6 +850,8 @@ impl Loop {
         if !self.lifted {
             self.lift(t, false);
         }
+        // Move hero disabled and shown at once (0x407E2C; design §4.1).
+        self.buttons.move_hero = false;
         let mut steps: VecDeque<(Direction, Pos)> = self
             .path
             .iter()
@@ -960,6 +992,19 @@ impl Loop {
         }
         if !key && !self.path.is_empty() {
             self.draw();
+            // The rest's path made again with its third argument (0x4080C9): move hero by its
+            // green arrows. With none left the points did not pay the next step, which set them
+            // to 0 (0x480864): the hero cannot move on (*provisional*: the engine's from M4), and
+            // next hero follows the kingdom (0x408193 to 0x4081C4; design §4.1).
+            self.buttons.move_hero = self.green();
+            if !self.buttons.move_hero {
+                if let Selected::Hero(i) = self.kingdom.selected
+                    && let Some(hero) = self.kingdom.heroes.get_mut(i)
+                {
+                    hero.movable = false;
+                }
+                self.buttons.next_hero = self.kingdom.next_hero();
+            }
         }
         self.cursor.at = self.rules.drawn_at(self.pointer);
         self.cursor.shown = true;
@@ -1148,8 +1193,9 @@ pub fn play(
     Ok(states)
 }
 
-/// The timeline's lines (design §3.2): at 0 the view, the objects, the cycles and the cursor, then
-/// each one where it changed, in that order within a millisecond; after 0 the walk's (§3.5) where
+/// The timeline's lines (design §3.2): at 0 the view, the objects, the cycles, the cursor and the
+/// buttons (move hero's and next hero's states, 1 enabled; E24 M3 T2a), then each one where it
+/// changed, in that order within a millisecond; after 0 the walk's (§3.5) where
 /// they changed: the selected hero, the walk's drawing, the path's arrows; and a `screen` line
 /// where `screens` gives the box the screen changed in (never at 0, whose screen is always kept).
 #[must_use]
@@ -1167,7 +1213,11 @@ pub fn lines(states: &[State], screens: &BTreeMap<u32, [i32; 4]>) -> Vec<String>
                 s.cursor.frame, s.cursor.at[0], s.cursor.at[1]
             )
         };
-        for f in [view, objects, cycles, cursor] {
+        let buttons = |s: &State| {
+            let b = s.buttons;
+            format!("buttons {} {}", u8::from(b.move_hero), u8::from(b.next_hero))
+        };
+        for f in [view, objects, cycles, cursor, buttons] {
             if changed(f) {
                 out.push(format!("{} {}", s.t, f(s)));
             }
@@ -1206,20 +1256,26 @@ pub fn lines(states: &[State], screens: &BTreeMap<u32, [i32; 4]>) -> Vec<String>
     out
 }
 
-/// The box two frames differ in within `area` (left, top, right, bottom, the last two exclusive),
-/// as the timeline's `screen` lines give it (the harness's `changed_box` over the screen outside
-/// the panels); `None` when nothing in it differs. Frames of other sizes differ in all of it.
+/// The box two frames differ in outside the `masked` rectangles (left, top, right, bottom, the last
+/// two exclusive), as the timeline's `screen` lines give it (the harness's `changed_box` over the
+/// screen outside the panels' mask, `clients/map/masks.toml`; E24 M3 T2a: the whole screen but the
+/// mask); `None` when nothing there differs. Frames of other sizes differ in all of `after`.
 #[must_use]
-pub fn changed(before: &Screen, after: &Screen, area: [i32; 4]) -> Option<[i32; 4]> {
-    let [left, top, right, bottom] = area;
+pub fn changed(before: &Screen, after: &Screen, masked: &[[i32; 4]]) -> Option<[i32; 4]> {
+    let [right, bottom] = [after.width(), after.height()].map(|v| i32::try_from(v).unwrap_or(0));
     if (before.width(), before.height()) != (after.width(), after.height()) {
-        return Some(area);
+        return Some([0, 0, right, bottom]);
     }
+    let hidden = |x: i32, y: i32| {
+        masked
+            .iter()
+            .any(|&[x0, y0, x1, y1]| (x0..x1).contains(&x) && (y0..y1).contains(&y))
+    };
     let mut found: Option<[i32; 4]> = None;
-    for y in top..bottom {
-        for x in left..right {
+    for y in 0..bottom {
+        for x in 0..right {
             let (x64, y64) = (i64::from(x), i64::from(y));
-            if before.pixel(x64, y64) != after.pixel(x64, y64) {
+            if before.pixel(x64, y64) != after.pixel(x64, y64) && !hidden(x, y) {
                 let [x0, y0, x1, y1] = found.unwrap_or([x, y, x + 1, y + 1]);
                 found = Some([x0.min(x), y0.min(y), x1.max(x + 1), y1.max(y + 1)]);
             }

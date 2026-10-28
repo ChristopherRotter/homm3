@@ -178,6 +178,16 @@ PATH, VIEW, MOUSE_TILE = 0x48, 0xE4, 0xE8
 # Adventure manager +0x4C: a path shown (not 0: the view's passes 6 and 8 draw the arrows of +0x48,
 # adventure_view_draw 0x40F5F2; E24 M1 T5b2, design §2.10).
 PATH_SHOWN = 0x4C
+# The adventure screen's panels (E24 M3 T2a; design §4.1 of E24): a player's towns (i8 +0x3E their
+# number, i8 +0x3F the selected one, -1 none, i8[] +0x40 their indices in the town list's order); a
+# hero asleep (u8 +0x11C); the adventure dialog (the manager's +0x44): the lists' first slots (i32
+# +0x64 the heroes', +0x68 the towns'); the seer huts' and quest guards' quests (vectors of 19-byte
+# and 5-byte records at game +0x1FBD4 and +0x1FBE4: the quest at +0, the visitors' bits at +4;
+# quest_log_state 0x4039B0).
+PLAYER_TOWNS, PLAYER_TOWN, PLAYER_TOWN_LIST, HERO_ASLEEP = 0x3E, 0x3F, 0x40, 0x11C
+ADVENTURE_DIALOG, HERO_TOP, TOWN_TOP = 0x44, 0x64, 0x68
+QUEST_VECTORS = ((0x1FBD4, 19), (0x1FBE4, 5))
+MOVE_HERO, NEXT_HERO = 7, 11
 # A path arrow's frame: 0 none, 1 to 25 a move today (green), 26 to 50 a later one (red).
 GREEN_FRAMES = range(1, 26)
 # The battle animations' next frame time (0x4F82F0 waits for it); on the adventure map the
@@ -841,6 +851,66 @@ class Mem:
     def write_points(self, index, points):
         """A hero's movement points (T1b: a sequence's `points`)."""
         self.write_u32(self.game() + HEROES + HERO_SIZE * index + HERO_POINTS, points)
+
+    def kingdom(self, colour):
+        """What the adventure screen's panels show of a player's kingdom (E24 M3 T2a; design
+        §4.1), as `render --live`'s `kingdom` takes it: its heroes in the hero list's order, each
+        [asleep, movable] (movable: points left; a step leaves 0 or at least the cheapest step
+        from the new tile, hero_move_step 0x481182, so a hero with points left can move:
+        *provisional*), its towns' number, the one selected ([1, the hero's place in the list],
+        [2, the town's] or [0, 0]), the lists' first slots and whether a quest it visited is in
+        its log (0x4039B0; the quest's text, which every quest has, not checked)."""
+        raw = self.read(self.game() + PLAYERS + PLAYER_SIZE * colour, PLAYER_SIZE)
+        count = struct.unpack_from("<b", raw, 0x1)[0]
+        heroes = list(struct.unpack_from(f"<{count}i", raw, 0x8))
+        selected = struct.unpack_from("<i", raw, 0x4)[0]
+        towns = struct.unpack_from("<b", raw, PLAYER_TOWNS)[0]
+        town_list = list(struct.unpack_from(f"<{towns}b", raw, PLAYER_TOWN_LIST))
+        town = struct.unpack_from("<b", raw, PLAYER_TOWN)[0]
+        rows = []
+        for index in heroes:
+            record = self.game() + HEROES + HERO_SIZE * index
+            asleep = self.read(record + HERO_ASLEEP, 1)[0]
+            rows.append([int(asleep != 0), int(self.i32(record + HERO_POINTS) > 0)])
+        if selected in heroes:
+            chosen = [1, heroes.index(selected)]
+        elif town in town_list:
+            chosen = [2, town_list.index(town)]
+        else:
+            chosen = [0, 0]
+        dialog = self.manager_field(ADVENTURE_DIALOG)
+        tops = [self.i32(dialog + HERO_TOP), self.i32(dialog + TOWN_TOP)]
+        quests = any(self.visited_quest(at, size, colour) for at, size in QUEST_VECTORS)
+        return {"heroes": rows, "towns": towns, "selected": chosen, "tops": tops,
+                "quests": int(quests)}
+
+    def buttons(self):
+        """Move hero's and next hero's states on the adventure screen (E24 M3 T2a; design §4.1),
+        `[move, next]`, 1 enabled: the items 7 and 11 of the adventure dialog (the manager's
+        +0x44), a state with bit 8 or 0x20 disabled."""
+        dialog = self.manager_field(ADVENTURE_DIALOG)
+        states, item, seen = {}, self.u32(dialog + FIRST_ITEM), set()
+        while item and item not in seen and len(seen) < 512 and len(states) < 2:
+            seen.add(item)
+            raw = self.read(item, ITEM_STATE + 2)
+            ident = struct.unpack_from("<H", raw, ITEM_ID)[0]
+            if ident in (MOVE_HERO, NEXT_HERO):
+                states[ident] = struct.unpack_from("<H", raw, ITEM_STATE)[0]
+            item = struct.unpack_from("<I", raw, NEXT_ITEM)[0]
+        return [int(not states[i] & 0x28) for i in (MOVE_HERO, NEXT_HERO)]
+
+    def visited_quest(self, vector, size, colour):
+        """Whether a record of the quests' vector at game + `vector` (`size` bytes each) holds a
+        quest the player `colour` visited (E24 M3 T2a)."""
+        begin, end = struct.unpack("<2I", self.read(self.game() + vector, 8))
+        if not begin or end <= begin:
+            return False
+        data = self.read(begin, end - begin)
+        for at in range(0, len(data) - size + 1, size):
+            quest, visitors = struct.unpack_from("<IB", data, at)
+            if quest and visitors >> colour & 1:
+                return True
+        return False
 
     def cursor(self):
         """The cursor (E24 M2 T1a2): its type (0 `crdeflt.DEF`, 1 `cradvntr.DEF`, ...), its

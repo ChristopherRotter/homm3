@@ -277,3 +277,124 @@ fn every_town_its_picture_by_its_buildings_at_the_start() {
     raw.objects[town].body = Body::None;
     assert_eq!(drawn(&raw), None);
 }
+
+#[test]
+fn a_maps_start_its_kingdom_and_buttons() {
+    // E24 M3 T2a (design §4.1): the art map's Red hero and Blue town.
+    let raw = raw(&map());
+    let art = MapArt::from_raw(&raw).unwrap();
+    let kingdom = |viewer| Live::at_start(&raw, &art, viewer, &towns()).kingdom;
+    let awake = KingdomHero {
+        asleep: false,
+        movable: true,
+    };
+    let red = kingdom(0);
+    assert_eq!(
+        red,
+        Kingdom {
+            heroes: vec![awake],
+            towns: 0,
+            selected: Selected::Hero(0),
+            tops: [0, 0],
+            quests: false,
+        }
+    );
+    let blue = kingdom(1);
+    assert_eq!((blue.heroes.len(), blue.towns), (0, 1));
+    assert_eq!(blue.selected, Selected::Town(0));
+    assert_eq!(kingdom(2), Kingdom::default());
+    assert!(Live::at_start(&raw, &art, 0, &towns()).buttons.is_none());
+    // Move hero by a green arrow of the selected hero's path, next hero by an awake hero able to
+    // move.
+    let arrow = |arrow| Arrow {
+        at: pos(1, 1),
+        arrow,
+    };
+    let buttons = |kingdom: &Kingdom, path: &[Arrow]| Buttons::of(kingdom, path);
+    assert_eq!(
+        buttons(&red, &[arrow(30), arrow(25)]),
+        Buttons {
+            move_hero: true,
+            next_hero: true,
+        }
+    );
+    assert!(!buttons(&red, &[arrow(26)]).move_hero);
+    assert!(!buttons(&red, &[arrow(0)]).move_hero);
+    assert_eq!(
+        buttons(&blue, &[arrow(1)]),
+        Buttons {
+            move_hero: false,
+            next_hero: false,
+        }
+    );
+    let tired = Kingdom {
+        heroes: vec![
+            KingdomHero {
+                asleep: true,
+                movable: true,
+            },
+            KingdomHero {
+                asleep: false,
+                movable: false,
+            },
+        ],
+        ..red
+    };
+    assert!(!tired.next_hero());
+}
+
+#[test]
+fn a_live_parts_kingdom_read() {
+    // E24 M3 T2a: `h3mem.py`'s `Mem.kingdom` as the harness writes it.
+    let read = |text: &str| {
+        let table: toml::Table = toml::from_str(&alloc::format!("kingdom = {text}")).unwrap();
+        Kingdom::read(&table["kingdom"])
+    };
+    let all = "{ heroes = [[0, 1], [1, 0]], towns = 2, selected = [1, 1], tops = [0, 1], quests = 1 }";
+    assert_eq!(
+        read(all),
+        Some(Kingdom {
+            heroes: vec![
+                KingdomHero {
+                    asleep: false,
+                    movable: true,
+                },
+                KingdomHero {
+                    asleep: true,
+                    movable: false,
+                },
+            ],
+            towns: 2,
+            selected: Selected::Hero(1),
+            tops: [0, 1],
+            quests: true,
+        })
+    );
+    let selected = |s: &str| read(&all.replace("selected = [1, 1]", s)).map(|k| k.selected);
+    assert_eq!(selected("selected = [0, 9]"), Some(Selected::None));
+    assert_eq!(selected("selected = [2, 1]"), Some(Selected::Town(1)));
+    for wrong in [
+        "selected = [1, 2]",
+        "selected = [2, 2]",
+        "selected = [3, 0]",
+        "selected = [1]",
+        "selected = [-1, 0]",
+    ] {
+        assert_eq!(selected(wrong), None, "{wrong}");
+    }
+    for (from, to) in [
+        ("[[0, 1], [1, 0]]", "[[0, 2]]"),
+        ("[[0, 1], [1, 0]]", "[[0]]"),
+        ("[[0, 1], [1, 0]]", "[[0, \"1\"]]"),
+        ("[[0, 1], [1, 0]]", "3"),
+        ("towns = 2", "towns = -1"),
+        ("tops = [0, 1]", "tops = [0]"),
+        ("tops = [0, 1]", "tops = [0, -1]"),
+        ("quests = 1", "quests = 2"),
+        ("quests = 1", "missing = 1"),
+    ] {
+        assert_eq!(read(&all.replace(from, to)), None, "{to}");
+    }
+    let table: toml::Table = toml::from_str("kingdom = 1").unwrap();
+    assert_eq!(Kingdom::read(&table["kingdom"]), None);
+}

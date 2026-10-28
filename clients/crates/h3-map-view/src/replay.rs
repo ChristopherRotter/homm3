@@ -1,6 +1,7 @@
 //! The map played forward as the window asks (E24 M2 T4a, *provisional*): the timeline's loop
 //! ([`Loop`]) run from a start and the actions at their milliseconds, as far as the window's clock
-//! needs, giving the changes of what the screen shows (the view's draw and the cursor) with their
+//! needs, giving the changes of what the screen shows (the view's draw, the cursor and, since E24
+//! M3 T2a, move hero's and next hero's states) with their
 //! times. The window composes a change's frame ahead of its time and shows it when it falls due,
 //! a change overtaken by a later one passed over (`h3-view window`'s way, E17 design §8.1).
 //! `sequences` plays the same loop ([`crate::timeline::play`]), so each change is a frame the
@@ -21,6 +22,7 @@ use alloc::collections::{BTreeMap, VecDeque};
 use alloc::vec::Vec;
 use core::iter;
 
+use crate::live::Buttons;
 use crate::sound::Cue;
 use crate::timeline::{Action, Cursor, Draw, Loop, Rules, Start, Unplayable};
 
@@ -33,6 +35,8 @@ pub struct Change {
     pub drawn: Draw,
     /// The cursor.
     pub cursor: Cursor,
+    /// Move hero's and next hero's states (E24 M3 T2a).
+    pub buttons: Buttons,
 }
 
 /// The loop run forward on demand, the changes kept from the one shown on, each with the loop as
@@ -66,6 +70,7 @@ fn shown(l: &Loop, t: u32) -> (Change, Loop) {
             t,
             drawn: l.drawn().clone(),
             cursor: l.cursor(),
+            buttons: l.buttons(),
         },
         l.clone(),
     )
@@ -242,7 +247,10 @@ impl Replay {
             self.t = next;
             let cues = self.l.take_cues();
             self.keep_cues(cues);
-            if *self.l.drawn() != self.now.0.drawn || self.l.cursor() != self.now.0.cursor {
+            if *self.l.drawn() != self.now.0.drawn
+                || self.l.cursor() != self.now.0.cursor
+                || self.l.buttons() != self.now.0.buttons
+            {
                 let change = shown(&self.l, next);
                 self.kept
                     .push_back(core::mem::replace(&mut self.now, change));

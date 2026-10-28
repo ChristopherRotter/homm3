@@ -4,7 +4,7 @@ use alloc::string::ToString;
 use alloc::vec;
 
 use crate::layout::AdventureLayout;
-use crate::live::{Facing, LiveHero};
+use crate::live::{Facing, Kingdom, LiveHero};
 use crate::sequence::{self, Sequences};
 use crate::situation::Situation;
 use crate::tables;
@@ -89,7 +89,31 @@ const RECORDED: [(&str, &str, &str); 13] = [
 ];
 
 /// The walks' live parts at 0 (`h3map.py frames`): their selected heroes.
-const LIVE: [(&str, &str); 7] = [
+const LIVE: [(&str, &str); 13] = [
+    (
+        "idle-cycles",
+        include_str!("../../../../map/timelines/idle-cycles-live.toml"),
+    ),
+    (
+        "idle-objects",
+        include_str!("../../../../map/timelines/idle-objects-live.toml"),
+    ),
+    (
+        "scroll-0",
+        include_str!("../../../../map/timelines/scroll-0-live.toml"),
+    ),
+    (
+        "scroll-1",
+        include_str!("../../../../map/timelines/scroll-1-live.toml"),
+    ),
+    (
+        "scroll-2",
+        include_str!("../../../../map/timelines/scroll-2-live.toml"),
+    ),
+    (
+        "scroll-limits",
+        include_str!("../../../../map/timelines/scroll-limits-live.toml"),
+    ),
     (
         "walk-1",
         include_str!("../../../../map/timelines/walk-1-live.toml"),
@@ -122,6 +146,15 @@ const LIVE: [(&str, &str); 7] = [
 
 /// A live part's heroes and viewer (`[x, y, level, class, facing, owner, boat, colour]` rows, as
 /// the binary's `read_live` takes them).
+/// A kept live part's kingdom (E24 M3 T2a), none before it was kept.
+fn live_kingdom(text: &str) -> Kingdom {
+    let table: toml::Table = text.parse().unwrap();
+    table
+        .get("kingdom")
+        .map(|k| Kingdom::read(k).unwrap())
+        .unwrap_or_default()
+}
+
 fn live_heroes(text: &str) -> (Vec<LiveHero>, u8) {
     let table: toml::Table = text.parse().unwrap();
     let number = |v: &toml::Value| v.as_integer().unwrap();
@@ -169,6 +202,7 @@ fn start(situation: &str, speed: usize) -> Start {
         path: Vec::new(),
         live: false,
         sound: None,
+        kingdom: Kingdom::default(),
     }
 }
 
@@ -180,7 +214,9 @@ pub(crate) fn recorded(id: &str) -> (Start, BTreeMap<u32, Vec<Action>>, u32) {
     let (_, situation, timeline) = RECORDED.iter().find(|(r, _, _)| *r == id).unwrap();
     let mut start = start(situation, sequence.scroll_speed().unwrap());
     start.hero_speed = sequence.hero_speed().unwrap();
-    if let Some((_, live)) = LIVE.iter().find(|(l, _)| *l == id) {
+    let (_, live) = LIVE.iter().find(|(l, _)| *l == id).unwrap();
+    start.kingdom = live_kingdom(live);
+    if sequence.walks() {
         let (heroes, viewer) = live_heroes(live);
         start.hero = Some(sequence::selected(&heroes, viewer).unwrap());
         start.paths = sequence.paths(timeline).unwrap();
@@ -204,12 +240,13 @@ fn replays_the_recorded_timelines() {
         let sequence = sequences.get(id).unwrap();
         let mut start = start(situation, sequence.scroll_speed().unwrap());
         start.hero_speed = sequence.hero_speed().unwrap();
-        if let Some((_, live)) = LIVE.iter().find(|(l, _)| *l == id) {
+        let (_, live) = LIVE.iter().find(|(l, _)| *l == id).unwrap();
+        start.kingdom = live_kingdom(live);
+        if sequence.walks() {
             let (heroes, viewer) = live_heroes(live);
             start.hero = Some(sequence::selected(&heroes, viewer).unwrap());
             start.paths = sequence.paths(recorded).unwrap();
         }
-        assert_eq!(sequence.walks(), start.hero.is_some(), "{id}");
         let states = play(
             rules(Bugs::Original),
             &start,
@@ -263,6 +300,7 @@ fn looped(bugs: Bugs, speed: usize) -> Loop {
         path: Vec::new(),
         live: false,
         sound: None,
+        kingdom: Kingdom::default(),
     };
     Loop::start(rules(bugs), &start).unwrap()
 }
@@ -456,6 +494,7 @@ fn what_it_cannot_play_yet() {
         path: Vec::new(),
         live: false,
         sound: None,
+        kingdom: Kingdom::default(),
     };
     assert_eq!(
         Loop::start(rules(Bugs::Fixed), &over),
@@ -511,6 +550,7 @@ fn the_lines_with_the_screens() {
             "0 objects 0",
             "0 cycles 0 0",
             "0 cursor 1 0 700 300",
+            "0 buttons 0 0",
             "1 view 11 10 0",
             "1 screen 8,8,600,552",
         ]
@@ -523,16 +563,18 @@ fn the_box_two_frames_differ_in() {
     let format = PixelFormat::RGB565;
     let before = Screen::new(10, 8, format).unwrap();
     let mut after = before.clone();
-    assert_eq!(changed(&before, &after, [0, 0, 10, 8]), None);
+    assert_eq!(changed(&before, &after, &[]), None);
     after.set(2, 3, 1);
     after.set(6, 1, 1);
     after.set(9, 7, 1);
-    assert_eq!(changed(&before, &after, [0, 0, 10, 8]), Some([2, 1, 10, 8]));
-    // Outside the area nothing counts.
-    assert_eq!(changed(&before, &after, [0, 0, 9, 7]), Some([2, 1, 7, 4]));
-    assert_eq!(changed(&before, &after, [7, 0, 9, 7]), None);
+    assert_eq!(changed(&before, &after, &[]), Some([2, 1, 10, 8]));
+    // Inside the masked rectangles nothing counts (E24 M3 T2a).
+    assert_eq!(changed(&before, &after, &[[9, 7, 10, 8]]), Some([2, 1, 7, 4]));
+    let all = [[0, 0, 7, 8], [7, 0, 10, 8]];
+    assert_eq!(changed(&before, &after, &all), None);
+    // Frames of other sizes differ in all of the later one.
     let other = Screen::new(10, 9, format).unwrap();
-    assert_eq!(changed(&before, &other, [0, 0, 4, 4]), Some([0, 0, 4, 4]));
+    assert_eq!(changed(&before, &other, &[]), Some([0, 0, 10, 9]));
 }
 
 #[test]
@@ -567,6 +609,7 @@ fn walking(speed: usize, paths: Vec<Vec<Arrow>>) -> Loop {
         path: Vec::new(),
         live: false,
         sound: None,
+        kingdom: Kingdom::default(),
     };
     Loop::start(rules(Bugs::Fixed), &start).unwrap()
 }
@@ -964,6 +1007,7 @@ fn live(pointer: [i32; 2], hero: bool, path: Vec<Arrow>) -> Start {
         path,
         live: true,
         sound: None,
+        kingdom: Kingdom::default(),
     }
 }
 

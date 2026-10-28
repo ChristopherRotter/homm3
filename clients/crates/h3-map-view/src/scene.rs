@@ -1,6 +1,7 @@
 //! The adventure screen's scene (E24 M1 T3b1, T4a, *provisional*): what it shows at a view and a
 //! moment, as a draw list in the original's order (`docs/epics/E24-design.md` §1.1, §1.9, §2.2).
-//! The frame's picture in the viewer's colours, then the view's passes, each over the whole view,
+//! The frame's picture in the viewer's colours, the adventure screen's dialog and resource bar
+//! (E24 M3 T2a, §4.1: [`crate::panels`]), then the view's passes, each over the whole view,
 //! rows outer and columns inner: the terrain with the map's edge (§1.3, §1.4), the rivers, the
 //! roads, the flat objects, the objects' shadows, their bodies by layer (§2.2: one 32 × 32 piece
 //! per entry of a tile's draw list, [`crate::objects`]), the unexplored tiles (§1.5), the corner
@@ -24,11 +25,13 @@ use core::ops::Range;
 
 use h3_map::model::Pos;
 use h3_render::Bugs;
+use h3_ui::ui;
 
 use crate::art::{Layer, MapArt};
 use crate::layout::AdventureLayout;
 use crate::live::{Facing, Lifted, Live, LiveBoat, LiveHero};
 use crate::objects::{self, DrawLists, Entry, ObjectsError, Shapes};
+use crate::panels;
 use crate::tables::{ShroudPiece, Tables};
 
 /// The highest layer a cell can have (a template is at most 6 rows high, design §2.1).
@@ -117,6 +120,9 @@ pub enum Draw {
         /// design §2.9); `None` skips them.
         flag: Option<u8>,
     },
+    /// One of the dialog's or the resource bar's draws (E24 M3 T2a, design §4.1), drawn as the
+    /// executable draws its item (`h3_ui::paint`).
+    Dialog(ui::Draw),
     /// A corner gem: frame `frame` (the viewer's colour) of `def`'s group 0 at (`x`, `y`), through
     /// the plain drawer with runs skipped, not mirrored, not clipped (0x40F2F0, design §1.1).
     Gem {
@@ -151,6 +157,9 @@ pub struct Scene {
     pub cycles: Vec<Cycle>,
     /// The palette the pieces' flag entries index (the tables' owners' palette, `game.pal`).
     pub flags: String,
+    /// The original's drawing bugs reproduced or fixed (the dialog's texts' long word, E17-design
+    /// §3.6).
+    pub bugs: Bugs,
 }
 
 /// Why a view has no scene.
@@ -243,6 +252,19 @@ pub fn scene(
         players: layout.player_palette.clone(),
         viewer: live.viewer,
     });
+    // The panels (`adventure_full_update` 0x417420 after its picture, design §4.1): the dialog's
+    // items in their order, then the resource bar's; the view after them.
+    let players = &layout.player_palette;
+    let shown = panels::dialog(layout, live, art.levels, at.z);
+    let bar = panels::resource_bar(layout, live);
+    draws.extend(
+        layout
+            .dialog
+            .draws(&shown, players)
+            .into_iter()
+            .chain(layout.resource_bar.draws(&bar, players))
+            .map(Draw::Dialog),
+    );
     let passes: [TilePass<'_>; 8] = [
         View::terrain,
         View::river,
@@ -284,6 +306,7 @@ pub fn scene(
         draws,
         cycles,
         flags: tables.map.owners.palette.clone(),
+        bugs,
     })
 }
 

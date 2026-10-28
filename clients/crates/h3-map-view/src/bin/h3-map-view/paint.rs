@@ -22,7 +22,7 @@ use h3_map_view::art::MapArt;
 use h3_map_view::batch::{self, Batch};
 use h3_map_view::compose::{FORMAT, compose};
 use h3_map_view::layout::AdventureLayout;
-use h3_map_view::live::{Facing, Lifted, Live, Moment, Walking};
+use h3_map_view::live::{Buttons, Facing, Lifted, Live, Moment, Walking};
 use h3_map_view::objects::{self, DrawLists, Shapes};
 use h3_map_view::scene::{self, ViewAt};
 use h3_map_view::sequence::{self, DEFAULT_HERO_SPEED, DEFAULT_SCROLL_SPEED, Sequence};
@@ -112,6 +112,7 @@ pub fn for_sequence<'a>(
         path: Vec::new(),
         live: false,
         sound,
+        kingdom: painter.live.kingdom.clone(),
     };
     Ok(Setup {
         painter,
@@ -179,6 +180,7 @@ pub fn for_situation<'a>(
         path: painter.live.path.clone(),
         live: false,
         sound,
+        kingdom: painter.live.kingdom.clone(),
     };
     Ok(Setup {
         painter,
@@ -208,8 +210,9 @@ pub struct Painter<'a> {
     shapes: Shapes,
     batch: Batch,
     added: BTreeSet<String>,
-    /// The last two views drawn (the window's frame shown and the one composed ahead).
-    views: VecDeque<(Draw, Screen)>,
+    /// The last two views drawn (the window's frame shown and the one composed ahead), by their
+    /// draw and buttons (E24 M3 T2a).
+    views: VecDeque<((Draw, Buttons), Screen)>,
     cursors: BTreeMap<u32, Sprite>,
     /// A walk's hero (its index in the live part's heroes): each draw puts it where the draw has
     /// it, lifted or on its tile; none for a map that walks no hero.
@@ -345,9 +348,10 @@ impl<'a> Painter<'a> {
         Ok(())
     }
 
-    /// The view as a draw shows it (the last two kept).
-    fn view(&mut self, draw: &Draw) -> Result<Screen, String> {
-        if let Some((_, screen)) = self.views.iter().find(|(d, _)| d == draw) {
+    /// The view as a draw shows it, with the buttons a walk sets (the last two kept).
+    fn view(&mut self, draw: &Draw, buttons: Buttons) -> Result<Screen, String> {
+        let key = (draw.clone(), buttons);
+        if let Some((_, screen)) = self.views.iter().find(|(k, _)| *k == key) {
             return Ok(screen.clone());
         }
         let base = self.base;
@@ -359,6 +363,7 @@ impl<'a> Painter<'a> {
         if let Some(index) = self.selected {
             self.walk(index, draw);
         }
+        self.live.buttons = Some(buttons);
         let assets = self.assets;
         let scene = scene::scene(
             &self.art,
@@ -376,7 +381,7 @@ impl<'a> Painter<'a> {
         if self.views.len() == 2 {
             self.views.pop_front();
         }
-        self.views.push_back((draw.clone(), screen.clone()));
+        self.views.push_back((key, screen.clone()));
         Ok(screen)
     }
 
@@ -400,9 +405,15 @@ impl<'a> Painter<'a> {
         };
     }
 
-    /// The screen a draw and a cursor show: the view, the cursor over it.
-    pub fn frame(&mut self, drawn: &Draw, cursor: Cursor) -> Result<Screen, String> {
-        let mut screen = self.view(drawn)?;
+    /// The screen a draw, the buttons and a cursor show: the view and the panels, the cursor over
+    /// them.
+    pub fn frame(
+        &mut self,
+        drawn: &Draw,
+        buttons: Buttons,
+        cursor: Cursor,
+    ) -> Result<Screen, String> {
+        let mut screen = self.view(drawn, buttons)?;
         let Cursor {
             frame,
             at: [x, y],

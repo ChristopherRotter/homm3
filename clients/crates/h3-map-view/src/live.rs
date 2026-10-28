@@ -38,7 +38,140 @@ pub struct Live {
     /// The walk's part of the draw (E24 M2 T3b, design §3.5, §3.8): the view's pixel offset and
     /// the selected hero lifted off its tile; none in a still (`Walking::default`).
     pub walking: Walking,
+    /// What the adventure screen's panels show of the viewer's kingdom (E24 M3 T2a, design
+    /// §4.1).
+    pub kingdom: Kingdom,
+    /// Move hero's and next hero's states as a timeline last set them (E24 M3 T2a: a walk
+    /// changes them at its own moments, `h3_map_view::timeline`); none: as the kingdom and the
+    /// path give them ([`Buttons::of`]).
+    pub buttons: Option<Buttons>,
 }
+
+/// What the adventure screen's panels show of the viewing player's kingdom (E24 M3 T2a, design
+/// §4.1; *provisional*: T4 and T5 add the lists' contents, the resources and the date): its
+/// heroes in the hero list's order, its towns, the one selected, the lists' first slots and
+/// whether its quest log holds a quest. A comparison reads them from the original's memory
+/// (`h3mem.py`); [`Live::at_start`] gives a map's start; from M4 on the engine.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct Kingdom {
+    /// The heroes, in the hero list's order (the player's +0x8).
+    pub heroes: Vec<KingdomHero>,
+    /// The towns (the player's +0x3E).
+    pub towns: usize,
+    /// The hero or town selected (the player's +0x4, +0x3F).
+    pub selected: Selected,
+    /// The first hero and the first town the lists show (the dialog's +0x64, +0x68).
+    pub tops: [usize; 2],
+    /// A seer hut's or quest guard's quest the player visited (`quest_log_state` 0x4039B0).
+    pub quests: bool,
+}
+
+/// A hero of the kingdom's.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct KingdomHero {
+    /// Asleep (its +0x11C).
+    pub asleep: bool,
+    /// It can still move today: its points at least the cheapest step from its tile
+    /// (`hero_can_move` 0x4E5F30).
+    pub movable: bool,
+}
+
+/// What the player has selected.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub enum Selected {
+    /// Nothing.
+    #[default]
+    None,
+    /// The hero at this place of the hero list.
+    Hero(usize),
+    /// The town at this place of the town list.
+    Town(usize),
+}
+
+/// The two buttons a walk changes (design §4.1): move hero and next hero, enabled or not.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Buttons {
+    /// Move hero (0x4191A2, 0x407E2C).
+    pub move_hero: bool,
+    /// Next hero (`next_hero_button_state` 0x419450).
+    pub next_hero: bool,
+}
+
+impl Kingdom {
+    /// Whether a hero is awake and can still move (`next_hero_exists` 0x4BAB90).
+    #[must_use]
+    pub fn next_hero(&self) -> bool {
+        self.heroes.iter().any(|h| h.movable && !h.asleep)
+    }
+
+    /// A live part's `kingdom` as the harness writes it (`h3mem.py`'s `Mem.kingdom`): `{ heroes =
+    /// [[asleep, movable], ...], towns = <n>, selected = [<0 none, 1 a hero, 2 a town>, <its place
+    /// in its list>], tops = [<heroes>, <towns>], quests = <0 or 1> }`, each flag 0 or 1; none
+    /// for anything else (a selection past its list among them).
+    #[must_use]
+    pub fn read(value: &toml::Value) -> Option<Self> {
+        fn pair(v: &toml::Value) -> Option<[&toml::Value; 2]> {
+            match v.as_array()?.as_slice() {
+                [a, b] => Some([a, b]),
+                _ => None,
+            }
+        }
+        let table = value.as_table()?;
+        let number = |v: &toml::Value| v.as_integer().and_then(|n| usize::try_from(n).ok());
+        let flag = |v: &toml::Value| match v.as_integer()? {
+            0 => Some(false),
+            1 => Some(true),
+            _ => None,
+        };
+        let heroes = table
+            .get("heroes")?
+            .as_array()?
+            .iter()
+            .map(|h| {
+                let [asleep, movable] = pair(h)?;
+                Some(KingdomHero {
+                    asleep: flag(asleep)?,
+                    movable: flag(movable)?,
+                })
+            })
+            .collect::<Option<Vec<_>>>()?;
+        let towns = number(table.get("towns")?)?;
+        let [kind, at] = pair(table.get("selected")?)?;
+        let at = number(at)?;
+        let selected = match number(kind)? {
+            0 => Selected::None,
+            1 if at < heroes.len() => Selected::Hero(at),
+            2 if at < towns => Selected::Town(at),
+            _ => return None,
+        };
+        let [heroes_top, towns_top] = pair(table.get("tops")?)?;
+        Some(Self {
+            heroes,
+            towns,
+            selected,
+            tops: [number(heroes_top)?, number(towns_top)?],
+            quests: flag(table.get("quests")?)?,
+        })
+    }
+}
+
+impl Buttons {
+    /// As a still shows them: move hero with a hero selected and its path holding a green arrow
+    /// (a step it pays today: `make_hero_path` 0x418DD0 at 0x4191A2), next hero with a hero awake
+    /// and able to move.
+    #[must_use]
+    pub fn of(kingdom: &Kingdom, path: &[Arrow]) -> Self {
+        let selected = matches!(kingdom.selected, Selected::Hero(_));
+        Self {
+            move_hero: selected && path.iter().any(|a| (1..=GREEN).contains(&a.arrow)),
+            next_hero: kingdom.next_hero(),
+        }
+    }
+}
+
+/// The last green arrow (1 to 25 a step the hero pays today, 26 to 50 one it does not: design
+/// §2.10).
+pub const GREEN: u16 = 25;
 
 /// The walk's part of a draw (the adventure manager's +0xF4, +0xF8, +0x1EC, +0x1FC, +0x200;
 /// design §3.5): what the timeline's draws give (`h3_map_view::timeline::Draw`), from M4 the
@@ -350,6 +483,35 @@ impl Live {
                 phase: 0,
             });
         }
+        // The viewer's kingdom (*provisional*, the engine's from M4): its heroes in the map's
+        // order, awake and able to move, its towns, the first hero selected, else the first town.
+        let mine = heroes.iter().filter(|h| h.owner == viewer).count();
+        let towns = objects
+            .iter()
+            .zip(&art.objects)
+            .filter(|(o, a)| {
+                o.owner == Some(viewer)
+                    && art.templates.get(a.template).is_some_and(|t| t.class == TOWN_CLASS)
+            })
+            .count();
+        let selected = match (mine, towns) {
+            (0, 0) => Selected::None,
+            (0, _) => Selected::Town(0),
+            _ => Selected::Hero(0),
+        };
+        let kingdom = Kingdom {
+            heroes: vec![
+                KingdomHero {
+                    asleep: false,
+                    movable: true,
+                };
+                mine
+            ],
+            towns,
+            selected,
+            tops: [0, 0],
+            quests: false,
+        };
         Self {
             objects,
             heroes,
@@ -359,6 +521,8 @@ impl Live {
             path: Vec::new(),
             moment: Moment::default(),
             walking: Walking::default(),
+            kingdom,
+            buttons: None,
         }
     }
 }

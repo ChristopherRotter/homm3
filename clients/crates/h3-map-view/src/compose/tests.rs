@@ -85,6 +85,7 @@ fn scene(draws: Vec<Draw>) -> Scene {
         draws,
         cycles: vec![],
         flags: "flags.pal".to_string(),
+        bugs: h3_render::Bugs::Fixed,
     }
 }
 

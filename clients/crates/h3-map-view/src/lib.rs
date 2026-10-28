@@ -7,7 +7,8 @@
 //! (`clients/map/assets/`), [`layout`] the adventure screen's layout (`clients/map/layouts/`),
 //! [`check`] what the real-asset gate checks of the archives' entries they name. [`objects`] are
 //! the tiles' draw lists of objects, from the templates' `.msk` shapes. [`scene`] is
-//! what the screen shows at a view and a moment, as a draw list in the original's order;
+//! what the screen shows at a view and a moment, as a draw list in the original's order, the
+//! adventure screen's panels in it as [`panels`] gives them (E24 M3 T2a);
 //! [`batch`] the assets it needs, decoded; [`compose`] draws it into a frame in the original's
 //! screen format with the view's drawers ([`draw`]) and the compositor's (`h3-render`).
 //! [`situation`] is a still of the capture set: a map built with the writer, its view and the
@@ -50,6 +51,7 @@ pub mod keys;
 pub mod layout;
 pub mod live;
 pub mod objects;
+pub mod panels;
 pub mod replay;
 pub mod scene;
 pub mod sequence;

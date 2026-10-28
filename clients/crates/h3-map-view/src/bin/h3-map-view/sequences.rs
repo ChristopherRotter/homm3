@@ -2,7 +2,8 @@
 //! decision). Each sequence of `clients/map/sequences.toml` (or one) is played by the library's
 //! timeline (`h3_map_view::timeline`) from its situation's start and its inputs; the screen is
 //! drawn at every millisecond it can change (the view at each draw, the cursor over it), and the
-//! box it changed in outside the panels gives the timeline's `screen` lines. The timeline is
+//! box it changed in outside the panels' mask (`<map>/masks.toml`, E24 M3 T2a) gives the
+//! timeline's `screen` lines. The timeline is
 //! compared with the one recorded (`timelines/<id>.txt`). With `--frames <dir>` (one sequence)
 //! the frame at every time the screen changed and at every time `<dir>/frames/` holds one of the
 //! original's (`h3map.py frames`' `t<ms>.npz`) is written as `<dir>/ours/t<ms>.png`, the timeline
@@ -15,6 +16,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
+use h3_map_view::live::Buttons;
 use h3_map_view::sequence::{Sequence, Sequences};
 use h3_map_view::timeline::{self, Cursor, Draw, Rules, Unplayable};
 use h3_render::Bugs;
@@ -23,9 +25,6 @@ use h3_render::screen::Screen;
 use crate::files;
 use crate::paint::{self, Assets};
 
-/// The screen the timeline's `screen` lines and the frame check look at: outside the panels
-/// (`h3map.py`'s `MASKS["panels"]`; the panels are M3's).
-pub const COMPARED: [i32; 4] = [0, 0, 608, 552];
 
 /// The command's options.
 #[derive(Debug, PartialEq, Eq)]
@@ -191,16 +190,19 @@ impl Context<'_> {
         if let Some(dir) = &ours {
             fs::create_dir_all(dir).map_err(|e| format!("{}: {e}", dir.display()))?;
         }
+        // The screen the `screen` lines look at: outside the panels' mask (E24 M3 T2a).
+        let masked = files::load_masks(&self.options.map)?;
         let mut screens = BTreeMap::new();
         let (mut kept, mut current): (Option<Screen>, Option<Screen>) = (None, None);
-        let mut shown: Option<(Draw, Cursor)> = None;
+        let mut shown: Option<(Draw, Buttons, Cursor)> = None;
         for s in &states {
-            if shown.as_ref() != Some(&(s.drawn.clone(), s.cursor)) {
-                shown = Some((s.drawn.clone(), s.cursor));
-                current = Some(painter.frame(&s.drawn, s.cursor)?);
+            let now = (s.drawn.clone(), s.buttons, s.cursor);
+            if shown.as_ref() != Some(&now) {
+                shown = Some(now);
+                current = Some(painter.frame(&s.drawn, s.buttons, s.cursor)?);
             }
             let Some(frame) = &current else { continue };
-            let new = match kept.as_ref().map(|k| timeline::changed(k, frame, COMPARED)) {
+            let new = match kept.as_ref().map(|k| timeline::changed(k, frame, &masked)) {
                 None => true,
                 Some(Some(b)) => {
                     screens.insert(s.t, b);

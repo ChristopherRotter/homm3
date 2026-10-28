@@ -17,7 +17,7 @@ use h3_map_view::art::{MapArt, TemplateArt};
 use h3_map_view::batch::{self, Batch};
 use h3_map_view::compose::compose;
 use h3_map_view::live::{
-    Arrow, Boat, Drawn, Explored, Facing, Live, LiveBoat, LiveHero, Moment, TOWN_CLASS,
+    Arrow, Boat, Drawn, Explored, Facing, Kingdom, Live, LiveBoat, LiveHero, Moment, TOWN_CLASS,
 };
 use h3_map_view::objects;
 use h3_map_view::scene::{self, Draw, ViewAt};
@@ -192,8 +192,9 @@ fn render(options: &Options) -> Result<PathBuf, String> {
     }
     let archive_bytes = files::read_archives(&options.install)?;
     let archives = files::parse_archives(&archive_bytes)?;
+    let mut pointer = None;
     if let Some(path) = &options.live {
-        read_live(
+        pointer = read_live(
             path,
             options.view,
             &mut art,
@@ -229,7 +230,25 @@ fn render(options: &Options) -> Result<PathBuf, String> {
         let (_, data) = files::find(&archives, &name)?.ok_or(format!("{name}: in no archive"))?;
         batch.add(&name, &data).map_err(|e| e.to_string())?;
     }
-    let screen = compose(&scene, &batch, layout.frame).map_err(|e| e.to_string())?;
+    let mut screen = compose(&scene, &batch, layout.frame).map_err(|e| e.to_string())?;
+    if let Some([x, y]) = pointer {
+        // The parked mouse's cursor (E24 M3 T2a): the arrow, as the mouse manager draws it over
+        // all (0x50D8B0) at the point less its hot spot.
+        let art = &layout.cursor;
+        let name = art.def.to_ascii_uppercase();
+        let (_, data) = files::find(&archives, &name)?.ok_or(format!("{name}: in no archive"))?;
+        batch.add(&name, &data).map_err(|e| e.to_string())?;
+        let [hx, hy] = usize::try_from(art.arrow)
+            .ok()
+            .and_then(|f| art.hot.get(f).copied())
+            .unwrap_or_default();
+        let hot = (u32::try_from(hx).unwrap_or(0), u32::try_from(hy).unwrap_or(0));
+        let cursor = batch
+            .sprite(&name)
+            .and_then(|s| h3_ui::cursor::Cursor::read(s, art.arrow, hot, screen.format()))
+            .ok_or_else(|| format!("{}: no frame {}", art.def, art.arrow))?;
+        cursor.draw(&mut screen, x, y);
+    }
     let out = options.out();
     if let Some(dir) = out.parent() {
         fs::create_dir_all(dir).map_err(|e| format!("{}: {e}", dir.display()))?;
@@ -278,16 +297,19 @@ const RANDOM_DWELLINGS: [u32; 3] = [216, 217, 218];
 /// tiles, a string per row of every level in turn (level by level, rows top to bottom), `1` a tile
 /// explored and `0` not; `path` (T5b2), the path shown, each arrow `[x, y, level, arrow]`; `view`,
 /// the view's top-left and level the original showed, which must be `--view` (E24 M1 T6b, the
-/// reviewer's R2-3). Each key is optional (`defs` and `classes` together); other keys are left.
-/// The file's `cycles`, `frames` and `viewer` override `--cycles`, `--at` and `--viewer`: the
-/// comparisons draw the original's.
+/// reviewer's R2-3); `kingdom` (E24 M3 T2a, design §4.1), what the panels show of the viewer's
+/// kingdom: `{ heroes = [[asleep, movable], ...], towns = <n>, selected = [<0 none, 1 a hero, 2 a
+/// town>, <its place in its list>], tops = [<heroes>, <towns>], quests = <0 or 1> }`; `pointer`
+/// (T2a), where the parked mouse is, returned. Each key is optional (`defs` and `classes`
+/// together); other keys are left. The file's `cycles`, `frames` and `viewer` override
+/// `--cycles`, `--at` and `--viewer`: the comparisons draw the original's.
 pub fn read_live(
     path: &PathBuf,
     view: ViewAt,
     art: &mut MapArt,
     live: &mut Live,
     templates: &[ObjectTemplate],
-) -> Result<(), String> {
+) -> Result<Option<[i32; 2]>, String> {
     let mut resolved = vec![false; art.objects.len()];
     let failed = |why: &str| format!("{}: {why}", path.display());
     let text = fs::read_to_string(path).map_err(|e| failed(&e.to_string()))?;
@@ -511,8 +533,27 @@ pub fn read_live(
             object.phase = phase;
         }
     }
-    Ok(())
+    if let Some(value) = table.get("kingdom") {
+        live.kingdom = Kingdom::read(value).ok_or_else(|| {
+            failed(
+                "`kingdom` is not { heroes = [[asleep, movable], ...], towns, selected = [kind, \
+                 index], tops = [heroes, towns], quests }",
+            )
+        })?;
+    }
+    table.get("pointer").map_or(Ok(None), |value| {
+        let point: Option<Vec<i32>> = value.as_array().and_then(|a| {
+            a.iter()
+                .map(|v| v.as_integer().and_then(|n| i32::try_from(n).ok()))
+                .collect()
+        });
+        point
+            .and_then(|p| <[i32; 2]>::try_from(p).ok())
+            .map(Some)
+            .ok_or_else(|| failed("`pointer` is not [x, y]"))
+    })
 }
+
 
 /// A TOML list of lists of `N` integers.
 fn rows<const N: usize>(value: &toml::Value) -> Option<Vec<[i64; N]>> {
@@ -651,6 +692,7 @@ fn print_list(scene: &scene::Scene) {
                 );
             }
             Draw::Gem { def, frame, x, y } => println!("gem {def} {frame} at {x},{y}"),
+            Draw::Dialog(item) => println!("dialog {item:?}"),
         }
     }
     for cycle in &scene.cycles {
