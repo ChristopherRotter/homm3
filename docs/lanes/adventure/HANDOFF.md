@@ -5,7 +5,7 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 ## Current state
 
 - **E08**: increments 1 to 7 **closed** (increment 7, rewards on the map, by T65's audit, 2026-10-28). **Increment 8: boats and the sea** (decisions 158, 159; ADV-Q31): boats on the map and in the writer (CLT-Q5), boarding, sailing and landing with Navigation, the sea's artifacts and Favorable Winds, battles with a hero in a boat, the events on water, the sea's four pickups. Round 1: T66a (the survey, in two: decision 160), then T66b (the ADR amendment drafts, the design note and the cut). **T66a done** (survey `E08-sea.md` §0 to §14; T66a2 whole, decision 161). Records: `E08-log.md`; increment 7's in `E08-archive.md`.
-- **Open pull requests:** #PRNUM (`adventure/e08-t66a2`, T66a2).
+- **Open pull requests:** #551 (`adventure/e08-t66a2`, T66a2).
 - **Next:** the user answers ADV-Q32 (`OPEN-QUESTIONS.md`; the survey's §14: D-41 to D-43 and D-45, D-44, the 64 boats, batch E8, A-27, the common rules, the scope); then T66b (`QUEUE.md`), its cut confirmed at its start.
 - **Versions** (`docs/08-work-process.md`, "Versions"): game state hash v19 (T63b), adventure state hash v15 (T62b2), adventure ruleset part v12 (T61a), map import v13 (`MAP_IMPORT_VERSION`, T61b), adventure replay format v7 (T63a); the env's action encoding v5 is the AI lane's (T63a's `cross-lane` bump). Built so far, by area: `OVERVIEW.md`; ownership: `lanes.toml` (the details are in `OVERVIEW.md`, "Ownership").
 - **ADRs accepted**: ADR-0015 to -0017 (2026-10-10), amended for increments 2 to 7 (last: T59, with ADR-0013).
