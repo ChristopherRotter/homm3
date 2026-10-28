@@ -560,6 +560,33 @@ pub fn turned(
     Ok(out)
 }
 
+/// How the battle `scenario` sets up with `seed` ends after `commands`, each for the side to act
+/// (E17 M5 T4b1: the result window of a sequence or a still): the engine's outcome, with its
+/// ruleset; none while a side is still to act. A rejected command is an error.
+pub fn outcome(
+    scenario: &Path,
+    packs: &Path,
+    seed: u64,
+    commands: &[Command],
+) -> Result<(BattleRuleset, Option<h3_contracts::BattleOutcome>), String> {
+    let (ruleset, mut state) = opening(scenario, packs, seed)?;
+    for (n, &command) in commands.iter().enumerate() {
+        let Some(side) = state.side_to_act() else {
+            break;
+        };
+        h3_battle::apply(
+            &mut state,
+            &ruleset,
+            side,
+            map::command_to_engine(command),
+            &mut NoopSink,
+        )
+        .map_err(|e| format!("command {} ({command:?}): {e:?}", n + 1))?;
+    }
+    let outcome = state.outcome();
+    Ok((ruleset, outcome))
+}
+
 /// The most commands a fought battle may take.
 pub(crate) const FOUGHT_LIMIT: usize = 5_000;
 

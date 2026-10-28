@@ -71,6 +71,12 @@ impl<'r> Live<'r> {
         fetch_record(&mut self.session, VIEWER)
     }
 
+    /// The engine's outcome once the battle is over (E17 M5 T4b1: the result window), and the
+    /// ruleset it was fought by.
+    pub fn outcome(&self) -> Option<(h3_contracts::BattleOutcome, &'r BattleRuleset)> {
+        Some((self.state.outcome()?, self.ruleset))
+    }
+
     /// Whether the battle is over (no side is to act).
     pub fn over(&self) -> bool {
         self.state.side_to_act().is_none()

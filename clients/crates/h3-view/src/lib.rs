@@ -4,7 +4,8 @@
 //! snapshot at a time ([`hero`]: the heroes and their flags), [`batch`] holds a checkpoint's decoded assets,
 //! [`compose`] draws the list into a frame; [`tables`] and [`layout`] are the asset tables and
 //! the screen layouts, made of the dialog items of the common crate (`h3_ui::ui`), [`panel`] the
-//! battle's panel of them and [`message`] the message box laid out as them; [`mouse`] is what the
+//! battle's panel of them, [`message`] the message box laid out as them and [`result`] the
+//! battle's result window; [`mouse`] is what the
 //! mouse shows over the battle (the cursor's kind, the status line's hint, the stack it marks);
 //! [`sound`] is what a battle's opening plays; [`battle_log`] the battle log's lines composed from
 //! the string catalogue (`h3_ui::text`). What both viewers share is the common crate `h3-ui`'s
@@ -44,6 +45,7 @@ pub mod mouse;
 pub mod panel;
 pub mod ray;
 pub mod record;
+pub mod result;
 pub mod scene;
 pub mod siege;
 pub mod sound;

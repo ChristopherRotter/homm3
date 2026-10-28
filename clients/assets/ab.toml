@@ -195,6 +195,7 @@ original = 128
 def = "CH17.DEF"
 cast = [95, 52]
 cast_frames = 5
+portrait = "HPL000pl.PCX"
 
 [[hero]]
 key = "thunar"
@@ -202,6 +203,7 @@ original = 129
 def = "CH17.DEF"
 cast = [95, 52]
 cast_frames = 5
+portrait = "HPL001pl.PCX"
 
 [[hero]]
 key = "ignissa"
@@ -209,6 +211,7 @@ original = 130
 def = "CH17.DEF"
 cast = [95, 52]
 cast_frames = 5
+portrait = "HPL002pl.PCX"
 
 [[hero]]
 key = "lacus"
@@ -216,6 +219,7 @@ original = 131
 def = "CH17.DEF"
 cast = [95, 52]
 cast_frames = 5
+portrait = "HPL003pl.PCX"
 
 [[hero]]
 key = "monere"
@@ -223,6 +227,7 @@ original = 132
 def = "CH16.DEF"
 cast = [99, 58]
 cast_frames = 5
+portrait = "HPL004pl.PCX"
 
 [[hero]]
 key = "erdamon"
@@ -230,6 +235,7 @@ original = 133
 def = "CH16.DEF"
 cast = [99, 58]
 cast_frames = 5
+portrait = "HPL005pl.PCX"
 
 [[hero]]
 key = "fiur"
@@ -237,6 +243,7 @@ original = 134
 def = "CH16.DEF"
 cast = [99, 58]
 cast_frames = 5
+portrait = "HPL006pl.PCX"
 
 [[hero]]
 key = "kalt"
@@ -244,6 +251,7 @@ original = 135
 def = "CH16.DEF"
 cast = [99, 58]
 cast_frames = 5
+portrait = "HPL007pl.PCX"
 
 [[hero]]
 key = "luna"
@@ -251,6 +259,7 @@ original = 136
 def = "CH17.DEF"
 cast = [95, 52]
 cast_frames = 5
+portrait = "HPL000el.PCX"
 
 [[hero]]
 key = "brissa"
@@ -258,6 +267,7 @@ original = 137
 def = "CH17.DEF"
 cast = [95, 52]
 cast_frames = 5
+portrait = "HPL001el.PCX"
 
 [[hero]]
 key = "ciele"
@@ -265,6 +275,7 @@ original = 138
 def = "CH17.DEF"
 cast = [95, 52]
 cast_frames = 5
+portrait = "HPL002el.PCX"
 
 [[hero]]
 key = "labetha"
@@ -272,6 +283,7 @@ original = 139
 def = "CH17.DEF"
 cast = [95, 52]
 cast_frames = 5
+portrait = "HPL003el.PCX"
 
 [[hero]]
 key = "inteus"
@@ -279,6 +291,7 @@ original = 140
 def = "CH16.DEF"
 cast = [99, 58]
 cast_frames = 5
+portrait = "HPL004el.PCX"
 
 [[hero]]
 key = "aenain"
@@ -286,6 +299,7 @@ original = 141
 def = "CH16.DEF"
 cast = [99, 58]
 cast_frames = 5
+portrait = "HPL005el.PCX"
 
 [[hero]]
 key = "gelare"
@@ -293,6 +307,7 @@ original = 142
 def = "CH16.DEF"
 cast = [99, 58]
 cast_frames = 5
+portrait = "HPL006el.PCX"
 
 [[hero]]
 key = "grindan"
@@ -300,6 +315,7 @@ original = 143
 def = "CH16.DEF"
 cast = [99, 58]
 cast_frames = 5
+portrait = "HPL007el.PCX"
 
 [[hero]]
 key = "sir_mullich"
@@ -307,6 +323,7 @@ original = 144
 def = "CH00.DEF"
 cast = [92, 67]
 cast_frames = 5
+portrait = "HPL130Kn.PCX"
 
 [[hero]]
 key = "adrienne"
@@ -314,6 +331,7 @@ original = 145
 def = "CH015.DEF"
 cast = [95, 52]
 cast_frames = 5
+portrait = "HPL000Sh.PCX"
 
 [[hero]]
 key = "catherine"
@@ -321,6 +339,7 @@ original = 146
 def = "CH01.DEF"
 cast = [94, 54]
 cast_frames = 5
+portrait = "HPL128Qc.PCX"
 
 [[hero]]
 key = "dracon"
@@ -328,6 +347,7 @@ original = 147
 def = "CH05.DEF"
 cast = [100, 59]
 cast_frames = 5
+portrait = "HPL003Sh.PCX"
 
 [[hero]]
 key = "gelu"
@@ -335,6 +355,7 @@ original = 148
 def = "CH02.DEF"
 cast = [102, 62]
 cast_frames = 5
+portrait = "HPL004Sh.PCX"
 
 [[hero]]
 key = "kilgor"
@@ -342,6 +363,7 @@ original = 149
 def = "CH013.DEF"
 cast = [101, 60]
 cast_frames = 5
+portrait = "HPL005Sh.PCX"
 
 [[hero]]
 key = "lord_haart_death_knight"
@@ -349,6 +371,7 @@ original = 150
 def = "CH08.DEF"
 cast = [91, 68]
 cast_frames = 5
+portrait = "HPL006Sh.PCX"
 
 [[hero]]
 key = "mutare"
@@ -356,6 +379,7 @@ original = 151
 def = "CH11.DEF"
 cast = [96, 56]
 cast_frames = 5
+portrait = "HPL007Sh.PCX"
 
 [[hero]]
 key = "roland"
@@ -363,6 +387,7 @@ original = 152
 def = "CH00.DEF"
 cast = [92, 67]
 cast_frames = 5
+portrait = "HPL009Sh.PCX"
 
 [[hero]]
 key = "mutare_drake"
@@ -370,6 +395,7 @@ original = 153
 def = "CH11.DEF"
 cast = [96, 56]
 cast_frames = 5
+portrait = "HPL008Sh.PCX"
 
 [[hero]]
 key = "boragus"
@@ -377,6 +403,7 @@ original = 154
 def = "CH013.DEF"
 cast = [101, 60]
 cast_frames = 5
+portrait = "HPL001Sh.PCX"
 
 [[hero]]
 key = "xeron"
@@ -384,6 +411,7 @@ original = 155
 def = "CH06.DEF"
 cast = [97, 63]
 cast_frames = 5
+portrait = "HPL131Dm.PCX"
 
 [[town]]
 key = "conflux"

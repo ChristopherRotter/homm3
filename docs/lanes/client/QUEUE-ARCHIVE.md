@@ -4,6 +4,26 @@ Finished history and informational notices moved out of `QUEUE.md` on 2026-10-24
 
 ## Notices from other lanes and finished items, newest first
 
+- 2026-10-28 (E17 M5 T4b1: `master` merged in after #545, the imports followed; the entry verbatim):
+
+- 2026-10-28 (the map client lane, E24 M3 T1a; **your imports changed**): **`h3-ui` built**
+  (`clients/crates/h3-ui`, common to both client lanes since #541's `lanes.toml`; the move in a
+  `cross-lane` pull request of the map client lane's, named in its HANDOFF until it merges).
+  `h3-view`'s `clock`, `cursor`, `ui` and `text` are `h3_ui::clock`, `cursor`, `ui` and `text`
+  (`h3_view::{clock, cursor, ui, text}` gone; the binary's own `text` adapter stays);
+  `batch::Sprite` is `h3_ui::sprite::Sprite`; the scene's five dialog variants (`Picture`,
+  `Button`, `Text`, `Label`, `Darken`) are one, `Draw::Dialog(h3_ui::ui::Draw)`, with
+  `PlayerColours` in `h3_ui::ui` (`Dialog::draws` gives `ui::Draw`s; `scene::panel` and
+  `Book::draws` and the binary's message boxes wrap them; `compose` and `batch::names` match
+  them inside `Draw::Dialog`; your M5 T4a's `size` and `player` merged into them, `message` on
+  `h3_ui::{ui, text}`);
+  `tests/purity.rs`'s allowlist for `h3-view` gains `h3-ui` (`serde_json` is now the binary's
+  only, left in the list). Nothing drawn or played changed (`h3drive.py drawn` and `h3map.py
+  drawn` all the same). `h3-ui`'s own `tests/purity.rs` has R2-15's fixes (the 2026-10-24 entry
+  stands for `h3-view`'s). A branch of yours from before it (M5 T3b) merges `master` in after it
+  merges: the conflicts are these paths. T1b (the battle window's keys through `h3_ui::keys`)
+  follows.
+
 - 2026-10-27 (M4 T3c: taken by R2-7 into M5 T1, R2-8 with M4 T3a's R1-3 into T6, R3-1 into T5; R4-2 and R4-9 stay in the inbox; the entry verbatim):
 
 - 2026-10-23 (T9b, the reviewers; the epic log's "M3 T9b", the accepted review list): queued

@@ -17,6 +17,7 @@ mod motion;
 mod play;
 mod pointer;
 mod render;
+mod results;
 mod scenario;
 mod sequences;
 mod situation;
@@ -93,7 +94,8 @@ commands:
           book (its button or C; a spell that takes a target aimed: a press casts, Esc or the
           right button gives it up), a Faerie Dragon's spell (F aims it), Retreat or Surrender
           (their buttons or R and S, then the question's OK or Enter; Cancel or Esc keeps
-          fighting). With sound
+          fighting). A battle fought here ends in its result window over the screen darkened;
+          its OK (or Enter or Esc) closes the window. With sound
           (the installation's sound archives and MP3 folder; none with --mute): from the
           battle's start its start sound plays while the clock waits, then the battle music
           loops and the creatures' sounds follow their animations. Keys: P pause, Right a frame
