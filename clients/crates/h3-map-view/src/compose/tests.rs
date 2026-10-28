@@ -354,3 +354,28 @@ fn refuses_a_frame_too_large_or_a_missing_asset() {
         "a 5 x 6 frame is too large"
     );
 }
+
+#[test]
+fn the_dialogs_items_by_their_own_drawers() {
+    // E24 M3 T2a: a dialog's picture over the frame (index 0 transparent, `h3_ui::paint`); an
+    // item whose asset the batch lacks is missing.
+    let picture = |name: &str| {
+        Draw::Dialog(h3_ui::ui::Draw::Picture {
+            picture: name.to_string(),
+            x: 0,
+            y: 0,
+            player: None,
+            size: Some([1, 1]),
+        })
+    };
+    let list = vec![frame_of_viewer(3), picture("frame.pcx")];
+    let screen = compose(&scene(list), &batch(), [4, 2]).unwrap();
+    // The frame's picture drawn keyed: its first pixel (index 1) over the frame's own.
+    assert_eq!(screen.pixel(0, 0), Some(1));
+    assert_eq!(screen.pixel(1, 0), Some(0xF803));
+    let list = vec![frame_of_viewer(3), picture("none.pcx")];
+    assert_eq!(
+        compose(&scene(list), &batch(), [4, 2]),
+        Err(ComposeError::Missing("none.pcx".to_string()))
+    );
+}

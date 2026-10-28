@@ -2,6 +2,7 @@
 0 objects 0
 0 cycles 0 0
 0 cursor 1 0 700 300
+0 buttons 0 1
 100 view 9 7 0
 100 screen 8,8,600,552
 180 objects 1
@@ -46,7 +47,7 @@
 2160 objects 12
 2200 cycles 11 11
 2310 cursor 1 0 2 300
-2310 screen 2,300,12,318
+2310 screen 2,300,710,318
 2340 objects 13
 2370 view 9 10 0
 2370 cursor 1 38 2 300
@@ -64,10 +65,10 @@
 2650 screen 8,8,600,552
 2700 objects 15
 2706 cursor 1 38 798 1
-2706 screen 2,296,24,306
+2706 screen 2,0,800,306
 2720 view 0 7 0
 2720 cursor 1 33 798 1
-2720 screen 8,8,600,552
+2720 screen 8,0,800,552
 2790 view 3 4 0
 2790 screen 8,8,600,552
 2800 cycles 14 14
@@ -79,6 +80,7 @@
 3000 view 12 -5 0
 3000 cycles 15 15
 3000 cursor 1 0 798 1
-3000 screen 8,8,600,552
+3000 screen 8,1,800,552
 3003 cursor 1 0 700 300
+3003 screen 700,1,800,318
 3060 objects 17

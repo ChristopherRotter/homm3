@@ -16,37 +16,16 @@ the original a reading or a capture finds is an `MCL-Q<n>` in the same task (the
 autonomy contract). Each panel drawn leaves `h3map.py`'s `panels` mask, and `drawn` then
 compares it on every situation and sequence.
 
-### E24 M3 T2a — the adventure screen's dialog at a map's start, right (in progress)
-
-Cut from T2 with the user (2026-10-28): its first half, kept whole (stills and sequences): the
-reading, the dialog and the resource bar drawn as at a map's start (the buttons' states and
-colours), the parked cursor, `panels` reduced to what T3 to T6 draw, the 40 situations and the 13
-sequences compared again (Move hero's and next hero's changes during a walk replayed). Its
-record: the epic's log, "M3 T2a".
-
 ### E24 M3 T2b — the frame's fixed cost
 
-Cut from T2 with the user (2026-10-28): its second half, from the scope below: the frame picture
-and the panels converted and drawn once a viewer, no screen copies, a frame redrawing what
-changed; measured with `map-measure.cmd`'s "a frame made in" before and after on the user's
-machine. **Depends on:** T2a. **Status:** ready after T2a.
-
-### E24 M3 T2 — the adventure screen's dialog at a map's start (cut into T2a and T2b)
-
-- **Scope:** read `adventure_full_update` 0x417420's panels (the manager's +0x44) and the
-  adventure dialog +0x50: its items in the order added and drawn, each one's id, place, picture
-  or DEF and states; the buttons (`iam000` to `iam015`), the status bar (`AdRollvr.pcx`), the
-  resource bar (`AResBar.pcx`), the status window's and the lists' frames as at a map's start;
-  `h3_map_view::layout` gains the dialog (`h3_ui::ui`'s format), the screen drawn with it. The
-  frame's fixed cost (the inbox's, `QUEUE-ARCHIVE.md` 2026-10-27, E24 M2 T4b3): the frame
-  picture and the panels converted and drawn once a viewer, no screen copies, a frame redrawing
-  what changed; measured with `map-measure.cmd`'s "a frame made in". The parked cursor drawn
-  (the mask's). Recorded: the situations' screens with the panels; `panels` reduced to what
-  T3 to T5 draw.
-- **Acceptance:** the static panels exact on the 40 situations and the 13 sequences; a frame's
-  fixed cost measured before and after; the Definition of Done.
-- **Depends on:** T1a (merged, #545). **Status:** ready (T1b's pull request merged first, or
-  `master` merged in after it: both touch `h3-ui`).
+- **Scope:** cut from T2 with the user (2026-10-28; T2a, the panels right, done: the epic's
+  log, "M3 T2a"): the frame's fixed cost (the inbox's, `QUEUE-ARCHIVE.md` 2026-10-27, E24 M2
+  T4b3): the frame picture and the panels converted and drawn once a viewer, no screen copies, a
+  frame redrawing what changed (a scroll or a walk only what moved; the buttons a walk sets);
+  measured with `map-measure.cmd`'s "a frame made in" before and after on the user's machine.
+- **Acceptance:** every situation and sequence as recorded (`h3map.py drawn` all the same, the
+  frame checks exact); a frame's fixed cost measured before and after; the Definition of Done.
+- **Depends on:** T2a. **Status:** ready.
 
 ### E24 M3 T3 — the minimap
 
@@ -56,7 +35,7 @@ machine. **Depends on:** T2a. **Status:** ready after T2a.
   and a selection as the original does (its callers). Recorded: the sequences show it scrolling.
 - **Acceptance:** the minimap exact on every situation and sequence (`panels` without it);
   the Definition of Done.
-- **Depends on:** T2. **Status:** ready after T2.
+- **Depends on:** T2a. **Status:** ready (T2b's change of how a frame is made first, or after).
 
 ### E24 M3 T4 — the hero and town lists
 
@@ -67,7 +46,7 @@ machine. **Depends on:** T2a. **Status:** ready after T2a.
   order, a hero's movement and mana and the one selected (`h3mem.py`, additive). Situations with
   more heroes and towns than the lists' slots.
 - **Acceptance:** both lists exact on every situation and the new ones; the Definition of Done.
-- **Depends on:** T2. **Status:** ready after T2.
+- **Depends on:** T2a. **Status:** ready (T2b's change of how a frame is made first, or after).
 
 ### E24 M3 T5 — the status window, the resource bar and the date
 
@@ -78,7 +57,7 @@ machine. **Depends on:** T2a. **Status:** ready after T2a.
   resources and the date. Situations for each kind.
 - **Acceptance:** the status window, the resource bar and the date exact on every situation and
   the new ones (no `panels` mask left but the status bar's hints); the Definition of Done.
-- **Depends on:** T2 (T4 for a hero's or a town's army and portraits). **Status:** ready after T4.
+- **Depends on:** T2a (T4 for a hero's or a town's army and portraits). **Status:** ready after T4.
 
 ### E24 M3 T6 — the mouse, the keys during a walk, the sound without the focus
 

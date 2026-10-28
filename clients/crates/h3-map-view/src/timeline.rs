@@ -342,9 +342,11 @@ pub struct Start {
     /// screen starts, which the loop starts at 0 and drives; none for a map without the tables'
     /// sounds, which gives no cues.
     pub sound: Option<Sound>,
-    /// The viewer's kingdom at 0 (E24 M3 T2a, design §4.1): move hero's and next hero's states
-    /// start from it and the path ([`Buttons::of`]).
+    /// The viewer's kingdom at 0 (E24 M3 T2a, design §4.1).
     pub kingdom: Kingdom,
+    /// Move hero's and next hero's states at 0 as the original last set them (a recording's, read
+    /// from its memory); none: as the kingdom and the path give them ([`Buttons::of`]).
+    pub buttons: Option<Buttons>,
 }
 
 /// The cursor drawn: a frame of the layout's cursor and the point its hot spot is at.
@@ -553,7 +555,9 @@ impl Loop {
             live: start.live,
             sound: start.sound.clone(),
             kingdom: start.kingdom.clone(),
-            buttons: Buttons::of(&start.kingdom, &start.path),
+            buttons: start
+                .buttons
+                .unwrap_or_else(|| Buttons::of(&start.kingdom, &start.path)),
             rules,
         };
         if !l.path.is_empty() {
@@ -775,8 +779,11 @@ impl Loop {
         let Some(next) = self.hero.and_then(|h| self.next(h.at, direction)) else {
             return;
         };
-        // Move hero disabled and shown at once (0x408D06; design §4.1).
-        self.buttons.move_hero = false;
+        // Move hero (design §4.1): disabled at the step's start (0x408F0B), enabled again when the
+        // step lifts a hero not lifted, whose selection makes the step's own path (`hero_select`
+        // through `mobilize_hero`, `make_hero_path` with its third argument; *provisional*: as
+        // the recordings show it).
+        self.buttons.move_hero = !self.lifted;
         if !self.path.is_empty() {
             self.path.clear();
             self.draw();
@@ -852,8 +859,6 @@ impl Loop {
         if !self.lifted {
             self.lift(t, false);
         }
-        // Move hero disabled and shown at once (0x407E2C; design §4.1).
-        self.buttons.move_hero = false;
         let mut steps: VecDeque<(Direction, Pos)> = self
             .path
             .iter()
@@ -991,6 +996,11 @@ impl Loop {
         self.stand();
         if let Some(sound) = &mut self.sound {
             sound.walk_end(t);
+        }
+        if !key && self.path.is_empty() {
+            // On its destination the path is cleared: move hero off (design §4.1; the walk keeps
+            // the state its click set until here, *provisional*: as the recordings show it).
+            self.buttons.move_hero = false;
         }
         if !key && !self.path.is_empty() {
             self.draw();

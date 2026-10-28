@@ -1335,3 +1335,52 @@ in two), the user answered **no cut**: every key of both windows through the tab
   design note's two mentions of the layout's `keys` and the moved keys; M3's review list opened
   (the file's tables, the contexts, the behaviour changed); the client lane's inbox told (its
   2026-10-26 entry done by this).
+
+### M3 T2a — the adventure screen's dialog at a map's start (2026-10-28)
+
+On `map-client/e24-m3-t2a`, the user present; `master` at d00303e8 (#548 found merged). The
+original data staged from the user's repo folder first (the exe, the four LODs, both `.snd`,
+`H3ab_ahd.vid`, `h3maped.exe`, the five DLLs, `maps.tar`, `extracted.tar`, `battle-videos.vid`,
+the nine terrain tracks, the combat tracks and the end tunes). T2 was too big for one task: the
+user cut it in two (T2a the panels right, T2b the frame's fixed cost), then, asked whether the
+sequences' button changes during a walk should go to a task of their own, kept T2a whole.
+
+- **The reading** (design §4.1; 29 map entries): `adventure_dialog_create` 0x401510 in full (its
+  45 items in order: three areas, the fourteen buttons with their hotkeys, the lists' pictures,
+  bars and frames, the status bar, a text and the chat's edit), `adventure_full_update`'s panel
+  calls, the resource bar's panel 0x558BA0 (`aresbar.pcx` at (3, 575) in the viewer's colours,
+  the amounts and the date), and every site that sets a button's state: the underground (one
+  level, `iam003.def` underground), the quest log (a visited quest), sleep and cast a spell (a
+  hero selected; sleep's `iam011.def` asleep), move hero (a green arrow, `make_hero_path`'s third
+  argument; a disable at a walk's and a key's step's start, through the window manager at once),
+  next hero (an awake hero that can move: `hero_can_move` 0x4E5F30), the lists' arrows (their tops
+  and lengths). Checked against the running original's dialog (`dialog_items` on
+  `heroes-objects` and `path-objects`); VCMI 1.7.5's `AdventureMapShortcuts` agrees on each.
+- **Built:** `h3_ui::paint` (the dialog items' drawers, ported from `h3_view::compose`, from any
+  batch through `Assets`; the client lane's inbox told), `Dialog::draws` giving a button
+  `Shown`'s colours and DEF by its id; `adventure.toml`'s `[dialog]`, `[resource_bar]` and
+  `[panels]` (`h3_map_view::layout`); `h3_map_view::panels` (the buttons' states, DEFs and
+  colours); the live part's `kingdom` (`Kingdom`, `KingdomHero`, `Selected`, `Kingdom::read`, a
+  map's start's) and `buttons` (`Buttons::of`, or the timeline's); the scene draws the dialog and
+  the resource bar after the frame picture (`Draw::Dialog`), the batch holds fonts; the timeline
+  carries the buttons (`Start::kingdom`, `Start::buttons`, `State::buttons`, a `buttons` line,
+  set at a path's click, a key's step and a walk's end), `changed` looks outside the mask;
+  `render` draws a still's parked cursor at the live part's `pointer`; `sequences` reads
+  `clients/map/masks.toml`, the painter keys its views by the buttons. The harness: `Mem.kingdom`,
+  `Mem.buttons`, `Mem.visited_quest`; `live_part` writes `kingdom`, `buttons` and `pointer`; `MASKS` from
+  `masks.toml`, `view_changed` outside it; the timeline's `buttons` lines.
+- **First model, corrected by the recordings:** built from the reading alone, move hero went
+  off at a path's walk's start and at every key's step, next hero followed the points at 0; the
+  first run of the 13 sequences showed 22, 17, 12, 3, 30, 12 and 20 frames of the seven walks
+  differing (494 pixels each: move hero's plate). The recordings' `buttons` lines gave the
+  original's moments (design §4.1, "Seen in the sequences"): the timeline now keeps move hero
+  through a path's walk to its end, turns it on at a key's step that lifts the hero and off at
+  one once lifted, and the live part carries the states memory holds (`walk-sail` starts with
+  next hero off, set before the harness wrote the hero's points). Compared again from the same
+  runs (`frames --reuse`, each live part's `buttons` from its run's state at 0).
+- **Checked:** the 40 situations exact with the smaller mask (386 868 pixels compared each, 335 616
+  before), twice (the second run keeping the live parts' `buttons`); the 13 sequences recorded
+  again, each timeline (now with `buttons` lines and the smaller mask's screen boxes) the viewer's
+  line for line, all 459 frames exact (`timelines/` and the `-frames.txt` counts recorded);
+  `h3drive.py drawn` 132 of the battle's sequences and situations the same (the common crate's
+  change draws nothing new there); CHECKS

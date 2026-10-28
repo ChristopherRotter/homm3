@@ -1545,8 +1545,9 @@ checked against the running original's dialog (`h3mem.dialog_items` on `heroes-o
   with a town selected (`town_select` 0x417830), sleep's DEF `iam011.def` while the hero sleeps
   (+0x11C; 0x403CC0, table 0x65F238, the hotkey W 0x11 instead); move hero enabled when the
   selected hero's path has a green arrow, a step it pays today (`make_hero_path` 0x418DD0 with its
-  third argument: 0x4191A2), disabled without a destination (0x418EB7) or a path (0x4191ED), with a
-  town selected and at a walk's start (0x407E2C, a key's step 0x408D06); next hero enabled when a
+  third argument: 0x4191A2, from a click on a tile `tile_click_path` 0x40AA17, a hero's selection
+  0x417FE2), disabled without a destination (0x418EB7) or a path (0x4191ED), with a town selected
+  and at a walk's start (0x407E2C, a key's step 0x408F0B); next hero enabled when a
   hero of the player's is awake and can still move (`next_hero_find` 0x4BAA40: from the one after
   the selected, round to it; `hero_can_move` 0x4E5F30: its points at least the cheapest step from
   its tile, 0x4B1880), set at the view's entry (0x419C53), after 0x40EC90 rebuilds a path (0x40F208)
@@ -1559,6 +1560,15 @@ checked against the running original's dialog (`h3mem.dialog_items` on `heroes-o
   `optionCanToggleLevel` (two levels), `optionCanViewQuests` (quests not empty),
   `optionHeroSelected` (sleep, cast), `optionHeroCanMove` (a path whose next node is this turn's),
   `optionHasNextHero` (a next wandering hero), the rest `optionInMapView`.
+- **Seen in the sequences** (M3 T2a's recordings, `Mem.buttons` every millisecond; the reading
+  above leaves the order of these messages open, so the timeline follows the recordings,
+  *provisional*): a path's walk keeps move hero as the click set it (the start's disable is not
+  seen) until its end, which turns it off on the destination (the path cleared) or sets it by the
+  rest's green arrows; a key's step turns it on when it lifts a hero not lifted (the selection's
+  path, the step's own) and off once the hero is lifted; next hero turns off at a walk's end
+  that leaves its only hero unable to move (`walk-points`). A state the original set before the
+  harness wrote a hero's points stays as set (`walk-sail`: next hero off at 0 with 1 500 points):
+  the live part carries the states memory holds (`buttons`).
 - **Seen** (the captures): the disabled buttons show frame 2 (a blank red plate where
   `AdvMap.pcx` paints the enabled icon), the list arrows' frame 2 a plain plate; the cursor
   parked at (700, 300) is drawn over the adventure options' button (the arrow, frame 0), and the
@@ -1566,7 +1576,8 @@ checked against the running original's dialog (`h3mem.dialog_items` on `heroes-o
 - **Built** (*provisional*): `adventure.toml`'s `[dialog]` (h3_ui::ui's format) and
   `[resource_bar]`; `h3_map_view::panels` turns the live part's `kingdom` (the viewer's heroes in
   the list's order, each asleep or not and able to move or not, its towns, the one selected, the
-  lists' tops, whether it has a quest) and the view's level into the items' states, DEFs and
+  lists' tops, whether it has a quest), its `buttons` (move hero's and next hero's states, as the
+  original or the timeline last set them) and the view's level into the items' states, DEFs and
   colours; the scene draws `AdvMap.pcx`, the dialog's items, the resource bar's picture, the view,
   then (a still) the cursor at the live part's pointer. Not drawn yet: the lists' contents (T4),
   the minimap (T3), the status window, the amounts and the date (T5), the hints (T6):

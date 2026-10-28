@@ -2,15 +2,17 @@
 0 objects 0
 0 cycles 0 0
 0 cursor 1 0 700 300
+0 buttons 0 0
+100 buttons 1 0
 100 arrows 14,7,0,1 13,8,0,11 12,9,0,11 11,10,0,11 10,11,0,11
-100 screen 64,108,473,313
+100 screen 64,108,709,313
 180 objects 1
 200 cycles 1 1
 300 view 1 3 0
 300 hero 10 11 0 1
 300 walk 6 1 22 -22
 300 arrows 14,7,0,1 13,8,0,11 12,9,0,11 11,10,0,11
-300 screen 8,8,600,552
+300 screen 8,8,710,552
 350 walk 6 2 10 -10
 350 screen 8,8,600,552
 400 cycles 2 2
@@ -56,8 +58,9 @@
 1000 walk 6 7 0 0
 1000 screen 8,9,600,552
 1050 objects 3
+1050 buttons 0 0
 1050 walk 1 0 0 0
-1050 screen 280,235,326,296
+1050 screen 280,235,710,318
 1200 cycles 6 6
 1230 objects 4
 1230 screen 8,40,448,456

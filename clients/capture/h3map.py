@@ -460,8 +460,8 @@ def live_part(mem, sit, turn, k, k_rivers):
     is the copy a new game made (design §2.7), whose DEF, class and subclass the viewer draws it
     as; a random dwelling's the dwelling's it became, a town's its picture by its buildings
     (§2.9). Each object's owner as the view finds it (T5b1). The viewer's explored tiles and the
-    path shown (T5b2). The viewer's kingdom the panels show and the mouse's point, where the
-    cursor is drawn (M3 T2a). Checks the heroes and boats against what the situation staged."""
+    path shown (T5b2). The viewer's kingdom the panels show, move hero's and next hero's states as
+    the original last set them and the mouse's point, where the cursor is drawn (M3 T2a). Checks the heroes and boats against what the situation staged."""
     objects, templates = mem.map_objects(), mem.map_templates()
     heroes, boats = mem.map_heroes(sit["view"][2])
     live = {"view": list(mem.view()) + [mem.view_level()], "cycles": k,
@@ -475,6 +475,7 @@ def live_part(mem, sit, turn, k, k_rivers):
             "explored": json.dumps(mem.explored_rows(mem.current_player())),
             "path": mem.path_arrows(),
             "kingdom": kingdom_toml(mem.kingdom(mem.current_player())),
+            "buttons": mem.buttons(),
             "pointer": mem.cursor()[2:],
             "situation": json.dumps(situation_digest(sit))}
     check_staged(sit, turn, heroes, boats)

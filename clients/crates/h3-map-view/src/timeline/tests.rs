@@ -146,13 +146,21 @@ const LIVE: [(&str, &str); 13] = [
 
 /// A live part's heroes and viewer (`[x, y, level, class, facing, owner, boat, colour]` rows, as
 /// the binary's `read_live` takes them).
-/// A kept live part's kingdom (E24 M3 T2a), none before it was kept.
-fn live_kingdom(text: &str) -> Kingdom {
+/// A kept live part's kingdom and buttons (E24 M3 T2a).
+fn live_kingdom(text: &str) -> (Kingdom, Option<Buttons>) {
     let table: toml::Table = text.parse().unwrap();
-    table
-        .get("kingdom")
-        .map(|k| Kingdom::read(k).unwrap())
-        .unwrap_or_default()
+    let kingdom = Kingdom::read(&table["kingdom"]).unwrap();
+    let flags: Vec<i64> = table["buttons"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|v| v.as_integer().unwrap())
+        .collect();
+    let buttons = Buttons {
+        move_hero: flags[0] == 1,
+        next_hero: flags[1] == 1,
+    };
+    (kingdom, Some(buttons))
 }
 
 fn live_heroes(text: &str) -> (Vec<LiveHero>, u8) {
@@ -203,6 +211,7 @@ fn start(situation: &str, speed: usize) -> Start {
         live: false,
         sound: None,
         kingdom: Kingdom::default(),
+        buttons: None,
     }
 }
 
@@ -215,7 +224,7 @@ pub(crate) fn recorded(id: &str) -> (Start, BTreeMap<u32, Vec<Action>>, u32) {
     let mut start = start(situation, sequence.scroll_speed().unwrap());
     start.hero_speed = sequence.hero_speed().unwrap();
     let (_, live) = LIVE.iter().find(|(l, _)| *l == id).unwrap();
-    start.kingdom = live_kingdom(live);
+    (start.kingdom, start.buttons) = live_kingdom(live);
     if sequence.walks() {
         let (heroes, viewer) = live_heroes(live);
         start.hero = Some(sequence::selected(&heroes, viewer).unwrap());
@@ -241,7 +250,7 @@ fn replays_the_recorded_timelines() {
         let mut start = start(situation, sequence.scroll_speed().unwrap());
         start.hero_speed = sequence.hero_speed().unwrap();
         let (_, live) = LIVE.iter().find(|(l, _)| *l == id).unwrap();
-        start.kingdom = live_kingdom(live);
+        (start.kingdom, start.buttons) = live_kingdom(live);
         if sequence.walks() {
             let (heroes, viewer) = live_heroes(live);
             start.hero = Some(sequence::selected(&heroes, viewer).unwrap());
@@ -301,6 +310,7 @@ fn looped(bugs: Bugs, speed: usize) -> Loop {
         live: false,
         sound: None,
         kingdom: Kingdom::default(),
+        buttons: None,
     };
     Loop::start(rules(bugs), &start).unwrap()
 }
@@ -495,6 +505,7 @@ fn what_it_cannot_play_yet() {
         live: false,
         sound: None,
         kingdom: Kingdom::default(),
+        buttons: None,
     };
     assert_eq!(
         Loop::start(rules(Bugs::Fixed), &over),
@@ -613,6 +624,7 @@ fn walking(speed: usize, paths: Vec<Vec<Arrow>>) -> Loop {
         live: false,
         sound: None,
         kingdom: Kingdom::default(),
+        buttons: None,
     };
     Loop::start(rules(Bugs::Fixed), &start).unwrap()
 }
@@ -1011,6 +1023,7 @@ fn live(pointer: [i32; 2], hero: bool, path: Vec<Arrow>) -> Start {
         live: true,
         sound: None,
         kingdom: Kingdom::default(),
+        buttons: None,
     }
 }
 
@@ -1089,8 +1102,9 @@ fn a_path_shown_at_0() {
 
 #[test]
 fn move_hero_and_next_hero_through_a_walk() {
-    // E24 M3 T2a (design §4.1): a path whose last two steps the points do not pay.
-    let path = vec![
+    // E24 M3 T2a (design §4.1), as the recordings show them: a path whose last two steps the
+    // points do not pay, and one all green.
+    let short = vec![
         arrow(18, 17, 12),
         arrow(19, 17, 12),
         arrow(20, 17, 37),
@@ -1100,7 +1114,7 @@ fn move_hero_and_next_hero_through_a_walk() {
         asleep: false,
         movable: true,
     };
-    let start = |heroes: Vec<KingdomHero>| {
+    let start = |heroes: Vec<KingdomHero>, path: &Vec<Arrow>| {
         let mut s = Start {
             kingdom: Kingdom {
                 heroes,
@@ -1118,31 +1132,41 @@ fn move_hero_and_next_hero_through_a_walk() {
         move_hero,
         next_hero,
     };
-    let mut l = start(vec![awake]);
+    let walk = |l: &mut Loop| {
+        l.run(1, &[Action::Click(tile(21, 17))]).unwrap();
+        assert!(l.state(1).buttons.move_hero);
+        l.run(2, &[Action::Click(tile(21, 17))]).unwrap();
+        for t in 3..=400 {
+            l.run(t, &[]).unwrap();
+        }
+    };
+    let mut l = start(vec![awake], &short);
     assert_eq!(l.state(0).buttons, buttons(false, true));
-    // The click shows the path: move hero by its green arrows.
-    l.run(1, &[Action::Click(tile(21, 17))]).unwrap();
-    assert_eq!(l.state(1).buttons, buttons(true, true));
-    // The walk: move hero off at its start; it ends on the red arrows, the hero unable to move,
-    // next hero off with no other hero.
-    l.run(2, &[Action::Click(tile(21, 17))]).unwrap();
-    for t in 3..=400 {
-        l.run(t, &[]).unwrap();
-    }
+    // The walk ends on the red arrows: the hero cannot move on, next hero off with no other hero.
+    walk(&mut l);
     let s = l.state(400);
     assert_eq!(s.hero.unwrap().at, Pos { x: 19, y: 17, z: 0 });
     assert_eq!(s.buttons, buttons(false, false));
     // Another hero awake and able to move keeps next hero on.
-    let mut l = start(vec![awake, awake]);
-    l.run(1, &[Action::Click(tile(21, 17))]).unwrap();
-    l.run(2, &[Action::Click(tile(21, 17))]).unwrap();
-    for t in 3..=400 {
+    let mut l = start(vec![awake, awake], &short);
+    walk(&mut l);
+    assert_eq!(l.state(400).buttons, buttons(false, true));
+    // On its destination the path is gone: move hero off.
+    let mut l = start(vec![awake], &east());
+    walk(&mut l);
+    assert_eq!(l.state(400).buttons, buttons(false, true));
+    // A key's step: move hero on when it lifts the hero, off once the hero is lifted.
+    let mut l = start(vec![awake], &short);
+    l.run(1, &[Action::Step(Direction::North)]).unwrap();
+    assert!(l.state(1).buttons.move_hero);
+    for t in 2..=300 {
         l.run(t, &[]).unwrap();
     }
-    assert_eq!(l.state(400).buttons, buttons(false, true));
-    // A key's step turns move hero off.
-    let mut l = start(vec![awake]);
-    l.run(1, &[Action::Click(tile(21, 17))]).unwrap();
-    l.run(2, &[Action::Step(Direction::North)]).unwrap();
-    assert!(!l.state(2).buttons.move_hero);
+    l.run(301, &[Action::Step(Direction::North)]).unwrap();
+    assert!(!l.state(301).buttons.move_hero);
+    // The start's buttons as given.
+    let mut given = live(PARK, true, Vec::new());
+    given.buttons = Some(buttons(true, false));
+    let l = Loop::start(rules(Bugs::Fixed), &given).unwrap();
+    assert_eq!(l.state(0).buttons, buttons(true, false));
 }

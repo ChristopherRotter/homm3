@@ -236,15 +236,18 @@ M1's review lists (three reviewers, T6b; the list accepted) and M2's (accepted a
   M3's later tasks draw, read by `h3map.py` and by the viewer's `sequences` (its `screen` lines:
   the box of the change outside them, the whole screen otherwise).
 - **M3 T2a, the live part's kingdom and pointer** (*provisional*): `kingdom = { heroes =
-  [[asleep, movable], ...], towns, selected = [kind, place], tops, quests }`, `pointer = [x, y]`
+  [[asleep, movable], ...], towns, selected = [kind, place], tops, quests }`, `buttons = [move,
+  next]` (the states memory holds), `pointer = [x, y]`
   (a still's cursor, the arrow); a hero's `movable` read as points left (a step leaves 0 or at
   least the cheapest step, 0x481182), the quest log's test without the quest's text;
   `Live::at_start` the viewer's heroes in the map's order, the first selected.
-- **M3 T2a, the buttons in a walk** (*provisional*): move hero set at a path's click, a walk's and
-  a key's step's start and a walk's end (its rest's green arrows); a walk whose rest has no green
-  arrow leaves its hero unable to move (the step set its points to 0) and next hero follows the
-  kingdom; a key's step's end does not set next hero (no recording shows one that ends the
-  points); the engine's from M4.
+- **M3 T2a, the buttons in a walk** (*provisional*, as the recordings show them, design §4.1):
+  move hero set at a path's click (its green arrows), kept through the path's walk to its end
+  (off on the destination, else by the rest's green arrows), on at a key's step that lifts the
+  hero and off at one once it is lifted; a walk whose rest has no green arrow leaves its hero
+  unable to move (the step set its points to 0) and next hero follows the kingdom; a key's
+  step's end does not set next hero (no recording shows one that ends the points); the live
+  part's `buttons` the states memory holds (a stale one kept, `walk-sail`); the engine's from M4.
 - **M3 T2a, `h3_ui::paint`**: the dialog items' drawers moved into the common crate (an `Assets`
   trait each viewer's batch implements); `h3-view` keeps its copy until the client lane takes
   this one (its inbox); a button takes a player's colours and a DEF from `Shown` by its id.

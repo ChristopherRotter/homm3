@@ -113,6 +113,7 @@ pub fn for_sequence<'a>(
         live: false,
         sound,
         kingdom: painter.live.kingdom.clone(),
+        buttons: painter.live.buttons,
     };
     Ok(Setup {
         painter,
@@ -181,6 +182,7 @@ pub fn for_situation<'a>(
         live: false,
         sound,
         kingdom: painter.live.kingdom.clone(),
+        buttons: painter.live.buttons,
     };
     Ok(Setup {
         painter,

@@ -17,7 +17,8 @@ use h3_map_view::art::{MapArt, TemplateArt};
 use h3_map_view::batch::{self, Batch};
 use h3_map_view::compose::compose;
 use h3_map_view::live::{
-    Arrow, Boat, Drawn, Explored, Facing, Kingdom, Live, LiveBoat, LiveHero, Moment, TOWN_CLASS,
+    Arrow, Boat, Buttons, Drawn, Explored, Facing, Kingdom, Live, LiveBoat, LiveHero, Moment,
+    TOWN_CLASS,
 };
 use h3_map_view::objects;
 use h3_map_view::scene::{self, Draw, ViewAt};
@@ -302,7 +303,9 @@ const RANDOM_DWELLINGS: [u32; 3] = [216, 217, 218];
 /// the view's top-left and level the original showed, which must be `--view` (E24 M1 T6b, the
 /// reviewer's R2-3); `kingdom` (E24 M3 T2a, design §4.1), what the panels show of the viewer's
 /// kingdom: `{ heroes = [[asleep, movable], ...], towns = <n>, selected = [<0 none, 1 a hero, 2 a
-/// town>, <its place in its list>], tops = [<heroes>, <towns>], quests = <0 or 1> }`; `pointer`
+/// town>, <its place in its list>], tops = [<heroes>, <towns>], quests = <0 or 1> }`; `buttons`
+/// (T2a), move hero's and next hero's states as the original last set them, `[move, next]`, 1
+/// enabled; `pointer`
 /// (T2a), where the parked mouse is, returned. Each key is optional (`defs` and `classes`
 /// together); other keys are left. The file's `cycles`, `frames` and `viewer` override
 /// `--cycles`, `--at` and `--viewer`: the comparisons draw the original's.
@@ -535,6 +538,25 @@ pub fn read_live(
         for (object, phase) in live.objects.iter_mut().zip(phases) {
             object.phase = phase;
         }
+    }
+    if let Some(value) = table.get("buttons") {
+        // Move hero's and next hero's states as the original last set them (E24 M3 T2a).
+        let flags: Option<Vec<bool>> = value.as_array().and_then(|a| {
+            a.iter()
+                .map(|v| match v.as_integer() {
+                    Some(0) => Some(false),
+                    Some(1) => Some(true),
+                    _ => None,
+                })
+                .collect()
+        });
+        live.buttons = match flags.as_deref() {
+            Some(&[move_hero, next_hero]) => Some(Buttons {
+                move_hero,
+                next_hero,
+            }),
+            _ => return Err(failed("`buttons` is not [move, next], each 0 or 1")),
+        };
     }
     if let Some(value) = table.get("kingdom") {
         live.kingdom = Kingdom::read(value).ok_or_else(|| {
