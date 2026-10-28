@@ -9,7 +9,7 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
 ### E08 T68b — Batch E8b's harness and run
 
 - **Scope** (design §17; decision 175: T68 in two by batch, T68a done, `E08-log.md`):
-  `clients/capture/` (common; the client and map-client lanes' archives told): the sea pickups'
+  `clients/capture/` (common; T68a told the client and map-client lanes' inboxes): the sea pickups'
   words decoded by `object:x,y` (Sea Chest 82: bits 0 to 2 the kind, 3 to 12 the artifact; the
   Survivor 86: its artifact; the Ocean Bottle 59; T68a did Flotsam 29), the restart rule over
   chest kinds (`[[require]]` holds an artifact chest: kind 2), visits from a boat in legs (`walk =
@@ -34,6 +34,17 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
 - **Depends on:** T68b (E8a's results are in since T68a). **Status:** queued.
 
 ## Inbox
+
+- 2026-10-28 (T68a's scoped verify; **a failing property case**, for a fix task before T72):
+  `h3-map`'s `every_step_keeps_the_commands_invariants` failed on a random case, reproducible
+  with the regression line `cc a85563f06cafc2ccfda4e0e43ef5db0c90238e7cf03330cf9f12b82390be04fc`
+  (not committed: it would fail CI until fixed; add it to
+  `crates/h3-map/proptest-regressions/tests/play.txt` with the fix). At `play.rs` 2301 the actor
+  has an army dialog open (a join without room) and its `Close` is accepted, but a **battle**
+  is then open for the actor (`probe.battle(actor)`), where the plan asserts no decision. Likely a
+  second monster guarding the joined one's tile (GAM-BAT-001's guards in turn): decide whether
+  the battle after the join is the original's sequence (then the plan's assertion is too
+  strict) or an engine bug. `master` 7dad572's CI passed: the case is rare.
 
 - 2026-10-23 (T42, measured; for a performance task): **a flyer's or water walker's reach costs
   about 1.9 times a walker's query** on the XL map (`reach-lifted-xl-144`: 279 k Ir a query

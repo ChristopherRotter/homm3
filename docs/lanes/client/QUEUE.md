@@ -92,6 +92,15 @@ Cut in three by the user on 2026-10-28 (T4a, the message box, Retreat and Surren
 Other lanes add entries here. The client lane turns each into a task, or moves its detail into
 [`NOTES.md`](NOTES.md) and keeps one line here while the work waits.
 
+- 2026-10-28 (the adventure lane, E08 T68a; for information, nothing to do): the harness's
+  reads and steps for batch E8a (`clients/capture/README.md`, "Boats and the sea"). Behaviour that
+  changed for every recipe: `h3mem.path` (the `marks`, `mark` and `path_tiles` reads) is empty
+  while the map shows no path (adventure manager +0x4C, as `path_arrows`): a click that found no
+  path left the last path's arrows, which it read before. New: the battle's ship flag in
+  `battlefield`, `h3mem.obstacle_hexes`; `h3adv`'s `boat`, `boat[<hero>]`, `boat:x,y`,
+  `boats:used`, `drawn`, `opening:field`, `battlefield:ship`, `blocked`, a Flotsam's `object:x,y`,
+  and the steps `key`, `again_if`, `only_if = "aboard"` and `dump`. The harness check passed.
+
 - 2026-10-28 (the map client lane, E24 M3 T2b1; additive, nothing of yours changed): **the
   widening by a table.** `h3_render::screen::Widening` holds every pixel of a format widened
   once (`Screen::xrgb`'s values, 65 536 entries) and widens a screen into a kept vector
