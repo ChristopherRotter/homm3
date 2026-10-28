@@ -59,8 +59,9 @@ parts are its tasks above):
   world scores a cut at the step limit 0 where the trainer charges `-truncation_penalty`, so the
   tree's losing side stalls (T1c: up to 1.5 % of the true worlds' battles cut); a search that
   trains or plays scores it as the trainer does (`E25-log.md` T1c). AI-STUB-1
-  (`docs/stubs.toml`: the hidden obstacles' number, and T9b's three gaps of a world: the other
-  hero's morale and luck modifiers, the magic limits, a commanded war machine without a guess);
+  (`docs/stubs.toml`: the hidden obstacles' number, and two of T9b's three gaps of a world: the
+  other hero's morale and luck modifiers, a commanded war machine without a guess; the magic
+  limits closed 2026-10-28, `E25-log.md`);
   the cast heads at the root unperturbed (design §14's Gumbel heads not built); T8c's optional
   Greedy rows on the user's machine (`uv run --group train python -m h3env.search --report
   --best runs/t7-1/best.pt --device cuda --opponent greedy --simulations 64 --json

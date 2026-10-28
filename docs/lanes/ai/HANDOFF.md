@@ -19,7 +19,9 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   against Aggressor, Greedy and the system actor, 0.409; a tail of long battles). **Next:** T3,
   the checkpoint: the user chooses increment 2 (`E25-log.md` T1c, T2b).
 - **Open pull requests:** none (#534 and #539 merged); this session's branch
-  `claude/e25-training-runs-cyvj0l` (T2b's records and read) until its pull request.
+  `claude/e25-training-runs-cyvj0l` (T2b's records and read; `cross-lane`, the user: AI-STUB-1's
+  magic limits fixed in `h3-battle`'s `world.rs`, which turned `master`'s verify red at random)
+  until its pull request.
 - **Versions:** battle action encoding v13, observation encoding v22, replay format v31
   (CLT-Q4/Q6), the adventure env's action encoding v5 (E08 T63a), C ABI v35 (E25 T1a, T1b, T2a:
   a world's reward, the true world, the potential) (`docs/08-work-process.md`, "Versions"). Next
@@ -37,7 +39,8 @@ Moved to `TRAPS.md`, in three groups: **Ownership** (cross-lane encodings and re
 - The user ran both configs at 20 M samples and uploaded both records and metrics and the
   control's `best.pt` (shaping's stays on their machine). The records committed and read
   (`E25-log.md` T2b): shaping is the first lever past the runs' spread since E06 T5d; its long
-  battles (0.2 % cut in training, ladders three to four times slower) are open.
+  battles (0.2 % cut in training, ladders three to four times slower) are open. `master`'s CI
+  red since #534's merge: a world's property test hit AI-STUB-1's magic limits; fixed here.
 
 ### 2026-10-28 — E25 T1a, T1b, T2a (C ABI v35), T1c
 

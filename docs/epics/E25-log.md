@@ -187,3 +187,22 @@ an entry only where a task builds on it.
   faithful system actor and the neutral battles costs nothing against the player kinds and about
   0.015 of value on the neutral set. Before a longer run builds on shaping, its long battles
   want a look.
+
+## AI-STUB-1's magic limits: `master`'s red verify (2026-10-28)
+
+- **Found:** CI's full verify on `master` failed at #534's merge (`e5cfa46`; #534 changed no
+  `h3-battle` code): `h3-battle`'s `a_world_shows_its_viewer_the_battle_and_reads_nothing_hidden`
+  drew a case whose attacker wore a hidden Orb of Inhibition, and the defender's world showed its
+  own random caster four candidate spells where the battle showed none. A world recomputed the
+  magic limits from the guessed hero (`MagicLimits::of`), AI-STUB-1's gap from E06 T9b; the
+  property's random cases reach it only now and then (it failed in the sandbox's coverage run and
+  passed in its test run and CI's).
+- **The fix** (the user: on this branch, `cross-lane`): a world keeps what the battle forbids
+  every caster, no casting and the highest spell level (BAT-MAG-061, -062), which each side meets
+  in its own casts and legal mask; only `guards`, whether a stack's guard is looked at, follows
+  the guessed hero's private defences (`h3-battle`'s `world.rs`). Tests: the failing case pinned
+  in `proptest-regressions/tests/properties.txt`;
+  `a_world_keeps_what_the_other_hero_forbids_every_caster` (an Orb and a Cloak the guess lacks;
+  `guards` from the guess); both fail without the fix; the property clean in nine further runs.
+  AI-STUB-1 keeps the other hero's morale and luck modifiers and a commanded war machine without
+  a guess.
