@@ -321,11 +321,54 @@ fn render(options: &Options) -> Result<Vec<String>, String> {
                     })
                     .flatten()
             };
+            // The message boxes (E17 M5 T4a): laid out in the layout's fonts, in the viewing
+            // player's colours; the side's ways to leave; its hero's spells no hex takes.
+            let writer =
+                crate::log::Writer::new(&tables, &layout, (&archives, &exe), Bugs::Original)?;
+            let viewing = viewing_player(observation);
+            let tell = |text: &str, style, picture: Option<&h3_view::message::Picture>| {
+                writer.message(&layout, text, style, picture, viewing)
+            };
+            let leave = crate::boxes::Leave::of(
+                observation,
+                &legal,
+                &manifest.keys.hero_types,
+                &catalogue,
+            );
+            let spells: Vec<(u16, u32)> = observation
+                .own_hero
+                .iter()
+                .flat_map(|h| &h.spell_book)
+                .filter_map(|b| {
+                    let entry = motion::spell_entry_in(&manifest.keys.spells, &tables, b.spell)?;
+                    Some((b.spell, u32::from(entry.original)))
+                })
+                .collect();
+            let no_one = if options.scenario() {
+                crate::scenario::opening_no_one(&options.input, &options.packs, options.seed, &spells)?
+            } else {
+                Vec::new()
+            };
+            let no_one = |spell: u16| no_one.contains(&spell);
+            let def = layout.message.spell_pictures.clone();
+            let size = lookup(&archives, &def)
+                .ok()
+                .and_then(|b| h3_assets::def::parse_def(&b).ok())
+                .map_or([0, 0], |d| {
+                    [d.width, d.height].map(|v| i32::try_from(v).unwrap_or(i32::MAX))
+                });
+            let boxes = crate::spellbook::Boxes {
+                tell: &tell,
+                leave,
+                no_one: &no_one,
+                pictures: (def, size),
+            };
             Some(crate::spellbook::still(
                 &actions,
                 mouse.unwrap_or(crate::pointer::PARK),
                 hero,
                 (&layout.book, &catalogue),
+                Some(&boxes),
             )?)
         };
         let interface = crate::sequences::Interface {
@@ -445,6 +488,23 @@ fn render(options: &Options) -> Result<Vec<String>, String> {
         lines.extend(list.iter().map(|d| format!("{d:?}")));
     }
     Ok(lines)
+}
+
+
+/// The colour whose view the screen shows in `observation`'s battle (`viewing_player` 0x4CEA20;
+/// E17 M5 T4a, as the window's battle takes it): the attacker's when human, else the defender's
+/// when human, else red (the record names none: red for the attacker, blue for the defender).
+fn viewing_player(observation: &h3_protocol::wire::Observation) -> u8 {
+    let colour = |index: usize| {
+        observation.sides[index]
+            .colour
+            .unwrap_or_else(|| u8::try_from(index).unwrap_or(0))
+    };
+    match (observation.sides[0].human, observation.sides[1].human) {
+        (true, _) => colour(0),
+        (false, true) => colour(1),
+        (false, false) => 0,
+    }
 }
 
 #[cfg(test)]

@@ -328,7 +328,8 @@ pub enum Draw {
         list: Vec<Draw>,
     },
     /// A dialog's picture (`H3DlgPcx`, E17 M3 T6a; §9.7): index 0 transparent, in its own colours
-    /// or a player's.
+    /// or a player's, at most its item's size of it from its corner (`dialog_picture_draw`
+    /// 0x450450; E17 M5 T4a: a message box's background tiles cut to the box).
     Picture {
         /// The picture.
         picture: String,
@@ -338,9 +339,13 @@ pub enum Draw {
         y: i32,
         /// The player's colours over its entries 224–255, if any.
         player: Option<PlayerColours>,
+        /// The item's width and height, none for the whole picture.
+        size: Option<[i32; 2]>,
     },
-    /// A dialog's button (`H3DlgDefButton`, E17 M3 T6a; §9.7): a frame of its DEF's group 0 (frame
-    /// 0 when the group has no such frame), by the plain drawer with runs skipped.
+    /// A dialog's button (`H3DlgDefButton`, E17 M3 T6a; §9.7) or DEF item (`H3DlgDef`, E17 M5
+    /// T3a): a frame of its DEF's group 0 (frame 0 when the group has no such frame), by the plain
+    /// drawer with runs skipped; a DEF item in a player's colours once the screen gives it one
+    /// (the message 0x200/0xD, `dialog_def_message` 0x4EA810; E17 M5 T4a: a message box's frame).
     Button {
         /// The DEF.
         def: String,
@@ -350,6 +355,8 @@ pub enum Draw {
         x: i32,
         /// The canvas's top edge.
         y: i32,
+        /// The player's colours over the DEF's entries 224–255, if any.
+        player: Option<PlayerColours>,
     },
     /// The mouse's cursor, over everything (E17 M3 T6c-1, design §9.9): a frame of its DEF's group
     /// 0, its canvas's corner at the mouse less the frame's hot spot, by the plain drawer with runs
@@ -402,8 +409,8 @@ pub enum Draw {
     },
 }
 
-/// A picture's player colours (0x450520): the players' palette and the player's colour (0 red to
-/// 7 pink), whose 32 entries of that palette replace the picture's 224–255.
+/// A picture's or a DEF item's player colours (0x450520, 0x4EAA4A): the players' palette and the
+/// player's colour (0 red to 7 pink), whose 32 entries of that palette replace its 224–255.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PlayerColours {
     /// The players' palette (`PLAYERS.PAL`).

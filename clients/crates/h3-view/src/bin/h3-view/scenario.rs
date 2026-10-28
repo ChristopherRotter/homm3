@@ -448,13 +448,42 @@ pub fn record_of(scenario: &Path, packs: &Path, seed: u64, seat: Seat) -> Result
 /// `seed`, its packs read from `packs` (E17 M3 T6c-1: what the mouse's cursor asks in a still);
 /// none when no side acts.
 pub fn opening_legal(scenario: &Path, packs: &Path, seed: u64) -> Result<Vec<Command>, String> {
-    let (ruleset, setup) = battle(scenario, packs, seed)?;
-    let state =
-        BattleState::new(&ruleset, &setup, seed).map_err(|e| format!("the setup: {e:?}"))?;
+    let (ruleset, state) = opening(scenario, packs, seed)?;
     Ok(state
         .side_to_act()
         .map(|side| map::legal_commands(&state, &ruleset, side))
         .unwrap_or_default())
+}
+
+/// The spells of the side to act's hero that the aim's entry tells affect no one at the opening
+/// of `scenario` (E17 M5 T4a; `enter_player_cast` 0x59F085): the stack spells and Teleport no hex
+/// takes (the engine gives no aim), by handle, among `spells` (their original numbers).
+pub fn opening_no_one(
+    scenario: &Path,
+    packs: &Path,
+    seed: u64,
+    spells: &[(u16, u32)],
+) -> Result<Vec<u16>, String> {
+    let (ruleset, state) = opening(scenario, packs, seed)?;
+    let Some(side) = state.side_to_act() else {
+        return Ok(Vec::new());
+    };
+    Ok(spells
+        .iter()
+        .filter(|&&(handle, original)| {
+            crate::boxes::affects_someone_only(original)
+                && crate::aims::hero(&state, &ruleset, side, handle).is_none()
+        })
+        .map(|&(handle, _)| handle)
+        .collect())
+}
+
+/// The ruleset and the opening state of `scenario`'s battle.
+fn opening(scenario: &Path, packs: &Path, seed: u64) -> Result<(BattleRuleset, BattleState), String> {
+    let (ruleset, setup) = battle(scenario, packs, seed)?;
+    let state =
+        BattleState::new(&ruleset, &setup, seed).map_err(|e| format!("the setup: {e:?}"))?;
+    Ok((ruleset, state))
 }
 
 /// A turn of a battle as the mouse asks it (E17 M3 T6c-2; M5 T3b): a spectator's observation,

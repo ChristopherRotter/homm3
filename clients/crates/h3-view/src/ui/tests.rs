@@ -173,6 +173,7 @@ fn a_dialog_draws_its_items_as_shown() {
         frame,
         x,
         y,
+        player: None,
     };
     let picture = |player: Option<u8>| Draw::Picture {
         picture: "bar.pcx".to_string(),
@@ -182,6 +183,7 @@ fn a_dialog_draws_its_items_as_shown() {
             palette: "P.pal".to_string(),
             player,
         }),
+        size: None,
     };
     assert_eq!(
         d.draws(&Shown::default(), "P.pal"),
@@ -369,13 +371,15 @@ fn the_book_s_kinds_draw_as_shown() {
                 def: "r.def".to_string(),
                 frame: 2,
                 x: 105,
-                y: 16
+                y: 16,
+                player: None,
             },
             Draw::Button {
                 def: "tab.def".to_string(),
                 frame: 4,
                 x: 300,
-                y: 10
+                y: 10,
+                player: None,
             },
             label(30, 105, 22, "x", false),
             label(31, 135, 22, "", true),

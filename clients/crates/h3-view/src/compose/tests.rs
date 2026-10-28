@@ -770,6 +770,7 @@ fn a_picture_is_keyed_and_takes_its_players_colours() {
             palette: "Players.pal".to_string(),
             player,
         }),
+        size: None,
     };
     let [bg, r, y, w, g] = [BLUE, RED, YELLOW, WHITE, GREEN].map(|c| FORMAT.pack(c));
     let list = [Draw::Background {
@@ -814,6 +815,7 @@ fn a_button_draws_its_frame_or_frame_0() {
         frame,
         x: 1,
         y: 0,
+        player: None,
     };
     let [r, w] = [RED, WHITE].map(|c| FORMAT.pack(c));
     let first = compose(&[button(0)], &batch, &small()).unwrap();
@@ -828,7 +830,8 @@ fn a_button_draws_its_frame_or_frame_0() {
                 def: "no.def".to_string(),
                 frame: 0,
                 x: 0,
-                y: 0
+                y: 0,
+                player: None,
             }],
             &batch,
             &small()

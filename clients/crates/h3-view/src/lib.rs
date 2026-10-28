@@ -3,8 +3,8 @@
 //! [`anim`] plays its commands at the original's timing, [`scene`] makes the draw list of a
 //! snapshot at a time ([`hero`]: the heroes and their flags), [`batch`] holds a checkpoint's decoded assets,
 //! [`compose`] draws the list into a frame; [`tables`] and [`layout`] are the asset tables and
-//! the screen layouts, [`ui`] the dialog items they are made of and [`panel`] the battle's panel
-//! of them; [`cursor`] is the game's mouse cursor, [`mouse`] what the mouse shows over the battle
+//! the screen layouts, [`ui`] the dialog items they are made of, [`panel`] the battle's panel
+//! of them and [`message`] the message box laid out as them; [`cursor`] is the game's mouse cursor, [`mouse`] what the mouse shows over the battle
 //! (the cursor's kind, the status line's hint, the stack it marks), and [`clock`] the battle's clock in
 //! the window; [`sound`] is what a battle's opening plays; [`text`] is the string catalogue and
 //! its language packs, [`battle_log`] the battle log's lines composed from it. The adapters (the
@@ -40,6 +40,7 @@ pub mod compose;
 pub mod cursor;
 pub mod hero;
 pub mod layout;
+pub mod message;
 pub mod mouse;
 pub mod panel;
 pub mod ray;

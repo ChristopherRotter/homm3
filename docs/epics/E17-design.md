@@ -2374,6 +2374,35 @@ panel's Surrender and Retreat (`battle_buttons` 0x474FA1 to 0x475151); the book'
   Inhibition 684 formatted with the hero and the artifact, a spell above level 1 on Cursed Ground
   748, Recanter's Cloak): they need facts the client lacks (the engine refuses those casts);
   the right button's popups (style 4: the book's 0x59D0EC and 0x59D19B).
+- **The text tables' quotes** (`text_table_records` 0x5BBBA0, from `H3TextFile::Load`): a
+  record that starts with a quote starts after it and loses its last character before the CR
+  and the trailing tabs (the closing quote); then every run of quotes in it becomes one
+  (0x5BBD29 to 0x5BBD6A; the tables of several columns' reader 0x5BBE70 has the same code). So
+  GENRLTXT's record 33, `"%s states:\n\n""I will … gold."""`, reads `%s states:` and the terms in
+  single quotes. `h3_formats::text` keeps the doubled quotes: the client's catalogue makes each
+  run one when it reads a table's field (`text::pack`, not the executable's own strings).
+- **Built:** `h3_render::text`'s `widest_word`, `widest_line`, `wrapped_width` and
+  `blit::draw_image_keyed_in_clipped`; `h3_view::message` (`layout`: the record's layout, the
+  frame's tiles and pieces, the text, the buttons, one picture and its caption as `ui` items in
+  the executable's order, the pieces in the viewing player's colours through `Shown::players`;
+  `Open`: a press, a move off and back, a release over the button, a key down and up, as the
+  panel's buttons); a picture item drawn at most its size (`Draw::Picture`'s `size`), a DEF item
+  in a player's colours (`Draw::Button`'s `player`); the layout's `[message]`; the catalogue's
+  keys `battle.retreat.ask`, `battle.surrender.ask`, `battle.surrender.poor`, `book.refused`,
+  `aim.no-one`. The binary: `boxes` (what each box asks and what its OK does, shared by the
+  window and the stills), `Writer::message` (the fonts), `Battle`'s box (opened by the panel's
+  Surrender or Retreat, released or by S or R, while the battle waits for a human whose side may
+  leave: Retreat when the engine lists it, Surrender when the side's own view prices it, whether
+  it can pay told after the OK as the original's; the book's refusal and description over the
+  book, "affects no one" over the battle; the battle and the book standing still behind it, the
+  default cursor's frame 0), the window's keys and mouse while it is open (every key but the
+  viewer's own goes to it: Escape is Cancel's, never the window's), unattended runs' `--leave
+  retreat|surrender` (the button clicked, the question shown 400 ms, its OK clicked); the stills'
+  actions `key:r`, `key:s`, a box's `key:` and `click:` (`spellbook::still`). *Provisional:* the
+  viewing player taken as the attacker's when a human plays it here, else the defender's (the
+  client knows no adventure map's turn; the executable falls back on the game's highest human
+  colour); Surrender enabled by the engine's price (it also needs the side to be able to retreat:
+  the Shackles of War disable it where the original's panel, 0x478573, may not).
 
 ## 8. The window, input and audio evaluation (M2 T2)
 

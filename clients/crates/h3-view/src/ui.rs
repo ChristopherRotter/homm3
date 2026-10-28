@@ -176,7 +176,9 @@ pub struct Picture {
     /// Its top-left corner from the dialog's.
     pub at: [i32; 2],
     /// Its size where it takes the mouse (its picture's; E17 M4 T3b: the battle's panel picture
-    /// is entered as the hovered item, `hovered_item` 0x6AAC68); none: it takes none
+    /// is entered as the hovered item, `hovered_item` 0x6AAC68), and the most of its picture it
+    /// draws from the picture's corner (`dialog_picture_draw` 0x450450; E17 M5 T4a: a message
+    /// box's background tiles); none: it takes none and draws the whole picture
     /// (*provisional*, design §9.9).
     #[serde(default)]
     pub size: Option<[i32; 2]>,
@@ -377,7 +379,8 @@ pub struct Shown {
     /// The items' states (a button's frame; any item hidden; a text alone's colour when
     /// disabled).
     pub states: BTreeMap<u16, State>,
-    /// The pictures in a player's colours: the player's colour (0 red to 7 pink).
+    /// The pictures and DEF items in a player's colours: the player's colour (0 red to 7 pink; a
+    /// DEF item's since E17 M5 T4a, the message 0x200/0xD of `dialog_def_message` 0x4EA810).
     pub players: BTreeMap<u16, u8>,
     /// The texts.
     pub texts: BTreeMap<u16, String>,
@@ -497,6 +500,12 @@ impl Dialog {
     pub fn draws(&self, shown: &Shown, players: &str) -> Vec<Draw> {
         let [x, y] = self.place;
         let place = |at: [i32; 2]| [x.saturating_add(at[0]), y.saturating_add(at[1])];
+        let colours = |id: u16| {
+            shown.players.get(&id).map(|&player| PlayerColours {
+                palette: players.into(),
+                player,
+            })
+        };
         let items = self
             .items
             .iter()
@@ -508,10 +517,8 @@ impl Dialog {
                         picture: p.picture.clone(),
                         x,
                         y,
-                        player: shown.players.get(&p.id).map(|&player| PlayerColours {
-                            palette: players.into(),
-                            player,
-                        }),
+                        player: colours(p.id),
+                        size: p.size,
                     })
                 }
                 Item::Button(b) => {
@@ -522,6 +529,7 @@ impl Dialog {
                         frame,
                         x,
                         y,
+                        player: None,
                     })
                 }
                 Item::Text(t) => {
@@ -541,6 +549,7 @@ impl Dialog {
                         frame: shown.frames.get(&d.id).copied().unwrap_or(d.frame),
                         x,
                         y,
+                        player: colours(d.id),
                     })
                 }
                 Item::Label(l) => {

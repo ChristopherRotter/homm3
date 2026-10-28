@@ -311,3 +311,30 @@ fn lines_are_counted_as_the_executable_counts_them() {
     assert_eq!(byte(b"ab", -1), 0);
     assert_eq!(byte(b"ab", 2), 0);
 }
+
+#[test]
+fn a_message_box_measures_its_text_as_the_executable() {
+    let f = font();
+    // The widest word: runs between spaces and newlines, braces not counted (0x4B5A10).
+    assert_eq!(widest_word(&f, b""), 0);
+    assert_eq!(widest_word(&f, b"  \n "), 0);
+    assert_eq!(widest_word(&f, b"x xxx\nxx"), 3);
+    assert_eq!(widest_word(&f, b" w{x}x "), 5);
+    // The widest line by the newlines alone, spaces counted (0x4B5990).
+    assert_eq!(widest_line(&f, b""), 0);
+    assert_eq!(widest_line(&f, b"x xx\nw\n\nxxxx"), 4);
+    assert_eq!(widest_line(&f, b"{xx} x"), 4);
+    // The widest line once broken at a width (0x4B5A80): a line broken at a space loses it.
+    assert_eq!(wrapped_width(&f, b"", 5), 0);
+    assert_eq!(wrapped_width(&f, b"xx xxxx", 5), 4);
+    assert_eq!(wrapped_width(&f, b"xxx xx\nx", 5), 3);
+    assert_eq!(wrapped_width(&f, b"xxxxx xx", 5), 5);
+    assert_eq!(wrapped_width(&f, b"xx xxx x", 6), 6);
+    // A brace adds nothing, going forward or back.
+    assert_eq!(wrapped_width(&f, b"xx{x} x", 3), 3);
+    assert_eq!(wrapped_width(&f, b"x x{xxxx}", 4), 1);
+    // A line of one word longer than the width counts 0, its next line starting past the place
+    // where it fit.
+    assert_eq!(wrapped_width(&f, b"xxxxxxx", 5), 2);
+    assert_eq!(wrapped_width(&f, b"x xxxxxxxx", 3), 2);
+}

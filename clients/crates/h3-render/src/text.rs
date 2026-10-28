@@ -379,6 +379,100 @@ pub fn line_count(font: &Font, text: &[u8], width: i64, bugs: Bugs) -> i64 {
     count
 }
 
+/// The widest word of `text` (`font_widest_word` 0x4B5A10; E17 M5 T4a, design §7.19): the
+/// advances of each run between spaces and newlines, `{` and `}` not counted. A message box's
+/// text is never narrower.
+#[must_use]
+pub fn widest_word(font: &Font, text: &[u8]) -> i64 {
+    let at = |i: i64| byte(text, i);
+    let (mut widest, mut i) = (0, 0);
+    while at(i) != 0 {
+        while matches!(at(i), b' ' | b'\n') {
+            i += 1;
+        }
+        let mut width = 0;
+        while !matches!(at(i), 0 | b' ' | b'\n') {
+            width += advance(font, at(i));
+            i += 1;
+        }
+        widest = widest.max(width);
+    }
+    widest
+}
+
+/// The widest line of `text` by its newlines alone (`font_widest_line` 0x4B5990; E17 M5 T4a):
+/// each line's advances, `{` and `}` not counted.
+#[must_use]
+pub fn widest_line(font: &Font, text: &[u8]) -> i64 {
+    let at = |i: i64| byte(text, i);
+    let (mut widest, mut i) = (0, 0);
+    while at(i) != 0 {
+        let mut width = 0;
+        while !matches!(at(i), 0 | b'\n') {
+            width += advance(font, at(i));
+            i += 1;
+        }
+        widest = widest.max(width);
+        i += 1;
+    }
+    widest
+}
+
+/// The widest line of `text` broken at `width` as [`line_count`] breaks it (`font_wrapped_width`
+/// 0x4B5A80; E17 M5 T4a): a line broken at a space without that space. As the executable, a line
+/// of one word longer than `width` counts 0 (a message box's width is never below its widest
+/// word, so none of its lines is one).
+#[must_use]
+pub fn wrapped_width(font: &Font, text: &[u8], width: i64) -> i64 {
+    let at = |i: i64| byte(text, i);
+    let (mut widest, mut i) = (0, 0);
+    while at(i) != 0 {
+        let start = i;
+        let mut used = 0;
+        while !matches!(at(i), 0 | b'\n') && used <= width {
+            used += advance(font, at(i));
+            i += 1;
+        }
+        if used > width {
+            let mut fits = None;
+            i -= 1;
+            if at(i) != b' ' {
+                while i >= start {
+                    // A brace is passed over, the place where the line fits not looked for there.
+                    if !matches!(at(i), b'{' | b'}') {
+                        used -= advance(font, at(i));
+                        if fits.is_none() && used < width {
+                            fits = Some(i);
+                        }
+                    }
+                    i -= 1;
+                    if at(i) == b' ' {
+                        break;
+                    }
+                }
+            }
+            if i <= start {
+                i = fits.unwrap_or(0);
+            }
+            if at(i) == b' ' {
+                used -= advance(font, b' ');
+            }
+        }
+        widest = widest.max(used);
+        i += 1;
+    }
+    widest
+}
+
+/// A glyph's advance as the measures add it: none for `{` and `}`.
+fn advance(font: &Font, c: u8) -> i64 {
+    if matches!(c, b'{' | b'}') {
+        0
+    } else {
+        i64::from(font.glyph(c).advance())
+    }
+}
+
 /// The byte at `i`, 0 outside the text (where the executable reads its neighbours: the text's
 /// NUL after it; before it, only when a line starts with a newline, whose width is 0 anyway).
 fn byte(text: &[u8], i: i64) -> u8 {

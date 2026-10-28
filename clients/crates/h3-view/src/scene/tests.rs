@@ -934,12 +934,14 @@ fn the_panel_draws_its_items_as_the_turn_sets_them() {
         frame,
         x,
         y: 561,
+        player: None,
     };
     let scroll = |frame, y| Draw::Button {
         def: "ComSlide.def".to_string(),
         frame,
         x: 624,
         y,
+        player: None,
     };
     assert_eq!(
         list,
@@ -951,7 +953,8 @@ fn the_panel_draws_its_items_as_the_turn_sets_them() {
                 player: Some(PlayerColours {
                     palette: "PLAYERS.PAL".to_string(),
                     player: 0
-                })
+                }),
+                size: Some([800, 44]),
             },
             // No heroes: no surrender, no retreat, no book.
             button("icm001.def", 2, 54),

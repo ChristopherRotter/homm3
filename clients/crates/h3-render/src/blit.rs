@@ -204,6 +204,19 @@ pub fn draw_image_keyed_clipped(screen: &mut Screen, image: &Pcx, x: i32, y: i32
     put_image_in(screen, image, None, (x, y), true, clip);
 }
 
+/// Draws an image as [`draw_image_keyed_in`] does, but only its pixels inside the screen's
+/// rectangle `clip` (left, top, right, bottom; the last two excluded): a dialog's picture in a
+/// player's colours, at most the item's size of it (`dialog_picture_draw` 0x450450; E17 M5 T4a).
+pub fn draw_image_keyed_in_clipped(
+    screen: &mut Screen,
+    image: &Pcx,
+    palette: &Palette,
+    (x, y): (i32, i32),
+    clip: [i32; 4],
+) {
+    put_image_in(screen, image, Some(palette), (x, y), true, clip);
+}
+
 /// Draws an image as [`draw_image`] does, but only its pixels inside the screen's rectangle `clip`
 /// (left, top, right, bottom; the last two excluded): a dialog's text item draws at most the item's
 /// size of its picture (0x5BC7F0; E17 M5 T3a: the spell book's `spelroll.pcx`, a column wider).
