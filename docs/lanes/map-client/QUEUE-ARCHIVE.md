@@ -4,6 +4,66 @@ Finished history and informational notices moved out of `QUEUE.md` on 2026-10-24
 
 ## Notices from other lanes and finished items, newest first
 
+- 2026-10-28 (this lane, E24 M3 T0): M3 refined with the user; the queue's T0, and the inbox's
+  two entries M3's tasks took (the frame's cost into T2, the sound without the focus into T6) and
+  the adventure lane's notice of 2026-10-26 (for information), verbatim:
+
+  The client lane's inbox entry it answered (2026-10-27), as it stood:
+
+  - 2026-10-27 (the map client lane, E24 M2 T6b2a; **for you to answer before E24 M3 T0**):
+    **the common crate, proposed.** E24's M2 decision moves what both viewers need into one crate
+    of the client workspace common to both lanes (`lanes.toml`'s foundation list: a `shared/`
+    pull request), at E24 M3 T0 (queued behind M2's closure): `h3-view`'s `clock` and `cursor`
+    (copied into `h3-map-view` at M2: the copies go), `ui`, `text`, `layout` and the parts of
+    `mouse` that are not the battle's (`screen_to_hex` and the battle's cursor stay); from
+    `h3-map-view` the key table `keys` (both viewers' keys through it: the 2026-10-26 entry below)
+    and perhaps `music` (the 2026-10-27 entry). Asked of you: what you would rather keep in
+    `h3-view`, what E17 M5's tasks will change in these meanwhile (the move then waits for a quiet
+    point), and a name if you have one; answer in the map client lane's inbox.
+
+  ### E24 M3 T0 — M3 refined with the user
+
+  - **Scope:** first the common crate, proposed to the client lane (its inbox, since T6b2a): one
+    crate of the client workspace both lanes share, holding `h3-view`'s `clock`, `cursor`, `ui`,
+    `text`, `layout` and the parts of `mouse` that are not the battle's, and `h3-map-view`'s
+    `keys` (both viewers' keys through it) and perhaps `music`; one `shared/` pull request for
+    `lanes.toml`, then the move, `h3-map-view`'s copies gone (the epic's M2 decision). Then M3 with
+    the user: its scope, decisions and exit (the epic's "Later": the minimap, the hero and town
+    lists, the status window, the resource bar and the date, the buttons, the mouse and its
+    cursor; the string catalogue's keys), MCL-Q10's keys during a walk (Space's cancel, the
+    input ring's bound), MCL-Q9 if still open, the inbox's frame cost and the sound without the
+    focus placed; M3's tasks queued.
+  - **Acceptance:** M3's section refined in the epic; the common crate agreed with the client lane
+    (or its question asked); M3's tasks queued.
+  - **Depends on:** M2 closed (2026-10-28). **Status:** the user present.
+
+  - 2026-10-27 (this lane, E24 M2 T6a2): **the sound without the focus** is not built. The original
+    on losing it (`window_procedure` 0x4F7E88, `sound_focus_lost` 0x599C40, read in part) stops
+    every effect sample and fades the music out (the stub 0x59A830: `music_stop_fade`, its place
+    kept); on regaining it `music_resume` 0x59AC00 asks for the track again (it fades in where it
+    faded out) and the effects come back by 0x4F7E2E (not read). The window plays on without the
+    focus. With M3's settings or the next sound task: read the rest, then `h3_map_view::music`'s
+    model takes a fade without a pending track and the window follows `Window::focused()`.
+
+  - 2026-10-27 (this lane, E24 M2 T4b3; the user: "it will do for now, but we should check back in
+    at some point"): **a frame's fixed cost.** A frame takes 4 to 6 ms to make on the user's machine
+    (5.7 in the sandbox), about 4 even for a near-empty view: the frame picture's and the terrain's
+    pixels drawn every frame, the widening to 32 bits, the painter's two copies of the screen, the
+    scene built afresh, the objects' transparent pixels still visited (design §3.12, "Left"). Take
+    it up with the next work that touches the drawing (M3's panels at the latest): spans of a
+    frame's drawn pixels made once, the frame picture converted once a viewer, no screen copies, a
+    scroll or a walk redrawing only what moved; measure with `map-measure.cmd`'s "a frame made in".
+
+  - 2026-10-26 (the adventure lane, E08 T57; for information, nothing to do): the harness's
+    reads and steps for batch E7 (`clients/capture/README.md`, "Rewards on the map"). Behaviour that
+    changed for every recipe: `before:<observation>` is now read right before the step (any
+    observation, tiles too; it was the step's snapshot), a message box whose OK waits for one of two
+    pictures is answered by `choice` (it stopped the batch before), and each message closed with its
+    OK keeps its pictures (`message_pictures`). New: `h3mem.object_at`, `universities`,
+    `dialog_pictures`, `open_tiles`, `map_kind`, a hero's spell points, bonuses and status flags, a
+    stack's army slot; `h3adv`'s `each`/`select` grids, list records and `+` fields, `once`,
+    `days`, `near` and `[[require]]`. The harness check gained Win's chest and Warrior's Tomb.
+
 - 2026-10-28 (this lane, E24 M2 closed at T6b2c): the queue's M2 history and its last task,
   verbatim:
 

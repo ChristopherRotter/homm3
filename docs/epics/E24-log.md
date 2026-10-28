@@ -1160,3 +1160,40 @@ On `map-client/e24-m2-t6b2c` (docs only, on T6b2b's branch, #532), the user at t
   verbatim to `E24-archive.md`, a stub with the decisions that bind later milestones left in the
   epic; the queue's M2 history and T6b2c's entry to `QUEUE-ARCHIVE.md`; the HANDOFF's M2 lines
   trimmed. Next: M3 T0 with the user.
+
+### M3 T0 — M3 refined with the user, MCL-Q9 built (2026-10-28)
+
+On `map-client/e24-m3-t0`, the user present in the chat; `master` at #535 (#532 and #535
+merged). The original data staged from the user's repo folder first (the exe, the four LODs, both
+`.snd`, `maps.tar`, `extracted.tar`, the nine terrain tracks).
+
+- **The common crate, looked at before proposing:** of what T6b2a's proposal named, `h3-view`'s
+  `layout` (the battle's layout: hexes, stacks, heroes, the count box, the panel's and the
+  book's dialogs) and `mouse` (`screen_to_hex`, the battle's cursor kinds, slots and clicks;
+  `line` and `track` the battle's too) are the battle's through and through; only `ui`'s dialog
+  format is common, and it goes with `ui`. `ui` depends on the battle scene's `Draw` and
+  `PlayerColours` (its `draws` gives `Draw::Picture`, `Button`, `Text`, `Label`, `Darken`): the
+  move gives it draw items of its own. `cursor` depends on `batch::Sprite` (in both viewers, the
+  same type), `clock` on nothing; `text` on `serde_json`, `serde`; `keys` on the map's
+  `timeline::{Action, Direction}` (the table made generic over a viewer's commands); `music` on
+  `h3_render::Bugs` only.
+- **The user's answers** (every recommendation taken): the crate `h3-ui` with `clock`, `cursor`
+  and `Sprite`, `ui`, `text`, `keys` and `music`; this lane moves it as T1a (`cross-lane`, after
+  a `shared/` pull request for `lanes.toml`), T1b the battle window's keys through the table,
+  both windows' own keys the map's F-keys (the battle's letters left to the original's hotkeys:
+  F the Faerie Dragon's, the client lane's M5 T3b); the clicks of M3 the view-only ones; the
+  cursor over the map in M3 from given inputs; the task cut T1a to T7 as proposed;
+  MCL-Q12's provisional part (a track asked for again during its own fade-in plays on)
+  confirmed. MCL-Q9: the user asked what a "picture" is (a tile's frame of its terrain's DEF,
+  fixed by the map; the water moves by its palette: 0 to 19 the coast's pieces, 20 to 32 open
+  water's variants) and took the fix (a).
+- **MCL-Q9 built** (`h3_map_view::sound`): `TileSounds::build` takes the profile; with the fixes
+  a water tile is the shore's when it is the coast (`TileArt::coast`, below picture 20, the map
+  load's test), with the original's bugs below the tables' `shore_pictures` (21) as before. The
+  test's buoy on picture 20 sounds as its buoy (5) with the fixes, as the shore (69) with the
+  original's; without draw lists the tile is silent with the fixes. `paint.rs` hands the
+  window's and `render`'s profile on (`sequences` and `drawn` compare with `--bugs original`).
+- **Docs:** M3's section in the epic (scope, decisions, tasks, exit); the queue's T1a to T7, the
+  inbox's frame cost (T2) and the sound without the focus (T6) and the adventure lane's notice
+  moved to `QUEUE-ARCHIVE.md`; the client lane's inbox told the decision (its proposal entry
+  replaced, the old one archived here); MCL-Q9 answered, MCL-Q12's entry notes the confirmation.
