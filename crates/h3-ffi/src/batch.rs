@@ -759,7 +759,10 @@ pub unsafe extern "C" fn h3_batch_true_world(
         return std::ptr::null_mut();
     };
     let world = catch_unwind(AssertUnwindSafe(|| {
-        let playing = h.batch.env(env as usize).is_some_and(|e| e.to_move().is_some());
+        let playing = h
+            .batch
+            .env(env as usize)
+            .is_some_and(|e| e.to_move().is_some());
         h.batch
             .true_world(env as usize, seed)
             .ok()
