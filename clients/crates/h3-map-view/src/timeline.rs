@@ -1221,7 +1221,12 @@ impl Loop {
         let points = self.kingdom.heroes.get(i).map(|h| h.points);
         let shown = i.checked_sub(top).is_some_and(|slot| slot < SLOTS);
         if let Some(points) = points.filter(|_| shown)
-            && self.drawn.kingdom.heroes.get(i).is_some_and(|h| h.points != points)
+            && self
+                .drawn
+                .kingdom
+                .heroes
+                .get(i)
+                .is_some_and(|h| h.points != points)
             && let Some(hero) = Arc::make_mut(&mut self.drawn.kingdom).heroes.get_mut(i)
         {
             hero.points = points;
@@ -1374,7 +1379,10 @@ pub fn lines(states: &[State], screens: &BTreeMap<u32, [i32; 4]>) -> Vec<String>
                 out.push(format!("{} {}", s.t, f(s)));
             }
         }
-        if let Some(points) = s.points.filter(|p| last.is_none_or(|l| l.points != Some(*p))) {
+        if let Some(points) = s
+            .points
+            .filter(|p| last.is_none_or(|l| l.points != Some(*p)))
+        {
             out.push(format!("{} points {points}", s.t));
         }
         if let Some(l) = last {

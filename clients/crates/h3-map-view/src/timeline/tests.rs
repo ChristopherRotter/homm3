@@ -226,6 +226,7 @@ pub(crate) fn recorded(id: &str) -> (Start, BTreeMap<u32, Vec<Action>>, u32) {
     start.hero_speed = sequence.hero_speed().unwrap();
     let (_, live) = LIVE.iter().find(|(l, _)| *l == id).unwrap();
     (start.kingdom, start.buttons) = live_kingdom(live);
+    start.points = sequence.points(timeline).unwrap();
     if sequence.walks() {
         let (heroes, viewer) = live_heroes(live);
         start.hero = Some(sequence::selected(&heroes, viewer).unwrap());
@@ -252,6 +253,7 @@ fn replays_the_recorded_timelines() {
         start.hero_speed = sequence.hero_speed().unwrap();
         let (_, live) = LIVE.iter().find(|(l, _)| *l == id).unwrap();
         (start.kingdom, start.buttons) = live_kingdom(live);
+        start.points = sequence.points(recorded).unwrap();
         if sequence.walks() {
             let (heroes, viewer) = live_heroes(live);
             start.hero = Some(sequence::selected(&heroes, viewer).unwrap());
@@ -1336,11 +1338,17 @@ fn a_slot_off_the_list_is_not_drawn_and_a_lift_scrolls_to_it() {
     }
     let s = l.state(201);
     assert_eq!(s.points, Some(900));
-    assert_eq!((s.drawn.kingdom.tops, s.drawn.kingdom.heroes[6].points), ([0, 0], 1000));
+    assert_eq!(
+        (s.drawn.kingdom.tops, s.drawn.kingdom.heroes[6].points),
+        ([0, 0], 1000)
+    );
     l.run(301, &[Action::Scroll(Direction::South)]).unwrap();
     l.run(302, &[Action::Step(Direction::East)]).unwrap();
     let s = l.state(302);
-    assert_eq!((s.drawn.kingdom.tops, s.drawn.kingdom.heroes[6].points), ([2, 0], 900));
+    assert_eq!(
+        (s.drawn.kingdom.tops, s.drawn.kingdom.heroes[6].points),
+        ([2, 0], 900)
+    );
 }
 
 #[test]

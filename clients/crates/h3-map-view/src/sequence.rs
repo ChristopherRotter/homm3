@@ -247,7 +247,8 @@ impl Sequence {
                 (Ok(t), Some(Ok(n)), None) => Some((t, n)),
                 _ => None,
             };
-            points.push(read.ok_or_else(|| format!("{}: the line `{line}` does not read", self.id))?);
+            points
+                .push(read.ok_or_else(|| format!("{}: the line `{line}` does not read", self.id))?);
         }
         Ok(points)
     }

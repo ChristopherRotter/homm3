@@ -419,8 +419,17 @@ fn a_live_parts_kingdom_read() {
     let before =
         "{ heroes = [[0, 1], [1, 0]], towns = 2, selected = [2, 1], tops = [0, 1], quests = 1 }";
     assert_eq!(read(before), None);
-    let short_hero = "{ heroes = [[0, 1]], towns = [], selected = [0, 0], tops = [0, 0], quests = 0 }";
+    let short_hero =
+        "{ heroes = [[0, 1]], towns = [], selected = [0, 0], tops = [0, 0], quests = 0 }";
     assert_eq!(read(short_hero), None);
+    let flag = "{ heroes = [], towns = [], selected = [0, 0], tops = [0, 0], quests = \"no\" }";
+    assert_eq!(read(flag), None);
+    for towns in ["2", "[3]", "[[0, 1]]"] {
+        let text = alloc::format!(
+            "{{ heroes = [], towns = {towns}, selected = [0, 0], tops = [0, 0], quests = 0 }}"
+        );
+        assert_eq!(read(&text), None, "{towns}");
+    }
     let selected = |s: &str| read(&all.replace("selected = [1, 1]", s)).map(|k| k.selected);
     assert_eq!(selected("selected = [0, 9]"), Some(Selected::None));
     assert_eq!(selected("selected = [2, 1]"), Some(Selected::Town(1)));

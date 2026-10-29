@@ -93,12 +93,11 @@ fn the_objects_must_be_the_maps() {
 #[test]
 fn the_kingdom_and_the_pointer() {
     // E24 M3 T2a: the panels' kingdom (`Kingdom::read`) and the parked mouse's point.
-    let (_, live) =
-        read(
-            "kingdom = { heroes = [[0, 1, 0, 1500, 0]], towns = [], selected = [1, 0], tops = [0, \
+    let (_, live) = read(
+        "kingdom = { heroes = [[0, 1, 0, 1500, 0]], towns = [], selected = [1, 0], tops = [0, \
              0], quests = 0 }\n",
-        )
-        .unwrap();
+    )
+    .unwrap();
     assert_eq!(live.kingdom.heroes.len(), 1);
     assert!(
         read("kingdom = { heroes = [] }\n")
