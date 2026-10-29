@@ -2640,7 +2640,7 @@ the phase T4c2b). Read: `battle_start` 0x462A20 at the phase (0x462C92 to 0x462D
 panel (0x472400 to 0x472483), `battle_panel_tactics_create` 0x46C050 whole, the base 0x46B610 at
 its picture (0x46B6E9 to 0x46B737), the tactics panel's vtable 0x63D430 (+4 0x485D80, +8
 0x5BC7E0), `battle_controls_state` 0x4782D0 at the phase (0x47869C to 0x4787C6) and its head and
-tail (0x4782D0 to 0x478326, 0x478830 to 0x478885), `stack_activation` 0x465330 at the phase
+tail (0x4782D0 to 0x478326, 0x478830 to 0x478884), `stack_activation` 0x465330 at the phase
 (0x4653A8, 0x465802), `battle_log_add` 0x472E90's head, the items' state message 0x5FE4F0
 (0x5FE557 to 0x5FE624), `draw_hex_overlays` 0x493930 whole, `battle_movement_overlay` 0x4937D0
 whole, `ai_pathfinder_map` 0x4B2DA0's cells (to 0x4B2F06), `battle_pathfinder` 0x4B3400's

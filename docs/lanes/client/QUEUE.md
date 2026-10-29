@@ -33,7 +33,7 @@ Cut in three by the user on 2026-10-28 (T4a, the message box, Retreat and Surren
   panel, its shade and its cursor; `situations/tactics.toml` its scenario): a stack placed by a
   click in the zone (read the placement's action and animation, 0x479722, the action
   dispatcher), Next Creature (2300, space: the engine's `Wait` in the phase) and Start Combat
-  (30722, Enter: `EndTactics`, 0x475220: the panels swapped by 0x4731F0, round 1's start, its log
+  (30722, Enter: `EndTactics`, 0x475220: the panels swapped by 0x4731F0 (read: its other callers 0x474552 and 0x475F92), round 1's start, its log
   line or none, the first activation), the shade over the phase's turns (an action's start clears
   it, its end draws the next turn's: `Moment::shade` from each turn's observation, the timeline's
   positions after a placement), a computer's phase seen by a human (0x46C290 on its turns, the
