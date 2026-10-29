@@ -521,6 +521,20 @@ impl<'a> Pricing<'a> {
         (water, straight)
     }
 
+    /// The cheapest straight step a boat makes (every step of a hero in a boat costs at least
+    /// this, a landing's included; E08 T73b): the least of the water terrains' prices, on
+    /// Favorable Winds the part's `sea_ground` share of it, truncated ([`Self::sea_straight`]); at
+    /// least 1, so that it divides.
+    pub(crate) fn sail_cheapest(&self) -> u32 {
+        let [numerator, denominator] = self.sea_ground;
+        self.prices
+            .iter()
+            .filter(|price| price.water)
+            .map(|price| (price.walk * numerator / denominator).max(1))
+            .min()
+            .unwrap_or(TerrainPrice::UNKNOWN.walk)
+    }
+
     /// The price of a boat's step from the water tile `from` with `points` left (ADV-SEA-004, E08
     /// T73; survey `E08-sea.md` §4.1): the straight step of [`Self::sea_straight`], with neither
     /// roads, nor the native cost, nor flying or water walking (a hero in a boat has neither); a

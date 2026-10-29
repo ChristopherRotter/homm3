@@ -337,10 +337,18 @@ pub(crate) fn movement_rules_edited(
 /// [`movement_rules`] with the skills of [`hero_skills`] and a terrain walker: an army with a
 /// wolf counts sand as swamp (E08 T40; invented, as the original's Nomads count sand as dirt).
 pub(crate) fn hero_rules(faithful: bool) -> (Ruleset, AdventureRuleset) {
+    hero_rules_with(faithful, hero_skills())
+}
+
+/// [`hero_rules`] with `skills` (E08 T73b: [`hero_skills`] and [`sea_skills`]).
+pub(crate) fn hero_rules_with(
+    faithful: bool,
+    skills: Vec<SecondarySkillDef>,
+) -> (Ruleset, AdventureRuleset) {
     movement_rules_with(
         faithful,
         16,
-        |core| core.skills = hero_skills(),
+        |core| core.skills = skills,
         |part| {
             part.terrain_walkers = vec![TerrainWalkerDef {
                 creature: key("t:wolf"),
@@ -379,12 +387,32 @@ pub(crate) fn hero_skills() -> Vec<SecondarySkillDef> {
     ]
 }
 
+/// The skills that follow [`hero_skills`] in the sea's tests (E08 T73): Navigation at levels 1 to
+/// 3 (the sea table's entries 1 to 3) and a skill of free boarding (the Admiral's Hat's effect,
+/// [`ADMIRAL`]).
+pub(crate) fn sea_skills() -> Vec<SecondarySkillDef> {
+    vec![
+        SecondarySkillDef {
+            key: key("t:navigation"),
+            name: "Navigation".into(),
+            levels: [1, 2, 3].map(|level| vec![HeroEffectDef::Navigation { level }]),
+        },
+        SecondarySkillDef {
+            key: key("t:admiral"),
+            name: "Admiral".into(),
+            levels: [1, 2, 3].map(|_| vec![HeroEffectDef::FreeBoarding]),
+        },
+    ]
+}
+
 /// The skills of [`hero_rules`].
 pub(crate) const LOGISTICS: SkillId = SkillId::from_raw(0);
 pub(crate) const PATHFINDING: SkillId = SkillId::from_raw(1);
 pub(crate) const SCOUTING: SkillId = SkillId::from_raw(2);
 pub(crate) const FLYING: SkillId = SkillId::from_raw(3);
 pub(crate) const WATER_WALKING: SkillId = SkillId::from_raw(4);
+/// The skill of free boarding of [`sea_skills`] after [`hero_skills`].
+pub(crate) const ADMIRAL: SkillId = SkillId::from_raw(6);
 
 /// A hero's details with these secondary skills and nothing else (a hero type the core lacks:
 /// no specialty), for the derivations of [`hero_rules`] (E08 T40).
@@ -683,6 +711,49 @@ pub(crate) fn started(
     let mut state = AdventureState::new(&rules.0, &rules.1, setup, &mut draws())?;
     state.start_game(&rules.0, &rules.1, &[]);
     Ok(state)
+}
+
+/// [`world`]'s setup of `rows` on one level with the map's coast flag on every land tile beside
+/// water (as the map editor sets it; E08 T73).
+pub(crate) fn coasted(rows: &[&str], heroes: Vec<HeroSetup>) -> AdventureSetup {
+    let mut setup = world(rows, 1, heroes);
+    let at = |x: i32, y: i32| {
+        usize::try_from(y)
+            .ok()
+            .and_then(|y| rows.get(y))
+            .and_then(|row| row.chars().nth(usize::try_from(x).ok()?))
+    };
+    let width = rows[0].len();
+    for (y, row) in rows.iter().enumerate() {
+        for (x, c) in row.chars().enumerate() {
+            let (x, y) = (i32::try_from(x).unwrap(), i32::try_from(y).unwrap());
+            let wet = |dx, dy| matches!(at(x + dx, y + dy), Some('~' | 'b'));
+            let beside = (-1..=1).any(|dx| (-1..=1).any(|dy| wet(dx, dy)));
+            if !matches!(c, '~' | 'b') && beside {
+                setup.map.tiles
+                    [usize::try_from(y).unwrap() * width + usize::try_from(x).unwrap()]
+                .coast = true;
+            }
+        }
+    }
+    setup
+}
+
+/// An object of `ty` lying on `pos` alone (its picture only: a hole's, a ground's), drawn on the
+/// tiles of `drawn` (E08 T73).
+pub(crate) fn lying(ty: ObjectTypeId, pos: Pos, drawn: u64) -> ObjectSetup {
+    ObjectSetup {
+        scenery: Default::default(),
+        anchor: pos,
+        blocked: TileMask::default(),
+        visitable: TileMask::default(),
+        object_type: Some(ty),
+        amount: None,
+        drawn: TileMask::from_bits(drawn),
+        monster: None,
+        guards: None,
+        holds: Default::default(),
+    }
 }
 
 /// The state of [`world`] under `rules`, started ([`started`]).
