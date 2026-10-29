@@ -224,8 +224,8 @@ pub struct BattleTerrainsDef {
     /// The battle part's special battlefield of a battle on a coast tile (the shore); checked
     /// against the battle part when the game bundles the parts.
     pub coast_battlefield: ContentKey,
-    /// The core terrain of a battle with a hero in a boat (GAM-BAT-001, E08 T72; read from T74:
-    /// the original's water).
+    /// The core terrain of a battle with a hero in a boat (GAM-BAT-001, E08 T72; read since T74b,
+    /// `AdventureState::sea_battle_ground`: the original's water).
     pub sea: ContentKey,
     /// The battle part's battlefield of a battle with one hero in a boat (the ship's deck), as the
     /// coast's.

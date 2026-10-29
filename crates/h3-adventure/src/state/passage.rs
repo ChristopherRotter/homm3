@@ -163,7 +163,7 @@ impl AdventureState {
             Some(Passage::Water(_)) => {
                 if let Some(other) = hero {
                     // A hero in a boat: a battle or a meeting from a stop node (GAM-BAT-004,
-                    // GAM-MET-001; the deck, T74).
+                    // GAM-MET-001; on the deck since T74b, `sea_battle_ground`).
                     return visit((node == Node::Stop).then_some(Meets::Hero(other)));
                 }
                 if let Some(boat) = self.empty_boat(pos) {

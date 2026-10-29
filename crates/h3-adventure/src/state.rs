@@ -1534,7 +1534,9 @@ impl AdventureState {
     /// The battle `attacker`, a hero on the map, starts against `defender` at `tile` (GAM-BAT-001,
     /// E08 T19a): fought where [`Self::battle_ground`] says; since E08 T54 with the battlefield
     /// picture's variant of the tile's surroundings ([`Self::background`], GAM-BAT-011) and the
-    /// special ground of the attacking hero's own tile ([`Self::special_ground`], GAM-BAT-013).
+    /// special ground of the attacking hero's own tile ([`Self::special_ground`], GAM-BAT-013);
+    /// since E08 T74b at sea when either side's hero is in a boat ([`Self::sea_battle_ground`]:
+    /// the attacker, or a defending hero; a monster, an event's or a pile's guards never are).
     pub(crate) fn battle_at(
         &self,
         part: &AdventureRuleset,
@@ -1542,7 +1544,13 @@ impl AdventureState {
         defender: Defender,
         tile: Pos,
     ) -> BattleStart {
-        let (terrain, battlefield) = self.battle_ground(part, tile);
+        let afloat = |hero: Option<&HeroOnMap>| u8::from(hero.is_some_and(|h| h.boat.is_some()));
+        let defending = match &defender {
+            Defender::Hero(combatant) => self.hero(combatant.hero),
+            _ => None,
+        };
+        let boats = afloat(Some(attacker)) + afloat(defending);
+        let (terrain, battlefield) = self.sea_battle_ground(part, tile, boats);
         BattleStart {
             attacker: attacker.combatant(),
             defender,
@@ -1574,6 +1582,38 @@ impl AdventureState {
             _ => (self.map.at(pos).terrain, None),
         };
         (terrain, self.special_ground(part, pos).or(field))
+    }
+
+    /// Where a battle at `pos` is fought when `boats` of its two sides' heroes are in boats
+    /// (GAM-BAT-001, E08 T74b; survey `E08-sea.md` §7.1, design §13): with one, on the part's sea
+    /// terrain and its deck; with both (2 or more), on the sea terrain and its two boats. This
+    /// comes first, before the underground: the original's `battle_setup_battlefield` (0x4643B0)
+    /// tests either side's hero for the in-boat bit after a siege only (water and the ship flag;
+    /// its picture with both the boats', batch E8's E8-11 and E8-12). A special ground on the tile
+    /// then replaces the battlefield and keeps the sea terrain, as on land (ADV-GRD-001; none lies
+    /// on water in the shipped maps). With no hero in a boat, or without the part's battle
+    /// terrains, [`Self::battle_ground`].
+    // rule: GAM-BAT-001
+    pub fn sea_battle_ground(
+        &self,
+        part: &AdventureRuleset,
+        pos: Pos,
+        boats: u8,
+    ) -> (TerrainId, Option<ContentKey>) {
+        match part.params().battle_terrains() {
+            Some(battle) if boats > 0 => {
+                let field = if boats > 1 {
+                    &battle.boats
+                } else {
+                    &battle.deck
+                };
+                (
+                    battle.sea,
+                    self.special_ground(part, pos).or(Some(field.clone())),
+                )
+            }
+            _ => self.battle_ground(part, pos),
+        }
     }
 
     /// The special battlefield of the special ground on `pos`, if any (ADV-GRD-001, E08 T20a2a):
@@ -1690,8 +1730,10 @@ impl AdventureState {
     /// GAM-BAT-003, E08 T19a), in the order given: a hero with an army keeps it as its army (its
     /// survivors by slot: at least one stack, the caller's check), a hero without one leaves the
     /// map, told to its owner and the players that see its tile (ADV-FOG-004) as
-    /// [`AdventureEventKind::HeroRemoved`]. Infallible: a hero not on the map is skipped.
-    // rule: GAM-BAT-002, GAM-BAT-003
+    /// [`AdventureEventKind::HeroRemoved`]; since E08 T74b a hero in a boat takes its boat with it
+    /// ([`Self::remove_boat`], ADV-SEA-006), and a winner in a boat stays in it. Infallible: a
+    /// hero not on the map is skipped.
+    // rule: GAM-BAT-002, GAM-BAT-003, ADV-SEA-006
     pub fn end_battle<S: Sink>(
         &mut self,
         core: &Ruleset,
@@ -1706,13 +1748,17 @@ impl AdventureState {
                 Some(army) => self.heroes[index].army = army.to_vec(),
                 None => {
                     let hero = self.heroes.remove(index);
+                    let seen_by = self.viewers(core, hero.owner, hero.pos);
                     sink.emit(AdventureEvent {
                         kind: AdventureEventKind::HeroRemoved {
                             hero: id,
                             pos: hero.pos,
                         },
-                        seen_by: self.viewers(core, hero.owner, hero.pos),
+                        seen_by,
                     });
+                    if let Some(boat) = hero.boat {
+                        self.remove_boat((id, boat, hero.pos), seen_by, sink);
+                    }
                 }
             }
         }
