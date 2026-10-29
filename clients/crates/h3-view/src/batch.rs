@@ -235,6 +235,7 @@ mod tests {
                 anchor: [0, 0],
                 mirrored: false,
                 outline: None,
+                effect: None,
             },
             picture("BG.pcx"),
             // E17 M5 T4c2a: a hex's shade names its cell's picture.

@@ -3,8 +3,8 @@
 //! resolution (`docs/epics/E24-design.md` §1.1, §1.2, §1.9). An HD layout is another file of the
 //! same format: the view's place, its clip and its loops are the immediates an HD layout
 //! changes (§1.2). The panels come with M3: the dialog and the resource bar since T2a (§4.1, in
-//! `h3_ui::ui`'s format), the minimap, the lists' contents and the status window later. The format
-//! is *provisional* until the M3 review.
+//! `h3_ui::ui`'s format), the status window's panels of a hero and a town since T5b1 (§4.8). The
+//! format is *provisional* until the M3 review.
 
 use alloc::collections::BTreeSet;
 use alloc::format;
@@ -37,6 +37,10 @@ pub struct AdventureLayout {
     pub dialog: Dialog,
     /// The resource bar's panel (`resource_bar_create` 0x558BA0).
     pub resource_bar: Dialog,
+    /// The status window's panel of a hero (E24 M3 T5b1, design §4.8: 0x451AB0).
+    pub status_hero: Dialog,
+    /// The status window's panel of a town (0x4521F0).
+    pub status_town: Dialog,
     /// What the panels' logic needs of the dialog (E24 M3 T2a).
     pub panels: Panels,
 }
@@ -141,6 +145,8 @@ impl AdventureLayout {
         let mut layout: Self = toml::from_str(text).map_err(|e| e.to_string())?;
         layout.dialog = layout.dialog.expanded();
         layout.resource_bar = layout.resource_bar.expanded();
+        layout.status_hero = layout.status_hero.expanded();
+        layout.status_town = layout.status_town.expanded();
         layout.check()?;
         Ok(layout)
     }
@@ -197,10 +203,16 @@ impl AdventureLayout {
         Ok(())
     }
 
-    /// Every name the dialog, the resource bar and the panels' data mention, with the extension
-    /// each must have.
+    /// Every name the dialog, the resource bar, the status window's panels and the panels' data
+    /// mention, with the extension each must have.
     fn dialog_names(&self) -> Vec<(&str, &'static str)> {
-        let items = self.dialog.items.iter().chain(&self.resource_bar.items);
+        let items = self
+            .dialog
+            .items
+            .iter()
+            .chain(&self.resource_bar.items)
+            .chain(&self.status_hero.items)
+            .chain(&self.status_town.items);
         let mut out = Vec::new();
         for item in items {
             match item {

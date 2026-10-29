@@ -1,4 +1,5 @@
 use super::*;
+use alloc::string::ToString;
 
 use h3_map::model::{RandomDwelling, Template, Text};
 
@@ -308,6 +309,16 @@ fn a_maps_start_its_kingdom_and_buttons() {
                 week: 1,
                 day: 1,
             },
+            // T5b1 (design §4.8): the selected hero's window, named by its type, nothing else
+            // known.
+            status: Some(Status::Hero(HeroStatus {
+                hero: 16,
+                own_name: false,
+                skills: [0; 4],
+                morale: 0,
+                luck: 0,
+                army: [None; 7],
+            })),
         }
     );
     let blue = kingdom(&raw, 1);
@@ -318,6 +329,20 @@ fn a_maps_start_its_kingdom_and_buttons() {
     };
     assert_eq!((blue.heroes.len(), &blue.towns), (0, &vec![castle]));
     assert_eq!(blue.selected, Selected::Town(0));
+    // The selected town's window: its faction's first name, its Fort standing; nothing of the
+    // viewer's, nothing selected, no window.
+    assert_eq!(
+        blue.status,
+        Some(Status::Town(TownStatus {
+            name: 0,
+            buildings: 1 << 7,
+            garrison: false,
+            army: [None; 7],
+            silo: Vec::new(),
+            income: 0,
+        }))
+    );
+    assert_eq!(kingdom(&raw, 5).status, None);
     // A portrait the map gives; a town without a fort.
     let hero = raw
         .objects
@@ -392,6 +417,7 @@ fn a_live_parts_kingdom_read() {
                -6], date = [12, 4, 7] }";
     let tail = "resources = [0, 0, 0, 0, 0, 0, 0], date = [1, 1, 1]";
     let two = Kingdom {
+        status: None,
         heroes: vec![
             KingdomHero {
                 asleep: false,
@@ -521,4 +547,111 @@ fn a_live_parts_kingdom_read() {
     }
     let table: toml::Table = toml::from_str("kingdom = 1").unwrap();
     assert_eq!(Kingdom::read(&table["kingdom"]), None);
+}
+
+#[test]
+fn a_live_parts_status_read() {
+    // E24 M3 T5b1 (design §4.8): `h3map.py`'s `status_toml`.
+    let read = |text: &str| {
+        let table: toml::Table = toml::from_str(&alloc::format!("status = {text}")).unwrap();
+        Status::read(&table["status"])
+    };
+    let army = "army = [[42, 22], [-1, 0], [-1, 0], [-1, 0], [-1, 0], [-1, 0], [149, 123456]]";
+    let slots = [
+        Some(Stack {
+            creature: 42,
+            count: 22,
+        }),
+        None,
+        None,
+        None,
+        None,
+        None,
+        Some(Stack {
+            creature: 149,
+            count: 123_456,
+        }),
+    ];
+    let hero = alloc::format!(
+        "{{ kind = 3, hero = 48, own_name = 1, skills = [2, -2, 1, 127], morale = -3, luck = 3, \
+         {army} }}"
+    );
+    assert_eq!(
+        read(&hero),
+        Some(Status::Hero(HeroStatus {
+            hero: 48,
+            own_name: true,
+            skills: [2, -2, 1, 127],
+            morale: -3,
+            luck: 3,
+            army: slots,
+        }))
+    );
+    let town = alloc::format!(
+        "{{ kind = 4, name = 37, buildings = [0, 7, 63], garrison = 1, {army}, silo = [0, 2], \
+         income = 1500 }}"
+    );
+    assert_eq!(
+        read(&town),
+        Some(Status::Town(TownStatus {
+            name: 37,
+            buildings: 1 | 1 << 7 | 1 << 63,
+            garrison: true,
+            army: slots,
+            silo: vec![0, 2],
+            income: 1500,
+        }))
+    );
+    assert_eq!(read("{ kind = 1 }"), Some(Status::Other(1)));
+    // Refused: a wrong kind or field, a slot or a list of the wrong length, a building past 63,
+    // a garrison not 0 or 1, a number past its type.
+    for wrong in [
+        "{ kind = -1 }".to_string(),
+        "{ kind = 3 }".to_string(),
+        "[3]".to_string(),
+        hero.replace("[2, -2, 1, 127]", "[2, -2, 1]"),
+        hero.replace("127]", "128]"),
+        hero.replace("own_name = 1", "own_name = 2"),
+        hero.replace("[[42, 22], ", "[[42], "),
+        hero.replace("[[42, 22], [-1, 0], ", "[[-1, 0], "),
+        hero.replace("[149, 123456]", "[70000, 1]"),
+        town.replace("63]", "64]"),
+        town.replace("garrison = 1", "garrison = 2"),
+        town.replace("silo = [0, 2]", "silo = [0, 256]"),
+        town.replace("name = 37", "name = -1"),
+        hero.replace("[149, 123456]", "[149, 3000000000]"),
+        hero.replace("[149, 123456]", "[\"x\", 1]"),
+        hero.replace("[149, 123456]", "[149, \"x\"]"),
+        hero.replace("[149, 123456]", "149"),
+        hero.replace("hero = 48", "hero = 300"),
+        town.replace("[0, 7, 63]", "[0, \"x\"]"),
+        town.replace("income = 1500", "income = 3000000000"),
+    ] {
+        assert_eq!(read(&wrong), None, "{wrong}");
+    }
+    // Every field missing or a text: refused; the flags 0 too.
+    let fields = |text: &str| -> toml::Table {
+        let table: toml::Table = toml::from_str(&alloc::format!("s = {text}")).unwrap();
+        table["s"].as_table().unwrap().clone()
+    };
+    let flags = ["own_name", "garrison"];
+    for whole in [fields(&hero), fields(&town)] {
+        for key in whole.keys() {
+            let mut without = whole.clone();
+            without.remove(key);
+            assert_eq!(Status::read(&toml::Value::Table(without)), None, "no {key}");
+            let mut text = whole.clone();
+            text.insert(key.clone(), toml::Value::String("x".into()));
+            assert_eq!(
+                Status::read(&toml::Value::Table(text)),
+                None,
+                "{key} a text"
+            );
+        }
+        for key in flags.iter().filter(|k| whole.contains_key(**k)) {
+            let mut zero = whole.clone();
+            zero.insert((*key).to_string(), toml::Value::Integer(0));
+            assert!(Status::read(&toml::Value::Table(zero)).is_some(), "{key} 0");
+        }
+    }
 }

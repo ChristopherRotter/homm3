@@ -1,0 +1,16 @@
+# A town's status window (E24 M3 T5b1; design §4.8, AdStatCs.pcx built by 0x4521F0): Red's Castle
+# with a Citadel standing (its Fort cleared by the upgrade: itmcls.def's frame 1), no hall but the
+# village's (itmtls.def's frame 0) and a Resource Silo (the Castle's two resources: smalres.def at
+# both places), its garrison written with a slot left empty between filled ones and a count from
+# 10 000; the town selected from its list (town_select).
+size = 36
+terrain = "grass"
+heroes = [
+    { at = [4, 14] },
+    { at = [30, 30], owner = 1 },
+]
+towns = [
+    { at = [12, 10], faction = 0, owner = 0, buildings = "citadel", silo = true, garrison = [[0, 50], [-1, 0], [2, 10000], [5, 3]] },
+]
+select = { town = [12, 10] }
+view = [0, 0, 0]

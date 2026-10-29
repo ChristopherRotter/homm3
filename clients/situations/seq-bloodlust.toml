@@ -1,0 +1,55 @@
+# E17 M5 T5b1: Bloodlust's glow (design §7.26), in hot seat. Orrin casts it at Basic on his
+# Swordsmen (`cast_spell` 0x5A122B: its line, then the stack glows in 20 redraws of trunc(100 F),
+# its strength 0.0 to 0.9 then 1.0 to 0.1, `draw_battle_stack`'s recolour toward red); then Crag
+# Hack at Expert (Fire Magic on the map) on his whole army (the mass handler 0x5A1359: every stack
+# it reached glows together). On grass at the capture set's tile (`sacrifice`'s).
+
+[scenario]
+id = "sequence-bloodlust"
+# Both players human, as the original's hot-seat map (`h3-view situation --hot-seat`).
+human = ["attacker", "defender"]
+packs = ["base"]
+profile = "base:faithful"
+terrain = "base:grass"
+obstacles = [
+    { hexes = [75, 76, 77, 78, 61, 60, 59, 58], anchor = 74, kind = "base:obstacle_22" },
+    { hexes = [91, 92], anchor = 91, kind = "base:obstacle_20" },
+    { hexes = [122, 123], anchor = 122, kind = "base:obstacle_19" },
+]
+
+[[attacker]]
+slot = 0
+creature = "base:swordsman"
+count = 20
+
+[[defender]]
+slot = 0
+creature = "base:archer"
+count = 10
+
+[[defender]]
+slot = 2
+creature = "base:pikeman"
+count = 10
+
+# The heroes (E17 M3 T3a) with 1 in every primary skill but the knowledge (30 spell points).
+[scenario.attacker_hero]
+hero_type = "base:orrin"
+attack = 1
+defense = 1
+power = 1
+knowledge = 3
+mana = 30
+max_mana = 30
+spell_book = ["base:bloodlust"]
+
+[scenario.defender_hero]
+hero_type = "base:crag_hack"
+attack = 1
+defense = 1
+power = 1
+knowledge = 3
+mana = 30
+max_mana = 30
+spell_book = ["base:bloodlust"]
+masteries = { "base:bloodlust" = 3 }

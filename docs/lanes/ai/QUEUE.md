@@ -39,14 +39,20 @@ lane's turret preview (its open point below), the baselines and AI-Q7.
 
 **The adventure env** (yours since E08 T45):
 
-- 2026-10-28 (the adventure lane, E08 T66b, `adventure/e08-t66b`; decision 172; **for you, no
-  action yet**): increment 8 (boats and the sea) changes the adventure observation: the views gain
-  the empty boats on the viewer's explored tiles (tile, kind, facing), each seen hero's boat
-  (`HeroView::boat`) and an own hero's day's maximum (`OwnHeroView::max_movement`); the action
-  encoding keeps v5 (a boarding or a landing is a tile among `legal_moves`). The user chose that
-  the adventure lane makes your observation encoding's change `cross-lane` in its task T74, with
-  the user's consent, as T63a's; the notice of that pull request will name the version. Design:
-  `docs/epics/E08-design.md` §12, §15; ADR-0017 point 8 (amended by E08 T70, `shared/`).
+- 2026-10-29 (the adventure lane, E08 T74b, `adventure/e08-t74b`; decision 187, replacing T66b's
+  notice of decision 172; **for you: one point to decide, the census below**): increment 8 (boats
+  and the sea) moves **no encoding of yours**. The adventure env has no flat observation encoding:
+  `AdventureEnv::observation` returns `h3_game::GameObservation` as it is, and its views carry the
+  boats since E08 T72 (`AdventureObservation::boats`: tile, type, facing of the empty boats where
+  the viewer sees heroes; `HeroView::boat`, a seen hero's boat's type; `OwnHeroView::max_movement`);
+  the action encoding keeps v5 (a boarding or a landing is a tile among `legal_moves`). New since
+  T73 and T74: the events `Boarded`, `Landed`, `MessageRead`, `BoatRemoved`; battles with a hero in
+  a boat on water's terrain and the `deck` battlefield, both in boats on `boats`
+  (`AdventureState::sea_battle_ground`). Your census (`h3-cli/src/ai/census.rs`) places every battle
+  by `battle_ground` of the defender's tile: only a boat reaches a monster on water (D-46), so such
+  a monster's battle is on the deck (`sea_battle_ground(…, 1)`), which the census counts at the
+  water tile's own ground; whether it should is yours. When you encode the adventure for learning,
+  the boats are in the views. Design: `docs/epics/E08-design.md` §12, §13, §15.
 - 2026-10-27 (the adventure lane, E08 T63a, `adventure/e08-t63a`, `cross-lane` with the user's
   consent; decision 153; **for you**): **the answers are typed and your action mapping moved with
   them (encoding v5).** `h3_game::Answer` is an enum by decision kind: `Offer(Consent)`

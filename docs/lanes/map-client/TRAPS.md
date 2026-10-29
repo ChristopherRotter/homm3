@@ -23,7 +23,9 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   sets the hero's points (its slowest creature), so `scroll-0`'s `0 points` line was 1700 in
   T4b's run and 1500 in T5a's: a `CHANGED` in that line alone is no regression (the frame check
   compares with the same run's screens): copy the run's `timeline.txt` into `map/timelines/` and
-  `frames --only <id> --reuse` keeps its live part.
+  `frames --only <id> --reuse` keeps its live part. The start's army and resources differ the
+  same way (M3 T5b1: `scroll-0`'s gems 15 in T5a's run, 10 in T5b1's): the kept live part's
+  `kingdom` and `status` are the run's.
 - **A sequence's options left out are the original's settings** (M2 T3a): the harness writes
   only the options a sequence gives, so one that scrolls without its `scroll_speed` ran at what
   the game held (`walk-follow`'s Ctrl and Down moved one tile, speed 0, in T1b's run) while the

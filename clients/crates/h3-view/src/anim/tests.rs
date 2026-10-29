@@ -2651,6 +2651,7 @@ fn the_log_records_what_the_battle_writes_and_when() {
             | Logged::DeathStare { .. }
             | Logged::Thunderbolt { .. }
             | Logged::Poisoned { .. }
+            | Logged::Petrified { .. }
             | Logged::AcidBreath { .. } => "striker",
             Logged::Turret { .. } | Logged::Moat { .. } => "siege",
         })
@@ -5449,6 +5450,7 @@ fn objects_outside_casts_and_without_their_looks() {
 }
 
 mod created;
+mod looks;
 pub(crate) mod playhead;
 mod raised;
 mod reviewed;

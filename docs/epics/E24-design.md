@@ -2062,3 +2062,101 @@ calls of `resource_bar_update` 0x403F00 (16 sites; `hero_select`'s at 0x417F48),
   the runs' spread: `walk-1` 24.6–24.8 % uploaded both, a frame made in a median 0.4 (0.5 on
   `master`); *Tale of two lands* 11.2 %, 1.2 (1.3); `path-objects` 5.2 %, 0.9 both. No sequence
   changes an amount or the date (M4's turns and pick-ups will).
+
+### 4.8 The status window of a hero and a town (M3 T5b1)
+
+Read: `status_window_choose` 0x415DE0 in full, its kinds' builders' callers 0x415F20, 0x415FB0,
+0x416160, 0x4162F0, 0x4163A0, 0x416450 and 0x4164F0, the kind's setter 0x415D60, the hero's window
+0x451AB0 and the town's 0x4521F0 in full, `town_garrison_army` 0x5C1460, `town_list_frame`
+0x5BD700 (T4a's), the arguments at the chooser's call sites in M3's paths. The other kinds'
+builders only by their pictures (T5b2 reads the date's and the kingdom's; the user, 2026-10-29: the
+other player's turn and the messages are M4's).
+
+- **The kinds** (the manager's +0x398 the kind asked, +0x394 the kind shown, +0x39C a timed kind's
+  end): 0 the selection's; 1 the date's (`AdStatOt.pcx`, `NewDay.def`, `newday.wav`: 0x450DD0); 2
+  the kingdom's (`AdStatin.pcx`, `itmtl.def`: 0x452B80); 3 a hero's (`AdStatHr.pcx`: 0x451AB0); 4 a
+  town's (`AdStatCs.pcx`: 0x4521F0); 5 another player's turn (`AdStatNx.pcx`, `crest58.def`,
+  `HourSand.def`, `HourGlas.def`: 0x453250); 6 a resource found (`AdStatOt.pcx`, `resour82.def`:
+  0x451220, the manager's +0x3A0 to +0x3A8); 7 a text (`AdStatOt.pcx`: 0x451820); 8 none. 0x415D60
+  sets a kind and its end: the time given, or without one (negative) 3 000 ms for 1 to 4 and
+  5 000 for 6 (5 and 7 then end at once); the chooser turns a kind whose end has passed
+  (`clock_ms` − +0x39C ≥ 0) back to 0, but 8. Kind 0 at a human's turn
+  with the view not covered (`covered_view` 0x699538): the selected hero's window (the current
+  player's +0x4 ≠ −1), else the selected town's (+0x3F ≠ −1), else the date's builder; otherwise
+  kind 5's.
+- **A builder** (`this, force`): the same kind shown and no `force` builds nothing (returns 0);
+  else +0x394 set, the panel made (0x34 to 0x74 bytes) and given to the dialog (0x402C10, not
+  read further); the date's and the kingdom's also redraw the resource bar
+  (0x403F00 with 1, 1). Then the chooser (`this, force, draw, show`) with a panel built and `draw`
+  draws the dialog's items again (0x402BC0, `show` its rectangle). The calls in M3's paths:
+  `adventure_full_update` 0x4174BC (1, 0, 0), `hero_select` 0x41800B (1, 1, 0), every view redraw
+  0x40F861 (0, 1, 1: only a timed kind's end builds), `path_rebuild` 0x40F173 and a key's step
+  0x4090FE (1, 1, 1: the same window built again, the same pixels). The status window's click
+  (the dialog's handler 0x409A70 at 0x409FD8, items 2000 to 2200): kind 2 → 1; another kind but 0
+  → 0; 0: the kingdom's (2), or the date's (1) when the kingdom's shows; the end now + 3 000; then
+  (1, 1, 1). T5b2 and T6 build those.
+- **The panel** (0x5AA470): at (614, 400), 176 × 166, inside the dialog's area 2; its items added
+  to the adventure dialog's list (`AddItem` −1, 0x5AA4A0), ids from 2000 in the order made; none
+  overlaps another, nor another panel's.
+- **A hero's** (0x451AB0; the current player's selected hero): 2000 the picture (0, 0); 2001 the
+  large portrait (`hero_info` 0x679DD0 + 0x5C × the record's portrait +0x34, its +0x34) at (3, 2),
+  58 × 64; 2002 the name (+0x23) in `smalfont.fnt`, colour 4, left (alignment 0), at (66, 2),
+  107 × 17; 2003 to 2006 the primary skills (+0x476 to +0x479, i8): above 99 shown 99, above 0
+  itself, else 0 for attack and defense and 1 for power and knowledge (0x451CFC: the places'
+  table pointer from 0x660BC0), by `%d` at the table 0x660BB0's places (65, 51), (92, 51),
+  (120, 51), (148, 51), 23 × 16, centred; 2010 the spell points (+0x18, i16) by `%d` in `tiny.fnt`
+  at (145, 93), 27 × 14, centred; 2008 the morale (`imrl22.def`, frame `H3Hero::GetMoraleBonus`
+  0x4E39B0 + 3) at (5, 74), 22 × 12; 2009 the luck (`ilck22.def`, `H3Hero::GetLuckBonus` 0x4E36C0
+  + 3) at (5, 91); then, when a slot is filled, each slot in turn (types +0x91, counts +0xAD) at
+  the table 0x660BD0's place (36, 73), (72, 73), (108, 73), (18, 121), (54, 121), (90, 121),
+  (126, 121), every slot stepping the place (0x4520E9): a filled one's `cprsmall.def` frame (the
+  creature + 2), 32 × 32, and below it (+34) its count in `tiny.fnt`, 32 × 13, centred: below
+  10 000 by `%d`, else the thousands (0x10624DD3: truncated) by `%dk` (0x660CB0).
+- **A town's** (0x4521F0; the current player's selected town, game +0x21614 + 0x168 × +0x3F):
+  2000 the picture; 2001 `itpt.def` at (3, 2), 58 × 64, its frame `town_list_frame` with 0 (the
+  town list's frame less its 2); 2002 the name (char* +0xC8) at (66, 1), 107 × 16, as the hero's;
+  the hall from the buildings standing (u64 +0x150, by the game's ids: an upgrade clears what it
+  replaces, unlike the every-built set +0x158): the Town Hall (11) 1, the City Hall (12) 2, the
+  Capitol (13) 3, tested in that order, else 0 (its hint's text 0x6A6294 + 4 × it, T6's), 2003
+  `itmtls.def` at (67, 31), 34 × 34; the fort: the Fort (7) 0, the Citadel (8) 1, the Castle (9) 2,
+  else 3, 2004 `itmcls.def` at (105, 31); with a garrison hero (+0xC ≠ −1) 2008 `townqkgh.pcx` at
+  (149, 76), 22 × 30; with a Resource Silo (15, the every-built set) the resources its income
+  holds (`H3Town::GetResourceSiloIncome` 0x5C1280, seven i32: the non-zero ones from wood): two,
+  2007 `smalres.def` at (6, 75) and (6, 87), 20 × 18, frames the resources; one, at (6, 81); more
+  or none, nothing; 2006 the gold income (`H3Town::GoldIncome` 0x5BF600 with 1, its low 16 bits
+  sign-extended: 0x45279F, MCL-Q16) by `%d` in `tiny.fnt` at (144, 54), 28 × 12, centred; then the
+  army shown (0x5C1460: the garrison hero's +0x91 with one, else the town's own +0xE0), when it
+  has a stack (`H3Army::GetStackCount` 0x44ACC0), each filled slot at the next of the table
+  0x660C08's places (the same as 0x660BD0's), the place stepping with a filled slot only
+  (0x452A38: the slots packed, unlike a hero's), its picture and count as a hero's (the count
+  written by a stream: the number, or the thousands and `k` 0x660CD0, the same text).
+- **Seen** (the captures): the hero's and the town's windows as read, pixel for pixel; every
+  situation and sequence shows one or the other at its moment (the selection's: memory's +0x394,
+  3 or 4).
+- **Built** (*provisional*): `h3_map_view::status` (the panels `status_hero` and `status_town` of
+  `adventure.toml`, h3_ui::ui's format, our ids: the original's for the fixed items, the army's
+  pictures 2011 to 2017 and counts 2021 to 2027 by place, the silo's 2007, 2018 and 2019 by place;
+  the tables' `[map.status]`: the 163 large portraits, the frames' offsets, the skills' bounds,
+  the thousands, the halls and forts tested), drawn after the resource bar; the live part's
+  `kingdom.status` (`Status`: a hero's type, whether its name is its own, skills, morale, luck and
+  army; a town's name as a record of `TownName.txt`, buildings standing, garrison hero, army
+  shown, silo and income; another kind not drawn), read by the harness from memory (`Mem.status`:
+  the records and the window's own items for the bonuses, the silo and the income, the original's
+  rules computed) and at a map's start the selection's with what the map gives; the names by the
+  catalogue (`hero.<type>` over `HOTRAITS.TXT`, `town-name.<record>` over `TownName.txt`, an
+  `optional` family of `h3_ui::text::keys`; the numbers by `map.status.number` and
+  `map.status.thousands`), a hero's own name the map's (`MapArt::hero_names`: a hero object's,
+  else a disposed hero's; `h3_ui::text::decode_1252`); the gate checks the window's DEFs, pictures
+  and large portraits. A situation writes a hero's `skills`, `morale`, `luck` and `army` and a
+  town's `garrison` and `garrison_hero`, and gives a town a `silo`; the situations `status-hero`,
+  `status-town` and `status-garrison`; `masks.toml`'s `panels` without the status window; the
+  harness refuses a still or a sequence whose window is another kind, or a town's name
+  `TownName.txt` lacks (a map's own: M4's).
+- **Checked:** `set`: the 47 situations exact with the window (the three new ones too); `frames`:
+  the 13 sequences, every frame exact; `drawn` the same after `--record`; the window under Xvfb
+  (`status-hero`, `status-town`, `status-garrison`, `walk-1`, `lists-scrolled`, `--check 10`):
+  every frame read back exact, made as the same frame composed afresh, every change the headless
+  loop's.
+- **Measured** (the sandbox, `--measure 20`, alternating with `master`'s build): the same:
+  `walk-1` 24.8 % uploaded, a frame made in a median 0.4–0.5 ms; *Tale of two lands* 11.2 %, 1.2;
+  `path-objects` 5.2 %, 0.9–1.0.

@@ -16,6 +16,7 @@ use h3_render::blit::{
     draw_image_clipped, draw_image_keyed, draw_image_keyed_clipped, draw_image_keyed_in_clipped,
 };
 use h3_render::palette::{ScreenPalette, with_player_colours};
+use h3_render::recolour;
 use h3_render::screen::{PixelFormat, Screen};
 use h3_render::text::{TextBox, TextStyle, draw_text};
 use h3_render::tint::{Tint, adjust_hue_saturation};
@@ -504,6 +505,7 @@ pub fn compose(
                 anchor,
                 mirrored,
                 outline,
+                ..
             }
             | Draw::Shooter {
                 def,
@@ -544,7 +546,15 @@ pub fn compose(
                     }
                     None => None,
                 };
-                let palette = ScreenPalette::new(&sprite.def.palette, FORMAT);
+                let mut palette = ScreenPalette::new(&sprite.def.palette, FORMAT);
+                // A stack's palette effect, for its sprite alone (0x43E280; E17 M5 T5b1).
+                if let Draw::Creature {
+                    effect: Some(effect),
+                    ..
+                } = item
+                {
+                    recolour::apply(&mut palette, FORMAT, *effect);
+                }
                 draw_frame_rows(
                     &mut screen,
                     frame,

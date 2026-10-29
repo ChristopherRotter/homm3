@@ -62,6 +62,10 @@ pub struct Playhead {
     counted: BTreeMap<u8, usize>,
     tints: Sweep,
     tinted: BTreeMap<u8, usize>,
+    /// The stacks' palette effects by their spells: the last key of each shown by then (E17 M5
+    /// T5b1).
+    looks: Sweep,
+    looked: BTreeMap<u8, usize>,
     turrets: Sweep,
     turret: [Option<usize>; 3],
     /// The explosions: the last key shown by then, and each explosion's keys shown by then.
@@ -118,6 +122,8 @@ impl Playhead {
             counted: BTreeMap::new(),
             tints: Sweep::new(timeline.tints.iter().map(|k| k.shown)),
             tinted: BTreeMap::new(),
+            looks: Sweep::new(timeline.looks.iter().map(|k| k.shown)),
+            looked: BTreeMap::new(),
             turrets: Sweep::new(timeline.turrets.iter().map(|k| k.shown)),
             turret: [None; 3],
             blasts: Sweep::new(timeline.blasts.iter().map(|k| k.shown)),
@@ -185,6 +191,8 @@ impl Playhead {
                 .extend(timeline.counts.iter().map(|k| k.shown), at),
             self.tints
                 .extend(timeline.tints.iter().map(|k| k.shown), at),
+            self.looks
+                .extend(timeline.looks.iter().map(|k| k.shown), at),
             self.turrets
                 .extend(timeline.turrets.iter().map(|k| k.shown), at),
             self.blasts
@@ -279,6 +287,9 @@ impl Playhead {
         for i in self.tints.to(t) {
             latest_of(&mut self.tinted, timeline.tints[i].stack, i);
         }
+        for i in self.looks.to(t) {
+            latest_of(&mut self.looked, timeline.looks[i].stack, i);
+        }
         for i in self.turrets.to(t) {
             if let Some(slot) = self.turret.get_mut(usize::from(timeline.turrets[i].record)) {
                 latest(slot, i);
@@ -359,6 +370,11 @@ impl Playhead {
                 .tinted
                 .iter()
                 .filter_map(|(&s, &i)| timeline.tints[i].hue.map(|h| (s, h)))
+                .collect(),
+            looks: self
+                .looked
+                .iter()
+                .filter_map(|(&s, &i)| timeline.looks[i].look.map(|l| (s, l)))
                 .collect(),
             marked: None,
             area: Vec::new(),

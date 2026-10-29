@@ -157,6 +157,20 @@ const CP1252_HIGH: [char; 32] = [
     '\u{02DC}', '\u{2122}', '\u{0161}', '\u{203A}', '\u{0153}', '\u{009D}', '\u{017E}', '\u{0178}',
 ];
 
+/// Bytes of Windows-1252 as a text (E24 M3 T5b1: a map's own names), each byte its character, an
+/// undefined one the C1 control of its value (as `h3-formats` decodes the text tables), so that
+/// [`encode_1252`] gives the bytes back.
+#[must_use]
+pub fn decode_1252(bytes: &[u8]) -> String {
+    bytes
+        .iter()
+        .map(|&b| match b {
+            0x80..=0x9F => CP1252_HIGH[usize::from(b - 0x80)],
+            _ => char::from(b),
+        })
+        .collect()
+}
+
 /// A text as the bytes of Windows-1252, the code page of the installation's fonts (`TextDraw`
 /// draws a byte's glyph, §3.6), and the characters it has no byte for, each written as `?`.
 #[must_use]

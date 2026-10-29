@@ -42,6 +42,7 @@ pub enum Bugs {
 pub mod blit;
 pub mod palette;
 pub mod png;
+pub mod recolour;
 pub mod screen;
 pub mod text;
 pub mod tint;

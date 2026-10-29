@@ -8355,3 +8355,49 @@ the pickups now; `random-play-duel-36`'s re-baseline in its pull request.
 - *Agent's calls (change freely):* `MessageRead` names the object by type and anchor (design §12's
   "object", as `ObjectRemoved` and ADR-0016 point 6); a leaving find keeps no knowledge mark (it
   is gone); the message's kind is built for a staying message too (one branch).
+
+### Increment 8, round 7: T74b, the battle at sea and the boat's leaving (2026-10-29, `adventure/e08-t74b`)
+
+Baseline 6141a7a (#580 merged; CI on `master` green; the light gates passed). No original data
+staged. The user's cut (decision 187): whole, the lane's own paths only; the security doc's
+`shared/` pull request after it in the same session (decision 188).
+
+- **The env's encoding** (decision 172's premise, found at the start): the adventure env has no
+  flat observation encoding; `AdventureEnv::observation` returns `h3_game::GameObservation` as it
+  is, which carries the boats since T72 (`AdventureObservation::boats`, `HeroView::boat`,
+  `OwnHeroView::max_movement`). Nothing to bump; the AI lane's inbox entry of T66b is replaced by
+  the finding. T75's random play on the sea map exercises the env at sea (`h3 adventure run`
+  drives `AdventureEnv`).
+- **The battle's ground** (design §13; survey `E08-sea.md` §7.1, `battle_setup_battlefield`
+  0x4643B0): `AdventureState::sea_battle_ground(part, pos, boats)`: with one of the two sides'
+  heroes in a boat the part's sea terrain and deck, with both the two boats, first (before the
+  underground); a special ground on the tile replaces the battlefield and keeps the sea terrain;
+  with none, or without the part's battle terrains, `battle_ground`. `battle_at` counts the
+  attacker's boat and a defending hero's (`Defender::Hero`'s hero on the map); a monster, an
+  event's or a pile's guards never are in one. So a walker, flyer or water walker on the shore
+  attacking a boat's hero fights on the deck at the boat's tile, a boat attacking a boat on the
+  two boats, a water monster's or an event's guards' battle against a boat on the deck, and a
+  landing's guards on land (the hero is out of its boat by then). `battle_ground` keeps its
+  signature (the AI lane's census calls it, told in its inbox).
+- **The boat's leaving** (§7.3; ADV-SEA-006): `end_battle` gives a hero in a boat that leaves the
+  map to `remove_boat`: the record gone (`Boat::gone`, kept by index), nobody aboard, its tile the
+  hero's last, owner and captain kept (the original's freed record keeps them, E8-11); told as
+  `AdventureEventKind::BoatRemoved { hero, boat, at }` right after the hero's `HeroRemoved`, to
+  the same viewers. A winner in a boat stays in it. `check_boats` holds (a gone boat is neither
+  empty nor aboard).
+- **Tests:** `state/tests/sea_battles.rs` (the deck from the shore, the two boats, a water
+  monster's battle at once on the deck, a landing's guards on land; `sea_battle_ground` with 0, 1
+  and 2 boats, underground, under a ground on water, without battle terrains; the beaten hero's
+  boat gone with its event, projected, the record kept, the winner aboard, the views without the
+  boat, a draw taking both); the projections' exhaustive matches (`observe/tests.rs`, `h3-map`'s
+  `view.rs`: told where the viewer sees heroes on the tile).
+- **Rules:** ADV-SEA-006 new (`verified`: E8-11, E8-12); GAM-BAT-001 and GAM-BAT-003 amended (the
+  sea; E8-11 to E8-15 as observations); ADV-SEA-005 and ADV-SEA-001 in line. No version moves:
+  the state's fields and hash are T72's (`Boat::gone` hashed since v16), no kind or parameter
+  changes, no replay changes (no golden map has a boat).
+- *For T75:* the scripted replays of design §15 (a battle on the deck from the shore and against a
+  monster on water, two boats, a boat leaving with its beaten hero) now have their engine side;
+  `h3-map`'s `view.rs` follows `BoatRemoved` as `Boarded` once the plans place boats.
+- *Agent's calls (change freely):* `BoatRemoved` names the hero and the boat's type, as `Boarded`
+  (the viewers saw the hero in it); a gone boat's tile is the hero's last tile, not the stale
+  boarding tile the record kept while aboard.

@@ -3343,6 +3343,42 @@ modelled (the user: "essentially a slip").
   `at:` action shows the states in a few minutes.
 - **Found:** CLT-Q33 (Summon Elemental's line written without a stack); review items 36 to 39.
 
+### M5 T5b1 — The palette effects (2026-10-29)
+
+On `client/e17-m5-t5b1`, the user present. The sandbox new; the files staged from the user's
+`original-data/` first (the container restarted once mid-task: the clone, the staged files and
+the Wine prefix survived; the running capture was started again). Asked at the start: T5b cut in
+two (T5b1 the palette effects, T5b2 the panel by the turn's controller and the sounds' waits);
+the user's note on T5a's Demons recorded (design §7.25, "To re-investigate"; the QUEUE's inbox):
+the rock clipped out is the slip, the corpse gone before the fade's end is not part of it.
+
+- **Read** (design §7.26): `draw_battle_stack`'s effect chain (0x43E280 to 0x43E4C7) and the
+  palette put back after the sprite (0x43E535); `palette16_recolour`, `palette16_stone_glow`,
+  `palette16_petrified`, `rgb_to_hsv` 0x523190, `hsv_to_rgb` 0x5232F0, the effect masks
+  (0x69CC60 to 0x69CC68: the screen's again); Bloodlust's handler and its mass path (0x5A122B,
+  0x5A1359), Stone Gaze's (0x5A1121) and its line (`battle_log_cast` 0x5A8E25, GENRLTXT 559 and
+  560), Stone Gaze's draw (`strike_spell_choice` 0x440780). Map entries new or amended.
+- **Built:** `h3_render::recolour` (the four effects, exact in integers: an x87 result rounded to
+  53 bits, an f32 store to 24; `clients/scripts/palette-reference.py` computes them in IEEE
+  doubles, the tests compare digests over every 16-bit value for 24 effects); `anim`'s
+  `LookKey`s (`Player::glow`: a redraw at trunc(100 F) a step, then the stack's look by its
+  spells in a redraw at once; Bloodlust on one stack and on all it reached; Stone Gaze after a
+  strike with its line, `Logged::Petrified`; the petrified look from the effect to its end or the
+  stack's death; a snapshot's petrified stacks from 0; a reused id afresh), read by
+  `Timeline::looks` and the playhead; `Draw::Creature`'s `effect` (the moment's look, else a
+  clone's colours by the stack's `clone`), applied by the compositor to the sprite's palette;
+  the key `battle.log.petrified`. The harness's roll `stone_gaze` (`xdd.c`, `h3drive.py`).
+- **Recorded:** `bloodlust` (Orrin's Basic Bloodlust on the Swordsmen, then Crag Hack's Expert
+  one on the Archers and Pikemen together): the timeline as recorded, all 72 frames exact (the
+  20 glow redraws of each, the boxes' hue). `stone` (the Archangel strikes the Greater Basilisks
+  from `acid`'s place; their strike back's Stone Gaze forced; `seed` 26: the 14 damage, as the
+  original's): the timeline as recorded, 102 frames, the glow, the line and the petrified look
+  exact; the landing's boxes at 2 324 ms differ by 134 pixels (as `acid`'s and `luck`'s) and the
+  landing's frames before by redraw artifacts alone. `clone` captured again: all 46 frames exact (1 497 pixels a frame before, the
+  clone's colours); `drawn` found no other sequence or situation changed.
+- **Found:** CLT-Q34 (the greys' hue from the channels' unequal scales, the glow's last step
+  replaced in its millisecond); review items 40 to 42.
+
 ## Accepted review lists (M1 to M4)
 
 M1 and M2 moved from the epic file on 2026-10-20 (less start-up reading), unchanged; M3 at its

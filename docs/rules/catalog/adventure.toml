@@ -2044,7 +2044,7 @@ id       = "ADV-SEA-001"
 title    = "Boats on the map: the import and the records"
 context  = "adventure"
 status   = "verified"
-summary  = "A map's boat (class 8) is no object of the static map but a boat of the state (ADR-0016 point 1): its template's one visitable tile, its subclass as its type (0 to 2, appearance only: the boat's pictures and a hero's flag on it), the original's facing 2, no owner, no captain, nobody aboard. The setup refuses a boat off the map or off water, on a tile an object blocks or is visited from, or on an earlier boat's tile (`SetupError::Boat`; no hero stands on water, so none on a boat's tile); a template without exactly one visitable tile on the map is an import error (`ImportError::BoatTile`), a subclass beyond the three another (`Subclass`). There is no bound on the number of boats beyond one a tile (decision 164: the original's 64 records are not reproduced, ADV-QUIRK-32). The records stay by index (the setup's order) in a persistent table, the empty boats' tiles in a persistent grid; a map without boats has none, so a fork costs nothing more. A boat keeps its owner and last captain, which no rule reads until Summon Boat and no viewer sees (ADV-FOG-008). Any hero boards any empty boat (T73: boarding, landing; T74: a boat leaving with its hero, ADV-SEA-006). The 160 shipped maps: 118 boats on 41 maps, every one valid. E08 T72: `MapSetup::boats`, `AdventureState::boats`, `check_boats`."
+summary  = "A map's boat (class 8) is no object of the static map but a boat of the state (ADR-0016 point 1): its template's one visitable tile, its subclass as its type (0 to 2, appearance only: the boat's pictures and a hero's flag on it), the original's facing 2, no owner, no captain, nobody aboard. The setup refuses a boat off the map or off water, on a tile an object blocks or is visited from, or on an earlier boat's tile (`SetupError::Boat`; no hero stands on water, so none on a boat's tile); a template without exactly one visitable tile on the map is an import error (`ImportError::BoatTile`), a subclass beyond the three another (`Subclass`). There is no bound on the number of boats beyond one a tile (decision 164: the original's 64 records are not reproduced, ADV-QUIRK-32). The records stay by index (the setup's order) in a persistent table, the empty boats' tiles in a persistent grid; a map without boats has none, so a fork costs nothing more. A boat keeps its owner and last captain, which no rule reads until Summon Boat and no viewer sees (ADV-FOG-008). Any hero boards any empty boat (T73: boarding, landing; T74b: a boat leaving with its hero, ADV-SEA-006). The 160 shipped maps: 118 boats on 41 maps, every one valid. E08 T72: `MapSetup::boats`, `AdventureState::boats`, `check_boats`."
 quirks   = ["ADV-QUIRK-32"]
 numeric  = "integer"
 
@@ -2179,7 +2179,7 @@ id       = "ADV-SEA-005"
 title    = "What a boat visits"
 context  = "adventure"
 status   = "verified"
-summary  = "From a boat an object visited from the neighbouring tile is visited from the boat's water tile (the step's price paid, the hero stays, ADV-OBJ-003) and an entered one is entered, the hero in its boat on its tile; a visit not built is refused (`Visit`); another hero (in a boat) is met or attacked from the neighbouring water tile (GAM-MET-001, GAM-BAT-004; the deck's and the two boats' battlefields are T74's); a boat never reaches a hero on land (`Landing`). From land a walker, a flyer and a water walker visit a hero in a boat from a stop (a flight passes over it, a water walk neither stops nor visits from water). An object's tile on water is reached only by a boat: never by a walker, a water walker or a flight (D-46, ADV-MOV-009). An event on water fires for a boat's step and ends the move there, its guards fighting on the deck (ADV-OBJ-007, ADV-MOV-011). The sea's pickups' visits are T74's (until then refused as any unbuilt visit). E08 T73a: `AdventureState::passage`, `MoveHero`."
+summary  = "From a boat an object visited from the neighbouring tile is visited from the boat's water tile (the step's price paid, the hero stays, ADV-OBJ-003) and an entered one is entered, the hero in its boat on its tile; a visit not built is refused (`Visit`); another hero (in a boat) is met or attacked from the neighbouring water tile (GAM-MET-001, GAM-BAT-004), the battle on the two boats (GAM-BAT-001, E08 T74b); a boat never reaches a hero on land (`Landing`). From land a walker, a flyer and a water walker visit a hero in a boat from a stop (a flight passes over it, a water walk neither stops nor visits from water). An object's tile on water is reached only by a boat: never by a walker, a water walker or a flight (D-46, ADV-MOV-009). An event on water fires for a boat's step and ends the move there, its guards fighting on the deck (ADV-OBJ-007, ADV-MOV-011). A battle with a hero in a boat on either side is on the deck (GAM-BAT-001, E08 T74b: a walker's, a flyer's or a water walker's from the shore, a water monster's, an event's guards'). The sea's pickups' visits are T74a's (ADV-PIK-014 to -018). E08 T73a: `AdventureState::passage`, `MoveHero`."
 numeric  = "integer"
 
   [[rule.source]]
@@ -2199,6 +2199,39 @@ numeric  = "integer"
   url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/pathfinder/PathfindingRules.cpp"
   retrieved  = "2026-10-28"
   confidence = "high"
+
+[[rule]]
+id       = "ADV-SEA-006"
+title    = "A boat leaves the map with its hero"
+context  = "adventure"
+status   = "verified"
+summary  = "A hero in a boat that a battle takes off the map (GAM-BAT-003: it lost, retreated or surrendered, both after a draw, or it won with only stacks the battle created) takes its boat with it: the boat is gone, its record kept by index (no index moves), nobody aboard, its tile the hero's last, its owner and captain kept (the original's freed record keeps them); no empty boat lies there and nobody boards it again. Told as `BoatRemoved` (the hero, the boat's type and its tile; never its index, owner or captain) right after the hero's `HeroRemoved`, to the same players: its owner and those that see heroes on the tile (ADV-FOG-006, ADV-FOG-008). A winner in a boat stays in it on its tile. E08 T74b: `AdventureState::end_battle`, `remove_boat`, `Boat::gone`."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey E08-sea.md §2, §7.3): a hero that leaves the map after a battle goes back to the heroes' pool through 0x4D9EC0, which frees its boat's record (+0x18 0 at 0x4DA009) and clears its in-boat flag: the boat disappears with it"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-8b.md (survey E08-sea.md §15): E8-11, the beaten hero's boat record freed (in use 0; owner, captain, aboard kept), nothing on its tile, boats in use 8 to 7, the winner on the shore; E8-12, the retreated hero's record freed and nothing on its tile, the winner still in its boat"
+  retrieved  = "2026-10-29"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "lib/gameState/GameStatePackVisitor.cpp: 'If hero on Boat is removed, the Boat disappears'"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/gameState/GameStatePackVisitor.cpp"
+  retrieved  = "2026-10-28"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Boat: the boat disappears with its defeated hero"
+  url        = "https://heroes.thelazy.net/index.php/Boat"
+  retrieved  = "2026-10-28"
+  confidence = "medium"
 
 [[rule]]
 id       = "ADV-SEA-007"

@@ -119,6 +119,11 @@ pub struct Family {
     /// descriptions, 0x59BAA0).
     #[serde(default)]
     pub raw: bool,
+    /// A family only some clients list (E24 M3 T5b1: the towns' names, the map viewer's): a
+    /// client that gives it no entries has none of its keys, where a family without entries is
+    /// otherwise an error.
+    #[serde(default)]
+    pub optional: bool,
 }
 
 /// A family's entry: its key's last part and its original id.
@@ -228,9 +233,11 @@ impl Keys {
         }
         for family in file.family {
             let named = family.list.as_ref().unwrap_or(&family.id);
-            let list = entries
-                .get(named)
-                .ok_or_else(|| KeysError::Family(named.clone()))?;
+            let list = match entries.get(named) {
+                Some(list) => list,
+                None if family.optional => continue,
+                None => return Err(KeysError::Family(named.clone())),
+            };
             let single = match (
                 family.forms.is_empty(),
                 family.contexts.is_empty(),

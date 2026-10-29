@@ -330,6 +330,266 @@ font_palette = "game.pal"
 colour = 4
 align = 1
 
+# The status window's panels (E24 M3 T5b1, design §4.8): at (614, 400) inside the dialog's area 2,
+# 176 x 166 (0x5AA470), built by status_window_choose 0x415DE0's kind, their items in the
+# executable's order (no two overlap). The ids are ours: the original numbers its items from 2000
+# as it adds them (a hero's skills 2003-2006, its spell points 2010 before its morale 2008 and luck
+# 2009; a town's hall 2003, fort 2004, garrison mark 2008, silo 2007, income 2006), the army a
+# picture and its count per filled slot from 2011 (a hero's) or 2009 (a town's) on. Texts in colour
+# 4: the names left-aligned, the numbers centred. A hero's (0x451AB0): `AdStatHr.pcx`, its large
+# portrait (the hero's), its name, its four primary skills (the table 0x660BB0), its spell points
+# in `tiny.fnt`, its morale and luck (frame the bonus + 3), the army's seven slots (the table
+# 0x660BD0: three, then four; `cprsmall.def` over the count in `tiny.fnt`, 34 below).
+[status_hero]
+place = [614, 400]
+
+[[status_hero.items]]
+kind = "picture"
+id = 2000
+picture = "AdStatHr.pcx"
+at = [0, 0]
+size = [176, 166]
+
+[[status_hero.items]]
+kind = "picture"
+id = 2001
+picture = "HPL000Kn.PCX"
+at = [3, 2]
+size = [58, 64]
+
+[[status_hero.items]]
+kind = "label"
+id = 2002
+at = [66, 2]
+size = [107, 17]
+font = "smalfont.fnt"
+font_palette = "game.pal"
+colour = 4
+align = 0
+
+[[status_hero.items]]
+kind = "label"
+id = 2003
+at = [65, 51]
+size = [23, 16]
+font = "smalfont.fnt"
+font_palette = "game.pal"
+colour = 4
+align = 1
+
+[[status_hero.items]]
+kind = "label"
+id = 2004
+at = [92, 51]
+size = [23, 16]
+font = "smalfont.fnt"
+font_palette = "game.pal"
+colour = 4
+align = 1
+
+[[status_hero.items]]
+kind = "label"
+id = 2005
+at = [120, 51]
+size = [23, 16]
+font = "smalfont.fnt"
+font_palette = "game.pal"
+colour = 4
+align = 1
+
+[[status_hero.items]]
+kind = "label"
+id = 2006
+at = [148, 51]
+size = [23, 16]
+font = "smalfont.fnt"
+font_palette = "game.pal"
+colour = 4
+align = 1
+
+[[status_hero.items]]
+kind = "label"
+id = 2010
+at = [145, 93]
+size = [27, 14]
+font = "tiny.fnt"
+font_palette = "game.pal"
+colour = 4
+align = 1
+
+[[status_hero.items]]
+kind = "def"
+id = 2008
+def = "imrl22.def"
+at = [5, 74]
+size = [22, 12]
+
+[[status_hero.items]]
+kind = "def"
+id = 2009
+def = "ilck22.def"
+at = [5, 91]
+size = [22, 12]
+
+[[status_hero.items]]
+kind = "def"
+id = 2011
+def = "cprsmall.def"
+at = [36, 73]
+size = [32, 32]
+repeat = { count = [3, 1], step = [36, 0] }
+
+[[status_hero.items]]
+kind = "def"
+id = 2014
+def = "cprsmall.def"
+at = [18, 121]
+size = [32, 32]
+repeat = { count = [4, 1], step = [36, 0] }
+
+[[status_hero.items]]
+kind = "label"
+id = 2021
+at = [36, 107]
+size = [32, 13]
+font = "tiny.fnt"
+font_palette = "game.pal"
+colour = 4
+align = 1
+repeat = { count = [3, 1], step = [36, 0] }
+
+[[status_hero.items]]
+kind = "label"
+id = 2024
+at = [18, 155]
+size = [32, 13]
+font = "tiny.fnt"
+font_palette = "game.pal"
+colour = 4
+align = 1
+repeat = { count = [4, 1], step = [36, 0] }
+
+# A town's (0x4521F0): `AdStatCs.pcx`, its picture (`itpt.def`), its name, its hall (`itmtls.def`)
+# and fort (`itmcls.def`), the garrison hero's mark (`townqkgh.pcx`), the silo's resources
+# (`smalres.def`: two at 75 and 87, one at 81), the gold income in `tiny.fnt`, the army's slots as a
+# hero's (the table 0x660C08, the same places).
+[status_town]
+place = [614, 400]
+
+[[status_town.items]]
+kind = "picture"
+id = 2000
+picture = "AdStatCs.pcx"
+at = [0, 0]
+size = [176, 166]
+
+[[status_town.items]]
+kind = "def"
+id = 2001
+def = "itpt.def"
+at = [3, 2]
+size = [58, 64]
+
+[[status_town.items]]
+kind = "label"
+id = 2002
+at = [66, 1]
+size = [107, 16]
+font = "smalfont.fnt"
+font_palette = "game.pal"
+colour = 4
+align = 0
+
+[[status_town.items]]
+kind = "def"
+id = 2003
+def = "itmtls.def"
+at = [67, 31]
+size = [34, 34]
+
+[[status_town.items]]
+kind = "def"
+id = 2004
+def = "itmcls.def"
+at = [105, 31]
+size = [34, 34]
+
+[[status_town.items]]
+kind = "picture"
+id = 2008
+picture = "townqkgh.pcx"
+at = [149, 76]
+size = [22, 30]
+
+[[status_town.items]]
+kind = "def"
+id = 2007
+def = "smalres.def"
+at = [6, 75]
+size = [20, 18]
+
+[[status_town.items]]
+kind = "def"
+id = 2018
+def = "smalres.def"
+at = [6, 87]
+size = [20, 18]
+
+[[status_town.items]]
+kind = "def"
+id = 2019
+def = "smalres.def"
+at = [6, 81]
+size = [20, 18]
+
+[[status_town.items]]
+kind = "label"
+id = 2006
+at = [144, 54]
+size = [28, 12]
+font = "tiny.fnt"
+font_palette = "game.pal"
+colour = 4
+align = 1
+
+[[status_town.items]]
+kind = "def"
+id = 2011
+def = "cprsmall.def"
+at = [36, 73]
+size = [32, 32]
+repeat = { count = [3, 1], step = [36, 0] }
+
+[[status_town.items]]
+kind = "def"
+id = 2014
+def = "cprsmall.def"
+at = [18, 121]
+size = [32, 32]
+repeat = { count = [4, 1], step = [36, 0] }
+
+[[status_town.items]]
+kind = "label"
+id = 2021
+at = [36, 107]
+size = [32, 13]
+font = "tiny.fnt"
+font_palette = "game.pal"
+colour = 4
+align = 1
+repeat = { count = [3, 1], step = [36, 0] }
+
+[[status_town.items]]
+kind = "label"
+id = 2024
+at = [18, 155]
+size = [32, 13]
+font = "tiny.fnt"
+font_palette = "game.pal"
+colour = 4
+align = 1
+repeat = { count = [4, 1], step = [36, 0] }
+
 # What the panels' logic needs (E24 M3 T2a, design §4.1): the buttons in the viewer's colours
 # (0x403F60), the underground button's DEF on the surface and underground (0x65F22C), sleep's while
 # the hero is awake and asleep (0x65F238).

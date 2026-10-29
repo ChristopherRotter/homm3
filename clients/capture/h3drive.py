@@ -119,6 +119,7 @@ ROLLS = {
     "thunderbird": (1, 100),  # random(1, 100) <= 20: the Thunderbird's bolt
     "acid": (1, 100),        # random(1, 100) <= 20: the Rust Dragon's acid damage
     "poison": (1, 100),      # random(1, 100) <= 30: the Wyvern Monarch's Poison
+    "stone_gaze": (1, 100),  # random(1, 100) <= 20: the Medusas' and Basilisks' Stone Gaze
     # The wall shots' (E17 M4 T2b, design §10.2): a `roll:<name>:<n>` action forces the draw n.
     "wall_damage": (100, 1),  # random(1, 100) against the chances for 0, 1, 2: 100 the most
     "wall_hit": (1, 100),     # random(1, 100) <= the target kind's chance: the aimed one hit

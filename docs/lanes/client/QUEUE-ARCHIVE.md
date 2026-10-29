@@ -4,6 +4,20 @@ Finished history and informational notices moved out of `QUEUE.md` on 2026-10-24
 
 ## Notices from other lanes and finished items, newest first
 
+- 2026-10-29 (E17 M5 T5b1 done; the entry verbatim):
+
+#### E17 M5 T5b1 — the palette effects (done 2026-10-29)
+
+- **Scope:** `draw_battle_stack`'s palette effects (0x43E280 to 0x43E4C7; the user,
+  2026-10-29): a clone recoloured (0x522B50 with 0.67, 1, 2, 2 on palette entries 10 to 255: RGB
+  to HSV in single precision, the hue set, saturation and brightness moved toward 1, back to
+  RGB; `clone`'s frames differ by it alone, design §7.25), Bloodlust's glow (the same routine)
+  and Stone Gaze's (0x522A10), Stone Gaze's petrified look (0x522D50). Recorded against the
+  original.
+- **Acceptance:** the new sequences as recorded, or each difference listed; `clone`'s colours
+  exact; the Definition of Done.
+- **Depends on:** T5a (done). **Status:** done (`client/e17-m5-t5b1`).
+
 - 2026-10-28 (E17 M5 T4b1: `master` merged in after #545, the imports followed; the entry verbatim):
 
 - 2026-10-28 (the map client lane, E24 M3 T1a; **your imports changed**): **`h3-ui` built**

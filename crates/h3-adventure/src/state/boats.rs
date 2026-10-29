@@ -5,7 +5,8 @@
 //! (`bench-check`); with boats a fork costs two reference counts, and a boarding, a landing or a
 //! boat leaving the map writes one record and one leaf. A boarding and a landing (E08 T73;
 //! ADV-SEA-002, ADV-SEA-003) are here: the boat's record, the hero's boat and its points and
-//! maximum on its new surface, and their events.
+//! maximum on its new surface, and their events; since E08 T74b a boat leaving the map with its
+//! hero after a battle too (ADV-SEA-006).
 
 use alloc::sync::Arc;
 
@@ -15,7 +16,7 @@ use h3_heroes::{HeroDetails, free_boarding};
 use h3_kernel::{CanonicalHash, StateHasher};
 
 use super::{AdventureState, StaticMap};
-use crate::command::{AdventureEvent, AdventureEventKind, Sink};
+use crate::command::{AdventureEvent, AdventureEventKind, Sink, Viewers};
 use crate::movement::{converted_points, day_points, details_of, sea_day_points};
 use crate::persistent::{BitGrid, Table};
 use crate::ruleset::{AdventureRuleset, Passage};
@@ -48,7 +49,7 @@ pub struct Boat {
     pub captain: Option<HeroId>,
     /// Whether its captain is aboard.
     pub aboard: bool,
-    /// Whether it left the map with its hero (ADV-SEA-006, T74): the record stays, so indexes
+    /// Whether it left the map with its hero (ADV-SEA-006, T74b): the record stays, so indexes
     /// never move.
     pub gone: bool,
 }
@@ -153,6 +154,19 @@ impl Boats {
             record.facing = facing;
             record.aboard = false;
             self.empty.set(water, true);
+            self.records.set(slot, Some(record));
+            record.kind
+        })
+    }
+
+    /// The boat at `slot` leaves the map from `at` with its hero (ADV-SEA-006): gone, its tile
+    /// `at`, nobody aboard, its owner and captain kept (the original's freed record keeps them,
+    /// batch E8's E8-11); its type, if the boat exists. A boat aboard is on no empty boats' tile.
+    fn remove(&mut self, slot: usize, at: Pos) -> Option<u8> {
+        self.records.get(slot).copied().map(|mut record| {
+            record.tile = at;
+            record.aboard = false;
+            record.gone = true;
             self.records.set(slot, Some(record));
             record.kind
         })
@@ -291,6 +305,35 @@ impl AdventureState {
                 boat: kind,
                 at: water,
                 facing,
+            },
+            seen_by,
+        });
+    }
+
+    /// A boat leaving the map with its hero (ADV-SEA-006, E08 T74b; survey `E08-sea.md` §7.3, the
+    /// original's 0x4D9EC0 freeing the boat's record at 0x4DA009): `hero`, which a battle took off
+    /// the map from the water tile `at`, was in the boat `boat`, which leaves with it: gone, its
+    /// record kept by index ([`Boat::gone`]), so it lies nowhere and nobody boards it again. Told
+    /// as [`AdventureEventKind::BoatRemoved`] to `seen_by`, the hero's removal's viewers (the
+    /// players that see heroes on the tile, ADV-FOG-006), after that removal.
+    // rule: ADV-SEA-006
+    pub(crate) fn remove_boat<S: Sink>(
+        &mut self,
+        (hero, boat, at): (HeroId, u32, Pos),
+        seen_by: Viewers,
+        sink: &mut S,
+    ) {
+        let slot = usize::try_from(boat).unwrap_or(usize::MAX);
+        let kind = self
+            .boats
+            .as_mut()
+            .and_then(|boats| boats.remove(slot, at))
+            .unwrap_or_default();
+        sink.emit(AdventureEvent {
+            kind: AdventureEventKind::BoatRemoved {
+                hero,
+                boat: kind,
+                at,
             },
             seen_by,
         });

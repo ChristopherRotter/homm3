@@ -20,7 +20,10 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   Input made while the battle does not take it is dropped at the next turn's start, not taken
   then (design §9.11; the tracker had it queued until T2a).
 - Tell spells by `SpellLook::original`, not engine handles (Poison 70). After a hero's cast a
-  stack acts by `key:` only (runbook).
+  stack acts by `key:` only (runbook). A sequence's engine command names the handle, the pack's
+  order (Stone Gaze 69, Bloodlust 43, Clone 64; E17 M5 T5b1).
+- A stack's palette effect spares the palette's entries 0 to 9 (`h3_render::recolour::FIRST`):
+  a test DEF needs an index of 10 or more to show it (E17 M5 T5b1).
 - Sequences are spectators' records; the engine rolls its own (a box ` n…` or the log ` log`
   listed; a seed searched to match: runbook, "Forced rolls"). Records: army, then war machines.
 - A new list of the timeline that `scene::Moment::at` reads needs its reader in

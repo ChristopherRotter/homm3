@@ -1,0 +1,44 @@
+# E17 M5 T5b1: Stone Gaze's glow and the petrified look (design §7.26), in hot seat. The Archangel
+# (speed 18) flies to the Greater Basilisks and strikes them from the left (`acid`'s place); they
+# strike back and their Stone Gaze's roll (`roll:stone_gaze`, 0x440780) falls: at the strike's
+# end its line (GENRLTXT 559), then the Archangel glows in 10 redraws of trunc(100 F), its
+# saturation times 1.0 down to 0.1 (`cast_spell` 0x5A1121), and looks petrified from then
+# (`draw_battle_stack` 0x43E3CB: each channel the colour's brightest). On grass at the capture
+# set's tile.
+
+[scenario]
+id = "sequence-stone"
+# Both players human, as the original's hot-seat map (`h3-view situation --hot-seat`).
+human = ["attacker", "defender"]
+packs = ["base"]
+profile = "base:faithful"
+terrain = "base:grass"
+obstacles = [
+    { hexes = [75, 76, 77, 78, 61, 60, 59, 58], anchor = 74, kind = "base:obstacle_22" },
+    { hexes = [91, 92], anchor = 91, kind = "base:obstacle_20" },
+    { hexes = [122, 123], anchor = 122, kind = "base:obstacle_19" },
+]
+
+[[attacker]]
+slot = 0
+creature = "base:archangel"
+count = 1
+
+[[defender]]
+slot = 0
+creature = "base:greater_basilisk"
+count = 5
+
+[scenario.attacker_hero]
+hero_type = "base:orrin"
+attack = 1
+defense = 1
+power = 1
+knowledge = 1
+
+[scenario.defender_hero]
+hero_type = "base:crag_hack"
+attack = 1
+defense = 1
+power = 1
+knowledge = 1
