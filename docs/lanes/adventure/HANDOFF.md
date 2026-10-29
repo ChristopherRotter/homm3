@@ -20,6 +20,10 @@ Moved to `TRAPS.md`: forks without deep copies, RNG seeds server-only, template 
 
 ## Recent sessions
 
+### 2026-10-29 — increment 8, round 6: T73b, the boat's reachable tiles
+
+Baseline 4ebfc6d (#575 merged; CI on `master` green; the light gates passed). No original data staged. The user's cut (decision 185): whole. `Reach::search_sail` (one node per tile, the sail rows and prices, landings converted, visits and guarded water tiles as leaves; its window by `Pricing::sail_cheapest`); a walker's empty boat and hero in a boat on water (`Reach::afloat`, `#[cold]`), its loop chosen once per query (`search_walking::<AFLOAT>`: the test in every loop cost `reach-xl-144` 5 %); the reach property with boats, coast, winds, water monsters and a hero aboard. ADV-STUB-11 closed; ADV-MOV-007, ADV-SEA-002, -004 amended. No version, no baseline moved: `random-play-duel-36` +1.99 %, `fork-xl-144` +1.99 %, `fork-meeting-xl-144` +1.93 % sit at the threshold (T74's likely to move them). Pull request: `adventure/e08-t73b`.
+
 ### 2026-10-29 — increment 8, round 6: T73a, moving at sea
 
 Baseline 1462fd8 (#573 merged; CI on `master` green; the light gates passed). No original data staged. The user's cut (decision 184): T73 in two, T73a now. `Mode::Sail`, boarding from every mode's stop node, landing onto a free coastal tile only (D-42), D-46 in `passage`, the sea's prices with Favorable Winds and D-43's exception, the drops, the conversion (D-41) with the maximum switched (`ADV-QUIRK-31`), the landing's facing, `Boarded` and `Landed`, events and guards on water, visits from a boat; a boat's reach its own tile until T73b (ADV-STUB-11), class 85 closed to a flight (ADV-STUB-12). ADV-SEA-002 to -005 `verified`. No version. Pull request: `adventure/e08-t73a`.
@@ -27,8 +31,3 @@ Baseline 1462fd8 (#573 merged; CI on `master` green; the light gates passed). No
 ### 2026-10-29 — increment 8, round 5: T72, the import, the kinds, the state, the views
 
 Baseline 43c8cdd (#571 merged; CI on `master` green; the light gates passed). The original data staged (`Heroes3.exe`, both bitmap archives, `maps.tar`, `extracted.tar`). The user's cut (decision 183): whole, one pull request; with consent the AI lane's two bots tables' adventure fingerprint (`cross-lane`). The sea's kinds and parameters (part v13), `MapSetup::boats` and `state/boats.rs` (adventure state hash v16, game v20), the views, the import of the seven classes and `HeroOnWater` (map import v14); the census: 118 boats on 41 maps, every static layer valid. The generated maps' blocker class 124 → 118; the 21 goldens re-recorded, commands unchanged. ADV-SEA-001, -007, ADV-PIK-014 to -016, ADV-FOG-008, `ADV-QUIRK-32`. Pull request: `adventure/e08-t72`.
-
-### 2026-10-29 — increment 8, round 5: T71, the sea points and free boarding
-
-Baseline 86f164b (#568 merged; CI on `master` green; the light gates passed). No original data staged. The user's cut (decision 182): T71 with the inbox's property case. `h3_heroes::{sea_points, free_boarding}` (any source of the three kinds counts, the agent's call), HER-ADV-009 `verified` (E8-1, E8-6, E8-10). The property case was the plan's: after an army dialog's `Close` a held event fired and its guards' battle opened (GAM-DEC-007); the `Close` branch now checks its own closing, the regression line kept. No version. Pull request: `adventure/e08-t71`.
-

@@ -8278,6 +8278,16 @@ staged. The user's cut (decision 185): whole, one pull request.
   tile), the step priced as the walker's from its land tile, a hero in a boat visited with the
   walker's drop, an empty boat boarded with a boat's drop and the conversion (`Search::boarded`);
   each a leaf. Before, the walker's search reached neither, though `MoveHero` accepted both.
+- **Benchmarks** (`bench-check`, none rebaselined): the first build, the water test in the
+  walker's one loop (`if search.occupied[next]` on every water neighbour), measured `reach-xl-144`
+  +5.06 %, `random-play-rewards-36` +4.86 %, `random-play-duel-36` +3.39 %, though no map of theirs
+  has a boat; so the walker's loop is now chosen once per query (`Reach::search_walking::<AFLOAT>`,
+  `expand::<START, AFLOAT>`): with neither an empty boat nor another hero in a boat in the window
+  the loop is the one before boats. Then `reach-xl-144` +0.37 %, `random-play-rewards-36`
+  +0.64 %, `random-play-duel-36` +1.99 % (T73a's +1.97 %), `reach-lifted-xl-144` −0.96 %, the
+  forks unchanged since T72 (+0.89 % to +1.99 %), `manage-army-12` +0.31 %. `random-play-duel-36`,
+  `fork-xl-144` and `fork-meeting-xl-144` sit at the threshold: T74's change will likely move
+  their baselines.
 - **The property** (`reach/tests.rs`, `the_query_and_move_hero_agree`): the map's coast flagged
   (`testing::coasted`, moved from the sea tests with `lying`), the tiles gain an empty boat (`b`),
   sea under Favorable Winds (`f`) and a monster on water (`m`); the hero starts in a boat in a
@@ -8295,6 +8305,6 @@ staged. The user's cut (decision 185): whole, one pull request.
 - **Rules:** ADV-MOV-007, ADV-SEA-002 and ADV-SEA-004 amended (the reach); ADV-STUB-11 closed. No
   version moves: the reach is no state, no replay changes (no generated map has boats).
 - *Agent's calls (change freely):* the walker's test reads the precomputed `occupied` flags rather
-  than `Boats::empty` per water neighbour (design §9), so a map without boats pays one load and a
-  branch per water neighbour; `sail_cheapest` sizes a boat's window (the land's `cheapest`, the
+  than `Boats::empty` per water neighbour (design §9), and only in a window holding a boat or a
+  hero in one (a second instance of the loop); `sail_cheapest` sizes a boat's window (the land's `cheapest`, the
   roads' 50 among them, would make it larger for nothing).
