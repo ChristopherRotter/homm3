@@ -1327,3 +1327,119 @@ fn the_drawbridge_s_redraws_show_its_rectangle_alone() {
     );
     assert_eq!(list.len(), base.len() + 1);
 }
+
+#[test]
+fn created_stacks_are_drawn_and_a_dissolve_measures_its_stacks() {
+    // E17 M5 T5a (§7.25): a created stack is drawn as the snapshot's, a reused id's in place of
+    // its earlier stack; a dissolve draws the saved battle, then its step of the new one over
+    // what it measures: each of its stacks drawn in either picture, its sprite and its count box
+    // whatever hides it; Teleport's over the battlefield.
+    let layout = layout();
+    let mut o = observation();
+    o.terrain = Some(0);
+    o.stacks = vec![
+        stack(0, Side::Attacker, 0, hex(4, 2), false),
+        stack(1, Side::Defender, 0, hex(4, 9), false),
+    ];
+    let made = crate::anim::created_stack(
+        (1, Side::Attacker),
+        (1, 6, hex(5, 3)),
+        crate::anim::Body::default(),
+        (false, false),
+    );
+    let created = Moment {
+        created: [
+            (1, made),
+            (
+                2,
+                crate::anim::created_stack(
+                    (2, Side::Defender),
+                    (0, 4, hex(6, 8)),
+                    crate::anim::Body::default(),
+                    (true, false),
+                ),
+            ),
+        ]
+        .into_iter()
+        .collect(),
+        ..Moment::default()
+    };
+    let list = battle_at(&o, &created, &keys(), &tables(), &layout).unwrap();
+    let creatures = |list: &[Draw]| {
+        list.iter()
+            .filter(|d| matches!(d, Draw::Creature { .. }))
+            .count()
+    };
+    assert_eq!(creatures(&list), 3);
+    let boxes: Vec<u32> = list
+        .iter()
+        .filter_map(|d| match d {
+            Draw::CountBox { count, .. } => Some(*count),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(boxes, [10, 6, 4]);
+    // Stack 1 gone (the saved picture holds it), stack 2 created: both measured, a sprite and a
+    // box each.
+    let gone = Pose {
+        group: 5,
+        frame: 0,
+        hex: hex(4, 9),
+        offset: [0, 0],
+        mirrored: true,
+        layer: GONE,
+        boxless: false,
+    };
+    let before = Moment::default();
+    let now = Moment {
+        poses: [(1, gone)].into_iter().collect(),
+        created: [(
+            2,
+            crate::anim::created_stack(
+                (2, Side::Defender),
+                (0, 4, hex(6, 8)),
+                crate::anim::Body::default(),
+                (false, true),
+            ),
+        )]
+        .into_iter()
+        .collect(),
+        dissolve: Some(Dissolve {
+            before: alloc::boxed::Box::new(before.clone()),
+            step: 3,
+            area: DissolveArea::Stacks(vec![1, 2, 7]),
+        }),
+        ..Moment::default()
+    };
+    let list = battle_at(&o, &now, &keys(), &tables(), &layout).unwrap();
+    let Some(Draw::Dissolve {
+        step,
+        rect,
+        measured,
+        list: drawn,
+    }) = list.last()
+    else {
+        panic!("{list:?}");
+    };
+    assert_eq!((*step, *rect), (3, None));
+    assert_eq!(creatures(measured), 2);
+    assert_eq!(measured.len(), 4);
+    assert_eq!(creatures(drawn), 2);
+    assert_eq!(
+        &list[..list.len() - 1],
+        &battle_at(&o, &before, &keys(), &tables(), &layout).unwrap()[..]
+    );
+    let teleport = Moment {
+        dissolve: Some(Dissolve {
+            before: alloc::boxed::Box::new(before),
+            step: 0,
+            area: DissolveArea::Battlefield,
+        }),
+        ..Moment::default()
+    };
+    let list = battle_at(&o, &teleport, &keys(), &tables(), &layout).unwrap();
+    assert!(matches!(
+        list.last(),
+        Some(Draw::Dissolve { rect: Some(r), measured, .. }) if *r == BATTLEFIELD && measured.is_empty()
+    ));
+}

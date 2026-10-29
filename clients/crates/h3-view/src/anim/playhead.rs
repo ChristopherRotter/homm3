@@ -73,17 +73,15 @@ pub struct Playhead {
     beams: Spans,
     shakes: Spans,
     bridges: Spans,
-    /// The battle as it stood just before each drawbridge's redraws ([`Timeline::bridge`]), kept
-    /// as the playhead passes that time.
-    befores: Sweep,
+    /// The times the battle is kept at as the playhead passes them: just before each drawbridge's
+    /// redraws ([`Timeline::bridge`]) and at each dissolve's start (E17 M5 T5a); the battles kept.
+    befores: Befores,
     bridged: BTreeMap<usize, Box<Moment>>,
     /// The created stacks by id: the last key of each shown by then (E17 M5 T5a).
     created: Sweep,
     made: BTreeMap<u8, usize>,
-    /// The dissolves blending then, and the battle as it stood at each one's start, kept as the
-    /// playhead passes it (E17 M5 T5a).
+    /// The dissolves blending then, and the battle as it stood at each one's start (E17 M5 T5a).
     dissolves: Spans,
-    starts: Sweep,
     dissolved: BTreeMap<usize, Box<Moment>>,
 }
 
@@ -134,12 +132,11 @@ impl Playhead {
                     .iter()
                     .map(|b| (b.from, u64::from(b.until))),
             ),
-            befores: Sweep::new(timeline.bridges.iter().map(|b| b.from.saturating_sub(1))),
+            befores: Befores::of(timeline),
             bridged: BTreeMap::new(),
             created: Sweep::new(timeline.created.iter().map(|k| k.shown)),
             made: BTreeMap::new(),
             dissolves: Spans::new(timeline.dissolves.iter().map(blending)),
-            starts: Sweep::new(timeline.dissolves.iter().map(|d| d.start)),
             dissolved: BTreeMap::new(),
         };
         head.reach(timeline, 0);
@@ -208,16 +205,11 @@ impl Playhead {
                 at,
             ),
             // The battle before a redraw added is kept as the playhead passes it, even now.
-            self.befores.extend(
-                timeline.bridges.iter().map(|b| b.from.saturating_sub(1)),
-                at.saturating_sub(1),
-            ),
+            self.befores.extend(timeline, at),
             self.created
                 .extend(timeline.created.iter().map(|k| k.shown), at),
             self.dissolves
                 .extend(timeline.dissolves.iter().map(blending), at),
-            self.starts
-                .extend(timeline.dissolves.iter().map(|d| d.start), at),
         ];
         if grown.into_iter().all(|g| g) {
             // No idle step after the old end has run: they go on from the new one.
@@ -233,30 +225,14 @@ impl Playhead {
     /// Moves forward to `t`, keeping the battle as it stands before each drawbridge's redraws and
     /// at each dissolve's start on the way, in their order.
     fn reach(&mut self, timeline: &Timeline, t: u32) {
-        loop {
-            let bridge = self.befores.next_by(t).copied();
-            let start = self.starts.next_by(t).copied();
-            let dissolve = match (bridge, start) {
-                (Some(b), Some(d)) => d.0 < b.0,
-                (None, Some(_)) => true,
-                (_, None) => false,
-            };
-            let Some((before, i)) = (if dissolve { start } else { bridge }) else {
-                break;
-            };
-            let sweep = if dissolve {
-                &mut self.starts
-            } else {
-                &mut self.befores
-            };
-            sweep.next += 1;
+        while let Some(&(before, kept)) = self.befores.next_by(t) {
+            self.befores.next += 1;
             self.advance(timeline, before);
             let moment = Box::new(self.moment(timeline));
-            if dissolve {
-                self.dissolved.insert(i, moment);
-            } else {
-                self.bridged.insert(i, moment);
-            }
+            match kept {
+                Kept::Bridge(i) => self.bridged.insert(i, moment),
+                Kept::Dissolve(i) => self.dissolved.insert(i, moment),
+            };
         }
         self.advance(timeline, t);
     }
@@ -466,17 +442,80 @@ impl Sweep {
         after
     }
 
-    /// The next key to take, if it shows by `t`.
-    fn next_by(&self, t: u32) -> Option<&(u32, usize)> {
-        self.order.get(self.next).filter(|(at, _)| *at <= t)
-    }
-
     /// The places of the keys shown by `t` not taken yet, in the order they show; taken.
     fn to(&mut self, t: u32) -> impl Iterator<Item = usize> + '_ {
         let from = self.next;
         let rest = self.order.get(from..).unwrap_or_default();
         self.next = from + rest.partition_point(|(at, _)| *at <= t);
         self.order[from..self.next].iter().map(|&(_, i)| i)
+    }
+}
+
+/// A battle the playhead keeps as it passes its time: before a drawbridge's redraws, at a
+/// dissolve's start (E17 M5 T5a), each by its place in its list.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+enum Kept {
+    Bridge(usize),
+    Dissolve(usize),
+}
+
+/// The battles kept ([`Kept`]) in the order of their times (a drawbridge's first at a time), the
+/// next to take, and how many of each list's are in.
+#[derive(Debug, Clone, Default)]
+struct Befores {
+    order: Vec<(u32, Kept)>,
+    next: usize,
+    bridges: usize,
+    dissolves: usize,
+}
+
+impl Befores {
+    /// The battles `timeline` keeps.
+    fn of(timeline: &Timeline) -> Self {
+        let mut order: Vec<(u32, Kept)> = Self::added(timeline, 0, 0).collect();
+        order.sort_unstable();
+        Self {
+            order,
+            next: 0,
+            bridges: timeline.bridges.len(),
+            dissolves: timeline.dissolves.len(),
+        }
+    }
+
+    /// The battles `timeline` keeps past its first `bridges` drawbridge spans and `dissolves`
+    /// dissolves.
+    fn added(
+        timeline: &Timeline,
+        bridges: usize,
+        dissolves: usize,
+    ) -> impl Iterator<Item = (u32, Kept)> + '_ {
+        let b = timeline.bridges.iter().enumerate().skip(bridges);
+        let d = timeline.dissolves.iter().enumerate().skip(dissolves);
+        b.map(|(i, b)| (b.from.saturating_sub(1), Kept::Bridge(i)))
+            .chain(d.map(|(i, d)| (d.start, Kept::Dissolve(i))))
+    }
+
+    /// Adds the times of `timeline`'s drawbridge spans and dissolves past those it holds; whether
+    /// each comes after `at` (a drawbridge's at it may: the battle just before its first redraw
+    /// is kept even now); else nothing is added.
+    fn extend(&mut self, timeline: &Timeline, at: u32) -> bool {
+        let added: Vec<(u32, Kept)> = Self::added(timeline, self.bridges, self.dissolves).collect();
+        let after = added.iter().all(|&(t, kept)| match kept {
+            Kept::Bridge(_) => t >= at.saturating_sub(1),
+            Kept::Dissolve(_) => t > at,
+        });
+        if after {
+            self.order.extend(added);
+            self.order[self.next..].sort_unstable();
+            self.bridges = timeline.bridges.len();
+            self.dissolves = timeline.dissolves.len();
+        }
+        after
+    }
+
+    /// The next battle to keep, if its time comes by `t`.
+    fn next_by(&self, t: u32) -> Option<&(u32, Kept)> {
+        self.order.get(self.next).filter(|(at, _)| *at <= t)
     }
 }
 

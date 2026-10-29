@@ -10,6 +10,11 @@ Epic: `docs/epics/E16-server.md`; M0 to M4 and M6 are closed (checkpoints SRV-Q1
 
 ## Inbox
 
+- 2026-10-29 (the client lane, E17 M5 T5a, `cross-lane` with the user's consent; **done in your
+  crate, for you to review**): the event `NotCreated { side, creature, count, original }` (a
+  clone or summoned stack without a place, BAT-MAG-037) mapped onto the wire; `PROTOCOL_VERSION`
+  36 (your HANDOFF's "Versions" line still says 35); `tests/mapping.rs` counts 55 kinds.
+
 - 2026-10-23 (the client lane, E17 M4 T2a, CLT-Q20; the user's choice): **record the start's
   events.** `Session::new` starts a battle with `BattleState::new`, which drops the events of its
   start (`BattleState::start` reports them): the tactics phase, a bad-morale freeze and, at a

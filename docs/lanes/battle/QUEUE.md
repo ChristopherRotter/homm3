@@ -12,6 +12,15 @@ E23, the original's battle AI, is **closed** (2026-10-24; `docs/epics/E23-origin
 
 Consolidated on 2026-10-19 (the user): the entries from E01 to E04c's closure are merged below by kind, done and duplicate parts dropped; the origin stays in brackets (an epic and task, a review report such as r3 or F-r2b-2). History: git. Items for other lanes went into their inboxes; the First Aid Tent became BAT-Q51. The addresses are readings of the executable, the reviews' not read a second time. Where the readings stand: `installation.md` §7.8–§7.33; the reviews' reports stay on `battle/e04b-t11b-review-reports` and `battle/e04c-t10b-review-reports`; their experiment candidates are in `docs/experiments/README.md` ("From the battle queue's inbox", "From the E04b review", "From E04c").
 
+- 2026-10-29 (the client lane, E17 M5 T5a, `cross-lane` with the user's consent; **done in
+  your crate, for you to review**): a Clone or Summon Elemental that finds no place now reports
+  it: `EventKind::NotCreated { side, creature, count, original }` (public; BAT-MAG-037's "Not
+  modelled" sentence replaced), from `created::clone`'s `None` place and after `created::summon`'s
+  columns; no state changes. The original shows a message box for a clone (0x5A6E22, GENRLTXT
+  189); its summon writes its line and calls 0x47A100 with hex −1, which reads past the hex
+  records (CLT-Q33, `docs/epics/E17-design.md` §7.25). Wire v36 (`h3-protocol`, the server lane's
+  inbox). Tests: `tests/created.rs`'s two no-place cases.
+
 - 2026-10-29 (the client lane, E17 M5 T4c2b, `cross-lane` with the user's consent; **done in
   your crate, for you to review**): a placement in the tactics phase is the original's walk
   (action 2 through the move handler 0x445950; `docs/epics/E17-design.md` §7.24). `h3_battle`

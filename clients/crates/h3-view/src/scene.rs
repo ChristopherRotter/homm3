@@ -1313,9 +1313,11 @@ fn with_created(observation: &Observation, moment: &Moment) -> Option<Observatio
 }
 
 /// What `battle_refresh_creatures` 0x495BF0 measures of the stacks `ids` at `moment` for a
-/// dissolve's rectangle (E17 M5 T5a, §7.25): each stack it draws, its sprite and its count box
-/// where the box would stand, measured whatever hides the box (+0x13D34 set: 0x43E576 goes
-/// straight to the box's place); a stack gone without a corpse is not drawn, so not measured.
+/// dissolve's rectangle (E17 M5 T5a, §7.25): each stack it draws, its sprite, its count box where
+/// the box would stand, measured whatever hides the box (+0x13D34 set: 0x43E576 goes straight to
+/// the box's place), and the magic animation's frame over it (`draw_battle_stack`'s tail,
+/// 0x43E795: Sacrifice's over its victim); a stack gone without a corpse is not drawn, so not
+/// measured.
 fn measured(
     observation: &Observation,
     moment: &Moment,
@@ -1356,6 +1358,17 @@ fn measured(
             count: 0,
             tint: layout.count_box.tint,
         });
+        out.extend(moment.magic.as_ref().and_then(|m| {
+            let &(_, [x, y], mirrored) = m.over.iter().find(|o| o.0 == s.id)?;
+            Some(Draw::Magic {
+                def: m.def.clone(),
+                frame: m.frame,
+                x,
+                y,
+                mirrored,
+                translucent: m.translucent,
+            })
+        }));
     }
     Ok(out)
 }

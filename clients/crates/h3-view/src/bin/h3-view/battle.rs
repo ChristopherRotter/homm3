@@ -274,6 +274,8 @@ pub struct Battle<'g> {
     message: Option<(h3_view::message::Open, u32, Asked)>,
     /// The result window was closed (E17 M5 T4b1): the battle's screen is done.
     result_closed: bool,
+    /// How many of the timeline's notices opened (E17 M5 T5a).
+    notices: usize,
     /// The tactics phase's message the battle opened with is still open (E17 M5 T4c2a, design
     /// §7.23): the battle behind it stands before its first turn.
     opening: bool,
@@ -407,6 +409,7 @@ impl<'g> Battle<'g> {
             aiming: None,
             message: None,
             result_closed: false,
+            notices: 0,
             opening: false,
         };
         battle.follow()?;
@@ -1224,6 +1227,32 @@ impl<'g> Battle<'g> {
         };
         self.message = Some((h3_view::message::Open::new(window), ended, Asked::Result));
         true
+    }
+
+    /// Opens the next of the timeline's notices once `at` reaches its time (E17 M5 T5a, design
+    /// §7.25: Clone's message when it found no place, `clone_place_and_create` 0x5A6E22), the
+    /// battle standing behind it from that time. Its time when it opened.
+    pub fn open_notice(&mut self, at: u32) -> Option<u32> {
+        if self.message.is_some() {
+            return None;
+        }
+        let &(t, notice) = self
+            .timeline()
+            .notices
+            .get(self.notices)
+            .filter(|&&(t, _)| t <= at)?;
+        self.notices += 1;
+        let key = match notice {
+            anim::Notice::NoPlace => "battle.clone.no-place",
+        };
+        let text = self
+            .ground
+            .writer
+            .as_ref()?
+            .catalogue
+            .text(key, &h3_ui::text::Args::new());
+        self.tell(t, &text, (Style::Ok, None), Asked::Told)
+            .then_some(t)
     }
 
     /// Whether the result window is open (E17 M5 T4b1).

@@ -564,7 +564,8 @@ pub fn compose(
 /// battlefield (0x694F18: the layout's mouse field, its bounds inclusive), widens the dirty
 /// rectangle edge by edge from the empty one (799, 599, 0, 0; 0x6AACE8). A creature's is its
 /// frame's content box as `battle_item_rect` 0x495F50 places it (mirrored in the DEF's width), a
-/// count box's its picture's (`battle_draw_pcx` 0x4958E0). None when nothing widened it.
+/// count box's its picture's (`battle_draw_pcx` 0x4958E0), a magic animation's its DEF's whole
+/// canvas at its corner (`battle_draw_magic_frame` 0x4953B0). None when nothing widened it.
 fn measure(
     measured: &[Draw],
     batch: &Batch,
@@ -597,6 +598,16 @@ fn measure(
                     (x, x.saturating_add(size[0]).saturating_sub(1))
                 };
                 [x0, y, x1, y.saturating_add(size[1]).saturating_sub(1)]
+            }
+            // `battle_draw_magic_frame` 0x4953B0: its DEF's canvas (+0x30, +0x34) at its corner,
+            // mirrored or not.
+            Draw::Magic {
+                def, frame, x, y, ..
+            } => {
+                let (sprite, _) = frame_of(batch, def, 0, *frame)?;
+                let size =
+                    [sprite.def.width, sprite.def.height].map(|v| i32::try_from(v).unwrap_or(0));
+                [*x, *y, x + size[0] - 1, y + size[1] - 1]
             }
             Draw::CountBox { x, y, .. } => {
                 let picture = picture_of(batch, &layout.count_box.picture)?;

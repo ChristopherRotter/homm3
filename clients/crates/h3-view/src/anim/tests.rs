@@ -5448,6 +5448,7 @@ fn objects_outside_casts_and_without_their_looks() {
     assert!(t.keys.iter().any(|k| k.stack == 1 && k.pose.group == 3));
 }
 
+mod created;
 pub(crate) mod playhead;
 mod raised;
 mod reviewed;

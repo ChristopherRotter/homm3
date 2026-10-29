@@ -1,0 +1,47 @@
+# E17 M5 T5a: a Pit Lord's Demons (design §7.25): round 1 the Archers shoot the Imps dead; round
+# 2 the Pit Lords raise Demons from their corpse (`pit_lord_raise_demons` 0x5A7390): the corpse
+# goes and the Demons show in a dissolve of 75 ms steps. Hot seat; on grass at the capture set's
+# tile (`sacrifice`'s).
+
+[scenario]
+id = "sequence-demons"
+# Both players human, as the original's hot-seat map (`h3-view situation --hot-seat`).
+human = ["attacker", "defender"]
+packs = ["base"]
+profile = "base:faithful"
+terrain = "base:grass"
+obstacles = [
+    { hexes = [75, 76, 77, 78, 61, 60, 59, 58], anchor = 74, kind = "base:obstacle_22" },
+    { hexes = [91, 92], anchor = 91, kind = "base:obstacle_20" },
+    { hexes = [122, 123], anchor = 122, kind = "base:obstacle_19" },
+]
+
+[[attacker]]
+slot = 0
+creature = "base:pit_lord"
+count = 10
+
+[[attacker]]
+slot = 1
+creature = "base:imp"
+count = 10
+
+[[defender]]
+slot = 0
+creature = "base:archer"
+count = 80
+
+# The heroes (E17 M3 T3a) with 1 in every primary skill but Orrin's knowledge.
+[scenario.attacker_hero]
+hero_type = "base:orrin"
+attack = 1
+defense = 1
+power = 1
+knowledge = 3
+
+[scenario.defender_hero]
+hero_type = "base:crag_hack"
+attack = 1
+defense = 1
+power = 1
+knowledge = 1
