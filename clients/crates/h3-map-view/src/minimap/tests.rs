@@ -204,6 +204,12 @@ fn a_tiles_colour_by_its_terrain_its_object_and_the_live_part() {
     );
     let (defs, owner) = dirt.drawn();
     assert_eq!((defs, owner), (vec!["dirttl.def"], false));
+    // A hero's place past the tiles (none is made so) draws nothing.
+    let past = Tiles {
+        heroes: vec![(2, Colour::Owner(0))],
+        ..dirt.clone()
+    };
+    assert_eq!(past.shown(), dirt.shown());
     // An 8-tile map is no size of the tables': no tile drawn; the box frame 1 at 1.0.
     assert_eq!((tiles.columns(), tiles.rows()), (vec![], vec![]));
     assert_eq!(
