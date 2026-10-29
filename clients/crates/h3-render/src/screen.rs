@@ -342,6 +342,35 @@ impl Widening {
         self.widen_onto(screen, [0, 0], out, screen.width);
     }
 
+    /// `rect` of `screen` (cut to it) widened onto `out`, a widened frame of the screen's size
+    /// (E24 M3 T2b2: only what changed since the frame `out` holds); nothing for an `out` of
+    /// another size.
+    pub fn widen_rect(&self, screen: &Screen, rect: [i64; 4], out: &mut [u32]) {
+        if out.len() != screen.pixels.len() {
+            return;
+        }
+        let Some([left, top, right, bottom]) = screen.inside(rect) else {
+            return;
+        };
+        let (w, from, to) = (index(screen.width), index(left), index(right));
+        for y in index(top)..index(bottom) {
+            let src = screen
+                .pixels
+                .get(y * w + from..y * w + to)
+                .unwrap_or_default();
+            let dst = out.get_mut(y * w + from..y * w + to).unwrap_or_default();
+            if screen.format == self.format {
+                for (d, &p) in dst.iter_mut().zip(src) {
+                    *d = self.pixel(p);
+                }
+            } else {
+                for (d, &p) in dst.iter_mut().zip(src) {
+                    *d = xrgb_of(screen.format, p);
+                }
+            }
+        }
+    }
+
     /// `screen` widened onto `out`, a frame `width` pixels wide, its top-left corner at `at`, cut
     /// to `out`'s rows and columns (a screen of another format by [`PixelFormat::unpack`]).
     pub fn widen_onto(&self, screen: &Screen, at: [i64; 2], out: &mut [u32], width: u32) {
@@ -546,6 +575,33 @@ mod tests {
         other.fill(0x7C00);
         table.widen_onto(&other, [2, 0], &mut out, 3);
         assert_eq!(out[2], red);
+    }
+
+    #[test]
+    fn a_rectangle_of_a_screen_widens_in_place() {
+        // E24 M3 T2b2: only the rectangle (cut to the screen), onto a frame of the screen's size.
+        let table = Widening::new(PixelFormat::RGB565);
+        let mut s = Screen::new(3, 2, PixelFormat::RGB565).unwrap();
+        s.pixels_mut()
+            .copy_from_slice(&[0xFFFF, 0xF800, 0x001F, 0x07E0, 0xFFFF, 0]);
+        let (white, red, blue, green) = (0x00FF_FFFF, 0x00FF_0000, 0x0000_00FF, 0x0000_FF00);
+        let mut out = vec![7; 6];
+        table.widen_rect(&s, [1, -4, 9, 1], &mut out);
+        assert_eq!(out, [7, red, blue, 7, 7, 7]);
+        table.widen_rect(&s, [0, 1, 1, 2], &mut out);
+        assert_eq!(out, [7, red, blue, green, 7, 7]);
+        // Off the screen, or onto a frame of another size: nothing.
+        table.widen_rect(&s, [3, 0, 5, 2], &mut out);
+        let mut short = vec![7; 5];
+        table.widen_rect(&s, [0, 0, 3, 2], &mut short);
+        assert_eq!((out[4], short), (7, vec![7; 5]));
+        // A screen of another format widens as its own.
+        let mut other = Screen::new(3, 2, PixelFormat::RGB555).unwrap();
+        other.fill(0x7C00);
+        table.widen_rect(&other, [0, 0, 1, 1], &mut out);
+        assert_eq!(out[0], red);
+        table.widen(&s, &mut out);
+        assert_eq!(out[4], white);
     }
 
     #[test]

@@ -23,16 +23,20 @@
 //! `Ctrl+`. `--check <s>` and `--measure <s>` run unattended for that many seconds (the window's
 //! own keys but quit do nothing; the map's input is taken) and report when each frame showed
 //! against its time and how long the frames took to make (the view composed, the cursor drawn,
-//! the frame widened: E24 M2 T4b3); `--check` also reads every frame back before presenting it and compares it
-//! with the composed frame at the window's scale (the black around it included), and at the end
-//! plays every action (the recorded and the given) headless (`timeline::play`) and compares each
-//! change shown with the headless loop's at its time. An adapter: the window is `h3-sdl`'s.
+//! the frame widened: E24 M2 T4b3) and how much of them went to the texture; `--check` also
+//! compares every frame made with the same frame composed afresh and widened pixel by pixel (E24
+//! M3 T2b2: a frame draws, widens and uploads only what changed), reads every frame back before
+//! presenting it and compares it with the composed frame at the window's scale (the black around
+//! it included), and at the end plays every action (the recorded and the given) headless
+//! (`timeline::play`) and compares each change shown with the headless loop's at its time. An
+//! adapter: the window is `h3-sdl`'s.
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
+use h3_map_view::damage::tidy;
 use h3_map_view::keys::{Command, Keys};
 use h3_map_view::replay::{Change, Replay};
 use h3_map_view::sequence::Sequences;
@@ -45,7 +49,7 @@ use h3_ui::keys::Window as Own;
 
 use crate::audio::{Library, Player};
 use crate::files;
-use crate::paint::{self, Assets, Painter, Setup};
+use crate::paint::{self, Assets, Held, Painter, Setup, Widened};
 
 /// How far past a change the window looks for the next one before it waits for input only.
 const LOOK_AHEAD_MS: u32 = 600_000;
@@ -265,24 +269,25 @@ impl Look {
 struct Frame {
     change: Change,
     cursor: Cursor,
-    xrgb: Vec<u32>,
+    widened: Widened,
 }
 
-/// What making frames keeps (E24 M3 T2b1): the microseconds each took, the widened frames' vectors
-/// no longer shown (made again into, not allocated afresh), and with `--check` the frames compared
-/// with the screen's own pixels widened one by one (`Screen::xrgb`), and those the same.
+/// What making frames keeps (E24 M3 T2b1, T2b2): the microseconds each took, the widened frames
+/// no longer shown (made again into, not allocated afresh: only what changed since the frame each
+/// holds widened), and with `--check` the frames compared with the same frame composed afresh and
+/// widened pixel by pixel (`Screen::xrgb`), and those the same.
 #[derive(Debug, Default)]
 struct Maker {
     made_us: Vec<u64>,
-    spare: Vec<Vec<u32>>,
+    spare: Vec<Widened>,
     check: bool,
-    widened: [usize; 2],
+    afresh: [usize; 2],
 }
 
 impl Maker {
     /// A frame no longer kept: its vector made into again.
     fn recycle(&mut self, frame: Option<Frame>) {
-        self.spare.extend(frame.map(|f| f.xrgb));
+        self.spare.extend(frame.map(|f| f.widened));
     }
 }
 
@@ -296,20 +301,20 @@ impl Frame {
     ) -> Result<Self, String> {
         let started = win.ticks_ns();
         let cursor = look.cursor(change.cursor);
-        let mut xrgb = maker.spare.pop().unwrap_or_default();
-        painter.frame_into(&change.drawn, change.buttons, cursor, &mut xrgb)?;
+        let mut widened = maker.spare.pop().unwrap_or_default();
+        painter.frame_into(&change.drawn, change.buttons, cursor, &mut widened)?;
         maker
             .made_us
             .push(win.ticks_ns().saturating_sub(started) / 1000);
         if maker.check {
-            let screen = painter.screen(&change.drawn, change.buttons, cursor)?;
-            maker.widened[0] += 1;
-            maker.widened[1] += usize::from(screen.xrgb() == xrgb);
+            let screen = painter.fresh(&change.drawn, change.buttons, cursor)?;
+            maker.afresh[0] += 1;
+            maker.afresh[1] += usize::from(screen.xrgb() == widened.xrgb);
         }
         Ok(Self {
             change,
             cursor,
-            xrgb,
+            widened,
         })
     }
 
@@ -481,6 +486,10 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
     let mut maker = Maker {
         check: read,
         ..Maker::default()
+    };
+    let mut texture = Texture {
+        size: layout.frame,
+        ..Texture::default()
     };
     let mut next = Some(Frame::of(
         &mut painter,
@@ -701,7 +710,7 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                     let again =
                         Frame::of(&mut painter, f.change.clone(), look, (&win, &mut maker))?;
                     maker.recycle(Some(f));
-                    if let Some(back) = show(&mut win, &again, read)? {
+                    if let Some(back) = texture.show(&mut win, &painter, &again, read)? {
                         compare(&back, &again, look.frame, &mut report);
                     }
                     again
@@ -751,7 +760,7 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                         maker.recycle(Some(d));
                         Frame::of(&mut painter, change, look, (&win, &mut maker))?
                     };
-                    let back = show(&mut win, &due, read)?;
+                    let back = texture.show(&mut win, &painter, &due, read)?;
                     let late = clock.late(win.ticks_ns(), due.change.t) / 1000;
                     report.late_us.push(late);
                     if given_at.contains(&due.change.t) {
@@ -771,7 +780,9 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                 .map(|c| Frame::of(&mut painter, c, look, (&win, &mut maker)))
                 .transpose()?;
         } else if redraw && let Some(f) = &shown {
-            show(&mut win, f, false)?;
+            // The window's contents may be lost: the whole frame uploaded again.
+            texture.held = None;
+            texture.show(&mut win, &painter, f, false)?;
         }
     }
     let seconds = win.ticks_ns().saturating_sub(started) / 1_000_000;
@@ -808,10 +819,11 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
         view.z
     ));
     lines.push(format!(
-        "frame after its time (ms): {}; at an input's time: {}; a frame made in: {}",
+        "frame after its time (ms): {}; at an input's time: {}; a frame made in: {}; {}",
         summary(&mut report.late_us),
         summary(&mut report.input_late_us),
-        summary(&mut maker.made_us)
+        summary(&mut maker.made_us),
+        texture.describe()
     ));
     let mut ok = report.difference.is_none();
     if read {
@@ -825,11 +837,11 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                 .map(|d| format!("; the first difference: {d}"))
                 .unwrap_or_default()
         ));
-        let [checked, widened] = maker.widened;
-        ok &= checked == widened;
+        let [checked, same] = maker.afresh;
+        ok &= checked == same;
         lines.push(format!(
-            "widened: {widened} of {checked} frames made as the screen's own pixels widened one by \
-             one"
+            "afresh: {same} of {checked} frames made as the same frame composed afresh and \
+             widened pixel by pixel"
         ));
         let (same, first) = headless(&rules, &start, replay.actions(), &log)?;
         ok &= first.is_none();
@@ -844,14 +856,79 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
     Ok((lines, ok))
 }
 
-/// Presents `frame`; reads it back first if `read`.
-fn show(win: &mut Window, frame: &Frame, read: bool) -> Result<Option<ReadBack>, String> {
-    if read {
-        win.present_read(&frame.xrgb).map(Some)
-    } else {
-        win.present(&frame.xrgb).map(|()| None)
+/// What the window's texture holds (E24 M3 T2b2, *provisional*): the frame last uploaded, so
+/// that the next uploads only what differs from it; the frames uploaded, those uploaded whole, and
+/// the pixels uploaded.
+#[derive(Debug, Default)]
+struct Texture {
+    size: [u32; 2],
+    held: Option<Held>,
+    rects: Vec<[i32; 4]>,
+    uploads: [u64; 3],
+}
+
+impl Texture {
+    /// Presents `frame`, uploading only what differs from the frame the texture holds when the
+    /// painter knows it (the whole frame otherwise); reads it back first if `read`.
+    fn show(
+        &mut self,
+        win: &mut Window,
+        painter: &Painter<'_>,
+        frame: &Frame,
+        read: bool,
+    ) -> Result<Option<ReadBack>, String> {
+        self.rects.clear();
+        let size = self.size;
+        let part = match (self.held, frame.widened.held) {
+            (Some(a), Some(b)) if painter.changed(a, b, &mut self.rects) => {
+                tidy(&mut self.rects, size, MOST_RECTS);
+                Some(
+                    self.rects
+                        .iter()
+                        .map(|r| r.map(|v| u32::try_from(v).unwrap_or(0)))
+                        .collect::<Vec<_>>(),
+                )
+            }
+            _ => None,
+        };
+        let pixels = part
+            .as_ref()
+            .map_or(u64::from(size[0]) * u64::from(size[1]), |rects| {
+                rects
+                    .iter()
+                    .map(|r| u64::from(r[2] - r[0]) * u64::from(r[3] - r[1]))
+                    .sum()
+            });
+        self.uploads[0] += 1;
+        self.uploads[1] += u64::from(part.is_none());
+        self.uploads[2] += pixels;
+        let xrgb = &frame.widened.xrgb;
+        let back = if read {
+            win.present_read_part(xrgb, part.as_deref()).map(Some)
+        } else {
+            win.present_part(xrgb, part.as_deref()).map(|()| None)
+        };
+        // A frame not shown leaves the texture unknown.
+        self.held = frame.widened.held.filter(|_| back.is_ok());
+        back
+    }
+
+    /// What was uploaded, for the report.
+    fn describe(&self) -> String {
+        let [frames, whole, pixels] = self.uploads;
+        let size = self.size;
+        let all = frames * u64::from(size[0]) * u64::from(size[1]);
+        let tenths = (pixels * 1000).checked_div(all).unwrap_or(0);
+        format!(
+            "uploaded: {frames} frames, {whole} whole; {}.{} % of their pixels",
+            tenths / 10,
+            tenths % 10
+        )
     }
 }
+
+/// Past this many rectangles a frame's upload is the smallest rectangle holding them.
+const MOST_RECTS: usize = 64;
 
 /// Compares what the window read back with `frame` (of `size`) at its scale, the black around it
 /// included.
@@ -870,7 +947,7 @@ fn compare(back: &ReadBack, frame: &Frame, size: [u32; 2], report: &mut Report) 
     for y in 0..back.height {
         for x in 0..back.width {
             let got = back.pixels[(y * back.width + x) as usize] & 0x00FF_FFFF;
-            let want = inside(x, y).map_or(0, |i| frame.xrgb[i]);
+            let want = inside(x, y).map_or(0, |i| frame.widened.xrgb[i]);
             if got != want {
                 report.difference.get_or_insert_with(|| {
                     format!(

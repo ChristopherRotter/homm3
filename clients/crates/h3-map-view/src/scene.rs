@@ -148,11 +148,27 @@ pub struct Cycle {
     pub steps: u32,
 }
 
+/// Where the view lies on the screen (E24 M3 T2b2, *provisional*; design §4.3): its clip, the
+/// place of the map's tile (0, 0) with the walk's offset, and a tile's side. A view moved by some
+/// pixels moves each of its pieces by as many (the lifted hero and the gems aside), so a frame
+/// keeps what stays ([`crate::compose::Composer`]).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ViewPlace {
+    /// The view's clip (left, top, right, bottom; the last two exclusive).
+    pub clip: [i32; 4],
+    /// The screen's point of the map's tile (0, 0)'s top-left corner.
+    pub origin: [i32; 2],
+    /// A tile's side.
+    pub tile: i32,
+}
+
 /// What the screen shows: the draw list in order, and the palette cycles its DEFs are drawn with.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Scene {
     /// The draws, in order.
     pub draws: Vec<Draw>,
+    /// Where the view's pieces lie (none for a scene without a view).
+    pub view: Option<ViewPlace>,
     /// Every cycling DEF of the tables, with the moment's steps.
     pub cycles: Vec<Cycle>,
     /// The palette the pieces' flag entries index (the tables' owners' palette, `game.pal`).
@@ -404,8 +420,17 @@ pub fn scene_in(
         steps,
     })
     .collect();
+    let [ox, oy] = live.walking.offset;
+    let [x, y] = layout
+        .view
+        .place(at.x.saturating_neg(), at.y.saturating_neg());
     Ok(Scene {
         draws,
+        view: Some(ViewPlace {
+            clip: layout.view.clip,
+            origin: [x.saturating_add(ox), y.saturating_add(oy)],
+            tile: layout.view.tile,
+        }),
         cycles,
         flags: tables.map.owners.palette.clone(),
         bugs,

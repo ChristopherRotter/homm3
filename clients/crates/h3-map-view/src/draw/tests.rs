@@ -60,7 +60,7 @@ fn raw_draws_literal_pixels_and_skips_runs() {
         y: 1,
         ..Place::default()
     };
-    raw(&mut s, &f, &palette(), at, ALL);
+    raw(&mut s, (&f, &Spans::of(&f)), &palette(), at, ALL);
     let w = 0xFFFF;
     assert_eq!(
         rows(&s),
@@ -84,7 +84,7 @@ fn raw_mirrors_both_ways_across_the_canvas() {
             mirror_x,
             mirror_y,
         };
-        raw(&mut s, &f, &palette(), at, ALL);
+        raw(&mut s, (&f, &Spans::of(&f)), &palette(), at, ALL);
         rows(&s)
     };
     assert_eq!(draw(false, false)[..2], [[1, 2, 3, 0, 0], [4, 5, 6, 0, 0]]);
@@ -100,7 +100,13 @@ fn raw_clips_to_the_rectangle_and_the_canvas() {
     f.left = 1;
     f.full_width = 3;
     let mut s = screen(0);
-    raw(&mut s, &f, &palette(), Place::default(), ALL);
+    raw(
+        &mut s,
+        (&f, &Spans::of(&f)),
+        &palette(),
+        Place::default(),
+        ALL,
+    );
     assert_eq!(rows(&s)[..2], [[0, 1, 2, 0, 0], [0, 4, 5, 0, 0]]);
     // The clip (1, 1)–(3, 2), the frame mirrored: its pixels at x 1, 2 of row 1 only.
     let f = frame([1, 2, 3, 4, 5, 6], [false; 6]);
@@ -111,7 +117,7 @@ fn raw_clips_to_the_rectangle_and_the_canvas() {
         mirror_x: true,
         mirror_y: false,
     };
-    raw(&mut s, &f, &palette(), at, [1, 1, 3, 2]);
+    raw(&mut s, (&f, &Spans::of(&f)), &palette(), at, [1, 1, 3, 2]);
     assert_eq!(rows(&s)[..2], [[0, 0, 0, 0, 0], [0, 5, 4, 0, 0]]);
     // Off the screen: nothing, and no panic.
     let mut s = screen(0);
@@ -120,7 +126,13 @@ fn raw_clips_to_the_rectangle_and_the_canvas() {
         y: 10,
         ..Place::default()
     };
-    raw(&mut s, &f, &palette(), at, [-20, -20, 20, 20]);
+    raw(
+        &mut s,
+        (&f, &Spans::of(&f)),
+        &palette(),
+        at,
+        [-20, -20, 20, 20],
+    );
     assert!(s.pixels().iter().all(|&p| p == 0));
 }
 
@@ -136,7 +148,7 @@ fn a_frame_across_the_screens_sides_keeps_what_lies_on_it() {
         y: -1,
         ..Place::default()
     };
-    raw(&mut s, &f, &palette(), at, wide);
+    raw(&mut s, (&f, &Spans::of(&f)), &palette(), at, wide);
     assert_eq!(rows(&s), [[0, 0, 0, 4, 5], [0; 5], [0; 5], [0; 5]]);
     // Mirrored at x −1: column 2 left of the screen; row 1 below it.
     let mut s = screen(0);
@@ -146,7 +158,7 @@ fn a_frame_across_the_screens_sides_keeps_what_lies_on_it() {
         mirror_x: true,
         mirror_y: false,
     };
-    raw(&mut s, &f, &palette(), at, wide);
+    raw(&mut s, (&f, &Spans::of(&f)), &palette(), at, wide);
     assert_eq!(rows(&s), [[0; 5], [0; 5], [0; 5], [2, 1, 0, 0, 0]]);
     // Its rows on the screen, its columns all past its right side: nothing.
     let mut s = screen(0);
@@ -154,7 +166,7 @@ fn a_frame_across_the_screens_sides_keeps_what_lies_on_it() {
         x: 5,
         ..Place::default()
     };
-    raw(&mut s, &f, &palette(), at, wide);
+    raw(&mut s, (&f, &Spans::of(&f)), &palette(), at, wide);
     assert!(s.pixels().iter().all(|&p| p == 0));
 }
 
@@ -170,7 +182,7 @@ fn pixels_past_the_frames_runs_are_literal() {
             mirror_x,
             ..Place::default()
         };
-        flagged(&mut s, f, &palette(), at, ALL, flag);
+        flagged(&mut s, (f, &Spans::of(f)), &palette(), at, ALL, flag);
         rows(&s)
     };
     assert_eq!(
@@ -196,7 +208,7 @@ fn shadows_darken_under_runs_of_one_to_four() {
     // Runs of 0 to 4 and a literal 1: borders under 1 and 2, bodies under 3 and 4.
     let f = frame([0, 1, 2, 3, 4, 1], [true, true, true, true, true, false]);
     let mut s = screen(white);
-    shadows(&mut s, &f, Place::default(), ALL);
+    shadows(&mut s, (&f, &Spans::of(&f)), Place::default(), ALL);
     let (border, body) = (FORMAT.shadow_border(white), FORMAT.shadow_body(white));
     assert_eq!(
         rows(&s)[..2],
@@ -211,7 +223,7 @@ fn shadows_darken_under_runs_of_one_to_four() {
         mirror_y: true,
         ..Place::default()
     };
-    shadows(&mut s, &f, at, [0, 0, 2, 1]);
+    shadows(&mut s, (&f, &Spans::of(&f)), at, [0, 0, 2, 1]);
     assert_eq!(rows(&s)[0], [body, body, white, white, white]);
     assert_eq!(rows(&s)[1], [white; 5]);
 }
@@ -222,11 +234,25 @@ fn flagged_draws_literal_pixels_and_flag_runs_in_the_colour() {
     let f = frame([7, 0, 1, 4, 5, 5], [false, true, true, true, true, false]);
     let w = 0xFFFF;
     let mut s = screen(w);
-    flagged(&mut s, &f, &palette(), Place::default(), ALL, Some(0xF800));
+    flagged(
+        &mut s,
+        (&f, &Spans::of(&f)),
+        &palette(),
+        Place::default(),
+        ALL,
+        Some(0xF800),
+    );
     assert_eq!(rows(&s)[..2], [[7, w, w, w, w], [w, 0xF800, 5, w, w]]);
     // Without a colour the flag's run is skipped too; clipped to the first column.
     let mut s = screen(w);
-    flagged(&mut s, &f, &palette(), Place::default(), [0, 0, 1, 4], None);
+    flagged(
+        &mut s,
+        (&f, &Spans::of(&f)),
+        &palette(),
+        Place::default(),
+        [0, 0, 1, 4],
+        None,
+    );
     assert_eq!(rows(&s)[..2], [[7, w, w, w, w], [w, w, w, w, w]]);
 }
 
@@ -240,7 +266,7 @@ fn the_shadow_pass_darkens_under_runs_of_one_and_four_only() {
     // Runs of 1, 2, 3, 4 and 5, and a literal 1.
     let f = frame([1, 2, 3, 4, 5, 1], [true, true, true, true, true, false]);
     let mut s = screen(white);
-    shadow_pass(&mut s, &f, Place::default(), ALL);
+    shadow_pass(&mut s, (&f, &Spans::of(&f)), Place::default(), ALL);
     let (border, body) = (FORMAT.shadow_border(white), FORMAT.shadow_body(white));
     assert_eq!(
         rows(&s)[..2],
@@ -260,7 +286,13 @@ fn blend_halves_literal_pixels_with_the_screen_and_skips_runs() {
         [false, true, false, false, false, false],
     );
     let mut s = screen(0xFFFF);
-    blend(&mut s, &f, &palette(), Place::default(), [0, 0, 3, 1]);
+    blend(
+        &mut s,
+        (&f, &Spans::of(&f)),
+        &palette(),
+        Place::default(),
+        [0, 0, 3, 1],
+    );
     let half = FORMAT.half_mask();
     let mixed = ((31 >> 1) & half) + ((0xFFFF >> 1) & half);
     let black = (0xFFFF >> 1) & half;
@@ -276,7 +308,49 @@ fn blend_halves_literal_pixels_with_the_screen_and_skips_runs() {
     );
     // Over the same picture drawn plain: each channel's lowest bit lost.
     let mut s = screen(0);
-    raw(&mut s, &f, &palette(), Place::default(), ALL);
-    blend(&mut s, &f, &palette(), Place::default(), ALL);
+    raw(
+        &mut s,
+        (&f, &Spans::of(&f)),
+        &palette(),
+        Place::default(),
+        ALL,
+    );
+    blend(
+        &mut s,
+        (&f, &Spans::of(&f)),
+        &palette(),
+        Place::default(),
+        ALL,
+    );
     assert_eq!(s.pixel(0, 1), Some(30));
+}
+
+#[test]
+fn a_frames_spans_are_its_rows_literal_pixels_and_runs_but_runs_of_zero() {
+    // E24 M3 T2b2. Row 0: literal 1, 2, then runs of 3 and 3 (one span); row 1: a run of 0 (left
+    // out), a run of 5, a literal 0.
+    let f = frame([1, 2, 3, 0, 5, 0], [false, false, true, true, true, false]);
+    let mut f2 = f.clone();
+    f2.pixels[3] = 3;
+    let spans = Spans::of(&f2);
+    let lit = |from, to| Span {
+        from,
+        to,
+        kind: Kind::Literal,
+    };
+    let run = |from, to, i| Span {
+        from,
+        to,
+        kind: Kind::Run(i),
+    };
+    assert_eq!(spans.row(0), [lit(0, 2), run(2, 3, 3)]);
+    assert_eq!(spans.row(1), [run(0, 1, 3), run(1, 2, 5), lit(2, 3)]);
+    let spans = Spans::of(&f);
+    assert_eq!(spans.row(1), [run(1, 2, 5), lit(2, 3)]);
+    // Past the last row: none; pixels past the frame's runs are literal.
+    assert!(spans.row(2).is_empty());
+    let mut short = f.clone();
+    short.runs.truncate(2);
+    assert_eq!(Spans::of(&short).row(1), [lit(0, 3)]);
+    assert_eq!(Spans::default().row(0), []);
 }

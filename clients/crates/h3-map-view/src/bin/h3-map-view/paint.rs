@@ -21,11 +21,12 @@ use h3_map::model::Pos;
 use h3_map::writer::ObjectTemplate;
 use h3_map_view::art::MapArt;
 use h3_map_view::batch::{self, Batch};
-use h3_map_view::compose::{Composer, FORMAT};
+use h3_map_view::compose::{self, ComposeError, Composer, FORMAT};
+use h3_map_view::damage::History;
 use h3_map_view::layout::{AdventureLayout, CursorArt};
 use h3_map_view::live::{Buttons, Facing, Lifted, Live, Moment, Walking};
 use h3_map_view::objects::{self, DrawLists, Shapes};
-use h3_map_view::scene::{self, TileIndex, ViewAt};
+use h3_map_view::scene::{self, Scene, TileIndex, ViewAt};
 use h3_map_view::sequence::{self, DEFAULT_HERO_SPEED, DEFAULT_SCROLL_SPEED, Sequence};
 use h3_map_view::situation::Situation;
 use h3_map_view::sound::{Sound, TileSounds};
@@ -40,6 +41,28 @@ use crate::{files, render, situation};
 /// Where the harness parks the pointer (`h3adv.py`'s `PARK`, over the right panel): a sequence's
 /// start, and a situation's in the window.
 pub const PARK: [i32; 2] = [700, 300];
+
+/// How many compositions the history keeps: a frame widened into a buffer older than that is
+/// widened whole (E24 M3 T2b2).
+const HISTORY: usize = 64;
+
+/// The most assets a view decodes as it is drawn (each one the scene drawn again).
+const MOST_DECODED: usize = 64;
+
+/// A frame widened for the window (E24 M3 T2b2, *provisional*): its pixels, and what they hold.
+#[derive(Debug, Default)]
+pub struct Widened {
+    pub xrgb: Vec<u32>,
+    pub held: Option<Held>,
+}
+
+/// What a frame widened holds: the composition it was widened from (its number in the
+/// painter's history) and the cursor's rectangle drawn over it, if any.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Held {
+    pub composed: u64,
+    pub cursor: Option<[i32; 4]>,
+}
 
 /// What every map drawn shares: the committed tables and layout, the installation copy's archives
 /// and the game's object templates, whether the original's drawing bugs are reproduced.
@@ -217,11 +240,12 @@ pub struct Painter<'a> {
     index: Vec<TileIndex>,
     batch: Batch,
     added: BTreeSet<String>,
-    /// The names decoded as the scenes spell them (E24 M3 T2b1).
-    spelled: BTreeSet<String>,
     /// The frame the last view was drawn into, and that view's draw and buttons.
     composer: Composer,
     shown: Option<(Draw, Buttons)>,
+    /// What each composition changed (E24 M3 T2b2), and a list of rectangles kept for its space.
+    history: History,
+    rects: Vec<[i32; 4]>,
     widening: Widening,
     cursors: BTreeMap<u32, Sprite>,
     /// A walk's hero (its index in the live part's heroes): each draw puts it where the draw has
@@ -286,9 +310,10 @@ impl<'a> Painter<'a> {
             index,
             batch: Batch::default(),
             added: BTreeSet::new(),
-            spelled: BTreeSet::new(),
             composer,
             shown: None,
+            history: History::new(HISTORY),
+            rects: Vec::new(),
             widening: Widening::new(FORMAT),
             cursors: BTreeMap::new(),
             selected: None,
@@ -373,13 +398,43 @@ impl<'a> Painter<'a> {
     }
 
     /// The view as a draw shows it, with the buttons a walk sets, drawn into the composer's
-    /// frame unless it holds that view already.
+    /// frame unless it holds that view already; what it changed recorded (E24 M3 T2b2).
     fn view(&mut self, draw: &Draw, buttons: Buttons) -> Result<&Screen, String> {
         let key = (draw.clone(), buttons);
         if self.shown.as_ref() == Some(&key) {
             return Ok(self.composer.screen());
         }
         self.shown = None;
+        let mut decoded = 0;
+        loop {
+            let scene = self.scene(draw, buttons)?;
+            let composed = self.composer.compose_owned(scene, &self.batch).map(|_| ());
+            self.history.push(self.composer.damage());
+            match composed {
+                Ok(()) => break,
+                // An asset the preload did not decode (a path's arrows shown later, an object's
+                // other picture): decoded now and the scene drawn again (E24 M3 T2b2: no scene's
+                // names looked for a frame).
+                Err(ComposeError::Missing(name))
+                    if decoded < MOST_DECODED && self.decodes(&name) =>
+                {
+                    decoded += 1;
+                }
+                Err(e) => return Err(e.to_string()),
+            }
+        }
+        self.shown = Some(key);
+        Ok(self.composer.screen())
+    }
+
+    /// Whether the asset `name` (as a scene spells it) was not decoded and now is.
+    fn decodes(&mut self, name: &str) -> bool {
+        let upper = name.to_ascii_uppercase();
+        !self.added.contains(&upper) && self.add([upper]).is_ok()
+    }
+
+    /// The scene a draw shows with the buttons a walk sets.
+    fn scene(&mut self, draw: &Draw, buttons: Buttons) -> Result<Scene, String> {
         let base = self.base;
         self.live.moment = Moment {
             cycles: base.cycles.wrapping_add(draw.cycles),
@@ -396,7 +451,7 @@ impl<'a> Painter<'a> {
             .index
             .get(usize::from(z))
             .ok_or(format!("level {z} is not on the map"))?;
-        let scene = scene::scene_in(
+        scene::scene_in(
             index,
             &self.art,
             &self.live,
@@ -406,21 +461,7 @@ impl<'a> Painter<'a> {
             draw.view,
             assets.bugs,
         )
-        .map_err(|e| e.to_string())?;
-        // Only names not seen as the scene spells them are upper-cased and looked for.
-        let new: Vec<&str> = batch::spelled(&scene)
-            .into_iter()
-            .filter(|n| !self.spelled.contains(*n))
-            .collect();
-        if !new.is_empty() {
-            self.add(new.iter().map(|n| n.to_ascii_uppercase()))?;
-            self.spelled.extend(new.into_iter().map(String::from));
-        }
-        self.composer
-            .compose(&scene, &self.batch)
-            .map_err(|e| e.to_string())?;
-        self.shown = Some(key);
-        Ok(self.composer.screen())
+        .map_err(|e| e.to_string())
     }
 
     /// A walk's part of a draw in the live part: the selected hero's tile and facing, lifted at
@@ -465,19 +506,63 @@ impl<'a> Painter<'a> {
         Ok(screen)
     }
 
-    /// [`Painter::screen`] widened into `out` (E24 M3 T2b1, *provisional*): the view's frame
-    /// widened by the table, then only what lies under the cursor cut out, drawn on and widened
-    /// over it; no copy of the frame.
+    /// [`Painter::screen`] composed afresh, with no frame kept (E24 M3 T2b2: the window's check
+    /// of the frames it made).
+    pub fn fresh(
+        &mut self,
+        drawn: &Draw,
+        buttons: Buttons,
+        cursor: Cursor,
+    ) -> Result<Screen, String> {
+        let scene = self.scene(drawn, buttons)?;
+        let mut screen = compose::compose(&scene, &self.batch, self.assets.layout.frame)
+            .map_err(|e| e.to_string())?;
+        if cursor.shown {
+            let assets = self.assets;
+            let sprite = cursor_in(
+                &mut self.cursors,
+                &self.batch,
+                &assets.layout.cursor,
+                cursor.frame,
+            )?;
+            sprite.draw(&mut screen, cursor.at[0], cursor.at[1]);
+        }
+        Ok(screen)
+    }
+
+    /// [`Painter::screen`] widened into `out` (E24 M3 T2b1, T2b2, *provisional*): the view's
+    /// frame widened by the table, only what changed since the frame `out` holds when the
+    /// history still has it (the rectangles composed since, and its cursor's); then only what
+    /// lies under the cursor cut out, drawn on and widened over it; no copy of the frame.
     pub fn frame_into(
         &mut self,
         drawn: &Draw,
         buttons: Buttons,
         cursor: Cursor,
-        out: &mut Vec<u32>,
+        out: &mut Widened,
     ) -> Result<(), String> {
         self.view(drawn, buttons)?;
         let screen = self.composer.screen();
-        self.widening.widen(screen, out);
+        let now = self.history.now();
+        self.rects.clear();
+        let since = out.held.filter(|held| {
+            out.xrgb.len() == screen.pixels().len()
+                && self.history.between(held.composed, now, &mut self.rects)
+        });
+        match since {
+            Some(held) => {
+                self.rects.extend(held.cursor);
+                for rect in &self.rects {
+                    self.widening
+                        .widen_rect(screen, rect.map(i64::from), &mut out.xrgb);
+                }
+            }
+            None => self.widening.widen(screen, &mut out.xrgb),
+        }
+        out.held = Some(Held {
+            composed: now,
+            cursor: None,
+        });
         let Cursor {
             frame,
             at: [x, y],
@@ -494,9 +579,26 @@ impl<'a> Painter<'a> {
             let at = |v: i32, from: i64| i32::try_from(i64::from(v) - from).unwrap_or(i32::MIN);
             sprite.draw(&mut under, at(x, left), at(y, top));
             self.widening
-                .widen_onto(&under, [left, top], out, screen.width());
+                .widen_onto(&under, [left, top], &mut out.xrgb, screen.width());
+            let side = |v: i64| i32::try_from(v).unwrap_or(i32::MAX);
+            let (w, h) = (i64::from(under.width()), i64::from(under.height()));
+            out.held = Some(Held {
+                composed: now,
+                cursor: Some([side(left), side(top), side(left + w), side(top + h)]),
+            });
         }
         Ok(())
+    }
+
+    /// Pushes to `out` what differs between two frames widened (E24 M3 T2b2): the rectangles
+    /// composed between theirs and both cursors'; `false` when the history no longer has them.
+    pub fn changed(&self, a: Held, b: Held, out: &mut Vec<[i32; 4]>) -> bool {
+        let known = self.history.between(a.composed, b.composed, out);
+        if known {
+            out.extend(a.cursor);
+            out.extend(b.cursor);
+        }
+        known
     }
 
     /// The cursor's frame as an image (the hardware cursor's, E24 M2 T4b).
