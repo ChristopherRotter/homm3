@@ -218,10 +218,14 @@ the stacks created mid-battle.
     place and slide, Teleport's), built (`Screen::dissolve_rect`, `anim::created`, the window's
     notices, the engine's `NotCreated`, `cross-lane`); `teleport`, `clone`, `summon`, `demons`
     recorded, `sacrifice` exact; the Demons' back buffer a slip not copied; CLT-Q33.
-  - **T5b, the panel by the turn's controller, the sounds' waits, the palette effects:** the
-    panel's side by each turn's controller (R3-1: Hypnotize, a created stack); the battle waiting
-    for the heal's sound and the other effects'; a clone's colours and the glows
-    (`draw_battle_stack`'s palette effects, the user's 2026-10-29); recorded.
+  - **T5b, the palette effects, the panel by the turn's controller, the sounds' waits** (cut in
+    two by the user, 2026-10-29):
+    - **T5b1, the palette effects:** a clone's colours and the glows (`draw_battle_stack`'s
+      palette effects, the user's 2026-10-29: Clone, Bloodlust, Stone Gaze's glow and petrified
+      look); recorded.
+    - **T5b2, the panel and the sounds' waits:** the panel's side by each turn's controller
+      (R3-1: Hypnotize, a created stack); the battle waiting for the heal's sound and the other
+      effects'; recorded.
 - **T6, a game on a server:** joined over the server's WebSocket by a seat token: the hello and
   the welcome's checks, the key pinned per address, the content check (`docs/lanes/client/NOTES.md`,
   "The live client"); a record that opens mid-battle (R2-8, with M4 T3a's R1-3) for a join and

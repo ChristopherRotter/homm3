@@ -23,13 +23,13 @@ check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gat
 
 Cut in two by the user (2026-10-29): T5a the dissolves and the created stacks (with the engine's
 event for a stack without a place, `cross-lane`; done 2026-10-29), T5b the panel by each turn's
-controller and the sounds' waits. The detail: `QUEUE-ARCHIVE.md`, 2026-10-22 (T7c-3).
+controller, the sounds' waits and the palette effects, cut in two again by the user (2026-10-29,
+at its start): T5b1 the palette effects, T5b2 the panel and the sounds' waits. The detail:
+`QUEUE-ARCHIVE.md`, 2026-10-22 (T7c-3).
 
-#### E17 M5 T5b — the panel by the turn's controller, the sounds' waits
+#### E17 M5 T5b1 — the palette effects `in progress`
 
-- **Scope:** the panel's side by each turn's controller (R3-1: Hypnotize, a created stack); the
-  battle waiting for the heal's sound and the other effects' (the Pit Lord's `Resurect.wav`,
-  0x5A754E, among them); `draw_battle_stack`'s palette effects (0x43E280 to 0x43E4C7; the user,
+- **Scope:** `draw_battle_stack`'s palette effects (0x43E280 to 0x43E4C7; the user,
   2026-10-29): a clone recoloured (0x522B50 with 0.67, 1, 2, 2 on palette entries 10 to 255: RGB
   to HSV in single precision, the hue set, saturation and brightness moved toward 1, back to
   RGB; `clone`'s frames differ by it alone, design §7.25), Bloodlust's glow (the same routine)
@@ -37,6 +37,15 @@ controller and the sounds' waits. The detail: `QUEUE-ARCHIVE.md`, 2026-10-22 (T7
   original.
 - **Acceptance:** the new sequences as recorded, or each difference listed; `clone`'s colours
   exact; the Definition of Done.
+- **Depends on:** T5a (done). **Status:** in progress (`client/e17-m5-t5b1`).
+
+#### E17 M5 T5b2 — the panel by the turn's controller, the sounds' waits
+
+- **Scope:** the panel's side by each turn's controller (R3-1: Hypnotize, a created stack); the
+  battle waiting for the heal's sound and the other effects' (the Pit Lord's `Resurect.wav`,
+  0x5A754E, among them). Recorded against the original.
+- **Acceptance:** the new sequences as recorded, or each difference listed; the Definition of
+  Done.
 - **Depends on:** T5a (done). **Status:** ready.
 
 ### E17 M5 T6 — a game on a server
@@ -83,6 +92,12 @@ controller and the sounds' waits. The detail: `QUEUE-ARCHIVE.md`, 2026-10-22 (T7
 
 Other lanes add entries here. The client lane turns each into a task, or moves its detail into
 [`NOTES.md`](NOTES.md) and keeps one line here while the work waits.
+
+- 2026-10-29 (the user, at E17 M5 T5b1's start; for a free slot or M5's closure): **the
+  Demons' dissolve, re-investigated.** The slip of T5a (the saved picture is the back buffer)
+  is the rock clipped out; the Imps' corpse gone before the fade-out's end is not part of it in
+  the user's view. Find where the corpse leaves the original's picture and model it if it is not
+  the slip (design §7.25, "To re-investigate"; `seq-demons.toml`'s 8 dissolve frames).
 
 - 2026-10-29 (the adventure lane, E08 T68b; for information, nothing to do): the harness's
   reads and steps for batch E8b (`clients/capture/README.md`, "Boats and the sea", since T68b).

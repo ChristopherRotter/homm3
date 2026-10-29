@@ -2884,6 +2884,12 @@ BAT-MAG-052, `installation.md` §7.19).
   rectangle pop away at its first step. The viewer blends from the picture shown, the corpse
   going with the new picture in the pose it lay in (`Player::lying`: memory keeps the pose).
   The other recorded dissolves start from a full redraw or a rectangle the clip held whole.
+  **To re-investigate** (the user, 2026-10-29, at T5b1's start): the slip is the rock clipped
+  out (the obstacles in the rectangle); the corpse gone before the fade-out's end is *not* part
+  of it in the user's view. Open: where the Imps' corpse leaves the original's picture (before
+  the save, by the raise itself, or by the clip as read above), and, if not by the slip, the
+  viewer to model it. Until then the viewer fades the corpse out with the blend, and `demons`'
+  8 differing frames hold both the rock and the corpse.
 - **Recorded** (`seq-teleport.toml`, `seq-clone.toml`, `seq-summon.toml`, `seq-demons.toml`, all
   on `sacrifice`'s grass and obstacles): `sacrifice`'s victim's dissolve now exact (its frames'
   counts re-recorded). `teleport`: the timeline as recorded, its frames exact but the aim's
