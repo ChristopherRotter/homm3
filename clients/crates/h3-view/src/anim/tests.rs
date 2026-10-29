@@ -5476,4 +5476,5 @@ pub(crate) mod playhead;
 mod raised;
 mod reviewed;
 mod siege;
+mod waits;
 mod walk;

@@ -70,7 +70,7 @@ pub fn length_ms(frames: u64, rate: u32) -> u32 {
     if rate == 0 {
         return 0;
     }
-    let ms = (frames * 1000).div_ceil(u64::from(rate));
+    let ms = frames.saturating_mul(1000).div_ceil(u64::from(rate));
     u32::try_from(ms).unwrap_or(u32::MAX)
 }
 /// The music's volume.

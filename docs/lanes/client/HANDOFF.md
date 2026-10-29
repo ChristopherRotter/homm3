@@ -46,6 +46,12 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
 
 ## Recent sessions
 
+- **2026-10-29, E17 M5 T5b2 (in progress; branch `client/e17-m5-t5b2`, kept whole by the user).**
+  Built: the panel and the screen by each turn's controller (`Timeline::controllers`,
+  `Panels::with_controllers`); the timeline's waits for samples (`sound::Lengths`,
+  `Player::wait_for`, the sites); the harness's `sound` runs (xdd.dll 6., `h3drive.py`). Next:
+  record `hypnotize`, `summon-turn` and the six `*-sound` sequences, their frames, the docs.
+
 - **2026-10-29, E17 M5 T5b1 (done; #583 open: check it first).** T5b cut in two with the
   user (T5b1 the palette effects); the user's Demons note recorded (design §7.25, QUEUE inbox).
   Read `draw_battle_stack`'s palette effects, the HSV round trip, the glows' redraws, Stone
