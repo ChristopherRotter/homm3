@@ -218,9 +218,10 @@ the stacks created mid-battle.
     (`screen_dissolve` 0x602DC0's blend, Sacrifice's victim's too), Clone's slide, a clone's
     `Vanished`, Teleport's dissolve, the message when no hex is free (the engine's
     `NotCreated`, `cross-lane`); recorded.
-  - **T5b, the panel by the turn's controller and the sounds' waits:** the panel's side by each
-    turn's controller (R3-1: Hypnotize, a created stack); the battle waiting for the heal's sound
-    and the other effects'; recorded.
+  - **T5b, the panel by the turn's controller, the sounds' waits, the palette effects:** the
+    panel's side by each turn's controller (R3-1: Hypnotize, a created stack); the battle waiting
+    for the heal's sound and the other effects'; a clone's colours and the glows
+    (`draw_battle_stack`'s palette effects, the user's 2026-10-29); recorded.
 - **T6, a game on a server:** joined over the server's WebSocket by a seat token: the hello and
   the welcome's checks, the key pinned per address, the content check (`docs/lanes/client/NOTES.md`,
   "The live client"); a record that opens mid-battle (R2-8, with M4 T3a's R1-3) for a join and
@@ -434,3 +435,19 @@ M3 at its review, T9b, M4 at its review, T3c). The next milestone's list starts 
 35. `EndTactics` in the viewer's timeline (T4c2b): a command without frames, its action's start
     (the pointer, the log settled) where the original's Start Combat runs no action; round 1's
     first turn starts in the same millisecond and does the same, so nothing shows it.
+36. A created stack's numbers (T5a; design §7.25): a record holds the first snapshot only, so
+    `created_stack` takes the creature, count and hex from the event, the body from the ruleset
+    (`Casts::bodies`; a clone its original's) and leaves the rest at 0 (attack, defense, damage,
+    speed: no drawing reads them; the mouse's status line over one in a record's playback names
+    nothing).
+37. A dissolve's moments (T5a): its changes drawn at its start and shown 1 ms later
+    (`DissolveKey`), the moment at the start the saved picture; the battlefield objects with more
+    than one frame left out of the rectangle (the original's `battle_refresh_creatures` widens it
+    by them: no recorded dissolve has one).
+38. The formats (T5a): `Timeline::dissolves`, `created`, `notices`, `Moment::created` and
+    `dissolve`, `Draw::Dissolve` (its `measured` items), `Logged::Created` and `Summoned`,
+    `Name::Creature`, `Casts::bodies`, the keys `battle.log.summoned` and
+    `battle.clone.no-place`; `h3_render::Screen::dissolve_rect` in the foundation.
+39. The clone's message in the window (T5a): a notice opens its box at its time and holds the
+    window's clock there until it closes (the original's modal box inside the cast); not recorded
+    (a Clone without a place needs every ring around a crowded original blocked).

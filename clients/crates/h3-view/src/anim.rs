@@ -1562,23 +1562,20 @@ impl Timeline {
             }
             // The stacks living at the start, then the records the battle set up by then (E17 M5
             // T5a: the harness lists a record from its set-up; a reused id keeps its record).
-            let mut set_up: Vec<&Member> = Vec::new();
+            let mut set_up: Vec<&Member> = self.members.iter().collect();
             for m in self
                 .created
                 .iter()
                 .filter(|k| k.drawn <= t)
                 .map(|k| &k.member)
             {
-                if self
-                    .members
-                    .iter()
-                    .chain(set_up.iter().copied())
-                    .all(|n| n.stack != m.stack)
-                {
+                if set_up.iter().all(|n| n.stack != m.stack) {
                     set_up.push(m);
                 }
             }
-            for m in self.members.iter().chain(set_up) {
+            // By side and record, as the harness reads the records.
+            set_up.sort_by_key(|m| (m.side == Side::Defender, m.record));
+            for m in set_up {
                 let p = now.get(&m.stack).copied().unwrap_or(m.start);
                 let seen = (p.group, p.frame, p.hex);
                 if printed.insert(m.stack, seen) != Some(seen) {

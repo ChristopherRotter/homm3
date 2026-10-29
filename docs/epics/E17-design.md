@@ -2869,7 +2869,7 @@ BAT-MAG-052, `installation.md` §7.19).
   dissolve with 33 ms steps whatever the speed (0x5A1BEA). No line.
 - **The viewer's timeline** (`anim::created`): a dissolve's changes are drawn at its start and
   shown from 1 ms later (`DissolveKey`: the moment at its start is the saved picture), its steps
-  blend from then to its end ([`DissolveKey::step_at`]), the new picture whole at its end; the
+  blend from then to its end (`DissolveKey::step_at`), the new picture whole at its end; the
   record a created stack takes is the engine's id's (a killed created stack's, as 0x47A12B) or the
   side's next; its numbers come from the event and the ruleset (`Casts::bodies`), the rest left at
   0 (*provisional*). The log names a created stack from its `Created` entry on (a reused id its

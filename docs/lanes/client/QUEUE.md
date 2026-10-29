@@ -40,7 +40,12 @@ sounds' waits. The detail: `QUEUE-ARCHIVE.md`, 2026-10-22 (T7c-3).
 
 - **Scope:** the panel's side by each turn's controller (R3-1: Hypnotize, a created stack); the
   battle waiting for the heal's sound and the other effects' (the Pit Lord's `Resurect.wav`,
-  0x5A754E, among them). Recorded against the original.
+  0x5A754E, among them); `draw_battle_stack`'s palette effects (0x43E280 to 0x43E4C7; the user,
+  2026-10-29): a clone recoloured (0x522B50 with 0.67, 1, 2, 2 on palette entries 10 to 255: RGB
+  to HSV in single precision, the hue set, saturation and brightness moved toward 1, back to
+  RGB; `clone`'s frames differ by it alone, design §7.25), Bloodlust's glow (the same routine)
+  and Stone Gaze's (0x522A10), Stone Gaze's petrified look (0x522D50). Recorded against the
+  original.
 - **Acceptance:** as T5a's.
 - **Depends on:** T5a. **Status:** ready after T5a.
 
