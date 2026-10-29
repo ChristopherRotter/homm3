@@ -328,6 +328,18 @@ fn errors_display() {
         ),
         (E::PastVisit { step: 2 }, "step 2 follows a visit"),
         (
+            E::Boat { step: 1 },
+            "step 1 goes onto an empty boat from water",
+        ),
+        (
+            E::Landing { step: 2 },
+            "step 2 goes ashore where no boat may land",
+        ),
+        (
+            E::Coast { step: 0 },
+            "step 0 sails diagonally past the coast",
+        ),
+        (
             E::NoStop { step: 1 },
             "step 1 lands where the hero may not stop",
         ),

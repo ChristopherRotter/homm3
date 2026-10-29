@@ -409,3 +409,42 @@ fn no_player_sees_an_event_in_its_views_its_paths_or_its_reach() {
         AdventureCommandError::Unexplored { .. } | AdventureCommandError::TooFewPoints { .. }
     ));
 }
+
+// covers: ADV-OBJ-007, ADV-MOV-011, ADV-SEA-005
+#[test]
+fn an_event_on_water_fires_for_a_boat_s_step_and_ends_the_move_there() {
+    // Batch E8's E8-14: a boat's path over an event on water stops on its tile, the event fired
+    // (E08 T73); the rest of the path is dropped.
+    let rules = rules(true);
+    let mut setup = world(
+        &["gggggggggggggggg", "gb~~~~~~~~~~~~~~"],
+        1,
+        vec![
+            hero_at(1, 0, Pos::new(0, 1, 0), &[PEASANT]),
+            hero_at(2, 1, Pos::new(14, 0, 0), &[PEASANT]),
+        ],
+    );
+    setup
+        .map
+        .objects
+        .push(event(&rules, 4, RED_ONLY, false, true));
+    setup.seats[0] = Seat {
+        colour: 0,
+        human: true,
+    };
+    let mut state = started(&rules, &setup).unwrap();
+    state.put_aboard(HERO, 0);
+    state.heroes[0].movement = 1500;
+    let (outcome, events) = walk(&rules, &mut state, &store(hero()), &row(2..=5));
+    let tile = Pos::new(4, 1, 0);
+    assert_eq!(state.hero(HERO).unwrap().pos, tile);
+    assert_eq!(state.hero(HERO).unwrap().movement, 1200);
+    assert_eq!(outcome.dropped, 1);
+    assert_eq!(
+        fired(&events),
+        [(
+            AdventureEventKind::EventFired { hero: HERO, tile },
+            Viewers::NONE.with(RED)
+        )]
+    );
+}

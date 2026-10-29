@@ -8176,3 +8176,77 @@ archives, `maps.tar`, `extracted.tar`).
   `observe/tests.rs` (the boats a player sees); `h3-pack-adventure`'s pack tests; `h3-game`'s
   ruleset check; `h3-map`'s `tests/import.rs` (the classes, the pictures, a boat's tile and type, a
   hero on water, the errors), `tests/sea.rs` (the sea map imports).
+
+### Increment 8, round 6: T73a, moving at sea (2026-10-29, `adventure/e08-t73a`)
+
+**The cut** (decision 184): T73 in two, T73a the boat's moves, prices, conversion, events and
+visits in `MoveHero`, T73b the reachable tiles. **Baseline:** `master` 1462fd8 (#573 merged, CI
+green on its merge); the sandbox's light gates passed on its code (CI's fingerprint). No original
+data staged (none needed: no import, harness or pack change).
+
+- **The modes and the passage** (design §7; `state/passage.rs`): `Mode::Sail(boat)` for a hero in
+  a boat, before flying and water walking (`Mode::of` takes the hero's boat); `Meets::{Board(u32),
+  Land(u32)}`, both entered, both ending the move. The water rows of a flight and a water walk: a
+  hero in a boat visited from a stop node (a flight passes it); an empty boat boarded from a stop
+  node (a flight passes it, a water walk from water gets `Boat`); a water tile an object is visited
+  from closed to both (D-46: `Blocked`); plain water and an object's blocked cell as before. A
+  walker (`check_step`): an empty boat's tile on water boarded (`Meets::Board`), else the terrain's
+  refusal; a hero in a boat visited from the shore as any hero. A hero in a boat
+  (`AdventureState::sail_entry`): land only as a landing onto a free coastal tile
+  (`AdventureState::free_coast`: the coast flag, no object blocking or visited from it as it
+  stands now, no event still on the map, no hole, no hero; else `Landing`), a diagonal landing
+  without a side test; water to water a diagonal only between two water side tiles (`Coast`),
+  another hero met or attacked from the boat's tile, never an empty boat (`Boat`) nor a blocked
+  tile, an object visited from the boat's tile or entered, a key holder's gate crossed, a visit not
+  built refused; every entry a stop.
+- **Prices, the drop and the conversion** (design §8; `movement.rs`): `Pricing::sail` (water's
+  table price from the source tile, the part's `sea_ground` share on Favorable Winds, truncated; the
+  diagonal ⌊× √2⌋ unless the points lie in water's price to ⌊× √2⌋ of it: D-43, in both
+  profiles), `step_by` (a boat's or the mode's), `left_by` (a step at sea or a boarding drops below
+  a boat's cheapest step from the new tile, 100 or 66; a landing as a walker without levels;
+  anything else `left_after`), `sail_left_after`; `converted_points` (⌊points × new ÷ old⌋ in 64
+  bits with free boarding, an old maximum of 0 giving 0, else 0).
+- **Boarding and landing** (`state/boats.rs`): `AdventureState::board` (the sea's maximum, the
+  conversion, the boat taken: off the grid, captain, owner, aboard, its tile kept; `Boarded { hero,
+  boat, at }` to the viewers of the boat's tile) and `land` (the land's maximum, the conversion, the
+  boat left empty on the water tile facing the step's direction, the original's order being
+  `DIRECTIONS`' own; `Landed { hero, boat, at, facing }` to the viewers of the water tile);
+  `change_surface` sets the maximum with or without the Hat (`ADV-QUIRK-31`, A-28 not reproduced);
+  `Boats::{take, leave}`; `empty_boat` (the record neither aboard nor gone on the tile).
+- **`MoveHero`** (`state.rs`): the boat's steps priced and dropped by `step_by` and `left_by`; no
+  guard test at a boarding; each step at sea tested for a guard (a water monster at once) and an
+  event on water (fired as a walker's, the move ending there); a landing's guards at once after the
+  landing in the move's outcome. The new errors `Boat`, `Landing`, `Coast` (their texts).
+- **`Reach`** (`reach.rs`; ADV-STUB-11): a hero in a boat reaches its own tile only; the layered
+  search's boarding (a flyer's, a water walker's) keeps the boat's drop and the conversion
+  (`Search::boarding`: the day's maximum, the sea's and free boarding, computed only for a flying or
+  water-walking hero), its pass over the boat the flight's own drop; a walker reaches no boat (both
+  T73b's).
+- **Events:** `AdventureEventKind::{Boarded, Landed}` (passed through `project`); `h3-map`'s view
+  property follows them without boats (its plans place none; T75's).
+- **Rules:** ADV-SEA-002 to -005 new, `verified` (E8-1, E8-2, E8-3, E8-4, E8-13 to E8-16, E8-17d,
+  E8-17e); ADV-MOV-006, -007, -009 (D-46), -010, -011 and ADV-OBJ-007 amended; `ADV-QUIRK-31`
+  recorded (no flag); ADV-STUB-11 (the reach, T73b) and ADV-STUB-12 (class 85's water tile, closed
+  to a flight until creature banks type it). No version moves: the state's fields and the hash are
+  T72's; no replay changes.
+- *Agent's calls (change freely):* `Landed` carries the water tile only (`at`), not the design's
+  `from`/`to`: its viewers are those of the water tile, and the landing tile reaches those who see
+  it by the step's `HeroStepped`, so no viewer learns a tile it does not see (design §12 amended);
+  a landing's guards visit at once in the move's outcome rather than by `guard_after` (no decision
+  can come between; design §7 amended); the water price is the terrain's table price (the part's
+  `step_cost`, 100 at every Pathfinding level, the original's `step_cost` for a boat), not
+  `Passage::Water` read apart (the same value); class 85's water tile is closed to a flight with
+  every other object's, the engine not knowing the class (ADV-STUB-12; the alternative, untyped
+  water entrances open, would let a flight over Whirlpools, Buoys, Mermaids, Sirens and Derelict
+  Ships, which the original closes); a flyer's boarding in `Reach` now, not with T73b, so its points
+  agree with the move's (the reach property compares them).
+- **Tests:** `state/tests/sea.rs` (13: a walker's boarding with the conversion and E8-1's drop; no
+  guard at the boat, a water monster at once; a flyer's and a water walker's boarding from land, the
+  flight over a boat, the water walk's `Boat`; a hero in a boat visited from the shore, flown over,
+  met; D-46 for a blocker's, a pile's and an obstacle's water tile, the move and the reach; the
+  sea's prices, the side test, rock, a blocked tile, an empty boat, a flyer in a boat; Favorable
+  Winds and E8-4's exception; visits from a boat; the landing, its facing, the view, the
+  conversion and E8-2; the refused landings; a guarded landing; a boat attacking a boat past a key
+  holder's gate; the interim reach and a flyer's converted boarding), `state/tests/events.rs` (an
+  event on water), `movement/tests.rs` (`converted_points`), `command/tests.rs` (the errors'
+  texts).
