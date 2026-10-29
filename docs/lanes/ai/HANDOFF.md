@@ -22,11 +22,12 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   bound costs nothing, the loop gone; **`e25-bound-1` the current best**, the user). **Done
   2026-10-29:** T5 (`e25-scale-1`, three rounds, stopped by the user at 41.3 M of 60 M: best #3
   at 30 M at `e25-bound-1`'s level, 0.418 against the system actor; scale gains nothing).
-  T6 in progress: **`e25-scale-1` #3 the current best** (the user). **Next:** AI-Q11, increment
-  3's network (hex convolutions, a wider or deeper MLP, the entity network; the agent: a
-  distillation bench, then A/Bs), then its refinement.
+  T6 (**`e25-scale-1` #3 the current best**; increment 2 in `E25-archive.md`; AI-Q11: increment
+  3 is the network's architecture, refined: a distillation bench over a deeper and a wider MLP,
+  a hex convolution network, a hex transformer and the entity network, then A/Bs). **Next:**
+  T7a, the network kinds (the queue's scope).
 - **Open pull requests:** the T5 branch `claude/nice-lamport-fdh8gx` (its pull request once
-  ready, after AI-Q11). `master`'s CI was red after #577 (the adventure lane's bench-check
+  ready). `master`'s CI was red after #577 (the adventure lane's bench-check
   `random-play-duel-36` +2.01 %); #580 re-baselined it (merged). Merged: #534, #539, #555, #558,
   #576.
 - **Versions:** battle action encoding v13, observation encoding v22, replay format v31
@@ -47,8 +48,8 @@ Moved to `TRAPS.md`, in three groups: **Ownership** (cross-lane encodings and re
   record, metrics and `best.pt`: the record committed and read (`E25-log.md` T5), the run had no
   final ladder, so its best #3 replayed on the sandbox's CPU over the full report and neutral
   sets (`battles.py`, `inspect`). The head-to-heads against `e25-bound-1` and `t7-1` need their
-  `best.pt`s (the user's machine): skipped (the user). T6: `e25-scale-1` #3 the current best;
-  increment 3 open as AI-Q11. The sandbox setup's full verify stopped (CI's record).
+  `best.pt`s (the user's machine): skipped (the user). T6 closed increment 2 (AI-Q11, the
+  user): increment 3 refined (T7a to T8). The sandbox setup's full verify stopped (CI's record).
 
 ### 2026-10-29 — E25 T4b
 

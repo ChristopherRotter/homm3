@@ -363,14 +363,23 @@ an entry only where a task builds on it.
   and samples add nothing more: the limit is the agent (its network or what it reads), not the
   training's length.
 
-## T6 — Increment 2's checkpoint (2026-10-29, in progress)
+## T6 — Increment 2's checkpoint (2026-10-29)
 
 - **The user's choices:** `e25-scale-1` #3 (30 M, three tactics rounds) is **the lineage's
   current best**, the network the exit criteria are judged on (at or above `e25-bound-1` on every
   point estimate; later runs use three rounds). The head-to-heads against `e25-bound-1` and
   `t7-1` are skipped (the engine seats compare them on the same battles).
-- **Increment 3, open (AI-Q11):** asked to choose among the candidates (the agent recommended
-  the entity network revived), the user asked which network architectures are possible: one
-  that correlates hexes properly and efficiently, a larger or deeper network (never tried: every
-  run since E05 is the 2 × 512 MLP), else the entity network, scrutinised. The options, their
-  costs and the recommendation: AI-Q11 (`docs/OPEN-QUESTIONS.md`).
+- **Increment 3, the network's architecture (AI-Q11):** asked to choose among the candidates
+  (the agent recommended the entity network revived), the user asked which architectures are
+  possible: one that correlates hexes properly and efficiently, a larger or deeper network
+  (never tried: every run since E05 is the 2 × 512 MLP), else the entity network, scrutinised.
+  The agent's options and the user's answer: AI-Q11 (`lanes/ai/QUESTIONS-ANSWERED.md`). **The
+  user:** a distillation bench over a hex convolution network, a hex transformer, a deeper and a
+  wider MLP; the agent adds the current MLP (the baseline) and E06's entity network as it is.
+- **Why the entity network underperformed** (E06 T5b, T5d; what the bench can tell): its move
+  logits read a hex's own 16 features and the context, not where the stacks stand, so "toward
+  that stack" was hard (T5b's diagnosis of its stalling); with the truncation penalty it stayed
+  behind per sample (`t5-2` 0.770 against `t5-3`'s 0.832 at 20 M) at 3.4 times the cost, its
+  entropy barely falling (3.44 to 3.11; the MLP 2.74 to 1.89), its optimiser the MLP's. The
+  bench separates the two causes: a network that cannot fit the teacher's move head lacks the
+  representation; one that fits it but learns slowly in RL points at the optimisation.

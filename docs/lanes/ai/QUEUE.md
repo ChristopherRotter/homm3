@@ -7,17 +7,63 @@ Pre-refined tasks of the AI lane, in order, then the inbox of discovered work. T
 **E05** (`docs/epics/E05-battle-env.md`) closed 2026-10-20 (record: `E05-log.md`; the environment as built: `docs/07-simulation-and-ai.md` §1.1). **E06** (`docs/epics/E06-battle-ai.md`, AI-Q8) closed 2026-10-27 (T1 to T9 in 8 increments; record `E06-log.md`, the design note kept there; the training pipeline as built: `docs/07-simulation-and-ai.md` §1.2): the battle AI v1 is `t7-1`, on the closing engine 0.830, 0.550, 0.530 against Random, Aggressor, Greedy at +0.273, +0.029, +0.010 and the neutral set's value +0.244 (decision 7's targets as revised, met), the system actor 0.628 against it (E25's target). The tasks' history is in `QUEUE-ARCHIVE.md`.
 
 **E25** (`docs/epics/E25-battle-ai-v2.md`, AI-Q10; record `E25-log.md`), refined
-2026-10-27; increment 1 closed 2026-10-28 (`E25-archive.md`; T3: the user chose increment 2).
-**`e25-scale-1` #3 is the lineage's current best** (the user at T6, 2026-10-29). **Increment 2,
-shaping, bounded, then scale:** the faithful system actor still trains no agent and no neutral
-battles train (decision 2, the user at T2a); each run's length is agreed with the user (decision
-5).
+2026-10-27; increments 1 and 2 closed 2026-10-28 and 29 (`E25-archive.md`).
+**`e25-scale-1` #3 is the lineage's current best** (the user at T6, 2026-10-29). **Increment 3, the network's architecture** (AI-Q11, the user):
+a distillation bench ranks a deeper and a wider MLP, a hex convolution network, a hex
+transformer and E06's entity network against the current MLP, then the best go to RL. The
+faithful system actor still trains no agent and no neutral battles train (decision 2); each
+run's length is agreed with the user (decision 5). All on observation v22 and action v13: no
+encoding or ABI change.
 
-- **T6 Increment 2's checkpoint.** *Scope:* T4b's and T5's reads put to the user (T5:
-  `e25-scale-1`, stopped at 41.3 M, its best #3 at `e25-bound-1`'s level, scale gains nothing;
-  `E25-log.md` T5); increment 3 chosen. The current best is `e25-scale-1` #3 and the
-  head-to-heads are skipped (the user, 2026-10-29; `E25-log.md` T6). *Depends on:* T5 (done
-  2026-10-29). *Status:* in progress: AI-Q11 (the network's architecture) waits for the user.
+- **T7a The network kinds.** *Scope:* (1) `[network] layers` for the MLP (its trunk's layers,
+  2 by default, so every saved MLP loads; `hidden` is the width). (2) Two kinds that read the
+  field as hexes, in a new module, sharing the entity network's heads (moved into a base class,
+  their parameter names kept so E06's files load) and one input: each stack slot's token
+  (`symlog` of its features, its creature's embedding) drawn on its hex and, for a two-hex
+  stack, on its front hex too (right of its position for the attacker's, left for the
+  defender's: `h3_battle::geometry::footprint`; side = own flag against the viewer-is-attacker
+  global), added to the hex planes' projection, plus the globals' and heroes' projection on
+  every hex; an off-field stack (a turret) keeps its token only. `kind = "hexconv"`: the field
+  in axial coordinates (column `x − ⌈y/2⌉ + 5`: 17 × 11 → 22 × 11 cells, 187 real), residual
+  blocks of two 3 × 3 convolutions whose kernel's two corners (+1, +1) and (−1, −1) are zero (a
+  hex's six neighbours), each block with a global-pooling bias (the real cells' mean and max),
+  the residual branch initialised at 0 and the padding cells kept at 0, no batch statistics;
+  `width` channels, `layers` blocks. `kind = "hexformer"`: the 187 hexes and a global token,
+  pre-norm blocks (E06's `Block`) with a learned bias per head and axial offset (shared by the
+  rows); `width`, `layers`, `heads`. Both: the hex vectors are the trunk's per hex, a stack's
+  vector its token plus the trunk's at its hex, the context the global and pooled vectors and
+  the active stack's. The field's size from the config (`field_width` 17, `field_height` 11,
+  the base ruleset's; checked on real battles). `layout.py` gains the columns read (two-hex,
+  viewer is attacker), pinned by `h3-sim`'s layout test. (3) Tests as `test_entity.py`'s (the
+  logits in the encodings' order, an empty slot unseen, the kernel's neighbours against
+  `Field::neighbors`, a run stopped, resumed and laddered per kind), `--time` and parameters per
+  kind in the bench's sizes. *Depends on:* T6 (done 2026-10-29). *Status:* next.
+- **T7b The distillation bench.** *Scope:* `python -m h3env.train.distill --teacher <best.pt>
+  --config configs/e25-distill.toml --out runs/<bench>`: the teacher plays itself on the training
+  distribution (its config's kinds and tactics bound, the sampled policy, a seed apart from its
+  run's) in rollouts as PPO's (`rollout` steps of `envs`); every student trains on the same
+  rollouts, `epochs` passes in minibatches: the KL from the teacher's entry head over the legal
+  entries, for a cast row its spell, target and second heads along the teacher's choices, and
+  the value against the teacher's λ-returns (PPO's targets, shaping as the teacher trained);
+  Adam, one learning-rate schedule for all (a student's own `lr` allowed). A held-out set
+  (rollouts on other seeds, collected once) scores each student every so many samples: the KL
+  per head, the entry's agreement with the teacher's most likely entry per category of the
+  teacher's choice (move, strike, shot, cast, wait or defend, tactics), the value's mean squared
+  error and explained variance, the teacher's own beside them, the time per sample; a JSON
+  report and a table; the students' weights saved (T7d may start from them). The config: the
+  students as named `[network]` tables (MLP 2 × 512, 2 × 1 024, 4 × 512, `hexconv`,
+  `hexformer`, `entity`), the samples per student, the held-out size. A CPU smoke in the
+  sandbox and tests. *Depends on:* T7a. *Status:* waiting.
+- **T7c The bench run.** *Scope:* on the user's machine (the GPU; its length agreed with the
+  user); the report committed (`python/records/distill/`) and read in `E25-log.md`: which
+  kinds fit the teacher best per sample and per second, and where the entity network fails
+  (the move head or not). *Depends on:* T7b; the user. *Status:* waiting.
+- **T7d The A/B.** *Scope:* the best one or two kinds at 20 M on `e25-scale.toml`'s settings
+  (from scratch, or from the bench's weights: imitation of the lineage's own network, not of
+  the system actor or a bot), against `e25-scale-1`; the user's machine. *Depends on:* T7c.
+  *Status:* waiting.
+- **T8 Increment 3's checkpoint.** *Scope:* T7c's and T7d's reads put to the user; increment 4
+  chosen. *Depends on:* T7d. *Status:* waiting.
 
 ## Inbox
 

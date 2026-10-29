@@ -77,27 +77,7 @@ The review's fix C3 follows the reading of 0x47A100: a created stack whose round
 
 ### AI lane (`AI-Q<n>`)
 
-- **AI-Q11 (2026-10-29, E25 T6): increment 3's network.** Context: the search (T1c) and scale
-  (T5: flat from 20 M) both stop at the MLP's limit, 0.418 against the system actor (target
-  above 0.5); every run since E05 used the same 2 × 512 MLP; E06's entity network (T5b, T5d)
-  was behind per sample at 3.4 times the cost, its move head reading a hex's own features and a
-  context, not the stacks. The user asked which architectures are possible: one that correlates
-  hexes properly and efficiently, larger or deeper networks, else the entity network again,
-  scrutinised (why it underperformed, how to find out). Options the agent gave (`E25-log.md`
-  T6): (a) a **hex-convolution network**: the field skewed into axial coordinates (17 × 11 →
-  22 × 11 cells), a 3 × 3 convolution with two opposite corners zeroed is exactly a hex's six
-  neighbours (one cuDNN kernel a layer), the stacks drawn onto their hexes from v22's x and y
-  (Python only, no encoding change), residual blocks with a global-pooling branch, the move
-  head per hex, the stack heads read at the stack's hex; (b) a **wider or deeper MLP** (`hidden`
-  1 024; three or four residual layers), never tried, cheap to rule out; (c) the **entity
-  network** with the move head fixed and its own optimiser settings; (d) a graph network or a
-  transformer over the hexes (the same neighbourhood as (a), slower). How to tell them apart
-  cheaply: a **distillation bench**, each candidate fitted to `e25-scale-1` #3's policy and
-  value on a fixed set of its battles (per head; no RL dynamics), which also locates the entity
-  network's failure (representation if it cannot fit the move head, optimisation if it fits but
-  learns slowly), then the best one or two as RL A/Bs at 20 M on the user's machine.
-  **Recommendation:** increment 3 = (a) and (b) built as network kinds, the bench over (a), (b),
-  (c) and the MLP, then the A/B. Waiting for the user.
+(no open questions)
 
 ### Client lane (`CLT-Q<n>`)
 
