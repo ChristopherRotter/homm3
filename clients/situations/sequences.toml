@@ -1283,3 +1283,30 @@ boxes = true
 command = [
     { seat = "Attacker", command = { Attack = { target = 2, from = 47 } } },
 ]
+
+# E17 M5 T4c2b (design §7.24): the tactics phase played (`tactics.toml`: Orrin's Expert Tactics,
+# Red's zone the seven columns at its edge). Enter closes the phase's message; the Champions'
+# turn shaded until, at 300, a click on hex 74 places them on 73 (their rear hex): they walk the
+# path the original's pathfinder finds with its tactics flag out of their corner (36, 37, 38,
+# 56, 73), the shade gone as the action starts. The Marksmen's turn shaded from its start (3 340);
+# Next Creature (Space, 3 640) passes to the Pikemen, their shade at once; a click on 141 (3 940)
+# walks them there. The Marksmen's turn again (they waited, 6 320); Start Combat (Enter, 6 620)
+# swaps the panels: round 1's line in the log ("Next round begins."), the Champions' turn waiting
+# for Red. Each turn waits 300 ms before its action, so that its shade shows.
+[[sequence]]
+id = "tactics-play"
+scenario = "tactics.toml"
+actions = [
+    "key:Return", "at:300", "hex:74", "turn:0.1", "at:3640", "key:space", "at:3940", "hex:141",
+    "turn:0.1", "at:6620", "key:Return",
+]
+ms = 2000
+timeline = "timelines/tactics-play.txt"
+frames = "timelines/tactics-play-frames.txt"
+boxes = true
+command = [
+    { seat = "Attacker", at = 300, command = { Move = { to = 73 } } },
+    { seat = "Attacker", at = 3640, command = { Wait = {} } },
+    { seat = "Attacker", at = 3940, command = { Move = { to = 141 } } },
+    { seat = "Attacker", at = 6620, command = { EndTactics = {} } },
+]

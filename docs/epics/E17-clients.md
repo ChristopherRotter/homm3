@@ -207,9 +207,11 @@ the stacks created mid-battle.
         shade's overlay and search, the cursor), built (`h3_view::tactics`, `Draw::Shade`, the
         layout's `[tactics_panel]`, the message before the first turn in the stills and the
         window); seven stills exact; CLT-Q32.
-      - **T4c2b, the phase played:** the stacks placed (the placement's animation), Next
-        Creature, Start Combat (the panels swapped, round 1's start), the shade over the phase's
-        turns, Auto Combat in the phase; recorded.
+      - **T4c2b, the phase played** (done 2026-10-29, kept whole by the user; design §7.24):
+        read (the placement as the walk, Next Creature, Start Combat and the panels' swap, the
+        shade over the turns, the computer's phase, Auto Combat in it, the keys), built (the
+        engine's placement steps, `cross-lane`; the buttons' commands, `Context::Tactics`, the
+        window's panel shown, `tactics::shade_at`); `tactics-play` recorded.
 - **T5, what a played battle shows:** the created stacks (`StackCreated`: Summon Elemental,
   Clone; a Pit Lord's `RoseFromCorpse`) with their dissolve (`screen_dissolve` 0x602DC0's blend,
   Sacrifice's victim's too), a clone's `Vanished`, Teleport's dissolve; the panel's side by each
@@ -413,3 +415,17 @@ M3 at its review, T9b, M4 at its review, T3c). The next milestone's list starts 
 31. The panel built for the defender (T4c2a; 0x462D24): before, *provisional*, for the opening's
     acting side; the two differ on a computer attacker's opening against a human defender (the
     picture's colours until the human's first turn), which no capture shows.
+32. The phase's keys (T4c2b; design §7.24): Next Creature's Space and Start Combat's Enter in a
+    context of their own (`keys::Context::Tactics`), which the window asks before the battle's
+    while the phase's panel shows (the original's disabled Defend passes Space on); a user's
+    file binds `next-creature` and `start-combat` apart from the battle's.
+33. The window's bot in the tactics phase (T4c2b): it ends any phase at once, a computer's and a
+    human's under Auto Combat, where the original's computer places the stacks and ends its
+    phase by its bound (BAT-AI-023); *provisional* with the bot (M2's review list: not the
+    original's computer).
+34. The formats (T4c2b): `tactics::shade_at` (a record's turns by its log's actions and turns),
+    `Panels::turns`, `now`, `enabled`, `panel::turns`' moves, `Battle::panel_at` and
+    `in_tactics`, `pointer::inputs`' `told` (a sequence's opening `key:Return`).
+35. `EndTactics` in the viewer's timeline (T4c2b): a command without frames, its action's start
+    (the pointer, the log settled) where the original's Start Combat runs no action; round 1's
+    first turn starts in the same millisecond and does the same, so nothing shows it.

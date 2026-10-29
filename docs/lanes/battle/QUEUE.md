@@ -12,6 +12,17 @@ E23, the original's battle AI, is **closed** (2026-10-24; `docs/epics/E23-origin
 
 Consolidated on 2026-10-19 (the user): the entries from E01 to E04c's closure are merged below by kind, done and duplicate parts dropped; the origin stays in brackets (an epic and task, a review report such as r3 or F-r2b-2). History: git. Items for other lanes went into their inboxes; the First Aid Tent became BAT-Q51. The addresses are readings of the executable, the reviews' not read a second time. Where the readings stand: `installation.md` §7.8–§7.33; the reviews' reports stay on `battle/e04b-t11b-review-reports` and `battle/e04c-t10b-review-reports`; their experiment candidates are in `docs/experiments/README.md` ("From the battle queue's inbox", "From the E04b review", "From E04c").
 
+- 2026-10-29 (the client lane, E17 M5 T4c2b, `cross-lane` with the user's consent; **done in
+  your crate, for you to review**): a placement in the tactics phase is the original's walk
+  (action 2 through the move handler 0x445950; `docs/epics/E17-design.md` §7.24). `h3_battle`
+  `tactics::place` now walks a walker's placement position by position along
+  `movement::placement_path` (the pathfinder with the tactics query, 0x5239D0, 0x4B34DE) for a
+  recording sink, so viewers animate it; and for every sink where a step may open a town's closed
+  gate (a defender's stack), which opens it at the step (0x442186) and closes it behind the stack
+  (`siege::close_gate`), as a walk does. Found by `walls_and_the_moat_agree_with_movement`; tests
+  in `tests/tactics.rs` and `tests/sieges.rs`; BAT-TAC-002 and BAT-MOV-003 amended. The
+  pathfinder's "not modelled" note dropped the placement. Nothing to act on unless you disagree.
+
 - 2026-10-29 (the adventure lane, E08 T69; **observations for BAT-TER-002 and BAT-GEO-004**,
   both `implemented`): batch E8b read the original's battles at sea (`experiments/results/E08-batch-8b.md`,
   `-run2.md`; survey `E08-sea.md` §15). One hero in a boat (E8-11, E8-13, E8-14): water, no special

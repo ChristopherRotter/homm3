@@ -94,7 +94,13 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   `Moment::before_first_turn` (no outline, the flags one idle step back) and the panel
   `Panels::before` (as built, the defender's colours); the panel in the phase is the layout's
   `[tactics_panel]` (`BattleLayout::panel_in`), which has no log's item: the status line and the
-  log's text go nowhere.
+  log's text go nowhere. Played (E17 M5 T4c2b, §7.24): the panel shown is the phase's until
+  `EndTactics`, so the window finds a button through `Battle::panel_at`, never
+  `layout().panel`; its Space and Enter are `keys::Context::Tactics`, asked before the battle's
+  (the table refuses one chord twice in a context); a record's shade over time is
+  `tactics::shade_at` (the log's `Action` and `Turn` entries, the turns' battles from
+  `Panels::turns`); a placement's walk comes hex by hex in the engine's events (a recording
+  sink), and `EndTactics` draws no frame.
 - `h3_formats`' `c_string` takes printable ASCII alone: an executable string with line breaks
   (the book's place formats) is read by the client's `text::exe_string`.
 - The viewer reads `clients/layouts/*.toml` at run time: a layout change made while a batch
