@@ -195,7 +195,9 @@ in `check_step` and the walking search):
   engine's, survey §9). A boarding's points are those the move leaves: the boat's drop, then the
   conversion (T73a for a flyer and a water walker; the property compares them).
 - **T73a's interim** (ADV-STUB-11): a hero in a boat reaches its own tile only and a walker no
-  boat, until T73b builds the boat's search and the walker's test.
+  boat, until T73b builds the boat's search and the walker's test. Built by T73b (the stub
+  closed): the walker's test reads the window's `occupied` flags, which mark empty boats beside
+  other heroes, rather than `Boats::empty` per water neighbour (log).
 
 ### 10. Visits at sea (ADV-SEA-005)
 
