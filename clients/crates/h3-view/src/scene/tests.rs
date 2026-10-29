@@ -1045,6 +1045,9 @@ fn the_tactics_phase_s_panel_shows_until_start_combat_and_takes_its_keys() {
     ];
     let panels = Panels::new(&o, &events, Vec::new());
     let started = [(500, 0)];
+    // One turn after the opening's: round 1's, the phase over.
+    assert_eq!(panels.turns().len(), 1);
+    assert!(panels.turns()[0].tactics.is_none());
     let enabled = |t, id| panels.enabled(&o, &started, t, &layout, id);
     assert!(panels.now(&o, &started, 499).tactics.is_some());
     assert!(panels.now(&o, &started, 500).tactics.is_none());
