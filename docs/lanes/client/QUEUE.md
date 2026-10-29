@@ -24,20 +24,8 @@ check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gat
 Cut in two by the user (2026-10-29): T5a the dissolves and the created stacks (with the engine's
 event for a stack without a place, `cross-lane`; done 2026-10-29), T5b the panel by each turn's
 controller, the sounds' waits and the palette effects, cut in two again by the user (2026-10-29,
-at its start): T5b1 the palette effects, T5b2 the panel and the sounds' waits. The detail:
-`QUEUE-ARCHIVE.md`, 2026-10-22 (T7c-3).
-
-#### E17 M5 T5b1 — the palette effects `in progress`
-
-- **Scope:** `draw_battle_stack`'s palette effects (0x43E280 to 0x43E4C7; the user,
-  2026-10-29): a clone recoloured (0x522B50 with 0.67, 1, 2, 2 on palette entries 10 to 255: RGB
-  to HSV in single precision, the hue set, saturation and brightness moved toward 1, back to
-  RGB; `clone`'s frames differ by it alone, design §7.25), Bloodlust's glow (the same routine)
-  and Stone Gaze's (0x522A10), Stone Gaze's petrified look (0x522D50). Recorded against the
-  original.
-- **Acceptance:** the new sequences as recorded, or each difference listed; `clone`'s colours
-  exact; the Definition of Done.
-- **Depends on:** T5a (done). **Status:** in progress (`client/e17-m5-t5b1`).
+at its start): T5b1 the palette effects (done 2026-10-29), T5b2 the panel and the sounds' waits.
+The detail: `QUEUE-ARCHIVE.md`, 2026-10-22 (T7c-3).
 
 #### E17 M5 T5b2 — the panel by the turn's controller, the sounds' waits
 

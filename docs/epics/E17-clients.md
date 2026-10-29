@@ -220,9 +220,11 @@ the stacks created mid-battle.
     recorded, `sacrifice` exact; the Demons' back buffer a slip not copied; CLT-Q33.
   - **T5b, the palette effects, the panel by the turn's controller, the sounds' waits** (cut in
     two by the user, 2026-10-29):
-    - **T5b1, the palette effects:** a clone's colours and the glows (`draw_battle_stack`'s
-      palette effects, the user's 2026-10-29: Clone, Bloodlust, Stone Gaze's glow and petrified
-      look); recorded.
+    - **T5b1, the palette effects** (done 2026-10-29; design §7.26): read (`draw_battle_stack`'s
+      chain, the recolour, Stone Gaze's glow, the petrified look, the HSV round trip, the glows'
+      redraws, Stone Gaze's line), built (`h3_render::recolour`, the timeline's `LookKey`s,
+      `Draw::Creature`'s `effect`); `bloodlust` and `stone` recorded, their glows and looks exact;
+      `clone`'s colours exact; CLT-Q34.
     - **T5b2, the panel and the sounds' waits:** the panel's side by each turn's controller
       (R3-1: Hypnotize, a created stack); the battle waiting for the heal's sound and the other
       effects'; recorded.

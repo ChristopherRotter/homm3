@@ -2962,7 +2962,9 @@ Bloodlust and Stone Gaze handlers). Built as `h3_render::recolour` (the effects)
   stack's death; a reused id's afresh); the scene takes a stack's look, else a clone's colours
   from the stack's `clone`. Not built: an Ogre Magi's Bloodlust (a creature's cast other than an
   area spell takes effect at once, §7.16).
-- **Recorded**: see the epic's log (M5 T5b1).
+- **Recorded** (`seq-bloodlust.toml`, `seq-stone.toml`; the epic's log, M5 T5b1): `bloodlust`
+  (Basic on one stack, Expert on two together) as recorded, every frame exact; `stone` (the
+  Basilisks' strike back) as recorded, its glow, line and petrified look exact; `clone` exact.
 
 ## 8. The window, input and audio evaluation (M2 T2)
 
