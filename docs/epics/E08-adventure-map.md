@@ -107,6 +107,10 @@ Refined with the user on 2026-10-28 (T65; ADV-Q31). Built like increments 1 to 7
 
 181. **T70 whole** (the user's choice of three, 2026-10-29, `AskUserQuestion`: "Whole, one PR"): the three ADRs applied, the glossary, the three effect kinds, the harvester's gap-fill and the re-harvested packs, the replays' header lines in one `shared/` pull request (`cross-lane`), as T45 was. Recommended was two pull requests (the docs now; the kinds, packs and harvester in the next session); not chosen either: both in this session, each its own pull request.
 
+**Round 5** (T71, at its start):
+
+182. **T71 with the inbox's property case** (the user's choice of two, 2026-10-29, `AskUserQuestion`: "T71 + the property case (Recommended)"): the day's sea points and free boarding in `h3-heroes` and the fix of `h3-map`'s failing `every_step_keeps_the_commands_invariants` case in one pull request, to stop and ask if the case were an engine bug. Not chosen: T71 alone, the case its own task before T72. The case was the plan's: after an army dialog's `Close` a held rest may open a decision (GAM-DEC-007), here a guard's join without room, then the event it guarded and its guards' battle.
+
 ### Tasks (queue entries in `docs/lanes/adventure/QUEUE.md`; one or two per round, the cut confirmed at each checkpoint)
 
 - **T65 Increment 8 refined** (with increment 7's closure). Done (2026-10-28, `adventure/e08-t65`; decisions 157–159): boats and the sea with the sea's pickups, the first round queued (T66a, T66b).
@@ -117,7 +121,8 @@ Refined with the user on 2026-10-28 (T65; ADV-Q31). Built like increments 1 to 7
 - **T69 Batch E8's scoring.** Done whole (2026-10-29, `adventure/e08-t69`; decisions 177–179): survey `E08-sea.md` §15, the 16 rows scored; D-41 to D-43 confirmed, D-44's refusal kept (ADV-Q34), D-45 reverted (only a boat takes a sea pickup or fights a monster on water), E8-15's battle at the monster's tile, A-28 confirmed; the flyer's search re-read (map entries 0x4B2300, 0x56A0D0): **D-46**, a flight over a water tile holding an object, to batch E8c (ADV-Q35); the drafts and the design in line (log).
 - **T69b Batch E8c.** Done whole (2026-10-29, `adventure/e08-t69b`; decisions 179, 180): the spec `E08-batch-8c` (row E8-17, five flyers in pockets closed by rock), its recipe, one run under Wine, recorded; survey `E08-sea.md` §16: **D-46 confirmed** (E8-17a, E8-17b: no path over a Flotsam's water tile, from land or water), an empty boat crossed from land and water (E8-17d, E8-17e); the re-read's 0x4B2CF3 corrected (map entry 0x4B2300); the drafts and the design in line (log).
 - **T70 Increment 8's `shared/` task.** Done whole (2026-10-29, `shared/e08-t70`, `cross-lane`; decision 181): ADR-0013 points 3 and 13, ADR-0016 points 1, 3, 4 and 6, ADR-0017 points 1, 8, 10 and 11 amended (the drafts deleted), the glossary's sea terms; `HeroEffect`'s `navigation`, `sea_movement_points` and `free_boarding` (core ruleset hash v50, pack format v49), Navigation and the three sea artifacts from the gap-fill, `base` and `sod` re-harvested; the replays' header lines (log).
-- **T71 to T76** (decision 171; design §18): `h3-heroes` (T71), the import, kinds and state (T72), moving and `Reach` (T73), the pickups, the battle at sea and the game (T74), the replays and gates (T75), the audit (T76).
+- **T71 `h3-heroes`: the day's sea points and free boarding.** Done (2026-10-29, `adventure/e08-t71`; decision 182): `h3_heroes::{sea_points, free_boarding}`, HER-ADV-009 `verified` (E8-1, E8-6, E8-10); with the inbox's property case: the plan's army dialog `Close` lets the held rests open what follows (GAM-DEC-007), its regression line kept (log).
+- **T72 to T76** (decision 171; design §18): the import, kinds and state (T72), moving and `Reach` (T73), the pickups, the battle at sea and the game (T74), the replays and gates (T75), the audit (T76).
 
 ## Later increments (sketch)
 

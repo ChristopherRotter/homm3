@@ -30,25 +30,15 @@ gap-fill's sources (`exe-sea-movement`, `exe-free-boarding`, `vcmi-sea-movement`
 
 ### 2. The day's sea points and free boarding (HER-ADV-009)
 
-- `h3_heroes::sea_points(details, core, table: &[u32; 4]) -> u32`: `table` the adventure part's
-  sea points by Navigation level (§5); the entry at the highest `navigation` level (0 without);
-  with a level from a skill whose specialty the hero has, ⌊hero level × table[0] × `bp_per_level`
-  ÷ 10 000⌋ added (75 a level: the original's ⌊level × 1 500 ÷ 20⌋); then each worn artifact
-  type's `sea_movement_points` once (worn or a part of a worn combination: `Count::OncePerType`),
-  saturating. Exact integers in both profiles.
-- `h3_heroes::free_boarding(details, core) -> bool`: a worn type with `free_boarding` (the
-  combination itself, not its parts worn apart: the original tests 136).
-- Tests (HER-ADV-009): 1 500 without Navigation; 2 250, 3 000, 3 750; Sylvia (a Navigation
-  specialist) at level 10 with Basic Navigation 3 000 (2 250 + 750), without Navigation 1 500;
-  Advanced Navigation and the Necklace 4 000, the Sea Captain's Hat alone 2 000 (batch E8's
-  E8-10); the Admiral's Hat 3 000 and free boarding, its two parts worn apart 3 000 and none.
-- Not here: Lighthouses (+500 each, item 9) and the computer's bonus (E10): inputs then.
+Built by T71 (`adventure/e08-t71`): `h3_heroes::sea_points(details, core, table: &[u32; 4])`
+and `h3_heroes::free_boarding(details, core)`, HER-ADV-009 `verified` (E8-1, E8-6, E8-10); any
+source of the three kinds counts, as the land's. Lighthouses (item 9) and the computer's bonus
+(E10) come as inputs then.
 
 ### 3. Rule ids, quirks, shared needs (the hero side)
 
-HER-ADV-009 (the day's sea points and free boarding). No quirk. No hero change, no new
-`HeroDetails` field: the details' hash keeps its version; a hero's boat, points and day's maximum
-are the adventure's (§6).
+Built by T71: HER-ADV-009, no quirk, no `HeroDetails` field (the details' hash keeps its
+version); a hero's boat, points and day's maximum are the adventure's (§6).
 
 ## Part B — the map (`h3-map`, `h3-adventure`)
 

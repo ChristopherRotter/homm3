@@ -8058,3 +8058,44 @@ the sandbox's own baseline run was stopped once the edits began (CI's run is the
   versions; the AI lane's inbox.
 
 T71 (`h3-heroes`, HER-ADV-009) next.
+
+### Increment 8, round 5: T71, `h3-heroes`'s sea points and free boarding, with the inbox's property case (2026-10-29, `adventure/e08-t71`)
+
+**The cut** (decision 182; asked at the start, `AskUserQuestion`): T71 with the inbox's failing
+property case in one pull request, to stop and ask if the case were an engine bug. Not chosen:
+T71 alone. **Baseline:** `master` 86f164b (#568, T70, merged; CI on `master` green; the light
+gates passed, the code verified by CI). No original data staged (none needed).
+
+- **`h3-heroes`** (design §2, ADR-0013 points 13.6, 13.7): `sea_points(details, core, table:
+  &[u32; 4])`: the table's entry at the highest `navigation` level (any source), then for each
+  skill the hero has whose effects at its level give a Navigation level its specialties'
+  `bp_per_level` of `table[0]` per hero level, summed and floored once (an exact `mul_div_floor`,
+  both profiles), then every effect's `sea_movement_points` (each artifact type once, worn or a
+  part of a worn combination), saturating; `free_boarding(details, core)`: an effect
+  `free_boarding` from any source (`effects` with `Count::OncePerType`: a worn type, a part of a
+  worn combination with its skill, a skill, the specialty; the packs: the Admiral's Hat alone).
+  The agent's call (change freely): any source counts for both, as the land's kinds; the ADR
+  names the worn artifact types, which the packs alone carry. `derive::specialty` became
+  `pub(crate)`. No version (no `HeroDetails` field).
+- **Tests** (`tests/movement.rs`, a sea pack on the movement pack: `t:navigation`, `t:band` the
+  Necklace's 1 000, `t:helm` the Sea Captain's Hat's 500, `t:circle` the Admiral's Hat's free
+  boarding, `t:hook` an artifact's Navigation 2): design §2's cases in both profiles (1 500;
+  2 250, 3 000, 3 750; Sylvia at level 10 3 000 with Basic, 1 500 without; 4 000 and 2 000,
+  E8-10's; the Hat 3 000 and free boarding, its parts apart 3 000 and none), an artifact's level
+  without the skill (no share), a specialty on another skill (none), the share floored once
+  (level 3, `table[0]` 7: 1), saturation, a part of a worn combination that boards free only
+  with its skill.
+- **HER-ADV-009** in `heroes.toml`, `verified`: the code reading, VCMI, the wiki, batch E8's
+  E8-1, E8-6 and E8-10 (survey §15).
+- **The property case** (inbox, T68a's): reproduced with its regression line. The hero stepped
+  onto an event's tile a monster guarded; the guard joined without room (army dialog); after
+  `Close` the held event fired (GAM-DEC-007 rest 4, `ADV-QUIRK-29`) and its guards' battle
+  opened, the engine's documented order (T63b), not an engine bug. The plan's army-dialog branch
+  (`check_legal`, from T51b, before the rests) asserted no decision after `Close`; it now checks
+  that `Close`'s first events are its own (`DecisionClosed`, then each stack of the group lost)
+  and that a decision open after them came with later events, as the choice branch checks its
+  own closing only. The regression line is kept in `proptest-regressions/tests/play.txt`.
+- **Docs**: design §2 and §3 cut to what was built; decision 182 and the task's line; the queue
+  (T71 and the inbox entry out, T72 next).
+
+T72 (the import, the kinds and the state) next.

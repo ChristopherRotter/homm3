@@ -2290,15 +2290,30 @@ fn check_legal(
     if exchanging {
         prop_assert_eq!(legal, &[CLOSE][..]);
         let mut probe = state.clone();
-        let result = apply(
-            &mut probe,
-            rules,
-            Actor::Player(actor),
-            CLOSE,
-            &mut Vec::new(),
-        );
+        let mut events = Vec::new();
+        let result = apply(&mut probe, rules, Actor::Player(actor), CLOSE, &mut events);
         prop_assert!(result.is_ok(), "Close rejected: {:?}", result);
-        prop_assert!(!probe.has_decision(actor));
+        // The meeting or the army dialog closes, the dialog's group lost stack by stack
+        // (GAM-DEC-003, GAM-DEC-004); what follows comes from the visit's held rests and may open
+        // another decision (E08 T63b, GAM-DEC-007: the guard's visit, a record's experience with
+        // its levels, an event on the hero's tile with its guards' battle; E08 T71: a guard's join
+        // without room, then the event it guarded and its guards' battle).
+        let closing: Vec<GameEvent> = core::iter::once(GameEvent::DecisionClosed { player: actor })
+            .chain(
+                state
+                    .army_dialog(actor)
+                    .into_iter()
+                    .flat_map(|(hero, group)| {
+                        group.iter().map(move |&stack| GameEvent::GroupLost {
+                            player: actor,
+                            hero,
+                            stack,
+                        })
+                    }),
+            )
+            .collect();
+        prop_assert_eq!(events.get(..closing.len()), Some(&closing[..]));
+        prop_assert!(!probe.has_decision(actor) || events.len() > closing.len());
         return Ok(());
     }
     if choosing {
