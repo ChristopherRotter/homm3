@@ -1,0 +1,408 @@
+# E08 batch E8a played by the capture harness (E08 T68a; h3adv.py batch): the procedure of
+# experiments/specs/E08-batch-8a.toml as steps, on Easy, with T68a's reads (README, "Boats and the
+# sea"). Hot seat, Red and Blue human, in the spec's order: day 1, Red: E8-1 (both heroes board),
+# E8-3, E8-4, E8-10 (both board), E8-15 (boards); Blue: E8-7. Day 2, Red: every hero's turn-start
+# reads first, then E8-1's landings, E8-3, E8-4, E8-10, E8-15; Blue: E8-16. Day 3, Red: E8-10's
+# last reads. A leg's points the template has no row for go under "anything odd" (`note`), so the
+# record shows every leg the procedure names. Row E8-5 is the map `E08-batch-8a-water` (its own
+# recipe).
+
+spec = "experiments/specs/E08-batch-8a.toml"
+players = ["Red", "Blue"]
+difficulty = "easy"
+
+# --- Day 1, Red: E8-1 and its control E8-1c board ---------------------------------------------
+
+[[step]]
+encounter = "E8-1"
+hero = "E8-1"
+record = { "E8-1, day 1 start | tile" = "hero:tile", "E8-1, day 1 start | movement points" = "hero:points", "E8-1, day 1 start | day's maximum" = "hero:day_points", "E8-1, day 1 start | status flags (hex)" = "hero:status" }
+note = { "worn at the start (the starting bonus)" = "hero:equipment", "backpack at the start" = "hero:backpack", "boats in use at the start" = "boats:used" }
+
+[[step]]
+encounter = "E8-1"
+hero = "E8-1"
+walk = [13, 4]
+record = { "E8-1, after (13, 4) | tile" = "hero:tile", "E8-1, after (13, 4) | movement points" = "hero:points", "E8-1, after (13, 4) | day's maximum" = "hero:day_points", "E8-1, after (13, 4) | status flags (hex)" = "hero:status" }
+
+[[step]]
+encounter = "E8-1"
+hero = "E8-1"
+walk = [17, 4]
+record = { "E8-1, after (17, 4) | tile" = "hero:tile", "E8-1, after (17, 4) | movement points" = "hero:points", "E8-1, after (17, 4) | day's maximum" = "hero:day_points", "E8-1, after (17, 4) | status flags (hex)" = "hero:status" }
+
+[[step]]
+encounter = "E8-1"
+hero = "E8-1"
+walk = [20, 4]
+record = { "E8-1, after boarding | tile" = "hero:tile", "E8-1, after boarding | movement points" = "hero:points", "E8-1, after boarding | day's maximum" = "hero:day_points", "E8-1, after boarding | status flags (hex)" = "hero:status" }
+note = { "E8-1's boarding: arrived on the boat's tile" = "arrived" }
+
+[[step]]
+encounter = "E8-1"
+hero = "E8-1c"
+record = { "E8-1c, day 1 start | tile" = "hero:tile", "E8-1c, day 1 start | movement points" = "hero:points", "E8-1c, day 1 start | day's maximum" = "hero:day_points", "E8-1c, day 1 start | status flags (hex)" = "hero:status" }
+note = { "worn at the start (the starting bonus)" = "hero:equipment", "backpack at the start" = "hero:backpack" }
+
+[[step]]
+encounter = "E8-1"
+hero = "E8-1c"
+walk = [15, 6]
+record = { "E8-1c, after (15, 6) | tile" = "hero:tile", "E8-1c, after (15, 6) | movement points" = "hero:points", "E8-1c, after (15, 6) | day's maximum" = "hero:day_points", "E8-1c, after (15, 6) | status flags (hex)" = "hero:status" }
+
+[[step]]
+encounter = "E8-1"
+hero = "E8-1c"
+walk = [19, 6]
+record = { "E8-1c, after (19, 6) | tile" = "hero:tile", "E8-1c, after (19, 6) | movement points" = "hero:points", "E8-1c, after (19, 6) | day's maximum" = "hero:day_points", "E8-1c, after (19, 6) | status flags (hex)" = "hero:status" }
+
+[[step]]
+encounter = "E8-1"
+hero = "E8-1c"
+walk = [20, 6]
+record = { "E8-1c, after boarding | tile" = "hero:tile", "E8-1c, after boarding | movement points" = "hero:points", "E8-1c, after boarding | day's maximum" = "hero:day_points", "E8-1c, after boarding | status flags (hex)" = "hero:status", "the boats' records after boarding (E8-1's, E8-1c's: tile, in use, type, facing, owner, captain, aboard)" = ["boat[E8-1]", "boat[E8-1c]"] }
+note = { "E8-1c's boarding: arrived on the boat's tile" = "arrived" }
+
+# --- Day 1, Red: E8-3, E8-4, E8-10 and E8-10b, E8-15 board ------------------------------------
+
+[[step]]
+encounter = "E8-3"
+hero = "E8-3"
+walk = [30, 14]
+note = { "worn at the start (the starting bonus)" = "hero:equipment", "backpack at the start" = "hero:backpack", "E8-3's boarding (tile, points, status)" = ["hero:tile", "hero:points", "hero:status"] }
+
+[[step]]
+encounter = "E8-4"
+hero = "E8-4"
+walk = [20, 26]
+note = { "worn at the start (the starting bonus)" = "hero:equipment", "backpack at the start" = "hero:backpack", "E8-4's boarding (tile, points, status)" = ["hero:tile", "hero:points", "hero:status"] }
+
+[[step]]
+encounter = "E8-10"
+hero = "E8-10"
+walk = [40, 12]
+note = { "worn at the start (the starting bonus)" = "hero:equipment", "backpack at the start" = "hero:backpack", "E8-10's boarding (tile, points, day's maximum, status)" = ["hero:tile", "hero:points", "hero:day_points", "hero:status"] }
+
+[[step]]
+encounter = "E8-10"
+hero = "E8-10b"
+walk = [40, 16]
+note = { "worn at the start (the starting bonus)" = "hero:equipment", "backpack at the start" = "hero:backpack", "E8-10b's boarding (tile, points, day's maximum, status)" = ["hero:tile", "hero:points", "hero:day_points", "hero:status"] }
+
+[[step]]
+encounter = "E8-15"
+hero = "E8-15"
+walk = [50, 14]
+note = { "worn at the start (the starting bonus)" = "hero:equipment", "backpack at the start" = "hero:backpack", "E8-15's boarding (tile, points, status)" = ["hero:tile", "hero:points", "hero:status"] }
+
+# Red's day 1 ends: Blue's day 1.
+[[step]]
+end_turn = true
+
+# --- Day 1, Blue: E8-7, the four Flotsams from the shore --------------------------------------
+
+# The marks' cell of E8-7b holds what its key did (no click): stepped, scrolled or nothing.
+
+# After each row a control (T68a's first run): a first click only (`once`) on a land tile whose
+# cheapest path crosses water for a flyer or a water walker and not for a walker, so the record
+# shows the hero's movement in force; E8-7b presses the left arrow, then the keypad's, toward the
+# land west of it (a key that moves nothing there moves nothing anywhere).
+
+[[step]]
+encounter = "E8-7"
+hero = "E8-7a"
+walk = [31, 41]
+record = { "E8-7a (wings, click) | the Flotsam's word before" = ["before:word:31,41", "before:object:31,41"], "E8-7a (wings, click) | the marks (or none)" = "path_tiles", "E8-7a (wings, click) | tile after" = "hero:tile", "E8-7a (wings, click) | movement points before / after" = ["before:hero:points", "hero:points"], "E8-7a (wings, click) | wood, gold before / after" = ["before:resource:wood", "before:resource:gold", "resource:wood", "resource:gold"], "E8-7a (wings, click) | the Flotsam after (word, or gone)" = ["word:31,41", "object:31,41"] }
+note = { "worn at the start (the starting bonus)" = "hero:equipment", "backpack at the start" = "hero:backpack", "E8-7a's messages" = "messages" }
+
+[[step]]
+encounter = "E8-7"
+hero = "E8-7a"
+walk = [32, 39]
+once = true
+note = { "control: E8-7a's path to (32, 39) at a first click (over (31, 40) if it flies): tiles, mark" = ["path_tiles", "mark"] }
+
+[[step]]
+encounter = "E8-7"
+hero = "E8-7b"
+key = "Right"
+record = { "E8-7b (wings, arrow key) | the Flotsam's word before" = ["before:word:31,43", "before:object:31,43"], "E8-7b (wings, arrow key) | the marks (or none)" = "key", "E8-7b (wings, arrow key) | tile after" = "hero:tile", "E8-7b (wings, arrow key) | movement points before / after" = ["before:hero:points", "hero:points"], "E8-7b (wings, arrow key) | wood, gold before / after" = ["before:resource:wood", "before:resource:gold", "resource:wood", "resource:gold"], "E8-7b (wings, arrow key) | the Flotsam after (word, or gone)" = ["word:31,43", "object:31,43"] }
+note = { "worn at the start (the starting bonus)" = "hero:equipment", "backpack at the start" = "hero:backpack", "E8-7b's messages" = "messages", "E8-7b's right arrow (stepped, scrolled or nothing)" = "key" }
+
+[[step]]
+encounter = "E8-7"
+hero = "E8-7b"
+key = "Left"
+note = { "control: E8-7b's key Left (stepped, scrolled or nothing; tile after)" = ["key", "hero:tile"] }
+
+[[step]]
+encounter = "E8-7"
+hero = "E8-7b"
+key = "KP_Left"
+note = { "control: E8-7b's key KP_Left (stepped, scrolled or nothing; tile after)" = ["key", "hero:tile"] }
+
+[[step]]
+encounter = "E8-7"
+hero = "E8-7c"
+walk = [31, 45]
+record = { "E8-7c (levitation, click) | the Flotsam's word before" = ["before:word:31,45", "before:object:31,45"], "E8-7c (levitation, click) | the marks (or none)" = "path_tiles", "E8-7c (levitation, click) | tile after" = "hero:tile", "E8-7c (levitation, click) | movement points before / after" = ["before:hero:points", "hero:points"], "E8-7c (levitation, click) | wood, gold before / after" = ["before:resource:wood", "before:resource:gold", "resource:wood", "resource:gold"], "E8-7c (levitation, click) | the Flotsam after (word, or gone)" = ["word:31,45", "object:31,45"] }
+note = { "worn at the start (the starting bonus)" = "hero:equipment", "backpack at the start" = "hero:backpack", "E8-7c's messages" = "messages" }
+
+[[step]]
+encounter = "E8-7"
+hero = "E8-7c"
+walk = [32, 49]
+once = true
+note = { "control: E8-7c's path to (32, 49) at a first click (over the water if it walks on it): tiles, mark" = ["path_tiles", "mark"] }
+
+[[step]]
+encounter = "E8-7"
+hero = "E8-7d"
+walk = [31, 47]
+record = { "E8-7d (walker, click) | the Flotsam's word before" = ["before:word:31,47", "before:object:31,47"], "E8-7d (walker, click) | the marks (or none)" = "path_tiles", "E8-7d (walker, click) | tile after" = "hero:tile", "E8-7d (walker, click) | movement points before / after" = ["before:hero:points", "hero:points"], "E8-7d (walker, click) | wood, gold before / after" = ["before:resource:wood", "before:resource:gold", "resource:wood", "resource:gold"], "E8-7d (walker, click) | the Flotsam after (word, or gone)" = ["word:31,47", "object:31,47"] }
+note = { "worn at the start (the starting bonus)" = "hero:equipment", "backpack at the start" = "hero:backpack", "E8-7d's messages" = "messages" }
+
+[[step]]
+encounter = "E8-7"
+hero = "E8-7d"
+walk = [32, 49]
+once = true
+note = { "control: E8-7d's path to (32, 49) at a first click (on land: (30, 48), (31, 49)): tiles, mark" = ["path_tiles", "mark"] }
+
+# Blue's day 1 ends: Red's day 2.
+[[step]]
+end_turn = true
+
+# --- Day 2, Red: the turn-start reads, before anything moves ----------------------------------
+
+[[step]]
+encounter = "E8-1"
+hero = "E8-1"
+record = { "E8-1, day 2 start | tile" = "hero:tile", "E8-1, day 2 start | movement points" = "hero:points", "E8-1, day 2 start | day's maximum" = "hero:day_points", "E8-1, day 2 start | status flags (hex)" = "hero:status" }
+
+[[step]]
+encounter = "E8-1"
+hero = "E8-1c"
+record = { "E8-1c, day 2 start | tile" = "hero:tile", "E8-1c, day 2 start | movement points" = "hero:points", "E8-1c, day 2 start | day's maximum" = "hero:day_points", "E8-1c, day 2 start | status flags (hex)" = "hero:status" }
+
+[[step]]
+encounter = "E8-3"
+hero = "E8-3"
+record = { "day 2 start: tile, movement points, gold" = ["hero:tile", "hero:points", "resource:gold"] }
+
+[[step]]
+encounter = "E8-4"
+hero = "E8-4"
+record = { "day 2 start | tile" = "hero:tile", "day 2 start | movement points" = "hero:points" }
+note = { "E8-4's day's maximum at day 2's start" = "hero:day_points" }
+
+[[step]]
+encounter = "E8-10"
+hero = "E8-10"
+record = { "E8-10, day 2 start | tile" = "hero:tile", "E8-10, day 2 start | movement points" = "hero:points", "E8-10, day 2 start | day's maximum" = "hero:day_points", "E8-10, day 2 start | status flags (hex)" = "hero:status" }
+
+[[step]]
+encounter = "E8-10"
+hero = "E8-10b"
+record = { "E8-10b, day 2 start | tile" = "hero:tile", "E8-10b, day 2 start | movement points" = "hero:points", "E8-10b, day 2 start | day's maximum" = "hero:day_points", "E8-10b, day 2 start | status flags (hex)" = "hero:status" }
+
+# --- Day 2, Red: E8-1 lands (row E8-2), then E8-1c --------------------------------------------
+
+[[step]]
+encounter = "E8-1"
+hero = "E8-1"
+walk = [21, 5]
+record = { "E8-1, after (21, 5) | tile" = "hero:tile", "E8-1, after (21, 5) | movement points" = "hero:points", "E8-1, after (21, 5) | day's maximum" = "hero:day_points", "E8-1, after (21, 5) | status flags (hex)" = "hero:status" }
+
+[[step]]
+encounter = "E8-1"
+hero = "E8-1"
+walk = [26, 5]
+note = { "E8-1 after (26, 5): tile, points" = ["hero:tile", "hero:points"] }
+
+[[step]]
+encounter = "E8-1"
+hero = "E8-1"
+walk = [31, 5]
+note = { "E8-1 after (31, 5): tile, points" = ["hero:tile", "hero:points"] }
+
+[[step]]
+encounter = "E8-1"
+hero = "E8-1"
+walk = [36, 5]
+note = { "E8-1 after (36, 5): tile, points" = ["hero:tile", "hero:points"] }
+
+[[step]]
+encounter = "E8-1"
+hero = "E8-1"
+walk = [41, 5]
+note = { "E8-1 after (41, 5): tile, points" = ["hero:tile", "hero:points"] }
+
+[[step]]
+encounter = "E8-1"
+hero = "E8-1"
+walk = [46, 5]
+record = { "E8-1, after (46, 5) | tile" = "hero:tile", "E8-1, after (46, 5) | movement points" = "hero:points", "E8-1, after (46, 5) | day's maximum" = "hero:day_points", "E8-1, after (46, 5) | status flags (hex)" = "hero:status" }
+
+[[step]]
+encounter = "E8-1"
+hero = "E8-1"
+walk = [49, 5]
+record = { "E8-1, after the landing | tile" = "hero:tile", "E8-1, after the landing | movement points" = "hero:points", "E8-1, after the landing | day's maximum" = "hero:day_points", "E8-1, after the landing | status flags (hex)" = "hero:status", "+the boats' records after the landings" = "boat" }
+note = { "E8-1's landing: the marks" = "path_tiles", "E8-1's landing: arrived" = "arrived" }
+
+[[step]]
+encounter = "E8-1"
+hero = "E8-1c"
+walk = [25, 6]
+note = { "E8-1c after (25, 6): tile, points" = ["hero:tile", "hero:points"] }
+
+[[step]]
+encounter = "E8-1"
+hero = "E8-1c"
+walk = [30, 6]
+note = { "E8-1c after (30, 6): tile, points" = ["hero:tile", "hero:points"] }
+
+[[step]]
+encounter = "E8-1"
+hero = "E8-1c"
+walk = [35, 6]
+note = { "E8-1c after (35, 6): tile, points" = ["hero:tile", "hero:points"] }
+
+[[step]]
+encounter = "E8-1"
+hero = "E8-1c"
+walk = [40, 6]
+record = { "E8-1c, after (40, 6) | tile" = "hero:tile", "E8-1c, after (40, 6) | movement points" = "hero:points", "E8-1c, after (40, 6) | day's maximum" = "hero:day_points", "E8-1c, after (40, 6) | status flags (hex)" = "hero:status" }
+
+[[step]]
+encounter = "E8-1"
+hero = "E8-1c"
+walk = [45, 6]
+record = { "E8-1c, after the landing | tile" = "hero:tile", "E8-1c, after the landing | movement points" = "hero:points", "E8-1c, after the landing | day's maximum" = "hero:day_points", "E8-1c, after the landing | status flags (hex)" = "hero:status", "+the boats' records after the landings" = "boat" }
+note = { "E8-1c's landing: the marks" = "path_tiles", "E8-1c's landing: arrived" = "arrived" }
+
+# --- Day 2, Red: E8-3 clicks the hole, the event, then the free tile --------------------------
+
+[[step]]
+encounter = "E8-3"
+hero = "E8-3"
+walk = [34, 14]
+record = { "(34, 14) the hole | the path's marks (tiles, or none)" = "path_tiles", "(34, 14) the hole | tile after" = "hero:tile", "(34, 14) the hole | movement points after" = "hero:points", "(34, 14) the hole | gold after" = "resource:gold", "(34, 14) the hole | message" = "messages" }
+note = { "E8-3's status after (34, 14) the hole" = "hero:status" }
+
+[[step]]
+encounter = "E8-3"
+hero = "E8-3"
+walk = [33, 13]
+only_if = "aboard"
+record = { "(33, 13) the event | the path's marks (tiles, or none)" = "path_tiles", "(33, 13) the event | tile after" = "hero:tile", "(33, 13) the event | movement points after" = "hero:points", "(33, 13) the event | gold after" = "resource:gold", "(33, 13) the event | message" = "messages" }
+note = { "E8-3's status after (33, 13) the event" = "hero:status" }
+
+[[step]]
+encounter = "E8-3"
+hero = "E8-3"
+walk = [33, 15]
+only_if = "aboard"
+record = { "(33, 15) free | the path's marks (tiles, or none)" = "path_tiles", "(33, 15) free | tile after" = "hero:tile", "(33, 15) free | movement points after" = "hero:points", "(33, 15) free | gold after" = "resource:gold", "(33, 15) free | message" = "messages" }
+note = { "E8-3's status after (33, 15) free" = "hero:status" }
+
+# --- Day 2, Red: E8-4 sails onto the winds, then the diagonal and the straight step -----------
+
+[[step]]
+encounter = "E8-4"
+hero = "E8-4"
+walk = [25, 26]
+record = { "after (25, 26) | tile" = "hero:tile", "after (25, 26) | movement points" = "hero:points" }
+
+[[step]]
+encounter = "E8-4"
+hero = "E8-4"
+walk = [30, 26]
+record = { "after (30, 26) | tile" = "hero:tile", "after (30, 26) | movement points" = "hero:points" }
+
+[[step]]
+encounter = "E8-4"
+hero = "E8-4"
+walk = [32, 28]
+record = { "after (32, 28) | tile" = "hero:tile", "after (32, 28) | movement points" = "hero:points" }
+
+[[step]]
+encounter = "E8-4"
+hero = "E8-4"
+walk = [34, 30]
+record = { "after (34, 30) | tile" = "hero:tile", "after (34, 30) | movement points" = "hero:points" }
+
+# The diagonal (35, 31) is clicked once only (`once`): T68a's first run clicked it again (its
+# marks the single step, in the next day's colour), the hero stayed and its 80 points became 0,
+# so the straight step was never tried with 80. The straight (35, 30) is clicked again only when
+# its first click shows the single step (`again_if`).
+
+[[step]]
+encounter = "E8-4"
+hero = "E8-4"
+walk = [35, 31]
+once = true
+record = { "after the click on (35, 31) | tile" = "hero:tile", "after the click on (35, 31) | movement points" = "hero:points", "+the marks of the click on (35, 31) (tiles, colour; clicked again or not), and of the click on (35, 30)" = ["path_tiles", "mark", "again"] }
+
+[[step]]
+encounter = "E8-4"
+hero = "E8-4"
+walk = [35, 30]
+again_if = { marks = 1 }
+record = { "after the click on (35, 30) | tile" = "hero:tile", "after the click on (35, 30) | movement points" = "hero:points", "+the marks of the click on (35, 31) (tiles, colour; clicked again or not), and of the click on (35, 30)" = ["path_tiles", "mark", "again"] }
+
+# --- Day 2, Red: E8-10 and E8-10b land south of their boats -----------------------------------
+
+[[step]]
+encounter = "E8-10"
+hero = "E8-10"
+walk = [40, 13]
+record = { "E8-10, after the landing | tile" = "hero:tile", "E8-10, after the landing | movement points" = "hero:points", "E8-10, after the landing | day's maximum" = "hero:day_points", "E8-10, after the landing | status flags (hex)" = "hero:status" }
+note = { "E8-10's landing: arrived" = "arrived" }
+
+[[step]]
+encounter = "E8-10"
+hero = "E8-10b"
+walk = [40, 17]
+record = { "E8-10b, after the landing | tile" = "hero:tile", "E8-10b, after the landing | movement points" = "hero:points", "E8-10b, after the landing | day's maximum" = "hero:day_points", "E8-10b, after the landing | status flags (hex)" = "hero:status" }
+note = { "E8-10b's landing: arrived" = "arrived" }
+
+# --- Day 2, Red: E8-15 lands on the guarded coastal tile --------------------------------------
+
+[[step]]
+encounter = "E8-15"
+hero = "E8-15"
+walk = [50, 15]
+battle = "auto"
+record = { "the path's marks to (50, 15)" = ["marks", "path_tiles"], "what follows the landing (a message, the battle)" = ["messages", "battle", "winner"], "the opening: terrain, special field, ship flag, blocked hexes" = "opening:field", "after: E8-15's tile, movement points, status flags" = ["hero:tile", "hero:points", "hero:status"], "after: the boat's record (tile, in use, facing, owner, captain, aboard)" = "boat" }
+note = { "E8-15's army after the battle" = "hero:army" }
+
+# Red's day 2 ends: Blue's day 2.
+[[step]]
+end_turn = true
+
+# --- Day 2, Blue: E8-16 boards the boat E8-1c left on (44, 6) ---------------------------------
+
+[[step]]
+encounter = "E8-16"
+hero = "E8-16"
+walk = [44, 6]
+record = { "the boat's record before (tile, in use, type, facing, owner, captain, aboard)" = "before:boat:44,6", "the boat's record after" = "boat", "E8-16 after: movement points, day's maximum, status flags" = ["hero:points", "hero:day_points", "hero:status"] }
+note = { "worn at the start (the starting bonus)" = "hero:equipment", "backpack at the start" = "hero:backpack", "E8-16's boarding: arrived on the boat's tile" = "arrived" }
+
+# Blue's day 2 ends: Red's day 3.
+[[step]]
+end_turn = true
+
+# --- Day 3, Red: E8-10's last reads -----------------------------------------------------------
+
+[[step]]
+encounter = "E8-10"
+hero = "E8-10"
+record = { "E8-10, day 3 start | tile" = "hero:tile", "E8-10, day 3 start | movement points" = "hero:points", "E8-10, day 3 start | day's maximum" = "hero:day_points", "E8-10, day 3 start | status flags (hex)" = "hero:status" }
+
+[[step]]
+encounter = "E8-10"
+hero = "E8-10b"
+record = { "E8-10b, day 3 start | tile" = "hero:tile", "E8-10b, day 3 start | movement points" = "hero:points", "E8-10b, day 3 start | day's maximum" = "hero:day_points", "E8-10b, day 3 start | status flags (hex)" = "hero:status" }

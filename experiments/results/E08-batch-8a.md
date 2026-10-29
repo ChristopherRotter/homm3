@@ -1,5 +1,9 @@
 # E08 batch E8a — results
 
+> Played by the capture harness on 2026-10-28 (`clients/capture/h3adv.py batch clients/capture/batches/E08-batch-8a.toml`): the same Complete 4.0 `Heroes3.exe` under Wine, without the HD mod; hot seat, difficulty Easy, the starting bonus random, Show Route on; read from the game's memory.
+>
+> The third of three runs (E08 T68a), each played whole without a stop. The first played the procedure as written; its records are these but for the random draws (the Flotsams' words; the starting bonus: gold, in the second run Spirit of Oppression on E8-7a) and E8-4's last two clicks (below). The second added the controls of E8-7 and clicked E8-4's diagonal once only; its E8-7d marks were the stale arrows of E8-7c's control (the harness then read a path while none was shown; fixed), the rest as here. Every line but those reads the same in all three.
+
 Map file: `E08-batch-8a.h3m`. Fill in the blanks below and keep this file; an agent records the results (`docs/experiments/README.md`).
 
 **Stamp `dbdf491f`.** The map's description in the scenario list starts with "Stamp dbdf491f.": compare the two before you play. If they differ, the map is not this template's build: do not play it, ask for the map again.
@@ -32,25 +36,25 @@ Map file: `E08-batch-8a.h3m`. Fill in the blanks below and keep this file; an ag
 
 | hero, moment | tile | movement points | day's maximum | status flags (hex) |
 |---|---|---|---|---|
-| E8-1, day 1 start |   |   |   |   |
-| E8-1, after (13, 4) |   |   |   |   |
-| E8-1, after (17, 4) |   |   |   |   |
-| E8-1, after boarding |   |   |   |   |
-| E8-1c, day 1 start |   |   |   |   |
-| E8-1c, after (15, 6) |   |   |   |   |
-| E8-1c, after (19, 6) |   |   |   |   |
-| E8-1c, after boarding |   |   |   |   |
-| E8-1, day 2 start |   |   |   |   |
-| E8-1, after (21, 5) |   |   |   |   |
-| E8-1, after (46, 5) |   |   |   |   |
-| E8-1, after the landing |   |   |   |   |
-| E8-1c, day 2 start |   |   |   |   |
-| E8-1c, after (40, 6) |   |   |   |   |
-| E8-1c, after the landing |   |   |   |   |
+| E8-1, day 1 start | 9,4,0 | 2000 | 2000 | 0x0 |
+| E8-1, after (13, 4) | 13,4,0 | 1300 | 2000 | 0x0 |
+| E8-1, after (17, 4) | 17,4,0 | 600 | 2000 | 0x0 |
+| E8-1, after boarding | 20,4,0 | 0 | 3000 | 0x40000 |
+| E8-1c, day 1 start | 11,6,0 | 2000 | 2000 | 0x0 |
+| E8-1c, after (15, 6) | 15,6,0 | 1300 | 2000 | 0x0 |
+| E8-1c, after (19, 6) | 19,6,0 | 600 | 2000 | 0x0 |
+| E8-1c, after boarding | 20,6,0 | 637 | 3000 | 0x40000 |
+| E8-1, day 2 start | 20,4,0 | 3000 | 3000 | 0x40000 |
+| E8-1, after (21, 5) | 21,5,0 | 2859 | 3000 | 0x40000 |
+| E8-1, after (46, 5) | 46,5,0 | 359 | 3000 | 0x40000 |
+| E8-1, after the landing | 49,5,0 | 0 | 2000 | 0x0 |
+| E8-1c, day 2 start | 20,6,0 | 3000 | 3000 | 0x40000 |
+| E8-1c, after (40, 6) | 40,6,0 | 1000 | 3000 | 0x40000 |
+| E8-1c, after the landing | 45,6,0 | 333 | 2000 | 0x0 |
 
-- the boats' records after boarding (E8-1's, E8-1c's: tile, in use, type, facing, owner, captain, aboard): 
-- the boats' records after the landings: 
-- anything odd: 
+- the boats' records after boarding (E8-1's, E8-1c's: tile, in use, type, facing, owner, captain, aboard): tile 20,4,0; in use 1; type 0; facing 2; owner red; captain E8-1; aboard 1; tile 20,6,0; in use 1; type 1; facing 2; owner red; captain E8-1c; aboard 1
+- the boats' records after the landings: tile 48,5,0; in use 1; type 0; facing 2; owner red; captain E8-1; aboard 0; tile 44,6,0; in use 1; type 1; facing 2; owner red; captain E8-1c; aboard 0
+- anything odd: worn at the start (the starting bonus): Admiral's Hat (head); boats in use at the start: 7; E8-1's boarding: arrived on the boat's tile: yes; worn at the start (the starting bonus): Admiral's Hat (head); E8-1c's boarding: arrived on the boat's tile: yes; E8-1 after (26, 5): tile, points: 26,5,0; 2359; E8-1 after (31, 5): tile, points: 31,5,0; 1859; E8-1 after (36, 5): tile, points: 36,5,0; 1359; E8-1 after (41, 5): tile, points: 41,5,0; 859; E8-1's landing: the marks: 47,5 48,5 49,5; E8-1's landing: arrived: yes; E8-1c after (25, 6): tile, points: 25,6,0; 2500; E8-1c after (30, 6): tile, points: 30,6,0; 2000; E8-1c after (35, 6): tile, points: 35,6,0; 1500; E8-1c's landing: the marks: 41,6 42,6 43,6 44,6 45,6; E8-1c's landing: arrived: yes
 
 ## E8-3 — Where a boat lands: an event's tile, a hole's tile and a free coastal tile (D-42, ADV-SEA-003)
 
@@ -65,12 +69,12 @@ Map file: `E08-batch-8a.h3m`. Fill in the blanks below and keep this file; an ag
 
 | target | the path's marks (tiles, or none) | tile after | movement points after | gold after | message |
 |---|---|---|---|---|---|
-| (34, 14) the hole |   |   |   |   |   |
-| (33, 13) the event |   |   |   |   |   |
-| (33, 15) free |   |   |   |   |   |
+| (34, 14) the hole | none | 30,14,0 | 1500 | 30850 | none |
+| (33, 13) the event | none | 30,14,0 | 1500 | 30850 | none |
+| (33, 15) free | 31,14 32,14 33,15 | 33,15,0 | 0 | 30850 | none |
 
-- day 2 start: tile, movement points, gold: 
-- anything odd: 
+- day 2 start: tile, movement points, gold: 30,14,0; 1500; 30850
+- anything odd: E8-3's boarding (tile, points, status): 30,14,0; 0; 0x40000; E8-3's status after (34, 14) the hole: 0x40000; E8-3's status after (33, 13) the event: 0x40000; E8-3's status after (33, 15) free: 0x0
 
 ## E8-4 — 80 points on a Favorable Winds tile: a diagonal step (93), then a straight one (66) (D-43, ADV-SEA-004)
 
@@ -85,16 +89,16 @@ Map file: `E08-batch-8a.h3m`. Fill in the blanks below and keep this file; an ag
 
 | moment | tile | movement points |
 |---|---|---|
-| day 2 start |   |   |
-| after (25, 26) |   |   |
-| after (30, 26) |   |   |
-| after (32, 28) |   |   |
-| after (34, 30) |   |   |
-| after the click on (35, 31) |   |   |
-| after the click on (35, 30) |   |   |
+| day 2 start | 20,26,0 | 1500 |
+| after (25, 26) | 25,26,0 | 1000 |
+| after (30, 26) | 30,26,0 | 500 |
+| after (32, 28) | 32,28,0 | 266 |
+| after (34, 30) | 34,30,0 | 80 |
+| after the click on (35, 31) | 34,30,0 | 80 |
+| after the click on (35, 30) | 35,30,0 | 0 |
 
-- the marks of the click on (35, 31) (tiles, colour; clicked again or not), and of the click on (35, 30): 
-- anything odd: 
+- the marks of the click on (35, 31) (tiles, colour; clicked again or not), and of the click on (35, 30): 35,31; red; no; 35,30; green; yes
+- anything odd: E8-4's boarding (tile, points, status): 20,26,0; 0; 0x40000; E8-4's day's maximum at day 2's start: 1500; the first run clicked the diagonal (35, 31) again as the procedure says (its marks the single step, red): E8-4 stayed on (34, 30) and its 80 points became 0; the click on (35, 30) then showed the single step in red, clicked again, nothing moved (0 points); this run clicks the diagonal once only, so the straight step is tried with 80
 
 ## E8-10 — The day's sea points: Advanced Navigation and the Necklace of Ocean Guidance; the Sea Captain's Hat (HER-ADV-009, ADV-MOV-001, ADV-MOV-002, A-28)
 
@@ -110,14 +114,14 @@ Map file: `E08-batch-8a.h3m`. Fill in the blanks below and keep this file; an ag
 
 | hero, moment | tile | movement points | day's maximum | status flags (hex) |
 |---|---|---|---|---|
-| E8-10, day 2 start |   |   |   |   |
-| E8-10, after the landing |   |   |   |   |
-| E8-10, day 3 start |   |   |   |   |
-| E8-10b, day 2 start |   |   |   |   |
-| E8-10b, after the landing |   |   |   |   |
-| E8-10b, day 3 start |   |   |   |   |
+| E8-10, day 2 start | 40,12,0 | 4000 | 4000 | 0x40000 |
+| E8-10, after the landing | 40,13,0 | 0 | 4000 | 0x0 |
+| E8-10, day 3 start | 40,13,0 | 1560 | 1560 | 0x0 |
+| E8-10b, day 2 start | 40,16,0 | 2000 | 2000 | 0x40000 |
+| E8-10b, after the landing | 40,17,0 | 0 | 2000 | 0x0 |
+| E8-10b, day 3 start | 40,17,0 | 1560 | 1560 | 0x0 |
 
-- anything odd: 
+- anything odd: worn at the start (the starting bonus): Necklace of Ocean Guidance (neck); E8-10's boarding (tile, points, day's maximum, status): 40,12,0; 0; 1560; 0x40000; worn at the start (the starting bonus): Sea Captain's Hat (head); E8-10b's boarding (tile, points, day's maximum, status): 40,16,0; 0; 1560; 0x40000; E8-10's landing: arrived: yes; E8-10b's landing: arrived: yes
 
 ## E8-15 — A landing on a free coastal tile a monster guards (ADV-SEA-003, GAM-BAT-001)
 
@@ -130,12 +134,12 @@ Map file: `E08-batch-8a.h3m`. Fill in the blanks below and keep this file; an ag
 
 **Record**
 
-- the path's marks to (50, 15): 
-- what follows the landing (a message, the battle): 
-- the opening: terrain, special field, ship flag, blocked hexes: 
-- after: E8-15's tile, movement points, status flags: 
-- after: the boat's record (tile, in use, facing, owner, captain, aboard): 
-- anything odd: 
+- the path's marks to (50, 15): 1; 50,15
+- what follows the landing (a message, the battle): none; yes; attacker
+- the opening: terrain, special field, ship flag, blocked hexes: terrain grass, special field none, ship flag 0, blocked hexes 21, 22, 23, 76, 77, 126, 127, 128, 129, 143, 144, 145, 146
+- after: E8-15's tile, movement points, status flags: 50,15,0; 0; 0x0
+- after: the boat's record (tile, in use, facing, owner, captain, aboard): tile 50,14,0; in use 1; type 2; facing 4; owner red; captain E8-15; aboard 0
+- anything odd: E8-15's boarding (tile, points, status): 50,14,0; 0; 0x40000; E8-15's army after the battle: 10 Angels
 
 ## E8-7 — A Flotsam on the water beside the coast: a flyer's click, a flyer's arrow key, a water walker, a walker (D-45, ADV-PIK-018)
 
@@ -154,12 +158,12 @@ Map file: `E08-batch-8a.h3m`. Fill in the blanks below and keep this file; an ag
 
 | hero | the Flotsam's word before | the marks (or none) | tile after | movement points before / after | wood, gold before / after | the Flotsam after (word, or gone) |
 |---|---|---|---|---|---|---|
-| E8-7a (wings, click) |   |   |   |   |   |   |
-| E8-7b (wings, arrow key) |   |   |   |   |   |   |
-| E8-7c (levitation, click) |   |   |   |   |   |   |
-| E8-7d (walker, click) |   |   |   |   |   |   |
+| E8-7a (wings, click) | 0x00000001; Flotsam: 5 wood | none | 30,41,0 | 1560; 1560 | 30; 30600; 30; 30600 | 0x00000001; Flotsam: 5 wood |
+| E8-7b (wings, arrow key) | 0x00000001; Flotsam: 5 wood | nothing | 30,43,0 | 1560; 1560 | 30; 30600; 30; 30600 | 0x00000001; Flotsam: 5 wood |
+| E8-7c (levitation, click) | 0x00000002; Flotsam: 5 wood, 200 gold | none | 30,45,0 | 1560; 1560 | 30; 30600; 30; 30600 | 0x00000002; Flotsam: 5 wood, 200 gold |
+| E8-7d (walker, click) | 0x00000001; Flotsam: 5 wood | none | 30,47,0 | 1560; 1560 | 30; 30600; 30; 30600 | 0x00000001; Flotsam: 5 wood |
 
-- anything odd: 
+- anything odd: worn at the start (the starting bonus): Angel Wings (shoulders); control: E8-7a's path to (32, 39) at a first click (over (31, 40) if it flies): tiles, mark: 32,39 31,40; green; worn at the start (the starting bonus): Angel Wings (shoulders); E8-7b's right arrow (stepped, scrolled or nothing): nothing; control: E8-7b's key Left (stepped, scrolled or nothing; tile after): stepped; 29,43,0; control: E8-7b's key KP_Left (stepped, scrolled or nothing; tile after): stepped; 28,43,0; worn at the start (the starting bonus): Boots of Levitation (feet); control: E8-7c's path to (32, 49) at a first click (over the water if it walks on it): tiles, mark: 31,46 32,47 32,48 32,49; green; control: E8-7d's path to (32, 49) at a first click (on land: (30, 48), (31, 49)): tiles, mark: 30,48 31,49 32,49; green
 
 ## E8-16 — Blue's hero boards the boat Red's E8-1c left at its landing (ADV-SEA-001)
 
@@ -170,7 +174,7 @@ Map file: `E08-batch-8a.h3m`. Fill in the blanks below and keep this file; an ag
 
 **Record**
 
-- the boat's record before (tile, in use, type, facing, owner, captain, aboard): 
-- the boat's record after: 
-- E8-16 after: movement points, day's maximum, status flags: 
-- anything odd: 
+- the boat's record before (tile, in use, type, facing, owner, captain, aboard): tile 44,6,0; in use 1; type 1; facing 2; owner red; captain E8-1c; aboard 0
+- the boat's record after: tile 44,6,0; in use 1; type 1; facing 2; owner blue; captain E8-16; aboard 1
+- E8-16 after: movement points, day's maximum, status flags: 0; 1560; 0x40000
+- anything odd: E8-16's boarding: arrived on the boat's tile: yes

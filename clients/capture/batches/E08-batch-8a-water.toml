@@ -1,0 +1,31 @@
+# E08 batch E8a's water map played by the capture harness (E08 T68a; h3adv.py batch): the
+# procedure of experiments/specs/E08-batch-8a-water.toml as steps, on Easy, with T68a's reads
+# (README, "Boats and the sea"). Hot seat, Red and Blue human; only Red's day 1 is played. Row E8-5:
+# a hero written on a water tile with no boat. If the game refuses the map, stops or crashes, the
+# batch stops there: that is the row's result, written into the template by hand.
+
+spec = "experiments/specs/E08-batch-8a-water.toml"
+players = ["Red", "Blue"]
+difficulty = "easy"
+
+# The first step's screen is kept (`dump`): an agent looks at what the view draws under E8-5.
+[[step]]
+encounter = "E8-5"
+hero = "E8-5"
+dump = "E8-5-start"
+record = { "what the screen shows under E8-5 (a boat or not)" = "drawn", "day 1 start: tile, movement points, day's maximum, status flags; boats in use" = ["hero:tile", "hero:points", "hero:day_points", "hero:status", "boats:used"] }
+note = { "worn at the start (the starting bonus)" = "hero:equipment", "backpack at the start" = "hero:backpack", "E8-5's boat" = "boat" }
+
+[[step]]
+encounter = "E8-5"
+hero = "E8-5"
+walk = [9, 10]
+record = { "the click on (9, 10): marks; tile and movement points after" = ["path_tiles", "hero:tile", "hero:points"] }
+note = { "messages after the click on (9, 10)" = "messages" }
+
+[[step]]
+encounter = "E8-5"
+hero = "E8-5"
+walk = [11, 10]
+record = { "the click on (11, 10): marks; tile, movement points, day's maximum, status flags after" = ["path_tiles", "hero:tile", "hero:points", "hero:day_points", "hero:status"] }
+note = { "messages after the click on (11, 10)" = "messages", "E8-5's boat after (11, 10)" = "boat", "boats in use after (11, 10)" = "boats:used" }

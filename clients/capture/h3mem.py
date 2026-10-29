@@ -209,8 +209,9 @@ VIEW_OFFSET, WALK_GROUP, WALK_FRAME, HERO_POINTS = 0xF4, 0x1FC, 0x200, 0x4D
 # 0x548 each), the idle step's counter +0x13FFC.
 SIDE_COUNTS, STACKS, SIDE_STRIDE, STACK_SIZE, STEP_COUNTER = 0x54BC, 0x54CC, 0x6EE8, 0x548, 0x13FFC
 # The battlefield (E08 T32b1; structs.toml, battle_manager): the terrain (i32 +0x5394, set by
-# 0x4643B0) and the special field (i32 +0x53C0, -1 none).
-BATTLE_TERRAIN, SPECIAL_FIELD = 0x5394, 0x53C0
+# 0x4643B0) and the special field (i32 +0x53C0, -1 none); since E08 T68a the ship flag (u8
+# +0x53C6: a hero in a boat, a Shipwreck or a Derelict Ship; the deck picture).
+BATTLE_TERRAIN, SPECIAL_FIELD, ON_SHIP = 0x5394, 0x53C0, 0x53C6
 # The hex records (structs.toml, hex_record; H3API's H3CombatSquare): 187 from +0x1C4, 0x70 bytes
 # each: the flags (u8 +0x10, 0x2 blocked), the stack on it (+0x18: side, record; -1 none), the
 # pathfinder's attack mark for the active stack (u8 +0x4A).
@@ -475,14 +476,20 @@ class Mem:
 
     def battlefield(self):
         """The battle's terrain and special field by name (E08 T32b1; the special field None for
-        none); None outside a battle."""
+        none) and since E08 T68a its ship flag (0 or 1); None outside a battle."""
         manager = self.manager()
         if not manager:
             return None
         terrain, special = self.i32(manager + BATTLE_TERRAIN), self.i32(manager + SPECIAL_FIELD)
         return {"terrain": TERRAINS[terrain] if 0 <= terrain < len(TERRAINS) else str(terrain),
                 "special": (SPECIAL_FIELDS[special] if 0 <= special < len(SPECIAL_FIELDS)
-                            else None if special < 0 else str(special))}
+                            else None if special < 0 else str(special)),
+                "ship": self.read(manager + ON_SHIP, 1)[0]}
+
+    def obstacle_hexes(self):
+        """The hexes an obstacle blocks (E08 T68a, batch E8's openings): the hex records' blocked
+        flag (0x2) on a hex no stack stands on, in the hexes' order."""
+        return [h["hex"] for h in self.hexes() if h["flags"] & 0x2 and h["stack"] is None]
 
     def battle_heroes(self):
         """Each side's hero as drawn (E17 M3 T3a): side, DEF group, frame and the flag's frame;
@@ -722,7 +729,12 @@ class Mem:
         return 2 if self.read(self.game() + TWO_LEVELS, 1)[0] else 1
 
     def path(self):
-        """The selected hero's path as the map shows it: {(x, y, level): "green" | "red"}."""
+        """The selected hero's path as the map shows it: {(x, y, level): "green" | "red"}; since
+        E08 T68a {} while the manager's +0x4C shows no path (as path_arrows): a click that finds
+        no path leaves the last path's arrows in the array (batch E8a's second run read E8-7c's
+        path as E8-7d's)."""
+        if not self.manager_field(PATH_SHOWN):
+            return {}
         side = self.i32(self.game() + MAP_SIDE)
         tiles = side * side * self.levels()
         frames = struct.unpack(f"<{tiles}H", self.read(self.manager_field(PATH), 2 * tiles))

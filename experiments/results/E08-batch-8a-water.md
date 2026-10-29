@@ -1,5 +1,7 @@
 # E08 batch E8a water — results
 
+> Played by the capture harness on 2026-10-28 (`clients/capture/h3adv.py batch clients/capture/batches/E08-batch-8a-water.toml`): the same Complete 4.0 `Heroes3.exe` under Wine, without the HD mod; hot seat, difficulty Easy, the starting bonus random, Show Route on; read from the game's memory.
+
 Map file: `E08-batch-8a-water.h3m`. Fill in the blanks below and keep this file; an agent records the results (`docs/experiments/README.md`).
 
 **Stamp `843348c3`.** The map's description in the scenario list starts with "Stamp 843348c3.": compare the two before you play. If they differ, the map is not this template's build: do not play it, ask for the map again.
@@ -26,8 +28,8 @@ Map file: `E08-batch-8a-water.h3m`. Fill in the blanks below and keep this file;
 
 **Record**
 
-- what the screen shows under E8-5 (a boat or not): 
-- day 1 start: tile, movement points, day's maximum, status flags; boats in use: 
-- the click on (9, 10): marks; tile and movement points after: 
-- the click on (11, 10): marks; tile, movement points, day's maximum, status flags after: 
-- anything odd: 
+- what the screen shows under E8-5 (a boat or not): on foot
+- day 1 start: tile, movement points, day's maximum, status flags; boats in use: 10,10,0; 2000; 2000; 0x0; 0
+- the click on (9, 10): marks; tile and movement points after: none; 10,10,0; 2000
+- the click on (11, 10): marks; tile, movement points, day's maximum, status flags after: 11,10; 11,10,0; 1900; 2000; 0x0
+- anything odd: boats in use after (11, 10): 0; the screen at the first step (`dump`, looked at by the agent, T68a): E8-5 drawn on horseback on the water tile (10, 10), no boat under it; the game took the map, set it up and played it without a message (two runs, the same tiles, points and flags)

@@ -4,34 +4,47 @@ Pre-refined tasks of the adventure lane, in order, then the inbox of discovered 
 
 ## Tasks
 
-Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T65 (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 7 are closed (2026-10-12, -13, -20, -21, -23, -26, -28; increment 7, rewards on the map, by T65's audit). **Increment 8, boats and the sea**, refined with the user at T65 (ADV-Q31; decisions 158, 159): the survey and the ADR amendment drafts first (T66a, T66b), each task's cut confirmed with the user at its start. T66a in two (decision 160): T66a1 done (`adventure/e08-t66a1`, #550: survey `E08-sea.md` §0 to §6), T66a2 done (`adventure/e08-t66a2`, decision 161: whole; §7 to §14, the checkpoint's ADV-Q32); T66b done (`adventure/e08-t66b`, decision 169: whole; the drafts, `E08-design.md` and the cut in eight rounds, ADV-Q33 accepted: decisions 170–173). Round 2: T67 done (`adventure/e08-t67`, decision 174: whole; the writer's sea objects, the spec's bottles and a monster's own tile, `cross-lane`; the specs E8a, its water map and E8b with their templates). Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
+Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T65 (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 7 are closed (2026-10-12, -13, -20, -21, -23, -26, -28; increment 7, rewards on the map, by T65's audit). **Increment 8, boats and the sea**, refined with the user at T65 (ADV-Q31; decisions 158, 159): the survey and the ADR amendment drafts first (T66a, T66b), each task's cut confirmed with the user at its start. T66a in two (decision 160): T66a1 done (`adventure/e08-t66a1`, #550: survey `E08-sea.md` §0 to §6), T66a2 done (`adventure/e08-t66a2`, decision 161: whole; §7 to §14, the checkpoint's ADV-Q32); T66b done (`adventure/e08-t66b`, decision 169: whole; the drafts, `E08-design.md` and the cut in eight rounds, ADV-Q33 accepted: decisions 170–173). Round 2: T67 done (`adventure/e08-t67`, decision 174: whole; the writer's sea objects, the spec's bottles and a monster's own tile, `cross-lane`; the specs E8a, its water map and E8b with their templates). Round 3: T68 in two by batch (decision 175): T68a done (`adventure/e08-t68a`: the harness's boat reads and steps, E8a and its water map run and recorded), T68b next. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
 
-### E08 T68 — Batch E8's harness and runs
+### E08 T68b — Batch E8b's harness and run
 
-- **Scope** (design §17, decision 171): `clients/capture/` (common; CLT-Q18: this lane builds it
-  with the harness check and tells the client and map-client lanes' inboxes): reads of the boats'
-  records (game +0x4E3BC, `structs.toml` "boat"), a hero's in-boat bit (+0x105 bit 18) and day's
-  maximum (+0x49), the battle's ship flag (`battle_manager` +0x53C6), terrain, special field and
-  blocked hexes at the opening; clicks at a coastal tile from a boat and at a boat from land; an
-  arrow key toward a tile (E8-7); the recipes `clients/capture/batches/E08-batch-8a.toml`,
-  `-8a-water.toml`, `-8b.toml` from the specs T67 staged (`experiments/specs/E08-batch-8a.toml`,
-  `-8a-water.toml`, `-8b.toml`; their legs, the restart rule of E8-6 and E8-8, E8-12's defend
-  and retreat by hand); the runs E8a (with its water map, which may refuse the hero on water: that
-  is E8-5's result) and E8b, the templates `experiments/results/E08-batch-8a.md`, `-8a-water.md`,
-  `-8b.md` filled.
-- **Depends on:** T67 (done). **Status:** ready; its cut confirmed at its start (T57, increment 7's,
-  was taken whole: the reads, the recipes and the runs).
+- **Scope** (design §17; decision 175: T68 in two by batch, T68a done, `E08-log.md`):
+  `clients/capture/` (common; T68a told the client and map-client lanes' inboxes): the sea pickups'
+  words decoded by `object:x,y` (Sea Chest 82: bits 0 to 2 the kind, 3 to 12 the artifact; the
+  Survivor 86: its artifact; the Ocean Bottle 59; T68a did Flotsam 29), the restart rule over
+  chest kinds (`[[require]]` holds an artifact chest: kind 2), visits from a boat in legs (`walk =
+  "each"`, `select` by kind), a bottle's whole message text, the battles at sea (the ship flag,
+  `opening:field` and `blocked` are T68a's), E8-12's defend and retreat (`battle = "defender
+  retreat"` exists); the recipe `clients/capture/batches/E08-batch-8b.toml` from the spec
+  `experiments/specs/E08-batch-8b.toml` (its order: E8-13 and E8-14 before E8-11 and E8-12, the
+  restart rule of E8-6 and E8-8); the run, the template `experiments/results/E08-batch-8b.md`
+  filled. T68a's trap: a second click on a red path whose first step the hero cannot pay zeroes
+  its points (`TRAPS.md`).
+- **Depends on:** T68a (done). **Status:** ready.
 
 ### E08 T69 — Batch E8's scoring
 
 - **Scope** (design §17): survey `E08-sea.md` §15 (new), each row against the specs' predictions
-  (T67's corrections to §11: E8-4's drop to 0, E8-13's path past the guards); a dispute a row
+  (T67's corrections to §11: E8-4's drop to 0, E8-13's path past the guards) and T68a's findings
+  (`E08-log.md`, T68a: the flyer took no Flotsam, E8-15's battle on grass, a refused second click
+  zeroes the points, the hero on water accepted); a dispute a row
   contradicts reverts to the other side (decision 162) or becomes an `ADV-Q`; E8-5 decides
   whether D-44's refusal stays (decision 163); the consensus rows' sources `verified` when the
   rules are written (T72 to T74).
-- **Depends on:** T68. **Status:** queued.
+- **Depends on:** T68b (E8a's results are in since T68a). **Status:** queued.
 
 ## Inbox
+
+- 2026-10-28 (T68a's scoped verify; **a failing property case**, for a fix task before T72):
+  `h3-map`'s `every_step_keeps_the_commands_invariants` failed on a random case, reproducible
+  with the regression line `cc a85563f06cafc2ccfda4e0e43ef5db0c90238e7cf03330cf9f12b82390be04fc`
+  (not committed: it would fail CI until fixed; add it to
+  `crates/h3-map/proptest-regressions/tests/play.txt` with the fix). At `play.rs` 2301 the actor
+  has an army dialog open (a join without room) and its `Close` is accepted, but a **battle**
+  is then open for the actor (`probe.battle(actor)`), where the plan asserts no decision. Likely a
+  second monster guarding the joined one's tile (GAM-BAT-001's guards in turn): decide whether
+  the battle after the join is the original's sequence (then the plan's assertion is too
+  strict) or an engine bug. `master` 7dad572's CI passed: the case is rare.
 
 - 2026-10-23 (T42, measured; for a performance task): **a flyer's or water walker's reach costs
   about 1.9 times a walker's query** on the XL map (`reach-lifted-xl-144`: 279 k Ir a query
