@@ -485,7 +485,9 @@ impl AdventureEvent {
                 | AdventureEventKind::HeroRemoved { .. }
                 | AdventureEventKind::CreaturesJoined { .. }
                 | AdventureEventKind::EventFired { .. }
-                | AdventureEventKind::MonsterChanged { .. } => self.kind,
+                | AdventureEventKind::MonsterChanged { .. }
+                | AdventureEventKind::Boarded { .. }
+                | AdventureEventKind::Landed { .. } => self.kind,
             },
             seen_by: alone,
         })

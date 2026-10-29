@@ -1,0 +1,33 @@
+# E25 T5's scale run (T4b, the user's choices 2026-10-29): `e25-bound.toml` at 60 M samples, its
+# tactics bound at the original's computer's three rounds (`[network] tactics_rounds = 3`,
+# BAT-AI-023's cap; the computer also stops after a round without a placement, which the agent
+# may do itself by ending the phase). From scratch, on the user's machine (about 3.5 to 4 hours):
+#
+#   uv run --group train python -m h3env.train --config configs/e25-scale.toml --out runs/e25-scale-1
+#   uv run --group train python -m h3env.train --resume runs/e25-scale-1
+
+seed = 1
+samples = 60_000_000
+
+[env]
+kinds = [0, 0, 100, 50, 25, 0]
+
+[network]
+tactics_rounds = 3
+
+[ppo]
+shaping = true
+
+[league]
+self_play = 0.5
+snapshot_every = 1_000_000
+max_members = 16
+live = 4
+live_every = 250_000
+
+[gate]
+gate_every = 10_000_000
+
+[ladder]
+ladder_episodes = 250
+ladder_final_episodes = 500

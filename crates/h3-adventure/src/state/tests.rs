@@ -895,4 +895,5 @@ mod monsters;
 mod piles;
 mod records;
 mod rewards;
+mod sea;
 mod visits;

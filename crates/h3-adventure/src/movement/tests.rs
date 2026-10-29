@@ -672,3 +672,19 @@ fn the_heros_flying_and_water_walking_levels_come_from_its_details() {
         120
     );
 }
+
+// covers: ADV-SEA-002, ADV-SEA-003
+#[test]
+fn a_boarding_or_a_landing_converts_the_points_only_with_free_boarding() {
+    // D-41 (batch E8's E8-1 and E8-2): ⌊points × new ÷ old⌋ after the step's drop, none without
+    // free boarding or from a maximum of 0, a 64-bit product saturated into the points.
+    assert_eq!(converted_points(425, (2000, 3000), true), 637);
+    assert_eq!(converted_points(500, (3000, 2000), true), 333);
+    assert_eq!(converted_points(425, (2000, 3000), false), 0);
+    assert_eq!(converted_points(425, (0, 3000), true), 0);
+    assert_eq!(converted_points(u32::MAX, (1, u32::MAX), true), u32::MAX);
+    assert_eq!(
+        converted_points(u32::MAX, (u32::MAX, u32::MAX - 1), true),
+        u32::MAX - 1
+    );
+}

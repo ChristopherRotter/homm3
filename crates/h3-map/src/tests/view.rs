@@ -458,6 +458,12 @@ fn check_told(
                 kind: AdventureEventKind::CreaturesJoined { .. },
                 seen_by,
             }) => prop_assert_eq!(seen_by, alone),
+            // E08 T73: a boarding and a landing, told where the viewer sees heroes on the boat's
+            // tile (the plans place no boats yet: T75 follows the boats here).
+            GameEvent::Adventure(AdventureEvent {
+                kind: AdventureEventKind::Boarded { .. } | AdventureEventKind::Landed { .. },
+                seen_by,
+            }) => prop_assert_eq!(seen_by, alone),
             // E08 T62b2: an event's firing, told to its visitor's owner alone (ADV-FOG-007).
             GameEvent::Adventure(AdventureEvent {
                 kind: AdventureEventKind::EventFired { hero, .. },

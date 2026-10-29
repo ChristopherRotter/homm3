@@ -45,12 +45,16 @@ use core::cmp::Reverse;
 
 use h3_content::Ruleset;
 use h3_contracts::{HeroId, PlayerId};
-use h3_heroes::HeroDetails;
+use h3_heroes::{HeroDetails, free_boarding};
 
-use crate::movement::{DIRECTIONS, Pricing, details_of, hero_movement};
+use crate::movement::{
+    DIRECTIONS, Pricing, converted_points, details_of, hero_movement, sea_day_points,
+};
 use crate::ruleset::AdventureRuleset;
 use crate::setup::Pos;
-use crate::state::{AdventureState, HeroOnMap, Mode, Node, StaticMap, enterable_terrain};
+use crate::state::{
+    AdventureState, HeroOnMap, Meets, Mode, Node, StaticMap, StaticTile, enterable_terrain,
+};
 
 /// What a search reads besides its window: the state, the rules, the hero's pricing and owner,
 /// and whether another hero stands on each of the window's tiles.
@@ -65,6 +69,22 @@ struct Search<'s> {
     /// Whether the map holds a monster, so that a tile may be guarded (E08 T20a2b): the search
     /// asks [`Search::guarded`] only then (`bench-check`).
     guards: bool,
+    /// What a boarding's conversion reads (E08 T73; ADV-SEA-002): the core, the hero's details
+    /// and its day's maximum; derived only at a boarding met (`bench-check`).
+    boarding: (&'s Ruleset, Option<&'s HeroDetails>, u32),
+}
+
+impl Search<'_> {
+    /// The points a boarding keeps of `left` on the boat's tile `tile` (E08 T73; ADV-SEA-002):
+    /// the boat's drop, then the conversion to the sea's maximum (`converted_points`), as the
+    /// move leaves them. Out of the search's hot loop: boats are rare.
+    #[cold]
+    fn boarded(&self, tile: &StaticTile, left: u32) -> u32 {
+        let (core, details, old) = self.boarding;
+        let new = sea_day_points(core, self.part, details);
+        let free = details.is_some_and(|details| free_boarding(details, core));
+        converted_points(self.pricing.sail_left_after(tile, left), (old, new), free)
+    }
 }
 
 impl Search<'_> {
@@ -111,7 +131,7 @@ impl Reach {
     ) -> Self {
         let map = state.map();
         let movement = hero_movement(core, details_of(heroes, hero.id));
-        let mode = Mode::of(&movement);
+        let mode = Mode::of(&movement, hero.boat);
         let pricing = Pricing::new(core, part, &hero.army, &movement);
         // No step costs less than the cheapest straight step, so none goes farther than this.
         let radius = u16::try_from(hero.movement / pricing.cheapest()).unwrap_or(u16::MAX);
@@ -141,6 +161,7 @@ impl Reach {
                 occupied[slot] = true;
             }
         }
+        let boarding = (core, details_of(heroes, hero.id), hero.max_movement);
         let search = Search {
             state,
             part,
@@ -150,8 +171,14 @@ impl Reach {
             owner: hero.owner,
             occupied,
             guards: map.any_monster(),
+            boarding,
         };
         reach.points[reach.start] = Some(hero.movement);
+        // A hero in a boat: its own tile only until its search is built (E08 T73b).
+        // stub: ADV-STUB-11
+        if let Mode::Sail(_) = mode {
+            return reach;
+        }
         if mode != Mode::Walk {
             reach.search_layered(&search, mode, hero.movement);
             return reach;
@@ -302,14 +329,20 @@ impl Reach {
                 continue;
             };
             let price = pricing.step(&from, &entry.tile, dir % 2 == 1, points);
-            let Some(left) = points.checked_sub(price) else {
+            let Some(price_left) = points.checked_sub(price) else {
                 continue;
             };
-            let left = pricing.left_after(&entry.tile, left);
+            let left = pricing.left_after(&entry.tile, price_left);
             let via = dir as u8 | if kind == Node::Pass { FROM_PASS } else { 0 };
             let guarded = || mode != Mode::Fly && search.guards && search.guarded(pos);
+            // A boarding keeps the points a boat's drop and the conversion leave (E08 T73,
+            // ADV-SEA-002; the move's `Pricing::left_by` and `converted_points`).
+            let stop = match entry.stop {
+                Some(Some(Meets::Board(_))) => search.boarded(&entry.tile, price_left),
+                _ => left,
+            };
             if let Some(met) = entry.stop
-                && self.improve((next, Node::Stop), left, via)
+                && self.improve((next, Node::Stop), stop, via)
                 && met.is_none()
                 && !guarded()
             {
