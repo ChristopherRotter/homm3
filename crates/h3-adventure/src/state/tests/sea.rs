@@ -294,7 +294,8 @@ fn a_hero_in_a_boat_is_visited_from_a_stop_and_flown_over() {
         state.put_aboard(HeroId::new(3), 1);
         state
     };
-    // From the shore a walker, a flyer and a water walker attack blue's boat (the deck: T74).
+    // From the shore a walker, a flyer and a water walker attack blue's boat (on the deck since
+    // T74b: `sea_battles.rs`).
     for heroes in [&store(&[])[..], &flyer, &walker] {
         let mut s = start();
         let (outcome, _) = sail(&mut s, &rules, heroes, &[p(1, 0)]).unwrap();

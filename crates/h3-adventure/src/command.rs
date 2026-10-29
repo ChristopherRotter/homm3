@@ -391,11 +391,13 @@ pub struct BattleStart {
     /// The tile the battle is fought at: the defender's (survey `E04c-battlefields.md` §4,
     /// batch 3b), a monster's its own, a guarded pile's the pile's (the visited tile, 0x4A4886).
     pub tile: Pos,
-    /// The battle's terrain by its tile ([`crate::BattleTerrains`]): the underground's, else the
-    /// coast's, else the tile's own.
+    /// The battle's terrain by its tile ([`crate::BattleTerrains`]): the sea's when either side's
+    /// hero is in a boat (E08 T74b), else the underground's, else the coast's, else the tile's
+    /// own.
     pub terrain: TerrainId,
-    /// The special battlefield the tile gives, if any: the coast's, or a special ground's
-    /// ([`crate::AdventureState::battle_ground`]).
+    /// The special battlefield, if any: a special ground's on the tile, else the deck with one
+    /// hero in a boat and the two boats with both (E08 T74b), else the coast's
+    /// ([`crate::AdventureState::sea_battle_ground`], [`crate::AdventureState::battle_ground`]).
     pub battlefield: Option<ContentKey>,
     /// The battlefield picture's variant, 0 to 2, by the scenery around the tile
     /// ([`crate::AdventureState::background`], GAM-BAT-011; E08 T54): for viewers.
@@ -728,6 +730,19 @@ pub enum AdventureEventKind {
         object_type: ObjectTypeId,
         /// Its anchor.
         anchor: Pos,
+    },
+    /// A boat left the map with its hero (ADV-SEA-006, E08 T74b; design §13): a battle took a
+    /// hero in a boat off the map, and its boat with it (the hero's removal came before as
+    /// [`Self::HeroRemoved`], at the same tile). Seen by the players that see heroes on the tile,
+    /// as they saw the hero in its boat there (ADV-FOG-006, ADV-FOG-008); never the boat's index,
+    /// owner or captain.
+    BoatRemoved {
+        /// The hero.
+        hero: HeroId,
+        /// The boat's type (appearance only).
+        boat: u8,
+        /// The water tile it left the map from, its hero's.
+        at: Pos,
     },
 }
 
