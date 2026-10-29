@@ -692,12 +692,30 @@ fn the_lists_writes_and_the_selection() {
     let without = "the resources or the date without a hero's selection";
     for (bad, error) in [
         (format!("select = {{ town = [20, 20] }}\n{bar}"), without),
-        ("select = { town = [20, 20] }\ndate = [1, 1, 1]".to_string(), without),
-        ("select = { hero = [5, 5] }\ndate = [0, 1, 1]".to_string(), "[0, 1, 1]"),
-        ("select = { hero = [5, 5] }\ndate = [1, 0, 1]".to_string(), "[1, 0, 1]"),
-        ("select = { hero = [5, 5] }\ndate = [1, 5, 1]".to_string(), "[1, 5, 1]"),
-        ("select = { hero = [5, 5] }\ndate = [1, 1, 0]".to_string(), "[1, 1, 0]"),
-        ("select = { hero = [5, 5] }\ndate = [1, 1, 8]".to_string(), "[1, 1, 8]"),
+        (
+            "select = { town = [20, 20] }\ndate = [1, 1, 1]".to_string(),
+            without,
+        ),
+        (
+            "select = { hero = [5, 5] }\ndate = [0, 1, 1]".to_string(),
+            "[0, 1, 1]",
+        ),
+        (
+            "select = { hero = [5, 5] }\ndate = [1, 0, 1]".to_string(),
+            "[1, 0, 1]",
+        ),
+        (
+            "select = { hero = [5, 5] }\ndate = [1, 5, 1]".to_string(),
+            "[1, 5, 1]",
+        ),
+        (
+            "select = { hero = [5, 5] }\ndate = [1, 1, 0]".to_string(),
+            "[1, 1, 0]",
+        ),
+        (
+            "select = { hero = [5, 5] }\ndate = [1, 1, 8]".to_string(),
+            "[1, 1, 8]",
+        ),
     ] {
         let error = if error.starts_with('[') {
             format!("the date Some({error}) is no day of the game's")
@@ -711,7 +729,10 @@ fn the_lists_writes_and_the_selection() {
          [9, 9], owner = 1 }}]\n{bar}\n"
     ))
     .unwrap();
-    assert_eq!(plain_bar.build(&BTreeMap::new(), &[]).map(|_| ()), Err(without.to_string()));
+    assert_eq!(
+        plain_bar.build(&BTreeMap::new(), &[]).map(|_| ()),
+        Err(without.to_string())
+    );
 }
 
 #[test]

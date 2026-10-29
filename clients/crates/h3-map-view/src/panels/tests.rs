@@ -166,7 +166,11 @@ fn the_lists_arrows_by_their_tops_and_lengths() {
 #[test]
 fn the_resource_bar_s_picture_in_the_viewer_s_colours() {
     let layout = layout();
-    let shown = resource_bar(&layout, &live(Kingdom::default(), vec![]), &Catalogue::default());
+    let shown = resource_bar(
+        &layout,
+        &live(Kingdom::default(), vec![]),
+        &Catalogue::default(),
+    );
     assert_eq!(shown.players.into_iter().collect::<Vec<_>>(), [(1000, 2)]);
 }
 
@@ -192,7 +196,11 @@ fn the_resource_bar_s_amounts_and_date_by_their_keys() {
     let pack = h3_ui::text::pack::Pack::from_json("en", json).unwrap();
     let texts = Catalogue { packs: vec![pack] };
     let shown = resource_bar(&layout, &live(kingdom.clone(), vec![]), &texts);
-    let all: Vec<(u16, &str)> = shown.texts.iter().map(|(&id, t)| (id, t.as_str())).collect();
+    let all: Vec<(u16, &str)> = shown
+        .texts
+        .iter()
+        .map(|(&id, t)| (id, t.as_str()))
+        .collect();
     assert_eq!(
         all,
         [
