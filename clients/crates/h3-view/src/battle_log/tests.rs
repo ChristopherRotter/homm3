@@ -731,6 +731,7 @@ fn the_striker_effects_and_the_spells_after_a_strike_have_their_lines() {
         Logged::Raised { stack: 9, count: 1 },
         Logged::Thunderbolt { stack: 9, count: 1 },
         Logged::Poisoned { stack: 9, count: 1 },
+        Logged::Petrified { stack: 9, count: 1 },
         Logged::AcidBreath {
             stack: 9,
             count: 1,
