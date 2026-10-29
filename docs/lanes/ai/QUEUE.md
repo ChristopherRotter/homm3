@@ -15,29 +15,6 @@ faithful system actor still trains no agent and no neutral battles train (decisi
 run's length is agreed with the user (decision 5). All on observation v22 and action v13: no
 encoding or ABI change.
 
-- **T7a The network kinds.** *Scope:* (1) `[network] layers` for the MLP (its trunk's layers,
-  2 by default, so every saved MLP loads; `hidden` is the width). (2) Two kinds that read the
-  field as hexes, in a new module, sharing the entity network's heads (moved into a base class,
-  their parameter names kept so E06's files load) and one input: each stack slot's token
-  (`symlog` of its features, its creature's embedding) drawn on its hex and, for a two-hex
-  stack, on its front hex too (right of its position for the attacker's, left for the
-  defender's: `h3_battle::geometry::footprint`; side = own flag against the viewer-is-attacker
-  global), added to the hex planes' projection, plus the globals' and heroes' projection on
-  every hex; an off-field stack (a turret) keeps its token only. `kind = "hexconv"`: the field
-  in axial coordinates (column `x − ⌈y/2⌉ + 5`: 17 × 11 → 22 × 11 cells, 187 real), residual
-  blocks of two 3 × 3 convolutions whose kernel's two corners (+1, +1) and (−1, −1) are zero (a
-  hex's six neighbours), each block with a global-pooling bias (the real cells' mean and max),
-  the residual branch initialised at 0 and the padding cells kept at 0, no batch statistics;
-  `width` channels, `layers` blocks. `kind = "hexformer"`: the 187 hexes and a global token,
-  pre-norm blocks (E06's `Block`) with a learned bias per head and axial offset (shared by the
-  rows); `width`, `layers`, `heads`. Both: the hex vectors are the trunk's per hex, a stack's
-  vector its token plus the trunk's at its hex, the context the global and pooled vectors and
-  the active stack's. The field's size from the config (`field_width` 17, `field_height` 11,
-  the base ruleset's; checked on real battles). `layout.py` gains the columns read (two-hex,
-  viewer is attacker), pinned by `h3-sim`'s layout test. (3) Tests as `test_entity.py`'s (the
-  logits in the encodings' order, an empty slot unseen, the kernel's neighbours against
-  `Field::neighbors`, a run stopped, resumed and laddered per kind), `--time` and parameters per
-  kind in the bench's sizes. *Depends on:* T6 (done 2026-10-29). *Status:* next.
 - **T7b The distillation bench.** *Scope:* `python -m h3env.train.distill --teacher <best.pt>
   --config configs/e25-distill.toml --out runs/<bench>`: the teacher plays itself on the training
   distribution (its config's kinds and tactics bound, the sampled policy, a seed apart from its
@@ -53,7 +30,8 @@ encoding or ABI change.
   report and a table; the students' weights saved (T7d may start from them). The config: the
   students as named `[network]` tables (MLP 2 × 512, 2 × 1 024, 4 × 512, `hexconv`,
   `hexformer`, `entity`), the samples per student, the held-out size. A CPU smoke in the
-  sandbox and tests. *Depends on:* T7a. *Status:* waiting.
+  sandbox and tests. *Depends on:* T7a (done 2026-10-29: `h3env.train.hexnet`, `[network]
+  layers` for the MLP; `E25-log.md` T7a). *Status:* next.
 - **T7c The bench run.** *Scope:* on the user's machine (the GPU; its length agreed with the
   user); the report committed (`python/records/distill/`) and read in `E25-log.md`: which
   kinds fit the teacher best per sample and per second, and where the entity network fails

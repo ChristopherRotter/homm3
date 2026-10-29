@@ -77,104 +77,31 @@ class Block(nn.Module):
         return x + self.ff(self.norm2(x))
 
 
-class Entity(Policy):
-    """The entity network of design §11 (module docstring)."""
+class Pointed(Policy):
+    """The heads of the networks that read the battle as stacks and hexes (the entity network,
+    `hexnet`'s kinds): from an encoding of the context [rows, width], the stack slots' vectors
+    [rows, 42, width] and the hexes' vectors [rows, 255, hex width] the value and the fixed
+    entries come from the context, a move points at its hex's vector, an attack, a shot or a heal
+    at its stack's, a cast's target at "none", a hex or a stack (module docstring). A kind makes
+    its trunk, then `make_heads` (their names and order are the entity network's: its files
+    load)."""
 
-    def __init__(self, width: int = 128, layers: int = 2, heads: int = 4, embed: int = 32) -> None:
-        super().__init__()
-        if width % heads:
-            raise ValueError(f"the width {width} is no multiple of the heads {heads}")
-        self.width = width
-        self.stack_in = nn.Linear(L.STACK_FEATURES, width)
-        self.creature_embed = nn.Embedding(CREATURES, width)
-        self.column_embed = nn.Embedding(COLUMNS, width)
-        self.row_embed = nn.Embedding(ROWS, width)
-        self.global_in = nn.Linear(L.OWN_HERO, width)
-        self.own_in = nn.Linear(L.OWN_HERO_FEATURES, width)
-        self.hex_in = nn.Linear(L.HEX_PLANES, HEX_WIDTH)
-        self.hex_embed = nn.Parameter(torch.zeros(L.MAX_FIELD_HEXES, HEX_WIDTH))
-        nn.init.normal_(self.hex_embed, std=0.02)
-        self.field_in = nn.Linear(L.MAX_FIELD_HEXES * HEX_WIDTH, width)
-        self.blocks = nn.ModuleList(Block(width, heads) for _ in range(layers))
-        self.norm = nn.LayerNorm(width)
-        self.context = nn.Linear(3 * width, width)
+    def make_heads(self, width: int, hex_width: int, embed: int) -> None:
+        """Makes the heads for vectors of `width` (the context, the stacks) and `hex_width`."""
         self.value_head = init(nn.Linear(width, 1), 1.0)
         self.fixed_head = init(nn.Linear(width, FIXED), 0.01)
-        self.move_head = Pointer(HEX_WIDTH, width, width)
+        self.move_head = Pointer(hex_width, width, width)
         self.stack_head = Pointer(width, width, width, PER_STACK)
         self.spell_head = init(nn.Linear(width + 2, L.SPELL_COUNT), 0.01)
         self.spell_embed = nn.Embedding(L.SPELL_COUNT, embed)
         query = width + 2 + embed
         self.target_none = init(nn.Linear(query, 1), 0.01)
-        self.target_hex = Pointer(HEX_WIDTH, query, width)
+        self.target_hex = Pointer(hex_width, query, width)
         self.target_stack = Pointer(width, query, width)
         self.target_embed = nn.Embedding(L.TARGET_COUNT, embed)
         self.second_none = init(nn.Linear(query + embed, 1), 0.01)
-        self.second_hex = Pointer(HEX_WIDTH, query + embed, width)
+        self.second_hex = Pointer(hex_width, query + embed, width)
         self.second_stack = Pointer(width, query + embed, width)
-
-    @classmethod
-    def for_batch(
-        cls,
-        batch: BattleBatch,
-        width: int = 128,
-        layers: int = 2,
-        heads: int = 4,
-        embed: int = 32,
-    ) -> Entity:
-        """The network for `batch`, whose encodings must be the layout's."""
-        versions = _ffi.versions()
-        sizes = (batch.observation_len, batch.action_count, batch.spell_count, batch.target_count)
-        expected = (L.OBSERVATION_LEN, L.ACTION_COUNT, L.SPELL_COUNT, L.TARGET_COUNT)
-        if (
-            versions["observation_encoding"] != L.OBSERVATION_ENCODING
-            or versions["action_encoding"] != L.ACTION_ENCODING
-            or sizes != expected
-        ):
-            raise ValueError(
-                "the entity network reads observation encoding "
-                f"v{L.OBSERVATION_ENCODING} and action encoding v{L.ACTION_ENCODING} "
-                f"{expected}; the library has v{versions['observation_encoding']}, "
-                f"v{versions['action_encoding']} {sizes}"
-            )
-        return cls(width, layers, heads, embed)
-
-    def encode(self, obs: torch.Tensor) -> Encoding:
-        """The context [rows, width], the stacks' tokens [rows, 42, width] and the hexes'
-        vectors [rows, 255, HEX_WIDTH]."""
-        rows = obs.shape[0]
-        x = symlog(obs)
-        raw = obs[:, L.STACKS : L.ORDER].view(rows, L.STACK_CAPACITY, L.STACK_FEATURES)
-        present = raw[..., L.PRESENT] > 0.5
-        stacks = (
-            self.stack_in(x[:, L.STACKS : L.ORDER].view(rows, L.STACK_CAPACITY, L.STACK_FEATURES))
-            + self.creature_embed(raw[..., L.CREATURE].long().clamp(0, CREATURES - 1))
-            + self.column_embed(raw[..., L.X].long().clamp(0, COLUMNS - 1))
-            + self.row_embed(raw[..., L.Y].long().clamp(0, ROWS - 1))
-        )
-        planes = x[:, L.FIELD : L.STACKS].view(rows, L.HEX_PLANES, L.MAX_FIELD_HEXES)
-        hexes = torch.relu(self.hex_in(planes.transpose(1, 2)) + self.hex_embed)
-        tokens = torch.cat(
-            [
-                self.global_in(x[:, : L.OWN_HERO]).unsqueeze(1),
-                self.own_in(x[:, L.OWN_HERO : L.FIELD]).unsqueeze(1),
-                self.field_in(hexes.flatten(1)).unsqueeze(1),
-                stacks,
-            ],
-            dim=1,
-        )
-        mask = torch.cat([present.new_ones(rows, LEADING), present], dim=1)
-        for block in self.blocks:
-            tokens = block(tokens, mask)
-        tokens = self.norm(tokens)
-        stacks = tokens[:, LEADING:]
-        weights = present.to(tokens.dtype).unsqueeze(2)
-        active = ((raw[..., L.ACTIVE] > 0.5) & present).to(tokens.dtype).unsqueeze(2)
-        mean = (stacks * weights).sum(1) / weights.sum(1).clamp(min=1.0)
-        context = torch.relu(
-            self.context(torch.cat([tokens[:, 0], (stacks * active).sum(1), mean], dim=1))
-        )
-        return context, stacks, hexes
 
     def value(self, encoding: Encoding) -> torch.Tensor:
         return self.value_head(encoding[0]).squeeze(1)
@@ -215,3 +142,96 @@ class Entity(Policy):
             [encoding[0], cast, self.spell_embed(spell), self.target_embed(target)], dim=1
         )
         return self._targets(encoding, query, self.second_none, self.second_hex, self.second_stack)
+
+
+def check_layout(batch: BattleBatch, name: str) -> None:
+    """Refuses a batch whose encodings are not the layout's (`name` the network's, for the
+    message)."""
+    versions = _ffi.versions()
+    sizes = (batch.observation_len, batch.action_count, batch.spell_count, batch.target_count)
+    expected = (L.OBSERVATION_LEN, L.ACTION_COUNT, L.SPELL_COUNT, L.TARGET_COUNT)
+    if (
+        versions["observation_encoding"] != L.OBSERVATION_ENCODING
+        or versions["action_encoding"] != L.ACTION_ENCODING
+        or sizes != expected
+    ):
+        raise ValueError(
+            f"the {name} reads observation encoding "
+            f"v{L.OBSERVATION_ENCODING} and action encoding v{L.ACTION_ENCODING} "
+            f"{expected}; the library has v{versions['observation_encoding']}, "
+            f"v{versions['action_encoding']} {sizes}"
+        )
+
+
+class Entity(Pointed):
+    """The entity network of design §11 (module docstring)."""
+
+    def __init__(self, width: int = 128, layers: int = 2, heads: int = 4, embed: int = 32) -> None:
+        super().__init__()
+        if width % heads:
+            raise ValueError(f"the width {width} is no multiple of the heads {heads}")
+        self.width = width
+        self.stack_in = nn.Linear(L.STACK_FEATURES, width)
+        self.creature_embed = nn.Embedding(CREATURES, width)
+        self.column_embed = nn.Embedding(COLUMNS, width)
+        self.row_embed = nn.Embedding(ROWS, width)
+        self.global_in = nn.Linear(L.OWN_HERO, width)
+        self.own_in = nn.Linear(L.OWN_HERO_FEATURES, width)
+        self.hex_in = nn.Linear(L.HEX_PLANES, HEX_WIDTH)
+        self.hex_embed = nn.Parameter(torch.zeros(L.MAX_FIELD_HEXES, HEX_WIDTH))
+        nn.init.normal_(self.hex_embed, std=0.02)
+        self.field_in = nn.Linear(L.MAX_FIELD_HEXES * HEX_WIDTH, width)
+        self.blocks = nn.ModuleList(Block(width, heads) for _ in range(layers))
+        self.norm = nn.LayerNorm(width)
+        self.context = nn.Linear(3 * width, width)
+        self.make_heads(width, HEX_WIDTH, embed)
+
+    @classmethod
+    def for_batch(
+        cls,
+        batch: BattleBatch,
+        width: int = 128,
+        layers: int = 2,
+        heads: int = 4,
+        embed: int = 32,
+    ) -> Entity:
+        """The network for `batch`, whose encodings must be the layout's."""
+        check_layout(batch, "entity network")
+        return cls(width, layers, heads, embed)
+
+    def encode(self, obs: torch.Tensor) -> Encoding:
+        """The context [rows, width], the stacks' tokens [rows, 42, width] and the hexes'
+        vectors [rows, 255, HEX_WIDTH]."""
+        rows = obs.shape[0]
+        x = symlog(obs)
+        raw = obs[:, L.STACKS : L.ORDER].view(rows, L.STACK_CAPACITY, L.STACK_FEATURES)
+        present = raw[..., L.PRESENT] > 0.5
+        stacks = (
+            self.stack_in(x[:, L.STACKS : L.ORDER].view(rows, L.STACK_CAPACITY, L.STACK_FEATURES))
+            + self.creature_embed(raw[..., L.CREATURE].long().clamp(0, CREATURES - 1))
+            + self.column_embed(raw[..., L.X].long().clamp(0, COLUMNS - 1))
+            + self.row_embed(raw[..., L.Y].long().clamp(0, ROWS - 1))
+        )
+        planes = x[:, L.FIELD : L.STACKS].view(rows, L.HEX_PLANES, L.MAX_FIELD_HEXES)
+        hexes = torch.relu(self.hex_in(planes.transpose(1, 2)) + self.hex_embed)
+        tokens = torch.cat(
+            [
+                self.global_in(x[:, : L.OWN_HERO]).unsqueeze(1),
+                self.own_in(x[:, L.OWN_HERO : L.FIELD]).unsqueeze(1),
+                self.field_in(hexes.flatten(1)).unsqueeze(1),
+                stacks,
+            ],
+            dim=1,
+        )
+        mask = torch.cat([present.new_ones(rows, LEADING), present], dim=1)
+        for block in self.blocks:
+            tokens = block(tokens, mask)
+        tokens = self.norm(tokens)
+        stacks = tokens[:, LEADING:]
+        weights = present.to(tokens.dtype).unsqueeze(2)
+        active = ((raw[..., L.ACTIVE] > 0.5) & present).to(tokens.dtype).unsqueeze(2)
+        mean = (stacks * weights).sum(1) / weights.sum(1).clamp(min=1.0)
+        context = torch.relu(
+            self.context(torch.cat([tokens[:, 0], (stacks * active).sum(1), mean], dim=1))
+        )
+        return context, stacks, hexes

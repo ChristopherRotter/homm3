@@ -36,6 +36,12 @@ X = 12
 Y = 13
 ACTIVE = 18
 
+#: The columns the hex networks read apart (E25 T7a, `hexnet`): a stack slot's two-hex flag,
+#: the globals' "viewer is attacker" (a two-hex stack's other hex lies right of its position for
+#: the attacker's, left for the defender's: `h3_battle::geometry::footprint`).
+TWO_HEX = 24
+VIEWER_ATTACKER = 1
+
 #: The behaviour analysis's columns: the globals' round (0 in the tactics phase); a public hero
 #: block's (the viewer's at `HEROES`, the opponent's after it) mana, maximum mana and casts this
 #: round; a stack slot's alive and own flags, count, top creature's and full hit points, acted,

@@ -383,3 +383,44 @@ an entry only where a task builds on it.
   entropy barely falling (3.44 to 3.11; the MLP 2.74 to 1.89), its optimiser the MLP's. The
   bench separates the two causes: a network that cannot fit the teacher's move head lacks the
   representation; one that fits it but learns slowly in RL points at the optimisation.
+
+## T7a — The network kinds (2026-10-29)
+
+- **The MLP's depth:** `[network] layers` is the MLP's trunk's layers too (2 the default; a
+  saved MLP without the key has two, every MLP before had: the parameter names unchanged).
+- **The hex networks** (`h3env.train.hexnet`; observation v22 and action v13, no encoding
+  change): the entity network's heads moved into a base class (`entity.Pointed`, names and
+  creation order kept: an E06 entity network built from the same seed is the same, tested
+  once); both new kinds draw the battle on the field (each hex's planes and a per-hex
+  embedding, each present stack's token on its position and a two-hex stack's on its front hex,
+  the global vector on every hex; a turret only keeps its token) and read out a context, the
+  stack vectors (token plus the trunk's vector under it) and the hex vectors to those heads.
+  `hexconv`: residual blocks of two 3 × 3 convolutions on the axial grid (22 × 11 cells, 187
+  real) with the kernel's corners (+1, +1) and (−1, −1) zero, a global-pooling bias in each
+  block, the branch initialised at 0, the padding cells kept at 0, no normalisation (agent's
+  choices, change freely). `hexformer`: a global token and the 187 hexes through pre-norm blocks
+  with a learned bias per head and axial offset (one table per block). The field's size is
+  `[network] field_width`, `field_height` (17, 11, the base ruleset's; the C ABI does not name
+  it), checked on real battles; `layout.py` gains `TWO_HEX` and `VIEWER_ATTACKER`, pinned by
+  `h3-sim`'s layout test.
+- **Tests:** `tests/test_hexnet.py` (the kernel's reach against `Field::neighbors`'s rule on
+  every hex, a stack drawn on its hexes per side and seat, a turret drawn nowhere, an empty slot
+  unseen and the slots' order free, the field on real battles, the MLP's depth, the cost
+  table's convolutions); `test_train.py`'s masks and log-probabilities and a run stopped,
+  resumed and laddered, for each kind. 167 Python tests pass (the GPU's skipped).
+- **Costs** (`python -m h3env.train.network --time`, 256 observations, the sandbox's 4 CPU
+  threads, the median of 10; the GPU decides a run's speed):
+
+  | Network | Parameters | Multiply-adds a decision | Forward µs | Training pass µs |
+  |---|---:|---:|---:|---:|
+  | MLP 2 × 512 (the current) | 5.95 M | 5.5 M | 62 | 65 |
+  | MLP 2 × 1 024 (wider) | 12.4 M | 11.6 M | 78 | 166 |
+  | MLP 2 × 2 048 | 26.8 M | 25.3 M | 130 | 328 |
+  | MLP 4 × 512 (deeper) | 6.47 M | 6.1 M | 71 | 114 |
+  | `hexconv` 64 × 6 blocks | 0.69 M | 85 M | 675 | 1 984 |
+  | `hexconv` 32 × 6 blocks | 0.21 M | 21 M | 305 | 728 |
+  | `hexformer` 64 × 4 blocks | 0.34 M | 45 M | 1 027 | 6 091 |
+  | `entity` 128 × 2 (E06's) | 1.19 M | 15.5 M | 339 | 724 |
+
+  The hex networks share their weights over the hexes: few parameters, many operations; the
+  bench measures them on the user's GPU.

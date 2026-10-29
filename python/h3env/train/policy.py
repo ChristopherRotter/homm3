@@ -1,8 +1,9 @@
 """The trainer's networks behind one interface (`Policy`): each reads the flat observation v22
 (without `[network] order` only v21's prefix, `layout.ORDER`, as before v22), gives a value and
 the factorized action's heads, each cast head conditioned on the earlier choices and masked by the
-batch's head calls. Two kinds (`[network] kind`, E06 T5a, design §11): `Mlp`, the smoke run's
-(E05 T8, `docs/epics/E05-log.md` §8.3), and the entity network (`entity.Entity`).
+batch's head calls. Four kinds (`[network] kind`, E06 T5a, design §11; E25 T7a): `Mlp`, the
+smoke run's (E05 T8, `docs/epics/E05-log.md` §8.3), the entity network (`entity.Entity`) and the
+two hex networks (`hexnet`).
 
 A row's action is its entry and, only where the entry is a cast, the spell, the target and the
 second target, chosen one head after another; its log-probability is the sum over the heads it
@@ -340,10 +341,11 @@ def preview_slots(base: int, entries: int) -> np.ndarray:
 
 
 class Mlp(Policy):
-    """The MLP (E05 T8): `symlog`, a trunk of two `hidden`-unit layers, the value and entry heads
-    on it; the spell head takes the trunk and which cast, the target head also the spell's
-    embedding, the second head also the target's. With `preview` (E06 T6d) the entry head reads
-    the kill preview, with `order` the trunk the turn order (the module's documentation)."""
+    """The MLP (E05 T8): `symlog`, a trunk of `layers` `hidden`-unit layers (two before E25 T7a,
+    the default), the value and entry heads on it; the spell head takes the trunk and which cast,
+    the target head also the spell's embedding, the second head also the target's. With
+    `preview` (E06 T6d) the entry head reads the kill preview, with `order` the trunk the turn
+    order (the module's documentation)."""
 
     def __init__(
         self,
@@ -355,18 +357,17 @@ class Mlp(Policy):
         embed: int = 32,
         preview: tuple[int, int] | None = None,
         order: bool = False,
+        layers: int = 2,
     ) -> None:
         super().__init__()
         root2 = float(np.sqrt(2.0))
         #: Whether the trunk reads the turn order; else only v21's prefix of the observation.
         self.reads_order = order
         self.inputs = observation_len if order else min(observation_len, L.ORDER)
-        self.trunk = nn.Sequential(
-            init(nn.Linear(self.inputs, hidden), root2),
-            nn.ReLU(),
-            init(nn.Linear(hidden, hidden), root2),
-            nn.ReLU(),
-        )
+        trunk: list[nn.Module] = [init(nn.Linear(self.inputs, hidden), root2), nn.ReLU()]
+        for _ in range(layers - 1):
+            trunk += [init(nn.Linear(hidden, hidden), root2), nn.ReLU()]
+        self.trunk = nn.Sequential(*trunk)
         self.value_head = init(nn.Linear(hidden, 1), 1.0)
         self.entry_head = init(nn.Linear(hidden, actions), 0.01)
         self.spell_head = init(nn.Linear(hidden + 2, spells), 0.01)
@@ -398,6 +399,7 @@ class Mlp(Policy):
         embed: int = 32,
         preview: bool = False,
         order: bool = False,
+        layers: int = 2,
     ) -> Mlp:
         """A network sized for `batch`'s encodings (with `preview`, for its kill preview; with
         `order`, reading the turn order)."""
@@ -410,6 +412,7 @@ class Mlp(Policy):
             embed,
             (batch.preview_base, batch.preview_entries) if preview else None,
             order,
+            layers,
         )
 
     def with_preview(self, logits, encoding, obs, preview, mask):
@@ -474,7 +477,8 @@ def build(config: dict[str, Any], batch: BattleBatch) -> Policy:
     for `batch`'s encodings. A config without `kind` (before E06 T5a) names an MLP, one without
     `preview` (before E06 T6d) a network that does not read the kill preview, one without `order`
     (before v22) one that reads v21's prefix of the observation, one without `tactics_rounds`
-    (before E25 T4a) one without the tactics bound."""
+    (before E25 T4a) one without the tactics bound, an MLP without `layers` two layers (every MLP
+    before E25 T7a had two)."""
     kind = config.get("kind", "mlp")
     if kind == "mlp":
         policy: Policy = Mlp.for_batch(
@@ -483,6 +487,7 @@ def build(config: dict[str, Any], batch: BattleBatch) -> Policy:
             config["embed"],
             config.get("preview", False),
             config.get("order", False),
+            config.get("layers", 2),
         )
     elif kind == "entity":
         from .entity import Entity
@@ -490,6 +495,10 @@ def build(config: dict[str, Any], batch: BattleBatch) -> Policy:
         policy = Entity.for_batch(
             batch, config["width"], config["layers"], config["heads"], config["embed"]
         )
+    elif kind in ("hexconv", "hexformer"):
+        from . import hexnet
+
+        policy = hexnet.for_batch(kind, batch, config)
     else:
         raise ValueError(f"no network kind {kind!r} (one of {NETWORK_KINDS})")
     policy.tactics_rounds = int(config.get("tactics_rounds", 0))

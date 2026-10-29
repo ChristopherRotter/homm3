@@ -36,6 +36,7 @@ from h3env.train.evaluate import (  # noqa: E402
     play,
     random_agent,
 )
+from h3env.train.hexnet import HexConv, HexFormer  # noqa: E402
 from h3env.train.policy import Mlp, build  # noqa: E402
 from h3env.train.ppo import Trainer, episode_entries  # noqa: E402
 from h3env.train.run import (  # noqa: E402
@@ -81,7 +82,10 @@ def casting_policy(batch: BattleBatch, kind: str = "mlp") -> Policy:
         with torch.no_grad():
             policy.entry_head.bias[[_ffi.HERO_CAST, _ffi.CREATURE_CAST]] = 30.0
         return policy
-    policy = Entity.for_batch(batch, width=16, layers=1, heads=2, embed=8)
+    if kind == "entity":
+        policy = Entity.for_batch(batch, width=16, layers=1, heads=2, embed=8)
+    else:
+        policy = build(asdict(Config(kind=kind, width=16, layers=1, heads=2, embed=8)), batch)
     with torch.no_grad():
         # The fixed entries: Wait, Defend, End tactics, Retreat, Surrender, the two casts, ….
         policy.fixed_head.bias[[5, 6]] = 30.0
@@ -97,7 +101,7 @@ def mixed_batch() -> BattleBatch:
     return batch
 
 
-@pytest.mark.parametrize("kind", ["mlp", "entity"])
+@pytest.mark.parametrize("kind", ["mlp", "entity", "hexconv", "hexformer"])
 def test_choices_keep_to_the_masks_and_recompute_their_log_probabilities(kind) -> None:
     batch = mixed_batch()
     policy = casting_policy(batch, kind)
@@ -966,25 +970,29 @@ def test_a_run_starts_from_its_parents_network(tmp_path) -> None:
         train(Config(**SMALL, **ENTITY, samples=1), init_from=tmp_path / "a" / "best.pt")
 
 
-def test_an_entity_run_stops_resumes_and_plays_its_ladder(tmp_path) -> None:
-    # E06 T5a: the entity network through a run: stopped after its first update, resumed to the
-    # budget; its files are entity networks (`load` builds the kind their config names).
-    config = Config(**SMALL, **ENTITY, samples=2 * ONE_UPDATE, snapshot_every=1)
+@pytest.mark.parametrize("kind", ["entity", "hexconv", "hexformer"])
+def test_a_structured_run_stops_resumes_and_plays_its_ladder(tmp_path, kind) -> None:
+    # E06 T5a (E25 T7a: the hex networks too): the network through a run: stopped after its
+    # first update, resumed to the budget; its files are networks of its kind (`load` builds the
+    # kind their config names).
+    network = {**ENTITY, "kind": kind}
+    config = Config(**SMALL, **network, samples=2 * ONE_UPDATE, snapshot_every=1)
+    cls = {"entity": Entity, "hexconv": HexConv, "hexformer": HexFormer}[kind]
 
     def interrupt(record: dict) -> None:
         if record["type"] == "update" and record["update"] == 1:
             signal.raise_signal(signal.SIGINT)
 
     stopped = train(config, tmp_path, log=interrupt)
-    assert isinstance(stopped.policy, Entity) and stopped.updates == 1
+    assert isinstance(stopped.policy, cls) and stopped.updates == 1
     finished = resume(tmp_path)
-    assert finished.updates >= 2 and isinstance(finished.policy, Entity)
+    assert finished.updates >= 2 and isinstance(finished.policy, cls)
     _same(finished.nets[1].state_dict(), load(tmp_path / "league" / "1.pt").state_dict())
     record = json.loads((tmp_path / "record.json").read_text())
-    assert check_record(record) == [] and record["config"]["network"]["kind"] == "entity"
+    assert check_record(record) == [] and record["config"]["network"]["kind"] == kind
     assert [s["ended"] for s in record["segments"]] == ["stop", "budget"]
     best = load(tmp_path / "best.pt")
-    assert isinstance(best, Entity) and best.width == 16 and len(best.blocks) == 1
+    assert isinstance(best, cls) and best.width == 16 and len(best.blocks) == 1
     rows = ladder(best, opponents=["random"], per_kind=1, max_steps=300)
     assert rows["random"]["games"] == 6
 

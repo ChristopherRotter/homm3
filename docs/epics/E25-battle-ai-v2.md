@@ -112,9 +112,10 @@ without two opposite corners: a hex's six neighbours); a **hex transformer** (th
 tokens, a bias per axial offset); E06's entity network as it is. A distillation bench ranks them
 against the current MLP before any RL run.
 
-- [ ] **T7a The network kinds** (sandbox): `[network] layers` for the MLP, `kind = "hexconv"`,
-  `kind = "hexformer"` (the stacks drawn on their hexes, the entity network's heads), the field's
-  size; tests; each kind's cost (`python -m h3env.train.network --time`).
+- [x] **T7a The network kinds** (2026-10-29; `E25-log.md` T7a): `[network] layers` for the MLP,
+  `kind = "hexconv"` and `"hexformer"` (`h3env.train.hexnet`: the stacks drawn on their hexes,
+  the entity network's heads, `entity.Pointed`), `field_width`, `field_height`; tests; the costs
+  on the sandbox's CPU (`hexconv` 64 × 6 15 times the MLP's operations).
 - [ ] **T7b The distillation bench** (sandbox; a CPU smoke): `h3env.train.distill`, every student
   trained on the same rollouts of the teacher (`e25-scale-1` #3) to its heads and its value
   targets, scored on held-out rollouts per head; `configs/e25-distill.toml`.

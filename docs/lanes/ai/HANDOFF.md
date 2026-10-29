@@ -24,8 +24,8 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   at 30 M at `e25-bound-1`'s level, 0.418 against the system actor; scale gains nothing).
   T6 (**`e25-scale-1` #3 the current best**; increment 2 in `E25-archive.md`; AI-Q11: increment
   3 is the network's architecture, refined: a distillation bench over a deeper and a wider MLP,
-  a hex convolution network, a hex transformer and the entity network, then A/Bs). **Next:**
-  T7a, the network kinds (the queue's scope).
+  a hex convolution network, a hex transformer and the entity network, then A/Bs); T7a (the
+  kinds: `hexconv`, `hexformer`, the MLP's `layers`). **Next:** T7b, the distillation bench.
 - **Open pull requests:** the T5 branch `claude/nice-lamport-fdh8gx` (its pull request once
   ready). `master`'s CI was red after #577 (the adventure lane's bench-check
   `random-play-duel-36` +2.01 %); #580 re-baselined it (merged). Merged: #534, #539, #555, #558,

@@ -86,11 +86,15 @@ decisions that trained): `samples`, the learning rate's linear decay over `lr_ho
 by default), the league's snapshots and live draws (`snapshot_every`, `live_every`), the gates
 (`gate_every`); wall time sets only the checkpoints.
 
-**The networks** (E06 T5a, `docs/epics/E06-log.md` §11): `network.kind` is `"mlp"` (E05's,
-the default: `hidden` 512) or `"entity"`, observation v21 read as entities by `h3env.train.layout`
-(a token per stack slot, the globals, the own hero, the field; `layers` 2 transformer blocks of
-`width` 128 with `heads` 4; pointer heads at the hexes and stacks); `embed` (32) sizes both
-kinds' spell and target embeddings. A saved network's config names its kind (a file from before
+**The networks** (E06 T5a, `docs/epics/E06-log.md` §11; E25 T7a): `network.kind` is `"mlp"`
+(E05's, the default: `hidden` 512, `layers` 2), `"entity"`, observation v21 read as entities by
+`h3env.train.layout` (a token per stack slot, the globals, the own hero, the field; `layers` 2
+transformer blocks of `width` 128 with `heads` 4; pointer heads at the hexes and stacks), or a
+hex network (`h3env.train.hexnet`, the entity network's heads): `"hexconv"`, `layers` residual
+blocks of hex convolutions with `width` channels on the field's axial grid, or `"hexformer"`,
+`layers` transformer blocks of `width` over the hexes with a bias per axial offset; both draw
+the stacks on their hexes, on a field of `field_width` × `field_height` (17 × 11, the base
+ruleset's). `embed` (32) sizes every kind's spell and target embeddings. A saved network's config names its kind (a file from before
 T5a is an MLP); `--init-from` a network of another kind is refused. A network at a glance:
 
 ```sh
