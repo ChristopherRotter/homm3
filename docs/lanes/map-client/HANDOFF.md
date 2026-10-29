@@ -29,6 +29,10 @@ The user's dictation (2026-10-12): `docs/lanes/client/ASSET-NOTES.md`; this lane
 
 ## Recent sessions
 
+- **2026-10-29, E24 M3 T3b** (the user present: T3b kept whole) — *in progress* on
+  `map-client/e24-m3-t3b`: the callers read (design §4.4, the map's entries), the timeline's
+  `Minimap` and the live part's `minimap` written (not built while the recording ran); the 13
+  sequences recorded with the minimap unmasked (`masks.toml`'s `panels`; `out/map-frames/`).
+  Next: build, `frames --reuse`, `drawn --record`, masks one (`stills` gone), the gates.
 - **2026-10-29, E24 M3 T3a** (the user present: T3 cut into T3a and T3b): T2b2's numbers recorded from the user's run; T3a built (the log's "M3 T3a"); the sandbox restarted once (its files kept). The user's computer was unlinked mid-session: nothing is waiting on it.
 - **2026-10-28, E24 M3 T2b2** (the user present: the cut proposed, "no cut"): T2b2 built (the log's "M3 T2b2"); the previous session's commit of T2b1's numbers found on this branch, merged in; the exe in `clients/out/win/` for the user's run.
-- **2026-10-28, E24 M3 T2b1** (the user present: T2b cut into T2b1 and T2b2; a spatial index and the widening once asked for): T2b1 built (the log's "M3 T2b1"); `map-measure.cmd` gained *Tale of two lands*; the user's before and after runs in `clients/out/win/`; merged as #557. Next: T2b2.
