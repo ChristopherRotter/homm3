@@ -3,21 +3,21 @@
 //! D-43's exception, visits from a boat, landing onto a free coastal tile only (D-42), the
 //! conversion of the points with free boarding (D-41) and the day's maximum switched (A-28 not
 //! reproduced), the landing's facing, the events, D-46's water tiles closed to a flight, and the
-//! reachable tiles until a boat's own search (ADV-STUB-11). Batch E8's rows as sources: E8-1 and
-//! E8-2 (the conversion after the drop), E8-3 (no landing on a hole or an event), E8-4 (the
-//! diagonal at sea on Favorable Winds), E8-15 (a guarded landing, the boat's facing).
+//! reachable tiles of a boat and of a walker beside one (E08 T73b). Batch E8's rows as sources:
+//! E8-1 and E8-2 (the conversion after the drop), E8-3 (no landing on a hole or an event), E8-4
+//! (the diagonal at sea on Favorable Winds), E8-15 (a guarded landing, the boat's facing).
 
 use std::sync::Arc;
 
-use h3_content::{HeroEffectDef, SecondarySkillDef, SkillId, TerrainId};
+use h3_content::{SkillId, TerrainId};
 use h3_heroes::HeroDetails;
 
 use super::*;
 use crate::command::{AdventureCommand, AdventureCommandError, AdventureEvent, AdventureEventKind};
 use crate::setup::{ObjectSetup, Pos, TileMask};
 use crate::testing::{
-    FLYING, HOLE, PEASANT, ROCK, SEA, WATER_WALKING, WINDS, hero_at, hero_details, hero_skills,
-    key, movement_rules_with, started, world,
+    FLYING, HOLE, PEASANT, ROCK, SEA, WATER_WALKING, WINDS, coasted, hero_at, hero_details,
+    hero_skills, lying, movement_rules_with, sea_skills, started, world,
 };
 
 type Rules = (Ruleset, AdventureRuleset);
@@ -35,19 +35,7 @@ fn sea_rules(faithful: bool) -> (Rules, SkillId, SkillId) {
     let rules = movement_rules_with(
         faithful,
         16,
-        |core| {
-            core.skills = hero_skills();
-            core.skills.push(SecondarySkillDef {
-                key: key("t:navigation"),
-                name: "Navigation".into(),
-                levels: [1, 2, 3].map(|level| vec![HeroEffectDef::Navigation { level }]),
-            });
-            core.skills.push(SecondarySkillDef {
-                key: key("t:admiral"),
-                name: "Admiral".into(),
-                levels: [1, 2, 3].map(|_| vec![HeroEffectDef::FreeBoarding]),
-            });
-        },
+        |core| core.skills = [hero_skills(), sea_skills()].concat(),
         |_| {},
     );
     let navigation = rules.0.skill_by_key("t:navigation").unwrap();
@@ -79,32 +67,6 @@ fn guard_visit(outcome: &AdventureOutcome) -> Option<Pos> {
         .as_ref()
         .map(|b| b.tile)
         .or(outcome.offer.as_ref().map(|o| o.anchor))
-}
-
-/// [`world`]'s setup of `rows` with the map's coast flag on every land tile beside water (as the
-/// map editor sets it).
-fn coasted(rows: &[&str], heroes: Vec<HeroSetup>) -> AdventureSetup {
-    let mut setup = world(rows, 1, heroes);
-    let at = |x: i32, y: i32| {
-        usize::try_from(y)
-            .ok()
-            .and_then(|y| rows.get(y))
-            .and_then(|row| row.chars().nth(usize::try_from(x).ok()?))
-    };
-    let width = rows[0].len();
-    for (y, row) in rows.iter().enumerate() {
-        for (x, c) in row.chars().enumerate() {
-            let (x, y) = (i32::try_from(x).unwrap(), i32::try_from(y).unwrap());
-            let wet = |dx, dy| matches!(at(x + dx, y + dy), Some('~' | 'b'));
-            let beside = (-1..=1).any(|dx| (-1..=1).any(|dy| wet(dx, dy)));
-            if !matches!(c, '~' | 'b') && beside {
-                setup.map.tiles
-                    [usize::try_from(y).unwrap() * width + usize::try_from(x).unwrap()]
-                .coast = true;
-            }
-        }
-    }
-    setup
 }
 
 /// Sets the terrain of `pos` on a one-level setup.
@@ -174,22 +136,6 @@ fn told(events: &[AdventureEvent]) -> Vec<AdventureEventKind> {
 
 fn blocked(step: usize, error: StandError) -> AdventureCommandError {
     AdventureCommandError::Blocked { step, error }
-}
-
-/// An object of `ty` lying on `pos` alone (its picture only: a hole's, a ground's).
-fn lying(ty: ObjectTypeId, pos: Pos, drawn: u64) -> ObjectSetup {
-    ObjectSetup {
-        scenery: Default::default(),
-        anchor: pos,
-        blocked: TileMask::default(),
-        visitable: TileMask::default(),
-        object_type: Some(ty),
-        amount: None,
-        drawn: TileMask::from_bits(drawn),
-        monster: None,
-        guards: None,
-        holds: Default::default(),
-    }
 }
 
 // covers: ADV-SEA-002, ADV-MOV-006
@@ -691,18 +637,157 @@ fn a_landing_s_guards_attack_once_the_hero_is_ashore() {
     ));
 }
 
-// covers: ADV-MOV-007, ADV-SEA-002
+// covers: ADV-MOV-007, ADV-SEA-002, GAM-BAT-004
 #[test]
-fn the_reachable_tiles_wait_for_a_boat_s_search_and_a_flyer_s_boarding_drops_as_a_boat_s() {
-    // ADV-STUB-11 (T73b): a hero in a boat reaches its own tile only, a walker no boat.
-    let (rules, _, _) = sea_rules(true);
-    let mut state = sea_state(&rules, p(2, 2), |_| {});
+fn a_walker_reaches_a_boat_and_a_hero_in_a_boat_and_goes_no_further() {
+    let (rules, _, admiral) = sea_rules(true);
+    // The boat at (3, 2) beside the walker: a boarding, the points the move leaves (0 without
+    // free boarding), and no water beyond it.
+    for (store, free) in [(store(&[]), false), (store(&[(admiral, 1)]), true)] {
+        let fresh = sea_state(&rules, p(2, 2), |_| {});
+        let reach = fresh.reach(&rules.0, &rules.1, &store, HERO).unwrap();
+        assert_eq!(reach.path(p(3, 2)), Some(vec![p(3, 2)]));
+        let mut moved = fresh.clone();
+        sail(&mut moved, &rules, &store, &[p(3, 2)]).unwrap();
+        assert_eq!(hero(&moved).1, Some(0));
+        assert_eq!(reach.points_left(p(3, 2)), Some(hero(&moved).2));
+        assert_eq!(hero(&moved).2 > 0, free);
+        assert_eq!(reach.points_left(p(4, 2)), None);
+        assert_eq!(reach.points_left(p(4, 3)), None);
+    }
+    // On the island at (5, 3), blue's hero in the boat at (6, 3): visited from the island, the
+    // island's only way out.
+    let mut state = sea_state(&rules, p(5, 3), |_| {});
+    state.put_aboard(HeroId::new(2), 1);
     let reach = state.reach(&rules.0, &rules.1, &[], HERO).unwrap();
-    assert_eq!(reach.points_left(p(3, 2)), None);
+    let tiles: Vec<(Pos, u32)> = reach.tiles().collect();
+    assert_eq!(tiles.len(), 1);
+    assert_eq!(tiles[0].0, p(6, 3));
+    assert_eq!(reach.path(p(6, 3)), Some(vec![p(6, 3)]));
+    let (outcome, _) = sail(&mut state, &rules, &[], &[p(6, 3)]).unwrap();
+    assert_eq!(outcome.battle.map(|b| b.tile), Some(p(6, 3)));
+    assert_eq!(hero(&state).0, p(5, 3));
+    assert_eq!(hero(&state).2, tiles[0].1);
+}
+
+// covers: ADV-MOV-007, ADV-SEA-003, ADV-SEA-004, ADV-SEA-005, ADV-MON-006
+#[test]
+fn a_boat_reaches_the_sea_its_landings_and_its_visits_as_destinations() {
+    let (rules, _, admiral) = sea_rules(true);
+    // A water monster at (6, 0), guarding (5, 0), (5, 1), (6, 1), (7, 1) and (7, 0) (ADV-MON-005).
+    let fresh = sea_state(&rules, p(2, 2), |setup| {
+        let monster = world(&["M"], 1, vec![]).map.objects.remove(0);
+        setup.map.objects.push(ObjectSetup {
+            anchor: p(6, 0),
+            ..monster
+        });
+    });
+    let mut state = fresh.clone();
     aboard(&mut state, 0, 1500);
     let reach = state.reach(&rules.0, &rules.1, &[], HERO).unwrap();
-    assert_eq!(reach.tiles().count(), 0);
-    assert_eq!(reach.points_left(p(3, 2)), Some(1500));
+    // At sea: 100 a straight step, 141 a diagonal between two waters.
+    assert_eq!(reach.points_left(p(4, 2)), Some(1400));
+    assert_eq!(reach.points_left(p(4, 3)), Some(1359));
+    assert_eq!(reach.path(p(4, 3)), Some(vec![p(4, 3)]));
+    // Never onto the empty boat at (6, 3); the island and the shore are landings (0 points
+    // without free boarding), beyond which nothing is reached; land off the coast never.
+    assert_eq!(reach.points_left(p(6, 3)), None);
+    for landing in [p(5, 3), p(2, 2), p(3, 6)] {
+        assert_eq!(reach.points_left(landing), Some(0), "{landing:?}");
+    }
+    for inland in [p(1, 2), p(3, 7)] {
+        assert_eq!(reach.points_left(inland), None, "{inland:?}");
+    }
+    // The guarded tiles are destinations, where the monster attacks: (7, 0) and the monster's
+    // own tile, reached only over them, are not reached.
+    let path = reach.path(p(6, 1)).unwrap();
+    let mut moved = state.clone();
+    let (outcome, _) = sail(&mut moved, &rules, &[], &path).unwrap();
+    assert_eq!(guard_visit(&outcome), Some(p(6, 0)));
+    assert_eq!(reach.points_left(p(7, 0)), None);
+    assert_eq!(reach.points_left(p(6, 0)), None);
+    // Every path reported is the move's, ending on its tile with the points it leaves.
+    for (pos, left) in reach.tiles() {
+        let mut moved = state.clone();
+        sail(&mut moved, &rules, &[], &reach.path(pos).unwrap()).unwrap();
+        assert_eq!((hero(&moved).0, hero(&moved).2), (pos, left));
+    }
+    // With free boarding a landing keeps its points, converted to the land's maximum.
+    let store = store(&[(admiral, 1)]);
+    let reach = state.reach(&rules.0, &rules.1, &store, HERO).unwrap();
+    let land = fresh.hero(HERO).unwrap().max_movement;
+    assert_eq!(reach.points_left(p(2, 2)), Some(1400 * land / 1500));
+    let mut moved = state.clone();
+    sail(&mut moved, &rules, &store, &[p(2, 2)]).unwrap();
+    assert_eq!(hero(&moved), (p(2, 2), None, 1400 * land / 1500, land));
+}
+
+// covers: ADV-MOV-007, ADV-OBJ-004, ADV-SEA-002
+#[test]
+fn a_walker_reaches_no_boat_it_cannot_pay_or_must_enter_across_an_object_s_top() {
+    let (rules, _, _) = sea_rules(true);
+    // 50 points pay no step from grass (100): the boat beside is not reached, nor boarded.
+    let mut state = sea_state(&rules, p(2, 2), |_| {});
+    state.heroes[0].movement = 50;
+    let reach = state.reach(&rules.0, &rules.1, &[], HERO).unwrap();
+    assert_eq!(reach.points_left(p(3, 2)), None);
+    assert!(matches!(
+        sail(&mut state, &rules, &[], &[p(3, 2)]),
+        Err(AdventureCommandError::TooFewPoints { step: 0, .. })
+    ));
+    // Red's hero 2 in its boat on a chart's water tile (entered, not visited from above) at
+    // (1, 1): hero 1 above meets it from no tile of the row above (ADV-OBJ-004), as the move.
+    let mut setup = coasted(
+        &["ggg", "~Cb", "ggg"],
+        vec![
+            hero_at(1, 0, p(1, 0), &[PEASANT]),
+            hero_at(2, 0, p(1, 2), &[PEASANT]),
+        ],
+    );
+    set_terrain(&mut setup, p(1, 1), SEA);
+    let mut state = started(&rules, &setup).unwrap();
+    state.put_aboard(HeroId::new(2), 0);
+    state.heroes[1].pos = p(1, 1);
+    assert!(state.check_boats(&rules.1));
+    let reach = state.reach(&rules.0, &rules.1, &[], HERO).unwrap();
+    assert_eq!(reach.points_left(p(1, 1)), None);
+    for down in [p(0, 1), p(1, 1)] {
+        let mut s = state.clone();
+        assert!(sail(&mut s, &rules, &[], &[down]).is_err(), "{down:?}");
+    }
+}
+
+// covers: ADV-SEA-004, ADV-MOV-005, ADV-MOV-006
+#[test]
+fn a_boat_s_reachable_tiles_follow_the_sea_s_prices_and_its_drop() {
+    let (rules, _, _) = sea_rules(true);
+    // Favorable Winds at (1, 1): (2, 1) is cheaper over them (141 + 66) than by the diagonal
+    // from (1, 0) found first (100 + 141).
+    let mut setup = coasted(
+        &["b~~", "~~~", "ggg"],
+        vec![hero_at(1, 0, p(0, 2), &[PEASANT])],
+    );
+    setup.map.objects.push(lying(WINDS, p(1, 1), 1));
+    let mut state = started(&rules, &setup).unwrap();
+    aboard(&mut state, 0, 1500);
+    let reach = state.reach(&rules.0, &rules.1, &[], HERO).unwrap();
+    assert_eq!(reach.points_left(p(1, 1)), Some(1359));
+    assert_eq!(reach.points_left(p(2, 1)), Some(1293));
+    assert_eq!(reach.path(p(2, 1)), Some(vec![p(1, 1), p(2, 1)]));
+    let mut moved = state.clone();
+    sail(&mut moved, &rules, &[], &[p(1, 1), p(2, 1)]).unwrap();
+    assert_eq!(hero(&moved).2, 1293);
+    // With 100 points the diagonal costs the straight step (ADV-MOV-005's exception against
+    // water's price) and both drop to 0, from where nothing more is reached.
+    aboard(&mut state, 0, 100);
+    let reach = state.reach(&rules.0, &rules.1, &[], HERO).unwrap();
+    let tiles: Vec<(Pos, u32)> = reach.tiles().collect();
+    assert_eq!(tiles, vec![(p(1, 0), 0), (p(0, 1), 0), (p(1, 1), 0)],);
+}
+
+// covers: ADV-MOV-007, ADV-SEA-002
+#[test]
+fn a_flyer_s_boarding_in_the_reachable_tiles_drops_as_a_boat_s() {
     // A level-1 flyer with free boarding under the strict profile, whose own drop on water is
     // its flight's 140: its boarding keeps 130 of 230 (the boat's drop, 100), converted, as the
     // move does; without free boarding none.

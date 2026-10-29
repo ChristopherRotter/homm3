@@ -415,10 +415,11 @@ fn headless(
 fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
     let mut lines = Vec::new();
     let (keys, keys_from) = load_keys(options.keys.as_deref())?;
-    let tables = files::load_tables(&options.map)?;
+    let mut tables = files::load_tables(&options.map)?;
     let layout = files::load_layout(&options.map)?;
     let archive_bytes = files::read_archives(&options.install)?;
     let archives = files::parse_archives(&archive_bytes)?;
+    tables.texts = crate::texts::catalogue(&options.install, &archives)?;
     let templates = files::templates(&archives)?;
     let assets = Assets {
         tables: &tables,

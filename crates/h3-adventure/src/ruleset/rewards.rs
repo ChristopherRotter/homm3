@@ -212,7 +212,7 @@ pub struct Find {
     /// The bonus every visit gives (the Warrior's Tomb's −3 morale), held or not.
     pub bonus: Option<OnceBonus>,
     /// It leaves the map at its visit instead of being emptied in place (E08 T72: the sea's
-    /// pickups, ADV-PIK-014 to -016; their visits are T74's).
+    /// pickups, ADV-PIK-014 to -016; their visits E08 T74a).
     pub leaves: bool,
 }
 
@@ -228,7 +228,8 @@ pub struct FindDef {
     pub question: bool,
     /// The bonus, its mark below [`BattleBonuses::MARKS`].
     pub bonus: Option<OnceBonus>,
-    /// Whether it leaves the map at its visit (E08 T72).
+    /// Whether it leaves the map at its visit (E08 T72); one that does has no
+    /// [`TurnDef::Stays`] (E08 T74a).
     pub leaves: bool,
 }
 
@@ -481,6 +482,9 @@ pub(super) fn compile_find(scope: &Scope<'_>, def: &FindDef) -> Compiled<Find> {
             Err("a find's drawn turn has no resources entry")
         } else if turn == Some(Turn::Drawn) && fixed_artifact {
             Err("a find's drawn turn is beside a fixed entry's artifact")
+        } else if def.leaves && turn == Some(Turn::Stays) {
+            // E08 T74a: a find that leaves takes what it holds with it.
+            Err("a find that leaves keeps its artifact")
         } else {
             def.bonus.map(check_bonus).transpose()
         }

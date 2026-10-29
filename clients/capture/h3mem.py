@@ -908,6 +908,17 @@ class Mem:
         towns = struct.unpack_from("<b", raw, PLAYER_TOWNS)[0]
         return list(struct.unpack_from(f"<{towns}b", raw, PLAYER_TOWN_LIST))
 
+    def write_resources(self, colour, amounts):
+        """A player's seven resources in the original's order (E24 M3 T5a: a situation's
+        `resources`; i32[7] at the player's +0x9C)."""
+        record = self.game() + PLAYERS + PLAYER_SIZE * colour
+        self.write_bytes(record + 0x9C, struct.pack("<7i", *amounts))
+
+    def write_date(self, month, week, day):
+        """The game's date (E24 M3 T5a: a situation's `date`; the day of the week, the week and
+        the month, u16 each from +0x1F63E)."""
+        self.write_bytes(self.game() + DATE, struct.pack("<3H", day, week, month))
+
     def write_town_built(self, index, built=1):
         """A town's day (E24 M3 T4a: a situation's town's `built`; u8 +0x2)."""
         self.write_bytes(self.town(index)["at"] + TOWN_BUILT_TODAY, bytes([built]))
@@ -920,7 +931,9 @@ class Mem:
         move: *provisional*; the rest since M3 T4a, §4.5), its towns in the town list's order, each
         [faction, fort, built today] (T4a), the one selected ([1, the hero's place in the list],
         [2, the town's] or [0, 0]), the lists' first slots and whether a quest it visited is in
-        its log (0x4039B0; the quest's text, which every quest has, not checked)."""
+        its log (0x4039B0; the quest's text, which every quest has, not checked); since M3 T5a its
+        seven resources in the original's order and the game's date [month, week, day] (design
+        §4.7: the resource bar)."""
         raw = self.read(self.game() + PLAYERS + PLAYER_SIZE * colour, PLAYER_SIZE)
         count = struct.unpack_from("<b", raw, 0x1)[0]
         heroes = list(struct.unpack_from(f"<{count}i", raw, 0x8))
@@ -946,8 +959,9 @@ class Mem:
         dialog = self.manager_field(ADVENTURE_DIALOG)
         tops = [self.i32(dialog + HERO_TOP), self.i32(dialog + TOWN_TOP)]
         quests = any(self.visited_quest(at, size, colour) for at, size in QUEST_VECTORS)
+        resources = list(struct.unpack_from("<7i", raw, 0x9C))
         return {"heroes": rows, "towns": town_rows, "selected": chosen, "tops": tops,
-                "quests": int(quests)}
+                "quests": int(quests), "resources": resources, "date": list(self.date())}
 
     def buttons(self):
         """Move hero's and next hero's states on the adventure screen (E24 M3 T2a; design §4.1),

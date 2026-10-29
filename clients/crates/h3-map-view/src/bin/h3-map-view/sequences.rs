@@ -106,7 +106,7 @@ pub fn run(options: &Options) -> ExitCode {
 
 /// Every sequence asked for; whether each is as recorded.
 fn all(options: &Options) -> Result<bool, String> {
-    let tables = files::load_tables(&options.map)?;
+    let mut tables = files::load_tables(&options.map)?;
     let layout = files::load_layout(&options.map)?;
     let path = options.map.join("sequences.toml");
     let text = fs::read_to_string(&path).map_err(|e| format!("{}: {e}", path.display()))?;
@@ -121,6 +121,7 @@ fn all(options: &Options) -> Result<bool, String> {
     };
     let archive_bytes = files::read_archives(&options.install)?;
     let archives = files::parse_archives(&archive_bytes)?;
+    tables.texts = crate::texts::catalogue(&options.install, &archives)?;
     let templates = files::templates(&archives)?;
     let assets = Assets {
         tables: &tables,

@@ -680,6 +680,59 @@ fn the_lists_writes_and_the_selection() {
         theirs.build(&BTreeMap::new(), core::slice::from_ref(&castle)),
         Err("town at [30, 20]: only Red's towns have their day written".to_string())
     );
+    // T5a: the resources and the date with a hero's selection, a day of the game's.
+    let bar = "resources = [0, 1, 2, 3, 4, 5, 6]";
+    for good in [
+        format!("select = {{ hero = [2, 1] }}\n{bar}"),
+        "select = { hero = [5, 5] }\ndate = [12, 4, 7]".to_string(),
+        "select = { hero = [5, 5] }\ndate = [1, 1, 1]".to_string(),
+    ] {
+        assert_eq!(build(&good), Ok(()), "{good}");
+    }
+    let without = "the resources or the date without a hero's selection";
+    for (bad, error) in [
+        (format!("select = {{ town = [20, 20] }}\n{bar}"), without),
+        (
+            "select = { town = [20, 20] }\ndate = [1, 1, 1]".to_string(),
+            without,
+        ),
+        (
+            "select = { hero = [5, 5] }\ndate = [0, 1, 1]".to_string(),
+            "[0, 1, 1]",
+        ),
+        (
+            "select = { hero = [5, 5] }\ndate = [1, 0, 1]".to_string(),
+            "[1, 0, 1]",
+        ),
+        (
+            "select = { hero = [5, 5] }\ndate = [1, 5, 1]".to_string(),
+            "[1, 5, 1]",
+        ),
+        (
+            "select = { hero = [5, 5] }\ndate = [1, 1, 0]".to_string(),
+            "[1, 1, 0]",
+        ),
+        (
+            "select = { hero = [5, 5] }\ndate = [1, 1, 8]".to_string(),
+            "[1, 1, 8]",
+        ),
+    ] {
+        let error = if error.starts_with('[') {
+            format!("the date Some({error}) is no day of the game's")
+        } else {
+            error.to_string()
+        };
+        assert_eq!(build(&bad), Err(error), "{bad}");
+    }
+    let plain_bar = Situation::parse(&format!(
+        "size = 36\nterrain = \"grass\"\nview = [0, 0, 0]\nheroes = [{{ at = [1, 1] }}, {{ at = \
+         [9, 9], owner = 1 }}]\n{bar}\n"
+    ))
+    .unwrap();
+    assert_eq!(
+        plain_bar.build(&BTreeMap::new(), &[]).map(|_| ()),
+        Err(without.to_string())
+    );
 }
 
 #[test]

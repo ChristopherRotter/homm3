@@ -189,6 +189,34 @@ pub(super) fn rules(faithful: bool) -> Rules {
                     }),
                 ),
             ]);
+            // E08 T74a (`sea_pickups.rs`): Flotsam and the Survivor, which leave, as the base
+            // pack's (one entry each, the test's draw set by hand; the Sea Chest is `draws.rs`'s),
+            // and two messages.
+            let sea = |draws, full_backpack| {
+                ObjectKindDef::Find(FindDef {
+                    draws: vec![(100, draws)],
+                    full_backpack,
+                    question: false,
+                    bonus: None,
+                    leaves: true,
+                })
+            };
+            let fixed = FindContentDef::Fixed {
+                resources: vec![(key("t:wood"), 5), (key("t:gold"), 200)],
+                artifact: None,
+            };
+            types.extend([
+                ty("t:flotsam", sea(fixed, None)),
+                ty(
+                    "t:survivor",
+                    sea(
+                        FindContentDef::Artifact(vec![ArtifactClass::Treasure]),
+                        Some(TurnDef::Lost),
+                    ),
+                ),
+                ty("t:bottle", ObjectKindDef::Message { leaves: true }),
+                ty("t:sign", ObjectKindDef::Message { leaves: false }),
+            ]);
         },
     )
 }

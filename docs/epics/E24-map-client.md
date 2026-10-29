@@ -174,7 +174,10 @@ viewers share.
   sequences recorded with them, every frame exact; the log); T4c, a changed panel item drawn
   again alone (**done** 2026-10-29: the background drawn again where its changed items reach, by
   `h3_ui::paint::reach`, and the view's cells there; `walk-1` 31.0 → 24.7 % uploaded; the log);
-  T5, the status window, the resource bar and the date; T6, the mouse, the keys during a walk,
+  T5 cut with the user (2026-10-29): T5a, the resource bar's amounts, the date and a text's reach
+  (**done** 2026-10-29: `resource_bar_redraw` 0x558F20 read and built through the catalogue's keys,
+  the live part's resources and date, a text's reach; the 44 situations and the 13 sequences exact
+  with the bar; MCL-Q15; the log), T5b, the status window; T6, the mouse, the keys during a walk,
   the sound without the focus; T7, M3's closure. A task that grows is cut at a seam agreed with the user.
 - **Exit:** every situation and sequence as recorded on the whole screen (no `panels` mask
   left, or each difference an `MCL-Q<n>`); the view-only clicks, the hints and the cursor in the
@@ -317,3 +320,12 @@ M1's review lists (three reviewers, T6b; the list accepted) and M2's (accepted a
 - **M3 T2a, `h3_ui::paint`**: the dialog items' drawers moved into the common crate (an `Assets`
   trait each viewer's batch implements); `h3-view` keeps its copy until the client lane takes
   this one (its inbox); a button takes a player's colours and a DEF from `Shown` by its id.
+- **M3 T5a, the resource bar's texts** (*provisional*, design §4.7): the catalogue's keys
+  `map.resources.amount`, `map.resources.date`, `word.month`, `word.week`, `word.day` (the
+  original's from the executable's `%d` and date format and GENRLTXT 63 to 65); the viewer's
+  binary reads only `panels::KEYS` of `clients/text/keys.toml` (the families left out) and stops
+  on a form it cannot read; `Tables::texts` (the catalogue, empty from the committed tables: a
+  key shows as itself); the live part's `kingdom` with `resources` (the original's order) and
+  `date` (`[month, week, day]`), a map's start none and the first day; a situation's
+  `resources` and `date`, only with a hero's selection; `h3_ui::paint::text_reach` (additive:
+  the box widened by the font's overhangs).

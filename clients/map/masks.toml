@@ -5,22 +5,14 @@
 # `panels` (E24 M3 T2a, design §4.1): what T5 and T6 draw of the adventure screen's panels; the
 # frame picture, the buttons, the status bar's and the resource bar's pictures, the minimap (T3a
 # as a still, T3b over time: design §4.4), the hero and town lists (T4a as stills, T4b over time:
-# §4.5) and the parked cursor are drawn and compared. The situations' and the sequences' mask
+# §4.5), the resource bar's amounts and the date (T5a, §4.7) and the parked cursor are drawn and
+# compared. The situations' and the sequences' mask
 # (`h3map.py`'s and the viewer's `sequences`; T4a's `stills`, the situations' alone while the
 # sequences kept the lists out, one list again since T4b). A task drawing another panel takes its
 # rectangle out.
 panels = [
-    # The status window (T5: the dialog's area 2).
+    # The status window (T5b: the dialog's area 2).
     [605, 389, 793, 571],
-    # The resource bar's amounts and the date (T5: its items 1001-1008).
-    [40, 578, 90, 596],
-    [124, 578, 174, 596],
-    [208, 578, 258, 596],
-    [292, 578, 342, 596],
-    [376, 578, 426, 596],
-    [460, 578, 510, 596],
-    [544, 578, 594, 596],
-    [610, 578, 790, 596],
     # The status bar's hint (T6: item 200's text).
     [8, 556, 600, 574],
 ]

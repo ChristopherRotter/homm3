@@ -36,6 +36,17 @@
 //! bit 11, 0x4B1B15), so that a path follows each node's predecessor of its kind. A flying hero's
 //! search goes on over guarded tiles (0x56BBCE). Its destinations are the stop nodes. A walking
 //! hero's search keeps its one node per tile and its own loop (`bench-check`).
+//!
+//! Boats (E08 T73b; ADV-SEA-002 to -005, design §9). A hero in a boat is searched over one node
+//! per tile, every water tile a stop, by `AdventureState::passage`'s rows of a boat and a boat's
+//! prices (`Pricing::sail`, the drop of `Pricing::left_by`): a landing onto a free coastal tile,
+//! a visit from the boat's tile (an object's, another hero's) and a water tile a monster guards
+//! are destinations it goes no further from, a landing with the points its conversion leaves
+//! (`converted_points` to the land's maximum, as the move's). A walking hero's water neighbour is
+//! tested out of its loop, only where another hero stands in a boat or an empty boat lies: the
+//! hero is visited, the boat boarded (with a boat's drop and the conversion to the sea's maximum,
+//! as a flyer's and a water walker's boarding), each a destination. Events stay unseen, at sea as
+//! on land (decision 131).
 
 use alloc::collections::BinaryHeap;
 use alloc::sync::Arc;
@@ -44,11 +55,11 @@ use alloc::vec::Vec;
 use core::cmp::Reverse;
 
 use h3_content::Ruleset;
-use h3_contracts::{HeroId, PlayerId};
+use h3_contracts::{ArmyStack, HeroId, PlayerId};
 use h3_heroes::{HeroDetails, free_boarding};
 
 use crate::movement::{
-    DIRECTIONS, Pricing, converted_points, details_of, hero_movement, sea_day_points,
+    DIRECTIONS, Pricing, converted_points, day_points, details_of, hero_movement, sea_day_points,
 };
 use crate::ruleset::AdventureRuleset;
 use crate::setup::Pos;
@@ -57,7 +68,7 @@ use crate::state::{
 };
 
 /// What a search reads besides its window: the state, the rules, the hero's pricing and owner,
-/// and whether another hero stands on each of the window's tiles.
+/// and whether another hero stands, or an empty boat lies, on each of the window's tiles.
 struct Search<'s> {
     state: &'s AdventureState,
     part: &'s AdventureRuleset,
@@ -65,13 +76,16 @@ struct Search<'s> {
     pricing: Pricing<'s>,
     hero: HeroId,
     owner: PlayerId,
+    /// Whether another hero stands on the slot's tile (on land, or on water in a boat) or an
+    /// empty boat lies there (E08 T73b: on water only, so a land tile's flag is a hero's).
     occupied: Vec<bool>,
     /// Whether the map holds a monster, so that a tile may be guarded (E08 T20a2b): the search
     /// asks [`Search::guarded`] only then (`bench-check`).
     guards: bool,
-    /// What a boarding's conversion reads (E08 T73; ADV-SEA-002): the core, the hero's details
-    /// and its day's maximum; derived only at a boarding met (`bench-check`).
-    boarding: (&'s Ruleset, Option<&'s HeroDetails>, u32),
+    /// What a boarding's and a landing's conversion reads (E08 T73; ADV-SEA-002, ADV-SEA-003):
+    /// the core, the hero's details, its day's maximum and its army; derived only at a boarding
+    /// or a landing met (`bench-check`).
+    surface: (&'s Ruleset, Option<&'s HeroDetails>, u32, &'s [ArmyStack]),
 }
 
 impl Search<'_> {
@@ -80,10 +94,27 @@ impl Search<'_> {
     /// move leaves them. Out of the search's hot loop: boats are rare.
     #[cold]
     fn boarded(&self, tile: &StaticTile, left: u32) -> u32 {
-        let (core, details, old) = self.boarding;
-        let new = sea_day_points(core, self.part, details);
+        let (core, details, _, _) = self.surface;
+        self.converted(
+            self.pricing.sail_left_after(tile, left),
+            sea_day_points(core, self.part, details),
+        )
+    }
+
+    /// The points a landing keeps of `left`, the points after its drop (E08 T73b; ADV-SEA-003):
+    /// the conversion to the land's maximum (`day_points` for the hero's army), as the move's.
+    #[cold]
+    fn landed(&self, left: u32) -> u32 {
+        let (core, details, _, army) = self.surface;
+        self.converted(left, day_points(core, self.part, details, army))
+    }
+
+    /// [`converted_points`] of `points` from the hero's day's maximum to `new`, with its free
+    /// boarding.
+    fn converted(&self, points: u32, new: u32) -> u32 {
+        let (core, details, old, _) = self.surface;
         let free = details.is_some_and(|details| free_boarding(details, core));
-        converted_points(self.pricing.sail_left_after(tile, left), (old, new), free)
+        converted_points(points, (old, new), free)
     }
 }
 
@@ -133,8 +164,13 @@ impl Reach {
         let movement = hero_movement(core, details_of(heroes, hero.id));
         let mode = Mode::of(&movement, hero.boat);
         let pricing = Pricing::new(core, part, &hero.army, &movement);
-        // No step costs less than the cheapest straight step, so none goes farther than this.
-        let radius = u16::try_from(hero.movement / pricing.cheapest()).unwrap_or(u16::MAX);
+        // No step costs less than the cheapest straight step, so none goes farther than this: a
+        // boat's every step is one at sea (a landing's priced from its water tile, E08 T73b).
+        let cheapest = match mode {
+            Mode::Sail(_) => pricing.sail_cheapest(),
+            _ => pricing.cheapest(),
+        };
+        let radius = u16::try_from(hero.movement / cheapest).unwrap_or(u16::MAX);
         let origin = hero.pos;
         let left = origin.x.saturating_sub(radius);
         let top = origin.y.saturating_sub(radius);
@@ -154,14 +190,26 @@ impl Reach {
             passing: Vec::new(),
             passing_via: Vec::new(),
         };
-        // Another hero's tile: a visit, which ends the path (GAM-BAT-004, GAM-MET-001).
+        // Another hero's tile: a visit, which ends the path (GAM-BAT-004, GAM-MET-001); an empty
+        // boat's: a boarding, which does too (ADV-SEA-002, E08 T73b). Whether one of them lies on
+        // the window's water (another hero in a boat, an empty boat) decides whether the walking
+        // search looks at water at all (`bench-check`).
         let mut occupied = vec![false; size];
+        let mut afloat = false;
         for other in state.heroes().iter().filter(|h| h.id != hero.id) {
             if let Some(slot) = reach.slot(other.pos) {
                 occupied[slot] = true;
+                afloat |= other.boat.is_some();
             }
         }
-        let boarding = (core, details_of(heroes, hero.id), hero.max_movement);
+        let boats = state.boats().map(|(_, boat)| boat);
+        for boat in boats.filter(|boat| !boat.aboard && !boat.gone) {
+            if let Some(slot) = reach.slot(boat.tile) {
+                occupied[slot] = true;
+                afloat = true;
+            }
+        }
+        let details = details_of(heroes, hero.id);
         let search = Search {
             state,
             part,
@@ -171,39 +219,51 @@ impl Reach {
             owner: hero.owner,
             occupied,
             guards: map.any_monster(),
-            boarding,
+            surface: (core, details, hero.max_movement, &hero.army),
         };
         reach.points[reach.start] = Some(hero.movement);
-        // A hero in a boat: its own tile only until its search is built (E08 T73b).
-        // stub: ADV-STUB-11
-        if let Mode::Sail(_) = mode {
+        if let Mode::Sail(boat) = mode {
+            reach.search_sail(&search, boat, hero.movement);
             return reach;
         }
         if mode != Mode::Walk {
             reach.search_layered(&search, mode, hero.movement);
             return reach;
         }
-        let mut queue = BinaryHeap::new();
-        // ADV-OBJ-004: a hero standing on the tile of an object not visited from above leaves it
-        // toward none of the three tiles above (E08 T14a); the start's own expansion only, so the
-        // search's hot loop has no test for it.
-        let closed = state.closed_above(part, origin);
-        reach.expand::<true>(&search, &mut queue, reach.start, hero.movement, closed);
-        while let Some((points, Reverse(slot))) = queue.pop() {
-            if reach.points[slot] != Some(points) {
-                continue;
-            }
-            reach.expand::<false>(&search, &mut queue, slot, points, false);
+        if afloat {
+            reach.search_walking::<true>(&search, hero.movement);
+        } else {
+            reach.search_walking::<false>(&search, hero.movement);
         }
         reach
     }
 
+    /// A walking hero's search: Dijkstra's over one node per tile, the most points first (ties by
+    /// slot), from the hero's tile with `points`. `AFLOAT`: the window holds an empty boat or
+    /// another hero in a boat, whose water tiles the search then looks at (E08 T73b); without, its
+    /// loop is the one before boats (`bench-check`).
+    fn search_walking<const AFLOAT: bool>(&mut self, search: &Search<'_>, points: u32) {
+        let mut queue = BinaryHeap::new();
+        // ADV-OBJ-004: a hero standing on the tile of an object not visited from above leaves it
+        // toward none of the three tiles above (E08 T14a); the start's own expansion only, so the
+        // search's hot loop has no test for it.
+        let closed = search.state.closed_above(search.part, self.origin);
+        self.expand::<true, AFLOAT>(search, &mut queue, self.start, points, closed);
+        while let Some((points, Reverse(slot))) = queue.pop() {
+            if self.points[slot] != Some(points) {
+                continue;
+            }
+            self.expand::<false, AFLOAT>(search, &mut queue, slot, points, false);
+        }
+    }
+
     /// Relaxes the steps from `slot`, reached with `points` left, in the eight directions; a
     /// tile reached with more points than before goes on the queue unless a visit or a guard ends
-    /// the path there. `START` is the hero's own tile, whose steps up are skipped when `closed`.
+    /// the path there. `START` is the hero's own tile, whose steps up are skipped when `closed`;
+    /// `AFLOAT` as [`Self::search_walking`]'s.
     // rule: ADV-OBJ-003, ADV-OBJ-004, ADV-VIS-005, GAM-BAT-004, ADV-MON-006
     #[inline(always)]
-    fn expand<const START: bool>(
+    fn expand<const START: bool, const AFLOAT: bool>(
         &mut self,
         search: &Search<'_>,
         queue: &mut BinaryHeap<(u32, Reverse<usize>)>,
@@ -224,7 +284,15 @@ impl Reach {
             let pos = self.pos(next);
             let to = search.map.at(pos);
             // The same tile checks as MoveHero's (ADV-MOV-007, ADV-MOV-008, ADR-0016 point 4).
-            if !state.is_explored(search.owner, pos) || !enterable_terrain(part, &to) {
+            if !state.is_explored(search.owner, pos) {
+                continue;
+            }
+            if !enterable_terrain(part, &to) {
+                // Water: a hero in a boat visited, an empty boat boarded (E08 T73b), out of the
+                // loop, only where one is and in a window holding one (`bench-check`).
+                if AFLOAT && search.occupied[next] {
+                    self.afloat(search, &from, (next, dir), points);
+                }
                 continue;
             }
             // Another hero is a visit (GAM-BAT-004, GAM-MET-001), but not from above onto the
@@ -264,6 +332,105 @@ impl Reach {
                 if !visit && !(search.guards && search.guarded(pos)) {
                     queue.push((left, Reverse(next)));
                 }
+            }
+        }
+    }
+
+    /// A walking hero's step from `from` onto the water tile of `next` in `dir` with `points`
+    /// (E08 T73b; design §9), where another hero stands in a boat or an empty boat lies: as
+    /// `MoveHero`'s `check_step`, not down across the top of an object's tile (ADV-OBJ-004), a
+    /// hero visited from `from` (GAM-BAT-004, GAM-MET-001) with the walker's drop, else the boat
+    /// boarded (ADV-SEA-002) with a boat's drop and the conversion ([`Search::boarded`]); each a
+    /// destination the search goes no further from. The step is priced as the walker's from its
+    /// land tile.
+    // rule: ADV-SEA-002, GAM-BAT-004, GAM-MET-001
+    #[cold]
+    #[inline(never)]
+    fn afloat(
+        &mut self,
+        search: &Search<'_>,
+        from: &StaticTile,
+        (next, dir): (usize, usize),
+        points: u32,
+    ) {
+        let (state, pricing) = (search.state, &search.pricing);
+        let pos = self.pos(next);
+        if (3..=5).contains(&dir) && state.closed_above(search.part, pos) {
+            return;
+        }
+        let to = search.map.at(pos);
+        let price = pricing.walking_step(from, &to, dir % 2 == 1, points);
+        let Some(left) = points.checked_sub(price) else {
+            return;
+        };
+        let hero = state
+            .heroes()
+            .iter()
+            .any(|h| h.pos == pos && h.id != search.hero);
+        let left = if hero {
+            pricing.walking_left_after(&to, left)
+        } else {
+            search.boarded(&to, left)
+        };
+        self.improve((next, Node::Stop), left, dir as u8);
+    }
+
+    /// A hero in a boat's search (E08 T73b; design §9; ADV-SEA-003 to -005): Dijkstra's over one
+    /// node per tile, the most points first (ties by slot), from the boat's tile with `points`,
+    /// every step one [`AdventureState::passage`] allows the boat `boat` (each a stop), priced
+    /// from the water tile ([`Pricing::sail`]) with the drop of [`Pricing::left_by`]. A landing,
+    /// a visit and a water tile a monster guards are destinations the search goes no further
+    /// from; a landing keeps the points of its conversion ([`Search::landed`]).
+    // rule: ADV-SEA-003, ADV-SEA-004, ADV-SEA-005, ADV-MON-006
+    fn search_sail(&mut self, search: &Search<'_>, boat: u32, points: u32) {
+        let mut queue = BinaryHeap::new();
+        self.expand_sail(search, &mut queue, boat, self.start, points);
+        while let Some((points, Reverse(slot))) = queue.pop() {
+            if self.points[slot] != Some(points) {
+                continue;
+            }
+            self.expand_sail(search, &mut queue, boat, slot, points);
+        }
+    }
+
+    /// Relaxes the steps of a hero in the boat `boat` from `slot`, reached with `points` left, in
+    /// the eight directions ([`Self::search_sail`]).
+    fn expand_sail(
+        &mut self,
+        search: &Search<'_>,
+        queue: &mut BinaryHeap<(u32, Reverse<usize>)>,
+        boat: u32,
+        slot: usize,
+        points: u32,
+    ) {
+        let (state, part, pricing) = (search.state, search.part, &search.pricing);
+        let mode = Mode::Sail(boat);
+        let at = self.pos(slot);
+        let from = search.map.at(at);
+        let mover = (search.owner, search.hero, mode);
+        for (dir, &(dx, dy)) in DIRECTIONS.iter().enumerate() {
+            let Some(next) = self.neighbour(slot, dx, dy) else {
+                continue;
+            };
+            let pos = self.pos(next);
+            let Ok(entry) = state.passage(part, mover, (at, Node::Stop), pos, dir, 0) else {
+                continue;
+            };
+            // A boat's every entry is a stop (`sail_entry`): what it meets, if anything.
+            let met = entry.stop.flatten();
+            let Some(left) = points.checked_sub(pricing.sail(&from, dir % 2 == 1, points)) else {
+                continue;
+            };
+            let left = pricing.left_by(mode, met, &entry.tile, left);
+            let left = match met {
+                Some(Meets::Land(_)) => search.landed(left),
+                _ => left,
+            };
+            if self.improve((next, Node::Stop), left, dir as u8)
+                && met.is_none()
+                && !(search.guards && search.guarded(pos))
+            {
+                queue.push((left, Reverse(next)));
             }
         }
     }

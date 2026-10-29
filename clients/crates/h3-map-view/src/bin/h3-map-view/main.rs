@@ -9,6 +9,7 @@ mod render;
 mod sequences;
 mod situation;
 mod sounds;
+mod texts;
 mod window;
 
 use std::process::ExitCode;
