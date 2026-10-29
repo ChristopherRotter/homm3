@@ -22,8 +22,8 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   bound costs nothing, the loop gone, 73 minutes against 90; **`e25-bound-1` the current best**,
   the user). **Next:** T5, `e25-scale-1` on the user's machine (`configs/e25-scale.toml`: 60 M,
   three tactics rounds, the user at T4b), then T6's checkpoint.
-- **Open pull requests:** E25 T4b's (`claude/practical-fermat-xmv41h`, restarted from `master`
-  after #558): watch it to its merge. Merged: #534, #539, #555, #558.
+- **Open pull requests:** #576 (E25 T4b; `claude/practical-fermat-xmv41h`, restarted from
+  `master` after #558): watch it to its merge. Merged: #534, #539, #555, #558.
 - **Versions:** battle action encoding v13, observation encoding v22, replay format v31
   (CLT-Q4/Q6), the adventure env's action encoding v5 (E08 T63a), C ABI v35 (E25 T1a, T1b, T2a:
   a world's reward, the true world, the potential) (`docs/08-work-process.md`, "Versions"). Next
