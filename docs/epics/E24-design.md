@@ -1690,6 +1690,11 @@ kept whole ("no cut", 2026-10-28).
   `path-objects` standing (5.5 %), 3.2 → 1.3 on *Tale of two lands* standing (11 %: its water
   cycles), 1.4 → 0.6 and 1.9 → 1.5 on them with input (`xdotool`: 9 scrolls, 37 steps, 4 clicks;
   29 % and 52 %).
+- **The user's machine** (`map-measure-t2b1.txt` → `map-measure-t2b2.txt`, Direct3D 11, 1600 ×
+  1200): a frame made in a median 0.7 → 0.2 ms on `walk-1` (24.9 % of the pixels uploaded), 2.3 →
+  0.9 on *Tale of two lands* (p95 2.7 → 0.9; 11.1 %), 0.2 → 0.0 on `path-objects` with the user's
+  input (p95 2.5 → 1.5; 54 %; the check's run 1.7 → 0.3); every frame read back exact, made as the
+  same frame composed afresh, and shown as the headless loop's.
 - **Left:** the scene built afresh each frame (2.3 million instructions, about half of what a
   standing frame costs now; its draws' names are strings, a few thousand allocations a frame); a
   button's change (a walk's start and end) draws the background and the whole view again; M4's

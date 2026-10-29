@@ -1442,5 +1442,7 @@ user: "no cut". The original data staged from the user's repo folder as for T2b1
   `walk-1`, 4.0 → 1.0 on `path-objects` and 3.2 → 1.3 on *Tale of two lands* standing, 1.4 → 0.6
   and 1.9 → 1.5 with input; a quarter of `walk-1`'s pixels uploaded, 5 to 11 % standing. The
   window cross-built for the user's machine (`clients/out/win/h3-map-view.exe`, also
-  `h3-map-view-t2b2.exe`); `map-measure.cmd`'s run asked of the user.
+  `h3-map-view-t2b2.exe`). The user's machine (`map-measure-t2b2.txt`, 2026-10-29): a median 0.7
+  → 0.2 ms on `walk-1`, 2.3 → 0.9 on *Tale of two lands*, 0.2 → 0.0 on `path-objects` with input
+  (p95 2.5 → 1.5); every frame read back exact and as composed afresh. Merged as #561.
 
