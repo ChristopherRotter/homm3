@@ -274,10 +274,10 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
    in `h3-sim` comes with the typed answers, `cross-lane` with the user's consent (E08 decision
    138). Increment 8 adds no entry to the action encoding: a boarding or a landing is a
    destination among the reachable tiles, so the env's masks offer them as any other. The
-   observation the env encodes gains the boats on the viewer's explored tiles (tile, type,
-   facing) and each seen hero's boat; the encoding's change is the AI lane's, made `cross-lane`
-   in the task that builds the game's observation, so that the env plays on at sea in the same
-   pull request (E08 decision 172).
+   observation the env returns gains the boats on the viewer's explored tiles (tile, type,
+   facing) and each seen hero's boat: `h3_game::GameObservation` as it is, since the adventure
+   env has no flat encoding, so nothing of the AI lane's moves (E08 decision 187, replacing
+   decision 172's `cross-lane` change).
 9. **Versions owned by the adventure lane** (T2 adds the rows): the game state hash (`h3-game`),
    the adventure state and ruleset-part hashes (`h3-adventure`), the import version (`h3-map`),
    the adventure replay format (`h3-sim`'s `replay.rs`), and until increment 6 the action
