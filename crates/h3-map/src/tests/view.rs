@@ -140,7 +140,9 @@ fn stacks(slots: &[Option<(u16, u16)>]) -> Vec<Option<Stack>> {
 /// it never sees a tile's terrain, road and river, `objects` whether it never sees what objects
 /// cover there and the heroes standing there; a monster it never sees where it never sees the
 /// ground (E08 decision 40: a monster shows on the fringe in either profile). A hero's tile stays
-/// land, and no blocker is added over it.
+/// land, and no blocker is added over it; (E08 T75b) a boat's tile stays water, and no blocker is
+/// added over it (the setup refuses both, ADV-SEA-001), while a boat the viewer never sees may be
+/// removed as a blocker is.
 fn vary(
     m: &RawMap,
     colour: u8,
@@ -157,12 +159,21 @@ fn vary(
         .filter(|o| o.template == HERO_TEMPLATE)
         .map(standing_on)
         .collect();
+    let afloat: Vec<Spot> = m
+        .objects
+        .iter()
+        .filter(|o| o.template != HERO_TEMPLATE)
+        .filter(|o| KINDS[usize::try_from(o.template - 1).unwrap() / BLOCKERS.len()].0 == 8)
+        .map(|o| (o.pos.x, o.pos.y, o.pos.z))
+        .collect();
     let spots =
         (0..levels).flat_map(|z| (0..side).flat_map(move |y| (0..side).map(move |x| (x, y, z))));
     for ((spot, tile), new) in spots.zip(&mut m.terrain.tiles).zip(&unseen.tiles) {
         if let Some((terrain, road, river)) = new.filter(|_| ground(spot)) {
             tile.terrain = if terrain >= 8 && standing.contains(&spot) {
                 2
+            } else if afloat.contains(&spot) {
+                8
             } else {
                 terrain
             };
@@ -205,7 +216,8 @@ fn vary(
     for &((x, y, z), template) in &unseen.added {
         let anchor = (x % side, y % side, z % levels);
         if unseen_blocker(anchor, template)
-            && covers(anchor, template, side).all(|spot| !standing.contains(&spot))
+            && covers(anchor, template, side)
+                .all(|spot| !standing.contains(&spot) && !afloat.contains(&spot))
         {
             let mut o = object(
                 anchor.0,

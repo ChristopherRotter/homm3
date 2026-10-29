@@ -131,9 +131,14 @@ impl AdventureState {
             pass: true,
         };
         // Up off the visitable tile of an object not visited from above: a flight passes, landing
-        // nowhere (§3.1 point 3); nothing else steps there.
+        // nowhere (§3.1 point 3); nothing else steps there. A water tile an object is visited
+        // from stays closed to the flight as below (D-46; E08 T75b, found by the plans'
+        // property).
         if dy == -1 && self.closed_above(part, from) {
             return match part.passage(tile.terrain) {
+                Some(Passage::Water(_)) if fly && tile.visitable => {
+                    Err(blocked(StandError::Blocked))
+                }
                 Some(Passage::Land(_) | Passage::Water(_)) if fly => Ok(pass),
                 Some(Passage::Land(_) | Passage::Water(_)) => {
                     Err(AdventureCommandError::FromAbove { step })
