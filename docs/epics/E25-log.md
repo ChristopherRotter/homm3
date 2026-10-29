@@ -264,3 +264,48 @@ an entry only where a task builds on it.
   `test_search.py` (the tree's nodes past the bound, and the root, bounded or not by the
   network's config; it fails with the tree unbounded), `test_run.py` (`e25-bound.toml` is
   `e25-shaping.toml` with the bound; negative refused; a resume keeps it).
+
+## T4b — The A/B: the bound against `e25-shaping-1` (2026-10-29)
+
+- **The run** (the user's machine; `python/records/e25-bound-1.json`; commit `43c8cdd`, clean,
+  C ABI v35, the core ruleset at v50, no battle rule moved since T2b; seed 1, 20 M samples,
+  `configs/e25-bound.toml`): 73 minutes, 6 of them the gates and ladders (shaping 90 and 25, the
+  control 73 and 9). Promoted at both gates (10 M: 0.870 in 23 pairs; 20 M: 0.561 in 82), best #2
+  at 20 M. The final ladders (win rate, value; the intervals ±0.013 against Random, ±0.018
+  otherwise, ±0.015 on the neutral set):
+
+  | Run | Random | Aggressor | Greedy | System actor | Neutral set |
+  |---|---|---|---|---|---|
+  | `e25-shaping-1` | 0.835, +0.283 | 0.589, +0.063 | 0.566, +0.045 | 0.409, −0.066 | 0.973, +0.238 |
+  | `e25-bound-1` | 0.840, +0.282 | 0.591, +0.067 | 0.573, +0.051 | 0.416, −0.062 | 0.963, +0.233 |
+
+  At or above shaping's point estimates against every engine seat, each difference inside the
+  intervals; the neutral set 0.010 and 0.005 lower, inside its interval. Against `promoted-1`
+  0.525. No ladder battle cut (shaping one in 1 500 per opponent).
+- **The loop is gone.** `records/inspect/battles.py` on its `best.pt` (the sandbox's CPU, the
+  ladder rows within 0.007 of the GPU's; shaping's and the control's numbers are T2b's, same
+  script and battles): in the 616 battles of 3 000 per opponent where the agent has a tactics
+  phase it decides there 3.2 to 3.3 times on average (median 2, the 90th and 99th percentiles 8
+  and 9, at most 11; shaping 42 to 47, its 99th percentile 723 to 928; the control 17 to 19), the
+  phase 2.4 to 2.6 % of its decisions (shaping 24 to 28 %, the control 10 to 12 %), none cut.
+  The median of 2 is a placement and End tactics: it mostly ends the phase itself, well before
+  the bound. Outside the phase it plays as shaping does: strikes at 55 to 60 % of those
+  decisions (shaping 55 to 58 %, the control 45 to 48 %), moves at 21 to 25 % (24 to 27 %), waits
+  at 2 %, 25 to 28 such decisions a battle; battles of 50 rounds or more 2 in 3 000.
+- **Training:** no self-play battle cut in any quarter (shaping 0.24 % and 0.20 % in its second
+  half); 48 samples an episode in the second half (shaping 70 and 63, the control 53 and 54), so
+  386 k episodes in the 20 M samples (shaping 307 k, the control 336 k). Samples per second as
+  shaping's (5 380 and 4 800 per gate interval; shaping 5 400 and 4 980, the control 5 790 and
+  4 910: a sample costs the same, the run's time moved out of evaluation). The value head's
+  explained variance 0.48 and 0.49 (shaping 0.52 and 0.67, the control 0.77 and 0.79) and the
+  entropy 1.60 at the end (shaping 1.98, the broad placement decisions gone): the lower variance
+  explained is not examined further; the ladders show no cost.
+- **The read:** the bound costs nothing measurable and removes the placement loop in training
+  and play; with it shaping's run takes the control's time. T4b's better settings are
+  `e25-bound.toml`'s, the base of T5's scale run.
+- **The user's choices** (2026-10-29): T5 runs **60 M samples** from scratch on T4b's settings
+  with the bound at **the original's computer's three rounds** (`configs/e25-scale.toml`,
+  `tactics_rounds = 3`, BAT-AI-023's cap; its early stop after a round without a placement is
+  left to the agent, which ends the phase itself). So T5 changes the length and the bound
+  together: its read against `e25-bound-1` cannot part them. **`e25-bound-1` is the lineage's
+  current best** (#2, 20 M; the network the exit criteria are judged on) until T5 reports.

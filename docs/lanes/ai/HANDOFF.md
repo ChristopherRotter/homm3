@@ -17,12 +17,13 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   mixes, T2b's configs), all C ABI v35; T1c (the search gains nothing with either world: the
   network's evaluation limits it); T2b (`e25-control-1`, `e25-shaping-1`: shaping about +0.04
   against Aggressor, Greedy and the system actor, 0.409; loops in the tactics phase); T3 (the
-  user: increment 2 is shaping, bounded, then scale; `e25-shaping-1` the current best; increment 1
-  in `E25-archive.md`); T4a (`[network] tactics_rounds`, the agent's tactics bound, Python only;
-  T4b's `configs/e25-bound.toml`). **Next:** T4b, `e25-bound-1` on the user's machine (20 M
-  proposed), then T5's scale run.
-- **Open pull requests:** #558 (E25 T4a; `claude/practical-fermat-xmv41h`): watch it to its merge.
-  Merged: #534, #539, #555.
+  user: increment 2 is shaping, bounded, then scale; increment 1 in `E25-archive.md`); T4a
+  (`[network] tactics_rounds`, the agent's tactics bound, Python only); T4b (`e25-bound-1`: the
+  bound costs nothing, the loop gone, 73 minutes against 90; **`e25-bound-1` the current best**,
+  the user). **Next:** T5, `e25-scale-1` on the user's machine (`configs/e25-scale.toml`: 60 M,
+  three tactics rounds, the user at T4b), then T6's checkpoint.
+- **Open pull requests:** E25 T4b's (`claude/practical-fermat-xmv41h`, restarted from `master`
+  after #558): watch it to its merge. Merged: #534, #539, #555, #558.
 - **Versions:** battle action encoding v13, observation encoding v22, replay format v31
   (CLT-Q4/Q6), the adventure env's action encoding v5 (E08 T63a), C ABI v35 (E25 T1a, T1b, T2a:
   a world's reward, the true world, the potential) (`docs/08-work-process.md`, "Versions"). Next
@@ -34,6 +35,14 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 Moved to `TRAPS.md`, in three groups: **Ownership** (cross-lane encodings and replays, what `--scope ai` skips), **Environment** (what an agent sees, the batch, the pool's `unsafe`, benchmarks, the census, the encounter sampler, bots' tables) and **Python** (the trainer's resumable state, uv, PyTorch's pinned build, the sandbox's network).
 
 ## Recent sessions
+
+### 2026-10-29 — E25 T4b
+
+- #558 (T4a) merged, `master` green. The user ran `e25-bound-1` (20 M) and uploaded its record,
+  metrics and `best.pt`: the record committed and read (`E25-log.md` T4b; `battles.py` on its
+  network in the sandbox, shaping's numbers T2b's: its `best.pt` is gone from the sandbox). The
+  user: `e25-bound-1` the current best; T5 at 60 M with three tactics rounds
+  (`configs/e25-scale.toml`).
 
 ### 2026-10-28 — E25 T4a
 
@@ -51,11 +60,3 @@ Moved to `TRAPS.md`, in three groups: **Ownership** (cross-lane encodings and re
   the tactics phase (both `best.pt`s, `records/inspect/battles.py`). `master`'s CI
   red since #534's merge: a world's property test hit AI-STUB-1's magic limits; fixed here.
   T3: the user chose increment 2 (shaping, bounded, then scale), refined.
-
-### 2026-10-28 — E25 T1a, T1b, T2a (C ABI v35), T1c
-
-- T1a: a world scores a decided battle by its batch's reward v1 (found with it: a world's setup
-  held the guess's starting mana). T1b: the true world, `--true-worlds`. The user: `t7-1`'s
-  `best.pt` uploaded, no neutral battles for now, a second branch for the shared docs (#539).
-  T2a: the batch's potential, `[ppo] shaping`, `run.trainable`, T2b's configs. T1c (six runs,
-  about five hours in the sandbox): no gain with guessed or true worlds.
