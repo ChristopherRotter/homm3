@@ -49,8 +49,8 @@ record at a fork, and decision 164 allows a boat on every water tile (the XL map
 >     subclass as the type, no owner, the original's facing 2, nobody aboard, and refuses two boats
 >     on one tile, a boat off water, on a tile an object blocks or is visited from, or under a
 >     hero. **Any hero boards any empty boat.** **A hero placed on water** is refused by the import
->     (`Unsupported`, D-44, E08 decision 163) until batch E8's row E8-5 shows what the original
->     does with it.
+>     (`Unsupported`, D-44, E08 decisions 163 and 178: batch E8's E8-5 showed the original keeping
+>     it on foot without a boat; no shipped map has one).
 >   - **The sea's pickups** are visited from the neighbouring tile and leave the map at their
 >     visit, without a question: **Flotsam** (29: nothing, 5 wood, 5 wood and 200 gold, or 10 wood
 >     and 500 gold, a quarter each), the **Sea Chest** (82: nothing 20 %, 1 500 gold 70 %, 1 000
@@ -83,16 +83,18 @@ record at a fork, and decision 164 allows a boat on every water tile (the XL map
 >     so from land (boarding: the move ends there; no guard attacks on it; a flight or a water walk
 >     over water passes no boat it could board, the boat being on the original's list of classes
 >     not entered, 0x63AA58); a hero in a boat is visited from a stop node (a battle or a
->     meeting); an object visited from the neighbouring tile on water is
->     visited by a **flying** hero from a stop node (D-45, the original's click; a flight still
->     passes it), never by a walking or water-walking one; plain water stays a flight's or a water
->     walk's pass. Disputes D-41 to D-43 and D-45 take the code's side until batch E8's rows
->     confirm or revert them (E08 decision 162).
+>     meeting); an object's visitable tile on water (a pickup, a monster, any class but a hero, a
+>     boat and the Shipwreck) is visited only from a boat (D-45 reverted by batch E8's E8-7), and a
+>     flight neither ends on nor passes over it (D-46, the original's code, until batch E8c
+>     confirms or reverts it, E08 decision 179); plain water and an object's blocked cell stay a
+>     flight's pass, plain water a water walk's. Batch E8 confirmed D-41 to D-43 (E08 decision
+>     162).
 >   - **At sea**, an object visited from the neighbouring tile is visited from the boat's water
 >     tile, an entered one is entered; another hero in a boat is met or attacked from the
 >     neighbouring water tile; a boat never reaches a hero on land; a step onto a guarded water
 >     tile is attacked at once; an event on water fires for a boat's step and ends the move there.
->     A landing's guards attack after the landing, on the shore.
+>     A landing's guards attack after the landing, at the monster's tile as any guards (batch E8's
+>     E8-15).
 >   - **The reachable-tiles query** searches a hero in a boat over one node per tile (every water
 >     tile a stop; the landing a leaf from which no path goes on, as boarding is from land); a
 >     walking hero's search tests a boat only on a water neighbour, so its cost stays
@@ -124,5 +126,5 @@ record at a fork, and decision 164 allows a boat on every water tile (the XL map
 >   for E08 increment 8, boats and the sea: boats as records with a tile layer (no original bound),
 >   a hero in a boat with its day's maximum, boarding and landing with the Admiral's Hat's
 >   conversion, the boat's passage, the free coastal tile, Favorable Winds and holes, the sea's
->   four pickups, a flyer's visit from the shore, a hero placed on water refused; what a viewer
+>   four pickups visited only from a boat, a hero placed on water refused; what a viewer
 >   sees of boats. Drafted in E08 T66b (survey `E08-sea.md`), batch E8's outcome folded in.
