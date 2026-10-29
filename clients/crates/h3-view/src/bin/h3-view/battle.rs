@@ -1299,10 +1299,11 @@ impl<'g> Battle<'g> {
         // in the phase, waiting, its stack's hexes shaded (E17 M5 T4c2a, design §7.23).
         if self.opening {
             moment.before_first_turn();
-        } else if self.waiting() && t >= self.timeline().end {
-            if let Some(turn) = self.turned.last() {
-                moment.shade = h3_view::tactics::shade(&turn.observation);
-            }
+        } else if self.waiting()
+            && t >= self.timeline().end
+            && let Some(turn) = self.turned.last()
+        {
+            moment.shade = h3_view::tactics::shade(&turn.observation);
         }
         let mut list = scene::battle_at(
             snapshot,
