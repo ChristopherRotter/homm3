@@ -309,3 +309,56 @@ an entry only where a task builds on it.
   left to the agent, which ends the phase itself). So T5 changes the length and the bound
   together: its read against `e25-bound-1` cannot part them. **`e25-bound-1` is the lineage's
   current best** (#2, 20 M; the network the exit criteria are judged on) until T5 reports.
+
+## T5 — The scale run (2026-10-29)
+
+- **The run** (the user's machine; `python/records/e25-scale-1.json`; commit `4395eed`, #576's
+  merge, clean, C ABI v35; seed 1, `configs/e25-scale.toml`: 60 M samples, three tactics
+  rounds). **Stopped by the user at 41.3 M** (1 697 updates, 137 minutes, 4.6 of them the gates
+  and ladders): the curve was flat, so it has **no final ladder**. Promoted at 10, 20 and 30 M
+  (0.804 in 28 pairs, 0.528 in 198, 0.523 in 301), rejected at 40 M (0.507 in 354 pairs, +5
+  Elo, LLR −2.95): best #3 at 30 M. The ladders (win rate, value; 250 per kind during the run,
+  intervals about ±0.025; the last row `records/inspect/battles.py` and `h3env.train.inspect
+  --set neutral-v1` on its `best.pt`, the sandbox's CPU, the full sets, 500 per kind):
+
+  | Network | Random | Aggressor | Greedy | System actor | Neutral set |
+  |---|---|---|---|---|---|
+  | `e25-bound-1` #2 (20 M, final) | 0.840, +0.282 | 0.591, +0.067 | 0.573, +0.051 | 0.416, −0.062 | 0.963, +0.233 |
+  | `e25-scale-1` #1 (10 M) | 0.825, +0.270 | 0.564, +0.044 | 0.544, +0.029 | 0.399, −0.079 | 0.968, +0.228 |
+  | `e25-scale-1` #2 (20 M) | 0.834, +0.279 | 0.583, +0.060 | 0.555, +0.042 | 0.412, −0.067 | 0.979, +0.241 |
+  | `e25-scale-1` #3 (30 M) | 0.834, +0.285 | 0.592, +0.069 | 0.574, +0.050 | 0.416, −0.060 | 0.972, +0.239 |
+  | #3, full sets (CPU) | 0.840, +0.284 | 0.593, +0.073 | 0.580, +0.057 | 0.418, −0.061 | 0.969, +0.241 |
+
+  On the full sets #3 is 0.000 to 0.007 above `e25-bound-1` in win rate and 0.001 to 0.008 in
+  value against every seat, each inside the intervals (±0.013 against Random, ±0.018 otherwise,
+  ±0.014 on the neutral set); the neutral value still below the system actor's own +0.285. Per
+  side against the system actor: the hero battles 0.593 / 0.224, the siege with a hero 0.486 /
+  0.322, the garrison 0.918 / 0.052 (shaping's T2b: 0.585 / 0.210, 0.472 / 0.316, 0.922 / 0.046).
+  The run's own head-to-heads: #3 against #2 0.510, the 40 M network against #3 0.507. The
+  head-to-heads against `e25-bound-1` and `t7-1` were not played (their `best.pt`s are on the
+  user's machine; `evaluate.ladder`'s `networks` plays them).
+- **Training:** one self-play battle cut in 818 k episodes (35 to 41 M); 48 to 50 samples an
+  episode after the first 5 M (`e25-bound-1` 48). Samples per second 5 300 falling to 4 840
+  (`e25-bound-1` 5 380 and 4 800). The league score 0.524, 0.519, 0.509, 0.509, 0.506, 0.504 per
+  5 M from 10 M; the entropy 1.79 to 1.50; the value head's explained variance rose with length,
+  0.48, 0.54, 0.59, 0.61 per gate interval (`e25-bound-1` 0.48 and 0.49), with no trace in the
+  ladders. The learning rate falls linearly to 5 % over the 60 M: at the stop it was 7.8e-5, 31 %
+  of the start, so the run's last third (the low rates) never ran; `e25-bound-1`'s 20 M schedule
+  reached the floor and the same ladder, so the missing anneal is unlikely to move it (not tested).
+- **Three rounds:** in the 616 battles of 3 000 per opponent with a tactics phase it decides
+  there 5.1 to 5.5 times on average (median 2, the 90th and 99th percentiles 17 to 18 and 23 to
+  25, at most 25 to 32; `e25-bound-1` 3.2 to 3.3, at most 11), the phase 3.6 to 4.1 % of its
+  decisions against the system actor, Greedy and Aggressor (`e25-bound-1` 2.4 to 2.6 %), 2.5 %
+  against Random; none above 50, none cut. No loop: the bound holds the phase to its three
+  rounds, and the median battle is still a placement and End tactics. Outside the phase, against
+  the same three seats, it strikes at 52 to 55 % of its decisions, moves at 27 to 31 %, casts at
+  11 to 12 % and waits at 1 %, 25 to 29 such decisions a battle (T4b's `e25-bound-1`: 55 to 60 %,
+  21 to 25 %, waits 2 %, 25 to 28); battles of 50 rounds or more 3 in 9 000 (against Random 15 in
+  3 000, none cut).
+- **The read:** scale gains nothing at these settings. From 20 M the MLP with shaping and the
+  bound is at `e25-bound-1`'s ladder and stays there to 41 M (the 40 M gate +5 Elo); three rounds
+  instead of one cost and gain nothing measurable (the two changes together, T4b's caveat). The
+  system actor's 0.418 is the lineage's best and still 0.08 short of the target's 0.5. Where E06's
+  `t4-2` rose to 50 M (no truncation penalty, no shaping), shaping passes that level by 20 M
+  and samples add nothing more: the limit is the agent (its network or what it reads), not the
+  training's length.

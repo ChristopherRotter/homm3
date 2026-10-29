@@ -111,9 +111,11 @@ current best, the network the exit criteria are judged on.
 - [x] **T4b The A/B** (2026-10-29; `E25-log.md` T4b): `e25-bound-1` at or above
   `e25-shaping-1` against every engine seat (inside the intervals), the loop gone (the phase 2.5 %
   of its decisions, none cut), 73 minutes against 90; the user: it is the current best.
-- [ ] **T5 The scale run** (the user's machine, 60 M from scratch, about 3.5 to 4 hours; the
-  user at T4b): `configs/e25-scale.toml`, T4b's settings with the original's computer's three
-  rounds (`tactics_rounds = 3`); the ladders against `e25-bound-1` and `t7-1`.
+- [x] **T5 The scale run** (2026-10-29; `E25-log.md` T5): `e25-scale-1`
+  (`configs/e25-scale.toml`, three tactics rounds), stopped by the user at 41.3 M of 60 M, the
+  curve flat from 20 M; best #3 (30 M) at `e25-bound-1`'s level against every engine seat
+  (0.418 against the system actor; the differences inside the intervals), the phase 4 % of its
+  decisions, no loop. Scale gains nothing at these settings.
 - [ ] **T6 Increment 2's checkpoint:** T4b's and T5's reads; the user chooses increment 3.
 
 ## Exit criteria

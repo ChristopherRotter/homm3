@@ -133,6 +133,15 @@ its `parent`.
   shaping`; 20 M samples, 73 and 90 minutes): best #2 each. The control on the full report set
   0.829, 0.548, 0.529 against Random, Aggressor, Greedy, 0.371 against the system actor, the
   neutral set +0.230; shaping 0.835, 0.589, 0.566, 0.409, +0.238, ahead of `t7-1` against every
-  opponent, a little behind on the neutral set (`docs/epics/E25-log.md` T2b). **`e25-shaping-1`
-  #2 is the current best** (E25 T3, the user, 2026-10-28). Their networks
-  are on the user's machine.
+  opponent, a little behind on the neutral set (`docs/epics/E25-log.md` T2b). `e25-shaping-1`
+  #2 was the current best from E25 T3 (the user, 2026-10-28) to T4b. Their networks are on the
+  user's machine.
+- `e25-bound-1` (E25 T4b, 2026-10-29; `configs/e25-bound.toml`: shaping with the agent's tactics
+  bound at one round; 20 M samples, 73 minutes): best #2, on the full report set 0.840, 0.591,
+  0.573 against Random, Aggressor, Greedy, 0.416 against the system actor, the neutral set
+  +0.233; the placement loop gone (`docs/epics/E25-log.md` T4b). **The current best** (E25 T4b,
+  the user, 2026-10-29). Its networks are on the user's machine.
+- `e25-scale-1` (E25 T5, 2026-10-29; `configs/e25-scale.toml`: `e25-bound.toml` with three
+  tactics rounds, 60 M samples; stopped by the user at 41.3 M, 137 minutes, the curve flat):
+  promoted #0 to #3, best #3 at 30 M, at `e25-bound-1`'s level (`docs/epics/E25-log.md` T5).
+  Its networks are on the user's machine.

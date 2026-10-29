@@ -13,15 +13,11 @@ shaping, bounded, then scale:** the faithful system actor still trains no agent 
 battles train (decision 2, the user at T2a); each run's length is agreed with the user (decision
 5).
 
-- **T5 The scale run.** *Scope:* on the user's machine, `e25-scale-1`: `configs/e25-scale.toml`
-  (T4b's settings, `e25-bound.toml`, with the original's computer's three rounds,
-  `tactics_rounds = 3`; 60 M samples from scratch, about 3.5 to 4 hours; the user at T4b,
-  2026-10-29): `uv run --group train python -m h3env.train --config configs/e25-scale.toml --out
-  runs/e25-scale-1`. The record committed and read, the ladders against `e25-bound-1` and
-  `t7-1`, the tactics share (`records/inspect/battles.py` on its `best.pt`). *Depends on:* T4b
-  (done 2026-10-29); the user. *Status:* next (the user's run).
-- **T6 Increment 2's checkpoint.** *Scope:* T4b's and T5's reads put to the user; increment 3
-  chosen among the epic's candidates. *Depends on:* T5. *Status:* waiting.
+- **T6 Increment 2's checkpoint.** *Scope:* T4b's and T5's reads put to the user (T5:
+  `e25-scale-1`, stopped at 41.3 M, its best #3 at `e25-bound-1`'s level, scale gains nothing;
+  `E25-log.md` T5); the current best (`e25-bound-1` #2 or `e25-scale-1` #3) and increment 3
+  chosen among the epic's candidates. *Depends on:* T5 (done 2026-10-29). *Status:* next (the
+  user's choice).
 
 ## Inbox
 
