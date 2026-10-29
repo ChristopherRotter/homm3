@@ -1,0 +1,345 @@
+# E08 batch E8b played by the capture harness (E08 T68b; h3adv.py batch): the procedure of
+# experiments/specs/E08-batch-8b.toml as steps, on Easy, with T68a's and T68b's reads (README,
+# "Boats and the sea"). Hot seat, Red and Blue human. A new game without an artifact chest among
+# E8-6's thirty or E8-8's forty is started again (`require`, the spec's restart rule). At the
+# start every word of E8-6's and E8-8's pickups is read (E8-8's into its tables, E8-6's under its
+# "anything odd"). Day 1, Red: E8-6, E8-8, E8-9, E8-12, E8-13 and E8-14 board; Blue: E8-11b and
+# E8-12b board. Day 2, Red: the turn-start reads (E8-6's points, E8-14's gold), then E8-6, E8-8,
+# E8-9, E8-13, E8-14, E8-11 and E8-12, in the spec's order. A visit picks its objects by their
+# words (`select`), sails toward a target not yet explored over open water first (`near`), and
+# waits for the hero's next turn when beyond the day's points (`days`: the spec's "a row left
+# unfinished goes on in Red's day 3"; never a second click on a red path, TRAPS.md). E8-11's
+# battle is played by `attack` (two human players: auto combat does not play it), E8-12's by
+# `defender retreat`.
+
+spec = "experiments/specs/E08-batch-8b.toml"
+players = ["Red", "Blue"]
+difficulty = "easy"
+
+[[require]]
+what = "an artifact chest among E8-6's thirty"
+each = { from = [24, 4], to = [34, 12], step = [2, 2] }
+holds = "artifact"
+
+[[require]]
+what = "an artifact chest among E8-8's forty"
+each = { from = [44, 24], to = [58, 32], step = [2, 2] }
+holds = "artifact"
+
+# --- The start (save 1): the pickups' words ----------------------------------------------------
+
+[[step]]
+encounter = "E8-8"
+hero = "E8-8"
+each = { from = [24, 24], to = [38, 32], step = [2, 2] }
+record = { "row:Flotsam (tile)" = ["text:({x}, {y})", ["word:{x},{y}", "object:{x},{y}"]] }
+
+[[step]]
+encounter = "E8-8"
+hero = "E8-8"
+each = { from = [44, 24], to = [58, 32], step = [2, 2] }
+record = { "row:Sea Chest (tile)" = ["text:({x}, {y})", ["word:{x},{y}", "object:{x},{y}"]] }
+
+[[step]]
+encounter = "E8-8"
+hero = "E8-8"
+each = { from = [24, 40], to = [38, 48], step = [2, 2] }
+record = { "row:Survivor (tile)" = ["text:({x}, {y})", ["word:{x},{y}", "object:{x},{y}"]] }
+
+[[step]]
+encounter = "E8-6"
+hero = "E8-6"
+each = { from = [24, 4], to = [34, 12], step = [2, 2] }
+note = { "({x}, {y}) at the start" = ["word:{x},{y}", "object:{x},{y}"] }
+
+[[step]]
+encounter = "E8-6"
+hero = "E8-6"
+each = { from = [24, 16], to = [30, 16], step = [3, 1] }
+note = { "({x}, {y}) at the start" = ["word:{x},{y}", "object:{x},{y}"] }
+
+# --- Day 1, Red: six heroes board their boats --------------------------------------------------
+
+[[step]]
+encounter = "E8-6"
+hero = "E8-6"
+walk = [20, 10]
+note = { "worn at the start (the starting bonus)" = "hero:equipment", "backpack count at the start" = "hero:backpack_count", "E8-6's boarding (arrived, tile, points, status, boat)" = ["arrived", "hero:tile", "hero:points", "hero:status", "boat"] }
+
+[[step]]
+encounter = "E8-8"
+hero = "E8-8"
+walk = [42, 36]
+note = { "worn at the start (the starting bonus)" = "hero:equipment", "backpack at the start" = "hero:backpack", "E8-8's boarding (arrived, tile, points, status, boat)" = ["arrived", "hero:tile", "hero:points", "hero:status", "boat"] }
+
+[[step]]
+encounter = "E8-9"
+hero = "E8-9"
+walk = [20, 57]
+note = { "worn at the start (the starting bonus)" = "hero:equipment", "backpack at the start" = "hero:backpack", "E8-9's boarding (arrived, tile, points, status, boat)" = ["arrived", "hero:tile", "hero:points", "hero:status", "boat"] }
+
+[[step]]
+encounter = "E8-12"
+hero = "E8-12"
+walk = [61, 10]
+note = { "worn at the start (the starting bonus)" = "hero:equipment", "E8-12's boarding (arrived, tile, points, status, boat)" = ["arrived", "hero:tile", "hero:points", "hero:status", "boat"] }
+
+[[step]]
+encounter = "E8-13"
+hero = "E8-13"
+walk = [5, 63]
+note = { "worn at the start (the starting bonus)" = "hero:equipment", "E8-13's boarding (arrived, tile, points, status, boat)" = ["arrived", "hero:tile", "hero:points", "hero:status", "boat"] }
+
+[[step]]
+encounter = "E8-14"
+hero = "E8-14"
+walk = [5, 68]
+note = { "worn at the start (the starting bonus)" = "hero:equipment", "E8-14's boarding (arrived, tile, points, status, boat)" = ["arrived", "hero:tile", "hero:points", "hero:status", "boat"] }
+
+[[step]]
+encounter = "E8-11"
+hero = "E8-11"
+note = { "worn at the start (the starting bonus)" = "hero:equipment" }
+
+# Red's day 1 ends: Blue's day 1.
+[[step]]
+end_turn = true
+
+# --- Day 1, Blue: E8-11b and E8-12b board -------------------------------------------------------
+
+[[step]]
+encounter = "E8-11"
+hero = "E8-11b"
+walk = [61, 4]
+note = { "E8-11b's boarding (arrived, tile, status, boat)" = ["arrived", "hero:tile", "hero:status", "boat"] }
+
+[[step]]
+encounter = "E8-12"
+hero = "E8-12b"
+walk = [62, 10]
+note = { "E8-12b's boarding (arrived, tile, status, boat)" = ["arrived", "hero:tile", "hero:status", "boat"] }
+
+# Blue's day 1 ends: Red's day 2.
+[[step]]
+end_turn = true
+
+# --- Day 2, Red: the turn-start reads, before anything moves ----------------------------------
+
+[[step]]
+encounter = "E8-6"
+hero = "E8-6"
+record = { "E8-6's movement points at day 2's start" = "hero:points" }
+note = { "E8-6 at day 2's start (day's maximum, status)" = ["hero:day_points", "hero:status"] }
+
+[[step]]
+encounter = "E8-8"
+hero = "E8-8"
+note = { "E8-8 at day 2's start (points, day's maximum)" = ["hero:points", "hero:day_points"] }
+
+[[step]]
+encounter = "E8-9"
+hero = "E8-9"
+note = { "E8-9 at day 2's start (points, day's maximum)" = ["hero:points", "hero:day_points"] }
+
+[[step]]
+encounter = "E8-14"
+hero = "E8-14"
+record = { "gold at day 2's start" = "resource:gold" }
+note = { "E8-14 at day 2's start (points, day's maximum)" = ["hero:points", "hero:day_points"] }
+
+# --- Day 2, Red: E8-6 visits every artifact chest, one of kind 1 and one of kind 0, then the
+# three Survivors -----------------------------------------------------------------------------
+
+[[step]]
+encounter = "E8-6"
+hero = "E8-6"
+each = { from = [24, 4], to = [34, 12], step = [2, 2] }
+walk = "each"
+select = { holds = "artifact", then = ["Sea Chest: 1500 gold", "Sea Chest: nothing"] }
+near = true
+days = 1
+expect = { dialogs = true }
+record = { "row:object (tile)" = [["text:({x}, {y})", "before:object:{x},{y}"], "before:word:{x},{y}", ["messages", "message_pictures"], ["before:hero:backpack_count", "hero:backpack_count"], ["before:resource:gold", "resource:gold"], "object:{x},{y}"] }
+
+[[step]]
+encounter = "E8-6"
+hero = "E8-6"
+each = { from = [24, 16], to = [30, 16], step = [3, 1] }
+walk = "each"
+select = { is = "Survivor" }
+near = true
+days = 1
+expect = { dialogs = true }
+record = { "row:object (tile)" = [["text:({x}, {y})", "before:object:{x},{y}"], "before:word:{x},{y}", ["messages", "message_pictures"], ["before:hero:backpack_count", "hero:backpack_count"], ["before:resource:gold", "resource:gold"], "object:{x},{y}"] }
+note = { "E8-6 after its visits (tile, points, backpack)" = ["hero:tile", "hero:points", "hero:backpack_count"] }
+
+# --- Day 2, Red: E8-8 visits the nearest Flotsam of word 3, the nearest Survivor and the nearest
+# artifact chest -------------------------------------------------------------------------------
+
+[[step]]
+encounter = "E8-8"
+hero = "E8-8"
+each = { from = [24, 24], to = [38, 32], step = [2, 2] }
+walk = "each"
+select = { is = "Flotsam: 10 wood, 500 gold", count = 1 }
+near = true
+days = 1
+expect = { dialogs = true }
+record = { "row:object visited (tile)" = [["text:Flotsam ({x}, {y})", "before:object:{x},{y}"], "before:word:{x},{y}", ["messages", "message_pictures"], ["before:resource:wood", "before:resource:gold", "resource:wood", "resource:gold"], ["before:hero:backpack_count", "hero:backpack_count", "hero:positions", "hero:backpack"]] }
+note = { "Flotsam ({x}, {y}) after the visit" = ["text:its object", "object:{x},{y}"] }
+
+[[step]]
+encounter = "E8-8"
+hero = "E8-8"
+each = { from = [24, 40], to = [38, 48], step = [2, 2] }
+walk = "each"
+select = { is = "Survivor", count = 1 }
+near = true
+days = 1
+expect = { dialogs = true }
+record = { "row:object visited (tile)" = [["text:Survivor ({x}, {y})", "before:object:{x},{y}"], "before:word:{x},{y}", ["messages", "message_pictures"], ["before:resource:wood", "before:resource:gold", "resource:wood", "resource:gold"], ["before:hero:backpack_count", "hero:backpack_count", "hero:positions", "hero:backpack"]] }
+note = { "Survivor ({x}, {y}) after the visit" = ["text:its object", "object:{x},{y}"] }
+
+[[step]]
+encounter = "E8-8"
+hero = "E8-8"
+each = { from = [44, 24], to = [58, 32], step = [2, 2] }
+walk = "each"
+select = { holds = "artifact", count = 1 }
+near = true
+days = 1
+expect = { dialogs = true }
+record = { "row:object visited (tile)" = [["text:Sea Chest ({x}, {y})", "before:object:{x},{y}"], "before:word:{x},{y}", ["messages", "message_pictures"], ["before:resource:wood", "before:resource:gold", "resource:wood", "resource:gold"], ["before:hero:backpack_count", "hero:backpack_count", "hero:positions", "hero:backpack"]] }
+note = { "Sea Chest ({x}, {y}) after the visit" = ["text:its object", "object:{x},{y}"] }
+
+# --- Day 2, Red: E8-9 reads the four Ocean Bottles along row 56 --------------------------------
+
+[[step]]
+encounter = "E8-9"
+hero = "E8-9"
+walk = [24, 55]
+near = true
+expect = { dialogs = true }
+record = { "(24, 55) | the message's text" = "messages", "(24, 55) | the treasury changed (yes/no)" = "treasury_changed", "(24, 55) | the bottle after" = "object:24,55" }
+note = { "(24, 55) before (its record; the hero's tile after)" = ["before:object:24,55", "hero:tile"] }
+
+[[step]]
+encounter = "E8-9"
+hero = "E8-9"
+walk = [25, 55]
+near = true
+expect = { dialogs = true }
+record = { "(25, 55) | the message's text" = "messages", "(25, 55) | the treasury changed (yes/no)" = "treasury_changed", "(25, 55) | the bottle after" = "object:25,55" }
+note = { "(25, 55) before (its record; the hero's tile after)" = ["before:object:25,55", "hero:tile"] }
+
+[[step]]
+encounter = "E8-9"
+hero = "E8-9"
+walk = [28, 56]
+
+[[step]]
+encounter = "E8-9"
+hero = "E8-9"
+walk = [32, 56]
+
+[[step]]
+encounter = "E8-9"
+hero = "E8-9"
+walk = [34, 55]
+near = true
+expect = { dialogs = true }
+record = { "(34, 55) | the message's text" = "messages", "(34, 55) | the treasury changed (yes/no)" = "treasury_changed", "(34, 55) | the bottle after" = "object:34,55" }
+note = { "(34, 55) before (its record; the hero's tile after)" = ["before:object:34,55", "hero:tile"] }
+
+[[step]]
+encounter = "E8-9"
+hero = "E8-9"
+walk = [38, 56]
+
+[[step]]
+encounter = "E8-9"
+hero = "E8-9"
+walk = [42, 56]
+
+[[step]]
+encounter = "E8-9"
+hero = "E8-9"
+walk = [46, 56]
+
+[[step]]
+encounter = "E8-9"
+hero = "E8-9"
+walk = [49, 55]
+near = true
+expect = { dialogs = true }
+record = { "(49, 55) | the message's text" = "messages", "(49, 55) | the treasury changed (yes/no)" = "treasury_changed", "(49, 55) | the bottle after" = "object:49,55" }
+note = { "(49, 55) before (its record; the hero's tile after, points)" = ["before:object:49,55", "hero:tile", "hero:points"] }
+
+# --- Day 2, Red: E8-13, a click past the guards, then onto a guarded tile -----------------------
+
+[[step]]
+encounter = "E8-13"
+hero = "E8-13"
+walk = [10, 63]
+record = { "the click on (10, 63): the marks (or none); E8-13's tile after" = ["marks", "path_tiles", "hero:tile"] }
+note = { "(10, 63) explored before the click; E8-13's points before" = ["before:explored:10,63", "before:hero:points"], "the guards before (8, 63)" = "before:monster:8,63" }
+
+[[step]]
+encounter = "E8-13"
+hero = "E8-13"
+walk = [7, 63]
+battle = "auto"
+answer = "no"
+expect = { battle = true }
+record = { "the click on (7, 63): the marks; the tile where the battle starts" = ["marks", "path_tiles", "battle:tile"], "the opening: terrain, special field, ship flag, blocked hexes" = "opening:field", "after: E8-13's tile and status flags" = ["hero:tile", "hero:status", "drawn", "boat"] }
+note = { "the battle (winner; stacks at the start)" = ["winner", "stacks:start"], "questions" = "questions", "messages" = "messages" }
+
+# --- Day 2, Red: E8-14, the two events on the channel -------------------------------------------
+
+[[step]]
+encounter = "E8-14"
+hero = "E8-14"
+walk = [10, 68]
+expect = { dialogs = true }
+record = { "the click on (10, 68): the marks; tile, movement points and gold after; the message" = ["marks", "path_tiles", "hero:tile", "hero:points", "resource:gold", "messages", "message_pictures"] }
+note = { "gold and points right before the click" = ["before:resource:gold", "before:hero:points"], "(8, 68) after (what stands there)" = "object:8,68" }
+
+[[step]]
+encounter = "E8-14"
+hero = "E8-14"
+walk = [13, 68]
+battle = "auto"
+answer = "no"
+expect = { battle = true, dialogs = true }
+record = { "the click on (13, 68): the marks; the message; the tile where the battle starts" = ["marks", "path_tiles", "messages", "battle:tile"], "the opening: terrain, special field, ship flag, blocked hexes" = "opening:field", "after: E8-14's tile and status flags" = ["hero:tile", "hero:status", "drawn", "boat"] }
+note = { "the battle (winner; stacks at the start)" = ["winner", "stacks:start"], "questions" = "questions" }
+
+# --- Day 2, Red: E8-11 attacks E8-11b's boat from the shore -------------------------------------
+
+[[step]]
+encounter = "E8-11"
+hero = "E8-11"
+record = { "the boat's record before (tile, in use, owner, captain, aboard)" = "boat[E8-11b]" }
+note = { "E8-11b before (tile, status)" = ["hero[E8-11b]:tile", "hero[E8-11b]:status"], "boats in use before" = "boats:used" }
+
+[[step]]
+encounter = "E8-11"
+hero = "E8-11"
+walk = [61, 4]
+# Two human players' battle: auto combat does not play it in hot seat (h3adv.fight), so every
+# stack attacks the other side's nearest one, as a player would (`attack`).
+battle = "attack"
+expect = { battle = true }
+record = { "the marks of the click on E8-11b" = ["marks", "mark", "path_tiles"], "the opening: terrain, special field, ship flag, blocked hexes" = "opening:field", "after: E8-11's tile and status flags; the boat's record; what stands on (61, 4)" = ["hero:tile", "hero:status", "boat_record:61,4", "object:61,4"] }
+note = { "the battle (winner; stacks at the start)" = ["winner", "stacks:start"], "boats in use after" = "boats:used", "messages" = "messages" }
+
+# --- Day 2, Red: E8-12 attacks E8-12b's boat from its own; Blue retreats ----------------------
+
+[[step]]
+encounter = "E8-12"
+hero = "E8-12"
+walk = [62, 10]
+battle = "defender retreat"
+expect = { battle = true }
+record = { "the marks of the click on E8-12b" = ["marks", "mark", "path_tiles"], "the opening: terrain, special field, ship flag, blocked hexes (all of them)" = "opening:field", "after: E8-12's tile and status flags" = ["hero:tile", "hero:status", "drawn"], "after: Red's boat's record; Blue's boat's record; what stands on (62, 10)" = ["boat", "boat_record:62,10", "object:62,10"] }
+note = { "the boats' records before (Red's, Blue's)" = ["before:boat[E8-12]", "before:boat[E8-12b]"], "the battle (winner, retreated; stacks at the start, at the end)" = ["winner", "retreated", "stacks:start", "stacks:end"], "boats in use after" = "boats:used", "messages" = "messages" }
