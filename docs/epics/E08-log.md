@@ -7908,7 +7908,7 @@ gone, no question; an artifact went to its worn position when free (misc 1 and 2
 and to the backpack when not (two neck pendants, the Necklace worn). **E8-9** (24, 55) and
 (49, 55) **RANDSIGN 24**, (25, 55) **RANDSIGN 0** (the column mod 25), (34, 55) the map's text;
 nothing given, every bottle gone. **E8-11** the opening **water, no special field, ship flag 1**,
-blocked hexes 98, 114, 115 (a single obstacle); E8-11 stays on (61, 5) (status 0); E8-11b's boat
+blocked hexes 98, 114, 115 (three, as E8-13's and E8-14's); E8-11 stays on (61, 5) (status 0); E8-11b's boat
 record **in use 0** (owner, captain and aboard kept), (61, 4) class 3 (the coast: nothing
 stands there); boats in use 8 to 7; in the recorded runs E8-11 captured Blue's starting-bonus
 artifact (GENRLTXT 31). **E8-12** water, ship flag 1, **exactly the 32 hexes** of 0x63D368; Blue
@@ -7917,7 +7917,7 @@ retreated; E8-12 stays in its boat on (61, 10), bit 18; Blue's boat record in us
 click on (7, 63) two marks, the battle **on (7, 63)** (the hero's tile at the opening), water,
 ship flag 1, blocked 79, 96, 97; the Pikemen split into three stacks (4 Pikemen, 3 Halberdiers, 3
 Pikemen); after the win E8-13 on (7, 63) in its boat. **E8-14** the click on (10, 68) five marks
-(the path over both events), the hero **stopped on (8, 68)** with 1 200 (three steps), +100 gold
+(the path over the first event), the hero **stopped on (8, 68)** with 1 200 (three steps), +100 gold
 (ADVEVENT 183), the event gone; the click on (13, 68) stopped on (11, 68), "you are attacked"
 (ADVEVENT 16), the battle there: water, ship flag 1, blocked 90, 106, 107; after it on (11, 68)
 in its boat. **A boat's record keeps its boarding tile while the hero sails** (E8-13's and E8-14's
