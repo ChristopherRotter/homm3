@@ -116,10 +116,8 @@ ADR-0026's (the batch's ADR-0025's); the detail is in `python/h3env/train/`'s do
   a crash or a kill loses at most the time since; `--resume` continues in a new segment with its
   own batch seed, the budget extensible: reproducible from the record, not bitwise.
 - **PPO** (E05's own, over the factorized heads): an MLP over `symlog` of the observation (the
-  default; its depth `[network] layers` since E25 T7a) or an entity network (attention over the
-  stack slots, the hexes and the heroes; parked, slower and no better), or since E25 T7a a hex
-  network (the stacks drawn on their hexes; convolutions on the axial grid, `hexconv`, or a
-  transformer over the hexes, `hexformer`; `h3env.train.hexnet`); γ 1, and a battle cut at the step limit costs each learning
+  default) or an entity network (attention over the stack slots, the hexes and the heroes;
+  parked, slower and no better); γ 1, and a battle cut at the step limit costs each learning
   side 1.0 (against stalling). Off by default after A/B runs that showed no gain: the kill
   preview as a bias of the strike entries (`[network] preview`, AI-Q7 closed) and the turn order
   in the trunk (`[network] order`).

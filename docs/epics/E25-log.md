@@ -424,6 +424,8 @@ an entry only where a task builds on it.
 
   The hex networks share their weights over the hexes: few parameters, many operations; the
   bench measures them on the user's GPU.
+- **Docs:** `python/README.md` names the kinds; `docs/07-simulation-and-ai.md` §1.2 (a shared
+  path) gains them with E25's other levers (shaping, the tactics bound) at the epic's closure.
 
 ## T7b — The distillation bench (2026-10-29)
 

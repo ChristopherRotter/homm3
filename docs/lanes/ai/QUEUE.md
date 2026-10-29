@@ -65,6 +65,10 @@ lane's turret preview (its open point below), the baselines and AI-Q7.
   replays recorded the same commands. **A-23 withdrawn** (E08 T58: `legal_moves` never reads events). Design:
   `docs/epics/E08-design.md` §14, §16; ADR-0017 points 6, 8.
 
+**For E25's closure** (a `shared/` pull request): `docs/07-simulation-and-ai.md` §1.2, the
+pipeline as built, gains E25's training levers: shaping (T2a), the tactics bound (T4a), the
+hex networks and the MLP's depth (T7a), the distillation bench (T7b).
+
 **For E25's later increments** (the epic's candidates; E06's leftovers, T9a; increment 1's
 parts are its tasks above):
 
