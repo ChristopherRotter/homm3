@@ -415,6 +415,10 @@ pub struct Tables {
     pub records: Records,
     /// The map's sounds resolved (E24 M2 T5), if the tables give them.
     pub sound: Option<SoundRules>,
+    /// The texts the panels show (E24 M3 T5a, *provisional*): the string catalogue's packs by
+    /// priority, none from the committed tables (a key no pack has shows as itself); the binary
+    /// adds the original's from the user's text tables and executable.
+    pub texts: h3_ui::text::Catalogue,
 }
 
 /// A DEF the tables name, the frames of its group 0 the view draws and the groups it draws.
@@ -656,6 +660,7 @@ pub fn load(files: &[TableFile], top: &str) -> Result<Tables, TableError> {
         roads: BTreeMap::new(),
         records: Records::new(&map.records),
         sound: None,
+        texts: h3_ui::text::Catalogue::default(),
     };
     for file in selected {
         // `cycle`: whether the scene cycles the layer's palettes (the terrains' and the rivers',

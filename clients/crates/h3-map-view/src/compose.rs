@@ -342,9 +342,10 @@ impl Background {
 /// (E24 M3 T4c, *provisional*): with as many items, each that differs as it was and as it is; else
 /// those between the lists' common start and end. Overlapping ones are joined; each lies on the
 /// screen (`all`). None when nothing changed. `None` (draw everything again) when a changed item's
-/// reach is unknown (a frame's picture, a text), when one reaches a clip whose pixels may move
-/// (`clips`: the view's and the background's one colour), or when a frame's picture or a dialog's
-/// item lies among the draws over the background (`moving`), which no cut reaches.
+/// reach is unknown (a frame's picture, an asset the batch lacks; a text's is known since T5a),
+/// when one reaches a clip whose pixels may move (`clips`: the view's and the background's one
+/// colour), or when a frame's picture or a dialog's item lies among the draws over the background
+/// (`moving`), which no cut reaches.
 fn changed_areas(
     was: &[Draw],
     now: &[Draw],

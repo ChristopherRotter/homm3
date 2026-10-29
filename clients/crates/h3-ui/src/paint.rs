@@ -184,8 +184,8 @@ pub fn draw(
 
 /// The rectangle of the screen `draw` can change (left, top, right, bottom; the last two
 /// excluded), as its drawer reaches (E24 M3 T4c, *provisional*): a picture's at most its item's
-/// size of it, a button's its frame's canvas, a darkened rectangle itself; `None` when unknown: a
-/// text's or a label's (the text drawer's lines may pass the item's box: not read yet), or an
+/// size of it, a button's its frame's canvas, a darkened rectangle itself; a text's or a label's
+/// its box widened by its font's overhangs (E24 M3 T5a, [`text_reach`]); `None` when unknown: an
 /// asset `assets` lacks (drawing it fails).
 #[must_use]
 pub fn reach(draw: &Draw, assets: &impl Assets) -> Option<[i32; 4]> {
@@ -215,8 +215,37 @@ pub fn reach(draw: &Draw, assets: &impl Assets) -> Option<[i32; 4]> {
             ))
         }
         Draw::Darken { rect: [x, y, w, h] } => Some(rect(*x, *y, [*w, *h])),
-        Draw::Text { .. } | Draw::Label { .. } => None,
+        Draw::Text { item, x, y, .. } => {
+            // The picture opaque inside the box (0x5BC7F0), the text over it.
+            assets.picture(&item.picture)?;
+            assets.palette(&item.font_palette)?;
+            Some(text_reach(assets.font(&item.font)?, *x, *y, item.size))
+        }
+        Draw::Label { item, x, y, .. } => {
+            assets.palette(&item.font_palette)?;
+            Some(text_reach(assets.font(&item.font)?, *x, *y, item.size))
+        }
     }
+}
+
+/// The rectangle the text drawer (0x4B5490, `h3_render::text`) can change for a text in the box
+/// at (`x`, `y`) of `size` in `font` (E24 M3 T5a, design §4.7; *provisional*): the box's rows, its
+/// columns widened by the font's widest overhang on each side. Its line drawer (0x4B5260) draws a
+/// line only when it lies inside the box's height, skips the glyphs that would start left of the
+/// box and ends before the first whose advance passes its right edge; so a glyph's pixels pass the
+/// box only by a negative right space (its last pixels past its advance) or, after the first, a
+/// negative left one (`smalfont.fnt`'s are 1 at most).
+#[must_use]
+pub fn text_reach(font: &Font, x: i32, y: i32, [w, h]: [i32; 2]) -> [i32; 4] {
+    let over = |space: i32| space.saturating_neg().max(0);
+    let left = font.glyphs.iter().map(|g| over(g.left)).max().unwrap_or(0);
+    let right = font.glyphs.iter().map(|g| over(g.right)).max().unwrap_or(0);
+    [
+        x.saturating_sub(left),
+        y,
+        x.saturating_add(w).saturating_add(right),
+        y.saturating_add(h),
+    ]
 }
 
 /// A button's frame (0x456940): frame `index` of `def`'s group 0, frame 0 when the group has no

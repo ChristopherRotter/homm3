@@ -4,6 +4,9 @@ Finished history and informational notices moved out of `QUEUE.md` on 2026-10-24
 
 ## Notices from other lanes and finished items, newest first
 
+- 2026-10-29 (this lane, E24 M3 T5a): T5 cut with the user at the seam T4c's session proposed:
+  T5a the resource bar's seven amounts, the date and a text's reach (done: the log's "M3 T5a";
+  MCL-Q15 found), T5b the status window (queued).
 - 2026-10-29 (this lane, E24 M3 T4c): a changed panel item drawn again alone, found by T4b's
   measurement and taken as a task of its own (not folded into T5); done: the log's "M3 T4c".
 - 2026-10-29 (this lane, E24 M3 T4b): the lists over time, kept whole (the redraws M3's

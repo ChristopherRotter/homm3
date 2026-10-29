@@ -150,6 +150,20 @@ if the stale bar is seen, (a) for the comparisons behind `--bugs original`, (b) 
 display artifact, not a rule); built meanwhile as the original's: T4b's slot shows the points
 alone. **Blocked:** nothing.
 
+#### MCL-Q15 — An amount wider than its box in the resource bar (E24 M3 T5a, a recording)
+
+The resource bar writes each amount by `%d` into a text item 50 pixels wide and 18 high
+(`resource_bar_create` 0x558BA0, `resource_bar_redraw` 0x558F20); `smalfont.fnt`'s digits are 7
+wide, so eight digits (ten million or more) do not fit, and the text drawer cuts the box's only
+line at the last digit that fits: the situation `resources-date` writes 12 345 678 gems and the
+original shows `1234567` (E24 design §4.7), a wrong amount with nothing to tell it apart (seven
+digits fit; the date's widest, `Month: 99, Week: 4, Day: 7`, fits its 180). **Options:** (a) the original's (the viewer draws the same
+already: the comparisons are exact); (b) the client writes such an amount so that it fits (`12M`,
+or a smaller font), behind `--bugs original` for the comparisons; (c) the client lets it pass its
+box (it would run over the next cell's picture). **Recommendation:** (a) for now: ten million of
+a resource is beyond a normal game; revisit with M4's engine if its amounts can reach it (b).
+**Blocked:** nothing; built as the original's.
+
 ## Answered
 
 Answered questions are history, kept out of the start-of-session reading. Read one only when a doc, a code comment or a queue entry cites its id (`git grep '<id>' -- docs`). The id's prefix says where it is; when a question is answered, move its entry from "Open" above to the **top** of that file (each lane edits only its own file, so lanes working at once never touch the same lines):

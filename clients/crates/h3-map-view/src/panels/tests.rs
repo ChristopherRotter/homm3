@@ -150,6 +150,7 @@ fn the_lists_arrows_by_their_tops_and_lengths() {
         selected: Selected::Hero(9),
         tops: [1, 0],
         quests: false,
+        ..Kingdom::default()
     };
     let shown = dialog(&layout, &live(kingdom.clone(), vec![]), 1, 0);
     // A selection past the list counts as an awake hero.
@@ -165,8 +166,71 @@ fn the_lists_arrows_by_their_tops_and_lengths() {
 #[test]
 fn the_resource_bar_s_picture_in_the_viewer_s_colours() {
     let layout = layout();
-    let shown = resource_bar(&layout, &live(Kingdom::default(), vec![]));
+    let shown = resource_bar(
+        &layout,
+        &live(Kingdom::default(), vec![]),
+        &Catalogue::default(),
+    );
     assert_eq!(shown.players.into_iter().collect::<Vec<_>>(), [(1000, 2)]);
+}
+
+#[test]
+fn the_resource_bar_s_amounts_and_date_by_their_keys() {
+    // E24 M3 T5a (design §4.7): 0x558F55's seven amounts by `%d`, 0x558F8B's date with the
+    // month's, week's and day's words; a key no pack has shows as itself.
+    let layout = layout();
+    let kingdom = Kingdom {
+        resources: [0, 7, 123, -4, 99_999, 1_000_000, 2_147_483_647],
+        date: crate::live::Date {
+            month: 12,
+            week: 4,
+            day: 7,
+        },
+        ..Kingdom::default()
+    };
+    let json = concat!(
+        r#"{ "map.resources.amount": "<{{amount}}>", "#,
+        r#""map.resources.date": "{{day_word}} {{day}} {{week_word}} {{week}} "#,
+        r#"{{month_word}} {{month}}", "word.month": "M", "word.week": "W", "word.day": "D" }"#,
+    );
+    let pack = h3_ui::text::pack::Pack::from_json("en", json).unwrap();
+    let texts = Catalogue { packs: vec![pack] };
+    let shown = resource_bar(&layout, &live(kingdom.clone(), vec![]), &texts);
+    let all: Vec<(u16, &str)> = shown
+        .texts
+        .iter()
+        .map(|(&id, t)| (id, t.as_str()))
+        .collect();
+    assert_eq!(
+        all,
+        [
+            (1001, "<0>"),
+            (1002, "<7>"),
+            (1003, "<123>"),
+            (1004, "<-4>"),
+            (1005, "<99999>"),
+            (1006, "<1000000>"),
+            (1007, "<2147483647>"),
+            (1008, "D 7 W 4 M 12"),
+        ]
+    );
+    let bare = resource_bar(&layout, &live(kingdom, vec![]), &Catalogue::default());
+    assert_eq!(bare.texts[&1001], "map.resources.amount");
+    assert_eq!(bare.texts[&1008], "map.resources.date");
+    // Drawn as the layout's labels: the amounts at (37 + 84 i, 3), the date at (607, 3), each
+    // from the bar's corner (3, 575).
+    let draws = layout.resource_bar.draws(&shown, &layout.player_palette);
+    let labels: Vec<(i32, i32, &str)> = draws
+        .iter()
+        .filter_map(|d| match d {
+            Draw::Label { x, y, text, .. } => Some((*x, *y, text.as_str())),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(labels.len(), 8);
+    assert_eq!(labels[0], (40, 578, "<0>"));
+    assert_eq!(labels[6], (544, 578, "<2147483647>"));
+    assert_eq!(labels[7], (610, 578, "D 7 W 4 M 12"));
 }
 
 #[test]
@@ -195,6 +259,7 @@ fn the_lists_slots_and_their_selection_frames_hidden() {
         selected: Selected::Hero(1),
         tops: [1, 1],
         quests: false,
+        ..Kingdom::default()
     };
     let shown = dialog(&layout, &live(kingdom.clone(), vec![]), 1, 0);
     let pictures: Vec<(u16, &str)> = shown
@@ -242,6 +307,7 @@ fn the_selections_drawn_after_the_items() {
         selected: Selected::Hero(6),
         tops: [2, 2],
         quests: false,
+        ..Kingdom::default()
     };
     let draws = |selected| {
         let k = Kingdom {
