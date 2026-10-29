@@ -5,6 +5,7 @@ use alloc::vec::Vec;
 use h3_assets::build;
 use h3_assets::def::Encoding;
 use h3_assets::palette::{Palette, Rgb};
+use h3_render::recolour::Effect;
 use h3_render::screen::MAX_SIDE;
 use h3_ui::ui;
 
@@ -100,6 +101,7 @@ fn creature_of(def: &str, anchor: [i32; 2], mirrored: bool, outline: Option<u8>)
         anchor,
         mirrored,
         outline,
+        effect: None,
     }
 }
 
@@ -130,6 +132,37 @@ fn each_draw_takes_its_drawer() {
     let screen = compose(&list, &batch(), &small()).unwrap();
     let [b, g, r, w, y] = [BLUE, GREEN, RED, WHITE, YELLOW].map(|c| FORMAT.pack(c));
     assert_eq!(screen.pixels(), [b, g, r, b, b, b, w, y, b, b, w, b]);
+}
+
+#[test]
+fn a_stack_s_palette_effect_recolours_its_sprite_from_entry_10() {
+    // E17 M5 T5b1 (design §7.26): `draw_battle_stack` changes the creature's palette from entry
+    // 10 on for its sprite alone (0x43E280): a clone's white at entry 10 is a light blue, the
+    // white at entry 4 (a keyed entry's place) stays.
+    let mut b = batch();
+    let p = palette(&[(4, WHITE), (10, WHITE)]);
+    let frame = row(&[4, 10], &[false, false]);
+    b.add(
+        "Fx.def",
+        &build::def(0x42, (2, 1), &p, &[(2, &[("f", 0)])], &[frame]),
+    )
+    .unwrap();
+    let background = Draw::Background {
+        picture: "bg.pcx".to_string(),
+        x: 0,
+        y: 0,
+    };
+    let mut clone = creature_of("FX.DEF", [1, 1], false, None);
+    if let Draw::Creature { effect, .. } = &mut clone {
+        *effect = Some(Effect::Clone);
+    }
+    let plain = creature_of("FX.DEF", [3, 1], false, None);
+    let screen = compose(&[background, clone, plain], &b, &small()).unwrap();
+    let [blue, white] = [BLUE, WHITE].map(|c| FORMAT.pack(c));
+    let light = Effect::Clone.colour(white, FORMAT.channel_masks());
+    assert_eq!(light, 0x7BFF);
+    let row = &screen.pixels()[6..];
+    assert_eq!(row, [white, light, white, white, blue, blue]);
 }
 
 #[test]

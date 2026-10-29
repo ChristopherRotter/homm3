@@ -200,6 +200,14 @@ pub enum Logged {
         /// Its number.
         count: u32,
     },
+    /// Stone Gaze turns a stack to stone after a strike (a creature's cast, `battle_log_cast`
+    /// 0x5A8E25; E17 M5 T5b1): before its glow.
+    Petrified {
+        /// The stack.
+        stack: u8,
+        /// Its number.
+        count: u32,
+    },
     /// Acid Breath lowers a stack's defense (`cast_spell` 0x5A1F27; E17 M3 T7b-2b-3): after its
     /// animation.
     AcidBreath {
@@ -497,6 +505,15 @@ pub fn word(
             Some(by_count(
                 catalogue,
                 "battle.log.poisoned",
+                n.stack(count),
+                Args::new(),
+            ))
+        }
+        Logged::Petrified { stack, count } => {
+            let (n, count) = named(*stack, *count)?;
+            Some(by_count(
+                catalogue,
+                "battle.log.petrified",
                 n.stack(count),
                 Args::new(),
             ))

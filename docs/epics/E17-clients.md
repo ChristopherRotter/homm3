@@ -218,10 +218,16 @@ the stacks created mid-battle.
     place and slide, Teleport's), built (`Screen::dissolve_rect`, `anim::created`, the window's
     notices, the engine's `NotCreated`, `cross-lane`); `teleport`, `clone`, `summon`, `demons`
     recorded, `sacrifice` exact; the Demons' back buffer a slip not copied; CLT-Q33.
-  - **T5b, the panel by the turn's controller, the sounds' waits, the palette effects:** the
-    panel's side by each turn's controller (R3-1: Hypnotize, a created stack); the battle waiting
-    for the heal's sound and the other effects'; a clone's colours and the glows
-    (`draw_battle_stack`'s palette effects, the user's 2026-10-29); recorded.
+  - **T5b, the palette effects, the panel by the turn's controller, the sounds' waits** (cut in
+    two by the user, 2026-10-29):
+    - **T5b1, the palette effects** (done 2026-10-29; design §7.26): read (`draw_battle_stack`'s
+      chain, the recolour, Stone Gaze's glow, the petrified look, the HSV round trip, the glows'
+      redraws, Stone Gaze's line), built (`h3_render::recolour`, the timeline's `LookKey`s,
+      `Draw::Creature`'s `effect`); `bloodlust` and `stone` recorded, their glows and looks exact;
+      `clone`'s colours exact; CLT-Q34.
+    - **T5b2, the panel and the sounds' waits:** the panel's side by each turn's controller
+      (R3-1: Hypnotize, a created stack); the battle waiting for the heal's sound and the other
+      effects'; recorded.
 - **T6, a game on a server:** joined over the server's WebSocket by a seat token: the hello and
   the welcome's checks, the key pinned per address, the content check (`docs/lanes/client/NOTES.md`,
   "The live client"); a record that opens mid-battle (R2-8, with M4 T3a's R1-3) for a join and
@@ -451,3 +457,13 @@ M3 at its review, T9b, M4 at its review, T3c). The next milestone's list starts 
 39. The clone's message in the window (T5a): a notice opens its box at its time and holds the
     window's clock there until it closes (the original's modal box inside the cast); not recorded
     (a Clone without a place needs every ring around a crowded original blocked).
+40. The palette effects' cost (T5b1; design §7.26): each stack with one has its creature's
+    palette recoloured at every frame drawn (246 entries, about 220 µs in a release build), not
+    cached (*provisional*: a cache by DEF and effect would compute each once).
+41. The formats (T5b1): `h3_render::recolour` (`Effect`, `apply`, `FIRST`) in the foundation
+    (additive), `Timeline::looks` and `LookKey`, `Moment::looks`, `Draw::Creature`'s `effect`,
+    `Logged::Petrified`, the key `battle.log.petrified`; the harness's roll `stone_gaze` (`xdd.c`'s
+    sites, `h3drive.py`'s `ROLLS`: a redirected call draws as the original's, so no other capture
+    changes).
+42. Not built (T5b1): an Ogre Magi's Bloodlust (a creature's cast other than an area spell takes
+    effect at once, M3 T7c-3): it glows nothing.

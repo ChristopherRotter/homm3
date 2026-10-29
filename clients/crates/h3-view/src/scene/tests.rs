@@ -209,6 +209,7 @@ fn the_battle_is_drawn_in_the_executables_order() {
         anchor: layout.anchor(row, column),
         mirrored,
         outline,
+        effect: None,
     };
     // Each stack's count box after it (M3 T4a): beside it, the hexes ahead free.
     let counted = |stack, row, column, [dx, dy]: [i32; 2]| {
@@ -458,6 +459,60 @@ fn a_magic_animation_is_drawn_over_its_stacks_count_box() {
 }
 
 #[test]
+fn a_stack_takes_its_palette_effect_by_its_spells_else_a_clone_s() {
+    // E17 M5 T5b1 (design §7.26, `draw_battle_stack` 0x43E280): the first that applies of a
+    // glow or the petrified look (the moment's, by its spells) and a clone's colours (+0x84's
+    // 0x800000); none for a stack without either.
+    let layout = layout();
+    let mut o = observation();
+    o.terrain = Some(0);
+    let mut clone = stack(1, Side::Attacker, 0, hex(2, 2), false);
+    clone.clone = true;
+    let mut petrified = clone.clone();
+    petrified.id = 2;
+    petrified.hex = hex(6, 2);
+    o.stacks = vec![
+        stack(0, Side::Attacker, 0, hex(4, 2), false),
+        clone,
+        petrified,
+    ];
+    let moment = Moment {
+        looks: BTreeMap::from([(0, Effect::Bloodlust(3)), (2, Effect::Petrified)]),
+        ..Moment::default()
+    };
+    let list = battle_at(&o, &moment, &keys(), &tables(), &layout).unwrap();
+    let effects: Vec<Option<Effect>> = list
+        .iter()
+        .filter_map(|d| match d {
+            Draw::Creature { effect, .. } => Some(*effect),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(
+        effects,
+        [
+            Some(Effect::Clone),
+            Some(Effect::Bloodlust(3)),
+            Some(Effect::Petrified)
+        ]
+    );
+    let plain = battle_at(
+        &battle_view(),
+        &Moment::default(),
+        &keys(),
+        &tables(),
+        &layout,
+    );
+    assert!(plain.unwrap().iter().all(|d| !matches!(
+        d,
+        Draw::Creature {
+            effect: Some(_),
+            ..
+        }
+    )));
+}
+
+#[test]
 fn a_moment_draws_each_stack_in_its_pose() {
     // E17 M2 T4a: the poses of a timeline. In row 4 the Pikemen walk (frame 3 of group 0, moved
     // by their offset) and lose the outline to the active defender; the dragon on 4/9 died: its
@@ -514,6 +569,7 @@ fn a_moment_draws_each_stack_in_its_pose() {
         field: None,
         counts: BTreeMap::new(),
         hues: BTreeMap::new(),
+        looks: BTreeMap::new(),
         // E17 M3 T6c-1: the mouse marks the walking Pikemen.
         marked: Some(0),
         area: Vec::new(),
@@ -763,6 +819,7 @@ fn a_flier_between_its_hexes_is_drawn_over_every_row() {
             anchor: [x + 5, y + 90],
             mirrored: false,
             outline: None,
+            effect: None,
         })
     );
     let creatures = list

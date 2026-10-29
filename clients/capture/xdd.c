@@ -90,6 +90,9 @@ static struct site sites[] = {
     {"acid", 0x4414B7, RANDOM_BETWEEN, 0, 0, 0, 0, 0},
     /* strike_spell_choice 0x440500: the Wyvern Monarch's Poison, random_between(1, 100) <= 30 */
     {"poison", 0x440839, RANDOM_BETWEEN, 0, 0, 0, 0, 0},
+    /* the same for Stone Gaze, the Medusas' and Basilisks' (76, 77, 106, 107): <= 20 (E17 M5
+       T5b1) */
+    {"stone_gaze", 0x440780, RANDOM_BETWEEN, 0, 0, 0, 0, 0},
     /* The wall shots' rolls (E17 M4 T2b; design §10.2): wall_shot_once 0x445EC0's damage,
        random_between(1, 100) against the BALLIST.TXT record's chances for 0, 1, 2 (in that
        order: the draw falls into the first whose running sum reaches it) */

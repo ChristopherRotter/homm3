@@ -244,6 +244,17 @@ original = [
     { form = "other", at = "GENRLTXT:563", printf = ["creature"] },
 ]
 
+# Stone Gaze taking hold after a strike (`battle_log_cast` 0x5A8E25, a creature's cast of Stone Gaze;
+# E17 M5 T5b1): the stack's name by its number.
+[[key]]
+id = "battle.log.petrified"
+args = { creature = "text" }
+plural = true
+original = [
+    { form = "one", at = "GENRLTXT:559", printf = ["creature"] },
+    { form = "other", at = "GENRLTXT:560", printf = ["creature"] },
+]
+
 # Acid Breath lowers a stack's defense (`cast_spell` 0x5A1F27, E17 M3 T7b-2b-3): the executable's
 # own text, not a table's (`EXE:<address>`): the stack's name by its number, the defense lowered.
 [[key]]

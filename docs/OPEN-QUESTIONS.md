@@ -116,6 +116,23 @@ leave out either way (nothing created). **Recommendation:** (b): the log should 
 summon that did not happen. **Built:** as the original's (the line written). **Blocked:**
 nothing.
 
+#### CLT-Q34 — The palette effects' slips (E17 M5 T5b1)
+
+**Context.** `draw_battle_stack`'s palette effects (`docs/epics/E17-design.md` §7.26) take each
+colour through HSV with every channel scaled to 0x7FFFFFFF / its mask. (1) The scales differ (at
+5-6-5 a full blue scales to 2^31 − 2, a full red to 2^31 − 2 048), so a grey or white has a hue
+(white's is a cyan, 0.51) and a saturation just above 0; where the effect moves the hue (Bloodlust's
+glow), white turns purple on its way to pink instead of going straight to pink, and the round trip
+through f32 values changes some colours with no effect intended (Bloodlust's step 0, Stone Gaze's
+1.0: 0x1234 becomes 0x1213; a blue of 1 becomes black). (2) Each glow's last step (strength 0.1) is
+drawn and shown, then replaced in the same millisecond by the redraw that clears the flag
+(0x5A11DB): it never stays on the screen. **Options:** (a) copy both; (b) fix (1) in the client
+(the channels scaled alike, a grey without hue), the original's for the comparisons only
+(`Bugs::Original`, as the cursor's x), and copy (2); (c) fix both, the original's for the
+comparisons. **Recommendation:** (a): both are how the original looks, briefly and on a few
+colours, and no reference shows what was meant instead. **Built:** as the original's (both).
+**Blocked:** nothing.
+
 ### Map client lane (`MCL-Q<n>`)
 
 #### MCL-Q13 — A monster's head under the Dragon Utopia (E24 M3 T2b1; the user, 2026-10-28)
