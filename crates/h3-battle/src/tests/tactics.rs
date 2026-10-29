@@ -171,12 +171,12 @@ fn the_phase_starts_in_round_0_and_is_public() {
     }
     // The enemy cannot act in the phase.
     let mut copy = state.clone();
-    let err = crate::apply(
+    let err = apply(
         &mut copy,
         &r,
         BattleSide::Defender,
         Command::EndTactics,
-        &mut crate::NoopSink,
+        &mut NoopSink,
     );
     assert_eq!(err, Err(CommandError::NotYourTurn));
     assert_eq!(copy, state);
@@ -254,12 +254,19 @@ fn stacks_are_handed_over_in_rounds_and_next_creature_waits() {
     let kinds = kinds(&events);
     let (turn, steps) = kinds.split_last().unwrap();
     assert_eq!(*turn, EventKind::TurnStarted { stack: StackId(2) });
-    let ends = steps.iter().map(|k| match *k {
-        EventKind::Moved { stack, from, to } if stack == StackId(3) => (from, to),
-        _ => panic!("{k:?}"),
-    });
-    assert_eq!(ends.clone().next().unwrap().0, at(&r, 1, 9));
-    assert_eq!(ends.last().unwrap().1, at(&r, 6, 0));
+    let ends: Vec<(Hex, Hex)> = steps
+        .iter()
+        .map(|k| match *k {
+            EventKind::Moved {
+                stack: StackId(3),
+                from,
+                to,
+            } => (from, to),
+            _ => panic!("{k:?}"),
+        })
+        .collect();
+    assert_eq!(ends[0].0, at(&r, 1, 9));
+    assert_eq!(ends[ends.len() - 1].1, at(&r, 6, 0));
     let mut seen = vec![];
     for _ in 0..5 {
         act(&mut state, &r, Command::Wait).unwrap();
