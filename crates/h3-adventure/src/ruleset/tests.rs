@@ -390,6 +390,10 @@ fn the_hash_is_stable_and_sees_every_part() {
         edit(|p| pack(p, "t").starting_resources.truncate(1)),
         edit(|p| pack(p, "t").params.as_mut().unwrap().fly_cost[0] = cost(141)),
         edit(|p| pack(p, "t").params.as_mut().unwrap().water_walk_cost[3] = cost(100)),
+        // E08 T72: the sea points and the sea ground's share.
+        edit(|p| pack(p, "t").params.as_mut().unwrap().sea_points[3] = 3751),
+        edit(|p| pack(p, "t").params.as_mut().unwrap().sea_ground = [1, 3]),
+        edit(|p| pack(p, "t").params.as_mut().unwrap().sea_ground = [2, 4]),
         edit(|p| pack(p, "u").terrain_walkers = vec![walker("t:imp", "u:swamp", "t:grass")]),
         edit(|p| {
             pack(p, "u").terrain_walkers = vec![walker("t:gog", "u:swamp", "t:grass")];
@@ -1063,6 +1067,34 @@ fn one_pack_provides_valid_parameters() {
         ))
     );
     assert_eq!(most(MAX_MONSTER_COUNT), Ok(MAX_MONSTER_COUNT));
+    // E08 T72: no sea points entry is 0; the sea ground's share is at most the whole price.
+    let sea = |points: [u32; 4], ground: [u16; 2]| {
+        AdventureRuleset::compile(
+            &core(),
+            &edit(|p| {
+                let params = pack(p, "t").params.as_mut().unwrap();
+                params.sea_points = points;
+                params.sea_ground = ground;
+            }),
+        )
+        .map(|part| (*part.params().sea_points(), part.params().sea_ground()))
+    };
+    assert_eq!(
+        sea([1500, 0, 3000, 3750], [2, 3]),
+        Err(AdventureCompileError::InvalidParams(
+            "a sea_points entry is 0"
+        ))
+    );
+    for ground in [[0, 3], [4, 3]] {
+        assert_eq!(
+            sea([1500, 2250, 3000, 3750], ground),
+            Err(AdventureCompileError::InvalidParams(
+                "sea_ground is not 1 <= numerator <= denominator"
+            )),
+            "{ground:?}"
+        );
+    }
+    assert_eq!(sea([1, 1, 1, 1], [1, 1]), Ok(([1, 1, 1, 1], [1, 1])));
     // Any chance up to 100 compiles, and no chances at all: only the first stack comes.
     assert_eq!(chances(vec![0, 100]), Ok(vec![0, 100]));
     assert_eq!(chances(vec![]), Ok(vec![]));

@@ -45,9 +45,9 @@ pub struct Boat {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct Boats {
     /// The records, by boat index; every index below their number holds one.
-    records: Table<Boat>,
+    pub(super) records: Table<Boat>,
     /// The tiles where an empty boat lies; follows from the records, so the hash leaves it out.
-    empty: BitGrid,
+    pub(super) empty: BitGrid,
 }
 
 impl Boats {

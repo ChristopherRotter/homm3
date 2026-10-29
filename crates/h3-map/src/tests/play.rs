@@ -92,8 +92,9 @@ pub(super) const BLOCKERS: [(Mask, Mask); 3] = [
     (&[(0, 0), (1, 0)], &[(1, 0)]),
     (&[(1, 0), (0, 1), (1, 1)], &[(0, 0)]),
 ];
-/// Blockers' object class: any the import keeps as a blocker (not a hero or a town).
-pub(super) const BLOCKER_CLASS: u32 = 124;
+/// Blockers' object class: any the import keeps as a blocker (not a hero or a town): a crater
+/// (`AVLc*`; E08 T72: the hole, 124 until then, is typed now).
+pub(super) const BLOCKER_CLASS: u32 = 118;
 /// The kinds of objects a plan lays out (E08 T12b): the blocker, then typed objects whose drawn
 /// contents no viewer sees, as class, subclass and a resource body's amount: a wood pile of a
 /// drawn amount, 300 gold, a campfire, a Redwood Observatory, the red Keymaster's tent, (E08

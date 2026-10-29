@@ -91,13 +91,16 @@ pub(crate) const MONSTER: ObjectTypeId = ObjectTypeId::from_raw(10);
 pub(crate) const RANDOM_MONSTER: ObjectTypeId = ObjectTypeId::from_raw(11);
 pub(crate) const HALLOW: ObjectTypeId = ObjectTypeId::from_raw(12);
 pub(crate) const BARRENS: ObjectTypeId = ObjectTypeId::from_raw(13);
+pub(crate) const WINDS: ObjectTypeId = ObjectTypeId::from_raw(14);
+pub(crate) const HOLE: ObjectTypeId = ObjectTypeId::from_raw(15);
 
 /// [`rules`]' object types: a wood pile (3–6), a gold pile (5–10 × 100), a random pile of the two,
 /// a fire (2–3 wood and 100 gold per wood), a tower revealing radius 8, a guard of key 0, two
 /// Cartographers of grass for 1 000 gold (E08 T14a): a chart not visited from above, as the
 /// original's, and an open chart that is; a tent of key 0, entered and not from above, and a gate
 /// of key 0 (E08 T15a); a monster of the map's creature, a random monster of level 1 and two
-/// grounds fought on the battlefields `t:hallow` and `t:barrens` (E08 T20a2a).
+/// grounds fought on the battlefields `t:hallow` and `t:barrens` (E08 T20a2a); a ground of the sea
+/// and a hole (E08 T72).
 fn object_types() -> Vec<ObjectTypeDef> {
     let n = |v| NonZeroU32::new(v).unwrap();
     let ty = |k: &str, visit, kind| ObjectTypeDef {
@@ -188,6 +191,8 @@ fn object_types() -> Vec<ObjectTypeDef> {
                 no_native: true,
             },
         ),
+        ty("t:winds", Visit::Enter, ObjectKindDef::SeaGround),
+        ty("t:hole", Visit::Enter, ObjectKindDef::Hole),
     ]
 }
 
