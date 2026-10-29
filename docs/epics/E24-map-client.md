@@ -365,5 +365,5 @@ M1's review lists (three reviewers, T6b; the list accepted) and M2's (accepted a
   [kind, end]` (`Start::asked`; a date's window at 0 the sequence did not ask refused), a
   situation's `status` and `teams` (written by the harness: the writer has no teams); the
   timeline's chooser (every draw, forced at a centring lift and a key's step's end; a window
-  the live part does not give left alone); `Cue::Effect` and a fifth audio stream for a sound
+  the live part does not give left alone); `Cue::Effect` and an audio stream of its own for a sound
   played once (the next cuts it off).
