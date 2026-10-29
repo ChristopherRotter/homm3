@@ -16,7 +16,7 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   steps, `cross-lane`; the dissolves and the created stacks, §7.25, `anim::created`, the engine's
   `NotCreated`, `cross-lane`; T5b cut in two, the palette effects done, §7.26,
   `h3_render::recolour`). **Next: M5 T5b2** (the panel by the turn's controller, the sounds'
-  waits: QUEUE), then T6. Open PR: T5b1's (`client/e17-m5-t5b1`; check it first). The inbox's
+  waits: QUEUE), then T6. Open PR: T5b1's (#583, `client/e17-m5-t5b1`; check it first). The inbox's
   CLT-Q30 task (`h3-bink` as BINKW32's float DCT) and the user's Demons note (T5a's dissolve, to
   re-investigate) wait for a free slot.
   Workspace `clients/` (`clients/README.md`), gates `clients/scripts/check.sh`; ADR-0020 (+ drafts
@@ -46,7 +46,7 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
 
 ## Recent sessions
 
-- **2026-10-29, E17 M5 T5b1 (done; its PR open: check it first).** T5b cut in two with the
+- **2026-10-29, E17 M5 T5b1 (done; #583 open: check it first).** T5b cut in two with the
   user (T5b1 the palette effects); the user's Demons note recorded (design §7.25, QUEUE inbox).
   Read `draw_battle_stack`'s palette effects, the HSV round trip, the glows' redraws, Stone
   Gaze's line (design §7.26). Built `h3_render::recolour` (exact in integers against an IEEE
