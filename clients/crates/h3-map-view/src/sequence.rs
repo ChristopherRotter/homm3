@@ -229,6 +229,28 @@ impl Sequence {
         }
         Ok(paths)
     }
+
+    /// The selected hero's movement points memory held, as its recorded timeline shows them (E24
+    /// M3 T4b, M3's scripted walks: `h3map.py frames`' `<ms> points <n>` lines), each with its
+    /// millisecond, in order: the timeline's [`crate::timeline::Start::points`].
+    ///
+    /// # Errors
+    /// A `points` line that does not read.
+    pub fn points(&self, recorded: &str) -> Result<Vec<(u32, i32)>, String> {
+        let mut points = Vec::new();
+        for line in recorded.lines() {
+            let mut words = line.split_whitespace();
+            let (Some(t), Some("points")) = (words.next(), words.next()) else {
+                continue;
+            };
+            let read = match (t.parse(), words.next().map(str::parse), words.next()) {
+                (Ok(t), Some(Ok(n)), None) => Some((t, n)),
+                _ => None,
+            };
+            points.push(read.ok_or_else(|| format!("{}: the line `{line}` does not read", self.id))?);
+        }
+        Ok(points)
+    }
 }
 
 /// An arrow of an `arrows` line: `<x>,<y>,<level>,<arrow>`.

@@ -3,6 +3,7 @@
 0 cycles 0 0
 0 cursor 1 0 700 300
 0 buttons 0 1
+0 points 2000
 100 view 8 8 0
 100 buttons 1 1
 100 hero 17 16 0 0
@@ -16,6 +17,7 @@
 250 walk 5 4 0 0
 250 screen 8,8,600,552
 300 objects 1
+300 points 1900
 300 walk 0 0 0 0
 300 screen 276,58,738,318
 360 objects 2
@@ -34,6 +36,7 @@
 550 screen 8,8,600,552
 600 objects 3
 600 cycles 3 3
+600 points 1759
 600 walk 1 0 0 0
 600 screen 281,54,742,318
 700 view 10 7 0
@@ -48,6 +51,7 @@
 850 walk 7 4 0 0
 850 screen 8,8,600,552
 900 objects 5
+900 points 1659
 900 walk 2 0 0 0
 900 screen 276,54,746,318
 1000 view 11 8 0
@@ -63,6 +67,7 @@
 1150 screen 8,8,600,552
 1200 objects 6
 1200 cycles 6 6
+1200 points 1518
 1200 walk 3 0 0 0
 1200 screen 285,54,750,318
 1260 objects 7
@@ -79,6 +84,7 @@
 1450 walk 9 4 0 0
 1450 screen 8,8,600,552
 1500 objects 8
+1500 points 1418
 1500 walk 4 0 0 0
 1500 screen 294,58,750,318
 1600 view 10 10 0
@@ -94,6 +100,7 @@
 1750 screen 8,8,600,552
 1800 objects 10
 1800 cycles 9 9
+1800 points 1277
 1800 walk 3 0 0 0
 1800 screen 285,47,750,318
 1900 view 9 10 0
@@ -108,6 +115,7 @@
 2050 walk 7 4 0 0
 2050 screen 8,8,600,552
 2100 objects 11
+2100 points 1177
 2100 walk 2 0 0 0
 2100 screen 278,66,746,318
 2160 objects 12
@@ -125,6 +133,7 @@
 2350 screen 8,8,600,552
 2400 objects 13
 2400 cycles 12 12
+2400 points 1036
 2400 walk 1 0 0 0
 2400 screen 285,62,742,318
 2500 buttons 1 1
@@ -146,6 +155,7 @@
 2850 walk 7 4 0 0
 2850 screen 8,8,600,552
 2900 view 10 9 0
+2900 points 936
 2900 hero 19 17 0 2
 2900 walk 7 5 24 0
 2900 arrows 20,18,0,13 21,19,0,1
@@ -158,6 +168,7 @@
 3050 walk 7 0 0 0
 3050 screen 8,8,600,552
 3100 view 11 10 0
+3100 points 836
 3100 hero 20 18 0 3
 3100 walk 8 1 24 24
 3100 arrows 21,19,0,1
@@ -170,6 +181,7 @@
 3250 walk 8 4 0 0
 3250 screen 8,8,600,552
 3300 view 12 11 0
+3300 points 695
 3300 hero 21 19 0 3
 3300 walk 8 5 24 24
 3300 arrows
@@ -183,6 +195,7 @@
 3450 screen 8,8,600,552
 3500 objects 17
 3500 buttons 0 1
+3500 points 554
 3500 walk 3 0 0 0
 3500 screen 286,66,754,318
 3600 cycles 18 18

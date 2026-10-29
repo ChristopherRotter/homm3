@@ -302,8 +302,10 @@ const RANDOM_DWELLINGS: [u32; 3] = [216, 217, 218];
 /// explored and `0` not; `path` (T5b2), the path shown, each arrow `[x, y, level, arrow]`; `view`,
 /// the view's top-left and level the original showed, which must be `--view` (E24 M1 T6b, the
 /// reviewer's R2-3); `kingdom` (E24 M3 T2a, design §4.1), what the panels show of the viewer's
-/// kingdom: `{ heroes = [[asleep, movable], ...], towns = <n>, selected = [<0 none, 1 a hero, 2 a
-/// town>, <its place in its list>], tops = [<heroes>, <towns>], quests = <0 or 1> }`; `buttons`
+/// kingdom: `{ heroes = [[asleep, movable, portrait, points, mana], ...], towns = [[faction, fort,
+/// built], ...], selected = [<0 none, 1 a hero, 2 a town>, <its place in its list>], tops =
+/// [<heroes>, <towns>], quests = <0 or 1> }` (since E24 M3 T4a; the heroes' points as the hero
+/// list shows them, T4b); `buttons`
 /// (T2a), move hero's and next hero's states as the original last set them, `[move, next]`, 1
 /// enabled; `pointer`
 /// (T2a), where the parked mouse is, returned. Each key is optional (`defs` and `classes`
@@ -561,8 +563,9 @@ pub fn read_live(
     if let Some(value) = table.get("kingdom") {
         live.kingdom = Kingdom::read(value).ok_or_else(|| {
             failed(
-                "`kingdom` is not { heroes = [[asleep, movable], ...], towns, selected = [kind, \
-                 index], tops = [heroes, towns], quests }",
+                "`kingdom` is not { heroes = [[asleep, movable, portrait, points, mana], ...], \
+                 towns = [[faction, fort, built], ...], selected = [kind, index], tops = [heroes, \
+                 towns], quests }",
             )
         })?;
     }
