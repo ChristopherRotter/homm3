@@ -2821,12 +2821,13 @@ fn check_conservation(
             });
             for (i, o) in left {
                 // E08 T64b: a chest leaves the map with the visit, its gold given only when its
-                // choice takes it ([`visit_gains`]; ADV-PIK-005).
-                let chest = matches!(
+                // choice takes it ([`visit_gains`]; ADV-PIK-005); (E08 T75b) a find that leaves
+                // gives what its artifact and turn say, [`visit_gains`]' too (ADV-PIK-014 to -016).
+                let apart = matches!(
                     rules.adventure().object_type(object_type).map(|t| &t.kind),
-                    Some(ObjectKind::Chest(_))
+                    Some(ObjectKind::Chest(_) | ObjectKind::Find(_))
                 );
-                if !chest {
+                if !apart {
                     contents.extend(o.contents.iter().copied());
                 }
                 // A monster that joins (all of it, of its creature) gives its treasure; one that
