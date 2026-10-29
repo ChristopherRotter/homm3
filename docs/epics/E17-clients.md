@@ -455,3 +455,13 @@ M3 at its review, T9b, M4 at its review, T3c). The next milestone's list starts 
 39. The clone's message in the window (T5a): a notice opens its box at its time and holds the
     window's clock there until it closes (the original's modal box inside the cast); not recorded
     (a Clone without a place needs every ring around a crowded original blocked).
+40. The palette effects' cost (T5b1; design §7.26): each stack with one has its creature's
+    palette recoloured at every frame drawn (246 entries, about 220 µs in a release build), not
+    cached (*provisional*: a cache by DEF and effect would compute each once).
+41. The formats (T5b1): `h3_render::recolour` (`Effect`, `apply`, `FIRST`) in the foundation
+    (additive), `Timeline::looks` and `LookKey`, `Moment::looks`, `Draw::Creature`'s `effect`,
+    `Logged::Petrified`, the key `battle.log.petrified`; the harness's roll `stone_gaze` (`xdd.c`'s
+    sites, `h3drive.py`'s `ROLLS`: a redirected call draws as the original's, so no other capture
+    changes).
+42. Not built (T5b1): an Ogre Magi's Bloodlust (a creature's cast other than an area spell takes
+    effect at once, M3 T7c-3): it glows nothing.

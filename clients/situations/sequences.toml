@@ -1426,11 +1426,12 @@ command = [
 # Greater Basilisks and strikes them from the left (`acid`'s place); they strike back and their
 # Stone Gaze's roll is forced (`roll:stone_gaze`: at the strike's end its line, then 10 redraws of
 # trunc(100 F) greying the Archangel, `cast_spell` 0x5A1121); it looks petrified from then
-# (`draw_battle_stack` 0x43E3CB). Hot seat.
+# (`draw_battle_stack` 0x43E3CB). `seed`: the strike back's 14 damage, as the original's. Hot seat.
 [[sequence]]
 id = "stone"
 scenario = "seq-stone.toml"
 hot_seat = true
+seed = 26
 actions = ["roll:stone_gaze", "click:634,322"]
 fail = ["stone_gaze", "good_morale"]
 ms = 9000
