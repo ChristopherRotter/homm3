@@ -1490,4 +1490,18 @@ fn created_stacks_are_drawn_and_a_dissolve_measures_its_stacks() {
         ..Moment::default()
     };
     assert!(battle_at(&o, &unknown, &keys(), &tables(), &layout).is_err());
+    // A saved picture that cannot be drawn too.
+    let saved = Moment {
+        created: unknown.created.clone(),
+        ..Moment::default()
+    };
+    let unknown = Moment {
+        dissolve: Some(Dissolve {
+            before: Box::new(saved),
+            step: 0,
+            area: DissolveArea::Battlefield,
+        }),
+        ..Moment::default()
+    };
+    assert!(battle_at(&o, &unknown, &keys(), &tables(), &layout).is_err());
 }

@@ -192,11 +192,7 @@ fn teleport_dissolves_the_battlefield_in_33_ms_steps() {
             Some(0),
             vec![
                 spell(TELEPORT_SPELL, Target::Stack { stack: 0 }),
-                Event::Moved {
-                    stack: 0,
-                    from: 86,
-                    to: 87,
-                },
+                Event::SpellResisted { target: 0 },
             ],
         ),
         (

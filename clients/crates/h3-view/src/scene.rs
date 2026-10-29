@@ -834,7 +834,7 @@ pub fn battle_at(
             dissolve: None,
             ..moment.clone()
         };
-        let [mut list, drawn] =
+        let [list, drawn] =
             [d.before.as_ref(), &now].map(|m| battle_at(observation, m, manifest, tables, layout));
         let (rect, measured) = match &d.area {
             DissolveArea::Battlefield => (Some(BATTLEFIELD), Vec::new()),
@@ -845,15 +845,14 @@ pub fn battle_at(
                 (None, all)
             }
         };
-        if let Ok(list) = list.as_mut() {
-            list.push(Draw::Dissolve {
-                step: d.step,
-                rect,
-                measured,
-                list: drawn?,
-            });
-        }
-        return list;
+        let mut list = list?;
+        list.push(Draw::Dissolve {
+            step: d.step,
+            rect,
+            measured,
+            list: drawn?,
+        });
+        return Ok(list);
     }
     // The drawbridge's redraws (E17 M4 T2c-1, CLT-Q23): the battle as the screen showed it
     // before, the moment's inside the drawbridge's rectangle.
