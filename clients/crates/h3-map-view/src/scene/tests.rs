@@ -126,9 +126,16 @@ fn the_frame_then_the_passes_then_the_gems() {
         (last.0.as_str(), last.2, last.4),
         ("grastl.def", [576, 520], [576, 520, 600, 552])
     );
-    // Every tile explored at the start: no shroud. The gems last, in the viewer's colour.
+    // Every tile explored at the start: no shroud. The gems after the view, in the viewer's
+    // colour; then the minimap's tiles and box (E24 M3 T3a).
     assert!(pieces(&scene, Pass::Shroud).is_empty());
-    let gems: Vec<&Draw> = scene.draws.iter().rev().take(4).collect();
+    let n = scene.draws.len();
+    assert!(matches!(scene.draws[n - 2], Draw::Minimap(_)));
+    assert!(matches!(
+        &scene.draws[n - 1],
+        Draw::Radar { def, frame: 4, at: [630, 26], cut: [0, 0], .. } if def == "radar.def"
+    ));
+    let gems: Vec<&Draw> = scene.draws.iter().rev().skip(2).take(4).collect();
     assert_eq!(
         gems[3],
         &Draw::Gem {
@@ -463,7 +470,7 @@ fn the_cycles_at_the_moment_and_the_viewers_colour() {
     assert_eq!(scene.cycles[1].ranges, [[229, 240], [242, 253]]);
     assert!(matches!(scene.draws[0], Draw::Frame { viewer: 5, .. }));
     assert!(matches!(
-        scene.draws.last(),
+        scene.draws.iter().rev().nth(2),
         Some(Draw::Gem { frame: 5, .. })
     ));
 }
@@ -1749,7 +1756,7 @@ fn a_levels_index_gives_each_view_the_scenes_draws() {
     let shapes = with_shape(&art, "tree.def", [0xff; 6], [0xff; 6], 2);
     let (t, l) = (tables(), layout());
     for z in [0, 1] {
-        let index = TileIndex::build(&art, &live, &t, &shapes, z, Bugs::Fixed).unwrap();
+        let index = TileIndex::build(&art, &live, &t, &l, &shapes, z, Bugs::Fixed).unwrap();
         assert_eq!(index.level(), z);
         for view in [at(0, 0), at(3, 2), at(-9, -8)] {
             let view = ViewAt { z, ..view };
@@ -1768,14 +1775,14 @@ fn a_levels_index_gives_each_view_the_scenes_draws() {
         );
     }
     // The checks a scene makes first, and an object without its shape.
-    let index = TileIndex::build(&art, &live, &t, &shapes, 0, Bugs::Fixed).unwrap();
+    let index = TileIndex::build(&art, &live, &t, &l, &shapes, 0, Bugs::Fixed).unwrap();
     let off = ViewAt { z: 2, ..at(0, 0) };
     assert_eq!(
         scene_in(&index, &art, &live, &t, &l, &shapes, off, Bugs::Fixed),
         Err(SceneError::Level(2))
     );
     assert!(matches!(
-        TileIndex::build(&art, &live, &t, &Shapes::default(), 1, Bugs::Fixed),
+        TileIndex::build(&art, &live, &t, &l, &Shapes::default(), 1, Bugs::Fixed),
         Err(SceneError::Objects(ObjectsError::Shape(_, _)))
     ));
 }

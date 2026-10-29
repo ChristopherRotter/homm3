@@ -22,6 +22,8 @@ use core::ops::Range;
 use serde::Deserialize;
 
 use crate::art::Layer;
+use crate::minimap::MinimapArt;
+use crate::record::{RecordArt, Records};
 use crate::sound::{SoundArt, SoundRules};
 
 /// One table file as written.
@@ -90,6 +92,10 @@ pub struct ViewArt {
     pub towns: TownArt,
     /// The hero's walk (E24 M2 T3a; design §3.5).
     pub walk: WalkArt,
+    /// What a tile records of its objects (E24 M2 T5, M3 T3a; [`crate::record`]).
+    pub records: RecordArt,
+    /// The minimap (E24 M3 T3a; design §4.4).
+    pub minimap: MinimapArt,
     /// The map's sounds (E24 M2 T5; design §3.11): none, and the map plays none.
     #[serde(default)]
     pub sound: Option<SoundArt>,
@@ -146,10 +152,15 @@ impl OwnerArt {
     /// flag pixels in, `None` when its class's are skipped.
     #[must_use]
     pub fn entry(&self, class: u32, owner: Option<u8>) -> Option<u8> {
-        let colour = owner.map_or(0, |c| c.saturating_add(1));
-        self.classes
-            .contains(&class)
-            .then(|| self.neutral.saturating_add(colour))
+        self.classes.contains(&class).then(|| self.colour(owner))
+    }
+
+    /// The palette entry of `owner`'s colour (a colour, `None` for none): the neutral entry, a
+    /// colour's the next but the colour (the minimap's too, E24 M3 T3a).
+    #[must_use]
+    pub fn colour(&self, owner: Option<u8>) -> u8 {
+        self.neutral
+            .saturating_add(owner.map_or(0, |c| c.saturating_add(1)))
     }
 }
 
@@ -397,6 +408,8 @@ pub struct Tables {
     pub rivers: BTreeMap<u8, LayerArt>,
     /// The roads, by code.
     pub roads: BTreeMap<u8, LayerArt>,
+    /// What a tile records of its objects, resolved (E24 M3 T3a).
+    pub records: Records,
     /// The map's sounds resolved (E24 M2 T5), if the tables give them.
     pub sound: Option<SoundRules>,
 }
@@ -464,6 +477,7 @@ impl Tables {
             (&map.shroud.full, "full shroud", FULL_FRAMES),
             (&map.shroud.edge, "edge shroud", map.shroud.edge_frames()),
             (&map.path, "path", PATH_FRAMES),
+            (&map.minimap.radar, "minimap box", map.minimap.frames()),
         ] {
             needs.push(DefNeed {
                 name: name.clone(),
@@ -618,6 +632,9 @@ pub fn load(files: &[TableFile], top: &str) -> Result<Tables, TableError> {
         return Err(entry("poll_ms", "a poll every 0 ms"));
     }
     walk(&map.walk)?;
+    map.minimap
+        .check()
+        .map_err(|rule| entry("minimap", &rule))?;
     if map.shroud.pieces.len() != MASKS {
         return Err(entry(
             "shroud",
@@ -633,6 +650,7 @@ pub fn load(files: &[TableFile], top: &str) -> Result<Tables, TableError> {
         terrains: BTreeMap::new(),
         rivers: BTreeMap::new(),
         roads: BTreeMap::new(),
+        records: Records::new(&map.records),
         sound: None,
     };
     for file in selected {
@@ -675,8 +693,10 @@ pub fn load(files: &[TableFile], top: &str) -> Result<Tables, TableError> {
             .iter()
             .filter_map(|(code, t)| t.step.clone().map(|m| (*code, m)))
             .collect();
-        tables.sound =
-            Some(SoundRules::new(sound, music, steps).map_err(|rule| entry("sound", &rule))?);
+        tables.sound = Some(
+            SoundRules::new(sound, tables.records.clone(), music, steps)
+                .map_err(|rule| entry("sound", &rule))?,
+        );
     }
     Ok(tables)
 }

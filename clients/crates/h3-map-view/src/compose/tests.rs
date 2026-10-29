@@ -794,3 +794,164 @@ fn a_view_draws_everything_again_when_the_rest_changes() {
     );
     assert_eq!(composer.damage(), [[0, 0, 14, 12]]);
 }
+
+/// A 2 × 2-tile minimap at (9, 0) of a 14 × 12 screen (columns of 2 pixels, rows of 1 then 2):
+/// the terrain's open and blocked colours (entries 8 and 9, which its cycle rotates), an owner's,
+/// black.
+fn minimap(colours: [Colour; 4]) -> Draw {
+    Draw::Minimap(Tiles {
+        look: alloc::sync::Arc::new(crate::minimap::Look {
+            at: [9, 0],
+            size: [4, 3],
+            side: 2,
+            pattern: Some(crate::minimap::Pattern {
+                columns: vec![2],
+                rows: vec![1, 2],
+            }),
+            terrains: vec!["terrain.def".to_string()],
+            entries: [8, 9],
+        }),
+        colours: colours.to_vec(),
+    })
+}
+
+/// The minimap's box at `at`, from its canvas's `cut`, inside the minimap's area.
+fn radar_at(at: [i32; 2], cut: [i32; 2]) -> Draw {
+    Draw::Radar {
+        def: "radar.def".to_string(),
+        frame: 0,
+        at,
+        cut,
+        area: [9, 0, 13, 3],
+    }
+}
+
+/// The view's batch with a 3 × 2 box of literal pixels (index 12) round a run of 0.
+fn minimap_batch() -> Batch {
+    let mut b = view_batch();
+    let mut radar = raw_frame(3, 2, &[12, 0, 12, 12, 12, 12]);
+    radar.encoding = Encoding::Rows;
+    radar.runs = vec![false, true, false, false, false, false];
+    b.add("radar.def", &def(&pixels(), &[radar])).unwrap();
+    b
+}
+
+#[test]
+fn the_minimap_its_tiles_rectangles_and_its_box_cut_to_its_area() {
+    use Colour::{Black, Blocked, Open, Owner};
+    let b = minimap_batch();
+    let s = scene(vec![
+        minimap([Open(0), Blocked(0), Owner(64), Black]),
+        radar_at([11, 1], [1, 0]),
+    ]);
+    let screen = compose(&s, &b, [14, 12]).unwrap();
+    let px = |x, y| screen.pixel(x, y).unwrap();
+    // The terrain's entries 8 and 9, the flag palette's 64 (its 565 pixel 64), black.
+    assert_eq!([px(9, 0), px(10, 0), px(11, 0), px(12, 0)], [8, 8, 9, 9]);
+    assert_eq!([px(9, 1), px(10, 2), px(11, 1), px(12, 2)], [64, 64, 0, 0]);
+    // The box from its canvas's column 1, as wide as the DEF less it and less what lies past the
+    // area's right edge (13), the cut taken once more (the original's 13 − 11 − 1): one column,
+    // its row 0's run skipped.
+    assert_eq!([px(11, 1), px(12, 1)], [0, 0]);
+    assert_eq!([px(11, 2), px(12, 2)], [12, 0]);
+    assert_eq!(rect_of(&s.draws[1], &b, [0, 0, 14, 12]), Ok([11, 1, 12, 3]));
+    // A box past the area's bottom keeps the rows above it; a tile past the screen nothing.
+    assert_eq!(
+        rect_of(&radar_at([9, 2], [0, 0]), &b, [0, 0, 14, 12]),
+        Ok([9, 2, 12, 3])
+    );
+    let mut wide = minimap([Open(0); 4]);
+    if let Draw::Minimap(tiles) = &mut wide {
+        let mut look = (*tiles.look).clone();
+        look.at = [12, 10];
+        tiles.look = alloc::sync::Arc::new(look);
+    }
+    let screen = compose(&scene(vec![wide]), &b, [14, 12]).unwrap();
+    assert_eq!(
+        [screen.pixel(13, 10), screen.pixel(13, 11)],
+        [Some(8), Some(8)]
+    );
+    // A tile of a code the tables lack, a missing box: not in the batch.
+    let mut odd = minimap([Open(3), Black, Black, Black]);
+    assert_eq!(
+        compose(&scene(vec![odd.clone()]), &b, [14, 12]),
+        Err(ComposeError::Missing(String::new()))
+    );
+    if let Draw::Minimap(tiles) = &mut odd {
+        tiles.colours.truncate(1);
+        tiles.colours[0] = Owner(0);
+    }
+    // An owner's entry of colour 0 is black; a tile without a colour too.
+    let screen = compose(&scene(vec![odd]), &b, [14, 12]).unwrap();
+    assert_eq!(
+        [screen.pixel(9, 0), screen.pixel(11, 0)],
+        [Some(0), Some(0)]
+    );
+    assert!(
+        compose(
+            &scene(vec![radar_at([9, 0], [0, 0])]),
+            &view_batch(),
+            [14, 12]
+        )
+        .is_err()
+    );
+}
+
+#[test]
+fn a_kept_frame_draws_the_minimap_again_only_when_it_changes() {
+    use Colour::{Blocked, Open, Owner};
+    // The view of the test above with the minimap after it: still, the terrain's cycle stepping
+    // (its entries 8 and 9 rotate), a tile changing, the box moving, the view scrolling and
+    // jumping.
+    let clip = [1, 3, 13, 11];
+    let steps = [
+        ([0, 0], 0, [Open(0), Open(0), Blocked(0), Owner(64)], [9, 0]),
+        ([0, 0], 1, [Open(0), Open(0), Blocked(0), Owner(64)], [9, 0]),
+        ([0, 0], 3, [Open(0), Open(0), Blocked(0), Owner(64)], [9, 0]),
+        (
+            [0, 0],
+            3,
+            [Owner(65), Open(0), Blocked(0), Owner(64)],
+            [9, 0],
+        ),
+        (
+            [0, 0],
+            3,
+            [Owner(65), Open(0), Blocked(0), Owner(64)],
+            [10, 1],
+        ),
+        (
+            [1, 0],
+            4,
+            [Owner(65), Open(0), Blocked(0), Owner(64)],
+            [11, 1],
+        ),
+        (
+            [1, 0],
+            4,
+            [Owner(65), Open(0), Blocked(0), Owner(64)],
+            [11, 1],
+        ),
+        (
+            [-40, 31],
+            4,
+            [Owner(65), Open(0), Blocked(0), Owner(64)],
+            [9, 0],
+        ),
+    ];
+    let scenes: Vec<Scene> = steps
+        .iter()
+        .map(|&(origin, t, colours, at)| {
+            let mut s = view_at(origin, t, clip);
+            s.draws.push(minimap(colours));
+            s.draws.push(radar_at(at, [0, 0]));
+            s
+        })
+        .collect();
+    as_fresh(&scenes, &minimap_batch(), [14, 12]);
+    // Two scenes alike change nothing.
+    let mut composer = Composer::new([14, 12]).unwrap();
+    composer.compose(&scenes[1], &minimap_batch()).unwrap();
+    composer.compose(&scenes[1], &minimap_batch()).unwrap();
+    assert!(composer.damage().is_empty());
+}

@@ -13,7 +13,7 @@
 //!
 //! [`SoundArt`] is the asset tables' `[map.sound]`, [`SoundRules`] the tables resolved,
 //! [`TileSounds`] each tile's ambient sound and terrain (`tile_ambient_sound` 0x418620 on the
-//! object a tile records, 0x505610's walks), [`Sound`] the original's state, driven by the
+//! object a tile records, [`crate::record`]), [`Sound`] the original's state, driven by the
 //! timeline's loop at the moments above and giving its [`Cue`]s. The effects' and the music's
 //! settings are taken as on (nothing plays at 0 in the original). The client keeps a bit for each
 //! ambient sound found, the comparisons the original's 32 (MCL-Q8, [`Bugs`]); the client's shore
@@ -31,7 +31,8 @@ use serde::Deserialize;
 
 use crate::art::{MapArt, TileArt, WATER};
 use crate::live::Live;
-use crate::objects::{DrawLists, Entry, template};
+use crate::objects::{DrawLists, Entry};
+use crate::record::{NO_CLASS, Records};
 
 /// The ambient loops' slots (the manager's +0x228).
 pub const SLOTS: usize = 4;
@@ -51,17 +52,14 @@ pub const MINE: u32 = 53;
 pub const AB_MINE: u32 = 220;
 /// RoE's abandoned mine's subclass.
 pub const ABANDONED: u32 = 7;
-/// The class a tile without an object keeps (0x505610's reset), and on coastal land.
-pub const NO_CLASS: u32 = 0;
-/// The class coastal land keeps without an object.
-pub const COAST_CLASS: u32 = 3;
 /// The x of a packed tile that names none (0x3FF in 10 bits: −1).
 pub const NO_TILE: i32 = -1;
 
 /// The asset tables' `[map.sound]` (E24 M2 T5): the ambient loops by the original's index, their
 /// volumes by distance and the rules of `tile_ambient_sound` 0x418620 by class; the flying step
-/// sound. The terrains' music and step sounds are on their `[[terrain]]` entries. Each loop is
-/// named by its WAV name, which `loops` gives an index.
+/// sound. The terrains' music and step sounds are on their `[[terrain]]` entries, the object a tile
+/// records is `[map.records]`' ([`crate::record`]). Each loop is named by its WAV name, which
+/// `loops` gives an index.
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct SoundArt {
@@ -77,15 +75,6 @@ pub struct SoundArt {
     /// The first water picture that is not the shore's in the original's test (21, one more than
     /// the coast's [`crate::art::SHORE_PICTURES`]: MCL-Q9, the comparisons' only).
     pub shore_pictures: u8,
-    /// The map's classes the game loads as others, `[map's, game's]` (`object_class_values`
-    /// 0x63A6E4).
-    pub loaded_as: Vec<[u32; 2]>,
-    /// The ownable classes (`class_is_ownable` 0x40FCA0): a tile without an entrance records the
-    /// topmost one blocking it first (0x505610).
-    pub ownable: Vec<u32>,
-    /// The class a tile without an entrance or a blocking object records when an object of it
-    /// lies there (124, the hole).
-    pub hole: u32,
     /// An entrance tile's loop by class, a subclass's entry for that subclass only; the first that
     /// matches.
     pub objects: Vec<ClassSound>,
@@ -147,9 +136,8 @@ pub struct SoundRules {
     volumes: Vec<u8>,
     shore: u8,
     shore_pictures: u8,
-    loaded_as: BTreeMap<u32, u32>,
-    ownable: Vec<u32>,
-    hole: u32,
+    /// What a tile records of its objects.
+    pub records: Records,
     objects: Vec<(u32, Option<u32>, u8)>,
     dwelling_creatures: Vec<u32>,
     creatures: BTreeMap<u32, u8>,
@@ -162,13 +150,15 @@ pub struct SoundRules {
 }
 
 impl SoundRules {
-    /// The rules of `art` with the terrains' music and step sounds (by code).
+    /// The rules of `art` with the tiles' records and the terrains' music and step sounds (by
+    /// code).
     ///
     /// # Errors
     /// What breaks a rule: a WAV name without its extension, more than 256 loops or one named
     /// twice, a loop `loops` does not name, a volume for each distance 0 to [`RINGS`] missing.
     pub fn new(
         art: &SoundArt,
+        records: Records,
         music: BTreeMap<u8, String>,
         steps: BTreeMap<u8, String>,
     ) -> Result<Self, String> {
@@ -220,13 +210,7 @@ impl SoundRules {
             volumes: art.volumes.clone(),
             shore: index(&art.shore)?,
             shore_pictures: art.shore_pictures,
-            loaded_as: art
-                .loaded_as
-                .iter()
-                .map(|&[map, game]| (map, game))
-                .collect(),
-            ownable: art.ownable.clone(),
-            hole: art.hole,
+            records,
             objects: art
                 .objects
                 .iter()
@@ -254,12 +238,6 @@ impl SoundRules {
         all.extend(self.steps.values().cloned());
         all.push(self.flying.clone());
         all
-    }
-
-    /// The class the game loads a map's `class` as.
-    #[must_use]
-    pub fn game_class(&self, class: u32) -> u32 {
-        self.loaded_as.get(&class).copied().unwrap_or(class)
     }
 
     /// A loop's volume at `distance` (0 at a distance the table lacks).
@@ -419,36 +397,19 @@ fn tile_sound(
     if tile.terrain.code == WATER && shore {
         return Some(rules.shore);
     }
-    // The object a tile records (0x505610): the topmost whose cell there is visitable.
-    let classes = |e: &Entry| {
-        template(art, e.object).map(|t| {
-            let drawn = live.objects.get(e.object).and_then(|o| o.drawn.as_ref());
-            let (class, subclass) = drawn.map_or((t.class, t.subclass), |d| (d.class, d.subclass));
-            (rules.game_class(class), subclass, class)
-        })
-    };
-    let blocks = |e: &&Entry| template(art, e.object).is_some_and(|t| !t.passable(e.dx, e.dy));
-    let top = || entries.iter().rev();
-    if let Some((class, subclass, map_class)) = top()
-        .find(|e| template(art, e.object).is_some_and(|t| t.visitable(e.dx, e.dy)))
-        .and_then(classes)
-    {
-        return rules.entrance(class, subclass, map_class);
+    // The object a tile records (0x505610): an entrance's sound by its class, without one the
+    // blocking object's or the special ground's.
+    let record = rules.records.record(art, live, tile, entries);
+    if record.entrance {
+        return rules.entrance(record.class, record.subclass, record.map_class);
     }
-    // Without an entrance: the topmost ownable object blocking it, else the topmost blocking one,
-    // else the hole, else none (on coastal land the coast's class).
-    let class_of = |e: &Entry| classes(e).map(|(c, _, _)| c);
-    let class = top()
-        .filter(blocks)
-        .find(|e| class_of(e).is_some_and(|c| rules.ownable.contains(&c)))
-        .or_else(|| top().find(blocks))
-        .and_then(class_of)
-        .or_else(|| top().filter_map(class_of).find(|&c| c == rules.hole))
-        .unwrap_or(if tile.coast() { COAST_CLASS } else { NO_CLASS });
+    let class = record.class;
     if class == NO_CLASS {
         // The special ground (`tile_special_ground` 0x4FCE20): the first from the top.
-        let ground = top()
-            .filter_map(class_of)
+        let ground = entries
+            .iter()
+            .rev()
+            .filter_map(|e| rules.records.classes(art, live, e).map(|(c, _, _)| c))
             .find(|c| rules.grounds.contains(c))?;
         return rules.ground_loops.get(&ground).copied();
     }

@@ -105,11 +105,47 @@ fort = ["AVCcasx0.def", "AVCramx0.def", "AVCtowx0.def", "AVCinfx0.def", "AVCnecx
 capitol = ["AVCcasz0.def", "AVCramz0.def", "AVCtowz0.def", "AVCinfz0.def", "AVCnecz0.def",
            "AVCdunz0.def", "AVCstrz0.def", "AVCforz0.def", "AVChforz.def"]
 
+# What a tile records of its objects (E24 M2 T5, moved out of the sounds' table at M3 T3a; design §4.4,
+# rules/surveys/E08-objects.md §2.5: tile_refresh_object 0x505610): the topmost object whose
+# entrance is there, else the topmost ownable one blocking it (class_is_ownable 0x40FCA0), else the
+# topmost blocking one, else the topmost hole; its class as the game loads the map's
+# (object_class_values 0x63A6E4).
+[map.records]
+loaded_as = [[165, 114], [166, 115], [167, 116], [168, 117], [169, 118], [170, 119], [171, 120],
+             [172, 121], [173, 122], [174, 123], [175, 124], [176, 125], [177, 126], [178, 127],
+             [179, 128], [180, 129], [181, 130], [182, 131], [183, 132], [184, 133], [185, 134],
+             [186, 135], [187, 136], [188, 137], [189, 138], [190, 143], [191, 147], [192, 148],
+             [193, 149], [194, 150], [195, 151], [196, 152], [197, 153], [198, 154], [199, 155],
+             [200, 156], [201, 157], [202, 158], [203, 159], [204, 160], [205, 161], [219, 33],
+             [220, 53], [221, 99], [223, 21], [230, 46]]
+ownable = [17, 20, 33, 42, 53, 77, 87, 98]
+hole = 124
+
+# The minimap (E24 M3 T3a; design §4.4: minimap_draw 0x412C40): a terrain DEF's palette entries of
+# its open and blocked colours (+0x2C, +0x2E); the classes whose blocked or entrance tiles take the
+# owner's colour (the switch 0x412FF0's cases 0 to 4) and those whose blocked tiles take the
+# terrain's blocked colour (case 5, table 0x413670); by the map's size each tile's pixels (the
+# columns' and rows' counters, 0x413198) and the box, radar.def's frame and the scale of the view's
+# corner (an f32 by its bits: 4.0, 2.0, 1.33, 1.0; 0x4132C5); another size draws no tile.
+[map.minimap]
+radar = "radar.def"
+terrain = [8, 9]
+owned = [17, 20, 33, 42, 53, 87, 98]
+blocking = [116, 118, 119, 121, 123, 126, 128, 131, 133, 134, 135, 137, 148, 149, 152, 153, 154,
+            155, 158, 159, 160]
+other = { frame = 1, scale = 0x3F800000 }
+sizes = [
+  { size = 36, columns = [4], rows = [4], radar = { frame = 4, scale = 0x40800000 } },
+  { size = 72, columns = [2], rows = [2], radar = { frame = 3, scale = 0x40000000 } },
+  { size = 108, columns = [2, 1, 1], rows = [1, 1, 2], radar = { frame = 2, scale = 0x3FAA3D71 } },
+  { size = 144, columns = [1], rows = [1], radar = { frame = 1, scale = 0x3F800000 } },
+]
+
 # The map's sounds (E24 M2 T5; design §3.11): the ambient loops by the original's index
 # (ambient_loop_names 0x65F794) and their volume by distance 0 to 3 (ambient_volumes 0x63A64C);
 # a tile's loop (tile_ambient_sound 0x418620): the coast's water the shore's (the client's: below
 # picture 20, as the map's load; MCL-Q9: the original's test below `shore_pictures`, 21), else by the
-# object the tile records (0x505610) as the game loads its class (object_class_values 0x63A6E4):
+# object the tile records ([map.records]):
 # an entrance's by class (its switch 0x41868B; a bank, the fourth dwelling and a garrison by
 # subclass), a dwelling's by its creature (dwelling_creatures 0x63D570, the switch 0x418809), a
 # mine's by type or abandoned; without an entrance the volcano's, or on a tile of no class the
@@ -134,15 +170,6 @@ loops = ["LoopAnim.wav", "LoopArch.wav", "LoopAren.wav", "LoopBehe.wav", "LoopBi
 volumes = [32, 28, 20, 10]
 shore = "loopocea.wav"
 shore_pictures = 21
-loaded_as = [[165, 114], [166, 115], [167, 116], [168, 117], [169, 118], [170, 119], [171, 120],
-             [172, 121], [173, 122], [174, 123], [175, 124], [176, 125], [177, 126], [178, 127],
-             [179, 128], [180, 129], [181, 130], [182, 131], [183, 132], [184, 133], [185, 134],
-             [186, 135], [187, 136], [188, 137], [189, 138], [190, 143], [191, 147], [192, 148],
-             [193, 149], [194, 150], [195, 151], [196, 152], [197, 153], [198, 154], [199, 155],
-             [200, 156], [201, 157], [202, 158], [203, 159], [204, 160], [205, 161], [219, 33],
-             [220, 53], [221, 99], [223, 21], [230, 46]]
-ownable = [17, 20, 33, 42, 53, 77, 87, 98]
-hole = 124
 objects = [
   { class = 4, loop = "LoopAren.wav" },
   { class = 7, loop = "LoopMark.wav" },

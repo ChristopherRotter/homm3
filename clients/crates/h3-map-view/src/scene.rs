@@ -8,7 +8,8 @@
 //! gems; the heroes and boats as two-row objects among them (E24 M1 T5a, §2.3, §2.8): their
 //! shadows after the objects', their pictures after the bodies of layers 1 and 2; the path's
 //! arrows (E24 M1 T5b2, §2.10): their shadows after every other shadow, their pixels after the
-//! bodies. A walk's draw (E24 M2 T3b, §3.5, §3.8; [`crate::live::Walking`]) adds the view's pixel offset to
+//! bodies. Then the minimap's tiles and box (E24 M3 T3a, §4.4: [`crate::minimap`]). A walk's
+//! draw (E24 M2 T3b, §3.5, §3.8; [`crate::live::Walking`]) adds the view's pixel offset to
 //! every pass's places and draws the lifted hero at the view's middle instead of on its tile: its
 //! shadow's and pictures' cells in passes 5 and 7 among the tiles', then the whole of it once
 //! more, blended, after the arrows (pass 9). [`crate::compose`] draws the list.
@@ -30,6 +31,7 @@ use h3_ui::ui;
 use crate::art::{Layer, MapArt};
 use crate::layout::AdventureLayout;
 use crate::live::{Facing, Lifted, Live, LiveBoat, LiveHero};
+use crate::minimap::{self, Base};
 use crate::objects::{self, DrawLists, Entry, ObjectsError, Shape, Shapes};
 use crate::panels;
 use crate::tables::{ShroudPiece, Tables};
@@ -134,6 +136,25 @@ pub enum Draw {
         x: i32,
         /// The canvas's top edge.
         y: i32,
+    },
+    /// The minimap's tiles (E24 M3 T3a, design §4.4): each tile's colour in the pixels its
+    /// column and row take, straight into the screen.
+    Minimap(minimap::Tiles),
+    /// The minimap's box (E24 M3 T3a, design §4.4): frame `frame` of `def`'s group 0 through the
+    /// plain drawer with runs skipped, from its canvas's column and row `cut` at `at`
+    /// (`def_draw_button_frame` 0x47BF00), as wide as the DEF less the columns cut, less what lies
+    /// past `area`'s right edge, as high likewise.
+    Radar {
+        /// The DEF.
+        def: String,
+        /// The frame.
+        frame: u32,
+        /// Where its canvas's part is drawn.
+        at: [i32; 2],
+        /// The canvas's columns and rows cut at its left and top.
+        cut: [i32; 2],
+        /// The minimap's area (left, top, right, bottom; the last two exclusive).
+        area: [i32; 4],
     },
 }
 
@@ -240,8 +261,27 @@ pub fn scene(
     bugs: Bugs,
 ) -> Result<Scene, SceneError> {
     check_view(art, live, at)?;
-    let index = TileIndex::build(art, live, tables, shapes, at.z, bugs)?;
+    let index = TileIndex::build(art, live, tables, layout, shapes, at.z, bugs)?;
     scene_in(&index, art, live, tables, layout, shapes, at, bugs)
+}
+
+/// Every tile of level `z` of a terrain the tables give (the minimap draws them all, E24 M3
+/// T3a): the first that is not, from the top left.
+fn check_terrains(art: &MapArt, tables: &Tables, z: u8) -> Result<(), SceneError> {
+    let side = i32::try_from(art.size).unwrap_or(0);
+    for y in 0..side {
+        for x in 0..side {
+            let code = art.tile(x, y, z).map(|t| t.terrain.code);
+            if let Some(code) = code.filter(|c| !tables.terrains.contains_key(c)) {
+                return Err(SceneError::Code {
+                    layer: Layer::Terrain,
+                    code,
+                    at: [x, y],
+                });
+            }
+        }
+    }
+    Ok(())
 }
 
 /// The view's level on the map, the viewer a colour, the live part fitting the map.
@@ -268,6 +308,9 @@ pub struct TileIndex {
     z: u8,
     lists: DrawLists,
     looks: Vec<Option<Look>>,
+    /// The level's minimap but the explored tiles and the heroes (E24 M3 T3a); none without the
+    /// layout's area.
+    minimap: Option<Base>,
 }
 
 /// How a listed object is drawn (what [`View::object_piece`] took from the map and the live part
@@ -283,7 +326,8 @@ struct Look {
 
 impl TileIndex {
     /// Level `z`'s index for `live`'s objects, with the original's drawing bugs fixed or
-    /// reproduced (`bugs`: MCL-Q3's random artifact's picture, MCL-Q4's flag).
+    /// reproduced (`bugs`: MCL-Q3's random artifact's picture, MCL-Q4's flag and minimap tile),
+    /// the minimap's into `layout`'s area.
     ///
     /// # Errors
     /// [`SceneError::Objects`]: an object of the level with entries whose picture has no shape.
@@ -291,6 +335,7 @@ impl TileIndex {
         art: &MapArt,
         live: &Live,
         tables: &Tables,
+        layout: &AdventureLayout,
         shapes: &Shapes,
         z: u8,
         bugs: Bugs,
@@ -318,7 +363,14 @@ impl TileIndex {
                 })
             })
             .collect();
-        Ok(Self { z, lists, looks })
+        check_terrains(art, tables, z)?;
+        let minimap = Base::build(art, live, tables, layout, &lists, z, bugs);
+        Ok(Self {
+            z,
+            lists,
+            looks,
+            minimap,
+        })
     }
 
     /// Its level.
@@ -405,6 +457,11 @@ pub fn scene_in(
             x: gem.at[0],
             y: gem.at[1],
         });
+    }
+    // The minimap after the view (`adventure_full_update` 0x41753A, design §4.4).
+    if let Some(base) = &index.minimap {
+        draws.push(Draw::Minimap(base.tiles(live, tables)));
+        draws.push(base.radar(at));
     }
     let moment = live.moment;
     let cycles = [

@@ -1,8 +1,9 @@
 //! What the adventure screen's dialog and resource bar show (E24 M3 T2a, *provisional*;
 //! `docs/epics/E24-design.md` §4.1): the buttons' states at the human player's turn from the
 //! live part's kingdom and buttons, the map's levels and the view's level; the buttons 3 to 12 and
-//! the resource bar's picture in the viewer's colours. The lists' contents (T4), the minimap (T3),
-//! the status window, the amounts and the date (T5) and the hints (T6) come later.
+//! the resource bar's picture in the viewer's colours. The lists' contents (T4), the status
+//! window, the amounts and the date (T5) and the hints (T6) come later; the minimap is
+//! [`crate::minimap`]'s (T3a).
 
 use alloc::collections::BTreeMap;
 
@@ -13,6 +14,8 @@ use crate::live::{Buttons, Live, Selected};
 
 /// The dialog's control ids the panels' logic sets (design §4.1).
 pub mod id {
+    /// The minimap's area.
+    pub const MINIMAP: u16 = 1;
     /// The underground.
     pub const UNDERGROUND: u16 = 4;
     /// The quest log.

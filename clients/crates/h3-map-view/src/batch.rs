@@ -176,8 +176,15 @@ pub fn names(scene: &Scene) -> BTreeSet<String> {
                     names.insert(scene.flags.to_ascii_uppercase());
                 }
             }
-            Draw::Gem { def, .. } => {
+            Draw::Gem { def, .. } | Draw::Radar { def, .. } => {
                 names.insert(def.to_ascii_uppercase());
+            }
+            Draw::Minimap(tiles) => {
+                let (defs, owner) = tiles.drawn();
+                names.extend(defs.into_iter().map(str::to_ascii_uppercase));
+                if owner {
+                    names.insert(scene.flags.to_ascii_uppercase());
+                }
             }
             Draw::Dialog(draw) => {
                 names.extend(
@@ -218,8 +225,15 @@ fn each_spelled<'s>(scene: &'s Scene, mut visit: impl FnMut(&'s str)) {
                     visit(scene.flags.as_str());
                 }
             }
-            Draw::Gem { def, .. } => {
+            Draw::Gem { def, .. } | Draw::Radar { def, .. } => {
                 visit(def.as_str());
+            }
+            Draw::Minimap(tiles) => {
+                let (defs, owner) = tiles.drawn();
+                defs.into_iter().for_each(&mut visit);
+                if owner {
+                    visit(scene.flags.as_str());
+                }
             }
             Draw::Dialog(draw) => h3_ui::paint::names(draw).into_iter().for_each(&mut visit),
         }
