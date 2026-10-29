@@ -73,7 +73,7 @@ are the adventure's (§6).
   eight Favorable Winds pictures (`AVXfw0` to `AVXfw7`: water only); read from the sprite
   archives by T67 (`H3sprite.lod`, as T20a2a read the grounds'): every hole 1 × 1, the winds 6 × 4,
   8 × 6, 6 × 6, 8 × 3, 3 × 6, 3 × 3, 5 × 2, 2 × 5 in that order (§19).
-- **D-44** (decision 163): a hero object (34) on a water tile is `Unsupported::HeroOnWater(index)`
+- **D-44** (decisions 163, 178: kept after E8-5): a hero object (34) on a water tile is `Unsupported::HeroOnWater(index)`
   (counted by reason in `examples/original_data.rs`: none of the 160 shipped maps, §1).
 - **The boats' bound** (decision 164): the setup refuses a boat off water, two boats on one tile,
   a boat on a tile an object blocks or is visited from, or under a hero (`SetupError::Boat`); no
@@ -145,8 +145,8 @@ in `check_step` and the walking search):
 |---|---|---|---|---|
 | an empty boat's tile | boards (a stop; no guard test there) | boards from a stop node; a flight over water passes it | boards from a stop node; never from water | never |
 | a hero in a boat | visit from the tile (battle, meeting: the deck) | visit from a stop node; passes | visit from a stop node | visit from the neighbouring water tile (the two boats) |
-| an object on water visited from the neighbour (the sea's pickups, a monster) | never | **visit from a stop node** (D-45); passes | never | visit from the neighbouring water tile |
-| an entered object on water (a water Cartographer) | never | passes (as today; the original's flyer not read) | never | entered |
+| an object on water visited from the neighbour (the sea's pickups, a monster) | never | **never, and no pass** (D-45 reverted by E8-7; D-46, batch E8c) | never | visit from the neighbouring water tile |
+| an entered object on water (a water Cartographer) | never | **no stop, no pass** (D-46, batch E8c; today it passes, ADV-MOV-009) | never | entered |
 | plain water | never | passes | passes | a stop |
 | a blocked water tile | never | passes | never | never |
 | a free coastal tile | as land | as land | as land | **lands** (a stop, a leaf; no guard test at the step) |
@@ -162,7 +162,7 @@ in `check_step` and the walking search):
   object left becomes one again (0x5056A5).
 - **Guards:** a boat's step onto a water tile a monster guards (water guards water, ADV-MON-005) is
   attacked at once; boarding tests no guard (0x480108); a landing tests none at the step, and the
-  landing tile's guard visits after the landing (`guard_after`), on the shore (§13).
+  landing tile's guard visits after the landing (`guard_after`), at the monster's tile (§13).
 - **Events on water** (ADV-OBJ-007, ADV-MOV-011 amended): a boat's step fires them as a walker's
   (`firing_event`) and ends the move there; their guards fight on the deck. `Reach` stays blind to
   them (decision 131's rule).
@@ -199,8 +199,8 @@ in `check_step` and the walking search):
 - **A walking hero:** a water neighbour (the terrain test fails) is tested for an empty boat
   (`Boats::empty`, one bit) and a hero, out of the hot loop (`#[cold]`, as `guarded`), so
   `reach-xl-144` stays within its gate; a boarding tile is a destination, a leaf.
-- **A flying or water-walking hero:** §7's rows in `passage` (the boarding and D-45 stops, the
-  hero in a boat).
+- **A flying or water-walking hero:** §7's rows in `passage` (the boarding stop, the hero in a
+  boat; D-46's water entrances closed to a flight).
 - **Destinations** (the env's mask, `legal_moves`): the boarding and landing tiles, the visits at
   sea, every water tile a boat reaches. Today's reach only (the sea's next day is not the
   engine's, survey §9).
@@ -229,9 +229,8 @@ in `check_step` and the walking search):
   instead of the 1 000 and the artifact, and nothing of the Survivor's; then the object leaves
   (`ObjectRemoved` where seen). The bottle: `MessageRead { hero, object }` to the visitor's owner
   alone, then it leaves. No question.
-- **Who takes them** (ADV-PIK-018): a boat from the neighbouring water tile; a flyer from a stop
-  node on land beside them (D-45, by the path's last step: the engine has no arrow keys); never a
-  walker or a water walker (§7). E8-7 confirms or reverts the flyer's.
+- **Who takes them** (ADV-PIK-018): a boat from the neighbouring water tile only; never a flyer, a
+  walker or a water walker (§7; D-45 reverted by E8-7, survey §15).
 
 ### 12. Information (ADV-FOG-006 amended, ADV-FOG-008)
 
@@ -253,9 +252,9 @@ in `check_step` and the walking search):
 - `battle_at` passes the two sides' boats: either hero in a boat → (`sea`, `deck`), both →
   (`sea`, `boats`), before the underground; then a special ground on the tile replaces the
   battlefield as on land (none lies on water in the shipped maps). A monster or an event's guards
-  against a boat's hero: the deck. A landing's guards: the shore (the hero has landed). A flyer
-  that attacks a monster on the water from the shore (D-45's path): no boat in the battle, the
-  water tile's own terrain without a battlefield (the reading; VCMI's deck by the tile). The
+  against a boat's hero: the deck. A landing's guards: the monster's tile's battlefield, as any
+  guards' (E8-15: the shore only when that tile is coastal). No hero but a boat's reaches a
+  monster on water (D-45 reverted), so no battle on water lacks a boat. The
   background (GAM-BAT-011) and the attacker's ground (GAM-BAT-013) unchanged. The battle lane's
   `deck` and `boats` battlefields exist (BAT-TER-002, BAT-GEO-004): no battle change, no seam
   change.
@@ -283,12 +282,13 @@ in `check_step` and the walking search):
   Sea Captain's Hat, the Admiral's Hat, Angel Wings beside a coastal Flotsam, Boots of Levitation.
 - **Golden replays:** random play on the sea map (three seeds); scripted: boarding and landing with
   and without the Hat, a battle on the deck from the shore and against a monster on water, two
-  boats, a landing into guards, an event on water, D-45's flyer, a boat leaving with its beaten
+  boats, a landing into guards, an event on water, a flyer refused beside a pickup, a boat leaving with its beaten
   hero. Every golden re-recorded once (the state hash versions).
 - **Properties** (`h3-map`'s `play.rs`, `view.rs`): generated maps with water regions and boats
   beside their coasts; `check_boats` (§6's invariants after every command); `Reach`'s paths
   accepted at sea; the conversion's bounds (without the Hat 0; with it at most the new maximum);
-  a flyer's D-45 stops only from land; fixed cases on the sea map.
+  no path of a hero not in a boat ends on a water entrance or, for a flyer, crosses one (D-46 as
+  batch E8c leaves it); fixed cases on the sea map.
 - **Benchmarks:** `reach-sea-xl-144` (a boat's search; a new XL fixture `e08-sea-144.h3m`, mostly
   sea, 15 boats as Myth and Legend's), `random-play-sea-36`, `fork-sea-xl-144`; the ten workloads
   at their baselines (`reach-xl-144` the walker's cold boat test).
@@ -330,7 +330,10 @@ E8-14).
   (E8-7).
 - **The scoring:** survey §15 (new), each row against §11's prediction; a dispute a row contradicts
   reverts to the other side (decision 162) or becomes an `ADV-Q`; the consensus rows' sources
-  `verified`. E8-5 decides whether D-44's refusal stays (decision 163).
+  `verified`. E8-5 decides whether D-44's refusal stays (decision 163). **Done** (T69, survey §15;
+  decisions 177–179): D-41 to D-43 confirmed, D-44's refusal kept, D-45 reverted, E8-15's battle
+  at the monster's tile; the re-read's **D-46** (a flight over a water tile holding an object)
+  goes to a one-row **batch E8c** (T69b) before T70.
 
 ### 18. Shared and `cross-lane` work; the building tasks; the exit criteria
 
@@ -347,7 +350,7 @@ increment 7's decision 139), so the ADRs are applied once with the disputes' ver
 | Round | Tasks | Content |
 |---|---|---|
 | 2 | **T67** | Batch E8's maps: the writer's boat, pickups, hole, winds and a hero and monster on water (§17); the spec's fields (`cross-lane`); the two specs and templates |
-| 3 | **T68** + **T69** | T68: the harness's reads and clicks, the recipes, the runs E8a and E8b. T69: scored (survey §15); D-41 to D-45 settled or an `ADV-Q` |
+| 3 | **T68** + **T69** (+ **T69b**) | T68: the harness's reads and clicks, the recipes, the runs E8a and E8b. T69: scored (survey §15); D-41 to D-45 settled. T69b: batch E8c, D-46 (decision 179) |
 | 4 | **T70** | `shared/`: the three ADRs amended with T69's outcome, the three effect kinds and the packs, the glossary |
 | 5 | **T71** + **T72** | T71: `h3-heroes` (§2; small). T72: `h3-map` and `h3-adventure`: the import (§4), the kinds and parameters (§5), the state (§6), the views (§12); map import v14, ruleset part v13, adventure state hash v16 |
 | 6 | **T73** | `h3-adventure`: moving (§7), the prices, the drop and the conversion (§8), `Reach` (§9), visits and events at sea (§10); likely cut in two at its start (the boat's moves and prices; `Reach`) |
@@ -360,7 +363,7 @@ increment 7's decision 139), so the ADRs are applied once with the disputes' ver
    boat leaves the map with its hero (ADV-SEA-001, -006, -007, GAM-BAT-003).
 2. Boarding and landing are the original's: the walk ends, the free coastal tile only (D-42), the
    Admiral's Hat's conversion after the step's drop (D-41 as batch E8 decided), the day's maximum
-   switched (A-28 not reproduced), no guard at a boarding, the landing's guards on the shore
+   switched (A-28 not reproduced), no guard at a boarding, the landing's guards at their tile
    (ADV-SEA-002, -003).
 3. A boat sails at the sea's prices with Favorable Winds, the diagonal between two waters, never
    onto an empty boat, with the drop and the diagonal exception at sea (D-43 as decided); the day's
@@ -373,14 +376,15 @@ increment 7's decision 139), so the ADRs are applied once with the disputes' ver
 5. A battle with a hero in a boat is fought on the deck, with both in boats on the two boats
    (GAM-BAT-001).
 6. Flotsam, the Sea Chest, the Shipwreck Survivor and the Ocean Bottle draw, give, turn, lose and
-   leave as the original; a flyer on the coast takes one by a click (D-45 as decided), a walker and
-   a water walker never (ADV-PIK-014 to -018).
+   leave as the original; only a boat takes one, never a flyer, a walker or a water walker (D-45
+   reverted; ADV-PIK-014 to -018).
 7. A viewer sees empty boats' tiles, kinds and facings and every seen hero's boat, never a boat's
    owner or captain nor a pickup's contents (ADV-FOG-006, ADV-FOG-008).
 8. Every new rule has its id, source and tests; `ADV-QUIRK-30` to `-32` recorded as not
    reproduced; the gates pass (coverage, determinism with the re-recorded and new replays, the
    benchmarks at their baselines and the new ones baselined); the env plays on at sea.
-9. Batch E8 run and scored; D-41 to D-45 and the consensus rows `verified` or reverted.
+9. Batch E8 run and scored (T69: D-41 to D-43 confirmed, D-44 refused, D-45 reverted) and batch
+   E8c's D-46; the consensus rows `verified`.
 
 ### 19. Risks and open points
 
@@ -396,8 +400,10 @@ increment 7's decision 139), so the ADRs are applied once with the disputes' ver
   build's census.
 - **The facing's order:** the original's facing numbers against the engine's `DIRECTIONS` (§6),
   for the view only; E8-15 records a landing's facing.
-- **D-45's flyer against a monster on water** (§13) follows the pickups' rule, which E8-7 tests
-  with a Flotsam only; a revert of E8-7 reverts both.
+- **D-45's flyer against a monster on water** (§13) followed the pickups' rule: E8-7 reverted
+  both (T69). **D-46** (a flight over a water tile holding an object, survey §15) changes
+  ADV-MOV-009, built and `verified` in increment 5, if batch E8c confirms the code: T73 then
+  closes those tiles to a flight in `passage` and `Reach`.
 - **The env's encoding** (`cross-lane`, §15): if the user prefers the AI lane's inbox, the env
   encodes no boat until the AI lane takes it, and its agents see a hero in a boat as on its tile.
 - **Not in increment 8** (decision 168): Shipyards and Lighthouses (item 9), Whirlpools, Buoys,

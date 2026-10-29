@@ -42,9 +42,8 @@ chosen: the AI lane's inbox after the build.
 > ground on the battle's tile then replaces the battlefield as on land (no shipped map has one on
 > water). Nothing else in a battle reads a boat (the original's three tests, survey §7.1). A
 > monster or an event's guards on water fight a boat's hero on the deck; a landing's guards fight
-> on the shore, the hero out of its boat; a flyer that attacks a monster on the water from the
-> shore (D-45's path, ADR-0016 point 4) fights on the water tile's own terrain, no boat in the
-> battle (the reading; VCMI's deck by the tile). A hero in a boat that loses, retreats or
+> at the monster's tile, the hero out of its boat (batch E8's E8-15); no hero but a boat's reaches
+> a monster on the water (ADR-0016 point 4; D-45 reverted). A hero in a boat that loses, retreats or
 > surrenders leaves the map **with its boat** (GAM-BAT-003 amended, ADV-SEA-006); a winner in a
 > boat stays in it.
 

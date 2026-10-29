@@ -7924,3 +7924,42 @@ in its boat. **A boat's record keeps its boarding tile while the hero sails** (E
 read (5, 63) and (5, 68) after their battles; T68a saw it updated at the landing).
 
 T69 (the scoring of E8a and E8b) queued.
+
+### Increment 8, round 3: T69, batch E8's scoring (2026-10-29, `adventure/e08-t69`)
+
+**The cut** (decision 177): whole, with a re-read of the flyer's search (recommended; not chosen:
+whole without it, in two). **Baseline:** `master` c8c1569 (#562 merged; CI on `master` green at
+64e2d5d, c8c1569's run in progress at the start). No engine code changed: docs and the address
+map only. `Heroes3.exe` staged from the user's repo folder for the re-read; VCMI 1.7.5's
+`lib/pathfinder` read for D-46.
+
+**The scoring** (survey `E08-sea.md` §15): the 16 rows against §11 as T67 corrected it. D-41 (E8-1,
+E8-2), D-42 (E8-3) and D-43 (E8-4) conclusive for the reading against VCMI. D-44 (E8-5): the
+original keeps a hero written on water on foot, no boat, the land's points; the import keeps
+refusing it (ADV-Q34, decision 178). D-45 (E8-7) **contradicted**: the flyer's click found no
+path; reverted to the wiki's side, VCMI agreeing (only a boat takes a sea pickup or reaches a
+monster on water). E8-15's battle on grass: the monster's tile, as every guard battle
+(ADV-MON-007); survey §7.2's "the shore" was a misprediction. A-28 confirmed (E8-10, E8-16), not
+reproduced as decided (decision 166). The draws within chance over both recorded runs (Flotsam
+χ² 1.3, chests 0.5, Survivors' classes 4.0; the second run's Survivors alone 10.7, p ≈ 0.01); every
+chest artifact a treasure one (12 of 12). The rest confirmed (E8-6, E8-8 to E8-14, E8-16); a
+second click on an unaffordable path zeroing the points is ADV-MOV-006's "loses the rest"; the
+landing's facing is the step's direction clockwise from up (east 2, south 4).
+
+**The re-read** (`docs/exe/map.toml` 0x4B2300, 0x56A0D0; survey §15): a node not in a boat onto a
+water entrance of any class but 34, 8 and 85 loses bit 10 and is relaxed as a stop node
+(0x4B27FB to 0x4B282D, 0x4B2D12), with no flying copy (0x4B2D3D needs bit 10);
+`pathfinder_build_path` builds from the bit-10 slot only, so no path ends there (E8-7), and
+`pathfinder_run` never expands such a stop node for a human's mouse path, so no flight passes
+either. §8.1 had taken the stop flag for a stop. **D-46** (new): a flight over a water tile
+holding an object, closed by the code, passed by ADV-MOV-009 (increment 5) and VCMI 1.7.5 (its air
+layer flies every tile), the wiki silent: ADV-Q35, decision 179: a one-row batch E8c (T69b) first;
+the drafts and the design carry the code's side until it runs.
+
+**The docs:** survey §15 and pointers in §0, §7.2, §7.4, §8.1, §10 and §12; the drafts
+`0016-increment-8.md` (point 4: D-44 kept, D-45 reverted, D-46, the landing's guards at their tile)
+and `0017-increment-8.md` (the landing's guards, no flyer's battle on water); `E08-design.md` §4,
+§7, §9, §11, §13, §15, §17, §18 and §19. The battle lane's inbox: BAT-TER-002 and
+BAT-GEO-004's observations (E8-11 to E8-14). No version.
+
+T69b (batch E8c) queued before T70.
