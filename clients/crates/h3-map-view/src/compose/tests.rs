@@ -699,10 +699,21 @@ fn the_cells_comparisons() {
         ranges,
         steps: 1,
     };
-    let past = [cycle("TERRAIN.DEF", vec![[10, 20]]), cycle("other.def", vec![[1, 9]])];
+    let past = [
+        cycle("TERRAIN.DEF", vec![[10, 20]]),
+        cycle("other.def", vec![[1, 9]]),
+    ];
     assert!(!uses(&map, &terrain_def, [&past, &[]]));
-    assert!(uses(&map, &terrain_def, [&[], &[cycle("terrain.def", vec![[1, 8]])]]));
-    assert!(!uses(&map, &[], [&[], &[cycle("terrain.def", vec![[1, 8]])]]));
+    assert!(uses(
+        &map,
+        &terrain_def,
+        [&[], &[cycle("terrain.def", vec![[1, 8]])]]
+    ));
+    assert!(!uses(
+        &map,
+        &[],
+        [&[], &[cycle("terrain.def", vec![[1, 8]])]]
+    ));
     // It stays where it is when the view moves.
     assert!(same_moved(&map, &map, [2, -1]));
     assert!(stays_put(&map) && !stays_put(&gem));
@@ -991,15 +1002,21 @@ fn a_kept_frame_draws_the_minimap_again_only_when_it_changes() {
         s
     };
     let b = minimap_batch();
-    as_fresh(&[quiet([0, 0], 0), quiet([1, 0], 3), quiet([1, 1], 6)], &b, [14, 12]);
+    as_fresh(
+        &[quiet([0, 0], 0), quiet([1, 0], 3), quiet([1, 1], 6)],
+        &b,
+        [14, 12],
+    );
     let mut composer = Composer::new([14, 12]).unwrap();
     composer.compose(&quiet([0, 0], 0), &b).unwrap();
     composer.compose(&quiet([1, 0], 3), &b).unwrap();
     assert!(!composer.damage().is_empty());
-    assert!(composer
-        .damage()
-        .iter()
-        .all(|&r| meet(r, [9, 0, 13, 2]).is_none()));
+    assert!(
+        composer
+            .damage()
+            .iter()
+            .all(|&r| meet(r, [9, 0, 13, 2]).is_none())
+    );
     // Two scenes alike change nothing.
     let mut composer = Composer::new([14, 12]).unwrap();
     composer.compose(&scenes[1], &minimap_batch()).unwrap();

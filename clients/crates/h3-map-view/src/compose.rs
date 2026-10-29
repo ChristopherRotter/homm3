@@ -633,7 +633,9 @@ fn same_moved(now: &Draw, was: &Draw, shift: [i32; 2]) -> bool {
                 && def == def_was
         }
         // The minimap stays where it is, whatever the view does.
-        (Draw::Minimap(_), Draw::Minimap(_)) | (Draw::Radar { .. }, Draw::Radar { .. }) => now == was,
+        (Draw::Minimap(_), Draw::Minimap(_)) | (Draw::Radar { .. }, Draw::Radar { .. }) => {
+            now == was
+        }
         _ => false,
     }
 }
