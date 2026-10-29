@@ -13,6 +13,7 @@ use alloc::vec::Vec;
 use core::fmt;
 
 use h3_protocol::wire::{Event, Manifest, Observation, Side, Stack};
+use h3_render::recolour::Effect;
 
 use crate::anim::{
     BATTLEFIELD, Blast, DRAWBRIDGE_RECT, Dissolve, DissolveArea, Field, GONE, Magic, Object, Pose,
@@ -66,6 +67,9 @@ pub struct Moment {
     /// The hues of the count boxes of the stacks with active spells, by id, as the bits of the
     /// f32 values ([`spell_hue`]; E17 M3 T7b-2a); the other boxes take the layout's tint.
     pub hues: BTreeMap<u8, u32>,
+    /// The palette effects by their spells of the stacks that have one, by id (E17 M5 T5b1: a
+    /// glow's step, the petrified look); a clone without one takes a clone's colours.
+    pub looks: BTreeMap<u8, Effect>,
     /// The stack the mouse marks (E17 M3 T6c-1, `crate::mouse`): its outline the mouse's unless
     /// it is the active stack (0x43E23A to 0x43E261, §4.2).
     pub marked: Option<u8>,
@@ -128,6 +132,7 @@ impl Moment {
             field: timeline.field(t),
             counts: timeline.counts(t),
             hues: timeline.hues(t),
+            looks: timeline.looks(t),
             marked: None,
             area: Vec::new(),
             walls: timeline.walls(t),
@@ -315,6 +320,9 @@ pub enum Draw {
         mirrored: bool,
         /// Its outline: the layout's outline palette's entry, none for no outline.
         outline: Option<u8>,
+        /// Its palette effect (`draw_battle_stack` 0x43E280, E17 M5 T5b1): a glow, the petrified
+        /// look or a clone's colours.
+        effect: Option<Effect>,
     },
     /// A siege's part (E17 M4 T1b, design §10.1): its picture with index 0 transparent, its
     /// top-left corner at (`x`, `y`), only its pixels inside `clip` (`battle_draw_pcx_rect`
@@ -1521,6 +1529,13 @@ fn creature(
         } else {
             (moment.marked == Some(stack.id)).then(|| layout.mouse_outline_after(moment.pulse))
         },
+        // The first that applies (0x43E280 to 0x43E4C7): a glow or the petrified look by its
+        // spells, else a clone's colours (+0x84's 0x800000).
+        effect: moment
+            .looks
+            .get(&stack.id)
+            .copied()
+            .or_else(|| stack.clone.then_some(Effect::Clone)),
     };
     let groups = tables.battle.groups;
     Ok(Sprite {

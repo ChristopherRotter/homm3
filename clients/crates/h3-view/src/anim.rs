@@ -29,6 +29,7 @@ use core::fmt::Write as _;
 
 use h3_protocol::wire::{Event, Observation, Outcome, ServerMessage, Side, Stack, Target};
 use h3_render::Bugs;
+use h3_render::recolour::Effect;
 
 use crate::battle_log::{Logged, Spread};
 use crate::hero::{Action, Happening, Heroes};
@@ -514,6 +515,30 @@ pub struct TintKey {
     /// The hue's f32 bits (none: the layout's tint).
     pub hue: Option<u32>,
 }
+
+/// A stack's palette effect by its spells from a time on (E17 M5 T5b1, design §7.26): a glow's
+/// step while Bloodlust's or Stone Gaze's handler redraws it, then the petrified look while Stone
+/// Gaze holds it (none: its own colours, or a clone's, which the scene takes from the stack).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct LookKey {
+    /// The stack's id.
+    pub stack: u8,
+    /// When it shows.
+    pub shown: u32,
+    /// The effect.
+    pub look: Option<Effect>,
+}
+
+/// Bloodlust (the executable's spell number): its handler glows the stacks it reached
+/// (`cast_spell` 0x5A122B, 0x5A1359; E17 M5 T5b1).
+pub const BLOODLUST: u16 = 43;
+/// Stone Gaze (the executable's spell number): its handler glows the stack, which then looks
+/// petrified while the spell lasts (0x5A1121, `draw_battle_stack` 0x43E3CB; E17 M5 T5b1).
+pub const STONE_GAZE: u16 = 70;
+/// A glow's steps: Bloodlust's strength 0.0 to 0.9 then 1.0 to 0.1 (0x5A12A3 to 0x5A1311),
+/// Stone Gaze's 1.0 to 0.1 (0x5A1199 to 0x5A11CF), in tenths.
+const BLOODLUST_STEPS: [u8; 20] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1];
+const STONE_STEPS: [u8; 10] = [10, 9, 8, 7, 6, 5, 4, 3, 2, 1];
 
 /// The magic animation of a spell resisted by the stack it was aimed at (`cast_spell` 0x5A2043:
 /// number 0x4E over it, 100 ms a frame, without its hit; E17 M3 T7b-1).
@@ -1036,6 +1061,8 @@ pub struct Timeline {
     pub counts: Vec<CountKey>,
     /// The hues the stacks' boxes take from a time on by their spells, in order (E17 M3 T7b-2a).
     pub tints: Vec<TintKey>,
+    /// The stacks' palette effects by their spells from a time on, in order (E17 M5 T5b1).
+    pub looks: Vec<LookKey>,
     /// The stack outlined as active from a time on (none: no outline), in order (§7.9).
     pub outlines: Vec<(u32, Option<u8>)>,
     /// When each idle step ran, up to the last command's start (none runs while a command
@@ -1423,6 +1450,18 @@ impl Timeline {
         hues
     }
 
+    /// The palette effects by their spells of the stacks at `t`, by id (E17 M5 T5b1).
+    pub fn looks(&self, t: u32) -> BTreeMap<u8, Effect> {
+        let mut looks = BTreeMap::new();
+        for k in self.looks.iter().filter(|k| k.shown <= t) {
+            match k.look {
+                Some(look) => looks.insert(k.stack, look),
+                None => looks.remove(&k.stack),
+            };
+        }
+        looks
+    }
+
     /// The stack outlined as active at `t` (§7.9): the snapshot's active stack until the first
     /// command's first frame shows; none while a command plays; a turn's stack from its start
     /// when a player acts next, none when the computer does (*provisional*).
@@ -1483,6 +1522,7 @@ impl Timeline {
         times.extend(self.hero_keys.iter().map(|k| k.shown));
         times.extend(self.counts.iter().map(|k| k.shown));
         times.extend(self.tints.iter().map(|k| k.shown));
+        times.extend(self.looks.iter().map(|k| k.shown));
         times.extend(self.outlines.iter().map(|(t, _)| *t));
         times.extend(self.turrets.iter().map(|k| k.shown));
         times.extend(self.walls.iter().map(|k| k.shown));
@@ -1927,6 +1967,8 @@ impl<'a> Growing<'a> {
             counts: Vec::new(),
             tints: Vec::new(),
             pending_tints: Vec::new(),
+            look_keys: Vec::new(),
+            pending_looks: Vec::new(),
             outlined: Vec::new(),
             machine: None,
             idle: Idle::default(),
@@ -2014,6 +2056,12 @@ impl<'a> Growing<'a> {
             .iter()
             .filter(|(_, l)| !l.spells.is_empty())
             .map(|(&id, l)| (id, hue(l, casts)))
+            .collect();
+        // The snapshot's petrified stacks look so from the start (E17 M5 T5b1).
+        player.pending_looks = player
+            .stacks
+            .iter()
+            .filter_map(|(&id, l)| rest_look(l, casts).map(|look| (id, Some(look))))
             .collect();
         // The snapshot's battlefield objects show from the start (E17 M3 T7c-2); one the other
         // side does not see, only to its own (E17 M5 T2b).
@@ -2253,6 +2301,7 @@ impl<'a> Growing<'a> {
         t.hero_keys.append(&mut p.hero_keys);
         t.counts.append(&mut p.counts);
         t.tints.append(&mut p.tints);
+        t.looks.append(&mut p.look_keys);
         t.steps.append(&mut p.steps);
         t.cues.append(&mut p.cues);
         t.log.append(&mut p.log);
@@ -2286,6 +2335,20 @@ fn hue(live: &Live, casts: &Casts) -> Option<u32> {
                 .map(|h| casts.spells.get(h).map_or(0, |l| l.sign)),
         )
     })
+}
+
+/// A stack's palette effect by its spells outside a glow (E17 M5 T5b1): petrified while Stone
+/// Gaze lasts (its duration +0x2B0 above 0, `draw_battle_stack` 0x43E3CB).
+fn rest_look(live: &Live, casts: &Casts) -> Option<Effect> {
+    live.spells
+        .iter()
+        .any(|h| {
+            casts
+                .spells
+                .get(h)
+                .is_some_and(|l| l.original == STONE_GAZE)
+        })
+        .then_some(Effect::Petrified)
 }
 
 /// What a command's action does at its start to the stacks in group 1 and to the mouse's stack
@@ -2502,6 +2565,10 @@ struct Player<'a> {
     tints: Vec<TintKey>,
     /// The hues changed since the last frame drawn: they show with the next.
     pending_tints: Vec<(u8, Option<u32>)>,
+    /// The palette effects by spells from a time on (E17 M5 T5b1).
+    look_keys: Vec<LookKey>,
+    /// The palette effects changed since the last frame drawn: they show with the next.
+    pending_looks: Vec<(u8, Option<Effect>)>,
     /// The outline's changes inside the command so far: a war machine's turn that plays out
     /// in it (E17 M3 T3b).
     outlined: Vec<(u32, Option<u8>)>,
@@ -2763,6 +2830,10 @@ impl Player<'_> {
         let casts = self.stage.casts;
         let live = self.stacks.remove(&stack).map(|mut l| {
             let before = l.spells.len();
+            // Its corpse no longer petrified (E17 M5 T5b1).
+            if rest_look(&l, casts).is_some() {
+                self.pending_looks.push((stack, None));
+            }
             l.spells.retain(|h| {
                 casts
                     .spells
@@ -3576,9 +3647,14 @@ impl Player<'_> {
             .get(&spell)
             .cloned()
             .unwrap_or_default();
+        // Stone Gaze takes hold only where the engine applied it (E17 M5 T5b1).
+        let stone = look.original == STONE_GAZE
+            && effects
+                .iter()
+                .any(|e| matches!(*e, Event::EffectApplied { target: t, .. } if t == target));
         let Some(live) = self
             .live(target)
-            .filter(|_| matches!(look.original, POISON | ACID_BREATH))
+            .filter(|_| stone || matches!(look.original, POISON | ACID_BREATH))
         else {
             self.effects(&effects);
             return;
@@ -3589,6 +3665,19 @@ impl Player<'_> {
             self.outlined.push((self.clock.now, None));
         }
         self.cue(target, Sound::Spell(spell), false);
+        if stone {
+            // Stone Gaze (0x5A10F1): its effect, its line (GENRLTXT 559 or 560 by the stack's
+            // number, `battle_log_cast` 0x5A8E25), its glow; then the stack looks petrified.
+            self.effects(&effects);
+            let line = Logged::Petrified {
+                stack: target,
+                count: live.count,
+            };
+            self.log.push((self.clock.now, line));
+            self.glow(&[target], &STONE_STEPS, Effect::StoneGlow);
+            self.outlined.push((self.clock.now, self.acting));
+            return;
+        }
         let poison = look.original == POISON;
         // Acid Breath's defense lowered (none for Poison).
         let lowered = (!poison).then(|| live.defense.clamp(0, ACID_DEFENSE));
@@ -3907,7 +3996,13 @@ impl Player<'_> {
                             _ if applied => {
                                 self.effects(effects);
                                 self.log.push((self.clock.now, line));
-                                over(self);
+                                // Bloodlust glows instead of an animation (0x5A122B; E17 M5
+                                // T5b1).
+                                if look.original == BLOODLUST {
+                                    self.glow(&[t], &BLOODLUST_STEPS, Effect::Bloodlust);
+                                } else {
+                                    over(self);
+                                }
                             }
                             _ => done = false,
                         }
@@ -4039,8 +4134,13 @@ impl Player<'_> {
                 self.cue(owner.unwrap_or(0), Sound::Spell(spell), false);
                 self.effects(effects);
                 self.log.push((self.clock.now, cast_line));
-                let marked: Vec<(u8, u32)> = applied.iter().map(|&t| (t, 0)).collect();
-                self.mass(look.animation, &marked, false);
+                if look.original == BLOODLUST {
+                    // Every stack it reached glows together (0x5A1359 to 0x5A1577; E17 M5 T5b1).
+                    self.glow(&applied, &BLOODLUST_STEPS, Effect::Bloodlust);
+                } else {
+                    let marked: Vec<(u8, u32)> = applied.iter().map(|&t| (t, 0)).collect();
+                    self.mass(look.animation, &marked, false);
+                }
                 true
             }
             _ => false,
@@ -4737,7 +4837,7 @@ impl Player<'_> {
         }
     }
 
-    /// The pending hues show from `shown` (E17 M3 T7b-2a).
+    /// The pending hues (E17 M3 T7b-2a) and palette effects (E17 M5 T5b1) show from `shown`.
     fn show_tints(&mut self, shown: u32) {
         let tints = core::mem::take(&mut self.pending_tints);
         self.tints.extend(
@@ -4745,6 +4845,35 @@ impl Player<'_> {
                 .into_iter()
                 .map(|(stack, hue)| TintKey { stack, shown, hue }),
         );
+        let looks = core::mem::take(&mut self.pending_looks);
+        self.look_keys
+            .extend(
+                looks
+                    .into_iter()
+                    .map(|(stack, look)| LookKey { stack, shown, look }),
+            );
+    }
+
+    /// A glow over `stacks` (`cast_spell` 0x5A122B, 0x5A1121, 0x5A1359; E17 M5 T5b1, design
+    /// §7.26): the flag set, then a redraw at trunc(100 F) for each of `steps` (its effect at
+    /// that strength), shown; the flag cleared and a redraw shown at once, each stack back to
+    /// its look by its spells.
+    fn glow(&mut self, stacks: &[u8], steps: &[u8], effect: fn(u8) -> Effect) {
+        let time = self.speed.scale(TICK);
+        // The flag goes before any look the spell gave (0x43E280's order).
+        self.pending_looks.retain(|(s, _)| !stacks.contains(s));
+        for &step in steps {
+            self.pending_looks
+                .extend(stacks.iter().map(|&s| (s, Some(effect(step)))));
+            self.frame(&[], time);
+        }
+        let casts = self.stage.casts;
+        let rest: Vec<(u8, Option<Effect>)> = stacks
+            .iter()
+            .map(|&s| (s, self.stacks.get(&s).and_then(|l| rest_look(l, casts))))
+            .collect();
+        self.pending_looks.extend(rest);
+        self.redraw();
     }
 
     /// The spells `events` start and end on stacks: each stack's active spells, and its box's
@@ -4775,6 +4904,7 @@ impl Player<'_> {
         let Some(live) = self.stacks.get_mut(&stack) else {
             return;
         };
+        let was = rest_look(live, casts);
         let changed = if on {
             live.spells.insert(spell)
         } else {
@@ -4782,6 +4912,10 @@ impl Player<'_> {
         };
         if changed {
             self.pending_tints.push((stack, hue(live, casts)));
+            let look = rest_look(live, casts);
+            if look != was {
+                self.pending_looks.push((stack, look));
+            }
         }
     }
 

@@ -2901,6 +2901,68 @@ BAT-MAG-052, `installation.md` §7.19).
   timeline as recorded (28 changes), 56 frames, the dissolve's 8 differing only by the slip
   above (about 800 pixels each: the Imps' corpse fading), the rest exact.
 
+### 7.26 A stack's palette effects (M5 T5b1)
+
+Read at T5b1 (`draw_battle_stack` 0x43E280 to 0x43E4C7, `palette16_recolour` 0x522B50,
+`palette16_stone_glow` 0x522A10, `palette16_petrified` 0x522D50, 0x523190, 0x5232F0, `cast_spell`'s
+Bloodlust and Stone Gaze handlers). Built as `h3_render::recolour` (the effects), the timeline's
+`LookKey`s and the scene's `Draw::Creature` `effect`.
+
+- **Where.** Part 0 of `draw_battle_stack` (the sprite), before the frame is drawn: the creature
+  DEF's 16-bit palette (its +0x20, entries at +0x1C) is copied aside, copied into a palette object
+  (0x5226A0), changed there, copied back into the DEF, the sprite drawn (`battle_draw_sprite`
+  0x4951B0), and the copy put back (0x43E535). Only the sprite: the count box and the magic
+  animation over the stack are drawn without it. Entries 10 to 255 change (from +0x30: 246
+  entries); 0 to 9, the drawers' keyed colours, stay.
+- **Which.** The first that applies of: the stack's +0x84 flag 0x20000000 (Bloodlust's glow),
+  0x40000000 (Stone Gaze's glow), Stone Gaze's duration +0x2B0 above 0 (petrified), the flag
+  0x800000 (a clone). A clone under a glow glows; a petrified clone looks petrified. BAT-QUIRK-7's
+  original turned into its own clone takes 0x400000 alone: its own colours.
+- **The channels.** Each entry's red, green and blue (masks 0x69CC64, 0x69CC60, 0x69CC68, set
+  with the screen's by `pixel_format_from_masks` 0x55A6B0) scaled as the tint's (§3.7): c × K, K =
+  0x7FFFFFFF / mask, unsigned; back, each channel divided by its K and kept to its mask.
+- **RGB to HSV** (0x523190, fastcall: red, green; blue and the three outputs on the stack):
+  V = f32(f32(max) / 2^31); without a difference h = 0 and s = 0 (s = f32(span / f32(max)) with
+  span = f32(max − min) otherwise); the distances d_c = f32(f32(max − c) / span); by the largest
+  channel, red first, then green: h = f32((d_b − d_g) / 6 + 0), (d_r − d_b) / 6 + f32(1/3), or
+  (d_g − d_r) / 6 + f32(2/3), each step at 53 bits; a negative h gets 1 added (f32).
+- **HSV to RGB** (0x5232F0): with s = 0 every channel round(v × 2^31) (the 1.5 × 2^52 addition, its
+  low word: ties to even); else H = f32(h × 6), f = f32(fmod(H, 1)), V = f32(v × 2^31), p =
+  f32((1 − s) V), q = f32((1 − f s) V), t = f32((1 − (1 − f) s) V), the channels by `crt_ftol`(H)
+  as the tint's (V, t, p) … (V, p, q), each rounded so; a sextant above 5 (H rounded up to 6)
+  writes nothing, so the entry comes back as it was. The round trip is not the identity: white's
+  scaled blue is its largest channel (0x1F × K_b = 2^31 − 2 against red's 2^31 − 2 048), so white
+  is a faint cyan, and a blue of 1 loses its level to the f32 store of its scaled value.
+- **The recolour** (0x522B50; hue, weight, saturation, value as f32 arguments): unless the weight is
+  negative, d = f32(hue − h), h = f32(d × weight + h); if |d| > 0.5 (the shorter way round),
+  h = f32((1 − weight) + h) for d > 0, else f32(h + weight), and 1 taken off if h ≥ 1. The
+  saturation, unless its factor is negative: times the factor up to 1, else
+  f32(1 − (1 − s) / factor); the value alike.
+- **The four effects.** A clone: the recolour with 0.67, 1, 2, 2 (0x43E47C: the hue set to blue,
+  saturation and value halfway to 1). Bloodlust's glow: 0, g, f32(g + 1), f32(g + 1) with g the
+  stack's +0x450 (0x43E2CC: toward red by g, then saturation and value toward 1). Stone Gaze's
+  glow (0x522A10, g): the saturation alone, times g up to 1, else toward 1. Petrified (0x522D50,
+  integers alone): every channel the largest scaled one, divided by its own K and masked.
+- **The glows** (§7.16's "Glows"): g = f32(i × 0.1) at 53 bits. Bloodlust (0x5A122B; at Expert the
+  mass handler's 0x5A1359 flags every stack it reached and redraws them together): its effect,
+  its line, the flag set, the stack's hexes dirty, then i = 0 to 9 and 10 down to 1, each a
+  redraw (1, 1, 0, 100, 1, 1): the dirty rectangle, at trunc(100 F), shown; the flag cleared
+  and a redraw (1, 1, 0, 0, 1, 0) shown at once, which replaces the last step within its
+  millisecond. Stone Gaze (0x5A1121, the strike's pending spell, §7.16): its effect, its line
+  (`battle_log_cast` 0x5A8E25: GENRLTXT 559 or 560 by the stack's number), then i = 10 down to 1
+  so; the stack is petrified from the redraw that clears the flag. Neither in a hidden battle.
+  The redraws are clipped to the stack's rectangle; nothing else changes meanwhile, so the
+  viewer redraws whole.
+- **Built** (*provisional* where marked): `h3_render::recolour::Effect` (`Bloodlust(step)`,
+  `StoneGlow(step)`, `Petrified`, `Clone`) computes an entry exactly in integers (each x87 result
+  rounded to 53 bits, each f32 store to 24; `clients/scripts/palette-reference.py` in IEEE doubles:
+  the tests' digests over every 16-bit value, 24 effects), about 0.9 µs an entry; `anim`'s
+  `LookKey` list (a glow's steps, the petrified look from Stone Gaze's effect to its end or the
+  stack's death; a reused id's afresh); the scene takes a stack's look, else a clone's colours
+  from the stack's `clone`. Not built: an Ogre Magi's Bloodlust (a creature's cast other than an
+  area spell takes effect at once, §7.16).
+- **Recorded**: see the epic's log (M5 T5b1).
+
 ## 8. The window, input and audio evaluation (M2 T2)
 
 ADR-0020 point 4 left the library to a measured evaluation at M2; the choice, the user's

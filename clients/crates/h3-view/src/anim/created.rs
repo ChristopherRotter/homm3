@@ -14,7 +14,7 @@ use alloc::vec::Vec;
 
 use h3_protocol::wire::{DamageRoll, Event, Side, Stack};
 
-use super::{CountKey, GONE, Key, Live, Member, Player, Pose, Sound, TintKey};
+use super::{CountKey, GONE, Key, Live, LookKey, Member, Player, Pose, Sound, TintKey};
 use crate::battle_log::Logged;
 use crate::scene::Moment;
 
@@ -356,7 +356,7 @@ impl Player<'_> {
             },
             stack,
         });
-        // A reused id's box and hue start afresh.
+        // A reused id's box, hue and look start afresh.
         self.counts.push(CountKey {
             stack: id,
             shown: now + 1,
@@ -366,6 +366,11 @@ impl Player<'_> {
             stack: id,
             shown: now + 1,
             hue: None,
+        });
+        self.look_keys.push(LookKey {
+            stack: id,
+            shown: now + 1,
+            look: None,
         });
         self.log.push((
             now,

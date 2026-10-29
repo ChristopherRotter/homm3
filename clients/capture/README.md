@@ -873,6 +873,7 @@ sequence fails at its end when any forced value was.
 | `thunderbird` | `random(1, 100) <= 20` (1, 100) | 0x44119D, the Thunderbird's bolt |
 | `acid` | `random(1, 100) <= 20` (1, 100) | 0x4414B7, the Rust Dragon's acid damage (its amount drawn after, not forced) |
 | `poison` | `random(1, 100) <= 30` (1, 100) | 0x440839, the Wyvern Monarch's Poison |
+| `stone_gaze` | `random(1, 100) <= 20` (1, 100) | 0x440780, the Medusas' and Basilisks' Stone Gaze (E17 M5 T5b1) |
 | `wall_damage` | `random(1, 100)` against the chances for 0, 1, 2 (100, 1) | 0x445ED6, a wall shot's damage, drawn first (E17 M4 T2b) |
 | `wall_hit` | `random(1, 100) <=` the target kind's chance (1, 100) | 0x445F25, its hit; a miss lands on the nearest other wall |
 | `wall_miss_tie` | `random(1, 100) <= 50` the later (1, 100) | 0x445F6C, a miss between two walls equally near |
