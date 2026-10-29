@@ -682,7 +682,9 @@ def settle(game, mem, index, answer=None, battle=None, level_up="left", actions=
             raise TimeoutError(f"neither the adventure map, a battle nor a dialog for {STRANGE} s "
                                f"(the game over?; the display: {bad})")
         if in_battle(game, pix):
-            events["battles"].append(fight(game, mem, battle))
+            # E08 T68b (batch E8b's E8-13, E8-14): the hero's tile as the battle opens.
+            at = mem.hero(index)["tile"]
+            events["battles"].append({**fight(game, mem, battle), "hero_tile": at})
             last, since = None, time.monotonic()
             continue
         waiting = find_button(game, "ok_disabled", pix)
@@ -745,7 +747,7 @@ def settle(game, mem, index, answer=None, battle=None, level_up="left", actions=
             last, since = None, time.monotonic()
             continue
         if oks:
-            events["messages"].append(h3lod.identify(mem.dialog_text()) or "?")
+            events["messages"].append(message_record(mem))
             events["message_pictures"].append(pictures_text(mem))
             click_button(game, "ok", oks[0])
             events["dialogs"] += 1
@@ -765,7 +767,8 @@ def approach_target(game, mem, name, target, days=0):
     visits across a wide grid: the original's pathfinder finds no path onto an unexplored tile),
     as a player would: to the open tile (h3mem.open_tiles: explored, empty, not guarded) nearest
     the target, again until the target is explored; each walk may wait for the hero's next turn
-    (`days`). Returns the tiles walked to and the days waited."""
+    (`days`). Since E08 T68b a hero in a boat sails to open water tiles only (sea_only: batch E8b's
+    legs over the water). Returns the tiles walked to and the days waited."""
     x, y, z = (*target, 0) if len(target) == 2 else target
     walked, waited = [], 0
     while True:
@@ -776,7 +779,7 @@ def approach_target(game, mem, name, target, days=0):
 
         def far(t, to):
             return max(abs(t[0] - to[0]), abs(t[1] - to[1]))
-        open_ = mem.open_tiles(hero["owner"], z) - {here}
+        open_ = mem.open_tiles(hero["owner"], z, sea_only(hero)) - {here}
         if not open_:
             raise RuntimeError(f"{name} has no open tile toward {target}")
         best = min(open_, key=lambda t: (far(t, (x, y)), far(t, here), t[1], t[0]))
@@ -787,6 +790,12 @@ def approach_target(game, mem, name, target, days=0):
         if not obs["arrived"]:
             raise RuntimeError(f"{name} did not reach {best} on the way to {target}")
         walked.append(list(best))
+
+
+def sea_only(hero):
+    """True for a hero in a boat (status bit 18; E08 T68b): its open tiles are water tiles only
+    (h3mem.open_tiles' `water`); None (any tile) for another."""
+    return True if hero["status"] & h3mem.IN_BOAT else None
 
 
 def view_both(game, mem, hero, x, y, z):
@@ -825,7 +834,7 @@ def ready(game, mem, name, target, days=0, near=False):
         # route there, no walk), then one on the target (a click on the set destination walks).
         hero = select(game, mem, name)
         hx, hy, _ = hero["tile"]
-        beside = sorted(t for t in mem.open_tiles(hero["owner"], z)
+        beside = sorted(t for t in mem.open_tiles(hero["owner"], z, sea_only(hero))
                         if max(abs(t[0] - hx), abs(t[1] - hy)) == 1 and t != (x, y))
         if not beside:
             raise RuntimeError(f"{name} has no open tile beside it to set its route anew")
@@ -1002,6 +1011,20 @@ SCREEN_ACTIONS = ("click", "right", "slider")
 # secondary skill (secskill.def, frame 3 x skill + 3 + level - 1), a spell (spells.def), a scroll
 # (spellscr.def), morale and luck (imrl82.def, ilck82.def: their frames as shown).
 PSKILL_FRAMES = (*h3mem.PRIMARY_SKILLS, "experience", "spell points")
+
+
+def message_record(mem):
+    """The record a message box's text was written from (h3lod.identify: `ADVEVENT:86`, since E08
+    T68b also `RANDSIGN:24`, a sign's or Ocean Bottle's default text), or first, since E08 T68b,
+    `the map's text "..."` when it is the text one of the map's message records holds (batch
+    E8b's E8-9: the map's own text, never the original's, ADR-0009; identify would name a text
+    with " the " in it GENRLTXT:16, `%s the %s`); `?` for neither."""
+    text = mem.dialog_text()
+    lines = [" ".join(line.split()) for line in [text, *text.split("\n")]]
+    for has_text, own in mem.messages():
+        if has_text and " ".join(own.split()) in lines:
+            return f'the map\'s text "{own}"'
+    return h3lod.identify(text) or "?"
 
 
 def picture_text(mem, picture):
@@ -1258,7 +1281,7 @@ def pass_dialogs(game, mem, obs, answer, heroes):
             answer_question(game, mem, answer, heroes)
             obs["questions"].append({"record": asked, "kind": "other", "answer": answer})
         else:
-            obs["messages"].append(h3lod.identify(mem.dialog_text()) or "?")
+            obs["messages"].append(message_record(mem))
             click_item(game, mem, "ok", heroes)
 
 
@@ -1398,7 +1421,9 @@ def signed(bits, width):
 def held_artifact(tile):
     """The artifact a Treasure Chest, Corpse, Wagon or Warrior's Tomb holds by its word (E08 T57;
     visit_treasure_chest 0x4A6520, visit_corpse 0x4A5480, visit_wagon 0x4A69B0,
-    visit_warriors_tomb 0x4A7C30), None for none or another class."""
+    visit_warriors_tomb 0x4A7C30), None for none or another class. Since E08 T68b a Sea Chest's
+    (82: the kind in bits 0-2 2, the artifact in bits 3-12; visit_sea_chest 0x4A5030) and a
+    Shipwreck Survivor's (86: the word; 0x4A52A0), survey E08-sea.md §8.3, §8.4."""
     kind, word = tile["class"], tile["word"]
     if kind == 101 and word >> 10 & 1:
         return word & 0x3FF
@@ -1408,6 +1433,10 @@ def held_artifact(tile):
         return word >> 15 & 0x3FF
     if kind == 108 and word & 1:
         return word >> 13 & 0x3FF
+    if kind == 82 and word & 7 == 2:
+        return word >> 3 & 0x3FF
+    if kind == 86:
+        return word & 0x3FF
     return None
 
 
@@ -1429,10 +1458,15 @@ def boat_text(mem, boat):
 def boat_value(mem, hero, what):
     """`boat` (the boat in use whose captain is the step's hero, the one aboard first, else the
     last: E08 T68a), `boat[<hero>]` the same for a hero named, `boat:x,y[,z]` the boat in use
-    whose record stands on the tile, `boats:used` how many are in use; `none` for no boat."""
+    whose record stands on the tile, `boats:used` how many are in use; `none` for no boat. Since
+    E08 T68b `boat_record:x,y[,z]` every record on the tile, in use or not (batch E8b's E8-11 and
+    E8-12: a beaten hero's boat freed), ` | ` between them."""
     boats = mem.boats()
     if what == "boats:used":
         return str(sum(1 for b in boats if b["used"]))
+    if m := re.match(r"boat_record:(\d+),(\d+)(?:,(\d))?$", what):
+        tile = [int(m.group(1)), int(m.group(2)), int(m.group(3) or 0)]
+        return " | ".join(boat_text(mem, b) for b in boats if b["tile"] == tile) or "none"
     if m := re.match(r"boat:(\d+),(\d+)(?:,(\d))?$", what):
         tile = [int(m.group(1)), int(m.group(2)), int(m.group(3) or 0)]
         found = [b for b in boats if b["used"] and b["tile"] == tile]
@@ -1466,12 +1500,20 @@ def object_text(mem, x, y, z=0):
     signed); a Witch Hut's skill (113, bits 13-19 signed); a University's four skills (104, the
     game's Universities at bits 13-24); a Pyramid's `guarded` or `looted` and its spell (63, bit 0,
     bits 13-20); `Pandora's Box`, `event`, `Spell Scroll`; `none` without an object (class 0).
-    Since E08 T68a a Flotsam's gains (29, the word 0-3: survey E08-sea.md §8.2)."""
+    Since E08 T68a a Flotsam's gains (29, the word 0-3: survey E08-sea.md §8.2); since E08 T68b
+    a Sea Chest's (82: `Sea Chest: nothing`, `1500 gold` or `artifact <name>, 1000 gold` by the
+    kind in bits 0-2, §8.3), a Survivor's artifact (86, §8.4) and an Ocean Bottle's message (59:
+    `the map's text "..."` or `no text`, by its record, §8.5) and `none (class 3: the coast)` for
+    a coastal tile without an object."""
     tile = mem.object_at(x, y, z)
     kind, word = tile["class"], tile["word"]
     artifact = held_artifact(tile)
     if kind in (0, -1):
         return "none"
+    if kind == 3:
+        # E08 T68b (batch E8b's E8-11): a coastal tile without an object (the land a boat lands
+        # on, and a shore's water tile once its boat left: tile_refresh_object 0x505610).
+        return "none (class 3: the coast)"
     if kind == 5:
         return mem.artifact_name(tile["subclass"])
     if kind in (22, 101, 105, 108) and artifact is not None:
@@ -1498,6 +1540,19 @@ def object_text(mem, x, y, z=0):
         return f"{'guarded' if word & 1 else 'looted'}, {mem.spell_name(word >> 13 & 0xFF)}"
     if kind == 29:
         return "Flotsam: " + FLOTSAM.get(word, f"word {word} (nothing)")
+    if kind == 82:
+        chest = word & 7
+        if chest == 2:
+            return f"Sea Chest: artifact {mem.artifact_name(artifact)}, 1000 gold"
+        return "Sea Chest: " + {0: "nothing", 1: "1500 gold"}.get(chest, f"kind {chest}")
+    if kind == 86:
+        return f"Survivor: artifact {mem.artifact_name(artifact)}"
+    if kind == 59:
+        found = mem.messages()
+        if not 0 <= word < len(found):
+            return f"Ocean Bottle: no message record {word}"
+        has_text, text = found[word]
+        return f'Ocean Bottle: the map\'s text "{text}"' if has_text else "Ocean Bottle: no text"
     return {6: "Pandora's Box", 26: "event", 93: "Spell Scroll"}.get(kind, f"class {kind}")
 
 
@@ -1505,7 +1560,27 @@ def object_text(mem, x, y, z=0):
 # `before:` they are read right before the step (E08 T57: `pre_read`), else they would show the
 # state after it.
 LIVE_READS = ("explored", "word", "object", "monster", "aggression", "never_flees", "boat",
-              "boats", "drawn")
+              "boats", "drawn", "boat_record")
+
+
+def observations(what):
+    """The observations a record's value names: one, a list of them, a `row:` field's cells (a
+    cell itself one or a list) and a grid's rows (`{ rows = [...] }`; E08 T68b)."""
+    if isinstance(what, dict):
+        what = what.get("rows", [])
+    if isinstance(what, list):
+        return [w for item in what for w in observations(item)]
+    return [what]
+
+
+def record_value(obs, field, what, mem):
+    """A record field's value from the step's observation (value); for a `row:<table>` field
+    (E08 T68b) the rows it adds to that table (fill), each a list of cells: one row, or a grid's
+    rows (`{ rows = [...] }`, expand)."""
+    if not field.startswith("row:"):
+        return value(obs, what, mem)
+    rows = what["rows"] if isinstance(what, dict) else [what]
+    return [[value(obs, cell, mem) for cell in row] for row in rows]
 
 
 def pre_read(step, before, mem):
@@ -1513,7 +1588,7 @@ def pre_read(step, before, mem):
     step from its snapshot and the game's memory as it stands (E08 T57: an object's word before a
     visit)."""
     wanted = [w for what in [*step.get("record", {}).values(), *step.get("note", {}).values()]
-              for w in (what if isinstance(what, list) else [what]) if w.startswith("before:")]
+              for w in observations(what) if w.startswith("before:")]
     obs = {"before": before, "after": before}
     return {w: value(obs, w.split(":", 1)[1], mem) for w in wanted}
 
@@ -1530,6 +1605,8 @@ def value(obs, what, mem):
     """A record's value from a step's observation (the game's memory right after the step for
     `monster:`, `aggression:` and another hero's details)."""
     yes = {True: "yes", False: "no"}
+    if isinstance(what, str) and what.startswith("text:"):
+        return what[5:]  # E08 T68b: a literal (a row's tile)
     if isinstance(what, list):
         # E08 T57: several observations in one field, joined by `; `.
         return "; ".join(value(obs, w, mem) for w in what)
@@ -1586,6 +1663,10 @@ def value(obs, what, mem):
         return "; ".join(f"level {d['level']}: {offer_text(d['left'])} or "
                          f"{offer_text(d['right'])}, took {d['taken']}"
                          for d in obs.get("level_up_dialogs", [])) or "none"
+    if what == "treasury_changed":
+        # E08 T68b (batch E8b's E8-9): whether the step changed the hero's player's treasury.
+        owner = COLOURS[obs["before"]["hero"]["owner"]]
+        return yes[obs["before"]["resources"][owner] != after["resources"][owner]]
     if m := re.match(r"treasury(?::([a-z]+))?$", what):
         owner = m.group(1) or COLOURS[obs["before"]["hero"]["owner"]]
         return ", ".join(f"{n} {k}" for k, n in after["resources"][owner].items())
@@ -1701,7 +1782,8 @@ def value(obs, what, mem):
     # E08 T68a (batch E8a): the boats' records (boat_value), what the view draws on a hero's
     # tile, the last battle's opening (terrain, special field, ship flag, the obstacles' hexes),
     # whether a walk's second click was made (`again_if`) and what an arrow key did (`key`).
-    if what in ("boat", "boats:used") or re.match(r"boat(:\d+,\d+(,\d)?|\[.+\])$", what):
+    if what in ("boat", "boats:used") or re.match(r"boat(:\d+,\d+(,\d)?|\[.+\])$", what) \
+            or re.match(r"boat_record:\d+,\d+(,\d)?$", what):
         hero = after["hero"]
         if m := re.match(r"boat\[(.+)\]$", what):
             hero, what = mem.hero_named(m.group(1)), "boat"
@@ -1721,6 +1803,9 @@ def value(obs, what, mem):
                 f"ship flag {field['ship']}, blocked hexes {blocked}")
     if what in ("again", "key"):
         return obs.get(what, "none")
+    if what == "battle:tile":
+        # E08 T68b: the step's hero's tile as the last battle opened (batch E8b's E8-13, E8-14).
+        return ",".join(map(str, battles[-1]["hero_tile"])) if battles else "no battle"
     if m := re.match(r"(monster|aggression|never_flees):(\d+),(\d+)(?:,(\d))?$", what):
         found = mem.monster(int(m.group(2)), int(m.group(3)), int(m.group(4) or 0))
         if found is None:
@@ -1773,7 +1858,9 @@ def fill(template, values, notes, header):
     """The template with each section's fields and table rows filled in: an empty cell by its
     row's label, in a table of more than one value column by `<label> | <column>` (E08 T37a).
     Since E08 T57 a section's `rows` (a list of rows, opening:rows) fill its table's rows without
-    a label in order, with more rows added after the last when they are not enough."""
+    a label in order, with more rows added after the last when they are not enough; since E08
+    T68b a section's `rows:<first column>` fill the table whose first column is named so (a
+    section with several tables without labels: batch E8b's E8-8)."""
     lines, section, out, columns, rows = template.splitlines(), None, [], [], []
     for line in lines:
         m = re.match(r"## (\S+) ", line)
@@ -1797,6 +1884,8 @@ def fill(template, values, notes, header):
             cells = table_cells(line)
             if cells is not None and TABLE_RULE.fullmatch(line.strip()) and out:
                 columns = table_cells(out[-1]) or []
+                if columns and (section, "rows:" + columns[0].strip()) in values:
+                    rows = list(values.pop((section, "rows:" + columns[0].strip())))
             elif cells is not None and len(cells) == len(columns) > 1:
                 label = cells[0].strip()
                 for j in range(1, len(cells)):
@@ -1858,32 +1947,63 @@ def substitute(item, x, y):
     return item
 
 
+def chosen_tiles(chosen, tiles, mem, start):
+    """The tiles a step's `select` keeps (E08 T57; T68b), in the order the hero visits them,
+    nearest first (nearest_first): those whose object holds an artifact by its word (`holds =
+    "artifact"`, held_artifact) or whose object_text starts with `is` (or any object), the `count`
+    nearest of them (default all); then the `controls` nearest whose object holds none; then for
+    each text of `then` the nearest whose object_text starts with it (batch E8b's E8-6: every
+    artifact chest, then one of kind 1 and one of kind 0)."""
+    unknown = set(chosen) - {"holds", "is", "count", "controls", "then"}
+    if unknown or chosen.get("holds", "artifact") != "artifact" or (
+            "holds" in chosen and "is" in chosen):
+        raise ValueError(f"`select = {chosen}`: holds = \"artifact\" or is = \"<object text>\", "
+                         "count, controls, then")
+    texts = {t: object_text(mem, *t) for t in tiles}
+    if "holds" in chosen:
+        wanted = [t for t in tiles if held_artifact(mem.object_at(*t)) is not None]
+    else:
+        wanted = [t for t in tiles if texts[t] != "none"
+                  and texts[t].startswith(chosen.get("is", ""))]
+    picked = nearest_first(start, wanted)[:chosen.get("count", len(wanted))]
+    if chosen.get("controls"):
+        others = [t for t in tiles if t not in wanted and texts[t] != "none"]
+        picked += nearest_first(picked[-1] if picked else start, others)[:chosen["controls"]]
+    for text in chosen.get("then", []):
+        left = [t for t in tiles if t not in picked and texts[t].startswith(text)]
+        if left:
+            picked += nearest_first(picked[-1] if picked else start, left)[:1]
+    return picked
+
+
 def expand(step, mem):
     """A step over a grid of tiles (E08 T57, batch E7): `each` names the tiles; a step without a
     walk reads its `record` at each (one step), one with `walk = "each"` walks to each in turn.
-    `select = { holds = "artifact", controls = <n> }` keeps the tiles whose object holds an
-    artifact by its word (held_artifact), nearest first from the hero, then the `controls`
-    nearest without one, read when the step comes."""
+    `select` keeps some of the tiles, in the order the hero visits them (chosen_tiles), read when
+    the step comes. A record's `row:<table>` field (E08 T68b) reads one table row per tile; a
+    step without a walk reads its `note` at each tile too (E08 T68b: E8-6's chests at the
+    start)."""
     if "each" not in step:
         return [step]
     tiles = each_tiles(step["each"])
     rest = {k: v for k, v in step.items() if k not in ("each", "select")}
     if "walk" not in step:
         merged = dict(rest)
-        merged["record"] = {k: v for x, y in tiles
-                            for k, v in substitute(step.get("record", {}), x, y).items()}
+        merged["record"] = {}
+        for x, y in tiles:
+            for k, v in substitute(step.get("record", {}), x, y).items():
+                if k.startswith("row:"):
+                    merged["record"].setdefault(k, {"rows": []})["rows"].append(v)
+                else:
+                    merged["record"][k] = v
+        merged["note"] = {k: v for x, y in tiles
+                          for k, v in substitute(step.get("note", {}), x, y).items()}
         return [merged]
     if step["walk"] != "each":
         raise ValueError("a step with `each` walks to each tile (`walk = \"each\"`) or none")
     if "select" in step:
-        chosen = step["select"]
-        if chosen.get("holds") != "artifact":
-            raise ValueError(f"`select = {chosen}`: only holds = \"artifact\"")
         start = tuple(mem.hero_named(step["hero"])["tile"][:2])
-        held = nearest_first(start, [t for t in tiles
-                                     if held_artifact(mem.object_at(*t)) is not None])
-        others = nearest_first(held[-1] if held else start, [t for t in tiles if t not in held])
-        tiles = held + others[:chosen.get("controls", 0)]
+        tiles = chosen_tiles(step["select"], tiles, mem, start)
     return [{**substitute(rest, x, y), "walk": [x, y]} for x, y in tiles]
 
 
@@ -1997,14 +2117,19 @@ def batch(recipe_path, map_path=None, out=None):
             for done in obs.get("actions", []):
                 obs["record"].update(done["record"])
                 notes.setdefault(step["encounter"], []).extend(done["notes"])
-            obs["record"].update({field: obs["skipped"] if obs.get("skipped")
-                                  else value(obs, what, mem)
+            obs["record"].update({field: ([[obs["skipped"]]] if field.startswith("row:")
+                                          else obs["skipped"]) if obs.get("skipped")
+                                  else record_value(obs, field, what, mem)
                                   for field, what in step.get("record", {}).items()})
             steps.append(obs)
             log.write(json.dumps(obs) + "\n")
             log.flush()
             print(json.dumps(obs), flush=True)
             for field, got in obs["record"].items():
+                if field.startswith("row:"):
+                    # E08 T68b: rows added to the table whose first column is named so.
+                    values.setdefault((step["encounter"], "rows:" + field[4:]), []).extend(got)
+                    continue
                 if field.startswith("+"):
                     # E08 T57: a field several steps add to, `; ` between (`none` left out).
                     key = (step["encounter"], field[1:])

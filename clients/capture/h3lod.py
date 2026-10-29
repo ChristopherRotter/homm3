@@ -10,7 +10,8 @@ the harness names a record by its number, never by its text (ADR-0009).
 
 Library use: `table(name)` (records of fields, header rows included, from 0), `matches(name,
 text)` (the records whose first field formats to `text`, or two neighbours' together: "89+90"),
-`identify(text)` (the most specific match in ADVEVENT.TXT or GENRLTXT.TXT: "ADVEVENT:86").
+`identify(text)` (the most specific match in ADVEVENT.TXT, GENRLTXT.TXT or, since E08 T68b,
+RANDSIGN.TXT, the signs' and Ocean Bottles' default texts: "ADVEVENT:86", "RANDSIGN:24").
 """
 
 import re
@@ -97,7 +98,8 @@ def table(name):
 
 def pattern(text):
     """A regular expression for what `printf` makes of a record's text: each conversion (`%s`,
-    `%d`, ...) any text, `%%` a percent sign, white space any white space."""
+    `%d`, ...) any text, `%%` a percent sign, white space any white space, since E08 T68b a
+    doubled quote one or two."""
     parts = re.split(r"(%%|%[-+ #0]*\d*(?:\.\d+)?[a-zA-Z]|\s+)", text.strip())
     out = []
     for part in parts:
@@ -108,7 +110,9 @@ def pattern(text):
         elif part and part.isspace():
             out.append(r"\s+")
         elif part:
-            out.append(re.escape(part))
+            # A doubled quote (a quoted field's quote, ADVEVENT 126: the Survivor's "no room";
+            # E08 T68b) shows as one or two.
+            out.append(re.escape(part).replace('""', '"{1,2}'))
     return re.compile("".join(out), re.S)
 
 
@@ -130,7 +134,9 @@ def matches(name, text):
     return [n for n, p in patterns(name) if p.fullmatch(text)]
 
 
-TABLES = ("ADVEVENT.TXT", "GENRLTXT.TXT")
+# Since E08 T68b RANDSIGN.TXT (batch E8b's E8-9: an Ocean Bottle without a text shows the default
+# text of its column mod 25, sign_default_texts 0x696C74; plain texts, no conversions).
+TABLES = ("ADVEVENT.TXT", "GENRLTXT.TXT", "RANDSIGN.TXT")
 
 
 def literal(name, record):
