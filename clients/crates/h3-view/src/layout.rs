@@ -48,6 +48,9 @@ pub struct BattleLayout {
     /// The palette of the players' colours (`PLAYERS.PAL`): a player's flag takes its 32 entries
     /// from 32 × the player's colour over the DEF's entries 224–255 (0x5FFE20, §4.5).
     pub player_palette: String,
+    /// The movement shade's cell (`ccellshd.pcx`, E17 M5 T4c2a, §7.23): at a shaded hex's box
+    /// corner, every pixel of a non-zero index halves what lies under it (0x44E6A0).
+    pub cell_shade: String,
     /// A stack's count box (§4.3; E17 M3 T4a).
     pub count_box: CountBox,
     /// The mouse over the battle (E17 M3 T6c-1; design §9.9).
@@ -56,6 +59,9 @@ pub struct BattleLayout {
     /// T4b-2b-1, T6a): its picture, buttons and the battle log's item (`crate::panel` names
     /// them).
     pub panel: Dialog,
+    /// The panel in the tactics phase (`battle_panel_tactics_create` 0x46C050; E17 M5 T4c2a,
+    /// §7.23): the base's picture and buttons, Next Creature and Start Combat, no log's item.
+    pub tactics_panel: Dialog,
     /// The hero's spell book (E17 M5 T3a; design §7.17; `crate::book` names its items).
     pub book: BookLayout,
     /// The message box's assets and fonts (E17 M5 T4a; design §7.19; `crate::message` lays it
@@ -193,6 +199,17 @@ impl BattleLayout {
         self.panel.text(crate::panel::LOG)
     }
 
+    /// The panel the battle `observation` shows: in the tactics phase its own (E17 M5 T4c2a,
+    /// `battle_panel_tactics_create` 0x46C050), else the battle's.
+    #[must_use]
+    pub fn panel_in(&self, observation: &h3_protocol::wire::Observation) -> &Dialog {
+        if observation.tactics.is_some() {
+            &self.tactics_panel
+        } else {
+            &self.panel
+        }
+    }
+
     /// The top-left corner of the box of the hex in `row` and `column`.
     pub fn hex_box(&self, row: u8, column: u8) -> [i32; 2] {
         let shift = if row.is_multiple_of(2) {
@@ -295,6 +312,18 @@ mod tests {
         assert_eq!((log.at, log.size), ([214, 7], [400, 32]));
         assert_eq!((log.colour, log.align), (1, 1));
         assert_eq!(layout.panel.items.len(), 11);
+        // §7.23 (E17 M5 T4c2a): the tactics phase's panel, without the log's three items; the
+        // phase's shade cell.
+        let mut phase = crate::record::tests::observation();
+        assert_eq!(layout.panel_in(&phase), &layout.panel);
+        phase.tactics = Some(h3_protocol::wire::Tactics {
+            side: h3_protocol::wire::Side::Attacker,
+            columns: 3,
+        });
+        let tactics = layout.panel_in(&phase);
+        assert_eq!((tactics.place, tactics.items.len()), ([0, 556], 10));
+        assert!(tactics.text(crate::panel::LOG).is_none());
+        assert_eq!(layout.cell_shade, "ccellshd.pcx");
         // §9.9: the mouse's outline from 0x70, rotated as the active one's; the mouse.
         assert_eq!(layout.mouse_outline_after(1), 0x77);
         let m = &layout.mouse;

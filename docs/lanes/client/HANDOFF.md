@@ -8,13 +8,14 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   accepted, CLT-Q22 to Q24 answered (a); the lane split at M3 T9c, CLT-Q18: the battle client
   here, the adventure map client the map-client lane's E24). **M5 (live play)** (QUEUE, the
   epic's M5): hot seat in-process first, then a game on a server and accounts; the new
-  dependencies the user's at T6 and T7. **T1 to T3, T4a, T4b, T4c1 done** (the playhead; the
-  timeline that grows, `live.rs`; the click's command; hot seat in the window; the spell book,
-  design §7.17; the hero's aim, §7.18; the message box, Retreat and Surrender, §7.19; the result
-  window, §7.20, its Bink decoder `h3-bink`, CLT-Q29, and its clip, §7.21; Auto Combat, §7.22,
-  `h3_view::auto`). **Next: M5 T4c2** (the tactics phase), then T5. Open PR: T4c1's
-  (`client/e17-m5-t4c1`; check it first). The inbox's CLT-Q30 task (`h3-bink` as BINKW32's float
-  DCT) waits for a free slot.
+  dependencies the user's at T6 and T7. **T1 to T3, T4a, T4b, T4c1, T4c2a done** (the playhead;
+  the timeline that grows, `live.rs`; the click's command; hot seat in the window; the spell
+  book, design §7.17; the hero's aim, §7.18; the message box, Retreat and Surrender, §7.19; the
+  result window, §7.20, its Bink decoder `h3-bink`, CLT-Q29, and its clip, §7.21; Auto Combat,
+  §7.22, `h3_view::auto`; the tactics phase drawn, §7.23, `h3_view::tactics`). **Next: M5
+  T4c2b** (the tactics phase played: T4c2 cut in two by the user, 2026-10-29), then T5. Open PR:
+  T4c2a's (`client/e17-m5-t4c2a`; check it first). The inbox's CLT-Q30 task (`h3-bink` as
+  BINKW32's float DCT) waits for a free slot.
   Workspace `clients/` (`clients/README.md`), gates `clients/scripts/check.sh`; ADR-0020 (+ drafts
   in `adr-drafts/`), ADR-0024; the harness `clients/capture/README.md`; design §3–§10; records in
   `E17-log.md`.
@@ -22,7 +23,7 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 - **The user's requirements** (epic, "Decisions"): a string catalogue (JSON packs, no committed translation, CLT-Q7); graphics options (`faithful` default); exhaustive diffs; drawing bugs fixed, the original's only for comparisons (`Bugs`).
 - The lane owns `clients/` but the map-client lane's paths and the common ones (`lanes.toml`: the foundation, `text/`, the harness; an additive change freely, a change in behaviour into the map-client lane's inbox), plus `docs/epics/E17*` and this folder; branches `client/<task>`; ids `CLT-Q<n>`, `CLT-QUIRK-<n>` (asset fixes), `CLT-STUB-<n>`; ADR drafts in `adr-drafts/`, numbered when accepted.
 - **Checkpoints** per milestone (below), a fresh reviewer agent first. **Open:** CLT-Q5,
-  CLT-Q26, CLT-Q27, CLT-Q28. Next id: CLT-Q32.
+  CLT-Q26, CLT-Q27, CLT-Q28, CLT-Q32. Next id: CLT-Q33.
 - Stage from `original-data/install/`: the four LODs (one per call), `h3maped.exe`, both `.snd`, `MP3/COMBAT01`–`04` and the end tunes, `Heroes3.exe`, the five DLLs, `H3ab_ahd.vid`, and `original-data/battle-videos.vid` (the result window's clips: the harness's `VIDEO.VID`, the viewer's stand-in); `cp -rn` the staged `original-data/.` into the clone. Frames stay in the sandbox.
 
 ## Autonomy contract (agreed by the user, 2026-10-12)
@@ -42,7 +43,14 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
 
 ## Recent sessions
 
-- **2026-10-28, E17 M5 T4c1 (done; its PR open: check it first).** T4c cut in two with the
+- **2026-10-29, E17 M5 T4c2a (done; its PR open: check it first).** T4c2 cut in two with the
+  user (T4c2a the phase drawn, T4c2b played). Read the phase's message, its panel (built for the
+  defender), the movement shade (overlay, search, drawer) and the cursor (design §7.23). Built
+  `h3_view::tactics`, `Draw::Shade`, `[tactics_panel]`, the message before the first turn (the
+  stills, the window); Tactics on the harness's maps. Seven stills exact; CLT-Q32; review items
+  28 to 31.
+
+- **2026-10-28, E17 M5 T4c1 (done; #560 merged).** T4c cut in two with the
   user (T4c1 Auto Combat, T4c2 the tactics phase). Read the switch, the stop (the input queue's
   read as a turn starts), the panel and the mouse (design §7.22). Built `h3_view::auto`, the
   panel's `Autoplay`, the window's switch and stop (the bot plays the human's side), `--auto`.
@@ -54,10 +62,3 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
   `Draw::Video`, `videos.rs`; the harness's clips and the DLL's clock. CLT-Q30 (the DLL's float
   DCT: listed, the inbox) and CLT-Q31 (two timing slips: fixed, the original's for the
   comparisons). `result-*` and `end` exact but the DCT's pixels; review items 19 to 23.
-
-- **2026-10-28, E17 M5 T4b2a (done; #549 merged).** T4b2 cut in two with the
-  user (T4b2a the decoder, T4b2b the clip in the window). `h3-bink` (pure, no dependency): a
-  port of FFmpeg 6.1.1's Bink demuxer and revision-`b` decoder; `h3_assets::vid`; `h3-view
-  video` and `bink-check.sh` (FFmpeg through PyAV). The ten clips and eight samples byte for
-  byte as FFmpeg; its command line loses the chroma's hidden rows (three clips, review item 16).
-  Review items 15 to 18.

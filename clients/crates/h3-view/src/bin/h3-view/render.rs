@@ -302,9 +302,11 @@ fn render(options: &Options) -> Result<Vec<String>, String> {
         } else {
             Vec::new()
         };
-        // A situation's actions (E17 M5 T3a: the spell book's stills) played at its opening.
+        // A situation's actions (E17 M5 T3a: the spell book's stills) played at its opening,
+        // after the tactics phase's message it opens with (E17 M5 T4c2a).
         let (mouse, actions) = crate::sequences::situation_inputs(dir)?;
-        let book = if actions.is_empty() {
+        let told = h3_view::tactics::told(observation);
+        let book = if actions.is_empty() && !told {
             None
         } else {
             let ruleset = crate::scenario::ruleset(&options.packs, manifest)?;
@@ -386,6 +388,8 @@ fn render(options: &Options) -> Result<Vec<String>, String> {
                 no_one: &no_one,
                 pictures: (def, size),
                 result: &result,
+                opening: told
+                    .then(|| catalogue.text("battle.tactics.phase", &h3_ui::text::Args::new())),
             };
             Some(crate::spellbook::still(
                 &actions,

@@ -2631,6 +2631,90 @@ kinds), `ai_battle_action` 0x477EE0's head, `ai_hero_cast_turn` 0x422DA0's head.
   frames exact but the same artifacts of the flight and the strike's start and the log's rolled
   lines.
 
+### 7.23 The tactics phase drawn (M5 T4c2a)
+
+T4c2 cut in two by the user on 2026-10-29 (here the phase as it opens: the message, the panel, the
+shade and the cursor; the stacks placed, Next Creature, Start Combat, round 1 and Auto Combat in
+the phase T4c2b). Read: `battle_start` 0x462A20 at the phase (0x462C92 to 0x462D0D, 0x462D14 to
+0x462DCD, 0x462E1E to 0x462EFA, 0x4630EE to 0x46320B), `combat_dialog_create` 0x4721D0 at its
+panel (0x472400 to 0x472483), `battle_panel_tactics_create` 0x46C050 whole, the base 0x46B610 at
+its picture (0x46B6E9 to 0x46B737), the tactics panel's vtable 0x63D430 (+4 0x485D80, +8
+0x5BC7E0), `battle_controls_state` 0x4782D0 at the phase (0x47869C to 0x4787C6) and its head and
+tail (0x4782D0 to 0x478326, 0x478830 to 0x478885), `stack_activation` 0x465330 at the phase
+(0x4653A8, 0x465802), `battle_log_add` 0x472E90's head, the items' state message 0x5FE4F0
+(0x5FE557 to 0x5FE624), `draw_hex_overlays` 0x493930 whole, `battle_movement_overlay` 0x4937D0
+whole, `ai_pathfinder_map` 0x4B2DA0's cells (to 0x4B2F06), `battle_pathfinder` 0x4B3400's
+neighbours (0x4B3687 to 0x4B3A15), the shade's drawer 0x44E6A0, `battle_load_heroes` 0x463370's
+cell pictures, the player record's reset 0x4B9E20 (+0x88).
+
+- **The message** (`battle_start`, after the first redraw, the music and the clocks, 0x4630EE):
+  in the phase, when the player of the phase's side (+0x132C0, set at 0x462EB3: 0 when the
+  attacker's Tactics exceeds the defender's, +0x13D70 > 0, else 1) is a human on this computer
+  (0x463111) and its record's +0x88 is set (each player's at the game's start, 0x4B9EDA; cleared
+  once shown, 0x463203: once a game), GENRLTXT 373 in a style-1 box (0x4F6530: `message_box`,
+  §7.19, x and y −1, a network timeout of 10 s), unless the game's +0x1F69D is clear and, in a
+  network game with both sides human, both players' +0xE4 are set, or else the global 0x69877C
+  is set (not read). It comes before the first activation (0x463246): behind it no stack is
+  outlined or shaded, the battle loop has run no idle step (the flags at their start frames 0
+  and 3, §4.5, where the opening otherwise shows 1 and 4) and its modal loop runs none
+  (recorded: the frames at 0 and 1 000 ms the same).
+- **The panel** (`combat_dialog_create` with the phase's flag, 0x472400): 0x46C050 instead of
+  0x46BC30, the base (§9.7) over `CoPlacbr.pcx` (the base takes its picture's name), then Next
+  Creature (2300, `ICM011.def` at (213, 4), 198 × 36, hotkey space) and Start Combat (30722,
+  `ICM012.def` at (419, 4), hotkey Enter), each with frames 0 and 1 and its hints from the pairs'
+  +0x48 and +0x50 (`Help.txt` 388 and 389); the dialog then adds state 8 (disabled, 0x5FE569 sets
+  bit 8 for the message value 0x1000 and the value 8 alike) to the spell book, Wait and Defend
+  (0x472428). No log's item: the panel's +0x34 stays 0, so `battle_log_add` returns at once
+  (0x472ECA: no log entry, no status line in the phase), and its vtable's +4 and +8 do nothing.
+  The base builds it in the colours of the player of the side the manager holds then, +0x132C0
+  = 1 since 0x462D24 (the defender's; the game's player without one), as for the battle's panel
+  (recorded: Blue's behind the message, Red's from the Champions' turn). A turn's start in the
+  phase (`stack_activation` skips to 0x465802, then `battle_controls_state`) sets the seven as
+  usual but leaves the spell book, Wait and Defend (0x4786C5 jumps past them) and enables Next
+  Creature and Start Combat (0x4786AB); a turn no local human plays calls the panel's +0xC,
+  0x46C290, the nine disabled. When the phase's side is not a local human, the start adds state
+  0x4008 to 2009 and 30722 too (0x462ED0 to 0x462EF5).
+- **The shade** (`draw_hex_overlays` with its second argument 1, at every turn's start 0x478375):
+  for an active stack that does not play itself (0x474BA0) and whose controlling side's
+  +0x54A6 is set (a human here), `battle_movement_overlay` fills the overlay +0x107 when the
+  movement shade option 0x6987C4 is set or the phase runs (the harness keeps the option off);
+  then, with the option or the phase, the hexes whose overlay changed have their part of the
+  background restored from the field's copy +0x53AC and each hex of a non-zero overlay is
+  shaded into the background buffer +0x53B0: 0x44E6A0 halves each pixel under a non-zero index
+  of `ccellshd.pcx` (45 × 52, loaded at 0x463385) at the hex box's corner (§4.1), so where two
+  cells' shapes overlap the pixels darken twice. An action's start clears the overlay and draws
+  again (0x478E51). The overlay (0x4937D0): the stack's own hexes; every hex the reach map
+  (`ai_pathfinder_map` with the phase's flag: range and speed 1 000) marks as a position (+0x4A)
+  or a two-hex stack's front hex (+0x4B) and holds no stack; and the hexes of the other side's
+  stacks the search marked (0x4938F9). The map keeps a position in the zone (0x4B2E53,
+  `outside_tactics_zone`), a two-hex stack's only with its front hex in it (0x4B2EC8, else its
+  mark cleared). The search (`battle_pathfinder`) from the stack's position: a walker only through
+  positions where it fits, a flyer (+0x84 bit 1, or creatures 0x36 and 0x37) over the hexes it
+  does not fit too (0x4B39C4: fewer than its speed of them in a row, 0x4B39E7); a neighbour where
+  it does not fit marks the stack of the other side on it (0x4B37EF to 0x4B3850, both its hexes)
+  and, for a two-hex mover, the one on the hex its front would take there (0x4B38C4 to
+  0x4B39B1). Recorded: the Champions' zone shaded but the obstacles' and the other stacks' hexes,
+  and both enemies (the Goblins only by the front's rule).
+- **The cursor** (§9.9's kinds in the phase): over an empty hex in the zone the move cursor (or
+  the fly cursor), elsewhere the forbidden one (frame 0), over any stack the query (5) and the
+  mouse's outline; over the panel the pointer; no status line anywhere. The turn's start sets the
+  pointer (0x478321, the manager's +0x34 being 1 since 0x4630CC) and posts a mouse move
+  (0x478857) that does not reach the battle's handler here: recorded, the mouse moved over the
+  message keeps the pointer and marks nothing at 100 and 1 000 ms until it moves again (CLT-Q32;
+  where the move is lost is not read).
+- **Built** (`h3_view::tactics`, the scene's `Draw::Shade` and `Moment::shade`, the layout's
+  `cell_shade` and `[tactics_panel]`, `panel::NEXT_CREATURE` and `START_COMBAT`, `Panels::before`,
+  `Moment::before_first_turn`): `tactics::shade` from an observation (*provisional*: a flyer
+  passes over any run of hexes; the phase's turns after the first: T4c2b), `tactics::told` (a
+  battle in the client is a game of its own, so every battle opening with a human's phase shows
+  the message, *provisional*), the panel built for the defender (it was the opening's side,
+  *provisional*), the situations' and the window's message at the opening, the pointer the
+  stills keep after it (CLT-Q32, as the original's), the window's shade while a human's turn in
+  the phase waits; `h3-view situation` writes Tactics for a hero's tactics level.
+- **Recorded** (`tactics.toml`: Orrin with Expert Tactics, the Champions first): `tactics-open`
+  (0 and 1 000 ms), `tactics`, `tactics-rest`, `tactics-move`, `tactics-out`, `tactics-enemy`,
+  `tactics-start`: all eight frames exact.
+
 ## 8. The window, input and audio evaluation (M2 T2)
 
 ADR-0020 point 4 left the library to a measured evaluation at M2; the choice, the user's

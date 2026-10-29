@@ -12,8 +12,8 @@ use h3_assets::def::Frame;
 use h3_assets::palette::{Palette, Rgb};
 use h3_render::Bugs;
 use h3_render::blit::{
-    Drawer, Placement, darken, draw_frame, draw_frame_rows, draw_image, draw_image_clipped,
-    draw_image_keyed, draw_image_keyed_clipped, draw_image_keyed_in_clipped,
+    Drawer, Placement, darken, darken_under, draw_frame, draw_frame_rows, draw_image,
+    draw_image_clipped, draw_image_keyed, draw_image_keyed_clipped, draw_image_keyed_in_clipped,
 };
 use h3_render::palette::{ScreenPalette, with_player_colours};
 use h3_render::screen::{PixelFormat, Screen};
@@ -71,6 +71,9 @@ pub fn compose(
             }
             Draw::AbsoluteObstacle { picture, x, y } => {
                 draw_image_keyed(&mut screen, picture_of(batch, picture)?, *x, *y);
+            }
+            Draw::Shade { picture, x, y } => {
+                darken_under(&mut screen, picture_of(batch, picture)?, *x, *y);
             }
             Draw::Obstacle {
                 def,

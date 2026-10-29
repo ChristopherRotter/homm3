@@ -145,6 +145,16 @@ pub struct Still {
     /// When the actions were made (ms after the opening: a situation's at once, 0); the battle
     /// behind the open book or box stands as it was then.
     pub at: u32,
+    /// The tactics phase's message the battle opened with is still open (E17 M5 T4c2a, design
+    /// §7.23): the battle behind it stands before its first turn.
+    pub opening: bool,
+    /// The message closed and the mouse not moved since: the battle's cursor is the pointer the
+    /// first turn's start set (0x478321) and marks nothing (CLT-Q32: the turn's posted mouse move
+    /// does not reach the battle).
+    pub arrow: bool,
+    /// Where a `move:` left the mouse over the battle, every dialog closed (none: the situation's
+    /// `mouse`).
+    pub over: Option<[i32; 2]>,
 }
 
 impl Still {
@@ -173,6 +183,8 @@ pub struct Boxes<'a> {
     pub pictures: (String, [i32; 2]),
     /// The result window after a command and its tune (none: the battle goes on, or no window).
     pub result: &'a dyn Fn(Command) -> Option<(MessageBox, Tune)>,
+    /// The tactics phase's message the battle opens with (E17 M5 T4c2a; none: it opens without).
+    pub opening: Option<String>,
 }
 
 /// What a box's click leads to in a still: another box (or none), or a command given.
@@ -212,9 +224,13 @@ pub fn still(
         result: None,
         mouse,
         at: 0,
+        opening: false,
+        arrow: false,
+        over: None,
     };
     let mut result: Option<(h3_view::message::Open, Tune)> = None;
     let mut asking: Option<Asking> = None;
+    let opening = boxes.and_then(|b| b.opening.as_deref());
     let keys = Keys::original();
     let point = |arg: &str| -> Result<[i32; 2], String> {
         let (x, y) = arg
@@ -279,7 +295,20 @@ pub fn still(
     let ended = |command: Command| -> Option<(h3_view::message::Open, Tune)> {
         (boxes?.result)(command).map(|(window, tune)| (h3_view::message::Open::new(window), tune))
     };
+    // The tactics phase's message, open as the battle opens (E17 M5 T4c2a), the mouse over it.
+    if let Some(text) = opening {
+        asking = tell(text, Style::Ok, None, Asked::Told);
+        still.opening = asking.is_some();
+        if let Some(a) = asking.as_mut() {
+            let _ = a.open.moved(mouse);
+        }
+    }
     for action in actions {
+        // Its OK closed it: the first turn starts, the box's cursor left (CLT-Q32).
+        if still.opening && asking.is_none() {
+            still.opening = false;
+            still.arrow = true;
+        }
         let (kind, arg) = action.split_once(':').unwrap_or((action, ""));
         match kind {
             "key" => {
@@ -369,8 +398,13 @@ pub fn still(
                     let outcome = open.press(&mut memory, (layout, catalogue), to);
                     asking = booked(&mut still, outcome);
                 }
+                // The tactics phase's message closed: the first turn starts (CLT-Q32).
+                if still.opening && asking.is_none() {
+                    still.opening = false;
+                    still.arrow = true;
+                }
                 // Parked: a box the click opened takes the move, the book behind it none (its
-                // status line keeps the hint).
+                // status line keeps the hint); over the battle the move reaches it.
                 if let Some((r, _)) = result.as_mut() {
                     still.mouse = crate::pointer::PARK;
                     let _ = r.moved(crate::pointer::PARK);
@@ -381,7 +415,13 @@ pub fn still(
                         still.mouse = crate::pointer::PARK;
                         let _ = a.open.moved(crate::pointer::PARK);
                     }
-                    None => moved(&mut still, &mut memory, crate::pointer::PARK),
+                    None => {
+                        moved(&mut still, &mut memory, crate::pointer::PARK);
+                        if still.arrow {
+                            still.over = Some(crate::pointer::PARK);
+                            still.arrow = false;
+                        }
+                    }
                 }
             }
             "move" => {
@@ -396,7 +436,13 @@ pub fn still(
                         still.mouse = to;
                         let _ = a.open.moved(to);
                     }
-                    None => moved(&mut still, &mut memory, to),
+                    None => {
+                        moved(&mut still, &mut memory, to);
+                        if still.open.is_none() {
+                            still.over = Some(to);
+                            still.arrow = false;
+                        }
+                    }
                 }
             }
             _ => {
@@ -405,6 +451,10 @@ pub fn still(
                 ));
             }
         }
+    }
+    if still.opening && asking.is_none() {
+        still.opening = false;
+        still.arrow = true;
     }
     still.message = asking.map(|a| a.open.message);
     still.result = result.map(|(r, tune)| (r.message, tune));
@@ -521,6 +571,7 @@ mod tests {
             no_one: &|_| false,
             pictures: (String::new(), [0, 0]),
             result: &result,
+            opening: None,
         };
         let catalogue = Catalogue::default();
         let played = |actions: &[&str]| {
@@ -549,6 +600,61 @@ mod tests {
         let still = played(&["key:r", "click:20,20", "click:20,20"]);
         assert!(still.result.is_none() && !still.dialog());
         assert_eq!(still.mouse, crate::pointer::PARK);
+    }
+
+    #[test]
+    fn the_tactics_phase_s_message_is_open_at_the_opening_until_its_ok() {
+        // E17 M5 T4c2a: the battle stands before its first turn behind it; its OK by Enter or a
+        // click starts the turn, no result follows.
+        let tell = |_: &str, _, _: Option<&Picture>| Some(one_button(h3_view::message::OK));
+        let boxes = Boxes {
+            tell: &tell,
+            leave: Leave::default(),
+            no_one: &|_| false,
+            pictures: (String::new(), [0, 0]),
+            result: &|_| None,
+            opening: Some("{Tactics Phase}".into()),
+        };
+        let catalogue = Catalogue::default();
+        let played = |actions: &[&str]| {
+            let actions: Vec<String> = actions.iter().map(|a| (*a).to_owned()).collect();
+            still(
+                &actions,
+                [300, 300],
+                || None,
+                (&layout(), &catalogue),
+                Some(&boxes),
+            )
+            .unwrap()
+        };
+        let open = played(&[]);
+        assert!(open.opening && open.message.is_some() && open.dialog());
+        assert_eq!(open.mouse, [300, 300]);
+        for actions in [
+            &["key:Return"][..],
+            &["click:20,20"],
+            &["key:Return", "move:5,5"],
+        ] {
+            let closed = played(actions);
+            assert!(!closed.opening && !closed.dialog(), "{actions:?}");
+        }
+        // Closed, the battle's cursor stays the box's until the mouse moves (CLT-Q32).
+        let closed = played(&["key:Return"]);
+        assert!(closed.arrow && closed.over.is_none());
+        let moved = played(&["key:Return", "move:5,5"]);
+        assert_eq!(
+            (moved.arrow, moved.over, moved.mouse),
+            (false, Some([5, 5]), [5, 5])
+        );
+        // Its OK clicked: the park move after it reaches the battle.
+        let clicked = played(&["click:20,20"]);
+        assert_eq!(clicked.mouse, crate::pointer::PARK);
+        assert_eq!(
+            (clicked.arrow, clicked.over),
+            (false, Some(crate::pointer::PARK))
+        );
+        // A key the box does not take leaves it open.
+        assert!(played(&["key:Up"]).opening);
     }
 
     #[test]

@@ -15,7 +15,10 @@
 //! panel at a moment is its last turn's start's, the battle as that turn found it ([`turns`]),
 //! with what it kept from the last human player's turn ([`kept`]). Auto Combat (E17 M5 T4c1,
 //! design §7.22) dims the panel of a turn it plays, its own button left enabled and selected
-//! ([`Autoplay`]). Not read: the tactics phase's panel 0x46C050 (the queue's T4c2).
+//! ([`Autoplay`]). In the tactics phase (E17 M5 T4c2a, design §7.23) the battle's dialog has its
+//! own panel (0x46C050: the base's picture and buttons, Next Creature and Start Combat, no log),
+//! built with the spell book, Wait and Defend disabled (0x472428), which no turn's start enables;
+//! a human's turn enables the two (0x4786AB), another's disables all nine (0x46C290).
 
 use alloc::collections::{BTreeMap, BTreeSet};
 use alloc::string::String;
@@ -46,6 +49,10 @@ pub const SPELL_BOOK: u16 = 2008;
 pub const WAIT: u16 = 2009;
 /// Defend (`icm007.def`).
 pub const DEFEND: u16 = 2010;
+/// Next Creature, the tactics phase's panel's (`ICM011.def`; E17 M5 T4c2a).
+pub const NEXT_CREATURE: u16 = 2300;
+/// Start Combat, the tactics phase's panel's (`ICM012.def`): it ends the phase.
+pub const START_COMBAT: u16 = 30722;
 
 /// The seven buttons a turn's start sets (0x46BF90 disables them all on a turn no human plays).
 pub const BUTTONS: [u16; 7] = [
@@ -112,7 +119,7 @@ pub struct Kept {
 
 /// What the panel keeps after the turns `started` (in order: each one's acting side, the
 /// stack's controller, and whether the tactics phase ran), built for the side `built`
-/// (0x46B70F's side the manager holds then, not read; *provisional*: the opening's side): the
+/// (0x46B70F's side the manager holds then: the defender, 0x462D24, E17 M5 T4c2a): the
 /// colours of the last side a human plays (0x4782D0 colours it), else `built`'s; the scroll
 /// buttons enabled once a human's turn started outside the tactics phase.
 #[must_use]
@@ -230,9 +237,12 @@ pub fn shown(
             // 0x478755: Wait outside the round's wait phase and the tactics phase.
             states.insert(WAIT, enabled(!observation.wait_phase && !tactics));
             if tactics {
-                // Disabled when the dialog is built in the tactics phase (0x472428 to 0x472454;
-                // its own panel 0x46C050 is not read).
+                // Disabled when the dialog is built in the tactics phase (0x472428 to 0x472454),
+                // which the turn's start leaves (0x4786C5); its own panel's two enabled
+                // (0x4786AB).
                 states.insert(DEFEND, disabled);
+                states.insert(NEXT_CREATURE, State::default());
+                states.insert(START_COMBAT, State::default());
             } else {
                 // 0x4786CA: the scroll buttons enabled; 0x4787B6: Defend.
                 states.insert(LOG_UP, State::default());
@@ -240,14 +250,26 @@ pub fn shown(
                 states.insert(DEFEND, State::default());
             }
         }
-        // 0x46BF90: the seven disabled, Auto Combat's selection left as it was.
+        // 0x46BF90: the seven disabled, Auto Combat's selection left as it was; in the tactics
+        // phase 0x46C290 the nine.
         Some(_) => {
             for id in BUTTONS {
                 states.insert(id, disabled);
             }
             states.insert(AUTO_COMBAT, auto_button(true));
+            if observation.tactics.is_some() {
+                states.insert(NEXT_CREATURE, disabled);
+                states.insert(START_COMBAT, disabled);
+            }
         }
-        None => {}
+        // As built: in the tactics phase the spell book, Wait and Defend disabled (0x472428).
+        None => {
+            if observation.tactics.is_some() {
+                for id in [SPELL_BOOK, WAIT, DEFEND] {
+                    states.insert(id, disabled);
+                }
+            }
+        }
     }
     let mut texts = BTreeMap::new();
     texts.insert(LOG, String::from(log));

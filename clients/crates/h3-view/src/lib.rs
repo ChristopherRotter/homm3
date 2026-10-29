@@ -5,7 +5,7 @@
 //! [`compose`] draws the list into a frame; [`tables`] and [`layout`] are the asset tables and
 //! the screen layouts, made of the dialog items of the common crate (`h3_ui::ui`), [`panel`] the
 //! battle's panel of them ([`auto`]: when Auto Combat plays its turns), [`message`] the message box laid out as them and [`result`] the
-//! battle's result window, [`clip`] the clip it plays; [`keys`] is what the battle window's keys do (through the common
+//! battle's result window, [`clip`] the clip it plays, [`tactics`] the hexes the tactics phase shades; [`keys`] is what the battle window's keys do (through the common
 //! table, `h3_ui::keys`); [`mouse`] is what the
 //! mouse shows over the battle (the cursor's kind, the status line's hint, the stack it marks);
 //! [`sound`] is what a battle's opening plays; [`battle_log`] the battle log's lines composed from
@@ -54,3 +54,4 @@ pub mod scene;
 pub mod siege;
 pub mod sound;
 pub mod tables;
+pub mod tactics;

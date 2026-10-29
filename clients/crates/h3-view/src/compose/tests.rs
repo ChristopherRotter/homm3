@@ -133,6 +133,46 @@ fn each_draw_takes_its_drawer() {
 }
 
 #[test]
+fn a_shaded_hex_halves_what_lies_under_its_cell_s_indices() {
+    // E17 M5 T4c2a: the movement shade (0x44E6A0): the cell's index 0 leaves the pixel, any other
+    // halves it; twice a quarter; a missing picture is an error.
+    let shade = |x| Draw::Shade {
+        picture: "abs.pcx".to_string(),
+        x,
+        y: 1,
+    };
+    let list = [
+        Draw::Background {
+            picture: "bg.pcx".to_string(),
+            x: 0,
+            y: 0,
+        },
+        shade(3),
+        shade(3),
+        shade(4),
+    ];
+    let screen = compose(&list, &batch(), &small()).unwrap();
+    let b = FORMAT.pack(BLUE);
+    let (half, quarter) = (
+        FORMAT.shadow_body(b),
+        FORMAT.shadow_body(FORMAT.shadow_body(b)),
+    );
+    assert_eq!(
+        screen.pixels(),
+        [b, b, b, b, b, b, b, b, b, b, quarter, half]
+    );
+    let missing = Draw::Shade {
+        picture: "no.pcx".to_string(),
+        x: 0,
+        y: 0,
+    };
+    assert_eq!(
+        compose(&[missing], &batch(), &small()),
+        Err(ComposeError::Missing("no.pcx".to_string()))
+    );
+}
+
+#[test]
 fn a_siege_part_is_keyed_and_cut_its_shooter_to_its_top_rows() {
     // E17 M4 T1b: a wall whole, cut by its clip (index 0 transparent inside it), a shooter as a
     // creature but only its canvas's top `rows`.

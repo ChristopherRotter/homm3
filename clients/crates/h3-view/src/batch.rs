@@ -121,6 +121,7 @@ pub fn names(list: &[Draw], layout: &BattleLayout) -> BTreeSet<String> {
     let named = list.iter().flat_map(|d| match d {
         Draw::Background { picture, .. }
         | Draw::AbsoluteObstacle { picture, .. }
+        | Draw::Shade { picture, .. }
         | Draw::Wall { picture, .. } => vec![picture],
         Draw::Obstacle { def, .. }
         | Draw::Projectile { def, .. }

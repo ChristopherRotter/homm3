@@ -574,9 +574,12 @@ pub(crate) fn draw_frames(
     let mut lists = Vec::new();
     let mut drawn = String::new();
     let mut texts = serde_json::Map::new();
-    // A situation's mouse where the harness left it, at the opening (E17 M3 T6c-1); a sequence's
-    // over time (T6c-2: `interface.shown`).
-    let pointer = kept.mouse.map(|point| {
+    // A situation's mouse where the harness left it, at the opening (E17 M3 T6c-1), or where its
+    // actions moved it over the battle (E17 M5 T4c2a), none while the tactics phase's message
+    // left the box's cursor (CLT-Q32); a sequence's over time (T6c-2: `interface.shown`).
+    let arrow = interface.book.is_some_and(|b| b.arrow);
+    let rest = interface.book.and_then(|b| b.over).or(kept.mouse);
+    let pointer = rest.filter(|_| !arrow).map(|point| {
         (
             point,
             mouse::pointer(snapshot, interface.legal, layout, (point, Bugs::Original)),
@@ -620,6 +623,15 @@ pub(crate) fn draw_frames(
         // The stacks an area spell's aim marks (E17 M5 T3b).
         if let Some(shown) = interface.shown {
             moment.area = shown.area(frame.t).to_vec();
+        }
+        // The tactics phase's message the battle opened with (E17 M5 T4c2a): behind it the
+        // battle before its first turn, no stack outlined or marked; once it closed, a
+        // situation's opening turn shaded (a sequence's turns: the queue's T4c2b).
+        let opening = interface.book.is_some_and(|b| b.opening);
+        if opening {
+            moment.before_first_turn();
+        } else if interface.shown.is_none() {
+            moment.shade = h3_view::tactics::shade(snapshot);
         }
         for &[side, index, group, f] in &frame.fidgets {
             let side = if side == 0 {
@@ -703,7 +715,11 @@ pub(crate) fn draw_frames(
         // turns left it (E17 M3 T6b), or the status line's hint where the mouse is (T6c-1:
         // *provisional*, the situations' battles write no lines; T6c-2 times it).
         let text = status.as_deref().unwrap_or_else(|| panels.text(at));
-        list.extend(panels.at_showing(snapshot, &timeline.turns, at, layout, text));
+        if opening {
+            list.extend(Panels::before(snapshot, layout));
+        } else {
+            list.extend(panels.at_showing(snapshot, &timeline.turns, at, layout, text));
+        }
         // Earthquake's shake (E17 M4 T2c-2): the screen as it was, shifted; the cursor hidden.
         if let Some(steps) = moment.shake {
             list = vec![scene::shaken(list, steps, layout)];
@@ -801,6 +817,9 @@ pub(crate) fn draw_frames(
             if let (Some(look), Some(point), true) = (look, point, visible) {
                 list.push(mouse::look_cursor(layout, look, point));
             }
+        } else if let Some(still) = interface.book.filter(|b| b.arrow) {
+            // The pointer the turn's start set where the mouse rests (0x478321; CLT-Q32).
+            list.push(mouse::cursor(layout, layout.mouse.panel_frame, still.mouse));
         } else if let Some((point, p)) = &pointer {
             list.push(p.cursor(layout, *point));
         }
