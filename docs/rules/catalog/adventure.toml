@@ -685,7 +685,7 @@ id       = "ADV-OBJ-002"
 title    = "Object types: the import's classes and subclasses"
 context  = "adventure"
 status   = "implemented"
-summary  = "The import maps an object's class and subclass to an object type of the adventure ruleset part (ADR-0016 point 4): resource piles (79, subclass = the resource 0-6), random resources (76), campfires (12), Cartographers (13: 0 water, 1 land, 2 subterranean), the Redwood Observatory (58), the Pillar of Fire (60), Keymaster's tents (10), border guards (9) and border gates (212, AB and SoD), each by key colour 0-7. A subclass its class does not define is an import error; every other class stays a blocker (its blocked and visitable tiles block). A type names its kind with typed parameters and two visit properties: entered or visited from a neighbouring tile, and visitable from above or not (classes 9, 12, 76, 79 and 212 are visited from a neighbour and from above; 10, 13, 58 and 60 are entered, not from above). A pile's or random resource's body gives a fixed amount (0 is none, drawn at setup; gold in hundreds), from 1 to 0x7FFFF, which the setup checks; a pile with a guards record is unsupported until battles exist (ADV-Q10, D-6). E08 T12a. Setup refuses two typed objects of one type on one anchor (`SharedAnchor`; a player names a typed object by both, ADR-0016 point 6; none in the 164 shipped maps; E08 T15's review); a key guard or gate type must be visited from a neighbour, and a gate from above too (T15b and its review). E08 T61a (increment 7, design §7 and §8): 31 more classes typed, each subclass to one type (a placed artifact's subclass is its artifact): 101 the treasure chest, 5 the placed artifact, 65-69 the random artifacts (any of treasure, minor and major; treasure; minor; major; relic), 93 the Spell Scroll, 4, 23, 32, 41, 47, 51, 61, 100, 102 and 107 the once-per-hero gifts, 88-90 the Shrines (levels 1-3), 113 the Witch Hut, 81 the Scholar, 104 the University, 22, 39, 105 and 108 the finds, 6 Pandora's Box, 26 the event, 63 the Pyramid; classes 5, 6, 22, 26, 65-69, 81, 93 and 101 visited from a neighbour and from above, the others entered and not from above (0x63AA58, 0x63AB00). Their kinds' parameters are the packs' (the chest's gold and chances, a gift's gain, prices and condition, a find's draws and full-backpack turn, the Pyramid's guards, spell level and looted bonus, a Witch Hut's RoE skills by profile, A-21). What the map puts in them is checked against the kind at setup (`Holds`, `SetupError::Holds`): a placed artifact one a hero may hold without a spell, a scroll the Spell Scroll with the map's spell (its u32's low byte), a Shrine's spell (255 drawn), a Witch Hut's mask (none on an RoE map; an empty mask every skill, 0x4C207D), a Scholar's gift (kind -1 drawn), Pandora's Box's and an event's reward record (skills of the ruleset at Basic to Expert, known artifacts, hero spells, distinct resources not 0, creatures valid as an army's) with the event's colours and computer and removal flags; every other kind nothing. A reward of more creature stacks than an army's slots is unsupported (A-24, always fixed), as a random creature code among them. Their visits come with T62: until then a step onto them is refused as a blocker's. E08 T72 (increment 8, design §4 and §5): classes 29 Flotsam, 82 the Sea Chest and 86 the Shipwreck Survivor (finds that leave the map, ADV-PIK-014 to -016) and 59 the Ocean Bottle (a message that leaves; its text is the client's), visited from a neighbour and from above; 124 the hole and 225 Favorable Winds (SoD) entered and from above, each lying on its picture's tiles (every hole 1 x 1, the winds' eight pictures 6 x 4 to 2 x 5) and never visited: a hole forbids a landing on its tiles, a ground of the sea lowers a boat's step price from the tiles it tops (T73; the static map marks them, the tile's top ground deciding). A boat (class 8) is no object but a boat of the state (ADV-SEA-001). The sea's pickups and the bottle are visited from a boat only, built by T74: until then a step onto them is refused as any unbuilt visit's. The setup lets grounds of the sea and holes share a type and anchor, as special grounds (nothing names them)."
+summary  = "The import maps an object's class and subclass to an object type of the adventure ruleset part (ADR-0016 point 4): resource piles (79, subclass = the resource 0-6), random resources (76), campfires (12), Cartographers (13: 0 water, 1 land, 2 subterranean), the Redwood Observatory (58), the Pillar of Fire (60), Keymaster's tents (10), border guards (9) and border gates (212, AB and SoD), each by key colour 0-7. A subclass its class does not define is an import error; every other class stays a blocker (its blocked and visitable tiles block). A type names its kind with typed parameters and two visit properties: entered or visited from a neighbouring tile, and visitable from above or not (classes 9, 12, 76, 79 and 212 are visited from a neighbour and from above; 10, 13, 58 and 60 are entered, not from above). A pile's or random resource's body gives a fixed amount (0 is none, drawn at setup; gold in hundreds), from 1 to 0x7FFFF, which the setup checks; a pile with a guards record is unsupported until battles exist (ADV-Q10, D-6). E08 T12a. Setup refuses two typed objects of one type on one anchor (`SharedAnchor`; a player names a typed object by both, ADR-0016 point 6; none in the 164 shipped maps; E08 T15's review); a key guard or gate type must be visited from a neighbour, and a gate from above too (T15b and its review). E08 T61a (increment 7, design §7 and §8): 31 more classes typed, each subclass to one type (a placed artifact's subclass is its artifact): 101 the treasure chest, 5 the placed artifact, 65-69 the random artifacts (any of treasure, minor and major; treasure; minor; major; relic), 93 the Spell Scroll, 4, 23, 32, 41, 47, 51, 61, 100, 102 and 107 the once-per-hero gifts, 88-90 the Shrines (levels 1-3), 113 the Witch Hut, 81 the Scholar, 104 the University, 22, 39, 105 and 108 the finds, 6 Pandora's Box, 26 the event, 63 the Pyramid; classes 5, 6, 22, 26, 65-69, 81, 93 and 101 visited from a neighbour and from above, the others entered and not from above (0x63AA58, 0x63AB00). Their kinds' parameters are the packs' (the chest's gold and chances, a gift's gain, prices and condition, a find's draws and full-backpack turn, the Pyramid's guards, spell level and looted bonus, a Witch Hut's RoE skills by profile, A-21). What the map puts in them is checked against the kind at setup (`Holds`, `SetupError::Holds`): a placed artifact one a hero may hold without a spell, a scroll the Spell Scroll with the map's spell (its u32's low byte), a Shrine's spell (255 drawn), a Witch Hut's mask (none on an RoE map; an empty mask every skill, 0x4C207D), a Scholar's gift (kind -1 drawn), Pandora's Box's and an event's reward record (skills of the ruleset at Basic to Expert, known artifacts, hero spells, distinct resources not 0, creatures valid as an army's) with the event's colours and computer and removal flags; every other kind nothing. A reward of more creature stacks than an army's slots is unsupported (A-24, always fixed), as a random creature code among them. Their visits come with T62: until then a step onto them is refused as a blocker's. E08 T72 (increment 8, design §4 and §5): classes 29 Flotsam, 82 the Sea Chest and 86 the Shipwreck Survivor (finds that leave the map, ADV-PIK-014 to -016) and 59 the Ocean Bottle (a message that leaves; its text is the client's), visited from a neighbour and from above; 124 the hole and 225 Favorable Winds (SoD) entered and from above, each lying on its picture's tiles (every hole 1 x 1, the winds' eight pictures 6 x 4 to 2 x 5) and never visited: a hole forbids a landing on its tiles, a ground of the sea lowers a boat's step price from the tiles it tops (T73; the static map marks them, the tile's top ground deciding). A boat (class 8) is no object but a boat of the state (ADV-SEA-001). The sea's pickups and the bottle are visited from a boat only (ADV-PIK-018), built by E08 T74a; a find that leaves keeps no artifact behind (no `Stays` turn). The setup lets grounds of the sea and holes share a type and anchor, as special grounds (nothing names them)."
 numeric  = "integer"
 
   [[rule.source]]
@@ -2236,7 +2236,7 @@ id       = "ADV-PIK-014"
 title    = "Flotsam: its draw and its four outcomes"
 context  = "adventure"
 status   = "verified"
-summary  = "Flotsam (class 29) is a find that leaves the map at its visit, without a question: when the game is built it draws one of nothing, 5 wood, 5 wood and 200 gold, or 10 wood and 500 gold, a quarter each (one draw of 0 to 99 from the setup stream in object order, not the original's random_between(0, 3): the streams are the engine's, the chances the original's). Its visit, from a boat only (ADV-PIK-018), gives its resources to the visitor's owner and removes it (T74). E08 T72: the base pack's `flotsam`, the find's fixed entries (`FindContent::Fixed`) and its leaving (`Find::leaves`)."
+summary  = "Flotsam (class 29) is a find that leaves the map at its visit, without a question: when the game is built it draws one of nothing, 5 wood, 5 wood and 200 gold, or 10 wood and 500 gold, a quarter each (one draw of 0 to 99 from the setup stream in object order, not the original's random_between(0, 3): the streams are the engine's, the chances the original's). Its visit, from a boat only (ADV-PIK-018), gives its resources to the visitor's owner and removes it (`ObjectRemoved` where seen; E08 T74a). E08 T72: the base pack's `flotsam`, the find's fixed entries (`FindContent::Fixed`) and its leaving (`Find::leaves`)."
 numeric  = "integer"
 
   [[rule.source]]
@@ -2269,7 +2269,7 @@ id       = "ADV-PIK-015"
 title    = "The Sea Chest: its draw and the full backpack's 1 500 gold"
 context  = "adventure"
 status   = "verified"
-summary  = "The Sea Chest (class 82) is a find that leaves the map at its visit, without a question: when the game is built it draws nothing (20 %), 1 500 gold (70 %) or 1 000 gold with a treasure artifact beside it (10 %; the artifact from the random artifacts' pool, ADV-OBJ-006). Its visit, from a boat only, gives the gold to the visitor's owner and the artifact through the backpack's test (ADV-QUIRK-22); a hero that cannot receive the artifact gets 1 500 gold instead of both (the full backpack's turn replaces the whole entry); then it leaves (T74). The find's search gives a fixed entry's resources beside its artifact (`AdventureState::search`, E08 T72). E08 T72: the base pack's `sea_chest`."
+summary  = "The Sea Chest (class 82) is a find that leaves the map at its visit, without a question: when the game is built it draws nothing (20 %), 1 500 gold (70 %) or 1 000 gold with a treasure artifact beside it (10 %; the artifact from the random artifacts' pool, ADV-OBJ-006). Its visit, from a boat only, gives the gold to the visitor's owner and the artifact through the backpack's test (ADV-QUIRK-22); a hero that cannot receive the artifact gets 1 500 gold instead of both (the full backpack's turn replaces the whole entry); then it leaves (E08 T74a). The find's search gives a fixed entry's resources beside its artifact (`AdventureState::search`, E08 T72). E08 T72: the base pack's `sea_chest`."
 numeric  = "integer"
 
   [[rule.source]]
@@ -2302,7 +2302,7 @@ id       = "ADV-PIK-016"
 title    = "The Shipwreck Survivor: its draw by class and the full backpack's loss"
 context  = "adventure"
 status   = "verified"
-summary  = "The Shipwreck Survivor (class 86) is a find that leaves the map at its visit, without a question: when the game is built it draws a treasure, minor, major or relic artifact at 55, 20, 20 and 5 % (from the random artifacts' pool, ADV-OBJ-006). Its visit, from a boat only, gives the artifact through the backpack's test; a hero that cannot receive it gets nothing and the survivor leaves anyway (the find's lost turn, `Turn::Lost`: the artifact lost, the find emptied; T74 for the leaving). E08 T72: the base pack's `shipwreck_survivor`."
+summary  = "The Shipwreck Survivor (class 86) is a find that leaves the map at its visit, without a question: when the game is built it draws a treasure, minor, major or relic artifact at 55, 20, 20 and 5 % (from the random artifacts' pool, ADV-OBJ-006). Its visit, from a boat only, gives the artifact through the backpack's test; a hero that cannot receive it gets nothing and the survivor leaves anyway (the find's lost turn, `Turn::Lost`: the artifact lost; E08 T74a the leaving). E08 T72: the base pack's `shipwreck_survivor`."
 numeric  = "integer"
 
   [[rule.source]]
@@ -2327,5 +2327,71 @@ numeric  = "integer"
   kind       = "wiki"
   ref        = "Shipwreck Survivor: 55 %, 20 %, 20 %, 5 %; the 'no room in your backpack' text"
   url        = "https://heroes.thelazy.net/index.php/Shipwreck_Survivor"
+  retrieved  = "2026-10-28"
+  confidence = "medium"
+
+[[rule]]
+id       = "ADV-PIK-017"
+title    = "The Ocean Bottle: its message read, then it leaves"
+context  = "adventure"
+status   = "verified"
+summary  = "The Ocean Bottle (class 59) is a message that leaves the map at its visit, without a question: its visit, from a boat only (ADV-PIK-018), tells the visitor's owner alone that its hero read it (`MessageRead`, by the bottle's type and anchor), gives nothing, and removes it (`ObjectRemoved` where seen). The text is the client's: the map's own, or when it has none the default text by the bottle's column, x mod 25 (the sign's defaults); the engine holds no text. A computer player's hero reads and takes it as a human's (`ADV-QUIRK-30`, A-27, not reproduced: the original's computer leaves it). E08 T72: the base pack's `ocean_bottle` (`ObjectKind::Message`, `leaves`); its visit E08 T74a. A message that stays (`leaves = false`, the Sign's shape) is read at every visit."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey E08-sea.md §8.5): load_object_body 0x503219 → 0x501270 appends the bottle's text as a 20-byte message record, the object's word its index; visit_object 0x4A9AFA (the Sign's code at 0x4A9FC0 but the removal) shows the record's text or, without one, the default by x mod 25 (the table 0x696C74), only for a human, then removes the bottle"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-8b.md (E8-9; survey E08-sea.md §15): bottles at columns 24 and 49 showed RANDSIGN 24, at column 25 RANDSIGN 0, at column 34 the map's text; nothing given; every bottle gone"
+  retrieved  = "2026-10-29"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "lib/mapObjects/MiscObjects.cpp CGSignBottle: the text shown, a random `randsign` text when it has none, and the bottle removed (a blocking visit)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/mapObjects/MiscObjects.cpp"
+  retrieved  = "2026-10-28"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Ocean bottle: 'if no message is written on the field, a random text will appear'; 'ocean bottles will disappear once read'"
+  url        = "https://heroes.thelazy.net/index.php/Ocean_bottle"
+  retrieved  = "2026-10-28"
+  confidence = "medium"
+
+[[rule]]
+id       = "ADV-PIK-018"
+title    = "Who takes a pickup on water: a boat from the neighbouring water tile only"
+context  = "adventure"
+status   = "verified"
+summary  = "Flotsam, the Sea Chest, the Shipwreck Survivor and the Ocean Bottle on water are visited only by a hero in a boat, from a neighbouring water tile (the step's price paid, the hero staying in its boat; ADV-SEA-005), never by a walker, a flyer or a water walker on the shore beside them: a walker never steps onto water but a boat's or a hero's in a boat, and a water tile an object is visited from is closed to a flight and a water walk (D-46, ADV-MOV-009). D-45 (a flyer on the coast taking one by a click, the reading's side at T66a2) reverted by batch E8's E8-7. The passage decides it, as for every object on water; the reachable-tiles query agrees (`Reach`). E08 T74a."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey E08-sea.md §8.1, the re-read in §15): hero_move_step's default case 0x480F27 visits from a boat at once (0x480F3A); hero_step_or_meet_allowed 0x481AD0 refuses a walker's step onto water but a boat's or class 85's (0x481D0D); the water walker's search refuses an entrance on water (0x4B29AC to 0x4B29E4); the flyer's search closes a water tile holding an object (map entry 0x4B2300)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-8b.md (E8-7; survey E08-sea.md §15): the flyer's click on its coastal Flotsam found no path and took nothing, the water walker and the walker no path; batch E8c (E08-batch-8c.md, survey §16): E8-17a, E8-17b, no flight over a Flotsam's water tile"
+  retrieved  = "2026-10-29"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "lib/pathfinder/PathfindingRules.cpp MovementToDestinationRule: from the shore a walker reaches only a hero, a boat or a coast-visitable object; a water walker's layer enters only free water"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/pathfinder/PathfindingRules.cpp"
+  retrieved  = "2026-10-28"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Flotsam, Sea Chest, Shipwreck Survivor, Ocean bottle: picked up by 'heroes traveling in boats', 'can only be found from water squares'"
+  url        = "https://heroes.thelazy.net/index.php/Flotsam"
   retrieved  = "2026-10-28"
   confidence = "medium"

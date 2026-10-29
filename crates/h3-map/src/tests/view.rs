@@ -464,9 +464,12 @@ fn check_told(
                 kind: AdventureEventKind::Boarded { .. } | AdventureEventKind::Landed { .. },
                 seen_by,
             }) => prop_assert_eq!(seen_by, alone),
-            // E08 T62b2: an event's firing, told to its visitor's owner alone (ADV-FOG-007).
+            // E08 T62b2: an event's firing, told to its visitor's owner alone (ADV-FOG-007); E08
+            // T74a: a message read likewise (ADV-PIK-017; the plans place no bottles yet: T75).
             GameEvent::Adventure(AdventureEvent {
-                kind: AdventureEventKind::EventFired { hero, .. },
+                kind:
+                    AdventureEventKind::EventFired { hero, .. }
+                    | AdventureEventKind::MessageRead { hero, .. },
                 seen_by,
             }) => {
                 prop_assert_eq!(seen_by, alone);

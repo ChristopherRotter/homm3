@@ -286,7 +286,9 @@ in `check_step` and the walking search):
   accepted at sea; the conversion's bounds (without the Hat 0; with it at most the new maximum);
   no path of a hero not in a boat ends on a water entrance or, for a flyer, crosses one but a
   boat's, a hero's in a boat or class 85's (D-46, confirmed by batch E8c); fixed cases on the sea
-  map.
+  map. T74a for T75: `play.rs`'s `visit_gains` counts a find's gains at its emptying (`emptied`),
+  and a find that leaves is never emptied: its gains come at its removal (`ObjectRemoved`), as a
+  chest's.
 - **Benchmarks:** `reach-sea-xl-144` (a boat's search; a new XL fixture `e08-sea-144.h3m`, mostly
   sea, 15 boats as Myth and Legend's), `random-play-sea-36`, `fork-sea-xl-144`; the ten workloads
   at their baselines (`reach-xl-144` the walker's cold boat test).

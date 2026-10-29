@@ -493,15 +493,16 @@ impl AdventureState {
     /// opens its question ([`OfferKind::Search`], every visit); else it is searched at once
     /// ([`Self::search`]).
     // rule: ADV-PIK-011
-    pub(super) fn visit_find(
+    pub(super) fn visit_find<S: Sink>(
         &mut self,
         rules: Rules<'_>,
         (player, hero): (PlayerId, HeroId),
         (index, object_type): (usize, ObjectTypeId),
         find: &Find,
+        sink: &mut S,
     ) -> AdventureOutcome {
         if !find.question {
-            return self.search(rules, (player, hero), index, find);
+            return self.search(rules, (player, hero), (index, object_type), find, sink);
         }
         AdventureOutcome {
             offer: Some(Offer {
@@ -516,11 +517,12 @@ impl AdventureState {
 
     /// An accepted find's question ([`OfferKind::Search`]): the find searched ([`Self::search`]);
     /// nothing when the object is gone or is no find.
-    pub(super) fn accept_search(
+    pub(super) fn accept_search<S: Sink>(
         &mut self,
         rules: Rules<'_>,
         player: PlayerId,
         offer: &Offer,
+        sink: &mut S,
     ) -> AdventureOutcome {
         let find = rules
             .1
@@ -530,7 +532,10 @@ impl AdventureState {
                 _ => None,
             });
         match (self.object_named(offer.object_type, offer.anchor), find) {
-            (Some(index), Some(find)) => self.search(rules, (player, offer.hero), index, find),
+            (Some(index), Some(find)) => {
+                let object = (index, offer.object_type);
+                self.search(rules, (player, offer.hero), object, find, sink)
+            }
             _ => AdventureOutcome::default(),
         }
     }
@@ -542,17 +547,25 @@ impl AdventureState {
     /// resources of a fixed entry beside it (E08 T72); one it cannot receive turns as the type
     /// says (the Corpse's 1 000 gold instead of the whole entry, the Wagon's drawn resources, it
     /// stays in the Tomb, which is then not emptied, or since E08 T72 it is lost and the find
-    /// emptied); without an artifact the find's resources, or nothing. Then the type's bonus (the Tomb's −3 morale, once until the next
-    /// battle by its mark: HER-ADV-008), whether or not the find held anything or was emptied.
+    /// emptied); without an artifact the find's resources, or nothing. Then the type's bonus (the
+    /// Tomb's −3 morale, once until the next battle by its mark: HER-ADV-008), whether or not the
+    /// find held anything or was emptied. Since E08 T74a a find that leaves (the sea's: Flotsam,
+    /// the Sea Chest, the Shipwreck Survivor, ADV-PIK-014 to -016; the original's 0x4A2230,
+    /// 0x4A5030, 0x4A52A0, survey `E08-sea.md` §8) gives the same and is then taken off the map
+    /// ([`Self::take_object`]): nothing of it stays to learn or to empty.
     // rule: ADV-PIK-009, ADV-PIK-010, ADV-PIK-011, ADV-PIK-012, ADV-VIS-006
-    fn search(
+    // rule: ADV-PIK-014, ADV-PIK-015, ADV-PIK-016
+    fn search<S: Sink>(
         &mut self,
         (core, _, heroes): Rules<'_>,
         (player, hero): (PlayerId, HeroId),
-        index: usize,
+        (index, object_type): (usize, ObjectTypeId),
         find: &Find,
+        sink: &mut S,
     ) -> AdventureOutcome {
-        self.learn(player, index);
+        if !find.leaves {
+            self.learn(player, index);
+        }
         let mut taken = Vec::new();
         let mut outcome = AdventureOutcome::default();
         if !self.is_emptied(index) {
@@ -579,7 +592,7 @@ impl AdventureState {
                     true
                 }
             };
-            if empties {
+            if empties && !find.leaves {
                 self.visits_mut().empty(index);
             }
         }
@@ -588,6 +601,9 @@ impl AdventureState {
             luck: bonus.luck,
             mark: Some(bonus.mark),
         }));
+        if find.leaves {
+            self.take_object(core, (index, object_type), sink);
+        }
         AdventureOutcome {
             hero: changes(hero, taken).hero,
             ..outcome

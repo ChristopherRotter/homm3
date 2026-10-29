@@ -8309,3 +8309,49 @@ staged. The user's cut (decision 185): whole, one pull request.
   than `Boats::empty` per water neighbour (design §9), and only in a window holding a boat or a
   hero in one (a second instance of the loop); `sail_cheapest` sizes a boat's window (the land's `cheapest`, the
   roads' 50 among them, would make it larger for nothing).
+
+### Increment 8, round 7: T74a, the sea's pickups (2026-10-29, `adventure/e08-t74a`)
+
+Baseline cb96348 (#577 merged with CI's verify failing at `bench-check` only, the user's call;
+#579 after it). No original data staged. The user's cut (decision 186): T74 in two, T74a
+the pickups now; `random-play-duel-36`'s re-baseline in its pull request.
+
+- **The kinds' visits** (`ObjectKind::effect`; design §11): a find that leaves is visited as a
+  find (`Effect::Find`), a message by `Effect::Message(leaves)`. Who reaches them is the
+  passage's, as for every object on water: a boat from the neighbouring water tile, never a
+  walker (no step onto water), a flyer or a water walker (D-46's closed tiles; ADV-PIK-018).
+- **The sea's finds** (`AdventureState::search`, survey `E08-sea.md` §8.2 to §8.4): Flotsam's
+  fixed resources, the Sea Chest's 1 000 gold beside its artifact or with a full backpack its
+  1 500 gold instead (`Turn::Give`), the Survivor's artifact or with a full backpack nothing
+  (`Turn::Lost`), each by the find's existing search, `ADV-QUIRK-22` in both profiles; then the
+  find is taken off the map (`take_object`: `ObjectRemoved` where seen). A find that leaves is
+  never learned (ADV-VIS-006) nor emptied, so its visit writes no visits' block (no fork cost).
+  `search` and `accept_search` take the object's type and the sink (a leaving find with a
+  question would leave at its answer). `compile_find` refuses a leaving find's `Stays` turn ("a
+  find that leaves keeps its artifact").
+- **The bottle** (§8.5; design §12): `AdventureEventKind::MessageRead { hero, object_type,
+  anchor }` to the visitor's owner alone, then, when the message leaves, the removal; nothing
+  given, no question; a message that stays (the Sign's shape, untyped yet) is read at every
+  visit. A computer's hero reads it as a human's (`ADV-QUIRK-30` not reproduced).
+- **Benchmarks:** T74a's code moves no workload (the duel has no sea pickup): `random-play-duel-36`
+  +1.97 % (T73b's), the forks as T73b left them (`fork-xl-144` +1.99 %, `fork-meeting-xl-144`
+  +1.93 %, the others below +1 %), `reach-xl-144` +0.36 %, `reach-lifted-xl-144` −0.98 %.
+  `random-play-duel-36` re-baselined (976 085 207 → 995 337 553 Ir): T73a's moves at sea and
+  T73b's walker beside the water on a map without boats, +2.01 % on CI's runner.
+- **Tests:** `state/tests/sea_pickups.rs` (the three finds from a boat, their full backpacks, the
+  strict profile's free finger; the bottle's message projected to its owner only, then its
+  leaving; a staying message read twice; a walker, a flyer and a water walker on the shore
+  refused and not reached, a boat's reach ending there); `ruleset/tests/rewards.rs`
+  (`the_sea_s_kinds_compile_and_are_checked`: the effects, the new check); the projections'
+  exhaustive matches (`observe/tests.rs`, `h3-map`'s `view.rs`: a message read is the viewer's
+  own hero's).
+- **Rules:** ADV-PIK-017 and -018 new (`verified`: E8-9, E8-7 and batch E8c); ADV-PIK-014 to -016
+  and ADV-OBJ-002 amended (built). No version moves: no kind, parameter or state changes (the
+  part's hash keeps v13; the visit adds no state), no replay changes (no golden map has a sea
+  pickup or a boat).
+- *For T75:* `h3-map`'s `play.rs` counts a find's gains when it is emptied (`visit_gains`,
+  `emptied`); a find that leaves is never emptied, so once the plans place sea pickups its gains
+  come with its removal (design §15).
+- *Agent's calls (change freely):* `MessageRead` names the object by type and anchor (design §12's
+  "object", as `ObjectRemoved` and ADR-0016 point 6); a leaving find keeps no knowledge mark (it
+  is gone); the message's kind is built for a staying message too (one branch).

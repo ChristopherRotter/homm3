@@ -717,6 +717,18 @@ pub enum AdventureEventKind {
         /// The boat's facing, in the original's order of eight directions from up, clockwise.
         facing: u8,
     },
+    /// A hero read an object's message (the Ocean Bottle, ADV-PIK-017, E08 T74a; design §12): the
+    /// map's text, or a default one when it has none, is the client's to show, found by the
+    /// object's type and anchor (never its index, ADR-0016 point 6). Seen by the hero's owner
+    /// alone; a bottle's leaving follows as [`Self::ObjectRemoved`].
+    MessageRead {
+        /// The hero.
+        hero: HeroId,
+        /// The object's type.
+        object_type: ObjectTypeId,
+        /// Its anchor.
+        anchor: Pos,
+    },
 }
 
 /// Receiver of the adventure context's events.
