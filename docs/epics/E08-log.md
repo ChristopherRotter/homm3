@@ -7858,3 +7858,69 @@ bit 18.
 cannot pay today keeps the hero where it is and zeroes its points.
 
 T68b (batch E8b) and T69 (the scoring) queued.
+
+### Increment 8, round 3: T68b, batch E8b's harness and run (2026-10-29, `adventure/e08-t68b`)
+
+**The cut** (decision 176): whole (recommended; not chosen: in two by rows, the pickups with the
+harness work, then the battles and the map's run). **Baseline:** `master` 22d5d0d (CI on `master`
+green at 22d5d0d and 64e2d5d; the sandbox's baseline verify was stopped with the session's first
+pause, before its test step: no engine code changes here). The installation's files staged from
+the user's computer for the harness, as T68a.
+
+**The reads and steps** (`clients/capture/`, common; README "Boats and the sea", since T68b):
+`h3adv`: `object:x,y` for the Sea Chest (82: `nothing`, `1500 gold` or `artifact <name>, 1000
+gold` by bits 0 to 2), the Survivor (86: its artifact) and the Ocean Bottle (59: the map's text
+from the game's message records, `h3mem.messages`, game +0x4E37C, or `no text`), and `none (class
+3: the coast)`; an artifact chest and a Survivor hold an artifact for `[[require]]` (the restart
+rule over chest kinds) and `select`, which also takes `is` (an object text's start), `count` and
+`then` (E8-6: every artifact chest, then the nearest of kind 1 and of kind 0); a hero in a boat
+approaches (`near`) and sets its route anew (`days`) over open water tiles only
+(`h3mem.open_tiles(…, water=True)`); `h3lod` knows `RANDSIGN.TXT` (`RANDSIGN:<n>`) and matches a
+record's doubled quote (ADVEVENT 126, the Survivor's "no room", read `?` in the first run); a
+message the map's records hold reads `the map's text "..."` before any table (GENRLTXT 16, `%s the
+%s`, took E8-9's own text in the first run); a table without row labels is filled by
+`row:<first column>` fields, a grid step's `note` reads at every tile; the reads `battle:tile`,
+`boat_record:x,y`, `treasury_changed`, `text:`. The client and map-client lanes' inboxes told. The
+harness check passed after the last change.
+
+**The recipe** (`clients/capture/batches/E08-batch-8b.toml`, 41 steps before the grids expand): the
+spec's order (day 1 Red's six boardings, Blue's two; day 2 the turn-start reads, then E8-6, E8-8,
+E8-9, E8-13, E8-14, E8-11, E8-12); E8-11's battle by `attack` (two human players: auto combat
+does not play their battle in hot seat, h3adv.fight; the first run stopped there), E8-12's by
+`defender retreat`.
+
+**The runs** (Easy, hot seat, under Wine): four. The first stopped at E8-11's auto combat; the
+second whole, before the two read fixes above; the third and fourth whole, recorded
+(`experiments/results/E08-batch-8b.md` and `-run2.md`, the second for the draws' counts). No
+restart was needed; every row ended on day 2. Every reading below the same in the second to
+fourth runs but the draws, the tiles they chose and the gold.
+
+**What the runs showed** (for T69; not scored here): **E8-6** day 2's points **5 250**; with 64 in
+the backpack each artifact chest (two, one, two in the three whole runs) gave **1 500 gold and no
+artifact**, the kind 1's message (ADVEVENT 118), the backpack 64, the chest gone; kind 1 the
+same, kind 0 nothing (ADVEVENT 116); each Survivor the **"no room" message (ADVEVENT 126),
+nothing given, gone**. **E8-8** the draws (Flotsam words 0 to 3; chests nothing, 1 500, artifact):
+13, 7, 14, 6 and 8, 28, 4 (first recorded run); 11, 10, 6, 13 and 10, 25, 5 (second); E8-6's
+thirty chests 6, 23, 1 and 8, 20, 2; the Survivors' artifacts in the tables (their classes for
+T69). The visits: a Flotsam of word 3 **+10 wood, +500 gold** (ADVEVENT 53), a Survivor its
+artifact (ADVEVENT 125), a chest of kind 2 **+1 000 gold and its artifact** (ADVEVENT 117), each
+gone, no question; an artifact went to its worn position when free (misc 1 and 2, the shoulders)
+and to the backpack when not (two neck pendants, the Necklace worn). **E8-9** (24, 55) and
+(49, 55) **RANDSIGN 24**, (25, 55) **RANDSIGN 0** (the column mod 25), (34, 55) the map's text;
+nothing given, every bottle gone. **E8-11** the opening **water, no special field, ship flag 1**,
+blocked hexes 98, 114, 115 (three, as E8-13's and E8-14's); E8-11 stays on (61, 5) (status 0); E8-11b's boat
+record **in use 0** (owner, captain and aboard kept), (61, 4) class 3 (the coast: nothing
+stands there); boats in use 8 to 7; in the recorded runs E8-11 captured Blue's starting-bonus
+artifact (GENRLTXT 31). **E8-12** water, ship flag 1, **exactly the 32 hexes** of 0x63D368; Blue
+retreated; E8-12 stays in its boat on (61, 10), bit 18; Blue's boat record in use 0, nothing on
+(62, 10); boats in use 6. **E8-13** (10, 63) explored, **no path** (0 marks), the hero stays; the
+click on (7, 63) two marks, the battle **on (7, 63)** (the hero's tile at the opening), water,
+ship flag 1, blocked 79, 96, 97; the Pikemen split into three stacks (4 Pikemen, 3 Halberdiers, 3
+Pikemen); after the win E8-13 on (7, 63) in its boat. **E8-14** the click on (10, 68) five marks
+(the path over the first event), the hero **stopped on (8, 68)** with 1 200 (three steps), +100 gold
+(ADVEVENT 183), the event gone; the click on (13, 68) stopped on (11, 68), "you are attacked"
+(ADVEVENT 16), the battle there: water, ship flag 1, blocked 90, 106, 107; after it on (11, 68)
+in its boat. **A boat's record keeps its boarding tile while the hero sails** (E8-13's and E8-14's
+read (5, 63) and (5, 68) after their battles; T68a saw it updated at the landing).
+
+T69 (the scoring of E8a and E8b) queued.

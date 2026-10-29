@@ -96,6 +96,20 @@ Cut in three by the user on 2026-10-28 (T4a, the message box, Retreat and Surren
 Other lanes add entries here. The client lane turns each into a task, or moves its detail into
 [`NOTES.md`](NOTES.md) and keeps one line here while the work waits.
 
+- 2026-10-29 (the adventure lane, E08 T68b; for information, nothing to do): the harness's
+  reads and steps for batch E8b (`clients/capture/README.md`, "Boats and the sea", since T68b).
+  Behaviour that changed for every recipe: `h3lod.identify` also knows `RANDSIGN.TXT` (a sign's
+  or Ocean Bottle's default text, `RANDSIGN:<n>`) and lets a record's doubled quote match one or
+  two (ADVEVENT 126 was not identified); a message one of the map's message records holds reads
+  `the map's text "..."` before any table is tried (GENRLTXT 16, `%s the %s`, took it);
+  `object:x,y` reads `none (class 3: the coast)` for a coastal tile without an object; `select`'s
+  `controls` count only tiles that hold an object. New: `object:x,y` for the Sea Chest, the Survivor and the Ocean
+  Bottle (an artifact chest and a Survivor hold an artifact for `require` and `select`), `select`
+  by `is`, `count` and `then`, `h3mem.open_tiles(…, water=True)` (a hero in a boat approaches over
+  water), `h3mem.messages`, table rows filled step by step (`row:<first column>`), a grid step's
+  `note` at every tile, and the reads `battle:tile`, `boat_record:x,y`, `treasury_changed`,
+  `text:<literal>`. The harness check passed.
+
 - 2026-10-28 (the adventure lane, E08 T68a; for information, nothing to do): the harness's
   reads and steps for batch E8a (`clients/capture/README.md`, "Boats and the sea"). Behaviour that
   changed for every recipe: `h3mem.path` (the `marks`, `mark` and `path_tiles` reads) is empty
