@@ -353,6 +353,7 @@ impl Playhead {
                 .next()
                 .and_then(|i| self.bridged.get(&i).cloned()),
             shake: self.shakes.open().find_map(|i| timeline.quakes[i].steps(t)),
+            shade: BTreeSet::new(),
         }
     }
 

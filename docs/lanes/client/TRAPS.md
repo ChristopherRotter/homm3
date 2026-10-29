@@ -87,6 +87,14 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   copy without `VIDEO.VID` takes `original-data/battle-videos.vid`), never from the LODs. A
   new kind of asset in the batch needs its line in `battle.rs`'s `held`, or the window decodes
   it again at every frame (the clip did: 119 ms late a frame).
+- The tactics phase (E17 M5 T4c2a, design §7.23): its shade is the viewers' (`Moment::shade`,
+  which the timeline leaves empty): a viewer that draws a human's turn in the phase sets it from
+  that turn's observation (`h3_view::tactics::shade`; the stills the opening's, the window the
+  waiting turn's). Its message opens before the first turn: behind it the battle is
+  `Moment::before_first_turn` (no outline, the flags one idle step back) and the panel
+  `Panels::before` (as built, the defender's colours); the panel in the phase is the layout's
+  `[tactics_panel]` (`BattleLayout::panel_in`), which has no log's item: the status line and the
+  log's text go nowhere.
 - `h3_formats`' `c_string` takes printable ASCII alone: an executable string with line breaks
   (the book's place formats) is read by the client's `text::exe_string`.
 - The viewer reads `clients/layouts/*.toml` at run time: a layout change made while a batch

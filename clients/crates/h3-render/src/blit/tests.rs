@@ -420,6 +420,33 @@ fn a_darkened_rectangle_halves_each_channel_inside_the_screen() {
 }
 
 #[test]
+fn an_images_non_zero_indices_darken_what_lies_under_them() {
+    // E17 M5 T4c2a: the movement shade (0x44E6A0); twice a quarter, off the screen nothing.
+    let mask = Pcx::Indexed(Box::new(IndexedImage {
+        width: 2,
+        height: 1,
+        pixels: vec![0, 7],
+        palette: palette_of_greys(),
+    }));
+    let mut s = screen(3, 2);
+    darken_under(&mut s, &mask, 0, 0);
+    darken_under(&mut s, &mask, 0, 0);
+    darken_under(&mut s, &mask, 1, -1);
+    darken_under(&mut s, &mask, 2, 1);
+    let half = s.format().shadow_body(WHITE);
+    assert_eq!(row(&s, 0), [WHITE, s.format().shadow_body(half), WHITE]);
+    assert_eq!(row(&s, 1), [WHITE; 3]);
+    // A 24-bit image darkens nothing.
+    let rgb = Pcx::Rgb(RgbImage {
+        width: 1,
+        height: 1,
+        pixels: vec![Rgb { r: 1, g: 1, b: 1 }],
+    });
+    darken_under(&mut s, &rgb, 0, 0);
+    assert_eq!(row(&s, 1), [WHITE; 3]);
+}
+
+#[test]
 fn a_frame_cut_to_its_canvas_s_top_rows() {
     // E17 M4 T1b: a turret's shooter, its canvas's top 232 rows (0x495090).
     let f = frame(1, 0, 0, (1, 3), vec![10, 20, 30], vec![]);

@@ -190,6 +190,42 @@ fn the_tactics_phase_disables_the_book_wait_and_defend() {
         )),
         [LOG_UP, LOG_DOWN, SPELL_BOOK, WAIT, DEFEND]
     );
+    // E17 M5 T4c2a: its own panel's two enabled on a human's turn (0x4786AB), disabled on
+    // another's with the seven (0x46C290); as built, before any turn, the spell book, Wait and
+    // Defend disabled (0x472428) and the two enabled.
+    let state = |shown: &Shown, id| shown.states.get(&id).map(|s| s.disabled);
+    let red = shown(
+        &o,
+        Some(Side::Attacker),
+        (by(Side::Attacker), NO_AUTO),
+        "",
+        RED_BLUE,
+    );
+    assert_eq!(
+        [NEXT_CREATURE, START_COMBAT].map(|id| state(&red, id)),
+        [Some(false); 2]
+    );
+    let blue = shown(
+        &o,
+        Some(Side::Defender),
+        (by(Side::Defender), NO_AUTO),
+        "",
+        RED_BLUE,
+    );
+    assert_eq!(
+        [NEXT_CREATURE, START_COMBAT, SURRENDER].map(|id| state(&blue, id)),
+        [Some(true); 3]
+    );
+    let built = shown(&o, None, (by(Side::Defender), NO_AUTO), "", RED_BLUE);
+    assert_eq!(
+        [SPELL_BOOK, WAIT, DEFEND, SURRENDER, NEXT_CREATURE].map(|id| state(&built, id)),
+        [Some(true), Some(true), Some(true), None, None]
+    );
+    assert_eq!(built.players.get(&PICTURE), Some(&1));
+    // Outside the phase nothing is set before a turn.
+    o.tactics = None;
+    let outside = shown(&o, None, (by(Side::Defender), NO_AUTO), "", RED_BLUE);
+    assert_eq!(state(&outside, SPELL_BOOK), None);
 }
 
 #[test]

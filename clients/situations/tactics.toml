@@ -1,0 +1,57 @@
+# E17 M5 T4c2a: the tactics phase drawn (design §7.23). The ground and obstacles of `book`
+# (book.toml): Red human, Orrin with Expert Tactics against Crag Hack without, so Red's zone is
+# the seven columns at its edge (BAT-TAC-001); the obstacles block hexes inside it. The phase
+# opens with its message (GENRLTXT 373), then the Champions' turn (the fastest; a two-hex walker:
+# the zone's shade takes its front hexes too), then the Marksmen's and the Pikemen's.
+
+[scenario]
+id = "tactics"
+human = ["attacker"]
+packs = ["base"]
+profile = "base:faithful"
+terrain = "base:grass"
+obstacles = [
+    { hexes = [75, 76, 77, 78, 61, 60, 59, 58], anchor = 74, kind = "base:obstacle_22" },
+    { hexes = [91, 92], anchor = 91, kind = "base:obstacle_20" },
+    { hexes = [122, 123], anchor = 122, kind = "base:obstacle_19" },
+]
+
+[[attacker]]
+slot = 0
+creature = "base:champion"
+count = 5
+
+[[attacker]]
+slot = 2
+creature = "base:marksman"
+count = 10
+
+[[attacker]]
+slot = 4
+creature = "base:pikeman"
+count = 20
+
+[[defender]]
+slot = 0
+creature = "base:wolf_rider"
+count = 8
+
+[[defender]]
+slot = 2
+creature = "base:goblin"
+count = 15
+
+[scenario.attacker_hero]
+hero_type = "base:orrin"
+attack = 1
+defense = 1
+power = 1
+knowledge = 1
+tactics = 3
+
+[scenario.defender_hero]
+hero_type = "base:crag_hack"
+attack = 1
+defense = 1
+power = 1
+knowledge = 1

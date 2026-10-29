@@ -200,7 +200,11 @@ Surrender's questions, and an open message box takes the `key:` (`key:Return`, `
 and up, its button's click) and the `click:` (press and release on its button); the park move
 after a `click:` that opened a box goes to the box, so the book behind keeps its hint
 (`msg-mana`). A battle's gold is the Normal difficulty's (Red 20 000): `dialogs.toml` prices its
-surrender above it.
+surrender above it. Since E17 M5 T4c2a (design §7.23) a scenario's hero has its `tactics` level as
+the Tactics skill on the map; a battle that opens in a human's tactics phase shows the phase's
+message at the opening (`tactics-open`), the situation's `mouse` moving over it: `key:Return`
+closes it and the first turn starts, the mouse keeping the turn's pointer until a `move:` after
+it gives the battle's cursor (CLT-Q32: `tactics-rest`, `tactics-move`).
 
 **Another battlefield:** the original's obstacles depend on the battle's tile, the background on
 what stands around it (§4.4): `--tile x,y` (the set's `tile`) moves the battle. At (20, 20) on dirt

@@ -345,6 +345,7 @@ pub fn sides(scenario: &Path, packs: &Path) -> Result<Sides, String> {
         let mut skills =
             effect_skills(&ruleset, &h.effects).map_err(|e| format!("{}: {e}", t.name))?;
         skills.extend(machine_skills(&ruleset, &h.war_machines)?);
+        skills.extend(tactics_skill(&ruleset, h.tactics)?);
         skills.sort_unstable();
         Ok(Some(SideHero {
             hero_type: h.hero_type.index(),
@@ -426,15 +427,29 @@ fn machine_skills(
         let Some(level) = level else {
             continue;
         };
-        let number = (**ruleset)
-            .skills()
-            .iter()
-            .position(|s| s.key.as_str().rsplit(':').next() == Some(name))
-            .and_then(|n| u8::try_from(n).ok())
-            .ok_or_else(|| format!("no skill `{name}` in the ruleset"))?;
-        skills.push((number, level));
+        skills.push((skill_number(ruleset, name)?, level));
     }
     Ok(skills)
+}
+
+/// The skill behind a hero's tactics level on the original's map (E17 M5 T4c2a): Tactics at that
+/// level (BAT-TAC-001), none at level 0.
+fn tactics_skill(ruleset: &BattleRuleset, level: u8) -> Result<Option<(u8, u8)>, String> {
+    if level == 0 {
+        return Ok(None);
+    }
+    Ok(Some((skill_number(ruleset, "tactics")?, level)))
+}
+
+/// The number of the skill whose key ends in `name`: the ruleset's, which is the original's
+/// (`sstraits.txt`'s order).
+fn skill_number(ruleset: &BattleRuleset, name: &str) -> Result<u8, String> {
+    (**ruleset)
+        .skills()
+        .iter()
+        .position(|s| s.key.as_str().rsplit(':').next() == Some(name))
+        .and_then(|n| u8::try_from(n).ok())
+        .ok_or_else(|| format!("no skill `{name}` in the ruleset"))
 }
 
 /// The record of `seat` (a spectator's, or a side's: what that side sees, its own hidden objects
@@ -790,6 +805,38 @@ mod tests {
         let grass = repo().join("clients/situations/grass.toml");
         let sides = super::sides(&grass, &repo().join("packs")).unwrap();
         assert_eq!(sides.machines, [Vec::new(), Vec::new()]);
+    }
+
+    #[test]
+    fn a_tactics_level_becomes_tactics_and_its_placements_are_shaded() {
+        // E17 M5 T4c2a: Orrin's Expert Tactics, Tactics (19) at level 3 on the map; Crag Hack none.
+        let packs = repo().join("packs");
+        let tactics = repo().join("clients/situations/tactics.toml");
+        let sides = sides(&tactics, &packs).unwrap();
+        let skills = sides.heroes.map(|h| h.map(|h| h.skills));
+        assert_eq!(skills, [Some(vec![(19, 3)]), Some(Vec::new())]);
+        // The engine's placements of the Champions all lie in the shade the client draws for
+        // them (design §7.23), each with its front hex; the zone's seven columns.
+        let text = record_of(&tactics, &packs, 1, Seat::Spectator).unwrap();
+        let record = h3_view::record::parse(&text).unwrap();
+        let snapshot = record.first_snapshot().unwrap();
+        assert!(h3_view::tactics::told(snapshot));
+        let shade = h3_view::tactics::shade(snapshot);
+        let placements: Vec<u8> = opening_legal(&tactics, &packs, 1)
+            .unwrap()
+            .into_iter()
+            .filter_map(|c| match c {
+                Command::Move { to } => Some(to),
+                _ => None,
+            })
+            .collect();
+        assert!(!placements.is_empty());
+        assert!(
+            placements
+                .iter()
+                .all(|&to| shade.contains(&to) && shade.contains(&(to + 1)))
+        );
+        assert_eq!(snapshot.tactics.as_ref().map(|t| t.columns), Some(7));
     }
 
     #[test]
