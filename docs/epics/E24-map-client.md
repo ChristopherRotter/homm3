@@ -270,6 +270,15 @@ M1's review lists (three reviewers, T6b; the list accepted) and M2's (accepted a
   composer finds one missing (no scene's names collected a frame); the window's `--check` line
   `afresh` (T2b1's `widened`: each frame made against the same frame composed afresh) and its
   timing line's `uploaded`.
+- **M3 T3a, the minimap's tables and draws** (*provisional*, design §4.4): `[map.records]` (the
+  tile records' rules, moved out of `[map.sound]`) and `[map.minimap]` (the palette entries, the
+  owned and blocking classes, each size's `columns`, `rows` and box, a scale as its f32's bits:
+  `0x3FAA3D71`, truncated exactly in integers); `h3_map_view::record` and `minimap` (`Base` in
+  `TileIndex`, built with the level; `TileIndex::build` takes the layout and refuses a level with
+  a terrain the tables lack); the scene's `Minimap` and `Radar` draws, the composer's minimap
+  staying put through a view's move; the owned object without an entrance on the map coloured
+  as MCL-Q4's answer gives its flags (its owner; the original's terrain colour under `--bugs
+  original`); `masks.toml`'s `stills` (until T3b).
 - **M3 T2a, `h3_ui::paint`**: the dialog items' drawers moved into the common crate (an `Assets`
   trait each viewer's batch implements); `h3-view` keeps its copy until the client lane takes
   this one (its inbox); a button takes a player's colours and a DEF from `Shown` by its id.
