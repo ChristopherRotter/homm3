@@ -1611,10 +1611,10 @@ frames = "timelines/gate-fortress-sound-frames.txt"
 boxes = true
 command = [
     { seat = "Attacker", command = { ShootWall = { part = 1 } } },
-    { seat = "Defender", at = 3775, command = { Move = { to = 94 } } },
-    { seat = "Attacker", at = 8347, command = { Defend = {} } },
-    { seat = "Attacker", at = 8347, command = { ShootWall = { part = 5 } } },
-    { seat = "Defender", at = 12222, command = { Move = { to = 93 } } },
+    { seat = "Defender", at = 3977, command = { Move = { to = 94 } } },
+    { seat = "Attacker", at = 8673, command = { Defend = {} } },
+    { seat = "Attacker", at = 8673, command = { ShootWall = { part = 5 } } },
+    { seat = "Defender", at = 12750, command = { Move = { to = 93 } } },
 ]
 
 [[sequence]]
@@ -1637,5 +1637,5 @@ boxes = true
 command = [
     { seat = "Defender", command = { Defend = {} } },
     { seat = "Attacker", at = 0, command = { ShootWall = { part = 2 } } },
-    { seat = "Attacker", at = 3375, command = { Move = { to = 79 } } },
+    { seat = "Attacker", at = 3577, command = { Move = { to = 79 } } },
 ]
