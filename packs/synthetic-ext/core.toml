@@ -69,7 +69,8 @@ effects = [
 # Format v46 (E08 T35b): the hero's movement and scouting, kinds only the adventure reads (its own
 # artifact: the regalia's list is full). Here, not in `synthetic`, so the battle replays' ruleset
 # hash stays. Format v47 (E08 T45): Scholar's meeting level and Titan's Thunder's book, read by
-# the hero model's increment-6 rules.
+# the hero model's increment-6 rules. Format v49 (E08 T70): the Navigation level, the sea points
+# and free boarding, read by the hero model's increment-8 derivations.
 [[artifact]]
 id = "wayfarer_sash"
 name = "Wayfarer Sash"
@@ -84,4 +85,7 @@ effects = [
     { kind = "scouting_radius", tiles = 1 },
     { kind = "meeting_spells", level = 3 },
     { kind = "gives_spell_book" },
+    { kind = "navigation", level = 2 },
+    { kind = "sea_movement_points", points = 250 },
+    { kind = "free_boarding" },
 ]

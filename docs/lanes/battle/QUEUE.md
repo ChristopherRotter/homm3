@@ -73,6 +73,17 @@ Consolidated on 2026-10-19 (the user): the entries from E01 to E04c's closure ar
   flag is position 39. `base` re-harvested: three lines. Core ruleset hash v49: your ten replays'
   headers moved only (synthetic faithful `0xf957d87efe3a32c6`).
 
+- 2026-10-29 (the adventure lane, E08 T70, `shared/e08-t70`, `cross-lane`; for your information,
+  nothing to do): **your harvester and packs** gained increment 8's shared part: the gap-fill's
+  `[[heroes.skill_effects]]` for Navigation (`navigation` 1, 2, 3), `sea_movement_points` for the
+  Necklace of Ocean Guidance (1 000) and the Sea Captain's Hat (500, beside its two spells),
+  `free_boarding` for the Admiral's Hat, the three out of the `pending` list, four sources
+  (`exe-sea-movement`, `exe-free-boarding`, `vcmi-sea-movement`, `wiki-sea-movement`); pack format
+  v49, read by `h3-heroes` from E08 T71. `base` and `sod` re-harvested: only those lines;
+  `synthetic-ext`'s `wayfarer_sash` carries the three kinds (`h3-pack-battle`'s every-kind check).
+  Core ruleset hash v50: your ten replays' headers moved only (synthetic faithful
+  `0x382b666869803877`). No battle rule reads the kinds.
+
 - 2026-10-27 (the AI lane, E06 T6f and T8b, `claude/jolly-volta-qejdfa`, `cross-lane` with the
   user's consent; **for you**): two additions to `h3-battle` the AI lane made and reads.
   **`h3_battle::turn_order(&Observation) -> TurnOrder`** (`turn.rs`): the rest of the round's

@@ -32,6 +32,12 @@ lane's turret preview (its open point below), the baselines and AI-Q7.
 
 **The adventure env** (yours since E08 T45):
 
+- 2026-10-29 (the adventure lane, E08 T70, `shared/e08-t70`, `cross-lane`; for your information,
+  nothing to do): core ruleset hash v50 (three hero-effect kinds the adventure reads; no battle
+  rule moved): `bots-report-v1.json` and `bots-neutral-v1.json` regenerated in that pull request
+  (only `engine.core`, now `ba830fc8f504b846`); the run records keep the hash they ran on.
+  ADR-0017 point 8 now holds increment 8's observation (the note below, decision 172).
+
 - 2026-10-28 (the adventure lane, E08 T66b, `adventure/e08-t66b`; decision 172; **for you, no
   action yet**): increment 8 (boats and the sea) changes the adventure observation: the views gain
   the empty boats on the viewer's explored tiles (tile, kind, facing), each seen hero's boat

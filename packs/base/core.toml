@@ -2045,6 +2045,9 @@ expert = [{ kind = "surrender_discount", bp = 6000 }, { kind = "join_bonus", lev
 [[secondary_skill]]
 id = "navigation"
 name = "Navigation"
+basic = [{ kind = "navigation", level = 1 }]
+advanced = [{ kind = "navigation", level = 2 }]
+expert = [{ kind = "navigation", level = 3 }]
 
 [[secondary_skill]]
 id = "leadership"
@@ -4977,11 +4980,12 @@ slot = "ring"
 effects = [{ kind = "land_movement_points", points = 300 }]
 
 [[artifact]]
-id = "necklace_of_ocean_guidance"  # original id 71; pending: E08-E10
+id = "necklace_of_ocean_guidance"  # original id 71
 name = "Necklace of Ocean Guidance"
 class = "major"
 cost = { "gold" = 10000 }
 slot = "neck"
+effects = [{ kind = "sea_movement_points", points = 1000 }]
 
 [[artifact]]
 id = "angel_wings"  # original id 72
@@ -5375,12 +5379,12 @@ cost = { "gold" = 5000 }
 slot = "misc"
 
 [[artifact]]
-id = "sea_captains_hat"  # original id 123; pending: E08-E10
+id = "sea_captains_hat"  # original id 123
 name = "Sea Captain's Hat"
 class = "relic"
 cost = { "gold" = 15000 }
 slot = "head"
-effects = [{ kind = "spells", spell = "summon_boat" }, { kind = "spells", spell = "scuttle_boat" }]
+effects = [{ kind = "spells", spell = "summon_boat" }, { kind = "spells", spell = "scuttle_boat" }, { kind = "sea_movement_points", points = 500 }]
 
 [[artifact]]
 id = "spellbinders_hat"  # original id 124

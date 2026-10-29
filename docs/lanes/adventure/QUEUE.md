@@ -4,17 +4,20 @@ Pre-refined tasks of the adventure lane, in order, then the inbox of discovered 
 
 ## Tasks
 
-Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T65 (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 7 are closed (2026-10-12, -13, -20, -21, -23, -26, -28; increment 7, rewards on the map, by T65's audit). **Increment 8, boats and the sea**, refined with the user at T65 (ADV-Q31; decisions 158, 159): the survey and the ADR amendment drafts first (T66a, T66b), each task's cut confirmed with the user at its start. T66a in two (decision 160): T66a1 done (`adventure/e08-t66a1`, #550: survey `E08-sea.md` §0 to §6), T66a2 done (`adventure/e08-t66a2`, decision 161: whole; §7 to §14, the checkpoint's ADV-Q32); T66b done (`adventure/e08-t66b`, decision 169: whole; the drafts, `E08-design.md` and the cut in eight rounds, ADV-Q33 accepted: decisions 170–173). Round 2: T67 done (`adventure/e08-t67`, decision 174: whole; the writer's sea objects, the spec's bottles and a monster's own tile, `cross-lane`; the specs E8a, its water map and E8b with their templates). Round 3: T68 in two by batch (decision 175): T68a done (`adventure/e08-t68a`: the harness's boat reads and steps, E8a and its water map run and recorded), T68b done (`adventure/e08-t68b`, decision 176: whole; the sea pickups' reads, E8b run four times, two recorded); T69 done (`adventure/e08-t69`, decision 177: whole with a re-read; batch E8 scored, D-45 reverted, D-46 to batch E8c: decision 179); T69b done (`adventure/e08-t69b`, decision 180: whole; batch E8c run and scored, D-46 confirmed, survey §16). T70 next. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
+Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T65 (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 7 are closed (2026-10-12, -13, -20, -21, -23, -26, -28; increment 7, rewards on the map, by T65's audit). **Increment 8, boats and the sea**, refined with the user at T65 (ADV-Q31; decisions 158, 159): the survey and the ADR amendment drafts first (T66a, T66b), each task's cut confirmed with the user at its start. T66a in two (decision 160): T66a1 done (`adventure/e08-t66a1`, #550: survey `E08-sea.md` §0 to §6), T66a2 done (`adventure/e08-t66a2`, decision 161: whole; §7 to §14, the checkpoint's ADV-Q32); T66b done (`adventure/e08-t66b`, decision 169: whole; the drafts, `E08-design.md` and the cut in eight rounds, ADV-Q33 accepted: decisions 170–173). Round 2: T67 done (`adventure/e08-t67`, decision 174: whole; the writer's sea objects, the spec's bottles and a monster's own tile, `cross-lane`; the specs E8a, its water map and E8b with their templates). Round 3: T68 in two by batch (decision 175): T68a done (`adventure/e08-t68a`: the harness's boat reads and steps, E8a and its water map run and recorded), T68b done (`adventure/e08-t68b`, decision 176: whole; the sea pickups' reads, E8b run four times, two recorded); T69 done (`adventure/e08-t69`, decision 177: whole with a re-read; batch E8 scored, D-45 reverted, D-46 to batch E8c: decision 179); T69b done (`adventure/e08-t69b`, decision 180: whole; batch E8c run and scored, D-46 confirmed, survey §16). Round 4: T70 done (`shared/e08-t70`, `cross-lane`, decision 181: whole; the three ADRs applied, the effect kinds, the packs and the glossary). T71 next. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
 
-### E08 T70 — `shared/`: increment 8's ADRs, effect kinds and glossary
+### E08 T71 — `h3-heroes`: the day's sea points and free boarding (HER-ADV-009)
 
-- **Scope** (decision 171; design §18, "Shared and `cross-lane`", round 4): one `shared/` pull
-  request, merged before T71: the three ADR amendment drafts (`adr-drafts/*-increment-8.md`, accepted
-  by decision 170) applied to ADR-0013, -0016 and -0017 with batch E8's and E8c's outcome (survey
-  `E08-sea.md` §15, §16: D-41 to D-43 confirmed, D-44's refusal, D-45 reverted, D-46 confirmed);
-  the three effect kinds in `h3-content` and `h3-pack` with the core packs; `docs/03-domain.md`'s
-  terms (boat, in a boat, boarding, landing, free coastal tile, ground of the sea).
-- **Depends on:** T69b (done). **Status:** ready; its cut confirmed at its start.
+- **Scope** (decision 171; design §2, §3, round 5): `h3_heroes::sea_points(details, core, table:
+  &[u32; 4]) -> u32` (the table's entry at the highest `navigation` level, a Navigation
+  specialist's ⌊level × table[0] × `bp_per_level` ÷ 10 000⌋ with the skill, each worn type's
+  `sea_movement_points` once, saturating) and `free_boarding(details, core) -> bool` (a worn type
+  with `free_boarding`, not its parts worn apart); HER-ADV-009 in the rule catalog (sources: the
+  gap-fill's `exe-sea-movement`, `exe-free-boarding`, `vcmi-sea-movement`, `wiki-sea-movement`;
+  survey `E08-sea.md` §3.1, §4.2); design §2's tests; 100 % coverage. No version (no
+  `HeroDetails` field). T72 (the import, the kinds and the state) is the round's second task.
+- **Depends on:** T70 (`shared/e08-t70`, merged first). **Status:** ready; its cut confirmed at
+  its start. T71 is small: the inbox's failing property case (a fix wanted before T72) may join it.
 
 ## Inbox
 

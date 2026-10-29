@@ -603,6 +603,15 @@ enum EffectDto {
         level: u8,
     },
     GivesSpellBook {},
+    /// Pack format v49 (E08 T70, increment 8): Navigation, the sea artifacts' points, the
+    /// Admiral's Hat's free boarding.
+    Navigation {
+        level: u8,
+    },
+    SeaMovementPoints {
+        points: u16,
+    },
+    FreeBoarding {},
 }
 
 /// Whose stacks a morale or luck effect changes, as files write it (`own` by default, `enemy`,
@@ -855,6 +864,9 @@ impl EffectDto {
             Self::ScoutingRadius { tiles } => HeroEffect::ScoutingRadius { tiles },
             Self::MeetingSpells { level } => HeroEffect::MeetingSpells { level },
             Self::GivesSpellBook {} => HeroEffect::GivesSpellBook,
+            Self::Navigation { level } => HeroEffect::Navigation { level },
+            Self::SeaMovementPoints { points } => HeroEffect::SeaMovementPoints { points },
+            Self::FreeBoarding {} => HeroEffect::FreeBoarding,
         })
     }
 }
