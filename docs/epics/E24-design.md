@@ -2152,3 +2152,11 @@ other player's turn and the messages are M4's).
   `status-town` and `status-garrison`; `masks.toml`'s `panels` without the status window; the
   harness refuses a still or a sequence whose window is another kind, or a town's name
   `TownName.txt` lacks (a map's own: M4's).
+- **Checked:** `set`: the 47 situations exact with the window (the three new ones too); `frames`:
+  the 13 sequences, every frame exact; `drawn` the same after `--record`; the window under Xvfb
+  (`status-hero`, `status-town`, `status-garrison`, `walk-1`, `lists-scrolled`, `--check 10`):
+  every frame read back exact, made as the same frame composed afresh, every change the headless
+  loop's.
+- **Measured** (the sandbox, `--measure 20`, alternating with `master`'s build): the same:
+  `walk-1` 24.8 % uploaded, a frame made in a median 0.4–0.5 ms; *Tale of two lands* 11.2 %, 1.2;
+  `path-objects` 5.2 %, 0.9–1.0.
