@@ -350,6 +350,55 @@ fn darken_halves_a_rectangle() {
 }
 
 #[test]
+fn reach_is_the_rectangle_each_drawer_can_change() {
+    // E24 M3 T4c: a picture's at most its item's size of it, a button's frame's canvas (frame 0
+    // past the group's), a darkened rectangle; unknown for a text, a label or a missing asset.
+    let s = store();
+    let picture = |name: &str, size| Draw::Picture {
+        picture: name.into(),
+        x: 1,
+        y: 2,
+        player: None,
+        size,
+    };
+    assert_eq!(reach(&picture("p.pcx", None), &s), Some([1, 2, 3, 3]));
+    assert_eq!(
+        reach(&picture("p.pcx", Some([1, 5])), &s),
+        Some([1, 2, 2, 3])
+    );
+    assert_eq!(reach(&picture("no.pcx", None), &s), None);
+    let button = |def: &str, frame| Draw::Button {
+        def: def.into(),
+        frame,
+        x: -1,
+        y: 4,
+        mirrored: true,
+        player: None,
+    };
+    assert_eq!(reach(&button("b.def", 1), &s), Some([-1, 4, 1, 5]));
+    assert_eq!(reach(&button("b.def", 9), &s), Some([-1, 4, 1, 5]));
+    assert_eq!(reach(&button("g1.def", 0), &s), None);
+    assert_eq!(reach(&button("no.def", 0), &s), None);
+    let dark = Draw::Darken { rect: [3, 1, 2, 4] };
+    assert_eq!(reach(&dark, &s), Some([3, 1, 5, 5]));
+    let text = Draw::Text {
+        item: text_item("q.pcx", "f.fnt", "game.pal"),
+        x: 0,
+        y: 0,
+        text: "1".into(),
+    };
+    assert_eq!(reach(&text, &s), None);
+    let label = Draw::Label {
+        item: label_item("f.fnt", "game.pal"),
+        x: 0,
+        y: 0,
+        text: "1".into(),
+        disabled: false,
+    };
+    assert_eq!(reach(&label, &s), None);
+}
+
+#[test]
 fn a_text_is_its_picture_opaque_then_the_text() {
     let s = store();
     let text = |item, text: &str| Draw::Text {

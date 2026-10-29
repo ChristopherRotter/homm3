@@ -4,8 +4,8 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 
 ## Current state
 
-- **E24** (`docs/epics/E24-map-client.md`; log `E24-log.md`, design `E24-design.md`): **M1** and **M2** closed (`E24-archive.md`): the crate `clients/crates/h3-map-view`, 40 situations and 13 sequences exact (a viewer change runs `h3map.py drawn` first: the runbook, "Which captures a change needs"; `--bugs original` the comparisons' profile). **M3** (the adventure screen; the epic's M3 section, its review list; the queue's tasks): **T1a** (#545), **T1b** (#548), **T2a** (#553), **T2b1** (#557), **T2b2** (#561), **T3a** (#563) and **T3b** (#567, the minimap over time) merged. T4 cut with the user (2026-10-29): **T4a** (#570, the lists as stills) merged; **T4b built** (the lists over time, design §4.5 "When they are drawn again": a step's end shows its hero's movement bar, a lift that centres the view and a walk's end that leaves the hero unable to move both lists; the 13 sequences recorded with the lists, every frame exact; `masks.toml` one list, `panels`). **Next: T4c** (a changed panel item drawn again alone: T4b's bars rebuild the panels' background, the whole screen uploaded), then T5. Open: **MCL-Q13** (a monster's head under the Utopia: the original's; keep, recommended), **MCL-Q14** (the mana bar a spell leaves: M4 records a cast first).
-- **Open pull requests** (2026-10-29): **#572**, T4b's (`map-client/e24-m3-t4b`): check it first (merged, or its mergeability with `master`). Stray branches `map-client/e24-m3-t4` and `map-client/e24-m3-t4a` (T4a's, merged) are the user's to delete: the session's proxy refuses it.
+- **E24** (`docs/epics/E24-map-client.md`; log `E24-log.md`, design `E24-design.md`): **M1** and **M2** closed (`E24-archive.md`): the crate `clients/crates/h3-map-view`, 40 situations and 13 sequences exact (a viewer change runs `h3map.py drawn` first: the runbook, "Which captures a change needs"; `--bugs original` the comparisons' profile). **M3** (the adventure screen; the epic's M3 section, its review list; the queue's tasks): **T1a** (#545), **T1b** (#548), **T2a** (#553), **T2b1** (#557), **T2b2** (#561), **T3a** (#563), **T3b** (#567), **T4a** (#570) and **T4b** (#572) merged; **T4c built** (a changed panel item drawn again alone, design §4.6: the background redrawn where the changed items reach, `h3_ui::paint::reach`, the view's cells there; `walk-1` 31.0 → 24.7 % uploaded, every frame exact). **Next: T5** (the status window, the resource bar and the date; a text's reach with it), then T6. Open: **MCL-Q13** (a monster's head under the Utopia: the original's; keep, recommended), **MCL-Q14** (the mana bar a spell leaves: M4 records a cast first).
+- **Open pull requests** (2026-10-29): **#574**, T4c's (`map-client/e24-m3-t4c`): check it first (merged, or its mergeability with `master`). Stray branches `map-client/e24-m3-t4` and `map-client/e24-m3-t4a` (T4a's, merged) are the user's to delete: the session's proxy refuses it.
 - **Ownership** (`lanes.toml`): this lane's crates in the client workspace (`clients/crates/h3-map…`: `h3-map-view`), its data folder `clients/map/`, `docs/epics/E24*` and this folder; branches `map-client/<task>`; ids `MCL-Q<n>`, `MCL-QUIRK-<n>` (asset fixes), `MCL-STUB-<n>`; ADR drafts in `adr-drafts/`. **Common** with the client lane: the foundation (`h3-assets`, `h3-render`, `h3-sdl`, `h3-ui`, the workspace's `Cargo.toml`, `deny.toml`, `.gitignore`, `README.md`, `scripts/`, the string catalogue `clients/text/`, kept common by the user at T0) and the capture harness `clients/capture/` (the adventure lane changes it too): an additive change freely, a change in behaviour noted in the client lane's inbox. The rest of `clients/` is the client lane's (`h3-view` included).
 - **The writer:** this lane adds what its situations need to `h3_map::writer` (the adventure lane's) in additive `cross-lane` pull requests, noted in that lane's inbox (`docs/formats/h3m.md`). It refuses an owner that is no player: a situation gives each owning colour a hero.
 - **From E17** (`clients/README.md`; ADR-0020, ADR-0024): the decoders, the compositor, the SDL 3 adapter, the string catalogue, the gate, the harness (the original under Wine, `h3mem.py`, `h3map.py`: the runbook `clients/capture/README.md`).
@@ -29,12 +29,13 @@ The user's dictation (2026-10-12): `docs/lanes/client/ASSET-NOTES.md`; this lane
 
 ## Recent sessions
 
+- **2026-10-29, E24 M3 T4c** (the user present; T4c done as a task of its own): T4c built
+  (the log's "M3 T4c"; #574); the original data staged from the user's repo folder first; the local
+  baseline stopped early (it was testing the edited tree), CI's green `master` the starting
+  point. Nothing is waiting on the user's computer.
 - **2026-10-29, E24 M3 T4b** (the user present: T4b kept whole): T4b built (the log's "M3
   T4b"); the original data staged from the user's repo folder first; its measurement found T4c
   (queued). Nothing is waiting on the user's computer.
 - **2026-10-29, E24 M3 T4a** (the user present: T4 cut into T4a, the stills, and T4b, over
   time): T4a built (the log's "M3 T4a"); the original data staged from the user's repo folder
   first; nothing is waiting on the user's computer.
-- **2026-10-29, E24 M3 T3b** (the user present: T3b kept whole when its reading grew): T3b
-  built (the log's "M3 T3b"); the recording found the step's end's redraw the first reading had
-  set aside. The user's computer stayed linked; nothing is waiting on it.

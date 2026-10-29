@@ -113,16 +113,7 @@ pub fn draw(
             // drawer with runs skipped (0x47BF00 → 0x47C570); the DEF's entries 224-255 in a
             // player's colours when it has one (a DEF item's 0x4EAA4A, E17 M5 T4a; an adventure
             // button's 0x4569E0, E24 M3 T2a), mirrored as a DEF item's +0x3C says (E17 M5 T4b1).
-            let count = assets
-                .sprite(def)
-                .and_then(|s| s.def.groups.iter().find(|g| g.id == 0))
-                .map_or(0, |g| g.frames.len());
-            let frame = if usize::try_from(*frame).unwrap_or(usize::MAX) < count {
-                *frame
-            } else {
-                0
-            };
-            let (sprite, frame) = frame_of(assets, def, frame)?;
+            let (sprite, frame) = button_frame(assets, def, *frame)?;
             let palette = match player {
                 Some(colours) => {
                     with_player_colours(&sprite.def.palette, &colours_of(assets, colours)?)
@@ -189,6 +180,62 @@ pub fn draw(
         }
     }
     Ok(())
+}
+
+/// The rectangle of the screen `draw` can change (left, top, right, bottom; the last two
+/// excluded), as its drawer reaches (E24 M3 T4c, *provisional*): a picture's at most its item's
+/// size of it, a button's its frame's canvas, a darkened rectangle itself; `None` when unknown: a
+/// text's or a label's (the text drawer's lines may pass the item's box: not read yet), or an
+/// asset `assets` lacks (drawing it fails).
+#[must_use]
+pub fn reach(draw: &Draw, assets: &impl Assets) -> Option<[i32; 4]> {
+    let side = |v: u32| i32::try_from(v).unwrap_or(i32::MAX);
+    let rect = |x: i32, y: i32, [w, h]: [i32; 2]| [x, y, x.saturating_add(w), y.saturating_add(h)];
+    match draw {
+        Draw::Picture {
+            picture,
+            x,
+            y,
+            size,
+            ..
+        } => {
+            let image = assets.picture(picture)?;
+            let [w, h] = [side(image.width()), side(image.height())];
+            let [w, h] = size.map_or([w, h], |[sw, sh]| [w.min(sw), h.min(sh)]);
+            Some(rect(*x, *y, [w, h]))
+        }
+        Draw::Button {
+            def, frame, x, y, ..
+        } => {
+            let (_, frame) = button_frame(assets, def, *frame).ok()?;
+            Some(rect(
+                *x,
+                *y,
+                [side(frame.full_width), side(frame.full_height)],
+            ))
+        }
+        Draw::Darken { rect: [x, y, w, h] } => Some(rect(*x, *y, [*w, *h])),
+        Draw::Text { .. } | Draw::Label { .. } => None,
+    }
+}
+
+/// A button's frame (0x456940): frame `index` of `def`'s group 0, frame 0 when the group has no
+/// such frame.
+fn button_frame<'a>(
+    assets: &'a impl Assets,
+    def: &str,
+    index: u32,
+) -> Result<(&'a Sprite, &'a Frame), String> {
+    let count = assets
+        .sprite(def)
+        .and_then(|s| s.def.groups.iter().find(|g| g.id == 0))
+        .map_or(0, |g| g.frames.len());
+    let index = if usize::try_from(index).unwrap_or(usize::MAX) < count {
+        index
+    } else {
+        0
+    };
+    frame_of(assets, def, index)
 }
 
 /// `text` in `area` by the text drawer (0x4B5490), in a font and the palette its colours come
