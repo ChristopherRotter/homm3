@@ -161,6 +161,12 @@ SPELL_POINTS, STATUS, MORALE_BONUS, LUCK_BONUS = 0x18, 0x105, 0x11A, 0x11B
 # four i32 skills each, indexed by a University's tile word's bits 13-24 (university_skills
 # 0x405E10).
 UNIVERSITIES, UNIVERSITY_SIZE = 0x4E3CC, 16
+# The signs' and Ocean Bottles' messages (E08 T68b; structs.toml, game +0x4E37C): a vector (begin,
+# end), 20 bytes a record, indexed by the object's word: a "has text" byte (+0x0), then the text as
+# the game's string, its characters' pointer at +0x8 and its length at +0xC (load_message_body
+# 0x501270). A tile's terrain (map_item +0x4; 8 water).
+MESSAGES, MESSAGE_RECORD, MESSAGE_TEXT, MESSAGE_LENGTH = 0x4E37C, 20, 0x8, 0xC
+TILE_TERRAIN, WATER = 0x4, 8
 # A message box's pictures (E08 T57, observed under Wine at a Treasure Chest; message_box_build
 # 0x4F6990): a picture item (PICTURE_VTABLE) with its caption, a text item whose box starts at the
 # picture's bottom; a choice's frames (vtable 0x63FE1C) are items 0x7809 + n (the left 0x7809,
@@ -753,11 +759,13 @@ class Mem:
         return [[i % side, i // side % side, i // (side * side), a]
                 for i, a in enumerate(arrows) if a]
 
-    def open_tiles(self, colour, z=0):
+    def open_tiles(self, colour, z=0, water=None):
         """The tiles of a level a hero of `colour` may walk to without visiting or meeting
         anything (E08 T57, the harness's approach to an unexplored target): explored by that
         player, no object's class (+0x1E 0), not closed (+0xD bit 0x01: rock, or an object
-        blocks it) and outside every monster's guard (the vision word's bit 8)."""
+        blocks it) and outside every monster's guard (the vision word's bit 8). Since E08 T68b
+        `water = True` keeps only water tiles (+0x4 terrain 8: a hero in a boat sails only
+        there), `False` only land."""
         game = self.game()
         side = self.i32(game + MAP_SIDE)
         count = side * side
@@ -767,7 +775,8 @@ class Mem:
         return {(i % side, i // side) for i in range(count)
                 if words[i] >> colour & 1 and not words[i] & 0x100
                 and struct.unpack_from("<i", raw, TILE_SIZE * i + 0x1E)[0] == 0
-                and not raw[TILE_SIZE * i + 0xD] & 1}
+                and not raw[TILE_SIZE * i + 0xD] & 1
+                and (water is None or (raw[TILE_SIZE * i + TILE_TERRAIN] == WATER) == water)}
 
     def explored_rows(self, colour):
         """A player's explored bits of every tile (E24 M1 T5b2), as `render --live` takes them: a
@@ -986,6 +995,19 @@ class Mem:
         found = self.tile(*at, z)
         found["tile"] = [at[0], at[1], z]
         return found
+
+    def messages(self):
+        """The signs' and Ocean Bottles' message records (E08 T68b; game +0x4E37C): [(has text,
+        text)] by the object's word, the text as the map gave it (cp1252)."""
+        begin, end = struct.unpack("<II", self.read(self.game() + MESSAGES, 8))
+        out = []
+        for at in range(begin, end - MESSAGE_RECORD + 1, MESSAGE_RECORD):
+            raw = self.read(at, MESSAGE_RECORD)
+            pointer, length = struct.unpack_from("<Ii", raw, MESSAGE_TEXT)
+            text = self.read(pointer, length).decode("cp1252", errors="replace") \
+                if pointer and 0 < length < 4096 else ""
+            out.append((bool(raw[0]), text))
+        return out
 
     def universities(self):
         """The game's Universities (E08 T57; game +0x4E3CC): each one's four skill ids, in the

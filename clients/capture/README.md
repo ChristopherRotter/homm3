@@ -30,7 +30,7 @@ adventure).
 | `screens.toml` | The screens the driver recognises: 12 probes `[x, y, 5-6-5 value]` each (numbers only). |
 | `h3cap.py` | `diff` (our render against a capture, with masks) and `find` (the original's obstacles in a capture); `compare` and `boxes_at` for the frame check. |
 | `h3mem.py` | Reads the running game's state from its memory: the battle's clocks, idle steps, active stack and the mouse's highlight, each stack's group, frame, hex, offsets and draw layer, and each side's hero's group and frame and its flag's frame (M3 T3a), the magic animation drawn and the stacks under it (M3 T3b), the battle's outcome (H1); the adventure map's players, heroes (with their experience, level, army and skills: H1), view and path, the difficulty, a tile's monster, the topmost dialog's text (H1; below); since E08 T47a the topmost dialog's kind and its items' boxes, states and texts, a hero's army slot by slot, worn positions, flags and learned spells, the artifact held, the battle's tactics phase; since E08 T57 a map object's word on its entrance tile, the Universities' skills, a hero's spell points, morale and luck bonuses and status flags, a stack's army slot, a message box's pictures and captions, the game's version; since E08 T68a the battle's ship flag and the obstacles' hexes. |
-| `h3adv.py` | The adventure map (M2 T6, H1, H2): hot seat at a chosen difficulty, heroes (the list scrolled), tiles of either level clicked twice, questions answered, battles played, level-ups chosen, turns, artifacts put on from the backpack in the hero screen (E08 T37a), the hero screen's, the exchange's, the army, creature and split dialogs' items clicked by their ids and a tactics phase ended (E08 T47a), a choice between two pictures made, steps run over a grid of tiles and a new game started again until its draws hold what the recipe requires (E08 T57), boats boarded and left, a key pressed for a hero, a second click made on a condition (E08 T68a); `batch` plays an experiment batch and fills its results template, `compare` sets two filled templates side by side, `learn-button`. |
+| `h3adv.py` | The adventure map (M2 T6, H1, H2): hot seat at a chosen difficulty, heroes (the list scrolled), tiles of either level clicked twice, questions answered, battles played, level-ups chosen, turns, artifacts put on from the backpack in the hero screen (E08 T37a), the hero screen's, the exchange's, the army, creature and split dialogs' items clicked by their ids and a tactics phase ended (E08 T47a), a choice between two pictures made, steps run over a grid of tiles and a new game started again until its draws hold what the recipe requires (E08 T57), boats boarded and left, a key pressed for a hero, a second click made on a condition (E08 T68a), the sea pickups' words read and visits picked by them, legs sailed over open water, a table's rows filled step by step (E08 T68b); `batch` plays an experiment batch and fills its results template, `compare` sets two filled templates side by side, `learn-button`. |
 | `h3map.py` | The adventure map's stills (E24 M1 T3b2, the map client lane): `still` shows a situation of `../map/situations/` in the original (a single scenario, a writer's map or a shipped one whole, the human's explored tiles written, the view by the minimap, the clock frozen), draws ours and diffs them; `set` runs the map's capture set, keeping each live part; `drawn` (T6a) draws ours from the kept ones without the original; `frames` (E24 M2 T1a1) records the map's sequences, 1 ms at a time (T1a2: with their options and inputs). Below, "The map's stills" and "The map's sequences". |
 | `h3lod.py` | The original's text tables, read from the run directory's LODs at run time (H1): which record a dialog's text was written from (`ADVEVENT:86`); never their text. |
 | `batches/` | The batches' recipes: a spec's procedure as steps (`E08-batch-2.toml`), and the harness's own check (`harness-check.toml`, its spec in `checks/`). |
@@ -489,6 +489,7 @@ the same way:
 | `drawn` | since E08 T68a: how the view draws the step's hero, by `h3mem.map_heroes`' rule read from its record (a turn's start lifts the selected hero off its tile): `in a boat (type 0, flag 0)`, `in a boat (no boat record)`, `on foot` |
 | `opening:field`, `battlefield:ship`, `blocked` | since E08 T68a: the last battle's opening in one line (`terrain sand, special field shore, ship flag 0, blocked hexes 23, 24`), its ship flag (battle manager +0x53C6: 0 or 1), the hexes an obstacle blocks (the hex records' flag 0x2 on a hex no stack stands on; `none`) |
 | `again`, `key` | since E08 T68a: whether a walk with `again_if` clicked a second time (yes or no); what a `key` step did: `stepped`, `scrolled` (the view moved, the hero did not) or `nothing` |
+| `battle:tile`, `boat_record:x,y[,level]`, `treasury_changed`, `text:<literal>` | since E08 T68b: the step's hero's tile as the last battle opened; every boat record on a tile, in use or not (a beaten hero's boat freed); whether the step changed the hero's player's treasury (yes or no); a literal (a table row's tile) |
 
 `expect = { marks = <n>, path = "green", question = "join, flee", battle = true, dialogs = true }`
 notes a difference under the encounter's "anything odd" (`dialogs = true`: dialogs passed after
@@ -557,6 +558,23 @@ path (adventure manager +0x4C, as `path_arrows`): a click that finds no path lea
 path's arrows in memory, and batch E8a's second run read them as a walker's marks.
 `dump = "<name>"` saves the screen after the step as `<out>/<name>.xwd` (`convert` makes a PNG of
 it) for an agent to look at: E8-5's hero on water.
+
+Since E08 T68b (batch E8b): `object:x,y` decodes a Sea Chest's word (class 82: `Sea Chest:
+nothing`, `1500 gold` or `artifact <name>, 1000 gold` by bits 0 to 2, the artifact in bits 3 to 12;
+survey §8.3), a Shipwreck Survivor's (86: `Survivor: artifact <name>`, §8.4) and an Ocean
+Bottle's (59: `the map's text "..."` or `no text`, from the game's message records, +0x4E37C,
+§8.5); an artifact chest and a Survivor hold an artifact for `[[require]]` and `select`. `select`
+takes `holds = "artifact"` or `is = "<object text>"` (the objects whose `object:` text starts so;
+neither: any object), `count` (the nearest so many), `controls` and `then = ["<object text>",
+…]` (after them the nearest of each: E8-6's chest of kind 1, then of kind 0). A hero in a boat
+approaches an unexplored target (`near`) and sets its route anew (`days`) over open **water**
+tiles only (`h3mem.open_tiles(…, water=True)`). A message's record may be `RANDSIGN:<n>` (a sign's
+or bottle's default text, by its number: the column mod 25) or `the map's text "..."` (a text a
+message record of the map holds: ours, never the original's). A table without row labels is
+filled step by step: a record field `"row:<the table's first column>" = [<cell>, …]` adds a row
+(a cell one observation or a list of them), a step over a grid without a walk one row per tile;
+a section with several such tables fills each by its first column. A grid step without a walk
+reads its `note` at every tile too (E8-6's chests at the start).
 
 **A new screen** (another recipe): get there by hand once with `Game.click`/`key`, then
 `python3 capture/h3drive.py learn <name> --in x0,y0,x1,y1 [--avoid …] [--also other-state.xwd]`
