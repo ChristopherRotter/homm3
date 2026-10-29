@@ -16,26 +16,19 @@ the original a reading or a capture finds is an `MCL-Q<n>` in the same task (the
 autonomy contract). Each panel drawn leaves `h3map.py`'s `panels` mask, and `drawn` then
 compares it on every situation and sequence.
 
-T3 cut with the user (2026-10-29): T3a the minimap as a still, T3b the minimap over time.
-
-### E24 M3 T3a — the minimap as a still (in progress, `map-client/e24-m3-t3a`)
-
-- **Scope:** `minimap_draw` 0x412C40 read in full and built: each tile's colour (the terrain's
-  DEF's palette entry 22, design §1.8; the blocked tiles' entry 23), the owners' colours, the
-  selected hero's, the unexplored tiles, the four sizes' patterns, the view's box, the
-  underground's; drawn in every frame from the live part. The 40 situations compare it (the
-  stills' mask without it); the sequences keep it masked until T3b.
-- **Acceptance:** the minimap exact on every situation; the Definition of Done.
-- **Depends on:** T2a. **Status:** in progress.
+T3 cut with the user (2026-10-29): T3a the minimap as a still (done: the epic's log), T3b the
+minimap over time.
 
 ### E24 M3 T3b — the minimap over time
 
 - **Scope:** the 13 callers of 0x412C40 read (which moments redraw it: a scroll, a walk's steps,
   a selection, a full update, the rest) and the timeline built from them (its box lags where the
   original's does); T2b2's cells cover it; the 13 sequences recorded again and exact with it.
+  The minimap's tiles made only at those moments (T3a makes them each scene: design §4.4);
+  `masks.toml`'s `stills` and `panels` one again.
 - **Acceptance:** the minimap exact on every sequence (`panels` without it); the Definition of
   Done.
-- **Depends on:** T3a. **Status:** ready after T3a.
+- **Depends on:** T3a (done). **Status:** ready.
 
 ### E24 M3 T4 — the hero and town lists
 

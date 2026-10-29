@@ -102,7 +102,7 @@ viewers share.
   (`adventure_full_update` 0x417420's panels, the manager's +0x44 and the dialog +0x50: its
   items' ids, places, pictures and order) drawn at a map's start, the frame's fixed cost taken
   down with it (T2); the minimap (`minimap_draw` 0x412C40: the terrains' colours, the owners',
-  the unexplored tiles, the view's box, the underground; T3); the hero list (portraits, the
+  the unexplored tiles, the view's box, the underground; T3a as a still, T3b over time); the hero list (portraits, the
   movement and mana bars, the selection, the scroll) and the town list (T4); the status window
   (a hero's, a town's, the kingdom's), the resource bar and the date (T5); the mouse (T6): the
   status bar's hints over the panels and the map, the cursor over the map by its tile, the
@@ -161,7 +161,10 @@ viewers share.
   cut with the user (2026-10-28): T2b1, the frame's fixed cost (**done** 2026-10-28: the
   widening by a table, the background drawn once, the levels' spatial index; the log), T2b2, a
   frame redrawing only what changed (kept whole by the user; **done** 2026-10-28: the drawers'
-  spans, the view's cells, the changed rectangles widened and uploaded; the log); T3, the minimap; T4, the hero and town lists; T5, the status
+  spans, the view's cells, the changed rectangles widened and uploaded; the log); T3 cut with the
+  user (2026-10-29): T3a, the minimap as a still (**done** 2026-10-29: `minimap_draw` 0x412C40
+  read and built, the 40 situations exact with it; the log), T3b, the minimap over time; T4, the
+  hero and town lists; T5, the status
   window, the resource bar and the date; T6, the mouse, the keys during a walk, the sound without
   the focus; T7, M3's closure. A task that grows is cut at a seam agreed with the user.
 - **Exit:** every situation and sequence as recorded on the whole screen (no `panels` mask
