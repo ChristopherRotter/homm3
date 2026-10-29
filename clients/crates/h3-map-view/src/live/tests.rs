@@ -280,29 +280,58 @@ fn every_town_its_picture_by_its_buildings_at_the_start() {
 
 #[test]
 fn a_maps_start_its_kingdom_and_buttons() {
-    // E24 M3 T2a (design §4.1): the art map's Red hero and Blue town.
-    let raw = raw(&map());
+    // E24 M3 T2a (design §4.1): the art map's Red hero and Blue town; their portrait (the hero's
+    // type, 16) and the town's faction and fort (T4a, §4.5).
+    let mut raw = raw(&map());
     let art = MapArt::from_raw(&raw).unwrap();
-    let kingdom = |viewer| Live::at_start(&raw, &art, viewer, &towns()).kingdom;
+    let kingdom = |raw: &RawMap, viewer| Live::at_start(raw, &art, viewer, &towns()).kingdom;
     let awake = KingdomHero {
         asleep: false,
         movable: true,
+        portrait: 16,
+        points: 0,
+        mana: 0,
     };
-    let red = kingdom(0);
+    let red = kingdom(&raw, 0);
     assert_eq!(
         red,
         Kingdom {
             heroes: vec![awake],
-            towns: 0,
+            towns: vec![],
             selected: Selected::Hero(0),
             tops: [0, 0],
             quests: false,
         }
     );
-    let blue = kingdom(1);
-    assert_eq!((blue.heroes.len(), blue.towns), (0, 1));
+    let blue = kingdom(&raw, 1);
+    let castle = KingdomTown {
+        faction: 0,
+        fort: true,
+        built: false,
+    };
+    assert_eq!((blue.heroes.len(), &blue.towns), (0, &vec![castle]));
     assert_eq!(blue.selected, Selected::Town(0));
-    assert_eq!(kingdom(2), Kingdom::default());
+    // A portrait the map gives; a town without a fort.
+    let hero = raw
+        .objects
+        .iter()
+        .position(|o| matches!(o.body, Body::Hero(_)))
+        .unwrap();
+    if let Body::Hero(h) = &mut raw.objects[hero].body {
+        h.portrait = Some(130);
+    }
+    let town = raw
+        .objects
+        .iter()
+        .position(|o| matches!(o.body, Body::Town(_)))
+        .unwrap();
+    if let Body::Town(t) = &mut raw.objects[town].body {
+        t.buildings = Buildings::Standard { fort: false };
+    }
+    assert_eq!(kingdom(&raw, 0).heroes[0].portrait, 130);
+    assert!(!kingdom(&raw, 1).towns[0].fort);
+    let raw = self::raw(&map());
+    assert_eq!(kingdom(&raw, 2), Kingdom::default());
     assert!(Live::at_start(&raw, &art, 0, &towns()).buttons.is_none());
     // Move hero by a green arrow of the selected hero's path, next hero by an awake hero able to
     // move.
@@ -331,11 +360,11 @@ fn a_maps_start_its_kingdom_and_buttons() {
         heroes: vec![
             KingdomHero {
                 asleep: true,
-                movable: true,
+                ..awake
             },
             KingdomHero {
-                asleep: false,
                 movable: false,
+                ..awake
             },
         ],
         ..red
@@ -350,25 +379,63 @@ fn a_live_parts_kingdom_read() {
         let table: toml::Table = toml::from_str(&alloc::format!("kingdom = {text}")).unwrap();
         Kingdom::read(&table["kingdom"])
     };
-    let all =
-        "{ heroes = [[0, 1], [1, 0]], towns = 2, selected = [1, 1], tops = [0, 1], quests = 1 }";
+    let all = "{ heroes = [[0, 1, 3, 1500, 20], [1, 0, 162, 0, -1]], towns = [[8, 1, 0], [0, 0, \
+               1]], selected = [1, 1], tops = [0, 1], quests = 1 }";
+    let two = Kingdom {
+        heroes: vec![
+            KingdomHero {
+                asleep: false,
+                movable: true,
+                portrait: 3,
+                points: 1500,
+                mana: 20,
+            },
+            KingdomHero {
+                asleep: true,
+                movable: false,
+                portrait: 162,
+                points: 0,
+                mana: -1,
+            },
+        ],
+        towns: vec![
+            KingdomTown {
+                faction: 8,
+                fort: true,
+                built: false,
+            },
+            KingdomTown {
+                faction: 0,
+                fort: false,
+                built: true,
+            },
+        ],
+        selected: Selected::Hero(1),
+        tops: [0, 1],
+        quests: true,
+    };
+    assert_eq!(read(all), Some(two.clone()));
+    // The form before T4a, the sequences' kept live parts' until T4b.
+    let before =
+        "{ heroes = [[0, 1], [1, 0]], towns = 2, selected = [2, 1], tops = [0, 1], quests = 1 }";
     assert_eq!(
-        read(all),
+        read(before),
         Some(Kingdom {
             heroes: vec![
                 KingdomHero {
                     asleep: false,
                     movable: true,
+                    ..KingdomHero::default()
                 },
                 KingdomHero {
                     asleep: true,
                     movable: false,
+                    ..KingdomHero::default()
                 },
             ],
-            towns: 2,
-            selected: Selected::Hero(1),
-            tops: [0, 1],
-            quests: true,
+            towns: vec![KingdomTown::default(); 2],
+            selected: Selected::Town(1),
+            ..two
         })
     );
     let selected = |s: &str| read(&all.replace("selected = [1, 1]", s)).map(|k| k.selected);
@@ -383,19 +450,35 @@ fn a_live_parts_kingdom_read() {
     ] {
         assert_eq!(selected(wrong), None, "{wrong}");
     }
+    let heroes = "[[0, 1, 3, 1500, 20], [1, 0, 162, 0, -1]]";
+    let towns = "[[8, 1, 0], [0, 0, 1]]";
     for (from, to) in [
-        ("[[0, 1], [1, 0]]", "[[0, 2]]"),
-        ("[[0, 1], [1, 0]]", "[[0]]"),
-        ("[[0, 1], [1, 0]]", "[[0, \"1\"]]"),
-        ("[[0, 1], [1, 0]]", "3"),
-        ("towns = 2", "towns = -1"),
+        (heroes, "[[0, 2]]"),
+        (heroes, "[[0]]"),
+        (heroes, "[[0, \"1\"]]"),
+        (heroes, "3"),
+        (heroes, "[3]"),
+        (heroes, "[[0, 1, 256, 0, 0]]"),
+        (heroes, "[[0, 1, 0, 2147483648, 0]]"),
+        (heroes, "[[0, 1, 0, 0, 2147483648]]"),
+        (heroes, "[[0, 1, 0, 0]]"),
+        (heroes, "[[0, 1, 0, 0, 0, 0]]"),
+        (towns, "-1"),
+        (towns, "[[9, 2, 0]]"),
+        (towns, "[[9, 0, 2]]"),
+        (towns, "[[256, 0, 0]]"),
+        (towns, "[[0, 0]]"),
+        (towns, "[3]"),
+        (towns, "\"two\""),
         ("tops = [0, 1]", "tops = [0]"),
         ("tops = [0, 1]", "tops = [0, -1]"),
         ("quests = 1", "quests = 2"),
         ("quests = 1", "missing = 1"),
-        ("[[0, 1], [1, 0]]", "[[2, 1]]"),
+        (heroes, "[[2, 1, 0, 0, 0]]"),
+        (heroes, "[[0, 2, 0, 0, 0]]"),
+        (heroes, "[[2, 1]]"),
         ("heroes = ", "people = "),
-        ("towns = 2", "cities = 2"),
+        ("towns = ", "cities = "),
         ("selected = [1, 1]", "chosen = [1, 1]"),
         ("selected = [1, 1]", "selected = 1"),
         ("selected = [1, 1]", "selected = [1, -1]"),

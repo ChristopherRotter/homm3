@@ -476,6 +476,9 @@ pub struct Shown {
     pub defs: BTreeMap<u16, String>,
     /// The DEF items' frames the screen gave them (0x4EAFF0; E17 M5 T3a).
     pub frames: BTreeMap<u16, u32>,
+    /// The pictures' pictures the screen gave them (`dialog_picture_set` 0x4504C0; E24 M3 T4a:
+    /// the adventure screen's hero list, a hero's portrait or the empty slot's).
+    pub pictures: BTreeMap<u16, String>,
 }
 
 impl Shown {
@@ -593,7 +596,7 @@ impl Dialog {
                 Item::Picture(p) => {
                     let [x, y] = place(p.at);
                     Some(Draw::Picture {
-                        picture: p.picture.clone(),
+                        picture: shown.pictures.get(&p.id).unwrap_or(&p.picture).clone(),
                         x,
                         y,
                         player: colours(p.id),

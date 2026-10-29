@@ -6,7 +6,8 @@
 //! its `.msk` leaves undrawn (D8); and, listed, the pixels a random object's picture loses when a
 //! new game draws it with its random template's masks. It runs only where the user's files are
 //! (ADR-0009): a copy of the installation, which it only reads. It reads whole archives, as
-//! `h3-view gate` does.
+//! `h3-view gate` does. The hero and town lists (E24 M3 T4a): their DEFs hold the frames the
+//! slots draw, every portrait of the tables decodes at the slot's size.
 
 use std::collections::BTreeMap;
 use std::fs;
@@ -20,9 +21,11 @@ use h3_map::Limits;
 use h3_map::writer::ObjectTemplate;
 use h3_map_view::art::{CELLS, Layer, MapArt, TemplateArt};
 use h3_map_view::check::{self, DefSummary};
-use h3_map_view::layout::GEM_FRAMES;
+use h3_map_view::layout::{AdventureLayout, GEM_FRAMES};
 use h3_map_view::objects::{self, Shape};
+use h3_map_view::panels;
 use h3_map_view::tables::{FACTIONS, Tables};
+use h3_ui::ui::Item;
 
 use crate::files;
 
@@ -151,6 +154,32 @@ fn gate(options: &Options) -> Result<usize, String> {
     // The adventure cursor (E24 M2 T2): a frame for each hot spot the layout gives.
     let cursor = &layout.cursor;
     needs.push(("cursor".into(), cursor.def.clone(), cursor.hot.len(), 1));
+    // The lists' DEFs (E24 M3 T4a): the frames their slots draw.
+    let lists = &tables.map.lists;
+    let factions = u8::try_from(FACTIONS).unwrap_or(u8::MAX);
+    for (what, id, frames) in [
+        (
+            "movement bar",
+            panels::id::MOVEMENT,
+            lists.movement.frames(),
+        ),
+        ("mana bar", panels::id::MANA, lists.mana.frames()),
+        (
+            "town list",
+            panels::id::TOWN_PICTURES,
+            lists.towns.frames(factions),
+        ),
+    ] {
+        match layout.dialog.item(id) {
+            Some(Item::Def(d)) if d.def.is_some() => needs.push((
+                what.into(),
+                d.def.clone().unwrap_or_default(),
+                usize::try_from(frames).unwrap_or(usize::MAX),
+                1,
+            )),
+            _ => problems.push(format!("{what}: item {id} is no DEF item with a DEF")),
+        }
+    }
     for (what, name, frames, groups) in &needs {
         let Some((archive, data)) = find(name)? else {
             problems.push(format!("{what}: {name} in no archive"));
@@ -214,6 +243,8 @@ fn gate(options: &Options) -> Result<usize, String> {
         },
     }
 
+    portraits(&layout, &tables, &find, &mut problems)?;
+
     let templates = files::templates(&archives)?;
     let (pictures, shapes) = object_pictures(&archives, &templates, &shipped, &mut problems)?;
     let mut visits = visits;
@@ -236,6 +267,49 @@ fn gate(options: &Options) -> Result<usize, String> {
         }
     }
     Ok(problems.len())
+}
+
+/// An archive entry by name: the archive and the bytes, none when no archive holds it.
+type Find<'a> = dyn Fn(&str) -> Result<Option<(&'static str, Vec<u8>)>, String> + 'a;
+
+/// The hero list's pictures (E24 M3 T4a): the tables' portraits and the layout's empty slot and
+/// selection frame, each found and decoded at the slot's size.
+fn portraits(
+    layout: &AdventureLayout,
+    tables: &Tables,
+    find: &Find<'_>,
+    problems: &mut Vec<String>,
+) -> Result<(), String> {
+    println!("\nthe hero list's pictures:");
+    let slot = |id: u16| match layout.dialog.item(id) {
+        Some(Item::Picture(p)) => Some((p.picture.clone(), p.size)),
+        _ => None,
+    };
+    let (Some((empty, size)), Some((frame, _))) =
+        (slot(panels::id::PORTRAITS), slot(panels::id::FRAMES))
+    else {
+        problems.push("the hero list: items 15 and 39 are no pictures".into());
+        return Ok(());
+    };
+    let mut sizes: BTreeMap<[u32; 2], usize> = BTreeMap::new();
+    for name in tables.map.lists.portraits.iter().chain([&empty, &frame]) {
+        match find(name)? {
+            None => problems.push(format!("portrait: {name} in no archive")),
+            Some((_, data)) => match decode_pcx(&data) {
+                Ok(pcx) => {
+                    let found = [pcx.width(), pcx.height()];
+                    *sizes.entry(found).or_default() += 1;
+                    let wanted = size.map(|s| s.map(|n| u32::try_from(n).unwrap_or(0)));
+                    if wanted.is_some_and(|w| w != found) {
+                        problems.push(format!("portrait: {name} {found:?}, the slot {size:?}"));
+                    }
+                }
+                Err(e) => problems.push(format!("portrait: {name}: does not decode ({e:?})")),
+            },
+        }
+    }
+    println!("  {sizes:?} (size: pictures)");
+    Ok(())
 }
 
 /// A DEF's line: frames held and drawn, encodings, run pixels by index (only those with any).

@@ -17,18 +17,21 @@ autonomy contract). Each panel drawn leaves `h3map.py`'s `panels` mask, and `dra
 compares it on every situation and sequence.
 
 T3 cut with the user (2026-10-29): T3a the minimap as a still, T3b the minimap over time (both
-done: the epic's log).
+done: the epic's log). T4 cut with the user (2026-10-29) the same way: T4a the lists as stills
+(done: the epic's log), T4b the lists over time.
 
-### E24 M3 T4 — the hero and town lists
+### E24 M3 T4b — the hero and town lists over time
 
-- **Scope:** read and built: the hero list (a hero's small portrait `HPS*.pcx`, the movement and
-  mana bars `imobil.def` and `imana.def`, the selection's frame, the scroll arrows, empty slots)
-  and the town list (`ITPA.def`: a town's picture by its kind, fort and the build of the day; the
-  selection, the scroll); `live` gains the viewing player's heroes and towns in their lists'
-  order, a hero's movement and mana and the one selected (`h3mem.py`, additive). Situations with
-  more heroes and towns than the lists' slots.
-- **Acceptance:** both lists exact on every situation and the new ones; the Definition of Done.
-- **Depends on:** T2a. **Status:** ready.
+- **Scope:** read and built: when the original draws the lists again in M3's sequences (a walk's
+  steps and end: the movement bar; a key's lift; a scroll; design §4.5's points for T4b: the
+  slot's own show rectangle, which leaves out the portrait's last columns and the mana bar, and
+  the town's item left at the mark's frame); the timeline's last drawn lists (the live part's
+  kingdom as last drawn, as T3b's minimap); the 13 sequences recorded again with the lists
+  compared, `masks.toml` one list again (`panels`), the kingdom's form before T4a (the sequences'
+  kept live parts) no longer read.
+- **Acceptance:** the 13 sequences' every frame exact with the lists; the 43 situations
+  unchanged; the Definition of Done.
+- **Depends on:** T4a. **Status:** ready.
 
 ### E24 M3 T5 — the status window, the resource bar and the date
 
@@ -39,7 +42,8 @@ done: the epic's log).
   resources and the date. Situations for each kind.
 - **Acceptance:** the status window, the resource bar and the date exact on every situation and
   the new ones (no `panels` mask left but the status bar's hints); the Definition of Done.
-- **Depends on:** T2a (T4 for a hero's or a town's army and portraits). **Status:** ready after T4.
+- **Depends on:** T2a (T4a for a hero's or a town's portraits; its army's pictures are T5's).
+  **Status:** ready after T4b.
 
 ### E24 M3 T6 — the mouse, the keys during a walk, the sound without the focus
 

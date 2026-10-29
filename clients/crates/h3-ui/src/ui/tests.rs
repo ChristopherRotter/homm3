@@ -439,3 +439,25 @@ fn a_button_takes_a_players_colours_and_a_def_by_its_id() {
     };
     assert_eq!(buttons, [("b.def", Some(five)), ("t.def", None)]);
 }
+
+#[test]
+fn a_picture_takes_the_picture_the_screen_gives_it() {
+    // The adventure screen's hero list: a slot's portrait or the empty slot's picture
+    // (`dialog_picture_set` 0x4504C0; E24 M3 T4a).
+    let pictures = |shown: &Shown| -> Vec<String> {
+        dialog()
+            .draws(shown, "players.pal")
+            .into_iter()
+            .filter_map(|d| match d {
+                Draw::Picture { picture, .. } => Some(picture),
+                _ => None,
+            })
+            .collect()
+    };
+    assert_eq!(pictures(&Shown::default()), ["bar.pcx"]);
+    let shown = Shown {
+        pictures: BTreeMap::from([(1, "hps000kn.pcx".to_string())]),
+        ..Shown::default()
+    };
+    assert_eq!(pictures(&shown), ["hps000kn.pcx"]);
+}

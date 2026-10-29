@@ -91,8 +91,9 @@ TERRAIN_FIELD, RIVER_FIELD = h3mem.TERRAIN_DEFS, h3mem.RIVER_DEFS
 # What the viewer does not draw yet (E24 M1; since E24 M3 T2a `clients/map/masks.toml`, which the
 # viewer's `sequences` reads too): its rectangles (x0, y0, x1, y1), the last two excluded.
 # `panels`: what T4 to T6 draw of the adventure screen's panels (the lists' contents, the status
-# window, the amounts and the date, the status bar's hint), the situations' and the sequences'
-# (E24 M3 T3b: T3a's `stills`, the situations' without the minimap, one with it again).
+# window, the amounts and the date, the status bar's hint), the sequences'; `stills`: the
+# situations', `panels` but the lists (E24 M3 T4a; T4b, timing the lists' redraws, makes the two
+# one again, as T3b did with T3a's).
 MASKS = {name: [tuple(r) for r in rects]
          for name, rects in tomllib.loads((CLIENTS / "map/masks.toml").read_text()).items()}
 
@@ -311,6 +312,46 @@ def hero_at(mem, x, y):
     return mem.hero(index)
 
 
+def town_index(mem, at):
+    """The index (of the game's towns) of the town anchored on `at` of the surface (E24 M3 T4a;
+    the record's place +0x5 is its entrance, two columns left of its anchor: design §4.5)."""
+    first, end = (mem.u32(mem.game() + h3mem.TOWNS + i) for i in (0, 4))
+    for index in range((end - first) // h3mem.TOWN_SIZE):
+        if mem.town(index)["place"] == [at[0] - 2, at[1], 0]:
+            return index
+    raise RuntimeError(f"no town is anchored on {tuple(at)}")
+
+
+def lists(game, mem, sit):
+    """The lists' writes and selection a situation gives (E24 M3 T4a; design §4.5): Red's
+    heroes' points and mana and Red's towns' day written into their records, then the hero or
+    town it selects chosen from its list, which scrolls that list to show it and redraws both
+    (hero_select 0x417B20, town_select 0x417830). A selection the turn's start made already would
+    redraw nothing: refused."""
+    for hero in sit.get("heroes", []):
+        if "points" in hero or "mana" in hero:
+            x, y = (hero.get("walk") or [hero["at"]])[-1]
+            index = hero_at(mem, x, y)["index"]
+            if "points" in hero:
+                mem.write_points(index, hero["points"])
+            if "mana" in hero:
+                mem.write_mana(index, hero["mana"])
+    for town in sit.get("towns", []):
+        if town.get("built"):
+            mem.write_town_built(town_index(mem, town["at"]))
+    select = sit.get("select")
+    if not select:
+        return
+    colour = mem.current_player()
+    before = mem.kingdom(colour)["selected"]
+    if "hero" in select:
+        h3adv.select(game, mem, hero_at(mem, *select["hero"])["name"])
+    else:
+        h3adv.select_town(game, mem, town_index(mem, select["town"]))
+    if mem.kingdom(colour)["selected"] == before:
+        raise RuntimeError(f"the selection {select} is the turn start's: the lists not redrawn")
+
+
 def check_staged(sit, turn, heroes, boats):
     """The facings and boats' colours the still staged are what memory holds at it (E24 M1 T6b,
     the reviewer's R3-3): a write that did not stick, or turned another record, fails the
@@ -435,6 +476,7 @@ def stage(situation_path, out):
     try:
         mem = game_mem(game)
         turn = arrange(game, mem, sit)
+        lists(game, mem, sit)
         if not start:
             mem.write_explored(vz, hidden_test(hidden), mem.current_player())
         set_view(game, mem, vx, vy, vz)
@@ -542,7 +584,7 @@ def compare(situation_path, out, cap):
     except RuntimeError as err:
         raise Refused(last_lines(err)) from err
     ours = h3cap.png565(out / "ours.png")
-    mask = masked(["panels"], cap.shape)
+    mask = masked(["stills"], cap.shape)
     n, where = h3cap.compare(cap, ours, mask, out / "diff.png")
     return n, int((~mask).sum()), where
 
@@ -1078,7 +1120,7 @@ def run_drawn(rest):
             failed += 1
             broken += 1
             continue
-        got[ident] = h3drive.png_digest(here / "ours.png", MASKS["panels"])
+        got[ident] = h3drive.png_digest(here / "ours.png", MASKS["stills"])
         before = recorded.get(ident)
         verdict = "new" if before is None else ("same" if before == got[ident] else "CHANGED")
         failed += verdict != "same"

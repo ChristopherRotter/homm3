@@ -105,6 +105,49 @@ fort = ["AVCcasx0.def", "AVCramx0.def", "AVCtowx0.def", "AVCinfx0.def", "AVCnecx
 capitol = ["AVCcasz0.def", "AVCramz0.def", "AVCtowz0.def", "AVCinfz0.def", "AVCnecz0.def",
            "AVCdunz0.def", "AVCstrz0.def", "AVCforz0.def", "AVChforz.def"]
 
+# The hero and town lists (E24 M3 T4a; design §4.5). A hero's small portrait by its record's
+# portrait (+0x34): hero_info 0x679DD0's +0x30, 0x5C bytes an entry, its 163 entries. The bars'
+# frames (hero_movement_frame 0x4E5330 by the points left +0x4D, hero_mana_frame 0x4E5380 by the
+# mana +0x18): 0 at or below 0; below top's first (value + round) / step, truncated; `from` from
+# top's first, one more from each further one. The town list's frames in itpa.def
+# (town_list_frame 0x5BD700 with 1): `fort` with a Fort in the town's every-built set (+0x158),
+# else `village`, + `faction` x its faction (+0x4), + `built` when it built today (+0x2); an empty
+# slot `empty` (0x403822), the selected town's mark `selected` (0x403908).
+[map.lists]
+portraits = [
+    "HPS000Kn.PCX", "HPS001Kn.PCX", "HPS002Kn.PCX", "HPS003Kn.PCX", "HPS004Kn.PCX", "HPS005Kn.PCX",
+    "HPS006Kn.PCX", "HPS007Kn.PCX", "HPS008Cl.PCX", "HPS009Cl.PCX", "HPS010Cl.PCX", "HPS011Cl.PCX",
+    "HPS012Cl.PCX", "HPS013Cl.PCX", "HPS014Cl.PCX", "HPS015Cl.PCX", "HPS016Rn.PCX", "HPS017Rn.PCX",
+    "HPS018Rn.PCX", "HPS019Rn.PCX", "HPS020Rn.PCX", "HPS021Rn.PCX", "HPS022Rn.PCX", "HPS023Rn.PCX",
+    "HPS024Dr.PCX", "HPS025Dr.PCX", "HPS026Dr.PCX", "HPS027Dr.PCX", "HPS028Dr.PCX", "HPS029Dr.PCX",
+    "HPS030Dr.PCX", "HPS031Dr.PCX", "HPS032Al.PCX", "HPS033Al.PCX", "HPS034Al.PCX", "HPS035Al.PCX",
+    "HPS036Al.PCX", "HPS037Al.PCX", "HPS038Al.PCX", "HPS039Al.PCX", "HPS040Wz.PCX", "HPS041Wz.PCX",
+    "HPS042Wz.PCX", "HPS043Wz.PCX", "HPS044Wz.PCX", "HPS045Wz.PCX", "HPS046Wz.PCX", "HPS047Wz.PCX",
+    "HPS048Hr.PCX", "HPS049Hr.PCX", "HPS050Hr.PCX", "HPS051Hr.PCX", "HPS052Hr.PCX", "HPS053Hr.PCX",
+    "HPS054Hr.PCX", "HPS055Hr.PCX", "HPS056Dm.PCX", "HPS057Dm.PCX", "HPS058Dm.PCX", "HPS059Dm.PCX",
+    "HPS060Dm.PCX", "HPS061Dm.PCX", "HPS062Dm.PCX", "HPS063Dm.PCX", "HPS064Dk.PCX", "HPS065Dk.PCX",
+    "HPS066Dk.PCX", "HPS067Dk.PCX", "HPS068Dk.PCX", "HPS069Dk.PCX", "HPS070Dk.PCX", "HPS071Dk.PCX",
+    "HPS072Nc.PCX", "HPS073Nc.PCX", "HPS074Nc.PCX", "HPS075Nc.PCX", "HPS076Nc.PCX", "HPS077Nc.PCX",
+    "HPS078Nc.PCX", "HPS079Nc.PCX", "HPS080Ov.PCX", "HPS081Ov.PCX", "HPS082Ov.PCX", "HPS083Ov.PCX",
+    "HPS084Ov.PCX", "HPS085Ov.PCX", "HPS086Ov.PCX", "HPS087Ov.PCX", "HPS088Wl.PCX", "HPS089Wl.PCX",
+    "HPS090Wl.PCX", "HPS091Wl.PCX", "HPS092Wl.PCX", "HPS093Wl.PCX", "HPS094Wl.PCX", "HPS095Wl.PCX",
+    "HPS096Br.PCX", "HPS097Br.PCX", "HPS098Br.PCX", "HPS099Br.PCX", "HPS100Br.PCX", "HPS101Br.PCX",
+    "HPS102Br.PCX", "HPS103Br.PCX", "HPS104Bm.PCX", "HPS105Bm.PCX", "HPS106Bm.PCX", "HPS107Bm.PCX",
+    "HPS108Bm.PCX", "HPS109Bm.PCX", "HPS110Bm.PCX", "HPS111Bm.PCX", "HPS112Bs.PCX", "HPS113Bs.PCX",
+    "HPS114Bs.PCX", "HPS115Bs.PCX", "HPS116Bs.PCX", "HPS117Bs.PCX", "HPS118Bs.PCX", "HPS119Bs.PCX",
+    "HPS120Wh.PCX", "HPS121Wh.PCX", "HPS122Wh.PCX", "HPS123Wh.PCX", "HPS124Wh.PCX", "HPS125Wh.PCX",
+    "HPS126Wh.PCX", "HPS127Wh.PCX", "HPS000Pl.PCX", "HPS001pl.PCX", "HPS002pl.PCX", "HPS003pl.PCX",
+    "HPS004pl.PCX", "HPS005pl.PCX", "HPS006pl.PCX", "HPS007pl.PCX", "HPS000el.PCX", "HPS001el.PCX",
+    "HPS002el.PCX", "HPS003el.PCX", "HPS004el.PCX", "HPS005el.PCX", "HPS006el.PCX", "HPS007el.PCX",
+    "HPS130Kn.PCX", "HPS000Sh.PCX", "HPS128Qc.PCX", "HPS003Sh.PCX", "HPS004Sh.PCX", "HPS005Sh.PCX",
+    "HPS006Sh.PCX", "HPS007Sh.PCX", "HPS009Sh.PCX", "HPS008Sh.PCX", "HPS001Sh.PCX", "HPS131Dm.PCX",
+    "HPS129Mk.PCX", "HPS002Sh.PCX", "HPS132Wl.PCX", "HPS133Nc.PCX", "HPS134Nc.PCX", "HPS135Wi.PCX",
+    "HPS136Wi.PCX",
+]
+movement = { step = 100, round = 0, top = [2300, 2500, 2800], from = 23 }
+mana = { step = 5, round = 4, top = [116, 145, 170], from = 23 }
+towns = { empty = 0, selected = 1, fort = 2, village = 20, faction = 2, built = 1 }
+
 # What a tile records of its objects (E24 M2 T5, moved out of the sounds' table at M3 T3a; design §4.4,
 # rules/surveys/E08-objects.md §2.5: tile_refresh_object 0x505610): the topmost object whose
 # entrance is there, else the topmost ownable one blocking it (class_is_ownable 0x40FCA0), else the

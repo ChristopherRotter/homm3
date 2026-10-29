@@ -63,6 +63,23 @@ pub struct Situation {
     /// Rectangles of tiles Red has not explored (corners inclusive); every other tile explored.
     #[serde(default)]
     pub hidden: Vec<[i32; 4]>,
+    /// What the harness selects from its list after its walks and writes (E24 M3 T4a; design
+    /// §4.5): the selection scrolls its list to show it and redraws both lists, so a situation
+    /// whose heroes' points or mana or towns' day the harness writes needs one, of another hero
+    /// or town than the turn's start selects.
+    #[serde(default)]
+    pub select: Option<SelectSpec>,
+}
+
+/// What a situation selects (E24 M3 T4a): Red's hero standing on a tile (after its walk) or Red's
+/// town anchored on one.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "lowercase", deny_unknown_fields)]
+pub enum SelectSpec {
+    /// The hero on this tile.
+    Hero([u8; 2]),
+    /// The town anchored on this tile.
+    Town([u8; 2]),
 }
 
 /// A terrain by name.
@@ -202,6 +219,10 @@ pub struct TownSpec {
     pub owner: Option<u8>,
     /// Its buildings, which give its picture (design §2.9).
     pub buildings: TownBuilt,
+    /// A building built in it today (+0x2), written by the harness before the still (E24 M3 T4a;
+    /// design §4.5: the town list's picture): Red's towns only.
+    #[serde(default)]
+    pub built: bool,
 }
 
 /// A town's buildings as a situation names them: the editor's standard set without or with a
@@ -269,6 +290,13 @@ pub struct HeroSpec {
     /// one at most (the selected hero's path is the one shown).
     #[serde(default)]
     pub path: Option<[u8; 2]>,
+    /// Its movement points left (+0x4D), written by the harness after its walk (E24 M3 T4a;
+    /// design §4.5: the hero list's movement bar): Red's heroes only.
+    #[serde(default)]
+    pub points: Option<i32>,
+    /// Its mana (+0x18), likewise (the mana bar).
+    #[serde(default)]
+    pub mana: Option<i32>,
 }
 
 /// A boat without a hero (E24 M1 T5a).
@@ -432,6 +460,7 @@ impl Situation {
         }
         objects.extend(self.boats(templates)?);
         let (players, mut heroes) = self.heroes()?;
+        self.selection()?;
         for t in &self.towns {
             let template = templates
                 .iter()
@@ -502,9 +531,11 @@ impl Situation {
                     h.at, h.owner
                 ));
             };
-            if h.owner != 0 && (!h.walk.is_empty() || h.path.is_some()) {
+            let written = h.points.is_some() || h.mana.is_some();
+            if h.owner != 0 && (!h.walk.is_empty() || h.path.is_some() || written) {
                 return Err(format!(
-                    "hero at {:?}: only Red's heroes walk or show a path",
+                    "hero at {:?}: only Red's heroes walk, show a path or have points or mana \
+                     written",
                     h.at
                 ));
             }
@@ -551,6 +582,39 @@ impl Situation {
             return Err("a situation needs a hero of Red's and of another colour".into());
         }
         Ok((players, heroes))
+    }
+
+    /// The harness's writes into the lists and its selection (E24 M3 T4a): a town's day written
+    /// only for Red's; the selection Red's hero on its tile (after its walk) or Red's town on its
+    /// anchor; a selection whenever something is written, so that the lists show it.
+    fn selection(&self) -> Result<(), String> {
+        if let Some(t) = self.towns.iter().find(|t| t.built && t.owner != Some(0)) {
+            return Err(format!(
+                "town at {:?}: only Red's towns have their day written",
+                t.at
+            ));
+        }
+        let written = self
+            .heroes
+            .iter()
+            .any(|h| h.points.is_some() || h.mana.is_some())
+            || self.towns.iter().any(|t| t.built);
+        let found = match self.select {
+            None if written => return Err("a write into the lists without a selection".into()),
+            None => true,
+            Some(SelectSpec::Hero(at)) => self
+                .heroes
+                .iter()
+                .any(|h| h.owner == 0 && h.walk.last().copied().unwrap_or(h.at) == at),
+            Some(SelectSpec::Town(at)) => {
+                self.towns.iter().any(|t| t.owner == Some(0) && t.at == at)
+            }
+        };
+        if found {
+            Ok(())
+        } else {
+            Err(format!("the selection {:?} is none of Red's", self.select))
+        }
     }
 
     /// The boats as objects: each of its type's template, anchored one column right of its tile.
