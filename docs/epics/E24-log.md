@@ -1446,3 +1446,25 @@ user: "no cut". The original data staged from the user's repo folder as for T2b1
   → 0.2 ms on `walk-1`, 2.3 → 0.9 on *Tale of two lands*, 0.2 → 0.0 on `path-objects` with input
   (p95 2.5 → 1.5); every frame read back exact and as composed afresh. Merged as #561.
 
+### M3 T3a — the minimap as a still (2026-10-29)
+
+On `map-client/e24-m3-t3a`, the user present; `master` at 64e2d5d (#561 found merged; CI green on
+it). The original data staged from the user's repo folder first (as for T2a); the sandbox
+restarted once mid-session (its files kept; the baseline check, then in its coverage step, did
+not finish: CI's run on `master` stands for it). T3 cut with the user before the reading (T3a the
+minimap as a still, T3b when it is drawn again); T2b2's numbers from the user's run recorded first
+(the T2b2 entry above).
+
+- **The reading** (design §4.4; map entries for `minimap_draw` 0x412C40, read, and
+  `tile_object_entrance` 0x4FCAA0, `game_screen_player` 0x4CE9B0 (H3API's `GetPlayer`
+  confirmed), `view_world_open` 0x6AAC3C and `view_world_scale` 0x68C6B8, inferred): a tile's
+  colour (unexplored black; the terrain DEF's 16-bit palette entries 8 and 9, not 22 as §1.8 had
+  it: the colours start at +0x1C; VCMI's `minimapUnblocked` and `minimapBlocked` agree), the
+  selected hero's and the standing heroes' owners, the owned classes' blocked and entrance tiles,
+  21 decorations' blocked tiles; the four sizes' pixels (108: columns 2, 1, 1, rows 1, 1, 2); the
+  box `radar.def` by size at the corner times 4.0, 2.0, 1.33 or 1.0, truncated, cut to the area.
+- **Built** (design §4.4): `record` (0x505610's walks out of `sound`), `minimap` (`Base`, `Tiles`,
+  `Look`, the exact scale), the scene's `Minimap` and `Radar` draws, the composer's, `TileIndex`'s
+  level-wide terrain check; the tables' `[map.records]` (moved out of `[map.sound]`) and
+  `[map.minimap]`; `OwnerArt::colour`; `masks.toml`'s `stills` (the situations' mask, `panels`
+  but the minimap; the sequences keep `panels` until T3b).

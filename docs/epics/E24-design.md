@@ -1766,3 +1766,19 @@ each redraws it: T3b.
   (a test checks), so the client truncates the exact product of the f32's bits.
 - **The view-world dialog** (`view_world_open` 0x6AAC3C, inferred): the frames 5 to 13 by its
   scale 0x68C6B8 (16.0, 11.84, 7.68) and with one of them no box; the spells' view (M4 or later).
+- **Built** (*provisional*): `h3_map_view::record`, the object a tile records (0x505610's walks,
+  M2 T5's, now shared by the sound and the minimap; the tables' `[map.records]`, moved out of
+  `[map.sound]`); `h3_map_view::minimap` with the tables' `[map.minimap]` (the palette entries,
+  the owned and blocking classes, each size's columns, rows, frame and scale by the f32's bits),
+  a level's `Base` built with its `TileIndex` (each tile's colour by its terrain and record: an
+  owned class blocked or an entrance its owner's, a listed class blocked the blocked colour),
+  `Base::tiles` each scene (the unexplored tiles black, every hero on the level in its owner's
+  colour: the selected hero's rule and a standing hero's give the same) and `Base::radar` (the
+  exact product, design above). The scene's draws `Minimap` and `Radar` after the gems; the
+  composer fills each tile's rectangle (a terrain's colours from its DEF's palette as the scene
+  cycles it, an owner's from the flag palette) and draws the box through the raw drawer cut as
+  0x47BF00 cuts it (the cut columns taken once more when the box passes the area's right edge:
+  `774 − x − cut`; no frame reaches it). Its cells compare them as draws that stay: the same only
+  while the view does not move. An owned object without an entrance on the map: its owner's
+  colour (MCL-Q4's answer for its flags), the terrain's under `--bugs original`. Each scene draws
+  the minimap as the live part gives it; when the original draws it again is T3b's.
