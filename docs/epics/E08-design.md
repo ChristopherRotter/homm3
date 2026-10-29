@@ -143,10 +143,10 @@ in `check_step` and the walking search):
 
 | Onto | Walking (on land) | Flying | Water walking | In a boat |
 |---|---|---|---|---|
-| an empty boat's tile | boards (a stop; no guard test there) | boards from a stop node; a flight over water passes it | boards from a stop node; never from water | never |
+| an empty boat's tile | boards (a stop; no guard test there) | boards from a stop node; a flight passes it, from land or water (batch E8c) | boards from a stop node; never from water | never |
 | a hero in a boat | visit from the tile (battle, meeting: the deck) | visit from a stop node; passes | visit from a stop node | visit from the neighbouring water tile (the two boats) |
-| an object on water visited from the neighbour (the sea's pickups, a monster) | never | **never, and no pass** (D-45 reverted by E8-7; D-46, batch E8c) | never | visit from the neighbouring water tile |
-| an entered object on water (a water Cartographer) | never | **no stop, no pass** (D-46, batch E8c; today it passes, ADV-MOV-009) | never | entered |
+| an object on water visited from the neighbour (the sea's pickups, a monster) | never | **never, and no pass** (D-45 reverted by E8-7; D-46 confirmed by batch E8c) | never | visit from the neighbouring water tile |
+| an entered object on water (a water Cartographer) | never | **no stop, no pass** (D-46: the pickups' branch, confirmed by batch E8c; today it passes, ADV-MOV-009) | never | entered |
 | plain water | never | passes | passes | a stop |
 | a blocked water tile | never | passes | never | never |
 | a free coastal tile | as land | as land | as land | **lands** (a stop, a leaf; no guard test at the step) |
@@ -287,8 +287,9 @@ in `check_step` and the walking search):
 - **Properties** (`h3-map`'s `play.rs`, `view.rs`): generated maps with water regions and boats
   beside their coasts; `check_boats` (§6's invariants after every command); `Reach`'s paths
   accepted at sea; the conversion's bounds (without the Hat 0; with it at most the new maximum);
-  no path of a hero not in a boat ends on a water entrance or, for a flyer, crosses one (D-46 as
-  batch E8c leaves it); fixed cases on the sea map.
+  no path of a hero not in a boat ends on a water entrance or, for a flyer, crosses one but a
+  boat's, a hero's in a boat or class 85's (D-46, confirmed by batch E8c); fixed cases on the sea
+  map.
 - **Benchmarks:** `reach-sea-xl-144` (a boat's search; a new XL fixture `e08-sea-144.h3m`, mostly
   sea, 15 boats as Myth and Legend's), `random-play-sea-36`, `fork-sea-xl-144`; the ten workloads
   at their baselines (`reach-xl-144` the walker's cold boat test).
@@ -333,7 +334,9 @@ E8-14).
   `verified`. E8-5 decides whether D-44's refusal stays (decision 163). **Done** (T69, survey §15;
   decisions 177–179): D-41 to D-43 confirmed, D-44's refusal kept, D-45 reverted, E8-15's battle
   at the monster's tile; the re-read's **D-46** (a flight over a water tile holding an object)
-  goes to a one-row **batch E8c** (T69b) before T70.
+  goes to a one-row **batch E8c** (T69b) before T70. **Done** (T69b, survey §16; decision 180):
+  D-46 confirmed (E8-17a, E8-17b), an empty boat crossed from land and from water (E8-17d,
+  E8-17e); the re-read's 0x4B2CF3 corrected (it skips the stop node only).
 
 ### 18. Shared and `cross-lane` work; the building tasks; the exit criteria
 
@@ -350,7 +353,7 @@ increment 7's decision 139), so the ADRs are applied once with the disputes' ver
 | Round | Tasks | Content |
 |---|---|---|
 | 2 | **T67** | Batch E8's maps: the writer's boat, pickups, hole, winds and a hero and monster on water (§17); the spec's fields (`cross-lane`); the two specs and templates |
-| 3 | **T68** + **T69** (+ **T69b**) | T68: the harness's reads and clicks, the recipes, the runs E8a and E8b. T69: scored (survey §15); D-41 to D-45 settled. T69b: batch E8c, D-46 (decision 179) |
+| 3 | **T68** + **T69** (+ **T69b**) | T68: the harness's reads and clicks, the recipes, the runs E8a and E8b. T69: scored (survey §15); D-41 to D-45 settled. T69b: batch E8c, D-46 confirmed (survey §16) |
 | 4 | **T70** | `shared/`: the three ADRs amended with T69's outcome, the three effect kinds and the packs, the glossary |
 | 5 | **T71** + **T72** | T71: `h3-heroes` (§2; small). T72: `h3-map` and `h3-adventure`: the import (§4), the kinds and parameters (§5), the state (§6), the views (§12); map import v14, ruleset part v13, adventure state hash v16 |
 | 6 | **T73** | `h3-adventure`: moving (§7), the prices, the drop and the conversion (§8), `Reach` (§9), visits and events at sea (§10); likely cut in two at its start (the boat's moves and prices; `Reach`) |
@@ -384,7 +387,7 @@ increment 7's decision 139), so the ADRs are applied once with the disputes' ver
    reproduced; the gates pass (coverage, determinism with the re-recorded and new replays, the
    benchmarks at their baselines and the new ones baselined); the env plays on at sea.
 9. Batch E8 run and scored (T69: D-41 to D-43 confirmed, D-44 refused, D-45 reverted) and batch
-   E8c's D-46; the consensus rows `verified`.
+   E8c's D-46 (T69b: confirmed); the consensus rows `verified`.
 
 ### 19. Risks and open points
 
@@ -402,8 +405,9 @@ increment 7's decision 139), so the ADRs are applied once with the disputes' ver
   for the view only; E8-15 records a landing's facing.
 - **D-45's flyer against a monster on water** (§13) followed the pickups' rule: E8-7 reverted
   both (T69). **D-46** (a flight over a water tile holding an object, survey §15) changes
-  ADV-MOV-009, built and `verified` in increment 5, if batch E8c confirms the code: T73 then
-  closes those tiles to a flight in `passage` and `Reach`.
+  ADV-MOV-009, built and `verified` in increment 5: batch E8c confirmed the code (T69b, survey
+  §16), so T73 closes those tiles to a flight in `passage` and `Reach`, a boat's tile staying a
+  flight's pass.
 - **The env's encoding** (`cross-lane`, §15): if the user prefers the AI lane's inbox, the env
   encodes no boat until the AI lane takes it, and its agents see a hero in a boat as on its tile.
 - **Not in increment 8** (decision 168): Shipyards and Lighthouses (item 9), Whirlpools, Buoys,

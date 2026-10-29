@@ -1,0 +1,257 @@
+# Experiment batch E8c (E08 T69b; decisions 179, 180): row E8-17, a flight over a water tile
+# holding an object (D-46; survey docs/rules/surveys/E08-sea.md §15), on a map of its own, in SoD
+# on Easy, hot seat. Build: docs/experiments/README.md. Predictions are for the agent who evaluates
+# the results; the template never shows them.
+#
+# | row      | settles                                 | the reading (faithful)                     | the other source(s)                     |
+# | E8-17a   | D-46: one water tile with a Flotsam,    | no path to the far side; the hero stays    | ADV-MOV-009 (`verified`, increment 5)   |
+# |          | entered from land                       |                                            | and VCMI 1.7.5: a path over, 200        |
+# | E8-17b   | D-46: three water tiles, the Flotsam in | no path to the far side; the hero stays    | ADV-MOV-009 and VCMI: a path over, 400  |
+# |          | the middle, entered from water          |                                            |                                         |
+# | E8-17c   | control: three plain water tiles        | a path over, 400                           | the same                                |
+# | E8-17d   | control: one water tile with an empty   | a path over (the flying copy), 200         | the same                                |
+# |          | boat                                    |                                            |                                         |
+# | E8-17e   | three water tiles, an empty boat in the | no path (from water, a class not entered   | survey `E08-hero-movement.md` §3.1      |
+# |          | middle, entered from water              | gets no node: 0x4B2CF3)                    | point 6, the design's table and VCMI:   |
+# |          |                                         |                                            | a path over, 400                        |
+#
+# **The pockets.** Each Red hero stands at column 11 of a pocket closed by rock (terrain 9, closed
+# to every hero, a flyer too: survey `E08-hero-movement.md` §3.1), one row of open tiles from
+# column 11 to 16 with the rock at columns 10 and 17 and on the rows above and below: the only way
+# to the far side crosses the pocket's water. The far side lies within the scouting radius (5 without Scouting;
+# ADV-FOG-002), so it is explored before the click (ADV-MOV-008: no path is drawn onto an
+# unexplored tile). Each pair of a row and its control differs only in the object on the water:
+# E8-17a and E8-17d one water tile (column 12), E8-17b, E8-17c and E8-17e three (columns 12 to 14).
+# E8-17e (added at T69b's start) separates the re-read's two closures: E8-17a's Flotsam is closed
+# from land by the flying-only branch (0x4B27FB), E8-17b's from water by that branch and by
+# 0x4B2CF3 (from a node without bit 10 a class not entered, 0x63AA58, gets no node); a boat is
+# exempt from the first (class 8) but on the list of the second, so E8-17e tests 0x4B2CF3 alone.
+#
+# **The points.** Ten Pikemen (speed 4): 1 560 on land (packs/base/adventure.toml `land_points`).
+# A step is priced by the tile left (batch E1a): grass and water 100 each; a path over costs 100 a
+# tile crossed: 200 for one water tile (from column 11 to 13), 400 for three (11 to 15).
+#
+# **Angel Wings** (shoulders) make each Red hero a flyer; the four wear nothing else. Blue's hero
+# (E8-17x) stands on land far away and never moves: it makes the map a two-player one for hot
+# seat, as the other batches. The trap of the starting bonus: a hot-seat player's random starting
+# bonus may give a hero an artifact; the template asks for gold, and an artifact the spec does not
+# give goes under "anything odd".
+
+[map]
+name = "E08 batch E8c"
+description = "Engine-generated experiment map (E08, batch E8c): a flight over a water tile holding an object. Hot seat, Red and Blue human, difficulty Easy; follow the results template."
+size = 36
+terrain = "grass"
+difficulty = "easy"
+instructions = [
+    "Copy `E08-batch-8c.h3m` into `D:\\Heroes3\\HoMM 3 Complete\\Maps`.",
+    "Use the HD launcher with plain HD (HD+ off).",
+    "Start the map in hot seat: *New Game → Multiplayer → Hot Seat*, two players, Red and Blue both human, difficulty **Easy**. If the scenario's options let you, set both players' starting bonus to gold. Before you start it, compare the stamp at the start of the map's description with the stamp above. Save right away (save 1).",
+    "Most records are the game's memory: a hero's tile and movement points (+0x4D), an object's word on its tile, a tile explored, the players' treasuries, the path marks (batch E1a's). The capture harness reads them (`clients/capture/batches/E08-batch-8c.toml`, E08 T69b). Played by hand, read the screens instead and leave the memory-only lines empty.",
+    "Tiles are (column, row) from 0 at the top left. A walk: click the target once (the path's marks show; note them, or that none show), then again (the hero goes, if a path showed).",
+    "Order: day 1, Red's turn: E8-17a, E8-17b, E8-17c, E8-17d. Then the map is done (Blue does nothing).",
+    "Fill in this file (anything unexpected goes into the encounter's last line) and keep it in the repo.",
+]
+
+# --- The four pockets: rock rows y − 1 and y + 1 and columns 10 and 17, open on row y -----------
+
+[[map.patch]]
+terrain = "rock"
+from = [10, 3]
+to = [17, 5]
+
+[[map.patch]]
+terrain = "rock"
+from = [10, 8]
+to = [17, 10]
+
+[[map.patch]]
+terrain = "rock"
+from = [10, 13]
+to = [17, 15]
+
+[[map.patch]]
+terrain = "rock"
+from = [10, 18]
+to = [17, 20]
+
+[[map.patch]]
+terrain = "grass"
+from = [11, 4]
+to = [16, 4]
+
+[[map.patch]]
+terrain = "grass"
+from = [11, 9]
+to = [16, 9]
+
+[[map.patch]]
+terrain = "grass"
+from = [11, 14]
+to = [16, 14]
+
+[[map.patch]]
+terrain = "grass"
+from = [11, 19]
+to = [16, 19]
+
+# E8-17a: one water tile (12, 4) with a Flotsam.
+[[map.patch]]
+terrain = "water"
+from = [12, 4]
+to = [12, 4]
+
+[[map.object]]
+picture = "AVAflot0"
+at = [12, 4]
+
+# E8-17b: three water tiles (12, 9) to (14, 9), the Flotsam on the middle one.
+[[map.patch]]
+terrain = "water"
+from = [12, 9]
+to = [14, 9]
+
+[[map.object]]
+picture = "AVAflot0"
+at = [13, 9]
+
+# E8-17c: three plain water tiles (12, 14) to (14, 14).
+[[map.patch]]
+terrain = "water"
+from = [12, 14]
+to = [14, 14]
+
+# E8-17d: one water tile (12, 19) with an empty boat (as a hero, a boat stands one column west of
+# its `at`).
+[[map.patch]]
+terrain = "water"
+from = [12, 19]
+to = [12, 19]
+
+[[map.object]]
+picture = "AVXboat0"
+at = [13, 19]
+
+# E8-17e: three water tiles (12, 24) to (14, 24), an empty boat on the middle one, (13, 24).
+[[map.patch]]
+terrain = "rock"
+from = [10, 23]
+to = [17, 25]
+
+[[map.patch]]
+terrain = "grass"
+from = [11, 24]
+to = [16, 24]
+
+[[map.patch]]
+terrain = "water"
+from = [12, 24]
+to = [14, 24]
+
+[[map.object]]
+picture = "AVXboat1"
+at = [14, 24]
+
+[[encounter]]
+id = "E8-17"
+title = "A flyer's way east across water: a Flotsam from land, a Flotsam from water, plain water, an empty boat from land, an empty boat from water"
+questions = ["D-46", "ADV-MOV-009"]
+procedure = [
+    "Day 1, Red's turn: five Red heroes wearing Angel Wings stand at the west end of five pockets closed by rock: E8-17a at (11, 4), a Flotsam on the water tile (12, 4) east of it; E8-17b at (11, 9), water on (12, 9) to (14, 9) and a Flotsam on (13, 9); E8-17c at (11, 14), plain water on (12, 14) to (14, 14); E8-17d at (11, 19), an empty boat on the water tile (12, 19); E8-17e at (11, 24), water on (12, 24) to (14, 24) and an empty boat on (13, 24). Each pocket's only way east crosses its water.",
+    "Read each hero's movement points, whether the far side (E8-17a and E8-17d: the tile just past the water, (13, 4) and (13, 19); E8-17b, E8-17c and E8-17e: (15, 9), (15, 14) and (15, 24)) is explored, each Flotsam's word, the boats' records and Red's treasury (wood and gold).",
+    "E8-17a: click (13, 4) once (note the marks, or that none show), then again. Read E8-17a's tile and movement points, Red's wood and gold, the Flotsam's word; note any message.",
+    "E8-17b: click (15, 9) the same way. The same reads.",
+    "E8-17c: click (15, 14) the same way. The same reads (no Flotsam).",
+    "E8-17d: click (13, 19) the same way. The same reads, and the boat's record (no Flotsam).",
+    "E8-17e: click (15, 24) the same way. The same reads, and the boat's record (no Flotsam).",
+]
+record = [
+    { table = ["hero", "the far side explored", "the Flotsam's word before", "the marks (or none)", "tile after", "movement points before / after", "wood, gold before / after", "the Flotsam after (word, or gone)"], labels = [
+        "E8-17a (a Flotsam, from land)",
+        "E8-17b (a Flotsam, from water)",
+        "E8-17c (plain water)",
+        "E8-17d (an empty boat, from land)",
+        "E8-17e (an empty boat, from water)",
+    ] },
+    { field = "anything odd" },
+]
+predictions = """
+- **The code** (survey §15, the re-read; `pathfinder_expand` 0x4B26D6, `pathfinder_relax`,
+  `pathfinder_run` 0x56BB7C to 0x56BB99, `pathfinder_build_path` 0x56A0D0): a flying node that
+  steps onto a water tile holding an entrance of any class but a hero (34), a boat (8) or class
+  85 is "flying only", loses bit 10 and is relaxed with the entrance as its stop flag; it lies in
+  the tile's second slot (no path ends there) and is never expanded (no flight goes on from it), and its
+  flying copy without the stop flag needs the bit 10 it lost. **E8-17a and E8-17b: no path**
+  (no marks), the hero stays on (11, 4) and (11, 9), **1 560** kept, the Flotsam's word and the
+  treasury unchanged. **E8-17c: a path over** the three water tiles, four marks, the hero on
+  (15, 14), **1 160** left. **E8-17d: a path over** the boat (a boat's node keeps bit 10, so its
+  flying copy is made and goes on), two marks, the hero on (13, 19), **1 360** left, the boat's
+  record unchanged (nobody aboard) and the hero not in it (bit 18 clear). **E8-17e: no path**: from
+  the first water tile's node (no bit 10) the boat's class 8, not entered (0x63AA58), gets no node
+  at all (0x4B2CF3 to 0x4B2D10, which jumps past the flying copy); the hero stays on (11, 24),
+  1 560 kept, the boat unchanged.
+- **Survey `E08-hero-movement.md` §3.1 point 6** (T34a's reading of the same branch: "a flying
+  node still passes over it") and **design §7's table** ("a flight over water passes it"):
+  E8-17e a path over, four marks, (15, 24), 1 160, not aboard. If E8-17e passes while E8-17b does
+  not, only the flying-only branch (0x4B27FB) closes a tile, and the re-read's 0x4B2CF3 is wrong.
+- **ADV-MOV-009** (the engine, increment 5, `verified` on land objects and plain water) and
+  **VCMI 1.7.5** (`PathfinderUtil.h` `evaluateAccessibility`: every tile of the air layer
+  flyable): **all five a path over** (E8-17e as above): E8-17a two marks, (13, 4), 1 360; E8-17b four marks,
+  (15, 9), 1 160; the Flotsams not taken (a flight visits nothing on its way, ADV-MOV-009) and
+  the treasury unchanged. The wiki is silent.
+- A confirmed reading keeps the drafts and design §7, §15 as they are and T73 amends
+  ADV-MOV-009; a reverted one sends them back to the pass, and the reading is read again.
+"""
+[encounter.hero]
+type = "Adela"
+specialty = "spell Bless"
+name = "E8-17a"
+at = [11, 4]
+primary = [1, 1, 1, 1]
+army = [["Pikeman", 10]]
+artifacts = { shoulders = "Angel Wings" }
+
+[[encounter.also]]
+type = "Cuthbert"
+specialty = "spell Weakness"
+name = "E8-17b"
+at = [11, 9]
+primary = [1, 1, 1, 1]
+army = [["Pikeman", 10]]
+artifacts = { shoulders = "Angel Wings" }
+
+[[encounter.also]]
+type = "Adelaide"
+specialty = "spell Frost Ring"
+name = "E8-17c"
+at = [11, 14]
+primary = [1, 1, 1, 1]
+army = [["Pikeman", 10]]
+artifacts = { shoulders = "Angel Wings" }
+
+[[encounter.also]]
+type = "Loynis"
+specialty = "spell Prayer"
+name = "E8-17d"
+at = [11, 19]
+primary = [1, 1, 1, 1]
+army = [["Pikeman", 10]]
+artifacts = { shoulders = "Angel Wings" }
+
+[[encounter.also]]
+type = "Orrin"
+specialty = "skill Archery"
+name = "E8-17e"
+at = [11, 24]
+primary = [1, 1, 1, 1]
+army = [["Pikeman", 10]]
+artifacts = { shoulders = "Angel Wings" }
+
+[[encounter.also]]
+type = "Valeska"
+specialty = "creature Archer"
+owner = "blue"
+name = "E8-17x"
+at = [30, 30]
+primary = [1, 1, 1, 1]
+army = [["Pikeman", 10]]

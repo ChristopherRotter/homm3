@@ -81,14 +81,14 @@ record at a fork, and decision 164 allows a boat on every water tile (the XL map
 >     on the coast its road's price, else the native price).
 >   - **From land onto water:** an empty boat's tile is a step for every mode from a stop node,
 >     so from land (boarding: the move ends there; no guard attacks on it; a flight or a water walk
->     over water passes no boat it could board, the boat being on the original's list of classes
->     not entered, 0x63AA58); a hero in a boat is visited from a stop node (a battle or a
->     meeting); an object's visitable tile on water (a pickup, a monster, any class but a hero, a
->     boat and the Shipwreck) is visited only from a boat (D-45 reverted by batch E8's E8-7), and a
->     flight neither ends on nor passes over it (D-46, the original's code, until batch E8c
->     confirms or reverts it, E08 decision 179); plain water and an object's blocked cell stay a
->     flight's pass, plain water a water walk's. Batch E8 confirmed D-41 to D-43 (E08 decision
->     162).
+>     over water boards no boat, the boat being on the original's list of classes not entered,
+>     0x63AA58, and a flight passes over it from land or water, batch E8c's E8-17d and E8-17e);
+>     a hero in a boat is visited from a stop node (a battle or a meeting); an object's visitable
+>     tile on water (a pickup, a monster, any class but a hero, a boat and the Shipwreck) is
+>     visited only from a boat (D-45 reverted by batch E8's E8-7), and a flight neither ends on
+>     nor passes over it (D-46, the original's code, confirmed by batch E8c's E8-17a and E8-17b,
+>     E08 decisions 179, 180); plain water and an object's blocked cell stay a flight's pass,
+>     plain water a water walk's. Batch E8 confirmed D-41 to D-43 (E08 decision 162).
 >   - **At sea**, an object visited from the neighbouring tile is visited from the boat's water
 >     tile, an entered one is entered; another hero in a boat is met or attacked from the
 >     neighbouring water tile; a boat never reaches a hero on land; a step onto a guarded water
