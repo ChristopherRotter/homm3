@@ -4,8 +4,8 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 
 ## Current state
 
-- **E24** (`docs/epics/E24-map-client.md`; log `E24-log.md`, design `E24-design.md`): **M1** and **M2** closed (`E24-archive.md`): the crate `clients/crates/h3-map-view`, 40 situations and 13 sequences exact (a viewer change runs `h3map.py drawn` first: the runbook, "Which captures a change needs"; `--bugs original` the comparisons' profile). **M3** (the adventure screen; the epic's M3 section, its review list; the queue's tasks): **T1a** (#545), **T1b** (#548) and **T2a** (#553: the dialog and the resource bar, the buttons in a walk) merged. **T2b1** (#557) and **T2b2** (#561: design §4.2, §4.3; the user's machine 0.7 → 0.2 ms a frame on `walk-1`) merged. **T3 cut with the user** (2026-10-29): **T3a built** (the minimap as a still: `minimap_draw` 0x412C40 read, `h3_map_view::minimap` and `record`, the 40 situations exact with it; design §4.4), **next: T3b** (when the original draws it again; the sequences then compare it). Open: **MCL-Q13** (a monster's head under the Utopia: the original's; keep, recommended).
-- **Open pull requests** (2026-10-29): **#563**, T3a's (`map-client/e24-m3-t3a`): check it first (merged, or its mergeability with `master`).
+- **E24** (`docs/epics/E24-map-client.md`; log `E24-log.md`, design `E24-design.md`): **M1** and **M2** closed (`E24-archive.md`): the crate `clients/crates/h3-map-view`, 40 situations and 13 sequences exact (a viewer change runs `h3map.py drawn` first: the runbook, "Which captures a change needs"; `--bugs original` the comparisons' profile). **M3** (the adventure screen; the epic's M3 section, its review list; the queue's tasks): **T1a** (#545), **T1b** (#548), **T2a** (#553), **T2b1** (#557), **T2b2** (#561) and **T3a** (#563, the minimap as a still) merged. **T3b built** (the minimap over time: a scroll, a centring lift and each step's end draw it again, design §4.4; the 13 sequences recorded with it, every frame exact; `masks.toml` one list, `panels`). **Next: T4** (the hero and town lists). Open: **MCL-Q13** (a monster's head under the Utopia: the original's; keep, recommended).
+- **Open pull requests** (2026-10-29): T3b's (`map-client/e24-m3-t3b`): check it first (merged, or its mergeability with `master`).
 - **Ownership** (`lanes.toml`): this lane's crates in the client workspace (`clients/crates/h3-map…`: `h3-map-view`), its data folder `clients/map/`, `docs/epics/E24*` and this folder; branches `map-client/<task>`; ids `MCL-Q<n>`, `MCL-QUIRK-<n>` (asset fixes), `MCL-STUB-<n>`; ADR drafts in `adr-drafts/`. **Common** with the client lane: the foundation (`h3-assets`, `h3-render`, `h3-sdl`, `h3-ui`, the workspace's `Cargo.toml`, `deny.toml`, `.gitignore`, `README.md`, `scripts/`, the string catalogue `clients/text/`, kept common by the user at T0) and the capture harness `clients/capture/` (the adventure lane changes it too): an additive change freely, a change in behaviour noted in the client lane's inbox. The rest of `clients/` is the client lane's (`h3-view` included).
 - **The writer:** this lane adds what its situations need to `h3_map::writer` (the adventure lane's) in additive `cross-lane` pull requests, noted in that lane's inbox (`docs/formats/h3m.md`). It refuses an owner that is no player: a situation gives each owning colour a hero.
 - **From E17** (`clients/README.md`; ADR-0020, ADR-0024): the decoders, the compositor, the SDL 3 adapter, the string catalogue, the gate, the harness (the original under Wine, `h3mem.py`, `h3map.py`: the runbook `clients/capture/README.md`).
@@ -29,10 +29,8 @@ The user's dictation (2026-10-12): `docs/lanes/client/ASSET-NOTES.md`; this lane
 
 ## Recent sessions
 
-- **2026-10-29, E24 M3 T3b** (the user present: T3b kept whole) — *in progress* on
-  `map-client/e24-m3-t3b`: the callers read (design §4.4, the map's entries), the timeline's
-  `Minimap` and the live part's `minimap` written (not built while the recording ran); the 13
-  sequences recorded with the minimap unmasked (`masks.toml`'s `panels`; `out/map-frames/`).
-  Next: build, `frames --reuse`, `drawn --record`, masks one (`stills` gone), the gates.
+- **2026-10-29, E24 M3 T3b** (the user present: T3b kept whole when its reading grew): T3b
+  built (the log's "M3 T3b"); the recording found the step's end's redraw the first reading had
+  set aside. The user's computer stayed linked; nothing is waiting on it.
 - **2026-10-29, E24 M3 T3a** (the user present: T3 cut into T3a and T3b): T2b2's numbers recorded from the user's run; T3a built (the log's "M3 T3a"); the sandbox restarted once (its files kept). The user's computer was unlinked mid-session: nothing is waiting on it.
 - **2026-10-28, E24 M3 T2b2** (the user present: the cut proposed, "no cut"): T2b2 built (the log's "M3 T2b2"); the previous session's commit of T2b1's numbers found on this branch, merged in; the exe in `clients/out/win/` for the user's run.

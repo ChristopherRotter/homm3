@@ -163,7 +163,9 @@ viewers share.
   frame redrawing only what changed (kept whole by the user; **done** 2026-10-28: the drawers'
   spans, the view's cells, the changed rectangles widened and uploaded; the log); T3 cut with the
   user (2026-10-29): T3a, the minimap as a still (**done** 2026-10-29: `minimap_draw` 0x412C40
-  read and built, the 40 situations exact with it; the log), T3b, the minimap over time; T4, the
+  read and built, the 40 situations exact with it; the log), T3b, the minimap over time (**done**
+  2026-10-29: a scroll, a centring lift and each step's end draw it again; the 13 sequences
+  recorded with it, every frame exact; the log); T4, the
   hero and town lists; T5, the status
   window, the resource bar and the date; T6, the mouse, the keys during a walk, the sound without
   the focus; T7, M3's closure. A task that grows is cut at a seam agreed with the user.

@@ -1834,3 +1834,10 @@ Read: `minimap_draw` 0x412C40 in full but its view-world and network branches,
   the explored tiles builds it again, as the objects); `Tiles` holds them shared (`Arc`, compared
   by their allocation first) with the heroes' tiles over them, so a scene no longer copies the
   level's tiles and the composer's comparison of an unchanged minimap is the heroes' few.
+- **Checked** (T3b): the 13 sequences recorded again with the minimap compared (`masks.toml` one
+  list, `panels`, for the situations and the sequences): every kept screen of the 459 exact, every
+  timeline line as the viewer's; the 40 situations' digests unchanged. **Measured** (the sandbox,
+  `--measure 20` side by side with `master`'s build): a frame made in a median 0.3 → 0.2 ms on
+  `walk-1`, 0.7 and 0.7 on `path-objects`, 0.9 and 0.9 on *Tale of two lands*; uploaded the same
+  (25.7, 5.2, 11.2 %); callgrind on *Tale of two lands* (144 tiles a side): a scene (`scene_in`)
+  2.33 → 1.55 million instructions.
