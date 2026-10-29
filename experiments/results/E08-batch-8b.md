@@ -1,5 +1,7 @@
 # E08 batch E8b — results
 
+> Played by the capture harness on 2026-10-29 (`clients/capture/h3adv.py batch clients/capture/batches/E08-batch-8b.toml`): the same Complete 4.0 `Heroes3.exe` under Wine, without the HD mod; hot seat, difficulty Easy, the starting bonus random, Show Route on; read from the game's memory.
+
 Map file: `E08-batch-8b.h3m`. Fill in the blanks below and keep this file; an agent records the results (`docs/experiments/README.md`).
 
 **Stamp `18e9bac9`.** The map's description in the scenario list starts with "Stamp 18e9bac9.": compare the two before you play. If they differ, the map is not this template's build: do not play it, ask for the map again.
@@ -27,12 +29,12 @@ Map file: `E08-batch-8b.h3m`. Fill in the blanks below and keep this file; an ag
 
 | object (tile) | its word (hex) | the message (first words; pictures) | backpack before / after | gold before / after | the object after |
 |---|---|---|---|---|---|
-|   |   |   |   |   |   |
-|   |   |   |   |   |   |
-|   |   |   |   |   |   |
-|   |   |   |   |   |   |
-|   |   |   |   |   |   |
-|   |   |   |   |   |   |
+| (24, 8); Sea Chest: artifact Hourglass of the Evil Hour, 1000 gold | 0xffffe2aa | ADVEVENT:118; ADVEVENT:118: 1500 gold | 64; 64 | 30350; 31850 | none |
+| (24, 6); Sea Chest: 1500 gold | 0xfffffff9 | ADVEVENT:118; ADVEVENT:118: 1500 gold | 64; 64 | 31850; 33350 | none |
+| (26, 10); Sea Chest: nothing | 0xfffffff8 | ADVEVENT:116; none | 64; 64 | 33350; 33350 | none |
+| (24, 16); Survivor: artifact Talisman of Mana | 0x0000004a | ADVEVENT:126; none | 64; 64 | 33350; 33350 | none |
+| (27, 16); Survivor: artifact Badge of Courage | 0x00000031 | ADVEVENT:126; none | 64; 64 | 33350; 33350 | none |
+| (30, 16); Survivor: artifact Charm of Mana | 0x00000049 | ADVEVENT:126; none | 64; 64 | 33350; 33350 | none |
 |   |   |   |   |   |   |
 |   |   |   |   |   |   |
 |   |   |   |   |   |   |
@@ -44,8 +46,8 @@ Map file: `E08-batch-8b.h3m`. Fill in the blanks below and keep this file; an ag
 |   |   |   |   |   |   |
 |   |   |   |   |   |   |
 
-- E8-6's movement points at day 2's start: 
-- anything odd: 
+- E8-6's movement points at day 2's start: 5250
+- anything odd: (24, 4) at the start: 0xfffffff9; Sea Chest: 1500 gold; (26, 4) at the start: 0xfffffff9; Sea Chest: 1500 gold; (28, 4) at the start: 0xfffffff9; Sea Chest: 1500 gold; (30, 4) at the start: 0xfffffff8; Sea Chest: nothing; (32, 4) at the start: 0xfffffff8; Sea Chest: nothing; (34, 4) at the start: 0xfffffff9; Sea Chest: 1500 gold; (24, 6) at the start: 0xfffffff9; Sea Chest: 1500 gold; (26, 6) at the start: 0xfffffff9; Sea Chest: 1500 gold; (28, 6) at the start: 0xfffffff9; Sea Chest: 1500 gold; (30, 6) at the start: 0xfffffff8; Sea Chest: nothing; (32, 6) at the start: 0xfffffff9; Sea Chest: 1500 gold; (34, 6) at the start: 0xfffffff9; Sea Chest: 1500 gold; (24, 8) at the start: 0xffffe2aa; Sea Chest: artifact Hourglass of the Evil Hour, 1000 gold; (26, 8) at the start: 0xfffffff9; Sea Chest: 1500 gold; (28, 8) at the start: 0xfffffff9; Sea Chest: 1500 gold; (30, 8) at the start: 0xfffffff9; Sea Chest: 1500 gold; (32, 8) at the start: 0xfffffff9; Sea Chest: 1500 gold; (34, 8) at the start: 0xfffffff9; Sea Chest: 1500 gold; (24, 10) at the start: 0xfffffff9; Sea Chest: 1500 gold; (26, 10) at the start: 0xfffffff8; Sea Chest: nothing; (28, 10) at the start: 0xfffffff9; Sea Chest: 1500 gold; (30, 10) at the start: 0xfffffff9; Sea Chest: 1500 gold; (32, 10) at the start: 0xfffffff9; Sea Chest: 1500 gold; (34, 10) at the start: 0xfffffff9; Sea Chest: 1500 gold; (24, 12) at the start: 0xfffffff9; Sea Chest: 1500 gold; (26, 12) at the start: 0xfffffff9; Sea Chest: 1500 gold; (28, 12) at the start: 0xfffffff9; Sea Chest: 1500 gold; (30, 12) at the start: 0xfffffff8; Sea Chest: nothing; (32, 12) at the start: 0xfffffff8; Sea Chest: nothing; (34, 12) at the start: 0xfffffff9; Sea Chest: 1500 gold; (24, 16) at the start: 0x0000004a; Survivor: artifact Talisman of Mana; (27, 16) at the start: 0x00000031; Survivor: artifact Badge of Courage; (30, 16) at the start: 0x00000049; Survivor: artifact Charm of Mana; worn at the start (the starting bonus): Sea Captain's Hat (head), Necklace of Ocean Guidance (neck); backpack count at the start: 64; E8-6's boarding (arrived, tile, points, status, boat): yes; 20,10,0; 0; 0x40000; tile 20,10,0; in use 1; type 0; facing 2; owner red; captain E8-6; aboard 1; E8-6 at day 2's start (day's maximum, status): 5250; 0x40000; E8-6 after its visits (tile, points, backpack): 23,15,0; 3181; 64; E8-6 after its visits (tile, points, backpack): 26,15,0; 2740; 64; E8-6 after its visits (tile, points, backpack): 29,15,0; 2299; 64
 
 ## E8-8 — The sea pickups' draws at a new game: forty Flotsams, forty Sea Chests, forty Survivors; one of each visited (ADV-PIK-014, ADV-PIK-015, ADV-PIK-016)
 
@@ -59,140 +61,140 @@ Map file: `E08-batch-8b.h3m`. Fill in the blanks below and keep this file; an ag
 
 | Flotsam (tile) | its word |
 |---|---|
-|   |   |
-|   |   |
-|   |   |
-|   |   |
-|   |   |
-|   |   |
-|   |   |
-|   |   |
-|   |   |
-|   |   |
-|   |   |
-|   |   |
-|   |   |
-|   |   |
-|   |   |
-|   |   |
-|   |   |
-|   |   |
-|   |   |
-|   |   |
-|   |   |
-|   |   |
-|   |   |
-|   |   |
-|   |   |
-|   |   |
-|   |   |
-|   |   |
-|   |   |
-|   |   |
-|   |   |
-|   |   |
-|   |   |
-|   |   |
-|   |   |
-|   |   |
-|   |   |
-|   |   |
-|   |   |
-|   |   |
+| (24, 24) | 0x00000001; Flotsam: 5 wood |
+| (26, 24) | 0x00000000; Flotsam: nothing |
+| (28, 24) | 0x00000002; Flotsam: 5 wood, 200 gold |
+| (30, 24) | 0x00000000; Flotsam: nothing |
+| (32, 24) | 0x00000000; Flotsam: nothing |
+| (34, 24) | 0x00000000; Flotsam: nothing |
+| (36, 24) | 0x00000002; Flotsam: 5 wood, 200 gold |
+| (38, 24) | 0x00000002; Flotsam: 5 wood, 200 gold |
+| (24, 26) | 0x00000001; Flotsam: 5 wood |
+| (26, 26) | 0x00000000; Flotsam: nothing |
+| (28, 26) | 0x00000002; Flotsam: 5 wood, 200 gold |
+| (30, 26) | 0x00000002; Flotsam: 5 wood, 200 gold |
+| (32, 26) | 0x00000000; Flotsam: nothing |
+| (34, 26) | 0x00000003; Flotsam: 10 wood, 500 gold |
+| (36, 26) | 0x00000001; Flotsam: 5 wood |
+| (38, 26) | 0x00000002; Flotsam: 5 wood, 200 gold |
+| (24, 28) | 0x00000003; Flotsam: 10 wood, 500 gold |
+| (26, 28) | 0x00000003; Flotsam: 10 wood, 500 gold |
+| (28, 28) | 0x00000003; Flotsam: 10 wood, 500 gold |
+| (30, 28) | 0x00000001; Flotsam: 5 wood |
+| (32, 28) | 0x00000002; Flotsam: 5 wood, 200 gold |
+| (34, 28) | 0x00000000; Flotsam: nothing |
+| (36, 28) | 0x00000002; Flotsam: 5 wood, 200 gold |
+| (38, 28) | 0x00000002; Flotsam: 5 wood, 200 gold |
+| (24, 30) | 0x00000001; Flotsam: 5 wood |
+| (26, 30) | 0x00000001; Flotsam: 5 wood |
+| (28, 30) | 0x00000002; Flotsam: 5 wood, 200 gold |
+| (30, 30) | 0x00000000; Flotsam: nothing |
+| (32, 30) | 0x00000000; Flotsam: nothing |
+| (34, 30) | 0x00000002; Flotsam: 5 wood, 200 gold |
+| (36, 30) | 0x00000002; Flotsam: 5 wood, 200 gold |
+| (38, 30) | 0x00000000; Flotsam: nothing |
+| (24, 32) | 0x00000003; Flotsam: 10 wood, 500 gold |
+| (26, 32) | 0x00000000; Flotsam: nothing |
+| (28, 32) | 0x00000000; Flotsam: nothing |
+| (30, 32) | 0x00000001; Flotsam: 5 wood |
+| (32, 32) | 0x00000002; Flotsam: 5 wood, 200 gold |
+| (34, 32) | 0x00000000; Flotsam: nothing |
+| (36, 32) | 0x00000002; Flotsam: 5 wood, 200 gold |
+| (38, 32) | 0x00000003; Flotsam: 10 wood, 500 gold |
 
 | Sea Chest (tile) | its word (hex) |
 |---|---|
-|   |   |
-|   |   |
-|   |   |
-|   |   |
-|   |   |
-|   |   |
-|   |   |
-|   |   |
-|   |   |
-|   |   |
-|   |   |
-|   |   |
-|   |   |
-|   |   |
-|   |   |
-|   |   |
-|   |   |
-|   |   |
-|   |   |
-|   |   |
-|   |   |
-|   |   |
-|   |   |
-|   |   |
-|   |   |
-|   |   |
-|   |   |
-|   |   |
-|   |   |
-|   |   |
-|   |   |
-|   |   |
-|   |   |
-|   |   |
-|   |   |
-|   |   |
-|   |   |
-|   |   |
-|   |   |
-|   |   |
+| (44, 24) | 0xfffffff9; Sea Chest: 1500 gold |
+| (46, 24) | 0xfffffff8; Sea Chest: nothing |
+| (48, 24) | 0xffffe19a; Sea Chest: artifact Glyph of Gallantry, 1000 gold |
+| (50, 24) | 0xfffffff9; Sea Chest: 1500 gold |
+| (52, 24) | 0xfffffff9; Sea Chest: 1500 gold |
+| (54, 24) | 0xffffe1aa; Sea Chest: artifact Spyglass, 1000 gold |
+| (56, 24) | 0xffffe332; Sea Chest: artifact Pendant of Holiness, 1000 gold |
+| (58, 24) | 0xfffffff9; Sea Chest: 1500 gold |
+| (44, 26) | 0xfffffff9; Sea Chest: 1500 gold |
+| (46, 26) | 0xfffffff9; Sea Chest: 1500 gold |
+| (48, 26) | 0xfffffff9; Sea Chest: 1500 gold |
+| (50, 26) | 0xfffffff9; Sea Chest: 1500 gold |
+| (52, 26) | 0xfffffff8; Sea Chest: nothing |
+| (54, 26) | 0xfffffff9; Sea Chest: 1500 gold |
+| (56, 26) | 0xfffffff8; Sea Chest: nothing |
+| (58, 26) | 0xfffffff8; Sea Chest: nothing |
+| (44, 28) | 0xfffffff8; Sea Chest: nothing |
+| (46, 28) | 0xfffffff9; Sea Chest: 1500 gold |
+| (48, 28) | 0xfffffff9; Sea Chest: 1500 gold |
+| (50, 28) | 0xfffffff9; Sea Chest: 1500 gold |
+| (52, 28) | 0xfffffff9; Sea Chest: 1500 gold |
+| (54, 28) | 0xfffffff9; Sea Chest: 1500 gold |
+| (56, 28) | 0xfffffff9; Sea Chest: 1500 gold |
+| (58, 28) | 0xfffffff9; Sea Chest: 1500 gold |
+| (44, 30) | 0xfffffff9; Sea Chest: 1500 gold |
+| (46, 30) | 0xfffffff9; Sea Chest: 1500 gold |
+| (48, 30) | 0xfffffff9; Sea Chest: 1500 gold |
+| (50, 30) | 0xffffe182; Sea Chest: artifact Ladybird of Luck, 1000 gold |
+| (52, 30) | 0xfffffff9; Sea Chest: 1500 gold |
+| (54, 30) | 0xfffffff9; Sea Chest: 1500 gold |
+| (56, 30) | 0xfffffff9; Sea Chest: 1500 gold |
+| (58, 30) | 0xfffffff9; Sea Chest: 1500 gold |
+| (44, 32) | 0xfffffff8; Sea Chest: nothing |
+| (46, 32) | 0xfffffff9; Sea Chest: 1500 gold |
+| (48, 32) | 0xfffffff9; Sea Chest: 1500 gold |
+| (50, 32) | 0xfffffff9; Sea Chest: 1500 gold |
+| (52, 32) | 0xfffffff8; Sea Chest: nothing |
+| (54, 32) | 0xfffffff9; Sea Chest: 1500 gold |
+| (56, 32) | 0xfffffff8; Sea Chest: nothing |
+| (58, 32) | 0xfffffff9; Sea Chest: 1500 gold |
 
 | Survivor (tile) | its word (the artifact) |
 |---|---|
-|   |   |
-|   |   |
-|   |   |
-|   |   |
-|   |   |
-|   |   |
-|   |   |
-|   |   |
-|   |   |
-|   |   |
-|   |   |
-|   |   |
-|   |   |
-|   |   |
-|   |   |
-|   |   |
-|   |   |
-|   |   |
-|   |   |
-|   |   |
-|   |   |
-|   |   |
-|   |   |
-|   |   |
-|   |   |
-|   |   |
-|   |   |
-|   |   |
-|   |   |
-|   |   |
-|   |   |
-|   |   |
-|   |   |
-|   |   |
-|   |   |
-|   |   |
-|   |   |
-|   |   |
-|   |   |
-|   |   |
+| (24, 40) | 0x0000000b; Survivor: artifact Sword of Hellfire |
+| (26, 40) | 0x00000029; Survivor: artifact Dragonbone Greaves |
+| (28, 40) | 0x00000012; Survivor: artifact Sentinel's Shield |
+| (30, 40) | 0x0000004e; Survivor: artifact Cape of Conjuring |
+| (32, 40) | 0x0000003c; Survivor: artifact Bow of Elven Cherrywood |
+| (34, 40) | 0x0000002f; Survivor: artifact Cards of Prophecy |
+| (36, 40) | 0x00000064; Survivor: artifact Pendant of Dispassion |
+| (38, 40) | 0x0000000e; Survivor: artifact Shield of the Yawning Dead |
+| (24, 42) | 0x00000077; Survivor: artifact Loins of Legion |
+| (26, 42) | 0x00000074; Survivor: artifact Endless Bag of Gold |
+| (28, 42) | 0x00000040; Survivor: artifact Stoic Watchman |
+| (30, 42) | 0x00000054; Survivor: artifact Spirit of Oppression |
+| (32, 42) | 0x00000062; Survivor: artifact Boots of Speed |
+| (34, 42) | 0x00000013; Survivor: artifact Helm of the Alabaster Unicorn |
+| (36, 42) | 0x00000016; Survivor: artifact Crown of the Supreme Magi |
+| (38, 42) | 0x00000025; Survivor: artifact Quiet Eye of the Dragon |
+| (24, 44) | 0x0000003f; Survivor: artifact Bird of Perception |
+| (26, 44) | 0x0000004d; Survivor: artifact Ring of Conjuring |
+| (28, 44) | 0x00000015; Survivor: artifact Helm of Chaos |
+| (30, 44) | 0x0000006f; Survivor: artifact Everpouring Vial of Mercury |
+| (32, 44) | 0x00000036; Survivor: artifact Amulet of the Undertaker |
+| (34, 44) | 0x00000037; Survivor: artifact Vampire's Cowl |
+| (36, 44) | 0x00000032; Survivor: artifact Crest of Valor |
+| (38, 44) | 0x00000057; Survivor: artifact Tome of Air Magic |
+| (24, 46) | 0x00000058; Survivor: artifact Tome of Water Magic |
+| (26, 46) | 0x00000072; Survivor: artifact Inexhaustible Cart of Lumber |
+| (28, 46) | 0x0000002a; Survivor: artifact Dragon Wing Tabard |
+| (30, 46) | 0x0000005e; Survivor: artifact Ring of Vitality |
+| (32, 46) | 0x00000078; Survivor: artifact Torso of Legion |
+| (34, 46) | 0x0000002c; Survivor: artifact Crown of Dragontooth |
+| (36, 46) | 0x00000076; Survivor: artifact Legs of Legion |
+| (38, 46) | 0x0000004c; Survivor: artifact Collar of Conjuring |
+| (24, 48) | 0x0000004b; Survivor: artifact Mystic Orb of Mana |
+| (26, 48) | 0x00000067; Survivor: artifact Pendant of Life |
+| (28, 48) | 0x0000002e; Survivor: artifact Clover of Fortune |
+| (30, 48) | 0x00000034; Survivor: artifact Speculum |
+| (32, 48) | 0x00000019; Survivor: artifact Breastplate of Petrified Wood |
+| (34, 48) | 0x0000000d; Survivor: artifact Shield of the Dwarven Lords |
+| (36, 48) | 0x0000005f; Survivor: artifact Ring of Life |
+| (38, 48) | 0x00000014; Survivor: artifact Skull Helmet |
 
 | object visited (tile) | its word | the message (first words) | wood, gold before / after | backpack count before / after; the artifact |
 |---|---|---|---|---|
-|   |   |   |   |   |
-|   |   |   |   |   |
-|   |   |   |   |   |
+| Flotsam (38, 32); Flotsam: 10 wood, 500 gold | 0x00000003 | ADVEVENT:53; ADVEVENT:53: 500 gold, 10 wood | 39; 33350; 49; 33850 | 0; 0; 0: Sea Captain's Hat, 2: Necklace of Ocean Guidance, 16: Catapult; none |
+| Survivor (32, 40); Survivor: artifact Bow of Elven Cherrywood | 0x0000003c | ADVEVENT:125; ADVEVENT:125: Bow of Elven Cherrywood | 49; 33850; 49; 33850 | 0; 0; 0: Sea Captain's Hat, 2: Necklace of Ocean Guidance, 9: Bow of Elven Cherrywood, 16: Catapult; none |
+| Sea Chest (48, 24); Sea Chest: artifact Glyph of Gallantry, 1000 gold | 0xffffe19a | ADVEVENT:117; ADVEVENT:117: 1000 (resource.def 6), Glyph of Gallantry | 49; 33850; 49; 34850 | 0; 0; 0: Sea Captain's Hat, 2: Necklace of Ocean Guidance, 9: Bow of Elven Cherrywood, 10: Glyph of Gallantry, 16: Catapult; none |
 
-- anything odd: 
+- anything odd: worn at the start (the starting bonus): Sea Captain's Hat (head), Necklace of Ocean Guidance (neck); E8-8's boarding (arrived, tile, points, status, boat): yes; 42,36,0; 0; 0x40000; tile 42,36,0; in use 1; type 1; facing 2; owner red; captain E8-8; aboard 1; E8-8 at day 2's start (points, day's maximum): 5250; 5250; Flotsam (38, 32) after the visit: its object; none; Survivor (32, 40) after the visit: its object; none; Sea Chest (48, 24) after the visit: its object; none
 
 ## E8-9 — Four Ocean Bottles: three without a text at columns 24, 25 and 49, one with the map's text (ADV-PIK-017)
 
@@ -205,12 +207,12 @@ Map file: `E08-batch-8b.h3m`. Fill in the blanks below and keep this file; an ag
 
 | bottle (tile) | the message's text | the treasury changed (yes/no) | the bottle after |
 |---|---|---|---|
-| (24, 55) |   |   |   |
-| (25, 55) |   |   |   |
-| (34, 55) |   |   |   |
-| (49, 55) |   |   |   |
+| (24, 55) | RANDSIGN:24 | no | none |
+| (25, 55) | RANDSIGN:0 | no | none |
+| (34, 55) | the map's text "E8-9: the map's own text." | no | none |
+| (49, 55) | RANDSIGN:24 | no | none |
 
-- anything odd: 
+- anything odd: worn at the start (the starting bonus): Necklace of Ocean Guidance (neck); E8-9's boarding (arrived, tile, points, status, boat): yes; 20,57,0; 0; 0x40000; tile 20,57,0; in use 1; type 2; facing 2; owner red; captain E8-9; aboard 1; E8-9 at day 2's start (points, day's maximum): 4750; 4750; (24, 55) before (its record; the hero's tile after): Ocean Bottle: no text; 23,56,0; (25, 55) before (its record; the hero's tile after): Ocean Bottle: no text; 24,56,0; (34, 55) before (its record; the hero's tile after): Ocean Bottle: the map's text "E8-9: the map's own text."; 33,56,0; (49, 55) before (its record; the hero's tile after, points): Ocean Bottle: no text; 48,56,0; 1345
 
 ## E8-11 — Red's hero on the shore attacks Blue's hero in a boat and wins (GAM-BAT-001, GAM-BAT-003, ADV-SEA-005, ADV-SEA-006)
 
@@ -224,11 +226,11 @@ Map file: `E08-batch-8b.h3m`. Fill in the blanks below and keep this file; an ag
 
 **Record**
 
-- the boat's record before (tile, in use, owner, captain, aboard): 
-- the marks of the click on E8-11b: 
-- the opening: terrain, special field, ship flag, blocked hexes: 
-- after: E8-11's tile and status flags; the boat's record; what stands on (61, 4): 
-- anything odd: 
+- the boat's record before (tile, in use, owner, captain, aboard): tile 61,4,0; in use 1; type 0; facing 2; owner blue; captain E8-11b; aboard 1
+- the marks of the click on E8-11b: 1; green; 61,4
+- the opening: terrain, special field, ship flag, blocked hexes: terrain water, special field none, ship flag 1, blocked hexes 98, 114, 115
+- after: E8-11's tile and status flags; the boat's record; what stands on (61, 4): 61,5,0; 0x0; tile 61,4,0; in use 0; type 0; facing 2; owner blue; captain E8-11b; aboard 1; none (class 3: the coast)
+- anything odd: E8-11b's boarding (arrived, tile, status, boat): yes; 61,4,0; 0x40000; tile 61,4,0; in use 1; type 0; facing 2; owner blue; captain E8-11b; aboard 1; E8-11b before (tile, status): 61,4,0; 0x40000; boats in use before: 8; 1 dialog(s) after the walk to [61, 4]; the battle (winner; stacks at the start): attacker; attacker 10 Archangels | defender 1 Pikeman; boats in use after: 7; messages: GENRLTXT:31
 
 ## E8-12 — Two heroes in boats side by side: Red attacks, Blue retreats (GAM-BAT-001, GAM-BAT-003, ADV-SEA-005, ADV-SEA-006)
 
@@ -242,11 +244,11 @@ Map file: `E08-batch-8b.h3m`. Fill in the blanks below and keep this file; an ag
 
 **Record**
 
-- the marks of the click on E8-12b: 
-- the opening: terrain, special field, ship flag, blocked hexes (all of them): 
-- after: E8-12's tile and status flags: 
-- after: Red's boat's record; Blue's boat's record; what stands on (62, 10): 
-- anything odd: 
+- the marks of the click on E8-12b: 1; green; 62,10
+- the opening: terrain, special field, ship flag, blocked hexes (all of them): terrain water, special field none, ship flag 1, blocked hexes 6, 7, 8, 9, 24, 25, 26, 58, 59, 60, 75, 76, 77, 92, 93, 94, 109, 110, 111, 126, 127, 128, 159, 160, 161, 162, 163, 176, 177, 178, 179, 180
+- after: E8-12's tile and status flags: 61,10,0; 0x40000; in a boat (type 1, flag 0)
+- after: Red's boat's record; Blue's boat's record; what stands on (62, 10): tile 61,10,0; in use 1; type 1; facing 2; owner red; captain E8-12; aboard 1; tile 62,10,0; in use 0; type 2; facing 2; owner blue; captain E8-12b; aboard 1; none
+- anything odd: E8-12's boarding (arrived, tile, points, status, boat): yes; 61,10,0; 0; 0x40000; tile 61,10,0; in use 1; type 1; facing 2; owner red; captain E8-12; aboard 1; E8-12b's boarding (arrived, tile, status, boat): yes; 62,10,0; 0x40000; tile 62,10,0; in use 1; type 2; facing 2; owner blue; captain E8-12b; aboard 1; the boats' records before (Red's, Blue's): tile 61,10,0; in use 1; type 1; facing 2; owner red; captain E8-12; aboard 1; tile 62,10,0; in use 1; type 2; facing 2; owner blue; captain E8-12b; aboard 1; the battle (winner, retreated; stacks at the start, at the end): attacker; defender; attacker 10 Archangels | defender 1 Pikeman; attacker 10 Archangels | defender 1 Pikeman; boats in use after: 6
 
 ## E8-13 — A boat and Pikemen on the water: a click past their guarded tiles, then onto one (GAM-BAT-001, ADV-SEA-005, ADV-MON-001)
 
@@ -260,11 +262,11 @@ Map file: `E08-batch-8b.h3m`. Fill in the blanks below and keep this file; an ag
 
 **Record**
 
-- the click on (10, 63): the marks (or none); E8-13's tile after: 
-- the click on (7, 63): the marks; the tile where the battle starts: 
-- the opening: terrain, special field, ship flag, blocked hexes: 
-- after: E8-13's tile and status flags: 
-- anything odd: 
+- the click on (10, 63): the marks (or none); E8-13's tile after: 0; none; 5,63,0
+- the click on (7, 63): the marks; the tile where the battle starts: 2; 6,63 7,63; 7,63,0
+- the opening: terrain, special field, ship flag, blocked hexes: terrain water, special field none, ship flag 1, blocked hexes 79, 96, 97
+- after: E8-13's tile and status flags: 7,63,0; 0x40000; in a boat (type 0, flag 0); tile 5,63,0; in use 1; type 0; facing 2; owner red; captain E8-13; aboard 1
+- anything odd: E8-13's boarding (arrived, tile, points, status, boat): yes; 5,63,0; 0; 0x40000; tile 5,63,0; in use 1; type 0; facing 2; owner red; captain E8-13; aboard 1; (10, 63) explored before the click; E8-13's points before: yes; 1500; the guards before (8, 63): 10 Pikemen; the battle (winner; stacks at the start): attacker; attacker 5 Archangels | defender 4 Pikemen, 3 Halberdiers, 3 Pikemen
 
 ## E8-14 — Two of Red's events on a channel: 100 gold, then guards (ADV-OBJ-007, ADV-MOV-011, ADV-SEA-005, GAM-BAT-001)
 
@@ -277,9 +279,9 @@ Map file: `E08-batch-8b.h3m`. Fill in the blanks below and keep this file; an ag
 
 **Record**
 
-- gold at day 2's start: 
-- the click on (10, 68): the marks; tile, movement points and gold after; the message: 
-- the click on (13, 68): the marks; the message; the tile where the battle starts: 
-- the opening: terrain, special field, ship flag, blocked hexes: 
-- after: E8-14's tile and status flags: 
-- anything odd: 
+- gold at day 2's start: 30350
+- the click on (10, 68): the marks; tile, movement points and gold after; the message: 5; 6,68 7,68 8,68 9,68 10,68; 8,68,0; 1200; 34950; ADVEVENT:183; ADVEVENT:183: 100 gold
+- the click on (13, 68): the marks; the message; the tile where the battle starts: 5; 9,68 10,68 11,68 12,68 13,68; ADVEVENT:16; 11,68,0
+- the opening: terrain, special field, ship flag, blocked hexes: terrain water, special field none, ship flag 1, blocked hexes 90, 106, 107
+- after: E8-14's tile and status flags: 11,68,0; 0x40000; in a boat (type 1, flag 0); tile 5,68,0; in use 1; type 1; facing 2; owner red; captain E8-14; aboard 1
+- anything odd: E8-14's boarding (arrived, tile, points, status, boat): yes; 5,68,0; 0; 0x40000; tile 5,68,0; in use 1; type 1; facing 2; owner red; captain E8-14; aboard 1; E8-14 at day 2's start (points, day's maximum): 1500; 1500; gold and points right before the click: 34850; 1500; the battle (winner; stacks at the start): attacker; attacker 5 Archangels | defender 5 Pikemen
