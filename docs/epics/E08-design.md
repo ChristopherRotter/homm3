@@ -257,6 +257,7 @@ in `check_step` and the walking search):
   change.
 - **After the battle:** a hero in a boat that lost, retreated or surrendered, or both after a draw,
   leaves the map with its boat (`gone`, `BoatRemoved` where seen); a winner in a boat stays in it.
+  Built by T74b (`sea_battle_ground`, `remove_boat`; decision 187).
 
 ### 14. The game (`h3-game`)
 
@@ -268,10 +269,11 @@ in `check_step` and the walking search):
 
 ### 15. The env, replays, fixtures, properties, benchmarks
 
-- **The env** (the AI lane's, ADR-0017 point 8): the observation encoding gains the empty boats on
-  explored tiles and each seen hero's in-boat bit (an encoding version bump); the action encoding
-  keeps v5 (a boarding or a landing is a tile). `cross-lane` in T74 with the user's consent
-  (decision 172), as T63a's; the AI lane's inbox told (T66b).
+- **The env** (the AI lane's, ADR-0017 point 8): no change (decision 187, T74b's finding): the
+  adventure env has no flat observation encoding, it returns `GameObservation`, whose views carry
+  the empty boats and each seen hero's boat since T72; the action encoding keeps v5 (a boarding or
+  a landing is a tile). The AI lane's inbox told; T75's random play on the sea map shows the env
+  plays on at sea.
 - **The sea fixture** `fixtures/maps/e08-sea-36.h3m` (written by `h3_map::writer` in
   `tests/sea_map.rs`): two players; boats of the three kinds beside coasts; the four pickups (a
   hero with a full backpack); events on water with and without guards; a monster on water;
@@ -303,7 +305,7 @@ in `check_step` and the walking search):
 | adventure ruleset part v13 | the find's extension, `Message`, `SeaGround`, `Hole`; the sea's parameters | T72 |
 | map import v14 | classes 8, 29, 59, 82, 86, 124, 225; `HeroOnWater` | T72 |
 | adventure state hash v16, game state hash v20 | the boats, a hero's boat and maximum | T72 |
-| env observation encoding (the AI lane's) | the boats, the in-boat bit | T74 (`cross-lane`) |
+| env observation encoding (the AI lane's) | none: no flat encoding exists (decision 187) | T74b: nothing to bump |
 
 Rule ids: survey §12 (ADV-SEA-001 to -007, ADV-PIK-014 to -018, HER-ADV-009 and the amendments).
 Quirks, recorded in `docs/rules/quirks-adventure.md` without flags (decisions 164, 166):

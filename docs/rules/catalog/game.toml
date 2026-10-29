@@ -467,7 +467,7 @@ id       = "GAM-BAT-001"
 title    = "A battle on the map: its sides, its setup, its seeds, a decision its players own"
 context  = "game"
 status   = "implemented"
-summary  = "A visit that starts a battle (increment 3: another player's hero's, GAM-BAT-004) opens it at once as a pending decision owned by the players of its sides: the attacker the visitor's owner, the defender the visited hero's owner, who plays outside its turn. Its setup: each side's army and formation as on the map, each hero's battle hero (h3_heroes::derive_battle_hero, with its maximum spell points, HER-MAN-001) and war machines (h3_heroes::war_machines); the battle is fought at the defender's tile, on the terrain the tile gives in the original's order (the adventure part's battle terrains: underground the subterranean, else on a coast tile, the map's flag 0x40, sand with the shore's battlefield, else the tile's own; since E08 T20a2a a special ground on the tile replaces the battlefield, ADV-GRD-001; boats, mines and sieges come later); each side owner's gold as its funds (a surrender's price, the battle part's resource). The battle's own seed is the attacking player's stream's next draw; its obstacles (h3_battle::generate_setup_obstacles) come from the tile's seed 110 291 x + 167 801 y + 81 569 (32-bit, the level not included) under ADV-QUIRK-5 (faithful), else from that stream's next draw. While it is open its owners' only legal commands are the battle's (`GameCommand::Battle`), for the side to act, by its owner (`NotYourSide` for the other, `NoBattle` without one, `BattleOpen` for an answer); neither owner can end its turn or move. Its start, its events by their visibility (a public one to both owners, a side's to its owner) and its end are told to its owners only; each sees its side's observation (`GameObservation::battle`). The command that ends it applies its outcome (GAM-BAT-002, GAM-BAT-003, GAM-BAT-005) and closes the decision. E08 T19a: `GameState::start_battle`, `battle_command`, `OpenBattle`, `AdventureState::battle_ground`."
+summary  = "A visit that starts a battle (increment 3: another player's hero's, GAM-BAT-004) opens it at once as a pending decision owned by the players of its sides: the attacker the visitor's owner, the defender the visited hero's owner, who plays outside its turn. Its setup: each side's army and formation as on the map, each hero's battle hero (h3_heroes::derive_battle_hero, with its maximum spell points, HER-MAN-001) and war machines (h3_heroes::war_machines); the battle is fought at the defender's tile, on the terrain the tile gives in the original's order (the adventure part's battle terrains: underground the subterranean, else on a coast tile, the map's flag 0x40, sand with the shore's battlefield, else the tile's own; since E08 T20a2a a special ground on the tile replaces the battlefield, ADV-GRD-001; since E08 T74b first of all, with a hero in a boat on either side, the sea's terrain, water, on the deck, with both on the two boats, a special ground on the tile replacing these as on land, `AdventureState::sea_battle_ground`: from the shore at a boat's hero's water tile, from a boat, a water monster's or an event's guards' against a boat, while a landing's guards fight on land; mines and sieges come later); each side owner's gold as its funds (a surrender's price, the battle part's resource). The battle's own seed is the attacking player's stream's next draw; its obstacles (h3_battle::generate_setup_obstacles) come from the tile's seed 110 291 x + 167 801 y + 81 569 (32-bit, the level not included) under ADV-QUIRK-5 (faithful), else from that stream's next draw. While it is open its owners' only legal commands are the battle's (`GameCommand::Battle`), for the side to act, by its owner (`NotYourSide` for the other, `NoBattle` without one, `BattleOpen` for an answer); neither owner can end its turn or move. Its start, its events by their visibility (a public one to both owners, a side's to its owner) and its end are told to its owners only; each sees its side's observation (`GameObservation::battle`). The command that ends it applies its outcome (GAM-BAT-002, GAM-BAT-003, GAM-BAT-005) and closes the decision. E08 T19a: `GameState::start_battle`, `battle_command`, `OpenBattle`, `AdventureState::battle_ground`."
 numeric  = "integer"
 quirks   = ["ADV-QUIRK-5", "ADV-QUIRK-8"]
 
@@ -499,6 +499,12 @@ quirks   = ["ADV-QUIRK-5", "ADV-QUIRK-8"]
   retrieved  = "2026-10-20"
   confidence = "high"
   note       = "The visit as the rule. The formation is ADV-QUIRK-8 (the original never applies the map's flag; fixed: the engine keeps it). E08 T22b."
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-8b.md and E08-batch-8a.md (survey E08-sea.md §15; E08 T74b, the battle at sea): E8-11, a hero on the shore attacking one in a boat fights on water with the ship flag and the water obstacle (the deck); E8-12, both in boats on water with exactly the 32 hexes of the two boats; E8-13 and E8-14, a water monster's and an event's guards' battle against a boat on the deck; E8-15, a landing's guards fight on land at the monster's tile"
+  retrieved  = "2026-10-29"
+  confidence = "high"
 
 [[rule]]
 id       = "GAM-BAT-002"
@@ -560,7 +566,7 @@ id       = "GAM-BAT-003"
 title    = "A hero that loses, retreats or surrenders leaves the map"
 context  = "game"
 status   = "implemented"
-summary  = "After a battle on the map, a hero stays only if its side won and has army survivors left; every other leaves the map: one that lost, retreated or surrendered, both after a draw, and a winner left with stacks created in the battle only (BAT-END-001: the opponent of a side that retreated or surrendered has then lost too). Its removal is told to its owner and to the players that see its tile (`HeroRemoved`); its details stay in the store of heroes (the heroes' pool and re-hiring are E09's). E08 T19a."
+summary  = "After a battle on the map, a hero stays only if its side won and has army survivors left; every other leaves the map: one that lost, retreated or surrendered, both after a draw, and a winner left with stacks created in the battle only (BAT-END-001: the opponent of a side that retreated or surrendered has then lost too). Its removal is told to its owner and to the players that see its tile (`HeroRemoved`); its details stay in the store of heroes (the heroes' pool and re-hiring are E09's). Since E08 T74b a hero in a boat takes its boat with it (ADV-SEA-006, `BoatRemoved`); a winner in a boat stays in it. E08 T19a."
 numeric  = "integer"
 
   [[rule.source]]
@@ -579,6 +585,12 @@ numeric  = "integer"
   retrieved  = "2026-10-20"
   confidence = "high"
   note       = "Confirms a surrendering hero's removal. E08 T22b."
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-8b.md (survey E08-sea.md §15; E08 T74b): E8-11, the beaten hero in a boat off the map, its boat's record freed; E8-12, a retreated hero in a boat likewise, the winner still in its boat"
+  retrieved  = "2026-10-29"
+  confidence = "high"
 
 [[rule]]
 id       = "GAM-BAT-004"
