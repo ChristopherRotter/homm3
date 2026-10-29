@@ -896,4 +896,5 @@ mod piles;
 mod records;
 mod rewards;
 mod sea;
+mod sea_pickups;
 mod visits;

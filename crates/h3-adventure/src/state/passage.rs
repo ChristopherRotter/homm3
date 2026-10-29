@@ -103,7 +103,7 @@ impl AdventureState {
     /// blocker here: its tile is closed as every other object's on water until creature banks type
     /// it (ADV-STUB-12).
     // rule: ADV-MOV-007, ADV-MOV-008, ADV-MOV-009, ADV-MOV-010, ADV-OBJ-003, ADV-OBJ-004
-    // rule: ADV-SEA-002
+    // rule: ADV-SEA-002, ADV-PIK-018
     pub(crate) fn passage<'p>(
         &self,
         part: &'p AdventureRuleset,

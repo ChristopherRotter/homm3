@@ -1185,9 +1185,10 @@ fn the_sea_s_kinds_compile_and_are_checked() {
         bonus: None,
         leaves: true,
     };
-    assert_eq!(kind_of(&part, 9), ObjectKind::Find(find));
-    // A find that leaves is visited from a boat only: its visit is T74's.
-    assert!(kind_of(&part, 9).effect().is_none());
+    assert_eq!(kind_of(&part, 9), ObjectKind::Find(find.clone()));
+    // A find that leaves is visited as a find (E08 T74a; on water from a boat only: the
+    // passage's).
+    assert_eq!(kind_of(&part, 9).effect(), Some(Effect::Find(&find)));
     // The survivor's lost turn; a find of fixed resources alone has no turn.
     let lost = FindDef {
         full_backpack: Some(TurnDef::Lost),
@@ -1203,16 +1204,22 @@ fn the_sea_s_kinds_compile_and_are_checked() {
     flotsam.draws[0].0 = 30;
     flotsam.full_backpack = None;
     assert!(compile_rewards(&sea(flotsam)).is_ok());
-    // A message, a ground of the sea and a hole: never visited until T74, or never at all.
-    for def in [
-        ObjectKindDef::Message { leaves: true },
-        ObjectKindDef::Message { leaves: false },
-        ObjectKindDef::SeaGround,
-        ObjectKindDef::Hole,
+    // A message, read at its visit (E08 T74a); a ground of the sea and a hole, never visited.
+    for (def, effect) in [
+        (
+            ObjectKindDef::Message { leaves: true },
+            Some(Effect::Message(true)),
+        ),
+        (
+            ObjectKindDef::Message { leaves: false },
+            Some(Effect::Message(false)),
+        ),
+        (ObjectKindDef::SeaGround, None),
+        (ObjectKindDef::Hole, None),
     ] {
         let part = compile_rewards(&with_kind(10, |k| *k = def.clone())).unwrap();
         let kind = kind_of(&part, 10);
-        assert!(kind.effect().is_none(), "{kind:?}");
+        assert_eq!(kind.effect(), effect, "{kind:?}");
         let expected = match def {
             ObjectKindDef::Message { leaves } => ObjectKind::Message { leaves },
             ObjectKindDef::SeaGround => ObjectKind::SeaGround,
@@ -1264,6 +1271,17 @@ fn the_sea_s_kinds_compile_and_are_checked() {
         }),
         reason("a find's drawn turn is beside a fixed entry's artifact")
     );
+    // E08 T74a: a find that leaves takes its artifact with it; one that stays may keep it.
+    assert_eq!(
+        invalid(&|f| f.full_backpack = Some(TurnDef::Stays)),
+        reason("a find that leaves keeps its artifact")
+    );
+    let kept = FindDef {
+        full_backpack: Some(TurnDef::Stays),
+        leaves: false,
+        ..sea_find()
+    };
+    assert!(compile_rewards(&sea(kept)).is_ok());
     // The hash sees every new parameter (ruleset part v13).
     let base = hash_of(&compile_rewards(&sea(sea_find())).unwrap());
     let changes: Vec<Vec<AdventurePack>> = vec![
@@ -1277,6 +1295,7 @@ fn the_sea_s_kinds_compile_and_are_checked() {
         }),
         sea(FindDef {
             full_backpack: Some(TurnDef::Stays),
+            leaves: false,
             ..sea_find()
         }),
         sea({

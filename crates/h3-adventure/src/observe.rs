@@ -487,7 +487,8 @@ impl AdventureEvent {
                 | AdventureEventKind::EventFired { .. }
                 | AdventureEventKind::MonsterChanged { .. }
                 | AdventureEventKind::Boarded { .. }
-                | AdventureEventKind::Landed { .. } => self.kind,
+                | AdventureEventKind::Landed { .. }
+                | AdventureEventKind::MessageRead { .. } => self.kind,
             },
             seen_by: alone,
         })

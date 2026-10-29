@@ -175,8 +175,8 @@ pub enum ObjectKind {
     /// The Pyramid (ADV-TCH-008, E08 T61a).
     Pyramid(Pyramid),
     /// A message (E08 T72, design §5: the Ocean Bottle, ADV-PIK-017): its visit tells the
-    /// visitor's owner which object's message it read (the map's text is the client's); its
-    /// visit is T74's.
+    /// visitor's owner which object's message it read (the map's text is the client's; E08
+    /// T74a).
     Message {
         /// It leaves the map at its visit (the Ocean Bottle; the Sign, a later increment's, stays).
         leaves: bool,
@@ -224,8 +224,12 @@ pub(crate) enum Effect<'k> {
     Scholar,
     /// Its skills, each for this price (a University, ADV-TCH-007, E08 T62a).
     University(&'k Resources),
-    /// Its contents, once (a find, ADV-PIK-009 to -012, E08 T62a).
+    /// Its contents, once (a find, ADV-PIK-009 to -012, E08 T62a); one that leaves then leaves
+    /// the map (the sea's, ADV-PIK-014 to -016, E08 T74a).
     Find(&'k Find),
+    /// Its message read by the visitor's owner, then, when it leaves, it leaves the map (the
+    /// Ocean Bottle, ADV-PIK-017, E08 T74a).
+    Message(bool),
     /// Its question, then its guards or its reward record (Pandora's Box, ADV-PIK-013, E08
     /// T62b1).
     PandoraBox,
@@ -242,7 +246,8 @@ impl ObjectKind {
     /// guards with their offer; T15b: the gates, which are not visited by their key's holders;
     /// T20b1: the wandering monsters, whose visit is their answer; T62a: the chests, artifacts,
     /// scrolls, gifts, Shrines, Witch Huts, Scholars, Universities and finds; T62b1: Pandora's
-    /// Box and the Pyramid.
+    /// Box and the Pyramid; T74a: the sea's finds, which leave, and the message. Who reaches a
+    /// kind's visit is the passage's: on water only a boat (ADV-PIK-018, D-46).
     pub(crate) fn effect(&self) -> Option<Effect<'_>> {
         match self {
             Self::Pickup(_) => Some(Effect::Pickup),
@@ -259,19 +264,13 @@ impl ObjectKind {
             Self::WitchHut { .. } => Some(Effect::WitchHut),
             Self::Scholar => Some(Effect::Scholar),
             Self::University { price, .. } => Some(Effect::University(price)),
-            Self::Find(find) if !find.leaves => Some(Effect::Find(find)),
+            Self::Find(find) => Some(Effect::Find(find)),
             Self::PandoraBox => Some(Effect::PandoraBox),
             Self::Pyramid(_) => Some(Effect::Pyramid),
+            Self::Message { leaves } => Some(Effect::Message(*leaves)),
             // E08 T61a: typed; an event is fired by a step, never visited (T62b2). E08 T72: the
-            // grounds of the sea and the holes are never visited; the sea's pickups (a find that
-            // leaves) and the Ocean Bottle are visited from a boat only, built by T74 (design
-            // §11), so until then a step onto them is refused as any unbuilt visit's.
-            Self::Ground { .. }
-            | Self::Event
-            | Self::Find(_)
-            | Self::Message { .. }
-            | Self::SeaGround
-            | Self::Hole => None,
+            // grounds of the sea and the holes are never visited.
+            Self::Ground { .. } | Self::Event | Self::SeaGround | Self::Hole => None,
         }
     }
 

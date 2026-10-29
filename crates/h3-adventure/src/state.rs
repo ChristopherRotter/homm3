@@ -1773,9 +1773,13 @@ impl AdventureState {
     /// T62a increment 7's pickups, teachers and finds (`rewards.rs`): a treasure chest
     /// ([`Self::visit_chest`]), an artifact or a Spell Scroll ([`Self::visit_artifact`]), a
     /// once-per-hero gift ([`Self::visit_gift`]), a Shrine, a Witch Hut, a Scholar, a University
-    /// and a find.
+    /// and a find. Since E08 T74a the sea's finds, which leave the map once searched, and a
+    /// message (the Ocean Bottle, ADV-PIK-017; the original's 0x4A9AFA, survey `E08-sea.md`
+    /// §8.5): read by the visitor's owner alone ([`AdventureEventKind::MessageRead`]; a computer's
+    /// hero as a human's, `ADV-QUIRK-30` not reproduced), then, when it leaves, taken off the map;
+    /// nothing given, no question.
     // rule: ADV-PIK-001, ADV-PIK-003, ADV-OBJ-005, ADV-VIS-001, ADV-VIS-002, ADV-VIS-003, ADV-VIS-004
-    // rule: ADV-VIS-005, ADV-PIK-004
+    // rule: ADV-VIS-005, ADV-PIK-004, ADV-PIK-017
     fn visit<S: Sink>(
         &mut self,
         rules: (&Ruleset, &AdventureRuleset, &[Arc<HeroDetails>]),
@@ -1838,9 +1842,24 @@ impl AdventureState {
             Effect::University(price) => {
                 outcome = self.visit_university((player, hero), object, price);
             }
-            Effect::Find(find) => outcome = self.visit_find(rules, (player, hero), object, find),
+            Effect::Find(find) => {
+                outcome = self.visit_find(rules, (player, hero), object, find, sink);
+            }
             Effect::PandoraBox => outcome = self.ask(hero, object, OfferKind::OpenBox),
             Effect::Pyramid => outcome = self.ask(hero, object, OfferKind::SearchPyramid),
+            Effect::Message(leaves) => {
+                sink.emit(AdventureEvent {
+                    kind: AdventureEventKind::MessageRead {
+                        hero,
+                        object_type: visit.object_type,
+                        anchor,
+                    },
+                    seen_by: Viewers::NONE.with(player),
+                });
+                if leaves {
+                    self.take_object(core, object, sink);
+                }
+            }
         }
         outcome
     }
@@ -1933,7 +1952,7 @@ impl AdventureState {
                 })
                 .unwrap_or_default(),
             OfferKind::Gift { .. } => self.accept_gift(rules, offer),
-            OfferKind::Search => self.accept_search(rules, player, offer),
+            OfferKind::Search => self.accept_search(rules, player, offer, sink),
             OfferKind::OpenBox => self.open_box(rules, offer, sink),
             OfferKind::SearchPyramid => self.search_pyramid(part, player, offer),
         }
