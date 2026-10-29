@@ -130,9 +130,7 @@ impl Kingdom {
     /// [[asleep, movable, portrait, points, mana], ...], towns = [[faction, fort, built], ...],
     /// selected = [<0 none, 1 a hero, 2 a town>, <its place in its list>], tops = [<heroes>,
     /// <towns>], quests = <0 or 1> }`, each flag 0 or 1; none for anything else (a selection past
-    /// its list among them). The form before T4a (`[asleep, movable]` a hero, `towns = <n>`), which
-    /// the sequences' kept live parts hold until T4b records them again, reads with portrait 0, no
-    /// points, no mana and towns of faction 0 without a fort.
+    /// its list among them).
     #[must_use]
     pub fn read(value: &toml::Value) -> Option<Self> {
         fn pair(v: &toml::Value) -> Option<[&toml::Value; 2]> {
@@ -155,11 +153,6 @@ impl Kingdom {
             .as_array()?
             .iter()
             .map(|h| match h.as_array()?.as_slice() {
-                [asleep, movable] => Some(KingdomHero {
-                    asleep: flag(asleep)?,
-                    movable: flag(movable)?,
-                    ..KingdomHero::default()
-                }),
                 [asleep, movable, portrait, points, mana] => Some(KingdomHero {
                     asleep: flag(asleep)?,
                     movable: flag(movable)?,
@@ -170,21 +163,19 @@ impl Kingdom {
                 _ => None,
             })
             .collect::<Option<Vec<_>>>()?;
-        let towns = match table.get("towns")? {
-            toml::Value::Integer(n) => vec![KingdomTown::default(); usize::try_from(*n).ok()?],
-            list => list
-                .as_array()?
-                .iter()
-                .map(|t| match t.as_array()?.as_slice() {
-                    [faction, fort, built] => Some(KingdomTown {
-                        faction: byte(faction)?,
-                        fort: flag(fort)?,
-                        built: flag(built)?,
-                    }),
-                    _ => None,
-                })
-                .collect::<Option<Vec<_>>>()?,
-        };
+        let towns = table
+            .get("towns")?
+            .as_array()?
+            .iter()
+            .map(|t| match t.as_array()?.as_slice() {
+                [faction, fort, built] => Some(KingdomTown {
+                    faction: byte(faction)?,
+                    fort: flag(fort)?,
+                    built: flag(built)?,
+                }),
+                _ => None,
+            })
+            .collect::<Option<Vec<_>>>()?;
         let [kind, at] = pair(table.get("selected")?)?;
         let at = number(at)?;
         let selected = match number(kind)? {

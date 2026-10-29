@@ -90,10 +90,9 @@ SPRITES = "H3sprite.lod"
 TERRAIN_FIELD, RIVER_FIELD = h3mem.TERRAIN_DEFS, h3mem.RIVER_DEFS
 # What the viewer does not draw yet (E24 M1; since E24 M3 T2a `clients/map/masks.toml`, which the
 # viewer's `sequences` reads too): its rectangles (x0, y0, x1, y1), the last two excluded.
-# `panels`: what T4 to T6 draw of the adventure screen's panels (the lists' contents, the status
-# window, the amounts and the date, the status bar's hint), the sequences'; `stills`: the
-# situations', `panels` but the lists (E24 M3 T4a; T4b, timing the lists' redraws, makes the two
-# one again, as T3b did with T3a's).
+# `panels`: what T5 and T6 draw of the adventure screen's panels (the status window, the amounts
+# and the date, the status bar's hint), the situations' and the sequences' (since E24 M3 T4b one
+# list again: T4a's `stills` left the lists out for the situations alone).
 MASKS = {name: [tuple(r) for r in rects]
          for name, rects in tomllib.loads((CLIENTS / "map/masks.toml").read_text()).items()}
 
@@ -494,7 +493,7 @@ def stage(situation_path, out):
     return game, mem, sit, turn
 
 
-def live_part(mem, sit, turn, k, k_rivers):
+def live_part(mem, sit, turn, k, k_rivers, kingdom=None):
     """The live part the screen shows right after a redraw at the frozen clock (the palette steps
     `k`, `k_rivers` read by `cycle_step`), as `render --live` takes it: `live.toml`'s lines. The
     redraw drew with the manager's +0x100 before it grew it (design §1.6): the screen shows the
@@ -504,7 +503,10 @@ def live_part(mem, sit, turn, k, k_rivers):
     as; a random dwelling's the dwelling's it became, a town's its picture by its buildings
     (§2.9). Each object's owner as the view finds it (T5b1). The viewer's explored tiles and the
     path shown (T5b2). The viewer's kingdom the panels show, move hero's and next hero's states as
-    the original last set them and the mouse's point, where the cursor is drawn (M3 T2a). Checks the heroes and boats against what the situation staged."""
+    the original last set them and the mouse's point, where the cursor is drawn (M3 T2a); the
+    kingdom as `kingdom` gives it when the panels show another than memory's (M3 T4b: a
+    sequence's `points` written after the hero list was drawn). Checks the heroes and boats
+    against what the situation staged."""
     objects, templates = mem.map_objects(), mem.map_templates()
     heroes, boats = mem.map_heroes(sit["view"][2])
     live = {"view": list(mem.view()) + [mem.view_level()], "cycles": k,
@@ -517,7 +519,7 @@ def live_part(mem, sit, turn, k, k_rivers):
             "heroes": heroes, "boats": boats, "owners": mem.map_owners(),
             "explored": json.dumps(mem.explored_rows(mem.current_player())),
             "path": mem.path_arrows(),
-            "kingdom": kingdom_toml(mem.kingdom(mem.current_player())),
+            "kingdom": kingdom_toml(kingdom or mem.kingdom(mem.current_player())),
             "buttons": mem.buttons(),
             "pointer": mem.cursor()[2:],
             "situation": json.dumps(situation_digest(sit))}
@@ -584,7 +586,7 @@ def compare(situation_path, out, cap):
     except RuntimeError as err:
         raise Refused(last_lines(err)) from err
     ours = h3cap.png565(out / "ours.png")
-    mask = masked(["stills"], cap.shape)
+    mask = masked(["panels"], cap.shape)
     n, where = h3cap.compare(cap, ours, mask, out / "diff.png")
     return n, int((~mask).sum()), where
 
@@ -623,11 +625,12 @@ def map_timeline(states):
     <rivers>` (the palette steps memory holds, each kind's ticks counted from 0), since T1a2
     `<ms> cursor <type> <frame> <x> <y>` (the cursor's DEF type and frame and the point it is
     drawn at, `Mem.cursor`), since M3 T2a `<ms> buttons <move> <next>` (move hero's and next
-    hero's states, 1 enabled: `Mem.buttons`) and `<ms> screen <x0>,<y0>,<x1>,<y1>` (where the
-    screen outside the panels' mask changed since the screen kept before: each such screen is
-    kept; x1, y1 exclusive).
-    The first state, at 0, gives the view, the objects, the cycles, the cursor and the buttons;
-    its screen is
+    hero's states, 1 enabled: `Mem.buttons`), since M3 T4b `<ms> points <n>` (the selected hero's
+    movement points, its record's +0x4D: `Mem.points`; none without one) and `<ms> screen
+    <x0>,<y0>,<x1>,<y1>` (where the screen outside the panels' mask changed since the screen kept
+    before: each such screen is kept; x1, y1 exclusive).
+    The first state, at 0, gives the view, the objects, the cycles, the cursor, the buttons and
+    the points; its screen is
     always kept, without a line. Since T1b the walk's lines, only where they change (at 0 they are
     the situation's: the selected hero standing on its tile, the offset 0, its path's arrows):
     `<ms> hero <x> <y> <level> <facing>` (the current player's selected hero, `Mem.selected`),
@@ -637,7 +640,7 @@ def map_timeline(states):
     lines, last = [], {}
     for state in states:
         t = state["t"]
-        for key in ("view", "objects", "cycles", "cursor", "buttons"):
+        for key in ("view", "objects", "cycles", "cursor", "buttons", "points"):
             if key in state and last.get(key) != state[key]:
                 lines.append(f"{t} {key} " + " ".join(map(str, state[key])))
                 last[key] = state[key]
@@ -771,6 +774,11 @@ def sequence(entry, out):
         # where an object's frames repeat a picture the screen's changed box at a redraw moved
         # with it from run to run (the frame steps too: below). The live part at 0 reads them.
         mem.write_phases(0)
+        # The kingdom as the panels show it (E24 M3 T4b, design §4.5): the hero list was drawn
+        # before the selected hero's `points` are written, and nothing draws it again until a
+        # step's end or a lift that centres the view; the live part at 0 keeps it as shown, the
+        # timeline's `points` give memory's.
+        shown = mem.kingdom(mem.current_player())
         for address, value in options:
             if address is None:
                 index, _ = mem.selected()
@@ -807,18 +815,21 @@ def sequence(entry, out):
                                f"{mem.map_due()})")
         base = {"objects": mem.frame_steps(), "cycles": cycle_now(mem)}
         counted = {"cycles": base["cycles"], "ticks": (0, 0)}
-        live = live_part(mem, sit, turn, *base["cycles"])
+        live = live_part(mem, sit, turn, *base["cycles"], kingdom=shown)
 
         def state(t, pix, before):
             k = cycle_now(mem)
             ticks = tuple(n + (now_k - was) % 36 for n, now_k, was
                           in zip(counted["ticks"], k, counted["cycles"]))
             counted.update(cycles=k, ticks=ticks)
+            index, hero = mem.selected()
             s = {"t": t - t0, "view": list(mem.view()) + [mem.view_level()],
                  "objects": [mem.frame_steps() - base["objects"]], "cycles": list(ticks),
                  "cursor": mem.cursor(), "due": [d - t0 for d in mem.map_due()],
-                 "hero": mem.selected()[1], "walk": mem.walk(), "arrows": mem.path_arrows(),
+                 "hero": hero, "walk": mem.walk(), "arrows": mem.path_arrows(),
                  "buttons": mem.buttons()}
+            if index >= 0:
+                s["points"] = [mem.points(index)]
             box = None if before is None else view_changed(before, pix)
             if before is None or box:
                 s["changed"] = box
@@ -1120,7 +1131,7 @@ def run_drawn(rest):
             failed += 1
             broken += 1
             continue
-        got[ident] = h3drive.png_digest(here / "ours.png", MASKS["stills"])
+        got[ident] = h3drive.png_digest(here / "ours.png", MASKS["panels"])
         before = recorded.get(ident)
         verdict = "new" if before is None else ("same" if before == got[ident] else "CHANGED")
         failed += verdict != "same"

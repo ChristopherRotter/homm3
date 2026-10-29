@@ -8,11 +8,15 @@
 //! `land_movement_points`, `pathfinding`, `flying`, `water_walking`, `scouting_radius` and the
 //! creature specialty's `speed`. Every artifact type counts once, worn or as a part of a worn
 //! combination, one that needs a skill only with it (the original's `hero_wears_artifact`
-//! 0x4D91F0 is a test per type).
+//! 0x4D91F0 is a test per type). Since E08 T71 the day's sea points and free boarding
+//! (HER-ADV-009; ADR-0013 points 13.6, 13.7; survey `docs/rules/surveys/E08-sea.md` §3.1, §4.2):
+//! the kinds `navigation`, `sea_movement_points` and `free_boarding`, Navigation's skill
+//! specialty.
 
-use h3_content::{CreatureTypeId, HeroEffect, Ruleset};
+use h3_content::{CreatureTypeId, FULL_BP, HeroEffect, Ruleset};
+use h3_kernel::arith::mul_div_floor;
 
-use crate::derive::{Count, effects, grown};
+use crate::derive::{Count, effects, grown, specialty};
 use crate::details::HeroDetails;
 
 /// The day's land points from `base`, the land table's entry the adventure gives (HER-ADV-003,
@@ -39,6 +43,73 @@ pub fn land_points(details: &HeroDetails, core: &Ruleset, base: u32) -> u32 {
             u32::try_from(points).unwrap_or(u32::MAX),
             u32::saturating_add,
         )
+}
+
+/// The day's sea points from `table`, the adventure's sea points by Navigation level (0 to 3;
+/// the original's `sea_movement_by_navigation` 0x698AEC: 1 500, 2 250, 3 000, 3 750; HER-ADV-009,
+/// E08 T71): the entry at the highest of the hero's `navigation` levels (0 without one); then,
+/// for each skill the hero has whose effects at its level give a Navigation level, its skill
+/// specialties' `bp_per_level` of the table's first entry per hero level, summed and rounded down
+/// once (⌊level × 1 500 × 500 ÷ 10 000⌋, 75 a level for the original's Navigation specialists,
+/// who get nothing without the skill); then the `sea_movement_points` of every effect, each worn
+/// artifact type once, worn or as a part of a worn combination (the Necklace of Ocean Guidance
+/// 1 000, the Sea Captain's Hat 500, the Admiral's Hat both through its parts); saturating. The
+/// army's speeds do not count. Exact integers in every profile (ADR-0013 point 13.6: the
+/// original's `hero_max_land_movement` 0x4E4990 with its sea argument adds `level × table[0] ÷
+/// 20` in integers). Lighthouses and a computer player's bonus are the caller's.
+pub fn sea_points(details: &HeroDetails, core: &Ruleset, table: &[u32; 4]) -> u32 {
+    // rule: HER-ADV-009
+    let mut level = 0;
+    let mut flat = 0_u32;
+    for effect in effects(details, core, Count::OncePerType) {
+        match *effect {
+            HeroEffect::Navigation { level: l } => level = level.max(l),
+            HeroEffect::SeaMovementPoints { points } => {
+                flat = flat.saturating_add(u32::from(points))
+            }
+            _ => {}
+        }
+    }
+    let specialty = specialty(details, core);
+    let navigates = |&&(skill, at): &&(_, u8)| {
+        core.skill(skill).is_some_and(|s| {
+            s.effects(at)
+                .iter()
+                .any(|e| matches!(e, HeroEffect::Navigation { .. }))
+        })
+    };
+    let bp: u64 = details
+        .skills
+        .iter()
+        .filter(navigates)
+        .flat_map(|&(id, _)| {
+            specialty.iter().filter_map(move |effect| match *effect {
+                HeroEffect::SkillSpecialty {
+                    skill,
+                    bp_per_level,
+                } if skill == id => Some(u64::from(bp_per_level)),
+                _ => None,
+            })
+        })
+        .sum();
+    let per_level = u64::from(details.level) * u64::from(table[0]);
+    let specialist = mul_div_floor(per_level, bp, FULL_BP.into()).unwrap_or(u64::MAX);
+    let entry = u64::from(table[usize::from(level.min(3))]);
+    u32::try_from(entry.saturating_add(specialist))
+        .unwrap_or(u32::MAX)
+        .saturating_add(flat)
+}
+
+/// Whether a boarding or a landing converts the hero's points left (HER-ADV-009, E08 T71;
+/// ADR-0013 point 13.7): one of its effects is `free_boarding`, from a worn artifact type or a
+/// part of a worn combination (one that needs a skill only with it), a skill or the specialty.
+/// The packs give it to the Admiral's Hat alone, the combination and not its parts: the
+/// original tests the Hat (`hero_wears_artifact` 0x4D91F0 with 136), so the Necklace of Ocean
+/// Guidance and the Sea Captain's Hat worn apart do not convert. The conversion itself is the
+/// adventure's (ADR-0016 point 3).
+pub fn free_boarding(details: &HeroDetails, core: &Ruleset) -> bool {
+    // rule: HER-ADV-009
+    effects(details, core, Count::OncePerType).any(|e| matches!(e, HeroEffect::FreeBoarding))
 }
 
 /// The speed a stack of `creature` counts with in the hero's army for the day's points

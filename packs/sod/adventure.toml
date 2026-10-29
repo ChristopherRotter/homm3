@@ -77,3 +77,13 @@ name = "Rocklands"
 visit = "enter"
 from_above = true
 ground = { battlefield = "rocklands" }
+
+# E08 T72 (design section 5; survey E08-sea.md section 4.1 point 1): Favorable Winds (225), a ground
+# of the sea: it lies on its picture's tiles (water only), is never visited and changes no battle;
+# a boat's step from a tile it tops costs the parameters' sea_ground share (ADV-SEA-004, T73).
+[[object_type]]
+id = "favorable_winds"
+name = "Favorable Winds"
+visit = "enter"
+from_above = true
+sea_ground = {}

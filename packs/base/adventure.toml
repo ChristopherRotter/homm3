@@ -53,18 +53,35 @@ starting_stack_chances = [88, 25]
 # 40, 20, 0 over 100) agree on the amounts; two fields so that data can tell the two apart.
 fly_cost = [140, 140, 120, 100]
 water_walk_cost = [140, 140, 120, 100]
+# HER-ADV-009 (E08 T72; read by h3_heroes::sea_points from the turn start in a boat): a day's
+# points at sea by Navigation level 0 to 3. Code reading (survey E08-sea.md section 4.2):
+# sea_movement_by_navigation (0x698AEC) holds 1 500, 2 250, 3 000, 3 750, movement.txt's sea
+# column; the wiki (Navigation: +50 %, +100 %, +150 %) and VCMI 1.7.5 config/gameConfig.json
+# (movementPointsSea 1500, the skill's 50, 100, 150 %) agree.
+sea_points = [1500, 2250, 3000, 3750]
+# ADV-SEA-004 (E08 T72; read by the boat's prices from T73): a boat's step from a tile Favorable
+# Winds tops costs two thirds of its price, truncated (66 straight, 93 diagonally; survey
+# E08-sea.md section 4.1 point 1: step_cost 0x4B1740 at 0x4B17B3, for a water source tile; the
+# wiki and VCMI 1.7.5 getMovementCost the same, boats only).
+sea_ground = [2, 3]
 
 # GAM-BAT-001 (E08 T19a): where a battle on the map is fought, by the defender's tile, in the
 # original's order (survey E04c-battlefields.md section 4, code 0x4FCE20, installation.md
 # section 7.26): underground on subterranean ground; else on a coast tile (the map's flag 0x40,
 # docs/formats/h3m.md; E04c batch 3b) on sand with the shore's battlefield; else on the tile's
-# terrain. The core's "desert" is the original's sand (terrain code 1). Boats, mines and sieges
-# come with the increments that build them; a special ground on the tile (Cursed Ground and the
-# like) with the ground kinds (E08 T20a).
+# terrain. The core's "desert" is the original's sand (terrain code 1). Mines and sieges come
+# with the increments that build them; a special ground on the tile (Cursed Ground and the like)
+# with the ground kinds (E08 T20a). E08 T72 (GAM-BAT-001, read by the battle at sea from T74;
+# survey E08-sea.md section 7.1): before the underground, a battle with a hero in a boat is fought
+# on water, on the ship's deck with one, on the two boats with both (choose_battle_background
+# 0x4646D0, battle_obstacles 0x466290; the battle part's BAT-TER-002).
 [params.battle]
 underground = "subterranean"
 coast = "desert"
 coast_battlefield = "shore"
+sea = "water"
+deck = "deck"
+boats = "boats"
 
 # E08 T20a2a: the wandering monsters' parameters.
 # ADV-MON-002: the aggression by disposition code (0 compliant, 1 friendly, 2 aggressive, 3 hostile,
@@ -812,3 +829,60 @@ name = "Pyramid"
 visit = "enter"
 from_above = false
 pyramid = { split = { creature = "gold_golem", count = 40 }, fixed = { creature = "diamond_golem", stacks = [10, 10] }, level = 5, looted = { luck = -2, mark = 1 } }
+
+# E08 T72 (design section 5; survey E08-sea.md section 8): the sea's four pickups, visited from the
+# neighbouring tile and from above (classes 29, 59, 82, 86 are on both of the original's lists,
+# 0x63AA58 and 0x63AB00), each leaving the map at its visit, without a question; their visits
+# (only from a boat, ADV-PIK-018) are T74's. Their contents are drawn when the game is built from
+# the setup stream in object order (one draw of 0 to 99 each; their artifacts from the random
+# artifacts' pool).
+# ADV-PIK-014: Flotsam (29): nothing, 5 wood, 5 wood and 200 gold, 10 wood and 500 gold, a quarter
+# each (setup_map_objects 0x4C1466 random_between(0, 3); the visit 0x4A2230). The wiki and VCMI
+# 1.7.5 config/objects/rewardablePickable.json: the same four at 25 %.
+[[object_type]]
+id = "flotsam"
+name = "Flotsam"
+visit = "neighbour"
+from_above = true
+find = { draws = [{ chance = 25, holds = "nothing" }, { chance = 25, holds = { fixed = { resources = { wood = 5 } } } }, { chance = 25, holds = { fixed = { resources = { wood = 5, gold = 200 } } } }, { chance = 25, holds = { fixed = { resources = { wood = 10, gold = 500 } } } }], leaves = true }
+
+# ADV-PIK-015: the Sea Chest (82): nothing 20 %, 1 500 gold 70 %, 1 000 gold and a treasure
+# artifact 10 % (0x4C1B94); a full backpack gets 1 500 gold instead of both (the visit 0x4A5030;
+# the wiki's "you will receive 1500 gold and no artifact"; VCMI the same chances, its backpack
+# unlimited).
+[[object_type]]
+id = "sea_chest"
+name = "Sea Chest"
+visit = "neighbour"
+from_above = true
+find = { draws = [{ chance = 20, holds = "nothing" }, { chance = 70, holds = { fixed = { resources = { gold = 1500 } } } }, { chance = 10, holds = { fixed = { resources = { gold = 1000 }, artifact = ["treasure"] } } }], full_backpack = { give = { gold = 1500 } }, leaves = true }
+
+# ADV-PIK-016: the Shipwreck Survivor (86): a treasure, minor, major or relic artifact at 55, 20,
+# 20 and 5 % (0x4C1BF2); a full backpack gets nothing and the survivor leaves anyway (the visit
+# 0x4A52A0; the wiki's "no room in your backpack"; VCMI the same chances).
+[[object_type]]
+id = "shipwreck_survivor"
+name = "Shipwreck Survivor"
+visit = "neighbour"
+from_above = true
+find = { draws = [{ chance = 55, holds = { artifact = ["treasure"] } }, { chance = 20, holds = { artifact = ["minor"] } }, { chance = 20, holds = { artifact = ["major"] } }, { chance = 5, holds = { artifact = ["relic"] } }], full_backpack = "lost", leaves = true }
+
+# The Ocean Bottle (59): a message, its text the map's (the client's: the engine holds no text),
+# and it leaves at its visit (0x4A9AFA; survey section 8.5).
+[[object_type]]
+id = "ocean_bottle"
+name = "Ocean Bottle"
+visit = "neighbour"
+from_above = true
+message = { leaves = true }
+
+# E08 T72 (design section 5): a hole (124) lies on its picture's tiles (every hole 1 x 1), is never
+# visited and blocks nothing (Objects.txt: passable everywhere, no visitable tile); only a landing
+# onto a tile it lies on is refused (ADV-SEA-003, T73; survey E08-sea.md section 3.2: the
+# landing's free coastal tile, class 3).
+[[object_type]]
+id = "hole"
+name = "Hole"
+visit = "enter"
+from_above = true
+hole = {}

@@ -174,6 +174,20 @@ pub enum ObjectKind {
     Event,
     /// The Pyramid (ADV-TCH-008, E08 T61a).
     Pyramid(Pyramid),
+    /// A message (E08 T72, design §5: the Ocean Bottle, ADV-PIK-017): its visit tells the
+    /// visitor's owner which object's message it read (the map's text is the client's); its
+    /// visit is T74's.
+    Message {
+        /// It leaves the map at its visit (the Ocean Bottle; the Sign, a later increment's, stays).
+        leaves: bool,
+    },
+    /// A ground of the sea (E08 T72, design §5: Favorable Winds): lies on its picture's tiles,
+    /// never visited, no battlefield; a boat's step from a tile it tops costs the part's
+    /// `sea_ground` share of its price (ADV-SEA-004, T73).
+    SeaGround,
+    /// A hole (E08 T72, design §5): lies on its picture's tiles, never visited, blocks nothing;
+    /// no landing onto a tile it lies on (ADV-SEA-003, T73).
+    Hole,
 }
 
 /// What a visit of an object does, for the kinds whose visit is built ([`ObjectKind::effect`]):
@@ -245,11 +259,19 @@ impl ObjectKind {
             Self::WitchHut { .. } => Some(Effect::WitchHut),
             Self::Scholar => Some(Effect::Scholar),
             Self::University { price, .. } => Some(Effect::University(price)),
-            Self::Find(find) => Some(Effect::Find(find)),
+            Self::Find(find) if !find.leaves => Some(Effect::Find(find)),
             Self::PandoraBox => Some(Effect::PandoraBox),
             Self::Pyramid(_) => Some(Effect::Pyramid),
-            // E08 T61a: typed; an event is fired by a step, never visited (T62b2).
-            Self::Ground { .. } | Self::Event => None,
+            // E08 T61a: typed; an event is fired by a step, never visited (T62b2). E08 T72: the
+            // grounds of the sea and the holes are never visited; the sea's pickups (a find that
+            // leaves) and the Ocean Bottle are visited from a boat only, built by T74 (design
+            // §11), so until then a step onto them is refused as any unbuilt visit's.
+            Self::Ground { .. }
+            | Self::Event
+            | Self::Find(_)
+            | Self::Message { .. }
+            | Self::SeaGround
+            | Self::Hole => None,
         }
     }
 
@@ -409,6 +431,15 @@ pub enum ObjectKindDef {
     Event,
     /// [`ObjectKind::Pyramid`].
     Pyramid(PyramidDef),
+    /// [`ObjectKind::Message`] (E08 T72).
+    Message {
+        /// Whether it leaves at its visit.
+        leaves: bool,
+    },
+    /// [`ObjectKind::SeaGround`] (E08 T72).
+    SeaGround,
+    /// [`ObjectKind::Hole`] (E08 T72).
+    Hole,
 }
 
 /// An object type as a pack defines it.
@@ -784,6 +815,9 @@ fn compile_kind(
         ObjectKindDef::PandoraBox => Ok(ObjectKind::PandoraBox),
         ObjectKindDef::Event => Ok(ObjectKind::Event),
         ObjectKindDef::Pyramid(def) => compile_pyramid(scope, def)?.map(ObjectKind::Pyramid),
+        ObjectKindDef::Message { leaves } => Ok(ObjectKind::Message { leaves: *leaves }),
+        ObjectKindDef::SeaGround => Ok(ObjectKind::SeaGround),
+        ObjectKindDef::Hole => Ok(ObjectKind::Hole),
     })
 }
 
@@ -814,12 +848,12 @@ impl CanonicalHash for ObjectType {
     /// Key, name, visit (0 enter, 1 neighbour), from above, then the kind: its tag (0 pickup,
     /// 1 reveal terrain, 2 reveal area, 3 key tent, 4 key guard, 5 key gate; since part v7 6
     /// monster, 7 ground; since part v12 8 chest, 9 artifact, 10 scroll, 11 gift, 12 Shrine,
-    /// 13 Witch Hut, 14 Scholar, 15 University, 16 find, 17 Pandora's Box, 18 event, 19 Pyramid)
-    /// and parameters (a pickup's own tag, 0 resource, 1 one of, 2 paired, then its fields in
+    /// 13 Witch Hut, 14 Scholar, 15 University, 16 find, 17 Pandora's Box, 18 event, 19 Pyramid;
+    /// since part v13 20 message, 21 ground of the sea, 22 hole) and parameters (a pickup's own tag, 0 resource, 1 one of, 2 paired, then its fields in
     /// order; a monster's levels as 0 for none, else 1, low, high; a ground's battlefield key,
     /// since part v10 whether it takes the native price away; an artifact's classes as 0 for
     /// none, else 1 and the classes; a Witch Hut's two skill lists; a University's offers and
-    /// price; the others' fields in order).
+    /// price; a message's whether it leaves; the others' fields in order).
     fn hash_into(&self, h: &mut StateHasher) {
         self.key.as_str().hash_into(h);
         self.name.as_str().hash_into(h);
@@ -921,6 +955,12 @@ impl CanonicalHash for ObjectType {
                 h.write_u8(19);
                 pyramid.hash_into(h);
             }
+            ObjectKind::Message { leaves } => {
+                h.write_u8(20);
+                h.write_bool(*leaves);
+            }
+            ObjectKind::SeaGround => h.write_u8(21),
+            ObjectKind::Hole => h.write_u8(22),
         }
     }
 }

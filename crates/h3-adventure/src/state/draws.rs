@@ -448,8 +448,10 @@ fn university_draw(skills: &[SkillId], offers: u8, draws: &mut Rng) -> Vec<Skill
 /// A find's contents (ADV-PIK-009 to -012; survey §6.9, D-35): r in 0 to 99 picks its entry by the
 /// chances in order; an artifact of the entry's classes from the random artifacts' pool, with the
 /// find's resources drawn too when they are what a full backpack turns it into (the Wagon); an
-/// amount between the entry's bounds, then one of its resources; or nothing.
-// rule: ADV-PIK-009, ADV-PIK-010, ADV-PIK-011, ADV-PIK-012
+/// amount between the entry's bounds, then one of its resources; since E08 T72 a fixed entry's
+/// resources, with an artifact of its classes from the pool beside them if it has one (the sea's
+/// finds, ADV-PIK-014 to -016: one draw of 0 to 99 for each, design §11); or nothing.
+// rule: ADV-PIK-009, ADV-PIK-010, ADV-PIK-011, ADV-PIK-012, ADV-PIK-016
 fn find_draw(
     find: &Find,
     artifacts: &mut ArtifactPool<'_>,
@@ -487,6 +489,19 @@ fn find_draw(
             )
         }
         Some(FindContent::Resources { .. }) => (resources(draws), Resolved::Nothing),
+        // rule: ADV-PIK-014, ADV-PIK-015
+        Some(FindContent::Fixed {
+            resources,
+            artifact,
+        }) => {
+            let drawn = artifact
+                .as_ref()
+                .and_then(|classes| artifacts.draw(classes, draws));
+            (
+                resources.clone(),
+                drawn.map_or(Resolved::Nothing, Resolved::Artifact),
+            )
+        }
         _ => (Vec::new(), Resolved::Nothing),
     }
 }

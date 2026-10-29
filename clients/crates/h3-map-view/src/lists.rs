@@ -215,6 +215,19 @@ pub fn town_slots(art: &ListArt, kingdom: &Kingdom) -> [u32; SLOTS] {
     })
 }
 
+/// The hero list's first slot once it is made to show the hero at place `at` of `heroes`
+/// (`hero_list_update` 0x4032E0 given a hero's place, E24 M3 T4b): `top` kept while it shows the
+/// hero already, else the hero's place held within the list's last five (0x403318: never below
+/// 0). The town list's update keeps its first slot the same way (0x403420).
+#[must_use]
+pub fn top_showing(top: usize, at: usize, heroes: usize) -> usize {
+    if (top..top.saturating_add(SLOTS)).contains(&at) {
+        top
+    } else {
+        at.min(heroes.saturating_sub(SLOTS))
+    }
+}
+
 /// The slot the selection shows in (`lists_selection_frames` 0x4038C0): the selected hero's in
 /// the hero list or the selected town's in the town list, if it lies among the slots shown.
 #[must_use]

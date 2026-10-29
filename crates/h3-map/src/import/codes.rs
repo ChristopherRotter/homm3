@@ -111,6 +111,13 @@ pub(crate) const ARTIFACT: u32 = 5;
 /// The event's class (E08 T61a).
 pub(crate) const EVENT: u32 = 26;
 
+/// The boat's class (E08 T72, ADV-SEA-001): a boat of the state, no object (ADR-0016 point 1); its
+/// subclass is its type, 0 to 2 (`AVXboat0` to `AVXboat2`).
+pub(crate) const BOAT: u32 = 8;
+
+/// The boats' types: the subclasses the original's templates give (survey `E08-sea.md` §2).
+pub(crate) const BOAT_KINDS: u32 = 3;
+
 /// The Spell Scroll's artifact code, which a scroll object (class 93) gives with its spell (E08
 /// T61a; `visit_spell_scroll` 0x4A5EA0 gives artifact 1).
 pub(crate) const SPELL_SCROLL: u16 = 1;
@@ -134,11 +141,21 @@ pub(crate) const fn scenery(class: u32) -> Scenery {
 /// The special grounds' pictures and their sizes in tiles, width then height (ADV-GRD-001, E08
 /// T20a2a): the first two bytes of each picture's `.msk` in the sprite archives (`H3sprite.lod`,
 /// `H3ab_spr.lod`; read 2026-10-15 for the pictures `Objects.txt` lists for classes 21, 46,
-/// 222–224 and 226–231), sorted by name, lower case without `.def`. The original takes an
+/// 222–224 and 226–231; since E08 T72 the eight holes' of class 124, every one 1 × 1, and
+/// Favorable Winds' eight of class 225, read by E08 T67 from `H3sprite.lod`), sorted by name,
+/// lower case without `.def`. The original takes an
 /// object's width and height from its picture's `.msk` (`default.msk`, 1 × 1, without one; the
 /// loader 0x514610) and places it on every tile of that rectangle (0x505B20), where the battle
 /// finds its ground (0x4FCE20); VCMI 1.7.5 `ObjectTemplate::readMsk` takes the same size.
-pub(crate) const GROUND_PICTURES: [(&str, u8, u8); 72] = [
+pub(crate) const GROUND_PICTURES: [(&str, u8, u8); 88] = [
+    ("avlhlds0", 1, 1),
+    ("avlhlsn0", 1, 1),
+    ("avlhold0", 1, 1),
+    ("avlholg0", 1, 1),
+    ("avlholl0", 1, 1),
+    ("avlholr0", 1, 1),
+    ("avlhols0", 1, 1),
+    ("avlholx0", 1, 1),
     ("avxcf0", 6, 4),
     ("avxcf1", 8, 6),
     ("avxcf2", 6, 6),
@@ -171,6 +188,14 @@ pub(crate) const GROUND_PICTURES: [(&str, u8, u8); 72] = [
     ("avxff5", 3, 3),
     ("avxff6", 5, 2),
     ("avxff7", 2, 5),
+    ("avxfw0", 6, 4),
+    ("avxfw1", 8, 6),
+    ("avxfw2", 6, 6),
+    ("avxfw3", 8, 3),
+    ("avxfw4", 3, 6),
+    ("avxfw5", 3, 3),
+    ("avxfw6", 5, 2),
+    ("avxfw7", 2, 5),
     ("avxhg0", 6, 4),
     ("avxhg1", 8, 6),
     ("avxhg2", 6, 6),
@@ -298,6 +323,14 @@ pub(crate) fn object_type(class: u32, subclass: u32) -> Option<Option<&'static s
         229 => Some("sod:magic_clouds"),
         230 => Some("sod:magic_plains"),
         231 => Some("sod:rocklands"),
+        // E08 T72 (design §4): the sea's four pickups, a hole and Favorable Winds; a boat (class
+        // 8) is no object ([`BOAT`]).
+        29 => Some("base:flotsam"),
+        59 => Some("base:ocean_bottle"),
+        82 => Some("base:sea_chest"),
+        86 => Some("base:shipwreck_survivor"),
+        124 => Some("base:hole"),
+        225 => Some("sod:favorable_winds"),
         _ => return None,
     })
 }

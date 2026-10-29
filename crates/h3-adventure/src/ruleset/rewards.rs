@@ -131,6 +131,16 @@ pub enum FindContent {
         /// The resources.
         resources: Vec<ResourceId>,
     },
+    /// These resources, and beside them an artifact drawn among these classes as one pool if any
+    /// (E08 T72, design §5: the sea's finds, ADV-PIK-014, -015; Flotsam's 5 wood and 200 gold, the
+    /// Sea Chest's 1 000 gold and a treasure artifact): given together, the artifact through the
+    /// full backpack's turn.
+    Fixed {
+        /// The resources, sorted by resource: distinct, at least one.
+        resources: Resources,
+        /// The classes of the artifact beside them; none for resources alone.
+        artifact: Option<Vec<ArtifactClass>>,
+    },
 }
 
 /// [`FindContent`] as a pack defines it: resources by key.
@@ -148,17 +158,30 @@ pub enum FindContentDef {
         /// The resources.
         resources: Vec<ContentKey>,
     },
+    /// [`FindContent::Fixed`] (E08 T72): distinct core resources, at least one, each amount from 1
+    /// to [`MAX_GAIN`]; the artifact's classes as [`FindContentDef::Artifact`]'s.
+    Fixed {
+        /// The resources.
+        resources: Vec<(ContentKey, u32)>,
+        /// The artifact's classes.
+        artifact: Option<Vec<ArtifactClass>>,
+    },
 }
 
 /// What a find's artifact turns into for a hero who cannot receive it (survey §8.2).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Turn {
-    /// These resources to the hero's owner instead (the Corpse's 1 000 gold).
+    /// These resources to the hero's owner instead of the whole entry, its artifact and the
+    /// resources beside it (the Corpse's 1 000 gold; since E08 T72 the Sea Chest's 1 500 gold
+    /// instead of its 1 000 and the artifact, survey `E08-sea.md` §8.3).
     Give(Resources),
     /// The find's own resources, drawn with the artifact when the game is built (the Wagon).
     Drawn,
     /// Nothing: the artifact stays in the find (the Warrior's Tomb).
     Stays,
+    /// Nothing: the artifact is lost and the find emptied all the same (E08 T72: the Shipwreck
+    /// Survivor, which leaves anyway; survey `E08-sea.md` §8.4).
+    Lost,
 }
 
 /// [`Turn`] as a pack defines it.
@@ -170,6 +193,8 @@ pub enum TurnDef {
     Drawn,
     /// [`Turn::Stays`].
     Stays,
+    /// [`Turn::Lost`].
+    Lost,
 }
 
 /// A find's type (ADV-PIK-009 to -012): its contents drawn when the game is built, emptied by
@@ -186,6 +211,9 @@ pub struct Find {
     pub question: bool,
     /// The bonus every visit gives (the Warrior's Tomb's −3 morale), held or not.
     pub bonus: Option<OnceBonus>,
+    /// It leaves the map at its visit instead of being emptied in place (E08 T72: the sea's
+    /// pickups, ADV-PIK-014 to -016; their visits are T74's).
+    pub leaves: bool,
 }
 
 /// [`Find`] as a pack defines it.
@@ -193,13 +221,15 @@ pub struct Find {
 pub struct FindDef {
     /// The draws: at least one, each chance from 1, together 100; at most one resources entry.
     pub draws: Vec<(u8, FindContentDef)>,
-    /// The full backpack's turn: given exactly when an entry is an artifact; [`TurnDef::Drawn`]
-    /// only beside a resources entry.
+    /// The full backpack's turn: given exactly when an entry may hold an artifact;
+    /// [`TurnDef::Drawn`] only beside a resources entry and no fixed entry's artifact.
     pub full_backpack: Option<TurnDef>,
     /// The question.
     pub question: bool,
     /// The bonus, its mark below [`BattleBonuses::MARKS`].
     pub bonus: Option<OnceBonus>,
+    /// Whether it leaves the map at its visit (E08 T72).
+    pub leaves: bool,
 }
 
 /// The Pyramid's type (ADV-TCH-008, survey `E08-rewards.md` §7.5): its guards, its spell's level
@@ -392,6 +422,20 @@ pub(super) fn compile_find(scope: &Scope<'_>, def: &FindDef) -> Compiled<Find> {
                     })
                 }
             }
+            FindContentDef::Fixed {
+                resources,
+                artifact,
+            } => match (
+                compile_resources(scope, resources)?,
+                compile_artifact_classes(artifact.as_ref()),
+            ) {
+                (Err(reason), _) | (_, Err(reason)) => Err(reason),
+                (Ok(list), Ok(_)) if list.is_empty() => Err("a find's fixed resources are empty"),
+                (Ok(resources), Ok(artifact)) => Ok(FindContent::Fixed {
+                    resources,
+                    artifact,
+                }),
+            },
         };
         match content {
             Ok(content) => draws.push((*chance, content)),
@@ -407,10 +451,22 @@ pub(super) fn compile_find(scope: &Scope<'_>, def: &FindDef) -> Compiled<Find> {
         },
         Some(TurnDef::Drawn) => Some(Turn::Drawn),
         Some(TurnDef::Stays) => Some(Turn::Stays),
+        Some(TurnDef::Lost) => Some(Turn::Lost),
     };
-    let artifact = draws
-        .iter()
-        .any(|(_, c)| matches!(c, FindContent::Artifact(_)));
+    // A fixed entry's artifact comes with its resources, which a drawn turn would give instead.
+    let fixed_artifact = draws.iter().any(|(_, c)| {
+        matches!(
+            c,
+            FindContent::Fixed {
+                artifact: Some(_),
+                ..
+            }
+        )
+    });
+    let artifact = fixed_artifact
+        || draws
+            .iter()
+            .any(|(_, c)| matches!(c, FindContent::Artifact(_)));
     let resources = draws
         .iter()
         .filter(|(_, c)| matches!(c, FindContent::Resources { .. }))
@@ -423,6 +479,8 @@ pub(super) fn compile_find(scope: &Scope<'_>, def: &FindDef) -> Compiled<Find> {
             Err("a find has a full backpack's turn exactly when it may hold an artifact")
         } else if turn == Some(Turn::Drawn) && resources == 0 {
             Err("a find's drawn turn has no resources entry")
+        } else if turn == Some(Turn::Drawn) && fixed_artifact {
+            Err("a find's drawn turn is beside a fixed entry's artifact")
         } else {
             def.bonus.map(check_bonus).transpose()
         }
@@ -432,6 +490,7 @@ pub(super) fn compile_find(scope: &Scope<'_>, def: &FindDef) -> Compiled<Find> {
         full_backpack: turn,
         question: def.question,
         bonus,
+        leaves: def.leaves,
     }))
 }
 
@@ -560,8 +619,10 @@ impl CanonicalHash for Gift {
 
 impl CanonicalHash for Find {
     /// The draws as length and each (the chance, then 0 nothing, 1 an artifact's classes,
-    /// 2 resources: the bounds and the resources), the turn (0 none, 1 give and its resources,
-    /// 2 drawn, 3 stays), the question, the bonus (0 none, else 1 and it).
+    /// 2 resources: the bounds and the resources; since part v13 3 fixed: the resources, then 0
+    /// for no artifact, else 1 and its classes), the turn (0 none, 1 give and its resources,
+    /// 2 drawn, 3 stays; since part v13 4 lost), the question, the bonus (0 none, else 1 and it);
+    /// since part v13 whether it leaves.
     fn hash_into(&self, h: &mut StateHasher) {
         h.write_len(self.draws.len());
         for (chance, content) in &self.draws {
@@ -578,6 +639,20 @@ impl CanonicalHash for Find {
                     h.write_u32(amount[1]);
                     resources.hash_into(h);
                 }
+                FindContent::Fixed {
+                    resources,
+                    artifact,
+                } => {
+                    h.write_u8(3);
+                    hash_resources(resources, h);
+                    match artifact {
+                        None => h.write_u8(0),
+                        Some(classes) => {
+                            h.write_u8(1);
+                            hash_classes(classes, h);
+                        }
+                    }
+                }
             }
         }
         match &self.full_backpack {
@@ -588,6 +663,7 @@ impl CanonicalHash for Find {
             }
             Some(Turn::Drawn) => h.write_u8(2),
             Some(Turn::Stays) => h.write_u8(3),
+            Some(Turn::Lost) => h.write_u8(4),
         }
         h.write_bool(self.question);
         match &self.bonus {
@@ -597,6 +673,7 @@ impl CanonicalHash for Find {
                 bonus.hash_into(h);
             }
         }
+        h.write_bool(self.leaves);
     }
 }
 

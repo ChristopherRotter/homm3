@@ -70,6 +70,7 @@ fn idle() -> Replay {
         live: false,
         sound: None,
         kingdom: crate::live::Kingdom::default(),
+        points: Vec::new(),
         buttons: None,
     };
     let actions = BTreeMap::from([
@@ -224,6 +225,7 @@ fn its_cues_are_handed_out_once() {
         live: false,
         sound: Some(crate::sound::tests::sound(tiles)),
         kingdom: crate::live::Kingdom::default(),
+        points: Vec::new(),
         buttons: None,
     };
     let actions = BTreeMap::from([

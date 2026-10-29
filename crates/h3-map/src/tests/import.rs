@@ -90,7 +90,7 @@ fn map() -> RawMap {
         ..Tile::default()
     };
     m.templates = vec![
-        template(124, &[(0, 0), (1, 0)], &[(0, 1)]),
+        template(118, &[(0, 0), (1, 0)], &[(0, 1)]),
         template(34, &[(1, 0)], &[(1, 0)]),
     ];
     let mut army = vec![None; 7];
@@ -341,6 +341,13 @@ fn the_typed_classes_import_as_their_object_types() {
         (229, "sod:magic_clouds"),
         (230, "sod:magic_plains"),
         (231, "sod:rocklands"),
+        // E08 T72: the sea's four pickups, a hole and Favorable Winds.
+        (29, "base:flotsam"),
+        (59, "base:ocean_bottle"),
+        (82, "base:sea_chest"),
+        (86, "base:shipwreck_survivor"),
+        (124, "base:hole"),
+        (225, "sod:favorable_winds"),
     ] {
         cases.push((class, 0, key.into()));
     }
@@ -646,9 +653,97 @@ fn a_special_ground_lies_on_its_pictures_tiles() {
     assert_eq!(drawn(46, "unknown.def"), rect(1, 1));
     // Other objects lie on no more than their masks.
     assert_eq!(drawn(58, "AVXcrsd0.def"), TileMask::default());
-    // Favorable Winds changes no battle: a blocker without tiles.
-    let winds = import(&typed_map(225, 0, Body::None), &SOD).unwrap();
-    assert_eq!(winds.map.objects[0].object_type, None);
+    // E08 T72: a ground of the sea and a hole lie on their pictures' tiles too (Favorable Winds'
+    // eight pictures, every hole's 1 × 1).
+    for (picture, (width, height)) in ["AVXfw0", "AVXfw1", "AVXfw2", "AVXfw3", "avxfw4.def"]
+        .into_iter()
+        .zip([(6, 4), (8, 6), (6, 6), (8, 3), (3, 6)])
+    {
+        assert_eq!(drawn(225, picture), rect(width, height), "{picture}");
+    }
+    for (picture, (width, height)) in
+        ["AVXfw5.def", "AVXfw6", "AVXfw7"]
+            .into_iter()
+            .zip([(3, 3), (5, 2), (2, 5)])
+    {
+        assert_eq!(drawn(225, picture), rect(width, height), "{picture}");
+    }
+    for picture in [
+        "AVLhlds0", "AVLhlsn0", "AVLhold0", "AVLholg0", "AVLholl0", "AVLholr0", "AVLhols0",
+        "AVLholx0",
+    ] {
+        assert_eq!(drawn(124, picture), rect(1, 1), "{picture}");
+    }
+}
+
+/// [`map`] with a boat (class 8) of `subclass` anchored at (2, 1), visited from `visitable`.
+fn boat_map(subclass: u32, visitable: &[(u8, u8)]) -> RawMap {
+    let mut m = map();
+    m.templates.push(Template {
+        subclass,
+        ..template(8, &[(1, 0)], visitable)
+    });
+    m.objects.push(object(2, 1, 2, Body::None));
+    m
+}
+
+// covers: ADV-SEA-001
+#[test]
+fn a_boat_imports_on_its_visitable_tile_with_its_type() {
+    // The original's three types; the boat is no object of the static map (ADR-0016 point 1).
+    for kind in 0..3 {
+        let setup = import(&boat_map(kind, &[(1, 0)]), &SOD).unwrap();
+        assert_eq!(
+            setup.map.boats,
+            [h3_adventure::BoatSetup {
+                tile: TilePos::new(1, 1, 0),
+                kind: u8::try_from(kind).unwrap(),
+            }]
+        );
+        assert_eq!(setup.map.objects.len(), 1);
+        assert_eq!(
+            import_map(&boat_map(kind, &[(1, 0)]), &SOD).unwrap().boats,
+            setup.map.boats
+        );
+    }
+    // No other type, and exactly one visitable tile on the map.
+    assert_eq!(
+        import(&boat_map(3, &[(1, 0)]), &SOD),
+        Err(ImportError::Subclass(2))
+    );
+    for visitable in [&[][..], &[(0, 0), (1, 0)], &[(3, 0)]] {
+        assert_eq!(
+            import(&boat_map(0, visitable), &SOD),
+            Err(ImportError::BoatTile(2)),
+            "{visitable:?}"
+        );
+    }
+    // On dirt (the map's land) the setup's check refuses it (SetupError::Boat).
+    let setup = import(&boat_map(0, &[(1, 0)]), &SOD).unwrap();
+    assert_eq!(
+        setup.validate(&SOD),
+        Err(h3_game::GameSetupError::Adventure(
+            h3_adventure::SetupError::Boat(0)
+        ))
+    );
+    // On water it holds.
+    let mut m = boat_map(0, &[(1, 0)]);
+    m.terrain.tiles[4].terrain = 8;
+    import(&m, &SOD).unwrap().validate(&SOD).unwrap();
+}
+
+// covers: ADV-SEA-007
+#[test]
+fn a_hero_placed_on_water_is_unsupported() {
+    // D-44 (decisions 163, 178): the original keeps such a hero on foot without a boat.
+    assert_eq!(
+        import_err(|m| m.terrain.tiles[1].terrain = 8),
+        ImportError::Unsupported(Unsupported::HeroOnWater(1))
+    );
+    // Any other terrain, or water elsewhere, does not.
+    let mut m = map();
+    m.terrain.tiles[2].terrain = 8;
+    assert!(import(&m, &SOD).is_ok());
 }
 
 // covers: ADV-OBJ-001
@@ -821,6 +916,10 @@ fn the_errors_and_reasons_read_well() {
             ImportError::HeroTile(3),
             "hero object 3 does not name one tile to stand on",
         ),
+        (
+            ImportError::BoatTile(3),
+            "boat object 3 does not name one tile to lie on",
+        ),
     ];
     for (error, text) in cases {
         assert_eq!(error.to_string(), text);
@@ -844,6 +943,7 @@ fn the_errors_and_reasons_read_well() {
             Unsupported::RewardArmy(0),
             "a reward of more creature stacks than an army's slots",
         ),
+        (Unsupported::HeroOnWater(0), "a hero placed on water"),
     ];
     for (what, text) in reasons {
         assert_eq!(what.reason(), text);

@@ -92,8 +92,9 @@ pub(super) const BLOCKERS: [(Mask, Mask); 3] = [
     (&[(0, 0), (1, 0)], &[(1, 0)]),
     (&[(1, 0), (0, 1), (1, 1)], &[(0, 0)]),
 ];
-/// Blockers' object class: any the import keeps as a blocker (not a hero or a town).
-pub(super) const BLOCKER_CLASS: u32 = 124;
+/// Blockers' object class: any the import keeps as a blocker (not a hero or a town): a crater
+/// (`AVLc*`; E08 T72: the hole, 124 until then, is typed now).
+pub(super) const BLOCKER_CLASS: u32 = 118;
 /// The kinds of objects a plan lays out (E08 T12b): the blocker, then typed objects whose drawn
 /// contents no viewer sees, as class, subclass and a resource body's amount: a wood pile of a
 /// drawn amount, 300 gold, a campfire, a Redwood Observatory, the red Keymaster's tent, (E08
@@ -2290,15 +2291,30 @@ fn check_legal(
     if exchanging {
         prop_assert_eq!(legal, &[CLOSE][..]);
         let mut probe = state.clone();
-        let result = apply(
-            &mut probe,
-            rules,
-            Actor::Player(actor),
-            CLOSE,
-            &mut Vec::new(),
-        );
+        let mut events = Vec::new();
+        let result = apply(&mut probe, rules, Actor::Player(actor), CLOSE, &mut events);
         prop_assert!(result.is_ok(), "Close rejected: {:?}", result);
-        prop_assert!(!probe.has_decision(actor));
+        // The meeting or the army dialog closes, the dialog's group lost stack by stack
+        // (GAM-DEC-003, GAM-DEC-004); what follows comes from the visit's held rests and may open
+        // another decision (E08 T63b, GAM-DEC-007: the guard's visit, a record's experience with
+        // its levels, an event on the hero's tile with its guards' battle; E08 T71: a guard's join
+        // without room, then the event it guarded and its guards' battle).
+        let closing: Vec<GameEvent> = core::iter::once(GameEvent::DecisionClosed { player: actor })
+            .chain(
+                state
+                    .army_dialog(actor)
+                    .into_iter()
+                    .flat_map(|(hero, group)| {
+                        group.iter().map(move |&stack| GameEvent::GroupLost {
+                            player: actor,
+                            hero,
+                            stack,
+                        })
+                    }),
+            )
+            .collect();
+        prop_assert_eq!(events.get(..closing.len()), Some(&closing[..]));
+        prop_assert!(!probe.has_decision(actor) || events.len() > closing.len());
         return Ok(());
     }
     if choosing {
@@ -2914,8 +2930,9 @@ fn visit_gains(
         GameCommand::Answer(Answer::Chest(ChestChoice::Gold))
     );
     let mut gains: Amounts = chest.filter(|_| gold).into_iter().collect();
-    // A find's artifact when its hero receives it, else what the artifact turns into (the
-    // Corpse's gold, the Wagon's own resources), or its resources.
+    // A find's artifact when its hero receives it, with a fixed entry's resources (E08 T72), else
+    // what the artifact turns into (the Corpse's gold, the Wagon's own resources, nothing when it
+    // is lost), or its resources.
     for i in emptied(before, after) {
         let o = &map.objects()[i];
         let ty = o
@@ -2933,9 +2950,10 @@ fn visit_gains(
             })
         };
         match (o.resolved.artifact(), turn) {
-            (Some(artifact), _) if received(artifact) => {}
+            (Some(artifact), Some(Turn::Drawn)) if received(artifact) => {}
+            (Some(artifact), _) if received(artifact) => gains.extend(o.contents.iter().copied()),
             (Some(_), Some(Turn::Give(resources))) => gains.extend(resources.iter().copied()),
-            (Some(_), Some(Turn::Stays) | None) => {}
+            (Some(_), Some(Turn::Stays | Turn::Lost) | None) => {}
             (Some(_), Some(Turn::Drawn)) | (None, _) => gains.extend(o.contents.iter().copied()),
         }
     }

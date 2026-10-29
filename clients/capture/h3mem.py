@@ -878,6 +878,10 @@ class Mem:
         x, y, level = struct.unpack("<3h", self.read(record, 6))
         return index, [x, y, level, self.read(record + HERO_FACING, 1)[0]]
 
+    def points(self, index):
+        """A hero's movement points left (E24 M3 T4b: a sequence's timeline; i32 +0x4D)."""
+        return self.i32(self.game() + HEROES + HERO_SIZE * index + HERO_POINTS)
+
     def write_points(self, index, points):
         """A hero's movement points (T1b: a sequence's `points`)."""
         self.write_u32(self.game() + HEROES + HERO_SIZE * index + HERO_POINTS, points)

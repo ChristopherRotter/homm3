@@ -149,6 +149,25 @@ fn the_paths_the_clicks_showed() {
 }
 
 #[test]
+fn the_points_memory_held() {
+    // E24 M3 T4b: each `points` line with its millisecond, in order.
+    let recorded = "0 view 1 2 0\n0 points 2000\n300 hero 17 16 0 0\n300 points 1900\n\
+                    400 screen 1,1,2,2\n2700 points 0\n";
+    assert_eq!(
+        one("").points(recorded),
+        Ok(vec![(0, 2000), (300, 1900), (2700, 0)])
+    );
+    assert_eq!(one("").points("0 view 1 2 0\n"), Ok(Vec::new()));
+    for bad in ["x points 1", "5 points", "5 points z", "5 points 1 2"] {
+        assert_eq!(
+            one("").points(bad),
+            Err(format!("s: the line `{bad}` does not read")),
+            "{bad}"
+        );
+    }
+}
+
+#[test]
 fn the_selected_hero() {
     let hero = |x, owner, facing| LiveHero {
         at: Pos { x, y: 3, z: 0 },

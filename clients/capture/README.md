@@ -672,8 +672,9 @@ tasks draw (the minimap, the lists' contents, the status window, the amounts and
 status bar's hint): the frame picture, the buttons, the status bar's and the resource bar's
 pictures and the parked cursor (the live part's `pointer`) are compared; since M3 T3a the stills
 (`set`, `still`, `drawn`'s situations) compare the minimap too, since T3b the sequences as well
-(one mask, `panels`, again); since T4a the stills compare the hero and town lists (`stills`,
-`panels` without them; the sequences keep `panels` until T4b). Every situation of T3b2
+(one mask, `panels`, again); since T4a the stills compare the hero and town lists (T4a's
+`stills`, `panels` without them), since T4b the sequences as well (one mask, `panels`, again).
+Every situation of T3b2
 is exact; `set.toml` records the counts. The menus run in real time, so each run's k and frame steps differ: they are read,
 never assumed.
 
@@ -697,10 +698,13 @@ whose pixels outside the panels' mask changed is kept (`<out>/<id>/frames/t<ms>.
 `frames.jsonl`, every step's in `states.jsonl`; local, never in git). Written: the timeline
 (`timeline.txt`, numbers only: the changes of the view, the objects' steps and the palette steps,
 each counted from 0 since each run's own start differs, since E24 M3 T2a move hero's and next
-hero's states (`buttons`, `Mem.buttons`), and where the screen changed: E24 design §3.2) against
+hero's states (`buttons`, `Mem.buttons`), since T4b the selected hero's movement points
+(`points`, `Mem.points`), and where the screen changed: E24 design §3.2) against
 the one recorded in
 `map/timelines/<id>.txt` (`ok`, `CHANGED`, `new`), and the live part the screen shows at 0
-(`live.toml`, a still's), with which the viewer's frame at 0 is drawn and compared (`ours.png`,
+(`live.toml`, a still's; since E24 M3 T4b its kingdom read before the sequence's `points` are
+written, as the hero list shows it: memory's points are the timeline's), with which the viewer's
+frame at 0 is drawn and compared (`ours.png`,
 `diff.png`; it must be exact). A run as recorded or new keeps that live part as
 `map/timelines/<id>-live.toml`. A sequence of 8 000 ms takes about 10 minutes (75 ms a step; the staging adds half a minute);
 `<out>` defaults to `out/map-frames`. A new sequence is recorded twice, its second run `ok`

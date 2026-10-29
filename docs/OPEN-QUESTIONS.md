@@ -133,6 +133,23 @@ for such cells: the stills' comparisons then need `--bugs original` for it). **R
 (a): the order is the rule every still is checked against, and the map's author placed it so.
 **Blocked:** nothing.
 
+#### MCL-Q14 — The mana bar a spell leaves on the screen (E24 M3 T4b, a reading)
+
+The hero list's slot (`hero_list_slot` 0x403560, every call with −1, 1, 1) draws the selected
+hero's portrait, movement bar, mana bar and frame, then shows only its rectangle (609, 212 + 32 i,
+48 × 32): the movement bar and the portrait's first 40 columns, not the mana bar (666–671) nor the
+portrait's last 8 columns (E24 design §4.5, "The slot's rectangle"). After a spell cast on the
+map (`adventure_spell_cast` 0x41D2D5, `hero_relocate_spell` 0x41D8B4: `hero_spend_mana`, then the slot;
+`hero_spend_mana` 0x4D931E itself too) the new mana bar is drawn but not shown, so the screen
+keeps the old one until something shows the whole screen (a list's update, a lift that centres
+the view, a dialog closed). Inferred from the reading, not yet seen: M3 casts no spell, and what
+follows a cast (its own dialogs, `path_rebuild`) may show the screen. **Options:** (a) the
+original's: the mana bar shown only with the whole screen (the timeline keeps what each part
+last showed); (b) the client shows the slot whole. **Recommendation:** M4 records a cast first;
+if the stale bar is seen, (a) for the comparisons behind `--bugs original`, (b) by default (a
+display artifact, not a rule); built meanwhile as the original's: T4b's slot shows the points
+alone. **Blocked:** nothing.
+
 ## Answered
 
 Answered questions are history, kept out of the start-of-session reading. Read one only when a doc, a code comment or a queue entry cites its id (`git grep '<id>' -- docs`). The id's prefix says where it is; when a question is answered, move its entry from "Open" above to the **top** of that file (each lane edits only its own file, so lanes working at once never touch the same lines):

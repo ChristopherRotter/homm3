@@ -1033,7 +1033,10 @@ fn artifact_effects<'a>(
 }
 
 /// The specialty of the hero's type.
-fn specialty<'a>(details: &HeroDetails, ruleset: &'a Ruleset) -> &'a [CompiledHeroEffect] {
+pub(crate) fn specialty<'a>(
+    details: &HeroDetails,
+    ruleset: &'a Ruleset,
+) -> &'a [CompiledHeroEffect] {
     ruleset
         .hero_type(details.hero_type)
         .map(|hero_type| hero_type.specialty.as_slice())

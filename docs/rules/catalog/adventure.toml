@@ -9,7 +9,7 @@ id       = "ADV-MOV-001"
 title    = "Movement points of a day on land"
 context  = "adventure"
 status   = "verified"
-summary  = "A hero's movement points on land for a day come from the lowest speed among the creatures of its army through the land table (data: 1300, 1360, 1430, 1500, 1560, 1630, 1700, 1760, 1830, 1900, 1960, 2000 for speeds 0 to 11; faster armies take the last entry; the original reads its table up to speed 20, all 2000 from 11, and caps the speed at 20). Since E08 T40 the hero counts in: each stack's speed as `h3_heroes::movement_speed` gives it (HER-ADV-004: a creature specialist's creature and its direct upgrades one faster, which can lift the slowest speed past the table's end; speed artifacts do not count), then the hero's bonuses on the entry by `h3_heroes::land_points` (HER-ADV-003: Logistics +10/20/30 %, a Logistics specialist's growth under Q-0005, the worn Boots of Speed +600 and Equestrian's Gloves +300 after the rate). When they are set: ADV-MOV-002. Stables, a computer player's bonus and the sea (Navigation) come later (survey E08-hero-movement.md §6). E08 T4: the table; T6b: `h3_adventure::day_points`; T40: `land_table_points` and the details."
+summary  = "A hero's movement points on land for a day come from the lowest speed among the creatures of its army through the land table (data: 1300, 1360, 1430, 1500, 1560, 1630, 1700, 1760, 1830, 1900, 1960, 2000 for speeds 0 to 11; faster armies take the last entry; the original reads its table up to speed 20, all 2000 from 11, and caps the speed at 20). Since E08 T40 the hero counts in: each stack's speed as `h3_heroes::movement_speed` gives it (HER-ADV-004: a creature specialist's creature and its direct upgrades one faster, which can lift the slowest speed past the table's end; speed artifacts do not count), then the hero's bonuses on the entry by `h3_heroes::land_points` (HER-ADV-003: Logistics +10/20/30 %, a Logistics specialist's growth under Q-0005, the worn Boots of Speed +600 and Equestrian's Gloves +300 after the rate). When they are set: ADV-MOV-002. Stables and a computer player's bonus come later (survey E08-hero-movement.md §6). E08 T4: the table; T6b: `h3_adventure::day_points`; T40: `land_table_points` and the details. At sea (E08 T72): a hero in a boat takes the day's sea points instead, `h3_heroes::sea_points` on the part's sea table (1 500, 2 250, 3 000, 3 750 by Navigation level; its specialists, the Necklace of Ocean Guidance and the two Hats, HER-ADV-009), the army's speeds not counted, the table's first entry without details (`h3_adventure::sea_day_points`)."
 numeric  = "integer"
 
   [[rule.source]]
@@ -55,7 +55,7 @@ id       = "ADV-MOV-002"
 title    = "When a day's movement points are set"
 context  = "adventure"
 status   = "verified"
-summary  = "At the start of its owner's turn every hero of that player gets the day's movement points for its army (ADV-MOV-001); points left from the day before are lost. A placed hero gets them when the game is built too. The original sets them at the start of the turn, not at the change of day for everyone as the wiki and VCMI have it; the difference shows only when another player changes the army between the two (a battle in that player's turn), which nothing in increment 1 can. The user chose the code reading (ADV-Q4, 2026-10-10); batch 1a confirmed it on day 1 and day 2 (E08 T10c), and a change of the army during the owner's own turn leaves the day's points as they are. E08 T6b: `AdventureState::start_turn`, run by `h3-game` at each turn group's start (ADR-0017 point 3). Since E08 T40 both read the hero's details in the game's store (ADV-MOV-001), and the build's points come after the levels at load (`AdventureState::start_game`, called by `GameState::new` after them: the original's `placed_hero_setup` 0x4D8B30, ADR-0017 point 1); a gain in the day (a level-up's Logistics, an artifact put on) changes neither the points left nor the day's maximum until the owner's next turn start (survey E08-hero-movement.md §1.4; batch E5's E5-3)."
+summary  = "At the start of its owner's turn every hero of that player gets the day's movement points for its army (ADV-MOV-001); points left from the day before are lost. A placed hero gets them when the game is built too. The original sets them at the start of the turn, not at the change of day for everyone as the wiki and VCMI have it; the difference shows only when another player changes the army between the two (a battle in that player's turn), which nothing in increment 1 can. The user chose the code reading (ADV-Q4, 2026-10-10); batch 1a confirmed it on day 1 and day 2 (E08 T10c), and a change of the army during the owner's own turn leaves the day's points as they are. Since E08 T72 the turn start and the start of the game also set the hero's day's maximum (ADR-0016 point 3, `HeroOnMap::max_movement`), both by its surface: the land's points on land, the sea's in a boat (ADV-MOV-001); a boarding and a landing switch them (T73). E08 T6b: `AdventureState::start_turn`, run by `h3-game` at each turn group's start (ADR-0017 point 3). Since E08 T40 both read the hero's details in the game's store (ADV-MOV-001), and the build's points come after the levels at load (`AdventureState::start_game`, called by `GameState::new` after them: the original's `placed_hero_setup` 0x4D8B30, ADR-0017 point 1); a gain in the day (a level-up's Logistics, an artifact put on) changes neither the points left nor the day's maximum until the owner's next turn start (survey E08-hero-movement.md §1.4; batch E5's E5-3)."
 numeric  = "integer"
 
   [[rule.source]]
@@ -533,7 +533,7 @@ id       = "ADV-FOG-006"
 title    = "What a player sees of the heroes and the monsters"
 context  = "adventure"
 status   = "implemented"
-summary  = "A player sees its own heroes in full (tile, army, movement points left) and another player's hero only on a tile where it sees heroes (explored, or the fringe under ADV-QUIRK-1, ADV-FOG-005): its tile, owner and identity, not its army or its movement points. What the original's right-click view shows of another player's hero is surveyed with the battle seam (increment 3). E08 T8b1. A wandering monster it sees (one of its tiles explored, or the fringe) shows its creature and the word of its count (as it stands: a battle's survivors once one leaves them), never the count, aggression, flags or treasure: the word is the number of the monsters' parameters' thresholds the count reaches, the original's few (1-4), several (5-9), pack (10-19), lots (20-49), horde (50-99), throng (100-249), swarm (250-499), zounds (500-999) and legion (1 000 and more). E08 T20a2a: `MonsterView`, the base pack's count_words. A change of the word after a battle it survived is told to the players that see it (`MonsterChanged`, E08 T20b3b1), as a removal is."
+summary  = "A player sees its own heroes in full (tile, army, movement points left) and another player's hero only on a tile where it sees heroes (explored, or the fringe under ADV-QUIRK-1, ADV-FOG-005): its tile, owner and identity, not its army or its movement points. What the original's right-click view shows of another player's hero is surveyed with the battle seam (increment 3). E08 T8b1. Of a hero in a boat (E08 T72) every viewer that sees it sees its boat's type (`HeroView::boat`: the original draws the hero's flag on it), never the boat's index, owner or captain; its owner also sees its day's maximum (`OwnHeroView::max_movement`). A wandering monster it sees (one of its tiles explored, or the fringe) shows its creature and the word of its count (as it stands: a battle's survivors once one leaves them), never the count, aggression, flags or treasure: the word is the number of the monsters' parameters' thresholds the count reaches, the original's few (1-4), several (5-9), pack (10-19), lots (20-49), horde (50-99), throng (100-249), swarm (250-499), zounds (500-999) and legion (1 000 and more). E08 T20a2a: `MonsterView`, the base pack's count_words. A change of the word after a battle it survived is told to the players that see it (`MonsterChanged`, E08 T20b3b1), as a removal is."
 numeric  = "integer"
 
   [[rule.source]]
@@ -579,6 +579,24 @@ numeric  = "integer"
   url        = "https://heroes.thelazy.net/index.php/Event"
   retrieved  = "2026-10-27"
   confidence = "medium"
+
+[[rule]]
+id       = "ADV-FOG-008"
+title    = "What a player sees of an empty boat"
+context  = "adventure"
+status   = "implemented"
+summary  = "A player sees an empty boat where it sees heroes (an explored tile, or the fringe under ADV-QUIRK-1): its tile, type and facing, as the original draws a boat object (`AdventureObservation::boats`, in tile order: level, row, column), never its owner or captain (an empty boat shows no flag) nor its index (that would count the boats before it). A boat with a hero aboard shows as the hero's boat (ADV-FOG-006). A viewer that is not a player of the game sees none. E08 T72: `BoatView`; the boarding's, landing's and leaving's events come with T73 and T74."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey E08-sea.md §2, §4.4): a boat is an object of class 8 on its tile (hero_show 0x4D75D0), drawn by view_boat_piece 0x410760 by its type and facing, with a flag only when a hero is aboard (view_hero_piece 0x40FE30)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "design"
+  ref        = "ADR-0016 point 6 as amended for increment 8 (E08 T70; design E08-design.md §12): an empty boat's tile, type and facing are public, its owner and captain never"
+  confidence = "high"
 
 [[rule]]
 id       = "ADV-OBJ-001"
@@ -667,7 +685,7 @@ id       = "ADV-OBJ-002"
 title    = "Object types: the import's classes and subclasses"
 context  = "adventure"
 status   = "implemented"
-summary  = "The import maps an object's class and subclass to an object type of the adventure ruleset part (ADR-0016 point 4): resource piles (79, subclass = the resource 0-6), random resources (76), campfires (12), Cartographers (13: 0 water, 1 land, 2 subterranean), the Redwood Observatory (58), the Pillar of Fire (60), Keymaster's tents (10), border guards (9) and border gates (212, AB and SoD), each by key colour 0-7. A subclass its class does not define is an import error; every other class stays a blocker (its blocked and visitable tiles block). A type names its kind with typed parameters and two visit properties: entered or visited from a neighbouring tile, and visitable from above or not (classes 9, 12, 76, 79 and 212 are visited from a neighbour and from above; 10, 13, 58 and 60 are entered, not from above). A pile's or random resource's body gives a fixed amount (0 is none, drawn at setup; gold in hundreds), from 1 to 0x7FFFF, which the setup checks; a pile with a guards record is unsupported until battles exist (ADV-Q10, D-6). E08 T12a. Setup refuses two typed objects of one type on one anchor (`SharedAnchor`; a player names a typed object by both, ADR-0016 point 6; none in the 164 shipped maps; E08 T15's review); a key guard or gate type must be visited from a neighbour, and a gate from above too (T15b and its review). E08 T61a (increment 7, design §7 and §8): 31 more classes typed, each subclass to one type (a placed artifact's subclass is its artifact): 101 the treasure chest, 5 the placed artifact, 65-69 the random artifacts (any of treasure, minor and major; treasure; minor; major; relic), 93 the Spell Scroll, 4, 23, 32, 41, 47, 51, 61, 100, 102 and 107 the once-per-hero gifts, 88-90 the Shrines (levels 1-3), 113 the Witch Hut, 81 the Scholar, 104 the University, 22, 39, 105 and 108 the finds, 6 Pandora's Box, 26 the event, 63 the Pyramid; classes 5, 6, 22, 26, 65-69, 81, 93 and 101 visited from a neighbour and from above, the others entered and not from above (0x63AA58, 0x63AB00). Their kinds' parameters are the packs' (the chest's gold and chances, a gift's gain, prices and condition, a find's draws and full-backpack turn, the Pyramid's guards, spell level and looted bonus, a Witch Hut's RoE skills by profile, A-21). What the map puts in them is checked against the kind at setup (`Holds`, `SetupError::Holds`): a placed artifact one a hero may hold without a spell, a scroll the Spell Scroll with the map's spell (its u32's low byte), a Shrine's spell (255 drawn), a Witch Hut's mask (none on an RoE map; an empty mask every skill, 0x4C207D), a Scholar's gift (kind -1 drawn), Pandora's Box's and an event's reward record (skills of the ruleset at Basic to Expert, known artifacts, hero spells, distinct resources not 0, creatures valid as an army's) with the event's colours and computer and removal flags; every other kind nothing. A reward of more creature stacks than an army's slots is unsupported (A-24, always fixed), as a random creature code among them. Their visits come with T62: until then a step onto them is refused as a blocker's."
+summary  = "The import maps an object's class and subclass to an object type of the adventure ruleset part (ADR-0016 point 4): resource piles (79, subclass = the resource 0-6), random resources (76), campfires (12), Cartographers (13: 0 water, 1 land, 2 subterranean), the Redwood Observatory (58), the Pillar of Fire (60), Keymaster's tents (10), border guards (9) and border gates (212, AB and SoD), each by key colour 0-7. A subclass its class does not define is an import error; every other class stays a blocker (its blocked and visitable tiles block). A type names its kind with typed parameters and two visit properties: entered or visited from a neighbouring tile, and visitable from above or not (classes 9, 12, 76, 79 and 212 are visited from a neighbour and from above; 10, 13, 58 and 60 are entered, not from above). A pile's or random resource's body gives a fixed amount (0 is none, drawn at setup; gold in hundreds), from 1 to 0x7FFFF, which the setup checks; a pile with a guards record is unsupported until battles exist (ADV-Q10, D-6). E08 T12a. Setup refuses two typed objects of one type on one anchor (`SharedAnchor`; a player names a typed object by both, ADR-0016 point 6; none in the 164 shipped maps; E08 T15's review); a key guard or gate type must be visited from a neighbour, and a gate from above too (T15b and its review). E08 T61a (increment 7, design §7 and §8): 31 more classes typed, each subclass to one type (a placed artifact's subclass is its artifact): 101 the treasure chest, 5 the placed artifact, 65-69 the random artifacts (any of treasure, minor and major; treasure; minor; major; relic), 93 the Spell Scroll, 4, 23, 32, 41, 47, 51, 61, 100, 102 and 107 the once-per-hero gifts, 88-90 the Shrines (levels 1-3), 113 the Witch Hut, 81 the Scholar, 104 the University, 22, 39, 105 and 108 the finds, 6 Pandora's Box, 26 the event, 63 the Pyramid; classes 5, 6, 22, 26, 65-69, 81, 93 and 101 visited from a neighbour and from above, the others entered and not from above (0x63AA58, 0x63AB00). Their kinds' parameters are the packs' (the chest's gold and chances, a gift's gain, prices and condition, a find's draws and full-backpack turn, the Pyramid's guards, spell level and looted bonus, a Witch Hut's RoE skills by profile, A-21). What the map puts in them is checked against the kind at setup (`Holds`, `SetupError::Holds`): a placed artifact one a hero may hold without a spell, a scroll the Spell Scroll with the map's spell (its u32's low byte), a Shrine's spell (255 drawn), a Witch Hut's mask (none on an RoE map; an empty mask every skill, 0x4C207D), a Scholar's gift (kind -1 drawn), Pandora's Box's and an event's reward record (skills of the ruleset at Basic to Expert, known artifacts, hero spells, distinct resources not 0, creatures valid as an army's) with the event's colours and computer and removal flags; every other kind nothing. A reward of more creature stacks than an army's slots is unsupported (A-24, always fixed), as a random creature code among them. Their visits come with T62: until then a step onto them is refused as a blocker's. E08 T72 (increment 8, design §4 and §5): classes 29 Flotsam, 82 the Sea Chest and 86 the Shipwreck Survivor (finds that leave the map, ADV-PIK-014 to -016) and 59 the Ocean Bottle (a message that leaves; its text is the client's), visited from a neighbour and from above; 124 the hole and 225 Favorable Winds (SoD) entered and from above, each lying on its picture's tiles (every hole 1 x 1, the winds' eight pictures 6 x 4 to 2 x 5) and never visited: a hole forbids a landing on its tiles, a ground of the sea lowers a boat's step price from the tiles it tops (T73; the static map marks them, the tile's top ground deciding). A boat (class 8) is no object but a boat of the state (ADV-SEA-001). The sea's pickups and the bottle are visited from a boat only, built by T74: until then a step onto them is refused as any unbuilt visit's. The setup lets grounds of the sea and holes share a type and anchor, as special grounds (nothing names them)."
 numeric  = "integer"
 
   [[rule.source]]
@@ -2019,4 +2037,168 @@ quirks   = ["ADV-QUIRK-22", "ADV-QUIRK-28"]
   ref        = "lib/rewardable/Interface.cpp grantRewardBeforeLevelup and grantRewardAfterLevelup: skills added, mana up to the maximum, the experience before the rest (D-37, D-38, D-39: the code and the batch against it); the creatures without room through the garrison dialog (agree)"
   url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/rewardable/Interface.cpp"
   retrieved  = "2026-10-26"
+  confidence = "medium"
+
+[[rule]]
+id       = "ADV-SEA-001"
+title    = "Boats on the map: the import and the records"
+context  = "adventure"
+status   = "verified"
+summary  = "A map's boat (class 8) is no object of the static map but a boat of the state (ADR-0016 point 1): its template's one visitable tile, its subclass as its type (0 to 2, appearance only: the boat's pictures and a hero's flag on it), the original's facing 2, no owner, no captain, nobody aboard. The setup refuses a boat off the map or off water, on a tile an object blocks or is visited from, or on an earlier boat's tile (`SetupError::Boat`; no hero stands on water, so none on a boat's tile); a template without exactly one visitable tile on the map is an import error (`ImportError::BoatTile`), a subclass beyond the three another (`Subclass`). There is no bound on the number of boats beyond one a tile (decision 164: the original's 64 records are not reproduced, ADV-QUIRK-32). The records stay by index (the setup's order) in a persistent table, the empty boats' tiles in a persistent grid; a map without boats has none, so a fork costs nothing more. A boat keeps its owner and last captain, which no rule reads until Summon Boat and no viewer sees (ADV-FOG-008). Any hero boards any empty boat (T73: boarding, landing; T74: a boat leaving with its hero, ADV-SEA-006). The 160 shipped maps: 118 boats on 41 maps, every one valid. E08 T72: `MapSetup::boats`, `AdventureState::boats`, `check_boats`."
+quirks   = ["ADV-QUIRK-32"]
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey E08-sea.md §2; structs.toml \"boat\"): load_object_body's case 8 (0x502F28 to 0x502F59) reads no body and calls create_boat 0x4BB250 with the object's entrance tile, no owner and the template's subclass as the type; a new boat faces 2, has no owner (-1), no captain, nobody aboard; create_boat fails when 64 records are in use"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-8a.md and E08-batch-8b.md (the capture harness, Complete 4.0 under Wine, 2026-10-28 and -29; survey E08-sea.md §15): E8-2, the map's boats on their water tiles facing east (2), nobody aboard; E8-16, any hero boards a boat another hero left, owner and captain then its own"
+  retrieved  = "2026-10-29"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "lib/mapObjects/MiscObjects.cpp CGBoat and lib/mapping/MapFormatH3M.cpp: a boat is an object of its own with its type's layer and pictures, no cap on their number"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/mapObjects/MiscObjects.cpp"
+  retrieved  = "2026-10-28"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Boat: three types of boats; 'There is a limit of 64 boats on the map'"
+  url        = "https://heroes.thelazy.net/index.php/Boat"
+  retrieved  = "2026-10-28"
+  confidence = "medium"
+
+[[rule]]
+id       = "ADV-SEA-007"
+title    = "A hero placed on water"
+context  = "adventure"
+status   = "implemented"
+summary  = "A map's hero object (class 34) on a water tile is unsupported (`Unsupported::HeroOnWater`; D-44, decisions 163 and 178): the original keeps such a hero on foot without a boat (batch E8's E8-5: drawn on horseback on the water, no boat, the land's points, no path onto water), VCMI gives it a boat; the engine refuses the map rather than build either. None of the 160 shipped maps has one. E08 T72: `h3_map::import`."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey E08-sea.md §2): placed_hero_setup 0x4D8B30 has no boat test; only hero_boards_boat sets the in-boat flag on a rule's path"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-8a-water.md (E8-5; survey E08-sea.md §15): the hero written on water taken by the game on foot, no boat record, bit 18 clear, 2 000 points and maximum, no path onto water, the step onto land taken"
+  retrieved  = "2026-10-28"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "lib/gameState/CGameState.cpp initHeroes: 'generate boats for all heroes on water', a boat of the hero's faction's type under it"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/gameState/CGameState.cpp"
+  retrieved  = "2026-10-28"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "design"
+  ref        = "the user's decisions 163 and 178 (ADV-Q32, ADV-Q34): refuse a hero placed on water (D-44 kept after E8-5)"
+  confidence = "high"
+
+[[rule]]
+id       = "ADV-PIK-014"
+title    = "Flotsam: its draw and its four outcomes"
+context  = "adventure"
+status   = "verified"
+summary  = "Flotsam (class 29) is a find that leaves the map at its visit, without a question: when the game is built it draws one of nothing, 5 wood, 5 wood and 200 gold, or 10 wood and 500 gold, a quarter each (one draw of 0 to 99 from the setup stream in object order, not the original's random_between(0, 3): the streams are the engine's, the chances the original's). Its visit, from a boat only (ADV-PIK-018), gives its resources to the visitor's owner and removes it (T74). E08 T72: the base pack's `flotsam`, the find's fixed entries (`FindContent::Fixed`) and its leaving (`Find::leaves`)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey E08-sea.md §8.2): setup_map_objects 0x4C1466 draws the word random_between(0, 3); visit_flotsam 0x4A2230: 0 nothing, 1 five wood, 2 five wood and 200 gold, 3 ten wood and 500 gold, then the object removed"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-8b.md (E8-8; survey E08-sea.md §15): Flotsam words 0 to 3 in 24, 17, 20, 19 of 80 (chi-squared 1.3, 3 df); a word 3 visited gave 10 wood and 500 gold and the Flotsam left"
+  retrieved  = "2026-10-29"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "config/objects/rewardablePickable.json flotsam: the same four outcomes at 25 % each"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/config/objects/rewardablePickable.json"
+  retrieved  = "2026-10-28"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Flotsam: nothing, 5 wood, 5 wood and 200 gold, 10 wood and 500 gold at 25 % each; found from water squares by heroes in boats"
+  url        = "https://heroes.thelazy.net/index.php/Flotsam"
+  retrieved  = "2026-10-28"
+  confidence = "medium"
+
+[[rule]]
+id       = "ADV-PIK-015"
+title    = "The Sea Chest: its draw and the full backpack's 1 500 gold"
+context  = "adventure"
+status   = "verified"
+summary  = "The Sea Chest (class 82) is a find that leaves the map at its visit, without a question: when the game is built it draws nothing (20 %), 1 500 gold (70 %) or 1 000 gold with a treasure artifact beside it (10 %; the artifact from the random artifacts' pool, ADV-OBJ-006). Its visit, from a boat only, gives the gold to the visitor's owner and the artifact through the backpack's test (ADV-QUIRK-22); a hero that cannot receive the artifact gets 1 500 gold instead of both (the full backpack's turn replaces the whole entry); then it leaves (T74). The find's search gives a fixed entry's resources beside its artifact (`AdventureState::search`, E08 T72). E08 T72: the base pack's `sea_chest`."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey E08-sea.md §8.3): setup_map_objects 0x4C1B94: r = random_between(0, 99), below 20 kind 0, below 90 kind 1, else kind 2 with random_artifact_of_level(2); visit_sea_chest 0x4A5030: kind 2 with 64 or more in the backpack becomes kind 1 (1 500 gold), kind 2 gives the artifact and 1 000 gold"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-8b.md (E8-6, E8-8; survey E08-sea.md §15): nothing, 1 500 gold, artifact in 18, 53, 9 of 80, every artifact a treasure one; a kind 2 visited gave 1 000 gold and its artifact; with a backpack of 64 each artifact chest gave 1 500 gold and no artifact; each chest left"
+  retrieved  = "2026-10-29"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "config/objects/rewardablePickable.json seaChest: 20 % empty, 70 % 1 500 gold, 10 % 1 000 gold and a treasure artifact (its backpack unlimited)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/config/objects/rewardablePickable.json"
+  retrieved  = "2026-10-28"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Sea Chest: 20 %, 70 %, 10 %; 'If your backpack is full, you will receive 1500 gold and no artifact'"
+  url        = "https://heroes.thelazy.net/index.php/Sea_Chest"
+  retrieved  = "2026-10-28"
+  confidence = "medium"
+
+[[rule]]
+id       = "ADV-PIK-016"
+title    = "The Shipwreck Survivor: its draw by class and the full backpack's loss"
+context  = "adventure"
+status   = "verified"
+summary  = "The Shipwreck Survivor (class 86) is a find that leaves the map at its visit, without a question: when the game is built it draws a treasure, minor, major or relic artifact at 55, 20, 20 and 5 % (from the random artifacts' pool, ADV-OBJ-006). Its visit, from a boat only, gives the artifact through the backpack's test; a hero that cannot receive it gets nothing and the survivor leaves anyway (the find's lost turn, `Turn::Lost`: the artifact lost, the find emptied; T74 for the leaving). E08 T72: the base pack's `shipwreck_survivor`."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey E08-sea.md §8.4): setup_map_objects 0x4C1BF2: r = random_between(0, 99), below 55 a treasure, below 75 a minor, below 95 a major, else a relic artifact; visit_shipwreck_survivor 0x4A52A0: with 64 or more in the backpack nothing is given and it still leaves"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-8b.md (E8-6, E8-8; survey E08-sea.md §15): treasure, minor, major, relic in 36, 22, 17, 5 of 80 (chi-squared 4.0, 3 df); a Survivor visited gave its artifact and left; with a backpack of 64 each gave nothing and left"
+  retrieved  = "2026-10-29"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "config/objects/rewardablePickable.json shipwreckSurvivor: 55, 20, 20 and 5 % of treasure, minor, major and relic"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/config/objects/rewardablePickable.json"
+  retrieved  = "2026-10-28"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Shipwreck Survivor: 55 %, 20 %, 20 %, 5 %; the 'no room in your backpack' text"
+  url        = "https://heroes.thelazy.net/index.php/Shipwreck_Survivor"
+  retrieved  = "2026-10-28"
   confidence = "medium"

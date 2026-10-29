@@ -3,6 +3,7 @@
 0 cycles 0 0
 0 cursor 1 0 700 300
 0 buttons 0 1
+0 points 2000
 100 view 8 8 0
 100 buttons 1 1
 100 hero 17 16 0 0
@@ -12,6 +13,7 @@
 150 screen 8,8,600,552
 200 objects 1
 200 cycles 1 1
+200 points 1900
 200 walk 0 0 0 0
 200 screen 276,58,738,318
 360 objects 2
@@ -24,8 +26,9 @@
 400 screen 8,8,710,552
 450 walk 6 2 0 0
 450 screen 8,8,600,552
+500 points 1759
 500 walk 1 0 0 0
-500 screen 662,54,742,318
+500 screen 610,54,742,318
 540 objects 3
 540 screen 281,240,324,296
 600 cycles 3 3
@@ -37,6 +40,7 @@
 750 screen 8,8,600,552
 800 objects 4
 800 cycles 4 4
+800 points 1659
 800 walk 2 0 0 0
 800 screen 278,54,746,318
 900 objects 5
@@ -49,6 +53,7 @@
 1050 walk 8 2 0 0
 1050 screen 8,8,600,552
 1100 objects 6
+1100 points 1518
 1100 walk 3 0 0 0
 1100 screen 285,54,750,318
 1200 cycles 6 6
@@ -61,8 +66,9 @@
 1350 walk 9 2 0 0
 1350 screen 8,8,600,552
 1400 cycles 7 7
+1400 points 1418
 1400 walk 4 0 0 0
-1400 screen 674,58,750,318
+1400 screen 610,58,750,318
 1440 objects 8
 1440 screen 294,238,315,296
 1600 view 10 10 0
@@ -73,6 +79,7 @@
 1650 walk 8 2 0 0
 1650 screen 8,8,600,552
 1700 objects 9
+1700 points 1277
 1700 walk 3 0 0 0
 1700 screen 284,62,750,318
 1800 objects 10
@@ -86,6 +93,7 @@
 1950 screen 8,8,600,552
 2000 objects 11
 2000 cycles 10 10
+2000 points 1177
 2000 walk 2 0 0 0
 2000 screen 276,66,746,318
 2160 objects 12
@@ -97,8 +105,9 @@
 2200 screen 8,8,710,552
 2250 walk 6 2 0 0
 2250 screen 8,8,600,552
+2300 points 1036
 2300 walk 1 0 0 0
-2300 screen 662,62,742,318
+2300 screen 610,62,742,318
 2340 objects 13
 2340 screen 284,241,326,296
 2400 cycles 12 12
@@ -117,6 +126,7 @@
 2750 screen 8,8,600,552
 2800 view 10 9 0
 2800 cycles 14 14
+2800 points 936
 2800 hero 19 17 0 2
 2800 walk 7 3 16 0
 2800 arrows 20,18,0,13 21,19,0,1
@@ -124,6 +134,7 @@
 2850 walk 7 4 0 0
 2850 screen 8,8,600,552
 2900 view 11 10 0
+2900 points 836
 2900 hero 20 18 0 3
 2900 walk 8 5 16 16
 2900 arrows 21,19,0,1
@@ -132,6 +143,7 @@
 2950 screen 8,8,600,552
 3000 view 12 11 0
 3000 cycles 15 15
+3000 points 695
 3000 hero 21 19 0 3
 3000 walk 8 7 16 16
 3000 arrows
@@ -140,6 +152,7 @@
 3050 screen 8,8,600,552
 3100 objects 17
 3100 buttons 0 1
+3100 points 554
 3100 walk 3 0 0 0
 3100 screen 286,66,754,318
 3200 cycles 16 16

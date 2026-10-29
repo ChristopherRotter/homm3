@@ -11,12 +11,14 @@
 //! map shows whole, its type and tiles, once the viewer sees any tile it covers so (ADR-0016 point
 //! 6, E08 T12b); its contents never show, nor another player's purchases or keys (its own
 //! Cartographer types bought show, T14b, and its own keys, T15a). Of a hero it sees its tile,
-//! owner and
-//! identity; its army and movement points only if the hero is its own (ADV-FOG-006). Other players'
+//! owner and identity and, since E08 T72, its boat's type; its army, movement points and day's
+//! maximum only if the hero is its own (ADV-FOG-006). An empty boat it sees where it sees heroes
+//! shows its tile, type and facing, never its owner or captain (ADV-FOG-008). Other players'
 //! explored tiles, the seed and the streams never show: an event's projection names the viewer
 //! alone among the players who see it, and a step tells only the tiles the viewer sees the hero
 //! on.
 
+use alloc::collections::BTreeMap;
 use alloc::vec::Vec;
 
 use h3_content::{
@@ -66,6 +68,9 @@ pub struct AdventureObservation {
     /// What the viewer learned of objects still on the map by its own visits (ADV-VIS-006, E08
     /// T62a), in the map's order; other players' knowledge never shows.
     pub known: Vec<KnownObject>,
+    /// The empty boats the viewer sees, on a tile where it sees heroes (ADV-FOG-008, E08 T72), in
+    /// tile order (level, row, column).
+    pub boats: Vec<BoatView>,
 }
 
 impl AdventureObservation {
@@ -130,6 +135,19 @@ pub struct ObjectView {
     /// What the viewer sees of a wandering monster (ADV-FOG-006, E08 T20a2a): none for every
     /// other object.
     pub monster: Option<MonsterView>,
+}
+
+/// An empty boat as a viewer sees it (ADV-FOG-008, E08 T72): where it lies, its type and its
+/// facing, as the original draws it; never its owner or captain (an empty boat shows no flag,
+/// `view_boat_piece` 0x410760), nor its index (that would count the boats before it).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct BoatView {
+    /// The tile it lies on.
+    pub tile: Pos,
+    /// Its type (appearance only).
+    pub kind: u8,
+    /// Its facing in the original's order of eight directions.
+    pub facing: u8,
 }
 
 /// What a viewer sees of a wandering monster (ADV-FOG-006, E08 T20a2a; the original's hover text,
@@ -202,6 +220,9 @@ pub struct HeroView {
     pub owner: PlayerId,
     /// The tile it stands on.
     pub pos: Pos,
+    /// Its boat's type when it is in a boat (ADV-FOG-006, E08 T72: public, the original draws the
+    /// hero's flag on its boat); never the boat's index, owner or captain.
+    pub boat: Option<u8>,
     /// Its army and movement points, for its owner only (ADV-FOG-006).
     pub own: Option<OwnHeroView>,
 }
@@ -213,6 +234,8 @@ pub struct OwnHeroView {
     pub army: Vec<ArmyStack>,
     /// The movement points it has left today.
     pub movement: u32,
+    /// Its day's maximum (ADR-0016 point 3, E08 T72).
+    pub max_movement: u32,
     /// Its army's formation in battle (E08 T18b).
     pub formation: Formation,
     /// Its tactics flag (ADV-ARM-006, E08 T50).
@@ -226,11 +249,12 @@ impl AdventureState {
     /// What `viewer` may know of the adventure map (ADV-FOG-004 to ADV-FOG-006): its sight's
     /// planes, built word by word from its explored grid, then each tile's view, the heroes and
     /// the typed objects it sees (a monster's creature and the word of its count, E08 T20a2a),
-    /// the Cartographer types it bought (E08 T14b) and the keys it holds (T15a). A viewer that is
-    /// not a player of the game sees no tile, no hero, no object, no purchase and no key. An event
-    /// is never among the objects, and its tile is no object's in the tile views (ADV-FOG-007,
-    /// E08 T62b2).
-    // rule: ADV-FOG-004, ADV-FOG-005, ADV-FOG-006, ADV-FOG-007
+    /// the Cartographer types it bought (E08 T14b) and the keys it holds (T15a), and since E08 T72
+    /// the empty boats it sees and every seen hero's boat's type (ADV-FOG-008). A viewer that is
+    /// not a player of the game sees no tile, no hero, no object, no purchase, no key and no boat.
+    /// An event is never among the objects, and its tile is no object's in the tile views
+    /// (ADV-FOG-007, E08 T62b2).
+    // rule: ADV-FOG-004, ADV-FOG-005, ADV-FOG-006, ADV-FOG-007, ADV-FOG-008
     pub fn observe(
         &self,
         core: &Ruleset,
@@ -257,6 +281,7 @@ impl AdventureState {
             bought: self.bought(viewer).collect(),
             keys: self.keys(viewer),
             known: Vec::new(),
+            boats: Vec::new(),
         };
         let row_tiles = usize::from(width);
         // A tile as it stands now; only a tile an object covered can differ from the static map's.
@@ -290,27 +315,52 @@ impl AdventureState {
                 observation.tiles.push(view);
             }
         }
-        observation.heroes = self
+        // Where the viewer sees heroes, it sees empty boats (ADV-FOG-008): the original's boat is
+        // an object of the map, drawn as the others.
+        let sees_heroes =
+            |pos| observation.is_explored(pos) || (objects_on_fringe && observation.is_fringe(pos));
+        // In tile order (one empty boat a tile: the tile is a unique key).
+        let boats: Vec<BoatView> = self
+            .boats()
+            .filter(|(_, boat)| !boat.aboard && !boat.gone && sees_heroes(boat.tile))
+            .map(|(_, boat)| {
+                let tile = boat.tile;
+                (
+                    (tile.level, tile.y, tile.x),
+                    BoatView {
+                        tile,
+                        kind: boat.kind,
+                        facing: boat.facing,
+                    },
+                )
+            })
+            .collect::<BTreeMap<_, _>>()
+            .into_values()
+            .collect();
+        let heroes = self
             .heroes()
             .iter()
-            .filter(|hero| {
-                hero.owner == viewer
-                    || observation.is_explored(hero.pos)
-                    || (objects_on_fringe && observation.is_fringe(hero.pos))
-            })
+            .filter(|hero| hero.owner == viewer || sees_heroes(hero.pos))
             .map(|hero| HeroView {
                 id: hero.id,
                 owner: hero.owner,
                 pos: hero.pos,
+                boat: hero
+                    .boat
+                    .and_then(|index| self.boat(usize::try_from(index).unwrap_or(usize::MAX)))
+                    .map(|boat| boat.kind),
                 own: (hero.owner == viewer).then(|| OwnHeroView {
                     army: hero.army.clone(),
                     movement: hero.movement,
+                    max_movement: hero.max_movement,
                     formation: hero.formation,
                     tactics: hero.tactics,
                     marks: self.marks_of(hero.id),
                 }),
             })
             .collect();
+        observation.heroes = heroes;
+        observation.boats = boats;
         // A monster shows on the fringe in either profile (E08 decision 40): it guards the
         // explored tiles beside it, which its guard's effect on the viewer's moves would reveal.
         let sees = |pos, monster: bool| {

@@ -135,6 +135,7 @@ pub(super) fn rules(faithful: bool) -> Rules {
                             luck: 0,
                             mark: 0,
                         }),
+                        leaves: false,
                     }),
                 ),
                 ty(
@@ -150,6 +151,7 @@ pub(super) fn rules(faithful: bool) -> Rules {
                         full_backpack: None,
                         question: false,
                         bonus: None,
+                        leaves: false,
                     }),
                 ),
                 ty("t:scroll", ObjectKindDef::Scroll),
@@ -157,6 +159,35 @@ pub(super) fn rules(faithful: bool) -> Rules {
                 ty("t:box", ObjectKindDef::PandoraBox),
                 // E08 T62b2 (`events.rs`).
                 ty("t:event", ObjectKindDef::Event),
+                // E08 T72: a find of fixed resources with an artifact beside them and one whose
+                // artifact a full backpack loses, both staying on the map (the sea's leave and are
+                // visited from a boat, T74).
+                ty(
+                    "t:hoard",
+                    ObjectKindDef::Find(FindDef {
+                        draws: vec![(
+                            100,
+                            FindContentDef::Fixed {
+                                resources: vec![(key("t:gold"), 1000)],
+                                artifact: Some(vec![ArtifactClass::Treasure]),
+                            },
+                        )],
+                        full_backpack: Some(TurnDef::Give(vec![(key("t:gold"), 1500)])),
+                        question: false,
+                        bonus: None,
+                        leaves: false,
+                    }),
+                ),
+                ty(
+                    "t:castaway",
+                    ObjectKindDef::Find(FindDef {
+                        draws: vec![(100, FindContentDef::Artifact(vec![ArtifactClass::Treasure]))],
+                        full_backpack: Some(TurnDef::Lost),
+                        question: false,
+                        bonus: None,
+                        leaves: false,
+                    }),
+                ),
             ]);
         },
     )
@@ -912,6 +943,40 @@ fn a_find_gives_its_contents_once_and_turns_an_artifact_the_hero_cannot_receive(
         visit(&rules, &mut s, &store(hero())),
         AdventureOutcome::default()
     );
+}
+
+// covers: ADV-PIK-015, ADV-PIK-016
+#[test]
+fn a_fixed_entry_gives_its_resources_beside_its_artifact_and_a_lost_one_empties_the_find() {
+    // E08 T72: the Sea Chest's shape on land: the artifact and the 1 000 gold beside it, or with
+    // a full backpack 1 500 gold instead of both; the Survivor's: nothing, and emptied.
+    let rules = rules(true);
+    let mut s = one(&rules, "t:hoard", Holds::Nothing);
+    draw(&mut s, 0, Resolved::Artifact(RING), &[(GOLD, 1000)]);
+    assert_eq!(
+        visit(&rules, &mut s, &store(hero())),
+        AdventureOutcome {
+            gains: vec![(GOLD, 1000)],
+            ..gives(&[add(RING)])
+        }
+    );
+    assert!(s.is_emptied(0));
+    let mut s = one(&rules, "t:hoard", Holds::Nothing);
+    draw(&mut s, 0, Resolved::Artifact(RING), &[(GOLD, 1000)]);
+    assert_eq!(
+        visit(&rules, &mut s, &store(full(hero()))),
+        gains(&[(GOLD, 1500)])
+    );
+    let mut s = one(&rules, "t:castaway", Holds::Nothing);
+    draw(&mut s, 0, Resolved::Artifact(RING), &[]);
+    assert_eq!(
+        visit(&rules, &mut s, &store(full(hero()))),
+        AdventureOutcome::default()
+    );
+    assert!(s.is_emptied(0));
+    let mut s = one(&rules, "t:castaway", Holds::Nothing);
+    draw(&mut s, 0, Resolved::Artifact(RING), &[]);
+    assert_eq!(visit(&rules, &mut s, &store(hero())), gives(&[add(RING)]));
 }
 
 // covers: ADV-PIK-011, HER-ADV-008

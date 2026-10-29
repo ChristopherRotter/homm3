@@ -49,8 +49,11 @@ pub use parse::parse;
 /// Scholar's gift, Pandora's Box's and an event's reward record and the event's flags), the
 /// guards of artifacts, scrolls, boxes and events, a monster's treasure artifact (a monster with
 /// one supported); a reward of more creature stacks than an army's slots unsupported (A-24). v13
-/// (E08 T61b): the map's banned spells and artifacts into the game's setup (GAM-SET-003).
-pub const MAP_IMPORT_VERSION: u32 = 13;
+/// (E08 T61b): the map's banned spells and artifacts into the game's setup (GAM-SET-003). v14
+/// (E08 T72): the boats (class 8) as the map's boats, the sea's four pickups (29, 59, 82, 86), the
+/// holes (124) and Favorable Winds (225) typed, the holes and the winds on their pictures' tiles;
+/// a hero placed on water unsupported (D-44).
+pub const MAP_IMPORT_VERSION: u32 = 14;
 
 /// Reads a map file as the game stores it (gzip-compressed) within `limits`.
 ///
