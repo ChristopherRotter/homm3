@@ -44,6 +44,13 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   by the scene's cycles) needs a new `Composer`, and a scene's `view.origin` must be the point
   every piece of the view moves by (the clip's pixels move by its change), or a scroll leaves
   stale pixels. The window's `--check` line `afresh` finds either.
+- **The status window over time** (M3 T5b2, design §4.9): the timeline's `Loop::draw` is a view's
+  draw (0x40F3F0) and ends with the status window's chooser, so a new caller of it chooses too
+  (a date's window steps, a kind asked ends there); a status the live part does not give (none)
+  is left as it is, and a kind asked ends into the selection's window only when the live part
+  gives it (`selection`, which the harness reads before it asks a kind: at the staging when the
+  situation asks one, so a sequence asking a kind over it keeps that one). A date's window at a
+  sequence's 0 must be the sequence's own `status` (built at 0): the harness refuses another.
 - **One game at a time:** `h3mem.Mem()` takes the first game process it finds, so a `still --keep` game left running makes the next still read it (T5a); stop it first (`wineserver -k` with `h3drive.env()`). At a human player's turn start the selected hero is off its tile until the view moves: find heroes by their records (`Mem.hero_on`).
 - **Driving the window under Xvfb** (M2 T4b1): `xdotool click --window <id>` sends a synthetic
   event that SDL ignores; move the pointer with `mousemove --window` and click with a plain

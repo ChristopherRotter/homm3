@@ -21,25 +21,9 @@ done: the epic's log). T4 cut with the user (2026-10-29) the same way: T4a the l
 T4b the lists over time, T4c a changed panel item drawn again alone (all done: the epic's log).
 T5 cut with the user (2026-10-29): T5a the resource bar's amounts, the date and a text's reach
 (done: the epic's log), T5b the status window, cut with the user (2026-10-29) into T5b1, a hero's
-and a town's (done: the epic's log), and T5b2, the date's and the kingdom's; the other kinds
-(another player's turn, a resource found, a text) are M4's (the epic's "Later").
-
-### E24 M3 T5b2 — the date's and the kingdom's status windows, and when each shows
-
-- **Scope:** read and built (design §4.8 has the kinds and the chooser): the date's window (kind
-  1, `status_date_create` 0x450DD0: `AdStatOt.pcx`, `NewDay.def`'s frames by the day, `newday.wav`,
-  its `medfont.fnt` text; its panel's own drawing over time, its vtable) and the kingdom's (kind 2,
-  `status_kingdom_create` 0x452B80: `AdStatin.pcx`, `itmtl.def`, the texts by `"%s:"`); when each
-  shows: kind 0 without a selection (the date's builder), a timed kind's end (3 000 ms) met at a
-  view's redraw (0x40F861) and the window built again, the status window's click cycling the
-  kingdom's, the date's and the selection's (0x409FD8: the click itself is T6's; T5b2 stages a
-  kind by the manager's +0x398 and +0x39C, or by the click if the harness's `h3adv` can give it);
-  the texts through the catalogue's keys; the live part's `status` for the two kinds (the
-  harness's `status_toml` refuses them until then). Situations for each, and a sequence of a timed
-  kind's end back to the selection's window.
-- **Acceptance:** the status window exact on every situation and sequence, the new ones too; the
-  Definition of Done.
-- **Depends on:** T5b1. **Status:** ready.
+and a town's, and T5b2, the date's and the kingdom's (kept whole by the user; both done: the
+epic's log); the other kinds (another player's turn, a resource found, a text) are M4's (the
+epic's "Later").
 
 ### E24 M3 T6 — the mouse, the keys during a walk, the sound without the focus
 
@@ -54,7 +38,7 @@ and a town's (done: the epic's log), and T5b2, the date's and the kingdom's; the
   `Window::focused()`). Recorded: sequences with the clicks and the cursor's kinds.
 - **Acceptance:** the new sequences as recorded, every frame; the clicks in the window; the
   Definition of Done.
-- **Depends on:** T3 to T5b2. **Status:** ready after T5b2.
+- **Depends on:** T3 to T5b2 (done). **Status:** ready.
 
 ### E24 M3 T7 — M3's closure
 

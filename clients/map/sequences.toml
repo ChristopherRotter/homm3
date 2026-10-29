@@ -16,6 +16,8 @@
 # pointer is then parked over the right panel in the same millisecond, so that the cursor over
 # the view, M3's, stays out of the frames, but at hero speed 4, whose walk ends inside the
 # click's millisecond: the cursor stays at the click's point until the next mouse poll, 33 ms).
+# Since E24 M3 T5b2 `status = [kind, end]`: the status window's kind (1 the date's, 2 the kingdom's)
+# asked at 0 until `end` ms after it, built afresh by 0's redraw (design §4.9).
 
 [[sequence]]
 id = "idle-cycles"

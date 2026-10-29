@@ -2160,3 +2160,96 @@ other player's turn and the messages are M4's).
 - **Measured** (the sandbox, `--measure 20`, alternating with `master`'s build): the same:
   `walk-1` 24.8 % uploaded, a frame made in a median 0.4–0.5 ms; *Tale of two lands* 11.2 %, 1.2;
   `path-objects` 5.2 %, 0.9–1.0.
+
+### 4.9 The date's and the kingdom's status windows, and when each shows (M3 T5b2)
+
+Read: `status_date_create` 0x450DD0 and `status_kingdom_create` 0x452B80 in full, the date's
+panel's step `status_date_update` 0x4511A0 and its vtable 0x63BB0C, `status_panel_update`
+0x402B90 and its callers, `status_window_date` 0x415FB0 again, the item message 0x5FE4F0's subtype
+5 (0x5FE599 to 0x5FE5E4), every caller of `adventure_view_draw` 0x40F3F0 for its fifth argument
+(1 at each), `hero_select`'s chooser call (0x417FEF to 0x41800B), a key's step's (0x4090F6). The
+other kinds (another player's turn, a resource found, a text) are M4's (the user, T5b1's cut).
+
+- **The date's** (0x450DD0; kind 1): the panel at (614, 400), 176 × 166; 2000 `AdStatOt.pcx`
+  (0, 0); on a week's first day but the game's first (0x450EB4: day 1, not week 1 of month 1)
+  the week's picture (the table 0x660BA0 by the week of the month: `NewWeek1.def` to
+  `NewWeek4.def`, 4, 8, 12 and 16 frames) and "%s %d" (0x660C98) with GENRLTXT 64 ("Week") and
+  the week, no sound; else `NewDay.def` (10 frames) and GENRLTXT 65 ("Day") with the day of the
+  week, then `newday.wav` (`play_sound_async`, time-out 30 000, category 3). 2001 the picture at
+  (0, 0), 175 × 166 (a column narrower than the panel), frame 0; 2002 the text in `medfont.fnt`,
+  colour 4, alignment 1, at (10, 10), 148 × 146. The panel keeps the picture (+0x38), the text
+  (+0x34), the frame (+0x3C, 0), its step (+0x40, 100 ms) and its last step's time (+0x44, the
+  clock at the build). Every picture's frame is 175 × 166, opaque but 62 transparent pixels at
+  the same places in each (so a frame drawn over the last shows the panel's picture there as
+  over the picture itself).
+- **Its step** (0x4511A0, the vtable's +4; `status_panel_update` 0x402B90 calls it when its
+  argument is 0 or the dialog's +0x6C is set; the other panels' +4 is a lone `ret` 0x5BC690):
+  while the frame is not the picture's group 0's last and the clock is 100 ms or more past +0x44,
+  the frame + 1, the picture drawn and the text over it, the picture's rectangle shown at once
+  (0x5FE7C0 with 5, 0x4000: the item message's subtype 5 adds the state and, with 0x4000, shows
+  the item's rectangle and clears it), +0x44 the clock now. `status_window_date` 0x415FB0 calls
+  it (with 0) when the date's shows and it is not forced; three sites in the computer's turns
+  (M4's) and a message box (with 1) too.
+- **The kingdom's** (0x452B80; kind 2): 2000 `AdStatin.pcx`; the current player's towns counted
+  by their every-built sets (+0x158; `building_bits` 13, 12, 11: the Capitol, the City Hall, the
+  Town Hall, tested in that order, else a village; the town's window tests the standing set
+  +0x150, the same in play); for each hall i of four `itmtl.def`'s frame i at (6 + 42 i, 11),
+  38 × 38 (ids 2001 to 2004), and under it, when it has towns, the count by `%d` in
+  `smalfont.fnt`, colour 4, centred, at (7 + 42 i, 56), 37 × 17 (id −1); "%s:" (0x660D28) with
+  GENRLTXT 391 ("Allies") at (10, 103) and 392 ("Enemies") at (10, 134), 57 × 20, left (id −1);
+  then by colour each player not out of the game (game +0x1F636) of the shown player's team
+  (+0x1F879, the shown player 0x69778C among them) on the first row, `itgflags.def`'s frame the
+  colour at (67 + 15 k, 102), 15 × 20, the others on the second at (67 + 15 k, 133), each row
+  stepping by its own flags, ids from 2005 in the order made.
+- **When each shows** (§4.8's chooser, read again): every view's draw ends with the chooser (0,
+  1, 1: each caller of 0x40F3F0 passes its fifth argument 1, so the idle redraws, a scroll's, a
+  walk's frames and the rest), so a kind asked for a time (+0x398 and +0x39C,
+  `status_window_set_kind`: a new day asks the date's for 3 000 ms) shows until the first draw at
+  or after its end and then the selection's (kind 0: the selected hero's, else the selected
+  town's, else the date's); the date's, asked or the selection's, steps its frame at each draw
+  100 ms or more after its last step, up to its last (at the idle redraws, every 180 ms). Forced:
+  `hero_select` with its c (0x417FF6: a lift that centres the view) and a key's step's end
+  (0x4090FE, after its visit and the mouse's move) build the window again: the date's at its
+  first frame, with its sound. The status window's click (0x409FD8, T6) cycles the kingdom's, the
+  date's and the selection's.
+- **Seen** (the captures): the date's (the day's at frame 1, the third week's) and the kingdom's
+  (four towns by their halls, two teams written) as read, pixel for pixel, first time; the kind
+  asked at a sequence's 0 shows from 0's redraw; the kingdom's gives way to the hero's at the
+  redraw at 720 (asked for 700 ms); the date's steps at 180, 360 … 1 620 to its tenth frame,
+  each step's screen change the picture's rectangle, and gives way to the hero's at 3 060; the
+  colours out of the game (no player) show no flag.
+- **Built** (*provisional*): the live part's `Status::Date` (the frame) and `Status::Kingdom`
+  (the halls' counts, the allies' and the enemies' colours), `Status::kind`, the kingdom's
+  `selection` (the selection's window, read before a kind is asked: what the end builds again);
+  `status::window`'s date's and kingdom's (the layout's `status_date`, `status_kingdom`: our ids
+  2021 to 2024 for the counts, 2031 and 2032 for the labels, 2041 and 2051 for the two rows'
+  eight places), the tables' `[map.status.date]` (the day's and the weeks' pictures, their frames,
+  the step, the sound; the gate checks each picture's frames exactly), `DateArt::shows`; the
+  catalogue's keys `map.status.date`, `map.status.side`, `word.allies`, `word.enemies`;
+  `timeline::Loop`'s chooser at the end of each draw and forced at a centring lift and a key's
+  step's end (`Start::asked`: a recording's kind asked at 0 and its end; none: a date's or
+  kingdom's window at 0 asked until no end), the date's step and build (`Cue::Effect` for its
+  sound, played once on a stream of the window's own; `SoundRules::effects`); a status window
+  the live part does not give (none) is left as it is. A map's start without a selection gives
+  the date's at its first frame. The harness: `Mem.status` for the kinds 1 and 2 (the frame from
+  the picture's item; the halls, allies and enemies computed from memory), `Mem.ask_status`
+  (+0x398, +0x39C, with `rebuild` +0x394 none), `h3map.ask_status` (the selection's window read
+  first); a situation's `status` (1 or 2, asked until long after the still) and `teams` (written
+  into +0x1F879), a sequence's `status = [kind, end]` (asked at 0, built afresh by 0's redraw; a
+  date's window at 0 the sequence did not ask is refused: its steps' times are unknown), the
+  situations `status-date`, `status-week`, `status-kingdom` (`TownBuilt`'s `townhall` and
+  `cityhall`, additive), the sequences `status-kingdom-end`, `status-date-end`. Not built: the
+  date's window over a computer's walk (M4's), a message box's (+0x6C), the click (T6).
+- **Checked:** `set --only` on the three new situations: exact (0 of 469 344 differing);
+  `frames --only` on the two new sequences: every frame exact (6 and 19), the viewer's timeline
+  the recorded one line for line; `drawn` all the 47 situations and 13 sequences recorded before
+  the same, then `--record`; unit tests (the windows, what the date shows, the chooser over time:
+  the date's steps and last frame, the ends, a town's selection, a selection's window unknown,
+  nothing selected, a still's date stepping on, a lift's and a key's step's rebuild, the sound
+  when built and not for a week or a later frame), 100 % coverage; the window under Xvfb
+  (`status-date-end`, `status-kingdom-end`, `status-kingdom`, `status-week`, `--check 10`): every
+  frame read back exact, made as the same frame composed afresh, every change the headless
+  loop's.
+- **Measured** (the sandbox, `--measure 20`, alternating with `master`'s build twice each): the
+  same: `walk-1` 24.8 % uploaded, a frame made in a median 0.5 ms (0.4–0.6 on `master`); *Tale of
+  two lands* 11.2 %, 1.2–1.3 (1.2). The chooser at each draw compares a status or returns.

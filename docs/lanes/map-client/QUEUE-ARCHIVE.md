@@ -4,6 +4,12 @@ Finished history and informational notices moved out of `QUEUE.md` on 2026-10-24
 
 ## Notices from other lanes and finished items, newest first
 
+- 2026-10-29 (this lane, E24 M3 T5b2): the agent proposed cutting T5b2 into the windows as stills
+  and over time; the user kept it whole. Done: the log's "M3 T5b2" (the date's and the kingdom's
+  windows, the chooser at every view's draw, a timed kind's end, the rebuilds). MCL-Q16 answered
+  at its start (the original's income kept).
+- 2026-10-29 (this lane, E24 M3 T5b1): T5b cut with the user into T5b1, a hero's and a town's
+  window (done: the log's "M3 T5b1"; MCL-Q16 found), and T5b2, the date's and the kingdom's.
 - 2026-10-29 (this lane, E24 M3 T5a): T5 cut with the user at the seam T4c's session proposed:
   T5a the resource bar's seven amounts, the date and a text's reach (done: the log's "M3 T5a";
   MCL-Q15 found), T5b the status window (queued).
