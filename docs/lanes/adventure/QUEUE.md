@@ -4,33 +4,25 @@ Pre-refined tasks of the adventure lane, in order, then the inbox of discovered 
 
 ## Tasks
 
-Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T65 (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 7 are closed (2026-10-12, -13, -20, -21, -23, -26, -28; increment 7, rewards on the map, by T65's audit). **Increment 8, boats and the sea**, refined with the user at T65 (ADV-Q31; decisions 158, 159): the survey and the ADR amendment drafts first (T66a, T66b), each task's cut confirmed with the user at its start. T66a in two (decision 160): T66a1 done (`adventure/e08-t66a1`, #550: survey `E08-sea.md` §0 to §6), T66a2 done (`adventure/e08-t66a2`, decision 161: whole; §7 to §14, the checkpoint's ADV-Q32); T66b done (`adventure/e08-t66b`, decision 169: whole; the drafts, `E08-design.md` and the cut in eight rounds, ADV-Q33 accepted: decisions 170–173). Round 2: T67 done (`adventure/e08-t67`, decision 174: whole; the writer's sea objects, the spec's bottles and a monster's own tile, `cross-lane`; the specs E8a, its water map and E8b with their templates). Round 3: T68 in two by batch (decision 175): T68a done (`adventure/e08-t68a`: the harness's boat reads and steps, E8a and its water map run and recorded), T68b done (`adventure/e08-t68b`, decision 176: whole; the sea pickups' reads, E8b run four times, two recorded); T69 done (`adventure/e08-t69`, decision 177: whole with a re-read; batch E8 scored, D-45 reverted, D-46 to batch E8c: decision 179); T69b done (`adventure/e08-t69b`, decision 180: whole; batch E8c run and scored, D-46 confirmed, survey §16). Round 4: T70 done (`shared/e08-t70`, `cross-lane`, decision 181: whole; the three ADRs applied, the effect kinds, the packs and the glossary). T71 next. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
+Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T65 (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 7 are closed (2026-10-12, -13, -20, -21, -23, -26, -28; increment 7, rewards on the map, by T65's audit). **Increment 8, boats and the sea**, refined with the user at T65 (ADV-Q31; decisions 158, 159): the survey and the ADR amendment drafts first (T66a, T66b), each task's cut confirmed with the user at its start. T66a in two (decision 160): T66a1 done (`adventure/e08-t66a1`, #550: survey `E08-sea.md` §0 to §6), T66a2 done (`adventure/e08-t66a2`, decision 161: whole; §7 to §14, the checkpoint's ADV-Q32); T66b done (`adventure/e08-t66b`, decision 169: whole; the drafts, `E08-design.md` and the cut in eight rounds, ADV-Q33 accepted: decisions 170–173). Round 2: T67 done (`adventure/e08-t67`, decision 174: whole; the writer's sea objects, the spec's bottles and a monster's own tile, `cross-lane`; the specs E8a, its water map and E8b with their templates). Round 3: T68 in two by batch (decision 175): T68a done (`adventure/e08-t68a`: the harness's boat reads and steps, E8a and its water map run and recorded), T68b done (`adventure/e08-t68b`, decision 176: whole; the sea pickups' reads, E8b run four times, two recorded); T69 done (`adventure/e08-t69`, decision 177: whole with a re-read; batch E8 scored, D-45 reverted, D-46 to batch E8c: decision 179); T69b done (`adventure/e08-t69b`, decision 180: whole; batch E8c run and scored, D-46 confirmed, survey §16). Round 4: T70 done (`shared/e08-t70`, `cross-lane`, decision 181: whole; the three ADRs applied, the effect kinds, the packs and the glossary). Round 5: T71 done (`adventure/e08-t71`, decision 182: with the inbox's property case; HER-ADV-009). T72 next. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
 
-### E08 T71 — `h3-heroes`: the day's sea points and free boarding (HER-ADV-009)
+### E08 T72 — `h3-map` and `h3-adventure`: the import, the kinds and the part, the state, the views
 
-- **Scope** (decision 171; design §2, §3, round 5): `h3_heroes::sea_points(details, core, table:
-  &[u32; 4]) -> u32` (the table's entry at the highest `navigation` level, a Navigation
-  specialist's ⌊level × table[0] × `bp_per_level` ÷ 10 000⌋ with the skill, each worn type's
-  `sea_movement_points` once, saturating) and `free_boarding(details, core) -> bool` (a worn type
-  with `free_boarding`, not its parts worn apart); HER-ADV-009 in the rule catalog (sources: the
-  gap-fill's `exe-sea-movement`, `exe-free-boarding`, `vcmi-sea-movement`, `wiki-sea-movement`;
-  survey `E08-sea.md` §3.1, §4.2); design §2's tests; 100 % coverage. No version (no
-  `HeroDetails` field). T72 (the import, the kinds and the state) is the round's second task.
-- **Depends on:** T70 (`shared/e08-t70`, merged first). **Status:** ready; its cut confirmed at
-  its start. T71 is small: the inbox's failing property case (a fix wanted before T72) may join it.
+- **Scope** (decision 171; design §4, §5, §6, §12, §16, round 5): the import of boats (class 8),
+  the sea's pickups (29, 59, 82, 86), the holes (124) and Favorable Winds (225), and a hero placed
+  on water refused (`Unsupported::HeroOnWater`, D-44 kept: ADV-Q34; design §4); the kinds and the sea's
+  parameters in the adventure part (the sea table 1 500, 2 250, 3 000, 3 750 for
+  `h3_heroes::sea_points`, the find's extension, `Message`, `SeaGround`, `Hole`; §5); `Boats` and
+  `HeroOnMap`'s `boat` and `max_movement` with their invariants (§6); what a viewer sees of boats
+  (§12, ADV-FOG-006 amended, ADV-FOG-008). Versions (§16): map import v14, adventure ruleset part
+  v13, adventure state hash v16, game state hash v20. Rule ids: ADV-SEA-001 and the others §4 to
+  §6 and §12 name (survey `E08-sea.md` §12). Moving, `Reach` and the visits are T73's.
+- **Depends on:** T71 (`adventure/e08-t71`). **Status:** ready; its cut confirmed at its start
+  (big: likely in two, the import and part, then the state and views; a seam to confirm).
+  `HeroOnMap` gains fields: `cargo check --workspace --all-targets` before the pull request
+  (`TRAPS.md`).
 
 ## Inbox
-
-- 2026-10-28 (T68a's scoped verify; **a failing property case**, for a fix task before T72):
-  `h3-map`'s `every_step_keeps_the_commands_invariants` failed on a random case, reproducible
-  with the regression line `cc a85563f06cafc2ccfda4e0e43ef5db0c90238e7cf03330cf9f12b82390be04fc`
-  (not committed: it would fail CI until fixed; add it to
-  `crates/h3-map/proptest-regressions/tests/play.txt` with the fix). At `play.rs` 2301 the actor
-  has an army dialog open (a join without room) and its `Close` is accepted, but a **battle**
-  is then open for the actor (`probe.battle(actor)`), where the plan asserts no decision. Likely a
-  second monster guarding the joined one's tile (GAM-BAT-001's guards in turn): decide whether
-  the battle after the join is the original's sequence (then the plan's assertion is too
-  strict) or an engine bug. `master` 7dad572's CI passed: the case is rare.
 
 - 2026-10-23 (T42, measured; for a performance task): **a flyer's or water walker's reach costs
   about 1.9 times a walker's query** on the XL map (`reach-lifted-xl-144`: 279 k Ir a query
