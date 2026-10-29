@@ -21,6 +21,7 @@ use alloc::collections::btree_map::Entry;
 use alloc::format;
 use alloc::string::String;
 use alloc::vec::Vec;
+use core::cell::RefCell;
 use core::fmt;
 
 use h3_assets::palette::{Palette, Rgb};
@@ -352,13 +353,20 @@ impl<'s> Changed<'s> {
         grid.bucket(self.rects.iter().copied(), now);
         grid.bucket(last.rects.iter().map(|&r| moved_by(r, shift)), was);
         let before = last.moving();
+        // A minimap's draw meets many cells: its comparison made once a scene (E24 M3 T3a).
+        let compared: RefCell<BTreeMap<(u32, u32), bool>> = RefCell::new(BTreeMap::new());
+        let pair = |i: u32, j: u32| {
+            let (d, e) = (&self.moving[to_index(i)], &before[to_index(j)]);
+            let fresh = || same_moved(d, e, shift) && !uses(d, &changed);
+            if matches!(d, Draw::Minimap(_)) {
+                *compared.borrow_mut().entry((i, j)).or_insert_with(fresh)
+            } else {
+                fresh()
+            }
+        };
         let same = |cell: usize| {
             let (a, b) = (now.of(cell), was.of(cell));
-            a.len() == b.len()
-                && a.iter().zip(b).all(|(&i, &j)| {
-                    let (d, e) = (&self.moving[to_index(i)], &before[to_index(j)]);
-                    same_moved(d, e, shift) && !uses(d, &changed)
-                })
+            a.len() == b.len() && a.iter().zip(b).all(|(&i, &j)| pair(i, j))
         };
         let dirty: Vec<bool> = (0..grid.cells())
             .map(|cell| {
