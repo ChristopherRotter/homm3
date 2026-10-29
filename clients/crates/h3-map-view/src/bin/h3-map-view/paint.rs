@@ -138,6 +138,8 @@ pub fn for_sequence<'a>(
         live: false,
         sound,
         kingdom: painter.live.kingdom.clone(),
+        // The selected hero's points memory held (E24 M3 T4b): the recording's.
+        points: sequence.points(recorded.as_deref().unwrap_or_default())?,
         buttons: painter.live.buttons,
     };
     Ok(Setup {
@@ -207,6 +209,7 @@ pub fn for_situation<'a>(
         live: false,
         sound,
         kingdom: painter.live.kingdom.clone(),
+        points: Vec::new(),
         buttons: painter.live.buttons,
     };
     Ok(Setup {
@@ -450,6 +453,10 @@ impl<'a> Painter<'a> {
             view: draw.minimap.view,
             hero: self.selected.zip(draw.minimap.hero),
         });
+        // The lists as last shown (E24 M3 T4b).
+        if self.live.kingdom != *draw.kingdom {
+            self.live.kingdom.clone_from(&draw.kingdom);
+        }
         self.live.buttons = Some(buttons);
         let assets = self.assets;
         let z = draw.view.z;

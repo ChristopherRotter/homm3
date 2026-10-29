@@ -171,3 +171,16 @@ fn the_selection_s_slot() {
     assert_eq!(slot(&kingdom), None);
     assert_eq!("HPS000Kn.PCX".to_string(), art().portraits[0]);
 }
+
+#[test]
+fn the_hero_list_scrolled_to_show_a_hero() {
+    // E24 M3 T4b (`hero_list_update` 0x4032E0 given a place): kept while it shows the hero, else
+    // the place held within the last five, never below 0.
+    assert_eq!(top_showing(2, 2, 9), 2);
+    assert_eq!(top_showing(2, 6, 9), 2);
+    assert_eq!(top_showing(2, 7, 9), 4);
+    assert_eq!(top_showing(2, 1, 9), 1);
+    assert_eq!(top_showing(0, 8, 9), 4);
+    assert_eq!(top_showing(3, 0, 3), 0);
+    assert_eq!(top_showing(0, 0, 1), 0);
+}

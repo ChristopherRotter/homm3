@@ -1908,6 +1908,57 @@ town records) and its captures (below). *Provisional* where marked.
   bars' every edge, both lists scrolled, a town's mark, empty slots, five factions with and
   without a fort, built today), exact first time; the set recaptured with the lists compared
   (`masks.toml`'s `stills`; the sequences keep `panels` until T4b).
-- **For T4b** (the lists over time): when the original draws the lists again during a walk (the
-  movement bar at a step's end?), a selection, a scroll; the slot's show rectangle above; the
-  town's item left at frame 1.
+- **When they are drawn again** (T4b, 2026-10-29; read: `hero_list_slot`'s and
+  `hero_list_update`'s 34 call sites listed, `town_list_update` 0x403420 in full, the sites below
+  read; `hero_move_step` 0x4805E0 around its points): every call of the slot is (−1, 1, 1): the
+  selected hero's slot, when the list shows it (none else), drawn and its rectangle (609, 212 +
+  32 i, 48 × 32) shown at once. Both updates with their redraw draw every item of the dialog
+  (vtable +0x14 over −65535 to 65535), the town list's then the selected town's mark alone
+  (frame 1, 0x403509) as the full update's selection does; with their show the whole screen is
+  shown. What M3's sequences meet:
+  - **a step's end** (`hero_move_loop` 0x407EEF, `adventure_key_down` 0x409069, after
+    `hero_move_step` returns: after the step's end's sounds and the guard's minimap): the slot.
+    The step's cost is priced at its start (0x4807DA) and taken after its frames (0x48118C), the
+    points dropping to 0 when fewer than the cheapest step from the new tile remain (0x481191);
+    a step not paid sets them to 0 at its start (0x48087A) and is not taken, the slot drawn all
+    the same. So the movement bar changes at each step's end, never during its frames;
+  - **a lift that centres the view** (`hero_select` with c, a key's step lifting a hero not
+    lifted, 0x480914 with 0, 0, 1; §4.4): `hero_list_update` with the hero's place, c and 0
+    (0x417F09: the list scrolled to show it, 0x403318: kept while it shows, else the place held
+    within the last five) and `town_list_update` with −1, c, 0 (0x417F19), shown with the whole
+    screen (0x41809B), before the step: the points the last step left (the harness's write of a
+    sequence's `points` shows first here). The path's lift (1, 0, 0) draws neither;
+  - **a walk's end that leaves the hero unable to move** (`hero_can_move` 0x4E5F30 clear; the
+    path's 0x408193, a key's 0x40913E): `make_hero_path` with 1, 0, 0, then `hero_list_update`
+    with −1, 1, 1 (0x4081B9, 0x409167): every slot, the whole screen shown (`walk-points`).
+  - Not met: `path_rebuild` 0x40EC90's update (0x40F1D5, the hero unable to move; from a key of
+    `adventure_key_down` other than the directions, 0x409318, and two more callers), the lists'
+    arrows (`hero_list_scroll` 0x403220, `town_list_scroll` 0x403280: T6's clicks), the full
+    update and the turn's start, a boat boarded or left (0x4A10A8, 0x49E6E0: the slot after the
+    points set to 0), a spell (`adventure_spell_cast` 0x41D2D5, `hero_relocate_spell` 0x41D8B4,
+    `hero_spend_mana` 0x4D931E: the slot after the mana is spent), visits, battles and the hero
+    screen: M4 and later.
+- **The slot's rectangle** holds the movement bar (610–615) and the portrait's and the frame's
+  first 40 columns (617–656); the mana bar (666–671) and their last 8 columns lie outside, drawn
+  but not shown until something shows the whole screen. In M3 the slot's hero, portrait and mana
+  never change between its draws (a walk changes the points alone); after a spell's cost (M4) the
+  screen would keep the old mana bar until the next update or lift (MCL-Q14).
+- **The town's item left at frame 1** (T4a): drawn again by every redraw of all the items while
+  its town is selected, it puts the mark over the picture and mark the screen holds there:
+  nothing changes. Every town list update sets the slots' frames again before its redraw
+  (`town_list_slot`, then the mark), so no picture is lost under a stale mark; M3's sequences
+  have no towns.
+- **Built** (T4b, *provisional*): the timeline's `Draw` carries the kingdom as the panels last
+  showed it (`Arc<Kingdom>`; the live part's at 0); a step's end shows the selected hero's points
+  in it (its slot, when shown), a lift that centres the view and a walk's end that leaves the hero
+  unable to move the whole kingdom (the hero list scrolled to the hero at the lift,
+  `lists::top_showing`); the loop's kingdom in memory takes the selected hero's points from
+  `Start::points` at 0 and at each step's end (M3's walks scripted: a recording's `points` lines,
+  `Sequence::points`; the engine's from M4); the timeline's `points` lines (memory's). The
+  harness records `points` each millisecond (`Mem.points`) and keeps the live part's kingdom as
+  read before it writes a sequence's `points` (the list as shown at 0); `masks.toml` one list
+  again (`panels`); the kingdom's form before T4a no longer read.
+- **Checked** (T4b): the 13 sequences recorded again with the lists compared: every kept screen
+  of the 459 exact, every timeline line as the viewer's; the 43 situations' digests unchanged.
+  A bar that changes is a dialog draw, which rebuilds the panels' background and uploads the
+  whole screen (`walk-1`: 31.0 % of the pixels uploaded, `master` 25.7 %; T4c).

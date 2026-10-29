@@ -3,6 +3,7 @@
 0 cycles 0 0
 0 cursor 1 0 700 300
 0 buttons 0 1
+0 points 2000
 100 view 8 8 0
 100 buttons 1 1
 100 hero 17 16 0 0
@@ -14,6 +15,7 @@
 200 walk 5 3 0 0
 200 screen 8,8,600,552
 250 objects 1
+250 points 1900
 250 walk 0 0 0 0
 250 screen 276,58,738,318
 360 objects 2
@@ -29,6 +31,7 @@
 500 walk 6 3 0 0
 500 screen 8,8,600,552
 550 objects 3
+550 points 1759
 550 walk 1 0 0 0
 550 screen 281,54,742,318
 600 cycles 3 3
@@ -42,6 +45,7 @@
 800 walk 7 3 0 0
 800 screen 8,8,600,552
 850 objects 4
+850 points 1659
 850 walk 2 0 0 0
 850 screen 277,54,746,318
 900 objects 5
@@ -56,6 +60,7 @@
 1100 walk 8 3 0 0
 1100 screen 8,8,600,552
 1150 objects 6
+1150 points 1518
 1150 walk 3 0 0 0
 1150 screen 285,54,750,318
 1200 cycles 6 6
@@ -71,6 +76,7 @@
 1400 walk 9 3 0 0
 1400 screen 8,8,600,552
 1450 objects 8
+1450 points 1418
 1450 walk 4 0 0 0
 1450 screen 294,58,750,318
 1600 view 10 10 0
@@ -83,6 +89,7 @@
 1700 walk 8 3 0 0
 1700 screen 8,8,600,552
 1750 objects 9
+1750 points 1277
 1750 walk 3 0 0 0
 1750 screen 283,62,750,318
 1800 objects 10
@@ -98,6 +105,7 @@
 2000 walk 7 3 0 0
 2000 screen 8,8,600,552
 2050 objects 11
+2050 points 1177
 2050 walk 2 0 0 0
 2050 screen 276,66,746,318
 2160 objects 12
@@ -112,6 +120,7 @@
 2300 walk 6 3 0 0
 2300 screen 8,8,600,552
 2350 objects 13
+2350 points 1036
 2350 walk 1 0 0 0
 2350 screen 285,62,742,318
 2400 cycles 12 12
@@ -132,6 +141,7 @@
 2800 walk 7 3 0 0
 2800 screen 8,8,600,552
 2850 view 10 9 0
+2850 points 936
 2850 hero 19 17 0 2
 2850 walk 7 4 22 0
 2850 arrows 20,18,0,13 21,19,0,1
@@ -142,6 +152,7 @@
 2950 screen 8,8,600,552
 3000 view 11 10 0
 3000 cycles 15 15
+3000 points 836
 3000 hero 20 18 0 3
 3000 walk 8 7 22 22
 3000 arrows 21,19,0,1
@@ -151,6 +162,7 @@
 3100 walk 8 1 0 0
 3100 screen 8,8,600,552
 3150 view 12 11 0
+3150 points 695
 3150 hero 21 19 0 3
 3150 walk 8 2 22 22
 3150 arrows
@@ -162,6 +174,7 @@
 3250 screen 8,8,600,552
 3300 objects 17
 3300 buttons 0 1
+3300 points 554
 3300 walk 3 0 0 0
 3300 screen 285,66,754,318
 3400 cycles 17 17

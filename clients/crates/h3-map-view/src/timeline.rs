@@ -3,9 +3,10 @@
 //! walking (`docs/epics/E24-design.md` §3.1, §3.4, §3.5), from a sequence's start and the player's
 //! actions at their milliseconds. Each millisecond gives a [`State`]: what the original's memory
 //! holds (the view's corner, the objects' frame steps, the palette steps, the cursor, the selected
-//! hero, its walk's drawing and the path's arrows) and what its screen shows (the view and, since
-//! E24 M3 T3b, the minimap as last drawn, and the cursor); [`lines`] writes the recorded
-//! timeline's lines from them (design §3.2).
+//! hero, its walk's drawing and the path's arrows; since E24 M3 T4b its movement points) and what
+//! its screen shows (the view and, since E24 M3 T3b, the minimap as last drawn, since T4b the hero
+//! and town lists as last shown, and the cursor); [`lines`] writes the recorded timeline's lines
+//! from them (design §3.2).
 //! The cursor over the view is M3's: [`Unplayable`].
 //!
 //! Per millisecond, as the managers' loop takes it (§3.1): the palette tick when due, the mouse
@@ -24,6 +25,7 @@
 use alloc::collections::{BTreeMap, VecDeque};
 use alloc::format;
 use alloc::string::String;
+use alloc::sync::Arc;
 use alloc::vec::Vec;
 use core::fmt;
 
@@ -32,6 +34,7 @@ use h3_render::Bugs;
 use h3_render::screen::Screen;
 
 use crate::layout::{AdventureLayout, DIRECTIONS};
+use crate::lists::{SLOTS, top_showing};
 use crate::live::{Arrow, Buttons, Kingdom, Selected};
 use crate::scene::ViewAt;
 use crate::sequence::{DEFAULT_HERO_SPEED, DEFAULT_SCROLL_SPEED};
@@ -343,8 +346,16 @@ pub struct Start {
     /// screen starts, which the loop starts at 0 and drives; none for a map without the tables'
     /// sounds, which gives no cues.
     pub sound: Option<Sound>,
-    /// The viewer's kingdom at 0 (E24 M3 T2a, design §4.1).
+    /// The viewer's kingdom at 0 as the panels show it (E24 M3 T2a, design §4.1; since T4b its
+    /// heroes' points as the hero list last drew them, which a recording's write of the selected
+    /// hero's points leaves: `points`).
     pub kingdom: Kingdom,
+    /// The selected hero's movement points memory holds, each from its millisecond on (E24 M3
+    /// T4b, design §4.5; *provisional*): M3's walks are scripted, so a recording gives them (its
+    /// `points` lines, `Sequence::points`): the first at 0, the rest what the steps left (a step's
+    /// cost is the engine's, M4). A step's end takes the one at its millisecond. Empty: the
+    /// kingdom's, which a walk leaves.
+    pub points: Vec<(u32, i32)>,
     /// Move hero's and next hero's states at 0 as the original last set them (a recording's, read
     /// from its memory); none: as the kingdom and the path give them ([`Buttons::of`]).
     pub buttons: Option<Buttons>,
@@ -412,6 +423,10 @@ pub struct Draw {
     pub path: Vec<Arrow>,
     /// The minimap (E24 M3 T3b).
     pub minimap: Minimap,
+    /// The kingdom as the panels last showed it (E24 M3 T4b, design §4.5): the hero and town
+    /// lists' slots as last drawn and shown (a step's end shows its hero's movement bar, a lift
+    /// that centres the view and a walk's end that leaves the hero unable to move every slot).
+    pub kingdom: Arc<Kingdom>,
 }
 
 /// The state after a millisecond.
@@ -438,6 +453,8 @@ pub struct State {
     /// Move hero's and next hero's states as the screen shows them (E24 M3 T2a, design §4.1:
     /// each change drawn and shown at once).
     pub buttons: Buttons,
+    /// The selected hero's movement points (its +0x4D; E24 M3 T4b): the timeline's `points`.
+    pub points: Option<i32>,
 }
 
 /// A walk under way: inside a key's step or the path's walk, which wait for their frames' times.
@@ -503,9 +520,11 @@ pub struct Loop {
     live: bool,
     /// The map's sound and its cues not taken yet ([`Start::sound`]).
     sound: Option<Sound>,
-    /// The viewer's kingdom ([`Start::kingdom`]): a walk the points end leaves its hero unable
-    /// to move.
+    /// The viewer's kingdom in memory ([`Start::kingdom`], its selected hero's points
+    /// [`Start::points`]'): a walk the points end leaves its hero unable to move.
     kingdom: Kingdom,
+    /// The selected hero's points by millisecond ([`Start::points`]).
+    points: Vec<(u32, i32)>,
     /// Move hero's and next hero's states.
     buttons: Buttons,
 }
@@ -563,6 +582,7 @@ impl Loop {
                 lifted: None,
                 path: Vec::new(),
                 minimap,
+                kingdom: Arc::new(start.kingdom.clone()),
             },
             hero: start.hero,
             lifted: false,
@@ -582,11 +602,14 @@ impl Loop {
             live: start.live,
             sound: start.sound.clone(),
             kingdom: start.kingdom.clone(),
+            points: start.points.clone(),
             buttons: start
                 .buttons
                 .unwrap_or_else(|| Buttons::of(&start.kingdom, &start.path)),
             rules,
         };
+        // Memory's points at 0: a recording's write, which the hero list does not show yet.
+        l.spend(0);
         if !l.path.is_empty() {
             l.paths.push(start.path.clone());
             l.drawn.path = l.arrows();
@@ -621,6 +644,10 @@ impl Loop {
             walk: self.walk,
             arrows: self.arrows(),
             buttons: self.buttons,
+            points: self
+                .selected_hero()
+                .and_then(|i| self.kingdom.heroes.get(i))
+                .map(|h| h.points),
         }
     }
 
@@ -976,6 +1003,8 @@ impl Loop {
                 moving.until = t.saturating_add(self.rules.walk.frame_ms);
                 continue;
             }
+            // The points the step left (0x48118C, after its frames).
+            self.spend(t);
             if moving.last {
                 self.stand();
             }
@@ -988,6 +1017,9 @@ impl Loop {
             // The guard's test after the step (`after_step_guard_check` 0x480090, from 0x48169D)
             // draws the minimap first, shown at once (0x4800A5).
             self.draw_minimap();
+            // Back from the step, its hero's slot drawn and shown (`hero_list_slot` with -1, 1, 1:
+            // the path's 0x407EEF, a key's 0x409069).
+            self.draw_slot();
             if !moving.key {
                 // The messages' kinds 1, 8, 0x20 and 0x200 end the walk (0x407FA7): a key-down,
                 // Ctrl's too (M2 T6a, the reviewer's R1-1), and a button; the loop reads up to the
@@ -1047,6 +1079,9 @@ impl Loop {
                 {
                     hero.movable = false;
                 }
+                // The hero list drawn and the whole screen shown (`hero_list_update` with -1, 1,
+                // 1: 0x4081B9).
+                self.draw_lists();
                 self.buttons.next_hero = self.kingdom.next_hero();
             }
         }
@@ -1076,12 +1111,19 @@ impl Loop {
     }
 
     /// The selected hero lifted off its tile (`hero_select` with b clear: +0x20C, the standing
-    /// group by its facing, frame 0); with `centred` (its c) the view centred on it and the
-    /// minimap drawn (0x418046; the whole screen shown at once, 0x41809B).
+    /// group by its facing, frame 0); with `centred` (its c) the lists drawn, the hero list
+    /// scrolled to show the hero (`hero_list_update` with its place, 1, 0 and `town_list_update`
+    /// with -1, 1, 0: 0x417F09, 0x417F19), the view centred on it and the minimap drawn (0x418046;
+    /// the whole screen shown at once, 0x41809B).
     fn lift(&mut self, t: u32, centred: bool) {
         self.lifted = true;
         self.stand();
         if centred {
+            if let Some(i) = self.selected_hero() {
+                let top = &mut self.kingdom.tops[0];
+                *top = top_showing(*top, i, self.kingdom.heroes.len());
+            }
+            self.draw_lists();
             self.centre();
             self.draw_minimap();
         }
@@ -1147,6 +1189,58 @@ impl Loop {
         arrows
     }
 
+    /// The selected hero's place in the kingdom's heroes, if any.
+    fn selected_hero(&self) -> Option<usize> {
+        match self.kingdom.selected {
+            Selected::Hero(i) if i < self.kingdom.heroes.len() => Some(i),
+            _ => None,
+        }
+    }
+
+    /// The selected hero's points memory holds at `t` as [`Start::points`] gives them (none
+    /// given: as they are).
+    fn spend(&mut self, t: u32) {
+        let given = self.points.iter().take_while(|(at, _)| *at <= t).last();
+        if let (Some(&(_, points)), Some(i)) = (given, self.selected_hero())
+            && let Some(hero) = self.kingdom.heroes.get_mut(i)
+        {
+            hero.points = points;
+        }
+    }
+
+    /// The selected hero's slot drawn and shown (`hero_list_slot` 0x403560 with -1, 1, 1; design
+    /// §4.5), when the list shows it: the portrait, both bars and the frame drawn, the rectangle
+    /// (609, 212 + 32 i), 48 × 32 shown, which holds the movement bar and leaves out the mana bar
+    /// (and the portrait's last 8 columns): the hero's points shown, its mana as last shown (the
+    /// slot's hero and portrait change only by an update, which shows the whole screen).
+    fn draw_slot(&mut self) {
+        let Some(i) = self.selected_hero() else {
+            return;
+        };
+        let top = self.kingdom.tops[0];
+        let points = self.kingdom.heroes.get(i).map(|h| h.points);
+        let shown = i.checked_sub(top).is_some_and(|slot| slot < SLOTS);
+        if let Some(points) = points.filter(|_| shown)
+            && self
+                .drawn
+                .kingdom
+                .heroes
+                .get(i)
+                .is_some_and(|h| h.points != points)
+            && let Some(hero) = Arc::make_mut(&mut self.drawn.kingdom).heroes.get_mut(i)
+        {
+            hero.points = points;
+        }
+    }
+
+    /// Both lists drawn as memory holds them, shown with the whole screen (`hero_list_update`
+    /// 0x4032E0, `town_list_update` 0x403420 with their redraws: every item of the dialog drawn).
+    fn draw_lists(&mut self) {
+        if *self.drawn.kingdom != self.kingdom {
+            self.drawn.kingdom = Arc::new(self.kingdom.clone());
+        }
+    }
+
     /// The minimap drawn (`minimap_draw` 0x412C40) and shown: the view's corner and the selected
     /// hero's tile now.
     fn draw_minimap(&mut self) {
@@ -1169,6 +1263,7 @@ impl Loop {
             lifted: self.lifted.then_some([self.walk.group, self.walk.frame]),
             path: self.arrows(),
             minimap: self.minimap,
+            kingdom: Arc::clone(&self.drawn.kingdom),
         };
     }
 
@@ -1250,9 +1345,10 @@ pub fn play(
     Ok(states)
 }
 
-/// The timeline's lines (design §3.2): at 0 the view, the objects, the cycles, the cursor and the
-/// buttons (move hero's and next hero's states, 1 enabled; E24 M3 T2a), then each one where it
-/// changed, in that order within a millisecond; after 0 the walk's (§3.5) where
+/// The timeline's lines (design §3.2): at 0 the view, the objects, the cycles, the cursor, the
+/// buttons (move hero's and next hero's states, 1 enabled; E24 M3 T2a) and the selected hero's
+/// points (E24 M3 T4b; none without one), then each one where it changed, in that order within a
+/// millisecond; after 0 the walk's (§3.5) where
 /// they changed: the selected hero, the walk's drawing, the path's arrows; and a `screen` line
 /// where `screens` gives the box the screen changed in (never at 0, whose screen is always kept).
 #[must_use]
@@ -1282,6 +1378,12 @@ pub fn lines(states: &[State], screens: &BTreeMap<u32, [i32; 4]>) -> Vec<String>
             if changed(f) {
                 out.push(format!("{} {}", s.t, f(s)));
             }
+        }
+        if let Some(points) = s
+            .points
+            .filter(|p| last.is_none_or(|l| l.points != Some(*p)))
+        {
+            out.push(format!("{} points {points}", s.t));
         }
         if let Some(l) = last {
             if let Some(h) = s.hero.filter(|_| s.hero != l.hero) {

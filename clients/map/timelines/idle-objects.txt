@@ -3,6 +3,7 @@
 0 cycles 0 0
 0 cursor 1 0 700 300
 0 buttons 0 1
+0 points 1500
 180 objects 1
 180 screen 8,13,600,552
 200 cycles 1 1

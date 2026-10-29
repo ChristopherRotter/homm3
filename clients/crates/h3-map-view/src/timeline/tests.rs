@@ -211,6 +211,7 @@ fn start(situation: &str, speed: usize) -> Start {
         live: false,
         sound: None,
         kingdom: Kingdom::default(),
+        points: Vec::new(),
         buttons: None,
     }
 }
@@ -225,6 +226,7 @@ pub(crate) fn recorded(id: &str) -> (Start, BTreeMap<u32, Vec<Action>>, u32) {
     start.hero_speed = sequence.hero_speed().unwrap();
     let (_, live) = LIVE.iter().find(|(l, _)| *l == id).unwrap();
     (start.kingdom, start.buttons) = live_kingdom(live);
+    start.points = sequence.points(timeline).unwrap();
     if sequence.walks() {
         let (heroes, viewer) = live_heroes(live);
         start.hero = Some(sequence::selected(&heroes, viewer).unwrap());
@@ -251,6 +253,7 @@ fn replays_the_recorded_timelines() {
         start.hero_speed = sequence.hero_speed().unwrap();
         let (_, live) = LIVE.iter().find(|(l, _)| *l == id).unwrap();
         (start.kingdom, start.buttons) = live_kingdom(live);
+        start.points = sequence.points(recorded).unwrap();
         if sequence.walks() {
             let (heroes, viewer) = live_heroes(live);
             start.hero = Some(sequence::selected(&heroes, viewer).unwrap());
@@ -310,6 +313,7 @@ fn looped(bugs: Bugs, speed: usize) -> Loop {
         live: false,
         sound: None,
         kingdom: Kingdom::default(),
+        points: Vec::new(),
         buttons: None,
     };
     Loop::start(rules(bugs), &start).unwrap()
@@ -505,6 +509,7 @@ fn what_it_cannot_play_yet() {
         live: false,
         sound: None,
         kingdom: Kingdom::default(),
+        points: Vec::new(),
         buttons: None,
     };
     assert_eq!(
@@ -624,6 +629,7 @@ fn walking(speed: usize, paths: Vec<Vec<Arrow>>) -> Loop {
         live: false,
         sound: None,
         kingdom: Kingdom::default(),
+        points: Vec::new(),
         buttons: None,
     };
     Loop::start(rules(Bugs::Fixed), &start).unwrap()
@@ -1023,6 +1029,7 @@ fn live(pointer: [i32; 2], hero: bool, path: Vec<Arrow>) -> Start {
         live: true,
         sound: None,
         kingdom: Kingdom::default(),
+        points: Vec::new(),
         buttons: None,
     }
 }
@@ -1229,4 +1236,138 @@ fn the_minimap_drawn_again_by_a_scroll_a_lift_and_each_steps_end() {
     let s = l.state(2);
     assert_eq!(s.hero.unwrap().at, Pos { x: 21, y: 17, z: 0 });
     assert_eq!(s.drawn.minimap, minimap(12, 9, 21, 17));
+}
+
+/// `walking`'s loop with a kingdom of `heroes` heroes (portrait 0, 1 000 points as the list shows
+/// them, 10 mana), the last one selected and on the hero's tile, the list's top `top`, and the
+/// points memory holds by millisecond (E24 M3 T4b).
+fn listed(speed: usize, heroes: usize, top: usize, points: Vec<(u32, i32)>) -> Loop {
+    let hero = KingdomHero {
+        asleep: false,
+        movable: true,
+        portrait: 0,
+        points: 1000,
+        mana: 10,
+    };
+    let start = Start {
+        kingdom: Kingdom {
+            heroes: vec![hero; heroes],
+            selected: Selected::Hero(heroes - 1),
+            tops: [top, 0],
+            ..Kingdom::default()
+        },
+        points,
+        live: false,
+        hero_speed: speed,
+        ..live(PARK, true, Vec::new())
+    };
+    Loop::start(rules(Bugs::Fixed), &start).unwrap()
+}
+
+#[test]
+fn the_lists_drawn_again_by_a_lift_each_steps_end_and_a_walk_that_ends_the_points() {
+    // E24 M3 T4b (design §4.5): at 0 the list as shown, memory's points the recording's; a key's
+    // step lifting the hero draws both lists as memory holds them (the points before the step);
+    // the step's end its slot, the points it left shown, the mana bar left as shown; a path's
+    // walk whose points end draws both lists.
+    let run = |l: &mut Loop, from: u32, to: u32| {
+        for t in from..=to {
+            l.run(t, &[]).unwrap();
+        }
+    };
+    let shown = |l: &Loop, t: u32| {
+        let s = l.state(t);
+        let h = s.drawn.kingdom.heroes.last().copied().unwrap();
+        (h.points, h.mana, s.points)
+    };
+    let mut l = listed(1, 1, 0, vec![(0, 2000), (201, 1900), (500, 1759)]);
+    assert_eq!(shown(&l, 0), (1000, 10, Some(2000)));
+    l.run(1, &[Action::Step(Direction::NorthEast)]).unwrap();
+    assert_eq!(shown(&l, 1), (2000, 10, Some(2000)));
+    run(&mut l, 2, 200);
+    assert_eq!(shown(&l, 200), (2000, 10, Some(2000)));
+    // The step's end (its frames at 1, 51, 101 and 151): the points it left, shown.
+    l.run(201, &[]).unwrap();
+    assert_eq!(shown(&l, 201), (1900, 10, Some(1900)));
+    run(&mut l, 202, 300);
+    // A second step, the hero lifted: nothing drawn until its end; the mana a spell took (M4) not
+    // shown by the slot.
+    l.kingdom.heroes[0].mana = 5;
+    l.run(301, &[Action::Step(Direction::East)]).unwrap();
+    run(&mut l, 302, 500);
+    assert_eq!(shown(&l, 500), (1900, 10, Some(1900)));
+    l.run(501, &[]).unwrap();
+    assert_eq!(shown(&l, 501), (1759, 10, Some(1759)));
+    // A scroll puts the hero back; the next step lifts it again: every slot drawn.
+    l.run(601, &[Action::Scroll(Direction::South)]).unwrap();
+    assert_eq!(shown(&l, 601), (1759, 10, Some(1759)));
+    l.run(800, &[Action::Step(Direction::West)]).unwrap();
+    assert_eq!(shown(&l, 800), (1759, 5, Some(1759)));
+    // The timeline's lines: memory's points at 0 and at each step's end.
+    let states = play(
+        rules(Bugs::Fixed),
+        &Start {
+            kingdom: listed(1, 1, 0, Vec::new()).kingdom.clone(),
+            points: vec![(0, 2000), (201, 1900)],
+            live: false,
+            hero_speed: 1,
+            ..live(PARK, true, Vec::new())
+        },
+        &BTreeMap::from([(1, vec![Action::Step(Direction::NorthEast)])]),
+        300,
+    )
+    .unwrap();
+    let points: Vec<String> = lines(&states, &BTreeMap::new())
+        .into_iter()
+        .filter(|l| l.contains(" points "))
+        .collect();
+    assert_eq!(points, ["0 points 2000", "201 points 1900"]);
+    // No hero selected: no points.
+    assert_eq!(looped(Bugs::Fixed, 1).state(0).points, None);
+}
+
+#[test]
+fn a_slot_off_the_list_is_not_drawn_and_a_lift_scrolls_to_it() {
+    // E24 M3 T4b: the seventh hero of seven, the list's top 0: its step's end draws no slot; the
+    // lift that centres the view scrolls the list to show it (top 2) and draws it.
+    let mut l = listed(1, 7, 0, vec![(0, 1000), (201, 900)]);
+    l.lifted = true;
+    l.run(1, &[Action::Step(Direction::NorthEast)]).unwrap();
+    for t in 2..=201 {
+        l.run(t, &[]).unwrap();
+    }
+    let s = l.state(201);
+    assert_eq!(s.points, Some(900));
+    assert_eq!(
+        (s.drawn.kingdom.tops, s.drawn.kingdom.heroes[6].points),
+        ([0, 0], 1000)
+    );
+    l.run(301, &[Action::Scroll(Direction::South)]).unwrap();
+    l.run(302, &[Action::Step(Direction::East)]).unwrap();
+    let s = l.state(302);
+    assert_eq!(
+        (s.drawn.kingdom.tops, s.drawn.kingdom.heroes[6].points),
+        ([2, 0], 900)
+    );
+}
+
+#[test]
+fn a_walk_that_ends_the_points_draws_both_lists() {
+    // E24 M3 T4b (0x4081B9): the path's walk ends on its red arrows, the hero unable to move:
+    // every slot drawn as memory holds it, the hero's points 0.
+    let short = vec![
+        arrow(18, 17, 12),
+        arrow(19, 17, 12),
+        arrow(20, 17, 37),
+        arrow(21, 17, 26),
+    ];
+    let mut l = listed(4, 1, 0, vec![(0, 450), (2, 0)]);
+    l.paths = vec![short];
+    l.run(1, &[Action::Click(tile(21, 17))]).unwrap();
+    l.run(2, &[Action::Click(tile(21, 17))]).unwrap();
+    let s = l.state(2);
+    assert_eq!(s.hero.unwrap().at, Pos { x: 19, y: 17, z: 0 });
+    let drawn = s.drawn.kingdom.heroes[0];
+    assert_eq!((drawn.points, drawn.movable), (0, false));
+    assert!(!s.buttons.next_hero);
 }

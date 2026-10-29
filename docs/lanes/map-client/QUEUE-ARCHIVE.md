@@ -4,6 +4,9 @@ Finished history and informational notices moved out of `QUEUE.md` on 2026-10-24
 
 ## Notices from other lanes and finished items, newest first
 
+- 2026-10-29 (this lane, E24 M3 T4b): the lists over time, kept whole (the redraws M3's
+  sequences meet: a step's end, a lift that centres the view, a walk's end that leaves the hero
+  unable to move); done: the log's "M3 T4b".
 - 2026-10-29 (this lane, E24 M3 T3b): the minimap over time, kept whole by the user when its
   reading grew (13 direct call sites and 20 through `minimap_redraw` 0x413790); done: the log's
   "M3 T3b".
