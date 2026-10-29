@@ -424,3 +424,38 @@ an entry only where a task builds on it.
 
   The hex networks share their weights over the hexes: few parameters, many operations; the
   bench measures them on the user's GPU.
+
+## T7b — The distillation bench (2026-10-29)
+
+- **Built** (`h3env.train.distill`, `configs/distill/e25.toml`; `python/README.md`): the teacher
+  (a run's network file; here `e25-scale-1` #3) plays itself in `ppo.Trainer`'s rollouts on its
+  run's training distribution (its kinds, tactics bound and shaping, the sampled policy,
+  self-play only, the bench's seed 7); every student learns on the same minibatches: the KL
+  divergence from the teacher's entry head over the legal entries, plus a cast row's spell,
+  target and second heads along the teacher's choices, plus 0.5 times half the squared error
+  against the teacher's λ-returns (`ppo.gae`: γ 1, λ 0.95, the shaped rewards, so the targets
+  PPO's value head regresses on). Adam at 3e-4 falling linearly to a tenth over the samples, 2
+  epochs a rollout in minibatches of 512 rows, the gradient's norm clipped at 0.5 (agent's
+  choices, change freely). A held-out set (16 384 samples of rollouts on seed 8, collected once)
+  scores every student every 500 k samples: the KL per head, the agreement of its most likely
+  entry with the teacher's (overall and per category of the teacher's: tactics phase, wait or
+  defend, move, melee, shot, heal, cast, other), its value's mean squared error and explained
+  variance against the returns (the teacher's own beside it) and its training seconds (the
+  GPU synchronised around each student's steps). `report.json`, `metrics.jsonl`,
+  `students/<name>.pt` (run network files with the teacher's other settings: `--init-from`
+  starts T7d from one). The students: the MLP 2 × 512 (the teacher's own architecture, from
+  scratch), 2 × 1 024, 4 × 512, `hexconv` 64 × 6, `hexformer` 64 × 4 (4 heads), `entity` 128 × 2.
+- **Memory:** PPO's minibatches (a rollout over 8, about 3 000 rows) killed the first CPU smoke
+  (the sandbox's 15 GB): the hex networks' activations at that size take several GB each (and
+  would not fit the user's 8 GB GPU either); at 512 rows six students on the CPU used 6.8 GB of
+  RAM. A hex network's RL run needs `[ppo] minibatches` raised (`TRAPS.md`, T7d's scope).
+- **The CPU smoke** (the sandbox, 65 k samples, 4 096 held out; a check of the code, not a
+  result): the teacher's value explains 0.608 of its held-out returns' variance (its run's 0.61:
+  the targets are its own); after 65 k samples the entry's KL is 0.51 to 0.65 for the MLPs and
+  1.01 to 1.07 for the structured networks, which learn more slowly this early; training seconds
+  for the 130 k sample passes: 16, 28, 18 (the MLPs), 256 (`hexconv`), 936 (`hexformer`), 72
+  (`entity`).
+- **Tests** (`tests/test_distill.py`): the config's refusals and `--set`, every bench config valid,
+  the categories, a student that is the teacher scores KL 0 and agreement 1 (another one does
+  not), a bench end to end (its students learn, its evaluations, report, metrics and files,
+  a second run into the same directory refused).

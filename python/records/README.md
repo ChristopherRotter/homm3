@@ -85,6 +85,17 @@ trunk knows which stack acts next, from `inspect/probe_order.py` (a one-off scri
 `uv run --group train python records/inspect/probe_order.py runs/<run>/best.pt 600` from
 `python/`; the method and the findings in `docs/epics/E06-log.md`).
 
+## The distillation benches
+
+`distill/<bench>.json` (E25 T7b): a bench's `report.json` (`python -m h3env.train.distill`;
+`python/README.md`): the teacher (its file, network settings, samples, parameters), the bench's
+settings, the identity (source, torch, device, machine), each student's network settings,
+learning rate and parameters, and every evaluation on the held-out set (per student the KL per
+head, the agreement overall and per category, the value's mean squared error and explained
+variance, the training seconds; the teacher's value beside them); how it ended (`budget`,
+`stop`). The students' files stay on the machine that ran it. The findings in
+`docs/epics/E25-log.md`.
+
 ## The search's measurements
 
 `search/<run>-<set>-<N>[-<per kind>].json` (E06 T8c): `python -m h3env.search --report --best

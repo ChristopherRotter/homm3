@@ -1,0 +1,52 @@
+# E25 T7b's distillation bench (increment 3, AI-Q11; `h3env.train.distill`): six students
+# learn the current best's policy and value on the same rollouts, scored on held-out rollouts.
+# On the user's machine, from python/ (T7c; its length agreed with the user):
+#
+#   uv run --group train python -m h3env.train.distill --teacher runs/e25-scale-1/best.pt --config configs/distill/e25.toml --out runs/distill-1
+#
+# A student's table sets `[network]` keys over the teacher's (an MLP 2 x 512 with its tactics
+# bound and the rest of its run's settings) and may set its own `lr`.
+
+seed = 7
+samples = 4_000_000
+heldout = 16_384
+eval_every = 500_000
+envs = 256
+rollout = 128
+epochs = 2
+minibatch = 512
+lr = 3e-4
+lr_floor = 0.1
+value_coef = 0.5
+max_grad_norm = 0.5
+device = "auto"
+
+# The baseline: the teacher's own architecture, from scratch.
+[students.mlp]
+kind = "mlp"
+
+[students.mlp-wide]
+kind = "mlp"
+hidden = 1024
+
+[students.mlp-deep]
+kind = "mlp"
+layers = 4
+
+[students.hexconv]
+kind = "hexconv"
+width = 64
+layers = 6
+
+[students.hexformer]
+kind = "hexformer"
+width = 64
+layers = 4
+heads = 4
+
+# E06's entity network as it was (`configs/e06-t5.toml`'s sizes).
+[students.entity]
+kind = "entity"
+width = 128
+layers = 2
+heads = 4

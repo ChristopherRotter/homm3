@@ -227,6 +227,27 @@ analyses).
 every heuristic bot; `records/t7-1.json`, `records/README.md`'s lineage); its network stays on
 the user's machine.
 
+## The distillation bench (E25 T7b)
+
+`h3env.train.distill` measures how well networks of other kinds and sizes learn a trained
+network's policy and value on the same samples, before any of them trains by RL:
+
+```sh
+uv run --group train python -m h3env.train.distill --teacher runs/e25-scale-1/best.pt \
+    --config configs/distill/e25.toml --out runs/distill-1
+```
+
+The teacher plays itself in PPO's rollouts on its run's training distribution; each student (a
+`[students.<name>]` table of `[network]` keys over the teacher's) learns the teacher's heads (the
+KL divergence over the legal entries, a cast's heads along the teacher's choices) and its
+λ-returns, all on the same minibatches. Every `eval_every` samples a held-out set of rollouts on
+another seed scores them: the KL per head, the agreement of the most likely entry per category
+(tactics, wait or defend, move, melee, shot, heal, cast, other), the value's explained variance
+(the teacher's beside it) and the training seconds. Its files: `report.json`, `metrics.jsonl`,
+`students/<name>.pt` (run network files: `--init-from` starts a run from one). `--set key=value`
+changes a top-level setting (`samples`, `device`, …). It does not resume; Ctrl-C scores and
+saves what it has. Bench configs live in `configs/distill/`.
+
 ## Search (E06 T8, design §14)
 
 `h3env.search` searches each decision over W determinized *worlds* of the battle

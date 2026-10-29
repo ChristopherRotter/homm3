@@ -15,30 +15,17 @@ faithful system actor still trains no agent and no neutral battles train (decisi
 run's length is agreed with the user (decision 5). All on observation v22 and action v13: no
 encoding or ABI change.
 
-- **T7b The distillation bench.** *Scope:* `python -m h3env.train.distill --teacher <best.pt>
-  --config configs/e25-distill.toml --out runs/<bench>`: the teacher plays itself on the training
-  distribution (its config's kinds and tactics bound, the sampled policy, a seed apart from its
-  run's) in rollouts as PPO's (`rollout` steps of `envs`); every student trains on the same
-  rollouts, `epochs` passes in minibatches: the KL from the teacher's entry head over the legal
-  entries, for a cast row its spell, target and second heads along the teacher's choices, and
-  the value against the teacher's λ-returns (PPO's targets, shaping as the teacher trained);
-  Adam, one learning-rate schedule for all (a student's own `lr` allowed). A held-out set
-  (rollouts on other seeds, collected once) scores each student every so many samples: the KL
-  per head, the entry's agreement with the teacher's most likely entry per category of the
-  teacher's choice (move, strike, shot, cast, wait or defend, tactics), the value's mean squared
-  error and explained variance, the teacher's own beside them, the time per sample; a JSON
-  report and a table; the students' weights saved (T7d may start from them). The config: the
-  students as named `[network]` tables (MLP 2 × 512, 2 × 1 024, 4 × 512, `hexconv`,
-  `hexformer`, `entity`), the samples per student, the held-out size. A CPU smoke in the
-  sandbox and tests. *Depends on:* T7a (done 2026-10-29: `h3env.train.hexnet`, `[network]
-  layers` for the MLP; `E25-log.md` T7a). *Status:* next.
 - **T7c The bench run.** *Scope:* on the user's machine (the GPU; its length agreed with the
-  user); the report committed (`python/records/distill/`) and read in `E25-log.md`: which
-  kinds fit the teacher best per sample and per second, and where the entity network fails
-  (the move head or not). *Depends on:* T7b; the user. *Status:* waiting.
+  user), from `python/`: `uv run --group train python -m h3env.train.distill --teacher
+  runs/e25-scale-1/best.pt --config configs/distill/e25.toml --out runs/distill-1` (4 M
+  samples; each evaluation prints the students' seconds; Ctrl-C scores and saves). The report
+  committed (`python/records/distill/distill-1.json`) and read in `E25-log.md`: which kinds fit
+  the teacher best per sample and per second, and where the entity network fails (the move
+  head or not). *Depends on:* T7b (done 2026-10-29); the user. *Status:* next (the user's run).
 - **T7d The A/B.** *Scope:* the best one or two kinds at 20 M on `e25-scale.toml`'s settings
   (from scratch, or from the bench's weights: imitation of the lineage's own network, not of
-  the system actor or a bot), against `e25-scale-1`; the user's machine. *Depends on:* T7c.
+  the system actor or a bot), against `e25-scale-1`; the user's machine; a hex network with
+  `[ppo] minibatches` raised to fit the GPU (`TRAPS.md`, Python). *Depends on:* T7c.
   *Status:* waiting.
 - **T8 Increment 3's checkpoint.** *Scope:* T7c's and T7d's reads put to the user; increment 4
   chosen. *Depends on:* T7d. *Status:* waiting.

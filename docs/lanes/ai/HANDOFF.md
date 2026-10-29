@@ -25,7 +25,8 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   T6 (**`e25-scale-1` #3 the current best**; increment 2 in `E25-archive.md`; AI-Q11: increment
   3 is the network's architecture, refined: a distillation bench over a deeper and a wider MLP,
   a hex convolution network, a hex transformer and the entity network, then A/Bs); T7a (the
-  kinds: `hexconv`, `hexformer`, the MLP's `layers`). **Next:** T7b, the distillation bench.
+  kinds: `hexconv`, `hexformer`, the MLP's `layers`); T7b (the bench, `h3env.train.distill`,
+  `configs/distill/e25.toml`). **Next:** T7c, the bench on the user's GPU (the queue's command).
 - **Open pull requests:** the T5 branch `claude/nice-lamport-fdh8gx` (its pull request once
   ready). `master`'s CI was red after #577 (the adventure lane's bench-check
   `random-play-duel-36` +2.01 %); #580 re-baselined it (merged). Merged: #534, #539, #555, #558,
@@ -42,14 +43,14 @@ Moved to `TRAPS.md`, in three groups: **Ownership** (cross-lane encodings and re
 
 ## Recent sessions
 
-### 2026-10-29 — E25 T5
+### 2026-10-29 — E25 T5, T6, T7a, T7b
 
-- #576 (T4b) merged. The user ran `e25-scale-1` and stopped it at 41.3 M (flat), uploaded its
-  record, metrics and `best.pt`: the record committed and read (`E25-log.md` T5), the run had no
-  final ladder, so its best #3 replayed on the sandbox's CPU over the full report and neutral
-  sets (`battles.py`, `inspect`). The head-to-heads against `e25-bound-1` and `t7-1` need their
-  `best.pt`s (the user's machine): skipped (the user). T6 closed increment 2 (AI-Q11, the
-  user): increment 3 refined (T7a to T8). The sandbox setup's full verify stopped (CI's record).
+- #576 (T4b) merged. The user ran `e25-scale-1`, stopped it at 41.3 M (flat), uploaded its
+  record, metrics and `best.pt`: read (`E25-log.md` T5; no final ladder, so its best replayed on
+  the sandbox's CPU). T6 (the user): `e25-scale-1` #3 the current best, increment 3 the
+  network's architecture (AI-Q11). T7a (`hexnet`, the MLP's depth) and T7b (the distillation
+  bench) built and tested; a CPU smoke of the bench (PPO's minibatches ran out of memory:
+  `TRAPS.md`). The sandbox setup's full verify stopped (CI's record).
 
 ### 2026-10-29 — E25 T4b
 

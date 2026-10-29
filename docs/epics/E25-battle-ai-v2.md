@@ -116,9 +116,10 @@ against the current MLP before any RL run.
   `kind = "hexconv"` and `"hexformer"` (`h3env.train.hexnet`: the stacks drawn on their hexes,
   the entity network's heads, `entity.Pointed`), `field_width`, `field_height`; tests; the costs
   on the sandbox's CPU (`hexconv` 64 × 6 15 times the MLP's operations).
-- [ ] **T7b The distillation bench** (sandbox; a CPU smoke): `h3env.train.distill`, every student
-  trained on the same rollouts of the teacher (`e25-scale-1` #3) to its heads and its value
-  targets, scored on held-out rollouts per head; `configs/e25-distill.toml`.
+- [x] **T7b The distillation bench** (2026-10-29; `E25-log.md` T7b): `h3env.train.distill`,
+  every student trained on the same rollouts of the teacher (`e25-scale-1` #3) to its heads and
+  its λ-returns, scored on held-out rollouts per head and category; `configs/distill/e25.toml`
+  (six students); a CPU smoke (minibatches of 512 rows: PPO's do not fit the hex networks).
 - [ ] **T7c The bench run** (the user's machine) and its read: which kinds go to RL.
 - [ ] **T7d The A/B** (the user's machine, 20 M): the best one or two against `e25-scale-1`.
 - [ ] **T8 Increment 3's checkpoint.**
