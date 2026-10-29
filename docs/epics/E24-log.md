@@ -1480,3 +1480,41 @@ minimap as a still, T3b when it is drawn again); T2b2's numbers from the user's 
   with `master`'s build (`--measure 20`) the same medians (0.5, 1.0, 1.4–1.5 ms), uploads 24.9 →
   25.5 % on `walk-1`, the same standing; unit tests (the walks, the colours, the four sizes, the
   box and its exact scale, the composer's rectangles, box cut and kept frame).
+
+### M3 T3b — the minimap over time (2026-10-29)
+
+On `map-client/e24-m3-t3b`, the user present (T3b kept whole when asked, the reading being larger
+than the queue said: 13 direct call sites and 20 through a wrapper); `master` at a26897f (#563
+merged; CI green). The original data staged from the user's repo folder first; the baseline
+check passed (`verify-once`, clients code 313f991).
+
+- **The reading** (design §4.4, "When it is drawn again"; map entries `minimap_redraw` 0x413790,
+  read, and nine inferred: `minimap_click` 0x40A0C0, `network_map_redraw` 0x405E30,
+  `view_world_run` 0x5FBF90, `hero_relocate` 0x41D930, `adventure_spell_cast` 0x41D090,
+  `visit_and_update` 0x4AAAA0, `hero_battle_on_map` 0x4AAFD0, `battle_aftermath` 0x4AC930,
+  `turn_start_minimap` 0x4CA530): M3's sequences meet a scroll that moves the view (shown at
+  once: T3a had its show argument as 0), a lift that centres the view (`hero_select` with c: a
+  key's step lifting a hero not lifted) and each step's end (`after_step_guard_check` 0x480090's
+  first call, 0x4800A5). The last was found by the recording, not the first reading: `walk-1`'s
+  minimap changed at every step's end (300, 600, …), so the guard's test, set aside as M4's, is
+  every step's; the step's own call (0x4810E6) is a network game's only. The rest (the minimap's
+  click, the view world, teleports, spells, visits, battles, turns, the hero screen) M4's and
+  later.
+- **Built** (design §4.4): the timeline's `Minimap` (the corner and the selected hero's tile at
+  the last draw) in each `Draw`; the live part's `minimap` (`minimap::Shown`); the scene's box and
+  selected hero from it; `Base` with the explored tiles made once with the index, `Tiles` sharing
+  the level's colours (`Arc`) with the heroes over them; `masks.toml` one list (`panels`; T3a's
+  `stills` gone, `h3map.py` and the runbook with it); the trap of the index extended to the
+  explored tiles (`TRAPS.md`).
+- **Checked:** `h3map.py frames` (the minimap unmasked for the run): the original's 13 sequences,
+  their timelines recorded anew (the screens' boxes take in the minimap), every kept screen of
+  459 exact with the viewer (`--reuse` after the build; the old build differed on 48 of 64 frames
+  of `walk-1`, the box running ahead of the original's through a step's frames), every timeline
+  line as the viewer's; `drawn --record` (the 40 situations' digests unchanged, the sequences'
+  459 recorded anew); the window under Xvfb (`walk-1`, `path-objects`, *Tale of two lands*):
+  every frame read back exact, made as the same frame composed afresh, every change the
+  headless loop's; unit tests (the redraws' moments, the scene's box and hero as last drawn, the
+  shared colours); `check.sh` (below).
+- **Measured** (the sandbox, `--measure 20` beside `master`'s build): a median 0.3 → 0.2 ms on
+  `walk-1`, 0.7 and 0.7 on `path-objects`, 0.9 and 0.9 on *Tale of two lands*, uploads the same;
+  callgrind on *Tale of two lands*: a scene 2.33 → 1.55 million instructions.

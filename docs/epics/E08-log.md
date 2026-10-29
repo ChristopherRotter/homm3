@@ -7963,3 +7963,45 @@ and `0017-increment-8.md` (the landing's guards, no flyer's battle on water); `E
 BAT-GEO-004's observations (E8-11 to E8-14). No version.
 
 T69b (batch E8c) queued before T70.
+
+### Increment 8, round 3: T69b, batch E8c (2026-10-29, `adventure/e08-t69b`)
+
+**The cut** (decision 180): whole (recommended; not chosen: in two, the spec and recipe, then the
+run and the score). **Baseline:** `master` 454810a (#565 merged; CI on `master` green, the
+sandbox's light gates passed). The installation's files staged from the user's repo folder for the
+harness as T68a (`Heroes3.exe`, the five DLLs, the four LODs, the sound and video archives,
+`battle-videos.vid`, `maps.tar`, `extracted.tar`). No engine or harness code changed.
+
+**The spec** (`experiments/specs/E08-batch-8c.toml`, stamp `b4df5c67`; a 36 × 36 grass map): row
+E8-17, five Red heroes with Angel Wings and ten Pikemen (1 560 points), each at the west end of a
+pocket closed by rock (columns 10 and 17, the rows above and below), one row of open tiles whose
+only way east crosses water: E8-17a a Flotsam on one water tile, entered from land; E8-17b a
+Flotsam amid three, entered from water; E8-17c three plain water tiles; E8-17d an empty boat on one
+water tile, from land; **E8-17e** (the agent's addition, change freely) an empty boat amid three,
+from water, so the jump at 0x4B2CF3 is tested apart from the flying-only branch 0x4B27FB (a boat
+is exempt from the second, on the list of the first). The far side within the scouting radius,
+read explored before each click. Blue's E8-17x far away for hot seat. **The recipe**
+(`clients/capture/batches/E08-batch-8c.toml`, six steps): a first read (explored, words, the
+boats' records, the starting bonus; the screen kept), then each hero's two clicks with its marks,
+tile, points, treasury and the Flotsam or boat after; existing reads only.
+
+**The run** (one: no random draw decides a path; the screen looked at: the pockets as written):
+E8-17a and E8-17b **no marks**, the heroes stayed with 1 560, the Flotsams (word 0) and the
+treasury unchanged; E8-17c four marks, 1 160; E8-17d two marks over the boat, 1 360, not aboard;
+E8-17e four marks over the boat, 1 160, not aboard; both boats' records unchanged.
+
+**The score** (survey `E08-sea.md` §16): **D-46 confirmed** (decision 179): a flight neither ends
+on nor passes over a water tile holding an entrance of any class but 34, 8 and 85, from land or
+water; VCMI's air layer and ADV-MOV-009's "water (plain or holding an object)" refuted for them;
+T73 amends ADV-MOV-009 with E8-17a to E8-17e as its observations. E8-17e **contradicted** T69's
+re-read: from a node without bit 10, a class not entered or a town jumps from 0x4B2D0B and
+0x4B2D10 to the flying copy at 0x4B2D3D (made when the new node has bit 10, 0x4B2D49), skipping
+only the stop relax; T34a's `E08-hero-movement.md` §3.1 point 6 had it right. D-46's closure is
+the flying-only branch alone (the node loses bit 10: a second-slot stop node, a leaf, no copy).
+
+**The docs:** survey `E08-sea.md` §0, §15 (the re-read's bullet corrected, pointers) and §16;
+`E08-hero-movement.md` §3.1 points 6 and 7; the map entry 0x4B2300; the draft
+`0016-increment-8.md` (the boat crossed by a flight, D-46 confirmed); `E08-design.md` §7's table,
+§15's property, §17, §18 and §19. No version.
+
+T70 (`shared/`) next.

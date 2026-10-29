@@ -20,10 +20,11 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   viewer takes the default (1): give every option a sequence's inputs use.
 - **A sequence's objects' phases and frame steps are 0** (T1b): `frames` writes them (the load's random phases and real time moved the screen's changed boxes between runs); a still's (`set`, `still`) stay the load's, read into its live part.
 - **A level's index holds for the objects it was built for** (M3 T2b1, design §4.2): the
-  painter's `TileIndex` (each tile's draw list, each object's DEF, shape, flag and phase) is
-  built at the map's load; whatever changes the live part's objects (an owner, a picture, a
-  fallen object: the engine's, M4) must build that level's index again, or the view draws the
-  old ones. `scene` (the stills, `render`) builds its own each time.
+  painter's `TileIndex` (each tile's draw list, each object's DEF, shape, flag and phase; since
+  M3 T3b the minimap's level colours with the explored tiles, §4.4) is built at the map's load;
+  whatever changes the live part's objects or explored tiles (an owner, a picture, a fallen
+  object, a hero's sight: the engine's, M4) must build that level's index again, or the view and
+  the minimap draw the old ones. `scene` (the stills, `render`) builds its own each time.
 - **A kept frame draws a cell again only when its draws change** (M3 T2b2, design §4.3): the
   composer compares each 32 × 32 cell's draws (with their DEFs' cycle steps and the flag
   palette's name) with the last scene's and leaves the cell's pixels when they are the same; what

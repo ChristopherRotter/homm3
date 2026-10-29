@@ -3,8 +3,9 @@
 //! walking (`docs/epics/E24-design.md` §3.1, §3.4, §3.5), from a sequence's start and the player's
 //! actions at their milliseconds. Each millisecond gives a [`State`]: what the original's memory
 //! holds (the view's corner, the objects' frame steps, the palette steps, the cursor, the selected
-//! hero, its walk's drawing and the path's arrows) and what its screen shows (the view as last
-//! drawn and the cursor); [`lines`] writes the recorded timeline's lines from them (design §3.2).
+//! hero, its walk's drawing and the path's arrows) and what its screen shows (the view and, since
+//! E24 M3 T3b, the minimap as last drawn, and the cursor); [`lines`] writes the recorded
+//! timeline's lines from them (design §3.2).
 //! The cursor over the view is M3's: [`Unplayable`].
 //!
 //! Per millisecond, as the managers' loop takes it (§3.1): the palette tick when due, the mouse
@@ -374,9 +375,24 @@ pub struct Walk {
     pub offset: [i32; 2],
 }
 
+/// The minimap's last draw (`minimap_draw` 0x412C40; E24 M3 T3b, design §4.4): the view's corner
+/// its box shows and the selected hero's tile, as they were then. A scroll that moves the view
+/// draws it again (`view_scroll` 0x41973E), so does a hero's selection that centres the view
+/// (`hero_select` 0x418046: a step lifting a hero not lifted) and each step's end
+/// (`after_step_guard_check` 0x4800A5); through a step's frames its box and hero stay where they
+/// were.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Minimap {
+    /// The view's corner.
+    pub view: ViewAt,
+    /// The selected hero's tile.
+    pub hero: Option<Pos>,
+}
+
 /// A draw of the view: its corner, the objects' frame steps and the palette steps since the
 /// sequence's 0 (the draw at 0 shows 0 of each: the still the live part at 0 gives), and the walk's
-/// part: the view's offset, the selected hero, its lifted picture and the path's arrows.
+/// part: the view's offset, the selected hero, its lifted picture and the path's arrows; the
+/// minimap as last drawn.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Draw {
     /// The view's corner.
@@ -394,6 +410,8 @@ pub struct Draw {
     pub lifted: Option<[u32; 2]>,
     /// The path's arrows shown (memory's order).
     pub path: Vec<Arrow>,
+    /// The minimap (E24 M3 T3b).
+    pub minimap: Minimap,
 }
 
 /// The state after a millisecond.
@@ -470,6 +488,8 @@ pub struct Loop {
     hero: Option<Hero>,
     /// The selected hero lifted off its tile (the manager's +0x1EC, +0x20C).
     lifted: bool,
+    /// The minimap's last draw.
+    minimap: Minimap,
     walk: Walk,
     /// The path shown, in its order from the hero (its last arrow the destination), each arrow with
     /// the step onto it.
@@ -516,6 +536,11 @@ impl Loop {
             at: rules.drawn_at(start.pointer),
             shown: true,
         };
+        // The minimap at 0 as the still shows it (the harness set the view through it).
+        let minimap = Minimap {
+            view: start.view,
+            hero: start.hero.map(|h| h.at),
+        };
         let mut l = Self {
             last: start.size.saturating_sub(1),
             step,
@@ -537,9 +562,11 @@ impl Loop {
                 hero: start.hero,
                 lifted: None,
                 path: Vec::new(),
+                minimap,
             },
             hero: start.hero,
             lifted: false,
+            minimap,
             walk: Walk {
                 group: 0,
                 frame: 0,
@@ -741,8 +768,9 @@ impl Loop {
 
     /// A scroll step (`view_scroll` 0x4195C0): the scroll's time now, the edge cursor with `edge`,
     /// the corner moved and held within the limits; a corner that moved puts the lifted hero back
-    /// on its tile (`adventure_hero_stop` 0x417680) and is drawn and shown at once, with the
-    /// objects' step when the redraw is due. Whether it moved.
+    /// on its tile (`adventure_hero_stop` 0x417680), draws the minimap (0x41973E, shown at once)
+    /// and the view, shown at once, with the objects' step when the redraw is due. Whether it
+    /// moved.
     fn scroll(&mut self, t: u32, direction: Direction, edge: bool) -> bool {
         self.scroll_at = t;
         if edge {
@@ -766,6 +794,7 @@ impl Loop {
         self.view.x = x;
         self.view.y = y;
         self.lifted = false;
+        self.draw_minimap();
         self.draw();
         self.step_objects(t);
         true
@@ -956,6 +985,9 @@ impl Loop {
                 sound.step_end(t, middle, hero.at, moving.last, self.walk.frame);
             }
             self.walk.offset = [0, 0];
+            // The guard's test after the step (`after_step_guard_check` 0x480090, from 0x48169D)
+            // draws the minimap first, shown at once (0x4800A5).
+            self.draw_minimap();
             if !moving.key {
                 // The messages' kinds 1, 8, 0x20 and 0x200 end the walk (0x407FA7): a key-down,
                 // Ctrl's too (M2 T6a, the reviewer's R1-1), and a button; the loop reads up to the
@@ -1044,12 +1076,14 @@ impl Loop {
     }
 
     /// The selected hero lifted off its tile (`hero_select` with b clear: +0x20C, the standing
-    /// group by its facing, frame 0).
+    /// group by its facing, frame 0); with `centred` (its c) the view centred on it and the
+    /// minimap drawn (0x418046; the whole screen shown at once, 0x41809B).
     fn lift(&mut self, t: u32, centred: bool) {
         self.lifted = true;
         self.stand();
         if centred {
             self.centre();
+            self.draw_minimap();
         }
         // Its sounds (0x4180A0): the ambient sounds around the view's middle, restarted; the
         // music of the hero's terrain when it centred the view.
@@ -1113,8 +1147,18 @@ impl Loop {
         arrows
     }
 
+    /// The minimap drawn (`minimap_draw` 0x412C40) and shown: the view's corner and the selected
+    /// hero's tile now.
+    fn draw_minimap(&mut self) {
+        self.minimap = Minimap {
+            view: self.view,
+            hero: self.hero.map(|h| h.at),
+        };
+        self.drawn.minimap = self.minimap;
+    }
+
     /// The view drawn and shown: at the objects' step and the palettes now, the walk's offset, the
-    /// hero and the arrows.
+    /// hero and the arrows; the minimap as last drawn.
     fn draw(&mut self) {
         self.drawn = Draw {
             view: self.view,
@@ -1124,6 +1168,7 @@ impl Loop {
             hero: self.hero,
             lifted: self.lifted.then_some([self.walk.group, self.walk.frame]),
             path: self.arrows(),
+            minimap: self.minimap,
         };
     }
 

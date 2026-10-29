@@ -337,9 +337,12 @@ human player's modes 0–2):
 6. From a node **without bit 10** (over a blocked tile, water, an unexplored tile, or a start node as
    in §3.3) no step enters an entrance of a class visited from the neighbouring tile ("cannot be
    entered", `object_settings` +0) or a town (98) as a stop: no visit from up there; a flying node
-   still passes over it (point 7).
+   still passes over it (point 7; the jumps at 0x4B2D0B and 0x4B2D10 go to its copy: E08 T69b,
+   batch E8c's E8-17e, a boat crossed from water, `E08-sea.md` §16).
 7. A flying node reaching an entrance is also stored without bit 10 (a second relax, 0x4B2D3D):
-   the flight may go on over it without the visit.
+   the flight may go on over it without the visit. Only when the new node has bit 10 (0x4B2D49):
+   a water entrance of point 4's other classes has lost it, so a flight neither stops on nor
+   passes it (D-46, confirmed by batch E8c, `E08-sea.md` §16).
 
 `pathfinder_run` skips the guard test for a popped flying node (0x56BBCE: flags bits 4 or 7): a
 flying hero's path goes on past guarded tiles, where a walking hero's ends (E08-battles §2.2); the

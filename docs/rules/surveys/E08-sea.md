@@ -6,7 +6,8 @@ boarding, landing, sailing, the events on water and the writer (§0 to §6); **T
 the battle at sea, the four pickups (Sea Chest 82, Shipwreck Survivor 86, Flotsam 29, Ocean
 Bottle 59), the commands, decisions, events and the observation, batch E8's plan, the rule ids, a
 fresh agent's second reading and the checkpoint's `ADV-Q32` (§7 to §14; whole, decision 161).
-**T69** scored batch E8 (§15) and re-read the flyer's search (D-45 reverted, D-46).
+**T69** scored batch E8 (§15) and re-read the flyer's search (D-45 reverted, D-46). **T69b** ran
+and scored batch E8c (§16): D-46 confirmed; the re-read's 0x4B2CF3 corrected.
 Input, not rules (`README.md`): a fact becomes binding when a task writes it into the catalog with
 its sources and tests.
 
@@ -894,8 +895,9 @@ does not arise. The arrow key's and the water walker's halves matched the readin
   (0x4B29C1 to 0x4B29E4; the computer's own paths, mode 4, not read).
 - The node is relaxed with the entered tile's entrance bit as its stop flag (0x4B2D12 to
   0x4B2D38); from a node without bit 10 (from water) a class "cannot be entered" or a town gets
-  no node at all (0x4B2CF3 to 0x4B2D10). The flying copy without the stop flag (the second relax,
-  0x4B2D3D to 0x4B2D4F) needs bit 10 in the new node, which it has lost: none is made.
+  no stop node (0x4B2CF3 to 0x4B2D10; **corrected by T69b**: the jumps go to the flying copy, not
+  past it, §16). The flying copy without the stop flag (the second relax, 0x4B2D3D to 0x4B2D4F)
+  needs bit 10 in the new node, which it has lost: none is made.
 - `pathfinder_relax` stores a node without bit 10 in the tile's second slot (0x4B1C4B to
   0x4B1C5D), and `pathfinder_build_path` builds the click's path from the destination's first
   slot only (level × 2 + 0, 0x56A1D6 to 0x56A21F; it must be reached, 0x56A275): **no path ends
@@ -919,6 +921,7 @@ monsters on water in the shipped maps, §1). Decision 179 (ADV-Q35): **tested fi
 batch E8c (T69b, before T70): a flyer whose only way to a target crosses a water tile with a
 Flotsam, beside controls (plain water; an empty boat); until it runs the drafts and the design
 carry the code's side, the row confirms or reverts it, and T73 amends ADV-MOV-009 if it confirms.
+**Confirmed** by batch E8c (§16).
 
 **What else the rows show:**
 
@@ -958,4 +961,49 @@ and -016 (E8-6, E8-8), -017 (E8-9), -018 (E8-7: a boat only), GAM-BAT-001 amende
 E8-14, E8-15 on land), GAM-BAT-003 amended (E8-11, E8-12), ADV-OBJ-007 and ADV-MOV-011 amended
 (E8-14). ADV-FOG-006 and -008 had no row. The rules already written take theirs with the build:
 ADV-MOV-006 (E8-4's first run), ADV-MON-007 and ADV-GRD-001 (E8-13, E8-15), ADV-MOV-009 (batch
-E8c).
+E8c, §16).
+
+## 16. Batch E8c scored (T69b)
+
+Played by the capture harness under Wine in T69b (`experiments/results/E08-batch-8c.md`, one run:
+no random draw decides a path; Complete 4.0, Easy, hot seat, the starting bonus random; spec
+`experiments/specs/E08-batch-8c.toml`). Five Red flyers (Angel Wings, ten Pikemen: 1 560
+points), each at the west end of a pocket closed by rock whose only way east crosses its water,
+the far side explored before the click (ADV-MOV-008). E8-17e was added at T69b's start (decision
+180) to test the branch at 0x4B2CF3 apart from the flying-only one.
+
+| Row | Observed | Reading (T69) | Other source | Verdict |
+|---|---|---|---|---|
+| E8-17a: a Flotsam on one water tile, from land | **no marks**; the hero on (11, 4), 1 560 kept; the Flotsam (word 0) and the treasury unchanged | no path | ADV-MOV-009, VCMI 1.7.5: a path over, 1 360 | **conclusive**: the reading |
+| E8-17b: a Flotsam amid three water tiles, from water | **no marks**; (11, 9), 1 560; the same unchanged | no path | ADV-MOV-009, VCMI: a path over, 1 160 | **conclusive**: the reading |
+| E8-17c: three plain water tiles (control) | four marks (12, 14 to 15, 14), green; on (15, 14), 1 160 | a path over, 1 160 | the same | confirmed |
+| E8-17d: an empty boat on one water tile, from land | two marks, green; on (13, 19), 1 360; not aboard (status 0x0); the boat's record unchanged (in use, no owner or captain, nobody aboard) | a path over, 1 360 | the same | confirmed |
+| E8-17e: an empty boat amid three water tiles, from water | four marks, green; on (15, 24), 1 160; not aboard; the boat unchanged | **no path** (0x4B2CF3: no node) | `E08-hero-movement.md` §3.1 point 6, design §7, VCMI: a path over | **contradicted**: the re-read corrected (below) |
+
+**D-46 confirmed** (decision 179): a flight neither ends on nor passes over a water tile holding
+an entrance of any class but a hero's (34), a boat's (8) or class 85's, entered from land
+(E8-17a) or from water (E8-17b); plain water and an empty boat are crossed at the step prices
+(100 a tile, E8-17c to E8-17e), and a flight over a boat boards nothing. The drafts and the design
+keep the code's side; T73 amends ADV-MOV-009 (increment 5's "water (plain or holding an
+object)") with E8-17a to E8-17e as its observations and closes those tiles to a flight in
+`passage` and `Reach`. VCMI's air layer (every tile flyable) is refuted for them.
+
+**The re-read corrected** (`docs/exe/map.toml` 0x4B2300). At 0x4B2CEB the popped node's bit 10 is
+tested; without it, an entrance (+0xD bit 0x10) of a class not entered (`object_settings` +0,
+0x63AA58) jumps from 0x4B2D0B, and a town (98) from 0x4B2D10, to **0x4B2D3D, the flying copy**:
+only the stop relax (0x4B2D12 to 0x4B2D38) is skipped. The copy is made when the new node is
+flying (0x90) on an entrance and **has bit 10** (0x4B2D49), with bit 10 cleared. T69 had read the
+jump as going past the copy; T34a's `E08-hero-movement.md` §3.1 points 6 and 7 had it right. So:
+
+- A boat's tile keeps bit 10 (§3.1 point 4: a normal step), so a flight passes it from land
+  (E8-17d) and from water (E8-17e); from water it boards nothing (no stop node there), from land
+  it boards only when the move ends there.
+- **D-46's closure is the flying-only branch alone** (0x4B27FB to 0x4B282D): the node onto such a
+  water entrance loses bit 10, so it is a stop node in the tile's second slot (no path ends there,
+  `pathfinder_build_path`), a leaf for a human's mouse path (`pathfinder_run` 0x56BB7C), and it
+  gets no flying copy (0x4B2D49). E8-17b's Flotsam from water takes the same branch (the 0x4B2CF3
+  jump then reaches a copy that is not made).
+
+Not tested: a water walker (its search drops a water entrance other than 34, 8, 85: §15), a hero in
+a boat or class 85 crossed by a flight, a land entrance reached by a flight from water (point 6's
+copy, by this reading), the computer's paths.

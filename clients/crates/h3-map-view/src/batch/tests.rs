@@ -162,7 +162,8 @@ fn the_names_a_scene_draws() {
                     terrains: vec!["DirtTl.def".to_string(), "sandtl.def".to_string()],
                     entries: [8, 9],
                 }),
-                colours,
+                colours: alloc::sync::Arc::new(colours),
+                heroes: vec![],
             }),
             Draw::Radar {
                 def: "Radar.def".to_string(),
