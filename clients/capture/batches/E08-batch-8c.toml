@@ -1,0 +1,54 @@
+# E08 batch E8c played by the capture harness (E08 T69b; h3adv.py batch): the procedure of
+# experiments/specs/E08-batch-8c.toml as steps, on Easy, with T68a's and T68b's reads (README,
+# "Boats and the sea"). Hot seat, Red and Blue human; only Red's day 1 is played. Row E8-17 (D-46):
+# five flyers, each in a pocket closed by rock whose only way east crosses water: a Flotsam on one
+# water tile, a Flotsam amid three, three plain water tiles, an empty boat on one, an empty boat
+# amid three. The first step reads
+# every far side's exploration and the Flotsams' words before any hero moves; its screen is kept
+# (`dump`) for an agent to look at the pockets.
+
+spec = "experiments/specs/E08-batch-8c.toml"
+players = ["Red", "Blue"]
+difficulty = "easy"
+
+[[step]]
+encounter = "E8-17"
+hero = "E8-17a"
+dump = "E8-17-start"
+record = { "E8-17a (a Flotsam, from land) | the far side explored" = "explored:13,4", "E8-17b (a Flotsam, from water) | the far side explored" = "explored:15,9", "E8-17c (plain water) | the far side explored" = "explored:15,14", "E8-17d (an empty boat, from land) | the far side explored" = "explored:13,19", "E8-17e (an empty boat, from water) | the far side explored" = "explored:15,24", "E8-17a (a Flotsam, from land) | the Flotsam's word before" = ["word:12,4", "object:12,4"], "E8-17b (a Flotsam, from water) | the Flotsam's word before" = ["word:13,9", "object:13,9"], "E8-17c (plain water) | the Flotsam's word before" = "text:no Flotsam", "E8-17d (an empty boat, from land) | the Flotsam's word before" = "text:no Flotsam", "E8-17e (an empty boat, from water) | the Flotsam's word before" = "text:no Flotsam" }
+note = { "E8-17a worn at the start (the starting bonus)" = "hero[E8-17a]:equipment", "E8-17b worn at the start" = "hero[E8-17b]:equipment", "E8-17c worn at the start" = "hero[E8-17c]:equipment", "E8-17d worn at the start" = "hero[E8-17d]:equipment", "E8-17e worn at the start" = "hero[E8-17e]:equipment", "backpack at the start (E8-17a)" = "hero:backpack", "the boats' records at the start (E8-17d's, E8-17e's)" = ["boat_record:12,19", "boat_record:13,24"], "boats in use at the start" = "boats:used" }
+
+[[step]]
+encounter = "E8-17"
+hero = "E8-17a"
+walk = [13, 4]
+record = { "E8-17a (a Flotsam, from land) | the marks (or none)" = ["path_tiles", "mark"], "E8-17a (a Flotsam, from land) | tile after" = "hero:tile", "E8-17a (a Flotsam, from land) | movement points before / after" = ["before:hero:points", "hero:points"], "E8-17a (a Flotsam, from land) | wood, gold before / after" = ["before:resource:wood", "before:resource:gold", "resource:wood", "resource:gold"], "E8-17a (a Flotsam, from land) | the Flotsam after (word, or gone)" = ["word:12,4", "object:12,4"] }
+note = { "E8-17a's messages" = "messages" }
+
+[[step]]
+encounter = "E8-17"
+hero = "E8-17b"
+walk = [15, 9]
+record = { "E8-17b (a Flotsam, from water) | the marks (or none)" = ["path_tiles", "mark"], "E8-17b (a Flotsam, from water) | tile after" = "hero:tile", "E8-17b (a Flotsam, from water) | movement points before / after" = ["before:hero:points", "hero:points"], "E8-17b (a Flotsam, from water) | wood, gold before / after" = ["before:resource:wood", "before:resource:gold", "resource:wood", "resource:gold"], "E8-17b (a Flotsam, from water) | the Flotsam after (word, or gone)" = ["word:13,9", "object:13,9"] }
+note = { "E8-17b's messages" = "messages" }
+
+[[step]]
+encounter = "E8-17"
+hero = "E8-17c"
+walk = [15, 14]
+record = { "E8-17c (plain water) | the marks (or none)" = ["path_tiles", "mark"], "E8-17c (plain water) | tile after" = "hero:tile", "E8-17c (plain water) | movement points before / after" = ["before:hero:points", "hero:points"], "E8-17c (plain water) | wood, gold before / after" = ["before:resource:wood", "before:resource:gold", "resource:wood", "resource:gold"], "E8-17c (plain water) | the Flotsam after (word, or gone)" = "text:no Flotsam" }
+note = { "E8-17c's messages" = "messages" }
+
+[[step]]
+encounter = "E8-17"
+hero = "E8-17d"
+walk = [13, 19]
+record = { "E8-17d (an empty boat, from land) | the marks (or none)" = ["path_tiles", "mark"], "E8-17d (an empty boat, from land) | tile after" = "hero:tile", "E8-17d (an empty boat, from land) | movement points before / after" = ["before:hero:points", "hero:points"], "E8-17d (an empty boat, from land) | wood, gold before / after" = ["before:resource:wood", "before:resource:gold", "resource:wood", "resource:gold"], "E8-17d (an empty boat, from land) | the Flotsam after (word, or gone)" = "text:no Flotsam" }
+note = { "E8-17d's messages" = "messages", "E8-17d's status flags after (hex; bit 18 the boat)" = "hero:status", "the boat's record after E8-17d" = "boat_record:12,19", "boats in use after E8-17d" = "boats:used" }
+
+[[step]]
+encounter = "E8-17"
+hero = "E8-17e"
+walk = [15, 24]
+record = { "E8-17e (an empty boat, from water) | the marks (or none)" = ["path_tiles", "mark"], "E8-17e (an empty boat, from water) | tile after" = "hero:tile", "E8-17e (an empty boat, from water) | movement points before / after" = ["before:hero:points", "hero:points"], "E8-17e (an empty boat, from water) | wood, gold before / after" = ["before:resource:wood", "before:resource:gold", "resource:wood", "resource:gold"], "E8-17e (an empty boat, from water) | the Flotsam after (word, or gone)" = "text:no Flotsam" }
+note = { "E8-17e's messages" = "messages", "E8-17e's status flags after (hex; bit 18 the boat)" = "hero:status", "the boat's record after E8-17e" = "boat_record:13,24", "boats in use after E8-17e" = "boats:used" }
