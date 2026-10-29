@@ -363,3 +363,16 @@ A candidate becomes an entry here only once it is confirmed for SoD (by an exper
 - Defaults: fixed in every profile
 - Regression test: `crates/h3-adventure/src/state/tests/events.rs`, `an_event_on_a_guarded_tile_fires_after_the_guards_visit` (gone, off its tile or another player's hero: nothing) and `a_flyer_stopped_on_a_guarded_event_meets_its_guard`; `crates/h3-game/src/tests/events.rs`, `an_event_on_a_guarded_tile_fires_once_the_guards_visit_is_over`
 - Decided by / date: the agent's classification at E08 T62b1's opening reading (state-corrupting: `AGENTS.md`), recorded in decision 151's cut; recorded by E08 T62b2, the fire after the guard's visit built by E08 T63b
+
+### ADV-QUIRK-32 — A 65th boat is dropped at load
+- Class: exploit-fix (no flag: the engine keeps no bound of the original's on the map's records, E08 decision 164)
+- Context / rules affected: adventure, ADV-SEA-001 (boats on the map)
+- Original behavior: the game keeps at most 64 boat records (`create_boat` 0x4BB250 fails with −1 when 64 are in use; survey `E08-sea.md` §2), so a map's 65th boat is not created at load, and no boat can be built or summoned while 64 are in use.
+- Intended/expected behavior: one boat per water tile at most, no bound on their number (ADR-0016 point 1: a persistent table by boat index).
+- Impact: unreachable on the shipped maps (118 boats on 41 maps, at most 15 on one, Myth and Legend's); a made map with more would lose boats.
+- Community status: documented on the wiki (Boat: "There is a limit of 64 boats on the map"); VCMI keeps boats as map objects without a cap.
+- Sources: code reading (survey §2), the wiki.
+- Flag: none (always fixed)
+- Defaults: fixed in every profile
+- Regression test: `crates/h3-adventure/src/state/tests/boats.rs`, `a_map_holds_more_boats_than_the_original_s_64`
+- Decided by / date: the user 2026-10-28 (ADV-Q32; decisions 164, 166: not reproduced, no flag); recorded by E08 T72

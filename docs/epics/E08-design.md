@@ -46,7 +46,7 @@ version); a hero's boat, points and day's maximum are the adventure's (§6).
 
 | Class | Becomes | Body |
 |---|---|---|
-| 8 boat | `AdventureSetup::boats`: a `BoatSetup { tile, kind }`, the kind the template's subclass (0 to 2), facing 2, no owner, nobody aboard | none (`load_object_body` case 8 reads nothing) |
+| 8 boat | `MapSetup::boats` (built so by T72: `GameSetup` carries the static layer's setup): a `BoatSetup { tile, kind }`, the kind the template's subclass (0 to 2), facing 2, no owner, nobody aboard | none (`load_object_body` case 8 reads nothing) |
 | 29 Flotsam, 82 Sea Chest, 86 Shipwreck Survivor | typed objects `base:flotsam`, `base:sea_chest`, `base:shipwreck_survivor` | none |
 | 59 Ocean Bottle | `base:ocean_bottle` | the message read and dropped (the client reads the map's text) |
 | 124 hole | `base:hole`, lying on its picture's tiles | none |
@@ -110,7 +110,9 @@ version); a hero's boat, points and day's maximum are the adventure's (§6).
   `DIRECTIONS` is the build's, with a test against E8-15's record); `gone` once its hero left the
   map (the record stays, so indexes never move).
 - **`HeroOnMap`** gains `boat: Option<u32>` (the boat aboard) and `max_movement: u32` (the day's
-  maximum, ADR-0016 point 3), set by `start_game`, `start_turn`, a boarding and a landing.
+  maximum, ADR-0016 point 3), set by `start_game`, `start_turn`, a boarding and a landing (T72
+  built the first two by the surface, §14's `day_points` branch: `movement::day_maximum`; the
+  boarding's state change is `AdventureState::put_aboard`, tests only until T73).
 - **Invariants** (`check_invariants` in the properties, and the setup's checks): every empty boat's
   tile is set in `empty` and no other tile is; a boat aboard has exactly one hero holding it, on a
   water tile, and no empty boat lies there; a hero on water is in a boat; no two boats on a tile.

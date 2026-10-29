@@ -257,6 +257,21 @@ pub struct MapSetup {
     pub tiles: Vec<TileSetup>,
     /// The objects, in the map's order.
     pub objects: Vec<ObjectSetup>,
+    /// The empty boats, in the map's order: their indexes (ADV-SEA-001, E08 T72). Boats are no
+    /// objects (ADR-0016 point 1: they move); the state keeps them apart from the static map.
+    pub boats: Vec<BoatSetup>,
+}
+
+/// An empty boat as the setup places it (ADV-SEA-001, E08 T72; ADR-0016 point 1): the map's boat
+/// (class 8), which the state gives the original's facing 2, no owner, no captain and nobody
+/// aboard.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct BoatSetup {
+    /// The water tile it lies on: its template's visitable tile.
+    pub tile: Pos,
+    /// Its type, appearance only (the boat's pictures and a hero's flag on it): the template's
+    /// subclass, 0 to 2 in the original (`AVXboat0` to `AVXboat2`).
+    pub kind: u8,
 }
 
 /// A hero on the map as the setup places it.
@@ -453,6 +468,10 @@ pub enum SetupError {
         /// Why.
         error: ArmyError,
     },
+    /// The boat at this index lies off the map or off water, on a tile an object blocks or is
+    /// visited from, on an earlier boat's tile or under a hero (ADV-SEA-001, E08 T72, decision
+    /// 164: no bound on the number of boats beyond one a tile).
+    Boat(usize),
 }
 
 impl fmt::Display for SetupError {
@@ -499,6 +518,7 @@ impl fmt::Display for SetupError {
             }
             Self::HeroTile { hero, error } => write!(f, "hero {}: {error}", hero.raw()),
             Self::Army { hero, error } => write!(f, "hero {}'s army: {error}", hero.raw()),
+            Self::Boat(boat) => write!(f, "boat {boat} lies where no boat may"),
         }
     }
 }

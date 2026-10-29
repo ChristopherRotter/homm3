@@ -10,7 +10,10 @@
 //! monsters' and the special grounds' counts, since E08 T21a the guarded piles' and since E08 T29
 //! the level limits, the banned skills and the levels at load of the maps that import whole
 //! (`docs/formats/h3m.md`, "Import"), since E08 T42 the Tutorial's hero's day's points
-//! (checked), and since E08 T62b2 the events: their flags and the tiles they lie on.
+//! (checked), since E08 T62b2 the events: their flags and the tiles they lie on, and since E08 T72
+//! the sea: the boats by type, the sea's pickups by type, the holes and Favorable Winds (a hero on
+//! water is counted by its reason, `Unsupported::HeroOnWater`; a boat the setup refuses fails the
+//! static layer's validation).
 //!
 //! `cargo run -p h3-map --example original_data -- original-data/install`
 //!
@@ -390,8 +393,18 @@ fn census(
         add(two, usize::from(guards.army.len() > 1));
     }
     events(setup, rules, &mut add);
+    sea(setup, rules, &mut add);
     let mut lying = BTreeMap::<(u16, u16, u8), usize>::new();
-    for object in setup.objects.iter().filter(|o| o.drawn.bits() != 0) {
+    let ground = |object: &&h3_adventure::ObjectSetup| {
+        matches!(
+            object
+                .object_type
+                .and_then(|ty| rules.adventure().object_type(ty))
+                .map(|ty| &ty.kind),
+            Some(ObjectKind::Ground { .. })
+        )
+    };
+    for object in setup.objects.iter().filter(ground) {
         add("special grounds", 1);
         add(
             "special grounds of a picture the import lacks",
@@ -410,6 +423,43 @@ fn census(
         "tiles two or more special grounds lie on",
         lying.values().filter(|&&n| n > 1).count(),
     );
+}
+
+/// Counts the sea's objects (E08 T72, design §4): the boats and the maps with boats, the boats by
+/// type, the sea's pickups by type, the holes, Favorable Winds and those of a picture the import
+/// lacks (they lie on one tile).
+fn sea(setup: &MapSetup, rules: &GameRuleset, add: &mut impl FnMut(&'static str, usize)) {
+    add("boats", setup.boats.len());
+    add("maps with boats", usize::from(!setup.boats.is_empty()));
+    for boat in &setup.boats {
+        add(
+            ["boats of type 0", "boats of type 1", "boats of type 2"][usize::from(boat.kind)],
+            1,
+        );
+    }
+    for object in &setup.objects {
+        let Some(ty) = object
+            .object_type
+            .and_then(|ty| rules.adventure().object_type(ty))
+        else {
+            continue;
+        };
+        match ty.key.as_str() {
+            "base:flotsam" => add("sea pickups: Flotsam", 1),
+            "base:sea_chest" => add("sea pickups: Sea Chests", 1),
+            "base:shipwreck_survivor" => add("sea pickups: Shipwreck Survivors", 1),
+            "base:ocean_bottle" => add("sea pickups: Ocean Bottles", 1),
+            "base:hole" => add("holes", 1),
+            "sod:favorable_winds" => {
+                add("Favorable Winds", 1);
+                add(
+                    "Favorable Winds of a picture the import lacks",
+                    usize::from(object.drawn.bits() == 1),
+                );
+            }
+            _ => {}
+        }
+    }
 }
 
 /// Counts the events (E08 T62b2, ADV-OBJ-007): how many, those that fire for a computer, those

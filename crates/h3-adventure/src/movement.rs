@@ -13,11 +13,11 @@ use h3_content::{
     NATIVE_SKIPS_LEADING_NEUTRALS, Ruleset, TerrainId,
 };
 use h3_contracts::{ArmyStack, HeroId};
-use h3_heroes::{HeroDetails, Movement, land_points, movement_speed, scouting_radius};
+use h3_heroes::{HeroDetails, Movement, land_points, movement_speed, scouting_radius, sea_points};
 
 use crate::ruleset::{AdventureRuleset, Passage, RoadId};
 use crate::setup::Pos;
-use crate::state::StaticTile;
+use crate::state::{HeroOnMap, StaticTile};
 
 /// A hero's details in the game's store of heroes by [`HeroId`] (ADR-0016 point 3), if the store
 /// holds them. An adventure played without the game (this crate's own tests) passes an empty
@@ -64,6 +64,35 @@ pub fn day_points(
 ) -> u32 {
     let base = land_table_points(core, part, details, army);
     details.map_or(base, |details| land_points(details, core, base))
+}
+
+/// A hero's day's movement points at sea (ADV-MOV-001, HER-ADV-009; E08 T72):
+/// `h3_heroes::sea_points` on the part's sea table (Navigation's level, its specialists' growth,
+/// the Necklace of Ocean Guidance and the two Hats; the army's speeds do not count, survey
+/// `E08-sea.md` §4.2); without `details` the table's first entry.
+// rule: ADV-MOV-001
+pub fn sea_day_points(
+    core: &Ruleset,
+    part: &AdventureRuleset,
+    details: Option<&HeroDetails>,
+) -> u32 {
+    let table = part.params().sea_points();
+    details.map_or(table[0], |details| sea_points(details, core, table))
+}
+
+/// A hero's day's maximum on its surface (ADV-MOV-002, E08 T72; ADR-0016 point 3): its
+/// [`sea_day_points`] in a boat, else its [`day_points`] for its army.
+pub(crate) fn day_maximum(
+    core: &Ruleset,
+    part: &AdventureRuleset,
+    details: Option<&HeroDetails>,
+    hero: &HeroOnMap,
+) -> u32 {
+    if hero.boat.is_some() {
+        sea_day_points(core, part, details)
+    } else {
+        day_points(core, part, details, &hero.army)
+    }
 }
 
 /// A hero's scouting radius (ADV-FOG-001, E08 T40): `h3_heroes::scouting_radius` (HER-ADV-006:

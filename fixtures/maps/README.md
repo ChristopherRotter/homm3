@@ -17,7 +17,10 @@ file's test reads each committed map and checks that it is still its plan's map 
 change of a committed map changes its content hash and so invalidates every replay that names it
 (ADV-Q2): regenerate only on purpose, with `H3_WRITE_FIXTURES=1 cargo test -p h3-map --lib
 tests::fixtures` (the rewards map: `tests::rewards_map`; the full maps: `tests::full_maps`), and
-say why in the commit message.
+say why in the commit message. E08 T72 rewrote the duel, the XL and the army maps once: their
+blocker templates' class moved from 124, which the import now types as a hole, to 118 (a crater, still a
+blocker), so each imports to the same static map as before; their replays were re-recorded with
+their commands unchanged.
 
 | File | Map | Played by |
 |---|---|---|

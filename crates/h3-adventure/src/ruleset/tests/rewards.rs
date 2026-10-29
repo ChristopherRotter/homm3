@@ -98,6 +98,7 @@ fn find() -> FindDef {
             luck: 0,
             mark: 0,
         }),
+        leaves: false,
     }
 }
 
@@ -259,6 +260,7 @@ fn compiles_the_reward_kinds() {
                 luck: 0,
                 mark: 0
             }),
+            leaves: false,
         })
     );
     assert_eq!(kind(10), ObjectKind::PandoraBox);
@@ -1107,5 +1109,212 @@ fn the_hash_sees_every_reward_parameter() {
         let packs = with_kind(n, |k| *k = kind.clone());
         let hash = hash_of(&compile_rewards(&packs).unwrap());
         assert_ne!(hash, base, "{n}: {kind:?}");
+    }
+}
+
+/// A find of the sea's shape (E08 T72; the Sea Chest's): nothing, fixed resources, fixed resources
+/// with an artifact beside them; a full backpack's gold instead of the whole entry; it leaves.
+fn sea_find() -> FindDef {
+    FindDef {
+        draws: vec![
+            (20, FindContentDef::Nothing),
+            (
+                70,
+                FindContentDef::Fixed {
+                    resources: vec![(key("t:gold"), 1500)],
+                    artifact: None,
+                },
+            ),
+            (
+                10,
+                FindContentDef::Fixed {
+                    resources: vec![(key("u:gem"), 2), (key("t:gold"), 1000)],
+                    artifact: Some(vec![ArtifactClass::Treasure]),
+                },
+            ),
+        ],
+        full_backpack: Some(TurnDef::Give(vec![(key("t:gold"), 1500)])),
+        question: false,
+        bonus: None,
+        leaves: true,
+    }
+}
+
+// covers: ADV-PIK-014, ADV-PIK-015, ADV-PIK-016, ADV-OBJ-002
+#[test]
+fn the_sea_s_kinds_compile_and_are_checked() {
+    let core = skill_core();
+    let resource = |k: &str| {
+        let index = core
+            .resources()
+            .iter()
+            .position(|r| r.key.as_str() == k)
+            .unwrap();
+        ResourceId::from_index(index).unwrap()
+    };
+    let (gold, gem) = (resource("t:gold"), resource("u:gem"));
+    let sea = |f: FindDef| with_kind(9, move |k| *k = ObjectKindDef::Find(f));
+    let kind_of = |part: &AdventureRuleset, n: usize| {
+        let id = part.object_type_by_key(&format!("u:reward_{n}")).unwrap();
+        part.object_type(id).unwrap().kind.clone()
+    };
+    let part = compile_rewards(&sea(sea_find())).unwrap();
+    // The fixed resources sorted by resource, as every price and gift.
+    let mut beside = vec![(gold, 1000), (gem, 2)];
+    beside.sort();
+    let find = Find {
+        draws: vec![
+            (20, FindContent::Nothing),
+            (
+                70,
+                FindContent::Fixed {
+                    resources: vec![(gold, 1500)],
+                    artifact: None,
+                },
+            ),
+            (
+                10,
+                FindContent::Fixed {
+                    resources: beside,
+                    artifact: Some(vec![ArtifactClass::Treasure]),
+                },
+            ),
+        ],
+        full_backpack: Some(Turn::Give(vec![(gold, 1500)])),
+        question: false,
+        bonus: None,
+        leaves: true,
+    };
+    assert_eq!(kind_of(&part, 9), ObjectKind::Find(find));
+    // A find that leaves is visited from a boat only: its visit is T74's.
+    assert!(kind_of(&part, 9).effect().is_none());
+    // The survivor's lost turn; a find of fixed resources alone has no turn.
+    let lost = FindDef {
+        full_backpack: Some(TurnDef::Lost),
+        ..sea_find()
+    };
+    let part = compile_rewards(&sea(lost)).unwrap();
+    let ObjectKind::Find(find) = kind_of(&part, 9) else {
+        panic!("not a find");
+    };
+    assert_eq!(find.full_backpack, Some(Turn::Lost));
+    let mut flotsam = sea_find();
+    flotsam.draws.truncate(2);
+    flotsam.draws[0].0 = 30;
+    flotsam.full_backpack = None;
+    assert!(compile_rewards(&sea(flotsam)).is_ok());
+    // A message, a ground of the sea and a hole: never visited until T74, or never at all.
+    for def in [
+        ObjectKindDef::Message { leaves: true },
+        ObjectKindDef::Message { leaves: false },
+        ObjectKindDef::SeaGround,
+        ObjectKindDef::Hole,
+    ] {
+        let part = compile_rewards(&with_kind(10, |k| *k = def.clone())).unwrap();
+        let kind = kind_of(&part, 10);
+        assert!(kind.effect().is_none(), "{kind:?}");
+        let expected = match def {
+            ObjectKindDef::Message { leaves } => ObjectKind::Message { leaves },
+            ObjectKindDef::SeaGround => ObjectKind::SeaGround,
+            _ => ObjectKind::Hole,
+        };
+        assert_eq!(kind, expected);
+    }
+    // The checks: a fixed entry's resources and classes, its artifact needing a turn that is not
+    // the drawn one.
+    let invalid = |f: &dyn Fn(&mut FindDef)| {
+        let mut def = sea_find();
+        f(&mut def);
+        compile_rewards(&sea(def)).unwrap_err()
+    };
+    let reason = |reason| AdventureCompileError::InvalidObjectType {
+        key: "u:reward_9".into(),
+        reason,
+    };
+    let fixed = |resources: Vec<(ContentKey, u32)>, artifact| FindContentDef::Fixed {
+        resources,
+        artifact,
+    };
+    assert_eq!(
+        invalid(&|f| f.draws[1].1 = fixed(vec![], None)),
+        reason("a find's fixed resources are empty")
+    );
+    assert_eq!(
+        invalid(&|f| f.draws[1].1 = fixed(vec![(key("t:gold"), 0)], None)),
+        reason("a price or gift is 0 or above MAX_GAIN")
+    );
+    assert_eq!(
+        invalid(&|f| {
+            f.draws[1].1 = fixed(vec![(key("t:gold"), 1)], Some(vec![ArtifactClass::Special]));
+        }),
+        reason("artifact classes name Special")
+    );
+    assert_eq!(
+        invalid(&|f| f.draws[1].1 = fixed(vec![(key("t:jade"), 1)], None)),
+        AdventureCompileError::UnknownResource("t:jade".into())
+    );
+    assert_eq!(
+        invalid(&|f| f.full_backpack = None),
+        reason("a find has a full backpack's turn exactly when it may hold an artifact")
+    );
+    assert_eq!(
+        invalid(&|f| {
+            f.draws[1].1 = resources([1, 2], &["t:wood"]);
+            f.full_backpack = Some(TurnDef::Drawn);
+        }),
+        reason("a find's drawn turn is beside a fixed entry's artifact")
+    );
+    // The hash sees every new parameter (ruleset part v13).
+    let base = hash_of(&compile_rewards(&sea(sea_find())).unwrap());
+    let changes: Vec<Vec<AdventurePack>> = vec![
+        sea(FindDef {
+            leaves: false,
+            ..sea_find()
+        }),
+        sea(FindDef {
+            full_backpack: Some(TurnDef::Lost),
+            ..sea_find()
+        }),
+        sea(FindDef {
+            full_backpack: Some(TurnDef::Stays),
+            ..sea_find()
+        }),
+        sea({
+            let mut f = sea_find();
+            f.draws[1].1 = fixed(vec![(key("t:gold"), 1400)], None);
+            f
+        }),
+        sea({
+            let mut f = sea_find();
+            f.draws[2].1 = fixed(
+                vec![(key("t:gold"), 1000)],
+                Some(vec![ArtifactClass::Minor]),
+            );
+            f
+        }),
+        sea({
+            let mut f = sea_find();
+            f.draws[2].1 = fixed(vec![(key("t:gold"), 1000)], None);
+            f.full_backpack = None;
+            f
+        }),
+        with_kind(10, |k| *k = ObjectKindDef::Message { leaves: true }),
+    ];
+    for (i, packs) in changes.iter().enumerate() {
+        assert_ne!(
+            hash_of(&compile_rewards(packs).unwrap()),
+            base,
+            "change {i}"
+        );
+    }
+    let kinds = [
+        ObjectKindDef::Message { leaves: true },
+        ObjectKindDef::Message { leaves: false },
+        ObjectKindDef::SeaGround,
+        ObjectKindDef::Hole,
+    ]
+    .map(|def| hash_of(&compile_rewards(&with_kind(10, |k| *k = def)).unwrap()));
+    for (i, a) in kinds.iter().enumerate() {
+        assert!(kinds[i + 1..].iter().all(|b| a != b), "{i}");
     }
 }

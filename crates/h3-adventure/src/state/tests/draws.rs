@@ -145,6 +145,7 @@ pub(super) fn rules_with(
                     full_backpack,
                     question: false,
                     bonus: None,
+                    leaves: false,
                 })
             };
             part.object_types.extend([
@@ -222,6 +223,33 @@ pub(super) fn rules_with(
                         ],
                         Some(TurnDef::Give(vec![(key("t:gold"), 1000)])),
                     ),
+                ),
+                // E08 T72: the Sea Chest's table (a find that leaves).
+                ty(
+                    "t:sea_chest",
+                    ObjectKindDef::Find(FindDef {
+                        draws: vec![
+                            (20, FindContentDef::Nothing),
+                            (
+                                70,
+                                FindContentDef::Fixed {
+                                    resources: vec![(key("t:gold"), 1500)],
+                                    artifact: None,
+                                },
+                            ),
+                            (
+                                10,
+                                FindContentDef::Fixed {
+                                    resources: vec![(key("t:gold"), 1000)],
+                                    artifact: Some(vec![ArtifactClass::Treasure]),
+                                },
+                            ),
+                        ],
+                        full_backpack: Some(TurnDef::Give(vec![(key("t:gold"), 1500)])),
+                        question: false,
+                        bonus: None,
+                        leaves: true,
+                    }),
                 ),
                 ty(
                     "t:pyramid",
@@ -682,6 +710,29 @@ fn a_find_holds_what_its_table_draws() {
         .filter(|(resolved, _)| *resolved != Resolved::Nothing)
         .count();
     assert!((20..70).contains(&held), "{held} of 200 hold an artifact");
+}
+
+// covers: ADV-PIK-015
+#[test]
+fn a_sea_find_holds_its_fixed_entry_with_the_artifact_beside_it() {
+    // E08 T72 (design §11): the Sea Chest holds nothing (20 %), 1 500 gold (70 %), or 1 000 gold
+    // and a treasure artifact (10 %), one draw of 0 to 99 and the artifact from the pool.
+    let rules = rules(true);
+    let mut seen = [0; 3];
+    for (resolved, contents) in outcomes(&rules, "t:sea_chest", &Holds::Nothing, &Bans::default()) {
+        let gold = |amount| contents == [(GOLD, amount)];
+        match resolved {
+            Resolved::Nothing if contents.is_empty() => seen[0] += 1,
+            Resolved::Nothing if gold(1500) => seen[1] += 1,
+            Resolved::Artifact(artifact) if gold(1000) => {
+                assert!([RING, CHARM, AMULET].contains(&artifact), "{artifact:?}");
+                seen[2] += 1;
+            }
+            other => panic!("not a sea chest's: {other:?} with {contents:?}"),
+        }
+    }
+    assert!(seen.iter().all(|&n| n > 0), "{seen:?}");
+    assert!((100..180).contains(&seen[1]), "{seen:?}");
 }
 
 // covers: ADV-TCH-008, GAM-SET-003

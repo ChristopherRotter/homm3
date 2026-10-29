@@ -8099,3 +8099,80 @@ gates passed, the code verified by CI). No original data staged (none needed).
   (T71 and the inbox entry out, T72 next).
 
 T72 (the import, the kinds and the state) next.
+
+### Increment 8, round 5: T72, the import, the kinds and the part, the state, the views (2026-10-29, `adventure/e08-t72`, `cross-lane`)
+
+**The cut** (decision 183): whole, one pull request (the agent recommended two by crate). **Baseline:**
+`master` 43c8cdd (#571 merged, CI green on its merge); the sandbox's light gates passed on its code
+(CI's fingerprint); the original data staged from the user's computer (`Heroes3.exe`, both bitmap
+archives, `maps.tar`, `extracted.tar`).
+
+- **The part** (`h3-adventure`'s `ruleset/`, `h3-pack-adventure`, the packs; adventure ruleset part
+  v13): the find's extension (design §5): `FindContent::Fixed { resources, artifact }` (fixed
+  resources with an optional artifact beside them), `Turn::Lost` (nothing, the find emptied),
+  `Find::leaves`; the checks: a fixed entry's resources distinct, at least one, each from 1 to
+  `MAX_GAIN`, its classes a draw's; its artifact counts for the turn's need, and a drawn turn
+  beside it is refused. `ObjectKind::{Message { leaves }, SeaGround, Hole}`; their hash tags 20 to
+  22, a fixed entry 3, the lost turn 4, the leaving after the bonus. `AdventureParams::sea_points`
+  (the table `h3_heroes::sea_points` reads) and `sea_ground` (`[2, 3]`, 1 ≤ numerator ≤
+  denominator); `BattleTerrains::{sea, deck, boats}` (the game checks the two battlefields against
+  the battle part, `GameRuleset::new`). The pack format: `holds = { fixed = { resources, artifact }
+  }`, `full_backpack = "lost"`, `leaves`, `message = { leaves }`, `sea_ground = {}`, `hole = {}`,
+  `sea_points`, `sea_ground`, `[params.battle]`'s `sea`, `deck`, `boats`. The packs: `base`'s
+  Flotsam, Sea Chest, Shipwreck Survivor, Ocean Bottle and hole, `sod`'s Favorable Winds, the
+  sea's parameters (the synthetic pack's too).
+- **The find's draw and search** (`state/draws.rs`, `state/rewards.rs`): a fixed entry's resources
+  into the object's contents and its artifact from the pool; the search gives a fixed entry's
+  resources beside a received artifact (not the Wagon's, a drawn turn's), and a lost turn empties
+  the find. A find that leaves and a message have no visit yet (`ObjectKind::effect`: T74's, from
+  a boat only), so a step onto them is refused as any unbuilt visit's.
+- **The setup and the state** (design §6; adventure state hash v16, game state hash v20):
+  `MapSetup::boats` (`BoatSetup { tile, kind }`), `SetupError::Boat` (off the map or water, on a
+  tile an object blocks or is visited from, on an earlier boat's tile; no hero stands on water, so
+  none under a boat); `state/boats.rs`: `Boat` (tile, kind, facing 2, owner, captain, aboard,
+  gone) in a persistent table by index and the empty boats' `BitGrid`, none for a map without
+  boats; `AdventureState::{boats, boat, is_empty_boat, check_boats}` (§6's invariants as one
+  conjunction, so a valid state runs every operand); `HeroOnMap::{boat, max_movement}`, the
+  start of the game and the turn start setting the day's maximum by the surface
+  (`movement::day_maximum`: `sea_day_points` in a boat, `day_points` on land); the static map's
+  `StaticTile::{winds, hole}` (`mark_grounds`, formerly `mark_no_native`: the tile's top ground,
+  a special ground or the sea's, decides `no_native` and `winds`; a hole marks every tile it lies
+  on); grounds of the sea and holes may share a type and anchor (`SharedAnchor` leaves them out,
+  as the special grounds). The hash: each hero's maximum and boat after its points, the boats
+  after the visits' block.
+- **The views** (design §12): `AdventureObservation::boats` (`BoatView { tile, kind, facing }`, in
+  tile order, where the viewer sees heroes), `HeroView::boat` (its boat's type), `OwnHeroView::
+  max_movement`.
+- **The import** (`h3-map`; map import v14): class 8 → `MapSetup::boats` (the template's one
+  visitable tile, else `ImportError::BoatTile`; the subclass 0–2, else `Subclass`); 29, 59, 82,
+  86, 124, 225 typed; a hole and the winds on their pictures' tiles (`GROUND_PICTURES`: 88
+  entries); `Unsupported::HeroOnWater`. The census (`examples/original_data.rs` gains the sea's
+  counts): every static layer imports and validates, the same 8 maps whole, no hero on water; 118
+  boats on 41 maps (20, 51, 47 by type), 2 019 Flotsam, 826 Sea Chests, 362 Survivors, 29 bottles,
+  732 holes, 154 winds (every picture in the table); the special grounds' census unchanged.
+- **The generated maps** (`h3-map`'s `tests/play.rs`): their blocker class moved from 124 (now the
+  hole) to 118 (a crater); the duel, the XL and the army maps rewritten, importing as before.
+- **Replays:** the 21 adventure goldens re-recorded with their options (the scripted eight from
+  their commands), their commands unchanged: every hash, the headers' versions and the three maps'
+  hashes moved. **The AI lane's** two bots tables' adventure fingerprint moved to the part's new
+  hash (`python/records/bots-*-v1.json`, `cross-lane`, decision 183).
+- **Rules:** ADV-SEA-001 (`verified`: E8-2, E8-16), ADV-SEA-007 (implemented: E8-5 the original's
+  side), ADV-PIK-014 to -016 (`verified`: E8-6, E8-8; their visits T74's), ADV-FOG-008 new;
+  ADV-MOV-001, -002, ADV-OBJ-002 and ADV-FOG-006 amended; `ADV-QUIRK-32` recorded (no flag).
+- *Agent's calls (change freely):* the boats in `MapSetup` (the static layer's setup), not a new
+  `AdventureSetup` field: `GameSetup` carries the `MapSetup`, so no lane outside builds a new
+  field; the turn start's sea branch built now (design §14 put it with T74): the maximum T72 adds
+  is set by the surface from the start; an empty boat shows where heroes show (explored, or the
+  fringe under `ADV-QUIRK-1`), as the original draws a boat object; the find's search gives a
+  fixed entry's resources beside its artifact for any find (the Sea Chest's shape on land too);
+  a ground of the sea on top of a special ground hides it for `no_native` and the reverse for
+  `winds` (the tile's top ground; no shipped map overlaps them); a boat's subclass above 2 is an
+  import error.
+- **Tests:** `h3-adventure`'s `ruleset/tests.rs` (the parameters' checks and hash, the battle's sea
+  fields), `ruleset/tests/rewards.rs` (`the_sea_s_kinds_compile_and_are_checked`),
+  `state/tests/boats.rs` (the setup's boats and refusals, 80 boats, a hero in a boat's sea points
+  at the turn start, the invariants broken seven ways, the hash, the marks), `state/tests/draws.rs`
+  (a Sea Chest's table), `state/tests/rewards.rs` (a fixed entry's search, a lost turn),
+  `observe/tests.rs` (the boats a player sees); `h3-pack-adventure`'s pack tests; `h3-game`'s
+  ruleset check; `h3-map`'s `tests/import.rs` (the classes, the pictures, a boat's tile and type, a
+  hero on water, the errors), `tests/sea.rs` (the sea map imports).

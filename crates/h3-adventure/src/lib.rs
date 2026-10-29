@@ -61,10 +61,10 @@ pub use command::{
     BattleStart, Choice, ChoiceKind, Combatant, Defender, HeroGains, Meeting, NoRoom, Offer,
     OfferKind, Pick, Sink, UniversityVisit, Viewers,
 };
-pub use movement::{day_points, diagonal_cost, land_table_points, native_terrain};
+pub use movement::{day_points, diagonal_cost, land_table_points, native_terrain, sea_day_points};
 pub use observe::{
-    AdventureObservation, HeroView, Known, KnownObject, MonsterView, ObjectView, OwnHeroView,
-    TileView,
+    AdventureObservation, BoatView, HeroView, Known, KnownObject, MonsterView, ObjectView,
+    OwnHeroView, TileView,
 };
 pub use persistent::BitGrid;
 pub use reach::Reach;
@@ -79,8 +79,9 @@ pub use ruleset::{
     TerrainWalkerDef, Turn, TurnDef, Visit,
 };
 pub use setup::{
-    AdventureSetup, ArmyError, Bans, EventSetup, Guards, HeroSetup, Holds, MapSetup, MonsterSetup,
-    ObjectSetup, Pos, RewardRecord, Scenery, Seat, SetupError, StandError, TileMask, TileSetup,
+    AdventureSetup, ArmyError, Bans, BoatSetup, EventSetup, Guards, HeroSetup, Holds, MapSetup,
+    MonsterSetup, ObjectSetup, Pos, RewardRecord, Scenery, Seat, SetupError, StandError, TileMask,
+    TileSetup,
 };
 pub use split::{TileRand, split, split_with_second};
 
@@ -90,7 +91,7 @@ pub use split::{TileRand, split, split_with_second};
 /// no edge to the hero model.
 pub use h3_heroes::{ArtifactInstance, HeroReward, PrimarySkill, ScholarGift};
 pub use state::{
-    AdventureState, BACKGROUND_RADIUS, HeroOnMap, MapObject, Monster, Resolved, StaticMap,
+    AdventureState, BACKGROUND_RADIUS, Boat, HeroOnMap, MapObject, Monster, Resolved, StaticMap,
     StaticTile, Visits,
 };
 
@@ -107,8 +108,8 @@ pub use state::{
 /// holds from the map (increment 7's kinds) and a monster's treasure artifact. v14 (E08 T61b): what
 /// the build drew for each object, and the visits' block (none, or the heroes' marks, the
 /// players' knowledge and the emptied objects). v15 (E08 T62b2): each player's seat (its colour
-/// and whether it counts as human).
-pub const ADVENTURE_STATE_HASH_VERSION: u32 = 15;
+/// and whether it counts as human). v16 (E08 T72): the boats, each hero's boat and day's maximum.
+pub const ADVENTURE_STATE_HASH_VERSION: u32 = 16;
 
 /// Version of the adventure ruleset part's canonical hash encoding (ADR-0015 point 2; owned by the
 /// adventure lane). v2 (E08 T5a): the setup bounds and the army slots. v3 (E08 T6b): the starting
@@ -118,5 +119,7 @@ pub const ADVENTURE_STATE_HASH_VERSION: u32 = 15;
 /// T20b1): the resource a monster's price to join is paid in. v9 (E08 T29): the terrains' costs
 /// by Pathfinding level. v10 (E08 T40): the fly and water-walk prices, the terrain walkers and a
 /// ground's loss of the native price (Cursed Ground's `no_native`). v11 (E08 T50): a stack's most
-/// creatures. v12 (E08 T61a): increment 7's kinds and their parameters.
-pub const ADVENTURE_RULESET_HASH_VERSION: u32 = 12;
+/// creatures. v12 (E08 T61a): increment 7's kinds and their parameters. v13 (E08 T72): the sea's
+/// kinds (the find's fixed entries, its lost turn and its leaving, a message, a ground of the sea,
+/// a hole), the sea points, the sea ground's share and the battle terrains at sea.
+pub const ADVENTURE_RULESET_HASH_VERSION: u32 = 13;

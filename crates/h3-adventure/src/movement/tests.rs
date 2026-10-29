@@ -78,6 +78,8 @@ fn tile(terrain: TerrainId, road: Option<RoadId>) -> StaticTile {
         blocked: false,
         visitable: false,
         no_native: false,
+        winds: false,
+        hole: false,
     }
 }
 

@@ -126,7 +126,7 @@ every one reads to its padding, and every body kind but the hero placeholder occ
 Versions the reader rejects: Heroes Chronicles (`0x1D`), HotA (`0x20`), WoG (`0x33`) and every
 other code.
 
-## Import (E08 T5a, T6a, T12a, T13a, T18b, T19a, T20a2a, T21a, T29, T49a, T49b, T54, T61a, T61b; `MAP_IMPORT_VERSION` 13)
+## Import (E08 T5a, T6a, T12a, T13a, T18b, T19a, T20a2a, T21a, T29, T49a, T49b, T54, T61a, T61b, T72; `MAP_IMPORT_VERSION` 14)
 
 `h3_map::import` turns a raw map and the game's rules into `h3_game::GameSetup`, which the game
 then validates (ADR-0015 point 4); `import_map` is its static layer. The import maps codes to
@@ -220,13 +220,25 @@ content and draws nothing; it rejects what the current increment cannot represen
 - **Special grounds** (v6, E08 T20a2a, ADV-GRD-001): 21 → `base:cursed_ground`, 46 →
   `base:magic_plains`, 222–224 and 226–231 → `sod:clover_field`, `sod:cursed_ground`,
   `sod:evil_fog`, `sod:fiery_fields`, `sod:holy_ground`, `sod:lucid_pools`, `sod:magic_clouds`,
-  `sod:magic_plains`, `sod:rocklands`; 225 (Favorable Winds) stays a blocker without tiles. A
-  ground lies on its picture's width × height tiles to the left of and above its anchor (its
+  `sod:magic_plains`, `sod:rocklands`; 225 (Favorable Winds) stayed a blocker without tiles
+  until v14. A ground lies on its picture's width × height tiles to the left of and above its anchor (its
   templates block and are visited nowhere): the size of the picture the template names, from
   `codes::GROUND_PICTURES` (the first two bytes of each picture's `.msk` in `H3sprite.lod` and
   `H3ab_spr.lod`, read 2026-10-15; the original places every object on its `.msk`'s rectangle,
   0x514610, 0x505B20; VCMI `ObjectTemplate::readMsk` the same), else 1 × 1 (the original's
   `default.msk`).
+- **The sea** (v14, E08 T72, design §4 of `docs/epics/E08-design.md`): a boat (class 8) is no object
+  but one of the map's boats (`MapSetup::boats`, ADV-SEA-001): its template's one visitable tile
+  (else `BoatTile`) and its subclass 0–2 as its type (else `Subclass`), no body (the original's
+  loader reads none); the setup refuses a boat off water, on a tile an object blocks or is
+  visited from, or on another boat's (`SetupError::Boat`). 29 → `base:flotsam`, 82 →
+  `base:sea_chest`, 86 → `base:shipwreck_survivor`, 59 → `base:ocean_bottle` (its message read and
+  dropped: the text is the client's), 124 → `base:hole`, 225 → `sod:favorable_winds`; a hole and
+  the winds lie on their pictures' tiles as a ground (`GROUND_PICTURES` gains the eight holes',
+  every one 1 × 1, and the winds' eight, 6 × 4, 8 × 6, 6 × 6, 8 × 3, 3 × 6, 3 × 3, 5 × 2 and
+  2 × 5 for `AVXfw0` to `AVXfw7`, read by E08 T67). Unsupported: a hero object on water
+  (`HeroOnWater`, ADV-SEA-007, D-44). The generated maps' blockers (`h3-map`'s `tests/play.rs`)
+  moved from class 124 to 118 (a crater), which stays a blocker.
 - **Placed heroes** (class 34): owner colour → player (a colour nobody plays is an error), hero
   type by original id → its key (the packs' `# original id`), the tile its template marks
   visitable (the editor's one column left of the position), the army's stacks by slot (creature by
@@ -323,7 +335,13 @@ grounds' census as T21b's. The guarded objects by kind (T61a's guards): 36 piles
 with two stacks, the 39 guards records as before), 33 artifacts (all ask, 18 with two or more
 stacks), 3 scrolls (all ask: each has a text), 12 boxes and 87 events (none asks). 26 maps ban
 spells (210 bits), 111 ban artifacts (1 061 bits); every map that imports whole validates with its
-bans.
+bans. E08 T72's run (import v14, the 160 shipped maps): every static layer imports and validates,
+its boats included; the same 8 import and validate whole, the other outcomes as T61b's; no hero
+on water. The sea's census: 118 boats on 41 maps (types 0, 1, 2: 20, 51, 47); 2 019 Flotsam,
+826 Sea Chests, 362 Shipwreck Survivors, 29 Ocean Bottles; 732 holes and 154 Favorable Winds,
+every winds picture in the table; the special grounds' census as T21b's (1 861, every picture in
+the table); 9 typed objects of one type on one anchor in the same 5 maps (grounds, holes and
+winds, which the setup allows).
 
 ## The subset we write (E04a T2)
 

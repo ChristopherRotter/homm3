@@ -213,9 +213,11 @@ fn a_player_sees_where_other_heroes_stand_and_its_own_in_full() {
                 id: own.id,
                 owner: RED,
                 pos: p(2, 2),
+                boat: None,
                 own: Some(OwnHeroView {
                     army: own.army.clone(),
                     movement: own.movement,
+                    max_movement: own.max_movement,
                     formation: own.formation,
                     tactics: true,
                     marks: Vec::new(),
@@ -229,6 +231,7 @@ fn a_player_sees_where_other_heroes_stand_and_its_own_in_full() {
                 id: HeroId::new(4),
                 owner: BLUE,
                 pos: p(6, 3),
+                boat: None,
                 own: None,
             })
         );
@@ -470,6 +473,55 @@ fn a_typed_object_shows_whole_once_a_tile_it_covers_is_seen() {
         assert_eq!(
             state.observe(&rules.0, &rules.1, RED).tile(p(3, 3)),
             Some(&TileView::Seen(*state.map().tile(p(3, 3)).unwrap()))
+        );
+    }
+}
+
+// covers: ADV-FOG-006, ADV-FOG-008
+#[test]
+fn a_player_sees_the_empty_boats_and_each_seen_hero_s_boat() {
+    // E08 T72: empty boats at (3, 3) and (6, 4), explored by red, (3, 8) on red's fringe and
+    // (14, 13) hidden from it; blue's hero 4 boards the one at (6, 4).
+    let marks = [(3, 3, 'b'), (6, 4, 'b'), (3, 8, 'b'), (14, 13, 'b')];
+    for faithful in [false, true] {
+        let rules = movement_rules(faithful);
+        let rows = rows(&marks);
+        let rows: Vec<&str> = rows.iter().map(String::as_str).collect();
+        let mut setup = crate::testing::world(&rows, 1, four_heroes());
+        for (boat, kind) in setup.map.boats.iter_mut().zip([1, 2, 0, 1]) {
+            boat.kind = kind;
+        }
+        let mut state = crate::testing::started(&rules, &setup).unwrap();
+        state.put_aboard(HeroId::new(4), 1);
+        let boat = |x, y, kind| BoatView {
+            tile: p(x, y),
+            kind,
+            facing: 2,
+        };
+        // Where red sees heroes it sees the empty boats, in tile order; never the boarded one.
+        let red = state.observe(&rules.0, &rules.1, RED);
+        let mut expected = vec![boat(3, 3, 1)];
+        if faithful {
+            expected.push(boat(3, 8, 0));
+        }
+        assert_eq!(red.boats, expected, "faithful {faithful}");
+        // Of a hero in a boat every viewer that sees it sees the boat's type, its owner its day's
+        // maximum too.
+        assert_eq!(red.hero(HeroId::new(4)).unwrap().boat, Some(2));
+        assert_eq!(red.hero(HeroId::new(1)).unwrap().boat, None);
+        let blue = state.observe(&rules.0, &rules.1, BLUE);
+        assert_eq!(blue.boats, [boat(3, 3, 1), boat(3, 8, 0), boat(14, 13, 1)]);
+        let own = blue.hero(HeroId::new(4)).unwrap();
+        let hero = state.hero(HeroId::new(4)).unwrap();
+        assert_eq!(own.boat, Some(2));
+        assert_eq!(
+            own.own.as_ref().map(|o| o.max_movement),
+            Some(hero.max_movement)
+        );
+        // A viewer that is not a player sees no boat.
+        assert_eq!(
+            state.observe(&rules.0, &rules.1, PlayerId::new(5)).boats,
+            []
         );
     }
 }

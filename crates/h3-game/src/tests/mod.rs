@@ -519,6 +519,7 @@ fn part_with(core: &Ruleset, chances: Vec<u8>, slots: u8) -> AdventureRuleset {
                         luck: 0,
                         mark: 0,
                     }),
+                    leaves: false,
                 }),
             ),
             // E08 T62b1: Pandora's Box and a Pyramid of 4 imps and a stack of 2 gogs
@@ -581,6 +582,9 @@ fn part_with(core: &Ruleset, chances: Vec<u8>, slots: u8) -> AdventureRuleset {
                 underground: key("t:grass"),
                 coast: key("t:rock"),
                 coast_battlefield: key("t:shore"),
+                sea: key("t:rock"),
+                deck: key("t:deck"),
+                boats: key("t:boats"),
             }),
             // The original's five dispositions and a sixth of aggression 3; the price to join in
             // gold (E08 T20b1).
@@ -591,6 +595,8 @@ fn part_with(core: &Ruleset, chances: Vec<u8>, slots: u8) -> AdventureRuleset {
             }),
             fly_cost: [cost; 4],
             water_walk_cost: [cost; 4],
+            sea_points: [1500, 2250, 3000, 3750],
+            sea_ground: [2, 3],
         }),
         // Difficulty 0 starts with 3 000 gold for a human, 1 with 2 000 (E08 T13a).
         starting_resources: [3000, 2000]
@@ -642,8 +648,9 @@ fn battle_part_with(
         creatures.push(row("t:elf", 9, 5, [3, 5], 15));
     }
     let pack = BattlePack {
-        // The coast's and, since E08 T20a2a, the holy ground's.
-        battlefields: ["t:shore", "t:holy"]
+        // The coast's and, since E08 T20a2a, the holy ground's; since E08 T72 the deck and the
+        // boats.
+        battlefields: ["t:shore", "t:holy", "t:deck", "t:boats"]
             .map(|k| BattlefieldDef {
                 key: key(k),
                 own_obstacles: false,
@@ -769,6 +776,7 @@ fn setup() -> GameSetup {
             levels: 1,
             tiles,
             objects: vec![],
+            boats: vec![],
         },
         heroes: vec![
             GameHeroSetup {
@@ -985,6 +993,17 @@ fn the_parts_must_belong_to_the_core() {
         GameRuleset::new(Arc::clone(&other), Arc::clone(&part), Arc::new(unholy)),
         Err(RulesetMismatch)
     );
+    // And the deck's and the boats' (E08 T72).
+    for field in ["t:deck", "t:boats"] {
+        let without = battle_part_with(&other, 7, |pack| {
+            pack.battlefields.retain(|b| b.key.as_str() != field);
+        });
+        assert_eq!(
+            GameRuleset::new(Arc::clone(&other), Arc::clone(&part), Arc::new(without)),
+            Err(RulesetMismatch),
+            "{field}"
+        );
+    }
     let rules = GameRuleset::new(other, part, battle).unwrap();
     assert_eq!(rules.core().creature_count(), 4);
     assert_eq!(rules.adventure().params().max_players(), 3);

@@ -1,17 +1,16 @@
 //! The experiment writer's sea objects (E08 T67: batch E8's maps; survey
 //! `docs/rules/surveys/E08-sea.md` §5, CLT-Q5): empty boats, the sea's four pickups, a hole,
-//! Favorable Winds, a hero and a monster on water read back as written, and the map imports.
-//! Increment 8's kinds are T72's: until then the new classes import as blockers and Favorable Winds
-//! as a ground without a type.
+//! Favorable Winds, a hero and a monster on water read back as written, and the map imports: since
+//! E08 T72 with the boats as the map's boats, the pickups, the hole and Favorable Winds typed, and a
+//! hero on water refused (D-44).
 
 use super::import::SOD;
 use super::limits;
 use crate::model::{Body, RawMap, Text};
 use crate::writer as w;
+use crate::{ImportError, Unsupported};
 use crate::{import, read};
-use h3_adventure::{SetupError, StandError};
-use h3_contracts::HeroId;
-use h3_game::GameSetupError;
+use h3_adventure::{BoatSetup, Pos, TileMask};
 
 /// The game's `Objects.txt` lines of the classes written here (E08 T67): the three boats,
 /// Flotsam, the Sea Chest, the Shipwreck Survivor, the Ocean Bottle, a grass hole and Favorable
@@ -208,31 +207,55 @@ fn the_sea_s_objects_read_back_as_written() {
     );
 }
 
+// covers: ADV-SEA-001, ADV-SEA-007, ADV-OBJ-002
 #[test]
 fn the_sea_map_imports() {
-    // The hero on water imports, and the setup's check refuses its tile (T72's import refuses
-    // it first: D-44, decision 163).
-    let setup = import(&written(), &SOD).unwrap();
+    // The hero on water is refused (ADV-SEA-007; D-44, decisions 163, 178).
     assert_eq!(
-        setup.validate(&SOD),
-        Err(GameSetupError::Adventure(SetupError::HeroTile {
-            hero: HeroId::new(1),
-            error: StandError::Terrain,
-        }))
+        import(&written(), &SOD),
+        Err(ImportError::Unsupported(Unsupported::HeroOnWater(2)))
     );
-    // Without it the map imports and validates: increment 8's classes are blockers until T72
-    // (the boats' records, the pickups' kinds, Favorable Winds' type).
+    // Without it the map imports and validates (E08 T72): the boats are the map's boats on their
+    // visitable tiles with their types, no objects; the pickups, the bottles, the hole and the
+    // winds typed, the winds on their picture's 3 × 3 tiles and the hole on its tile.
     let mut map = sea_map();
     map.objects.remove(2);
     let m = read(&w::gzip(&w::write(&map).unwrap()), &limits()).unwrap();
     let setup = import(&m, &SOD).unwrap();
     setup.validate(&SOD).unwrap();
     assert_eq!(setup.heroes.len(), 1);
-    let objects = &setup.map.objects;
-    // The winds, the boats, the pickups, the bottles and the hole; the monster last.
-    assert_eq!(objects.len(), 11);
-    assert!(
-        objects[..10].iter().all(|o| o.object_type.is_none()),
-        "{objects:?}"
+    let at = |x, y| Pos::new(x, y, 0);
+    assert_eq!(
+        setup.map.boats,
+        [(at(12, 6), 0), (at(12, 8), 1), (at(12, 10), 2)]
+            .map(|(tile, kind)| BoatSetup { tile, kind })
     );
+    let part = SOD.adventure();
+    let keys: Vec<Option<&str>> = setup
+        .map
+        .objects
+        .iter()
+        .map(|o| {
+            o.object_type
+                .and_then(|ty| part.object_type(ty))
+                .map(|ty| ty.key.as_str())
+        })
+        .collect();
+    assert_eq!(
+        keys,
+        [
+            Some("sod:favorable_winds"),
+            Some("base:flotsam"),
+            Some("base:sea_chest"),
+            Some("base:shipwreck_survivor"),
+            Some("base:ocean_bottle"),
+            Some("base:ocean_bottle"),
+            Some("base:hole"),
+            Some("base:monster"),
+        ]
+    );
+    let drawn: Vec<TileMask> = setup.map.objects.iter().map(|o| o.drawn).collect();
+    assert_eq!(drawn[0], TileMask::from_bits(0x07_0707));
+    assert_eq!(drawn[6], TileMask::from_bits(1));
+    assert!(drawn[1..6].iter().all(|d| *d == TileMask::default()));
 }

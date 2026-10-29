@@ -24,11 +24,18 @@
 //!                                  # 0 to 3 (ADV-MOV-009)
 //! water_walk_cost = [140, 140, 120, 100] # a water walker's step from water by its level
 //!                                  # (ADV-MOV-010)
+//! sea_points = [1500, 2250, 3000, 3750] # E08 T72: a day's points at sea by Navigation level
+//!                                  # 0 to 3 (HER-ADV-009), none 0
+//! sea_ground = [2, 3]              # a boat's step price from a tile a ground of the sea tops,
+//!                                  # times 2 / 3 truncated (ADV-SEA-004); 1 <= first <= second
 //!
 //! [params.battle]                  # optional (E08 T19a, GAM-BAT-001): a battle on the map is
 //! underground = "subterranean"     # fought on this terrain underground, else on a coast tile
 //! coast = "desert"                 # on this one with this battlefield (a key of the battle
-//! coast_battlefield = "shore"      # part), else on the tile's terrain
+//! coast_battlefield = "shore"      # part), else on the tile's terrain; E08 T72: with a hero
+//! sea = "water"                    # in a boat on this terrain, on the deck with one, on the
+//! deck = "deck"                    # boats with both (battle part keys)
+//! boats = "boats"
 //!
 //! [params.monsters]                # optional (E08 T20a2a): without it a map holds no monster
 //! aggression = [[-4, -4], [1, 7]]  # bounds by disposition code, from 0 (ADV-MON-002)
@@ -95,9 +102,13 @@
 //! # find = { draws = [{ chance = 20, holds = { artifact = ["minor"] } },
 //! #          { chance = 80, holds = "nothing" }], full_backpack = { give = { gold = 1000 } } }
 //! #                                # holds: "nothing", { artifact = [...] }, { resources =
-//! #                                # { amount = [1, 5], resources = ["wood"] } }; full_backpack:
-//! #                                # { give = {...} }, "drawn", "stays"; question = true;
-//! #                                # bonus = { morale = -3, luck = 0, mark = 0 }
+//! #                                # { amount = [1, 5], resources = ["wood"] } }, E08 T72
+//! #                                # { fixed = { resources = { gold = 1000 }, artifact =
+//! #                                # ["treasure"] } } (the artifact optional); full_backpack:
+//! #                                # { give = {...} }, "drawn", "stays", "lost"; question = true;
+//! #                                # bonus = { morale = -3, luck = 0, mark = 0 }; leaves = true
+//! # message = { leaves = true }    # E08 T72: the Ocean Bottle (leaves: false if left out)
+//! # sea_ground = {}                # E08 T72: also hole = {}, no parameters
 //! # pyramid = { split = { creature = "gold_golem", count = 40 }, fixed = { creature =
 //! #             "diamond_golem", stacks = [10, 10] }, level = 5, looted = { luck = -2, mark = 1 } }
 //!
@@ -248,6 +259,8 @@ struct ParamsDto {
     monsters: Option<MonstersDto>,
     fly_cost: [NonZeroU16; 4],
     water_walk_cost: [NonZeroU16; 4],
+    sea_points: [u32; 4],
+    sea_ground: [u16; 2],
 }
 
 #[derive(Deserialize)]
@@ -264,6 +277,9 @@ struct BattleDto {
     underground: String,
     coast: String,
     coast_battlefield: String,
+    sea: String,
+    deck: String,
+    boats: String,
 }
 
 #[derive(Deserialize, Default, Clone, Copy)]
@@ -336,6 +352,16 @@ struct ObjectTypeDto {
     pandora_box: Option<EmptyDto>,
     event: Option<EmptyDto>,
     pyramid: Option<PyramidDto>,
+    message: Option<MessageDto>,
+    sea_ground: Option<EmptyDto>,
+    hole: Option<EmptyDto>,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct MessageDto {
+    #[serde(default)]
+    leaves: bool,
 }
 
 /// A kind table without parameters (`scroll = {}`).
@@ -455,6 +481,10 @@ enum HoldsDto {
         amount: [u32; 2],
         resources: Vec<String>,
     },
+    Fixed {
+        resources: BTreeMap<String, u32>,
+        artifact: Option<Vec<ClassDto>>,
+    },
 }
 
 #[derive(Deserialize)]
@@ -470,6 +500,7 @@ enum TurnDto {
     Give(BTreeMap<String, u32>),
     Drawn,
     Stays,
+    Lost,
 }
 
 #[derive(Deserialize)]
@@ -500,6 +531,8 @@ struct FindDto {
     #[serde(default)]
     question: bool,
     bonus: Option<BonusDto>,
+    #[serde(default)]
+    leaves: bool,
 }
 
 #[derive(Deserialize)]
@@ -694,6 +727,13 @@ fn object_type(pack: &str, t: ObjectTypeDto) -> Result<ObjectTypeDef, AdventureP
                         amount,
                         resources: refs(resources)?,
                     },
+                    HoldsDto::Fixed {
+                        resources,
+                        artifact,
+                    } => FindContentDef::Fixed {
+                        resources: amounts(resources)?,
+                        artifact: artifact.map(classes),
+                    },
                 },
             ));
         }
@@ -704,9 +744,11 @@ fn object_type(pack: &str, t: ObjectTypeDto) -> Result<ObjectTypeDef, AdventureP
                 Some(TurnDto::Give(map)) => Some(TurnDef::Give(amounts(map)?)),
                 Some(TurnDto::Drawn) => Some(TurnDef::Drawn),
                 Some(TurnDto::Stays) => Some(TurnDef::Stays),
+                Some(TurnDto::Lost) => Some(TurnDef::Lost),
             },
             question: f.question,
             bonus: f.bonus.map(OnceBonus::from),
+            leaves: f.leaves,
         }));
     }
     kinds.extend(t.pandora_box.map(|_| ObjectKindDef::PandoraBox));
@@ -719,6 +761,12 @@ fn object_type(pack: &str, t: ObjectTypeDto) -> Result<ObjectTypeDef, AdventureP
             looted: OnceBonus::from(p.looted),
         }));
     }
+    kinds.extend(
+        t.message
+            .map(|m| ObjectKindDef::Message { leaves: m.leaves }),
+    );
+    kinds.extend(t.sea_ground.map(|_| ObjectKindDef::SeaGround));
+    kinds.extend(t.hole.map(|_| ObjectKindDef::Hole));
     let [kind] = <[ObjectKindDef; 1]>::try_from(kinds)
         .map_err(|_| AdventurePackError::ObjectKind(t.id.clone()))?;
     Ok(ObjectTypeDef {
@@ -843,6 +891,9 @@ pub fn parse_adventure(
                             underground: reference(pack, &b.underground)?,
                             coast: reference(pack, &b.coast)?,
                             coast_battlefield: reference(pack, &b.coast_battlefield)?,
+                            sea: reference(pack, &b.sea)?,
+                            deck: reference(pack, &b.deck)?,
+                            boats: reference(pack, &b.boats)?,
                         })
                     })
                     .transpose()?;
@@ -870,6 +921,8 @@ pub fn parse_adventure(
                     monsters,
                     fly_cost: p.fly_cost,
                     water_walk_cost: p.water_walk_cost,
+                    sea_points: p.sea_points,
+                    sea_ground: p.sea_ground,
                 })
             })
             .transpose()?,

@@ -106,6 +106,7 @@ fn setup() -> AdventureSetup {
                     holds: Default::default(),
                 },
             ],
+            boats: vec![],
         },
         heroes: vec![
             HeroSetup {
@@ -604,7 +605,7 @@ fn each_broken_invariant_is_its_own_error() {
         SetupError::ObjectLevel(1)
     );
     assert_eq!(
-        error(|s| s.map.objects[1].object_type = Some(ObjectTypeId::from_raw(14))),
+        error(|s| s.map.objects[1].object_type = Some(ObjectTypeId::from_raw(99))),
         SetupError::UnknownObjectType(1)
     );
     assert_eq!(
@@ -884,6 +885,7 @@ fn the_hash_sees_content_not_sharing() {
 }
 
 mod answers;
+mod boats;
 mod day;
 mod draws;
 mod events;

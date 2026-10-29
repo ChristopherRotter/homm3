@@ -37,8 +37,8 @@ impl GameRuleset {
     /// # Errors
     ///
     /// [`RulesetMismatch`] if a part was compiled on another core (by content hash), or a
-    /// battlefield of the adventure part, the coast's or a special ground's, is not the battle
-    /// part's.
+    /// battlefield of the adventure part, the coast's, the deck's or the boats' (E08 T72) or a
+    /// special ground's, is not the battle part's.
     pub fn new(
         core: Arc<Ruleset>,
         adventure: Arc<AdventureRuleset>,
@@ -50,7 +50,7 @@ impl GameRuleset {
         let field = adventure
             .params()
             .battle_terrains()
-            .is_none_or(|t| known(&t.coast_battlefield))
+            .is_none_or(|t| known(&t.coast_battlefield) && known(&t.deck) && known(&t.boats))
             && adventure.object_types().iter().all(|ty| match &ty.kind {
                 ObjectKind::Ground { battlefield, .. } => known(battlefield),
                 _ => true,

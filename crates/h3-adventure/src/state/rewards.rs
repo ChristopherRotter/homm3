@@ -538,10 +538,11 @@ impl AdventureState {
     /// A find searched by `player`'s hero `hero` (ADV-PIK-009 to -012; the original's
     /// `visit_corpse` 0x4A5480, `visit_wagon` 0x4A69B0, `visit_warriors_tomb` 0x4A7C30 after its
     /// question, `visit_lean_to` 0x4A31A0): its owner learns whether it is emptied (ADV-VIS-006).
-    /// Not emptied yet: an artifact the hero receives (`ADV-QUIRK-22`) is given; one it cannot
-    /// receive turns as the type says (the Corpse's 1 000 gold, the Wagon's drawn resources, or
-    /// it stays in the Tomb, which is then not emptied); without an artifact the find's
-    /// resources, or nothing. Then the type's bonus (the Tomb's −3 morale, once until the next
+    /// Not emptied yet: an artifact the hero receives (`ADV-QUIRK-22`) is given, with the
+    /// resources of a fixed entry beside it (E08 T72); one it cannot receive turns as the type
+    /// says (the Corpse's 1 000 gold instead of the whole entry, the Wagon's drawn resources, it
+    /// stays in the Tomb, which is then not emptied, or since E08 T72 it is lost and the find
+    /// emptied); without an artifact the find's resources, or nothing. Then the type's bonus (the Tomb's −3 morale, once until the next
     /// battle by its mark: HER-ADV-008), whether or not the find held anything or was emptied.
     // rule: ADV-PIK-009, ADV-PIK-010, ADV-PIK-011, ADV-PIK-012, ADV-VIS-006
     fn search(
@@ -558,14 +559,20 @@ impl AdventureState {
             let object = &self.map.objects()[index];
             let artifact = object.resolved.artifact().map(ArtifactInstance::from);
             let empties = match (artifact, &find.full_backpack) {
-                (Some(item), _) if receives(core, details_of(heroes, hero), item) => {
+                (Some(item), turn) if receives(core, details_of(heroes, hero), item) => {
                     taken.push(HeroChange::AddArtifact(item));
+                    // A fixed entry's resources come with its artifact (E08 T72); the Wagon's
+                    // are its turn's, given instead of it.
+                    if *turn != Some(Turn::Drawn) {
+                        outcome.gains.clone_from(&object.contents);
+                    }
                     true
                 }
                 (Some(_), Some(Turn::Give(resources))) => {
                     outcome.gains.clone_from(resources);
                     true
                 }
+                (Some(_), Some(Turn::Lost)) => true,
                 (Some(_), Some(Turn::Stays) | None) => false,
                 (Some(_), Some(Turn::Drawn)) | (None, _) => {
                     outcome.gains.clone_from(&object.contents);

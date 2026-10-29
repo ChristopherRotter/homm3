@@ -31,6 +31,115 @@ fn key_of(text: &str) -> ContentKey {
     ContentKey::parse(text).unwrap()
 }
 
+// covers: ADV-PIK-014, ADV-PIK-015, ADV-PIK-016, HER-ADV-009, GAM-BAT-001
+#[test]
+fn the_packs_type_the_sea_s_objects() {
+    // E08 T72 (design §5): the sea's parameters, its four pickups, the hole and Favorable Winds.
+    let (core, part) = compile(&ORIGINAL_PACKS, PROFILE).unwrap();
+    let params = part.params();
+    assert_eq!(params.sea_points(), &[1500, 2250, 3000, 3750]);
+    assert_eq!(params.sea_ground(), [2, 3]);
+    let battle = params.battle_terrains().unwrap();
+    assert_eq!(
+        (battle.sea, battle.deck.as_str(), battle.boats.as_str()),
+        (
+            core.terrain_by_key("base:water").unwrap(),
+            "base:deck",
+            "base:boats"
+        )
+    );
+    let ty = |key: &str| {
+        part.object_type(part.object_type_by_key(key).unwrap())
+            .unwrap()
+    };
+    let resource = |key: &str| {
+        core.resources()
+            .iter()
+            .position(|r| r.key.as_str() == key)
+            .and_then(ResourceId::from_index)
+            .unwrap()
+    };
+    let (wood, gold) = (resource("base:wood"), resource("base:gold"));
+    let fixed = |resources: Vec<(ResourceId, u32)>, artifact| FindContent::Fixed {
+        resources,
+        artifact,
+    };
+    for key in [
+        "base:flotsam",
+        "base:sea_chest",
+        "base:shipwreck_survivor",
+        "base:ocean_bottle",
+    ] {
+        assert_eq!(
+            (ty(key).visit, ty(key).from_above),
+            (Visit::Neighbour, true),
+            "{key}"
+        );
+    }
+    assert_eq!(
+        ty("base:flotsam").kind,
+        ObjectKind::Find(Find {
+            draws: vec![
+                (25, FindContent::Nothing),
+                (25, fixed(vec![(wood, 5)], None)),
+                (25, fixed(vec![(wood, 5), (gold, 200)], None)),
+                (25, fixed(vec![(wood, 10), (gold, 500)], None)),
+            ],
+            full_backpack: None,
+            question: false,
+            bonus: None,
+            leaves: true,
+        })
+    );
+    assert_eq!(
+        ty("base:sea_chest").kind,
+        ObjectKind::Find(Find {
+            draws: vec![
+                (20, FindContent::Nothing),
+                (70, fixed(vec![(gold, 1500)], None)),
+                (
+                    10,
+                    fixed(vec![(gold, 1000)], Some(vec![ArtifactClass::Treasure]))
+                ),
+            ],
+            full_backpack: Some(Turn::Give(vec![(gold, 1500)])),
+            question: false,
+            bonus: None,
+            leaves: true,
+        })
+    );
+    let class = |c| FindContent::Artifact(vec![c]);
+    assert_eq!(
+        ty("base:shipwreck_survivor").kind,
+        ObjectKind::Find(Find {
+            draws: vec![
+                (55, class(ArtifactClass::Treasure)),
+                (20, class(ArtifactClass::Minor)),
+                (20, class(ArtifactClass::Major)),
+                (5, class(ArtifactClass::Relic)),
+            ],
+            full_backpack: Some(Turn::Lost),
+            question: false,
+            bonus: None,
+            leaves: true,
+        })
+    );
+    assert_eq!(
+        ty("base:ocean_bottle").kind,
+        ObjectKind::Message { leaves: true }
+    );
+    for (key, kind) in [
+        ("base:hole", ObjectKind::Hole),
+        ("sod:favorable_winds", ObjectKind::SeaGround),
+    ] {
+        let ty = ty(key);
+        assert_eq!(
+            (&ty.kind, ty.visit, ty.from_above),
+            (&kind, Visit::Enter, true)
+        );
+    }
+}
+
 // covers: GAM-SET-001
 #[test]
 fn the_original_starting_armies_fit_the_draw() {
@@ -274,10 +383,10 @@ fn the_base_pack_types_the_objects_of_increment_2() {
         assert_eq!(guard.kind, ObjectKind::KeyGuard { key });
         assert_eq!((guard.visit, guard.from_above), (Visit::Neighbour, true));
     }
-    // E08 T61a: increment 7's 31 types after them.
+    // E08 T61a: increment 7's 31 types after them; E08 T72: the sea's four pickups and the hole.
     assert_eq!(
         part.object_types().len(),
-        7 + 1 + 1 + 3 + 2 + 8 + 8 + 9 + 2 + 31
+        7 + 1 + 1 + 3 + 2 + 8 + 8 + 9 + 2 + 31 + 5
     );
     assert!(part.object_type_by_key("base:border_gate_red").is_none());
 }
@@ -481,6 +590,7 @@ fn the_base_pack_types_the_rewards_of_increment_7() {
             full_backpack: Some(Turn::Give(vec![(gold, 1000)])),
             question: false,
             bonus: None,
+            leaves: false,
         })
     );
     assert_eq!(
@@ -500,6 +610,7 @@ fn the_base_pack_types_the_rewards_of_increment_7() {
             full_backpack: Some(Turn::Drawn),
             question: false,
             bonus: None,
+            leaves: false,
         })
     );
     let ObjectKind::Find(tomb) = &ty("base:warriors_tomb").kind else {
@@ -532,6 +643,7 @@ fn the_base_pack_types_the_rewards_of_increment_7() {
             full_backpack: None,
             question: false,
             bonus: None,
+            leaves: false,
         })
     );
     assert_eq!(ty("base:pandoras_box").kind, ObjectKind::PandoraBox);
@@ -671,8 +783,8 @@ fn the_expansions_add_the_border_gates() {
         ab.object_types()[..base.object_types().len()],
         *base.object_types()
     );
-    // SoD adds its nine special grounds (E08 T20a2a).
-    assert_eq!(sod.object_types().len(), ab.object_types().len() + 9);
+    // SoD adds its nine special grounds (E08 T20a2a) and Favorable Winds (E08 T72).
+    assert_eq!(sod.object_types().len(), ab.object_types().len() + 10);
     let gate = ab
         .object_type(ab.object_type_by_key("ab:border_gate_black").unwrap())
         .unwrap();
@@ -756,6 +868,8 @@ fn parses_every_field() {
         starting_stack_chances = [80, 20]
         fly_cost = [140, 140, 120, 100]
         water_walk_cost = [150, 140, 125, 110]
+        sea_points = [1500, 2250, 3000, 3750]
+        sea_ground = [2, 3]
 
         [params.monsters]
         aggression = [[-4, -4], [1, 7]]
@@ -1069,6 +1183,8 @@ fn parses_every_field() {
             }),
             fly_cost: [cost(140), cost(140), cost(120), cost(100)],
             water_walk_cost: [cost(150), cost(140), cost(125), cost(110)],
+            sea_points: [1500, 2250, 3000, 3750],
+            sea_ground: [2, 3],
         })
     );
     assert_eq!(
@@ -1219,8 +1335,47 @@ fn parses_the_reward_kinds() {
                 luck: 1,
                 mark: 0
             }),
+            leaves: false,
         })
     );
+    // E08 T72: a fixed entry with and without an artifact, the lost turn, leaving.
+    assert_eq!(
+        kind(
+            "find = { draws = [{ chance = 90, holds = { fixed = { resources = { coin = 15 } } } }, { chance = 10, holds = { fixed = { resources = { coin = 10, wood = 1 }, artifact = [\"treasure\"] } } }], full_backpack = \"lost\", leaves = true }"
+        ),
+        ObjectKindDef::Find(FindDef {
+            draws: vec![
+                (
+                    90,
+                    FindContentDef::Fixed {
+                        resources: vec![(k("p:coin"), 15)],
+                        artifact: None,
+                    }
+                ),
+                (
+                    10,
+                    FindContentDef::Fixed {
+                        resources: vec![(k("p:coin"), 10), (k("p:wood"), 1)],
+                        artifact: Some(vec![ArtifactClass::Treasure]),
+                    }
+                ),
+            ],
+            full_backpack: Some(TurnDef::Lost),
+            question: false,
+            bonus: None,
+            leaves: true,
+        })
+    );
+    assert_eq!(
+        kind("message = { leaves = true }"),
+        ObjectKindDef::Message { leaves: true }
+    );
+    assert_eq!(
+        kind("message = {}"),
+        ObjectKindDef::Message { leaves: false }
+    );
+    assert_eq!(kind("sea_ground = {}"), ObjectKindDef::SeaGround);
+    assert_eq!(kind("hole = {}"), ObjectKindDef::Hole);
     let turn = |table: &str| match kind(&format!(
         "find = {{ draws = [{{ chance = 100, holds = \"nothing\" }}]{table} }}"
     )) {
@@ -1261,7 +1416,10 @@ fn parses_the_reward_kinds() {
         "gift = { gives = { choice = { skills = [\"luck\", \"attack\"], amount = 1 } } }",
         "gift = { gives = \"levels\" }",
         "find = { draws = [{ chance = 100, holds = \"everything\" }] }",
-        "find = { draws = [], full_backpack = \"lost\" }",
+        "find = { draws = [], full_backpack = \"gone\" }",
+        "find = { draws = [{ chance = 100, holds = { fixed = { resources = {}, artifacts = [] } } }] }",
+        "message = { text = \"Ahoy\" }",
+        "hole = { depth = 1 }",
         "find = { draws = [], bonus = { morale = 1 } }",
         "pyramid = { split = { creature = \"g\", count = 1 }, fixed = { creature = \"g\", stacks = [1] }, level = 1, looted = { mark = 1 }, extra = 1 }",
     ] {
@@ -1282,6 +1440,7 @@ fn parses_the_reward_kinds() {
         "university = { offers = 1, price = { Bad = 1 } }",
         "find = { draws = [{ chance = 100, holds = { resources = { amount = [1, 1], resources = [\"Bad\"] } } }] }",
         "find = { draws = [], full_backpack = { give = { Bad = 1 } } }",
+        "find = { draws = [{ chance = 100, holds = { fixed = { resources = { Bad = 1 } } } }] }",
         "pyramid = { split = { creature = \"Bad\", count = 1 }, fixed = { creature = \"g\", stacks = [1] }, level = 1, looted = { mark = 1 } }",
         "pyramid = { split = { creature = \"g\", count = 1 }, fixed = { creature = \"Bad\", stacks = [1] }, level = 1, looted = { mark = 1 } }",
     ] {
@@ -1374,7 +1533,7 @@ fn rejects_malformed_files() {
     assert!(syntax(&object(
         "ground = { battlefield = \"f\", no_native = 1 }"
     )));
-    let prices = "fly_cost = [1, 1, 1, 1]\nwater_walk_cost = [1, 1, 1, 1]";
+    let prices = "fly_cost = [1, 1, 1, 1]\nwater_walk_cost = [1, 1, 1, 1]\nsea_points = [1, 1, 1, 1]\nsea_ground = [1, 1]";
     assert!(syntax(&format!(
         "[params]\n{bounds}\n{slots} = 1\nstarting_stack_chances = []\nfly_cost = [1, 1, 1]"
     )));
@@ -1386,8 +1545,16 @@ fn rejects_malformed_files() {
     assert!(syntax(
         &full.replace("max_stack_count = 4095", "max_stack_count = 0")
     ));
+    // E08 T72: four sea points, two parts of the sea ground's share, all needed.
+    assert!(syntax(
+        &full.replace("sea_points = [1, 1, 1, 1]", "sea_points = [1, 1, 1]")
+    ));
+    assert!(syntax(
+        &full.replace("sea_ground = [1, 1]", "sea_ground = [1]")
+    ));
+    assert!(syntax(&full.replace("\nsea_ground = [1, 1]", "")));
     let battle = |fields: &str| format!("{full}\n[params.battle]\n{fields}");
-    let fine = "underground = \"u\"\ncoast = \"c\"\ncoast_battlefield = \"f\"";
+    let fine = "underground = \"u\"\ncoast = \"c\"\ncoast_battlefield = \"f\"\nsea = \"w\"\ndeck = \"d\"\nboats = \"b\"";
     let parsed = parse(&battle(fine))
         .unwrap()
         .params
@@ -1398,9 +1565,20 @@ fn rejects_malformed_files() {
         (parsed.underground, parsed.coast, parsed.coast_battlefield),
         (key_of("p:u"), key_of("p:c"), key_of("p:f"))
     );
+    assert_eq!(
+        (parsed.sea, parsed.deck, parsed.boats),
+        (key_of("p:w"), key_of("p:d"), key_of("p:b"))
+    );
     assert!(syntax(&battle("underground = \"u\"\ncoast = \"c\"")));
-    assert!(syntax(&battle(&format!("{fine}\nboats = \"b\""))));
-    for field in ["underground", "coast", "coast_battlefield"] {
+    assert!(syntax(&battle(&format!("{fine}\nships = \"s\""))));
+    for field in [
+        "underground",
+        "coast",
+        "coast_battlefield",
+        "sea",
+        "deck",
+        "boats",
+    ] {
         let bad = fine.replace(&format!("{field} = \""), &format!("{field} = \"Bad"));
         assert!(key(&battle(&bad)), "{field}");
     }

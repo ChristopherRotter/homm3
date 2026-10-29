@@ -102,5 +102,6 @@ pub use state::{GameState, OpenBattle};
 /// kinds. v17 (E08 T62b1): Pandora's Box's and the Pyramid's questions among the offer kinds.
 /// v18 (E08 T63a): the choices (a chest's, the Arena's, a School's) and the Universities among
 /// the decisions. v19 (E08 T63b): the rests (GAM-DEC-007), the guard's wait no longer in a
-/// decision.
-pub const GAME_STATE_HASH_VERSION: u32 = 19;
+/// decision. v20 (E08 T72): the adventure's boats, each hero's boat and day's maximum (the
+/// adventure state hash v16).
+pub const GAME_STATE_HASH_VERSION: u32 = 20;

@@ -13,6 +13,8 @@ max_stack_count = 9999
 starting_stack_chances = [80, 20]
 fly_cost = [160, 150, 130, 110]
 water_walk_cost = [170, 150, 140, 120]
+sea_points = [1600, 2400, 3200, 4000]
+sea_ground = [1, 2]
 
 [[difficulty]]
 human = { coin = 500, shard = 5 }

@@ -4,23 +4,27 @@ Pre-refined tasks of the adventure lane, in order, then the inbox of discovered 
 
 ## Tasks
 
-Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T65 (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 7 are closed (2026-10-12, -13, -20, -21, -23, -26, -28; increment 7, rewards on the map, by T65's audit). **Increment 8, boats and the sea**, refined with the user at T65 (ADV-Q31; decisions 158, 159): the survey and the ADR amendment drafts first (T66a, T66b), each task's cut confirmed with the user at its start. T66a in two (decision 160): T66a1 done (`adventure/e08-t66a1`, #550: survey `E08-sea.md` §0 to §6), T66a2 done (`adventure/e08-t66a2`, decision 161: whole; §7 to §14, the checkpoint's ADV-Q32); T66b done (`adventure/e08-t66b`, decision 169: whole; the drafts, `E08-design.md` and the cut in eight rounds, ADV-Q33 accepted: decisions 170–173). Round 2: T67 done (`adventure/e08-t67`, decision 174: whole; the writer's sea objects, the spec's bottles and a monster's own tile, `cross-lane`; the specs E8a, its water map and E8b with their templates). Round 3: T68 in two by batch (decision 175): T68a done (`adventure/e08-t68a`: the harness's boat reads and steps, E8a and its water map run and recorded), T68b done (`adventure/e08-t68b`, decision 176: whole; the sea pickups' reads, E8b run four times, two recorded); T69 done (`adventure/e08-t69`, decision 177: whole with a re-read; batch E8 scored, D-45 reverted, D-46 to batch E8c: decision 179); T69b done (`adventure/e08-t69b`, decision 180: whole; batch E8c run and scored, D-46 confirmed, survey §16). Round 4: T70 done (`shared/e08-t70`, `cross-lane`, decision 181: whole; the three ADRs applied, the effect kinds, the packs and the glossary). Round 5: T71 done (`adventure/e08-t71`, decision 182: with the inbox's property case; HER-ADV-009). T72 next. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
+Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T65 (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 7 are closed (2026-10-12, -13, -20, -21, -23, -26, -28; increment 7, rewards on the map, by T65's audit). **Increment 8, boats and the sea**, refined with the user at T65 (ADV-Q31; decisions 158, 159): the survey and the ADR amendment drafts first (T66a, T66b), each task's cut confirmed with the user at its start. T66a in two (decision 160): T66a1 done (`adventure/e08-t66a1`, #550: survey `E08-sea.md` §0 to §6), T66a2 done (`adventure/e08-t66a2`, decision 161: whole; §7 to §14, the checkpoint's ADV-Q32); T66b done (`adventure/e08-t66b`, decision 169: whole; the drafts, `E08-design.md` and the cut in eight rounds, ADV-Q33 accepted: decisions 170–173). Round 2: T67 done (`adventure/e08-t67`, decision 174: whole; the writer's sea objects, the spec's bottles and a monster's own tile, `cross-lane`; the specs E8a, its water map and E8b with their templates). Round 3: T68 in two by batch (decision 175): T68a done (`adventure/e08-t68a`: the harness's boat reads and steps, E8a and its water map run and recorded), T68b done (`adventure/e08-t68b`, decision 176: whole; the sea pickups' reads, E8b run four times, two recorded); T69 done (`adventure/e08-t69`, decision 177: whole with a re-read; batch E8 scored, D-45 reverted, D-46 to batch E8c: decision 179); T69b done (`adventure/e08-t69b`, decision 180: whole; batch E8c run and scored, D-46 confirmed, survey §16). Round 4: T70 done (`shared/e08-t70`, `cross-lane`, decision 181: whole; the three ADRs applied, the effect kinds, the packs and the glossary). Round 5: T71 done (`adventure/e08-t71`, decision 182: with the inbox's property case; HER-ADV-009), T72 done (`adventure/e08-t72`, `cross-lane`, decision 183: whole; the import, kinds, state and views; the AI lane's bots tables' fingerprint). T73 next. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
 
-### E08 T72 — `h3-map` and `h3-adventure`: the import, the kinds and the part, the state, the views
+### E08 T73 — `h3-adventure`: moving at sea, the prices and the conversion, `Reach`, visits at sea
 
-- **Scope** (decision 171; design §4, §5, §6, §12, §16, round 5): the import of boats (class 8),
-  the sea's pickups (29, 59, 82, 86), the holes (124) and Favorable Winds (225), and a hero placed
-  on water refused (`Unsupported::HeroOnWater`, D-44 kept: ADV-Q34; design §4); the kinds and the sea's
-  parameters in the adventure part (the sea table 1 500, 2 250, 3 000, 3 750 for
-  `h3_heroes::sea_points`, the find's extension, `Message`, `SeaGround`, `Hole`; §5); `Boats` and
-  `HeroOnMap`'s `boat` and `max_movement` with their invariants (§6); what a viewer sees of boats
-  (§12, ADV-FOG-006 amended, ADV-FOG-008). Versions (§16): map import v14, adventure ruleset part
-  v13, adventure state hash v16, game state hash v20. Rule ids: ADV-SEA-001 and the others §4 to
-  §6 and §12 name (survey `E08-sea.md` §12). Moving, `Reach` and the visits are T73's.
-- **Depends on:** T71 (`adventure/e08-t71`). **Status:** ready; its cut confirmed at its start
-  (big: likely in two, the import and part, then the state and views; a seam to confirm).
-  `HeroOnMap` gains fields: `cargo check --workspace --all-targets` before the pull request
-  (`TRAPS.md`).
+- **Scope** (decision 171; design §7 to §10, round 6): `Mode::Sail` and the passage's boat rows
+  (boarding from a stop node, no guard test there; landing onto a free coastal tile only, D-42;
+  the diagonal between two waters; never onto an empty boat; D-46: no flight over a water tile an
+  object other than a boat, a boat's hero or class 85 is visited from, ADV-MOV-009 amended); the
+  sea's prices (100, 141; Favorable Winds' `sea_ground` share from `StaticTile::winds`), the drop
+  and the diagonal exception at sea (D-43), boarding's and landing's conversion with the
+  Admiral's Hat (`h3_heroes::free_boarding`, D-41: after the step's drop; `ADV-QUIRK-31`, A-28 not
+  reproduced) switching `HeroOnMap::max_movement`; a landing's facing (the original's order,
+  tested against E8-2's and E8-15's records), `Boarded` and `Landed` events; `Reach` for a hero in
+  a boat and the boat rows (ADV-MOV-007 amended); visits from a boat (ADV-SEA-005: the built kinds
+  from the neighbouring water tile, a boat's hero met or attacked, a hero on land never reached),
+  events on water (ADV-OBJ-007, ADV-MOV-011 amended). Rule ids: ADV-SEA-002 to -005 (survey
+  `E08-sea.md` §12). T72 left `AdventureState::put_aboard` (tests only) as the boarding's state
+  change and `StaticTile::hole` for the landing.
+- **Depends on:** T72 (`adventure/e08-t72`). **Status:** ready once T72's pull request merged; big
+  (design §18: likely in two, the boat's moves and prices, then `Reach`), its seam confirmed at its
+  start.
 
 ## Inbox
 

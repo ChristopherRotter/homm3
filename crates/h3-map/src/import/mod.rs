@@ -10,11 +10,11 @@ pub(crate) mod codes;
 
 use std::fmt;
 
-use h3_adventure::ObjectKind;
 use h3_adventure::{
-    ArtifactInstance, EventSetup, Guards, HeroReward, Holds, MapSetup, MonsterSetup, ObjectSetup,
-    Pos, PrimarySkill, RewardRecord, ScholarGift, TileMask, TileSetup,
+    ArtifactInstance, BoatSetup, EventSetup, Guards, HeroReward, Holds, MapSetup, MonsterSetup,
+    ObjectSetup, Pos, PrimarySkill, RewardRecord, ScholarGift, TileMask, TileSetup,
 };
+use h3_adventure::{ObjectKind, Passage};
 use h3_content::{CreatureTypeId, Formation, ResourceId, SkillId, SpellId};
 use h3_contracts::{ArmyStack, HeroSex, PlayerId};
 use h3_game::{
@@ -58,6 +58,10 @@ pub enum Unsupported {
     /// (A-24, always fixed: E08 decision 133; T61a). Its static layer keeps it without its
     /// creatures.
     RewardArmy(usize),
+    /// The hero object at this index stands on water (ADV-SEA-007, E08 T72; D-44, decisions 163
+    /// and 178: batch E8's E8-5 showed the original keeping such a hero on foot without a boat,
+    /// VCMI gives it one; none of the shipped maps has one).
+    HeroOnWater(usize),
 }
 
 impl Unsupported {
@@ -72,6 +76,7 @@ impl Unsupported {
             }
             Self::HeroInTown(_) => "a hero standing in a town",
             Self::RewardArmy(_) => "a reward of more creature stacks than an army's slots",
+            Self::HeroOnWater(_) => "a hero placed on water",
         }
     }
 }
@@ -102,6 +107,9 @@ pub enum ImportError {
     /// The hero object at this index has a template without exactly one visitable tile on the
     /// map, the tile the hero stands on.
     HeroTile(usize),
+    /// The boat object at this index has a template without exactly one visitable tile on the
+    /// map, the tile the boat lies on (E08 T72).
+    BoatTile(usize),
 }
 
 impl fmt::Display for ImportError {
@@ -125,6 +133,9 @@ impl fmt::Display for ImportError {
             }
             Self::HeroTile(object) => {
                 write!(f, "hero object {object} does not name one tile to stand on")
+            }
+            Self::BoatTile(object) => {
+                write!(f, "boat object {object} does not name one tile to lie on")
             }
         }
     }
@@ -177,6 +188,10 @@ pub fn import(map: &RawMap, rules: &GameRuleset) -> Result<GameSetup, ImportErro
                 if towns.iter().any(|town| blocks(town, hero.pos)) {
                     return Err(Unsupported::HeroInTown(index).into());
                 }
+                // rule: ADV-SEA-007
+                if on_water(rules, &static_map, hero.pos) {
+                    return Err(Unsupported::HeroOnWater(index).into());
+                }
                 heroes.push(hero);
             }
             (RANDOM_HERO, _) => return Err(Unsupported::RandomHero(index).into()),
@@ -218,12 +233,14 @@ fn skill_set(rules: &GameRuleset, bits: &Bits) -> Result<Vec<SkillId>, ImportErr
 /// special ground's tiles (ADV-GRD-001), a guarded object's guards (ADV-PIK-004, E08 T21a) and,
 /// since E08 T61a, what increment 7's objects hold; every other object is a blocker (the whole
 /// [`import`] refuses guards or reward creatures with a random stack and reward creatures beyond
-/// an army's slots, which this leaves out).
+/// an army's slots, which this leaves out). Since E08 T72 the boats (class 8) are no objects but
+/// the map's boats, each on its template's visitable tile with its subclass as its type
+/// (ADV-SEA-001), and a ground of the sea and a hole lie on their pictures' tiles.
 ///
 /// # Errors
 ///
 /// The first [`ImportError`] found: the map's size, the tiles, then the objects' templates and
-/// types in the map's order.
+/// types and the boats' tiles and types in the map's order.
 pub fn import_map(map: &RawMap, rules: &GameRuleset) -> Result<MapSetup, ImportError> {
     static_layer(map, rules).map(|(setup, _)| setup)
 }
@@ -242,8 +259,13 @@ fn static_layer(
     let tiles = tiles(map, rules)?;
     let mut unsupported = None;
     let mut placed = Vec::new();
+    let mut boats = Vec::new();
     for (index, object, template) in objects(map)? {
         if matches!(template.class, HERO | RANDOM_HERO | HERO_PLACEHOLDER) {
+            continue;
+        }
+        if template.class == codes::BOAT {
+            boats.push(boat(index, (object, template))?);
             continue;
         }
         let (setup, what) = typed(rules, map.header.version, index, (object, template))?;
@@ -256,6 +278,7 @@ fn static_layer(
         levels,
         tiles,
         objects: placed,
+        boats,
     };
     Ok((setup, unsupported))
 }
@@ -342,17 +365,45 @@ fn typed(
         }
         _ => {}
     }
+    // E08 T72: a ground of the sea and a hole lie on their pictures' tiles too.
     if matches!(
         rules
             .adventure()
             .object_type(object_type)
             .map(|ty| &ty.kind),
-        Some(ObjectKind::Ground { .. })
+        Some(ObjectKind::Ground { .. } | ObjectKind::SeaGround | ObjectKind::Hole)
     ) {
         setup.drawn = ground_tiles(codes::ground_size(template.def.as_bytes()));
     }
     setup.object_type = Some(object_type);
     Ok((setup, unsupported))
+}
+
+/// A boat (ADV-SEA-001, E08 T72; survey `E08-sea.md` §2): its template's one visitable tile and
+/// its subclass as its type (the original's loader reads no body for class 8 and creates the boat
+/// on the object's entrance tile, 0x502F28); a subclass beyond the original's three is one the
+/// class does not define.
+// rule: ADV-SEA-001
+fn boat(index: usize, (object, template): (&Object, &Template)) -> Result<BoatSetup, ImportError> {
+    let tile = stands_on(&footprint(object, template)).ok_or(ImportError::BoatTile(index))?;
+    let kind = (template.subclass < codes::BOAT_KINDS)
+        .then(|| u8::try_from(template.subclass).unwrap_or(u8::MAX))
+        .ok_or(ImportError::Subclass(index))?;
+    Ok(BoatSetup { tile, kind })
+}
+
+/// Whether `pos` lies on water in the imported static map (a tile off it: no).
+fn on_water(rules: &GameRuleset, map: &MapSetup, pos: Pos) -> bool {
+    let index = (usize::from(pos.level) * usize::from(map.height) + usize::from(pos.y))
+        * usize::from(map.width)
+        + usize::from(pos.x);
+    (pos.x < map.width && pos.y < map.height)
+        && map.tiles.get(index).is_some_and(|tile| {
+            matches!(
+                rules.adventure().passage(tile.terrain),
+                Some(Passage::Water(_))
+            )
+        })
 }
 
 /// A wandering monster's data (ADV-MON-001, E08 T20a2a; `docs/formats/h3m.md`, "Import"): the
