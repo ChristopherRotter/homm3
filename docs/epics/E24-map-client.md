@@ -171,7 +171,8 @@ viewers share.
   the selections read and built, three new situations and the 40 exact with them; the log), T4b,
   the lists over time (**done** 2026-10-29: a step's end draws the hero's slot, a lift that
   centres the view and a walk's end that leaves the hero unable to move both lists; the 13
-  sequences recorded with them, every frame exact; the log); T5, the status
+  sequences recorded with them, every frame exact; the log); T4c, a changed panel item drawn
+  again alone (T4b's measurement: a changed dialog draw redraws the panels whole); T5, the status
   window, the resource bar and the date; T6, the mouse, the keys during a walk, the sound without
   the focus; T7, M3's closure. A task that grows is cut at a seam agreed with the user.
 - **Exit:** every situation and sequence as recorded on the whole screen (no `panels` mask

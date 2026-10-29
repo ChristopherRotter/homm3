@@ -18,7 +18,24 @@ compares it on every situation and sequence.
 
 T3 cut with the user (2026-10-29): T3a the minimap as a still, T3b the minimap over time (both
 done: the epic's log). T4 cut with the user (2026-10-29) the same way: T4a the lists as stills,
-T4b the lists over time (both done: the epic's log).
+T4b the lists over time (both done: the epic's log). T4c, found by T4b's measurement, is a
+small task of its own (*provisional*: the user may fold it into T5).
+
+### E24 M3 T4c — a changed panel item drawn again alone
+
+- **Scope:** the composer (`h3_map_view::compose`, design §4.2 and §4.3): a scene whose panels'
+  draws (the still part: the frame picture and the dialog's draws) differ from the background's
+  in some items alone (as many draws: a bar's frame, a button's state, later T5's status window
+  and T6's hints) draws the background again only in those items' rectangles (the old and the
+  new, every still draw cut to each) and the screen there over it, its damage those rectangles;
+  today the background is drawn again whole and the whole screen uploaded (T4b: `walk-1`'s 13
+  frames whose movement bar changed, 25.7 → 31.0 % of the pixels uploaded, p95 2.2 → 2.8–3.5
+  ms).
+- **Acceptance:** `--check 10` exact (afresh included) on `walk-1`, `walk-points`,
+  `lists-scrolled`, *Tale of two lands*; `walk-1`'s uploads at or below `master`'s before T4b
+  (25.7 %), `--measure 20` beside `master`; unit tests; `drawn` unchanged; the Definition of
+  Done.
+- **Depends on:** T4b. **Status:** ready.
 
 ### E24 M3 T5 — the status window, the resource bar and the date
 
@@ -29,8 +46,8 @@ T4b the lists over time (both done: the epic's log).
   resources and the date. Situations for each kind.
 - **Acceptance:** the status window, the resource bar and the date exact on every situation and
   the new ones (no `panels` mask left but the status bar's hints); the Definition of Done.
-- **Depends on:** T2a (T4a for a hero's or a town's portraits; its army's pictures are T5's).
-  **Status:** ready.
+- **Depends on:** T2a (T4a for a hero's or a town's portraits; its army's pictures are T5's);
+  T4c (its status window changes with each selection). **Status:** ready after T4c.
 
 ### E24 M3 T6 — the mouse, the keys during a walk, the sound without the focus
 

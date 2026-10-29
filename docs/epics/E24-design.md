@@ -1958,3 +1958,7 @@ town records) and its captures (below). *Provisional* where marked.
   harness records `points` each millisecond (`Mem.points`) and keeps the live part's kingdom as
   read before it writes a sequence's `points` (the list as shown at 0); `masks.toml` one list
   again (`panels`); the kingdom's form before T4a no longer read.
+- **Checked** (T4b): the 13 sequences recorded again with the lists compared: every kept screen
+  of the 459 exact, every timeline line as the viewer's; the 43 situations' digests unchanged.
+  A bar that changes is a dialog draw, which rebuilds the panels' background and uploads the
+  whole screen (`walk-1`: 31.0 % of the pixels uploaded, `master` 25.7 %; T4c).

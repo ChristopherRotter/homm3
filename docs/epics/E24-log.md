@@ -1586,3 +1586,22 @@ original data staged from the user's repo folder first; the baseline check passe
   memory's 2 000 once written, first shown at the lift at 100); `masks.toml` one list (`panels`;
   T4a's `stills` gone, `h3map.py` and the runbook with it); `Kingdom::read`'s form before T4a
   gone; a trap (`TRAPS.md`: a sequence's points are the recording's).
+- **Checked:** `h3map.py frames` (the lists unmasked): the original's 13 sequences recorded
+  anew, their timelines as before but the new `points` lines and three of `walk-3`'s `screen`
+  boxes, which now reach the movement bar (x 610); with each new timeline in place (`--reuse`)
+  every kept screen of the 459 exact with the viewer and every timeline line as the viewer's
+  (`walk-1` first, alone: its run against the old timeline differed on 57 of 64 frames, the
+  points unknown); every frame at 0 exact with the kingdom as shown; `drawn --record` (the 43
+  situations' digests unchanged, the sequences' 459 recorded anew); unit tests (the redraws'
+  moments, the slot's points alone, a slot off the list, the lift's scroll, the walk's end, the
+  `points` lines, `Sequence::points`, `top_showing`, the kingdom's refusals); `check.sh` (100 %
+  coverage); the window under Xvfb (`walk-1`, `walk-points`, `lists-scrolled`, *Tale of two
+  lands*, `--check 10`): every frame read back exact, made as the same frame composed afresh,
+  every change the headless loop's.
+- **Measured** (the sandbox, `--measure 20`, alternating with `master`'s build): a frame made in
+  a median 0.5 ms on `walk-1` (both), 1.0–1.2 and 1.1–1.2 on `path-objects`, 1.2–1.3 and
+  1.4–1.5 on *Tale of two lands*; uploads the same on `path-objects` (5.2 %) and *Tale* (11.2 %),
+  on `walk-1` 25.6–25.7 → 31.0 %, p95 2.2–2.3 → 2.8–3.5 ms: a bar that changes is a dialog draw,
+  which rebuilds the panels' background and uploads the whole screen (13 of `walk-1`'s frames,
+  as a button's change already did). Queued as T4c: a changed panel item drawn again alone (T5's
+  status window and T6's hints change far more often).
