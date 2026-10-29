@@ -237,6 +237,12 @@ fn engine_events() -> Vec<K> {
             hex: Hex(30),
             original: Some(s),
         },
+        K::NotCreated {
+            side: BattleSide::Defender,
+            creature,
+            count: 4,
+            original: None,
+        },
         K::TurnedSummoned {
             stack: s,
             rounds: 2,
@@ -312,7 +318,7 @@ const ENGINE_ERRORS: [CommandError; 31] = {
 #[test]
 fn every_engine_kind_has_its_wire_kind_of_the_same_name() {
     let events = engine_events();
-    assert_eq!(events.len(), 54, "the mapped event kinds");
+    assert_eq!(events.len(), 55, "the mapped event kinds");
     for kind in &events {
         let wire = map::events(&[EngineEvent::public(*kind)], BattleSide::Attacker);
         assert_eq!(kind_name(&wire[0]), kind_name(kind));

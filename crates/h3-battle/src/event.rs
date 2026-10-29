@@ -440,6 +440,20 @@ pub enum EventKind {
         /// The stack it copies, for a clone.
         original: Option<StackId>,
     },
+    /// A spell's stack found no place (BAT-MAG-037): nothing was created and the mana is spent.
+    /// The clone of `original` (Clone, BAT-MAG-038: no place in its rings) or a summoned stack
+    /// (Summon Elemental, BAT-MAG-039: no column with a place, or no creatures to summon). The
+    /// original shows a message for a clone (0x5A6E22); viewers draw it from this event.
+    NotCreated {
+        /// The side it would have joined.
+        side: BattleSide,
+        /// Its creature.
+        creature: CreatureTypeId,
+        /// Its creatures.
+        count: u32,
+        /// The stack it would have copied, for a clone.
+        original: Option<StackId>,
+    },
     /// Clone's place was its original's own hex (quirk BAT-QUIRK-7, BAT-MAG-038): no clone was
     /// made, and the original became a summoned stack that vanishes after `rounds` rounds and is
     /// no longer of its side's army.
