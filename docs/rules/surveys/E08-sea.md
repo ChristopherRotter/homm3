@@ -911,7 +911,7 @@ does not arise. The arrow key's and the water walker's halves matched the readin
 ends on nor passes over a water tile that is an entrance of any class but a hero's, a boat's or
 class 85's (the sea's pickups, a monster, a Whirlpool, a Buoy, a water Cartographer): the flyer
 goes around it. Plain water and an object's blocked cell on water stay a flight's pass, a boat
-and a hero in a boat a pass and a stop. ADV-MOV-009 (increment 5, `verified`) lets a flight pass
+and a hero in a boat a pass (and a stop from land: boarding, a visit). ADV-MOV-009 (increment 5, `verified`) lets a flight pass
 over "water (plain or holding an object)", as VCMI 1.7.5 does (`lib/pathfinder/PathfinderUtil.h`
 `evaluateAccessibility`: every tile of the air layer flyable); the wiki is silent. A conflict of
 the reading with VCMI on a built rule, on every flyer's way over the sea (3 236 sea pickups and 55
