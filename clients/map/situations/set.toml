@@ -248,3 +248,18 @@ why = "exact: a town's status window, its Citadel, the village's hall, the Castl
 id = "status-garrison"
 differing = 0
 why = "exact: a town's status window with a garrison hero's mark and that hero's army, a Castle, the Rampart's one silo resource"
+
+[[situation]]
+id = "status-date"
+differing = 0
+why = "exact: the date's status window asked over a hero's, the day's picture at its step's frame and \"Day 3\""
+
+[[situation]]
+id = "status-week"
+differing = 0
+why = "exact: the date's status window on a week's first day, the week's picture (the third's) and \"Week 3\""
+
+[[situation]]
+id = "status-kingdom"
+differing = 0
+why = "exact: the kingdom's status window, Red's towns by their halls, the teams written: two flags of Red's team, two of the others"

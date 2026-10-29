@@ -319,6 +319,7 @@ fn a_maps_start_its_kingdom_and_buttons() {
                 luck: 0,
                 army: [None; 7],
             })),
+            selection: None,
         }
     );
     let blue = kingdom(&raw, 1);
@@ -342,7 +343,12 @@ fn a_maps_start_its_kingdom_and_buttons() {
             income: 0,
         }))
     );
-    assert_eq!(kingdom(&raw, 5).status, None);
+    // A colour with neither heroes nor towns: the date's window (the chooser's kind 0 without a
+    // selection, E24 M3 T5b2) at its first frame.
+    assert_eq!(
+        kingdom(&raw, 5).status,
+        Some(Status::Date(DateStatus { frame: 0 }))
+    );
     // A portrait the map gives; a town without a fort.
     let hero = raw
         .objects
@@ -363,7 +369,14 @@ fn a_maps_start_its_kingdom_and_buttons() {
     assert_eq!(kingdom(&raw, 0).heroes[0].portrait, 130);
     assert!(!kingdom(&raw, 1).towns[0].fort);
     let raw = self::raw(&map());
-    assert_eq!(kingdom(&raw, 2), Kingdom::default());
+    // Nothing of a colour's: the kingdom's defaults but the date's window (E24 M3 T5b2).
+    assert_eq!(
+        kingdom(&raw, 2),
+        Kingdom {
+            status: Some(Status::Date(DateStatus { frame: 0 })),
+            ..Kingdom::default()
+        }
+    );
     assert!(Live::at_start(&raw, &art, 0, &towns()).buttons.is_none());
     // Move hero by a green arrow of the selected hero's path, next hero by an awake hero able to
     // move.
@@ -418,6 +431,7 @@ fn a_live_parts_kingdom_read() {
     let tail = "resources = [0, 0, 0, 0, 0, 0, 0], date = [1, 1, 1]";
     let two = Kingdom {
         status: None,
+        selection: None,
         heroes: vec![
             KingdomHero {
                 asleep: false,
@@ -602,10 +616,35 @@ fn a_live_parts_status_read() {
             income: 1500,
         }))
     );
-    assert_eq!(read("{ kind = 1 }"), Some(Status::Other(1)));
+    // The date's and the kingdom's (E24 M3 T5b2), their numbers; another kind by its number.
+    let date = "{ kind = 1, frame = 9 }";
+    assert_eq!(read(date), Some(Status::Date(DateStatus { frame: 9 })));
+    let realm = "{ kind = 2, halls = [0, 2, 1, -1], allies = [0, 2], enemies = [7] }";
+    let kingdom_status = KingdomStatus {
+        halls: [0, 2, 1, -1],
+        allies: vec![0, 2],
+        enemies: vec![7],
+    };
+    assert_eq!(read(realm), Some(Status::Kingdom(kingdom_status.clone())));
+    assert_eq!(read("{ kind = 5 }"), Some(Status::Other(5)));
+    for (status, kind) in [
+        (Status::Date(DateStatus { frame: 0 }), 1),
+        (Status::Kingdom(kingdom_status), 2),
+        (read(&hero).unwrap(), 3),
+        (read(&town).unwrap(), 4),
+        (Status::Other(6), 6),
+    ] {
+        assert_eq!(status.kind(), kind);
+    }
     // Refused: a wrong kind or field, a slot or a list of the wrong length, a building past 63,
-    // a garrison not 0 or 1, a number past its type.
+    // a garrison not 0 or 1, a number past its type; a colour past 7, four halls but not.
     for wrong in [
+        "{ kind = 1, frame = -1 }".to_string(),
+        realm.replace("[0, 2, 1, -1]", "[0, 2, 1]"),
+        realm.replace("[0, 2, 1, -1]", "[0, 2, 1, 3000000000]"),
+        realm.replace("[0, 2]", "[0, 8]"),
+        realm.replace("[7]", "[-1]"),
+        realm.replace("[7]", "7"),
         "{ kind = -1 }".to_string(),
         "{ kind = 3 }".to_string(),
         "[3]".to_string(),
@@ -635,7 +674,7 @@ fn a_live_parts_status_read() {
         table["s"].as_table().unwrap().clone()
     };
     let flags = ["own_name", "garrison"];
-    for whole in [fields(&hero), fields(&town)] {
+    for whole in [fields(&hero), fields(&town), fields(date), fields(realm)] {
         for key in whole.keys() {
             let mut without = whole.clone();
             without.remove(key);

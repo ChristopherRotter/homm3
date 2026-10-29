@@ -82,6 +82,26 @@ picture = "AResBar.pcx"
 at = [0, 0]
 size = [794, 22]
 
+[status_date]
+place = [614, 400]
+
+[[status_date.items]]
+kind = "picture"
+id = 2000
+picture = "AdStatOt.pcx"
+at = [0, 0]
+
+[status_kingdom]
+place = [614, 400]
+
+[[status_kingdom.items]]
+kind = "def"
+id = 2041
+def = "itgflags.def"
+at = [67, 102]
+size = [15, 20]
+repeat = { count = [8, 1], step = [15, 0] }
+
 [status_hero]
 place = [614, 400]
 
@@ -129,8 +149,11 @@ fn loads_a_layout_and_places_its_tiles() {
     let ids: Vec<u16> = layout.dialog.items.iter().map(Item::id).collect();
     assert_eq!(ids, [0, 3, 32, 33, 200, 37]);
     assert_eq!(layout.resource_bar.place, [3, 575]);
-    // The status window's panels (E24 M3 T5b1): their names among the layout's.
+    // The status window's panels (E24 M3 T5b1): their names among the layout's; since T5b2 the
+    // date's and the kingdom's, a repeat made into its copies.
     assert_eq!(layout.status_town.place, [614, 400]);
+    let flags: Vec<u16> = layout.status_kingdom.items.iter().map(Item::id).collect();
+    assert_eq!(flags, (2041..2049).collect::<Vec<u16>>());
     assert_eq!(layout.panels.sleep[1], "iam011.def");
     let names: Vec<String> = layout.names().into_iter().collect();
     assert_eq!(
@@ -138,6 +161,7 @@ fn loads_a_layout_and_places_its_tiles() {
         [
             "ADROLLVR.PCX",
             "ADSTATHR.PCX",
+            "ADSTATOT.PCX",
             "ADVMAP.PCX",
             "AGEMUL.DEF",
             "AGEMUR.DEF",
@@ -149,6 +173,7 @@ fn loads_a_layout_and_places_its_tiles() {
             "IAM005.DEF",
             "IAM010.DEF",
             "IAM011.DEF",
+            "ITGFLAGS.DEF",
             "ITPA.DEF",
             "ITPT.DEF",
             "MEDFONT.FNT",

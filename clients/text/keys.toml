@@ -472,6 +472,27 @@ id = "map.status.thousands"
 args = { thousands = "number" }
 original = [{ at = "EXE:0x660CB0", printf = ["thousands"] }]
 
+# The date's status window (E24 M3 T5b2; docs/epics/E24-design.md §4.9, 0x450DD0): the day's or the
+# week's word and its number ("Day 3", "Week 2": the words `word.day`, `word.week`); the kingdom's
+# window (0x452B80): a row's label, the word of the viewer's team or of the others and a colon.
+[[key]]
+id = "map.status.date"
+args = { word = "text", number = "number" }
+original = [{ at = "EXE:0x660C98", printf = ["word", "number"] }]
+
+[[key]]
+id = "map.status.side"
+args = { word = "text" }
+original = [{ at = "EXE:0x660D28", printf = ["word"] }]
+
+[[key]]
+id = "word.allies"
+original = [{ at = "GENRLTXT:391" }]
+
+[[key]]
+id = "word.enemies"
+original = [{ at = "GENRLTXT:392" }]
+
 # The spell book (E17 M5 T3a; design §7.17). A place's text (`spell_book_page` 0x59CE19, 0x59CEE1:
 # the executable's own formats): the spell's name, its level, the hero's mastery's short name when
 # it has one, the spell points' word and the cost.

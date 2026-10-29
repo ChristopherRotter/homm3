@@ -212,6 +212,14 @@ FORT_BIT = 1 << 7
 STATUS_SHOWN, STATUS_ITEMS = 0x394, range(2000, 2100)
 STATUS_MORALE, STATUS_LUCK, STATUS_SILO, STATUS_INCOME = 2008, 2009, 2007, 2006
 TOWN_GARRISON_HERO, TOWN_ARMY, TOWN_NAME, TOWN_STANDING = 0xC, 0xE0, 0xC8, 0x150
+# E24 M3 T5b2 (design §4.9): the kind asked (the manager's +0x398) and a timed kind's end (+0x39C,
+# a clock time; status_window_set_kind 0x415D60), the kind none (8); the date's window's picture
+# (DEF item 2001, its frame the window's step); the kingdom's: the viewer's towns by their halls
+# (their every-built sets +0x158: the Capitol 13, the City Hall 12, the Town Hall 11, tested in
+# that order, else a village), the players alive (game +0x1F636, a byte each: out of the game)
+# by their teams (+0x1F879) against the shown player's (0x69778C).
+STATUS_ASKED, STATUS_END, STATUS_NONE, STATUS_DATE_DEF = 0x398, 0x39C, 8, 2001
+OUT_OF_GAME, TEAMS, SHOWN_PLAYER, HALL_BITS = 0x1F636, 0x1F879, 0x69778C, (13, 12, 11)
 MOVE_HERO, NEXT_HERO = 7, 11
 # A path arrow's frame: 0 none, 1 to 25 a move today (green), 26 to 50 a later one (red).
 GREEN_FRAMES = range(1, 26)
@@ -948,7 +956,9 @@ class Mem:
         town's (4) its name (the record's text), its buildings standing (+0x150's bits), whether
         a hero is in its garrison (+0xC), the army the window shows (the garrison hero's or the
         town's own, 0x5C1460), its silo's resources (the frames of the items 2007, in the
-        window's order) and its gold income (the item 2006's text, 0x5BF600 computed)."""
+        window's order) and its gold income (the item 2006's text, 0x5BF600 computed); since M3
+        T5b2 for the date's (1) its picture's frame, for the kingdom's (2) the towns by their
+        halls and the players alive of the shown player's team and the others."""
         kind = self.i32(self.u32(ADVENTURE_MANAGER_POINTER) + STATUS_SHOWN)
         raw = self.read(self.game() + PLAYERS + PLAYER_SIZE * colour, PLAYER_SIZE)
         items = self.status_items()
@@ -978,7 +988,42 @@ class Mem:
                     "buildings": [b for b in range(64) if standing >> b & 1],
                     "garrison": int(hero >= 0), "army": shown, "silo": silo,
                     "income": int(items[STATUS_INCOME][0][1])}
+        if kind == 1:
+            # The date's (E24 M3 T5b2): its picture's frame, the window's step; the date and the
+            # picture's kind the game's date gives.
+            return {"kind": kind, "frame": items[STATUS_DATE_DEF][0][0]}
+        if kind == 2:
+            # The kingdom's (E24 M3 T5b2): the towns by their halls (villages, Town Halls, City
+            # Halls, Capitols), the players alive of the shown player's team (itself among them)
+            # and the others, each by colour.
+            halls = [0, 0, 0, 0]
+            for index in self.town_list(colour):
+                record = self.u32(self.game() + TOWNS) + TOWN_SIZE * index
+                built = struct.unpack("<Q", self.read(record + TOWN_EVERY_BUILT, 8))[0]
+                hall = next((3 - i for i, b in enumerate(HALL_BITS) if built >> b & 1), 0)
+                halls[hall] += 1
+            out = self.read(self.game() + OUT_OF_GAME, 8)
+            teams = struct.unpack("<8b", self.read(self.game() + TEAMS, 8))
+            shown = self.i32(SHOWN_PLAYER)
+            alive = [p for p in range(8) if out[p] == 0]
+            allies = [p for p in alive if shown >= 0 and teams[p] == teams[shown]]
+            return {"kind": kind, "halls": halls, "allies": allies,
+                    "enemies": [p for p in alive if p not in allies]}
         return {"kind": kind}
+
+    def ask_status(self, kind, end, rebuild=False):
+        """Asks the status window for a kind until the clock time `end` (E24 M3 T5b2; design
+        §4.9: the manager's +0x398 and +0x39C, as status_window_set_kind 0x415D60 sets them); with
+        `rebuild` the kind shown set to none, so that the next view draw builds the window afresh
+        (the date's from its first picture) even when it shows that kind already."""
+        manager = self.u32(ADVENTURE_MANAGER_POINTER)
+        self.write_bytes(manager + STATUS_ASKED, struct.pack("<iI", kind, end % (1 << 32)))
+        if rebuild:
+            self.write_bytes(manager + STATUS_SHOWN, struct.pack("<i", STATUS_NONE))
+
+    def status_shown(self):
+        """The status window's kind shown (the manager's +0x394; E24 M3 T5b2)."""
+        return self.i32(self.u32(ADVENTURE_MANAGER_POINTER) + STATUS_SHOWN)
 
     def town(self, index):
         """The town `index` of the game's towns (E24 M3 T4a): its record's address, faction,
