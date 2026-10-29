@@ -1,0 +1,28 @@
+# Instruction-count baseline of one `cargo xtask bench-check` workload (valgrind/callgrind, event
+# Ir); the directory names the owning lane (lanes.toml). Counts are deterministic for a given
+# toolchain + target + source and are compared only when both match this file. A change above
+# `threshold_percent` fails verify. Update intentionally with
+# `cargo xtask bench-check --update --workload <name>` and state the reason in the commit message.
+
+toolchain = "rustc 1.97.0 (2d8144b78 2026-07-07)"
+target = "x86_64-unknown-linux-gnu"
+
+[workload]
+description = "the reachable-tiles query of every hero in a boat of the acting player at each step of 2 random games of 56 days on the sea XL map (E08 T75b, increment 8: 144 x 144 of sea, sixteen islands, fifteen boats, each player's four heroes beside their boats with Navigation and the sea's artifacts: 1 832 queries of heroes in boats, about 2.29 M Ir each, 91 % inside Reach::expand_sail, 55 % in AdventureState::passage, 8.7 % in Search::landed, which computes the land's day points, day_points, at every landing tile); counts only inside h3_cli::adventure::bench::sail_queries"
+args = [
+    "adventure",
+    "bench",
+    "--map",
+    "fixtures/maps/e08-sea-144.h3m",
+    "--workload",
+    "reach",
+    "--games",
+    "2",
+    "--days",
+    "56",
+    "--seed",
+    "1",
+]
+collect = "*sail_queries*"
+instructions = 4193142577
+threshold_percent = 2

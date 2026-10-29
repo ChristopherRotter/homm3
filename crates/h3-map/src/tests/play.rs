@@ -5543,6 +5543,20 @@ impl Sailed {
     }
 }
 
+/// The moves of `legal` that board an empty boat or move a hero in a boat (E08 T75b), or `legal`
+/// if none does: random play's preference at sea ([`the_plans_sail`], the sea XL map's test).
+pub(super) fn at_sea(state: &GameState, legal: Vec<GameCommand>) -> Vec<GameCommand> {
+    let adventure = state.adventure();
+    let afloat = |hero| adventure.hero(hero).is_some_and(|h| h.boat.is_some());
+    let sails = |c: &&GameCommand| {
+        as_move(c).is_some_and(|(hero, path)| {
+            afloat(hero) || path.last().is_some_and(|&t| adventure.is_empty_boat(t))
+        })
+    };
+    let moves: Vec<GameCommand> = legal.iter().filter(sails).cloned().collect();
+    if moves.is_empty() { legal } else { moves }
+}
+
 /// The plans sail (E08 T75b, design §15; increment 8's exit criteria 2 to 6): over a fixed set of
 /// cases (proptest's deterministic runner), with steps that prefer a boarding or a move of a hero
 /// in a boat when one is legal, random play boards with and without free boarding, sails, over
@@ -5574,17 +5588,7 @@ fn the_plans_sail() {
         for (step, sea) in &steps {
             let mut legal = options(&state, rules);
             if *sea {
-                let adventure = state.adventure();
-                let afloat = |hero| adventure.hero(hero).is_some_and(|h| h.boat.is_some());
-                let at_sea = |c: &&GameCommand| {
-                    as_move(c).is_some_and(|(hero, path)| {
-                        afloat(hero) || path.last().is_some_and(|&t| adventure.is_empty_boat(t))
-                    })
-                };
-                let moves: Vec<GameCommand> = legal.iter().filter(at_sea).cloned().collect();
-                if !moves.is_empty() {
-                    legal = moves;
-                }
+                legal = at_sea(&state, legal);
             }
             let (actor, command) = resolve(&state, rules, &legal, step);
             let before = state.clone();
