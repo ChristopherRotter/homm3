@@ -54,6 +54,19 @@ fn the_defaults_are_the_windows_and_the_originals_by_context() {
     for key in ["Return", "Left", "Right", "RightButton", "P", "M", "Home"] {
         assert_eq!(on(Context::Battle, key), None, "{key}");
     }
+    // The tactics phase's panel's two (E17 M5 T4c2b), in their own context: the window asks it
+    // before the battle's while the phase's panel shows.
+    assert_eq!(
+        on(Context::Tactics, "Space"),
+        Some(Command::Button(panel::NEXT_CREATURE))
+    );
+    assert_eq!(
+        on(Context::Tactics, "Return"),
+        Some(Command::Button(panel::START_COMBAT))
+    );
+    for key in ["D", "W", "Escape"] {
+        assert_eq!(on(Context::Tactics, key), None, "{key}");
+    }
     // The book's.
     let book = [
         ("Escape", book::Key::Close),
@@ -96,7 +109,7 @@ fn the_defaults_are_the_windows_and_the_originals_by_context() {
 #[test]
 fn every_command_has_a_name_in_the_tables_order() {
     let all = Command::all();
-    assert_eq!(all.len(), 30);
+    assert_eq!(all.len(), 32);
     let mut sorted = all.clone();
     sorted.sort_unstable();
     assert_eq!(sorted, all);
@@ -117,6 +130,8 @@ fn every_command_has_a_name_in_the_tables_order() {
             "spell-book",
             "wait",
             "defend",
+            "next-creature",
+            "start-combat",
             "book-close",
             "book-adventure",
             "book-combat",
@@ -137,13 +152,13 @@ fn every_command_has_a_name_in_the_tables_order() {
     // Every command bound by default, in the table's order.
     let keys = Keys::original();
     let chords = keys.chords();
-    assert_eq!(chords.len(), 34);
+    assert_eq!(chords.len(), 36);
     let mut commands: Vec<Command> = chords.iter().map(|&(c, _)| c).collect();
     commands.dedup();
     assert_eq!(commands, all);
     assert_eq!(chords[0].1.to_string(), "F2");
-    assert_eq!(chords[31].1.to_string(), "RightButton");
-    assert_eq!(chords[33].1.to_string(), "Escape");
+    assert_eq!(chords[33].1.to_string(), "RightButton");
+    assert_eq!(chords[35].1.to_string(), "Escape");
 }
 
 #[test]

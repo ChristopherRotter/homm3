@@ -14,6 +14,7 @@ use alloc::collections::{BTreeSet, VecDeque};
 
 use h3_protocol::wire::{Observation, Side, Stack, Tactics};
 
+use crate::battle_log::Logged;
 use crate::mouse::neighbour;
 
 /// Hexes in a row (`hex mod 17` is the column).
@@ -110,6 +111,42 @@ pub fn shade(observation: &Observation) -> BTreeSet<u8> {
         }
     }
     shaded
+}
+
+/// The hexes shaded at `t` of a recorded battle (E17 M5 T4c2b, design §7.24): its opening
+/// `snapshot`, the battle as each later turn's start found it (`turns`: one for each
+/// `Logged::Turn` of `log`, `crate::panel::turns`'s) and its timeline's `log`. A human's turn in
+/// the tactics phase shades from its start, the battle redrawn and shown at once (0x478375,
+/// 0x4783B1), until an action starts, which clears the overlay and shows the battle at once
+/// (0x478E51, 0x478E79): the [`shade`] of the last turn started at or before `t` when no action
+/// started after it by then (the opening's turn until the first action). The log's actions and
+/// turns are in time order (its lines need not be).
+#[must_use]
+pub fn shade_at(
+    snapshot: &Observation,
+    turns: &[Observation],
+    log: &[(u32, Logged)],
+    t: u32,
+) -> BTreeSet<u8> {
+    // The turn shading: 0 the opening's, k the k-th started since; none while an action plays.
+    let (mut turn, mut started) = (Some(0), 0);
+    for (at, entry) in log {
+        match entry {
+            Logged::Action | Logged::Turn(_) if *at > t => break,
+            Logged::Action => turn = None,
+            Logged::Turn(_) => {
+                started += 1;
+                turn = Some(started);
+            }
+            _ => {}
+        }
+    }
+    let battle = match turn {
+        Some(0) => Some(snapshot),
+        Some(k) => turns.get(k - 1),
+        None => None,
+    };
+    battle.map_or_else(BTreeSet::new, shade)
 }
 
 /// The field as the moving stack's search sees it: the hexes obstacles block and the other

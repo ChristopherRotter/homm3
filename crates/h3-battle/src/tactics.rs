@@ -14,7 +14,9 @@ use h3_kernel::{CanonicalHash, StateHasher};
 use crate::event::{Event, EventKind, Sink};
 use crate::geometry::{Field, Hex};
 use crate::hero::HeroRecord;
-use crate::movement::{Reach, reachable_within};
+use crate::movement::{self, Reach, reachable_within};
+use crate::obstacles;
+use crate::siege;
 use crate::state::{BattleState, Stack, StackFlags, StackId, StackTraits, side_code};
 use crate::turn;
 
@@ -177,6 +179,35 @@ pub(crate) fn begin<S: Sink>(state: &mut BattleState, phase: TacticsPhase, sink:
         columns: phase.columns,
     }));
     activate(state, phase, sink);
+}
+
+/// Places stack `mover` from `from` at `to` (BAT-TAC-002): the original's walk (action 2, the move
+/// handler 0x445950) with no spell obstacle in the phase. A walker goes position by position along
+/// the path its walk takes in the phase ([`movement::placement_path`]) where something records it,
+/// so that a viewer walks it as the original does (E17 M5 T4c2b, `cross-lane`), and where a
+/// position may open the town's gate (a defender's stack at a closed gate, BAT-SIE-003, the walk's
+/// 0x442186), so every sink ends in the same state; the gate then closes behind it as after a move.
+// rule: BAT-TAC-002, BAT-SIE-003
+pub(crate) fn place<S: Sink>(
+    state: &mut BattleState,
+    ruleset: &BattleRuleset,
+    mover: StackId,
+    (from, to): (Hex, Hex),
+    sink: &mut S,
+) {
+    let mut start = from;
+    let stack = *state.at(mover);
+    if !stack.has(StackTraits::FLIES) && (S::RECORDS || siege::gate_closed_for(state, &stack)) {
+        let field = Field::new(ruleset.battle().field);
+        let (path, len) = movement::placement_path(state, field, mover, &stack, to);
+        // The path ends at `to`: its last step is the move below.
+        for &at in &path[..len.saturating_sub(1)] {
+            obstacles::moved(state, mover, (start, at), sink);
+            start = at;
+        }
+    }
+    obstacles::moved(state, mover, (start, to), sink);
+    siege::close_gate(state, sink);
 }
 
 /// Ends `current`'s turn in the phase after a placement, which the round's count records; the

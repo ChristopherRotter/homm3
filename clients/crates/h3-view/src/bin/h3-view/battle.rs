@@ -1283,6 +1283,23 @@ impl<'g> Battle<'g> {
         &self.ground.layout
     }
 
+    /// The panel shown at `at` (E17 M5 T4c2b, design §7.24): the tactics phase's own until the
+    /// phase ends, then the battle's (`combat_dialog_battle_panel` 0x4731F0 swaps them).
+    pub fn panel_at(&self, at: u32) -> &h3_ui::ui::Dialog {
+        let layout = &self.ground.layout;
+        self.record
+            .first_snapshot()
+            .map_or(&layout.panel, |snapshot| {
+                layout.panel_in(self.panels.now(snapshot, &self.timeline().turns, at))
+            })
+    }
+
+    /// Whether the tactics phase's panel shows at `at` (E17 M5 T4c2b): its keys come before the
+    /// battle's.
+    pub fn in_tactics(&self, at: u32) -> bool {
+        std::ptr::eq(self.panel_at(at), &self.ground.layout.tactics_panel)
+    }
+
     /// The draw list of the battle at `moment` (at `t`), the panel's after it as the battle's
     /// turns and lines left it (E17 M3 T6b).
     pub fn list(&self, t: u32, moment: &Moment) -> Result<Vec<Draw>, String> {
@@ -1346,9 +1363,10 @@ impl<'g> Battle<'g> {
     }
 
     /// Where a press at `at` gives `wanted` (E17 M5 T2b: the window's unattended presses): the
-    /// panel's Wait or Defend, else a point of `points` ([`crate::pointer::press_points`]) or the
-    /// siege's rectangles; none if none gives it (a hero's cast, the tactics phase's end: M5 T3,
-    /// T4; CLT-Q25's step back) or the battle takes no press then.
+    /// panel's Wait or Defend (in the tactics phase its Next Creature or Start Combat, E17 M5
+    /// T4c2b), else a point of `points` ([`crate::pointer::press_points`]) or the siege's
+    /// rectangles; none if none gives it (a hero's cast: M5 T3; CLT-Q25's step back) or the
+    /// battle takes no press then.
     pub fn press_for(
         &self,
         at: u32,
@@ -1358,9 +1376,14 @@ impl<'g> Battle<'g> {
         let layout = &self.ground.layout;
         let rects = [layout.mouse.keep, layout.mouse.tower].map(crate::pointer::middle);
         self.taken(at, |field| {
-            let button = [mouse::WAIT, mouse::DEFEND]
-                .into_iter()
-                .find(|&id| mouse::button(field.legal, id) == Some(wanted));
+            let button = [
+                mouse::WAIT,
+                mouse::DEFEND,
+                mouse::NEXT_CREATURE,
+                mouse::START_COMBAT,
+            ]
+            .into_iter()
+            .find(|&id| mouse::button(field.legal, id) == Some(wanted));
             if let Some(id) = button {
                 return Some(Press::Button(id));
             }

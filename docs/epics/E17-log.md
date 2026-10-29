@@ -3261,6 +3261,48 @@ the phase played).
 - **Found:** CLT-Q32 (the cursor after the message: copy recommended, built as the original's);
   review items 28 to 31.
 
+### M5 T4c2b — The tactics phase played (2026-10-29)
+
+On `client/e17-m5-t4c2b`, the user present. The sandbox new; every file staged from the user's
+`original-data/` first; `master` at `454810a` (T4c2a's #564 merged that morning). Asked at the
+start: a cut in two (the human's phase, then the computer's and Auto Combat in it); the user kept
+T4c2b whole. Asked during it: the placement's walk needs its path, which the engine reported as
+one `Moved`; the user chose a `cross-lane` change in this pull request (the engine emits the
+steps) over the battle lane's inbox or a copy of the pathfinder in the client.
+
+- **Read** (design §7.24): the dispatcher's switch and its walk (action 2), its head at the
+  overlay (cleared and shown at once as an action starts), the move handler, `walker_path` (the
+  tactics byte), `stack_walk`'s path start (the whole path in the phase), Start Combat in
+  `battle_buttons` (no action: the phase's flags, the panels swapped by 0x4731F0, `round_start`,
+  `next_stack_to_act(1)`), the swap's other callers (`round_start`'s end of the computer's phase
+  by its bound; a network message's case), the turn's start at the overlay (drawn and shown with
+  the outline), the computer's phase's start (0x4008: disabled and shown at once, on Wait and
+  Start Combat), the items' state message at 0x4000, the DEF button's keys (a disabled one passes
+  them on), `stack_automatic` in the phase. Two map entries new, one amended.
+- **The engine (`cross-lane`, the user's call):** `h3_battle` `tactics::place`: a walker's
+  placement goes position by position along `movement::placement_path` (the pathfinder's tactics
+  query) for a recording sink, and for every sink where a step may open the town's closed gate,
+  which closes behind it (the property `walls_and_the_moat_agree_with_movement` found the gate:
+  a defender's placement through it now opens it, as the original's walk does, 0x442186);
+  BAT-TAC-002 and BAT-MOV-003 amended, a code-reading source; two tests new, one amended.
+- **Built:** `mouse::button`'s Next Creature (`Wait`) and Start Combat (`EndTactics`), the
+  battle's Wait none in the phase (`Legal`'s `tactics`); the keys `next-creature` (Space) and
+  `start-combat` (Enter) in `Context::Tactics`, which the window asks first while the phase's
+  panel shows; `scene::Panels::turns`, `now` and `enabled`; `panel::turns` following the moves;
+  the phase's two dimmed under Auto Combat; `tactics::shade_at` (a record's turns: the sequences'
+  frames); the binary: `Battle::panel_at` and `in_tactics` (the window's buttons on the panel
+  shown, `button_centre` by it), the presser's Start Combat for the bot's `EndTactics`,
+  `pointer::inputs`' opening `key:Return` (the message's OK), the `clicks` test's two buttons and
+  `EndTactics`. Tests: the buttons', the keys', the panel's, the scene's, the shade's over a
+  record.
+- **Explored** (scratch runs, not committed): two placements, Next Creature and Start Combat on
+  `tactics.toml`; Next Creature on the last stack shows nothing (the same stack again), so the
+  recorded sequence presses it on the Marksmen; acting in the millisecond a turn starts shows no
+  later turn's shade, so each turn waits 300 ms.
+- **Recorded:** `tactics-play`: 78 changes, the viewer's timeline as recorded (the Champions'
+  walk 35, 36, 37, 38, 56, 73 and the Pikemen's 137 to 141 hex for hex); its frames below.
+- **Found:** no new question; review items 32 to 35.
+
 ## Accepted review lists (M1 to M4)
 
 M1 and M2 moved from the epic file on 2026-10-20 (less start-up reading), unchanged; M3 at its

@@ -522,6 +522,49 @@ impl Panels {
         Self { casts, ..self }
     }
 
+    /// The battle as each `TurnStarted`'s turn found it, in order (`crate::panel::turns`; E17 M5
+    /// T4c2b: the tactics phase's shade of a record's turns, `crate::tactics::shade_at`).
+    #[must_use]
+    pub fn turns(&self) -> &[Observation] {
+        &self.turns
+    }
+
+    /// The battle as the last turn started by `t` found it ([`Panels::at`]'s `started`; the
+    /// opening's `snapshot` before the first): the panel it shows is the layout's for it
+    /// (`BattleLayout::panel_in`: the tactics phase's own until its end, E17 M5 T4c2b).
+    #[must_use]
+    pub fn now<'a>(
+        &'a self,
+        snapshot: &'a Observation,
+        started: &[(u32, u8)],
+        t: u32,
+    ) -> &'a Observation {
+        self.kept_at(started, t).1.last().unwrap_or(snapshot)
+    }
+
+    /// Whether the panel's button `id` is on the panel shown at `t` ([`Panels::at`]'s arguments)
+    /// and enabled there (E17 M5 T4c2b): a disabled button passes its hotkey on to the next item
+    /// (`def_button_message` 0x4565AF), so in the tactics phase Space is Next Creature's, Defend
+    /// being disabled.
+    #[must_use]
+    pub fn enabled(
+        &self,
+        snapshot: &Observation,
+        started: &[(u32, u8)],
+        t: u32,
+        layout: &BattleLayout,
+        id: u16,
+    ) -> bool {
+        let now = self.now(snapshot, started, t);
+        let shown = self.shown_at(snapshot, started, t, "");
+        layout
+            .panel_in(now)
+            .items
+            .iter()
+            .any(|item| item.id() == id)
+            && !shown.states.get(&id).is_some_and(|s| s.disabled)
+    }
+
     /// The text the log's item shows at `t` (`crate::battle_log::text_at`'s: the last of the list
     /// shown by then).
     #[must_use]
@@ -572,6 +615,43 @@ impl Panels {
         text: &str,
         pressed: Option<u16>,
     ) -> Vec<Draw> {
+        let (now, kept, autoplay) = self.state_at(snapshot, started, t);
+        pressed_panel(
+            &now,
+            controller(snapshot, &now),
+            (kept, autoplay),
+            text,
+            layout,
+            pressed,
+        )
+    }
+
+    /// What the panel shows at `t` ([`Panels::at`]'s arguments), its log's item showing `text`.
+    fn shown_at(
+        &self,
+        snapshot: &Observation,
+        started: &[(u32, u8)],
+        t: u32,
+        text: &str,
+    ) -> h3_ui::ui::Shown {
+        let (now, kept, autoplay) = self.state_at(snapshot, started, t);
+        crate::panel::shown(
+            &now,
+            controller(snapshot, &now),
+            (kept, autoplay),
+            text,
+            PLAYERS,
+        )
+    }
+
+    /// The battle the panel shows at `t` (the last turn's start's, with the heroes' casts since),
+    /// what it kept and Auto Combat on the turn under way.
+    fn state_at(
+        &self,
+        snapshot: &Observation,
+        started: &[(u32, u8)],
+        t: u32,
+    ) -> (Observation, crate::panel::Kept, Autoplay) {
         let (kept, turns) = self.kept_at(started, t);
         let since = started
             .get(..started.partition_point(|(at, _)| *at <= t))
@@ -592,14 +672,7 @@ impl Panels {
             plays: auto.plays(k, t),
             selected: selected.get(k).copied().unwrap_or_default(),
         };
-        pressed_panel(
-            &now,
-            controller(snapshot, &now),
-            (kept, autoplay),
-            text,
-            layout,
-            pressed,
-        )
+        (now, kept, autoplay)
     }
 
     /// What the panel draws before the battle's first turn (E17 M5 T4c2a: behind the tactics

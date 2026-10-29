@@ -100,14 +100,19 @@ const BOOK_PLACES: u8 = 12;
 /// (`handle` gives its handle) takes a target: the aim starts with the mouse there; `key:Escape`
 /// gives an aim up. E17 M5 T4c1 (design §7.22): Auto Combat's key (`key:a`, the original's
 /// table) switches it on ([`Input::Auto`]); while it plays, a `key:`, `hex:` or `click:` stops it
-/// ([`Input::Stop`]: the click moves the mouse and gives nothing). *Not modelled:* the book over
-/// the battlefield.
+/// ([`Input::Stop`]: the click moves the mouse and gives nothing). E17 M5 T4c2b: a battle that
+/// opens with the tactics phase's message (`told`) takes its first `key:Return` as the box's OK,
+/// which gives nothing (the first turn starts); the phase's `key:space` and `key:Return` are its
+/// panel's Next Creature and Start Combat. *Not modelled:* the book over the battlefield, the
+/// mouse moved over the phase's message.
 pub fn inputs(
     actions: &[String],
     pre: u32,
     layout: &BattleLayout,
     (timeline, spells, handle): (&Timeline, &[u16], &dyn Fn(u16) -> Option<u16>),
+    told: bool,
 ) -> Result<Vec<Input>, String> {
+    let mut told = told;
     let mut spells = spells.iter().copied();
     let (mut cast_pending, mut auto) = (false, false);
     let mut out = vec![Input::Move { at: 0, to: PARK }];
@@ -141,6 +146,8 @@ pub fn inputs(
                 });
                 out.push(Input::Move { at: now, to: PARK });
             }
+            // The tactics phase's message closed by its OK (E17 M5 T4c2b).
+            "key" if arg == "Return" && core::mem::take(&mut told) => {}
             // A key while Auto Combat plays stops it (E17 M5 T4c1).
             "key" if core::mem::take(&mut auto) => out.push(Input::Stop { at: now }),
             "key" if auto_combat(arg) => {
@@ -497,7 +504,7 @@ mod tests {
         let actions: Vec<String> = ["key:a", "at:10", "hex:40", "key:a", "key:Escape", "key:d"]
             .map(String::from)
             .into();
-        let got = inputs(&actions, 0, &layout, (&timeline, &[], &|_| None)).unwrap();
+        let got = inputs(&actions, 0, &layout, (&timeline, &[], &|_| None), false).unwrap();
         assert_eq!(
             got,
             vec![

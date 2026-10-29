@@ -1,7 +1,8 @@
 //! The scripted presses' test (E17 M5 T2a, `docs/epics/E17-design.md` §9.11): over every turn of
 //! every scenario the bot fights to its end, a press at every hex (in each slot of a hex the
-//! acting stack may strike), on the siege's rectangles and on the panel's Wait and Defend gives
-//! exactly the engine's legal walks, strikes, shots, wall shots, heals, Wait and Defend
+//! acting stack may strike), on the siege's rectangles and on the panel's Wait and Defend (in the
+//! tactics phase its Next Creature and Start Combat, E17 M5 T4c2b) gives exactly the engine's
+//! legal walks, strikes, shots, wall shots, heals, Wait, Defend and `EndTactics`
 //! (`h3_view::mouse::click`, `button`), each stack facing its side's way as the engine has it;
 //! but the original's one gap, a two-hex stack's step back by one hex where two are open too
 //! (CLT-Q25, copied: an option later).
@@ -17,7 +18,7 @@ use h3_protocol::session::Bot as _;
 use h3_protocol::wire::{Command, Observation, Side};
 use h3_render::Bugs;
 use h3_view::layout::{BattleLayout, parse_battle};
-use h3_view::mouse::{self, DEFEND, Facing, Field, WAIT};
+use h3_view::mouse::{self, DEFEND, Facing, Field, NEXT_CREATURE, START_COMBAT, WAIT};
 
 /// The client workspace.
 fn clients() -> PathBuf {
@@ -47,7 +48,7 @@ fn scenarios() -> Vec<PathBuf> {
     out
 }
 
-/// The commands the presses give in `field` ([`points`], the rectangles, the two buttons).
+/// The commands the presses give in `field` ([`points`], the rectangles, the panels' buttons).
 fn pressed(
     layout: &BattleLayout,
     field: &Field<'_>,
@@ -71,7 +72,7 @@ fn pressed(
     for rect in [layout.mouse.keep, layout.mouse.tower] {
         take(mouse::click(field, layout, crate::pointer::middle(rect)));
     }
-    for id in [WAIT, DEFEND] {
+    for id in [WAIT, DEFEND, NEXT_CREATURE, START_COMBAT] {
         take(mouse::button(field.legal, id));
     }
     out
@@ -162,6 +163,7 @@ fn check(path: &Path, with: &mut With, out: &mut Checked) {
                         | Command::Heal { .. }
                         | Command::Wait {}
                         | Command::Defend {}
+                        | Command::EndTactics {}
                 )
             })
             .map(|c| format!("{c:?}"))

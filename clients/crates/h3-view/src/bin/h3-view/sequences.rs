@@ -359,6 +359,7 @@ fn sequences(options: &Options) -> Result<usize, String> {
             sequence.pre,
             &layout,
             (&timeline, &spells, &handle),
+            h3_view::tactics::told(snapshot),
         )
         .map_err(|e| format!("{}: {e}", sequence.id))?;
         // The spells the actions aim, each turn's aims of them (E17 M5 T3b).
@@ -626,12 +627,16 @@ pub(crate) fn draw_frames(
         }
         // The tactics phase's message the battle opened with (E17 M5 T4c2a): behind it the
         // battle before its first turn, no stack outlined or marked; once it closed, a
-        // situation's opening turn shaded (a sequence's turns: the queue's T4c2b).
+        // situation's opening turn shaded, a sequence's human turns in the phase while they wait
+        // (E17 M5 T4c2b).
         let opening = interface.book.is_some_and(|b| b.opening);
         if opening {
             moment.before_first_turn();
         } else if interface.shown.is_none() {
             moment.shade = h3_view::tactics::shade(snapshot);
+        } else {
+            moment.shade =
+                h3_view::tactics::shade_at(snapshot, panels.turns(), &timeline.log, frame.t);
         }
         for &[side, index, group, f] in &frame.fidgets {
             let side = if side == 0 {

@@ -204,3 +204,26 @@ pub(crate) fn path(
     };
     Search::run(state, field, (id, mover), query).path()
 }
+
+/// [`path`] of a placement in the tactics phase (BAT-TAC-002): the original's walk there asks its
+/// pathfinder with the tactics flag (`walker_path` 0x5239D0: its range and speed then
+/// [`crate::pathfinder::TACTICS_RANGE`], 0x4B34DE) and walks the whole path (0x4420B8), whatever
+/// the stack's speed. Empty if `to` is the start or out of that reach.
+// rule: BAT-TAC-002
+pub(crate) fn placement_path(
+    state: &BattleState,
+    field: Field,
+    id: StackId,
+    mover: &Stack,
+    to: Hex,
+) -> ([Hex; MAX_PATH], usize) {
+    let query = Query {
+        goal: Goal::Reach(to),
+        range: crate::pathfinder::TACTICS_RANGE,
+        avoid: false,
+        spare: None,
+        speed: None,
+        tactics: true,
+    };
+    Search::run(state, field, (id, mover), query).path()
+}

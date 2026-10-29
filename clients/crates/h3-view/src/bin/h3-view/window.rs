@@ -18,19 +18,22 @@
 //! (`h3_view::mouse::track`): its cursor (the combat cursor's frame, the hardware cursor or drawn),
 //! the stack it marks and those it enters fidgeting, its hints in the panel's log. The panel's
 //! buttons show their click frame while the mouse holds them or their hotkeys are down (the
-//! table's: S, R, O, A, C, W, D and Space); a replay takes no command, but the log's scroll
-//! buttons and the arrow keys scroll it.
+//! table's: S, R, O, A, C, W, D and Space; in the tactics phase its panel's Space and Enter
+//! first, E17 M5 T4c2b); a replay takes no command, but the log's scroll buttons and the arrow
+//! keys scroll it.
 //!
 //! Hot seat (E17 M5 T2b): `--human attacker|defender|both` names the sides a human plays here
 //! (their players the battle's human ones, the bot playing the others). On a human's turn the
 //! battle waits at its end, idling, until a left press over the battlefield gives its command
 //! (`h3_view::mouse::click`, as the button goes down) or the panel's Wait or Defend is clicked
-//! (the mouse's button released over it, or its hotkey released: `mouse::button`); input made
+//! (the mouse's button released over it, or its hotkey released: `mouse::button`; in the tactics
+//! phase its panel's Next Creature or Start Combat, E17 M5 T4c2b); input made
 //! while the battle takes none (an action playing, the computer's turn) gives nothing. The screen
 //! shows the side to act's hidden objects (`anim::Timeline::screen`). Unattended (`--check`,
 //! `--measure`), the window presses a human's commands itself: the bot's choice, pressed where
-//! the mouse gives it (given without a press where none does: a hero's cast, the tactics phase's
-//! end), so that the battle is the bot's at once with the same setup, which the run checks.
+//! the mouse gives it (a hero's cast through its book and aim; the tactics phase ended by Start
+//! Combat, E17 M5 T4c2b), so that the battle is the bot's at once with the same setup, which the
+//! run checks.
 //!
 //! The sound (T5b, [`crate::audio`]): a battle shown from its start opens as the original's does,
 //! its start sound playing over the first frame while the battle's clock waits (at most 10 s),
@@ -62,7 +65,6 @@ use h3_ui::ui::Item;
 use h3_view::anim::Speed;
 use h3_view::compose::FORMAT;
 use h3_view::keys::{Command as Do, Context, Keys};
-use h3_view::layout::BattleLayout;
 use h3_view::mouse::track::Input;
 use h3_view::scene::Draw;
 use h3_view::sound::Tune;
@@ -596,7 +598,12 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                         battle.book_open(),
                         battle.aiming(),
                     );
-                    let command = keys.command(context, ctrl.contains(&true), key.name());
+                    let ctrl_held = ctrl.contains(&true);
+                    // The tactics phase's panel's keys first, then the battle's (E17 M5 T4c2b).
+                    let command = (context == Context::Battle && battle.in_tactics(at))
+                        .then(|| keys.command(Context::Tactics, ctrl_held, key.name()))
+                        .flatten()
+                        .or_else(|| keys.command(context, ctrl_held, key.name()));
                     // A key while Auto Combat plays stops it as the next turn starts and does
                     // nothing else (E17 M5 T4c1, 0x4741F9); the window's own keys stay its own.
                     if context == Context::Battle
@@ -837,7 +844,7 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                         inputs.push(Input::Move { at, to: [x, y] });
                         // The mouse's button follows it on or off the button it holds.
                         if let Some(h) = held.as_mut().filter(|h| h.key.is_none()) {
-                            h.over = battle.layout().panel.button_at([x, y]) == Some(h.id);
+                            h.over = battle.panel_at(at).button_at([x, y]) == Some(h.id);
                         }
                         mouse_changed = true;
                     }
@@ -854,7 +861,7 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                     down: true,
                     at: (x, y),
                 } => {
-                    if let Some(id) = battle.layout().panel.button_at([x, y]) {
+                    if let Some(id) = battle.panel_at(at).button_at([x, y]) {
                         held = Some(Held {
                             id,
                             key: None,
@@ -1226,7 +1233,7 @@ impl Presser {
         // Auto Combat's button clicked at the turn `--auto` names (E17 M5 T4c1).
         if self.auto == Some(self.waited) && self.switched.is_none() {
             let commands = battle.commands();
-            if let Some(to) = button_centre(battle.layout(), h3_view::panel::AUTO_COMBAT) {
+            if let Some(to) = button_centre(battle.panel_at(now), h3_view::panel::AUTO_COMBAT) {
                 inputs.retain(|i| i.at() <= now);
                 inputs.push(Input::Move { at: now, to });
             }
@@ -1238,7 +1245,7 @@ impl Presser {
         }
         // Leaving: the panel's button clicked, its question shown (E17 M5 T4a).
         if let Some(id) = self.leave {
-            if let Some(to) = button_centre(battle.layout(), id) {
+            if let Some(to) = button_centre(battle.panel_at(now), id) {
                 inputs.retain(|i| i.at() <= now);
                 inputs.push(Input::Move { at: now, to });
             }
@@ -1262,7 +1269,7 @@ impl Presser {
             }
             Some(Press::Button(id)) => {
                 self.buttons += 1;
-                button_centre(battle.layout(), id)
+                button_centre(battle.panel_at(now), id)
             }
             None => {
                 self.given += 1;
@@ -1400,8 +1407,7 @@ impl Presser {
 }
 
 /// The centre of the panel's button `id`.
-fn button_centre(layout: &BattleLayout, id: u16) -> Option<[i32; 2]> {
-    let panel = &layout.panel;
+fn button_centre(panel: &h3_ui::ui::Dialog, id: u16) -> Option<[i32; 2]> {
     panel.items.iter().find_map(|item| match item {
         Item::Button(b) if b.id == id => Some([
             panel.place[0] + b.at[0] + b.size[0] / 2,

@@ -10,9 +10,9 @@ use h3_render::Bugs;
 
 use super::track::Look;
 use super::{
-    DEFEND, Facing, Field, Hint, Kind, Legal, Pointer, Slot, Spot, WAIT, attack_slots, button,
-    click, cursor, distance, look_cursor, neighbour, pointer, pointer_in, slot, slots, spot,
-    walls_halve,
+    DEFEND, Facing, Field, Hint, Kind, Legal, NEXT_CREATURE, Pointer, START_COMBAT, Slot, Spot,
+    WAIT, attack_slots, button, click, cursor, distance, look_cursor, neighbour, pointer,
+    pointer_in, slot, slots, spot, walls_halve,
 };
 use crate::layout::{BattleLayout, parse_battle};
 use crate::record::tests::observation;
@@ -875,4 +875,22 @@ fn the_panel_s_wait_and_defend_give_their_commands_when_listed() {
     assert_eq!(button(&defend, WAIT), None);
     assert_eq!(button(&Legal::default(), DEFEND), None);
     assert_eq!(button(&Legal::new(&[Command::Retreat {}]), DEFEND), None);
+    // Outside the tactics phase its panel's two give nothing.
+    assert_eq!(button(&both, NEXT_CREATURE), None);
+    assert_eq!(button(&both, START_COMBAT), None);
+}
+
+#[test]
+fn the_tactics_phase_s_next_creature_waits_and_start_combat_ends_it() {
+    // E17 M5 T4c2b: the phase's legal commands are its placements, Wait and EndTactics.
+    let phase = Legal::new(&[
+        Command::Move { to: 20 },
+        Command::Wait {},
+        Command::EndTactics {},
+    ]);
+    assert_eq!(button(&phase, NEXT_CREATURE), Some(Command::Wait {}));
+    assert_eq!(button(&phase, START_COMBAT), Some(Command::EndTactics {}));
+    // The battle's Wait is disabled in the phase (0x472428), Defend never listed there.
+    assert_eq!(button(&phase, WAIT), None);
+    assert_eq!(button(&phase, DEFEND), None);
 }

@@ -204,7 +204,12 @@ surrender above it. Since E17 M5 T4c2a (design §7.23) a scenario's hero has its
 the Tactics skill on the map; a battle that opens in a human's tactics phase shows the phase's
 message at the opening (`tactics-open`), the situation's `mouse` moving over it: `key:Return`
 closes it and the first turn starts, the mouse keeping the turn's pointer until a `move:` after
-it gives the battle's cursor (CLT-Q32: `tactics-rest`, `tactics-move`).
+it gives the battle's cursor (CLT-Q32: `tactics-rest`, `tactics-move`). A sequence through the
+phase (E17 M5 T4c2b, `tactics-play`): its first `key:Return` is the message's OK (no command, the
+viewer's `pointer::inputs` skips it), `hex:` places the active stack, `key:space` is Next Creature
+and a later `key:Return` Start Combat. A turn acted on in the millisecond it starts shows no
+shade: wait on it with an `at:` first. Next Creature on the phase's last stack gives the same
+stack again and shows nothing.
 
 **Another battlefield:** the original's obstacles depend on the battle's tile, the background on
 what stands around it (§4.4): `--tile x,y` (the set's `tile`) moves the battle. At (20, 20) on dirt

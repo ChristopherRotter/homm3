@@ -24,6 +24,10 @@ pub type Keys = keys::Keys<Command>;
 pub enum Context {
     /// Nothing: the battle's own keys.
     Battle,
+    /// Nothing, in the tactics phase (E17 M5 T4c2b): its panel's Next Creature and Start Combat,
+    /// then the battle's own ([`Context::Battle`]: the window asks both; the base's Defend is
+    /// disabled there and passes its Space on, `def_button_message` 0x4565AF).
+    Tactics,
     /// The hero's spell book (E17 M5 T3a).
     Book,
     /// A message box (E17 M5 T4a), over the book too.
@@ -81,8 +85,9 @@ pub enum Command {
 /// The panel's buttons with a hotkey, by id, with their names and the original's keys
 /// (`battle_panel_base` 0x46B610, each button's +0x48: the scan codes 0x1F S, 0x13 R, 0x18 O,
 /// 0x1E A, 0x2E C, 0x11 W, 0x20 D and 0x39 Space; a key down presses it, the key up clicks,
-/// 0x45659F, 0x4564D6).
-pub const BUTTONS: [(u16, &str, &[&str]); 7] = [
+/// 0x45659F, 0x4564D6); the tactics phase's panel's two (0x46C050: Space and Enter, E17 M5
+/// T4c2b).
+pub const BUTTONS: [(u16, &str, &[&str]); 9] = [
     (panel::SURRENDER, "surrender", &["S"]),
     (panel::RETREAT, "retreat", &["R"]),
     (panel::OPTIONS, "options", &["O"]),
@@ -90,6 +95,8 @@ pub const BUTTONS: [(u16, &str, &[&str]); 7] = [
     (panel::SPELL_BOOK, "spell-book", &["C"]),
     (panel::WAIT, "wait", &["W"]),
     (panel::DEFEND, "defend", &["D", "Space"]),
+    (panel::NEXT_CREATURE, "next-creature", &["Space"]),
+    (panel::START_COMBAT, "start-combat", &["Return"]),
 ];
 
 /// The book's keys with their names and the original's keys (`spell_book_proc` 0x59D1B4, by the
@@ -172,11 +179,13 @@ impl keys::Command for Command {
     }
 
     /// Everywhere the window's own that work whatever is open; with nothing over the battle quit,
-    /// a frame on, restart, the log's, the dragon's and the buttons'; the book's, the box's, the
-    /// aim's and the result window's in theirs.
+    /// a frame on, restart, the log's, the dragon's and the buttons' (the tactics phase's panel's
+    /// two in its own context); the book's, the box's, the aim's and the result window's in
+    /// theirs.
     fn context(self) -> Option<Context> {
         match self {
             Self::Window(w) if w.everywhere() => None,
+            Self::Button(panel::NEXT_CREATURE | panel::START_COMBAT) => Some(Context::Tactics),
             Self::Window(_) | Self::LogUp | Self::LogDown | Self::DragonSpell | Self::Button(_) => {
                 Some(Context::Battle)
             }

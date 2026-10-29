@@ -1027,6 +1027,38 @@ fn the_panel_draws_its_items_as_the_turn_sets_them() {
 }
 
 #[test]
+fn the_tactics_phase_s_panel_shows_until_start_combat_and_takes_its_keys() {
+    // E17 M5 T4c2b (design §7.24): Red's phase, then Start Combat at 500 (round 1's turn in the
+    // same millisecond): the phase's panel and its two enabled until then, Defend disabled
+    // there; the battle's panel after, Defend enabled on Red's turn.
+    let layout = layout();
+    let mut o = battle_view();
+    o.sides[0].human = true;
+    o.tactics = Some(h3_protocol::wire::Tactics {
+        side: Side::Attacker,
+        columns: 3,
+    });
+    let events = [
+        Event::TacticsEnded {},
+        Event::RoundStarted { round: 1 },
+        Event::TurnStarted { stack: 0 },
+    ];
+    let panels = Panels::new(&o, &events, Vec::new());
+    let started = [(500, 0)];
+    // One turn after the opening's: round 1's, the phase over.
+    assert_eq!(panels.turns().len(), 1);
+    assert!(panels.turns()[0].tactics.is_none());
+    let enabled = |t, id| panels.enabled(&o, &started, t, &layout, id);
+    assert!(panels.now(&o, &started, 499).tactics.is_some());
+    assert!(panels.now(&o, &started, 500).tactics.is_none());
+    assert!(enabled(0, crate::panel::NEXT_CREATURE) && enabled(499, crate::panel::START_COMBAT));
+    assert!(!enabled(0, crate::panel::DEFEND) && !enabled(0, crate::panel::WAIT));
+    assert!(!enabled(500, crate::panel::NEXT_CREATURE) && enabled(500, crate::panel::DEFEND));
+    // A button no panel has.
+    assert!(!enabled(0, 1));
+}
+
+#[test]
 fn the_panel_over_time_follows_the_turns_and_the_log() {
     // E17 M3 T6b: stack 0 the attacker's (Red, human), stack 2 the defender's (a computer).
     let layout = layout();

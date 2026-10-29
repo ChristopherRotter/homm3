@@ -2715,6 +2715,89 @@ cell pictures, the player record's reset 0x4B9E20 (+0x88).
   (0 and 1 000 ms), `tactics`, `tactics-rest`, `tactics-move`, `tactics-out`, `tactics-enemy`,
   `tactics-start`: all eight frames exact.
 
+### 7.24 The tactics phase played (M5 T4c2b)
+
+Kept whole by the user (2026-10-29). Read: `action_dispatcher` 0x478D80 at its switch (0x479022 to
+0x47902F, the table 0x479DA4: the case the action less 1), its head at the overlay (0x478E20 to
+0x478E7E) and its walk, action 2 (0x4790F0 to 0x4791BA); the move handler 0x445950 whole,
+`walker_path` 0x5239D0 whole, `stack_walk` 0x441FA0 at the path's start (0x4420A8 to 0x442190);
+`battle_buttons` 0x474D80 at Start Combat (0x4751CC to 0x47528D) and its switch 0x474E53;
+`combat_dialog_battle_panel` 0x4731F0's callers: `round_start` 0x475ED0's head (0x475ED0 to
+0x475F9E), `battle_loop_turn` 0x4740D0 at 0x474470 to 0x474567; `battle_controls_state` 0x4782D0
+at the turn's overlay (0x478326 to 0x4783B6); `battle_start` 0x462A20 at the computer's phase
+(0x462EA2 to 0x462EFF); the items' state message 0x5FE4F0 at 0x5FE540 to 0x5FE624;
+`def_button_message` 0x456190 at its keys (0x456472 to 0x4565DF); `stack_automatic` 0x474BF0's head.
+
+- **A placement** is action 2, the walk (0x4790F0): the phase round's mark +0x14030 set (the
+  computer's bound below), the stand's fidgets settled (0x479DE0), the move handler through
+  0x445D10 with its flag 1 (a plain move: the walker turns back at its end), so a walker walks, a
+  flyer flies and a teleporter teleports as on any turn. The walk's path is `walker_path`'s, which
+  asks the pathfinder with the tactics byte (its range 99 there, the pathfinder's 1 000 then:
+  0x4B34DE), and in the phase the walker takes the whole path (0x4420B8; elsewhere from the step
+  its speed leaves). A defender's step onto a town's closed gate opens it (0x442186). The engine
+  reported a placement as one `Moved`; since this task a walker's is reported hex by hex along that
+  path (`h3_battle` `tactics::place`, `movement::placement_path`; the user's `cross-lane` call,
+  2026-10-29), and through the gate it opens and closes as a walk's (the path then walked for
+  every sink, BAT-TAC-002).
+- **The shade over the phase's turns.** An action's start (0x478E3A to 0x478E79) shows the pointer,
+  clears the overlay +0x107, draws the hex overlays again with its second argument 0 and, when one
+  changed, redraws the battle and shows it at once: the shade goes as the action starts, while
+  the outline stays until the move handler clears it (0x445996). The next turn's start, when the
+  outlined stack changes (0x47836D), draws the overlays with its second argument 1, outlines the
+  new stack, stands it (group 2 unless it holds another, 0x478380) and redraws and shows the
+  battle at once (0x4783B1): its shade comes with its outline.
+- **Next Creature** (2300) is action 8, Wait (0x4751B8, as 2009): the waited bit, no log line in
+  the phase (0x479918); the engine's `Wait` (a stack that waited this round of the phase ends its
+  turn, BAT-TAC-002).
+- **Start Combat** (30722, 0x4751CC) is no action: the button's command clears the outline
+  +0x132C8, sends the network message, and in the phase clears the flag +0x13D68, sets +0x132B8 to
+  1 and +0x132BC and the phase's round counter +0x13D6C to 0; with the battle shown it swaps the
+  panels (0x4731F0: the dialog's +0x70 destroyed, `battle_panel_create` 0x46BC30 its new +0x70, the
+  dialog redrawn and the whole screen shown); then `round_start` (now outside the phase: the
+  round's start and, shown, its log line GENRLTXT 413), `next_stack_to_act` with its argument 1
+  (round 1's first activation with its bad morale and Fear checks, as the engine's
+  `turn::activate_next`) and a redraw. The new panel is built in the colours of +0x132C0's player
+  (the phase's side's) with its scroll buttons as built, which the client's `panel::Kept` already
+  gives (a human's turns in the phase colour it, none outside it enabled the scroll buttons).
+  The viewer's timeline gives `EndTactics` no frames: the pointer and the log's settling of its
+  action's start are what round 1's first turn's start does in the same millisecond.
+- **The swap's other callers.** `round_start` in the phase (0x475EF0 to 0x475F99): when the battle
+  is hidden or the first stack plays itself (0x474BF0) and no stack was placed in the phase's last
+  round (+0x14030) or its counter reached 3, the phase ends there as Start Combat ends it: the
+  computer's phase's end (BAT-AI-023, the engine's computer). 0x474552 is a case of the battle
+  loop's message switch (its table at 0x474664; not read further: a network game's).
+- **A computer's phase seen by a human.** At the start (0x462ED0) the dialog adds the state 0x4008
+  to 2009 and 30722: disabled (8) and shown at once (0x4000: 0x5FE5AC redraws and shows the item,
+  0x5FE5E4 clears the bit); Wait is disabled already (0x472428), so Next Creature stays enabled
+  until the first activation, which comes before the battle's first frame (`battle_start`
+  0x463246) and dims the nine (the panel's +0xC 0x46C290 on a turn no local human plays, built at
+  T4c2a). The computer places its stacks by its own action (0x477EE0) and ends the phase at a phase
+  round's start (above). In the window the bot (`Greedy`, *provisional*: not the original's
+  computer, the M2 review list) ends any phase at once.
+- **Auto Combat in the phase.** With +0x132C4 set a human's creatures play themselves
+  (`stack_automatic`: creatures with auto combat and the option; a war machine never in the
+  phase, 0x474C27 and 0x474C6F, nor is one ever active there), so the computer places them and
+  round_start's bound ends the phase; the panel's +0xC (0x46C290) dims the nine with Auto Combat
+  enabled and selected (0x4784F9). In the window the bot ends the phase at once (above).
+- **Keys.** A disabled button skips the key messages (0x4565AF: state 8): the dialog offers them
+  to its items in order, so in the phase Space, the base's Defend's second hotkey, reaches Next
+  Creature (Defend disabled) and Enter Start Combat; the window asks the phase's two first
+  (`Context::Tactics`) while the phase's panel shows.
+- **Built:** `h3_battle` `tactics::place` (`cross-lane`); `mouse::button`'s Next Creature (`Wait`)
+  and Start Combat (`EndTactics`), the battle's Wait giving none in the phase (`Legal`'s
+  `tactics`); `keys`' `next-creature` and `start-combat` (`Context::Tactics`); the window's buttons
+  found on the panel shown (`Battle::panel_at`, `scene::Panels::now`, `enabled`), its presser
+  pressing Start Combat for the bot's `EndTactics`; `panel::turns` following the stacks' moves;
+  `tactics::shade_at` (a record's turns, the sequences' frames); the phase's two dimmed under Auto
+  Combat; `pointer::inputs`' opening `key:Return` (the message's OK).
+- **Recorded** (`tactics-play`, `tactics.toml`): the message's OK, the Champions placed on 73 by
+  a click on 74 (their walk 35, 36, 37, 38, 56, 73: the engine's path the original's), Next
+  Creature on the Marksmen, the Pikemen placed on 141, Start Combat on the Marksmen's return, each
+  turn waiting 300 ms so that its shade shows: the timeline as recorded (78 changes); 106 frames,
+  44 of them, the Champions' walk, differing only by two pixels of redraw artifacts (§7.11, as
+  `walk`'s), the others exact: the four shaded turns, the panels' swap, round 1's log line and the
+  Champions' turn.
+
 ## 8. The window, input and audio evaluation (M2 T2)
 
 ADR-0020 point 4 left the library to a measured evaluation at M2; the choice, the user's
