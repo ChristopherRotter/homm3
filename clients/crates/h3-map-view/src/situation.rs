@@ -216,7 +216,7 @@ pub struct ObjectSpec {
 
 /// A town (E24 M1 T5b1): its faction's template (`Objects.txt`'s first of class 98 and the
 /// faction), its owner and buildings.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct TownSpec {
     /// Its anchor; its entrance is two columns left of it.
@@ -232,6 +232,37 @@ pub struct TownSpec {
     /// design §4.5: the town list's picture): Red's towns only.
     #[serde(default)]
     pub built: bool,
+    /// A Resource Silo among its buildings (E24 M3 T5b1, design §4.8: the status window's silo;
+    /// the map's building 9): with chosen buildings only (a Citadel, Castle or Capitol).
+    #[serde(default)]
+    pub silo: bool,
+    /// Its garrison's slots, [creature, count] each, written by the harness into its record
+    /// before the selection (E24 M3 T5b1: the status window's army): Red's towns only, at most
+    /// seven.
+    #[serde(default)]
+    pub garrison: Vec<[i32; 2]>,
+    /// A hero of Red's (on its tile, after its walk) the harness makes its garrison hero in its
+    /// record (+0xC) before the selection (E24 M3 T5b1: only the status window reads it, its mark
+    /// and that hero's army): Red's towns only.
+    #[serde(default)]
+    pub garrison_hero: Option<[u8; 2]>,
+}
+
+impl TownSpec {
+    /// The writer's buildings: its set's, with the Resource Silo (the map's building 9) when it
+    /// has one (E24 M3 T5b1; the checks refuse a silo with a standard set).
+    fn writer_buildings(&self) -> TownBuildings {
+        match self.buildings.writer() {
+            TownBuildings::Custom {
+                mut built,
+                forbidden,
+            } if self.silo => {
+                built[1] |= 1 << 1;
+                TownBuildings::Custom { built, forbidden }
+            }
+            other => other,
+        }
+    }
 }
 
 /// A town's buildings as a situation names them: the editor's standard set without or with a
@@ -306,6 +337,32 @@ pub struct HeroSpec {
     /// Its mana (+0x18), likewise (the mana bar).
     #[serde(default)]
     pub mana: Option<i32>,
+    /// Its attack, defense, power and knowledge as stored (i8 +0x476), likewise (E24 M3 T5b1,
+    /// design §4.8: the status window).
+    #[serde(default)]
+    pub skills: Option<[i8; 4]>,
+    /// Its morale until its next battle (i8 +0x11A), likewise: the status window shows its
+    /// morale with it.
+    #[serde(default)]
+    pub morale: Option<i8>,
+    /// Its luck until its next battle (i8 +0x11B), likewise.
+    #[serde(default)]
+    pub luck: Option<i8>,
+    /// Its army's slots, [creature, count] each (+0x91, +0xAD), likewise; at most seven.
+    #[serde(default)]
+    pub army: Vec<[i32; 2]>,
+}
+
+impl HeroSpec {
+    /// Whether the harness writes anything into its record (E24 M3 T4a, T5b1).
+    fn written(&self) -> bool {
+        self.points.is_some()
+            || self.mana.is_some()
+            || self.skills.is_some()
+            || self.morale.is_some()
+            || self.luck.is_some()
+            || !self.army.is_empty()
+    }
 }
 
 /// A boat without a hero (E24 M1 T5a).
@@ -483,7 +540,7 @@ impl Situation {
                 owner: t.owner,
                 garrison: None,
                 tight_formation: false,
-                buildings: t.buildings.writer(),
+                buildings: t.writer_buildings(),
             }));
         }
         let map = Map {
@@ -613,11 +670,47 @@ impl Situation {
         if bar && !matches!(self.select, Some(SelectSpec::Hero(_))) {
             return Err("the resources or the date without a hero's selection".into());
         }
-        let written = self
+        // The status window's (E24 M3 T5b1): Red's towns' garrisons and garrison heroes, of
+        // Red's; seven slots at most; a silo with chosen buildings.
+        for t in &self.towns {
+            let garrisoned = !t.garrison.is_empty() || t.garrison_hero.is_some();
+            if garrisoned && t.owner != Some(0) {
+                return Err(format!(
+                    "town at {:?}: only Red's towns have their garrison written",
+                    t.at
+                ));
+            }
+            if let Some(at) = t.garrison_hero
+                && !self
+                    .heroes
+                    .iter()
+                    .any(|h| h.owner == 0 && h.walk.last().copied().unwrap_or(h.at) == at)
+            {
+                return Err(format!(
+                    "town at {:?}: its garrison hero is none of Red's",
+                    t.at
+                ));
+            }
+            if t.silo && matches!(t.buildings, TownBuilt::Village | TownBuilt::Fort) {
+                return Err(format!(
+                    "town at {:?}: a silo with the standard buildings",
+                    t.at
+                ));
+            }
+        }
+        let slots = self
             .heroes
             .iter()
-            .any(|h| h.points.is_some() || h.mana.is_some())
-            || self.towns.iter().any(|t| t.built);
+            .map(|h| h.army.len())
+            .chain(self.towns.iter().map(|t| t.garrison.len()));
+        if slots.into_iter().any(|n| n > 7) {
+            return Err("an army of more than seven slots".into());
+        }
+        let written = self.heroes.iter().any(HeroSpec::written)
+            || self
+                .towns
+                .iter()
+                .any(|t| t.built || !t.garrison.is_empty() || t.garrison_hero.is_some());
         let found = match self.select {
             None if written => return Err("a write into the lists without a selection".into()),
             None => true,

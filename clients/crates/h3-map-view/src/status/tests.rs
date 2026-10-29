@@ -225,7 +225,7 @@ fn a_bonus_past_the_frames_shows_the_first() {
 #[test]
 fn a_town_s_window() {
     // 0x4521F0 (design §4.8): the picture the list's less 2, the name, the City Hall (2) and the
-    // Citadel (1), the garrison hero's mark, two silo resources, the income, the army.
+    // Citadel (1), the garrison hero's mark, two silo resources, the income, the army packed.
     let layout = layout();
     let (panel, shown) = window(
         &layout,
@@ -246,18 +246,19 @@ fn a_town_s_window() {
             (2003, 2),
             (2004, 1),
             (2007, 0),
-            (2012, 15),
+            (2011, 15),
             (2018, 2)
         ]
     );
+    // The filled slots one after another from the first place (0x452A38), not at their slots'.
     assert_eq!(
         texts_of(&shown),
-        [(2002, "Arcton"), (2006, "1500"), (2022, "5")]
+        [(2002, "Arcton"), (2006, "1500"), (2021, "5")]
     );
     assert_eq!(
         hidden(&shown),
         [
-            2011, 2013, 2014, 2015, 2016, 2017, 2019, 2021, 2023, 2024, 2025, 2026, 2027
+            2012, 2013, 2014, 2015, 2016, 2017, 2019, 2022, 2023, 2024, 2025, 2026, 2027
         ]
     );
 }

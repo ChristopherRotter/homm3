@@ -13,7 +13,8 @@
 //! (`itmtls.def`: 1 to 3 for the Town Hall, City Hall and Capitol standing, tested in that order,
 //! else 0) and fort (`itmcls.def`: 0 to 2 for the Fort, Citadel and Castle, else 3), the garrison
 //! hero's mark (`townqkgh.pcx`), its silo's one or two resources (`smalres.def`; three or more
-//! show none), its gold income and the army it shows, as a hero's.
+//! show none), its gold income and the army it shows, as a hero's but its filled slots one after
+//! another from the first place (a hero's each at its slot's).
 
 use alloc::format;
 use alloc::string::String;
@@ -230,7 +231,7 @@ fn hero_window(
             .frames
             .insert(id, u32::try_from(frame).unwrap_or_default());
     }
-    army(art, &status.army, texts, &mut shown);
+    army(art, &status.army, Places::BySlot, texts, &mut shown);
     shown
 }
 
@@ -270,20 +271,46 @@ fn town_window(art: &StatusArt, status: &TownStatus, picture: u32, texts: &Catal
     shown
         .texts
         .insert(id::INCOME, number(texts, i64::from(status.income)));
-    army(art, &status.army, texts, &mut shown);
+    army(art, &status.army, Places::Packed, texts, &mut shown);
     shown
 }
 
-/// The army's slots (0x451EBB, 0x45280C): a filled slot's creature and count, an empty slot's
-/// items hidden.
-fn army(art: &StatusArt, army: &[Option<Stack>; 7], texts: &Catalogue, shown: &mut Shown) {
+/// How a window places an army's filled slots.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Places {
+    /// Each at its slot's place (a hero's: 0x4520E9 steps the places with every slot).
+    BySlot,
+    /// One after another from the first place (a town's: 0x452A38 steps them with a filled slot
+    /// only).
+    Packed,
+}
+
+/// The army's slots (0x451EBB, 0x45280C): each filled slot's creature and count at its place
+/// (`places`), the places left over hidden.
+fn army(
+    art: &StatusArt,
+    army: &[Option<Stack>; 7],
+    places: Places,
+    texts: &Catalogue,
+    shown: &mut Shown,
+) {
     let hidden = State {
         hidden: true,
         ..State::default()
     };
-    for ((stack_id, count_id), slot) in (id::STACKS..).zip(id::COUNTS..).zip(army) {
-        match slot {
-            Some(stack) => {
+    let filled: Vec<(u16, Stack)> = (0u16..)
+        .zip(army)
+        .filter_map(|(slot, stack)| stack.map(|s| (slot, s)))
+        .enumerate()
+        .map(|(n, (slot, stack))| match places {
+            Places::BySlot => (slot, stack),
+            Places::Packed => (u16::try_from(n).unwrap_or(u16::MAX), stack),
+        })
+        .collect();
+    for place in 0..SLOTS {
+        let (stack_id, count_id) = (id::STACKS + place, id::COUNTS + place);
+        match filled.iter().find(|(p, _)| *p == place) {
+            Some((_, stack)) => {
                 let frame = u32::from(stack.creature).saturating_add(art.stack);
                 shown.frames.insert(stack_id, frame);
                 let text = if stack.count < art.thousands {
