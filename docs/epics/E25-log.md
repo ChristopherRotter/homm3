@@ -362,3 +362,15 @@ an entry only where a task builds on it.
   `t4-2` rose to 50 M (no truncation penalty, no shaping), shaping passes that level by 20 M
   and samples add nothing more: the limit is the agent (its network or what it reads), not the
   training's length.
+
+## T6 — Increment 2's checkpoint (2026-10-29, in progress)
+
+- **The user's choices:** `e25-scale-1` #3 (30 M, three tactics rounds) is **the lineage's
+  current best**, the network the exit criteria are judged on (at or above `e25-bound-1` on every
+  point estimate; later runs use three rounds). The head-to-heads against `e25-bound-1` and
+  `t7-1` are skipped (the engine seats compare them on the same battles).
+- **Increment 3, open (AI-Q11):** asked to choose among the candidates (the agent recommended
+  the entity network revived), the user asked which network architectures are possible: one
+  that correlates hexes properly and efficiently, a larger or deeper network (never tried: every
+  run since E05 is the 2 × 512 MLP), else the entity network, scrutinised. The options, their
+  costs and the recommendation: AI-Q11 (`docs/OPEN-QUESTIONS.md`).

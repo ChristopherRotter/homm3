@@ -8,16 +8,16 @@ Pre-refined tasks of the AI lane, in order, then the inbox of discovered work. T
 
 **E25** (`docs/epics/E25-battle-ai-v2.md`, AI-Q10; record `E25-log.md`), refined
 2026-10-27; increment 1 closed 2026-10-28 (`E25-archive.md`; T3: the user chose increment 2).
-**`e25-bound-1` is the lineage's current best** (the user at T4b, 2026-10-29). **Increment 2,
+**`e25-scale-1` #3 is the lineage's current best** (the user at T6, 2026-10-29). **Increment 2,
 shaping, bounded, then scale:** the faithful system actor still trains no agent and no neutral
 battles train (decision 2, the user at T2a); each run's length is agreed with the user (decision
 5).
 
 - **T6 Increment 2's checkpoint.** *Scope:* T4b's and T5's reads put to the user (T5:
   `e25-scale-1`, stopped at 41.3 M, its best #3 at `e25-bound-1`'s level, scale gains nothing;
-  `E25-log.md` T5); the current best (`e25-bound-1` #2 or `e25-scale-1` #3) and increment 3
-  chosen among the epic's candidates. *Depends on:* T5 (done 2026-10-29). *Status:* next (the
-  user's choice).
+  `E25-log.md` T5); increment 3 chosen. The current best is `e25-scale-1` #3 and the
+  head-to-heads are skipped (the user, 2026-10-29; `E25-log.md` T6). *Depends on:* T5 (done
+  2026-10-29). *Status:* in progress: AI-Q11 (the network's architecture) waits for the user.
 
 ## Inbox
 

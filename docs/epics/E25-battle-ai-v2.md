@@ -100,7 +100,8 @@ evidence asks for one (then a `cross-lane` change with the battle lane, after th
 **At increment 1's checkpoint** (the user, 2026-10-28, T3): increment 2 is shaping, bounded,
 then scale; `e25-shaping-1` (#2, 20 M) was the lineage's current best; `t7-1` stays the battle
 AI v1 and the baseline. **Since T4b** (the user, 2026-10-29) **`e25-bound-1`** (#2, 20 M) is the
-current best, the network the exit criteria are judged on.
+current best; **since T6** (the user, 2026-10-29) **`e25-scale-1` #3** (30 M, three tactics
+rounds), the network the exit criteria are judged on.
 
 **Increment 2: shaping, bounded, then scale** (refined 2026-10-28; the AI queue's tasks):
 
@@ -116,7 +117,8 @@ current best, the network the exit criteria are judged on.
   curve flat from 20 M; best #3 (30 M) at `e25-bound-1`'s level against every engine seat
   (0.418 against the system actor; the differences inside the intervals), the phase 4 % of its
   decisions, no loop. Scale gains nothing at these settings.
-- [ ] **T6 Increment 2's checkpoint:** T4b's and T5's reads; the user chooses increment 3.
+- [ ] **T6 Increment 2's checkpoint:** T4b's and T5's reads; the current best `e25-scale-1` #3
+  (the user, 2026-10-29); increment 3 open (AI-Q11: the network's architecture).
 
 ## Exit criteria
 

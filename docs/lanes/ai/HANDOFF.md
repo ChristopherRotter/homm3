@@ -22,15 +22,17 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   bound costs nothing, the loop gone; **`e25-bound-1` the current best**, the user). **Done
   2026-10-29:** T5 (`e25-scale-1`, three rounds, stopped by the user at 41.3 M of 60 M: best #3
   at 30 M at `e25-bound-1`'s level, 0.418 against the system actor; scale gains nothing).
-  **Next:** T6, increment 2's checkpoint (the user: the current best and increment 3).
+  T6 in progress: **`e25-scale-1` #3 the current best** (the user). **Next:** AI-Q11, increment
+  3's network (hex convolutions, a wider or deeper MLP, the entity network; the agent: a
+  distillation bench, then A/Bs), then its refinement.
 - **Open pull requests:** the T5 branch `claude/nice-lamport-fdh8gx` (its pull request once
-  ready). `master`'s CI red since #577 (the adventure lane's bench-check
-  `random-play-duel-36` +2.01 %); #580 re-baselines it (`benches/adventure/`, not this lane's
-  path). Merged: #534, #539, #555, #558, #576.
+  ready, after AI-Q11). `master`'s CI was red after #577 (the adventure lane's bench-check
+  `random-play-duel-36` +2.01 %); #580 re-baselined it (merged). Merged: #534, #539, #555, #558,
+  #576.
 - **Versions:** battle action encoding v13, observation encoding v22, replay format v31
   (CLT-Q4/Q6), the adventure env's action encoding v5 (E08 T63a), C ABI v35 (E25 T1a, T1b, T2a:
   a world's reward, the true world, the potential) (`docs/08-work-process.md`, "Versions"). Next
-  ids: AI-Q11, AI-QUIRK-1, AI-STUB-2.
+  ids: AI-Q12, AI-QUIRK-1, AI-STUB-2.
 - Working agreement: increments with a user checkpoint (Q41's pattern); the user reviews ADRs and seams.
 
 ## Standing traps
@@ -45,7 +47,8 @@ Moved to `TRAPS.md`, in three groups: **Ownership** (cross-lane encodings and re
   record, metrics and `best.pt`: the record committed and read (`E25-log.md` T5), the run had no
   final ladder, so its best #3 replayed on the sandbox's CPU over the full report and neutral
   sets (`battles.py`, `inspect`). The head-to-heads against `e25-bound-1` and `t7-1` need their
-  `best.pt`s (the user's machine). The sandbox setup's full verify stopped (CI's record).
+  `best.pt`s (the user's machine): skipped (the user). T6: `e25-scale-1` #3 the current best;
+  increment 3 open as AI-Q11. The sandbox setup's full verify stopped (CI's record).
 
 ### 2026-10-29 — E25 T4b
 
