@@ -322,6 +322,7 @@ pub(crate) fn map_with(
         walking: Walking::default(),
         kingdom: crate::live::Kingdom::default(),
         buttons: None,
+        minimap: None,
     };
     (art, live, shapes)
 }

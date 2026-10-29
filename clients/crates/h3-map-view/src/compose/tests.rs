@@ -871,7 +871,8 @@ fn minimap(colours: [Colour; 4]) -> Draw {
             terrains: vec!["terrain.def".to_string()],
             entries: [8, 9],
         }),
-        colours: colours.to_vec(),
+        colours: alloc::sync::Arc::new(colours.to_vec()),
+        heroes: vec![],
     })
 }
 
@@ -954,8 +955,7 @@ fn the_minimap_its_tiles_rectangles_and_its_box_cut_to_its_area() {
         Err(ComposeError::Missing(String::new()))
     );
     if let Draw::Minimap(tiles) = &mut odd {
-        tiles.colours.truncate(1);
-        tiles.colours[0] = Owner(0);
+        tiles.colours = alloc::sync::Arc::new(vec![Owner(0)]);
     }
     // An owner's entry of colour 0 is black; a tile without a colour too.
     let screen = compose(&scene(vec![odd]), &b, [14, 12]).unwrap();

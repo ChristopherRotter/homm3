@@ -1705,9 +1705,9 @@ kept whole ("no cut", 2026-10-28).
 
 Read: `minimap_draw` 0x412C40 in full but its view-world and network branches,
 `tile_object_entrance` 0x4FCAA0, the arguments of three callers (`adventure_full_update`
-0x41753A, `hero_select` 0x418046, `view_scroll` 0x41973E: the view's corner +0xE4, then 0, 1, 0,
-0, 0), and `radar.def`'s load (0x40742B into the manager's +0xC8). The other ten callers and when
-each redraws it: T3b.
+0x41753A and `hero_select` 0x418046: the view's corner +0xE4, then 0, 1, 0, 0, 0; `view_scroll`
+0x41973E: the corner, then 1, 1, 0, 0, 0, which T3a had as the others'), and `radar.def`'s load
+(0x40742B into the manager's +0xC8). Its callers and when each draws it again: T3b, below.
 
 - **The call** (thiscall on the manager, six arguments): the view's corner as a packed tile (x and
   y signed 10 bits, the level bit 26), `show` (the area shown at once, `screen_show_rect`
@@ -1781,7 +1781,7 @@ each redraws it: T3b.
   `774 − x − cut`; no frame reaches it). Its cells compare them as draws that stay: the same only
   while the view does not move. An owned object without an entrance on the map: its owner's
   colour (MCL-Q4's answer for its flags), the terrain's under `--bugs original`. Each scene draws
-  the minimap as the live part gives it; when the original draws it again is T3b's.
+  the minimap as it was last drawn (T3b, below).
 - **The kept frame** (T2b2's composer): the minimap's draws stay where they are when the view
   moves (compared unmoved, their last rectangles unmoved), a cell clear of the view's clip keeps
   its pixels through a move, a terrain's palette step counts for the minimap only where a cycle
@@ -1792,3 +1792,40 @@ each redraws it: T3b.
   step), 5.2 and 5.2 %, 11.1 → 11.2 %. `Base::tiles` (the explored tiles and the heroes, each
   scene) costs some 36 000 instructions a frame on a 36-tile map, about 0.6 million on a 144-tile
   one: gone with T3b, which makes the tiles only when the original draws them.
+- **When it is drawn again** (M3 T3b): 13 call sites in 11 functions, and 20 in 14 more through
+  `minimap_redraw` 0x413790 (the manager's corner and its own five arguments). Its second
+  argument shows the area at once; `hero_select` and the full update pass 0 and show the whole
+  screen after (0x41809B; the full update by its first argument). What M3's sequences meet:
+  - **a scroll** that moves the corner (`view_scroll` 0x41973E: Ctrl and a direction key, the
+    screen's edges): after the hero is put back on its tile and the corner written, shown at once,
+    then the view;
+  - **a hero's selection that centres the view** (`hero_select` 0x418046: its c and `view_shown`):
+    after the centring, before the view. `mobilize_hero` 0x4175E0 selects only a hero not lifted,
+    so a key's step (0x480914, with 0, 0, 1) draws it when it lifts the hero, at a sequence's
+    start (the harness's view puts the hero back) or after a scroll: the view centred on the tile
+    the hero steps from, the hero on it; the steps after find the hero lifted and draw none. The
+    path's walk lifts the hero with 1, 0, 0 (c clear: no centring, no minimap, 0x407DEC) and its
+    steps draw none either. So a walk leaves the minimap's box and hero where they were.
+  - Not met: the full update 0x41753A (a map's start, after a dialog: 21 callers); the step's own
+    `minimap_redraw` (0x4810E6) only in a network game (0x481077 jumps past it otherwise);
+    `hero_move_loop`'s 0x4086CD only at the end of the manager's mode 7 (its +0x40, not read; the
+    walk's end, 0x408730, draws none).
+- **The rest** (M4 and later, their calls only, inferred): `minimap_click` 0x40A0C0 (a left click
+  on it: the corner the tile clicked less (9, 8), shown at once, 0x40A280, and while the button
+  stays down, 0x40A509; a right click its help text: T6); `network_map_redraw` 0x405E30 (a network
+  game's); the view world (`view_world_run` 0x5FBF90, opened by V among others: its handlers draw
+  it at the dialog's corner with the three reveals); through 0x413790: `hero_relocate` 0x41D930
+  (a hero put on another tile at once, 12 callers), `adventure_spell_cast` 0x41D090,
+  `after_step_guard_check` 0x4800A5, `visit_object` 0x4A93A0, `visit_and_update` 0x4AAAA0,
+  `hero_battle_on_map` 0x4AAFD0, `battle_aftermath` 0x4AC930, `adventure_battle` (three sites),
+  `next_player_turn` (two), `turn_start_minimap` 0x4CA530, `hero_screen_show` 0x4E19E5,
+  `battle_flag_toggles` 0x4F450D: the engine's moves, visits, battles and turns, and the dialogs.
+- **Built** (T3b, *provisional*): the timeline's `Minimap`, its last draw (the view's corner and
+  the selected hero's tile): the still's at 0, again at a scroll that moves the view and at a
+  lift that centres it (`Loop::lift` with `centred`), carried in each `Draw`; the live part's
+  `minimap` (`minimap::Shown`, the selected hero by its index), which a scene draws the box and
+  the selected hero from (none: the scene's view and the heroes where they stand, a still's).
+  `Base` makes the level's colours with its explored tiles once, with the index (whatever changes
+  the explored tiles builds it again, as the objects); `Tiles` holds them shared (`Arc`, compared
+  by their allocation first) with the heroes' tiles over them, so a scene no longer copies the
+  level's tiles and the composer's comparison of an unchanged minimap is the heroes' few.

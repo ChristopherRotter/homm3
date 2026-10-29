@@ -5,16 +5,17 @@
 //! owned object's blocked or entrance tile in its owner's, a listed decoration's blocked tile in
 //! the terrain's blocked colour (entry 9); it takes 4 × 4, 2 × 2, 2-1-1 by 1-1-2 or 1 × 1 pixels
 //! by the map's size. The box is `radar.def`'s frame by the map's size at the view's corner times
-//! the size's scale, cut to the area. [`Base`] is a level's colours from its terrain and objects,
-//! worked out once with the level's index ([`crate::scene::TileIndex`]); [`Base::tiles`] adds the
-//! explored tiles and the heroes and [`Base::radar`] places the box, each scene. When the original
-//! draws it again (a scroll, a step, a selection: its callers) is T3b's; here every scene draws it
-//! as the live part gives it.
+//! the size's scale, cut to the area. [`Base`] is a level's colours from its terrain, objects
+//! and explored tiles, worked out once with the level's index ([`crate::scene::TileIndex`]);
+//! [`Base::tiles`] lays the heroes over them and [`Base::radar`] places the box, each scene, as
+//! the minimap was last drawn ([`Shown`], E24 M3 T3b: the original draws it again at a scroll and
+//! at a hero's selection, not at a walk's steps; a still's as the view and the heroes stand).
 
 use alloc::string::String;
 use alloc::sync::Arc;
 use alloc::vec::Vec;
 
+use h3_map::model::Pos;
 use h3_render::Bugs;
 use serde::Deserialize;
 
@@ -177,13 +178,28 @@ pub struct Look {
     pub entries: [u8; 2],
 }
 
-/// The minimap's tiles as a scene draws them: each tile's colour, row by row.
+/// The minimap as last drawn (E24 M3 T3b, design §4.4): the view's corner its box shows and the
+/// selected hero (its index among the live part's heroes) on the tile it stood on then. A scene
+/// draws the minimap so; without it, at the scene's view and with the heroes where they stand (a
+/// still).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Shown {
+    /// The view's corner.
+    pub view: ViewAt,
+    /// The selected hero and its tile.
+    pub hero: Option<(usize, Pos)>,
+}
+
+/// The minimap's tiles as a scene draws them: the level's colours, the heroes' over them (E24 M3
+/// T3b: the level's made once with its index, compared by their allocation first).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Tiles {
     /// How they are drawn.
     pub look: Arc<Look>,
-    /// The tiles' colours, row by row.
-    pub colours: Vec<Colour>,
+    /// The level's tiles' colours, row by row, the unexplored ones black.
+    pub colours: Arc<Vec<Colour>>,
+    /// The heroes' tiles over them: each one's place in `colours` and its owner's colour.
+    pub heroes: Vec<(usize, Colour)>,
 }
 
 impl Tiles {
@@ -208,13 +224,35 @@ impl Tiles {
 }
 
 impl Tiles {
+    /// Tiles of `colours` without a hero over them.
+    #[must_use]
+    pub fn new(look: Arc<Look>, colours: Vec<Colour>) -> Self {
+        Self {
+            look,
+            colours: Arc::new(colours),
+            heroes: Vec::new(),
+        }
+    }
+
+    /// Each tile's colour as drawn, row by row: the heroes' over the level's.
+    #[must_use]
+    pub fn shown(&self) -> Vec<Colour> {
+        let mut colours = self.colours.to_vec();
+        for &(i, colour) in &self.heroes {
+            if let Some(c) = colours.get_mut(i) {
+                *c = colour;
+            }
+        }
+        colours
+    }
+
     /// The terrains' DEFs its tiles take a colour of, once each by code, and whether a tile takes
     /// an owner's (the flag palette's).
     #[must_use]
     pub fn drawn(&self) -> (Vec<&str>, bool) {
         let mut codes = [false; 256];
         let mut owner = false;
-        for colour in &self.colours {
+        for colour in &self.shown() {
             match colour {
                 Colour::Open(code) | Colour::Blocked(code) => codes[usize::from(*code)] = true,
                 Colour::Owner(_) => owner = true,
@@ -252,20 +290,22 @@ impl Look {
     }
 }
 
-/// A level's minimap but the explored tiles and the heroes (E24 M3 T3a): each tile's colour by
-/// its terrain and the object it records ([`crate::record`]), worked out once with the level's
-/// index; and the box.
+/// A level's minimap but the heroes (E24 M3 T3a): each tile's colour by its terrain and the
+/// object it records ([`crate::record`]), black where the viewer has not explored it, worked out
+/// once with the level's index (T3b); and the box.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Base {
     look: Arc<Look>,
     radar: (String, RadarArt),
     z: u8,
-    colours: Vec<Colour>,
+    colours: Arc<Vec<Colour>>,
 }
 
 impl Base {
-    /// Level `z`'s minimap for `live`'s objects drawn in `lists`, into the layout's area (the
-    /// dialog's item [`panels::id::MINIMAP`]); none without that area. An owned object without an
+    /// Level `z`'s minimap for `live`'s objects drawn in `lists` and its explored tiles, into the
+    /// layout's area (the dialog's item [`panels::id::MINIMAP`]); none without that area. It
+    /// holds for the live part it was built with, as the index does (E24 M3 T3b: whatever changes
+    /// the explored tiles builds it again). An owned object without an
     /// entrance on the map takes its owner's colour (MCL-Q4's answer for its flags), its
     /// terrain's under the original's bugs (`tile_object_entrance` 0x4FCAA0 finds none).
     #[must_use]
@@ -317,7 +357,10 @@ impl Base {
         for y in 0..side {
             for x in 0..side {
                 let (x, y) = (to_i32(x), to_i32(y));
-                let Some(tile) = art.tile(x, y, z) else {
+                let Some(tile) = art
+                    .tile(x, y, z)
+                    .filter(|_| live.explored.explored(x, y, z))
+                else {
                     colours.push(Colour::Black);
                     continue;
                 };
@@ -343,36 +386,38 @@ impl Base {
             look: Arc::new(look),
             radar: (minimap.radar.clone(), radar),
             z,
-            colours,
+            colours: Arc::new(colours),
         })
     }
 
-    /// The tiles as `live` shows them: black where the viewer has not explored, a hero's tile on
-    /// the level in its owner's colour (the screen's player's selected hero's and every other
-    /// standing hero's alike, 0x412F79 and 0x412FA5).
+    /// The tiles as `live` shows them: a hero's explored tile on the level in its owner's colour
+    /// (the screen's player's selected hero's and every other standing hero's alike, 0x412F79 and
+    /// 0x412FA5), the selected hero `hero` (its index) on the tile given with it (where the
+    /// minimap last drew it, [`Shown`]).
     #[must_use]
-    pub fn tiles(&self, live: &Live, tables: &Tables) -> Tiles {
+    pub fn tiles(&self, live: &Live, tables: &Tables, hero: Option<(usize, Pos)>) -> Tiles {
         let side = self.look.side;
-        let mut colours = self.colours.clone();
-        for (i, colour) in colours.iter_mut().enumerate() {
-            let (x, y) = (to_i32(i % side.max(1)), to_i32(i / side.max(1)));
-            if !live.explored.explored(x, y, self.z) {
-                *colour = Colour::Black;
-            }
-        }
-        for hero in live.heroes.iter().filter(|h| h.at.z == self.z) {
-            let (x, y) = (usize::from(hero.at.x), usize::from(hero.at.y));
-            let explored = live.explored.explored(to_i32(x), to_i32(y), self.z);
-            if let Some(colour) = (x < side && explored)
-                .then(|| colours.get_mut(y * side + x))
-                .flatten()
-            {
-                *colour = Colour::Owner(tables.map.owners.colour(Some(hero.owner)));
-            }
-        }
+        let heroes = live
+            .heroes
+            .iter()
+            .enumerate()
+            .filter_map(|(i, h)| {
+                let at = hero.filter(|&(j, _)| j == i).map_or(h.at, |(_, at)| at);
+                let (x, y) = (usize::from(at.x), usize::from(at.y));
+                let shown = at.z == self.z
+                    && x < side
+                    && y < side
+                    && live.explored.explored(to_i32(x), to_i32(y), self.z);
+                shown.then(|| {
+                    let colour = Colour::Owner(tables.map.owners.colour(Some(h.owner)));
+                    (y * side + x, colour)
+                })
+            })
+            .collect();
         Tiles {
             look: Arc::clone(&self.look),
-            colours,
+            colours: Arc::clone(&self.colours),
+            heroes,
         }
     }
 

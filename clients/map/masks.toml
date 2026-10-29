@@ -9,8 +9,6 @@
 # (design §4.4); T3b, timing its redraws, takes it out of `panels` and the two are one again. A
 # task drawing another panel takes its rectangle out of both.
 panels = [
-    # The minimap (T3: the dialog's area 1).
-    [630, 26, 774, 170],
     # The hero list's portraits, frames and bars (T4: items 15-29, 39-43).
     [610, 212, 674, 373],
     # The town list's pictures (T4: items 32-36).
