@@ -566,7 +566,7 @@ pub fn read_live(
             failed(
                 "`kingdom` is not { heroes = [[asleep, movable, portrait, points, mana], ...], \
                  towns = [[faction, fort, built], ...], selected = [kind, index], tops = [heroes, \
-                 towns], quests }",
+                 towns], quests, resources = [7 amounts], date = [month, week, day] }",
             )
         })?;
     }
