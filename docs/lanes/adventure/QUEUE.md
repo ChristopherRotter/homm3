@@ -19,8 +19,8 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
   the reach property (`reach/tests.rs`, `the_query_and_move_hero_agree`) extended to boats,
   boarding and landing (a hero in a boat, the plan's water); ADV-STUB-11 closed; ADV-MOV-007
   amended. `bench-check` on `reach-xl-144` (the walker's test) and `reach-lifted-xl-144` (T73a's
-  boarding branch); the fork benchmarks were at 1.9–2.0 % after T72 (their baselines likely move
-  here). Rule ids: ADV-SEA-004's and -002's reach sentences.
+  boarding branch); the fork benchmarks were at 1.9–2.0 % after T72 and `random-play-duel-36` at +1.97 %
+  after T73a (their baselines likely move here, explained in the pull request). Rule ids: ADV-SEA-004's and -002's reach sentences.
 - **Depends on:** T73a (`adventure/e08-t73a`). **Status:** ready once T73a's pull request merged;
   small to medium, likely whole.
 

@@ -8219,9 +8219,13 @@ data staged (none needed: no import, harness or pack change).
   landing in the move's outcome. The new errors `Boat`, `Landing`, `Coast` (their texts).
 - **`Reach`** (`reach.rs`; ADV-STUB-11): a hero in a boat reaches its own tile only; the layered
   search's boarding (a flyer's, a water walker's) keeps the boat's drop and the conversion
-  (`Search::boarding`: the day's maximum, the sea's and free boarding, computed only for a flying or
-  water-walking hero), its pass over the boat the flight's own drop; a walker reaches no boat (both
-  T73b's).
+  (`Search::boarded`, `#[cold]`: the sea's maximum and free boarding derived only at a boarding
+  met; derived per query, they cost `random-play-duel-36` +2.30 %), its pass over the boat the
+  flight's own drop; a walker reaches no boat (both T73b's).
+- **Benchmarks** (`bench-check`, none rebaselined): `random-play-duel-36` +1.97 % (the moves'
+  and passage's new tests; at the threshold: T73b's walker test will move it), `reach-lifted-xl-144`
+  −1.01 %, `reach-xl-144` +0.69 %, the forks unchanged since T72 (+0.89 % to +1.99 %), the rest
+  within ±0.4 %.
 - **Events:** `AdventureEventKind::{Boarded, Landed}` (passed through `project`); `h3-map`'s view
   property follows them without boats (its plans place none; T75's).
 - **Rules:** ADV-SEA-002 to -005 new, `verified` (E8-1, E8-2, E8-3, E8-4, E8-13 to E8-16, E8-17d,
