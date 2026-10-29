@@ -68,6 +68,12 @@ Increment 7 (rewards on the map; `docs/epics/E08-design.md` §13, survey `rules/
 - **Its own:** what its heroes' visits learned of an object (ADV-VIS-006, E08 T62a): what the game's build drew for it (a Shrine's spell, a Witch Hut's skill, a gift's drawn price, a University's skills) and whether a find is emptied, kept while the object is on the map; and its heroes' once-per-hero marks. No other player learns it. What a chest, an artifact, a box or the Pyramid holds and what the build drew for it are hidden from every player; a visit tells the visitor's owner what it gives.
 - **Events** (ADV-FOG-007, E08 T62b2): an event is never observed, whatever the player explored, and nothing tells of one before it fires (paths are blind to it, ADV-MOV-011); its firing is told to the mover's owner alone, then what its guards' battle or its record gives as any visit's.
 
+Increment 8 (boats and the sea; ADR-0016 points 1 and 6, ADR-0017 point 8; `docs/epics/E08-design.md` §12, survey `rules/surveys/E08-sea.md` §9) adds:
+
+- **Boats:** an empty boat is seen where the viewer sees heroes on its tile (ADV-FOG-008, E08 T72): its tile, type and facing, as the original draws it; never its owner or last captain (an empty boat shows no flag) and never its index, which would count the boats before it. A hero in a boat shows its boat's type with the hero (ADV-FOG-006: public, the original draws the hero's flag on it); its day's maximum, as its points, is its owner's only (`OwnHeroView::max_movement`).
+- **Events** (E08 T73a, T74a, T74b): a boarding (`Boarded`), a landing (`Landed`, the boat left on its water tile with its facing) and a boat leaving the map with its hero after a battle (`BoatRemoved`, right after `HeroRemoved`) are told to the hero's owner and the players that see heroes on the boat's tile, each naming the boat by its type, never its index, owner or captain; a landing's tile is told by the step's own event to those that see it, so no viewer learns a tile it does not see. A message read (`MessageRead`, the Ocean Bottle) is told to the visitor's owner alone; its text is the client's. The sea's pickups hide their contents as increment 7's finds; their visits and leaving are told as any pickup's.
+- **The fog** is unchanged: a boat adds nothing to the scouting radius. A battle at sea is a battle (its owners only), on the deck or the two boats, which the battle's observation shows them.
+
 ## Denial of service and resource limits
 
 - Bounded command size and count per turn; bounded work per command (path search limits, list lengths).
