@@ -1841,3 +1841,73 @@ Read: `minimap_draw` 0x412C40 in full but its view-world and network branches,
   `walk-1`, 0.7 and 0.7 on `path-objects`, 0.9 and 0.9 on *Tale of two lands*; uploaded the same
   (25.7, 5.2, 11.2 %); callgrind on *Tale of two lands* (144 tiles a side): a scene (`scene_in`)
   2.33 → 1.55 million instructions.
+
+### 4.5 The hero and town lists (M3 T4a)
+
+Read (T4a, 2026-10-29): `hero_list_slot` 0x403560, `town_list_slot` 0x4037A0, the bars' frames
+0x4E5330 and 0x4E5380, `town_list_frame` 0x5BD700, `lists_selection_frames` 0x4038C0 to its end,
+the lists' updates 0x4032E0 and 0x403420 in full, the hero list's scroll 0x403220, the lists'
+items in `adventure_dialog_create` (0x401BE0–0x401EB4) and the DEF item's message 0x200/4
+(`dialog_def_message` 0x4EA810); checked against the running original (`h3mem.kingdom`, the
+town records) and its captures (below). *Provisional* where marked.
+
+- **The items** (in the dialog's order, §4.1): the portraits 15–19 and the selection frames 39–43,
+  pictures created without one (flags 0x800) at (617, 212 + 32 i), 48 × 32; the movement bars
+  `imobil.def` 20–24 at (610, 213 + 32 i) and the mana bars `imana.def` 25–29 at (666, 213 + 32 i),
+  8 × 32, DEF items (flags 0x10, frame 0); after the town list's arrows, `itpa.def` 32–36 at
+  (747, 212 + 32 i), 48 × 32. The bars' frames are 6 × 30 (610–615, 666–671), clear of the
+  portraits and frames (617–664).
+- **A hero's slot i** (`hero_list_slot`, the screen's player): the hero `heroes[top + i]` (the
+  player's +0x8, `top` the dialog's +0x64); none (−1) or the view covered (0x699538: the hot seat's
+  handover, M5): the picture `hpsxxx.pcx`, both bars frame 0 (sent before their state's bit 2 is
+  cleared: a DEF item takes the message only with it). Else the picture `hero_info` 0x679DD0's
+  +0x30 (0x5C bytes an entry, 163; the hero's +0x34 its index), the movement bar's frame by the
+  points left +0x4D (0x4E5330: 0 at or below 0, points / 100 below 2 300, then 23, 24 from 2 500,
+  25 from 2 800) and the mana bar's by the mana +0x18 (0x4E5380: (mana + 4) / 5 below 116, then 23,
+  24 from 145, 25 from 170). The frame 39 + i is shown (state 4) when the slot holds the selected
+  hero (+0x4), else hidden; with the slot's second argument the three items are drawn again and
+  the frame with `hpsyyy.pcx` (0x403743); with its third the rectangle (609, 212 + 32 i, 48 × 32)
+  is shown (T4b: it leaves out the portrait's last 8 columns and the mana bar).
+- **A town's slot i** (`town_list_slot`): the town `towns[top + i]` (the player's +0x40, `top` the
+  dialog's +0x68) when i is below the player's number of towns (+0x3E: the slot, not top + i, is
+  tested; the town list's update keeps `top` within the towns when it scrolls, T4b to confirm when
+  a town is lost); its frame 0x5BD700 with 1: 2 + 2 × faction (+0x4) with a Fort in the town's
+  every-built set (+0x158, building 7; a Citadel or Castle keeps the bit, installation.md §7.27),
+  20 + 2 × faction without, one more when it built today (+0x2): 2–37 of `itpa.def`'s 39. Else
+  frame 0 (the empty slot's leather).
+- **The selections** (`lists_selection_frames`, after every item is drawn, §4.1): the selected
+  town (+0x3F) among the slots shown gets frame 1, `itpa.def`'s yellow border with a clear middle,
+  and that item alone is drawn again: the mark over the picture just drawn; the frames 39–43 are
+  hidden, then the selected hero's among the slots shown gets `hpsyyy.pcx`, is shown and drawn.
+  The town's item keeps frame 1: drawn alone again later it would put the mark over whatever lies
+  under it (a redraw artifact, not copied; T4b reads when it happens). Selecting a hero
+  (`hero_select` 0x417B20) or a town (`town_select` 0x417830, which sets the selected hero to −1)
+  updates both lists with their redraw; the arrows scroll by one (0x403220 for the heroes) and
+  redraw.
+- **The lists' order** (the running original): the map's order of the player's heroes and towns at
+  a new game; a town record's place (+0x5, +0x6, +0x7) is its entrance, two columns left of its
+  anchor.
+- **VCMI 1.7.5 compared** (`client/adventureMap/CList.cpp`): the same items and places
+  (`CHeroItem`, `CTownItem`: the portrait one right of the movement bar, the mana bar one right of
+  the portrait), the selection the same pictures (`HPSYYY`, `ITPA` frame 1 over the picture), the
+  town's frame its faction's icon + 2 by fort and built; the bars differ: `min(25, points / 100)`
+  and `min(25, mana / 5)` (the original's last three frames span 2 300–2 499, 2 500–2 799 and
+  2 800 on, its mana rounded up below 116: any mana shows).
+- **Built** (T4a, *provisional*): `h3_map_view::lists` (the tables' `[map.lists]`: the portraits,
+  the bars' rules, the towns' frames; each list's slots from its top; the selection's slot);
+  `panels::dialog` gives the slots' pictures (`h3_ui::ui::Shown::pictures`, new) and frames and
+  hides 39–43, `panels::selections` the mark or the frame drawn after the items (before the
+  resource bar: disjoint); the live part's kingdom gains each hero's portrait, points and mana and
+  each town's faction, fort and day (`[asleep, movable, portrait, points, mana]`, `[faction, fort,
+  built]`; the form before, which the sequences' kept live parts hold until T4b, still read); a
+  map's start gives the map's portraits and towns, no points or mana (the engine's from M4); the
+  layout's items 15–29, 32–36, 39–43; the gate checks the bars' and towns' frames and every
+  portrait (165 pictures, 48 × 32). The harness writes a situation's heroes' `points` and `mana`
+  and towns' `built`, then selects its `select` from its list (both lists redrawn).
+- **Checked** (T4a): three new situations, `lists-heroes`, `lists-scrolled`, `lists-towns` (the
+  bars' every edge, both lists scrolled, a town's mark, empty slots, five factions with and
+  without a fort, built today), exact first time; the set recaptured with the lists compared
+  (`masks.toml`'s `stills`; the sequences keep `panels` until T4b).
+- **For T4b** (the lists over time): when the original draws the lists again during a walk (the
+  movement bar at a step's end?), a selection, a scroll; the slot's show rectangle above; the
+  town's item left at frame 1.

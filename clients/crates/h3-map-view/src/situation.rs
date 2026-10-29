@@ -594,7 +594,10 @@ impl Situation {
                 t.at
             ));
         }
-        let written = self.heroes.iter().any(|h| h.points.is_some() || h.mana.is_some())
+        let written = self
+            .heroes
+            .iter()
+            .any(|h| h.points.is_some() || h.mana.is_some())
             || self.towns.iter().any(|t| t.built);
         let found = match self.select {
             None if written => return Err("a write into the lists without a selection".into()),
@@ -603,10 +606,9 @@ impl Situation {
                 .heroes
                 .iter()
                 .any(|h| h.owner == 0 && h.walk.last().copied().unwrap_or(h.at) == at),
-            Some(SelectSpec::Town(at)) => self
-                .towns
-                .iter()
-                .any(|t| t.owner == Some(0) && t.at == at),
+            Some(SelectSpec::Town(at)) => {
+                self.towns.iter().any(|t| t.owner == Some(0) && t.at == at)
+            }
         };
         if found {
             Ok(())

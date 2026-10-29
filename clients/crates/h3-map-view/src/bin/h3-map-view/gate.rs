@@ -24,8 +24,8 @@ use h3_map_view::check::{self, DefSummary};
 use h3_map_view::layout::{AdventureLayout, GEM_FRAMES};
 use h3_map_view::objects::{self, Shape};
 use h3_map_view::panels;
-use h3_ui::ui::Item;
 use h3_map_view::tables::{FACTIONS, Tables};
+use h3_ui::ui::Item;
 
 use crate::files;
 
@@ -158,7 +158,11 @@ fn gate(options: &Options) -> Result<usize, String> {
     let lists = &tables.map.lists;
     let factions = u8::try_from(FACTIONS).unwrap_or(u8::MAX);
     for (what, id, frames) in [
-        ("movement bar", panels::id::MOVEMENT, lists.movement.frames()),
+        (
+            "movement bar",
+            panels::id::MOVEMENT,
+            lists.movement.frames(),
+        ),
         ("mana bar", panels::id::MANA, lists.mana.frames()),
         (
             "town list",

@@ -1518,3 +1518,37 @@ check passed (`verify-once`, clients code 313f991).
 - **Measured** (the sandbox, `--measure 20` beside `master`'s build): a median 0.3 → 0.2 ms on
   `walk-1`, 0.7 and 0.7 on `path-objects`, 0.9 and 0.9 on *Tale of two lands*, uploads the same;
   callgrind on *Tale of two lands*: a scene 2.33 → 1.55 million instructions.
+
+### M3 T4a — the hero and town lists as stills (2026-10-29)
+
+On `map-client/e24-m3-t4a`, the user present (T4 cut into T4a, the stills, and T4b, the lists over
+time, as T3 was); `master` at 25ff803 (#567 merged; CI green on it). The original data staged from
+the user's repo folder first; the baseline check passed (`verify-once`, clients code 864e300).
+
+- **The reading** (design §4.5; map entries `hero_list_slot` 0x403560 read, `town_list_slot`
+  0x4037A0, `hero_movement_frame` 0x4E5330, `hero_mana_frame` 0x4E5380, `town_list_frame`
+  0x5BD700, `dialog_picture_set` 0x4504C0, `hero_list_scroll` 0x403220 read, `town_list_scroll`
+  0x403280 inferred; `hero_table` 0x679DD0 corrected to its 163 records): a hero's slot its
+  portrait by its +0x34, its bars by its points left and mana (the last three frames from 2 300,
+  2 500, 2 800 points and 116, 145, 170 mana; mana rounded up below; VCMI 1.7.5 linear to 25); a
+  town's slot `itpa.def` 2 + 2 × faction with a Fort, 20 + 2 × faction without, one more when it
+  built today; the empty slots `hpsxxx.pcx`, frame 0; the selections drawn after the items (the
+  town's mark, frame 1, over its picture; the hero's frame). From the running original: the
+  lists in the map's order, a town record's place its entrance.
+- **Built** (design §4.5): `h3_map_view::lists`; `panels::dialog` (the slots) and `selections`;
+  the live part's kingdom with portraits, points, mana and towns (the old form still read); the
+  tables' `[map.lists]`; the layout's items; `h3_ui::ui::Shown::pictures`; the situations'
+  `points`, `mana`, `built` and `select`; the harness's writes and selection (`h3mem`:
+  `kingdom`'s new fields, `town`, `town_list`, `write_mana`, `write_town_built`;
+  `h3adv.select_town`; `h3map.lists`, `town_index`); `masks.toml`'s `stills`; the gate's lists
+  (the bars' and towns' frames, the 165 pictures at 48 × 32).
+- **Checked:** `h3map.py set`: the three new situations (`lists-heroes`, `lists-scrolled`,
+  `lists-towns`: the bars' every edge, both lists scrolled by a selection, a town's mark over its
+  picture, empty slots, five factions with and without a fort, built today) exact first time,
+  then the whole set recaptured with the lists compared (`stills`): each of the 43, 0 differing of
+  425 588 pixels (the lists' 20 000 or so now among them), shipped maps' heroes with their own
+  points and mana included; `drawn --record`: the 43 situations' digests recorded anew, the 13
+  sequences' 459 frames the same and their timelines as recorded (they keep `panels`); the gate
+  with the lists; unit tests (the bars' edges, the towns' frames, the tables' rules, the slots
+  from their tops, the selection's slot and draws, the kingdom's both forms, the situations'
+  writes and selection).

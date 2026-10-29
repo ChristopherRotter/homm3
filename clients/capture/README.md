@@ -585,7 +585,7 @@ button that shows in more than one place (a dialog's OK): `python3 capture/h3adv
 `h3adv.find_button` finds it anywhere on the screen.
 
 **The map's stills** (E24 M1 T3b2, T4a, T4b, T5a, T5b1, T5b2, T6a, the map client lane;
-`docs/epics/E24-design.md` §1.10, §2.6 to §2.10): from
+`docs/epics/E24-design.md` §1.10, §2.6 to §2.10; the lists since E24 M3 T4a, §4.5): from
 `clients/`, after `cargo build --release -p h3-map-view`,
 
 ```
@@ -609,7 +609,13 @@ an underground shows it; the explored bits are its human player's, and with `exp
 (T5b2) they stay as the new game left them). `still`
 writes the map (`h3-map-view situation`), loads it as a single scenario, walks Red's heroes the
 situation walks, by play (`h3adv.walk`, each checked to arrive: a hero boards a boat by walking
-onto it; boarding takes the day's points, T5a), writes Red's explored
+onto it; boarding takes the day's points, T5a), writes the lists' parts the situation gives
+(E24 M3 T4a: Red's heroes' `points` and `mana`, `Mem.write_points` and `write_mana`; Red's towns'
+`built`, a building built today, `Mem.write_town_built`, the town found by its record's place, its
+entrance two columns left of its anchor) and selects its `select` from its list (`h3adv.select`, a
+hero on a tile; `h3adv.select_town`, a town on its anchor: the list scrolled until it shows, both
+lists redrawn; a selection the turn's start made already is refused, since it would redraw
+nothing), writes Red's explored
 bit of every tile of the level (`h3mem.Mem.write_explored`: all but the situation's `hidden`
 rectangles; the game's own reveal around its heroes is overwritten; not with `explored =
 "start"`), centres the view by a minimap click (another view first if it is there already, so
@@ -661,7 +667,8 @@ tasks draw (the minimap, the lists' contents, the status window, the amounts and
 status bar's hint): the frame picture, the buttons, the status bar's and the resource bar's
 pictures and the parked cursor (the live part's `pointer`) are compared; since M3 T3a the stills
 (`set`, `still`, `drawn`'s situations) compare the minimap too, since T3b the sequences as well
-(one mask, `panels`, again). Every situation of T3b2
+(one mask, `panels`, again); since T4a the stills compare the hero and town lists (`stills`,
+`panels` without them; the sequences keep `panels` until T4b). Every situation of T3b2
 is exact; `set.toml` records the counts. The menus run in real time, so each run's k and frame steps differ: they are read,
 never assumed.
 

@@ -213,3 +213,18 @@ why = "exact: a shipped map's start, an explored circle at the map's right colum
 id = "boats-colours"
 differing = 0
 why = "exact: seven boarded boats of the three types, their flags in the seven colours but Red's (written)"
+
+[[situation]]
+id = "lists-heroes"
+differing = 0
+why = "exact: the hero list from its first: seven heroes' portraits, the bars at their edges, the third's frame; two towns over empty slots"
+
+[[situation]]
+id = "lists-scrolled"
+differing = 0
+why = "exact: the hero list scrolled to its fourth by the eighth's selection, the bars' other edges; seven towns from the first"
+
+[[situation]]
+id = "lists-towns"
+differing = 0
+why = "exact: the town list scrolled to its third, the seventh town's mark over its picture; one hero over empty slots"

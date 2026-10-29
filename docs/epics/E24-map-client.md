@@ -103,7 +103,8 @@ viewers share.
   items' ids, places, pictures and order) drawn at a map's start, the frame's fixed cost taken
   down with it (T2); the minimap (`minimap_draw` 0x412C40: the terrains' colours, the owners',
   the unexplored tiles, the view's box, the underground; T3a as a still, T3b over time); the hero list (portraits, the
-  movement and mana bars, the selection, the scroll) and the town list (T4); the status window
+  movement and mana bars, the selection, the scroll) and the town list (T4a as stills, T4b over
+  time); the status window
   (a hero's, a town's, the kingdom's), the resource bar and the date (T5); the mouse (T6): the
   status bar's hints over the panels and the map, the cursor over the map by its tile, the
   clicks below; the keys during a walk (MCL-Q10: Space's cancel of the queued steps, the input
@@ -165,8 +166,10 @@ viewers share.
   user (2026-10-29): T3a, the minimap as a still (**done** 2026-10-29: `minimap_draw` 0x412C40
   read and built, the 40 situations exact with it; the log), T3b, the minimap over time (**done**
   2026-10-29: a scroll, a centring lift and each step's end draw it again; the 13 sequences
-  recorded with it, every frame exact; the log); T4, the
-  hero and town lists; T5, the status
+  recorded with it, every frame exact; the log); T4 cut with the user (2026-10-29): T4a, the
+  hero and town lists as stills (**done** 2026-10-29: the slots, the bars, the towns' pictures and
+  the selections read and built, three new situations and the 40 exact with them; the log), T4b,
+  the lists over time; T5, the status
   window, the resource bar and the date; T6, the mouse, the keys during a walk, the sound without
   the focus; T7, M3's closure. A task that grows is cut at a seam agreed with the user.
 - **Exit:** every situation and sequence as recorded on the whole screen (no `panels` mask
@@ -287,6 +290,17 @@ M1's review lists (three reviewers, T6b; the list accepted) and M2's (accepted a
   its index), none in a still; the level's colours made once with the index, its explored tiles
   in them (the index built again when they change, as for the objects), shared by `Arc` with the
   heroes over them (`Tiles::colours`, `heroes`, `shown`); `masks.toml` one list again (`panels`).
+- **M3 T4a, the lists' tables, items and live part** (*provisional*, design §4.5): `[map.lists]`
+  (`portraits` from `hero_table` 0x679DD0's 163 records; the bars' `step`, `round`, `top`, `from`;
+  the towns' frames in `itpa.def`); the layout's items 15–29, 32–36, 39–43 as the constructor's
+  (the portraits' layout picture `hpsxxx.pcx`, the frames' `hpsyyy.pcx`); `h3_ui::ui::Shown::
+  pictures` (additive, the common crate's: a picture item's picture by its id);
+  `panels::selections` (the selected hero's frame or the selected town's mark drawn after the
+  items, as 0x4038C0 does; the mark's leftover frame, a redraw artifact, not copied); the
+  kingdom's `[asleep, movable, portrait, points, mana]` and `[faction, fort, built]`, a portrait
+  past the tables' refused by the scene, `Live::at_start` with no points or mana; the situations'
+  `points`, `mana`, `built` and `select` (the harness's writes and selection, both lists redrawn
+  by it); `masks.toml`'s `stills` (until T4b).
 - **M3 T2a, `h3_ui::paint`**: the dialog items' drawers moved into the common crate (an `Assets`
   trait each viewer's batch implements); `h3-view` keeps its copy until the client lane takes
   this one (its inbox); a button takes a player's colours and a DEF from `Shown` by its id.
