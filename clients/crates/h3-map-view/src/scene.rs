@@ -34,6 +34,7 @@ use crate::live::{Facing, Lifted, Live, LiveBoat, LiveHero};
 use crate::minimap::{self, Base};
 use crate::objects::{self, DrawLists, Entry, ObjectsError, Shape, Shapes};
 use crate::panels;
+use crate::status;
 use crate::tables::{ShroudPiece, Tables};
 
 /// The highest layer a cell can have (a template is at most 6 rows high, design §2.1).
@@ -430,6 +431,10 @@ pub fn scene_in(
     let shown = panels::dialog(layout, lists, live, art.levels, at.z)
         .ok_or_else(|| SceneError::Live("a hero's portrait is past the tables'".into()))?;
     let bar = panels::resource_bar(layout, live, &tables.texts);
+    // The status window's panel (E24 M3 T5b1, design §4.8): its items join the dialog's after the
+    // resource bar's (none overlaps another panel's).
+    let status = status::window(layout, &tables.map.status, lists, live, &tables.texts)
+        .map_err(SceneError::Live)?;
     draws.extend(
         layout
             .dialog
@@ -437,6 +442,12 @@ pub fn scene_in(
             .into_iter()
             .chain(panels::selections(layout, lists, live))
             .chain(layout.resource_bar.draws(&bar, players))
+            .chain(
+                status
+                    .map(|(panel, shown)| panel.draws(&shown, players))
+                    .into_iter()
+                    .flatten(),
+            )
             .map(Draw::Dialog),
     );
     let passes: [TilePass<'_>; 8] = [

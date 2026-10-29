@@ -18,7 +18,7 @@ use h3_map_view::batch::{self, Batch};
 use h3_map_view::compose::compose;
 use h3_map_view::live::{
     Arrow, Boat, Buttons, Drawn, Explored, Facing, Kingdom, Live, LiveBoat, LiveHero, Moment,
-    TOWN_CLASS,
+    Status, TOWN_CLASS,
 };
 use h3_map_view::objects;
 use h3_map_view::scene::{self, Draw, ViewAt};
@@ -569,6 +569,16 @@ pub fn read_live(
                  towns], quests, resources = [7 amounts], date = [month, week, day] }",
             )
         })?;
+    }
+    if let Some(value) = table.get("status") {
+        // What the status window shows (E24 M3 T5b1, design §4.8).
+        live.kingdom.status = Some(Status::read(value).ok_or_else(|| {
+            failed(
+                "`status` is not { kind = 3, hero, skills = [4], morale, luck, army = [[type, \
+                 count] x 7] }, { kind = 4, name, buildings = [ids], garrison, army, silo = \
+                 [resources], income } or { kind }",
+            )
+        })?);
     }
     table.get("pointer").map_or(Ok(None), |value| {
         let point: Option<Vec<i32>> = value.as_array().and_then(|a| {

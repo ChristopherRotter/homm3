@@ -358,6 +358,13 @@ fn keys_refuse_mistakes() {
         Keys::parse(&unknown, &entries()),
         Err(KeysError::Family(s("spell")))
     );
+    // A family only some clients list (E24 M3 T5b1): none of its keys without entries, its
+    // keys with them.
+    let optional = format!("{unknown}\noptional = true");
+    assert_eq!(Keys::parse(&optional, &entries()), Ok(Keys::default()));
+    let listed = optional.replace("\"spell\"", "\"creature\"");
+    let keys = Keys::parse(&listed, &entries()).unwrap();
+    assert!(keys.keys.contains_key("creature.base:imp"));
     let shown: Vec<String> = [
         KeysError::Parse(s("x")),
         KeysError::Id(s("A")),
