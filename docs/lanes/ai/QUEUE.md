@@ -39,8 +39,7 @@ lane's turret preview (its open point below), the baselines and AI-Q7.
   encoding keeps v5 (a boarding or a landing is a tile among `legal_moves`). The user chose that
   the adventure lane makes your observation encoding's change `cross-lane` in its task T74, with
   the user's consent, as T63a's; the notice of that pull request will name the version. Design:
-  `docs/epics/E08-design.md` §12, §15; the ADR-0017 draft's point 8
-  (`docs/lanes/adventure/adr-drafts/0017-increment-8.md`).
+  `docs/epics/E08-design.md` §12, §15; ADR-0017 point 8 (amended by E08 T70, `shared/`).
 - 2026-10-27 (the adventure lane, E08 T63a, `adventure/e08-t63a`, `cross-lane` with the user's
   consent; decision 153; **for you**): **the answers are typed and your action mapping moved with
   them (encoding v5).** `h3_game::Answer` is an enum by decision kind: `Offer(Consent)`

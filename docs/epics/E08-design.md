@@ -1,10 +1,10 @@
 # E08 design note: increment 8, boats and the sea
 
 A handover, not binding (`docs/adr/README.md`): the working detail behind increment 8's
-amendment drafts of ADR-0013 (points 3, 13), ADR-0016 (points 1, 3, 4, 6) and ADR-0017 (points 1,
-8, 10, 11) in `docs/lanes/adventure/adr-drafts/*-increment-8.md`, written by T66b from T66a's
-survey and the answers at ADV-Q32 (the epic's decisions 162–168), accepted as written with the
-cut at ADV-Q33 (decisions 170–173). The task that builds a section deletes it; the file goes
+amendments of ADR-0013 (points 3, 13), ADR-0016 (points 1, 3, 4, 6) and ADR-0017 (points 1, 8,
+10, 11), drafted in `docs/lanes/adventure/adr-drafts/*-increment-8.md` (applied and deleted by
+T70, `shared/`), written by T66b from T66a's survey and the answers at ADV-Q32 (the epic's
+decisions 162–168), accepted as written with the cut at ADV-Q33 (decisions 170–173). The task that builds a section deletes it; the file goes
 when the epic closes. Facts and sources: survey `docs/rules/surveys/E08-sea.md` (§ numbers are the
 survey's unless they name this note); the proposed rule ids are the survey's §12.
 
