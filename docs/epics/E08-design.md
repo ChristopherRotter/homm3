@@ -236,7 +236,7 @@ in `check_step` and the walking search):
   leaves the tile's view, the hero steps onto it), `Landed { hero, boat, at, facing }` (the boat
   left on `at`, the water tile; T73a: seen by the viewers of `at` only, the landing tile told by
   the step's own `HeroStepped`, so no viewer learns a tile it does not see; `boat` the type, never
-  the index), `BoatRemoved { boat, at }` beside `HeroRemoved`, `MessageRead { hero, object }`
+  the index), `BoatRemoved { hero, boat, at }` right after `HeroRemoved` (T74b: the same viewers), `MessageRead { hero, object }`
   (the visitor's owner only). A hero's points after a conversion are its owner's
   (`OwnHeroView`).
 - **The fog:** unchanged (the scouting radius has no boat term, §4.4); `docs/06-security.md`'s
