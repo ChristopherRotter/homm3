@@ -4,6 +4,27 @@ Finished history and informational notices moved out of `QUEUE.md` on 2026-10-24
 
 ## Completed tasks (the "Tasks" text as it stood on 2026-10-24)
 
+**E25 increment 2, T4b** (moved 2026-10-29, done: `E25-log.md` T4b):
+
+- **T4b The A/B.** *Scope:* on the user's machine, `e25-bound-1` (`configs/e25-bound.toml`, T4a:
+  `[network] tactics_rounds = 1`; 20 M unless agreed otherwise) against `e25-shaping-1`: the
+  record committed and read, the ladders, the tactics share and cuts
+  (`records/inspect/battles.py` on both networks), samples per second. *Depends on:* T4a (done
+  2026-10-28); the user. *Status:* next (the user's run).
+
+**E25 increment 2, T4a** (moved 2026-10-29, done 2026-10-28 in #558: `E25-log.md` T4a):
+
+- **T4a The tactics bound.** *Scope:* the agent bounds its own tactics phase (its mask; the rules
+  unchanged, BAT-TAC-002 has no limit): a config key, off by default, after which only
+  `EndTactics` is left (proposed: after its stacks' first round of the phase, each placed or
+  passed once; its exact form the agent's choice, tell the user). The bound is part of the agent:
+  rollouts and league members, gates, ladders, `inspect` and the search play the network
+  bounded from its checkpoint's config. Python only, unless the observation lacks what the bound
+  needs (then say so first: an encoding or ABI change). T4b's config `configs/e25-bound.toml`
+  (`e25-shaping.toml` with the bound). *Acceptance:* tests that a bounded agent ends its phase at
+  the bound in rollouts and evaluation, that unbounded play is unchanged, and the config's
+  load; `E25-log.md` T4a. *Depends on:* T3 (done 2026-10-28). *Status:* next.
+
 **E25 increment 1, T3** (moved 2026-10-28, done: `E25-log.md` T3):
 
 - **T3 Increment 1's checkpoint.** *Scope:* T1c's read (`E25-log.md` T1c: no gain, the guess
@@ -155,6 +176,14 @@ and defends (1 %) less than the system actor (7 %, 3 %), loses mostly defending;
 leaves a quarter of the previewed kills.
 
 ## Notices from other lanes and finished items, newest first
+
+**Moved 2026-10-29** (E25 T4b's session; verbatim, informational):
+
+- 2026-10-29 (the adventure lane, E08 T70, `shared/e08-t70`, `cross-lane`; for your information,
+  nothing to do): core ruleset hash v50 (three hero-effect kinds the adventure reads; no battle
+  rule moved): `bots-report-v1.json` and `bots-neutral-v1.json` regenerated in that pull request
+  (only `engine.core`, now `ba830fc8f504b846`); the run records keep the hash they ran on.
+  ADR-0017 point 8 now holds increment 8's observation (the note below, decision 172).
 
 **Moved at E06's audit** (T9a, 2026-10-27; verbatim, the inbox's other entries sorted by
 destination in `QUEUE.md`): done or informational. T58's withdrawal is folded into T55b's entry,
