@@ -191,14 +191,22 @@ impl Reach {
             passing_via: Vec::new(),
         };
         // Another hero's tile: a visit, which ends the path (GAM-BAT-004, GAM-MET-001); an empty
-        // boat's: a boarding, which does too (ADV-SEA-002, E08 T73b).
+        // boat's: a boarding, which does too (ADV-SEA-002, E08 T73b). Whether one of them lies on
+        // the window's water (another hero in a boat, an empty boat) decides whether the walking
+        // search looks at water at all (`bench-check`).
         let mut occupied = vec![false; size];
-        let others = state.heroes().iter().filter(|h| h.id != hero.id);
-        let boats = state.boats().map(|(_, boat)| boat);
-        let empty = boats.filter(|boat| !boat.aboard && !boat.gone);
-        for pos in others.map(|h| h.pos).chain(empty.map(|boat| boat.tile)) {
-            if let Some(slot) = reach.slot(pos) {
+        let mut afloat = false;
+        for other in state.heroes().iter().filter(|h| h.id != hero.id) {
+            if let Some(slot) = reach.slot(other.pos) {
                 occupied[slot] = true;
+                afloat |= other.boat.is_some();
+            }
+        }
+        let boats = state.boats().map(|(_, boat)| boat);
+        for boat in boats.filter(|boat| !boat.aboard && !boat.gone) {
+            if let Some(slot) = reach.slot(boat.tile) {
+                occupied[slot] = true;
+                afloat = true;
             }
         }
         let details = details_of(heroes, hero.id);
@@ -222,27 +230,40 @@ impl Reach {
             reach.search_layered(&search, mode, hero.movement);
             return reach;
         }
-        let mut queue = BinaryHeap::new();
-        // ADV-OBJ-004: a hero standing on the tile of an object not visited from above leaves it
-        // toward none of the three tiles above (E08 T14a); the start's own expansion only, so the
-        // search's hot loop has no test for it.
-        let closed = state.closed_above(part, origin);
-        reach.expand::<true>(&search, &mut queue, reach.start, hero.movement, closed);
-        while let Some((points, Reverse(slot))) = queue.pop() {
-            if reach.points[slot] != Some(points) {
-                continue;
-            }
-            reach.expand::<false>(&search, &mut queue, slot, points, false);
+        if afloat {
+            reach.search_walking::<true>(&search, hero.movement);
+        } else {
+            reach.search_walking::<false>(&search, hero.movement);
         }
         reach
     }
 
+    /// A walking hero's search: Dijkstra's over one node per tile, the most points first (ties by
+    /// slot), from the hero's tile with `points`. `AFLOAT`: the window holds an empty boat or
+    /// another hero in a boat, whose water tiles the search then looks at (E08 T73b); without, its
+    /// loop is the one before boats (`bench-check`).
+    fn search_walking<const AFLOAT: bool>(&mut self, search: &Search<'_>, points: u32) {
+        let mut queue = BinaryHeap::new();
+        // ADV-OBJ-004: a hero standing on the tile of an object not visited from above leaves it
+        // toward none of the three tiles above (E08 T14a); the start's own expansion only, so the
+        // search's hot loop has no test for it.
+        let closed = search.state.closed_above(search.part, self.origin);
+        self.expand::<true, AFLOAT>(search, &mut queue, self.start, points, closed);
+        while let Some((points, Reverse(slot))) = queue.pop() {
+            if self.points[slot] != Some(points) {
+                continue;
+            }
+            self.expand::<false, AFLOAT>(search, &mut queue, slot, points, false);
+        }
+    }
+
     /// Relaxes the steps from `slot`, reached with `points` left, in the eight directions; a
     /// tile reached with more points than before goes on the queue unless a visit or a guard ends
-    /// the path there. `START` is the hero's own tile, whose steps up are skipped when `closed`.
+    /// the path there. `START` is the hero's own tile, whose steps up are skipped when `closed`;
+    /// `AFLOAT` as [`Self::search_walking`]'s.
     // rule: ADV-OBJ-003, ADV-OBJ-004, ADV-VIS-005, GAM-BAT-004, ADV-MON-006
     #[inline(always)]
-    fn expand<const START: bool>(
+    fn expand<const START: bool, const AFLOAT: bool>(
         &mut self,
         search: &Search<'_>,
         queue: &mut BinaryHeap<(u32, Reverse<usize>)>,
@@ -268,8 +289,8 @@ impl Reach {
             }
             if !enterable_terrain(part, &to) {
                 // Water: a hero in a boat visited, an empty boat boarded (E08 T73b), out of the
-                // loop and only where one is (`bench-check`).
-                if search.occupied[next] {
+                // loop, only where one is and in a window holding one (`bench-check`).
+                if AFLOAT && search.occupied[next] {
                     self.afloat(search, &from, (next, dir), points);
                 }
                 continue;
