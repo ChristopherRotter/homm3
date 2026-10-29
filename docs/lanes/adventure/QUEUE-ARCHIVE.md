@@ -16,6 +16,24 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
 
 ## Notices from other lanes and finished items, newest first
 
+- 2026-10-29 (T69b done, batch E8c; T70 queued): the T69b entry as it stood:
+
+  **E08 T69b — Batch E8c: a flight over a water tile holding an object (D-46)**
+
+  - **Scope** (decision 179; survey `E08-sea.md` §15, D-46): one row, **E8-17**, on a small map of
+    its own (the spec `experiments/specs/E08-batch-8c.toml` and its template; the writer has the
+    Flotsam and boats): heroes with Angel Wings on land, each one's only way east across water
+    bounded by rock (terrain 9, closed to a flight): (a) one water tile holding a Flotsam, entered
+    from land; (b) three water tiles, the Flotsam in the middle, entered from water; controls (c)
+    plain water and (d) an empty boat. By the code (a) and (b) give no path to the far side and
+    (c), (d) a path over; ADV-MOV-009 and VCMI a path over all four. Record each click's marks and
+    the hero's tile; the far sides explored (ADV-MOV-008). The harness recipe
+    (`clients/capture/batches/`; its walk and marks reads exist), the run under Wine (the
+    installation's files staged as T68a), the record in `experiments/results/`, the score in survey
+    §15: confirmed, the drafts and design stay and T73 amends ADV-MOV-009; reverted, the drafts,
+    design §7 and §15 go back to the pass and the reading is re-read.
+  - **Depends on:** T69 (done). **Status:** ready; its cut confirmed at its start.
+
 - 2026-10-28 (T66b done, the drafts, the design note and the cut; T67 queued): the T66b entry as it stood:
 
   **E08 T66b — The ADR amendment drafts, the design note and the cut**

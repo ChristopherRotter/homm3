@@ -99,6 +99,10 @@ Refined with the user on 2026-10-28 (T65; ADV-Q31). Built like increments 1 to 7
 
 179. **D-46 tested first** (ADV-Q35, the user's choice of three): the re-read's closure of a water tile holding an object to a flight (no end, no pass; ADV-MOV-009 and VCMI pass) goes to a one-row batch E8c (T69b) before T70; until it runs the drafts and the design carry the code's side; T73 amends ADV-MOV-009 if the row confirms it. Not chosen: the code's side untested; the engine's pass kept.
 
+**Round 3** (T69b, at its start):
+
+180. **T69b whole** (the user's choice of two, 2026-10-29, `AskUserQuestion`: "Whole, one PR (Recommended)"): batch E8c's spec, map and recipe, the staging, the run under Wine, the record and the score in survey `E08-sea.md` §16 in one pull request. Not chosen: in two (the spec and recipe; the run and the score). The agent added a fifth pocket, E8-17e (an empty boat amid three water tiles, entered from water), to test 0x4B2CF3 apart from the flying-only branch (change freely).
+
 ### Tasks (queue entries in `docs/lanes/adventure/QUEUE.md`; one or two per round, the cut confirmed at each checkpoint)
 
 - **T65 Increment 8 refined** (with increment 7's closure). Done (2026-10-28, `adventure/e08-t65`; decisions 157–159): boats and the sea with the sea's pickups, the first round queued (T66a, T66b).
@@ -107,7 +111,7 @@ Refined with the user on 2026-10-28 (T65; ADV-Q31). Built like increments 1 to 7
 - **T67 Batch E8's maps and specs.** Done whole (2026-10-28, `adventure/e08-t67`, `cross-lane`; decision 174): the writer's boats, sea pickups, holes and bottle texts, the spec's `[[map.bottle]]` and a monster's own `at`; the specs `E08-batch-8a`, `-8a-water` (E8-5) and `-8b` with their templates, reviewed (nine findings taken); the holes' and the winds' picture sizes read (log).
 - **T68 Batch E8's harness and runs**, in two by batch (decision 175): **T68a** done (2026-10-28, `adventure/e08-t68a`: the boat, ship-flag, obstacle and key reads and steps, the path marks read only while shown; the recipes E8a and E8a-water; E8a run three times, the water map twice, recorded; the harness check passed); **T68b** done (2026-10-29, `adventure/e08-t68b`, decision 176: the sea pickups' words, visits picked by them, legs over water, a bottle's message, table rows; the recipe E8b; four runs, two recorded; the harness check passed).
 - **T69 Batch E8's scoring.** Done whole (2026-10-29, `adventure/e08-t69`; decisions 177–179): survey `E08-sea.md` §15, the 16 rows scored; D-41 to D-43 confirmed, D-44's refusal kept (ADV-Q34), D-45 reverted (only a boat takes a sea pickup or fights a monster on water), E8-15's battle at the monster's tile, A-28 confirmed; the flyer's search re-read (map entries 0x4B2300, 0x56A0D0): **D-46**, a flight over a water tile holding an object, to batch E8c (ADV-Q35); the drafts and the design in line (log).
-- **T69b Batch E8c** (decision 179): one row on D-46, spec, run and scored, before T70. Queued.
+- **T69b Batch E8c.** Done whole (2026-10-29, `adventure/e08-t69b`; decisions 179, 180): the spec `E08-batch-8c` (row E8-17, five flyers in pockets closed by rock), its recipe, one run under Wine, recorded; survey `E08-sea.md` §16: **D-46 confirmed** (E8-17a, E8-17b: no path over a Flotsam's water tile, from land or water), an empty boat crossed from land and water (E8-17d, E8-17e); the re-read's 0x4B2CF3 corrected (map entry 0x4B2300); the drafts and the design in line (log).
 - **T70 to T76** (decision 171; design §18): the `shared/` task (T70), `h3-heroes` (T71), the import, kinds and state (T72), moving and `Reach` (T73), the pickups, the battle at sea and the game (T74), the replays and gates (T75), the audit (T76).
 
 ## Later increments (sketch)
