@@ -85,6 +85,17 @@ trunk knows which stack acts next, from `inspect/probe_order.py` (a one-off scri
 `uv run --group train python records/inspect/probe_order.py runs/<run>/best.pt 600` from
 `python/`; the method and the findings in `docs/epics/E06-log.md`).
 
+## The distillation benches
+
+`distill/<bench>.json` (E25 T7b): a bench's `report.json` (`python -m h3env.train.distill`;
+`python/README.md`): the teacher (its file, network settings, samples, parameters), the bench's
+settings, the identity (source, torch, device, machine), each student's network settings,
+learning rate and parameters, and every evaluation on the held-out set (per student the KL per
+head, the agreement overall and per category, the value's mean squared error and explained
+variance, the training seconds; the teacher's value beside them); how it ended (`budget`,
+`stop`). The students' files stay on the machine that ran it. The findings in
+`docs/epics/E25-log.md`.
+
 ## The search's measurements
 
 `search/<run>-<set>-<N>[-<per kind>].json` (E06 T8c): `python -m h3env.search --report --best
@@ -133,6 +144,16 @@ its `parent`.
   shaping`; 20 M samples, 73 and 90 minutes): best #2 each. The control on the full report set
   0.829, 0.548, 0.529 against Random, Aggressor, Greedy, 0.371 against the system actor, the
   neutral set +0.230; shaping 0.835, 0.589, 0.566, 0.409, +0.238, ahead of `t7-1` against every
-  opponent, a little behind on the neutral set (`docs/epics/E25-log.md` T2b). **`e25-shaping-1`
-  #2 is the current best** (E25 T3, the user, 2026-10-28). Their networks
-  are on the user's machine.
+  opponent, a little behind on the neutral set (`docs/epics/E25-log.md` T2b). `e25-shaping-1`
+  #2 was the current best from E25 T3 (the user, 2026-10-28) to T4b. Their networks are on the
+  user's machine.
+- `e25-bound-1` (E25 T4b, 2026-10-29; `configs/e25-bound.toml`: shaping with the agent's tactics
+  bound at one round; 20 M samples, 73 minutes): best #2, on the full report set 0.840, 0.591,
+  0.573 against Random, Aggressor, Greedy, 0.416 against the system actor, the neutral set
+  +0.233; the placement loop gone (`docs/epics/E25-log.md` T4b). The current best from E25 T4b to T6.
+  Its networks are on the user's machine.
+- `e25-scale-1` (E25 T5, 2026-10-29; `configs/e25-scale.toml`: `e25-bound.toml` with three
+  tactics rounds, 60 M samples; stopped by the user at 41.3 M, 137 minutes, the curve flat):
+  promoted #0 to #3, best #3 at 30 M, at `e25-bound-1`'s level (`docs/epics/E25-log.md` T5).
+  **#3 is the current best** (E25 T6, the user, 2026-10-29). Its networks are on the user's
+  machine.

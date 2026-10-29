@@ -27,6 +27,7 @@ from torch import nn
 
 from ..batch import BattleBatch
 from .entity import Block, Entity
+from .hexnet import HexConv, HexNet
 from .policy import CASTS, Mlp, Policy, build
 from .run import load_config
 
@@ -64,6 +65,11 @@ def parts(
         if isinstance(module, Block):
             x = args[0]
             return 2.0 * x.shape[1] * x.shape[1] * x.shape[2] * x.shape[0]
+        if isinstance(module, nn.Conv2d):
+            # A hex convolution's kernel counts its seven hexes (`hexnet.HEX_KERNEL`).
+            mask = getattr(module, "kernel_mask", None)
+            taps = float(mask.sum()) if mask is not None else float(np.prod(module.kernel_size))
+            return out.numel() * module.in_channels / module.groups * taps
         return 0.0
 
     hooks = []
@@ -134,12 +140,14 @@ def mermaid(net: Policy) -> str:
     """The data flow of `net` as a Mermaid flowchart."""
     if isinstance(net, Mlp):
         first, second = net.trunk[0], net.trunk[2]
+        more = len(net.trunk) // 2 - 1
         return "\n".join(
             [
                 "flowchart LR",
                 f'  obs["observation v21<br/>{first.in_features:,}"] --> sl["symlog"]',
                 f'  sl --> t1["Linear {first.in_features:,} → {first.out_features}<br/>ReLU"]',
-                f'  t1 --> t2["Linear {second.in_features} → {second.out_features}<br/>ReLU"]',
+                f'  t1 --> t2["{more} × Linear {second.in_features} → {second.out_features}'
+                '<br/>ReLU"]',
                 '  t2 --> value["value"]',
                 f'  t2 --> entry["entry logits {net.entry_head.out_features:,}"]',
                 '  t2 --> spell["spell logits"]',
@@ -151,6 +159,8 @@ def mermaid(net: Policy) -> str:
                 "  se --> second",
             ]
         )
+    if isinstance(net, HexNet):
+        return hex_mermaid(net)
     assert isinstance(net, Entity)
     w, n = net.width, len(net.blocks)
     return "\n".join(
@@ -183,6 +193,53 @@ def mermaid(net: Policy) -> str:
             "  ctx & hx & enc --> target",
             '  target --> te(["target embedding"]) --> second["second target pointer"]',
             "  ctx & hx & enc & se --> second",
+        ]
+    )
+
+
+def hex_mermaid(net: HexNet) -> str:
+    """The data flow of a hex network (`hexnet`) as a Mermaid flowchart."""
+    w, n, g = net.width, len(net.blocks), net.grid
+    if isinstance(net, HexConv):
+        trunk = (
+            f'  field --> enc["{n} × residual block: 2 hex convolutions<br/>'
+            f'{g.height} × {g.columns} axial cells, global pooling"]'
+        )
+    else:
+        trunk = (
+            f'  field & glob --> enc["{n} × transformer block, {net.blocks[0].heads} heads<br/>'
+            f'{g.hexes} hexes + global token, bias per axial offset"]'
+        )
+    return "\n".join(
+        [
+            "flowchart LR",
+            '  obs["observation v21"] --> sl["symlog"]',
+            '  sl --> stacks["42 stack slots × 99"]',
+            '  sl --> glob["globals, heroes, own hero"]',
+            '  sl --> planes["16 hex planes × 255"]',
+            f'  stacks --> st["stack tokens {w}<br/>+ creature embedding"]',
+            f'  planes --> hx["hex vectors {g.hexes} × {w}<br/>+ per-hex embedding"]',
+            '  st & hx & glob --> field["the field: stacks on their hexes,<br/>'
+            'the global vector on every hex"]',
+            trunk,
+            '  enc --> sv["stack vectors: token + the hex under it"]',
+            "  st --> sv",
+            '  enc & sv & glob --> ctx["context: global, hexes mean and max,<br/>'
+            'active stack, mean of the stacks"]',
+            '  ctx --> value["value"]',
+            '  ctx --> fixed["15 fixed entries"]',
+            '  enc --> move["move pointer: 255"]',
+            "  ctx --> move",
+            '  sv --> sp["stack pointer: 42 × (24 attacks,<br/>2 shots, heal)"]',
+            "  ctx --> sp",
+            '  fixed & move & sp --> entry["entry logits 1 404"]',
+            '  ctx --> spell["spell logits"]',
+            '  cast(["the cast"]) --> spell',
+            '  spell --> se(["spell embedding"]) --> target["target pointer:<br/>'
+            'none, 255 hexes, 42 stacks"]',
+            "  ctx & enc & sv --> target",
+            '  target --> te(["target embedding"]) --> second["second target pointer"]',
+            "  ctx & enc & sv & se --> second",
         ]
     )
 

@@ -309,3 +309,155 @@ an entry only where a task builds on it.
   left to the agent, which ends the phase itself). So T5 changes the length and the bound
   together: its read against `e25-bound-1` cannot part them. **`e25-bound-1` is the lineage's
   current best** (#2, 20 M; the network the exit criteria are judged on) until T5 reports.
+
+## T5 — The scale run (2026-10-29)
+
+- **The run** (the user's machine; `python/records/e25-scale-1.json`; commit `4395eed`, #576's
+  merge, clean, C ABI v35; seed 1, `configs/e25-scale.toml`: 60 M samples, three tactics
+  rounds). **Stopped by the user at 41.3 M** (1 697 updates, 137 minutes, 4.6 of them the gates
+  and ladders): the curve was flat, so it has **no final ladder**. Promoted at 10, 20 and 30 M
+  (0.804 in 28 pairs, 0.528 in 198, 0.523 in 301), rejected at 40 M (0.507 in 354 pairs, +5
+  Elo, LLR −2.95): best #3 at 30 M. The ladders (win rate, value; 250 per kind during the run,
+  intervals about ±0.025; the last row `records/inspect/battles.py` and `h3env.train.inspect
+  --set neutral-v1` on its `best.pt`, the sandbox's CPU, the full sets, 500 per kind):
+
+  | Network | Random | Aggressor | Greedy | System actor | Neutral set |
+  |---|---|---|---|---|---|
+  | `e25-bound-1` #2 (20 M, final) | 0.840, +0.282 | 0.591, +0.067 | 0.573, +0.051 | 0.416, −0.062 | 0.963, +0.233 |
+  | `e25-scale-1` #1 (10 M) | 0.825, +0.270 | 0.564, +0.044 | 0.544, +0.029 | 0.399, −0.079 | 0.968, +0.228 |
+  | `e25-scale-1` #2 (20 M) | 0.834, +0.279 | 0.583, +0.060 | 0.555, +0.042 | 0.412, −0.067 | 0.979, +0.241 |
+  | `e25-scale-1` #3 (30 M) | 0.834, +0.285 | 0.592, +0.069 | 0.574, +0.050 | 0.416, −0.060 | 0.972, +0.239 |
+  | #3, full sets (CPU) | 0.840, +0.284 | 0.593, +0.073 | 0.580, +0.057 | 0.418, −0.061 | 0.969, +0.241 |
+
+  On the full sets #3 is 0.000 to 0.007 above `e25-bound-1` in win rate and 0.001 to 0.008 in
+  value against every seat, each inside the intervals (±0.013 against Random, ±0.018 otherwise,
+  ±0.014 on the neutral set); the neutral value still below the system actor's own +0.285. Per
+  side against the system actor: the hero battles 0.593 / 0.224, the siege with a hero 0.486 /
+  0.322, the garrison 0.918 / 0.052 (shaping's T2b: 0.585 / 0.210, 0.472 / 0.316, 0.922 / 0.046).
+  The run's own head-to-heads: #3 against #2 0.510, the 40 M network against #3 0.507. The
+  head-to-heads against `e25-bound-1` and `t7-1` were not played (their `best.pt`s are on the
+  user's machine; `evaluate.ladder`'s `networks` plays them).
+- **Training:** one self-play battle cut in 818 k episodes (35 to 41 M); 48 to 50 samples an
+  episode after the first 5 M (`e25-bound-1` 48). Samples per second 5 300 falling to 4 840
+  (`e25-bound-1` 5 380 and 4 800). The league score 0.524, 0.519, 0.509, 0.509, 0.506, 0.504 per
+  5 M from 10 M; the entropy 1.79 to 1.50; the value head's explained variance rose with length,
+  0.48, 0.54, 0.59, 0.61 per gate interval (`e25-bound-1` 0.48 and 0.49), with no trace in the
+  ladders. The learning rate falls linearly to 5 % over the 60 M: at the stop it was 7.8e-5, 31 %
+  of the start, so the run's last third (the low rates) never ran; `e25-bound-1`'s 20 M schedule
+  reached the floor and the same ladder, so the missing anneal is unlikely to move it (not tested).
+- **Three rounds:** in the 616 battles of 3 000 per opponent with a tactics phase it decides
+  there 5.1 to 5.5 times on average (median 2, the 90th and 99th percentiles 17 to 18 and 23 to
+  25, at most 25 to 32; `e25-bound-1` 3.2 to 3.3, at most 11), the phase 3.6 to 4.1 % of its
+  decisions against the system actor, Greedy and Aggressor (`e25-bound-1` 2.4 to 2.6 %), 2.5 %
+  against Random; none above 50, none cut. No loop: the bound holds the phase to its three
+  rounds, and the median battle is still a placement and End tactics. Outside the phase, against
+  the same three seats, it strikes at 52 to 55 % of its decisions, moves at 27 to 31 %, casts at
+  11 to 12 % and waits at 1 %, 25 to 29 such decisions a battle (T4b's `e25-bound-1`: 55 to 60 %,
+  21 to 25 %, waits 2 %, 25 to 28); battles of 50 rounds or more 3 in 9 000 (against Random 15 in
+  3 000, none cut).
+- **The read:** scale gains nothing at these settings. From 20 M the MLP with shaping and the
+  bound is at `e25-bound-1`'s ladder and stays there to 41 M (the 40 M gate +5 Elo); three rounds
+  instead of one cost and gain nothing measurable (the two changes together, T4b's caveat). The
+  system actor's 0.418 is the lineage's best and still 0.08 short of the target's 0.5. Where E06's
+  `t4-2` rose to 50 M (no truncation penalty, no shaping), shaping passes that level by 20 M
+  and samples add nothing more: the limit is the agent (its network or what it reads), not the
+  training's length.
+
+## T6 — Increment 2's checkpoint (2026-10-29)
+
+- **The user's choices:** `e25-scale-1` #3 (30 M, three tactics rounds) is **the lineage's
+  current best**, the network the exit criteria are judged on (at or above `e25-bound-1` on every
+  point estimate; later runs use three rounds). The head-to-heads against `e25-bound-1` and
+  `t7-1` are skipped (the engine seats compare them on the same battles).
+- **Increment 3, the network's architecture (AI-Q11):** asked to choose among the candidates
+  (the agent recommended the entity network revived), the user asked which architectures are
+  possible: one that correlates hexes properly and efficiently, a larger or deeper network
+  (never tried: every run since E05 is the 2 × 512 MLP), else the entity network, scrutinised.
+  The agent's options and the user's answer: AI-Q11 (`lanes/ai/QUESTIONS-ANSWERED.md`). **The
+  user:** a distillation bench over a hex convolution network, a hex transformer, a deeper and a
+  wider MLP; the agent adds the current MLP (the baseline) and E06's entity network as it is.
+- **Why the entity network underperformed** (E06 T5b, T5d; what the bench can tell): its move
+  logits read a hex's own 16 features and the context, not where the stacks stand, so "toward
+  that stack" was hard (T5b's diagnosis of its stalling); with the truncation penalty it stayed
+  behind per sample (`t5-2` 0.770 against `t5-3`'s 0.832 at 20 M) at 3.4 times the cost, its
+  entropy barely falling (3.44 to 3.11; the MLP 2.74 to 1.89), its optimiser the MLP's. The
+  bench separates the two causes: a network that cannot fit the teacher's move head lacks the
+  representation; one that fits it but learns slowly in RL points at the optimisation.
+
+## T7a — The network kinds (2026-10-29)
+
+- **The MLP's depth:** `[network] layers` is the MLP's trunk's layers too (2 the default; a
+  saved MLP without the key has two, every MLP before had: the parameter names unchanged).
+- **The hex networks** (`h3env.train.hexnet`; observation v22 and action v13, no encoding
+  change): the entity network's heads moved into a base class (`entity.Pointed`, names and
+  creation order kept: an E06 entity network built from the same seed is the same, tested
+  once); both new kinds draw the battle on the field (each hex's planes and a per-hex
+  embedding, each present stack's token on its position and a two-hex stack's on its front hex,
+  the global vector on every hex; a turret only keeps its token) and read out a context, the
+  stack vectors (token plus the trunk's vector under it) and the hex vectors to those heads.
+  `hexconv`: residual blocks of two 3 × 3 convolutions on the axial grid (22 × 11 cells, 187
+  real) with the kernel's corners (+1, +1) and (−1, −1) zero, a global-pooling bias in each
+  block, the branch initialised at 0, the padding cells kept at 0, no normalisation (agent's
+  choices, change freely). `hexformer`: a global token and the 187 hexes through pre-norm blocks
+  with a learned bias per head and axial offset (one table per block). The field's size is
+  `[network] field_width`, `field_height` (17, 11, the base ruleset's; the C ABI does not name
+  it), checked on real battles; `layout.py` gains `TWO_HEX` and `VIEWER_ATTACKER`, pinned by
+  `h3-sim`'s layout test.
+- **Tests:** `tests/test_hexnet.py` (the kernel's reach against `Field::neighbors`'s rule on
+  every hex, a stack drawn on its hexes per side and seat, a turret drawn nowhere, an empty slot
+  unseen and the slots' order free, the field on real battles, the MLP's depth, the cost
+  table's convolutions); `test_train.py`'s masks and log-probabilities and a run stopped,
+  resumed and laddered, for each kind. 167 Python tests pass (the GPU's skipped).
+- **Costs** (`python -m h3env.train.network --time`, 256 observations, the sandbox's 4 CPU
+  threads, the median of 10; the GPU decides a run's speed):
+
+  | Network | Parameters | Multiply-adds a decision | Forward µs | Training pass µs |
+  |---|---:|---:|---:|---:|
+  | MLP 2 × 512 (the current) | 5.95 M | 5.5 M | 62 | 65 |
+  | MLP 2 × 1 024 (wider) | 12.4 M | 11.6 M | 78 | 166 |
+  | MLP 2 × 2 048 | 26.8 M | 25.3 M | 130 | 328 |
+  | MLP 4 × 512 (deeper) | 6.47 M | 6.1 M | 71 | 114 |
+  | `hexconv` 64 × 6 blocks | 0.69 M | 85 M | 675 | 1 984 |
+  | `hexconv` 32 × 6 blocks | 0.21 M | 21 M | 305 | 728 |
+  | `hexformer` 64 × 4 blocks | 0.34 M | 45 M | 1 027 | 6 091 |
+  | `entity` 128 × 2 (E06's) | 1.19 M | 15.5 M | 339 | 724 |
+
+  The hex networks share their weights over the hexes: few parameters, many operations; the
+  bench measures them on the user's GPU.
+- **Docs:** `python/README.md` names the kinds; `docs/07-simulation-and-ai.md` §1.2 (a shared
+  path) gains them with E25's other levers (shaping, the tactics bound) at the epic's closure.
+
+## T7b — The distillation bench (2026-10-29)
+
+- **Built** (`h3env.train.distill`, `configs/distill/e25.toml`; `python/README.md`): the teacher
+  (a run's network file; here `e25-scale-1` #3) plays itself in `ppo.Trainer`'s rollouts on its
+  run's training distribution (its kinds, tactics bound and shaping, the sampled policy,
+  self-play only, the bench's seed 7); every student learns on the same minibatches: the KL
+  divergence from the teacher's entry head over the legal entries, plus a cast row's spell,
+  target and second heads along the teacher's choices, plus 0.5 times half the squared error
+  against the teacher's λ-returns (`ppo.gae`: γ 1, λ 0.95, the shaped rewards, so the targets
+  PPO's value head regresses on). Adam at 3e-4 falling linearly to a tenth over the samples, 2
+  epochs a rollout in minibatches of 512 rows, the gradient's norm clipped at 0.5 (agent's
+  choices, change freely). A held-out set (16 384 samples of rollouts on seed 8, collected once)
+  scores every student every 500 k samples: the KL per head, the agreement of its most likely
+  entry with the teacher's (overall and per category of the teacher's: tactics phase, wait or
+  defend, move, melee, shot, heal, cast, other), its value's mean squared error and explained
+  variance against the returns (the teacher's own beside it) and its training seconds (the
+  GPU synchronised around each student's steps). `report.json`, `metrics.jsonl`,
+  `students/<name>.pt` (run network files with the teacher's other settings: `--init-from`
+  starts T7d from one). The students: the MLP 2 × 512 (the teacher's own architecture, from
+  scratch), 2 × 1 024, 4 × 512, `hexconv` 64 × 6, `hexformer` 64 × 4 (4 heads), `entity` 128 × 2.
+- **Memory:** PPO's minibatches (a rollout over 8, about 3 000 rows) killed the first CPU smoke
+  (the sandbox's 15 GB): the hex networks' activations at that size take several GB each (and
+  would not fit the user's 8 GB GPU either); at 512 rows six students on the CPU used 6.8 GB of
+  RAM. A hex network's RL run needs `[ppo] minibatches` raised (`TRAPS.md`, T7d's scope).
+- **The CPU smoke** (the sandbox, 65 k samples, 4 096 held out; a check of the code, not a
+  result): the teacher's value explains 0.608 of its held-out returns' variance (its run's 0.61:
+  the targets are its own); after 65 k samples the entry's KL is 0.51 to 0.65 for the MLPs and
+  1.01 to 1.07 for the structured networks, which learn more slowly this early; training seconds
+  for the 130 k sample passes: 16, 28, 18 (the MLPs), 256 (`hexconv`), 936 (`hexformer`), 72
+  (`entity`).
+- **Tests** (`tests/test_distill.py`): the config's refusals and `--set`, every bench config valid,
+  the categories, a student that is the teacher scores KL 0 and agreement 1 (another one does
+  not), a bench end to end (its students learn, its evaluations, report, metrics and files,
+  a second run into the same directory refused).

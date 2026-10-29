@@ -7,21 +7,28 @@ Pre-refined tasks of the AI lane, in order, then the inbox of discovered work. T
 **E05** (`docs/epics/E05-battle-env.md`) closed 2026-10-20 (record: `E05-log.md`; the environment as built: `docs/07-simulation-and-ai.md` §1.1). **E06** (`docs/epics/E06-battle-ai.md`, AI-Q8) closed 2026-10-27 (T1 to T9 in 8 increments; record `E06-log.md`, the design note kept there; the training pipeline as built: `docs/07-simulation-and-ai.md` §1.2): the battle AI v1 is `t7-1`, on the closing engine 0.830, 0.550, 0.530 against Random, Aggressor, Greedy at +0.273, +0.029, +0.010 and the neutral set's value +0.244 (decision 7's targets as revised, met), the system actor 0.628 against it (E25's target). The tasks' history is in `QUEUE-ARCHIVE.md`.
 
 **E25** (`docs/epics/E25-battle-ai-v2.md`, AI-Q10; record `E25-log.md`), refined
-2026-10-27; increment 1 closed 2026-10-28 (`E25-archive.md`; T3: the user chose increment 2).
-**`e25-bound-1` is the lineage's current best** (the user at T4b, 2026-10-29). **Increment 2,
-shaping, bounded, then scale:** the faithful system actor still trains no agent and no neutral
-battles train (decision 2, the user at T2a); each run's length is agreed with the user (decision
-5).
+2026-10-27; increments 1 and 2 closed 2026-10-28 and 29 (`E25-archive.md`).
+**`e25-scale-1` #3 is the lineage's current best** (the user at T6, 2026-10-29). **Increment 3, the network's architecture** (AI-Q11, the user):
+a distillation bench ranks a deeper and a wider MLP, a hex convolution network, a hex
+transformer and E06's entity network against the current MLP, then the best go to RL. The
+faithful system actor still trains no agent and no neutral battles train (decision 2); each
+run's length is agreed with the user (decision 5). All on observation v22 and action v13: no
+encoding or ABI change.
 
-- **T5 The scale run.** *Scope:* on the user's machine, `e25-scale-1`: `configs/e25-scale.toml`
-  (T4b's settings, `e25-bound.toml`, with the original's computer's three rounds,
-  `tactics_rounds = 3`; 60 M samples from scratch, about 3.5 to 4 hours; the user at T4b,
-  2026-10-29): `uv run --group train python -m h3env.train --config configs/e25-scale.toml --out
-  runs/e25-scale-1`. The record committed and read, the ladders against `e25-bound-1` and
-  `t7-1`, the tactics share (`records/inspect/battles.py` on its `best.pt`). *Depends on:* T4b
-  (done 2026-10-29); the user. *Status:* next (the user's run).
-- **T6 Increment 2's checkpoint.** *Scope:* T4b's and T5's reads put to the user; increment 3
-  chosen among the epic's candidates. *Depends on:* T5. *Status:* waiting.
+- **T7c The bench run.** *Scope:* on the user's machine (the GPU; its length agreed with the
+  user), from `python/`: `uv run --group train python -m h3env.train.distill --teacher
+  runs/e25-scale-1/best.pt --config configs/distill/e25.toml --out runs/distill-1` (4 M
+  samples; each evaluation prints the students' seconds; Ctrl-C scores and saves). The report
+  committed (`python/records/distill/distill-1.json`) and read in `E25-log.md`: which kinds fit
+  the teacher best per sample and per second, and where the entity network fails (the move
+  head or not). *Depends on:* T7b (done 2026-10-29); the user. *Status:* next (the user's run).
+- **T7d The A/B.** *Scope:* the best one or two kinds at 20 M on `e25-scale.toml`'s settings
+  (from scratch, or from the bench's weights: imitation of the lineage's own network, not of
+  the system actor or a bot), against `e25-scale-1`; the user's machine; a hex network with
+  `[ppo] minibatches` raised to fit the GPU (`TRAPS.md`, Python). *Depends on:* T7c.
+  *Status:* waiting.
+- **T8 Increment 3's checkpoint.** *Scope:* T7c's and T7d's reads put to the user; increment 4
+  chosen. *Depends on:* T7d. *Status:* waiting.
 
 ## Inbox
 
@@ -63,6 +70,10 @@ lane's turret preview (its open point below), the baselines and AI-Q7.
   of 2026-10-26). The rollout's legal-command order keeps the old games' draws: the twelve golden
   replays recorded the same commands. **A-23 withdrawn** (E08 T58: `legal_moves` never reads events). Design:
   `docs/epics/E08-design.md` §14, §16; ADR-0017 points 6, 8.
+
+**For E25's closure** (a `shared/` pull request): `docs/07-simulation-and-ai.md` §1.2, the
+pipeline as built, gains E25's training levers: shaping (T2a), the tactics bound (T4a), the
+hex networks and the MLP's depth (T7a), the distillation bench (T7b).
 
 **For E25's later increments** (the epic's candidates; E06's leftovers, T9a; increment 1's
 parts are its tasks above):
