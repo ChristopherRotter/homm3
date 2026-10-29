@@ -1605,3 +1605,35 @@ original data staged from the user's repo folder first; the baseline check passe
   which rebuilds the panels' background and uploads the whole screen (13 of `walk-1`'s frames,
   as a button's change already did). Queued as T4c: a changed panel item drawn again alone (T5's
   status window and T6's hints change far more often).
+
+### M3 T4c — a changed panel item drawn again alone (2026-10-29)
+
+On `map-client/e24-m3-t4c`, the user present (T4c taken as the session's task); `master` at
+2f7ab39 (#572 merged; CI's Clients run green on it). The original data staged from the user's
+repo folder first. The local baseline was stopped early (it had begun testing the working tree
+with the change in it; `verify-once` records nothing with uncommitted changes); CI's green run on
+`master` stands for the starting point.
+
+- **Built** (design §4.6): `h3_ui::paint::reach` (additive in the common crate: a picture's, a
+  button's and a darkened rectangle's reach; unknown for texts, labels and missing assets;
+  `button_frame` shared with the drawer); in `compose`: `changed_areas` (the changed items' old and
+  new reach, or those between the lists' common start and end; joined; refused near a clip whose
+  pixels may move, for an unknown reach, or with a dialog draw over the background),
+  `Background::redraw` on a kept scratch screen (the frame's picture cut, the dialog's items that
+  may reach an area whole), the view's cells meeting an area dirty in `Changed`, the areas in the
+  restored rectangle of a scene drawn whole over the background; `frame_picture` cut to a
+  rectangle.
+- **Checked:** unit tests (the reach of each kind; scenes with a button's frame, a darkened
+  rectangle over a gem, an item fewer and more, a label's text, a picture turned label, another
+  flag palette, a dialog draw over the view, a reach meeting the clip, each as a fresh composer's
+  with every changed pixel in the damage; the button's damage its 2 × 2 rectangle alone; a batch
+  lacking the frame's picture or the label's font; `joined`); 100 % coverage of `h3-ui` and
+  `h3-map-view`; clippy; the window under Xvfb (`walk-1`, `walk-points`, `lists-scrolled`,
+  *Tale of two lands*, `--check 10`): every frame read back exact, made as the same frame
+  composed afresh, every change the headless loop's; `drawn`: 43 situations and 13 sequences the
+  same.
+- **Measured** (the sandbox, `--measure 20`, alternating with `master`'s build twice each; the
+  sandbox slower than T4b's, `master`'s median 0.8 ms on `walk-1` against T4b's 0.5): `walk-1`
+  uploads 30.8–31.0 → 24.6–24.8 % (25.7 before T4b), p95 3.6–4.0 → 2.9–3.0 ms, median 0.8 both;
+  *Tale of two lands* 11.2 % and `path-objects` 5.2 % as before, their times within the spread.
+- **Left:** a text's reach (T5's texts change with each selection and day; queued with T5).
