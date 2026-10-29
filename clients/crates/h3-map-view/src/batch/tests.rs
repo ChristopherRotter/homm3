@@ -128,6 +128,7 @@ fn the_names_a_scene_draws() {
                 y: 0,
             },
         ],
+        view: None,
         cycles: vec![],
         flags: "game.pal".to_string(),
         bugs: h3_render::Bugs::Fixed,
@@ -194,6 +195,7 @@ fn holds_a_font_and_gives_the_dialogs_drawers_its_assets() {
             Draw::Dialog(h3_ui::ui::Draw::Darken { rect: [0; 4] }),
             Draw::Dialog(button),
         ],
+        view: None,
         cycles: vec![],
         flags: "game.pal".to_string(),
         bugs: h3_render::Bugs::Fixed,
@@ -202,6 +204,7 @@ fn holds_a_font_and_gives_the_dialogs_drawers_its_assets() {
     assert_eq!(names, ["IAM002.DEF", "PLAYERS.PAL"]);
     let scene = Scene {
         draws: vec![Draw::Dialog(h3_ui::ui::Draw::Darken { rect: [0; 4] })],
+        view: None,
         cycles: vec![],
         flags: "game.pal".to_string(),
         bugs: h3_render::Bugs::Fixed,

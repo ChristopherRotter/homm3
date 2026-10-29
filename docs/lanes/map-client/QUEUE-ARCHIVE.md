@@ -4,6 +4,9 @@ Finished history and informational notices moved out of `QUEUE.md` on 2026-10-24
 
 ## Notices from other lanes and finished items, newest first
 
+- 2026-10-28 (this lane, E24 M3 T2b2): kept whole by the user ("no cut"; the cut proposed: the
+  drawers' spans, the view's cells, the changed rectangles widened and uploaded), done: the
+  log's "M3 T2b2".
 - 2026-10-28 (this lane, E24 M3 T2b1): T2b cut with the user into T2b1 (the frame's fixed cost,
   done: the log's "M3 T2b1") and T2b2 (a frame redrawing only what changed, queued), the user
   adding a spatial structure for the draw objects (a jump and HotA's large maps) and the

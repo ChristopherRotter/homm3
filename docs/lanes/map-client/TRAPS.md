@@ -24,6 +24,13 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   built at the map's load; whatever changes the live part's objects (an owner, a picture, a
   fallen object: the engine's, M4) must build that level's index again, or the view draws the
   old ones. `scene` (the stills, `render`) builds its own each time.
+- **A kept frame draws a cell again only when its draws change** (M3 T2b2, design §4.3): the
+  composer compares each 32 × 32 cell's draws (with their DEFs' cycle steps and the flag
+  palette's name) with the last scene's and leaves the cell's pixels when they are the same; what
+  changes a piece's pixels otherwise (a DEF decoded again under its name, a palette changed but
+  by the scene's cycles) needs a new `Composer`, and a scene's `view.origin` must be the point
+  every piece of the view moves by (the clip's pixels move by its change), or a scroll leaves
+  stale pixels. The window's `--check` line `afresh` finds either.
 - **One game at a time:** `h3mem.Mem()` takes the first game process it finds, so a `still --keep` game left running makes the next still read it (T5a); stop it first (`wineserver -k` with `h3drive.env()`). At a human player's turn start the selected hero is off its tile until the view moves: find heroes by their records (`Mem.hero_on`).
 - **Driving the window under Xvfb** (M2 T4b1): `xdotool click --window <id>` sends a synthetic
   event that SDL ignores; move the pointer with `mousemove --window` and click with a plain

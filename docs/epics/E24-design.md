@@ -1627,7 +1627,70 @@ anywhere on the map, HotA's 252 × 252 maps and larger), the widening computed o
 - **Measured after:** callgrind on `path-objects` 25.2 million instructions a frame (101): the
   view's drawers 16 (the shadow pass 6.5, the flagged drawer 6.3, the raw one 3.4), the widening
   3.9, the scene 2.3. The sandbox's medians: `walk-1` 6.4 → 1.3 ms, `path-objects` 10.8 → 4.5,
-  *Tale of two lands* 14.3 → 4.2 (the map's size no longer counts).
+  *Tale of two lands* 14.3 → 4.2 (the map's size no longer counts). The user's machine
+  (`map-measure-t2b1.txt`): a frame made in a median 0.7 ms on `walk-1` (4.2; p95 0.9 to 1.0,
+  4.5 to 4.8), 2.3 on *Tale of two lands* (3.3; p95 2.7, 11.3), 1.7 and 0.2 on `path-objects`
+  with the user's input (3.4 and 3.3; p95 2.9 and 2.5, 7.1 and 7.3); an input's frame shown a
+  median 3.5 ms after its time (8.8); every frame read back exact and widened as the screen's own
+  (1 051 on `path-objects`).
 - **Left** (T2b2): the drawers visit every pixel of a piece, transparent ones included; every
   frame draws the whole view and widens and uploads the whole screen, though an idle frame changes
   only the animated objects and the cycling water and a scroll moves what it keeps.
+
+### 4.3 A frame redrawing only what changed (M3 T2b2)
+
+No reading; every frame as before, pixel for pixel (*provisional* in what follows). The user's ask
+at T2b's cut: draw efficiently whatever moves, the draw objects found by T2b1's spatial index; T2b2
+kept whole ("no cut", 2026-10-28).
+
+- **Measured before** (T2b1's build, the sandbox): callgrind on the window's frames 25.1 million
+  instructions a frame on `path-objects` standing, 10.1 on `walk-1` (§4.2: the view's drawers 16
+  of the 25, every pixel of a piece visited, the transparent ones too); every frame drew the whole
+  view, widened the whole screen and uploaded it to the texture.
+- **The spans** (`draw::Spans`): each frame's rows as spans of literal pixels and of runs of one
+  index, worked out once as its DEF is decoded (`Batch::drawable` gives a frame with its spans),
+  the runs of index 0 left out (no drawer draws them); each drawer visits only its spans, cut to
+  the canvas, the clip and the screen. The gems go through the raw drawer (the plain drawer with
+  runs skipped draws their frames the same), so that a cell can cut them.
+- **The cells** (`compose::Composer`): of the draws over the background, each has its rectangle
+  (a piece's clip, a gem's canvas). The view's 32 × 32 cells (their corners at the view's origin
+  plus whole tiles, `Scene::view`'s `ViewPlace`: the clip, the origin and the tile; a scene
+  without one at (0, 0)) cover this scene's rectangles and the last's. A cell is left as it is when
+  its draws (each draw whose rectangle meets it, in order) are the last scene's and their DEFs'
+  palettes cycle the same; the others, merged into rectangles (each row's runs, a run below one of
+  the same columns joined), are restored from the background and drawn again, each draw cut to
+  them. Exact by construction: every drawer puts a pixel from the screen's pixel there and the draws
+  over it. A new flag palette, a frame's picture or a dialog's item among the view's draws, or a
+  new background (a button's state: a walk's start and end) draw everything again.
+- **The move:** when the view's origin moved (a scroll, a walk's slide; the same clip and tile, a
+  move smaller than the clip) and the background is one colour across the clip (the black of
+  `AdvMap.pcx` there; only then is a moved pixel of the background the background), the clip's
+  pixels move by as much first, and each cell is compared with the last scene's draws moved; a cell
+  not wholly inside what the move keeps (the strip it brings in, the gems' corners) is drawn
+  again. A jump moves nothing: every cell differs.
+- **What changed, widened and uploaded:** the composer reports the rectangles a scene changed
+  (`Composer::damage`); the painter numbers each composition and keeps the last 64's
+  (`damage::History`). A frame widened (the painter's `Widened`) knows the composition it holds
+  and its cursor's rectangle: the window's spare frames are widened again only where the
+  compositions since changed and where both cursors lie (`Widening::widen_rect`), whole when the
+  history no longer reaches. The texture likewise holds the frame last uploaded: a frame shown
+  uploads only what differs from it (`Window::present_part`: `SDL_UpdateTexture` a rectangle at a
+  time; past 64 rectangles their bounding one), the whole frame again after the window asked for
+  a redraw (its contents may be lost).
+- **The names:** the painter no longer collects a scene's names each frame (T2b1's `spelled`);
+  an asset the preload did not decode (a path's arrows shown later, an object's other picture) is
+  decoded when the composer finds it missing, and the scene drawn again.
+- **The check:** `--check`'s `afresh` line (T2b1's `widened`) compares every frame made with the
+  same frame composed afresh and widened pixel by pixel; the read-back checks the texture's
+  uploads. The timing line says how much went to the texture (`uploaded`).
+- **Measured after** (the sandbox; Xvfb's software renderer): callgrind 25.1 → 5.6 million
+  instructions a frame on `path-objects` standing (the scene 2.3, the composer 2.9: its drawers
+  1.0, the cells' lists and comparisons about 1.2; the widening 0.35), 10.1 → 3.2 on `walk-1`. A
+  frame made in a median 0.9 → 0.3 ms on `walk-1` (25 % of the pixels uploaded), 4.0 → 1.0 on
+  `path-objects` standing (5.5 %), 3.2 → 1.3 on *Tale of two lands* standing (11 %: its water
+  cycles), 1.4 → 0.6 and 1.9 → 1.5 on them with input (`xdotool`: 9 scrolls, 37 steps, 4 clicks;
+  29 % and 52 %).
+- **Left:** the scene built afresh each frame (2.3 million instructions, about half of what a
+  standing frame costs now; its draws' names are strings, a few thousand allocations a frame); a
+  button's change (a walk's start and end) draws the background and the whole view again; M4's
+  changes to the objects (the tile index again, §4.2; the cells compare whatever the scene draws).

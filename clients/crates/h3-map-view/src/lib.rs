@@ -10,7 +10,8 @@
 //! what the screen shows at a view and a moment, as a draw list in the original's order, the
 //! adventure screen's panels in it as [`panels`] gives them (E24 M3 T2a);
 //! [`batch`] the assets it needs, decoded; [`compose`] draws it into a frame in the original's
-//! screen format with the view's drawers ([`draw`]) and the compositor's (`h3-render`).
+//! screen format with the view's drawers ([`draw`]) and the compositor's (`h3-render`), a frame
+//! kept drawing only what changed, [`damage`] what changed between frames (E24 M3 T2b2).
 //! [`situation`] is a still of the capture set: a map built with the writer, its view and the
 //! tiles left unexplored. [`timeline`] is the map over time (E24 M2 T2): the original's loop on a
 //! clock of milliseconds, its redraws, palette steps, scroll and cursor; [`sequence`] the recorded
@@ -46,6 +47,7 @@ pub mod art;
 pub mod batch;
 pub mod check;
 pub mod compose;
+pub mod damage;
 pub mod draw;
 pub mod keys;
 pub mod layout;
