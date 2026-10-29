@@ -314,6 +314,40 @@ fn the_defender_opens_the_gate_and_it_closes_behind_it() {
     assert!(open(&t));
 }
 
+// covers: BAT-SIE-003, BAT-TAC-002
+#[test]
+fn a_defender_s_placement_through_the_gate_opens_it_with_every_sink() {
+    // E17 M5 T4c2b: a placement in the tactics phase is the original's walk (0x445950): out
+    // through the closed gate it opens on the gate's hex and closes behind the stack.
+    let r = ruleset();
+    let fort = town(&r, "t:castle", FortLevel::Fort, Moat::Absent);
+    let mut tactician = hero(&r);
+    tactician.tactics = 3;
+    let mut s = at_town(
+        &r,
+        fort,
+        [None, Some(tactician)],
+        &[("fixed", 1, 2, 1)],
+        &[("fast", 1, 13, 5)],
+    );
+    assert!(s.tactics().is_some_and(|t| t.side == BattleSide::Defender));
+    activate(&mut s, 1);
+    let mut t = s.clone();
+    let events = act(&mut t, &r, walk(&r, 9, 4)).unwrap();
+    assert_eq!(gate(&events), [true, false]);
+    assert!(!open(&t));
+    let mut quiet = s.clone();
+    apply(
+        &mut quiet,
+        &r,
+        BattleSide::Defender,
+        walk(&r, 9, 4),
+        &mut NoopSink,
+    )
+    .unwrap();
+    assert_eq!(quiet.state_hash(), t.state_hash());
+}
+
 // covers: BAT-SIE-003
 #[test]
 fn a_stack_or_a_corpse_on_the_bridges_keeps_the_gate_shut_for_the_defender() {

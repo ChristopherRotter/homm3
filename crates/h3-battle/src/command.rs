@@ -510,8 +510,7 @@ pub fn apply<S: Sink>(
             to,
             phase,
         } => {
-            // No spell obstacle exists in the tactics phase: a placement is a plain move, in one.
-            obstacles::moved(state, mover, (from, to), sink);
+            tactics::place(state, ruleset, mover, (from, to), sink);
             tactics::placed(state, phase, mover, sink);
         }
         Plan::Pass { mover, phase } => tactics::skip(state, phase, mover, sink),

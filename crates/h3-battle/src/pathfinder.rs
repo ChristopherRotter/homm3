@@ -29,9 +29,11 @@
 //! Such a stop is reached but not queued (its cost lies beyond the queue's), and a walk's search
 //! to it ends on it after the others, as the original takes it last.
 //!
+//! A placement's walk asks the same flag (`movement::placement_path`, for a recording sink's
+//! steps: the original's walk 0x5239D0 in the phase).
+//!
 //! Not modelled, as no caller of the engine meets it: the original's cap of 500 queued entries (a
-//! position is queued at most twice, below); the tactics phase's range in the engine's own
-//! searches (no walk is searched there: a placement is one move); the computer's stop avoidance in
+//! position is queued at most twice, below); the computer's stop avoidance in
 //! a command's own walk (0x4B3420: for a stack the computer plays at a town; the engine's walks
 //! are commands, whose legality reads no player, and within one move a stop is an end that no
 //! path to another position passes, so no such path changes; the battle AI's own searches ask

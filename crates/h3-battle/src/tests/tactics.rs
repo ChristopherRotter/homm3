@@ -9,7 +9,7 @@ use h3_contracts::{BallistaControl, BattleHero, BattleSide, TentControl};
 use super::support::*;
 use crate::{
     BattleSetup, BattleState, Command, CommandError, Event, EventKind, Hex, LegalCommands,
-    StackFlags, StackId, TacticsPhase, computer, legal_commands, observe,
+    NoopSink, StackFlags, StackId, TacticsPhase, apply, computer, legal_commands, observe,
 };
 
 /// The test hero with Tactics at `level`.
@@ -250,17 +250,16 @@ fn stacks_are_handed_over_in_rounds_and_next_creature_waits() {
     // phase, which starts after the last stack's turn (R7c).
     act(&mut state, &r, Command::Wait).unwrap();
     let events = act(&mut state, &r, Command::Move { to: at(&r, 6, 0) }).unwrap();
-    assert_eq!(
-        kinds(&events),
-        [
-            EventKind::Moved {
-                stack: StackId(3),
-                from: at(&r, 1, 9),
-                to: at(&r, 6, 0)
-            },
-            EventKind::TurnStarted { stack: StackId(2) },
-        ]
-    );
+    // The walk's steps (E17 M5 T4c2b), then the next turn.
+    let kinds = kinds(&events);
+    let (turn, steps) = kinds.split_last().unwrap();
+    assert_eq!(*turn, EventKind::TurnStarted { stack: StackId(2) });
+    let ends = steps.iter().map(|k| match *k {
+        EventKind::Moved { stack, from, to } if stack == StackId(3) => (from, to),
+        _ => panic!("{k:?}"),
+    });
+    assert_eq!(ends.clone().next().unwrap().0, at(&r, 1, 9));
+    assert_eq!(ends.last().unwrap().1, at(&r, 6, 0));
     let mut seen = vec![];
     for _ in 0..5 {
         act(&mut state, &r, Command::Wait).unwrap();
@@ -404,6 +403,66 @@ fn a_walking_path_may_leave_the_zone() {
     );
     act(&mut state, &r, Command::Move { to: target }).unwrap();
     assert_eq!(state.stack(StackId(0)).unwrap().hex, target);
+}
+
+// covers: BAT-TAC-002
+#[test]
+fn a_walker_s_placement_reports_its_steps_and_a_flyer_s_is_one_move() {
+    // E17 M5 T4c2b: a recording sink sees a walker's placement step by step along the path the
+    // original's walk takes in the phase (0x4420B8, 0x5239D0), here out of the zone and back; a
+    // flyer's is one move. Both end in the state a sink without records leaves.
+    let r = ruleset();
+    let f = field(&r);
+    let target = at(&r, 3, 5);
+    let mut s = led(
+        &r,
+        &[(0, "slow", 5), (1, "flyer", 5)],
+        &[(0, "fixed", 5)],
+        [Some(1), None],
+    );
+    s.obstacles = blocked(
+        f.neighbors(target)
+            .into_iter()
+            .flatten()
+            .filter(|&h| f.coords(h).0 <= 3)
+            .map(|h| h.0)
+            .collect(),
+    );
+    let (mut state, _) = start(&r, &s);
+    let moved = |events: &[Event], id: u8| -> Vec<(Hex, Hex)> {
+        events
+            .iter()
+            .filter_map(|e| match e.kind {
+                EventKind::Moved { stack, from, to } if stack == StackId(id) => Some((from, to)),
+                _ => None,
+            })
+            .collect()
+    };
+    let place = |state: &mut BattleState, to: Hex| {
+        let side = state.side_to_act().unwrap();
+        let mut quiet = state.clone();
+        apply(&mut quiet, &r, side, Command::Move { to }, &mut NoopSink).unwrap();
+        let events = act(state, &r, Command::Move { to }).unwrap();
+        assert_eq!(*state, quiet);
+        events
+    };
+    // The flyer (speed 7) first: one move.
+    assert_eq!(active(&state), 1);
+    let from = state.stack(StackId(1)).unwrap().hex;
+    let events = place(&mut state, at(&r, 2, 10));
+    assert_eq!(moved(&events, 1), vec![(from, at(&r, 2, 10))]);
+    // The walker: each step a neighbour of the last, through column 4 outside the zone.
+    let from = state.stack(StackId(0)).unwrap().hex;
+    let steps = moved(&place(&mut state, target), 0);
+    assert!(steps.len() > 2, "{steps:?}");
+    assert_eq!((steps[0].0, steps[steps.len() - 1].1), (from, target));
+    assert!(steps.windows(2).all(|w| w[0].1 == w[1].0));
+    assert!(
+        steps
+            .iter()
+            .all(|&(a, b)| f.neighbors(a).contains(&Some(b)))
+    );
+    assert!(steps.iter().any(|&(_, to)| f.coords(to).0 == 4));
 }
 
 // covers: BAT-TAC-002
