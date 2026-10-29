@@ -106,6 +106,7 @@ fn setup() -> AdventureSetup {
                     holds: Default::default(),
                 },
             ],
+            boats: vec![],
         },
         heroes: vec![
             HeroSetup {

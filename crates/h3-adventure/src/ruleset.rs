@@ -160,6 +160,15 @@ pub struct AdventureParamsDef {
     /// (ADV-MOV-010, E08 T40; read from T41): the same table in the original, a field of its own
     /// so that data can tell the two apart (VCMI's spells do).
     pub water_walk_cost: [NonZeroU16; 4],
+    /// A hero's day's points at sea by its Navigation level, 0 to 3 (HER-ADV-009, E08 T72; read
+    /// by `h3_heroes::sea_points`): `movement.txt`'s sea column, the original's
+    /// `sea_movement_by_navigation` (0x698AEC), 1 500, 2 250, 3 000, 3 750. None 0.
+    pub sea_points: [u32; 4],
+    /// The share of a boat's step price from a tile a ground of the sea tops (ADV-SEA-004, E08
+    /// T72; read by the prices from T73), as numerator and denominator, the price truncated:
+    /// Favorable Winds' two thirds, `[2, 3]` (survey `E08-sea.md` §4.1). The numerator from 1, at
+    /// most the denominator.
+    pub sea_ground: [u16; 2],
 }
 
 /// The wandering monsters' parameters in a pack (E08 T20a2a).
@@ -215,6 +224,15 @@ pub struct BattleTerrainsDef {
     /// The battle part's special battlefield of a battle on a coast tile (the shore); checked
     /// against the battle part when the game bundles the parts.
     pub coast_battlefield: ContentKey,
+    /// The core terrain of a battle with a hero in a boat (GAM-BAT-001, E08 T72; read from T74:
+    /// the original's water).
+    pub sea: ContentKey,
+    /// The battle part's battlefield of a battle with one hero in a boat (the ship's deck), as the
+    /// coast's.
+    pub deck: ContentKey,
+    /// The battle part's battlefield of a battle with both heroes in boats (the two boats), as the
+    /// coast's.
+    pub boats: ContentKey,
 }
 
 /// One pack's adventure definitions (its `adventure.toml`), with the manifest of its core pack.
@@ -338,6 +356,8 @@ pub struct AdventureParams {
     monsters: Option<MonsterParams>,
     fly_cost: [NonZeroU16; 4],
     water_walk_cost: [NonZeroU16; 4],
+    sea_points: [u32; 4],
+    sea_ground: [u16; 2],
 }
 
 /// The compiled [`BattleTerrainsDef`].
@@ -349,6 +369,12 @@ pub struct BattleTerrains {
     pub coast: TerrainId,
     /// The special battlefield of a battle on a coast tile (a battle part's key).
     pub coast_battlefield: ContentKey,
+    /// The terrain of a battle with a hero in a boat (E08 T72).
+    pub sea: TerrainId,
+    /// The battlefield of a battle with one hero in a boat (a battle part's key).
+    pub deck: ContentKey,
+    /// The battlefield of a battle with both heroes in boats (a battle part's key).
+    pub boats: ContentKey,
 }
 
 impl AdventureParams {
@@ -426,6 +452,18 @@ impl AdventureParams {
     /// (ADV-MOV-010, E08 T40); a level above 3 counts as 3.
     pub fn water_walk_cost(&self, level: u8) -> u32 {
         u32::from(self.water_walk_cost[usize::from(level.min(3))].get())
+    }
+
+    /// The day's points at sea by Navigation level, 0 to 3 (HER-ADV-009, E08 T72): the table
+    /// `h3_heroes::sea_points` reads.
+    pub const fn sea_points(&self) -> &[u32; 4] {
+        &self.sea_points
+    }
+
+    /// The share of a boat's step price from a tile a ground of the sea tops, as numerator and
+    /// denominator (ADV-SEA-004, E08 T72).
+    pub const fn sea_ground(&self) -> [u16; 2] {
+        self.sea_ground
     }
 }
 
@@ -781,8 +819,8 @@ impl AdventureRuleset {
 }
 
 impl CanonicalHash for AdventureRuleset {
-    /// Encoding v11 (E08 T50; v1 was T4's, v2 T5a's, v3 T6b's, v4 T12a's, v5 T13a's, v6 T19a's,
-    /// v7 T20a2a's, v8 T20b1's, v9 T29's, v10 T40's): version; the terrains in the
+    /// Encoding v13 (E08 T72; v1 was T4's, v2 T5a's, v3 T6b's, v4 T12a's, v5 T13a's, v6 T19a's,
+    /// v7 T20a2a's, v8 T20b1's, v9 T29's, v10 T40's, v11 T50's, v12 T61a's): version; the terrains in the
     /// core's order (key, passage: 0 land, 1 water with the cost, 2 impassable; since v9 the
     /// costs by Pathfinding level, 0 for none, else 1 and the three costs); the road kinds
     /// (key, name, cost); the river kinds (key, name); the parameters (native cost, the land
@@ -797,7 +835,10 @@ impl CanonicalHash for AdventureRuleset {
     /// random monster becomes, as length and handles in order; since v10 (E08 T40) the fly and
     /// the water-walk prices (four each) and the terrain walkers as length and each one's
     /// creature, terrain and the terrain it counts as (a ground's `no_native` in
-    /// [`ObjectType`]'s); since v11 (E08 T50) a stack's most creatures after the army slots. The
+    /// [`ObjectType`]'s); since v11 (E08 T50) a stack's most creatures after the army slots; since
+    /// v13 (E08 T72) the battle terrains' sea terrain, deck and boats after the coast's
+    /// battlefield, and the sea points (four) and the sea ground's share (numerator, denominator)
+    /// after the terrain walkers. The
     /// core's hash is not part of it: replays record both.
     fn hash_into(&self, h: &mut StateHasher) {
         h.write_u32(ADVENTURE_RULESET_HASH_VERSION);
@@ -848,6 +889,9 @@ impl CanonicalHash for AdventureRuleset {
                 h.write_u16(battle.underground.raw());
                 h.write_u16(battle.coast.raw());
                 battle.coast_battlefield.as_str().hash_into(h);
+                h.write_u16(battle.sea.raw());
+                battle.deck.as_str().hash_into(h);
+                battle.boats.as_str().hash_into(h);
             }
         }
         match &self.params.monsters {
@@ -880,6 +924,12 @@ impl CanonicalHash for AdventureRuleset {
             walker.creature.hash_into(h);
             walker.terrain.hash_into(h);
             walker.counts_as.hash_into(h);
+        }
+        for &points in &self.params.sea_points {
+            h.write_u32(points);
+        }
+        for &part in &self.params.sea_ground {
+            h.write_u16(part);
         }
     }
 }
@@ -1022,16 +1072,21 @@ fn compile_pack(
             .battle
             .as_ref()
             .map(|def| {
-                if !closure.contains(def.coast_battlefield.pack()) {
-                    return Err(AdventureCompileError::ReferenceOutsideDependencies {
-                        key: String::from(def.coast_battlefield.as_str()),
-                        pack: String::from(id),
-                    });
+                for field in [&def.coast_battlefield, &def.deck, &def.boats] {
+                    if !closure.contains(field.pack()) {
+                        return Err(AdventureCompileError::ReferenceOutsideDependencies {
+                            key: String::from(field.as_str()),
+                            pack: String::from(id),
+                        });
+                    }
                 }
                 Ok(BattleTerrains {
                     underground: core_terrain(core, id, closure, &def.underground)?,
                     coast: core_terrain(core, id, closure, &def.coast)?,
                     coast_battlefield: def.coast_battlefield.clone(),
+                    sea: core_terrain(core, id, closure, &def.sea)?,
+                    deck: def.deck.clone(),
+                    boats: def.boats.clone(),
                 })
             })
             .transpose()?;
@@ -1123,6 +1178,10 @@ fn validate_params(
         Some("max_players is above MAX_PLAYERS")
     } else if def.max_stack_count.get() < MAX_MONSTER_COUNT {
         Some("max_stack_count is below MAX_MONSTER_COUNT")
+    } else if def.sea_points.contains(&0) {
+        Some("a sea_points entry is 0")
+    } else if !(1 <= def.sea_ground[0] && def.sea_ground[0] <= def.sea_ground[1]) {
+        Some("sea_ground is not 1 <= numerator <= denominator")
     } else if let Some(monsters) = &def.monsters {
         check_monster_params(monsters)
     } else {
@@ -1148,6 +1207,8 @@ fn validate_params(
             }),
             fly_cost: def.fly_cost,
             water_walk_cost: def.water_walk_cost,
+            sea_points: def.sea_points,
+            sea_ground: def.sea_ground,
         }),
     }
 }

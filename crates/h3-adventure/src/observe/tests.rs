@@ -213,9 +213,11 @@ fn a_player_sees_where_other_heroes_stand_and_its_own_in_full() {
                 id: own.id,
                 owner: RED,
                 pos: p(2, 2),
+                boat: None,
                 own: Some(OwnHeroView {
                     army: own.army.clone(),
                     movement: own.movement,
+                    max_movement: own.max_movement,
                     formation: own.formation,
                     tactics: true,
                     marks: Vec::new(),
@@ -229,6 +231,7 @@ fn a_player_sees_where_other_heroes_stand_and_its_own_in_full() {
                 id: HeroId::new(4),
                 owner: BLUE,
                 pos: p(6, 3),
+                boat: None,
                 own: None,
             })
         );

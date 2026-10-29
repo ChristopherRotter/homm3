@@ -2929,8 +2929,9 @@ fn visit_gains(
         GameCommand::Answer(Answer::Chest(ChestChoice::Gold))
     );
     let mut gains: Amounts = chest.filter(|_| gold).into_iter().collect();
-    // A find's artifact when its hero receives it, else what the artifact turns into (the
-    // Corpse's gold, the Wagon's own resources), or its resources.
+    // A find's artifact when its hero receives it, with a fixed entry's resources (E08 T72), else
+    // what the artifact turns into (the Corpse's gold, the Wagon's own resources, nothing when it
+    // is lost), or its resources.
     for i in emptied(before, after) {
         let o = &map.objects()[i];
         let ty = o
@@ -2948,9 +2949,10 @@ fn visit_gains(
             })
         };
         match (o.resolved.artifact(), turn) {
-            (Some(artifact), _) if received(artifact) => {}
+            (Some(artifact), Some(Turn::Drawn)) if received(artifact) => {}
+            (Some(artifact), _) if received(artifact) => gains.extend(o.contents.iter().copied()),
             (Some(_), Some(Turn::Give(resources))) => gains.extend(resources.iter().copied()),
-            (Some(_), Some(Turn::Stays) | None) => {}
+            (Some(_), Some(Turn::Stays | Turn::Lost) | None) => {}
             (Some(_), Some(Turn::Drawn)) | (None, _) => gains.extend(o.contents.iter().copied()),
         }
     }

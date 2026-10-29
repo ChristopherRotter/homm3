@@ -135,6 +135,7 @@ pub(super) fn rules(faithful: bool) -> Rules {
                             luck: 0,
                             mark: 0,
                         }),
+                        leaves: false,
                     }),
                 ),
                 ty(
@@ -150,6 +151,7 @@ pub(super) fn rules(faithful: bool) -> Rules {
                         full_backpack: None,
                         question: false,
                         bonus: None,
+                        leaves: false,
                     }),
                 ),
                 ty("t:scroll", ObjectKindDef::Scroll),

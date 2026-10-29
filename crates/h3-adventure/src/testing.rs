@@ -24,7 +24,8 @@ use crate::ruleset::{
     StartingResourcesDef, TerrainMovementDef, TerrainWalkerDef, Visit,
 };
 use crate::setup::{
-    AdventureSetup, HeroSetup, MapSetup, MonsterSetup, ObjectSetup, Pos, TileMask, TileSetup,
+    AdventureSetup, BoatSetup, HeroSetup, MapSetup, MonsterSetup, ObjectSetup, Pos, TileMask,
+    TileSetup,
 };
 use crate::state::AdventureState;
 
@@ -267,6 +268,8 @@ pub(crate) fn rules() -> (Ruleset, AdventureRuleset) {
             monsters: Some(monster_params()),
             fly_cost: [cost(140), cost(140), cost(120), cost(100)],
             water_walk_cost: [cost(140), cost(140), cost(120), cost(100)],
+            sea_points: [1500, 2250, 3000, 3750],
+            sea_ground: [2, 3],
         }),
         starting_resources: starting_resources(),
         ..AdventurePack::new(manifest("t", &[]))
@@ -504,10 +507,15 @@ pub(crate) fn movement_rules_with(
                 underground: key("t:swamp"),
                 coast: key("t:sand"),
                 coast_battlefield: key("t:shore"),
+                sea: key("t:sea"),
+                deck: key("t:deck"),
+                boats: key("t:boats"),
             }),
             monsters: Some(monster_params()),
             fly_cost: [cost(140), cost(140), cost(120), cost(100)],
             water_walk_cost: [cost(140), cost(140), cost(120), cost(100)],
+            sea_points: [1500, 2250, 3000, 3750],
+            sea_ground: [2, 3],
         }),
         starting_resources: starting_resources(),
         ..AdventurePack::new(manifest("t", &[]))
@@ -559,7 +567,7 @@ fn tile_of(
         'S' => (SAND, Some(COBBLE_ROAD), None),
         'w' => (SWAMP, None, None),
         'W' => (SWAMP, Some(COBBLE_ROAD), None),
-        '~' => (SEA, None, None),
+        '~' | 'b' => (SEA, None, None),
         '#' => (ROCK, None, None),
         'B' => (GRASS, None, Some((1, 0, None))),
         'V' => (GRASS, None, Some((0, 1, None))),
@@ -584,15 +592,25 @@ fn tile_of(
 /// visited on its tile, `F` a fire likewise, `O` a tower's visitable tile (entered), `K` a guard
 /// blocking and visited on its tile, `C` a chart (a Cartographer not visited from above) likewise,
 /// `c` an open chart (one that is) likewise, `Y` a tent and `X` a gate likewise, `M` five of the
-/// first creature as a monster likewise (aggressive; E08 T20a2b).
+/// first creature as a monster likewise (aggressive; E08 T20a2b); `b` an empty boat of type 0 on
+/// sea (E08 T72).
 pub(crate) fn world(rows: &[&str], levels: u8, heroes: Vec<HeroSetup>) -> AdventureSetup {
     let height = rows.len() / usize::from(levels);
     let width = rows[0].chars().count();
     let mut tiles = Vec::new();
     let mut objects = Vec::new();
+    let mut boats = Vec::new();
     for (index, row) in rows.iter().enumerate() {
         for (x, c) in row.chars().enumerate() {
             let (terrain, road, object) = tile_of(c);
+            let pos = Pos::new(
+                u16::try_from(x).unwrap(),
+                u16::try_from(index % height).unwrap(),
+                u8::try_from(index / height).unwrap(),
+            );
+            if c == 'b' {
+                boats.push(BoatSetup { tile: pos, kind: 0 });
+            }
             tiles.push(TileSetup {
                 terrain,
                 road,
@@ -602,11 +620,7 @@ pub(crate) fn world(rows: &[&str], levels: u8, heroes: Vec<HeroSetup>) -> Advent
             if let Some((blocked, visitable, object_type)) = object {
                 objects.push(ObjectSetup {
                     scenery: Default::default(),
-                    anchor: Pos::new(
-                        u16::try_from(x).unwrap(),
-                        u16::try_from(index % height).unwrap(),
-                        u8::try_from(index / height).unwrap(),
-                    ),
+                    anchor: pos,
                     blocked: TileMask::from_bits(blocked),
                     visitable: TileMask::from_bits(visitable),
                     object_type,
@@ -635,6 +649,7 @@ pub(crate) fn world(rows: &[&str], levels: u8, heroes: Vec<HeroSetup>) -> Advent
             levels,
             tiles,
             objects,
+            boats,
         },
         heroes,
         difficulty: 0,

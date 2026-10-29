@@ -145,6 +145,7 @@ pub(super) fn rules_with(
                     full_backpack,
                     question: false,
                     bonus: None,
+                    leaves: false,
                 })
             };
             part.object_types.extend([

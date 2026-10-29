@@ -98,6 +98,8 @@ fn params() -> AdventureParamsDef {
         monsters: None,
         fly_cost: [cost(140), cost(140), cost(120), cost(100)],
         water_walk_cost: [cost(150), cost(140), cost(120), cost(110)],
+        sea_points: [1500, 2250, 3000, 3750],
+        sea_ground: [2, 3],
     }
 }
 
@@ -1275,15 +1277,22 @@ fn errors_explain_themselves() {
 // covers: GAM-BAT-001
 #[test]
 fn the_battle_terrains_name_terrains_of_the_closure() {
-    let battle = |underground: &str, coast: &str, field: &str| {
+    // E08 T72: with the sea's terrain, the deck and the boats.
+    let at_sea = |underground: &str, coast: &str, field: &str, [sea, deck, boats]: [&str; 3]| {
         edit(|p| {
             pack(p, "t").params.as_mut().unwrap().battle = Some(BattleTerrainsDef {
                 underground: key(underground),
                 coast: key(coast),
                 coast_battlefield: key(field),
+                sea: key(sea),
+                deck: key(deck),
+                boats: key(boats),
             });
         })
     };
+    let sea = ["t:grass", "t:deck", "t:boats"];
+    let battle =
+        |underground: &str, coast: &str, field: &str| at_sea(underground, coast, field, sea);
     let part = compile(&battle("t:rock", "t:grass", "t:shore")).unwrap();
     let core = core();
     let terrain = |k| core.terrain_by_key(k).unwrap();
@@ -1293,6 +1302,9 @@ fn the_battle_terrains_name_terrains_of_the_closure() {
             underground: terrain("t:rock"),
             coast: terrain("t:grass"),
             coast_battlefield: key("t:shore"),
+            sea: terrain("t:grass"),
+            deck: key("t:deck"),
+            boats: key("t:boats"),
         })
     );
     assert_eq!(compile(&packs()).unwrap().params().battle_terrains(), None);
@@ -1327,6 +1339,32 @@ fn the_battle_terrains_name_terrains_of_the_closure() {
     assert_eq!(
         compile_err(&battle("t:rock", "t:grass", "u:shore")),
         outside("u:shore")
+    );
+    // The sea's terrain, the deck and the boats (E08 T72): in the hash, a known terrain, battle
+    // keys of the closure.
+    let shore = |sea| at_sea("t:rock", "t:grass", "t:shore", sea);
+    for other in [
+        ["t:rock", "t:deck", "t:boats"],
+        ["t:grass", "t:ship", "t:boats"],
+        ["t:grass", "t:deck", "t:ships"],
+    ] {
+        assert_ne!(
+            part.content_hash(),
+            compile(&shore(other)).unwrap().content_hash(),
+            "{other:?}"
+        );
+    }
+    assert_eq!(
+        compile_err(&shore(["t:lava", "t:deck", "t:boats"])),
+        AdventureCompileError::UnknownTerrain("t:lava".into())
+    );
+    assert_eq!(
+        compile_err(&shore(["t:grass", "u:deck", "t:boats"])),
+        outside("u:deck")
+    );
+    assert_eq!(
+        compile_err(&shore(["t:grass", "t:deck", "u:boats"])),
+        outside("u:boats")
     );
 }
 

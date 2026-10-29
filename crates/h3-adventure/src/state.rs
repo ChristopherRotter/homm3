@@ -27,7 +27,7 @@ use crate::command::{
 };
 use crate::fog::{on_fringe, reveal};
 use crate::movement::{
-    DIRECTIONS, Pricing, day_points, details_of, direction, hero_movement, hero_radius,
+    DIRECTIONS, Pricing, day_maximum, details_of, direction, hero_movement, hero_radius,
 };
 use crate::persistent::{BitGrid, Table};
 use crate::ruleset::{
@@ -59,6 +59,11 @@ pub struct StaticTile {
     /// The tile's top ground takes the native price away (Cursed Ground; ADV-MOV-004, E08 T40):
     /// a step from it, or the drop after a step onto it, prices its terrain for every army.
     pub no_native: bool,
+    /// The tile's top ground is a ground of the sea (Favorable Winds; ADV-SEA-004, E08 T72): a
+    /// boat's step from it costs the part's `sea_ground` share (T73).
+    pub winds: bool,
+    /// A hole lies on the tile (E08 T72): no landing onto it (ADV-SEA-003, T73).
+    pub hole: bool,
 }
 
 impl StaticTile {
@@ -70,9 +75,12 @@ impl StaticTile {
         blocked: true,
         visitable: false,
         no_native: false,
+        winds: false,
+        hole: false,
     };
 }
 
+mod boats;
 mod draws;
 mod events;
 mod flags;
@@ -86,6 +94,8 @@ mod records;
 mod rewards;
 mod visits;
 
+pub use boats::Boat;
+use boats::Boats;
 pub use draws::Resolved;
 use flags::Flags;
 pub(crate) use occupancy::Occupancy;
@@ -203,6 +213,20 @@ impl MapObject {
     }
 }
 
+/// What an object lying on a tile marks there ([`StaticMap::mark_grounds`]).
+#[derive(Clone, Copy)]
+enum Mark {
+    /// A ground on top: whether it takes the native price away, whether it is the sea's.
+    Top {
+        /// [`StaticTile::no_native`].
+        no_native: bool,
+        /// [`StaticTile::winds`].
+        winds: bool,
+    },
+    /// A hole.
+    Hole,
+}
+
 /// What never changes after setup: dimensions, terrain, roads and rivers per tile, the objects
 /// and the tiles they cover (ADR-0016 point 1).
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -294,6 +318,8 @@ impl StaticMap {
                 blocked: false,
                 visitable: false,
                 no_native: false,
+                winds: false,
+                hole: false,
             });
             if tile.coast {
                 coast[index / 64] |= 1 << (index % 64);
@@ -344,7 +370,13 @@ impl StaticMap {
             {
                 return Err(SetupError::ObjectAmount(index));
             }
-            let ground = ty.is_some_and(|ty| matches!(ty.kind, ObjectKind::Ground { .. }));
+            // E08 T72: nothing names a ground of the sea or a hole either.
+            let ground = ty.is_some_and(|ty| {
+                matches!(
+                    ty.kind,
+                    ObjectKind::Ground { .. } | ObjectKind::SeaGround | ObjectKind::Hole
+                )
+            });
             if let Some(id) = object.object_type
                 && !ground
                 && !named.insert((id.raw(), object.anchor))
@@ -387,7 +419,7 @@ impl StaticMap {
         map.resolve(core, part, &setup.objects, draws);
         draws::resolve_rewards(core, part, bans, &mut map.objects, draws);
         map.mark_near_monsters();
-        map.mark_no_native(part);
+        map.mark_grounds(part);
         // After the objects, as the original counts after placing its map's objects.
         map.shares = terrain_shares(part, &map.tiles);
         map.hash = hash_of(&map);
@@ -424,33 +456,51 @@ impl StaticMap {
     }
 
     /// Marks the tiles whose top ground takes the native price away ([`StaticTile::no_native`],
-    /// E08 T40): on each tile the last ground in map order whose picture lies on it decides, as
-    /// for a battle's ground ([`AdventureState::battle_ground`]; the original's
-    /// `tile_special_ground` 0x4FCE20, which `step_cost` 0x4B1740 asks for Cursed Ground). Follows
-    /// from the objects, so the hash leaves it out.
+    /// E08 T40) or is a ground of the sea ([`StaticTile::winds`], E08 T72): on each tile the last
+    /// ground in map order whose picture lies on it decides, a special ground or a ground of the
+    /// sea, as for a battle's ground ([`AdventureState::battle_ground`]; the original's
+    /// `tile_special_ground` 0x4FCE20, which `step_cost` 0x4B1740 asks for Cursed Ground and
+    /// Favorable Winds, 0x4B17B3); and the tiles a hole lies on ([`StaticTile::hole`], E08 T72).
+    /// Follows from the objects, so the hash leaves it out.
     // rule: ADV-MOV-004
-    fn mark_no_native(&mut self, part: &AdventureRuleset) {
+    fn mark_grounds(&mut self, part: &AdventureRuleset) {
         let map = &*self;
-        let grounds: Vec<(usize, bool)> = map
+        let marks: Vec<(usize, Mark)> = map
             .objects
             .iter()
             .filter_map(|object| {
                 let ty = object.object_type.and_then(|id| part.object_type(id))?;
-                match ty.kind {
-                    ObjectKind::Ground { no_native, .. } => Some((object, no_native)),
-                    _ => None,
-                }
+                let mark = match ty.kind {
+                    ObjectKind::Ground { no_native, .. } => Mark::Top {
+                        no_native,
+                        winds: false,
+                    },
+                    ObjectKind::SeaGround => Mark::Top {
+                        no_native: false,
+                        winds: true,
+                    },
+                    ObjectKind::Hole => Mark::Hole,
+                    _ => return None,
+                };
+                Some((object, mark))
             })
-            .flat_map(|(object, no_native)| {
+            .flat_map(|(object, mark)| {
                 object
                     .drawn
                     .offsets()
                     .filter_map(move |(column, row)| map.offset(object.anchor, column, row))
-                    .map(move |index| (index, no_native))
+                    .map(move |index| (index, mark))
             })
             .collect();
-        for (index, no_native) in grounds {
-            self.tiles[index].no_native = no_native;
+        for (index, mark) in marks {
+            let tile = &mut self.tiles[index];
+            match mark {
+                Mark::Top { no_native, winds } => {
+                    tile.no_native = no_native;
+                    tile.winds = winds;
+                }
+                Mark::Hole => tile.hole = true,
+            }
         }
     }
 
@@ -895,6 +945,12 @@ pub struct HeroOnMap {
     pub tactics: bool,
     /// The movement points it has left today.
     pub movement: u32,
+    /// The boat it is in, by boat index (ADR-0016 point 3, ADV-SEA-001; E08 T72): none on land.
+    pub boat: Option<u32>,
+    /// The day's maximum (ADR-0016 point 3, E08 T72): the points its turn started with on its
+    /// surface, set by the start of the game and of its turn (ADV-MOV-002) and, from T73, by a
+    /// boarding and a landing.
+    pub max_movement: u32,
 }
 
 impl HeroOnMap {
@@ -940,6 +996,9 @@ pub struct AdventureState {
     /// What visits left on the objects (E08 T61b; [`Visits`], design §10): none until a visit
     /// writes it (E08 T62), then one block the forks share, as [`Self::flags`].
     visits: Option<Arc<Visits>>,
+    /// The boats (ADR-0016 point 1, ADV-SEA-001; E08 T72): none for a map without boats, so a
+    /// fork costs nothing more (`bench-check`).
+    boats: Option<Boats>,
 }
 
 impl AdventureState {
@@ -947,8 +1006,9 @@ impl AdventureState {
     /// and tiles, the objects, the players' bound, and each hero's owner, tile (ADV-MAP-001) and
     /// army. The objects' random contents are drawn from `draws`, the game's setup stream
     /// (ADR-0017 point 4); every draw is valid, so whether a setup is valid does not depend on
-    /// them. The heroes are kept by id, their stacks by slot, without movement points; nothing is
-    /// explored, and every object is on the map. The game gives the heroes their levels at load,
+    /// them. The heroes are kept by id, their stacks by slot, without movement points, then the
+    /// boats (since E08 T72; [`SetupError::Boat`]), each empty; nothing is explored, and every
+    /// object is on the map. The game gives the heroes their levels at load,
     /// then starts the game ([`Self::start_game`]: the points and the reveals, ADR-0017 point 1).
     ///
     /// # Errors
@@ -981,15 +1041,18 @@ impl AdventureState {
             seats,
             army_left: Table::new(),
             visits: None,
+            boats: None,
         };
         for hero in &setup.heroes {
             state.place(core, part, hero)?;
         }
+        state.boats = Boats::new(part, &state.map, &setup.map.boats)?;
         Ok(state)
     }
 
     /// The start of the game (ADR-0017 point 1, E08 T40), after the game gave the heroes their
-    /// levels at load: each hero gets the day's movement points ([`day_points`], ADV-MOV-002) and
+    /// levels at load: each hero gets the day's movement points (ADV-MOV-002; since E08 T72 on
+    /// its surface, [`day_maximum`], which is also its day's maximum) and
     /// reveals the tiles around it to its owner with its radius (ADV-FOG-003), both from its
     /// details in `heroes`, the game's store. The original's order: `placed_hero_setup` 0x4D8B30
     /// sets the points after the levels (survey `E08-progression.md` §3.2), `placed_heroes_setup`
@@ -1005,7 +1068,8 @@ impl AdventureState {
     ) {
         for hero in &mut self.heroes {
             let details = details_of(heroes, hero.id);
-            hero.movement = day_points(core, part, details, &hero.army);
+            hero.max_movement = day_maximum(core, part, details, hero);
+            hero.movement = hero.max_movement;
         }
         self.reveal_around_heroes(core, part, heroes);
     }
@@ -1080,6 +1144,8 @@ impl AdventureState {
                 formation: hero.formation,
                 tactics: true,
                 movement: 0,
+                boat: None,
+                max_movement: 0,
             },
         );
         Ok(())
@@ -1087,7 +1153,8 @@ impl AdventureState {
 
     /// The start of `player`'s turn (ADR-0017 point 3), a step only the game triggers: each of
     /// its heroes gets the day's movement points for its army and its details in `heroes`, the
-    /// game's store ([`day_points`]); what was left is lost. A gain in the day (a level-up's
+    /// game's store, on its surface ([`day_maximum`], E08 T72: the land's or, in a boat, the
+    /// sea's), which is also its day's maximum; what was left is lost. A gain in the day (a level-up's
     /// Logistics, an artifact put on) shows here first (survey `E08-hero-movement.md` §1.4).
     // rule: ADV-MOV-002
     pub fn start_turn(
@@ -1099,7 +1166,8 @@ impl AdventureState {
     ) {
         for hero in self.heroes.iter_mut().filter(|h| h.owner == player) {
             let details = details_of(heroes, hero.id);
-            hero.movement = day_points(core, part, details, &hero.army);
+            hero.max_movement = day_maximum(core, part, details, hero);
+            hero.movement = hero.max_movement;
         }
     }
 
@@ -2160,13 +2228,14 @@ impl AdventureState {
 }
 
 impl CanonicalHash for AdventureState {
-    /// Encoding v15 (E08 T62b2; v1 was T5a's, v2 T6b's, v3 T8a's, v4 T12's, v5 T14b's, v6
-    /// T15a's, v7 T18b's, v8 T19a's, v9 T20a2a's, v10 T21a's, v11 T50's, v14 T61b's; v12 and v13
-    /// changed the static map's):
+    /// Encoding v16 (E08 T72; v1 was T5a's, v2 T6b's, v3 T8a's, v4 T12's, v5 T14b's, v6 T15a's,
+    /// v7 T18b's, v8 T19a's, v9 T20a2a's, v10 T21a's, v11 T50's, v14 T61b's, v15 T62b2's; v12
+    /// and v13 changed the static map's):
     /// version; the static map's content hash (since v4 with the objects' types and contents); the
     /// number of players; the heroes by id (id, owner, tile, the army's stacks by slot: slot,
     /// creature, count; since v7 the formation, 0 loose, 1 tight; since v11 the tactics flag;
-    /// since v2 the movement points left); since v3 each player's explored tiles, by player id
+    /// since v2 the movement points left; since v16 the day's maximum and the boat, 0 for none,
+    /// else 1 and its index); since v3 each player's explored tiles, by player id
     /// ([`BitGrid`]'s encoding); since v4 the objects that left the map (0 for none, else 1 and
     /// [`Occupancy`]'s encoding; there is an occupancy only once an object has left); since v5 the
     /// Cartographer types bought, as length and entries in type order (the type, then its byte of
@@ -2175,7 +2244,8 @@ impl CanonicalHash for AdventureState {
     /// seat by player id (its colour, whether it counts as human), then the armies battles
     /// left on objects as their number and, by object index, the index and the army's stacks as
     /// length and entries (slot, creature, count); since v14 the visits' block (0 for none, else
-    /// 1 and [`Visits`]' encoding; there is one only once a visit wrote it).
+    /// 1 and [`Visits`]' encoding; there is one only once a visit wrote it); since v16 the boats
+    /// (their number, 0 for a map without boats, then each: [`Boat`]'s fields in order).
     fn hash_into(&self, h: &mut StateHasher) {
         h.write_u32(ADVENTURE_STATE_HASH_VERSION);
         h.write_u64(self.map.content_hash());
@@ -2194,6 +2264,14 @@ impl CanonicalHash for AdventureState {
             h.write_bool(hero.formation == Formation::Tight);
             h.write_bool(hero.tactics);
             h.write_u32(hero.movement);
+            h.write_u32(hero.max_movement);
+            match hero.boat {
+                None => h.write_u8(0),
+                Some(boat) => {
+                    h.write_u8(1);
+                    h.write_u32(boat);
+                }
+            }
         }
         h.write_len(self.explored.len());
         for grid in &self.explored {
@@ -2228,6 +2306,10 @@ impl CanonicalHash for AdventureState {
                 h.write_u8(1);
                 visits.hash_into(h);
             }
+        }
+        match &self.boats {
+            None => h.write_len(0),
+            Some(boats) => boats.hash_into(h),
         }
     }
 }

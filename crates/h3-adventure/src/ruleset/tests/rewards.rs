@@ -98,6 +98,7 @@ fn find() -> FindDef {
             luck: 0,
             mark: 0,
         }),
+        leaves: false,
     }
 }
 
@@ -259,6 +260,7 @@ fn compiles_the_reward_kinds() {
                 luck: 0,
                 mark: 0
             }),
+            leaves: false,
         })
     );
     assert_eq!(kind(10), ObjectKind::PandoraBox);
