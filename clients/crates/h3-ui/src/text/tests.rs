@@ -625,15 +625,13 @@ fn arguments_are_written() {
 fn windows_1252_encoding() {
     assert_eq!(encode_1252("Aé€™"), (vec![0x41, 0xE9, 0x80, 0x99], vec![]));
     assert_eq!(encode_1252("Łx"), (vec![b'?', b'x'], vec!['Ł']));
-    // Every byte round-trips through the decoder's characters.
+    // Every byte round-trips through the decoder (E24 M3 T5b1: `decode_1252`).
     for byte in 0..=255_u8 {
-        let c = match byte {
-            0x80..=0x9F => super::CP1252_HIGH[usize::from(byte - 0x80)],
-            _ => char::from(byte),
-        };
-        let text = String::from(c);
+        let text = decode_1252(&[byte]);
+        assert_eq!(text.chars().count(), 1);
         assert_eq!(encode_1252(&text), (vec![byte], vec![]), "{byte:#x}");
     }
+    assert_eq!(decode_1252(&[0x41, 0xE9, 0x80, 0x99]), "Aé€™");
 }
 
 #[test]

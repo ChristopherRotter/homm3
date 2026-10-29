@@ -1,4 +1,5 @@
 use super::*;
+use alloc::collections::BTreeMap;
 use alloc::vec;
 
 use h3_ui::text::pack::Pack;
@@ -30,6 +31,11 @@ fn texts() -> Catalogue {
     }
 }
 
+/// A map's own hero names: type 48's.
+fn names() -> BTreeMap<u8, String> {
+    BTreeMap::from([(48, "Own".into())])
+}
+
 fn live(kingdom: Kingdom) -> Live {
     Live {
         objects: Vec::new(),
@@ -53,6 +59,7 @@ fn stack(creature: u16, count: i32) -> Option<Stack> {
 fn fiona() -> HeroStatus {
     HeroStatus {
         hero: 48,
+        own_name: false,
         skills: [120, -5, 0, -1],
         morale: -3,
         luck: 3,
@@ -135,6 +142,7 @@ fn a_hero_s_window() {
         &art(),
         &lists(),
         &live(hero_kingdom(fiona())),
+        &names(),
         &texts(),
     )
     .unwrap()
@@ -204,6 +212,32 @@ fn a_hero_s_window() {
 }
 
 #[test]
+fn a_hero_s_own_name_the_map_s() {
+    // A record's name not its type's (a shipped map's hero): the map's; one the map lacks, the
+    // type's.
+    let name = |hero: u8| {
+        let status = HeroStatus {
+            hero,
+            own_name: true,
+            ..fiona()
+        };
+        let (_, shown) = window(
+            &layout(),
+            &art(),
+            &lists(),
+            &live(hero_kingdom(status)),
+            &names(),
+            &texts(),
+        )
+        .unwrap()
+        .unwrap();
+        shown.texts[&id::NAME].clone()
+    };
+    assert_eq!(name(48), "Own");
+    assert_eq!(name(7), "hero.7");
+}
+
+#[test]
 fn a_bonus_past_the_frames_shows_the_first() {
     let status = HeroStatus {
         morale: -7,
@@ -215,6 +249,7 @@ fn a_bonus_past_the_frames_shows_the_first() {
         &art(),
         &lists(),
         &live(hero_kingdom(status)),
+        &names(),
         &texts(),
     )
     .unwrap()
@@ -232,6 +267,7 @@ fn a_town_s_window() {
         &art(),
         &lists(),
         &live(town_kingdom(town())),
+        &names(),
         &texts(),
     )
     .unwrap()
@@ -271,6 +307,7 @@ fn a_town_s_hall_fort_garrison_and_silo_by_what_stands() {
             &art(),
             &lists(),
             &live(town_kingdom(status)),
+            &names(),
             &texts(),
         )
         .unwrap()
@@ -316,7 +353,7 @@ fn a_town_s_hall_fort_garrison_and_silo_by_what_stands() {
 fn nothing_drawn_but_a_hero_s_or_a_town_s_window_of_the_selection() {
     let layout = layout();
     let draw = |kingdom: Kingdom| {
-        window(&layout, &art(), &lists(), &live(kingdom), &texts())
+        window(&layout, &art(), &lists(), &live(kingdom), &names(), &texts())
             .unwrap()
             .is_some()
     };
@@ -349,7 +386,7 @@ fn nothing_drawn_but_a_hero_s_or_a_town_s_window_of_the_selection() {
     let mut kingdom = hero_kingdom(fiona());
     kingdom.heroes[1].portrait = 200;
     assert_eq!(
-        window(&layout, &art(), &lists(), &live(kingdom), &texts()).unwrap_err(),
+        window(&layout, &art(), &lists(), &live(kingdom), &names(), &texts()).unwrap_err(),
         "a hero's portrait is past the tables'"
     );
 }
@@ -361,6 +398,7 @@ fn a_key_no_pack_has_shows_as_itself() {
         &art(),
         &lists(),
         &live(hero_kingdom(fiona())),
+        &names(),
         &Catalogue::default(),
     )
     .unwrap()

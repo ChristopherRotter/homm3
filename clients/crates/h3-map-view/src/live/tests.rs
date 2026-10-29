@@ -313,6 +313,7 @@ fn a_maps_start_its_kingdom_and_buttons() {
             // known.
             status: Some(Status::Hero(HeroStatus {
                 hero: 16,
+                own_name: false,
                 skills: [0; 4],
                 morale: 0,
                 luck: 0,
@@ -572,12 +573,14 @@ fn a_live_parts_status_read() {
         }),
     ];
     let hero = alloc::format!(
-        "{{ kind = 3, hero = 48, skills = [2, -2, 1, 127], morale = -3, luck = 3, {army} }}"
+        "{{ kind = 3, hero = 48, own_name = 1, skills = [2, -2, 1, 127], morale = -3, luck = 3, \
+         {army} }}"
     );
     assert_eq!(
         read(&hero),
         Some(Status::Hero(HeroStatus {
             hero: 48,
+            own_name: true,
             skills: [2, -2, 1, 127],
             morale: -3,
             luck: 3,
@@ -608,6 +611,7 @@ fn a_live_parts_status_read() {
         "[3]".to_string(),
         hero.replace("[2, -2, 1, 127]", "[2, -2, 1]"),
         hero.replace("127]", "128]"),
+        hero.replace("own_name = 1", "own_name = 2"),
         hero.replace("[[42, 22], ", "[[42], "),
         hero.replace("[[42, 22], [-1, 0], ", "[[-1, 0], "),
         hero.replace("[149, 123456]", "[70000, 1]"),

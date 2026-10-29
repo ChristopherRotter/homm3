@@ -569,17 +569,19 @@ def ids_from(table, first):
 def status_toml(mem, colour):
     """`Mem.status` as `render --live`'s `status`, an inline TOML table (E24 M3 T5b1; design
     §4.8): a town's name as its record in `TownName.txt` (the catalogue's `town-name` family: the
-    harness keeps numbers, never the text, ADR-0009). A hero whose name is not its type's (a
-    map's own) or a town whose name the table lacks is the harness's failure: the viewer names
-    them by the catalogue (a map's own names are M4's). A kind the viewer does not draw yet (the
-    date's, the kingdom's: T5b2) too, since the status window is compared."""
+    harness keeps numbers, never the text, ADR-0009); a hero's `own_name` 1 when its record's name
+    is not its type's (a shipped map's hero: the viewer takes the map's). A town whose name the
+    table lacks (a map's own) is the harness's failure (the town's own names are M4's), as is a
+    kind the viewer does not draw yet (the date's, the kingdom's: T5b2), since the status window
+    is compared."""
     status = mem.status(colour)
     if status["kind"] not in STATUS_DRAWN:
         raise RuntimeError(f"the status window shows the kind {status['kind']}: not drawn yet")
     if status["kind"] == 3:
         name = mem.hero(status["hero"])["name"]
-        if ids_from("HOTRAITS.TXT", 2)[status["hero"]] != name:
-            raise RuntimeError(f"the hero {status['hero']} has a name of its own")
+        status = {"kind": 3, "hero": status["hero"],
+                  "own_name": int(ids_from("HOTRAITS.TXT", 2)[status["hero"]] != name),
+                  **{k: v for k, v in status.items() if k not in ("kind", "hero")}}
     else:
         names = ids_from("TownName.txt", 0)
         if status["name"] not in names:

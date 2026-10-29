@@ -101,6 +101,9 @@ pub enum Status {
 pub struct HeroStatus {
     /// Its type (the record's index, `HOTRAITS.TXT`'s order), which names it.
     pub hero: u8,
+    /// It has a name of its own, the map's ([`crate::art::MapArt::hero_names`]): its record's
+    /// name is not its type's.
+    pub own_name: bool,
     /// Its attack, defense, power and knowledge as stored (i8 +0x476).
     pub skills: [i8; 4],
     /// Its morale (`H3Hero::GetMoraleBonus` 0x4E39B0: −3 to 3).
@@ -142,8 +145,8 @@ pub struct Stack {
 
 impl Status {
     /// A live part's `status` as the harness writes it (`h3map.py`'s `status_toml`): `{ kind =
-    /// 3, hero = <type>, skills = [a, d, p, k], morale = m, luck = l, army = [[type, count], ...7]
-    /// }`, `{ kind = 4, name = <TownName.txt's record>, buildings = [<ids standing>], garrison =
+    /// 3, hero = <type>, own_name = <0 or 1>, skills = [a, d, p, k], morale = m, luck = l, army =
+    /// [[type, count], ...7] }`, `{ kind = 4, name = <TownName.txt's record>, buildings = [<ids standing>], garrison =
     /// <0 or 1>, army = [[type, count], ...7], silo = [<resources>], income = n }` or `{ kind = n
     /// }` for another kind (an empty slot's type −1); none for anything else.
     #[must_use]
@@ -152,6 +155,11 @@ impl Status {
         let get = |key: &str| table.get(key);
         let int = |v: &toml::Value| v.as_integer();
         let small = |v: &toml::Value| int(v).and_then(|n| i8::try_from(n).ok());
+        let flag = |v: &toml::Value| match int(v)? {
+            0 => Some(false),
+            1 => Some(true),
+            _ => None,
+        };
         let army = |v: &toml::Value| -> Option<[Option<Stack>; 7]> {
             let slots = v
                 .as_array()?
@@ -179,6 +187,7 @@ impl Status {
                     .collect::<Option<Vec<_>>>()?;
                 Some(Self::Hero(HeroStatus {
                     hero: u8::try_from(int(get("hero")?)?).ok()?,
+                    own_name: flag(get("own_name")?)?,
                     skills: skills.try_into().ok()?,
                     morale: small(get("morale")?)?,
                     luck: small(get("luck")?)?,
@@ -203,11 +212,7 @@ impl Status {
                 Some(Self::Town(TownStatus {
                     name: u16::try_from(int(get("name")?)?).ok()?,
                     buildings,
-                    garrison: match int(get("garrison")?)? {
-                        0 => false,
-                        1 => true,
-                        _ => return None,
-                    },
+                    garrison: flag(get("garrison")?)?,
                     army: army(get("army")?)?,
                     silo,
                     income: i32::try_from(int(get("income")?)?).ok()?,
@@ -740,8 +745,8 @@ impl Live {
         // hero's type 0xFF until the engine draws it) and no points or mana known; its towns in
         // the map's order, none built in today; the first hero selected, else the first town; no
         // resources (the difficulty's starting ones are the engine's rule) on the first day. The
-        // status window the selection's (E24 M3 T5b1, design §4.8): the hero named by its type,
-        // its skills, morale, luck and army the engine's (none known: 0, empty); the town named
+        // status window the selection's (E24 M3 T5b1, design §4.8): the hero named by the map or
+        // its type, its skills, morale, luck and army the engine's (none known: 0, empty); the town named
         // by its faction's first name (its name is the new game's draw), its buildings at the
         // start standing, no garrison, silo or income known.
         let selected = match (portraits.len(), towns_kept.len()) {
@@ -753,6 +758,9 @@ impl Live {
             Selected::None => None,
             Selected::Hero(_) => Some(Status::Hero(HeroStatus {
                 hero: types.first().copied().unwrap_or_default(),
+                own_name: types
+                    .first()
+                    .is_some_and(|t| art.hero_names.contains_key(t)),
                 skills: [0; 4],
                 morale: 0,
                 luck: 0,

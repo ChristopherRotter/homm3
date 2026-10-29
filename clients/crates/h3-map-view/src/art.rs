@@ -10,12 +10,14 @@
 //! scene's to refuse, since only the tables and the loaded DEFs know them (E24 design §1.3: no
 //! pass of the original checks a picture against its DEF's frames).
 
+use alloc::collections::BTreeMap;
 use alloc::string::String;
 use alloc::vec::Vec;
 use core::fmt;
 
 use h3_map::RawMap;
-use h3_map::model::{self, Pos};
+use h3_map::model::{self, Body, Pos};
+use h3_ui::text::decode_1252;
 
 /// The art of one map.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -30,6 +32,10 @@ pub struct MapArt {
     pub templates: Vec<TemplateArt>,
     /// The objects, in the map's order: an object's index is its place here.
     pub objects: Vec<ObjectArt>,
+    /// The names the map gives hero types of its own (E24 M3 T5b1, design §4.8: the status
+    /// window), by hero type: a hero object's (the first named of the type), else a disposed
+    /// hero's (SoD's hero settings); *provisional*: the game's order between them not read.
+    pub hero_names: BTreeMap<u8, String>,
 }
 
 /// One tile's pictures (the `.h3m` tile record, as the original keeps it in map_item +0x4 to
@@ -211,12 +217,29 @@ impl MapArt {
                 template,
             });
         }
+        let mut hero_names = BTreeMap::new();
+        let named = raw
+            .objects
+            .iter()
+            .filter_map(|o| match &o.body {
+                Body::Hero(h) => h.name.as_ref().map(|n| (h.hero_type, n)),
+                _ => None,
+            })
+            .chain(raw.disposed_heroes.iter().map(|d| (d.hero_type, &d.name)));
+        for (hero, name) in named {
+            if !name.as_bytes().is_empty() {
+                hero_names
+                    .entry(hero)
+                    .or_insert_with(|| decode_1252(name.as_bytes()));
+            }
+        }
         Ok(Self {
             size: terrain.size,
             levels: terrain.levels,
             tiles: terrain.tiles.iter().map(tile).collect(),
             templates,
             objects,
+            hero_names,
         })
     }
 

@@ -7,7 +7,9 @@
 //! new game draws it with its random template's masks. It runs only where the user's files are
 //! (ADR-0009): a copy of the installation, which it only reads. It reads whole archives, as
 //! `h3-view gate` does. The hero and town lists (E24 M3 T4a): their DEFs hold the frames the
-//! slots draw, every portrait of the tables decodes at the slot's size.
+//! slots draw, every portrait of the tables decodes at the slot's size. The status window (E24 M3
+//! T5b1): its DEFs hold the frames its items draw, its pictures and the large portraits decode at
+//! their items' sizes.
 
 use std::collections::BTreeMap;
 use std::fs;
@@ -23,11 +25,14 @@ use h3_map_view::art::{CELLS, Layer, MapArt, TemplateArt};
 use h3_map_view::check::{self, DefSummary};
 use h3_map_view::layout::{AdventureLayout, GEM_FRAMES};
 use h3_map_view::objects::{self, Shape};
-use h3_map_view::panels;
+use h3_map_view::{panels, status};
 use h3_map_view::tables::{FACTIONS, Tables};
 use h3_ui::ui::Item;
 
 use crate::files;
+
+/// The resources (`smalres.def`'s frames, the silo's: wood to gold).
+const RESOURCES: usize = 7;
 
 /// The random objects a new game draws (resolve_random_objects 0x4C9DD0; design §2.7), by their
 /// class, and the class of what each becomes: the random artifacts (65–69) artifacts (5), the
@@ -181,6 +186,36 @@ fn gate(options: &Options) -> Result<usize, String> {
             _ => problems.push(format!("{what}: item {id} is no DEF item with a DEF")),
         }
     }
+    // The status window's DEFs (E24 M3 T5b1, design §4.8): the frames its items draw.
+    let status = &tables.map.status;
+    let bonus = usize::try_from(status.bonus).unwrap_or(0);
+    let town_frames = lists.towns.frames(factions).saturating_sub(status.town_list);
+    for (what, panel, id, frames) in [
+        ("morale", &layout.status_hero, status::id::MORALE, 2 * bonus + 1),
+        ("luck", &layout.status_hero, status::id::LUCK, 2 * bonus + 1),
+        (
+            "creature",
+            &layout.status_hero,
+            status::id::STACKS,
+            usize::try_from(status.stack).unwrap_or(0) + 1,
+        ),
+        (
+            "town picture",
+            &layout.status_town,
+            status::id::PORTRAIT,
+            usize::try_from(town_frames).unwrap_or(0),
+        ),
+        ("hall", &layout.status_town, status::id::HALL, status.halls.len() + 1),
+        ("fort", &layout.status_town, status::id::FORT, status.forts.len() + 1),
+        ("silo", &layout.status_town, status::id::SILO, RESOURCES),
+    ] {
+        match panel.item(id) {
+            Some(Item::Def(d)) if d.def.is_some() => {
+                needs.push((what.into(), d.def.clone().unwrap_or_default(), frames, 1));
+            }
+            _ => problems.push(format!("{what}: item {id} is no DEF item with a DEF")),
+        }
+    }
     for (what, name, frames, groups) in &needs {
         let Some((archive, data)) = find(name)? else {
             problems.push(format!("{what}: {name} in no archive"));
@@ -245,6 +280,7 @@ fn gate(options: &Options) -> Result<usize, String> {
     }
 
     portraits(&layout, &tables, &find, &mut problems)?;
+    status_pictures(&layout, &tables, &find, &mut problems)?;
 
     let templates = files::templates(&archives)?;
     let (pictures, shapes) = object_pictures(&archives, &templates, &shipped, &mut problems)?;
@@ -306,6 +342,60 @@ fn portraits(
                     }
                 }
                 Err(e) => problems.push(format!("portrait: {name}: does not decode ({e:?})")),
+            },
+        }
+    }
+    println!("  {sizes:?} (size: pictures)");
+    Ok(())
+}
+
+/// The status window's pictures (E24 M3 T5b1, design §4.8): its panels' pictures and every large
+/// portrait of the tables, each found and decoded at its item's size.
+fn status_pictures(
+    layout: &AdventureLayout,
+    tables: &Tables,
+    find: &Find<'_>,
+    problems: &mut Vec<String>,
+) -> Result<(), String> {
+    println!("\nthe status window's pictures:");
+    let panels = [&layout.status_hero, &layout.status_town];
+    let mut wanted: Vec<(String, Option<[i32; 2]>)> = panels
+        .iter()
+        .flat_map(|panel| &panel.items)
+        .filter_map(|item| match item {
+            Item::Picture(p) if p.id != status::id::PORTRAIT => Some((p.picture.clone(), p.size)),
+            _ => None,
+        })
+        .collect();
+    let portrait = match layout.status_hero.item(status::id::PORTRAIT) {
+        Some(Item::Picture(p)) => p.size,
+        _ => {
+            problems.push("the status window: item 2001 is no picture".into());
+            None
+        }
+    };
+    wanted.extend(
+        tables
+            .map
+            .status
+            .portraits
+            .iter()
+            .map(|name| (name.clone(), portrait)),
+    );
+    let mut sizes: BTreeMap<[u32; 2], usize> = BTreeMap::new();
+    for (name, size) in &wanted {
+        match find(name)? {
+            None => problems.push(format!("status window: {name} in no archive")),
+            Some((_, data)) => match decode_pcx(&data) {
+                Ok(pcx) => {
+                    let found = [pcx.width(), pcx.height()];
+                    *sizes.entry(found).or_default() += 1;
+                    let item = size.map(|s| s.map(|n| u32::try_from(n).unwrap_or(0)));
+                    if item.is_some_and(|w| w != found) {
+                        problems.push(format!("status window: {name} {found:?}, the item {size:?}"));
+                    }
+                }
+                Err(e) => problems.push(format!("status window: {name}: does not decode ({e:?})")),
             },
         }
     }

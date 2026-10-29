@@ -16,6 +16,7 @@
 //! show none), its gold income and the army it shows, as a hero's but its filled slots one after
 //! another from the first place (a hero's each at its slot's).
 
+use alloc::collections::BTreeMap;
 use alloc::format;
 use alloc::string::String;
 use alloc::vec::Vec;
@@ -162,7 +163,8 @@ impl StatusArt {
 }
 
 /// The status window drawn for `live` (design §4.8): its panel (the layout's `status_hero` or
-/// `status_town`) and what its items show, the texts in `texts`. None when it shows nothing yet
+/// `status_town`) and what its items show, the texts in `texts`, a hero's name of its own in
+/// `names` (the map's, [`crate::art::MapArt::hero_names`]; one the map lacks shows its type's). None when it shows nothing yet
 /// (no status, another kind, a hero's or a town's window without that selection); an error for a
 /// portrait past the tables'.
 ///
@@ -173,6 +175,7 @@ pub fn window<'l>(
     art: &StatusArt,
     lists: &ListArt,
     live: &Live,
+    names: &BTreeMap<u8, String>,
     texts: &Catalogue,
 ) -> Result<Option<(&'l Dialog, Shown)>, String> {
     let kingdom = &live.kingdom;
@@ -183,7 +186,11 @@ pub fn window<'l>(
                     .portraits
                     .get(usize::from(hero.portrait))
                     .ok_or("a hero's portrait is past the tables'")?;
-                let shown = hero_window(art, status, portrait, hero.mana, texts);
+                let name = match names.get(&status.hero) {
+                    Some(own) if status.own_name => own.clone(),
+                    _ => texts.text(&hero_key(status.hero), &Args::new()),
+                };
+                let shown = hero_window(art, status, portrait, hero.mana, name, texts);
                 Some((&layout.status_hero, shown))
             }
             None => None,
@@ -211,13 +218,12 @@ fn hero_window(
     status: &HeroStatus,
     portrait: &str,
     mana: i32,
+    name: String,
     texts: &Catalogue,
 ) -> Shown {
     let mut shown = Shown::default();
     shown.pictures.insert(id::PORTRAIT, portrait.into());
-    shown
-        .texts
-        .insert(id::NAME, texts.text(&hero_key(status.hero), &Args::new()));
+    shown.texts.insert(id::NAME, name);
     for ((id, &skill), &bottom) in (id::SKILLS..).zip(&status.skills).zip(&art.skills.bottom) {
         let shown_skill = skill.min(art.skills.top).max(bottom);
         shown
