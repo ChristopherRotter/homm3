@@ -35,7 +35,10 @@ pub fn takes(observation: &Observation) -> bool {
         && !h3_view::panel::shown(
             observation,
             Some(side),
-            h3_view::panel::Kept::built(side),
+            (
+                h3_view::panel::Kept::built(side),
+                h3_view::panel::Autoplay::default(),
+            ),
             "",
             [0, 1],
         )

@@ -213,3 +213,49 @@ fn keys_held_out_of_the_order_they_show_keep_the_last_in_the_list() {
     assert_eq!(end.turrets, [None; 3]);
     agrees(&timeline);
 }
+
+#[test]
+fn a_turn_pushed_as_the_computers_outlines_its_stack_once_a_human_plays_it() {
+    // E17 M5 T4c1: a command pushed as followed by the computer's (Auto Combat on), then the
+    // turn it started played by a human after all (a press stopped Auto Combat): outlined from
+    // the turn's start as when pushed as followed by a human's.
+    let (layout, tables, magic, casts) = (layout(), tables(), magic(), Casts::default());
+    let stage = Stage {
+        layout: &layout,
+        width: 17,
+        groups: tables.battle.groups,
+        magic: &magic,
+        casts: &casts,
+        bugs: Bugs::Original,
+        siege: None,
+    };
+    let o = snapshot(vec![
+        at(0, Side::Attacker, PIKEMAN, 50, false),
+        at(1, Side::Defender, PIKEMAN, 60, false),
+    ]);
+    let events = [
+        moved(0, 50, 51),
+        h3_protocol::wire::Event::TurnStarted { stack: 1 },
+    ];
+    let command = Command {
+        at: Some(0),
+        events: &events,
+    };
+    let grown = |computer: bool| {
+        let mut growing = Growing::new(&o, &looks(), stage, Speed::default(), None).unwrap();
+        growing.push(&command, computer);
+        growing
+    };
+    let human = grown(false).timeline().clone();
+    let mut stopped = grown(true);
+    let start = human.turns[0].0;
+    assert_eq!(stopped.timeline().outlined(start), None);
+    stopped.outline_waiting();
+    assert_eq!(stopped.timeline().outlined(start), Some(1));
+    assert_eq!(human.outlined(start), Some(1));
+    // Before any turn started: nothing to outline.
+    let mut fresh = Growing::new(&o, &looks(), stage, Speed::default(), None).unwrap();
+    let before = fresh.timeline().outlines.clone();
+    fresh.outline_waiting();
+    assert_eq!(fresh.timeline().outlines, before);
+}

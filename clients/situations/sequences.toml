@@ -1248,3 +1248,38 @@ boxes = true
 command = [
     { seat = "Attacker", at = 1500, command = { Cast = { spell = 15, target = { Stack = { stack = 2 } }, second = { None = {} } } } },
 ]
+
+# E17 M5 T4c1 (design §7.22): Auto Combat, on the melee's battle (`seq-melee.toml`). Its key A at
+# the Angels' turn: the computer flies them at once and strikes the Wolf Riders, the panel dimmed
+# but Auto Combat, enabled and selected; the mouse moved over the battlefield keeps the pointer.
+# A again during the flight stops it as the next turn starts (the Wolf Riders', the computer's:
+# the button stays selected); the Pikemen's turn waits for Red, the panel as on any human turn.
+[[sequence]]
+id = "auto"
+scenario = "seq-melee.toml"
+actions = ["key:a", "move:400,300", "at:1500", "key:a"]
+ms = 7500
+timeline = "timelines/auto.txt"
+frames = "timelines/auto-frames.txt"
+boxes = true
+command = [
+    { seat = "Attacker", command = { Attack = { target = 2, from = 47 } } },
+    { seat = "Defender", command = { Attack = { target = 0, from = 49 } } },
+]
+
+# E17 M5 T4c1 (design §7.22): Auto Combat stopped on a human's turn (`seq-auto-stop.toml`). A at
+# the Angels' turn: the computer flies them and strikes; a click on hex 120 during the flight
+# stops it as the Royal Griffins' turn starts, walking nobody; the mouse moved after it shows the
+# Griffins' cursor there once their turn starts (the stop drops the moves, the turn posts the
+# mouse), the panel lit, the Griffins outlined.
+[[sequence]]
+id = "auto-stop"
+scenario = "seq-auto-stop.toml"
+actions = ["key:a", "at:1500", "hex:120", "move:300,350"]
+ms = 5000
+timeline = "timelines/auto-stop.txt"
+frames = "timelines/auto-stop-frames.txt"
+boxes = true
+command = [
+    { seat = "Attacker", command = { Attack = { target = 2, from = 47 } } },
+]

@@ -889,6 +889,39 @@ fn moves_made_while_an_action_plays_are_dropped_as_the_next_turn_starts() {
 }
 
 #[test]
+fn auto_combat_s_switch_and_stop_move_nothing_themselves() {
+    // E17 M5 T4c1: the switch shows with the computer's action it starts, the stop with the turn
+    // it stops at (`Turn::human`): followed with them or without, the mouse shows the same.
+    let (o, legal) = (battle(), legal());
+    let turn = Turn {
+        field: Field {
+            observation: &o,
+            legal: &legal,
+            facing: &Facing::Sides,
+            bugs: Bugs::Fixed,
+        },
+        human: true,
+    };
+    let moved = Input::Move {
+        at: 0,
+        to: centre(87),
+    };
+    let log = [(100, Logged::Action)];
+    let starts = [Start { unmarks: true }];
+    let with = run(
+        &log,
+        &starts,
+        &[turn],
+        &[moved, Input::Auto { at: 100 }, Input::Stop { at: 150 }],
+    );
+    assert_eq!(with, run(&log, &starts, &[turn], &[moved]));
+    assert_eq!(
+        [Input::Auto { at: 5 }.at(), Input::Stop { at: 6 }.at()],
+        [5, 6]
+    );
+}
+
+#[test]
 fn the_client_forgets_the_hovered_item_over_the_battlefield() {
     // CLT-Q24, answered (a) (E17 M5 T2a): back on the panel's picture from the battlefield, the
     // client's profile writes its empty line again; the original's keeps the battlefield's hint.

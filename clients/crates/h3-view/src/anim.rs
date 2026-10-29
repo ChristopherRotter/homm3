@@ -2004,6 +2004,15 @@ impl<'a> Growing<'a> {
         tail.timeline
     }
 
+    /// The turn the last command started is a human's after all (E17 M5 T4c1: Auto Combat
+    /// stopped as it started, the command pushed as followed by the computer's): its stack
+    /// outlined from its start, as [`Growing::push`] outlines a human's turn.
+    pub fn outline_waiting(&mut self) {
+        if let Some(&(at, stack)) = self.timeline.turns.last() {
+            self.timeline.outlines.push((at, Some(stack)));
+        }
+    }
+
     /// Plays `command` after those before it (a command without a time as soon as the previous
     /// one's last frame showed; *provisional*, [`timeline`]); `computer`: the next command is the
     /// computer's (a turn this one starts is then not outlined: the computer's stack is outlined

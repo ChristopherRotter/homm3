@@ -21,6 +21,7 @@ use h3_render::screen::Screen;
 use h3_ui::sprite::Sprite;
 use h3_view::anim::Timeline;
 use h3_view::anim::{self, Casts, Growing, Look, MagicLook, Playhead, SiegeStage, Sound, Speed};
+use h3_view::auto::Auto;
 use h3_view::batch::{self, Batch};
 use h3_view::battle_log::Logged;
 use h3_view::compose::compose;
@@ -458,15 +459,90 @@ impl<'g> Battle<'g> {
     }
 
     /// The next command: the bot's, sent from its seat ([`Battle::take`]); none while the
-    /// battle waits for a human's.
+    /// battle waits for a human's. A human's turn Auto Combat no longer plays (E17 M5 T4c1: a
+    /// press stopped it after the command before was played) waits.
     fn play_next(&mut self) -> Result<(), String> {
+        let auto = self.auto_turn(false);
         let (Some(live), Played::Growing(_)) = (self.live.as_mut(), &self.played) else {
             return Ok(());
         };
+        live.set_auto(auto);
+        if live.waiting() {
+            let placeholder = Played::Finished(Box::default());
+            if let Played::Growing(mut growing) = std::mem::replace(&mut self.played, placeholder) {
+                // Outlined from its start as a human's turn (pushed as the computer's).
+                growing.outline_waiting();
+                let tail = Box::new(growing.waiting());
+                self.played = Played::Waiting(growing, tail);
+            }
+            self.head = Playhead::new(self.timeline());
+            return Ok(());
+        }
         match live.next()? {
             Some(played) => self.take(None, played),
             None => Ok(()),
         }
+    }
+
+    /// Whether Auto Combat plays the last turn started from its start, or (`next`) the turn to
+    /// come after it (E17 M5 T4c1): switched on before and no key or button pressed since.
+    fn auto_turn(&self, next: bool) -> bool {
+        let mut starts: Vec<u32> = std::iter::once(0)
+            .chain(self.played.timeline().turns.iter().map(|&(t, _)| t))
+            .collect();
+        if next {
+            starts.push(u32::MAX);
+        }
+        Auto::of(&self.inputs, &starts).from_start(starts.len() - 1)
+    }
+
+    /// When the first turn started after `at` starts (E17 M5 T4c1: the one a stop pressed at `at`
+    /// comes at), if the battle grew that far.
+    pub fn turn_after(&self, at: u32) -> Option<u32> {
+        self.played
+            .timeline()
+            .turns
+            .iter()
+            .map(|&(t, _)| t)
+            .find(|&t| t > at)
+    }
+
+    /// Whether Auto Combat is on for the turns to come (E17 M5 T4c1): a key or a button pressed
+    /// now stops it ([`Battle::stop_auto`]).
+    pub fn auto_on(&self) -> bool {
+        self.live.is_some() && self.auto_turn(true)
+    }
+
+    /// Auto Combat's button clicked (or its key released) at `at` (E17 M5 T4c1, design §7.22):
+    /// on a human's turn waiting for its command, the button enabled (not both sides human,
+    /// 0x46BB40), it switches on, the bot playing the turn from then; the switch joins `inputs`
+    /// (the window's). Whether it did.
+    pub fn switch_auto(&mut self, at: u32, inputs: &mut Vec<Input>) -> Result<bool, String> {
+        let both = self
+            .turned
+            .last()
+            .is_some_and(|t| t.observation.sides.iter().all(|s| s.human));
+        if self.live.is_none() || both || !self.takes(at) {
+            return Ok(false);
+        }
+        inputs.retain(|i| i.at() <= at);
+        inputs.push(Input::Auto { at });
+        self.inputs.clone_from(inputs);
+        let choice = self.choice().ok_or("no command for the turn waiting")?;
+        self.command(at, choice)
+    }
+
+    /// A key or a mouse button pressed at `at` while Auto Combat is on (E17 M5 T4c1): it stops as
+    /// the next turn starts, the press doing nothing else; the stop joins `inputs`. Whether it
+    /// did (nothing while it is off).
+    pub fn stop_auto(&mut self, at: u32, inputs: &mut Vec<Input>) -> bool {
+        if !self.auto_on() {
+            return false;
+        }
+        inputs.retain(|i| i.at() <= at);
+        inputs.push(Input::Stop { at });
+        self.inputs.clone_from(inputs);
+        true
     }
 
     /// A human's `command`, pressed at `at` while the battle waits for it (E17 M5 T2b): sent
@@ -495,9 +571,12 @@ impl<'g> Battle<'g> {
     /// computer's unless the battle is over or a human's comes next. Over, the timeline is
     /// finished; a human's next, it waits.
     fn take(&mut self, at: Option<u32>, played: crate::live::Played) -> Result<(), String> {
+        // Auto Combat plays the turn this command starts unless stopped by then (E17 M5 T4c1).
+        let auto = self.auto_turn(true);
         let (Some(live), Played::Growing(growing)) = (self.live.as_mut(), &mut self.played) else {
             return Ok(());
         };
+        live.set_auto(auto);
         let (over, waiting) = (live.over(), live.waiting());
         let computer = !over && !waiting;
         let first = self.record.messages.len();
@@ -632,7 +711,15 @@ impl<'g> Battle<'g> {
             let i = logged.partition_point(|(t, _)| *t <= at);
             logged.insert(i, (at, Logged::Scroll(by)));
         }
-        writer.panels(&self.record, &logged)
+        // Auto Combat as the window switched it (E17 M5 T4c1).
+        let snapshot = self
+            .record
+            .first_snapshot()
+            .ok_or("the record holds no snapshot")?;
+        let auto = crate::pointer::auto(&self.inputs, self.played.timeline());
+        Ok(writer
+            .panels(&self.record, &logged)?
+            .with_auto(snapshot, auto))
     }
 
     /// The cursor at `t`: the spell book's once it set one (E17 M5 T3a), else the combat cursor's

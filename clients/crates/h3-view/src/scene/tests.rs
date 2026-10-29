@@ -1071,6 +1071,40 @@ fn a_heros_cast_disables_its_spell_book_for_the_turn() {
     assert_eq!([book(100), book(199), book(200)], [0, 0, 2]);
 }
 
+#[test]
+fn auto_combat_dims_the_panel_and_keeps_its_button_selected_through_the_computers_turns() {
+    // E17 M5 T4c1 (design §7.22): Red (stack 0, human) switches Auto Combat on at 50 in its
+    // opening turn; a press at 120, in the computer's turn (stack 2, from 100), stops it as Red's
+    // next turn starts (300).
+    use crate::mouse::track::Input;
+    let layout = layout();
+    let mut o = battle_view();
+    o.sides[0].human = true;
+    let events = [
+        Event::TurnStarted { stack: 2 },
+        Event::TurnStarted { stack: 0 },
+    ];
+    let started = [(100, 2), (300, 0)];
+    let auto = Auto::of(
+        &[Input::Auto { at: 50 }, Input::Stop { at: 120 }],
+        &[0, 100, 300],
+    );
+    let panels = Panels::new(&o, &events, Vec::new()).with_auto(&o, auto);
+    let frames = |t| {
+        let list = panels.at(&o, &started, t, &layout);
+        [4, 6].map(|i| match &list[i] {
+            Draw::Dialog(ui::Draw::Button { frame, .. }) => *frame,
+            _ => 9,
+        })
+    };
+    // Auto Combat's frame and Wait's: lit, then dimmed with Auto Combat selected (3) from the
+    // switch and through the computer's turn, lit and unselected on Red's next turn.
+    assert_eq!(frames(49), [0, 0]);
+    assert_eq!(frames(50), [3, 2]);
+    assert_eq!(frames(200), [3, 2]);
+    assert_eq!(frames(300), [0, 0]);
+}
+
 /// The count box's hue under spells (E17 M3 T7b-2a, 0x43E6AA): the executable's f64 and f32
 /// arithmetic, checked against it run in floats for every sum of up to 81 signs (all equal); here
 /// a few: all positive green, all negative red (0), none or only neutral ones 0.1667, mixes

@@ -13,8 +13,9 @@
 //! action and its animation leave the panel as its turn's start set it; the hotkeys Wait and
 //! Defend are the buttons' own, outside the battle's key switch 0x4758FB, not read further): the
 //! panel at a moment is its last turn's start's, the battle as that turn found it ([`turns`]),
-//! with what it kept from the last human player's turn ([`kept`]). Not read: the tactics phase's
-//! panel 0x46C050 and Auto Combat switched on (the queue's inbox).
+//! with what it kept from the last human player's turn ([`kept`]). Auto Combat (E17 M5 T4c1,
+//! design §7.22) dims the panel of a turn it plays, its own button left enabled and selected
+//! ([`Autoplay`]). Not read: the tactics phase's panel 0x46C050 (the queue's T4c2).
 
 use alloc::collections::{BTreeMap, BTreeSet};
 use alloc::string::String;
@@ -144,15 +145,28 @@ impl Kept {
     }
 }
 
+/// Auto Combat on the panel (E17 M5 T4c1, design §7.22): whether it plays the turn now, and
+/// whether its button shows selected from the human players' last turn (its state's bit 0x10: a
+/// turn it played selects it, 0x4784F9; a human's turn it does not play clears it, 0x47864A;
+/// another side's turn leaves it, its dimming 0x46BF90 setting only the disabled state, which the
+/// selected frame outranks).
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct Autoplay {
+    /// Auto Combat plays the turn now (a human player's stacks play themselves).
+    pub plays: bool,
+    /// Its button is selected from the human players' last turn.
+    pub selected: bool,
+}
+
 /// What the panel shows when the stacks of `side` (the active stack's controller; none before a
 /// turn starts) begin their turn in the battle `observation` shows, with what it `kept` from the
-/// turns before (the picture's colours, the scroll buttons), its log showing `log`; each side's
-/// player's colour is `players`' entry (the record names none: CLT-Q6).
+/// turns before (the picture's colours, the scroll buttons), Auto Combat as `auto` says, its log
+/// showing `log`; each side's player's colour is `players`' entry (the record names none: CLT-Q6).
 #[must_use]
 pub fn shown(
     observation: &Observation,
     side: Option<Side>,
-    kept: Kept,
+    (kept, auto): (Kept, Autoplay),
     log: &str,
     players: [u8; 2],
 ) -> Shown {
@@ -165,15 +179,32 @@ pub fn shown(
     let enabled = |on: bool| if on { State::default() } else { disabled };
     let mut states = BTreeMap::new();
     // As built (0x46BB40, 0x46BE64): Auto Combat disabled when both sides are human, the scroll
-    // buttons disabled until a human's turn enables them.
-    states.insert(
-        AUTO_COMBAT,
-        enabled(!(human(Side::Attacker) && human(Side::Defender))),
-    );
+    // buttons disabled until a human's turn enables them; Auto Combat selected as kept.
+    let both = human(Side::Attacker) && human(Side::Defender);
+    let auto_button = |disabled: bool| State {
+        disabled,
+        selected: auto.selected,
+        ..State::default()
+    };
+    states.insert(AUTO_COMBAT, auto_button(both));
     states.insert(LOG_UP, enabled(kept.scroll));
     states.insert(LOG_DOWN, enabled(kept.scroll));
     let picture = players[index(kept.colours)];
     match side {
+        // Auto Combat plays a human's turn (0x4784CA): dimmed as the computer's, its button
+        // enabled and selected (0x4784F9).
+        Some(s) if human(s) && auto.plays => {
+            for id in BUTTONS {
+                states.insert(id, disabled);
+            }
+            states.insert(
+                AUTO_COMBAT,
+                State {
+                    selected: true,
+                    ..State::default()
+                },
+            );
+        }
         Some(s) if human(s) => {
             let view = &observation.sides[index(s)];
             let other = &observation.sides[1 - index(s)];
@@ -194,10 +225,7 @@ pub fn shown(
             states.insert(RETREAT, enabled(retreat));
             states.insert(OPTIONS, State::default());
             // 0x47864A: no longer selected; disabled when both sides are human.
-            states.insert(
-                AUTO_COMBAT,
-                enabled(!(human(Side::Attacker) && human(Side::Defender))),
-            );
+            states.insert(AUTO_COMBAT, enabled(!both));
             states.insert(SPELL_BOOK, enabled(book));
             // 0x478755: Wait outside the round's wait phase and the tactics phase.
             states.insert(WAIT, enabled(!observation.wait_phase && !tactics));
@@ -212,10 +240,12 @@ pub fn shown(
                 states.insert(DEFEND, State::default());
             }
         }
+        // 0x46BF90: the seven disabled, Auto Combat's selection left as it was.
         Some(_) => {
             for id in BUTTONS {
                 states.insert(id, disabled);
             }
+            states.insert(AUTO_COMBAT, auto_button(true));
         }
         None => {}
     }

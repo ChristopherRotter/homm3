@@ -2556,6 +2556,81 @@ under Wine (`clients/capture/binkprobe.c`) and, where that stalled, read in its 
   layout's `clip`; `h3_assets::vid::directory`; the binary's `videos.rs`, the window (a frame at
   each decode while the window stands), the stills' and sequences' clip.
 
+### 7.22 Auto Combat (M5 T4c1)
+
+Read: `battle_buttons`' case for 2004 (0x474E5A to 0x474EEA), `battle_loop_turn` 0x4740D0 from the
+tick to its action (0x47417A to 0x474265, 0x474477 to 0x4744D4, 0x474622 to 0x474643),
+`battle_controls_state` 0x4782D0 again for Auto Combat (0x4782D4 to 0x478326, 0x47846E to
+0x478525, 0x47864A, 0x478804 to 0x478884), `battle_panel_disable` 0x46BF90 whole, the panels'
+vtables (0x63D420; the tactics phase's 0x63D430), the input manager's mouse messages 0x4EC290 (their
+kinds), `ai_battle_action` 0x477EE0's head, `ai_hero_cast_turn` 0x422DA0's head.
+
+- **The switch** (0x474E5A): the command of the button 2004 (its click, or its hotkey A's release,
+  0x45659F), taken only while the side to act is played here (+0x132B4), toggles +0x132C4. On,
+  `battle_controls_state` runs again for the turn under way, and the panel dims (the panel's
+  vtable +0xC, 0x46BF90) if its stack now plays itself (`stack_automatic` 0x474BF0: every
+  creature with the setting `Combat Auto Creatures` 0x698794, which the harness sets; a war
+  machine by its own, 0x69879C to 0x6987A4; the client's bot plays them all, *provisional*: no
+  options dialog). The next pass of the battle loop gives that stack's turn to the computer
+  (0x4744C0, `ai_battle_action`): the action starts in the same millisecond. Both sides human,
+  the button is disabled (0x46BB40, 0x478670): no switch in hot seat. It is never switched off by
+  its own click: while it plays no human's turn takes one (below).
+- **The panel** (0x47846E to 0x478520): a turn's start while it is on and the stack plays itself
+  dims the seven buttons and, for a side whose player is human (+0x54A4 + side), gives Auto Combat
+  back its enabled state and the selected one (0x10). 0x46BF90 sets only the disabled state, and
+  the selected frame outranks it (§9.7): through the computer's turns, and after a stop, the
+  button stays selected until a human's turn it does not play clears it (0x47864A). The picture's
+  colours and the log's scroll buttons stay as they were.
+- **The stop** (0x47419B to 0x47425B): each pass of the battle loop while the battle is shown, the
+  side to act is played here, Auto Combat is on (or the turn is remote) and the active stack plays
+  itself, reads the input queue until a message of kind 0 (none left), 1 (a key down), 8 or 0x20
+  (a left or right button down, double clicks the same) or 0x10 or 0x40 (their release), the
+  moves (4) and the keys' releases (2) read and dropped; one other than the idle message stops it:
+  the queue emptied (0x4EC570), +0x132C4 cleared, `battle_controls_state` again (now as without
+  it). The computer acts in the pass that meets its stack and the action plays inside it, so a
+  pass meets an automatic stack only as a turn starts: a key or a mouse button pressed while Auto
+  Combat plays stops it as the next turn starts, whoever's. The press does nothing else (taken
+  from the queue by that read, the dialog's hotkeys never see it): recorded, D pressed so gives
+  the human's turn it stops at no Defend, a click on a hex no walk. Only the battle's own keys
+  act: on a human's turn the stop comes at, the battle's handler gets the message found
+  (0x474625, `battle_buttons`' key switch): ↑ and ↓ scroll the log, F aims a Faerie Dragon's
+  spell, then (read, not recorded); on the computer's turn it is lost.
+- **The mouse:** the turn's start shows the pointer (0x478321) and the computer's turn unmarks the
+  mouse's stack (`ai_stack_turn` 0x422200); a human's turn under Auto Combat posts the mouse
+  (0x478857) but the stop's read drops the move: moved over the battlefield, the mouse keeps the
+  pointer and marks and enters nothing, as on the computer's turns (`Turn::human` false).
+- **Not built** (the client's bot neither casts nor leaves): the computer's cast of the human's
+  hero at a turn's start (`ai_hero_cast_turn` 0x422E42, under the setting 0x698798), and its
+  question to the human, once a battle (+0x1402F), when it would retreat or surrender for them
+  (0x477F56: a two-button box of GENRLTXT's row; Cancel keeps fighting and asks no more).
+- **Built:** `h3_view::auto` (`Auto::of`: per turn whether it plays from its start or from a time
+  in it, from the inputs `Input::Auto` and `Input::Stop` and the turns' starts), the panel's
+  `Autoplay` (`panel::shown`) and `Panels::with_auto`, the mouse's automatic turns
+  (`pointer::shown`), the sequences' `key:a` (the original's table: the switch; a key or a click
+  then: the stop) and their recording's end after an `at:` action; the window: the button or A
+  on a human's waiting turn switches it on (`Battle::switch_auto`: the bot's command for the
+  turn at once, `Live::set_auto`), any key or press but the window's own while it is on stops it
+  (`Battle::stop_auto`; ↑, ↓ and F then act at the start of the turn it stops at, a human's); a
+  human's turn it stops at waits, its stack outlined from its start
+  (`Growing::outline_waiting`: the command before was pushed as followed by the computer's);
+  unattended, `--auto <n>` switches it on at the human's n-th turn and stops it two commands
+  later.
+- **Recorded** (`auto`, the melee's battle): A at the Angels' turn, the flight at 0 ms; the mouse
+  moved to (400, 300); A again at 1 500 ms, the stop at the Wolf Riders' turn; the Pikemen's turn
+  at 7 530 waits. The timeline as recorded (101 changes); the 106 frames' panel and cursor exact
+  throughout (dimmed, Auto Combat selected from the switch through the computer's turns, lit and
+  unselected on the Pikemen's); beside the log's rolled lines (listed), the flight's redraw
+  artifacts as `melee`'s, the strike's start at 2 730 (435 pixels, 222 counted as artifacts: the
+  original's partial redraw of the count boxes, as `strike`'s, §4.3) and, at 7 530, Orrin's
+  victory (2 400 pixels) whose first frame the screen shows a step before memory holds it (the
+  frame check draws memory's heroes). `auto-stop` (`seq-auto-stop.toml`: Royal Griffins for the
+  Pikemen, their turn after the Angels'): a click on hex 120 at 1 500 ms stops it as the
+  Griffins' turn starts (5 130 ms), walking nobody; the mouse moved after it to (300, 350) shows
+  their flight's cursor there from 5 230 (the turn's posted move, the poll's grid), the panel lit
+  and the Griffins outlined from the turn's start. The timeline as recorded (73 changes); its 80
+  frames exact but the same artifacts of the flight and the strike's start and the log's rolled
+  lines.
+
 ## 8. The window, input and audio evaluation (M2 T2)
 
 ADR-0020 point 4 left the library to a measured evaluation at M2; the choice, the user's
@@ -3058,7 +3133,7 @@ text item) in `compose`.
   town) and the acting stack's controller; a record names no player colours, so red and blue
   (CLT-Q6). Not modelled: what a click, an animation or the log's scrolling change, the panel kept
   from an earlier turn (T6b), the side the panel is built for (taken as the acting side), the
-  tactics phase's panel, Auto Combat switched on. The situations' and sequences' scenarios name
+  tactics phase's panel; Auto Combat switched on since M5 T4c1 (§7.22). The situations' and sequences' scenarios name
   their human sides (`human`), as the original's maps have them; `h3-view situation` refuses a
   scenario whose `human` is not its map's.
 - **Checked:** the capture set compares the whole panel (its `panel_beside_log` masks gone): all
