@@ -1458,9 +1458,9 @@ frames = "timelines/hypnotize-frames.txt"
 boxes = true
 command = [
     { seat = "Attacker", command = { Cast = { spell = 59, target = { Stack = { stack = 1 } }, second = { None = {} } } } },
-    { seat = "Attacker", at = 0, command = { Defend = {} } },
-    { seat = "Attacker", at = 0, command = { Defend = {} } },
-    { seat = "Defender", at = 0, command = { Defend = {} } },
+    { seat = "Attacker", at = 2800, command = { Defend = {} } },
+    { seat = "Attacker", at = 2800, command = { Defend = {} } },
+    { seat = "Defender", at = 2800, command = { Defend = {} } },
 ]
 
 # E17 M5 T5b2: a created stack's turn after the other side's (R3-1): `summon`'s Fire Elementals
@@ -1479,10 +1479,10 @@ frames = "timelines/summon-turn-frames.txt"
 boxes = true
 command = [
     { seat = "Attacker", command = { Cast = { spell = 65, target = { None = {} }, second = { None = {} } } } },
-    { seat = "Attacker", at = 0, command = { Defend = {} } },
-    { seat = "Attacker", at = 0, command = { Wait = {} } },
-    { seat = "Defender", at = 0, command = { Defend = {} } },
-    { seat = "Attacker", at = 0, command = { Defend = {} } },
+    { seat = "Attacker", at = 1200, command = { Defend = {} } },
+    { seat = "Attacker", at = 1200, command = { Wait = {} } },
+    { seat = "Defender", at = 1200, command = { Defend = {} } },
+    { seat = "Attacker", at = 1200, command = { Defend = {} } },
 ]
 
 # E17 M5 T5b2: the sounds' waits (design §8.3). The sequences whose timelines change when the
