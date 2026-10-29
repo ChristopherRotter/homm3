@@ -183,7 +183,10 @@ fn a_tiles_colour_by_its_terrain_its_object_and_the_live_part() {
     assert_eq!(at(&tiles, 6, 6), Colour::Open(2));
     assert_eq!(tiles.heroes, [(36, Colour::Owner(67))]);
     // The level's colours shared, not copied, from scene to scene.
-    assert!(Arc::ptr_eq(&tiles.colours, &unexplored.tiles(&live, &t, None).colours));
+    assert!(Arc::ptr_eq(
+        &tiles.colours,
+        &unexplored.tiles(&live, &t, None).colours
+    ));
     // The selected hero (0) where the minimap last drew it (T3b): (2, 3), its tile now its
     // terrain's; one off the map's side or row draws none.
     let drawn_at = |x: u8, y: u8| unexplored.tiles(&live, &t, Some((0, Pos { x, y, z: 0 })));
@@ -301,9 +304,12 @@ fn each_size_lays_its_tiles_and_scales_its_box() {
 fn a_scene_draws_the_minimap_as_last_drawn() {
     // E24 M3 T3b: the box at the corner the minimap was last drawn at, the selected hero on the
     // tile it stood on then; a still (none) at the scene's view, the hero where it stands.
-    let (art, mut live, shapes) = map_with(&[], &[]);
+    let (art, mut live, mut shapes) = map_with(&[], &[]);
     live.heroes = vec![hero(4, 4, 0, 3)];
     let (t, l) = (tables(), layout());
+    for (def, _) in t.map.heroes.defs() {
+        shapes.insert_frames(&def, 1);
+    }
     let index = TileIndex::build(&art, &live, &t, &l, &shapes, 0, Bugs::Fixed).unwrap();
     let minimap = |live: &Live| {
         let view = ViewAt { x: 0, y: 0, z: 0 };
@@ -314,7 +320,10 @@ fn a_scene_draws_the_minimap_as_last_drawn() {
     let (Draw::Minimap(still), Draw::Radar { at, cut, .. }) = minimap(&live) else {
         panic!("no minimap");
     };
-    assert_eq!((still.heroes, at, cut), (vec![(36, Colour::Owner(67))], [630, 26], [0, 0]));
+    assert_eq!(
+        (still.heroes, at, cut),
+        (vec![(36, Colour::Owner(67))], [630, 26], [0, 0])
+    );
     live.minimap = Some(Shown {
         view: ViewAt { x: 3, y: -2, z: 0 },
         hero: Some((0, Pos { x: 2, y: 3, z: 0 })),
@@ -322,5 +331,8 @@ fn a_scene_draws_the_minimap_as_last_drawn() {
     let (Draw::Minimap(shown), Draw::Radar { at, cut, .. }) = minimap(&live) else {
         panic!("no minimap");
     };
-    assert_eq!((shown.heroes, at, cut), (vec![(26, Colour::Owner(67))], [633, 26], [0, 2]));
+    assert_eq!(
+        (shown.heroes, at, cut),
+        (vec![(26, Colour::Owner(67))], [633, 26], [0, 2])
+    );
 }

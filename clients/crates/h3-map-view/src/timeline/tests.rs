@@ -1178,11 +1178,7 @@ fn the_minimap_drawn_again_by_a_scroll_a_lift_and_each_steps_end() {
     // it again (the guard's test); a scroll draws it at the new corner, the hero put back.
     let minimap = |x: i32, y: i32, hx: u8, hy: u8| Minimap {
         view: ViewAt { x, y, z: 0 },
-        hero: Some(Pos {
-            x: hx,
-            y: hy,
-            z: 0,
-        }),
+        hero: Some(Pos { x: hx, y: hy, z: 0 }),
     };
     let run = |l: &mut Loop, from: u32, to: u32| {
         for t in from..=to {
