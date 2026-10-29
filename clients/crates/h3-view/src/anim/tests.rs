@@ -600,6 +600,7 @@ fn play(snapshot: &Observation, commands: &[(Option<u32>, Vec<Event>)]) -> Timel
         casts: &Casts::default(),
         bugs: Bugs::Original,
         siege: None,
+        lengths: None,
     };
     let commands: Vec<Command<'_>> = commands
         .iter()
@@ -1036,6 +1037,7 @@ fn a_creature_without_numbers_is_an_error() {
         casts: &Casts::default(),
         bugs: Bugs::Original,
         siege: None,
+        lengths: None,
     };
     let err = timeline(&o, &[], &looks(), stage, Speed::default()).unwrap_err();
     assert_eq!(err, AnimError::Look(99));
@@ -1095,6 +1097,7 @@ fn a_flight_without_a_distance_is_one_cycle() {
         casts: &Casts::default(),
         bugs: Bugs::Original,
         siege: None,
+        lengths: None,
     };
     let o = snapshot(vec![angels]);
     let events = [moved(0, 35, 37)];
@@ -1215,6 +1218,7 @@ fn a_reaction_without_frames_and_a_strike_at_nothing() {
         casts: &Casts::default(),
         bugs: Bugs::Original,
         siege: None,
+        lengths: None,
     };
     let o = snapshot(vec![
         at(0, Side::Attacker, WOLF_RIDER, 52, true),
@@ -1251,6 +1255,7 @@ fn a_ray_without_a_climax_frame_or_a_target() {
         casts: &Casts::default(),
         bugs: Bugs::Original,
         siege: None,
+        lengths: None,
     };
     let o = snapshot(vec![
         at(0, Side::Attacker, ARCH_MAGE, 137, false),
@@ -1331,6 +1336,7 @@ fn shots_aim_up_straight_and_down() {
         casts: &Casts::default(),
         bugs: Bugs::Original,
         siege: None,
+        lengths: None,
     };
     let column = |target: u8| {
         let o = snapshot(vec![
@@ -1367,6 +1373,7 @@ fn shots_without_a_climax_or_a_target() {
         casts: &Casts::default(),
         bugs: Bugs::Original,
         siege: None,
+        lengths: None,
     };
     let o = snapshot(vec![
         at(0, Side::Attacker, MARKSMAN, 35, false),
@@ -1535,6 +1542,7 @@ fn a_shooter_without_a_projectile_waits_as_one_flies() {
         casts: &Casts::default(),
         bugs: Bugs::Original,
         siege: None,
+        lengths: None,
     };
     let o = snapshot(vec![
         at(0, Side::Attacker, MARKSMAN, 35, false),
@@ -1781,6 +1789,7 @@ fn a_breath_on_two_stacks_takes_its_own_groups() {
         casts: &Casts::default(),
         bugs: Bugs::Original,
         siege: None,
+        lengths: None,
     };
     let o = snapshot(vec![
         at(0, Side::Attacker, ANGEL, 52, false),
@@ -1937,6 +1946,7 @@ fn neighbours_follow_the_layout() {
         casts: &Casts::default(),
         bugs: Bugs::Original,
         siege: None,
+        lengths: None,
     };
     // Hex 83 (row 4, even, shifted right): up-right 67, right 84, down-right 101, down-left 100,
     // left 82, up-left 66; row 5 (odd): up-right of 100 is 83.
@@ -2010,6 +2020,7 @@ fn fidgeting_play(
         casts: &Casts::default(),
         bugs: Bugs::Original,
         siege: None,
+        lengths: None,
     };
     let commands: Vec<Command<'_>> = commands
         .iter()
@@ -2238,6 +2249,7 @@ fn a_target_reacts_as_the_projectile_lands() {
         casts: &Casts::default(),
         bugs: Bugs::Original,
         siege: None,
+        lengths: None,
     };
     let o = snapshot(vec![
         at(0, Side::Attacker, MARKSMAN, 35, false),
@@ -2395,6 +2407,7 @@ fn a_heal_without_its_animation_plays_its_sound_only() {
         casts: &Casts::default(),
         bugs: Bugs::Original,
         siege: None,
+        lengths: None,
     };
     let events = [healed(1, 0), Event::TurnStarted { stack: 2 }];
     let commands = [Command {
@@ -2448,6 +2461,7 @@ fn magic_animations_stand_where_their_place_says() {
             casts: &Casts::default(),
             bugs: Bugs::Original,
             siege: None,
+            lengths: None,
         };
         let events = [healed(1, 0)];
         let commands = [Command {
@@ -3004,6 +3018,7 @@ fn play_casts_with(
         casts: &casts,
         bugs: Bugs::Original,
         siege: None,
+        lengths: None,
     };
     let commands: Vec<Command<'_>> = commands
         .iter()
@@ -3284,6 +3299,7 @@ fn casts_without_a_caster_a_stack_or_an_effect_play_what_they_can() {
         casts: &unloaded,
         bugs: Bugs::Original,
         siege: None,
+        lengths: None,
     };
     let bare = [
         vec![cast(54, 3), applied(3, 54)],
@@ -3666,6 +3682,7 @@ fn play_rolls(
         casts: &casts,
         bugs: Bugs::Original,
         siege: None,
+        lengths: None,
     };
     let commands: Vec<Command<'_>> = commands
         .iter()
@@ -3957,6 +3974,7 @@ fn play_strikes(
         casts,
         bugs: Bugs::Original,
         siege: None,
+        lengths: None,
     };
     let commands: Vec<Command<'_>> = commands
         .iter()
@@ -4384,6 +4402,7 @@ fn play_area_with(
         casts: &casts,
         bugs,
         siege: None,
+        lengths: None,
     };
     let commands: Vec<Command<'_>> = commands
         .iter()
@@ -4952,6 +4971,7 @@ fn magic_animations_at_a_hex_and_over_several_stacks_without_their_look() {
         casts: &casts,
         bugs: Bugs::Original,
         siege: None,
+        lengths: None,
     };
     let events = [
         vec![cast_at(21, Target::Hex { hex: 15 }), hurt(1, 9, 9, 0)],
@@ -5096,6 +5116,7 @@ fn play_objects_bugs(
         casts: &casts,
         bugs,
         siege: None,
+        lengths: None,
     };
     let commands: Vec<Command<'_>> = commands
         .iter()

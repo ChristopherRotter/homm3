@@ -538,7 +538,7 @@ impl Player<'_> {
     /// the corpse, `Resurect.wav` (spell 38's sound, started as a file), the corpse gone and the
     /// Demons set up (0x47A100 with its animation: a dissolve of 75 ms steps over their
     /// rectangle), a redraw at once (0x5A749C), the raise's line (GENRLTXT 117 or 118); the sound
-    /// waited for (0x5A754E: not built, the next task's), then the caster turns back.
+    /// waited for (0x5A754E, E17 M5 T5b2), then the caster's own (0x4486E2) and it turns back.
     pub(super) fn demons(
         &mut self,
         stack: u8,
@@ -549,9 +549,9 @@ impl Player<'_> {
             return;
         };
         let turned = self.creature_casting(stack, dead.position(dead.hex));
-        if let Some(spell) = self.spell_handle(super::raise::RESURRECTION) {
-            self.cue(corpse, Sound::SpellFile(spell), false);
-        }
+        let cue = self
+            .spell_handle(super::raise::RESURRECTION)
+            .map(|spell| self.cue(corpse, Sound::SpellFile(spell), false));
         // The corpse goes (0x5A73DD), in the pose it lay in (memory keeps it), with the redraw
         // the dissolve blends in. (The original blends from its back buffer, which the casting
         // frames' clipped redraws left as the background outside the caster's rectangle: the
@@ -579,6 +579,9 @@ impl Player<'_> {
         self.redraw();
         let line = Logged::Raised { stack: new, count };
         self.log.push((self.clock.now, line));
+        if let Some(cue) = cue {
+            self.wait_for(cue);
+        }
         self.creature_cast_over(stack, turned);
     }
 }

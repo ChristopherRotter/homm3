@@ -143,7 +143,7 @@ impl Player<'_> {
     /// An Archangel raises `target` (`creature_cast_action` 0x448563 to 0x4485DE; E17 M3 T7c-3,
     /// *provisional*: not recorded): its casting frames toward the corpse, `Resurect.wav` (spell
     /// 38's sound, started as a file) on the stack raised, [`Player::raise`], the sound waited for
-    /// (not built), then its own sound ends and it turns back.
+    /// (0x4485DE, E17 M5 T5b2), then its own sound and it turns back.
     pub(super) fn creature_raise(&mut self, stack: u8, target: u8, creatures: u32) {
         let at = self
             .corpses
@@ -154,10 +154,13 @@ impl Player<'_> {
             return;
         };
         let turned = self.creature_casting(stack, hex);
-        if let Some(spell) = self.spell_handle(RESURRECTION) {
-            self.cue(target, Sound::SpellFile(spell), false);
-        }
+        let cue = self
+            .spell_handle(RESURRECTION)
+            .map(|spell| self.cue(target, Sound::SpellFile(spell), false));
         self.raise(target, creatures, RAISE);
+        if let Some(cue) = cue {
+            self.wait_for(cue);
+        }
         self.creature_cast_over(stack, turned);
     }
 

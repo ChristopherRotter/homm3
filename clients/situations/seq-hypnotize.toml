@@ -1,0 +1,54 @@
+# E17 M5 T5b2: a hypnotized stack's turn (R3-1), in hot seat. Orrin (power 5) hypnotizes Crag
+# Hack's Archers at Basic (100 hit points, within 10 + 25 x 5); their turn is then Red's
+# (`stack_activation` 0x465330 sets the acting side +0x132C0 to the controller): Red's panel,
+# then the Pikemen's Blue one. On grass at the capture set's tile (`bloodlust`'s).
+
+[scenario]
+id = "sequence-hypnotize"
+# Both players human, as the original's hot-seat map (`h3-view situation --hot-seat`).
+human = ["attacker", "defender"]
+packs = ["base"]
+profile = "base:faithful"
+terrain = "base:grass"
+obstacles = [
+    { hexes = [75, 76, 77, 78, 61, 60, 59, 58], anchor = 74, kind = "base:obstacle_22" },
+    { hexes = [91, 92], anchor = 91, kind = "base:obstacle_20" },
+    { hexes = [122, 123], anchor = 122, kind = "base:obstacle_19" },
+]
+
+[[attacker]]
+slot = 0
+creature = "base:swordsman"
+count = 20
+
+[[defender]]
+slot = 0
+creature = "base:archer"
+count = 10
+
+[[defender]]
+slot = 2
+creature = "base:pikeman"
+count = 10
+
+# The heroes (E17 M3 T3a) with 1 in every primary skill but Orrin's power and the knowledge (30
+# spell points).
+[scenario.attacker_hero]
+hero_type = "base:orrin"
+attack = 1
+defense = 1
+power = 5
+knowledge = 3
+mana = 30
+max_mana = 30
+spell_book = ["base:hypnotize"]
+
+[scenario.defender_hero]
+hero_type = "base:crag_hack"
+attack = 1
+defense = 1
+power = 1
+knowledge = 3
+mana = 30
+max_mana = 30
+spell_book = ["base:bloodlust"]

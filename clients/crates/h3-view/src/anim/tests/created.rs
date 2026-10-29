@@ -116,6 +116,7 @@ fn play_with(
         casts,
         bugs: Bugs::Original,
         siege: None,
+        lengths: None,
     };
     let commands: Vec<Command<'_>> = commands
         .iter()

@@ -23,7 +23,8 @@ use h3_assets::wav::{Pcm, decode_wav};
 use h3_sdl::Audio;
 use h3_view::anim::{Cue, Sound};
 use h3_view::sound::{
-    EFFECT_VOLUME, FILE_VOLUME, MUSIC_VOLUME, Opening, START_WAIT, Tune, music_volume,
+    EFFECT_VOLUME, FILE_VOLUME, Lengths, MUSIC_VOLUME, Opening, START_WAIT, Tune, length_ms,
+    music_volume,
 };
 use h3_view::tables::Sounds;
 
@@ -107,37 +108,7 @@ impl Library {
             .collect();
         wanted.sort_unstable();
         wanted.dedup();
-        let mut clips = BTreeMap::new();
-        if let Ok(data) = find_ci(install, "Data") {
-            for archive in SOUND_ARCHIVES {
-                let Ok(path) = find_ci(&data, archive) else {
-                    continue;
-                };
-                let bytes = fs::read(&path).map_err(|e| format!("{}: {e}", path.display()))?;
-                let snd = SndArchive::parse(&bytes).map_err(|e| format!("{archive}: {e:?}"))?;
-                for name in &wanted {
-                    if clips.contains_key(name) {
-                        continue;
-                    }
-                    // A sound that does not decode costs that sound, as a missing one does.
-                    match snd.find(name).map(decode_wav) {
-                        Some(Ok(pcm)) => {
-                            clips.insert(name.clone(), pcm);
-                        }
-                        Some(Err(e)) => lines.push(format!("sound: {name}: {e:?}")),
-                        None => {}
-                    }
-                }
-            }
-        }
-        let missing: Vec<&str> = wanted
-            .iter()
-            .filter(|n| !clips.contains_key(*n))
-            .map(String::as_str)
-            .collect();
-        if !missing.is_empty() {
-            lines.push(format!("sound: not found: {}", missing.join(", ")));
-        }
+        let clips = clips(install, &wanted, lines)?;
         let music = mp3(install, &opening.music_file(), lines)?;
         let mut decoded = Vec::new();
         for &tune in tunes {
@@ -156,6 +127,119 @@ impl Library {
         })
     }
 
+    /// How long each sample a cue may name plays (E17 M5 T5b2; `h3_view::sound::Lengths`): the
+    /// battle's waits for them.
+    pub fn lengths(&self) -> Lengths {
+        let ms = |name: &str| {
+            self.clips
+                .get(&name.to_ascii_uppercase())
+                .map(|c| length_ms(c.frames() as u64, c.rate))
+        };
+        Lengths {
+            stacks: self
+                .stacks
+                .iter()
+                .flat_map(|(&id, sounds)| {
+                    KINDS.iter().filter_map(move |&kind| {
+                        sounds.name(kind).and_then(ms).map(|l| ((id, kind), l))
+                    })
+                })
+                .collect(),
+            named: self
+                .named
+                .iter()
+                .filter_map(|(&cue, name)| ms(name).map(|l| (cue, l)))
+                .collect(),
+        }
+    }
+}
+
+/// A stack's eight sounds (`stack_load_graphics` 0x43D9F0's order).
+const KINDS: [Sound; 8] = [
+    Sound::Move,
+    Sound::Attack,
+    Sound::Wince,
+    Sound::Shot,
+    Sound::Death,
+    Sound::Defend,
+    Sound::Start,
+    Sound::End,
+];
+
+/// How long the samples of `stacks` and `named` play (E17 M5 T5b2): [`Library::lengths`] without
+/// the music and the start sound, for a comparison that plays its sounds (`h3-view sequences`'s
+/// `sound` sequences).
+pub fn lengths(
+    install: &Path,
+    (stacks, named): (BTreeMap<u8, Sounds>, BTreeMap<Sound, String>),
+    lines: &mut Vec<String>,
+) -> Result<Lengths, String> {
+    let named: BTreeMap<Sound, String> = named
+        .into_iter()
+        .map(|(cue, name)| (cue, name.to_ascii_uppercase()))
+        .collect();
+    let mut wanted: Vec<String> = stacks
+        .values()
+        .flat_map(Sounds::names)
+        .chain(named.values())
+        .map(|n| n.to_ascii_uppercase())
+        .collect();
+    wanted.sort_unstable();
+    wanted.dedup();
+    let library = Library {
+        clips: clips(install, &wanted, lines)?,
+        music: None,
+        tunes: Vec::new(),
+        start: String::new(),
+        took: 0,
+        stacks,
+        named,
+    };
+    Ok(library.lengths())
+}
+
+/// The sound archives' entries `wanted` (upper-cased), decoded; a missing or undecodable one
+/// noted in `lines`.
+fn clips(
+    install: &Path,
+    wanted: &[String],
+    lines: &mut Vec<String>,
+) -> Result<BTreeMap<String, Pcm>, String> {
+    let mut clips = BTreeMap::new();
+    if let Ok(data) = find_ci(install, "Data") {
+        for archive in SOUND_ARCHIVES {
+            let Ok(path) = find_ci(&data, archive) else {
+                continue;
+            };
+            let bytes = fs::read(&path).map_err(|e| format!("{}: {e}", path.display()))?;
+            let snd = SndArchive::parse(&bytes).map_err(|e| format!("{archive}: {e:?}"))?;
+            for name in wanted {
+                if clips.contains_key(name) {
+                    continue;
+                }
+                // A sound that does not decode costs that sound, as a missing one does.
+                match snd.find(name).map(decode_wav) {
+                    Some(Ok(pcm)) => {
+                        clips.insert(name.clone(), pcm);
+                    }
+                    Some(Err(e)) => lines.push(format!("sound: {name}: {e:?}")),
+                    None => {}
+                }
+            }
+        }
+    }
+    let missing: Vec<&str> = wanted
+        .iter()
+        .filter(|n| !clips.contains_key(*n))
+        .map(String::as_str)
+        .collect();
+    if !missing.is_empty() {
+        lines.push(format!("sound: not found: {}", missing.join(", ")));
+    }
+    Ok(clips)
+}
+
+impl Library {
     /// The end's `tune`, if it was decoded.
     fn tune(&self, tune: Tune) -> Option<&Music> {
         self.tunes.iter().find(|(t, _)| *t == tune).map(|(_, m)| m)

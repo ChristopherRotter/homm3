@@ -308,7 +308,7 @@ impl Player<'_> {
         let Some(mut siege) = self.siege.filter(|s| s.walls.gate != GATE_DESTROYED) else {
             return;
         };
-        self.cue(0, Sound::Drawbridge, false);
+        let cue = self.cue(0, Sound::Drawbridge, false);
         let tick = self.speed.scale(TICK);
         let states = if open {
             [GATE_CLOSED, GATE_MOVING, GATE_OPEN]
@@ -332,6 +332,8 @@ impl Player<'_> {
         if self.stage.bugs == Bugs::Original {
             self.bridge_from = first;
         }
+        // Its sound waited for (0x4672A5, 0x46742C; E17 M5 T5b2).
+        self.wait_for(cue);
     }
 
     /// A walk stops before its step onto the closed gate's hexes (`stack_walk` 0x4421BC to
@@ -407,8 +409,10 @@ impl Player<'_> {
                             self.pending_objects.push((anchor, None));
                         }
                     }
-                    self.cue(stack, Sound::Mine, false);
+                    let cue = self.cue(stack, Sound::Mine, false);
                     self.marked((stack, live), kills, Some(MINE_BLAST));
+                    // The blast's sound waited for (0x59FC94; E17 M5 T5b2).
+                    self.wait_for(cue);
                 }
                 _ => {}
             }
@@ -476,7 +480,7 @@ impl Player<'_> {
         let n = live.look.count(group);
         let climax = live.look.climax_in(n);
         let time = self.speed.scale(live.look.times[2] / climax.max(1));
-        self.cue(turret, Sound::TurretShot, false);
+        let cue = self.cue(turret, Sound::TurretShot, false);
         let pose = |frame| TurretPose {
             group: u32::from(group),
             frame,
@@ -506,6 +510,8 @@ impl Player<'_> {
                 right: false,
             },
         });
+        // Its shot sound waited for (0x465F05; E17 M5 T5b2).
+        self.wait_for(cue);
     }
 
     /// A wall shot of `shooter` (the Catapult, a Cyclops) that hit target `t` for `damage`
@@ -538,7 +544,7 @@ impl Player<'_> {
         let n = live.look.count(group);
         let climax = live.look.climax_in(n);
         let time = self.speed.scale(live.look.times[2] / climax.max(1));
-        self.cue(shooter, Sound::Shot, false);
+        let shot = self.cue(shooter, Sound::Shot, false);
         for f in 0..climax {
             self.frame(&[(shooter, Self::posed(&live, group, f, live.hex))], time);
         }
@@ -572,7 +578,7 @@ impl Player<'_> {
         } else {
             Sound::WallMiss
         };
-        self.cue(shooter, sound, false);
+        let landed = self.cue(shooter, sound, false);
         let landings = vec![self.landing(&burst, to)];
         let blast = self.blast_count;
         self.blast_count += 1;
@@ -628,6 +634,10 @@ impl Player<'_> {
             walls,
             restored: fixed,
         });
+        // The shot's and the landing's samples waited for in turn (0x4464C2, 0x4464D3; E17 M5
+        // T5b2).
+        self.wait_for(shot);
+        self.wait_for(landed);
     }
 
     /// Where `burst` lands centred on `to` (0x4462DC, 0x5A7EDE): its canvas's top-left and the

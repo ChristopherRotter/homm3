@@ -352,6 +352,9 @@ pub struct Stage<'a> {
     pub bugs: Bugs,
     /// A siege's turrets and explosions (E17 M4 T2b; none: no siege).
     pub siege: Option<&'a SiegeStage>,
+    /// The samples' lengths when the battle plays its sounds (E17 M5 T5b2): the waits for them
+    /// ([`crate::sound::Lengths`]); none: no sound, nothing waited for.
+    pub lengths: Option<&'a crate::sound::Lengths>,
 }
 
 /// What a battle's casts draw (E17 M3 T7b-1, design §7.16): each spell the record casts by its
@@ -2726,14 +2729,51 @@ impl Player<'_> {
         self.flush(now, now);
     }
 
-    /// `stack`'s `sound` starts (or, `stop`, ends) with the next frame drawn.
-    fn cue(&mut self, stack: u8, sound: Sound, stop: bool) {
-        self.cues.push(Cue {
+    /// `stack`'s `sound` starts (or, `stop`, ends) with the next frame drawn; returns the cue,
+    /// which a wait for its sample names ([`Player::wait_for`]).
+    fn cue(&mut self, stack: u8, sound: Sound, stop: bool) -> Cue {
+        let cue = Cue {
             at: self.clock.now,
             stack,
             sound,
             stop,
-        });
+        };
+        self.cues.push(cue);
+        cue
+    }
+
+    /// The battle waits while the sample `cue` started plays (E17 M5 T5b2, design §8.3;
+    /// `wait_for_sample` 0x59A4C0, `sample_wait` 0x599EC0): from now, until the sample's end or
+    /// [`crate::sound::SAMPLE_WAIT`] ms, whichever comes first, handling messages but drawing
+    /// nothing (the screen stands still, the idle steps too). Nothing without the samples'
+    /// lengths (no sound), for a cue without a sample or one already over.
+    fn wait_for(&mut self, cue: Cue) {
+        let Some(ms) = self.stage.lengths.and_then(|l| l.of(cue.stack, cue.sound)) else {
+            return;
+        };
+        let now = self.clock.now;
+        let end = cue
+            .at
+            .saturating_add(ms)
+            .min(now.saturating_add(crate::sound::SAMPLE_WAIT));
+        if end > now {
+            self.clock.wait(end - now);
+        }
+    }
+
+    /// The battle waits while `stack`'s `sound` last started in the command under way plays
+    /// ([`Player::wait_for`]): `sample_wait` 0x599EC0 on the stack's own sound's handle (a shot's
+    /// end, 0x43FDF9; a creature's cast's, 0x4486E2).
+    fn wait_last(&mut self, stack: u8, sound: Sound) {
+        let last = self
+            .cues
+            .iter()
+            .rev()
+            .find(|c| c.stack == stack && c.sound == sound && !c.stop)
+            .copied();
+        if let Some(cue) = last {
+            self.wait_for(cue);
+        }
     }
 
     /// The pose `r` lies in after its death: its group's last frame among the corpses.
@@ -3017,6 +3057,11 @@ impl Player<'_> {
                             hits,
                         };
                         self.log.push((at, line));
+                        // A one-target shot waits for its shot sound (`stack_shot` 0x43FDF9;
+                        // E17 M5 T5b2); an area shot does not (0x4400EB).
+                        if !area {
+                            self.wait_last(attacker, Sound::Shot);
+                        }
                     } else {
                         if struck {
                             self.clock.wait(self.speed.scale(PAUSE));
@@ -3353,12 +3398,12 @@ impl Player<'_> {
     /// step (or, commanded, the heal's first frame) to the heal's end; the heal's sound starts, then magic animation
     /// [`HEAL`] over the patient, a frame per redraw of trunc(100 F) on the deadline
     /// (`PlayMagicAnimation` 0x496840 without the hit), and a last redraw that erases it. The
-    /// battle then waits for the sound to end (`wait_for_sample` 0x59A4C0), which it has at
-    /// speed 0 (`Regener`, 1 881 ms, against the animation's 2 100); not at the faster speeds
-    /// with the sound on (*provisional*: not built, the captures play without sound). The log's
-    /// line comes between the sound and the animation (0x478D0A, E17 M3 T6b).
+    /// battle then waits for the sound to end (`wait_for_sample` 0x59A4C0; E17 M5 T5b2), which
+    /// it has at speed 0 (`Regener`, 1 881 ms, against the animation's 2 100), not at the faster
+    /// speeds; the tent's outline goes with the next redraw, after the wait. The log's line comes
+    /// between the sound and the animation (0x478D0A, E17 M3 T6b).
     fn heal(&mut self, healer: u8, target: u8, hit_points: u32) {
-        self.cue(target, Sound::Heal, false);
+        let cue = self.cue(target, Sound::Heal, false);
         let count = |stack: u8| self.live(stack).map_or(0, |l| l.count);
         let line = Logged::Heal {
             healer,
@@ -3395,6 +3440,7 @@ impl Player<'_> {
                 over: over.clone(),
             });
         }
+        self.wait_for(cue);
         self.outlined.push((self.clock.now, None));
     }
 
@@ -3520,15 +3566,14 @@ impl Player<'_> {
 
     /// Good morale after `stack`'s action (`good_morale_roll` 0x4649D3; E17 M3 T7b-2b-2b, design
     /// §7.16): its sound starts, animation [`GOOD_MORALE`] over it without its hit, the log's line
-    /// after it (0x464AD5), then the sound waited for (`wait_for_sample` 0x59A4C0: not with the
-    /// sound off, as the captures play; *provisional* with it on, as the heal's) and a redraw
-    /// shown at once (0x464B23). The stack that acted is outlined again from the animation's
+    /// after it (0x464AD5), then the sound waited for (`wait_for_sample` 0x59A4C0, E17 M5 T5b2;
+    /// nothing with the sound off) and a redraw shown at once (0x464B23). The stack that acted is outlined again from the animation's
     /// first frame ([`Player::acting`], the recorded `morale`).
     fn good_morale(&mut self, stack: u8) {
         let Some(live) = self.live(stack) else {
             return;
         };
-        self.cue(stack, Sound::GoodMorale, false);
+        let cue = self.cue(stack, Sound::GoodMorale, false);
         let first = self.over_one(GOOD_MORALE, (stack, &live), self.speed.scale(TICK), false);
         if let Some(first) = first {
             self.outlined.push((first, self.acting));
@@ -3539,6 +3584,7 @@ impl Player<'_> {
             good: true,
         };
         self.log.push((self.clock.now, line));
+        self.wait_for(cue);
         self.redraw();
     }
 
@@ -3577,12 +3623,14 @@ impl Player<'_> {
             };
             (Sound::BadMorale, BAD_MORALE, line)
         };
-        self.cue(stack, sound, false);
+        let cue = self.cue(stack, sound, false);
         self.log.push((self.clock.now, line));
         // The stack that acted last stays outlined ([`Player::acting`], the recorded `bad`).
         if let Some(first) = self.over_one(number, (stack, &live), self.speed.scale(TICK), true) {
             self.outlined.push((first, self.acting));
         }
+        // 0x464D1D, 0x464F3D (E17 M5 T5b2).
+        self.wait_for(cue);
     }
 
     /// The spells a melee strike of `attacker` leaves pending ([`PENDING`]), from `events[i]` on:
@@ -3727,8 +3775,8 @@ impl Player<'_> {
     /// M3 T7b-2b-3): the Thunderbird's bolt (0x441185 to 0x441374) with its damage: the log's
     /// line, its sound, the bolt from the sky over the stack, the damage's line (named by the
     /// spell), then [`THUNDERBOLT`] over the marked stack with its reaction; the sound waited for
-    /// as good morale's (not built). Any other its effects at once (the flies' dispels and
-    /// Weakness: not built), as a pending one the strike did not take.
+    /// as good morale's (0x441374, E17 M5 T5b2). Any other its effects at once (the flies'
+    /// dispels and Weakness: not built), as a pending one the strike did not take.
     fn strike_spell(&mut self, target: u8, spell: u16, effects: &[Event]) {
         let damage = effects.iter().find_map(|e| match *e {
             Event::SpellDamage {
@@ -3748,7 +3796,7 @@ impl Player<'_> {
             count: live.count,
         };
         self.log.push((self.clock.now, line));
-        self.cue(target, Sound::Thunderbolt, false);
+        let cue = self.cue(target, Sound::Thunderbolt, false);
         self.over_one(BOLT, (target, &live), self.speed.scale(BOLT_TIME), false);
         let line = Logged::SpellDamage {
             spell,
@@ -3756,6 +3804,7 @@ impl Player<'_> {
         };
         self.log.push((self.clock.now, line));
         self.marked((target, &live), kills, Some(THUNDERBOLT));
+        self.wait_for(cue);
         self.effects(effects);
     }
 
@@ -3771,14 +3820,16 @@ impl Player<'_> {
 
     /// The Rust Dragon's acid on the stack it struck (`striker_effects` 0x44149F to 0x441586;
     /// E17 M3 T7b-2b-3): Acid Breath's sound (category 2), the damage and its line (named by Acid
-    /// Breath), animation [`ACID`] over the stack without its hit, the sound waited for (not
-    /// built), then the stack's reaction (`strike_animation` without an animation).
+    /// Breath), animation [`ACID`] over the stack without its hit, the sound waited for
+    /// (0x441577, E17 M5 T5b2), then the stack's reaction (`strike_animation` without an
+    /// animation).
     fn acid(&mut self, target: u8, (damage, kills): (u64, u32)) {
         let Some(live) = self.live(target) else {
             return;
         };
+        let mut cue = None;
         if let Some(spell) = self.spell_handle(ACID_BREATH) {
-            self.cue(target, Sound::SpellFile(spell), false);
+            cue = Some(self.cue(target, Sound::SpellFile(spell), false));
             let line = Logged::SpellDamage {
                 spell,
                 hit: (target, damage, kills),
@@ -3786,6 +3837,9 @@ impl Player<'_> {
             self.log.push((self.clock.now, line));
         }
         self.over_one(ACID, (target, &live), self.speed.scale(TICK), false);
+        if let Some(cue) = cue {
+            self.wait_for(cue);
+        }
         self.react_alone(&[(target, kills)], [STRIKER, STRUCK]);
     }
 
@@ -3793,7 +3847,7 @@ impl Player<'_> {
     /// T7b-2b-3): the creatures it raised join the stack, the log's line (the drinkers by their
     /// number before them, the stack `hit` struck by its number before the strike), its sound,
     /// then animation [`LIFE_DRAIN`] over the drinkers without their hit, the box showing their
-    /// new number from its first frame; the sound waited for (not built).
+    /// new number from its first frame; the sound waited for (0x440E8D, E17 M5 T5b2).
     fn drain(
         &mut self,
         stack: u8,
@@ -3815,7 +3869,7 @@ impl Player<'_> {
             target_count,
         };
         self.log.push((self.clock.now, line));
-        self.cue(stack, Sound::Drain, false);
+        let cue = self.cue(stack, Sound::Drain, false);
         let first = self.over_one(LIFE_DRAIN, (stack, &live), self.speed.scale(TICK), false);
         if let Some(shown) = first.filter(|_| raised > 0) {
             self.counts.push(CountKey {
@@ -3824,12 +3878,13 @@ impl Player<'_> {
                 count: live.count,
             });
         }
+        self.wait_for(cue);
     }
 
     /// Death Stare after a strike of `starer` on `target` (`striker_effects` 0x440EB6 to
     /// 0x441178; E17 M3 T7b-2b-3): the log's line, Death Stare's sound (category 2), animation
     /// [`DEATH_STARE`] over the stack without its hit, then the kills and the stack's reaction
-    /// (`strike_animation` without an animation); the sound waited for (not built).
+    /// (`strike_animation` without an animation); the sound waited for (0x441178, E17 M5 T5b2).
     fn death_stare(&mut self, starer: u8, target: u8, kills: u32) {
         let (Some(gorgons), Some(live)) = (self.live(starer), self.live(target)) else {
             return;
@@ -3841,11 +3896,14 @@ impl Player<'_> {
             kills,
         };
         self.log.push((self.clock.now, line));
-        if let Some(spell) = self.spell_handle(DEATH_STARE_SPELL) {
-            self.cue(target, Sound::SpellFile(spell), false);
-        }
+        let cue = self
+            .spell_handle(DEATH_STARE_SPELL)
+            .map(|spell| self.cue(target, Sound::SpellFile(spell), false));
         self.over_one(DEATH_STARE, (target, &live), self.speed.scale(TICK), false);
         self.react_alone(&[(target, kills)], [STRIKER, STRUCK]);
+        if let Some(cue) = cue {
+            self.wait_for(cue);
+        }
     }
 
     /// A frame of the hero of `side` (0 the attacker's): drawn now and shown at the deadline,
@@ -3920,13 +3978,15 @@ impl Player<'_> {
             || (look.original == TELEPORT && self.teleporting(spell, effects));
         match aimed.filter(|_| !done) {
             Some((t, live)) if resisted(t) => {
-                self.cue(t, Sound::Resisted, false);
+                let cue = self.cue(t, Sound::Resisted, false);
                 let line = Logged::Resisted {
                     stack: t,
                     count: live.count,
                 };
                 self.log.push((self.clock.now, line));
                 self.over_one(RESISTED, (t, &live), time, false);
+                // 0x5A2053 (E17 M5 T5b2).
+                self.wait_for(cue);
             }
             Some((t, live)) => {
                 self.cue(t, Sound::Spell(spell), false);
@@ -4344,9 +4404,9 @@ impl Player<'_> {
             let Some(&anchor) = hexes.iter().max() else {
                 continue;
             };
-            if look.object_sound {
-                self.cue(0, Sound::Object(spell), false);
-            }
+            let cue = look
+                .object_sound
+                .then(|| self.cue(0, Sound::Object(spell), false));
             let at = match look.original {
                 FIRE_WALL if self.stage.bugs == Bugs::Fixed => anchor,
                 FIRE_WALL | FORCE_FIELD => aimed.unwrap_or(anchor),
@@ -4358,6 +4418,11 @@ impl Player<'_> {
             self.place(spell, hexes, self.owner(hexes));
             if look.original != FORCE_FIELD {
                 self.redraw();
+            }
+            // Quicksand's and Land Mine's loops wait for each object's sample (`sample_wait`
+            // 0x5A04DD, 0x5A06FF; E17 M5 T5b2); Fire Wall's and Force Field's do not.
+            if let Some(cue) = cue.filter(|_| matches!(look.original, QUICKSAND | LAND_MINE)) {
+                self.wait_for(cue);
             }
         }
     }
@@ -4618,9 +4683,10 @@ impl Player<'_> {
         turned
     }
 
-    /// A creature's cast is over (0x4486E2, 0x44872F): its shot sound ends and it turns back if
-    /// it turned.
+    /// A creature's cast is over (0x4486E2, 0x44872F): the battle waits for its shot sound
+    /// (`sample_wait`, E17 M5 T5b2), which then ends, and it turns back if it turned.
     fn creature_cast_over(&mut self, stack: u8, turned: bool) {
+        self.wait_last(stack, Sound::Shot);
         self.cue(stack, Sound::Shot, true);
         if let Some(live) = self.live(stack).filter(|_| turned) {
             self.turn(stack, live);

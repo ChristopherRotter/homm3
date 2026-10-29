@@ -482,6 +482,7 @@ fn play_mine(snapshot: &Observation, commands: &[(Option<u32>, Vec<Event>)]) -> 
         casts: &casts,
         bugs: Bugs::Original,
         siege: Some(&castle),
+        lengths: None,
     };
     let commands: Vec<Command<'_>> = commands
         .iter()
@@ -622,6 +623,7 @@ fn grow_seen(humans: [bool; 2], laid: bool, commands: &[Seen]) -> Timeline {
         casts: &casts,
         bugs: Bugs::Original,
         siege: Some(&castle),
+        lengths: None,
     };
     let looks = siege_looks();
     let mut growing = Growing::new(&o, &looks, stage, Speed::default(), None).unwrap();
