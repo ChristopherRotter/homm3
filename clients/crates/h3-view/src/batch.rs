@@ -390,6 +390,21 @@ mod tests {
                     y: 0,
                 }],
             },
+            // A dissolve's new picture and what it measures (E17 M5 T5a).
+            Draw::Dissolve {
+                step: 0,
+                rect: None,
+                measured: vec![Draw::Background {
+                    picture: "Measured.pcx".to_string(),
+                    x: 0,
+                    y: 0,
+                }],
+                list: vec![Draw::Background {
+                    picture: "Blended.pcx".to_string(),
+                    x: 0,
+                    y: 0,
+                }],
+            },
             // The result window's clips, a start and its loop (E17 M5 T4b2b).
             Draw::Video {
                 start: "rtstart.bik".to_string(),
@@ -405,6 +420,7 @@ mod tests {
             [
                 "ABS.PCX",
                 "BG.PCX",
+                "BLENDED.PCX",
                 "BOOK.FNT",
                 "BOOK.PAL",
                 "C06SPF0.DEF",
@@ -419,6 +435,7 @@ mod tests {
                 "CROLLOVR.PCX",
                 "GAME.PAL",
                 "ICM001.DEF",
+                "MEASURED.PCX",
                 "OB.DEF",
                 "OTHER.PCX",
                 "PLAYERS.PAL",

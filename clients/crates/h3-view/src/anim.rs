@@ -4359,10 +4359,7 @@ impl Player<'_> {
                 count,
             })
         }));
-        for r in reactions {
-            if gone.contains(&r.stack) {
-                continue;
-            }
+        for r in reactions.into_iter().filter(|r| !gone.contains(&r.stack)) {
             if r.died {
                 let corpse = Pose {
                     layer: CORPSE,
@@ -5631,10 +5628,7 @@ impl Player<'_> {
                 count,
             })
         }));
-        for r in reactions {
-            if gone.contains(&r.stack) {
-                continue;
-            }
+        for r in reactions.iter().filter(|r| !gone.contains(&r.stack)) {
             let pose = if r.died { Self::fallen(r) } else { r.base };
             self.pending.push((r.stack, pose));
             if r.died {

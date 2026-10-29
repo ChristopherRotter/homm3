@@ -1405,7 +1405,7 @@ fn created_stacks_are_drawn_and_a_dissolve_measures_its_stacks() {
         .into_iter()
         .collect(),
         dissolve: Some(Dissolve {
-            before: alloc::boxed::Box::new(before.clone()),
+            before: Box::new(before.clone()),
             step: 3,
             area: DissolveArea::Stacks(vec![1, 2, 7]),
         }),
@@ -1431,7 +1431,7 @@ fn created_stacks_are_drawn_and_a_dissolve_measures_its_stacks() {
     );
     let teleport = Moment {
         dissolve: Some(Dissolve {
-            before: alloc::boxed::Box::new(before),
+            before: Box::new(before),
             step: 0,
             area: DissolveArea::Battlefield,
         }),
@@ -1442,4 +1442,52 @@ fn created_stacks_are_drawn_and_a_dissolve_measures_its_stacks() {
         list.last(),
         Some(Draw::Dissolve { rect: Some(r), measured, .. }) if *r == BATTLEFIELD && measured.is_empty()
     ));
+    // A magic animation over a measured stack is measured with it (Sacrifice's victim).
+    let magic = Moment {
+        magic: Some(Magic {
+            def: "SP12_.def".into(),
+            frame: 0,
+            translucent: false,
+            over: vec![(1, [3, 4], false)],
+        }),
+        ..Moment::default()
+    };
+    let removed = Moment {
+        dissolve: Some(Dissolve {
+            before: Box::new(magic),
+            step: 0,
+            area: DissolveArea::Stacks(vec![0, 1]),
+        }),
+        ..Moment::default()
+    };
+    let list = battle_at(&o, &removed, &keys(), &tables(), &layout).unwrap();
+    let Some(Draw::Dissolve { measured, .. }) = list.last() else {
+        panic!("{list:?}");
+    };
+    let magics = measured
+        .iter()
+        .filter(|d| matches!(d, Draw::Magic { .. }))
+        .count();
+    assert_eq!(magics, 1);
+    // A new picture that cannot be drawn (a created Ghost: no asset entry) fails the dissolve.
+    let unknown = Moment {
+        created: [(
+            5,
+            crate::anim::created_stack(
+                (5, Side::Attacker),
+                (2, 3, hex(7, 3)),
+                crate::anim::Body::default(),
+                (false, false),
+            ),
+        )]
+        .into_iter()
+        .collect(),
+        dissolve: Some(Dissolve {
+            before: Box::new(Moment::default()),
+            step: 0,
+            area: DissolveArea::Battlefield,
+        }),
+        ..Moment::default()
+    };
+    assert!(battle_at(&o, &unknown, &keys(), &tables(), &layout).is_err());
 }

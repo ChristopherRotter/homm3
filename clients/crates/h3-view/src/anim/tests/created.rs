@@ -186,6 +186,32 @@ fn teleport_dissolves_the_battlefield_in_33_ms_steps() {
     // The hero's frames 5 to 7 after it.
     assert!(t.hero_keys.iter().any(|k| k.drawn >= end));
     assert_eq!(BATTLEFIELD, [0, 0, 800, 556]);
+    // A Teleport that moved no stack, or one the timeline does not know, dissolves nothing.
+    let commands = [
+        (
+            Some(0),
+            vec![
+                spell(TELEPORT_SPELL, Target::Stack { stack: 0 }),
+                Event::Moved {
+                    stack: 0,
+                    from: 86,
+                    to: 87,
+                },
+            ],
+        ),
+        (
+            None,
+            vec![
+                spell(TELEPORT_SPELL, Target::Stack { stack: 9 }),
+                Event::Teleported {
+                    stack: 9,
+                    from: 40,
+                    to: 41,
+                },
+            ],
+        ),
+    ];
+    assert!(play_created(&o, &commands).dissolves.is_empty());
 }
 
 #[test]
@@ -279,6 +305,47 @@ fn a_summoned_stack_dissolves_in_and_away_and_its_record_goes_to_the_next() {
     let (vanished, _, ref area) = ds[2];
     assert_eq!(area, &DissolveArea::Stacks(vec![2]));
     assert_eq!(t.at(vanished + 1)[&2].layer, GONE);
+}
+
+#[test]
+fn a_defenders_summon_takes_its_sides_next_record() {
+    let o = snapshot(vec![
+        at(0, Side::Attacker, SWORDSMAN, 86, false),
+        at(1, Side::Defender, PIKEMAN, 50, false),
+    ]);
+    let cast = |spell, target| Event::SpellCast {
+        side: Side::Defender,
+        spell,
+        target,
+        second: Target::None {},
+    };
+    let commands = [
+        (
+            Some(0),
+            vec![cast(SUMMON, Target::None {}), summoned(2, 6, 32)],
+        ),
+        // A clone of a creature without a look: no stack the timeline draws.
+        (
+            None,
+            vec![
+                cast(CLONE, Target::Stack { stack: 1 }),
+                Event::StackCreated {
+                    stack: 3,
+                    creature: 999,
+                    count: 40,
+                    hex: 40,
+                    original: Some(1),
+                },
+            ],
+        ),
+    ];
+    let t = play_created(&o, &commands);
+    let made = t.member_at(Side::Defender, 1).unwrap();
+    assert_eq!((made.stack, made.side), (2, Side::Defender));
+    assert_eq!(t.member(2).map(|m| m.record), Some(1));
+    assert!(t.member_at(Side::Attacker, 1).is_none());
+    assert_eq!(t.created.len(), 1);
+    assert!(t.member(3).is_none());
 }
 
 #[test]
