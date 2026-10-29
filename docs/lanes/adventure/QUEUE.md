@@ -4,20 +4,23 @@ Pre-refined tasks of the adventure lane, in order, then the inbox of discovered 
 
 ## Tasks
 
-Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T65 (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 7 are closed (2026-10-12, -13, -20, -21, -23, -26, -28; increment 7, rewards on the map, by T65's audit). **Increment 8, boats and the sea**, refined with the user at T65 (ADV-Q31; decisions 158, 159): the survey and the ADR amendment drafts first (T66a, T66b), each task's cut confirmed with the user at its start. T66a in two (decision 160): T66a1 done (`adventure/e08-t66a1`, #550: survey `E08-sea.md` §0 to §6), T66a2 done (`adventure/e08-t66a2`, decision 161: whole; §7 to §14, the checkpoint's ADV-Q32); T66b done (`adventure/e08-t66b`, decision 169: whole; the drafts, `E08-design.md` and the cut in eight rounds, ADV-Q33 accepted: decisions 170–173). Round 2: T67 done (`adventure/e08-t67`, decision 174: whole; the writer's sea objects, the spec's bottles and a monster's own tile, `cross-lane`; the specs E8a, its water map and E8b with their templates). Round 3: T68 in two by batch (decision 175): T68a done (`adventure/e08-t68a`: the harness's boat reads and steps, E8a and its water map run and recorded), T68b done (`adventure/e08-t68b`, decision 176: whole; the sea pickups' reads, E8b run four times, two recorded). T69 next. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
+Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T65 (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 7 are closed (2026-10-12, -13, -20, -21, -23, -26, -28; increment 7, rewards on the map, by T65's audit). **Increment 8, boats and the sea**, refined with the user at T65 (ADV-Q31; decisions 158, 159): the survey and the ADR amendment drafts first (T66a, T66b), each task's cut confirmed with the user at its start. T66a in two (decision 160): T66a1 done (`adventure/e08-t66a1`, #550: survey `E08-sea.md` §0 to §6), T66a2 done (`adventure/e08-t66a2`, decision 161: whole; §7 to §14, the checkpoint's ADV-Q32); T66b done (`adventure/e08-t66b`, decision 169: whole; the drafts, `E08-design.md` and the cut in eight rounds, ADV-Q33 accepted: decisions 170–173). Round 2: T67 done (`adventure/e08-t67`, decision 174: whole; the writer's sea objects, the spec's bottles and a monster's own tile, `cross-lane`; the specs E8a, its water map and E8b with their templates). Round 3: T68 in two by batch (decision 175): T68a done (`adventure/e08-t68a`: the harness's boat reads and steps, E8a and its water map run and recorded), T68b done (`adventure/e08-t68b`, decision 176: whole; the sea pickups' reads, E8b run four times, two recorded); T69 done (`adventure/e08-t69`, decision 177: whole with a re-read; batch E8 scored, D-45 reverted, D-46 to batch E8c: decision 179). T69b next, then T70. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
 
-### E08 T69 — Batch E8's scoring
+### E08 T69b — Batch E8c: a flight over a water tile holding an object (D-46)
 
-- **Scope** (design §17): survey `E08-sea.md` §15 (new), each row against the specs' predictions
-  (T67's corrections to §11: E8-4's drop to 0, E8-13's path past the guards) and T68a's findings
-  (`E08-log.md`, T68a: the flyer took no Flotsam, E8-15's battle on grass, a refused second click
-  zeroes the points, the hero on water accepted) and T68b's (`E08-log.md`, T68b: E8b's two
-  recorded runs, `E08-batch-8b.md` and `-run2.md`, their draws counted together; E8-11's opening
-  blocks three hexes; a boat's record keeps its boarding tile while sailing); a dispute a row
-  contradicts reverts to the other side (decision 162) or becomes an `ADV-Q`; E8-5 decides
-  whether D-44's refusal stays (decision 163); the consensus rows' sources `verified` when the
-  rules are written (T72 to T74).
-- **Depends on:** T68a, T68b (done). **Status:** ready.
+- **Scope** (decision 179; survey `E08-sea.md` §15, D-46): one row, **E8-17**, on a small map of
+  its own (the spec `experiments/specs/E08-batch-8c.toml` and its template; the writer has the
+  Flotsam and boats): heroes with Angel Wings on land, each one's only way east across water
+  bounded by rock (terrain 9, closed to a flight): (a) one water tile holding a Flotsam, entered
+  from land; (b) three water tiles, the Flotsam in the middle, entered from water; controls (c)
+  plain water and (d) an empty boat. By the code (a) and (b) give no path to the far side and
+  (c), (d) a path over; ADV-MOV-009 and VCMI a path over all four. Record each click's marks and
+  the hero's tile; the far sides explored (ADV-MOV-008). The harness recipe
+  (`clients/capture/batches/`; its walk and marks reads exist), the run under Wine (the
+  installation's files staged as T68a), the record in `experiments/results/`, the score in survey
+  §15: confirmed, the drafts and design stay and T73 amends ADV-MOV-009; reverted, the drafts,
+  design §7 and §15 go back to the pass and the reading is re-read.
+- **Depends on:** T69 (done). **Status:** ready; its cut confirmed at its start.
 
 ## Inbox
 

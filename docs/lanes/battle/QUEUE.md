@@ -12,6 +12,13 @@ E23, the original's battle AI, is **closed** (2026-10-24; `docs/epics/E23-origin
 
 Consolidated on 2026-10-19 (the user): the entries from E01 to E04c's closure are merged below by kind, done and duplicate parts dropped; the origin stays in brackets (an epic and task, a review report such as r3 or F-r2b-2). History: git. Items for other lanes went into their inboxes; the First Aid Tent became BAT-Q51. The addresses are readings of the executable, the reviews' not read a second time. Where the readings stand: `installation.md` §7.8–§7.33; the reviews' reports stay on `battle/e04b-t11b-review-reports` and `battle/e04c-t10b-review-reports`; their experiment candidates are in `docs/experiments/README.md` ("From the battle queue's inbox", "From the E04b review", "From E04c").
 
+- 2026-10-29 (the adventure lane, E08 T69; **observations for BAT-TER-002 and BAT-GEO-004**,
+  both `implemented`): batch E8b read the original's battles at sea (`experiments/results/E08-batch-8b.md`,
+  `-run2.md`; survey `E08-sea.md` §15). One hero in a boat (E8-11, E8-13, E8-14): water, no special
+  field, the ship flag, one obstacle 55 (three hexes: 98, 114, 115; 79, 96, 97; 90, 106, 107), as
+  `deck`; both in boats (E8-12): exactly the 32 hexes of `boats` (0x63D368). Add them as
+  observations when you next touch the catalog; nothing to change.
+
 - 2026-10-28 (the client lane, E17 M5 T4a; **for you to judge: `h3_formats::text` and quotes**):
   the executable's text-table readers make each run of quotes in a field one, after cutting a
   quoted field's closing quote (`text_table_records` 0x5BBBA0 at 0x5BBD29 to 0x5BBD6A; the
