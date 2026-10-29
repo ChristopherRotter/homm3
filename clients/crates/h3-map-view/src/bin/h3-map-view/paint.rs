@@ -296,7 +296,7 @@ impl<'a> Painter<'a> {
         let index = (0..art.levels)
             .map(|z| {
                 let z = u8::try_from(z).map_err(|_| format!("level {z}"))?;
-                TileIndex::build(&art, &start, tables, &shapes, z, assets.bugs)
+                TileIndex::build(&art, &start, tables, assets.layout, &shapes, z, assets.bugs)
                     .map_err(|e| e.to_string())
             })
             .collect::<Result<Vec<_>, String>>()?;

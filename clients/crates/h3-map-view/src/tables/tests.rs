@@ -69,6 +69,19 @@ pieces = [{}]
 
 {}
 
+[map.records]
+loaded_as = [[219, 33]]
+ownable = [53]
+hole = 124
+
+[map.minimap]
+radar = "radar.def"
+terrain = [8, 9]
+owned = [53]
+blocking = [134]
+other = {{ frame = 1, scale = 0x3F800000 }}
+sizes = [{{ size = 36, columns = [4], rows = [4], radar = {{ frame = 4, scale = 0x40800000 }} }}]
+
 [[terrain]]
 code = 0
 def = "dirttl.def"
@@ -172,28 +185,28 @@ fn every_def_with_the_frames_the_view_draws() {
     // The heroes' and boats' DEFs after the rest, each drawn in the facings' five groups.
     let heroes = HERO_CLASSES + COLOURS + 2 * BOAT_TYPES + BOAT_TYPES * COLOURS;
     // Then the towns' pictures, one frame of one group each (E24 M1 T5b1).
-    assert_eq!(needs.len(), 8 + heroes + 3 * FACTIONS);
-    assert!(defs[..8].iter().all(|n| n.groups == 1));
-    assert!(defs[..8].iter().all(|n| n.walking.is_empty()));
+    assert_eq!(needs.len(), 9 + heroes + 3 * FACTIONS);
+    assert!(defs[..9].iter().all(|n| n.groups == 1));
+    assert!(defs[..9].iter().all(|n| n.walking.is_empty()));
     // Each also in a step's walking groups 5 to 9, 8 frames each (E24 M2 T3b).
     assert!(
-        defs[8..8 + heroes]
+        defs[9..9 + heroes]
             .iter()
             .all(|n| n.groups == 5 && n.frames == 1 && n.walking == (5..10) && n.walk_frames == 8)
     );
     assert!(
-        defs[8 + heroes..]
+        defs[9 + heroes..]
             .iter()
             .all(|n| n.groups == 1 && n.frames == 1 && n.walking.is_empty())
     );
     assert_eq!(
-        [&needs[8 + heroes], needs.last().unwrap()],
+        [&needs[9 + heroes], needs.last().unwrap()],
         [
             &("tv0.def", "town village 0", None, 1),
             &("tc8.def", "town capitol 8", None, 1)
         ]
     );
-    let ends = [&needs[8], &needs[7 + heroes]];
+    let ends = [&needs[9], &needs[8 + heroes]];
     assert_eq!(
         ends,
         [
@@ -201,9 +214,9 @@ fn every_def_with_the_frames_the_view_draws() {
             &("abf23.def", "boat flag 23", None, 1)
         ]
     );
-    assert_eq!(needs[8 + HERO_CLASSES].1, "hero flag 0");
+    assert_eq!(needs[9 + HERO_CLASSES].1, "hero flag 0");
     assert_eq!(
-        needs[..8],
+        needs[..9],
         [
             ("dirttl.def", "terrain 0", Some((Layer::Terrain, 0)), 1),
             ("watrtl.def", "terrain 8", Some((Layer::Terrain, 8)), 1),
@@ -213,6 +226,7 @@ fn every_def_with_the_frames_the_view_draws() {
             ("tshrc.def", "full shroud", None, FULL_FRAMES),
             ("tshre.def", "edge shroud", None, 34),
             ("adag.def", "path", None, PATH_FRAMES),
+            ("radar.def", "minimap box", None, 5),
         ]
     );
     let names: Vec<String> = tables
@@ -227,6 +241,7 @@ fn every_def_with_the_frames_the_view_draws() {
             "COBBRD.DEF",
             "DIRTTL.DEF",
             "EDG.DEF",
+            "RADAR.DEF",
             "WATRTL.DEF"
         ]
     );

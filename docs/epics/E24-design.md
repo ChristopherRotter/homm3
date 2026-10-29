@@ -208,7 +208,8 @@ The table, mask = 16 × row + column:
 - ~~Terrain frames with runs (§1.3) and the DEFs' frame counts~~: closed by T2's gate (§1.9).
 - The mouse's tile and the 8-pixel offset (§1.2): M3, with a capture hovering at y = 8 + 32 k + 28.
 - Passes 4 to 9: read in T1b (§2). The puzzle and covered modes: later (M5 for the hot seat).
-- The minimap (0x412C40, inferred) takes a terrain's colour from its DEF's palette entry 22: M3.
+- ~~The minimap (0x412C40) takes a terrain's colour from its DEF's palette entry 22~~: entries 8 and 9
+  (a 16-bit palette's colours start at +0x1C; M3 T3a, §4.4).
 - What 0x6989C0 means and when the DEFs are reloaded (k's origin).
 
 ### 1.9 The frame and the gate's findings (M1 T2, 2026-10-23)
@@ -1690,7 +1691,104 @@ kept whole ("no cut", 2026-10-28).
   `path-objects` standing (5.5 %), 3.2 → 1.3 on *Tale of two lands* standing (11 %: its water
   cycles), 1.4 → 0.6 and 1.9 → 1.5 on them with input (`xdotool`: 9 scrolls, 37 steps, 4 clicks;
   29 % and 52 %).
+- **The user's machine** (`map-measure-t2b1.txt` → `map-measure-t2b2.txt`, Direct3D 11, 1600 ×
+  1200): a frame made in a median 0.7 → 0.2 ms on `walk-1` (24.9 % of the pixels uploaded), 2.3 →
+  0.9 on *Tale of two lands* (p95 2.7 → 0.9; 11.1 %), 0.2 → 0.0 on `path-objects` with the user's
+  input (p95 2.5 → 1.5; 54 %; the check's run 1.7 → 0.3); every frame read back exact, made as the
+  same frame composed afresh, and shown as the headless loop's.
 - **Left:** the scene built afresh each frame (2.3 million instructions, about half of what a
   standing frame costs now; its draws' names are strings, a few thousand allocations a frame); a
   button's change (a walk's start and end) draws the background and the whole view again; M4's
   changes to the objects (the tile index again, §4.2; the cells compare whatever the scene draws).
+
+### 4.4 The minimap (M3 T3a)
+
+Read: `minimap_draw` 0x412C40 in full but its view-world and network branches,
+`tile_object_entrance` 0x4FCAA0, the arguments of three callers (`adventure_full_update`
+0x41753A, `hero_select` 0x418046, `view_scroll` 0x41973E: the view's corner +0xE4, then 0, 1, 0,
+0, 0), and `radar.def`'s load (0x40742B into the manager's +0xC8). The other ten callers and when
+each redraws it: T3b.
+
+- **The call** (thiscall on the manager, six arguments): the view's corner as a packed tile (x and
+  y signed 10 bits, the level bit 26), `show` (the area shown at once, `screen_show_rect`
+  0x602BD0), a third never read, and three reveals that draw a tile of class 53 (mines), 34
+  (heroes) or 98 (towns) unexplored (the spells' view of the world: 0 at the callers read). It
+  returns at once during a computer's turn outside a network game (`player_is_human` 0x4BADA0 of
+  the current player, `remote_turn` 0x691209); the network branch is not read.
+- **The area:** the dialog's area 1 (+0x44, its +0x4C: x +0x18, y +0x1A, width +0x1C, height
+  +0x1E: (630, 26), 144 × 144), written straight into the back buffer.
+- **A tile's colour**, row by row from the top, each row's tiles from the left (the map's width a
+  row, its height rows): black (0) when the viewer has not explored it (`viewing_player_bit`
+  0x69CCBC in `tile_vision_word` 0x4F79B0's low byte) or while the covered view (0x699538) is
+  set; else the terrain's open colour, its DEF's (+0x60 + 4 t) 16-bit palette (+0x20) entry 8
+  (+0x2C: the colours start at +0x1C; 0x412F6C), then the first that applies:
+  - the tile of the screen's player's selected hero (`game_screen_player` 0x4CE9B0, +0x4; on the view's
+    level): game_palette16's entry 64 + the hero's owner (+0x22), as the flags' (§2.9);
+  - a hero's tile (class 34 with the entrance bit +0xD 0x10, which `hero_show` sets with the
+    class): entry 64 + its owner (game +0x4DF18 by the tile's word, the hero);
+  - by `tile_object_class` 0x4FCBD0 (a hero's tile the class under it; the switch 0x412FF0, its
+    table 0x413670 indexed by the class less 17): the dwellings 17 and 20, a garrison 33, a
+    lighthouse 42 and a mine 53, a shipyard 87 and a town 98, where the tile is blocked or an
+    entrance (+0xC bit 0x40 clear or +0xD 0x10 set): entry 64 + the owner of the object recorded
+    on the entrance tile `tile_object_entrance` gives (`tile_object_setup` 0x4FCC30, its record's
+    owner as `tile_object_owner` 0x40FD20 reads it), 63 with none; the terrain's colour without
+    an entrance tile;
+  - 21 decorations (116, 118, 119, 121, 123, 126, 128, 131, 133, 134, 135, 137, 148, 149, 152,
+    153, 154, 155, 158, 159, 160: cacti, craters, dead trees, frozen and other lakes, hills, lava
+    lakes, mandrakes, mounds, mountains, the trees, dunes and pits, stalagmites, stumps, tar pits,
+    volcanoes; not the brush, flowers, kelp, logs, moss, rocks or skulls) on a blocked tile (+0xC
+    bit 0x40 clear): the terrain's blocked colour, entry 9 (+0x2E);
+  - every other class (none, a boat, a monster, a pile, the other decorations): the open colour.
+
+  A tile records a blocking object without an entrance only through 0x505610's two blocking walks
+  (§2.5 of `rules/surveys/E08-objects.md`), which clear the bit, so an owned object's tiles all
+  take its owner's colour and a listed decoration's its terrain's blocked one (but the hole's,
+  124, which the fourth walk records unblocked and the list leaves out). The ten terrains' entries
+  8 and 9 are VCMI's `minimapUnblocked` and `minimapBlocked` (`config/terrains.json`) to within
+  the 5-6-5 rounding: water's blocked colour is not VCMI's (the original's entry 9, (0, 41, 108),
+  never drawn: no listed decoration stands on water).
+- **The pixels** by the map's height (`map_height` 0x6783CC; the jump tables 0x4135D0 and
+  0x413700 indexed by the height less 36): 36 four by four a tile, 72 two by two, 108 the columns
+  2, 1, 1 and the rows 1, 1, 2 over and over (two counters: the column's carried from tile to tile,
+  the row's stepped before its row is drawn), 144 one pixel; any other height draws no tile (the
+  box still drawn). A row's pointer steps by the rows its tiles took.
+- **The box:** `radar.def` (+0xC8), group 0, its frame by the height: 36 frame 4 at the scale 4.0,
+  72 frame 3 at 2.0, 108 frame 2 at 1.33 (the f32 0x3FAA3D71), any other frame 1 at 1.0. Its
+  place: x = 630 + trunc(vx × s) for the view's corner vx ≥ 0 (`fild`, `fmul`, `fadd` of the
+  area's x, `fstp` to an f32, `crt_ftol` 0x6179D4), else 630 with its canvas cut from column
+  trunc(−vx × s); y the same. Drawn through `def_draw_button_frame` 0x47BF00 (the plain drawer,
+  runs skipped) with the width the DEF's (+0x30: 148) less the columns cut, less what lies past
+  the area's right edge (x + 148 always does: 774 − x − the columns cut), the height likewise
+  (+0x34: 132; cut at the area's bottom only past it). The frames: 19 × 17, 25 × 23, 38 × 34
+  and 76 × 68 at their canvas's corner (frame 1 one pixel a tile: the view's 18.5 × 17 tiles
+  rounded up). The x87's roundings of a product with 1.33 could carry it across an integer only
+  with its fraction within 2^-14 of the next; none comes within 2^-10 for a corner of −10 to 255
+  (a test checks), so the client truncates the exact product of the f32's bits.
+- **The view-world dialog** (`view_world_open` 0x6AAC3C, inferred): the frames 5 to 13 by its
+  scale 0x68C6B8 (16.0, 11.84, 7.68) and with one of them no box; the spells' view (M4 or later).
+- **Built** (*provisional*): `h3_map_view::record`, the object a tile records (0x505610's walks,
+  M2 T5's, now shared by the sound and the minimap; the tables' `[map.records]`, moved out of
+  `[map.sound]`); `h3_map_view::minimap` with the tables' `[map.minimap]` (the palette entries,
+  the owned and blocking classes, each size's columns, rows, frame and scale by the f32's bits),
+  a level's `Base` built with its `TileIndex` (each tile's colour by its terrain and record: an
+  owned class blocked or an entrance its owner's, a listed class blocked the blocked colour),
+  `Base::tiles` each scene (the unexplored tiles black, every hero on the level in its owner's
+  colour: the selected hero's rule and a standing hero's give the same) and `Base::radar` (the
+  exact product, design above). The scene's draws `Minimap` and `Radar` after the gems; the
+  composer fills each tile's rectangle (a terrain's colours from its DEF's palette as the scene
+  cycles it, an owner's from the flag palette) and draws the box through the raw drawer cut as
+  0x47BF00 cuts it (the cut columns taken once more when the box passes the area's right edge:
+  `774 − x − cut`; no frame reaches it). Its cells compare them as draws that stay: the same only
+  while the view does not move. An owned object without an entrance on the map: its owner's
+  colour (MCL-Q4's answer for its flags), the terrain's under `--bugs original`. Each scene draws
+  the minimap as the live part gives it; when the original draws it again is T3b's.
+- **The kept frame** (T2b2's composer): the minimap's draws stay where they are when the view
+  moves (compared unmoved, their last rectangles unmoved), a cell clear of the view's clip keeps
+  its pixels through a move, a terrain's palette step counts for the minimap only where a cycle
+  rotates its entries (none does: 8 and 9 lie below every range), and its draw's comparison,
+  which meets some 25 cells, is made once a scene. Measured (the sandbox, `--measure 20`, `master`
+  against T3a): a frame made in a median 0.5 and 0.5 ms on `walk-1`, 1.0 and 1.0 on
+  `path-objects`, 1.4 and 1.5 on *Tale of two lands*; uploaded 24.9 → 25.5 % (the minimap at a
+  step), 5.2 and 5.2 %, 11.1 → 11.2 %. `Base::tiles` (the explored tiles and the heroes, each
+  scene) costs some 36 000 instructions a frame on a 36-tile map, about 0.6 million on a 144-tile
+  one: gone with T3b, which makes the tiles only when the original draws them.

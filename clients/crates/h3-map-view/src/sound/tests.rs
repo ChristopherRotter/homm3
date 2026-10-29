@@ -14,6 +14,11 @@ fn art() -> SoundArt {
     tables::parse(text).unwrap().map.unwrap().sound.unwrap()
 }
 
+/// The committed tables' records.
+fn records() -> Records {
+    rules().records
+}
+
 /// The committed tables' sound rules.
 pub(crate) fn rules() -> SoundRules {
     let text = include_str!("../../../../map/assets/base.toml");
@@ -97,7 +102,11 @@ fn the_tables_sounds_are_the_originals() {
     let volumes: Vec<u8> = (0..5).map(|d| r.volume(d)).collect();
     assert_eq!(volumes, [32, 28, 20, 10, 0]);
     assert_eq!(
-        (r.game_class(202), r.game_class(220), r.game_class(5)),
+        (
+            r.records.game_class(202),
+            r.records.game_class(220),
+            r.records.game_class(5)
+        ),
         (158, 53, 5)
     );
     // `tile_ambient_sound`'s switch: by class, subclass, a dwelling's creature, a mine's type.
@@ -137,7 +146,7 @@ fn the_tables_sounds_break_no_rule() {
     let fails = |change: fn(&mut SoundArt)| {
         let mut a = art();
         change(&mut a);
-        SoundRules::new(&a, BTreeMap::new(), BTreeMap::new()).unwrap_err()
+        SoundRules::new(&a, records(), BTreeMap::new(), BTreeMap::new()).unwrap_err()
     };
     assert_eq!(
         fails(|a| a.loops[0] = "LoopAnim".into()),
@@ -178,7 +187,7 @@ fn the_tables_sounds_break_no_rule() {
     let mut steps = BTreeMap::new();
     steps.insert(0, "horse00".to_string());
     assert_eq!(
-        SoundRules::new(&art(), BTreeMap::new(), steps).unwrap_err(),
+        SoundRules::new(&art(), records(), BTreeMap::new(), steps).unwrap_err(),
         "`horse00` is not a .WAV name"
     );
 }
@@ -221,7 +230,7 @@ fn the_tables_with_and_without_sound() {
 
 /// A template of `class` and `subclass` whose cells `blocked` block and `visited` are its
 /// entrances, its DEF named by its index.
-fn template(
+pub(crate) fn template(
     index: usize,
     class: u32,
     subclass: u32,
@@ -247,7 +256,10 @@ fn template(
 }
 
 /// An 8 × 8 grass map with these objects (template, anchor), every DEF one tile but `wide`'s two.
-fn map_with(objects: &[(TemplateArt, (u8, u8))], wide: &[usize]) -> (MapArt, Live, Shapes) {
+pub(crate) fn map_with(
+    objects: &[(TemplateArt, (u8, u8))],
+    wide: &[usize],
+) -> (MapArt, Live, Shapes) {
     let grass = TileArt {
         terrain: Piece {
             code: 2,

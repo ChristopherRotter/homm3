@@ -102,7 +102,7 @@ viewers share.
   (`adventure_full_update` 0x417420's panels, the manager's +0x44 and the dialog +0x50: its
   items' ids, places, pictures and order) drawn at a map's start, the frame's fixed cost taken
   down with it (T2); the minimap (`minimap_draw` 0x412C40: the terrains' colours, the owners',
-  the unexplored tiles, the view's box, the underground; T3); the hero list (portraits, the
+  the unexplored tiles, the view's box, the underground; T3a as a still, T3b over time); the hero list (portraits, the
   movement and mana bars, the selection, the scroll) and the town list (T4); the status window
   (a hero's, a town's, the kingdom's), the resource bar and the date (T5); the mouse (T6): the
   status bar's hints over the panels and the map, the cursor over the map by its tile, the
@@ -161,7 +161,10 @@ viewers share.
   cut with the user (2026-10-28): T2b1, the frame's fixed cost (**done** 2026-10-28: the
   widening by a table, the background drawn once, the levels' spatial index; the log), T2b2, a
   frame redrawing only what changed (kept whole by the user; **done** 2026-10-28: the drawers'
-  spans, the view's cells, the changed rectangles widened and uploaded; the log); T3, the minimap; T4, the hero and town lists; T5, the status
+  spans, the view's cells, the changed rectangles widened and uploaded; the log); T3 cut with the
+  user (2026-10-29): T3a, the minimap as a still (**done** 2026-10-29: `minimap_draw` 0x412C40
+  read and built, the 40 situations exact with it; the log), T3b, the minimap over time; T4, the
+  hero and town lists; T5, the status
   window, the resource bar and the date; T6, the mouse, the keys during a walk, the sound without
   the focus; T7, M3's closure. A task that grows is cut at a seam agreed with the user.
 - **Exit:** every situation and sequence as recorded on the whole screen (no `panels` mask
@@ -267,6 +270,15 @@ M1's review lists (three reviewers, T6b; the list accepted) and M2's (accepted a
   composer finds one missing (no scene's names collected a frame); the window's `--check` line
   `afresh` (T2b1's `widened`: each frame made against the same frame composed afresh) and its
   timing line's `uploaded`.
+- **M3 T3a, the minimap's tables and draws** (*provisional*, design §4.4): `[map.records]` (the
+  tile records' rules, moved out of `[map.sound]`) and `[map.minimap]` (the palette entries, the
+  owned and blocking classes, each size's `columns`, `rows` and box, a scale as its f32's bits:
+  `0x3FAA3D71`, truncated exactly in integers); `h3_map_view::record` and `minimap` (`Base` in
+  `TileIndex`, built with the level; `TileIndex::build` takes the layout and refuses a level with
+  a terrain the tables lack); the scene's `Minimap` and `Radar` draws, the composer's minimap
+  staying put through a view's move; the owned object without an entrance on the map coloured
+  as MCL-Q4's answer gives its flags (its owner; the original's terrain colour under `--bugs
+  original`); `masks.toml`'s `stills` (until T3b).
 - **M3 T2a, `h3_ui::paint`**: the dialog items' drawers moved into the common crate (an `Assets`
   trait each viewer's batch implements); `h3-view` keeps its copy until the client lane takes
   this one (its inbox); a button takes a player's colours and a DEF from `Shown` by its id.

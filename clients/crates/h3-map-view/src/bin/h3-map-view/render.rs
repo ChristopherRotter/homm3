@@ -717,6 +717,27 @@ fn print_list(scene: &scene::Scene) {
             }
             Draw::Gem { def, frame, x, y } => println!("gem {def} {frame} at {x},{y}"),
             Draw::Dialog(item) => println!("dialog {item:?}"),
+            Draw::Minimap(tiles) => {
+                let look = &tiles.look;
+                println!(
+                    "minimap {} tiles at {},{} size {}x{}",
+                    tiles.colours.len(),
+                    look.at[0],
+                    look.at[1],
+                    look.size[0],
+                    look.size[1]
+                );
+            }
+            Draw::Radar {
+                def,
+                frame,
+                at,
+                cut,
+                area,
+            } => println!(
+                "radar {def} {frame} at {},{} cut {},{} in {},{}-{},{}",
+                at[0], at[1], cut[0], cut[1], area[0], area[1], area[2], area[3]
+            ),
         }
     }
     for cycle in &scene.cycles {

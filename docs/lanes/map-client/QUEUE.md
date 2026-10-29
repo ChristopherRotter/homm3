@@ -16,15 +16,19 @@ the original a reading or a capture finds is an `MCL-Q<n>` in the same task (the
 autonomy contract). Each panel drawn leaves `h3map.py`'s `panels` mask, and `drawn` then
 compares it on every situation and sequence.
 
-### E24 M3 T3 — the minimap
+T3 cut with the user (2026-10-29): T3a the minimap as a still (done: the epic's log), T3b the
+minimap over time.
 
-- **Scope:** `minimap_draw` 0x412C40 read (13 callers) and built: each tile's colour (the
-  terrain's DEF's palette entry 22, design §1.8), the owners' colours, the unexplored tiles, the
-  view's box, the map's size scaled to its square, the underground's; redrawn at a scroll, a step
-  and a selection as the original does (its callers). Recorded: the sequences show it scrolling.
-- **Acceptance:** the minimap exact on every situation and sequence (`panels` without it);
-  the Definition of Done.
-- **Depends on:** T2a. **Status:** ready.
+### E24 M3 T3b — the minimap over time
+
+- **Scope:** the 13 callers of 0x412C40 read (which moments redraw it: a scroll, a walk's steps,
+  a selection, a full update, the rest) and the timeline built from them (its box lags where the
+  original's does); T2b2's cells cover it; the 13 sequences recorded again and exact with it.
+  The minimap's tiles made only at those moments (T3a makes them each scene: design §4.4);
+  `masks.toml`'s `stills` and `panels` one again.
+- **Acceptance:** the minimap exact on every sequence (`panels` without it); the Definition of
+  Done.
+- **Depends on:** T3a (done). **Status:** ready.
 
 ### E24 M3 T4 — the hero and town lists
 
@@ -76,29 +80,6 @@ compares it on every situation and sequence.
 
 Other lanes add entries here. The map client lane turns each into a task, or keeps one line here
 while the work waits.
-
-- 2026-10-29 (the adventure lane, E08 T68b; for information, nothing to do): the harness's
-  reads and steps for batch E8b (`clients/capture/README.md`, "Boats and the sea", since T68b).
-  Behaviour that changed for every recipe: `h3lod.identify` also knows `RANDSIGN.TXT` (a sign's
-  or Ocean Bottle's default text, `RANDSIGN:<n>`) and lets a record's doubled quote match one or
-  two (ADVEVENT 126 was not identified); a message one of the map's message records holds reads
-  `the map's text "..."` before any table is tried (GENRLTXT 16, `%s the %s`, took it);
-  `object:x,y` reads `none (class 3: the coast)` for a coastal tile without an object; `select`'s
-  `controls` count only tiles that hold an object. New: `object:x,y` for the Sea Chest, the Survivor and the Ocean
-  Bottle (an artifact chest and a Survivor hold an artifact for `require` and `select`), `select`
-  by `is`, `count` and `then`, `h3mem.open_tiles(…, water=True)` (a hero in a boat approaches over
-  water), `h3mem.messages`, table rows filled step by step (`row:<first column>`), a grid step's
-  `note` at every tile, and the reads `battle:tile`, `boat_record:x,y`, `treasury_changed`,
-  `text:<literal>`. The harness check passed.
-
-- 2026-10-28 (the adventure lane, E08 T68a; for information, nothing to do): the harness's
-  reads and steps for batch E8a (`clients/capture/README.md`, "Boats and the sea"). Behaviour that
-  changed for every recipe: `h3mem.path` (the `marks`, `mark` and `path_tiles` reads) is empty
-  while the map shows no path (adventure manager +0x4C, as `path_arrows`): a click that found no
-  path left the last path's arrows, which it read before. New: the battle's ship flag in
-  `battlefield`, `h3mem.obstacle_hexes`; `h3adv`'s `boat`, `boat[<hero>]`, `boat:x,y`,
-  `boats:used`, `drawn`, `opening:field`, `battlefield:ship`, `blocked`, a Flotsam's `object:x,y`,
-  and the steps `key`, `again_if`, `only_if = "aboard"` and `dump`. The harness check passed.
 
 - 2026-10-23 (the client lane, E17 M3 T9c, at the split): moved here from the client lane's
   inbox, the adventure lane's entry of 2026-10-21 (E08 T30, decision 65, ADR-0017 point 6 amended

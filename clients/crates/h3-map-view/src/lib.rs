@@ -6,9 +6,11 @@
 //! viewer has explored, the moment). [`tables`] are the map's asset tables
 //! (`clients/map/assets/`), [`layout`] the adventure screen's layout (`clients/map/layouts/`),
 //! [`check`] what the real-asset gate checks of the archives' entries they name. [`objects`] are
-//! the tiles' draw lists of objects, from the templates' `.msk` shapes. [`scene`] is
+//! the tiles' draw lists of objects, from the templates' `.msk` shapes, [`record`] the object
+//! each tile records of them. [`scene`] is
 //! what the screen shows at a view and a moment, as a draw list in the original's order, the
-//! adventure screen's panels in it as [`panels`] gives them (E24 M3 T2a);
+//! adventure screen's panels in it as [`panels`] gives them (E24 M3 T2a), the minimap as
+//! [`minimap`] does (M3 T3a);
 //! [`batch`] the assets it needs, decoded; [`compose`] draws it into a frame in the original's
 //! screen format with the view's drawers ([`draw`]) and the compositor's (`h3-render`), a frame
 //! kept drawing only what changed, [`damage`] what changed between frames (E24 M3 T2b2).
@@ -52,8 +54,10 @@ pub mod draw;
 pub mod keys;
 pub mod layout;
 pub mod live;
+pub mod minimap;
 pub mod objects;
 pub mod panels;
+pub mod record;
 pub mod replay;
 pub mod scene;
 pub mod sequence;

@@ -10,7 +10,9 @@
 //! E24 M1 T5b1, design §2.9), their shadows through
 //! the shadow pass ([`crate::draw::shadow_pass`], §2.2), the gems through the plain drawer with
 //! runs skipped (0x40F2F0: the raw drawer's literal pixels, E24 M3 T2b2), the dialog's items by
-//! `h3_ui::paint` (E24 M3 T2a). A DEF's palette is cycled once per scene (design §1.6). A
+//! `h3_ui::paint` (E24 M3 T2a), the minimap's tiles as rectangles of their colours and its box
+//! through the plain drawer with runs skipped (E24 M3 T3a, design §4.4). A DEF's palette is
+//! cycled once per scene (design §1.6). A
 //! [`Composer`] keeps a frame from scene to scene and draws only what changed (E24 M3 T2b1,
 //! T2b2; design §4.2, §4.3).
 
@@ -19,6 +21,7 @@ use alloc::collections::btree_map::Entry;
 use alloc::format;
 use alloc::string::String;
 use alloc::vec::Vec;
+use core::cell::RefCell;
 use core::fmt;
 
 use h3_assets::palette::{Palette, Rgb};
@@ -32,6 +35,7 @@ use h3_ui::sprite::Sprite;
 
 use crate::batch::{Batch, Drawable};
 use crate::draw::{self, FrameSpans, Place};
+use crate::minimap::{Colour, Tiles};
 use crate::scene::{Cycle, Draw, Pass, Scene, ViewPlace};
 
 /// The screen's pixel format (E17 design §3.2: the executable's 16-bit 5-6-5 screen).
@@ -327,6 +331,16 @@ impl<'s> Changed<'s> {
             to.unwrap_or_default()
         });
         let changed = changed_defs(&last.cycles, self.cycles);
+        let cycles = [last.cycles.as_slice(), self.cycles];
+        let before = last.moving();
+        // The last scene's rectangles where its draws now compare: moved with the view but the
+        // minimap's, which stays where it is (E24 M3 T3a).
+        let was_at: Vec<[i32; 4]> = last
+            .rects
+            .iter()
+            .zip(before)
+            .map(|(&r, d)| if stays_put(d) { r } else { moved_by(r, shift) })
+            .collect();
         // The cells: every draw's rectangle now, the last's where they were and moved, the clip
         // when it moved.
         let rects = self
@@ -334,7 +348,7 @@ impl<'s> Changed<'s> {
             .iter()
             .copied()
             .chain(last.rects.iter().copied())
-            .chain(last.rects.iter().map(|&r| moved_by(r, shift)))
+            .chain(was_at.iter().copied())
             .chain(moved.map(|(clip, _)| clip));
         let Some(extent) = rects
             .fold(None, |r, d| union(r, Some(d)))
@@ -347,20 +361,28 @@ impl<'s> Changed<'s> {
             .map_or(([0, 0], DEFAULT_TILE), |v| (v.origin, v.tile.max(1)));
         let grid = Grid::new(extent, align, tile);
         grid.bucket(self.rects.iter().copied(), now);
-        grid.bucket(last.rects.iter().map(|&r| moved_by(r, shift)), was);
-        let before = last.moving();
+        grid.bucket(was_at.iter().copied(), was);
+        // A minimap's draw meets many cells: its comparison made once a scene (E24 M3 T3a).
+        let compared: RefCell<BTreeMap<(u32, u32), bool>> = RefCell::new(BTreeMap::new());
+        let pair = |i: u32, j: u32| {
+            let (d, e) = (&self.moving[to_index(i)], &before[to_index(j)]);
+            let fresh = || same_moved(d, e, shift) && !uses(d, &changed, cycles);
+            if matches!(d, Draw::Minimap(_)) {
+                *compared.borrow_mut().entry((i, j)).or_insert_with(fresh)
+            } else {
+                fresh()
+            }
+        };
         let same = |cell: usize| {
             let (a, b) = (now.of(cell), was.of(cell));
-            a.len() == b.len()
-                && a.iter().zip(b).all(|(&i, &j)| {
-                    let (d, e) = (&self.moving[to_index(i)], &before[to_index(j)]);
-                    same_moved(d, e, shift) && !uses(d, &changed)
-                })
+            a.len() == b.len() && a.iter().zip(b).all(|(&i, &j)| pair(i, j))
         };
         let dirty: Vec<bool> = (0..grid.cells())
             .map(|cell| {
                 let rect = grid.rect(cell, extent);
-                let stays = kept.is_none_or(|k| contains(k, rect));
+                // A move changes only the clip's pixels: a cell clear of it keeps its own.
+                let stays = kept.is_none_or(|k| contains(k, rect))
+                    || moved.is_some_and(|(clip, _)| meet(rect, clip).is_none());
                 !(stays && same(cell))
             })
             .collect();
@@ -610,17 +632,43 @@ fn same_moved(now: &Draw, was: &Draw, shift: [i32; 2]) -> bool {
                 && at(*y, *y_was, shift[1])
                 && def == def_was
         }
+        // The minimap stays where it is, whatever the view does.
+        (Draw::Minimap(_), Draw::Minimap(_)) | (Draw::Radar { .. }, Draw::Radar { .. }) => {
+            now == was
+        }
         _ => false,
     }
 }
 
-/// Whether `draw`'s DEF is one of `defs` (ignoring case).
-fn uses(draw: &Draw, defs: &[String]) -> bool {
-    let def = match draw {
-        Draw::Piece { def, .. } | Draw::Gem { def, .. } => def,
-        Draw::Frame { .. } | Draw::Dialog(_) => return true,
-    };
-    defs.iter().any(|d| d.eq_ignore_ascii_case(def))
+/// Whether `draw`'s DEF is one of `defs` (ignoring case); the minimap's only where one of
+/// `cycles` (the last scene's and this one's) rotates the entries its colours take.
+fn uses(draw: &Draw, defs: &[String], cycles: [&[Cycle]; 2]) -> bool {
+    let named = |def: &str| defs.iter().any(|d| d.eq_ignore_ascii_case(def));
+    match draw {
+        Draw::Piece { def, .. } | Draw::Gem { def, .. } | Draw::Radar { def, .. } => named(def),
+        Draw::Minimap(tiles) => {
+            let entries = tiles.look.entries;
+            let rotated = |def: &str| {
+                cycles
+                    .iter()
+                    .flat_map(|c| c.iter())
+                    .filter(|c| c.def.eq_ignore_ascii_case(def))
+                    .flat_map(|c| c.ranges.iter())
+                    .any(|&[first, last]| entries.iter().any(|e| (first..=last).contains(e)))
+            };
+            tiles
+                .look
+                .terrains
+                .iter()
+                .any(|def| named(def) && rotated(def))
+        }
+        Draw::Frame { .. } | Draw::Dialog(_) => true,
+    }
+}
+
+/// Whether `draw` stays where it is when the view moves: the minimap's (E24 M3 T3a).
+fn stays_put(draw: &Draw) -> bool {
+    matches!(draw, Draw::Minimap(_) | Draw::Radar { .. })
 }
 
 /// The DEFs whose palettes cycle otherwise in `now` than in `was` (their ranges or steps).
@@ -702,8 +750,64 @@ fn rect_of(draw: &Draw, batch: &Batch, all: [i32; 4]) -> Result<[i32; 4], Compos
                 y.saturating_add(side(f.full_height)),
             ]
         }
+        Draw::Minimap(tiles) => {
+            let look = &tiles.look;
+            [
+                look.at[0],
+                look.at[1],
+                look.at[0].saturating_add(look.size[0]),
+                look.at[1].saturating_add(look.size[1]),
+            ]
+        }
+        Draw::Radar {
+            def,
+            frame,
+            at,
+            cut,
+            area,
+        } => radar(batch, def, *frame, *at, *cut, *area)?.0,
         Draw::Frame { .. } | Draw::Dialog(_) => all,
     })
+}
+
+/// The minimap's box (`def_draw_button_frame` 0x47BF00, design §4.4): the rectangle drawn, frame
+/// `frame` of `def`'s group 0 and its DEF. As wide as the DEF (its header's width, the loaded
+/// DEF's +0x30) less the columns `cut`, less what lies past `area`'s right edge; as high
+/// likewise.
+///
+/// # Errors
+/// The DEF or its frame not in the batch.
+fn radar<'b>(
+    batch: &'b Batch,
+    def: &str,
+    frame: u32,
+    at: [i32; 2],
+    cut: [i32; 2],
+    area: [i32; 4],
+) -> Result<([i32; 4], FrameSpans<'b>, &'b Sprite), ComposeError> {
+    let (f, sprite) = gem_frame(batch, def, frame)?;
+    let side = |v: u32| i32::try_from(v).unwrap_or(i32::MAX);
+    let along = |size: i32, at: i32, cut: i32, end: i32| {
+        let mut length = size.saturating_sub(cut);
+        if at.saturating_add(size) > end {
+            length = length.saturating_add(end.saturating_sub(size).saturating_sub(at));
+        }
+        at.saturating_add(length.max(0))
+    };
+    let right = along(side(sprite.def.width), at[0], cut[0], area[2]);
+    let bottom = along(side(sprite.def.height), at[1], cut[1], area[3]);
+    Ok(([at[0], at[1], right, bottom], f, sprite))
+}
+
+/// Fills `rect` (on the screen) with `colour`.
+fn fill(screen: &mut Screen, rect: [i32; 4], colour: u16) {
+    let width = usize::try_from(screen.width()).unwrap_or(0).max(1);
+    let [l, t, r, b] = rect.map(|v| usize::try_from(v).unwrap_or(0));
+    for row in screen.pixels_mut().chunks_mut(width).take(b).skip(t) {
+        for pixel in row.iter_mut().take(r).skip(l) {
+            *pixel = colour;
+        }
+    }
 }
 
 /// The whole screen as a rectangle.
@@ -860,8 +964,108 @@ impl<'s, 'k> Pen<'s, 'k> {
                 h3_ui::paint::draw(screen, draw, batch, scene.bugs)
                     .map_err(ComposeError::Missing)?;
             }
+            Draw::Minimap(tiles) => self.minimap(screen, tiles, cut)?,
+            Draw::Radar {
+                def,
+                frame,
+                at,
+                cut: from,
+                area,
+            } => {
+                // The plain drawer with runs skipped, unmirrored (0x47BF00): the raw drawer's
+                // literal pixels, the box's (radar.def's runs are all of index 0).
+                let (rect, f, sprite) = radar(batch, def, *frame, *at, *from, *area)?;
+                let Some(clip) = meet(rect, cut.unwrap_or_else(|| whole(screen))) else {
+                    return Ok(());
+                };
+                let palette = ScreenPalette::new(&sprite.def.palette, FORMAT);
+                let place = Place {
+                    x: at[0].saturating_sub(from[0]),
+                    y: at[1].saturating_sub(from[1]),
+                    ..Place::default()
+                };
+                draw::raw(screen, f, &palette, place, clip);
+            }
         }
         Ok(())
+    }
+
+    /// The minimap's tiles (`minimap_draw` 0x412C40, design §4.4): each tile's rectangle of its
+    /// colour, cut to `cut` and the screen; a terrain's colours from its DEF's palette as the
+    /// scene cycles it, an owner's from the flag palette, each looked up once a draw.
+    fn minimap(
+        &mut self,
+        screen: &mut Screen,
+        tiles: &'s Tiles,
+        cut: Option<[i32; 4]>,
+    ) -> Result<(), ComposeError> {
+        let Some(clip) = meet(cut.unwrap_or_else(|| whole(screen)), whole(screen)) else {
+            return Ok(());
+        };
+        let look = &tiles.look;
+        let mut terrains: BTreeMap<u8, [u16; 2]> = BTreeMap::new();
+        let mut owners: BTreeMap<u8, u16> = BTreeMap::new();
+        let (columns, rows) = (tiles.columns(), tiles.rows());
+        let side = look.side;
+        for (y, &[top, bottom]) in rows.iter().enumerate() {
+            if bottom <= clip[1] || top >= clip[3] {
+                continue;
+            }
+            for (x, &[left, right]) in columns.iter().enumerate() {
+                let Some(rect) = meet([left, top, right, bottom], clip) else {
+                    continue;
+                };
+                let colour = match tiles.colours.get(y * side + x) {
+                    Some(Colour::Open(code)) => self.terrain(&mut terrains, look, *code)?[0],
+                    Some(Colour::Blocked(code)) => self.terrain(&mut terrains, look, *code)?[1],
+                    Some(&Colour::Owner(entry)) => {
+                        if let Some(&colour) = owners.get(&entry) {
+                            colour
+                        } else {
+                            let Self {
+                                batch,
+                                scene,
+                                flag_colours,
+                                ..
+                            } = self;
+                            let colour = flag_colour(batch, scene, flag_colours, Some(entry))?;
+                            *owners.entry(entry).or_insert(colour.unwrap_or(0))
+                        }
+                    }
+                    Some(Colour::Black) | None => 0,
+                };
+                fill(screen, rect, colour);
+            }
+        }
+        Ok(())
+    }
+
+    /// Terrain `code`'s open and blocked colours: its DEF's palette's entries as the scene cycles
+    /// it, kept in `terrains` for the draw.
+    fn terrain(
+        &mut self,
+        terrains: &mut BTreeMap<u8, [u16; 2]>,
+        look: &'s crate::minimap::Look,
+        code: u8,
+    ) -> Result<[u16; 2], ComposeError> {
+        if let Some(&colours) = terrains.get(&code) {
+            return Ok(colours);
+        }
+        let def = look
+            .terrains
+            .get(usize::from(code))
+            .map_or("", String::as_str);
+        let Self {
+            kept,
+            defs,
+            batch,
+            scene,
+            ..
+        } = self;
+        let (_, palette) = def_in(defs, kept, batch, scene, def)?;
+        let colours = look.entries.map(|entry| palette.get(entry));
+        terrains.insert(code, colours);
+        Ok(colours)
     }
 }
 
@@ -876,6 +1080,22 @@ fn frame_in<'s, 'd>(
     group: u32,
     index: u32,
 ) -> Result<(FrameSpans<'s>, &'d ScreenPalette), ComposeError> {
+    let (drawable, palette) = def_in(defs, kept, batch, scene, def)?;
+    let f = drawable
+        .frame(group, index)
+        .ok_or_else(|| ComposeError::Missing(format!("{def} group {group} frame {index}")))?;
+    Ok((f, palette))
+}
+
+/// `def` and its palette cycled, looked up once a scene by the name as the scene spells it (in
+/// `defs`).
+fn def_in<'s, 'd>(
+    defs: &'d mut BTreeMap<&'s str, (Drawable<'s>, ScreenPalette)>,
+    kept: &mut BTreeMap<String, (Vec<u32>, ScreenPalette)>,
+    batch: &'s Batch,
+    scene: &Scene,
+    def: &'s str,
+) -> Result<(&'d Drawable<'s>, &'d ScreenPalette), ComposeError> {
     let (drawable, palette) = match defs.entry(def) {
         Entry::Occupied(known) => known.into_mut(),
         Entry::Vacant(new) => {
@@ -886,10 +1106,7 @@ fn frame_in<'s, 'd>(
             new.insert((drawable, palette))
         }
     };
-    let f = drawable
-        .frame(group, index)
-        .ok_or_else(|| ComposeError::Missing(format!("{def} group {group} frame {index}")))?;
-    Ok((f, palette))
+    Ok((drawable, palette))
 }
 
 /// A gem's frame (group 0) with its spans, and its DEF.
