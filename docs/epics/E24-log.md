@@ -1546,9 +1546,16 @@ the user's repo folder first; the baseline check passed (`verify-once`, clients 
   `lists-towns`: the bars' every edge, both lists scrolled by a selection, a town's mark over its
   picture, empty slots, five factions with and without a fort, built today) exact first time,
   then the whole set recaptured with the lists compared (`stills`): each of the 43, 0 differing of
-  425 588 pixels (the lists' 20 000 or so now among them), shipped maps' heroes with their own
+  425 588 pixels (the lists' 17 984 now among them; 407 604 before), shipped maps' heroes with their own
   points and mana included; `drawn --record`: the 43 situations' digests recorded anew, the 13
   sequences' 459 frames the same and their timelines as recorded (they keep `panels`); the gate
   with the lists; unit tests (the bars' edges, the towns' frames, the tables' rules, the slots
   from their tops, the selection's slot and draws, the kingdom's both forms, the situations'
-  writes and selection).
+  writes and selection, a portrait past the tables refused); `check.sh` (100 % coverage); the
+  window under Xvfb (`lists-scrolled`, `lists-towns`, `walk-1`, *Tale of two lands*,
+  `--check 10`): every frame read back exact, made as the same frame composed afresh, every
+  change the headless loop's.
+- **Measured** (the sandbox, `--measure 20`, alternating with `master`'s build twice each): the
+  same within noise, a frame made in a median 0.5–0.6 ms on `walk-1` (both), 1.1–1.2 and 1.1 on
+  `path-objects`, 1.6 and 1.4–1.5 on *Tale of two lands*; uploads the same (25.6–25.7, 5.2,
+  11.2 %). This sandbox is slower than T3b's (its 0.2, 0.7, 0.9 ms).

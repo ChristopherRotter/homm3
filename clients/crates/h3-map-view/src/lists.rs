@@ -173,11 +173,11 @@ pub struct HeroSlot {
     pub mana: u32,
 }
 
-/// The hero list's slots for `kingdom` (`hero_list_slot` 0x403560): the heroes from the list's
-/// first (+0x64) on, a slot past them empty (no picture: the layout's `hpsxxx.pcx`; both bars at
-/// 0); none for a hero whose portrait the table lacks.
+/// The hero list's [`SLOTS`] slots for `kingdom` (`hero_list_slot` 0x403560): the heroes from the
+/// list's first (+0x64) on, a slot past them empty (no picture: the layout's `hpsxxx.pcx`; both
+/// bars at 0); none for a hero whose portrait the table lacks.
 #[must_use]
-pub fn hero_slots(art: &ListArt, kingdom: &Kingdom) -> Option<[HeroSlot; SLOTS]> {
+pub fn hero_slots(art: &ListArt, kingdom: &Kingdom) -> Option<Vec<HeroSlot>> {
     let slot = |i: usize| -> Option<HeroSlot> {
         let hero = kingdom.tops[0]
             .checked_add(i)
@@ -200,7 +200,7 @@ pub fn hero_slots(art: &ListArt, kingdom: &Kingdom) -> Option<[HeroSlot; SLOTS]>
             },
         })
     };
-    Some([slot(0)?, slot(1)?, slot(2)?, slot(3)?, slot(4)?])
+    (0..SLOTS).map(slot).collect()
 }
 
 /// The town list's frames for `kingdom` (`town_list_slot` 0x4037A0): the towns from the list's

@@ -475,6 +475,8 @@ fn a_live_parts_kingdom_read() {
         ("quests = 1", "quests = 2"),
         ("quests = 1", "missing = 1"),
         (heroes, "[[2, 1, 0, 0, 0]]"),
+        (heroes, "[[0, 2, 0, 0, 0]]"),
+        (heroes, "[[2, 1]]"),
         ("heroes = ", "people = "),
         ("towns = ", "cities = "),
         ("selected = [1, 1]", "chosen = [1, 1]"),

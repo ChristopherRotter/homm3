@@ -269,12 +269,15 @@ fn gate(options: &Options) -> Result<usize, String> {
     Ok(problems.len())
 }
 
+/// An archive entry by name: the archive and the bytes, none when no archive holds it.
+type Find<'a> = dyn Fn(&str) -> Result<Option<(&'static str, Vec<u8>)>, String> + 'a;
+
 /// The hero list's pictures (E24 M3 T4a): the tables' portraits and the layout's empty slot and
 /// selection frame, each found and decoded at the slot's size.
 fn portraits(
     layout: &AdventureLayout,
     tables: &Tables,
-    find: &dyn Fn(&str) -> Result<Option<(&'static str, Vec<u8>)>, String>,
+    find: &Find<'_>,
     problems: &mut Vec<String>,
 ) -> Result<(), String> {
     println!("\nthe hero list's pictures:");

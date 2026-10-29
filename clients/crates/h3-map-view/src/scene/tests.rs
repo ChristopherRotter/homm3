@@ -533,6 +533,26 @@ fn refuses_a_level_a_viewer_or_a_code_it_cannot_draw() {
             at: [0, 0]
         })
     ));
+    // A hero of the kingdom's with a portrait past the tables' (E24 M3 T4a).
+    let mut unknown = live.clone();
+    unknown.kingdom.heroes.push(crate::live::KingdomHero {
+        portrait: 200,
+        ..crate::live::KingdomHero::default()
+    });
+    assert_eq!(
+        scene(
+            &art,
+            &unknown,
+            &t,
+            &l,
+            &shapes_of(&art),
+            at(0, 0),
+            Bugs::Fixed
+        ),
+        Err(SceneError::Live(
+            "a hero's portrait is past the tables'".to_string()
+        ))
+    );
     live.viewer = 8;
     assert_eq!(
         scene(&art, &live, &t, &l, &shapes_of(&art), at(0, 0), Bugs::Fixed),
