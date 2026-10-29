@@ -10,7 +10,7 @@ use super::keys::{EXECUTABLE, Entry, Keys, KeysError, Row, Source, address_field
 use super::message::{Kind, Message, PrintfError, Segment};
 use super::pack::{Pack, PackError, Problem, Tables};
 use super::plural::{Category, Rule};
-use super::{Args, Catalogue, Value, encode_1252};
+use super::{Args, Catalogue, Value, decode_1252, encode_1252};
 
 fn s(text: &str) -> String {
     text.to_string()

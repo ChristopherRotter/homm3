@@ -619,7 +619,38 @@ fn a_live_parts_status_read() {
         town.replace("garrison = 1", "garrison = 2"),
         town.replace("silo = [0, 2]", "silo = [0, 256]"),
         town.replace("name = 37", "name = -1"),
+        hero.replace("[149, 123456]", "[149, 3000000000]"),
+        hero.replace("[149, 123456]", "[\"x\", 1]"),
+        hero.replace("[149, 123456]", "[149, \"x\"]"),
+        hero.replace("[149, 123456]", "149"),
+        hero.replace("hero = 48", "hero = 300"),
+        town.replace("[0, 7, 63]", "[0, \"x\"]"),
     ] {
         assert_eq!(read(&wrong), None, "{wrong}");
+    }
+    // Every field missing or a text: refused; the flags 0 too.
+    let fields = |text: &str| -> toml::Table {
+        let table: toml::Table = toml::from_str(&alloc::format!("s = {text}")).unwrap();
+        table["s"].as_table().unwrap().clone()
+    };
+    let flags = ["own_name", "garrison"];
+    for whole in [fields(&hero), fields(&town)] {
+        for key in whole.keys() {
+            let mut without = whole.clone();
+            without.remove(key);
+            assert_eq!(Status::read(&toml::Value::Table(without)), None, "no {key}");
+            let mut text = whole.clone();
+            text.insert(key.clone(), toml::Value::String("x".into()));
+            assert_eq!(
+                Status::read(&toml::Value::Table(text)),
+                None,
+                "{key} a text"
+            );
+        }
+        for key in flags.iter().filter(|k| whole.contains_key(**k)) {
+            let mut zero = whole.clone();
+            zero.insert((*key).to_string(), toml::Value::Integer(0));
+            assert!(Status::read(&toml::Value::Table(zero)).is_some(), "{key} 0");
+        }
     }
 }

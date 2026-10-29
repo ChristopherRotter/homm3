@@ -284,7 +284,7 @@ pub(crate) fn map_with(
         tiles,
         templates: Vec::new(),
         objects: Vec::new(),
-        hero_names: alloc::collections::BTreeMap::new(),
+        hero_names: BTreeMap::new(),
     };
     for (i, (t, (x, y))) in objects.iter().enumerate() {
         let width = if wide.contains(&i) { 2 } else { 1 };
