@@ -3252,7 +3252,12 @@ the phase played).
   the layout's, the compositor's, the scene's, the stills', the placements against the shade.
 - **Recorded:** `tactics-open` (0 and 1 000 ms), `tactics`, `tactics-rest`, `tactics-move`,
   `tactics-out`, `tactics-enemy`, `tactics-start` (`tactics.toml`): all eight frames exact.
-- **Checked:** CHECKED
+- **Checked:** `window --check 45 --human attacker` on `tactics.toml` under Xvfb: the message
+  answered, the phase ended without a press, the battle the bot's at once, 588 of 588 frames
+  read back exact; interactively the message, then after Enter the Champions' shade and the
+  phase's panel in Red's colours. `drawn`: the 134 others the same (the panel built for the
+  defender changes none); `drawn --record` adds the seven. `cargo xtask verify --scope client`:
+  no failing step; `clients/scripts/check.sh`: running (its result in the pull request).
 - **Found:** CLT-Q32 (the cursor after the message: copy recommended, built as the original's);
   review items 28 to 31.
 

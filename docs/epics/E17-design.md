@@ -2662,9 +2662,9 @@ cell pictures, the player record's reset 0x4B9E20 (+0x88).
   0x46BC30, the base (§9.7) over `CoPlacbr.pcx` (the base takes its picture's name), then Next
   Creature (2300, `ICM011.def` at (213, 4), 198 × 36, hotkey space) and Start Combat (30722,
   `ICM012.def` at (419, 4), hotkey Enter), each with frames 0 and 1 and its hints from the pairs'
-  +0x48 and +0x50 (`Help.txt` 388 and 389); the dialog then adds state 8 (disabled, 0x5FE569 sets
-  bit 8 for the message value 0x1000 and the value 8 alike) to the spell book, Wait and Defend
-  (0x472428). No log's item: the panel's +0x34 stays 0, so `battle_log_add` returns at once
+  +0x48 and +0x50 (`Help.txt` 388 and 389); the dialog then adds state 8 (disabled: the value
+  0x1000 sets the state's bit 8 at 0x5FE569, the value 8 the same bit at 0x5FE57D) to the spell
+  book, Wait and Defend (0x472428). No log's item: the panel's +0x34 stays 0, so `battle_log_add` returns at once
   (0x472ECA: no log entry, no status line in the phase), and its vtable's +4 and +8 do nothing.
   The base builds it in the colours of the player of the side the manager holds then, +0x132C0
   = 1 since 0x462D24 (the defender's; the game's player without one), as for the battle's panel
