@@ -6,6 +6,7 @@ use h3_map::model::Pos;
 
 use crate::live::{Facing, LiveHero};
 use crate::objects::DrawLists;
+use crate::scene::{TileIndex, scene_in};
 use crate::sound::tests::{map_with, template};
 use crate::tables;
 
@@ -199,6 +200,9 @@ fn a_tiles_colour_by_its_terrain_its_object_and_the_live_part() {
             area: [630, 26, 774, 170],
         }
     );
+    // A level the map lacks: every tile black.
+    let below = Base::build(&art, &live, &t, &l, &lists, 1, Bugs::Fixed).unwrap();
+    assert!(below.colours.iter().all(|&c| c == Colour::Black));
     // A layout without the minimap's area: none.
     let mut bare = l.clone();
     bare.dialog
@@ -207,6 +211,17 @@ fn a_tiles_colour_by_its_terrain_its_object_and_the_live_part() {
     assert_eq!(
         Base::build(&art, &live, &t, &bare, &lists, 0, Bugs::Fixed),
         None
+    );
+    // Its scene draws no minimap.
+    live.heroes.clear();
+    let index = TileIndex::build(&art, &live, &t, &bare, &shapes, 0, Bugs::Fixed).unwrap();
+    let view = ViewAt { x: 0, y: 0, z: 0 };
+    let drawn = scene_in(&index, &art, &live, &t, &bare, &shapes, view, Bugs::Fixed).unwrap();
+    assert!(
+        !drawn
+            .draws
+            .iter()
+            .any(|d| matches!(d, Draw::Minimap(_) | Draw::Radar { .. }))
     );
 }
 

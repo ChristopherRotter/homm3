@@ -801,13 +801,11 @@ fn radar<'b>(
 
 /// Fills `rect` (on the screen) with `colour`.
 fn fill(screen: &mut Screen, rect: [i32; 4], colour: u16) {
-    let width = usize::try_from(screen.width()).unwrap_or(0);
+    let width = usize::try_from(screen.width()).unwrap_or(0).max(1);
     let [l, t, r, b] = rect.map(|v| usize::try_from(v).unwrap_or(0));
-    let pixels = screen.pixels_mut();
-    for y in t..b {
-        let row = y.saturating_mul(width);
-        if let Some(run) = pixels.get_mut(row.saturating_add(l)..row.saturating_add(r)) {
-            run.fill(colour);
+    for row in screen.pixels_mut().chunks_mut(width).take(b).skip(t) {
+        for pixel in row.iter_mut().take(r).skip(l) {
+            *pixel = colour;
         }
     }
 }

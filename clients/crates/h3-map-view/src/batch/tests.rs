@@ -148,6 +148,42 @@ fn the_names_a_scene_draws() {
     );
     // As spelled, each once (E24 M3 T2b1).
     let spelled: Vec<&str> = spelled(&scene).into_iter().collect();
+    // The minimap's (E24 M3 T3a): the terrains its tiles take a colour of, the flag palette with
+    // an owner's colour, the box's DEF.
+    use crate::minimap::{Colour, Look, Tiles};
+    let minimap = |colours: Vec<Colour>| Scene {
+        draws: vec![
+            Draw::Minimap(Tiles {
+                look: alloc::sync::Arc::new(Look {
+                    at: [0, 0],
+                    size: [2, 2],
+                    side: 2,
+                    pattern: None,
+                    terrains: vec!["DirtTl.def".to_string(), "sandtl.def".to_string()],
+                    entries: [8, 9],
+                }),
+                colours,
+            }),
+            Draw::Radar {
+                def: "Radar.def".to_string(),
+                frame: 1,
+                at: [0, 0],
+                cut: [0, 0],
+                area: [0, 0, 2, 2],
+            },
+        ],
+        ..scene.clone()
+    };
+    let with_owner = minimap(vec![Colour::Open(1), Colour::Owner(64)]);
+    let got: Vec<String> = names(&with_owner).into_iter().collect();
+    assert_eq!(got, ["GAME.PAL", "RADAR.DEF", "SANDTL.DEF"]);
+    let got: Vec<&str> = super::spelled(&with_owner).into_iter().collect();
+    assert_eq!(got, ["Radar.def", "game.pal", "sandtl.def"]);
+    let without = minimap(vec![Colour::Blocked(0), Colour::Black]);
+    let got: Vec<String> = names(&without).into_iter().collect();
+    assert_eq!(got, ["DIRTTL.DEF", "RADAR.DEF"]);
+    let got: Vec<&str> = super::spelled(&without).into_iter().collect();
+    assert_eq!(got, ["DirtTl.def", "Radar.def"]);
     assert_eq!(
         spelled,
         [

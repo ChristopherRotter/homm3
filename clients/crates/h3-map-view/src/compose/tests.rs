@@ -733,6 +733,38 @@ fn the_cells_comparisons() {
         pen.draw(&mut s, &none, None),
         Err(ComposeError::Missing("none.def".to_string()))
     );
+    // The minimap and its box cut to a rectangle they do not meet, or off the screen, draw
+    // nothing.
+    let b = minimap_batch();
+    let mut pen = Pen::new(&lacking, &b, &mut kept);
+    let mut s = Screen::new(14, 12, FORMAT).unwrap();
+    let radar = radar_at([11, 1], [0, 0]);
+    pen.draw(&mut s, &radar, Some([0, 0, 2, 2])).unwrap();
+    pen.draw(&mut s, &map, Some([20, 20, 22, 22])).unwrap();
+    assert!(s.pixels().iter().all(|&p| p == 0));
+    // Whatever they take missing from the batch: the box's DEF, a blocked tile's terrain, the
+    // flag palette.
+    let mut pen = Pen::new(&lacking, &b, &mut kept);
+    let mut nameless = radar_at([11, 1], [0, 0]);
+    if let Draw::Radar { def, .. } = &mut nameless {
+        *def = "none.def".to_string();
+    }
+    assert_eq!(
+        pen.draw(&mut s, &nameless, None),
+        Err(ComposeError::Missing("none.def".to_string()))
+    );
+    let blocked = minimap([Colour::Blocked(3); 4]);
+    assert_eq!(
+        pen.draw(&mut s, &blocked, None),
+        Err(ComposeError::Missing(String::new()))
+    );
+    let owned = minimap([Colour::Owner(64); 4]);
+    let plain = batch();
+    let mut pen = Pen::new(&lacking, &plain, &mut kept);
+    assert_eq!(
+        pen.draw(&mut s, &owned, None),
+        Err(ComposeError::Missing("flags.pal".to_string()))
+    );
     // A clip off the screen is one colour; a screen of two colours across it is not.
     let mut s = Screen::new(2, 2, FORMAT).unwrap();
     assert!(one_colour(&s, [5, 5, 9, 9]));
@@ -874,6 +906,22 @@ fn the_minimap_its_tiles_rectangles_and_its_box_cut_to_its_area() {
     ]);
     let screen = compose(&s, &b, [14, 12]).unwrap();
     let px = |x, y| screen.pixel(x, y).unwrap();
+    // An owner's colour looked up once a draw, however many tiles take it.
+    let owners = compose(
+        &scene(vec![minimap([Owner(64), Owner(64), Owner(65), Owner(64)])]),
+        &b,
+        [14, 12],
+    )
+    .unwrap();
+    assert_eq!(
+        [
+            owners.pixel(9, 0),
+            owners.pixel(11, 0),
+            owners.pixel(9, 1),
+            owners.pixel(11, 1)
+        ],
+        [Some(64), Some(64), Some(65), Some(64)]
+    );
     // The terrain's entries 8 and 9, the flag palette's 64 (its 565 pixel 64), black.
     assert_eq!([px(9, 0), px(10, 0), px(11, 0), px(12, 0)], [8, 8, 9, 9]);
     assert_eq!([px(9, 1), px(10, 2), px(11, 1), px(12, 2)], [64, 64, 0, 0]);
