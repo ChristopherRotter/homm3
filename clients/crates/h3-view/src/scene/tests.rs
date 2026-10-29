@@ -1208,7 +1208,12 @@ fn the_panel_follows_each_turns_controller() {
         [150, 250, 350].map(|t| wait(&by_opening.at(&o, &started, t, &layout))),
         [2, 2, 0]
     );
-    let controllers = [Side::Defender, Side::Attacker, Side::Defender, Side::Attacker];
+    let controllers = [
+        Side::Defender,
+        Side::Attacker,
+        Side::Defender,
+        Side::Attacker,
+    ];
     let panels = Panels::new(&o, &events, Vec::new()).with_controllers(&o, &controllers);
     assert_eq!(
         [150, 250, 350].map(|t| wait(&panels.at(&o, &started, t, &layout))),

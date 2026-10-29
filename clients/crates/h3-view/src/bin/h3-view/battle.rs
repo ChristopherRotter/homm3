@@ -296,6 +296,15 @@ pub fn battle_sounds(record: &Record, tables: &Tables) -> BTreeMap<Sound, String
             Sound::Mine,
             battle.siege_sounds.as_ref().map(|s| s[1].clone()),
         ),
+        // A wall shot's landing (E17 M5 T5b2: its wait; the window played none before).
+        (
+            Sound::WallHit,
+            battle.wall_sounds.as_ref().map(|s| s[0].clone()),
+        ),
+        (
+            Sound::WallMiss,
+            battle.wall_sounds.as_ref().map(|s| s[1].clone()),
+        ),
     ];
     for handle in (0..spells.len()).filter_map(|h| u16::try_from(h).ok()) {
         sounds.push((Sound::Spell(handle), spell(handle, false)));

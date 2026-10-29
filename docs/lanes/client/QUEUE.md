@@ -11,30 +11,14 @@ closure (T3c, 2026-10-27, with the user): hot seat in-process first, then a game
 its tasks below, in order (T1 and T2 done 2026-10-27, each cut in two by the user; T2b whole,
 the user; T3 cut in two, T3a done 2026-10-27, T3b 2026-10-28; T4 cut in three, T4a done
 2026-10-28, T4b cut in two, T4b1 done 2026-10-28, T4b2 and T4c1 done 2026-10-28, T4c2a and
-T4c2b 2026-10-29: T4 done). The original files: stage them from the user's `original-data/install/` (one large file per staging call; the
+T4c2b 2026-10-29: T4 done; T5 cut in two, T5a done 2026-10-29, T5b cut in two, T5b1 and T5b2
+done 2026-10-29: T5 done). The original files: stage them from the user's `original-data/install/` (one large file per staging call; the
 user's computer must be online); never from the installation. The captures need the five DLLs,
 `Heroes3.snd`, `H3ab_ahd.snd` and `H3ab_ahd.vid` too; the harness's runbook:
 `clients/capture/README.md`. The client's gates: `clients/scripts/check.sh` (the full local
 check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gate` from
 `clients/`. An asset fix gets its mechanism (ADR-0020 point 6: the entry's flag, the
 `faithful`/`fixed` profile) with the first one a task finds.
-
-### E17 M5 T5 — what a played battle shows
-
-Cut in two by the user (2026-10-29): T5a the dissolves and the created stacks (with the engine's
-event for a stack without a place, `cross-lane`; done 2026-10-29), T5b the panel by each turn's
-controller, the sounds' waits and the palette effects, cut in two again by the user (2026-10-29,
-at its start): T5b1 the palette effects (done 2026-10-29), T5b2 the panel and the sounds' waits.
-The detail: `QUEUE-ARCHIVE.md`, 2026-10-22 (T7c-3).
-
-#### E17 M5 T5b2 — the panel by the turn's controller, the sounds' waits
-
-- **Scope:** the panel's side by each turn's controller (R3-1: Hypnotize, a created stack); the
-  battle waiting for the heal's sound and the other effects' (the Pit Lord's `Resurect.wav`,
-  0x5A754E, among them). Recorded against the original.
-- **Acceptance:** the new sequences as recorded, or each difference listed; the Definition of
-  Done.
-- **Depends on:** T5a (done). **Status:** ready.
 
 ### E17 M5 T6 — a game on a server
 

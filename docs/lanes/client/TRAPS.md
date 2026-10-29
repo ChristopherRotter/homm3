@@ -104,6 +104,15 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   `tactics::shade_at` (the log's `Action` and `Turn` entries, the turns' battles from
   `Panels::turns`); a placement's walk comes hex by hex in the engine's events (a recording
   sink), and `EndTactics` draws no frame.
+- The sounds' waits (E17 M5 T5b2, design §8.3): the timeline waits only with `Stage::lengths`
+  (the window once its sound opened, a sequence with `sound`); a new wait site keeps the cue its
+  `cue()` returns and calls `Player::wait_for` where the original's `wait_for_sample` stands (a
+  stack's own sound by its handle: `wait_last`). The window makes its battle again once the sound
+  opened (`Ground::play_sounds`): state set on the first `Battle` before that is lost. A `sound`
+  capture counts only the main thread's clock reads and settles the adventure map's sounds first
+  (runbook, "Sound"); a sequence without `sound` must stay silent (its timeline would change).
+- The panel's and the screen's side is each turn's controller (`Timeline::controllers`, E17 M5
+  T5b2): a new list of turns built beside `turns` needs its controller pushed with it.
 - `h3_formats`' `c_string` takes printable ASCII alone: an executable string with line breaks
   (the book's place formats) is read by the client's `text::exe_string`.
 - The viewer reads `clients/layouts/*.toml` at run time: a layout change made while a batch

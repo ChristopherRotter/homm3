@@ -96,8 +96,8 @@ a line there while the work waits.
   spells of a melee strike (Blind, Curse, Disease, Age, Paralyze, Bind: the timed handler and
   `battle_log_cast`'s creature rows 552 to 566; Stone Gaze's glow), the flies' Dispel and
   Weakness (`striker_effects` 0x4413C4), regeneration (79), the Wraiths' mana drain (77), Death
-  Blow (73) and Poison's damage at a round's start (67, 0x4472AB); the waits for every sound
-  these play (as the heal's, below).
+  Blow (73) and Poison's damage at a round's start (67, 0x4472AB), with the waits for their
+  sounds (design §8.3, E17 M5 T5b2's list).
 - 2026-10-22 (E17 M3 T7c-1, done; design §7.16): the mass and area spells of the recorded casts
   are built. Left for later (read in part or not at all, not recorded): the Faerie Dragon's
   draw line ("readies %s", the executable's own text, 0x660AD0) needs the drawn spell, private to
@@ -111,13 +111,8 @@ a line there while the work waits.
   onto a Land Mine (its blast 57 over the stack, the mine's removal; `ObstacleTriggered`), a
   pit's reveal as the walker meets it; Dispel's (Expert) and Remove Obstacle's removals in their
   handlers' order (0x5A1767, 0x5A1C35; the vanish plays where the event comes), an obstacle's
-  fade (vanish −1); Quicksand's and Land Mine's wait for their sample (0x5A04DD); in hot seat, a
+  fade (vanish −1); in hot seat, a
   hidden object shown only on its owner's turn (a seat's record would need it, CLT-Q15).
-- 2026-10-15 (E17 M3 T3b): **for T8**: the battle waits for the heal's sound to end
-  (`wait_for_sample` after `first_aid_tent_action`'s animation, design §7.15): at speed 0 the
-  animation outlasts `Regener` (2 100 against 1 881 ms), at speeds 1 and 2 with the sound on the
-  viewer's timeline should wait; the sound plays on the start sound's stream (category 2's four
-  channels: one built).
 
 ## Battlefields and boats
 

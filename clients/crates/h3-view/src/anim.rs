@@ -1699,12 +1699,20 @@ struct Clock {
     now: u32,
     deadline: u32,
     grid: u32,
+    /// When a wait for a sample ended with the deadline a grid step or more behind (E17 M5 T5b2):
+    /// no tick kept it on its grid meanwhile, so the turn's start shows late and the grid starts
+    /// again there (`gate-sound`: the Hobgoblins' first step 100 ms after the wait's end).
+    waited: Option<u32>,
 }
 
 impl Clock {
     /// A command at `at`: the clock moves there; the battle's tick (0x474040) has kept the
-    /// deadline on its grid, so it is the grid's next point after it.
+    /// deadline on its grid, so it is the grid's next point after it (after a sample's wait, the
+    /// grid from the wait's end).
     fn start(&mut self, at: u32) {
+        if let Some(end) = self.waited.take() {
+            self.deadline = end;
+        }
         self.now = self.now.max(at);
         if self.deadline <= self.now {
             let behind = self.now - self.deadline;
@@ -1715,6 +1723,7 @@ impl Clock {
     /// A frame drawn now waits for the deadline (`wait_until` 0x4F82F0), which then moves on by
     /// max(`time`, the lateness); returns when it shows.
     fn show(&mut self, time: u32) -> u32 {
+        self.waited = None;
         let shown = self.now.max(self.deadline);
         let late = shown - self.deadline;
         self.deadline += time.max(late);
@@ -1967,6 +1976,7 @@ impl<'a> Growing<'a> {
                 now: 0,
                 deadline: 0,
                 grid,
+                waited: None,
             },
             stacks,
             keys: Vec::new(),
@@ -2758,6 +2768,9 @@ impl Player<'_> {
             .min(now.saturating_add(crate::sound::SAMPLE_WAIT));
         if end > now {
             self.clock.wait(end - now);
+            if self.clock.deadline.saturating_add(self.clock.grid) <= end {
+                self.clock.waited = Some(end);
+            }
         }
     }
 

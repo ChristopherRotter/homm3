@@ -1553,14 +1553,14 @@ command = [
     { seat = "Defender", at = 1400, command = { Defend = {} } },
     { seat = "Defender", at = 1400, command = { Defend = {} } },
     { seat = "Attacker", at = 1400, command = { Cast = { spell = 10, target = { None = {} }, second = { None = {} } } } },
-    { seat = "Attacker", at = 3400, command = { Defend = {} } },
-    { seat = "Defender", at = 4200, command = { Defend = {} } },
-    { seat = "Defender", at = 4200, command = { Defend = {} } },
-    { seat = "Attacker", at = 4200, command = { Cast = { spell = 12, target = { Hex = { hex = 63 } }, second = { None = {} } } } },
-    { seat = "Attacker", at = 5300, command = { Defend = {} } },
-    { seat = "Defender", at = 5300, command = { Defend = {} } },
-    { seat = "Defender", at = 5300, command = { Defend = {} } },
-    { seat = "Attacker", at = 5300, command = { Cast = { spell = 26, target = { None = {} }, second = { None = {} } } } },
+    { seat = "Attacker", at = 6412, command = { Defend = {} } },
+    { seat = "Defender", at = 7212, command = { Defend = {} } },
+    { seat = "Defender", at = 7212, command = { Defend = {} } },
+    { seat = "Attacker", at = 7212, command = { Cast = { spell = 12, target = { Hex = { hex = 63 } }, second = { None = {} } } } },
+    { seat = "Attacker", at = 8312, command = { Defend = {} } },
+    { seat = "Defender", at = 8312, command = { Defend = {} } },
+    { seat = "Defender", at = 8312, command = { Defend = {} } },
+    { seat = "Attacker", at = 8312, command = { Cast = { spell = 26, target = { None = {} }, second = { None = {} } } } },
 ]
 
 [[sequence]]
@@ -1584,10 +1584,10 @@ frames = "timelines/gate-sound-frames.txt"
 boxes = true
 command = [
     { seat = "Attacker", command = { ShootWall = { part = 1 } } },
-    { seat = "Defender", at = 3775, command = { Move = { to = 93 } } },
-    { seat = "Attacker", at = 9259, command = { Defend = {} } },
-    { seat = "Attacker", at = 9259, command = { ShootWall = { part = 5 } } },
-    { seat = "Defender", at = 13134, command = { Move = { to = 100 } } },
+    { seat = "Defender", at = 3977, command = { Move = { to = 93 } } },
+    { seat = "Attacker", at = 9909, command = { Defend = {} } },
+    { seat = "Attacker", at = 9909, command = { ShootWall = { part = 5 } } },
+    { seat = "Defender", at = 13986, command = { Move = { to = 100 } } },
 ]
 
 [[sequence]]

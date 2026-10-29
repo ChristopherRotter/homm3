@@ -57,7 +57,10 @@ fn named(sound: Sound, ms: u32) -> Lengths {
 fn a_samples_length_rounds_its_frames_up() {
     // `Regener`: 41 470 frames at 22 050 Hz, 1 880.7 ms.
     assert_eq!(length_ms(41_470, 22_050), 1_881);
-    assert_eq!([length_ms(22_050, 22_050), length_ms(1, 22_050)], [1_000, 1]);
+    assert_eq!(
+        [length_ms(22_050, 22_050), length_ms(1, 22_050)],
+        [1_000, 1]
+    );
     assert_eq!(length_ms(5, 0), 0);
     assert_eq!(length_ms(u64::MAX / 1000, 1), u32::MAX);
     // A cue's sample: the battle's own sound by its cue first, else the stack's.
@@ -69,7 +72,10 @@ fn a_samples_length_rounds_its_frames_up() {
     };
     assert_eq!(lengths.of(2, Sound::Shot), Some(700));
     assert_eq!(lengths.of(2, Sound::Heal), Some(900));
-    assert_eq!([lengths.of(3, Sound::Shot), lengths.of(2, Sound::Move)], [None, None]);
+    assert_eq!(
+        [lengths.of(3, Sound::Shot), lengths.of(2, Sound::Move)],
+        [None, None]
+    );
 }
 
 #[test]
@@ -93,10 +99,20 @@ fn the_heal_waits_for_its_sound_when_it_outlasts_the_animation() {
     let turn = silent.turns[0].0;
     assert_eq!(silent.turns[1], (turn + 400, 0));
     let short = named(Sound::Heal, 399);
-    let t = waited(&o, &[(Some(0), events.clone())], (&magic, &casts), Some(&short));
+    let t = waited(
+        &o,
+        &[(Some(0), events.clone())],
+        (&magic, &casts),
+        Some(&short),
+    );
     assert_eq!(t, silent);
     let long = named(Sound::Heal, 1_000);
-    let t = waited(&o, &[(Some(0), events.clone())], (&magic, &casts), Some(&long));
+    let t = waited(
+        &o,
+        &[(Some(0), events.clone())],
+        (&magic, &casts),
+        Some(&long),
+    );
     assert_eq!(t.turns, [(turn, 1), (turn + 1_000, 0)]);
     assert_eq!(
         [turn + 400, turn + 999, turn + 1_000].map(|ms| t.outlined(ms)),
@@ -159,7 +175,9 @@ fn a_one_target_shot_waits_for_the_shooters_shot_sound() {
         .unwrap();
     let next = silent.turns.last().unwrap().0;
     let lengths = Lengths {
-        stacks: [((0, Sound::Shot), next - cue.at + 250)].into_iter().collect(),
+        stacks: [((0, Sound::Shot), next - cue.at + 250)]
+            .into_iter()
+            .collect(),
         ..Lengths::default()
     };
     let t = waited(&o, &[(None, events)], (&magic, &casts), Some(&lengths));
