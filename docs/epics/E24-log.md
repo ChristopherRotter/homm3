@@ -1676,10 +1676,11 @@ testing the edited tree); CI's green run on `master` stands for the starting poi
   labels and the font's overhangs, a label's change drawing its cell alone, a changed item of
   unknown reach without the label's font, the kingdom's new fields and their refusals, the bar's
   texts by their keys and as the layout draws them, the situation's resources and date, the
-  viewer's keys and the executable's strings); `check.sh` (100 % coverage); the window under
-  Xvfb (`walk-1`, `walk-points`, `lists-scrolled`, `resources-date`, *Tale of two lands*,
-  `--check 10`): every frame read back exact, made as the same frame composed afresh, every
-  change the headless loop's.
+  viewer's keys and the executable's strings); `check.sh` (its coverage found three regions of
+  the composer a label had reached: tested with a batch lacking its font; then 100 %); the
+  window under Xvfb (`walk-1`, `walk-points`, `lists-scrolled`, `resources-date`, *Tale of two
+  lands*, `--check 10`): every frame read back exact, made as the same frame composed afresh,
+  every change the headless loop's.
 - **Measured** (the sandbox, `--measure 20`, alternating with `master`'s build): the same within
   the spread; `walk-1` 24.6–24.8 % uploaded (both), a frame made in a median 0.4 ms (0.5 on
   `master`), p95 1.8–2.0 (1.7–2.1); *Tale of two lands* 11.2 %, 1.2 (1.3); `path-objects` 5.2 %,
