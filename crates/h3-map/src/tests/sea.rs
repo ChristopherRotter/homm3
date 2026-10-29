@@ -8,8 +8,8 @@ use super::import::SOD;
 use super::limits;
 use crate::model::{Body, RawMap, Text};
 use crate::writer as w;
-use crate::{import, read};
 use crate::{ImportError, Unsupported};
+use crate::{import, read};
 use h3_adventure::{BoatSetup, Pos, TileMask};
 
 /// The game's `Objects.txt` lines of the classes written here (E08 T67): the three boats,
@@ -227,7 +227,8 @@ fn the_sea_map_imports() {
     let at = |x, y| Pos::new(x, y, 0);
     assert_eq!(
         setup.map.boats,
-        [(at(12, 6), 0), (at(12, 8), 1), (at(12, 10), 2)].map(|(tile, kind)| BoatSetup { tile, kind })
+        [(at(12, 6), 0), (at(12, 8), 1), (at(12, 10), 2)]
+            .map(|(tile, kind)| BoatSetup { tile, kind })
     );
     let part = SOD.adventure();
     let keys: Vec<Option<&str>> = setup

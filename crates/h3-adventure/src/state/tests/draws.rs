@@ -719,8 +719,7 @@ fn a_sea_find_holds_its_fixed_entry_with_the_artifact_beside_it() {
     // and a treasure artifact (10 %), one draw of 0 to 99 and the artifact from the pool.
     let rules = rules(true);
     let mut seen = [0; 3];
-    for (resolved, contents) in outcomes(&rules, "t:sea_chest", &Holds::Nothing, &Bans::default())
-    {
+    for (resolved, contents) in outcomes(&rules, "t:sea_chest", &Holds::Nothing, &Bans::default()) {
         let gold = |amount| contents == [(GOLD, amount)];
         match resolved {
             Resolved::Nothing if contents.is_empty() => seen[0] += 1,

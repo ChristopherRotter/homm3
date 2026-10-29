@@ -18,6 +18,7 @@
 //! alone among the players who see it, and a step tells only the tiles the viewer sees the hero
 //! on.
 
+use alloc::collections::BTreeMap;
 use alloc::vec::Vec;
 
 use h3_content::{
@@ -318,17 +319,24 @@ impl AdventureState {
         // an object of the map, drawn as the others.
         let sees_heroes =
             |pos| observation.is_explored(pos) || (objects_on_fringe && observation.is_fringe(pos));
-        let mut boats: Vec<BoatView> = self
+        // In tile order (one empty boat a tile: the tile is a unique key).
+        let boats: Vec<BoatView> = self
             .boats()
             .filter(|(_, boat)| !boat.aboard && !boat.gone && sees_heroes(boat.tile))
-            .map(|(_, boat)| BoatView {
-                tile: boat.tile,
-                kind: boat.kind,
-                facing: boat.facing,
+            .map(|(_, boat)| {
+                let tile = boat.tile;
+                (
+                    (tile.level, tile.y, tile.x),
+                    BoatView {
+                        tile,
+                        kind: boat.kind,
+                        facing: boat.facing,
+                    },
+                )
             })
+            .collect::<BTreeMap<_, _>>()
+            .into_values()
             .collect();
-        // One empty boat a tile: the tile is a unique key.
-        boats.sort_by_key(|boat| (boat.tile.level, boat.tile.y, boat.tile.x));
         let heroes = self
             .heroes()
             .iter()

@@ -8,7 +8,7 @@ toolchain = "rustc 1.97.0 (2d8144b78 2026-07-07)"
 target = "x86_64-unknown-linux-gnu"
 
 [workload]
-description = "5 random-vs-random games of 28 days on the rewards map (E08 T64a, increment 7: every reward class, the visits, their decisions and their guards' battles; 1 358 steps, about 862 000 Ir a step, the duel's about 305 000); counts only inside h3_sim::adventure::random_rollout (the agent, the reachable-tiles queries, apply)"
+description = "5 random-vs-random games of 28 days on the rewards map (E08 T64a, increment 7: every reward class, the visits, their decisions and their guards' battles; 1 358 steps, about 862 000 Ir a step, the duel's about 305 000); since E08 T72 -2.22 %, the same games: the static map's tiles grew by the winds' and holes' marks from 14 to 16 bytes, likely copied in fewer instructions; counts only inside h3_sim::adventure::random_rollout (the agent, the reachable-tiles queries, apply)"
 args = [
     "adventure",
     "bench",
@@ -24,5 +24,5 @@ args = [
     "1",
 ]
 collect = "*adventure*random_rollout*"
-instructions = 1171206348
+instructions = 1145261544
 threshold_percent = 2

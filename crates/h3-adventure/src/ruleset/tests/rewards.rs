@@ -1286,7 +1286,10 @@ fn the_sea_s_kinds_compile_and_are_checked() {
         }),
         sea({
             let mut f = sea_find();
-            f.draws[2].1 = fixed(vec![(key("t:gold"), 1000)], Some(vec![ArtifactClass::Minor]));
+            f.draws[2].1 = fixed(
+                vec![(key("t:gold"), 1000)],
+                Some(vec![ArtifactClass::Minor]),
+            );
             f
         }),
         sea({
@@ -1298,7 +1301,11 @@ fn the_sea_s_kinds_compile_and_are_checked() {
         with_kind(10, |k| *k = ObjectKindDef::Message { leaves: true }),
     ];
     for (i, packs) in changes.iter().enumerate() {
-        assert_ne!(hash_of(&compile_rewards(packs).unwrap()), base, "change {i}");
+        assert_ne!(
+            hash_of(&compile_rewards(packs).unwrap()),
+            base,
+            "change {i}"
+        );
     }
     let kinds = [
         ObjectKindDef::Message { leaves: true },

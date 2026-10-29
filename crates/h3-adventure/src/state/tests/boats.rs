@@ -105,9 +105,7 @@ fn the_setup_refuses_a_boat_where_no_boat_may_lie() {
         f(&mut setup);
         build(&rules, &setup).map(|_| ())
     };
-    let push = |tile| {
-        move |s: &mut AdventureSetup| s.map.boats.push(BoatSetup { tile, kind: 0 })
-    };
+    let push = |tile| move |s: &mut AdventureSetup| s.map.boats.push(BoatSetup { tile, kind: 0 });
     // Off the map, off its levels, on land or rock, on an earlier boat's tile.
     for tile in [p(16, 2), Pos::new(5, 2, 1), p(2, 2), p(5, 6)] {
         assert_eq!(with(&push(tile)), Err(SetupError::Boat(2)), "{tile:?}");
@@ -290,7 +288,10 @@ fn the_hash_sees_the_boats_and_each_hero_s_boat_and_maximum() {
         assert_ne!(state.state_hash(), base.state_hash(), "change {i}");
     }
     // The empty boats' grid follows from the records: equal states, equal hashes.
-    assert_eq!(build(&rules, &setup).unwrap().state_hash(), base.state_hash());
+    assert_eq!(
+        build(&rules, &setup).unwrap().state_hash(),
+        base.state_hash()
+    );
 }
 
 /// An object of `ty` lying on the 3 × 2 tiles left of and above `anchor` (its picture only).
@@ -341,7 +342,10 @@ fn the_static_map_marks_the_sea_s_grounds_and_the_holes() {
             .all(|t| !t.winds && !t.hole && !t.no_native)
     );
     // A tile off the map has neither.
-    assert_eq!((StaticTile::OUTSIDE.winds, StaticTile::OUTSIDE.hole), (false, false));
+    assert_eq!(
+        (StaticTile::OUTSIDE.winds, StaticTile::OUTSIDE.hole),
+        (false, false)
+    );
 }
 
 // covers: ADV-SEA-001

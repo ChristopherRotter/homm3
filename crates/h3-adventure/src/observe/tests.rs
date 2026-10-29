@@ -510,10 +510,7 @@ fn a_player_sees_the_empty_boats_and_each_seen_hero_s_boat() {
         assert_eq!(red.hero(HeroId::new(4)).unwrap().boat, Some(2));
         assert_eq!(red.hero(HeroId::new(1)).unwrap().boat, None);
         let blue = state.observe(&rules.0, &rules.1, BLUE);
-        assert_eq!(
-            blue.boats,
-            [boat(3, 3, 1), boat(3, 8, 0), boat(14, 13, 1)]
-        );
+        assert_eq!(blue.boats, [boat(3, 3, 1), boat(3, 8, 0), boat(14, 13, 1)]);
         let own = blue.hero(HeroId::new(4)).unwrap();
         let hero = state.hero(HeroId::new(4)).unwrap();
         assert_eq!(own.boat, Some(2));

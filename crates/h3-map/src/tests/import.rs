@@ -661,9 +661,10 @@ fn a_special_ground_lies_on_its_pictures_tiles() {
     {
         assert_eq!(drawn(225, picture), rect(width, height), "{picture}");
     }
-    for (picture, (width, height)) in ["AVXfw5.def", "AVXfw6", "AVXfw7"]
-        .into_iter()
-        .zip([(3, 3), (5, 2), (2, 5)])
+    for (picture, (width, height)) in
+        ["AVXfw5.def", "AVXfw6", "AVXfw7"]
+            .into_iter()
+            .zip([(3, 3), (5, 2), (2, 5)])
     {
         assert_eq!(drawn(225, picture), rect(width, height), "{picture}");
     }

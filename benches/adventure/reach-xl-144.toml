@@ -8,7 +8,7 @@ toolchain = "rustc 1.97.0 (2d8144b78 2026-07-07)"
 target = "x86_64-unknown-linux-gnu"
 
 [workload]
-description = "the reachable-tiles query of every walking hero of the acting player at each step of 2 random games of 28 days on the generated 144 x 144 two-level map (E08 decision 11; since E08 T20b3b2 with its monsters, whose guarded tiles end paths; since E04c T10b with the original's obstacles in its battles; since E08 T31 with its heroes near a level and one levelled at load; since E08 T40 the heroes' day's points, Pathfinding and radius from their details, which changed the games: 4 784 queries; the same games under T40's code measured -0.09 %; since E08 T42 the walkers only, the flyers and water walkers in reach-lifted-xl-144, the games changed by the map's kits: 3 145 queries of 6 303, about 148 k Ir each; the code alone on the old map +0.86 %, T41's search); counts only inside h3_cli::adventure::bench::reach_queries"
+description = "the reachable-tiles query of every walking hero of the acting player at each step of 2 random games of 28 days on the generated 144 x 144 two-level map (E08 decision 11; since E08 T20b3b2 with its monsters, whose guarded tiles end paths; since E04c T10b with the original's obstacles in its battles; since E08 T31 with its heroes near a level and one levelled at load; since E08 T40 the heroes' day's points, Pathfinding and radius from their details, which changed the games: 4 784 queries; the same games under T40's code measured -0.09 %; since E08 T42 the walkers only, the flyers and water walkers in reach-lifted-xl-144, the games changed by the map's kits: 3 145 queries of 6 303, about 148 k Ir each; the code alone on the old map +0.86 %, T41's search); since E08 T72 -2.28 %, the same games: the static map's tiles grew by the winds' and holes' marks from 14 to 16 bytes, likely copied in fewer instructions; counts only inside h3_cli::adventure::bench::reach_queries"
 args = [
     "adventure",
     "bench",
@@ -24,5 +24,5 @@ args = [
     "1",
 ]
 collect = "*reach_queries*"
-instructions = 466864446
+instructions = 456239665
 threshold_percent = 2
