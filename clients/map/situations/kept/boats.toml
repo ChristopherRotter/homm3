@@ -1,11 +1,11 @@
 # The original's live part at the still (h3map.py still).
 view = [0, 0, 0]
-cycles = 3
-river_cycles = 3
-frames = 76
+cycles = 6
+river_cycles = 6
+frames = 77
 viewer = 0
 anchors = [[5, 8, 0], [9, 12, 0], [19, 8, 0], [3, 14, 0], [6, 8, 0], [10, 12, 0], [18, 8, 0], [14, 9, 0], [2, 6, 0], [5, 6, 0]]
-phases = [43, 232, 194, 114, 91, 162, 246, 238, 224, 111]
+phases = [233, 158, 244, 130, 93, 169, 219, 245, 193, 125]
 defs = ["ah01_e.def", "ah06_e.def", "ah12_e.def", "ah00_e.def", "AVXboat0.def", "AVXboat1.def", "AVXboat2.def", "AVXboat0.def", "AVXboat2.def", "AVXboat1.def"]
 classes = [[34, 1], [34, 6], [34, 12], [34, 0], [8, 0], [8, 1], [8, 2], [8, 0], [8, 2], [8, 1]]
 heroes = [[5, 8, 0, 1, 6, 0, 0, 0], [17, 8, 0, 12, 3, 0, 2, 0], [9, 12, 0, 6, 1, 0, 1, 0], [2, 14, 0, 0, 2, 1, -1, -1]]
