@@ -29,10 +29,13 @@ The user's dictation (2026-10-12): `docs/lanes/client/ASSET-NOTES.md`; this lane
 
 ## Recent sessions
 
+- **2026-10-29, E24 M3 T4b** (the user present: T4b kept whole): *in progress* on
+  `map-client/e24-m3-t4b`: the reading, the viewer and the harness done (design §4.5, "When they
+  are drawn again"), `walk-1` recorded exact with the lists; next the other 12 sequences
+  (`frames`, then `--reuse` with each new timeline), `drawn --record`, `check.sh`, the window.
 - **2026-10-29, E24 M3 T4a** (the user present: T4 cut into T4a, the stills, and T4b, over
   time): T4a built (the log's "M3 T4a"); the original data staged from the user's repo folder
   first; nothing is waiting on the user's computer.
 - **2026-10-29, E24 M3 T3b** (the user present: T3b kept whole when its reading grew): T3b
   built (the log's "M3 T3b"); the recording found the step's end's redraw the first reading had
   set aside. The user's computer stayed linked; nothing is waiting on it.
-- **2026-10-29, E24 M3 T3a** (the user present: T3 cut into T3a and T3b): T2b2's numbers recorded from the user's run; T3a built (the log's "M3 T3a"); the sandbox restarted once (its files kept). The user's computer was unlinked mid-session: nothing is waiting on it.
