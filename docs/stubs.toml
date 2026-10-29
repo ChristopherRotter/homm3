@@ -64,12 +64,6 @@ reason = "A battle from the map leaves BattleSetup.retreat (ADR-0027 point 14: e
 epic   = "E10"
 
 [[stub]]
-id     = "ADV-STUB-11"
-where  = "crates/h3-adventure/src/reach.rs::Reach::search"
-reason = "The reachable tiles of a hero in a boat are its own tile only, and a walking hero's search reaches no empty boat (E08 T73a; design §9): a boat's own search (one node per tile, the sail rows and prices, the landings and visits as leaves) and the walking search's boat test out of its hot loop come with T73b; MoveHero already accepts every such path, and a flyer's and a water walker's boarding are reached (ADV-SEA-002, ADV-SEA-004, ADV-MOV-007)"
-epic   = "E08"
-
-[[stub]]
 id     = "ADV-STUB-12"
 where  = "crates/h3-adventure/src/state/passage.rs::AdventureState::passage"
 reason = "The original's class 85 (the Shipwreck) is the one object whose water tile a flight passes and a walker steps onto from land (0x4B26D6, 0x481D0D; survey E08-sea.md §15); it is an untyped blocker in the engine, so its water tile is closed to a flight as every other object's (D-46, ADV-MOV-009) until creature banks type it (the sketch's item 10)"

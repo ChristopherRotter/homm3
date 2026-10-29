@@ -8254,3 +8254,58 @@ data staged (none needed: no import, harness or pack change).
   holder's gate; the interim reach and a flyer's converted boarding), `state/tests/events.rs` (an
   event on water), `movement/tests.rs` (`converted_points`), `command/tests.rs` (the errors'
   texts).
+
+### Increment 8, round 6: T73b, the boat's reachable tiles (2026-10-29, `adventure/e08-t73b`)
+
+Baseline 4ebfc6d (#575 merged; CI on `master` green; the light gates passed). No original data
+staged. The user's cut (decision 185): whole, one pull request.
+
+- **A hero in a boat** (`reach.rs`; design §9; ADV-SEA-003 to -005): `Reach::search_sail`, a third
+  search beside the walking and the layered ones: Dijkstra's over one node per tile, the most
+  points first (ties by slot), every step one `AdventureState::passage` allows the boat (its
+  `sail_entry` rows, each a stop), priced by `Pricing::sail` from the water tile and dropped by
+  `Pricing::left_by`; a landing, a visit (an object visited from the boat's tile or entered,
+  another hero) and a water tile a monster guards are destinations it goes no further from; a
+  landing keeps the points its conversion leaves (`Search::landed`: `converted_points` to the
+  land's maximum for the hero's army, `#[cold]`). The window's radius for a boat is its points ÷
+  `Pricing::sail_cheapest` (the least water price, on Favorable Winds the part's share, at least
+  1), every step of a boat being one at sea; a landing's is priced from its water tile.
+- **A walking hero beside the water** (`Reach::expand`, `Reach::afloat`): the window's `occupied`
+  flags mark empty boats beside other heroes (a boat lies on water only, so a land tile's flag
+  stays a hero's); a water neighbour (the terrain test fails) is looked at only when flagged, out
+  of the hot loop (`#[cold]`, `#[inline(never)]`): as `check_step`, not down across the top of an
+  object's tile not visited from above (ADV-OBJ-004: a hero in a boat on a water Cartographer's
+  tile), the step priced as the walker's from its land tile, a hero in a boat visited with the
+  walker's drop, an empty boat boarded with a boat's drop and the conversion (`Search::boarded`);
+  each a leaf. Before, the walker's search reached neither, though `MoveHero` accepted both.
+- **Benchmarks** (`bench-check`, none rebaselined): the first build, the water test in the
+  walker's one loop (`if search.occupied[next]` on every water neighbour), measured `reach-xl-144`
+  +5.06 %, `random-play-rewards-36` +4.86 %, `random-play-duel-36` +3.39 %, though no map of theirs
+  has a boat; so the walker's loop is now chosen once per query (`Reach::search_walking::<AFLOAT>`,
+  `expand::<START, AFLOAT>`): with neither an empty boat nor another hero in a boat in the window
+  the loop is the one before boats. Then `reach-xl-144` +0.37 %, `random-play-rewards-36`
+  +0.64 %, `random-play-duel-36` +1.99 % (T73a's +1.97 %), `reach-lifted-xl-144` −0.96 %, the
+  forks unchanged since T72 (+0.89 % to +1.99 %), `manage-army-12` +0.31 %. `random-play-duel-36`,
+  `fork-xl-144` and `fork-meeting-xl-144` sit at the threshold. CI's runner measured
+  `random-play-duel-36` at +2.01 %, the pull request's only failing step; the user accepted it
+  (2026-10-29), and the next session re-baselines it (the lane HANDOFF).
+- **The property** (`reach/tests.rs`, `the_query_and_move_hero_agree`): the map's coast flagged
+  (`testing::coasted`, moved from the sea tests with `lying`), the tiles gain an empty boat (`b`),
+  sea under Favorable Winds (`f`) and a monster on water (`m`); the hero starts in a boat in a
+  quarter of the cases (the setup places heroes on land: such a hero starts on the first free land
+  tile and is put aboard), another hero may stand in one, and the hero boards free in half the
+  cases (`testing::{sea_skills, ADMIRAL, hero_rules_with}`), so later rounds sail and land. Five
+  deliberate faults were each caught at 600 cases (no walker's water test, no landing conversion,
+  a guarded water tile not a leaf, a boarding with the walker's drop, the boat's search left out);
+  8 000 cases passed.
+- **Tests** (`state/tests/sea.rs`): the interim test replaced by a walker's boarding with and
+  without free boarding and a hero in a boat met from an island; a boat's sea, landings (0 points,
+  and converted with free boarding), the empty boat refused, the guarded tiles as leaves, every
+  path the move's; a walker short of points and a boat on a Cartographer's tile from above; the
+  winds' cheaper path found after a dearer one, and E8-4's exception at 100 points.
+- **Rules:** ADV-MOV-007, ADV-SEA-002 and ADV-SEA-004 amended (the reach); ADV-STUB-11 closed. No
+  version moves: the reach is no state, no replay changes (no generated map has boats).
+- *Agent's calls (change freely):* the walker's test reads the precomputed `occupied` flags rather
+  than `Boats::empty` per water neighbour (design §9), and only in a window holding a boat or a
+  hero in one (a second instance of the loop); `sail_cheapest` sizes a boat's window (the land's `cheapest`, the
+  roads' 50 among them, would make it larger for nothing).

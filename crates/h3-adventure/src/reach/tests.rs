@@ -17,9 +17,11 @@ use proptest::prelude::{any, prop_assert, prop_assert_eq, proptest};
 use super::*;
 use crate::command::{AdventureCommand, AdventureCommandError, AdventureEvent, AdventureEventKind};
 use crate::movement::DIRECTIONS;
+use crate::setup::ObjectSetup;
 use crate::testing::{
-    FLYING, GNOLL, PEASANT, PIKEMAN, WATER_WALKING, WOLF, hero_at, hero_details, hero_rules,
-    movement_rules, world, world_state,
+    ADMIRAL, FLYING, GNOLL, PEASANT, PIKEMAN, WATER_WALKING, WINDS, WOLF, coasted, hero_at,
+    hero_details, hero_rules_with, hero_skills, lying, movement_rules, sea_skills, started, world,
+    world_state,
 };
 
 const RED: PlayerId = PlayerId::new(0);
@@ -213,7 +215,7 @@ fn the_query_stays_on_the_heros_level() {
             hero_at(2, 1, p(1, 1), &[PEASANT]),
         ],
     );
-    let state = crate::testing::started(&rules, &setup).unwrap();
+    let state = started(&rules, &setup).unwrap();
     let reach = reach(&state, &rules, 1);
     assert_eq!(reach.points_left(Pos::new(1, 1, 1)), Some(1159));
     assert_eq!(reach.points_left(p(1, 1)), None);
@@ -228,16 +230,17 @@ fn the_query_stays_on_the_heros_level() {
             hero_at(2, 1, p(1, 1), &[PEASANT]),
         ],
     );
-    let guarded = crate::testing::started(&rules, &setup).unwrap();
+    let guarded = started(&rules, &setup).unwrap();
     assert_eq!(guarded.guard_of(&rules.1, p(1, 0)), Some(0));
     assert_eq!(guarded.guard_of(&rules.1, Pos::new(1, 0, 1)), None);
     assert_eq!(self::reach(&guarded, &rules, 1), reach);
 }
 
-/// The tiles of the property's maps, weighted toward walkable ones.
+/// The tiles of the property's maps, weighted toward walkable ones; since E08 T73b with an empty
+/// boat (`b`), sea under Favorable Winds (`f`) and a monster on water (`m`).
 const TILES: &[char] = &[
-    'g', 'g', 'g', 'g', 's', 's', 'w', 'w', 'G', 'G', 'S', 'W', 'd', '~', '#', 'B', 'V', 'T', 'P',
-    'C', 'c', 'O', 'Y', 'K', 'X', 'M',
+    'g', 'g', 'g', 'g', 's', 's', 'w', 'w', 'G', 'G', 'S', 'W', 'd', '~', '~', '#', 'B', 'V', 'T',
+    'P', 'C', 'c', 'O', 'Y', 'K', 'X', 'M', 'b', 'f', 'm',
 ];
 const CREATURES: [h3_content::CreatureTypeId; 4] = [PIKEMAN, GNOLL, PEASANT, WOLF];
 
@@ -289,7 +292,10 @@ proptest! {
     /// leaves; a rejected move changes nothing; the query is deterministic. The hero's owner
     /// holds the gates' key from the start in half the cases, and takes it at a tent in others.
     /// E08 T41: the hero walks, flies or water-walks (its details' levels 1 to 3; a flyer
-    /// sometimes water-walks too), over the two kinds of node.
+    /// sometimes water-walks too), over the two kinds of node. E08 T73b: the map's coast flagged,
+    /// with empty boats and Favorable Winds; the hero starts in a boat in a quarter of the cases,
+    /// another hero may be in one, and half the heroes board free (the Admiral's Hat's effect),
+    /// so that boardings, sailing, landings and visits from and to a boat are walked.
     #[test]
     fn the_query_and_move_hero_agree(
         cells in proptest::collection::vec(0usize..TILES.len(), 64),
@@ -301,24 +307,30 @@ proptest! {
         faithful in any::<bool>(),
         picks in proptest::collection::vec(0usize..1000, 0..4),
         key in any::<bool>(),
-        (mode, level, both) in (0usize..3, 1u8..=3, any::<bool>()),
+        (mode, level, both, free) in (0usize..4, 1u8..=3, any::<bool>(), any::<bool>()),
     ) {
-        let rules = hero_rules(faithful);
-        let skills: Vec<_> = match mode {
+        let rules = hero_rules_with(faithful, [hero_skills(), sea_skills()].concat());
+        let mut skills: Vec<_> = match mode {
             1 if both => vec![(FLYING, level), (WATER_WALKING, 4 - level)],
             1 => vec![(FLYING, level)],
             2 => vec![(WATER_WALKING, level)],
             _ => vec![],
         };
+        if free {
+            skills.push((ADMIRAL, 1));
+        }
         let store = [Arc::new(hero_details(&[])), Arc::new(hero_details(&skills))];
         let (hx, hy) = (start.0 % width, start.1 % height);
         let mut grid: Vec<Vec<char>> = (0..height)
             .map(|y| (0..width).map(|x| TILES[cells[y * 8 + x]]).collect())
             .collect();
         // No hero stands on a pile's, a guard's or a gate's tile (ADV-MAP-001); one may on a
-        // chart's, a tower's or a tent's (E08 T14a).
-        let standable = |c: char| !matches!(c, '~' | '#' | 'B' | 'P' | 'K' | 'X' | 'M');
-        if !standable(grid[hy][hx]) {
+        // chart's, a tower's or a tent's (E08 T14a); on water only in a boat (E08 T73b).
+        let standable =
+            |c: char| !matches!(c, '~' | 'f' | 'b' | 'm' | '#' | 'B' | 'P' | 'K' | 'X' | 'M');
+        if mode == 3 {
+            grid[hy][hx] = 'b';
+        } else if !standable(grid[hy][hx]) {
             grid[hy][hx] = 'g';
         }
         let army: Vec<_> = creatures.iter().map(|&c| CREATURES[c]).collect();
@@ -326,13 +338,58 @@ proptest! {
         for (id, &(x, y)) in (2..).zip(&others) {
             let (x, y) = (x % width, y % height);
             let taken = heroes.iter().any(|h| h.pos == p(x as u16, y as u16));
-            if standable(grid[y][x]) && !taken {
+            if (standable(grid[y][x]) || grid[y][x] == 'b') && !taken {
                 heroes.push(hero_at(id, (id % 2) as u8, p(x as u16, y as u16), &[PEASANT]));
             }
         }
-        let rows: Vec<String> = grid.iter().map(|row| row.iter().collect()).collect();
+        // A hero on a boat's tile is put into the boat after the start (the setup places heroes
+        // on land): it starts on the first free land tile, grass if there is none.
+        let mut aboard = Vec::new();
+        for index in 0..heroes.len() {
+            let at = heroes[index].pos;
+            if grid[usize::from(at.y)][usize::from(at.x)] != 'b' {
+                continue;
+            }
+            let tiles = (0..height).flat_map(|y| (0..width).map(move |x| (x, y)));
+            let free = |(x, y): &(usize, usize)| {
+                grid[*y][*x] != 'b' && !heroes.iter().any(|h| h.pos == p(*x as u16, *y as u16))
+            };
+            let mut land = tiles.clone().filter(free);
+            let (x, y) = land
+                .clone()
+                .find(|&(x, y)| standable(grid[y][x]))
+                .or_else(|| land.next())
+                .unwrap();
+            grid[y][x] = if standable(grid[y][x]) { grid[y][x] } else { 'g' };
+            aboard.push((heroes[index].id, at));
+            heroes[index].pos = p(x as u16, y as u16);
+        }
+        // Favorable Winds lie on the sea of `f` (one tile each), a monster on the sea of `m`.
+        let on = |c: char| {
+            (0..height)
+                .flat_map(|y| (0..width).map(move |x| (x, y)))
+                .filter(|&(x, y)| grid[y][x] == c)
+                .map(|(x, y)| p(x as u16, y as u16))
+                .collect::<Vec<Pos>>()
+        };
+        let (winds, monsters) = (on('f'), on('m'));
+        let rows: Vec<String> = grid
+            .iter()
+            .map(|row| row.iter().map(|&c| if matches!(c, 'f' | 'm') { '~' } else { c }).collect())
+            .collect();
         let rows: Vec<&str> = rows.iter().map(String::as_str).collect();
-        let mut state = world_state(&rules, &rows, heroes);
+        let mut setup = coasted(&rows, heroes);
+        setup.map.objects.extend(winds.iter().map(|&at| lying(WINDS, at, 1)));
+        let monster = world(&["M"], 1, vec![]).map.objects.remove(0);
+        setup.map.objects.extend(monsters.iter().map(|&anchor| ObjectSetup {
+            anchor,
+            ..monster.clone()
+        }));
+        let mut state = started(&rules, &setup).unwrap();
+        for (hero, at) in aboard {
+            let boat = state.boats().position(|(_, b)| b.tile == at).unwrap();
+            state.put_aboard(hero, boat);
+        }
         if key {
             state.give_key(RED, 0);
         }
