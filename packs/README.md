@@ -642,6 +642,9 @@ different creatures or statistics.
 | `scouting_radius` | `tiles` (≥ 1) | since v46: the hero's scouting radius grows by `tiles` over the adventure part's base; sources add, each artifact type once (Scouting 1/2/3, the Speculum and the Spyglass 1 each, 0x4E4070; HER-ADV-006) |
 | `meeting_spells` | `level` (1..=5) | since v47 (E08 T45; read from E08 T49): at a meeting of two heroes of one player, each learns the other's learned spells up to the lesser of its learnable level and this level, the highest of both heroes' sources, if both wear a spell book (Scholar: 2/3/4, the code's level + 1, 0x4A2940; HER-SPL-007) |
 | `gives_spell_book` | — | since v47: equipping the artifact puts a Spell Book into the hero's empty spell book position, on every path (a move, a gain, a combination's build); removing it takes nothing back (Titan's Thunder, 0x4E2A00; HER-ART-007) |
+| `navigation` | `level` (1..=3) | since v49 (E08 T70; read from E08 T71): the hero's Navigation level, the highest of its sources; it indexes the adventure part's sea table for the day's sea points (0 without; the skill: 1/2/3, 0x698AEC). A skill specialty on the skill adds its `bp_per_level` of the table's first entry per hero level while the hero has the skill (Sylvia and Voy: 500, so 75 a level; HER-ADV-009) |
+| `sea_movement_points` | `points` (≥ 1) | since v49: flat points added to the day's sea points after the table's entry; sources add, each artifact type once, worn or a part of a worn combination (the Necklace of Ocean Guidance 1 000, the Sea Captain's Hat 500, so the Admiral's Hat 1 500 through its parts: 0x4E4990; HER-ADV-009) |
+| `free_boarding` | — | since v49: a boarding or a landing converts the hero's points left to the new surface's instead of setting them to 0; only the artifact type that carries it counts, not its parts worn apart (the Admiral's Hat, 0x4A1010, 0x49E670; HER-ADV-009) |
 
 The three `*_specialty` kinds are allowed in a hero's `specialty` only.
 

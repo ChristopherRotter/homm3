@@ -680,6 +680,24 @@ pub enum HeroEffect<C, K, S, F, L> {
     /// removing it takes nothing back (pack format v47, E08 increment 6; ADR-0013 point 3,
     /// HER-ART-007; Titan's Thunder, 0x4E2A64).
     GivesSpellBook,
+    /// The hero's Navigation level (pack format v49, E08 increment 8; ADR-0013 points 3 and
+    /// 13.6): the index into the adventure's sea table (0 without one; the original's
+    /// `sea_movement_by_navigation` 0x698AEC). Several sources: the highest (the skill: 1, 2, 3).
+    Navigation {
+        /// Navigation level (1..=3).
+        level: u8,
+    },
+    /// Flat points added to the day's sea points after the table's entry (pack format v49, E08
+    /// increment 8; HER-ADV-009). Several sources add, each artifact type once (the Necklace of
+    /// Ocean Guidance 1 000, the Sea Captain's Hat 500).
+    SeaMovementPoints {
+        /// Movement points (≥ 1).
+        points: u16,
+    },
+    /// A boarding or a landing converts the hero's points left instead of setting them to 0
+    /// (pack format v49, E08 increment 8; ADR-0013 point 13.7, HER-ADV-009; the Admiral's Hat,
+    /// tested as `hero_wears_artifact` 0x4D91F0 with 136).
+    FreeBoarding,
 }
 
 /// An effect as written in a pack (references are keys).
@@ -689,7 +707,7 @@ pub type CompiledHeroEffect = HeroEffect<CreatureTypeId, SkillId, SpellId, Facti
 
 impl<C, K, S, F, L> HeroEffect<C, K, S, F, L> {
     /// Pack names, indexed by [`HeroEffect::code`].
-    pub const NAMES: [&'static str; 53] = [
+    pub const NAMES: [&'static str; 56] = [
         "morale",
         "luck",
         "ranged_damage",
@@ -743,6 +761,9 @@ impl<C, K, S, F, L> HeroEffect<C, K, S, F, L> {
         "scouting_radius",
         "meeting_spells",
         "gives_spell_book",
+        "navigation",
+        "sea_movement_points",
+        "free_boarding",
     ];
 
     /// Stable code of the variant (canonical hash, duplicate checks).
@@ -801,6 +822,9 @@ impl<C, K, S, F, L> HeroEffect<C, K, S, F, L> {
             Self::ScoutingRadius { .. } => 50,
             Self::MeetingSpells { .. } => 51,
             Self::GivesSpellBook => 52,
+            Self::Navigation { .. } => 53,
+            Self::SeaMovementPoints { .. } => 54,
+            Self::FreeBoarding => 55,
         }
     }
 
@@ -997,6 +1021,9 @@ impl<C, K, S, F, L> HeroEffect<C, K, S, F, L> {
             Self::ScoutingRadius { tiles } => HeroEffect::ScoutingRadius { tiles: *tiles },
             Self::MeetingSpells { level } => HeroEffect::MeetingSpells { level: *level },
             Self::GivesSpellBook => HeroEffect::GivesSpellBook,
+            Self::Navigation { level } => HeroEffect::Navigation { level: *level },
+            Self::SeaMovementPoints { points } => HeroEffect::SeaMovementPoints { points: *points },
+            Self::FreeBoarding => HeroEffect::FreeBoarding,
         })
     }
 
@@ -1113,6 +1140,12 @@ impl<C, K, S, F, L> HeroEffect<C, K, S, F, L> {
             Self::ScoutingRadius { tiles: 0 } => Some("scouting_radius tiles must be at least 1"),
             Self::MeetingSpells { level } if !(1..=MAX_SPELL_LEVEL).contains(level) => {
                 Some("meeting_spells level must be 1..=5")
+            }
+            Self::Navigation { level } if !(1..=MAX_SKILL_LEVEL).contains(level) => {
+                Some("navigation level must be 1..=3")
+            }
+            Self::SeaMovementPoints { points: 0 } => {
+                Some("sea_movement_points points must be at least 1")
             }
             _ => None,
         }
@@ -1325,7 +1358,8 @@ impl CanonicalHash for CompiledHeroEffect {
             | Self::NoCasting
             | Self::MindImmunity
             | Self::NegateImmunities
-            | Self::GivesSpellBook => {}
+            | Self::GivesSpellBook
+            | Self::FreeBoarding => {}
             Self::SpellLevelLimit { level } | Self::SpellLevelImmunity { level } => {
                 h.write_u8(*level);
             }
@@ -1368,10 +1402,13 @@ impl CanonicalHash for CompiledHeroEffect {
             | Self::Pathfinding { level }
             | Self::Flying { level }
             | Self::WaterWalking { level }
-            | Self::MeetingSpells { level } => h.write_u8(*level),
+            | Self::MeetingSpells { level }
+            | Self::Navigation { level } => h.write_u8(*level),
             Self::LearnLevel { levels } => h.write_u8(*levels),
             Self::LandMovement { bp } => h.write_u16(*bp),
-            Self::LandMovementPoints { points } => h.write_u16(*points),
+            Self::LandMovementPoints { points } | Self::SeaMovementPoints { points } => {
+                h.write_u16(*points);
+            }
             Self::ScoutingRadius { tiles } => h.write_u8(*tiles),
             Self::Raises { priority, creature } => {
                 h.write_u8(*priority);
@@ -1518,6 +1555,9 @@ mod tests {
             E::ScoutingRadius { tiles: 1 },
             E::MeetingSpells { level: 2 },
             E::GivesSpellBook,
+            E::Navigation { level: 1 },
+            E::SeaMovementPoints { points: 500 },
+            E::FreeBoarding,
         ]
     }
 
@@ -1842,6 +1882,9 @@ mod tests {
             E::ScoutingRadius { tiles: 0 },
             E::MeetingSpells { level: 0 },
             E::MeetingSpells { level: 6 },
+            E::Navigation { level: 0 },
+            E::Navigation { level: 4 },
+            E::SeaMovementPoints { points: 0 },
         ];
         for e in bad {
             assert!(e.parameter_error().is_some(), "{e:?}");

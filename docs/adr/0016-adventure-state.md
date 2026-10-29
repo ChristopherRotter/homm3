@@ -54,6 +54,15 @@ left open whether objects are a closed enum or data-driven primitives. No logic 
      heroes and players on the XL map's 41 472 objects, measured in E08 T55b). The **reward
      records** are static (the static map), one per box or event, never shared (A-19 not
      reproduced).
+   - **Increment 8's boats** (E08 decision 164: no original bound; the original's 64 records are
+     not reproduced, `ADV-QUIRK-32`): boats are no objects of the static map, because they move.
+     Each boat is a record (its type, which is appearance only; its facing; its owner and last
+     captain, kept and read by no rule until Summon Boat; whether a hero is aboard) in a
+     persistent table by boat index, and the tiles where an empty boat lies are a persistent
+     per-tile layer (a bitset grid as the fog's) that the movement rules and the reachable-tiles
+     query read; a boat with a hero aboard lies on its hero's tile, which the hero on the map
+     holds. A fork costs two reference counts; a boarding, a landing or a boat leaving the map
+     writes one record and one leaf.
 
    A fork is `Clone`: a few reference increments plus the plain arrays. The structures are
    hand-rolled in `h3-adventure` (no persistent-collections dependency) and move to the kernel
@@ -99,6 +108,20 @@ left open whether objects are a closed enum or data-driven primitives. No logic 
    decision (ADR-0017 points 1 and 6). From increment 7 a visit's changes to the hero come back
    as hero changes (ADR-0013 points 2 and 15); its morale and luck bonuses are the details'. The
    once-per-hero marks are the adventure's (point 1).
+   From increment 8 a hero on the map may be **in a boat** (it holds its boat's index) and keeps
+   its **day's maximum**, the points its turn started with on its surface. The turn start sets the
+   day's points and the maximum by the hero's surface: on land the land points (ADR-0013 point
+   13.1), in a boat the sea points (ADR-0013 point 13.6). **Boarding** (a step from land onto an
+   empty boat's tile) and **landing** (a step from a boat onto a free coastal tile) end the move;
+   at the visit that follows the step the hero's maximum becomes the new surface's, computed then
+   from its details and army, and its points become 0, or with free boarding (ADR-0013 point
+   13.7; the Admiral's Hat) the points left × the new maximum ÷ the old one, truncated, the points
+   left being those after the step's own drop to 0 (D-41, the original's order, confirmed by
+   batch E8). The original keeps the old maximum without the Hat (A-28, `ADV-QUIRK-31`): not
+   reproduced, no flag (E08 decision 166). Boarding clears nothing the engine holds yet (the
+   original clears the Fly and Water Walk spells' levels; the spells come later); a hero in a
+   boat neither flies nor water-walks, whatever it wears. A hero that leaves the map takes its
+   boat (the boat leaves with it).
 4. **Map objects are closed behaviour kinds with data parameters** (as abilities, ADR-0012;
    answers the `docs/03` question). An object is its static part (position, template masks of
    blocked and visitable tiles, object type), a kind from a closed enum in `h3-adventure` with
@@ -158,9 +181,10 @@ left open whether objects are a closed enum or data-driven primitives. No logic 
    - **A hero's passage** (increment 5) depends on how it moves: walking, flying (a flying level
      from its details) or water walking (a water-walking level); a hero that does both flies.
      **A walking hero** moves as above. **A flying hero** also passes over blocked tiles, water,
-     guarded tiles and the visitable tiles of objects and heroes, never over rock and never over
-     an **unexplored** tile: moves stay on explored tiles for every hero (A-13 fixed for now,
-     `ADV-QUIRK-15`). **Provisional** (the user at ADV-Q20 and ADV-Q21): "probably fix, but
+     guarded tiles and the visitable tiles of objects and heroes (on water, from increment 8,
+     only an empty boat's and a boat's hero's: D-46, increment 8's kinds), never over rock and
+     never over an **unexplored** tile: moves stay on explored tiles for every hero (A-13 fixed
+     for now, `ADV-QUIRK-15`). **Provisional** (the user at ADV-Q20 and ADV-Q21): "probably fix, but
      gameplay impacts have to be considered (wide obstacle ranges become impassable); perhaps
      deserves a compromise, like allowing to route to the closest unexplored, but free hex; TBD
      later anyway". The compromise, and with it `ADV-QUIRK-15`'s class, is decided later; until
@@ -169,7 +193,9 @@ left open whether objects are a closed enum or data-driven primitives. No logic 
      object not visited from above stays impossible. **A water-walking hero** also passes over
      water that holds no object; on land, and for the guards, it is a walking hero.
    - **A move ends only on a tile a hero may stop on** (D-25): a free land tile, or a visit made
-     from such a tile (an entered object, or a neighbour's object or hero visited from it). A
+     from such a tile (an entered object, or a neighbour's object or hero visited from it); from
+     increment 8 also an empty boat's tile (a boarding) and, for a hero in a boat, every water
+     tile and a landing's free coastal tile (increment 8's kinds). A
      tile only passed over (blocked, water, a visitable tile flown over, a tile a flight enters by
      a step up off the visitable tile of an object not visited from above) is never a move's end
      nor the tile a visit is made from. The **reachable-tiles query** keeps two kinds of node per
@@ -243,6 +269,64 @@ left open whether objects are a closed enum or data-driven primitives. No logic 
        (A-24). An RoE map's Witch Hut without a mask takes the original's fixed 14 skills (mask
        0xEFBF) under `faithful` and every skill but Leadership and Necromancy under
        `strict-fixed` (A-21, `ADV-QUIRK-21`, a quirk with a flag).
+   - **Increment 8's kinds and the sea** (the import maps classes 8, 29, 59, 82, 86, 124 and
+     225):
+     - **Boats** (class 8) become boats (point 1), never objects; the import takes the template's
+       subclass as the type, no owner, the original's facing 2, nobody aboard, and refuses two
+       boats on one tile, a boat off water, on a tile an object blocks or is visited from, or
+       under a hero. **Any hero boards any empty boat.** **A hero placed on water** is refused by
+       the import (`Unsupported`, D-44, E08 decisions 163 and 178: batch E8's E8-5 showed the
+       original keeping it on foot without a boat; no shipped map has one).
+     - **The sea's pickups** are visited from the neighbouring tile and leave the map at their
+       visit, without a question: **Flotsam** (29: nothing, 5 wood, 5 wood and 200 gold, or 10
+       wood and 500 gold, a quarter each), the **Sea Chest** (82: nothing 20 %, 1 500 gold 70 %,
+       1 000 gold and a treasure artifact 10 %), the **Shipwreck Survivor** (86: a treasure,
+       minor, major or relic artifact at 55, 20, 20 and 5 %) are finds that leave, their contents
+       drawn when the game is built from the setup stream in object order (the random artifacts'
+       pool of increment 7); a hero that cannot receive the artifact gets the chest's 1 500 gold
+       instead of both its parts, and loses the survivor's (`ADV-QUIRK-22`'s test). The **Ocean
+       Bottle** (59) is a **message**: its visit tells the visitor's owner which object's message
+       it read (the map's text, or the original's default by the bottle's column, are the
+       client's: the engine holds no text) and it leaves; every visitor reads it, a computer
+       player's too (A-27, `ADV-QUIRK-30`, not reproduced, no flag; E08 decision 166).
+     - **Favorable Winds** (225) is a **ground of the sea**: it lies on its picture's tiles, is
+       never visited and is no battlefield; a boat's step from a tile it tops costs two thirds of
+       the step's price, truncated (66, 93 diagonally), as does the drop's cheapest step from
+       such a tile. **Holes** (124) lie on their picture's tiles, are never visited and only
+       forbid a landing there.
+     - **A hero's passage in a boat** (the fourth mode beside walking, flying and water walking):
+       water steps only, at water's price from the source tile (100, 141 diagonally, Favorable
+       Winds as above), with neither roads, nor native terrain, nor Pathfinding; a diagonal step
+       from water to water only when both side tiles are water (a diagonal landing needs no such
+       test: E08 T66b's reading of 0x4B2867 and 0x481CDB); never onto an empty boat's tile nor a
+       blocked water tile; onto land only by a **landing** onto a **free coastal tile** (the
+       map's coast flag; no object blocking it or visited from it, no event, no hole, no hero:
+       D-42, the original's class 3, with the wiki). The diagonal exception (ADV-MOV-005)
+       compares the points left with water's price, never the winds' (D-43). The drop to 0 after
+       a step prices the cheapest step from the new tile as the original's `cheapest_step_from`
+       (100 at sea, 66 on Favorable Winds; on the coast its road's price, else the native price).
+     - **From land onto water:** an empty boat's tile is a step for every mode from a stop node,
+       so from land (boarding: the move ends there; no guard attacks on it; a flight or a water
+       walk over water boards no boat, the boat being on the original's list of classes not
+       entered, 0x63AA58, and a flight passes over it from land or water, batch E8c's E8-17d and
+       E8-17e); a hero in a boat is visited from a stop node (a battle or a meeting); an object's
+       visitable tile on water (a pickup, a monster, any class but a hero, a boat and the
+       Shipwreck) is visited only from a boat (D-45 reverted by batch E8's E8-7), and a flight
+       neither ends on nor passes over it (D-46, the original's code, confirmed by batch E8c's
+       E8-17a and E8-17b, E08 decisions 179, 180); plain water and an object's blocked cell stay
+       a flight's pass, plain water a water walk's. Batch E8 confirmed D-41 to D-43 (E08 decision
+       162).
+     - **At sea**, an object visited from the neighbouring tile is visited from the boat's water
+       tile, an entered one is entered; another hero in a boat is met or attacked from the
+       neighbouring water tile; a boat never reaches a hero on land; a step onto a guarded water
+       tile is attacked at once; an event on water fires for a boat's step and ends the move
+       there. A landing's guards attack after the landing, at the monster's tile as any guards
+       (batch E8's E8-15).
+     - **The reachable-tiles query** searches a hero in a boat over one node per tile (every water
+       tile a stop; the landing a leaf from which no path goes on, as boarding is from land); a
+       walking hero's search tests a boat only on a water neighbour, so its cost stays
+       (`bench-check`). Today's reach only: the multi-day path's next day at the sea's maximum is
+       not the engine's.
 5. **Fog of war.** Each player has an explored layer (a bitset grid). An explored tile stays
    visible with its current content until a rule clears it (Cover of Darkness): no line-of-sight
    memory (VCMI, survey `E08-adventure-core.md` §2). Reveals set disk-shaped areas;
@@ -283,7 +367,13 @@ left open whether objects are a closed enum or data-driven primitives. No logic 
    observed**, not even by its visitor's owner after it fired; its firing is told to the visitor's
    owner alone, its removal to no one. Removals of picked-up objects are seen where the tiles
    are, as a pile's. The legal moves never depend on an event (A-23 withdrawn), so they reveal
-   nothing of one before it fires.
+   nothing of one before it fires. From increment 8 a viewer sees on its explored tiles every
+   **empty boat**: its tile, type and facing, never its owner or captain; of every hero it sees
+   whether it is in a boat (its boat's type: the original draws the hero's flag on it); an own
+   hero's day's maximum is its owner's. The sea's pickups look alike to every viewer until a
+   visit, as the chests; their contents stay hidden. A boarding, a landing and a boat leaving
+   with its hero are seen where their tiles are; a bottle's message is told to its visitor's
+   owner alone.
 
 ## Consequences
 
@@ -316,6 +406,15 @@ left open whether objects are a closed enum or data-driven primitives. No logic 
   properties' plans) do not change for events (A-23 withdrawn). The monster battle gains a second
   creature (the Pyramid's), which `split` lays out by the original's order table (ADV-MON-012).
   The import maps 31 more classes and reads the scenario's spell and artifact bans.
+- Increment 8: the adventure state grows by the boats (a table and a grid), the hero's boat and
+  its day's maximum (the state hash and its version); `fork-*` moves by two reference counts.
+  The reachable-tiles query gains a search for a hero in a boat and the boat rows in the
+  others; its callers (`legal_moves`, the env's masks, the properties' plans) see boarding and
+  landing tiles among the destinations. The import maps seven more classes; the battle's
+  battlefield reads the heroes' boats (ADR-0017 point 11). The env's observation encoding gains
+  the boats and the in-boat flag (the AI lane's, ADR-0017 point 8). D-46 narrows increment 5's
+  flight (ADV-MOV-009): a flight no longer crosses a water tile an object other than a boat or a
+  boat's hero is visited from.
 
 ## Alternatives considered
 
@@ -348,6 +447,12 @@ left open whether objects are a closed enum or data-driven primitives. No logic 
   draws them); A-23, an event's tile as a stop (withdrawn: the original's pathfinder never stops
   there, batch E7's E7-23 and the re-read, E08 T58); VCMI's side of the disputes (batch E7
   showed the code's side on every row, E08 T58).
+- Increment 8 (ADV-Q32, ADV-Q34, ADV-Q35): boats as objects of the static map (they move) or as
+  a plain array (a fork copies every record, and decision 164 allows a boat on every water tile,
+  the XL map's 41 472); the original's 64 boats (`ADV-QUIRK-32`); a hero placed on water given a
+  boat (VCMI; batch E8's E8-5 showed the original's hero on foot, D-44); VCMI's flyer or water
+  walker taking a pickup or fighting a monster on water (D-45, reverted by E8-7) and its flight
+  over an object on water (D-46: batch E8c showed the code's side).
 
 ## Revision history
 
@@ -394,3 +499,10 @@ left open whether objects are a closed enum or data-driven primitives. No logic 
   refusals (A-25's full backpack), their draws at the build, A-21's Witch Hut mask; the knowledge
   in the observation, events never observed. Drafted in E08 T55b (#484; survey `E08-rewards.md`
   §1–§9, §13); batch E7's outcome (T58, §15: A-23 withdrawn) and decision 145 folded in.
+- 2026-10-29 (E08 T70 `shared/`; the user at ADV-Q32 to ADV-Q35): points 1, 3, 4 and 6 amended
+  for E08 increment 8, boats and the sea: boats as records with a tile layer (no original bound),
+  a hero in a boat with its day's maximum, boarding and landing with the Admiral's Hat's
+  conversion, the boat's passage, the free coastal tile, Favorable Winds and holes, the sea's
+  four pickups visited only from a boat, no flight over an object's tile on water but a boat's, a
+  hero placed on water refused; what a viewer sees of boats. Drafted in E08 T66b (survey
+  `E08-sea.md`); batches E8 and E8c's outcome (T69, T69b: §15, §16) folded in.

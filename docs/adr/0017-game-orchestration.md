@@ -71,6 +71,10 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
    change it before the game is built; an env's agent counts as whatever the setup says), and
    beside the banned skills the scenario's **banned spells and artifacts** (static, from the map),
    which the game passes to the adventure's build.
+   **Increment 8** adds no command and no decision: boarding, sailing and landing are steps of
+   `MoveHero`'s path, and the sea's pickups give at once. The setup gains the map's **boats**
+   (ADR-0016 point 1), which the import fills; a hero placed on water is refused (`Unsupported`,
+   D-44). The turn start's points follow the hero's surface (ADR-0016 point 3).
 2. **Actors and viewers.** `Actor::Player(PlayerId)` for every player command, also a bot's;
    `Actor::System` for the trusted layer that hosts the game only (the server's session layer,
    the env), never for a player, with its own closed set of commands (end a player's turn,
@@ -268,7 +272,12 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
    each decision, so a rollout never stalls (the system actor's defaults, point 6). Whether a
    University's purchase gets a head of the encoding is the AI lane's call; the mapping's change
    in `h3-sim` comes with the typed answers, `cross-lane` with the user's consent (E08 decision
-   138).
+   138). Increment 8 adds no entry to the action encoding: a boarding or a landing is a
+   destination among the reachable tiles, so the env's masks offer them as any other. The
+   observation the env encodes gains the boats on the viewer's explored tiles (tile, type,
+   facing) and each seen hero's boat; the encoding's change is the AI lane's, made `cross-lane`
+   in the task that builds the game's observation, so that the env plays on at sea in the same
+   pull request (E08 decision 172).
 9. **Versions owned by the adventure lane** (T2 adds the rows): the game state hash (`h3-game`),
    the adventure state and ruleset-part hashes (`h3-adventure`), the import version (`h3-map`),
    the adventure replay format (`h3-sim`'s `replay.rs`), and until increment 6 the action
@@ -309,7 +318,10 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
     with its amounts, a group of up to seven stacks without room, the visit's rest after a battle
     or an army dialog, an event's firing (to its visitor's owner) and the move's stop. A price (a
     School's, a Tree's, a University's) is the treasury's and the object type's, never the
-    command's.
+    command's. Increment 8's outcomes reuse increment 7's: a sea pickup's resources and artifact
+    (with the full backpack's turn or loss), a removal; a boarding or a landing reports the
+    hero's boat and its points after the conversion (to its owner); a bottle's message (to its
+    visitor's owner).
 11. **Battles through the game** (increment 3; ADR-0013 point 5). The game builds the
     `BattleSetup`: the armies from the adventure (a monster's stacks by its split), each hero's
     `BattleHero` and war machines from `h3-heroes`, the battlefield from the tile in the
@@ -346,6 +358,16 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
     whose losses are not kept (the next fight is against the full guards). When a battle ends
     every hero in it loses its battle bonuses (ADR-0013 point 15.1), as the original's
     `battle_end`.
+    **Increment 8's battles** (GAM-BAT-001 amended): before the underground, a battle in which
+    **either** hero is in a boat is fought on water's battle terrain with the ship's **deck**;
+    when **both** are, on the **two boats** (their fixed blocked hexes, the battle part's); a
+    special ground on the battle's tile then replaces the battlefield as on land (no shipped map
+    has one on water). Nothing else in a battle reads a boat (the original's three tests). A
+    monster or an event's guards on water fight a boat's hero on the deck; a landing's guards
+    fight at the monster's tile, the hero out of its boat (batch E8's E8-15); no hero but a
+    boat's reaches a monster on the water (ADR-0016 point 4; D-45 reverted). A hero in a boat
+    that loses, retreats or surrenders leaves the map **with its boat** (GAM-BAT-003 amended,
+    ADV-SEA-006); a winner in a boat stays in it.
 
 ## Consequences
 
@@ -391,6 +413,11 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
   commands can both write: a find emptied, a chest, artifact, scroll, Scholar, box or event
   removed, an event's guards (the objects of increment 2's kind); a player's knowledge and a
   hero's marks are written by their owner's commands only.
+- Increment 8: no command, decision or answer is new, so the adventure replay format keeps its
+  version; the game state hash follows the adventure's. The battle's setup reads the heroes'
+  boats (no seam change: `BattleSetup` already names its terrain and battlefield). The env's
+  observation encoding changes (the AI lane's, `cross-lane`). Simultaneous play's inventory
+  (point 7) grows by the empty boats (two players' heroes may board one) and the sea's pickups.
 
 ## Alternatives considered
 
@@ -439,6 +466,8 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
   before the level-ups (a level-up's Wisdom or Learning would not count for a box's spells and
   experience, nor Expert Wisdom for the Pyramid's spell, unlike the original); the army dialog's
   rest given before it opens (VCMI's order, D-39: batch E7 showed the code's side, E08 T58).
+- Increment 8 (ADV-Q33): the env's observation of boats left to the AI lane's inbox after the
+  build (its agents would see a hero in a boat as on its tile until then).
 
 ## Revision history
 
@@ -496,3 +525,8 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
   choices and the move's stop; the battle setup's facts from the game (E08 T54, decision 124),
   increment 7's guards and the battle bonuses cleared at a battle's end. Drafted in E08 T55b
   (#484; survey `E08-rewards.md` §8.1, §8.6).
+- 2026-10-29 (E08 T70 `shared/`; the user at ADV-Q32 and ADV-Q33): points 1, 8, 10 and 11
+  amended for E08 increment 8, boats and the sea: no new command or decision, the boats in the
+  setup and a hero on water refused, the env's observation with the boats, the battle at sea (the
+  deck by either hero's boat, the two boats by both) and a boat leaving with its beaten hero.
+  Drafted in E08 T66b (survey `E08-sea.md`), batch E8's outcome folded in.

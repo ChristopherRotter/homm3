@@ -1,10 +1,10 @@
 # E08 design note: increment 8, boats and the sea
 
 A handover, not binding (`docs/adr/README.md`): the working detail behind increment 8's
-amendment drafts of ADR-0013 (points 3, 13), ADR-0016 (points 1, 3, 4, 6) and ADR-0017 (points 1,
-8, 10, 11) in `docs/lanes/adventure/adr-drafts/*-increment-8.md`, written by T66b from T66a's
-survey and the answers at ADV-Q32 (the epic's decisions 162–168), accepted as written with the
-cut at ADV-Q33 (decisions 170–173). The task that builds a section deletes it; the file goes
+amendments of ADR-0013 (points 3, 13), ADR-0016 (points 1, 3, 4, 6) and ADR-0017 (points 1, 8,
+10, 11), drafted in `docs/lanes/adventure/adr-drafts/*-increment-8.md` (applied and deleted by
+T70, `shared/`), written by T66b from T66a's survey and the answers at ADV-Q32 (the epic's
+decisions 162–168), accepted as written with the cut at ADV-Q33 (decisions 170–173). The task that builds a section deletes it; the file goes
 when the epic closes. Facts and sources: survey `docs/rules/surveys/E08-sea.md` (§ numbers are the
 survey's unless they name this note); the proposed rule ids are the survey's §12.
 
@@ -19,19 +19,14 @@ and may still change.
 
 ### 1. The data (the core content and packs: shared)
 
-- **Three effect kinds** in `h3_content::HeroEffect` (ADR-0013 point 3; the parser in `h3-pack`):
-  `navigation { level }` (1 to 3, as `pathfinding`'s), `sea_movement_points { points }` (from
-  1) and `free_boarding` (no parameter). None reaches `BattleEffect`.
-- **The packs** (`packs/base/core.toml`, `packs/sod/core.toml`): Navigation's basic, advanced
-  and expert levels `navigation` 1, 2, 3; the Necklace of Ocean Guidance (71)
-  `sea_movement_points` 1 000 and the Sea Captain's Hat (123) 500 beside its two spells, their
-  `pending: E08-E10` marks dropped; the Admiral's Hat (136, SoD) `free_boarding`, its points by its
-  parts. The Navigation specialists keep their `skill_specialty` (`bp_per_level` 500, Sylvia and
-  Voy). Sources in the packs' comments: survey §4.2 and `E08-hero-movement.md` §1.1
-  (`movement.txt`'s sea column, 0x698AEC, 0x698B04, 0x698B0C), the wiki (Navigation, Necklace of
-  Ocean Guidance, Sea Captain's Hat, Admiral's Hat), VCMI (`config/skills.json`,
-  `movementPointsSea`, `navigationSpecialty`, `FREE_SHIP_BOARDING`).
-- The core ruleset hash and the pack format move (the `shared/` task, §18).
+Built by T70 (`shared/e08-t70`): `h3_content::HeroEffect`'s `navigation { level }` (1..=3),
+`sea_movement_points { points }` (≥ 1) and `free_boarding`, codes 53 to 55, none reaching
+`BattleEffect`; pack format v49, core ruleset hash v50; the gap-fill gives Navigation 1, 2, 3, the
+Necklace of Ocean Guidance 1 000, the Sea Captain's Hat 500 and the Admiral's Hat `free_boarding`
+(its points by its parts), the three out of the `pending` list; the Navigation specialists keep
+their `skill_specialty` (`bp_per_level` 500). Details: `packs/README.md`'s effect table, the
+gap-fill's sources (`exe-sea-movement`, `exe-free-boarding`, `vcmi-sea-movement`,
+`wiki-sea-movement`).
 
 ### 2. The day's sea points and free boarding (HER-ADV-009)
 
@@ -300,7 +295,7 @@ in `check_step` and the walking search):
 
 | Version | Change | Task |
 |---|---|---|
-| core ruleset hash, pack format | the three effect kinds; Navigation and the three artifacts | T70 (`shared/`) |
+| core ruleset hash v50, pack format v49 | the three effect kinds; Navigation and the three artifacts | T70 (`shared/`): done |
 | adventure ruleset part v13 | the find's extension, `Message`, `SeaGround`, `Hole`; the sea's parameters | T72 |
 | map import v14 | classes 8, 29, 59, 82, 86, 124, 225; `HeroOnWater` | T72 |
 | adventure state hash v16, game state hash v20 | the boats, a hero's boat and maximum | T72 |
@@ -354,7 +349,7 @@ increment 7's decision 139), so the ADRs are applied once with the disputes' ver
 |---|---|---|
 | 2 | **T67** | Batch E8's maps: the writer's boat, pickups, hole, winds and a hero and monster on water (§17); the spec's fields (`cross-lane`); the two specs and templates |
 | 3 | **T68** + **T69** (+ **T69b**) | T68: the harness's reads and clicks, the recipes, the runs E8a and E8b. T69: scored (survey §15); D-41 to D-45 settled. T69b: batch E8c, D-46 confirmed (survey §16) |
-| 4 | **T70** | `shared/`: the three ADRs amended with T69's outcome, the three effect kinds and the packs, the glossary |
+| 4 | **T70** | `shared/`: the three ADRs amended with T69's outcome, the three effect kinds and the packs, the glossary (done, decision 181) |
 | 5 | **T71** + **T72** | T71: `h3-heroes` (§2; small). T72: `h3-map` and `h3-adventure`: the import (§4), the kinds and parameters (§5), the state (§6), the views (§12); map import v14, ruleset part v13, adventure state hash v16 |
 | 6 | **T73** | `h3-adventure`: moving (§7), the prices, the drop and the conversion (§8), `Reach` (§9), visits and events at sea (§10); likely cut in two at its start (the boat's moves and prices; `Reach`) |
 | 7 | **T74** | `h3-adventure` and `h3-game`: the pickups' visits (§11), the battle at sea and the boat leaving with its hero (§13), the game (§14), the env's observation (`cross-lane`, §15) |

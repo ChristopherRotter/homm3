@@ -74,6 +74,16 @@ are computed before the seam (03-domain). The seam must change once for E04a and
    highest spell level a meeting may teach, 2, 3, 4 by the skill's level; several sources: the
    highest) and **`gives_spell_book`** (Titan's Thunder: equipping the artifact puts a Spell Book
    into the empty spell book position; removing it takes nothing back). The packs carry them.
+   E08 increment 8 adds three kinds only the adventure's derivations read (none reaches
+   `BattleEffect`): the **Navigation level** (`navigation { level }`, 1 to 3: the index into the
+   adventure part's sea table, 0 without one, as the Pathfinding level indexes its prices;
+   several sources: the highest), **sea movement points** (`sea_movement_points { points }`,
+   flat: the Necklace of Ocean Guidance 1 000, the Sea Captain's Hat 500; the Admiral's Hat
+   counts both through its parts) and **free boarding** (`free_boarding`, no parameter: the
+   Admiral's Hat). A skill specialty on the skill that gives the Navigation level adds, with that
+   skill, its `bp_per_level` of the sea table's first entry per hero level (the original's
+   Navigation specialists, 75 a level), never a growth of the level. The packs carry them
+   (Navigation's three levels, the three artifacts).
 4. **`BattleHero` is a hybrid:** typed fields for what the battle reads by name (primary skills,
    Tactics level, damage bonuses, war-machine control as derived numbers (the Catapult's: the
    Ballistics level, ADR-0023 point 6; the Ballista's also the Artillery level), surrender
@@ -155,6 +165,23 @@ are computed before the seam (03-domain). The seam must change once for E04a and
     5. **When** a property takes effect is the adventure's and the game's (ADR-0016 points 3 and
        5, ADR-0017 point 3): a gain in the day changes neither the points left nor the explored
        tiles until the owner's next turn start or the hero's next step.
+    6. **The day's sea points** (E08 increment 8) from the sea table the adventure gives (the
+       points by Navigation level, 0 to 3): the entry at the hero's Navigation level, then a
+       Navigation specialist's ⌊hero level × the table's first entry × `bp_per_level` ÷ 10 000⌋
+       when the hero has the skill (⌊level × 1 500 ÷ 20⌋ in the original packs), then the flat
+       sea movement points of the worn artifact types (each type once, worn or as a part of a
+       worn combination), saturating. The army's speeds do not count (the original's
+       `hero_max_land_movement` 0x4E4990 with its sea argument). Exact integers in every
+       profile: no x87 product, no Q-0005 term. Lighthouses (+500 each owned, the sketch's item
+       9) and the computer player's bonus (E10) come with them, as inputs.
+    7. **Free boarding** (E08 increment 8): whether the hero wears an artifact type with
+       `free_boarding` (or a combination holding one; the original tests the Admiral's Hat,
+       `hero_wears_artifact` 0x4D91F0 with 136, so its two parts worn apart do not count). The
+       conversion it allows at a boarding or a landing is the adventure's rule (ADR-0016 point
+       3); here only the test.
+
+    Item 5 holds for both: a gain in the day changes neither the points left nor the day's
+    maximum until the owner's next turn start, or a boarding or a landing (ADR-0016 point 3).
 14. **Artifact moves, combinations and Scholar are `h3-heroes`' rules** (E08 increment 6; pure
     functions of one or two heroes' details and the ruleset, checked before they change anything,
     applied as hero changes, point 2):
@@ -253,6 +280,11 @@ are computed before the seam (03-domain). The seam must change once for E04a and
   setups) has none. The mana ceiling is a hero parameter of the core content and A-25 a quirk
   flag (the pack format, the core ruleset hash). No rule outside `h3-heroes` computes a learnable
   spell, a skill's room or a reward's order.
+- Boats and the sea (points 3, 13.6 and 13.7, increment 8): three effect kinds (the pack format,
+  the core ruleset hash), Navigation and the three sea artifacts getting them through the
+  harvester's gap-fill; no hero change and no new `HeroDetails` field, so the details' hash keeps
+  its version: a hero's boat, its day's maximum and its points are the adventure's (ADR-0016
+  point 3).
 
 ## Alternatives considered
 
@@ -289,6 +321,10 @@ are computed before the seam (03-domain). The seam must change once for E04a and
   temporary artifact-like effect (the original adds them up and clears them at a battle's end,
   which an effect list does not express); VCMI's reward order and sums (D-37 to D-39: batch E7
   showed the code's side, E08 T58).
+- Boats (E08 ADV-Q32): Navigation as a rate of the base sea points (VCMI's `PERCENT_TO_BASE`),
+  not a level into the sea table (the original's `sea_movement_by_navigation` 0x698AEC, four
+  entries from `movement.txt`, and the Pathfinding level's precedent; both give 1 500, 2 250,
+  3 000, 3 750).
 
 ## Revision history
 
@@ -350,3 +386,8 @@ are computed before the seam (03-domain). The seam must change once for E04a and
   effects in its next battle, the reward record's hero half in the original's order with the mana
   ceiling, what a teacher may teach, an artifact received under A-25's flag). Drafted in E08 T55b
   (#484; survey `E08-rewards.md`), batch E7's outcome (T58, §15) and decision 145 folded in.
+- 2026-10-29 (E08 T70 `shared/`; the user at ADV-Q32 and ADV-Q33): points 3 and 13 amended for
+  E08 increment 8, boats and the sea: three hero-effect kinds (`navigation`,
+  `sea_movement_points`, `free_boarding`), the day's sea points (the sea table by Navigation's
+  level, a Navigation specialist's flat points, the sea artifacts') and the free boarding test as
+  `h3-heroes`' derivations (`HER-ADV-009`). Drafted in E08 T66b (survey `E08-sea.md`).

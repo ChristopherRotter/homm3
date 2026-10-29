@@ -88,10 +88,11 @@ effects = [{ kind = "spells", spell = "titans_lightning_bolt" }, { kind = "gives
 parts = ["base:titans_gladius", "base:sentinels_shield", "base:thunder_helmet", "base:titans_cuirass"]
 
 [[artifact]]
-id = "admirals_hat"  # original id 136; pending: E08-E10
+id = "admirals_hat"  # original id 136
 name = "Admiral's Hat"
 class = "relic"
 slot = "base:head"
+effects = [{ kind = "free_boarding" }]
 parts = ["base:necklace_of_ocean_guidance", "base:sea_captains_hat"]
 
 [[artifact]]

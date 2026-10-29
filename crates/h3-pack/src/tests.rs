@@ -404,6 +404,104 @@ fn the_harvested_scholar_and_titans_thunder() {
 }
 
 #[test]
+fn the_sea_kinds_parse() {
+    // E08 T70 (pack format v49, increment 8): Navigation, the sea points, free boarding.
+    let manifest = "[pack]\nid = \"x\"\nversion = \"1\"\n";
+    let pack = parse_pack(&format!(
+        "{manifest}[[secondary_skill]]\nid = \"s\"\n\
+         basic = [{{ kind = \"navigation\", level = 1 }}]\n\
+         [[artifact]]\nid = \"a\"\nname = \"A\"\nclass = \"relic\"\n\
+         effects = [{{ kind = \"sea_movement_points\", points = 500 }}, \
+         {{ kind = \"free_boarding\" }}]\n"
+    ))
+    .unwrap();
+    assert_eq!(
+        pack.skills[0].levels,
+        [vec![HeroEffect::Navigation { level: 1 }], vec![], vec![]]
+    );
+    assert_eq!(
+        pack.artifacts[0].effects,
+        [
+            HeroEffect::SeaMovementPoints { points: 500 },
+            HeroEffect::FreeBoarding
+        ]
+    );
+    // An unknown field is a syntax error, also on the kind without parameters.
+    for effect in [
+        "kind = \"navigation\", level = 2, bp = 3",
+        "kind = \"free_boarding\", points = 1",
+    ] {
+        let unknown =
+            format!("{manifest}[[secondary_skill]]\nid = \"s\"\nbasic = [{{ {effect} }}]\n");
+        assert!(
+            matches!(parse_pack(&unknown), Err(PackError::Syntax(_))),
+            "{effect}"
+        );
+    }
+    for (effect, message) in [
+        (
+            "kind = \"navigation\", level = 0",
+            "navigation level must be 1..=3",
+        ),
+        (
+            "kind = \"navigation\", level = 4",
+            "navigation level must be 1..=3",
+        ),
+        (
+            "kind = \"sea_movement_points\", points = 0",
+            "sea_movement_points points must be at least 1",
+        ),
+    ] {
+        let bad = format!("{manifest}[[secondary_skill]]\nid = \"s\"\nbasic = [{{ {effect} }}]\n");
+        let error = compile(&[bad.as_str(), SYNTHETIC_CORE], "synthetic:faithful").unwrap_err();
+        assert!(error.to_string().contains(message), "{error}");
+    }
+}
+
+/// E08 T70 (pack format v49): Navigation's levels and the sea artifacts' points from the gap-fill
+/// in every expansion, the Admiral's Hat's free boarding with SoD (HER-ADV-009).
+#[test]
+fn the_harvested_navigation_and_sea_artifacts() {
+    for packs in [
+        &[SOD_CORE, AB_CORE, BASE_CORE][..],
+        &[AB_CORE, BASE_CORE],
+        &[BASE_CORE],
+    ] {
+        let r = compile(packs, "base:faithful").unwrap();
+        let navigation = &r
+            .skill(r.skill_by_key("base:navigation").unwrap())
+            .unwrap()
+            .levels;
+        assert_eq!(
+            navigation.clone(),
+            [1, 2, 3].map(|level| vec![HeroEffect::Navigation { level }])
+        );
+        for (key, points) in [
+            ("base:necklace_of_ocean_guidance", 1000),
+            ("base:sea_captains_hat", 500),
+        ] {
+            let artifact = r.artifact(r.artifact_by_key(key).unwrap()).unwrap();
+            assert!(
+                artifact
+                    .effects
+                    .contains(&HeroEffect::SeaMovementPoints { points }),
+                "{artifact:?}"
+            );
+            assert!(
+                !artifact.effects.contains(&HeroEffect::FreeBoarding),
+                "{artifact:?}"
+            );
+        }
+    }
+    let r = compile(&[SOD_CORE, AB_CORE, BASE_CORE], "base:faithful").unwrap();
+    let hat = r
+        .artifact(r.artifact_by_key("sod:admirals_hat").unwrap())
+        .unwrap();
+    // The combination's own effect; its points come through its parts (HER-ADV-009).
+    assert_eq!(hat.effects, [HeroEffect::FreeBoarding], "{hat:?}");
+}
+
+#[test]
 fn the_mana_ceiling_parses_and_is_required() {
     // E08 T59 (pack format v48): the most spell points a reward record leaves a hero.
     let manifest = "[pack]\nid = \"x\"\nversion = \"1\"\n";

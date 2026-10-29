@@ -1957,6 +1957,35 @@ ref = "Angel Wings - Heroes 3 wiki: the hero flies as with an Expert Fly while i
 url = "https://heroes.thelazy.net/index.php/Angel_Wings"
 retrieved = "2026-10-21"
 
+# Boats and the sea (E08 T70, pack format v49; survey E08-sea.md §3.1, §3.2, §4.2).
+[[source]]
+id = "exe-sea-movement"
+kind = "original-data"
+ref = "Heroes3.exe code reading (E08 T34a, T66a1; docs/exe/map.toml 0x4E4990, 0x698AEC, 0x4D91F0): hero_max_land_movement at sea (argument 1) takes sea_movement_by_navigation 0x698AEC (movement.txt's sea column: 1500, 2250, 3000, 3750) at the Navigation level (+0xCE), the army's speeds not counted; a Navigation specialist with the skill adds level x the table's first entry / 20 (75 a level); then +500 (0x698B0C, the Lighthouse's amount) for the Sea Captain's Hat (123) and +1000 (0x698B04) for the Necklace of Ocean Guidance (71), each worn or part of a worn combination, so the Admiral's Hat (136) counts both"
+url = "docs/rules/surveys/E08-sea.md"
+retrieved = "2026-10-28"
+
+[[source]]
+id = "exe-free-boarding"
+kind = "original-data"
+ref = "Heroes3.exe code reading (E08 T66a1, T66a2; docs/exe/map.toml 0x4A1010, 0x49E670, 0x4D91F0): hero_boards_boat and hero_lands_from_boat set the day's maximum to the new surface's and convert the points left (left x new maximum / old maximum, truncated) only while the hero wears the Admiral's Hat (hero_wears_artifact with 136: the combination, not its parts worn apart); otherwise the points become 0"
+url = "docs/rules/surveys/E08-sea.md"
+retrieved = "2026-10-28"
+
+[[source]]
+id = "vcmi-sea-movement"
+kind = "vcmi"
+ref = "config/skills.json (1.7.5): navigation MOVEMENT heroMovementSea PERCENT_TO_BASE 50, 100, 150 of gameConfig's movementPointsSea 1500. config/artifacts.json: necklaceOfOceanGuidance MOVEMENT heroMovementSea 1000 and seaCaptainsHat 500 (ADDITIVE_VALUE); admiralsHat FREE_SHIP_BOARDING, its components the two"
+url = "https://github.com/vcmi/vcmi/blob/1.7.5/config/artifacts.json"
+retrieved = "2026-10-29"
+
+[[source]]
+id = "wiki-sea-movement"
+kind = "wiki"
+ref = "Navigation - Heroes 3 wiki: '+50/100/150 %', the base 1500 'fixed and does not depend on the slowest creature', the specialists' '75 extra movement points at sea per level'; Sea Captain's Hat: '+500 movement points on water'; Admiral's Hat: '+1500 movement points on water', 'No boarding or unboarding penalty for boats', 'Converts movement points between land and water movement' (survey E08-sea.md §3.1, §4.2)"
+url = "https://heroes.thelazy.net/index.php/Navigation"
+retrieved = "2026-10-28"
+
 # Skills whose values are not in the executable's skill tables (installation.md §7.4).
 # Wisdom (E08 T19a2b, pack format v40): the code's Wisdom level + 2 over the base of 2.
 [[heroes.skill_effects]]
@@ -2067,6 +2096,16 @@ basic = [{ kind = "meeting_spells", level = 2 }]
 advanced = [{ kind = "meeting_spells", level = 3 }]
 expert = [{ kind = "meeting_spells", level = 4 }]
 sources = ["exe-scholar", "vcmi-scholar", "wiki-scholar"]
+
+# Navigation (E08 T70, pack format v49; ADR-0013 point 13.6): the level indexes the adventure's
+# sea table (0x698AEC), as Pathfinding's indexes the step prices (HER-ADV-009; read by h3-heroes
+# from E08 T71). Its specialists' 75 a level are their `skill_specialty` (bp_per_level 500).
+[[heroes.skill_effects]]
+skill = "Navigation"
+basic = [{ kind = "navigation", level = 1 }]
+advanced = [{ kind = "navigation", level = 2 }]
+expert = [{ kind = "navigation", level = 3 }]
+sources = ["exe-sea-movement", "vcmi-sea-movement", "wiki-sea-movement"]
 
 # Specialty parts the executable's fixed-stat record has no field for (dispute H-2: speed).
 [[heroes.specialty_extra]]
@@ -2836,8 +2875,9 @@ artifacts = ["Sea Captain's Hat"]
 effects = [
     { kind = "spells", spell = "summon_boat" },
     { kind = "spells", spell = "scuttle_boat" },
+    { kind = "sea_movement_points", points = 500 },
 ]
-sources = ["exe-available-spells"]
+sources = ["exe-available-spells", "exe-sea-movement", "vcmi-sea-movement", "wiki-sea-movement"]
 
 # Armageddon at Expert while worn (0x4E5080; HER-SPL-003); its stacks immune to it (T8b2).
 [[artifacts.effects]]
@@ -3016,6 +3056,19 @@ artifacts = ["Speculum", "Spyglass"]
 effects = [{ kind = "scouting_radius", tiles = 1 }]
 sources = ["exe-scouting", "vcmi-movement", "wiki-scouting"]
 
+# Boats and the sea (E08 T70, pack format v49; ADR-0013 points 13.6 and 13.7, HER-ADV-009): the
+# sea points count each artifact type once, worn or as a part of a worn combination, so the
+# Admiral's Hat counts its two parts' 1 500; its own effect is free boarding (the code tests 136).
+[[artifacts.effects]]
+artifacts = ["Necklace of Ocean Guidance"]
+effects = [{ kind = "sea_movement_points", points = 1000 }]
+sources = ["exe-sea-movement", "vcmi-sea-movement"]
+
+[[artifacts.effects]]
+artifacts = ["Admiral's Hat"]
+effects = [{ kind = "free_boarding" }]
+sources = ["exe-free-boarding", "vcmi-sea-movement", "wiki-sea-movement"]
+
 # Effects no epic has modelled yet; the pack marks these artifacts, and every artifact without a
 # modelled effect must be listed here.
 # The Catapult has no effect of its own: every hero carries one, and the battle sets one up for
@@ -3036,16 +3089,18 @@ epic = "E08-E10"
 what = "spell points per day"
 artifacts = ["Charm of Mana", "Talisman of Mana", "Mystic Orb of Mana", "Wizard's Well"]
 
+# The sea's movement left this list in E08 T70 (`navigation`, `sea_movement_points`,
+# `free_boarding`): the Necklace of Ocean Guidance, the Sea Captain's Hat, the Admiral's Hat.
 [[artifacts.pending]]
 epic = "E08-E10"
-what = "adventure map: the sea's movement, resources, growth, the Grail"
+what = "adventure map: resources, growth, the Grail"
 artifacts = [
-    "The Grail", "Necklace of Ocean Guidance",
+    "The Grail",
     "Everflowing Crystal Cloak", "Ring of Infinite Gems", "Everpouring Vial of Mercury",
     "Inexhaustible Cart of Ore", "Eversmoking Ring of Sulfur", "Inexhaustible Cart of Lumber",
     "Endless Sack of Gold", "Endless Bag of Gold", "Endless Purse of Gold",
     "Legs of Legion", "Loins of Legion", "Torso of Legion", "Arms of Legion", "Head of Legion",
-    "Sea Captain's Hat", "Statue of Legion", "Admiral's Hat", "Cornucopia",
+    "Statue of Legion", "Cornucopia",
 ]
 
 # What spells do in battle beyond what the executable's flag word gives (E04b T2a; pack format

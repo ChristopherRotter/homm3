@@ -8005,3 +8005,56 @@ the flying-only branch alone (the node loses bit 10: a second-slot stop node, a 
 §15's property, §17, §18 and §19. No version.
 
 T70 (`shared/`) next.
+
+### Increment 8, round 4: T70, the `shared/` task (2026-10-29, `shared/e08-t70`, `cross-lane`)
+
+**The cut** (decision 181; asked at the start, `AskUserQuestion`): whole, in one session and one
+`shared/` pull request (`cross-lane`), as T45. Recommended was two pull requests (the ADRs and the
+glossary; then the kinds, the packs and the harvester); not chosen either: both now, each its own.
+**Baseline:** `master` 25ff803 (#567; #566, T69b, merged; CI on `master` green). The installation's
+files staged from the user's repo folder (`Heroes3.exe`, both LODs, `maps.tar`, `extracted.tar`);
+the sandbox's own baseline run was stopped once the edits began (CI's run is the record).
+
+- **The ADRs** (the three drafts accepted at ADV-Q33, decision 170, applied, then deleted):
+  ADR-0013 point 3 (the three kinds), point 13 items 6 and 7 (the day's sea points, free
+  boarding) with item 5 for both, a consequence, an alternative (VCMI's rate) and the history;
+  ADR-0016 point 1 (the boats' table and grid, `ADV-QUIRK-32` named), point 3 (a hero in a boat,
+  its day's maximum, boarding and landing with D-41), point 4 (increment 8's kinds and the sea,
+  with D-42 to D-46 as batches E8 and E8c left them; increment 5's flight and stop sentences
+  pointed to them), point 6 (what a viewer sees of boats), a consequence (D-46 narrows
+  ADV-MOV-009), an alternative and the history; ADR-0017 points 1, 8 (decision 172), 10 and 11
+  (the battle at sea), a consequence (the simultaneous-play inventory grows by empty boats and the
+  sea's pickups: the agent's line), an alternative (the AI lane's inbox) and the history; the
+  index's three Read-when cells; the AI lane's inbox note and the design note repointed.
+- **The glossary** (`docs/03-domain.md`): boat, in a boat, boarding, landing, the day's maximum,
+  free boarding, free coastal tile, ground of the sea.
+- **`h3-content`** (design §1): `HeroEffect::Navigation { level }` (1..=3),
+  `SeaMovementPoints { points }` (≥ 1) and `FreeBoarding`, codes 53 to 55, with `NAMES`,
+  `try_map`, the parameter checks and the hash (the points with the land points', the level with
+  the levels', free boarding with the kinds without parameters); **core ruleset hash v50** (the
+  golden base hash moved).
+- **`h3-pack`**: **pack format v49** (`free_boarding` a struct variant `{}`); a syntax test
+  (`the_sea_kinds_parse`) and a harvested test (`the_harvested_navigation_and_sea_artifacts`:
+  Navigation 1, 2, 3 and the two artifacts' points in every expansion, the Admiral's Hat's
+  `free_boarding` alone with SoD).
+- **The harvester** (battle-owned, `cross-lane`): the gap-fill's Navigation skill effects, the
+  Necklace's 1 000 and the Sea Captain's Hat's 500 (beside its spells), the Admiral's Hat's
+  `free_boarding`; the three out of the `pending` list (its entry now "resources, growth, the
+  Grail"); four sources (`exe-sea-movement`: 0x4E4990, 0x698AEC, 0x698B04, 0x698B0C;
+  `exe-free-boarding`: 0x4A1010, 0x49E670, 0x4D91F0; `vcmi-sea-movement`: VCMI 1.7.5's
+  `config/skills.json` and `config/artifacts.json`, read today: navigation 50, 100, 150 % of 1 500,
+  the Necklace 1 000, the Hat 500, the Admiral's Hat `FREE_SHIP_BOARDING`; `wiki-sea-movement`: the
+  survey's quotes, §3.1, §4.2; the Necklace's own wiki page was not reachable from this session).
+  `base` and `sod` re-harvested from the staged installation: only those lines changed.
+  `synthetic-ext`'s `wayfarer_sash` carries the three kinds (the every-kind check);
+  `packs/README.md`'s effect table.
+- **Replays and records**: the 31 golden replays keep commands and state hashes; only
+  `ruleset_hash` in their headers moved (synthetic faithful `0x382b666869803877`, base faithful
+  `0xba830fc8f504b846`, strict-fixed `0xa040165f84cd1e99`; the old three recomputed first to match
+  the headers). The AI lane's `bots-report-v1.json` and `bots-neutral-v1.json` regenerated: only
+  `engine.core` moved.
+- **Docs**: design §1 cut to what was built, §16's and §18's rows; decision 181 and the task's
+  line in the epic; the queue (T70 out, T71 in); the battle lane's inbox and its HANDOFF's shared
+  versions; the AI lane's inbox.
+
+T71 (`h3-heroes`, HER-ADV-009) next.
