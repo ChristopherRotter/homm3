@@ -233,3 +233,18 @@ why = "exact: the town list scrolled to its third, the seventh town's mark over 
 id = "resources-date"
 differing = 0
 why = "exact: the resource bar's seven amounts written (one digit to eight, the eight past its box) and a date of a two-digit month"
+
+[[situation]]
+id = "status-hero"
+differing = 0
+why = "exact: a hero's status window, its skills cut, its spell points, morale and luck at the ends, seven slots with counts in thousands"
+
+[[situation]]
+id = "status-town"
+differing = 0
+why = "exact: a town's status window, its Citadel, the village's hall, the Castle's two silo resources, its garrison with an empty slot"
+
+[[situation]]
+id = "status-garrison"
+differing = 0
+why = "exact: a town's status window with a garrison hero's mark and that hero's army, a Castle, the Rampart's one silo resource"

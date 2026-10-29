@@ -1,0 +1,16 @@
+# A hero's status window (E24 M3 T5b1; design §4.8, AdStatHr.pcx built by 0x451AB0): the second of
+# Red's heroes selected (hero_select builds the window again, 0x41800B) with its primary skills
+# written past what the window shows (attack above 99, defense below 0, power 0 and knowledge
+# below 0: 0x451CE4 cuts them to 99, 0, 1 and 1), four-digit spell points, morale and luck bonuses
+# at the ends (+3 and -3: the window's DEFs' first and last frames as the computed bonuses give
+# them) and seven slots of seven creatures, their counts below and from 10 000 (in thousands,
+# truncated: "10k", "123k", "65k").
+size = 36
+terrain = "grass"
+heroes = [
+    { at = [4, 6] },
+    { at = [8, 6], class = 5, mana = 9999, skills = [120, -5, 0, -1], morale = 3, luck = -3, army = [[12, 1], [26, 9999], [40, 10000], [54, 123456], [68, 65535], [82, 25], [96, 7]] },
+    { at = [30, 30], owner = 1 },
+]
+select = { hero = [8, 6] }
+view = [0, 0, 0]

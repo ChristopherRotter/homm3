@@ -177,8 +177,12 @@ viewers share.
   T5 cut with the user (2026-10-29): T5a, the resource bar's amounts, the date and a text's reach
   (**done** 2026-10-29: `resource_bar_redraw` 0x558F20 read and built through the catalogue's keys,
   the live part's resources and date, a text's reach; the 44 situations and the 13 sequences exact
-  with the bar; MCL-Q15; the log), T5b, the status window; T6, the mouse, the keys during a walk,
-  the sound without the focus; T7, M3's closure. A task that grows is cut at a seam agreed with the user.
+  with the bar; MCL-Q15; the log), T5b cut with the user (2026-10-29): T5b1, the status window of
+  a hero and a town (**done** 2026-10-29: 0x451AB0 and 0x4521F0 read and built, the selection's
+  window, the names by the catalogue or the map's own; three new situations and the 47 and the 13
+  sequences exact with the window; MCL-Q16; the log), T5b2, the date's and the kingdom's windows
+  and when each shows; T6, the mouse, the keys during a walk, the sound without the focus; T7,
+  M3's closure. A task that grows is cut at a seam agreed with the user.
 - **Exit:** every situation and sequence as recorded on the whole screen (no `panels` mask
   left, or each difference an `MCL-Q<n>`); the view-only clicks, the hints and the cursor in the
   window; `h3-ui` the only copy of what both viewers share; M3's review list accepted; a hand
@@ -194,7 +198,11 @@ viewers share.
   read, M1 T6b); the map's sound compared by ear with the original's on a whole map (the user,
   at M2 T4b2: the transitions sounded unclean, perhaps the lag's doing; the harness's recordings
   have no sound); the nine step sounds the original ships but never plays (`HORSE20` to `HORSE29`,
-  perhaps the roads') as a sound option once their purpose is known (MCL-Q11).
+  perhaps the roads') as a sound option once their purpose is known (MCL-Q11); the status
+  window's kinds the engine's turns and events set off (the user, 2026-10-29, at M3 T5b's cut):
+  another player's turn (5: `AdStatNx.pcx`, the hourglass, 0x453250), a resource found (6:
+  0x451220, 5 seconds) and a text (7: 0x451820; E24 design §4.8); a town's own name from the map
+  (the harness refuses one until then).
 - **M5, hot seat:** whole games played in-process: the handover screen when the player who must
   act changes, the level-up dialog (the inbox), the hero and town screens as play needs them;
   then live play against the server.
@@ -329,3 +337,20 @@ M1's review lists (three reviewers, T6b; the list accepted) and M2's (accepted a
   `date` (`[month, week, day]`), a map's start none and the first day; a situation's
   `resources` and `date`, only with a hero's selection; `h3_ui::paint::text_reach` (additive:
   the box widened by the font's overhangs).
+- **M3 T5b1, the status window** (*provisional*, design §4.8): the layout's panels `status_hero`
+  and `status_town` (our ids: the original's for the fixed items, the army's and the silo's by
+  place) and the tables' `[map.status]` (the large portraits, the frames' offsets, the skills'
+  bounds, the thousands, the halls and forts tested); the live part's `status` (a hero's type,
+  `own_name`, skills, morale, luck, army; a town's name as a record of `TownName.txt`, buildings
+  standing, garrison hero, army shown, silo, income; another kind not drawn), the harness reading
+  the bonuses, the silo and the income from the window's own items (the original's rules
+  computed: the engine's from M4); the names by the catalogue: the `hero` family keyed by the
+  type in the map viewer (`hero.12`, the battle client keys its asset tables' heroes,
+  `hero.base:orrin`: one key per hero for a translation needs one scheme) and a new family
+  `town-name` (`TownName.txt`), `optional` (additive in `h3_ui::text::keys`: a client that lists
+  no entries for it has none of its keys, so `h3-view` is unchanged); a hero's own name the map's
+  (`MapArt::hero_names`: a hero object's, else a disposed hero's, `h3_ui::text::decode_1252`), a
+  town's own refused by the harness (M4); the numbers by `map.status.number` and
+  `map.status.thousands`; a situation's `skills`, `morale`, `luck`, `army`, `garrison`,
+  `garrison_hero` and `silo` (the garrison hero a hero of Red's standing elsewhere: only the
+  window reads it).

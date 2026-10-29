@@ -86,11 +86,15 @@ decisions that trained): `samples`, the learning rate's linear decay over `lr_ho
 by default), the league's snapshots and live draws (`snapshot_every`, `live_every`), the gates
 (`gate_every`); wall time sets only the checkpoints.
 
-**The networks** (E06 T5a, `docs/epics/E06-log.md` §11): `network.kind` is `"mlp"` (E05's,
-the default: `hidden` 512) or `"entity"`, observation v21 read as entities by `h3env.train.layout`
-(a token per stack slot, the globals, the own hero, the field; `layers` 2 transformer blocks of
-`width` 128 with `heads` 4; pointer heads at the hexes and stacks); `embed` (32) sizes both
-kinds' spell and target embeddings. A saved network's config names its kind (a file from before
+**The networks** (E06 T5a, `docs/epics/E06-log.md` §11; E25 T7a): `network.kind` is `"mlp"`
+(E05's, the default: `hidden` 512, `layers` 2), `"entity"`, observation v21 read as entities by
+`h3env.train.layout` (a token per stack slot, the globals, the own hero, the field; `layers` 2
+transformer blocks of `width` 128 with `heads` 4; pointer heads at the hexes and stacks), or a
+hex network (`h3env.train.hexnet`, the entity network's heads): `"hexconv"`, `layers` residual
+blocks of hex convolutions with `width` channels on the field's axial grid, or `"hexformer"`,
+`layers` transformer blocks of `width` over the hexes with a bias per axial offset; both draw
+the stacks on their hexes, on a field of `field_width` × `field_height` (17 × 11, the base
+ruleset's). `embed` (32) sizes every kind's spell and target embeddings. A saved network's config names its kind (a file from before
 T5a is an MLP); `--init-from` a network of another kind is refused. A network at a glance:
 
 ```sh
@@ -222,6 +226,27 @@ analyses).
 **The battle AI v1** is `t7-1`'s best (E06's closure, decision 7 as revised 2026-10-27: it beats
 every heuristic bot; `records/t7-1.json`, `records/README.md`'s lineage); its network stays on
 the user's machine.
+
+## The distillation bench (E25 T7b)
+
+`h3env.train.distill` measures how well networks of other kinds and sizes learn a trained
+network's policy and value on the same samples, before any of them trains by RL:
+
+```sh
+uv run --group train python -m h3env.train.distill --teacher runs/e25-scale-1/best.pt \
+    --config configs/distill/e25.toml --out runs/distill-1
+```
+
+The teacher plays itself in PPO's rollouts on its run's training distribution; each student (a
+`[students.<name>]` table of `[network]` keys over the teacher's) learns the teacher's heads (the
+KL divergence over the legal entries, a cast's heads along the teacher's choices) and its
+λ-returns, all on the same minibatches. Every `eval_every` samples a held-out set of rollouts on
+another seed scores them: the KL per head, the agreement of the most likely entry per category
+(tactics, wait or defend, move, melee, shot, heal, cast, other), the value's explained variance
+(the teacher's beside it) and the training seconds. Its files: `report.json`, `metrics.jsonl`,
+`students/<name>.pt` (run network files: `--init-from` starts a run from one). `--set key=value`
+changes a top-level setting (`samples`, `device`, …). It does not resume; Ctrl-C scores and
+saves what it has. Bench configs live in `configs/distill/`.
 
 ## Search (E06 T8, design §14)
 

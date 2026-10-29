@@ -634,6 +634,11 @@ mod tests {
         let obs = observe(&s, &r, BattleSide::Defender);
         encode(&obs, width, &mut out).unwrap();
         assert_eq!(out[column("ROUND")], f32::from(obs.round));
+        // E25 T7a: the hex networks' side of a stack (`hexnet`).
+        assert_eq!(out[column("VIEWER_ATTACKER")], 0.0);
+        let mut attacker = vec![0.0; OBSERVATION_LEN];
+        encode(&observe(&s, &r, BattleSide::Attacker), width, &mut attacker).unwrap();
+        assert_eq!(attacker[column("VIEWER_ATTACKER")], 1.0);
         let mut flags = [0usize; 4];
         for (i, st) in obs.stacks.iter().enumerate() {
             let f = stack(&out, i);
@@ -660,6 +665,7 @@ mod tests {
                 ("MAX_HP", st.max_hp as f32),
                 ("RETALIATIONS_LEFT", f32::from(st.retaliations_left)),
                 ("SHOOTER", is(st.has(StackTraits::SHOOTER))),
+                ("TWO_HEX", is(st.has(StackTraits::TWO_HEX))),
                 ("WAR_MACHINE", is(st.has(StackTraits::WAR_MACHINE))),
                 ("BASE_COUNT", st.base_count as f32),
                 ("TURRET", is(st.is_turret())),

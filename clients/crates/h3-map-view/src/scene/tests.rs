@@ -553,6 +553,35 @@ fn refuses_a_level_a_viewer_or_a_code_it_cannot_draw() {
             "a hero's portrait is past the tables'".to_string()
         ))
     );
+    // The status window's (E24 M3 T5b1): a selected hero past the list's slots shown, whose
+    // portrait the tables lack.
+    let mut beyond = live.clone();
+    let kingdom = &mut beyond.kingdom;
+    kingdom.heroes = alloc::vec![crate::live::KingdomHero::default(); 6];
+    kingdom.heroes[5].portrait = 200;
+    kingdom.selected = crate::live::Selected::Hero(5);
+    kingdom.status = Some(crate::live::Status::Hero(crate::live::HeroStatus {
+        hero: 0,
+        own_name: false,
+        skills: [0; 4],
+        morale: 0,
+        luck: 0,
+        army: [None; 7],
+    }));
+    assert_eq!(
+        scene(
+            &art,
+            &beyond,
+            &t,
+            &l,
+            &shapes_of(&art),
+            at(0, 0),
+            Bugs::Fixed
+        ),
+        Err(SceneError::Live(
+            "a hero's portrait is past the tables'".to_string()
+        ))
+    );
     live.viewer = 8;
     assert_eq!(
         scene(&art, &live, &t, &l, &shapes_of(&art), at(0, 0), Bugs::Fixed),

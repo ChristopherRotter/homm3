@@ -61,6 +61,7 @@ fn art(templates: Vec<TemplateArt>, objects: &[(u8, u8, u8, usize)]) -> MapArt {
                 template,
             })
             .collect(),
+        hero_names: BTreeMap::new(),
     }
 }
 

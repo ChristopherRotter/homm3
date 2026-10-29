@@ -82,6 +82,25 @@ picture = "AResBar.pcx"
 at = [0, 0]
 size = [794, 22]
 
+[status_hero]
+place = [614, 400]
+
+[[status_hero.items]]
+kind = "picture"
+id = 2000
+picture = "AdStatHr.pcx"
+at = [0, 0]
+
+[status_town]
+place = [614, 400]
+
+[[status_town.items]]
+kind = "def"
+id = 2001
+def = "itpt.def"
+at = [3, 2]
+size = [58, 64]
+
 [panels]
 coloured = [3]
 underground = ["iam010.def", "iam003.def"]
@@ -110,12 +129,15 @@ fn loads_a_layout_and_places_its_tiles() {
     let ids: Vec<u16> = layout.dialog.items.iter().map(Item::id).collect();
     assert_eq!(ids, [0, 3, 32, 33, 200, 37]);
     assert_eq!(layout.resource_bar.place, [3, 575]);
+    // The status window's panels (E24 M3 T5b1): their names among the layout's.
+    assert_eq!(layout.status_town.place, [614, 400]);
     assert_eq!(layout.panels.sleep[1], "iam011.def");
     let names: Vec<String> = layout.names().into_iter().collect();
     assert_eq!(
         names,
         [
             "ADROLLVR.PCX",
+            "ADSTATHR.PCX",
             "ADVMAP.PCX",
             "AGEMUL.DEF",
             "AGEMUR.DEF",
@@ -128,6 +150,7 @@ fn loads_a_layout_and_places_its_tiles() {
             "IAM010.DEF",
             "IAM011.DEF",
             "ITPA.DEF",
+            "ITPT.DEF",
             "MEDFONT.FNT",
             "PLAYERS.PAL",
             "SMALFONT.FNT",
