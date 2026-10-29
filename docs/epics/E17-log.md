@@ -3257,7 +3257,7 @@ the phase played).
   read back exact; interactively the message, then after Enter the Champions' shade and the
   phase's panel in Red's colours. `drawn`: the 134 others the same (the panel built for the
   defender changes none); `drawn --record` adds the seven. `cargo xtask verify --scope client`:
-  no failing step; `clients/scripts/check.sh`: running (its result in the pull request).
+  no failing step; `clients/scripts/check.sh`: all gates passed (coverage 100 %).
 - **Found:** CLT-Q32 (the cursor after the message: copy recommended, built as the original's);
   review items 28 to 31.
 
