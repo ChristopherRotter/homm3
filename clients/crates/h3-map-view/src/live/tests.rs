@@ -625,6 +625,7 @@ fn a_live_parts_status_read() {
         hero.replace("[149, 123456]", "149"),
         hero.replace("hero = 48", "hero = 300"),
         town.replace("[0, 7, 63]", "[0, \"x\"]"),
+        town.replace("income = 1500", "income = 3000000000"),
     ] {
         assert_eq!(read(&wrong), None, "{wrong}");
     }
