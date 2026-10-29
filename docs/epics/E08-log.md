@@ -8456,5 +8456,9 @@ fingerprint); the original data staged from the user's computer.
   `shared/e08-t75a-benches`.
 - *Agent's calls (change freely):* decision 189's; the map's heroes and objects; the seeds.
 - **Versions:** none.
-- **Gates:** the scoped verify with the original data (below); `clippy -p h3-map -p h3-cli
+- **Gates:** the scoped verify with the original data passed every step (coverage, determinism
+  with the 32 replays, `bench-check` with the eleven workloads, the 160 maps) but
+  `scripts/exe.py check`: two sizes of E17 M5 T5b1's entries (#583; `rgb_to_hsv` 0x523190,
+  `hsv_to_rgb` 0x5232F0) disagreed with the executable, fixed with `--fix-sizes` in this pull
+  request (`docs/exe/map.toml` is common), the check then clean; `clippy -p h3-map -p h3-cli
   --all-targets` clean, the CLI's replay test passed (the scope builds no `h3-cli`).
