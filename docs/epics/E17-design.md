@@ -2932,7 +2932,8 @@ Bloodlust and Stone Gaze handlers). Built as `h3_render::recolour` (the effects)
   as the tint's (V, t, p) … (V, p, q), each rounded so; a sextant above 5 (H rounded up to 6)
   writes nothing, so the entry comes back as it was. The round trip is not the identity: white's
   scaled blue is its largest channel (0x1F × K_b = 2^31 − 2 against red's 2^31 − 2 048), so white
-  is a faint cyan, and a blue of 1 loses its level to the f32 store of its scaled value.
+  is a faint cyan, and a blue of 1 loses its level to the f32 store of its scaled value
+  (CLT-Q34 (1): copied).
 - **The recolour** (0x522B50; hue, weight, saturation, value as f32 arguments): unless the weight is
   negative, d = f32(hue − h), h = f32(d × weight + h); if |d| > 0.5 (the shorter way round),
   h = f32((1 − weight) + h) for d > 0, else f32(h + weight), and 1 taken off if h ≥ 1. The
@@ -2948,7 +2949,7 @@ Bloodlust and Stone Gaze handlers). Built as `h3_render::recolour` (the effects)
   its line, the flag set, the stack's hexes dirty, then i = 0 to 9 and 10 down to 1, each a
   redraw (1, 1, 0, 100, 1, 1): the dirty rectangle, at trunc(100 F), shown; the flag cleared
   and a redraw (1, 1, 0, 0, 1, 0) shown at once, which replaces the last step within its
-  millisecond. Stone Gaze (0x5A1121, the strike's pending spell, §7.16): its effect, its line
+  millisecond (CLT-Q34 (2): copied). Stone Gaze (0x5A1121, the strike's pending spell, §7.16): its effect, its line
   (`battle_log_cast` 0x5A8E25: GENRLTXT 559 or 560 by the stack's number), then i = 10 down to 1
   so; the stack is petrified from the redraw that clears the flag. Neither in a hidden battle.
   The redraws are clipped to the stack's rectangle; nothing else changes meanwhile, so the

@@ -1416,10 +1416,10 @@ frames = "timelines/bloodlust-frames.txt"
 boxes = true
 command = [
     { seat = "Attacker", command = { Cast = { spell = 43, target = { Stack = { stack = 0 } }, second = { None = {} } } } },
-    { seat = "Attacker", at = 0, command = { Defend = {} } },
-    { seat = "Defender", at = 0, command = { Cast = { spell = 43, target = { None = {} }, second = { None = {} } } } },
-    { seat = "Defender", at = 0, command = { Defend = {} } },
-    { seat = "Defender", at = 0, command = { Defend = {} } },
+    { seat = "Attacker", at = 2800, command = { Defend = {} } },
+    { seat = "Defender", at = 2800, command = { Cast = { spell = 43, target = { None = {} }, second = { None = {} } } } },
+    { seat = "Defender", at = 5600, command = { Defend = {} } },
+    { seat = "Defender", at = 5600, command = { Defend = {} } },
 ]
 
 # E17 M5 T5b1: Stone Gaze's glow and the petrified look (design §7.26): the Archangel flies to the
