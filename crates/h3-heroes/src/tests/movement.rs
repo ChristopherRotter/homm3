@@ -297,3 +297,154 @@ fn the_scouting_radius_adds_the_skills_and_artifacts_tiles() {
         assert_eq!(radius(1, &[("t:scouting", 3)], &["t:eye"], 254), u8::MAX);
     }
 }
+
+/// The original's sea table (`movement.txt`'s "Sea Movement", HER-ADV-009): by Navigation level.
+const SEA_TABLE: [u32; 4] = [1500, 2250, 3000, 3750];
+
+/// The movement pack with the sea (E08 T71): Navigation 1/2/3 as `t:navigation`; `t:band` +1 000
+/// sea points (the Necklace of Ocean Guidance's), `t:helm` +500 (the Sea Captain's Hat's), the
+/// combination `t:circle` (band, loop, helm) free boarding (the Admiral's Hat's), `t:hook` a
+/// Navigation level 2 of its own; with `loop_boards`, `t:loop` (needs Luck) free boarding too.
+fn sea_pack(specialty: Vec<HeroEffectDef>, loop_boards: bool) -> ContentPack {
+    let mut p = movement_pack(specialty);
+    p.skills.push(SecondarySkillDef {
+        key: key("t:navigation"),
+        name: "Skill".into(),
+        levels: [1, 2, 3].map(|level| vec![HeroEffectDef::Navigation { level }]),
+    });
+    for a in &mut p.artifacts {
+        let effect = match a.key.to_string().as_str() {
+            "t:band" => HeroEffectDef::SeaMovementPoints { points: 1000 },
+            "t:helm" => HeroEffectDef::SeaMovementPoints { points: 500 },
+            "t:circle" => HeroEffectDef::FreeBoarding,
+            "t:hook" => HeroEffectDef::Navigation { level: 2 },
+            "t:loop" if loop_boards => HeroEffectDef::FreeBoarding,
+            _ => continue,
+        };
+        a.effects.push(effect);
+    }
+    p
+}
+
+/// A Navigation specialist's specialty (Sylvia's, Voy's): 5 % of the table's first entry per
+/// level with the skill.
+fn navigation_specialist() -> Vec<HeroEffectDef> {
+    vec![HeroEffectDef::SkillSpecialty {
+        skill: key("t:navigation"),
+        bp_per_level: 500,
+    }]
+}
+
+// covers: HER-ADV-009
+#[test]
+fn the_sea_points_are_the_tables_entry_at_the_navigation_level() {
+    // Exact integers in both profiles (ADR-0013 point 13.6).
+    for r in both(sea_pack(vec![], false)) {
+        let points = |skills: &[(&str, u8)], worn: &[&str]| {
+            sea_points(&hero(&r, 10, skills, worn), &r, &SEA_TABLE)
+        };
+        // Without Navigation 1 500, whatever the army or the land's Logistics.
+        assert_eq!(points(&[], &[]), 1500);
+        assert_eq!(points(&[("t:logistics", 3)], &[]), 1500);
+        for (level, expected) in [(1, 2250), (2, 3000), (3, 3750)] {
+            assert_eq!(points(&[("t:navigation", level)], &[]), expected);
+        }
+        // An artifact's Navigation level counts as the skill's; several sources: the highest.
+        assert_eq!(points(&[], &["t:hook"]), 3000);
+        assert_eq!(points(&[("t:navigation", 1)], &["t:hook"]), 3000);
+        assert_eq!(points(&[("t:navigation", 3)], &["t:hook"]), 3750);
+        // A table the adventure gives otherwise is read as given.
+        let advanced = hero(&r, 1, &[("t:navigation", 2)], &[]);
+        assert_eq!(sea_points(&advanced, &r, &[1, 2, 3, 4]), 3);
+    }
+}
+
+// covers: HER-ADV-009
+#[test]
+fn a_navigation_specialist_adds_its_share_of_the_first_entry_with_the_skill() {
+    for r in both(sea_pack(navigation_specialist(), false)) {
+        let points = |level: u8, skills: &[(&str, u8)], worn: &[&str]| {
+            sea_points(&hero(&r, level, skills, worn), &r, &SEA_TABLE)
+        };
+        // Sylvia at level 10: Basic Navigation 3 000 (2 250 + 750), none without the skill.
+        assert_eq!(points(10, &[("t:navigation", 1)], &[]), 3000);
+        assert_eq!(points(10, &[], &[]), 1500);
+        // 75 a level (⌊level × 1 500 ÷ 20⌋), whatever the skill's level.
+        assert_eq!(points(1, &[("t:navigation", 1)], &[]), 2325);
+        assert_eq!(points(20, &[("t:navigation", 3)], &[]), 5250);
+        // The level from an artifact alone gets no share; with the skill the share comes once.
+        assert_eq!(points(10, &[], &["t:hook"]), 3000);
+        assert_eq!(points(10, &[("t:navigation", 1)], &["t:hook"]), 3750);
+        // A specialty on another skill adds nothing at sea.
+        let logistics = compile(sea_pack(logistics_specialist(), false)).unwrap();
+        let other = hero(
+            &logistics,
+            10,
+            &[("t:navigation", 1), ("t:logistics", 1)],
+            &[],
+        );
+        assert_eq!(sea_points(&other, &logistics, &SEA_TABLE), 2250);
+        // The share's ⌊⌋ is taken once, of the exact product.
+        let third = hero(&r, 3, &[("t:navigation", 1)], &[]);
+        assert_eq!(sea_points(&third, &r, &[7, 0, 0, 0]), 1);
+    }
+}
+
+// covers: HER-ADV-009
+#[test]
+fn the_sea_artifacts_add_once_per_type_and_the_admirals_hat_boards_free() {
+    for r in both(sea_pack(vec![], false)) {
+        let d = |skills: &[(&str, u8)], worn: &[&str]| hero(&r, 1, skills, worn);
+        // Batch E8's E8-10: Advanced Navigation and the Necklace 4 000; the Sea Captain's Hat
+        // alone 2 000.
+        assert_eq!(
+            sea_points(&d(&[("t:navigation", 2)], &["t:band"]), &r, &SEA_TABLE),
+            4000
+        );
+        assert_eq!(sea_points(&d(&[], &["t:helm"]), &r, &SEA_TABLE), 2000);
+        // Two copies count once; the backpack not (the test hero carries a helm there).
+        assert_eq!(
+            sea_points(&d(&[], &["t:band", "t:band"]), &r, &SEA_TABLE),
+            2500
+        );
+        assert_eq!(sea_points(&d(&[], &[]), &r, &SEA_TABLE), 1500);
+        // The Admiral's Hat: 3 000 through its parts, and free boarding; its parts worn apart
+        // give the same points and no free boarding (the original tests the combination).
+        let admiral = d(&[], &["t:circle"]);
+        assert_eq!(sea_points(&admiral, &r, &SEA_TABLE), 3000);
+        assert!(free_boarding(&admiral, &r));
+        let apart = d(&[], &["t:band", "t:helm"]);
+        assert_eq!(sea_points(&apart, &r, &SEA_TABLE), 3000);
+        assert!(!free_boarding(&apart, &r));
+        assert!(!free_boarding(&d(&[("t:navigation", 3)], &[]), &r));
+        // The sum saturates.
+        let table = [u32::MAX - 100, 0, 0, 0];
+        assert_eq!(sea_points(&admiral, &r, &table), u32::MAX);
+    }
+    // A specialist's share saturates too.
+    let r = compile(sea_pack(navigation_specialist(), false)).unwrap();
+    let veteran = hero(&r, u8::MAX, &[("t:navigation", 1)], &[]);
+    assert_eq!(sea_points(&veteran, &r, &[u32::MAX, 0, 0, 0]), u32::MAX);
+}
+
+// covers: HER-ADV-009
+#[test]
+fn free_boarding_counts_a_part_of_a_worn_combination_that_needs_its_skill() {
+    // `t:loop` boards free but needs Luck; the circle (here without its own) holds it.
+    let mut p = sea_pack(vec![], true);
+    for a in &mut p.artifacts {
+        if a.key.to_string() == "t:circle" {
+            a.effects.clear();
+        }
+    }
+    let r = compile(p).unwrap();
+    assert!(!free_boarding(&hero(&r, 1, &[], &["t:circle"]), &r));
+    assert!(free_boarding(
+        &hero(&r, 1, &[("t:luck", 1)], &["t:circle"]),
+        &r
+    ));
+    assert!(free_boarding(
+        &hero(&r, 1, &[("t:luck", 1)], &["t:loop"]),
+        &r
+    ));
+}

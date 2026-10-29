@@ -1568,3 +1568,36 @@ numeric  = "integer"
   url        = "https://github.com/vcmi/vcmi/blob/1.7.5/config/objects/rewardableOnceVisitable.json"
   retrieved  = "2026-10-26"
   confidence = "medium"
+
+[[rule]]
+id       = "HER-ADV-009"
+title    = "A hero's day's sea points and free boarding"
+context  = "heroes"
+status   = "verified"
+summary  = "The day's sea points from the sea table the adventure gives (the points by Navigation level 0 to 3; the original's 1 500, 2 250, 3 000, 3 750): the entry at the highest of the hero's navigation levels (the skill's 1, 2, 3, any source; 0 without one); then, for each skill the hero has that gives a Navigation level at its level, the bp_per_level of its skill specialties of the table's first entry per hero level, rounded down once (the original's Navigation specialists Sylvia and Voy: floor(level x 1 500 / 20), 75 a level, nothing without the skill, a share and never a growth of the level); then the sea_movement_points of the effects, each worn artifact type once, worn or as a part of a worn combination, one that needs a skill only with it (the Necklace of Ocean Guidance 1 000, the Sea Captain's Hat 500, the Admiral's Hat both through its parts: 1 500); saturating. The army's speeds do not count; exact integers in every profile (no Q-0005 term). Free boarding: whether an effect of the hero is free_boarding (the Admiral's Hat, the combination itself: its two parts worn apart give its points but not free boarding; any source counts, a part of a worn combination with its skill too); the conversion at a boarding or a landing it allows is the adventure's (ADV-SEA-002, ADV-SEA-003). Not here: Lighthouses (+500 each owned) and a computer player's bonus (E10), inputs then; when the day's sea points apply (the turn start in a boat, a boarding, a landing) is the adventure's. E08 T71: `h3_heroes::{sea_points, free_boarding}`."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E08 T34a, T66a1; survey E08-sea.md §4.2, §3.1; docs/exe/map.toml 0x4E4990, 0x698AEC, 0x4D91F0, 0x4A1010): hero_max_land_movement at sea (argument 1) takes sea_movement_by_navigation 0x698AEC (1500, 2250, 3000, 3750) at the Navigation level (+0xCE), the army's speeds not counted; a Navigation specialist with the skill adds level x the table's first entry / 20; then +500 (0x698B0C) for the Sea Captain's Hat (123) and +1000 (0x698B04) for the Necklace of Ocean Guidance (71), each worn or a part of a worn combination (hero_wears_artifact), so the Admiral's Hat (136) counts both; hero_boards_boat and hero_lands_from_boat convert the points left only while hero_wears_artifact finds 136 itself"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "config/skills.json (1.7.5) navigation: MOVEMENT heroMovementSea PERCENT_TO_BASE 50, 100, 150 of gameConfig's movementPointsSea 1500; the Navigation specialty's valPer20 1500 limited by the skill; config/artifacts.json necklaceOfOceanGuidance +1000 and seaCaptainsHat +500 (ADDITIVE_VALUE), admiralsHat FREE_SHIP_BOARDING with the two as components (survey E08-sea.md §4.2)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/config/artifacts.json"
+  retrieved  = "2026-10-29"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Navigation - Heroes 3 wiki (survey E08-sea.md §4.2): '+50/100/150 %', the base 1500 'fixed and does not depend on the slowest creature', the specialists' '75 extra movement points at sea per level'; Sea Captain's Hat '+500 movement points on water'; Admiral's Hat '+1500 movement points on water', 'No boarding or unboarding penalty for boats'"
+  url        = "https://heroes.thelazy.net/index.php/Navigation"
+  retrieved  = "2026-10-28"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-8a.md (stamp dbdf491f) and E08-batch-8b.md (stamp 18e9bac9) (the capture harness, Complete 4.0 Heroes3.exe under Wine without HD, hot seat, Easy, 2026-10-28 and -29; survey E08-sea.md §15): E8-10, day 2 in boats Advanced Navigation and the Necklace 4 000, the Sea Captain's Hat alone 2 000; E8-6, Expert Navigation, the Necklace and the Sea Captain's Hat 5 250; E8-1, the Admiral's Hat's day's maximum at sea 3 000 and its control's 425 points left converted to 637 (425 x 3 000 / 2 000)"
+  retrieved  = "2026-10-29"
+  confidence = "high"
