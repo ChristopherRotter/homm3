@@ -1137,3 +1137,127 @@ fn a_clip_copies_its_frame_on_the_screen_cut_to_it() {
         ComposeError::Missing("no.bik".to_string())
     );
 }
+
+#[test]
+fn a_dissolve_blends_the_new_picture_over_what_it_measures() {
+    // E17 M5 T5a (`screen_dissolve` 0x602DC0): the new picture blended by the step's eighths into
+    // the screen as it stands, inside the rectangle its measured items cover, cut to the
+    // battlefield; the saved picture elsewhere.
+    let mut b = batch();
+    let red = build::pcx_indexed(6, 2, &[1; 12], &palette(&[(1, RED)]));
+    b.add("Red.pcx", &red).unwrap();
+    let boxed = build::pcx_indexed(1, 1, &[1], &palette(&[(1, GREEN)]));
+    b.add("CmNumWin.pcx", &boxed).unwrap();
+    let p = palette(&[(3, RED)]);
+    let magic = build::def(
+        0x40,
+        (2, 1),
+        &p,
+        &[(0, &[("m", 0)])],
+        &[row(&[3], &[false])],
+    );
+    b.add("Mg.def", &magic).unwrap();
+    let background = |picture: &str| Draw::Background {
+        picture: picture.to_string(),
+        x: 0,
+        y: 0,
+    };
+    let new = vec![
+        background("red.pcx"),
+        creature([1, 1], false, None),
+        creature([4, 1], true, None),
+    ];
+    let at = |step: u8, rect: Option<[i32; 4]>, measured: Vec<Draw>| {
+        let dissolve = Draw::Dissolve {
+            step,
+            rect,
+            measured,
+            list: new.clone(),
+        };
+        compose(&[background("bg.pcx"), dissolve], &b, &small())
+            .unwrap()
+            .pixels()
+            .to_vec()
+    };
+    let [blue, red, white] = [BLUE, RED, WHITE].map(|c| FORMAT.pack(c));
+    // Halfway (step 4): blue to white and to red, each channel rounding down.
+    let (to_white, to_red) = (15 << 11 | 31 << 5 | 31, 15 << 11 | 15);
+    // The creature's content box: its frame's two pixels at (0, 1).
+    assert_eq!(
+        at(4, None, vec![creature([1, 1], false, None)]),
+        [
+            blue, blue, blue, blue, blue, blue, to_white, to_red, blue, blue, blue, blue
+        ]
+    );
+    // A mirrored one's (x 3 and 4) with a count box's picture at (5, 0): x 3 to 5, both rows.
+    let count = Draw::CountBox {
+        stack: 0,
+        x: 5,
+        y: 0,
+        count: 0,
+        tint: [0, 0],
+    };
+    assert_eq!(
+        at(4, None, vec![creature([4, 1], true, None), count]),
+        [
+            blue, blue, blue, to_red, to_red, to_red, blue, blue, blue, to_red, to_white, to_red
+        ]
+    );
+    // A fixed rectangle (Teleport's battlefield); the last step's end is the new picture.
+    assert_eq!(
+        at(8, Some([0, 0, 6, 2]), Vec::new()),
+        [
+            red, red, red, red, red, red, white, red, red, red, white, red
+        ]
+    );
+    // A magic animation's frame over a stack: its DEF's whole canvas (2 x 1) at its corner.
+    let magic = Draw::Magic {
+        def: "mg.def".to_string(),
+        frame: 0,
+        x: 1,
+        y: 0,
+        mirrored: true,
+        translucent: false,
+    };
+    assert_eq!(
+        at(4, None, vec![magic]),
+        [
+            blue, to_red, to_red, blue, blue, blue, blue, blue, blue, blue, blue, blue
+        ]
+    );
+    // Nothing measured, or nothing a rectangle is measured from: the saved picture.
+    assert_eq!(at(4, None, Vec::new()), [blue; 12]);
+    assert_eq!(at(4, None, vec![background("red.pcx")]), [blue; 12]);
+    // A measured item or a new picture the batch cannot draw fails the frame: a creature's DEF,
+    // a magic animation's, the count box's picture, the new picture's background.
+    let fails = |b: &Batch, rect: Option<[i32; 4]>, measured: Vec<Draw>, list: Vec<Draw>| {
+        let dissolve = Draw::Dissolve {
+            step: 4,
+            rect,
+            measured,
+            list,
+        };
+        compose(&[background("bg.pcx"), dissolve], b, &small()).is_err()
+    };
+    let unknown = creature_of("none.def", [1, 1], false, None);
+    assert!(fails(&b, None, vec![unknown], new.clone()));
+    let unknown = Draw::Magic {
+        def: "none.def".to_string(),
+        frame: 0,
+        x: 1,
+        y: 0,
+        mirrored: false,
+        translucent: false,
+    };
+    assert!(fails(&b, None, vec![unknown], new.clone()));
+    let count = Draw::CountBox {
+        stack: 0,
+        x: 5,
+        y: 0,
+        count: 0,
+        tint: [0, 0],
+    };
+    assert!(fails(&batch(), None, vec![count], new.clone()));
+    let unknown = vec![background("none.pcx")];
+    assert!(fails(&b, Some([0, 0, 6, 2]), Vec::new(), unknown));
+}

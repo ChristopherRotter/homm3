@@ -1310,3 +1310,91 @@ command = [
     { seat = "Attacker", at = 3940, command = { Move = { to = 141 } } },
     { seat = "Attacker", at = 6620, command = { EndTactics = {} } },
 ]
+
+# E17 M5 T5a: Teleport (design §7.25): Orrin teleports his Swordsmen from 86 to 90 at their turn
+# (`cast:0:86`, the second target by `hex:90`): a redraw shown at once, the battlefield saved, the
+# stack moved and the battle redrawn unseen, then the dissolve over the battlefield in 33 ms steps
+# (0x5A1BEA); the Swordsmen defend after the cast. Hot seat.
+[[sequence]]
+id = "teleport"
+scenario = "seq-teleport.toml"
+hot_seat = true
+actions = ["cast:0:86", "hex:90", "key:d"]
+ms = 2500
+heroes = true
+screens = true
+timeline = "timelines/teleport.txt"
+frames = "timelines/teleport-frames.txt"
+boxes = true
+command = [
+    { seat = "Attacker", command = { Cast = { spell = 62, target = { Stack = { stack = 0 } }, second = { Hex = { hex = 90 } } } } },
+    { seat = "Attacker", at = 864, command = { Defend = {} } },
+]
+
+# E17 M5 T5a: Clone (design §7.25): Orrin clones his Swordsmen at their turn (`cast:0:86`): the
+# clone set up without a dissolve and slid from its original's place in 16 redraws (0x5A6FDE);
+# the Swordsmen, the clone and the Archers defend; at round 2's start the clone's one round (Orrin's
+# power) has run out and it vanishes in a dissolve of trunc(150 F) steps (`round_start` 0x47614D).
+# Hot seat.
+[[sequence]]
+id = "clone"
+scenario = "seq-clone.toml"
+hot_seat = true
+actions = ["cast:0:86", "key:d", "turn:0.1", "key:d", "turn:1.0", "key:d"]
+ms = 2500
+heroes = true
+screens = true
+timeline = "timelines/clone.txt"
+frames = "timelines/clone-frames.txt"
+boxes = true
+command = [
+    { seat = "Attacker", command = { Cast = { spell = 64, target = { Stack = { stack = 0 } }, second = { None = {} } } } },
+    { seat = "Attacker", at = 1600, command = { Defend = {} } },
+    { seat = "Attacker", at = 1600, command = { Defend = {} } },
+    { seat = "Defender", at = 1600, command = { Defend = {} } },
+]
+
+# E17 M5 T5a: Summon Elemental (design §7.25): Orrin summons two Fire Elementals (power 1, Basic)
+# at the Swordsmen's turn (`cast:0`): the line, then the stack shown in a dissolve of 75 ms steps
+# whatever the speed (`create_battle_stack` 0x47A2A8); the Swordsmen defend, the elementals wait,
+# the Archers shoot them both dead: they leave no corpse and dissolve away in trunc(150 F) steps
+# (`battle_dissolve_removed`). Hot seat; `seed`: the engine's, whose row is the original's.
+[[sequence]]
+id = "summon"
+scenario = "seq-summon.toml"
+hot_seat = true
+actions = ["cast:0", "key:d", "turn:0.1", "key:w", "turn:1.0", "hex:18"]
+ms = 3200
+heroes = true
+screens = true
+timeline = "timelines/summon.txt"
+frames = "timelines/summon-frames.txt"
+boxes = true
+command = [
+    { seat = "Attacker", command = { Cast = { spell = 65, target = { None = {} }, second = { None = {} } } } },
+    { seat = "Attacker", at = 1200, command = { Defend = {} } },
+    { seat = "Attacker", at = 1200, command = { Wait = {} } },
+    { seat = "Defender", at = 1200, command = { Shoot = { target = 2, at = 18 } } },
+]
+
+# E17 M5 T5a: a Pit Lord's Demons (design §7.25): round 1 the Pit Lords defend and the Archers
+# (on their native grass as fast as the Imps, so the side that did not act goes first) shoot the
+# Imps dead; round 2 the Pit Lords raise one Demon from their corpse (a click on it): their casting
+# frames, the corpse gone and the Demon shown in a dissolve of 75 ms steps (`create_battle_stack`
+# 0x47A2A8), a redraw at once, the line (GENRLTXT 117). Hot seat.
+[[sequence]]
+id = "demons"
+scenario = "seq-demons.toml"
+hot_seat = true
+actions = ["key:d", "turn:1.0", "hex:137", "turn:0.0", "hex:137"]
+ms = 2500
+heroes = true
+screens = true
+timeline = "timelines/demons.txt"
+frames = "timelines/demons-frames.txt"
+boxes = true
+command = [
+    { seat = "Attacker", at = 0, command = { Defend = {} } },
+    { seat = "Defender", at = 0, command = { Shoot = { target = 1, at = 137 } } },
+    { seat = "Attacker", at = 1688, command = { CreatureCast = { target = { Stack = { stack = 1 } } } } },
+]

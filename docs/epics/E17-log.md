@@ -3303,6 +3303,46 @@ steps) over the battle lane's inbox or a copy of the pathfinder in the client.
   walk 35, 36, 37, 38, 56, 73 and the Pikemen's 137 to 141 hex for hex); its frames below.
 - **Found:** no new question; review items 32 to 35.
 
+### M5 T5a — The dissolves and the created stacks (2026-10-29)
+
+On `client/e17-m5-t5a`, the user present. The sandbox new; the files staged from the user's
+`original-data/` first. Asked at the start: T5 cut in two (T5a the dissolves and the created
+stacks, T5b the panel by the turn's controller and the sounds' waits); the message when no hex is
+free needs an engine event, which the user put in this pull request (`cross-lane`). Asked during
+it: the clone's recolour (`draw_battle_stack`'s palette effects) went to T5b, the user's call;
+the Demons' dissolve starting from the back buffer (design §7.25) is a slip of the original, not
+modelled (the user: "essentially a slip").
+
+- **Read** (design §7.25): `screen_dissolve` and its blend, `screen_save_rect`, the dissolve's
+  rectangle (`battle_refresh_creatures` in measure-only mode: the content box, the count box, a
+  magic frame's canvas), `battle_dissolve_removed` and its four callers, `create_battle_stack`
+  (the record taken, the set-up, the animation), Summon Elemental's line and creation, a Pit
+  Lord's Demons, Clone's place, message and slide, Teleport's dissolve. Map entries new or
+  amended.
+- **The engine (`cross-lane`, the user's call):** `h3_battle`'s `NotCreated` (a clone or a
+  summoned stack without a place: the mana spent, nothing made; BAT-MAG-037 amended), its test
+  assertions; `h3-protocol` wire v36 (the server lane's inbox told).
+- **Built:** `h3_render::Screen::dissolve_rect` (an additive foundation function); `anim::created`
+  (the created stacks' keys, the dissolves' keys and steps, the clone's slide, a turned summoned
+  stack's wait, Teleport's dissolve, a Pit Lord's Demons, `remove_gone` and `vanish_at_round`);
+  `scene`'s `Moment::created`, `Moment::dissolve`, `Draw::Dissolve` and `measured`;
+  `compose::measure`; the log's `Created` and `Summoned` lines; the window's notices (the clone's
+  message box). Tests: the created stacks', the dissolve's blend and rectangle, the scene's, the
+  playhead's.
+- **Recorded:** `teleport`, `clone`, `summon` and `demons` on new scenarios with `sacrifice`'s
+  obstacles; `sacrifice`'s dissolve now exact (its frames' counts re-recorded). `teleport`: the
+  dissolve exact, the aim's hint (*Teleport Here*) not modelled (masked as before); `summon`:
+  every frame exact, the log's damage the engine's roll (no seed gives the original's 102 with
+  the shot at 18); `clone`: the slide exact, its colours differ (the palette effects, T5b);
+  `demons`: the timeline as recorded, the dissolve's 8 frames differing by the slip, the rest
+  exact. A corpse now keeps the pose it lay in when it goes (`Player::lying`: a raise a command
+  after the death found no key of it).
+- **Explored** (scratch runs): the first `demons` run stalled for good, the Imps' turn waited
+  for while the Archers (as fast on grass, the other side) were active; a run killed with
+  `pkill` left the game running and slowed the next one (kill by process id). Probing with an
+  `at:` action shows the states in a few minutes.
+- **Found:** CLT-Q33 (Summon Elemental's line written without a stack); review items 36 to 39.
+
 ## Accepted review lists (M1 to M4)
 
 M1 and M2 moved from the epic file on 2026-10-20 (less start-up reading), unchanged; M3 at its

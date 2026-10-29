@@ -367,6 +367,17 @@ pub fn event(kind: &EventKind) -> Event {
             hex: hex.0,
             original: original.map(|s| s.0),
         },
+        K::NotCreated {
+            side: s,
+            creature,
+            count,
+            original,
+        } => Event::NotCreated {
+            side: side(s),
+            creature: creature.raw(),
+            count,
+            original: original.map(|s| s.0),
+        },
         K::TurnedSummoned { stack, rounds } => Event::TurnedSummoned {
             stack: stack.0,
             rounds,

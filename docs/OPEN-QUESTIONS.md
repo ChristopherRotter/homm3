@@ -101,6 +101,21 @@ The review's fix C3 follows the reading of 0x47A100: a created stack whose round
 
 **Context.** The tactics phase's message (GENRLTXT 373, `battle_start` 0x4631E5; `docs/epics/E17-design.md` §7.23) opens before the battle's first turn. When its OK closes it, the first turn's start sets the combat cursor's pointer (0x478321) and posts a mouse move (0x478857), as every turn's start does, but that move does not reach the battle here: recorded (`tactics-rest`), the mouse moved over the message and left over a hex of the zone keeps the pointer and marks no stack at 100 and 1 000 ms, until it moves again (then the move cursor at once). Where the posted move is lost is not read. **Options:** (a) copy it (the first move after the message gives the cursor; harmless); (b) fix it in the client (the turn's start shows the cursor and the mark for where the mouse rests), the original's for the comparisons only (`Bugs::Original`, as the cursor's x). **Recommendation:** (a): the window shows what its last input left anyway, and a move is all it takes. **Built:** as the original's (the stills keep the pointer; the window's battle takes no move made over a box, E17 M5 T4a). **Blocked:** nothing.
 
+#### CLT-Q33 — Summon Elemental's line without a stack (E17 M5 T5a)
+
+**Context.** `summon_elemental` (0x5A7080; `docs/epics/E17-design.md` §7.25) writes its line
+("%s summons %d %s", GENRLTXT 676) before it creates the stack, whether or not a column had a
+place: without one the hex stays −1, the line is written all the same and `create_battle_stack`
+0x47A100 is called with hex −1, whose test reads a byte before the hex records (the battle
+manager's +0x16C, not read): nothing is created unless that byte is negative. The engine creates
+nothing and reports `NotCreated` (BAT-MAG-037). Rare: every one of fifteen columns must be full.
+**Options:** (a) copy the line (the original's log, a line about elementals that never appear);
+(b) fix it in the client (no line when nothing is created), the original's for the comparisons
+only (`Bugs::Original`, as the cursor's x); the read past the hex records is the engine's to
+leave out either way (nothing created). **Recommendation:** (b): the log should not report a
+summon that did not happen. **Built:** as the original's (the line written). **Blocked:**
+nothing.
+
 ### Map client lane (`MCL-Q<n>`)
 
 #### MCL-Q13 — A monster's head under the Dragon Utopia (E24 M3 T2b1; the user, 2026-10-28)

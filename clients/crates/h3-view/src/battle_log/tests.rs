@@ -43,6 +43,8 @@ const PACK: &str = r#"{
         "poisoned_other": "{{creature}} are poisoned.",
         "raised_one": "{{count}} {{creature}} rises.",
         "raised_other": "{{count}} {{creature}} rise.",
+        "summoned_one": "{{hero}} calls {{count}} {{creature}}.",
+        "summoned_other": "{{hero}} calls {{count}} {{creature}}.",
         "acid-breath": "Acid: {{creature}} -{{defense}}.",
         "cast": "{{hero}}: {{spell}}.",
         "death-ripple": "Ripple {{damage}}.",
@@ -245,12 +247,14 @@ fn named(id: u8) -> Option<Named> {
     })
 }
 
-/// The spell 15 and the attacker's hero [`word`] names (E17 M3 T7b-1).
+/// The spell 15, the attacker's hero (E17 M3 T7b-1) and the creature 7 (E17 M5 T5a) [`word`]
+/// names.
 fn key(name: Name) -> Option<String> {
     match name {
         Name::Spell(15) => Some("spell.t:arrow".into()),
         Name::Hero(0) => Some("hero.t:mage".into()),
         Name::Moat => Some("moat.t:castle".into()),
+        Name::Creature(7) => Some("creature.t:bee".into()),
         _ => None,
     }
 }
@@ -665,6 +669,23 @@ fn the_striker_effects_and_the_spells_after_a_strike_have_their_lines() {
     let raised = |count| Logged::Raised { stack: 2, count };
     assert_eq!(worded(&raised(1)).as_deref(), Some("1 Bee rises."));
     assert_eq!(worded(&raised(3)).as_deref(), Some("3 Bees rise."));
+    // Summon Elemental's line (E17 M5 T5a): the hero, the count and the creature's name by it;
+    // nothing for a hero or a creature the record does not name.
+    let summoned = |side, creature, count| Logged::Summoned {
+        side,
+        creature,
+        count,
+    };
+    assert_eq!(
+        worded(&summoned(0, 7, 1)).as_deref(),
+        Some("Mage calls 1 Bee.")
+    );
+    assert_eq!(
+        worded(&summoned(0, 7, 6)).as_deref(),
+        Some("Mage calls 6 Bees.")
+    );
+    assert_eq!(worded(&summoned(1, 7, 6)), None);
+    assert_eq!(worded(&summoned(0, 8, 6)), None);
     let acid = Logged::AcidBreath {
         stack: 1,
         count: 4,

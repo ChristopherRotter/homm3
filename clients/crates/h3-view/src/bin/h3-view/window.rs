@@ -472,6 +472,8 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
 
     let mut changes = Changes::new(&battle);
     let mut clock = Clock::new(win.ticks_ns(), options.from);
+    // The clock is held under a notice's box (E17 M5 T5a).
+    let mut notice_held = false;
     // The opening: the clock waits while the start sound plays (from the battle's start only).
     let mut opening_until = None;
     if let (Some(p), Some(lib)) = (player.as_mut(), library.as_ref()) {
@@ -534,6 +536,21 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
         if battle.open_result(ms) {
             lines.push(format!("the result window opened at {ms} ms"));
             book_changed = true;
+        }
+        // A notice opens at its time, the clock held there until its box closes (E17 M5 T5a).
+        if let Some(t) = battle.open_notice(ms) {
+            lines.push(format!("a message box opened at {t} ms"));
+            let now = win.ticks_ns();
+            clock.seek(now, t);
+            if !clock.paused() {
+                clock.toggle(now);
+                notice_held = true;
+            }
+            book_changed = true;
+        }
+        if notice_held && !battle.message_open() {
+            clock.toggle(win.ticks_ns());
+            notice_held = false;
         }
         if let Some(p) = presser.as_mut() {
             grew |= p.press(&mut battle, &mut inputs, clock.ms(win.ticks_ns()))?;

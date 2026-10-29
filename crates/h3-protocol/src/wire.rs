@@ -483,6 +483,12 @@ pub enum Event {
         hex: u8,
         original: Option<u8>,
     },
+    NotCreated {
+        side: Side,
+        creature: u16,
+        count: u32,
+        original: Option<u8>,
+    },
     TurnedSummoned {
         stack: u8,
         rounds: u16,

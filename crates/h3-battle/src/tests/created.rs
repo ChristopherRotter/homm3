@@ -5,6 +5,7 @@
 use std::vec;
 use std::vec::Vec;
 
+use h3_content::CreatureTypeId;
 use h3_content_battle::BattleRuleset;
 use h3_contracts::{BattleHero, BattleResult, BattleSide, StackOrigin, StackRecord};
 
@@ -293,6 +294,28 @@ fn a_crowded_two_hex_stack_is_never_covered_by_its_clone() {
     let events = cast(&mut s, &r, "copy", stack(0)).unwrap();
     assert_eq!((created(&events), s.stacks().len()), (vec![], 2));
     assert!(s.hero(BattleSide::Attacker).unwrap().mana < mana);
+    // Reported (E17 M5 T5a): the original's message box needs it.
+    let serf = s.stacks()[0];
+    assert_eq!(
+        not_created(&events),
+        vec![(BattleSide::Attacker, serf.creature, 2, Some(0))]
+    );
+}
+
+/// The stacks a spell found no place for, as `(side, creature, count, original)`.
+fn not_created(events: &[Event]) -> Vec<(BattleSide, CreatureTypeId, u32, Option<u8>)> {
+    events
+        .iter()
+        .filter_map(|e| match e.kind {
+            EventKind::NotCreated {
+                side,
+                creature,
+                count,
+                original,
+            } => Some((side, creature, count, original.map(|s| s.0))),
+            _ => None,
+        })
+        .collect()
 }
 
 // covers: BAT-MAG-038, BAT-MAG-037, BAT-END-003
@@ -634,6 +657,10 @@ fn a_summoned_stack_takes_a_random_fitting_row_and_none_without_a_place() {
     assert_eq!((created(&events), s.stacks().len()), (vec![], 2));
     assert_eq!(s.hero(BattleSide::Attacker).unwrap().mana, mana - 4);
     let sprite = r.creature_by_key("t:sprite").unwrap();
+    assert_eq!(
+        not_created(&events),
+        vec![(BattleSide::Attacker, sprite, 6, None)]
+    );
     assert_eq!(
         crate::observe(&s, &r, BattleSide::Defender).summoned,
         [Some(sprite), None]

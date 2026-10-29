@@ -242,7 +242,18 @@ pub(crate) fn clone<S: Sink>(
         Some(ClonePlace::At(position)) => position,
         // rule: BAT-MAG-038
         Some(ClonePlace::Original) => return turn(state, (s, rounds), sink),
-        None => return,
+        None => {
+            // No place: nothing is created, the mana is spent (the original's message box,
+            // 0x5A6E22).
+            let original = state.at(s);
+            sink.emit(Event::public(EventKind::NotCreated {
+                side: original.side,
+                creature: original.creature,
+                count: original.count,
+                original: Some(s),
+            }));
+            return;
+        }
     };
     let original = *state.at(s);
     let shots = ruleset.creature(original.creature).map_or(0, |c| c.shots);
@@ -433,6 +444,13 @@ pub(crate) fn summon<S: Sink>(
         created(state, id, None, sink);
         return;
     }
+    // No column has a place (or there are no creatures): nothing is created, the mana is spent.
+    sink.emit(Event::public(EventKind::NotCreated {
+        side,
+        creature,
+        count,
+        original: None,
+    }));
 }
 
 /// Puts the created `stack` into the battle (BAT-MAG-037; the original's 0x47A100): in the slot of

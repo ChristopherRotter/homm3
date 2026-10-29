@@ -115,6 +115,22 @@ pub fn compose(
                 let own = compose(list, batch, layout, bugs)?;
                 copy_rect(&mut screen, &own, *rect);
             }
+            Draw::Dissolve {
+                step,
+                rect,
+                measured,
+                list,
+            } => {
+                // The new picture on its own frame, blended into the saved one (E17 M5 T5a).
+                let rect = match rect {
+                    Some(r) => Some(*r),
+                    None => measure(measured, batch, layout)?,
+                };
+                if let Some(rect) = rect {
+                    let new = compose(list, batch, layout, bugs)?;
+                    screen.dissolve_rect(&new, rect.map(i64::from), *step);
+                }
+            }
             Draw::Shaken {
                 offsets,
                 rect,
@@ -541,6 +557,76 @@ pub fn compose(
         }
     }
     Ok(screen)
+}
+
+/// The rectangle a dissolve's `measured` items cover (`battle_refresh_creatures` 0x495BF0; E17
+/// M5 T5a, design §7.25), left, top, right and bottom, exclusive: each item's, cut to the
+/// battlefield (0x694F18: the layout's mouse field, its bounds inclusive), widens the dirty
+/// rectangle edge by edge from the empty one (799, 599, 0, 0; 0x6AACE8). A creature's is its
+/// frame's content box as `battle_item_rect` 0x495F50 places it (mirrored in the DEF's width), a
+/// count box's its picture's (`battle_draw_pcx` 0x4958E0), a magic animation's its DEF's whole
+/// canvas at its corner (`battle_draw_magic_frame` 0x4953B0). None when nothing widened it.
+fn measure(
+    measured: &[Draw],
+    batch: &Batch,
+    layout: &BattleLayout,
+) -> Result<Option<[i32; 4]>, ComposeError> {
+    let [width, height] = layout.mouse.field;
+    let mut dirty = [799, 599, 0, 0];
+    for item in measured {
+        let [x0, y0, x1, y1] = match item {
+            Draw::Creature {
+                def,
+                group,
+                frame,
+                anchor,
+                mirrored,
+                ..
+            } => {
+                let (sprite, frame) = frame_of(batch, def, *group, *frame)?;
+                let [dx, dy] = layout.stack_canvas;
+                let canvas = i32::try_from(sprite.def.width).unwrap_or(i32::MAX);
+                let size = [frame.width, frame.height].map(|v| i32::try_from(v).unwrap_or(0));
+                let y = anchor[1].saturating_sub(dy).saturating_add(frame.top);
+                let (x0, x1) = if *mirrored {
+                    // 0x495F80: the canvas's x plus its width less the margin and the width.
+                    let x = anchor[0].saturating_sub(canvas).saturating_add(dx);
+                    let right = x.saturating_add(canvas).saturating_sub(frame.left);
+                    (right.saturating_sub(size[0]), right.saturating_sub(1))
+                } else {
+                    let x = anchor[0].saturating_sub(dx).saturating_add(frame.left);
+                    (x, x.saturating_add(size[0]).saturating_sub(1))
+                };
+                [x0, y, x1, y.saturating_add(size[1]).saturating_sub(1)]
+            }
+            // `battle_draw_magic_frame` 0x4953B0: its DEF's canvas (+0x30, +0x34) at its corner,
+            // mirrored or not.
+            Draw::Magic {
+                def, frame, x, y, ..
+            } => {
+                let (sprite, _) = frame_of(batch, def, 0, *frame)?;
+                let size =
+                    [sprite.def.width, sprite.def.height].map(|v| i32::try_from(v).unwrap_or(0));
+                [*x, *y, x + size[0] - 1, y + size[1] - 1]
+            }
+            Draw::CountBox { x, y, .. } => {
+                let picture = picture_of(batch, &layout.count_box.picture)?;
+                let size =
+                    [picture.width(), picture.height()].map(|v| i32::try_from(v).unwrap_or(0));
+                [*x, *y, x + size[0] - 1, y + size[1] - 1]
+            }
+            _ => continue,
+        };
+        let cut = [x0.max(0), y0.max(0), x1.min(width - 1), y1.min(height - 1)];
+        dirty = [
+            dirty[0].min(cut[0]),
+            dirty[1].min(cut[1]),
+            dirty[2].max(cut[2]),
+            dirty[3].max(cut[3]),
+        ];
+    }
+    let [x0, y0, x1, y1] = dirty;
+    Ok((x0 <= x1 && y0 <= y1).then_some([x0, y0, x1 + 1, y1 + 1]))
 }
 
 /// The plain drawer with runs skipped (`def_draw_plain` 0x47BCF0 → 0x47C570).

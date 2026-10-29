@@ -1,0 +1,44 @@
+# E17 M5 T5a: Teleport (design §7.25): Orrin teleports his Swordsmen four hexes ahead; the
+# battlefield dissolves in 33 ms steps (0x5A1BEA). Hot seat; on grass at the capture set's tile
+# (`sacrifice`'s).
+
+[scenario]
+id = "sequence-teleport"
+# Both players human, as the original's hot-seat map (`h3-view situation --hot-seat`).
+human = ["attacker", "defender"]
+packs = ["base"]
+profile = "base:faithful"
+terrain = "base:grass"
+obstacles = [
+    { hexes = [75, 76, 77, 78, 61, 60, 59, 58], anchor = 74, kind = "base:obstacle_22" },
+    { hexes = [91, 92], anchor = 91, kind = "base:obstacle_20" },
+    { hexes = [122, 123], anchor = 122, kind = "base:obstacle_19" },
+]
+
+[[attacker]]
+slot = 0
+creature = "base:swordsman"
+count = 20
+
+[[defender]]
+slot = 0
+creature = "base:archer"
+count = 10
+
+# The heroes (E17 M3 T3a) with 1 in every primary skill but Orrin's knowledge.
+[scenario.attacker_hero]
+hero_type = "base:orrin"
+attack = 1
+defense = 1
+power = 1
+knowledge = 3
+mana = 30
+max_mana = 30
+spell_book = ["base:teleport"]
+
+[scenario.defender_hero]
+hero_type = "base:crag_hack"
+attack = 1
+defense = 1
+power = 1
+knowledge = 1

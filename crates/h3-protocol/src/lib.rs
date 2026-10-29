@@ -74,8 +74,9 @@ pub mod wire;
 /// `may_retreat` is as the viewer knows it (a town's Escape Tunnel shows to its defender only,
 /// BAT-Q50 (4)): the field is unchanged, its meaning is new. v35 (CLT-Q4, CLT-Q6): for viewers,
 /// the observation names the battlefield picture's variant, each side's player colour and a
-/// hero's sex where its map gave it one.
-pub const PROTOCOL_VERSION: u32 = 35;
+/// hero's sex where its map gave it one. v36 (E17 M5 T5a, BAT-MAG-037): the event `NotCreated`,
+/// a clone or summoned stack that found no place.
+pub const PROTOCOL_VERSION: u32 = 36;
 
 /// The version of the record's format (`wire::RecordHeader`, the `Record` message): bumped when
 /// its layout changes.

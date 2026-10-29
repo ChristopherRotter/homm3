@@ -21,16 +21,23 @@ check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gat
 
 ### E17 M5 T5 — what a played battle shows
 
-- **Scope:** the created stacks (`StackCreated`: Summon Elemental, Clone; a Pit Lord's
-  `RoseFromCorpse`): their numbers, their record index and the dissolve that shows them
-  (`create_battle_stack`, 75 ms steps; `screen_dissolve` 0x602DC0's blend, Sacrifice's victim's
-  too), the message when no hex is free, a clone's `Vanished`, Teleport's dissolve; the panel's
-  side by each turn's controller (R3-1: Hypnotize, a created stack); the battle waiting for the
-  heal's sound and the other effects'. The detail: `QUEUE-ARCHIVE.md`, 2026-10-22 (T7c-3).
-  Recorded against the original.
-- **Acceptance:** the new sequences as recorded, or each difference listed; `sacrifice`'s
-  dissolve exact; the Definition of Done.
-- **Depends on:** T1b (done 2026-10-27). **Status:** ready.
+Cut in two by the user (2026-10-29): T5a the dissolves and the created stacks (with the engine's
+event for a stack without a place, `cross-lane`; done 2026-10-29), T5b the panel by each turn's
+controller and the sounds' waits. The detail: `QUEUE-ARCHIVE.md`, 2026-10-22 (T7c-3).
+
+#### E17 M5 T5b — the panel by the turn's controller, the sounds' waits
+
+- **Scope:** the panel's side by each turn's controller (R3-1: Hypnotize, a created stack); the
+  battle waiting for the heal's sound and the other effects' (the Pit Lord's `Resurect.wav`,
+  0x5A754E, among them); `draw_battle_stack`'s palette effects (0x43E280 to 0x43E4C7; the user,
+  2026-10-29): a clone recoloured (0x522B50 with 0.67, 1, 2, 2 on palette entries 10 to 255: RGB
+  to HSV in single precision, the hue set, saturation and brightness moved toward 1, back to
+  RGB; `clone`'s frames differ by it alone, design §7.25), Bloodlust's glow (the same routine)
+  and Stone Gaze's (0x522A10), Stone Gaze's petrified look (0x522D50). Recorded against the
+  original.
+- **Acceptance:** the new sequences as recorded, or each difference listed; `clone`'s colours
+  exact; the Definition of Done.
+- **Depends on:** T5a (done). **Status:** ready.
 
 ### E17 M5 T6 — a game on a server
 

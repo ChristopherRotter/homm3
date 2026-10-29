@@ -2644,7 +2644,9 @@ fn the_log_records_what_the_battle_writes_and_when() {
             | Logged::MassDamage { .. }
             | Logged::Armageddon { .. }
             | Logged::AreaDamage { .. }
-            | Logged::Raised { .. } => "spell",
+            | Logged::Raised { .. }
+            | Logged::Summoned { .. }
+            | Logged::Created { .. } => "spell",
             Logged::Drain { .. }
             | Logged::DeathStare { .. }
             | Logged::Thunderbolt { .. }
@@ -5446,6 +5448,7 @@ fn objects_outside_casts_and_without_their_looks() {
     assert!(t.keys.iter().any(|k| k.stack == 1 && k.pose.group == 3));
 }
 
+mod created;
 pub(crate) mod playhead;
 mod raised;
 mod reviewed;

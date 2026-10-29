@@ -493,7 +493,7 @@ fn sequences(options: &Options) -> Result<usize, String> {
         let entered: std::collections::BTreeSet<String> = shown
             .entered
             .iter()
-            .filter_map(|(_, id)| timeline.members.iter().find(|m| m.stack == *id))
+            .filter_map(|(_, id)| timeline.member(*id))
             .map(|m| format!("{}.{}", u8::from(m.side == Side::Defender), m.record))
             .collect();
         // The screens' boxes (`screens`, E17 M3 T7a-2b) are the frame check's, not the timeline's.
@@ -644,10 +644,9 @@ pub(crate) fn draw_frames(
             } else {
                 Side::Defender
             };
-            let member = timeline
-                .members
-                .iter()
-                .find(|m| m.side == side && u32::from(m.record) == index);
+            let member = u8::try_from(index)
+                .ok()
+                .and_then(|record| timeline.member_at(side, record));
             // A stack the mouse entered fidgets as the viewer's timeline has it (E17 M3 T6c-2:
             // the original's memory runs ahead of its screen there).
             let entered = |m: &&anim::Member| {
@@ -708,7 +707,7 @@ pub(crate) fn draw_frames(
             } = d
             {
                 let _ = write!(line, " box{x},{y}n{count}");
-                if let Some(m) = timeline.members.iter().find(|m| m.stack == *stack) {
+                if let Some(m) = timeline.member(*stack) {
                     let side = u8::from(m.side == Side::Defender);
                     let _ = write!(line, "@{side}.{}", m.record);
                 }

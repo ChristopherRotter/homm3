@@ -158,16 +158,25 @@ pub fn names(list: &[Draw], layout: &BattleLayout) -> BTreeSet<String> {
         Draw::Ray(_)
         | Draw::Within { .. }
         | Draw::Shaken { .. }
+        | Draw::Dissolve { .. }
         | Draw::Dialog(ui::Draw::Darken { .. }) => Vec::new(),
     });
     let mut all: BTreeSet<String> = named
         .chain(core::iter::once(&layout.outline_palette))
         .map(|n| n.to_ascii_uppercase())
         .collect();
-    // A list drawn within a rectangle names its own (E17 M4 T2b), a shaken one too (T2c-2).
+    // A list drawn within a rectangle names its own (E17 M4 T2b), a shaken one too (T2c-2), a
+    // dissolve's new picture and what it measures (E17 M5 T5a).
     for d in list {
-        if let Draw::Within { list, .. } | Draw::Shaken { list, .. } = d {
-            all.extend(names(list, layout));
+        match d {
+            Draw::Within { list, .. } | Draw::Shaken { list, .. } => {
+                all.extend(names(list, layout));
+            }
+            Draw::Dissolve { list, measured, .. } => {
+                all.extend(names(list, layout));
+                all.extend(names(measured, layout));
+            }
+            _ => {}
         }
     }
     all
@@ -381,6 +390,21 @@ mod tests {
                     y: 0,
                 }],
             },
+            // A dissolve's new picture and what it measures (E17 M5 T5a).
+            Draw::Dissolve {
+                step: 0,
+                rect: None,
+                measured: vec![Draw::Background {
+                    picture: "Measured.pcx".to_string(),
+                    x: 0,
+                    y: 0,
+                }],
+                list: vec![Draw::Background {
+                    picture: "Blended.pcx".to_string(),
+                    x: 0,
+                    y: 0,
+                }],
+            },
             // The result window's clips, a start and its loop (E17 M5 T4b2b).
             Draw::Video {
                 start: "rtstart.bik".to_string(),
@@ -396,6 +420,7 @@ mod tests {
             [
                 "ABS.PCX",
                 "BG.PCX",
+                "BLENDED.PCX",
                 "BOOK.FNT",
                 "BOOK.PAL",
                 "C06SPF0.DEF",
@@ -410,6 +435,7 @@ mod tests {
                 "CROLLOVR.PCX",
                 "GAME.PAL",
                 "ICM001.DEF",
+                "MEASURED.PCX",
                 "OB.DEF",
                 "OTHER.PCX",
                 "PLAYERS.PAL",

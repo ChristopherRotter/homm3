@@ -537,16 +537,6 @@ fn raises_by_a_sacrifice_an_archangel_a_phoenix_and_on_the_living() {
                     stack: 9,
                     target: 0,
                 },
-                Event::Teleported {
-                    stack: 3,
-                    from: 151,
-                    to: 140,
-                },
-                Event::Teleported {
-                    stack: 9,
-                    from: 1,
-                    to: 2,
-                },
             ],
         ),
     ];
@@ -582,7 +572,6 @@ fn raises_by_a_sacrifice_an_archangel_a_phoenix_and_on_the_living() {
             .iter()
             .any(|c| c.sound == Sound::Spell(RESURRECTION) && c.stack == 4)
     );
-    assert_eq!(t.at(t.end)[&3].hex, 140);
 }
 
 #[test]

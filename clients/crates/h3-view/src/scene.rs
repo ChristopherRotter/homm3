@@ -15,8 +15,8 @@ use core::fmt;
 use h3_protocol::wire::{Event, Manifest, Observation, Side, Stack};
 
 use crate::anim::{
-    Blast, DRAWBRIDGE_RECT, Field, GONE, Magic, Object, Pose, Projectile, Ray, Spot, Timeline,
-    TurretPose,
+    BATTLEFIELD, Blast, DRAWBRIDGE_RECT, Dissolve, DissolveArea, Field, GONE, Magic, Object, Pose,
+    Projectile, Ray, Spot, Timeline, TurretPose,
 };
 use crate::auto::Auto;
 use crate::hero::{FLAG_START, HeroPose};
@@ -88,6 +88,11 @@ pub struct Moment {
     /// The hexes shaded into the background (E17 M5 T4c2a: a human's turn in the tactics phase,
     /// [`crate::tactics::shade`]; the timeline leaves none, its viewers set them).
     pub shade: BTreeSet<u8>,
+    /// The stacks the battle created, by id (E17 M5 T5a): drawn as the snapshot's are, a reused
+    /// id's in place of its earlier stack.
+    pub created: BTreeMap<u8, Stack>,
+    /// A dissolve blending (E17 M5 T5a; the drawing's [`Draw::Dissolve`]).
+    pub dissolve: Option<Dissolve>,
 }
 
 impl Moment {
@@ -133,6 +138,15 @@ impl Moment {
                 .map(|before| Box::new(Self::at(timeline, before))),
             shake: timeline.shake(t),
             shade: BTreeSet::new(),
+            created: timeline.created_at(t),
+            dissolve: timeline.dissolving(t).map(|(d, step)| Dissolve {
+                before: Box::new(Self {
+                    dissolve: None,
+                    ..Self::at(timeline, d.start)
+                }),
+                step,
+                area: d.area.clone(),
+            }),
         }
     }
 }
@@ -342,6 +356,22 @@ pub enum Draw {
         /// The rectangle.
         rect: [i32; 4],
         /// The list.
+        list: Vec<Draw>,
+    },
+    /// A dissolve's step (E17 M5 T5a, `screen_dissolve` 0x602DC0, design §7.25): the list composed
+    /// on a frame of its own, the new picture, blended into the screen as it stands, the saved
+    /// one, by `step` eighths over `rect` (left, top, right, bottom, exclusive), or where none is
+    /// given over the rectangle `measured` covers: each item's (a creature's frame's content box,
+    /// a count box's picture) cut to the battlefield, together (`battle_item_rect` 0x495F50,
+    /// `battle_draw_pcx` 0x4958E0).
+    Dissolve {
+        /// The step (0 to 7).
+        step: u8,
+        /// The rectangle, if fixed.
+        rect: Option<[i32; 4]>,
+        /// The items measured for it.
+        measured: Vec<Draw>,
+        /// The new picture's list.
         list: Vec<Draw>,
     },
     /// Earthquake's shake (E17 M4 T2c-2, `earthquake` 0x5A7C80, design §10.2): the list composed
@@ -797,6 +827,33 @@ pub fn battle_at(
     tables: &Tables,
     layout: &BattleLayout,
 ) -> Result<Vec<Draw>, SceneError> {
+    // A dissolve (E17 M5 T5a, §7.25): the battle as the screen showed it at its start, the
+    // moment's blended into it over the area by the step's eighths.
+    if let Some(d) = &moment.dissolve {
+        let now = Moment {
+            dissolve: None,
+            ..moment.clone()
+        };
+        let [list, drawn] =
+            [d.before.as_ref(), &now].map(|m| battle_at(observation, m, manifest, tables, layout));
+        let (rect, measured) = match &d.area {
+            DissolveArea::Battlefield => (Some(BATTLEFIELD), Vec::new()),
+            DissolveArea::Stacks(ids) => {
+                let content = (manifest, tables, layout);
+                let mut all = measured(observation, &d.before, ids, content)?;
+                all.extend(measured(observation, &now, ids, content)?);
+                (None, all)
+            }
+        };
+        let mut list = list?;
+        list.push(Draw::Dissolve {
+            step: d.step,
+            rect,
+            measured,
+            list: drawn?,
+        });
+        return Ok(list);
+    }
     // The drawbridge's redraws (E17 M4 T2c-1, CLT-Q23): the battle as the screen showed it
     // before, the moment's inside the drawbridge's rectangle.
     if let Some(before) = &moment.bridge {
@@ -815,6 +872,14 @@ pub fn battle_at(
                 list
             })
         });
+    }
+    // The stacks the battle created (E17 M5 T5a): drawn as the snapshot's.
+    if let Some(with) = with_created(observation, moment) {
+        let now = Moment {
+            created: BTreeMap::new(),
+            ..moment.clone()
+        };
+        return battle_at(&with, &now, manifest, tables, layout);
     }
     // A wall shot's explosion (E17 M4 T2b, design §10.2): in its rectangle each frame drawn over a
     // redraw of the battle with its walls' states, without the background restored after the
@@ -1061,29 +1126,7 @@ fn drawn(
     if let Some(siege) = &siege {
         list.extend(siege.parts_at(BEFORE_ROWS.0, BEFORE_ROWS.1, layout));
     }
-    // The hexes a count box cannot take (0x43E605): a living stack's (each of its poses' hexes)
-    // while it holds them (not dead since, its box not hidden: E17 M3 T5a), and the blocked ones.
-    let mut taken: BTreeSet<u8> = observation.obstacles.iter().copied().collect();
-    taken.extend(
-        moment
-            .objects
-            .values()
-            .flat_map(|o| o.blocked.iter().copied()),
-    );
-    // A siege's standing walls (E17 M4 T2c-1).
-    if let Some(s) = &observation.siege {
-        taken.extend(moment.walls.unwrap_or_else(|| Walls::of(s)).blocking(s));
-    }
-    for s in observation.stacks.iter().filter(|s| s.alive) {
-        let pose = pose_of(s, moment, tables);
-        if !pose.holds_hex() {
-            continue;
-        }
-        taken.insert(pose.hex);
-        if s.two_hex {
-            taken.extend(ahead(pose.hex, !pose.mirrored, 0));
-        }
-    }
+    let taken = taken(observation, moment, tables);
     // A stack gone without a corpse (`anim::GONE`, E17 M3 T9d) is not drawn, nor one off the
     // field: a siege's turrets (their shooters are the town's, `draw_hex_stack` 0x494F4F).
     let cells = u16::from(width) * u16::from(height);
@@ -1222,6 +1265,111 @@ fn pose_of(stack: &Stack, moment: &Moment, tables: &Tables) -> Pose {
         layer: STANDING,
         boxless: false,
     })
+}
+
+/// The hexes a count box cannot take at `moment` (0x43E605): a living stack's (each of its
+/// poses' hexes) while it holds them (not dead since, its box not hidden: E17 M3 T5a), and the
+/// blocked ones.
+fn taken(observation: &Observation, moment: &Moment, tables: &Tables) -> BTreeSet<u8> {
+    let mut taken: BTreeSet<u8> = observation.obstacles.iter().copied().collect();
+    taken.extend(
+        moment
+            .objects
+            .values()
+            .flat_map(|o| o.blocked.iter().copied()),
+    );
+    // A siege's standing walls (E17 M4 T2c-1).
+    if let Some(s) = &observation.siege {
+        taken.extend(moment.walls.unwrap_or_else(|| Walls::of(s)).blocking(s));
+    }
+    for s in observation.stacks.iter().filter(|s| s.alive) {
+        let pose = pose_of(s, moment, tables);
+        if !pose.holds_hex() {
+            continue;
+        }
+        taken.insert(pose.hex);
+        if s.two_hex {
+            taken.extend(ahead(pose.hex, !pose.mirrored, 0));
+        }
+    }
+    taken
+}
+
+/// `observation` with the stacks `moment` holds as created (E17 M5 T5a): each in place of the
+/// snapshot's of its id, or added.
+fn with_created(observation: &Observation, moment: &Moment) -> Option<Observation> {
+    if moment.created.is_empty() {
+        return None;
+    }
+    let mut with = observation.clone();
+    for (id, s) in &moment.created {
+        match with.stacks.iter_mut().find(|x| x.id == *id) {
+            Some(x) => x.clone_from(s),
+            None => with.stacks.push(s.clone()),
+        }
+    }
+    Some(with)
+}
+
+/// What `battle_refresh_creatures` 0x495BF0 measures of the stacks `ids` at `moment` for a
+/// dissolve's rectangle (E17 M5 T5a, §7.25): each stack it draws, its sprite, its count box where
+/// the box would stand, measured whatever hides the box (+0x13D34 set: 0x43E576 goes straight to
+/// the box's place), and the magic animation's frame over it (`draw_battle_stack`'s tail,
+/// 0x43E795: Sacrifice's over its victim); a stack gone without a corpse is not drawn, so not
+/// measured.
+fn measured(
+    observation: &Observation,
+    moment: &Moment,
+    ids: &[u8],
+    (manifest, tables, layout): (&Manifest, &Tables, &BattleLayout),
+) -> Result<Vec<Draw>, SceneError> {
+    let with = with_created(observation, moment);
+    let observation = with.as_ref().unwrap_or(observation);
+    let width = manifest.field.width.max(1);
+    let at = |hex: u8| (hex / width, hex % width);
+    let taken = taken(observation, moment, tables);
+    let mut out = Vec::new();
+    for s in observation.stacks.iter().filter(|s| ids.contains(&s.id)) {
+        let drawn = match moment.poses.get(&s.id) {
+            Some(pose) => pose.layer != GONE,
+            None => s.alive,
+        };
+        if !drawn {
+            continue;
+        }
+        let pose = pose_of(s, moment, tables);
+        let sprite = creature(s, pose, moment, manifest, tables, layout, at)?;
+        let right = !pose.mirrored;
+        let blocked =
+            ahead(pose.hex, right, u8::from(s.two_hex)).is_some_and(|h| taken.contains(&h));
+        let [x, y] = layout.count_box.corner(
+            sprite.anchor,
+            right,
+            s.two_hex,
+            blocked,
+            sprite.troop_offset,
+        );
+        out.push(sprite.draw);
+        out.push(Draw::CountBox {
+            stack: s.id,
+            x,
+            y,
+            count: 0,
+            tint: layout.count_box.tint,
+        });
+        out.extend(moment.magic.as_ref().and_then(|m| {
+            let &(_, [x, y], mirrored) = m.over.iter().find(|o| o.0 == s.id)?;
+            Some(Draw::Magic {
+                def: m.def.clone(),
+                frame: m.frame,
+                x,
+                y,
+                mirrored,
+                translucent: m.translucent,
+            })
+        }));
+    }
+    Ok(out)
 }
 
 /// The hex `1 + extra` ahead of `hex` facing right or left, if there is one.

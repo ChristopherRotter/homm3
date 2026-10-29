@@ -67,16 +67,9 @@ pub const FLYING: u8 = 8;
 /// Not a pass: a stack gone from the battlefield without a corpse (E17 M3 T9d, recorded in
 /// `sacrifice`): `stack_death` 0x444120 leaves none for a sacrificed or summoned stack (its
 /// +0x84 flags 0x10000000 or 0x400000, 0x4442C5) and marks it for the dissolve
-/// ([`DISSOLVE_STEP`]). The scene draws no stack in this layer.
+/// ([`Player::remove_gone`], E17 M5 T5a); a corpse the Pit Lord's Demons rise from. The scene
+/// draws no stack in this layer.
 pub const GONE: u8 = u8::MAX;
-/// A dissolve's step (`battle_dissolve_removed` 0x4670EF: trunc(150 F) ms; E17 M3 T9d): at a
-/// strike's end, after the deaths, a stack [`GONE`] leaves the battlefield in `screen_dissolve`
-/// 0x602DC0's eight steps outside the deadline, the battle redrawn without it blended into the
-/// screen's rectangle by k / 8 at step k (the blend is not drawn: the viewer shows the picture
-/// before it until its end, *provisional*).
-const DISSOLVE_STEP: u32 = 150;
-/// A dissolve's steps (`screen_dissolve` 0x602DC0).
-const DISSOLVE_STEPS: u32 = 8;
 /// A projectile's step length in pixels: trunc((d + 20) / 40) steps (§7.4).
 const STEP_PIXELS: u64 = 40;
 /// Half a hex: a two-hex target is aimed at from its middle (0x43F323).
@@ -380,6 +373,9 @@ pub struct Casts {
     /// The draws Chain Lightning's rays turn by, in order (E17 M3 T7c-3): the original's, which a
     /// capture keeps for the frame check; past them the viewer draws its own ([`crate::ray::chain`]).
     pub rays: Vec<i32>,
+    /// The bodies of the creatures the record's battle creates, by handle (E17 M5 T5a: the
+    /// ruleset's; a clone takes its original's).
+    pub bodies: BTreeMap<u16, Body>,
 }
 
 /// A spell as its cast draws it (E17 M3 T7b-1): its magic animation (the spell record's +8; the
@@ -1077,6 +1073,13 @@ pub struct Timeline {
     /// Whether each side's player is a human here (the snapshot's `human`; E17 M5 T2b): the
     /// screen shows the side to act's hidden objects ([`Timeline::screen`]).
     pub humans: [bool; 2],
+    /// The dissolves, in order (E17 M5 T5a).
+    pub dissolves: Vec<DissolveKey>,
+    /// The stacks the battle created, in order (E17 M5 T5a): a reused id's later key replaces its
+    /// earlier one.
+    pub created: Vec<CreatedKey>,
+    /// The message boxes the battle opens, with their times, in order (E17 M5 T5a).
+    pub notices: Vec<(u32, Notice)>,
     /// When the last frame shows.
     pub end: u32,
 }
@@ -1277,6 +1280,45 @@ impl Timeline {
             .map(|k| k.walls)
     }
 
+    /// The dissolve blending at `t` and its step (E17 M5 T5a), if any.
+    #[must_use]
+    pub fn dissolving(&self, t: u32) -> Option<(&DissolveKey, u8)> {
+        self.dissolves
+            .iter()
+            .find_map(|d| d.step_at(t).map(|step| (d, step)))
+    }
+
+    /// The created stacks the screen draws at `t`, by id (E17 M5 T5a): each id's last created key
+    /// shown by then.
+    #[must_use]
+    pub fn created_at(&self, t: u32) -> BTreeMap<u8, Stack> {
+        self.created
+            .iter()
+            .filter(|k| k.shown <= t)
+            .map(|k| (k.member.stack, k.stack.clone()))
+            .collect()
+    }
+
+    /// Stack `stack`'s record and start (a created stack's first key's, E17 M5 T5a).
+    #[must_use]
+    pub fn member(&self, stack: u8) -> Option<&Member> {
+        self.all_members().find(|m| m.stack == stack)
+    }
+
+    /// The stack in `side`'s record `record` (a created stack's too, E17 M5 T5a).
+    #[must_use]
+    pub fn member_at(&self, side: Side, record: u8) -> Option<&Member> {
+        self.all_members()
+            .find(|m| m.side == side && m.record == record)
+    }
+
+    /// The stacks living at the start, then the created ones in the order created.
+    fn all_members(&self) -> impl Iterator<Item = &Member> {
+        self.members
+            .iter()
+            .chain(self.created.iter().map(|k| &k.member))
+    }
+
     /// While the screen shows the drawbridge's rectangle alone at `t` (E17 M4 T2c-1, the
     /// original's: CLT-Q23), the time whose screen it shows elsewhere: the one before the
     /// drawbridge's first redraw showed.
@@ -1343,7 +1385,7 @@ impl Timeline {
             Some(i) => Some(self.turns[i].1),
             None => self.outlines.first().and_then(|(_, s)| *s),
         };
-        let side = self.members.iter().find(|m| Some(m.stack) == stack)?.side;
+        let side = self.member(stack?)?.side;
         let human = self.humans[usize::from(side == Side::Defender)];
         Some(if human { side } else { opponent(side) })
     }
@@ -1449,6 +1491,11 @@ impl Timeline {
             times.extend((0..SHAKES * 15).map(|k| q.from + k * q.step));
             times.push(q.until);
         }
+        // Each dissolve's steps and its end (E17 M5 T5a), each created stack's showing.
+        for d in &self.dissolves {
+            times.extend((0..=DISSOLVE_STEPS).map(|k| d.start + k * d.step));
+        }
+        times.extend(self.created.iter().map(|k| k.shown));
         times.extend(&self.steps);
         let mut idle = self.idle;
         idle.run(until, |t| times.push(t));
@@ -1489,6 +1536,7 @@ impl Timeline {
         let mut printed: BTreeMap<u8, (u32, u32, u8)> = BTreeMap::new();
         let mut out = String::new();
         let mut times: Vec<u32> = self.keys.iter().map(|k| k.drawn).collect();
+        times.extend(self.created.iter().map(|k| k.drawn));
         times.extend(self.magics.iter().map(|k| k.drawn));
         times.extend(self.turrets.iter().map(|k| k.drawn));
         times.extend(self.walls.iter().map(|k| k.drawn));
@@ -1512,7 +1560,22 @@ impl Timeline {
             for key in self.keys.iter().filter(|k| k.drawn == t) {
                 now.insert(key.stack, key.pose);
             }
-            for m in &self.members {
+            // The stacks living at the start, then the records the battle set up by then (E17 M5
+            // T5a: the harness lists a record from its set-up; a reused id keeps its record).
+            let mut set_up: Vec<&Member> = self.members.iter().collect();
+            for m in self
+                .created
+                .iter()
+                .filter(|k| k.drawn <= t)
+                .map(|k| &k.member)
+            {
+                if set_up.iter().all(|n| n.stack != m.stack) {
+                    set_up.push(m);
+                }
+            }
+            // By side and record, as the harness reads the records.
+            set_up.sort_by_key(|m| (m.side == Side::Defender, m.record));
+            for m in set_up {
                 let p = now.get(&m.stack).copied().unwrap_or(m.start);
                 let seen = (p.group, p.frame, p.hex);
                 if printed.insert(m.stack, seen) != Some(seen) {
@@ -1555,9 +1618,10 @@ impl Timeline {
             if let Some(key) = self.magics.iter().rev().find(|k| k.drawn == t) {
                 let _ = match key.frame {
                     Some(frame) => {
-                        let over = key.over.iter().filter_map(|(stack, ..)| {
-                            self.members.iter().find(|m| m.stack == *stack)
-                        });
+                        let over = key
+                            .over
+                            .iter()
+                            .filter_map(|(stack, ..)| self.member(*stack));
                         let records: Vec<String> = over
                             .map(|m| format!("{}.{}", u8::from(m.side == Side::Defender), m.record))
                             .collect();
@@ -1886,6 +1950,7 @@ impl<'a> Growing<'a> {
             fields: Vec::new(),
             field_kept: None,
             corpses: BTreeMap::new(),
+            lying: BTreeMap::new(),
             draws: chain::Draws::new(&stage.casts.rays),
             siege: None,
             turret_keys: Vec::new(),
@@ -1895,6 +1960,17 @@ impl<'a> Growing<'a> {
             bridges: Vec::new(),
             bridge_from: None,
             quakes: Vec::new(),
+            dissolves: Vec::new(),
+            created: Vec::new(),
+            summoned: BTreeSet::new(),
+            vanished: Vec::new(),
+            records: members
+                .iter()
+                .map(|m| (m.stack, (m.side, m.record)))
+                .collect(),
+            next_record: records,
+            looks: looks.clone(),
+            notices: Vec::new(),
         };
         // A siege with a fort (E17 M4 T2b): the walls' states and hit points, each turret standing.
         if let Some(s) = snapshot.siege.as_ref().filter(|s| s.fort > 0) {
@@ -2192,6 +2268,9 @@ impl<'a> Growing<'a> {
             self.open_bridge = true;
         }
         t.quakes.append(&mut p.quakes);
+        t.dissolves.append(&mut p.dissolves);
+        t.created.append(&mut p.created);
+        t.notices.append(&mut p.notices);
         t.idle = p.idle;
         t.end = p.clock.now;
     }
@@ -2479,6 +2558,8 @@ struct Player<'a> {
     field_kept: Option<FieldKey>,
     /// The dead stacks as they fell, by id, which a raise brings back (E17 M3 T7c-3).
     corpses: BTreeMap<u8, Live>,
+    /// Their poses as they lie (E17 M5 T5a: a corpse a Pit Lord's Demons rise from leaves in it).
+    lying: BTreeMap<u8, Pose>,
     /// The draws of Chain Lightning's rays (E17 M3 T7c-3).
     draws: chain::Draws,
     /// A siege's walls in memory (E17 M4 T2b; none: no siege with a fort).
@@ -2497,6 +2578,24 @@ struct Player<'a> {
     bridge_from: Option<u32>,
     /// Earthquake's shakes (E17 M4 T2c-2).
     quakes: Vec<QuakeKey>,
+    /// The dissolves (E17 M5 T5a).
+    dissolves: Vec<DissolveKey>,
+    /// The stacks the battle created (E17 M5 T5a).
+    created: Vec<CreatedKey>,
+    /// The living created stacks, which die without a corpse (E17 M5 T5a: the summoned stacks and
+    /// clones, +0x84 0x400000; not a Pit Lord's Demons).
+    summoned: BTreeSet<u8>,
+    /// The clones gone with their originals in the command under way: they dissolve with the
+    /// next deaths (E17 M5 T5a).
+    vanished: Vec<u8>,
+    /// Each stack's side and record, by id (E17 M5 T5a: a created stack's too).
+    records: BTreeMap<u8, (Side, u8)>,
+    /// Each side's next record.
+    next_record: [u8; 2],
+    /// Each creature's numbers by handle (E17 M5 T5a: a created stack's).
+    looks: BTreeMap<u16, Look>,
+    /// The message boxes the battle opens (E17 M5 T5a).
+    notices: Vec<(u32, Notice)>,
 }
 
 /// A spell a melee strike leaves pending on the stack it struck ([`PENDING`]): the stack, the
@@ -2555,6 +2654,22 @@ impl Player<'_> {
             sound,
             stop,
         });
+    }
+
+    /// The pose `r` lies in after its death: its group's last frame among the corpses.
+    fn fallen(r: &Reaction) -> Pose {
+        let base = Pose {
+            layer: CORPSE,
+            ..r.base
+        };
+        match r.frames.checked_sub(1) {
+            Some(last) => Pose {
+                group: u32::from(r.group),
+                frame: last,
+                ..base
+            },
+            None => base,
+        }
     }
 
     /// The pending poses, drawn at `drawn` and shown at `shown`, and the pending hues and erasures
@@ -2638,8 +2753,10 @@ impl Player<'_> {
         self.stacks.get(&stack).cloned()
     }
 
-    /// A dead stack leaves the living for the corpses (a raise may bring it back).
-    fn bury(&mut self, stack: u8) {
+    /// A dead stack leaves the living for the corpses (a raise may bring it back), lying in
+    /// `lying`.
+    fn bury(&mut self, stack: u8, lying: Pose) {
+        self.lying.insert(stack, lying);
         // A death ends every spell with a duration, unreported (the engine's `remove_dead`, the
         // original's 0x444120): Disrupting Ray stays, so a stack raised or reborn comes back
         // without the others' hue and walk (E17 M3 T9b, the reviewer).
@@ -2680,6 +2797,16 @@ impl Player<'_> {
         let mut expired = 0;
         // The stacks the last melee strike struck: their Fire Shields strike back (E17 M3 T7c-3).
         let mut shields: Vec<u8> = Vec::new();
+        // The clones gone with their originals in the action (before a round's start): they
+        // dissolve with its deaths (E17 M5 T5a).
+        self.vanished = events
+            .iter()
+            .take_while(|e| !matches!(e, Event::RoundStarted { .. }))
+            .filter_map(|e| match *e {
+                Event::Vanished { stack, .. } => Some(stack),
+                _ => None,
+            })
+            .collect();
         while let Some(event) = events.get(i) {
             i += 1;
             match *event {
@@ -2894,6 +3021,20 @@ impl Player<'_> {
                     ref damage,
                     kills,
                 } => self.shield_return(stack, (damage.0, kills), &shields),
+                // A Pit Lord's Demons (E17 M5 T5a): the stack they make follows.
+                Event::CreatureRaise { stack, target }
+                    if let Some(&Event::RoseFromCorpse {
+                        stack: new,
+                        corpse,
+                        creature,
+                        count,
+                        hex,
+                    }) = events.get(i)
+                        && corpse == target =>
+                {
+                    i += 1;
+                    self.demons(stack, corpse, (new, creature, count, hex));
+                }
                 // An Archangel's raise (E17 M3 T7c-3): the stack it raises follows.
                 Event::CreatureRaise { stack, target } => {
                     let raised = match events.get(i) {
@@ -2911,8 +3052,6 @@ impl Player<'_> {
                 }
                 // A Phoenix reborn (E17 M3 T7c-3).
                 Event::Reborn { stack, creatures } => self.reborn(stack, creatures),
-                // Teleport's move (E17 M3 T7c-3, *provisional*: its dissolve not read).
-                Event::Teleported { stack, to, .. } => self.teleported(stack, to),
                 Event::Defended { stack } => {
                     self.defends(stack, true);
                     // A war machine writes no line (0x479758).
@@ -2963,6 +3102,10 @@ impl Player<'_> {
                                 | Event::Sacrificed { .. }
                                 | Event::WallQuaked { .. }
                                 | Event::WallDestroyed { .. }
+                                | Event::StackCreated { .. }
+                                | Event::NotCreated { .. }
+                                | Event::TurnedSummoned { .. }
+                                | Event::Teleported { .. }
                         )
                     }) {
                         i += 1;
@@ -3036,6 +3179,10 @@ impl Player<'_> {
                             matches!(e, Event::TurnStarted { .. } | Event::RoundStarted { .. })
                         })
                         .unwrap_or(start.len());
+                    // The clones whose rounds ran out first, in one dissolve (0x47614D; E17 M5
+                    // T5a), after any gone with an original no death of the action played.
+                    self.remove_gone(&[]);
+                    self.vanish_at_round(&start[..ends]);
                     for e in &start[..ends] {
                         if let Event::ObstacleRemoved { hexes, .. } = e {
                             self.vanish(hexes);
@@ -3111,6 +3258,8 @@ impl Player<'_> {
             }
         }
         self.attack_over(&mut melee, &mut shooter);
+        // A clone gone with its original where no death played (E17 M5 T5a).
+        self.remove_gone(&[]);
     }
 
     /// The First Aid Tent heals `target` (`first_aid_tent_action` 0x478B90, design §7.15; E17
@@ -3662,7 +3811,9 @@ impl Player<'_> {
         // own rays) aim at a corpse or at several stacks; Earthquake at the walls (E17 M4 T2c-2).
         let mut done = self.raising(s, (spell, &look), effects)
             || (look.original == CHAIN_LIGHTNING && self.chain(spell, &look, effects))
-            || (look.original == EARTHQUAKE && self.quaking(spell, effects));
+            || (look.original == EARTHQUAKE && self.quaking(spell, effects))
+            || self.creating(s, spell, effects)
+            || (look.original == TELEPORT && self.teleporting(spell, effects));
         match aimed.filter(|_| !done) {
             Some((t, live)) if resisted(t) => {
                 self.cue(t, Sound::Resisted, false);
@@ -4185,8 +4336,21 @@ impl Player<'_> {
             }
             self.frame(&poses, tick);
         }
-        // The end (0x4692A4 to 0x46938A): the dead lie as corpses, every stack's layer and box as
-        // at a strike's end, a redraw at once.
+        // The end (0x4692A4 to 0x46938A): those that leave no corpse dissolve away (E17 M5 T5a),
+        // the dead lie as corpses, every stack's layer and box as at a strike's end, a redraw at
+        // once.
+        let dying: Vec<(u8, Pose)> = reactions
+            .iter()
+            .filter(|r| r.died)
+            .map(|r| {
+                let corpse = Pose {
+                    layer: CORPSE,
+                    ..pose(r, r.frames)
+                };
+                (r.stack, corpse)
+            })
+            .collect();
+        let gone = self.remove_gone(&dying);
         let shown = self.clock.now;
         self.counts.extend(reactions.iter().filter_map(|r| {
             r.count.map(|count| CountKey {
@@ -4195,14 +4359,14 @@ impl Player<'_> {
                 count,
             })
         }));
-        for r in reactions {
+        for r in reactions.into_iter().filter(|r| !gone.contains(&r.stack)) {
             if r.died {
                 let corpse = Pose {
                     layer: CORPSE,
                     ..pose(&r, r.frames)
                 };
                 self.pending.push((r.stack, corpse));
-                self.bury(r.stack);
+                self.bury(r.stack, corpse);
             } else {
                 self.pending.push((r.stack, r.base));
             }
@@ -4448,16 +4612,29 @@ impl Player<'_> {
                 over,
             });
         }
-        // The dead die (`stack_death` 0x444120): their corpses with the redraw.
+        // The dead die (`stack_death` 0x444120): those that leave no corpse dissolve away
+        // (0x5A6C59; E17 M5 T5a), the others' corpses with the redraw.
+        let dying: Vec<(u8, Pose)> = reacting
+            .iter()
+            .filter(|r| r.4)
+            .map(|(stack, live, group, frame, _)| {
+                let corpse = Pose {
+                    layer: CORPSE,
+                    ..Self::posed(live, *group, *frame, live.hex)
+                };
+                (*stack, corpse)
+            })
+            .collect();
+        let gone = self.remove_gone(&dying);
         let mut died = false;
         for (stack, live, group, frame, dead) in reacting {
-            if dead {
+            if dead && !gone.contains(&stack) {
                 let corpse = Pose {
                     layer: CORPSE,
                     ..Self::posed(&live, group, frame, live.hex)
                 };
                 self.pending.push((stack, corpse));
-                self.bury(stack);
+                self.bury(stack, corpse);
                 died = true;
             }
         }
@@ -4530,15 +4707,28 @@ impl Player<'_> {
                 def: l.def,
             });
         }
+        // Those that leave no corpse dissolve away (0x5A51D3; E17 M5 T5a).
+        let dying: Vec<(u8, Pose)> = reacting
+            .iter()
+            .filter(|r| r.4)
+            .map(|(stack, live, group, frame, _)| {
+                let corpse = Pose {
+                    layer: CORPSE,
+                    ..Self::posed(live, *group, *frame, live.hex)
+                };
+                (*stack, corpse)
+            })
+            .collect();
+        let gone = self.remove_gone(&dying);
         let mut died = false;
         for (stack, live, group, frame, dead) in reacting {
-            if dead {
+            if dead && !gone.contains(&stack) {
                 let corpse = Pose {
                     layer: CORPSE,
                     ..Self::posed(&live, group, frame, live.hex)
                 };
                 self.pending.push((stack, corpse));
-                self.bury(stack);
+                self.bury(stack, corpse);
                 died = true;
             }
         }
@@ -5424,13 +5614,12 @@ impl Player<'_> {
         if let Some((id, _, standing)) = striker {
             self.pending.push((id, standing));
         }
-        if reactions
+        let dying: Vec<(u8, Pose)> = reactions
             .iter()
-            .any(|r| r.died && self.vanishing.contains(&r.stack))
-        {
-            let step = self.speed.scale(DISSOLVE_STEP);
-            self.clock.wait(DISSOLVE_STEPS * step);
-        }
+            .filter(|r| r.died)
+            .map(|r| (r.stack, Self::fallen(r)))
+            .collect();
+        let gone = self.remove_gone(&dying);
         let shown = self.clock.now;
         self.counts.extend(reactions.iter().filter_map(|r| {
             r.count.map(|count| CountKey {
@@ -5439,34 +5628,11 @@ impl Player<'_> {
                 count,
             })
         }));
-        for r in reactions {
-            let pose = match (r.died, r.frames.checked_sub(1)) {
-                (true, Some(last)) => Pose {
-                    group: u32::from(r.group),
-                    frame: last,
-                    layer: CORPSE,
-                    ..r.base
-                },
-                (true, None) => Pose {
-                    layer: CORPSE,
-                    ..r.base
-                },
-                (false, _) => r.base,
-            };
-            if r.died && self.vanishing.remove(&r.stack) {
-                self.stacks.remove(&r.stack);
-                self.pending.push((
-                    r.stack,
-                    Pose {
-                        layer: GONE,
-                        ..pose
-                    },
-                ));
-                continue;
-            }
+        for r in reactions.iter().filter(|r| !gone.contains(&r.stack)) {
+            let pose = if r.died { Self::fallen(r) } else { r.base };
             self.pending.push((r.stack, pose));
             if r.died {
-                self.bury(r.stack);
+                self.bury(r.stack, pose);
             }
         }
         // Every stack's mark cleared (0x46905A): the magic animation is gone with the redraw.
@@ -5652,6 +5818,7 @@ pub fn differences(ours: &str, expected: &str) -> Vec<String> {
 }
 
 mod chain;
+mod created;
 mod creature;
 mod entered;
 mod playhead;
@@ -5659,6 +5826,10 @@ mod raise;
 mod siege;
 
 pub use chain::{CHAIN_LIGHTNING, CHAIN_START};
+pub use created::{
+    BATTLEFIELD, Body, CREATION_STEP, CreatedKey, DISSOLVE_STEPS, Dissolve, DissolveArea,
+    DissolveKey, Notice, TELEPORT, TELEPORT_STEP, created_stack,
+};
 pub use creature::{FIRE_SHIELD, SHIELD_RETURN};
 pub use playhead::Playhead;
 pub use raise::{ANIMATE_DEAD, RAISE, RESURRECTION, SACRIFICE, SACRIFICED};

@@ -209,7 +209,7 @@ impl Heroes {
     /// Whether the side of the `active` stack of `timeline` has a human player.
     pub(crate) fn human(&self, timeline: &Timeline, active: Option<u8>) -> bool {
         active
-            .and_then(|stack| timeline.members.iter().find(|m| m.stack == stack))
+            .and_then(|stack| timeline.member(stack))
             .is_some_and(|m| self.human[usize::from(m.side == Side::Defender)])
     }
 

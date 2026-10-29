@@ -2798,6 +2798,103 @@ at the turn's overlay (0x478326 to 0x4783B6); `battle_start` 0x462A20 at the com
   `walk`'s), the others exact: the four shaded turns, the panels' swap, round 1's log line and the
   Champions' turn.
 
+### 7.25 The dissolves and the stacks a battle creates (M5 T5a)
+
+Read for T5a (every address in the map; the engine's side: BAT-MAG-037 to BAT-MAG-039,
+BAT-MAG-052, `installation.md` §7.19).
+
+- **The blend** (`screen_dissolve` 0x602DC0; its arguments x, y, w, h and the step, −1 giving 33
+  ms, 0x602E74): the rectangle cut to 800 × 600, nothing at all (no wait) when it is empty. The
+  back buffer's rectangle, the new picture the caller has just drawn unseen, is copied aside; the
+  picture `screen_save_rect` 0x602CC0 saved before (the back buffer's rectangle then, the screen
+  as last shown) is the old one. Eight steps k = 0 to 7: the step's deadline taken (`clock_ms` plus
+  the step), each pixel blended with the weight w = (k << 16) / 8 per channel mask (the surface's,
+  0x694D68, 0x694D60, 0x694D64): `old + ((new − old) × w >> 16)` in 32-bit arithmetic, masked to the
+  channel (the product wraps for red beyond 2³¹, the mask keeps the channel exact; the shift is
+  arithmetic: a step down rounds down), written into the back buffer; `adventure_tick`; the
+  rectangle shown; `wait_until` the deadline. Then the new picture copied back and its rectangle
+  shown. So step 0 shows the old picture, step k k eighths of the way, outside the frame deadline
+  (memory unchanged meanwhile). Built: `h3_render::Screen::dissolve_rect` (the foundation, an
+  additive function: the map's 38 callers, the vanishing objects among them, may take it).
+- **Its rectangle** for stacks: `reset_dirty_rects`, the stacks marked at +0x14000, then
+  `battle_refresh_creatures` 0x495BF0 with +0x13D2C and +0x13D34 set draws each in measure-only
+  mode: `draw_battle_stack` 0x43E140's sprite through `battle_draw_sprite` 0x4951B0 measures the
+  frame's content box (`battle_item_rect` 0x495F50: its margins +0x38, +0x3C and size +0x30,
+  +0x34, mirrored in the DEF's width), and with +0x13D34 set the count box's place is reached
+  whatever would hide the box (0x43E576: dead, a war machine, +0x30, the group), its picture
+  measured by `battle_draw_pcx` 0x4958E0; each cut to the battlefield 0x694F18 (0, 0, 799, 555)
+  and joined edge by edge into +0x13D38 from the empty (799, 599, 0, 0). The battlefield's
+  objects with more than one frame widen it too (the list +0x13D5C: not built, *provisional*; no
+  recorded dissolve has one). Built: `scene`'s `measured` (both pictures' stacks, a gone one not
+  drawn so not measured) and `Draw::Dissolve`, measured by the compositor (`compose::measure`).
+- **Removed without a corpse** (`battle_dissolve_removed` 0x466E00, after `stack_death` marked
+  the stack in +0x13438 and set +0x13460: Sacrifice's victim, a summoned stack or clone, flag
+  0x10000000 or 0x400000; from `strike_animation` 0x469316, `round_start` 0x47614D,
+  `mass_damage_handler` 0x5A51D3 and `mass_spell_animation` 0x5A6C59): skipped in a hidden or
+  quick battle (game +0x1F69D, the network's case, `battle_tactics_global`); the marked stacks
+  (an arrow tower its own flags) measured, then taken off their hexes (+0x1DC, +0x1DD, the second
+  hex of a two-hex one), the rectangle saved, `battle_redraw` (0, 0, 1, 0, 1, 0) unseen and the
+  dissolve with trunc(150 F) a step (0x4670EF). At a strike's end it comes after the deaths and
+  before every stack's layer and box are reset and the whole redraw (0x46931B to 0x46938A). A
+  round start's comes after every stack's round start (a clone whose rounds ran out dies there),
+  before the objects' countdown. Built: `Player::remove_gone` at each, a dissolve over the stacks
+  gone (their poses `GONE` from its start), a clone gone with its original (`Vanished` in the
+  action) with the deaths, the round start's `vanish_at_round`.
+- **A created stack** (`create_battle_stack` 0x47A100: side, creature, count, hex, flags, its
+  animation): the record the first of 0–19 that is empty (creature −1) or holds a dead summoned
+  stack with no creatures (0x200000 and 0x400000; reused: the side's count +0x54BC unchanged),
+  none or a taken hex: nothing (0 returned). Set up as a starting stack (`stack_setup_with_hero`
+  0x43D8B0, `stack_load_graphics` 0x43D9F0), the flags added; with its animation and the battle
+  not hidden: marked, measured, the rectangle saved, `battle_redraw` (0, 0, 0, 0, 1, 0) unseen and
+  the dissolve with 75 ms steps whatever the speed (0x47A2A8). Summon Elemental creates with
+  0x400000 and its animation (0x5A72E5) after its line (`summon_elemental` 0x5A72A1: GENRLTXT 676,
+  the hero's name, the count and the creature's name by it, written when no hex was found too:
+  then the hex is −1 and the creation reads past the hex records, CLT-Q33); a Pit Lord's Demons
+  (`pit_lord_raise_demons` 0x5A7390) with no flags and its animation, after `Resurect.wav`
+  (0x5A73A8) and the corpse's removal (0x5A73DD, both hexes of a two-hex one), then
+  `draw_hex_overlays` and a redraw shown at once (0x5A749C), the line (GENRLTXT 117 or 118 by the
+  count, the Demons' name) and the sound waited for (0x5A754E: the next task's).
+- **Clone** (`clone_place_and_create` 0x5A6C70): no place, a message box (0x5A6E22: GENRLTXT 189,
+  OK) and nothing else; else created with 0x800000 without its animation (0x5A6E36), flagged
+  0x400000, its rounds and links set, then slid from its original's place: the anchors'
+  difference d (the original's hex record +0x1C4, +0x1C6 less the clone's) and 16 redraws (1, 1,
+  0, 50, 1, 1: shown, at trunc(50 F) on the deadline), the clone at offset trunc(d × (16 − i) /
+  16) in redraw i (0x5A6FF6: times 16, then less d each time, divided by 16 rounding toward 0),
+  then offset 0, `draw_hex_overlays` and a redraw shown at once (0x5A7067). A crowded original
+  whose clone's place is its own hex (quirk BAT-QUIRK-7) is itself the stack the slide moves: d
+  is 0, 16 redraws of nothing. No line of its own; the spell's sound starts before every handler
+  (0x5A0331).
+- **Teleport** (0x5A1B4D): a redraw shown at once (1, 0, 0, 0, 1, 0), the battlefield saved (0, 0,
+  800, 556), the stack's Bind links and its own Bind ended, moved, a redraw unseen and the
+  dissolve with 33 ms steps whatever the speed (0x5A1BEA). No line.
+- **The viewer's timeline** (`anim::created`): a dissolve's changes are drawn at its start and
+  shown from 1 ms later (`DissolveKey`: the moment at its start is the saved picture), its steps
+  blend from then to its end (`DissolveKey::step_at`), the new picture whole at its end; the
+  record a created stack takes is the engine's id's (a killed created stack's, as 0x47A12B) or the
+  side's next; its numbers come from the event and the ruleset (`Casts::bodies`), the rest left at
+  0 (*provisional*). The log names a created stack from its `Created` entry on (a reused id its
+  latest). The clone's message is a notice the window opens as a message box at its time, the
+  battle standing behind it (`Timeline::notices`, `Battle::open_notice`).
+- **The saved picture is the back buffer** (a slip of the original, not copied: the user's,
+  2026-10-29). `screen_save_rect` copies the back buffer, which a clipped redraw (the second
+  argument of `battle_redraw`: the dirty rectangle) leaves as the background outside its
+  rectangle, since the redraw copies the whole background first (0x4944FD) and draws the rest
+  clipped. The Pit Lord's casting frames are such redraws (0x4484FE), so the Demons' dissolve
+  starts from the terrain alone outside the caster: the corpse and the obstacles in the Demons'
+  rectangle pop away at its first step. The viewer blends from the picture shown, the corpse
+  going with the new picture in the pose it lay in (`Player::lying`: memory keeps the pose).
+  The other recorded dissolves start from a full redraw or a rectangle the clip held whole.
+- **Recorded** (`seq-teleport.toml`, `seq-clone.toml`, `seq-summon.toml`, `seq-demons.toml`, all
+  on `sacrifice`'s grass and obstacles): `sacrifice`'s victim's dissolve now exact (its frames'
+  counts re-recorded). `teleport`: the timeline as recorded, its frames exact but the aim's
+  hint (*Teleport Here*, not modelled) in the log. `summon`: every frame exact; the log's damage
+  is the engine's roll (no seed gives the original's 102 with the shot at 18). `clone`: the
+  slide exact, the clone's colours not (`draw_battle_stack`'s palette effects, T5b). `demons`
+  (the Archers, on their native grass as fast as the Imps, act before the Imps: the side that
+  did not act goes first; the Pit Lords' raise a creature cast at the corpse's stack): the
+  timeline as recorded (28 changes), 56 frames, the dissolve's 8 differing only by the slip
+  above (about 800 pixels each: the Imps' corpse fading), the rest exact.
+
 ## 8. The window, input and audio evaluation (M2 T2)
 
 ADR-0020 point 4 left the library to a measured evaluation at M2; the choice, the user's

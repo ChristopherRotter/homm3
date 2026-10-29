@@ -215,6 +215,24 @@ original = [
     { form = "other", at = "GENRLTXT:117", printf = ["count", "creature"] },
 ]
 
+# Clone found no place for its clone (`clone_place_and_create` 0x5A6E22, E17 M5 T5a): a message
+# box with OK.
+[[key]]
+id = "battle.clone.no-place"
+original = [{ at = "GENRLTXT:189" }]
+
+# Summon Elemental's line (`summon_elemental` 0x5A72A1, E17 M5 T5a): the caster's hero and the
+# creatures summoned, `count` of them, which picks the creature's name (one row for both); written
+# whether a stack is made or not (CLT-Q33).
+[[key]]
+id = "battle.log.summoned"
+args = { hero = "text", creature = "text" }
+plural = true
+original = [
+    { form = "one", at = "GENRLTXT:676", printf = ["hero", "count", "creature"] },
+    { form = "other", at = "GENRLTXT:676", printf = ["hero", "count", "creature"] },
+]
+
 # Poison taking hold after a strike (`battle_log_cast` 0x5A8EFC, a creature's cast of Poison; E17 M3
 # T7b-2b-3): the stack's name, verb and pronoun by its number.
 [[key]]
