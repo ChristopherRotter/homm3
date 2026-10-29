@@ -456,6 +456,22 @@ original = [{ at = "GENRLTXT:64" }]
 id = "word.day"
 original = [{ at = "GENRLTXT:65" }]
 
+# The adventure screen's status window (E24 M3 T5b1; docs/epics/E24-design.md §4.8): a number by the
+# executable's `%d` (a hero's primary skills, cut to 0-99, its spell points, an army slot's count
+# below 10 000: 0x451AB0; a town's gold income and its army's counts: 0x4521F0), and a count from
+# 10 000 on in thousands, truncated (the hero's window by the format 0x660CB0; the town's writes
+# the number and the executable's "k" 0x660CD0 after it: the same text). The names: the `hero` and
+# `town-name` families.
+[[key]]
+id = "map.status.number"
+args = { number = "number" }
+original = [{ at = "EXE:0x660A1C", printf = ["number"] }]
+
+[[key]]
+id = "map.status.thousands"
+args = { thousands = "number" }
+original = [{ at = "EXE:0x660CB0", printf = ["thousands"] }]
+
 # The spell book (E17 M5 T3a; design §7.17). A place's text (`spell_book_page` 0x59CE19, 0x59CEE1:
 # the executable's own formats): the spell's name, its level, the hero's mastery's short name when
 # it has one, the spell points' word and the cost.
@@ -722,3 +738,13 @@ id = "hero"
 table = "HOTRAITS"
 first = 2
 column = 0
+
+# A town's name (TownName.txt's records, 16 a faction in the factions' order; E24 M3 T5b1): a new
+# game names each town of a map without a name of its own by one of its faction's (the map viewer's
+# status window; a map's own name is not read). Only the map viewer lists it.
+[[family]]
+id = "town-name"
+table = "TOWNNAME"
+first = 0
+column = 0
+optional = true

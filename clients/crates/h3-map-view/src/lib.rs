@@ -10,7 +10,8 @@
 //! each tile records of them. [`scene`] is
 //! what the screen shows at a view and a moment, as a draw list in the original's order, the
 //! adventure screen's panels in it as [`panels`] gives them (E24 M3 T2a), the minimap as
-//! [`minimap`] does (M3 T3a), the hero and town lists as [`lists`] does (M3 T4a);
+//! [`minimap`] does (M3 T3a), the hero and town lists as [`lists`] does (M3 T4a), the status
+//! window as [`status`] does (M3 T5b1);
 //! [`batch`] the assets it needs, decoded; [`compose`] draws it into a frame in the original's
 //! screen format with the view's drawers ([`draw`]) and the compositor's (`h3-render`), a frame
 //! kept drawing only what changed, [`damage`] what changed between frames (E24 M3 T2b2).
@@ -64,5 +65,6 @@ pub mod scene;
 pub mod sequence;
 pub mod situation;
 pub mod sound;
+pub mod status;
 pub mod tables;
 pub mod timeline;

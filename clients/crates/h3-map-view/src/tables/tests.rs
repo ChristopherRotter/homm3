@@ -88,6 +88,16 @@ movement = {{ step = 100, round = 0, top = [2300, 2500, 2800], from = 23 }}
 mana = {{ step = 5, round = 4, top = [116, 145, 170], from = 23 }}
 towns = {{ empty = 0, selected = 1, fort = 2, village = 20, faction = 2, built = 1 }}
 
+[map.status]
+portraits = ["hpl000kn.pcx"]
+town_list = 2
+stack = 2
+bonus = 3
+skills = {{ top = 99, bottom = [0, 0, 1, 1] }}
+thousands = 10000
+halls = [11, 12, 13]
+forts = [7, 8, 9]
+
 [[terrain]]
 code = 0
 def = "dirttl.def"
@@ -513,6 +523,13 @@ fn refuses_what_breaks_the_format() {
         "base",
         entry("lists", "no portraits"),
         "`lists`: no portraits",
+    );
+    // The status window (E24 M3 T5b1): its portraits.
+    check(
+        &[base("").replacen("portraits = [\"hpl000kn.pcx\"]", "portraits = []", 1)],
+        "base",
+        entry("status", "no portraits"),
+        "`status`: no portraits",
     );
     // The walk (E24 M2 T3a): a group per direction, frames and their time, per hero speed pixels
     // summing to one tile, or none.

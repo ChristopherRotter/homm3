@@ -95,6 +95,10 @@ TERRAIN_FIELD, RIVER_FIELD = h3mem.TERRAIN_DEFS, h3mem.RIVER_DEFS
 # list again: T4a's `stills` left the lists out for the situations alone).
 MASKS = {name: [tuple(r) for r in rects]
          for name, rects in tomllib.loads((CLIENTS / "map/masks.toml").read_text()).items()}
+# What `lists` writes into a situation's hero's record (E24 M3 T4a, T5b1).
+HERO_WRITES = {"points", "mana", "skills", "morale", "luck", "army"}
+# The status window's kinds the viewer draws (E24 M3 T5b1: a hero's and a town's, design §4.8).
+STATUS_DRAWN = (3, 4)
 
 
 def run(*args):
@@ -328,18 +332,35 @@ def lists(game, mem, sit):
     (hero_select 0x417B20, town_select 0x417830). A selection the turn's start made already would
     redraw nothing: refused. Since M3 T5a Red's resources and the game's date written before it
     too: a hero's selection draws the resource bar again (0x417F48; the viewer's parser asks for
-    one with them)."""
+    one with them). Since M3 T5b1 what the status window shows (design §4.8): Red's heroes'
+    primary skills, morale and luck bonuses and armies, Red's towns' garrisons and garrison
+    heroes (a hero of Red's standing elsewhere: only the window reads it), written before the
+    selection builds the window again."""
     for hero in sit.get("heroes", []):
-        if "points" in hero or "mana" in hero:
+        if set(hero) & HERO_WRITES:
             x, y = (hero.get("walk") or [hero["at"]])[-1]
             index = hero_at(mem, x, y)["index"]
             if "points" in hero:
                 mem.write_points(index, hero["points"])
             if "mana" in hero:
                 mem.write_mana(index, hero["mana"])
+            # The status window's (E24 M3 T5b1; design §4.8).
+            if "skills" in hero:
+                mem.write_skills(index, hero["skills"])
+            if "morale" in hero or "luck" in hero:
+                mem.write_bonuses(index, hero.get("morale", 0), hero.get("luck", 0))
+            if "army" in hero:
+                mem.write_army(mem.hero_record(index) + h3mem.ARMY, hero["army"])
     for town in sit.get("towns", []):
         if town.get("built"):
             mem.write_town_built(town_index(mem, town["at"]))
+        if "garrison" in town or "garrison_hero" in town:
+            record = mem.town(town_index(mem, town["at"]))["at"]
+            if "garrison" in town:
+                mem.write_army(record + h3mem.TOWN_ARMY, town["garrison"])
+            if "garrison_hero" in town:
+                hero = hero_at(mem, *town["garrison_hero"])["index"]
+                mem.write_bytes(record + h3mem.TOWN_GARRISON_HERO, struct.pack("<i", hero))
     if "resources" in sit:
         mem.write_resources(0, sit["resources"])
     if "date" in sit:
@@ -526,6 +547,7 @@ def live_part(mem, sit, turn, k, k_rivers, kingdom=None):
             "explored": json.dumps(mem.explored_rows(mem.current_player())),
             "path": mem.path_arrows(),
             "kingdom": kingdom_toml(kingdom or mem.kingdom(mem.current_player())),
+            "status": status_toml(mem, mem.current_player()),
             "buttons": mem.buttons(),
             "pointer": mem.cursor()[2:],
             "situation": json.dumps(situation_digest(sit))}
@@ -536,6 +558,36 @@ def live_part(mem, sit, turn, k, k_rivers, kingdom=None):
 def kingdom_toml(kingdom):
     """`Mem.kingdom` as `render --live`'s `kingdom`, an inline TOML table (E24 M3 T2a)."""
     return "{ " + ", ".join(f"{key} = {value}" for key, value in kingdom.items()) + " }"
+
+
+def ids_from(table, first):
+    """A text table's first fields of its non-blank records from `first`, in order: the original
+    ids' records as the catalogue's families count them (`h3_ui::text::keys`)."""
+    return [r[0] for r in h3lod.table(table)[first:] if any(f.strip() for f in r)]
+
+
+def status_toml(mem, colour):
+    """`Mem.status` as `render --live`'s `status`, an inline TOML table (E24 M3 T5b1; design
+    §4.8): a town's name as its record in `TownName.txt` (the catalogue's `town-name` family: the
+    harness keeps numbers, never the text, ADR-0009); a hero's `own_name` 1 when its record's name
+    is not its type's (a shipped map's hero: the viewer takes the map's). A town whose name the
+    table lacks (a map's own) is the harness's failure (the town's own names are M4's), as is a
+    kind the viewer does not draw yet (the date's, the kingdom's: T5b2), since the status window
+    is compared."""
+    status = mem.status(colour)
+    if status["kind"] not in STATUS_DRAWN:
+        raise RuntimeError(f"the status window shows the kind {status['kind']}: not drawn yet")
+    if status["kind"] == 3:
+        name = mem.hero(status["hero"])["name"]
+        status = {"kind": 3, "hero": status["hero"],
+                  "own_name": int(ids_from("HOTRAITS.TXT", 2)[status["hero"]] != name),
+                  **{k: v for k, v in status.items() if k not in ("kind", "hero")}}
+    else:
+        names = ids_from("TownName.txt", 0)
+        if status["name"] not in names:
+            raise RuntimeError("a town's name is not in TownName.txt")
+        status["name"] = names.index(status["name"])
+    return "{ " + ", ".join(f"{key} = {value}" for key, value in status.items()) + " }"
 
 
 def capture(situation_path, out, keep=False):

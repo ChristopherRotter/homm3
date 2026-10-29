@@ -1,0 +1,17 @@
+# A town's status window with a garrison hero (E24 M3 T5b1; design §4.8): Red's Rampart with a
+# Castle standing (itmcls.def's frame 2) and a Resource Silo (the Rampart's one resource, between
+# the two places), Red's second hero written into its garrison (+0xC: townqkgh.pcx's mark, and the
+# window shows that hero's army, 0x5C1460, not the town's own written garrison); the town
+# selected from its list.
+size = 36
+terrain = "grass"
+heroes = [
+    { at = [4, 14] },
+    { at = [8, 6], class = 2, army = [[14, 3], [-1, 0], [20, 200]] },
+    { at = [30, 30], owner = 1 },
+]
+towns = [
+    { at = [12, 10], faction = 1, owner = 0, buildings = "castle", silo = true, garrison = [[0, 5]], garrison_hero = [8, 6] },
+]
+select = { town = [12, 10] }
+view = [0, 0, 0]

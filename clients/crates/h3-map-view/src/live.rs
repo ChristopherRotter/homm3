@@ -74,6 +74,154 @@ pub struct Kingdom {
     pub resources: [i32; 7],
     /// The game's date (E24 M3 T5a), which the resource bar shows beside the amounts.
     pub date: Date,
+    /// What the status window shows (E24 M3 T5b1, design §4.8): a live part's `status`; none:
+    /// nothing drawn there (the frame's picture shows).
+    pub status: Option<Status>,
+}
+
+/// What the status window shows (E24 M3 T5b1, design §4.8; *provisional*): the window the
+/// original built last (`status_window_choose` 0x415DE0, the manager's +0x394) with what it read
+/// of the game for it. A comparison reads it from the original's memory (`h3mem.py`'s
+/// `Mem.status`: the morale, luck, silo and income as the window's items hold them, the original's
+/// rules computed); [`Live::at_start`] the selected hero's or town's with what a map gives; from
+/// M4 on the engine.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Status {
+    /// The selected hero's (the kind 3, `AdStatHr.pcx`: 0x451AB0).
+    Hero(HeroStatus),
+    /// The selected town's (the kind 4, `AdStatCs.pcx`: 0x4521F0).
+    Town(TownStatus),
+    /// Another kind, not drawn yet: the date's (1) and the kingdom's (2) are T5b2's, the other
+    /// player's turn (5) and a message's (6, 7) M4's.
+    Other(u8),
+}
+
+/// A hero's status window: its portrait and spell points are the selected [`KingdomHero`]'s.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct HeroStatus {
+    /// Its type (the record's index, `HOTRAITS.TXT`'s order), which names it.
+    pub hero: u8,
+    /// It has a name of its own, the map's ([`crate::art::MapArt::hero_names`]): its record's
+    /// name is not its type's.
+    pub own_name: bool,
+    /// Its attack, defense, power and knowledge as stored (i8 +0x476).
+    pub skills: [i8; 4],
+    /// Its morale (`H3Hero::GetMoraleBonus` 0x4E39B0: −3 to 3).
+    pub morale: i8,
+    /// Its luck (`H3Hero::GetLuckBonus` 0x4E36C0: −3 to 3).
+    pub luck: i8,
+    /// Its army's seven slots (+0x91 the types, +0xAD the counts).
+    pub army: [Option<Stack>; 7],
+}
+
+/// A town's status window: its picture is the selected [`KingdomTown`]'s.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TownStatus {
+    /// Its name, a record of `TownName.txt` (the catalogue's `town-name` family; a map's own
+    /// name is M4's).
+    pub name: u16,
+    /// The buildings standing (+0x150's bits by the game's ids: an upgrade clears the building
+    /// it replaces).
+    pub buildings: u64,
+    /// A hero is in its garrison (+0xC): the window marks it and shows that hero's army.
+    pub garrison: bool,
+    /// The army the window shows (0x5C1460: the garrison hero's, else the town's own +0xE0).
+    pub army: [Option<Stack>; 7],
+    /// The resources its Resource Silo yields, in the window's order (0x5C1280's non-zero ones;
+    /// none without a silo).
+    pub silo: Vec<u8>,
+    /// Its gold income (0x5BF600 with the silo).
+    pub income: i32,
+}
+
+/// An army slot's creatures.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Stack {
+    /// The creature's type (the executable's number).
+    pub creature: u16,
+    /// How many.
+    pub count: i32,
+}
+
+impl Status {
+    /// A live part's `status` as the harness writes it (`h3map.py`'s `status_toml`): `{ kind =
+    /// 3, hero = <type>, own_name = <0 or 1>, skills = [a, d, p, k], morale = m, luck = l, army =
+    /// [[type, count], ...7] }`, `{ kind = 4, name = <TownName.txt's record>, buildings = [<ids
+    /// standing>], garrison = <0 or 1>, army = [[type, count], ...7], silo = [<resources>],
+    /// income = n }` or `{ kind = n }` for another kind (an empty slot's type −1); none for
+    /// anything else.
+    #[must_use]
+    pub fn read(value: &toml::Value) -> Option<Self> {
+        let table = value.as_table()?;
+        let get = |key: &str| table.get(key);
+        let int = |v: &toml::Value| v.as_integer();
+        let small = |v: &toml::Value| int(v).and_then(|n| i8::try_from(n).ok());
+        let flag = |v: &toml::Value| match int(v)? {
+            0 => Some(false),
+            1 => Some(true),
+            _ => None,
+        };
+        let army = |v: &toml::Value| -> Option<[Option<Stack>; 7]> {
+            let slots = v
+                .as_array()?
+                .iter()
+                .map(|slot| match slot.as_array()?.as_slice() {
+                    [creature, count] => match int(creature)? {
+                        -1 => Some(None),
+                        c => Some(Some(Stack {
+                            creature: u16::try_from(c).ok()?,
+                            count: i32::try_from(int(count)?).ok()?,
+                        })),
+                    },
+                    _ => None,
+                })
+                .collect::<Option<Vec<_>>>()?;
+            slots.try_into().ok()
+        };
+        let kind = u8::try_from(int(get("kind")?)?).ok()?;
+        match kind {
+            3 => {
+                let skills = get("skills")?
+                    .as_array()?
+                    .iter()
+                    .map(small)
+                    .collect::<Option<Vec<_>>>()?;
+                Some(Self::Hero(HeroStatus {
+                    hero: u8::try_from(int(get("hero")?)?).ok()?,
+                    own_name: flag(get("own_name")?)?,
+                    skills: skills.try_into().ok()?,
+                    morale: small(get("morale")?)?,
+                    luck: small(get("luck")?)?,
+                    army: army(get("army")?)?,
+                }))
+            }
+            4 => {
+                let buildings = get("buildings")?
+                    .as_array()?
+                    .iter()
+                    .map(|b| {
+                        int(b)
+                            .and_then(|n| u32::try_from(n).ok())
+                            .filter(|&n| n < 64)
+                    })
+                    .try_fold(0u64, |set, id| Some(set | 1 << id?))?;
+                let silo = get("silo")?
+                    .as_array()?
+                    .iter()
+                    .map(|r| int(r).and_then(|n| u8::try_from(n).ok()))
+                    .collect::<Option<Vec<_>>>()?;
+                Some(Self::Town(TownStatus {
+                    name: u16::try_from(int(get("name")?)?).ok()?,
+                    buildings,
+                    garrison: flag(get("garrison")?)?,
+                    army: army(get("army")?)?,
+                    silo,
+                    income: i32::try_from(int(get("income")?)?).ok()?,
+                }))
+            }
+            _ => Some(Self::Other(kind)),
+        }
+    }
 }
 
 /// The game's date (E24 M3 T5a, design §4.7): the month, the week of the month and the day of the
@@ -235,6 +383,7 @@ impl Kingdom {
             quests: flag(table.get("quests")?)?,
             resources: resources.try_into().ok()?,
             date,
+            status: None,
         })
     }
 }
@@ -505,6 +654,8 @@ pub const HERO_CLASS: u32 = 34;
 pub const BOAT_CLASS: u32 = 8;
 /// The towns' class (98; a random town is 77).
 pub const TOWN_CLASS: u32 = 98;
+/// The names of a faction in `TownName.txt` (16 records each, in the factions' order).
+pub const TOWN_NAMES: u16 = 16;
 
 impl Live {
     /// The live part at a map's start, as far as it needs no draw: every object standing and
@@ -522,7 +673,9 @@ impl Live {
         let mut boats = Vec::new();
         // The viewer's heroes' portraits and towns, in the map's order (the kingdom below).
         let mut portraits = Vec::new();
+        let mut types = Vec::new();
         let mut towns_kept = Vec::new();
+        let mut towns_built = Vec::new();
         let mut objects = Vec::with_capacity(art.objects.len());
         for (object, raw_object) in art.objects.iter().zip(&raw.objects) {
             let template = art.templates.get(object.template);
@@ -533,6 +686,7 @@ impl Live {
                     if let (Ok(class), Some(owner)) = (u8::try_from(subclass), colour(hero.owner)) {
                         if owner == viewer {
                             portraits.push(hero.portrait.unwrap_or(hero.hero_type));
+                            types.push(hero.hero_type);
                         }
                         heroes.push(LiveHero {
                             at,
@@ -559,6 +713,7 @@ impl Live {
                 && colour(town.owner) == Some(viewer)
             {
                 let built = built_at_start(&town.buildings);
+                towns_built.push(built);
                 towns_kept.push(KingdomTown {
                     faction: u8::try_from(t.subclass).unwrap_or(u8::MAX),
                     fort: [tables::FORT, tables::CITADEL, tables::CASTLE]
@@ -590,11 +745,38 @@ impl Live {
         // order, awake and able to move, each with its portrait (the map's or its type's; a random
         // hero's type 0xFF until the engine draws it) and no points or mana known; its towns in
         // the map's order, none built in today; the first hero selected, else the first town; no
-        // resources (the difficulty's starting ones are the engine's rule) on the first day.
+        // resources (the difficulty's starting ones are the engine's rule) on the first day. The
+        // status window the selection's (E24 M3 T5b1, design §4.8): the hero named by the map or
+        // its type, its skills, morale, luck and army the engine's (none known: 0, empty); the
+        // town named by its faction's first name (its name is the new game's draw), its buildings
+        // at the start standing, no garrison, silo or income known.
         let selected = match (portraits.len(), towns_kept.len()) {
             (0, 0) => Selected::None,
             (0, _) => Selected::Town(0),
             _ => Selected::Hero(0),
+        };
+        let status = match selected {
+            Selected::None => None,
+            Selected::Hero(_) => Some(Status::Hero(HeroStatus {
+                hero: types.first().copied().unwrap_or_default(),
+                own_name: types
+                    .first()
+                    .is_some_and(|t| art.hero_names.contains_key(t)),
+                skills: [0; 4],
+                morale: 0,
+                luck: 0,
+                army: [None; 7],
+            })),
+            Selected::Town(_) => Some(Status::Town(TownStatus {
+                name: towns_kept
+                    .first()
+                    .map_or(0, |t| u16::from(t.faction).saturating_mul(TOWN_NAMES)),
+                buildings: towns_built.first().copied().unwrap_or_default(),
+                garrison: false,
+                army: [None; 7],
+                silo: Vec::new(),
+                income: 0,
+            })),
         };
         let kingdom = Kingdom {
             heroes: portraits
@@ -613,6 +795,7 @@ impl Live {
             quests: false,
             resources: [0; 7],
             date: Date::default(),
+            status,
         };
         Self {
             objects,

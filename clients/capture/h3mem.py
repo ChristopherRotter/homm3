@@ -202,6 +202,16 @@ HERO_PORTRAIT = 0x34
 TOWNS, TOWN_SIZE, TOWN_BUILT_TODAY, TOWN_FACTION, TOWN_PLACE, TOWN_EVERY_BUILT = (
     0x21614, 0x168, 0x2, 0x4, 0x5, 0x158)
 FORT_BIT = 1 << 7
+# The status window (E24 M3 T5b1; design §4.8 of E24): the kind shown (the manager's +0x394, 3 a
+# hero's, 4 a town's; status_window_choose 0x415DE0) and its items, ids from 2000, in the
+# adventure dialog's list: a hero's morale and luck (DEF items 2008 and 2009, frame the bonus + 3),
+# a town's gold income (text 2006) and its silo's resources (DEF items 2007, a frame each). A
+# town's garrison hero (i32 +0xC, -1 none), its own army (seven types i32 +0xE0, seven counts),
+# its name (char* +0xC8) and its buildings standing (u64 +0x150: an upgrade clears what it
+# replaces, unlike the every-built set +0x158).
+STATUS_SHOWN, STATUS_ITEMS = 0x394, range(2000, 2100)
+STATUS_MORALE, STATUS_LUCK, STATUS_SILO, STATUS_INCOME = 2008, 2009, 2007, 2006
+TOWN_GARRISON_HERO, TOWN_ARMY, TOWN_NAME, TOWN_STANDING = 0xC, 0xE0, 0xC8, 0x150
 MOVE_HERO, NEXT_HERO = 7, 11
 # A path arrow's frame: 0 none, 1 to 25 a move today (green), 26 to 50 a later one (red).
 GREEN_FRAMES = range(1, 26)
@@ -890,6 +900,85 @@ class Mem:
         """A hero's mana (E24 M3 T4a: a situation's hero's `mana`; i16 +0x18)."""
         record = self.game() + HEROES + HERO_SIZE * index
         self.write_bytes(record + SPELL_POINTS, struct.pack("<h", mana))
+
+    def write_skills(self, index, skills):
+        """A hero's primary skills (E24 M3 T5b1: a situation's hero's `skills`; i8[4] +0x476)."""
+        record = self.game() + HEROES + HERO_SIZE * index
+        self.write_bytes(record + PRIMARY, struct.pack("<4b", *skills))
+
+    def write_bonuses(self, index, morale, luck):
+        """A hero's morale and luck until its next battle (E24 M3 T5b1: a situation's hero's
+        `morale` and `luck`; i8 +0x11A, +0x11B)."""
+        record = self.game() + HEROES + HERO_SIZE * index
+        self.write_bytes(record + MORALE_BONUS, struct.pack("<2b", morale, luck))
+
+    def write_army(self, at, army):
+        """Seven army slots at `at` (E24 M3 T5b1: a situation's hero's `army`, a hero's +0x91, a
+        town's `garrison`, its +0xE0): the types (i32, -1 none), then the counts; `army` the
+        slots' [type, count] in order, the rest left empty."""
+        slots = list(army) + [[-1, 0]] * (7 - len(army))
+        self.write_bytes(at, struct.pack("<14i", *[s[0] for s in slots], *[s[1] for s in slots]))
+
+    def hero_record(self, index):
+        """The address of the hero `index`'s record."""
+        return self.game() + HEROES + HERO_SIZE * index
+
+    def status_items(self):
+        """The status window's items in the adventure dialog (E24 M3 T5b1; ids from 2000): by id,
+        a list of each one's frame (a DEF item's, i32 +0x34) and text (None for an item that holds
+        none), in the dialog's list's order."""
+        dialog = self.manager_field(ADVENTURE_DIALOG)
+        items, item, seen = {}, self.u32(dialog + FIRST_ITEM), set()
+        while item and item not in seen and len(seen) < 512:
+            seen.add(item)
+            raw = self.read(item, ITEM_TEXT + 12)
+            ident = struct.unpack_from("<H", raw, ITEM_ID)[0]
+            if ident in STATUS_ITEMS:
+                items.setdefault(ident, []).append(
+                    (struct.unpack_from("<i", raw, PICTURE_FRAME)[0], self.item_text(raw)))
+            item = struct.unpack_from("<I", raw, NEXT_ITEM)[0]
+        return items
+
+    def status(self, colour):
+        """What the status window shows (E24 M3 T5b1; design §4.8), as `render --live`'s `status`
+        takes it once the harness named the town's name: `{"kind": <the manager's +0x394>}`, and
+        for a hero's (3) the hero (its record's index), its primary skills as stored, its morale
+        and luck (the window's DEF items' frames less 3: the bonuses 0x4E39B0 and 0x4E36C0
+        computed) and its army ([type, count] for each of the seven slots, type -1 empty); for a
+        town's (4) its name (the record's text), its buildings standing (+0x150's bits), whether
+        a hero is in its garrison (+0xC), the army the window shows (the garrison hero's or the
+        town's own, 0x5C1460), its silo's resources (the frames of the items 2007, in the
+        window's order) and its gold income (the item 2006's text, 0x5BF600 computed)."""
+        kind = self.i32(self.u32(ADVENTURE_MANAGER_POINTER) + STATUS_SHOWN)
+        raw = self.read(self.game() + PLAYERS + PLAYER_SIZE * colour, PLAYER_SIZE)
+        items = self.status_items()
+
+        def army(at):
+            data = self.read(at, 56)
+            return [list(s) for s in zip(struct.unpack_from("<7i", data, 0),
+                                         struct.unpack_from("<7i", data, 28))]
+
+        if kind == 3:
+            index = struct.unpack_from("<i", raw, 0x4)[0]
+            record = self.hero_record(index)
+            return {"kind": kind, "hero": index,
+                    "skills": list(struct.unpack("<4b", self.read(record + PRIMARY, 4))),
+                    "morale": items[STATUS_MORALE][0][0] - 3,
+                    "luck": items[STATUS_LUCK][0][0] - 3, "army": army(record + ARMY)}
+        if kind == 4:
+            index = struct.unpack_from("<b", raw, PLAYER_TOWN)[0]
+            record = self.u32(self.game() + TOWNS) + TOWN_SIZE * index
+            data = self.read(record, TOWN_SIZE)
+            standing = struct.unpack_from("<Q", data, TOWN_STANDING)[0]
+            hero = struct.unpack_from("<i", data, TOWN_GARRISON_HERO)[0]
+            shown = army(self.hero_record(hero) + ARMY if hero >= 0 else record + TOWN_ARMY)
+            silo = [frame for frame, _ in reversed(items.get(STATUS_SILO, []))]
+            return {"kind": kind,
+                    "name": self.c_string(struct.unpack_from("<I", data, TOWN_NAME)[0], 64),
+                    "buildings": [b for b in range(64) if standing >> b & 1],
+                    "garrison": int(hero >= 0), "army": shown, "silo": silo,
+                    "income": int(items[STATUS_INCOME][0][1])}
+        return {"kind": kind}
 
     def town(self, index):
         """The town `index` of the game's towns (E24 M3 T4a): its record's address, faction,

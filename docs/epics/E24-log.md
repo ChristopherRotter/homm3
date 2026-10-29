@@ -1686,3 +1686,63 @@ testing the edited tree); CI's green run on `master` stands for the starting poi
   `master`), p95 1.8–2.0 (1.7–2.1); *Tale of two lands* 11.2 %, 1.2 (1.3); `path-objects` 5.2 %,
   0.9 (0.9).
 
+### M3 T5b1 — the status window of a hero and a town (2026-10-29)
+
+On `map-client/e24-m3-t5b`, the user present (T5b cut with the user: T5b1 a hero's and a town's
+window and the choice between them, T5b2 the date's and the kingdom's and when each shows; the
+other kinds, another player's turn, a resource found and a text, M4's); `master` at cb96348
+(#579 merged). The original data staged from the user's repo folder first; the baseline
+(`scripts/verify-once.sh clients` on `master`'s code) passed every gate.
+
+- **The reading** (design §4.8; map entries `status_window_choose` 0x415DE0 read in full, its
+  kinds' builders 0x415F20 to 0x4164F0, `status_window_set_kind` 0x415D60, `status_hero_create`
+  0x451AB0 and `status_town_create` 0x4521F0 read in full, `town_garrison_army` 0x5C1460, the
+  other kinds' panels by their pictures, the H3API functions the windows call, the tables
+  0x660BB0, 0x660BD0, 0x660C08 and the strings 0x660CB0, 0x660CD0): the eight kinds and the
+  chooser (the selection's window at a human's turn, a timed kind's end), the builders' `force`,
+  the call sites' arguments in M3's paths (a path's rebuild and a key's step build the same
+  window again), the status window's click (T5b2, T6); the hero's window (the large portrait,
+  the name, the skills cut to 0–99 and power and knowledge to at least 1, the spell points, the
+  morale and luck + 3, the army by slot) and the town's (`itpt.def` by the list's frame less 2,
+  the hall and fort by the buildings standing, the garrison hero's mark, the silo's one or two
+  resources, the income's low 16 bits, the army shown packed).
+- **Built** (design §4.8): `h3_map_view::status` (the window from the live part's status and the
+  selection, the panels' `Shown`), the layout's `status_hero` and `status_town`, the tables'
+  `[map.status]`; the live part's `Kingdom::status` (`live::Status`, `HeroStatus`, `TownStatus`,
+  `Stack`; `Status::read`; a map's start the selection's), `MapArt::hero_names` (a map's own hero
+  names; `h3_ui::text::decode_1252`, additive); the catalogue's keys `map.status.number` and
+  `map.status.thousands` and the family `town-name` (`optional`, additive in
+  `h3_ui::text::keys`); the viewer's `texts.rs` with the families `hero` and `town-name` keyed by
+  their ids, counted in their tables; the gate's checks of the window's DEFs, pictures and large
+  portraits; a situation's hero `skills`, `morale`, `luck`, `army` and town `garrison`,
+  `garrison_hero`, `silo` (the writer's map building 9), the harness's writes
+  (`Mem.write_skills`, `write_bonuses`, `write_army`) and its read (`Mem.status`,
+  `h3map.status_toml`: a town's name as its `TownName.txt` record, a hero's `own_name`); the
+  situations `status-hero`, `status-town`, `status-garrison`; `masks.toml`'s `panels` without the
+  status window.
+- **Seen:** MCL-Q16 (a town's income by its low 16 bits; unreachable in play). The first capture
+  of `status-town` and `status-garrison` showed the town's army packed (the reading had missed
+  that the place steps with filled slots only, 0x452A38); fixed, both exact. `shipped-good-witch`'s
+  hero has a name of its own (its map object's): the window takes the map's (`own_name`).
+- **Checked:** `h3map.py still` on `lists-heroes` and `lists-towns` exact first time with the
+  window unmasked (a hand-made live part first, then the harness's), the three new situations
+  (`status-hero` first time; the towns' after the packing); the whole `set`: the 47 situations
+  exact, 0 differing of 469 344 pixels (the window's 34 216 now among them; `shipped-good-witch`
+  failed once on the hero's own name, captured again after `own_name`: exact); `frames`: the 13
+  sequences, every frame exact (459), their timelines as before but `scroll-limits`' start points
+  (1700, the start's random army: taken from the run and kept by `--reuse`); `scroll-0`'s start
+  had 10 gems where T5a's run had 15 (the trap extended); `drawn --record`, then `drawn` all the
+  same; unit tests (the windows' items, frames, texts and hidden places, the bounds and the
+  packing, the income's 16 bits, the names, the refusals of `Status::read`, a map's start's
+  window, the map's own names, the situation's writes, the tables' and layout's checks, the
+  families' keys); `check.sh` (its coverage found the refused fields of `Status::read` and the
+  scene's status error: tested; then 100 %); the gate (every new DEF with its frames,
+  `cprsmall.def` 151, the pictures and the 163 large portraits at 58 × 64); the window under
+  Xvfb (`status-hero`, `status-town`, `status-garrison`, `walk-1`, `lists-scrolled`, `--check
+  10`): every frame read back exact, made as the same frame composed afresh, every change the
+  headless loop's.
+- **Measured** (the sandbox, `--measure 20`, alternating with `master`'s build twice each): the
+  same: `walk-1` 24.8 % uploaded (24.6–24.8 on `master`), a frame made in a median 0.4–0.5 ms
+  (0.4); *Tale of two lands* 11.2 %, 1.2 (1.2); `path-objects` 5.2 %, 0.9–1.0 (1.0). The
+  status window is part of the background: no sequence changes it (M4's events and T6's clicks
+  will, and a changed text draws only its box again, §4.7).

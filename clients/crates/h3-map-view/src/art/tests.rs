@@ -163,6 +163,38 @@ fn reads_the_templates_and_objects_in_the_maps_order() {
 }
 
 #[test]
+fn the_maps_own_hero_names() {
+    // E24 M3 T5b1 (design §4.8): a hero object's name, else a disposed hero's, the first of a type;
+    // an empty one none; Windows-1252 decoded.
+    let mut raw = raw(&map());
+    assert_eq!(MapArt::from_raw(&raw).unwrap().hero_names, BTreeMap::new());
+    let Body::Hero(hero) = &mut raw.objects[0].body else {
+        panic!("the art map's first object is its hero");
+    };
+    let own = hero.hero_type;
+    hero.name = Some(model::Text(vec![b'O', 0xE9, 0x80]));
+    let disposed = |hero_type, name: &[u8]| model::DisposedHero {
+        hero_type,
+        portrait: 0,
+        name: model::Text(name.to_vec()),
+        players: 0xFF,
+    };
+    raw.disposed_heroes = vec![
+        disposed(own, b"Later"),
+        disposed(7, b"Seven"),
+        disposed(9, b""),
+    ];
+    let names = MapArt::from_raw(&raw).unwrap().hero_names;
+    assert_eq!(
+        names,
+        BTreeMap::from([
+            (own, "O\u{e9}\u{20ac}".to_string()),
+            (7, "Seven".to_string())
+        ])
+    );
+}
+
+#[test]
 fn reads_a_cell_of_the_masks() {
     let t = TemplateArt::from_writer(&template("x.def", 1, 0, 0));
     assert!(!t.passable(0, 0));

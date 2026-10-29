@@ -148,6 +148,53 @@ movement = { step = 100, round = 0, top = [2300, 2500, 2800], from = 23 }
 mana = { step = 5, round = 4, top = [116, 145, 170], from = 23 }
 towns = { empty = 0, selected = 1, fort = 2, village = 20, faction = 2, built = 1 }
 
+# The status window (E24 M3 T5b1; design §4.8). A hero's large portrait by its record's portrait
+# (+0x34): hero_info 0x679DD0's +0x34, its 163 entries. The town's picture in itpt.def: the town
+# list's frame less `town_list` (town_list_frame 0x5BD700 without its argument's 2). An army slot's
+# picture in cprsmall.def: the creature + `stack`; its count from `thousands` on in thousands. The
+# morale's and luck's frames: the bonus + `bonus`. A primary skill shown cut to `top` and to its
+# `bottom` (0x451CE4: attack and defense 0, power and knowledge 1). The hall's frame: 1 + the place
+# of the first of `halls` standing (the Town Hall, City Hall, Capitol; 0x452414), else 0; the
+# fort's: the place of the first of `forts` standing (the Fort, Citadel, Castle; 0x452537), else 3.
+[map.status]
+portraits = [
+    "HPL000Kn.PCX", "HPL001Kn.PCX", "HPL002Kn.PCX", "HPL003Kn.PCX", "HPL004Kn.PCX", "HPL005Kn.PCX",
+    "HPL006Kn.PCX", "HPL007Kn.PCX", "HPL008Cl.PCX", "HPL009Cl.PCX", "HPL010Cl.PCX", "HPL011Cl.PCX",
+    "HPL012Cl.PCX", "HPL013Cl.PCX", "HPL014Cl.PCX", "HPL015Cl.PCX", "HPL016Rn.PCX", "HPL017Rn.PCX",
+    "HPL018Rn.PCX", "HPL019Rn.PCX", "HPL020Rn.PCX", "HPL021Rn.PCX", "HPL022Rn.PCX", "HPL023Rn.PCX",
+    "HPL024Dr.PCX", "HPL025Dr.PCX", "HPL026Dr.PCX", "HPL027Dr.PCX", "HPL028Dr.PCX", "HPL029Dr.PCX",
+    "HPL030Dr.PCX", "HPL031Dr.PCX", "HPL032Al.PCX", "HPL033Al.PCX", "HPL034Al.PCX", "HPL035Al.PCX",
+    "HPL036Al.PCX", "HPL037Al.PCX", "HPL038Al.PCX", "HPL039Al.PCX", "HPL040Wz.PCX", "HPL041Wz.PCX",
+    "HPL042Wz.PCX", "HPL043Wz.PCX", "HPL044Wz.PCX", "HPL045Wz.PCX", "HPL046Wz.PCX", "HPL047Wz.PCX",
+    "HPL048Hr.PCX", "HPL049Hr.PCX", "HPL050Hr.PCX", "HPL051Hr.PCX", "HPL052Hr.PCX", "HPL053Hr.PCX",
+    "HPL054Hr.PCX", "HPL055Hr.PCX", "HPL056Dm.PCX", "HPL057Dm.PCX", "HPL058Dm.PCX", "HPL059Dm.PCX",
+    "HPL060Dm.PCX", "HPL061Dm.PCX", "HPL062Dm.PCX", "HPL063Dm.PCX", "HPL064Dk.PCX", "HPL065Dk.PCX",
+    "HPL066Dk.PCX", "HPL067Dk.PCX", "HPL068Dk.PCX", "HPL069Dk.PCX", "HPL070Dk.PCX", "HPL071Dk.PCX",
+    "HPL072Nc.PCX", "HPL073Nc.PCX", "HPL074Nc.PCX", "HPL075Nc.PCX", "HPL076Nc.PCX", "HPL077Nc.PCX",
+    "HPL078Nc.PCX", "HPL079Nc.PCX", "HPL080Ov.PCX", "HPL081Ov.PCX", "HPL082Ov.PCX", "HPL083Ov.PCX",
+    "HPL084Ov.PCX", "HPL085Ov.PCX", "HPL086Ov.PCX", "HPL087Ov.PCX", "HPL088Wl.PCX", "HPL089Wl.PCX",
+    "HPL090Wl.PCX", "HPL091Wl.PCX", "HPL092Wl.PCX", "HPL093Wl.PCX", "HPL094Wl.PCX", "HPL095Wl.PCX",
+    "HPL096Br.PCX", "HPL097Br.PCX", "HPL098Br.PCX", "HPL099Br.PCX", "HPL100Br.PCX", "HPL101Br.PCX",
+    "HPL102Br.PCX", "HPL103Br.PCX", "HPL104Bm.PCX", "HPL105Bm.PCX", "HPL106Bm.PCX", "HPL107Bm.PCX",
+    "HPL108Bm.PCX", "HPL109Bm.PCX", "HPL110Bm.PCX", "HPL111Bm.PCX", "HPL112Bs.PCX", "HPL113Bs.PCX",
+    "HPL114Bs.PCX", "HPL115Bs.PCX", "HPL116Bs.PCX", "HPL117Bs.PCX", "HPL118Bs.PCX", "HPL119Bs.PCX",
+    "HPL120Wh.PCX", "HPL121Wh.PCX", "HPL122Wh.PCX", "HPL123Wh.PCX", "HPL124Wh.PCX", "HPL125Wh.PCX",
+    "HPL126Wh.PCX", "HPL127Wh.PCX", "HPL000pl.PCX", "HPL001pl.PCX", "HPL002pl.PCX", "HPL003pl.PCX",
+    "HPL004pl.PCX", "HPL005pl.PCX", "HPL006pl.PCX", "HPL007pl.PCX", "HPL000el.PCX", "HPL001el.PCX",
+    "HPL002el.PCX", "HPL003el.PCX", "HPL004el.PCX", "HPL005el.PCX", "HPL006el.PCX", "HPL007el.PCX",
+    "HPL130Kn.PCX", "HPL000Sh.PCX", "HPL128Qc.PCX", "HPL003Sh.PCX", "HPL004Sh.PCX", "HPL005Sh.PCX",
+    "HPL006Sh.PCX", "HPL007Sh.PCX", "HPL009Sh.PCX", "HPL008Sh.PCX", "HPL001Sh.PCX", "HPL131Dm.PCX",
+    "HPL129Mk.PCX", "HPL002Sh.PCX", "HPL132Wl.PCX", "HPL133Nc.PCX", "HPL134Nc.PCX", "HPL135Wi.PCX",
+    "HPL136Wi.PCX",
+]
+town_list = 2
+stack = 2
+bonus = 3
+skills = { top = 99, bottom = [0, 0, 1, 1] }
+thousands = 10000
+halls = [11, 12, 13]
+forts = [7, 8, 9]
+
 # What a tile records of its objects (E24 M2 T5, moved out of the sounds' table at M3 T3a; design §4.4,
 # rules/surveys/E08-objects.md §2.5: tile_refresh_object 0x505610): the topmost object whose
 # entrance is there, else the topmost ownable one blocking it (class_is_ownable 0x40FCA0), else the

@@ -736,6 +736,99 @@ fn the_lists_writes_and_the_selection() {
 }
 
 #[test]
+fn the_status_windows_writes() {
+    // E24 M3 T5b1 (design §4.8): a hero's skills, morale, luck and army; a town's garrison and
+    // garrison hero, Red's; seven slots at most; a silo with chosen buildings, the map's
+    // building 9.
+    let castle = ObjectTemplate::from_objects_txt(&format!(
+        "avccast0.def {} {} 111111111 111111111 98 0 0 0",
+        "1".repeat(48),
+        "0".repeat(47) + "1"
+    ))
+    .unwrap();
+    let build = |hero: &str, town: &str, select: &str| {
+        let text = format!(
+            "size = 36\nterrain = \"grass\"\nview = [0, 0, 0]\nheroes = [{{ at = [1, 1]{hero} }}, \
+             {{ at = [9, 9], owner = 1 }}]\ntowns = [{{ at = [20, 20], faction = 0, owner = 0, \
+             buildings = \"castle\"{town} }}, {{ at = [30, 20], faction = 0, owner = 1, \
+             buildings = \"fort\" }}]\n{select}"
+        );
+        Situation::parse(&text)
+            .unwrap()
+            .build(&BTreeMap::new(), core::slice::from_ref(&castle))
+    };
+    let hero = ", skills = [120, -5, 0, -1], morale = 3, luck = -3, army = [[1, 2], [3, 4]]";
+    let hero_selected = "select = { hero = [1, 1] }";
+    assert!(build(hero, "", hero_selected).is_ok());
+    let town = ", silo = true, garrison = [[1, 99999]], garrison_hero = [1, 1]";
+    let town_selected = "select = { town = [20, 20] }";
+    let (built, _) = build("", town, town_selected).unwrap();
+    // The silo among the castle's chosen buildings (Fort, Citadel, Castle: bits 3 to 5).
+    assert!(built.objects.iter().any(|o| matches!(
+        o,
+        MapObject::Town(t) if t.buildings == TownBuildings::Custom {
+            built: [0b11_1000, 0b10, 0, 0, 0, 0],
+            forbidden: [0; 6],
+        }
+    )));
+    for (hero, town, select, error) in [
+        (hero, "", "", "a write into the lists without a selection"),
+        (
+            "",
+            ", garrison = [[1, 1]]",
+            "",
+            "a write into the lists without a selection",
+        ),
+        (
+            ", army = [[1, 1], [1, 1], [1, 1], [1, 1], [1, 1], [1, 1], [1, 1], [1, 1]]",
+            "",
+            hero_selected,
+            "an army of more than seven slots",
+        ),
+        (
+            "",
+            ", garrison_hero = [9, 9]",
+            town_selected,
+            "town at [20, 20]: its garrison hero is none of Red's",
+        ),
+    ] {
+        assert_eq!(
+            build(hero, town, select).map(|_| ()),
+            Err(error.to_string()),
+            "{hero} {town}"
+        );
+    }
+    let theirs = Situation::parse(
+        "size = 36\nterrain = \"grass\"\nview = [0, 0, 0]\nheroes = [{ at = [1, 1] }, { at = \
+         [9, 9], owner = 1 }]\ntowns = [{ at = [30, 20], faction = 0, owner = 1, buildings = \
+         \"fort\", garrison = [[1, 1]] }]\n",
+    )
+    .unwrap();
+    assert_eq!(
+        theirs
+            .build(&BTreeMap::new(), core::slice::from_ref(&castle))
+            .map(|_| ()),
+        Err("town at [30, 20]: only Red's towns have their garrison written".to_string())
+    );
+    let standard = theirs_with_silo();
+    assert_eq!(
+        standard
+            .build(&BTreeMap::new(), core::slice::from_ref(&castle))
+            .map(|_| ()),
+        Err("town at [20, 20]: a silo with the standard buildings".to_string())
+    );
+}
+
+fn theirs_with_silo() -> Situation {
+    Situation::parse(
+        "size = 36\nterrain = \"grass\"\nview = [0, 0, 0]\nheroes = [{ at = [1, 1] }, { at = \
+         [9, 9], owner = 1 }]\ntowns = [{ at = [20, 20], faction = 0, owner = 0, buildings = \
+         \"fort\", silo = true }]\n",
+    )
+    .unwrap()
+}
+
+#[test]
 fn a_shipped_map_loaded_whole_is_the_harnesss() {
     // E24 M1 T6b (the reviewer's R2-12): not the writer's to build.
     let text = alloc::format!("map = \"Hoard.h3m\"\n{PLAIN}");
