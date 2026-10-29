@@ -21,6 +21,13 @@
 //! turns run only the tick (the poll and the palettes): no idle redraw, no edge scroll, the actions
 //! given meanwhile waiting. The hero walks given tiles (M2: the path the original showed, from the
 //! recording; M4 and M5: the engine's path and move), never a path of the client's own.
+//!
+//! The status window (E24 M3 T5b2, design §4.9) is chosen again at the end of every view's draw
+//! (`status_window_choose` 0x415DE0 from `adventure_view_draw` 0x40F861) and, forced, at a hero's
+//! selection and after a key's step: a kind asked for a time ([`Start::asked`]) gives way to the
+//! selection's window once its end has come; the date's window steps its picture's frame at a draw
+//! at least the tables' step after the last, up to its last frame, and plays the day's sound when
+//! built.
 
 use alloc::collections::{BTreeMap, VecDeque};
 use alloc::format;
@@ -35,10 +42,11 @@ use h3_render::screen::Screen;
 
 use crate::layout::{AdventureLayout, DIRECTIONS};
 use crate::lists::{SLOTS, top_showing};
-use crate::live::{Arrow, Buttons, Kingdom, Selected};
+use crate::live::{Arrow, Buttons, DateStatus, Kingdom, KingdomStatus, Selected, Status};
 use crate::scene::ViewAt;
 use crate::sequence::{DEFAULT_HERO_SPEED, DEFAULT_SCROLL_SPEED};
 use crate::sound::{Cue, Sound};
+use crate::status::DateArt;
 use crate::tables::{Tables, WalkArt};
 
 /// The mouse manager's type of the adventure cursor (`cursor_defs` 0x67FF38: 1, `cradvntr.def`),
@@ -203,6 +211,8 @@ pub struct Rules {
     pub standing: Vec<u32>,
     /// The walk's groups, frames and times.
     pub walk: WalkArt,
+    /// The date's status window's pictures and step (E24 M3 T5b2, design §4.9).
+    pub date: DateArt,
     /// The original's bugs or the client's fixes.
     pub bugs: Bugs,
 }
@@ -227,6 +237,7 @@ impl Rules {
             edges: layout.cursor.edges,
             standing: tables.map.heroes.groups.clone(),
             walk: tables.map.walk.clone(),
+            date: tables.map.status.date.clone(),
             bugs,
         }
     }
@@ -359,6 +370,21 @@ pub struct Start {
     /// Move hero's and next hero's states at 0 as the original last set them (a recording's, read
     /// from its memory); none: as the kingdom and the path give them ([`Buttons::of`]).
     pub buttons: Option<Buttons>,
+    /// The status window's kind asked for a time at 0 (E24 M3 T5b2, design §4.9; a recording's
+    /// `status`: the harness asks it so that 0's redraw builds it, the kingdom's window at 0 the
+    /// window it built). None: the kingdom's date's or kingdom's window at 0 asked until no end
+    /// (a situation's still), another the selection's (kind 0).
+    pub asked: Option<Asked>,
+}
+
+/// A status window's kind asked for a time (`status_window_set_kind` 0x415D60: the manager's
+/// +0x398 and +0x39C; E24 M3 T5b2).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Asked {
+    /// The kind: 1 the date's, 2 the kingdom's.
+    pub kind: u8,
+    /// The millisecond from which a view's draw shows the selection's window again.
+    pub end: u32,
 }
 
 /// The cursor drawn: a frame of the layout's cursor and the point its hot spot is at.
@@ -527,6 +553,14 @@ pub struct Loop {
     points: Vec<(u32, i32)>,
     /// Move hero's and next hero's states.
     buttons: Buttons,
+    /// The status window's kind asked (the manager's +0x398; 0 the selection's) and its end
+    /// (+0x39C; E24 M3 T5b2).
+    asked: u8,
+    end: u32,
+    /// When the date's window stepped its frame last, or was built (its panel's +0x44).
+    stepped: u32,
+    /// The kingdom's window, as the live part at 0 shows it.
+    realm: Option<KingdomStatus>,
 }
 
 impl Loop {
@@ -606,8 +640,23 @@ impl Loop {
             buttons: start
                 .buttons
                 .unwrap_or_else(|| Buttons::of(&start.kingdom, &start.path)),
+            asked: 0,
+            end: 0,
+            stepped: 0,
+            realm: None,
             rules,
         };
+        // The status window at 0 (E24 M3 T5b2): the kind asked, else the date's or the kingdom's
+        // shown asked until no end; the date's at its first frame built at 0, with its sound.
+        let shown = start.kingdom.status.as_ref();
+        (l.asked, l.end) = match (start.asked, shown.map(Status::kind)) {
+            (Some(asked), _) => (asked.kind, asked.end),
+            (None, Some(kind @ (1 | 2))) => (kind, u32::MAX),
+            _ => (0, 0),
+        };
+        if let Some(Status::Kingdom(realm)) = shown {
+            l.realm = Some(realm.clone());
+        }
         // Memory's points at 0: a recording's write, which the hero list does not show yet.
         l.spend(0);
         if !l.path.is_empty() {
@@ -621,6 +670,10 @@ impl Loop {
         let (middle, standing) = (l.middle(), l.standing());
         if let Some(sound) = &mut l.sound {
             sound.start(0, middle, standing);
+            let built = matches!(shown, Some(Status::Date(DateStatus { frame: 0 })));
+            if built && !l.rules.date.shows(start.kingdom.date).week {
+                sound.effect(0, &l.rules.date.sound);
+            }
         }
         if !l.live && l.rules.over_view(start.pointer) {
             return Err(Unplayable::OverView(start.pointer));
@@ -733,7 +786,7 @@ impl Loop {
         // at the clock, so the loop's next turn, in the same millisecond, redraws again: after a
         // walk the screen shows the last of them (M2 T3b, design §3.8).
         while t >= self.frame_at {
-            self.draw();
+            self.draw(t);
             self.step_objects(t);
         }
     }
@@ -822,7 +875,7 @@ impl Loop {
         self.view.y = y;
         self.lifted = false;
         self.draw_minimap();
-        self.draw();
+        self.draw(t);
         self.step_objects(t);
         true
     }
@@ -842,7 +895,7 @@ impl Loop {
         self.buttons.move_hero = !self.lifted;
         if !self.path.is_empty() {
             self.path.clear();
-            self.draw();
+            self.draw(t);
             if t >= self.frame_at {
                 self.steps = self.steps.saturating_add(1);
                 let late = t - self.frame_at;
@@ -877,7 +930,7 @@ impl Loop {
             return self.refused(Unplayable::NoPath(tile));
         };
         self.path = path;
-        self.draw();
+        self.draw(t);
         // Move hero by the path's green arrows (`make_hero_path` from 0x40AA17, its third argument
         // set: 0x4191A2; design §4.1).
         self.buttons.move_hero = self.green();
@@ -961,7 +1014,7 @@ impl Loop {
     fn step(&mut self, t: u32, direction: Direction, next: Pos) {
         if !self.lifted {
             self.lift(t, true);
-            self.draw();
+            self.draw(t);
         }
         self.path.retain(|(_, a)| a.at != next);
         let n = usize::try_from(direction.number()).unwrap_or(0);
@@ -1067,7 +1120,7 @@ impl Loop {
             self.buttons.move_hero = false;
         }
         if !key && !self.path.is_empty() {
-            self.draw();
+            self.draw(t);
             // The rest's path made again with its third argument (0x4080C9): move hero by its
             // green arrows. With none left the points did not pay the next step, which set them
             // to 0 (0x480864): the hero cannot move on (*provisional*: the engine's from M4), and
@@ -1088,6 +1141,10 @@ impl Loop {
         self.cursor.at = self.rules.drawn_at(self.pointer);
         self.cursor.shown = true;
         self.moved();
+        if key {
+            // The status window built again (0x4090FE, E24 M3 T5b2).
+            self.choose(t, true);
+        }
     }
 
     /// The loop's turn after a walk at its last millisecond: the actions given during it and
@@ -1124,6 +1181,8 @@ impl Loop {
                 *top = top_showing(*top, i, self.kingdom.heroes.len());
             }
             self.draw_lists();
+            // The status window built again (0x41800B with its c set, E24 M3 T5b2).
+            self.choose(t, true);
             self.centre();
             self.draw_minimap();
         }
@@ -1252,8 +1311,9 @@ impl Loop {
     }
 
     /// The view drawn and shown: at the objects' step and the palettes now, the walk's offset, the
-    /// hero and the arrows; the minimap as last drawn.
-    fn draw(&mut self) {
+    /// hero and the arrows; the minimap as last drawn; then the status window chosen (0x40F861,
+    /// E24 M3 T5b2).
+    fn draw(&mut self, t: u32) {
         self.drawn = Draw {
             view: self.view,
             frames: self.steps,
@@ -1265,11 +1325,76 @@ impl Loop {
             minimap: self.minimap,
             kingdom: Arc::clone(&self.drawn.kingdom),
         };
+        self.choose(t, false);
+    }
+
+    /// The status window chosen (`status_window_choose` 0x415DE0; design §4.8, §4.9): a kind
+    /// asked whose end has come back to the selection's (0); then the kind asked built (1 the
+    /// date's, 2 the kingdom's) or for 0 the selection's window (the hero's, else the town's, else
+    /// the date's), drawn and shown at once. Without `force` (a view's draw, 0x40F861) the kind
+    /// shown builds nothing, but the date's steps its frame ([`Loop::date_window`]); with it (a
+    /// hero's selection 0x41800B, a key's step 0x4090FE) the window is built again. A selection's
+    /// window the live part does not give is left as it is.
+    fn choose(&mut self, t: u32, force: bool) {
+        if self.asked != 0 && t >= self.end {
+            self.asked = 0;
+        }
+        let shown = self.kingdom.status.as_ref().map(Status::kind);
+        let selection = self.kingdom.selection.clone().or_else(|| {
+            self.kingdom
+                .status
+                .clone()
+                .filter(|s| matches!(s, Status::Hero(_) | Status::Town(_)))
+        });
+        let window = match (self.asked, self.kingdom.selected, selection) {
+            (1, _, _) | (0, Selected::None, _) => None,
+            (2, _, _) => match &self.realm {
+                Some(realm) => Some(Status::Kingdom(realm.clone())),
+                None => return,
+            },
+            (0, Selected::Hero(_), Some(s @ Status::Hero(_)))
+            | (0, Selected::Town(_), Some(s @ Status::Town(_))) => Some(s),
+            _ => return,
+        };
+        let next = match window {
+            None => self.date_window(t, shown == Some(1) && !force),
+            Some(s) => (force || shown != Some(s.kind())).then_some(s),
+        };
+        if let Some(status) = next.filter(|s| self.kingdom.status.as_ref() != Some(s)) {
+            self.kingdom.status = Some(status.clone());
+            Arc::make_mut(&mut self.drawn.kingdom).status = Some(status);
+        }
+    }
+
+    /// The date's window (E24 M3 T5b2, design §4.9): with `update` its frame stepped once the
+    /// tables' step has passed since its last step and while it is short of its picture's last
+    /// (`status_date_update` 0x4511A0: the frame drawn and its rectangle shown at once); else
+    /// built at its first frame (0x450DD0), the day's playing its sound.
+    fn date_window(&mut self, t: u32, update: bool) -> Option<Status> {
+        let shows = self.rules.date.shows(self.kingdom.date);
+        if update {
+            let Some(Status::Date(date)) = self.kingdom.status else {
+                return None;
+            };
+            let next = date.frame.saturating_add(1);
+            if next >= shows.frames || t.saturating_sub(self.stepped) < self.rules.date.step {
+                return None;
+            }
+            self.stepped = t;
+            return Some(Status::Date(DateStatus { frame: next }));
+        }
+        self.stepped = t;
+        if !shows.week
+            && let Some(sound) = &mut self.sound
+        {
+            sound.effect(t, &self.rules.date.sound);
+        }
+        Some(Status::Date(DateStatus { frame: 0 }))
     }
 
     /// A walk's frame drawn: pass 9 steps the lifted hero's frame after it (0x47FF6D).
     fn frame_drawn(&mut self, t: u32) {
-        self.draw();
+        self.draw(t);
         self.walk.frame = (self.walk.frame + 1)
             .checked_rem(self.rules.walk.frames)
             .unwrap_or(0);

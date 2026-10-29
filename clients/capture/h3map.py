@@ -534,9 +534,11 @@ def stage(situation_path, out):
 
 def ask_status(mem, kind, end, rebuild=False):
     """Asks the status window for `kind` until the clock time `end` (E24 M3 T5b2; design §4.9),
-    the selection's window read first (`mem.selection`, the live part's `selection`: what a timed
-    kind's end builds again); with `rebuild` the window built afresh by the next view draw."""
-    mem.selection = status_toml(mem, mem.current_player())
+    the selection's window read first unless a kind asked before read it (`mem.selection`, the
+    live part's `selection`: what a timed kind's end builds again); with `rebuild` the window
+    built afresh by the next view draw."""
+    if not getattr(mem, "selection", None):
+        mem.selection = status_toml(mem, mem.current_player())
     mem.ask_status(kind, end, rebuild)
 
 

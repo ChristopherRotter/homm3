@@ -141,6 +141,8 @@ pub fn for_sequence<'a>(
         // The selected hero's points memory held (E24 M3 T4b): the recording's.
         points: sequence.points(recorded.as_deref().unwrap_or_default())?,
         buttons: painter.live.buttons,
+        // The status window's kind the recording asked at 0 (E24 M3 T5b2).
+        asked: sequence.asked()?,
     };
     Ok(Setup {
         painter,
@@ -211,6 +213,7 @@ pub fn for_situation<'a>(
         kingdom: painter.live.kingdom.clone(),
         points: Vec::new(),
         buttons: painter.live.buttons,
+        asked: None,
     };
     Ok(Setup {
         painter,

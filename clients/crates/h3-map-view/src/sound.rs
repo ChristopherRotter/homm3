@@ -133,6 +133,9 @@ pub struct SoundRules {
     pub steps: BTreeMap<u8, String>,
     /// The flying hero's step sound.
     pub flying: String,
+    /// The sounds played once ([`Cue::Effect`]; E24 M3 T5b2: the day's status window's, the
+    /// tables' `[map.status.date]`), which the window decodes with the rest.
+    pub effects: Vec<String>,
     volumes: Vec<u8>,
     shore: u8,
     shore_pictures: u8,
@@ -207,6 +210,7 @@ impl SoundRules {
             music,
             steps,
             flying: art.flying.clone(),
+            effects: Vec::new(),
             volumes: art.volumes.clone(),
             shore: index(&art.shore)?,
             shore_pictures: art.shore_pictures,
@@ -231,12 +235,14 @@ impl SoundRules {
         })
     }
 
-    /// Every WAV the rules name (the loops, the step sounds), as named.
+    /// Every WAV the rules name (the loops, the step sounds, since E24 M3 T5b2 the effects), as
+    /// named.
     #[must_use]
     pub fn wavs(&self) -> Vec<String> {
         let mut all: Vec<String> = self.loops.clone();
         all.extend(self.steps.values().cloned());
         all.push(self.flying.clone());
+        all.extend(self.effects.iter().cloned());
         all
     }
 
@@ -447,6 +453,9 @@ pub enum Cue {
         /// The volume.
         volume: u8,
     },
+    /// A sound played once on a channel of its own (`play_sound_async` 0x59A590, category 3; E24
+    /// M3 T5b2: the day's status window's `newday.wav`, design §4.9).
+    Effect(String),
 }
 
 /// An ambient slot (the manager's +0x228 entries): a sound and its distance.
@@ -497,6 +506,12 @@ impl Sound {
             next: None,
             cues: Vec::new(),
         }
+    }
+
+    /// A sound played once (`play_sound_async` 0x59A590; E24 M3 T5b2: the day's status window's,
+    /// design §4.9).
+    pub fn effect(&mut self, t: u32, name: &str) {
+        self.cues.push((t, Cue::Effect(name.into())));
     }
 
     /// The cues given since the last take, with their milliseconds, in order.
@@ -726,6 +741,7 @@ pub fn line(t: u32, cue: &Cue) -> String {
         Cue::Loop { slot, name, volume } => format!("{t} loop {slot} {name} {volume}"),
         Cue::LoopStop { slot } => format!("{t} loop-stop {slot}"),
         Cue::LoopVolume { slot, volume } => format!("{t} loop-volume {slot} {volume}"),
+        Cue::Effect(name) => format!("{t} effect {name}"),
     }
 }
 

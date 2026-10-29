@@ -706,10 +706,11 @@ pub fn load(files: &[TableFile], top: &str) -> Result<Tables, TableError> {
             .iter()
             .filter_map(|(code, t)| t.step.clone().map(|m| (*code, m)))
             .collect();
-        tables.sound = Some(
-            SoundRules::new(sound, tables.records.clone(), music, steps)
-                .map_err(|rule| entry("sound", &rule))?,
-        );
+        let mut rules = SoundRules::new(sound, tables.records.clone(), music, steps)
+            .map_err(|rule| entry("sound", &rule))?;
+        // The sounds played once (E24 M3 T5b2): the day's status window's.
+        rules.effects.push(map.status.date.sound.clone());
+        tables.sound = Some(rules);
     }
     Ok(tables)
 }

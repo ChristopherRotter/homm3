@@ -251,3 +251,27 @@ inputs = [
     { at = 100, click = [472, 120] }, { at = 100, pointer = [700, 300] },
     { at = 300, click = [472, 120] }, { at = 300, pointer = [700, 300] },
 ]
+
+# The status window over time (E24 M3 T5b2; design §4.9): a kind asked at 0 for a time (`status`:
+# the harness writes the manager's +0x398 and +0x39C, the kind shown none, so 0's redraw builds it
+# afresh), the window shown until the first view's draw at or after its end, then the selection's.
+# The kingdom's asked for 700 ms over the kingdom's situation (its hero's window read at the
+# staging): the redraw at 720 shows the hero's again.
+
+[[sequence]]
+id = "status-kingdom-end"
+situation = "status-kingdom"
+ms = 900
+status = [2, 700]
+why = "the kingdom's status window asked for 700 ms, then the selected hero's at the next redraw"
+
+# The date's asked for 3 000 ms (the original's own time for a new day's), the day's picture
+# stepping a frame at each redraw (180 ms apart, at least 100 after the last) to its tenth, then the
+# hero's window at the redraw at 3 060.
+
+[[sequence]]
+id = "status-date-end"
+situation = "status-date"
+ms = 3300
+status = [1, 3000]
+why = "the date's status window built at 0, its picture stepping to its last frame, then the selected hero's"
