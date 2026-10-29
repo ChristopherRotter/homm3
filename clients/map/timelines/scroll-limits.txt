@@ -3,6 +3,7 @@
 0 cycles 0 0
 0 cursor 1 0 700 300
 0 buttons 0 1
+0 points 1500
 132 cursor 1 0 798 598
 132 screen 700,300,800,600
 170 view 12 13 0

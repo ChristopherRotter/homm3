@@ -1935,9 +1935,9 @@ town records) and its captures (below). *Provisional* where marked.
     `adventure_key_down` other than the directions, 0x409318, and two more callers), the lists'
     arrows (`hero_list_scroll` 0x403220, `town_list_scroll` 0x403280: T6's clicks), the full
     update and the turn's start, a boat boarded or left (0x4A10A8, 0x49E6E0: the slot after the
-    points set to 0), a spell (`adventure_spell_cast` 0x41D2D5, `hero_relocate_spell` 0x41D8B4, `hero_spend_mana`
-    0x4D931E: the slot after the mana is spent), visits, battles and the hero screen: M4 and
-    later.
+    points set to 0), a spell (`adventure_spell_cast` 0x41D2D5, `hero_relocate_spell` 0x41D8B4,
+    `hero_spend_mana` 0x4D931E: the slot after the mana is spent), visits, battles and the hero
+    screen: M4 and later.
 - **The slot's rectangle** holds the movement bar (610–615) and the portrait's and the frame's
   first 40 columns (617–656); the mana bar (666–671) and their last 8 columns lie outside, drawn
   but not shown until something shows the whole screen. In M3 the slot's hero, portrait and mana

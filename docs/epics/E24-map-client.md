@@ -169,7 +169,9 @@ viewers share.
   recorded with it, every frame exact; the log); T4 cut with the user (2026-10-29): T4a, the
   hero and town lists as stills (**done** 2026-10-29: the slots, the bars, the towns' pictures and
   the selections read and built, three new situations and the 40 exact with them; the log), T4b,
-  the lists over time; T5, the status
+  the lists over time (**done** 2026-10-29: a step's end draws the hero's slot, a lift that
+  centres the view and a walk's end that leaves the hero unable to move both lists; the 13
+  sequences recorded with them, every frame exact; the log); T5, the status
   window, the resource bar and the date; T6, the mouse, the keys during a walk, the sound without
   the focus; T7, M3's closure. A task that grows is cut at a seam agreed with the user.
 - **Exit:** every situation and sequence as recorded on the whole screen (no `panels` mask
@@ -301,6 +303,15 @@ M1's review lists (three reviewers, T6b; the list accepted) and M2's (accepted a
   past the tables' refused by the scene, `Live::at_start` with no points or mana; the situations'
   `points`, `mana`, `built` and `select` (the harness's writes and selection, both lists redrawn
   by it); `masks.toml`'s `stills` (until T4b).
+- **M3 T4b, the lists as last shown** (*provisional*, design §4.5): the timeline's `Draw::kingdom`
+  (`Arc<Kingdom>`, the kingdom as the panels last showed it): a step's end shows the selected
+  hero's points in its slot when the list shows it (the mana bar left as last shown, the slot's
+  rectangle's: MCL-Q14), a lift that centres the view (the list scrolled to the hero,
+  `lists::top_showing`) and a walk's end that leaves the hero unable to move every slot; memory's
+  points from `Start::points` (a recording's `points` lines, `Sequence::points`: M3's walks
+  scripted, the engine's from M4), taken at 0 and at each step's end; the timeline's `points`
+  lines; the live part's kingdom as the panels show it (the harness reads it before writing a
+  sequence's `points`); `masks.toml` one list again; the kingdom's form before T4a no longer read.
 - **M3 T2a, `h3_ui::paint`**: the dialog items' drawers moved into the common crate (an `Assets`
   trait each viewer's batch implements); `h3-view` keeps its copy until the client lane takes
   this one (its inbox); a button takes a player's colours and a DEF from `Shown` by its id.

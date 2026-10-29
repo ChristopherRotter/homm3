@@ -14,6 +14,11 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   load's real time's (`cycles`, `river_cycles`), so a run as recorded keeps a new
   `timelines/<id>-live.toml` and `drawn` then finds its frames `CHANGED`: `drawn --record` after
   every `frames` run that kept one.
+- **A sequence's points are the recording's** (M3 T4b): the viewer takes the selected hero's
+  points at each step's end from the recorded timeline's `points` lines (as its paths from the
+  `arrows` lines), and the kept live part's kingdom is the list as shown before the harness
+  wrote the sequence's `points`: a new or changed walk draws its movement bar right only once
+  its timeline is recorded (`frames`, then `--reuse` with the new timeline in place).
 - **A sequence's options left out are the original's settings** (M2 T3a): the harness writes
   only the options a sequence gives, so one that scrolls without its `scroll_speed` ran at what
   the game held (`walk-follow`'s Ctrl and Down moved one tile, speed 0, in T1b's run) while the

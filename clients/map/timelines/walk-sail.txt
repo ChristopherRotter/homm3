@@ -3,6 +3,7 @@
 0 cycles 0 0
 0 cursor 1 0 700 300
 0 buttons 0 0
+0 points 1500
 100 buttons 1 0
 100 arrows 14,7,0,1 13,8,0,11 12,9,0,11 11,10,0,11 10,11,0,11
 100 screen 64,108,709,313
@@ -19,6 +20,7 @@
 400 walk 6 3 0 0
 400 screen 8,8,600,552
 450 view 2 2 0
+450 points 1359
 450 hero 11 10 0 1
 450 walk 6 4 22 -22
 450 arrows 14,7,0,1 13,8,0,11 12,9,0,11
@@ -29,6 +31,7 @@
 550 screen 8,8,600,552
 600 view 3 1 0
 600 cycles 3 3
+600 points 1218
 600 hero 12 9 0 1
 600 walk 6 7 22 -22
 600 arrows 14,7,0,1 13,8,0,11
@@ -38,6 +41,7 @@
 700 walk 6 1 0 0
 700 screen 8,8,600,552
 750 view 4 0 0
+750 points 1077
 750 hero 13 8 0 1
 750 walk 6 2 22 -22
 750 arrows 14,7,0,1
@@ -48,6 +52,7 @@
 850 walk 6 4 0 0
 850 screen 8,8,600,552
 900 view 5 -1 0
+900 points 936
 900 hero 14 7 0 1
 900 walk 6 5 22 -22
 900 arrows
@@ -59,6 +64,7 @@
 1000 screen 8,9,600,552
 1050 objects 3
 1050 buttons 0 0
+1050 points 795
 1050 walk 1 0 0 0
 1050 screen 280,26,726,318
 1200 cycles 6 6

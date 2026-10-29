@@ -1559,3 +1559,30 @@ the user's repo folder first; the baseline check passed (`verify-once`, clients 
   same within noise, a frame made in a median 0.5–0.6 ms on `walk-1` (both), 1.1–1.2 and 1.1 on
   `path-objects`, 1.6 and 1.4–1.5 on *Tale of two lands*; uploads the same (25.6–25.7, 5.2,
   11.2 %). This sandbox is slower than T3b's (its 0.2, 0.7, 0.9 ms).
+
+### M3 T4b — the hero and town lists over time (2026-10-29)
+
+On `map-client/e24-m3-t4b`, the user present (T4b kept whole, the seam between the viewer and
+the recording named in case it grew); `master` at 86f164b (#570 merged; CI green on it). The
+original data staged from the user's repo folder first; the baseline check passed
+(`verify-once`, clients code cc440c1).
+
+- **The reading** (design §4.5, "When they are drawn again"; map entries `hero_list_update`,
+  `town_list_update` (read in full), `hero_list_slot`, `hero_select` amended, `hero_relocate_spell`
+  0x41D360 inferred): every call of the slot is (−1, 1, 1), the selected hero's slot drawn and
+  its rectangle (609, 212 + 32 i, 48 × 32) shown, the mana bar left out (MCL-Q14); both updates
+  with their redraw draw every item of the dialog. M3's sequences meet three: each step's end
+  (the slot, after the step's points are taken at 0x48118C), a lift that centres the view
+  (`hero_select` with c: both lists, the hero list scrolled to the hero, shown with the whole
+  screen) and a walk's end that leaves the hero unable to move (0x4081B9: both, the whole
+  screen). The town's item left at frame 1 changes nothing on screen (every redraw puts the mark
+  over the picture and mark there; every town list update sets the frames again first).
+- **Built** (design §4.5, "Built"): the timeline's `Draw::kingdom` (the lists as last shown), the
+  loop's memory points from `Start::points` (the recording's `points` lines,
+  `Sequence::points`), the redraws at those three moments (`lists::top_showing` for the lift's
+  scroll), the timeline's `points` lines; `paint`'s scene draws the lists from the draw; the
+  harness's `points` each millisecond (`Mem.points`) and the live part's kingdom read before a
+  sequence's `points` are written (the list as shown at 0: 1 500 points on `seq-walk`'s hero,
+  memory's 2 000 once written, first shown at the lift at 100); `masks.toml` one list (`panels`;
+  T4a's `stills` gone, `h3map.py` and the runbook with it); `Kingdom::read`'s form before T4a
+  gone; a trap (`TRAPS.md`: a sequence's points are the recording's).
