@@ -1,0 +1,28 @@
+# Instruction-count baseline of one `cargo xtask bench-check` workload (valgrind/callgrind, event
+# Ir); the directory names the owning lane (lanes.toml). Counts are deterministic for a given
+# toolchain + target + source and are compared only when both match this file. A change above
+# `threshold_percent` fails verify. Update intentionally with
+# `cargo xtask bench-check --update --workload <name>` and state the reason in the commit message.
+
+toolchain = "rustc 1.97.0 (2d8144b78 2026-07-07)"
+target = "x86_64-unknown-linux-gnu"
+
+[workload]
+description = "5 random-vs-random games of 28 days on the sea map (E08 T75a, increment 8: 4 boardings, 3 landings, Favorable Winds sailed, both events on water, the guarded one's battle on the deck, a hero battle on the shore; 1 532 steps, about 1 714 000 Ir a step, the rewards map's about 862 000: 52 % inside the flyer's and the water walker's layered search over the open sea, `Reach::expand_layered`, the boats' own search 4 %); counts only inside h3_sim::adventure::random_rollout (the agent, the reachable-tiles queries, apply)"
+args = [
+    "adventure",
+    "bench",
+    "--map",
+    "fixtures/maps/e08-sea-36.h3m",
+    "--workload",
+    "play",
+    "--games",
+    "5",
+    "--days",
+    "28",
+    "--seed",
+    "1",
+]
+collect = "*adventure*random_rollout*"
+instructions = 2625483594
+threshold_percent = 2
