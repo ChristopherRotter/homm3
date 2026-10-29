@@ -1,5 +1,7 @@
 # E08 batch E8c — results
 
+> Played by the capture harness on 2026-10-29 (`clients/capture/h3adv.py batch clients/capture/batches/E08-batch-8c.toml`): the same Complete 4.0 `Heroes3.exe` under Wine, without the HD mod; hot seat, difficulty Easy, the starting bonus random, Show Route on; read from the game's memory.
+
 Map file: `E08-batch-8c.h3m`. Fill in the blanks below and keep this file; an agent records the results (`docs/experiments/README.md`).
 
 **Stamp `acfc5755`.** The map's description in the scenario list starts with "Stamp acfc5755.": compare the two before you play. If they differ, the map is not this template's build: do not play it, ask for the map again.
@@ -35,10 +37,10 @@ Map file: `E08-batch-8c.h3m`. Fill in the blanks below and keep this file; an ag
 
 | hero | the far side explored | the Flotsam's word before | the marks (or none) | tile after | movement points before / after | wood, gold before / after | the Flotsam after (word, or gone) |
 |---|---|---|---|---|---|---|---|
-| E8-17a (a Flotsam, from land) |   |   |   |   |   |   |   |
-| E8-17b (a Flotsam, from water) |   |   |   |   |   |   |   |
-| E8-17c (plain water) |   |   |   |   |   |   |   |
-| E8-17d (an empty boat, from land) |   |   |   |   |   |   |   |
-| E8-17e (an empty boat, from water) |   |   |   |   |   |   |   |
+| E8-17a (a Flotsam, from land) | yes | 0x00000000; Flotsam: nothing | none; none | 11,4,0 | 1560; 1560 | 37; 30000; 37; 30000 | 0x00000000; Flotsam: nothing |
+| E8-17b (a Flotsam, from water) | yes | 0x00000000; Flotsam: nothing | none; none | 11,9,0 | 1560; 1560 | 37; 30000; 37; 30000 | 0x00000000; Flotsam: nothing |
+| E8-17c (plain water) | yes | no Flotsam | 12,14 13,14 14,14 15,14; green | 15,14,0 | 1560; 1160 | 37; 30000; 37; 30000 | no Flotsam |
+| E8-17d (an empty boat, from land) | yes | no Flotsam | 12,19 13,19; green | 13,19,0 | 1560; 1360 | 37; 30000; 37; 30000 | no Flotsam |
+| E8-17e (an empty boat, from water) | yes | no Flotsam | 12,24 13,24 14,24 15,24; green | 15,24,0 | 1560; 1160 | 37; 30000; 37; 30000 | no Flotsam |
 
-- anything odd: 
+- anything odd: E8-17a worn at the start (the starting bonus): Angel Wings (shoulders); E8-17b worn at the start: Angel Wings (shoulders); E8-17c worn at the start: Angel Wings (shoulders); E8-17d worn at the start: Angel Wings (shoulders); E8-17e worn at the start: Angel Wings (shoulders); the boats' records at the start (E8-17d's, E8-17e's): tile 12,19,0; in use 1; type 0; facing 2; owner none; captain none; aboard 0; tile 13,24,0; in use 1; type 1; facing 2; owner none; captain none; aboard 0; boats in use at the start: 2; E8-17d's status flags after (hex; bit 18 the boat): 0x0; the boat's record after E8-17d: tile 12,19,0; in use 1; type 0; facing 2; owner none; captain none; aboard 0; boats in use after E8-17d: 2; E8-17e's status flags after (hex; bit 18 the boat): 0x0; the boat's record after E8-17e: tile 13,24,0; in use 1; type 1; facing 2; owner none; captain none; aboard 0; boats in use after E8-17e: 2; the screen at the first step (`dump`, looked at by the agent, T69b): the pockets drawn as the spec writes them, rock around each, the Flotsams on (12, 4) and (13, 9); one run (no random draw decides a path)
