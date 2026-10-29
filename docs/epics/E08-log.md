@@ -8286,8 +8286,9 @@ staged. The user's cut (decision 185): whole, one pull request.
   the loop is the one before boats. Then `reach-xl-144` +0.37 %, `random-play-rewards-36`
   +0.64 %, `random-play-duel-36` +1.99 % (T73a's +1.97 %), `reach-lifted-xl-144` −0.96 %, the
   forks unchanged since T72 (+0.89 % to +1.99 %), `manage-army-12` +0.31 %. `random-play-duel-36`,
-  `fork-xl-144` and `fork-meeting-xl-144` sit at the threshold: T74's change will likely move
-  their baselines.
+  `fork-xl-144` and `fork-meeting-xl-144` sit at the threshold. CI's runner measured
+  `random-play-duel-36` at +2.01 %, the pull request's only failing step; the user accepted it
+  (2026-10-29), and the next session re-baselines it (the lane HANDOFF).
 - **The property** (`reach/tests.rs`, `the_query_and_move_hero_agree`): the map's coast flagged
   (`testing::coasted`, moved from the sea tests with `lying`), the tiles gain an empty boat (`b`),
   sea under Favorable Winds (`f`) and a monster on water (`m`); the hero starts in a boat in a
