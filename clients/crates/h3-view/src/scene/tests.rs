@@ -523,6 +523,8 @@ fn a_moment_draws_each_stack_in_its_pose() {
         bridge: None,
         shake: None,
         shade: BTreeSet::new(),
+        created: BTreeMap::new(),
+        dissolve: None,
     };
     let list = battle_at(&battle_view(), &moment, &keys(), &tables(), &layout).unwrap();
     // E17 M5 T4c2a: the shaded hexes into the background, in hex order, at their boxes' corners.

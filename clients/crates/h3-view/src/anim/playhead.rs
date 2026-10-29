@@ -18,7 +18,7 @@ use alloc::collections::{BTreeMap, BTreeSet};
 use alloc::vec;
 use alloc::vec::Vec;
 
-use super::{Blast, Fidgets, Idle, Pose, Timeline, sees};
+use super::{Blast, Dissolve, Fidgets, Idle, Pose, Timeline, sees};
 use crate::hero::Posing;
 use crate::scene::Moment;
 
@@ -77,6 +77,14 @@ pub struct Playhead {
     /// as the playhead passes that time.
     befores: Sweep,
     bridged: BTreeMap<usize, Box<Moment>>,
+    /// The created stacks by id: the last key of each shown by then (E17 M5 T5a).
+    created: Sweep,
+    made: BTreeMap<u8, usize>,
+    /// The dissolves blending then, and the battle as it stood at each one's start, kept as the
+    /// playhead passes it (E17 M5 T5a).
+    dissolves: Spans,
+    starts: Sweep,
+    dissolved: BTreeMap<usize, Box<Moment>>,
 }
 
 impl Playhead {
@@ -128,6 +136,11 @@ impl Playhead {
             ),
             befores: Sweep::new(timeline.bridges.iter().map(|b| b.from.saturating_sub(1))),
             bridged: BTreeMap::new(),
+            created: Sweep::new(timeline.created.iter().map(|k| k.shown)),
+            made: BTreeMap::new(),
+            dissolves: Spans::new(timeline.dissolves.iter().map(blending)),
+            starts: Sweep::new(timeline.dissolves.iter().map(|d| d.start)),
+            dissolved: BTreeMap::new(),
         };
         head.reach(timeline, 0);
         head
@@ -199,6 +212,12 @@ impl Playhead {
                 timeline.bridges.iter().map(|b| b.from.saturating_sub(1)),
                 at.saturating_sub(1),
             ),
+            self.created
+                .extend(timeline.created.iter().map(|k| k.shown), at),
+            self.dissolves
+                .extend(timeline.dissolves.iter().map(blending), at),
+            self.starts
+                .extend(timeline.dissolves.iter().map(|d| d.start), at),
         ];
         if grown.into_iter().all(|g| g) {
             // No idle step after the old end has run: they go on from the new one.
@@ -211,14 +230,33 @@ impl Playhead {
         }
     }
 
-    /// Moves forward to `t`, keeping the battle as it stands before each drawbridge's redraws on
-    /// the way.
+    /// Moves forward to `t`, keeping the battle as it stands before each drawbridge's redraws and
+    /// at each dissolve's start on the way, in their order.
     fn reach(&mut self, timeline: &Timeline, t: u32) {
-        while let Some(&(before, i)) = self.befores.next_by(t) {
-            self.befores.next += 1;
+        loop {
+            let bridge = self.befores.next_by(t).copied();
+            let start = self.starts.next_by(t).copied();
+            let dissolve = match (bridge, start) {
+                (Some(b), Some(d)) => d.0 < b.0,
+                (None, Some(_)) => true,
+                (_, None) => false,
+            };
+            let Some((before, i)) = (if dissolve { start } else { bridge }) else {
+                break;
+            };
+            let sweep = if dissolve {
+                &mut self.starts
+            } else {
+                &mut self.befores
+            };
+            sweep.next += 1;
             self.advance(timeline, before);
-            let moment = self.moment(timeline);
-            self.bridged.insert(i, Box::new(moment));
+            let moment = Box::new(self.moment(timeline));
+            if dissolve {
+                self.dissolved.insert(i, moment);
+            } else {
+                self.bridged.insert(i, moment);
+            }
         }
         self.advance(timeline, t);
     }
@@ -270,6 +308,9 @@ impl Playhead {
                 latest(slot, i);
             }
         }
+        for i in self.created.to(t) {
+            latest_of(&mut self.made, timeline.created[i].member.stack, i);
+        }
         for i in self.blasts.to(t) {
             latest(&mut self.blast, i);
             self.blasted
@@ -281,6 +322,7 @@ impl Playhead {
         self.beams.to(t);
         self.shakes.to(t);
         self.bridges.to(t);
+        self.dissolves.to(t);
         self.at = t;
     }
 
@@ -354,6 +396,19 @@ impl Playhead {
                 .and_then(|i| self.bridged.get(&i).cloned()),
             shake: self.shakes.open().find_map(|i| timeline.quakes[i].steps(t)),
             shade: BTreeSet::new(),
+            created: self
+                .made
+                .iter()
+                .map(|(&s, &i)| (s, timeline.created[i].stack.clone()))
+                .collect(),
+            dissolve: self.dissolves.open().next().and_then(|i| {
+                let d = &timeline.dissolves[i];
+                Some(Dissolve {
+                    before: self.dissolved.get(&i)?.clone(),
+                    step: d.step_at(t)?,
+                    area: d.area.clone(),
+                })
+            }),
         }
     }
 
@@ -465,6 +520,11 @@ impl Spans {
     fn open(&self) -> impl Iterator<Item = usize> + '_ {
         self.open.iter().copied()
     }
+}
+
+/// A dissolve's blending span (E17 M5 T5a, [`super::DissolveKey::step_at`]).
+fn blending(d: &super::DissolveKey) -> (u32, u64) {
+    (d.start + 1, u64::from(d.end()))
 }
 
 /// `slot` holds the later of its key and the key at `i` in the list.

@@ -255,6 +255,48 @@ impl Screen {
         }
     }
 
+    /// One step of a dissolve (`screen_dissolve` 0x602DC0, E17 M5 T5a; `docs/epics/E17-design.md`
+    /// §7.25): in `rect` (left, top, right, bottom; the last two exclusive, cut to both screens)
+    /// each pixel here, the picture saved before, moves `step` eighths of the way to `from`'s,
+    /// the new picture: per channel `old + ((new - old) × step × 8 192 >> 16)` in 32-bit
+    /// arithmetic (the product wraps, the shift is arithmetic: a step down rounds down), masked
+    /// to the channel. Step 0 leaves the old picture, 8 or more gives the new. Nothing for screens
+    /// of other formats.
+    pub fn dissolve_rect(&mut self, from: &Self, rect: [i64; 4], step: u8) {
+        if from.format != self.format {
+            return;
+        }
+        let Some([left, top, right, bottom]) = self
+            .inside(rect)
+            .and_then(|r| from.inside(r.map(i64::from)))
+        else {
+            return;
+        };
+        // The weight in 1/65 536 (0x602ECB: the step shifted 16 left, then divided by 8).
+        let weight = i32::from(step.min(8)) << 13;
+        let masks = self
+            .format
+            .channel_masks()
+            .map(|m| i32::try_from(m).unwrap_or(0));
+        let w = index(right - left);
+        for y in top..bottom {
+            let (to, at) = (
+                index(y) * index(self.width) + index(left),
+                index(y) * index(from.width) + index(left),
+            );
+            let src = from.pixels.get(at..at + w).unwrap_or_default();
+            let dst = self.pixels.get_mut(to..to + src.len()).unwrap_or_default();
+            for (old, &new) in dst.iter_mut().zip(src) {
+                let (o, n) = (i32::from(*old), i32::from(new));
+                let blended = masks.iter().fold(0, |out, &m| {
+                    let (o, n) = (o & m, n & m);
+                    out | ((((n - o).wrapping_mul(weight)) >> 16) + o) & m
+                });
+                *old = u16::try_from(blended).unwrap_or_default();
+            }
+        }
+    }
+
     /// `rect` cut to the screen, if anything of it is on it.
     fn inside(&self, [left, top, right, bottom]: [i64; 4]) -> Option<[u32; 4]> {
         let side = |v: i64, max: u32| u32::try_from(v.clamp(0, i64::from(max))).unwrap_or(0);
@@ -410,6 +452,41 @@ mod tests {
     #[allow(non_snake_case)]
     fn RGB(r: u8, g: u8, b: u8) -> Rgb {
         Rgb { r, g, b }
+    }
+
+    #[test]
+    fn a_dissolve_moves_each_channel_an_eighth_a_step_rounding_down() {
+        let f = PixelFormat::RGB565;
+        let screen = |pixels: &[u16]| {
+            let mut s = Screen::new(2, 1, f).unwrap();
+            s.pixels_mut().copy_from_slice(pixels);
+            s
+        };
+        // Old white and black, new black and white: red 31 down to 0 and up from 0, and so on.
+        let (old, new) = (screen(&[0xFFFF, 0]), screen(&[0, 0xFFFF]));
+        let at = |step: u8| {
+            let mut s = old.clone();
+            s.dissolve_rect(&new, [0, 0, 2, 1], step);
+            [s.pixels()[0], s.pixels()[1]]
+        };
+        assert_eq!(at(0), [0xFFFF, 0]);
+        // Step 1: 31 − 3.875 rounds down to 27, 63 − 7.875 to 55; up 3.875 to 3, 7.875 to 7.
+        assert_eq!(at(1), [27 << 11 | 55 << 5 | 27, 3 << 11 | 7 << 5 | 3]);
+        // Step 7: red's product wraps in 32 bits (31 × 0x800 × 57 344 > 2³¹); its mask keeps
+        // the channel exact: 31 × 7 / 8 = 27.125 up to 27, down to 3.875 rounding to 3.
+        assert_eq!(at(7), [3 << 11 | 7 << 5 | 3, 27 << 11 | 55 << 5 | 27]);
+        assert_eq!(at(8), [0, 0xFFFF]);
+        assert_eq!(at(9), [0, 0xFFFF]);
+        // Only the rectangle, cut to both screens; another format: nothing.
+        let mut s = old.clone();
+        s.dissolve_rect(&new, [1, 0, 5, 3], 8);
+        assert_eq!(s.pixels(), &[0xFFFF, 0xFFFF]);
+        let mut s = old.clone();
+        s.dissolve_rect(&new, [2, 0, 5, 3], 8);
+        assert_eq!(s.pixels(), old.pixels());
+        let other = Screen::new(2, 1, PixelFormat::RGB555).unwrap();
+        s.dissolve_rect(&other, [0, 0, 2, 1], 8);
+        assert_eq!(s.pixels(), old.pixels());
     }
 
     #[test]

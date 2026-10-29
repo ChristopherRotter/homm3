@@ -124,6 +124,9 @@ fn begins(now: &Timeline, before: &Timeline) -> bool {
             n.from == b.from && (n.until == b.until || b.until == u32::MAX)
         })
         && starts(&now.quakes, &before.quakes)
+        && starts(&now.dissolves, &before.dissolves)
+        && starts(&now.created, &before.created)
+        && starts(&now.notices, &before.notices)
         && now.end >= before.end
 }
 

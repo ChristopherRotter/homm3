@@ -219,9 +219,7 @@ pub fn inputs(
                 };
                 let record: u8 = record.parse().map_err(|e| format!("`{action}`: {e}"))?;
                 let stack = timeline
-                    .members
-                    .iter()
-                    .find(|m| m.side == side && m.record == record)
+                    .member_at(side, record)
                     .map(|m| m.stack)
                     .ok_or_else(|| format!("`{action}`: no such stack"))?;
                 if opening.take() == Some(stack) && turns == 0 {

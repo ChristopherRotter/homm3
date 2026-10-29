@@ -6,7 +6,10 @@
 
 use h3_assets::fnt::Font;
 use h3_formats::lod::LodArchive;
-use h3_protocol::wire::{Event, ServerMessage};
+use std::cell::RefCell;
+use std::collections::BTreeMap;
+
+use h3_protocol::wire::{Event, ServerMessage, Side};
 use h3_render::Bugs;
 use h3_ui::text::pack::Pack;
 use h3_ui::text::{Catalogue, encode_1252};
@@ -67,12 +70,19 @@ pub fn texts(
     let snapshot = record.first_snapshot()?;
     let keys = &record.header.manifest.keys.creatures;
     let stack = |id: u8| snapshot.stacks.iter().find(|s| s.id == id);
+    // The stacks the battle created, as the log has named them so far (E17 M5 T5a: a reused id
+    // names its latest).
+    let created: RefCell<BTreeMap<u8, (u16, Side)>> = RefCell::new(BTreeMap::new());
     let named = |id: u8| {
-        let s = stack(id)?;
-        let key = keys.get(usize::from(s.creature))?;
+        let made = created.borrow().get(&id).copied();
+        let (creature, war_machine) = match made {
+            Some((creature, _)) => (creature, false),
+            None => stack(id).map(|s| (s.creature, s.war_machine))?,
+        };
+        let key = keys.get(usize::from(creature))?;
         Some(Named {
             creature: format!("creature.{key}"),
-            war_machine: s.war_machine,
+            war_machine,
         })
     };
     // A spell's and a side's hero's keys (E17 M3 T7b-1).
@@ -93,15 +103,30 @@ pub fn texts(
             let k = manifest.factions.get(usize::from(siege.faction))?;
             Some(format!("moat.{k}"))
         }
+        // A creature by its handle (E17 M5 T5a: Summon Elemental's line).
+        battle_log::Name::Creature(handle) => {
+            let k = keys.get(usize::from(handle))?;
+            Some(format!("creature.{k}"))
+        }
     };
-    let word = |logged: &battle_log::Logged| battle_log::word(catalogue, logged, &named, &key);
+    let word = |logged: &battle_log::Logged| {
+        if let battle_log::Logged::Created {
+            stack,
+            creature,
+            side,
+        } = *logged
+        {
+            created.borrow_mut().insert(stack, (creature, side));
+        }
+        battle_log::word(catalogue, logged, &named, &key)
+    };
     let lines = |text: &str| {
         h3_render::text::line_count(font, &encode_1252(text).0, i64::from(width), bugs)
     };
     let human = |id: u8| {
-        stack(id).is_some_and(|s| {
-            snapshot.sides[usize::from(s.controller == h3_protocol::wire::Side::Defender)].human
-        })
+        let made = created.borrow().get(&id).map(|&(_, side)| side);
+        made.or_else(|| stack(id).map(|s| s.controller))
+            .is_some_and(|side| snapshot.sides[usize::from(side == Side::Defender)].human)
     };
     Some(battle_log::texts(logged, &word, &lines, &human))
 }

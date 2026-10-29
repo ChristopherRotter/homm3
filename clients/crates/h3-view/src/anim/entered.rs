@@ -25,7 +25,7 @@ impl Timeline {
         let starts: Vec<(u32, bool)> = self.actions.iter().map(|a| (a.start, a.stands)).collect();
         let mut added: BTreeMap<u8, Vec<Key>> = BTreeMap::new();
         for (n, &(t, stack)) in entered.iter().enumerate() {
-            let Some(member) = self.members.iter().find(|m| m.stack == stack) else {
+            let Some(member) = self.member(stack) else {
                 continue;
             };
             let standing = member.start.group;

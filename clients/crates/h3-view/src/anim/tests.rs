@@ -2644,7 +2644,9 @@ fn the_log_records_what_the_battle_writes_and_when() {
             | Logged::MassDamage { .. }
             | Logged::Armageddon { .. }
             | Logged::AreaDamage { .. }
-            | Logged::Raised { .. } => "spell",
+            | Logged::Raised { .. }
+            | Logged::Summoned { .. }
+            | Logged::Created { .. } => "spell",
             Logged::Drain { .. }
             | Logged::DeathStare { .. }
             | Logged::Thunderbolt { .. }

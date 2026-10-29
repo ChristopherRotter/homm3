@@ -1,7 +1,7 @@
 //! Raised stacks (E17 M3 T7c-3; `docs/epics/E17-design.md` §7.16, player 4): `raise_stack`
 //! 0x5A7560 brings creatures back to a stack, a dead one up from the corpses, for Resurrection
 //! and Animate Dead (`cast_spell` 0x5A1907), Sacrifice's target (0x5A1A49), an Archangel's raise
-//! (`creature_cast_action` 0x4485BE) and a Phoenix's rebirth (0x4695AD); and Teleport's move.
+//! (`creature_cast_action` 0x4485BE) and a Phoenix's rebirth (0x4695AD).
 
 use alloc::vec;
 
@@ -167,16 +167,5 @@ impl Player<'_> {
             self.cue(stack, Sound::Spell(spell), false);
         }
         self.raise(stack, creatures, RAISE);
-    }
-
-    /// Teleport moves `stack` to `to` (E17 M3 T7c-3, *provisional*: the handler's dissolve of the
-    /// battlefield, 0x5A1B6C, is not read): it stands there from the next frame drawn.
-    pub(super) fn teleported(&mut self, stack: u8, to: u8) {
-        let Some(live) = self.stacks.get_mut(&stack) else {
-            return;
-        };
-        live.hex = to;
-        let live = live.clone();
-        self.pending.push((stack, self.standing(&live, to)));
     }
 }

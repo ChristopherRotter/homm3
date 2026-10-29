@@ -170,6 +170,10 @@ impl Ground {
         let magic = motion::magic(&record, &tables, &parsed, every)?;
         let siege = motion::siege(&record, &tables, &parsed)?;
         let casts = motion::casts(&record, &tables, &parsed, &source.packs, every)?;
+        // A battle fought as it is played may create any creature a spell or a raiser makes.
+        let mut looks = looks;
+        let made: Vec<u16> = casts.bodies.keys().copied().collect();
+        motion::add_looks(&record, &tables, &parsed, &made, &mut looks)?;
         // The viewer's own fidgets and the heroes' reactions, from the battle's seed.
         let seed = u32::try_from(source.seed & u64::from(u32::MAX)).unwrap_or(1);
         let heroes = motion::heroes(&record, &tables, &parsed, Some(seed))?;

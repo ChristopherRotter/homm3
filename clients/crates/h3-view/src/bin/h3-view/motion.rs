@@ -6,13 +6,13 @@
 use std::collections::BTreeMap;
 use std::path::Path;
 
-use h3_content::CreatureTypeId;
+use h3_content::{CreatureFlag, CreatureTypeId};
 use h3_content_battle::Ability;
 use h3_formats::lod::LodArchive;
 use h3_protocol::wire::{Event, ServerMessage, Side};
 use h3_render::Bugs;
 use h3_view::anim::{
-    ACID, ACID_BREATH, BAD_MORALE, BOLT, Burst, CHAIN_LIGHTNING, CHAIN_START, Caster, Casts,
+    ACID, ACID_BREATH, BAD_MORALE, BOLT, Body, Burst, CHAIN_LIGHTNING, CHAIN_START, Caster, Casts,
     DEATH_STARE, DEATH_STARE_SPELL, Explosion, FEAR, FIRE_SHIELD, GOOD_LUCK, GOOD_MORALE, HEAL,
     LAND_MINE, LIFE_DRAIN, LIGHTNING_BOLT, Look, MINE_BLAST, MagicLook, Missile, ObjectLook, RAISE,
     RESISTED, RESURRECTION, SACRIFICED, SHIELD_RETURN, Shell, SiegeStage, SpellLook, Stage,
@@ -63,7 +63,44 @@ pub fn looks(
             look(record, tables, archives, (entry, missile))?,
         );
     }
+    // The creatures the battle creates (E17 M5 T5a): a summoned stack's, a Pit Lord's Demons.
+    let made: Vec<u16> = events(record)
+        .filter_map(|e| match *e {
+            Event::StackCreated { creature, .. } | Event::RoseFromCorpse { creature, .. } => {
+                Some(creature)
+            }
+            _ => None,
+        })
+        .collect();
+    add_looks(record, tables, archives, &made, &mut looks)?;
     Ok(looks)
+}
+
+/// The looks of the creatures `made` that `looks` lacks, added (E17 M5 T5a: created stacks; a
+/// battle fought as it is played adds every creature it may create, [`casts`]' bodies).
+pub fn add_looks(
+    record: &Record,
+    tables: &Tables,
+    archives: &[(&str, LodArchive<'_>)],
+    made: &[u16],
+    looks: &mut BTreeMap<u16, Look>,
+) -> Result<(), String> {
+    let keys = &record.header.manifest.keys.creatures;
+    for &creature in made {
+        if looks.contains_key(&creature) {
+            continue;
+        }
+        let key = keys
+            .get(usize::from(creature))
+            .ok_or_else(|| format!("no creature handle {creature}"))?;
+        let entry = tables
+            .creatures
+            .get(key)
+            .ok_or_else(|| format!("the asset tables have no entry for `{key}`"))?;
+        let missile = entry.missile.clone();
+        looks.insert(creature, look(record, tables, archives, (entry, missile))?);
+    }
+    Ok(())
 }
 
 /// The creature the town's turrets show (its shooter by its original id): their look and their
@@ -421,6 +458,8 @@ pub fn casts(
         .first_snapshot()
         .ok_or("the record holds no snapshot")?;
     let (mut cast, mut frightened, mut reflected) = (every, every, every);
+    // The creatures the battle creates (E17 M5 T5a): their bodies from the ruleset.
+    let mut made: Vec<u16> = Vec::new();
     let mut spells: Vec<u16> = snapshot
         .stacks
         .iter()
@@ -461,6 +500,9 @@ pub fn casts(
                 spells.extend(numbered(RESURRECTION));
             }
             Event::DeathStared { .. } => spells.extend(numbered(DEATH_STARE_SPELL)),
+            Event::StackCreated { creature, .. } | Event::RoseFromCorpse { creature, .. } => {
+                made.push(creature);
+            }
             Event::StrikeDamage { .. } => spells.extend(numbered(ACID_BREATH)),
             _ => {}
         }
@@ -472,7 +514,7 @@ pub fn casts(
     spells.sort_unstable();
     spells.dedup();
     let manifest = &record.header.manifest;
-    let ruleset = if cast || frightened || reflected {
+    let ruleset = if cast || frightened || reflected || !made.is_empty() {
         Some(crate::scenario::ruleset(packs, manifest)?)
     } else {
         None
@@ -502,6 +544,38 @@ pub fn casts(
                 })
             })
             .collect();
+    }
+    // Every creature a spell summons or a corpse raiser raises, for a battle fought as it is played.
+    if let Some(r) = ruleset.as_ref().filter(|_| every) {
+        made.extend(
+            r.spells()
+                .iter()
+                .filter_map(|s| s.summons.map(CreatureTypeId::raw)),
+        );
+        let count = u16::try_from(manifest.keys.creatures.len()).unwrap_or(u16::MAX);
+        for c in 0..count {
+            for a in r.abilities(CreatureTypeId::from_raw(c)) {
+                if let Ability::CorpseRaiser { creature, .. } = a {
+                    made.push(creature.raw());
+                }
+            }
+        }
+    }
+    if let Some(r) = ruleset.as_ref() {
+        for &c in &made {
+            let Some(creature) = r.creature(CreatureTypeId::from_raw(c)) else {
+                continue;
+            };
+            let has = |flag| creature.flags.contains(flag);
+            casts.bodies.insert(
+                c,
+                Body {
+                    two_hex: has(CreatureFlag::TwoHex),
+                    flies: has(CreatureFlag::Flying),
+                    shooter: has(CreatureFlag::Shooter),
+                },
+            );
+        }
     }
     let viewer = usize::from(snapshot.viewer == Side::Defender);
     for spell in spells {

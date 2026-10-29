@@ -162,8 +162,30 @@ pub enum Logged {
         /// Its number.
         count: u32,
     },
+    /// A stack the battle created (E17 M5 T5a): from here on its id names `creature`, of `side`
+    /// (a killed created stack's id may be reused). No line.
+    Created {
+        /// The stack.
+        stack: u8,
+        /// Its creature's handle.
+        creature: u16,
+        /// Its side.
+        side: h3_protocol::wire::Side,
+    },
+    /// Summon Elemental's line (`summon_elemental` 0x5A72A1, GENRLTXT 676; E17 M5 T5a): the
+    /// side's hero summons the creatures, named by their number; written whether a stack is
+    /// made or not (CLT-Q33).
+    Summoned {
+        /// The caster's side (0 the attacker).
+        side: u8,
+        /// The creature's handle.
+        creature: u16,
+        /// The creatures.
+        count: u32,
+    },
     /// Creatures raised in a stack (`raise_stack` 0x5A772F, GENRLTXT 117 and 118 by their
-    /// number; E17 M3 T7c-3): before the raise's animation.
+    /// number; E17 M3 T7c-3; a Pit Lord's Demons, `pit_lord_raise_demons` 0x5A7527, E17 M5
+    /// T5a): before the raise's animation.
     Raised {
         /// The stack.
         stack: u8,
@@ -288,6 +310,8 @@ pub enum Name {
     Hero(u8),
     /// The battle's town's moat (E17 M4 T2c-1).
     Moat,
+    /// A creature by its handle: its key (E17 M5 T5a).
+    Creature(u16),
 }
 
 /// The line `logged` writes (none for what writes none, or a stack `stack` or a spell or hero
@@ -305,7 +329,26 @@ pub fn word(
         | Logged::Turn(_)
         | Logged::Status { .. }
         | Logged::Scroll(_)
-        | Logged::Unmark => None,
+        | Logged::Unmark
+        | Logged::Created { .. } => None,
+        Logged::Summoned {
+            side,
+            creature,
+            count,
+        } => {
+            let hero = catalogue.text(&key(Name::Hero(*side))?, &Args::new());
+            let creature = key(Name::Creature(*creature))?;
+            let args = Args::new().text("hero", &hero);
+            Some(by_count(
+                catalogue,
+                "battle.log.summoned",
+                Stack {
+                    creature: &creature,
+                    count: *count,
+                },
+                args,
+            ))
+        }
         Logged::Strike {
             attacker,
             count,
