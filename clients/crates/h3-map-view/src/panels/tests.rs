@@ -29,6 +29,7 @@ fn live(kingdom: Kingdom, path: Vec<Arrow>) -> Live {
         walking: Walking::default(),
         kingdom,
         buttons: None,
+        minimap: None,
     }
 }
 

@@ -163,7 +163,9 @@ viewers share.
   frame redrawing only what changed (kept whole by the user; **done** 2026-10-28: the drawers'
   spans, the view's cells, the changed rectangles widened and uploaded; the log); T3 cut with the
   user (2026-10-29): T3a, the minimap as a still (**done** 2026-10-29: `minimap_draw` 0x412C40
-  read and built, the 40 situations exact with it; the log), T3b, the minimap over time; T4, the
+  read and built, the 40 situations exact with it; the log), T3b, the minimap over time (**done**
+  2026-10-29: a scroll, a centring lift and each step's end draw it again; the 13 sequences
+  recorded with it, every frame exact; the log); T4, the
   hero and town lists; T5, the status
   window, the resource bar and the date; T6, the mouse, the keys during a walk, the sound without
   the focus; T7, M3's closure. A task that grows is cut at a seam agreed with the user.
@@ -279,6 +281,12 @@ M1's review lists (three reviewers, T6b; the list accepted) and M2's (accepted a
   staying put through a view's move; the owned object without an entrance on the map coloured
   as MCL-Q4's answer gives its flags (its owner; the original's terrain colour under `--bugs
   original`); `masks.toml`'s `stills` (until T3b).
+- **M3 T3b, the minimap's last draw** (*provisional*, design §4.4): the timeline's `Minimap` (the
+  view's corner and the selected hero's tile at its last draw: a scroll that moves the view, a
+  lift that centres it) in each `Draw`; the live part's `minimap` (`minimap::Shown`, the hero by
+  its index), none in a still; the level's colours made once with the index, its explored tiles
+  in them (the index built again when they change, as for the objects), shared by `Arc` with the
+  heroes over them (`Tiles::colours`, `heroes`, `shown`); `masks.toml` one list again (`panels`).
 - **M3 T2a, `h3_ui::paint`**: the dialog items' drawers moved into the common crate (an `Assets`
   trait each viewer's batch implements); `h3-view` keeps its copy until the client lane takes
   this one (its inbox); a button takes a player's colours and a DEF from `Shown` by its id.

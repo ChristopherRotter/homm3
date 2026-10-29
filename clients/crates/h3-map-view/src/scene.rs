@@ -458,10 +458,12 @@ pub fn scene_in(
             y: gem.at[1],
         });
     }
-    // The minimap after the view (`adventure_full_update` 0x41753A, design §4.4).
+    // The minimap after the view (`adventure_full_update` 0x41753A, design §4.4), as it was last
+    // drawn (T3b).
     if let Some(base) = &index.minimap {
-        draws.push(Draw::Minimap(base.tiles(live, tables)));
-        draws.push(base.radar(at));
+        let (view, hero) = live.minimap.map_or((at, None), |m| (m.view, m.hero));
+        draws.push(Draw::Minimap(base.tiles(live, tables, hero)));
+        draws.push(base.radar(view));
     }
     let moment = live.moment;
     let cycles = [

@@ -83,6 +83,7 @@ fn live(objects: usize) -> Live {
         walking: crate::live::Walking::default(),
         kingdom: crate::live::Kingdom::default(),
         buttons: None,
+        minimap: None,
     }
 }
 

@@ -1006,6 +1006,7 @@ impl<'s, 'k> Pen<'s, 'k> {
         let mut terrains: BTreeMap<u8, [u16; 2]> = BTreeMap::new();
         let mut owners: BTreeMap<u8, u16> = BTreeMap::new();
         let (columns, rows) = (tiles.columns(), tiles.rows());
+        let colours = tiles.shown();
         let side = look.side;
         for (y, &[top, bottom]) in rows.iter().enumerate() {
             if bottom <= clip[1] || top >= clip[3] {
@@ -1015,7 +1016,7 @@ impl<'s, 'k> Pen<'s, 'k> {
                 let Some(rect) = meet([left, top, right, bottom], clip) else {
                     continue;
                 };
-                let colour = match tiles.colours.get(y * side + x) {
+                let colour = match colours.get(y * side + x) {
                     Some(Colour::Open(code)) => self.terrain(&mut terrains, look, *code)?[0],
                     Some(Colour::Blocked(code)) => self.terrain(&mut terrains, look, *code)?[1],
                     Some(&Colour::Owner(entry)) => {

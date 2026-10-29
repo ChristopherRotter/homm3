@@ -25,6 +25,7 @@ use h3_map_view::compose::{self, ComposeError, Composer, FORMAT};
 use h3_map_view::damage::History;
 use h3_map_view::layout::{AdventureLayout, CursorArt};
 use h3_map_view::live::{Buttons, Facing, Lifted, Live, Moment, Walking};
+use h3_map_view::minimap::Shown;
 use h3_map_view::objects::{self, DrawLists, Shapes};
 use h3_map_view::scene::{self, Scene, TileIndex, ViewAt};
 use h3_map_view::sequence::{self, DEFAULT_HERO_SPEED, DEFAULT_SCROLL_SPEED, Sequence};
@@ -444,6 +445,11 @@ impl<'a> Painter<'a> {
         if let Some(index) = self.selected {
             self.walk(index, draw);
         }
+        // The minimap as last drawn (E24 M3 T3b): its box's corner and the selected hero's tile.
+        self.live.minimap = Some(Shown {
+            view: draw.minimap.view,
+            hero: self.selected.zip(draw.minimap.hero),
+        });
         self.live.buttons = Some(buttons);
         let assets = self.assets;
         let z = draw.view.z;

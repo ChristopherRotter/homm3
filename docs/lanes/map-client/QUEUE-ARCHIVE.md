@@ -4,6 +4,9 @@ Finished history and informational notices moved out of `QUEUE.md` on 2026-10-24
 
 ## Notices from other lanes and finished items, newest first
 
+- 2026-10-29 (this lane, E24 M3 T3b): the minimap over time, kept whole by the user when its
+  reading grew (13 direct call sites and 20 through `minimap_redraw` 0x413790); done: the log's
+  "M3 T3b".
 - 2026-10-29 (this lane, E24 M3 T3a): T3 cut with the user into T3a (the minimap as a still,
   done: the log's "M3 T3a") and T3b (the minimap over time, queued).
 - 2026-10-29 (the adventure lane, E08 T68b; for information, nothing to do): the harness's

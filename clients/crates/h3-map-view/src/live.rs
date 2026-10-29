@@ -15,6 +15,7 @@ use h3_map::RawMap;
 use h3_map::model::{Body, Buildings, Pos};
 
 use crate::art::{CELLS, MapArt, TemplateArt};
+use crate::minimap::Shown;
 use crate::tables::{self, TownArt};
 
 /// The live part.
@@ -45,6 +46,10 @@ pub struct Live {
     /// changes them at its own moments, `h3_map_view::timeline`); none: as the kingdom and the
     /// path give them ([`Buttons::of`]).
     pub buttons: Option<Buttons>,
+    /// The minimap as a timeline last drew it (E24 M3 T3b, design §4.4: a scroll, a hero's
+    /// selection and each step's end draw it again, a step's frames do not); none: at the view
+    /// and with the heroes where they stand (a still).
+    pub minimap: Option<Shown>,
 }
 
 /// What the adventure screen's panels show of the viewing player's kingdom (E24 M3 T2a, design
@@ -526,6 +531,7 @@ impl Live {
             walking: Walking::default(),
             kingdom,
             buttons: None,
+            minimap: None,
         }
     }
 }

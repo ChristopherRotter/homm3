@@ -156,8 +156,8 @@ fn a_tiles_colour_by_its_terrain_its_object_and_the_live_part() {
     let lists = DrawLists::build(&art, &live, &shapes, 0).unwrap();
     let (t, l) = (tables(), layout());
     let base = Base::build(&art, &live, &t, &l, &lists, 0, Bugs::Fixed).unwrap();
-    let tiles = base.tiles(&live, &t);
-    let at = |tiles: &Tiles, x: usize, y: usize| tiles.colours[y * 8 + x];
+    let tiles = base.tiles(&live, &t, None);
+    let at = |tiles: &Tiles, x: usize, y: usize| tiles.shown()[y * 8 + x];
     assert_eq!(at(&tiles, 2, 1), Colour::Owner(66));
     assert_eq!(at(&tiles, 1, 1), Colour::Owner(66));
     assert_eq!(at(&tiles, 3, 1), Colour::Owner(63));
@@ -169,25 +169,47 @@ fn a_tiles_colour_by_its_terrain_its_object_and_the_live_part() {
     // The town without an entrance on the map: its owner's colour, the terrain's in the original.
     assert_eq!(at(&tiles, 0, 2), Colour::Owner(65));
     let original = Base::build(&art, &live, &t, &l, &lists, 0, Bugs::Original).unwrap();
-    assert_eq!(at(&original.tiles(&live, &t), 0, 2), Colour::Open(2));
-    // Unexplored tiles black, heroes in their owners' colours on explored tiles of the level.
+    assert_eq!(at(&original.tiles(&live, &t, None), 0, 2), Colour::Open(2));
+    // Unexplored tiles black (the level's colours made with them, T3b), heroes in their owners'
+    // colours on explored tiles of the level.
     live.explored.set(4, 1, 0, false);
     live.explored.set(5, 5, 0, false);
     live.heroes = vec![hero(4, 4, 0, 3), hero(5, 5, 0, 3), hero(6, 6, 1, 3)];
-    let tiles = base.tiles(&live, &t);
+    let unexplored = Base::build(&art, &live, &t, &l, &lists, 0, Bugs::Fixed).unwrap();
+    let tiles = unexplored.tiles(&live, &t, None);
     assert_eq!(at(&tiles, 4, 1), Colour::Black);
     assert_eq!(at(&tiles, 4, 4), Colour::Owner(67));
     assert_eq!(at(&tiles, 5, 5), Colour::Black);
     assert_eq!(at(&tiles, 6, 6), Colour::Open(2));
+    assert_eq!(tiles.heroes, [(36, Colour::Owner(67))]);
+    // The level's colours shared, not copied, from scene to scene.
+    assert!(Arc::ptr_eq(
+        &tiles.colours,
+        &unexplored.tiles(&live, &t, None).colours
+    ));
+    // The selected hero (0) where the minimap last drew it (T3b): (2, 3), its tile now its
+    // terrain's; one off the map's side or row draws none.
+    let drawn_at = |x: u8, y: u8| unexplored.tiles(&live, &t, Some((0, Pos { x, y, z: 0 })));
+    let moved = drawn_at(2, 3);
+    assert_eq!(at(&moved, 2, 3), Colour::Owner(67));
+    assert_eq!(at(&moved, 4, 4), unexplored.colours[36]);
+    assert_eq!(drawn_at(8, 0).heroes, []);
+    assert_eq!(drawn_at(0, 8).heroes, []);
     // What they draw: the grass's and the water's DEFs, the flag palette.
     let (defs, owner) = tiles.drawn();
     assert_eq!((defs, owner), (vec!["grastl.def", "watrtl.def"], true));
-    let dirt = Tiles {
-        look: Arc::clone(&tiles.look),
-        colours: vec![Colour::Black, Colour::Blocked(0)],
-    };
+    let dirt = Tiles::new(
+        Arc::clone(&tiles.look),
+        vec![Colour::Black, Colour::Blocked(0)],
+    );
     let (defs, owner) = dirt.drawn();
     assert_eq!((defs, owner), (vec!["dirttl.def"], false));
+    // A hero's place past the tiles (none is made so) draws nothing.
+    let past = Tiles {
+        heroes: vec![(2, Colour::Owner(0))],
+        ..dirt.clone()
+    };
+    assert_eq!(past.shown(), dirt.shown());
     // An 8-tile map is no size of the tables': no tile drawn; the box frame 1 at 1.0.
     assert_eq!((tiles.columns(), tiles.rows()), (vec![], vec![]));
     assert_eq!(
@@ -240,10 +262,7 @@ fn each_size_lays_its_tiles_and_scales_its_box() {
             entries: [8, 9],
         })
     };
-    let tiles = |side: usize| Tiles {
-        look: look(side),
-        colours: vec![],
-    };
+    let tiles = |side: usize| Tiles::new(look(side), vec![]);
     let first = |spans: Vec<[i32; 2]>| spans.into_iter().take(4).collect::<Vec<_>>();
     assert_eq!(
         first(tiles(36).columns()),
@@ -270,7 +289,7 @@ fn each_size_lays_its_tiles_and_scales_its_box() {
             look: look(side),
             radar: ("radar.def".to_string(), radar),
             z: 0,
-            colours: vec![],
+            colours: Arc::new(vec![]),
         };
         base.radar(ViewAt { x, y, z: 0 })
     };
@@ -285,4 +304,41 @@ fn each_size_lays_its_tiles_and_scales_its_box() {
     assert_eq!(radar(72, 5, 3), want(3, [640, 32], [0, 0]));
     assert_eq!(radar(108, 3, 100), want(2, [633, 159], [0, 0]));
     assert_eq!(radar(144, 134, -1), want(1, [764, 26], [0, 1]));
+}
+
+#[test]
+fn a_scene_draws_the_minimap_as_last_drawn() {
+    // E24 M3 T3b: the box at the corner the minimap was last drawn at, the selected hero on the
+    // tile it stood on then; a still (none) at the scene's view, the hero where it stands.
+    let (art, mut live, mut shapes) = map_with(&[], &[]);
+    live.heroes = vec![hero(4, 4, 0, 3)];
+    let (t, l) = (tables(), layout());
+    for (def, _) in t.map.heroes.defs() {
+        shapes.insert_frames(&def, 1);
+    }
+    let index = TileIndex::build(&art, &live, &t, &l, &shapes, 0, Bugs::Fixed).unwrap();
+    let minimap = |live: &Live| {
+        let view = ViewAt { x: 0, y: 0, z: 0 };
+        let scene = scene_in(&index, &art, live, &t, &l, &shapes, view, Bugs::Fixed).unwrap();
+        let n = scene.draws.len();
+        (scene.draws[n - 2].clone(), scene.draws[n - 1].clone())
+    };
+    let (Draw::Minimap(still), Draw::Radar { at, cut, .. }) = minimap(&live) else {
+        panic!("no minimap");
+    };
+    assert_eq!(
+        (still.heroes, at, cut),
+        (vec![(36, Colour::Owner(67))], [630, 26], [0, 0])
+    );
+    live.minimap = Some(Shown {
+        view: ViewAt { x: 3, y: -2, z: 0 },
+        hero: Some((0, Pos { x: 2, y: 3, z: 0 })),
+    });
+    let (Draw::Minimap(shown), Draw::Radar { at, cut, .. }) = minimap(&live) else {
+        panic!("no minimap");
+    };
+    assert_eq!(
+        (shown.heroes, at, cut),
+        (vec![(26, Colour::Owner(67))], [633, 26], [0, 2])
+    );
 }

@@ -11,17 +11,17 @@
 180 objects 1
 200 cycles 1 1
 240 view 15 16 0
-240 screen 8,8,600,552
+240 screen 8,8,766,552
 310 view 18 19 0
-310 screen 8,8,600,552
+310 screen 8,8,774,552
 360 objects 2
 380 view 21 22 0
-380 screen 8,8,600,552
+380 screen 8,8,774,552
 400 cycles 2 2
 450 view 24 25 0
-450 screen 8,8,600,552
+450 screen 8,8,774,552
 520 view 26 27 0
-520 screen 8,8,600,552
+520 screen 8,8,774,552
 540 objects 3
 590 cursor 1 0 798 598
 590 screen 790,585,800,600
@@ -33,38 +33,38 @@
 825 screen 0,0,800,600
 870 view 23 24 0
 870 cursor 1 39 0 0
-870 screen 0,0,600,552
+870 screen 0,0,774,552
 900 objects 5
 940 view 20 21 0
-940 screen 8,8,600,552
+940 screen 8,8,774,552
 1000 cycles 5 5
 1010 view 17 18 0
-1010 screen 8,8,600,552
+1010 screen 8,8,774,552
 1080 view 14 15 0
 1080 objects 6
-1080 screen 8,8,600,552
+1080 screen 8,8,774,552
 1150 view 11 12 0
-1150 screen 8,8,600,552
+1150 screen 8,8,762,552
 1200 cycles 6 6
 1220 view 8 9 0
-1220 screen 8,8,600,552
+1220 screen 8,8,750,552
 1260 objects 7
 1290 view 5 6 0
-1290 screen 8,8,600,552
+1290 screen 8,8,738,552
 1360 view 2 3 0
-1360 screen 8,8,600,552
+1360 screen 8,8,726,552
 1400 cycles 7 7
 1430 view -1 0 0
-1430 screen 8,8,600,552
+1430 screen 8,8,714,552
 1440 objects 8
 1500 view -4 -3 0
-1500 screen 9,8,600,552
+1500 screen 9,8,702,552
 1570 view -7 -6 0
-1570 screen 8,8,600,552
+1570 screen 8,8,690,552
 1600 cycles 8 8
 1620 objects 9
 1640 view -9 -8 0
-1640 screen 8,8,600,552
+1640 screen 8,8,678,552
 1710 cursor 1 0 0 0
 1710 screen 0,0,18,18
 1800 objects 10
@@ -76,12 +76,12 @@
 1920 screen 8,0,800,552
 1980 objects 11
 1990 view -3 -8 0
-1990 screen 8,8,600,552
+1990 screen 8,8,694,552
 2000 cycles 10 10
 2060 view 0 -8 0
-2060 screen 8,8,600,552
+2060 screen 8,8,706,552
 2130 view 3 -8 0
-2130 screen 8,8,600,552
+2130 screen 8,8,718,552
 2160 objects 12
 2200 view 6 -8 0
 2200 cycles 11 11
