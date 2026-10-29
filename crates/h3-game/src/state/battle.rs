@@ -450,7 +450,8 @@ impl GameState {
     /// as its end, one context after the other: in the adventure (GAM-BAT-002, GAM-BAT-003) a hero
     /// whose side won and has army survivors keeps them as its army (a damaged top creature
     /// forgotten), every other hero — lost, retreated, surrendered, in a draw, or left with stacks
-    /// created in the battle only (BAT-END-001) — leaves the map; then the heroes' part
+    /// created in the battle only (BAT-END-001) — leaves the map, a hero in a boat with its boat
+    /// (ADV-SEA-006, E08 T74b); then the heroes' part
     /// ([`Self::heroes_after_battle`], E08 T19a2a, T19a2b); then every hero of the battle, winner
     /// and loser, loses its battle bonuses and their once-marks (GAM-BAT-014, E08 T63b:
     /// `HeroChange::ClearBonuses`, told to its owner when it had any; the original's

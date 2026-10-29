@@ -236,7 +236,7 @@ in `check_step` and the walking search):
   leaves the tile's view, the hero steps onto it), `Landed { hero, boat, at, facing }` (the boat
   left on `at`, the water tile; T73a: seen by the viewers of `at` only, the landing tile told by
   the step's own `HeroStepped`, so no viewer learns a tile it does not see; `boat` the type, never
-  the index), `BoatRemoved { boat, at }` beside `HeroRemoved`, `MessageRead { hero, object }`
+  the index), `BoatRemoved { hero, boat, at }` right after `HeroRemoved` (T74b: the same viewers), `MessageRead { hero, object }`
   (the visitor's owner only). A hero's points after a conversion are its owner's
   (`OwnHeroView`).
 - **The fog:** unchanged (the scouting radius has no boat term, §4.4); `docs/06-security.md`'s
@@ -257,6 +257,7 @@ in `check_step` and the walking search):
   change.
 - **After the battle:** a hero in a boat that lost, retreated or surrendered, or both after a draw,
   leaves the map with its boat (`gone`, `BoatRemoved` where seen); a winner in a boat stays in it.
+  Built by T74b (`sea_battle_ground`, `remove_boat`; decision 187).
 
 ### 14. The game (`h3-game`)
 
@@ -268,10 +269,11 @@ in `check_step` and the walking search):
 
 ### 15. The env, replays, fixtures, properties, benchmarks
 
-- **The env** (the AI lane's, ADR-0017 point 8): the observation encoding gains the empty boats on
-  explored tiles and each seen hero's in-boat bit (an encoding version bump); the action encoding
-  keeps v5 (a boarding or a landing is a tile). `cross-lane` in T74 with the user's consent
-  (decision 172), as T63a's; the AI lane's inbox told (T66b).
+- **The env** (the AI lane's, ADR-0017 point 8): no change (decision 187, T74b's finding): the
+  adventure env has no flat observation encoding, it returns `GameObservation`, whose views carry
+  the empty boats and each seen hero's boat since T72; the action encoding keeps v5 (a boarding or
+  a landing is a tile). The AI lane's inbox told; T75's random play on the sea map shows the env
+  plays on at sea.
 - **The sea fixture** `fixtures/maps/e08-sea-36.h3m` (written by `h3_map::writer` in
   `tests/sea_map.rs`): two players; boats of the three kinds beside coasts; the four pickups (a
   hero with a full backpack); events on water with and without guards; a monster on water;
@@ -286,7 +288,9 @@ in `check_step` and the walking search):
   accepted at sea; the conversion's bounds (without the Hat 0; with it at most the new maximum);
   no path of a hero not in a boat ends on a water entrance or, for a flyer, crosses one but a
   boat's, a hero's in a boat or class 85's (D-46, confirmed by batch E8c); fixed cases on the sea
-  map.
+  map. T74a for T75: `play.rs`'s `visit_gains` counts a find's gains at its emptying (`emptied`),
+  and a find that leaves is never emptied: its gains come at its removal (`ObjectRemoved`), as a
+  chest's.
 - **Benchmarks:** `reach-sea-xl-144` (a boat's search; a new XL fixture `e08-sea-144.h3m`, mostly
   sea, 15 boats as Myth and Legend's), `random-play-sea-36`, `fork-sea-xl-144`; the ten workloads
   at their baselines (`reach-xl-144` the walker's cold boat test).
@@ -301,7 +305,7 @@ in `check_step` and the walking search):
 | adventure ruleset part v13 | the find's extension, `Message`, `SeaGround`, `Hole`; the sea's parameters | T72 |
 | map import v14 | classes 8, 29, 59, 82, 86, 124, 225; `HeroOnWater` | T72 |
 | adventure state hash v16, game state hash v20 | the boats, a hero's boat and maximum | T72 |
-| env observation encoding (the AI lane's) | the boats, the in-boat bit | T74 (`cross-lane`) |
+| env observation encoding (the AI lane's) | none: no flat encoding exists (decision 187) | T74b: nothing to bump |
 
 Rule ids: survey §12 (ADV-SEA-001 to -007, ADV-PIK-014 to -018, HER-ADV-009 and the amendments).
 Quirks, recorded in `docs/rules/quirks-adventure.md` without flags (decisions 164, 166):

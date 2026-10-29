@@ -459,14 +459,21 @@ fn check_told(
                 seen_by,
             }) => prop_assert_eq!(seen_by, alone),
             // E08 T73: a boarding and a landing, told where the viewer sees heroes on the boat's
-            // tile (the plans place no boats yet: T75 follows the boats here).
+            // tile (the plans place no boats yet: T75 follows the boats here); E08 T74b: a boat
+            // leaving with its hero likewise (ADV-SEA-006).
             GameEvent::Adventure(AdventureEvent {
-                kind: AdventureEventKind::Boarded { .. } | AdventureEventKind::Landed { .. },
+                kind:
+                    AdventureEventKind::Boarded { .. }
+                    | AdventureEventKind::Landed { .. }
+                    | AdventureEventKind::BoatRemoved { .. },
                 seen_by,
             }) => prop_assert_eq!(seen_by, alone),
-            // E08 T62b2: an event's firing, told to its visitor's owner alone (ADV-FOG-007).
+            // E08 T62b2: an event's firing, told to its visitor's owner alone (ADV-FOG-007); E08
+            // T74a: a message read likewise (ADV-PIK-017; the plans place no bottles yet: T75).
             GameEvent::Adventure(AdventureEvent {
-                kind: AdventureEventKind::EventFired { hero, .. },
+                kind:
+                    AdventureEventKind::EventFired { hero, .. }
+                    | AdventureEventKind::MessageRead { hero, .. },
                 seen_by,
             }) => {
                 prop_assert_eq!(seen_by, alone);
