@@ -1950,6 +1950,7 @@ impl<'a> Growing<'a> {
             fields: Vec::new(),
             field_kept: None,
             corpses: BTreeMap::new(),
+            lying: BTreeMap::new(),
             draws: chain::Draws::new(&stage.casts.rays),
             siege: None,
             turret_keys: Vec::new(),
@@ -2557,6 +2558,8 @@ struct Player<'a> {
     field_kept: Option<FieldKey>,
     /// The dead stacks as they fell, by id, which a raise brings back (E17 M3 T7c-3).
     corpses: BTreeMap<u8, Live>,
+    /// Their poses as they lie (E17 M5 T5a: a corpse a Pit Lord's Demons rise from leaves in it).
+    lying: BTreeMap<u8, Pose>,
     /// The draws of Chain Lightning's rays (E17 M3 T7c-3).
     draws: chain::Draws,
     /// A siege's walls in memory (E17 M4 T2b; none: no siege with a fort).
@@ -2750,8 +2753,10 @@ impl Player<'_> {
         self.stacks.get(&stack).cloned()
     }
 
-    /// A dead stack leaves the living for the corpses (a raise may bring it back).
-    fn bury(&mut self, stack: u8) {
+    /// A dead stack leaves the living for the corpses (a raise may bring it back), lying in
+    /// `lying`.
+    fn bury(&mut self, stack: u8, lying: Pose) {
+        self.lying.insert(stack, lying);
         // A death ends every spell with a duration, unreported (the engine's `remove_dead`, the
         // original's 0x444120): Disrupting Ray stays, so a stack raised or reborn comes back
         // without the others' hue and walk (E17 M3 T9b, the reviewer).
@@ -4364,7 +4369,7 @@ impl Player<'_> {
                     ..pose(&r, r.frames)
                 };
                 self.pending.push((r.stack, corpse));
-                self.bury(r.stack);
+                self.bury(r.stack, corpse);
             } else {
                 self.pending.push((r.stack, r.base));
             }
@@ -4632,7 +4637,7 @@ impl Player<'_> {
                     ..Self::posed(&live, group, frame, live.hex)
                 };
                 self.pending.push((stack, corpse));
-                self.bury(stack);
+                self.bury(stack, corpse);
                 died = true;
             }
         }
@@ -4726,7 +4731,7 @@ impl Player<'_> {
                     ..Self::posed(&live, group, frame, live.hex)
                 };
                 self.pending.push((stack, corpse));
-                self.bury(stack);
+                self.bury(stack, corpse);
                 died = true;
             }
         }
@@ -5633,7 +5638,7 @@ impl Player<'_> {
             let pose = if r.died { Self::fallen(r) } else { r.base };
             self.pending.push((r.stack, pose));
             if r.died {
-                self.bury(r.stack);
+                self.bury(r.stack, pose);
             }
         }
         // Every stack's mark cleared (0x46905A): the magic animation is gone with the redraw.

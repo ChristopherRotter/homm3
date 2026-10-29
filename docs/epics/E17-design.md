@@ -2875,6 +2875,25 @@ BAT-MAG-052, `installation.md` §7.19).
   0 (*provisional*). The log names a created stack from its `Created` entry on (a reused id its
   latest). The clone's message is a notice the window opens as a message box at its time, the
   battle standing behind it (`Timeline::notices`, `Battle::open_notice`).
+- **The saved picture is the back buffer** (a slip of the original, not copied: the user's,
+  2026-10-29). `screen_save_rect` copies the back buffer, which a clipped redraw (the second
+  argument of `battle_redraw`: the dirty rectangle) leaves as the background outside its
+  rectangle, since the redraw copies the whole background first (0x4944FD) and draws the rest
+  clipped. The Pit Lord's casting frames are such redraws (0x4484FE), so the Demons' dissolve
+  starts from the terrain alone outside the caster: the corpse and the obstacles in the Demons'
+  rectangle pop away at its first step. The viewer blends from the picture shown, the corpse
+  going with the new picture in the pose it lay in (`Player::lying`: memory keeps the pose).
+  The other recorded dissolves start from a full redraw or a rectangle the clip held whole.
+- **Recorded** (`seq-teleport.toml`, `seq-clone.toml`, `seq-summon.toml`, `seq-demons.toml`, all
+  on `sacrifice`'s grass and obstacles): `sacrifice`'s victim's dissolve now exact (its frames'
+  counts re-recorded). `teleport`: the timeline as recorded, its frames exact but the aim's
+  hint (*Teleport Here*, not modelled) in the log. `summon`: every frame exact; the log's damage
+  is the engine's roll (no seed gives the original's 102 with the shot at 18). `clone`: the
+  slide exact, the clone's colours not (`draw_battle_stack`'s palette effects, T5b). `demons`
+  (the Archers, on their native grass as fast as the Imps, act before the Imps: the side that
+  did not act goes first; the Pit Lords' raise a creature cast at the corpse's stack): the
+  timeline as recorded (28 changes), 56 frames, the dissolve's 8 differing only by the slip
+  above (about 800 pixels each: the Imps' corpse fading), the rest exact.
 
 ## 8. The window, input and audio evaluation (M2 T2)
 

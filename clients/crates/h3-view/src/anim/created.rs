@@ -241,6 +241,7 @@ impl Player<'_> {
         for &(s, pose) in gone {
             self.stacks.remove(&s);
             self.corpses.remove(&s);
+            self.lying.remove(&s);
             self.key_now(
                 s,
                 Pose {
@@ -547,15 +548,14 @@ impl Player<'_> {
         if let Some(spell) = self.spell_handle(super::raise::RESURRECTION) {
             self.cue(corpse, Sound::SpellFile(spell), false);
         }
-        // The corpse goes with the redraw the dissolve blends in (0x5A73DD).
-        let lying = self
-            .keys
-            .iter()
-            .rev()
-            .find(|k| k.stack == corpse)
-            .map_or_else(|| self.standing(&dead, dead.hex), |k| k.pose);
+        // The corpse goes (0x5A73DD), in the pose it lay in (memory keeps it), with the redraw
+        // the dissolve blends in. (The original blends from its back buffer, which the casting
+        // frames' clipped redraws left as the background outside the caster's rectangle: the
+        // corpse and the obstacles there pop away at the first step. A slip, not copied: the
+        // user's, 2026-10-29; design §7.25.)
         self.corpses.remove(&corpse);
-        if corpse != new {
+        let lying = self.lying.remove(&corpse);
+        if let Some(lying) = lying.filter(|_| corpse != new) {
             self.key_now(
                 corpse,
                 Pose {

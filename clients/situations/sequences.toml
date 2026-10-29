@@ -1376,3 +1376,25 @@ command = [
     { seat = "Attacker", at = 1200, command = { Wait = {} } },
     { seat = "Defender", at = 1200, command = { Shoot = { target = 2, at = 18 } } },
 ]
+
+# E17 M5 T5a: a Pit Lord's Demons (design §7.25): round 1 the Pit Lords defend and the Archers
+# (on their native grass as fast as the Imps, so the side that did not act goes first) shoot the
+# Imps dead; round 2 the Pit Lords raise one Demon from their corpse (a click on it): their casting
+# frames, the corpse gone and the Demon shown in a dissolve of 75 ms steps (`create_battle_stack`
+# 0x47A2A8), a redraw at once, the line (GENRLTXT 117). Hot seat.
+[[sequence]]
+id = "demons"
+scenario = "seq-demons.toml"
+hot_seat = true
+actions = ["key:d", "turn:1.0", "hex:137", "turn:0.0", "hex:137"]
+ms = 2500
+heroes = true
+screens = true
+timeline = "timelines/demons.txt"
+frames = "timelines/demons-frames.txt"
+boxes = true
+command = [
+    { seat = "Attacker", at = 0, command = { Defend = {} } },
+    { seat = "Defender", at = 0, command = { Shoot = { target = 1, at = 137 } } },
+    { seat = "Attacker", at = 1688, command = { CreatureCast = { target = { Stack = { stack = 1 } } } } },
+]

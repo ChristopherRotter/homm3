@@ -13,9 +13,11 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   hero's aim, §7.18; the message box, Retreat and Surrender, §7.19; the result window, §7.20, its
   Bink decoder `h3-bink`, CLT-Q29, and its clip, §7.21; Auto Combat, §7.22, `h3_view::auto`; the
   tactics phase drawn, §7.23, `h3_view::tactics`, and played, §7.24: the engine's placement
-  steps, `cross-lane`). **Next: M5 T5** (created stacks and their dissolve), then T6. Open PR:
-  T4c2b's (`client/e17-m5-t4c2b`, `cross-lane`; check it first). The inbox's CLT-Q30 task
-  (`h3-bink` as BINKW32's float DCT) waits for a free slot.
+  steps, `cross-lane`; the dissolves and the created stacks, §7.25, `anim::created`, the engine's
+  `NotCreated`, `cross-lane`). **Next: M5 T5b** (the panel by the turn's controller, the sounds'
+  waits, the palette effects: QUEUE), then T6. Open PR: T5a's (`client/e17-m5-t5a`,
+  `cross-lane`; check it first). The inbox's CLT-Q30 task (`h3-bink` as BINKW32's float DCT)
+  waits for a free slot.
   Workspace `clients/` (`clients/README.md`), gates `clients/scripts/check.sh`; ADR-0020 (+ drafts
   in `adr-drafts/`), ADR-0024; the harness `clients/capture/README.md`; design §3–§10; records in
   `E17-log.md`.
@@ -23,7 +25,7 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 - **The user's requirements** (epic, "Decisions"): a string catalogue (JSON packs, no committed translation, CLT-Q7); graphics options (`faithful` default); exhaustive diffs; drawing bugs fixed, the original's only for comparisons (`Bugs`).
 - The lane owns `clients/` but the map-client lane's paths and the common ones (`lanes.toml`: the foundation, `text/`, the harness; an additive change freely, a change in behaviour into the map-client lane's inbox), plus `docs/epics/E17*` and this folder; branches `client/<task>`; ids `CLT-Q<n>`, `CLT-QUIRK-<n>` (asset fixes), `CLT-STUB-<n>`; ADR drafts in `adr-drafts/`, numbered when accepted.
 - **Checkpoints** per milestone (below), a fresh reviewer agent first. **Open:** CLT-Q5,
-  CLT-Q26, CLT-Q27, CLT-Q28, CLT-Q32. Next id: CLT-Q33.
+  CLT-Q26, CLT-Q27, CLT-Q28, CLT-Q32, CLT-Q33. Next id: CLT-Q34.
 - Stage from `original-data/install/`: the four LODs (one per call), `h3maped.exe`, both `.snd`, `MP3/COMBAT01`–`04` and the end tunes, `Heroes3.exe`, the five DLLs, `H3ab_ahd.vid`, and `original-data/battle-videos.vid` (the result window's clips: the harness's `VIDEO.VID`, the viewer's stand-in); `cp -rn` the staged `original-data/.` into the clone. Frames stay in the sandbox.
 
 ## Autonomy contract (agreed by the user, 2026-10-12)
@@ -43,7 +45,14 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
 
 ## Recent sessions
 
-- **2026-10-29, E17 M5 T4c2b (done; its PR open: check it first).** Kept whole by the user;
+- **2026-10-29, E17 M5 T5a (done; its PR open: check it first).** T5 cut in two with the
+  user; the engine's `NotCreated` (`cross-lane`, the user's call, wire v36). Read the dissolve's
+  blend and rectangle, the stacks removed without a corpse, the created stacks, Clone, Teleport
+  (design §7.25). Built `Screen::dissolve_rect`, `anim::created`, the window's notices.
+  `teleport`, `clone`, `summon`, `demons` recorded, `sacrifice` exact; the clone's colours to
+  T5b and the Demons' back buffer a slip not copied (the user's); CLT-Q33; items 36 to 39.
+
+- **2026-10-29, E17 M5 T4c2b (done; #569 merged).** Kept whole by the user;
   the placement's path from the engine (`cross-lane`, the user's call: `tactics::place`, the gate
   opened on the way). Read the placement as the walk, Next Creature, Start Combat and the
   panels' swap, the shade over the turns, the computer's phase, Auto Combat in it, the keys
@@ -57,9 +66,3 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
   `h3_view::tactics`, `Draw::Shade`, `[tactics_panel]`, the message before the first turn (the
   stills, the window); Tactics on the harness's maps. Seven stills exact; CLT-Q32; review items
   28 to 31.
-
-- **2026-10-28, E17 M5 T4c1 (done; #560 merged).** T4c cut in two with the
-  user (T4c1 Auto Combat, T4c2 the tactics phase). Read the switch, the stop (the input queue's
-  read as a turn starts), the panel and the mouse (design §7.22). Built `h3_view::auto`, the
-  panel's `Autoplay`, the window's switch and stop (the bot plays the human's side), `--auto`.
-  `auto` and `auto-stop` recorded: panels and cursors exact; review items 24 to 27. No question.

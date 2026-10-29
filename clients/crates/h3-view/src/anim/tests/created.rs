@@ -12,7 +12,7 @@ use h3_render::Bugs;
 use super::timeline;
 use super::{PIKEMAN, SWORDSMAN, at, flags, layout, look, looks, magic, snapshot, struck, tables};
 use crate::anim::{
-    BATTLEFIELD, Body, CREATION_STEP, Caster, Casts, Command, DISSOLVE_STEPS, DissolveArea,
+    BATTLEFIELD, Body, CORPSE, CREATION_STEP, Caster, Casts, Command, DISSOLVE_STEPS, DissolveArea,
     DissolveKey, GONE, Logged, Look, Notice, Speed, SpellLook, Stage, TELEPORT, TELEPORT_STEP,
     Timeline,
 };
@@ -395,6 +395,10 @@ fn a_pit_lord_raises_demons_where_a_corpse_lay() {
     // The corpse goes and the Demons stand there, both with the dissolve's new picture; the
     // attacker's records 0 and 1 are taken: theirs is 2.
     assert_eq!(t.at(start + 1)[&1].layer, GONE);
+    // It goes in the pose it lay in, raised a command after its death (memory keeps the pose).
+    let (lay, gone) = (t.at(start)[&1], t.at(start + 1)[&1]);
+    assert_eq!((gone.group, gone.frame), (lay.group, lay.frame));
+    assert_eq!(lay.layer, CORPSE);
     assert_eq!(t.at(start + 1)[&3].hex, 52);
     assert_eq!(t.created[0].member.record, 2);
     assert!(t.created[0].stack.raised && t.created[0].stack.shooter);

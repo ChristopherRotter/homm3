@@ -213,11 +213,11 @@ the stacks created mid-battle.
         engine's placement steps, `cross-lane`; the buttons' commands, `Context::Tactics`, the
         window's panel shown, `tactics::shade_at`); `tactics-play` recorded.
 - **T5, what a played battle shows** (cut in two by the user, 2026-10-29):
-  - **T5a, the dissolves and the created stacks** (in progress; design §7.25): the created stacks
-    (`StackCreated`: Summon Elemental, Clone; a Pit Lord's `RoseFromCorpse`) with their dissolve
-    (`screen_dissolve` 0x602DC0's blend, Sacrifice's victim's too), Clone's slide, a clone's
-    `Vanished`, Teleport's dissolve, the message when no hex is free (the engine's
-    `NotCreated`, `cross-lane`); recorded.
+  - **T5a, the dissolves and the created stacks** (done 2026-10-29; design §7.25): read (the
+    blend, its rectangle, the stacks removed without a corpse, the created stacks, Clone's
+    place and slide, Teleport's), built (`Screen::dissolve_rect`, `anim::created`, the window's
+    notices, the engine's `NotCreated`, `cross-lane`); `teleport`, `clone`, `summon`, `demons`
+    recorded, `sacrifice` exact; the Demons' back buffer a slip not copied; CLT-Q33.
   - **T5b, the panel by the turn's controller, the sounds' waits, the palette effects:** the
     panel's side by each turn's controller (R3-1: Hypnotize, a created stack); the battle waiting
     for the heal's sound and the other effects'; a clone's colours and the glows

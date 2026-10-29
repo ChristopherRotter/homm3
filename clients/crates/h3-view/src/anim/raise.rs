@@ -136,6 +136,7 @@ impl Player<'_> {
         self.pending_counts.push((stack, live.count));
         self.redraw();
         self.corpses.remove(&stack);
+        self.lying.remove(&stack);
         self.stacks.insert(stack, live);
     }
 
