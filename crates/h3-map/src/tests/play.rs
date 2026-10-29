@@ -2009,7 +2009,8 @@ fn stops_on(before: &GameState, rules: &GameRuleset, pos: TilePos) -> bool {
 
 /// A move's rules at sea (E08 T75b; design §7, §8, §15): a hero not in a boat steps onto no water
 /// tile an object still on the map is visited on, nor visits one from the shore (ADV-PIK-018,
-/// D-46: only a boat visits the sea's objects, and no flight passes one); a boarding or a landing
+/// D-46: only a boat visits the sea's objects, and no flight passes one), but where a hero in a
+/// boat stands, who is met there (ADV-SEA-005); a boarding or a landing
 /// converts the hero's points (ADV-SEA-002, -003; D-41): to at most the new maximum with free
 /// boarding (HER-ADV-009, the Admiral's Hat), to 0 without.
 fn check_sea_move(
@@ -2023,8 +2024,12 @@ fn check_sea_move(
         .adventure()
         .hero(hero)
         .is_some_and(|h| h.boat.is_some());
+    let heroes = before.adventure().heroes();
     for &tile in path.iter().filter(|_| !afloat) {
-        let entrance = is_water(before, rules, tile) && live_bits(before, tile).1;
+        // A hero in a boat on the tile is met there, whatever lies under it (ADV-SEA-005: from
+        // the shore too; D-46 leaves such a tile open).
+        let met = heroes.iter().any(|h| h.pos == tile && h.id != hero);
+        let entrance = is_water(before, rules, tile) && live_bits(before, tile).1 && !met;
         let adventure = before.adventure();
         let objects: Vec<_> = (adventure.map().objects().iter().enumerate())
             .filter(|&(i, o)| !adventure.is_removed(i) && o.covers(tile).1)

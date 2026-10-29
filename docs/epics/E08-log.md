@@ -8490,7 +8490,10 @@ original data staged from the user's computer.
   with free boarding and 0 without (ADV-SEA-002, -003; D-41); `landing` takes a pickup's removal
   after its visit; `visit_gains` counts a find that leaves at its removal by the find's own rules
   (its artifact, its turn) and `check_conservation`'s removal path leaves finds to it, as chests
-  (a first try counted a Flotsam twice; 600 cases found it). `view.rs`: `vary` keeps a boat's tile
+  (a first try counted a Flotsam twice; 600 cases found it). A second 600-case run found a walker
+  on the shore attacking a hero in a boat that had entered a Keymaster's tent lying in the strait
+  (an entered object on water, which a boat enters): legal (ADV-SEA-005), so the check skips a
+  tile another hero stands on. `view.rs`: `vary` keeps a boat's tile
   water and adds no blocker over it (a boat the viewer never sees may go, as a blocker), and
   `check_told` follows the boats: a boarding takes the empty boat the viewer saw, a landing leaves
   one facing its way, a hero's boat changes only by a boarding, a landing or its leaving, a boat
