@@ -89,11 +89,7 @@ pub fn shade(observation: &Observation) -> BTreeSet<u8> {
                 shaded.extend([hex, front]);
             }
         }
-        // A flyer passes over a hex where it does not fit; a walker goes on only from a position
-        // (0x4B39C4).
-        if !fits && !mover.flies {
-            continue;
-        }
+        // A hex queued is a position, or a hex a flyer passes over (below).
         for direction in 0..6 {
             let Some(next) = neighbour(hex, direction) else {
                 continue;
@@ -106,6 +102,8 @@ pub fn shade(observation: &Observation) -> BTreeSet<u8> {
                     shaded.extend(field.hexes(stack, stack.hex));
                 }
             }
+            // A flyer passes over a hex where it does not fit; a walker goes on only through
+            // positions (0x4B39C4).
             if seen.insert(next) && (mover.flies || field.fits(next)) {
                 queue.push_back(next);
             }

@@ -228,6 +228,12 @@ mod tests {
                 outline: None,
             },
             picture("BG.pcx"),
+            // E17 M5 T4c2a: a hex's shade names its cell's picture.
+            Draw::Shade {
+                picture: "ccellshd.pcx".to_string(),
+                x: 0,
+                y: 0,
+            },
             Draw::Projectile {
                 def: "PlcBowX.def".to_string(),
                 frame: 0,
@@ -394,6 +400,7 @@ mod tests {
                 "BOOK.PAL",
                 "C06SPF0.DEF",
                 "CBAR.PCX",
+                "CCELLSHD.PCX",
                 "CH00.DEF",
                 "CLCBOW.DEF",
                 "CMFLAGL.DEF",
