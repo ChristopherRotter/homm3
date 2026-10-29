@@ -2052,3 +2052,13 @@ calls of `resource_bar_update` 0x403F00 (16 sites; `hero_select`'s at 0x417F48),
 - **Seen** (MCL-Q15): an amount of eight digits (12 345 678 gems) is cut to the seven that fit its
   box (`1234567`): the text drawer's last line cut at the glyph that fits (`h3_render::text`), the
   viewer's the same.
+- **Checked:** `set`: the 44 situations exact with the bar (the new `resources-date` first time);
+  `frames`: the 13 sequences, every frame exact, their timelines as before but `scroll-limits`'
+  corner box (it now reaches the bar) and `scroll-0`'s start points (the start's random army,
+  `TRAPS.md`); `drawn` the same after `--record`; the window under Xvfb (`walk-1`, `walk-points`,
+  `lists-scrolled`, `resources-date`, *Tale of two lands*, `--check 10`): every frame read back
+  exact, made as the same frame composed afresh, every change the headless loop's.
+- **Measured** (the sandbox, `--measure 20`, alternating with `master`'s build): the same within
+  the runs' spread: `walk-1` 24.6–24.8 % uploaded both, a frame made in a median 0.4 (0.5 on
+  `master`); *Tale of two lands* 11.2 %, 1.2 (1.3); `path-objects` 5.2 %, 0.9 both. No sequence
+  changes an amount or the date (M4's turns and pick-ups will).

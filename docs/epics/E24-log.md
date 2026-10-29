@@ -1667,5 +1667,21 @@ testing the edited tree); CI's green run on `master` stands for the starting poi
 - **Checked:** `h3map.py set --only resources-date` exact first time (the bar cropped and looked
   at: both draw every amount and the date); then the whole set with the bar compared: each of the
   44 exact, 0 differing of 435 128 pixels (the bar's 9 540 now among them, 425 588 before; the
-  shipped maps' starts with their difficulty's resources and the first day included).
+  shipped maps' starts with their difficulty's resources and the first day included); `frames`:
+  the 13 sequences, every frame exact (459), their timelines as before but two: `scroll-limits`'
+  box at 590 ms (the cursor in the corner, now unmasked over the date: 790,585 → 782,581) and
+  `scroll-0`'s `0 points` (1700 in T4b's run, 1500 in this one: the new game's random army sets
+  the start's points; a trap), both taken from the run and compared again (`--reuse`); `drawn
+  --record` (every digest anew), then `drawn` all the same; unit tests (the reach of texts and
+  labels and the font's overhangs, a label's change drawing its cell alone, a changed item of
+  unknown reach without the label's font, the kingdom's new fields and their refusals, the bar's
+  texts by their keys and as the layout draws them, the situation's resources and date, the
+  viewer's keys and the executable's strings); `check.sh` (100 % coverage); the window under
+  Xvfb (`walk-1`, `walk-points`, `lists-scrolled`, `resources-date`, *Tale of two lands*,
+  `--check 10`): every frame read back exact, made as the same frame composed afresh, every
+  change the headless loop's.
+- **Measured** (the sandbox, `--measure 20`, alternating with `master`'s build): the same within
+  the spread; `walk-1` 24.6–24.8 % uploaded (both), a frame made in a median 0.4 ms (0.5 on
+  `master`), p95 1.8–2.0 (1.7–2.1); *Tale of two lands* 11.2 %, 1.2 (1.3); `path-objects` 5.2 %,
+  0.9 (0.9).
 
