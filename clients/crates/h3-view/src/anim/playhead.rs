@@ -379,9 +379,10 @@ impl Playhead {
                 .collect(),
             dissolve: self.dissolves.open().next().and_then(|i| {
                 let d = &timeline.dissolves[i];
-                Some(Dissolve {
-                    before: self.dissolved.get(&i)?.clone(),
-                    step: d.step_at(t)?,
+                let kept = self.dissolved.get(&i).zip(d.step_at(t));
+                kept.map(|(before, step)| Dissolve {
+                    before: before.clone(),
+                    step,
                     area: d.area.clone(),
                 })
             }),

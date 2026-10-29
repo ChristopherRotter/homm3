@@ -13,8 +13,8 @@ use super::timeline;
 use super::{PIKEMAN, SWORDSMAN, at, flags, layout, look, looks, magic, snapshot, struck, tables};
 use crate::anim::{
     BATTLEFIELD, Body, CORPSE, CREATION_STEP, Caster, Casts, Command, DISSOLVE_STEPS, DissolveArea,
-    DissolveKey, GONE, Logged, Look, Notice, Speed, SpellLook, Stage, TELEPORT, TELEPORT_STEP,
-    Timeline,
+    DissolveKey, GONE, Logged, Look, Notice, STANDING, Speed, SpellLook, Stage, TELEPORT,
+    TELEPORT_STEP, Timeline,
 };
 use crate::scene::Moment;
 
@@ -98,15 +98,22 @@ fn created_casts() -> Casts {
 }
 
 fn play_created(snapshot: &Observation, commands: &[(Option<u32>, Vec<Event>)]) -> Timeline {
+    play_with(snapshot, commands, &created_casts())
+}
+
+fn play_with(
+    snapshot: &Observation,
+    commands: &[(Option<u32>, Vec<Event>)],
+    casts: &Casts,
+) -> Timeline {
     let layout = layout();
     let magic = magic();
-    let casts = created_casts();
     let stage = Stage {
         layout: &layout,
         width: 17,
         groups: tables().battle.groups,
         magic: &magic,
-        casts: &casts,
+        casts,
         bugs: Bugs::Original,
         siege: None,
     };
@@ -471,6 +478,44 @@ fn a_pit_lord_raises_demons_where_a_corpse_lay() {
     };
     assert!(t.log.iter().any(|(_, l)| *l == line));
     assert_eq!(t.created.len(), 1);
+}
+
+#[test]
+fn demons_in_the_corpses_id_or_of_an_unknown_creature() {
+    // Without Resurrection's sound in the ruleset; the Demons taking the corpse's own id (no
+    // corpse key: theirs replaces it); an unknown creature's Demons: no stack, no dissolve.
+    let o = snapshot(vec![
+        at(0, Side::Attacker, PIT_LORD, 86, false),
+        at(1, Side::Attacker, PIKEMAN, 52, false),
+        at(2, Side::Attacker, PIKEMAN, 54, false),
+        at(3, Side::Defender, SWORDSMAN, 53, false),
+    ]);
+    let raise = |target, (new, creature, hex)| {
+        vec![
+            Event::CreatureRaise { stack: 0, target },
+            Event::RoseFromCorpse {
+                stack: new,
+                corpse: target,
+                creature,
+                count: 10,
+                hex,
+            },
+        ]
+    };
+    let commands = [
+        (Some(0), vec![struck(3, 1, 40, flags(false, false, false))]),
+        (None, vec![struck(3, 2, 40, flags(false, false, false))]),
+        (None, raise(1, (1, DEMON, 52))),
+        (None, raise(2, (4, 999, 54))),
+    ];
+    let mut casts = created_casts();
+    casts.spells.remove(&38);
+    let t = play_with(&o, &commands, &casts);
+    let [(start, ..)] = dissolves(&t)[..] else {
+        panic!("{:?}", t.dissolves);
+    };
+    assert_eq!(t.at(start + 1)[&1].layer, STANDING);
+    assert!(t.member(4).is_none());
 }
 
 #[test]

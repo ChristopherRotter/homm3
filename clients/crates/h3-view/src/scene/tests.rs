@@ -1490,18 +1490,24 @@ fn created_stacks_are_drawn_and_a_dissolve_measures_its_stacks() {
         ..Moment::default()
     };
     assert!(battle_at(&o, &unknown, &keys(), &tables(), &layout).is_err());
-    // A saved picture that cannot be drawn too.
-    let saved = Moment {
+    // A saved picture that cannot be drawn too, and a stack measured in either that cannot.
+    let ghost = Moment {
         created: unknown.created.clone(),
         ..Moment::default()
     };
-    let unknown = Moment {
-        dissolve: Some(Dissolve {
-            before: Box::new(saved),
-            step: 0,
-            area: DissolveArea::Battlefield,
-        }),
-        ..Moment::default()
+    let fails = |before: &Moment, now: &Moment, area: DissolveArea| {
+        let moment = Moment {
+            dissolve: Some(Dissolve {
+                before: Box::new(before.clone()),
+                step: 0,
+                area,
+            }),
+            ..now.clone()
+        };
+        battle_at(&o, &moment, &keys(), &tables(), &layout).is_err()
     };
-    assert!(battle_at(&o, &unknown, &keys(), &tables(), &layout).is_err());
+    let nothing = Moment::default();
+    assert!(fails(&ghost, &nothing, DissolveArea::Battlefield));
+    assert!(fails(&ghost, &nothing, DissolveArea::Stacks(vec![5])));
+    assert!(fails(&nothing, &ghost, DissolveArea::Stacks(vec![5])));
 }

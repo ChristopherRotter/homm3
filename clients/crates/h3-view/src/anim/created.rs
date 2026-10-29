@@ -8,7 +8,7 @@
 //! into the saved one (`screen_dissolve` 0x602DC0, `h3_render::Screen::dissolve_rect`).
 
 use alloc::boxed::Box;
-use alloc::collections::BTreeSet;
+use alloc::collections::{BTreeMap, BTreeSet};
 use alloc::vec;
 use alloc::vec::Vec;
 
@@ -216,19 +216,18 @@ impl Player<'_> {
     /// poses [`GONE`]), the battle without them blended in over their rectangle in eight steps of
     /// trunc(150 F). Returns the stacks gone; the others lie as corpses.
     pub(super) fn remove_gone(&mut self, dead: &[(u8, Pose)]) -> BTreeSet<u8> {
-        let mut gone: Vec<(u8, Pose)> = dead
+        let mut gone: BTreeMap<u8, Pose> = dead
             .iter()
             .filter(|(s, _)| self.vanishing.remove(s) || self.summoned.contains(s))
             .copied()
             .collect();
         for s in core::mem::take(&mut self.vanished) {
-            if gone.iter().all(|(g, _)| *g != s)
-                && let Some(live) = self.stacks.get(&s)
-            {
+            if let Some(live) = self.stacks.get(&s) {
                 let pose = self.standing(live, live.hex);
-                gone.push((s, pose));
+                gone.entry(s).or_insert(pose);
             }
         }
+        let gone: Vec<(u8, Pose)> = gone.into_iter().collect();
         self.remove(&gone, self.speed.scale(REMOVAL_STEP))
     }
 

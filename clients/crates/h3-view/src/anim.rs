@@ -3022,7 +3022,7 @@ impl Player<'_> {
                     kills,
                 } => self.shield_return(stack, (damage.0, kills), &shields),
                 // A Pit Lord's Demons (E17 M5 T5a): the stack they make follows.
-                Event::CreatureRaise { stack, target } if matches!(events.get(i), Some(Event::RoseFromCorpse { corpse, .. }) if *corpse == target) => {
+                Event::CreatureRaise { stack, target }
                     if let Some(&Event::RoseFromCorpse {
                         stack: new,
                         corpse,
@@ -3030,10 +3030,10 @@ impl Player<'_> {
                         count,
                         hex,
                     }) = events.get(i)
-                    {
-                        i += 1;
-                        self.demons(stack, corpse, (new, creature, count, hex));
-                    }
+                        && corpse == target =>
+                {
+                    i += 1;
+                    self.demons(stack, corpse, (new, creature, count, hex));
                 }
                 // An Archangel's raise (E17 M3 T7c-3): the stack it raises follows.
                 Event::CreatureRaise { stack, target } => {

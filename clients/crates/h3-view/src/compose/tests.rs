@@ -1228,4 +1228,36 @@ fn a_dissolve_blends_the_new_picture_over_what_it_measures() {
     // Nothing measured, or nothing a rectangle is measured from: the saved picture.
     assert_eq!(at(4, None, Vec::new()), [blue; 12]);
     assert_eq!(at(4, None, vec![background("red.pcx")]), [blue; 12]);
+    // A measured item or a new picture the batch cannot draw fails the frame: a creature's DEF,
+    // a magic animation's, the count box's picture, the new picture's background.
+    let fails = |b: &Batch, rect: Option<[i32; 4]>, measured: Vec<Draw>, list: Vec<Draw>| {
+        let dissolve = Draw::Dissolve {
+            step: 4,
+            rect,
+            measured,
+            list,
+        };
+        compose(&[background("bg.pcx"), dissolve], b, &small()).is_err()
+    };
+    let unknown = creature_of("none.def", [1, 1], false, None);
+    assert!(fails(&b, None, vec![unknown], new.clone()));
+    let unknown = Draw::Magic {
+        def: "none.def".to_string(),
+        frame: 0,
+        x: 1,
+        y: 0,
+        mirrored: false,
+        translucent: false,
+    };
+    assert!(fails(&b, None, vec![unknown], new.clone()));
+    let count = Draw::CountBox {
+        stack: 0,
+        x: 5,
+        y: 0,
+        count: 0,
+        tint: [0, 0],
+    };
+    assert!(fails(&batch(), None, vec![count], new.clone()));
+    let unknown = vec![background("none.pcx")];
+    assert!(fails(&b, Some([0, 0, 6, 2]), Vec::new(), unknown));
 }
