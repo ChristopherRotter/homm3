@@ -1260,6 +1260,34 @@ fn a_changed_dialog_item_draws_what_the_batch_has() {
 }
 
 #[test]
+fn a_changed_item_of_unknown_reach_draws_everything() {
+    // E24 M3 T5a: a label's reach is known only with its font; without it (a batch lacking it)
+    // the scene is drawn whole, which fails as a fresh scene's would: a label changed, a picture
+    // turned label, a label among those between the lists' common start and end.
+    let mut nofont = view_batch();
+    nofont
+        .add("other.pal", &build::pal(&players(), &[0; 256], 0, &[]))
+        .unwrap();
+    let b = panel_batch();
+    let mut relabelled = panel([0, 0], 0, 0, DARK, true, "1");
+    relabelled.draws[3] = Draw::Dialog(label("1"));
+    for (was, now) in [
+        (true, panel([0, 0], 0, 0, DARK, true, "11")),
+        (true, relabelled),
+        (true, panel([0, 0], 0, 0, DARK, false, "11")),
+    ] {
+        let mut composer = Composer::new([14, 12]).unwrap();
+        composer
+            .compose(&panel([0, 0], 0, 0, DARK, was, "1"), &b)
+            .unwrap();
+        assert_eq!(
+            composer.compose(&now, &nofont),
+            Err(ComposeError::Missing("font.fnt".to_string()))
+        );
+    }
+}
+
+#[test]
 fn overlapping_areas_are_joined() {
     assert_eq!(joined(vec![]), Vec::<[i32; 4]>::new());
     assert_eq!(
