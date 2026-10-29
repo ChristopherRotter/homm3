@@ -364,6 +364,19 @@ A candidate becomes an entry here only once it is confirmed for SoD (by an exper
 - Regression test: `crates/h3-adventure/src/state/tests/events.rs`, `an_event_on_a_guarded_tile_fires_after_the_guards_visit` (gone, off its tile or another player's hero: nothing) and `a_flyer_stopped_on_a_guarded_event_meets_its_guard`; `crates/h3-game/src/tests/events.rs`, `an_event_on_a_guarded_tile_fires_once_the_guards_visit_is_over`
 - Decided by / date: the agent's classification at E08 T62b1's opening reading (state-corrupting: `AGENTS.md`), recorded in decision 151's cut; recorded by E08 T62b2, the fire after the guard's visit built by E08 T63b
 
+### ADV-QUIRK-31 — Boarding or landing without the Admiral's Hat keeps the old surface's maximum
+- Class: harmless, not reproduced (no flag; E08 decision 166; A-28)
+- Context / rules affected: adventure, ADV-SEA-002 (boarding), ADV-SEA-003 (landing), ADV-MOV-002 (the day's maximum)
+- Original behavior: `hero_boards_boat` (0x4A1010) and `hero_lands_from_boat` (0x49E670) write the hero's day's maximum (+0x49) only with the Admiral's Hat (0x4A1088, 0x49E6C1): without it the points become 0 and the maximum of the surface left stays until the next turn start (survey `E08-sea.md` §10, §13). Only the Hat's conversion reads that maximum, so a hero that gains the Hat at sea (assembled from a pickup's part) lands with left × land ÷ land, its points unchanged, where the two surfaces' maxima give left × land ÷ sea; the movement bar shows the stale maximum.
+- Intended/expected behavior: a boarding and a landing set the day's maximum of the new surface with or without the Hat (ADR-0016 point 3); the conversion reads the two surfaces' maxima.
+- Impact: rare (the Hat gained between a boarding without it and the landing) and harmless (a day's maximum is never 0, so no division by 0).
+- Community status: not documented; VCMI converts by the two surfaces' maxima.
+- Sources: code reading (survey §13, the second reading); batch E8's E8-10 and E8-16 (the maximum kept after landings and a boarding without the Hat: 4 000 and 2 000; 1 560).
+- Flag: none (not reproduced)
+- Defaults: the engine's rule in every profile
+- Regression test: `crates/h3-adventure/src/state/tests/sea.rs`, `a_walker_boards_an_empty_boat_and_its_walk_ends_there` and `a_boat_lands_on_a_free_coastal_tile_and_is_left_behind_facing_the_landing_s_way` (the maximum switched without the Hat)
+- Decided by / date: the user 2026-10-28 (ADV-Q32; decision 166: not reproduced, no flag); recorded by E08 T73a
+
 ### ADV-QUIRK-32 — A 65th boat is dropped at load
 - Class: exploit-fix (no flag: the engine keeps no bound of the original's on the map's records, E08 decision 164)
 - Context / rules affected: adventure, ADV-SEA-001 (boats on the map)

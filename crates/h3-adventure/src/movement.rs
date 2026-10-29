@@ -1,9 +1,9 @@
 //! Movement (E08): a day's movement points (T6b; the hero's bonuses since T40); the army's native
 //! terrain, the price of a step and the points left after it (T7b, survey
 //! `E08-adventure-core.md` §1.2–1.3; the hero's Pathfinding, Nomads and Cursed Ground since T40,
-//! its flying and water walking since T41, survey `E08-hero-movement.md` §2). `MoveHero` is in
-//! `command.rs`, the passage of a flying or water-walking hero in `state/passage.rs`, the
-//! reachable-tiles query in `reach.rs`.
+//! its flying and water walking since T41, survey `E08-hero-movement.md` §2; a boat's since T73,
+//! survey `E08-sea.md` §4.1). `MoveHero` is in `command.rs`, the passage of a flying,
+//! water-walking or sailing hero in `state/passage.rs`, the reachable-tiles query in `reach.rs`.
 
 use alloc::sync::Arc;
 use alloc::vec::Vec;
@@ -17,7 +17,7 @@ use h3_heroes::{HeroDetails, Movement, land_points, movement_speed, scouting_rad
 
 use crate::ruleset::{AdventureRuleset, Passage, RoadId};
 use crate::setup::Pos;
-use crate::state::{HeroOnMap, StaticTile};
+use crate::state::{HeroOnMap, Meets, Mode, StaticTile};
 
 /// A hero's details in the game's store of heroes by [`HeroId`] (ADR-0016 point 3), if the store
 /// holds them. An adventure played without the game (this crate's own tests) passes an empty
@@ -93,6 +93,21 @@ pub(crate) fn day_maximum(
     } else {
         day_points(core, part, details, &hero.army)
     }
+}
+
+/// The points a hero keeps when a boarding or a landing changes its surface (ADV-SEA-002,
+/// ADV-SEA-003; ADR-0016 point 3, D-41, E08 T73): with free boarding (ADR-0013 point 13.7, the
+/// Admiral's Hat) its points `points`, after the step's drop to 0, × the `new` maximum ÷ the
+/// `old` one, truncated (a 64-bit product; an old maximum of 0 gives 0); without it none. The
+/// original's order, confirmed by batch E8 (E8-1: 75 left after the step onto the boat drop to 0
+/// first; 425 become 637 = 425 × 3 000 ÷ 2 000; E8-2: 500 become 333); VCMI converts before the
+/// drop.
+// rule: ADV-SEA-002, ADV-SEA-003
+pub(crate) fn converted_points(points: u32, (old, new): (u32, u32), free: bool) -> u32 {
+    if !free || old == 0 {
+        return 0;
+    }
+    u32::try_from(u64::from(points) * u64::from(new) / u64::from(old)).unwrap_or(u32::MAX)
 }
 
 /// A hero's scouting radius (ADV-FOG-001, E08 T40): `h3_heroes::scouting_radius` (HER-ADV-006:
@@ -239,6 +254,9 @@ pub(crate) struct Pricing<'a> {
     check_ignores_roads: bool,
     /// `ADV-QUIRK-3`: the exception's check ignores the native cost.
     check_ignores_native: bool,
+    /// The share of a boat's step from a tile a ground of the sea tops (ADV-SEA-004), as
+    /// numerator and denominator (the part checks 1 <= numerator <= denominator).
+    sea_ground: [u32; 2],
 }
 
 impl<'a> Pricing<'a> {
@@ -300,6 +318,7 @@ impl<'a> Pricing<'a> {
             },
             check_ignores_roads: quirks.is_enabled(DIAGONAL_CHECK_IGNORES_ROADS),
             check_ignores_native: quirks.is_enabled(DIAGONAL_CHECK_IGNORES_NATIVE),
+            sea_ground: params.sea_ground().map(u32::from),
         }
     }
 
@@ -479,6 +498,87 @@ impl<'a> Pricing<'a> {
     #[inline]
     pub(crate) fn walking_left_after(&self, to: &StaticTile, left: u32) -> u32 {
         if left < self.walking_cheapest(to) {
+            0
+        } else {
+            left
+        }
+    }
+
+    /// A boat's straight step from `from` (ADV-SEA-004, E08 T73): water's price and the step's.
+    /// Water's is its terrain's table price, the same at every Pathfinding level (the part's
+    /// `Passage::Water`, 100; the original's `step_cost` for a boat, 0x4B24B7); the step's is
+    /// water's, or on a tile a ground of the sea tops (Favorable Winds) the part's `sea_ground`
+    /// share of it, truncated (66; 0x4B17B3).
+    #[inline]
+    fn sea_straight(&self, from: &StaticTile) -> (u32, u32) {
+        let water = self.price(from.terrain).walk;
+        let [numerator, denominator] = self.sea_ground;
+        let straight = if from.winds {
+            water * numerator / denominator
+        } else {
+            water
+        };
+        (water, straight)
+    }
+
+    /// The price of a boat's step from the water tile `from` with `points` left (ADV-SEA-004, E08
+    /// T73; survey `E08-sea.md` §4.1): the straight step of [`Self::sea_straight`], with neither
+    /// roads, nor the native cost, nor flying or water walking (a hero in a boat has neither); a
+    /// diagonal ⌊straight × √2⌋ (141, 93 from Favorable Winds), except that with points from
+    /// water's price C up to ⌊C × √2⌋ it costs only the straight step (ADV-MOV-005's exception,
+    /// compared with water's price, never the winds' step: D-43, confirmed by batch E8's E8-4; in
+    /// both profiles). A landing's step is priced so, from its water tile.
+    // rule: ADV-SEA-004, ADV-MOV-005
+    pub(crate) fn sail(&self, from: &StaticTile, diagonal: bool, points: u32) -> u32 {
+        let (water, straight) = self.sea_straight(from);
+        if !diagonal || (water..=diagonal_cost(water)).contains(&points) {
+            straight
+        } else {
+            diagonal_cost(straight)
+        }
+    }
+
+    /// The price of a step of a hero moving by `mode` (E08 T73): a boat's ([`Self::sail`]),
+    /// else [`Self::step`] (a boarding's step is priced by the hero's mode on land).
+    pub(crate) fn step_by(
+        &self,
+        mode: Mode,
+        (from, to): (&StaticTile, &StaticTile),
+        diagonal: bool,
+        points: u32,
+    ) -> u32 {
+        match mode {
+            Mode::Sail(_) => self.sail(from, diagonal, points),
+            _ => self.step(from, to, diagonal, points),
+        }
+    }
+
+    /// The points left on `to` after a step that left `left` and met `met` (ADV-MOV-006's drop,
+    /// E08 T73; design §8): a step that ends at sea or boards drops to 0 below a boat's cheapest
+    /// step from `to` (the straight step of [`Self::sea_straight`]: 100, 66 on Favorable Winds;
+    /// the original's `cheapest_step_from` 0x4B1880 for a boat); a landing as a walker without
+    /// its levels ([`Self::walking_left_after`]: the coast tile's road price, else the native
+    /// price, Cursed Ground's terrain price under it), in both profiles; any other step
+    /// [`Self::left_after`].
+    // rule: ADV-MOV-006, ADV-SEA-002, ADV-SEA-003, ADV-SEA-004
+    pub(crate) fn left_by(
+        &self,
+        mode: Mode,
+        met: Option<Meets<'_>>,
+        to: &StaticTile,
+        left: u32,
+    ) -> u32 {
+        match (mode, met) {
+            (Mode::Sail(_), Some(Meets::Land(_))) => self.walking_left_after(to, left),
+            (Mode::Sail(_), _) | (_, Some(Meets::Board(_))) => self.sail_left_after(to, left),
+            _ => self.left_after(to, left),
+        }
+    }
+
+    /// The points a boat has left on `to`, or a hero that boarded there, after a step that left
+    /// `left`: none below a boat's cheapest step from `to` (100, 66 on Favorable Winds).
+    pub(crate) fn sail_left_after(&self, to: &StaticTile, left: u32) -> u32 {
+        if left < self.sea_straight(to).1 {
             0
         } else {
             left

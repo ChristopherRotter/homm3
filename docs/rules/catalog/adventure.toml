@@ -222,7 +222,7 @@ id       = "ADV-MOV-006"
 title    = "A step needs its price; the diagonal exception; the points left"
 context  = "adventure"
 status   = "verified"
-summary  = "A step is made only with at least its price in points left; MoveHero takes only paths payable today and rejects one with a step it cannot pay (the original stops there and loses the rest). The diagonal exception: with points from a check cost C up to ⌊C × √2⌋ (inclusive) a diagonal costs only its straight cost; C is the step's own straight cost, or under ADV-QUIRK-2 without the road and under ADV-QUIRK-3 without the native cost (the original compares with the source terrain's plain cost). After each step the points left drop to 0 when fewer remain than the cheapest straight step from the new tile: its road's cost, else the native cost (D-3: the code reading; VCMI's rule, below the step's own straight cost, not taken: the user, ADV-Q3, 2026-10-11), on Cursed Ground the terrain's walking price at the hero's Pathfinding level after a terrain walker (E08 T40, ADV-MOV-004). C is likewise the source terrain's price at the hero's Pathfinding level after a terrain walker. Flying and water walking (E08 T41, ADV-MOV-009, ADV-MOV-010): clean, C is the step's own straight cost whatever priced it, the fly or water-walk price included; under ADV-QUIRK-2 or ADV-QUIRK-3 it is the walking check, never the fly or water-walk price (water's 100). The drop then prices the cheapest step from the new tile with the hero's flying and water walking as a step from it (on water the water-walk price, then the fly price from water or a blocked tile and the lesser from a free land tile); under ADV-QUIRK-17 (faithful) without them, a walking step (the original passes the spells' levels, not the artifacts'). E08 T7b: `Pricing::step`, `Pricing::left_after`, `MoveHero`; T41: `Pricing::lifted`."
+summary  = "A step is made only with at least its price in points left; MoveHero takes only paths payable today and rejects one with a step it cannot pay (the original stops there and loses the rest). The diagonal exception: with points from a check cost C up to ⌊C × √2⌋ (inclusive) a diagonal costs only its straight cost; C is the step's own straight cost, or under ADV-QUIRK-2 without the road and under ADV-QUIRK-3 without the native cost (the original compares with the source terrain's plain cost). After each step the points left drop to 0 when fewer remain than the cheapest straight step from the new tile: its road's cost, else the native cost (D-3: the code reading; VCMI's rule, below the step's own straight cost, not taken: the user, ADV-Q3, 2026-10-11), on Cursed Ground the terrain's walking price at the hero's Pathfinding level after a terrain walker (E08 T40, ADV-MOV-004). C is likewise the source terrain's price at the hero's Pathfinding level after a terrain walker. Flying and water walking (E08 T41, ADV-MOV-009, ADV-MOV-010): clean, C is the step's own straight cost whatever priced it, the fly or water-walk price included; under ADV-QUIRK-2 or ADV-QUIRK-3 it is the walking check, never the fly or water-walk price (water's 100). The drop then prices the cheapest step from the new tile with the hero's flying and water walking as a step from it (on water the water-walk price, then the fly price from water or a blocked tile and the lesser from a free land tile); under ADV-QUIRK-17 (faithful) without them, a walking step (the original passes the spells' levels, not the artifacts'). E08 T7b: `Pricing::step`, `Pricing::left_after`, `MoveHero`; T41: `Pricing::lifted`. E08 T73a (increment 8): a step that ends at sea or boards drops below a boat's cheapest step from the new tile (100, 66 on Favorable Winds), a landing as a walker without its levels, in both profiles (ADV-SEA-002 to -004; `Pricing::left_by`)."
 numeric  = "integer"
 quirks   = ["ADV-QUIRK-2", "ADV-QUIRK-3", "ADV-QUIRK-17"]
 
@@ -259,7 +259,7 @@ id       = "ADV-MOV-007"
 title    = "Where a hero may step"
 context  = "adventure"
 status   = "implemented"
-summary  = "A hero steps to one of the eight neighbouring tiles on the same level inside the map, onto a tile it may stand on (ADV-MAP-001): land terrain (water only by boat, not before boats exist; rock never), no object's blocked tile, no other hero. In increment 1 an object's visitable tile is not entered either (a visit ends a move and comes with increment 2, ADR-0016 point 4). A hero's own tile is always left, a town's gate too. E08 T4: the passages; T7b: `MoveHero` and the reachable-tiles query. Increment 2: a step onto a visitable tile visits its object (ADV-OBJ-003; E08 T13b, T14a), and an object not visited from above closes the steps across its tile's top (ADV-OBJ-004, T14a); a border gate is crossed by its key's holders as any tile (ADV-VIS-005, T15b). Increment 5 (E08 T41): a flying or water-walking hero also passes over tiles it may not stop on (ADV-MOV-009, ADV-MOV-010); a path that ends on one, or visits from one, is rejected (`NoStop`)."
+summary  = "A hero steps to one of the eight neighbouring tiles on the same level inside the map, onto a tile it may stand on (ADV-MAP-001): land terrain (water only by boat, not before boats exist; rock never), no object's blocked tile, no other hero. In increment 1 an object's visitable tile is not entered either (a visit ends a move and comes with increment 2, ADR-0016 point 4). A hero's own tile is always left, a town's gate too. E08 T4: the passages; T7b: `MoveHero` and the reachable-tiles query. Increment 2: a step onto a visitable tile visits its object (ADV-OBJ-003; E08 T13b, T14a), and an object not visited from above closes the steps across its tile's top (ADV-OBJ-004, T14a); a border gate is crossed by its key's holders as any tile (ADV-VIS-005, T15b). Increment 5 (E08 T41): a flying or water-walking hero also passes over tiles it may not stop on (ADV-MOV-009, ADV-MOV-010); a path that ends on one, or visits from one, is rejected (`NoStop`). Increment 8 (E08 T73a): water by boat (ADV-SEA-004), an empty boat's tile boarded from land by any mode (ADV-SEA-002), land from a boat only by a landing onto a free coastal tile (ADV-SEA-003); a hero in a boat is visited from the shore and from another boat (ADV-SEA-005)."
 numeric  = "integer"
 
   [[rule.source]]
@@ -323,7 +323,7 @@ id       = "ADV-MOV-009"
 title    = "Flying"
 context  = "adventure"
 status   = "verified"
-summary  = "A hero with a flying level (its details' highest, HER-ADV-005: Angel Wings 3; the spells later) flies. The price (E08 T41, the original's step_cost point 5 as corrected at ADV-Q22, in every profile): from a land tile no object blocks, an object's visitable tile included, the lesser of the fly price at its level (data: 140, 140, 120, 100) and the walking price (ADV-MOV-003, ADV-MOV-004); from water and from a tile the live occupancy blocks (an obstacle flown over) the fly price; a diagonal times √2 (ADV-MOV-005) with the exception's check of ADV-MOV-006. The passage (design note §7's table, `AdventureState::passage`): besides a walker's tiles a flight passes over blocked tiles, water (plain or holding an object), an own hero, another player's hero, an object's visitable tile (a neighbour's object, an entered one, one whose visit is not built), guarded tiles, and up off the visitable tile of an object not visited from above; never rock, never an unexplored tile (ADV-MOV-008, ADV-QUIRK-15), never down onto such a visitable tile. A move ends only where the hero may stop (D-25): a free land tile, a gate whose key its owner holds, an entered object's tile (visited from any node), or a visit from a stop to a neighbour's object or another player's hero; else `NoStop`. A flight goes on over guarded tiles and objects without visiting them: only its last step's tile is tested for a guard and only its object visited. The reachable-tiles query keeps two nodes per tile (stop, pass) and reports the stop tiles; the drop to 0 after each step follows ADV-MOV-006 (ADV-QUIRK-17). A flyer that also water-walks flies. Not yet: a hero in a boat (neither flies nor water-walks), towns (entered as a stop from a stop only, E09). E08 T41: `Pricing`, `Mode`, `Node`, `AdventureState::passage`, `MoveHero`, `Reach`."
+summary  = "A hero with a flying level (its details' highest, HER-ADV-005: Angel Wings 3; the spells later) flies. The price (E08 T41, the original's step_cost point 5 as corrected at ADV-Q22, in every profile): from a land tile no object blocks, an object's visitable tile included, the lesser of the fly price at its level (data: 140, 140, 120, 100) and the walking price (ADV-MOV-003, ADV-MOV-004); from water and from a tile the live occupancy blocks (an obstacle flown over) the fly price; a diagonal times √2 (ADV-MOV-005) with the exception's check of ADV-MOV-006. The passage (design note §7's table, `AdventureState::passage`): besides a walker's tiles a flight passes over blocked tiles, water (plain or holding an object), an own hero, another player's hero, an object's visitable tile (a neighbour's object, an entered one, one whose visit is not built), guarded tiles, and up off the visitable tile of an object not visited from above; never rock, never an unexplored tile (ADV-MOV-008, ADV-QUIRK-15), never down onto such a visitable tile. A move ends only where the hero may stop (D-25): a free land tile, a gate whose key its owner holds, an entered object's tile (visited from any node), or a visit from a stop to a neighbour's object or another player's hero; else `NoStop`. A flight goes on over guarded tiles and objects without visiting them: only its last step's tile is tested for a guard and only its object visited. The reachable-tiles query keeps two nodes per tile (stop, pass) and reports the stop tiles; the drop to 0 after each step follows ADV-MOV-006 (ADV-QUIRK-17). A flyer that also water-walks flies. Not yet: a hero in a boat (neither flies nor water-walks), towns (entered as a stop from a stop only, E09). E08 T41: `Pricing`, `Mode`, `Node`, `AdventureState::passage`, `MoveHero`, `Reach`. E08 T73a (increment 8, D-46 confirmed by batch E8c's E8-17a, E8-17b): a water tile an object is visited from (a pickup's, a monster's, a water Cartographer's, a blocker's) is closed to a flight, no stop and no pass; plain water, an object's blocked cell on water, an empty boat and a hero in a boat stay a flight's pass; a flight boards a boat from a stop node only (ADV-SEA-002) and visits a hero in a boat from one. The original's class 85 (the Shipwreck), whose water tile a flight passes, is an untyped blocker here and closed too until creature banks type it (ADV-STUB-12). A hero in a boat does not fly."
 numeric  = "integer"
 quirks   = ["ADV-QUIRK-15", "ADV-QUIRK-17"]
 
@@ -367,7 +367,7 @@ id       = "ADV-MOV-010"
 title    = "Water walking"
 context  = "adventure"
 status   = "verified"
-summary  = "A hero with a water-walking level and no flying level (its details' highest, HER-ADV-005: Boots of Levitation 3; the spells later) walks on water. The price (E08 T41, the original's step_cost point 4): from water the water-walk price at its level (data: 140, 140, 120, 100) replaces the walking price; from land the walking price (ADV-MOV-003, ADV-MOV-004), onto water included; a diagonal times √2 (ADV-MOV-005) with ADV-MOV-006's exception. The passage (design note §7's table): besides a walker's tiles it passes over plain water (no object, no hero); on land, and for the guards, it is a walker (a guarded tile ends its move, on water too). A move ends only where it may stop (D-25): never on water (`NoStop`); a visit to an entered object's tile from any node, to a neighbour's object or another player's hero only from a stop. The drop to 0 follows ADV-MOV-006 (ADV-QUIRK-17). E08 T41: `Pricing`, `Mode`, `AdventureState::passage`, `MoveHero`, `Reach`."
+summary  = "A hero with a water-walking level and no flying level (its details' highest, HER-ADV-005: Boots of Levitation 3; the spells later) walks on water. The price (E08 T41, the original's step_cost point 4): from water the water-walk price at its level (data: 140, 140, 120, 100) replaces the walking price; from land the walking price (ADV-MOV-003, ADV-MOV-004), onto water included; a diagonal times √2 (ADV-MOV-005) with ADV-MOV-006's exception. The passage (design note §7's table): besides a walker's tiles it passes over plain water (no object, no hero); on land, and for the guards, it is a walker (a guarded tile ends its move, on water too). A move ends only where it may stop (D-25): never on water (`NoStop`); a visit to an entered object's tile from any node, to a neighbour's object or another player's hero only from a stop. The drop to 0 follows ADV-MOV-006 (ADV-QUIRK-17). E08 T41: `Pricing`, `Mode`, `AdventureState::passage`, `MoveHero`, `Reach`. E08 T73a (increment 8): a water walk boards an empty boat from land only (ADV-SEA-002; `Boat` from water), visits a hero in a boat from a stop and never steps onto an object's water tile; a hero in a boat does not water-walk."
 numeric  = "integer"
 quirks   = ["ADV-QUIRK-17"]
 
@@ -403,7 +403,7 @@ id       = "ADV-MOV-011"
 title    = "An event and the move: blind paths, the stop on the firing step"
 context  = "adventure"
 status   = "verified"
-summary  = "A path is checked and priced as if no event lay on the map: an event's tile is no stop for the reachable tiles nor for MoveHero, in every profile (A-23 withdrawn, E08 decision 131: the original's placement clears the tile's visitable bit), so a path crosses events of any colour and may end on one, and neither a path's acceptance, its price nor the reachable tiles tell of one. Then the first step onto a tile the hero stands on (a stop that visits nothing; a flyer's free tile mid-flight too, not a tile it only passes over) that fires an event (ADV-OBJ-007) ends the move there with the points left after that step, the rest of the path dropped (the outcome's `dropped`), and the event fires. A hero that starts its move on an event does not fire it; a later step back onto it does. A flyer stopped so is at its move's end for the guard test (the original's): on a guarded tile the guard visits and the event fires after its visit (ADV-OBJ-007; E08 T63b, before which an event on a guarded tile neither fired nor stopped a move, ADV-STUB-10). E08 T62b2: `StaticMap::events_at`, `MoveHero`, `AdventureOutcome::dropped`."
+summary  = "A path is checked and priced as if no event lay on the map: an event's tile is no stop for the reachable tiles nor for MoveHero, in every profile (A-23 withdrawn, E08 decision 131: the original's placement clears the tile's visitable bit), so a path crosses events of any colour and may end on one, and neither a path's acceptance, its price nor the reachable tiles tell of one. Then the first step onto a tile the hero stands on (a stop that visits nothing; a flyer's free tile mid-flight too, not a tile it only passes over) that fires an event (ADV-OBJ-007) ends the move there with the points left after that step, the rest of the path dropped (the outcome's `dropped`), and the event fires. A hero that starts its move on an event does not fire it; a later step back onto it does. A flyer stopped so is at its move's end for the guard test (the original's): on a guarded tile the guard visits and the event fires after its visit (ADV-OBJ-007; E08 T63b, before which an event on a guarded tile neither fired nor stopped a move, ADV-STUB-10). E08 T62b2: `StaticMap::events_at`, `MoveHero`, `AdventureOutcome::dropped`. E08 T73a (increment 8): a boat's step fires an event on water as a walker's and ends the move there (batch E8's E8-14); a coastal tile holding an event is no landing (ADV-SEA-003)."
 numeric  = "integer"
 
   [[rule.source]]
@@ -1521,7 +1521,7 @@ id       = "ADV-OBJ-007"
 title    = "Events: who fires them, the guards at once, the record, the removal flag and the repeats"
 context  = "adventure"
 status   = "verified"
-summary  = "An event lies on its template's visitable tile, kept apart from the tiles objects are visited from (never visited, never observed: ADV-MOV-011, ADV-FOG-007). A step onto its tile fires it when its colours hold the mover's player's colour and the player counts as human (GAM-BAT-010's flag), or with the event's computer flag; one of another colour changes nothing. On a tile several events lie on, the last in map order still on the map is the tile's. Fired: told to the mover's owner alone; while its guards stand (the map's, or the survivors of a lost battle) they fight at once, announced and not asked, as Pandora's Box's (unsplit, unowned, at its tile; lost or retreated, their survivors stay, none after a draw); won, or without guards standing, its reward record is given (ADV-RWD-001; after a won battle once the winner's levels are given, GAM-DEC-007, E08 T63b); then with its removal flag it leaves the map, told to nobody; without it, it stays and fires again at every later entry, its beaten guards gone for good. On a tile a monster guards the step ends the move there (a flyer's too) and the guard visits first; the original fires the event after it whatever that visit ended in (A-26, fixed: ADV-QUIRK-29): the engine holds it as a rest of the visit (GAM-DEC-007) and fires it once the guard's visit is over (its offers answered, its battle and levels given), for a hero still on its tile only, the event still firing for its player (E08 T63b: `AdventureOutcome::event_after`, `AdventureState::fire_held_event`; before it such an event did not fire, ADV-STUB-10). The event's scenario tests after it (the original's victory tests) come with E10. E08 T62b2: `AdventureState::firing_event`, `fire_event`, `give_event`, `end_event_battle`, `AdventureSetup::seats`."
+summary  = "An event lies on its template's visitable tile, kept apart from the tiles objects are visited from (never visited, never observed: ADV-MOV-011, ADV-FOG-007). A step onto its tile fires it when its colours hold the mover's player's colour and the player counts as human (GAM-BAT-010's flag), or with the event's computer flag; one of another colour changes nothing. On a tile several events lie on, the last in map order still on the map is the tile's. Fired: told to the mover's owner alone; while its guards stand (the map's, or the survivors of a lost battle) they fight at once, announced and not asked, as Pandora's Box's (unsplit, unowned, at its tile; lost or retreated, their survivors stay, none after a draw); won, or without guards standing, its reward record is given (ADV-RWD-001; after a won battle once the winner's levels are given, GAM-DEC-007, E08 T63b); then with its removal flag it leaves the map, told to nobody; without it, it stays and fires again at every later entry, its beaten guards gone for good. On a tile a monster guards the step ends the move there (a flyer's too) and the guard visits first; the original fires the event after it whatever that visit ended in (A-26, fixed: ADV-QUIRK-29): the engine holds it as a rest of the visit (GAM-DEC-007) and fires it once the guard's visit is over (its offers answered, its battle and levels given), for a hero still on its tile only, the event still firing for its player (E08 T63b: `AdventureOutcome::event_after`, `AdventureState::fire_held_event`; before it such an event did not fire, ADV-STUB-10). The event's scenario tests after it (the original's victory tests) come with E10. E08 T62b2: `AdventureState::firing_event`, `fire_event`, `give_event`, `end_event_battle`, `AdventureSetup::seats`. E08 T73a (increment 8): an event on water fires for a boat's step (ADV-SEA-005, batch E8's E8-14)."
 numeric  = "integer"
 
   [[rule.source]]
@@ -2072,6 +2072,133 @@ numeric  = "integer"
   url        = "https://heroes.thelazy.net/index.php/Boat"
   retrieved  = "2026-10-28"
   confidence = "medium"
+
+[[rule]]
+id       = "ADV-SEA-002"
+title    = "Boarding: a step onto an empty boat's tile"
+context  = "adventure"
+status   = "verified"
+summary  = "A hero not in a boat steps onto an empty boat's water tile from a stop node, whatever its mode (ADR-0016 point 4, design §7): a walker from its tile, a flyer and a water walker from land; a flight passes over a boat from land or water and boards none from water, a water walk never steps onto it from water (`Boat`). The step is priced by the hero's mode on land from its land tile (ADV-MOV-003, ADV-MOV-009, ADV-MOV-010); no guard attacks on the boat's tile; the walk ends there (`PastVisit` after it). The drop after the step is a boat's: none below a boat's cheapest step from the tile (100; 66 on Favorable Winds). Then the hero is in the boat on its tile: the boat leaves the empty boats, its captain the hero and its owner the hero's player (any hero boards any empty boat), its record keeping its tile; the day's maximum becomes the sea's (HER-ADV-009) and the points 0, or with free boarding (the Admiral's Hat) the points after the drop × the sea's maximum ÷ the old maximum, truncated, a maximum of 0 giving 0 (D-41: the drop first, the original's order). The original keeps the land's maximum without the Hat (A-28, `ADV-QUIRK-31`): not reproduced. Told as `Boarded` (the boat's type and tile, never its index, owner or captain) to those that see heroes on the tile, after the step's event. The reachable tiles give a flyer's and a water walker's boarding with the converted points; a walker's comes with T73b (ADV-STUB-11). E08 T73a: `AdventureState::check_step`, `passage`, `board`, `Pricing::left_by`, `converted_points`."
+numeric  = "integer"
+quirks   = ["ADV-QUIRK-31"]
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey E08-sea.md §3.1, §13): hero_move_step 0x480C19 takes a boat's entrance as a step from land, charges the step and drops the points below cheapest_step_from 0x4B1880 (100 on water); after_step_guard_check 0x480090 skips a boat's tile; the step returns the boat, which ends the walk; hero_boards_boat 0x4A1010 clears the fly and water-walk levels, sets the in-boat flag, the owner, captain and aboard, and with the Admiral's Hat the sea's maximum and left x sea / land, else 0 with the land's maximum kept (A-28)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-8a.md (survey E08-sea.md §15): E8-1, the Hat's hero with 75 left after its step onto the boat keeps 0, with 425 keeps 637 (425 x 3 000 / 2 000), the maximum 3 000; E8-16, any hero boards a boat another hero left, owner and captain its own, 0 points and the maximum kept without the Hat (A-28); batch E8c (E08-batch-8c.md, survey §16): E8-17d, E8-17e, a flight crosses an empty boat from land and from water"
+  retrieved  = "2026-10-29"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "lib/mapObjects/CGHeroInstance.cpp movementPointsAfterEmbark: 0 without free boarding, else (left - price) x sea / land with no drop between (D-41's other side); lib/pathfinder: EMBARK with IGNORE_GUARDS"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/mapObjects/CGHeroInstance.cpp"
+  retrieved  = "2026-10-28"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Boat: boarding 'takes the remainder of a hero's movement allowance for the current day'; Admiral's Hat: 'No boarding or unboarding penalty for boats', 'Converts movement points between land and water movement'"
+  url        = "https://heroes.thelazy.net/index.php/Boat"
+  retrieved  = "2026-10-28"
+  confidence = "medium"
+
+[[rule]]
+id       = "ADV-SEA-003"
+title    = "Landing: a boat's step onto a free coastal tile"
+context  = "adventure"
+status   = "verified"
+summary  = "A hero in a boat steps onto land only onto a free coastal tile (D-42, decision 162): a tile with the map's coast flag that, as it stands now, no object still on the map blocks or is visited from, with no event still on the map (whoever it fires for), no hole and no hero; else `Landing` (a boat never reaches a hero on land). A diagonal landing has no side test. The step is priced as a boat's from its water tile (ADV-SEA-004); no guard is tested at the step; the walk ends there (`PastVisit` after it); the drop is a walker's without its levels (the coast tile's road price, else the native price, Cursed Ground's terrain price under it), in both profiles. Then the boat lies empty on the water tile left, facing the step's direction in the original's order (clockwise from up: east 2, south 4), nobody aboard, its owner and captain kept; the hero's day's maximum becomes the land's and its points 0, or with free boarding the points after the drop × the land's maximum ÷ the sea's (D-41); the old maximum is not kept (A-28, `ADV-QUIRK-31`). Told as `Landed` (the boat's type, its water tile and facing) to those that see heroes on the water tile, after the step's event; the landing tile's guards then visit, at the monster's tile. The refusal tells of an event on a coastal tile, as the original's path does. E08 T73a: `AdventureState::passage` (`sail_entry`, `free_coast`), `land`."
+numeric  = "integer"
+quirks   = ["ADV-QUIRK-31"]
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey E08-sea.md §3.2, §3.3, §13): the loader gives class 3 to every land tile with the coast flag (map_tiles_load 0x4FE3D6), any object, event or hole recorded on the tile replaces it, tile_refresh_object gives it back (0x5056A5); the pathfinder steps from a boat node onto class 3 only (0x4B2867); hero_move_step 0x48095A puts the boat on the hero's water tile facing its way, prices the water step and drops below the coast tile's cheapest step; after_step_guard_check skips the landing (0x4800E3); hero_lands_from_boat 0x49E670 converts with the Hat, else 0 with the maximum kept, then guard_attack for the landing tile"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-8a.md (survey E08-sea.md §15): E8-2, 59 left after the step onto the coast keep 0, 500 keep 333, the boat on the water tile behind facing east (2), nobody aboard, owner and captain kept; E8-3, no path to a hole's tile nor an event's, the free tile landed; E8-15, a guarded landing fights at once at the monster's tile, the boat behind facing south (4); E8-10, the maximum kept without the Hat (A-28)"
+  retrieved  = "2026-10-29"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "lib/gameState/GameStatePackVisitor / server moveHero: disembarking onto any land tile not blocked, an event's or an enterable object's too, with the destination's visit (D-42's other side); CHECK_FOR_GUARDS"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/server/CGameHandler.cpp"
+  retrieved  = "2026-10-28"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Boat: 'Landing is allowed on any clear land square, but not on a square with a hole.'"
+  url        = "https://heroes.thelazy.net/index.php/Boat"
+  retrieved  = "2026-10-28"
+  confidence = "medium"
+
+[[rule]]
+id       = "ADV-SEA-004"
+title    = "Sailing: a boat's steps, their prices and the drop at sea"
+context  = "adventure"
+status   = "verified"
+summary  = "A hero in a boat sails, whatever its levels (it neither flies nor water-walks): water to water, every water tile a stop; never onto an empty boat (`Boat`), a blocked water tile or rock; a diagonal only when both side tiles are water (`Coast`). The price from the source tile: water's table price (100, the same at every Pathfinding level), on a tile a ground of the sea tops (Favorable Winds) the part's `sea_ground` share (2/3), truncated (66); no roads, no native terrain, no flying or water walking; a diagonal ⌊straight × √2⌋ (141, 93), except that with points from water's price C to ⌊C × √2⌋ it costs only the straight step: the exception compares with water's price, never the winds' step (D-43, in both profiles; on Favorable Winds with 66 to 92 points the diagonal is refused, with 93 to 99 it costs 93, with 100 to 141 the straight 66). The drop after a step at sea: none below a boat's cheapest step from the new tile (100; 66 on Favorable Winds). Each step is tested for a guard (a water monster attacks at once, ADV-MON-005) and for an event on water (ADV-MOV-011). E08 T73a: `Mode::Sail`, `Pricing::sail`, `left_by`; the reachable tiles of a hero in a boat come with T73b (ADV-STUB-11)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey E08-sea.md §4.1, §13): pathfinder_expand's boat node: step_cost with no road, native or levels, water's table price 100 (0x63E510), Favorable Winds two thirds on the source tile (0x4B17B3); never onto a boat's entrance (0x4B26EB); a diagonal only between two water side tiles (0x4B2703 to 0x4B27F5; hero_step_allowed 0x481D33); cheapest_step_from 0x4B1880 for a boat 100, 66 on the winds; the diagonal exception's check the terrain's table price"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-8a.md (E8-4, survey E08-sea.md §15): 80 points on Favorable Winds, the diagonal one red mark, not taken; the straight step taken, 0 left"
+  retrieved  = "2026-10-29"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "lib/pathfinder/TurnInfo / CPathfinderHelper::getMovementCost: x 2/3 for the SAIL layer from the current tile; the diagonal exception against the price after the winds (D-43's other side); getNeighbourTiles: 'avoid diagonal movement over coast when sailing'"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/pathfinder/CPathfinder.cpp"
+  retrieved  = "2026-10-28"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Movement: 'Favorable Winds at 66% (66 straight / 93 diagonal)', 'Favorable winds do not affect movement under the Fly spell'"
+  url        = "https://heroes.thelazy.net/index.php/Movement"
+  retrieved  = "2026-10-28"
+  confidence = "medium"
+
+[[rule]]
+id       = "ADV-SEA-005"
+title    = "What a boat visits"
+context  = "adventure"
+status   = "verified"
+summary  = "From a boat an object visited from the neighbouring tile is visited from the boat's water tile (the step's price paid, the hero stays, ADV-OBJ-003) and an entered one is entered, the hero in its boat on its tile; a visit not built is refused (`Visit`); another hero (in a boat) is met or attacked from the neighbouring water tile (GAM-MET-001, GAM-BAT-004; the deck's and the two boats' battlefields are T74's); a boat never reaches a hero on land (`Landing`). From land a walker, a flyer and a water walker visit a hero in a boat from a stop (a flight passes over it, a water walk neither stops nor visits from water). An object's tile on water is reached only by a boat: never by a walker, a water walker or a flight (D-46, ADV-MOV-009). An event on water fires for a boat's step and ends the move there, its guards fighting on the deck (ADV-OBJ-007, ADV-MOV-011). The sea's pickups' visits are T74's (until then refused as any unbuilt visit). E08 T73a: `AdventureState::passage`, `MoveHero`."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey E08-sea.md §4.3): hero_move_step's class switch (0x480C12): a hero in a boat goes to visit_from_neighbour 0x480240 for a class on the 'cannot be entered' list (0x480F3A); another hero on water from a boat when it is in a boat (0x480D89 to 0x480E2D); event_fires_for 0x4FCDC0 at 0x4811A3 for every tile entered, no boat test"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-8b.md (survey E08-sea.md §15): E8-13, a boat's step onto a guarded water tile fights at once; E8-14, a boat's path over an event on water stops on its tile with the event fired (+100 gold), a guarded one's battle on the water"
+  retrieved  = "2026-10-29"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "lib/pathfinder/PathfindingRules.cpp: from SAIL a visitable object's tile is a visit, a hero in a boat is attacked from the water; 'Hero in boat can't visit empty boats'"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/pathfinder/PathfindingRules.cpp"
+  retrieved  = "2026-10-28"
+  confidence = "high"
 
 [[rule]]
 id       = "ADV-SEA-007"

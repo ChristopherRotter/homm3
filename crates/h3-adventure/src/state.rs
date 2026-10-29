@@ -911,18 +911,27 @@ pub(crate) struct StepVisit<'p> {
 
 /// What a step meets that ends the move (ADV-OBJ-003): an object's visit, or another hero, by
 /// index among the heroes on the map, visited from the tile before: another player's in a battle
-/// (GAM-BAT-004, E08 T19a), an own one in a meeting (GAM-MET-001, T50).
+/// (GAM-BAT-004, E08 T19a), an own one in a meeting (GAM-MET-001, T50); since E08 T73 an empty
+/// boat boarded (ADV-SEA-002) and a landing (ADV-SEA-003), each by boat index.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum Meets<'p> {
     Object(StepVisit<'p>),
     Hero(usize),
+    /// The empty boat the hero boards, on the step's tile.
+    Board(u32),
+    /// The free coastal tile the hero lands on, leaving its boat on the water tile it left.
+    Land(u32),
 }
 
 impl Meets<'_> {
-    /// Whether the hero steps onto the tile: an entered object's, not a neighbour-visited
-    /// object's nor another hero's.
+    /// Whether the hero steps onto the tile: an entered object's, a boat's, a landing's; not a
+    /// neighbour-visited object's nor another hero's.
     fn enters(self) -> bool {
-        matches!(self, Self::Object(visit) if visit.mode == Visit::Enter)
+        match self {
+            Self::Object(visit) => visit.mode == Visit::Enter,
+            Self::Hero(_) => false,
+            Self::Board(_) | Self::Land(_) => true,
+        }
     }
 }
 
@@ -1279,8 +1288,18 @@ impl AdventureState {
     /// end for the guard test) the guard visits first and the event waits for the guard's visit
     /// ([`AdventureOutcome::event_after`], E08 T63b, `ADV-QUIRK-29`). The hero's start is no step:
     /// a hero that starts on an event does not fire it.
+    ///
+    /// Boats (E08 T73; ADV-SEA-002 to -005, design §7 and §8): a step onto an empty boat's tile
+    /// boards it ([`Self::board`]), priced by the hero's mode on land, from a stop node, the
+    /// walk ending there with no guard test; a hero in a boat sails ([`Mode::Sail`]): each step
+    /// is a stop priced as a boat's ([`Pricing::sail`]) and tested for a guard (a water monster
+    /// attacks at once) and for an event on water as a walker's, a step onto a free coastal tile
+    /// lands ([`Self::land`]), the walk ending there and the tile's guards visiting after the
+    /// landing; an object or a hero in a boat is visited from the boat's tile. The drop after a
+    /// step is [`Pricing::left_by`]'s; a boarding's and a landing's conversion follows it (D-41).
     // rule: ADV-MOV-006, ADV-MOV-007, ADV-MOV-009, ADV-MOV-010, ADV-FOG-003
-    // rule: ADV-OBJ-003, ADV-MON-006, GAM-MET-001, ADV-MOV-011
+    // rule: ADV-OBJ-003, ADV-MON-006, GAM-MET-001, ADV-MOV-011, ADV-OBJ-007
+    // rule: ADV-SEA-002, ADV-SEA-003, ADV-SEA-004, ADV-SEA-005
     fn move_hero<S: Sink>(
         &mut self,
         core: &Ruleset,
@@ -1302,7 +1321,7 @@ impl AdventureState {
         let hero = &self.heroes[index];
         let details = details_of(heroes, id);
         let movement = hero_movement(core, details);
-        let mode = Mode::of(&movement);
+        let mode = Mode::of(&movement, hero.boat);
         let pricing = Pricing::new(core, part, &hero.army, &movement);
         let start = hero.pos;
         let (mut at, mut from, mut points) =
@@ -1310,6 +1329,8 @@ impl AdventureState {
         let (mut node, mut visit, mut guard) = (Node::Stop, None, None);
         // The first step that fires an event: the step, the event, the points left after it.
         let mut fired = None;
+        // A landing's water tile and direction (ADV-SEA-003).
+        let mut landing = (start, 0);
         for (step, &next) in path.iter().enumerate() {
             if visit.is_some() || guard.is_some() {
                 return Err(AdventureCommandError::PastVisit { step });
@@ -1329,15 +1350,17 @@ impl AdventureState {
                     _ => return Err(AdventureCommandError::NoStop { step }),
                 }
             };
-            let cost = pricing.step(&from, &to, direction % 2 == 1, points);
+            let cost = pricing.step_by(mode, (&from, &to), direction % 2 == 1, points);
             let left = points
                 .checked_sub(cost)
                 .ok_or(AdventureCommandError::TooFewPoints { step, cost, points })?;
-            points = pricing.left_after(&to, left);
+            points = pricing.left_by(mode, met, &to, left);
+            landing = (at, direction);
             if met.is_none_or(Meets::enters) {
                 (at, from, node) = (next, to, kind);
-                // A flying hero meets a guard only where its move ends (0x48147D).
-                if mode != Mode::Fly || last {
+                // A flying hero meets a guard only where its move ends (0x48147D); no guard
+                // attacks on a boat's tile (0x480108, ADV-SEA-002).
+                if (mode != Mode::Fly || last) && !matches!(met, Some(Meets::Board(_))) {
                     guard = self.guard_at(part, next);
                 }
             }
@@ -1395,10 +1418,19 @@ impl AdventureState {
                 ..outcome
             });
         }
-        let visited = visit.is_some();
+        let visited = matches!(visit, Some(Meets::Object(_)));
         let outcome = match visit {
             None => AdventureOutcome::default(),
             Some(Meets::Object(visit)) => self.visit(rules, (player, id), visit, sink),
+            Some(Meets::Board(boat)) => {
+                self.board(rules, (player, index), boat, sink);
+                AdventureOutcome::default()
+            }
+            Some(Meets::Land(boat)) => {
+                let (water, direction) = landing;
+                self.land(rules, (player, index), (boat, water, direction), sink);
+                AdventureOutcome::default()
+            }
             Some(Meets::Hero(other)) if self.heroes[other].owner == player => AdventureOutcome {
                 meeting: Some(Meeting {
                     visitor: id,
@@ -1415,8 +1447,9 @@ impl AdventureState {
         // over, with everything it opened (E08 T63b: the game holds it as a rest of the visit,
         // GAM-DEC-007; before it the guard came after an offer's answer, E08 T20b1, a choice's or
         // a University's, T63a, or at once beside what the visit gave). On a tile without an
-        // object the guard's visit is the step's. A step that does not enter tests no guard
-        // (T20b3a).
+        // object the guard's visit is the step's, a landing's after the landing (its tile's
+        // guards attack once the hero is on land, `hero_lands_from_boat`'s guard_attack; E08
+        // T73). A step that does not enter tests no guard (T20b3a), nor a boarding.
         Ok(match guard {
             None => outcome,
             Some(_) if visited => AdventureOutcome {
@@ -2073,8 +2106,10 @@ impl AdventureState {
     /// tile across its top (ADV-OBJ-004); the tile, and the object the step visits if an object
     /// is visited from it (ADR-0016 point 4: a pickup's visit since E08 T13b, the Cartographer's
     /// since T14a), none for a border gate the player passes (ADV-VIS-005, T15b). The explored test
-    /// comes first, so a rejection tells nothing about a hidden tile.
-    // rule: ADV-MOV-007, ADV-MOV-008, ADV-OBJ-004
+    /// comes first, so a rejection tells nothing about a hidden tile. Since E08 T73 a step onto an
+    /// empty boat's tile on water boards it ([`Meets::Board`], ADV-SEA-002: the walk ends there,
+    /// no guard attacks on it), and a hero in a boat is visited from the shore as any hero.
+    // rule: ADV-MOV-007, ADV-MOV-008, ADV-OBJ-004, ADV-SEA-002
     fn check_step<'p>(
         &self,
         part: &'p AdventureRuleset,
@@ -2110,11 +2145,23 @@ impl AdventureState {
             }
             return Ok((self.live(pos, self.map.at(pos)), Some(Meets::Hero(other))));
         }
-        let tile = self
-            .check_tile(part, pos, Some(mover))
-            .map_err(|error| AdventureCommandError::Blocked { step, error })?;
+        let (tile, boat) = match self.check_tile(part, pos, Some(mover)) {
+            Ok(tile) => (tile, None),
+            // Water: an empty boat's tile only (0x481D0D; class 85's, the Shipwreck's, is an
+            // untyped blocker's here, ADV-STUB-12).
+            Err(error @ StandError::Terrain) => {
+                let boat = self
+                    .empty_boat(pos)
+                    .ok_or(AdventureCommandError::Blocked { step, error })?;
+                (self.live(pos, self.map.at(pos)), Some(boat))
+            }
+            Err(error) => return Err(AdventureCommandError::Blocked { step, error }),
+        };
         if closed() {
             return Err(AdventureCommandError::FromAbove { step });
+        }
+        if let Some(boat) = boat {
+            return Ok((tile, Some(Meets::Board(boat))));
         }
         if !tile.visitable {
             return Ok((tile, None));

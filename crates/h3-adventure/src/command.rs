@@ -100,6 +100,24 @@ pub enum AdventureCommandError {
         /// The points left before it.
         points: u32,
     },
+    /// A step onto an empty boat's tile from a boat, or from water by a water walk (ADV-SEA-002,
+    /// ADV-SEA-004; E08 T73): a boat is boarded only from a stop node.
+    Boat {
+        /// The step.
+        step: usize,
+    },
+    /// A boat's step onto land that is no free coastal tile (ADV-SEA-003, D-42; E08 T73): an
+    /// object's, an event's, a hole's or a hero's tile, or a tile off the coast.
+    Landing {
+        /// The step.
+        step: usize,
+    },
+    /// A boat's diagonal step between two water tiles past a side tile that is not water
+    /// (ADV-SEA-004; E08 T73).
+    Coast {
+        /// The step.
+        step: usize,
+    },
 }
 
 impl fmt::Display for AdventureCommandError {
@@ -122,6 +140,13 @@ impl fmt::Display for AdventureCommandError {
                 )
             }
             Self::PastVisit { step } => write!(f, "step {step} follows a visit"),
+            Self::Boat { step } => write!(f, "step {step} goes onto an empty boat from water"),
+            Self::Landing { step } => {
+                write!(f, "step {step} goes ashore where no boat may land")
+            }
+            Self::Coast { step } => {
+                write!(f, "step {step} sails diagonally past the coast")
+            }
             Self::NoStop { step } => write!(f, "step {step} lands where the hero may not stop"),
             Self::TooFewPoints { step, cost, points } => {
                 write!(f, "step {step} costs {cost} with {points} points left")
@@ -663,6 +688,34 @@ pub enum AdventureEventKind {
         anchor: Pos,
         /// The word of its count now ([`crate::MonsterParams::count_word`]).
         count_word: u8,
+    },
+    /// A hero boarded an empty boat (ADV-SEA-002, E08 T73; design §12): the boat is no longer an
+    /// empty one on the tile, the hero is in it there (its step came before as
+    /// [`Self::HeroStepped`]). Seen by the players that see heroes on the tile, as they see the
+    /// empty boat there (ADV-FOG-008). Named by the boat's type and tile, never its index
+    /// (ADR-0016 point 6), owner or captain.
+    Boarded {
+        /// The hero.
+        hero: HeroId,
+        /// The boat's type (appearance only).
+        boat: u8,
+        /// The boat's tile, where the hero stands.
+        at: Pos,
+    },
+    /// A hero in a boat landed (ADV-SEA-003, E08 T73; design §12): its boat lies empty on the
+    /// water tile it left, facing the landing's way (its step came before as
+    /// [`Self::HeroStepped`], which tells the landing tile to those that see it). Seen by the
+    /// players that see heroes on the water tile, as they then see the empty boat there
+    /// (ADV-FOG-008); never the boat's index, owner or captain.
+    Landed {
+        /// The hero.
+        hero: HeroId,
+        /// The boat's type (appearance only).
+        boat: u8,
+        /// The water tile the boat lies on now.
+        at: Pos,
+        /// The boat's facing, in the original's order of eight directions from up, clockwise.
+        facing: u8,
     },
 }
 
