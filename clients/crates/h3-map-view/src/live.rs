@@ -53,16 +53,16 @@ pub struct Live {
 }
 
 /// What the adventure screen's panels show of the viewing player's kingdom (E24 M3 T2a, design
-/// §4.1; *provisional*: T4 and T5 add the lists' contents, the resources and the date): its
-/// heroes in the hero list's order, its towns, the one selected, the lists' first slots and
-/// whether its quest log holds a quest. A comparison reads them from the original's memory
+/// §4.1; *provisional*: T4a added the lists' contents, T5 adds the resources and the date): its
+/// heroes and towns in their lists' order, the one selected, the lists' first slots and whether
+/// its quest log holds a quest. A comparison reads them from the original's memory
 /// (`h3mem.py`); [`Live::at_start`] gives a map's start; from M4 on the engine.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct Kingdom {
     /// The heroes, in the hero list's order (the player's +0x8).
     pub heroes: Vec<KingdomHero>,
-    /// The towns (the player's +0x3E).
-    pub towns: usize,
+    /// The towns, in the town list's order (the player's +0x40, +0x3E of them).
+    pub towns: Vec<KingdomTown>,
     /// The hero or town selected (the player's +0x4, +0x3F).
     pub selected: Selected,
     /// The first hero and the first town the lists show (the dialog's +0x64, +0x68).
@@ -79,6 +79,23 @@ pub struct KingdomHero {
     /// It can still move today: its points at least the cheapest step from its tile
     /// (`hero_can_move` 0x4E5F30).
     pub movable: bool,
+    /// Its portrait (+0x34), an index into the tables' portraits (E24 M3 T4a).
+    pub portrait: u8,
+    /// Its movement points left (+0x4D).
+    pub points: i32,
+    /// Its mana (+0x18).
+    pub mana: i32,
+}
+
+/// A town of the kingdom's, as the town list shows it (E24 M3 T4a, design §4.5).
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct KingdomTown {
+    /// Its faction (+0x4: 0 Castle … 8 Conflux).
+    pub faction: u8,
+    /// It has a Fort (or a Citadel or Castle: its every-built set +0x158 keeps the Fort's bit).
+    pub fort: bool,
+    /// A building was built in it today (+0x2).
+    pub built: bool,
 }
 
 /// What the player has selected.
@@ -110,9 +127,12 @@ impl Kingdom {
     }
 
     /// A live part's `kingdom` as the harness writes it (`h3mem.py`'s `Mem.kingdom`): `{ heroes =
-    /// [[asleep, movable], ...], towns = <n>, selected = [<0 none, 1 a hero, 2 a town>, <its place
-    /// in its list>], tops = [<heroes>, <towns>], quests = <0 or 1> }`, each flag 0 or 1; none
-    /// for anything else (a selection past its list among them).
+    /// [[asleep, movable, portrait, points, mana], ...], towns = [[faction, fort, built], ...],
+    /// selected = [<0 none, 1 a hero, 2 a town>, <its place in its list>], tops = [<heroes>,
+    /// <towns>], quests = <0 or 1> }`, each flag 0 or 1; none for anything else (a selection past
+    /// its list among them). The form before T4a (`[asleep, movable]` a hero, `towns = <n>`), which
+    /// the sequences' kept live parts hold until T4b records them again, reads with portrait 0, no
+    /// points, no mana and towns of faction 0 without a fort.
     #[must_use]
     pub fn read(value: &toml::Value) -> Option<Self> {
         fn pair(v: &toml::Value) -> Option<[&toml::Value; 2]> {
@@ -123,6 +143,8 @@ impl Kingdom {
         }
         let table = value.as_table()?;
         let number = |v: &toml::Value| v.as_integer().and_then(|n| usize::try_from(n).ok());
+        let int = |v: &toml::Value| v.as_integer().and_then(|n| i32::try_from(n).ok());
+        let byte = |v: &toml::Value| v.as_integer().and_then(|n| u8::try_from(n).ok());
         let flag = |v: &toml::Value| match v.as_integer()? {
             0 => Some(false),
             1 => Some(true),
@@ -132,21 +154,43 @@ impl Kingdom {
             .get("heroes")?
             .as_array()?
             .iter()
-            .map(|h| {
-                let [asleep, movable] = pair(h)?;
-                Some(KingdomHero {
+            .map(|h| match h.as_array()?.as_slice() {
+                [asleep, movable] => Some(KingdomHero {
                     asleep: flag(asleep)?,
                     movable: flag(movable)?,
-                })
+                    ..KingdomHero::default()
+                }),
+                [asleep, movable, portrait, points, mana] => Some(KingdomHero {
+                    asleep: flag(asleep)?,
+                    movable: flag(movable)?,
+                    portrait: byte(portrait)?,
+                    points: int(points)?,
+                    mana: int(mana)?,
+                }),
+                _ => None,
             })
             .collect::<Option<Vec<_>>>()?;
-        let towns = number(table.get("towns")?)?;
+        let towns = match table.get("towns")? {
+            toml::Value::Integer(n) => vec![KingdomTown::default(); usize::try_from(*n).ok()?],
+            list => list
+                .as_array()?
+                .iter()
+                .map(|t| match t.as_array()?.as_slice() {
+                    [faction, fort, built] => Some(KingdomTown {
+                        faction: byte(faction)?,
+                        fort: flag(fort)?,
+                        built: flag(built)?,
+                    }),
+                    _ => None,
+                })
+                .collect::<Option<Vec<_>>>()?,
+        };
         let [kind, at] = pair(table.get("selected")?)?;
         let at = number(at)?;
         let selected = match number(kind)? {
             0 => Selected::None,
             1 if at < heroes.len() => Selected::Hero(at),
-            2 if at < towns => Selected::Town(at),
+            2 if at < towns.len() => Selected::Town(at),
             _ => return None,
         };
         let [heroes_top, towns_top] = pair(table.get("tops")?)?;
@@ -441,6 +485,9 @@ impl Live {
     pub fn at_start(raw: &RawMap, art: &MapArt, viewer: u8, towns: &TownArt) -> Self {
         let mut heroes = Vec::new();
         let mut boats = Vec::new();
+        // The viewer's heroes' portraits and towns, in the map's order (the kingdom below).
+        let mut portraits = Vec::new();
+        let mut towns_kept = Vec::new();
         let mut objects = Vec::with_capacity(art.objects.len());
         for (object, raw_object) in art.objects.iter().zip(&raw.objects) {
             let template = art.templates.get(object.template);
@@ -449,6 +496,9 @@ impl Live {
             match (class, at, &raw_object.body) {
                 (Some((HERO_CLASS, subclass)), Some(at), Body::Hero(hero)) => {
                     if let (Ok(class), Some(owner)) = (u8::try_from(subclass), colour(hero.owner)) {
+                        if owner == viewer {
+                            portraits.push(hero.portrait.unwrap_or(hero.hero_type));
+                        }
                         heroes.push(LiveHero {
                             at,
                             class,
@@ -468,6 +518,19 @@ impl Live {
                     }
                 }
                 _ => {}
+            }
+            if let (Some(t), Body::Town(town)) = (template, &raw_object.body)
+                && t.class == TOWN_CLASS
+                && colour(town.owner) == Some(viewer)
+            {
+                let built = built_at_start(&town.buildings);
+                towns_kept.push(KingdomTown {
+                    faction: u8::try_from(t.subclass).unwrap_or(u8::MAX),
+                    fort: [tables::FORT, tables::CITADEL, tables::CASTLE]
+                        .iter()
+                        .any(|&id| built >> id & 1 == 1),
+                    built: false,
+                });
             }
             let drawn = match (template, &raw_object.body) {
                 (Some(t), Body::Town(town)) if t.class == TOWN_CLASS => towns
@@ -489,33 +552,26 @@ impl Live {
             });
         }
         // The viewer's kingdom (*provisional*, the engine's from M4): its heroes in the map's
-        // order, awake and able to move, its towns, the first hero selected, else the first town.
-        let mine = heroes.iter().filter(|h| h.owner == viewer).count();
-        let towns = objects
-            .iter()
-            .zip(&art.objects)
-            .filter(|(o, a)| {
-                o.owner == Some(viewer)
-                    && art
-                        .templates
-                        .get(a.template)
-                        .is_some_and(|t| t.class == TOWN_CLASS)
-            })
-            .count();
-        let selected = match (mine, towns) {
+        // order, awake and able to move, each with its portrait (the map's or its type's; a random
+        // hero's type 0xFF until the engine draws it) and no points or mana known; its towns in
+        // the map's order, none built in today; the first hero selected, else the first town.
+        let selected = match (portraits.len(), towns_kept.len()) {
             (0, 0) => Selected::None,
             (0, _) => Selected::Town(0),
             _ => Selected::Hero(0),
         };
         let kingdom = Kingdom {
-            heroes: vec![
-                KingdomHero {
+            heroes: portraits
+                .into_iter()
+                .map(|portrait| KingdomHero {
                     asleep: false,
                     movable: true,
-                };
-                mine
-            ],
-            towns,
+                    portrait,
+                    points: 0,
+                    mana: 0,
+                })
+                .collect(),
+            towns: towns_kept,
             selected,
             tops: [0, 0],
             quests: false,

@@ -423,15 +423,19 @@ pub fn scene_in(
         viewer: live.viewer,
     });
     // The panels (`adventure_full_update` 0x417420 after its picture, design §4.1): the dialog's
-    // items in their order, then the resource bar's; the view after them.
+    // items in their order, the lists' selections (0x4038C0, §4.5), then the resource bar's; the
+    // view after them.
     let players = &layout.player_palette;
-    let shown = panels::dialog(layout, live, art.levels, at.z);
+    let lists = &tables.map.lists;
+    let shown = panels::dialog(layout, lists, live, art.levels, at.z)
+        .ok_or_else(|| SceneError::Live("a hero's portrait is past the tables'".into()))?;
     let bar = panels::resource_bar(layout, live);
     draws.extend(
         layout
             .dialog
             .draws(&shown, players)
             .into_iter()
+            .chain(panels::selections(layout, lists, live))
             .chain(layout.resource_bar.draws(&bar, players))
             .map(Draw::Dialog),
     );

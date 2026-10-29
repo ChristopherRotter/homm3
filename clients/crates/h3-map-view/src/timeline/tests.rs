@@ -1113,6 +1113,7 @@ fn move_hero_and_next_hero_through_a_walk() {
     let awake = KingdomHero {
         asleep: false,
         movable: true,
+        ..KingdomHero::default()
     };
     let start = |heroes: Vec<KingdomHero>, path: &Vec<Arrow>| {
         let mut s = Start {

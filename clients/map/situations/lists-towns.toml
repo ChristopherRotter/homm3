@@ -1,0 +1,22 @@
+# The town list scrolled and a town selected (E24 M3 T4a; design §4.5): Red's seven towns, the
+# seventh selected from the list, which scrolls it to its third (town_list_update 0x403420); the
+# selected town's mark (itpa.def's frame 1) over its picture (lists_selection_frames 0x4038C0),
+# a village built in today among the five shown. Red's one hero over four empty slots, no frame
+# (a town selected).
+size = 36
+terrain = "grass"
+heroes = [
+    { at = [4, 14], class = 13, points = 700, mana = 60 },
+    { at = [30, 30], owner = 1 },
+]
+towns = [
+    { at = [6, 5], faction = 0, owner = 0, buildings = "village" },
+    { at = [12, 5], faction = 1, owner = 0, buildings = "fort" },
+    { at = [18, 5], faction = 7, owner = 0, buildings = "fort" },
+    { at = [24, 5], faction = 8, owner = 0, buildings = "village" },
+    { at = [30, 5], faction = 0, owner = 0, buildings = "village", built = true },
+    { at = [6, 10], faction = 1, owner = 0, buildings = "castle" },
+    { at = [12, 10], faction = 8, owner = 0, buildings = "capitol" },
+]
+select = { town = [12, 10] }
+view = [0, 0, 0]

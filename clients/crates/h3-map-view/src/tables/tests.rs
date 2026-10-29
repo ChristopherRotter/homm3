@@ -82,6 +82,12 @@ blocking = [134]
 other = {{ frame = 1, scale = 0x3F800000 }}
 sizes = [{{ size = 36, columns = [4], rows = [4], radar = {{ frame = 4, scale = 0x40800000 }} }}]
 
+[map.lists]
+portraits = ["hps000kn.pcx"]
+movement = {{ step = 100, round = 0, top = [2300, 2500, 2800], from = 23 }}
+mana = {{ step = 5, round = 4, top = [116, 145, 170], from = 23 }}
+towns = {{ empty = 0, selected = 1, fort = 2, village = 20, faction = 2, built = 1 }}
+
 [[terrain]]
 code = 0
 def = "dirttl.def"
@@ -500,6 +506,13 @@ fn refuses_what_breaks_the_format() {
         "base",
         entry("poll_ms", "a poll every 0 ms"),
         "`poll_ms`: a poll every 0 ms",
+    );
+    // The lists (E24 M3 T4a): portraits, the bars' rules.
+    check(
+        &[base("").replacen("portraits = [\"hps000kn.pcx\"]", "portraits = []", 1)],
+        "base",
+        entry("lists", "no portraits"),
+        "`lists`: no portraits",
     );
     // The walk (E24 M2 T3a): a group per direction, frames and their time, per hero speed pixels
     // summing to one tile, or none.

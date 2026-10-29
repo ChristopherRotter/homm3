@@ -77,6 +77,8 @@ DIFFICULTY_BUTTONS = (521, 478, 32)  # the scenario list's player difficulty: Ea
 PARK = (700, 300)  # over the right panel: no edge scrolls, no tile hovered
 HERO_LIST = (638, 227, 32, 5)  # the hero list's portraits: x, the first one's y, the step, rows
 LIST_UP, LIST_DOWN = (638, 203), (638, 379)  # the hero list's arrows (E17 H2)
+TOWN_LIST = (771, 227, 32, 5)  # the town list's pictures (E24 M3 T4a), as HERO_LIST
+TOWN_UP, TOWN_DOWN = (771, 203), (771, 379)  # the town list's arrows
 MAP_AREA = (8, 8, 18, 17)  # the map's screen area: its top-left, the tiles across and down
 TILE = 32
 RADAR = (630, 26, 144)  # the minimap: its top-left and side in pixels
@@ -203,6 +205,33 @@ def select(game, mem, name):
     game.move(*PARK)
     wait_for(lambda: mem.player(player["colour"])["selected"] == hero["index"], f"select {name}")
     return hero
+
+
+def select_town(game, mem, index):
+    """Selects the current player's town `index` (of the game's towns) from the town list, as
+    `select` a hero (E24 M3 T4a): with more than five towns the list is scrolled to its top first,
+    then down until the town's row shows; the selection is checked in memory (the player's +0x3F;
+    town_select 0x417830 sets the selected hero to none). A town selected already is not clicked
+    again (a click on it opens its screen)."""
+    colour = mem.current_player()
+    towns = mem.town_list(colour)
+    if index not in towns:
+        raise ValueError(f"town {index} is not the current player's ({towns})")
+    if mem.player(colour)["selected"] < 0 and mem.kingdom(colour)["selected"] == [
+            2, towns.index(index)]:
+        return
+    x, y, step, rows = TOWN_LIST
+    row = towns.index(index)
+    if len(towns) > rows:
+        for _ in range(len(towns) - rows):
+            game.click(*TOWN_UP, 0.4)
+        for _ in range(max(0, row - rows + 1)):
+            game.click(*TOWN_DOWN, 0.4)
+        row = min(row, rows - 1)
+    game.click(x, y + step * row, 0.6)
+    game.move(*PARK)
+    wait_for(lambda: mem.kingdom(colour)["selected"] == [2, towns.index(index)],
+             f"select town {index}")
 
 
 def wait_for(test, what, limit=3.0):

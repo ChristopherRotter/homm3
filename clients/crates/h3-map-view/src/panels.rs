@@ -1,15 +1,18 @@
 //! What the adventure screen's dialog and resource bar show (E24 M3 T2a, *provisional*;
 //! `docs/epics/E24-design.md` §4.1): the buttons' states at the human player's turn from the
 //! live part's kingdom and buttons, the map's levels and the view's level; the buttons 3 to 12 and
-//! the resource bar's picture in the viewer's colours. The lists' contents (T4), the status
-//! window, the amounts and the date (T5) and the hints (T6) come later; the minimap is
-//! [`crate::minimap`]'s (T3a).
+//! the resource bar's picture in the viewer's colours; the lists' contents and their selections
+//! (T4a, [`crate::lists`]). The status window, the amounts and the date (T5) and the hints (T6)
+//! come later; the minimap is [`crate::minimap`]'s (T3a).
 
 use alloc::collections::BTreeMap;
+use alloc::string::ToString;
+use alloc::vec::Vec;
 
-use h3_ui::ui::{Shown, State};
+use h3_ui::ui::{Draw, Item, Shown, State};
 
 use crate::layout::AdventureLayout;
+use crate::lists::{self, ListArt, SLOTS};
 use crate::live::{Buttons, Live, Selected};
 
 /// The dialog's control ids the panels' logic sets (design §4.1).
@@ -32,10 +35,17 @@ pub mod id {
     pub const HEROES: [u16; 2] = [13, 14];
     /// The town list's arrows, up and down.
     pub const TOWNS: [u16; 2] = [30, 31];
+    /// The hero list's portraits, the first of five (E24 M3 T4a).
+    pub const PORTRAITS: u16 = 15;
+    /// The hero list's movement bars, the first of five.
+    pub const MOVEMENT: u16 = 20;
+    /// The hero list's mana bars, the first of five.
+    pub const MANA: u16 = 25;
+    /// The town list's pictures, the first of five.
+    pub const TOWN_PICTURES: u16 = 32;
+    /// The hero list's selection frames, the first of five.
+    pub const FRAMES: u16 = 39;
 }
-
-/// The slots of each list (`hero_list_update` 0x4032E0, `town_list_update` 0x403420).
-pub const SLOTS: usize = 5;
 
 /// What the dialog's items show for `live` on a map of `levels` levels with the view on level
 /// `z` (design §4.1): the underground disabled on one level and its DEF by `z`; the quest log
@@ -43,8 +53,18 @@ pub const SLOTS: usize = 5;
 /// DEF the asleep one while it sleeps; move hero and next hero as the live part's buttons (or as
 /// [`Buttons::of`] gives them); each list's up arrow disabled at its top, its down arrow when no
 /// more than its slots lie below the top; the buttons the layout names in the viewer's colours.
+/// The lists' slots by [`lists`] (design §4.5): each hero's portrait and its bars' frames, each
+/// town's picture, an empty slot the layout's picture and frame 0; the selection frames hidden
+/// ([`selections`] draws the selected hero's after the items, as 0x4038C0 does). None when a
+/// hero's portrait is past the tables'.
 #[must_use]
-pub fn dialog(layout: &AdventureLayout, live: &Live, levels: usize, z: u8) -> Shown {
+pub fn dialog(
+    layout: &AdventureLayout,
+    lists: &ListArt,
+    live: &Live,
+    levels: usize,
+    z: u8,
+) -> Option<Shown> {
     let kingdom = &live.kingdom;
     let buttons = live
         .buttons
@@ -69,9 +89,13 @@ pub fn dialog(layout: &AdventureLayout, live: &Live, levels: usize, z: u8) -> Sh
         (id::TOWNS[0], towns_top == 0),
         (
             id::TOWNS[1],
-            kingdom.towns <= towns_top.saturating_add(SLOTS),
+            kingdom.towns.len() <= towns_top.saturating_add(SLOTS),
         ),
     ];
+    let hidden = State {
+        hidden: true,
+        ..State::default()
+    };
     let states = disabled
         .into_iter()
         .filter(|&(_, off)| off)
@@ -82,7 +106,20 @@ pub fn dialog(layout: &AdventureLayout, live: &Live, levels: usize, z: u8) -> Sh
             };
             (id, state)
         })
+        .chain((id::FRAMES..).take(SLOTS).map(|id| (id, hidden)))
         .collect();
+    let heroes = lists::hero_slots(lists, kingdom)?;
+    let towns = lists::town_slots(lists, kingdom);
+    let mut frames = BTreeMap::new();
+    let mut pictures = BTreeMap::new();
+    for ((slot, hero), town) in (0u16..).zip(&heroes).zip(towns) {
+        frames.insert(id::MOVEMENT + slot, hero.movement);
+        frames.insert(id::MANA + slot, hero.mana);
+        frames.insert(id::TOWN_PICTURES + slot, town);
+        if let Some(portrait) = &hero.picture {
+            pictures.insert(id::PORTRAITS + slot, portrait.clone());
+        }
+    }
     let panels = &layout.panels;
     let underground = &panels.underground[usize::from(z.min(1))];
     let sleep = &panels.sleep[usize::from(hero.is_some_and(|h| h.asleep))];
@@ -90,15 +127,57 @@ pub fn dialog(layout: &AdventureLayout, live: &Live, levels: usize, z: u8) -> Sh
         (id::UNDERGROUND, underground.clone()),
         (id::SLEEP, sleep.clone()),
     ]);
-    Shown {
+    Some(Shown {
         states,
         players: panels
             .coloured
             .iter()
             .map(|&id| (id, live.viewer))
             .collect(),
+        texts: BTreeMap::new(),
         defs,
-        ..Shown::default()
+        frames,
+        pictures,
+    })
+}
+
+/// The lists' selections drawn after the dialog's items (`lists_selection_frames` 0x4038C0,
+/// design §4.5): the selected town's mark (`itpa.def`'s frame 1) over its slot's picture, or the
+/// selected hero's frame (`hpsyyy.pcx`) over its slot, when the selection lies among the slots
+/// shown; nothing else. The original leaves the town's item at the mark's frame: drawn again by
+/// itself, it would show the mark over what lies under it (a redraw artifact, not copied).
+#[must_use]
+pub fn selections(layout: &AdventureLayout, lists: &ListArt, live: &Live) -> Vec<Draw> {
+    let Some((selected, slot)) = lists::selected_slot(&live.kingdom) else {
+        return Vec::new();
+    };
+    let slot = u16::try_from(slot).unwrap_or(u16::MAX);
+    let [x, y] = layout.dialog.place;
+    let first = match selected {
+        Selected::Town(_) => id::TOWN_PICTURES,
+        Selected::None | Selected::Hero(_) => id::FRAMES,
+    };
+    match layout.dialog.item(first.saturating_add(slot)) {
+        Some(Item::Picture(p)) => Vec::from([Draw::Picture {
+            picture: p.picture.clone(),
+            x: x.saturating_add(p.at[0]),
+            y: y.saturating_add(p.at[1]),
+            player: None,
+            size: p.size,
+        }]),
+        Some(Item::Def(d)) => d
+            .def
+            .iter()
+            .map(|def| Draw::Button {
+                def: def.to_string(),
+                frame: lists.towns.selected,
+                x: x.saturating_add(d.at[0]),
+                y: y.saturating_add(d.at[1]),
+                mirrored: false,
+                player: None,
+            })
+            .collect(),
+        _ => Vec::new(),
     }
 }
 
@@ -110,7 +189,7 @@ pub fn resource_bar(layout: &AdventureLayout, live: &Live) -> Shown {
             .resource_bar
             .items
             .iter()
-            .filter(|i| matches!(i, h3_ui::ui::Item::Picture(_)))
+            .filter(|i| matches!(i, Item::Picture(_)))
             .map(|i| (i.id(), live.viewer))
             .collect(),
         ..Shown::default()

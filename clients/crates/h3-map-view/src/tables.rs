@@ -22,6 +22,7 @@ use core::ops::Range;
 use serde::Deserialize;
 
 use crate::art::Layer;
+use crate::lists::ListArt;
 use crate::minimap::MinimapArt;
 use crate::record::{RecordArt, Records};
 use crate::sound::{SoundArt, SoundRules};
@@ -96,6 +97,8 @@ pub struct ViewArt {
     pub records: RecordArt,
     /// The minimap (E24 M3 T3a; design §4.4).
     pub minimap: MinimapArt,
+    /// The hero and town lists (E24 M3 T4a; design §4.5).
+    pub lists: ListArt,
     /// The map's sounds (E24 M2 T5; design §3.11): none, and the map plays none.
     #[serde(default)]
     pub sound: Option<SoundArt>,
@@ -635,6 +638,7 @@ pub fn load(files: &[TableFile], top: &str) -> Result<Tables, TableError> {
     map.minimap
         .check()
         .map_err(|rule| entry("minimap", &rule))?;
+    map.lists.check().map_err(|rule| entry("lists", &rule))?;
     if map.shroud.pieces.len() != MASKS {
         return Err(entry(
             "shroud",

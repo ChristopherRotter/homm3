@@ -531,7 +531,7 @@ fn refuses_heroes_and_boats_it_cannot_write() {
         (
             "{ at = [1, 1], owner = 1, path = [2, 2] }, { at = [3, 3] }",
             "",
-            "hero at [1, 1]: only Red's heroes walk or show a path",
+            "hero at [1, 1]: only Red's heroes walk, show a path or have points or mana written",
         ),
         (
             "{ at = [1, 1], path = [2, 2] }, { at = [3, 3], path = [4, 4] }",
@@ -571,12 +571,22 @@ fn refuses_heroes_and_boats_it_cannot_write() {
         (
             "{ at = [1, 1], owner = 1, walk = [[2, 2]] }",
             "",
-            "hero at [1, 1]: only Red's heroes walk or show a path",
+            "hero at [1, 1]: only Red's heroes walk, show a path or have points or mana written",
         ),
         (
             two,
             "{ at = [5, 5], kind = 1 }",
             "boat at [5, 5]: no template of type 1 or a facing or colour past 7",
+        ),
+        (
+            "{ at = [1, 1] }, { at = [3, 3], owner = 1, points = 5 }",
+            "",
+            "hero at [3, 3]: only Red's heroes walk, show a path or have points or mana written",
+        ),
+        (
+            "{ at = [1, 1] }, { at = [3, 3], owner = 1, mana = 5 }",
+            "",
+            "hero at [3, 3]: only Red's heroes walk, show a path or have points or mana written",
         ),
         (
             two,
@@ -604,6 +614,71 @@ fn refuses_heroes_and_boats_it_cannot_write() {
     assert_eq!(
         build(&nine(&|i| format!(", class = 5, owner = {}", i % 2)), ""),
         Err("hero at [16, 1]: a ninth of class 5".to_string())
+    );
+}
+
+#[test]
+fn the_lists_writes_and_the_selection() {
+    // E24 M3 T4a: the harness writes Red's heroes' points and mana and Red's towns' day, then
+    // selects Red's hero on its tile (after its walk) or Red's town on its anchor.
+    let castle = ObjectTemplate::from_objects_txt(&format!(
+        "avccast0.def {} {} 111111111 111111111 98 0 0 0",
+        "1".repeat(48),
+        "0".repeat(47) + "1"
+    ))
+    .unwrap();
+    let build = |rest: &str| {
+        let text = format!(
+            "size = 36\nterrain = \"grass\"\nview = [0, 0, 0]\nheroes = [{{ at = [1, 1], walk = \
+             [[2, 1]], points = 2800, mana = 0 }}, {{ at = [5, 5] }}, {{ at = [9, 9], owner = 1 \
+             }}]\ntowns = [{{ at = [20, 20], faction = 0, owner = 0, buildings = \"fort\", built = \
+             true }}, {{ at = [30, 20], faction = 0, owner = 1, buildings = \"fort\" }}]\n{rest}"
+        );
+        Situation::parse(&text)
+            .unwrap()
+            .build(&BTreeMap::new(), core::slice::from_ref(&castle))
+            .map(|_| ())
+    };
+    for good in [
+        "select = { hero = [2, 1] }",
+        "select = { hero = [5, 5] }",
+        "select = { town = [20, 20] }",
+    ] {
+        assert_eq!(build(good), Ok(()), "{good}");
+    }
+    for (bad, error) in [
+        ("", "a write into the lists without a selection"),
+        (
+            "select = { hero = [1, 1] }",
+            "the selection Some(Hero([1, 1])) is none of Red's",
+        ),
+        (
+            "select = { hero = [9, 9] }",
+            "the selection Some(Hero([9, 9])) is none of Red's",
+        ),
+        (
+            "select = { town = [30, 20] }",
+            "the selection Some(Town([30, 20])) is none of Red's",
+        ),
+    ] {
+        assert_eq!(build(bad), Err(error.to_string()), "{bad}");
+    }
+    // A selection without writes; a day written in another colour's town.
+    let plain = Situation::parse(
+        "size = 36\nterrain = \"grass\"\nview = [0, 0, 0]\nheroes = [{ at = [1, 1] }, { at = \
+         [9, 9], owner = 1 }]\nselect = { hero = [1, 1] }\n",
+    )
+    .unwrap();
+    assert!(plain.build(&BTreeMap::new(), &[]).is_ok());
+    let theirs = Situation::parse(
+        "size = 36\nterrain = \"grass\"\nview = [0, 0, 0]\nheroes = [{ at = [1, 1] }, { at = \
+         [9, 9], owner = 1 }]\ntowns = [{ at = [30, 20], faction = 0, owner = 1, buildings = \
+         \"fort\", built = true }]\n",
+    )
+    .unwrap();
+    assert_eq!(
+        theirs.build(&BTreeMap::new(), core::slice::from_ref(&castle)),
+        Err("town at [30, 20]: only Red's towns have their day written".to_string())
     );
 }
 

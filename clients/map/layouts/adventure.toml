@@ -2,8 +2,8 @@
 # are the executable's (docs/epics/E24-design.md §1.1, §1.2, §1.9, read 2026-10-23); an HD layout
 # is another file of this format. Loader: h3_map_view::layout (the format is provisional until the
 # M1 review). The panels right of and below the view come with M3: the dialog and the resource
-# bar since M3 T2a (design §4.1, in h3_ui::ui's format), the lists' contents (T4), the minimap
-# (T3) and the status window (T5) later.
+# bar since M3 T2a (design §4.1, in h3_ui::ui's format), the minimap since T3a (§4.4), the lists'
+# contents since T4a (§4.5); the status window (T5) later.
 
 frame = [800, 600]
 # Drawn opaque at (0, 0) before the view, entries 224-255 of its palette the viewing player's
@@ -53,9 +53,9 @@ hot = [
 ]
 
 # The adventure screen's dialog (E24 M3 T2a; design §4.1: adventure_dialog_create 0x401510, the
-# manager's +0x44): at (0, 0), its items in the executable's order, each with its control id. The
-# hero list's pictures, bars and frames (ids 15-29, 39-43) and the town list's pictures (32-36)
-# come with T4 at their places below; the chat's edit (38, 0x5541A0) draws nothing outside a chat.
+# manager's +0x44): at (0, 0), its items in the executable's order, each with its control id (the
+# hero list's pictures, bars and frames, ids 15-29 and 39-43, and the town list's pictures, 32-36,
+# since T4a); the chat's edit (38, 0x5541A0) draws nothing outside a chat.
 [dialog]
 place = [0, 0]
 
@@ -164,6 +164,86 @@ id = 14
 def = "iam013.def"
 at = [609, 372]
 size = [64, 16]
+# The hero list (E24 M3 T4a; design §4.5): five portraits (+0x70, flags 0x800: no picture until a
+# slot's update, hero_list_slot 0x403560, gives a hero's small portrait or hpsxxx.pcx), five
+# selection frames at the same places (+0x84; hidden but the selected hero's, hpsyyy.pcx: drawn
+# after the items, lists_selection_frames 0x4038C0), each 48 x 32 from (617, 212) a row 32 lower;
+# then the movement bars imobil.def (8 x 32 from (610, 213)) and the mana bars imana.def (from
+# (666, 213)), DEF items (flags 0x10) whose frames the slots set.
+[[dialog.items]]
+kind = "picture"
+id = 15
+picture = "hpsxxx.pcx"
+at = [617, 212]
+size = [48, 32]
+[[dialog.items]]
+kind = "picture"
+id = 16
+picture = "hpsxxx.pcx"
+at = [617, 244]
+size = [48, 32]
+[[dialog.items]]
+kind = "picture"
+id = 17
+picture = "hpsxxx.pcx"
+at = [617, 276]
+size = [48, 32]
+[[dialog.items]]
+kind = "picture"
+id = 18
+picture = "hpsxxx.pcx"
+at = [617, 308]
+size = [48, 32]
+[[dialog.items]]
+kind = "picture"
+id = 19
+picture = "hpsxxx.pcx"
+at = [617, 340]
+size = [48, 32]
+[[dialog.items]]
+kind = "picture"
+id = 39
+picture = "hpsyyy.pcx"
+at = [617, 212]
+size = [48, 32]
+[[dialog.items]]
+kind = "picture"
+id = 40
+picture = "hpsyyy.pcx"
+at = [617, 244]
+size = [48, 32]
+[[dialog.items]]
+kind = "picture"
+id = 41
+picture = "hpsyyy.pcx"
+at = [617, 276]
+size = [48, 32]
+[[dialog.items]]
+kind = "picture"
+id = 42
+picture = "hpsyyy.pcx"
+at = [617, 308]
+size = [48, 32]
+[[dialog.items]]
+kind = "picture"
+id = 43
+picture = "hpsyyy.pcx"
+at = [617, 340]
+size = [48, 32]
+[[dialog.items]]
+kind = "def"
+id = 20
+def = "imobil.def"
+at = [610, 213]
+size = [8, 32]
+repeat = { count = [1, 5], step = [0, 32] }
+[[dialog.items]]
+kind = "def"
+id = 25
+def = "imana.def"
+at = [666, 213]
+size = [8, 32]
+repeat = { count = [1, 5], step = [0, 32] }
 # The town list's arrows.
 [[dialog.items]]
 kind = "button"
@@ -178,6 +258,18 @@ id = 31
 def = "iam015.def"
 at = [747, 372]
 size = [48, 16]
+
+# The town list's pictures (E24 M3 T4a; design §4.5): itpa.def's DEF items (flags 0x10), 48 x 32 from
+# (747, 212) a row 32 lower, their frames a slot's update sets (town_list_slot 0x4037A0): a town's
+# picture, the empty slot's 0, the selected town's 1 drawn over its picture after the items
+# (lists_selection_frames 0x4038C0).
+[[dialog.items]]
+kind = "def"
+id = 32
+def = "itpa.def"
+at = [747, 212]
+size = [48, 32]
+repeat = { count = [1, 5], step = [0, 32] }
 
 # The status bar (+0x60, 0x5BC760): its picture opaque, then the hint (T6) centred in smalfont.fnt,
 # colour 1.

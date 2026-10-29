@@ -1,0 +1,30 @@
+# The hero list scrolled (E24 M3 T4a; design §4.5): Red's eight heroes, the eighth selected from
+# the list, which scrolls it to its fourth (hero_list_update 0x4032E0: the first shown kept
+# within the list); the five shown with their points and mana just below and at the bars' other
+# edges (movement 0, 15, 23, 24, 25; mana 24, 23, 24, 1, 25). Seven towns of Red's of seven
+# factions, the list from its first: a Citadel, a village, a Castle, a Capitol and a Fort built
+# in today shown.
+size = 36
+terrain = "grass"
+heroes = [
+    { at = [2, 14], class = 1 },
+    { at = [4, 14], class = 2 },
+    { at = [6, 14], class = 4 },
+    { at = [8, 14], class = 5, points = 99, mana = 116 },
+    { at = [10, 14], class = 7, points = 1500, mana = 144 },
+    { at = [12, 14], class = 8, points = 2499, mana = 169 },
+    { at = [14, 14], class = 10, points = 2799, mana = 5 },
+    { at = [16, 14], class = 16, points = 9999, mana = 999 },
+    { at = [30, 30], owner = 1 },
+]
+towns = [
+    { at = [6, 5], faction = 2, owner = 0, buildings = "citadel" },
+    { at = [12, 5], faction = 3, owner = 0, buildings = "village" },
+    { at = [18, 5], faction = 4, owner = 0, buildings = "castle" },
+    { at = [24, 5], faction = 5, owner = 0, buildings = "capitol" },
+    { at = [30, 5], faction = 6, owner = 0, buildings = "fort", built = true },
+    { at = [6, 10], faction = 7, owner = 0, buildings = "village" },
+    { at = [12, 10], faction = 8, owner = 0, buildings = "fort" },
+]
+select = { hero = [16, 14] }
+view = [0, 0, 0]

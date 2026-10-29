@@ -193,6 +193,15 @@ PATH_SHOWN = 0x4C
 PLAYER_TOWNS, PLAYER_TOWN, PLAYER_TOWN_LIST, HERO_ASLEEP = 0x3E, 0x3F, 0x40, 0x11C
 ADVENTURE_DIALOG, HERO_TOP, TOWN_TOP = 0x44, 0x64, 0x68
 QUEST_VECTORS = ((0x1FBD4, 19), (0x1FBE4, 5))
+# The lists' contents (E24 M3 T4a; design §4.5 of E24): a hero's portrait (u8 +0x34, an index into
+# hero_info 0x679DD0); the towns (game +0x21614 their vector's first, 0x168 bytes a town): a town's
+# day (u8 +0x2, a building built in it today), faction (i8 +0x4), place (u8 +0x5, +0x6, +0x7: its
+# entrance, two columns left of its anchor, and level) and every built building (u64 +0x158; the Fort bit 7 kept by a Citadel and a
+# Castle).
+HERO_PORTRAIT = 0x34
+TOWNS, TOWN_SIZE, TOWN_BUILT_TODAY, TOWN_FACTION, TOWN_PLACE, TOWN_EVERY_BUILT = (
+    0x21614, 0x168, 0x2, 0x4, 0x5, 0x158)
+FORT_BIT = 1 << 7
 MOVE_HERO, NEXT_HERO = 7, 11
 # A path arrow's frame: 0 none, 1 to 25 a move today (green), 26 to 50 a later one (red).
 GREEN_FRAMES = range(1, 26)
@@ -873,12 +882,39 @@ class Mem:
         """A hero's movement points (T1b: a sequence's `points`)."""
         self.write_u32(self.game() + HEROES + HERO_SIZE * index + HERO_POINTS, points)
 
+    def write_mana(self, index, mana):
+        """A hero's mana (E24 M3 T4a: a situation's hero's `mana`; i16 +0x18)."""
+        record = self.game() + HEROES + HERO_SIZE * index
+        self.write_bytes(record + SPELL_POINTS, struct.pack("<h", mana))
+
+    def town(self, index):
+        """The town `index` of the game's towns (E24 M3 T4a): its record's address, faction,
+        whether it has a Fort (its every-built set), whether it built today and its place [x, y,
+        level]."""
+        record = self.u32(self.game() + TOWNS) + TOWN_SIZE * index
+        raw = self.read(record, TOWN_SIZE)
+        built = struct.unpack_from("<Q", raw, TOWN_EVERY_BUILT)[0]
+        return {"at": record, "faction": struct.unpack_from("<b", raw, TOWN_FACTION)[0],
+                "fort": int(built & FORT_BIT != 0), "built": int(raw[TOWN_BUILT_TODAY] != 0),
+                "place": list(raw[TOWN_PLACE:TOWN_PLACE + 3])}
+
+    def town_list(self, colour):
+        """A player's towns by their indices in the game's towns, in the town list's order."""
+        raw = self.read(self.game() + PLAYERS + PLAYER_SIZE * colour, PLAYER_SIZE)
+        towns = struct.unpack_from("<b", raw, PLAYER_TOWNS)[0]
+        return list(struct.unpack_from(f"<{towns}b", raw, PLAYER_TOWN_LIST))
+
+    def write_town_built(self, index, built=1):
+        """A town's day (E24 M3 T4a: a situation's town's `built`; u8 +0x2)."""
+        self.write_bytes(self.town(index)["at"] + TOWN_BUILT_TODAY, bytes([built]))
+
     def kingdom(self, colour):
         """What the adventure screen's panels show of a player's kingdom (E24 M3 T2a; design
         §4.1), as `render --live`'s `kingdom` takes it: its heroes in the hero list's order, each
-        [asleep, movable] (movable: points left; a step leaves 0 or at least the cheapest step
-        from the new tile, hero_move_step 0x481182, so a hero with points left can move:
-        *provisional*), its towns' number, the one selected ([1, the hero's place in the list],
+        [asleep, movable, portrait, points, mana] (movable: points left; a step leaves 0 or at least
+        the cheapest step from the new tile, hero_move_step 0x481182, so a hero with points left can
+        move: *provisional*; the rest since M3 T4a, §4.5), its towns in the town list's order, each
+        [faction, fort, built today] (T4a), the one selected ([1, the hero's place in the list],
         [2, the town's] or [0, 0]), the lists' first slots and whether a quest it visited is in
         its log (0x4039B0; the quest's text, which every quest has, not checked)."""
         raw = self.read(self.game() + PLAYERS + PLAYER_SIZE * colour, PLAYER_SIZE)
@@ -892,7 +928,11 @@ class Mem:
         for index in heroes:
             record = self.game() + HEROES + HERO_SIZE * index
             asleep = self.read(record + HERO_ASLEEP, 1)[0]
-            rows.append([int(asleep != 0), int(self.i32(record + HERO_POINTS) > 0)])
+            points = self.i32(record + HERO_POINTS)
+            portrait = self.read(record + HERO_PORTRAIT, 1)[0]
+            mana = struct.unpack("<h", self.read(record + SPELL_POINTS, 2))[0]
+            rows.append([int(asleep != 0), int(points > 0), portrait, points, mana])
+        town_rows = [[t["faction"], t["fort"], t["built"]] for t in map(self.town, town_list)]
         if selected in heroes:
             chosen = [1, heroes.index(selected)]
         elif town in town_list:
@@ -902,7 +942,7 @@ class Mem:
         dialog = self.manager_field(ADVENTURE_DIALOG)
         tops = [self.i32(dialog + HERO_TOP), self.i32(dialog + TOWN_TOP)]
         quests = any(self.visited_quest(at, size, colour) for at, size in QUEST_VECTORS)
-        return {"heroes": rows, "towns": towns, "selected": chosen, "tops": tops,
+        return {"heroes": rows, "towns": town_rows, "selected": chosen, "tops": tops,
                 "quests": int(quests)}
 
     def buttons(self):
