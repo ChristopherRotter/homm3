@@ -27,10 +27,8 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   a hex convolution network, a hex transformer and the entity network, then A/Bs); T7a (the
   kinds: `hexconv`, `hexformer`, the MLP's `layers`); T7b (the bench, `h3env.train.distill`,
   `configs/distill/e25.toml`). **Next:** T7c, the bench on the user's GPU (the queue's command).
-- **Open pull requests:** the T5 branch `claude/nice-lamport-fdh8gx` (its pull request once
-  ready). `master`'s CI was red after #577 (the adventure lane's bench-check
-  `random-play-duel-36` +2.01 %); #580 re-baselined it (merged). Merged: #534, #539, #555, #558,
-  #576.
+- **Open pull requests:** none. Merged: #534, #539, #555, #558, #576, #585 (E25 T5 to T7b,
+  2026-10-29).
 - **Versions:** battle action encoding v13, observation encoding v22, replay format v31
   (CLT-Q4/Q6), the adventure env's action encoding v5 (E08 T63a), C ABI v35 (E25 T1a, T1b, T2a:
   a world's reward, the true world, the potential) (`docs/08-work-process.md`, "Versions"). Next
