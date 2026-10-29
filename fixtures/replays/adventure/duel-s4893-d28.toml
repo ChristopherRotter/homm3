@@ -603,30 +603,30 @@ commands = [
     "1 end-turn",
 ]
 checkpoints = [
-    "0xbf9f669bcc83e365",
-    "0xffff531197c57376",
-    "0x8bcb222d8400fa8d",
-    "0xd256bd5961709227",
-    "0xbabcfd06aea56fbc",
-    "0xed61df3d61f39f73",
-    "0xc869ef99a7ca0e4d",
-    "0x55f4e8c801806684",
-    "0x7279a928e6831421",
-    "0xbfead83f408ff19c",
-    "0x9958e139c2953e7e",
-    "0xd453f221d7909d49",
-    "0xe8efd875941083d1",
-    "0x90dd22eb368072c9",
-    "0x65aee20de971fabd",
-    "0x15c60a78bb9f37a0",
-    "0xd1970bb577309d9e",
-    "0xd01f295c6cd461be",
-    "0x434fbef54f20a481",
-    "0x851f91adfad04fa7",
-    "0xcb5c4ff00097e393",
-    "0x05b01d10c806969f",
-    "0xdbeac64ab0b2713c",
-    "0x471e501a65508cb7",
+    "0x30a4985a037c26b8",
+    "0x6d588e8afd778e53",
+    "0xa70ed02f4431e4a8",
+    "0xcc5745d66157461e",
+    "0x543069147096e25d",
+    "0x4fbc4ba7b5afd91a",
+    "0x11e5812f977307c0",
+    "0x051f1cecb2cc70e5",
+    "0xfef9a3f3dc95d5c0",
+    "0x28c7eaaf4e7b7805",
+    "0x96d095310bbbffe5",
+    "0x69c1b4ad1426258d",
+    "0x440dfcb0a52ec0a1",
+    "0x2c28518a55eb7129",
+    "0xa9f7f62245a046dd",
+    "0x1d45b5ab571b2730",
+    "0x999cd314db44b672",
+    "0x7e94c411bc5f4a82",
+    "0x7e801d9970640997",
+    "0x815e2fc4fc66c81d",
+    "0x50e051ee41be5925",
+    "0xec48f8fdb968b427",
+    "0x766f21d05e7c3f21",
+    "0x8bc4d8d17789688e",
 ]
 
 [replay]
@@ -650,20 +650,20 @@ packs = [
 ]
 profile = "base:faithful"
 ruleset_hash = "0xba830fc8f504b846"
-adventure_ruleset_hash = "0x0d26ccf1412ed8dc"
+adventure_ruleset_hash = "0x8b3cb263b9bac1c5"
 rng = "xoshiro256starstar+splitmix64"
 rng_version = 1
 hash = "fnv1a64-le"
 hash_version = 1
-game_state_hash_version = 19
-adventure_state_hash_version = 15
+game_state_hash_version = 20
+adventure_state_hash_version = 16
 checkpoint_every = 25
 
 [map]
 path = "fixtures/maps/e08-duel-36.h3m"
-hash = "0x37d348cff2785a01"
-import_version = 13
+hash = "0x5918efa3271a85e0"
+import_version = 14
 
 [result]
 day = 29
-final_hash = "0xc26cc5cfec7678e5"
+final_hash = "0xd776c512f2c14b6b"
