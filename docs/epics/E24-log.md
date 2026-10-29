@@ -1637,3 +1637,35 @@ with the change in it; `verify-once` records nothing with uncommitted changes); 
   uploads 30.8–31.0 → 24.6–24.8 % (25.7 before T4b), p95 3.6–4.0 → 2.9–3.0 ms, median 0.8 both;
   *Tale of two lands* 11.2 % and `path-objects` 5.2 % as before, their times within the spread.
 - **Left:** a text's reach (T5's texts change with each selection and day; queued with T5).
+
+### M3 T5a — the resource bar's amounts and the date (2026-10-29)
+
+On `map-client/e24-m3-t5a`, the user present (T5 cut with the user at the seam T4c's session
+proposed: T5a the resource bar, the date and a text's reach; T5b the status window); `master` at
+445b145 (#574 merged; CI's Clients run green on it). The original data staged from the user's
+repo folder first. The local baseline stopped with the session's first background jobs (it was
+testing the edited tree); CI's green run on `master` stands for the starting point.
+
+- **The reading** (design §4.7; map entries `resource_bar_redraw` 0x558F20 read,
+  `resource_bar_order` 0x641008, `decimal_format` 0x660A1C, `date_format` 0x682E64, `shown_player`
+  0x69778C inferred, `hero_select` amended): the constructor's eight texts alone (`smalfont.fnt`,
+  colour 4; the amounts left-aligned, the date centred), their texts from the shown player's
+  record +0x9C by `%d` and the date from the executable's format with GENRLTXT's rows 63 to 65 and
+  the game's month, week and day; a hero's selection sets them again from memory (0x417F48), a
+  town's does not.
+- **Built** (design §4.7): `h3_ui::paint::text_reach` and `reach` for texts and labels (additive in
+  the common crate: the box widened by the font's overhangs); the catalogue's keys
+  `map.resources.amount`, `map.resources.date`, `word.month`, `word.week`, `word.day` (common,
+  additive); `panels::KEYS`, `panels::resource_bar` with the texts, `Tables::texts`; the live
+  part's `Kingdom::resources` and `date` (`live::Date`; a map's start none and the first day);
+  the layout's labels 1001–1008; the viewer's `texts.rs` (the original's forms of its keys from
+  the archives and `Heroes3.exe`), loaded by `render`, `window`, `gate` and `sequences`; a
+  situation's `resources` and `date` (with a hero's selection, a day of the game's) and the
+  harness's writes (`Mem.write_resources`, `write_date`; `Mem.kingdom` with both); the situation
+  `resources-date`; `masks.toml` without the bar's eight rectangles.
+- **Seen:** MCL-Q15 (an amount of eight digits cut to seven by its box; the viewer the same).
+- **Checked:** `h3map.py set --only resources-date` exact first time (the bar cropped and looked
+  at: both draw every amount and the date); then the whole set with the bar compared: each of the
+  44 exact, 0 differing of 435 128 pixels (the bar's 9 540 now among them, 425 588 before; the
+  shipped maps' starts with their difficulty's resources and the first day included).
+
