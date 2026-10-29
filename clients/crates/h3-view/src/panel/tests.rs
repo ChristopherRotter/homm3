@@ -341,6 +341,36 @@ fn each_turn_finds_the_battle_its_events_left() {
     );
     assert_eq!(frozen.len(), 1);
     assert_eq!(frozen[0].active, Some(1));
+    // E17 M5 T4c2b: a placement's walk moves its stack, hex by hex, for the next turn's shade.
+    let mut o = battle();
+    o.stacks = alloc::vec![
+        crate::scene::tests::stack(0, Side::Attacker, 0, 18, false),
+        crate::scene::tests::stack(1, Side::Attacker, 0, 52, false),
+    ];
+    let from = o.stacks[0].hex;
+    let placed = super::turns(
+        &o,
+        &[
+            Event::Moved {
+                stack: 0,
+                from,
+                to: 20,
+            },
+            Event::Moved {
+                stack: 0,
+                from: 20,
+                to: 21,
+            },
+            Event::Moved {
+                stack: 9,
+                from: 0,
+                to: 1,
+            },
+            Event::TurnStarted { stack: 1 },
+        ],
+    );
+    assert_eq!(placed[0].stacks[0].hex, 21);
+    assert_eq!(placed[0].stacks[1].hex, o.stacks[1].hex);
 }
 
 #[test]
@@ -413,6 +443,19 @@ fn auto_combat_dims_the_turn_it_plays_and_keeps_its_button_selected() {
     );
     let human = shown(&o, Some(Side::Attacker), (red.0, kept), "", RED_BLUE);
     assert!(!human.state(AUTO_COMBAT).selected && disabled(&human).is_empty());
+    // E17 M5 T4c2b: in the tactics phase the panel's +0xC (0x46C290) dims its two as well.
+    let mut phase = o.clone();
+    phase.tactics = Some(Tactics {
+        side: Side::Attacker,
+        columns: 3,
+    });
+    let auto = shown(&phase, Some(Side::Attacker), (red.0, playing), "", RED_BLUE);
+    assert!(
+        [NEXT_CREATURE, START_COMBAT]
+            .iter()
+            .all(|&id| auto.state(id).disabled)
+    );
+    assert!(auto.state(AUTO_COMBAT).selected && !auto.state(AUTO_COMBAT).disabled);
     // Blue a computer with Auto Combat on: its turn as any computer's.
     assert_eq!(
         disabled(&shown(

@@ -66,9 +66,11 @@ pub const BUTTONS: [u16; 7] = [
 ];
 
 /// The battle as each turn's start finds it (E17 M3 T6b): for each `TurnStarted` of `events` (a
-/// record's, in order) but a frozen stack's, the opening's `observation` with the events before it applied as far as
-/// the panel reads them: the active stack, the round's wait phase (its stack waited this round:
-/// only waited stacks act then), the heroes' casts this round and the tactics phase.
+/// record's, in order) but a frozen stack's, the opening's `observation` with the events before
+/// it applied as far as the panel and the tactics phase's shade read them: the active stack, the
+/// round's wait phase (its stack waited this round: only waited stacks act then), the heroes'
+/// casts this round, the tactics phase and where the stacks moved (E17 M5 T4c2b: the shade of a
+/// turn after a placement, `crate::tactics::shade`).
 #[must_use]
 pub fn turns(observation: &Observation, events: &[Event]) -> Vec<Observation> {
     let mut now = observation.clone();
@@ -94,6 +96,11 @@ pub fn turns(observation: &Observation, events: &[Event]) -> Vec<Observation> {
                 }
             }
             Event::TacticsEnded {} => now.tactics = None,
+            Event::Moved { stack, to, .. } => {
+                if let Some(s) = now.stacks.iter_mut().find(|s| s.id == stack) {
+                    s.hex = to;
+                }
+            }
             // A turn its pick freezes is none (E17 M3 T7b-2b-2b, as the timeline's).
             Event::TurnStarted { stack } if !crate::anim::freezes(&events[i + 1..], stack) => {
                 now.active = Some(stack);
@@ -199,10 +206,15 @@ pub fn shown(
     let picture = players[index(kept.colours)];
     match side {
         // Auto Combat plays a human's turn (0x4784CA): dimmed as the computer's, its button
-        // enabled and selected (0x4784F9).
+        // enabled and selected (0x4784F9); in the tactics phase the panel's +0xC is 0x46C290,
+        // which dims its two too (E17 M5 T4c2b).
         Some(s) if human(s) && auto.plays => {
             for id in BUTTONS {
                 states.insert(id, disabled);
+            }
+            if observation.tactics.is_some() {
+                states.insert(NEXT_CREATURE, disabled);
+                states.insert(START_COMBAT, disabled);
             }
             states.insert(
                 AUTO_COMBAT,

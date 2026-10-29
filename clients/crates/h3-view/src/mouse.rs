@@ -185,6 +185,10 @@ pub struct Legal {
     wait: bool,
     /// It may defend.
     defend: bool,
+    /// The tactics phase runs: its stack may end it (E17 M5 T4c2b; `EndTactics` is listed only
+    /// in the phase), and the phase's panel's Next Creature waits where the battle's Wait is
+    /// disabled.
+    tactics: bool,
     /// It is the Catapult (its original id [`CATAPULT`]).
     pub catapult: bool,
     /// The walls never halve its shots (`shot_wall_test`'s shooters, [`WALL_EXEMPT`], or its
@@ -219,6 +223,7 @@ impl Legal {
                 }
                 Command::Wait {} => legal.wait = true,
                 Command::Defend {} => legal.defend = true,
+                Command::EndTactics {} => legal.tactics = true,
                 _ => {}
             }
         }
@@ -998,6 +1003,10 @@ pub fn attack_slots(field: &Field<'_>, hex: u8) -> [Slot; 12] {
 pub const WAIT: u16 = 2009;
 /// The panel's Defend button (0x474EEE: action 3).
 pub const DEFEND: u16 = 2010;
+/// The tactics phase's panel's Next Creature (0x4751B8: action 8, as Wait; E17 M5 T4c2b).
+pub const NEXT_CREATURE: u16 = crate::panel::NEXT_CREATURE;
+/// The tactics phase's panel's Start Combat (0x4751CC: the phase ended, no action).
+pub const START_COMBAT: u16 = crate::panel::START_COMBAT;
 
 /// The command a left press at `point` gives in `field` (E17 M5 T2a; `battle_click_action`
 /// 0x476BD0, design §9.11): over the battlefield by the cursor's kind there, a walk or a flight
@@ -1041,12 +1050,16 @@ pub fn click(field: &Field<'_>, layout: &BattleLayout, point: [i32; 2]) -> Optio
 
 /// The command the panel's button `id` gives when it is clicked (its hotkey's release too:
 /// `def_button_message` 0x456190) for the acting stack's commands `legal` (E17 M5 T2a): Wait and
-/// Defend when listed (a disabled button gives none).
+/// Defend when listed (a disabled button gives none); in the tactics phase (E17 M5 T4c2b, design
+/// §7.24) its panel's Next Creature the engine's Wait and Start Combat `EndTactics`, the battle's
+/// Wait disabled there (0x472428).
 #[must_use]
 pub fn button(legal: &Legal, id: u16) -> Option<Command> {
     match id {
-        WAIT if legal.wait => Some(Command::Wait {}),
+        WAIT if legal.wait && !legal.tactics => Some(Command::Wait {}),
         DEFEND if legal.defend => Some(Command::Defend {}),
+        NEXT_CREATURE if legal.wait && legal.tactics => Some(Command::Wait {}),
+        START_COMBAT if legal.tactics => Some(Command::EndTactics {}),
         _ => None,
     }
 }

@@ -147,3 +147,49 @@ fn a_two_hex_stack_needs_its_front_hex_in_the_zone() {
     });
     assert_eq!(shade(&defender), columns(13, 15));
 }
+
+#[test]
+fn a_record_shades_each_human_turn_of_the_phase_while_it_waits() {
+    // E17 M5 T4c2b: the opening's turn until the first action, none while an action plays, the
+    // next turn's from its start (the battle as it found it: the placement's hex), none once the
+    // phase ended.
+    let first = stack(0, Side::Attacker, 0, hex(5, 1), false);
+    let second = stack(1, Side::Attacker, 0, hex(7, 1), false);
+    let opening = phase(3, alloc::vec![first, second]);
+    let mut placed = opening.clone();
+    placed.stacks[0].hex = hex(5, 3);
+    placed.active = Some(1);
+    let mut ended = placed.clone();
+    ended.tactics = None;
+    ended.active = Some(0);
+    let turns = [placed.clone(), ended];
+    let log = [
+        (100, Logged::Action),
+        (900, Logged::Turn(1)),
+        (1500, Logged::Action),
+        (1500, Logged::Turn(0)),
+    ];
+    let at = |t| shade_at(&opening, &turns, &log, t);
+    assert_eq!(at(0), shade(&opening));
+    assert_eq!(at(99), shade(&opening));
+    assert!(at(100).is_empty() && at(899).is_empty());
+    assert_eq!(at(900), shade(&placed));
+    assert!(at(900).contains(&hex(5, 1)) && !at(900).contains(&hex(5, 3)));
+    assert_eq!(at(1499), shade(&placed));
+    // Start Combat at 1 500: round 1's turn starts in the same millisecond, the phase over.
+    assert!(at(1500).is_empty() && at(5000).is_empty());
+    // A log's lines between them change nothing.
+    let lined = [
+        (100, Logged::Action),
+        (
+            50,
+            Logged::Defend {
+                stack: 0,
+                count: 1,
+                defense: 1,
+            },
+        ),
+        (900, Logged::Turn(1)),
+    ];
+    assert_eq!(shade_at(&opening, &turns, &lined, 1000), shade(&placed));
+}
