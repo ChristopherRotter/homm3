@@ -1148,8 +1148,9 @@ const DARK: [i32; 4] = [0, 1, 3, 2];
 #[test]
 fn a_changed_dialog_item_draws_its_rectangle_alone() {
     // E24 M3 T4c: the background drawn again only where its changed items reach (as they were and
-    // as they are), the view's cells there again; everything again when an item's reach is
-    // unknown (a label), meets the view's clip, or a dialog's item lies over the view.
+    // as they are), the view's cells there again; everything again when an item's reach meets the
+    // view's clip or a dialog's item lies over the view (T5a: a label's reach is its box widened
+    // by its font's overhangs).
     let b = panel_batch();
     let mut flags = panel([1, 0], 1, 1, DARK, true, "1");
     flags.flags = "other.pal".to_string();
@@ -1171,8 +1172,8 @@ fn a_changed_dialog_item_draws_its_rectangle_alone() {
         // A darkened rectangle reaching the clip, then nothing changed.
         panel([1, 0], 2, 0, [0, 1, 3, 3], true, "1"),
         panel([1, 0], 2, 0, [0, 1, 3, 3], true, "1"),
-        // The label's text: its reach unknown; the picture a label (the picture's reach known,
-        // the label's not); an item fewer, a label among those between the lists' start and end.
+        // The label's text; the picture a label; an item fewer, a label among those between the
+        // lists' start and end.
         panel([1, 0], 2, 0, DARK, true, "11"),
         relabelled,
         panel([1, 0], 2, 0, DARK, false, "1"),
@@ -1200,6 +1201,11 @@ fn a_changed_dialog_item_draws_its_rectangle_alone() {
         .compose(&panel([0, 0], 0, 1, [0, 1, 2, 2], true, "1"), &b)
         .unwrap();
     assert_eq!(composer.damage(), [[0, 1, 4, 4]]);
+    // The label's text (T5a): the cell its box meets alone (this screen's cells are 2 × 2).
+    composer
+        .compose(&panel([0, 0], 0, 1, [0, 1, 2, 2], true, "11"), &b)
+        .unwrap();
+    assert_eq!(composer.damage(), [[12, 0, 14, 2]]);
 }
 
 #[test]

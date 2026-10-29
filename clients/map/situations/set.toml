@@ -228,3 +228,8 @@ why = "exact: the hero list scrolled to its fourth by the eighth's selection, th
 id = "lists-towns"
 differing = 0
 why = "exact: the town list scrolled to its third, the seventh town's mark over its picture; one hero over empty slots"
+
+[[situation]]
+id = "resources-date"
+differing = 0
+why = "exact: the resource bar's seven amounts written (one digit to eight, the eight past its box) and a date of a two-digit month"

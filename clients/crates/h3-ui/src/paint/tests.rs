@@ -352,7 +352,8 @@ fn darken_halves_a_rectangle() {
 #[test]
 fn reach_is_the_rectangle_each_drawer_can_change() {
     // E24 M3 T4c: a picture's at most its item's size of it, a button's frame's canvas (frame 0
-    // past the group's), a darkened rectangle; unknown for a text, a label or a missing asset.
+    // past the group's), a darkened rectangle; T5a: a text's and a label's box widened by the
+    // font's overhangs; unknown for a missing asset.
     let s = store();
     let picture = |name: &str, size| Draw::Picture {
         picture: name.into(),
@@ -381,21 +382,56 @@ fn reach_is_the_rectangle_each_drawer_can_change() {
     assert_eq!(reach(&button("no.def", 0), &s), None);
     let dark = Draw::Darken { rect: [3, 1, 2, 4] };
     assert_eq!(reach(&dark, &s), Some([3, 1, 5, 5]));
-    let text = Draw::Text {
-        item: text_item("q.pcx", "f.fnt", "game.pal"),
-        x: 0,
-        y: 0,
+    let text = |picture: &str, font: &str, palette: &str| Draw::Text {
+        item: text_item(picture, font, palette),
+        x: 3,
+        y: 1,
         text: "1".into(),
     };
-    assert_eq!(reach(&text, &s), None);
-    let label = Draw::Label {
-        item: label_item("f.fnt", "game.pal"),
-        x: 0,
-        y: 0,
+    assert_eq!(
+        reach(&text("q.pcx", "f.fnt", "game.pal"), &s),
+        Some([3, 1, 5, 2])
+    );
+    assert_eq!(reach(&text("no.pcx", "f.fnt", "game.pal"), &s), None);
+    assert_eq!(reach(&text("q.pcx", "no.fnt", "game.pal"), &s), None);
+    assert_eq!(reach(&text("q.pcx", "f.fnt", "no.pal"), &s), None);
+    let label = |font: &str, palette: &str| Draw::Label {
+        item: label_item(font, palette),
+        x: -2,
+        y: 4,
         text: "1".into(),
         disabled: false,
     };
-    assert_eq!(reach(&label, &s), None);
+    assert_eq!(reach(&label("f.fnt", "game.pal"), &s), Some([-2, 4, 0, 5]));
+    assert_eq!(reach(&label("no.fnt", "game.pal"), &s), None);
+    assert_eq!(reach(&label("f.fnt", "no.pal"), &s), None);
+}
+
+#[test]
+fn a_texts_reach_takes_the_fonts_widest_overhangs() {
+    // E24 M3 T5a: a negative left space may put a glyph's pixels left of the box, a negative
+    // right one past its right edge; positive spaces widen nothing; the rows stay the box's.
+    let mut f = font();
+    assert_eq!(text_reach(&f, 5, 6, [10, 3]), [5, 6, 15, 9]);
+    f.glyphs[usize::from(b'a')].left = -1;
+    f.glyphs[usize::from(b'b')].left = -2;
+    f.glyphs[usize::from(b'b')].right = 4;
+    f.glyphs[usize::from(b'c')].right = -3;
+    assert_eq!(text_reach(&f, 5, 6, [10, 3]), [3, 6, 18, 9]);
+    assert_eq!(
+        text_reach(&f, i32::MIN + 1, i32::MAX, [1, 1]),
+        [i32::MIN, i32::MAX, i32::MIN + 5, i32::MAX]
+    );
+    assert_eq!(
+        text_reach(&f, i32::MAX - 1, 0, [5, 1]),
+        [i32::MAX - 3, 0, i32::MAX, 1]
+    );
+    let empty = Font {
+        height: 1,
+        y_offset: 0,
+        glyphs: Vec::new(),
+    };
+    assert_eq!(text_reach(&empty, 0, 0, [2, 2]), [0, 0, 2, 2]);
 }
 
 #[test]

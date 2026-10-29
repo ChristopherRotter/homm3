@@ -326,7 +326,9 @@ def lists(game, mem, sit):
     heroes' points and mana and Red's towns' day written into their records, then the hero or
     town it selects chosen from its list, which scrolls that list to show it and redraws both
     (hero_select 0x417B20, town_select 0x417830). A selection the turn's start made already would
-    redraw nothing: refused."""
+    redraw nothing: refused. Since M3 T5a Red's resources and the game's date written before it
+    too: a hero's selection draws the resource bar again (0x417F48; the viewer's parser asks for
+    one with them)."""
     for hero in sit.get("heroes", []):
         if "points" in hero or "mana" in hero:
             x, y = (hero.get("walk") or [hero["at"]])[-1]
@@ -338,6 +340,10 @@ def lists(game, mem, sit):
     for town in sit.get("towns", []):
         if town.get("built"):
             mem.write_town_built(town_index(mem, town["at"]))
+    if "resources" in sit:
+        mem.write_resources(0, sit["resources"])
+    if "date" in sit:
+        mem.write_date(*sit["date"])
     select = sit.get("select")
     if not select:
         return

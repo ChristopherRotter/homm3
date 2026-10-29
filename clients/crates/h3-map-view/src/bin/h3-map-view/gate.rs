@@ -113,10 +113,11 @@ pub fn run(options: &Options) -> ExitCode {
 type Highest = BTreeMap<(Layer, u8), (u8, String)>;
 
 fn gate(options: &Options) -> Result<usize, String> {
-    let tables = files::load_tables(&options.map)?;
+    let mut tables = files::load_tables(&options.map)?;
     let layout = files::load_layout(&options.map)?;
     let bytes = files::read_archives(&options.install)?;
     let archives = files::parse_archives(&bytes)?;
+    tables.texts = crate::texts::catalogue(&options.install, &archives)?;
     let find = |name: &str| files::find(&archives, name);
     let mut problems = Vec::new();
 

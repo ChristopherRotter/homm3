@@ -1,0 +1,15 @@
+# The resource bar (E24 M3 T5a; design §4.7): Red's seven amounts written (none, one digit to
+# seven; gems eight, wider than an amount's box: the text drawer's long word), the game's date
+# written with a month of two digits; the second hero's selection draws the bar again
+# (hero_select 0x417F48).
+size = 36
+terrain = "grass"
+heroes = [
+    { at = [4, 6] },
+    { at = [8, 6], class = 3 },
+    { at = [30, 30], owner = 1 },
+]
+select = { hero = [8, 6] }
+resources = [0, 7, 45, 123, 9999, 12345678, 1234567]
+date = [12, 4, 7]
+view = [0, 0, 0]

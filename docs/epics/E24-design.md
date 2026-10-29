@@ -1974,8 +1974,8 @@ as a button's state already did at a walk's start and end (§4.3, "Left").
 - **An item's reach** (`h3_ui::paint::reach`, the drawers' own): the rectangle its drawer can
   change: a picture's at most its item's size of it, a button's or a DEF item's its frame's canvas
   (frame 0 past the group's, as drawn), a darkened rectangle itself; unknown for a text and a
-  label (the text drawer's lines may pass the item's box, `h3_render::text`: not read) and for an
-  asset the batch lacks.
+  label (the text drawer's lines may pass the item's box, `h3_render::text`: not read; known
+  since T5a, §4.7) and for an asset the batch lacks.
 - **The areas** (`compose::changed_areas`): with as many background draws as the last scene's,
   each pair that differs gives its old and its new item's reach; with more or fewer, every item
   between the two lists' common start and end. Each is cut to the screen, overlapping ones joined.
@@ -2002,5 +2002,53 @@ as a button's state already did at a walk's start and end (§4.3, "Left").
   median 0.8 ms (both), p95 3.6–4.0 → 2.9–3.0; *Tale of two lands* (11.2 %) and `path-objects`
   (5.2 %) as before, their times within the runs' spread (medians 1.8–2.0 and 1.3–1.5 ms).
 - **Left:** a changed text or label draws everything again (T5's status window, resource bar
-  and date, T6's hints: its reach needs the text drawer's extent, read where T5 needs it); a
-  dialog item drawn on the scratch is drawn whole however little of it an area needs.
+  and date, T6's hints: its reach needs the text drawer's extent, read where T5 needs it; done in
+  T5a, §4.7); a dialog item drawn on the scratch is drawn whole however little of it an area
+  needs.
+
+### 4.7 The resource bar's amounts and the date (M3 T5a)
+
+Read: `resource_bar_create` 0x558BA0's texts, `resource_bar_redraw` 0x558F20 in full, the
+calls of `resource_bar_update` 0x403F00 (16 sites; `hero_select`'s at 0x417F48), `shown_player`
+0x69778C's writes.
+
+- **The items** (0x558CE5's loop, then 0x558DB2; texts alone, `text_item_create` 0x5BC280): the
+  amounts 1001 to 1007 at (37 + 84 i, 3) of the bar, 50 × 18, in `smalfont.fnt`, colour 4,
+  alignment 0 (left, top), background 0, flags 8, each followed by its hint's area 1009 + i (T6);
+  then the date 1008 at (607, 3), 180 × 18, the same but centred (alignment 1). The bar's picture
+  `aresbar.pcx` is its first item, drawn under them.
+- **Their texts** (0x558F20, `this, draw, show`): the picture in the colours of `shown_player`
+  0x69778C (the current player at a human's turn, `next_player_turn` 0x4C7730; a saved game's
+  load 0x4BDBF7), that player's record (game +0x20AD0 + 0x168 × colour) +0x9C read as seven
+  `i32` in the order of the table 0x641008 (0 to 6: wood, mercury, ore, sulfur, crystal, gems,
+  gold), each written by `%d` (0x660A1C) into its item; the date by the executable's format
+  0x682E64 (three words, each with its number) from `general_text`'s rows 63, 64, 65 (the
+  month's, the week's and the day's words) and the game's month +0x1F642, week +0x1F640 and day
+  of the week +0x1F63E (`u16` each, from 1); with `draw` every item of the bar drawn (0x5AA4F0,
+  the ids −65535 to 65535: the picture under the texts), shown with `show`. A full update and
+  `hero_select` (0x417F48: draw, not show; the screen is shown later) call it through 0x403F00; a
+  town's selection does not, so a write into memory shows after a hero's selection.
+- **The catalogue** (`clients/text/keys.toml`, common): `map.resources.amount` (`EXE:0x660A1C`,
+  the argument `amount`), `map.resources.date` (`EXE:0x682E64`; `month_word`, `month`,
+  `week_word`, `week`, `day_word`, `day`), `word.month`, `word.week`, `word.day` (GENRLTXT 63 to
+  65). The viewer's binary reads the original's forms of these keys alone
+  (`h3_map_view::panels::KEYS`, its `texts.rs`: the catalogue's families, the battle's, left out)
+  from the archives as the game searches a name and from `Heroes3.exe`; a form it cannot read
+  stops it.
+- **A text's reach** (`h3_ui::paint::text_reach`, closing §4.6's "Left"): the line drawer
+  (0x4B5260) draws a line only inside the box's height, skips the glyphs that would start left of
+  it and stops before the first whose advance passes its right edge, so a glyph's pixels leave the
+  box only by a negative right space (past its advance) or, after the first, a negative left one:
+  the reach is the box, its columns widened by the font's widest of each (`smalfont.fnt`: 1 and 1).
+  A changed amount draws its box's background again and the cells it meets, not the screen.
+- **Built** (*provisional*): the live part's `kingdom` has `resources` (seven, the original's
+  order) and `date` (`[month, week, day]`), from `h3mem.py`'s `Mem.kingdom`; a map's start none
+  and the first day (the difficulty's starting resources are the engine's rule, M4);
+  `panels::resource_bar` fills the texts from the tables' catalogue (`Tables::texts`, empty from
+  the committed tables: a key shows as itself); the layout's eight labels; a situation's
+  `resources` and `date`, written by the harness before its selection (`Mem.write_resources`,
+  `write_date`), which must be a hero's; the situation `resources-date`; `masks.toml`'s `panels`
+  without the bar's eight rectangles.
+- **Seen** (MCL-Q15): an amount of eight digits (12 345 678 gems) is cut to the seven that fit its
+  box (`1234567`): the text drawer's last line cut at the glyph that fits (`h3_render::text`), the
+  viewer's the same.

@@ -173,7 +173,7 @@ pub fn run(options: &Options) -> ExitCode {
 }
 
 fn render(options: &Options) -> Result<PathBuf, String> {
-    let tables = files::load_tables(&options.map)?;
+    let mut tables = files::load_tables(&options.map)?;
     let layout = files::load_layout(&options.map)?;
     let path = &options.map_file;
     let bytes = fs::read(path).map_err(|e| format!("{}: {e}", path.display()))?;
@@ -193,6 +193,7 @@ fn render(options: &Options) -> Result<PathBuf, String> {
     }
     let archive_bytes = files::read_archives(&options.install)?;
     let archives = files::parse_archives(&archive_bytes)?;
+    tables.texts = crate::texts::catalogue(&options.install, &archives)?;
     let mut pointer = None;
     if let Some(path) = &options.live {
         pointer = read_live(

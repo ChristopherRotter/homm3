@@ -19,20 +19,21 @@ compares it on every situation and sequence.
 T3 cut with the user (2026-10-29): T3a the minimap as a still, T3b the minimap over time (both
 done: the epic's log). T4 cut with the user (2026-10-29) the same way: T4a the lists as stills,
 T4b the lists over time, T4c a changed panel item drawn again alone (all done: the epic's log).
+T5 cut with the user (2026-10-29): T5a the resource bar's amounts, the date and a text's reach
+(done: the epic's log), T5b the status window.
 
-### E24 M3 T5 — the status window, the resource bar and the date
+### E24 M3 T5b — the status window
 
 - **Scope:** read and built: the status window's kinds (`AdStatHr`, `AdStatCs`, `AdStatOt`,
   `ADSTATIN`, `ADSTATNX`: a hero's portrait, skills, morale, luck and army; a town's; the
-  kingdom's and the date's) and when each shows; the resource bar's seven amounts and the date
-  (the fonts, the string catalogue's keys from the original's tables); `live` gains the
-  resources and the date. Situations for each kind. A text's reach (`h3_ui::paint::reach` gives
-  none: the text drawer's lines may pass the item's box), so that a changed text draws its
-  rectangle alone as T4c's items do (design §4.6, "Left").
-- **Acceptance:** the status window, the resource bar and the date exact on every situation and
-  the new ones (no `panels` mask left but the status bar's hints); the Definition of Done.
-- **Depends on:** T2a (T4a for a hero's or a town's portraits; its army's pictures are T5's);
-  T4c (its status window changes with each selection). **Status:** ready.
+  kingdom's and the date's) and when each shows (`adventure_full_update` 0x417420's choice,
+  0x415DE0); the texts through the catalogue's keys (T5a's `panels::KEYS`, the viewer's
+  `texts.rs`); a text's change drawn alone by T5a's reach (design §4.7). Situations for each
+  kind.
+- **Acceptance:** the status window exact on every situation and the new ones (no `panels` mask
+  left but the status bar's hints); the Definition of Done.
+- **Depends on:** T2a (T4a for a hero's or a town's portraits; its army's pictures are T5b's);
+  T4c (its status window changes with each selection); T5a. **Status:** ready.
 
 ### E24 M3 T6 — the mouse, the keys during a walk, the sound without the focus
 
@@ -47,7 +48,7 @@ T4b the lists over time, T4c a changed panel item drawn again alone (all done: t
   `Window::focused()`). Recorded: sequences with the clicks and the cursor's kinds.
 - **Acceptance:** the new sequences as recorded, every frame; the clicks in the window; the
   Definition of Done.
-- **Depends on:** T3 to T5. **Status:** ready after T5.
+- **Depends on:** T3 to T5b. **Status:** ready after T5b.
 
 ### E24 M3 T7 — M3's closure
 

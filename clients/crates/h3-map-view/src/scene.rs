@@ -429,7 +429,7 @@ pub fn scene_in(
     let lists = &tables.map.lists;
     let shown = panels::dialog(layout, lists, live, art.levels, at.z)
         .ok_or_else(|| SceneError::Live("a hero's portrait is past the tables'".into()))?;
-    let bar = panels::resource_bar(layout, live);
+    let bar = panels::resource_bar(layout, live, &tables.texts);
     draws.extend(
         layout
             .dialog

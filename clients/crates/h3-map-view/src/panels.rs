@@ -2,13 +2,14 @@
 //! `docs/epics/E24-design.md` §4.1): the buttons' states at the human player's turn from the
 //! live part's kingdom and buttons, the map's levels and the view's level; the buttons 3 to 12 and
 //! the resource bar's picture in the viewer's colours; the lists' contents and their selections
-//! (T4a, [`crate::lists`]). The status window, the amounts and the date (T5) and the hints (T6)
-//! come later; the minimap is [`crate::minimap`]'s (T3a).
+//! (T4a, [`crate::lists`]); the resource bar's amounts and the date (T5a, design §4.7). The status
+//! window (T5b) and the hints (T6) come later; the minimap is [`crate::minimap`]'s (T3a).
 
 use alloc::collections::BTreeMap;
 use alloc::string::ToString;
 use alloc::vec::Vec;
 
+use h3_ui::text::{Args, Catalogue};
 use h3_ui::ui::{Draw, Item, Shown, State};
 
 use crate::layout::AdventureLayout;
@@ -45,6 +46,10 @@ pub mod id {
     pub const TOWN_PICTURES: u16 = 32;
     /// The hero list's selection frames, the first of five.
     pub const FRAMES: u16 = 39;
+    /// The resource bar's amounts, the first of seven (E24 M3 T5a).
+    pub const AMOUNTS: u16 = 1001;
+    /// The resource bar's date.
+    pub const DATE: u16 = 1008;
 }
 
 /// What the dialog's items show for `live` on a map of `levels` levels with the view on level
@@ -181,9 +186,39 @@ pub fn selections(layout: &AdventureLayout, lists: &ListArt, live: &Live) -> Vec
     }
 }
 
-/// What the resource bar shows (design §4.1): its picture in the viewer's colours (0x558C99).
+/// The string catalogue's keys the panels show texts by (E24 M3 T5a; `clients/text/keys.toml`).
+pub const KEYS: [&str; 5] = [
+    "map.resources.amount",
+    "map.resources.date",
+    "word.month",
+    "word.week",
+    "word.day",
+];
+
+/// What the resource bar shows (design §4.1, §4.7): its picture in the viewer's colours
+/// (0x558C99); each of the kingdom's seven amounts by the key `map.resources.amount` (0x558F55)
+/// and the date by `map.resources.date` with the words `word.month`, `word.week` and `word.day`
+/// (0x558F8B), in `texts`.
 #[must_use]
-pub fn resource_bar(layout: &AdventureLayout, live: &Live) -> Shown {
+pub fn resource_bar(layout: &AdventureLayout, live: &Live, texts: &Catalogue) -> Shown {
+    let kingdom = &live.kingdom;
+    let mut shown_texts: BTreeMap<u16, _> = (id::AMOUNTS..)
+        .zip(kingdom.resources)
+        .map(|(id, amount)| {
+            let args = Args::new().number("amount", i64::from(amount));
+            (id, texts.text("map.resources.amount", &args))
+        })
+        .collect();
+    let date = kingdom.date;
+    let word = |key: &str| texts.text(key, &Args::new());
+    let args = Args::new()
+        .text("month_word", &word("word.month"))
+        .number("month", i64::from(date.month))
+        .text("week_word", &word("word.week"))
+        .number("week", i64::from(date.week))
+        .text("day_word", &word("word.day"))
+        .number("day", i64::from(date.day));
+    shown_texts.insert(id::DATE, texts.text("map.resources.date", &args));
     Shown {
         players: layout
             .resource_bar
@@ -192,6 +227,7 @@ pub fn resource_bar(layout: &AdventureLayout, live: &Live) -> Shown {
             .filter(|i| matches!(i, Item::Picture(_)))
             .map(|i| (i.id(), live.viewer))
             .collect(),
+        texts: shown_texts,
         ..Shown::default()
     }
 }

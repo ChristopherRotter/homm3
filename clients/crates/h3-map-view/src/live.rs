@@ -53,10 +53,10 @@ pub struct Live {
 }
 
 /// What the adventure screen's panels show of the viewing player's kingdom (E24 M3 T2a, design
-/// §4.1; *provisional*: T4a added the lists' contents, T5 adds the resources and the date): its
-/// heroes and towns in their lists' order, the one selected, the lists' first slots and whether
-/// its quest log holds a quest. A comparison reads them from the original's memory
-/// (`h3mem.py`); [`Live::at_start`] gives a map's start; from M4 on the engine.
+/// §4.1; *provisional*: T4a added the lists' contents, T5a the resources and the date): its
+/// heroes and towns in their lists' order, the one selected, the lists' first slots, whether its
+/// quest log holds a quest, its resources and the game's date. A comparison reads them from the
+/// original's memory (`h3mem.py`); [`Live::at_start`] gives a map's start; from M4 on the engine.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct Kingdom {
     /// The heroes, in the hero list's order (the player's +0x8).
@@ -69,6 +69,33 @@ pub struct Kingdom {
     pub tops: [usize; 2],
     /// A seer hut's or quest guard's quest the player visited (`quest_log_state` 0x4039B0).
     pub quests: bool,
+    /// The amounts of the seven resources in the original's order, wood, mercury, ore, sulfur,
+    /// crystal, gems and gold (the player's +0x9C; E24 M3 T5a, design §4.7).
+    pub resources: [i32; 7],
+    /// The game's date (E24 M3 T5a), which the resource bar shows beside the amounts.
+    pub date: Date,
+}
+
+/// The game's date (E24 M3 T5a, design §4.7): the month, the week of the month and the day of the
+/// week, each from 1 (the game's +0x1F642, +0x1F640, +0x1F63E); a map's start the first of each.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Date {
+    /// The month.
+    pub month: u16,
+    /// The week of the month.
+    pub week: u16,
+    /// The day of the week.
+    pub day: u16,
+}
+
+impl Default for Date {
+    fn default() -> Self {
+        Self {
+            month: 1,
+            week: 1,
+            day: 1,
+        }
+    }
 }
 
 /// A hero of the kingdom's.
@@ -129,8 +156,8 @@ impl Kingdom {
     /// A live part's `kingdom` as the harness writes it (`h3mem.py`'s `Mem.kingdom`): `{ heroes =
     /// [[asleep, movable, portrait, points, mana], ...], towns = [[faction, fort, built], ...],
     /// selected = [<0 none, 1 a hero, 2 a town>, <its place in its list>], tops = [<heroes>,
-    /// <towns>], quests = <0 or 1> }`, each flag 0 or 1; none for anything else (a selection past
-    /// its list among them).
+    /// <towns>], quests = <0 or 1>, resources = [<7 amounts>], date = [<month>, <week>, <day>]
+    /// }`, each flag 0 or 1; none for anything else (a selection past its list among them).
     #[must_use]
     pub fn read(value: &toml::Value) -> Option<Self> {
         fn pair(v: &toml::Value) -> Option<[&toml::Value; 2]> {
@@ -185,12 +212,29 @@ impl Kingdom {
             _ => return None,
         };
         let [heroes_top, towns_top] = pair(table.get("tops")?)?;
+        let resources = table
+            .get("resources")?
+            .as_array()?
+            .iter()
+            .map(int)
+            .collect::<Option<Vec<_>>>()?;
+        let word = |v: &toml::Value| v.as_integer().and_then(|n| u16::try_from(n).ok());
+        let date = match table.get("date")?.as_array()?.as_slice() {
+            [month, week, day] => Date {
+                month: word(month)?,
+                week: word(week)?,
+                day: word(day)?,
+            },
+            _ => return None,
+        };
         Some(Self {
             heroes,
             towns,
             selected,
             tops: [number(heroes_top)?, number(towns_top)?],
             quests: flag(table.get("quests")?)?,
+            resources: resources.try_into().ok()?,
+            date,
         })
     }
 }
@@ -545,7 +589,8 @@ impl Live {
         // The viewer's kingdom (*provisional*, the engine's from M4): its heroes in the map's
         // order, awake and able to move, each with its portrait (the map's or its type's; a random
         // hero's type 0xFF until the engine draws it) and no points or mana known; its towns in
-        // the map's order, none built in today; the first hero selected, else the first town.
+        // the map's order, none built in today; the first hero selected, else the first town; no
+        // resources (the difficulty's starting ones are the engine's rule) on the first day.
         let selected = match (portraits.len(), towns_kept.len()) {
             (0, 0) => Selected::None,
             (0, _) => Selected::Town(0),
@@ -566,6 +611,8 @@ impl Live {
             selected,
             tops: [0, 0],
             quests: false,
+            resources: [0; 7],
+            date: Date::default(),
         };
         Self {
             objects,

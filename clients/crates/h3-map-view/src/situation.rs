@@ -69,6 +69,15 @@ pub struct Situation {
     /// or town than the turn's start selects.
     #[serde(default)]
     pub select: Option<SelectSpec>,
+    /// Red's resources the harness writes before its selection (E24 M3 T5a, design §4.7), in the
+    /// original's order: a hero's selection draws the resource bar again (`hero_select`
+    /// 0x417F48), a town's does not, so a situation that gives them selects a hero.
+    #[serde(default)]
+    pub resources: Option<[i32; 7]>,
+    /// The game's date the harness writes before its selection (E24 M3 T5a): [month, week, day],
+    /// a week from 1 to 4 and a day from 1 to 7; as the resources, with a hero's selection.
+    #[serde(default)]
+    pub date: Option<[u16; 3]>,
 }
 
 /// What a situation selects (E24 M3 T4a): Red's hero standing on a tile (after its walk) or Red's
@@ -586,13 +595,23 @@ impl Situation {
 
     /// The harness's writes into the lists and its selection (E24 M3 T4a): a town's day written
     /// only for Red's; the selection Red's hero on its tile (after its walk) or Red's town on its
-    /// anchor; a selection whenever something is written, so that the lists show it.
+    /// anchor; a selection whenever something is written, so that the lists show it; a hero's
+    /// with the resources or the date (T5a), a day of the game's.
     fn selection(&self) -> Result<(), String> {
         if let Some(t) = self.towns.iter().find(|t| t.built && t.owner != Some(0)) {
             return Err(format!(
                 "town at {:?}: only Red's towns have their day written",
                 t.at
             ));
+        }
+        if let Some([month, week, day]) = self.date
+            && (month == 0 || !(1..=4).contains(&week) || !(1..=7).contains(&day))
+        {
+            return Err(format!("the date {:?} is no day of the game's", self.date));
+        }
+        let bar = self.resources.is_some() || self.date.is_some();
+        if bar && !matches!(self.select, Some(SelectSpec::Hero(_))) {
+            return Err("the resources or the date without a hero's selection".into());
         }
         let written = self
             .heroes

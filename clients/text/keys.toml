@@ -400,6 +400,33 @@ original = [
     { form = "female", at = "GENRLTXT:541" },
 ]
 
+# The adventure screen's resource bar (E24 M3 T5a; docs/epics/E24-design.md §4.7): each of the
+# shown player's seven amounts by the executable's `%d` (0x558F55: the player's +0x9C, in the
+# resources' order), and the date (0x558F8B): the executable's format with GENRLTXT's records 63
+# to 65 (the month's, the week's and the day's words) and the game's month, week and day of the
+# week (its +0x1F642, +0x1F640, +0x1F63E).
+[[key]]
+id = "map.resources.amount"
+args = { amount = "number" }
+original = [{ at = "EXE:0x660A1C", printf = ["amount"] }]
+
+[[key]]
+id = "map.resources.date"
+args = { month_word = "text", month = "number", week_word = "text", week = "number", day_word = "text", day = "number" }
+original = [{ at = "EXE:0x682E64", printf = ["month_word", "month", "week_word", "week", "day_word", "day"] }]
+
+[[key]]
+id = "word.month"
+original = [{ at = "GENRLTXT:63" }]
+
+[[key]]
+id = "word.week"
+original = [{ at = "GENRLTXT:64" }]
+
+[[key]]
+id = "word.day"
+original = [{ at = "GENRLTXT:65" }]
+
 # The spell book (E17 M5 T3a; design §7.17). A place's text (`spell_book_page` 0x59CE19, 0x59CEE1:
 # the executable's own formats): the spell's name, its level, the hero's mastery's short name when
 # it has one, the spell points' word and the cost.

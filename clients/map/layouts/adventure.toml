@@ -296,7 +296,9 @@ colour = 13
 align = 8
 
 # The resource bar (the dialog's +0x5C, resource_bar_create 0x558BA0): at (3, 575), its picture in
-# the viewer's colours; the amounts (1001-1007) and the date (1008) come with T5.
+# the viewer's colours, then its texts (E24 M3 T5a, design §4.7; texts alone, 0x5BC280, in
+# `smalfont.fnt`'s colour 4, filled by 0x558F20): the seven amounts 1001-1007 (0x558CE5's loop,
+# each followed by its hint's area 1009-1015, T6's), left-aligned, and the date 1008, centred.
 [resource_bar]
 place = [3, 575]
 
@@ -306,6 +308,27 @@ id = 1000
 picture = "AResBar.pcx"
 at = [0, 0]
 size = [794, 22]
+
+[[resource_bar.items]]
+kind = "label"
+id = 1001
+at = [37, 3]
+size = [50, 18]
+font = "smalfont.fnt"
+font_palette = "game.pal"
+colour = 4
+align = 0
+repeat = { count = [7, 1], step = [84, 0] }
+
+[[resource_bar.items]]
+kind = "label"
+id = 1008
+at = [607, 3]
+size = [180, 18]
+font = "smalfont.fnt"
+font_palette = "game.pal"
+colour = 4
+align = 1
 
 # What the panels' logic needs (E24 M3 T2a, design §4.1): the buttons in the viewer's colours
 # (0x403F60), the underground button's DEF on the surface and underground (0x65F22C), sleep's while

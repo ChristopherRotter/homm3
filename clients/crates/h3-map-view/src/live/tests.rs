@@ -301,6 +301,13 @@ fn a_maps_start_its_kingdom_and_buttons() {
             selected: Selected::Hero(0),
             tops: [0, 0],
             quests: false,
+            // T5a: no resources known, the first day.
+            resources: [0; 7],
+            date: Date {
+                month: 1,
+                week: 1,
+                day: 1,
+            },
         }
     );
     let blue = kingdom(&raw, 1);
@@ -374,13 +381,16 @@ fn a_maps_start_its_kingdom_and_buttons() {
 
 #[test]
 fn a_live_parts_kingdom_read() {
-    // E24 M3 T2a: `h3mem.py`'s `Mem.kingdom` as the harness writes it.
+    // E24 M3 T2a: `h3mem.py`'s `Mem.kingdom` as the harness writes it (T5a: with the resources
+    // and the date).
     let read = |text: &str| {
         let table: toml::Table = toml::from_str(&alloc::format!("kingdom = {text}")).unwrap();
         Kingdom::read(&table["kingdom"])
     };
     let all = "{ heroes = [[0, 1, 3, 1500, 20], [1, 0, 162, 0, -1]], towns = [[8, 1, 0], [0, 0, \
-               1]], selected = [1, 1], tops = [0, 1], quests = 1 }";
+               1]], selected = [1, 1], tops = [0, 1], quests = 1, resources = [0, 1, 2, 3, 4, 5, \
+               -6], date = [12, 4, 7] }";
+    let tail = "resources = [0, 0, 0, 0, 0, 0, 0], date = [1, 1, 1]";
     let two = Kingdom {
         heroes: vec![
             KingdomHero {
@@ -413,20 +423,36 @@ fn a_live_parts_kingdom_read() {
         selected: Selected::Hero(1),
         tops: [0, 1],
         quests: true,
+        resources: [0, 1, 2, 3, 4, 5, -6],
+        date: Date {
+            month: 12,
+            week: 4,
+            day: 7,
+        },
     };
     assert_eq!(read(all), Some(two));
     // The form before T4a (E24 M3 T4b: no longer read).
-    let before =
-        "{ heroes = [[0, 1], [1, 0]], towns = 2, selected = [2, 1], tops = [0, 1], quests = 1 }";
-    assert_eq!(read(before), None);
-    let short_hero =
-        "{ heroes = [[0, 1]], towns = [], selected = [0, 0], tops = [0, 0], quests = 0 }";
-    assert_eq!(read(short_hero), None);
-    let flag = "{ heroes = [], towns = [], selected = [0, 0], tops = [0, 0], quests = \"no\" }";
-    assert_eq!(read(flag), None);
+    let before = alloc::format!(
+        "{{ heroes = [[0, 1], [1, 0]], towns = 2, selected = [2, 1], tops = [0, 1], quests = 1, \
+         {tail} }}"
+    );
+    assert_eq!(read(&before), None);
+    let short_hero = alloc::format!(
+        "{{ heroes = [[0, 1]], towns = [], selected = [0, 0], tops = [0, 0], quests = 0, {tail} }}"
+    );
+    assert_eq!(read(&short_hero), None);
+    let flag = alloc::format!(
+        "{{ heroes = [], towns = [], selected = [0, 0], tops = [0, 0], quests = \"no\", {tail} }}"
+    );
+    assert_eq!(read(&flag), None);
+    let empty = alloc::format!(
+        "{{ heroes = [], towns = [], selected = [0, 0], tops = [0, 0], quests = 0, {tail} }}"
+    );
+    assert_eq!(read(&empty), Some(Kingdom::default()));
     for towns in ["2", "[3]", "[[0, 1]]"] {
         let text = alloc::format!(
-            "{{ heroes = [], towns = {towns}, selected = [0, 0], tops = [0, 0], quests = 0 }}"
+            "{{ heroes = [], towns = {towns}, selected = [0, 0], tops = [0, 0], quests = 0, \
+             {tail} }}"
         );
         assert_eq!(read(&text), None, "{towns}");
     }
@@ -476,6 +502,20 @@ fn a_live_parts_kingdom_read() {
         ("selected = [1, 1]", "selected = [1, -1]"),
         ("tops = [0, 1]", "top = [0, 1]"),
         ("tops = [0, 1]", "tops = [-1, 1]"),
+        // T5a: seven amounts of 32 bits; three parts of the date of 16 bits each.
+        ("resources = ", "wealth = "),
+        ("-6]", "-6, 7]"),
+        ("[0, 1, 2, 3, 4, 5, ", "[0, 1, 2, 3, 4, "),
+        ("-6]", "-2147483649]"),
+        ("-6]", "\"six\"]"),
+        ("resources = [", "resources = 3, x = ["),
+        ("date = ", "day = "),
+        ("[12, 4, 7]", "[12, 4]"),
+        ("[12, 4, 7]", "[12, 4, 7, 1]"),
+        ("[12, 4, 7]", "[12, 4, 65536]"),
+        ("[12, 4, 7]", "[12, -1, 7]"),
+        ("[12, 4, 7]", "[-12, 4, 7]"),
+        ("[12, 4, 7]", "12"),
     ] {
         assert_eq!(read(&all.replace(from, to)), None, "{to}");
     }
