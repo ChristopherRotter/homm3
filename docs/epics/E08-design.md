@@ -291,6 +291,9 @@ in `check_step` and the walking search):
   map. T74a for T75: `play.rs`'s `visit_gains` counts a find's gains at its emptying (`emptied`),
   and a find that leaves is never emptied: its gains come at its removal (`ObjectRemoved`), as a
   chest's.
+- **T75a's finding for T75b:** `random-play-sea-36` costs about 1 714 000 Ir a step (the rewards
+  map's 862 000), 52 % of it in the flyer's and the water walker's layered search over the open
+  sea (`Reach::expand_layered`), the boats' own search 4 %: the inbox's lever (the lane's QUEUE).
 - **Benchmarks:** `reach-sea-xl-144` (a boat's search; a new XL fixture `e08-sea-144.h3m`, mostly
   sea, 15 boats as Myth and Legend's), `random-play-sea-36`, `fork-sea-xl-144`; the ten workloads
   at their baselines (`reach-xl-144` the walker's cold boat test).
@@ -359,7 +362,7 @@ increment 7's decision 139), so the ADRs are applied once with the disputes' ver
 | 5 | **T71** + **T72** | T71: `h3-heroes` (§2; small). T72: `h3-map` and `h3-adventure`: the import (§4), the kinds and parameters (§5), the state (§6), the views (§12); map import v14, ruleset part v13, adventure state hash v16 |
 | 6 | **T73** | `h3-adventure`: moving (§7), the prices, the drop and the conversion (§8), `Reach` (§9), visits and events at sea (§10); likely cut in two at its start (the boat's moves and prices; `Reach`) |
 | 7 | **T74** | `h3-adventure` and `h3-game`: the pickups' visits (§11), the battle at sea and the boat leaving with its hero (§13), the game (§14), the env's observation (`cross-lane`, §15) |
-| 8 | **T75** + **T76** | T75: the sea fixtures, replays, properties, benchmarks, `--with-original-data` (§15). T76: the audit against the exit criteria, increment 8 closed, increment 9 refined |
+| 8 | **T75** + **T76** | T75 in two (decision 189): T75a the sea map, its replays and `random-play-sea-36` (done); T75b the properties, the sea XL with `reach-sea-xl-144` and `fork-sea-xl-144`, `--with-original-data` (§15). T76: the audit against the exit criteria, increment 8 closed, increment 9 refined |
 
 **Increment 8's exit criteria:**
 1. Boats import without the original's cap and a hero placed on water is refused (D-44 as batch

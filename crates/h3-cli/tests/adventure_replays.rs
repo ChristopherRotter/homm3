@@ -184,6 +184,53 @@
 //! - `rewards-stone-guard-s1`: Orrin enters the Learning Stone on (3, 8): its 1 000 experience and
 //!   level-up first; only once he answers do the gnolls guarding it fight (ADV-MON-006,
 //!   GAM-DEC-007).
+//!
+//! **Sea** (E08 T75a, increment 8), on `fixtures/maps/e08-sea-36.h3m` (a strait between two
+//! shores, written by `h3_map::writer`; `fixtures/maps/README.md`): red's Sylvia (hero 0, the
+//! Admiral's Hat, twenty archangels), Orrin (hero 1), Mephala (hero 2, Angel Wings) and Tyris
+//! (hero 3, Boots of Levitation, five angels) on the west; blue's Voy (hero 4, the Necklace, a full
+//! backpack) and Fiona (hero 5, the Sea Captain's Hat) on the east and Astral (hero 6, one pikeman)
+//! on red's shore; each beside an empty boat but Mephala and Tyris. Random play, recorded with
+//! `--map fixtures/maps/e08-sea-36.h3m --seed N --agent-seed N --days 28`: the three of a search
+//! over the seeds 1 to 3 000 (a scratch probe noting each game's boardings, landings, pickups,
+//! events on water, the battles by their battlefield and a boat leaving; not committed) whose
+//! union meets the most:
+//!
+//! - `sea-s103-d28`: two boardings, a Flotsam and a bottle taken, both events on water (the
+//!   guarded one's battle on the deck), a hero battle on land.
+//! - `sea-s1503-d28`: a boarding, the Shipwreck Survivor taken, a hero battle on the shore, a
+//!   monster's battle on land.
+//! - `sea-s2611-d28`: five boardings and three landings, Favorable Winds sailed, a Sea Chest taken,
+//!   a battle on the two boats whose beaten hero leaves with its boat, a monster's battle on land.
+//!
+//! **Scripted** (E08 T75a: design §15's paths), on the same map, recorded with `h3 adventure run
+//! --map fixtures/maps/e08-sea-36.h3m --seed 1 --checkpoint-every 5 --script <script> --record
+//! <replay>` (the moves from a scratch probe walking each hero to its tile through the explored
+//! reachable ones, the battles' commands from the original's battle AI for both sides, E23's
+//! `h3_battle_ai::choose`; not committed); each ends with both players' turns:
+//!
+//! - `sea-board-hat-s1`: Sylvia boards her boat with the Admiral's Hat: her points after the step
+//!   become the share of the sea's maximum (1 700 of 2 000 to 3 251 of 3 825), she sails east and
+//!   lands on (24, 9), the share back to the land's (ADV-SEA-002, -003; D-41).
+//! - `sea-board-s1`: Orrin boards his boat without the Hat: his points become 0; the next day he
+//!   sails the strait and lands on (24, 10), his points 0 again (ADV-SEA-002 to -004).
+//! - `sea-deck-shore-s1`: Astral boards his boat on red's shore; the next day Tyris attacks him
+//!   from the coast: the battle on the deck (GAM-BAT-001, ADV-SEA-006); Astral beaten, his boat
+//!   leaves the map with him (`BoatRemoved` after `HeroRemoved`; GAM-BAT-003).
+//! - `sea-deck-monster-s1`: Sylvia sails onto the water the pikemen on (16, 4) guard: they attack
+//!   her at once, the battle on the deck at their tile (ADV-SEA-005, ADV-MON-005).
+//! - `sea-two-boats-s1`: Sylvia sails toward Voy; he boards his boat; the next day she attacks
+//!   him from the next water tile: the battle on the two boats; Voy leaves with his boat, she
+//!   stays in hers (GAM-BAT-001, -003; ADV-SEA-006).
+//! - `sea-landing-guards-s1`: Sylvia sails over Favorable Winds and lands on (24, 16), which the
+//!   gnolls on (25, 16) guard: after the landing they fight her on land, at their tile (ADV-SEA-003;
+//!   E8-15).
+//! - `sea-event-s1`: Sylvia sails onto the event on (14, 7), which fires and ends the move, then
+//!   onto the one on (17, 7), whose pikemen fight her on the deck before it fires (ADV-OBJ-007,
+//!   ADV-MOV-011).
+//! - `sea-flyer-s1`: Mephala flies over the plain water beside the Flotsam on (12, 16) and lands
+//!   beside it; no flight ends on or passes its tile (D-46, ADV-PIK-018): a refusal a replay
+//!   cannot hold, so `h3-map`'s `sea_map.rs` checks it on the same map.
 
 use std::path::PathBuf;
 
@@ -198,7 +245,7 @@ fn golden_adventure_replays_reproduce_their_hashes() {
         .collect();
     files.sort();
     assert!(
-        files.len() >= 21,
+        files.len() >= 32,
         "expected the E08 replay fixtures in {}",
         dir.display()
     );

@@ -8401,3 +8401,64 @@ staged. The user's cut (decision 187): whole, the lane's own paths only; the sec
 - *Agent's calls (change freely):* `BoatRemoved` names the hero and the boat's type, as `Boarded`
   (the viewers saw the hero in it); a gone boat's tile is the hero's last tile, not the stale
   boarding tile the record kept while aboard.
+
+### Increment 8, round 8: T75a, the sea map, its replays and the random-play benchmark (2026-10-29, `adventure/e08-t75a`)
+
+**The cut** (decision 189): T75 in two, the user's "Two parts (Recommended)", as T64's: T75a the
+sea map, its replays and `random-play-sea-36`; T75b the properties, the sea XL with its two
+workloads and the original data's census. **Baseline:** `master` 331ce3b (#581, #582 merged; CI
+green on 6947cce, the code's last run); the sandbox's light gates passed on its code (CI's
+fingerprint); the original data staged from the user's computer.
+
+- **The sea map** (`fixtures/maps/e08-sea-36.h3m`, 837 bytes; `h3-map`'s `tests/sea_map.rs`,
+  `the_sea_map_is_committed_as_written`): SoD, 36 × 36, no underground, written by
+  `h3_map::writer::write` with the original's templates (`sea.rs`' lines); grass on columns 0 to
+  11 and 24 to 35, the sea between. Six empty boats of the three kinds beside both coasts (the
+  test checks them as `MapSetup::boats`); red's Sylvia (hero 0, a Navigation specialist, the
+  Admiral's Hat, twenty archangels) on (9, 4) beside her boat on (12, 4), ten savage pikemen on
+  water at (16, 4), an event on water at (14, 7) (500 gold) and one at (17, 7) whose five
+  pikemen fight first (five crystals); Orrin (hero 1, his type's own) on (9, 10) beside his boat;
+  Mephala (hero 2, Angel Wings) on (10, 16) beside a Flotsam on (12, 16); Tyris (hero 3, Boots of
+  Levitation, five angels) on (9, 27); blue's Voy (hero 4, a Navigation specialist, the Necklace,
+  64 Centaur's Axes in his backpack: `ADV-QUIRK-22`'s full backpack) on (27, 22) and Fiona (hero
+  5, expert Navigation, the Sea Captain's Hat) on (27, 28), each beside a boat, and Astral (hero 6,
+  one pikeman) on red's shore at (10, 31) beside his; Favorable Winds on (18, 12) to (20, 14), two
+  Flotsams, two Sea Chests, the Shipwreck Survivor, a bottle with a message and an empty one; a
+  hole on the west coast at (11, 20); two gnolls on (25, 16) guarding the coast's (24, 16). The
+  test imports it (the heroes, the boats, increment 8's classes) and checks the flyer beside the
+  Flotsam (D-46, ADV-PIK-018): a flight onto its tile or across it is refused and leaves the state
+  as it was, `Reach` offers no path through it, a flight over the plain water beside it lands.
+- **The golden replays** (`adventure_replays.rs` lists what each meets; the test expects 32):
+  random play `sea-s103-d28`, `-s1503-d28` and `-s2611-d28` (`--seed N --agent-seed N --days
+  28`), the best union of three in a scratch search over the seeds 1 to 3 000 (17 features
+  counted; the three meet 15: boardings, landings, Favorable Winds, the four pickups, both events
+  on water, battles on the deck, the shore, the two boats and land, a boat leaving; neither a hero
+  battle on the deck nor the water monster's battle, which the scripted ones hold; of the 3 000
+  games 1 907 board, 2 fight on the two boats, 11 a hero on the deck, 10 lose a boat with its
+  hero); scripted (`--seed 1 --checkpoint-every 5 --script`): `sea-board-hat-s1` (the conversion
+  both ways: 1 700 of 2 000 to 3 251 of 3 825 at the boarding, 1 846 of 3 825 to 965 of 2 000 at
+  the landing), `sea-board-s1` (0 points at both), `sea-deck-shore-s1` (`base:deck`, Astral's boat
+  leaving after `HeroRemoved`), `sea-deck-monster-s1` (`base:deck` at the monster's tile, attacked
+  at once), `sea-two-boats-s1` (`base:boats`, the loser's boat leaving, the winner aboard),
+  `sea-landing-guards-s1` (over the winds; the guards' battle on grass at their tile, no special
+  field), `sea-event-s1` (the plain event's stop, the guarded one's battle on the deck before its
+  crystals), `sea-flyer-s1` (a flight over the water beside the Flotsam). The moves came from a
+  scratch probe walking each hero toward its tile through explored reachable ones (`Reach` gives
+  no path onto an unexplored tile), the battles' commands from E23's `h3_battle_ai::choose` for
+  both sides (an attack-or-defend driver stalled on the deck: the stacks never close in).
+- **The benchmark** `random-play-sea-36` (5 games of 28 days, `--seed 1`, 1 532 steps, inside
+  `random_rollout`): 2 625 483 594 Ir, about 1 714 000 a step (the rewards map's 862 000, the
+  duel's 305 000); its games board four times, land three times, sail over the winds, fire both
+  events on water (the guarded one's battle on the deck) and fight a hero on the shore. Callgrind's
+  inclusive profile: `Reach::expand_layered` 52 % (the flyer's and the water walker's two-layer
+  search over the open sea), `AdventureState::passage` 31 %, `Reach::expand_sail` 4 %: the inbox's
+  entry on a lifted hero's query (`reach-lifted-xl-144`) grows. The benches README's row:
+  `shared/e08-t75a-benches`.
+- *Agent's calls (change freely):* decision 189's; the map's heroes and objects; the seeds.
+- **Versions:** none.
+- **Gates:** the scoped verify with the original data passed every step (coverage, determinism
+  with the 32 replays, `bench-check` with the eleven workloads, the 160 maps) but
+  `scripts/exe.py check`: two sizes of E17 M5 T5b1's entries (#583; `rgb_to_hsv` 0x523190,
+  `hsv_to_rgb` 0x5232F0) disagreed with the executable, fixed with `--fix-sizes` in this pull
+  request (`docs/exe/map.toml` is common), the check then clean; `clippy -p h3-map -p h3-cli
+  --all-targets` clean, the CLI's replay test passed (the scope builds no `h3-cli`).
