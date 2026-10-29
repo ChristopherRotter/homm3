@@ -149,7 +149,9 @@ in `check_step` and the walking search):
   object left becomes one again (0x5056A5).
 - **Guards:** a boat's step onto a water tile a monster guards (water guards water, ADV-MON-005) is
   attacked at once; boarding tests no guard (0x480108); a landing tests none at the step, and the
-  landing tile's guard visits after the landing (`guard_after`), at the monster's tile (§13).
+  landing tile's guard visits after the landing, at the monster's tile (§13). T73a: at once in
+  the move's outcome, after the landing's state change (a landing opens no decision, so no
+  `guard_after` is needed).
 - **Events on water** (ADV-OBJ-007, ADV-MOV-011 amended): a boat's step fires them as a walker's
   (`firing_event`) and ends the move there; their guards fight on the deck. `Reach` stays blind to
   them (decision 131's rule).
@@ -190,7 +192,10 @@ in `check_step` and the walking search):
   boat; D-46's water entrances closed to a flight).
 - **Destinations** (the env's mask, `legal_moves`): the boarding and landing tiles, the visits at
   sea, every water tile a boat reaches. Today's reach only (the sea's next day is not the
-  engine's, survey §9).
+  engine's, survey §9). A boarding's points are those the move leaves: the boat's drop, then the
+  conversion (T73a for a flyer and a water walker; the property compares them).
+- **T73a's interim** (ADV-STUB-11): a hero in a boat reaches its own tile only and a walker no
+  boat, until T73b builds the boat's search and the walker's test.
 
 ### 10. Visits at sea (ADV-SEA-005)
 
@@ -225,9 +230,11 @@ in `check_step` and the walking search):
   facing; never owner or captain); `HeroView::boat` (its boat's kind, public: the original draws
   the hero's flag on it); `OwnHeroView::max_movement` (the day's maximum, its owner's).
 - **Events** (each `seen_by` the viewers of its tiles): `Boarded { hero, boat, at }` (the boat
-  leaves the tile's view, the hero steps onto it), `Landed { hero, boat, from, to, facing }` (the
-  boat left on `from`), `BoatRemoved { boat, at }` beside `HeroRemoved`, `MessageRead { hero,
-  object }` (the visitor's owner only). A hero's points after a conversion are its owner's
+  leaves the tile's view, the hero steps onto it), `Landed { hero, boat, at, facing }` (the boat
+  left on `at`, the water tile; T73a: seen by the viewers of `at` only, the landing tile told by
+  the step's own `HeroStepped`, so no viewer learns a tile it does not see; `boat` the type, never
+  the index), `BoatRemoved { boat, at }` beside `HeroRemoved`, `MessageRead { hero, object }`
+  (the visitor's owner only). A hero's points after a conversion are its owner's
   (`OwnHeroView`).
 - **The fog:** unchanged (the scouting radius has no boat term, §4.4); `docs/06-security.md`'s
   viewer knowledge list gains the boats (the adventure epic's).

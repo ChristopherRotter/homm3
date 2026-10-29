@@ -172,9 +172,10 @@ viewers share.
   the lists over time (**done** 2026-10-29: a step's end draws the hero's slot, a lift that
   centres the view and a walk's end that leaves the hero unable to move both lists; the 13
   sequences recorded with them, every frame exact; the log); T4c, a changed panel item drawn
-  again alone (T4b's measurement: a changed dialog draw redraws the panels whole); T5, the status
-  window, the resource bar and the date; T6, the mouse, the keys during a walk, the sound without
-  the focus; T7, M3's closure. A task that grows is cut at a seam agreed with the user.
+  again alone (**done** 2026-10-29: the background drawn again where its changed items reach, by
+  `h3_ui::paint::reach`, and the view's cells there; `walk-1` 31.0 → 24.7 % uploaded; the log);
+  T5, the status window, the resource bar and the date; T6, the mouse, the keys during a walk,
+  the sound without the focus; T7, M3's closure. A task that grows is cut at a seam agreed with the user.
 - **Exit:** every situation and sequence as recorded on the whole screen (no `panels` mask
   left, or each difference an `MCL-Q<n>`); the view-only clicks, the hints and the cursor in the
   window; `h3-ui` the only copy of what both viewers share; M3's review list accepted; a hand

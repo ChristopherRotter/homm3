@@ -1071,3 +1071,198 @@ fn a_kept_frame_draws_the_minimap_again_only_when_it_changes() {
     composer.compose(&scenes[1], &minimap_batch()).unwrap();
     assert!(composer.damage().is_empty());
 }
+
+/// The view's clip on the 14 × 12 screen of the panels' tests.
+const CLIP: [i32; 4] = [1, 3, 13, 11];
+
+/// A label of `font.fnt` in a 2 × 1 box.
+fn label(text: &str) -> h3_ui::ui::Draw {
+    h3_ui::ui::Draw::Label {
+        item: h3_ui::ui::Label {
+            id: 1,
+            at: [0, 0],
+            size: [2, 1],
+            font: "font.fnt".to_string(),
+            font_palette: "players.pal".to_string(),
+            colour: 0,
+            align: 0,
+            hint: None,
+            repeat: None,
+        },
+        x: 12,
+        y: 0,
+        text: text.to_string(),
+        disabled: false,
+    }
+}
+
+/// `view_at`'s scene at `origin` and `t` with a dialog's items after the frame's picture: a button
+/// (`terrain.def`'s frame `f`, 2 × 2) at (10, 0), a rectangle darkened over the left gem (0, 2),
+/// the frame's picture as a 2 × 2 item at (5, 0) when `picture`, a label of `text` at (12, 0).
+fn panel(origin: [i32; 2], t: u32, f: u32, dark: [i32; 4], picture: bool, text: &str) -> Scene {
+    let mut items = vec![
+        h3_ui::ui::Draw::Button {
+            def: "terrain.def".to_string(),
+            frame: f,
+            x: 10,
+            y: 0,
+            mirrored: false,
+            player: None,
+        },
+        h3_ui::ui::Draw::Darken { rect: dark },
+    ];
+    if picture {
+        items.push(h3_ui::ui::Draw::Picture {
+            picture: "frame.pcx".to_string(),
+            x: 5,
+            y: 0,
+            player: None,
+            size: Some([2, 2]),
+        });
+    }
+    items.push(label(text));
+    let mut s = view_at(origin, t, CLIP);
+    s.draws.splice(1..1, items.into_iter().map(Draw::Dialog));
+    s
+}
+
+/// The view's batch with the label's font (glyph `1` inks its one pixel).
+fn panel_batch() -> Batch {
+    let mut b = view_batch();
+    let mut glyphs = vec![h3_assets::fnt::Glyph::default(); 256];
+    glyphs[usize::from(b'1')].width = 1;
+    glyphs[usize::from(b'1')].pixels = vec![0xFF];
+    let font = h3_assets::fnt::Font {
+        height: 1,
+        y_offset: 0,
+        glyphs,
+    };
+    b.add("font.fnt", &build::fnt(&font)).unwrap();
+    b.add("other.pal", &build::pal(&players(), &[0; 256], 0, &[]))
+        .unwrap();
+    b
+}
+
+const DARK: [i32; 4] = [0, 1, 3, 2];
+
+#[test]
+fn a_changed_dialog_item_draws_its_rectangle_alone() {
+    // E24 M3 T4c: the background drawn again only where its changed items reach (as they were and
+    // as they are), the view's cells there again; everything again when an item's reach is
+    // unknown (a label), meets the view's clip, or a dialog's item lies over the view.
+    let b = panel_batch();
+    let mut flags = panel([1, 0], 1, 1, DARK, true, "1");
+    flags.flags = "other.pal".to_string();
+    let mut over = panel([1, 0], 1, 1, DARK, true, "1");
+    over.draws
+        .push(Draw::Dialog(h3_ui::ui::Draw::Darken { rect: [4, 4, 2, 2] }));
+    let mut relabelled = panel([1, 0], 2, 0, DARK, true, "1");
+    relabelled.draws[3] = Draw::Dialog(label("1"));
+    let scenes = [
+        panel([0, 0], 0, 0, DARK, true, "1"),
+        // The button's frame, with a scroll.
+        panel([1, 0], 1, 1, DARK, true, "1"),
+        // The darkened rectangle narrower: its old and new reach joined.
+        panel([1, 0], 1, 1, [0, 1, 2, 2], true, "1"),
+        // An item fewer, then the button and an item more: those between the lists' common start
+        // and end.
+        panel([1, 0], 2, 1, [0, 1, 2, 2], false, "1"),
+        panel([1, 0], 2, 0, DARK, true, "1"),
+        // A darkened rectangle reaching the clip, then nothing changed.
+        panel([1, 0], 2, 0, [0, 1, 3, 3], true, "1"),
+        panel([1, 0], 2, 0, [0, 1, 3, 3], true, "1"),
+        // The label's text: its reach unknown; the picture a label (the picture's reach known,
+        // the label's not); an item fewer, a label among those between the lists' start and end.
+        panel([1, 0], 2, 0, DARK, true, "11"),
+        relabelled,
+        panel([1, 0], 2, 0, DARK, false, "1"),
+        // Another flag palette: what the view drew and the items' reach restored, the view
+        // drawn whole.
+        flags,
+        panel([1, 0], 1, 0, DARK, true, "1"),
+        // The button's frame and a dialog's item over the view.
+        over,
+        panel([1, 0], 1, 0, DARK, true, "1"),
+    ];
+    as_fresh(&scenes, &b, [14, 12]);
+    // The button's frame alone: its 2 × 2 rectangle (the view's cells are its tiles), nothing
+    // else.
+    let mut composer = Composer::new([14, 12]).unwrap();
+    composer
+        .compose(&panel([0, 0], 0, 0, DARK, true, "1"), &b)
+        .unwrap();
+    composer
+        .compose(&panel([0, 0], 0, 1, DARK, true, "1"), &b)
+        .unwrap();
+    assert_eq!(composer.damage(), [[10, 0, 12, 2]]);
+    // The darkened rectangle over the gem: the gem drawn again over it.
+    composer
+        .compose(&panel([0, 0], 0, 1, [0, 1, 2, 2], true, "1"), &b)
+        .unwrap();
+    assert_eq!(composer.damage(), [[0, 1, 4, 4]]);
+}
+
+#[test]
+fn a_changed_dialog_item_draws_what_the_batch_has() {
+    // E24 M3 T4c: the background's draws drawn again where an item changed fail as a fresh
+    // scene's would (a batch without the frame's picture, without the label's font); the next
+    // scene draws everything again.
+    let b = panel_batch();
+    let mut lacking = Batch::default();
+    let terrain = [
+        raw_frame(2, 2, &[1, 2, 3, 4]),
+        raw_frame(2, 2, &[5, 6, 7, 8]),
+    ];
+    lacking
+        .add("terrain.def", &def(&pixels(), &terrain))
+        .unwrap();
+    let mut gem = raw_frame(2, 1, &[0, 11]);
+    gem.encoding = Encoding::Rows;
+    gem.runs = vec![true, false];
+    lacking
+        .add("gem.def", &def(&pixels(), &[gem.clone(), gem]))
+        .unwrap();
+    let first = panel([0, 0], 0, 0, DARK, false, "1");
+    let next = panel([0, 0], 0, 1, DARK, false, "1");
+    let mut composer = Composer::new([14, 12]).unwrap();
+    composer.compose(&first, &b).unwrap();
+    assert_eq!(
+        composer.compose(&next, &lacking),
+        Err(ComposeError::Missing("frame.pcx".to_string()))
+    );
+    assert_eq!(
+        composer.compose(&next, &b).unwrap(),
+        &compose(&next, &b, [14, 12]).unwrap()
+    );
+    lacking
+        .add(
+            "Frame.pcx",
+            &build::pcx_indexed(4, 2, &[1, 224, 1, 224, 1, 224, 1, 224], &pixels()),
+        )
+        .unwrap();
+    lacking
+        .add("Players.pal", &build::pal(&players(), &[0; 256], 0, &[]))
+        .unwrap();
+    assert_eq!(
+        composer.compose(&first, &lacking),
+        Err(ComposeError::Missing("font.fnt".to_string()))
+    );
+    assert_eq!(
+        composer.compose(&first, &b).unwrap(),
+        &compose(&first, &b, [14, 12]).unwrap()
+    );
+}
+
+#[test]
+fn overlapping_areas_are_joined() {
+    assert_eq!(joined(vec![]), Vec::<[i32; 4]>::new());
+    assert_eq!(
+        joined(vec![[0, 0, 2, 2], [5, 5, 6, 6], [1, 1, 3, 3], [2, 0, 6, 1]]),
+        [[5, 5, 6, 6], [0, 0, 6, 3]]
+    );
+    // Touching is not overlapping.
+    assert_eq!(
+        joined(vec![[0, 0, 2, 2], [2, 0, 4, 2]]),
+        [[2, 0, 4, 2], [0, 0, 2, 2]]
+    );
+}

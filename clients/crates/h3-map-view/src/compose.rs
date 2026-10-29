@@ -27,7 +27,7 @@ use core::fmt;
 use h3_assets::palette::{Palette, Rgb};
 use h3_assets::pcx::Pcx;
 use h3_render::Bugs;
-use h3_render::blit::draw_image;
+use h3_render::blit::draw_image_clipped;
 use h3_render::palette::{ScreenPalette, with_player_colours};
 use h3_render::screen::{PixelFormat, Screen};
 
@@ -76,7 +76,8 @@ pub fn compose(scene: &Scene, batch: &Batch, frame: [u32; 2]) -> Result<Screen, 
 /// what changed is drawn again. The view's 32 × 32 cells are compared with the last scene's: a
 /// cell whose draws (each draw whose rectangle meets it, in order, with its DEF's palette steps)
 /// are the last scene's is left, the others restored from the background and drawn again, each
-/// draw cut to them. A view moved by some pixels (a scroll, a walk) moves the clip's pixels by as
+/// draw cut to them. A background whose items changed in some alone (a bar, a button's state) is
+/// drawn again only in those items' rectangles, and the screen there over it (E24 M3 T4c). A view moved by some pixels (a scroll, a walk) moves the clip's pixels by as
 /// many first and compares each cell with the last scene's draws moved, so only what it brings in
 /// and what changed is drawn; a jump draws the whole view. What it draws is [`compose`]'s, pixel
 /// for pixel: every drawer puts a pixel from the screen's pixel there and the draws over it.
@@ -93,6 +94,9 @@ pub struct Composer {
     /// The cells' draws, this scene's and the last's moved (kept for their space).
     now: Buckets,
     was: Buckets,
+    /// Where the background's draws are drawn again before the rectangles their changed items
+    /// reach are copied into it (E24 M3 T4c; kept for its space).
+    scratch: Option<Screen>,
 }
 
 /// The background: the leading draws that do not move and the bugs they were drawn with, what
@@ -134,6 +138,7 @@ impl Composer {
             damage: Vec::new(),
             now: Buckets::default(),
             was: Buckets::default(),
+            scratch: None,
         })
     }
 
@@ -210,11 +215,26 @@ impl Composer {
             damage,
             now,
             was,
+            scratch,
             ..
         } = self;
         let mut pen = Pen::new(scene, batch, palettes);
-        match background {
-            Some(b) if b.still.as_slice() == still && b.bugs == scene.bugs => {
+        // The rectangles the background's changed items reach, when they may be drawn again alone
+        // (none when nothing changed; E24 M3 T4c).
+        let areas = match background {
+            Some(b) if b.bugs == scene.bugs => {
+                let clips = [scene.view.map(|v| v.clip), b.uniform];
+                changed_areas(&b.still, still, moving, batch, all, clips)
+            }
+            _ => None,
+        };
+        match (background.as_mut(), areas) {
+            (Some(b), Some(areas)) => {
+                if !areas.is_empty() {
+                    let scratch = scratch.get_or_insert_with(|| screen.clone());
+                    b.redraw(still, &areas, scratch, &mut pen)?;
+                }
+                let b = &*b;
                 let usable = last.as_ref().filter(|l| {
                     l.flags == scene.flags
                         && !moving
@@ -225,12 +245,17 @@ impl Composer {
                     let view = Changed {
                         moving,
                         rects: &rects,
+                        areas: &areas,
                         view: scene.view,
                         cycles: &scene.cycles,
                     };
                     view.draw(screen, b, last, &mut pen, [now, was], damage)?;
                 } else {
-                    let covered = rects.iter().copied().fold(None, |r, d| union(r, Some(d)));
+                    let covered = rects
+                        .iter()
+                        .chain(&areas)
+                        .copied()
+                        .fold(None, |r, d| union(r, Some(d)));
                     let before = last.iter().flat_map(|l| l.rects.iter().copied());
                     if let Some(rect) = before.fold(covered, |r, d| union(r, Some(d))) {
                         let rect = meet(rect, all).unwrap_or_default();
@@ -276,6 +301,118 @@ impl Composer {
     }
 }
 
+impl Background {
+    /// Draws the background's draws `still` again in `areas` alone (E24 M3 T4c): on `scratch`,
+    /// black there first, a frame's picture cut to each area and each dialog item that may reach
+    /// one whole (its drawer has no cut; what it draws elsewhere on `scratch` is never copied),
+    /// then each area copied into the background; `still` its draws from then on.
+    fn redraw<'s>(
+        &mut self,
+        still: &'s [Draw],
+        areas: &[[i32; 4]],
+        scratch: &mut Screen,
+        pen: &mut Pen<'s, '_>,
+    ) -> Result<(), ComposeError> {
+        for &area in areas {
+            fill(scratch, area, 0);
+        }
+        for item in still {
+            if let Draw::Dialog(d) = item {
+                let reaches = h3_ui::paint::reach(d, pen.batch)
+                    .is_none_or(|r| areas.iter().any(|&a| meet(r, a).is_some()));
+                if reaches {
+                    pen.draw(scratch, item, None)?;
+                }
+            } else {
+                for &area in areas {
+                    pen.draw(scratch, item, Some(area))?;
+                }
+            }
+        }
+        for &area in areas {
+            self.screen.copy_rect(scratch, area.map(i64::from));
+        }
+        self.still.clear();
+        self.still.extend_from_slice(still);
+        Ok(())
+    }
+}
+
+/// The rectangles of the screen the background's items reach where `now`'s differ from `was`'s
+/// (E24 M3 T4c, *provisional*): with as many items, each that differs as it was and as it is; else
+/// those between the lists' common start and end. Overlapping ones are joined; each lies on the
+/// screen (`all`). None when nothing changed. `None` (draw everything again) when a changed item's
+/// reach is unknown (a frame's picture, a text), when one reaches a clip whose pixels may move
+/// (`clips`: the view's and the background's one colour), or when a frame's picture or a dialog's
+/// item lies among the draws over the background (`moving`), which no cut reaches.
+fn changed_areas(
+    was: &[Draw],
+    now: &[Draw],
+    moving: &[Draw],
+    batch: &Batch,
+    all: [i32; 4],
+    clips: [Option<[i32; 4]>; 2],
+) -> Option<Vec<[i32; 4]>> {
+    if was == now {
+        return Some(Vec::new());
+    }
+    if moving
+        .iter()
+        .any(|d| matches!(d, Draw::Frame { .. } | Draw::Dialog(_)))
+    {
+        return None;
+    }
+    let mut areas: Vec<[i32; 4]> = Vec::new();
+    let mut add = |draw: &Draw| -> Option<()> {
+        let Draw::Dialog(item) = draw else {
+            return None;
+        };
+        areas.extend(meet(h3_ui::paint::reach(item, batch)?, all));
+        Some(())
+    };
+    if was.len() == now.len() {
+        for (a, b) in was.iter().zip(now) {
+            if a != b {
+                add(a)?;
+                add(b)?;
+            }
+        }
+    } else {
+        let start = was.iter().zip(now).take_while(|(a, b)| a == b).count();
+        let room = was.len().min(now.len()).saturating_sub(start);
+        let end = was
+            .iter()
+            .rev()
+            .zip(now.iter().rev())
+            .take(room)
+            .take_while(|(a, b)| a == b)
+            .count();
+        let middle = |list: &'_ [Draw]| -> Vec<Draw> {
+            list.get(start..list.len().saturating_sub(end))
+                .unwrap_or_default()
+                .to_vec()
+        };
+        for d in middle(was).iter().chain(&middle(now)) {
+            add(d)?;
+        }
+    }
+    let areas = joined(areas);
+    let moves = |a: [i32; 4]| clips.iter().flatten().any(|&c| meet(a, c).is_some());
+    (!areas.iter().any(|&a| moves(a))).then_some(areas)
+}
+
+/// `areas` with each two that overlap joined into the rectangle holding both, until none does.
+fn joined(mut areas: Vec<[i32; 4]>) -> Vec<[i32; 4]> {
+    let mut out: Vec<[i32; 4]> = Vec::new();
+    while let Some(mut area) = areas.pop() {
+        while let Some(i) = out.iter().position(|&o| meet(o, area).is_some()) {
+            area = union(Some(area), Some(out.swap_remove(i))).unwrap_or(area);
+        }
+        out.push(area);
+    }
+    out
+}
+
 impl Last {
     /// The draws over the background.
     fn moving(&self) -> &[Draw] {
@@ -283,10 +420,12 @@ impl Last {
     }
 }
 
-/// A scene's draws over the background, compared with the last's.
+/// A scene's draws over the background, compared with the last's; `areas` where the background
+/// changed (E24 M3 T4c: every cell meeting one drawn again).
 struct Changed<'s> {
     moving: &'s [Draw],
     rects: &'s [[i32; 4]],
+    areas: &'s [[i32; 4]],
     view: Option<ViewPlace>,
     cycles: &'s [Cycle],
 }
@@ -342,14 +481,15 @@ impl<'s> Changed<'s> {
             .map(|(&r, d)| if stays_put(d) { r } else { moved_by(r, shift) })
             .collect();
         // The cells: every draw's rectangle now, the last's where they were and moved, the clip
-        // when it moved.
+        // when it moved, where the background changed.
         let rects = self
             .rects
             .iter()
             .copied()
             .chain(last.rects.iter().copied())
             .chain(was_at.iter().copied())
-            .chain(moved.map(|(clip, _)| clip));
+            .chain(moved.map(|(clip, _)| clip))
+            .chain(self.areas.iter().copied());
         let Some(extent) = rects
             .fold(None, |r, d| union(r, Some(d)))
             .and_then(|r| meet(r, all))
@@ -380,10 +520,12 @@ impl<'s> Changed<'s> {
         let dirty: Vec<bool> = (0..grid.cells())
             .map(|cell| {
                 let rect = grid.rect(cell, extent);
-                // A move changes only the clip's pixels: a cell clear of it keeps its own.
+                // A move changes only the clip's pixels: a cell clear of it keeps its own; where the
+                // background changed, none does.
                 let stays = kept.is_none_or(|k| contains(k, rect))
                     || moved.is_some_and(|(clip, _)| meet(rect, clip).is_none());
-                !(stays && same(cell))
+                let under = self.areas.iter().any(|&a| meet(rect, a).is_some());
+                under || !(stays && same(cell))
             })
             .collect();
         let mut indices = Vec::new();
@@ -880,8 +1022,8 @@ impl<'s, 'k> Pen<'s, 'k> {
         }
     }
 
-    /// Draws `item` onto `screen`, cut to `cut` if one is given (a piece and a gem; the frame's
-    /// picture and the dialog's items are drawn whole).
+    /// Draws `item` onto `screen`, cut to `cut` if one is given (the dialog's items are drawn
+    /// whole).
     fn draw(
         &mut self,
         screen: &mut Screen,
@@ -901,7 +1043,7 @@ impl<'s, 'k> Pen<'s, 'k> {
                 let players = batch
                     .palette(players)
                     .ok_or_else(|| ComposeError::Missing(players.clone()))?;
-                frame_picture(screen, image, players, *viewer);
+                frame_picture(screen, image, players, *viewer, cut);
             }
             Draw::Piece {
                 pass,
@@ -1178,7 +1320,16 @@ fn flag_colour(
 /// The frame's picture drawn opaque at the screen's top-left corner in a viewer's colours: an
 /// 8-bit one's entries 224–255 its 32 colours of the players' palette (from entry 32 × the
 /// colour), row by row with no copy of it; a 24-bit one has no palette and is drawn as it is.
-fn frame_picture(screen: &mut Screen, image: &Pcx, players: &Palette, viewer: u8) {
+/// Only inside `cut` if one is given (E24 M3 T4c).
+fn frame_picture(
+    screen: &mut Screen,
+    image: &Pcx,
+    players: &Palette,
+    viewer: u8,
+    cut: Option<[i32; 4]>,
+) {
+    let all = whole(screen);
+    let rect = cut.map_or(all, |c| meet(c, all).unwrap_or_default());
     match image {
         Pcx::Indexed(indexed) => {
             let colours: Vec<Rgb> = players
@@ -1192,17 +1343,20 @@ fn frame_picture(screen: &mut Screen, image: &Pcx, players: &Palette, viewer: u8
                 ScreenPalette::new(&with_player_colours(&indexed.palette, &colours), FORMAT);
             let width = usize::try_from(screen.width()).unwrap_or(0).max(1);
             let from = usize::try_from(indexed.width).unwrap_or(0).max(1);
+            let [l, t, r, b] = rect.map(|v| usize::try_from(v).unwrap_or(0));
             for (row, line) in screen
                 .pixels_mut()
                 .chunks_mut(width)
                 .zip(indexed.pixels.chunks(from))
+                .take(b)
+                .skip(t)
             {
-                for (p, &index) in row.iter_mut().zip(line) {
+                for (p, &index) in row.iter_mut().zip(line).take(r).skip(l) {
                     *p = palette.get(index);
                 }
             }
         }
-        Pcx::Rgb(_) => draw_image(screen, image, 0, 0),
+        Pcx::Rgb(_) => draw_image_clipped(screen, image, 0, 0, rect),
     }
 }
 

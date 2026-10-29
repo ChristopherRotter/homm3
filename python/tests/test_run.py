@@ -652,7 +652,7 @@ def test_e25s_configs_train_and_e06s_mixes_do_not() -> None:
     trainable(load_config(""))  # the distribution's defaults weigh no neutral kind
 
 
-def test_t4bs_config_is_shaping_with_the_tactics_bound() -> None:
+def test_increment_2s_configs_are_shaping_with_the_tactics_bound() -> None:
     # E25 T4a: `e25-bound.toml` is `e25-shaping.toml` with one round of the agent's own tactics
     # phase; the bound is off by default, never negative, and a resume keeps it.
     configs = PYTHON / "configs"
@@ -668,6 +668,13 @@ def test_t4bs_config_is_shaping_with_the_tactics_bound() -> None:
         load_config("[network]\ntactics_rounds = -1\n")
     with pytest.raises(ConfigError, match="network.tactics_rounds would change the training"):
         resumed(bound, ["network.tactics_rounds=2"])
+    # T5's scale run (the user at T4b): 60 M samples, the original's computer's three rounds.
+    scale = load_config((configs / "e25-scale.toml").read_text())
+    trainable(scale)
+    assert scale.lr_horizon == 60_000_000
+    assert dataclasses.replace(scale, samples=20_000_000, lr_horizon=0, tactics_rounds=1) == (
+        dataclasses.replace(bound, lr_horizon=0)
+    )
 
 
 def test_the_league_draws_scores_and_retires() -> None:

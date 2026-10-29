@@ -1962,3 +1962,45 @@ town records) and its captures (below). *Provisional* where marked.
   of the 459 exact, every timeline line as the viewer's; the 43 situations' digests unchanged.
   A bar that changes is a dialog draw, which rebuilds the panels' background and uploads the
   whole screen (`walk-1`: 31.0 % of the pixels uploaded, `master` 25.7 %; T4c).
+
+### 4.6 A changed panel item drawn again alone (M3 T4c)
+
+No reading; every frame as before, pixel for pixel (*provisional* in what follows). Found by
+T4b's measurement (§4.5, "Checked"): a scene whose panels' draws (the background: the frame's
+picture, the dialog's items, the lists' selections, the resource bar) differ from the last's in
+some items drew the background again whole, then the whole view, and uploaded the whole screen,
+as a button's state already did at a walk's start and end (§4.3, "Left").
+
+- **An item's reach** (`h3_ui::paint::reach`, the drawers' own): the rectangle its drawer can
+  change: a picture's at most its item's size of it, a button's or a DEF item's its frame's canvas
+  (frame 0 past the group's, as drawn), a darkened rectangle itself; unknown for a text and a
+  label (the text drawer's lines may pass the item's box, `h3_render::text`: not read) and for an
+  asset the batch lacks.
+- **The areas** (`compose::changed_areas`): with as many background draws as the last scene's,
+  each pair that differs gives its old and its new item's reach; with more or fewer, every item
+  between the two lists' common start and end. Each is cut to the screen, overlapping ones joined.
+  Everything is drawn again as before when a changed item's reach is unknown (a frame's picture,
+  a text, a missing asset), when an area meets the view's clip or the background's one-colour clip
+  (the pixels a scroll moves, §4.3), when a frame's picture or a dialog's item lies among the
+  draws over the background (no cut reaches them), or when the bugs changed.
+- **The background in the areas** (`Background::redraw`): on a scratch screen kept by the
+  composer, black in each area, the frame's picture cut to each, every dialog item whose reach
+  meets one (or is unknown) drawn whole (the dialog's drawers have no cut; what they draw
+  elsewhere on the scratch is never copied), then each area copied into the background. Exact by
+  construction: an area's pixels are the background's draws in their order, and outside the areas
+  neither the old nor the new items reach.
+- **The screen over it:** the view's cells that meet an area are dirty whatever their draws
+  (restored from the new background, every draw meeting them drawn again cut to them, §4.3); a
+  scene that draws its other draws whole (another flag palette) restores the areas with what the
+  last scene drew. The damage is those cells: for `walk-1`'s movement bar or a button's state the
+  few cells they meet, not the screen.
+- **Checked:** the window under Xvfb, `--check 10` on `walk-1`, `walk-points`, `lists-scrolled`
+  and *Tale of two lands*: every frame read back exact, made as the same frame composed afresh,
+  every change the headless loop's; `drawn` the same (43 situations, 13 sequences).
+- **Measured** (the sandbox, `--measure 20`, alternating with `master`'s build twice each):
+  `walk-1` 30.8–31.0 → 24.6–24.8 % of the pixels uploaded (25.7 before T4b), a frame made in a
+  median 0.8 ms (both), p95 3.6–4.0 → 2.9–3.0; *Tale of two lands* (11.2 %) and `path-objects`
+  (5.2 %) as before, their times within the runs' spread (medians 1.8–2.0 and 1.3–1.5 ms).
+- **Left:** a changed text or label draws everything again (T5's status window, resource bar
+  and date, T6's hints: its reach needs the text drawer's extent, read where T5 needs it); a
+  dialog item drawn on the scratch is drawn whole however little of it an area needs.
