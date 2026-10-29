@@ -1803,9 +1803,14 @@ Read: `minimap_draw` 0x412C40 in full but its view-world and network branches,
     after the centring, before the view. `mobilize_hero` 0x4175E0 selects only a hero not lifted,
     so a key's step (0x480914, with 0, 0, 1) draws it when it lifts the hero, at a sequence's
     start (the harness's view puts the hero back) or after a scroll: the view centred on the tile
-    the hero steps from, the hero on it; the steps after find the hero lifted and draw none. The
-    path's walk lifts the hero with 1, 0, 0 (c clear: no centring, no minimap, 0x407DEC) and its
-    steps draw none either. So a walk leaves the minimap's box and hero where they were.
+    the hero steps from, the hero on it; the steps after find the hero lifted and draw none there.
+    The path's walk lifts the hero with 1, 0, 0 (c clear: no centring, no minimap, 0x407DEC);
+  - **each step's end**: after its frames and the end's sounds, every path of `hero_move_step`
+    reaches the guard's test (`after_step_guard_check` 0x480090 at 0x48169D), whose first call is
+    `minimap_redraw` with 1, 1, 0, 0, 0 (0x4800A5): the view's corner centred on the new tile, the
+    hero on it, shown at once. Through a step's frames the box and the hero stay where they were
+    (the recordings: `walk-1`'s minimap changes at 300, 600, … and at each of the path's step
+    ends, never at a frame).
   - Not met: the full update 0x41753A (a map's start, after a dialog: 21 callers); the step's own
     `minimap_redraw` (0x4810E6) only in a network game (0x481077 jumps past it otherwise);
     `hero_move_loop`'s 0x4086CD only at the end of the manager's mode 7 (its +0x40, not read; the
@@ -1816,13 +1821,13 @@ Read: `minimap_draw` 0x412C40 in full but its view-world and network branches,
   game's); the view world (`view_world_run` 0x5FBF90, opened by V among others: its handlers draw
   it at the dialog's corner with the three reveals); through 0x413790: `hero_relocate` 0x41D930
   (a hero put on another tile at once, 12 callers), `adventure_spell_cast` 0x41D090,
-  `after_step_guard_check` 0x4800A5, `visit_object` 0x4A93A0, `visit_and_update` 0x4AAAA0,
+  `visit_object` 0x4A93A0, `visit_and_update` 0x4AAAA0,
   `hero_battle_on_map` 0x4AAFD0, `battle_aftermath` 0x4AC930, `adventure_battle` (three sites),
   `next_player_turn` (two), `turn_start_minimap` 0x4CA530, `hero_screen_show` 0x4E19E5,
   `battle_flag_toggles` 0x4F450D: the engine's moves, visits, battles and turns, and the dialogs.
 - **Built** (T3b, *provisional*): the timeline's `Minimap`, its last draw (the view's corner and
-  the selected hero's tile): the still's at 0, again at a scroll that moves the view and at a
-  lift that centres it (`Loop::lift` with `centred`), carried in each `Draw`; the live part's
+  the selected hero's tile): the still's at 0, again at a scroll that moves the view, at a lift
+  that centres it (`Loop::lift` with `centred`) and at each step's end, carried in each `Draw`; the live part's
   `minimap` (`minimap::Shown`, the selected hero by its index), which a scene draws the box and
   the selected hero from (none: the scene's view and the heroes where they stand, a still's).
   `Base` makes the level's colours with its explored tiles once, with the index (whatever changes

@@ -377,9 +377,10 @@ pub struct Walk {
 
 /// The minimap's last draw (`minimap_draw` 0x412C40; E24 M3 T3b, design §4.4): the view's corner
 /// its box shows and the selected hero's tile, as they were then. A scroll that moves the view
-/// draws it again (`view_scroll` 0x41973E) and so does a hero's selection that centres the view
-/// (`hero_select` 0x418046: a step lifting a hero not lifted); a walk's steps and the path's lift
-/// do not, so its box and hero stay where they were.
+/// draws it again (`view_scroll` 0x41973E), so does a hero's selection that centres the view
+/// (`hero_select` 0x418046: a step lifting a hero not lifted) and each step's end
+/// (`after_step_guard_check` 0x4800A5); through a step's frames its box and hero stay where they
+/// were.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Minimap {
     /// The view's corner.
@@ -984,6 +985,9 @@ impl Loop {
                 sound.step_end(t, middle, hero.at, moving.last, self.walk.frame);
             }
             self.walk.offset = [0, 0];
+            // The guard's test after the step (`after_step_guard_check` 0x480090, from 0x48169D)
+            // draws the minimap first, shown at once (0x4800A5).
+            self.draw_minimap();
             if !moving.key {
                 // The messages' kinds 1, 8, 0x20 and 0x200 end the walk (0x407FA7): a key-down,
                 // Ctrl's too (M2 T6a, the reviewer's R1-1), and a button; the loop reads up to the
@@ -1143,13 +1147,14 @@ impl Loop {
         arrows
     }
 
-    /// The minimap drawn (`minimap_draw` 0x412C40): the view's corner and the selected hero's
-    /// tile now.
+    /// The minimap drawn (`minimap_draw` 0x412C40) and shown: the view's corner and the selected
+    /// hero's tile now.
     fn draw_minimap(&mut self) {
         self.minimap = Minimap {
             view: self.view,
             hero: self.hero.map(|h| h.at),
         };
+        self.drawn.minimap = self.minimap;
     }
 
     /// The view drawn and shown: at the objects' step and the palettes now, the walk's offset, the

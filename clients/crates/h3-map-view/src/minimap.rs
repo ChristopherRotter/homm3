@@ -8,8 +8,9 @@
 //! the size's scale, cut to the area. [`Base`] is a level's colours from its terrain, objects
 //! and explored tiles, worked out once with the level's index ([`crate::scene::TileIndex`]);
 //! [`Base::tiles`] lays the heroes over them and [`Base::radar`] places the box, each scene, as
-//! the minimap was last drawn ([`Shown`], E24 M3 T3b: the original draws it again at a scroll and
-//! at a hero's selection, not at a walk's steps; a still's as the view and the heroes stand).
+//! the minimap was last drawn ([`Shown`], E24 M3 T3b: the original draws it again at a scroll, a
+//! hero's selection and each step's end, not through a step's frames; a still's as the view and
+//! the heroes stand).
 
 use alloc::string::String;
 use alloc::sync::Arc;

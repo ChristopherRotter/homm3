@@ -1172,10 +1172,10 @@ fn move_hero_and_next_hero_through_a_walk() {
 }
 
 #[test]
-fn the_minimap_drawn_again_by_a_scroll_and_by_a_step_lifting_the_hero() {
+fn the_minimap_drawn_again_by_a_scroll_a_lift_and_each_steps_end() {
     // E24 M3 T3b (design §4.4): at 0 the still's; a key's step lifting the hero draws it with the
-    // view centred on the hero's tile before the step, and the step's moves leave it; a scroll
-    // draws it at the new corner, the hero put back on its tile.
+    // view centred on the hero's tile before the step; the step's frames leave it, its end draws
+    // it again (the guard's test); a scroll draws it at the new corner, the hero put back.
     let minimap = |x: i32, y: i32, hx: u8, hy: u8| Minimap {
         view: ViewAt { x, y, z: 0 },
         hero: Some(Pos {
@@ -1195,12 +1195,18 @@ fn the_minimap_drawn_again_by_a_scroll_and_by_a_step_lifting_the_hero() {
     let s = l.state(1);
     assert_eq!(s.view, ViewAt { x: 9, y: 8, z: 0 });
     assert_eq!(s.drawn.minimap, minimap(8, 9, 17, 17));
-    run(&mut l, 2, 300);
-    // A second step: the hero lifted already, the minimap as it was.
+    run(&mut l, 2, 200);
+    assert_eq!(l.state(200).drawn.minimap, minimap(8, 9, 17, 17));
+    // The step's end (its frames at 1, 51, 101 and 151): the new corner and tile.
+    l.run(201, &[]).unwrap();
+    assert_eq!(l.state(201).drawn.minimap, minimap(9, 8, 18, 16));
+    run(&mut l, 202, 300);
+    // A second step: the hero lifted already, the minimap as it was until the step's end.
     l.run(301, &[Action::Step(Direction::East)]).unwrap();
+    assert_eq!(l.state(301).drawn.minimap, minimap(9, 8, 18, 16));
     run(&mut l, 302, 600);
     assert_eq!(l.state(600).hero.unwrap().at, Pos { x: 19, y: 16, z: 0 });
-    assert_eq!(l.state(600).drawn.minimap, minimap(8, 9, 17, 17));
+    assert_eq!(l.state(600).drawn.minimap, minimap(10, 8, 19, 16));
     // A scroll: the new corner, the hero on its tile.
     l.run(601, &[Action::Scroll(Direction::South)]).unwrap();
     let s = l.state(601);
@@ -1217,12 +1223,13 @@ fn the_minimap_drawn_again_by_a_scroll_and_by_a_step_lifting_the_hero() {
     let s = l.state(800);
     assert_eq!(s.hero.unwrap().at, Pos { x: 18, y: 16, z: 0 });
     assert_eq!(s.drawn.minimap, minimap(10, 8, 19, 16));
-    // A path's walk lifts the hero without drawing it: the still's after the walk.
+    // A path's walk lifts the hero without drawing it; each step's end draws it (speed 4: one
+    // draw a step, the walk over at once).
     let mut l = walking(4, vec![east()]);
     l.run(1, &[Action::Click(tile(21, 17))]).unwrap();
+    assert_eq!(l.state(1).drawn.minimap, minimap(8, 9, 17, 17));
     l.run(2, &[Action::Click(tile(21, 17))]).unwrap();
-    run(&mut l, 3, 400);
-    let s = l.state(400);
+    let s = l.state(2);
     assert_eq!(s.hero.unwrap().at, Pos { x: 21, y: 17, z: 0 });
-    assert_eq!(s.drawn.minimap, minimap(8, 9, 17, 17));
+    assert_eq!(s.drawn.minimap, minimap(12, 9, 21, 17));
 }
