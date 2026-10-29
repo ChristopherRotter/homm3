@@ -41,6 +41,8 @@ const PACK: &str = r#"{
         "thunderbolt": "Bolt on {{creature}}!",
         "poisoned_one": "{{creature}} is poisoned.",
         "poisoned_other": "{{creature}} are poisoned.",
+        "petrified_one": "{{creature}} is stone.",
+        "petrified_other": "{{creature}} are stone.",
         "raised_one": "{{count}} {{creature}} rises.",
         "raised_other": "{{count}} {{creature}} rise.",
         "summoned_one": "{{hero}} calls {{count}} {{creature}}.",
@@ -665,6 +667,10 @@ fn the_striker_effects_and_the_spells_after_a_strike_have_their_lines() {
     let poisoned = |count| Logged::Poisoned { stack: 2, count };
     assert_eq!(worded(&poisoned(1)).as_deref(), Some("Bee is poisoned."));
     assert_eq!(worded(&poisoned(4)).as_deref(), Some("Bees are poisoned."));
+    // Stone Gaze's line (E17 M5 T5b1): the stack's name and verb by its number.
+    let petrified = |count| Logged::Petrified { stack: 2, count };
+    assert_eq!(worded(&petrified(1)).as_deref(), Some("Bee is stone."));
+    assert_eq!(worded(&petrified(4)).as_deref(), Some("Bees are stone."));
     // Creatures raised (E17 M3 T7c-3): their name and verb by how many.
     let raised = |count| Logged::Raised { stack: 2, count };
     assert_eq!(worded(&raised(1)).as_deref(), Some("1 Bee rises."));

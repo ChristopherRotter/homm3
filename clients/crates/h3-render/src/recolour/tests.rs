@@ -244,3 +244,24 @@ fn the_numbers_round_add_and_compare_exactly() {
     assert!(Num::from_f32_bits(0xBF80_0000).neg);
     assert_eq!(Num::ZERO.div(Num::int(6)).m, 0);
 }
+
+#[test]
+fn a_hue_past_one_wraps_and_a_sixth_sextant_keeps_the_colour() {
+    // 0x522C42: a hue moved the shorter way round past 1 has 1 taken off (0.9 toward 0.1 with
+    // the weight 1 comes to 0.1); a negative factor leaves its part (0x522C61). 0x523387: a hue
+    // whose six times rounds to 6 writes nothing, so the scaled channels come back.
+    let f = Num::from_f32_bits;
+    let [point_nine, point_one, minus] = [0x3F66_6666, 0x3DCC_CCCD, 0xBF80_0000].map(f);
+    let half = Num::HALF;
+    let [h, s, v] = recolour(
+        [point_nine, half, half],
+        [point_one, Num::ONE, minus, minus],
+    );
+    let [low, high] = [0x3DB8_51EC, 0x3DE1_47AE].map(f);
+    assert_eq!(
+        (h.cmp(low), h.cmp(high)),
+        (Ordering::Greater, Ordering::Less)
+    );
+    assert_eq!((s, v), (half, half));
+    assert_eq!(rgb([Num::ONE, half, half], [1, 2, 3]), [1, 2, 3]);
+}
