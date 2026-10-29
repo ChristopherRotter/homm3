@@ -91,7 +91,8 @@ TERRAIN_FIELD, RIVER_FIELD = h3mem.TERRAIN_DEFS, h3mem.RIVER_DEFS
 # What the viewer does not draw yet (E24 M1; since E24 M3 T2a `clients/map/masks.toml`, which the
 # viewer's `sequences` reads too): its rectangles (x0, y0, x1, y1), the last two excluded.
 # `panels`: what T3 to T6 draw of the adventure screen's panels (the minimap, the lists' contents,
-# the status window, the amounts and the date, the status bar's hint).
+# the status window, the amounts and the date, the status bar's hint), the sequences'; `stills`:
+# the situations', `panels` but the minimap (E24 M3 T3a).
 MASKS = {name: [tuple(r) for r in rects]
          for name, rects in tomllib.loads((CLIENTS / "map/masks.toml").read_text()).items()}
 
@@ -541,7 +542,7 @@ def compare(situation_path, out, cap):
     except RuntimeError as err:
         raise Refused(last_lines(err)) from err
     ours = h3cap.png565(out / "ours.png")
-    mask = masked(["panels"], cap.shape)
+    mask = masked(["stills"], cap.shape)
     n, where = h3cap.compare(cap, ours, mask, out / "diff.png")
     return n, int((~mask).sum()), where
 
@@ -1077,7 +1078,7 @@ def run_drawn(rest):
             failed += 1
             broken += 1
             continue
-        got[ident] = h3drive.png_digest(here / "ours.png", MASKS["panels"])
+        got[ident] = h3drive.png_digest(here / "ours.png", MASKS["stills"])
         before = recorded.get(ident)
         verdict = "new" if before is None else ("same" if before == got[ident] else "CHANGED")
         failed += verdict != "same"

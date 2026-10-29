@@ -637,7 +637,9 @@ T4b's runs beside a build failed so. Masked (`h3map.MASKS`, since E24 M3 T2a rea
 608 and below y 552 and the cursor parked over the right panel; since then only what M3's later
 tasks draw (the minimap, the lists' contents, the status window, the amounts and the date, the
 status bar's hint): the frame picture, the buttons, the status bar's and the resource bar's
-pictures and the parked cursor (the live part's `pointer`) are compared. Every situation of T3b2
+pictures and the parked cursor (the live part's `pointer`) are compared; since M3 T3a the stills
+(`set`, `still`, `drawn`'s situations) compare the minimap too (the mask `stills`), the sequences
+not yet (`panels`, until T3b). Every situation of T3b2
 is exact; `set.toml` records the counts. The menus run in real time, so each run's k and frame steps differ: they are read,
 never assumed.
 
