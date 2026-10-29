@@ -384,6 +384,8 @@ towns = [
     { at = [10, 20], faction = 0, buildings = "citadel" },
     { at = [20, 20], faction = 1, owner = 1, buildings = "castle" },
     { at = [30, 20], faction = 0, buildings = "capitol" },
+    { at = [10, 30], faction = 0, buildings = "townhall" },
+    { at = [20, 30], faction = 1, buildings = "cityhall" },
 ]"#;
     let situation = Situation::parse(text).unwrap();
     assert!(situation.needs_templates());
@@ -416,6 +418,9 @@ towns = [
             ((10, 20), 0, None, custom(0x18)),
             ((20, 20), 1, Some(1), custom(0x38)),
             ((30, 20), 0, None, custom(0x3F)),
+            // E24 M3 T5b2: the Town Hall and a Fort; the City Hall too.
+            ((10, 30), 0, None, custom(0b1001)),
+            ((20, 30), 1, None, custom(0b1011)),
         ]
     );
     assert!(matches!(map.objects[2], MapObject::Town(_)));
@@ -816,6 +821,22 @@ fn the_status_windows_writes() {
             .build(&BTreeMap::new(), core::slice::from_ref(&castle))
             .map(|_| ()),
         Err("town at [20, 20]: a silo with the standard buildings".to_string())
+    );
+    // E24 M3 T5b2 (design §4.9): the kind asked, the date's or the kingdom's; the teams, each 0
+    // to 7.
+    let asked = |extra: &str| build("", "", &format!("{extra}\n")).map(|_| ());
+    assert_eq!(
+        asked("status = 1\nteams = [0, 1, 0, 2, 3, 4, 5, 7]"),
+        Ok(())
+    );
+    assert_eq!(asked("status = 2"), Ok(()));
+    assert_eq!(
+        asked("status = 3"),
+        Err("the status window's kind 3: not 1 or 2".to_string())
+    );
+    assert_eq!(
+        asked("teams = [0, 1, 0, 2, 3, 4, 5, 8]"),
+        Err("the teams [0, 1, 0, 2, 3, 4, 5, 8]: one past 7".to_string())
     );
 }
 

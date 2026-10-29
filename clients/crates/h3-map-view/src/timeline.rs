@@ -1333,9 +1333,12 @@ impl Loop {
     /// date's, 2 the kingdom's) or for 0 the selection's window (the hero's, else the town's, else
     /// the date's), drawn and shown at once. Without `force` (a view's draw, 0x40F861) the kind
     /// shown builds nothing, but the date's steps its frame ([`Loop::date_window`]); with it (a
-    /// hero's selection 0x41800B, a key's step 0x4090FE) the window is built again. A selection's
-    /// window the live part does not give is left as it is.
+    /// hero's selection 0x41800B, a key's step 0x4090FE) the window is built again. A window the
+    /// live part does not give (none shown, or the selection's unknown) is left as it is.
     fn choose(&mut self, t: u32, force: bool) {
+        if self.kingdom.status.is_none() {
+            return;
+        }
         if self.asked != 0 && t >= self.end {
             self.asked = 0;
         }
@@ -1357,7 +1360,13 @@ impl Loop {
             _ => return,
         };
         let next = match window {
-            None => self.date_window(t, shown == Some(1) && !force),
+            None => {
+                let date = match self.kingdom.status {
+                    Some(Status::Date(date)) if !force => Some(date),
+                    _ => None,
+                };
+                self.date_window(t, date)
+            }
             Some(s) => (force || shown != Some(s.kind())).then_some(s),
         };
         if let Some(status) = next.filter(|s| self.kingdom.status.as_ref() != Some(s)) {
@@ -1366,16 +1375,13 @@ impl Loop {
         }
     }
 
-    /// The date's window (E24 M3 T5b2, design §4.9): with `update` its frame stepped once the
+    /// The date's window (E24 M3 T5b2, design §4.9): the one `shown` its frame stepped once the
     /// tables' step has passed since its last step and while it is short of its picture's last
     /// (`status_date_update` 0x4511A0: the frame drawn and its rectangle shown at once); else
     /// built at its first frame (0x450DD0), the day's playing its sound.
-    fn date_window(&mut self, t: u32, update: bool) -> Option<Status> {
+    fn date_window(&mut self, t: u32, shown: Option<DateStatus>) -> Option<Status> {
         let shows = self.rules.date.shows(self.kingdom.date);
-        if update {
-            let Some(Status::Date(date)) = self.kingdom.status else {
-                return None;
-            };
+        if let Some(date) = shown {
             let next = date.frame.saturating_add(1);
             if next >= shows.frames || t.saturating_sub(self.stepped) < self.rules.date.step {
                 return None;

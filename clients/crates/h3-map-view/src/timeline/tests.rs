@@ -4,7 +4,7 @@ use alloc::string::ToString;
 use alloc::vec;
 
 use crate::layout::AdventureLayout;
-use crate::live::{Facing, Kingdom, KingdomHero, LiveHero};
+use crate::live::{DateStatus, Facing, Kingdom, KingdomHero, KingdomStatus, LiveHero, Status};
 use crate::sequence::{self, Sequences};
 use crate::situation::Situation;
 use crate::tables;
@@ -20,7 +20,7 @@ pub(crate) fn rules(bugs: Bugs) -> Rules {
 
 /// The recorded sequences and their situations and timelines (no original file).
 const SEQUENCES: &str = include_str!("../../../../map/sequences.toml");
-const RECORDED: [(&str, &str, &str); 13] = [
+const RECORDED: [(&str, &str, &str); 15] = [
     (
         "idle-cycles",
         include_str!("../../../../map/situations/seq-idle-cycles.toml"),
@@ -86,10 +86,20 @@ const RECORDED: [(&str, &str, &str); 13] = [
         include_str!("../../../../map/situations/seq-sail.toml"),
         include_str!("../../../../map/timelines/walk-sail.txt"),
     ),
+    (
+        "status-kingdom-end",
+        include_str!("../../../../map/situations/status-kingdom.toml"),
+        include_str!("../../../../map/timelines/status-kingdom-end.txt"),
+    ),
+    (
+        "status-date-end",
+        include_str!("../../../../map/situations/status-date.toml"),
+        include_str!("../../../../map/timelines/status-date-end.txt"),
+    ),
 ];
 
 /// The walks' live parts at 0 (`h3map.py frames`): their selected heroes.
-const LIVE: [(&str, &str); 13] = [
+const LIVE: [(&str, &str); 15] = [
     (
         "idle-cycles",
         include_str!("../../../../map/timelines/idle-cycles-live.toml"),
@@ -142,14 +152,25 @@ const LIVE: [(&str, &str); 13] = [
         "walk-sail",
         include_str!("../../../../map/timelines/walk-sail-live.toml"),
     ),
+    (
+        "status-kingdom-end",
+        include_str!("../../../../map/timelines/status-kingdom-end-live.toml"),
+    ),
+    (
+        "status-date-end",
+        include_str!("../../../../map/timelines/status-date-end-live.toml"),
+    ),
 ];
 
 /// A live part's heroes and viewer (`[x, y, level, class, facing, owner, boat, colour]` rows, as
 /// the binary's `read_live` takes them).
-/// A kept live part's kingdom and buttons (E24 M3 T2a).
+/// A kept live part's kingdom and buttons (E24 M3 T2a), the status window's and the selection's
+/// (T5b1, T5b2).
 fn live_kingdom(text: &str) -> (Kingdom, Option<Buttons>) {
     let table: toml::Table = text.parse().unwrap();
-    let kingdom = Kingdom::read(&table["kingdom"]).unwrap();
+    let mut kingdom = Kingdom::read(&table["kingdom"]).unwrap();
+    kingdom.status = table.get("status").map(|s| Status::read(s).unwrap());
+    kingdom.selection = table.get("selection").map(|s| Status::read(s).unwrap());
     let flags: Vec<i64> = table["buttons"]
         .as_array()
         .unwrap()
@@ -213,6 +234,7 @@ fn start(situation: &str, speed: usize) -> Start {
         kingdom: Kingdom::default(),
         points: Vec::new(),
         buttons: None,
+        asked: None,
     }
 }
 
@@ -227,6 +249,7 @@ pub(crate) fn recorded(id: &str) -> (Start, BTreeMap<u32, Vec<Action>>, u32) {
     let (_, live) = LIVE.iter().find(|(l, _)| *l == id).unwrap();
     (start.kingdom, start.buttons) = live_kingdom(live);
     start.points = sequence.points(timeline).unwrap();
+    start.asked = sequence.asked().unwrap();
     if sequence.walks() {
         let (heroes, viewer) = live_heroes(live);
         start.hero = Some(sequence::selected(&heroes, viewer).unwrap());
@@ -254,6 +277,7 @@ fn replays_the_recorded_timelines() {
         let (_, live) = LIVE.iter().find(|(l, _)| *l == id).unwrap();
         (start.kingdom, start.buttons) = live_kingdom(live);
         start.points = sequence.points(recorded).unwrap();
+        start.asked = sequence.asked().unwrap();
         if sequence.walks() {
             let (heroes, viewer) = live_heroes(live);
             start.hero = Some(sequence::selected(&heroes, viewer).unwrap());
@@ -315,6 +339,7 @@ fn looped(bugs: Bugs, speed: usize) -> Loop {
         kingdom: Kingdom::default(),
         points: Vec::new(),
         buttons: None,
+        asked: None,
     };
     Loop::start(rules(bugs), &start).unwrap()
 }
@@ -511,6 +536,7 @@ fn what_it_cannot_play_yet() {
         kingdom: Kingdom::default(),
         points: Vec::new(),
         buttons: None,
+        asked: None,
     };
     assert_eq!(
         Loop::start(rules(Bugs::Fixed), &over),
@@ -631,6 +657,7 @@ fn walking(speed: usize, paths: Vec<Vec<Arrow>>) -> Loop {
         kingdom: Kingdom::default(),
         points: Vec::new(),
         buttons: None,
+        asked: None,
     };
     Loop::start(rules(Bugs::Fixed), &start).unwrap()
 }
@@ -1031,6 +1058,7 @@ fn live(pointer: [i32; 2], hero: bool, path: Vec<Arrow>) -> Start {
         kingdom: Kingdom::default(),
         points: Vec::new(),
         buttons: None,
+        asked: None,
     }
 }
 
@@ -1370,4 +1398,216 @@ fn a_walk_that_ends_the_points_draws_both_lists() {
     let drawn = s.drawn.kingdom.heroes[0];
     assert_eq!((drawn.points, drawn.movable), (0, false));
     assert!(!s.buttons.next_hero);
+}
+
+/// The status window drawn at each millisecond of a play.
+fn statuses(states: &[State]) -> Vec<Option<Status>> {
+    states
+        .iter()
+        .map(|s| s.drawn.kingdom.status.clone())
+        .collect()
+}
+
+fn date_frame(status: Option<&Status>) -> Option<u32> {
+    match status {
+        Some(Status::Date(d)) => Some(d.frame),
+        _ => None,
+    }
+}
+
+#[test]
+fn the_status_window_over_time() {
+    // The date's asked at 0 for 3 000 ms (E24 M3 T5b2, design §4.9): its frame stepped at each
+    // redraw (180 ms apart, at least 100 after the last) to its picture's last (the day's
+    // tenth), then the selected hero's window at the redraw at 3 060.
+    let (start, actions, ms) = recorded("status-date-end");
+    let states = play(rules(Bugs::Original), &start, &actions, ms).unwrap();
+    let shown = statuses(&states);
+    let frame = |t: usize| date_frame(shown[t].as_ref());
+    for (t, want) in [(0, 0), (179, 0), (180, 1), (359, 1), (360, 2), (1620, 9)] {
+        assert_eq!(frame(t), Some(want), "{t}");
+    }
+    assert_eq!(frame(3059), Some(9));
+    assert!(matches!(shown[3060], Some(Status::Hero(_))));
+    assert_eq!(shown[3060], start.kingdom.selection);
+    // The kingdom's asked for 700 ms: the hero's at the redraw at 720.
+    let (start, actions, ms) = recorded("status-kingdom-end");
+    let shown = statuses(&play(rules(Bugs::Original), &start, &actions, ms).unwrap());
+    assert!(matches!(shown[719], Some(Status::Kingdom(_))));
+    assert_eq!(shown[720], start.kingdom.selection);
+    // Without a selection's window known the kind asked stays at its end; the kingdom's asked
+    // without the live part's kingdom shows what it shows.
+    let mut unknown = start.clone();
+    unknown.kingdom.selection = None;
+    let shown = statuses(&play(rules(Bugs::Original), &unknown, &actions, ms).unwrap());
+    assert!(matches!(shown[900], Some(Status::Kingdom(_))));
+    let (date, _, _) = recorded("status-date-end");
+    let realmless = Start {
+        asked: Some(Asked { kind: 2, end: 500 }),
+        ..date.clone()
+    };
+    let shown = statuses(&play(rules(Bugs::Original), &realmless, &actions, 400).unwrap());
+    assert_eq!(date_frame(shown[0].as_ref()), Some(0));
+    assert_eq!(date_frame(shown[400].as_ref()), Some(0));
+    // Nothing selected: the end gives the date's window again, built afresh at its first frame.
+    let none = Start {
+        kingdom: Kingdom {
+            selected: Selected::None,
+            status: Some(Status::Kingdom(KingdomStatus {
+                halls: [1, 0, 0, 0],
+                allies: vec![0],
+                enemies: vec![1],
+            })),
+            ..date.kingdom.clone()
+        },
+        asked: Some(Asked { kind: 2, end: 300 }),
+        ..date.clone()
+    };
+    let shown = statuses(&play(rules(Bugs::Original), &none, &actions, 600).unwrap());
+    assert!(matches!(shown[359], Some(Status::Kingdom(_))));
+    assert_eq!(date_frame(shown[360].as_ref()), Some(0));
+    assert_eq!(date_frame(shown[540].as_ref()), Some(1));
+    // A town selected: its window (a hero's window as the selection's with a town selected is
+    // left as it is).
+    let town = crate::live::TownStatus {
+        name: 3,
+        buildings: 0,
+        garrison: false,
+        army: [None; 7],
+        silo: Vec::new(),
+        income: 500,
+    };
+    let towned = Start {
+        kingdom: Kingdom {
+            selected: Selected::Town(0),
+            selection: Some(Status::Town(town.clone())),
+            ..none.kingdom.clone()
+        },
+        ..none.clone()
+    };
+    let shown = statuses(&play(rules(Bugs::Original), &towned, &actions, 400).unwrap());
+    assert_eq!(shown[360], Some(Status::Town(town)));
+    let mismatched = Start {
+        kingdom: Kingdom {
+            selected: Selected::Town(0),
+            selection: date.kingdom.selection.clone(),
+            ..none.kingdom.clone()
+        },
+        ..none.clone()
+    };
+    let shown = statuses(&play(rules(Bugs::Original), &mismatched, &actions, 400).unwrap());
+    assert!(matches!(shown[400], Some(Status::Kingdom(_))));
+    // A still's date's window (no kind asked): asked until no end, its frame stepping on.
+    let still = Start {
+        asked: None,
+        kingdom: Kingdom {
+            status: Some(Status::Date(DateStatus { frame: 3 })),
+            ..date.kingdom.clone()
+        },
+        ..date.clone()
+    };
+    let shown = statuses(&play(rules(Bugs::Original), &still, &actions, 5000).unwrap());
+    assert_eq!(date_frame(shown[0].as_ref()), Some(3));
+    assert_eq!(date_frame(shown[180].as_ref()), Some(4));
+    assert_eq!(date_frame(shown[5000].as_ref()), Some(9));
+}
+
+#[test]
+fn the_status_window_built_again_by_a_selection_and_a_key_s_step() {
+    // The date's window over a walking hero (E24 M3 T5b2): a key's step lifts the hero (its
+    // selection centring the view, 0x41800B) and ends (0x4090FE): each builds the date's again
+    // at its first frame.
+    let (date, _, _) = recorded("status-date-end");
+    let (walk, _, _) = recorded("walk-1");
+    let start = Start {
+        kingdom: Kingdom {
+            status: Some(Status::Date(DateStatus { frame: 0 })),
+            selection: walk.kingdom.status.clone(),
+            date: date.kingdom.date,
+            ..walk.kingdom.clone()
+        },
+        asked: Some(Asked {
+            kind: 1,
+            end: 10_000,
+        }),
+        ..walk.clone()
+    };
+    let actions = BTreeMap::from([(400, vec![Action::Step(Direction::East)])]);
+    let states = play(rules(Bugs::Original), &start, &actions, 1500).unwrap();
+    let shown = statuses(&states);
+    assert_eq!(date_frame(shown[360].as_ref()), Some(2));
+    // The step at 400: built again at once, then stepping from there.
+    assert_eq!(date_frame(shown[400].as_ref()), Some(0));
+    let restarts = (401..=1500)
+        .filter(|&t| {
+            date_frame(shown[t].as_ref()) == Some(0) && date_frame(shown[t - 1].as_ref()) != Some(0)
+        })
+        .count();
+    assert_eq!(restarts, 1, "the step's end builds it again");
+}
+
+#[test]
+fn the_day_s_window_plays_its_sound_when_built() {
+    // A day's window built at 0 and again: its sound each time; a week's none (E24 M3 T5b2).
+    let tiles = crate::sound::tests::tiles(36, |_, _| 2, |_, _| None);
+    let (date, actions, _) = recorded("status-date-end");
+    let start = Start {
+        sound: Some(crate::sound::tests::sound(tiles.clone())),
+        ..date.clone()
+    };
+    let mut l = Loop::start(rules(Bugs::Original), &start).unwrap();
+    let effects = |l: &mut Loop| -> Vec<(u32, Cue)> {
+        l.take_cues()
+            .into_iter()
+            .filter(|(_, c)| matches!(c, Cue::Effect(_)))
+            .collect()
+    };
+    assert_eq!(effects(&mut l), [(0, Cue::Effect("newday.wav".into()))]);
+    for t in 1..=600 {
+        l.run(t, actions.get(&t).map_or(&[][..], Vec::as_slice))
+            .unwrap();
+    }
+    assert!(effects(&mut l).is_empty());
+    let week = Start {
+        kingdom: Kingdom {
+            date: crate::live::Date {
+                month: 2,
+                week: 3,
+                day: 1,
+            },
+            ..start.kingdom.clone()
+        },
+        ..start.clone()
+    };
+    let mut l = Loop::start(rules(Bugs::Original), &week).unwrap();
+    assert!(effects(&mut l).is_empty());
+    // A still's window at a later frame was built before: none.
+    let later = Start {
+        kingdom: Kingdom {
+            status: Some(Status::Date(DateStatus { frame: 2 })),
+            ..start.kingdom.clone()
+        },
+        ..start.clone()
+    };
+    let mut l = Loop::start(rules(Bugs::Original), &later).unwrap();
+    assert!(effects(&mut l).is_empty());
+    // Nothing selected and a kind asked ending: the date's built again, with its sound.
+    let none = Start {
+        kingdom: Kingdom {
+            selected: Selected::None,
+            status: Some(Status::Kingdom(KingdomStatus {
+                halls: [0; 4],
+                allies: vec![0],
+                enemies: Vec::new(),
+            })),
+            ..start.kingdom.clone()
+        },
+        asked: Some(Asked { kind: 2, end: 100 }),
+        ..start.clone()
+    };
+    let mut l = Loop::start(rules(Bugs::Original), &none).unwrap();
+    for t in 1..=200 {
+        l.run(t, &[]).unwrap();
+    }
+    assert_eq!(effects(&mut l), [(180, Cue::Effect("newday.wav".into()))]);
 }
