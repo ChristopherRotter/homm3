@@ -85,9 +85,26 @@ pub struct Moment {
     /// While Earthquake shakes the screen (E17 M4 T2c-2), how many of its steps have shown: the
     /// frame's assembler shifts the whole screen ([`Draw::Shaken`]).
     pub shake: Option<u32>,
+    /// The hexes shaded into the background (E17 M5 T4c2a: a human's turn in the tactics phase,
+    /// [`crate::tactics::shade`]; the timeline leaves none, its viewers set them).
+    pub shade: BTreeSet<u8>,
 }
 
 impl Moment {
+    /// The battle before its first turn (E17 M5 T4c2a: behind the tactics phase's message,
+    /// `battle_start` 0x4631E5, before the battle loop's first idle step): no stack outlined or
+    /// marked, nothing shaded, the flags at their start frames (0x463F29).
+    pub fn before_first_turn(&mut self) {
+        self.active = None;
+        self.marked = None;
+        self.shade.clear();
+        for (hero, start) in self.heroes.iter_mut().zip(FLAG_START) {
+            if let Some(hero) = hero {
+                hero.flag = start;
+            }
+        }
+    }
+
     /// The battle at `t` of `timeline` (E17 M2 T4b-2a).
     pub fn at(timeline: &Timeline, t: u32) -> Self {
         Self {
@@ -115,6 +132,7 @@ impl Moment {
                 .bridge(t)
                 .map(|before| Box::new(Self::at(timeline, before))),
             shake: timeline.shake(t),
+            shade: BTreeSet::new(),
         }
     }
 }
@@ -134,6 +152,16 @@ pub enum Draw {
     /// The absolute obstacle's picture, index 0 transparent, into the background (§4.4).
     AbsoluteObstacle {
         /// The picture.
+        picture: String,
+        /// Its left edge.
+        x: i32,
+        /// Its top edge.
+        y: i32,
+    },
+    /// A hex's movement shade into the background (E17 M5 T4c2a, §7.23): the picture's pixels of a
+    /// non-zero index halve what lies under them (0x44E6A0), its top-left corner at the hex box's.
+    Shade {
+        /// The cell's picture (`ccellshd.pcx`).
         picture: String,
         /// Its left edge.
         x: i32,
@@ -402,7 +430,7 @@ fn pressed_panel(
         state.pressed = !state.disabled;
     }
     layout
-        .panel
+        .panel_in(observation)
         .draws(&shown, &layout.player_palette)
         .into_iter()
         .map(Draw::Dialog)
@@ -440,9 +468,9 @@ impl Panels {
     #[must_use]
     pub fn new(snapshot: &Observation, events: &[Event], texts: Vec<(u32, String)>) -> Self {
         let turns = crate::panel::turns(snapshot, events);
-        // The opening's side the panel was built for (*provisional*), then each turn's.
-        let built = controller(snapshot, snapshot).unwrap_or(Side::Attacker);
-        let mut kept = alloc::vec![crate::panel::Kept::built(built)];
+        // Built for the defender (the manager's +0x132C0 is 1 when `battle_start` builds the
+        // dialog, 0x462D24; E17 M5 T4c2a), then each turn's.
+        let mut kept = alloc::vec![crate::panel::Kept::built(Side::Defender)];
         for o in core::iter::once(snapshot).chain(&turns) {
             let last = kept[kept.len() - 1];
             let now = controller(snapshot, o)
@@ -508,8 +536,7 @@ impl Panels {
     /// What the panel draws at `t` of the battle `snapshot` opens, whose turns started at the
     /// times of `started` (a timeline's `turns`, in the order of the `TurnStarted`s): as its last
     /// turn's start by then set it (the opening's before the first), with what it kept from the
-    /// turns so far (`crate::panel::kept`, the opening's side the one it was built for:
-    /// *provisional*).
+    /// turns so far (`crate::panel::kept`, built for the defender).
     #[must_use]
     pub fn at(
         &self,
@@ -572,6 +599,23 @@ impl Panels {
             text,
             layout,
             pressed,
+        )
+    }
+
+    /// What the panel draws before the battle's first turn (E17 M5 T4c2a: behind the tactics
+    /// phase's message): as built, for the defender's side (0x462D24), no button selected.
+    #[must_use]
+    pub fn before(snapshot: &Observation, layout: &BattleLayout) -> Vec<Draw> {
+        pressed_panel(
+            snapshot,
+            None,
+            (
+                crate::panel::Kept::built(Side::Defender),
+                Autoplay::default(),
+            ),
+            "",
+            layout,
+            None,
         )
     }
 
@@ -830,6 +874,17 @@ fn drawn(
             picture: pcx.clone(),
             x: i32::from(point[0]),
             y: i32::from(point[1]),
+        });
+    }
+    // The hexes the tactics phase shades for a human's stack (E17 M5 T4c2a, §7.23): drawn into the
+    // background by `draw_hex_overlays` 0x493930, in hex order.
+    for &hex in &moment.shade {
+        let (row, column) = at(hex);
+        let [x, y] = layout.hex_box(row, column);
+        list.push(Draw::Shade {
+            picture: layout.cell_shade.clone(),
+            x,
+            y,
         });
     }
     let background = list.len();

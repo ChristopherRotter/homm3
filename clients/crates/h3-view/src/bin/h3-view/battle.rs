@@ -15,7 +15,7 @@ use std::path::PathBuf;
 use h3_battle::BattleSetup;
 use h3_content_battle::BattleRuleset;
 use h3_formats::lod::LodArchive;
-use h3_protocol::wire::{Command, ServerMessage};
+use h3_protocol::wire::{Command, ServerMessage, Side};
 use h3_render::Bugs;
 use h3_render::screen::Screen;
 use h3_ui::sprite::Sprite;
@@ -270,6 +270,9 @@ pub struct Battle<'g> {
     message: Option<(h3_view::message::Open, u32, Asked)>,
     /// The result window was closed (E17 M5 T4b1): the battle's screen is done.
     result_closed: bool,
+    /// The tactics phase's message the battle opened with is still open (E17 M5 T4c2a, design
+    /// §7.23): the battle behind it stands before its first turn.
+    opening: bool,
 }
 
 /// What a message box did with an input (E17 M5 T4a).
@@ -400,8 +403,21 @@ impl<'g> Battle<'g> {
             aiming: None,
             message: None,
             result_closed: false,
+            opening: false,
         };
         battle.follow()?;
+        // The tactics phase's message (E17 M5 T4c2a; `battle_start` 0x4630EE to 0x4631E5): when
+        // a human plays the phase's side here, before its first turn.
+        let told = snapshot
+            .tactics
+            .as_ref()
+            .is_some_and(|t| ground.humans[usize::from(t.side == Side::Defender)]);
+        if let Some(writer) = ground.writer.as_ref().filter(|_| told) {
+            let text = writer
+                .catalogue
+                .text("battle.tactics.phase", &h3_ui::text::Args::new());
+            battle.opening = battle.tell(0, &text, (Style::Ok, None), Asked::Told);
+        }
         Ok(battle)
     }
 
@@ -821,7 +837,7 @@ impl<'g> Battle<'g> {
         };
         let open = h3_view::book::Open::new(&mut self.book_memory, hero, &writer.catalogue);
         // The hero's player's colours (the record names none: red, blue; CLT-Q6).
-        let index = usize::from(observation.viewer == h3_protocol::wire::Side::Defender);
+        let index = usize::from(observation.viewer == Side::Defender);
         let player = observation.sides[index]
             .colour
             .unwrap_or_else(|| u8::try_from(index).unwrap_or(0));
@@ -912,7 +928,7 @@ impl<'g> Battle<'g> {
         let side = o
             .active
             .and_then(|id| o.stacks.iter().find(|s| s.id == id))
-            .map(|s| usize::from(s.controller == h3_protocol::wire::Side::Defender))?;
+            .map(|s| usize::from(s.controller == Side::Defender))?;
         if o.sides[side].hero.as_ref().is_some_and(|h| h.casts > 0) {
             return None;
         }
@@ -1151,6 +1167,8 @@ impl<'g> Battle<'g> {
             Outcome::Closed(id) => id,
         };
         self.message = None;
+        // The tactics phase's message closed: the first turn starts (E17 M5 T4c2a).
+        self.opening = false;
         if asked == Asked::Result {
             self.result_closed = true;
             return MessageDid::Ended;
@@ -1277,6 +1295,16 @@ impl<'g> Battle<'g> {
         let mut moment = moment.clone();
         moment.marked = self.shown.marked(t);
         moment.area = self.shown.area(t).to_vec();
+        // Behind the tactics phase's message the battle before its first turn; a human's turn
+        // in the phase, waiting, its stack's hexes shaded (E17 M5 T4c2a, design §7.23).
+        if self.opening {
+            moment.before_first_turn();
+        } else if self.waiting()
+            && t >= self.timeline().end
+            && let Some(turn) = self.turned.last()
+        {
+            moment.shade = h3_view::tactics::shade(&turn.observation);
+        }
         let mut list = scene::battle_at(
             snapshot,
             &moment,
@@ -1286,14 +1314,18 @@ impl<'g> Battle<'g> {
         )
         .map_err(|e| format!("{t} ms: {e}"))?;
         let text = self.panels.text(t);
-        list.extend(self.panels.at_pressed(
-            snapshot,
-            &self.timeline().turns,
-            t,
-            layout,
-            text,
-            self.pressed,
-        ));
+        if self.opening {
+            list.extend(Panels::before(snapshot, layout));
+        } else {
+            list.extend(self.panels.at_pressed(
+                snapshot,
+                &self.timeline().turns,
+                t,
+                layout,
+                text,
+                self.pressed,
+            ));
+        }
         // Earthquake's shake (E17 M4 T2c-2): the screen as it was, shifted.
         if let Some(steps) = moment.shake {
             list = vec![scene::shaken(list, steps, layout)];

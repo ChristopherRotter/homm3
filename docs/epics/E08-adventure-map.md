@@ -91,6 +91,14 @@ Refined with the user on 2026-10-28 (T65; ADV-Q31). Built like increments 1 to 7
 
 176. **T68b whole** (the user's choice of two, 2026-10-29, `AskUserQuestion`: "Whole (Recommended)"): the sea pickups' reads, the restart rule over chest kinds, visits picked by their words, legs over water, the bottle's message, the E8b recipe and its runs in one pull request. Not chosen: in two by rows (the pickups with all the harness work; the battles and the map's whole run).
 
+**Round 3** (T69, at its start and after its re-read):
+
+177. **T69 whole, with a re-read** (the user's choice of three, 2026-10-29, `AskUserQuestion`: "Whole, with re-read (Recommended)"): batch E8 scored in survey `E08-sea.md` §15, D-45 reverted in the drafts and the design, and the flyer's search in `Heroes3.exe` re-read for why E8-7's click found no path, in one pull request. Not chosen: whole without the re-read (a note for T73); in two (the scoring; the re-read).
+
+178. **D-44: the import keeps refusing a hero placed on water** (ADV-Q34, the user's choice of three): E8-5 showed the original keeping such a hero on foot, without a boat, with the land's points; no shipped map has one and its other cases are untested, so `Unsupported` stays. Not chosen: the original's hero on water; VCMI's boat.
+
+179. **D-46 tested first** (ADV-Q35, the user's choice of three): the re-read's closure of a water tile holding an object to a flight (no end, no pass; ADV-MOV-009 and VCMI pass) goes to a one-row batch E8c (T69b) before T70; until it runs the drafts and the design carry the code's side; T73 amends ADV-MOV-009 if the row confirms it. Not chosen: the code's side untested; the engine's pass kept.
+
 ### Tasks (queue entries in `docs/lanes/adventure/QUEUE.md`; one or two per round, the cut confirmed at each checkpoint)
 
 - **T65 Increment 8 refined** (with increment 7's closure). Done (2026-10-28, `adventure/e08-t65`; decisions 157–159): boats and the sea with the sea's pickups, the first round queued (T66a, T66b).
@@ -98,7 +106,9 @@ Refined with the user on 2026-10-28 (T65; ADV-Q31). Built like increments 1 to 7
 - **T66b The ADR amendment drafts, the design note and the cut.** Done whole (2026-10-28, `adventure/e08-t66b`; decisions 162–173): ADV-Q32 answered at its start; the drafts of ADR-0013, -0016 and -0017 (`docs/lanes/adventure/adr-drafts/*-increment-8.md`), `E08-design.md` written for increment 8 with the cut and the exit criteria (§18), a reading of the diagonal landing (map entries 0x481BE0, 0x4B2300); the checkpoint ADV-Q33 accepted as written (log).
 - **T67 Batch E8's maps and specs.** Done whole (2026-10-28, `adventure/e08-t67`, `cross-lane`; decision 174): the writer's boats, sea pickups, holes and bottle texts, the spec's `[[map.bottle]]` and a monster's own `at`; the specs `E08-batch-8a`, `-8a-water` (E8-5) and `-8b` with their templates, reviewed (nine findings taken); the holes' and the winds' picture sizes read (log).
 - **T68 Batch E8's harness and runs**, in two by batch (decision 175): **T68a** done (2026-10-28, `adventure/e08-t68a`: the boat, ship-flag, obstacle and key reads and steps, the path marks read only while shown; the recipes E8a and E8a-water; E8a run three times, the water map twice, recorded; the harness check passed); **T68b** done (2026-10-29, `adventure/e08-t68b`, decision 176: the sea pickups' words, visits picked by them, legs over water, a bottle's message, table rows; the recipe E8b; four runs, two recorded; the harness check passed).
-- **T69 to T76** (decision 171; design §18): the scoring (T69), the `shared/` task (T70), `h3-heroes` (T71), the import, kinds and state (T72), moving and `Reach` (T73), the pickups, the battle at sea and the game (T74), the replays and gates (T75), the audit (T76). T69 queued.
+- **T69 Batch E8's scoring.** Done whole (2026-10-29, `adventure/e08-t69`; decisions 177–179): survey `E08-sea.md` §15, the 16 rows scored; D-41 to D-43 confirmed, D-44's refusal kept (ADV-Q34), D-45 reverted (only a boat takes a sea pickup or fights a monster on water), E8-15's battle at the monster's tile, A-28 confirmed; the flyer's search re-read (map entries 0x4B2300, 0x56A0D0): **D-46**, a flight over a water tile holding an object, to batch E8c (ADV-Q35); the drafts and the design in line (log).
+- **T69b Batch E8c** (decision 179): one row on D-46, spec, run and scored, before T70. Queued.
+- **T70 to T76** (decision 171; design §18): the `shared/` task (T70), `h3-heroes` (T71), the import, kinds and state (T72), moving and `Reach` (T73), the pickups, the battle at sea and the game (T74), the replays and gates (T75), the audit (T76).
 
 ## Later increments (sketch)
 

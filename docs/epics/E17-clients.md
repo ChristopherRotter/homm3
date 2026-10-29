@@ -201,8 +201,15 @@ the stacks created mid-battle.
       mouse), built (`h3_view::auto`, the panel's `Autoplay`, the window's switch and stop, the
       bot playing the human's side, `--auto`); `auto` and `auto-stop` recorded, their panels and
       cursors exact.
-    - **T4c2, the tactics phase:** its panel (0x46C050), the stacks placed in the zone, its
-      end.
+    - **T4c2, the tactics phase** (cut in two by the user, 2026-10-29):
+      - **T4c2a, the phase drawn** (done 2026-10-29; design §7.23): read (the message at the
+        phase's start, its panel 0x46C050, the panel built for the defender, the movement
+        shade's overlay and search, the cursor), built (`h3_view::tactics`, `Draw::Shade`, the
+        layout's `[tactics_panel]`, the message before the first turn in the stills and the
+        window); seven stills exact; CLT-Q32.
+      - **T4c2b, the phase played:** the stacks placed (the placement's animation), Next
+        Creature, Start Combat (the panels swapped, round 1's start), the shade over the phase's
+        turns, Auto Combat in the phase; recorded.
 - **T5, what a played battle shows:** the created stacks (`StackCreated`: Summon Elemental,
   Clone; a Pit Lord's `RoseFromCorpse`) with their dissolve (`screen_dissolve` 0x602DC0's blend,
   Sacrifice's victim's too), a clone's `Vanished`, Teleport's dissolve; the panel's side by each
@@ -390,3 +397,19 @@ M3 at its review, T9b, M4 at its review, T3c). The next milestone's list starts 
     action (`hover` compared to 1 500 ms, as the harness records it).
 27. `--auto <n>` (T4c1): an unattended run switches Auto Combat on at the human's n-th turn and
     stops it by a press two commands later; the battle checked against the bot's at once.
+28. The tactics phase's message in every battle (T4c2a; design §7.23): the original shows it once
+    a game to each player (its record's +0x88); a battle in the client is a game of its own, so
+    every battle opening with a human's phase shows it (`tactics::told`).
+29. The shade's search in the client (T4c2a, `tactics::shade`): the engine's legal placements
+    are not used; the client searches the observation (obstacles, stacks, two-hex fronts) as
+    `battle_pathfinder` does, a flyer over any run of hexes it does not fit (the original's:
+    fewer than its speed in a row, 0x4B39E7); a test holds the engine's placements in it
+    (`tactics.toml`).
+30. The formats (T4c2a): the layout's `cell_shade` and `[tactics_panel]` (the base's seven
+    buttons listed again), `scene::Draw::Shade` (a picture's indices halving the screen,
+    `h3_render::blit::darken_under`), `Moment::shade` (set by its viewers, not the timeline:
+    the phase's later turns T4c2b), `Panels::before`, `Moment::before_first_turn`, the
+    stills' `Still::opening`, `arrow` and `over`.
+31. The panel built for the defender (T4c2a; 0x462D24): before, *provisional*, for the opening's
+    acting side; the two differ on a computer attacker's opening against a human defender (the
+    picture's colours until the human's first turn), which no capture shows.

@@ -522,8 +522,29 @@ fn a_moment_draws_each_stack_in_its_pose() {
         blast: None,
         bridge: None,
         shake: None,
+        shade: BTreeSet::new(),
     };
     let list = battle_at(&battle_view(), &moment, &keys(), &tables(), &layout).unwrap();
+    // E17 M5 T4c2a: the shaded hexes into the background, in hex order, at their boxes' corners.
+    let mut shaded = moment.clone();
+    shaded.shade = [hex(1, 2), hex(0, 1)].into_iter().collect();
+    let shades = battle_at(&battle_view(), &shaded, &keys(), &tables(), &layout).unwrap();
+    let cells: Vec<&Draw> = shades
+        .iter()
+        .filter(|d| matches!(d, Draw::Shade { .. }))
+        .collect();
+    let cell = |x, y| Draw::Shade {
+        picture: "ccellshd.pcx".to_string(),
+        x,
+        y,
+    };
+    assert_eq!(cells, [&cell(80, 86), &cell(102, 128)]);
+    let first = shades.iter().position(|d| matches!(d, Draw::Shade { .. }));
+    assert!(matches!(
+        shades[..first.unwrap()],
+        [Draw::Background { .. }, Draw::AbsoluteObstacle { .. }]
+    ));
+    assert_eq!(shades.len(), list.len() + 2);
     // The magic animation right after its stack's sprite, once.
     let walker = list
         .iter()
@@ -906,6 +927,28 @@ fn each_hero_and_its_flag_are_drawn_after_the_layer_1_obstacles() {
     };
     let list = battle_at(&o, &moment, &keys(), &tables, &layout).unwrap();
     assert_eq!(list[back + 1..back + 3], [flag(1, 5), hero(1, 1, 2)]);
+    // E17 M5 T4c2a: before the first turn (behind the tactics phase's message) the flags at their
+    // start frames, nothing outlined, marked or shaded; the heroes' poses kept.
+    let mut before = Moment {
+        active: Some(0),
+        marked: Some(2),
+        shade: [hex(1, 1)].into_iter().collect(),
+        ..moment.clone()
+    };
+    before.before_first_turn();
+    assert_eq!((before.active, before.marked), (None, None));
+    assert!(before.shade.is_empty());
+    assert_eq!(
+        before.heroes,
+        [
+            None,
+            Some(HeroPose {
+                group: 1,
+                frame: 2,
+                flag: 3,
+            })
+        ]
+    );
     // A handle the manifest lacks, a key the tables lack.
     o.sides[1].hero = led(3);
     assert_eq!(
@@ -1017,15 +1060,16 @@ fn the_panel_over_time_follows_the_turns_and_the_log() {
     assert_eq!(wait(&pressed), 1);
     let dimmed = panels.at_pressed(&o, &started, 200, &layout, "", Some(2009));
     assert_eq!(wait(&dimmed), 2);
-    // More turns started than the events name: the last named; no opening stack: the attacker's
-    // colours.
+    // More turns started than the events name: the last named; no opening stack: the colours of
+    // the defender, whom the panel is built for (0x462D24, E17 M5 T4c2a).
     assert_eq!(
         wait(&panels.at(&o, &[(0, 2), (1, 0), (2, 2)], 5, &layout)),
         0
     );
     o.active = None;
     let none = Panels::new(&o, &[], Vec::new());
-    assert_eq!(picture(&none.at(&o, &[], 0, &layout)), Some(0));
+    assert_eq!(picture(&none.at(&o, &[], 0, &layout)), Some(1));
+    assert_eq!(picture(&Panels::before(&o, &layout)), Some(1));
     assert_eq!(none.text(0), "");
     // E17 M3 T9b, the reviewer: the scroll buttons take a click once a human's turn enabled them
     // (the opening's own active stack none: Red's turn at 300 is the first).

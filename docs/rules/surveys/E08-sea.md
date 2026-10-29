@@ -6,6 +6,7 @@ boarding, landing, sailing, the events on water and the writer (§0 to §6); **T
 the battle at sea, the four pickups (Sea Chest 82, Shipwreck Survivor 86, Flotsam 29, Ocean
 Bottle 59), the commands, decisions, events and the observation, batch E8's plan, the rule ids, a
 fresh agent's second reading and the checkpoint's `ADV-Q32` (§7 to §14; whole, decision 161).
+**T69** scored batch E8 (§15) and re-read the flyer's search (D-45 reverted, D-46).
 Input, not rules (`README.md`): a fact becomes binding when a task writes it into the catalog with
 its sources and tests.
 
@@ -97,7 +98,8 @@ its sources and tests.
   no artifact with a full backpack); the Shipwreck Survivor a treasure, minor, major or relic
   artifact at 55, 20, 20 and 5 % (lost with a full backpack); the Ocean Bottle its text or the
   default by its column, only for a human. VCMI and the wiki agree but for VCMI's unlimited
-  backpack. A flyer on the coast takes one beside it with a click (the reading): **D-45**.
+  backpack. A flyer on the coast takes one beside it with a click (the reading): **D-45**
+  (reverted by E8-7; batch E8 scored in §15, T69).
 - **The interfaces** (§9): no new command or decision; `Reach` gains a boat layer; boats and the
   in-boat flag in the state, the observation and the env's encoding.
 - **Batch E8** (§11): 16 rows in two runs. **Rule ids** (§12): the family `ADV-SEA`, ADV-PIK-014 to
@@ -472,7 +474,8 @@ or the tactics phase.
 - **An event's guards on water** (§4.3: events on water fire for a hero in a boat): the deck.
   The census (§1): 3 of the 9 events on water have guards (Gelea's Champions and its allied copy,
   Myth and Legend).
-- **The landing's guards** attack after the landing (§3.2, §3.3): the hero is on land then, out
+- **The landing's guards** (corrected by E8-15, §15: the battle is at the monster's tile, as
+  every guard's) attack after the landing (§3.2, §3.3): the hero is on land then, out
   of its boat: the coast's battlefield (sand and the shore), not the deck.
 - The sea's creature banks (the Derelict Ship 24 from a boat, the Shipwreck 85 from land; both
   fought on the deck by their own class test) are item 10's; Sirens, Mermaids, Buoys and
@@ -494,7 +497,8 @@ water tile takes water's one battlefield `ship` (the deck, `CMBKDECK`), both her
 `ship_to_ship` with the same 32 `impassableHexes`; a water tile is never "coastal"
 (`CMap::isCoastalTile`). The tile decides in VCMI, the heroes' flag in the original; they differ
 only where a battle on water has no hero in a boat or a hero in a boat fights on land. The second
-never happens (the landing's battle comes after the landing); the first only on D-45's path (§8.1):
+never happens (the landing's battle comes after the landing); the first only on D-45's path (§8.1;
+no such path, §15):
 a flyer on the coast that attacks a monster on the water beside it with a click (4 such monsters,
 §1) fights in the original on the water tile's coast mark (+0xD bit 0x02, a shore
 picture on water: sand and the shore) or, without it, on water's own terrain, in VCMI on the
@@ -524,7 +528,8 @@ object removed (`remove_map_object` 0x4AABB0) and, when the view is shown, one o
   boat's or a class-85 entrance (0x481D0D); the step then fails as any refused step. The
   pathfinder gives no path either (`E08-hero-movement.md` §3.1 point 4: another entrance on water
   is passable only flying).
-- **A flying hero standing on land, by a click:** the search gives a flying node a path onto
+- **A flying hero standing on land, by a click** (**wrong**: no path ends there and no flight
+  passes it, E8-7 and the re-read in §15; D-45 reverted, D-46): the search gives a flying node a path onto
   another entrance on water as a stop-only node (`pathfinder_expand` 0x4B27FB, 0x4B2D12); the move
   takes a flyer to the class switch only on its path's last step (0x480B44 to 0x480BD0), where
   `hero_step_or_meet_allowed` passes it (`hero_step_allowed` with the fourth argument 0: a flyer
@@ -652,7 +657,7 @@ What increment 8 changes in the game's interfaces (ADR-0016, ADR-0017; the desig
 
 T66a1's D-41 to D-44 and the 64 boats are in §6; the checkpoint's questions are §14.
 
-- **D-45. A pickup on the water taken from the shore.** The reading lets a flying hero standing
+- **D-45. A pickup on the water taken from the shore** (**reverted** by E8-7, §15). The reading lets a flying hero standing
   on land (Angel Wings; Fly later) take a sea pickup on a neighbouring water tile with a click
   (§8.1: its search gives a stop-only node there, and the path's last step visits from the
   hero's land tile); the arrow keys do not, and a water walker never does (the second reading's
@@ -744,7 +749,7 @@ its rule is built. `ADV-SEA` (boats and the sea) is a new family.
 | ADV-SEA-004 | sailing: the step's price at sea (100, 141), Favorable Winds (66, 93, a boat only), a diagonal only between two waters, no empty boat from a boat, the drop at sea, the diagonal exception's comparison | §4.1 | D-43 |
 | ADV-SEA-005 | what a boat visits: objects visited from the neighbouring water tile, another boat's hero from the neighbour; a hero on land visits a boat's hero from the shore, never the reverse; events on water fire for a boat | §4.3 | — |
 | ADV-SEA-006 | a boat leaves the map with its hero | §2, §7.3 | — |
-| ADV-SEA-007 | a hero placed on water | §2, §5 | D-44 |
+| ADV-SEA-007 | a hero placed on water | §2, §5 | D-44 (refused, decision 178; §15) |
 | HER-ADV-009 | a hero's day's sea points in `h3-heroes` (Navigation, its specialists, the Necklace, the two Hats; ADR-0013 point 2) | §4.2 | — |
 | ADV-MOV-001, -002 (amended) | the day's points set at the turn start by the hero's boat state | §4.2 | — |
 | ADV-MOV-007 (amended) | where a hero may step: water by boat, land from a boat only by a landing | §3, §4.1 | — |
@@ -753,7 +758,7 @@ its rule is built. `ADV-SEA` (boats and the sea) is a new family.
 | ADV-PIK-015 | the Sea Chest: its draw, the full backpack's 1 500 gold | §8.3 | — |
 | ADV-PIK-016 | the Shipwreck Survivor: its draw by class, the full backpack's loss | §8.4 | — |
 | ADV-PIK-017 | the Ocean Bottle: its message (the map's or the default by column), then it leaves | §8.5 | A-27 (E10) |
-| ADV-PIK-018 | who takes a pickup on the water: a boat from the neighbouring tile; a flyer from the shore by a click | §8.1 | D-45 |
+| ADV-PIK-018 | who takes a pickup on the water: a boat from the neighbouring tile (a flyer from the shore by a click: reverted, §15) | §8.1 | D-45 |
 | GAM-BAT-001 (amended) | the battlefield: a hero in a boat on either side, the deck (water, the ship); both, the two boats | §7.1 | — |
 | GAM-BAT-003 (amended) | a hero leaving the map takes its boat (ADV-SEA-006) | §7.3 | — |
 | ADV-OBJ-007, ADV-MOV-011 (amended) | events on water: fired by a boat's step, the move's stop at sea | §4.3 | — |
@@ -840,3 +845,117 @@ the drawing, the sounds.
    written.
 7. **What stays out of increment 8:** decision 158's list, the computer player's boats (E10), the
    sea's creature banks' battles (item 10). Recommended: confirmed.
+
+## 15. Batch E8 scored (T69)
+
+Played by the capture harness under Wine in T68a and T68b (`experiments/results/E08-batch-8a.md`,
+the third run; `-8a-water.md`, the second; `-8b.md` and `-8b-run2.md`, the third and fourth runs,
+their draws counted together; Complete 4.0, Easy, hot seat, the starting bonus random), each row
+against §11's prediction as T67's specs corrected it (E8-4: the drop to 0 after the straight
+step; E8-13: no path goes on past a guarded tile). Points, words, records and openings are the
+game's memory, read by the harness. "Conclusive": another source predicted otherwise.
+
+| Row | Observed | Reading | Other source | Verdict |
+|---|---|---|---|---|
+| E8-1 (D-41) | the Hat's hero, 75 left after its step onto the boat (600, three swamp steps): **0**, the maximum 3 000, bit 18; the control, 425 left: **637** | 0; 425 × 3 000 ÷ 2 000 | VCMI: 112 | **conclusive**: the reading |
+| E8-2 (D-41) | 59 left after the step onto the coast: **0**, the maximum 2 000, bit 18 clear; the control, 500 left: **333**; both boats on the water tile behind, facing east (2), nobody aboard, owner and captain kept | 0; 333 | VCMI: 39 | **conclusive**: the reading |
+| E8-3 (D-42) | no path to the hole's tile nor to the event's (the event not fired, gold unchanged); the free tile landed (three steps, 0 left) | the same | the wiki the same; VCMI: lands on the event and fires it | **conclusive**: the reading |
+| E8-4 (D-43) | 80 points on the winds: the diagonal one red mark, not taken (80 kept); the straight step taken, **0** left | the same | VCMI: the diagonal taken for 66 | **conclusive**: the reading |
+| E8-5 (D-44) | the hero written on water taken by the game: drawn on horseback on the water, no boat record, bit 18 clear, 2 000 points and maximum; no path onto water; the step onto land taken, 1 900 left | the same | VCMI: a boat under it, the sea's points | **conclusive**: the reading |
+| E8-6 (§8.3, §8.4) | backpack 64: each artifact chest of every whole run 1 500 gold and no artifact (ADVEVENT 118, the kind 1's message), gone; kind 0 its message (116), nothing; each Survivor the "no room" message (126), nothing, gone; day 2's points 5 250 | the same; 3 750 + 1 000 + 500 | the wiki the same; VCMI: no full backpack | confirmed |
+| E8-7 (D-45) | the flyer's click on its Flotsam: **no path, nothing taken** (its control path flew over water); the flyer's right arrow nothing (left and keypad left stepped); the water walker and the walker no path (their controls over water and on land) | the flyer takes it by a click | the wiki: only boats; VCMI: no layer reaches it from land | **contradicted**: D-45 reverts (below) |
+| E8-8 (§8.2 to §8.4) | Flotsam words 0 to 3: 24, 17, 20, 19 of 80; chests nothing, 1 500 gold, artifact: 18, 53, 9 of 80 (E8-6's 60: 14, 43, 3), every chest's artifact a treasure one (12 of 12); Survivors treasure, minor, major, relic: 36, 22, 17, 5 of 80; visited: Flotsam 3 +10 wood +500 gold (53), a Survivor its artifact (125), a chest of kind 2 +1 000 gold and its artifact (117), each gone, no question; an artifact onto its free position, else into the backpack | 25 % each; 20, 70, 10 %; 55, 20, 20, 5 %; the gains of §8.2 to §8.4 | consensus (§8.6) | confirmed (the draws below) |
+| E8-9 (§8.5) | columns 24 and 49 RANDSIGN 24, column 25 RANDSIGN 0, column 34 the map's text; nothing given; every bottle gone | the text by x mod 25 | the wiki and VCMI: a random text | **conclusive**: the reading |
+| E8-10 (§4.2, A-28) | day 2 in boats 4 000 and 2 000; after the landings 0, the maximum **kept** (4 000, 2 000); day 3 1 560 each | the same | consensus on the points; A-28 the code's alone | confirmed; A-28 confirmed |
+| E8-11 (§7.1, §7.3) | water, no special field, ship flag 1, three blocked hexes (98, 114, 115: one obstacle 55); the winner stays on the shore (bit 18 clear); the beaten hero's boat record freed (in use 0; owner, captain, aboard kept), nothing on its tile, boats in use 8 → 7; the loser's artifact taken (GENRLTXT 31) | the same | consensus | confirmed |
+| E8-12 (§7.1, §7.3) | water, ship flag 1, exactly the 32 hexes of 0x63D368 (the battle part's `boats`); Blue retreated; Red still in its boat; Blue's record freed, nothing on its tile, boats in use 6 | the same | consensus | confirmed |
+| E8-13 (§7.2) | the click past the guards: no path; the click on a guarded tile: two marks, the battle there at once: water, ship flag 1, one obstacle; 10 Pikemen in three stacks (4, 3 Halberdiers, 3); the winner on that tile in its boat | the same | consensus | confirmed |
+| E8-14 (§7.2, §4.3) | a path over the first event: the move stopped on its tile with 1 200 (three steps), +100 gold (183), the event gone; the second: stopped on its tile, "you are attacked" (16), the battle there: water, ship flag 1, one obstacle | the same | consensus | confirmed |
+| E8-15 (§3.2, §3.3) | one mark, no message, the battle at once: **grass, no special field**, ship flag 0, 13 blocked hexes; after it the hero on the coastal tile with 0, bit 18 clear; the boat on the water tile behind, facing south (4), nobody aboard, owner and captain kept | sand and the shore; the rest the same | — | the battlefield **mispredicted** (the monster's tile, below); the rest confirmed |
+| E8-16 (§2) | Blue's hero boarded the boat Red's hero left: owner Blue, captain E8-16, aboard; 0 points, the maximum 1 560 kept, bit 18 | Blue's | consensus | confirmed |
+
+**The disputes** (decision 162): **D-41** (E8-1, E8-2), **D-42** (E8-3) and **D-43** (E8-4) show
+the code's side, each conclusive against VCMI: they stay as decided. **D-44** (E8-5): the original
+keeps a hero written on water on foot, without a boat, with the land's points and maximum, its
+steps a walker's from water (onto land; onto a boat not tested); VCMI's boat refuted. Decision
+178 (ADV-Q34): the import keeps refusing it (`Unsupported`): no shipped map has one, and the
+original's other cases (a battle on that tile, a visit to that hero, its next turn) are untested;
+E8-5 is ADV-SEA-007's observation for whoever builds it. **D-45** (E8-7) **reverts** to the
+wiki's side, VCMI agreeing: only a hero in a boat takes a sea pickup, and, as design §19 tied
+them, only a boat's hero fights a monster on water, so §7.4's battle on water without a boat
+does not arise. The arrow key's and the water walker's halves matched the reading.
+
+**The re-read** (T69, decision 177; `docs/exe/map.toml`): why the flyer's click found no path.
+
+- `pathfinder_expand` (0x4B26D6 to 0x4B282D): a node not in a boat that steps onto water whose
+  tile is an entrance (+0xD bit 0x10) of any class but a hero (34), a boat (8) or class 85 is
+  marked "flying only" and loses bit 10; plain water is "flying or water walking", also without
+  bit 10. A flying node goes on (0x4B29AC to 0x4B29BB); a walker's or water walker's is dropped
+  (0x4B29C1 to 0x4B29E4; the computer's own paths, mode 4, not read).
+- The node is relaxed with the entered tile's entrance bit as its stop flag (0x4B2D12 to
+  0x4B2D38); from a node without bit 10 (from water) a class "cannot be entered" or a town gets
+  no node at all (0x4B2CF3 to 0x4B2D10). The flying copy without the stop flag (the second relax,
+  0x4B2D3D to 0x4B2D4F) needs bit 10 in the new node, which it has lost: none is made.
+- `pathfinder_relax` stores a node without bit 10 in the tile's second slot (0x4B1C4B to
+  0x4B1C5D), and `pathfinder_build_path` builds the click's path from the destination's first
+  slot only (level × 2 + 0, 0x56A1D6 to 0x56A21F; it must be reached, 0x56A275): **no path ends
+  on such a tile** (E8-7's "no path").
+- `pathfinder_run` expands a stop node only when `pathfinder_pass_through` allows it (0x56BB7C
+  to 0x56BB99), which for a human's mouse path it never does but for classes 33 and 212
+  (`E08-objects.md` §2.2): the node is a leaf, so **no flight goes on over such a tile either**.
+- §8.1's error: it took the stop flag for a stop. The stop a move may end on is bit 10
+  (`E08-hero-movement.md` §3.1; `pathfinder_build_path`, read in T34a). Not read: the computer's
+  paths, the multi-day path's next day.
+
+**D-46 (new). A flight over a water tile holding an object.** By the re-read a flight neither
+ends on nor passes over a water tile that is an entrance of any class but a hero's, a boat's or
+class 85's (the sea's pickups, a monster, a Whirlpool, a Buoy, a water Cartographer): the flyer
+goes around it. Plain water and an object's blocked cell on water stay a flight's pass, a boat
+and a hero in a boat a pass (and a stop from land: boarding, a visit). ADV-MOV-009 (increment 5, `verified`) lets a flight pass
+over "water (plain or holding an object)", as VCMI 1.7.5 does (`lib/pathfinder/PathfinderUtil.h`
+`evaluateAccessibility`: every tile of the air layer flyable); the wiki is silent. A conflict of
+the reading with VCMI on a built rule, on every flyer's way over the sea (3 236 sea pickups and 55
+monsters on water in the shipped maps, §1). Decision 179 (ADV-Q35): **tested first**: a one-row
+batch E8c (T69b, before T70): a flyer whose only way to a target crosses a water tile with a
+Flotsam, beside controls (plain water; an empty boat); until it runs the drafts and the design
+carry the code's side, the row confirms or reverts it, and T73 amends ADV-MOV-009 if it confirms.
+
+**What else the rows show:**
+
+- **A landing's guards fight at the monster's tile** (E8-15), as every guard battle (ADV-MON-007,
+  ADV-GRD-001: the monster's tile's terrain and battlefield): the Pikemen's grass, no shore;
+  §7.2's "sand and the shore" assumed the hero's coastal tile. The shore only when the monster's
+  tile is coastal. Corrected in §7.2, design §13 and the drafts (ADR-0016 point 4, ADR-0017).
+- **The facing** after a landing is the step's direction in the original's order, clockwise from
+  up (`step_directions` 0x678150): east 2 (E8-2), south 4 (E8-15). Design §6's mapping tests both.
+- **A-28 confirmed** (E8-10, E8-16): without the Hat the maximum stays the surface's left until
+  the next turn start (4 000 and 2 000 after the landings, 1 560 after a boarding). It stays not
+  reproduced (decision 166, `ADV-QUIRK-31` with no flag): the engine sets the maximum at each
+  boarding and landing (design §6).
+- **A boat's record keeps its boarding tile while aboard** (E8-13, E8-14 after their battles);
+  the landing writes the water tile behind (E8-2, E8-15). Nothing the batch saw reads it while
+  aboard; design §6's `Boat::tile` is the hero's tile then, no stale tile kept.
+- **A second click on a path the hero cannot pay today** (E8-4's first run, T68a) keeps the hero
+  and sets its points to 0: ADV-MOV-006's "the original stops there and loses the rest" (the
+  engine rejects such a move; the harness's trap is in `TRAPS.md`).
+- **The draws:** Flotsam χ² 1.3 over the 80 (3 df, p ≈ 0.73), the chests 0.5 (p ≈ 0.77), the
+  Survivors' classes 4.0 (p ≈ 0.26); the second run's Survivors alone 10.7 (p ≈ 0.01: 13 treasure,
+  14 major), within chance among six counts. `random_artifact_of_level` draws within the level
+  and starts its flags again when a level runs out (0x4C94D0), so no level spills into another:
+  no re-run.
+- **One boat's deck** (E8-11, E8-13, E8-14): one obstacle 55 (three hexes) at a random place, as
+  the battle part's `deck`; the two boats (E8-12) exactly its `boats` list: the battle lane's
+  BAT-TER-002 and BAT-GEO-004 get their observations (its inbox).
+- **E8-6's 5 250** (Expert Navigation 3 750, the Necklace 1 000, the Sea Captain's Hat 500) is a
+  third check of §4.2 besides E8-1 and E8-10.
+
+**The rules** (§12): the rows become the observations of the rules T72 to T74 write, `verified`
+where the row matches: ADV-SEA-001 (E8-2, E8-15, E8-16), -002 (E8-1, E8-16), -003 (E8-2, E8-3,
+E8-15), -004 (E8-4; E8-1's diagonal at sea, 141), -005 (E8-11 to E8-14), -006 (E8-11, E8-12),
+-007 (E8-5, the original's side recorded beside the refusal), HER-ADV-009 (E8-1, E8-6, E8-10),
+ADV-MOV-001 and -002 amended (E8-10), ADV-MOV-007 amended (E8-3, E8-5), ADV-PIK-014 (E8-8), -015
+and -016 (E8-6, E8-8), -017 (E8-9), -018 (E8-7: a boat only), GAM-BAT-001 amended (E8-11 to
+E8-14, E8-15 on land), GAM-BAT-003 amended (E8-11, E8-12), ADV-OBJ-007 and ADV-MOV-011 amended
+(E8-14). ADV-FOG-006 and -008 had no row. The rules already written take theirs with the build:
+ADV-MOV-006 (E8-4's first run), ADV-MON-007 and ADV-GRD-001 (E8-13, E8-15), ADV-MOV-009 (batch
+E8c).

@@ -1109,3 +1109,88 @@ why = "the surrender's window: \"Orrin surrenders to the enemy, and departs in s
 at = 6866
 differing = 0
 why = "exact: surrender's frame 1 in its second round (T4b2b)"
+
+# E17 M5 T4c2a: the tactics phase drawn (tactics.toml; design §7.23). Orrin's Expert Tactics
+# against none: Red's zone the seven columns at its edge. The battle opens with the phase's message
+# (GENRLTXT 373) over the battle before its first turn: no stack outlined, the flags at their start
+# frames, the panel as built (the phase's, for the defender: Blue's colours). Its OK by Enter starts
+# the Champions' turn: the panel lit in Red's colours, the zone's hexes the Champions reach shaded
+# and the enemies they could reach. The turn's start sets the pointer, and its posted mouse move
+# does not reach the battle: the mouse left over a hex by a move made over the box keeps the
+# pointer and marks nothing (CLT-Q32). A move after it: in the zone the move cursor, outside it
+# the forbidden one, over an enemy the query and its outline, over Start Combat the pointer. No
+# status line: the phase's panel has no log.
+[[situation]]
+id = "tactics-open"
+scenario = "tactics.toml"
+
+[[situation.frame]]
+at = 0
+differing = 0
+why = "exact: the phase's message over the battle before its first turn, the flags at their start frames, the phase's panel as built in Blue's colours (E17 M5 T4c2a)"
+
+[[situation.frame]]
+at = 1000
+differing = 0
+why = "exact: the battle behind the box still (E17 M5 T4c2a)"
+
+[[situation]]
+id = "tactics"
+scenario = "tactics.toml"
+actions = ["key:Return"]
+
+[[situation.frame]]
+at = 100
+differing = 0
+why = "exact: the Champions' turn, the zone's hexes they reach and the enemies they could reach shaded, the phase's panel lit in Red's colours, the pointer (E17 M5 T4c2a)"
+
+[[situation]]
+id = "tactics-rest"
+scenario = "tactics.toml"
+mouse = [190, 196]
+actions = ["key:Return"]
+
+[[situation.frame]]
+at = 100
+differing = 0
+why = "exact: the mouse moved over the box keeps the turn's pointer over the zone, marking nothing (CLT-Q32) (E17 M5 T4c2a)"
+
+[[situation]]
+id = "tactics-move"
+scenario = "tactics.toml"
+actions = ["key:Return", "move:190,196"]
+
+[[situation.frame]]
+at = 100
+differing = 0
+why = "exact: in the zone the move cursor, no status line (E17 M5 T4c2a)"
+
+[[situation]]
+id = "tactics-out"
+scenario = "tactics.toml"
+actions = ["key:Return", "move:586,196"]
+
+[[situation.frame]]
+at = 100
+differing = 0
+why = "exact: outside the zone the forbidden cursor (E17 M5 T4c2a)"
+
+[[situation]]
+id = "tactics-enemy"
+scenario = "tactics.toml"
+actions = ["key:Return", "move:700,180"]
+
+[[situation.frame]]
+at = 100
+differing = 0
+why = "exact: over the Wolf Riders the query cursor and their outline (E17 M5 T4c2a)"
+
+[[situation]]
+id = "tactics-start"
+scenario = "tactics.toml"
+actions = ["key:Return", "move:518,578"]
+
+[[situation.frame]]
+at = 100
+differing = 0
+why = "exact: over Start Combat the pointer, its hint shown nowhere (E17 M5 T4c2a)"

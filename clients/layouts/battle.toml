@@ -29,6 +29,10 @@ hero_canvas = [[-43, -19], [693, -19]]
 flag_canvas = [[29, 20], [755, 20]]
 # The players' colours (0x5FFE20): a flag takes its player's 32 entries over 224-255.
 player_palette = "PLAYERS.PAL"
+# The movement shade's cell (E17 M5 T4c2a, §7.23; loaded at 0x463385): drawn at a shaded hex's box
+# corner into the background, each pixel of a non-zero index halving what lies under it
+# (0x44E6A0).
+cell_shade = "ccellshd.pcx"
 
 # A stack's count box (§4.3, `draw_battle_stack` 0x43E568; E17 M3 T4a): the picture, index 0
 # transparent, beside the stack; its inside tinted (0x44E940); the count in the font, centred.
@@ -194,6 +198,95 @@ def = "ComSlide.def"
 at = [624, 24]
 size = [18, 17]
 frames = { normal = 2, pressed = 3, disabled = 3 }
+
+# The panel in the tactics phase (`battle_panel_tactics_create` 0x46C050; E17 M5 T4c2a, design
+# §7.23): the base's picture `CoPlacbr.pcx` and its seven buttons (`battle_panel_base` 0x46B610,
+# as above), then Next Creature (2300, `ICM011.def`, its hotkey space) and Start Combat (30722,
+# `ICM012.def`, Enter), 198 x 36, their frames the DEF buttons' (0 and 1; disabled 2). No log's
+# item: its vtable's +4 and +8 do nothing (0x485D80, 0x5BC7E0), so the phase writes neither the
+# log nor the status line (`battle_log_add` 0x472E90 needs the panel's +0x34). Its hints are
+# `Help.txt`'s records 388 and 389, which show nowhere.
+[tactics_panel]
+place = [0, 556]
+
+[[tactics_panel.items]]
+kind = "picture"
+id = 2000
+picture = "CoPlacbr.pcx"
+at = [0, 0]
+size = [800, 44]
+
+[[tactics_panel.items]]
+kind = "button"
+id = 2001
+def = "icm001.def"
+at = [54, 5]
+size = [48, 36]
+hint = "battle.control.surrender"
+
+[[tactics_panel.items]]
+kind = "button"
+id = 2002
+def = "icm002.def"
+at = [105, 5]
+size = [48, 36]
+hint = "battle.control.retreat"
+
+[[tactics_panel.items]]
+kind = "button"
+id = 2003
+def = "icm003.def"
+at = [3, 5]
+size = [48, 36]
+hint = "battle.control.options"
+
+[[tactics_panel.items]]
+kind = "button"
+id = 2004
+def = "icm004.def"
+at = [156, 5]
+size = [48, 36]
+hint = "battle.control.auto"
+
+[[tactics_panel.items]]
+kind = "button"
+id = 2008
+def = "icm005.def"
+at = [645, 5]
+size = [48, 36]
+hint = "battle.control.spell-book"
+
+[[tactics_panel.items]]
+kind = "button"
+id = 2009
+def = "icm006.def"
+at = [696, 5]
+size = [48, 36]
+hint = "battle.control.wait"
+
+[[tactics_panel.items]]
+kind = "button"
+id = 2010
+def = "icm007.def"
+at = [747, 5]
+size = [48, 36]
+hint = "battle.control.defend"
+
+[[tactics_panel.items]]
+kind = "button"
+id = 2300
+def = "ICM011.def"
+at = [213, 4]
+size = [198, 36]
+hint = "battle.control.next-creature"
+
+[[tactics_panel.items]]
+kind = "button"
+id = 30722
+def = "ICM012.def"
+at = [419, 4]
+size = [198, 36]
+hint = "battle.control.end-tactics"
 
 # The hero's spell book (`spell_book_dialog` 0x59BDF0; E17 M5 T3a, design §7.17): a 620 x 595
 # dialog at (90, 2), its items in the order the constructor adds them (the order they are drawn),

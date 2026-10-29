@@ -361,6 +361,17 @@ original = [{ at = "HELP:386" }]
 id = "battle.control.defend"
 original = [{ at = "HELP:387" }]
 
+# The tactics phase's panel's two (`battle_panel_tactics_create` 0x46C050 from the pairs' +0x48
+# and +0x50; E17 M5 T4c2a): Next Creature's ("Phase Wait") and Start Combat's, records 388 and
+# 389. They show nowhere: the phase's panel has no log's item for the status line.
+[[key]]
+id = "battle.control.next-creature"
+original = [{ at = "HELP:388" }]
+
+[[key]]
+id = "battle.control.end-tactics"
+original = [{ at = "HELP:389" }]
+
 # The word for a creature, by `count`: a strike's perish row names it when the strike killed
 # several kinds.
 [[key]]
@@ -503,6 +514,12 @@ original = [{ at = "GENRLTXT:33", printf = ["hero", "price"] }]
 [[key]]
 id = "battle.surrender.poor"
 original = [{ at = "GENRLTXT:30" }]
+
+# The tactics phase's message (E17 M5 T4c2a; `battle_start` 0x4631CD: GENRLTXT's record 373), at
+# the phase's start when a human plays its side here, before its first turn.
+[[key]]
+id = "battle.tactics.phase"
+original = [{ at = "GENRLTXT:373" }]
 
 # The spell book's refusal of a spell above the hero's spell points (0x59D46D: record 207 with the
 # cost and the points) and the aim's of a stack spell no hex takes (0x59F122: record 186).

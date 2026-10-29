@@ -5,8 +5,9 @@
 //! primary skills), each with the scenario's stacks in their slots and its formation and its war
 //! machines (E17 M3 T3b: their artifacts) and its spell book (M3 T7a-2a: the book in its slot,
 //! its spells, and the school skills behind its masteries, M3 T7a-2b), the secondary skills
-//! behind its battle effects (M3 T7b-2b-2a: Leadership for its morale, Luck for its luck), no
-//! other skills or artifacts (no Tactics phase); stepping Red's hero east starts the battle
+//! behind its battle effects (M3 T7b-2b-2a: Leadership for its morale, Luck for its luck) and its
+//! tactics level (E17 M5 T4c2a: Tactics, the phase with it), no other skills or artifacts;
+//! stepping Red's hero east starts the battle
 //! (`h3drive.py`). With `--hot-seat` (E17 M3 T1a) Blue may be a human too, so that the
 //! harness plays both sides of a hot-seat battle (`hot_seat` in `sequences.toml`). A special
 //! battlefield (E17 M3 T2) is set up as the original makes it, on the defender's tile: water

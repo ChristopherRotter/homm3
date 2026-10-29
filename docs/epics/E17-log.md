@@ -3220,6 +3220,47 @@ tactics phase).
   frames exact. `drawn`: the 131 others the same.
 - **Found:** no open question; review items 24 to 27.
 
+### M5 T4c2a — The tactics phase drawn (2026-10-29)
+
+On `client/e17-m5-t4c2a`, the user present at the start. The sandbox new; every file staged from
+the user's `original-data/` as the lane's HANDOFF lists, before the user's computer went offline;
+`master` at `64e2d5d`. Asked at the start: the user cut T4c2 in two (T4c2a the phase drawn, T4c2b
+the phase played).
+
+- **Read** (design §7.23): `battle_start` at the phase (the hero's tactics flag, the side the
+  dialog is built for, the phase's side, the message GENRLTXT 373 and its once-a-game flag, the
+  player record's reset 0x4B9E20), `combat_dialog_create` at its panel, the tactics panel 0x46C050
+  whole, its vtable's empty +4 and +8, the base's picture, the item state message's value 8,
+  `battle_controls_state` in the phase and its head and tail (the pointer, the posted move),
+  `stack_activation`'s skip in the phase, `battle_log_add`'s head (no log item, no line),
+  `draw_hex_overlays` and `battle_movement_overlay` whole, `ai_pathfinder_map`'s zone, the
+  pathfinder's marks (a two-hex mover's front hex too), the shade's drawer 0x44E6A0. Eight map
+  entries new, six amended.
+- **Explored** (scratch runs, not committed): Orrin with Expert Tactics on `book`'s ground: the
+  message at the opening over a panel in Blue's colours; after its OK the zone shaded with both
+  enemies, the cursors in and out of the zone, the query over an enemy, the pointer and no hint
+  over Start Combat; Start Combat gives round 1 with the battle's panel. The mouse moved over the
+  message keeps the pointer after it until it moves again (CLT-Q32).
+- **Built:** `h3_view::tactics` (`in_zone`, `shade`, `told`), `Moment::shade` and
+  `before_first_turn`, `scene::Draw::Shade` (`h3_render::blit::darken_under`), the layout's
+  `cell_shade` and `[tactics_panel]` (`BattleLayout::panel_in`), `panel::NEXT_CREATURE` and
+  `START_COMBAT` and their states, the panel built for the defender, `Panels::before`, the keys
+  `battle.tactics.phase`, `battle.control.next-creature` and `battle.control.end-tactics`; the
+  binary: `h3-view situation` writes Tactics, the stills' message at the opening
+  (`spellbook::Boxes::opening`, `Still::opening`, `arrow`, `over`), the window's message at the
+  opening and its shade while a human's turn in the phase waits. Tests: the shade's, the panel's,
+  the layout's, the compositor's, the scene's, the stills', the placements against the shade.
+- **Recorded:** `tactics-open` (0 and 1 000 ms), `tactics`, `tactics-rest`, `tactics-move`,
+  `tactics-out`, `tactics-enemy`, `tactics-start` (`tactics.toml`): all eight frames exact.
+- **Checked:** `window --check 45 --human attacker` on `tactics.toml` under Xvfb: the message
+  answered, the phase ended without a press, the battle the bot's at once, 588 of 588 frames
+  read back exact; interactively the message, then after Enter the Champions' shade and the
+  phase's panel in Red's colours. `drawn`: the 134 others the same (the panel built for the
+  defender changes none); `drawn --record` adds the seven. `cargo xtask verify --scope client`:
+  no failing step; `clients/scripts/check.sh`: all gates passed (coverage 100 %).
+- **Found:** CLT-Q32 (the cursor after the message: copy recommended, built as the original's);
+  review items 28 to 31.
+
 ## Accepted review lists (M1 to M4)
 
 M1 and M2 moved from the epic file on 2026-10-20 (less start-up reading), unchanged; M3 at its

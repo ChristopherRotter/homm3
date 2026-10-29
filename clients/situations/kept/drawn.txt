@@ -4921,6 +4921,14 @@ set/smoke t00400 7187e56ddb60e280
 set/snow t00000 aa57d4036712229b
 set/subterranean t00000 05c527ed84667866
 set/swamp t00000 1cf494c9abed787b
+set/tactics t00100 0729c9cbd6f8e1a1
+set/tactics-enemy t00100 075e539dab2b8dbc
+set/tactics-move t00100 3654a3e2a736eeb0
+set/tactics-open t00000 36b979954078a056
+set/tactics-open t01000 36b979954078a056
+set/tactics-out t00100 89f94f3895b1ad97
+set/tactics-rest t00100 452c2a20ba22f321
+set/tactics-start t00100 59ee526b0c3218c9
 set/war-machines t00000 11083af6a1a8f70b
 set/war-machines t00100 af2765da604b80fb
 set/war-machines t00200 74849c6a6cf9086e

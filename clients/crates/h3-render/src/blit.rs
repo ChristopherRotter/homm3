@@ -238,6 +238,30 @@ pub fn darken(screen: &mut Screen, [x, y, width, height]: [i32; 4]) {
     }
 }
 
+/// Darkens the screen under an 8-bit image with its top-left corner at `(x, y)`: each pixel under
+/// a non-zero index has each channel halved, rounded down (0x44E6A0: the battle's movement shade,
+/// `ccellshd.pcx` over a hex; E17 M5 T4c2a, design §7.23); what lies outside the screen is left
+/// alone. A 24-bit image has no index and darkens nothing.
+pub fn darken_under(screen: &mut Screen, image: &Pcx, x: i32, y: i32) {
+    let Pcx::Indexed(image) = image else {
+        return;
+    };
+    let format = screen.format();
+    let width = index(image.width).max(1);
+    for (i, &v) in image.pixels.iter().enumerate() {
+        if v == 0 {
+            continue;
+        }
+        let (px, py) = (
+            i64::from(x) + to_i64(i % width),
+            i64::from(y) + to_i64(i / width),
+        );
+        if let Some(p) = screen.pixel_mut(px, py) {
+            *p = format.shadow_body(*p);
+        }
+    }
+}
+
 fn put_image(
     screen: &mut Screen,
     image: &Pcx,
