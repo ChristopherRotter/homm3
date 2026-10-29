@@ -686,9 +686,26 @@ fn the_cells_comparisons() {
     };
     assert!(same_moved(&moved, &gem, [2, -1]));
     // A frame's picture or a dialog's item counts as changed whatever cycles.
-    assert!(uses(&frame_of_viewer(0), &[]));
-    assert!(!uses(&gem, &["terrain.def".to_string()]));
-    assert!(uses(&terrain, &["TERRAIN.DEF".to_string()]));
+    assert!(uses(&frame_of_viewer(0), &[], [&[], &[]]));
+    assert!(!uses(&gem, &["terrain.def".to_string()], [&[], &[]]));
+    assert!(uses(&terrain, &["TERRAIN.DEF".to_string()], [&[], &[]]));
+    // The minimap's terrain counts only where a cycle (the last scene's or this one's) rotates
+    // its entries (8 and 9 here): not 10 to 20, nor another DEF's.
+    use Colour::Open;
+    let map = minimap([Open(0); 4]);
+    let terrain_def = ["terrain.def".to_string()];
+    let cycle = |def: &str, ranges: Vec<[u8; 2]>| Cycle {
+        def: def.to_string(),
+        ranges,
+        steps: 1,
+    };
+    let past = [cycle("TERRAIN.DEF", vec![[10, 20]]), cycle("other.def", vec![[1, 9]])];
+    assert!(!uses(&map, &terrain_def, [&past, &[]]));
+    assert!(uses(&map, &terrain_def, [&[], &[cycle("terrain.def", vec![[1, 8]])]]));
+    assert!(!uses(&map, &[], [&[], &[cycle("terrain.def", vec![[1, 8]])]]));
+    // It stays where it is when the view moves.
+    assert!(same_moved(&map, &map, [2, -1]));
+    assert!(stays_put(&map) && !stays_put(&gem));
     // A gem the batch lacks does not draw.
     let b = batch();
     let lacking = scene(vec![]);
@@ -949,6 +966,40 @@ fn a_kept_frame_draws_the_minimap_again_only_when_it_changes() {
         })
         .collect();
     as_fresh(&scenes, &minimap_batch(), [14, 12]);
+    // A minimap whose entries no cycle rotates (10 and 11), two rows above the clip: a scroll
+    // and a palette step leave its pixels, its box's too.
+    let quiet = |origin: [i32; 2], t: u32| {
+        let mut s = view_at(origin, t, clip);
+        let mut map = minimap([Owner(64), Open(0), Blocked(0), Open(0)]);
+        if let Draw::Minimap(tiles) = &mut map {
+            let mut look = (*tiles.look).clone();
+            look.size = [4, 2];
+            look.entries = [10, 11];
+            if let Some(p) = look.pattern.as_mut() {
+                p.rows = vec![1];
+            }
+            tiles.look = alloc::sync::Arc::new(look);
+        }
+        s.draws.push(map);
+        s.draws.push(Draw::Radar {
+            def: "radar.def".to_string(),
+            frame: 0,
+            at: [9, 0],
+            cut: [0, 0],
+            area: [9, 0, 13, 2],
+        });
+        s
+    };
+    let b = minimap_batch();
+    as_fresh(&[quiet([0, 0], 0), quiet([1, 0], 3), quiet([1, 1], 6)], &b, [14, 12]);
+    let mut composer = Composer::new([14, 12]).unwrap();
+    composer.compose(&quiet([0, 0], 0), &b).unwrap();
+    composer.compose(&quiet([1, 0], 3), &b).unwrap();
+    assert!(!composer.damage().is_empty());
+    assert!(composer
+        .damage()
+        .iter()
+        .all(|&r| meet(r, [9, 0, 13, 2]).is_none()));
     // Two scenes alike change nothing.
     let mut composer = Composer::new([14, 12]).unwrap();
     composer.compose(&scenes[1], &minimap_batch()).unwrap();

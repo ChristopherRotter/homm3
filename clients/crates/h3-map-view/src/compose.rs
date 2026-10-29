@@ -331,6 +331,16 @@ impl<'s> Changed<'s> {
             to.unwrap_or_default()
         });
         let changed = changed_defs(&last.cycles, self.cycles);
+        let cycles = [last.cycles.as_slice(), self.cycles];
+        let before = last.moving();
+        // The last scene's rectangles where its draws now compare: moved with the view but the
+        // minimap's, which stays where it is (E24 M3 T3a).
+        let was_at: Vec<[i32; 4]> = last
+            .rects
+            .iter()
+            .zip(before)
+            .map(|(&r, d)| if stays_put(d) { r } else { moved_by(r, shift) })
+            .collect();
         // The cells: every draw's rectangle now, the last's where they were and moved, the clip
         // when it moved.
         let rects = self
@@ -338,7 +348,7 @@ impl<'s> Changed<'s> {
             .iter()
             .copied()
             .chain(last.rects.iter().copied())
-            .chain(last.rects.iter().map(|&r| moved_by(r, shift)))
+            .chain(was_at.iter().copied())
             .chain(moved.map(|(clip, _)| clip));
         let Some(extent) = rects
             .fold(None, |r, d| union(r, Some(d)))
@@ -351,13 +361,12 @@ impl<'s> Changed<'s> {
             .map_or(([0, 0], DEFAULT_TILE), |v| (v.origin, v.tile.max(1)));
         let grid = Grid::new(extent, align, tile);
         grid.bucket(self.rects.iter().copied(), now);
-        grid.bucket(last.rects.iter().map(|&r| moved_by(r, shift)), was);
-        let before = last.moving();
+        grid.bucket(was_at.iter().copied(), was);
         // A minimap's draw meets many cells: its comparison made once a scene (E24 M3 T3a).
         let compared: RefCell<BTreeMap<(u32, u32), bool>> = RefCell::new(BTreeMap::new());
         let pair = |i: u32, j: u32| {
             let (d, e) = (&self.moving[to_index(i)], &before[to_index(j)]);
-            let fresh = || same_moved(d, e, shift) && !uses(d, &changed);
+            let fresh = || same_moved(d, e, shift) && !uses(d, &changed, cycles);
             if matches!(d, Draw::Minimap(_)) {
                 *compared.borrow_mut().entry((i, j)).or_insert_with(fresh)
             } else {
@@ -371,7 +380,9 @@ impl<'s> Changed<'s> {
         let dirty: Vec<bool> = (0..grid.cells())
             .map(|cell| {
                 let rect = grid.rect(cell, extent);
-                let stays = kept.is_none_or(|k| contains(k, rect));
+                // A move changes only the clip's pixels: a cell clear of it keeps its own.
+                let stays = kept.is_none_or(|k| contains(k, rect))
+                    || moved.is_some_and(|(clip, _)| meet(rect, clip).is_none());
                 !(stays && same(cell))
             })
             .collect();
@@ -621,22 +632,41 @@ fn same_moved(now: &Draw, was: &Draw, shift: [i32; 2]) -> bool {
                 && at(*y, *y_was, shift[1])
                 && def == def_was
         }
-        // The minimap stays where it is: the same only while the view does not move.
-        (Draw::Minimap(_), Draw::Minimap(_)) | (Draw::Radar { .. }, Draw::Radar { .. }) => {
-            shift == [0, 0] && now == was
-        }
+        // The minimap stays where it is, whatever the view does.
+        (Draw::Minimap(_), Draw::Minimap(_)) | (Draw::Radar { .. }, Draw::Radar { .. }) => now == was,
         _ => false,
     }
 }
 
-/// Whether `draw`'s DEF is one of `defs` (ignoring case).
-fn uses(draw: &Draw, defs: &[String]) -> bool {
+/// Whether `draw`'s DEF is one of `defs` (ignoring case); the minimap's only where one of
+/// `cycles` (the last scene's and this one's) rotates the entries its colours take.
+fn uses(draw: &Draw, defs: &[String], cycles: [&[Cycle]; 2]) -> bool {
     let named = |def: &str| defs.iter().any(|d| d.eq_ignore_ascii_case(def));
     match draw {
         Draw::Piece { def, .. } | Draw::Gem { def, .. } | Draw::Radar { def, .. } => named(def),
-        Draw::Minimap(tiles) => tiles.look.terrains.iter().any(|def| named(def)),
+        Draw::Minimap(tiles) => {
+            let entries = tiles.look.entries;
+            let rotated = |def: &str| {
+                cycles
+                    .iter()
+                    .flat_map(|c| c.iter())
+                    .filter(|c| c.def.eq_ignore_ascii_case(def))
+                    .flat_map(|c| c.ranges.iter())
+                    .any(|&[first, last]| entries.iter().any(|e| (first..=last).contains(e)))
+            };
+            tiles
+                .look
+                .terrains
+                .iter()
+                .any(|def| named(def) && rotated(def))
+        }
         Draw::Frame { .. } | Draw::Dialog(_) => true,
     }
+}
+
+/// Whether `draw` stays where it is when the view moves: the minimap's (E24 M3 T3a).
+fn stays_put(draw: &Draw) -> bool {
+    matches!(draw, Draw::Minimap(_) | Draw::Radar { .. })
 }
 
 /// The DEFs whose palettes cycle otherwise in `now` than in `was` (their ranges or steps).

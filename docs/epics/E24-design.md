@@ -1782,3 +1782,13 @@ each redraws it: T3b.
   while the view does not move. An owned object without an entrance on the map: its owner's
   colour (MCL-Q4's answer for its flags), the terrain's under `--bugs original`. Each scene draws
   the minimap as the live part gives it; when the original draws it again is T3b's.
+- **The kept frame** (T2b2's composer): the minimap's draws stay where they are when the view
+  moves (compared unmoved, their last rectangles unmoved), a cell clear of the view's clip keeps
+  its pixels through a move, a terrain's palette step counts for the minimap only where a cycle
+  rotates its entries (none does: 8 and 9 lie below every range), and its draw's comparison,
+  which meets some 25 cells, is made once a scene. Measured (the sandbox, `--measure 20`, `master`
+  against T3a): a frame made in a median 0.5 and 0.5 ms on `walk-1`, 1.0 and 1.0 on
+  `path-objects`, 1.4 and 1.5 on *Tale of two lands*; uploaded 24.9 → 25.5 % (the minimap at a
+  step), 5.2 and 5.2 %, 11.1 → 11.2 %. `Base::tiles` (the explored tiles and the heroes, each
+  scene) costs some 36 000 instructions a frame on a 36-tile map, about 0.6 million on a 144-tile
+  one: gone with T3b, which makes the tiles only when the original draws them.

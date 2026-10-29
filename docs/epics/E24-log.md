@@ -1467,4 +1467,16 @@ minimap as a still, T3b when it is drawn again); T2b2's numbers from the user's 
   `Look`, the exact scale), the scene's `Minimap` and `Radar` draws, the composer's, `TileIndex`'s
   level-wide terrain check; the tables' `[map.records]` (moved out of `[map.sound]`) and
   `[map.minimap]`; `OwnerArt::colour`; `masks.toml`'s `stills` (the situations' mask, `panels`
-  but the minimap; the sequences keep `panels` until T3b).
+  but the minimap; the sequences keep `panels` until T3b). The kept frame: the minimap's draws
+  stay put through a move, a cell clear of the clip keeps its pixels, a palette step counts only
+  where it rotates the minimap's entries, its comparison made once a scene (a first build redrew
+  and uploaded the minimap at every palette step and its gap to the view at every scroll: 5.5 →
+  11.7 % uploaded standing on `path-objects`; fixed before the checks below).
+- **Checked:** `h3map.py set`: the 40 situations recaptured, each 0 differing of 407 604 pixels
+  (the minimap's 20 736 now among them), first time; `drawn --record`: the 40 situations' digests
+  recorded anew, the 13 sequences' 459 frames the same and their timelines as recorded; the
+  window under Xvfb (`walk-1`, `path-objects`, *Tale of two lands*): every frame read back
+  exact, made as the same frame composed afresh, every change the headless loop's; side by side
+  with `master`'s build (`--measure 20`) the same medians (0.5, 1.0, 1.4–1.5 ms), uploads 24.9 →
+  25.5 % on `walk-1`, the same standing; unit tests (the walks, the colours, the four sizes, the
+  box and its exact scale, the composer's rectangles, box cut and kept frame).
