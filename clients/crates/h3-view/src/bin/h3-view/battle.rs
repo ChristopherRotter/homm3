@@ -716,9 +716,10 @@ impl<'g> Battle<'g> {
         let ground = self.ground;
         let Some(writer) = &ground.writer else {
             let parsed = parse(&ground.archives)?;
+            let timeline = self.played.timeline();
             return crate::log::panels(
                 &self.record,
-                &self.played.timeline().log,
+                (&timeline.log, &timeline.controllers),
                 &ground.tables,
                 &ground.layout,
                 (&parsed, &ground.exe),
@@ -726,7 +727,8 @@ impl<'g> Battle<'g> {
             );
         };
         if self.inputs.is_empty() && self.scrolls.is_empty() {
-            return writer.panels(&self.record, &self.played.timeline().log);
+            let timeline = self.played.timeline();
+            return writer.panels(&self.record, (&timeline.log, &timeline.controllers));
         }
         // The scrolls after the log's entries at their time.
         let mut logged = self.shown.log.clone();
@@ -741,7 +743,7 @@ impl<'g> Battle<'g> {
             .ok_or("the record holds no snapshot")?;
         let auto = crate::pointer::auto(&self.inputs, self.played.timeline());
         Ok(writer
-            .panels(&self.record, &logged)?
+            .panels(&self.record, (&logged, &self.played.timeline().controllers))?
             .with_auto(snapshot, auto))
     }
 

@@ -445,7 +445,7 @@ fn sequences(options: &Options) -> Result<usize, String> {
             // Auto Combat as the actions switched it (E17 M5 T4c1).
             let panels = log::panels(
                 &record,
-                &shown.log,
+                (&shown.log, &timeline.controllers),
                 &tables,
                 &layout,
                 (&archives, &exe),

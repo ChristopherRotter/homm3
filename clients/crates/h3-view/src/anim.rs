@@ -529,6 +529,9 @@ pub struct LookKey {
     pub look: Option<Effect>,
 }
 
+/// Hypnotize (the executable's spell number): the other side controls the stack while it holds
+/// (`stack_activation` 0x465330 sets the acting side +0x132C0 to the controller; E17 M5 T5b2).
+pub const HYPNOTIZE: u16 = 60;
 /// Bloodlust (the executable's spell number): its handler glows the stacks it reached
 /// (`cast_spell` 0x5A122B, 0x5A1359; E17 M5 T5b1).
 pub const BLOODLUST: u16 = 43;
@@ -1041,6 +1044,10 @@ pub struct Timeline {
     pub keys: Vec<Key>,
     /// The active stack from a time on (its turn started then).
     pub turns: Vec<(u32, u8)>,
+    /// Each turn's acting side, in the order of `turns` (E17 M5 T5b2, R3-1): the active stack's
+    /// controller as `stack_activation` 0x465330 sets +0x132C0, the other side while Hypnotize
+    /// holds it, a created stack's side.
+    pub controllers: Vec<Side>,
     /// The projectiles' flights, in order.
     pub flights: Vec<Flight>,
     /// The rays, in order.
@@ -1401,18 +1408,21 @@ impl Timeline {
     /// The side whose hidden objects the screen shows at `t` (E17 M5 T2b; `battle_redraw`
     /// 0x49460A to 0x49463A, design §7.16): the side to act when a human here plays it, else the
     /// other one; none when no human plays here (a record holds only what its viewer sees: every
-    /// object shows). The side to act is its turn's stack's side at the start
-    /// (*provisional*: a hypnotized stack's controller is not followed, R3-1).
+    /// object shows). The side to act is the acting side +0x132C0 its turn's start set (E17 M5
+    /// T5b2: [`Timeline::controllers`], a hypnotized stack's controller), before the first turn
+    /// the opening's active stack's side.
     pub fn screen(&self, t: u32) -> Option<Side> {
         if !self.humans.contains(&true) {
             return None;
         }
         let i = self.turns.partition_point(|(at, _)| *at <= t);
-        let stack = match i.checked_sub(1) {
-            Some(i) => Some(self.turns[i].1),
-            None => self.outlines.first().and_then(|(_, s)| *s),
+        let side = match i.checked_sub(1) {
+            Some(i) => self.controllers.get(i).copied()?,
+            None => {
+                let stack = self.outlines.first().and_then(|(_, s)| *s);
+                self.member(stack?)?.side
+            }
         };
-        let side = self.member(stack?)?.side;
         let human = self.humans[usize::from(side == Side::Defender)];
         Some(if human { side } else { opponent(side) })
     }
@@ -1959,6 +1969,7 @@ impl<'a> Growing<'a> {
             keys: Vec::new(),
             pending: Vec::new(),
             turns: Vec::new(),
+            controllers: Vec::new(),
             flights: Vec::new(),
             beams: Vec::new(),
             magics: Vec::new(),
@@ -2292,6 +2303,7 @@ impl<'a> Growing<'a> {
         }
         t.keys.append(&mut p.keys);
         t.turns.append(&mut p.turns);
+        t.controllers.append(&mut p.controllers);
         t.flights.append(&mut p.flights);
         t.beams.append(&mut p.beams);
         t.magics.append(&mut p.magics);
@@ -2551,6 +2563,7 @@ struct Player<'a> {
     /// the next frame drawn, as the executable draws them at its next redraw.
     pending: Vec<(u8, Pose)>,
     turns: Vec<(u32, u8)>,
+    controllers: Vec<Side>,
     flights: Vec<Flight>,
     beams: Vec<Beam>,
     /// The magic animations' frames (E17 M3 T3b).
@@ -3309,6 +3322,8 @@ impl Player<'_> {
                     let frozen = freezes(&events[i..], stack);
                     if !frozen {
                         self.turns.push((self.clock.now, stack));
+                        let controller = self.controller(stack);
+                        self.controllers.push(controller);
                         self.log.push((self.clock.now, Logged::Turn(stack)));
                         self.acting = Some(stack);
                     }
@@ -4881,6 +4896,25 @@ impl Player<'_> {
     fn effects(&mut self, events: &[Event]) {
         for event in events {
             self.effect(event);
+        }
+    }
+
+    /// The side that controls `stack` now (E17 M5 T5b2): its own, the other while Hypnotize holds
+    /// it (`stack_activation` 0x465330, installation.md §7.21's opening spells); a stack the
+    /// timeline does not follow the attacker.
+    fn controller(&self, stack: u8) -> Side {
+        let Some(live) = self.stacks.get(&stack) else {
+            return Side::Attacker;
+        };
+        let spells = &self.stage.casts.spells;
+        let hypnotized = live
+            .spells
+            .iter()
+            .any(|h| spells.get(h).is_some_and(|l| l.original == HYPNOTIZE));
+        if hypnotized {
+            opponent(live.side)
+        } else {
+            live.side
         }
     }
 

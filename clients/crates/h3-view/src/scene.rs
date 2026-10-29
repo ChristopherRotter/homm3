@@ -489,6 +489,9 @@ pub struct Panels {
     texts: Vec<(u32, String)>,
     /// When each hero's cast started, and its side (E17 M3 T7b-1), in time order.
     casts: Vec<(u32, Side)>,
+    /// The acting side (the active stack's controller) from none: the opening's, then each
+    /// turn's ([`Panels::with_controllers`]; none: a stack the opening's stacks do not name).
+    controllers: Vec<Option<Side>>,
     /// What the panel keeps after each number of turns started (`crate::panel::kept`), from
     /// none: the opening's, then each turn's.
     kept: Vec<crate::panel::Kept>,
@@ -506,17 +509,11 @@ impl Panels {
     #[must_use]
     pub fn new(snapshot: &Observation, events: &[Event], texts: Vec<(u32, String)>) -> Self {
         let turns = crate::panel::turns(snapshot, events);
-        // Built for the defender (the manager's +0x132C0 is 1 when `battle_start` builds the
-        // dialog, 0x462D24; E17 M5 T4c2a), then each turn's.
-        let mut kept = alloc::vec![crate::panel::Kept::built(Side::Defender)];
-        for o in core::iter::once(snapshot).chain(&turns) {
-            let last = kept[kept.len() - 1];
-            let now = controller(snapshot, o)
-                .map_or(last, |s| last.then(snapshot, (s, o.tactics.is_some())));
-            kept.push(now);
-        }
-        // The opening's own controller comes with the opening: none before it.
-        kept.remove(0);
+        let controllers: Vec<Option<Side>> = core::iter::once(snapshot)
+            .chain(&turns)
+            .map(|o| controller(snapshot, o))
+            .collect();
+        let kept = kept_by_turn(snapshot, &turns, &controllers);
         let mut by_time: Vec<(u32, usize)> = texts.iter().map(|(at, _)| *at).zip(0..).collect();
         by_time.sort_unstable();
         let mut last = 0;
@@ -528,9 +525,31 @@ impl Panels {
             turns,
             texts,
             casts: Vec::new(),
+            controllers,
             kept,
             by_time,
             auto: (Auto::default(), Vec::new()),
+        }
+    }
+
+    /// The panel with each turn's acting side (`+0x132C0`) as the timeline followed it (E17 M5
+    /// T5b2, R3-1; [`crate::anim::Timeline::controllers`]): `stack_activation` 0x465330 sets it
+    /// to the active stack's controller, so a hypnotized stack's turn shows its controller's
+    /// panel and a stack the battle created its side's (the opening's stacks alone name neither).
+    /// `controllers` are the turns' in order; a turn past them keeps the opening's stacks' answer.
+    #[must_use]
+    pub fn with_controllers(self, snapshot: &Observation, controllers: &[Side]) -> Self {
+        let mut by_turn = self.controllers;
+        for (k, &side) in controllers.iter().enumerate() {
+            if let Some(c) = by_turn.get_mut(k + 1) {
+                *c = Some(side);
+            }
+        }
+        let kept = kept_by_turn(snapshot, &self.turns, &by_turn);
+        Self {
+            controllers: by_turn,
+            kept,
+            ..self
         }
     }
 
@@ -540,10 +559,9 @@ impl Panels {
     #[must_use]
     pub fn with_auto(self, snapshot: &Observation, auto: Auto) -> Self {
         let mut selected = alloc::vec![false];
-        for (k, o) in core::iter::once(snapshot).chain(&self.turns).enumerate() {
+        for (k, c) in self.controllers.iter().enumerate() {
             let last = selected[k];
-            let human = controller(snapshot, o)
-                .is_some_and(|s| snapshot.sides[usize::from(s == Side::Defender)].human);
+            let human = c.is_some_and(|s| snapshot.sides[usize::from(s == Side::Defender)].human);
             selected.push(if human { auto.played(k) } else { last });
         }
         Self {
@@ -656,7 +674,7 @@ impl Panels {
         let (now, kept, autoplay) = self.state_at(snapshot, started, t);
         pressed_panel(
             &now,
-            controller(snapshot, &now),
+            self.controller_at(started, t),
             (kept, autoplay),
             text,
             layout,
@@ -675,7 +693,7 @@ impl Panels {
         let (now, kept, autoplay) = self.state_at(snapshot, started, t);
         crate::panel::shown(
             &now,
-            controller(snapshot, &now),
+            self.controller_at(started, t),
             (kept, autoplay),
             text,
             PLAYERS,
@@ -737,6 +755,12 @@ impl Panels {
         self.kept_at(started, t).0.scroll
     }
 
+    /// The acting side at `t`: the last turn's started by then (the opening's before the first).
+    fn controller_at(&self, started: &[(u32, u8)], t: u32) -> Option<Side> {
+        let k = self.kept_at(started, t).1.len();
+        self.controllers.get(k).copied().flatten()
+    }
+
     /// What the panel kept from the turns started by `t` (`crate::panel::kept`), and those turns;
     /// `started` in time order (a timeline's turns are).
     fn kept_at(&self, started: &[(u32, u8)], t: u32) -> (crate::panel::Kept, &[Observation]) {
@@ -746,9 +770,29 @@ impl Panels {
     }
 }
 
+/// What the panel keeps after each number of turns started (`crate::panel::kept`), from none:
+/// built for the defender (the manager's +0x132C0 is 1 when `battle_start` builds the dialog,
+/// 0x462D24; E17 M5 T4c2a), then the opening's and each turn's by its acting side `controllers`
+/// (the opening's first; none keeps what it kept).
+fn kept_by_turn(
+    snapshot: &Observation,
+    turns: &[Observation],
+    controllers: &[Option<Side>],
+) -> Vec<crate::panel::Kept> {
+    let mut kept = alloc::vec![crate::panel::Kept::built(Side::Defender)];
+    for (o, c) in core::iter::once(snapshot).chain(turns).zip(controllers) {
+        let last = kept[kept.len() - 1];
+        let now = c.map_or(last, |s| last.then(snapshot, (s, o.tactics.is_some())));
+        kept.push(now);
+    }
+    // The opening's own controller comes with the opening: none before it.
+    kept.remove(0);
+    kept
+}
+
 /// The controller of the battle `o`'s active stack, by the stacks of the opening `snapshot`
-/// (*provisional*: a controller Hypnotize changes and a stack the battle creates are not
-/// followed, as created stacks are not drawn; the queue's inbox).
+/// (none for a stack the battle created; a controller Hypnotize changes is the timeline's,
+/// [`Panels::with_controllers`]).
 fn controller(snapshot: &Observation, o: &Observation) -> Option<Side> {
     o.active
         .and_then(|id| snapshot.stacks.iter().find(|s| s.id == id))
