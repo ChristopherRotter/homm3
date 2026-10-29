@@ -64,9 +64,9 @@ pub struct Situation {
     #[serde(default)]
     pub hidden: Vec<[i32; 4]>,
     /// What the harness selects from its list after its walks and writes (E24 M3 T4a; design
-    /// §4.5): the selection scrolls its list to show it and redraws both lists, so a situation
-    /// whose heroes' points or mana or towns' day the harness writes needs one, of another hero
-    /// or town than the turn's start selects.
+    /// §4.5): the selection scrolls its list to show it and redraws both lists (and builds the
+    /// status window again, M3 T5b1), so a situation whose heroes or towns the harness writes
+    /// into needs one, of another hero or town than the turn's start selects.
     #[serde(default)]
     pub select: Option<SelectSpec>,
     /// Red's resources the harness writes before its selection (E24 M3 T5a, design §4.7), in the
@@ -653,7 +653,9 @@ impl Situation {
     /// The harness's writes into the lists and its selection (E24 M3 T4a): a town's day written
     /// only for Red's; the selection Red's hero on its tile (after its walk) or Red's town on its
     /// anchor; a selection whenever something is written, so that the lists show it; a hero's
-    /// with the resources or the date (T5a), a day of the game's.
+    /// with the resources or the date (T5a), a day of the game's; since T5b1 the status window's
+    /// writes into Red's heroes and towns, a garrison hero of Red's, seven slots at most, a silo
+    /// with chosen buildings.
     fn selection(&self) -> Result<(), String> {
         if let Some(t) = self.towns.iter().find(|t| t.built && t.owner != Some(0)) {
             return Err(format!(

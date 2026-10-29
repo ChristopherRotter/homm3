@@ -347,15 +347,28 @@ fn a_town_s_hall_fort_garrison_and_silo_by_what_stands() {
         ..town()
     });
     assert!(none.state(id::SILO_ONLY).hidden);
+    // The income's low 16 bits, signed (MCL-Q16): 40 000 shows -25 536.
+    let rich = shown(TownStatus {
+        income: 40_000,
+        ..town()
+    });
+    assert_eq!(rich.texts[&id::INCOME], "-25536");
 }
 
 #[test]
 fn nothing_drawn_but_a_hero_s_or_a_town_s_window_of_the_selection() {
     let layout = layout();
     let draw = |kingdom: Kingdom| {
-        window(&layout, &art(), &lists(), &live(kingdom), &names(), &texts())
-            .unwrap()
-            .is_some()
+        window(
+            &layout,
+            &art(),
+            &lists(),
+            &live(kingdom),
+            &names(),
+            &texts(),
+        )
+        .unwrap()
+        .is_some()
     };
     assert!(!draw(Kingdom {
         status: None,
@@ -386,7 +399,15 @@ fn nothing_drawn_but_a_hero_s_or_a_town_s_window_of_the_selection() {
     let mut kingdom = hero_kingdom(fiona());
     kingdom.heroes[1].portrait = 200;
     assert_eq!(
-        window(&layout, &art(), &lists(), &live(kingdom), &names(), &texts()).unwrap_err(),
+        window(
+            &layout,
+            &art(),
+            &lists(),
+            &live(kingdom),
+            &names(),
+            &texts()
+        )
+        .unwrap_err(),
         "a hero's portrait is past the tables'"
     );
 }

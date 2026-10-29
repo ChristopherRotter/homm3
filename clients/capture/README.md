@@ -617,7 +617,10 @@ situation walks, by play (`h3adv.walk`, each checked to arrive: a hero boards a 
 onto it; boarding takes the day's points, T5a), writes the lists' parts the situation gives
 (E24 M3 T4a: Red's heroes' `points` and `mana`, `Mem.write_points` and `write_mana`; Red's towns'
 `built`, a building built today, `Mem.write_town_built`, the town found by its record's place, its
-entrance two columns left of its anchor) and selects its `select` from its list (`h3adv.select`, a
+entrance two columns left of its anchor; M3 T5b1, the status window: Red's heroes' `skills`,
+`morale`, `luck` and `army`, `Mem.write_skills`, `write_bonuses`, `write_army`; Red's towns'
+`garrison` and `garrison_hero`, the town's own army and its garrison hero's index +0xC) and selects
+its `select` from its list (`h3adv.select`, a
 hero on a tile; `h3adv.select_town`, a town on its anchor: the list scrolled until it shows, both
 lists redrawn; a selection the turn's start made already is refused, since it would redraw
 nothing), writes Red's explored
@@ -647,7 +650,11 @@ draws (`Mem.map_heroes`: by the tiles of class 34 and 8 with a word, each hero's
 owner and boat; T5a) and every object's owner as the view finds it (`Mem.map_owners`, by its
 entrance tile and the owner's record, -1 none; T5b1), the viewer's explored bits of every level
 (`Mem.explored_rows`) and the path's arrows while one is shown (`Mem.path_arrows`: the manager's
-+0x48 while +0x4C is set; T5b2), all into `live.toml`. Ours:
++0x48 while +0x4C is set; T5b2), since E24 M3 T5b1 the status window (`Mem.status`: the kind shown,
+a hero's or a town's record, the window's own items for the morale, luck, silo and income; a
+town's name as its record of `TownName.txt`, a hero's `own_name` when its record's name is not its
+type's; a window of another kind, or a town's name the table lacks, fails the still), all into
+`live.toml`. Ours:
 `h3-map-view render --bugs original --live live.toml` with the same view and hidden rectangles;
 it refuses a `live.toml` whose anchors are not its map's (but a random dwelling's, which the
 map's load moves: T5b1, design §2.9) and one whose towns' pictures are not those their buildings
@@ -673,7 +680,9 @@ status bar's hint): the frame picture, the buttons, the status bar's and the res
 pictures and the parked cursor (the live part's `pointer`) are compared; since M3 T3a the stills
 (`set`, `still`, `drawn`'s situations) compare the minimap too, since T3b the sequences as well
 (one mask, `panels`, again); since T4a the stills compare the hero and town lists (T4a's
-`stills`, `panels` without them), since T4b the sequences as well (one mask, `panels`, again).
+`stills`, `panels` without them), since T4b the sequences as well (one mask, `panels`, again);
+since T5a the resource bar's amounts and the date, since T5b1 the status window (`panels` the
+status bar's hint alone).
 Every situation of T3b2
 is exact; `set.toml` records the counts. The menus run in real time, so each run's k and frame steps differ: they are read,
 never assumed.

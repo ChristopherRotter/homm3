@@ -25,8 +25,8 @@ use h3_map_view::art::{CELLS, Layer, MapArt, TemplateArt};
 use h3_map_view::check::{self, DefSummary};
 use h3_map_view::layout::{AdventureLayout, GEM_FRAMES};
 use h3_map_view::objects::{self, Shape};
-use h3_map_view::{panels, status};
 use h3_map_view::tables::{FACTIONS, Tables};
+use h3_map_view::{panels, status};
 use h3_ui::ui::Item;
 
 use crate::files;
@@ -189,9 +189,17 @@ fn gate(options: &Options) -> Result<usize, String> {
     // The status window's DEFs (E24 M3 T5b1, design §4.8): the frames its items draw.
     let status = &tables.map.status;
     let bonus = usize::try_from(status.bonus).unwrap_or(0);
-    let town_frames = lists.towns.frames(factions).saturating_sub(status.town_list);
+    let town_frames = lists
+        .towns
+        .frames(factions)
+        .saturating_sub(status.town_list);
     for (what, panel, id, frames) in [
-        ("morale", &layout.status_hero, status::id::MORALE, 2 * bonus + 1),
+        (
+            "morale",
+            &layout.status_hero,
+            status::id::MORALE,
+            2 * bonus + 1,
+        ),
         ("luck", &layout.status_hero, status::id::LUCK, 2 * bonus + 1),
         (
             "creature",
@@ -205,8 +213,18 @@ fn gate(options: &Options) -> Result<usize, String> {
             status::id::PORTRAIT,
             usize::try_from(town_frames).unwrap_or(0),
         ),
-        ("hall", &layout.status_town, status::id::HALL, status.halls.len() + 1),
-        ("fort", &layout.status_town, status::id::FORT, status.forts.len() + 1),
+        (
+            "hall",
+            &layout.status_town,
+            status::id::HALL,
+            status.halls.len() + 1,
+        ),
+        (
+            "fort",
+            &layout.status_town,
+            status::id::FORT,
+            status.forts.len() + 1,
+        ),
         ("silo", &layout.status_town, status::id::SILO, RESOURCES),
     ] {
         match panel.item(id) {
@@ -392,7 +410,9 @@ fn status_pictures(
                     *sizes.entry(found).or_default() += 1;
                     let item = size.map(|s| s.map(|n| u32::try_from(n).unwrap_or(0)));
                     if item.is_some_and(|w| w != found) {
-                        problems.push(format!("status window: {name} {found:?}, the item {size:?}"));
+                        problems.push(format!(
+                            "status window: {name} {found:?}, the item {size:?}"
+                        ));
                     }
                 }
                 Err(e) => problems.push(format!("status window: {name}: does not decode ({e:?})")),

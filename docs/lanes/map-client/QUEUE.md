@@ -20,20 +20,26 @@ T3 cut with the user (2026-10-29): T3a the minimap as a still, T3b the minimap o
 done: the epic's log). T4 cut with the user (2026-10-29) the same way: T4a the lists as stills,
 T4b the lists over time, T4c a changed panel item drawn again alone (all done: the epic's log).
 T5 cut with the user (2026-10-29): T5a the resource bar's amounts, the date and a text's reach
-(done: the epic's log), T5b the status window.
+(done: the epic's log), T5b the status window, cut with the user (2026-10-29) into T5b1, a hero's
+and a town's (done: the epic's log), and T5b2, the date's and the kingdom's; the other kinds
+(another player's turn, a resource found, a text) are M4's (the epic's "Later").
 
-### E24 M3 T5b — the status window
+### E24 M3 T5b2 — the date's and the kingdom's status windows, and when each shows
 
-- **Scope:** read and built: the status window's kinds (`AdStatHr`, `AdStatCs`, `AdStatOt`,
-  `ADSTATIN`, `ADSTATNX`: a hero's portrait, skills, morale, luck and army; a town's; the
-  kingdom's and the date's) and when each shows (`adventure_full_update` 0x417420's choice,
-  0x415DE0); the texts through the catalogue's keys (T5a's `panels::KEYS`, the viewer's
-  `texts.rs`); a text's change drawn alone by T5a's reach (design §4.7). Situations for each
-  kind.
-- **Acceptance:** the status window exact on every situation and the new ones (no `panels` mask
-  left but the status bar's hints); the Definition of Done.
-- **Depends on:** T2a (T4a for a hero's or a town's portraits; its army's pictures are T5b's);
-  T4c (its status window changes with each selection); T5a. **Status:** ready.
+- **Scope:** read and built (design §4.8 has the kinds and the chooser): the date's window (kind
+  1, `status_date_create` 0x450DD0: `AdStatOt.pcx`, `NewDay.def`'s frames by the day, `newday.wav`,
+  its `medfont.fnt` text; its panel's own drawing over time, its vtable) and the kingdom's (kind 2,
+  `status_kingdom_create` 0x452B80: `AdStatin.pcx`, `itmtl.def`, the texts by `"%s:"`); when each
+  shows: kind 0 without a selection (the date's builder), a timed kind's end (3 000 ms) met at a
+  view's redraw (0x40F861) and the window built again, the status window's click cycling the
+  kingdom's, the date's and the selection's (0x409FD8: the click itself is T6's; T5b2 stages a
+  kind by the manager's +0x398 and +0x39C, or by the click if the harness's `h3adv` can give it);
+  the texts through the catalogue's keys; the live part's `status` for the two kinds (the
+  harness's `status_toml` refuses them until then). Situations for each, and a sequence of a timed
+  kind's end back to the selection's window.
+- **Acceptance:** the status window exact on every situation and sequence, the new ones too; the
+  Definition of Done.
+- **Depends on:** T5b1. **Status:** ready.
 
 ### E24 M3 T6 — the mouse, the keys during a walk, the sound without the focus
 
@@ -48,7 +54,7 @@ T5 cut with the user (2026-10-29): T5a the resource bar's amounts, the date and 
   `Window::focused()`). Recorded: sequences with the clicks and the cursor's kinds.
 - **Acceptance:** the new sequences as recorded, every frame; the clicks in the window; the
   Definition of Done.
-- **Depends on:** T3 to T5b. **Status:** ready after T5b.
+- **Depends on:** T3 to T5b2. **Status:** ready after T5b2.
 
 ### E24 M3 T7 — M3's closure
 

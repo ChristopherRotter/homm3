@@ -164,6 +164,17 @@ box (it would run over the next cell's picture). **Recommendation:** (a) for now
 a resource is beyond a normal game; revisit with M4's engine if its amounts can reach it (b).
 **Blocked:** nothing; built as the original's.
 
+#### MCL-Q16 — A town's income shown by its low 16 bits (E24 M3 T5b1, a reading)
+
+The town's status window (`AdStatCs.pcx`, built by 0x4521F0; E24 design §4.8) writes the town's
+gold income by `%d`, but from the low 16 bits of `H3Town::GoldIncome` 0x5BF600's result, sign
+extended (0x45279F: `movsx edx, ax`): an income above 32 767 would show negative (40 000 as
+−25 536), above 65 535 wrapped. Not seen: a town's income stays far below (a Capitol's 4 000 and
+the Grail's bonus), so no situation can show it. **Options:** (a) the original's (built: the
+viewer shows the same 16 bits); (b) the client shows the whole income, behind `--bugs original`
+for the comparisons. **Recommendation:** (a): unreachable in play; revisit if M4's engine or a
+mod lets an income pass 32 767 (then (b)). **Blocked:** nothing; built as the original's.
+
 ## Answered
 
 Answered questions are history, kept out of the start-of-session reading. Read one only when a doc, a code comment or a queue entry cites its id (`git grep '<id>' -- docs`). The id's prefix says where it is; when a question is answered, move its entry from "Open" above to the **top** of that file (each lane edits only its own file, so lanes working at once never touch the same lines):

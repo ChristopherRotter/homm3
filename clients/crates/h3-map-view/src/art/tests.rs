@@ -179,11 +179,18 @@ fn the_maps_own_hero_names() {
         name: model::Text(name.to_vec()),
         players: 0xFF,
     };
-    raw.disposed_heroes = vec![disposed(own, b"Later"), disposed(7, b"Seven"), disposed(9, b"")];
+    raw.disposed_heroes = vec![
+        disposed(own, b"Later"),
+        disposed(7, b"Seven"),
+        disposed(9, b""),
+    ];
     let names = MapArt::from_raw(&raw).unwrap().hero_names;
     assert_eq!(
         names,
-        BTreeMap::from([(own, "O\u{e9}\u{20ac}".to_string()), (7, "Seven".to_string())])
+        BTreeMap::from([
+            (own, "O\u{e9}\u{20ac}".to_string()),
+            (7, "Seven".to_string())
+        ])
     );
 }
 

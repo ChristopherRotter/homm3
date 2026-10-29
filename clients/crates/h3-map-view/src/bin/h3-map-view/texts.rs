@@ -1,10 +1,10 @@
 //! The texts the panels show, in the adapters (E24 M3 T5a, *provisional*;
-//! `docs/epics/E24-design.md` §4.7): the keys the viewer uses ([`h3_map_view::panels::KEYS`], since
-//! T5b1 [`h3_map_view::status::KEYS`] and the families [`FAMILIES`], §4.8) taken from the client's
-//! key catalogue (`clients/text/keys.toml`, common with the battle client; its other families, the
-//! battle's, left out), their original forms read from the installation copy's text tables (the
-//! archives as the game searches a name) and from its `Heroes3.exe` (the table `EXE`), as the
-//! battle client's `h3-view text` reads them.
+//! `docs/epics/E24-design.md` §4.7): the keys the viewer uses ([`h3_map_view::panels::KEYS`],
+//! since T5b1 [`h3_map_view::status::KEYS`] and the families [`FAMILIES`], §4.8) taken from the
+//! client's key catalogue (`clients/text/keys.toml`, common with the battle client; its other
+//! families, the battle's, left out), their original forms read from the installation copy's text
+//! tables (the archives as the game searches a name) and from its `Heroes3.exe` (the table
+//! `EXE`), as the battle client's `h3-view text` reads them.
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
@@ -29,9 +29,9 @@ pub fn default_keys() -> PathBuf {
     files::default_map().join("../text/keys.toml")
 }
 
-/// The viewer's keys of the catalogue `text`: the panels' and the status window's ([`panels::KEYS`],
-/// [`status::KEYS`]), each one it must hold, and its families' ([`FAMILIES`]) over as many ids as
-/// `ids` gives each.
+/// The viewer's keys of the catalogue `text`: the panels' and the status window's
+/// ([`panels::KEYS`], [`status::KEYS`]), each one it must hold, and its families' ([`FAMILIES`])
+/// over as many ids as `ids` gives each.
 pub fn keys(text: &str, ids: &BTreeMap<String, usize>) -> Result<Keys, String> {
     let file: KeysFile = toml::from_str(text).map_err(|e| e.to_string())?;
     // The other families' entries are the battle client's asset tables: none here.

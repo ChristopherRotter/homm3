@@ -13,8 +13,9 @@
 //! (`itmtls.def`: 1 to 3 for the Town Hall, City Hall and Capitol standing, tested in that order,
 //! else 0) and fort (`itmcls.def`: 0 to 2 for the Fort, Citadel and Castle, else 3), the garrison
 //! hero's mark (`townqkgh.pcx`), its silo's one or two resources (`smalres.def`; three or more
-//! show none), its gold income and the army it shows, as a hero's but its filled slots one after
-//! another from the first place (a hero's each at its slot's).
+//! show none), its gold income (its low 16 bits, signed: MCL-Q16) and the army it shows, as a
+//! hero's but its filled slots one after another from the first place (a hero's each at its
+//! slot's).
 
 use alloc::collections::BTreeMap;
 use alloc::format;
@@ -52,7 +53,7 @@ pub mod id {
     pub const SILO_SECOND: u16 = 2018;
     /// A town's silo: its only resource.
     pub const SILO_ONLY: u16 = 2019;
-    /// A hero's morale; a town's garrison hero's mark.
+    /// A hero's morale.
     pub const MORALE: u16 = 2008;
     /// A town's garrison hero's mark.
     pub const GARRISON: u16 = 2008;
@@ -164,9 +165,9 @@ impl StatusArt {
 
 /// The status window drawn for `live` (design §4.8): its panel (the layout's `status_hero` or
 /// `status_town`) and what its items show, the texts in `texts`, a hero's name of its own in
-/// `names` (the map's, [`crate::art::MapArt::hero_names`]; one the map lacks shows its type's). None when it shows nothing yet
-/// (no status, another kind, a hero's or a town's window without that selection); an error for a
-/// portrait past the tables'.
+/// `names` (the map's, [`crate::art::MapArt::hero_names`]; one the map lacks shows its type's).
+/// None when it shows nothing yet (no status, another kind, a hero's or a town's window without
+/// that selection); an error for a portrait past the tables'.
 ///
 /// # Errors
 /// A hero's portrait the tables lack.
@@ -274,9 +275,12 @@ fn town_window(art: &StatusArt, status: &TownStatus, picture: u32, texts: &Catal
             }
         }
     }
+    // The income's low 16 bits as a signed number (0x45279F: `movsx edx, ax`; MCL-Q16).
+    let [low, high, ..] = status.income.to_le_bytes();
+    let income = i16::from_le_bytes([low, high]);
     shown
         .texts
-        .insert(id::INCOME, number(texts, i64::from(status.income)));
+        .insert(id::INCOME, number(texts, i64::from(income)));
     army(art, &status.army, Places::Packed, texts, &mut shown);
     shown
 }

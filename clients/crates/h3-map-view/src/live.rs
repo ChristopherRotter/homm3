@@ -146,9 +146,10 @@ pub struct Stack {
 impl Status {
     /// A live part's `status` as the harness writes it (`h3map.py`'s `status_toml`): `{ kind =
     /// 3, hero = <type>, own_name = <0 or 1>, skills = [a, d, p, k], morale = m, luck = l, army =
-    /// [[type, count], ...7] }`, `{ kind = 4, name = <TownName.txt's record>, buildings = [<ids standing>], garrison =
-    /// <0 or 1>, army = [[type, count], ...7], silo = [<resources>], income = n }` or `{ kind = n
-    /// }` for another kind (an empty slot's type −1); none for anything else.
+    /// [[type, count], ...7] }`, `{ kind = 4, name = <TownName.txt's record>, buildings = [<ids
+    /// standing>], garrison = <0 or 1>, army = [[type, count], ...7], silo = [<resources>],
+    /// income = n }` or `{ kind = n }` for another kind (an empty slot's type −1); none for
+    /// anything else.
     #[must_use]
     pub fn read(value: &toml::Value) -> Option<Self> {
         let table = value.as_table()?;
@@ -746,9 +747,9 @@ impl Live {
         // the map's order, none built in today; the first hero selected, else the first town; no
         // resources (the difficulty's starting ones are the engine's rule) on the first day. The
         // status window the selection's (E24 M3 T5b1, design §4.8): the hero named by the map or
-        // its type, its skills, morale, luck and army the engine's (none known: 0, empty); the town named
-        // by its faction's first name (its name is the new game's draw), its buildings at the
-        // start standing, no garrison, silo or income known.
+        // its type, its skills, morale, luck and army the engine's (none known: 0, empty); the
+        // town named by its faction's first name (its name is the new game's draw), its buildings
+        // at the start standing, no garrison, silo or income known.
         let selected = match (portraits.len(), towns_kept.len()) {
             (0, 0) => Selected::None,
             (0, _) => Selected::Town(0),
