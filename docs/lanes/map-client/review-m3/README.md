@@ -14,6 +14,7 @@ session consolidates them and fixes (T7b). Nothing here is merged as is.
 | `F3-hover.md` | the mouse-over: hints and cursor | `h3-map-view/src/hover.rs`, `hover/contents.rs`; `live.rs`'s `[hover]` part (visits, contents, costs); `timeline.rs`'s `Cursor` and `look_again` … `selection`; `h3-ui/src/cursor.rs`'s M3 part | §4.10, §4.11, §4.12 |
 | `F4-input.md` | the clicks, keys, the walk's input, the sound without the focus | `timeline.rs`'s `Action` … `Unplayable`, `run` … `choose_town`, `edge` … `spend`; `h3-map-view/src/keys.rs`, `h3-ui/src/keys.rs`; `h3-ui/src/music.rs`'s focus; `h3-sdl/src/lib.rs`'s `Audio::hold`; the binary's `window.rs` (events, focus) and `audio.rs` (focus) | §4.13, §4.14, §4.15 |
 | `F5-harness.md` | the harness's M3 additions | `capture/h3map.py`, `capture/h3mem.py` (M3's diff), `map/masks.toml`, `map/sequences.toml`'s keys; `h3-map-view/src/situation.rs`'s M3 parts; the binary's `sequences.rs` | the runbook `clients/capture/README.md`'s map sections |
+| `F6-rest.md` | what F1 to F4 left (their "Not covered") | the binary's `window.rs` from line 720, `gate.rs`; `h3-ui/src/ui.rs`'s `Dialog::draws`; `h3-ui/src/paint.rs`'s `reach`; `h3-ui/src/cursor.rs`'s `Cursor::rect` against the cursor's drawer; `tables.rs`'s parts F1 left; `hover.rs`'s cases beyond the design's readings, spot-checked against the executable (the 42-class table 0x63AA58 among them) | §4.2 (the cursor's rectangle), §4.10 |
 
 ## Rules for a reviewer
 
