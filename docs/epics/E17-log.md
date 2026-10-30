@@ -3683,9 +3683,21 @@ capture on each instance lost and rerun; files kept); the baseline `check.sh` ha
   two runs (recorded 2 523 pixels: its first frame read a step before memory, the trap): its
   count recorded again, `--reuse` kept it (`kept/` `heroes` at 7 530 now his victory's frame).
   `raise`'s `before` at 1 312 moved from frame 0 to 1 (the trap's variation, no compared pixel).
-  The sound sequences ran on the fixed harness.
-- **Next (T8b2, QUEUE):** R4b, R5a to R5c, R6 and their fixers; the leftovers; `drawn` with
-  the fixed viewer (`auto`'s 7 530 digest changes with its kept hero: `drawn --record`), `check.sh`.
+  Every one as recorded at its first full run but `defended`'s first run on the fixed harness
+  (the game's page fault in `rumour_pick_text` on the new-game screen, Wine's crash dialog taken
+  for a display of depth 24; the rerun as recorded): the screens' timeouts now name a crash from
+  `wine.log` (`Game.crash_note`, the runbook's trap). The six sound sequences (59 to 64) and two
+  silent ones (`teleport`, `defended`) ran on the fixed harness: the ack's ninth field 9 and
+  tenth 0 in each sound run, 0 and 0 in the silent ones. The harness's own check
+  (`harness-check.toml`): its first run stopped at the Gear battle (no attack cursor, the
+  runbook's trap), its rerun passed (23 steps). About 2 hours for the 37 on the two instances.
+- **Checked:** the release viewer with F2's fixes, `drawn` over all 156 items: 155 the same,
+  `auto`'s 7 530 changed with its kept hero only (the frame `--reuse`d with this viewer: exact,
+  as recorded), its digest recorded (`drawn --only auto --record`); `check.sh` all gates
+  (coverage 100 %); `verify --scope client --with-original-data` no failing step.
+- **The sub-agents' sizes** (reported tokens): reviewers 157 000 to 219 000, fixers 228 000 and
+  274 000, capture agents 84 000 to 103 000 (each given a second and third round by message).
+- **Next (T8b2, QUEUE):** R4b, R5a to R5c, R6 and their fixers; the leftovers; `drawn`, `check.sh`.
 
 ## Accepted review lists (M1 to M4)
 
