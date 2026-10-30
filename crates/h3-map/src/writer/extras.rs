@@ -4,10 +4,13 @@
 //! body the map editor gives such an object left as placed. [`write_with`](super::write_with)
 //! writes them; without them it writes what [`write`](super::write) wrote before, byte for byte.
 
+use std::collections::BTreeMap;
+
 use super::{
-    ARMY_SLOTS, Map, ObjectTemplate, Out, RoadKind, Terrain, Town, TownBuildings, WriteError,
-    out_of_range, write_army, write_town,
+    ARMY_SLOTS, Map, ObjectTemplate, Out, RoadKind, Terrain, Town, TownBuildings,
+    WriteError, out_of_range, write_army, write_town,
 };
+use crate::model::Mission;
 
 /// River kinds in map files.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -74,6 +77,12 @@ pub struct Extras {
     pub tiles: Vec<GivenTile>,
     /// Objects written after the map's own (the surface's and the underground's), in this order.
     pub objects: Vec<AnyObject>,
+    /// The quest of a Seer's Hut (83) or a Quest Guard (215) of [`Extras::objects`], by its
+    /// index there (E24 M3 T6a2b, the map client lane's additive change): written in the SoD
+    /// layout with no deadline and no texts, a seer's reward nothing; the others' left without
+    /// one. A hero's or a monster's mission names its object's identifier (an object's index
+    /// in the written list plus one: the map's placed objects, then these).
+    pub quests: BTreeMap<usize, Mission>,
 }
 
 /// The classes whose bodies name a hero: a hero, a prison, a random hero, a hero placeholder.
@@ -117,6 +126,20 @@ fn packed(level: u8, (x, y): (u8, u8)) -> u64 {
 }
 
 pub(super) fn validate(map: &Map, extras: &Extras) -> Result<(), WriteError> {
+    for (&index, mission) in &extras.quests {
+        let class = extras.objects.get(index).map(|o| o.template.class);
+        if !matches!(class, Some(83 | 215)) {
+            return Err(out_of_range("quest of an object without one (index)", index));
+        }
+        let listed = match mission {
+            Mission::Artifacts(a) => a.len(),
+            Mission::Army(a) => a.len(),
+            _ => 0,
+        };
+        if listed > usize::from(u8::MAX) {
+            return Err(out_of_range("quest list length", listed));
+        }
+    }
     let levels = 1 + u8::from(map.underground.is_some());
     let side = map.size;
     let mut given = vec![false; usize::from(levels) * usize::from(side) * usize::from(side)];
@@ -198,9 +221,23 @@ pub(super) fn tile_bytes(tile: &GivenTile) -> [u8; 7] {
 /// (`docs/formats/h3m.md`, "Object bodies by class"; where the editor chooses, its choice is the
 /// most common body in the game's SoD maps, E24 M1 T3a): nothing optional, no message, no
 /// guards, no quest, random amounts and choices, the owner or neutral; `identifier` for a
-/// monster's and a town's. The hero classes never reach it (`validate`).
-pub(super) fn write_empty_body(out: &mut Out, object: &AnyObject, identifier: u32) {
+/// monster's and a town's. The hero classes never reach it (`validate`). A Seer's Hut's or a
+/// Quest Guard's `quest` replaces its empty one (E24 M3 T6a2b).
+pub(super) fn write_empty_body(
+    out: &mut Out,
+    object: &AnyObject,
+    identifier: u32,
+    quest: Option<&Mission>,
+) {
     let template = &object.template;
+    if let Some(mission) = quest {
+        write_quest(out, mission);
+        if template.class == 83 {
+            // The reward: nothing; two unused.
+            out.bytes(&[0; 3]);
+        }
+        return;
+    }
     let owner = u32::from(object.owner.unwrap_or(0xff));
     match template.class {
         // An event: no message, no rewards, every player, not the computer, removed after its
@@ -286,6 +323,54 @@ pub(super) fn write_empty_body(out: &mut Out, object: &AnyObject, identifier: u3
     }
 }
 
+/// A quest in the SoD layout (`docs/formats/h3m.md`, the quest guard's body): the mission's code
+/// and data, no deadline (-1) and three empty texts.
+fn write_quest(out: &mut Out, mission: &Mission) {
+    match mission {
+        Mission::Level(n) => {
+            out.u8(1);
+            out.u32(*n);
+        }
+        Mission::PrimarySkills(p) => {
+            out.u8(2);
+            out.bytes(p);
+        }
+        Mission::KillHero(n) => {
+            out.u8(3);
+            out.u32(*n);
+        }
+        Mission::KillCreature(n) => {
+            out.u8(4);
+            out.u32(*n);
+        }
+        Mission::Artifacts(a) => {
+            out.u8(5);
+            out.u8(u8::try_from(a.len()).unwrap_or(u8::MAX));
+            for &a in a {
+                out.u16(a);
+            }
+        }
+        Mission::Army(a) => {
+            out.u8(6);
+            out.u8(u8::try_from(a.len()).unwrap_or(u8::MAX));
+            for s in a {
+                out.u16(s.creature);
+                out.u16(s.count);
+            }
+        }
+        Mission::Resources(r) => {
+            out.u8(7);
+            for &x in r {
+                out.u32(x);
+            }
+        }
+        Mission::Hero(h) => out.bytes(&[8, *h]),
+        Mission::Player(p) => out.bytes(&[9, *p]),
+    }
+    out.u32(u32::MAX); // no deadline
+    out.bytes(&[0; 12]); // three empty texts
+}
+
 #[cfg(test)]
 mod tests {
     use super::super::tests::smoke_like_map;
@@ -295,8 +380,8 @@ mod tests {
     };
     use super::*;
     use crate::model::{
-        Bits, Body, Buildings, EventBody, MonsterBody, Pos, RandomDwelling, Rewards, Text, Tile,
-        TownBody,
+        Bits, Body, Buildings, EventBody, MonsterBody, Pos, Quest, RandomDwelling, Reward, Rewards,
+        Stack, Text, Tile, TownBody,
     };
     use crate::{Limits, RawMap, parse};
 
@@ -539,7 +624,7 @@ mod tests {
                     0x40,
                 ),
             ],
-            objects: vec![],
+            ..Extras::default()
         };
         let m = read_back(&with_underground(), &extras);
         let tile = |x, y, z| *m.terrain.tile(Pos { x, y, z }).unwrap();
@@ -597,6 +682,7 @@ mod tests {
                 object(0, (21, 20), pikeman.template.clone()),
                 object(1, (4, 4), template(91, 0)),
             ],
+            ..Extras::default()
         };
         let m = read_back(&map, &extras);
         // The hero's and the monster's templates, then the boat's, the mine's and the sign's.
@@ -730,6 +816,7 @@ mod tests {
         let extras = Extras {
             tiles: vec![],
             objects: objects.clone(),
+            ..Extras::default()
         };
         let m = read_back(&map, &extras);
         assert_eq!(m.objects.len(), 2 + objects.len());
@@ -767,11 +854,11 @@ mod tests {
         };
         let tiles = |tiles| Extras {
             tiles,
-            objects: vec![],
+            ..Extras::default()
         };
         let objects = |objects| Extras {
-            tiles: vec![],
             objects,
+            ..Extras::default()
         };
         let map = smoke_like_map();
         assert_eq!(
@@ -836,5 +923,90 @@ mod tests {
             error("object owner (no playable player)", 2)
         );
         assert!(write_with(&map, &objects(vec![owned(53, 1, 1)])).is_ok());
+    }
+
+    /// E24 M3 T6a2b: a Seer's Hut's and a Quest Guard's quests read back as written, with no
+    /// deadline, no texts and a seer's reward nothing; a quest elsewhere or a list too long is
+    /// refused.
+    #[test]
+    fn quests_are_written() {
+        let error = |what, value| Err(WriteError::OutOfRange { what, value });
+        let map = smoke_like_map();
+        let missions = [
+            Mission::Level(7),
+            Mission::PrimarySkills([1, 2, 0, 3]),
+            Mission::KillHero(1),
+            Mission::KillCreature(2),
+            Mission::Artifacts(vec![7, 140]),
+            Mission::Army(vec![
+                Stack {
+                    creature: 0,
+                    count: 10,
+                },
+                Stack {
+                    creature: 140,
+                    count: 1,
+                },
+            ]),
+            Mission::Resources([0, 1, 0, 0, 0, 0, 1000]),
+            Mission::Hero(12),
+            Mission::Player(3),
+        ];
+        let mut extras = Extras::default();
+        for (i, mission) in missions.iter().enumerate() {
+            let x = u8::try_from(2 * i).unwrap();
+            extras.objects.push(object(0, (x, 10), template(83, 0)));
+            extras.objects.push(object(0, (x, 12), template(215, 0)));
+            extras.quests.insert(2 * i, mission.clone());
+            extras.quests.insert(2 * i + 1, mission.clone());
+        }
+        extras.objects.push(object(0, (30, 14), template(83, 0)));
+        let m = read_back(&map, &extras);
+        let placed = m.objects.len() - extras.objects.len();
+        let quest = |mission: &Mission| Quest {
+            mission: mission.clone(),
+            deadline: -1,
+            first_visit: Text::default(),
+            next_visit: Text::default(),
+            completed: Text::default(),
+        };
+        for (i, mission) in missions.iter().enumerate() {
+            let Body::SeerHut(Some(task)) = &m.objects[placed + 2 * i].body else {
+                panic!("a seer hut with a quest: {:?}", m.objects[placed + 2 * i].body)
+            };
+            assert_eq!((&task.quest, task.reward), (&quest(mission), Reward::Nothing));
+            assert_eq!(
+                m.objects[placed + 2 * i + 1].body,
+                Body::QuestGuard(Some(quest(mission)))
+            );
+        }
+        assert_eq!(m.objects.last().unwrap().body, Body::SeerHut(None));
+        let mut elsewhere = Extras::default();
+        elsewhere.objects.push(object(0, (5, 5), template(8, 0)));
+        elsewhere.quests.insert(0, Mission::Level(1));
+        assert_eq!(
+            write_with(&map, &elsewhere),
+            error("quest of an object without one (index)", 0)
+        );
+        elsewhere.quests = BTreeMap::from([(1, Mission::Level(1))]);
+        assert_eq!(
+            write_with(&map, &elsewhere),
+            error("quest of an object without one (index)", 1)
+        );
+        let mut long = Extras::default();
+        long.objects.push(object(0, (5, 5), template(215, 0)));
+        long.quests.insert(0, Mission::Artifacts(vec![0; 256]));
+        assert_eq!(write_with(&map, &long), error("quest list length", 256));
+        long.quests.insert(
+            0,
+            Mission::Army(vec![
+                Stack {
+                    creature: 0,
+                    count: 1
+                };
+                256
+            ]),
+        );
+        assert_eq!(write_with(&map, &long), error("quest list length", 256));
     }
 }

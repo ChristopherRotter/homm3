@@ -44,7 +44,7 @@ fn source() -> RawMap {
     };
     let extras = Extras {
         tiles: vec![river],
-        objects: vec![],
+        ..Extras::default()
     };
     let bytes = writer::write_with(&map, &extras).unwrap();
     h3_map::parse(&bytes, &Limits::default()).unwrap()
@@ -265,6 +265,7 @@ fn source_with_objects() -> RawMap {
             object("tree.def", 155, (3, 3)),
             object("pile.def", 79, (4, 4)),
         ],
+        ..Extras::default()
     };
     let bytes = writer::write_with(&map, &extras).unwrap();
     h3_map::parse(&bytes, &Limits::default()).unwrap()
