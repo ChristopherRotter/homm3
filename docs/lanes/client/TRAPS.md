@@ -126,6 +126,11 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   timeline pose's (`scene::living`), never the snapshot's `alive`; the records count every
   snapshot stack, a dead or gone one's too. A battle on a server opens again from a record
   opened afresh (`Battle::afresh`): state kept across it in the window resets there.
+- Accounts on a local `h3-server` (E17 M5 T7, design §11.4): an account is a server's (another
+  data directory: `--register` again); `anonymous = false` makes every join need `--login`; a
+  created game's id is its journal's name in `<data>/games/`; a `battle.toml` game outlasts a
+  150 s `--check` at speed 0, `seq-raise.toml` at `--speed 2` reaches the result window in ~25 s.
+  `h3-view account` reads the password from standard input: pipe it in unattended.
 - `h3_formats`' `c_string` takes printable ASCII alone: an executable string with line breaks
   (the book's place formats) is read by the client's `text::exe_string`.
 - The viewer reads `clients/layouts/*.toml` at run time: a layout change made while a batch

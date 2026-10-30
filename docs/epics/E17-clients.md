@@ -251,9 +251,13 @@ the stacks created mid-battle.
       by the timeline's living set, the moat's strip by the fixed rows (R1-3); a re-join's
       record extends the one taken or opens afresh (`remote::rejoined`): a new timeline; a join
       mid-battle and a restart of a local `h3-server` played, every frame exact.
-- **T7, accounts:** the account's key from the login and the password (argon2id, Ed25519; their
-  dependencies the user's decision, at the task), the login with the welcome's check, seats by
-  account, `Rekey` after a password change, the new goodbyes.
+- **T7, accounts** (done 2026-10-30, kept whole by the user; design §11.4): `argon2` the
+  engine's (the user's choice), the password from standard input shown as typed (the user's
+  choice); `h3-view account` derives and keeps the key (`remote::Accounts`), the test vector
+  reproduced; `Client::login` with the re-key from an earlier key due at the server after a
+  password change; seats by account; `remote::farewell`; played logged in on a local
+  `h3-server`, headless and in two windows to the result window, seats re-taken by account
+  after drops, every frame exact.
 - **T8, M5's closure:** a fresh reviewer, the recipes' starting bonus set to Gold (M4's item 15),
   every capture afresh, the review list, the next milestone refined.
 - **Exit:** a battle played to its end in the window, in hot seat and on a server; the new
@@ -541,3 +545,18 @@ M3 at its review, T9b, M4 at its review, T3c). The next milestone's list starts 
     opening's stacks.
 60. Re-dialing (T6b2): once a second until a server answers, however long; the drop said once
     until a welcome.
+61. The accounts file (T7): `accounts.txt` in the working directory by default (as `pins.txt`),
+    a line per key (`<login> key|old <seed> [<address>...]`), the seed in the clear, the file
+    made owner-only on Unix (Windows: the folder's permissions); no system keychain.
+62. The password (T7, the user's choice): from standard input, a line shown as typed, its prompt
+    only on a terminal; derived once per device by `h3-view account`; no dialog in the window
+    (the original has none to copy; the server browser's milestone may want one).
+63. A password change (T7): the key so far due at every server pinned then (an older key's
+    servers left to it), re-keyed at the next login there; an earlier key due nowhere is
+    forgotten; a server never dialed again keeps it in the file (its line edited by hand).
+64. The final goodbyes (T7, `remote::farewell`): `Rekeyed`, `CommandLimit`, `Abandoned`,
+    `Replaced` and `Protocol` end a seat's run with their reason (the window closes, the reason
+    on standard error); `Replaced` re-dialed before T7, which made two connections of a seat take
+    it from each other in turn. Other goodbyes re-dial as a drop.
+65. A login refused ends the run (no second attempt, no prompt); `--register` is sent at every
+    login of a run (the server takes it as a login once the account exists with the key).

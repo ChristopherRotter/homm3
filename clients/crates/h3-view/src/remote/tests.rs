@@ -574,6 +574,10 @@ fn pins_read_and_write_a_line_per_address() {
     pins.pin("ws://a.example", b);
     pins.pin("ws://c.example", a);
     assert_eq!(pins.key("ws://a.example"), Some(b));
+    assert_eq!(
+        pins.addresses().collect::<Vec<_>>(),
+        ["ws://a.example", "ws://c.example", "wss://b.example"]
+    );
     assert_eq!(Pins::parse(&pins.text()), Ok(pins));
     assert_eq!(Pins::parse(""), Ok(Pins::default()));
     let key = account::to_hex(&a);
@@ -829,4 +833,216 @@ fn a_record_fetched_at_a_re_join_extends_the_one_taken_or_opens_afresh() {
     };
     assert_eq!(rejoined(&taken, &other(8, Seat::Attacker)), Rejoined::Other);
     assert_eq!(rejoined(&taken, &other(7, Seat::Defender)), Rejoined::Other);
+}
+
+const OLD: [u8; KEY_BYTES] = [2; KEY_BYTES];
+const NEW: [u8; KEY_BYTES] = [3; KEY_BYTES];
+
+/// The stand-in signature by the key `signer` names: [`NEW`] the account's, [`OLD`] the earlier.
+fn by(signer: Signer, message: &[u8]) -> [u8; SIGNATURE_BYTES] {
+    sign(if signer == Signer::Key { &NEW } else { &OLD }, message)
+}
+
+/// `alice`'s login by `key` signed by `signer`, numbered `seq`, registering `display`.
+fn login_message(
+    seq: u32,
+    key: &[u8; KEY_BYTES],
+    signer: Signer,
+    display: Option<&str>,
+) -> ClientMessage {
+    let signed = account::login_message(ADDRESS, &CHALLENGE, "alice", display);
+    ClientMessage::Login {
+        seq,
+        login: "alice".to_string(),
+        key: account::to_hex(key),
+        signature: account::to_hex(&by(signer, &signed)),
+        display: display.map(ToString::to_string),
+    }
+}
+
+fn answer(display: &str) -> ServerMessage {
+    ServerMessage::Account {
+        seq: 1,
+        display: display.to_string(),
+        listed: true,
+    }
+}
+
+fn refused(reason: Refusal) -> ServerMessage {
+    ServerMessage::Refused { reason }
+}
+
+const ALICE: Login<'static> = Login {
+    login: "alice",
+    key: NEW,
+    old: None,
+    display: None,
+};
+
+#[test]
+fn a_login_is_signed_for_the_address_dialed_and_the_welcome_s_challenge() {
+    let mut client = Client::new(ADDRESS, NONCE, Some(KEY));
+    assert_eq!(client.login(&ALICE, by), None, "not before the welcome");
+    client.receive(welcome(ADDRESS, &KEY), verify).unwrap();
+    assert_eq!(
+        client.login(&ALICE, by),
+        Some(login_message(1, &NEW, Signer::Key, None))
+    );
+    assert_eq!(client.login(&ALICE, by), None, "one login at a time");
+    assert_eq!(
+        client.join(4, Seat::Attacker, None),
+        None,
+        "no join while it is asked"
+    );
+    assert_eq!(
+        client.receive(answer("Alice"), verify),
+        Ok(vec![Note::LoggedIn("Alice".to_string())])
+    );
+    assert_eq!(client.account(), Some("Alice"));
+    assert_eq!(client.login(&ALICE, by), None, "logged in already");
+    // The seat is the account's: joined without a token.
+    assert_eq!(
+        client.join(4, Seat::Attacker, None),
+        Some(ClientMessage::Join {
+            game: 4,
+            seat: Seat::Attacker,
+            token: None
+        })
+    );
+    // An account's answer outside a login is no step of it.
+    assert!(matches!(
+        client.receive(answer("Alice"), verify).unwrap()[..],
+        [Note::Other(_)]
+    ));
+}
+
+#[test]
+fn a_registration_names_its_display_name_and_signs_it() {
+    let mut client = welcomed();
+    let register = Login {
+        display: Some("Alice A."),
+        ..ALICE
+    };
+    assert_eq!(
+        client.login(&register, by),
+        Some(login_message(1, &NEW, Signer::Key, Some("Alice A.")))
+    );
+    // Refused, it may log in again.
+    assert_eq!(
+        client.receive(refused(Refusal::NameTaken), verify),
+        Ok(vec![Note::Refused(Refusal::NameTaken)])
+    );
+    assert_eq!(client.account(), None);
+    assert_eq!(
+        client.login(&ALICE, by),
+        Some(login_message(2, &NEW, Signer::Key, None))
+    );
+    assert_eq!(
+        client.receive(refused(Refusal::BadLogin), verify),
+        Ok(vec![Note::Refused(Refusal::BadLogin)])
+    );
+}
+
+#[test]
+fn an_earlier_key_due_here_logs_in_then_re_keys_the_account() {
+    let mut client = welcomed();
+    let due = Login {
+        old: Some(OLD),
+        display: Some("Alice"),
+        ..ALICE
+    };
+    // By the earlier key, never a registration.
+    assert_eq!(
+        client.login(&due, by),
+        Some(login_message(1, &OLD, Signer::Old, None))
+    );
+    let rekeyed = account::rekey_message(ADDRESS, &CHALLENGE, "alice", &NEW);
+    assert_eq!(
+        client.receive(answer("Alice"), verify),
+        Ok(vec![Note::Send(ClientMessage::Rekey {
+            seq: 2,
+            key: account::to_hex(&NEW),
+            by_old: account::to_hex(&sign(&OLD, &rekeyed)),
+            by_new: account::to_hex(&sign(&NEW, &rekeyed)),
+        })])
+    );
+    assert_eq!(
+        client.join(4, Seat::Attacker, None),
+        None,
+        "not before the re-key"
+    );
+    assert_eq!(
+        client.receive(answer("Alice"), verify),
+        Ok(vec![Note::Rekeyed, Note::LoggedIn("Alice".to_string())])
+    );
+    assert!(client.join(4, Seat::Attacker, None).is_some());
+}
+
+#[test]
+fn a_server_without_the_earlier_key_takes_the_account_s() {
+    let mut client = welcomed();
+    let due = Login {
+        old: Some(OLD),
+        display: Some("Alice"),
+        ..ALICE
+    };
+    client.login(&due, by).unwrap();
+    // Held: the login by the account's key, numbered after the re-key.
+    assert_eq!(
+        client.receive(refused(Refusal::BadLogin), verify),
+        Ok(vec![
+            Note::OldKeyRefused,
+            Note::Send(login_message(3, &NEW, Signer::Key, Some("Alice")))
+        ])
+    );
+    assert_eq!(
+        client.receive(answer("Alice"), verify),
+        Ok(vec![Note::LoggedIn("Alice".to_string())])
+    );
+}
+
+#[test]
+fn a_refused_re_key_or_earlier_login_ends_the_login() {
+    let due = Login {
+        old: Some(OLD),
+        ..ALICE
+    };
+    // The earlier login refused otherwise: no login.
+    let mut client = welcomed();
+    client.login(&due, by).unwrap();
+    assert_eq!(
+        client.receive(refused(Refusal::BadName), verify),
+        Ok(vec![Note::Refused(Refusal::BadName)])
+    );
+    assert_eq!(client.account(), None);
+    // The re-key refused: logged in by the earlier key, no other login.
+    let mut client = welcomed();
+    client.login(&due, by).unwrap();
+    client.receive(answer("Alice"), verify).unwrap();
+    assert_eq!(
+        client.receive(refused(Refusal::BadLogin), verify),
+        Ok(vec![Note::Refused(Refusal::BadLogin)])
+    );
+    assert_eq!(client.account(), Some("Alice"));
+    assert_eq!(client.login(&ALICE, by), None);
+}
+
+#[test]
+fn a_seat_is_not_taken_again_after_a_final_goodbye() {
+    for reason in [
+        GoodbyeReason::Rekeyed,
+        GoodbyeReason::CommandLimit,
+        GoodbyeReason::Abandoned,
+        GoodbyeReason::Replaced,
+        GoodbyeReason::Protocol,
+    ] {
+        assert!(farewell(reason).is_some(), "{reason:?}");
+    }
+    for reason in [
+        GoodbyeReason::Shutdown,
+        GoodbyeReason::IdleTimeout,
+        GoodbyeReason::Paused,
+    ] {
+        assert_eq!(farewell(reason), None, "{reason:?}");
+    }
 }

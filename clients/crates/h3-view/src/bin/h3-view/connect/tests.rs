@@ -300,6 +300,7 @@ fn options(address: &str, seat: Seat, dir: &Path) -> Options {
         packs: repo().join("packs"),
         out: Some(dir.join("record.jsonl")),
         drop: None,
+        account: None,
     }
 }
 
@@ -481,8 +482,24 @@ fn the_options_name_the_address_the_game_and_the_seat() {
             packs: PathBuf::from("k"),
             out: Some(PathBuf::from("o")),
             drop: Some(2),
+            account: None,
         }
     );
+    // An account (E17 M5 T7): the login lowercased, the accounts file by default here.
+    let login = Options::parse(&args("ws://h --game 1 --seat attacker --login Alice")).unwrap();
+    let alice = |register: Option<&str>, accounts: &str| {
+        Some(Account {
+            login: "alice".to_owned(),
+            register: register.map(str::to_owned),
+            accounts: PathBuf::from(accounts),
+        })
+    };
+    assert_eq!(login.account, alice(None, "accounts.txt"));
+    let register = Options::parse(&args(
+        "ws://h --game 1 --seat attacker --login alice --register Alice --accounts a",
+    ))
+    .unwrap();
+    assert_eq!(register.account, alice(Some("Alice"), "a"));
     let spectator = Options::parse(&args("ws://h --game 1 --seat spectator")).unwrap();
     assert_eq!((spectator.token.as_deref(), spectator.drop), (None, None));
     assert_eq!(spectator.pins, PathBuf::from("pins.txt"));
@@ -503,6 +520,15 @@ fn the_options_name_the_address_the_game_and_the_seat() {
         ("ws://h --game", "needs a value"),
         ("ws://h --what", "unknown option"),
         ("ws://h ws://i", "unexpected"),
+        (
+            "ws://h --game 1 --seat attacker --register Al",
+            "need --login",
+        ),
+        (
+            "ws://h --game 1 --seat attacker --accounts a",
+            "need --login",
+        ),
+        ("ws://h --game 1 --seat attacker --login a", "no login name"),
     ] {
         let error = Options::parse(&args(bad)).unwrap_err();
         assert!(error.contains(why), "{bad}: {error}");
