@@ -372,7 +372,11 @@ fn quests_of_seers_and_guards() {
         ))
         .unwrap()
     };
-    let templates = [line("seer.def", 83), line("guard.def", 215), line("pike.def", 54)];
+    let templates = [
+        line("seer.def", 83),
+        line("guard.def", 215),
+        line("pike.def", 54),
+    ];
     let text = |objects: &str| {
         format!(
             "size = 36\nterrain = \"grass\"\nheroes = [{{ at = [34, 34], class = 2 }}, {{ at = [34, 1], owner = 1 }}]\nview = [0, 0, 0]\n{objects}"
@@ -436,9 +440,7 @@ fn quests_of_seers_and_guards() {
         "the quest at [2, 2]: no hero on [1, 1]"
     );
     assert_eq!(
-        refused(
-            r#"objects = [{ def = "seer.def", at = [2, 2], quest = { monster = [2, 2] } }]"#
-        ),
+        refused(r#"objects = [{ def = "seer.def", at = [2, 2], quest = { monster = [2, 2] } }]"#),
         "the quest at [2, 2]: no monster anchored on [2, 2]"
     );
 }

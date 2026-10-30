@@ -326,7 +326,11 @@ fn the_walks_frames_are_m2_t3bs() {
             "hover-visits-a",
             "hover-visited-a",
             "hover-visits-b",
-            "hover-visited-b"
+            "hover-visited-b",
+            "hover-owners",
+            "hover-banks",
+            "hover-teach",
+            "hover-quests"
         ]
     );
 }

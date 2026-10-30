@@ -101,9 +101,7 @@ fn the_contents_read_from_the_live_parts_table() {
         )
     );
     let mission = |o: usize| match c(o) {
-        Content::Quest {
-            quest: Some(q), ..
-        } => q.mission.clone(),
+        Content::Quest { quest: Some(q), .. } => q.mission.clone(),
         other => panic!("{other:?}"),
     };
     assert_eq!(mission(11), Mission::Skills([1, 0, -2, 3]));
@@ -236,10 +234,7 @@ fn a_contents_hints_text() {
     assert_eq!(text(keymaster(10, 0, Some(true))), "Light blue Tent (seen)");
     assert_eq!(text(keymaster(232, 8, None)), " ");
     let dwelling = |class, kind, owner| Hint::Dwelling { class, kind, owner };
-    assert_eq!(
-        text(dwelling(17, 56, Some(0))),
-        "Guardhouse - Owned by red"
-    );
+    assert_eq!(text(dwelling(17, 56, Some(0))), "Guardhouse - Owned by red");
     assert_eq!(text(dwelling(20, 1, None)), "Golem Factory");
     assert_eq!(text(dwelling(20, 2, None)), "");
     assert_eq!(
@@ -268,6 +263,15 @@ fn a_contents_hints_text() {
             guards: guards(Some(151), 12),
         }),
         "Abandoned Mine Guarded by a pack of "
+    );
+    assert_eq!(
+        text(Hint::Mine {
+            name: 0,
+            owner: Some(1),
+            produces: None,
+            guards: None,
+        }),
+        "Sawmill Owned by blue"
     );
     let bank = |mark| Hint::Bank { bank: 0, mark };
     assert_eq!(
@@ -317,21 +321,13 @@ fn a_contents_hints_text() {
         text(teaches(113, None, Some(Teach::Skill(2, false)), None)),
         "Witch Hut (Teach Logistics)"
     );
-    let quest = |variant, mission| {
-        Some(Arc::new(Quest {
-            variant,
-            mission,
-        }))
-    };
+    let quest = |variant, mission| Some(Arc::new(Quest { variant, mission }));
     let seer = |mission| Hint::Quest {
         class: 83,
         seer: Some(4),
         quest: quest(0, mission),
     };
-    assert_eq!(
-        text(seer(Mission::Level(10))),
-        "Engle the Seer (reach 10)"
-    );
+    assert_eq!(text(seer(Mission::Level(10))), "Engle the Seer (reach 10)");
     assert_eq!(
         text(seer(Mission::DefeatHero(16, false))),
         "Engle the Seer (defeat Mephala)"
@@ -360,10 +356,7 @@ fn a_contents_hints_text() {
         text(seer(Mission::BePlayer(1))),
         "Engle the Seer (flag blue)"
     );
-    assert_eq!(
-        text(seer(Mission::BePlayer(8))),
-        "Engle the Seer (flag )"
-    );
+    assert_eq!(text(seer(Mission::BePlayer(8))), "Engle the Seer (flag )");
     let guard = |variant, mission| Hint::Quest {
         class: 215,
         seer: None,
@@ -427,10 +420,11 @@ fn fixture() -> Arc<Hover> {
         .iter()
         .enumerate()
         .map(|(i, &(class, subclass))| {
-            let (blocked, visited): (&[(u8, u8)], &[(u8, u8)]) = if i == 26 {
-                (&[(0, 0)], &[])
+            let cell: &[(u8, u8)] = &[(0, 0)];
+            let (blocked, visited) = if i == 26 {
+                (cell, &[][..])
             } else {
-                (&[], &[(0, 0)])
+                (&[][..], cell)
             };
             let at = (
                 u8::try_from(1 + i % 7).unwrap(),
@@ -449,7 +443,7 @@ mines = [[6, 0, [[13, 2]]], [7, 3, [[46, 120]]], [8, 2, []]]
 banks = [[9, 0, [[0, 3]]], [10, 1, []], [11, 1, [[56, 30]]], [12, 1, [[0, 3], [1, 4]]], [13, 0, []]]
 shrines = [[14, 1, -1, 0], [15, 0, 3, 1], [26, 1, -1, 0]]
 trees = [[16, 0, 1, 0], [17, 1, -1, -1], [27, 0, -1, -1]]
-witch_huts = [[18, 0, 2, 0], [19, 0, -1, 0]]
+witch_huts = [[18, 0, 2, 0], [19, 1, -1, 0]]
 quests = [
     [20, 1, 4, 1, 0, [10], []],
     [21, 0, 4, 1, 0, [10], []],
@@ -564,7 +558,10 @@ fn the_hint_of_an_owner_or_contents() {
         visited,
     };
     assert_eq!(hint(14), teaches(88, Some(19), None, None));
-    assert_eq!(hint(15), teaches(90, None, Some(Teach::Spell(3, true)), None));
+    assert_eq!(
+        hint(15),
+        teaches(90, None, Some(Teach::Spell(3, true)), None)
+    );
     assert_eq!(
         hint(16),
         teaches(102, None, Some(Teach::Price(1)), Some(false))
@@ -574,8 +571,9 @@ fn the_hint_of_an_owner_or_contents() {
         hint(18),
         teaches(113, None, Some(Teach::Skill(2, false)), None)
     );
-    // A hut without a skill, a Tree with nothing shown: the names.
-    assert_eq!(hint(19), Hint::Object(113));
+    // A hut's kind known (the harness writes none for a hut without a skill); a Tree with
+    // nothing shown: its name.
+    assert_eq!(hint(19), teaches(113, Some(12), None, None));
     assert_eq!(hint(27), Hint::Object(102));
     let level = Arc::new(Quest {
         variant: 0,

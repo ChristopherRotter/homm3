@@ -134,10 +134,10 @@ impl Mission {
 pub(super) struct Written {
     /// `[[object, resource, [[creature, count], ...]], ...]`.
     #[serde(default)]
-    pub mines: Vec<(usize, u8, Vec<(u32, u32)>)>,
+    pub mines: Vec<ArmyRow>,
     /// `[[object, visited, [[creature, count], ...]], ...]`.
     #[serde(default)]
-    pub banks: Vec<(usize, u8, Vec<(u32, u32)>)>,
+    pub banks: Vec<ArmyRow>,
     /// `[[object, known, spell or -1, learned], ...]`.
     #[serde(default)]
     pub shrines: Vec<(usize, u8, i32, u8)>,
@@ -154,6 +154,9 @@ pub(super) struct Written {
     #[serde(default)]
     pub quests: Vec<QuestRow>,
 }
+
+/// A mine's or a bank's row as written: the object, a value, the guards' stacks.
+type ArmyRow = (usize, u8, Vec<(u32, u32)>);
 
 /// One quest's row as written.
 type QuestRow = (usize, u8, u8, u8, u8, Vec<i64>, Vec<(u32, u32)>);
@@ -298,9 +301,7 @@ impl Guards {
         let one = stacks.iter().all(|&(c, _)| c == first);
         Some(Self {
             creature: one.then_some(first),
-            count: stacks
-                .iter()
-                .fold(0u32, |sum, &(_, n)| sum.wrapping_add(n)),
+            count: stacks.iter().fold(0u32, |sum, &(_, n)| sum.wrapping_add(n)),
         })
     }
 }
@@ -455,9 +456,7 @@ pub fn quest_text(
     };
     let what = match &quest.mission {
         Mission::Level(n) => {
-            let args = Args::new()
-                .context(&context)
-                .number("level", i64::from(*n));
+            let args = Args::new().context(&context).number("level", i64::from(*n));
             return texts.text(&key, &args);
         }
         Mission::Skills(s) => {
@@ -541,11 +540,7 @@ pub fn text(hint: &Hint, names: &BTreeMap<u8, String>, texts: &Catalogue) -> Str
             }
             text
         }
-        Hint::Dwelling {
-            class,
-            kind,
-            owner,
-        } => {
+        Hint::Dwelling { class, kind, owner } => {
             let (family, count) = if *class == 20 {
                 ("dwelling4", 2)
             } else {
@@ -643,11 +638,7 @@ pub fn text(hint: &Hint, names: &BTreeMap<u8, String>, texts: &Catalogue) -> Str
             }
             text
         }
-        Hint::Quest {
-            class,
-            seer,
-            quest,
-        } => {
+        Hint::Quest { class, seer, quest } => {
             let mut text = match seer {
                 Some(n) => {
                     let name = entry(texts, "seer-name", u32::from(*n), SEER_NAMES);

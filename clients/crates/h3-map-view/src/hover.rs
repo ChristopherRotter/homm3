@@ -854,7 +854,7 @@ impl Hover {
                     *resource
                 },
                 owner,
-                produces: Some(*resource).filter(|_| self.allied(owner, self.viewer)),
+                produces: self.allied(owner, self.viewer).then_some(*resource),
                 guards: Guards::of(guards),
             },
             (16 | 24 | 25 | 84 | 85, Some(Content::Bank { visited, guards })) => Hint::Bank {

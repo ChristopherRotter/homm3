@@ -4,6 +4,29 @@ Finished history and informational notices moved out of `QUEUE.md` on 2026-10-24
 
 ## Notices from other lanes and finished items, newest first
 
+- 2026-10-30 (this lane, E24 M3 T6a2b): the agent proposed cutting T6a2b at the quests (T6a2b1
+  without them, T6a2b2 the Seer's Huts and Quest Guards); the user kept it whole. Done: the
+  log's "M3 T6a2b". Its entry as it was:
+
+  ### E24 M3 T6a2b — the map hint's owners and contents
+
+  T6 cut with the user (2026-10-30) in two: T6a the mouse-over, T6a cut again (2026-10-30): T6a1
+  (done: the epic's log) and T6a2, cut with the user (2026-10-30) by what runs the hint: T6a2a, the
+  35 classes of the visit marks (done: the epic's log, design §4.11), and T6a2b.
+
+  - **Scope:** `map_hint` 0x40B150's other 20 cases (switch 0x40B20E): the Border Guard and Gate
+    (9, 212) and the Keymaster's Tent (10: a colour's name 0x6A7520, a key's mark by the game's
+    +0x4E364), the dwellings (17, 20: the owner's colour, CrGen1 0x6914FC and CrGen4 0x691354), the
+    Lighthouse (42, its owner), the mine (53, 0x40D670), the resource (79, its name 0x6A5E64), the
+    creature banks (16, 24, 25, 84, 85: 0x40D3F0), the Seer's Hut (83, 0x5741B0), the Shrines (88 to
+    90, 0x40D8D0), the Tree of Knowledge (102, 0x40DB00), the Witch Hut (113, 0x40DCC0), the Quest
+    Guard (215, 0x573040): their facts in `[hover]` (`h3mem.Mem.hover`), keys and families; read the
+    sub-functions first (`scripts/exe.py fn`; each cited address a map entry). Situations with each
+    class and sequences over them, as T6a2a's (`hover-visits-*`).
+  - **Acceptance:** new sequences with the pointer over every class of the 20, each exact with the
+    status bar compared; the Definition of Done.
+  - **Depends on:** T6a2a (done). **Status:** ready.
+
 - 2026-10-30 (this lane, E24 M3 T6a2a): the agent proposed cutting T6a2 by what runs the hint;
   the user agreed: T6a2a, the 35 classes of the visit marks (done: the log's "M3 T6a2a"), and
   T6a2b, the 20 of the owners and contents (queued); the recapture with the hint unmasked moved

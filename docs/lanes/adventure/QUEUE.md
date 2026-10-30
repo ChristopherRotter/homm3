@@ -54,6 +54,13 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
 
 ## Inbox
 
+- 2026-10-30 (the map client lane, E24 M3 T6a2b; the user's standing consent for the writer, E24
+  T0; for your information, nothing to do): **the writer writes quests**: `Extras::quests` maps
+  an index of `Extras::objects` (a Seer's Hut, 83, or a Quest Guard, 215) to a
+  `model::Mission`, written in the SoD layout with no deadline, no texts and a seer's reward
+  nothing (`writer::extras::write_quest`; refused on another class or with a list past 255).
+  A literal `Extras { tiles, objects }` now needs `..Extras::default()`.
+
 - 2026-10-23 (T42, measured; for a performance task): **a flyer's or water walker's reach costs
   about 1.9 times a walker's query** on the XL map (`reach-lifted-xl-144`: 279 k Ir a query
   against `reach-xl-144`'s 148 k on the same games), and random play on the duel with one of each
