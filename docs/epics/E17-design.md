@@ -2555,6 +2555,13 @@ under Wine (`clients/capture/binkprobe.c`) and, where that stalled, read in its 
   `Draw::Video`, the batch's `.BIK`, the compositor's copy; `h3_view::result::clip` and the
   layout's `clip`; `h3_assets::vid::directory`; the binary's `videos.rs`, the window (a frame at
   each decode while the window stands), the stills' and sequences' clip.
+- **Since M5 T8b1** (R2b-1, R2b-3, R2b-5; *provisional*): the window decodes the pair as soon as
+  the battle's end is known (`load_clips` from `follow`, battles played here or on a server; a
+  record file's window never opens the result window), not at the first frame that shows it; a
+  clip that cannot be read or decoded, or whose frames would pass `clip::BUDGET` (64 MiB, about
+  ten times `defendloop`'s), leaves the slot bare as a missing one does (a warning on standard
+  error). The sequences tool still fails on such a clip (a comparison wants it). `h3-bink`
+  refuses an empty video packet (`Invalid`), which FFmpeg's `avcodec_send_packet` refuses too.
 
 ### 7.22 Auto Combat (M5 T4c1)
 

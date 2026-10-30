@@ -43,5 +43,9 @@ getrandom.workspace = true
 # Accounts (E17 M5 T7): the key's derivation, the binary's only.
 argon2.workspace = true
 
+[dev-dependencies]
+# The clip's timing's property test (E17 M5 T8b1, R2b-7).
+proptest.workspace = true
+
 [lints]
 workspace = true

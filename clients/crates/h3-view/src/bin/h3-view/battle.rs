@@ -511,11 +511,27 @@ pub struct Battle<'g> {
     result_closed: bool,
     /// The battle behind the result window while it is open (E17 M5 T8a, R3-2).
     behind: h3_view::result::Behind,
+    /// The result window's clips (E17 M5 T8b1, R2b-3 and R2b-5): decoded into the batch as soon
+    /// as the battle's end, and so its tune, is known.
+    clips: Clips,
     /// How many of the timeline's notices opened (E17 M5 T5a).
     notices: usize,
     /// The tactics phase's message the battle opened with is still open (E17 M5 T4c2a, design
     /// §7.23): the battle behind it stands before its first turn.
     opening: bool,
+}
+
+/// Where the result window's clips stand (E17 M5 T8b1, R2b-3 and R2b-5).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Clips {
+    /// Not loaded: the battle's end is not known yet, or nothing here opens its window (a record
+    /// file's battle).
+    Unknown,
+    /// In the batch, or not in the video archives (the slot then stays bare).
+    Loaded,
+    /// One of them could not be read or decoded (`h3-bink` refused it): the slot stays bare, as
+    /// without the archives, instead of the window failing.
+    Refused,
 }
 
 /// The battle being fought: here, its copy and session in-process (E17 M5 T1b), or by a seat on a
@@ -712,6 +728,7 @@ impl<'g> Battle<'g> {
             message: None,
             result_closed: false,
             behind: h3_view::result::Behind::default(),
+            clips: Clips::Unknown,
             notices: 0,
             opening: false,
         };
@@ -1221,6 +1238,7 @@ impl<'g> Battle<'g> {
             self.head = Playhead::new(self.timeline());
         }
         self.panels = self.panel()?;
+        self.load_clips();
         Ok(())
     }
 
@@ -2242,47 +2260,62 @@ impl<'g> Battle<'g> {
 
     /// The result window's clip `since` ms after it opened (E17 M5 T4b2b): the one its tune's
     /// branch picks, when the video archives hold it (else the slot stays bare, as the
-    /// original's does without them).
+    /// original's does without them) and `h3-bink` decodes it (E17 M5 T8b1, R2b-3).
     fn clip(&self, since: u32) -> Option<Draw> {
         let (_, tune) = self.end_tune()?;
         let clip = h3_view::clip::of(tune);
         let held = std::iter::once(clip.start)
             .chain(clip.looped)
             .all(|name| self.ground.videos.has(name));
-        held.then(|| h3_view::result::clip(&self.ground.layout.result, tune, since))
+        (held && self.clips != Clips::Refused)
+            .then(|| h3_view::result::clip(&self.ground.layout.result, tune, since))
+    }
+
+    /// Decodes the result window's clips into the batch once the battle's end is known (E17 M5
+    /// T8b1, R2b-5): the batch holds what a screen needs before it is shown, and the end is
+    /// known as its last command is played, before its last action has played out and the
+    /// window opens. A clip the archives hold but that cannot be read or decoded leaves the
+    /// slot bare, a warning on stderr (R2b-3). Only a battle fought here or on a server opens
+    /// the window.
+    fn load_clips(&mut self) {
+        if self.clips != Clips::Unknown || self.fight.is_none() {
+            return;
+        }
+        let Some((_, tune)) = self.end_tune() else {
+            return;
+        };
+        let clip = h3_view::clip::of(tune);
+        let names: Vec<&str> = std::iter::once(clip.start).chain(clip.looped).collect();
+        self.clips = if add_clips(&self.ground.videos, &mut self.batch, &names) {
+            Clips::Loaded
+        } else {
+            Clips::Refused
+        };
     }
 
     /// When the result window's clip frame on the screen at `t` was decoded and when the next
-    /// decode comes (E17 M5 T4b2b; `h3_view::clip::decodes`), the clips loaded first: the times
-    /// the window draws at while the result window stands. None without the window or its clip.
-    pub fn clip_times(&mut self, t: u32) -> Result<Option<(u32, Option<u32>)>, String> {
-        let Some(opened) = self
+    /// decode comes (E17 M5 T4b2b; `h3_view::clip::decodes`), the clips loaded as the battle's
+    /// end became known (`Battle::load_clips`): the times the window draws at while the result
+    /// window stands. None without the window or its clip.
+    pub fn clip_times(&self, t: u32) -> Option<(u32, Option<u32>)> {
+        let opened = self
             .message
             .as_ref()
             .filter(|(_, _, asked)| *asked == Asked::Result)
-            .map(|&(_, opened, _)| opened)
-        else {
-            return Ok(None);
-        };
+            .map(|&(_, opened, _)| opened)?;
         let Some(Draw::Video { start, looped, .. }) = self.clip(0) else {
-            return Ok(None);
+            return None;
         };
-        let names: Vec<&str> = std::iter::once(start.as_str())
-            .chain(looped.as_deref())
-            .collect();
-        self.load_batch(std::iter::empty(), &names)?;
         let timing = |name: &str| self.batch.video(name).map(h3_view::clip::Video::timing);
-        let Some(first) = timing(&start) else {
-            return Ok(None);
-        };
+        let first = timing(&start)?;
         let second = looped.as_deref().and_then(timing);
         // The window's own drawing: the clip's slips fixed (CLT-Q31).
         let since = t.saturating_sub(opened);
         let (began, next) = h3_view::clip::decodes(since, first, second, Bugs::Fixed);
-        Ok(Some((
+        Some((
             opened.saturating_add(began),
             next.map(|n| opened.saturating_add(n)),
-        )))
+        ))
     }
 
     /// When the battle is decided and the tune its end plays then (E17 M3 T8, design §8.2): the
@@ -2302,6 +2335,29 @@ impl<'g> Battle<'g> {
     pub fn frame_size(&self) -> [u32; 2] {
         self.ground.layout.frame
     }
+}
+
+/// Decodes the clips `names` from the video archives into `batch` (E17 M5 T8b1, R2b-3): those
+/// the archives lack or the batch holds are left; whether every other one was read and decoded,
+/// a failure warned of on stderr.
+fn add_clips(videos: &crate::videos::Videos, batch: &mut Batch, names: &[&str]) -> bool {
+    let mut all = true;
+    for &name in names {
+        if !videos.has(name) || held(batch, name) {
+            continue;
+        }
+        let added = videos
+            .read(name)
+            .and_then(|bytes| batch.add(name, &bytes).map_err(|e| e.to_string()));
+        if let Err(e) = added {
+            eprintln!(
+                "the result window's clip {}; its slot stays bare",
+                crate::connect::printable(&e)
+            );
+            all = false;
+        }
+    }
+    all
 }
 
 /// Whether the batch holds the asset `name`.
@@ -2325,4 +2381,33 @@ fn parse<'a>(
                 .map_err(|e| format!("{name}: {e:?}"))
         })
         .collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_clip_that_does_not_decode_is_left_out() {
+        // E17 M5 T8b1, R2b-3: `h3-bink` refuses the loop, so the pair leaves the slot bare; a
+        // clip the archives lack is no failure.
+        let dir = std::env::temp_dir().join(format!("h3-view-clips-{}", std::process::id()));
+        let data = dir.join("Data");
+        fs::create_dir_all(&data).unwrap();
+        let sample = h3_bink::build::sample(1);
+        let archive = h3_assets::build::vid(&[("rtstart.bik", &sample), ("rtloop.bik", b"BIKb")]);
+        fs::write(data.join("Video.vid"), archive).unwrap();
+        let videos = crate::videos::Videos::open(&dir);
+        let mut batch = Batch::default();
+        assert!(add_clips(&videos, &mut batch, &["Win3.bik"]));
+        assert!(add_clips(&videos, &mut batch, &["rtstart.bik"]));
+        assert!(batch.video("RTSTART.BIK").is_some());
+        assert!(!add_clips(
+            &videos,
+            &mut batch,
+            &["rtstart.bik", "rtloop.bik"]
+        ));
+        assert!(batch.video("RTLOOP.BIK").is_none());
+        fs::remove_dir_all(&dir).unwrap();
+    }
 }

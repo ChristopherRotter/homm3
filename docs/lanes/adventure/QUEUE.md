@@ -29,6 +29,18 @@ the Definition of Done (`docs/05-testing.md`).
 
 ## Inbox
 
+- 2026-10-30 (the client lane, E17 M5 T8b1, reviewer R7's fixes; **your harness changed**):
+  after it merges, run `clients/capture/setup.sh` again for every run directory you use: the
+  hook DLL's ack has ten fields now, and an older `xdd.dll` stops a run with "stale xdd.dll".
+  `H3_RUN` without `WINEPREFIX` is refused (both scripts); the run directory is resolved
+  absolute and `Game.start` fails unless the prefix's `d:` points at it. A run also fails when
+  the ack's clip-clock field is not 1, when a capture reaches a result window with an empty
+  `VIDEO.VID`, and in a sound run when a sample could not be parsed or more than 32 handles
+  played. Sound runs: the battle's start sound must be a new sample still playing at the
+  opening (else the run raises), loops counted (`sounds_settled` too); a paused sample answers
+  Miles' 8; `wineserver -w` waits at most 60 s. Nothing else drives the original otherwise
+  (runbook, "Sound", "The clips", "Traps").
+
 - 2026-10-30 (the map client lane, E24 M3 T6a2b; the user's standing consent for the writer, E24
   T0; for your information, nothing to do): **the writer writes quests**: `Extras::quests` maps
   an index of `Extras::objects` (a Seer's Hut, 83, or a Quest Guard, 215) to a

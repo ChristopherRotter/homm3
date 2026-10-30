@@ -3,10 +3,11 @@
 //!
 //! A frame is three planes, Y then U and V at half the size, each coded as rows of 8 × 8 blocks;
 //! revision `b` decodes it in place over the frame before (FFmpeg's `ff_reget_buffer`; the first
-//! frame over a black one, its motion vectors biased 15 rows up, `ybias`). Each block row first
-//! refills the ten *bundles* that are used up (a 13-bit count, then that many values of the
-//! bundle's width; a count of 0 ends the bundle for the plane), then each block takes its type
-//! and its values from them and reads what else it needs (a run's lengths, a DCT's
+//! frame over planes of zeros, Y = U = V = 0 as FFmpeg's buffer is allocated, which shows green,
+//! not black (E17 M5 T8b1, R2a-2); its motion vectors biased 15 rows up, `ybias`). Each block
+//! row first refills the ten *bundles* that are used up (a 13-bit count, then that many values
+//! of the bundle's width; a count of 0 ends the bundle for the plane), then each block takes its
+//! type and its values from them and reads what else it needs (a run's lengths, a DCT's
 //! coefficients) from the stream itself. A plane ends on a multiple of 32 bits.
 
 use alloc::vec;
@@ -57,7 +58,7 @@ pub struct Plane {
 }
 
 impl Plane {
-    /// A black plane of `blocks_wide` × `blocks_high` blocks showing `width` × `height`.
+    /// A plane of zeros, `blocks_wide` × `blocks_high` blocks showing `width` × `height`.
     fn new(blocks_wide: usize, blocks_high: usize, width: usize, height: usize) -> Self {
         Self {
             width,
@@ -235,7 +236,7 @@ struct Grid {
 }
 
 impl Decoder {
-    /// A decoder for `clip`'s video, its frame black.
+    /// A decoder for `clip`'s video, its frame's planes all 0 (Y = U = V = 0).
     pub fn new(clip: &Clip<'_>) -> Result<Self, Error> {
         if clip.revision != b'b' {
             return Err(Error::Revision(clip.revision));
@@ -269,7 +270,7 @@ impl Decoder {
         })
     }
 
-    /// The frame as last decoded (black before the first).
+    /// The frame as last decoded (all 0 before the first).
     #[must_use]
     pub fn frame(&self) -> &Frame {
         &self.frame
@@ -279,6 +280,12 @@ impl Decoder {
     /// returns it (`decode_frame`). On an error the frame stays as far as it was decoded, and the
     /// next decodes over it, as in FFmpeg.
     pub fn decode(&mut self, packet: &[u8]) -> Result<&Frame, Error> {
+        // An empty packet never reaches FFmpeg's decoder: `avcodec_send_packet` refuses it, so no
+        // frame comes and the next is decoded as if it were not there, the key frame's count
+        // too (E17 M5 T8b1, R2a's doubt c, checked through PyAV).
+        if packet.is_empty() {
+            return Err(Error::Invalid("empty packet"));
+        }
         let mut bits = Bits::new(packet);
         self.decoded = self.decoded.wrapping_add(1);
         let key = self.decoded == 1;
@@ -722,7 +729,11 @@ mod tests {
         );
         assert_eq!(pattern[56..], [2, 1, 1, 1, 1, 1, 1, 1]);
         assert_eq!(block(&frame, 0, 2), raw);
-        assert_eq!(block(&frame, 0, 3), [0; 64], "skipped over the black frame");
+        assert_eq!(
+            block(&frame, 0, 3),
+            [0; 64],
+            "skipped over the zeroed frame"
+        );
         assert_eq!(block(&frame, 1, 0), [3; 64]);
         assert_eq!(block(&frame, 2, 0), [9; 64]);
         // The next frame decodes over this one: skipped blocks keep it, a motion block copies.
@@ -779,7 +790,7 @@ mod tests {
     }
 
     /// The pixels `block` (AC coefficients by scan position, the DC apart) gives through
-    /// unquantization and the inverse DCT put on black, or added to `base`.
+    /// unquantization and the inverse DCT put on zeros, or added to `base`.
     fn transformed(
         dc: i32,
         quant: &[i32; 64],
@@ -1009,6 +1020,51 @@ mod tests {
     }
 
     #[test]
+    fn an_eleven_bit_bundle_counts_two_bytes_a_value() {
+        // E17 M5 T8b1, R2a-3: a DC takes two of its bundle's 64 bytes, so 32 fit one block's
+        // buffer and 33 overflow it, intra and inter alike.
+        for bundle in [INTRA_DC, INTER_DC] {
+            let mut d = decoder(8, 8);
+            let fits = [0; 32];
+            let mut counts: Vec<(u32, &[u32])> = vec![(0, &[][..]); BUNDLES];
+            counts[bundle] = (32, &fits[..]);
+            let packet = by_hand(&counts, &BitWriter::new());
+            assert!(d.decode(&packet.into_bytes()).is_ok(), "bundle {bundle}");
+            let over = [0; 33];
+            counts[bundle] = (33, &over[..]);
+            let packet = by_hand(&counts, &BitWriter::new());
+            assert_eq!(
+                d.decode(&packet.into_bytes()),
+                Err(Error::Invalid("bundle overflow")),
+                "bundle {bundle}"
+            );
+        }
+    }
+
+    #[test]
+    fn an_empty_packet_gives_no_frame_and_changes_nothing() {
+        // E17 M5 T8b1, R2a's doubt c: FFmpeg's `avcodec_send_packet` refuses it (PyAV: EINVAL),
+        // and the next frame decodes as without it, the key frame's bias included.
+        let first = build::frame(8, 8, [&[Block::Fill(40)], NONE, NONE]);
+        let second = build::frame(8, 8, [&[Block::Motion { x: 0, y: 1 }], NONE, NONE]);
+        let mut with = decoder(8, 8);
+        with.decode(&first).unwrap();
+        let before = with.frame().clone();
+        assert_eq!(with.decode(&[]), Err(Error::Invalid("empty packet")));
+        assert_eq!(with.frame(), &before);
+        let mut without = decoder(8, 8);
+        without.decode(&first).unwrap();
+        assert_eq!(with.decode(&second), without.decode(&second));
+        let header = Header::new(8, 8);
+        let mut audio = header.clone();
+        audio.audio_tracks = 1;
+        let tracked = |video: &[u8]| [&[0u8, 0, 0, 0][..], video].concat();
+        let skipped = build::file(&audio, &[tracked(&first), tracked(&[]), tracked(&second)]);
+        let plain = build::file(&header, &[first, second]);
+        assert_eq!(check::frames(&skipped), check::frames(&plain));
+    }
+
+    #[test]
     fn a_packet_ending_after_a_plane_leaves_the_others() {
         let mut d = decoder(8, 8);
         let plane = by_hand(&[(1, &[5]), (1, &[33])], &BitWriter::new());
@@ -1100,7 +1156,7 @@ mod tests {
         assert!(y.row(9).is_empty());
         assert!(
             y.pixels().iter().all(|&p| p == 0),
-            "black before the first frame"
+            "all 0 before the first frame"
         );
     }
 
@@ -1115,6 +1171,25 @@ mod tests {
         ] {
             let frames = check::frames(&build::sample(seed)).unwrap();
             assert_eq!(frames.len(), build::SAMPLE_FRAMES);
+            assert_eq!(check::hash(&frames), hash, "seed {seed}");
+        }
+    }
+
+    /// The samples at the game's clips' size, 256 × 120 (E17 M5 T8b1, R2a-4): the chroma's
+    /// block grid holds four rows below the picture, which motion vectors read and write.
+    /// Hashes of FFmpeg's decoding through PyAV (`bink-reference.py`; PyAV 19.0.2, whose
+    /// FFmpeg 9.0.2's `bink.c` is 6.1.1's but for includes and fall-through markers, and which
+    /// gives the 256 × 48 hashes above too).
+    #[test]
+    fn the_samples_at_the_games_size_decode_as_ffmpeg_decodes_them() {
+        for (seed, hash) in [
+            (1, 0x3b26_7165_5755_2c84_u64),
+            (2, 0x4aba_eef3_e4de_546f),
+            (3, 0x31dd_6ca1_a9da_5973),
+        ] {
+            let frames = check::frames(&build::sample_sized(seed, 256, 120)).unwrap();
+            assert_eq!(frames.len(), build::SAMPLE_FRAMES);
+            assert_eq!(frames[0].planes()[1].pixels().len(), 128 * 64);
             assert_eq!(check::hash(&frames), hash, "seed {seed}");
         }
     }

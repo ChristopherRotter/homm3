@@ -14,11 +14,14 @@
 //! CLT-Q29).
 //!
 //! **What it decodes as FFmpeg does:** every file FFmpeg's demuxer accepts with a video of
-//! revision `b` without an alpha plane, frame by frame into the same planes, including FFmpeg's
-//! handling of malformed data (bits past a packet's end read as 0; a motion vector out of the
-//! plane leaves the block as it was; a bundle's values once used up are read again as they were
-//! left). Checked against FFmpeg's decoder on the game's ten battle clips and on synthetic clips
-//! of every block type (`clients/scripts/bink-check.sh`; [`build::sample`]). Two differences
+//! revision `b` without an alpha plane and a frame of at most [`MAX_WIDTH`] × [`MAX_HEIGHT`]
+//! (FFmpeg takes larger ones, refused here with [`Error::Size`]; E17 M5 T8b1, R2a-1), frame by
+//! frame into the same planes, including FFmpeg's handling of malformed data (bits past a
+//! packet's end read as 0; a motion vector out of the plane leaves the block as it was; a
+//! bundle's values once used up are read again as they were left; an empty video packet gives
+//! no frame and changes nothing, as `avcodec_send_packet` refuses it). Checked against FFmpeg's
+//! decoder on the game's ten battle clips and on synthetic clips of every block type
+//! (`clients/scripts/bink-check.sh`; [`build::sample`], [`build::sample_sized`]). Two differences
 //! lie in FFmpeg's buffers, not its decoding: (1) FFmpeg pads a plane's rows to its SIMD
 //! alignment (64 bytes in the build checked: a 64-pixel-wide clip's luma rows take 128), so
 //! where its rows are longer than the block grid's, a motion vector crossing a row's end reads
@@ -90,6 +93,7 @@ pub enum Error {
     /// The frame is empty or larger than [`MAX_WIDTH`] × [`MAX_HEIGHT`].
     Size,
     /// A frame's data break one of FFmpeg's decoder's checks; names it. The frame is left
-    /// partly decoded, as FFmpeg leaves it, and the next one decodes over it.
+    /// partly decoded, as FFmpeg leaves it, and the next one decodes over it (an empty packet's:
+    /// untouched).
     Invalid(&'static str),
 }

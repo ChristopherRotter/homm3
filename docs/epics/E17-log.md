@@ -3628,6 +3628,77 @@ in; the baseline had passed (`verify-once clients`: CI's fingerprint, the light 
 - **Next (T8b, QUEUE):** sequences 28 to 64; reviewers R2, R4b, R5a to R5c, R6, R7 and their
   fixers; R1's and R3-1's leftovers; then T8c with the user.
 
+### M5 T8b1 — M5's closure, part 2: sequences 28 to 64, the harness's and the clip's reviewers (2026-10-30)
+
+On `client/e17-m5-t8b1`, the user present at the start, the original data staged at once (the
+user's computer went offline about an hour in). **The user's cut** (the agent's proposal): T8b
+in two, T8b1 the captures with R7 and R2 (split in two by size), T8b2 the five smaller
+reviewers, the leftovers, `drawn` and `check.sh`. The fractions as T8a's: two capture agents
+(one per instance), one reviewer or fixer at a time. The VM restarted about 40 minutes in (a
+capture on each instance lost and rerun; files kept); the baseline `check.sh` had passed.
+
+- **Reviewer R7, the harness's M5 additions** (`xdd.c`, `binkprobe.c`, the client commits'
+  `h3drive.py`, `setup.sh`, `h3mem.py`): R7-1 the start sound taken as the last sample logged
+  before the opening, never checked new or still playing (a sound run's t0 could land 5 s early
+  silently), loops ignored; R7-2 the clip clock's ack field and the clip archive never checked
+  (an empty `VIDEO.VID` or a stale `xdd.dll` recorded silently); R7-3 instance isolation by
+  convention (`H3_RUN` with the default prefix re-pointed instance 1's `d:`; a relative
+  `H3_RUN` a broken link); R7-4 `pgrep -f "Xvfb :9"` a substring; R7-5 `hook_file`'s length
+  kept from the previous sample for a non-WAVE file, a RIFF size 0, an unbounded chunk walk, a
+  33rd handle on real Miles; R7-6 a paused sample's status by elapsed time; R7-7 the settle
+  count not reset at a drop; R7-8 `gold_bonus`'s clicks blind; R7-9 `wineserver -w` unbounded;
+  R7-10 the ack padded to 7 fields; R7-11 a header read before its module's check; R7-12 docs.
+  Checked fine: the virtual clock across a wrap and its lock, the samples' lengths as the
+  viewer's, the two instances' kills and pids, `binkprobe` against the game's calls, no write
+  outside `original-data/`, `clients/out/` and the prefixes.
+- **Fixed** (F7, in a worktree while the captures ran; merged once both instances were idle,
+  both set up again): all but R7-8 (no probe or address of the bonus known: a note, item 74);
+  the ack's tenth field counts unparsed samples and handles past 32; the chunk walk as
+  `wav.rs`'s, bounded by `VirtualQuery`; items 73, 74. Checked without the game (a throwaway
+  Python test of the acks, the settle and the start sound; the chunk walk under ASan), then live:
+  the sound sequences and two silent ones (`teleport`, `defended`) on the fixed harness.
+- **Reviewer R2a, the decoder** (`h3-bink`): R2a-1, R2a-2 docs (the size limit, the first
+  frame Y = U = V = 0, green, not black); R2a-3, R2a-4 test gaps (the 11-bit bundles' overflow;
+  no partial blocks or hidden chroma rows outside the original-data check). Unsure: the motion
+  bound, a residue cut short, an empty packet against FFmpeg. Checked fine: the bundles, the nine
+  block types, the list walks, the quantizers, the IDCT, the bit reader; no overflow, every loop
+  bounded, nothing allocated per block.
+- **Reviewer R2b, the clip** (`h3_assets::vid`, `h3_bink::clip`, `h3_view::clip`, the binary's
+  `video`, its call sites): R2b-1 every frame of a clip kept, its count and size the file's (a
+  few-MB clip could ask for hundreds of GB); R2b-2 `video`'s output paths from archive names
+  (`../`); R2b-3 a clip `h3-bink` refuses closed the window; R2b-4 `Timing::at`'s overflow at
+  extreme rates; R2b-5 the clips decoded at the first frame showing them; R2b-6 names printed
+  raw; R2b-7 test gaps. Checked fine: the directory's bounds, `Clip::parse` against FFmpeg, the
+  timing and colours against §7.21, the copy's stride, purity.
+- **Fixed** (F2): all; FFmpeg (PyAV 19.0.2, FFmpeg 9.0.2, `bink.c` as 6.1.1's) settled the
+  doubts: the motion bound and a residue cut short decode alike (synthetic clips, byte for
+  byte); an empty packet differed (FFmpeg refuses it), now `Invalid("empty packet")`; a
+  256 × 120 sample's hashes from FFmpeg; `clip::BUDGET` 64 MiB, `VideoError`; a bad clip a bare
+  slot; `load_clips` when the end is known; `Timing::at` in u128; `video`'s `plain` names and
+  `printable`; a property test tying `decodes` to `shown`. No drawn frame can change (design
+  §7.21's new paragraph; items 75 to 77). Left: the sequences tool still fails on a bad clip (a
+  comparison wants it); `bink-reference.py` raises on a failing packet.
+- **Captured** (C1 on instance 1, C2 on instance 2; the release viewer of T8a's `master`): all
+  37 sequences 28 to 64 as recorded but `auto`, whose 7 530 (Orrin's victory) came out exact in
+  two runs (recorded 2 523 pixels: its first frame read a step before memory, the trap): its
+  count recorded again, `--reuse` kept it (`kept/` `heroes` at 7 530 now his victory's frame).
+  `raise`'s `before` at 1 312 moved from frame 0 to 1 (the trap's variation, no compared pixel).
+  Every one as recorded at its first full run but `defended`'s first run on the fixed harness
+  (the game's page fault in `rumour_pick_text` on the new-game screen, Wine's crash dialog taken
+  for a display of depth 24; the rerun as recorded): the screens' timeouts now name a crash from
+  `wine.log` (`Game.crash_note`, the runbook's trap). The six sound sequences (59 to 64) and two
+  silent ones (`teleport`, `defended`) ran on the fixed harness: the ack's ninth field 9 and
+  tenth 0 in each sound run, 0 and 0 in the silent ones. The harness's own check
+  (`harness-check.toml`): its first run stopped at the Gear battle (no attack cursor, the
+  runbook's trap), its rerun passed (23 steps). About 2 hours for the 37 on the two instances.
+- **Checked:** the release viewer with F2's fixes, `drawn` over all 156 items: 155 the same,
+  `auto`'s 7 530 changed with its kept hero only (the frame `--reuse`d with this viewer: exact,
+  as recorded), its digest recorded (`drawn --only auto --record`); `check.sh` all gates
+  (coverage 100 %); `verify --scope client --with-original-data` no failing step.
+- **The sub-agents' sizes** (reported tokens): reviewers 157 000 to 219 000, fixers 228 000 and
+  274 000, capture agents 84 000 to 103 000 (each given a second and third round by message).
+- **Next (T8b2, QUEUE):** R4b, R5a to R5c, R6 and their fixers; the leftovers; `drawn`, `check.sh`.
+
 ## Accepted review lists (M1 to M4)
 
 M1 and M2 moved from the epic file on 2026-10-20 (less start-up reading), unchanged; M3 at its
