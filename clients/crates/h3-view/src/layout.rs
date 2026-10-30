@@ -252,9 +252,21 @@ impl BattleLayout {
 /// Parses a battle layout file.
 ///
 /// # Errors
-/// The parser's message: not TOML, an unknown, missing or mistyped field.
+/// The parser's message: not TOML, an unknown, missing or mistyped field; the book's `schools`
+/// not four distinct names (the four the book draws, its school bits 1 to 8: R4-4).
 pub fn parse_battle(text: &str) -> Result<BattleLayout, String> {
     let mut layout: BattleLayout = toml::from_str(text).map_err(|e| e.to_string())?;
+    let schools = &layout.book.schools;
+    let distinct = schools
+        .iter()
+        .enumerate()
+        .all(|(i, s)| !schools[..i].contains(s));
+    if schools.len() != 4 || !distinct {
+        return Err(alloc::format!(
+            "book.schools: {schools:?}, not the four distinct schools the book draws (air, fire, \
+             water, earth by its index)"
+        ));
+    }
     let empty = Dialog {
         place: [0, 0],
         shadow: None,
@@ -352,5 +364,17 @@ mod tests {
     #[test]
     fn a_bad_layout_is_an_error() {
         assert!(parse_battle("frame = [1, 2]\nwhat = 3\n").is_err());
+        // R4-4: the book's schools not the four it draws, distinct: an error naming them.
+        let four = "schools = [\"air\", \"fire\", \"water\", \"earth\"]";
+        assert!(NATIVE.contains(four));
+        for schools in [
+            "[\"air\", \"fire\", \"water\"]",
+            "[\"air\", \"fire\", \"water\", \"earth\", \"light\"]",
+            "[\"air\", \"fire\", \"air\", \"earth\"]",
+        ] {
+            let text = NATIVE.replacen(four, &alloc::format!("schools = {schools}"), 1);
+            let error = parse_battle(&text).unwrap_err();
+            assert!(error.starts_with("book.schools: "), "{error}");
+        }
     }
 }
