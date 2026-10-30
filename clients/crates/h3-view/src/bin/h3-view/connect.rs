@@ -23,8 +23,8 @@ use crate::net::{self, Connection, Incoming};
 #[cfg(test)]
 mod tests;
 
-/// The program's name in the hello.
-const PROGRAM: &str = concat!("h3-view ", env!("CARGO_PKG_VERSION"));
+/// The program's name in the hello (the window's too, E17 M5 T6b1).
+pub const PROGRAM: &str = concat!("h3-view ", env!("CARGO_PKG_VERSION"));
 
 /// How long a headless session waits for the server's next message.
 const SILENCE: Duration = Duration::from_secs(30);
@@ -329,7 +329,7 @@ fn check(packs: &Path, manifest: &h3_protocol::wire::Manifest) -> Content {
 }
 
 /// The pins file at `path`; none yet when it does not exist.
-fn read_pins(path: &Path) -> Result<Pins, String> {
+pub fn read_pins(path: &Path) -> Result<Pins, String> {
     match std::fs::read_to_string(path) {
         Ok(text) => Pins::parse(&text).map_err(|line| format!("{}: line {line}", path.display())),
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(Pins::default()),
@@ -348,13 +348,15 @@ pub fn text(record: &Record) -> String {
     text
 }
 
-fn write(path: &Path, text: &str) -> Result<(), String> {
+/// Writes `text` to `path`, its folder made first.
+pub fn write(path: &Path, text: &str) -> Result<(), String> {
     if let Some(dir) = path.parent().filter(|d| !d.as_os_str().is_empty()) {
         std::fs::create_dir_all(dir).map_err(|e| format!("{}: {e}", dir.display()))?;
     }
     std::fs::write(path, text).map_err(|e| format!("{}: {e}", path.display()))
 }
 
-fn hex(bytes: &[u8]) -> String {
+/// `bytes` as lowercase hex.
+pub fn hex(bytes: &[u8]) -> String {
     h3_protocol::account::to_hex(bytes)
 }

@@ -72,6 +72,47 @@ pub fn dragon(
     Some(engine_part(ruleset, spell, 0, targets, true))
 }
 
+/// The aim of `spell` from a server's answer `targets` (E17 M5 T6b1: a seat on a server asks the
+/// protocol's `Query`, where no engine runs here), a creature's cast or the hero's at its
+/// `mastery`: none when the server casts it without a target or at nothing. The ruleset's part
+/// (the area, the level, a stack spell at that mastery) only with the game's own content
+/// (`ruleset`: the content check's `Same`); without it the aim marks no area, aims at a stack when
+/// every target is one, at level 0 (*provisional*: a preview is the client's own content's).
+#[must_use]
+pub fn served(
+    ruleset: Option<&BattleRuleset>,
+    (spell, mastery, creature): (u16, u8, bool),
+    targets: &[h3_protocol::wire::Target],
+) -> Option<Aim> {
+    use h3_protocol::wire::Target as Wire;
+    if targets.is_empty() || targets.iter().any(|t| matches!(t, Wire::None {})) {
+        return None;
+    }
+    let mut aimed: Vec<Target> = targets
+        .iter()
+        .filter_map(|t| match *t {
+            Wire::Stack { stack } => Some(Target::Stack(stack)),
+            Wire::Hex { hex } => Some(Target::Hex(hex)),
+            Wire::None {} => None,
+        })
+        .collect();
+    aimed.sort_unstable();
+    Some(match ruleset {
+        Some(ruleset) => engine_part(ruleset, spell, mastery.min(3), aimed, creature),
+        None => Aim {
+            spell,
+            original: 0,
+            creature,
+            stacks: aimed.iter().all(|t| matches!(t, Target::Stack(_))),
+            targets: aimed,
+            area: None,
+            polarity: 0,
+            level: 0,
+            anti_magic: None,
+        },
+    })
+}
+
 /// The engine's targets as the aim's (a cast at nothing left out).
 fn targets_of(found: &CastTargets) -> Vec<Target> {
     found

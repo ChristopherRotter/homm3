@@ -898,6 +898,13 @@ impl Pose {
     pub const fn holds_hex(&self) -> bool {
         !self.boxless && self.layer != CORPSE && self.layer != GONE
     }
+
+    /// Whether it is dead: among the corpses, or gone without one (E17 M5 T6b1: the seat's
+    /// battle on a server, `crate::remote::seen`).
+    #[must_use]
+    pub const fn dead(&self) -> bool {
+        self.layer == CORPSE || self.layer == GONE
+    }
 }
 
 /// One pose of one stack: drawn at `drawn` (the harness reads it from then, design §7.1), shown

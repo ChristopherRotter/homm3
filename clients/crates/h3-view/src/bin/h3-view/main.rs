@@ -16,6 +16,7 @@ mod live;
 mod log;
 mod motion;
 mod net;
+mod online;
 mod play;
 mod pointer;
 mod render;

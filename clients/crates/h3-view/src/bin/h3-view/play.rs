@@ -77,6 +77,7 @@ impl Options {
                     .or(env)
                     .unwrap_or_else(|| clients.join("../original-data/install")),
                 humans: [false; 2],
+                server: None,
             },
             out,
             png,
