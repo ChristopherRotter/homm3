@@ -73,6 +73,16 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   millisecond redraws. A list's redraw (a choice, an arrow, Next Hero, a lift that centres, a walk
   that ends unable to move) leaves the status bar empty on screen with the hint in memory
   (MCL-Q22): only another item's hint shows a text again.
+- **The minimap and the status window hold the mouse their own ways** (M3 T6b2, design §4.14):
+  while the mouse holds the minimap down only its moves (each drawn, the corner moved or not) and
+  its release reach the timeline (`Loop::drag`), the idle step stopped; a press on the status
+  window's picture clicks at the release, wherever it is, unless the window was built anew in
+  between (MCL-Q23). A sequence's point off the panels that should not scroll keeps out of the
+  edge zones: the resource bar's row below y 585 is the bottom one (`status-click`'s first run
+  scrolled there at the original's held speed).
+- **A situation's underground** (M3 T6b2): the harness explores it whole, waits for the screen
+  `adventure` (the underground's button enabled breaks `adventure_map`'s probes) and reads only the
+  view's level's heroes into the live part: a recording puts no hero or town below.
 - **`choose = true` stages slowly** (M3 T6b1): `choose_each` clicks through every hero and town,
   then the staging's selection and the lists' first slots by their arrows; it needs the
   situation's `select` (the lists' writes) and every path's tile inside the situation's view.

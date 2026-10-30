@@ -1169,6 +1169,9 @@ pub struct PanelItems {
     /// The items' ids and boxes on the screen (left, top, right, bottom; the last two
     /// exclusive), in the order searched last to first.
     items: Vec<(u16, [i32; 4])>,
+    /// The status window's box (its picture 2000's: E24 M3 T6b2, design §4.14): its items, the
+    /// dialog's newest, take a press before every other.
+    status: Option<[i32; 4]>,
 }
 
 impl PanelItems {
@@ -1190,7 +1193,33 @@ impl PanelItems {
         if let Some(&(_, bar)) = items.iter().find(|(i, _)| *i == id::STATUS_BAR) {
             items.push((id::EDIT, bar));
         }
-        Self { items }
+        let [sx, sy] = layout.status_hero.place;
+        let status = layout
+            .status_hero
+            .items
+            .iter()
+            .find(|i| i.id() == STATUS_PICTURE)
+            .and_then(|i| i.area())
+            .map(|([x, y], [w, h])| {
+                let (x, y) = (sx.saturating_add(x), sy.saturating_add(y));
+                [x, y, x.saturating_add(w), y.saturating_add(h)]
+            });
+        Self { items, status }
+    }
+
+    /// The box of item `id` (left, top, right, bottom; the last two exclusive), if the dialog
+    /// has it.
+    #[must_use]
+    pub fn area(&self, id: u16) -> Option<[i32; 4]> {
+        self.items.iter().find(|(i, _)| *i == id).map(|&(_, b)| b)
+    }
+
+    /// Whether the status window's box holds `point` (its items, ids 2000 to 2200, the dialog's
+    /// newest: `dialog_send_to_items` 0x5FEDE0 gives them the press first; E24 M3 T6b2).
+    #[must_use]
+    pub fn in_status(&self, [x, y]: [i32; 2]) -> bool {
+        self.status
+            .is_some_and(|[l, t, r, b]| (l..r).contains(&x) && (t..b).contains(&y))
     }
 
     /// Whether the box of item `id` holds `point` (a button held down follows the mouse in and
@@ -1215,6 +1244,10 @@ impl PanelItems {
             .map(|&(i, _)| i)
     }
 }
+
+/// The status window's picture, which every kind's panel starts with at its place and size
+/// (`AdStat*.pcx`, 0x5AA470: 176 × 166).
+const STATUS_PICTURE: u16 = 2000;
 
 /// Whether the adventure dialog's item `item` takes the mouse for `kingdom` with `buttons` on a
 /// map of `levels` levels (its state's bit 0x2 without 0x8; read from the running original's

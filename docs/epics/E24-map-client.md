@@ -198,8 +198,10 @@ viewers share.
   buttons' press and hotkeys, the lists' clicks and Next Hero (**done** 2026-10-30: 0x4097E0,
   0x409A70, the button's loop, `hero_select` and `town_select` read and built; two new sequences
   exact with the status bar; MCL-Q22; the log), T6b2, the underground, the minimap's click and
-  the status window's, and T6b3, the keys during a walk and the sound without the focus; T7, M3's
-  closure. A task that grows is cut at a
+  the status window's (**done** 2026-10-30: the command 4, `minimap_click` 0x40A0C0 whole with
+  its loop, the items' press and release and the status window's click 0x409FD8 read and built;
+  the situation's underground; three new sequences exact with the status bar; MCL-Q23, MCL-Q24;
+  the log), and T6b3, the keys during a walk and the sound without the focus; T7, M3's closure. A task that grows is cut at a
   seam agreed with the user.
 - **Exit:** every situation and sequence as recorded on the whole screen (no `panels` mask
   left, or each difference an `MCL-Q<n>`); the view-only clicks, the hints and the cursor in the
@@ -418,3 +420,14 @@ M1's review lists (three reviewers, T6b; the list accepted) and M2's (accepted a
   the sequences move the pointer over the map only before their first choice); the release's hint
   is recorded, not read; the hotkeys of the sequences held to their end (their commands' dialogs
   after it). The original's hint hidden by a list's redraw: MCL-Q22.
+- **M3 T6b2, the underground, the minimap's click, the status window's** (*provisional*, design
+  §4.14): the tables' minimap `click` (each map size's divisor, by its f32's bits) and
+  `[map.status] asked` (3 000 ms); the live part's `realm` (the kingdom's window as the original
+  would build it, a `status` of kind 2: what a click shows) and `Live::at_start`'s from the map (the
+  towns' halls: the start's Town Hall and City Hall bits now read; the players a human or the
+  computer may play, by the map's teams); the situation's `underground` (terrains alone; the
+  harness explores it whole and waits for `adventure`); the selection's window kept while a click
+  shows another. Not built: the minimap's right click (its help text, M4, M5); a hero or town of the
+  underground in a recording (the harness reads the view's level's heroes). The original's lost
+  press on a rebuilt status window: MCL-Q23; a hotkey's release eaten by the minimap's loop:
+  MCL-Q24.

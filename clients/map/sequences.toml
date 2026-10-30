@@ -587,3 +587,64 @@ inputs = [
     { at = 4800, keydown = "h" }, { at = 4850, keyup = "h" },
     { at = 5000, pointer = [700, 300] },
 ]
+
+# The underground's button and key, the minimap's click and drag, the status window's click (E24 M3
+# T6b2, design §4.14), on `seq-underground` (a map of two levels). The underground: U pressed and
+# released (the level 1 shown, the whole screen updated), the button clicked (back to the surface),
+# pressed and released off it (nothing), clicked again and U again. The minimap: a click (press and
+# release in one millisecond), a press dragged inside the area, past its right and bottom edges
+# (held at the edge), past its top-left corner and back, released at another point (its move drawn
+# first); on the underground a click, then a press held without a move (the map stands still, the
+# palettes stepping in memory) through H's press and release (dropped). The status window: clicks
+# from the hero's to the kingdom's, the date's (its sound, its frames stepping) and the hero's; a
+# press on it released over the resource bar's date (the click wherever the release; outside the
+# edge zones: no scroll); a press held past the kingdom's end (the window built again drops the
+# press: the release does nothing); a last click.
+[[sequence]]
+id = "underground"
+situation = "seq-underground"
+ms = 2400
+why = "the underground's key and button: the level switched, the whole screen updated, a press released off the button doing nothing"
+inputs = [
+    { at = 200, keydown = "u" }, { at = 300, keyup = "u" },
+    { at = 600, press = [727, 212] }, { at = 700, release = [727, 212] },
+    { at = 900, press = [727, 212] }, { at = 1000, pointer = [760, 212] },
+    { at = 1100, release = [760, 212] },
+    { at = 1300, press = [727, 212] }, { at = 1400, release = [727, 212] },
+    { at = 1700, keydown = "u" }, { at = 1800, keyup = "u" },
+    { at = 2100, pointer = [700, 300] },
+]
+
+[[sequence]]
+id = "minimap-drag"
+situation = "seq-underground"
+ms = 3000
+why = "the minimap clicked and dragged: inside, past its edges (held there), released elsewhere; on the underground a press held still through a hotkey"
+inputs = [
+    { at = 200, press = [650, 50] }, { at = 200, release = [650, 50] },
+    { at = 500, press = [700, 100] }, { at = 600, pointer = [720, 120] },
+    { at = 700, pointer = [760, 150] }, { at = 800, pointer = [790, 200] },
+    { at = 900, pointer = [600, 20] }, { at = 1000, pointer = [700, 60] },
+    { at = 1100, release = [740, 90] },
+    { at = 1400, keydown = "u" }, { at = 1500, keyup = "u" },
+    { at = 1700, press = [680, 80] }, { at = 1700, release = [680, 80] },
+    { at = 2000, press = [690, 90] }, { at = 2200, keydown = "h" },
+    { at = 2300, keyup = "h" }, { at = 2400, release = [690, 90] },
+    { at = 2700, pointer = [700, 300] },
+]
+
+[[sequence]]
+id = "status-click"
+situation = "seq-underground"
+ms = 5600
+why = "the status window clicked: the kingdom's, the date's and the hero's in turn, a release elsewhere, a press dropped by the window built again"
+inputs = [
+    { at = 200, press = [700, 480] }, { at = 260, release = [700, 480] },
+    { at = 500, press = [700, 480] }, { at = 560, release = [700, 480] },
+    { at = 1300, press = [700, 480] }, { at = 1360, release = [700, 480] },
+    { at = 1500, press = [700, 480] }, { at = 1600, pointer = [700, 580] },
+    { at = 1700, release = [700, 580] },
+    { at = 4500, press = [700, 480] }, { at = 4900, release = [700, 480] },
+    { at = 5200, press = [700, 480] }, { at = 5260, release = [700, 480] },
+    { at = 5400, pointer = [700, 300] },
+]

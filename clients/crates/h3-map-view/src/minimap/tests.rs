@@ -124,6 +124,13 @@ fn the_tables_minimap_breaks_no_rule() {
             m.check().unwrap_err(),
             alloc::format!("the scale {scale:#x} is not a positive normal f32")
         );
+        // A click's divisor the same (E24 M3 T6b2).
+        let mut m = tables().map.minimap;
+        m.sizes[3].radar.click = scale;
+        assert_eq!(
+            m.check().unwrap_err(),
+            alloc::format!("the scale {scale:#x} is not a positive normal f32")
+        );
     }
     // The tables refuse it.
     let text = include_str!("../../../../map/assets/base.toml")
@@ -341,4 +348,47 @@ fn a_scene_draws_the_minimap_as_last_drawn() {
         (shown.heroes, at, cut),
         (vec![(26, Colour::Owner(67))], [633, 26], [0, 2])
     );
+}
+
+#[test]
+fn a_clicks_tile_divides_exactly() {
+    // E24 M3 T6b2 (design §4.14): the tables' divisors by the map's size, another size's 1.0.
+    let m = tables().map.minimap;
+    assert_eq!(
+        [36, 72, 108, 144, 50].map(|side| m.click(side)),
+        [
+            0x4080_0000,
+            0x4000_0000,
+            0x3FAA_A993,
+            0x3F80_0000,
+            0x3F80_0000
+        ]
+    );
+    // trunc(v / f) for each: 1.3333 is a little less than 4/3, so 4 pixels make a hair more than
+    // 3 tiles: 143 gives 107, the 108-tile map's last.
+    let tiles = |bits: u32| [0, 3, 4, 100, 143].map(|v| divided(v, bits));
+    assert_eq!(tiles(0x4080_0000), [0, 0, 1, 25, 35]);
+    assert_eq!(tiles(0x4000_0000), [0, 1, 2, 50, 71]);
+    assert_eq!(tiles(0x3FAA_A993), [0, 2, 3, 75, 107]);
+    assert_eq!(tiles(0x3F80_0000), [0, 3, 4, 100, 143]);
+    // A divisor of 2^-24 shifts left; one far below saturates; one far above gives 0.
+    assert_eq!(divided(3, 0x3380_0000), 3 << 24);
+    assert_eq!(divided(1000, 0x0080_0000), i32::MAX);
+    assert_eq!(divided(1000, 0x7E80_0000), 0);
+    assert_eq!(divided(1 << 24, 0x4B00_0000), 2);
+    assert_eq!(divided(u32::MAX, 0x3F80_0000), i32::MAX);
+    // No point of the area (0 to 143) over a table's divisor lies within 0.24 of the next
+    // integer, so the x87's roundings (at most 2^-46 here) never carry it across.
+    for s in &m.sizes {
+        let bits = s.radar.click;
+        let mantissa = u64::from(bits & 0x7F_FFFF | 0x80_0000);
+        let shift = 150 - u64::from((bits >> 23) & 0xFF);
+        for v in 0..=143u64 {
+            let rest = (v << shift) % mantissa;
+            assert!(
+                rest == 0 || mantissa - rest > mantissa / 5,
+                "{v} / {bits:#x}"
+            );
+        }
+    }
 }

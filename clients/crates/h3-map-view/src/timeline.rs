@@ -47,6 +47,7 @@ use crate::live::{
     Arrow, Buttons, Chosen, ChosenHero, ChosenTown, DateStatus, Kingdom, KingdomStatus, Selected,
     Status,
 };
+use crate::minimap::{MinimapArt, divided};
 use crate::panels;
 use crate::scene::ViewAt;
 use crate::sequence::{DEFAULT_HERO_SPEED, DEFAULT_SCROLL_SPEED};
@@ -256,15 +257,14 @@ impl Hotkey {
 pub enum Unplayable {
     /// The pointer over the view: the cursor by the tile under it, M3's.
     OverView([i32; 2]),
-    /// A click on a panel's item whose action is not built: the minimap's and the status
-    /// window's (T6b2), the selected hero's or town's screen (M4, M5), a hero or town whose
-    /// choice the live part does not give.
+    /// A click on a panel's item whose action is not built: the selected hero's or town's screen
+    /// (M4, M5), a hero or town whose choice the live part does not give.
     Panel([i32; 2]),
     /// A click on a tile no given path leads to from the selected hero (or with none): M2 walks
     /// the paths recorded, the engine's come with M4.
     NoPath([i32; 3]),
-    /// A button's command that opens a dialog or is the engine's action (M4, M5; the
-    /// underground's: T6b2), by the button's id.
+    /// A button's command that opens a dialog or is the engine's action (M4, M5), by the
+    /// button's id.
     Command(u16),
 }
 
@@ -327,6 +327,11 @@ pub struct Rules {
     pub bugs: Bugs,
     /// The panels' items the mouse finds (E24 M3 T6a1, design §4.10).
     pub panels: PanelItems,
+    /// The minimap's art: a click's divisor by the map's side (E24 M3 T6b2, design §4.14).
+    pub minimap: MinimapArt,
+    /// How long a click on the status window asks the kingdom's or the date's window for, ms
+    /// (E24 M3 T6b2).
+    pub asked_ms: u32,
 }
 
 impl Rules {
@@ -353,6 +358,8 @@ impl Rules {
             date: tables.map.status.date.clone(),
             bugs,
             panels: PanelItems::new(layout),
+            minimap: tables.map.minimap.clone(),
+            asked_ms: tables.map.status.asked,
         }
     }
 
@@ -765,6 +772,16 @@ pub struct Loop {
     held: Option<(u16, bool)>,
     /// The buttons a hotkey holds pressed, with the key.
     keyed: Vec<(Hotkey, u16)>,
+    /// The mouse holds the minimap down (`minimap_click`'s own loop from 0x40A344: the tick by
+    /// each message's wait, every message but the mouse's moves and its release dropped; E24 M3
+    /// T6b2).
+    dragging: bool,
+    /// A click's divisor on this map's minimap (the f32's bits: [`MinimapArt::click`]).
+    scale: u32,
+    /// An item of the status window holds the press (its state's bit 1, `sub_44FF60` 0x450030):
+    /// the left button's next release, wherever, is its command (0x409FD8); a window built again
+    /// meanwhile takes it with its items.
+    status_held: bool,
 }
 
 impl Loop {
@@ -867,6 +884,11 @@ impl Loop {
             chosen: start.chosen.clone(),
             held: None,
             keyed: Vec::new(),
+            dragging: false,
+            scale: rules
+                .minimap
+                .click(usize::try_from(start.size).unwrap_or(usize::MAX)),
+            status_held: false,
             rules,
         };
         // The status window at 0 (E24 M3 T5b2): the kind asked, else the date's or the kingdom's
@@ -877,9 +899,12 @@ impl Loop {
             (None, Some(kind @ (1 | 2))) => (kind, u32::MAX),
             _ => (0, 0),
         };
-        if let Some(Status::Kingdom(realm)) = shown {
-            l.realm = Some(realm.clone());
-        }
+        // The kingdom's window: as memory would build it (E24 M3 T6b2: a click's), else the one
+        // shown.
+        l.realm = start.kingdom.realm.clone().or_else(|| match shown {
+            Some(Status::Kingdom(realm)) => Some(realm.clone()),
+            _ => None,
+        });
         // Memory's points at 0: a recording's write, which the hero list does not show yet.
         l.spend(0);
         if !l.path.is_empty() {
@@ -1007,8 +1032,9 @@ impl Loop {
 
     /// The idle message: the edge scroll before it, then the idle step (0x408A88).
     fn idle_message(&mut self, t: u32) {
-        // The mouse holding a button down runs the button's loop: the tick only (0x45641C).
-        if self.held.is_some() {
+        // The mouse holding a button down runs the button's loop: the tick only (0x45641C); so
+        // does the minimap's (0x40A344, E24 M3 T6b2).
+        if self.held.is_some() || self.dragging {
             return;
         }
         self.edge(t);
@@ -1026,7 +1052,7 @@ impl Loop {
     /// cursor read the mouse's point now, GetCursorPos: the latest given, M2 T6a, the reviewer's
     /// R1-3; a click's tile is its message's).
     fn act(&mut self, t: u32, action: Action, fresh: bool) -> Result<(), Unplayable> {
-        if self.held.is_some() {
+        if self.held.is_some() || self.dragging {
             return self.holding(t, action);
         }
         if fresh
@@ -1055,12 +1081,14 @@ impl Loop {
                     self.moved();
                 }
                 match action {
-                    Action::Release(_) => {}
+                    Action::Release(_) => self.release(t),
                     Action::Press(_) => self.press(t, at)?,
                     _ => {
                         self.press(t, at)?;
-                        if self.held.is_some() {
+                        if self.held.is_some() || self.dragging {
                             self.holding(t, Action::Release(at))?;
+                        } else {
+                            self.release(t);
                         }
                     }
                 }
@@ -1077,6 +1105,10 @@ impl Loop {
     /// the left button's release ends the hold, a click when the button shows pressed (0x456451:
     /// its command, `adventure_command` 0x409A70); every other message is taken and dropped.
     fn holding(&mut self, t: u32, action: Action) -> Result<(), Unplayable> {
+        if self.dragging {
+            self.drag(t, action);
+            return Ok(());
+        }
         let (Some((id, over)), Action::Pointer(at) | Action::Release(at)) = (self.held, action)
         else {
             return Ok(());
@@ -1110,9 +1142,15 @@ impl Loop {
     /// M3 T6b1, design §4.13): the item under the mouse that takes it ([`hover::takes`]); a
     /// button held down (`def_button_message` 0x456328; not the quest log without a quest, whose
     /// state 0x20 the button skips: 0x456287), the view's area and the text over it a tile's
-    /// click, a hero list's slot its hero chosen, a town list's its town; the minimap's click
-    /// T6b2's; every other item nothing (the bars, the status window, the status bar).
+    /// click, a hero list's slot its hero chosen, a town list's its town, the minimap its own
+    /// loop ([`Loop::minimap_press`]); every other item nothing (the bars, the status bar). The
+    /// status window's items, the dialog's newest (`dialog_send_to_items` 0x5FEDE0 from the
+    /// list's head), take the press first: the item holds it (E24 M3 T6b2, design §4.14).
     fn press(&mut self, t: u32, at: [i32; 2]) -> Result<(), Unplayable> {
+        if self.kingdom.status.is_some() && self.rules.panels.in_status(at) {
+            self.status_held = true;
+            return Ok(());
+        }
         let (kingdom, buttons, levels) = (&self.kingdom, self.buttons, self.levels);
         let item = self
             .rules
@@ -1128,7 +1166,10 @@ impl Loop {
                 Ok(())
             }
             Some(panels::id::VIEW | panels::id::TEXT) => self.click(t, at),
-            Some(panels::id::MINIMAP) => self.unbuilt(Unplayable::Panel(at)),
+            Some(panels::id::MINIMAP) => {
+                self.minimap_press(t, at);
+                Ok(())
+            }
             Some(id) => match list_slot(id) {
                 Some((false, slot)) => self.hero_slot(t, slot, at),
                 Some((true, slot)) => self.town_slot(t, slot, at),
@@ -1194,11 +1235,15 @@ impl Loop {
         }
     }
 
-    /// A button's command (`adventure_command` 0x409A70, its switch 0x409AB4): next hero's
-    /// (0x409D89), the hero list's arrows (0x403220) and the town list's (0x403280); the rest a
-    /// dialog's or the engine's (M4, M5; the underground's T6b2).
+    /// A button's command (`adventure_command` 0x409A70, its switch 0x409AB4): the
+    /// underground's (0x409F6B), next hero's (0x409D89), the hero list's arrows (0x403220) and
+    /// the town list's (0x403280); the rest a dialog's or the engine's (M4, M5).
     fn command(&mut self, t: u32, id: u16) -> Result<(), Unplayable> {
         match id {
+            panels::id::UNDERGROUND => {
+                self.underground(t);
+                Ok(())
+            }
             panels::id::NEXT_HERO => {
                 self.next_hero(t);
                 Ok(())
@@ -1217,6 +1262,129 @@ impl Loop {
     /// draw), nothing live.
     fn unbuilt(&self, why: Unplayable) -> Result<(), Unplayable> {
         if self.live { Ok(()) } else { Err(why) }
+    }
+
+    /// The underground's command (`adventure_command` 0x409F6B; E24 M3 T6b2, design §4.14): on
+    /// a map of two levels the selected hero put back on its tile (0x409F84), the view on the
+    /// other level at the same corner (0x409FAE), the button's picture by it (0x403C40) and the
+    /// whole screen updated and shown (`adventure_full_update` 0x417420 with 1: every item drawn,
+    /// so the status bar's hint hidden, the status window built again, the view and the
+    /// minimap); no sound, no mouse move.
+    fn underground(&mut self, t: u32) {
+        if self.levels < 2 {
+            return;
+        }
+        self.lifted = false;
+        self.view.z = u8::from(self.view.z == 0);
+        self.draw_lists();
+        self.choose(t, true);
+        self.draw_minimap();
+        self.draw(t);
+    }
+
+    /// The left button pressed on the minimap (`minimap_click` 0x40A0C0, the left button's;
+    /// E24 M3 T6b2, design §4.14): the selected hero put back on its tile (0x40A112), the view's
+    /// corner the tile under the point less the view's middle, held within the scroll's limits
+    /// (0x40A1D7 to 0x40A267), the minimap drawn and shown (0x40A280) and the view (0x40A2BB,
+    /// shown 0x40A2D3) with the objects' step when due; then its own loop holds the mouse
+    /// ([`Loop::drag`]).
+    fn minimap_press(&mut self, t: u32, at: [i32; 2]) {
+        self.lifted = false;
+        let Some([left, top, ..]) = self.rules.panels.area(panels::id::MINIMAP) else {
+            return;
+        };
+        let [mx, my] = self.rules.middle;
+        let tile = |v: i32, from: i32| divided(v.saturating_sub(from).unsigned_abs(), self.scale);
+        self.view.x = tile(at[0], left)
+            .saturating_sub(mx)
+            .clamp(-mx, self.last.saturating_sub(mx).max(-mx));
+        self.view.y = tile(at[1], top)
+            .saturating_sub(my)
+            .clamp(-my, self.last.saturating_sub(my).max(-my));
+        self.dragging = true;
+        self.minimap_drawn(t);
+    }
+
+    /// An action while the mouse holds the minimap down (its loop, 0x40A344 to 0x40A5BE: each
+    /// turn the messages waiting, up to the release, the last move kept, the rest dropped): a move
+    /// (the latest point, GetCursorPos) held inside the area (0x40A3C4 to 0x40A41B; its height by
+    /// the width, harmless on the square area), its tile within the map (0x40A47B to 0x40A4BC: by
+    /// the width) less the view's middle the corner, never otherwise held, the minimap and the
+    /// view drawn and shown with the objects' step when due, the corner changed or not; the
+    /// release (after the move the harness gives it at another point) ends the loop, the
+    /// manager's next turn in the same millisecond (the redraw the hold kept from its deadline).
+    /// The mouse manager's move (0x40A42A) draws nothing (its message handler 0x4EC560 returns
+    /// at once); no hint, no cursor change, no edge scroll.
+    fn drag(&mut self, t: u32, action: Action) {
+        let (Action::Pointer(at) | Action::Release(at)) = action else {
+            return;
+        };
+        let moved = at != self.pointer;
+        self.pointer = at;
+        if matches!(action, Action::Pointer(_)) || moved {
+            if let Some([left, top, right, _]) = self.rules.panels.area(panels::id::MINIMAP) {
+                let last = right.saturating_sub(1);
+                let bottom = top
+                    .saturating_add(right.saturating_sub(left))
+                    .saturating_sub(1);
+                let (x, y) = (
+                    at[0].clamp(left, last.max(left)),
+                    at[1].clamp(top, bottom.max(top)),
+                );
+                let tile = |v: i32, from: i32| {
+                    divided(v.saturating_sub(from).unsigned_abs(), self.scale)
+                        .clamp(0, self.last.max(0))
+                };
+                let [mx, my] = self.rules.middle;
+                self.view.x = tile(x, left).saturating_sub(mx);
+                self.view.y = tile(y, top).saturating_sub(my);
+            }
+            self.minimap_drawn(t);
+        }
+        if matches!(action, Action::Release(_)) {
+            self.dragging = false;
+            self.idle_message(t);
+        }
+    }
+
+    /// The minimap and the view drawn and shown at the corner, the objects stepped when due (a
+    /// minimap's click and its moves, 0x40A2D8 and 0x40A561: as the idle step steps them).
+    fn minimap_drawn(&mut self, t: u32) {
+        self.draw_minimap();
+        self.draw(t);
+        self.step_objects(t);
+    }
+
+    /// The left button released with no loop of its own holding it (`dialog_send_to_items`
+    /// 0x5FEDE0: the first item from the list's head whose state holds the press, `sub_44FF60`
+    /// 0x450079; E24 M3 T6b2, design §4.14): a status window's item gives its command
+    /// ([`Loop::status_click`]); the others' commands do nothing (the view's, the minimap's: its
+    /// own loop took its release, so its state still holds the press, harmlessly).
+    fn release(&mut self, t: u32) {
+        if core::mem::take(&mut self.status_held) {
+            self.status_click(t);
+        }
+    }
+
+    /// The status window's click (`adventure_command` 0x409FD8, its items 2000 to 2200; design
+    /// §4.8, §4.14): the kingdom's asked gives the date's, another kind asked but the selection's
+    /// gives the selection's; the selection's gives the kingdom's, or the date's while the
+    /// kingdom's shows; the date's and the kingdom's for the tables' time from now (0x40A030);
+    /// then the window built again, drawn and shown (`status_window_choose` with 1, 1, 1).
+    fn status_click(&mut self, t: u32) {
+        let shown = self.kingdom.status.as_ref().map(Status::kind);
+        match self.asked {
+            2 => {
+                self.asked = 1;
+                self.end = t.saturating_add(self.rules.asked_ms);
+            }
+            0 => {
+                self.asked = if shown == Some(2) { 1 } else { 2 };
+                self.end = t.saturating_add(self.rules.asked_ms);
+            }
+            _ => self.asked = 0,
+        }
+        self.choose(t, true);
     }
 
     /// A list's arrow (`hero_list_scroll` 0x403220, `town_list_scroll` 0x403280): its first slot
@@ -2027,17 +2195,34 @@ impl Loop {
             | (0, Selected::Town(_), Some(s @ Status::Town(_))) => Some(s),
             _ => return,
         };
-        let next = match window {
+        let (next, built) = match window {
             None => {
                 let date = match self.kingdom.status {
                     Some(Status::Date(date)) if !force => Some(date),
                     _ => None,
                 };
-                self.date_window(t, date)
+                (self.date_window(t, date), date.is_none())
             }
-            Some(s) => (force || shown != Some(s.kind())).then_some(s),
+            Some(s) => {
+                let built = force || shown != Some(s.kind());
+                (built.then_some(s), built)
+            }
         };
+        // A window built anew drops the old one's items, a press they held with them (E24 M3
+        // T6b2: `status_panel_set` 0x402C10).
+        if built {
+            self.status_held = false;
+        }
         if let Some(status) = next.filter(|s| self.kingdom.status.as_ref() != Some(s)) {
+            // The selection's window kept as another takes its place (E24 M3 T6b2: a click's),
+            // for the chooser's kind 0 to build again.
+            let selection = |s: &Status| matches!(s, Status::Hero(_) | Status::Town(_));
+            if self.kingdom.selection.is_none()
+                && !selection(&status)
+                && self.kingdom.status.as_ref().is_some_and(selection)
+            {
+                self.kingdom.selection.clone_from(&self.kingdom.status);
+            }
             self.kingdom.status = Some(status.clone());
             Arc::make_mut(&mut self.drawn.kingdom).status = Some(status);
         }
