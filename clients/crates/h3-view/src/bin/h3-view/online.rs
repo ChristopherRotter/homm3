@@ -4,8 +4,12 @@
 //! ([`Online::open`]); from then the window takes what came at each of its frames
 //! ([`Online::poll`]) and never waits. A turn the server asks the seat to play asks the server's
 //! rules for the targets of each spell the seat may cast and of its active stack's own cast (the
-//! protocol's `Query`): the aims need them, as no engine runs here. A dropped connection is dialed
-//! again (at most once a second, until the server answers) and the seat re-joined by its token;
+//! protocol's `Query`): the aims need them, as no engine runs here. What the seat sends goes at
+//! the client's pace (`h3_view::remote::Pace`, E17 M5 review R1-1: a burst of queries would have
+//! the server close the connection as rate-limited), and at most [`POLL_MOST`] messages are taken
+//! at a frame (R1-5). A dropped connection, or one silent for [`net::SILENT`] (pings count as
+//! heard, R1-3), is dialed again (at most once a second, until the server answers) and the seat
+//! re-joined by its token;
 //! the record fetched then extends the one before, so the battle keeps its timeline, or a
 //! restarted server's opens afresh at the re-join's snapshot: a new timeline (E17 M5 T6b2). With
 //! an account (E17 M5 T7, [`crate::account`]), each connection logs in once welcomed and joins
@@ -20,9 +24,9 @@ use std::time::Duration;
 
 use h3_content_battle::BattleRuleset;
 use h3_protocol::map;
-use h3_protocol::wire::{Command, Query, Seat, ServerMessage, Target};
+use h3_protocol::wire::{ClientMessage, Command, Query, Seat, ServerMessage, Target};
 use h3_view::record::Record;
-use h3_view::remote::{self, Client, Content, Note, Pins, Rejoined, rejoined};
+use h3_view::remote::{self, Client, Content, Note, Pace, Pins, Rejoined, rejoined};
 use rustls::RootCertStore;
 
 use crate::account::Account;
@@ -31,6 +35,13 @@ use crate::net::{self, Connection, Incoming};
 
 /// The least time between two dials of a dropped connection, in milliseconds.
 const REDIAL_MS: u64 = 1_000;
+
+/// The most frames of the connection a poll takes (E17 M5 review R1-5, *provisional*): the rest
+/// wait for the window's next frame, which a long queue would hold up otherwise.
+const POLL_MOST: usize = 256;
+
+/// [`net::SILENT`] in milliseconds of the caller's clock.
+const SILENT_MS: u64 = net::SILENT.as_secs() * 1_000;
 
 /// Where and how a window plays its seat on a server.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -61,6 +72,14 @@ pub struct Online {
     pins: Pins,
     client: Client,
     connection: Option<Connection>,
+    /// What the seat sends, at the client's pace (E17 M5 review R1-1).
+    pace: Pace<ClientMessage>,
+    /// The caller's clock at the last poll, in milliseconds (none before the first: the opening
+    /// waits without it).
+    clock: Option<u64>,
+    /// When the connection was last heard, a ping too, by the caller's clock (E17 M5 review R1-3;
+    /// none: not since the opening, read at the first poll).
+    heard: Option<u64>,
     /// When the connection was last dialed, by the caller's clock in milliseconds (none: it may
     /// be dialed at once).
     dialed: Option<u64>,
@@ -70,6 +89,9 @@ pub struct Online {
     /// The seat's record as the window took it: the first connection's, extended by later ones'
     /// (none before it opened).
     record: Option<Record>,
+    /// How many messages of the connection's record were taken (E17 M5 review R1-5: a growth
+    /// appends what came after them).
+    copied: usize,
     /// The content check, and the ruleset compiled here from the packs the game names (none:
     /// they did not compile).
     content: Content,
@@ -82,7 +104,8 @@ pub struct Online {
     /// (none: the active stack's own cast) with its sequence number.
     queried: Option<usize>,
     queries: Vec<(Option<u16>, u32)>,
-    /// How often the seat was re-joined.
+    /// How often the seat was re-joined: its record opened again (E17 M5 review R1-7: not the
+    /// dials, which a server's downtime repeats).
     pub rejoined: u32,
     /// How often its record opened afresh ([`Online::timelines`]).
     timelines: u32,
@@ -108,7 +131,7 @@ impl Online {
         let pins = read_pins(&server.pins)?;
         let client = Client::new(&server.address, net::nonce()?, pins.key(&server.address));
         let connection = Connection::open(&server.address, roots);
-        connection.send(client.hello(PROGRAM, &server.name));
+        let hello = client.hello(PROGRAM, &server.name);
         let mut online = Self {
             token: server.token.clone(),
             drop: server.drop,
@@ -117,9 +140,13 @@ impl Online {
             pins,
             client,
             connection: Some(connection),
+            pace: Pace::default(),
+            clock: None,
+            heard: None,
             dialed: None,
             joined: None,
             record: None,
+            copied: 0,
             content: Content::Absent,
             ruleset: None,
             asked: false,
@@ -131,11 +158,14 @@ impl Online {
             down: false,
             lines: Vec::new(),
         };
+        // Sent without the clock, as the join's messages: a handful, within the pace's window.
+        online.send_raw(hello);
         while online.record.is_none() {
             let connection = online.connection.as_ref().ok_or("no connection")?;
             match connection.wait(wait) {
                 None => return Err(format!("nothing from the server in {wait:?}")),
                 Some(Incoming::Closed(why)) => return Err(why),
+                Some(Incoming::Heard) => {}
                 Some(Incoming::Message(message)) => online.receive(*message)?,
             }
         }
@@ -148,35 +178,52 @@ impl Online {
         Ok(online)
     }
 
-    /// Takes what came since, without waiting, at `now` (the caller's clock in milliseconds):
-    /// whether the seat's record grew. A dropped connection is dialed again ([`REDIAL_MS`] after
-    /// the last dial) and the seat re-joined.
+    /// Takes what came since, without waiting, at `now` (the caller's clock in milliseconds), at
+    /// most [`POLL_MOST`] frames of it, and sends what the pace lets go: whether the seat's record
+    /// grew. A dropped connection, or one silent for [`net::SILENT`], is dialed again
+    /// ([`REDIAL_MS`] after the last dial) and the seat re-joined.
     ///
     /// # Errors
     /// A fault, a refusal, or a record fetched at a re-join that does not extend the one before.
     pub fn poll(&mut self, now: u64) -> Result<bool, String> {
+        self.poll_at_most(now, POLL_MOST)
+    }
+
+    /// [`Online::poll`], taking at most `most` frames.
+    fn poll_at_most(&mut self, now: u64, most: usize) -> Result<bool, String> {
         let before = self.taken();
+        self.clock = Some(now);
+        self.flush();
+        let mut frames = 0;
         loop {
             let Some(connection) = self.connection.as_ref() else {
                 self.redial(now);
                 break;
             };
-            match connection.poll() {
-                None => break,
+            if frames >= most {
+                break;
+            }
+            let incoming = connection.poll();
+            if incoming.is_some() {
+                (self.heard, frames) = (Some(now), frames + 1);
+            }
+            match incoming {
+                None => {
+                    // Silent too long (E17 M5 review R1-3): as a drop.
+                    let heard = *self.heard.get_or_insert(now);
+                    if now.saturating_sub(heard) <= SILENT_MS {
+                        break;
+                    }
+                    self.dropped(&format!("nothing heard in {:?}", net::SILENT));
+                }
+                Some(Incoming::Heard) => {}
                 Some(Incoming::Message(message)) => self.receive(*message)?,
                 Some(Incoming::Closed(why)) => {
                     if self.over() || self.client.closed() {
                         self.connection = None;
                         break;
                     }
-                    // Dialed again until the server answers (E17 M5 T6b2: a restart's
-                    // downtime), the drop said once.
-                    if !self.down {
-                        self.lines
-                            .push(format!("the connection dropped ({why}): re-joining"));
-                        self.down = true;
-                    }
-                    self.connection = None;
+                    self.dropped(&why);
                 }
             }
         }
@@ -184,8 +231,20 @@ impl Online {
         Ok(self.taken() > before)
     }
 
+    /// The connection dropped for `why`: dialed again until the server answers (E17 M5 T6b2: a
+    /// restart's downtime), the drop said once.
+    fn dropped(&mut self, why: &str) {
+        if !self.down {
+            self.lines
+                .push(format!("the connection dropped ({why}): re-joining"));
+            self.down = true;
+        }
+        self.connection = None;
+    }
+
     /// Dials again at `now` once [`REDIAL_MS`] passed since the last dial: a new client, the
-    /// hello; the welcome's join re-joins the game by the seat's token.
+    /// hello; the welcome's join re-joins the game by the seat's token. What waited for the
+    /// connection before is dropped with it.
     fn redial(&mut self, now: u64) {
         let early = self
             .dialed
@@ -201,13 +260,13 @@ impl Online {
             nonce,
             self.pins.key(&self.server.address),
         );
-        let connection = Connection::open(&self.server.address, self.roots);
-        connection.send(self.client.hello(PROGRAM, &self.server.name));
-        self.connection = Some(connection);
-        self.dialed = Some(now);
+        self.connection = Some(Connection::open(&self.server.address, self.roots));
+        self.pace.clear();
+        let hello = self.client.hello(PROGRAM, &self.server.name);
+        self.send_raw(hello);
+        (self.dialed, self.heard) = (Some(now), Some(now));
         (self.asked, self.queried) = (false, None);
         self.queries.clear();
-        self.rejoined += 1;
     }
 
     /// What the server's `message` does.
@@ -258,7 +317,8 @@ impl Online {
                     self.lines.push(format!("joined game {game} as {seat:?}"));
                 }
                 Note::Refused(reason) => return Err(format!("refused: {reason:?}")),
-                Note::Opened | Note::Grew => self.take()?,
+                Note::Opened => self.opened()?,
+                Note::Grew => self.grew(),
                 Note::Goodbye(reason) => {
                     self.lines.push(format!("goodbye: {reason:?}"));
                     if let Some(why) = remote::farewell(reason).filter(|_| !self.over()) {
@@ -276,17 +336,17 @@ impl Online {
 
     /// The join once welcomed (and logged in, with an account): the game joined before, or the
     /// server's game, or a new one of its offer.
-    fn join(&mut self) -> Result<h3_protocol::wire::ClientMessage, String> {
+    fn join(&mut self) -> Result<ClientMessage, String> {
         let (game, seat) = (&self.server.game, self.server.seat);
         connect::join(&mut self.client, game, self.joined, seat, &self.token)
     }
 
-    /// The connection's record taken as the seat's: at the first opening as it is; at a
-    /// re-join's, the one taken with what it adds when its numbers go on, else (E17 M5 T6b2) as
-    /// a new timeline: a restarted server's restored game numbers afresh from the re-join's
-    /// snapshot ([`Online::timelines`]). Another game's or seat's ends the run. A command
-    /// answered, the next turn may be played.
-    fn take(&mut self) -> Result<(), String> {
+    /// The connection's record opened, taken as the seat's: at the first opening as it is; at a
+    /// re-join's (counted, E17 M5 review R1-7), the one taken with what it adds when its numbers
+    /// go on, else (E17 M5 T6b2) as a new timeline: a restarted server's restored game numbers
+    /// afresh from the re-join's snapshot ([`Online::timelines`]). Another game's or seat's ends
+    /// the run. The only comparison of the whole record (E17 M5 review R1-5): a growth appends.
+    fn opened(&mut self) -> Result<(), String> {
         let Some(record) = self.client.record() else {
             return Ok(());
         };
@@ -307,14 +367,35 @@ impl Online {
                 return Err("the record fetched at the re-join is another game's".to_owned());
             }
         };
+        self.copied = record.messages.len();
+        if self.record.is_some() {
+            self.rejoined += 1;
+        }
+        self.record = Some(taken);
+        self.settle();
+        Ok(())
+    }
+
+    /// The connection's record grew: what it added appended to the one taken (E17 M5 review
+    /// R1-5: neither compared nor copied whole).
+    fn grew(&mut self) {
+        let (Some(record), Some(taken)) = (self.client.record(), self.record.as_mut()) else {
+            return;
+        };
+        remote::grown(taken, record, self.copied);
+        self.copied = record.messages.len();
+        self.settle();
+    }
+
+    /// A command answered (the connection's last message), the next turn may be played.
+    fn settle(&mut self) {
+        let last = self.client.record().and_then(|r| r.messages.last());
         if matches!(
-            record.messages.last(),
+            last,
             Some(ServerMessage::Accepted { .. } | ServerMessage::Rejected { .. })
         ) {
             self.asked = false;
         }
-        self.record = Some(taken);
-        Ok(())
     }
 
     /// How often the seat's record opened afresh (E17 M5 T6b2: a server's restart): each a new
@@ -323,8 +404,19 @@ impl Online {
         self.timelines
     }
 
-    fn send_raw(&self, message: h3_protocol::wire::ClientMessage) {
-        if let Some(connection) = &self.connection {
+    /// Queues `message` for the server, sent at the client's pace (E17 M5 review R1-1): what may
+    /// go at once goes.
+    fn send_raw(&mut self, message: ClientMessage) {
+        self.pace.push(message);
+        self.flush();
+    }
+
+    /// Sends what the pace lets go at the last poll's clock (none read yet: the opening's).
+    fn flush(&mut self) {
+        let Some(connection) = &self.connection else {
+            return;
+        };
+        for message in self.pace.release(self.clock) {
             connection.send(message);
         }
     }

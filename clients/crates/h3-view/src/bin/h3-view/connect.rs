@@ -31,8 +31,9 @@ pub(crate) mod tests;
 /// The program's name in the hello (the window's too, E17 M5 T6b1).
 pub const PROGRAM: &str = concat!("h3-view ", env!("CARGO_PKG_VERSION"));
 
-/// How long a headless session waits for the server's next message.
-const SILENCE: Duration = Duration::from_secs(30);
+/// How long a headless session waits for the server's next frame, a ping's too (E17 M5 review
+/// R1-3: an opponent may think longer than that).
+const SILENCE: Duration = net::SILENT;
 
 /// The most commands the plain player sends before it gives up (*provisional*, as `play`'s
 /// `FOUGHT_LIMIT`).
@@ -227,6 +228,8 @@ pub fn session(
             let message = match connection.wait(SILENCE) {
                 None => return Err(format!("nothing from the server in {SILENCE:?}")),
                 Some(Incoming::Closed(why)) => return Err(why),
+                // A ping: the server is there, and nothing changed.
+                Some(Incoming::Heard) => continue,
                 Some(Incoming::Message(message)) => message,
             };
             let notes = client
