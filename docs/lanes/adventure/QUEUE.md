@@ -10,22 +10,22 @@ battle sides and `auto again`; the recipe `E08-batch-9a` and its runs); T79b don
 208; `adventure/e08-t79b`: the harness's income, Garden mask, weekly objects' and monsters' words,
 end-turn messages; the recipe `E08-batch-9b` and its runs). T80 done (decisions 209, 210: whole
 with A-33's re-read; `adventure/e08-t80`, `cross-lane`: batch E9 scored, survey §19, A-33
-withdrawn). Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
+withdrawn). T81 in two, the ADRs first (decision 211): T81a done (`shared/e08-t81a`: the three
+drafts applied, ADR-0015's core row, the index, the glossary). Every entry's acceptance includes
+the Definition of Done (`docs/05-testing.md`).
 
-**E08 T81 — The `shared/` task: the ADRs, the kinds, the creature's abilities and the packs**
+**E08 T81b — The `shared/` task's code: the kinds, the creature's abilities and the packs**
 
-- **Scope:** design §18's round 4, a `shared/e08-t81` pull request (`cross-lane`: the packs and
-  the harvester's gap-fill are the battle lane's): the three drafts (`adr-drafts/0013-`, `0016-`,
-  `0017-increment-9.md`, batch E9's outcome folded in by T80) applied to ADR-0013, -0016 and
-  -0017 (and ADR-0015 point 2's core row); the four kinds (daily resource, the day's mana regain,
-  the extra regain, full mana), the two hero parameters and the core creature's abilities outside
-  battle (`weekly_resource`, decision 201) in `h3-content` and `h3-pack`, with the packs and the
-  gap-fill; `docs/03-domain.md`'s terms (owner, flag, ownable object, mine, guards, Leave Guards,
-  weekly object, the week's and the month's steps, the month's kind, timed event, income); core
-  ruleset hash v51, pack format v50 (design §16).
-- **Inputs:** design §1 to §3, §16, §18; the drafts; survey `E08-economy.md` §19; T70's record in
-  `E08-log.md` (increment 8's `shared/` task) as the pattern.
-- **Depends on:** T80 (done). **Status:** ready; its cut confirmed with the user at its start.
+- **Scope:** design §18's round 4, second half (decision 211), a `shared/e08-t81b` pull request
+  (`cross-lane`: the packs and the harvester's gap-fill are the battle lane's): the four kinds
+  (daily resource, the day's mana regain, the extra regain, full mana), the two hero parameters
+  and the core creature's abilities outside battle (`weekly_resource`, decision 201) in
+  `h3-content` and `h3-pack`, with the packs and the gap-fill (ADR-0013 point 3, ADR-0015's R01
+  point 1, ADR-0017's consequences, as T81a applied them); core ruleset hash v51, pack format v50
+  (design §16); the golden replays' headers and the AI lane's reports, as T70.
+- **Inputs:** design §1, §3, §16; survey `E08-economy.md` §19; T70's record in `E08-log.md`
+  (increment 8's `shared/` task) as the pattern; the original data staged for the re-harvest.
+- **Depends on:** T81a (done). **Status:** ready; its cut confirmed with the user at its start.
 
 ## Inbox
 
