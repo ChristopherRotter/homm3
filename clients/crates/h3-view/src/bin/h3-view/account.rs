@@ -7,7 +7,7 @@
 //! their next login and re-key the account to the new one (`h3_view::remote::Client::login`). An
 //! adapter: the derivation, the signatures, the files, standard input.
 
-use std::io::{BufRead, Write as _};
+use std::io::{BufRead, IsTerminal as _, Write as _};
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
@@ -169,11 +169,13 @@ pub fn keep(options: &Options, input: &mut impl BufRead) -> Result<Vec<String>, 
     Ok(lines)
 }
 
-/// A password read from `input` after its prompt naming `what` on standard error: a line, its end
-/// of line left out.
+/// A password read from `input` after its prompt naming `what` on standard error when standard
+/// input is a terminal: a line, its end of line left out.
 fn password(input: &mut impl BufRead, what: &str) -> Result<String, String> {
-    eprint!("{what}: ");
-    let _ = std::io::stderr().flush();
+    if std::io::stdin().is_terminal() {
+        eprint!("{what}: ");
+        let _ = std::io::stderr().flush();
+    }
     let mut line = String::new();
     input
         .read_line(&mut line)
