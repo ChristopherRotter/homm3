@@ -10,7 +10,8 @@
 //!   challenge (`account::welcome_message`), and its key the one pinned for the address ([`Pins`]:
 //!   pinned at first contact, [`Note::Pinned`]; a key that changed ends the connection, as SSH
 //!   warns).
-//! - **The join** by a seat's token (a spectator's without), then `FetchRecord`: the record is the
+//! - **The join** by a seat's token (a spectator's without; a seat not taken yet without, its
+//!   token then the game's), or a game created and joined (`CreateGame`), then `FetchRecord`: the record is the
 //!   viewer's as the server keeps it ([`crate::record`]), so a re-join after a drop has what it
 //!   missed, and one after a server restart starts afresh, its numbers too. The numbered messages
 //!   that come meanwhile are held, and those after the record's last added. The record opens at
@@ -46,6 +47,8 @@ enum Phase {
     Greeting,
     /// Welcomed, no game joined.
     Lobby,
+    /// A game asked for, to take this seat in.
+    Creating(Seat),
     /// A join sent for this game and seat.
     Joining(u32, Seat),
     /// Joined this game and seat, the record asked for: the numbered messages are held.
@@ -86,6 +89,8 @@ pub enum Note {
     Welcomed(String),
     /// The server's key, pinned for the address at this first contact: the adapter keeps it.
     Pinned([u8; KEY_BYTES]),
+    /// The game created (`CreateGame`'s answer); its join follows.
+    Created(u32),
     /// The game and the seat joined; the record is asked for.
     Joined(u32, Seat),
     /// A request refused (a join's: no such game, a wrong token, a seat taken…).
@@ -204,6 +209,22 @@ impl Client {
         Some(ClientMessage::Join { game, seat, token })
     }
 
+    /// Creates a game of the server's offer `offer` and takes `seat` in it, once welcomed and
+    /// before a game is joined; none otherwise.
+    pub fn create(&mut self, offer: &str, seat: Seat) -> Option<ClientMessage> {
+        if self.phase != Phase::Lobby {
+            return None;
+        }
+        self.phase = Phase::Creating(seat);
+        self.token = None;
+        Some(ClientMessage::CreateGame {
+            seq: self.next_seq(),
+            offer: String::from(offer),
+            seat,
+            spectators: None,
+        })
+    }
+
     /// Sends `command` for the seat, once its record is open; none otherwise.
     pub fn command(&mut self, command: Command) -> Option<ClientMessage> {
         (self.phase == Phase::Playing).then(|| ClientMessage::Command {
@@ -303,8 +324,12 @@ impl Client {
                     Note::Send(ClientMessage::FetchRecord { seq }),
                 ])
             }
+            (Phase::Creating(seat), ServerMessage::GameCreated { game, .. }) => {
+                self.phase = Phase::Joining(game, seat);
+                Ok(vec![Note::Created(game)])
+            }
             (phase, ServerMessage::Refused { reason }) => {
-                if matches!(phase, Phase::Joining(..)) {
+                if matches!(phase, Phase::Joining(..) | Phase::Creating(..)) {
                     self.phase = Phase::Lobby;
                 }
                 Ok(vec![Note::Refused(reason)])
@@ -315,6 +340,7 @@ impl Client {
             (
                 _,
                 m @ (ServerMessage::Welcome { .. }
+                | ServerMessage::GameCreated { .. }
                 | ServerMessage::Joined { .. }
                 | ServerMessage::Record { .. }),
             ) => Err(out_of_place(&m)),

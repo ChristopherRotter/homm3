@@ -4558,3 +4558,60 @@ dialog, box, state and hint, in `states.jsonl` and `frames.jsonl`), read-only.
   first move into the panel; `states.jsonl` is read after each action, never inside a cast, so
   the 11 casts' sequences show the picture after each cast's park whether the book forgot it or
   not: the book's forgetting stays *provisional*, every frame as recorded either way.
+
+## 11. Live play on a server (M5 T6)
+
+The server lane's asks of a client: `docs/lanes/client/NOTES.md`, "The live client" (2026-10-11:
+the content check and a server restart; 2026-10-13: the welcome, the pins). T6 cut with the user
+(2026-10-30): **T6a** the connection, headless (no original data needed); **T6b** the window
+over a server, the record that opens mid-battle (R2-8, R1-3) and the end's `remote_turn`.
+
+### 11.1 The connection (M5 T6a)
+
+- **The dependency** (the user, 2026-10-30): the server's stack, blocking on the I/O thread only:
+  `tungstenite` 0.30 (sync; `handshake`, `rustls-tls-native-roots`), `rustls` 0.23 without its
+  default features (no `ring`, no `aws-lc`: not GPLv2-compatible), `rustls-graviola` (pure Rust;
+  x86_64 and aarch64 with their crypto extensions), `rustls-native-certs`; `ed25519-dalek` (the
+  welcome's signature, `verify_strict`, no weak key) and `getrandom` (the hello's nonce). The
+  binary's only (`tests/purity.rs`' `BINARY_ONLY`); `cargo deny` passes as the engine's.
+- **Pure, `h3_view::remote`:** `Client` is the connection's state without I/O: the hello (this
+  protocol, a nonce, the address dialed); the welcome's checks in order (protocol, `id` the
+  address dialed, the key, challenge and signature hex of their sizes, the signature over
+  `account::welcome_message(id, nonce, challenge)`, the key the one pinned: a first contact pins
+  it, `Note::Pinned`; another key is `Fault::KeyChanged`, shouted, as SSH does); `join` by a
+  token or `create` an offer's game (`GameCreated`, then its `Joined`); at `Joined` a
+  `FetchRecord`, the numbered messages held meanwhile; the record (`record::parse`) the seat's
+  and opened at its first snapshot (`header.first` its number: the server's bound,
+  `record_bytes` 512 KiB by default, may have let the start go), the held messages after its
+  last added; each numbered message after it in order (`Fault::Gap` otherwise); `turn` the
+  record's last `YourTurn` unless an `Accepted` or the end follows it (a `Rejected` keeps it);
+  a `Goodbye` closes it. `remote::number` says which messages are the viewer's (a `Rejected`
+  numbered 0 is a connection's without a seat). `content` compares the game's manifest with
+  the one compiled here: both hashes equal `Same`, else `Different`, none `Absent`.
+  `Pins` is the pins file (*provisional*: a line per address, `address key-hex`, sorted, `#`
+  comments; a duplicate or a bad line is an error with its number).
+- **Why the record is fetched** (*provisional*): one code path for a first join, a re-join after
+  a drop (the record holds what came while away: one timeline for the window) and a re-join
+  after a restart (the numbers afresh: `first` 1 again). A drop on the same server gives a
+  record that extends the one before; the window (T6b) keeps its timeline then and starts a
+  new one otherwise.
+- **The adapter, `net`:** `Connection::open` spawns the I/O thread (`thread::Builder`: the
+  workspace bans `thread::spawn`), which dials (TCP, then TLS for `wss://` with graviola and the
+  roots given, then the handshake), sets the socket's read timeout to 5 ms (through a cloned
+  handle: the handshake needs blocking reads) and loops: what the caller queued sent, one read
+  (a timeout is no error; tungstenite answers pings), a server message passed on. The caller's
+  thread never waits on the socket; a dial's failure arrives as `Incoming::Closed`. Messages up
+  to 64 MiB (*provisional*: a record comes whole in one).
+- **`h3-view connect`** (headless): the session above with the pins file (default `pins.txt` in
+  the working directory, *provisional*), the content check (`scenario::ruleset` and
+  `map::manifest` over the manifest's packs), the plain player (*provisional*, a test's player:
+  ends a tactics phase, shoots, strikes, else walks toward the enemy's edge by the hex's column,
+  else defends; never leaves), `--drop <n>` (drops after n commands and re-joins by the token),
+  and the record written (`clients/out/connect/g<game>-<seat>.jsonl`).
+- **Tested over loopback** (`connect/tests.rs`): a host on threads serving `h3-protocol`'s
+  `Connection` and `Session` over a real WebSocket, plain or behind TLS with the server tests'
+  certificate (localhost, valid to 2126). A battle to its end against the host's bot (the key
+  pinned, the record numbered from 1 and its end); two seats over `wss://`, the defender dropping
+  after its first command and re-joining mid-battle (its record holds both snapshots and one
+  end, the attacker's the same end); a changed key, a wrong token, a bad address, a bad pins
+  file; no packs: `Absent`. Twenty runs in a row passed.

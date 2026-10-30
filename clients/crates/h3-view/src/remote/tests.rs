@@ -260,6 +260,51 @@ fn a_join_waits_for_the_welcome_and_a_refusal_lets_the_client_join_again() {
 }
 
 #[test]
+fn a_game_created_is_joined_and_a_refusal_lets_the_client_try_again() {
+    assert_eq!(
+        Client::new(ADDRESS, NONCE, None).create("duel", Seat::Attacker),
+        None
+    );
+    let mut client = welcomed();
+    assert_eq!(
+        client.create("duel", Seat::Attacker),
+        Some(ClientMessage::CreateGame {
+            seq: 1,
+            offer: "duel".to_string(),
+            seat: Seat::Attacker,
+            spectators: None,
+        })
+    );
+    assert_eq!(client.create("duel", Seat::Attacker), None);
+    let refused = ServerMessage::Refused {
+        reason: Refusal::NoSuchOffer,
+    };
+    assert_eq!(
+        client.receive(refused, verify),
+        Ok(vec![Note::Refused(Refusal::NoSuchOffer)])
+    );
+    assert!(client.create("duel", Seat::Defender).is_some());
+    let created = ServerMessage::GameCreated { seq: 2, game: 9 };
+    assert_eq!(
+        client.receive(created.clone(), verify),
+        Ok(vec![Note::Created(9)])
+    );
+    // Created once: a second answer is out of place.
+    assert_eq!(
+        client.clone().receive(created, verify),
+        Err(Fault::OutOfPlace("GameCreated".to_string()))
+    );
+    assert_eq!(
+        client.receive(joined(9, Seat::Defender, Some("d")), verify),
+        Ok(vec![
+            Note::Joined(9, Seat::Defender),
+            Note::Send(ClientMessage::FetchRecord { seq: 3 })
+        ])
+    );
+    assert_eq!(client.token(), Some("d"));
+}
+
+#[test]
 fn the_join_asks_for_the_record_and_holds_what_comes_meanwhile() {
     let mut client = welcomed();
     client
