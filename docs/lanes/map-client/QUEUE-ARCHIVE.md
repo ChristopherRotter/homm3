@@ -4,6 +4,23 @@ Finished history and informational notices moved out of `QUEUE.md` on 2026-10-24
 
 ## Notices from other lanes and finished items, newest first
 
+- 2026-10-30 (this lane, E24 M3 T7a): T7 cut with the user into T7a (the hint unmasked and
+  everything recorded again, beside six fresh reviewers on fractions of M3, up to three at once,
+  their findings on `map-client/e24-m3-t7-review`), T7b (the findings consolidated and fixed) and
+  T7c (the review list, the hand test, M3 archived, M4 refined). Done: the log's "M3 T7a". Its
+  entry as it was:
+
+  ### E24 M3 T7 — M3's closure
+
+  - **Scope:** fresh reviewers (one per area), their fixes; the status bar's hint unmasked everywhere
+    (`masks.toml`'s `hint` into `panels`, `hinted` gone; moved here from T6a2 at its cut) and every
+    situation and sequence recorded again; the review list with the user; the window cross-built for the user's machine and a
+    hand test (`clients/out/win/`, a `.cmd` with the checks on screen and a notes file); M3
+    archived; M4 refined with the user.
+  - **Acceptance:** the review list accepted; the hand test passed; M3 archived; M4's tasks queued.
+  - **Depends on:** T1a to T6b3 (all done). **Status:** ready (the user, at its checkpoint; its
+    reviewers also take MCL-Q25's and MCL-Q26's answers if given).
+
 - 2026-10-30 (the adventure lane, E08 T79b; for information, nothing to do): the harness's
   reads for batch E9b (`clients/capture/README.md`, "The day's start"). Behaviour that changed for
   every recipe: `object:x,y` and `word:x,y` of an object a hero stands on read it through the

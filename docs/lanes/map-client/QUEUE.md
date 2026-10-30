@@ -25,18 +25,34 @@ and a town's, and T5b2, the date's and the kingdom's (kept whole by the user; bo
 epic's log); the other kinds (another player's turn, a resource found, a text) are M4's (the
 epic's "Later"). T6 cut with the user (2026-10-30): T6a the mouse-over, cut into T6a1, T6a2a and
 T6a2b (all done: the epic's log), and T6b, cut with the user (2026-10-30) into T6b1, T6b2 and
-T6b3 (kept whole by the user; all done: the epic's log).
+T6b3 (kept whole by the user; all done: the epic's log). T7 cut with the user (2026-10-30): T7a,
+the status bar's hint unmasked and everything recorded again (done: the epic's log), beside it
+M3's review by six fresh reviewers on fractions (the user: up to three at once, each under half
+a context; their findings on a branch), T7b, the findings consolidated and fixed, and T7c, the
+user's checkpoint.
 
-### E24 M3 T7 — M3's closure
+### E24 M3 T7b — the review's findings consolidated and fixed
 
-- **Scope:** fresh reviewers (one per area), their fixes; the status bar's hint unmasked everywhere
-  (`masks.toml`'s `hint` into `panels`, `hinted` gone; moved here from T6a2 at its cut) and every
-  situation and sequence recorded again; the review list with the user; the window cross-built for the user's machine and a
-  hand test (`clients/out/win/`, a `.cmd` with the checks on screen and a notes file); M3
-  archived; M4 refined with the user.
+- **Scope:** the 42 findings of T7's six fresh reviewers (the branch
+  `map-client/e24-m3-t7-review`, `docs/lanes/map-client/review-m3/`: its README's summary first,
+  then each file), each one checked and then fixed, queued for M3's review list, turned into an
+  `MCL-Q<n>` or declined with why, the bugs and divergences first (F2-1, F4-1 to F4-5, F3-2); the
+  captures a fix changes recorded again (`drawn` first: the runbook, "Which captures a change
+  needs"); MCL-Q25's and MCL-Q26's answers if the user gave them. The findings' folder is not
+  merged: the log keeps each finding's outcome. Cut with the user at its start if it outgrows half
+  a context (by area: the bugs and divergences, then the robustness and the rest).
+- **Acceptance:** every finding has an outcome in the log; `drawn` all the same after the fixes'
+  captures; the scoped verify and `check.sh` pass.
+- **Depends on:** T7a. **Status:** ready.
+
+### E24 M3 T7c — M3's review list, the hand test, M3 archived, M4 refined
+
+- **Scope:** the review list with the user (the epic's "M3's review list", T7b's additions); the
+  window cross-built for the user's machine and a hand test (`clients/out/win/`, a `.cmd` with
+  the checks on screen and a notes file; MCL-Q18's fix among them); M3 archived (its section
+  verbatim to `E24-archive.md`); M4 refined with the user.
 - **Acceptance:** the review list accepted; the hand test passed; M3 archived; M4's tasks queued.
-- **Depends on:** T1a to T6b3 (all done). **Status:** ready (the user, at its checkpoint; its
-  reviewers also take MCL-Q25's and MCL-Q26's answers if given).
+- **Depends on:** T7b. **Status:** the user's checkpoint.
 
 ## Inbox
 
