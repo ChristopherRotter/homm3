@@ -194,7 +194,10 @@ viewers share.
   the user; **done** 2026-10-30: the seven sub-functions and the nine quests' texts read and
   built, the facts' contents, the writer's quests; four new sequences exact with the status bar;
   MCL-Q20, MCL-Q21; the log); every capture again with the hint unmasked moved to T7; T6b, the clicks, the
-  keys during a walk, the sound without the focus; T7, M3's closure. A task that grows is cut at a
+  keys during a walk, the sound without the focus, cut with the user (2026-10-30) into T6b1, the
+  buttons' press and hotkeys, the lists' clicks and Next Hero, T6b2, the underground, the
+  minimap's click and the status window's, and T6b3, the keys during a walk and the sound without
+  the focus; T7, M3's closure. A task that grows is cut at a
   seam agreed with the user.
 - **Exit:** every situation and sequence as recorded on the whole screen (no `panels` mask
   left, or each difference an `MCL-Q<n>`); the view-only clicks, the hints and the cursor in the
