@@ -9446,3 +9446,79 @@ recipe. Every reading the same in all three but the draws and the starting bonus
   GENRLTXT 14 is the hot-seat turn's message.
 
 T80 (the scoring) queued.
+
+### Increment 9, round 3: T80, batch E9 scored; A-33 withdrawn (2026-10-30, `adventure/e08-t80`, `cross-lane`)
+
+**The cut** (decisions 209, 210; asked at the start): whole with A-33's re-read (recommended, as
+T58 and T69; not chosen: whole without it, in two by batch); the experiments README's rows
+`cross-lane` (recommended; not chosen: the battle lane's inbox). **Baseline:** `master` 1597854
+(#608 and #609 merged; CI on `master` running at the start, its Clients job green; the setup's
+full baseline stopped, as the lane's trap says). The installation's files staged from the user's
+computer at the start (`Heroes3.exe` for the re-read); the computer went offline later. No engine
+or harness code changed.
+
+**The scoring** (survey `E08-economy.md` §19, from T79a's and T79b's recorded runs): every row as
+the reading predicted but E9-4's surroundings. **D-47 confirmed** (E9-1: in five runs A three
+stacks none upgraded, B two with the second Infernal Troglodytes, T78's prediction from the
+entrance tile's seed; VCMI's single stack and the two other seeds refuted). **D-49 confirmed**
+(E9-9: 47 + 4/16 → 51 + 15/16, 89 + 1/16 → 97 + 15/16 against VCMI's 52 and 98). **A-32
+confirmed** (E9-10: 4 095 → 4 000). **Design §13's call confirmed** (E9-2: Blue, human, played its
+guards' side, each stack waiting for its order): `Defender::Garrison` stands, §19's risk closed.
+The rest as predicted: E9-3, E9-5 (the price, the type-1 boat, the refusal with a hero on the boat
+tile, the use from afar), E9-0, E9-6, E9-7 (the Cornucopia's 5, VCMI's 4 refuted), E9-8 (one load
+a week for whoever comes first; the marks kept), E9-11, E9-12. Beyond the predictions: the
+Garden's index follows the setup's tile walk; a timed event's take shows the gold taken; the
+messages' order at a turn start (the clients'). No dispute reverts; no `ADV-Q`.
+
+**A-33's re-read:** `setup_map_objects`' case 42 has no owner call (T77a1 right), but
+`adventure_manager_start` calls `reveal_owned` (0x4C7C50, read whole) with no test at 0x4075B4:
+heroes by their scouting radius, towns (radius 5; E09's cases), the mines' and Lighthouses',
+dwellings' and garrisons' records and the Shipyards (a tile walk), radius 3 each, for their
+owners. Every object owned at load reveals at the start, as VCMI and the design: **A-33
+withdrawn**, `ADV-QUIRK-34` not recorded. T34b's list of `reveal_owned`'s callers corrected
+(`E08-hero-movement.md` §4.2).
+
+**The docs:** survey §0, §2.2, §6 (D-47), §9.3, §14 (D-49, A-32), §15, §19 (new), its sources;
+`docs/exe/map.toml` (0x406FD0, 0x4C15D8, 0x4C7C50 now `read`); the drafts `0013-`, `0016-` and
+`0017-increment-9.md` (batch E9's outcome: D-49 and A-32 in point 4, A-33 in point 5, E9-2 in
+point 11); `E08-design.md` §13, §16, §17, §18 (exit criteria 2, 9), §19; the catalog:
+ADV-FOG-003 (its source corrected, E9-4 and E9-6), ADV-MON-009 (E9-1), GAM-BAT-010 and HER-MAN-001
+(`verified`: E9-1, E9-2; E9-12); `docs/experiments/README.md`'s E8 and E9 rows evaluated
+(`cross-lane`, decision 210). No version.
+
+T81 (`shared/`) next.
+
+### Increment 9, round 4: T81a, the ADRs and the glossary (2026-10-30, `shared/e08-t81a`, `cross-lane`)
+
+**The cut** (decision 211; asked at the start, `AskUserQuestion`): T81 in two, the ADRs first
+(recommended): T81a a docs-only `shared/` pull request, T81b the code and packs the next session.
+Not chosen: the code first; whole, as T70; three pull requests (the creature's abilities apart).
+One pull request with the lane's own docs, `cross-lane` (the user, asked when `check-lane` flagged
+them; not chosen: a second, adventure pull request as T26a's). **Baseline:** `master` 0b4f612 (T80 merged). A docs-only change: no build, no original data; the
+sandbox ran `check-docs` only. This session had no GitHub API or push access (the repository was
+not enabled for it).
+
+- **The ADRs** (the three drafts accepted at ADV-Q38, decisions 201–204, applied with batch E9's
+  outcome as T80 folded it in, then deleted): ADR-0013 point 3 (the four kinds, the two
+  parameters, the thirteen specialists; the Cornucopia's 4 and the specialists as a specialty's
+  effect folded into the point), 13.6 (the Lighthouses' input), a new point 16 (the income each
+  copy counting, the day's spell points with the specialists' `+ 1` as a parameter, every hero of
+  the store), a consequence and the history; ADR-0016 point 1 (owners, guards, the weekly
+  contents, the fractions, the objects added in play, the boat tile), 3 (Leave Guards), 4
+  (increment 9's kinds and the week's and month's steps; D-47 written as batch E9 decided), 5
+  (the flag's and the start's reveal, A-33 withdrawn), 6 (owners public, production the owner's),
+  a consequence, an alternative (the agent's calls' rejected options) and the history; ADR-0017
+  points 1 (`BuildBoat`, the setup's owners and timed events), 3 (the day's start, the month's
+  kind; the agent's call on the week and names folded in), 4 (the streams), 6 (the decisions), 8
+  (the env's `BuildBoat`; "as increment 8's observation" corrected to increment 7's typed answers,
+  decision 187 having replaced decision 172), 10 (the income and timed events), 11 (a mine's
+  guards in battle, E9-2), a consequence (the core creature's abilities, the versions), an
+  alternative and the history; ADR-0015's amendment R01 point 1 (the core keeps a creature's
+  abilities outside battle) and its history; the index's four Read-when cells.
+- **The glossary** (`docs/03-domain.md`): ownable object, owner (neutral), flag, mine (abandoned
+  mine), guards, Leave Guards, weekly object; day's start with the week's step, the month's kind
+  and step; income; timed event.
+- **Docs**: design note's header, §3, §16, §18; decision 211 and the task's line in the epic; the
+  queue (T81a out, T81b in).
+
+T81b (`shared/`, `cross-lane`: the kinds, the parameters, the creature's abilities, the packs) next.

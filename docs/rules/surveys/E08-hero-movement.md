@@ -447,7 +447,9 @@ around the owned heroes as a rule. `new_day` calls `reveal_owned` only when
 `building_bits` +0x88), through 0x49D3D0 with the town's owner, and is true when one did.
 `reveal_owned`'s three other callers also follow a hide: an object visit's hide of radius 20 for
 the current player (0x4A14B0, from `visit_object` 0x4A8CB7) and a hide of the whole map per level
-(0x402450). No turn start reveals: of the functions holding `reveal_disk`'s 33 call sites and
+(0x402450) (*E08 T80:* a fourth caller, `adventure_manager_start` at 0x4075B4, runs it once
+at the game's start with no test: every owned object reveals then; survey `E08-economy.md` §19).
+No turn start reveals: of the functions holding `reveal_disk`'s 33 call sites and
 their known callers, `next_player_turn` (0x4C6FE0) reaches none within two calls but `new_day`'s
 conditional one. So in SoD, until a Cover of Darkness stands on the map, **a grown radius
 shows only at the hero's next step**. Before the reveal `new_day` also ends the day's spells: every

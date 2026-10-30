@@ -1,0 +1,836 @@
+{
+ "schema": 5,
+ "id": "e25-wide-1",
+ "identity": {
+  "started": "2026-10-30T17:06:59Z",
+  "commit": "71be6868d4657b32b295a8f5272141de1389acaa",
+  "dirty": false,
+  "abi": 35,
+  "observation_encoding": 22,
+  "action_encoding": 13,
+  "encounters": 1,
+  "system_policy": 19,
+  "entries": [
+   {
+    "kind": "encounters",
+    "weight": 1,
+    "ruleset_hash": "ba830fc8f504b846",
+    "battle_ruleset_hash": "c14c573e9d2ee26f",
+    "adventure_ruleset_hash": "8b3cb263b9bac1c5"
+   }
+  ],
+  "observation_len": 9008,
+  "action_count": 1404,
+  "parameters": 12371705,
+  "torch": "2.14.1+cu126",
+  "cuda": "12.6",
+  "device": "cuda",
+  "gpu": "NVIDIA GeForce GTX 1070",
+  "os": "Windows-10-10.0.19045-SP0",
+  "cpu": "AMD64 Family 23 Model 113 Stepping 0, AuthenticAMD",
+  "cores": 24,
+  "python": "3.12.15",
+  "numpy": "2.5.4"
+ },
+ "parent": null,
+ "config": {
+  "name": "",
+  "seed": 1,
+  "samples": 20000000,
+  "env": {
+   "envs": 256,
+   "threads": 24,
+   "max_steps": 2000,
+   "kinds": [
+    0,
+    0,
+    100,
+    50,
+    25,
+    0
+   ],
+   "currency": "ai_value",
+   "mana_price": 10
+  },
+  "network": {
+   "kind": "mlp",
+   "hidden": 1024,
+   "embed": 32,
+   "width": 128,
+   "layers": 2,
+   "heads": 4,
+   "field_width": 17,
+   "field_height": 11,
+   "preview": false,
+   "order": false,
+   "tactics_rounds": 3
+  },
+  "ppo": {
+   "rollout": 128,
+   "gamma": 1.0,
+   "lam": 0.95,
+   "lr": 0.00025,
+   "lr_schedule": "linear",
+   "lr_floor": 0.05,
+   "lr_horizon": 20000000,
+   "epochs": 4,
+   "minibatches": 8,
+   "clip": 0.2,
+   "value_coef": 0.5,
+   "entropy_coef": 0.01,
+   "max_grad_norm": 0.5,
+   "truncation_penalty": 1.0,
+   "shaping": true
+  },
+  "league": {
+   "self_play": 0.5,
+   "system_share": 0.0,
+   "snapshot_every": 1000000,
+   "max_members": 16,
+   "live": 4,
+   "live_every": 250000,
+   "pfsp_power": 2.0,
+   "decay": 0.99,
+   "retire_games": 200
+  },
+  "gate": {
+   "gate_every": 10000000,
+   "elo0": 0.0,
+   "elo1": 20.0,
+   "alpha": 0.05,
+   "beta": 0.05,
+   "max_pairs": 4000
+  },
+  "ladder": {
+   "ladder_opponents": [
+    "random",
+    "aggressor",
+    "greedy",
+    "system"
+   ],
+   "ladder_neutral": true,
+   "ladder_episodes": 250,
+   "ladder_final_episodes": 500,
+   "ladder_promoted": 1
+  },
+  "checkpoint": {
+   "checkpoint_minutes": 5.0
+  },
+  "device": {
+   "device": "auto",
+   "torch_threads": 0
+  }
+ },
+ "progress": {
+  "samples": 20004673,
+  "updates": 828,
+  "episodes": 381446,
+  "minutes": 93.79274437999993,
+  "evaluation_minutes": 5.889833333333566,
+  "ended": "budget"
+ },
+ "segments": [
+  {
+   "segment": 0,
+   "seed": 1,
+   "started": "2026-10-30T17:06:59Z",
+   "commit": "71be6868d4657b32b295a8f5272141de1389acaa",
+   "dirty": false,
+   "device": "cuda",
+   "changed": {},
+   "start": {
+    "samples": 0,
+    "updates": 0,
+    "minutes": 0.00022031499999381293
+   },
+   "end": {
+    "samples": 20004673,
+    "updates": 828,
+    "minutes": 93.79274437999993
+   },
+   "ended": "budget",
+   "dropped": 0
+  }
+ ],
+ "curve": [
+  {
+   "samples": 10015717,
+   "updates": 414,
+   "samples_per_s": 3940.2838974318934,
+   "attacker_won": 0.7097629275279098,
+   "truncated": 0.0,
+   "league_score": 0.5717936974671478,
+   "frozen_passes": 3.4754679951690823,
+   "policy_loss": -0.029162387042783823,
+   "value_loss": 0.00407658862904526,
+   "entropy": 2.3945162097792982,
+   "kl": 0.01373553018635834,
+   "clip": 0.18467417016901433,
+   "explained_variance": 0.4875138720181976,
+   "by_kind": {
+    "hero": {
+     "episodes": 47924,
+     "attacker_won": 0.6977088723812703,
+     "truncated": 0.0
+    },
+    "siege_hero": {
+     "episodes": 23888,
+     "attacker_won": 0.6183020763563295,
+     "truncated": 0.0
+    },
+    "siege_garrison": {
+     "episodes": 12057,
+     "attacker_won": 0.9351414116280998,
+     "truncated": 0.0
+    }
+   }
+  },
+  {
+   "samples": 20004673,
+   "updates": 828,
+   "samples_per_s": 3726.251319950516,
+   "attacker_won": 0.7024057613577296,
+   "truncated": 0.0,
+   "league_score": 0.5251474667221455,
+   "frozen_passes": 4.269719957729468,
+   "policy_loss": -0.01737476071169252,
+   "value_loss": 0.0020347298797023013,
+   "entropy": 1.5175259405486106,
+   "kl": 0.005751735186584979,
+   "clip": 0.07519255580599427,
+   "explained_variance": 0.5448484851753707,
+   "by_kind": {
+    "hero": {
+     "episodes": 61105,
+     "attacker_won": 0.6956059242287865,
+     "truncated": 0.0
+    },
+    "siege_hero": {
+     "episodes": 30565,
+     "attacker_won": 0.5941436283330607,
+     "truncated": 0.0
+    },
+    "siege_garrison": {
+     "episodes": 15267,
+     "attacker_won": 0.9460928800681208,
+     "truncated": 0.0
+    }
+   }
+  }
+ ],
+ "gates": [
+  {
+   "samples": 10015717,
+   "update": 414,
+   "minutes": 44.51982544500012,
+   "best": 0,
+   "result": "promoted",
+   "pairs": 26,
+   "counts": [
+    0,
+    0,
+    9,
+    0,
+    17
+   ],
+   "llr": 2.9829261953125554,
+   "score": 0.8269230769230769,
+   "elo": 271.69037845610455,
+   "games": 3103,
+   "seconds": 13.531000000002678,
+   "league": [
+    {
+     "id": 0,
+     "kind": "promoted",
+     "samples": 0,
+     "p": 0.7696,
+     "games": 391.0,
+     "played": 8719,
+     "live": false
+    },
+    {
+     "id": 1,
+     "kind": "snapshot",
+     "samples": 1023153,
+     "p": 0.6719,
+     "games": 1892.0,
+     "played": 13833,
+     "live": false
+    },
+    {
+     "id": 2,
+     "kind": "snapshot",
+     "samples": 2014666,
+     "p": 0.5862,
+     "games": 2718.2,
+     "played": 14832,
+     "live": false
+    },
+    {
+     "id": 3,
+     "kind": "snapshot",
+     "samples": 3005770,
+     "p": 0.5426,
+     "games": 2848.8,
+     "played": 12332,
+     "live": false
+    },
+    {
+     "id": 4,
+     "kind": "snapshot",
+     "samples": 4021741,
+     "p": 0.5397,
+     "games": 1737.4,
+     "played": 6156,
+     "live": true
+    },
+    {
+     "id": 5,
+     "kind": "snapshot",
+     "samples": 5014534,
+     "p": 0.542,
+     "games": 4302.4,
+     "played": 10711,
+     "live": true
+    },
+    {
+     "id": 6,
+     "kind": "snapshot",
+     "samples": 6007042,
+     "p": 0.5019,
+     "games": 3660.5,
+     "played": 7811,
+     "live": true
+    },
+    {
+     "id": 7,
+     "kind": "snapshot",
+     "samples": 7018848,
+     "p": 0.5055,
+     "games": 3682.9,
+     "played": 6367,
+     "live": true
+    },
+    {
+     "id": 8,
+     "kind": "snapshot",
+     "samples": 8012062,
+     "p": 0.5125,
+     "games": 1044.0,
+     "played": 1883,
+     "live": false
+    },
+    {
+     "id": 9,
+     "kind": "snapshot",
+     "samples": 9006012,
+     "p": 0.4964,
+     "games": 699.8,
+     "played": 814,
+     "live": false
+    },
+    {
+     "id": 10,
+     "kind": "snapshot",
+     "samples": 10015717,
+     "p": 0.5,
+     "games": 0.0,
+     "played": 0,
+     "live": false
+    }
+   ]
+  },
+  {
+   "samples": 20004673,
+   "update": 828,
+   "minutes": 90.91257452333326,
+   "best": 1,
+   "result": "promoted",
+   "pairs": 263,
+   "counts": [
+    8,
+    0,
+    233,
+    0,
+    22
+   ],
+   "llr": 3.155591786104284,
+   "score": 0.526615969581749,
+   "elo": 18.512168787484907,
+   "games": 2454,
+   "seconds": 8.031000000002678,
+   "league": [
+    {
+     "id": 6,
+     "kind": "snapshot",
+     "samples": 6007042,
+     "p": 0.5231,
+     "games": 940.4,
+     "played": 14714,
+     "live": false
+    },
+    {
+     "id": 7,
+     "kind": "snapshot",
+     "samples": 7018848,
+     "p": 0.5279,
+     "games": 1816.5,
+     "played": 16121,
+     "live": true
+    },
+    {
+     "id": 8,
+     "kind": "snapshot",
+     "samples": 8012062,
+     "p": 0.5383,
+     "games": 1488.9,
+     "played": 7391,
+     "live": false
+    },
+    {
+     "id": 9,
+     "kind": "snapshot",
+     "samples": 9006012,
+     "p": 0.5329,
+     "games": 1587.3,
+     "played": 6963,
+     "live": true
+    },
+    {
+     "id": 10,
+     "kind": "snapshot",
+     "samples": 10015717,
+     "p": 0.5043,
+     "games": 1686.6,
+     "played": 11376,
+     "live": false
+    },
+    {
+     "id": 11,
+     "kind": "promoted",
+     "samples": 10015717,
+     "p": 0.5091,
+     "games": 1299.3,
+     "played": 7419,
+     "live": false
+    },
+    {
+     "id": 12,
+     "kind": "snapshot",
+     "samples": 11002589,
+     "p": 0.5095,
+     "games": 2685.9,
+     "played": 10633,
+     "live": false
+    },
+    {
+     "id": 13,
+     "kind": "snapshot",
+     "samples": 12004848,
+     "p": 0.5106,
+     "games": 2390.8,
+     "played": 7886,
+     "live": true
+    },
+    {
+     "id": 14,
+     "kind": "snapshot",
+     "samples": 13016195,
+     "p": 0.5058,
+     "games": 1454.9,
+     "played": 5219,
+     "live": false
+    },
+    {
+     "id": 15,
+     "kind": "snapshot",
+     "samples": 14002517,
+     "p": 0.531,
+     "games": 1341.0,
+     "played": 4007,
+     "live": false
+    },
+    {
+     "id": 16,
+     "kind": "snapshot",
+     "samples": 15020119,
+     "p": 0.507,
+     "games": 1577.0,
+     "played": 2561,
+     "live": true
+    },
+    {
+     "id": 17,
+     "kind": "snapshot",
+     "samples": 16002341,
+     "p": 0.4859,
+     "games": 573.4,
+     "played": 2260,
+     "live": false
+    },
+    {
+     "id": 18,
+     "kind": "snapshot",
+     "samples": 17016267,
+     "p": 0.5064,
+     "games": 1556.3,
+     "played": 2680,
+     "live": false
+    },
+    {
+     "id": 19,
+     "kind": "snapshot",
+     "samples": 18009182,
+     "p": 0.4809,
+     "games": 889.0,
+     "played": 1467,
+     "live": false
+    },
+    {
+     "id": 20,
+     "kind": "snapshot",
+     "samples": 19006750,
+     "p": 0.478,
+     "games": 1204.4,
+     "played": 1457,
+     "live": false
+    },
+    {
+     "id": 21,
+     "kind": "snapshot",
+     "samples": 20004673,
+     "p": 0.5,
+     "games": 0.0,
+     "played": 0,
+     "live": false
+    }
+   ]
+  }
+ ],
+ "promotions": [
+  {
+   "samples": 0,
+   "update": 0,
+   "minutes": 0.0002606266665679868,
+   "index": 0,
+   "how": "start"
+  },
+  {
+   "samples": 10015717,
+   "update": 414,
+   "minutes": 44.51985643166675,
+   "index": 1,
+   "how": "gate"
+  },
+  {
+   "samples": 20004673,
+   "update": 828,
+   "minutes": 90.91260132166668,
+   "index": 2,
+   "how": "gate"
+  }
+ ],
+ "ladders": [
+  {
+   "samples": 0,
+   "update": 0,
+   "minutes": 1.4429647450000629,
+   "index": 0,
+   "final": false,
+   "per_kind": 250,
+   "seconds": 86.0,
+   "opponents": {
+    "random": {
+     "win_rate": 0.504,
+     "interval": 0.025443875931154828,
+     "value": 0.0010613914357298698,
+     "kinds": {
+      "hero": 0.506,
+      "siege_hero": 0.5,
+      "siege_garrison": 0.504
+     },
+     "truncated": 0.0
+    },
+    "aggressor": {
+     "win_rate": 0.19285714285714287,
+     "interval": 0.02029200780603043,
+     "value": -0.24727971834951312,
+     "kinds": {
+      "hero": 0.17,
+      "siege_hero": 0.13,
+      "siege_garrison": 0.41000000000000003
+     },
+     "truncated": 0.0
+    },
+    "greedy": {
+     "win_rate": 0.1734285714285714,
+     "interval": 0.019155503773067413,
+     "value": -0.27449823117968375,
+     "kinds": {
+      "hero": 0.146,
+      "siege_hero": 0.11,
+      "siege_garrison": 0.41000000000000003
+     },
+     "truncated": 0.0
+    },
+    "system": {
+     "win_rate": 0.13057716580608145,
+     "interval": 0.01594066368494967,
+     "value": -0.32550225837485725,
+     "kinds": {
+      "hero": 0.094,
+      "siege_hero": 0.076,
+      "siege_garrison": 0.3860401606425703
+     },
+     "truncated": 0.0
+    }
+   },
+   "neutral": {
+    "win_rate": 0.7191030303030304,
+    "interval": 0.05266791510267522,
+    "value": -0.07001002088718286,
+    "kinds": {
+     "wandering": 0.72,
+     "guards": 0.788,
+     "siege_neutral": 0.636
+    },
+    "truncated": 0.0
+   }
+  },
+  {
+   "samples": 10015717,
+   "update": 414,
+   "minutes": 45.75999999333338,
+   "index": 1,
+   "final": false,
+   "per_kind": 250,
+   "seconds": 74.04699999999139,
+   "opponents": {
+    "random": {
+     "win_rate": 0.8248571428571428,
+     "interval": 0.018823631785603968,
+     "value": 0.27228137031783367,
+     "kinds": {
+      "hero": 0.856,
+      "siege_hero": 0.8859999999999999,
+      "siege_garrison": 0.578
+     },
+     "truncated": 0.0
+    },
+    "aggressor": {
+     "win_rate": 0.5682857142857144,
+     "interval": 0.025445182365233698,
+     "value": 0.0496387701592009,
+     "kinds": {
+      "hero": 0.5780000000000001,
+      "siege_hero": 0.5780000000000001,
+      "siege_garrison": 0.51
+     },
+     "truncated": 0.0
+    },
+    "greedy": {
+     "win_rate": 0.545142857142857,
+     "interval": 0.025477673739962993,
+     "value": 0.030968673548170563,
+     "kinds": {
+      "hero": 0.548,
+      "siege_hero": 0.558,
+      "siege_garrison": 0.508
+     },
+     "truncated": 0.0
+    },
+    "system": {
+     "win_rate": 0.39086976477337926,
+     "interval": 0.024920306274415993,
+     "value": -0.07793607747787194,
+     "kinds": {
+      "hero": 0.378,
+      "siege_hero": 0.37,
+      "siege_garrison": 0.48408835341365464
+     },
+     "truncated": 0.0
+    },
+    "promoted-0": {
+     "win_rate": 0.8291428571428571,
+     "interval": 0.01867527374899763,
+     "value": 0.2759029591711514,
+     "kinds": {
+      "hero": 0.866,
+      "siege_hero": 0.878,
+      "siege_garrison": 0.584
+     },
+     "truncated": 0.0
+    }
+   },
+   "neutral": {
+    "win_rate": 0.9673454545454544,
+    "interval": 0.019395603599966425,
+    "value": 0.23206428121388184,
+    "kinds": {
+     "wandering": 0.972,
+     "guards": 0.96,
+     "siege_neutral": 0.828
+    },
+    "truncated": 0.0
+   }
+  },
+  {
+   "samples": 20004673,
+   "update": 828,
+   "minutes": 91.89849097166662,
+   "index": 2,
+   "final": false,
+   "per_kind": 250,
+   "seconds": 58.79700000000594,
+   "opponents": {
+    "random": {
+     "win_rate": 0.8451428571428571,
+     "interval": 0.01783249635917529,
+     "value": 0.288081256147632,
+     "kinds": {
+      "hero": 0.878,
+      "siege_hero": 0.9099999999999999,
+      "siege_garrison": 0.584
+     },
+     "truncated": 0.0
+    },
+    "aggressor": {
+     "win_rate": 0.5862857142857143,
+     "interval": 0.02518994288203131,
+     "value": 0.07049143835977052,
+     "kinds": {
+      "hero": 0.5860000000000001,
+      "siege_hero": 0.626,
+      "siege_garrison": 0.508
+     },
+     "truncated": 0.0
+    },
+    "greedy": {
+     "win_rate": 0.5671428571428572,
+     "interval": 0.02562987307030606,
+     "value": 0.050938862847197536,
+     "kinds": {
+      "hero": 0.5700000000000001,
+      "siege_hero": 0.5880000000000001,
+      "siege_garrison": 0.514
+     },
+     "truncated": 0.0
+    },
+    "system": {
+     "win_rate": 0.4194411933448078,
+     "interval": 0.02501134963193104,
+     "value": -0.058235952086070235,
+     "kinds": {
+      "hero": 0.41000000000000003,
+      "siege_hero": 0.404,
+      "siege_garrison": 0.48808835341365464
+     },
+     "truncated": 0.0
+    },
+    "promoted-1": {
+     "win_rate": 0.533142857142857,
+     "interval": 0.025948057900351616,
+     "value": 0.024630139309384888,
+     "kinds": {
+      "hero": 0.54,
+      "siege_hero": 0.532,
+      "siege_garrison": 0.508
+     },
+     "truncated": 0.0
+    }
+   },
+   "neutral": {
+    "win_rate": 0.9795878787878787,
+    "interval": 0.01477568116789353,
+    "value": 0.24296045894139645,
+    "kinds": {
+     "wandering": 0.984,
+     "guards": 0.972,
+     "siege_neutral": 0.848
+    },
+    "truncated": 0.0
+   }
+  },
+  {
+   "samples": 20004673,
+   "update": 828,
+   "minutes": 93.78903215000004,
+   "index": 2,
+   "final": true,
+   "per_kind": 500,
+   "seconds": 112.98400000001129,
+   "opponents": {
+    "random": {
+     "win_rate": 0.8432857142857144,
+     "interval": 0.012708539617123597,
+     "value": 0.2847158858496186,
+     "kinds": {
+      "hero": 0.882,
+      "siege_hero": 0.888,
+      "siege_garrison": 0.599
+     },
+     "truncated": 0.0
+    },
+    "aggressor": {
+     "win_rate": 0.5927142857142857,
+     "interval": 0.018246717271882082,
+     "value": 0.0729932661307934,
+     "kinds": {
+      "hero": 0.5980000000000001,
+      "siege_hero": 0.619,
+      "siege_garrison": 0.519
+     },
+     "truncated": 0.0
+    },
+    "greedy": {
+     "win_rate": 0.574,
+     "interval": 0.0184063830667516,
+     "value": 0.055480095868055024,
+     "kinds": {
+      "hero": 0.5800000000000001,
+      "siege_hero": 0.589,
+      "siege_garrison": 0.52
+     },
+     "truncated": 0.0
+    },
+    "system": {
+     "win_rate": 0.41448640137417686,
+     "interval": 0.01831200503944635,
+     "value": -0.05865495424093841,
+     "kinds": {
+      "hero": 0.40259118236472946,
+      "siege_hero": 0.405,
+      "siege_garrison": 0.4810400801603207
+     },
+     "truncated": 0.0
+    },
+    "promoted-1": {
+     "win_rate": 0.5229999999999999,
+     "interval": 0.01873920578893353,
+     "value": 0.021423195784453647,
+     "kinds": {
+      "hero": 0.518,
+      "siege_hero": 0.542,
+      "siege_garrison": 0.505
+     },
+     "truncated": 0.0
+    }
+   },
+   "neutral": {
+    "win_rate": 0.9725939393939393,
+    "interval": 0.012720507808264914,
+    "value": 0.2397018093602478,
+    "kinds": {
+     "wandering": 0.976,
+     "guards": 0.968,
+     "siege_neutral": 0.87
+    },
+    "truncated": 0.0
+   }
+  }
+ ],
+ "best": {
+  "index": 2,
+  "samples": 20004673
+ }
+}

@@ -503,3 +503,43 @@ an entry only where a task builds on it.
 - **The user's choices** (2026-10-30): T7d runs the wide MLP alone, from scratch: `e25-scale.toml`'s
   settings at 20 M samples with `[network] hidden = 1024` (`configs/e25-wide.toml`), against
   `e25-scale-1`.
+
+## T7d — The A/B: the wide MLP against `e25-scale-1` (2026-10-30)
+
+- **The run** (the user's machine; `python/records/e25-wide-1.json`; commit `71be686`, #604's
+  merge, clean, C ABI v35; seed 1, `configs/e25-wide.toml`: `e25-scale.toml`'s settings, three
+  tactics rounds, 20 M samples, `[network] hidden = 1024`, 12.37 M parameters, from scratch):
+  94 minutes, 5.9 of them the gates and ladders. Promoted at both gates (10 M: 0.827 in 26 pairs;
+  20 M: 0.527 in 263, +19 Elo), best #2 at 20 M. The final ladder (win rate, value; the GPU, 500
+  per kind; the intervals ±0.013 against Random, ±0.018 otherwise, ±0.013 on the neutral set)
+  beside `e25-scale-1` #3 on the same full sets (T5: the sandbox's CPU) and `e25-bound-1`'s final:
+
+  | Network | Random | Aggressor | Greedy | System actor | Neutral set |
+  |---|---|---|---|---|---|
+  | `e25-bound-1` #2 (2 × 512, 20 M) | 0.840, +0.282 | 0.591, +0.067 | 0.573, +0.051 | 0.416, −0.062 | 0.963, +0.233 |
+  | `e25-scale-1` #3 (2 × 512, 30 M) | 0.840, +0.284 | 0.593, +0.073 | 0.580, +0.057 | 0.418, −0.061 | 0.969, +0.241 |
+  | `e25-wide-1` #2 (2 × 1 024, 20 M) | 0.843, +0.285 | 0.593, +0.073 | 0.574, +0.055 | 0.414, −0.059 | 0.973, +0.240 |
+
+  Every point estimate within 0.006 of `e25-scale-1` #3's, each far inside its interval. Per
+  side against the system actor: the hero battles 0.591 / 0.214, the siege with a hero 0.484 /
+  0.326, the garrison 0.922 / 0.040 (#3: 0.593 / 0.224, 0.486 / 0.322, 0.918 / 0.052). Against
+  `promoted-1` (its own 10 M network) 0.523. No ladder battle cut. The head-to-head against #3
+  was not played (both networks are on the user's machine: `h3env.train.gate --candidate
+  runs/e25-wide-1/best.pt --best runs/e25-scale-1/best.pt --device cuda` plays it).
+- **Training:** no self-play battle cut; 71, 52, 47 and 46 samples an episode per 5 M (`e25-scale-1`
+  48 to 50 after its first 5 M), 381 k episodes. Samples per second 3 940 and 3 730 per gate
+  interval, about 0.7 times `e25-scale-1`'s 5 700 and 5 290 over the same intervals (T7c's GPU
+  cost a pass, 33 against 22 µs). The value head's explained variance 0.49 and 0.54
+  (`e25-scale-1` 0.48 and 0.54): the bench's lead (0.612 against 0.567 fitted to the same
+  returns) does not show in RL. The entropy 2.39 and 1.52 (`e25-scale-1` 2.39 and 1.71 with its
+  60 M schedule, `e25-bound-1` 2.37 and 1.60), the league score 0.572 and 0.525 (0.564, 0.521).
+- **Not read:** the tactics share and the decisions' mix (`records/inspect/battles.py`): the
+  wide network's `best.pt` (49.5 MB of weights) is above the user's upload limit (30 MB). The
+  script on the user's machine writes its lines (`TRAPS.md`, Python).
+- **The read:** width gains nothing in RL. The wide MLP fits the teacher better (T7c) but
+  learns, from scratch and at the same settings, the policy and value the 2 × 512 MLP learns,
+  at 1.4 times the run's time. With T5 (samples flat from 20 M) and T7c (the structured
+  networks fit worse at many times the cost), the network's size, depth, structure and the
+  training's length all end at one ladder, 0.41 to 0.42 against the system actor: the limit is
+  not the network's capacity, but what PPO's self-play at these settings drives it to (or what
+  the agent may see, the risk the epic names).

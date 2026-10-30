@@ -10,21 +10,19 @@ Pre-refined tasks of the AI lane, in order, then the inbox of discovered work. T
 2026-10-27; increments 1 and 2 closed 2026-10-28 and 29 (`E25-archive.md`).
 **`e25-scale-1` #3 is the lineage's current best** (the user at T6, 2026-10-29). **Increment 3, the network's architecture** (AI-Q11, the user):
 a distillation bench ranked a deeper and a wider MLP, a hex convolution network, a hex
-transformer and E06's entity network against the current MLP (T7c: the wide MLP leads); it
-goes to RL (T7d). The
+transformer and E06's entity network against the current MLP (T7c: the wide MLP leads); in RL
+the wide MLP ends at `e25-scale-1` #3's ladder (T7d, done 2026-10-30: `E25-log.md` T7d). The
 faithful system actor still trains no agent and no neutral battles train (decision 2); each
 run's length is agreed with the user (decision 5). All on observation v22 and action v13: no
 encoding or ABI change.
 
-- **T7d The A/B.** *Scope:* on the user's machine, `e25-wide-1`: `configs/e25-wide.toml`
-  (`e25-scale.toml`'s settings at 20 M samples with `[network] hidden = 1024`, from scratch; the
-  user at T7c, 2026-10-30; about 1.5 to 2 hours): `uv run --group train python -m h3env.train
-  --config configs/e25-wide.toml --out runs/e25-wide-1`. The record committed and read against
-  `e25-scale-1` (the ladders; the tactics share and the decisions' mix, `records/inspect/
-  battles.py` on its `best.pt`). *Depends on:* T7c (done 2026-10-30: `E25-log.md` T7c); the
-  user. *Status:* next (the user's run).
-- **T8 Increment 3's checkpoint.** *Scope:* T7c's and T7d's reads put to the user; increment 4
-  chosen. *Depends on:* T7d. *Status:* waiting.
+- **T8 Increment 3's checkpoint.** *Scope:* T7c's and T7d's reads put to the user (AI-Q12 in
+  `docs/OPEN-QUESTIONS.md`: increment 4's options, the current best); increment 4 chosen and
+  refined (the epic's task list, this queue); increment 3 moved to `E25-archive.md`. If the
+  user uploads `battles.py`'s lines on `runs/e25-wide-1/best.pt` (`uv run --group train python
+  records/inspect/battles.py runs/e25-wide-1/best.pt runs/e25-wide-1/battles.jsonl
+  system,greedy,aggressor`), T7d's decisions' mix read with `--summary` into `E25-log.md` T7d.
+  *Depends on:* T7d (done); the user. *Status:* next (the user's answer).
 
 ## Inbox
 
