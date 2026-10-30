@@ -3454,6 +3454,30 @@ mid-battle, T6b, with the original data).
   record that opens mid-battle drawn (R2-8, R1-3), `remote_turn`.
 - **Found:** review items 48 to 51; no question.
 
+### M5 T6b1 — The window plays a seat on a server (2026-10-30)
+
+On `client/e17-m5-t6b1`, the user present at the start, the original data staged. T6b proposed in
+two by the agent and cut so by the user (T6b1 the window playing a seat joined at the start, T6b2
+the record that opens mid-battle with a restart's re-join).
+
+- **Built** (design §11.2): `h3_view::remote::seen` (the seat's battle from its record and
+  timeline), `Client::query` and `Client::answer`, `anim::Pose::dead`; the binary's `online`
+  (`Online`: the seat's connection for the window, the record opened before the window shows, the
+  turn's queries, the re-dial and re-join, the content check), `Battle`'s `Fight` (here or on a
+  server) with `poll`, `take_served`, `serve_turn`, `served_outcome`; `aims::served`,
+  `spellbook::cost`, `results::served`; `window --server` and its report; `net::Connection::poll`.
+- **Tested:** `remote` 15 tests at 100 %; `online` 2 over loopback (ten runs in a row).
+- **Run against `h3-server`** (two windows under Xvfb, `--check`): `scenarios/battle.toml` to its
+  end with a drop and a re-join, every frame exact; a window against the server's bot with a
+  drop; `situations/seq-haste.toml` with both heroes' casts through the book and the aim; both
+  content outcomes; both seats dropping and re-joining on the final code (design §11.2,
+  "Checked").
+- **Gates:** `clients/scripts/check.sh` all passed (100 % lines and regions); the scoped verify
+  with the original data passed every step it runs.
+- **Not built (T6b2):** a record that opens mid-battle drawn (R2-8, R1-3), a join mid-battle, a
+  restart's re-join (a new timeline), re-dialing until a restarted server answers.
+- **Found:** review items 52 to 55; no question.
+
 ## Accepted review lists (M1 to M4)
 
 M1 and M2 moved from the epic file on 2026-10-20 (less start-up reading), unchanged; M3 at its

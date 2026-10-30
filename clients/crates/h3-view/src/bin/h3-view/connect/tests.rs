@@ -62,7 +62,7 @@ fn bytes(hex: &str) -> Vec<u8> {
 }
 
 /// The roots of a client that trusts the test root only.
-fn test_roots() -> RootCertStore {
+pub(crate) fn test_roots() -> RootCertStore {
     let mut roots = RootCertStore::empty();
     roots.add(CertificateDer::from(bytes(ROOT))).unwrap();
     roots
@@ -94,7 +94,7 @@ impl<S: Read + Write + Send> Stream for S {}
 
 /// A host of `duel.toml`'s battle (seed 1) with `seats`, its address (`wss://localhost:…` with
 /// `tls`, `ws://127.0.0.1:…` without) and its key.
-fn host(seats: [SeatKind; 2], tls: bool) -> (String, [u8; KEY_BYTES]) {
+pub(crate) fn host(seats: [SeatKind; 2], tls: bool) -> (String, [u8; KEY_BYTES]) {
     let packs = repo().join("packs");
     let (ruleset, setup) = battle(&packs.join("synthetic/scenarios/duel.toml"), &packs, 1).unwrap();
     let ruleset = Box::leak(Box::new(ruleset));
@@ -223,12 +223,12 @@ fn gone(shared: &Mutex<Shared>, n: u64) {
     shared.session.disconnected(ConnId(n));
 }
 
-fn repo() -> PathBuf {
+pub(crate) fn repo() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("../../..")
 }
 
 /// A fresh directory for one test's files.
-fn scratch(name: &str) -> PathBuf {
+pub(crate) fn scratch(name: &str) -> PathBuf {
     let dir = std::env::temp_dir().join(format!("h3-view-connect-{name}-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
@@ -255,7 +255,7 @@ fn options(address: &str, seat: Seat, dir: &Path) -> Options {
     }
 }
 
-fn player(token: &str) -> SeatKind {
+pub(crate) fn player(token: &str) -> SeatKind {
     SeatKind::Player {
         token: token.to_owned(),
     }
@@ -263,7 +263,7 @@ fn player(token: &str) -> SeatKind {
 
 /// The record's messages are numbered from 1, one after another, and it holds the game's end once
 /// (a re-join after it adds the re-join's snapshot); that end.
-fn whole(record: &Record) -> Outcome {
+pub(crate) fn whole(record: &Record) -> Outcome {
     for (n, message) in (record.header.first..).zip(&record.messages) {
         assert_eq!(remote::number(message), Some(n));
     }

@@ -12,7 +12,8 @@ its tasks below, in order (T1 and T2 done 2026-10-27, each cut in two by the use
 the user; T3 cut in two, T3a done 2026-10-27, T3b 2026-10-28; T4 cut in three, T4a done
 2026-10-28, T4b cut in two, T4b1 done 2026-10-28, T4b2 and T4c1 done 2026-10-28, T4c2a and
 T4c2b 2026-10-29: T4 done; T5 cut in two, T5a done 2026-10-29, T5b cut in two, T5b1 and T5b2
-done 2026-10-29: T5 done; T6 cut in two by the user, T6a done 2026-10-30). The original files: stage them from the user's `original-data/install/` (one large file per staging call; the
+done 2026-10-29: T5 done; T6 cut in two by the user, T6a done 2026-10-30, T6b cut in two by
+the user, T6b1 done 2026-10-30). The original files: stage them from the user's `original-data/install/` (one large file per staging call; the
 user's computer must be online); never from the installation. The captures need the five DLLs,
 `Heroes3.snd`, `H3ab_ahd.snd` and `H3ab_ahd.vid` too; the harness's runbook:
 `clients/capture/README.md`. The client's gates: `clients/scripts/check.sh` (the full local
@@ -20,24 +21,18 @@ check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gat
 `clients/`. An asset fix gets its mechanism (ADR-0020 point 6: the entry's flag, the
 `faithful`/`fixed` profile) with the first one a task finds.
 
-### E17 M5 T6b — the window over a server
+### E17 M5 T6b2 — the record that opens mid-battle
 
-- **Scope:** `h3-view window` plays a seat on a server through T6a's `h3_view::remote` and the
-  binary's `net` (design §11.1): the address, the game (joined by its token, or created), the
-  seat; the window polls the connection each frame (never waits on it); the record growing
-  from the server's messages into the window's timeline (`anim::Growing`), the turn from the
-  server's `YourTurn` (its `legal` and `castable` for the mouse and the book), the previews
-  (damage ranges, reachable hexes) only when the content check is `Same`, a visible note
-  otherwise; a record that opens mid-battle (R2-8: the snapshot's dead stacks as corpses, the
-  box by the timeline's living set; M4 T3a's R1-3: the moat's strip by the fixed moat rows,
-  0x63BCE8 and 0x63BCF4) for a join and a re-join after a drop (the record fetched extends the
-  one before: the timeline kept) or a server restart (the numbering afresh: a new timeline),
-  the window re-dialing after a closed connection; the end's `remote_turn`. The server lane's
-  notes: `NOTES.md`, "The live client"; the detail: `QUEUE-ARCHIVE.md`, 2026-10-23 (T9b).
-- **Acceptance:** a battle played to its end in two windows on a local `h3-server`, a seat each;
-  a drop and a re-join; a server restart and a re-join; both outcomes of the content check; the
-  mid-battle record drawn against the original where it has a reference; the Definition of Done.
-- **Depends on:** T6a (done 2026-10-30); the original data staged. **Status:** ready.
+- **Scope:** a record that opens mid-battle (R2-8: the snapshot's dead stacks as corpses, a raise
+  of one drawn, the box by the timeline's living set; M4 T3a's R1-3: the moat's strip by the
+  fixed moat rows, 0x63BCE8 and 0x63BCF4, not the record's moat) for a join mid-battle and a
+  re-join after a server restart (the numbering afresh: a new timeline); the window re-dialing
+  until a restarted server answers. The detail: `QUEUE-ARCHIVE.md`, 2026-10-23 (T9b). Where
+  T6b1 stops (design §11.2): `online::Online::take` refuses a fetched record that does not extend
+  the one taken; `Ground::load` keeps the record's first snapshot as the opening.
+- **Acceptance:** a join mid-battle; a server restart and a re-join; the mid-battle record drawn
+  against the original where it has a reference; the Definition of Done.
+- **Depends on:** T6b1 (done 2026-10-30); the original data staged. **Status:** ready.
 
 ### E17 M5 T7 — accounts
 
@@ -49,7 +44,7 @@ check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gat
   `CommandLimit`, `Abandoned`. Its dependencies (argon2, Ed25519): asked of the user at the task.
 - **Acceptance:** the test vector reproduced; a battle played logged in on a local `h3-server`,
   the seat re-taken after a drop; the Definition of Done.
-- **Depends on:** T6b; the user's choice of the dependencies. **Status:** ready after T6b
+- **Depends on:** T6b2; the user's choice of the dependencies. **Status:** ready after T6b2
   (T6a's `remote` keeps the welcome's challenge out until the login needs it).
 
 ### E17 M5 T8 — M5's closure

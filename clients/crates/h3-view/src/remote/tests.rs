@@ -586,3 +586,182 @@ fn pins_read_and_write_a_line_per_address() {
         assert_eq!(Pins::parse(&bad), Err(line), "{bad}");
     }
 }
+
+/// The seat's battle on a server (E17 M5 T6b1, `seen`): the active stack and the round by the
+/// panel's turns; the hexes by the moves, a teleport and a creation, in order; the counts and the
+/// deaths as the timeline shows them; a created stack in the dead one's id; the heroes' mana by
+/// the casts' costs, the mana channelled and drained; the gate.
+#[test]
+fn the_seat_sees_the_moves_deaths_creations_and_mana() {
+    use crate::anim::tests::created::{SUMMON, play_created, spell, summoned};
+    use crate::anim::tests::{PIKEMAN, SWORDSMAN, at, flags, moved, snapshot, struck};
+    use h3_protocol::wire::{Event, Hero, Side, Target};
+    let mut opening = snapshot(vec![
+        at(0, Side::Attacker, SWORDSMAN, 86, false),
+        at(1, Side::Defender, PIKEMAN, 50, false),
+        at(2, Side::Defender, PIKEMAN, 120, false),
+    ]);
+    let hero = |mana| {
+        Some(Hero {
+            hero_type: 0,
+            attack: 1,
+            defense: 1,
+            power: 1,
+            knowledge: 1,
+            mana,
+            max_mana: 30,
+            casts: 0,
+            commands_ballista: false,
+            commands_tent: false,
+            commands_catapult: false,
+            spell_book: true,
+            sex: None,
+        })
+    };
+    opening.sides[0].hero = hero(20);
+    opening.sides[1].hero = hero(5);
+    let commands = [
+        (
+            Some(0),
+            vec![Event::TurnStarted { stack: 0 }, moved(0, 86, 87)],
+        ),
+        (
+            None,
+            vec![
+                Event::TurnStarted { stack: 1 },
+                struck(0, 1, 40, flags(false, false, false)),
+            ],
+        ),
+        (
+            None,
+            vec![
+                Event::RoundStarted { round: 2 },
+                Event::TurnStarted { stack: 0 },
+                spell(SUMMON, Target::None {}),
+                summoned(1, 6, 18),
+            ],
+        ),
+        // A second summon takes a new id.
+        (
+            None,
+            vec![
+                spell(SUMMON, Target::None {}),
+                summoned(3, 4, 30),
+                Event::TurnStarted { stack: 2 },
+            ],
+        ),
+    ];
+    let timeline = play_created(&opening, &commands);
+    let mut events: Vec<Event> = commands.iter().flat_map(|(_, e)| e.clone()).collect();
+    events.extend([
+        // A stack risen where it lay, then teleported: the latter's hex.
+        Event::RoseFromCorpse {
+            stack: 2,
+            corpse: 2,
+            creature: PIKEMAN,
+            count: 40,
+            hex: 90,
+        },
+        Event::Teleported {
+            stack: 2,
+            from: 120,
+            to: 100,
+        },
+        Event::ManaChanneled {
+            side: Side::Defender,
+            mana: 4,
+        },
+        Event::ManaDrained {
+            stack: 0,
+            side: Side::Attacker,
+            mana: 1,
+        },
+        Event::GateOpened {},
+    ]);
+    let cost = |side: Side, spell: u16| {
+        if (side, spell) == (Side::Attacker, SUMMON) {
+            6
+        } else {
+            0
+        }
+    };
+    let now = seen(&opening, &events, &timeline, timeline.end, cost);
+    assert_eq!((now.active, now.round), (Some(2), 2));
+    let stack = |id: u8| now.stacks.iter().find(|s| s.id == id).unwrap();
+    assert_eq!(
+        (stack(0).hex, stack(0).alive, stack(0).count),
+        (87, true, 40)
+    );
+    // The summoned elementals in the dead Pikemen's id, where they were made.
+    assert_eq!(
+        (stack(1).hex, stack(1).alive, stack(1).count),
+        (18, true, 6)
+    );
+    assert_eq!(
+        stack(1).creature,
+        crate::anim::tests::created::FIRE_ELEMENTAL
+    );
+    assert_eq!((stack(2).hex, stack(2).alive), (100, true));
+    assert_eq!((stack(3).hex, stack(3).count, now.stacks.len()), (30, 4, 4));
+    let mana = |i: usize| now.sides[i].hero.map(|h| h.mana);
+    assert_eq!((mana(0), mana(1)), (Some(7), Some(9)));
+    assert!(now.siege.is_none());
+    // Before the strike: the Pikemen alive, all 40 of them.
+    let early = seen(&opening, &events[..2], &timeline, 0, cost);
+    assert_eq!((early.active, early.stacks.len()), (Some(0), 3));
+    // A siege's gate; a side without a hero; a timeline without the events' stacks.
+    let mut siege = opening.clone();
+    siege.siege = Some(h3_protocol::wire::Siege {
+        faction: 0,
+        fort: 1,
+        moat: 0,
+        gate_open: false,
+        walls: Vec::new(),
+        moat_hexes: Vec::new(),
+        parts: Vec::new(),
+    });
+    siege.sides[1].hero = None;
+    let gate = [
+        Event::GateOpened {},
+        Event::GateClosed {},
+        Event::GateOpened {},
+    ];
+    let opened = seen(&siege, &gate, &crate::anim::Timeline::default(), 0, cost);
+    assert!(opened.siege.is_some_and(|s| s.gate_open));
+    assert_eq!(opened.sides[1].hero, None);
+    let closed = seen(
+        &siege,
+        &gate[..2],
+        &crate::anim::Timeline::default(),
+        0,
+        cost,
+    );
+    assert!(closed.siege.is_some_and(|s| !s.gate_open));
+}
+
+/// A query once the record is open (E17 M5 T6b1): its sequence number, its answer by that number.
+#[test]
+fn a_query_is_numbered_and_its_answer_kept() {
+    let mut client = fetching();
+    assert_eq!(client.query(Query::CreatureCastTargets {}), None);
+    let text = record(
+        &header(4, Seat::Attacker, 1),
+        &[snapshot(1), your_turn(2)],
+        2,
+    );
+    client.receive(text, verify).unwrap();
+    let (seq, message) = client.query(Query::CastTargets { spell: 3 }).unwrap();
+    let asked = ClientMessage::Query {
+        seq,
+        query: Query::CastTargets { spell: 3 },
+    };
+    assert_eq!(message, asked);
+    assert_eq!(client.answer(seq), None);
+    let answer = ServerMessage::QueryResult {
+        n: 3,
+        seq,
+        targets: vec![Target::Stack { stack: 1 }],
+    };
+    client.receive(answer, verify).unwrap();
+    assert_eq!(client.answer(seq), Some(&[Target::Stack { stack: 1 }][..]));
+}

@@ -79,6 +79,15 @@ impl Connection {
         let _ = self.out.send(message);
     }
 
+    /// What came, if anything, without waiting (E17 M5 T6b1: the window's, each frame).
+    pub fn poll(&self) -> Option<Incoming> {
+        match self.incoming.try_recv() {
+            Ok(incoming) => Some(incoming),
+            Err(TryRecvError::Empty) => None,
+            Err(TryRecvError::Disconnected) => Some(ended()),
+        }
+    }
+
     /// What comes within `wait` (a headless caller's).
     pub fn wait(&self, wait: Duration) -> Option<Incoming> {
         match self.incoming.recv_timeout(wait) {

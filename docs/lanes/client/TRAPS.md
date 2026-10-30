@@ -113,6 +113,12 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   (runbook, "Sound"); a sequence without `sound` must stay silent (its timeline would change).
 - The panel's and the screen's side is each turn's controller (`Timeline::controllers`, E17 M5
   T5b2): a new list of turns built beside `turns` needs its controller pushed with it.
+- A seat on a server (E17 M5 T6b1, design §11.2): the battle idles `Waiting` on both seats'
+  turns, so a press counts only while `Battle::takes` (the server's turn served, its queries
+  answered), the presser too; the window polls the connection every pass (`Battle::poll`), its
+  input wait capped at 10 ms. The clients' clippy bans `std::time::Instant`: an adapter's timing
+  takes the window's clock (`win.ticks_ns()`) or a channel's timeout. A local `h3-server` drains
+  at the first SIGTERM and stops at the second; kill it by its pid (`pidof`), never `pgrep -f`.
 - `h3_formats`' `c_string` takes printable ASCII alone: an executable string with line breaks
   (the book's place formats) is read by the client's `text::exe_string`.
 - The viewer reads `clients/layouts/*.toml` at run time: a layout change made while a batch
