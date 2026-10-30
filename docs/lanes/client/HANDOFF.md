@@ -58,6 +58,12 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
 
 ## Recent sessions
 
+- **2026-10-30, E17 M5 T8b1 (in progress, `client/e17-m5-t8b1`).** The user cut T8b into
+  T8b1 (captures 28–64, R7, R2a/R2b and fixers) and T8b2 (the rest). Done: the original data
+  staged, both harness instances set up, the baseline `check.sh` green, R7 reviewed (12
+  findings). Running: C1 (28–39, instance 1), C2 (40–51, instance 2), F7 (R7's fixes, worktree
+  `client/e17-m5-t8b1-r7`). Next: C3 (52–64, the sound ones after F7), R2a, R2b.
+
 - **2026-10-30, E17 M5 T8a (done; its PR open: check it first).** The original data staged;
   the VM restarted ~10 minutes in. The user's cut: three concurrent sub-agents, each a fraction
   of about half a context. Built the harness's two instances (one fault found by a capture

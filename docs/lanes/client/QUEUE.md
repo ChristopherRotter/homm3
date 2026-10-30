@@ -31,6 +31,9 @@ check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gat
   of about half a context; the runner keeps only their reports. **T8a done** (log, "M5 T8a"):
   the two instances, the bonus Gold, reviewers R1 (network, accounts), R3 (the play core), R4
   (the spell book) and their fixes; all 91 stills and sequences 0 to 27 as recorded.
+- **T8b cut in two by the user (2026-10-30, the agent's proposal):** **T8b1** the captures
+  (sequences 28 to 64), R7 and R2 (in two: R2a the decoder, R2b the clip) with their fixers;
+  **T8b2** R4b, R5a to R5c, R6, the leftovers, then `drawn` and `check.sh`. **T8b1 in progress.**
 - **T8b, the rest in fractions** (the order free; the ids of `sequences.toml`):
   - captures: sequences 28 to 64 (`raise` to `mine-sound`; `raise` and `sacrifice` have seeds
     searched, the six `-sound` ones run with sound), about 12 a capture agent;
