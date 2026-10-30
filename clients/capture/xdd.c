@@ -45,16 +45,22 @@
       Heroes3.exe's Miles imports that start, end and ask after a sample go through the hooks
       below, so a sample plays for its length on the virtual clock: AIL_sample_status reports it
       playing (4) from AIL_start_sample until (now - start) x rate reaches its frames x 1000 x its
-      loop count (0: until ended), then done (2); AIL_end_sample and AIL_init_sample end it. A
+      loop count (0: until ended), then done (2); AIL_end_sample and AIL_init_sample end it;
+      AIL_stop_sample pauses a playing one, stopped (8) as Miles answers, until AIL_resume_sample
+      moves its start on by the pause (E17 M5 T8b1, R7-6). A
       sample's frames are its WAV's `fact` count (every entry of the sound archives has one: the
       viewer's decoder gives the same, h3-assets' wav.rs), its rate the `fmt ` chunk's. Miles
       still mixes the real sample (Wine's device is ALSA's null sink, faster than real time), but
       the game reads only the hooks' answers, so `wait_for_sample` 0x59A4C0 and `sample_wait`
       0x599EC0 end where the viewer's timeline does. Each start is appended to <H3CLOCK>\sounds as
       "<time> <channel> <length ms> <loops>" (the channel: the game's sample handle's index in
-      the order first started; the length rounded up); the ack's ninth field counts the hooked
+      the order the hooks first saw it, in any hooked call (its file set, as a rule: E17 M5 T8b1,
+      R7-12); the length rounded up); the ack's ninth field counts the hooked
       imports (9 when all are: AIL_serve's too, whose real time resets the game's reads like
-      every hooked call, so the harness never takes a game inside Miles for idle). With sound the
+      every hooked call, so the harness never takes a game inside Miles for idle), its tenth
+      (E17 M5 T8b1, R7-5) the calls the hooks could not follow: a file not read as a RIFF WAVE
+      with a `fmt ` rate and a `fact` count, and a handle past the table's SAMPLES (real Miles
+      answers for it); the harness fails a sound run when it is not 0. With sound the
       game's other threads read the clock too (its sound service), so only the main thread's
       reads count: they alone say the battle is idle (`machines`' heal read half done
       otherwise). */
@@ -354,7 +360,11 @@ static struct sample {
     unsigned long rate;
     int loops;            /* 0: until ended */
     int playing;
+    int paused;           /* E17 M5 T8b1, R7-6: stopped (AIL_stop_sample) while it played */
+    DWORD paused_at;      /* the virtual time it was */
 } samples[SAMPLES];
+/* E17 M5 T8b1, R7-5: the calls the hooks could not follow (the ack's tenth field). */
+static volatile LONG unfollowed;
 static ail1_fn real_start, real_end, real_init, real_status, real_stop, real_resume;
 static ail2_fn real_loops;
 static ail0_fn real_serve;
@@ -375,7 +385,8 @@ static void busy(void)
     InterlockedExchange(&reads, 0);
 }
 
-/* The table's entry of `handle`, made on first sight (none when the table is full). */
+/* The table's entry of `handle`, made on first sight (none when the table is full: counted in
+   `unfollowed`, E17 M5 T8b1, R7-5). */
 static struct sample *sample_of(void *handle)
 {
     int i;
@@ -388,7 +399,19 @@ static struct sample *sample_of(void *handle)
             samples[i].loops = 1;
             return &samples[i];
         }
+    InterlockedIncrement(&unfollowed);
     return NULL;
+}
+
+/* The bytes readable from `p` on (E17 M5 T8b1, R7-5): to the end of its committed region, as
+   AIL_set_sample_file's file comes without its length. */
+static unsigned long readable(const BYTE *p)
+{
+    MEMORY_BASIC_INFORMATION m;
+    if (!p || !VirtualQuery(p, &m, sizeof m) || m.State != MEM_COMMIT
+        || (m.Protect & (PAGE_NOACCESS | PAGE_GUARD)))
+        return 0;
+    return (unsigned long)((const BYTE *)m.BaseAddress + m.RegionSize - p);
 }
 
 /* Whether the sample is still playing at the virtual time `t`. */
@@ -413,23 +436,44 @@ static int WINAPI hook_file(void *handle, const void *file, int block)
     busy();
     EnterCriticalSection(&lock);
     s = sample_of(handle);
-    if (s && p && !memcmp(p, "RIFF", 4) && !memcmp(p + 8, "WAVE", 4)) {
-        unsigned long size = le32(p + 4) + 8, at = 12;
+    if (s) {
+        /* E17 M5 T8b1, R7-5: the length set first, so that a file not read keeps none of the
+           sample before; the chunks walked as h3-assets' wav.rs walks them (the first `fmt ` and
+           the first `fact`; inside the RIFF size, the whole file when it is 0), and inside the
+           memory readable here, the file's length unknown; a file without both counted in
+           `unfollowed` (its length 0). */
+        unsigned long have = readable(p), end, at = 12;
+        int fmt = 0, fact = 0, counted = 0;
         s->frames = 0;
-        s->rate = 22050;
-        while (at + 8 <= size) {
-            unsigned long n = le32(p + at + 4);
-            if (!memcmp(p + at, "fmt ", 4))
-                s->rate = le32(p + at + 12);
-            else if (!memcmp(p + at, "fact", 4))
-                s->frames = le32(p + at + 8);
-            at += 8 + n + (n & 1);
+        s->rate = 0;
+        if (have >= 12 && !memcmp(p, "RIFF", 4) && !memcmp(p + 8, "WAVE", 4)) {
+            end = le32(p + 4);
+            end = end == 0 || end > have - 8 ? have : end + 8;
+            while (at + 8 <= end && !(fmt && fact)) {
+                unsigned long n = le32(p + at + 4);
+                if (!fmt && !memcmp(p + at, "fmt ", 4)) {
+                    fmt = 1;
+                    if (n >= 16 && at + 24 <= end)
+                        s->rate = le32(p + at + 12);
+                } else if (!fact && !memcmp(p + at, "fact", 4)) {
+                    fact = 1;
+                    if (n >= 4 && at + 12 <= end) {
+                        s->frames = le32(p + at + 8);
+                        counted = 1;
+                    }
+                }
+                if (n > end - at - 8)
+                    break;
+                at += 8 + n + (n & 1);
+            }
         }
-        if (!s->rate)
-            s->rate = 22050;
-    }
-    if (s)
+        if (!s->rate || !counted) {
+            s->frames = 0;
+            InterlockedIncrement(&unfollowed);
+        }
         s->playing = 0;
+        s->paused = 0;
+    }
     LeaveCriticalSection(&lock);
     return r;
 }
@@ -459,6 +503,7 @@ static int WINAPI hook_start(void *handle)
         FILE *f = fopen(sounds_path, "a");
         s->start = now();
         s->playing = 1;
+        s->paused = 0;
         if (f) {
             unsigned long ms = s->rate ? (s->frames * 1000u + s->rate - 1) / s->rate : 0;
             fprintf(f, "%lu %d %lu %d\n", (unsigned long)s->start, (int)(s - samples), ms,
@@ -480,8 +525,10 @@ static int WINAPI hook_end(void *handle)
     struct sample *s;
     EnterCriticalSection(&lock);
     s = sample_of(handle);
-    if (s)
+    if (s) {
         s->playing = 0;
+        s->paused = 0;
+    }
     LeaveCriticalSection(&lock);
     {
         int r = real_end(handle);
@@ -498,6 +545,7 @@ static int WINAPI hook_init(void *handle)
     s = sample_of(handle);
     if (s) {
         s->playing = 0;
+        s->paused = 0;
         s->loops = 1;
     }
     LeaveCriticalSection(&lock);
@@ -508,17 +556,19 @@ static int WINAPI hook_init(void *handle)
     }
 }
 
-/* Paused (the game's focus lost, 0x599C40): the time it stood still is added to its start. */
-static DWORD paused_at[SAMPLES];
-
+/* Paused (the game's focus lost, 0x599C40): the time it stood still is added to its start.
+   Only a sample still playing pauses (E17 M5 T8b1, R7-6, *provisional*: as Miles' stop leaves
+   a done one done). */
 static int WINAPI hook_stop(void *handle)
 {
     busy();
     struct sample *s;
     EnterCriticalSection(&lock);
     s = sample_of(handle);
-    if (s)
-        paused_at[s - samples] = now();
+    if (s && !s->paused && sounding(s, now())) {
+        s->paused = 1;
+        s->paused_at = now();
+    }
     LeaveCriticalSection(&lock);
     {
         int r = real_stop(handle);
@@ -533,9 +583,9 @@ static int WINAPI hook_resume(void *handle)
     struct sample *s;
     EnterCriticalSection(&lock);
     s = sample_of(handle);
-    if (s && paused_at[s - samples]) {
-        s->start += now() - paused_at[s - samples];
-        paused_at[s - samples] = 0;
+    if (s && s->paused) {
+        s->start += now() - s->paused_at;
+        s->paused = 0;
     }
     LeaveCriticalSection(&lock);
     {
@@ -552,7 +602,8 @@ static int WINAPI hook_status(void *handle)
     EnterCriticalSection(&lock);
     for (s = samples; s < samples + SAMPLES; s++)
         if (s->handle == handle && (s->playing || s->frames)) {
-            r = sounding(s, now()) ? 4 : 2;
+            /* Paused: stopped (8), as Miles answers (E17 M5 T8b1, R7-6). */
+            r = s->paused ? 8 : sounding(s, now()) ? 4 : 2;
             break;
         }
     LeaveCriticalSection(&lock);
@@ -641,9 +692,9 @@ static DWORD WINAPI control(LPVOID unused)
         LeaveCriticalSection(&lock);
         f = fopen(tmp_path, "w");
         if (f) {
-            fprintf(f, "%lu %lu %ld %ld %ld %d %ld %d %d\n", applied, (unsigned long)t,
+            fprintf(f, "%lu %lu %ld %ld %ld %d %ld %d %d %ld\n", applied, (unsigned long)t,
                     (long)reads, (long)forced_draws, waiting, redirected, (long)refused,
-                    bink_clock, sound_hooks);
+                    bink_clock, sound_hooks, (long)unfollowed);
             fclose(f);
             MoveFileExA(tmp_path, ack_path, MOVEFILE_REPLACE_EXISTING);
         }
@@ -657,12 +708,16 @@ static DWORD WINAPI control(LPVOID unused)
 static int hook(HMODULE module, time_fn clock)
 {
     BYTE *base = (BYTE *)module;
-    IMAGE_NT_HEADERS32 *nt = (IMAGE_NT_HEADERS32 *)(base + ((IMAGE_DOS_HEADER *)base)->e_lfanew);
-    IMAGE_DATA_DIRECTORY dir = nt->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_IMPORT];
-    IMAGE_IMPORT_DESCRIPTOR *d = (IMAGE_IMPORT_DESCRIPTOR *)(base + dir.VirtualAddress);
+    IMAGE_NT_HEADERS32 *nt;
+    IMAGE_DATA_DIRECTORY dir;
+    IMAGE_IMPORT_DESCRIPTOR *d;
     FARPROC target = GetProcAddress(GetModuleHandleA("winmm.dll"), "timeGetTime");
+    /* A module not loaded is tested before its headers are read (E17 M5 T8b1, R7-11). */
     if (!base || !target)
         return 0;
+    nt = (IMAGE_NT_HEADERS32 *)(base + ((IMAGE_DOS_HEADER *)base)->e_lfanew);
+    dir = nt->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_IMPORT];
+    d = (IMAGE_IMPORT_DESCRIPTOR *)(base + dir.VirtualAddress);
     for (; d->Name; d++) {
         DWORD *slot = (DWORD *)(base + d->FirstThunk);
         if (lstrcmpiA((const char *)(base + d->Name), "winmm.dll"))

@@ -10,15 +10,24 @@
 # four LODs, Heroes3.snd, H3ab_ahd.snd and H3ab_ahd.vid. VIDEO.VID (629 MB) is replaced by the
 # user's original-data/battle-videos.vid when it is there (E17 M5 T4b2b: the result window's ten
 # clips and the spell book's two page turns, a VIDEO.VID of its own; H3_VIDEOS names another),
-# else by an empty archive (no clip plays). The run directory is original-data/wine/game
-# (gitignored), the Wine prefix $WINEPREFIX (default ~/.wine-h3). A second instance (E17 M5
-# T8a: two captures side by side) sets H3_RUN (another run directory's parent), WINEPREFIX and,
-# for h3drive.py, H3_DISPLAY; set up one instance at a time (wineboot uses display :98).
+# else by an empty archive (no clip plays); it says which. The run directory is
+# original-data/wine/game (gitignored), the Wine prefix $WINEPREFIX (default ~/.wine-h3). A
+# second instance (E17 M5 T8a: two captures side by side) sets H3_RUN (another run directory's
+# parent; refused without WINEPREFIX), WINEPREFIX and, for h3drive.py, H3_DISPLAY; set up one
+# instance at a time (wineboot uses display :98).
 set -euo pipefail
 root="$(cd "$(dirname "$0")/../.." && pwd)"
 install="${1:-$root/original-data/install}"
-run="${H3_RUN:-$root/original-data/wine}"
-export WINEPREFIX="${WINEPREFIX:-$HOME/.wine-h3}" WINEARCH=win32 WINEDEBUG=-all
+# E17 M5 T8b1, R7-3: H3_RUN only with its own prefix (the default one is the other instance's:
+# its drive D: would move here), and both absolute (a relative H3_RUN made a broken link D:).
+if [ -n "${H3_RUN:-}" ] && [ -z "${WINEPREFIX:-}" ]; then
+    echo "setup.sh: H3_RUN is set without WINEPREFIX: the default prefix ~/.wine-h3 is the" \
+        "other instance's; set both" >&2
+    exit 1
+fi
+run="$(realpath -m "${H3_RUN:-$root/original-data/wine}")"
+WINEPREFIX="$(realpath -m "${WINEPREFIX:-$HOME/.wine-h3}")"
+export WINEPREFIX WINEARCH=win32 WINEDEBUG=-all
 export WINEDLLOVERRIDES="mscoree,mshtml="
 
 # 1. Packages: 32-bit Wine, the virtual display and input (xset turns its key repeat off: E24 M2
@@ -46,10 +55,15 @@ for f in H3bitmap.lod H3sprite.lod H3ab_bmp.lod H3ab_spr.lod Heroes3.snd H3ab_ah
     cp "$install/Data/$f" "$game/Data/"
 done
 videos="${H3_VIDEOS:-$root/original-data/battle-videos.vid}"
+# Which archive it is, said (E17 M5 T8b1, R7-2): a capture that reaches the result window fails
+# with the empty one (h3drive.check_clips).
 if [ -f "$videos" ]; then
     cp "$videos" "$game/Data/VIDEO.VID"
+    echo "capture setup: VIDEO.VID is $videos"
 else
     printf '\0\0\0\0' > "$game/Data/VIDEO.VID"
+    echo "capture setup: VIDEO.VID is empty ($videos not found): no clip plays, and a capture" \
+        "that reaches the result window fails"
 fi
 chmod -R u+w "$game"
 
