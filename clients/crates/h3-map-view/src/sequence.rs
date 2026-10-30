@@ -16,7 +16,7 @@ use alloc::vec::Vec;
 use h3_map::model::Pos;
 use serde::Deserialize;
 
-use crate::live::{Arrow, LiveHero};
+use crate::live::{Arrow, Live, LiveHero, Selected};
 use crate::tables::{HERO_SPEEDS, SCROLL_SPEEDS};
 use crate::timeline::{Action, Asked, Direction, Hero};
 
@@ -321,6 +321,44 @@ pub fn selected_index(heroes: &[LiveHero], viewer: u8) -> Result<usize, String> 
         ));
     };
     Ok(index)
+}
+
+/// The index in `live`'s heroes of the current player's selected hero: with the mouse-over's
+/// facts (E24 M3 T6a1) the kingdom's selected hero by its record index; else [`selected_index`]'s.
+///
+/// # Errors
+/// As [`selected_index`] without the facts; with them, no hero selected or none of its index.
+pub fn selected_in(live: &Live) -> Result<usize, String> {
+    let Some(facts) = &live.hover else {
+        return selected_index(&live.heroes, live.viewer);
+    };
+    let Selected::Hero(slot) = live.kingdom.selected else {
+        return Err("no hero selected".into());
+    };
+    let id = facts
+        .hero_list
+        .get(slot)
+        .map(|h| h.0)
+        .ok_or("the selected hero is past the facts' list")?;
+    facts
+        .heroes
+        .iter()
+        .position(|h| h.0 == id)
+        .filter(|&i| i < live.heroes.len())
+        .ok_or_else(|| format!("the selected hero {id} is not on the view's level"))
+}
+
+/// The hero [`selected_in`] gives, on its tile and facing as the live part at 0 holds it.
+///
+/// # Errors
+/// As [`selected_in`].
+pub fn selected_hero(live: &Live) -> Result<Hero, String> {
+    let hero = &live.heroes[selected_in(live)?];
+    let facing = usize::from(hero.facing.number());
+    Ok(Hero {
+        at: hero.at,
+        facing: Direction::ALL[facing % Direction::ALL.len()],
+    })
 }
 
 /// A key's name: with Ctrl or not, and its direction.

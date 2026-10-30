@@ -25,20 +25,33 @@ and a town's, and T5b2, the date's and the kingdom's (kept whole by the user; bo
 epic's log); the other kinds (another player's turn, a resource found, a text) are M4's (the
 epic's "Later").
 
-### E24 M3 T6 — the mouse, the keys during a walk, the sound without the focus
+### E24 M3 T6a2 — the map hint's own cases
 
-- **Scope:** `adventure_mouse_move` 0x40E360's unread part and `view_mouse_tile` 0x40DEB0 (the
-  8-pixel question, design §1.8): the cursor over the map by its tile (`cradvntr.def`'s kinds;
-  the reach and its days given: a recording's from the original's memory), the status bar's
-  hints over the map's objects and the panels (the catalogue's keys); the view-only clicks (a
-  hero or a town chosen, the lists scrolled, Next Hero, the underground, the minimap, the status
-  window) and the other buttons' press; the panels' hotkeys through the key table; MCL-Q10's
-  keys during a walk (Space's cancel, the input ring's bound of 63); the sound without the focus
-  (`QUEUE-ARCHIVE.md` 2026-10-27, E24 M2 T6a2: the rest read, the window by
-  `Window::focused()`). Recorded: sequences with the clicks and the cursor's kinds.
+T6 cut with the user (2026-10-30) in two: T6a the mouse-over, T6b the clicks, the keys during a
+walk and the sound without the focus; T6a cut again (2026-10-30): T6a1 (done: the epic's log), and
+T6a2.
+
+- **Scope:** `map_hint` 0x40B150's 58 cases of their own (`hover::OWN_CASES` but 0, 3, 26, 36,
+  34, 54, 98; switch 0x40B20E): the visited marks (the viewing player's, a selected hero's), the
+  owners, the contents (a resource's amount, an artifact's or spell's name, a dwelling's
+  creatures, a keymaster's colour, ...), each one's facts in `[hover]` (`h3mem.Mem.hover`) and its
+  keys; the sub-functions it calls (`scripts/exe.py callees 0x40B150`). Then the status
+  bar's hint unmasked everywhere (`masks.toml`'s `hint` into `panels`, `hinted` gone): every
+  situation and sequence captured again (`set`, `frames`), as M3's closure would.
+- **Acceptance:** new sequences with the pointer over every class with a case, each exact; every
+  situation and sequence exact with the status bar compared; the Definition of Done.
+- **Depends on:** T6a1 (done). **Status:** ready.
+
+### E24 M3 T6b — the clicks, the keys during a walk, the sound without the focus
+
+- **Scope:** the view-only clicks (a hero or a town chosen, the lists scrolled, Next Hero, the
+  underground, the minimap, the status window) and the other buttons' press; the panels'
+  hotkeys through the key table; MCL-Q10's keys during a walk (Space's cancel, the input ring's
+  bound of 63); the sound without the focus (`QUEUE-ARCHIVE.md` 2026-10-27, E24 M2 T6a2: the
+  rest read, the window by `Window::focused()`). Recorded: sequences with the clicks.
 - **Acceptance:** the new sequences as recorded, every frame; the clicks in the window; the
   Definition of Done.
-- **Depends on:** T3 to T5b2 (done). **Status:** ready.
+- **Depends on:** T6a1 (done; independent of T6a2). **Status:** ready.
 
 ### E24 M3 T7 — M3's closure
 
@@ -47,7 +60,7 @@ epic's "Later").
   hand test (`clients/out/win/`, a `.cmd` with the checks on screen and a notes file); M3
   archived; M4 refined with the user.
 - **Acceptance:** the review list accepted; the hand test passed; M3 archived; M4's tasks queued.
-- **Depends on:** T1a to T6. **Status:** waiting (the user, at its checkpoint).
+- **Depends on:** T1a to T6b (T6a2 too). **Status:** waiting (the user, at its checkpoint).
 
 ## Inbox
 

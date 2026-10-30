@@ -769,3 +769,109 @@ table = "TOWNNAME"
 first = 0
 column = 0
 optional = true
+
+# The adventure screen's hints in its status bar (E24 M3 T6a1; docs/epics/E24-design.md §4.10). Over
+# a panel's item (`adventure_panel_hint` 0x403010): the item's hint of the adventure screen's (hint,
+# right-click text) pairs (0x6A56E0, by `panel_hint_index` 0x402C50), Help.txt's records 291 to 317
+# as `help_text_load` 0x5B98B0 loads them, a key per pair `map-hint.<n>` (0 the minimap's to 26 the
+# status bar's). Only the map viewer lists it.
+[[family]]
+id = "map-hint"
+table = "HELP"
+first = 291
+count = 27
+column = 0
+optional = true
+
+# An object class's name (OBJNAMES.TXT's record per class, `object_names` 0x6A79EC as 0x5B92D0
+# loads it, some records blank; E24 M3 T6a1): the status bar's hint over an object without a case
+# of its own (0x40D0E7) and over a special ground (0x40B215), `object.<class>`. Only the map viewer
+# lists it.
+[[family]]
+id = "object"
+table = "OBJNAMES"
+first = 0
+count = 232
+column = 0
+optional = true
+
+# A hero class's name (HCTRAITS.TXT's first column, its non-blank records from record 2 the
+# classes in order; `hero_class_name` 0x4D8F70 reads the class record's +0x4; E24 M3 T6a1): the
+# hints over a hero, `hero-class.<class>`. Only the map viewer lists it.
+[[family]]
+id = "hero-class"
+table = "HCTRAITS"
+first = 2
+column = 0
+optional = true
+
+# A town type's name (ARRAYTXT.TXT's records 219 to 227, `town_type_names` 0x6A74F4 as
+# `arraytxt_load` 0x5B9CC0 loads them after its "gTownTypeNames" row and the neutral's; E24 M3
+# T6a1): the hints over a town, `town-type.<type>`. Only the map viewer lists it.
+[[family]]
+id = "town-type"
+table = "ARRAYTXT"
+first = 219
+count = 9
+column = 0
+optional = true
+
+# A hero's hint, over its slot of the hero list (0x40316A) or over it on the map (0x40BC89):
+# GENRLTXT's record 16 with its name and its class's name.
+[[key]]
+id = "map.hint.hero"
+args = { name = "text", class = "text" }
+original = [{ at = "GENRLTXT:16", printf = ["name", "class"] }]
+
+# A town's hint, over its slot of the town list (0x4030DA) or over it on the map (0x40CA5A): the
+# executable's "%s, %s" with its name and its type's name.
+[[key]]
+id = "map.hint.town"
+args = { name = "text", type = "text" }
+original = [{ at = "EXE:0x65F3D4", printf = ["name", "type"] }]
+
+# A monster's hint on the map (0x40C387): the executable's "%s %s" with the size word of its count
+# (`map.army.<n>`) and its creature's plural name.
+[[key]]
+id = "map.hint.monster"
+args = { size = "text", creature = "text" }
+original = [{ at = "EXE:0x660344", printf = ["size", "creature"] }]
+
+# The size words of a count, the form a monster's hint takes (`creature_quantity_word` 0x44ADE0
+# with form 1: below 5, 10, 20, 50, 100, 250, 500 and 1000, else the ninth; ARRAYTXT.TXT's records
+# 174 + 3 n + 1 as `arraytxt_load` loads them to 0x6A5BB8).
+[[key]]
+id = "map.army.0"
+original = [{ at = "ARRAYTXT:175" }]
+
+[[key]]
+id = "map.army.1"
+original = [{ at = "ARRAYTXT:178" }]
+
+[[key]]
+id = "map.army.2"
+original = [{ at = "ARRAYTXT:181" }]
+
+[[key]]
+id = "map.army.3"
+original = [{ at = "ARRAYTXT:184" }]
+
+[[key]]
+id = "map.army.4"
+original = [{ at = "ARRAYTXT:187" }]
+
+[[key]]
+id = "map.army.5"
+original = [{ at = "ARRAYTXT:190" }]
+
+[[key]]
+id = "map.army.6"
+original = [{ at = "ARRAYTXT:193" }]
+
+[[key]]
+id = "map.army.7"
+original = [{ at = "ARRAYTXT:196" }]
+
+[[key]]
+id = "map.army.8"
+original = [{ at = "ARRAYTXT:199" }]

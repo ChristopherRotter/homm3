@@ -1789,3 +1789,60 @@ baseline stopped): CI's green `master` the starting point.
 - **Measured** (the sandbox, `--measure 20`, alternating with `master`'s build twice each): the
   same: `walk-1` 24.8 % uploaded, a frame made in a median 0.5 ms (0.4–0.6); *Tale of two lands*
   11.2 %, 1.2–1.3 (1.2).
+
+### M3 T6a1 — the mouse over the map and the panels (2026-10-30)
+
+On `map-client/e24-m3-t6a`, the user present: T6 cut in two (T6a the mouse-over, T6b the clicks,
+the keys during a walk and the sound without the focus), then T6a cut again once the map's hint
+showed 59 cases (T6a1: the cursor by tile, the panels' hints, the map hint's frame, the special
+grounds, the classes without a case, heroes, towns and monsters; T6a2: the other 58 cases);
+`master` at d378a77 (#588 merged). The original data staged from the user's repo folder first;
+the sandbox restarted during the setup (its background baseline stopped): CI's green `master` (CI
+and Clients) the starting point.
+
+- **The reading** (design §4.10; map entries `panel_hint_index` 0x402C50, `adventure_panel_hint`
+  0x403010, `hint_tile` 0x40AFB0, `map_hint` 0x40B150, `tile_cursor_kind` 0x40E280,
+  `hero_class_name` 0x4D8F70, `objnames_load` 0x5B92D0, `town_defended` 0x5BDFE0,
+  `panel_hint_item` 0x65F228, `name_type_format` 0x65F3D4, `two_words_format` 0x660344,
+  `adventure_hints` 0x6A56E0, `army_size_words` 0x6A5BB8, `town_type_names` 0x6A74F4,
+  `object_names` 0x6A79EC; `adventure_mouse_move` 0x40E360 and `view_mouse_tile` 0x40DEB0 read
+  whole; `movement_calculations_mouse` 0x4194A0, `pathfinder_run` 0x56B440's stop,
+  `tile_special_ground` 0x4FCE20's end corrected (none gives 0), `help_text_load` 0x5B98B0 and
+  `arraytxt_load` 0x5B9CC0's groups): the tile under the mouse by the screen's point (8 pixels
+  off the drawn rows, MCL-Q18), looked at only when the view's column or row changes; the cursor
+  by the tile, the selected hero and the pathfinder's cost there (its run stops at the tile:
+  MCL-Q19); the panel's hint by the item under the pointer, written only when that item changes
+  (the map's hints leave it: MCL-Q17); the map's hint by the tile of the object's entrance.
+- **Seen:** the hit test's items are the adventure dialog's own and the chat's edit (over the
+  status bar: no text); the status window's and the resource bar's are panels of their own (the
+  status window's area under the whole window: "Status Window"); a disabled button (state 0x8)
+  takes no mouse, the quest log's 0x20 does; a list's empty slots take none but the hero list's
+  frames; water is never the coast's class 3 (`record`'s rule corrected: `hover-sail` showed the
+  sail, not a landing, on water of a shore picture).
+- **Built:** `h3_map_view::hover` (`Facts`, `Hover`, `Tile`, `Hint`, `Selection`, `Cursor`,
+  `PanelItems`, `takes`, `panel_hint`, `parked_hint`, `days`, the tables of the original's classes
+  `OWN_CASES` and `NOT_ENTERED`); the live part's `hover` and `hint`, `[hover]` read by `render
+  --live`; the timeline's `Loop::moved` over the view (`over_map`) and outside it (`panel_hint`,
+  `Rules::keeps_edge`), the click's move first, a step's stale reach, `Rules::column_at`,
+  `Start::hover` and `levels`, `Draw::hint`; `panels::disabled`; the scene's status bar text; the
+  binary's mouse-over from every level's draw lists, the selected hero by the facts
+  (`sequence::selected_in`, `selected_hero`), a still's parked hint; the catalogue's families
+  `map-hint`, `object`, `hero-class`, `town-type` and the map viewer's `creature`, the keys
+  `map.hint.hero`, `map.hint.town`, `map.hint.monster`, `map.army.0` to `8`; h3-ui's family
+  `count` (records one by one, blank ones included; additive); `masks.toml`'s `hint` and `hinted`
+  (the status bar compared in the items recorded with it); the harness's `Mem.hover`,
+  `Mem.node_cost`, `h3map.look_over_view` (each input tile's cost before 0, the parking's hint
+  back, the column forgotten), the `[hover]` table in every live part, the per-item mask
+  (`panel_rects`, `masked_for`); the situation `seq-hover`; the sequences `hover-panels`,
+  `hover-map`, `hover-sail`.
+- **Checked:** `frames --only` on the three sequences: every frame exact (62, 73, 23), each
+  timeline as recorded (the cursor's frames 0, 2 to 7, 9 to 16 and 21 among them); `still` of
+  `seq-hover` exact with its status bar; `drawn`: the 50 situations and 15 sequences recorded
+  before all the same; `drawn --record` (50 situations, 642 frames of 18 sequences); unit tests
+  (the facts, the tiles, the hints, the cursors on land, in a boat, without a hero and on another
+  level, the panels' items, the loop over the map and the panels); coverage 100 %; clippy;
+  `scripts/verify-once.sh clients` passed; the window under Xvfb (`hover-map` `--check 14` with
+  seven moves of the pointer live after its inputs): 136 of 136 frames read back exact, each made
+  as the same frame afresh, 141 of 141 changes the headless loop's.
+- **Measured** (the sandbox, `walk-1`, `--measure 20`): a frame made in a median 0.5 ms, 24.6 %
+  uploaded (T5b2's 0.5, 24.8 %).

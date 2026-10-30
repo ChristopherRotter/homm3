@@ -183,8 +183,12 @@ viewers share.
   sequences exact with the window; MCL-Q16; the log), T5b2, the date's and the kingdom's windows
   and when each shows (kept whole by the user; **done** 2026-10-29: 0x450DD0, 0x452B80 and the
   date's step 0x4511A0 read and built, the chooser at every view's draw, a timed kind's end, the
-  rebuilds; three new situations and two new sequences exact; the log); T6, the mouse, the keys
-  during a walk, the sound without the focus; T7, M3's closure. A task that grows is cut at a seam agreed with the user.
+  rebuilds; three new situations and two new sequences exact; the log); T6 cut with the user
+  (2026-10-30): T6a, the mouse-over, cut again with the user (2026-10-30) into T6a1, the cursor by
+  tile and the hints of the panels and the map but the map's 58 own cases (**done** 2026-10-30:
+  0x40E360, 0x40DEB0, 0x40B150's frame, 0x403010 read and built; three new sequences exact, their
+  status bar compared; MCL-Q17 to MCL-Q19; the log), and T6a2, those cases; T6b, the clicks, the
+  keys during a walk, the sound without the focus; T7, M3's closure. A task that grows is cut at a seam agreed with the user.
 - **Exit:** every situation and sequence as recorded on the whole screen (no `panels` mask
   left, or each difference an `MCL-Q<n>`); the view-only clicks, the hints and the cursor in the
   window; `h3-ui` the only copy of what both viewers share; M3's review list accepted; a hand

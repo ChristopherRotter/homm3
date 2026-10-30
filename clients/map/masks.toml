@@ -2,7 +2,8 @@
 # T3b2 on): `h3map.py`'s stills, sequences and `drawn` digests, and the `sequences` command's
 # `screen` lines. Rectangles [x0, y0, x1, y1], the last two excluded.
 #
-# `panels` (E24 M3 T2a, design §4.1): what T6 draws of the adventure screen's panels; the frame
+# `panels` (E24 M3 T2a, design §4.1): what T6 draws of the adventure screen's panels (none left
+# since T6a1); the frame
 # picture, the buttons, the status bar's and the resource bar's pictures, the minimap (T3a as a
 # still, T3b over time: design §4.4), the hero and town lists (T4a as stills, T4b over time:
 # §4.5), the resource bar's amounts and the date (T5a, §4.7), the status window (T5b1: a hero's
@@ -11,7 +12,10 @@
 # (`h3map.py`'s and the viewer's `sequences`; T4a's `stills`, the situations' alone while the
 # sequences kept the lists out, one list again since T4b). A task drawing another panel takes its
 # rectangle out.
-panels = [
-    # The status bar's hint (T6: item 200's text).
-    [8, 556, 600, 574],
-]
+panels = []
+
+# The status bar's hint (E24 M3 T6a1, design §4.10: item 200's text): drawn since T6a1, compared in
+# the situations and sequences `hinted` lists (recorded with it), left out of the others until
+# T6a2 draws the classes with a case of their own and they are recorded again.
+hint = [[8, 556, 600, 574]]
+hinted = ["hover-panels", "hover-map", "hover-sail"]

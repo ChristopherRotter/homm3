@@ -52,6 +52,7 @@ pub mod check;
 pub mod compose;
 pub mod damage;
 pub mod draw;
+pub mod hover;
 pub mod keys;
 pub mod layout;
 pub mod lists;

@@ -727,14 +727,25 @@ frame at 0 is drawn and compared (`ours.png`,
 `<out>` defaults to `out/map-frames`. A new sequence is recorded twice, its second run `ok`
 (the first run's `timeline.txt` copied to `map/timelines/<id>.txt` by hand).
 
+**The mouse-over** (E24 M3 T6a1, design §4.10): every live part ends with a `[hover]` table,
+`Mem.hover`'s facts the cursor and the hints read that the map cannot give (each object's entrance
+word and army, the towns' names as `TownName.txt` records and their types, the heroes' record
+indices and own names, the viewer's lists, the teams, the guarded tiles, the selected hero's
+costs and day points; numbers only). The costs: the original's pathfinder stops at the tile under
+the pointer, so before a sequence's 0 `look_over_view` moves the pointer over each tile its
+inputs visit and reads that tile's node (`Mem.node_cost`), then over the kingdom overview's button
+and back to the parking (the status bar's hint as before) and writes the manager's +0xEC and
++0xF0 -1; a still reads none. The status bar's hint is compared only for the items
+`map/masks.toml`'s `hinted` lists (`panel_rects`): add a new item recorded with it there.
+
 **Options and inputs** (E24 M2 T1a2, design §3.4): a sequence's `scroll_speed` (0 to 2) and
 `hero_speed` (1 to 4), the values the original holds, are written into its settings once the
 situation is staged (`h3mem.SCROLL_SPEED`, `WALK_SPEED`); its `inputs` are each at a millisecond
 from 1 to `ms`: `keydown` and `keyup` (xdotool's key names; `ctrl+Up` presses and releases the
 Control key with Up: the map scrolls by Ctrl and the direction keys `Up`, `Prior`, `Right`,
 `Next`, `Down`, `End`, `Left`, `Home`, without Ctrl they walk the selected hero) and `pointer` (a
-point of the screen; the map scrolls while it lies within 16 pixels of a side: keep it outside
-the view, x below 8 or y below 8 or over the panels, until M3 draws the cursor over the view).
+point of the screen; the map scrolls while it lies within 16 pixels of a side; since E24 M3
+T6a1 over the view too, with the mouse-over's facts below).
 The step to that millisecond comes first, then the inputs, then the game reads the frozen clock
 500 times more (it handles them at that millisecond), then the state and the screen. The
 scroll's 70 ms run from its own last time, which `edge_scroll` sets to the clock at every call
