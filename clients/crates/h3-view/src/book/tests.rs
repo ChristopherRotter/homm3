@@ -134,6 +134,29 @@ fn the_page_lists_the_tab_s_spells_by_level_school_and_name() {
 }
 
 #[test]
+fn a_spell_of_no_known_school_shows_on_the_tab_of_all_schools_alone() {
+    // R4-4: its schools none of the layout's, no bit: listed under no school on the tab of all
+    // schools (before a school's spell of its level), on no school's tab.
+    let hero = hero(vec![spell(2, "Odd", 1, 0), spell(3, "Gust", 1, 1)]);
+    let book = Book::open(&mut Memory::default(), 7);
+    let names: Vec<(&str, u8)> = book
+        .entries(&hero)
+        .into_iter()
+        .map(|(s, school)| (s.name.as_str(), school))
+        .collect();
+    assert_eq!(names, [("Odd", 0), ("Gust", 1)]);
+    for tab in [1, 2, 4, 8] {
+        let school = Book { tab, ..book };
+        let listed: Vec<u16> = school
+            .entries(&hero)
+            .iter()
+            .map(|(s, _)| s.handle)
+            .collect();
+        assert_eq!(listed, if tab == 1 { vec![3] } else { vec![] }, "{tab}");
+    }
+}
+
+#[test]
 fn the_best_school_is_tried_air_fire_earth_water() {
     assert_eq!(best_school([0, 0, 0, 0], ALL), 1);
     assert_eq!(best_school([0, 1, 0, 0], ALL), 2);

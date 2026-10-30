@@ -259,7 +259,9 @@ the stacks created mid-battle.
   `h3-server`, headless and in two windows to the result window, seats re-taken by account
   after drops, every frame exact.
 - **T8, M5's closure:** a fresh reviewer, the recipes' starting bonus set to Gold (M4's item 15),
-  every capture afresh, the review list, the next milestone refined.
+  every capture afresh, the review list, the next milestone refined. Cut by the user into
+  concurrent fractions (QUEUE); **T8a done:** the harness's two instances, the bonus Gold,
+  reviewers R1, R3, R4 and their fixes, all stills and sequences 0 to 27 as recorded.
 - **Exit:** a battle played to its end in the window, in hot seat and on a server; the new
   screens (the book, the aim, the dialogs, the created stacks) pass against the original, or each
   difference is a listed fix or a classified quirk.
@@ -558,5 +560,25 @@ M3 at its review, T9b, M4 at its review, T3c). The next milestone's list starts 
     `Replaced` and `Protocol` end a seat's run with their reason (the window closes, the reason
     on standard error); `Replaced` re-dialed before T7, which made two connections of a seat take
     it from each other in turn. Other goodbyes re-dial as a drop.
-65. A login refused ends the run (no second attempt, no prompt); `--register` is sent at every
-    login of a run (the server takes it as a login once the account exists with the key).
+65. A login refused ends the run (no second attempt, no prompt); `--register`'s display is sent
+    until the run's first `LoggedIn`, not at its re-dials (T8a, R1-2: the server counts each as
+    an account change, 20 an hour).
+66. The harness's two instances (T8a): `H3_RUN`, `H3_DISPLAY`, `WINEPREFIX` (instance 2
+    `original-data/wine2`, `:96`, `~/.wine-h3b`), `h3mem.game_pid` by the prefix; the battle
+    recipes' starting bonus Gold for every player (`gold_bonus`, M4's item 15), the adventure
+    batches and the map's stills left random.
+67. The client's pace (T8a, R1-1): at most 10 messages in any second of the client's clock
+    (`remote::Pace`; the server's limit, 20 by default, is not on the wire), and `RateLimited` a
+    final goodbye.
+68. Silence and waits (T8a, R1-3): the dial and each handshake read at most 10 s (`DIAL_WAIT`),
+    any frame (pings too) heard, 60 s of silence a drop (`SILENT`; the server's ping interval is
+    not on the wire); the name lookup has no limit of its own.
+69. The record on a server (T8a, R1-5): compared whole only when it opens, a `Grew` appended;
+    at most 256 frames handled a poll (`POLL_MOST`).
+70. The files written whole (T8a, R1-4): beside the target, synced, renamed over; the accounts
+    file 0600 at every write; a new pin merged into the pins file as it is then.
+71. The mouse followed on from the last turn start (T8a, R3-1: `pointer::Follower`,
+    `track::follow_on`), its equivalence with the whole re-follow a test's; an entered stack
+    still clones the timeline; Auto Combat's check and the inputs' comparison still whole passes.
+72. The bot's command bound (T8a, R3-4): `FOUGHT_LIMIT` counts the bot's commands since a
+    human's last; a layout's `book.schools` must be the four the book draws (R4-4).

@@ -810,6 +810,20 @@ load gives each object a random phase and the steps count the load's real time, 
 object's frames repeat a picture the box the screen changed in at a redraw moved with them from
 run to run (two mines did); the live part at 0 reads them back.
 
+**The buttons and the lists** (E24 M3 T6b1, design §4.13): the inputs `press` and `release` (a
+point: the pointer moved there, then the left button down or up alone, `xdotool mousedown 1` and
+`mouseup 1`, handled before the next input; a panel's button held between them runs the button's
+own loop, the map standing still; a button left down at the end is released) and the panels'
+hotkeys by their letters (`keydown`/`keyup` of `k`, `u`, `q`, `z`, `w`, `m`, `c`, `a`, `o`, `h`,
+`e`: the key down presses the button, the key up clicks it; a dialog's button left down is only
+released after the sequence's end). A situation's `choose = true` has `choose_each` choose each of
+Red's heroes and towns from their lists once the path is shown, reading each one's status window
+(`status_toml`), a hero's path and tile, a town's place, then choose the staging's selection
+again, scroll the lists back to their first slots and set the view again (the path checked to be
+the one shown before): the live part's `[chosen]` (before `[hover]`), which the viewer's choices
+show. With `choose` several heroes may have a `path` (each one's destination). With no hero
+selected (a town chosen) the timeline's `hero` line has no numbers.
+
 **The frame check** (E24 M2 T2, design §3.6): after each run `frames` has the viewer replay the
 sequence without the original (`h3-map-view sequences <id> --frames <out>/<id> --live
 <out>/<id>/live.toml`: the map's timeline from the situation, this run's live part at 0 and the
@@ -1081,13 +1095,24 @@ design §7.1.
   vary too (E17 M4 T3b-2, each gone at a rerun): `luck` stopped once with its forced draw
   untaken, memory reading every stack's luck 0 (Expert Luck's 3 expected), `morale` read luck 4,
   and `bolt`'s line showed Orrin's spell power 2 (Lightning Bolt 60, not 35). Likely the
-  starting bonus: the recipes leave the scenario list's at random, and a bonus artifact on the
+  starting bonus: the recipes left the scenario list's at random, and a bonus artifact on the
   hero changes it for that run (E08 T32b2 saw one; not read in these runs). Stacks' `luck` and
-  `morale` in `states.jsonl` show it.
+  `morale` in `states.jsonl` show it. Since E17 M5 T8a the battle recipes (`capture`,
+  `sequence`) set every player's bonus to Gold in the advanced options (`h3drive.gold_bonus`;
+  `to_scenario` and `h3adv.to_hot_seat` take `gold`, off for the adventure batches and the map's
+  stills, which keep the random bonus).
 - An XWD file's colour map holds bytes the X server leaves unset: compare pixels, never files.
 - The menus run in real time; only the battle runs on the stepped clock. Two runs still agree:
   the battle's setup does not depend on the clock (observed: the obstacles follow the tile).
 - Display `:99` belongs to the driver; `setup.sh` uses `:98` for `wineboot`.
+- **Two instances side by side** (E17 M5 T8a): `H3_RUN` (the run directory's parent, default
+  `original-data/wine`), `WINEPREFIX` and `H3_DISPLAY` (default `:99`) choose another instance
+  for `setup.sh` (one setup at a time: both boot on `:98`) and for `h3drive.py`; each run ends
+  the games of its own prefix only, and `h3mem.game_pid` reads only its own prefix's game (at
+  first it took the first `Heroes3.exe` found, the other instance's: reads and writes went to
+  the wrong game). Give each instance other ids (`clients/out/<kind>/<id>` and
+  `kept/` are per id), leave `drawn --record` to after both, and rerun a `CHANGED` alone before
+  believing it (two games load both cores: the trap of a build beside a capture).
 - A click at the frozen clock acts at once and the computer's reply too (the AI acts in the same
   millisecond); a sequence's timeline therefore also holds the computer's moves. A click on an
   enemy the active stack cannot reach may still end its turn (seen once with Angels): click

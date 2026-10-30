@@ -39,17 +39,26 @@ pub fn seen(
             Event::StackCreated { stack, hex, .. } | Event::RoseFromCorpse { stack, hex, .. } => {
                 hexes.insert(stack, hex);
             }
+            // Saturating (E17 M5 review R1-6): a hostile server's many casts, channels or drains
+            // overflow no sum (overflow checks panic in release too).
             Event::SpellCast {
                 side: by, spell, ..
             } => {
-                mana[side(by)] -= i32::from(cost(by, spell));
+                let at = side(by);
+                mana[at] = mana[at].saturating_sub(i32::from(cost(by, spell)));
             }
-            Event::ManaChanneled { side: to, mana: m } => mana[side(to)] += i32::from(m),
+            Event::ManaChanneled { side: to, mana: m } => {
+                let at = side(to);
+                mana[at] = mana[at].saturating_add(i32::from(m));
+            }
             Event::ManaDrained {
                 side: from,
                 mana: m,
                 ..
-            } => mana[side(from)] -= i32::from(m),
+            } => {
+                let at = side(from);
+                mana[at] = mana[at].saturating_sub(i32::from(m));
+            }
             Event::GateOpened {} | Event::GateClosed {} => {
                 if let Some(siege) = now.siege.as_mut() {
                     siege.gate_open = matches!(event, Event::GateOpened {});
@@ -60,7 +69,9 @@ pub fn seen(
     }
     for (view, change) in now.sides.iter_mut().zip(mana) {
         if let Some(hero) = view.hero.as_mut() {
-            let left = (i32::from(hero.mana) + change).clamp(0, i32::from(u16::MAX));
+            let left = i32::from(hero.mana)
+                .saturating_add(change)
+                .clamp(0, i32::from(u16::MAX));
             hero.mana = u16::try_from(left).unwrap_or(0);
         }
     }

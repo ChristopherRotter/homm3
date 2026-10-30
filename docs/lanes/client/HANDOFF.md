@@ -25,8 +25,11 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   `remote::rejoined`, `Battle::afresh`: T6 done; T7 done, kept whole by the user: accounts,
   design §11.4, `argon2` the engine's and the password from standard input (the user's
   choices), `h3-view account`, `remote::Accounts`, `Client::login` with the re-key,
-  `remote::farewell`). **Next: M5 T8** (M5's closure, at the user's checkpoint; QUEUE). Open
-  PR: T7's (branch `client/e17-m5-t7`; check it first). The inbox's CLT-Q30 task (`h3-bink` as BINKW32's float DCT) and the user's Demons
+  `remote::farewell`). **M5 T8** (M5's closure) cut by the user into concurrent fractions (two
+  capture agents on the harness's two instances, one reviewer or fixer; QUEUE): **T8a done**
+  (PR from `client/e17-m5-t8a`; check it first): reviewers R1, R3, R4 fixed, all stills and
+  sequences 0 to 27 as recorded. **Next: T8b** (QUEUE: sequences 28 to 64, reviewers R2, R4b,
+  R5a–c, R6, R7 and their fixers), then T8c at the user's checkpoint (review items 1 to 72+). The inbox's CLT-Q30 task (`h3-bink` as BINKW32's float DCT) and the user's Demons
   note (T5a's dissolve, to re-investigate) wait for a free slot.
   Workspace `clients/` (`clients/README.md`), gates `clients/scripts/check.sh`; ADR-0020 (+ drafts
   in `adr-drafts/`), ADR-0024; the harness `clients/capture/README.md`; design §3–§11; records in
@@ -55,7 +58,14 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
 
 ## Recent sessions
 
-- **2026-10-30, E17 M5 T7 (done; its PR open: check it first).** The original data staged; the
+- **2026-10-30, E17 M5 T8a (done; its PR open: check it first).** The original data staged;
+  the VM restarted ~10 minutes in. The user's cut: three concurrent sub-agents, each a fraction
+  of about half a context. Built the harness's two instances (one fault found by a capture
+  agent: `h3mem.game_pid` read the other instance's game; fixed, the void ids redone) and the
+  recipes' bonus Gold; reviewers R1, R3, R4 and their fixers (log); 91 stills and sequences 0
+  to 27 as recorded; `drawn` all 156 the same with the fixes; `check.sh` green. Items 65–72.
+
+- **2026-10-30, E17 M5 T7 (done; #600 merged).** The original data staged; the
   user chose `argon2` (the engine's), the password from standard input shown as typed, and kept
   T7 whole (the agent proposed a cut); the VM restarted ~10 minutes in (CI's green `master` the
   baseline). Built the accounts (design §11.4): the key derived and kept, the login and the
@@ -70,11 +80,3 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
   deaths, and live: two windows through a restart of a local `h3-server` (Resurrection on an
   opening corpse), a join mid-battle with a small record bound, every frame exact. Items 56 to
   60; T7 next.
-
-- **2026-10-30, E17 M5 T6b1 (done; #594 merged).** The original data staged; T6b
-  cut in two by the user (the agent's proposal). Built the window's seat on a server (design
-  §11.2): `online::Online`, `Battle`'s `Fight::Server` polled each frame, the turn from
-  `YourTurn` with the aims' targets by `Query`, `remote::seen`, `results::served`, the seat as the
-  one human here (`remote_turn`); two windows on a local `h3-server` played `battle.toml` to its
-  end with a drop and a re-join, and `seq-haste` with both casts through the book and the aim,
-  every frame exact; both content outcomes. Items 52 to 55; T6b2 next.

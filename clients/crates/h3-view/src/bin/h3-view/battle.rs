@@ -19,7 +19,7 @@ use std::time::Duration;
 use h3_battle::BattleSetup;
 use h3_content_battle::BattleRuleset;
 use h3_formats::lod::LodArchive;
-use h3_protocol::wire::{Command, Seat, ServerMessage, Side};
+use h3_protocol::wire::{Command, Observation, Seat, ServerMessage, Side};
 use h3_render::Bugs;
 use h3_render::screen::Screen;
 use h3_ui::sprite::Sprite;
@@ -35,7 +35,7 @@ use h3_view::hero::Heroes;
 use h3_view::layout::{self, BattleLayout};
 use h3_view::message::{Picture, Style};
 use h3_view::mouse::aim::Target;
-use h3_view::mouse::track::{Input, Shown};
+use h3_view::mouse::track::{Input, Lens, Shown};
 use h3_view::mouse::{self, Field};
 use h3_view::record::{self, Record};
 use h3_view::scene::Panels;
@@ -441,6 +441,16 @@ impl Played<'_> {
             Self::Waiting(_, t) | Self::Finished(t) => t,
         }
     }
+
+    /// Before when the timeline's moments are final (E17 M5 T8a, R3-1): a battle still fought
+    /// adds from its last command's end on ([`Growing::push`]; a waiting one's tail shows the
+    /// first idle step after it), a finished one nothing.
+    fn settled(&self) -> u32 {
+        match self {
+            Self::Growing(g) | Self::Waiting(g, _) => g.timeline().end,
+            Self::Finished(_) => u32::MAX,
+        }
+    }
 }
 
 /// The battle, played as it is drawn (the module's text).
@@ -476,6 +486,9 @@ pub struct Battle<'g> {
     batch: Batch,
     /// The mouse over the battle: its moves and what they showed.
     pub shown: Shown,
+    /// The mouse followed on as the battle grows (E17 M5 T8a, R3-1): its mark's lists are the
+    /// start of `shown`'s.
+    follower: crate::pointer::Follower<'g>,
     inputs: Vec<Input>,
     /// The log scrolled (each at a time, by entries).
     scrolls: Vec<(u32, i64)>,
@@ -496,6 +509,8 @@ pub struct Battle<'g> {
     message: Option<(h3_view::message::Open, u32, Asked)>,
     /// The result window was closed (E17 M5 T4b1): the battle's screen is done.
     result_closed: bool,
+    /// The battle behind the result window while it is open (E17 M5 T8a, R3-2).
+    behind: h3_view::result::Behind,
     /// How many of the timeline's notices opened (E17 M5 T5a).
     notices: usize,
     /// The tactics phase's message the battle opened with is still open (E17 M5 T4c2a, design
@@ -687,6 +702,7 @@ impl<'g> Battle<'g> {
             turned,
             batch: Batch::default(),
             shown: Shown::default(),
+            follower: crate::pointer::Follower::default(),
             inputs: Vec::new(),
             scrolls: Vec::new(),
             pressed: None,
@@ -695,6 +711,7 @@ impl<'g> Battle<'g> {
             aiming: None,
             message: None,
             result_closed: false,
+            behind: h3_view::result::Behind::default(),
             notices: 0,
             opening: false,
         };
@@ -1078,6 +1095,7 @@ impl<'g> Battle<'g> {
         if self.served_events == Some(commands) {
             self.turned.pop();
         }
+        self.follower.touch(self.turned.len());
         self.turned.push(turn);
         (self.served, self.served_events) = (index, Some(commands));
         true
@@ -1096,7 +1114,7 @@ impl<'g> Battle<'g> {
 
     /// The side to act's own observation (E17 M5 T3a: its hero's spell book): the engine's view
     /// of a battle fought here; on a server the seat's battle of the turn it plays (E17 M5 T6b1).
-    fn own_view(&self) -> Option<h3_protocol::wire::Observation> {
+    fn own_view(&self) -> Option<Observation> {
         match self.fight.as_ref()? {
             Fight::Here(live) => live.own_view(),
             Fight::Server(_) => self
@@ -1160,56 +1178,62 @@ impl<'g> Battle<'g> {
         if self.ground.writer.is_none() {
             return Ok(false);
         }
-        let shown = self.pointer(inputs);
-        if shown == self.shown && scrolls == self.scrolls.as_slice() {
+        let (from, tail) = self.pointer(Some(inputs), false);
+        if self.shown.ends_with(from, &tail) && scrolls == self.scrolls.as_slice() {
             return Ok(false);
         }
         self.inputs = inputs.to_vec();
         self.scrolls = scrolls.to_vec();
-        self.show(shown)?;
+        self.show(from, tail)?;
         Ok(true)
     }
 
-    /// The mouse over the battle as played so far (E17 M3 T6c-2).
-    fn pointer(&self, inputs: &[Input]) -> Shown {
-        self.ground
-            .writer
-            .as_ref()
-            .map_or_else(Shown::default, |writer| {
-                crate::pointer::shown(
-                    &self.record,
-                    self.played.timeline(),
-                    &self.turned,
-                    inputs,
-                    (&self.ground.layout, &writer.catalogue),
-                    (&self.ground.tables, Bugs::Fixed),
-                )
-            })
+    /// The mouse over the battle as played so far (E17 M3 T6c-2) by `inputs` (none: the ones it
+    /// took last), followed on from its last turn's start (E17 M5 T8a, R3-1; `grew`: the timeline
+    /// grew since): where in [`Battle::shown`] (cut there) the lists returned go.
+    fn pointer(&mut self, inputs: Option<&[Input]>, grew: bool) -> (Lens, Shown) {
+        let ground = self.ground;
+        let Some(writer) = ground.writer.as_ref() else {
+            return (Lens::default(), Shown::default());
+        };
+        let timeline = self.played.timeline();
+        let read = (timeline, self.turned.as_slice());
+        let settled = (self.played.settled(), grew);
+        (self.follower).read(&self.record, read, &ground.tables, settled);
+        let record = &self.record;
+        let name = |hint: &mouse::Hint, observation: &Observation| {
+            crate::pointer::hint_text(record, &writer.catalogue, hint, observation)
+        };
+        let inputs = inputs.unwrap_or(&self.inputs);
+        let words = (&ground.layout, &name as _, Bugs::Fixed);
+        self.follower.shown(timeline, inputs, words)
     }
 
     /// The mouse, the timeline shown and the panel after the battle grew (or as it starts): the
     /// playhead goes on over what was played, unless the mouse's fidgets go in afresh.
     fn follow(&mut self) -> Result<(), String> {
-        let shown = self.pointer(&self.inputs);
-        if shown.entered.is_empty() && self.entered.is_none() {
+        let (from, tail) = self.pointer(None, true);
+        self.shown.splice(from, tail);
+        if self.shown.entered.is_empty() && self.entered.is_none() {
             self.head.extend(self.played.timeline());
         } else {
-            self.entered = self.entered(&shown);
+            self.entered = self.entered(&self.shown);
             self.head = Playhead::new(self.timeline());
         }
-        self.shown = shown;
         self.panels = self.panel()?;
         Ok(())
     }
 
-    /// Shows the mouse's `shown`: the stacks it entered fidgeting in the timeline, its hints and
-    /// the log's scrolls in the panel.
-    fn show(&mut self, shown: Shown) -> Result<(), String> {
-        if shown.entered != self.shown.entered {
-            self.entered = self.entered(&shown);
+    /// Shows what the mouse shows now, `tail` from `from` on: the stacks it entered fidgeting in
+    /// the timeline, its hints and the log's scrolls in the panel.
+    fn show(&mut self, from: Lens, tail: Shown) -> Result<(), String> {
+        let added = tail.entered.len();
+        let cut = self.shown.splice(from, tail);
+        let entered = &self.shown.entered;
+        if cut.entered[..] != entered[entered.len() - added..] {
+            self.entered = self.entered(&self.shown);
             self.head = Playhead::new(self.timeline());
         }
-        self.shown = shown;
         self.panels = self.panel()?;
         Ok(())
     }
@@ -1436,6 +1460,7 @@ impl<'g> Battle<'g> {
                 }
                 match aim.filter(|_| !second) {
                     Some(aim) => {
+                        self.follower.touch(self.turned.len().saturating_sub(1));
                         if let Some(turn) = self.turned.last_mut() {
                             turn.aims.retain(|a| a.spell != spell || a.creature);
                             turn.aims.push(aim);
@@ -1763,6 +1788,7 @@ impl<'g> Battle<'g> {
             return false;
         };
         self.message = Some((h3_view::message::Open::new(window), ended, Asked::Result));
+        self.behind = h3_view::result::Behind::default();
         true
     }
 
@@ -2075,10 +2101,10 @@ impl<'g> Battle<'g> {
         self.head.seek(timeline, at);
         let mut moment = self.head.moment(timeline);
         // Behind the result window the battle stands as it ended, its flags as last shown (E17 M5
-        // T4b1, `h3_view::result::behind`).
+        // T4b1, `h3_view::result::behind`), the moment before read once (E17 M5 T8a, R3-2).
         if self.result_open() {
-            let before = Moment::at(timeline, at.saturating_sub(1));
-            h3_view::result::behind(&mut moment, &before);
+            self.behind
+                .show(&mut moment, at, |t| Moment::at(timeline, t));
         }
         let mut list = self.list(at, &moment)?;
         if let Some((open, _, player)) = &self.book {

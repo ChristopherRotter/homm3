@@ -33,7 +33,7 @@ use h3_map_view::sequence::{self, DEFAULT_HERO_SPEED, DEFAULT_SCROLL_SPEED, Sequ
 use h3_map_view::situation::Situation;
 use h3_map_view::sound::{Sound, TileSounds};
 use h3_map_view::tables::Tables;
-use h3_map_view::timeline::{Action, Cursor, Draw, Start};
+use h3_map_view::timeline::{Action, Cursor, Direction, Draw, Hero, Start};
 use h3_render::Bugs;
 use h3_render::screen::{Screen, Widening};
 use h3_ui::cursor::{Cursor as Sprite, Image};
@@ -140,7 +140,8 @@ pub fn for_sequence<'a>(
         pointer: PARK,
         hero,
         paths,
-        path: Vec::new(),
+        // The path shown at 0 (E24 M3 T6b1: the staging's selection's, a sequence of choices').
+        path: painter.live.path.clone(),
         live: false,
         sound,
         kingdom: painter.live.kingdom.clone(),
@@ -151,6 +152,9 @@ pub fn for_sequence<'a>(
         asked: sequence.asked()?,
         hover: painter.hover()?,
         levels: painter.art.levels,
+        heroes: heroes(&painter.live),
+        index: painter.selected,
+        chosen: painter.live.chosen.clone(),
     };
     Ok(Setup {
         painter,
@@ -223,6 +227,9 @@ pub fn for_situation<'a>(
         asked: None,
         hover: painter.hover()?,
         levels: painter.art.levels,
+        heroes: heroes(&painter.live),
+        index: painter.selected,
+        chosen: painter.live.chosen.clone(),
     };
     Ok(Setup {
         painter,
@@ -230,6 +237,17 @@ pub fn for_situation<'a>(
         actions: BTreeMap::new(),
         recorded: None,
     })
+}
+
+/// The live part's heroes on their tiles and facings (the timeline's [`Start::heroes`]).
+fn heroes(live: &Live) -> Vec<Hero> {
+    live.heroes
+        .iter()
+        .map(|h| Hero {
+            at: h.at,
+            facing: Direction::ALL[usize::from(h.facing.number()) % Direction::ALL.len()],
+        })
+        .collect()
 }
 
 /// A situation's view, on the surface.
@@ -477,14 +495,28 @@ impl<'a> Painter<'a> {
             river_cycles: base.river_cycles.wrapping_add(draw.cycles),
             frames: base.frames.wrapping_add(draw.frames),
         };
-        if let Some(index) = self.selected {
-            self.walk(index, draw);
+        // The selected hero as the draw has it (E24 M3 T6b1: a hero chosen is another; the one
+        // chosen away from keeps the tile and facing its last draw gave it).
+        match (draw.selected, self.selected) {
+            (Some(index), _) => self.walk(index, draw),
+            // A town chosen (no hero selected): the path cleared, the hero put back.
+            (None, Some(_)) => {
+                self.live.path.clone_from(&draw.path);
+                self.live.walking = Walking {
+                    offset: draw.offset,
+                    lifted: None,
+                };
+            }
+            // No hero selected from the start: the live part's as it is.
+            (None, None) => {}
         }
         // The minimap as last drawn (E24 M3 T3b): its box's corner and the selected hero's tile.
         self.live.minimap = Some(Shown {
             view: draw.minimap.view,
-            hero: self.selected.zip(draw.minimap.hero),
+            hero: draw.minimap.index.zip(draw.minimap.hero),
         });
+        // The buttons pressed (E24 M3 T6b1).
+        self.live.pressed.clone_from(&draw.pressed);
         // The lists as last shown (E24 M3 T4b).
         if self.live.kingdom != *draw.kingdom {
             self.live.kingdom.clone_from(&draw.kingdom);

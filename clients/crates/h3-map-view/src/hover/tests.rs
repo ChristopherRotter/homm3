@@ -718,3 +718,12 @@ fn a_stills_parked_hint() {
     });
     assert_eq!(parked_hint(&l, &live, 1, [695, 276]), Hint::Panel(6));
 }
+
+#[test]
+fn a_held_buttons_box() {
+    // A button held follows the mouse in and out of its own box (E24 M3 T6b1).
+    let panels = PanelItems::new(&layout());
+    assert!(panels.holds(3, [679, 196]) && panels.holds(3, [710, 227]));
+    assert!(!panels.holds(3, [711, 212]) && !panels.holds(3, [695, 228]));
+    assert!(!panels.holds(999, [695, 212]));
+}

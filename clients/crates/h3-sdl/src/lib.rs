@@ -80,20 +80,28 @@ pub enum Key {
     F,
     /// H.
     H,
+    /// K (E24 M3 T6b1: the adventure map's hotkeys).
+    K,
     /// M.
     M,
     /// O.
     O,
     /// P.
     P,
+    /// Q (E24 M3 T6b1).
+    Q,
     /// R.
     R,
     /// S.
     S,
+    /// U (E24 M3 T6b1).
+    U,
     /// V.
     V,
     /// W.
     W,
+    /// Z (E24 M3 T6b1).
+    Z,
     /// The left arrow.
     Left,
     /// Enter (E17 M5 T3a: the spell book closes by it).
@@ -169,13 +177,17 @@ impl Key {
             SDLK_E => Self::E,
             SDLK_F => Self::F,
             SDLK_H => Self::H,
+            SDLK_K => Self::K,
             SDLK_M => Self::M,
             SDLK_O => Self::O,
             SDLK_P => Self::P,
+            SDLK_Q => Self::Q,
             SDLK_R => Self::R,
             SDLK_S => Self::S,
+            SDLK_U => Self::U,
             SDLK_V => Self::V,
             SDLK_W => Self::W,
+            SDLK_Z => Self::Z,
             SDLK_LEFT => Self::Left,
             SDLK_RETURN => Self::Return,
             SDLK_PAGEUP => Self::PageUp,
@@ -223,13 +235,17 @@ impl Key {
             Self::E => "E",
             Self::F => "F",
             Self::H => "H",
+            Self::K => "K",
             Self::M => "M",
             Self::O => "O",
             Self::P => "P",
+            Self::Q => "Q",
             Self::R => "R",
             Self::S => "S",
+            Self::U => "U",
             Self::V => "V",
             Self::W => "W",
+            Self::Z => "Z",
             Self::Left => "Left",
             Self::Return => "Return",
             Self::PageUp => "PageUp",
@@ -262,7 +278,7 @@ impl Key {
     }
 
     /// Every key, in the enum's order.
-    pub const ALL: [Self; 47] = [
+    pub const ALL: [Self; 51] = [
         Self::Escape,
         Self::Space,
         Self::Right,
@@ -275,13 +291,17 @@ impl Key {
         Self::E,
         Self::F,
         Self::H,
+        Self::K,
         Self::M,
         Self::O,
         Self::P,
+        Self::Q,
         Self::R,
         Self::S,
+        Self::U,
         Self::V,
         Self::W,
+        Self::Z,
         Self::Left,
         Self::Return,
         Self::PageUp,

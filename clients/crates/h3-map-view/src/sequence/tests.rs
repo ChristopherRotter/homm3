@@ -17,7 +17,7 @@ fn one(rest: &str) -> Sequence {
 #[test]
 fn reads_the_recorded_sequences() {
     let sequences = Sequences::parse(SEQUENCES).unwrap();
-    assert_eq!(sequences.sequence.len(), 26);
+    assert_eq!(sequences.sequence.len(), 28);
     // The status window's kind asked at 0 (E24 M3 T5b2).
     let date = sequences.get("status-date-end").unwrap();
     assert_eq!(date.asked(), Ok(Some(Asked { kind: 1, end: 3000 })));
@@ -64,6 +64,22 @@ fn the_keys_and_the_clicks() {
     assert!(one("hero_speed = 2").walks());
     assert!(one("points = 0").walks());
     assert!(one("inputs = [{ at = 2, click = [1, 1] }]").walks());
+    assert!(one("inputs = [{ at = 2, press = [1, 1] }]").walks());
+    // The left button apart and the panels' hotkeys (E24 M3 T6b1): a hotkey's release clicks.
+    let s = one(
+        "inputs = [{ at = 1, press = [641, 380] }, { at = 2, release = [641, 380] }, \
+         { at = 3, keydown = \"h\" }, { at = 4, keyup = \"h\" }]",
+    );
+    assert_eq!(
+        s.actions().unwrap(),
+        BTreeMap::from([
+            (1, vec![Action::Press([641, 380])]),
+            (2, vec![Action::Release([641, 380])]),
+            (3, vec![Action::Key(Hotkey::NextHero)]),
+            (4, vec![Action::KeyUp(Hotkey::NextHero)]),
+        ])
+    );
+    assert!(!one("inputs = [{ at = 2, keydown = \"k\" }]").walks());
 }
 
 #[test]
@@ -71,11 +87,11 @@ fn refuses_what_breaks_a_rule() {
     for (inputs, message) in [
         (
             "{ at = 1, keydown = \"Up\", keyup = \"Up\" }",
-            "s: the input at 1: not exactly one of keydown, keyup, pointer, click",
+            "s: the input at 1: not exactly one of keydown, keyup, pointer, click, press, release",
         ),
         (
             "{ at = 1 }",
-            "s: the input at 1: not exactly one of keydown, keyup, pointer, click",
+            "s: the input at 1: not exactly one of keydown, keyup, pointer, click, press, release",
         ),
         (
             "{ at = 0, pointer = [1, 1] }",
@@ -96,6 +112,10 @@ fn refuses_what_breaks_a_rule() {
         (
             "{ at = 5, keydown = \"ctrl+a\" }",
             "s: the input at 5: `ctrl+a`: no key of the map's",
+        ),
+        (
+            "{ at = 5, keydown = \"K\" }",
+            "s: the input at 5: `K`: no key of the map's",
         ),
     ] {
         let s = one(&format!("inputs = [{inputs}]"));

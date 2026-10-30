@@ -98,9 +98,11 @@ fn the_tables_sounds_are_the_originals() {
         ("horse00.wav", "horse09.wav")
     );
     assert_eq!(r.flying, "horse10.wav");
-    // The loops, the step sounds, the flying one and (E24 M3 T5b2) the day's status window's.
-    assert_eq!(r.wavs().len(), 82);
-    assert_eq!(r.effects, ["newday.wav"]);
+    // The loops, the step sounds, the flying one, (E24 M3 T6b1) the buttons' press and (E24 M3
+    // T5b2) the day's status window's.
+    assert_eq!(r.wavs().len(), 83);
+    assert_eq!(r.effects, ["button.wav", "newday.wav"]);
+    assert_eq!(r.button.as_deref(), Some("button.wav"));
     let volumes: Vec<u8> = (0..5).map(|d| r.volume(d)).collect();
     assert_eq!(volumes, [32, 28, 20, 10, 0]);
     assert_eq!(
@@ -199,9 +201,10 @@ fn the_tables_with_and_without_sound() {
     let text = include_str!("../../../../map/assets/base.toml");
     let t = tables::load(&[tables::parse(text).unwrap()], "base").unwrap();
     let sounds = t.sounds();
-    // Since E24 M3 T5b2 the day's status window's sound among them.
-    assert_eq!(sounds.len(), 82);
+    // Since E24 M3 T5b2 the day's status window's sound among them, since T6b1 the buttons'.
+    assert_eq!(sounds.len(), 83);
     assert!(sounds.contains("LOOPANIM") && sounds.contains("HORSE10") && sounds.contains("NEWDAY"));
+    assert!(sounds.contains("BUTTON"));
     assert_eq!(t.tracks().len(), 9);
     // Without `[map.sound]`, no sound; a river's music, an error.
     let without = text.replace("[map.sound]", "[unused]");
@@ -329,6 +332,8 @@ pub(crate) fn map_with(
         minimap: None,
         hover: None,
         hint: None,
+        chosen: crate::live::Chosen::default(),
+        pressed: Vec::new(),
     };
     (art, live, shapes)
 }
@@ -667,4 +672,22 @@ fn the_music_and_the_step_sounds_follow_the_terrain() {
     let mut s = sound(tiles(36, |_, _| 2, |_, _| None));
     s.effect(7, "newday.wav");
     assert_eq!(names(&s.take()), ["7 effect newday.wav"]);
+}
+
+#[test]
+fn a_buttons_press_and_its_sound() {
+    // The tables' press (E24 M3 T6b1); without one, silent.
+    let mut s = sound(tiles(4, |_, _| 2, |_, _| None));
+    s.press(5);
+    assert_eq!(s.take(), [(5, Cue::Effect("button.wav".into()))]);
+    let mut a = art();
+    a.button = None;
+    let silent = SoundRules::new(&a, records(), BTreeMap::new(), BTreeMap::new()).unwrap();
+    let mut s = Sound::new(
+        Arc::new(silent),
+        Arc::new(tiles(4, |_, _| 2, |_, _| None)),
+        Bugs::Fixed,
+    );
+    s.press(5);
+    assert!(s.take().is_empty());
 }

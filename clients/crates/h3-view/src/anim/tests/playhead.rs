@@ -12,8 +12,8 @@ use h3_render::Bugs;
 
 use super::{PIKEMAN, at, layout, looks, magic, moved, play, snapshot, tables};
 use crate::anim::{
-    Casts, Command, Growing, Key, Look, Playhead, Pose, Speed, Stage, Timeline, TurretKey,
-    TurretPose,
+    Casts, Command, DissolveArea, DissolveKey, Growing, Key, Look, Playhead, Pose, Speed, Stage,
+    Timeline, TurretKey, TurretPose,
 };
 use crate::hero::Heroes;
 use crate::scene::Moment;
@@ -58,6 +58,9 @@ pub(crate) fn grows(
         if let Some(given) = command.at {
             let tail = growing.waiting();
             assert!(begins(&tail, &before), "command {i}, waiting");
+            // The window's (E17 M5 T8a): the playhead extended along goes on into the tail.
+            let mut along = head.clone();
+            along.extend(&tail);
             let mut head = Playhead::new(&tail);
             let times = tail.changes(given);
             for t in times
@@ -65,8 +68,10 @@ pub(crate) fn grows(
                 .filter(|t| (before.end..given).contains(t))
             {
                 head.seek(&tail, t);
+                along.seek(&tail, t);
                 let moment = Moment::at(whole, t);
                 assert_eq!(head.moment(&tail), moment, "at {t} ms, waiting for {i}");
+                assert_eq!(along.moment(&tail), moment, "at {t} ms, along to {i}");
                 assert_eq!(Moment::at(&tail, t), moment, "at {t} ms, waiting for {i}");
             }
         }
@@ -108,8 +113,10 @@ fn begins(now: &Timeline, before: &Timeline) -> bool {
         && starts(&now.objects, &before.objects)
         && starts(&now.fields, &before.fields)
         && starts(&now.hero_keys, &before.hero_keys)
+        && starts(&now.controllers, &before.controllers)
         && starts(&now.counts, &before.counts)
         && starts(&now.tints, &before.tints)
+        && starts(&now.looks, &before.looks)
         && starts(&now.outlines, &before.outlines)
         && starts(&now.steps, &before.steps)
         && starts(&now.cues, &before.cues)
@@ -176,6 +183,67 @@ fn a_playhead_past_the_old_end_starts_over_as_the_timeline_grows() {
     head.seek(&early, shown);
     head.extend(&whole);
     assert_eq!(head.moment(&whole), Moment::at(&whole, shown));
+}
+
+/// The duel of two pikemen, the attacker's walking a hex, with two dissolves of the battlefield,
+/// the second starting as the first blends.
+fn dissolving() -> Timeline {
+    let o = snapshot(vec![
+        at(0, Side::Attacker, PIKEMAN, 50, false),
+        at(1, Side::Defender, PIKEMAN, 60, false),
+    ]);
+    let mut timeline = play(&o, &[(None, vec![moved(0, 50, 51)])]);
+    let dissolve = |start| DissolveKey {
+        start,
+        step: 75,
+        area: DissolveArea::Battlefield,
+    };
+    timeline.dissolves = vec![dissolve(100), dissolve(200)];
+    timeline
+}
+
+#[test]
+fn a_dissolve_keeps_the_battle_without_the_one_blending_then() {
+    // E17 M5 T8a (R3-7): the battle the second dissolve blends from stands as at its start
+    // without the first's blending, as [`Moment::at`] has it.
+    let timeline = dissolving();
+    let second = Moment::at(&timeline, 750).dissolve.unwrap();
+    assert_eq!(second.before.dissolve, None);
+    assert!(Moment::at(&timeline, 200).dissolve.is_some());
+    agrees(&timeline);
+}
+
+#[test]
+fn a_playhead_extended_by_the_timeline_it_read_stays_as_it_is() {
+    // E17 M5 T8a (R3-3): past the end, its idle steps run, a playhead extended by the timeline
+    // it read (a turn came, nothing grew) neither starts over nor reads its lists again: the
+    // last key of the walking stack, shown later in a copy, stays taken.
+    let whole = dissolving();
+    let t = whole.end + 1_000;
+    let mut head = Playhead::new(&whole);
+    head.seek(&whole, t);
+    let mut later = whole.clone();
+    let last = whole.keys.iter().rposition(|k| k.stack == 0).unwrap();
+    later.keys[last].shown = t + 1;
+    assert_ne!(Moment::at(&later, t), Moment::at(&whole, t));
+    head.extend(&later);
+    assert_eq!(head.at(), t);
+    assert_eq!(head.moment(&whole), Moment::at(&whole, t));
+    // Anything else read changed (a span's end, the idle steps, a list read on by place): it
+    // starts over.
+    let changed: [fn(&mut Timeline); 3] = [
+        |t| t.dissolves[1].step += 1,
+        |t| t.idle.from += 1,
+        |t| t.steps.push(0),
+    ];
+    for change in changed {
+        let mut other = later.clone();
+        change(&mut other);
+        let mut head = Playhead::new(&whole);
+        head.seek(&whole, t);
+        head.extend(&other);
+        assert_eq!(head.moment(&other), Moment::at(&other, t));
+    }
 }
 
 #[test]

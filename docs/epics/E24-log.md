@@ -1925,3 +1925,44 @@ went offline later); the sandbox's baseline green (`clients` verified on `master
   situation's quests); coverage 100 % (`h3-map-view`), clippy, fmt.
 - **Questions:** MCL-Q20 (the Tree's two spaces: the original's, recommended), MCL-Q21 (an object
   whose data names nothing: nothing shown there, refused at M4's import, recommended).
+
+### M3 T6b1 — the buttons' press and hotkeys, the lists' clicks, Next Hero (2026-10-30)
+
+On `map-client/e24-m3-t6b1`, the user present: T6b cut by the user into T6b1 (this), T6b2 (the
+underground, the minimap's click, the status window's) and T6b3 (the keys during a walk, the
+sound without the focus), the agent's three-part proposal taken. `master` at 618e20b (#602
+merged). The original data staged from the user's repo folder first (the computer went offline
+later); the VM restarted during the setup (the baseline's run stopped): CI's green `master` the
+starting point.
+
+- **The reading** (design §4.13; map entries `adventure_click` 0x4097E0 read whole,
+  `adventure_command` 0x409A70 renamed from `end_turn_button`, `town_select` 0x417830 read whole,
+  `hero_select` 0x417B20's path and order, `button_press` 0x456860, `edit_draw` 0x5BB400,
+  `button_sample` 0x694DA4 and three inferred): the item messages' dispatch, the button's own loop
+  while the mouse holds it (the map's idle step does not run), the hotkeys' key down and up, the
+  commands, Next Hero, the lists' slots and arrows, a hero's and a town's choice.
+- **Recorded** (two sequences on the new situation `seq-lists`, Red's seven heroes and six towns,
+  `choose = true`): the status bar empty after every list's redraw while memory keeps the hint
+  (observed live, then found: the chat's edit 38 paints its empty picture over it; MCL-Q22); the
+  hint of the mouse's point after a hold's release; the map's idle step in the release's
+  millisecond.
+- **Built:** `timeline`'s `Action::Press`, `Release`, `Key`, `KeyUp`, `Hotkey`,
+  `Unplayable::Command`, the hold, the hotkeys, the commands, the lists' slots, `hero_select` and
+  `town_select`, a hero's path kept for its next choice; `Draw::selected` and `pressed`,
+  `Minimap::index`; `live::Chosen` and `Live::pressed` (the panels' click frames), `at_start`'s
+  choices; `keys::Command::Panel` (eleven hotkeys, `Command::release`); `sequence`'s `press`,
+  `release` and the letters; the situation's `choose` (several paths with it); `h3_sdl::Key`'s K,
+  Q, U, Z (the foundation, additive); the tables' `[map.sound] button`; the window's presses and
+  releases apart, a hotkey's key up; the painter's selected hero by the draw, a town chosen
+  putting the hero back; a sequence's path at 0 from its live part. The harness's `press` and
+  `release` inputs, the hotkeys' letters, `choose_each` and the live part's `[chosen]`, the
+  `hero` line without a hero.
+- **Checked:** `choose-lists` (54 frames) and `press-buttons` (77) exact with the status bar
+  compared, each timeline as recorded; `drawn`: every earlier situation and sequence the same,
+  `drawn --record` (1 146 frames of 28 sequences); the window under Xvfb on both with live clicks
+  and keys after them: 177 and 166 frames read back exact, every frame as composed afresh, every
+  change as the headless loop's; unit tests (the choices replayed, the hold and what it drops,
+  the hotkeys' skips, the slots' refusals, `[chosen]` read and refused, the press's frame and
+  sound); coverage 100 % (`h3-map-view`), clippy, fmt.
+- **Questions:** MCL-Q22 (the hint hidden by a list's redraw: the client's fix behind `--bugs
+  original`, recommended).

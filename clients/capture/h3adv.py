@@ -139,10 +139,11 @@ def dismiss(game, quiet=1.5, limit=60.0):
 
 
 # -- the game's start and turns ----------------------------------------------------------------
-def to_hot_seat(game, names, difficulty="normal"):
+def to_hot_seat(game, names, difficulty="normal", gold=False):
     """From the start to the first human's adventure map of the only map in Maps/, every name a
     human player (hot seat, at least two; colours from red on, as the map allows them), the
-    players' difficulty chosen in the scenario list (E17 H1; its default Normal)."""
+    players' difficulty chosen in the scenario list (E17 H1; its default Normal); with `gold`
+    (the battle recipes, E17 M5 T8a) the named players' starting bonus Gold, else random."""
     game.wait("main_menu", 90)
     game.click(640, 75, 1.0)  # New Game
     game.wait("new_game_menu")
@@ -159,6 +160,8 @@ def to_hot_seat(game, names, difficulty="normal"):
     game.wait("scenario_list")
     x, y, step = DIFFICULTY_BUTTONS
     game.click(x + step * h3mem.DIFFICULTIES.index(difficulty), y, 0.6)
+    if gold:
+        h3drive.gold_bonus(game, len(names))
     game.click(*BEGIN, 1.0)
     game.move(*PARK)
     game.wait("turn_dialog", 60)

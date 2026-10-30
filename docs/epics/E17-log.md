@@ -3548,6 +3548,86 @@ tests and deny had passed): CI's green `master` (d2d4c70, then 56976c7) stood in
   `argon2`'s licences); the scoped verify with the original data passed every step it runs.
 - **Found:** review items 61 to 65; no question.
 
+### M5 T8a — M5's closure, part 1: the harness's two instances, the bonus Gold, reviewers and captures in parallel (2026-10-30)
+
+On `client/e17-m5-t8a`, the user present at the start, the original data staged at once.
+**The user's cut** (over the agent's five sequential parts): the closure partitioned over three
+concurrent sub-agents, two capturing and one reviewing, each given a fraction small enough to
+fill about half its context; later fractions in later rounds. The VM restarted about 10 minutes
+in; the baseline had passed (`verify-once clients`: CI's fingerprint, the light gates).
+
+- **The harness, two instances** (the runbook, "Traps"): `H3_RUN`, `H3_DISPLAY` and
+  `WINEPREFIX` choose another run directory, display and prefix for `setup.sh` and
+  `h3drive.py` (defaults unchanged); instance 2 is `original-data/wine2`, `:96`,
+  `~/.wine-h3b`. Each run's `wineserver -k` ends only its own prefix's game.
+- **The bonus Gold** (M4's review item 15): `h3drive.gold_bonus` opens the scenario list's
+  advanced options and presses each player's Starting Bonus right arrow twice (Random,
+  Artifact, Gold; read on the screen: the computer's rows change too); `to_scenario` and
+  `h3adv.to_hot_seat` take `gold`, which `capture` and `sequence` pass (the adventure batches and
+  the map's stills keep the random bonus). Checked on `walk`'s map (single scenario) and
+  `behind`'s (hot seat): both rows Gold.
+- **Reviewer R1, the network and accounts** (T6a to T7; read-only): R1-1 the window's turn
+  start sends a `Query` per castable spell at once, over the server's 20 messages a second: a
+  `RateLimited` goodbye and a re-dial loop for ever (high); R1-2 `--register`'s display on every
+  login (the server's 20 account changes an hour), `connect` printing a goodbye's reason only on
+  success; R1-3 no silence detection (no connect or handshake timeout, pings not counted); R1-4
+  the accounts and pins files truncated then written (a crash empties them), 0600 only at
+  creation, a pin another process wrote lost; R1-5 `rejoined` deep-compares and clones the
+  record at every `Grew` (quadratic), `poll` unbounded; R1-6 `seen`'s mana sums overflow
+  (a hostile server panics the window); R1-7 the re-join count counts dials; R1-8 a refused
+  re-key's doc (the run ends); R1-9 the server's names printed with control characters.
+  Checked fine: the welcome's checks before the pin, the signed bytes, the accounts' earlier
+  keys, the nonce, TLS, hostile input elsewhere, the final goodbyes.
+- **Fixed** (fixers F1b, F1a; tests each): R1-2 the display until the first `LoggedIn`,
+  `connect`'s lines on failure; R1-4 the files written whole (beside, synced, renamed), 0600 at
+  each write, a pin merged into the file as it is then; R1-6 saturating sums; R1-8 the doc;
+  R1-9 `connect::printable`; R1-1 `remote::Pace` (10 messages in any second, *provisional*) and
+  `RateLimited` final; R1-3 `DIAL_WAIT` 10 s, pings heard, `SILENT` 60 s a drop; R1-5 the record
+  compared at `Opened` only, a `Grew` appended, `POLL_MOST` 256; R1-7 re-joins at a re-opened
+  record; `Fault::NotDialed` printable. Left: the name lookup has no time limit,
+  `RecordError::Line` may print a server's text raw.
+- **The harness's fault found by C1:** `h3mem.game_pid` took the first `Heroes3.exe`, with two
+  instances often the other's: C1's reads (and its mouse-poll alignment, a siege's walls) went
+  to C2's game. Fixed (the process's `WINEPREFIX` matched). C1's four differing `mouse-*`
+  stills, `siege-castle-hit` (failed) and `shot` void, rerun; C2's seven runs of the overlap all
+  as recorded, pixel for pixel (a wrong game's reads would have drawn another battle): kept.
+- **Reviewer R3, the play core** (T1, T2): R3-1 a mouse move re-follows every input since the
+  battle's start and rebuilds every turn's field (a full `Timeline::at` per turn): unbounded per
+  frame in a long live battle; R3-2 the result window's moment rescanned every frame; R3-3
+  `extend` restarts when nothing grew; R3-4 `FOUGHT_LIMIT` stops a long hot-seat battle's human
+  commands; R3-5 a doc (an accepted command's local failure is fatal); R3-6 test gaps
+  (`looks`, `controllers`, the growing path, a turned two-hex click); R3-7 (unsure) a dissolve's
+  kept moment carries another open dissolve. Checked fine: the playhead against a full rescan,
+  `extend`'s appends, input gating, the click's side in hot seat, determinism.
+- **Fixed** (fixers F3a, F3b): R3-2 `result::Behind` (read once for its time); R3-3 `extend`
+  returns when nothing it reads grew or moved; R3-4 the bot's commands counted since a human's
+  last; R3-5 the docs; R3-6 the tests (`looks`, `controllers`, the window's growing path, 504
+  turned two-hex clicks all legal); R3-7 `dissolve: None` on the kept moment; R3-1
+  `pointer::Follower` (each turn's observation, legal commands and facing kept as it arrives,
+  `touch` on a change in place) and `track::follow_on` (from a `Mark` at a turn start, refused
+  when what it stands on changed): 72 `Timeline::at` calls a mouse move at the end of
+  `battle.toml`'s hot seat before, none after; a test compares it with the whole re-follow at
+  all 620 steps (TRAPS.md). Left: an entered stack clones the timeline.
+- **Reviewer R4, the spell book** (T3a): R4-1 a spell missing from the manifest closed the
+  whole book; R4-2 the client's copy of the cost untested (equal to `mana::cost` and
+  `mastery_at` today); R4-3 a still's second `key:c` did nothing; R4-4 a spell of no known
+  school hidden everywhere, `1 << i` past 8 schools. **Fixed** (F4): skipped; tests (and the
+  school levels capped at Expert); the hero cloned at each opening; `book.schools` four distinct
+  names, a spell of no known school on the tab of all schools.
+- **Captured** (sub-agents C1 to C4, the two instances side by side, about 1.5 to 2 loads):
+  **all 91 stills and sequences 0 to 27 as recorded** (C1's void ids again on instance 1: all
+  13 as recorded; `luck`, `morale` and `strike`, which needed reruns at M4, as recorded at their
+  first run: the bonus Gold); `kept/` unchanged throughout (the as-recorded runs rewrite the same
+  numbers).
+- **Checked:** the release viewer with every fix, `drawn` over all 156 items: all the same (no
+  fix changed a frame); `clients/scripts/check.sh` all gates (a first run found two regions of
+  `Fault::NotDialed`'s new text uncovered, its error branches: the text built first).
+- **The sub-agents' sizes** (their reported tokens): reviewers 116 000 to 202 000, fixers
+  131 000 to 277 000, capture agents 68 000 to 118 000; the smaller slices (about 1 400 lines a
+  reviewer) came out nearer the half.
+- **Next (T8b, QUEUE):** sequences 28 to 64; reviewers R2, R4b, R5a to R5c, R6, R7 and their
+  fixers; R1's and R3-1's leftovers; then T8c with the user.
+
 ## Accepted review lists (M1 to M4)
 
 M1 and M2 moved from the epic file on 2026-10-20 (less start-up reading), unchanged; M3 at its

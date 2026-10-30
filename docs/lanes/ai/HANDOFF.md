@@ -13,24 +13,17 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 - **E25 refined 2026-10-27** (AI-Q10; `docs/epics/E25-battle-ai-v2.md`, record `E25-log.md`):
   the target is beating the faithful system actor (`t7-1`: 0.372); it **trains no agent any
   more** (ADR-0026 point 8 as amended; no neutral battles in training for now, the user at T2a).
-  **Done 2026-10-28:** T1a, T1b (a world's reward v1, the true world), T2a (shaping, the refused
-  mixes, T2b's configs), all C ABI v35; T1c (the search gains nothing with either world: the
-  network's evaluation limits it); T2b (`e25-control-1`, `e25-shaping-1`: shaping about +0.04
-  against Aggressor, Greedy and the system actor, 0.409; loops in the tactics phase); T3 (the
-  user: increment 2 is shaping, bounded, then scale; increment 1 in `E25-archive.md`); T4a
-  (`[network] tactics_rounds`, the agent's tactics bound, Python only); T4b (`e25-bound-1`: the
-  bound costs nothing, the loop gone; **`e25-bound-1` the current best**, the user). **Done
-  2026-10-29:** T5 (`e25-scale-1`, three rounds, stopped by the user at 41.3 M of 60 M: best #3
-  at 30 M at `e25-bound-1`'s level, 0.418 against the system actor; scale gains nothing).
-  T6 (**`e25-scale-1` #3 the current best**; increment 2 in `E25-archive.md`; AI-Q11: increment
-  3 is the network's architecture, refined: a distillation bench over a deeper and a wider MLP,
-  a hex convolution network, a hex transformer and the entity network, then A/Bs); T7a (the
-  kinds: `hexconv`, `hexformer`, the MLP's `layers`); T7b (the bench, `h3env.train.distill`,
-  `configs/distill/e25.toml`). **Next:** T7c, the bench on the user's GPU (the queue's command).
-- **Open pull requests:** the T5 branch `claude/nice-lamport-fdh8gx` (its pull request once
-  ready). `master`'s CI was red after #577 (the adventure lane's bench-check
-  `random-play-duel-36` +2.01 %); #580 re-baselined it (merged). Merged: #534, #539, #555, #558,
-  #576.
+  **Done 2026-10-28/29:** increments 1 (the search's diagnostics, shaping: +0.04; C ABI v35) and
+  2 (the tactics bound; the scale run flat from 20 M), in `E25-archive.md`; **`e25-scale-1` #3
+  the current best** (T6, the user; 0.418 against the system actor). Increment 3, the network's
+  architecture (AI-Q11): T7a (`hexconv`, `hexformer`, the MLP's `layers`), T7b (the bench,
+  `h3env.train.distill`).
+  **Done 2026-10-30:** T7c (the bench on the user's GPU, `records/distill/distill-1.json`: the
+  structured networks fit ten times worse at 5 to 25 times the cost; the wide MLP 2 × 1 024 leads,
+  its value past the teacher's; the user: it alone to RL, from scratch). **Next:** T7d,
+  `e25-wide-1` on the user's machine (`configs/e25-wide.toml`, 20 M; the queue's command).
+- **Open pull requests:** none. Merged: #534, #539, #555, #558, #576, #585 (E25 T5 to T7b,
+  2026-10-29).
 - **Versions:** battle action encoding v13, observation encoding v22, replay format v31
   (CLT-Q4/Q6), the adventure env's action encoding v5 (E08 T63a), C ABI v35 (E25 T1a, T1b, T2a:
   a world's reward, the true world, the potential) (`docs/08-work-process.md`, "Versions"). Next
@@ -42,6 +35,13 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 Moved to `TRAPS.md`, in three groups: **Ownership** (cross-lane encodings and replays, what `--scope ai` skips), **Environment** (what an agent sees, the batch, the pool's `unsafe`, benchmarks, the census, the encounter sampler, bots' tables) and **Python** (the trainer's resumable state, uv, PyTorch's pinned build, the sandbox's network).
 
 ## Recent sessions
+
+### 2026-10-30 — E25 T7c
+
+- #585 merged; the branch restarted from `master`. The user ran the distillation bench (4 M
+  samples, GTX 1070) and uploaded its report and metrics: committed and read (`E25-log.md` T7c).
+  The user: T7d is the wide MLP alone, from scratch at 20 M (`configs/e25-wide.toml`, its test in
+  `test_run.py`). The bench's students stay on the user's machine (`runs/distill-1/students/`).
 
 ### 2026-10-29 — E25 T5, T6, T7a, T7b
 
@@ -59,10 +59,3 @@ Moved to `TRAPS.md`, in three groups: **Ownership** (cross-lane encodings and re
   network in the sandbox, shaping's numbers T2b's: its `best.pt` is gone from the sandbox). The
   user: `e25-bound-1` the current best; T5 at 60 M with three tactics rounds
   (`configs/e25-scale.toml`).
-
-### 2026-10-28 — E25 T4a
-
-- #555 merged before the start (`master` green). T4a: the binding counts a tactics phase's
-  turns from the observations (`BattleBatch.tactics_round`), `Policy.act` and the search's
-  nodes bound the entry mask by the network's `tactics_rounds`; tests, `configs/e25-bound.toml`.
-  The form put to the user: one round, each stack placed or passed once.

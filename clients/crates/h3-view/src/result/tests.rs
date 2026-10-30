@@ -258,6 +258,37 @@ fn behind_the_window_the_flags_stay_as_shown() {
 }
 
 #[test]
+fn behind_the_window_the_battle_before_is_read_once_for_its_time() {
+    // E17 M5 T8a (R3-2): the moment before the window's time is read at its first frame and kept
+    // for the next ones; read again once the time changed.
+    use crate::hero::HeroPose;
+    let moment = |flag| Moment {
+        heroes: [
+            Some(HeroPose {
+                group: 0,
+                frame: 0,
+                flag,
+            }),
+            None,
+        ],
+        ..Moment::default()
+    };
+    let mut kept = Behind::default();
+    let mut read = Vec::new();
+    let mut flags = Vec::new();
+    for (at, flag) in [(500, 4), (500, 9), (700, 6), (0, 2)] {
+        let mut now = moment(1);
+        kept.show(&mut now, at, |t| {
+            read.push(t);
+            moment(flag)
+        });
+        flags.push(now.heroes[0].map(|h| h.flag));
+    }
+    assert_eq!(read, [499, 699, 0]);
+    assert_eq!(flags, [Some(4), Some(4), Some(6), Some(2)]);
+}
+
+#[test]
 fn the_clip_is_the_tunes_over_the_slot() {
     assert_eq!(
         clip(&assets(), Tune::Retreat, 250),

@@ -34,6 +34,9 @@ pub struct Live<'r> {
     /// Auto Combat plays the turn to come (E17 M5 T4c1): the bot plays the humans' sides too.
     auto: bool,
     sent: u32,
+    /// The bot's commands since a human's (E17 M5 T8a, R3-4): [`FOUGHT_LIMIT`] stops the bot's
+    /// endless fights, not a long battle a human plays.
+    bot_run: usize,
 }
 
 /// What a command played sent: the spectator's messages, in order (its `Events`, then
@@ -66,6 +69,7 @@ impl<'r> Live<'r> {
             humans,
             auto: false,
             sent: 0,
+            bot_run: 0,
         })
     }
 
@@ -154,8 +158,9 @@ impl<'r> Live<'r> {
     }
 
     /// Plays the next command if a bot's: the bot's for the side to act, sent from its seat;
-    /// none when the battle is over or waits for a human ([`Live::waiting`]). A command the
-    /// session rejects, or one too many ([`FOUGHT_LIMIT`]), is an error.
+    /// none when the battle is over or waits for a human ([`Live::waiting`]). One too many of the
+    /// bot's in a row ([`FOUGHT_LIMIT`] since a human's) is an error that changes nothing; for
+    /// the others, [`Live::play`]'s.
     pub fn next(&mut self) -> Result<Option<Played>, String> {
         let Some(side) = self
             .state
@@ -164,11 +169,16 @@ impl<'r> Live<'r> {
         else {
             return Ok(None);
         };
+        if self.bot_run >= FOUGHT_LIMIT {
+            return Err(format!("no end after {FOUGHT_LIMIT} commands of the bot's"));
+        }
         h3_battle::legal_commands(&self.state, self.ruleset, side, &mut self.legal);
         let choice = self
             .bot
             .command(&self.state, self.ruleset, side, &self.legal);
-        self.send(side, map::command(choice)).map(Some)
+        let played = self.send(side, map::command(choice))?;
+        self.bot_run += 1;
+        Ok(Some(played))
     }
 
     /// The bot's choice for the side to act, as the wire's command (E17 M5 T2b: what the
@@ -182,18 +192,22 @@ impl<'r> Live<'r> {
         Some(map::command(choice))
     }
 
-    /// Plays a human's `command` for the side to act (E17 M5 T2b), sent from its seat: the
-    /// session validates it as a server; one it rejects is an error and changes nothing.
+    /// Plays a human's `command` for the side to act (E17 M5 T2b), sent from its seat, however
+    /// many came before (E17 M5 T8a, R3-4: a long hot-seat battle): the session validates it as
+    /// a server; one it rejects is an error and changes nothing. Any other error comes after the
+    /// session took the command: the session and the copy here no longer agree, the battle
+    /// cannot go on (the window quits on it).
     pub fn play(&mut self, command: Command) -> Result<Played, String> {
         let side = self.state.side_to_act().ok_or("the battle is over")?;
-        self.send(side, command)
+        let played = self.send(side, command)?;
+        self.bot_run = 0;
+        Ok(played)
     }
 
-    /// Sends `command` from `side`'s seat; the copy here plays it after the session took it.
+    /// Sends `command` from `side`'s seat; the copy here plays it after the session took it. A
+    /// rejection changes nothing; a frame not read or the copy's failure to play it come after
+    /// the session took it (fatal to the battle, [`Live::play`]).
     fn send(&mut self, side: BattleSide, command: Command) -> Result<Played, String> {
-        if usize::try_from(self.sent).unwrap_or(usize::MAX) >= FOUGHT_LIMIT {
-            return Err(format!("no end after {FOUGHT_LIMIT} commands"));
-        }
         let seq = self.sent + 1;
         let seat = match side {
             BattleSide::Attacker => Seat::Attacker,
@@ -293,6 +307,38 @@ mod tests {
         let whole = h3_view::record::parse(&live.record().unwrap()).unwrap();
         assert_eq!(whole.messages, fought.messages);
         assert_eq!(whole.header, opening.header);
+    }
+
+    #[test]
+    fn the_bot_s_limit_leaves_a_human_s_commands_alone() {
+        // E17 M5 T8a (R3-4): past `FOUGHT_LIMIT` commands a hot-seat battle's are taken; the
+        // bot stops after as many in a row (Auto Combat on), a human's command starting the run
+        // afresh.
+        let (scenario, packs) = (
+            repo().join("packs/synthetic/scenarios/duel.toml"),
+            repo().join("packs"),
+        );
+        let (ruleset, mut setup) = crate::scenario::battle(&scenario, &packs, 1).unwrap();
+        setup.human = [true, true];
+        let mut live = Live::new(&ruleset, setup, 1, [true, true]).unwrap();
+        live.sent = u32::try_from(FOUGHT_LIMIT).unwrap();
+        for _ in 0..2 {
+            let choice = live.choice().unwrap();
+            live.play(choice).unwrap();
+        }
+        assert_eq!(live.sent, u32::try_from(FOUGHT_LIMIT + 2).unwrap());
+        live.set_auto(true);
+        live.bot_run = FOUGHT_LIMIT;
+        let before = live.record().unwrap();
+        assert!(live.next().unwrap_err().starts_with("no end after"));
+        assert_eq!(live.record().unwrap(), before);
+        live.set_auto(false);
+        let choice = live.choice().unwrap();
+        live.play(choice).unwrap();
+        assert_eq!(live.bot_run, 0);
+        live.set_auto(true);
+        live.next().unwrap().unwrap();
+        assert_eq!(live.bot_run, 1);
     }
 
     #[test]

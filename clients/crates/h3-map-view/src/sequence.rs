@@ -5,7 +5,8 @@
 //! xdotool's names. [`Sequence::actions`] turns the inputs into the viewer's actions
 //! ([`crate::timeline::Action`]) by the original's default keys (design §3.4): Ctrl and a direction
 //! key scroll the view, a direction key alone steps the selected hero, a key's release does
-//! nothing. A walk's paths are the original's, from the recorded timeline ([`Sequence::paths`]),
+//! nothing; since E24 M3 T6b1 a panel button's letter presses the button and its release clicks
+//! it, and the left button's press and release come apart. A walk's paths are the original's, from the recorded timeline ([`Sequence::paths`]),
 //! and its hero the live part's ([`selected`]): M2's walks are scripted (the epic's M2 decision).
 
 use alloc::collections::BTreeMap;
@@ -18,7 +19,7 @@ use serde::Deserialize;
 
 use crate::live::{Arrow, Live, LiveHero, Selected};
 use crate::tables::{HERO_SPEEDS, SCROLL_SPEEDS};
-use crate::timeline::{Action, Asked, Direction, Hero};
+use crate::timeline::{Action, Asked, Direction, Hero, Hotkey};
 
 /// The file.
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
@@ -70,6 +71,10 @@ pub struct Input {
     pub pointer: Option<[i32; 2]>,
     /// The left button clicked at a point.
     pub click: Option<[i32; 2]>,
+    /// The left button pressed at a point (E24 M3 T6b1).
+    pub press: Option<[i32; 2]>,
+    /// The left button released at a point (E24 M3 T6b1).
+    pub release: Option<[i32; 2]>,
 }
 
 /// The scroll speed when a sequence gives none (`settings_read` 0x50B7B0: any value but 0 to 2 is
@@ -163,6 +168,7 @@ impl Sequence {
             || self.points.is_some()
             || self.inputs.iter().any(|i| {
                 i.click.is_some()
+                    || i.press.is_some()
                     || i.keydown
                         .as_deref()
                         .is_some_and(|k| matches!(key(k), Some((false, _))))
@@ -184,34 +190,41 @@ impl Sequence {
             let kinds = usize::from(input.keydown.is_some())
                 + usize::from(input.keyup.is_some())
                 + usize::from(input.pointer.is_some())
-                + usize::from(input.click.is_some());
+                + usize::from(input.click.is_some())
+                + usize::from(input.press.is_some())
+                + usize::from(input.release.is_some());
             if kinds != 1 {
-                return Err(failed("not exactly one of keydown, keyup, pointer, click"));
+                return Err(failed(
+                    "not exactly one of keydown, keyup, pointer, click, press, release",
+                ));
             }
             if !(last..=self.ms).contains(&input.at) {
                 return Err(failed(&format!("out of order or outside 1 to {}", self.ms)));
             }
             last = input.at;
             let action = if let Some(name) = &input.keydown {
-                let (ctrl, direction) =
-                    key(name).ok_or_else(|| failed(&format!("`{name}`: no key of the map's")))?;
                 down.push(name);
-                Some(if ctrl {
-                    Action::Scroll(direction)
-                } else {
-                    Action::Step(direction)
+                Some(match (key(name), hotkey(name)) {
+                    (Some((true, direction)), _) => Action::Scroll(direction),
+                    (Some((false, direction)), _) => Action::Step(direction),
+                    (None, Some(hotkey)) => Action::Key(hotkey),
+                    (None, None) => {
+                        return Err(failed(&format!("`{name}`: no key of the map's")));
+                    }
                 })
             } else if let Some(name) = &input.keyup {
                 let Some(at) = down.iter().position(|d| d == name) else {
                     return Err(failed(&format!("`{name}` released, never pressed")));
                 };
                 down.remove(at);
-                None
+                hotkey(name).map(Action::KeyUp)
             } else {
                 input
                     .pointer
                     .map(Action::Pointer)
                     .or(input.click.map(Action::Click))
+                    .or(input.press.map(Action::Press))
+                    .or(input.release.map(Action::Release))
             };
             if let Some(action) = action {
                 actions.entry(input.at).or_default().push(action);
@@ -239,7 +252,11 @@ impl Sequence {
             lines.push((t, arrows.ok_or_else(failed)?));
         }
         let mut paths: Vec<Vec<Arrow>> = Vec::new();
-        for input in self.inputs.iter().filter(|i| i.click.is_some()) {
+        for input in self
+            .inputs
+            .iter()
+            .filter(|i| i.click.is_some() || i.press.is_some())
+        {
             let shown = lines
                 .iter()
                 .find(|(t, arrows)| *t >= input.at && !arrows.is_empty());
@@ -359,6 +376,13 @@ pub fn selected_hero(live: &Live) -> Result<Hero, String> {
         at: hero.at,
         facing: Direction::ALL[facing % Direction::ALL.len()],
     })
+}
+
+/// A panel button's hotkey by xdotool's name (E24 M3 T6b1: its letter in lower case, `k` …).
+fn hotkey(name: &str) -> Option<Hotkey> {
+    Hotkey::ALL
+        .into_iter()
+        .find(|h| h.letter().to_ascii_lowercase() == name)
 }
 
 /// A key's name: with Ctrl or not, and its direction.

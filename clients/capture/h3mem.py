@@ -27,9 +27,11 @@ map_heroes, hero_on, write_facing, write_bytes). Needs a running game
 """
 
 import json
+import os
 import struct
 import subprocess
 import sys
+from pathlib import Path
 
 BATTLE_MANAGER_POINTER = 0x6993D0  # the battle manager while a battle runs
 # A siege's walls (E17 M4 T1b; structs.toml, battle_manager): the parts' picture states and hit
@@ -379,16 +381,22 @@ FIELDS = {
 
 
 def game_pid():
-    """The Wine process that maps Heroes3.exe at its image base, 0x400000."""
+    """The Wine process that maps Heroes3.exe at its image base, 0x400000, in this instance's
+    prefix (E17 M5 T8a: with two instances side by side the first game found was the other's,
+    read and written; the runbook's "Two instances")."""
+    prefix = os.environ.get("WINEPREFIX", str(Path.home() / ".wine-h3"))
     found = subprocess.run(["pgrep", "-f", "Heroes3.exe"], capture_output=True, text=True)
     for pid in found.stdout.split():
         try:
+            with open(f"/proc/{pid}/environ", "rb") as environ:
+                if f"WINEPREFIX={prefix}".encode() not in environ.read().split(b"\0"):
+                    continue
             with open(f"/proc/{pid}/maps") as maps:
                 if any(line.startswith("00400000-") for line in maps):
                     return int(pid)
         except OSError:
             continue
-    raise RuntimeError("no running Heroes3.exe")
+    raise RuntimeError(f"no running Heroes3.exe in the prefix {prefix}")
 
 
 class Mem:

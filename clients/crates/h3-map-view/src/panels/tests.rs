@@ -44,6 +44,8 @@ fn live(kingdom: Kingdom, path: Vec<Arrow>) -> Live {
         minimap: None,
         hover: None,
         hint: None,
+        chosen: crate::live::Chosen::default(),
+        pressed: Vec::new(),
     }
 }
 
@@ -359,4 +361,16 @@ fn the_selections_drawn_after_the_items() {
         ..kingdom
     };
     assert_eq!(selections(&bare, &art, &live(k, vec![])), []);
+}
+
+#[test]
+fn a_button_pressed_shows_its_click_frame() {
+    // The kingdom overview and the quest log pressed (E24 M3 T6b1): the first in its click frame,
+    // the second disabled (no quest) and so not pressed.
+    let layout = layout();
+    let mut pressed = live(one_hero(), vec![]);
+    pressed.pressed = vec![3, 5];
+    let shown = dialog(&layout, &pressed, 1, 0);
+    assert!(shown.states[&3].pressed && !shown.states[&3].disabled);
+    assert!(shown.states[&5].disabled && !shown.states[&5].pressed);
 }

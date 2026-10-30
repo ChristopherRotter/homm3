@@ -53,6 +53,8 @@ fn live(kingdom: Kingdom) -> Live {
         minimap: None,
         hover: None,
         hint: None,
+        chosen: crate::live::Chosen::default(),
+        pressed: Vec::new(),
     }
 }
 

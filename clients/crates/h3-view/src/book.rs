@@ -245,13 +245,18 @@ impl Book {
     /// The spells the page lists (0x59CA58): the hero's of the tab's schools and the bookmark's
     /// kind, each with the school it shows under (the tab's, or on the tab of all schools the one
     /// the hero knows best), sorted by level, then school bit, then name (0x59DBE0; the name's
-    /// letters A to Z as a to z; the handle last, never needed).
+    /// letters A to Z as a to z; the handle last, never needed). A spell of no school the book
+    /// knows (none of the layout's, R4-4) shows on the tab of all schools alone, under no school.
     #[must_use]
     pub fn entries<'h>(&self, hero: &'h Hero) -> Vec<(&'h Spell, u8)> {
         let mut list: Vec<(&Spell, u8)> = hero
             .spells
             .iter()
-            .filter(|s| s.schools & self.tab != 0 && s.kind == self.kind)
+            .filter(|s| s.kind == self.kind)
+            .filter(|s| match s.schools {
+                0 => self.tab == ALL,
+                bits => bits & self.tab != 0,
+            })
             .map(|s| {
                 let school = if self.tab == ALL {
                     best_school(hero.schools, s.schools)

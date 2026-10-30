@@ -17,7 +17,7 @@ use h3_protocol::account::{self, KEY_BYTES};
 use h3_protocol::wire::ClientMessage;
 use h3_view::remote::{Accounts, Client, Login, SEED_BYTES, Signer};
 
-use crate::connect::{hex, read_pins};
+use crate::connect::{hex, read_pins, write_private};
 
 /// The accounts file's default name, in the working directory (*provisional*, as the pins file's).
 pub const ACCOUNTS: &str = "accounts.txt";
@@ -199,20 +199,10 @@ pub fn read_accounts(path: &Path) -> Result<Accounts, String> {
     }
 }
 
-/// Writes `accounts` to `path` (*provisional*: readable by its owner alone where the system has
-/// such modes, when the file is made).
+/// Writes `accounts` to `path` whole or not at all, readable by its owner alone where the system
+/// has such modes, at every write (*provisional*; E17 M5 review R1-4: `connect::write_private`).
 fn write_accounts(path: &Path, accounts: &Accounts) -> Result<(), String> {
-    if let Some(dir) = path.parent().filter(|d| !d.as_os_str().is_empty()) {
-        std::fs::create_dir_all(dir).map_err(|e| format!("{}: {e}", dir.display()))?;
-    }
-    let mut open = std::fs::OpenOptions::new();
-    open.write(true).create(true).truncate(true);
-    #[cfg(unix)]
-    std::os::unix::fs::OpenOptionsExt::mode(&mut open, 0o600);
-    let text = format!("{HEADER}{}", accounts.text());
-    open.open(path)
-        .and_then(|mut file| file.write_all(text.as_bytes()))
-        .map_err(|e| format!("{}: {e}", path.display()))
+    write_private(path, &format!("{HEADER}{}", accounts.text()))
 }
 
 /// The account a connection logs in to (E17 M5 T7): its login name, the display name a
