@@ -639,6 +639,14 @@ fn the_seat_sees_the_moves_deaths_creations_and_mana() {
                 Event::TurnStarted { stack: 0 },
                 spell(SUMMON, Target::None {}),
                 summoned(1, 6, 18),
+            ],
+        ),
+        // A second summon takes a new id.
+        (
+            None,
+            vec![
+                spell(SUMMON, Target::None {}),
+                summoned(3, 4, 30),
                 Event::TurnStarted { stack: 2 },
             ],
         ),
@@ -686,8 +694,9 @@ fn the_seat_sees_the_moves_deaths_creations_and_mana() {
         crate::anim::tests::created::FIRE_ELEMENTAL
     );
     assert_eq!((stack(2).hex, stack(2).alive), (100, true));
+    assert_eq!((stack(3).hex, stack(3).count, now.stacks.len()), (30, 4, 4));
     let mana = |i: usize| now.sides[i].hero.map(|h| h.mana);
-    assert_eq!((mana(0), mana(1)), (Some(13), Some(9)));
+    assert_eq!((mana(0), mana(1)), (Some(7), Some(9)));
     assert!(now.siege.is_none());
     // Before the strike: the Pikemen alive, all 40 of them.
     let early = seen(&opening, &events[..2], &timeline, 0, cost);

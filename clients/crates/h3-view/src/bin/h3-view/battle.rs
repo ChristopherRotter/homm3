@@ -461,6 +461,9 @@ pub struct Battle<'g> {
     /// The index in the record of the server's `YourTurn` whose turn the mouse and the book have
     /// (E17 M5 T6b1: [`Battle::turned`]'s last; none while the seat has no turn to play).
     served: Option<usize>,
+    /// How many of the record's messages were events when [`Battle::turned`]'s last turn was
+    /// served: a turn served again with none since (a re-join's `YourTurn`) replaces it.
+    served_events: Option<usize>,
     /// The timeline with the stacks the mouse entered fidgeting (E17 M3 T6c-2; none: as played).
     entered: Option<Timeline>,
     /// The timeline shown read forward as the frames are asked for (E17 M5 T1a): a frame costs
@@ -649,6 +652,7 @@ impl<'g> Battle<'g> {
             commands,
             fight,
             served: None,
+            served_events: None,
             entered: None,
             head,
             panels: Panels::new(snapshot, &[], Vec::new()),
@@ -1015,13 +1019,7 @@ impl<'g> Battle<'g> {
         let Some(snapshot) = self.record.first_snapshot() else {
             return false;
         };
-        let events: Vec<_> = (self.record.messages.iter())
-            .filter_map(|m| match m {
-                ServerMessage::Events { events, .. } => Some(events.iter().cloned()),
-                _ => None,
-            })
-            .flatten()
-            .collect();
+        let events = self.events();
         let timeline = self.played.timeline();
         let ruleset = self.ground.rules();
         let cost = |side: Side, spell: u16| {
@@ -1042,9 +1040,26 @@ impl<'g> Battle<'g> {
             aims,
         };
         drop(online);
+        let commands = (self.record.messages.iter())
+            .filter(|m| matches!(m, ServerMessage::Events { .. }))
+            .count();
+        if self.served_events == Some(commands) {
+            self.turned.pop();
+        }
         self.turned.push(turn);
-        self.served = index;
+        (self.served, self.served_events) = (index, Some(commands));
         true
+    }
+
+    /// Every event of the record, in order.
+    fn events(&self) -> Vec<h3_protocol::wire::Event> {
+        (self.record.messages.iter())
+            .filter_map(|m| match m {
+                ServerMessage::Events { events, .. } => Some(events.iter().cloned()),
+                _ => None,
+            })
+            .flatten()
+            .collect()
     }
 
     /// The side to act's own observation (E17 M5 T3a: its hero's spell book): the engine's view
@@ -1100,13 +1115,7 @@ impl<'g> Battle<'g> {
             _ => None,
         })?;
         let snapshot = self.record.first_snapshot()?;
-        let events: Vec<_> = (self.record.messages.iter())
-            .filter_map(|m| match m {
-                ServerMessage::Events { events, .. } => Some(events.iter().cloned()),
-                _ => None,
-            })
-            .flatten()
-            .collect();
+        let events = self.events();
         let timeline = self.played.timeline();
         let end = h3_view::remote::seen(snapshot, &events, timeline, timeline.end, |_, _| 0);
         Some(crate::results::served(snapshot, &end, result))
