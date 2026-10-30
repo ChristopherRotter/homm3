@@ -53,7 +53,8 @@ pub struct Aim {
     pub original: u16,
     /// A creature casts it (the Faerie Dragon's key F: action 10), not the hero (action 1).
     pub creature: bool,
-    /// What the engine lets it be cast at, sorted.
+    /// What the engine lets it be cast at, sorted and without repeats ([`Aim::target`] searches
+    /// it).
     pub targets: Vec<Target>,
     /// Its area, for the spells that mark one (the original's flags 0x280: Frost Ring,
     /// Fireball, Inferno, Meteor Shower; Berserk by the mastery, 0x5A4810).
@@ -102,20 +103,18 @@ impl Aim {
     }
 
     /// The engine's target at `hex`: the hex itself, else a stack on it (a raising spell's dead
-    /// one too).
+    /// one too; of several, the lowest number).
     #[must_use]
     pub fn target(&self, field: &Field<'_>, hex: u8) -> Option<Target> {
-        if self.targets.contains(&Target::Hex(hex)) {
+        let listed = |t: Target| self.targets.binary_search(&t).is_ok();
+        if listed(Target::Hex(hex)) {
             return Some(Target::Hex(hex));
         }
-        self.targets.iter().copied().find(|t| match *t {
-            Target::Stack(id) => field
-                .observation
-                .stacks
-                .iter()
-                .any(|s| s.id == id && field.hexes(s).contains(&hex)),
-            Target::Hex(_) => false,
-        })
+        (field.observation.stacks.iter())
+            .filter(|s| field.hexes(s).contains(&hex) && listed(Target::Stack(s.id)))
+            .map(|s| s.id)
+            .min()
+            .map(Target::Stack)
     }
 
     /// The cast's line over `hex`, a hex the cursor takes (0x5A8690): "Cast %s" (27) for the
@@ -141,17 +140,19 @@ impl Aim {
     }
 
     /// Why the spell is not cast at `hex` (`spell_fails_message` 0x5A2880 with GENRLTXT 24),
-    /// the acting side `side`: for a spell aimed at a stack with a living stack there, Anti-Magic
-    /// protecting it (171), a hostile spell at an own stack (172), a friendly one at an enemy
-    /// (178), else its immunity (a raising spell's 180, any other's 181); else "Select Spell
-    /// Target". *Provisional:* the executable words the immunity only where its creature's
-    /// factor is 0 (0x44A4D0) and the default otherwise; the client takes any other refusal of
-    /// the engine for it (the engine's tests are not public).
+    /// the acting side `side`: for a spell aimed at a stack with a living stack there that the
+    /// engine does not let it be cast at, Anti-Magic protecting it (171), a hostile spell at an
+    /// own stack (172), a friendly one at an enemy (178), else its immunity (a raising spell's
+    /// 180, any other's 181); else "Select Spell Target" (a target's other hex in a side column
+    /// too: every test passes there; E17 M5 T8b2, R4b-2). *Provisional:* the executable words
+    /// the immunity only where its creature's factor is 0 (0x44A4D0) and the default otherwise;
+    /// the client takes any other refusal of the engine for it (the engine's tests are not
+    /// public).
     #[must_use]
     pub fn refusal(&self, field: &Field<'_>, hex: i32, side: Side) -> Hint {
         let Some(stack) = u8::try_from(hex)
             .ok()
-            .filter(|&h| self.stacks && h < COLUMNS * ROWS)
+            .filter(|&h| self.stacks && h < COLUMNS * ROWS && self.target(field, h).is_none())
             .and_then(|h| field.at(h))
         else {
             return Hint::SelectTarget;
@@ -183,28 +184,31 @@ impl Aim {
     /// 0); the client marks every living stack of the area.
     #[must_use]
     pub fn marks(&self, field: &Field<'_>, hex: i32) -> BTreeSet<u8> {
-        let mut marked = BTreeSet::new();
         let (Some(area), Some(centre)) = (
             self.area,
             u8::try_from(hex).ok().filter(|&h| h < COLUMNS * ROWS),
         ) else {
-            return marked;
+            return BTreeSet::new();
         };
-        for h in 0..COLUMNS * ROWS {
+        let within = |h: u8| {
             let column = h % COLUMNS;
             let d = distance(centre, h);
-            if column == 0
-                || column == COLUMNS - 1
-                || d > i32::from(area.radius)
-                || (d == 0 && !area.centre)
-            {
-                continue;
-            }
-            if let Some(stack) = field.at(h) {
-                marked.insert(stack.id);
-            }
-        }
-        marked
+            h < COLUMNS * ROWS
+                && column != 0
+                && column != COLUMNS - 1
+                && d <= i32::from(area.radius)
+                && (d != 0 || area.centre)
+        };
+        // By stack, not by hex (E17 M5 T8b2, R4b-5): each living stack whose hex of the area
+        // finds it (the first living stack on a hex, as the scan by hex did).
+        (field.observation.stacks.iter())
+            .filter(|s| s.alive)
+            .filter(|s| {
+                (field.hexes(s).into_iter())
+                    .any(|h| within(h) && field.at(h).is_some_and(|o| o.id == s.id))
+            })
+            .map(|s| s.id)
+            .collect()
     }
 }
 

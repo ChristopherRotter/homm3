@@ -614,6 +614,9 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
             .min(if battle.online() { POLL_MS } else { WAIT_MS });
         let mut redraw = false;
         let mut mouse_changed = false;
+        // The mouse followed in the pass already (an aim's press, E17 M5 T8b2: R4b-1), whether
+        // what it shows changed then.
+        let mut followed = false;
         let mut grew = false;
         // The spell book opened, closed or changed (E17 M5 T3a).
         let mut book_changed = false;
@@ -979,9 +982,14 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                 }
                 Event::Click { down: false, .. } if battle.book_open() => {}
                 Event::Click { down: true, .. } if battle.aiming() => {
+                    // The press casts at the hex the cursor took as it went down: the pass's
+                    // moves before it followed first (E17 M5 T8b2, R4b-1: `wait` gives every
+                    // pending event at once, a move and the press among them).
+                    followed |= battle.mouse(&inputs, &scrolls)?;
                     if let Some(command) = battle.aim_press(at) {
                         grew |= give(&mut battle, &mut inputs, at, command)?;
                     }
+                    mouse_changed = true;
                 }
                 Event::Click { down: false, .. } if battle.aiming() => {}
                 Event::Pointer(p) => {
@@ -1058,7 +1066,7 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
         // T2b): the battle follows them and the frame now is made again.
         if mouse_changed || grew || book_changed {
             let pressed = held.filter(|h| h.over).map(|h| h.id);
-            let changed = battle.mouse(&inputs, &scrolls)? || battle.pressed != pressed;
+            let changed = battle.mouse(&inputs, &scrolls)? || followed || battle.pressed != pressed;
             battle.pressed = pressed;
             if changed || grew || book_changed {
                 let ms = clock.ms(win.ticks_ns());
