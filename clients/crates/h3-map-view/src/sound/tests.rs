@@ -673,3 +673,21 @@ fn the_music_and_the_step_sounds_follow_the_terrain() {
     s.effect(7, "newday.wav");
     assert_eq!(names(&s.take()), ["7 effect newday.wav"]);
 }
+
+#[test]
+fn a_buttons_press_and_its_sound() {
+    // The tables' press (E24 M3 T6b1); without one, silent.
+    let mut s = sound(tiles(4, |_, _| 2, |_, _| None));
+    s.press(5);
+    assert_eq!(s.take(), [(5, Cue::Effect("button.wav".into()))]);
+    let mut a = art();
+    a.button = None;
+    let silent = SoundRules::new(&a, records(), BTreeMap::new(), BTreeMap::new()).unwrap();
+    let mut s = Sound::new(
+        Arc::new(silent),
+        Arc::new(tiles(4, |_, _| 2, |_, _| None)),
+        Bugs::Fixed,
+    );
+    s.press(5);
+    assert!(s.take().is_empty());
+}

@@ -2457,3 +2457,89 @@ Log's state as shown (`Mem.item_states`: the harness's writes do not run `quest_
 writer's quests (`Extras::quests`, a situation object's `quest`). An object whose data names
 nothing (a colour or resource past its table, a defeat-hero quest without its hero) shows nothing
 there (MCL-Q21).
+
+### 4.13 The buttons' press, the hotkeys, the lists' clicks and Next Hero (M3 T6b1)
+
+Read in the sandbox (T6b cut by the user into T6b1 to T6b3, 2026-10-30), checked by two
+sequences (`choose-lists`, `press-buttons`: every frame exact, the status bar compared).
+
+- **The dispatch.** An item's message of type 0x200 reaches `adventure_manager_procedure`
+  0x4087B0: subtype 0xC (the left button down on an item, 0x408A40) `adventure_click` 0x4097E0,
+  subtype 0xD (an item's command, 0x408A19) `adventure_command` 0x409A70 (named `end_turn_button`
+  before; its switch 0x409AB4 on the id less 3). `adventure_click`'s table 0x409A44 by id: 0 and
+  37 the tile's click (`tile_click_path` 0x40A5D0), 1 the minimap (`minimap_click` 0x40A0C0,
+  T6b2), 15-19 and 39-43 a hero list's slot, 32-36 a town list's, every other item nothing.
+- **A button** (`def_button_message` 0x456190; E17 design §9.10): skipped disabled (state 8) or
+  0x20 (the quest log without a quest, 0x456287). The left button down inside it (0x456328)
+  presses it (0x456860: state 1, `button.wav` played, 0x694DA4 loaded at 0x4EDA51; drawn in its
+  click frame and shown at once) and runs the button's own loop (0x45641C: `pump_messages`, the
+  tick 0x4ED490, the next message): the map's idle step does not run (no view redraw, no objects'
+  step, no edge scroll; the palettes step in memory and show at the first redraw after it), every
+  message but the mouse's goes to the button and is dropped; a move inside presses it again (its
+  sound again, 0x4563A2), outside releases it (0x4563B5); the button up (0x10, 0x456451) releases
+  it and, pressed, returns its command 0x200/0xD. A hotkey's key down (0x45659F: the message's
+  scan code among +0x4C to +0x50) presses it the same way and returns 0x200/0xC (the key never
+  reaches `adventure_key_down`, whose switch takes none of the letters); its key up (0x4564D6)
+  releases it and returns its command. The hotkeys (`adventure_dialog_create`): K kingdom, U
+  underground, Q quest log, Z sleep (W while the hero sleeps, 0x403CC0), M move hero, C cast, A
+  and O the options, H next hero, E end turn.
+- **Recorded, not read** (*provisional*): the mouse's release ends the hold with the hint of the
+  point it left (released off a button, the status bar the point's item's); the map's idle step
+  runs again in the release's millisecond (the deadline the hold kept: the objects' step there).
+- **The commands** (0x409A70): 3 the kingdom overview, 5 the quest log (0x52E430), 6 sleep, 7
+  move hero, 8 cast, 9 and 10 the options, 12 end turn: dialogs and the engine's actions (M4, M5:
+  a recording refuses them, live nothing); 4 the underground (T6b2); 11 next hero (0x409D89); 13
+  and 14 the hero list's arrows (`hero_list_scroll` 0x403220 with 1 and 0), 30 and 31 the town
+  list's (0x403280).
+- **Next hero** (0x409D89, a human's turn): a path shown (+0x4C) cleared, the view drawn and shown
+  with the objects' step when due (0x40F270), then `hero_select` of `next_hero_find` 0x4BAA40
+  (from the one after the selected, or the first, to the end, then from the first to the
+  selected: the first awake that can move).
+- **A hero list's slot** (0x409829): slot i the hero `heroes[top + i]` unless i (not top + i,
+  0x409844: harmless while the update keeps top within the last five) is past the count; the
+  selected hero's opens its screen (+0x40 = 2, `hero_move_loop`'s case 1: M4, M5), another
+  `hero_select` (hero, 0, 0, 1). The selection frames 39-43 take the mouse in every slot (§4.10),
+  over the portraits: a press finds them, a slot past the list does nothing.
+- **A town list's slot** (0x40987D; an empty slot takes no mouse): move hero disabled (0x4098BB),
+  a path shown cleared and the view drawn and shown with the objects' step when due; the selected
+  town opens its screen (+0x40 = 3, case 2: M4, M5), another `town_select` (town, 0, 1).
+- **`hero_select`** 0x417B20 (hero, a, b, c): the town selected −1 (0x417B54), move hero disabled
+  and the path's flag cleared with c (0x417B80), the selected hero put back (0x417BAC), the new
+  one lifted (b clear) and the view centred on it when the viewer sees its tile or a neighbour
+  (a hero of the viewer's always: 0x417DAE), the underground's DEF by its level (a change a full
+  update, 0x417EBB: T6b2); its place in the list (0x4BA9E0); both lists updated (0x417F09,
+  0x417F19), cast and sleep by the hero, the resource bar, the dialog drawn; with c and a = 0 its
+  path made again from its destination +0x35 (0x417FD5, `make_hero_path` 0x417FE2 with its third
+  argument: move hero by its green arrows); the status window built (0x41800B), +0x1EC, the
+  minimap, the view drawn and the whole screen shown (0x418046 to 0x41809B); its ambient sounds
+  and its terrain's music (0x4180FF, 0x41812D); the mouse's move posted with +0xEC 0 (0x418146: the
+  view's column forgotten, its row kept).
+- **`town_select`** 0x417830 (town, b, c), read in full: the hero put back, the selected hero −1
+  and the town set; the view's corner its record's place (+5 to +7, the entrance: §4.5) less (9,
+  8), never clamped; the underground's DEF by the level (0x41790E); the town list updated to show
+  it, the hero list (0x417953, 0x417961), cast and sleep disabled; move hero disabled and the
+  path's flag cleared (0x4179AF); `adventure_full_update` (0x4179CE: the status window, the view,
+  the minimap); the ambient sounds and the music of the terrain at the view's middle (0x417A33,
+  0x417AF8); the mouse's move posted, +0xEC 0.
+- **The hint hidden by a dialog's redraw.** Every update of a list with its redraw (and a full
+  update) draws every item (`dialog_redraw` 0x5FF020 with the whole range); the chat's edit 38,
+  added after the status bar over its box and shown, draws its picture `AdRollvr.pcx` with its
+  empty text (`edit_draw` 0x5BB400): the status bar shows no text while its item keeps the hint
+  and 0x65F228 the item looked at last, so only another item's or the map's next hint shows a
+  text again (observed live: the item's text kept; MCL-Q22).
+- **The choices' facts** (the harness): `h3map.py`'s `choose_each` chooses each of Red's heroes and
+  towns from their lists before the sequence's 0 (a situation's `choose`), reading each one's
+  status window, a hero's path and tile, a town's place, then the staging's selection, the lists'
+  first slots and the view again; the live part's `[chosen]`. A situation with `choose` may give
+  several heroes a path (each one's destination; the staging's selection's shown at 0).
+- **Built** (*provisional*): `timeline::Action`'s `Press`, `Release`, `Key`, `KeyUp` (`Click` a
+  press and a release at once), `Hotkey`, `Unplayable::Command`; the loop's hold, the hotkeys'
+  presses, the commands (next hero, the lists' arrows), the lists' slots, `hero_select` and
+  `town_select` as above, a choice's path kept for the hero chosen away from (its destination
+  stays), the hint hidden by every lists' draw; `Draw::selected` and `pressed` (the panels' click
+  frames: `Live::pressed`), `Minimap::index`; `live::Chosen` (`[chosen]`; `Live::at_start` gives
+  each hero's and town's choice with what a map gives, a town centred on its entrance); the key
+  table's `Command::Panel` (`kingdom-overview` … `end-turn`), `h3_sdl::Key`'s K, Q, U and Z; the
+  tables' `[map.sound] button`; the window's presses and releases apart and hotkeys' releases.
+  After a choice the mouse-over's reach and the hero's own marks are the staged hero's (the
+  engine's from M4): a sequence moves the pointer over the map only before its first choice.

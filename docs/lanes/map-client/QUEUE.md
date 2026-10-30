@@ -24,21 +24,8 @@ T5 cut with the user (2026-10-29): T5a the resource bar's amounts, the date and 
 and a town's, and T5b2, the date's and the kingdom's (kept whole by the user; both done: the
 epic's log); the other kinds (another player's turn, a resource found, a text) are M4's (the
 epic's "Later"). T6 cut with the user (2026-10-30): T6a the mouse-over, cut into T6a1, T6a2a and
-T6a2b (all done: the epic's log), and T6b, cut with the user (2026-10-30) into T6b1, T6b2 and
-T6b3 (below).
-
-### E24 M3 T6b1 — the buttons' press and hotkeys, the lists' clicks, Next Hero
-
-- **Scope:** every button's press by a click and by its hotkey through the key table (the
-  panels' hotkeys: the dialog's +0x48 scan codes, design §4.1), each doing nothing but its press
-  where its action is a dialog's or the engine's (M4, M5); a hero or a town chosen in its list
-  (the selection's frames, the view centred, the status window, the buttons' states, the path the
-  recording gives), the lists' arrows (their scroll and states), Next Hero (its button and its
-  key). Recorded: sequences with the clicks and keys (the visit marks and contents read again for
-  a hero selected: `TRAPS.md`).
-- **Acceptance:** the new sequences as recorded, every frame, the status bar compared; the clicks
-  and keys in the window; the Definition of Done.
-- **Depends on:** T6a2b (done). **Status:** in progress (2026-10-30).
+T6a2b (all done: the epic's log), and T6b, cut with the user (2026-10-30) into T6b1 (done: the
+epic's log), T6b2 and T6b3 (below).
 
 ### E24 M3 T6b2 — the underground, the minimap's click, the status window's click
 
@@ -46,8 +33,11 @@ T6b3 (below).
   a click on the minimap and the drag while held (`minimap_click` 0x40A0C0, 0x40A280, 0x40A509);
   the status window's click (0x409FD8: the kingdom's and the date's windows in turn). Recorded:
   sequences with them.
-- **Acceptance:** as T6b1's.
-- **Depends on:** T6b1. **Status:** ready once T6b1 is merged.
+- **Acceptance:** the new sequences as recorded, every frame, the status bar compared; the clicks
+  and keys in the window; the Definition of Done.
+- **Depends on:** T6b1 (done). **Status:** ready once T6b1's pull request is merged (its
+  timeline's hold, `Action::Press`, `Hotkey`, `Chosen`: the underground's key is U, its command
+  `Unplayable::Command(4)` until then; a click on the minimap `Unplayable::Panel`).
 
 ### E24 M3 T6b3 — the keys during a walk, the sound without the focus
 
@@ -55,8 +45,10 @@ T6b3 (below).
   bound of 63 messages); the sound without the focus (`QUEUE-ARCHIVE.md` 2026-10-27, E24 M2 T6a2:
   the rest read, `h3_map_view::music`'s fade without a pending track, the window by
   `Window::focused()`). Recorded: a walk with Space.
-- **Acceptance:** as T6b1's; the focus's sound by a test and in the window.
-- **Depends on:** T6b1 (the key table's additions). **Status:** ready once T6b1 is merged.
+- **Acceptance:** the new sequence as recorded, every frame, the status bar compared; the focus's
+  sound by a test and in the window; the Definition of Done.
+- **Depends on:** T6b1 (done: the key table's additions). **Status:** ready once T6b1's pull
+  request is merged.
 
 ### E24 M3 T7 — M3's closure
 

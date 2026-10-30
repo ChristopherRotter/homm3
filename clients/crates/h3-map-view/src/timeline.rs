@@ -1030,10 +1030,8 @@ impl Loop {
             return self.holding(t, action);
         }
         if fresh
-            && let Action::Pointer(at)
-            | Action::Click(at)
-            | Action::Press(at)
-            | Action::Release(at) = action
+            && let Action::Pointer(at) | Action::Click(at) | Action::Press(at) | Action::Release(at) =
+                action
         {
             // The move's message: GetCursorPos (the edge's) already reads the new point.
             self.pointer = at;
@@ -1067,7 +1065,7 @@ impl Loop {
                     }
                 }
             }
-            Action::Key(key) => self.key(t, key)?,
+            Action::Key(key) => self.key(t, key),
             Action::KeyUp(key) => self.key_up(t, key)?,
         }
         Ok(())
@@ -1144,7 +1142,7 @@ impl Loop {
     /// takes the key (shown, not disabled, not skipped as the quest log without a quest; sleep's
     /// by the selected hero's sleep), with its sound; else the key goes on to the map's keys,
     /// which take none of the letters (0x408C40).
-    fn key(&mut self, t: u32, key: Hotkey) -> Result<(), Unplayable> {
+    fn key(&mut self, t: u32, key: Hotkey) {
         let id = key.button();
         let asleep = self
             .selected_hero()
@@ -1164,7 +1162,6 @@ impl Loop {
             self.show_pressed(id, true);
             self.press_sound(t);
         }
-        Ok(())
     }
 
     /// A hotkey's key up (0x4564D6): the button its key pressed released, drawn and shown, and
@@ -1568,13 +1565,11 @@ impl Loop {
         self.walk_off(t, true, direction, next, VecDeque::new());
     }
 
-    /// A click on the view (M3 the rest): on the path's destination the hero walks the path, on
-    /// another tile the path there is shown (`make_hero_path` 0x418DD0, which draws the view).
-    /// Live, a click off the view or on a tile no path leads to is only the pointer's move.
+    /// A click on the view (the press on its area, E24 M3 T6b1): on the path's destination the
+    /// hero walks the path, on another tile the path there is shown (`make_hero_path` 0x418DD0,
+    /// which draws the view). Live, a click on a tile no path leads to is only the pointer's
+    /// move.
     fn click(&mut self, t: u32, at: [i32; 2]) -> Result<(), Unplayable> {
-        if !self.rules.over_view(at) {
-            return self.refused(Unplayable::Panel(at));
-        }
         let tile = self.rules.tile_at(self.view, at);
         let pos = |a: &Arrow| [i32::from(a.at.x), i32::from(a.at.y), i32::from(a.at.z)];
         if self.path.last().is_some_and(|(_, a)| pos(a) == tile) {
@@ -2111,11 +2106,11 @@ const fn is_button(id: u16) -> bool {
 }
 
 /// The list and slot of a list's item (`adventure_click`'s table 0x409A44): a hero list's
-/// portrait or selection frame (false), a town list's picture (true); none for another item (the
-/// bars take no click).
+/// selection frame (false; over its portrait, which the original's table names too, and taking
+/// the mouse in every slot: the portrait is never the item under it), a town list's picture
+/// (true); none for another item (the bars take no click).
 const fn list_slot(id: u16) -> Option<(bool, usize)> {
     match id {
-        15..=19 => Some((false, (id - 15) as usize)),
         39..=43 => Some((false, (id - 39) as usize)),
         32..=36 => Some((true, (id - 32) as usize)),
         _ => None,

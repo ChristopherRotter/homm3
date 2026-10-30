@@ -993,8 +993,18 @@ impl Live {
         };
         let status = match selected {
             Selected::None => Some(Status::Date(DateStatus { frame: 0 })),
-            Selected::Hero(_) => chosen.heroes.first().cloned().flatten().map(|h| Status::Hero(h.status)),
-            Selected::Town(_) => chosen.towns.first().cloned().flatten().map(|t| Status::Town(t.status)),
+            Selected::Hero(_) => chosen
+                .heroes
+                .first()
+                .cloned()
+                .flatten()
+                .map(|h| Status::Hero(h.status)),
+            Selected::Town(_) => chosen
+                .towns
+                .first()
+                .cloned()
+                .flatten()
+                .map(|t| Status::Town(t.status)),
         };
         let kingdom = Kingdom {
             heroes: portraits

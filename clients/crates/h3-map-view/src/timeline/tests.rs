@@ -1893,7 +1893,7 @@ fn a_choice_moves_the_selection_and_its_draws() {
     assert_eq!(l.kingdom.selected, Selected::Hero(2));
     assert_eq!((d.selected, d.minimap.index), (l.index, l.index));
     assert_eq!(d.hint, Hint::Empty);
-    assert_eq!(l.last_item, Some(17));
+    assert_eq!(l.last_item, Some(41));
     // A town chosen: no hero selected, none drawn.
     for t in 201..=800 {
         l.run(t, actions.get(&t).map_or(&[][..], Vec::as_slice))
@@ -1925,7 +1925,12 @@ fn the_buttons_hotkeys_and_their_skips() {
     let mut l = Loop::start(r.clone(), &start).unwrap();
     // Q without a quest, U on one level, W with the hero awake, M without a green arrow: none.
     l.buttons.move_hero = false;
-    for key in [Hotkey::Quests, Hotkey::Underground, Hotkey::Wake, Hotkey::MoveHero] {
+    for key in [
+        Hotkey::Quests,
+        Hotkey::Underground,
+        Hotkey::Wake,
+        Hotkey::MoveHero,
+    ] {
         l.run(1, &[Action::Key(key)]).unwrap();
     }
     assert!(l.drawn().pressed.is_empty() && l.keyed.is_empty());
@@ -2064,4 +2069,70 @@ fn the_lists_slots_and_what_they_refuse() {
     l.next_hero(1);
     assert_eq!(l.kingdom.selected, start.kingdom.selected);
     assert!(l.path.is_empty());
+}
+
+#[test]
+fn a_choice_with_the_facts_and_the_sound() {
+    // The mouse-over's facts name the hero chosen; its choice unknown for the one selected, so
+    // the selected hero's path is not kept.
+    let mut l = hovering(true, Bugs::Original);
+    l.heroes = vec![
+        Hero {
+            at: Pos { x: 4, y: 3, z: 0 },
+            facing: Direction::South,
+        },
+        Hero {
+            at: Pos { x: 2, y: 5, z: 0 },
+            facing: Direction::East,
+        },
+    ];
+    l.index = Some(0);
+    let status = crate::live::HeroStatus {
+        hero: 1,
+        own_name: false,
+        skills: [0; 4],
+        morale: 0,
+        luck: 0,
+        army: [None; 7],
+    };
+    l.chosen.heroes = vec![
+        None,
+        Some(ChosenHero {
+            hero: 1,
+            status,
+            path: Vec::new(),
+        }),
+    ];
+    let id = l.hover.as_ref().unwrap().facts().hero_list[1].0;
+    l.run(1, &[Action::Press([641, 260])]).unwrap();
+    assert_eq!((l.selected_id, l.index), (Some(id), Some(1)));
+    // A selected hero whose place names no map's hero: its tile is not kept; next hero to a hero
+    // past the choices: none chosen.
+    l.index = Some(9);
+    l.chosen.heroes.truncate(1);
+    for h in &mut l.kingdom.heroes {
+        h.movable = true;
+    }
+    l.next_hero(2);
+    assert_eq!(l.kingdom.selected, Selected::Hero(1));
+    l.kingdom.selected = Selected::Hero(0);
+    l.next_hero(3);
+    assert_eq!(l.kingdom.selected, Selected::Hero(0));
+    // A town chosen and a button pressed with the sound: its cues.
+    let (start, _, _, _) = choosing("choose-lists");
+    let tiles = crate::sound::tests::tiles(36, |x, _| u8::from(x > 10), |_, _| None);
+    let sounded = Start {
+        sound: Some(crate::sound::tests::sound(tiles)),
+        ..start
+    };
+    let mut l = Loop::start(rules(Bugs::Original), &sounded).unwrap();
+    l.take_cues();
+    l.run(1, &[Action::Press([771, 260])]).unwrap();
+    assert!(
+        l.take_cues()
+            .iter()
+            .any(|(_, c)| matches!(c, Cue::Music(_)))
+    );
+    l.run(2, &[Action::Press([695, 212])]).unwrap();
+    assert_eq!(l.take_cues(), [(2, Cue::Effect("button.wav".into()))]);
 }

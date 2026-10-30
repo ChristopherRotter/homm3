@@ -109,7 +109,10 @@ impl keys::Command for Command {
             defaults.push((Self::Hero(d), chords(false)));
         }
         for key in Hotkey::ALL {
-            defaults.push((Self::Panel(key), Vec::from([Chord::new(false, key.letter())])));
+            defaults.push((
+                Self::Panel(key),
+                Vec::from([Chord::new(false, key.letter())]),
+            ));
         }
         for w in Window::ALL {
             defaults.push((Self::Window(w), Vec::from([Chord::new(false, w.key())])));

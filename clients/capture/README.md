@@ -783,6 +783,20 @@ load gives each object a random phase and the steps count the load's real time, 
 object's frames repeat a picture the box the screen changed in at a redraw moved with them from
 run to run (two mines did); the live part at 0 reads them back.
 
+**The buttons and the lists** (E24 M3 T6b1, design §4.13): the inputs `press` and `release` (a
+point: the pointer moved there, then the left button down or up alone, `xdotool mousedown 1` and
+`mouseup 1`, handled before the next input; a panel's button held between them runs the button's
+own loop, the map standing still; a button left down at the end is released) and the panels'
+hotkeys by their letters (`keydown`/`keyup` of `k`, `u`, `q`, `z`, `w`, `m`, `c`, `a`, `o`, `h`,
+`e`: the key down presses the button, the key up clicks it; a dialog's button left down is only
+released after the sequence's end). A situation's `choose = true` has `choose_each` choose each of
+Red's heroes and towns from their lists once the path is shown, reading each one's status window
+(`status_toml`), a hero's path and tile, a town's place, then choose the staging's selection
+again, scroll the lists back to their first slots and set the view again (the path checked to be
+the one shown before): the live part's `[chosen]` (before `[hover]`), which the viewer's choices
+show. With `choose` several heroes may have a `path` (each one's destination). With no hero
+selected (a town chosen) the timeline's `hero` line has no numbers.
+
 **The frame check** (E24 M2 T2, design §3.6): after each run `frames` has the viewer replay the
 sequence without the original (`h3-map-view sequences <id> --frames <out>/<id> --live
 <out>/<id>/live.toml`: the map's timeline from the situation, this run's live part at 0 and the

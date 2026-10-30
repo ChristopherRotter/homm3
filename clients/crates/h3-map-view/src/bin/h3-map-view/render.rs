@@ -18,8 +18,8 @@ use h3_map_view::batch::{self, Batch};
 use h3_map_view::compose::compose;
 use h3_map_view::hover::{self, Facts};
 use h3_map_view::live::{
-    Arrow, Boat, Buttons, Chosen, Drawn, Explored, Facing, Kingdom, Live, LiveBoat, LiveHero, Moment,
-    Status, TOWN_CLASS,
+    Arrow, Boat, Buttons, Chosen, Drawn, Explored, Facing, Kingdom, Live, LiveBoat, LiveHero,
+    Moment, Status, TOWN_CLASS,
 };
 use h3_map_view::objects;
 use h3_map_view::scene::{self, Draw, ViewAt};

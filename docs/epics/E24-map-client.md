@@ -195,9 +195,11 @@ viewers share.
   built, the facts' contents, the writer's quests; four new sequences exact with the status bar;
   MCL-Q20, MCL-Q21; the log); every capture again with the hint unmasked moved to T7; T6b, the clicks, the
   keys during a walk, the sound without the focus, cut with the user (2026-10-30) into T6b1, the
-  buttons' press and hotkeys, the lists' clicks and Next Hero, T6b2, the underground, the
-  minimap's click and the status window's, and T6b3, the keys during a walk and the sound without
-  the focus; T7, M3's closure. A task that grows is cut at a
+  buttons' press and hotkeys, the lists' clicks and Next Hero (**done** 2026-10-30: 0x4097E0,
+  0x409A70, the button's loop, `hero_select` and `town_select` read and built; two new sequences
+  exact with the status bar; MCL-Q22; the log), T6b2, the underground, the minimap's click and
+  the status window's, and T6b3, the keys during a walk and the sound without the focus; T7, M3's
+  closure. A task that grows is cut at a
   seam agreed with the user.
 - **Exit:** every situation and sequence as recorded on the whole screen (no `panels` mask
   left, or each difference an `MCL-Q<n>`); the view-only clicks, the hints and the cursor in the
@@ -404,3 +406,15 @@ M1's review lists (three reviewers, T6b; the list accepted) and M2's (accepted a
   the players apart (hot seat, M5), a defeat-hero quest without its hero (MCL-Q21), the skills
   quest's spaced texts (SeerHut.txt's variants 2 and 3: the new game drew variant 1 for it; the
   other types' variants have one text, several drawn).
+- **M3 T6b1, the buttons' press, the hotkeys, the lists' clicks** (*provisional*, design §4.13):
+  the timeline's `Action::Press`, `Release`, `Key`, `KeyUp` (a sequence's `press`, `release` and
+  the hotkeys' letters; the window's presses and releases apart); `Hotkey` and the key table's
+  eleven commands (`kingdom-overview` … `end-turn`, the original's letters); the live part's
+  `[chosen]` (each hero's place, status window and path, each town's place and status window: the
+  harness chooses each before 0, a situation's `choose`; `Live::at_start` what a map gives) and
+  `pressed`; a command the M3 view does not build refused in a recording, nothing live
+  (`Unplayable::Command`: the dialogs and the engine's actions). Not built here: after a choice
+  the mouse-over's reach and the hero's own marks stay the staged hero's (the engine's from M4:
+  the sequences move the pointer over the map only before their first choice); the release's hint
+  is recorded, not read; the hotkeys of the sequences held to their end (their commands' dialogs
+  after it). The original's hint hidden by a list's redraw: MCL-Q22.

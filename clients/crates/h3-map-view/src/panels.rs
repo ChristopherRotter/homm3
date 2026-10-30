@@ -98,13 +98,17 @@ pub fn dialog(
         .collect();
     // A button pressed shows its click frame (E24 M3 T6b1: `def_button_message` 0x456860); a
     // disabled one takes no press.
-    let pressed = live.pressed.iter().filter(|id| !off.contains(id)).map(|&id| {
-        let state = State {
-            pressed: true,
-            ..State::default()
-        };
-        (id, state)
-    });
+    let pressed = live
+        .pressed
+        .iter()
+        .filter(|id| !off.contains(id))
+        .map(|&id| {
+            let state = State {
+                pressed: true,
+                ..State::default()
+            };
+            (id, state)
+        });
     let states = off
         .iter()
         .map(|&id| {

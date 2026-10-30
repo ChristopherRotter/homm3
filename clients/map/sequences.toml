@@ -17,7 +17,10 @@
 # the view, M3's, stays out of the frames, but at hero speed 4, whose walk ends inside the
 # click's millisecond: the cursor stays at the click's point until the next mouse poll, 33 ms).
 # Since E24 M3 T5b2 `status = [kind, end]`: the status window's kind (1 the date's, 2 the kingdom's)
-# asked at 0 until `end` ms after it, built afresh by 0's redraw (design §4.9).
+# asked at 0 until `end` ms after it, built afresh by 0's redraw (design §4.9). Since E24 M3 T6b1
+# `press` and `release` (the left button down and up apart at a point: a panel's button held
+# between them) and the panels' hotkeys by their letters (`keydown = "h"`: the key down presses
+# the button, the key up clicks it; design §4.13).
 
 [[sequence]]
 id = "idle-cycles"
