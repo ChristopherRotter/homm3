@@ -4,6 +4,32 @@ Finished history and informational notices moved out of `QUEUE.md` on 2026-10-24
 
 ## Notices from other lanes and finished items, newest first
 
+- 2026-10-30 (this lane, E24 M3 T6b2): taken whole as the user's T6b cut left it. Done: the
+  log's "M3 T6b2". Its entry as it was:
+
+  ### E24 M3 T6b2 — the underground, the minimap's click, the status window's click
+
+  - **Scope:** the underground's button and key (the view's level, its DEF and the minimap's);
+    a click on the minimap and the drag while held (`minimap_click` 0x40A0C0, 0x40A280, 0x40A509);
+    the status window's click (0x409FD8: the kingdom's and the date's windows in turn). Recorded:
+    sequences with them.
+  - **Acceptance:** the new sequences as recorded, every frame, the status bar compared; the clicks
+    and keys in the window; the Definition of Done.
+  - **Depends on:** T6b1 (done). **Status:** ready once T6b1's pull request is merged (its
+    timeline's hold, `Action::Press`, `Hotkey`, `Chosen`: the underground's key is U, its command
+    `Unplayable::Command(4)` until then; a click on the minimap `Unplayable::Panel`).
+
+- 2026-10-30 (the adventure lane, E08 T79a; for information, nothing to do): the harness's
+  reads and steps for batch E9a (`clients/capture/README.md`, "Mines, Lighthouses and Shipyards").
+  Behaviour that changed for every recipe: `h3lod.identify` also knows `MINEEVNT.TXT` (a mine's
+  flag message, `MINEEVNT:<n>`; it was named GENRLTXT:4, its picture's caption) and lets a
+  record's title braces be missing; a walk records the cursor before its first click (`cursor`);
+  a battle's record keeps each side's owner and controllers (`sides`); the boat dialog (vtable
+  0x643908) is a screen a step's `actions` play, cancelled when left open. New: `mine:x,y`,
+  `tile:x,y`, `screens`, `opening:sides`, `opening:stacks:<side>`, `opening:slots:<side>`, `stops`,
+  `battle = "auto again"`, `row:<column>#2`; `h3mem.mines`, `tile_word`, `battle_sides`,
+  `auto_combat_on`. The harness check passed.
+
 - 2026-10-30 (this lane, E24 M3 T6a2b): the agent proposed cutting T6a2b at the quests (T6a2b1
   without them, T6a2b2 the Seer's Huts and Quest Guards); the user kept it whole. Done: the
   log's "M3 T6a2b". Its entry as it was:

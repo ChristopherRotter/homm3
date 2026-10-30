@@ -1995,3 +1995,16 @@ first; the baseline (`verify-once.sh clients`) green.
   levels explored, the screen `adventure` waited for on a map with an underground, the live part's
   `realm` (`Mem.realm`). The situation `seq-underground`, the sequences `underground`,
   `minimap-drag`, `status-click` (in `masks.toml`'s `hinted`).
+- **Checked:** `underground` (21 frames), `minimap-drag` (26) and `status-click` (43) exact with the
+  status bar compared, each timeline as recorded line for line (`status-click`'s first run released
+  over the resource bar at y 590, in the bottom edge zone: the map scrolled at the original's held
+  speed; the point moved to y 580); `drawn`: every earlier situation and sequence the same, `drawn
+  --record` (90 frames of the 3 new sequences); the window under Xvfb on all three with live drags,
+  clicks and keys after them: 90, 70 and 87 frames read back exact, every frame as composed
+  afresh, every change as the headless loop's; unit tests (the recorded clicks replayed, the
+  underground's button and key, the minimap's press, moves, clamps, dropped actions and releases
+  on 36 and 108 tiles, the status window's click in every kind, a press dropped by a rebuild, the
+  divisors exact, the kingdom's window at a map's start, the situation's underground); coverage
+  100 % (`h3-map-view`), clippy, fmt; `check.sh`; the scoped verify with original data.
+- **Questions:** MCL-Q23 (a status window's press lost to its rebuild, recorded), MCL-Q24 (a
+  hotkey's release eaten by the minimap's loop, read); MCL-Q22 noted for the underground's update.

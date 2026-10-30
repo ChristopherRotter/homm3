@@ -2374,8 +2374,7 @@ fn replays_the_recorded_clicks() {
         let (heroes, _) = live_heroes(live);
         let table: toml::Table = live.parse().unwrap();
         let objects = table["anchors"].as_array().unwrap().len();
-        let facts =
-            crate::hover::Facts::read(&table["hover"], objects, heroes.len(), 36, 2).unwrap();
+        let facts = hover::Facts::read(&table["hover"], objects, heroes.len(), 36, 2).unwrap();
         let Selected::Hero(slot) = start.kingdom.selected else {
             panic!("{id}: no hero selected at 0");
         };
