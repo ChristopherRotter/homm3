@@ -428,7 +428,8 @@ impl Hint {
                 bonus,
                 visited,
             } => {
-                let more = |text: String| texts.text("map.hint.more", &Args::new().text("text", &text));
+                let more =
+                    |text: String| texts.text("map.hint.more", &Args::new().text("text", &text));
                 let mut hint = Self::Object(class).text(names, texts);
                 if let Some(n) = bonus {
                     hint.push_str(&more(plain(&alloc::format!("map-bonus.{n}"))));

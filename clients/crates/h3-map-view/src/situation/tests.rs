@@ -851,7 +851,9 @@ fn the_status_windows_writes() {
         Err("the visits at [6, 5]: no object anchored there".to_string())
     );
     assert_eq!(
-        asked(&format!("{pond}\nvisits = [{{ at = [5, 5] }}, {{ at = [5, 5] }}]")),
+        asked(&format!(
+            "{pond}\nvisits = [{{ at = [5, 5] }}, {{ at = [5, 5] }}]"
+        )),
         Err("the visits at [5, 5]: given twice".to_string())
     );
 }

@@ -724,7 +724,10 @@ impl Situation {
         // The visit marks (E24 M3 T6a2a): each of an object the situation gives, once.
         for (i, v) in self.visits.iter().enumerate() {
             if !self.objects.iter().any(|o| o.at == v.at) {
-                return Err(format!("the visits at {:?}: no object anchored there", v.at));
+                return Err(format!(
+                    "the visits at {:?}: no object anchored there",
+                    v.at
+                ));
             }
             if self.visits[..i].iter().any(|w| w.at == v.at) {
                 return Err(format!("the visits at {:?}: given twice", v.at));
