@@ -63,7 +63,7 @@ fn the_window_s_seat_plays_and_re_joins_after_a_drop_keeping_its_record() {
         account: None,
     };
     let other = std::thread::Builder::new()
-        .spawn(move || connect::session(&options, test_roots))
+        .spawn(move || connect::session(&options, test_roots, &mut Vec::new()))
         .unwrap();
     let mut seat = server(&address, Seat::Attacker, &attacker);
     seat.drop = Some(1);
@@ -153,4 +153,37 @@ fn a_restarted_server_s_record_opens_afresh_and_the_seat_plays_on() {
     play(&mut online);
     assert_eq!(online.timelines(), 1);
     whole(online.record().unwrap());
+}
+
+/// With an account, the window's registration is asked until a login succeeds, never at a
+/// re-dial's (E17 M5 review R1-2); the server's display name is kept without its control
+/// characters (R1-9).
+#[test]
+fn the_window_registers_its_account_once_and_re_dials_without_it() {
+    let seats = [
+        player("attacker"),
+        SeatKind::Bot(Box::new(crate::bot::Greedy)),
+    ];
+    let (address, _, restart) = restartable(seats, false);
+    let dir = scratch("online-register");
+    let accounts = dir.join("accounts.txt");
+    let mut kept = remote::Accounts::default();
+    kept.set("alice", [5; 32]);
+    connect::write_private(&accounts, &kept.text()).unwrap();
+    let mut seat = server(&address, Seat::Attacker, &dir);
+    seat.drop = Some(1);
+    seat.account = Some(Account {
+        login: "alice".to_owned(),
+        register: Some("Alice".to_owned()),
+        accounts,
+    });
+    let packs = repo().join("packs");
+    let mut online = Online::open(seat, &packs, test_roots, Duration::from_secs(10)).unwrap();
+    play(&mut online);
+    assert_eq!(online.rejoined, 1);
+    assert_eq!(restart.logins(), [Some("Alice".to_owned()), None]);
+    let logged: Vec<&String> = (online.lines.iter())
+        .filter(|l| l.starts_with("logged in"))
+        .collect();
+    assert_eq!(logged, ["logged in as Alice", "logged in as Al?[2Jice"]);
 }

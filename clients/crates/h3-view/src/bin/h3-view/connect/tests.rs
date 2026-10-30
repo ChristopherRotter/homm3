@@ -15,7 +15,7 @@ use h3_battle::BattleSetup;
 use h3_content_battle::BattleRuleset;
 use h3_protocol::account::{KEY_BYTES, SIGNATURE_BYTES};
 use h3_protocol::codec::DEFAULT_MAX_CLIENT_FRAME;
-use h3_protocol::connection::{Connection as Gate, Host, Received, Signer};
+use h3_protocol::connection::{AccountRequest, Connection as Gate, Host, Received, Signer};
 use h3_protocol::session::{ConnId, Entry, SeatKind, Session};
 use h3_protocol::wire::{Outcome, Seat, ServerMessage};
 use rustls::pki_types::{CertificateDer, PrivateKeyDer, PrivatePkcs8KeyDer};
@@ -86,12 +86,13 @@ impl Signer for Key {
 
 /// What the host's connections share: the game and each connection's gate and queue; the
 /// game's journal and how often it restarted (E17 M5 T6b2: a connection of an earlier run
-/// closes).
+/// closes); each login's display name, in order (E17 M5 review R1-2).
 struct Shared {
     session: Session<'static>,
     gates: BTreeMap<u64, (Gate, Sender<(String, bool)>)>,
     journal: Vec<Entry>,
     run: u32,
+    logins: Vec<Option<String>>,
 }
 
 /// A host's game, restarted as `h3-server` restarts one (E17 M5 T6b2): every connection closed,
@@ -112,6 +113,11 @@ impl Restart {
         shared.session = Session::restore(self.ruleset, config, seats, &shared.journal).unwrap();
         shared.gates.clear();
         shared.run += 1;
+    }
+
+    /// Each login's display name so far, in order (E17 M5 review R1-2).
+    pub(crate) fn logins(&self) -> Vec<Option<String>> {
+        lock(&self.shared).logins.clone()
     }
 }
 
@@ -137,6 +143,7 @@ pub(crate) fn restartable(seats: [SeatKind; 2], tls: bool) -> (String, [u8; KEY_
         gates: BTreeMap::new(),
         journal: Vec::new(),
         run: 0,
+        logins: Vec::new(),
     }));
     let restart = Restart {
         shared: shared.clone(),
@@ -241,9 +248,16 @@ fn lock(shared: &Mutex<Shared>) -> std::sync::MutexGuard<'_, Shared> {
     shared.lock().unwrap_or_else(PoisonError::into_inner)
 }
 
-/// The client's `frame` on connection `n`, as the server's host takes it.
+/// The client's `frame` on connection `n`, as the server's host takes it: a login taken as it
+/// comes, signature unchecked, answered with the display name it registers; without one, as a
+/// hostile server's, with a terminal's escape (E17 M5 review R1-9).
 fn receive(shared: &mut Shared, n: u64, frame: &[u8], host: &Host<'_>) {
-    let Shared { session, gates, .. } = shared;
+    let Shared {
+        session,
+        gates,
+        logins,
+        ..
+    } = shared;
     let Some((gate, _)) = gates.get_mut(&n) else {
         return;
     };
@@ -254,6 +268,22 @@ fn receive(shared: &mut Shared, n: u64, frame: &[u8], host: &Host<'_>) {
             let mut sent = Vec::new();
             session.handle(ConnId(n), message, &mut sent);
             out.extend(sent.into_iter().map(|o| (o.to.0, o.frame, o.close)));
+        }
+        Received::Account(AccountRequest::Login {
+            seq,
+            login,
+            display,
+            ..
+        }) => {
+            logins.push(display.clone());
+            gate.logged_in(login);
+            let display = display.unwrap_or_else(|| "Al\u{1b}[2Jice".to_owned());
+            let answer = ServerMessage::Account {
+                seq,
+                display,
+                listed: false,
+            };
+            out.push((n, codec::encode_text(&answer), false));
         }
         Received::Account(_) => {}
     }
@@ -331,7 +361,9 @@ pub(crate) fn whole(record: &Record) -> Outcome {
 fn a_battle_is_played_to_its_end_over_loopback_and_the_key_is_pinned() {
     let (address, key) = host([player("attacker"), SeatKind::Bot(Box::new(Greedy))], false);
     let dir = scratch("end");
-    let done = session(&options(&address, Seat::Attacker, &dir), test_roots).unwrap();
+    let mut lines = Vec::new();
+    let options = options(&address, Seat::Attacker, &dir);
+    let done = session(&options, test_roots, &mut lines).unwrap();
     assert_eq!(done.content, Content::Same);
     assert_eq!(done.rejoined, 0);
     whole(&done.record);
@@ -339,7 +371,7 @@ fn a_battle_is_played_to_its_end_over_loopback_and_the_key_is_pinned() {
     let pins = Pins::parse(&std::fs::read_to_string(dir.join("pins.txt")).unwrap()).unwrap();
     assert_eq!(pins.key(&address), Some(key));
     assert!(
-        done.lines
+        lines
             .iter()
             .any(|l| l.starts_with("pinned the server's key"))
     );
@@ -355,10 +387,15 @@ fn two_seats_play_over_tls_and_one_re_joins_after_a_drop() {
     let mut dropping = options(&address, Seat::Defender, &defender);
     dropping.drop = Some(1);
     let other = std::thread::Builder::new()
-        .spawn(move || session(&dropping, test_roots))
+        .spawn(move || {
+            let mut lines = Vec::new();
+            session(&dropping, test_roots, &mut lines).map(|done| (done, lines))
+        })
         .unwrap();
-    let a = session(&options(&address, Seat::Attacker, &attacker), test_roots).unwrap();
-    let d = other.join().unwrap().unwrap();
+    let mut lines = Vec::new();
+    let options = options(&address, Seat::Attacker, &attacker);
+    let a = session(&options, test_roots, &mut lines).unwrap();
+    let (d, lines) = other.join().unwrap().unwrap();
     assert_eq!((a.rejoined, d.rejoined), (0, 1));
     assert_eq!((a.content, d.content), (Content::Same, Content::Same));
     // The battle waits for the defender's turn: it re-joins mid-battle, its record from the
@@ -369,14 +406,14 @@ fn two_seats_play_over_tls_and_one_re_joins_after_a_drop() {
         .count();
     assert_eq!(snapshots, 2);
     assert!(
-        d.lines
+        lines
             .iter()
             .any(|l| l == "dropped the connection after 1 commands")
     );
-    let played = d.lines.last().unwrap();
+    let played = lines.last().unwrap();
     assert!(!played.ends_with("after 1 commands sent here"), "{played}");
     // The second connection's welcome held the key the first pinned.
-    let pinned = d.lines.iter().filter(|l| l.starts_with("pinned")).count();
+    let pinned = lines.iter().filter(|l| l.starts_with("pinned")).count();
     assert_eq!(pinned, 1);
 }
 
@@ -387,22 +424,114 @@ fn a_changed_key_a_wrong_token_and_a_bad_address_end_the_session() {
     let mut pins = Pins::default();
     pins.pin(&address, [3; KEY_BYTES]);
     std::fs::write(dir.join("pins.txt"), pins.text()).unwrap();
-    let changed = session(&options(&address, Seat::Attacker, &dir), test_roots).unwrap_err();
+    let session = |options: &Options| session(options, test_roots, &mut Vec::new());
+    let changed = session(&options(&address, Seat::Attacker, &dir)).unwrap_err();
     assert!(changed.starts_with("THE SERVER'S KEY CHANGED"), "{changed}");
     std::fs::remove_file(dir.join("pins.txt")).unwrap();
     let mut wrong = options(&address, Seat::Attacker, &dir);
     wrong.token = Some("defender".to_owned());
-    assert_eq!(
-        session(&wrong, test_roots).unwrap_err(),
-        "refused: BadToken"
-    );
+    // What happened is kept whether the session ends well or not (E17 M5 review R1-2).
+    let mut lines = Vec::new();
+    let refused = super::session(&wrong, test_roots, &mut lines).unwrap_err();
+    assert_eq!(refused, "refused: BadToken");
+    assert_eq!(lines.last().unwrap(), "welcomed by loopback host");
     let mut http = options("http://127.0.0.1:1", Seat::Attacker, &dir);
     http.address = "http://127.0.0.1:1".to_owned();
-    let bad = session(&http, test_roots).unwrap_err();
+    let bad = session(&http).unwrap_err();
     assert!(bad.ends_with("not a ws:// or wss:// address"), "{bad}");
     std::fs::write(dir.join("pins.txt"), "not a pin").unwrap();
-    let pins = session(&options(&address, Seat::Attacker, &dir), test_roots).unwrap_err();
+    let pins = session(&options(&address, Seat::Attacker, &dir)).unwrap_err();
     assert!(pins.ends_with("pins.txt: line 1"), "{pins}");
+}
+
+/// An account's registration is asked until a login succeeds, never at a re-dial's (E17 M5 review
+/// R1-2: the server counts each as an account change); the server's names are printed without
+/// their control characters (R1-9).
+#[test]
+fn a_registration_is_asked_once_and_the_names_print_without_control_characters() {
+    let seats = [player("attacker"), SeatKind::Bot(Box::new(Greedy))];
+    let (address, _, restart) = restartable(seats, false);
+    let dir = scratch("register");
+    let accounts = dir.join("accounts.txt");
+    let mut kept = remote::Accounts::default();
+    kept.set("alice", [5; 32]);
+    write_private(&accounts, &kept.text()).unwrap();
+    let mut options = options(&address, Seat::Attacker, &dir);
+    options.drop = Some(1);
+    let display = "Alice".to_owned();
+    options.account = Some(Account {
+        login: "alice".to_owned(),
+        register: Some(display.clone()),
+        accounts,
+    });
+    let mut lines = Vec::new();
+    let done = session(&options, test_roots, &mut lines).unwrap();
+    assert_eq!(done.rejoined, 1);
+    assert_eq!(restart.logins(), [Some(display), None]);
+    let logged: Vec<&String> = (lines.iter())
+        .filter(|l| l.starts_with("logged in"))
+        .collect();
+    assert_eq!(logged, ["logged in as Alice", "logged in as Al?[2Jice"]);
+    assert_eq!(
+        printable("Al\u{1b}[2Jice\u{9b}\n\tok é"),
+        "Al?[2Jice???ok é"
+    );
+}
+
+/// A file is written whole, by a new file renamed over it, its folder made; a private one is its
+/// owner's at every write; a pin keeps the pins another process wrote since this one read them
+/// (E17 M5 review R1-4).
+#[test]
+fn a_file_is_written_whole_and_a_pin_keeps_the_pins_written_since() {
+    let dir = scratch("files");
+    let pins = dir.join("deep/pins.txt");
+    write(&pins, &format!("ws://a {}\n", hex(&[1; KEY_BYTES]))).unwrap();
+    let kept = pin(&pins, "ws://b", [2; KEY_BYTES]).unwrap();
+    assert_eq!(read_pins(&pins).unwrap(), kept);
+    let keys = (kept.key("ws://a"), kept.key("ws://b"));
+    assert_eq!(keys, (Some([1; KEY_BYTES]), Some([2; KEY_BYTES])));
+    let names = |folder: &Path| {
+        let mut names: Vec<String> = (std::fs::read_dir(folder).unwrap())
+            .map(|e| e.unwrap().file_name().to_string_lossy().into_owned())
+            .collect();
+        names.sort_unstable();
+        names
+    };
+    assert_eq!(names(&dir.join("deep")), ["pins.txt"]);
+    let private = dir.join("private.txt");
+    std::fs::write(&private, "before").unwrap();
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt as _;
+        let others = std::fs::Permissions::from_mode(0o644);
+        std::fs::set_permissions(&private, others).unwrap();
+    }
+    write_private(&private, "after").unwrap();
+    assert_eq!(std::fs::read_to_string(&private).unwrap(), "after");
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt as _;
+        let mode = std::fs::metadata(&private).unwrap().permissions().mode();
+        assert_eq!(mode & 0o777, 0o600, "the owner's alone");
+    }
+    // Failures: no file name; a file where its folder goes; a folder in its place (the new file
+    // removed); a bad pins file, left as it was.
+    let nameless = write(&dir.join(".."), "x").unwrap_err();
+    assert!(nameless.ends_with("no file name"), "{nameless}");
+    let under = write(&private.join("x.txt"), "x").unwrap_err();
+    assert!(under.starts_with(&private.display().to_string()), "{under}");
+    std::fs::create_dir_all(dir.join("folder/inner")).unwrap();
+    let folder = write(&dir.join("folder"), "x").unwrap_err();
+    assert!(
+        folder.starts_with(&dir.join("folder").display().to_string()),
+        "{folder}"
+    );
+    assert_eq!(names(&dir), ["deep", "folder", "private.txt"]);
+    std::fs::write(&pins, "not a pin").unwrap();
+    let bad = pin(&pins, "ws://b", [2; KEY_BYTES]).unwrap_err();
+    assert!(bad.ends_with("line 1"), "{bad}");
+    assert_eq!(std::fs::read_to_string(&pins).unwrap(), "not a pin");
+    std::fs::remove_dir_all(&dir).unwrap();
 }
 
 #[test]
@@ -411,7 +540,7 @@ fn without_the_packs_the_content_is_absent() {
     let dir = scratch("absent");
     let mut options = options(&address, Seat::Attacker, &dir);
     options.packs = dir.clone();
-    let done = session(&options, test_roots).unwrap();
+    let done = session(&options, test_roots, &mut Vec::new()).unwrap();
     assert_eq!(done.content, Content::Absent);
 }
 

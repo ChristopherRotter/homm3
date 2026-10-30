@@ -743,6 +743,59 @@ fn the_seat_sees_the_moves_deaths_creations_and_mana() {
     assert!(closed.siege.is_some_and(|s| !s.gate_open));
 }
 
+/// A hostile server's mana events overflow no sum (E17 M5 review R1-6: overflow checks panic in
+/// release too): the heroes' mana stays within a `u16`, channelled up to its most, drained and
+/// spent down to none.
+#[test]
+fn the_seat_sees_the_mana_within_its_bounds_whatever_the_server_sends() {
+    use crate::anim::tests::created::{SUMMON, spell};
+    use crate::anim::tests::{SWORDSMAN, at, snapshot};
+    use h3_protocol::wire::{Event, Hero, Side, Target};
+    let mut opening = snapshot(vec![at(0, Side::Attacker, SWORDSMAN, 86, false)]);
+    let hero = Hero {
+        hero_type: 0,
+        attack: 1,
+        defense: 1,
+        power: 1,
+        knowledge: 1,
+        mana: 20,
+        max_mana: 30,
+        casts: 0,
+        commands_ballista: false,
+        commands_tent: false,
+        commands_catapult: false,
+        spell_book: true,
+        sex: None,
+    };
+    opening.sides[0].hero = Some(hero);
+    opening.sides[1].hero = Some(hero);
+    let channeled = Event::ManaChanneled {
+        side: Side::Attacker,
+        mana: u16::MAX,
+    };
+    let drained = Event::ManaDrained {
+        stack: 0,
+        side: Side::Defender,
+        mana: u16::MAX,
+    };
+    let mut events = vec![channeled; 40_000];
+    events.extend(vec![drained; 40_000]);
+    let mana = |events: &[Event]| {
+        let now = seen(
+            &opening,
+            events,
+            &crate::anim::Timeline::default(),
+            0,
+            |_, _| u16::MAX,
+        );
+        now.sides.map(|side| side.hero.map(|h| h.mana))
+    };
+    assert_eq!(mana(&events), [Some(u16::MAX), Some(0)]);
+    // As many casts at the most a spell costs: none left.
+    let casts = vec![spell(SUMMON, Target::None {}); 40_000];
+    assert_eq!(mana(&casts), [Some(0), Some(20)]);
+}
+
 /// A query once the record is open (E17 M5 T6b1): its sequence number, its answer by that number.
 #[test]
 fn a_query_is_numbered_and_its_answer_kept() {

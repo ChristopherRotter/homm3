@@ -26,7 +26,7 @@ use h3_view::remote::{self, Client, Content, Note, Pins, Rejoined, rejoined};
 use rustls::RootCertStore;
 
 use crate::account::Account;
-use crate::connect::{self, Game, PROGRAM, hex, read_pins, write};
+use crate::connect::{self, Game, PROGRAM, hex, printable, read_pins};
 use crate::net::{self, Connection, Incoming};
 
 /// The least time between two dials of a dropped connection, in milliseconds.
@@ -220,13 +220,13 @@ impl Online {
             match note {
                 Note::Send(message) => self.send_raw(message),
                 Note::Pinned(key) => {
-                    self.pins.pin(&self.server.address, key);
-                    write(&self.server.pins, &self.pins.text())?;
+                    self.pins = connect::pin(&self.server.pins, &self.server.address, key)?;
                     self.lines
                         .push(format!("pinned the server's key {}", hex(&key)));
                 }
                 Note::Welcomed(server) => {
-                    self.lines.push(format!("welcomed by {server}"));
+                    self.lines
+                        .push(format!("welcomed by {}", printable(&server)));
                     self.down = false;
                     let ask = match &self.server.account {
                         Some(account) => account.login(&mut self.client, &self.server.address)?,
@@ -235,7 +235,14 @@ impl Online {
                     self.send_raw(ask);
                 }
                 Note::LoggedIn(display) => {
-                    self.lines.push(format!("logged in as {display}"));
+                    self.lines
+                        .push(format!("logged in as {}", printable(&display)));
+                    // Registered: a re-dial logs in without the display name, which the server
+                    // counts as an account change (rate-limited) at every login (E17 M5 review
+                    // R1-2).
+                    if let Some(account) = &mut self.server.account {
+                        account.register = None;
+                    }
                     let ask = self.join()?;
                     self.send_raw(ask);
                 }

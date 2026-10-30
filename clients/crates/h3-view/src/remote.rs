@@ -560,8 +560,9 @@ impl Client {
     }
 
     /// A login refused at `step` for `reason` (E17 M5 T7): by an earlier key the server does not
-    /// hold, the login by the account's key follows; else no login (by an earlier key accepted and
-    /// its re-key refused, the connection stays logged in by that one).
+    /// hold, the login by the account's key follows; else [`Note::Refused`], on which the adapters
+    /// end the run (E17 M5 review R1-8: a re-key refused after a login by an earlier key too; that
+    /// key stays due there).
     fn login_refused(&mut self, step: Step, reason: Refusal) -> Vec<Note> {
         let current = self.later.pop();
         self.later.clear();

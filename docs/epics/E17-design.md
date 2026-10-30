@@ -4764,8 +4764,8 @@ Kept whole by the user (2026-10-30); the server lane's asks: `NOTES.md`, "The li
   `LoggedIn`; refused `BadLogin`, the server holds the earlier key no more (re-keyed from another
   device, or never registered): `Note::OldKeyRefused` and the login by the account's key. Either
   note ends the earlier key's due there (`Account::done` rewrites the file). Any other refusal
-  ends the login (by the earlier key accepted and its re-key refused, the connection stays
-  logged in by it); the adapters end the run.
+  ends the login with `Note::Refused`, and the adapters end the run (a re-key refused after the
+  login by the earlier key too: that key stays due there).
 - **Seats by account** (`connect` and `window --server` with `--login`; `--accounts`): the join
   waits for `LoggedIn` and carries no token (the given `--token` if any); the server's `Joined`
   gives none, so a re-join after a drop logs in again and joins the same way, and so does a new
