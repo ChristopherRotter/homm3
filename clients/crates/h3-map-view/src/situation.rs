@@ -407,7 +407,8 @@ pub struct HeroSpec {
     pub facing: Option<u8>,
     /// The tile its path leads to, shown by the harness after the view is set: the hero selected
     /// and the tile clicked once (E24 M1 T5b2; design §2.10, passes 6 and 8). Red's heroes only,
-    /// one at most (the selected hero's path is the one shown).
+    /// one at most (the selected hero's path is the one shown), but in a situation that has each
+    /// hero chosen (`choose`, E24 M3 T6b1: the last shown at the still).
     #[serde(default)]
     pub path: Option<[u8; 2]>,
     /// Its movement points left (+0x4D), written by the harness after its walk (E24 M3 T4a;
@@ -690,7 +691,9 @@ impl Situation {
                     h.at
                 ));
             }
-            if h.path.is_some() && paths.replace(h.at).is_some() {
+            // With `choose` each hero's path shows when it is chosen (E24 M3 T6b1), the staging's
+            // selection's at the still.
+            if h.path.is_some() && paths.replace(h.at).is_some() && !self.choose {
                 return Err(format!("hero at {:?}: a second path shown", h.at));
             }
             *count += 1;

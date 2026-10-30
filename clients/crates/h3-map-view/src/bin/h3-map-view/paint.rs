@@ -140,7 +140,8 @@ pub fn for_sequence<'a>(
         pointer: PARK,
         hero,
         paths,
-        path: Vec::new(),
+        // The path shown at 0 (E24 M3 T6b1: the staging's selection's, a sequence of choices').
+        path: painter.live.path.clone(),
         live: false,
         sound,
         kingdom: painter.live.kingdom.clone(),

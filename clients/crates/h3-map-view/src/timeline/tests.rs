@@ -333,7 +333,9 @@ fn the_walks_frames_are_m2_t3bs() {
             "hover-owners",
             "hover-banks",
             "hover-teach",
-            "hover-quests"
+            "hover-quests",
+            "choose-lists",
+            "press-buttons"
         ]
     );
 }
@@ -573,10 +575,10 @@ fn what_it_cannot_play_yet() {
     );
     let mut parked = over.clone();
     parked.pointer = PARK;
-    let later = BTreeMap::from([(5, vec![Action::Click([700, 2])])]);
+    let later = BTreeMap::from([(5, vec![Action::Click([700, 100])])]);
     assert_eq!(
         play(rules(Bugs::Fixed), &parked, &later, 10),
-        Err((5, Unplayable::Panel([700, 2])))
+        Err((5, Unplayable::Panel([700, 100])))
     );
     assert_eq!(
         Unplayable::OverView([1, 2]).to_string(),
@@ -584,11 +586,15 @@ fn what_it_cannot_play_yet() {
     );
     assert_eq!(
         Unplayable::Panel([700, 2]).to_string(),
-        "a click off the view at (700, 2) (M3)"
+        "a click on a panel at (700, 2) not built"
     );
     assert_eq!(
         Unplayable::NoPath([3, 4, 0]).to_string(),
         "no path given from the selected hero to (3, 4, 0)"
+    );
+    assert_eq!(
+        Unplayable::Command(9).to_string(),
+        "button 9's command (a dialog or the engine's)"
     );
 }
 
@@ -1031,9 +1037,10 @@ fn actions_during_a_keys_step_wait_for_its_end() {
 #[test]
 fn clicks_it_cannot_play() {
     let mut l = walking(2, vec![east()]);
+    // The adventure options' button clicked (E24 M3 T6b1): its dialog not built.
     assert_eq!(
         l.run(1, &[Action::Click([700, 300])]),
-        Err(Unplayable::Panel([700, 300]))
+        Err(Unplayable::Command(9))
     );
     assert_eq!(
         l.run(2, &[Action::Click(tile(21, 19))]),

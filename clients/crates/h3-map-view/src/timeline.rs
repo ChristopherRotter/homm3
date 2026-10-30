@@ -1095,8 +1095,11 @@ impl Loop {
             self.held = None;
             if inside {
                 self.show_pressed(id, false);
-                return self.command(t, id);
+                self.command(t, id)?;
             }
+            // The loop's next turn in the same millisecond: the redraw the hold kept from its
+            // deadline.
+            self.idle_message(t);
         }
         Ok(())
     }
@@ -1961,6 +1964,11 @@ impl Loop {
         if *self.drawn.kingdom != self.kingdom {
             self.drawn.kingdom = Arc::new(self.kingdom.clone());
         }
+        // Every item drawn (`dialog_redraw` 0x5FF020 with the whole range): the chat's edit 38,
+        // drawn after the status bar over its box, paints its picture with no text over the
+        // hint (`edit_draw` 0x5BB400; E24 M3 T6b1, design §4.13). Memory keeps the hint and the
+        // item looked at last: only another item's or the map's next hint shows a text again.
+        self.drawn.hint = Hint::Empty;
     }
 
     /// The minimap drawn (`minimap_draw` 0x412C40) and shown: the view's corner and the selected
