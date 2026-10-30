@@ -3578,8 +3578,31 @@ in; the baseline had passed (`verify-once clients`: CI's fingerprint, the light 
   re-key's doc (the run ends); R1-9 the server's names printed with control characters.
   Checked fine: the welcome's checks before the pin, the signed bytes, the accounts' earlier
   keys, the nonce, TLS, hostile input elsewhere, the final goodbyes.
-- **In progress:** fixer F1b (R1-2, 4, 6, 8, 9); capture agent C1 (instance 1: the 91 stills,
-  sequences 0 to 9), C2 (instance 2: sequences 10 to 21).
+- **Fixed** (fixers F1b, F1a; tests each): R1-2 the display until the first `LoggedIn`,
+  `connect`'s lines on failure; R1-4 the files written whole (beside, synced, renamed), 0600 at
+  each write, a pin merged into the file as it is then; R1-6 saturating sums; R1-8 the doc;
+  R1-9 `connect::printable`; R1-1 `remote::Pace` (10 messages in any second, *provisional*) and
+  `RateLimited` final; R1-3 `DIAL_WAIT` 10 s, pings heard, `SILENT` 60 s a drop; R1-5 the record
+  compared at `Opened` only, a `Grew` appended, `POLL_MOST` 256; R1-7 re-joins at a re-opened
+  record; `Fault::NotDialed` printable. Left: the name lookup has no time limit,
+  `RecordError::Line` may print a server's text raw.
+- **The harness's fault found by C1:** `h3mem.game_pid` took the first `Heroes3.exe`, with two
+  instances often the other's: C1's reads (and its mouse-poll alignment, a siege's walls) went
+  to C2's game. Fixed (the process's `WINEPREFIX` matched). C1's four differing `mouse-*`
+  stills, `siege-castle-hit` (failed) and `shot` void, rerun; C2's seven runs of the overlap all
+  as recorded, pixel for pixel (a wrong game's reads would have drawn another battle): kept.
+- **Reviewer R3, the play core** (T1, T2): R3-1 a mouse move re-follows every input since the
+  battle's start and rebuilds every turn's field (a full `Timeline::at` per turn): unbounded per
+  frame in a long live battle; R3-2 the result window's moment rescanned every frame; R3-3
+  `extend` restarts when nothing grew; R3-4 `FOUGHT_LIMIT` stops a long hot-seat battle's human
+  commands; R3-5 a doc (an accepted command's local failure is fatal); R3-6 test gaps
+  (`looks`, `controllers`, the growing path, a turned two-hex click); R3-7 (unsure) a dissolve's
+  kept moment carries another open dissolve. Checked fine: the playhead against a full rescan,
+  `extend`'s appends, input gating, the click's side in hot seat, determinism.
+- **In progress:** fixer F3a (R3-2 to R3-7); captures C1' (instance 1: the void ids, sequences
+  0 to 9's rest) and C2 (instance 2: sequences 10 to 21). Next: R3-1, reviewers R2 (the
+  decoder), R4 (the book and the aim), R5 (the dialogs), R6 (the effects and sounds), R7 (the
+  harness); captures from sequence 22 on.
 
 ## Accepted review lists (M1 to M4)
 
