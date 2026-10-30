@@ -22,7 +22,7 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   T6b1 done: the window plays a seat on a server, design §11.2, `remote::seen`, the binary's
   `online`, `Battle`'s `Fight`). **Next: M5 T6b2** (the record that opens mid-battle, R2-8 with
   R1-3, a join mid-battle, a server restart's re-join and re-dialing: needs the original data
-  staged; QUEUE). Open PR: T6b1's (branch `client/e17-m5-t6b1`; check it first). The inbox's
+  staged; QUEUE). Open PR: T6b1's #594 (branch `client/e17-m5-t6b1`; check it first). The inbox's
   CLT-Q30 task (`h3-bink` as BINKW32's float DCT) and the user's Demons note (T5a's dissolve, to
   re-investigate) wait for a free slot.
   Workspace `clients/` (`clients/README.md`), gates `clients/scripts/check.sh`; ADR-0020 (+ drafts
@@ -52,7 +52,7 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
 
 ## Recent sessions
 
-- **2026-10-30, E17 M5 T6b1 (done; PR open: check it first).** The original data staged; T6b
+- **2026-10-30, E17 M5 T6b1 (done; #594 open: check it first).** The original data staged; T6b
   cut in two by the user (the agent's proposal). Built the window's seat on a server (design
   §11.2): `online::Online`, `Battle`'s `Fight::Server` polled each frame, the turn from
   `YourTurn` with the aims' targets by `Query`, `remote::seen`, `results::served`, the seat as the
