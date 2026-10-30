@@ -499,10 +499,11 @@ mod tests {
             .flat_map(|k| k.original.iter().map(|(_, s, _)| s.table.as_str()))
             .collect();
         // E17 M3 T7b-2b-3: the executable's own strings too (Acid Breath's line); E17 M4 T2c-1
-        // the moats' names; E17 M4 T2c-2 the walls' parts (WALLS.TXT).
+        // the moats' names; E17 M4 T2c-2 the walls' parts (WALLS.TXT); E24 M3 T6a2b the map
+        // viewer's quests' texts (SeerHut.txt, the map hint's keys every client lists).
         let tables = [
-            "ARRAYTXT", "CRTRAITS", "EXE", "GENRLTXT", "HELP", "HOTRAITS", "SKILLLEV", "SPTRAITS",
-            "WALLS",
+            "ARRAYTXT", "CRTRAITS", "EXE", "GENRLTXT", "HELP", "HOTRAITS", "SEERHUT", "SKILLLEV",
+            "SPTRAITS", "WALLS",
         ];
         assert_eq!(names, BTreeSet::from(tables));
     }
