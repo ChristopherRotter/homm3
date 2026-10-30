@@ -40,6 +40,8 @@ rustls-graviola.workspace = true
 rustls-native-certs.workspace = true
 ed25519-dalek.workspace = true
 getrandom.workspace = true
+# Accounts (E17 M5 T7): the key's derivation, the binary's only.
+argon2.workspace = true
 
 [lints]
 workspace = true

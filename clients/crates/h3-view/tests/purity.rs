@@ -36,10 +36,12 @@ const PURE: [(&str, &[&str]); 4] = [
 /// ruleset's type `h3-content-battle`; M2 T5a: the platform adapter `h3-sdl`, the window; T5b:
 /// `nanomp3`, the music; M3 T7b-2b-2a: `h3-content` and `h3-contracts`, a hero's battle effects
 /// and the skills behind them for the original's map; M5 T6a: the connection's I/O thread, the
-/// WebSocket with TLS, the welcome's signature and the hello's nonce).
+/// WebSocket with TLS, the welcome's signature and the hello's nonce; M5 T7: `argon2`, the
+/// account's key).
 const BINARY_ONLY: [(&str, &[&str]); 1] = [(
     "h3-view",
     &[
+        "argon2",
         "ed25519-dalek",
         "getrandom",
         "h3-battle",

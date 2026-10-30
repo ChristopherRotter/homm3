@@ -86,6 +86,11 @@ rustls-graviola = "0.4"
 rustls-native-certs = "0.8"
 ed25519-dalek = "3"
 getrandom = "0.3"
+# Accounts (E17 M5 T7; the user, 2026-10-30: the engine's crate, version and features): the
+# account's key derived from the login and the password as the server lane's test client derives
+# it (Argon2id, `docs/lanes/client/NOTES.md`, "The live client"), the login signed by
+# `ed25519-dalek` above. License: MIT OR Apache-2.0. Only `h3-view`'s binary names it.
+argon2 = { version = "0.6", default-features = false, features = ["alloc", "zeroize"] }
 # Test-only (the engine's version and features).
 # MP3 for the music (E17 M2 T5b; ADR-0024 point 5): pure Rust, minimp3's samples.
 nanomp3 = { version = "0.2", default-features = false, features = ["std"] }

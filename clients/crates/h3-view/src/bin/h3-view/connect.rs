@@ -4,7 +4,10 @@
 //! (the manifest's packs and profile compiled here, the ruleset hashes compared), plays the seat
 //! with the plain player ([`plain`]) until the game ends, re-joining after a drop by the token,
 //! and writes the seat's record as the server kept it. The window's live play over a server
-//! builds on it (M5 T6b). An adapter: the socket, the files, the clock's timeouts.
+//! builds on it (M5 T6b). With an account (E17 M5 T7, [`crate::account`]), it logs in once
+//! welcomed (registering it with a display name if asked; re-keying it where an earlier key is
+//! due) and joins without a token: the seat is the account's, re-taken after a drop by logging in
+//! again. An adapter: the socket, the files, the clock's timeouts.
 
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
@@ -12,11 +15,12 @@ use std::time::Duration;
 
 use h3_protocol::codec;
 use h3_protocol::map;
-use h3_protocol::wire::{Command, Seat, ServerMessage};
+use h3_protocol::wire::{ClientMessage, Command, Seat, ServerMessage};
 use h3_view::record::Record;
 use h3_view::remote::{self, Client, Content, Note, Pins};
 use rustls::RootCertStore;
 
+use crate::account::{self, Account};
 use crate::assets;
 use crate::net::{self, Connection, Incoming};
 
@@ -52,6 +56,8 @@ pub struct Options {
     pub out: Option<PathBuf>,
     /// Drops the connection after this many commands sent and re-joins (a test of the re-join).
     pub drop: Option<u32>,
+    /// The account logged in to (E17 M5 T7); none: anonymous.
+    pub account: Option<Account>,
 }
 
 /// The game a session plays.
@@ -67,11 +73,12 @@ impl Options {
     /// Parses `<ws://… | wss://…> (--game <id> | --create <offer>)
     /// --seat <attacker|defender|spectator>
     /// [--token <t>] [--name <display>] [--pins <file>] [--packs <dir>] [--out <file>]
-    /// [--drop <n>]`.
+    /// [--drop <n>] [--login <login> [--register <display>] [--accounts <file>]]`.
     pub fn parse(args: &[String]) -> Result<Self, String> {
         let clients = assets::clients_dir();
         let (mut address, mut game, mut seat, mut token) = (None, None, None, None);
         let mut create = None;
+        let (mut login, mut register, mut accounts) = (None, None, None);
         let (mut name, mut pins, mut packs, mut out, mut drop) = (None, None, None, None, None);
         let mut rest = args.iter();
         while let Some(arg) = rest.next() {
@@ -101,6 +108,9 @@ impl Options {
                 "--packs" => packs = Some(PathBuf::from(value()?)),
                 "--out" => out = Some(PathBuf::from(value()?)),
                 "--drop" => drop = Some(number(value()?)?),
+                "--login" => login = Some(account::login_name(&value()?)?),
+                "--register" => register = Some(value()?),
+                "--accounts" => accounts = Some(PathBuf::from(value()?)),
                 flag if flag.starts_with("--") => {
                     return Err(format!("connect: unknown option `{flag}`"));
                 }
@@ -125,6 +135,15 @@ impl Options {
             packs: packs.unwrap_or_else(|| clients.join("../packs")),
             out,
             drop,
+            account: match (login, register, accounts) {
+                (Some(login), register, accounts) => Some(Account {
+                    login,
+                    register,
+                    accounts: accounts.unwrap_or_else(|| PathBuf::from(account::ACCOUNTS)),
+                }),
+                (None, None, None) => None,
+                (None, ..) => return Err("connect: --register and --accounts need --login".into()),
+            },
         })
     }
 
@@ -216,13 +235,22 @@ pub fn session(options: &Options, roots: fn() -> RootCertStore) -> Result<Done, 
                     }
                     Note::Welcomed(server) => {
                         lines.push(format!("welcomed by {server}"));
-                        let ask = match (&options.game, joined) {
-                            (_, Some(game)) | (&Game::Join(game), None) => {
-                                client.join(game, options.seat, token.clone())
-                            }
-                            (Game::Create(offer), None) => client.create(offer, options.seat),
+                        let ask = match &options.account {
+                            Some(account) => account.login(&mut client, &options.address)?,
+                            None => join(&mut client, &options.game, joined, options.seat, &token)?,
                         };
-                        connection.send(ask.ok_or("the join after the welcome")?);
+                        connection.send(ask);
+                    }
+                    Note::LoggedIn(display) => {
+                        lines.push(format!("logged in as {display}"));
+                        let game = &options.game;
+                        connection.send(join(&mut client, game, joined, options.seat, &token)?);
+                    }
+                    Note::Rekeyed | Note::OldKeyRefused => {
+                        lines.push(rekeyed(&note));
+                        if let Some(account) = &options.account {
+                            account.done(&options.address)?;
+                        }
                     }
                     Note::Created(game) => lines.push(format!("created game {game}")),
                     Note::Joined(game, seat) => {
@@ -248,7 +276,12 @@ pub fn session(options: &Options, roots: fn() -> RootCertStore) -> Result<Done, 
                             asked = false;
                         }
                     }
-                    Note::Goodbye(reason) => lines.push(format!("goodbye: {reason:?}")),
+                    Note::Goodbye(reason) => {
+                        lines.push(format!("goodbye: {reason:?}"));
+                        if let Some(why) = remote::farewell(reason).filter(|_| !client.over()) {
+                            return Err(why.to_owned());
+                        }
+                    }
                     Note::Other(_) => {}
                 }
             }
@@ -292,6 +325,31 @@ pub fn session(options: &Options, roots: fn() -> RootCertStore) -> Result<Done, 
                 break;
             }
         }
+    }
+}
+
+/// What `client` asks once welcomed (and logged in, with an account): a join of the game joined
+/// before (a re-join) or of `game`, else the creation of `game`'s offer, `seat` taken by `token`.
+pub fn join(
+    client: &mut Client,
+    game: &Game,
+    joined: Option<u32>,
+    seat: Seat,
+    token: &Option<String>,
+) -> Result<ClientMessage, String> {
+    let ask = match (game, joined) {
+        (_, Some(game)) | (&Game::Join(game), None) => client.join(game, seat, token.clone()),
+        (Game::Create(offer), None) => client.create(offer, seat),
+    };
+    ask.ok_or_else(|| "a join out of place".to_owned())
+}
+
+/// The line a re-key's `note` says (E17 M5 T7).
+pub fn rekeyed(note: &Note) -> String {
+    if *note == Note::Rekeyed {
+        "re-keyed the account here from its earlier key".to_owned()
+    } else {
+        "the server holds no earlier key of the account: logged in by its key".to_owned()
     }
 }
 

@@ -21,6 +21,7 @@ fn server(address: &str, seat: Seat, dir: &Path) -> Server {
         name: "window".to_owned(),
         pins: dir.join("pins.txt"),
         drop: None,
+        account: None,
     }
 }
 
@@ -59,6 +60,7 @@ fn the_window_s_seat_plays_and_re_joins_after_a_drop_keeping_its_record() {
         packs: repo().join("packs"),
         out: None,
         drop: None,
+        account: None,
     };
     let other = std::thread::Builder::new()
         .spawn(move || connect::session(&options, test_roots))
