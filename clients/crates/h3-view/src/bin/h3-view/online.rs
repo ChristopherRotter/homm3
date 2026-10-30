@@ -12,7 +12,7 @@
 //! socket, the pins file, the clock.
 
 use std::path::{Path, PathBuf};
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 use h3_content_battle::BattleRuleset;
 use h3_protocol::map;
@@ -24,8 +24,8 @@ use rustls::RootCertStore;
 use crate::connect::{Game, PROGRAM, hex, read_pins, write};
 use crate::net::{self, Connection, Incoming};
 
-/// The least time between two dials of a dropped connection.
-const REDIAL: Duration = Duration::from_secs(1);
+/// The least time between two dials of a dropped connection, in milliseconds.
+const REDIAL_MS: u64 = 1_000;
 
 /// Where and how a window plays its seat on a server.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -54,8 +54,9 @@ pub struct Online {
     pins: Pins,
     client: Client,
     connection: Option<Connection>,
-    /// When the connection was last dialed.
-    dialed: Instant,
+    /// When the connection was last dialed, by the caller's clock in milliseconds (none: it may
+    /// be dialed at once).
+    dialed: Option<u64>,
     /// The game joined: a re-join joins it.
     joined: Option<u32>,
     token: Option<String>,
@@ -81,12 +82,12 @@ pub struct Online {
 }
 
 impl Online {
-    /// Dials `server`, joins (or creates) its game and waits up to `wait` for the seat's record
-    /// to open; the content check compiles the game's packs from `packs`; `roots` checks a
-    /// `wss://` server's certificate.
+    /// Dials `server`, joins (or creates) its game and waits for the seat's record to open, each
+    /// message at most `wait` after the one before; the content check compiles the game's packs
+    /// from `packs`; `roots` checks a `wss://` server's certificate.
     ///
     /// # Errors
-    /// The pins file, a fault, a refusal, a closed connection or the wait's end.
+    /// The pins file, a fault, a refusal, a closed connection or a server silent for `wait`.
     pub fn open(
         server: Server,
         packs: &Path,
@@ -105,7 +106,7 @@ impl Online {
             pins,
             client,
             connection: Some(connection),
-            dialed: Instant::now(),
+            dialed: None,
             joined: None,
             record: None,
             content: Content::Absent,
@@ -117,12 +118,10 @@ impl Online {
             rejoined: 0,
             lines: Vec::new(),
         };
-        let until = Instant::now() + wait;
         while online.record.is_none() {
-            let left = until.saturating_duration_since(Instant::now());
             let connection = online.connection.as_ref().ok_or("no connection")?;
-            match connection.wait(left) {
-                None => return Err(format!("no record from the server in {wait:?}")),
+            match connection.wait(wait) {
+                None => return Err(format!("nothing from the server in {wait:?}")),
                 Some(Incoming::Closed(why)) => return Err(why),
                 Some(Incoming::Message(message)) => online.receive(*message)?,
             }
@@ -136,16 +135,17 @@ impl Online {
         Ok(online)
     }
 
-    /// Takes what came since, without waiting: whether the seat's record grew. A dropped
-    /// connection is dialed again ([`REDIAL`] after the last dial) and the seat re-joined.
+    /// Takes what came since, without waiting, at `now` (the caller's clock in milliseconds):
+    /// whether the seat's record grew. A dropped connection is dialed again ([`REDIAL_MS`] after
+    /// the last dial) and the seat re-joined.
     ///
     /// # Errors
     /// A fault, a refusal, or a record fetched at a re-join that does not extend the one before.
-    pub fn poll(&mut self) -> Result<bool, String> {
+    pub fn poll(&mut self, now: u64) -> Result<bool, String> {
         let before = self.taken();
         loop {
             let Some(connection) = self.connection.as_ref() else {
-                self.redial();
+                self.redial(now);
                 break;
             };
             match connection.poll() {
@@ -166,10 +166,13 @@ impl Online {
         Ok(self.taken() > before)
     }
 
-    /// Dials again once [`REDIAL`] passed since the last dial: a new client, the hello; the
-    /// welcome's join re-joins the game by the seat's token.
-    fn redial(&mut self) {
-        if self.dialed.elapsed() < REDIAL || self.over() {
+    /// Dials again at `now` once [`REDIAL_MS`] passed since the last dial: a new client, the
+    /// hello; the welcome's join re-joins the game by the seat's token.
+    fn redial(&mut self, now: u64) {
+        let early = self
+            .dialed
+            .is_some_and(|at| now.saturating_sub(at) < REDIAL_MS);
+        if early || self.over() {
             return;
         }
         let Ok(nonce) = net::nonce() else {
@@ -183,7 +186,7 @@ impl Online {
         let connection = Connection::open(&self.server.address, self.roots);
         connection.send(self.client.hello(PROGRAM, &self.server.name));
         self.connection = Some(connection);
-        self.dialed = Instant::now();
+        self.dialed = Some(now);
         (self.asked, self.queried) = (false, None);
         self.queries.clear();
         self.rejoined += 1;
@@ -343,7 +346,7 @@ impl Online {
             ));
             // Dropped, the I/O thread closes the socket; the next poll dials again at once.
             self.connection = None;
-            self.dialed = Instant::now().checked_sub(REDIAL).unwrap_or(self.dialed);
+            self.dialed = None;
         }
         Ok(())
     }
@@ -379,3 +382,6 @@ impl Online {
         })
     }
 }
+
+#[cfg(test)]
+mod tests;

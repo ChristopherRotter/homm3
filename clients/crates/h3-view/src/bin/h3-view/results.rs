@@ -249,6 +249,63 @@ pub fn experience(
     u32::try_from(points.max(0)).unwrap_or(u32::MAX)
 }
 
+/// The outcome of a battle on a server as a seat's record shows it (E17 M5 T6b1; no engine runs
+/// here): the game's end `result` (a forfeit the other side's victory; a void game a draw), and
+/// each side's stacks in id order as the battle `end` (the seat's, `h3_view::remote::seen`) shows
+/// them: where each came from, its creatures at the `opening` (or when the battle created it) and
+/// at the end. What the result window reads only (*provisional*: the survivors, the heroes'
+/// outcomes and the surrender's cost are left empty).
+pub fn served(
+    opening: &Observation,
+    end: &Observation,
+    result: h3_protocol::wire::Outcome,
+) -> BattleOutcome {
+    use h3_protocol::wire::{Outcome, Side as Wire};
+    let side = |s: Wire| match s {
+        Wire::Attacker => BattleSide::Attacker,
+        Wire::Defender => BattleSide::Defender,
+    };
+    let result = match result {
+        Outcome::Victory { side: s } => BattleResult::Victory(side(s)),
+        Outcome::Retreat { side: s } => BattleResult::Retreat(side(s)),
+        Outcome::Surrender { side: s } => BattleResult::Surrender(side(s)),
+        Outcome::Forfeit { side: s } => BattleResult::Victory(side(s).opponent()),
+        Outcome::Draw {} | Outcome::NoShow {} | Outcome::Unverified {} => BattleResult::Draw,
+    };
+    let mut stacks: [Vec<StackRecord>; 2] = [Vec::new(), Vec::new()];
+    for stack in &end.stacks {
+        let origin = if stack.war_machine {
+            StackOrigin::WarMachine
+        } else if stack.raised {
+            StackOrigin::Raised(stack.slot)
+        } else if stack.created {
+            StackOrigin::Created
+        } else {
+            StackOrigin::Army(stack.slot)
+        };
+        let start = opening
+            .stacks
+            .iter()
+            .find(|s| s.id == stack.id && s.creature == stack.creature)
+            .map_or(stack.base_count, |s| s.count);
+        stacks[usize::from(stack.side == Wire::Defender)].push(StackRecord {
+            origin,
+            creature: CreatureTypeId::from_raw(stack.creature),
+            start,
+            end: if stack.alive { stack.count } else { 0 },
+        });
+    }
+    BattleOutcome {
+        result,
+        survivors: [Army::default(), Army::default()],
+        war_machines: [Vec::new(), Vec::new()],
+        stacks,
+        surrender_cost: None,
+        heroes: [None, None],
+        rounds: end.round,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -355,62 +412,5 @@ mod tests {
         assert_eq!(experience(&loser, hp, (true, true, false)), 160);
         assert_eq!(experience(&loser, hp, (true, false, true)), 1160);
         assert_eq!(experience(&[], hp, (false, true, false)), 0);
-    }
-}
-
-/// The outcome of a battle on a server as a seat's record shows it (E17 M5 T6b1; no engine runs
-/// here): the game's end `result` (a forfeit the other side's victory; a void game a draw), and
-/// each side's stacks in id order as the battle `end` (the seat's, `h3_view::remote::seen`) shows
-/// them: where each came from, its creatures at the `opening` (or when the battle created it) and
-/// at the end. What the result window reads only (*provisional*: the survivors, the heroes'
-/// outcomes and the surrender's cost are left empty).
-pub fn served(
-    opening: &Observation,
-    end: &Observation,
-    result: h3_protocol::wire::Outcome,
-) -> BattleOutcome {
-    use h3_protocol::wire::{Outcome, Side as Wire};
-    let side = |s: Wire| match s {
-        Wire::Attacker => BattleSide::Attacker,
-        Wire::Defender => BattleSide::Defender,
-    };
-    let result = match result {
-        Outcome::Victory { side: s } => BattleResult::Victory(side(s)),
-        Outcome::Retreat { side: s } => BattleResult::Retreat(side(s)),
-        Outcome::Surrender { side: s } => BattleResult::Surrender(side(s)),
-        Outcome::Forfeit { side: s } => BattleResult::Victory(side(s).opponent()),
-        Outcome::Draw {} | Outcome::NoShow {} | Outcome::Unverified {} => BattleResult::Draw,
-    };
-    let mut stacks: [Vec<StackRecord>; 2] = [Vec::new(), Vec::new()];
-    for stack in &end.stacks {
-        let origin = if stack.war_machine {
-            StackOrigin::WarMachine
-        } else if stack.raised {
-            StackOrigin::Raised(stack.slot)
-        } else if stack.created {
-            StackOrigin::Created
-        } else {
-            StackOrigin::Army(stack.slot)
-        };
-        let start = opening
-            .stacks
-            .iter()
-            .find(|s| s.id == stack.id && s.creature == stack.creature)
-            .map_or(stack.base_count, |s| s.count);
-        stacks[usize::from(stack.side == Wire::Defender)].push(StackRecord {
-            origin,
-            creature: CreatureTypeId::from_raw(stack.creature),
-            start,
-            end: if stack.alive { stack.count } else { 0 },
-        });
-    }
-    BattleOutcome {
-        result,
-        survivors: [Army::default(), Army::default()],
-        war_machines: [Vec::new(), Vec::new()],
-        stacks,
-        surrender_cost: None,
-        heroes: [None, None],
-        rounds: end.round,
     }
 }

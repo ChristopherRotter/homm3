@@ -94,14 +94,18 @@ impl Source {
 #[derive(Debug)]
 enum Fought {
     /// A scenario's battle: its ruleset, setup and seed.
-    Here(BattleRuleset, BattleSetup, u64),
-    /// A seat's on a server: its connection, the content check and the ruleset compiled here
-    /// from the game's packs (none: absent).
-    Server {
-        online: RefCell<Online>,
-        content: h3_view::remote::Content,
-        ruleset: Option<BattleRuleset>,
-    },
+    Here(Box<(BattleRuleset, BattleSetup, u64)>),
+    /// A seat's on a server.
+    Server(Box<Served>),
+}
+
+/// A seat's battle on a server (E17 M5 T6b1): its connection, the content check and the ruleset
+/// compiled here from the game's packs (none: absent).
+#[derive(Debug)]
+struct Served {
+    online: RefCell<Online>,
+    content: h3_view::remote::Content,
+    ruleset: Option<BattleRuleset>,
 }
 
 /// Where a press gives a command (E17 M5 T2b).
@@ -167,8 +171,8 @@ impl Ground {
     /// or a server's game whose packs are absent here.
     fn rules(&self) -> Option<&BattleRuleset> {
         match self.fight.as_ref()? {
-            Fought::Here(ruleset, _, _) => Some(ruleset),
-            Fought::Server { ruleset, .. } => ruleset.as_ref(),
+            Fought::Here(here) => Some(&here.0),
+            Fought::Server(served) => served.ruleset.as_ref(),
         }
     }
 
@@ -176,19 +180,26 @@ impl Ground {
     /// here's, or a server's game's when the content check finds it the same.
     fn previews(&self) -> Option<&BattleRuleset> {
         match self.fight.as_ref()? {
-            Fought::Here(ruleset, _, _) => Some(ruleset),
-            Fought::Server {
-                ruleset, content, ..
-            } => ruleset
+            Fought::Here(here) => Some(&here.0),
+            Fought::Server(served) => served
+                .ruleset
                 .as_ref()
-                .filter(|_| *content == h3_view::remote::Content::Same),
+                .filter(|_| served.content == h3_view::remote::Content::Same),
         }
     }
 
     /// The content check of a server's game (E17 M5 T6b1; none: a battle here or a record).
     pub fn content(&self) -> Option<h3_view::remote::Content> {
         match self.fight.as_ref()? {
-            Fought::Server { content, .. } => Some(*content),
+            Fought::Server(served) => Some(served.content),
+            Fought::Here(..) => None,
+        }
+    }
+
+    /// The seat's connection on a server (E17 M5 T6b1; none: a battle here or a record).
+    pub fn online(&self) -> Option<&RefCell<Online>> {
+        match self.fight.as_ref()? {
+            Fought::Server(served) => Some(&served.online),
             Fought::Here(..) => None,
         }
     }
@@ -227,11 +238,24 @@ impl Ground {
                 }
             }
             let (content, ruleset) = (online.content(), online.take_rules());
-            let fought = Fought::Server {
+            // The drawing needs the game's packs (the stage's spells and creatures): absent here,
+            // the window says so and stops (*provisional*).
+            if content == h3_view::remote::Content::Absent {
+                let packs: Vec<&str> = (record.header.manifest.packs.iter())
+                    .map(|p| p.id.as_str())
+                    .collect();
+                return Err(format!(
+                    "the game's packs ({}) do not compile from {}: the window draws a server's game \
+                     from them",
+                    packs.join(", "),
+                    source.packs.display()
+                ));
+            }
+            let fought = Fought::Server(Box::new(Served {
                 online: RefCell::new(online),
                 content,
                 ruleset,
-            };
+            }));
             (record, Some(fought))
         } else if source.scenario() {
             let (ruleset, mut setup) =
@@ -243,7 +267,10 @@ impl Ground {
             }
             let opening = Live::new(&ruleset, setup.clone(), source.seed, humans)?.record()?;
             let record = record::parse(&opening).map_err(|e| e.to_string())?;
-            (record, Some(Fought::Here(ruleset, setup, source.seed)))
+            (
+                record,
+                Some(Fought::Here(Box::new((ruleset, setup, source.seed)))),
+            )
         } else {
             let text = fs::read_to_string(&source.input)
                 .map_err(|e| format!("{}: {e}", source.input.display()))?;
@@ -478,7 +505,7 @@ pub struct Battle<'g> {
 /// server (E17 M5 T6b1).
 #[derive(Debug)]
 enum Fight<'g> {
-    Here(Live<'g>),
+    Here(Box<Live<'g>>),
     Server(&'g RefCell<Online>),
 }
 
@@ -543,13 +570,16 @@ impl<'g> Battle<'g> {
             .first_snapshot()
             .ok_or("the record holds no snapshot")?;
         let fight = match &ground.fight {
-            Some(Fought::Here(ruleset, setup, seed)) => Some(Fight::Here(Live::new(
-                ruleset,
-                setup.clone(),
-                *seed,
-                ground.humans,
-            )?)),
-            Some(Fought::Server { online, .. }) => Some(Fight::Server(online)),
+            Some(Fought::Here(here)) => {
+                let (ruleset, setup, seed) = &**here;
+                Some(Fight::Here(Box::new(Live::new(
+                    ruleset,
+                    setup.clone(),
+                    *seed,
+                    ground.humans,
+                )?)))
+            }
+            Some(Fought::Server(served)) => Some(Fight::Server(&served.online)),
             None => None,
         };
         // A battle a human plays here grows from every side's events: the screen shows the side
@@ -896,17 +926,19 @@ impl<'g> Battle<'g> {
         matches!(self.fight, Some(Fight::Server(_)))
     }
 
-    /// Takes what a seat's server sent since (E17 M5 T6b1; the window's, each frame, at `at`):
+    /// Takes what a seat's server sent since (E17 M5 T6b1; the window's, each frame, at `at` of the
+    /// battle's clock and `now` of the window's, in milliseconds: a dropped connection is dialed
+    /// again by the latter, which no pause stops):
     /// the record and the timeline grow by it, the turn it asks the seat to play comes to the
     /// mouse and the book. Whether the battle changed (nothing for a battle not on a server).
     ///
     /// # Errors
     /// The connection's fault, a refusal, a record that does not extend the one before.
-    pub fn poll(&mut self, at: u32) -> Result<bool, String> {
+    pub fn poll(&mut self, at: u32, now: u64) -> Result<bool, String> {
         let Some(Fight::Server(online)) = &self.fight else {
             return Ok(false);
         };
-        let grew = online.borrow_mut().poll()?;
+        let grew = online.borrow_mut().poll(now)?;
         let mut changed = grew && self.take_served(Some(at))?;
         changed |= self.serve_turn();
         if changed {
@@ -1886,13 +1918,24 @@ impl<'g> Battle<'g> {
     pub fn choice(&mut self) -> Option<Command> {
         match self.fight.as_mut()? {
             Fight::Here(live) => live.choice(),
-            // A seat on a server: the plain player's choice of the server's legal commands
-            // (*provisional*, `connect`'s test player).
+            // A seat on a server (*provisional*, a test's player): its hero casts first the first
+            // spell the server lets it cast at its first target (not one with a second target),
+            // else the plain player's choice of the server's legal commands (`connect`'s).
             Fight::Server(online) => {
                 let online = online.borrow();
-                let (legal, _) = online.turn()?;
+                let (legal, castable) = online.turn()?;
+                let keys = &self.record.header.manifest.keys.spells;
+                let cast = castable.iter().find_map(|&spell| {
+                    let original = motion::spell_entry_in(keys, &self.ground.tables, spell)?;
+                    let target = *online.targets(Some(spell))?.first()?;
+                    (!SECOND_TARGET.contains(&original.original)).then_some(Command::Cast {
+                        spell,
+                        target,
+                        second: h3_protocol::wire::Target::None {},
+                    })
+                });
                 let width = self.record.header.manifest.field.width;
-                crate::connect::plain(legal, online.seat(), width)
+                cast.or_else(|| crate::connect::plain(legal, online.seat(), width))
             }
         }
     }
@@ -1901,9 +1944,10 @@ impl<'g> Battle<'g> {
     /// once with the same setup (E17 M5 T2b: a battle pressed by the bot's choices); none for a
     /// record.
     pub fn as_the_bot_fights(&mut self) -> Option<Result<bool, String>> {
-        let Some(Fought::Here(ruleset, setup, seed)) = self.ground.fight.as_ref() else {
+        let Some(Fought::Here(here)) = self.ground.fight.as_ref() else {
             return None;
         };
+        let (ruleset, setup, seed) = &**here;
         let mut check = || {
             let bot = crate::live::bot_record(ruleset, setup.clone(), *seed)?;
             let bot = record::parse(&bot).map_err(|e| e.to_string())?;

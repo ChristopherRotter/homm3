@@ -262,9 +262,8 @@ const fn content_note(content: h3_view::remote::Content) -> Option<&'static str>
         h3_view::remote::Content::Different => {
             Some("the server's rules are not this client's packs: no previews")
         }
-        h3_view::remote::Content::Absent => {
-            Some("the game's packs are not here: no previews, spell book or result window")
-        }
+        // The battle does not load without them (`Ground::load`).
+        h3_view::remote::Content::Absent => Some("the game's packs are not here"),
     }
 }
 
@@ -631,7 +630,8 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
             notice_held = false;
         }
         // A seat on a server: what the server sent since (E17 M5 T6b1), never waited on.
-        grew |= battle.poll(clock.ms(win.ticks_ns()))?;
+        let ticks = win.ticks_ns();
+        grew |= battle.poll(clock.ms(ticks), ticks / 1_000_000)?;
         if let Some(p) = presser.as_mut() {
             grew |= p.press(&mut battle, &mut inputs, clock.ms(win.ticks_ns()))?;
         }
@@ -1186,6 +1186,15 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                 yes(over)
             ));
             ok &= before && over;
+        } else if let Some(online) = ground.online() {
+            // A seat on a server (E17 M5 T6b1): what the connection did, whether the game ended.
+            let online = online.borrow();
+            lines.extend(online.lines.iter().cloned());
+            lines.push(format!(
+                "re-joined {} times; the game over: {}",
+                online.rejoined,
+                yes(online.over())
+            ));
         } else {
             let same = battle.as_the_bot_fights().unwrap_or(Ok(false))?;
             lines.push(format!(
@@ -1320,7 +1329,12 @@ impl Presser {
             self.switched = Some((on, Some(battle.commands())));
             return Ok(true);
         }
-        if !battle.waiting() || now < battle.timeline().end.saturating_add(PRESS_AFTER_MS) {
+        // A seat on a server waits for the other seat's turns too, taking no press then (E17 M5
+        // T6b1).
+        if !battle.waiting()
+            || now < battle.timeline().end.saturating_add(PRESS_AFTER_MS)
+            || !battle.takes(now)
+        {
             return Ok(false);
         }
         if self.met != Some(battle.commands()) {

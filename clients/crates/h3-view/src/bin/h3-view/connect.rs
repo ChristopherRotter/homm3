@@ -21,7 +21,7 @@ use crate::assets;
 use crate::net::{self, Connection, Incoming};
 
 #[cfg(test)]
-mod tests;
+pub(crate) mod tests;
 
 /// The program's name in the hello (the window's too, E17 M5 T6b1).
 pub const PROGRAM: &str = concat!("h3-view ", env!("CARGO_PKG_VERSION"));
