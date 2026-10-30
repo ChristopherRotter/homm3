@@ -9354,11 +9354,12 @@ E08-batch-9a.md`); the fourth recorded as `-run2.md`. Every reading the same in 
 draws (the Troglodytes' counts) and the starting bonus.
 
 **What the runs showed** (for T80; not scored here): **E9-1** each mine one stack of Troglodytes at
-the start (A 126, 163, 105, …; B 163, 116, 192, …), A's drawn resource gems in every run; the
-question ADVEVENT 84; A fought as **three stacks** of Troglodytes (42 × 3; 55, 54, 54; 35 × 3), B
-as **two**, the second **Infernal Troglodytes** (82 + 81; 58 + 58; 96 + 96): the reading seeded by
+the start (A 126, 163, 105, 101; B 163, 116, 192, 187), A's drawn resource gems in the first three
+runs, crystal in the fourth; the question ADVEVENT 84; A fought as **three stacks** of Troglodytes
+(42 × 3; 55, 54, 54; 35 × 3; 34, 34, 33), B as **two**, the second **Infernal Troglodytes** (82 +
+81; 58 + 58; 96 + 96; 94 + 93): the reading seeded by
 the entrance, not VCMI's single stack; the opening subterranean; ADVEVENT 85 then the drawn mine's
-message (MINEEVNT 5, the Gem Pond's; 6, the Gold Mine's); the records Red's, guards empty. The
+message (MINEEVNT 5, the Gem Pond's, or 4, the Crystal Cavern's; 6, the Gold Mine's); the records Red's, guards empty. The
 first battle's messages also hold GENRLTXT 7, the townless player's warning. **E9-2** Blue's own
 visit opens the army dialog titled GENRLTXT 710 (Leave Guards), the mine's army upper and empty;
 the moved stacks are the records' slot 0 (C 2 Angels, S 1 Archangel). Red's visit: ADVEVENT 187;
@@ -9377,7 +9378,7 @@ captain; with E9-5 aboard on the boat tile E9-5b's click on (32, 50) shows **cur
 **GENRLTXT 52**, nothing paid, no path; on day 2, the tile free, the same click opens **the boat
 dialog**, the second boat as the first, another 1 000 and 10 (the first boat's record keeps its
 boarding tile (31, 50) while E9-5 sails, as T68b saw). **E9-0** Red at day 2's start +1 000 gold and
-+1 gems (B and A), nothing else (Estates banned, no level-up gold); Blue +4 wood and +1 crystal
++1 gems or crystal (B and A), nothing else (Estates banned, no level-up gold); Blue +4 wood and +1 crystal
 (its sawmill and N, its cavern), nothing on day 1.
 
 T79b (batch E9b) and T80 (the scoring) queued.
