@@ -95,7 +95,10 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   exact. The clips come from the video archives entry by entry (`videos.rs`; an installation
   copy without `VIDEO.VID` takes `original-data/battle-videos.vid`), never from the LODs. A
   new kind of asset in the batch needs its line in `battle.rs`'s `held`, or the window decodes
-  it again at every frame (the clip did: 119 ms late a frame).
+  it again at every frame (the clip did: 119 ms late a frame). Since M5 T8b1 the window decodes
+  the pair when the battle's end is known (`load_clips`), not inside `clip_times`; a clip it
+  cannot decode leaves the slot bare (design §7.21). Since T8b1 the harness fails a run whose
+  ack's clip field is not 1 or whose `VIDEO.VID` is empty at a result window (R7-2).
 - The tactics phase (E17 M5 T4c2a, design §7.23): its shade is the viewers' (`Moment::shade`,
   which the timeline leaves empty): a viewer that draws a human's turn in the phase sets it from
   that turn's observation (`h3_view::tactics::shade`; the stills the opening's, the window the

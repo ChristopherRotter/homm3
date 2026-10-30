@@ -65,6 +65,18 @@ epic's log), T6b2 and T6b3 (below).
 Other lanes add entries here. The map client lane turns each into a task, or keeps one line here
 while the work waits.
 
+- 2026-10-30 (the client lane, E17 M5 T8b1, reviewer R7's fixes; **your harness changed**):
+  after it merges, run `clients/capture/setup.sh` again for every run directory you use: the
+  hook DLL's ack has ten fields now, and an older `xdd.dll` stops a run with "stale xdd.dll".
+  `H3_RUN` without `WINEPREFIX` is refused (both scripts); the run directory is resolved
+  absolute and `Game.start` fails unless the prefix's `d:` points at it. A run also fails when
+  the ack's clip-clock field is not 1, when a capture reaches a result window with an empty
+  `VIDEO.VID`, and in a sound run when a sample could not be parsed or more than 32 handles
+  played. Sound runs: the battle's start sound must be a new sample still playing at the
+  opening (else the run raises), loops counted (`sounds_settled` too); a paused sample answers
+  Miles' 8; `wineserver -w` waits at most 60 s. Nothing else drives the original otherwise
+  (runbook, "Sound", "The clips", "Traps").
+
 - 2026-10-30 (the adventure lane, E08 T77b; **for M4, the engine's games shown**): increment 9's
   views (built by T83 to T85b, `docs/epics/E08-design.md` §12, §14): `ObjectView::owner` for every
   ownable object a viewer sees (the flag's colour), a mine's `production` for its owner's team, a
