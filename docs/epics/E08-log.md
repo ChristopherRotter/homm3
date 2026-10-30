@@ -9116,3 +9116,69 @@ step it runs (fmt, clippy, check-arch, check-rules, check-stubs, check-docs, che
 clients-lock, check-lane, test, coverage, determinism, bench-check, doc-drift, original-data;
 deny and ffi-smoke skipped by the scope; exit 2, its normal result); no code changed. CI's full
 verify on the pull request is the record.
+
+### Increment 9, round 1: T77a2, the survey's day's start; the checkpoint (2026-10-30, `adventure/e08-t77a2`)
+
+Baseline: `master` at 7f46f18 (#596 merged; CI's push run on `master` green there; the setup's
+baseline verified the engine code on 7f46f18). The executable, the four LODs, the sound and video
+archives, the five DLLs, `maps.tar` and `extracted.tar` staged at the start (the user's computer
+went offline after, then came back). At its start the agent measured the task (`new_day` 0x462
+bytes, the new week 0x7B7, the new month 0x378, the income 0x573, the three visits, the timed
+events) and recommended a cut by rules then synthesis; the user chose **whole** (decision 195,
+`AskUserQuestion`).
+
+**The survey** `docs/rules/surveys/E08-economy.md` §7 to §18 (and §0, §1, the Sources):
+
+- **The day's start** (§7): the date's three words (weeks of 7 days, months of 4 weeks); `new_day`
+  only after the round's last turn, never for day 1 (no income, growth or reset on day 1); its
+  order (the new week, the new month, towns, the heroes' day flags, the income added to every
+  player not defeated, the scenario's test, the spell points); the new week whole (the week's
+  kind, towns, the taverns, the dwellings, the map's scan of entrance tiles by class with a hero
+  lifted off, the Stables' bit, the rumour, neutral towns); the new month whole (its kind: 50 %
+  normal, 40 % one of twelve creatures, 10 % the Plague; the tutorial and the Deity of Fire; the
+  towns' dwellings; a creature month's monsters; the Artifact Merchants); the player's turn start
+  (the timed events).
+- **The income** (§8): `player_daily_income` whole (mines below resource 6 by a second table,
+  towns, Crystal Dragons, the resource artifacts with the Cornucopia's 5, specialists, the
+  computer's bonus, the handicap) and the gold (`player_gold_income`: 1 000 a gold mine by a
+  constant, the gold artifacts, Estates, the 350 of a gold specialist, the computer's and the
+  handicap's factors).
+- **The weekly objects** (§9): the Windmill, the Water Wheel (500 then 1 000) and the Mystical
+  Garden, their words, setup, visits, weekly reset (visited or not) and visited marks (the team's;
+  the Garden's the player's), kept across weeks.
+- **Monsters** (§10): growth in sixteenths (bits 27 to 30), a tenth a week, the 0xFA00 cap; the
+  month's monsters (one chance in 200 a free land tile, twice the creature's range, mood 1 to 10).
+- **Timed events** (§11): the record, the loader's first day + 1, the day test, the floor at 0;
+  **spell points** (§12): the cap, Mysticism and the mana artifacts, the Wizard's Well, every hero
+  record.
+- **VCMI 1.7.5 and the wiki** compared at each point: **D-49** (growth in sixteenths against
+  VCMI's thousandths and the wiki's exact formula: a batch row), **D-50** (the month's monsters:
+  per tile and twice the range against VCMI's exact count and one range); the Cornucopia's 5
+  agrees with the wiki (4 + its parts' 1), so no dispute; **A-32** (the 4 000 cap shrinks a larger
+  stack); **A-31 corrected** (resource 8 adds no income; the import's refusal stays as a bound).
+- **The interfaces** (§13), **batch E9's plan** (§15: 12 rows in two runs, the harness's and the
+  spec's gaps), **the proposed ids** (§16: the new families ADV-OWN, ADV-MIN, ADV-SHY, ADV-WEK;
+  GAM-CAL-002 to -004, GAM-RES-003 to -005, ADV-MON-013, -014, HER-MAN-002 and amendments).
+- **The census** (§1, §11) with a throwaway example (deleted): the timed events' intervals and
+  amounts, no monster above 4 000, the weekly objects' most on a map.
+- **The second reading** (§17): two fresh agents in turn from questions only; **A** (the new day,
+  the income, the week, the month, the spell points) confirmed every point and added the towns'
+  byte, the Cover of Darkness's order, the dragons' garrison, a possible double count of a
+  garrison hero; **B** (the weekly objects, the timed events, T77a1's open points) confirmed and
+  **corrected T77a1's §5.3**: the Shipyard's use runs for the cursor's click mode 8 (the loop's
+  index is the mode minus 1), the click's path closed, the clicked tile's word used; it added
+  A-29's empty-army battle, the sixteenths surviving a fight, and a combination's parts never
+  counted.
+- **The address map:** 31 new entries (22 functions, 4 tables, 5 globals), `new_day` and
+  `new_day_week_events` read whole, `resource_pile_defs` corrected to eight pointers (its ninth
+  word is the income table's), the Shipyard's three entries corrected.
+
+**The checkpoint** (`ADV-Q37`, asked at the end, four questions): every recommendation accepted
+(decisions 196–199): D-47 and D-49 built from the reading and checked by batch E9; the heroes'
+income, the Crystal Dragons, the day's spell points and the month's monsters added to the
+increment, the week's creature with E09; batch E9 whole before the build; the rest as written.
+
+**Verify:** the scoped `cargo xtask verify --scope adventure --summary --with-original-data`
+passed every step it runs but `check-exe-map`, which failed on one address cited after the run
+began; mapped, `check-exe-map` and `check-docs` passed (the steps the change touches; no code
+changed). CI's full verify on the pull request is the record.
