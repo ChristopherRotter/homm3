@@ -134,7 +134,10 @@ impl Records {
                     .and_then(|e| found(e, false, false))
             })
             .unwrap_or_else(|| {
-                let class = if tile.coast() { COAST_CLASS } else { NO_CLASS };
+                // Land with the map file's coast bit (0x4FE3D6; E24 M3 T6a1: not water of a
+                // shore picture, which has the bit 0x02 alone).
+                let coast = tile.coast() && tile.terrain.code != crate::art::WATER;
+                let class = if coast { COAST_CLASS } else { NO_CLASS };
                 Record {
                     object: None,
                     class,

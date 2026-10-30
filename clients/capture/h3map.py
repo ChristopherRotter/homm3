@@ -558,26 +558,39 @@ def ask_status(mem, kind, end, rebuild=False):
     mem.ask_status(kind, end, rebuild)
 
 
+def over_view(point):
+    """Whether a point of the screen lies over the view's item (8, 8, 592 x 544)."""
+    return 8 <= point[0] < 600 and 8 <= point[1] < 552
+
+
 def status_bar_text(mem):
     """The status bar's text (the adventure dialog's item 200, E24 M3 T6a1), None when empty."""
     return next((i["text"] for i in mem.dialog_items() if i["id"] == 200), None)
 
 
-def look_over_view(game, mem, sit):
-    """The selected hero's reach as a pointer over the view finds it (E24 M3 T6a1; design §4.10):
-    the pointer moved over a tile of the view's second row (`adventure_mouse_move` runs the
-    pathfinder for the selected hero, `movement_calculations_mouse` 0x4194A0, which leaves its
-    nodes for `Mem.hover`), then over the kingdom overview's button and back to the parking (its
-    item looked at again: the status bar's hint as before), the view's column and row forgotten
-    (the manager's +0xEC and +0xF0 -1, as after a walk), so that a sequence's first move over the
-    view looks at its tile. The clock runs."""
+def look_over_view(game, mem, sit, points):
+    """The selected hero's costs of the view's tiles under `points` (E24 M3 T6a1; design §4.10):
+    the pointer moved over each in turn (`adventure_mouse_move` runs the pathfinder for the
+    selected hero to the tile under it, `movement_calculations_mouse` 0x4194A0, which stops once
+    that tile is reached: its node holds the cost the cursor's days read), each one's cost read
+    (`Mem.node_cost`; one the run did not reach left out, as a tile the cursor finds no path to),
+    kept as `mem.reach` for `live_part`; then the pointer over the kingdom overview's button and
+    back to the parking (its item looked at again: the status bar's hint as before), the view's
+    column and row forgotten (the manager's +0xEC and +0xF0 -1, as after a walk), so that a
+    sequence's first move over the view looks at its tile. The clock runs."""
     before = status_bar_text(mem)
     vx, vy, vz = sit["view"]
-    _, hero = mem.selected()
-    column = 2 if hero and hero[:2] == [vx + 1, vy + 1] else 1
-    game.move(16 + 32 * column, 40)
-    h3adv.wait_for(lambda: mem.mouse_tile()[:2] == (vx + column, vy + 1),
-                   lambda: f"the mouse over the view's tile ({vx + column}, {vy + 1})")
+    reach = {}
+    for x, y in points:
+        tile = (vx + x // 32, vy + y // 32)
+        game.move(x, y)
+        h3adv.wait_for(lambda: mem.mouse_tile()[:2] == tile,
+                       lambda: f"the mouse over the view's tile {tile}")
+        game.clock("step 0", settle_reads=200)
+        cost = mem.node_cost(*tile, vz)
+        if cost is not None:
+            reach[tile] = cost
+    mem.reach = reach
     game.move(690, 212)
     game.move(*h3adv.PARK)
     manager = mem.u32(h3mem.ADVENTURE_MANAGER_POINTER)
@@ -623,7 +636,7 @@ def live_part(mem, sit, turn, k, k_rivers, kingdom=None):
     check_staged(sit, turn, heroes, boats)
     # The game's facts the mouse-over reads (E24 M3 T6a1; design §4.10), a table of its own last.
     hover = mem.hover(mem.current_player(), ids_from("HOTRAITS.TXT", 2),
-                      ids_from("TownName.txt", 0), sit["view"][2])
+                      ids_from("TownName.txt", 0), sit["view"][2], getattr(mem, "reach", None))
     return ("".join(f"{key} = {value}\n" for key, value in live.items()) + "\n[hover]\n"
             + "".join(f"{key} = {json.dumps(value)}\n" for key, value in hover.items()))
 
@@ -668,7 +681,6 @@ def capture(situation_path, out, keep=False):
     live part (`live.toml`) in `out`."""
     game, mem, sit, turn = stage(situation_path, out)
     try:
-        look_over_view(game, mem, sit)
         game.clock("step 100")
         now = game.clock("freeze")
         # The moment: the idle step redraws the view only once the clock reaches the frame
@@ -925,8 +937,9 @@ def sequence(entry, out):
                 mem.write_points(index, value)
             else:
                 mem.write_u32(address, value)
-        # The reach for the points written (E24 M3 T6a1).
-        look_over_view(game, mem, sit)
+        # The reach of the tiles the pointer visits, for the points written (E24 M3 T6a1).
+        look_over_view(game, mem, sit, [v for t in sorted(inputs) for k, v in inputs[t]
+                                        if k in ("pointer", "click") and over_view(v)])
         # The display's own key repeat is off (T1a2): it repeats a held key in real time, which
         # a step of the virtual clock spans many times over; the original repeats nothing itself
         # (a key held is one press, design §3.4).

@@ -116,12 +116,17 @@ pub fn for_sequence<'a>(
     );
     let mut painter = Painter::new(assets, &raw, Some(&live_path), view, &[])?;
     // A walk's hero is the live part's selected one, its paths the ones the recording shows.
-    let (hero, paths) = if walks {
+    // The mouse-over's facts (E24 M3 T6a1) select a hero too: the cursor reads it.
+    let (hero, paths) = if walks || painter.live.hover.is_some() {
         let live = &painter.live;
-        let hero = sequence::selected(&live.heroes, live.viewer)
+        let hero = sequence::selected_hero(live)
             .map_err(|e| format!("{}: {e}", live_path.display()))?;
-        painter.selected = sequence::selected_index(&live.heroes, live.viewer).ok();
-        let paths = sequence.paths(recorded.as_deref().unwrap_or_default())?;
+        painter.selected = sequence::selected_in(live).ok();
+        let paths = if walks {
+            sequence.paths(recorded.as_deref().unwrap_or_default())?
+        } else {
+            Vec::new()
+        };
         (Some(hero), paths)
     } else {
         (None, Vec::new())
@@ -198,9 +203,8 @@ pub fn for_situation<'a>(
     let kept = map.join("situations/kept").join(format!("{id}.toml"));
     let live = kept.exists().then_some(kept);
     let mut painter = Painter::new(assets, &raw, live.as_deref(), view, &hidden)?;
-    let (heroes, viewer) = (&painter.live.heroes, painter.live.viewer);
-    let hero = sequence::selected(heroes, viewer).ok();
-    painter.selected = sequence::selected_index(heroes, viewer).ok();
+    let hero = sequence::selected_hero(&painter.live).ok();
+    painter.selected = sequence::selected_in(&painter.live).ok();
     let sound = painter.sound(hero.map(|h| h.at))?;
     let start = Start {
         view,

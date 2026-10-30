@@ -1,0 +1,34 @@
+# The mouse over the map and the panels (E24 M3 T6a1; clients/map/sequences.toml `hover-map` and
+# `hover-panels`; E24 design §4.10): Red's selected hero near the view's top-left with 100 points
+# left (the sequences' `points`), a swamp beyond (its far tiles three days and more away), Red's
+# second hero and Blue's, a monster and the tiles it guards, visited objects (a treasure chest,
+# Pandora's box, a campfire, an artifact), Red's town and Blue's, Blue's garrison, a lake with a
+# boat, the Magic Plains, a mountain, two tiles Red has not explored.
+size = 36
+terrain = "grass"
+patches = [
+    { terrain = "swamp", from = [10, 9], to = [19, 18] },
+    { terrain = "water", from = [1, 15], to = [7, 18] },
+]
+heroes = [
+    { at = [2, 3], class = 2 },
+    { at = [4, 5], class = 4 },
+    { at = [6, 3], owner = 1 },
+]
+towns = [
+    { at = [12, 7], faction = 0, owner = 0, buildings = "fort" },
+    { at = [18, 7], faction = 2, owner = 1, buildings = "fort" },
+]
+objects = [
+    { def = "AvWPike.def", at = [3, 9] },
+    { def = "AVTchst0.def", at = [6, 6] },
+    { def = "AVA0128.def", at = [8, 3] },
+    { def = "adcfra.def", at = [7, 9] },
+    { def = "AVA0007.def", at = [5, 11] },
+    { def = "AVXplns0.def", at = [11, 14] },
+    { def = "avlmtdr1.def", at = [16, 17] },
+    { def = "AVCgar10.def", at = [14, 12], owner = 1 },
+]
+boats = [{ at = [5, 16], kind = 0 }]
+hidden = [[18, 2, 19, 3]]
+view = [1, 2, 0]

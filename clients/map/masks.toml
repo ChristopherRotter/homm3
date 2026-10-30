@@ -18,4 +18,4 @@ panels = []
 # the situations and sequences `hinted` lists (recorded with it), left out of the others until
 # T6a2 draws the classes with a case of their own (MCL-STUB-7) and they are recorded again.
 hint = [[8, 556, 600, 574]]
-hinted = []
+hinted = ["hover-panels", "hover-map", "hover-sail"]

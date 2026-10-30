@@ -1284,7 +1284,19 @@ class Mem:
             out.append(owner)
         return out
 
-    def hover(self, colour, hotraits, town_names, z=0):
+    def node_cost(self, x, y, z=0):
+        """The adventure pathfinder's kind-0 node of a tile (0x699284 +0x24, 30 bytes at ((y +
+        2 z h) w + x); E24 M3 T6a1): the movement points the path there costs (+0x18), None when
+        not reached (+4 bit 0)."""
+        side = self.i32(self.game() + MAP_SIDE)
+        nodes = self.u32(self.u32(PATHFINDER_POINTER) + 0x24)
+        if not nodes:
+            # No run yet (the pathfinder allocates its nodes at its first).
+            return None
+        raw = self.read(nodes + 30 * ((y + 2 * z * side) * side + x), 30)
+        return struct.unpack_from("<H", raw, 0x18)[0] if raw[4] & 1 else None
+
+    def hover(self, colour, hotraits, town_names, z=0, reach=None):
         """The game's facts the mouse-over reads (E24 M3 T6a1; design §4.10), as `render
         --live`'s `[hover]` takes them, for the viewing player `colour` and the view's level `z`:
         per map object the word of its entrance tile (with a hero or boat standing there, the word
@@ -1293,9 +1305,10 @@ class Mem:
         the game's towns by index [name record of TownName.txt, type]; per hero of `map_heroes(z)`
         its record index and whether its name is its own (not its type's); the player's heroes in
         its list's order [index, class, own name] and its towns' indices; the teams; the tiles a
-        monster guards (the vision words' bit 8, rows per level); the selected hero's reach on
-        its level (the pathfinder's kind-0 nodes, 0x699284 +0x24, 30 bytes at ((y + 2 z h) w + x):
-        +4 bit 0 reached, +0x18 the cost) and its day points (+0x49). `hotraits` and `town_names`:
+        monster guards (the vision words' bit 8, rows per level); `reach`, the selected hero's
+        costs of the tiles the pointer looked at ({(x, y): cost}: the pathfinder stops once its
+        destination is reached, so each tile's cost is the run's for it, `h3map.look_over_view`),
+        and its day points (+0x49). `hotraits` and `town_names`:
         the hero types' names and TownName.txt's, in order (the harness keeps the records'
         numbers, never the text)."""
         game = self.game()
@@ -1370,18 +1383,8 @@ class Mem:
                            for x in range(side))
                    for lv in range(levels) for y in range(side)]
         selected = struct.unpack_from("<i", player, 0x4)[0]
-        reach, day_points = [], 0
-        if selected >= 0:
-            day_points = self.i32(hero_record(selected) + 0x49)
-            hz = struct.unpack("<h", self.read(hero_record(selected) + 4, 2))[0]
-            pathfinder = self.u32(PATHFINDER_POINTER)
-            nodes = self.read(self.u32(pathfinder + 0x24) + 30 * (2 * hz * side) * side,
-                              30 * side * side)
-            for y in range(side):
-                for x in range(side):
-                    i = 30 * (y * side + x)
-                    if nodes[i + 4] & 1:
-                        reach.append([x, y, struct.unpack_from("<H", nodes, i + 0x18)[0]])
+        day_points = self.i32(hero_record(selected) + 0x49) if selected >= 0 else 0
+        reach = [[x, y, cost] for (x, y), cost in sorted((reach or {}).items())]
         return {"words": words, "armed": armed, "towns": towns, "hero_ids": hero_ids,
                 "hero_list": hero_list, "town_list": town_list, "teams": teams,
                 "guarded": guarded, "reach": reach, "day_points": day_points}

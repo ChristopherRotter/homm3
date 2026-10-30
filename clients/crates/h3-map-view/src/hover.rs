@@ -39,7 +39,7 @@ use crate::record::Records;
 use crate::status::{hero_key, town_key};
 
 /// The terrain code of water (8).
-pub const WATER: u8 = 8;
+pub const WATER: u8 = crate::art::WATER;
 
 /// The cursor's frames of `cradvntr.def` over the map (`adventure_mouse_move` 0x40E360, the
 /// mouse manager's type 1).
@@ -861,68 +861,44 @@ fn entrances(art: &MapArt) -> BTreeMap<usize, (i32, i32)> {
 
 /// The panels' items as the mouse finds them (`dialog_item_at` 0x5FF3E0: the last in the dialog's
 /// order whose box holds the point and whose state takes the mouse, bit 0x2 without 0x8 or
-/// 0x1000): the adventure dialog's items in their order, the chat's edit over the status bar, the
-/// resource bar's items, then the status window's of the kind shown.
+/// 0x1000): the adventure dialog's items in their order, then the chat's edit over the status
+/// bar. The resource bar's and the status window's items are panels of their own, not searched
+/// (observed, design §4.10: inside the status window the area under it, its hint).
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct PanelItems {
     /// The items' ids and boxes on the screen (left, top, right, bottom; the last two
     /// exclusive), in the order searched last to first.
     items: Vec<(u16, [i32; 4])>,
-    /// Each status window kind's items' boxes ([`crate::live::Status::kind`]: 1 the date's, 2
-    /// the kingdom's, 3 a hero's, 4 a town's).
-    status: Vec<(u8, Vec<[i32; 4]>)>,
 }
-
-/// The id the status window's items stand for: none has a hint (0x402C50 gives none above 1015).
-pub const STATUS_ITEM: u16 = 2000;
 
 impl PanelItems {
     /// The items of `layout`.
     #[must_use]
     pub fn new(layout: &AdventureLayout) -> Self {
-        let boxes = |dialog: &h3_ui::ui::Dialog| -> Vec<(u16, [i32; 4])> {
-            let [px, py] = dialog.place;
-            dialog
-                .items
-                .iter()
-                .filter_map(|item| {
-                    let ([x, y], [w, h]) = item.area()?;
-                    let (x, y) = (px.saturating_add(x), py.saturating_add(y));
-                    Some((item.id(), [x, y, x.saturating_add(w), y.saturating_add(h)]))
-                })
-                .collect()
-        };
-        let mut items = boxes(&layout.dialog);
+        let [px, py] = layout.dialog.place;
+        let mut items: Vec<(u16, [i32; 4])> = layout
+            .dialog
+            .items
+            .iter()
+            .filter_map(|item| {
+                let ([x, y], [w, h]) = item.area()?;
+                let (x, y) = (px.saturating_add(x), py.saturating_add(y));
+                Some((item.id(), [x, y, x.saturating_add(w), y.saturating_add(h)]))
+            })
+            .collect();
         // The chat's edit 38, added after the status bar over its box (0x5541A0).
         if let Some(&(_, bar)) = items.iter().find(|(i, _)| *i == id::STATUS_BAR) {
             items.push((id::EDIT, bar));
         }
-        items.extend(boxes(&layout.resource_bar));
-        let status = [
-            (1, &layout.status_date),
-            (2, &layout.status_kingdom),
-            (3, &layout.status_hero),
-            (4, &layout.status_town),
-        ]
-        .into_iter()
-        .map(|(kind, dialog)| (kind, boxes(dialog).into_iter().map(|(_, b)| b).collect()))
-        .collect();
-        Self { items, status }
+        Self { items }
     }
 
-    /// The item under the mouse at `point` with the status window of `kind` shown: the last
-    /// whose box holds it among those `takes` lets take the mouse; none over no item.
+    /// The item under the mouse at `point`: the last whose box holds it among those `takes` lets
+    /// take the mouse; none over no item.
     #[must_use]
-    pub fn at(&self, point: [i32; 2], kind: Option<u8>, takes: impl Fn(u16) -> bool) -> Option<u16> {
-        let inside = |[l, t, r, b]: [i32; 4]| (l..r).contains(&point[0]) && (t..b).contains(&point[1]);
-        let status = self
-            .status
-            .iter()
-            .find(|(k, _)| Some(*k) == kind)
-            .is_some_and(|(_, boxes)| boxes.iter().any(|&b| inside(b)));
-        if status {
-            return Some(STATUS_ITEM);
-        }
+    pub fn at(&self, point: [i32; 2], takes: impl Fn(u16) -> bool) -> Option<u16> {
+        let inside =
+            |[l, t, r, b]: [i32; 4]| (l..r).contains(&point[0]) && (t..b).contains(&point[1]);
         self.items
             .iter()
             .rev()
@@ -956,8 +932,8 @@ pub fn takes(item: u16, kingdom: &Kingdom, buttons: Buttons, levels: usize) -> b
 
 /// The status bar's hint over the panels' item `item` (`adventure_panel_hint` 0x403010; none:
 /// no item): a hero list's slot its hero's (`map.hint.hero`), a town list's its town's
-/// (`map.hint.town`), each by `facts` (none without them), nothing in an empty slot; the resource
-/// bar's items nothing; another item its pair of Help.txt's (0x402C50), if it has one.
+/// (`map.hint.town`), each by `facts` (none without them), nothing in an empty slot; another item
+/// its pair of Help.txt's (0x402C50), if it has one.
 #[must_use]
 pub fn panel_hint(item: Option<u16>, kingdom: &Kingdom, facts: Option<&Facts>) -> Hint {
     let Some(item) = item else {
@@ -1005,8 +981,7 @@ pub fn parked_hint(layout: &AdventureLayout, live: &Live, levels: usize, point: 
     let buttons = live
         .buttons
         .unwrap_or_else(|| Buttons::of(&live.kingdom, &live.path));
-    let kind = live.kingdom.status.as_ref().map(crate::live::Status::kind);
-    let item = panels.at(point, kind, |i| takes(i, &live.kingdom, buttons, levels));
+    let item = panels.at(point, |i| takes(i, &live.kingdom, buttons, levels));
     panel_hint(item, &live.kingdom, live.hover.as_ref())
 }
 

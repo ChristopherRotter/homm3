@@ -942,12 +942,11 @@ impl Loop {
     /// The panel's hint (`adventure_panel_hint` 0x403010): the item under the mouse, when it is
     /// not the one looked at last: none sets the arrow; its hint shown at once.
     fn panel_hint(&mut self) {
-        let kind = self.kingdom.status.as_ref().map(Status::kind);
         let (kingdom, buttons, levels) = (&self.kingdom, self.buttons, self.levels);
         let item = self
             .rules
             .panels
-            .at(self.pointer, kind, |i| hover::takes(i, kingdom, buttons, levels));
+            .at(self.pointer, |i| hover::takes(i, kingdom, buttons, levels));
         if item == self.last_item {
             return;
         }
