@@ -29,6 +29,7 @@ fn art_with(tiles: Vec<GivenTile>) -> (MapArt, Live) {
     let extras = Extras {
         tiles,
         objects: vec![],
+        ..Extras::default()
     };
     let bytes = writer::write_with(&map(), &extras).unwrap();
     let raw = h3_map::parse(&bytes, &Limits::default()).unwrap();
@@ -614,6 +615,7 @@ fn art_with_objects(objects: Vec<AnyObject>) -> (MapArt, Live) {
     let extras = Extras {
         tiles: vec![],
         objects,
+        ..Extras::default()
     };
     let bytes = writer::write_with(&map(), &extras).unwrap();
     let raw = h3_map::parse(&bytes, &Limits::default()).unwrap();
@@ -1796,6 +1798,7 @@ fn a_levels_index_gives_each_view_the_scenes_draws() {
     let extras = Extras {
         tiles: vec![],
         objects: vec![object("tree.def", 5, 5, 0), under],
+        ..Extras::default()
     };
     let bytes = writer::write_with(&two, &extras).unwrap();
     let raw = h3_map::parse(&bytes, &Limits::default()).unwrap();

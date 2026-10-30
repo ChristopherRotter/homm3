@@ -19,8 +19,10 @@
 //! day points, the players' teams) is the live part's [`Facts`]: a comparison's from the
 //! original's memory, the engine's from M4. Of the classes with a hint of their own
 //! ([`OWN_CASES`]) those that show what was visited are T6a2a's ([`VISITS`]: what the viewer knows
-//! of each object, the facts' [`Visit`]s; design §4.11); the owners' and contents' (T6a2b) show
-//! their plain name until then.
+//! of each object, the facts' [`Visit`]s; design §4.11), the owners' and contents' T6a2b's
+//! ([`contents`]: the facts' [`Content`]s; design §4.12).
+
+pub mod contents;
 
 use alloc::collections::BTreeMap;
 use alloc::string::String;
@@ -39,6 +41,7 @@ use crate::objects::{self, DrawLists, Entry};
 use crate::panels::{self, id};
 use crate::record::Records;
 use crate::status::{hero_key, town_key};
+pub use contents::{BankMark, Content, Guards, Quest, Teach};
 
 /// The terrain code of water (8).
 pub const WATER: u8 = crate::art::WATER;
@@ -112,6 +115,10 @@ pub struct Facts {
     /// Per map object, what the viewer knows of it (E24 M3 T6a2a, design §4.11): none known for
     /// a live part written before.
     pub visits: Vec<Visit>,
+    /// The contents of the objects of the owners' and contents' hints (E24 M3 T6a2b, design
+    /// §4.12), by object: a mine's, a creature bank's, a Shrine's, a Tree of Knowledge's, a Witch
+    /// Hut's, a Seer's Hut's and a Quest Guard's; none for a live part written before.
+    pub contents: BTreeMap<usize, Content>,
 }
 
 /// What the viewer knows of a map object (E24 M3 T6a2a, design §4.11): the hint's bonus and mark
@@ -142,6 +149,8 @@ struct Written {
     day_points: i32,
     #[serde(default)]
     visits: Vec<(u8, i8)>,
+    #[serde(flatten)]
+    contents: contents::Written,
 }
 
 impl Facts {
@@ -153,7 +162,8 @@ impl Facts {
     /// string per row of every level in turn, `1` guarded), `reach` (`[[x, y, cost], ...]`
     /// of the selected hero's level) with `day_points` and `visits` (`[[known, mark], ...]`, one
     /// per object: known 0 or 1, the mark -1 none, 0 not visited, 1 visited; left out none
-    /// known). None when a part is missing or wrong.
+    /// known), since T6a2b the contents' lists ([`contents::Written`]; left out, none). None when
+    /// a part is missing or wrong.
     #[must_use]
     pub fn read(
         value: &toml::Value,
@@ -173,6 +183,7 @@ impl Facts {
         if !fits {
             return None;
         }
+        let contents = w.contents.contents(objects)?;
         let mut guarded = Explored::all(size, levels, false);
         for (r, row) in w.guarded.iter().enumerate() {
             let (z, y) = (r / size.max(1), r % size.max(1));
@@ -223,6 +234,7 @@ impl Facts {
                     })
                 })
                 .collect::<Option<_>>()?,
+            contents,
         })
     }
 }
@@ -262,7 +274,7 @@ pub const GROUNDS: [u32; 10] = [21, 46, 222, 224, 225, 226, 227, 228, 229, 231];
 /// The classes whose hint is a case of the original's own (0x40B150's switch, table 0x40D314):
 /// every other class below 232 shows its name (`object_names` 0x6A79EC). T6a1 builds those of
 /// 0, 3, 26 and 36 (the special ground), 34 (a hero), 54 (a monster) and 98 (a town), T6a2a
-/// those of [`VISITS`]; the rest (owners, contents) show their name too until T6a2b.
+/// those of [`VISITS`], T6a2b the other 20 (owners and contents: [`contents`]).
 pub const OWN_CASES: [u32; 62] = [
     0, 3, 4, 9, 10, 11, 14, 16, 17, 20, 22, 23, 24, 25, 26, 28, 30, 31, 32, 34, 35, 36, 38, 39, 41,
     42, 47, 48, 49, 51, 52, 53, 54, 55, 56, 57, 61, 63, 64, 79, 83, 84, 85, 88, 89, 90, 92, 94, 96,
@@ -309,7 +321,7 @@ pub const BONUSES: [(u32, u8); 23] = [
 ];
 
 /// The status bar's hint: what its text shows, its words the catalogue's.
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub enum Hint {
     /// Nothing.
     #[default]
@@ -352,6 +364,73 @@ pub enum Hint {
         /// Its mark.
         visited: Option<bool>,
     },
+    /// A Border Guard's, a Border Gate's or a Keymaster's Tent's colour (`keymaster.<n>`) and
+    /// name (`map.hint.keymaster`), a Tent's mark on its entrance (E24 M3 T6a2b, as each below).
+    Keymaster {
+        /// Its class.
+        class: u32,
+        /// Its colour (its subclass).
+        colour: u32,
+        /// A Tent's mark.
+        visited: Option<bool>,
+    },
+    /// A dwelling's name (`dwelling1.<n>`, `dwelling4.<n>`) with its owner's (`map.hint.owned`).
+    Dwelling {
+        /// Its class (17 or 20).
+        class: u32,
+        /// Its kind (its subclass).
+        kind: u32,
+        /// Its owner.
+        owner: Option<u8>,
+    },
+    /// A Lighthouse's name, on its entrance with its owner's (`map.hint.owner`).
+    Lighthouse {
+        /// Its owner.
+        owner: Option<u8>,
+    },
+    /// A resource's name (`resource.<n>`).
+    Resource(u32),
+    /// A mine's name (`mine.<n>`), its owner's, what it produces where the viewer's team owns it
+    /// and its guards.
+    Mine {
+        /// Its name's record (7 an abandoned mine's).
+        name: u8,
+        /// Its owner.
+        owner: Option<u8>,
+        /// The resource it produces.
+        produces: Option<u8>,
+        /// Its guards.
+        guards: Option<Guards>,
+    },
+    /// A creature bank's name (`bank.<n>`) and its mark.
+    Bank {
+        /// Its kind.
+        bank: u8,
+        /// Its mark.
+        mark: BankMark,
+    },
+    /// A Shrine's, a Tree of Knowledge's or a Witch Hut's name and on its entrance what it
+    /// teaches once visited, else its bonus once its kind is known; a Tree's mark after.
+    Teaches {
+        /// Its class.
+        class: u32,
+        /// Its bonus's record (`map-bonus.<n>`).
+        bonus: Option<u8>,
+        /// What it teaches.
+        teach: Option<Teach>,
+        /// A Tree's mark.
+        visited: Option<bool>,
+    },
+    /// A Seer's Hut's name (`map.hint.seer` once visited, its seer's) or a Quest Guard's, with
+    /// its quest's text.
+    Quest {
+        /// Its class (83 or 215).
+        class: u32,
+        /// The seer's name, once visited.
+        seer: Option<u8>,
+        /// The quest shown.
+        quest: Option<Arc<Quest>>,
+    },
 }
 
 /// The catalogue's keys the hints show texts by (the families `map-hint`, `object`, `hero`,
@@ -384,9 +463,9 @@ pub const LAST_CREATURE: u32 = 150;
 impl Hint {
     /// The hint's text by `texts`, a hero's own names `names` (the map's, by type).
     #[must_use]
-    pub fn text(self, names: &BTreeMap<u8, String>, texts: &Catalogue) -> String {
+    pub fn text(&self, names: &BTreeMap<u8, String>, texts: &Catalogue) -> String {
         let plain = |key: &str| texts.text(key, &Args::new());
-        match self {
+        match *self {
             Self::Empty => String::new(),
             Self::Panel(n) => plain(&alloc::format!("map-hint.{n}")),
             Self::Hero {
@@ -444,6 +523,7 @@ impl Hint {
                 }
                 hint
             }
+            _ => contents::text(self, names, texts),
         }
     }
 }
@@ -509,6 +589,7 @@ pub struct Hover {
     boats: Vec<Pos>,
     explored: Explored,
     viewer: u8,
+    owners: Vec<Option<u8>>,
 }
 
 /// The objects classes the cursor finds the owner of by the entrance tile: a garrison (33), a
@@ -580,6 +661,7 @@ impl Hover {
             boats: live.boats.iter().map(|b| b.at).collect(),
             explored: live.explored.clone(),
             viewer: live.viewer,
+            owners: live.objects.iter().map(|o| o.owner).collect(),
             facts,
         }))
     }
@@ -729,7 +811,126 @@ impl Hover {
             },
             MONSTER => Hint::Empty,
             class if tile.entrance && VISITS.contains(&class) => self.visits(class, &tile),
-            class => Hint::Object(class),
+            class => self.contents(class, &tile),
+        }
+    }
+
+    /// The hint of a class of the owners' and contents' cases (E24 M3 T6a2b, design §4.12): the
+    /// name and what the map, the owners and the facts' [`Content`] give; any other class's name.
+    fn contents(&self, class: u32, tile: &Tile) -> Hint {
+        let owner = tile
+            .object
+            .and_then(|o| self.owners.get(o).copied())
+            .flatten();
+        let content = tile.object.and_then(|o| self.facts.contents.get(&o));
+        let hint = match (class, content) {
+            (9 | 212, _) => Hint::Keymaster {
+                class,
+                colour: tile.subclass,
+                visited: None,
+            },
+            (10, _) => Hint::Keymaster {
+                class,
+                colour: tile.subclass,
+                visited: tile
+                    .object
+                    .filter(|_| tile.entrance)
+                    .and_then(|o| self.facts.visits.get(o))
+                    .and_then(|v| v.visited),
+            },
+            (17 | 20, _) => Hint::Dwelling {
+                class,
+                kind: tile.subclass,
+                owner,
+            },
+            (42, _) => Hint::Lighthouse {
+                owner: owner.filter(|_| tile.entrance),
+            },
+            (79, _) => Hint::Resource(tile.subclass),
+            (53, Some(Content::Mine { resource, guards })) => Hint::Mine {
+                name: if tile.subclass == ABANDONED {
+                    7
+                } else {
+                    *resource
+                },
+                owner,
+                produces: Some(*resource).filter(|_| self.allied(owner, self.viewer)),
+                guards: Guards::of(guards),
+            },
+            (16 | 24 | 25 | 84 | 85, Some(Content::Bank { visited, guards })) => Hint::Bank {
+                bank: match class {
+                    24 => 8,
+                    84 => 9,
+                    85 => 7,
+                    25 => 10,
+                    _ => u8::try_from(tile.subclass).unwrap_or(u8::MAX),
+                },
+                mark: match Guards::of(guards) {
+                    _ if !visited => BankMark::NotVisited,
+                    None => BankMark::Visited,
+                    Some(g) => BankMark::Guarded(g),
+                },
+            },
+            (88..=90, Some(&Content::Shrine { known, spell })) if tile.entrance => Hint::Teaches {
+                class,
+                bonus: (known && spell.is_none())
+                    .then(|| u8::try_from(class - 88 + 19).unwrap_or(0)),
+                teach: spell.map(|(s, k)| Teach::Spell(s, k)),
+                visited: None,
+            },
+            (
+                102,
+                Some(&Content::Tree {
+                    known,
+                    price,
+                    visited,
+                }),
+            ) if tile.entrance => Hint::Teaches {
+                class,
+                bonus: (known && price.is_none()).then_some(18),
+                teach: price.map(Teach::Price),
+                visited,
+            },
+            (113, Some(&Content::WitchHut { known, skill })) if tile.entrance => Hint::Teaches {
+                class,
+                bonus: (known && skill.is_none()).then_some(12),
+                teach: skill.map(|(s, k)| Teach::Skill(s, k)),
+                visited: None,
+            },
+            (
+                83,
+                Some(Content::Quest {
+                    visited: true,
+                    seer,
+                    quest,
+                }),
+            ) => Hint::Quest {
+                class,
+                seer: Some(*seer),
+                quest: quest.clone(),
+            },
+            (
+                215,
+                Some(Content::Quest {
+                    visited: true,
+                    quest: Some(quest),
+                    ..
+                }),
+            ) => Hint::Quest {
+                class,
+                seer: None,
+                quest: Some(quest.clone()),
+            },
+            _ => Hint::Object(class),
+        };
+        match hint {
+            Hint::Teaches {
+                class,
+                bonus: None,
+                teach: None,
+                visited: None,
+            } => Hint::Object(class),
+            hint => hint,
         }
     }
 
@@ -907,6 +1108,8 @@ impl Hover {
 
 /// The monsters' class (54).
 pub const MONSTER: u32 = 54;
+/// An abandoned mine's subclass of class 53 (7: the load makes class 220 one).
+pub const ABANDONED: u32 = 7;
 /// A monster's count's bits of its word.
 pub const COUNT: u32 = 0xFFF;
 /// The garrisons' class (33).

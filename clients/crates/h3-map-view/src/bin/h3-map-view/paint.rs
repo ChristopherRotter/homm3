@@ -491,7 +491,7 @@ impl<'a> Painter<'a> {
         }
         self.live.buttons = Some(buttons);
         // The status bar's hint as last shown (E24 M3 T6a1).
-        self.live.hint = Some(draw.hint);
+        self.live.hint = Some(draw.hint.clone());
         let assets = self.assets;
         let z = draw.view.z;
         let index = self

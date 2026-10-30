@@ -359,6 +359,90 @@ fn objects_given_by_their_templates_def() {
     );
 }
 
+/// E24 M3 T6a2b: a Seer's Hut's and a Quest Guard's quests by the writer's missions, a hero's and
+/// a monster's by their identifiers (the heroes first, then the extras' objects); a hero or a
+/// monster missing.
+#[test]
+fn quests_of_seers_and_guards() {
+    let line = |def: &str, class| {
+        ObjectTemplate::from_objects_txt(&format!(
+            "{def} {} {} 111111111 111111111 {class} 0 0 0",
+            "1".repeat(48),
+            "0".repeat(48)
+        ))
+        .unwrap()
+    };
+    let templates = [line("seer.def", 83), line("guard.def", 215), line("pike.def", 54)];
+    let text = |objects: &str| {
+        format!(
+            "size = 36\nterrain = \"grass\"\nheroes = [{{ at = [34, 34], class = 2 }}, {{ at = [34, 1], owner = 1 }}]\nview = [0, 0, 0]\n{objects}"
+        )
+    };
+    let given = text(
+        r#"objects = [
+    { def = "seer.def", at = [2, 2], quest = { level = 10 } },
+    { def = "seer.def", at = [4, 2], quest = { skills = [1, 2, 0, 3] } },
+    { def = "seer.def", at = [6, 2], quest = { hero = [34, 1] } },
+    { def = "seer.def", at = [8, 2], quest = { monster = [30, 30] } },
+    { def = "seer.def", at = [10, 2], quest = { artifacts = [7, 8] } },
+    { def = "guard.def", at = [2, 4], quest = { creatures = [[0, 10], [13, 1]] } },
+    { def = "guard.def", at = [4, 4], quest = { resources = [0, 0, 0, 0, 0, 5, 1000] } },
+    { def = "guard.def", at = [6, 4], quest = { be_hero = 3 } },
+    { def = "guard.def", at = [8, 4], quest = { player = 1 } },
+    { def = "guard.def", at = [10, 4] },
+    { def = "pike.def", at = [30, 30] },
+]"#,
+    );
+    let (map, extras) = Situation::parse(&given)
+        .unwrap()
+        .build(&BTreeMap::new(), &templates)
+        .unwrap();
+    assert_eq!(map.objects.len(), 2);
+    let quests: Vec<_> = extras.quests.iter().map(|(&i, m)| (i, m.clone())).collect();
+    assert_eq!(
+        quests,
+        [
+            (0, Mission::Level(10)),
+            (1, Mission::PrimarySkills([1, 2, 0, 3])),
+            (2, Mission::KillHero(2)),
+            (3, Mission::KillCreature(13)),
+            (4, Mission::Artifacts(vec![7, 8])),
+            (
+                5,
+                Mission::Army(vec![
+                    Stack {
+                        creature: 0,
+                        count: 10
+                    },
+                    Stack {
+                        creature: 13,
+                        count: 1
+                    }
+                ])
+            ),
+            (6, Mission::Resources([0, 0, 0, 0, 0, 5, 1000])),
+            (7, Mission::Hero(3)),
+            (8, Mission::Player(1)),
+        ]
+    );
+    let refused = |objects: &str| {
+        Situation::parse(&text(objects))
+            .unwrap()
+            .build(&BTreeMap::new(), &templates)
+            .unwrap_err()
+    };
+    assert_eq!(
+        refused(r#"objects = [{ def = "seer.def", at = [2, 2], quest = { hero = [1, 1] } }]"#),
+        "the quest at [2, 2]: no hero on [1, 1]"
+    );
+    assert_eq!(
+        refused(
+            r#"objects = [{ def = "seer.def", at = [2, 2], quest = { monster = [2, 2] } }]"#
+        ),
+        "the quest at [2, 2]: no monster anchored on [2, 2]"
+    );
+}
+
 #[test]
 fn owned_objects_and_towns_by_their_buildings() {
     let line = |def: &str, class, subclass| {

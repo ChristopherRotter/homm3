@@ -1120,7 +1120,7 @@ fn live_a_click_the_loop_cannot_play_only_moves_the_pointer() {
         // The status bar's hint follows the pointer (E24 M3 T6a1): (700, 2) lies on no item.
         assert_eq!(s.drawn.hint, Hint::Empty, "{hero}");
         let drawn = Draw {
-            hint: before.hint,
+            hint: before.hint.clone(),
             ..s.drawn.clone()
         };
         assert_eq!(drawn, before, "{hero}");
@@ -1678,7 +1678,7 @@ fn the_mouse_over_the_map_and_the_panels() {
     assert_eq!(l.state(0).drawn.hint, Hint::Panel(8));
     let shown = |l: &Loop, t| {
         let s = l.state(t);
-        (s.cursor.frame, s.drawn.hint)
+        (s.cursor.frame, s.drawn.hint.clone())
     };
     // A guarded tile: the attack, no hint; the monster: the attack a day away, its hint.
     l.run(1, &[Action::Pointer(on(4, 4))]).unwrap();
@@ -1688,10 +1688,10 @@ fn the_mouse_over_the_map_and_the_panels() {
         creature: 13,
         count: 7,
     };
-    assert_eq!(shown(&l, 2), (frame::ATTACK + frame::DAY, monster));
+    assert_eq!(shown(&l, 2), (frame::ATTACK + frame::DAY, monster.clone()));
     // A tile not explored: the arrow, the hint left.
     l.run(3, &[Action::Pointer(on(0, 6))]).unwrap();
-    assert_eq!(shown(&l, 3), (r.arrow, monster));
+    assert_eq!(shown(&l, 3), (r.arrow, monster.clone()));
     // The parking, its item the one looked at last: the hint left (MCL-Q17).
     l.run(4, &[Action::Pointer(PARK)]).unwrap();
     assert_eq!(shown(&l, 4), (r.arrow, monster));
@@ -1702,11 +1702,11 @@ fn the_mouse_over_the_map_and_the_panels() {
         class: 2,
         own_name: false,
     };
-    assert_eq!(shown(&l, 5), (frame::HERO, a));
+    assert_eq!(shown(&l, 5), (frame::HERO, a.clone()));
     l.run(6, &[Action::Pointer(PARK)]).unwrap();
     let [x, y] = on(4, 3);
     l.run(7, &[Action::Pointer([x + 3, y + 3])]).unwrap();
-    assert_eq!(shown(&l, 7), (r.arrow, a));
+    assert_eq!(shown(&l, 7), (r.arrow, a.clone()));
     // A panel's item, then between the panels: the arrow and nothing.
     l.run(8, &[Action::Pointer([695, 212])]).unwrap();
     assert_eq!(shown(&l, 8), (r.arrow, Hint::Panel(2)));

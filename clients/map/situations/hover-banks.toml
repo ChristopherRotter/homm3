@@ -1,0 +1,35 @@
+# The creature banks' hints of the map hint (E24 M3 T6a2b; clients/map/sequences.toml
+# `hover-banks`; E24 design §4.12): Red's selected hero at (17, 1), in the view from (0, 0), the
+# eleven banks: the seven of class 16 in two rows, a Crypt and a Dragon Utopia, a Derelict Ship and
+# a Shipwreck on a lake; not visited, visited with the new game's guards, visited and empty
+# (`guards` none), visited with guards written; Blue's hero far off.
+size = 36
+terrain = "grass"
+patches = [{ terrain = "water", from = [0, 12], to = [17, 17] }]
+heroes = [
+    { at = [17, 1], class = 2 },
+    { at = [34, 34], owner = 1 },
+]
+objects = [
+    { def = "AVXbnk10.def", at = [3, 3] },  # Cyclops Stockpile (16, 0)
+    { def = "AVXbnk20.def", at = [7, 3] },  # Dwarven Treasury (16, 1)
+    { def = "AVXbnk30.def", at = [10, 3] },  # Griffin Conservatory (16, 2)
+    { def = "AVXbnk40.def", at = [13, 3] },  # Imp Cache (16, 3)
+    { def = "AVXbnk50.def", at = [17, 3] },  # Medusa Stores (16, 4)
+    { def = "AVXbnk60.def", at = [3, 7] },  # Naga Bank (16, 5)
+    { def = "AVXbnk70.def", at = [7, 7] },  # Dragon Fly Hive (16, 6)
+    { def = "AVXgyds0.def", at = [11, 7] },  # Crypt (84)
+    { def = "AVSutop0.def", at = [16, 8] },  # Dragon Utopia (25)
+    { def = "AVAdlic0.def", at = [5, 14] },  # Derelict Ship (24)
+    { def = "AVAwrek0.def", at = [11, 14] },  # Shipwreck (85)
+]
+visits = [
+    { at = [7, 3], visited = true },
+    { at = [10, 3], visited = true, guards = [] },
+    { at = [13, 3], visited = true, guards = [[42, 30]] },
+    { at = [3, 7], visited = true },
+    { at = [7, 7], visited = true, guards = [] },
+    { at = [11, 7], visited = true, guards = [[54, 10], [56, 5]] },
+    { at = [5, 14], visited = true },
+]
+view = [0, 0, 0]
