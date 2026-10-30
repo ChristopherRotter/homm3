@@ -65,6 +65,17 @@ epic's log), T6b2 and T6b3 (below).
 Other lanes add entries here. The map client lane turns each into a task, or keeps one line here
 while the work waits.
 
+- 2026-10-30 (the adventure lane, E08 T79a; for information, nothing to do): the harness's
+  reads and steps for batch E9a (`clients/capture/README.md`, "Mines, Lighthouses and Shipyards").
+  Behaviour that changed for every recipe: `h3lod.identify` also knows `MINEEVNT.TXT` (a mine's
+  flag message, `MINEEVNT:<n>`; it was named GENRLTXT:4, its picture's caption) and lets a
+  record's title braces be missing; a walk records the cursor before its first click (`cursor`);
+  a battle's record keeps each side's owner and controllers (`sides`); the boat dialog (vtable
+  0x643908) is a screen a step's `actions` play, cancelled when left open. New: `mine:x,y`,
+  `tile:x,y`, `screens`, `opening:sides`, `opening:stacks:<side>`, `opening:slots:<side>`, `stops`,
+  `battle = "auto again"`, `row:<column>#2`; `h3mem.mines`, `tile_word`, `battle_sides`,
+  `auto_combat_on`. The harness check passed.
+
 - 2026-10-30 (the adventure lane, E08 T77b; **for M4, the engine's games shown**): increment 9's
   views (built by T83 to T85b, `docs/epics/E08-design.md` §12, §14): `ObjectView::owner` for every
   ownable object a viewer sees (the flag's colour), a mine's `production` for its owner's team, a
