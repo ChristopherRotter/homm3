@@ -94,9 +94,12 @@ import numpy as np
 
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent.parent
-GAME_DIR = ROOT / "original-data" / "wine" / "game"
+# The instance (E17 M5 T8a): H3_RUN, H3_DISPLAY and WINEPREFIX choose another run directory,
+# display and prefix (setup.sh with the same three), so that two captures run side by side;
+# without them the one instance as before. Each run ends any game in its own prefix only.
+GAME_DIR = Path(os.environ.get("H3_RUN", ROOT / "original-data" / "wine")) / "game"
 SCREENS = HERE / "screens.toml"
-DISPLAY = ":99"
+DISPLAY = os.environ.get("H3_DISPLAY", ":99")
 WIDTH, HEIGHT = 800, 600
 # Where the battle's recipes park the mouse: the game draws its own cursor, so in the panel, off
 # the battlefield, beside the log's item (the layout's [log], compared since M3 T4b-2b-1) and
@@ -444,13 +447,35 @@ class Game:
 
 
 # -- recipes: the common uses, by fixed coordinates (the menus never move) --------------------
-def to_scenario(game):
-    """From the start to the adventure map of the only map in Maps/ (a single scenario)."""
+# The scenario list's Show Advanced Options, and its Starting Bonus column's right arrow on the
+# first player's row (one row a player, 50 px apart; E17 M5 T8a, read on the screen).
+ADVANCED_OPTIONS = (513, 518)
+BONUS_RIGHT = (383, 146, 50)
+
+
+def gold_bonus(game, players=2):
+    """Sets the first `players` players' starting bonus to Gold in the scenario list's advanced
+    options (E17 M5 T8a, M4's review item 15): a random bonus can give a hero an artifact that
+    changes its luck, morale or primary skills for one run (M4 T3b-2's `luck`, `morale`, `bolt`).
+    The right arrow goes Random, Artifact, Gold (then Resource where the town allows one); the
+    computer's rows change as the human's. Gold changes nothing in a battle."""
+    game.click(*ADVANCED_OPTIONS, 1.0)
+    x, y, step = BONUS_RIGHT
+    for row in range(players):
+        for _ in range(2):
+            game.click(x, y + step * row, 0.5)
+
+
+def to_scenario(game, gold=False):
+    """From the start to the adventure map of the only map in Maps/ (a single scenario); with
+    `gold` (the battle recipes, E17 M5 T8a) every player's starting bonus Gold, else random."""
     game.wait("main_menu", 90)
     game.click(640, 75, 1.0)  # New Game
     game.wait("new_game_menu")
     game.click(640, 75, 1.0)  # Single Scenario
     game.wait("scenario_list")
+    if gold:
+        gold_bonus(game)
     game.click(497, 553, 1.0)  # Begin
     game.move(700, 300)  # away from the edges: a cursor there scrolls the adventure map
     game.wait("adventure_map", 60)
@@ -631,9 +656,9 @@ def capture(game, map_path, out, frames, key="Right", stacks=None, hot_seat=Fals
     if hot_seat:
         import h3adv
 
-        h3adv.to_hot_seat(game, ["Red", "Blue"])
+        h3adv.to_hot_seat(game, ["Red", "Blue"], gold=True)
     else:
-        to_scenario(game)
+        to_scenario(game, gold=True)
     t0 = into_battle(game, key, walls)
     if mouse is not None:
         game.move(*mouse)
@@ -937,9 +962,9 @@ def sequence(game, map_path, out, pre=0, actions=(), ms=1000, screen=False, fram
     if hot_seat:
         import h3adv
 
-        h3adv.to_hot_seat(game, ["Red", "Blue"])
+        h3adv.to_hot_seat(game, ["Red", "Blue"], gold=True)
     else:
-        to_scenario(game)
+        to_scenario(game, gold=True)
     if game.sound:
         sounds_settled(game)
     t0 = into_battle(game, key)

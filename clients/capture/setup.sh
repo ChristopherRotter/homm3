@@ -11,11 +11,13 @@
 # user's original-data/battle-videos.vid when it is there (E17 M5 T4b2b: the result window's ten
 # clips and the spell book's two page turns, a VIDEO.VID of its own; H3_VIDEOS names another),
 # else by an empty archive (no clip plays). The run directory is original-data/wine/game
-# (gitignored), the Wine prefix $WINEPREFIX (default ~/.wine-h3).
+# (gitignored), the Wine prefix $WINEPREFIX (default ~/.wine-h3). A second instance (E17 M5
+# T8a: two captures side by side) sets H3_RUN (another run directory's parent), WINEPREFIX and,
+# for h3drive.py, H3_DISPLAY; set up one instance at a time (wineboot uses display :98).
 set -euo pipefail
 root="$(cd "$(dirname "$0")/../.." && pwd)"
 install="${1:-$root/original-data/install}"
-run="$root/original-data/wine"
+run="${H3_RUN:-$root/original-data/wine}"
 export WINEPREFIX="${WINEPREFIX:-$HOME/.wine-h3}" WINEARCH=win32 WINEDEBUG=-all
 export WINEDLLOVERRIDES="mscoree,mshtml="
 
