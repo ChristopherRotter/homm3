@@ -3511,6 +3511,43 @@ green `master` (819f41d) stood in.
   with the original data passed every step it runs.
 - **Found:** review items 56 to 60; no question.
 
+### M5 T7 — Accounts (2026-10-30)
+
+On `client/e17-m5-t7`, the user present at the start, the original data staged at once (the
+device link dropped later, as expected). The user chose the dependencies (`argon2` 0.6, the
+engine's; Ed25519 already T6a's `ed25519-dalek`), the password from standard input shown as
+typed (over the `console` crate's hidden input and a window dialog; `rpassword` is Apache-2.0
+alone) and kept T7 whole (the agent proposed T7a the login, T7b the password change). The VM
+restarted about 10 minutes in and its baseline died in its coverage step (fmt, clippy, the doc
+tests and deny had passed): CI's green `master` (d2d4c70, then 56976c7) stood in.
+
+- **Built** (design §11.4): `remote::Accounts` (the accounts file: `parse`, `text`, `key`,
+  `due`, `set`, `change`, `done`; seeds out of its debug print), `Login`, `Signer`,
+  `Client::login` (the login's step `Old`, `Rekey`, `Key`; the re-key and the account's login
+  made and signed with the first), `Client::account`, `Note::LoggedIn`, `Rekeyed`,
+  `OldKeyRefused`, `remote::farewell`, `Pins::addresses`; the binary's `account` (`derive`,
+  `public`, `login_name`, `h3-view account`, `keep`, the file owner-only on Unix, `Account`'s
+  `login` and `done`), `connect`'s `--login`, `--register`, `--accounts` (the window's too),
+  `connect::join` shared with `online`, the final goodbyes ending `connect` and the window; the
+  window's `--server` in the help.
+- **Tested:** the lib's login (signed for the address and the challenge; a registration; by an
+  earlier key then the re-key; the earlier key refused; other refusals), the accounts file, the
+  final goodbyes; the binary's test vector, the file's text and mode, a change's due servers, the
+  login's and the re-key's signatures verified by Ed25519; `connect`'s options. The library at
+  100 %.
+- **Run against `h3-server`** (`master`'s, `anonymous = false`): headless, two accounts
+  registered, both seats dropping and re-joined by account to the end; a password change, the
+  re-key on a second connection (the first heard `Rekeyed`, stopped with its reason), a stale
+  earlier key refused on a second device and the login going on; `CommandLimit` (6 commands) at
+  both seats; `Abandoned` at a spectator. Under Xvfb, `--check`: two windows on `battle.toml`
+  dropping and re-joining (1 179 and 1 174 frames exact), two new windows taking the seats back
+  by account alone (1 828 and 1 789 exact; the battle outlasted the 150 s runs); `seq-raise.toml`
+  at speed 2 to both result windows, the attacker dropping (494 and 465 exact); a window whose
+  seat another connection of the account took closed with its reason.
+- **Gates:** `clients/scripts/check.sh` all passed (100 % lines and regions; `cargo deny` with
+  `argon2`'s licences); the scoped verify with the original data passed every step it runs.
+- **Found:** review items 61 to 65; no question.
+
 ## Accepted review lists (M1 to M4)
 
 M1 and M2 moved from the epic file on 2026-10-20 (less start-up reading), unchanged; M3 at its

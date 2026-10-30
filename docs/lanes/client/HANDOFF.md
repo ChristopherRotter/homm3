@@ -8,7 +8,7 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   accepted, CLT-Q22 to Q24 answered (a); the lane split at M3 T9c, CLT-Q18: the battle client
   here, the adventure map client the map-client lane's E24). **M5 (live play)** (QUEUE, the
   epic's M5): hot seat in-process first, then a game on a server and accounts; the new
-  dependencies the user's at T6 and T7. **T1 to T4 done** (the playhead; the timeline that grows,
+  dependencies the user's at T6 and T7. **T1 to T7 done** (the playhead; the timeline that grows,
   `live.rs`; the click's command; hot seat in the window; the spell book, design §7.17; the
   hero's aim, §7.18; the message box, Retreat and Surrender, §7.19; the result window, §7.20, its
   Bink decoder `h3-bink`, CLT-Q29, and its clip, §7.21; Auto Combat, §7.22, `h3_view::auto`; the
@@ -22,9 +22,11 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   T6b1 done: the window plays a seat on a server, design §11.2, `remote::seen`, the binary's
   `online`, `Battle`'s `Fight`; T6b2 done, kept whole by the user: the record that opens
   mid-battle, design §11.3, `anim::lies`, `scene::living`, the moat by fixed rows,
-  `remote::rejoined`, `Battle::afresh`: T6 done). **Next: M5 T7** (accounts: the dependencies
-  the user's at the task; QUEUE). Open PR: T6b2's #597 (branch `client/e17-m5-t6b2`; check it
-  first). The inbox's CLT-Q30 task (`h3-bink` as BINKW32's float DCT) and the user's Demons
+  `remote::rejoined`, `Battle::afresh`: T6 done; T7 done, kept whole by the user: accounts,
+  design §11.4, `argon2` the engine's and the password from standard input (the user's
+  choices), `h3-view account`, `remote::Accounts`, `Client::login` with the re-key,
+  `remote::farewell`). **Next: M5 T8** (M5's closure, at the user's checkpoint; QUEUE). Open
+  PR: T7's (branch `client/e17-m5-t7`; check it first). The inbox's CLT-Q30 task (`h3-bink` as BINKW32's float DCT) and the user's Demons
   note (T5a's dissolve, to re-investigate) wait for a free slot.
   Workspace `clients/` (`clients/README.md`), gates `clients/scripts/check.sh`; ADR-0020 (+ drafts
   in `adr-drafts/`), ADR-0024; the harness `clients/capture/README.md`; design §3–§11; records in
@@ -53,7 +55,15 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
 
 ## Recent sessions
 
-- **2026-10-30, E17 M5 T6b2 (done; #597 open: check it first).** The original data staged;
+- **2026-10-30, E17 M5 T7 (done; its PR open: check it first).** The original data staged; the
+  user chose `argon2` (the engine's), the password from standard input shown as typed, and kept
+  T7 whole (the agent proposed a cut); the VM restarted ~10 minutes in (CI's green `master` the
+  baseline). Built the accounts (design §11.4): the key derived and kept, the login and the
+  re-key, seats by account, the final goodbyes; the test vector reproduced; live on a local
+  `h3-server`, headless and in two windows to the result window, seats re-taken by account
+  after drops and by new processes, every frame exact. Items 61 to 65; T8 next.
+
+- **2026-10-30, E17 M5 T6b2 (done; #597 merged).** The original data staged;
   the agent's cut into T6b2a/b declined by the user (kept whole); the VM restarted ~10 minutes
   in (CI's green `master` the baseline). Built the record that opens mid-battle (R2-8, R1-3) and
   the restart's new timeline (design §11.3); checked against the recorded `raise` cut after its
@@ -68,11 +78,3 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
   one human here (`remote_turn`); two windows on a local `h3-server` played `battle.toml` to its
   end with a drop and a re-join, and `seq-haste` with both casts through the book and the aim,
   every frame exact; both content outcomes. Items 52 to 55; T6b2 next.
-
-- **2026-10-30, E17 M5 T6a (done; #592 merged).** No original data in the
-  session; the user chose the server's stack (blocking only on the I/O thread) and cut T6: the
-  part without original content now. Built `h3_view::remote` (the welcome's checks, the pins,
-  join or create, the record fetched and grown, the content check), the binary's `net` (the I/O
-  thread, `ws://` and `wss://` with graviola) and `h3-view connect` (headless, the plain player,
-  `--drop`); loopback tests (plain and TLS, a drop and a re-join) and a run against `h3-server`.
-  Items 48 to 51; T6b in the queue.

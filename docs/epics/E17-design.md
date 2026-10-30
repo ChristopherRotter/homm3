@@ -4731,3 +4731,62 @@ restored game (its numbers afresh from the re-join's snapshot: `NOTES.md`, "The 
   then, with `record_bytes` 16 KiB, a window joining the attacker's seat by its token after
   another had left it: its record opened mid-battle (the last 8 of the game's 15 commands), the
   corpses drawn (a screenshot), played to the end, 415 frames exact.
+
+### 11.4 Accounts (M5 T7)
+
+Kept whole by the user (2026-10-30); the server lane's asks: `NOTES.md`, "The live client",
+2026-10-12 (wire 13, `docs/epics/E16-design.md` §10, ADR-0019 point 1).
+
+- **The dependencies** (the user, 2026-10-30): `argon2` 0.6, the engine's version and features
+  (`alloc`, `zeroize`; MIT OR Apache-2.0), the binary's only; Ed25519's signing by T6a's
+  `ed25519-dalek`. The password is read from standard input, a line shown as typed (the user's
+  choice over the `console` crate's hidden input and a dialog in the window; `rpassword` is
+  Apache-2.0 alone, not on the licence list), its prompt only on a terminal.
+- **The key** (`h3-view account <login> [--change] [--accounts] [--pins]`, the binary's
+  `account`): the login lowercased (`account::is_login_name`), the seed Argon2id (64 MiB, 3
+  passes, 1 lane, version 0x13, salt `h3-account-v1:<login>`, 32 bytes), Ed25519's secret key;
+  the server lane's test vector reproduced. Kept in the accounts file (`remote::Accounts`,
+  *provisional*: default `accounts.txt` in the working directory as the pins file; a line per key,
+  `<login> key <seed>` then the account's `<login> old <seed> <address>...`; the file made
+  owner-only on Unix; its debug print leaves the seeds out), never the password. Run again, it
+  replaces the key (a new device, or after `Rekeyed`), the earlier keys kept.
+- **A password change** (`--change`; the current password first unless its key is kept here):
+  the key so far becomes an earlier key due at every server the pins file names, those an older
+  key is still due at left to it (the re-key there goes from that one); an earlier key due
+  nowhere is forgotten (`Accounts::done`).
+- **The login** (`remote::Client::login`, after the welcome's checks: its id is the address
+  dialed, so a login signs nothing a hostile server could relay): `Login` signed over
+  `account::login_message(address, challenge, login, display)` by the account's key, a
+  registration's display name with it (`--register`: the server takes it as a login when the
+  account exists with this key). With an earlier key due at this server: the login by it (no
+  registration), at its `Account` the `Rekey` (`account::rekey_message`, signed by both, made
+  with the login: the adapter signs once, `Signer`), at its `Account` `Note::Rekeyed` and
+  `LoggedIn`; refused `BadLogin`, the server holds the earlier key no more (re-keyed from another
+  device, or never registered): `Note::OldKeyRefused` and the login by the account's key. Either
+  note ends the earlier key's due there (`Account::done` rewrites the file). Any other refusal
+  ends the login (by the earlier key accepted and its re-key refused, the connection stays
+  logged in by it); the adapters end the run.
+- **Seats by account** (`connect` and `window --server` with `--login`; `--accounts`): the join
+  waits for `LoggedIn` and carries no token (the given `--token` if any); the server's `Joined`
+  gives none, so a re-join after a drop logs in again and joins the same way, and so does a new
+  process (the seat is the account's).
+- **The goodbyes** (`remote::farewell`, *provisional*): `Rekeyed` (log in again with the new
+  password: `h3-view account`), `CommandLimit` (the game is void), `Abandoned` (gone before it
+  started), `Replaced` (another connection took the seat: re-taking it would take turns with
+  that one) and `Protocol` end the run with their reason (`connect` fails; the window closes,
+  the reason on standard error); after the game's end they are lines only; every other goodbye
+  (a shutdown, a timeout, a pause) is a drop: dialed again.
+- **Checked:** `remote`'s login, re-key, refusals and `Accounts` at 100 %; the binary's test
+  vector, the file and its mode, the login's and the re-key's signatures verified by Ed25519.
+  Against a local `h3-server` (`anonymous = false`): anonymous refused (`NotLoggedIn`); headless,
+  both seats registered, each dropping (after 3 and 2 commands) and re-joined by account to the
+  end; a password change, a second connection re-keying the account (`players.log`'s
+  `Rekeyed`) while the first, logged in by the earlier key, heard `Goodbye { Rekeyed }` and
+  stopped with its reason; a second device's stale earlier key refused and the login going on;
+  a server with `commands_per_game = 6` (`CommandLimit` at both seats) and a spectator of a
+  waiting game its player left (`Abandoned`). Under Xvfb, `--check`: two windows logged in on
+  `battle.toml`, each dropping and re-joining (1 179 and 1 174 frames exact), then two new
+  windows taking both seats back by account alone (1 828 and 1 789 frames exact); two windows on
+  `seq-raise.toml` at speed 2, the attacker dropping after 2 commands, both to the result window
+  (494 and 465 frames exact); a window whose seat another connection of the account took closed
+  with "another connection took the seat".
