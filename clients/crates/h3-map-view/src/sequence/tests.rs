@@ -17,7 +17,7 @@ fn one(rest: &str) -> Sequence {
 #[test]
 fn reads_the_recorded_sequences() {
     let sequences = Sequences::parse(SEQUENCES).unwrap();
-    assert_eq!(sequences.sequence.len(), 28);
+    assert_eq!(sequences.sequence.len(), 31);
     // The status window's kind asked at 0 (E24 M3 T5b2).
     let date = sequences.get("status-date-end").unwrap();
     assert_eq!(date.asked(), Ok(Some(Asked { kind: 1, end: 3000 })));

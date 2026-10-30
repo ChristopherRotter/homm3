@@ -41,7 +41,10 @@ opening:rows, morale:start, luck:start (the README's "Rewards on the map"). Sinc
 (batch E8a): `key` (a key pressed for the selected hero), `again_if = { marks = <n> }` (the second
 click only after that many marks), `only_if = "aboard"`, and the observations boat, boat[<hero>],
 boat:x,y, boats:used, drawn, opening:field, battlefield:ship, blocked, again, key and a Flotsam's
-object:x,y (the README's "Boats and the sea").
+object:x,y (the README's "Boats and the sea"). Since E08 T79b (batch E9b): `gold = true` (the
+starting bonus Gold), an end-turn step's `record` and `note` (the new turn's messages), a repeated
+row label `<label>#<n>`, and the observations income, gardens, growth:x,y, gain and the weekly
+objects' object:x,y, through a hero on the entrance (the README's "The day's start").
 
 Library use: to_hot_seat, dismiss, end_turn, select, centre, hover, walk, observe,
 open_hero_screen, equip; since E08 T47a screen_kind, click_item, right_click, run_actions,
@@ -117,14 +120,19 @@ def click_button(game, name, at):
     game.move(*PARK)
 
 
-def dismiss(game, quiet=1.5, limit=60.0):
+def dismiss(game, quiet=1.5, limit=60.0, mem=None, events=None):
     """Clicks every dialog's OK until none shows for `quiet` seconds on the adventure map;
-    returns how many it clicked."""
+    returns how many it clicked. With `mem` and `events` (E08 T79b, batch E9b's timed events at a
+    turn's start) each message's record and pictures go into events["messages"] and
+    events["message_pictures"] before its OK."""
     clicked, since, end = 0, time.monotonic(), time.monotonic() + limit
     while time.monotonic() < end:
         pix = game.settled()
         found = find_button(game, "ok", pix)
         if found:
+            if events is not None and mem.dialog():
+                events["messages"].append(message_record(mem))
+                events["message_pictures"].append(pictures_text(mem))
             click_button(game, "ok", found[0])
             clicked, since = clicked + 1, time.monotonic()
         elif not game.matches("adventure", pix):
@@ -168,9 +176,10 @@ def to_hot_seat(game, names, difficulty="normal", gold=False):
     dismiss(game)
 
 
-def end_turn(game, mem):
+def end_turn(game, mem, events=None):
     """Ends the current player's turn (key e) and passes the dialogs up to the next human's map;
-    returns the new current player."""
+    returns the new current player. With `events` (E08 T79b) the messages of the new turn's start
+    are recorded there (dismiss)."""
     player = mem.current_player()
     game.key("e", 0.5)
     end = time.monotonic() + 60
@@ -181,7 +190,7 @@ def end_turn(game, mem):
         if found:
             click_button(game, "ok", found[0])
         time.sleep(0.2)
-    dismiss(game)
+    dismiss(game, mem=mem, events=events)
     return mem.current_player()
 
 
@@ -531,6 +540,96 @@ def attack_to_the_end(game, mem, end):
     play_turns(game, mem, lambda s: nearest_enemy(mem, s), lambda: False, end, "attack")
 
 
+def auto_again(game, mem, end, stall=8.0, settle_on=3.0, refused=3):
+    """E08 T79a (batch E9a's E9-2: who plays an owned mine's guards): auto combat, turned on
+    again at each stop. Auto combat is on when the battle manager's flag says so (+0x132C4), so
+    the key is pressed only while it is off (a second press would stop it); each time it is
+    found off again after it was on, a stop is recorded (the active stack's side, creature and
+    count). When the key leaves it off `refused` times in a row (the first run: a battle between
+    two human players in hot seat, as E08 T32b1 found), or it is on and the same stack stays
+    active with every stack unchanged for `stall` seconds, that stop is recorded and the rest is
+    played by `play_waiting` (every stack attacks the nearest enemy, each turn recorded as
+    waiting for an order or not). Returns the stops: [{side, creature, count, auto}]."""
+    stops, pressed, presses, state, since = [], False, 0, None, time.monotonic()
+    while not find_button(game, "battle_ok"):
+        if time.monotonic() > end:
+            game.dump(game.out / "auto-again-stalled.xwd")
+            raise TimeoutError("the battle does not end")
+        active = mem.globals()["active"]
+        now = (active, stacks(mem))
+        if now != state:
+            state, since = now, time.monotonic()
+        if active is None:
+            time.sleep(0.1)
+            continue
+        stack = next((s for s in mem.stacks() if [s["side"], s["record"]] == active), None)
+        if stack is None:
+            time.sleep(0.1)
+            continue
+        stop = {"side": SIDES[active[0]], "creature": stack["creature"], "count": stack["count"]}
+        if not mem.auto_combat_on():
+            if presses >= refused:
+                stops.append({**stop, "auto": f"the key left auto combat off {presses} times"})
+                stops += play_waiting(game, mem, end)
+                break
+            if pressed:
+                stops.append({**stop, "auto": "off again: turned on again"})
+                pressed = False
+            game.key("a", 0.5)
+            presses += 1
+            try:
+                wait_for(lambda: mem.auto_combat_on() or find_button(game, "battle_ok"),
+                         "auto combat on", settle_on)
+                pressed, presses = True, 0
+            except TimeoutError:
+                pass  # lost (before the stack took orders) or refused: pressed again
+            state, since = None, time.monotonic()
+            continue
+        if time.monotonic() - since > stall:
+            stops.append({**stop, "auto": "on, the stack waits"})
+            game.key("a", 0.5)  # auto combat off before the orders
+            stops += play_waiting(game, mem, end)
+            break
+        time.sleep(0.2)
+    return stops
+
+
+def play_waiting(game, mem, end, patience=2.0):
+    """E08 T79a: plays the rest of a battle as attack_to_the_end does, but first waits up to
+    `patience` seconds at each turn: a stack the computer plays acts by itself (recorded `acted
+    without an order`), one that waits for its player's order is recorded (`waited for an
+    order`) and attacks the nearest enemy (strike). Returns the turns' records."""
+    turns = []
+    while not find_button(game, "battle_ok"):
+        if time.monotonic() > end:
+            raise TimeoutError("play_waiting: the battle goes on")
+        active = mem.globals()["active"]
+        stack = next((s for s in mem.stacks() if [s["side"], s["record"]] == active), None) \
+            if active else None
+        if stack is None or stack["creature"] in MACHINES:
+            time.sleep(0.1)
+            continue
+        turn = {"side": SIDES[active[0]], "creature": stack["creature"], "count": stack["count"]}
+        try:
+            wait_for(lambda a=active: mem.globals()["active"] != a
+                     or find_button(game, "battle_ok"), "an action without an order", patience)
+            turns.append({**turn, "auto": "acted without an order"})
+            continue
+        except TimeoutError:
+            pass
+        aim = nearest_enemy(mem, stack)
+        action = strike(game, mem, active, aim) if aim else (game.key("d", 0.3) or "defends")
+        turns.append({**turn, "auto": f"waited for an order: {action}"})
+        game.move(*BATTLE_PARK)
+        try:
+            wait_for(lambda a=active: mem.globals()["active"] != a or find_button(game, "battle_ok"),
+                     "the next stack's turn", 30)
+        except TimeoutError:
+            game.dump(game.out / "plan-stalled.xwd")
+            raise
+    return turns
+
+
 def end_tactics_phase(game, mem, end):
     """Ends a battle's tactics phase (E08 T47a): the message that opens it (GENRLTXT 373) closed
     with its OK, then the battle's Start button (item 30722, "Start Combat") clicked, until the
@@ -556,8 +655,10 @@ def fight(game, mem, plan, limit=300.0):
     auto combat does not play a battle between two human players in hot seat), or a table `{
     attack = "<creature>", by = "attacker" | "defender", then = "attack" | "auto" }` (E4-9): each
     stack of that side attacks the other side's stack of that creature while it stands and every
-    other stack defends, then `then` plays the rest; the war machines act by themselves. The
-    record holds the battlefield at the start (`field`: h3mem.battlefield)."""
+    other stack defends, then `then` plays the rest; the war machines act by themselves. Since
+    E08 T79a "auto again" (auto combat turned on again at each stop: auto_again, its `stops`
+    recorded). The record holds the battlefield at the start (`field`: h3mem.battlefield) and
+    since E08 T79a each side's owner and controllers (`sides`: h3mem.battle_sides)."""
     if plan is None:
         raise RuntimeError("a battle the step does not plan (`battle`)")
     if isinstance(plan, dict):
@@ -567,8 +668,10 @@ def fight(game, mem, plan, limit=300.0):
         action, side = "first", SIDES.index(plan["by"])
     else:
         words = plan.split()
+        if plan == "auto again":
+            words = ["again"]  # E08 T79a: auto combat, on again at each stop (auto_again)
         action, side = words[-1], SIDES.index(words[0]) if len(words) == 2 else 0
-        if action not in ("auto", "attack", *BATTLE_KEYS) or len(words) > 2:
+        if action not in ("auto", "attack", "again", *BATTLE_KEYS) or len(words) > 2:
             raise ValueError(f"unknown battle plan `{plan}`")
     game.move(*BATTLE_PARK)
     wait_for(lambda: mem.stacks(), "the battle's stacks", 10)
@@ -576,6 +679,8 @@ def fight(game, mem, plan, limit=300.0):
     record = {"plan": plan, "field": mem.battlefield(), "start": stacks(mem),
               # E08 T68a: the hexes an obstacle blocks at the opening (batch E8's openings).
               "blocked": mem.obstacle_hexes(),
+              # E08 T79a: each side's owner and whether a human (here) controls it (E9-2).
+              "sides": mem.battle_sides(), "stops": [],
               # E08 T57: every stack's record at the opening (army slot, morale, luck, ...).
               "opening": [{k: st[k] for k in ("side", "army_slot", "hex", "creature", "count",
                                                 "morale", "luck")} for st in mem.stacks()]}
@@ -595,6 +700,8 @@ def fight(game, mem, plan, limit=300.0):
             attack_to_the_end(game, mem, end)
     elif action == "attack":
         attack_to_the_end(game, mem, end)
+    elif action == "again":
+        record["stops"] = auto_again(game, mem, end)
     elif action == "auto":
         auto_combat(game, mem, end)
     else:
@@ -697,11 +804,13 @@ def settle(game, mem, index, answer=None, battle=None, level_up="left", actions=
     end = time.monotonic() + 600
     while time.monotonic() < end:
         kind = screen_kind(mem)
-        if kind in ("exchange", "army"):
+        if kind in ("exchange", "army", "boat"):
+            # E08 T79a (batch E9a): also a mine's Leave Guards (the army dialog) and a
+            # Shipyard's boat dialog.
             events["screens"].append(kind)
             if actions and not events["actions"]:
                 events["actions"] = run_actions(game, mem, index, actions)
-            if (now := screen_kind(mem)) in ("exchange", "army"):
+            if (now := screen_kind(mem)) in ("exchange", "army", "boat"):
                 close_screen(game, mem, now, screen_heroes(mem, now, index))
             last, since, known = None, time.monotonic(), time.monotonic()
             continue
@@ -892,7 +1001,12 @@ def walk(game, mem, name, target, answer=None, battle=None, level_up="left", act
     x, y, z = (*target, 0) if len(target) == 2 else target
     view_both(game, mem, hero, x, y, z)
     before = observe(mem, index)
-    game.click(*hover(game, mem, x, y, z), 0.3)
+    point = hover(game, mem, x, y, z)
+    # E08 T79a (batch E9a's E9-5): the cursor over the target before the first click (its type
+    # and frame: an own Shipyard's tile shows cradvntr.DEF frame 6, survey E08-economy §5.3).
+    time.sleep(0.1)
+    cursor = mem.cursor()[:2]
+    game.click(*point, 0.3)
     game.move(*PARK)
     time.sleep(0.3)
     path = mem.path()
@@ -912,7 +1026,7 @@ def walk(game, mem, name, target, answer=None, battle=None, level_up="left", act
         "arrived": after["tile"] == [x, y, z],
         "moved": after["tile"] != before["tile"], "points_before": before["points"],
         "points": after["points"], "first_click_walked": first_walked,
-        "again": "yes" if again else "no", **events,
+        "again": "yes" if again else "no", "cursor": cursor, **events,
     }
 
 
@@ -996,7 +1110,8 @@ def equip(game, mem, name, moves):
 # click lands on is found by the dialog's items in memory (their ids and boxes), never by fixed
 # coordinates or probes. The adventure map and the battle are dialogs too.
 SCREEN_KINDS = {0x63A5E4: "map", 0x63D528: "battle", 0x63EAE8: "hero", 0x642428: "exchange",
-                0x643854: "army", 0x643C14: "creature", 0x63B8F8: "split", 0x63DB40: "message"}
+                0x643854: "army", 0x643C14: "creature", 0x63B8F8: "split", 0x63DB40: "message",
+                0x643908: "boat"}
 # Each screen's items by name (survey E08-army §1.1, §2.3, §3.1-§3.4, §4, §5.1: the procedures'
 # item ids; checked under Wine, E08 T47a). A name `<part>:<n>` is the part's n-th (an army slot
 # from 0 at the left, a worn position by its number 0-18, a backpack place from 0 at the left of
@@ -1011,7 +1126,10 @@ SCREEN_KINDS = {0x63A5E4: "map", 0x63D528: "battle", 0x63EAE8: "hero", 0x642428:
 # The split dialog (0x449E90): OK 30722, cancel 30721, the slider 6, the counts 4 (the source)
 # and 5 (the target). A message: OK 30722; a question: yes 30725, no 30726; since E08 T57 a
 # choice's two pictures' frames left 30729 (0x7809) and right 30730 (0x780A). The battle: the
-# tactics phase's Start 30722.
+# tactics phase's Start 30722. Since E08 T79a (batch E9a) the boat dialog of a Shipyard
+# (shipyard_dialog_create 0x5D1EF0, its vtable 0x643908): build 30722 (iBUY30.def, the result
+# 0x7802 that builds), cancel 30721 (iCancel.def). The army dialog is also a mine's Leave Guards
+# (army_dialog_with 0x5D12B0: the mine's guards upper, the hero's army lower).
 SCREEN_ITEMS = {
     "hero": {"army": 68, "worn": 2, "backpack": 40, "backpack left": 77, "backpack right": 78,
              "loose": 122, "tight": 124, "tactics": 126, "split": 127, "close": 30720},
@@ -1025,6 +1143,7 @@ SCREEN_ITEMS = {
     "split": {"ok": 30722, "cancel": 30721},
     "message": {"ok": 30722, "yes": 30725, "no": 30726, "left": 30729, "right": 30730},
     "battle": {"start": 30722},
+    "boat": {"build": 30722, "cancel": 30721},
 }
 # The counts each screen shows under its army slots (text items, first id): the hero screen's
 # 61-67, the exchange's 65-71 and 72-78, the army dialog's 108-114 and 133-139.
@@ -1050,13 +1169,31 @@ def message_record(mem):
     T68b also `RANDSIGN:24`, a sign's or Ocean Bottle's default text), or first, since E08 T68b,
     `the map's text "..."` when it is the text one of the map's message records holds (batch
     E8b's E8-9: the map's own text, never the original's, ADR-0009; identify would name a text
-    with " the " in it GENRLTXT:16, `%s the %s`); `?` for neither."""
+    with " the " in it GENRLTXT:16, `%s the %s`); `?` for neither. Since E08 T79b also a text
+    of the batch's spec (OWN_TEXTS: its timed events' and events' messages, batch E9b's E9-11),
+    which the game keeps in records the harness does not read."""
     text = mem.dialog_text()
     lines = [" ".join(line.split()) for line in [text, *text.split("\n")]]
     for has_text, own in mem.messages():
         if has_text and " ".join(own.split()) in lines:
             return f'the map\'s text "{own}"'
+    for own in OWN_TEXTS:
+        if " ".join(own.split()) in lines:
+            return f'the map\'s text "{own}"'
     return h3lod.identify(text) or "?"
+
+
+# The batch's own message texts (E08 T79b; batch sets them from its spec): message_record names a
+# message with one of them `the map's text "..."`.
+OWN_TEXTS = []
+
+
+def own_texts(spec):
+    """The messages a spec's map shows that are its own (E08 T79b): its timed events' and
+    events' `message`s."""
+    found = tomllib.loads(Path(spec).read_text()).get("map", {})
+    return [e["message"] for kind in ("timed_event", "event") for e in found.get(kind, [])
+            if e.get("message")]
 
 
 def picture_text(mem, picture):
@@ -1318,9 +1455,10 @@ def pass_dialogs(game, mem, obs, answer, heroes):
 
 
 def close_screen(game, mem, kind, heroes):
-    """Closes a hero screen, exchange or army dialog an action left open (its close or OK)."""
+    """Closes a hero screen, exchange or army dialog an action left open (its close or OK; since
+    E08 T79a a boat dialog by its cancel: nothing built)."""
     if screen_kind(mem) == kind:
-        click_item(game, mem, "ok" if kind == "army" else "close", heroes)
+        click_item(game, mem, {"army": "ok", "boat": "cancel"}.get(kind, "close"), heroes)
 
 
 def hero_screen(game, mem, name, actions):
@@ -1522,6 +1660,56 @@ def drawn_text(mem, hero):
     return f"in a boat (type {found[0]['type']}, flag {found[0]['colour']})"
 
 
+def colour_name(colour):
+    return COLOURS[colour] if 0 <= colour < len(COLOURS) else "none"
+
+
+def mine_text(mem, x, y, z=0):
+    """A mine's or Lighthouse's record by its entrance (E08 T79a, batch E9a; h3mem.mines):
+    `record 3; owner red; resource crystal; abandoned 0; guards 0: 150 Troglodytes` (a
+    Lighthouse's resource `Lighthouse (100)`; the guards slot by slot, `none`); `none` without a
+    record there."""
+    found = [m for m in mem.mines() if m["entrance"] == [x, y, z]]
+    if not found:
+        return "none"
+    mine = found[0]
+    kind = mine["resource"]
+    resource = ("Lighthouse (100)" if kind == h3mem.LIGHTHOUSE else h3mem.RESOURCES[kind]
+                if 0 <= kind < len(h3mem.RESOURCES) else str(kind))
+    guards = ", ".join(f"{k}: {c} " + (mem.creature_name(t, c) if t >= 0 else "(no creature)")
+                       for k, (t, c) in enumerate(mine["guards"]) if t >= 0 or c) or "none"
+    return (f"record {mine['index']}; owner {colour_name(mine['owner'])}; resource {resource}; "
+            f"abandoned {mine['abandoned']}; guards {guards}")
+
+
+SHIPYARD_CLASS = 87
+
+
+def shipyard_word(word):
+    """A Shipyard tile's word (survey E08-economy §2.1, §5.1): the owner in its low byte (signed,
+    0xFF none), the boat tile's column and row in its next two (0xFF 0xFF none)."""
+    owner = word & 0xFF
+    column, row = word >> 8 & 0xFF, word >> 16 & 0xFF
+    tile = "none" if (column, row) == (0xFF, 0xFF) else f"{column},{row}"
+    return f"owner {colour_name(owner - 256 if owner > 127 else owner)}, boat tile {tile}"
+
+
+def tile_text(mem, x, y, z=0):
+    """A tile's own word and class (E08 T79a, batch E9a's E9-5: each of a Shipyard's three
+    tiles; h3mem.tile_word): `0xffff32ff class 87.0 (owner red, boat tile 50,31)`; a hero's tile
+    names the hero and the word and class under it (its record's +0x14, +0xC)."""
+    tile = mem.tile_word(x, y, z)
+    word, kind = tile["word"], tile["class"]
+    text = f"{word:#010x} class {kind}.{tile['subclass']}"
+    if kind == SHIPYARD_CLASS:
+        text += f" ({shipyard_word(word)})"
+    if "hero" in tile:
+        under, below = tile["under_word"], tile["under_class"]
+        text += (f"; hero {mem.hero(tile['hero'])['name']}, under it {under:#010x} class "
+                 f"{below}" + (f" ({shipyard_word(under)})" if below == SHIPYARD_CLASS else ""))
+    return text
+
+
 def object_text(mem, x, y, z=0):
     """What the object anchored at (x, y, z) holds, from its word (E08 T57, batch E7; survey
     E08-rewards.md and map.toml's visit functions): an artifact's name (5, the subclass); a
@@ -1536,8 +1724,36 @@ def object_text(mem, x, y, z=0):
     a Sea Chest's (82: `Sea Chest: nothing`, `1500 gold` or `artifact <name>, 1000 gold` by the
     kind in bits 0-2, §8.3), a Survivor's artifact (86, §8.4) and an Ocean Bottle's message (59:
     `the map's text "..."` or `no text`, by its record, §8.5) and `none (class 3: the coast)` for
-    a coastal tile without an object."""
+    a coastal tile without an object. Since E08 T79b (batch E9b; survey E08-economy.md §9) a
+    Windmill's (112: `Windmill: 4 sulfur` or `empty (sulfur)`, bits 13-16 and 0-3), a Water
+    Wheel's (109: `500 gold` or `empty`, bits 0-4 in 500s) and a Mystical Garden's (55: `Garden 0:
+    full, 5 gems` or `empty (500 gold)`, bit 10, bits 6-9, the index bits 0-4), each with its visited
+    marks (bits 5-12, the teams; the Garden's are the players' masks, `gardens`); and an object a
+    hero stands on is read through the hero's record (object_tile: `... (under E9-8)`)."""
+    tile = object_tile(mem, x, y, z)
+    text = object_word_text(mem, tile)
+    return f"{text} (under {tile['hero']})" if "hero" in tile else text
+
+
+def object_tile(mem, x, y, z=0):
+    """mem.object_at, and when a hero stands on the object's entrance the class and word under it
+    from the hero's record (+0xC, +0x14; E08 T79b, batch E9b's E9-8: a hero left on a Windmill's
+    entrance until the week's start), with the hero's name; the subclass is then unknown (-1)."""
     tile = mem.object_at(x, y, z)
+    if tile["class"] == h3mem.HERO_OBJECT:
+        under = mem.tile_word(*tile["tile"])
+        if "hero" in under:
+            tile = {**tile, "class": under["under_class"], "word": under["under_word"],
+                    "subclass": -1, "hero": mem.hero(under["hero"])["name"]}
+    return tile
+
+
+# The weekly objects' classes (E08 T79b; survey E08-economy.md §9).
+WINDMILL, WATER_WHEEL, GARDEN = 112, 109, 55
+
+
+def object_word_text(mem, tile):
+    """What an object holds by its class and word (object_text)."""
     kind, word = tile["class"], tile["word"]
     artifact = held_artifact(tile)
     if kind in (0, -1):
@@ -1572,6 +1788,19 @@ def object_text(mem, x, y, z=0):
         return f"{'guarded' if word & 1 else 'looted'}, {mem.spell_name(word >> 13 & 0xFF)}"
     if kind == 29:
         return "Flotsam: " + FLOTSAM.get(word, f"word {word} (nothing)")
+    if kind in (WINDMILL, WATER_WHEEL, GARDEN):
+        marks = f"marks {word >> 5 & 0xFF:#04x}"
+        if kind == WINDMILL:
+            drawn = signed(word & 0xF, 4)
+            resource = h3mem.RESOURCES[drawn] if 0 <= drawn < 7 else f"resource {drawn}"
+            amount = word >> 13 & 0xF
+            return f"Windmill: {f'{amount} {resource}' if amount else f'empty ({resource})'}; {marks}"
+        if kind == WATER_WHEEL:
+            gold = 500 * (word & 0x1F)
+            return f"Water Wheel: {f'{gold} gold' if gold else 'empty'}; {marks}"
+        resource = word >> 6 & 0xF
+        gain = {5: "5 gems", 6: "500 gold"}.get(resource, f"resource {resource}")
+        return f"Garden {word & 0x1F}: {'full, ' + gain if word >> 10 & 1 else f'empty ({gain})'}"
     if kind == 82:
         chest = word & 7
         if chest == 2:
@@ -1592,7 +1821,7 @@ def object_text(mem, x, y, z=0):
 # `before:` they are read right before the step (E08 T57: `pre_read`), else they would show the
 # state after it.
 LIVE_READS = ("explored", "word", "object", "monster", "aggression", "never_flees", "boat",
-              "boats", "drawn", "boat_record")
+              "boats", "drawn", "boat_record", "mine", "tile", "income", "gardens", "growth")
 
 
 def observations(what):
@@ -1611,6 +1840,10 @@ def record_value(obs, field, what, mem):
     rows (`{ rows = [...] }`, expand)."""
     if not field.startswith("row:"):
         return value(obs, what, mem)
+    if isinstance(what, str):
+        # E08 T79a (batch E9a's E9-1): an observation that gives rows itself (`opening:slots:`).
+        got = value(obs, what, mem)
+        return got if isinstance(got, list) else [[got]]
     rows = what["rows"] if isinstance(what, dict) else [what]
     return [[value(obs, cell, mem) for cell in row] for row in rows]
 
@@ -1649,7 +1882,7 @@ def value(obs, what, mem):
             # The snapshot holds no tiles: the read would be the state after the step.
             raise ValueError(f"`{what}`: read a tile before a step in a step of its own")
         return value({"before": obs["before"], "after": obs["before"]}, what.split(":", 1)[1], mem)
-    after = obs["after"]
+    after = obs.get("after")  # E08 T79b: an end-turn step has no hero
     if what in ("arrived", "moved"):
         return yes[obs[what]]
     if what == "points" and "points" not in obs:
@@ -1723,7 +1956,9 @@ def value(obs, what, mem):
     if m := re.match(r"(word|object):(\d+),(\d+)(?:,(\d))?$", what):
         x, y, z = int(m.group(2)), int(m.group(3)), int(m.group(4) or 0)
         if m.group(1) == "word":
-            return f"{mem.object_at(x, y, z)['word']:#010x}"
+            # E08 T79b: through a hero on the entrance (object_tile).
+            tile = object_tile(mem, x, y, z)
+            return f"{tile['word']:#010x}" + (f" (under {tile['hero']})" if "hero" in tile else "")
         return object_text(mem, x, y, z)
     if what == "heroes:experience":
         return pool_experience(mem)
@@ -1776,6 +2011,17 @@ def value(obs, what, mem):
     # (`morale:start[:<side>]`: `20 Pikemen -3, 10 Centaurs -3`).
     if what == "opening:rows":
         return opening_rows(mem, battles[-1]) if battles else []
+    # E08 T79a (batch E9a): a side's stacks at the last battle's opening, as table rows (army
+    # slot, creature, count) or in one line (`slot 0: 50 Troglodytes, slot 1: ...`).
+    if m := re.match(r"opening:(slots|stacks):(attacker|defender)$", what):
+        side = SIDES.index(m.group(2))
+        found = [s for s in battles[-1]["opening"] if s["side"] == side] if battles else []
+        if m.group(1) == "slots":
+            return [[str(s["army_slot"]), mem.creature_name(s["creature"], s["count"]),
+                     str(s["count"])] for s in found]
+        return ", ".join(f"slot {s['army_slot']}: {s['count']} "
+                         f"{mem.creature_name(s['creature'], s['count'])}" for s in found) \
+            or ("no battle" if not battles else "none")
     if m := re.match(r"(morale|luck):start(?::(attacker|defender))?$", what):
         if not battles:
             return "no battle"
@@ -1845,7 +2091,66 @@ def value(obs, what, mem):
         if m.group(1) == "monster":
             return army_text(mem, [(found["creature"], found["count"])])
         return str(found["aggression"]) if m.group(1) == "aggression" else yes[found["never_flees"]]
+    # E08 T79a (batch E9a): a mine's or Lighthouse's record by its entrance (`mine:x,y[,level]`),
+    # a tile's own word (`tile:x,y[,level]`), the cursor over a walk's target before its first
+    # click, the screens a step's walk opened, the last battle's sides at its opening (owner,
+    # human, human here) and the stops of `battle = "auto again"`.
+    if m := re.match(r"(mine|tile):(\d+),(\d+)(?:,(\d))?$", what):
+        x, y, z = int(m.group(2)), int(m.group(3)), int(m.group(4) or 0)
+        return mine_text(mem, x, y, z) if m.group(1) == "mine" else tile_text(mem, x, y, z)
+    if what == "cursor":
+        cursor = obs.get("cursor")
+        return f"type {cursor[0]}, frame {cursor[1]}" if cursor else "none"
+    if what == "screens":
+        return ", ".join(obs.get("screens", [])) or "none"
+    if what == "opening:sides":
+        if not battles:
+            return "no battle"
+        return "; ".join(f"{SIDES[k]} {colour_name(side['owner'])} (human {side['human']}, "
+                         f"here {side['here']})" for k, side in enumerate(battles[-1]["sides"]))
+    if what == "stops":
+        if not battles:
+            return "no battle"
+        return "; ".join(f"{stop['side']} {stop['count']} "
+                         f"{mem.creature_name(stop['creature'], stop['count'])} ({stop['auto']})"
+                         for stop in battles[-1]["stops"]) or "none"
+    # E08 T79b (batch E9b): a player's day's income (+0x108: `0 wood, 5 mercury, ...`), its
+    # Mystical Gardens' mask (+0xB8: `0x00000001 (Gardens 0)`), a monster's count with its
+    # sixteenths (bits 27-30: `47 Pikemen and 4/16 (756 sixteenths), grows`) and what the step
+    # changed in its hero's player's treasury (`+4 sulfur, +500 gold`; `none`). The player is
+    # the step hero's owner or, in an end-turn step, the new current player, unless named.
+    if m := re.match(r"(income|gardens)(?::([a-z]+))?$", what):
+        colour = player_colour(obs, m.group(2), mem)
+        found = mem.player(colour)
+        if m.group(1) == "income":
+            return ", ".join(f"{n} {k}" for k, n in found["income"].items())
+        mask = found["gardens"]
+        bits = ", ".join(str(b) for b in range(32) if mask >> b & 1)
+        return f"{mask:#010x} ({f'Gardens {bits}' if bits else 'none'})"
+    if m := re.match(r"growth:(\d+),(\d+)(?:,(\d))?$", what):
+        found = mem.monster(int(m.group(1)), int(m.group(2)), int(m.group(3) or 0))
+        if found is None:
+            return "none"
+        count, part = found["count"], found["sixteenths"]
+        return (f"{count} {mem.creature_name(found['creature'], count)} and {part}/16 "
+                f"({16 * count + part} sixteenths), "
+                + ("does not grow" if found["fixed_count"] else "grows"))
+    if m := re.match(r"gain(?::([a-z]+))?$", what):
+        owner = COLOURS[player_colour(obs, m.group(1), mem)]
+        was, now = obs["before"]["resources"][owner], after["resources"][owner]
+        return ", ".join(f"{now[k] - was[k]:+d} {k}" for k in now if now[k] != was[k]) or "none"
     raise ValueError(f"unknown observation `{what}`")
+
+
+def player_colour(obs, named, mem):
+    """The colour index an observation names (`red`, …), else the step's hero's owner, else (an
+    end-turn step) the current player (E08 T79b)."""
+    if named is not None:
+        if named not in COLOURS:
+            raise ValueError(f"unknown colour `{named}`")
+        return COLOURS.index(named)
+    hero = (obs.get("before") or {}).get("hero")
+    return hero["owner"] if hero else mem.current_player()
 
 
 def oddities(obs, expect):
@@ -1880,6 +2185,13 @@ def table_cells(line):
     return line[1:-1].split("|") if len(line) > 1 and line[0] == line[-1] == "|" else None
 
 
+def repeated(seen, label):
+    """A table row's label as its cells' keys name it (E08 T79b): the label itself the first time
+    the table has it, `<label>#<n>` the n-th time (`seen` counts them per table)."""
+    seen[label] = seen.get(label, 0) + 1
+    return label if seen[label] == 1 else f"{label}#{seen[label]}"
+
+
 def cell_key(section, label, columns, j):
     """The record key of a row's j-th cell: its label in a table of one value column, `<label> |
     <column>` in a wider one (E08 T37a: batch E5's probes, walks and heroes by column)."""
@@ -1892,12 +2204,16 @@ def fill(template, values, notes, header):
     Since E08 T57 a section's `rows` (a list of rows, opening:rows) fill its table's rows without
     a label in order, with more rows added after the last when they are not enough; since E08
     T68b a section's `rows:<first column>` fill the table whose first column is named so (a
-    section with several tables without labels: batch E8b's E8-8)."""
+    section with several tables without labels: batch E8b's E8-8); since E08 T79a the n-th such
+    table of a section (n from 2) by `rows:<first column>#<n>` (batch E9a's E9-1: two tables of
+    slots); since E08 T79b a row whose label an earlier row of its table has by `<label>#<n>`
+    (n from 2: batch E9b's two rows a day, `1 | wood` and `1#2 | wood`)."""
     lines, section, out, columns, rows = template.splitlines(), None, [], [], []
+    tables, seen = {}, {}
     for line in lines:
         m = re.match(r"## (\S+) ", line)
         if m:
-            section, columns = m.group(1), []
+            section, columns, tables = m.group(1), [], {}
             rows = list(values.pop((section, "rows"), []))
         cells = table_cells(line)
         if rows and cells is None and columns and out and table_cells(out[-1]) is not None:
@@ -1915,11 +2231,15 @@ def fill(template, values, notes, header):
                 line = f"- anything odd: {'; '.join(notes.pop(section))}"
             cells = table_cells(line)
             if cells is not None and TABLE_RULE.fullmatch(line.strip()) and out:
-                columns = table_cells(out[-1]) or []
-                if columns and (section, "rows:" + columns[0].strip()) in values:
-                    rows = list(values.pop((section, "rows:" + columns[0].strip())))
+                columns, seen = table_cells(out[-1]) or [], {}
+                first = columns[0].strip() if columns else None
+                tables[first] = tables.get(first, 0) + 1
+                key = (section, f"rows:{first}" + (f"#{tables[first]}" if tables[first] > 1
+                                                   else ""))
+                if columns and key in values:
+                    rows = list(values.pop(key))
             elif cells is not None and len(cells) == len(columns) > 1:
-                label = cells[0].strip()
+                label = repeated(seen, cells[0].strip())
                 for j in range(1, len(cells)):
                     key = cell_key(section, label, columns, j)
                     if not cells[j].strip() and key in values:
@@ -2073,6 +2393,7 @@ def batch(recipe_path, map_path=None, out=None):
         template = out / f"{name}-template.md"
         compile_spec(spec, out, name)  # the template; the given map stays the one played
     values, notes, steps = {}, {}, []
+    OWN_TEXTS[:] = own_texts(spec)  # E08 T79b: the map's own messages by their text
     log = open(out / "steps.jsonl", "w")
     game = Game(out)
     try:
@@ -2080,7 +2401,8 @@ def batch(recipe_path, map_path=None, out=None):
         restarts = []
         while True:
             game.start(map_path)
-            to_hot_seat(game, recipe["players"], difficulty)
+            # E08 T79b: `gold = true` gives each player the starting bonus Gold (E17 M5 T8a).
+            to_hot_seat(game, recipe["players"], difficulty, gold=recipe.get("gold", False))
             mem = h3mem.Mem()
             if mem.difficulty() != difficulty:
                 raise RuntimeError(f"the game's difficulty is {mem.difficulty()}, not {difficulty}")
@@ -2094,7 +2416,12 @@ def batch(recipe_path, map_path=None, out=None):
             game.stop()
         for step in (s for step in recipe["step"] for s in expand(step, mem)):
             if step.get("end_turn"):
-                obs = {"end_turn": True, "player": end_turn(game, mem)}
+                # E08 T79b: the new turn's messages (`messages`, `message_pictures`) and every
+                # player's resources after it, for the step's `record` and `note`.
+                obs = {"end_turn": True, "messages": [], "message_pictures": []}
+                obs["player"] = end_turn(game, mem, obs)
+                obs["after"] = {"resources": {COLOURS[c]: mem.player(c)["resources"]
+                                              for c in range(8) if mem.player(c)["heroes"]}}
             else:
                 prepared = None
                 if "walk" in step and (step.get("days") or step.get("near")):
@@ -2184,7 +2511,8 @@ def batch(recipe_path, map_path=None, out=None):
               f"(`clients/capture/h3adv.py batch {shown(recipe_path)}`): "
               "the same Complete 4.0 `Heroes3.exe` under Wine, without the HD mod; hot seat, "
               f"difficulty {recipe.get('difficulty', 'normal').capitalize()}, the starting bonus "
-              "random, Show Route on; read from the game's memory."
+              f"{'gold' if recipe.get('gold') else 'random'}, Show Route on; read from the game's "
+              "memory."
               + (f" Started again {len(restarts)} time(s) for the recipe's `require` "
                  f"({'; '.join(', '.join(m) for m in restarts)} missing)." if restarts else ""))
     filled = fill(Path(template).read_text(), values, notes, header)
@@ -2196,8 +2524,9 @@ def batch(recipe_path, map_path=None, out=None):
 
 def records(text):
     """A filled template's record lines: {(section, field or row label): value}, a cell of a
-    table of more than one value column under `<label> | <column>` (E08 T37a)."""
-    found, section, recording, columns = {}, None, False, []
+    table of more than one value column under `<label> | <column>` (E08 T37a), a repeated label
+    as fill keys it (`<label>#<n>`, E08 T79b)."""
+    found, section, recording, columns, seen = {}, None, False, [], {}
     lines = text.splitlines()
     for i, line in enumerate(lines):
         m = re.match(r"## (\S+) ", line)
@@ -2210,10 +2539,11 @@ def records(text):
             found[(section, m.group(1))] = m.group(2).strip()
         elif recording and cells is not None:
             if i + 1 < len(lines) and TABLE_RULE.fullmatch(lines[i + 1].strip()):
-                columns = cells  # the header
+                columns, seen = cells, {}  # the header
             elif not TABLE_RULE.fullmatch(line.strip()) and len(cells) == len(columns) > 1:
+                label = repeated(seen, cells[0].strip())  # E08 T79b: as fill keys it
                 for j in range(1, len(cells)):
-                    found[cell_key(section, cells[0].strip(), columns, j)] = cells[j].strip()
+                    found[cell_key(section, label, columns, j)] = cells[j].strip()
     return found
 
 

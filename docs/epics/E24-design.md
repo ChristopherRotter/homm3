@@ -2543,3 +2543,86 @@ sequences (`choose-lists`, `press-buttons`: every frame exact, the status bar co
   tables' `[map.sound] button`; the window's presses and releases apart and hotkeys' releases.
   After a choice the mouse-over's reach and the hero's own marks are the staged hero's (the
   engine's from M4): a sequence moves the pointer over the map only before its first choice.
+
+### 4.14 The underground, the minimap's click and drag, the status window's click (M3 T6b2)
+
+Read in the sandbox (T6b cut by the user into T6b1 to T6b3, 2026-10-30), checked by three
+sequences on the new situation `seq-underground` (a writer's map of two levels): `underground`,
+`minimap-drag`, `status-click` (every frame exact, the status bar compared).
+
+- **The underground** (`adventure_command` 0x409F6B, the command 4; its button's press and U as
+  §4.13): on a map of two levels (game +0x1FC48) the selected hero put back on its tile, the view's
+  level the other (0x409FAE: 1 − the level within the corner's field), its corner kept, the
+  button's picture by the level (`underground_button_level` 0x403C40: `iam010.def` on the surface,
+  `iam003.def` below, drawn and shown) and `adventure_full_update` with 1. No sound changes (the
+  surface's music plays on below), no mouse move is posted. A hero chosen on the other level
+  (`hero_select` 0x417EBB) or a town there (0x41790E) changes the level with its centring and
+  updates the whole screen as before.
+- **The whole screen's update** (`adventure_full_update` 0x417420, read in its middle): the
+  background, the buttons' colours, both lists and the quest log updated, the status window built
+  (`status_window_choose` with 1, 0, 0: forced, the same kind built again, the date's at its first
+  frame with its sound) and the resource bar, then the dialog's every item drawn (its vtable +0x14
+  with the whole range: the new window's items too, and the chat's edit 38 over the status bar, so
+  the hint is hidden as after a list's redraw, MCL-Q22), the lists' selection frames, the view and
+  the minimap; shown whole.
+- **The minimap's press** (`minimap_click` 0x40A0C0, read whole; `adventure_click`'s id 1): a
+  right click its help text (M4, M5); else the selected hero put back, the point less the area's
+  corner (the dialog's item 1: (630, 26), 144 × 144) divided by an f32 by the map's height (4.0,
+  2.0, 1.3333 (0x3FAAA993, not the box's 1.33) or 1.0; the tables' `click`) and truncated
+  (`crt_ftol`), less (9, 8) the view's corner, held within −9 to the width − 10 and −8 to the
+  height − 9; the minimap drawn and shown (0x40A280), the view drawn and shown ((0, 8), 608 × 544)
+  and the objects stepped when due, as a scroll's step does (0x40A2D8: `frame_deadline` moved on
+  by the larger of 180 and its lateness).
+- **Its loop while the button is held** (0x40A344 to 0x40A5BE): `pump_messages`, then
+  `input_next_message` (whose wait runs the tick: the palettes step in memory, the mouse poll
+  draws the cursor where the mouse is) until the queue is empty or the left button's release; the
+  last move among them is kept, every other message (keys, other buttons) taken and dropped. A move
+  is held inside the area (x within its width, y from its top to its top plus the *width* less 1:
+  harmless on the square area), sent to the mouse manager (its handler 0x4EC560 returns at once:
+  nothing drawn), its tile within 0 to the width − 1 for both (the map is square), the corner that
+  less (9, 8) with no further limit; then the minimap, the view and the objects' step as the press,
+  **whether the corner moved or not** (a move drawn again at the same corner). No idle step runs
+  (no redraw, no objects' step, no edge scroll; the map stands still while the mouse does), no
+  hint, no cursor change (an arrow over the view stays). The release (a move to another point
+  before it, the harness's, is drawn first) ends the loop; the manager's next turn, in the same
+  millisecond, redraws when the hold passed the deadline (`minimap-drag`'s 2 400: two objects'
+  steps in one millisecond). The release is the loop's: the area's state keeps the press's bit 1
+  (observed in memory: the staging's own minimap click leaves item 1 at state 7), harmlessly
+  (below).
+- **An item's press and release** (`dialog_area_message` 0x44FF60, the areas' and the pictures'
+  handler; the DEF items' `dialog_def_message` 0x4EA810 and the text items' 0x5BC440 alike): with
+  the state's bit 2 a left button down inside the item's box sets its bit 1 and becomes 0x200/0xC
+  with its id (`adventure_click`); a left button up while bit 1 is set, **wherever the mouse is**,
+  clears it and becomes 0x200/0xD with its id (`adventure_command`). `dialog_send_to_items`
+  0x5FEDE0 offers each message to the items from the list's head until one takes it, and
+  `dialog_add_item` 0x5FECB0 puts each new item at the head (−1: one above the head's +0x12), so
+  the newest are asked first: the status window's items (ids 2000 to 2024, built last), then the
+  resource bar's, the status bar, …, the buttons, the areas 2, 1, 0 (observed: the adventure
+  dialog's list in memory). A press on the status window's picture (614, 400, 176 × 166) is its
+  items'; around it (inside area 2, 605, 389, 188 × 182) area 2's, which does nothing; a release
+  goes to the first item holding a press, a stale one (the minimap's, the view's after a walk,
+  whose loops took their releases) only after every newer one: their commands (ids 0 and 1) do
+  nothing.
+- **The status window's click** (0x409FD8, the command of an id 2000 to 2200; §4.8): the kind
+  asked (+0x398) 2 gives 1, another but 0 gives 0, 0 gives 2, or 1 while the kingdom's shows
+  (+0x394 2); the kingdom's and the date's asked until now + 3 000 ms (+0x39C; the tables'
+  `[map.status] asked`), the selection's with the end left; then `status_window_choose` with 1, 1,
+  1: the window built, its panel's items drawn and its rectangle shown (`status_panel_show`
+  0x402BC0 draws only the panel's items: the hint stays). So the click fires at the release,
+  wherever it is; a window built anew between the press and the release (`status_panel_set`
+  0x402C10 drops the old panel's items: a timed kind's end at a redraw) takes the press with it, and
+  that release does nothing. The selection's window is kept while another shows (the timeline's
+  `selection`), so the chooser's kind 0 builds it again.
+- **Built** (*provisional*): `timeline::Loop`'s `underground` (the command 4), `minimap_press`
+  and its loop `drag` (`dragging`: the idle step stopped, every action but the moves and the
+  release dropped), `release` and `status_click` (`status_held`, dropped by a window built anew),
+  the selection's window kept by `choose`; `minimap::divided` and the tables' `click` (each size's
+  divisor, exact in integers: no point of the area lies within 0.24 of the next integer, so the
+  x87's roundings never carry it across), `[map.status] asked`; `PanelItems::area`, `in_status`;
+  `Kingdom::realm` (the kingdom's window as the original would build it: a live part's `realm`,
+  `h3mem.Mem.realm`; `Live::at_start`'s from the map: the towns' halls, which `built_at_start` now
+  reads with the Town Hall and City Hall bits, and the players a human or the computer may play
+  by the map's teams); the situation's `underground` (the writer's second level, terrains alone;
+  the harness explores it whole and waits for the screen `adventure`, whose probes take the
+  underground's button enabled). Not built: the minimap's right click (its help text: M4, M5), a
+  hero or town of the other level in a recording (the harness reads the view's level's heroes).

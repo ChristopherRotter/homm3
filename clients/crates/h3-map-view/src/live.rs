@@ -203,6 +203,10 @@ pub struct Kingdom {
     /// once a kind asked for a time ends (the chooser's kind 0), when it shows another; a live
     /// part's `selection`. None: the selection's is the one shown, or none is known (a still).
     pub selection: Option<Status>,
+    /// The kingdom's window as the original would build it now (E24 M3 T6b2, design §4.14: what a
+    /// click on the status window shows; a live part's `realm`, [`Live::at_start`]'s from the
+    /// map). None: unknown (a live part written before), so only one the status window shows is.
+    pub realm: Option<KingdomStatus>,
 }
 
 /// What the status window shows (E24 M3 T5b1, design §4.8; *provisional*): the window the
@@ -572,6 +576,7 @@ impl Kingdom {
             date,
             status: None,
             selection: None,
+            realm: None,
         })
     }
 }
@@ -1006,6 +1011,36 @@ impl Live {
                 .flatten()
                 .map(|t| Status::Town(t.status)),
         };
+        // The kingdom's window (E24 M3 T6b2, design §4.9): the viewer's towns by their halls at
+        // the start, the players a human or the computer may play by the map's teams (each its
+        // own without them), the viewer's among the allies.
+        let mut halls = [0; 4];
+        for built in &towns_built {
+            let hall = [tables::CAPITOL, tables::CITY_HALL, tables::TOWN_HALL]
+                .iter()
+                .position(|&id| built >> id & 1 == 1)
+                .map_or(0, |i| 3 - i);
+            // 0 to 3: the three halls tested, else a village.
+            halls[hall] += 1;
+        }
+        let team = |colour: usize| {
+            raw.teams
+                .as_ref()
+                .and_then(|t| t.of_player.get(colour))
+                .map_or(colour, |&code| usize::from(code))
+        };
+        let playing = (0..8u8).filter(|&c| {
+            raw.players
+                .get(usize::from(c))
+                .is_some_and(|p| p.human || p.computer)
+        });
+        let (allies, enemies): (Vec<u8>, Vec<u8>) =
+            playing.partition(|&c| team(usize::from(c)) == team(usize::from(viewer)));
+        let realm = KingdomStatus {
+            halls,
+            allies,
+            enemies,
+        };
         let kingdom = Kingdom {
             heroes: portraits
                 .into_iter()
@@ -1025,6 +1060,7 @@ impl Live {
             date: Date::default(),
             status,
             selection: None,
+            realm: Some(realm),
         };
         Self {
             objects,
@@ -1070,6 +1106,8 @@ fn built_at_start(buildings: &Buildings) -> u64 {
     match buildings {
         Buildings::Standard { fort } => u64::from(*fort) * bit(tables::FORT),
         Buildings::Custom { built, .. } => [
+            (0, tables::TOWN_HALL),
+            (1, tables::CITY_HALL),
             (2, tables::CAPITOL),
             (3, tables::FORT),
             (4, tables::CITADEL),

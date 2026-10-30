@@ -9318,3 +9318,207 @@ banned in 9a, so a level-up after E9-1's or E9-2r's battles adds no gold; (8) E9
 floor on day 1 only, Blue's visits subtracted; (9) the order names E9-9's day-1 read; (10) the income
 vector recorded. The legs priced again on the rebuilt maps.
 
+
+### Increment 9, round 3: T79a, batch E9a's harness and runs (2026-10-30, `adventure/e08-t79a`)
+
+**The cut** (decision 207): T79 in two by batch, this part E9a (recommended, as decision 175); T79b
+batch E9b. **Baseline:** `master` ef32f96 (#603 merged; the setup's baseline: the engine code
+verified on that commit, light gates only). The installation's files staged from the user's
+computer at the start (as T68a, with every MP3).
+
+**The reads and clicks** (`clients/capture/`, common; README "Mines, Lighthouses and Shipyards"):
+`h3mem`: the mine and Lighthouse records (`mines`, game +0x4E38C), a tile's own word with the word
+and class under a hero (`tile_word`), each battle side's owner, human flag and human-here flag
+(`battle_sides`: manager +0x54A8, read in `battle_side_setup` 0x4639F0; +0x54A4, +0x54A6), auto
+combat's flag (+0x132C4). `h3adv`: the observations `mine:x,y`, `tile:x,y` (a Shipyard's word
+decoded: owner, boat tile), `cursor` (over a walk's target before its first click), `screens`,
+`opening:sides`, `opening:stacks:<side>`, `opening:slots:<side>` (table rows), `stops`; the boat
+dialog as a screen (`shipyard_dialog_create` 0x5D1EF0 read in part: vtable 0x643908, build 0x7802,
+cancel 0x7801; map entries added), played by a walk onto an own Shipyard or a single click from
+afar; the Leave Guards dialog is the army dialog (the mine's guards upper); `battle = "auto
+again"` (auto combat on by its flag, again at each stop; refused three times or a stack waiting
+with it on: the rest played as `attack`, each turn recorded as waiting for an order or not); a
+`row:<column>#2` for a section's second table of the same first column; `h3lod` knows MINEEVNT.TXT
+(the first runs named the mine's message GENRLTXT:4, its picture's caption) and a title's braces
+are optional. The harness check passed after the last change. The client and map-client lanes'
+inboxes told.
+
+**The recipe** (`clients/capture/batches/E08-batch-9a.toml`, 41 steps): the spec's order (day 1
+Red's reads before any hero moves, E9-1, E9-3, E9-4, E9-5, the treasury; Blue's E9-2, E9-3b; day 2
+Red's E9-4, E9-5, E9-2r; Blue's treasury).
+
+**The runs** (Easy, hot seat, under Wine): five. The first stopped at E9-2r's first battle: the key
+`a` left auto combat off (both sides human), and the first `auto again` pressed it without end; the
+second whole (the mine's messages as GENRLTXT:4); the third recorded (`experiments/results/
+E08-batch-9a.md`); the fourth recorded as `-run2.md`; the fifth on the harness merged with
+`master` (#605, #606: two instances, the Gold bonus), not recorded. Every reading the same in the
+last four but the draws (the Troglodytes' counts, A's resource) and the starting bonus.
+
+**What the runs showed** (for T80; not scored here): **E9-1** each mine one stack of Troglodytes at
+the start (A 126, 163, 105, 101, 161; B 163, 116, 192, 187, 159), A's drawn resource gems but in
+the fourth run (crystal); the question ADVEVENT 84; A fought as **three stacks** of Troglodytes
+(42 × 3; 55, 54, 54; 35 × 3; 34, 34, 33; 54, 54, 53), B as **two**, the second **Infernal
+Troglodytes** (82 + 81; 58 + 58; 96 + 96; 94 + 93; 80 + 79): the reading seeded by the entrance, not VCMI's single stack; the opening subterranean; ADVEVENT 85 then the drawn mine's
+message (MINEEVNT 5, the Gem Pond's, or 4, the Crystal Cavern's; 6, the Gold Mine's); the records Red's, guards empty. The
+first battle's messages also hold GENRLTXT 7, the townless player's warning. **E9-2** Blue's own
+visit opens the army dialog titled GENRLTXT 710 (Leave Guards), the mine's army upper and empty;
+the moved stacks are the records' slot 0 (C 2 Angels, S 1 Archangel). Red's visit: ADVEVENT 187;
+the battle's defender **Blue, human (here 1)**, the guards **unsplit**; auto combat **refused**
+(the key left it off three times) and **each of Blue's stacks waited for an order**, as Red's did:
+Blue plays its guards. C on the **subterranean** field, S on **grass**; won, the mine's message
+(MINEEVNT 4, 0), the records Red's, guards empty. **E9-3** Red's flag with MINEEVNT 0 (2/day), no
+question; the second visit opens Leave Guards and nothing else; Blue's visit of Red's unguarded
+sawmill asks nothing and flags it for Blue. **E9-4** the records owner Red, resource 100; for Red at
+day 1 (66, 6), (66, 8), (66, 9), (68, 8), (6, 64), (6, 63) **explored**, (66, 10) and (6, 62) not:
+the radius-3 disk around each Lighthouse owned at load, **against A-33's reading**; after boarding
+0 of 2 000 (A-28), day 2 **2 500 of 2 500**. **E9-5** the three tiles' words alike, `0xff321f00`
+(owner Red, boat tile (31, 50)), before and after; the visit opens the boat dialog (GENRLTXT 596);
+the build takes **1 000 gold and 10 wood**, the boat on (31, 50) type 1, facing 2, owner Red, no
+captain; with E9-5 aboard on the boat tile E9-5b's click on (32, 50) shows **cursor 6** and
+**GENRLTXT 52**, nothing paid, no path; on day 2, the tile free, the same click opens **the boat
+dialog**, the second boat as the first, another 1 000 and 10 (the first boat's record keeps its
+boarding tile (31, 50) while E9-5 sails, as T68b saw). **E9-0** Red at day 2's start +1 000 gold and
++1 gems or crystal (B and A), nothing else (Estates banned, no level-up gold); Blue +4 wood and +1 crystal
+(its sawmill and N, its cavern), nothing on day 1.
+
+T79b (batch E9b) and T80 (the scoring) queued.
+
+### Increment 9, round 3: T79b, batch E9b's harness and runs (2026-10-30, `adventure/e08-t79b`)
+
+**The cut** (decision 208): whole (recommended); T80 the next session. **Baseline:** `master`
+661683d (#607 merged; CI on `master` green, its full verify and the clients; the scoped verify
+with original data passed every step). The installation's files staged from the user's computer
+at the start (as T79a, with every MP3).
+
+**The reads** (`clients/capture/`, common; README "The day's start"): `h3mem.player`'s `income`
+(+0x108, seven i32) and `gardens` (+0xB8; `structs.toml` "player_record" gains +0x108);
+`h3mem.monster`'s `sixteenths` (bits 27 to 30) and `word`. `h3adv`: the observations
+`income[:<colour>]`, `gardens[:<colour>]`, `growth:x,y` (count, sixteenths, the "does not grow"
+flag), `gain[:<colour>]` (the step's change to the treasury); `object:x,y` decodes a Windmill's,
+a Water Wheel's and a Mystical Garden's word (amount, resource, marks, the Garden's index and full
+bit), and `object:` and `word:` read an object a hero stands on through the hero's record (+0xC,
++0x14: `(under E9-8)`); an end-turn step takes `encounter`, `record` and `note` (`end_turn` and
+`dismiss` record the new turn's messages); a message with one of the spec's own texts (its timed
+events' messages) is `the map's text "..."`; `fill` and `compare` key a repeated row label
+`<label>#<n>` (the spec's two rows a day); a recipe's `gold = true` (the starting bonus Gold,
+E17 M5 T8a's). The harness check passed after the last change. The client and map-client lanes'
+inboxes told.
+
+**The recipe** (`clients/capture/batches/E08-batch-9b.toml`, 90 steps, 28 of them end turns):
+the spec's order over fifteen days; Red's reads by E9-7 (who never moves), Blue's by E9-11. A
+throwaway check before the first run: every record key of the recipe is a field or cell of the
+template, each once, and every observation resolves on a stub of the game's memory.
+
+**The runs** (Easy, hot seat, the Gold bonus, under Wine; about 9 minutes each): three, each
+whole. The first played the recipe without the two reads of W1 with E9-7 selected (the hero-record
+path: a read with E9-8 selected shows the Windmill's own word, the selected hero lifted off its
+tile); the second (`experiments/results/E08-batch-9b.md`) and the third (`-run2.md`) the final
+recipe. Every reading the same in all three but the draws and the starting bonus.
+
+**What the runs showed** (for T80; not scored here):
+- **E9-6:** for Red at day 1 (63, 11), (65, 10), (60, 8), (63, 23) explored, (63, 12), (66, 10),
+  (59, 8), (63, 24) not: the radius-3 disk around each mine owned at load (as E9-4's Lighthouses);
+  the records owner Red, resources gold and ore; the income +0x108 all 0 on day 1.
+- **E9-7:** each Red day's start against the turn's end before it **+2 125 gold, +2 ore, +5 mercury,
+  +5 sulfur, +6 crystal, +5 gems**, no wood; day 8 **+9 crystal**; the income vector day 2 `0, 5, 2,
+  5, 6, 5, 2125`, day 8 the crystal 9 (the Cornucopia's 5, not VCMI's 4). The date (1, 1, 1), (1, 2,
+  1), (1, 2, 2) on days 1, 8, 9.
+- **E9-8:** Red day 1: W1 its draw (3 sulfur; 4 mercury; 6 mercury), H1 **500 gold**, M1 its draw
+  (500 gold in all three); Blue day 1 **nothing** at all three (ADVEVENT 169, 165, 93; the
+  Windmill's and Wheel's marks 0x03, Blue's mask bit set); Red day 2 nothing. Day 8: W1 **a new
+  draw** under E9-8, who stood on its entrance at the week's start (read through its record: 6 ore
+  in the second run), H1 **1 000**, M1 full again (5 gems; 500 gold; 500 gold); day 9 Ivor: W2 (5
+  crystal; 5 crystal; 6 mercury), H2 **1 000**, M2 (5 gems; 5 gems; 500 gold). The marks are never
+  cleared. The Gardens' indices: M2 (row 8) 0, M1 (row 40) 1, against the spec's order (M1 first).
+  Messages: the Windmill ADVEVENT 170 (a gain) and 169, the Wheel 164 and 165, the Garden 92 and 93.
+- **E9-9, E9-10:** day 1, 8, 15: 43 → **47 + 4/16 → 51 + 15/16**; 81 → **89 + 1/16 → 97 + 15/16**;
+  15 → **16 + 8/16 → 18 + 2/16**; 43 not growing **43** throughout; 4 095 → **4 000** (A-32's cap) →
+  4 000. The code's sixteenths, against VCMI's 52 and 98 on day 15 (D-49).
+- **E9-11:** Blue's gold at days 1 to 6 **300, 300, 800, 800, 1 300, 1 300** (1 800 on days 7 and
+  8): the list's order, the floor at 0, every two days from day 2 (days 2 to 14), after the day's
+  income. The take's picture shows the gold taken (−30 800, −30 700: Blue's whole treasury), not −99
+  999.
+- **E9-12:** E9-12 **0, 2, 4**; Uland **0, 3, 6**; Melodia **0, 20, 20** (the event's message
+  ADVEVENT 177).
+- **Odd:** W2's and M2's draws were the same in the first two runs (W2 5 sulfur, then 5 crystal; M2
+  gems both weeks), not in the third (5 crystal, then 6 mercury; 500 gold both weeks). The week's
+  announcement is named GENRLTXT 16 (`identify`'s `%s the %s`; its own table is not searched);
+  GENRLTXT 14 is the hot-seat turn's message.
+
+T80 (the scoring) queued.
+
+### Increment 9, round 3: T80, batch E9 scored; A-33 withdrawn (2026-10-30, `adventure/e08-t80`, `cross-lane`)
+
+**The cut** (decisions 209, 210; asked at the start): whole with A-33's re-read (recommended, as
+T58 and T69; not chosen: whole without it, in two by batch); the experiments README's rows
+`cross-lane` (recommended; not chosen: the battle lane's inbox). **Baseline:** `master` 1597854
+(#608 and #609 merged; CI on `master` running at the start, its Clients job green; the setup's
+full baseline stopped, as the lane's trap says). The installation's files staged from the user's
+computer at the start (`Heroes3.exe` for the re-read); the computer went offline later. No engine
+or harness code changed.
+
+**The scoring** (survey `E08-economy.md` §19, from T79a's and T79b's recorded runs): every row as
+the reading predicted but E9-4's surroundings. **D-47 confirmed** (E9-1: in five runs A three
+stacks none upgraded, B two with the second Infernal Troglodytes, T78's prediction from the
+entrance tile's seed; VCMI's single stack and the two other seeds refuted). **D-49 confirmed**
+(E9-9: 47 + 4/16 → 51 + 15/16, 89 + 1/16 → 97 + 15/16 against VCMI's 52 and 98). **A-32
+confirmed** (E9-10: 4 095 → 4 000). **Design §13's call confirmed** (E9-2: Blue, human, played its
+guards' side, each stack waiting for its order): `Defender::Garrison` stands, §19's risk closed.
+The rest as predicted: E9-3, E9-5 (the price, the type-1 boat, the refusal with a hero on the boat
+tile, the use from afar), E9-0, E9-6, E9-7 (the Cornucopia's 5, VCMI's 4 refuted), E9-8 (one load
+a week for whoever comes first; the marks kept), E9-11, E9-12. Beyond the predictions: the
+Garden's index follows the setup's tile walk; a timed event's take shows the gold taken; the
+messages' order at a turn start (the clients'). No dispute reverts; no `ADV-Q`.
+
+**A-33's re-read:** `setup_map_objects`' case 42 has no owner call (T77a1 right), but
+`adventure_manager_start` calls `reveal_owned` (0x4C7C50, read whole) with no test at 0x4075B4:
+heroes by their scouting radius, towns (radius 5; E09's cases), the mines' and Lighthouses',
+dwellings' and garrisons' records and the Shipyards (a tile walk), radius 3 each, for their
+owners. Every object owned at load reveals at the start, as VCMI and the design: **A-33
+withdrawn**, `ADV-QUIRK-34` not recorded. T34b's list of `reveal_owned`'s callers corrected
+(`E08-hero-movement.md` §4.2).
+
+**The docs:** survey §0, §2.2, §6 (D-47), §9.3, §14 (D-49, A-32), §15, §19 (new), its sources;
+`docs/exe/map.toml` (0x406FD0, 0x4C15D8, 0x4C7C50 now `read`); the drafts `0013-`, `0016-` and
+`0017-increment-9.md` (batch E9's outcome: D-49 and A-32 in point 4, A-33 in point 5, E9-2 in
+point 11); `E08-design.md` §13, §16, §17, §18 (exit criteria 2, 9), §19; the catalog:
+ADV-FOG-003 (its source corrected, E9-4 and E9-6), ADV-MON-009 (E9-1), GAM-BAT-010 and HER-MAN-001
+(`verified`: E9-1, E9-2; E9-12); `docs/experiments/README.md`'s E8 and E9 rows evaluated
+(`cross-lane`, decision 210). No version.
+
+T81 (`shared/`) next.
+
+### Increment 9, round 4: T81a, the ADRs and the glossary (2026-10-30, `shared/e08-t81a`, `cross-lane`)
+
+**The cut** (decision 211; asked at the start, `AskUserQuestion`): T81 in two, the ADRs first
+(recommended): T81a a docs-only `shared/` pull request, T81b the code and packs the next session.
+Not chosen: the code first; whole, as T70; three pull requests (the creature's abilities apart).
+One pull request with the lane's own docs, `cross-lane` (the user, asked when `check-lane` flagged
+them; not chosen: a second, adventure pull request as T26a's). **Baseline:** `master` 0b4f612 (T80 merged). A docs-only change: no build, no original data; the
+sandbox ran `check-docs` only. This session had no GitHub API or push access (the repository was
+not enabled for it).
+
+- **The ADRs** (the three drafts accepted at ADV-Q38, decisions 201–204, applied with batch E9's
+  outcome as T80 folded it in, then deleted): ADR-0013 point 3 (the four kinds, the two
+  parameters, the thirteen specialists; the Cornucopia's 4 and the specialists as a specialty's
+  effect folded into the point), 13.6 (the Lighthouses' input), a new point 16 (the income each
+  copy counting, the day's spell points with the specialists' `+ 1` as a parameter, every hero of
+  the store), a consequence and the history; ADR-0016 point 1 (owners, guards, the weekly
+  contents, the fractions, the objects added in play, the boat tile), 3 (Leave Guards), 4
+  (increment 9's kinds and the week's and month's steps; D-47 written as batch E9 decided), 5
+  (the flag's and the start's reveal, A-33 withdrawn), 6 (owners public, production the owner's),
+  a consequence, an alternative (the agent's calls' rejected options) and the history; ADR-0017
+  points 1 (`BuildBoat`, the setup's owners and timed events), 3 (the day's start, the month's
+  kind; the agent's call on the week and names folded in), 4 (the streams), 6 (the decisions), 8
+  (the env's `BuildBoat`; "as increment 8's observation" corrected to increment 7's typed answers,
+  decision 187 having replaced decision 172), 10 (the income and timed events), 11 (a mine's
+  guards in battle, E9-2), a consequence (the core creature's abilities, the versions), an
+  alternative and the history; ADR-0015's amendment R01 point 1 (the core keeps a creature's
+  abilities outside battle) and its history; the index's four Read-when cells.
+- **The glossary** (`docs/03-domain.md`): ownable object, owner (neutral), flag, mine (abandoned
+  mine), guards, Leave Guards, weekly object; day's start with the week's step, the month's kind
+  and step; income; timed event.
+- **Docs**: design note's header, §3, §16, §18; decision 211 and the task's line in the epic; the
+  queue (T81a out, T81b in).
+
+T81b (`shared/`, `cross-lane`: the kinds, the parameters, the creature's abilities, the packs) next.

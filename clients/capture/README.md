@@ -29,8 +29,8 @@ adventure).
 | `h3drive.py` | The driver: starts the game, the recipes (fixed coordinates, screens by probes), the clock, dumps; the commands `battle`, `set`, `learn`, `shot`, `sequence`, `sequences`, `frames`. |
 | `screens.toml` | The screens the driver recognises: 12 probes `[x, y, 5-6-5 value]` each (numbers only). |
 | `h3cap.py` | `diff` (our render against a capture, with masks) and `find` (the original's obstacles in a capture); `compare` and `boxes_at` for the frame check. |
-| `h3mem.py` | Reads the running game's state from its memory: the battle's clocks, idle steps, active stack and the mouse's highlight, each stack's group, frame, hex, offsets and draw layer, and each side's hero's group and frame and its flag's frame (M3 T3a), the magic animation drawn and the stacks under it (M3 T3b), the battle's outcome (H1); the adventure map's players, heroes (with their experience, level, army and skills: H1), view and path, the difficulty, a tile's monster, the topmost dialog's text (H1; below); since E08 T47a the topmost dialog's kind and its items' boxes, states and texts, a hero's army slot by slot, worn positions, flags and learned spells, the artifact held, the battle's tactics phase; since E08 T57 a map object's word on its entrance tile, the Universities' skills, a hero's spell points, morale and luck bonuses and status flags, a stack's army slot, a message box's pictures and captions, the game's version; since E08 T68a the battle's ship flag and the obstacles' hexes. |
-| `h3adv.py` | The adventure map (M2 T6, H1, H2): hot seat at a chosen difficulty, heroes (the list scrolled), tiles of either level clicked twice, questions answered, battles played, level-ups chosen, turns, artifacts put on from the backpack in the hero screen (E08 T37a), the hero screen's, the exchange's, the army, creature and split dialogs' items clicked by their ids and a tactics phase ended (E08 T47a), a choice between two pictures made, steps run over a grid of tiles and a new game started again until its draws hold what the recipe requires (E08 T57), boats boarded and left, a key pressed for a hero, a second click made on a condition (E08 T68a), the sea pickups' words read and visits picked by them, legs sailed over open water, a table's rows filled step by step (E08 T68b); `batch` plays an experiment batch and fills its results template, `compare` sets two filled templates side by side, `learn-button`. |
+| `h3mem.py` | Reads the running game's state from its memory: the battle's clocks, idle steps, active stack and the mouse's highlight, each stack's group, frame, hex, offsets and draw layer, and each side's hero's group and frame and its flag's frame (M3 T3a), the magic animation drawn and the stacks under it (M3 T3b), the battle's outcome (H1); the adventure map's players, heroes (with their experience, level, army and skills: H1), view and path, the difficulty, a tile's monster, the topmost dialog's text (H1; below); since E08 T47a the topmost dialog's kind and its items' boxes, states and texts, a hero's army slot by slot, worn positions, flags and learned spells, the artifact held, the battle's tactics phase; since E08 T57 a map object's word on its entrance tile, the Universities' skills, a hero's spell points, morale and luck bonuses and status flags, a stack's army slot, a message box's pictures and captions, the game's version; since E08 T68a the battle's ship flag and the obstacles' hexes; since E08 T79a the mines' and Lighthouses' records, a tile's own word, each battle side's owner and controllers, auto combat's flag. |
+| `h3adv.py` | The adventure map (M2 T6, H1, H2): hot seat at a chosen difficulty, heroes (the list scrolled), tiles of either level clicked twice, questions answered, battles played, level-ups chosen, turns, artifacts put on from the backpack in the hero screen (E08 T37a), the hero screen's, the exchange's, the army, creature and split dialogs' items clicked by their ids and a tactics phase ended (E08 T47a), a choice between two pictures made, steps run over a grid of tiles and a new game started again until its draws hold what the recipe requires (E08 T57), boats boarded and left, a key pressed for a hero, a second click made on a condition (E08 T68a), the sea pickups' words read and visits picked by them, legs sailed over open water, a table's rows filled step by step (E08 T68b), mine records and Shipyards read, the boat dialog and Leave Guards played, auto combat turned on again at each stop (E08 T79a); `batch` plays an experiment batch and fills its results template, `compare` sets two filled templates side by side, `learn-button`. |
 | `h3map.py` | The adventure map's stills (E24 M1 T3b2, the map client lane): `still` shows a situation of `../map/situations/` in the original (a single scenario, a writer's map or a shipped one whole, the human's explored tiles written, the view by the minimap, the clock frozen), draws ours and diffs them; `set` runs the map's capture set, keeping each live part; `drawn` (T6a) draws ours from the kept ones without the original; `frames` (E24 M2 T1a1) records the map's sequences, 1 ms at a time (T1a2: with their options and inputs). Below, "The map's stills" and "The map's sequences". |
 | `h3lod.py` | The original's text tables, read from the run directory's LODs at run time (H1): which record a dialog's text was written from (`ADVEVENT:86`); never their text. |
 | `batches/` | The batches' recipes: a spec's procedure as steps (`E08-batch-2.toml`), and the harness's own check (`harness-check.toml`, its spec in `checks/`). |
@@ -442,11 +442,12 @@ artifact's name, the position that holds it or the place that shows it):
 |---|---|
 | hero (`hero_screen_proc` 0x4DD2D0) | `army:<slot>`, `worn:<position>`, `backpack:<place>`, `backpack left`, `backpack right` (the arrows: the last entry becomes the first, the first the last), `loose`, `tight`, `tactics` (the tactics formation), `split`, `close` |
 | exchange (`swap_manager_proc` 0x5AFDF0; left the visitor) | `left army:<slot>`, `right army:<slot>`, `left worn:<position>`, `right worn:<position>`, `left backpack:<place>`, `right backpack:<place>`, their arrows `left backpack left`, …, `left split`, `right split`, `close` |
-| army (the join's dialog, 0x5D11D0) | `upper:<slot>` (the group), `lower:<slot>` (the hero's army), `split`, `ok` |
+| army (the join's dialog, 0x5D11D0; since E08 T79a also a mine's Leave Guards, `army_dialog_with` 0x5D12B0) | `upper:<slot>` (the group; the mine's guards), `lower:<slot>` (the hero's army), `split`, `ok` |
 | creature (0x4C6C50, a slot clicked twice) | `dismiss`, `ok` |
 | split (0x449E90) | `ok`, `cancel` (and `slider = "max"`) |
 | message | `ok`; a question `yes`, `no` |
 | battle | `start` (the tactics phase's Start Combat) |
+| boat (a Shipyard's boat dialog, `shipyard_dialog_create` 0x5D1EF0, vtable 0x643908; E08 T79a) | `build` (30722, the result 0x7802 that builds), `cancel` (30721) |
 
 A battle that opens in its tactics phase (battle manager +0x13D68 at its start; the observation
 `tactics`) is ended at once, as the templates ask: the phase's message's OK, then its Start
@@ -495,6 +496,8 @@ the same way:
 | `opening:field`, `battlefield:ship`, `blocked` | since E08 T68a: the last battle's opening in one line (`terrain sand, special field shore, ship flag 0, blocked hexes 23, 24`), its ship flag (battle manager +0x53C6: 0 or 1), the hexes an obstacle blocks (the hex records' flag 0x2 on a hex no stack stands on; `none`) |
 | `again`, `key` | since E08 T68a: whether a walk with `again_if` clicked a second time (yes or no); what a `key` step did: `stepped`, `scrolled` (the view moved, the hero did not) or `nothing` |
 | `battle:tile`, `boat_record:x,y[,level]`, `treasury_changed`, `text:<literal>` | since E08 T68b: the step's hero's tile as the last battle opened; every boat record on a tile, in use or not (a beaten hero's boat freed); whether the step changed the hero's player's treasury (yes or no); a literal (a table row's tile) |
+| `mine:x,y[,level]`, `tile:x,y[,level]`, `cursor`, `screens`, `opening:sides`, `opening:stacks:<side>`, `opening:slots:<side>`, `stops` | since E08 T79a: below, "Mines, Lighthouses and Shipyards" |
+| `income[:<colour>]`, `gardens[:<colour>]`, `growth:x,y[,level]`, `gain[:<colour>]` | since E08 T79b: below, "The day's start" |
 
 `expect = { marks = <n>, path = "green", question = "join, flee", battle = true, dialogs = true }`
 notes a difference under the encounter's "anything odd" (`dialogs = true`: dialogs passed after
@@ -580,6 +583,53 @@ filled step by step: a record field `"row:<the table's first column>" = [<cell>,
 (a cell one observation or a list of them), a step over a grid without a walk one row per tile;
 a section with several such tables fills each by its first column. A grid step without a walk
 reads its `note` at every tile too (E8-6's chests at the start).
+
+**Mines, Lighthouses and Shipyards** (E08 T79a, batch E9a; `docs/rules/surveys/E08-economy.md`
+§2 to §5). `mine:x,y[,level]` reads the mine or Lighthouse record whose entrance is that tile (game
++0x4E38C, 0x40 bytes each, `h3mem.mines`: `record 0; owner none; resource gems; abandoned 1;
+guards 0: 163 Troglodytes`; a Lighthouse's resource `Lighthouse (100)`; `none` without one).
+`tile:x,y[,level]` reads a tile's own word and class (`word:` reads the entrance's of an object
+anchored there): a Shipyard's decoded (`0xff321f00 class 87.0 (owner red, boat tile 31,50)`), a
+hero's tile with the hero's name and the word and class under it (its record's +0x14, +0xC). A
+walk records the cursor over its target before its first click (`cursor`: `type 1, frame 6` over
+an own Shipyard's tile), and `screens` the army, exchange and boat screens it passed. The boat
+dialog is a screen (above): a walk onto an own Shipyard's entrance, or a single click (`once`) on
+any of its tiles from afar, plays the step's `actions` there (`click = ["build"]`), and a dialog
+they leave open is cancelled; a mine's own visit opens the army dialog titled Leave Guards
+(GENRLTXT 710; `click = ["lower:0", "upper:0"]` moves the hero's first stack into the mine). A
+battle's record keeps each side's owner and controllers at its opening (`opening:sides`: `attacker
+red (human 1, here 1); defender blue (human 1, here 1)`, battle manager +0x54A8, +0x54A4, +0x54A6)
+and a side's stacks (`opening:stacks:<side>`, one line; `opening:slots:<side>`, table rows of army
+slot, creature and count). `battle = "auto again"` turns auto combat on by its flag (manager
++0x132C4, pressed only while off) and again at each stop; when the key leaves it off three times
+(a battle between two human players in hot seat: an owned mine's guards are their human owner's
+side, E9-2) or a stack waits with it on, the rest is played as `attack`, every turn recorded as
+waiting for an order or acting without one (`stops`). A section with two tables of the same first
+column fills the second by `row:<column>#2` (E9-1's two battles' slots). `h3lod` names a mine's
+flag message `MINEEVNT:<n>` (the first run named it `GENRLTXT:4`, its picture's caption), a
+record's title braces optional.
+
+**The day's start** (E08 T79b, batch E9b; `docs/rules/surveys/E08-economy.md` §7 to §12).
+`income[:<colour>]` reads a player's day's income (player +0x108, seven i32, wood to gold: `0 wood,
+5 mercury, 2 ore, …`; computed at each day's start, `player_daily_income` 0x4B8AF0, and kept until
+the next), `gardens[:<colour>]` its Mystical Gardens' mask (+0xB8: `0x00000001 (Gardens 0)`, a bit
+per Garden by the index in its word), `growth:x,y[,level]` a wandering monster's count with the
+sixteenths of its word's bits 27 to 30 (`47 Pikemen and 4/16 (756 sixteenths), grows`; `does not
+grow` with the map's flag, bit 18), `gain[:<colour>]` what the step changed in the player's
+treasury (`+4 sulfur`, `none`); the player is the step's hero's owner, in an end-turn step the new
+current player, unless named. `object:x,y` decodes the weekly objects' words: a Windmill's (112:
+`Windmill: 4 sulfur; marks 0x01`, `empty (sulfur)` once taken: the amount bits 13 to 16, the
+resource 0 to 3), a Water Wheel's (109: `500 gold` or `empty`, bits 0 to 4 in 500s) and a Mystical
+Garden's (55: `Garden 0: full, 5 gems` or `empty (500 gold)`: bit 10, the resource bits 6 to 9, the
+index 0 to 4), the visited marks of the first two the teams' bits 5 to 12; an object a hero stands
+on is read through the hero's record (+0xC, +0x14: `… (under E9-8)`, `word:` too). An end-turn
+step takes `encounter`, `record` and `note`: the new turn's messages (`messages`,
+`message_pictures`: the hot-seat turn's and the timed events' at its start, `dismiss`) and every
+player's resources after it. A message whose text is one of the spec's own (its timed events'
+and events' `message`s) is named `the map's text "..."`. A table row whose label an earlier row of
+its table has is keyed `<label>#<n>` (n from 2: `1 | wood`, then `1#2 | wood`), by `fill` and
+`compare` alike. A recipe's `gold = true` gives every player the starting bonus Gold (E17 M5 T8a's
+`to_hot_seat(gold=True)`), which the filled template's header names.
 
 **A new screen** (another recipe): get there by hand once with `Game.click`/`key`, then
 `python3 capture/h3drive.py learn <name> --in x0,y0,x1,y1 [--avoid …] [--also other-state.xwd]`

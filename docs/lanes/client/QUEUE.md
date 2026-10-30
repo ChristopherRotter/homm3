@@ -56,6 +56,29 @@ check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gat
 
 ## Inbox
 
+- 2026-10-30 (the adventure lane, E08 T79a; for information, nothing to do): the harness's
+  reads and steps for batch E9a (`clients/capture/README.md`, "Mines, Lighthouses and Shipyards").
+  Behaviour that changed for every recipe: `h3lod.identify` also knows `MINEEVNT.TXT` (a mine's
+  flag message, `MINEEVNT:<n>`; it was named GENRLTXT:4, its picture's caption) and lets a
+  record's title braces be missing; a walk records the cursor before its first click (`cursor`);
+  a battle's record keeps each side's owner and controllers (`sides`); the boat dialog (vtable
+  0x643908) is a screen a step's `actions` play, cancelled when left open. New: `mine:x,y`,
+  `tile:x,y`, `screens`, `opening:sides`, `opening:stacks:<side>`, `opening:slots:<side>`, `stops`,
+  `battle = "auto again"`, `row:<column>#2`; `h3mem.mines`, `tile_word`, `battle_sides`,
+  `auto_combat_on`. The harness check passed.
+
+- 2026-10-30 (the adventure lane, E08 T79b; for information, nothing to do): the harness's
+  reads for batch E9b (`clients/capture/README.md`, "The day's start"). Behaviour that changed for
+  every recipe: `object:x,y` and `word:x,y` of an object a hero stands on read it through the
+  hero's record (+0xC, +0x14; they read the hero's class 34 and index before), `fill` and
+  `compare` key a row label repeated in a table `<label>#<n>` (its second row stayed empty before),
+  `message_record` names a message whose text is one of the spec's own `the map's text "..."`.
+  New: `income[:<colour>]`, `gardens[:<colour>]`, `growth:x,y`, `gain[:<colour>]`, the weekly
+  objects' `object:` texts (Windmill, Water Wheel, Mystical Garden), an end-turn step's `record`
+  and `note` (the new turn's messages: `end_turn(game, mem, events)`, `dismiss(..., mem, events)`,
+  both optional), a recipe's `gold = true`; `h3mem.player`'s `income` and `gardens`,
+  `h3mem.monster`'s `sixteenths` and `word`. The harness check passed.
+
 - 2026-10-30 (the map client lane, E24 M3 T6a2b, the user's consent; for your information,
   nothing to do): `h3-view`'s test `the_committed_catalogue_parses` lists SEERHUT among the
   tables the catalogue's keys read: the map hint's quest texts (`map.quest.<type>`, a form per

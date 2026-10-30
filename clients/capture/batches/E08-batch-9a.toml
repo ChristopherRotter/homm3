@@ -1,0 +1,298 @@
+# E08 batch E9a played by the capture harness (E08 T79a; h3adv.py batch): the procedure of
+# experiments/specs/E08-batch-9a.toml as steps, on Easy, with T79a's reads (README, "Mines,
+# Lighthouses and Shipyards"). Hot seat, Red and Blue human, in the spec's order: day 1, Red: the
+# reads before any hero moves (E9-4's explored tiles and Lighthouses, E9-1's mines, E9-5's
+# Shipyard words), E9-1, E9-3, E9-4 (boards), E9-5 (the visit's boat, boarding, E9-5b's click from
+# afar), the treasury; Blue: the treasury, E9-2 (Leave Guards in both mines), E9-3b, the
+# treasury. Day 2, Red: the treasury, E9-4's points, E9-5 sails off and E9-5b's click builds,
+# E9-2r's two battles (auto combat on again at each stop: who plays the guards); Blue: the
+# treasury.
+
+spec = "experiments/specs/E08-batch-9a.toml"
+players = ["Red", "Blue"]
+difficulty = "easy"
+
+# --- Day 1, Red: the reads before any hero moves ----------------------------------------------
+
+[[step]]
+encounter = "E9-4"
+hero = "E9-4"
+record = { "(66, 6)" = "explored:66,6:red", "(66, 8)" = "explored:66,8:red", "(66, 9)" = "explored:66,9:red", "(68, 8)" = "explored:68,8:red", "(66, 10)" = "explored:66,10:red", "(6, 64)" = "explored:6,64:red", "(6, 63)" = "explored:6,63:red", "(6, 62)" = "explored:6,62:red", "the Lighthouses' records (owner, resource)" = ["mine:66,6", "mine:6,66"] }
+note = { "worn at the start (the starting bonus)" = "hero:equipment", "backpack at the start" = "hero:backpack", "the date at the start" = "date", "the game's version" = "map_kind" }
+
+[[step]]
+encounter = "E9-1"
+hero = "E9-1"
+record = { "before: A's record (owner, resource, guards' creature and count by slot)" = "mine:8,8", "before: B's record (owner, resource, guards' creature and count by slot)" = "mine:14,8" }
+note = { "worn at the start (the starting bonus)" = "hero:equipment", "every mine record at the start (Blue's two, N)" = ["mine:7,26", "mine:13,26", "mine:41,10"] }
+
+[[step]]
+encounter = "E9-5"
+hero = "E9-5"
+record = { "before: the words of (32, 50), (33, 50), (34, 50); Red's treasury (wood, gold)" = ["tile:32,50", "tile:33,50", "tile:34,50", "resource:wood:red", "resource:gold:red"] }
+note = { "worn at the start (the starting bonus)" = "hero:equipment", "boats in use at the start" = "boats:used" }
+
+# --- Day 1, Red: E9-1 visits the two abandoned mines --------------------------------------------
+
+[[step]]
+encounter = "E9-1"
+hero = "E9-1"
+walk = [7, 9]
+
+[[step]]
+encounter = "E9-1"
+hero = "E9-1"
+walk = [8, 8]
+answer = "yes"
+battle = "auto"
+expect = { dialogs = true, battle = true }
+record = { "A: the question's text" = "questions", "row:slot" = "opening:slots:defender", "A: the battle's result; the messages after it" = ["winner", "messages", "message_pictures"], "after: A's record (owner, resource, guards)" = "mine:8,8" }
+note = { "A: the opening (terrain, special field)" = "opening:field", "A: the sides" = "opening:sides", "A: the level-ups" = "level_up_dialogs", "A: E9-1's tile after" = "hero:tile" }
+
+[[step]]
+encounter = "E9-1"
+hero = "E9-1"
+walk = [13, 9]
+
+[[step]]
+encounter = "E9-1"
+hero = "E9-1"
+walk = [14, 8]
+answer = "yes"
+battle = "auto"
+expect = { dialogs = true, battle = true }
+record = { "B: the question's text" = "questions", "row:slot#2" = "opening:slots:defender", "B: the battle's result; the messages after it" = ["winner", "messages", "message_pictures"], "after: B's record (owner, resource, guards)" = "mine:14,8" }
+note = { "B: the opening (terrain, special field)" = "opening:field", "B: the sides" = "opening:sides", "B: the level-ups" = "level_up_dialogs" }
+
+# --- Day 1, Red: E9-3 flags the neutral sawmill, visits it again --------------------------------
+
+[[step]]
+encounter = "E9-3"
+hero = "E9-3"
+walk = [41, 11]
+
+[[step]]
+encounter = "E9-3"
+hero = "E9-3"
+walk = [41, 10]
+answer = "yes"
+expect = { dialogs = true }
+record = { "Red's first visit: the message; N's owner after" = ["questions", "messages", "message_pictures", "mine:41,10"] }
+note = { "Red's first visit: E9-3's tile after" = "hero:tile" }
+
+[[step]]
+encounter = "E9-3"
+hero = "E9-3"
+walk = [41, 11]
+
+[[step]]
+encounter = "E9-3"
+hero = "E9-3"
+walk = [41, 10]
+actions = [{ record = { "Red's second visit: what opens" = ["screen", "dialog", "shown:upper", "shown:lower"] } }]
+note = { "Red's second visit: the screens passed, messages and N after" = ["screens", "messages", "mine:41,10"] }
+
+[[step]]
+encounter = "E9-3"
+hero = "E9-3"
+walk = [38, 13]
+
+# --- Day 1, Red: E9-4 boards the boat -----------------------------------------------------------
+
+[[step]]
+encounter = "E9-4"
+hero = "E9-4"
+walk = [56, 30]
+record = { "day 1 after boarding: E9-4's movement points and maximum" = ["hero:points", "hero:day_points"] }
+note = { "E9-4's boarding: arrived, status, boat" = ["arrived", "hero:status", "boat"] }
+
+# --- Day 1, Red: E9-5's Shipyard ------------------------------------------------------------------
+
+[[step]]
+encounter = "E9-5"
+hero = "E9-5"
+walk = [33, 51]
+
+[[step]]
+encounter = "E9-5"
+hero = "E9-5"
+walk = [33, 50]
+answer = "yes"
+actions = [{ record = { "the visit: what opens" = ["screen", "dialog"] } }, { click = ["build"] }]
+record = { "after building: Red's treasury; the boat's record" = ["resource:wood:red", "resource:gold:red", "boat:31,50"] }
+note = { "the visit: the screens passed and messages" = ["screens", "messages"], "the visit: E9-5's tile after" = "hero:tile", "boats in use after the build" = "boats:used" }
+
+[[step]]
+encounter = "E9-5"
+hero = "E9-5"
+walk = [32, 51]
+
+[[step]]
+encounter = "E9-5"
+hero = "E9-5"
+walk = [31, 50]
+note = { "E9-5's boarding: arrived, points, status, boat" = ["arrived", "hero:points", "hero:status", "boat"] }
+
+[[step]]
+encounter = "E9-5"
+hero = "E9-5b"
+walk = [32, 50]
+once = true
+expect = { dialogs = true }
+actions = [{ record = { "E9-5 on the boat tile, the click from E9-5b: the cursor; what opens; the treasury; the three words" = ["screen", "dialog"] } }, { click = ["cancel"] }]
+record = { "+E9-5 on the boat tile, the click from E9-5b: the cursor; what opens; the treasury; the three words" = ["cursor", "screens", "messages", "resource:wood:red", "resource:gold:red", "tile:32,50", "tile:33,50", "tile:34,50"] }
+note = { "the click from E9-5b: the path's marks, E9-5b's tile after" = ["marks", "hero:tile"] }
+
+# --- Day 1, Red's treasury; Blue's turn -----------------------------------------------------------
+
+[[step]]
+encounter = "E9-0"
+hero = "E9-0"
+record = { "Red, day 1, the turn's end | wood" = "resource:wood:red", "Red, day 1, the turn's end | mercury" = "resource:mercury:red", "Red, day 1, the turn's end | ore" = "resource:ore:red", "Red, day 1, the turn's end | sulfur" = "resource:sulfur:red", "Red, day 1, the turn's end | crystal" = "resource:crystal:red", "Red, day 1, the turn's end | gems" = "resource:gems:red", "Red, day 1, the turn's end | gold" = "resource:gold:red" }
+
+[[step]]
+encounter = "E9-0"
+end_turn = true
+
+[[step]]
+encounter = "E9-0"
+hero = "E9-2"
+record = { "Blue, day 1, the turn's start | wood" = "resource:wood:blue", "Blue, day 1, the turn's start | mercury" = "resource:mercury:blue", "Blue, day 1, the turn's start | ore" = "resource:ore:blue", "Blue, day 1, the turn's start | sulfur" = "resource:sulfur:blue", "Blue, day 1, the turn's start | crystal" = "resource:crystal:blue", "Blue, day 1, the turn's start | gems" = "resource:gems:blue", "Blue, day 1, the turn's start | gold" = "resource:gold:blue" }
+note = { "Blue: E9-2 worn at the start (the starting bonus)" = "hero:equipment", "Blue: the date" = "date" }
+
+# --- Day 1, Blue: E9-2 leaves guards in both mines ------------------------------------------------
+
+[[step]]
+encounter = "E9-2"
+hero = "E9-2"
+walk = [7, 27]
+
+[[step]]
+encounter = "E9-2"
+hero = "E9-2"
+walk = [7, 26]
+actions = [{ record = { "C: the dialog at Blue's visit (its title)" = ["screen", "dialog"] }, note = { "C's dialog before the move: the counts shown (upper, lower)" = ["shown:upper", "shown:lower"] } }, { click = ["lower:0", "upper:0"], note = { "C's dialog after the move: the counts shown (upper, lower)" = ["shown:upper", "shown:lower"] } }]
+record = { "after Blue's day 1: C's record (owner, guards)" = "mine:7,26" }
+note = { "C: the screens passed, messages; E9-2's army after" = ["screens", "messages", "hero:slots"] }
+
+[[step]]
+encounter = "E9-2"
+hero = "E9-2"
+walk = [13, 27]
+
+[[step]]
+encounter = "E9-2"
+hero = "E9-2"
+walk = [13, 26]
+actions = [{ click = ["lower:1", "upper:0"], note = { "S's dialog after the move: the counts shown (upper, lower)" = ["shown:upper", "shown:lower"] } }]
+record = { "after Blue's day 1: S's record (owner, guards)" = "mine:13,26" }
+note = { "S: the screens passed, messages; E9-2's army after" = ["screens", "messages", "hero:slots"] }
+
+[[step]]
+encounter = "E9-2"
+hero = "E9-2"
+walk = [15, 28]
+
+# --- Day 1, Blue: E9-3b flags Red's sawmill ---------------------------------------------------------
+
+[[step]]
+encounter = "E9-3"
+hero = "E9-3b"
+walk = [41, 11]
+
+[[step]]
+encounter = "E9-3"
+hero = "E9-3b"
+walk = [41, 10]
+answer = "yes"
+expect = { dialogs = true }
+record = { "Blue's visit: a question?; the message; N's owner after" = ["questions", "messages", "message_pictures", "mine:41,10"] }
+note = { "Blue's visit: the screens passed, battles" = ["screens", "battle"] }
+
+[[step]]
+encounter = "E9-0"
+hero = "E9-2"
+record = { "Blue, day 1, the turn's end | wood" = "resource:wood:blue", "Blue, day 1, the turn's end | mercury" = "resource:mercury:blue", "Blue, day 1, the turn's end | ore" = "resource:ore:blue", "Blue, day 1, the turn's end | sulfur" = "resource:sulfur:blue", "Blue, day 1, the turn's end | crystal" = "resource:crystal:blue", "Blue, day 1, the turn's end | gems" = "resource:gems:blue", "Blue, day 1, the turn's end | gold" = "resource:gold:blue" }
+
+[[step]]
+encounter = "E9-0"
+end_turn = true
+
+# --- Day 2, Red -----------------------------------------------------------------------------------
+
+[[step]]
+encounter = "E9-0"
+hero = "E9-0"
+record = { "Red, day 2, the turn's start | wood" = "resource:wood:red", "Red, day 2, the turn's start | mercury" = "resource:mercury:red", "Red, day 2, the turn's start | ore" = "resource:ore:red", "Red, day 2, the turn's start | sulfur" = "resource:sulfur:red", "Red, day 2, the turn's start | crystal" = "resource:crystal:red", "Red, day 2, the turn's start | gems" = "resource:gems:red", "Red, day 2, the turn's start | gold" = "resource:gold:red" }
+note = { "Red, day 2: the date" = "date", "Red, day 2: every mine record (A, B, C, S, N)" = ["mine:8,8", "mine:14,8", "mine:7,26", "mine:13,26", "mine:41,10"] }
+
+[[step]]
+encounter = "E9-4"
+hero = "E9-4"
+record = { "day 2 at the turn's start: E9-4's movement points and maximum" = ["hero:points", "hero:day_points"] }
+note = { "day 2: E9-4's status, boat" = ["hero:status", "boat"] }
+
+[[step]]
+encounter = "E9-5"
+hero = "E9-5"
+walk = [29, 50]
+note = { "day 2: E9-5's sail to (29, 50): arrived, points, boat" = ["arrived", "hero:points", "boat"] }
+
+[[step]]
+encounter = "E9-5"
+hero = "E9-5b"
+walk = [32, 50]
+once = true
+expect = { dialogs = true }
+actions = [{ record = { "day 2, the boat tile free, the click: the cursor; what opens" = ["screen", "dialog"] } }, { click = ["build"] }]
+record = { "+day 2, the boat tile free, the click: the cursor; what opens" = ["cursor", "screens", "messages"], "after building: Red's treasury; both boats' records; the three words" = ["resource:wood:red", "resource:gold:red", "boat[E9-5]", "boat:31,50", "tile:32,50", "tile:33,50", "tile:34,50"] }
+note = { "day 2's click from E9-5b: the path's marks, E9-5b's tile after; boats in use" = ["marks", "hero:tile", "boats:used"] }
+
+# --- Day 2, Red: E9-2r attacks Blue's guards ----------------------------------------------------------
+
+[[step]]
+encounter = "E9-2"
+hero = "E9-2r"
+walk = [7, 27]
+
+[[step]]
+encounter = "E9-2"
+hero = "E9-2r"
+walk = [7, 26]
+answer = "yes"
+battle = "auto again"
+expect = { dialogs = true, battle = true }
+record = { "C, day 2: the question's text" = "questions", "C: terrain, special field" = "opening:field", "C: the defending stacks (creature, count, slot)" = "opening:stacks:defender", "C: the defending side's owner; whether Blue plays it (how it showed)" = ["opening:sides", "stops"], "C: the result; the messages; the record after" = ["winner", "messages", "message_pictures", "mine:7,26"] }
+note = { "C: the level-ups" = "level_up_dialogs", "C: the stacks at the end" = "stacks:end" }
+
+[[step]]
+encounter = "E9-2"
+hero = "E9-2r"
+walk = [11, 28]
+
+[[step]]
+encounter = "E9-2"
+hero = "E9-2r"
+walk = [13, 27]
+
+[[step]]
+encounter = "E9-2"
+hero = "E9-2r"
+walk = [13, 26]
+answer = "yes"
+battle = "auto again"
+expect = { dialogs = true, battle = true }
+record = { "S, day 2: the question's text" = "questions", "S: terrain, special field" = "opening:field", "S: the defending stacks (creature, count, slot)" = "opening:stacks:defender", "S: the defending side's owner; whether Blue plays it (how it showed)" = ["opening:sides", "stops"], "S: the result; the messages; the record after" = ["winner", "messages", "message_pictures", "mine:13,26"] }
+note = { "S: the level-ups" = "level_up_dialogs", "S: the stacks at the end" = "stacks:end" }
+
+[[step]]
+encounter = "E9-0"
+end_turn = true
+
+# --- Day 2, Blue: the treasury ----------------------------------------------------------------------
+
+[[step]]
+encounter = "E9-0"
+hero = "E9-2"
+record = { "Blue, day 2, the turn's start | wood" = "resource:wood:blue", "Blue, day 2, the turn's start | mercury" = "resource:mercury:blue", "Blue, day 2, the turn's start | ore" = "resource:ore:blue", "Blue, day 2, the turn's start | sulfur" = "resource:sulfur:blue", "Blue, day 2, the turn's start | crystal" = "resource:crystal:blue", "Blue, day 2, the turn's start | gems" = "resource:gems:blue", "Blue, day 2, the turn's start | gold" = "resource:gold:blue" }
+note = { "Blue, day 2: the date; C, S and N" = ["date", "mine:7,26", "mine:13,26", "mine:41,10"] }

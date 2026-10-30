@@ -16,6 +16,20 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
 
 ## Notices from other lanes and finished items, newest first
 
+- 2026-10-30 (T80 done, whole with A-33's re-read: decisions 209, 210; T81 queued): the T80 entry as it stood in the "Tasks" text:
+
+  **E08 T80 — Batch E9 scored**
+
+  - **Scope:** survey `E08-economy.md` §19 (new): each row of batches E9a and E9b against its
+    prediction; D-47 (E9-1), D-49 (E9-9), A-32 (E9-10), A-33 (E9-4) and design §13's call on who plays
+    an owned mine's guards (E9-2) settled; a dispute a row contradicts reverts to the other side
+    (decision 196) or becomes an `ADV-Q`; the consensus rows' sources `verified`; D-48 and D-50 stay
+    as read (decision 199); the README's batch row evaluated.
+  - **Inputs:** the results (T79a: `experiments/results/E08-batch-9a.md`, `-run2.md`; T79b:
+    `E08-batch-9b.md`, `-run2.md`); the specs' predictions; survey §14, §15; T79a's and T79b's
+    records in `E08-log.md` (the runs' draws).
+  - **Depends on:** T79b (done). **Status:** ready.
+
 - 2026-10-30 (T77b done, whole: decision 200; ADV-Q38 answered, decisions 201–204; T78 queued): the T77b entry as it stood in the "Tasks" text:
 
   **E08 T77b — The ADR amendment drafts, the design note and the cut**

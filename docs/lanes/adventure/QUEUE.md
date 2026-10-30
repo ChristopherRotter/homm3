@@ -4,35 +4,28 @@ Pre-refined tasks of the adventure lane, in order, then the inbox of discovered 
 
 ## Tasks
 
-Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T76 (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 8 are closed (2026-10-12, -13, -20, -21, -23, -26, -28, -30; increment 8, boats and the sea, by T76's audit). **Increment 9, mines, the week and owned objects**, refined with the user at T76 (ADV-Q36; decisions 192, 193): the survey and the ADR amendment drafts first (T77a, T77b), each task's cut confirmed with the user at its start. T77a in two (decision 194): T77a1 done (`adventure/e08-t77a1`: survey `E08-economy.md` §0 to §6), T77a2 done whole (decision 195; `adventure/e08-t77a2`: §7 to §18, the checkpoint's `ADV-Q37`). T77b done whole (decision 200; `adventure/e08-t77b`: the drafts, `E08-design.md`, the cut in rounds 2 to 8, decision 202; the checkpoint's `ADV-Q38`, decisions 201–204). T78 done whole (decision 205; `adventure/e08-t78`, `cross-lane`, decision 206: the writer's ownable objects, weekly objects and timed events, the spec's fields, the specs `E08-batch-9a` and `-9b`). Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
+Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T76 (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 8 are closed (2026-10-12, -13, -20, -21, -23, -26, -28, -30; increment 8, boats and the sea, by T76's audit). **Increment 9, mines, the week and owned objects**, refined with the user at T76 (ADV-Q36; decisions 192, 193): the survey and the ADR amendment drafts first (T77a, T77b), each task's cut confirmed with the user at its start. T77a in two (decision 194): T77a1 done (`adventure/e08-t77a1`: survey `E08-economy.md` §0 to §6), T77a2 done whole (decision 195; `adventure/e08-t77a2`: §7 to §18, the checkpoint's `ADV-Q37`). T77b done whole (decision 200; `adventure/e08-t77b`: the drafts, `E08-design.md`, the cut in rounds 2 to 8, decision 202; the checkpoint's `ADV-Q38`, decisions 201–204). T78 done whole (decision 205; `adventure/e08-t78`, `cross-lane`, decision 206: the writer's ownable objects, weekly objects and timed events, the spec's fields, the specs `E08-batch-9a` and `-9b`). T79 in two by batch (decision 207): T79a
+done (`adventure/e08-t79a`: the harness's mine records, tile words, boat dialog, Leave Guards,
+battle sides and `auto again`; the recipe `E08-batch-9a` and its runs); T79b done whole (decision
+208; `adventure/e08-t79b`: the harness's income, Garden mask, weekly objects' and monsters' words,
+end-turn messages; the recipe `E08-batch-9b` and its runs). T80 done (decisions 209, 210: whole
+with A-33's re-read; `adventure/e08-t80`, `cross-lane`: batch E9 scored, survey §19, A-33
+withdrawn). T81 in two, the ADRs first (decision 211): T81a done (`shared/e08-t81a`: the three
+drafts applied, ADR-0015's core row, the index, the glossary). Every entry's acceptance includes
+the Definition of Done (`docs/05-testing.md`).
 
-**E08 T79 — Batch E9's harness and runs**
+**E08 T81b — The `shared/` task's code: the kinds, the creature's abilities and the packs**
 
-- **Scope:** increment 9's design note §17 (the harness): the capture harness's reads
-  (`clients/capture/`, common; CLT-Q18: this lane builds them with the harness check and tells the
-  client and map-client lanes' inboxes): the mine records (game +0x4E38C: owner, resource,
-  abandoned, guards, entrance), a player's income +0x108 and the Garden mask +0xB8, the date's three
-  words (+0x1F63E to +0x1F642), a tile's word (the weekly objects'; a monster's count and sixteenths,
-  bits 0 to 11 and 27 to 30), the explored tiles, a hero's spell points, a battle's sides' owners and
-  controllers at its opening (E9-2: who plays an owned mine's guards); the clicks: a Shipyard's side
-  tile with another hero selected, the boat dialog's build button, the Leave Guards dialog's moves;
-  the recipes `clients/capture/batches/E08-batch-9a.toml` and `-9b.toml`; the runs E9a (two days)
-  and E9b (fifteen days), the results `experiments/results/E08-batch-9a.md` and `-9b.md`.
-- **Inputs:** the specs `experiments/specs/E08-batch-9a.toml`, `-9b.toml` and their templates
-  (T78; compile them with the staged tables); design §17; T68a's and T68b's records in
-  `E08-log.md` (increment 8's harness, the same shape); `clients/capture/README.md`.
-- **Depends on:** T78 (done). **Status:** ready; its cut confirmed at its start (T68 was taken in
-  two, by batch).
-
-**E08 T80 — Batch E9 scored**
-
-- **Scope:** survey `E08-economy.md` §19 (new): each row of batches E9a and E9b against its
-  prediction; D-47 (E9-1), D-49 (E9-9), A-32 (E9-10), A-33 (E9-4) and design §13's call on who plays
-  an owned mine's guards (E9-2) settled; a dispute a row contradicts reverts to the other side
-  (decision 196) or becomes an `ADV-Q`; the consensus rows' sources `verified`; D-48 and D-50 stay
-  as read (decision 199); the README's batch row evaluated.
-- **Inputs:** the results (T79); the specs' predictions; survey §14, §15.
-- **Depends on:** T79. **Status:** ready after T79; may share a round with it (design §18).
+- **Scope:** design §18's round 4, second half (decision 211), a `shared/e08-t81b` pull request
+  (`cross-lane`: the packs and the harvester's gap-fill are the battle lane's): the four kinds
+  (daily resource, the day's mana regain, the extra regain, full mana), the two hero parameters
+  and the core creature's abilities outside battle (`weekly_resource`, decision 201) in
+  `h3-content` and `h3-pack`, with the packs and the gap-fill (ADR-0013 point 3, ADR-0015's R01
+  point 1, ADR-0017's consequences, as T81a applied them); core ruleset hash v51, pack format v50
+  (design §16); the golden replays' headers and the AI lane's reports, as T70.
+- **Inputs:** design §1, §3, §16; survey `E08-economy.md` §19; T70's record in `E08-log.md`
+  (increment 8's `shared/` task) as the pattern; the original data staged for the re-harvest.
+- **Depends on:** T81a (done). **Status:** ready; its cut confirmed with the user at its start.
 
 ## Inbox
 

@@ -320,6 +320,13 @@ fn a_maps_start_its_kingdom_and_buttons() {
                 army: [None; 7],
             })),
             selection: None,
+            // T6b2 (design §4.14): the kingdom's window, no town, both players on teams of their
+            // own.
+            realm: Some(KingdomStatus {
+                halls: [0; 4],
+                allies: vec![0],
+                enemies: vec![1],
+            }),
         }
     );
     let blue = kingdom(&raw, 1);
@@ -330,6 +337,15 @@ fn a_maps_start_its_kingdom_and_buttons() {
     };
     assert_eq!((blue.heroes.len(), &blue.towns), (0, &vec![castle]));
     assert_eq!(blue.selected, Selected::Town(0));
+    // Its town a village (no hall built at the start), Blue the ally.
+    assert_eq!(
+        blue.realm,
+        Some(KingdomStatus {
+            halls: [1, 0, 0, 0],
+            allies: vec![1],
+            enemies: vec![0],
+        })
+    );
     // The selected town's window: its faction's first name, its Fort standing; nothing of the
     // viewer's, nothing selected, no window.
     assert_eq!(
@@ -369,14 +385,48 @@ fn a_maps_start_its_kingdom_and_buttons() {
     assert_eq!(kingdom(&raw, 0).heroes[0].portrait, 130);
     assert!(!kingdom(&raw, 1).towns[0].fort);
     let raw = self::raw(&map());
-    // Nothing of a colour's: the kingdom's defaults but the date's window (E24 M3 T5b2).
+    // Nothing of a colour's: the kingdom's defaults but the date's window (E24 M3 T5b2); a
+    // colour no one plays is no one's ally (T6b2).
     assert_eq!(
         kingdom(&raw, 2),
         Kingdom {
             status: Some(Status::Date(DateStatus { frame: 0 })),
+            realm: Some(KingdomStatus {
+                halls: [0; 4],
+                allies: vec![],
+                enemies: vec![0, 1],
+            }),
             ..Kingdom::default()
         }
     );
+    // The map's teams: Red and Blue on one.
+    let mut allied = self::raw(&map());
+    allied.teams = Some(h3_map::model::Teams {
+        count: 1,
+        of_player: [0; 8],
+    });
+    assert_eq!(
+        kingdom(&allied, 0).realm.map(|r| (r.allies, r.enemies)),
+        Some((vec![0, 1], vec![]))
+    );
+    // Halls built: a Capitol, a City Hall and a Town Hall counted as such.
+    for (bit, hall) in [(2, 3), (1, 2), (0, 1)] {
+        let mut built = self::raw(&map());
+        let town = built
+            .objects
+            .iter()
+            .position(|o| matches!(o.body, Body::Town(_)))
+            .unwrap();
+        if let Body::Town(t) = &mut built.objects[town].body {
+            t.buildings = Buildings::Custom {
+                built: [1 << bit, 0, 0, 0, 0, 0],
+                forbidden: [0; 6],
+            };
+        }
+        let mut halls = [0; 4];
+        halls[hall] = 1;
+        assert_eq!(kingdom(&built, 1).realm.map(|r| r.halls), Some(halls));
+    }
     assert!(Live::at_start(&raw, &art, 0, &towns()).buttons.is_none());
     // Move hero by a green arrow of the selected hero's path, next hero by an awake hero able to
     // move.
@@ -432,6 +482,7 @@ fn a_live_parts_kingdom_read() {
     let two = Kingdom {
         status: None,
         selection: None,
+        realm: None,
         heroes: vec![
             KingdomHero {
                 asleep: false,

@@ -77,7 +77,16 @@ The review's fix C3 follows the reading of 0x47A100: a created stack whose round
 
 ### AI lane (`AI-Q<n>`)
 
-(no open questions)
+#### AI-Q12 — E25's increment 4 (T8, 2026-10-30)
+
+Increment 3 (the network's architecture) is read (`docs/epics/E25-log.md` T7c, T7d): the hex convolution network, the hex transformer and E06's entity network fit the teacher ten times worse than any MLP at 5 to 25 times its cost; the wide MLP 2 × 1 024 fits it best but, trained from scratch at 20 M, ends at `e25-scale-1` #3's ladder (every point estimate within 0.006; 0.414 against the system actor, the target 0.5) at 0.7 times its samples a second. With T5 (samples flat from 20 M), network size, depth, structure and length all end at one ladder; PPO's own settings (the entropy bonus 0.01, 4 epochs, 8 minibatches, the learning rate 2.5e-4, the rollout of 128 × 256) were never varied in E05, E06 or E25. Options:
+
+- **(a) The policy's sharpness and PPO's settings** (agent's recommendation): first a diagnostic without training: `e25-scale-1` #3's ladder against the system actor with its logits divided by a temperature (1, 0.7, 0.5; a small `evaluate` option): how much of the gap to 0.5 is the sampled policy's spread (the entropy ends at 1.5); then A/Bs on the 2 × 512 MLP at 20 M, about 75 minutes each on the user's machine: the entropy bonus decayed to 0 with the learning rate, and one of fewer epochs or a larger rollout. Cheap, untried, decision 1's rules unchanged (still the sampled policy, only trained sharper).
+- **(b) A more diverse league:** exploiters (a second learner trained only against the main agent's frozen copies, its snapshots joining the league), aimed at self-play's narrowness (the agent plays the same against every opponent, E06 T6a; the league score settles at 0.5). A build in `h3env.train`, a resumable state and tests, then a longer A/B (two learners share the GPU).
+- **(c) Expert iteration** (a search in Rust over determinized worlds, trained on its own choices): the largest build; T1c argues against it on this network's evaluation.
+- **(d) Pause E25** at `e25-scale-1` #3 until the battle lane builds the fair system actor (decision 3: imitation, and a fair target), the lane moving to other work meanwhile; or revise decision 1's target with this evidence (the faithful actor sees the hidden facts) and close E25.
+
+Also for the user: **the current best stays `e25-scale-1` #3** (agent's recommendation: the wide network is as strong at twice the parameters and 1.5 times a decision's cost) or becomes `e25-wide-1` #2. And optionally, on the user's machine (the wide `best.pt` is above the upload limit): `records/inspect/battles.py` on `runs/e25-wide-1/best.pt` (its JSONL lines uploaded: T7d's decisions' mix) and the head-to-head gate against #3 (its one line).
 
 ### Client lane (`CLT-Q<n>`)
 
@@ -199,6 +208,33 @@ both: the comparisons are exact); (b) the client draws the hint again after such
 mouse's item's), the original's behind `--bugs original` for the comparisons; (c) an option.
 **Recommendation:** (b): the empty bar is a redraw artifact (the edit was never meant to show),
 and a player clicking through the lists loses the hint of the slot under the mouse. **Blocked:**
+nothing; built as the original's. (E24 M3 T6b2: the underground's button and key update the whole
+screen, which draws every item too: the same empty bar after each, recorded in `underground`.)
+
+#### MCL-Q23 — A press on the status window lost when the window is built again (E24 M3 T6b2, a reading)
+
+The status window's click fires at the left button's release, wherever it is, from the window's
+item that took the press (E24 design §4.14). A window built anew in between (a kind asked for a
+time ending at a redraw: the kingdom's or the date's 3 000 ms after a click; a hero's choice by a
+key) drops the old window's items and the press with them: the release then does nothing. Built
+and recorded in `status-click` (a press held across the kingdom's end at 4 700 ms, released at
+4 900: nothing). **Options:** (a) the original's (built, for both); (b) the client keeps the
+press across the window's rebuild (the release clicks the new window), the original's behind
+`--bugs original` for the comparisons; (c) an option. **Recommendation:** (b): a click that
+silently does nothing because a timer ran out under the mouse reads as a missed click. **Blocked:**
+nothing; built as the original's.
+
+#### MCL-Q24 — A hotkey's release during a minimap drag leaves its button pressed (E24 M3 T6b2, a reading)
+
+While the mouse holds the minimap down, its own loop takes every message but the mouse's moves and
+the release, and drops them (E24 design §4.14). A panel button's hotkey pressed before the drag
+(its button drawn pressed) and released during it loses its key up: the button stays drawn pressed
+and its command is lost, until that key is pressed and released again. Built by the reading (the
+timeline keeps the key's button pressed), not recorded (`minimap-drag` presses and releases H both
+during the drag: both dropped, no button pressed). **Options:** (a) the original's (built, for
+both); (b) the client releases a hotkey's button when its key up comes during the drag (without
+its command, as a release off a button), the original's behind `--bugs original`; (c) an option.
+**Recommendation:** (b): a button stuck in its pressed picture is a visible defect. **Blocked:**
 nothing; built as the original's.
 
 ## Answered

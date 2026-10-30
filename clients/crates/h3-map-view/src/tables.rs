@@ -228,6 +228,11 @@ pub const FORT: u32 = 7;
 pub const CITADEL: u32 = 8;
 /// The Castle.
 pub const CASTLE: u32 = 9;
+/// The Town Hall (E24 M3 T6b2: a hall of the kingdom's window, which tests the Capitol, the City
+/// Hall and the Town Hall in that order, 0x452C2E).
+pub const TOWN_HALL: u32 = 11;
+/// The City Hall.
+pub const CITY_HALL: u32 = 12;
 /// The Capitol.
 pub const CAPITOL: u32 = 13;
 

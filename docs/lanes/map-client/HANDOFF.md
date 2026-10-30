@@ -4,8 +4,8 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 
 ## Current state
 
-- **E24** (`docs/epics/E24-map-client.md`; log `E24-log.md`, design `E24-design.md`): **M1** and **M2** closed (`E24-archive.md`): the crate `clients/crates/h3-map-view`, 50 situations and 28 sequences exact (a viewer change runs `h3map.py drawn` first: the runbook, "Which captures a change needs"; `--bugs original` the comparisons' profile). **M3** (the adventure screen; the epic's M3 section, its review list; the queue's tasks): **T1a** (#545) to **T6a2b** (#602) merged; T6b cut by the user (2026-10-30) into T6b1, T6b2, T6b3; **T6b1 built** (the buttons' press and hotkeys, the lists' clicks, Next Hero; design §4.13; `choose-lists`, `press-buttons` exact with the status bar). **Next: T6b2** (the underground, the minimap's click, the status window's), then T6b3 (the keys during a walk, the sound without the focus), then T7 (M3's closure, the status bar unmasked and everything recorded again). Open: **MCL-Q13** (keep, recommended), **MCL-Q14** (M4 records a cast first), **MCL-Q15**, **MCL-Q20** (the original's, recommended), **MCL-Q21** (nothing shown, refused at M4's import, recommended), **MCL-Q22** (the hint hidden by a list's redraw: the client's fix, recommended).
-- **Open pull requests** (2026-10-30): T6b1's **#605** (`map-client/e24-m3-t6b1`; `h3-sdl`'s keys K, Q, U, Z, the foundation's, additive): check it first (merged, or its mergeability with `master`). A merged branch is the user's to delete: the session's proxy refuses it.
+- **E24** (`docs/epics/E24-map-client.md`; log `E24-log.md`, design `E24-design.md`): **M1** and **M2** closed (`E24-archive.md`): the crate `clients/crates/h3-map-view`, 50 situations and 28 sequences exact (a viewer change runs `h3map.py drawn` first: the runbook, "Which captures a change needs"; `--bugs original` the comparisons' profile). **M3** (the adventure screen; the epic's M3 section, its review list; the queue's tasks): **T1a** (#545) to **T6b1** (#605) merged; T6b cut by the user (2026-10-30) into T6b1, T6b2, T6b3; **T6b2 built** (the underground's button and key, the minimap's click and drag, the status window's click; design §4.14; `underground`, `minimap-drag`, `status-click` exact with the status bar). **Next: T6b3** (the keys during a walk, the sound without the focus; its queue entry notes `carry_on`'s missing `Press` and `Key`), then T7 (M3's closure, the status bar unmasked and everything recorded again). Open: **MCL-Q13** (keep, recommended), **MCL-Q14** (M4 records a cast first), **MCL-Q15**, **MCL-Q20** (the original's, recommended), **MCL-Q21** (nothing shown, refused at M4's import, recommended), **MCL-Q22** (the hint hidden by a list's redraw: the client's fix, recommended), **MCL-Q23** (a status window's press lost to its rebuild: the client's fix, recommended), **MCL-Q24** (a hotkey's release eaten by the minimap's loop: the client's fix, recommended).
+- **Open pull requests** (2026-10-30): T6b2's (`map-client/e24-m3-t6b2`; the harness's `h3map.py` and `h3mem.py`, common, additive): check it first (merged, or its mergeability with `master`). A merged branch is the user's to delete: the session's proxy refuses it.
 - **Ownership** (`lanes.toml`): this lane's crates in the client workspace (`clients/crates/h3-map…`: `h3-map-view`), its data folder `clients/map/`, `docs/epics/E24*` and this folder; branches `map-client/<task>`; ids `MCL-Q<n>`, `MCL-QUIRK-<n>` (asset fixes), `MCL-STUB-<n>`; ADR drafts in `adr-drafts/`. **Common** with the client lane: the foundation (`h3-assets`, `h3-render`, `h3-sdl`, `h3-ui`, the workspace's `Cargo.toml`, `deny.toml`, `.gitignore`, `README.md`, `scripts/`, the string catalogue `clients/text/`, kept common by the user at T0) and the capture harness `clients/capture/` (the adventure lane changes it too): an additive change freely, a change in behaviour noted in the client lane's inbox. The rest of `clients/` is the client lane's (`h3-view` included).
 - **The writer:** this lane adds what its situations need to `h3_map::writer` (the adventure lane's) in additive `cross-lane` pull requests, noted in that lane's inbox (`docs/formats/h3m.md`). It refuses an owner that is no player: a situation gives each owning colour a hero.
 - **From E17** (`clients/README.md`; ADR-0020, ADR-0024): the decoders, the compositor, the SDL 3 adapter, the string catalogue, the gate, the harness (the original under Wine, `h3mem.py`, `h3map.py`: the runbook `clients/capture/README.md`).
@@ -29,6 +29,10 @@ The user's dictation (2026-10-12): `docs/lanes/client/ASSET-NOTES.md`; this lane
 
 ## Recent sessions
 
+- **2026-10-30, E24 M3 T6b2** (the user present: T6b2 taken whole): T6b2 built (the log's "M3
+  T6b2"; its pull request); the original data staged from the user's repo folder first; the
+  baseline green; the status window's item list read from the running original's memory to settle
+  the click. Nothing is waiting on the user's computer.
 - **2026-10-30, E24 M3 T6b1** (the user present: T6b cut into T6b1, T6b2, T6b3, the agent's
   proposal): T6b1 built (the log's "M3 T6b1"; #605); the original data staged from the user's repo
   folder first (the computer went offline later); the VM restarted during the setup: CI's green
@@ -37,7 +41,3 @@ The user's dictation (2026-10-12): `docs/lanes/client/ASSET-NOTES.md`; this lane
   declined): T6a2b built (the log's "M3 T6a2b"; #602); the original data staged from the user's repo
   folder first (the computer went offline later); the baseline green. Nothing is waiting on the
   user's computer.
-- **2026-10-30, E24 M3 T6a2a** (the user present: T6a2 cut into T6a2a, the visit marks, and
-  T6a2b; MCL-Q17 to MCL-Q19 answered): T6a2a built (the log's "M3 T6a2a"; #598); the original data
-  staged from the user's repo folder first; the sandbox restarted during the setup, the baseline
-  run again and green. Nothing is waiting on the user's computer.

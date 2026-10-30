@@ -119,6 +119,20 @@ MAP_TEMPLATES, TEMPLATE_RECORD, TEMPLATE_CLASS = 0x4, 0x44, 0x38
 HERO_CLASS_FIELD, HERO_ID, HERO_FACING, HERO_STATUS, IN_BOAT = 0x30, 0x1A, 0x47, 0x105, 1 << 18
 BOATS, BOAT_RECORD, BOAT_FACING, BOAT_COLOUR = 0x4E3BC, 0x28, 0x1B, 0x1C
 HERO_OBJECT, BOAT_OBJECT, ENTRANCE = 34, 8, 0x10
+# The mines' and Lighthouses' records (E08 T79a, batch E9a; survey E08-economy §2.1, structs.toml
+# "mine_record"): a vector at game +0x4E38C (begin, end), 0x40 bytes each: the owner (i8 +0x0, -1
+# none), the resource (i8 +0x1: a mine's subclass 0-6, an abandoned mine's drawn one, 100 for a
+# Lighthouse), the abandoned flag (u8 +0x2), the guards (creature types i32 +0x4 to +0x1F, counts
+# i32 +0x20 to +0x3B), the entrance's column, row and level (u8 +0x3C to +0x3E). A hero's record
+# keeps the class and word of the object under it (i32 +0xC, +0x14; hero_hide).
+MINES, MINE_RECORD, MINE_GUARDS, MINE_ENTRANCE, LIGHTHOUSE = 0x4E38C, 0x40, 0x4, 0x3C, 100
+HERO_UNDER_CLASS, HERO_UNDER_WORD = 0xC, 0x14
+# A player's day's income (E08 T79b, batch E9b; survey E08-economy §8.1, structs.toml
+# "player_record"): seven i32 at +0x108, wood to gold, computed at each day's start
+# (player_daily_income 0x4B8AF0) and kept until the next; its Mystical Gardens' mask (u32 +0xB8,
+# a bit per Garden by the index in its word's bits 0-4, §9.3). A wandering monster's word keeps
+# the sixteenths of its count in bits 27-30 (§10.1; the count in bits 0-11).
+PLAYER_INCOME, PLAYER_GARDENS, SIXTEENTHS_SHIFT = 0x108, 0xB8, 27
 # The map hint's visit marks (E24 M3 T6a2a; E24 design §4.11, structs.toml): per class the kind
 # whose bit of the viewing player in the game's kinds_visited (u8[28] +0x4E344) shows its bonus
 # ("word": the object's word's bit 5 + the shown player, 0x69778C; None no bonus) and its mark's
@@ -325,6 +339,13 @@ DECIDED = 0x132F8
 # The battle's outcome (E17 H1; structs.toml, battle_manager): each side retreated (u8 +0x132B0)
 # or surrendered (u8 +0x132B2), the winner (i32 +0x13D48: 0 the attacker, 1 the defender).
 RETREATED, SURRENDERED, WINNER = 0x132B0, 0x132B2, 0x13D48
+# Each side's owner and controller (E08 T79a, batch E9a's E9-2; battle_side_setup 0x4639F0,
+# structs.toml): the owner (i32 +0x54A8: the attacking hero's +0x22, the defender's the setup's
+# argument, -1 none), whether that player is human (u8 +0x54A4, player_id_is_human 0x4CE940) and
+# human on this machine (u8 +0x54A6, player_id_is_human_here 0x4CE970), 0 for a side without one.
+SIDE_OWNERS, SIDE_HUMAN, SIDE_HUMAN_HERE = 0x54A8, 0x54A4, 0x54A6
+# Auto combat on (i32 +0x132C4; the button, control 2004, toggles it: structs.toml).
+AUTO_COMBAT = 0x132C4
 # The battle's log (E17 M3 T6b, design §9.8): the combat dialog (a pointer at the manager's
 # +0x132FC) holds the entries (a vector of string pointers: begin +0x58, end +0x5C), the new
 # entries' count +0x64, the first shown +0x68 and the time it last showed them +0x6C (the
@@ -570,6 +591,23 @@ class Mem:
                             else None if special < 0 else str(special)),
                 "ship": self.read(manager + ON_SHIP, 1)[0]}
 
+    def battle_sides(self):
+        """Each side's owner (a colour, -1 none) and whether it is a human player's and a human's
+        on this machine (E08 T79a, batch E9a's E9-2: who plays an owned mine's guards); None
+        outside a battle."""
+        manager = self.manager()
+        if not manager:
+            return None
+        owners = struct.unpack("<2i", self.read(manager + SIDE_OWNERS, 8))
+        human, here = self.read(manager + SIDE_HUMAN, 2), self.read(manager + SIDE_HUMAN_HERE, 2)
+        return [{"owner": owners[s], "human": human[s], "here": here[s]} for s in (0, 1)]
+
+    def auto_combat_on(self):
+        """Whether auto combat is on (E08 T79a; battle manager +0x132C4), False outside a
+        battle."""
+        manager = self.manager()
+        return bool(manager) and self.i32(manager + AUTO_COMBAT) != 0
+
     def obstacle_hexes(self):
         """The hexes an obstacle blocks (E08 T68a, batch E8's openings): the hex records' blocked
         flag (0x2) on a hex no stack stands on, in the hexes' order."""
@@ -647,6 +685,9 @@ class Mem:
             "selected": struct.unpack_from("<i", raw, 0x4)[0],
             "heroes": list(struct.unpack_from(f"<{count}i", raw, 0x8)),
             "resources": dict(zip(RESOURCES, struct.unpack_from("<7i", raw, 0x9C))),
+            # E08 T79b (batch E9b): the day's income and the Mystical Gardens' mask.
+            "income": dict(zip(RESOURCES, struct.unpack_from("<7i", raw, PLAYER_INCOME))),
+            "gardens": struct.unpack_from("<I", raw, PLAYER_GARDENS)[0],
         }
 
     def hero(self, index):
@@ -1044,23 +1085,27 @@ class Mem:
             # picture's kind the game's date gives.
             return {"kind": kind, "frame": items[STATUS_DATE_DEF][0][0]}
         if kind == 2:
-            # The kingdom's (E24 M3 T5b2): the towns by their halls (villages, Town Halls, City
-            # Halls, Capitols), the players alive of the shown player's team (itself among them)
-            # and the others, each by colour.
-            halls = [0, 0, 0, 0]
-            for index in self.town_list(colour):
-                record = self.u32(self.game() + TOWNS) + TOWN_SIZE * index
-                built = struct.unpack("<Q", self.read(record + TOWN_EVERY_BUILT, 8))[0]
-                hall = next((3 - i for i, b in enumerate(HALL_BITS) if built >> b & 1), 0)
-                halls[hall] += 1
-            out = self.read(self.game() + OUT_OF_GAME, 8)
-            teams = struct.unpack("<8b", self.read(self.game() + TEAMS, 8))
-            shown = self.i32(SHOWN_PLAYER)
-            alive = [p for p in range(8) if out[p] == 0]
-            allies = [p for p in alive if shown >= 0 and teams[p] == teams[shown]]
-            return {"kind": kind, "halls": halls, "allies": allies,
-                    "enemies": [p for p in alive if p not in allies]}
+            return {"kind": kind, **self.realm(colour)}
         return {"kind": kind}
+
+    def realm(self, colour):
+        """The kingdom's status window as the game would build it now (E24 M3 T5b2, since T6b2
+        on its own: what a click on the window shows): the towns of `colour` by their halls
+        (villages, Town Halls, City Halls, Capitols), the players alive of the shown player's team
+        (itself among them) and the others, each by colour."""
+        halls = [0, 0, 0, 0]
+        for index in self.town_list(colour):
+            record = self.u32(self.game() + TOWNS) + TOWN_SIZE * index
+            built = struct.unpack("<Q", self.read(record + TOWN_EVERY_BUILT, 8))[0]
+            hall = next((3 - i for i, b in enumerate(HALL_BITS) if built >> b & 1), 0)
+            halls[hall] += 1
+        out = self.read(self.game() + OUT_OF_GAME, 8)
+        teams = struct.unpack("<8b", self.read(self.game() + TEAMS, 8))
+        shown = self.i32(SHOWN_PLAYER)
+        alive = [p for p in range(8) if out[p] == 0]
+        allies = [p for p in alive if shown >= 0 and teams[p] == teams[shown]]
+        return {"halls": halls, "allies": allies,
+                "enemies": [p for p in alive if p not in allies]}
 
     def ask_status(self, kind, end, rebuild=False):
         """Asks the status window for a kind until the clock time `end` (E24 M3 T5b2; design
@@ -1755,6 +1800,36 @@ class Mem:
                         "aboard": raw[i + 0x24]})
         return out
 
+    def mines(self):
+        """The mines' and Lighthouses' records in the game's order (E08 T79a, batch E9a): [{index,
+        owner, resource, abandoned, guards: [[creature, count]] by slot (an empty slot [-1, 0]),
+        entrance: [x, y, level]}]."""
+        begin, end = struct.unpack("<II", self.read(self.game() + MINES, 8))
+        raw = self.read(begin, end - begin) if end > begin else b""
+        out = []
+        for i in range(0, len(raw) - MINE_RECORD + 1, MINE_RECORD):
+            types = struct.unpack_from("<7i", raw, i + MINE_GUARDS)
+            counts = struct.unpack_from("<7i", raw, i + MINE_GUARDS + 28)
+            owner, resource = struct.unpack_from("<2b", raw, i)
+            out.append({"index": i // MINE_RECORD, "owner": owner, "resource": resource,
+                        "abandoned": raw[i + 2], "guards": [[t, c] for t, c in zip(types, counts)],
+                        "entrance": list(raw[i + MINE_ENTRANCE:i + MINE_ENTRANCE + 3])})
+        return out
+
+    def tile_word(self, x, y, z=0):
+        """A tile's own word, class and subclass (E08 T79a, batch E9a's Shipyard: each of its
+        three tiles' words, which `object_at` would read on the entrance) and, when a hero stands
+        there (class 34), the hero's index and the class and word of the object under it (its
+        record's +0xC, +0x14)."""
+        found = self.tile(x, y, z)
+        if found["class"] == HERO_OBJECT:
+            index = found["word"]
+            raw = self.read(self.game() + HEROES + HERO_SIZE * index + HERO_UNDER_CLASS, 12)
+            found["hero"] = index
+            found["under_class"], = struct.unpack_from("<i", raw, 0)
+            found["under_word"], = struct.unpack_from("<I", raw, HERO_UNDER_WORD - HERO_UNDER_CLASS)
+        return found
+
     def standing(self, z=0):
         """The heroes and boats the view draws on a level (E24 M1 T5a; view_tile_heroes_boats
         0x40FB30): {(x, y): ("hero", index) | ("boat", index)} for each tile of class 34 or 8
@@ -1828,7 +1903,8 @@ class Mem:
 
     def monster(self, x, y, z=0):
         """The wandering monster on a tile from its word (E17 H1; E3-3), None for none: its
-        creature, count, aggression (-4 to 10, signed 5 bits), never flees and does not grow."""
+        creature, count, aggression (-4 to 10, signed 5 bits), never flees and does not grow;
+        since E08 T79b the sixteenths of its count (bits 27-30, batch E9b's growth) and the word."""
         t = self.tile(x, y, z)
         if t["class"] != MONSTER_CLASS:
             return None
@@ -1836,7 +1912,8 @@ class Mem:
         aggression = (word >> 12) & 0x1F
         return {"creature": t["subclass"], "count": word & 0xFFF,
                 "aggression": aggression - 32 * (aggression >= 16),
-                "never_flees": bool(word >> 17 & 1), "fixed_count": bool(word >> 18 & 1)}
+                "never_flees": bool(word >> 17 & 1), "fixed_count": bool(word >> 18 & 1),
+                "sixteenths": word >> SIXTEENTHS_SHIFT & 0xF, "word": word}
 
     def creature_name(self, creature, count=1):
         """A creature's name from the game's creature table, plural unless count is 1."""

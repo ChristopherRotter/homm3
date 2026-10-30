@@ -71,6 +71,10 @@ pub struct RadarArt {
     /// What the view's corner is multiplied by for the box's place: the f32 the executable holds,
     /// by its bits (0x3FAA3D71: 1.33). A positive normal number.
     pub scale: u32,
+    /// What a click's point less the area's corner is divided by for its tile (`minimap_click`
+    /// 0x40A11C, E24 M3 T6b2; design §4.14): the f32 the executable holds, by its bits (0x3FAAA993:
+    /// 1.3333, not the box's 1.33). A positive normal number.
+    pub click: u32,
 }
 
 impl MinimapArt {
@@ -127,15 +131,23 @@ impl MinimapArt {
             }
         }
         for radar in self.sizes.iter().map(|s| s.radar).chain([self.other]) {
-            let exponent = (radar.scale >> 23) & 0xFF;
-            if radar.scale >> 31 != 0 || exponent == 0 || exponent == 0xFF {
-                return Err(alloc::format!(
-                    "the scale {:#x} is not a positive normal f32",
-                    radar.scale
-                ));
+            for bits in [radar.scale, radar.click] {
+                let exponent = (bits >> 23) & 0xFF;
+                if bits >> 31 != 0 || exponent == 0 || exponent == 0xFF {
+                    return Err(alloc::format!(
+                        "the scale {bits:#x} is not a positive normal f32"
+                    ));
+                }
             }
         }
         Ok(())
+    }
+
+    /// The divisor of a click's point on a map of `side` tiles (E24 M3 T6b2): its size's, else
+    /// `other`'s.
+    #[must_use]
+    pub fn click(&self, side: usize) -> u32 {
+        self.of(side).1.click
     }
 }
 
@@ -470,6 +482,31 @@ pub fn scaled(v: u32, bits: u32) -> i32 {
             .checked_shl(shift)
             .filter(|v| v >> shift == product)
             .unwrap_or(u64::MAX)
+    };
+    i32::try_from(value).unwrap_or(i32::MAX)
+}
+
+/// trunc(`v` ÷ the f32 of `bits`), exactly (E24 M3 T6b2: a minimap click's tile, `minimap_click`
+/// 0x40A160's `fdiv` and `crt_ftol`; a positive normal f32, [`MinimapArt::check`]). The tables'
+/// divisors leave every point of the area at least 0.24 short of the next integer (design §4.14),
+/// so the x87's roundings never carry it across.
+#[must_use]
+pub fn divided(v: u32, bits: u32) -> i32 {
+    let mantissa = u64::from(bits & 0x7F_FFFF | 0x80_0000);
+    let exponent = i64::from((bits >> 23) & 0xFF) - 127 - 23;
+    let shift = u32::try_from(exponent.unsigned_abs().min(63)).unwrap_or(63);
+    let value = if exponent < 0 {
+        // v × 2^shift ÷ mantissa: v below 2^32 and the shift at most 63 - 32 fit, a larger one
+        // saturates.
+        u64::from(v)
+            .checked_shl(shift)
+            .filter(|w| w >> shift == u64::from(v))
+            .map_or(u64::MAX, |w| w / mantissa)
+    } else {
+        mantissa
+            .checked_shl(shift)
+            .filter(|m| m >> shift == mantissa)
+            .map_or(0, |m| u64::from(v) / m)
     };
     i32::try_from(value).unwrap_or(i32::MAX)
 }

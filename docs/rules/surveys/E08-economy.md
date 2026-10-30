@@ -22,7 +22,7 @@ its sources and tests.
   `player_daily_income` 0x4B8AF0, `player_gold_income` 0x4C7930, `hero_gold_income` 0x4E4390,
   `count_worn_artifact` 0x4BABD0, `hero_mana_regained` 0x4E3F40, `visit_windmill` 0x4A7FC0,
   `visit_water_wheel` 0x4A7DE0, `visit_garden` 0x4A3BC0, `map_timed_events` 0x4CD910,
-  `apply_timed_event` 0x4CD710.
+  `apply_timed_event` 0x4CD710; T80: `reveal_owned` 0x4C7C50.
   **Read in part:** `visit_object`'s cases 42, 53 and 87 (0x4A84F0), `load_object_body`'s cases
   53 and 87 (0x502E00), `setup_map_objects`'s cases 42, 53 and 87 (0x4C0CC0),
   `map_template_read` 0x503780 at the class's mapping (`object_class_values` 0x63A6E4),
@@ -33,7 +33,7 @@ its sources and tests.
   screen's control messages, its switch 0x409AB4; the name is its End Turn case's) at its control
   7; T77a2: `setup_map_objects`' cases 55, 109 and 112, `next_player_turn` 0x4C6FE0 at its
   call of the new day, `load_timed_event` 0x4FC1A0 at its days, `place_object` 0x4C9890 at its
-  class. **Not followed:** the computer player (`ai_fight_answer` 0x52BD10, its own mines, its boats),
+  class; T80: `adventure_manager_start` 0x406FD0 at its call of `reveal_owned`. **Not followed:** the computer player (`ai_fight_answer` 0x52BD10, its own mines, its boats),
   network play (the message records 0x49BF90 and 0x482390, `network_map_message` 0x482010), saved
   games, the scenario's conditions after a flag (`scenario_condition_met` 0x4F2CE0: E10), the boat
   dialog itself (0x5D2720), the guards' description (0x40ABE0); T77a2: the towns', the taverns'
@@ -66,7 +66,12 @@ its sources and tests.
   read with `h3-map`'s reader and a throwaway example (not committed), §1; the text tables
   `advevent.txt`, `GENRLTXT.TXT` and `MINEEVNT.TXT` (`extracted.tar`) for which message is which.
 
-## 0. Findings in short (T77a1, T77a2)
+## 0. Findings in short (T77a1, T77a2; batch E9 scored by T80)
+
+- **Batch E9** (§19, T80): every row as the reading predicted but one. D-47 (the split), D-49
+  (the sixteenths) and A-32 (the cap) confirmed, and design §13's call (the owner plays its
+  mine's guards); **A-33 withdrawn**: the game's start reveals around every owned object, a
+  Lighthouse too (`reveal_owned` from `adventure_manager_start`).
 
 - **Census** (§1): 5 979 mines on 158 maps (60 owned at load, by colours that play), 158
   abandoned mines (64 of class 53, 94 of SoD's 220; every one subclass 7, never wood, 7 gold only),
@@ -204,8 +209,9 @@ column):
   abandoned one gets its guards (§3.4); then `set_mine_owner(index, the record's owner, quiet)`:
   an owned mine reveals its radius at once (§2.3).
 - **Case 42** (0x4C15D8): the same search; the tile's word becomes the index; no owner call (no
-  shipped Lighthouse is owned at load; one owned in a crafted map keeps its owner without the
-  reveal).
+  shipped Lighthouse is owned at load; one owned in a crafted map keeps its owner). *Corrected by
+  T80 (§19):* the game's start reveals its radius all the same, as every owned object's
+  (`reveal_owned` 0x4C7C50 from `adventure_manager_start` 0x4075B4; A-33 withdrawn).
 - **Case 87** (0x4C1C4D): an owner other than `0xFF` is cleared and set again through
   `set_shipyard_owner`, which reveals and lists it.
 
@@ -480,7 +486,7 @@ The checkpoint's questions are T77a2's (§7 on); these are its inputs.
   is silent on the split. Every abandoned mine (158 on the shipped maps) is such a mine. A conflict of a
   reading with VCMI with real gameplay impact (one stack of 150 Troglodytes against several).
   **Proposed:** the reading, with a batch E9 row (an abandoned mine's battle: its stacks) to
-  confirm it.
+  confirm it. **Confirmed** by E9-1 (§19, T80).
 - **D-48. The abandoned mine's Troglodytes: 100 to 200 or 100 to 199.** `random_between(100, 200)`
   is inclusive (read whole), VCMI draws 100 to 199; the wiki gives only the army word's band.
   Impact: one count in 101. **Proposed:** the reading; no batch row (an observation could not
@@ -722,7 +728,7 @@ player's message is the only difference a computer's visit makes (the flag argum
 ### 9.3 The Mystical Garden (55; `visit_garden` 0x4A3BC0, read whole)
 
 - **Its word:** bits 0 to 4 the garden's index (a counter over the map's Gardens at the setup,
-  wrapping past 31; at most 11 on a shipped map), bits 6 to 9 the resource (5 gems or 6 gold),
+  in its walk's order by level, row and column, E9-8; wrapping past 31; at most 11 on a shipped map), bits 6 to 9 the resource (5 gems or 6 gold),
   bit 10 full.
 - **At the new game** (0x4C1965) and **every week**: full, the resource gems or gold one in two.
 - **A visit:** sets the index's bit in the **current player's** mask +0xB8 (its visited mark: the
@@ -884,7 +890,7 @@ T77a1's D-47, D-48 and A-29 to A-31 are in §6; the checkpoint's questions are �
   thousandths; the wiki's formula is exact. They agree after one growth for every count, after two
   they differ for 66 counts in 4 095 (43: 51 against 52), and a stack of 1 reaches 2 after 10
   growths (the wiki: 8). Impact: one creature now and then on a slowly growing stack.
-  **Proposed:** the reading, with a batch E9 row (E9-9).
+  **Proposed:** the reading, with a batch E9 row (E9-9). **Confirmed** by E9-9 (§19, T80).
 - **D-50. The month's monsters** (§10.2): the reading draws one chance in 200 per free land tile
   (no entrance, no event), twice the creature's map range, any guard zone; VCMI places exactly
   ⌊free ÷ 200⌋ on shuffled tiles, skips guarded tiles, once the range. The wiki: 0.5 % per tile.
@@ -893,6 +899,7 @@ T77a1's D-47, D-48 and A-29 to A-31 are in §6; the checkpoint's questions are �
 - **A-32. The 4 000 cap shrinks a larger stack** (§10.1): a growing stack of 4 001 to 4 095 from
   the map becomes 4 000 at its first week (VCMI leaves it). None on the shipped maps.
   **Proposed:** the rule as read (the documented limit; no flag), its row cheap (E9-10).
+  **Confirmed** by E9-10 (§19, T80).
 - **A-31 corrected** (§6): an abandoned mine whose resource is 8 adds **no income** (§8.1: the
   mines' loop counts resources below 6, the gold mines' resource 6 only), so it corrupts no
   treasury; its visit's message reads past its two tables (MINEEVNT, `mine_daily_income`). The
@@ -915,6 +922,8 @@ T77a1's D-47, D-48 and A-29 to A-31 are in §6; the checkpoint's questions are �
   objects' hints (E24); the Mysticism specialist's `+ 1` against VCMI's specialty formula.
 
 ## 15. Batch E9's plan (T77a2)
+
+Run by T79a and T79b, scored in §19 (T80).
 
 Increment 9's batch, **batch E9**, runs on the client lane's harness in SoD on Easy, hot seat,
 from maps `h3-experiment` writes (`docs/experiments/README.md`), as batches E3 to E8 (decision
@@ -1084,3 +1093,66 @@ in point 4, (a) to (c) in and (d) with E09.
    grown in map order with the sixteenths kept; the timed events at each player's turn start, in
    the map's order, floored at 0; one new command (a boat from an own or allied Shipyard); the
    Shipyard's tile at load and an owner colour nobody plays refused (§6). Recommended: as written.
+
+## 19. Batch E9 scored (T80)
+
+Scored on 2026-10-30 (E08 T80; decision 209: whole, with A-33's re-read) from the recorded runs:
+E9a `experiments/results/E08-batch-9a.md` and `-run2.md` (T79a: five runs, the last four whole),
+E9b `E08-batch-9b.md` and `-run2.md` (T79b: three runs, each whole); every reading the same in
+every run but the draws and the starting bonus. Each row against §15's prediction as T78
+corrected it (`E08-log.md`, T78: E9-3 asks nothing, E9-5's use on day 2, the towns' 500 a day in
+E9-7 and E9-11, E9-11 moved to Blue).
+
+| Row | Predicted | Observed | Verdict |
+|---|---|---|---|
+| E9-1 (D-47) | the wandering monster's split (ADV-MON-009), its draws seeded by the entrance tile: A (8, 8) three stacks, none upgraded; B (14, 8) two, the second (n / 2) Infernal Troglodytes; VCMI one stack | five runs: A three stacks of Troglodytes (126 as 42 × 3; 163 as 55, 54, 54; 105, 101, 161 alike), B two, the second Infernal (163 as 82 + 81; 116, 192, 187, 159 alike); ADVEVENT 84, then ADVEVENT 85 and the drawn resource's mine's message (MINEEVNT 4, 5 or 6); the subterranean field; the records Red's, guards empty | **D-47 confirmed**: the reading; VCMI's single stack refuted, and with it T78's other two seeds (the hero's tile, the mine's position) |
+| E9-2 (§3.2, §3.3; design §13's call) | Blue's own visit opens Leave Guards, the group left the mine's guards; Red asked ADVEVENT 187; C on the subterranean field, S on grass; the guards unsplit; whether Blue plays them | Leave Guards (the army dialog, GENRLTXT 710), the moved stacks the records' slot 0 (C 2 Angels, S 1 Archangel); ADVEVENT 187 at both; C subterranean, S grass; the defender Blue, human and at the machine; auto combat refused (both sides human), **each of Blue's stacks waited for its order**; Red won, MINEEVNT 4 and 0, the records Red's, guards empty | confirmed; **§13's call stands**: the owner plays its mine's guards |
+| E9-3 (§2.3, §2.4, §3.1) | Red's flag with no question (T78: no guards), its second visit Leave Guards, Blue's flag with no question; +2 wood the next day | MINEEVNT 0 (2 a day), the record Red's; the second visit Leave Guards and nothing else; Blue's visit asks nothing, the record Blue's; Blue +2 wood for it at day 2 | confirmed |
+| E9-4 (§4; A-33) | the sea's maximum + 1 000 at day 2 (1 500 + 2 × 500); after boarding 0 of the land's 2 000 (A-28); the eight tiles: the reading none explored, the engine and VCMI the radius-3 disk | 2 500 of 2 500 at day 2; 0 of 2 000 after boarding; the radius-3 disk around both Lighthouses explored for Red on day 1 ((66, 9), (68, 8), (6, 63) yes; (66, 10), (6, 62) no) | sea points and A-28 confirmed; **A-33 contradicted, withdrawn** (the re-read below) |
+| E9-5 (§5.2, §5.3) | the visit's offer: 1 000 gold and 10 wood, a type-1 boat on the first offset tile; refused with a hero on the boat tile; the use from afar opens the offer | the three tiles' words alike, owner Red and boat tile (31, 50), unchanged throughout; the boat dialog (GENRLTXT 596); 1 000 and 10 paid, the boat on (31, 50) type 1, facing 2, Red's, no captain; with E9-5 aboard on the tile a click from E9-5b shows cursor 6 and GENRLTXT 52, nothing paid; on day 2 the same click opens the dialog, a second boat as the first for another 1 000 and 10 | confirmed |
+| E9-0 (§8) | the visits' mines produce from day 2 | Red +1 000 gold (B) and +1 of A's drawn resource; Blue +4 wood (S, N) and +1 crystal (C); nothing on day 1 | confirmed |
+| E9-6 (§7.1, §8.3) | no change on day 1; the mines' 1 000 gold and 2 ore from day 2 (in E9-7's totals) | the income word (player +0x108) all 0 on day 1; the disk around both mines explored on day 1 (A-33's control) | confirmed |
+| E9-7 (§8.1, §8.2) | +2 125 gold (the town's 500, the mine's 1 000, Estates' 125, the Purse's 500), +2 ore, +5 mercury, sulfur and gems, +6 crystal (the Cornucopia's 5, the specialist's 1) a day; +3 more crystal on the week's first day | exactly that at each day's start, days 2 to 9; the income word `0, 5, 2, 5, 6, 5, 2125` on day 2, crystal 9 on day 8; the date's words (1, 1, 1), (1, 2, 1), (1, 2, 2) on days 1, 8, 9 | confirmed: the Cornucopia's 5 (the reading and the wiki; VCMI's 4 refuted; the engine's 4 with its parts' 1, ADR-0013's draft point 3, gives the same 5) |
+| E9-8 (§9; decision 201) | W1 3 to 6 of mercury to gems, H1 500 gold, M1 5 gems or 500 gold; Blue's visits after Red's nothing; Red's on day 2 nothing; on day 8 again (H1 1 000), W1 reset under the hero standing on it; the second set full on day 9 (H2 1 000) | as predicted in all three runs (W1 3 sulfur, 4 mercury, 6 mercury; M1 500 gold); messages ADVEVENT 170 and 169 (the Windmill), 164 and 165 (the Wheel), 92 and 93 (the Garden); the Windmill's and the Wheel's marks Red's then Red's and Blue's (0x01, 0x03), kept through the week's reset; each visitor's own Garden bit | confirmed: one load a week for whoever comes first |
+| E9-9 (D-49) | 47, 89, 16 at day 8, 51, 97, 18 at day 15; the fourth 43 throughout; VCMI 52 and 98 at day 15 | 47 + 4/16, 89 + 1/16, 16 + 8/16; then 51 + 15/16, 97 + 15/16, 18 + 2/16 (688 → 756 → 831 sixteenths, a tenth truncated each week); 43 + 0/16 throughout | **D-49 confirmed**: the reading's sixteenths; VCMI's thousandths refuted |
+| E9-10 (A-32) | 4 000 at day 8 (VCMI 4 095) | 4 095 → 4 000 + 0/16 at day 8, 4 000 at day 15 | **A-32 confirmed**: the rule, no flag |
+| E9-11 (§11) | Blue's gold at days 1 to 6: 300, 300, 800, 800, 1 300, 1 300 (the list's order; the floor on day 1; the take every two days from day 2, after the day's income) | exactly that; 1 800 at days 7 and 8 | confirmed |
+| E9-12 (§12) | +2 a day; +3 a day; the maximum | 0, 2, 4; 0, 3, 6; 0, 20, 20 (Knowledge 2's maximum, HER-MAN-001) | confirmed |
+
+**A-33's re-read** (decision 209). `setup_map_objects`' case 42 (0x4C15D8) makes no owner call,
+as T77a1 read (§2.2); but `adventure_manager_start` (0x406FD0, once when the adventure map
+starts) calls `reveal_owned` (0x4C7C50, read whole now) with no test at 0x4075B4, before the
+first turn. It reveals through `reveal_disk` (0x49D160) around every owned hero (its scouting
+radius), every owned town (radius 5; its other cases E09's), every owned record of the mines' and
+Lighthouses' table (game +0x4E38C), of the dwellings' (+0x4E39C) and of the garrisons'
+(+0x4E3AC), radius 3 each, and every owned Shipyard found by a walk over the tiles (class 87,
+radius 3). So **every object a player owns at load reveals radius 3 to its team at the game's
+start**, a Lighthouse among them, as VCMI's `initFogOfWar` and the design (§16, ADR-0016's draft
+point 5) do. **A-33 withdrawn:** no quirk; `ADV-QUIRK-34` is not recorded. T34b's account of
+`reveal_owned`'s callers (`E08-hero-movement.md` §4.2) missed this one; its finding stands: no
+new day reveals as a rule. ADV-FOG-003's source corrected (E08 T80).
+
+**Beyond the predictions:**
+- **The Garden's index** (§9.3): M2 (row 8) is 0 and M1 (row 40) is 1, against the spec's order:
+  the counter follows the setup's walk by level, row and column (§2.2), not the map's object
+  list. Only the visited mask (player +0xB8) reads it; the engine keeps its marks per object.
+- **A timed event's take is shown as taken:** Blue's day-1 message showed −30 700 (−30 800 in
+  another run), its whole treasury, not −99 999, as design §14's `ResourceLost` with the amount
+  actually taken.
+- **The messages' order** at a turn start (for the clients): the hot-seat turn's (GENRLTXT 14),
+  then the timed events' texts, then on a week's first day the week's announcement (GENRLTXT 16;
+  Blue's day 8).
+- **The draws** within their ranges: ten Troglodyte counts of 101 to 192 (100 to 200), A's
+  resource gems in four runs and crystal in one; the Windmills' 3 to 6 of mercury to gems; the
+  Gardens both gifts. W2's and M2's draws matched in the first two E9b runs, not the third: the
+  game's seed, no rule.
+
+**The rules** (§16): the new ones cite these rows as `observation` sources and are written
+`verified` when T82 to T85 build them: E9-1 ADV-MIN-002 (D-47), ADV-MIN-003 and GAM-BAT-001
+amended; E9-2 ADV-MIN-002, GAM-BAT-001 and GAM-DEC-004 amended; E9-3 ADV-OWN-001; E9-4 ADV-OWN-005
+and HER-ADV-009 amended, ADV-OWN-002's start reveal; E9-5 ADV-SHY-001 to -003; E9-0, E9-6
+GAM-RES-003, GAM-CAL-002; E9-7 GAM-RES-004, -005, GAM-CAL-002; E9-8 ADV-WEK-001 to -003, ADV-VIS-006
+amended; E9-9, E9-10 ADV-MON-013; E9-11 GAM-CAL-004; E9-12 HER-MAN-002. Rules already in the
+catalog gain the rows now: ADV-FOG-003 (E9-4, E9-6; its source corrected), ADV-MON-009 (E9-1),
+GAM-BAT-010 (E9-1, E9-2; `verified`), HER-MAN-001 (E9-12; `verified`). D-48 and D-50 stay as
+read (decision 199). No `ADV-Q`.

@@ -480,13 +480,13 @@ id       = "ADV-FOG-003"
 title    = "When tiles are revealed"
 context  = "adventure"
 status   = "verified"
-summary  = "At the start of a game each hero reveals the tiles around its tile to its owner, and each step of a move reveals the tiles around the tile it enters, for the radius of ADV-FOG-001 (shape ADV-FOG-002). Increment 1 has no owned objects, so a game opens with only the heroes' surroundings explored (towns and mines add theirs once owned: a recorded simplification). The original reveals around everything a player owns (0x4C7C50) only right after a hide: at a new day only when a Cover of Darkness hid tiles (0x4C7BA0; E08 T34b, survey E08-hero-movement.md §4.2), so no new day reveals as a rule (with towns, E09). Since E08 T40 the start's reveal comes after the levels at load (`AdventureState::start_game`), each with the hero's radius then; a radius grown in the day shows at the hero's next step (ADV-QUIRK-18, faithful; batch E5's E5-10), and in strict-fixed also at the next day's start, where the adventure's start-of-day step (`AdventureState::start_day`, after the calendar) reveals around every hero to its owner. E08 T8a; T40."
+summary  = "At the start of a game each hero reveals the tiles around its tile to its owner, and each step of a move reveals the tiles around the tile it enters, for the radius of ADV-FOG-001 (shape ADV-FOG-002). Increment 1 has no owned objects, so a game opens with only the heroes' surroundings explored (towns and mines add theirs once owned: a recorded simplification). The original reveals around everything a player owns (0x4C7C50) once at the game's start (E08 T80: every owned object, radius 3, a Lighthouse too; batch E9's E9-4, E9-6) and otherwise only right after a hide: at a new day only when a Cover of Darkness hid tiles (0x4C7BA0; E08 T34b, survey E08-hero-movement.md §4.2), so no new day reveals as a rule (with towns, E09). Since E08 T40 the start's reveal comes after the levels at load (`AdventureState::start_game`), each with the hero's radius then; a radius grown in the day shows at the hero's next step (ADV-QUIRK-18, faithful; batch E5's E5-10), and in strict-fixed also at the next day's start, where the adventure's start-of-day step (`AdventureState::start_day`, after the calendar) reveals around every hero to its owner. E08 T8a; T40."
 numeric  = "integer"
 quirks   = ["ADV-QUIRK-18"]
 
   [[rule.source]]
   kind       = "original-data"
-  ref        = "Heroes3.exe code reading (E08 T8a): hero_move_step (0x4805E0) calls reveal_disk at the step's destination before the hero's position changes (0x48106B); the placed heroes' setup (placed_heroes_setup 0x4CAE10) reveals around each placed hero (0x4CAF74; survey E08-progression.md §3.1, first read in a campaign's carried-over hero's setup 0x486590 at 0x486E25); reveal_owned (0x4C7C50) around every owned hero, called by new_day only after the Cover of Darkness hid tiles (0x4C7BA0; E08 T34b, survey E08-hero-movement.md §4.2; first read in E08-adventure-core.md §2 as every new day)"
+  ref        = "Heroes3.exe code reading (E08 T8a): hero_move_step (0x4805E0) calls reveal_disk at the step's destination before the hero's position changes (0x48106B); the placed heroes' setup (placed_heroes_setup 0x4CAE10) reveals around each placed hero (0x4CAF74; survey E08-progression.md §3.1, first read in a campaign's carried-over hero's setup 0x486590 at 0x486E25); reveal_owned (0x4C7C50, read whole in E08 T80) around every owned hero (its scouting radius), town, mine and Lighthouse, dwelling, garrison and Shipyard (radius 3), called once at the game's start by adventure_manager_start (0x4075B4, no test; E08 T80, survey E08-economy.md §19) and by new_day only after the Cover of Darkness hid tiles (0x4C7BA0; E08 T34b, survey E08-hero-movement.md §4.2; first read in E08-adventure-core.md §2 as every new day)"
   confidence = "high"
 
   [[rule.source]]
@@ -501,6 +501,13 @@ quirks   = ["ADV-QUIRK-18"]
   ref        = "experiments/results/E08-batch-5e.md E5-10 (stamp bf513e0e, the capture harness, Complete 4.0 Heroes3.exe under Wine without HD, hot seat, Easy, 2026-10-22): no tile newly explored after a level-up's Scouting in a battle nor at day 2's turn start; after the hero's first step of day 2 the probe 6 columns away explored (the radius 6), the one 7 away not; the Spyglass put on from the backpack the same (D-26, E08 T38)"
   retrieved  = "2026-10-22"
   confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-9a.md E9-4 and E08-batch-9b.md E9-6 (stamps bfafdcac and c267b8f6, the capture harness, Complete 4.0 Heroes3.exe under Wine without HD, hot seat, Easy, 2026-10-30): on day 1 before any hero moves, the radius-3 disk (ADV-FOG-002) around each of Red's two Lighthouses and two mines owned at load explored for Red, the tiles just beyond it not (E08 T80; A-33 withdrawn)"
+  retrieved  = "2026-10-30"
+  confidence = "high"
+  note       = "The original's side of the start's reveal around owned objects; the engine reveals around them from E08 increment 9 (design E08-design.md §16, ADV-OWN-002)."
 
 [[rule]]
 id       = "ADV-FOG-004"
@@ -1308,6 +1315,13 @@ numeric  = "integer"
   retrieved  = "2026-10-20"
   confidence = "high"
   note       = "Confirms D-11 (the second draw at most 50 upgrades: VCMI's formula gives none underground at (12, 27); a threshold below 50 none at either) and the split's table, first draw and even stacks. E08 T22b."
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-9a.md E9-1, -run2.md (stamp bfafdcac, the capture harness, Complete 4.0 Heroes3.exe under Wine without HD, hot seat, Easy, 2026-10-30): an abandoned mine's single stack of Troglodytes fought by six Archangels through the same split, seeded by the mine's entrance tile: at (8, 8) three stacks none upgraded (126, 163, 105, 101, 161 in five runs), at (14, 8) two, the second Infernal Troglodytes (163, 116, 192, 187, 159)"
+  retrieved  = "2026-10-30"
+  confidence = "high"
+  note       = "T78's prediction from the tile's seed (first draws 100 and 41, second 87 and 44); D-47 confirmed (survey E08-economy.md §19, E08 T80)."
 
 [[rule]]
 id       = "ADV-MON-010"

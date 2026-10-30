@@ -1966,3 +1966,45 @@ starting point.
   sound); coverage 100 % (`h3-map-view`), clippy, fmt.
 - **Questions:** MCL-Q22 (the hint hidden by a list's redraw: the client's fix behind `--bugs
   original`, recommended).
+
+### M3 T6b2 — the underground, the minimap's click and drag, the status window's click (2026-10-30)
+
+On `map-client/e24-m3-t6b2`, the user present (T6b2 taken whole as the user's T6b cut left it).
+`master` at 76290a7 (#605 and #606 merged). The original data staged from the user's repo folder
+first; the baseline (`verify-once.sh clients`) green.
+
+- **The reading** (design §4.14; map entries `minimap_click` 0x40A0C0 read whole, `adventure_command`
+  0x409A70's command 4 and its status window's click 0x409FD8, `adventure_full_update` 0x417420's
+  middle, `dialog_area_message` 0x44FF60, `dialog_add_item` 0x5FECB0, `dialog_send_to_items`
+  0x5FEDE0, `status_panel_show` 0x402BC0, `message_ignored` 0x4EC560, `mouse_manager_vtable`
+  0x640028, `dialog_picture_message` 0x450550 inferred): the level switched with the whole
+  screen's update; the minimap's press and its own loop (every move drawn, the rest dropped, the
+  idle step stopped; the point held in the area, the tile in the map); an item's press and
+  release (the release, wherever, is the command of the item holding the press; the newest items
+  asked first); the status window's click at the release, lost when the window is built anew.
+- **Observed** (the running original's memory, a kept still): the adventure dialog's list from the
+  status window's items (2000 to 2024, state 6) down to the areas, the minimap's area at state 7 (the
+  press's bit its loop's release left).
+- **Built:** `timeline::Loop`'s `underground`, `minimap_press` and `drag` (`dragging`), `release`
+  and `status_click` (`status_held`, dropped by a window built anew), the selection's window kept
+  by `choose`; `minimap::divided`, the tables' minimap `click` and `[map.status] asked`;
+  `PanelItems::area`, `in_status`; `Kingdom::realm` (a live part's `realm`, `Live::at_start`'s from
+  the map; `built_at_start` with the Town Hall and City Hall bits; `tables::TOWN_HALL`,
+  `CITY_HALL`); the situation's `underground` (`UndergroundSpec`); `Unplayable::Panel` no longer
+  the minimap's or the status window's, `Command` no longer the underground's. The harness: both
+  levels explored, the screen `adventure` waited for on a map with an underground, the live part's
+  `realm` (`Mem.realm`). The situation `seq-underground`, the sequences `underground`,
+  `minimap-drag`, `status-click` (in `masks.toml`'s `hinted`).
+- **Checked:** `underground` (21 frames), `minimap-drag` (26) and `status-click` (43) exact with the
+  status bar compared, each timeline as recorded line for line (`status-click`'s first run released
+  over the resource bar at y 590, in the bottom edge zone: the map scrolled at the original's held
+  speed; the point moved to y 580); `drawn`: every earlier situation and sequence the same, `drawn
+  --record` (90 frames of the 3 new sequences); the window under Xvfb on all three with live drags,
+  clicks and keys after them: 90, 70 and 87 frames read back exact, every frame as composed
+  afresh, every change as the headless loop's; unit tests (the recorded clicks replayed, the
+  underground's button and key, the minimap's press, moves, clamps, dropped actions and releases
+  on 36 and 108 tiles, the status window's click in every kind, a press dropped by a rebuild, the
+  divisors exact, the kingdom's window at a map's start, the situation's underground); coverage
+  100 % (`h3-map-view`), clippy, fmt; `check.sh`; the scoped verify with original data.
+- **Questions:** MCL-Q23 (a status window's press lost to its rebuild, recorded), MCL-Q24 (a
+  hotkey's release eaten by the minimap's loop, read); MCL-Q22 noted for the underground's update.

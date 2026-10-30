@@ -6,8 +6,7 @@ the code's comments cite these notes as "increment N's design note §M".
 
 A handover, not binding (`docs/adr/README.md`): the working detail behind increment 9's
 amendments of ADR-0013 (points 3, 13.6, a new point 16), ADR-0016 (points 1, 3, 4, 5, 6) and
-ADR-0017 (points 1, 3, 4, 6, 8, 10, 11), drafted in
-`docs/lanes/adventure/adr-drafts/*-increment-9.md` and applied by the increment's `shared/` task;
+ADR-0017 (points 1, 3, 4, 6, 8, 10, 11), drafted in the lane's `adr-drafts/` and applied by T81a (`shared/e08-t81a`, decision 211; the drafts deleted);
 written by T77b from T77a's survey and the answers at ADV-Q36 and ADV-Q37 (the epic's decisions
 192, 193, 196–199). The task that builds a section deletes it; the file goes when the epic
 closes. Facts and sources: survey `docs/rules/surveys/E08-economy.md` (§ numbers are the
@@ -87,7 +86,7 @@ B**, the map (`h3-map`, `h3-adventure`); **part C**, the game, the env, batch E9
 
 HER-MAN-002 (the day's spell points), GAM-RES-004 (the heroes' income: its derivation here, its
 payment the game's), HER-ADV-009 amended (the Lighthouses' input). No quirk. Shared: the four
-kinds, the two parameters, the core creature's abilities, the packs and the gap-fill (T81).
+kinds, the two parameters, the core creature's abilities, the packs and the gap-fill (T81b).
 
 ## Part B — the map (`h3-map`, `h3-adventure`)
 
@@ -276,11 +275,12 @@ the map.
 ### 13. The mines' battles (GAM-BAT-001 amended; ADV-MIN-002)
 
 - **The defender:** a neutral mine whose guards are one stack, `Defender::Monster { creature,
-  count }` (split by the game as a monster's, `ADV-QUIRK-6`'s draws; D-47); a neutral mine with
+  count }` (split by the game as a monster's, `ADV-QUIRK-6`'s draws; D-47, confirmed by E9-1); a neutral mine with
   more, `Defender::Guards { army }` (unsplit, the neutral seat); an owned mine's,
   **`Defender::Garrison { owner, army }`** (new): the side's owner the mine's, its human flag the
   setup's (GAM-BAT-010), played by that player through `GameCommand::Battle` outside its turn as a
-  hero battle's defender (*agent's call*; E9-2 records it, §17).
+  hero battle's defender (*agent's call*, confirmed by E9-2: the original hands its human owner
+  the side, each stack waiting for its order; survey §19).
 - **The terrain:** the mine type's `battle_terrain` when set (`battle_at`: crystal, gold and
   abandoned mines on the subterranean), else the entrance tile's; special grounds as before.
 - **After:** the survivors go back to the mine (`end_mine_battle`); a win flags it for the
@@ -368,7 +368,7 @@ the map.
 
 | Version | Change | Task |
 |---|---|---|
-| core ruleset hash v51, pack format v50 | the four kinds, the two hero parameters, the core creature's abilities; the packs | T81 (`shared/`) |
+| core ruleset hash v51, pack format v50 | the four kinds, the two hero parameters, the core creature's abilities; the packs | T81b (`shared/`) |
 | adventure ruleset part v14 | the seven kinds; the calendar, growth, months and income parameters | T83 |
 | map import v15 | classes 42, 53, 55, 87, 109, 112, 220; owners; the timed events; `ObjectOwner`, `MineResources`, `OwnedOnWater` | T83 |
 | adventure state hash v17, game state hash v21 | owners, guards, weekly, fractions, added objects; the month, the events, the dialog's holder | T83, T85 |
@@ -380,9 +380,10 @@ to -003, ADV-MON-013, -014, GAM-CAL-002 to -004, GAM-RES-003 to -005, HER-MAN-00
 amendments of GAM-BAT-001, HER-ADV-009, ADV-VIS-006, ADV-MAP-002); new here: GAM-DEC-004 amended
 (the kept group), ADV-FOG-006 amended (the owners' views). ADV-OWN-004 (a defeat's) is E10's: not
 written now. Quirks, recorded in `docs/rules/quirks-adventure.md` without flags: `ADV-QUIRK-33`
-A-31 (an abandoned mine without a resource: refused at the import), `ADV-QUIRK-34` A-33 (an owned
-Lighthouse at load reveals nothing in the original: every owned object reveals here); both not
-reproduced. A-29 is recorded with E10's defeat; A-30 with E09; A-32 is the rule (no quirk).
+A-31 (an abandoned mine without a resource: refused at the import), not reproduced. A-33 is
+withdrawn (T80, survey §19: the original's game start reveals around every owned object, a
+Lighthouse too), so `ADV-QUIRK-34` is not recorded. A-29 is recorded with E10's defeat; A-30 with
+E09; A-32 is the rule (no quirk; confirmed by E9-10).
 
 ### 17. Batch E9
 
@@ -391,7 +392,7 @@ SoD on Easy, hot seat, from maps `h3-experiment` writes: **E9a** the visits (E9-
 **E9b** the day's start (E9-6 to E9-12, two to three weeks of end turns). Two predictions are
 added to the survey's rows: **E9-2** records whether Blue (human) is asked to play its guards'
 side when Red attacks them (§13's call); **E9-4** records whether the tiles around Red's two
-Lighthouses owned at load are explored on day 1 (A-33: the reading says not).
+Lighthouses owned at load are explored on day 1 (A-33: the reading says not; they were, T80).
 
 - **The writer and the specs:** built by T78 (`E08-log.md`, T78).
 - **The harness** (T79; common, CLT-Q18: this lane builds it with its check and tells the client
@@ -399,17 +400,20 @@ Lighthouses owned at load are explored on day 1 (A-33: the reading says not).
   guards), a player's income +0x108 and the Garden mask +0xB8, the date's three words
   (+0x1F63E to +0x1F642), a tile's word (the weekly objects', a monster's bits 27 to 30), the
   explored tiles; a click at a Shipyard with no hero near and the boat dialog's build button.
-- **The scoring** (T80): survey §19 (new), each row against its prediction; a dispute a row
-  contradicts reverts to the other side (decision 196) or becomes an `ADV-Q`; the consensus rows'
-  sources `verified`. D-48 and D-50 stay as read (decision 199), without rows.
+- **The scoring** (T80, done): survey §19, each row against its prediction. Every row as the
+  reading predicted but E9-4's surroundings: D-47, D-49 and A-32 confirmed, §13's call confirmed,
+  A-33 withdrawn (the original reveals around every owned object at the start); no dispute
+  reverts, no `ADV-Q`. The rows each new rule cites are listed there (`verified` when built).
+  D-48 and D-50 stay as read (decision 199), without rows.
 
 ### 18. Shared and `cross-lane` work; the building tasks; the exit criteria
 
-**Shared and `cross-lane`:** T81's `shared/` task (the three ADRs applied with batch E9's outcome;
-the four kinds, the two parameters and the core creature's abilities in `h3-content` and `h3-pack`
-with the packs and the harvester's gap-fill, `cross-lane`; `docs/03-domain.md`'s terms: owner, flag, ownable object,
-mine, guards, Leave Guards, weekly object, the week's and the month's steps, the month's kind,
-timed event, income); batch E9's spec (`h3-experiment`, `cross-lane`, T78); the harness (common,
+**Shared and `cross-lane`:** T81's `shared/` task in two (decision 211): T81a the three ADRs
+applied with batch E9's outcome and `docs/03-domain.md`'s terms (owner, flag, ownable object, mine,
+guards, Leave Guards, weekly object, the day's start with the week's and the month's steps, the
+month's kind, timed event, income), done; T81b the four kinds, the two parameters and the core
+creature's abilities in `h3-content` and `h3-pack` with the packs and the harvester's gap-fill,
+`cross-lane`; batch E9's spec (`h3-experiment`, `cross-lane`, T78); the harness (common,
 T79); the env's action encoding (`h3-sim`, `cross-lane`, T85b). Everything else is the lane's own.
 
 **The building tasks**, in rounds of one or two (ids continue the epic's; each task's cut
@@ -420,7 +424,7 @@ confirmed at its start). **Batch E9 runs before the build and before the shared 
 |---|---|---|
 | 2 | **T78** | Batch E9's maps: the writer's seven classes and timed events (§4); the spec's fields (`cross-lane`); the two specs and templates (§17) |
 | 3 | **T79** + **T80** | T79: the harness's reads and clicks, the recipes, the runs E9a and E9b. T80: scored (survey §19); D-47, D-49, A-32 settled |
-| 4 | **T81** | `shared/`: the three ADRs amended with T80's outcome (and ADR-0015 point 2's core row), the four kinds, the parameters, the core creature's abilities and the packs, the glossary |
+| 4 | **T81** | `shared/` in two (decision 211): T81a the three ADRs amended with T80's outcome (and ADR-0015's core row), the glossary (done); T81b the four kinds, the parameters, the core creature's abilities and the packs |
 | 5 | **T82** + **T83** | T82: `h3-heroes` (§2; small). T83: `h3-map` and `h3-adventure`: the import (§4), the kinds and parameters (§5), the state (§6), the views (§12); map import v15, part v14, adventure state hash v17 |
 | 6 | **T84** | `h3-adventure` and `h3-game`: the owned objects' visits (§7), `BuildBoat` (§8), the weekly visits (§9), the mines' battles (§13), the kept dialog and the boat offer (§14); likely cut in two at its start (flagging and mines with their battles; Lighthouses, Shipyards, `BuildBoat` and the weekly visits) |
 | 7 | **T85** | The day's start: T85a `h3-adventure`'s week and month steps (§10, §11; the added objects and the audit of the static reads); T85b `h3-game`'s day advance, income, spell points, timed events and observation (§14), the env (`cross-lane`, §15) |
@@ -433,7 +437,7 @@ confirmed at its start). **Batch E9 runs before the build and before the shared 
    boat tile are fixed when the game is built (ADV-OWN-002, ADV-MIN-001, -003, ADV-SHY-001,
    ADV-MAP-002).
 2. A visit flags a neutral or another's object for its visitor's owner, never an own one,
-   revealing radius 3; every owned object reveals at the start (A-33 not reproduced); every
+   revealing radius 3; every owned object reveals at the start (as the original, A-33 withdrawn); every
    viewer sees the owners (ADV-OWN-001, -003).
 3. An own mine's visit opens Leave Guards, whose group stays as the mine's guards; another's
    guards are asked, then fought (a neutral single stack split, D-47 as batch E9 decided; others
@@ -454,8 +458,7 @@ confirmed at its start). **Batch E9 runs before the build and before the shared 
 8. A viewer sees every owner, its own team's mines' production, its team's weekly marks (the
    Garden's its own), the month's kind; never a weekly object's contents, another team's
    production nor a monster's fraction (ADV-OWN-003, ADV-FOG-006).
-9. Every new rule has its id, source and tests; `ADV-QUIRK-33` and `-34` recorded as not
-   reproduced; the gates pass (coverage, determinism with the re-recorded and new replays, the
+9. Every new rule has its id, source and tests; `ADV-QUIRK-33` recorded as not reproduced; the gates pass (coverage, determinism with the re-recorded and new replays, the
    benchmarks at their baselines and the new ones baselined); the env plays `BuildBoat`.
 10. Batch E9 run and scored (T80); the consensus rows `verified`.
 
@@ -473,9 +476,8 @@ confirmed at its start). **Batch E9 runs before the build and before the shared 
 - **Re-recording.** Every golden replay of eight days or more changes (the growth); the maps with
   mines also change their visits (blockers until T84). T86 re-records them with the README loop
   (`docs/lanes/adventure/TRAPS.md`), checking each keeps the features its README row names.
-- **The owner's guards side** (§13): if E9-2 shows the original plays an owned mine's guards for
-  their owner, the side goes to the neutral seat (`Defender::Guards` with an owner for the
-  battle's colours only); T84's cut confirms it after T80.
+- ~~**The owner's guards side** (§13)~~: closed by T80, E9-2 showed the original hands the side
+  to its human owner: `Defender::Garrison { owner, army }` stands, no neutral seat.
 - **Teams:** every "team" test is `allied`, the player alone until E10; an allied map plays its
   allies as enemies, as today.
 - **Not read** (survey §14, §17): the three other callers of the income (the kingdom's views); a
