@@ -650,6 +650,7 @@ impl Situation {
             underground: None,
             level_limit: 0,
             banned_skills: vec![],
+            events: Vec::new(),
         };
         let quests = self.quests(&map.objects, &objects, first)?;
         let extras = Extras {

@@ -4,24 +4,35 @@ Pre-refined tasks of the adventure lane, in order, then the inbox of discovered 
 
 ## Tasks
 
-Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T76 (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 8 are closed (2026-10-12, -13, -20, -21, -23, -26, -28, -30; increment 8, boats and the sea, by T76's audit). **Increment 9, mines, the week and owned objects**, refined with the user at T76 (ADV-Q36; decisions 192, 193): the survey and the ADR amendment drafts first (T77a, T77b), each task's cut confirmed with the user at its start. T77a in two (decision 194): T77a1 done (`adventure/e08-t77a1`: survey `E08-economy.md` §0 to §6), T77a2 done whole (decision 195; `adventure/e08-t77a2`: §7 to §18, the checkpoint's `ADV-Q37`). T77b done whole (decision 200; `adventure/e08-t77b`: the drafts, `E08-design.md`, the cut in rounds 2 to 8, decision 202; the checkpoint's `ADV-Q38`, decisions 201–204). Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
+Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T76 (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 8 are closed (2026-10-12, -13, -20, -21, -23, -26, -28, -30; increment 8, boats and the sea, by T76's audit). **Increment 9, mines, the week and owned objects**, refined with the user at T76 (ADV-Q36; decisions 192, 193): the survey and the ADR amendment drafts first (T77a, T77b), each task's cut confirmed with the user at its start. T77a in two (decision 194): T77a1 done (`adventure/e08-t77a1`: survey `E08-economy.md` §0 to §6), T77a2 done whole (decision 195; `adventure/e08-t77a2`: §7 to §18, the checkpoint's `ADV-Q37`). T77b done whole (decision 200; `adventure/e08-t77b`: the drafts, `E08-design.md`, the cut in rounds 2 to 8, decision 202; the checkpoint's `ADV-Q38`, decisions 201–204). T78 done whole (decision 205; `adventure/e08-t78`, `cross-lane`, decision 206: the writer's ownable objects, weekly objects and timed events, the spec's fields, the specs `E08-batch-9a` and `-9b`). Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
 
-**E08 T78 — Batch E9's maps and specs**
+**E08 T79 — Batch E9's harness and runs**
 
-- **Scope:** increment 9's design note §4 (the writer) and §17: `h3_map::writer` writes the seven
-  classes with their bodies (a mine's owner by subclass, an abandoned mine's resource set, a
-  Lighthouse's and a Shipyard's owner, the three weekly objects) and the map's timed events (it
-  writes none today), with tests that read them back; the spec's fields in `h3-experiment`
-  (battle-owned, `cross-lane` by decisions 198 and 202): mines by subclass with an owner and
-  guards, the abandoned mine's set, Lighthouses, Shipyards, the weekly objects, a monster's "does
-  not grow", timed events, a hero's Estates, Mysticism and specialty; the specs `E08-batch-9a`
-  (E9-1 to E9-5) and `-9b` (E9-6 to E9-12) with their templates and each row's prediction (survey
-  §15, plus design §17's two: E9-2 who plays Blue's guards, E9-4 the Lighthouses' surroundings at
-  day 1). `docs/experiments/README.md` names the new fields.
-- **Inputs:** survey `E08-economy.md` §15 (the plan, the harness's and the spec's gaps); design
-  §4, §17; T67's record in `E08-log.md` (increment 8's writer and specs, the same shape).
-- **Depends on:** T77b (done; ADV-Q38 answered, decisions 201–204). **Status:** ready; its cut
-  confirmed at its start (T67 was taken whole).
+- **Scope:** increment 9's design note §17 (the harness): the capture harness's reads
+  (`clients/capture/`, common; CLT-Q18: this lane builds them with the harness check and tells the
+  client and map-client lanes' inboxes): the mine records (game +0x4E38C: owner, resource,
+  abandoned, guards, entrance), a player's income +0x108 and the Garden mask +0xB8, the date's three
+  words (+0x1F63E to +0x1F642), a tile's word (the weekly objects'; a monster's count and sixteenths,
+  bits 0 to 11 and 27 to 30), the explored tiles, a hero's spell points, a battle's sides' owners and
+  controllers at its opening (E9-2: who plays an owned mine's guards); the clicks: a Shipyard's side
+  tile with another hero selected, the boat dialog's build button, the Leave Guards dialog's moves;
+  the recipes `clients/capture/batches/E08-batch-9a.toml` and `-9b.toml`; the runs E9a (two days)
+  and E9b (fifteen days), the results `experiments/results/E08-batch-9a.md` and `-9b.md`.
+- **Inputs:** the specs `experiments/specs/E08-batch-9a.toml`, `-9b.toml` and their templates
+  (T78; compile them with the staged tables); design §17; T68a's and T68b's records in
+  `E08-log.md` (increment 8's harness, the same shape); `clients/capture/README.md`.
+- **Depends on:** T78 (done). **Status:** ready; its cut confirmed at its start (T68 was taken in
+  two, by batch).
+
+**E08 T80 — Batch E9 scored**
+
+- **Scope:** survey `E08-economy.md` §19 (new): each row of batches E9a and E9b against its
+  prediction; D-47 (E9-1), D-49 (E9-9), A-32 (E9-10), A-33 (E9-4) and design §13's call on who plays
+  an owned mine's guards (E9-2) settled; a dispute a row contradicts reverts to the other side
+  (decision 196) or becomes an `ADV-Q`; the consensus rows' sources `verified`; D-48 and D-50 stay
+  as read (decision 199); the README's batch row evaluated.
+- **Inputs:** the results (T79); the specs' predictions; survey §14, §15.
+- **Depends on:** T79. **Status:** ready after T79; may share a round with it (design §18).
 
 ## Inbox
 

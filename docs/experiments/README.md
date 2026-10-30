@@ -190,8 +190,10 @@ only Red's); the battle log's entries read as empty strings this way. Batches 4a
   it too). `[map.underground]` (E08 T22a1): a second level, `terrain` (a land terrain) and its
   own `[[map.underground.patch]]` rectangles (`rock` for walls); no roads or grounds on it.
   `[[map.town]]` (E23 T7): a town no encounter fights, `entrance = [column, row]`, `faction`,
-  `owner` (`blue`, the default, `tan` or `neutral`), `buildings`, `garrison`: batch 4b's Tavern
-  town of Tan's, which the computer's retreat test asks for.
+  `owner` (`blue`, the default, `tan`, `neutral` or, E08 T78, `red`), `buildings`, `garrison`: batch
+  4b's Tavern town of Tan's, which the computer's retreat test asks for; batch E9b's town of each
+  player, which a run past the seventh day needs (a player without a town is defeated seven days
+  after, the original's countdown).
   `format` (E08 T56): `sod` (the default) or `roe`, the map in the RoE format (version `0x0E`,
   batch E7's row E7-7): no level limit, banned skills, towns, hero spells or primary skills (its
   heroes take `defaults`) and RoE's codes only; `h3-map`'s writer refuses the rest.
@@ -227,6 +229,32 @@ only Red's); the battle log's entries read as empty strings this way. Batches 4a
   Clover Field's eight). A hero (`at`) or an opponent monster (its own `at`, below) may stand on
   water: the original gives a hero placed there no boat (D-44); a hero "in a boat" is one beside
   an empty boat that boards it in play.
+  **Increment 9's objects** (E08 T78, batch E9; survey `docs/rules/surveys/E08-economy.md` §15,
+  increment 9's design note §4; on the surface): `[[map.ownable]]` an ownable object by its
+  `picture` and `at`, with its `owner` (`red`, `blue`, `tan` or `neutral`, the default; a colour
+  that owns one plays): a mine (class 53, the subclass its resource), each entered at the tile
+  west of `at`, its row blocked from two columns west of `at` to `at` (the grass sawmill `AVMsawg0`
+  three columns west, its top row's two east tiles too; the ore pit `AVMore0` and the gem pond
+  `AVMgems0` also the row above): the sawmill, `AVMore0`, the alchemist's lab `AVMalch0`, the
+  sulfur dune `AVMsulf0`, the crystal cavern `AVMcrys0`, `AVMgems0`, the gold mine `AVMgold0`;
+  the abandoned mine `AVXabnd0` (53.7) or SoD's grass one `AVXamGr` (220.7, which the game loads as
+  53.7), shaped as a mine, always neutral, with `resources` (at least one by name: the game draws
+  one when the map loads); the Lighthouse `AVXlths0` (the tile `at`, blocked and visited from a
+  neighbour); the Shipyard `AVXshyd0` (three tiles on `at`'s row, entered at the middle one, land
+  only; its boat tile is the first clear water tile of the twelve around its entrance, survey
+  §5.1). The format holds no guards for a mine: they are left in play (Leave Guards), an
+  abandoned mine's Troglodytes drawn when the game starts. `[[map.object]]` takes the weekly
+  objects: the Windmill `AVMwndd0` (it blocks only its entrance, the tile west of `at`), the Water
+  Wheel `AVMwwhl0` (two rows of three ending on `at`, entered at `at`), the Mystical Garden
+  `AVTmyst0` (three tiles, entered at the tile west of `at`). `[[map.monster]]` a wandering monster
+  of no encounter: `creature`, `count`, `at` (any terrain), `level`, `grows` (false, the default:
+  the map's "does not grow" flag, as every encounter's monster), `disposition`, `flees`.
+  `[[map.timed_event]]` the map's timed events, in the order the game fires them on a day: `day`
+  (the game's day it first fires on, 1 or later; the file stores the day before), `interval` (0,
+  the default: once), `players` by colour, `human` (true, the default), `computer`, `resources =
+  { gold = -500 }`, `message`, `name`. A hero's Estates and Mysticism are its `skills`, a resource
+  specialty its `type`'s (`specialty = "resource crystal"` checks it), the income artifacts its
+  `artifacts`. The template lists none of these: the procedures say where they are.
 - `[[encounter]]`: `id` (also the hero's name in the game), `title`, `questions`, `level` (E08
   T22a1: 1 puts the encounter's heroes and opponent on the underground; the template says so),
   `procedure`
@@ -327,6 +355,7 @@ capture harness's frozen clock does; the client lane, E17 M2 T3).
 | E08 6 (`E08-batch-6`) | increment 6's army and hero management (E08 T46, T47b1, decisions 100, 105, 107, 109; survey `E08-army.md` §9), one map of 14 heroes: the army dialog with a full army and a compliant group, OK without a change and room made by a dismissal (E6-1, E6-2); a hero's last stack in the exchange (E6-3); the split into a one-stack hero's empty slot (A-16, D-27; E6-4); the tactics formation off and on against a monster (E6-6); Scholar's limits from both sides (E6-7); Wizard's Well's questions, its position and a right-click in the backpack (§5.3, D-28; E6-8); Titan's Thunder's book (E6-9); the backpack's arrow (E6-10); a meeting's price (E6-11); E6-5 (a stack of 40 000, A-15) dropped by E08 decision 109 | **evaluated** (2026-10-23), **run by an agent** (the capture harness, E08 T47b2; three runs, every field the same; Easy; `experiments/results/E08-batch-6.md`, two lines filled by the agent from run 3: E6-7's composed message, E6-8's screen; scored in T48, survey `E08-army.md` §13): every row as the code reading, three of them against VCMI: A-16 and D-27 (E6-4: the split's maximum leaves 1 and gives 9), §5.3 and D-28 (E6-8: the assembly question once per player and on the right click, the Well on the first position that takes it, a combination in the backpack only shown), the backpack's arrows rotating the array (E6-10); the consensus rows E6-1 to E6-3, E6-6, E6-7, E6-9 and E6-11 confirmed; no question |
 | E08 7a, 7b (`E08-batch-7a`, `-7a-roe`, `-7b`) | increment 7's rewards on the map (E08 T56, decisions 129 to 132, 139, 142; survey `E08-rewards.md` §11, 23 rows in two runs): 7a the pickups and the objects that teach, a guarded artifact without a text (D-29), where a pickup's artifact goes (D-30), 40 random artifacts (D-31), chests and the Learning Stone with Basic Learning, chests, a monster's treasure, Corpses, Wagons and Tombs with a full backpack, 15 random Shrines (D-34), 30 Universities (D-36), two Tombs and a battle (E7-1 to E7-6, E7-8 to E7-11; a 72 map), and its RoE map's 60 Witch Huts (E7-7: D-33, A-21); 7b Pandora's Box's skill, mana, Learning and spells (D-37 to D-39), the Pyramid's golems (D-40), an event's stop, colours and repeats, a box's artifact and creatures without room, a looted Pyramid twice, the Pyramid's spell without Expert Wisdom, a path past a hidden event (A-23) (E7-12 to E7-23; skills banned but Wisdom and Learning) | **evaluated** (2026-10-27), **run by an agent** (the capture harness, E08 T57: 7a four times, the RoE map once, 7b three times, the last of each recorded; Easy; `experiments/results/E08-batch-7a.md`, `-7a-roe.md`, `-7b.md`; scored in T58, survey `E08-rewards.md` §15): every dispute's row as the code reading, conclusive against VCMI or the wiki (D-29 to D-31, D-33 with A-21, D-34, D-36 to D-40), the full-backpack rows (the count tested before a free position) and the consensus rows confirmed; **E7-23 against the reading's A-23**: a path crossed a hidden event (the corridor half's targets were unexplored, so it tested nothing); the re-read found an event's tile no stop for the pathfinder (`place_object_tiles` clears its entrance bit), A-23 withdrawn (decision 131); no question; `docs/epics/E08-log.md`, T57 and T58 |
 | E08 8a, 8b (`E08-batch-8a`, `-8a-water`, `-8b`) | increment 8's boats and the sea (E08 T67, decisions 162, 163, 165, 174; survey `E08-sea.md` §11, 16 rows in two runs): 8a movement and the shore, the Admiral's Hat's conversion at boarding and landing with about 50 points left after the step and a control (D-41, E8-1, E8-2), a landing at an event's, a hole's and a free coastal tile (D-42, E8-3), 80 points on Favorable Winds: a diagonal, then a straight step (D-43, E8-4), a Flotsam beside the coast for a flyer's click, a flyer's arrow key, a water walker and a walker (D-45, E8-7), the day's sea points (E8-10, A-28), a guarded landing (E8-15), Blue boarding Red's boat (E8-16); its water map a hero written on water (D-44, E8-5); 8b a full backpack at Sea Chests and Survivors (E8-6), the sea pickups' draws (E8-8), Ocean Bottles' default texts (E8-9), the deck and the two boats (E8-11, E8-12), a monster on water (E8-13), events on water (E8-14) | **staged** (2026-10-28): to be run by an agent on the capture harness (E08 T68) and scored (T69) |
+| E08 9a, 9b (`E08-batch-9a`, `-9b`) | increment 9's mines, the week and owned objects (E08 T78, decisions 193, 198, 201, 202; survey `E08-economy.md` §15 and design §17, 12 rows in two runs): 9a the visits, a neutral abandoned mine's Troglodytes split or not (D-47, E9-1), an owned mine's guards: Leave Guards, the question, the field and who plays them (E9-2), flagging, a second visit and another player's flag (E9-3), two Lighthouses at sea and their surroundings at load (E9-4, A-33), a Shipyard's boat at a visit, its refusal with a hero on the boat tile and its use without a visit (E9-5); 9b the day's start over fifteen days, no income on day 1 and the mines' (E9-6), the heroes' and the Crystal Dragon's income (E9-7), the weekly objects through two weeks and one load for every player (E9-8, decision 201), the monsters' growth in sixteenths and its cap (D-49, A-32; E9-9, E9-10), timed events (E9-11), spell points (E9-12) | **staged** (2026-10-30): to be run by an agent on the capture harness (E08 T79) and scored (T80) |
 
 **How the user plays** (2026-10-03): the Complete edition's `Heroes3.exe` started through a HotA
 installation's HD Mod launcher (HD Mod 5.6 R9). The HD Mod's always-on changes are crash fixes; its
