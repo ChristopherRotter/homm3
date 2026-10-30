@@ -7,7 +7,8 @@
 //! music, the effects, pause, a frame on, restart, vsync, the cursor's kind, fullscreen, quit),
 //! which take the function keys and Esc, keys the original's map leaves to nothing else; since
 //! E24 M3 T6b1 the panels' buttons' hotkeys (the original's letters K, U, Q, Z, W, M, C, A, O, H
-//! and E, design §4.13).
+//! and E, design §4.13); since T6b3 Space (the selected hero chosen again and its tile visited,
+//! design §4.15).
 
 use alloc::format;
 use alloc::string::String;
@@ -30,6 +31,9 @@ pub enum Command {
     /// A panel button's hotkey (E24 M3 T6b1, design §4.13): its key down presses the button, its
     /// key up clicks it.
     Panel(Hotkey),
+    /// The selected hero chosen again and the object it stands on visited (the original's Space,
+    /// E24 M3 T6b3).
+    Visit,
     /// The window's own (the music and the effects since E24 M2 T5, the cursor's kind since T4b).
     Window(Window),
 }
@@ -55,17 +59,20 @@ impl Command {
             Self::Scroll(d) => Some(Action::Scroll(d)),
             Self::Hero(d) => Some(Action::Step(d)),
             Self::Panel(key) => Some(Action::Key(key)),
+            Self::Visit => Some(Action::Visit),
             Self::Window(_) => None,
         }
     }
 
-    /// The map's action its key's release gives: a hotkey's key up (E24 M3 T6b1); none for the
-    /// rest (a key's release does nothing on the map).
+    /// The map's action its key's release gives: a hotkey's key up (E24 M3 T6b1); for the map's
+    /// other keys a message in the input queue that does nothing (E24 M3 T6b3: it counts in the
+    /// ring); none for the window's own.
     #[must_use]
     pub const fn release(self) -> Option<Action> {
         match self {
             Self::Panel(key) => Some(Action::KeyUp(key)),
-            _ => None,
+            Self::Scroll(_) | Self::Hero(_) | Self::Visit => Some(Action::Up),
+            Self::Window(_) => None,
         }
     }
 }
@@ -76,11 +83,12 @@ impl keys::Command for Command {
     const TABLE: &'static str = "map";
 
     /// Every command, in the table's order: the scroll's eight directions, the hero's eight, the
-    /// panels' hotkeys, the window's own.
+    /// panels' hotkeys, Space's, the window's own.
     fn all() -> Vec<Self> {
         let mut all: Vec<Self> = Direction::ALL.into_iter().map(Self::Scroll).collect();
         all.extend(Direction::ALL.into_iter().map(Self::Hero));
         all.extend(Hotkey::ALL.map(Self::Panel));
+        all.push(Self::Visit);
         all.extend(Window::ALL.map(Self::Window));
         all
     }
@@ -91,12 +99,13 @@ impl keys::Command for Command {
             Self::Scroll(d) => format!("scroll-{}", direction_name(d)),
             Self::Hero(d) => format!("hero-{}", direction_name(d)),
             Self::Panel(key) => hotkey_name(key).into(),
+            Self::Visit => "visit".into(),
             Self::Window(w) => w.name().into(),
         }
     }
 
     /// The original's keys on the map (a direction's key and the keypad's, with Ctrl for the
-    /// scroll; the panels' letters, E24 M3 T6b1) and the window's own.
+    /// scroll; the panels' letters, E24 M3 T6b1; Space, T6b3) and the window's own.
     fn defaults() -> Vec<(Self, Vec<Chord>)> {
         let mut defaults = Vec::new();
         for ((d, key), pad) in Direction::ALL
@@ -114,6 +123,7 @@ impl keys::Command for Command {
                 Vec::from([Chord::new(false, key.letter())]),
             ));
         }
+        defaults.push((Self::Visit, Vec::from([Chord::new(false, "Space")])));
         for w in Window::ALL {
             defaults.push((Self::Window(w), Vec::from([Chord::new(false, w.key())])));
         }

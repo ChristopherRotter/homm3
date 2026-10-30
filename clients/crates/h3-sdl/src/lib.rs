@@ -1145,6 +1145,22 @@ impl Audio {
         }
     }
 
+    /// Holds a stream where it is (unbound from the device: what it has queued waits, E24 M3
+    /// T6b3) or lets it play on (bound again). A stream held twice or let go twice is left as it
+    /// is.
+    pub fn hold(&mut self, index: usize, on: bool) {
+        let stream = self.stream(index);
+        // SAFETY: a stream of ours and our device.
+        unsafe {
+            let bound = SDL_GetAudioStreamDevice(stream) == self.device;
+            if on && bound {
+                SDL_UnbindAudioStream(stream);
+            } else if !on && !bound {
+                SDL_BindAudioStream(self.device, stream);
+            }
+        }
+    }
+
     /// Drops what a stream has queued: it falls silent.
     pub fn clear(&mut self, index: usize) {
         // SAFETY: a stream of ours.

@@ -19,6 +19,11 @@
 //! - **A sound played once** (E24 M3 T5b2: the day's status window's `newday.wav`) on a stream of
 //!   its own at 127, the next one cutting it off.
 //!
+//! - **The focus** (E24 M3 T6b3, design §4.15): lost, every effect playing is held where it is
+//!   (its stream unbound) and the music fades out as the original's stub thread fades it;
+//!   regained, the effects held play on and the music fades in where its fade began. A cue
+//!   meanwhile plays, as the original starts a sample anew.
+//!
 //! The volumes are SDL gains of volume / 127 (both settings at their highest, as `h3-view`'s:
 //! no settings yet), the music's fades scaling its samples. The music and the effects (the step
 //! and ambient sounds) can be switched off, which holds their gains at 0. A sound that is missing
@@ -218,6 +223,8 @@ struct Lane {
     format: (u32, u16),
     clip: Option<String>,
     volume: u8,
+    /// Held where it is while the game lacks the focus.
+    held: bool,
 }
 
 /// The audio output of the map.
@@ -252,6 +259,7 @@ impl Player {
                 format: (22_050, 1),
                 clip: None,
                 volume: FULL,
+                held: false,
             })
         };
         let step = lane(&mut out)?;
@@ -345,6 +353,31 @@ impl Player {
         }
     }
 
+    /// The game's focus lost or regained (`window_procedure` 0x4F7C00, WM_ACTIVATEAPP; design
+    /// §4.15). Lost (`sound_focus_lost` 0x599C40): each effect playing held where it is (its
+    /// sample stopped, AIL_stop_sample, whether it played kept at 0x6A3258) and the music faded
+    /// out by the model (`music_thread`'s stub 0x59A830); regained: the effects held play on
+    /// (0x599B90: AIL_resume_sample on each that played and stands stopped) and the music asked
+    /// for again (`music_resume` 0x59AC00).
+    pub fn focus(&mut self, library: &mut Library, on: bool, lines: &mut Vec<String>) {
+        library.collect(lines);
+        let queued = self.music_queued();
+        let tracks = |n: &str| library.state(n);
+        if self.music.focus(on, queued, &tracks) {
+            self.out.clear(self.music_stream);
+        }
+        for lane in [&mut self.step, &mut self.effect]
+            .into_iter()
+            .chain(&mut self.slots)
+        {
+            let hold = !on && self.out.queued(lane.stream) > 0;
+            if hold != lane.held {
+                self.out.hold(lane.stream, hold);
+                lane.held = hold;
+            }
+        }
+    }
+
     /// Holds or resumes every sound (the fades hold with it: they follow the frames heard).
     pub fn pause(&mut self, on: bool) {
         self.out.pause(on);
@@ -410,8 +443,7 @@ fn run_samples((_, channels, samples): &Music, run: &Run) -> Vec<i16> {
 
 /// A lane's clip started from its beginning, looping, at `volume` (0 while the effects are off).
 fn play(out: &mut Audio, lane: &mut Lane, library: &Library, name: &str, volume: u8, on: bool) {
-    out.clear(lane.stream);
-    lane.clip = None;
+    stop(out, lane);
     lane.volume = volume;
     let Some(clip) = library.clip(name) else {
         return;
@@ -426,10 +458,14 @@ fn play(out: &mut Audio, lane: &mut Lane, library: &Library, name: &str, volume:
     }
 }
 
-/// A lane silenced.
+/// A lane silenced (one held plays on: empty).
 fn stop(out: &mut Audio, lane: &mut Lane) {
     out.clear(lane.stream);
     lane.clip = None;
+    if lane.held {
+        out.hold(lane.stream, false);
+        lane.held = false;
+    }
 }
 
 /// [`AHEAD_MS`] of samples at `rate` × `channels`.

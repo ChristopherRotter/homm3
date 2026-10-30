@@ -1,0 +1,338 @@
+0 view 8 9 0
+0 objects 0
+0 cycles 0 0
+0 cursor 1 0 700 300
+0 buttons 0 1
+0 points 3900
+100 view 10 9 0
+100 screen 8,8,746,552
+180 objects 1
+200 cycles 1 1
+300 view 8 9 0
+300 screen 8,8,746,572
+360 objects 2
+400 cycles 2 2
+500 view 9 9 0
+500 hero 18 17 0 2
+500 walk 7 1 22 0
+500 screen 8,8,710,552
+550 walk 7 2 10 0
+550 screen 8,8,600,552
+600 cycles 3 3
+600 walk 7 3 0 0
+600 screen 8,8,600,552
+650 view 10 9 0
+650 points 3800
+650 hero 19 17 0 2
+650 walk 7 1 22 0
+650 screen 8,8,742,552
+700 walk 7 2 10 0
+700 screen 8,8,600,552
+750 walk 7 3 0 0
+750 screen 8,8,600,552
+800 view 9 9 0
+800 cycles 4 4
+800 points 3700
+800 hero 18 17 0 6
+800 walk 7 1 -22 0
+800 screen 8,8,746,552
+850 walk 7 2 -10 0
+850 screen 8,8,600,552
+900 walk 7 3 0 0
+900 screen 8,8,600,552
+950 view 10 9 0
+950 points 3600
+950 hero 19 17 0 2
+950 walk 7 1 22 0
+950 screen 8,8,746,552
+1000 cycles 5 5
+1000 walk 7 2 10 0
+1000 screen 8,8,600,552
+1050 walk 7 3 0 0
+1050 screen 8,8,600,552
+1100 view 9 9 0
+1100 points 3500
+1100 hero 18 17 0 6
+1100 walk 7 1 -22 0
+1100 screen 8,8,746,552
+1150 walk 7 2 -10 0
+1150 screen 8,8,600,552
+1200 cycles 6 6
+1200 walk 7 3 0 0
+1200 screen 8,8,600,552
+1250 view 10 9 0
+1250 points 3400
+1250 hero 19 17 0 2
+1250 walk 7 1 22 0
+1250 screen 8,8,746,552
+1300 walk 7 2 10 0
+1300 screen 8,8,600,552
+1350 walk 7 3 0 0
+1350 screen 8,8,600,552
+1400 view 9 9 0
+1400 cycles 7 7
+1400 points 3300
+1400 hero 18 17 0 6
+1400 walk 7 1 -22 0
+1400 screen 8,8,746,552
+1450 walk 7 2 -10 0
+1450 screen 8,8,600,552
+1500 walk 7 3 0 0
+1500 screen 8,8,600,552
+1550 view 10 9 0
+1550 points 3200
+1550 hero 19 17 0 2
+1550 walk 7 1 22 0
+1550 screen 8,8,746,552
+1600 cycles 8 8
+1600 walk 7 2 10 0
+1600 screen 8,8,600,552
+1650 walk 7 3 0 0
+1650 screen 8,8,600,552
+1700 view 9 9 0
+1700 points 3100
+1700 hero 18 17 0 6
+1700 walk 7 1 -22 0
+1700 screen 8,8,746,552
+1750 walk 7 2 -10 0
+1750 screen 8,8,600,552
+1800 cycles 9 9
+1800 walk 7 3 0 0
+1800 screen 8,8,600,552
+1850 view 10 9 0
+1850 points 3000
+1850 hero 19 17 0 2
+1850 walk 7 1 22 0
+1850 screen 8,8,746,552
+1900 walk 7 2 10 0
+1900 screen 8,8,600,552
+1950 walk 7 3 0 0
+1950 screen 8,8,600,552
+2000 view 9 9 0
+2000 cycles 10 10
+2000 points 2900
+2000 hero 18 17 0 6
+2000 walk 7 1 -22 0
+2000 screen 8,8,746,552
+2050 walk 7 2 -10 0
+2050 screen 8,8,600,552
+2100 walk 7 3 0 0
+2100 screen 8,8,600,552
+2150 view 10 9 0
+2150 points 2800
+2150 hero 19 17 0 2
+2150 walk 7 1 22 0
+2150 screen 8,8,746,552
+2200 cycles 11 11
+2200 walk 7 2 10 0
+2200 screen 8,8,600,552
+2250 walk 7 3 0 0
+2250 screen 8,8,600,552
+2300 view 9 9 0
+2300 points 2700
+2300 hero 18 17 0 6
+2300 walk 7 1 -22 0
+2300 screen 8,8,746,552
+2350 walk 7 2 -10 0
+2350 screen 8,8,600,552
+2400 cycles 12 12
+2400 walk 7 3 0 0
+2400 screen 8,8,600,552
+2450 view 10 9 0
+2450 points 2600
+2450 hero 19 17 0 2
+2450 walk 7 1 22 0
+2450 screen 8,8,746,552
+2500 walk 7 2 10 0
+2500 screen 8,8,600,552
+2550 walk 7 3 0 0
+2550 screen 8,8,600,552
+2600 view 9 9 0
+2600 cycles 13 13
+2600 points 2500
+2600 hero 18 17 0 6
+2600 walk 7 1 -22 0
+2600 screen 8,8,746,552
+2650 walk 7 2 -10 0
+2650 screen 8,8,600,552
+2700 walk 7 3 0 0
+2700 screen 8,8,600,552
+2750 view 10 9 0
+2750 points 2400
+2750 hero 19 17 0 2
+2750 walk 7 1 22 0
+2750 screen 8,8,746,552
+2800 cycles 14 14
+2800 walk 7 2 10 0
+2800 screen 8,8,600,552
+2850 walk 7 3 0 0
+2850 screen 8,8,600,552
+2900 view 9 9 0
+2900 points 2300
+2900 hero 18 17 0 6
+2900 walk 7 1 -22 0
+2900 screen 8,8,746,552
+2950 walk 7 2 -10 0
+2950 screen 8,8,600,552
+3000 cycles 15 15
+3000 walk 7 3 0 0
+3000 screen 8,8,600,552
+3050 view 10 9 0
+3050 points 2200
+3050 hero 19 17 0 2
+3050 walk 7 1 22 0
+3050 screen 8,8,746,552
+3100 walk 7 2 10 0
+3100 screen 8,8,600,552
+3150 walk 7 3 0 0
+3150 screen 8,8,600,552
+3200 view 9 9 0
+3200 cycles 16 16
+3200 points 2100
+3200 hero 18 17 0 6
+3200 walk 7 1 -22 0
+3200 screen 8,8,746,552
+3250 walk 7 2 -10 0
+3250 screen 8,8,600,552
+3300 walk 7 3 0 0
+3300 screen 8,8,600,552
+3350 view 10 9 0
+3350 points 2000
+3350 hero 19 17 0 2
+3350 walk 7 1 22 0
+3350 screen 8,8,746,552
+3400 cycles 17 17
+3400 walk 7 2 10 0
+3400 screen 8,8,600,552
+3450 walk 7 3 0 0
+3450 screen 8,8,600,552
+3500 view 9 9 0
+3500 points 1900
+3500 hero 18 17 0 6
+3500 walk 7 1 -22 0
+3500 screen 8,8,746,552
+3550 walk 7 2 -10 0
+3550 screen 8,8,600,552
+3600 cycles 18 18
+3600 walk 7 3 0 0
+3600 screen 8,8,600,552
+3650 view 10 9 0
+3650 points 1800
+3650 hero 19 17 0 2
+3650 walk 7 1 22 0
+3650 screen 8,8,746,552
+3700 walk 7 2 10 0
+3700 screen 8,8,600,552
+3750 walk 7 3 0 0
+3750 screen 8,8,600,552
+3800 view 9 9 0
+3800 cycles 19 19
+3800 points 1700
+3800 hero 18 17 0 6
+3800 walk 7 1 -22 0
+3800 screen 8,8,746,552
+3850 walk 7 2 -10 0
+3850 screen 8,8,600,552
+3900 walk 7 3 0 0
+3900 screen 8,8,600,552
+3950 view 10 9 0
+3950 points 1600
+3950 hero 19 17 0 2
+3950 walk 7 1 22 0
+3950 screen 8,8,746,552
+4000 cycles 20 20
+4000 walk 7 2 10 0
+4000 screen 8,8,600,552
+4050 walk 7 3 0 0
+4050 screen 8,8,600,552
+4100 view 9 9 0
+4100 points 1500
+4100 hero 18 17 0 6
+4100 walk 7 1 -22 0
+4100 screen 8,8,746,552
+4150 walk 7 2 -10 0
+4150 screen 8,8,600,552
+4200 cycles 21 21
+4200 walk 7 3 0 0
+4200 screen 8,8,600,552
+4250 view 10 9 0
+4250 points 1400
+4250 hero 19 17 0 2
+4250 walk 7 1 22 0
+4250 screen 8,8,746,552
+4300 walk 7 2 10 0
+4300 screen 8,8,600,552
+4350 walk 7 3 0 0
+4350 screen 8,8,600,552
+4400 view 9 9 0
+4400 cycles 22 22
+4400 points 1300
+4400 hero 18 17 0 6
+4400 walk 7 1 -22 0
+4400 screen 8,8,746,552
+4450 walk 7 2 -10 0
+4450 screen 8,8,600,552
+4500 walk 7 3 0 0
+4500 screen 8,8,600,552
+4550 view 10 9 0
+4550 points 1200
+4550 hero 19 17 0 2
+4550 walk 7 1 22 0
+4550 screen 8,8,746,552
+4600 cycles 23 23
+4600 walk 7 2 10 0
+4600 screen 8,8,600,552
+4650 walk 7 3 0 0
+4650 screen 8,8,600,552
+4700 view 9 9 0
+4700 points 1100
+4700 hero 18 17 0 6
+4700 walk 7 1 -22 0
+4700 screen 8,8,746,552
+4750 walk 7 2 -10 0
+4750 screen 8,8,600,552
+4800 cycles 24 24
+4800 walk 7 3 0 0
+4800 screen 8,8,600,552
+4850 view 10 9 0
+4850 points 1000
+4850 hero 19 17 0 2
+4850 walk 7 1 22 0
+4850 screen 8,8,746,552
+4900 walk 7 2 10 0
+4900 screen 8,8,600,552
+4950 walk 7 3 0 0
+4950 screen 8,8,600,552
+5000 view 9 9 0
+5000 cycles 25 25
+5000 points 900
+5000 hero 18 17 0 6
+5000 walk 7 1 -22 0
+5000 screen 8,8,746,552
+5050 walk 7 2 -10 0
+5050 screen 8,8,600,552
+5100 walk 7 3 0 0
+5100 screen 8,8,600,552
+5150 objects 4
+5150 points 800
+5150 walk 2 0 0 0
+5150 screen 276,62,746,318
+5200 cycles 26 26
+5330 objects 5
+5330 screen 303,240,320,249
+5400 view 7 9 0
+5400 cycles 27 27
+5400 screen 8,8,742,552
+5510 objects 6
+5600 cycles 28 28
+5600 buttons 1 1
+5600 arrows 19,17,0,21 20,18,0,13 21,19,0,1
+5600 screen 366,241,709,351
+5690 objects 7
+5800 view 9 9 0
+5800 cycles 29 29
+5800 screen 8,8,742,552
+5870 objects 8
+6000 cycles 30 30
+6050 objects 9
+6050 screen 300,240,320,249

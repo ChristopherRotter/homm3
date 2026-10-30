@@ -653,6 +653,7 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                     Command::Scroll(_)
                     | Command::Hero(_)
                     | Command::Panel(_)
+                    | Command::Visit
                     | Command::Window(Own::Frame),
                 )
                 | None => {}
@@ -667,6 +668,17 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
         } else if !focused {
             pointer = pointer.or(mouse);
         }
+        // The sound follows it (E24 M3 T6b3, design §4.15): held and faded out without it.
+        if has_focus != focused
+            && let Some((library, player)) = &mut audio
+        {
+            player.focus(library, has_focus, &mut lines);
+            lines.push(format!(
+                "{} the focus: the sound {}",
+                if has_focus { "regained" } else { "lost" },
+                if has_focus { "resumed" } else { "held" }
+            ));
+        }
         focused = has_focus;
         input.extend(pointer.map(Action::Pointer));
         let ms = clock.ms(win.ticks_ns());
@@ -680,7 +692,7 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                     Action::Step(_) => 1,
                     Action::Pointer(_) => 2,
                     Action::Click(_) | Action::Press(_) | Action::Release(_) => 3,
-                    Action::Key(_) | Action::KeyUp(_) => 4,
+                    Action::Key(_) | Action::KeyUp(_) | Action::Visit | Action::Up => 4,
                 }] += 1;
                 replay.give(t, action);
             }

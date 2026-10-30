@@ -18,6 +18,13 @@
 //!   is then* (0x59A920, the last asked for) where that name's last fade began, and fades it in
 //!   (9 steps of 100 ms, then the whole; E17 §8.2).
 //!
+//! - **The focus** (E24 M3 T6b3; design §4.15): losing it (`sound_focus_lost` 0x599C40) starts a
+//!   thread of `music_thread`'s stub 0x59A830 while a stream plays, which fades it out
+//!   (`music_stop_fade` alone: the place kept, then paused) once the lock is free; a track opened
+//!   meanwhile is not started (0x59AA15: `app_active`), so it stays silent. Regaining it
+//!   (`music_resume` 0x59AC00) asks for the track the thread opened last again, whatever is
+//!   pending: it comes back, faded in, where its fade began.
+//!
 //! [`Music`] is that state; [`Queue`] runs it twice for a stream queued ahead: once at the
 //! frames heard (where a request lands) and once at the frames queued (what to queue next),
 //! re-queuing from the heard point when a request is taken. Only looping tracks (the map's), at
@@ -101,6 +108,9 @@ enum Stream {
     /// The track opened last fading out at frame `at` of `len`, `heard` frames into the fade;
     /// the thread opens the pending track at its end.
     Fading { len: u64, at: u64, heard: u64 },
+    /// The track opened last at frame `at` of `len` while the game lacks the focus: never
+    /// started (0x59AA15), silent; the focus regained opens it again there.
+    Held { len: u64, at: u64 },
 }
 
 /// The original's music: the names, the stream and the places (`music_positions` 0x69FEC0).
@@ -118,6 +128,11 @@ pub struct Music {
     stream: Stream,
     /// Where each track's last fade-out began, by name.
     places: BTreeMap<String, u64>,
+    /// Whether the game has the focus (`app_active` 0x6783D0, WM_ACTIVATEAPP).
+    active: bool,
+    /// A fade-out asked with no track to follow: the stub thread the focus's loss started
+    /// (0x599D70), waiting for the lock.
+    stop: bool,
 }
 
 impl Music {
@@ -132,6 +147,8 @@ impl Music {
             playing: None,
             stream: Stream::Closed,
             places: BTreeMap::new(),
+            active: true,
+            stop: false,
         }
     }
 
@@ -162,6 +179,38 @@ impl Music {
         }
         self.pending = Some(name.into());
         Request::Taken
+    }
+
+    /// The game's focus lost or regained (`window_procedure` 0x4F7C00, WM_ACTIVATEAPP: only a
+    /// change counts, 0x699609). Lost (`sound_focus_lost` 0x599C40): a stream playing (Miles'
+    /// status 4: being opened, fading in, playing; one fading out already is faded by its own
+    /// thread) is faded out by the stub once the lock is free. Regained (`music_resume`
+    /// 0x59AC00): the track the thread opened last asked for again, the one pending replaced (a
+    /// stream held since its opening closed, its place kept).
+    pub fn focus(&mut self, active: bool) {
+        if active == self.active {
+            return;
+        }
+        self.active = active;
+        if !active {
+            self.stop = matches!(self.stream, Stream::Opening | Stream::Playing { .. });
+            return;
+        }
+        if let Stream::Held { at, .. } = self.stream {
+            if let Some(name) = &self.playing {
+                self.places.insert(name.clone(), at);
+            }
+            self.stream = Stream::Closed;
+        }
+        if let Some(name) = &self.playing {
+            self.pending = Some(name.clone());
+        }
+    }
+
+    /// Whether the game has the focus.
+    #[must_use]
+    pub fn active(&self) -> bool {
+        self.active
     }
 
     /// The track opened last, while its stream is open (fading out or being decoded too).
@@ -197,7 +246,7 @@ impl Music {
             let (len, at, heard, volumes) = match &mut self.stream {
                 Stream::Playing { len, at, heard } => (*len, at, heard, &FADE_IN),
                 Stream::Fading { len, at, heard } => (*len, at, heard, &FADE_OUT),
-                Stream::Closed | Stream::Opening => break,
+                Stream::Closed | Stream::Opening | Stream::Held { .. } => break,
             };
             let volume = usize::try_from(*heard / step)
                 .ok()
@@ -233,17 +282,32 @@ impl Music {
                 Stream::Playing { heard, .. } | Stream::Fading { heard, .. } if heard < fade => {
                     return;
                 }
-                // The fade-out's end: paused and closed (0x59A8F4); the pending track opens next.
-                Stream::Fading { .. } => self.stream = Stream::Closed,
-                // A thread let in once the fade-in ended: `music_stop_fade` keeps the place, then
-                // fades the stream out from the whole.
+                // The fade-out's end: paused and closed (0x59A8F4); the pending track opens next
+                // (a stub waiting finds the stream faded: `music_stop_fade` does nothing).
+                Stream::Fading { .. } => {
+                    self.stop = false;
+                    self.stream = Stream::Closed;
+                }
+                // A thread let in once the fade-in ended (a track's or the stub's):
+                // `music_stop_fade` keeps the place, then fades the stream out from the whole.
                 Stream::Playing { len, at, .. } => {
+                    if self.pending.is_none() && !self.stop {
+                        return;
+                    }
+                    self.stop = false;
+                    let name = self.playing.clone().unwrap_or_default();
+                    self.places.insert(name, at);
+                    self.stream = Stream::Fading { len, at, heard: 0 };
+                }
+                // A thread with a track to open, the stream held: its place kept (the fade of a
+                // stream never started is silent), closed.
+                Stream::Held { at, .. } => {
                     if self.pending.is_none() {
                         return;
                     }
                     let name = self.playing.clone().unwrap_or_default();
                     self.places.insert(name, at);
-                    self.stream = Stream::Fading { len, at, heard: 0 };
+                    self.stream = Stream::Closed;
                 }
                 // `music_thread` opens the pending name as it is now (0x59A96A, cleared at
                 // 0x59A9A8).
@@ -256,15 +320,23 @@ impl Music {
                 }
                 Stream::Opening => {
                     let name = self.playing.as_deref().unwrap_or_default();
-                    self.stream = match tracks(name) {
+                    let place = |len| self.place(name).filter(|&p| p < len).unwrap_or(0);
+                    let stream = match tracks(name) {
                         Track::Decoding => return,
                         Track::Missing | Track::Frames(0) => Stream::Closed,
+                        // Started only with the focus (0x59AA15); else held, and a stub
+                        // waiting finds nothing to fade.
+                        Track::Frames(len) if !self.active => Stream::Held { len, at: place(len) },
                         Track::Frames(len) => Stream::Playing {
                             len,
-                            at: self.place(name).filter(|&p| p < len).unwrap_or(0),
+                            at: place(len),
                             heard: 0,
                         },
                     };
+                    if matches!(stream, Stream::Held { .. }) {
+                        self.stop = false;
+                    }
+                    self.stream = stream;
                 }
             }
         }
@@ -327,6 +399,19 @@ impl Queue {
             self.cleared();
         }
         request
+    }
+
+    /// The game's focus lost or regained while the stream holds `queued` frames
+    /// ([`Music::focus`]); whether that changed the music to come: then the stream must be
+    /// cleared, what it holds queued again from the frames heard.
+    pub fn focus(&mut self, active: bool, queued: u64, tracks: &impl Fn(&str) -> Track) -> bool {
+        self.hear(queued, tracks);
+        if self.heard.active() == active {
+            return false;
+        }
+        self.heard.focus(active);
+        self.cleared();
+        true
     }
 
     /// The stream cleared (by a request, or by the window): queued again from the frames heard.

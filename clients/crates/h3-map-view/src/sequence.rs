@@ -171,7 +171,7 @@ impl Sequence {
                     || i.press.is_some()
                     || i.keydown
                         .as_deref()
-                        .is_some_and(|k| matches!(key(k), Some((false, _))))
+                        .is_some_and(|k| matches!(key(k), Some((false, _))) || k == SPACE)
             })
     }
 
@@ -208,6 +208,7 @@ impl Sequence {
                     (Some((true, direction)), _) => Action::Scroll(direction),
                     (Some((false, direction)), _) => Action::Step(direction),
                     (None, Some(hotkey)) => Action::Key(hotkey),
+                    (None, None) if name == SPACE => Action::Visit,
                     (None, None) => {
                         return Err(failed(&format!("`{name}`: no key of the map's")));
                     }
@@ -217,7 +218,9 @@ impl Sequence {
                     return Err(failed(&format!("`{name}` released, never pressed")));
                 };
                 down.remove(at);
-                hotkey(name).map(Action::KeyUp)
+                // Another key's release is a message that does nothing (E24 M3 T6b3: it counts
+                // in the input ring).
+                Some(hotkey(name).map_or(Action::Up, Action::KeyUp))
             } else {
                 input
                     .pointer
@@ -384,6 +387,9 @@ fn hotkey(name: &str) -> Option<Hotkey> {
         .into_iter()
         .find(|h| h.letter().to_ascii_lowercase() == name)
 }
+
+/// Space by xdotool's name (E24 M3 T6b3: [`Action::Visit`]).
+const SPACE: &str = "space";
 
 /// A key's name: with Ctrl or not, and its direction.
 fn key(name: &str) -> Option<(bool, Direction)> {

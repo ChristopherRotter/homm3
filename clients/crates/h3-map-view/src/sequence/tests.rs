@@ -17,7 +17,7 @@ fn one(rest: &str) -> Sequence {
 #[test]
 fn reads_the_recorded_sequences() {
     let sequences = Sequences::parse(SEQUENCES).unwrap();
-    assert_eq!(sequences.sequence.len(), 31);
+    assert_eq!(sequences.sequence.len(), 35);
     // The status window's kind asked at 0 (E24 M3 T5b2).
     let date = sequences.get("status-date-end").unwrap();
     assert_eq!(date.asked(), Ok(Some(Asked { kind: 1, end: 3000 })));
@@ -34,8 +34,8 @@ fn reads_the_recorded_sequences() {
     assert_eq!(actions[&100], [Action::Scroll(Direction::North)]);
     assert_eq!(actions[&300], [Action::Scroll(Direction::NorthEast)]);
     assert_eq!(actions[&1500], [Action::Scroll(Direction::NorthWest)]);
-    // A key's release is no action.
-    assert!(!actions.contains_key(&160));
+    // A key's release is a message that does nothing (E24 M3 T6b3: it counts in the ring).
+    assert_eq!(actions[&160], [Action::Up]);
     assert_eq!(actions[&2300], [Action::Pointer([2, 300])]);
     assert!(sequences.get("idle").is_none());
     assert_eq!(sequences.get("idle-cycles").unwrap().scroll_speed(), Ok(1));
@@ -51,7 +51,7 @@ fn the_keys_and_the_clicks() {
     assert_eq!(
         s.actions().unwrap(),
         BTreeMap::from([
-            (1, vec![Action::Step(Direction::NorthWest)]),
+            (1, vec![Action::Step(Direction::NorthWest), Action::Up]),
             (2, vec![Action::Scroll(Direction::SouthWest)]),
             (
                 3,
