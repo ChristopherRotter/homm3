@@ -97,7 +97,10 @@ ROOT = HERE.parent.parent
 # The instance (E17 M5 T8a): H3_RUN, H3_DISPLAY and WINEPREFIX choose another run directory,
 # display and prefix (setup.sh with the same three), so that two captures run side by side;
 # without them the one instance as before. Each run ends any game in its own prefix only.
-GAME_DIR = Path(os.environ.get("H3_RUN", ROOT / "original-data" / "wine")) / "game"
+# E17 M5 T8b1, R7-3: the run directory absolute (a relative H3_RUN made a broken drive D:), and
+# H3_RUN refused without WINEPREFIX (`instance_fault`): the default prefix is the other
+# instance's, so its game would be ended and its drive D: moved here.
+GAME_DIR = (Path(os.environ.get("H3_RUN") or ROOT / "original-data" / "wine") / "game").resolve()
 SCREENS = HERE / "screens.toml"
 DISPLAY = os.environ.get("H3_DISPLAY", ":99")
 WIDTH, HEIGHT = 800, 600
@@ -138,6 +141,8 @@ ROLLS = {
 TURN_LIMIT = 30000
 # The most values `roll:<name>:<a>,<b>,...` queues (xdd.c's QUEUE).
 QUEUE = 8
+# The fields of xdd.dll's ack (xdd.c's `control`; `Game.ack`).
+ACK_FIELDS = 10
 
 
 class Unreadable(RuntimeError):
@@ -165,7 +170,20 @@ def xwd565(data):
     return rows.copy().view("<u2").astype(np.uint16)
 
 
+def instance_fault():
+    """Why this instance must not run (E17 M5 T8b1, R7-3), or None: H3_RUN without WINEPREFIX
+    (setup.sh refuses it alike)."""
+    if os.environ.get("H3_RUN") and not os.environ.get("WINEPREFIX"):
+        return ("H3_RUN is set without WINEPREFIX: the default prefix ~/.wine-h3 is the other "
+                "instance's (its game would be ended); set both, as for setup.sh")
+    return None
+
+
 def env():
+    # No Wine command of a refused instance runs (E17 M5 T8b1, R7-3).
+    fault = instance_fault()
+    if fault:
+        raise RuntimeError(fault)
     e = dict(os.environ)
     e.setdefault("WINEPREFIX", str(Path.home() / ".wine-h3"))
     e["WINEDEBUG"] = "-all"
@@ -183,6 +201,9 @@ SETTINGS_KEY = ("HKEY_LOCAL_MACHINE\\SOFTWARE\\New World Computing\\"
 # The effects volume of a `sound` run (E17 M5 T5b2): any but 0 (play_sample 0x59A210 plays
 # nothing at 0); the music's stays 0 (play_music 0x59ACB0 then asks for nothing).
 SOUND_VOLUME = 5
+# How long `sound_settings` waits for the prefix's wineserver to end (E17 M5 T8b1, R7-9,
+# *provisional*: it ends a few seconds after regedit).
+WINESERVER_WAIT = 60
 
 
 def sound_settings(on):
@@ -199,7 +220,15 @@ def sound_settings(on):
     ).encode("cp1252"))
     subprocess.run(["wine", "regedit", str(reg)], env=env(), check=True,
                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    subprocess.run(["wineserver", "-w"], env=env(), check=False)
+    # At most WINESERVER_WAIT seconds, then this prefix's wineserver is ended (E17 M5 T8b1,
+    # R7-9: a process left in the prefix kept the wait going for ever); it saves the registry as
+    # it ends.
+    try:
+        subprocess.run(["wineserver", "-w"], env=env(), check=False, timeout=WINESERVER_WAIT)
+    except subprocess.TimeoutExpired:
+        print(f"(the prefix's wineserver had not ended {WINESERVER_WAIT} s after the sound "
+              "settings: ended with `wineserver -k`)", file=sys.stderr)
+        subprocess.run(["wineserver", "-k"], env=env(), check=False)
 
 
 def view(args):
@@ -260,7 +289,19 @@ class Game:
 
     # -- the process ------------------------------------------------------------------------
     def start(self, map_path=None):
-        if subprocess.run(["pgrep", "-f", f"Xvfb {DISPLAY}"], capture_output=True).returncode:
+        # The instance checked before anything runs (E17 M5 T8b1, R7-3): H3_RUN with its own
+        # prefix (`env` refuses it otherwise), whose drive D: is this run directory (setup.sh's
+        # link; else the game would run another instance's directory).
+        prefix = Path(env()["WINEPREFIX"])
+        drive = prefix / "dosdevices" / "d:"
+        if Path(os.path.realpath(drive)) != GAME_DIR:
+            said = os.readlink(drive) if drive.is_symlink() else "no link"
+            raise RuntimeError(f"the prefix {prefix}'s drive D: is {said}, not the run directory "
+                               f"{GAME_DIR}: run setup.sh with the same H3_RUN and WINEPREFIX")
+        # The display's own Xvfb, its number matched whole (E17 M5 T8b1, R7-4: `:9` matched
+        # `:99`'s).
+        xvfb = f"(^|/)Xvfb {re.escape(DISPLAY)}( |$)"
+        if subprocess.run(["pgrep", "-f", xvfb], capture_output=True).returncode:
             subprocess.Popen(
                 ["Xvfb", DISPLAY, "-screen", "0", f"{WIDTH}x{HEIGHT}x16", "-nolisten", "tcp"],
                 stdout=subprocess.DEVNULL,
@@ -295,6 +336,8 @@ class Game:
         )
 
     def stop(self):
+        if instance_fault():  # nothing ran (`env` refused it), and nothing is ended (R7-3)
+            return
         subprocess.run(["wineserver", "-k"], env=env(), check=False)
         if self.proc:
             # One `wineserver -k` did not end is killed, not left running, and the error that
@@ -352,7 +395,21 @@ class Game:
         except Unreadable as err:
             bad = f"none: {err}"
         also = f"; {fault}" if fault else ""
-        raise TimeoutError(f"the screen `{name}` did not appear (the display: {bad}{also})")
+        raise TimeoutError(f"the screen `{name}` did not appear (the display: {bad}{also})"
+                           f"{self.crash_note()}")
+
+    def crash_note(self):
+        """The game's crash, if Wine logged one, for a timeout's message (E17 M5 T8b1: a crash
+        in `rumour_pick_text` 0x4CCF8C on the new-game screen left Wine's crash dialog, which the
+        timeout named only as a display of depth 24)."""
+        try:
+            text = (self.out / "wine.log").read_text(errors="replace")
+        except OSError:
+            return ""
+        for line in text.splitlines():
+            if "Unhandled" in line:
+                return f"; the game crashed: {line.strip()} (its log: {self.out / 'wine.log'})"
+        return ""
 
     # -- input --------------------------------------------------------------------------------
     def click(self, x, y, settle=0.3):
@@ -369,15 +426,24 @@ class Game:
         time.sleep(settle)
 
     # -- the clock ----------------------------------------------------------------------------
-    def ack(self):
+    def ack(self, need=False):
         """xdd.dll's acknowledgement: the command's seq, the clock's time, the game's reads since,
         and (M3 T7b-2b-1) the draws forced, the forced draws pending and the calls redirected, and
-        (E17 M4 T3a) the roll commands and forced values it refused."""
+        (E17 M4 T3a) the roll commands and forced values it refused, (E17 M5 T4b2b) 1 when the
+        clips' clock is the virtual one, (E17 M5 T5b2) the Miles imports hooked and (E17 M5
+        T8b1, R7-5) the sample calls the hooks could not follow: ACK_FIELDS, padded with 0; None
+        before the first. With `need` (a check reads it once so, R7-10) an error instead of None,
+        and one naming a stale xdd.dll (built before xdd.c's last field) for fewer fields."""
         try:
             fields = [int(v) for v in (self.clock_dir / "ack").read_text().split()]
         except (OSError, ValueError):
-            return None
-        return tuple(fields + [0] * (7 - len(fields))) if len(fields) >= 3 else None
+            fields = []
+        if need and len(fields) < 3:
+            raise RuntimeError(f"no acknowledgement from xdd.dll in {self.clock_dir}")
+        if need and len(fields) < ACK_FIELDS:
+            raise RuntimeError(f"xdd.dll acknowledges {len(fields)} fields, not {ACK_FIELDS}: a "
+                               f"stale xdd.dll in {GAME_DIR} (setup.sh builds it from xdd.c)")
+        return tuple(fields + [0] * (ACK_FIELDS - len(fields))) if len(fields) >= 3 else None
 
     def roll(self, name, falls=True, count=1, value=None):
         """Forces the next `count` draws of the roll `name` (ROLLS) to make it fall, or fail (M3
@@ -389,9 +455,9 @@ class Game:
             draw = ROLLS[name][0 if falls else 1] if value is None else value
             command = f"roll {name} {draw} {count}"
         # A command xdd.dll refuses stops here (E17 M4 T3a): it would force nothing.
-        before = (self.ack() or (0,) * 7)[6]
+        before = (self.ack() or (0,) * ACK_FIELDS)[6]
         self.clock(command)
-        if self.ack()[6] > before:
+        if self.ack(need=True)[6] > before:
             raise RuntimeError(f"xdd.dll refused `{command}`")
 
     def rolls_fail(self, name):
@@ -413,10 +479,15 @@ class Game:
         need, seen, last = (3 if self.sound else 1), 0, -1
         while time.monotonic() < end:
             a = self.ack()
-            if a and a[0] == self.seq and a[2] >= settle_reads and a[2] > last:
-                seen, last = seen + 1, a[2]
-                if seen >= need:
-                    return a[1]
+            if a and a[0] == self.seq:
+                # Reads gone back (a Miles call set them to 0) count again from none (E17 M5
+                # T8b1, R7-7): three acknowledgements in a row.
+                if a[2] < last:
+                    seen, last = 0, -1
+                if a[2] >= settle_reads and a[2] > last:
+                    seen, last = seen + 1, a[2]
+                    if seen >= need:
+                        return a[1]
             time.sleep(0.002)
         raise TimeoutError(f"the clock did not settle after `{command}` (ack {self.ack()})")
 
@@ -443,7 +514,8 @@ class Game:
                 return t
         bad = self.out / f"not-{names[0]}.xwd"
         self.dump(bad)
-        raise TimeoutError(f"the screen `{name}` did not appear within {limit_ms} ms (the display: {bad})")
+        raise TimeoutError(f"the screen `{name}` did not appear within {limit_ms} ms (the display: "
+                           f"{bad}){self.crash_note()}")
 
 
 # -- recipes: the common uses, by fixed coordinates (the menus never move) --------------------
@@ -458,7 +530,11 @@ def gold_bonus(game, players=2):
     options (E17 M5 T8a, M4's review item 15): a random bonus can give a hero an artifact that
     changes its luck, morale or primary skills for one run (M4 T3b-2's `luck`, `morale`, `bolt`).
     The right arrow goes Random, Artifact, Gold (then Resource where the town allows one); the
-    computer's rows change as the human's. Gold changes nothing in a battle."""
+    computer's rows change as the human's. Gold changes nothing in a battle.
+
+    The choice is not checked afterwards (E17 M5 T8b1, R7-8, left open): the screen's probes
+    (screens.toml) hold no picture of the Gold bonus, which only a run of the game can learn, and
+    no address of the scenario's starting bonuses has been read for `h3mem`."""
     game.click(*ADVANCED_OPTIONS, 1.0)
     x, y, step = BONUS_RIGHT
     for row in range(players):
@@ -497,15 +573,24 @@ def sounds(game):
     return [tuple(int(v) for v in line.split()) for line in text.splitlines() if line.strip()]
 
 
+def sound_end(sample):
+    """When a logged sample (`sounds`) stops playing (E17 M5 T8b1, R7-1): its start plus its
+    length times its loops. One that loops until ended (0) counts its first pass, *provisional*:
+    the log holds no end (the game ends it) and nothing waits for it to end on its own."""
+    t, _, ms, loops = sample
+    return t + ms * max(loops, 1)
+
+
 def sounds_settled(game, quiet=1.5, limit=60.0):
-    """Waits, the clock running, until every sample started has played out and none started
-    for `quiet` seconds (E17 M5 T5b2): with sound the adventure map's turn start (hot seat's new
-    day) waits for its samples, and a key pressed meanwhile is lost once the clock stops."""
+    """Waits, the clock running, until every sample started has played out (`sound_end`) and
+    none started for `quiet` seconds (E17 M5 T5b2): with sound the adventure map's turn start
+    (hot seat's new day) waits for its samples, and a key pressed meanwhile is lost once the
+    clock stops."""
     end, since, seen = time.monotonic() + limit, time.monotonic(), None
     while time.monotonic() < end:
         started = sounds(game)
         ack = game.ack()
-        playing = ack is not None and any(t + ms > ack[1] for t, _, ms, _ in started)
+        playing = ack is not None and any(sound_end(s) > ack[1] for s in started)
         if playing or len(started) != seen:
             since, seen = time.monotonic(), len(started)
         elif time.monotonic() - since >= quiet:
@@ -514,19 +599,54 @@ def sounds_settled(game, quiet=1.5, limit=60.0):
     raise TimeoutError("the game's sounds never settled")
 
 
-def after_start_sound(game, shown):
+def after_start_sound(game, shown, heard):
     """The battle's opening with sound (E17 M5 T5b2): `battle_start` shows the battlefield, then
     waits while its start sound plays, at most 10 s (`wait_for_sample` 0x46304B), and only then
     starts its clocks (0x463093); the viewer's time 0 is there, as without sound (no wait). Steps
-    the clock to the start sound's end (the last sample started by the screen `shown`) and
-    returns that time."""
-    if game.ack()[8] != 9:
-        raise RuntimeError(f"xdd.dll hooked {game.ack()[8]} of Miles' 9 sample imports")
-    started = [s for s in sounds(game) if s[0] <= shown]
-    if not started:
-        raise RuntimeError("no start sound played: has the game a sound device?")
-    end = started[-1][0] + started[-1][2]
-    return game.clock(f"step {end - shown}") if end > shown else shown
+    the clock to the start sound's end and returns that time. The start sound (E17 M5 T8b1,
+    R7-1): of the samples logged after the first `heard` (the log's length before the step into
+    the battle), the last started by the screen `shown` that still plays then (`sound_end`), its
+    loops counted; none is an error (an earlier sample, the new day's or the walk's, was taken
+    for it before), and so is one that loops until ended (the wait then ends at its limit)."""
+    ack = game.ack(need=True)
+    if ack[8] != 9:
+        raise RuntimeError(f"xdd.dll hooked {ack[8]} of Miles' 9 sample imports")
+    if ack[9]:
+        raise RuntimeError(f"xdd.dll could not follow {ack[9]} sample calls (a file not read as "
+                           "a WAV, a handle past its table): their lengths are Miles' own")
+    playing = [s for s in sounds(game)[heard:] if s[0] <= shown and sound_end(s) > shown]
+    if not playing:
+        log = game.clock_dir / "sounds"
+        raise RuntimeError(f"no start sound played at the battle's show ({shown}): no sample "
+                           f"started since the step into the battle plays then ({log})")
+    start = playing[-1]
+    if start[3] == 0:
+        raise RuntimeError(f"the start sound {start} loops until ended: its end is not logged")
+    return game.clock(f"step {sound_end(start) - shown}")
+
+
+def at_result(mem, states=()):
+    """Whether the battle is over, its result window open (E17 M5 T8b1, R7-2): decided in a
+    state of `states` or now, or a side retreated or surrendered (the manager's flags)."""
+    if any(s["clocks"].get("decided") for s in states):
+        return True
+    if not mem.manager():
+        return False
+    outcome = mem.battle_outcome()
+    return bool(mem.globals()["decided"] or outcome["retreated"] is not None
+                or outcome["surrendered"] is not None)
+
+
+def check_clips(where):
+    """A capture that reached the result window (`at_result`) played its clip from the run's
+    `Data/VIDEO.VID` (E17 M5 T8b1, R7-2): setup.sh's empty stand-in (4 bytes) plays none, which
+    the viewer draws; an error then, naming `where` (the capture's files)."""
+    vid = GAME_DIR / "Data" / "VIDEO.VID"
+    size = vid.stat().st_size if vid.exists() else 0
+    if size <= 4:
+        raise RuntimeError(f"the battle reached its result window, but {vid} holds no clips "
+                           f"({size} bytes: setup.sh found no battle-videos.vid; H3_VIDEOS names "
+                           f"another); {where}")
 
 
 def into_battle(game, key="Right", walls=None):
@@ -537,6 +657,11 @@ def into_battle(game, key="Right", walls=None):
     game's memory once the siege's setup has set its parts' states (some above 0) and before the
     battle screen shows, so that its first frame draws them (`h3mem.write_walls`)."""
     game.clock("freeze")
+    # The clips' clock is the virtual one (E17 M5 T8b1, R7-2: xdd.dll's 5., the ack's eighth
+    # field): else the result window's clip runs in real time while the clock stands.
+    if game.ack(need=True)[7] != 1:
+        raise RuntimeError("xdd.dll did not point BINKW32.DLL's timeGetTime at the virtual clock "
+                           "(the ack's eighth field 0): a clip would run in real time")
     game.key(key)
     game.move(*PARK)
     if walls is None:
@@ -683,6 +808,10 @@ def capture(game, map_path, out, frames, key="Right", stacks=None, hot_seat=Fals
         paths.append(path)
         if mem is not None:
             stacks.append(mem.stacks())
+    # A result window reached played its clip (E17 M5 T8b1, R7-2; read with the stacks: every
+    # `set` run).
+    if mem is not None and at_result(mem):
+        check_clips(f"the frames: {out}")
     return paths
 
 
@@ -967,9 +1096,10 @@ def sequence(game, map_path, out, pre=0, actions=(), ms=1000, screen=False, fram
         to_scenario(game, gold=True)
     if game.sound:
         sounds_settled(game)
+        heard = len(sounds(game))  # the samples before the step into the battle (R7-1)
     t0 = into_battle(game, key)
     if game.sound:
-        t0 = after_start_sound(game, t0)
+        t0 = after_start_sound(game, t0, heard)
     mem = h3mem.Mem()
     # xdd.dll redirected every roll's and logged draw's call (M3 T7b-2b-1), each checked against
     # the bytes it replaces: the executable is the one read, before the harness writes into its
@@ -977,8 +1107,9 @@ def sequence(game, map_path, out, pre=0, actions=(), ms=1000, screen=False, fram
     # the write).
     rolls = bool(fail) or any(a.startswith("roll:") for a in actions)
     sites = len(ROLLS) + len(LOGGED)
-    if game.ack()[5] != sites:
-        raise RuntimeError(f"xdd.dll redirected {game.ack()[5]} of the {sites} rolls' and "
+    redirected = game.ack(need=True)[5]
+    if redirected != sites:
+        raise RuntimeError(f"xdd.dll redirected {redirected} of the {sites} rolls' and "
                            "logged draws' calls (another Heroes3.exe?)")
     # The mouse poll's grid from the opening (M3 T6c-2): the cursor moves at the same times in
     # every run.
@@ -1065,14 +1196,21 @@ def sequence(game, map_path, out, pre=0, actions=(), ms=1000, screen=False, fram
     (out / "turns.txt").write_text("".join(f"{t}\n" for t in turns))
     if stalled:  # M3 T7a-2b: the files above show how far it came
         raise RuntimeError(f"{stalled} (the states so far: {out / 'states.jsonl'})")
-    if rolls and game.ack()[4]:
-        raise RuntimeError(f"{game.ack()[4]} forced draws no roll took (the states: "
+    ack = game.ack(need=True)  # read once for the checks (E17 M5 T8b1, R7-10)
+    if rolls and ack[4]:
+        raise RuntimeError(f"{ack[4]} forced draws no roll took (the states: "
                            f"{out / 'states.jsonl'})")
     # A forced value outside its call's range was refused, the call's own draw taken (E17 M4
     # T3a): not the sequence asked for.
-    if rolls and game.ack()[6]:
-        raise RuntimeError(f"xdd.dll refused {game.ack()[6]} forced values or commands (the "
+    if rolls and ack[6]:
+        raise RuntimeError(f"xdd.dll refused {ack[6]} forced values or commands (the "
                            f"states: {out / 'states.jsonl'})")
+    # A sample the hooks could not follow played for Miles' own length (E17 M5 T8b1, R7-5).
+    if game.sound and ack[9]:
+        raise RuntimeError(f"xdd.dll could not follow {ack[9]} sample calls (a file not read as "
+                           f"a WAV, a handle past its table; the states: {out / 'states.jsonl'})")
+    if at_result(mem, states):  # its clip played (R7-2)
+        check_clips(f"the states: {out / 'states.jsonl'}")
     if frames:
         with open(out / "frames.jsonl", "w") as f:
             for s in states:

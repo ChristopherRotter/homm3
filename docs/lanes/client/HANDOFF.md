@@ -27,9 +27,11 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   choices), `h3-view account`, `remote::Accounts`, `Client::login` with the re-key,
   `remote::farewell`). **M5 T8** (M5's closure) cut by the user into concurrent fractions (two
   capture agents on the harness's two instances, one reviewer or fixer; QUEUE): **T8a done**
-  (PR from `client/e17-m5-t8a`; check it first): reviewers R1, R3, R4 fixed, all stills and
-  sequences 0 to 27 as recorded. **Next: T8b** (QUEUE: sequences 28 to 64, reviewers R2, R4b,
-  R5a–c, R6, R7 and their fixers), then T8c at the user's checkpoint (review items 1 to 72+). The inbox's CLT-Q30 task (`h3-bink` as BINKW32's float DCT) and the user's Demons
+  (#606 merged): reviewers R1, R3, R4 fixed, all stills and sequences 0 to 27 as recorded; T8b
+  cut in two by the user, **T8b1 done** (PR from `client/e17-m5-t8b1`; check it first):
+  sequences 28 to 64 as recorded, R7 (the harness) and R2a/R2b (the decoder, the clip) fixed.
+  **Next: T8b2** (QUEUE: R4b, R5a–c, R6 and their fixers, the leftovers, `drawn`, `check.sh`),
+  then T8c at the user's checkpoint (review items 1 to 77+). The inbox's CLT-Q30 task (`h3-bink` as BINKW32's float DCT) and the user's Demons
   note (T5a's dissolve, to re-investigate) wait for a free slot.
   Workspace `clients/` (`clients/README.md`), gates `clients/scripts/check.sh`; ADR-0020 (+ drafts
   in `adr-drafts/`), ADR-0024; the harness `clients/capture/README.md`; design §3–§11; records in
@@ -58,6 +60,13 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
 
 ## Recent sessions
 
+- **2026-10-30, E17 M5 T8b1 (done; its PR open: check it first).** The original data staged
+  (the user's computer offline an hour in); the user's cut of T8b in two; the VM restarted ~40
+  minutes in (two captures rerun). R7 (the harness) and R2a/R2b (the decoder, the clip) and
+  their fixers (F7 in a worktree, merged with both instances idle and set up again); sequences
+  28 to 64 as recorded (`auto`'s 7 530 now exact, recorded); the harness check passed at its
+  rerun; `drawn` and `check.sh` with the fixes. Items 73–77.
+
 - **2026-10-30, E17 M5 T8a (done; its PR open: check it first).** The original data staged;
   the VM restarted ~10 minutes in. The user's cut: three concurrent sub-agents, each a fraction
   of about half a context. Built the harness's two instances (one fault found by a capture
@@ -72,11 +81,3 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
   re-key, seats by account, the final goodbyes; the test vector reproduced; live on a local
   `h3-server`, headless and in two windows to the result window, seats re-taken by account
   after drops and by new processes, every frame exact. Items 61 to 65; T8 next.
-
-- **2026-10-30, E17 M5 T6b2 (done; #597 merged).** The original data staged;
-  the agent's cut into T6b2a/b declined by the user (kept whole); the VM restarted ~10 minutes
-  in (CI's green `master` the baseline). Built the record that opens mid-battle (R2-8, R1-3) and
-  the restart's new timeline (design §11.3); checked against the recorded `raise` cut after its
-  deaths, and live: two windows through a restart of a local `h3-server` (Resurrection on an
-  opening corpse), a join mid-battle with a small record bound, every frame exact. Items 56 to
-  60; T7 next.

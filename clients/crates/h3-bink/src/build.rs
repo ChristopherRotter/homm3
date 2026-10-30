@@ -702,13 +702,24 @@ pub const SAMPLE_HEIGHT: u32 = 48;
 pub const SAMPLE_FRAMES: usize = 8;
 
 /// A 256 × 48 clip of 8 frames (as wide as the game's clips, whose rows FFmpeg does not pad: a
-/// reference crossing a row's end reads the same pixels in both), every block of a random type of the nine with random values (the
-/// first frame's skipped blocks raw instead), each seed its own clip: what `h3-view video
-/// --sample` writes for FFmpeg to decode, and what the decoder's unit test hashes.
+/// reference crossing a row's end reads the same pixels in both), every block of a random type
+/// of the nine with random values (the first frame's skipped blocks raw instead), each seed its
+/// own clip: what `h3-view video --sample` writes for FFmpeg to decode, and what the decoder's
+/// unit test hashes.
 #[must_use]
 pub fn sample(seed: u64) -> Vec<u8> {
+    sample_sized(seed, SAMPLE_WIDTH, SAMPLE_HEIGHT)
+}
+
+/// [`sample`]'s clip of `seed` at `width` × `height` (E17 M5 T8b1, R2a-4: 256 × 120, the game's
+/// clips' size, whose chroma planes hide four rows below the picture). A width other than 256
+/// is decoded by FFmpeg over padded rows (`crate`'s doc): not comparable where a vector crosses
+/// a row's end.
+#[must_use]
+pub fn sample_sized(seed: u64, width: u32, height: u32) -> Vec<u8> {
     let mut rng = Random::new(seed);
-    let (width, height) = (SAMPLE_WIDTH as usize, SAMPLE_HEIGHT as usize);
+    let header = Header::new(width, height);
+    let (width, height) = (width as usize, height as usize);
     let frames: Vec<Vec<u8>> = (0..SAMPLE_FRAMES)
         .map(|f| {
             let planes: [Vec<Block>; 3] = core::array::from_fn(|i| {
@@ -725,5 +736,5 @@ pub fn sample(seed: u64) -> Vec<u8> {
             frame(width, height, [&planes[0], &planes[1], &planes[2]])
         })
         .collect();
-    file(&Header::new(SAMPLE_WIDTH, SAMPLE_HEIGHT), &frames)
+    file(&header, &frames)
 }

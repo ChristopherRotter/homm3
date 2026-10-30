@@ -126,10 +126,13 @@ impl Timing {
         ((u64::from(since) + 1) * num - 1) / (1000 * den)
     }
 
-    /// The time of its p-th decoded frame after its first.
+    /// The time of its p-th decoded frame after its first (`u64::MAX`: never). In 128 bits, as
+    /// 1000 p den passes a `u64` at extreme rates (E17 M5 T8b1, R2b-4).
     fn at(self, p: u64) -> u64 {
-        let [num, den] = self.rate.map(u64::from);
-        (1000 * p * den).checked_div(num).unwrap_or(u64::MAX)
+        let [num, den] = self.rate.map(u128::from);
+        (1000 * u128::from(p) * den)
+            .checked_div(num)
+            .map_or(u64::MAX, |t| u64::try_from(t).unwrap_or(u64::MAX))
     }
 }
 
@@ -219,6 +222,36 @@ pub fn decodes(
     (time(began).unwrap_or(since), time(next))
 }
 
+/// The most bytes a clip's decoded frames may take (E17 M5 T8b1, R2b-1; *provisional*): 64 MiB,
+/// ten times the game's largest clip (`defendloop`, 102 frames of 256 × 120 at two bytes a
+/// pixel: 6.3 MB). A file gives its own frame count and size, so a few megabytes could ask for
+/// hundreds of gigabytes.
+pub const BUDGET: u64 = 64 << 20;
+
+/// Whether `frames` frames of `width` × `height` pixels, two bytes each, fit the [`BUDGET`].
+fn fits(frames: usize, width: u32, height: u32) -> bool {
+    let frame = u64::from(width) * u64::from(height);
+    u64::try_from(frames)
+        .ok()
+        .and_then(|n| n.checked_mul(frame))
+        .is_some_and(|pixels| pixels <= BUDGET / 2)
+}
+
+/// Why a clip is not decoded.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum VideoError {
+    /// What `h3-bink` rejects: the file, or a frame.
+    Bink(Error),
+    /// Its frames, decoded, would take more than [`BUDGET`] bytes (E17 M5 T8b1, R2b-1).
+    Budget,
+}
+
+impl From<Error> for VideoError {
+    fn from(error: Error) -> Self {
+        Self::Bink(error)
+    }
+}
+
 /// A clip decoded for the screen: its frames' pixels in the screen's 5-6-5, row by row.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct Video {
@@ -236,10 +269,14 @@ impl Video {
     /// Decodes every frame of the Bink file `bytes` and converts it as the DLL does.
     ///
     /// # Errors
-    /// What `h3-bink` rejects: the file, or a frame.
-    pub fn decode(bytes: &[u8]) -> Result<Self, Error> {
+    /// What `h3-bink` rejects: the file, or a frame; frames past the [`BUDGET`], found before
+    /// any is decoded.
+    pub fn decode(bytes: &[u8]) -> Result<Self, VideoError> {
         let clip = BinkClip::parse(bytes)?;
         let mut decoder = Decoder::new(&clip)?;
+        if !fits(clip.frames().len(), clip.width, clip.height) {
+            return Err(VideoError::Budget);
+        }
         let frames = (0..clip.frames().len())
             .map(|n| Ok(rgb565(decoder.decode(clip.video(n)?)?)))
             .collect::<Result<Vec<_>, Error>>()?;

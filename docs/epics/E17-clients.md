@@ -261,7 +261,9 @@ the stacks created mid-battle.
 - **T8, M5's closure:** a fresh reviewer, the recipes' starting bonus set to Gold (M4's item 15),
   every capture afresh, the review list, the next milestone refined. Cut by the user into
   concurrent fractions (QUEUE); **T8a done:** the harness's two instances, the bonus Gold,
-  reviewers R1, R3, R4 and their fixes, all stills and sequences 0 to 27 as recorded.
+  reviewers R1, R3, R4 and their fixes, all stills and sequences 0 to 27 as recorded. T8b cut
+  in two by the user; **T8b1 done:** sequences 28 to 64 as recorded, reviewers R7 (the harness)
+  and R2a/R2b (the decoder, the clip) and their fixes.
 - **Exit:** a battle played to its end in the window, in hot seat and on a server; the new
   screens (the book, the aim, the dialogs, the created stacks) pass against the original, or each
   difference is a listed fix or a classified quirk.
@@ -582,3 +584,22 @@ M3 at its review, T9b, M4 at its review, T3c). The next milestone's list starts 
     still clones the timeline; Auto Combat's check and the inputs' comparison still whole passes.
 72. The bot's command bound (T8a, R3-4): `FOUGHT_LIMIT` counts the bot's commands since a
     human's last; a layout's `book.schools` must be the four the book draws (R4-4).
+73. The harness's own checks (T8b1, R7; the runbook): `xdd.dll`'s ack has ten fields (an older
+    one stops a run: `setup.sh` again for every run directory), `H3_RUN` refused without
+    `WINEPREFIX`, the prefix's `d:` checked against the run directory; a run fails on the clip
+    clock's field not 1, on an empty `VIDEO.VID` at a result window, and in a sound run on an
+    unparsed sample or more than 32 handles; the start sound must be a new sample still playing
+    at the opening, loops counted; a paused sample answers 8 (Miles not checked); `wineserver -w`
+    waits at most 60 s.
+74. The starting bonus Gold is not verified (T8b1, R7-8): no probe of its picture or memory
+    address of the bonus is known, so `gold_bonus`'s clicks stay blind (a lost click would leave
+    Artifact: a hero's numbers off, the M4 trap).
+75. The result window's clips (T8b1, R2b-1, R2b-3, R2b-5): at most 64 MiB of decoded frames a
+    clip (`clip::BUDGET`, about ten times `defendloop`'s); a clip that cannot be read or decoded
+    leaves the slot bare (a warning); the pair decoded when the battle's end is known, never for
+    a record file's window.
+76. `h3-bink` (T8b1, R2a): an empty video packet refused as `Invalid` (FFmpeg refuses it too; an
+    existing variant reused); a 256 × 120 sample's hashes from FFmpeg 9.0.2 (PyAV 19.0.2, its
+    `bink.c` as 6.1.1's); the motion bound and a residue cut short checked equal to FFmpeg's.
+77. `h3-view video` (T8b1, R2b-2, R2b-6): an archive entry whose name is not a bare file name is
+    skipped and fails the run; names printed through `printable`.
