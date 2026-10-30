@@ -138,7 +138,7 @@ pub fn texts(
 /// draws with `bugs` (the original's for the comparisons only: E17 M3 T9b, the reviewer).
 pub fn panels(
     record: &Record,
-    logged: &[(u32, battle_log::Logged)],
+    (logged, controllers): (&[(u32, battle_log::Logged)], &[Side]),
     tables: &Tables,
     layout: &BattleLayout,
     (archives, exe): (&[(&str, LodArchive<'_>)], &[u8]),
@@ -159,7 +159,7 @@ pub fn panels(
     } else {
         Catalogue::default()
     };
-    Writer::with(catalogue, layout, archives, bugs)?.panels(record, logged)
+    Writer::with(catalogue, layout, archives, bugs)?.panels(record, (logged, controllers))
 }
 
 /// What words the log's lines and measures them, kept once the archives are gone (E17 M3
@@ -231,11 +231,12 @@ impl Writer {
         ))
     }
 
-    /// The panel over the record's battle through `logged` ([`panels`]).
+    /// The panel over the record's battle through `logged`, each turn's acting side the
+    /// timeline's `controllers` ([`panels`]; E17 M5 T5b2).
     pub fn panels(
         &self,
         record: &Record,
-        logged: &[(u32, battle_log::Logged)],
+        (logged, controllers): (&[(u32, battle_log::Logged)], &[Side]),
     ) -> Result<Panels, String> {
         let snapshot = record
             .first_snapshot()
@@ -267,7 +268,9 @@ impl Writer {
                 })
             })
             .collect();
-        Ok(Panels::new(snapshot, &events(record), texts).with_casts(casts))
+        Ok(Panels::new(snapshot, &events(record), texts)
+            .with_controllers(snapshot, controllers)
+            .with_casts(casts))
     }
 }
 

@@ -466,6 +466,13 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
         }
         None => None,
     };
+    // With its sound playing, the battle waits for its samples as the original does on a
+    // computer with sound (E17 M5 T5b2, design §8.3): made again with their lengths.
+    if let (Some(_), Some(lib)) = (player.as_ref(), library.as_ref()) {
+        ground.play_sounds(lib.lengths());
+        battle = Battle::new(&ground)?;
+        battle.load_batch(std::iter::empty(), &[&combat, &book_cursor, &spell_cursor])?;
+    }
     let mut cue = battle.timeline().cue_from(options.from);
     // Whether the battle's end's tune started (E17 M3 T8).
     let mut ended = false;

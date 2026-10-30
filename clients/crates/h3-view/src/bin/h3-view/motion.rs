@@ -758,5 +758,6 @@ pub fn stage<'a>(
         casts,
         bugs: Bugs::Fixed,
         siege,
+        lengths: None,
     }
 }

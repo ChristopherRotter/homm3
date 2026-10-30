@@ -225,9 +225,12 @@ the stacks created mid-battle.
       redraws, Stone Gaze's line), built (`h3_render::recolour`, the timeline's `LookKey`s,
       `Draw::Creature`'s `effect`); `bloodlust` and `stone` recorded, their glows and looks exact;
       `clone`'s colours exact; CLT-Q34.
-    - **T5b2, the panel and the sounds' waits:** the panel's side by each turn's controller
-      (R3-1: Hypnotize, a created stack); the battle waiting for the heal's sound and the other
-      effects'; recorded.
+    - **T5b2, the panel and the sounds' waits** (done 2026-10-29, kept whole by the user;
+      design §8.3, §9.12): read (the acting side by the controller, `wait_for_sample` and
+      `sample_wait` at their 30 battle sites), built (`Timeline::controllers`,
+      `Panels::with_controllers`, `sound::Lengths`, the timeline's waits, the window's lengths;
+      the harness's `sound` runs); `hypnotize`, `summon-turn` and six `*-sound` sequences
+      recorded; CLT-Q34 answered (a).
 - **T6, a game on a server:** joined over the server's WebSocket by a seat token: the hello and
   the welcome's checks, the key pinned per address, the content check (`docs/lanes/client/NOTES.md`,
   "The live client"); a record that opens mid-battle (R2-8, with M4 T3a's R1-3) for a join and
@@ -467,3 +470,18 @@ M3 at its review, T9b, M4 at its review, T3c). The next milestone's list starts 
     changes).
 42. Not built (T5b1): an Ogre Magi's Bloodlust (a creature's cast other than an area spell takes
     effect at once, M3 T7c-3): it glows nothing.
+43. A sample's length (T5b2; design §8.3): its `fact` frames at its rate, rounded up; on a sound
+    card Miles' mixer ends it, perhaps a few ms later. The harness's samples end so too, so the
+    recordings confirm where the waits are and how long, not the mixer's slack.
+44. A wait on a handle another sample took meanwhile (T5b2): the original would wait for that
+    sample; the viewer waits for its own (no recorded case: every channel of a category busy, or
+    the cue's sample over and the handle given again before the wait).
+45. Not built (T5b2): the waits of the effects the viewer does not draw yet (the Wraiths' mana
+    drain, regeneration, Poison's round damage, Death Blow, Ice Bolt's explosion, the Familiars'
+    channel; design §8.3's list); the effects' switch (E) does not stop the waits (the original's
+    volume 0 would: a setting, later).
+46. The window makes its battle twice when its sound opens (T5b2, `Ground::play_sounds`): the
+    library loads after the window opened; a live battle's opening plays twice (cheap, seeded).
+47. The harness's sound (T5b2, the runbook's "Sound"): Wine's ALSA driver over the null sink and
+    `xdd.dll`'s Miles hooks (nine imports): an emulation of a sample's end, not Miles' own; only
+    the main thread's clock reads count in a `sound` run (the silent runs as before).

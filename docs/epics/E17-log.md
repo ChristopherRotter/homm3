@@ -3379,6 +3379,49 @@ the rock clipped out is the slip, the corpse gone before the fade's end is not p
 - **Found:** CLT-Q34 (the greys' hue from the channels' unequal scales, the glow's last step
   replaced in its millisecond); review items 40 to 42.
 
+### M5 T5b2 — The panel by the turn's controller, the sounds' waits (2026-10-29)
+
+On `client/e17-m5-t5b2`, the user present at the start. The sandbox new; the files staged from the
+user's `original-data/` first (the device link dropped later; nothing more was needed). Asked at
+the start: T5b2 kept whole (the user, against the recommended cut: the panel now, the sounds
+next); CLT-Q34 answered (a), copy both.
+
+- **Read:** the panel's and the screen's side from `stack_activation` 0x465330 (the acting side
+  +0x132C0 the active stack's controller; installation.md §7.21, design §9.12). The sounds' waits
+  (design §8.3): `wait_for_sample` 0x59A4C0, `sample_wait` 0x599EC0, `play_sample` 0x59A210 (nothing
+  at the effects' volume 0), their 30 battle sites (callers), each one's sample and place; the
+  battle's start 0x46304B (10 s, the clocks after it). Map entries amended where cited.
+- **Built:** `Timeline::controllers` (each turn's acting side: Hypnotize's look by
+  `SpellLook::original`, a created stack's side), `Timeline::screen` by it,
+  `Panels::with_controllers` (the panel's kept colours, Auto Combat's selection), the writer's
+  panels with the timeline's controllers. `sound::Lengths` and `length_ms`, `Stage::lengths`,
+  `Player::wait_for` and `wait_last` at the sites (design §8.3's table), the deadline's grid from
+  a wait's end (`Clock::waited`); the binary's lengths (`audio::lengths`, `Library::lengths`), the
+  window's battle made again once its sound opened (`Ground::play_sounds`), a sequence's `sound`;
+  the battle's sound list with a wall shot's landing (`WallHit`, `WallMiss`: the window played
+  none before). The harness's `sound` runs (runbook, "Sound"): `xdd.dll` 6. (Miles' nine sample
+  imports on the virtual clock, `clock/sounds`; with sound the main thread's reads alone),
+  `h3drive.py` (`sound_settings`, Wine's ALSA driver over the null sink, `sounds_settled`,
+  `after_start_sound`, reads growing over three acknowledgements).
+- **Found on the way:** with sound the hot seat's new day waits for its samples and a key pressed
+  meanwhile is lost once the clock stops (`sounds_settled`); the game's sound thread reads the
+  clock and holds the sound manager's lock in real time, so 20 reads of any thread took a busy
+  main thread for idle (`machines`' heal read a millisecond late, three causes ruled out first).
+- **Recorded:** `machines` with sound: its silent timeline exactly. The viewer's comparison over
+  every sequence with the lengths named the sequences the waits change (`thunder`, `acid`,
+  `obstacles`, `gate`, `gate-fortress`, `mine`; with the landing's sound added, `breach`,
+  `tower`, `cyclops`, `moat`, `quake`, `through` by a wall shot's landing alone, not captured
+  again); the six recorded again with sound (`*-sound`), the
+  commands' times from the new turns: every timeline as recorded (the turns after a wait 27 ms
+  to 3 012 ms later), after two fixes they asked for (the deadline's grid after a wait; a wall
+  shot's landing among the battle's sounds); their frames as the silent ones' (`obstacles-sound`
+  all 80 exact, the rest the same redraw artifacts at their new times). `hypnotize` (Orrin hypnotizes
+  the Archers; their turn Red's) all 44 frames exact; `summon-turn` (`summon`'s elementals'
+  waited turn after the Archers', left waiting) all 30 exact. Its first recording went on into
+  round 2 (the elementals defending at their waited turn): the original's round starts with the
+  elementals (speed 6), the engine's with the Swordsmen (5): the battle lane's inbox.
+- **Found:** review items 43 to 47; no question.
+
 ## Accepted review lists (M1 to M4)
 
 M1 and M2 moved from the epic file on 2026-10-20 (less start-up reading), unchanged; M3 at its

@@ -15,10 +15,11 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   tactics phase drawn, §7.23, `h3_view::tactics`, and played, §7.24: the engine's placement
   steps, `cross-lane`; the dissolves and the created stacks, §7.25, `anim::created`, the engine's
   `NotCreated`, `cross-lane`; T5b cut in two, the palette effects done, §7.26,
-  `h3_render::recolour`). **Next: M5 T5b2** (the panel by the turn's controller, the sounds'
-  waits: QUEUE), then T6. Open PR: T5b1's (#583, `client/e17-m5-t5b1`; check it first). The inbox's
-  CLT-Q30 task (`h3-bink` as BINKW32's float DCT) and the user's Demons note (T5a's dissolve, to
-  re-investigate) wait for a free slot.
+  `h3_render::recolour`; the panel by each turn's controller and the sounds' waits, §8.3,
+  `Timeline::controllers`, `sound::Lengths`, the harness's `sound` runs: T5 done). **Next: M5 T6**
+  (a game on a server: the WebSocket+TLS dependency the user's call; QUEUE). Open PR: T5b2's
+  (#591, `client/e17-m5-t5b2`; check it first). The inbox's CLT-Q30 task (`h3-bink` as BINKW32's
+  float DCT) and the user's Demons note (T5a's dissolve, to re-investigate) wait for a free slot.
   Workspace `clients/` (`clients/README.md`), gates `clients/scripts/check.sh`; ADR-0020 (+ drafts
   in `adr-drafts/`), ADR-0024; the harness `clients/capture/README.md`; design §3–§10; records in
   `E17-log.md`.
@@ -26,7 +27,7 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 - **The user's requirements** (epic, "Decisions"): a string catalogue (JSON packs, no committed translation, CLT-Q7); graphics options (`faithful` default); exhaustive diffs; drawing bugs fixed, the original's only for comparisons (`Bugs`).
 - The lane owns `clients/` but the map-client lane's paths and the common ones (`lanes.toml`: the foundation, `text/`, the harness; an additive change freely, a change in behaviour into the map-client lane's inbox), plus `docs/epics/E17*` and this folder; branches `client/<task>`; ids `CLT-Q<n>`, `CLT-QUIRK-<n>` (asset fixes), `CLT-STUB-<n>`; ADR drafts in `adr-drafts/`, numbered when accepted.
 - **Checkpoints** per milestone (below), a fresh reviewer agent first. **Open:** CLT-Q5,
-  CLT-Q26, CLT-Q27, CLT-Q28, CLT-Q32, CLT-Q33, CLT-Q34. Next id: CLT-Q35.
+  CLT-Q26, CLT-Q27, CLT-Q28, CLT-Q32, CLT-Q33. Next id: CLT-Q35.
 - Stage from `original-data/install/`: the four LODs (one per call), `h3maped.exe`, both `.snd`, `MP3/COMBAT01`–`04` and the end tunes, `Heroes3.exe`, the five DLLs, `H3ab_ahd.vid`, and `original-data/battle-videos.vid` (the result window's clips: the harness's `VIDEO.VID`, the viewer's stand-in); `cp -rn` the staged `original-data/.` into the clone. Frames stay in the sandbox.
 
 ## Autonomy contract (agreed by the user, 2026-10-12)
@@ -46,7 +47,15 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
 
 ## Recent sessions
 
-- **2026-10-29, E17 M5 T5b1 (done; #583 open: check it first).** T5b cut in two with the
+- **2026-10-30, E17 M5 T5b2 (done; #591 open: check it first).** Kept whole by the user;
+  CLT-Q34 answered (a). Read the acting side by the controller and `wait_for_sample`'s 30 battle
+  sites (design §8.3). Built `Timeline::controllers`, `Panels::with_controllers`, the timeline's
+  waits (`sound::Lengths`, `wait_for`, the grid after a wait), the window's lengths, the
+  harness's `sound` runs (xdd.dll 6.: Miles on the virtual clock). `hypnotize` exact,
+  `summon-turn` and six `*-sound` sequences recorded; the engine's round-2 order after a created
+  stack into the battle lane's inbox; items 43 to 47.
+
+- **2026-10-29, E17 M5 T5b1 (done; #583 merged).** T5b cut in two with the
   user (T5b1 the palette effects); the user's Demons note recorded (design §7.25, QUEUE inbox).
   Read `draw_battle_stack`'s palette effects, the HSV round trip, the glows' redraws, Stone
   Gaze's line (design §7.26). Built `h3_render::recolour` (exact in integers against an IEEE
@@ -60,11 +69,3 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
   (design §7.25). Built `Screen::dissolve_rect`, `anim::created`, the window's notices.
   `teleport`, `clone`, `summon`, `demons` recorded, `sacrifice` exact; the clone's colours to
   T5b and the Demons' back buffer a slip not copied (the user's); CLT-Q33; items 36 to 39.
-
-- **2026-10-29, E17 M5 T4c2b (done; #569 merged).** Kept whole by the user;
-  the placement's path from the engine (`cross-lane`, the user's call: `tactics::place`, the gate
-  opened on the way). Read the placement as the walk, Next Creature, Start Combat and the
-  panels' swap, the shade over the turns, the computer's phase, Auto Combat in it, the keys
-  (design §7.24). Built the buttons' commands, `Context::Tactics`, the window's panel shown,
-  `tactics::shade_at`. `tactics-play` recorded: timeline as recorded, its frames exact but the
-  walk's redraw artifacts; review items 32 to 35; no question.

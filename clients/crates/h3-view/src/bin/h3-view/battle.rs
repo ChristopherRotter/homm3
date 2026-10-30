@@ -20,7 +20,9 @@ use h3_render::Bugs;
 use h3_render::screen::Screen;
 use h3_ui::sprite::Sprite;
 use h3_view::anim::Timeline;
-use h3_view::anim::{self, Casts, Growing, Look, MagicLook, Playhead, SiegeStage, Sound, Speed};
+use h3_view::anim::{
+    self, Casts, Growing, Look, MagicLook, Playhead, SiegeStage, Sound, Speed, Stage,
+};
 use h3_view::auto::Auto;
 use h3_view::batch::{self, Batch};
 use h3_view::battle_log::Logged;
@@ -34,7 +36,7 @@ use h3_view::mouse::{self, Field};
 use h3_view::record::{self, Record};
 use h3_view::scene::Panels;
 use h3_view::scene::{self, Draw, Moment};
-use h3_view::sound::Tune;
+use h3_view::sound::{Lengths, Tune};
 use h3_view::tables::{Sounds, Tables};
 
 use crate::boxes::{Answered, Asked, Leave};
@@ -117,9 +119,29 @@ pub struct Ground {
     fight: Option<(BattleRuleset, BattleSetup, u64)>,
     /// The sides a human plays here ([`Source::humans`]).
     humans: [bool; 2],
+    /// The samples' lengths once the window plays the battle's sounds (E17 M5 T5b2,
+    /// [`Ground::play_sounds`]): the battle waits for them; unset, no sound and no waits.
+    lengths: std::cell::OnceCell<Lengths>,
 }
 
 impl Ground {
+    /// The sounds of each stack living at the start, by its id ([`stack_sounds`]).
+    pub fn stack_sounds(&self) -> BTreeMap<u8, Sounds> {
+        stack_sounds(&self.record, &self.tables)
+    }
+
+    /// The battle's own sounds a cue may name, by cue ([`battle_sounds`]).
+    pub fn battle_sounds(&self) -> BTreeMap<Sound, String> {
+        battle_sounds(&self.record, &self.tables)
+    }
+
+    /// The battle plays its sounds, whose samples last `lengths` (E17 M5 T5b2): a battle made
+    /// from here on waits for them (`wait_for_sample`); set once, by the window when its sound
+    /// opened.
+    pub fn play_sounds(&self, lengths: Lengths) {
+        let _ = self.lengths.set(lengths);
+    }
+
     /// Reads what the battle of `source` is drawn from: a record file, or a scenario's opening
     /// (its battle is fought as it is played: every magic animation and spell read for it, as its
     /// events are not known yet).
@@ -206,8 +228,93 @@ impl Ground {
             speed: source.speed,
             fight,
             humans,
+            lengths: std::cell::OnceCell::new(),
         })
     }
+}
+
+/// The sounds of each stack living at the start, by its id (E17 M2 T5b); a siege's turrets
+/// (off the field) the town's shooter's, as their look (E17 M4 T3a, R2-1).
+pub fn stack_sounds(record: &Record, tables: &Tables) -> BTreeMap<u8, Sounds> {
+    let keys = &record.header.manifest.keys.creatures;
+    let field = record.header.manifest.field;
+    let cells = u16::from(field.width) * u16::from(field.height);
+    let shooter = motion::town(record, tables)
+        .and_then(|town| motion::shooter(town, tables))
+        .ok();
+    record
+        .first_snapshot()
+        .map(|s| s.stacks.as_slice())
+        .unwrap_or_default()
+        .iter()
+        .filter_map(|s| {
+            let creature = if u16::from(s.hex) < cells {
+                let key = keys.get(usize::from(s.creature))?;
+                tables.creatures.get(key)?
+            } else {
+                shooter?
+            };
+            Some((s.id, creature.sounds.clone()))
+        })
+        .collect()
+}
+
+/// The battle's own sounds a cue may name, by cue (not a creature's; design §8.2): the tent's
+/// heal (E17 M3 T3b), a resisted spell's and each spell's (E17 M3 T7b-1), morale's, Fear's
+/// and good luck's (E17 M3 T7b-2b-2b), Life Drain's, the Thunderbird's bolt's and the spells'
+/// the striker's effects play (E17 M3 T7b-2b-3), the sound placed with each object (E17 M3
+/// T7c-2), a siege's drawbridge and a mine's blast (E17 M4 T2c-1); while the battle is still
+/// fought, every one it may play (E17 M5 T1b: its cues are not known yet; T2b: waiting for a
+/// human too): here every one it may play, the battle's own list keeping those its cues name
+/// once it is over ([`Battle::battle_sounds`]).
+pub fn battle_sounds(record: &Record, tables: &Tables) -> BTreeMap<Sound, String> {
+    let spells = &record.header.manifest.keys.spells;
+    let battle = &tables.battle;
+    let spell = |handle: u16, object: bool| {
+        let entry = tables.spells.get(spells.get(usize::from(handle))?)?;
+        if object {
+            entry.object_sound.clone()
+        } else {
+            entry.sound.clone()
+        }
+    };
+    let mut sounds: Vec<(Sound, Option<String>)> = vec![
+        (Sound::Heal, Some(battle.heal_sound.clone())),
+        (Sound::Resisted, battle.resist_sound.clone()),
+        (Sound::GoodMorale, battle.good_morale_sound.clone()),
+        (Sound::BadMorale, battle.bad_morale_sound.clone()),
+        (Sound::Fear, battle.fear_sound.clone()),
+        (Sound::Luck, battle.luck_sound.clone()),
+        (Sound::Drain, battle.drain_sound.clone()),
+        (Sound::Thunderbolt, battle.thunderbolt_sound.clone()),
+        // A siege's drawbridge and a mine's blast (E17 M4 T2c-1).
+        (
+            Sound::Drawbridge,
+            battle.siege_sounds.as_ref().map(|s| s[0].clone()),
+        ),
+        (
+            Sound::Mine,
+            battle.siege_sounds.as_ref().map(|s| s[1].clone()),
+        ),
+        // A wall shot's landing (E17 M5 T5b2: its wait; the window played none before).
+        (
+            Sound::WallHit,
+            battle.wall_sounds.as_ref().map(|s| s[0].clone()),
+        ),
+        (
+            Sound::WallMiss,
+            battle.wall_sounds.as_ref().map(|s| s[1].clone()),
+        ),
+    ];
+    for handle in (0..spells.len()).filter_map(|h| u16::try_from(h).ok()) {
+        sounds.push((Sound::Spell(handle), spell(handle, false)));
+        sounds.push((Sound::SpellFile(handle), spell(handle, false)));
+        sounds.push((Sound::Object(handle), spell(handle, true)));
+    }
+    sounds
+        .into_iter()
+        .filter_map(|(cue, name)| Some((cue, name?)))
+        .collect()
 }
 
 /// The battle's timeline as it is played: growing, waiting at its end for a human's command
@@ -343,12 +450,15 @@ impl<'g> Battle<'g> {
         if let Some(fight) = fight.as_ref().filter(|f| f.human()) {
             opening.spell_obstacles = fight.obstacles();
         }
-        let stage = motion::stage(
-            &ground.record,
-            &ground.tables,
-            &ground.layout,
-            (&ground.magic, &ground.casts, ground.siege.as_ref()),
-        );
+        let stage = Stage {
+            lengths: ground.lengths.get(),
+            ..motion::stage(
+                &ground.record,
+                &ground.tables,
+                &ground.layout,
+                (&ground.magic, &ground.casts, ground.siege.as_ref()),
+            )
+        };
         let mut growing = Growing::new(
             &opening,
             &ground.looks,
@@ -716,9 +826,10 @@ impl<'g> Battle<'g> {
         let ground = self.ground;
         let Some(writer) = &ground.writer else {
             let parsed = parse(&ground.archives)?;
+            let timeline = self.played.timeline();
             return crate::log::panels(
                 &self.record,
-                &self.played.timeline().log,
+                (&timeline.log, &timeline.controllers),
                 &ground.tables,
                 &ground.layout,
                 (&parsed, &ground.exe),
@@ -726,7 +837,8 @@ impl<'g> Battle<'g> {
             );
         };
         if self.inputs.is_empty() && self.scrolls.is_empty() {
-            return writer.panels(&self.record, &self.played.timeline().log);
+            let timeline = self.played.timeline();
+            return writer.panels(&self.record, (&timeline.log, &timeline.controllers));
         }
         // The scrolls after the log's entries at their time.
         let mut logged = self.shown.log.clone();
@@ -741,7 +853,7 @@ impl<'g> Battle<'g> {
             .ok_or("the record holds no snapshot")?;
         let auto = crate::pointer::auto(&self.inputs, self.played.timeline());
         Ok(writer
-            .panels(&self.record, &logged)?
+            .panels(&self.record, (&logged, &self.played.timeline().controllers))?
             .with_auto(snapshot, auto))
     }
 
@@ -1626,83 +1738,22 @@ impl<'g> Battle<'g> {
         self.batch.sprite(name)
     }
 
-    /// The sounds of each stack living at the start, by its id (E17 M2 T5b); a siege's turrets
-    /// (off the field) the town's shooter's, as their look (E17 M4 T3a, R2-1).
+    /// The sounds of each stack living at the start, by its id ([`Ground::stack_sounds`]).
     pub fn stack_sounds(&self) -> BTreeMap<u8, Sounds> {
-        let (record, tables) = (&self.record, &self.ground.tables);
-        let keys = &record.header.manifest.keys.creatures;
-        let field = record.header.manifest.field;
-        let cells = u16::from(field.width) * u16::from(field.height);
-        let shooter = motion::town(record, tables)
-            .and_then(|town| motion::shooter(town, tables))
-            .ok();
-        record
-            .first_snapshot()
-            .map(|s| s.stacks.as_slice())
-            .unwrap_or_default()
-            .iter()
-            .filter_map(|s| {
-                let creature = if u16::from(s.hex) < cells {
-                    let key = keys.get(usize::from(s.creature))?;
-                    tables.creatures.get(key)?
-                } else {
-                    shooter?
-                };
-                Some((s.id, creature.sounds.clone()))
-            })
-            .collect()
+        self.ground.stack_sounds()
     }
 
-    /// The battle's own sounds a cue may name, by cue (not a creature's; design §8.2): the tent's
-    /// heal (E17 M3 T3b), a resisted spell's and each spell's (E17 M3 T7b-1), morale's, Fear's
-    /// and good luck's (E17 M3 T7b-2b-2b), Life Drain's, the Thunderbird's bolt's and the spells'
-    /// the striker's effects play (E17 M3 T7b-2b-3), the sound placed with each object (E17 M3
-    /// T7c-2), a siege's drawbridge and a mine's blast (E17 M4 T2c-1); while the battle is still
-    /// fought, every one it may play (E17 M5 T1b: its cues are not known yet; T2b: waiting for a
-    /// human too).
+    /// The battle's own sounds a cue may name, by cue ([`Ground::battle_sounds`]): those its
+    /// cues name once the battle is over; while it is still fought, every one it may play (E17
+    /// M5 T1b: its cues are not known yet; T2b: waiting for a human too).
     pub fn battle_sounds(&self) -> BTreeMap<Sound, String> {
-        let spells = &self.record.header.manifest.keys.spells;
-        let tables = &self.ground.tables;
-        let battle = &tables.battle;
-        let spell = |handle: u16, object: bool| {
-            let entry = tables.spells.get(spells.get(usize::from(handle))?)?;
-            if object {
-                entry.object_sound.clone()
-            } else {
-                entry.sound.clone()
-            }
-        };
-        let mut sounds: Vec<(Sound, Option<String>)> = vec![
-            (Sound::Heal, Some(battle.heal_sound.clone())),
-            (Sound::Resisted, battle.resist_sound.clone()),
-            (Sound::GoodMorale, battle.good_morale_sound.clone()),
-            (Sound::BadMorale, battle.bad_morale_sound.clone()),
-            (Sound::Fear, battle.fear_sound.clone()),
-            (Sound::Luck, battle.luck_sound.clone()),
-            (Sound::Drain, battle.drain_sound.clone()),
-            (Sound::Thunderbolt, battle.thunderbolt_sound.clone()),
-            // A siege's drawbridge and a mine's blast (E17 M4 T2c-1).
-            (
-                Sound::Drawbridge,
-                battle.siege_sounds.as_ref().map(|s| s[0].clone()),
-            ),
-            (
-                Sound::Mine,
-                battle.siege_sounds.as_ref().map(|s| s[1].clone()),
-            ),
-        ];
-        for handle in (0..spells.len()).filter_map(|h| u16::try_from(h).ok()) {
-            sounds.push((Sound::Spell(handle), spell(handle, false)));
-            sounds.push((Sound::SpellFile(handle), spell(handle, false)));
-            sounds.push((Sound::Object(handle), spell(handle, true)));
-        }
+        let sounds = self.ground.battle_sounds();
         let cued = |cue: &Sound| self.timeline().cues.iter().any(|c| c.sound == *cue);
         // Still fought: by the bot or waiting for a human (E17 M5 T2b).
         let fought = !matches!(self.played, Played::Finished(_));
         sounds
             .into_iter()
             .filter(|(cue, _)| fought || cued(cue))
-            .filter_map(|(cue, name)| Some((cue, name?)))
             .collect()
     }
 

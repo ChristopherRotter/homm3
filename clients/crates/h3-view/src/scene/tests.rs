@@ -1185,6 +1185,46 @@ fn the_panel_over_time_follows_the_turns_and_the_log() {
 }
 
 #[test]
+fn the_panel_follows_each_turns_controller() {
+    // E17 M5 T5b2 (R3-1): stack 2 the defender's (a computer), hypnotized by the attacker (Red,
+    // human) for its second turn: that turn's panel is Red's and lit; a stack the opening lacks
+    // (created, 7: no side by the opening's stacks, the panel as with none) by its controller the
+    // timeline names, here the defender's. Controllers past the turns are ignored.
+    let layout = layout();
+    let mut o = battle_view();
+    o.sides[0].human = true;
+    let events = [
+        Event::TurnStarted { stack: 2 },
+        Event::TurnStarted { stack: 2 },
+        Event::TurnStarted { stack: 7 },
+    ];
+    let started = [(100, 2), (200, 2), (300, 7)];
+    let wait = |list: &[Draw]| match &list[6] {
+        Draw::Dialog(ui::Draw::Button { frame, .. }) => *frame,
+        _ => 9,
+    };
+    let by_opening = Panels::new(&o, &events, Vec::new());
+    assert_eq!(
+        [150, 250, 350].map(|t| wait(&by_opening.at(&o, &started, t, &layout))),
+        [2, 2, 0]
+    );
+    let controllers = [
+        Side::Defender,
+        Side::Attacker,
+        Side::Defender,
+        Side::Attacker,
+    ];
+    let panels = Panels::new(&o, &events, Vec::new()).with_controllers(&o, &controllers);
+    assert_eq!(
+        [150, 250, 350].map(|t| wait(&panels.at(&o, &started, t, &layout))),
+        [2, 0, 2]
+    );
+    // Auto Combat's selection reads the same sides.
+    let auto = panels.with_auto(&o, Auto::default());
+    assert_eq!(wait(&auto.at(&o, &started, 250, &layout)), 0);
+}
+
+#[test]
 fn a_heros_cast_disables_its_spell_book_for_the_turn() {
     // E17 M3 T7b-1 (the recorded `cast`): from the cast's start, the side's hero has cast this
     // round; the other side's cast leaves this turn's book as it is.

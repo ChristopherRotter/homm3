@@ -22,13 +22,57 @@
 //! 0x59A470: the start sound, the tent's heal) keeps its loader's default, 127 (the WAV's
 //! constructor 0x566DA0 from 0x55C48A and 0x55C6DC: volume 127, played once).
 
+use alloc::collections::BTreeMap;
 use alloc::format;
 use alloc::string::String;
 
 use h3_protocol::wire::{Outcome, Side};
 
+use crate::anim::Sound;
+
 /// The longest the battle waits for its start sound, in ms (0x463045).
 pub const START_WAIT: u32 = 10_000;
+/// The longest the battle waits for any other sample, in ms (E17 M5 T5b2): `wait_for_sample`
+/// 0x59A4C0 and `sample_wait` 0x599EC0 with their argument −1, as every caller in the battle but
+/// the start passes (0x59A4CD).
+pub const SAMPLE_WAIT: u32 = 4_000;
+
+/// How long each sample the battle may wait for plays, in ms (E17 M5 T5b2, design §8.3): the
+/// stacks' own sounds by stack and kind, the battle's other sounds by cue, as the window's sound
+/// library resolves a cue (a named sound first). A sample's length is its frames at its rate,
+/// rounded up (`ceil(frames × 1000 / rate)`; the frames the WAV's `fact` count, as the decoder's).
+/// The battle waits for its samples only when it plays them: a computer with a sound device and
+/// an effects volume above 0 (`play_sample` 0x59A210 plays nothing at 0, so nothing is waited
+/// for); without, the timeline has no lengths, as every capture before T5b2 (the harness's
+/// `sound` runs give the original a device).
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct Lengths {
+    /// Each stack's sounds by stack id and kind ([`Sound::Move`] to [`Sound::End`]).
+    pub stacks: BTreeMap<(u8, Sound), u32>,
+    /// The battle's other sounds by cue.
+    pub named: BTreeMap<Sound, u32>,
+}
+
+impl Lengths {
+    /// How long `stack`'s cue `sound` plays, if it has a sample.
+    #[must_use]
+    pub fn of(&self, stack: u8, sound: Sound) -> Option<u32> {
+        self.named
+            .get(&sound)
+            .or_else(|| self.stacks.get(&(stack, sound)))
+            .copied()
+    }
+}
+
+/// A sample's length in ms: `frames` at `rate` Hz, rounded up ([`Lengths`]; a rate of 0 none).
+#[must_use]
+pub fn length_ms(frames: u64, rate: u32) -> u32 {
+    if rate == 0 {
+        return 0;
+    }
+    let ms = frames.saturating_mul(1000).div_ceil(u64::from(rate));
+    u32::try_from(ms).unwrap_or(u32::MAX)
+}
 /// The music's volume.
 pub const MUSIC_VOLUME: u8 = 127;
 /// A creature sound's volume (0x43DCEB).

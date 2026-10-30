@@ -1440,3 +1440,202 @@ timeline = "timelines/stone.txt"
 frames = "timelines/stone-frames.txt"
 boxes = true
 command = [{ seat = "Attacker", command = { Attack = { target = 1, from = 97 } } }]
+
+# E17 M5 T5b2: the panel by each turn's controller (R3-1, design §9.12): Orrin hypnotizes the
+# Archers (`seq-hypnotize.toml`); their turn is Red's (`stack_activation` 0x465330 sets the
+# acting side +0x132C0 to the stack's controller), so the panel shows Red's colours and Red's
+# hero's book disabled (he cast this round), then the Pikemen's turn Blue's. Hot seat.
+[[sequence]]
+id = "hypnotize"
+scenario = "seq-hypnotize.toml"
+hot_seat = true
+actions = ["cast:0:49", "key:d", "turn:1.0", "key:d", "turn:1.1", "key:d"]
+ms = 1500
+heroes = true
+screens = true
+timeline = "timelines/hypnotize.txt"
+frames = "timelines/hypnotize-frames.txt"
+boxes = true
+command = [
+    { seat = "Attacker", command = { Cast = { spell = 59, target = { Stack = { stack = 1 } }, second = { None = {} } } } },
+    { seat = "Attacker", at = 2800, command = { Defend = {} } },
+    { seat = "Attacker", at = 2800, command = { Defend = {} } },
+    { seat = "Defender", at = 2800, command = { Defend = {} } },
+]
+
+# E17 M5 T5b2: a created stack's turn after the other side's (R3-1): `summon`'s Fire Elementals
+# wait, the Archers defend, then the elementals' waited turn is Red's again (their side's; the
+# opening's stacks do not name them), left waiting (round 2 would start with the elementals in
+# the original, with the Swordsmen in the engine: the battle lane's inbox). Hot seat.
+[[sequence]]
+id = "summon-turn"
+scenario = "seq-summon.toml"
+hot_seat = true
+actions = ["cast:0", "key:d", "turn:0.1", "key:w", "turn:1.0", "key:d", "turn:0.1"]
+ms = 1500
+heroes = true
+screens = true
+timeline = "timelines/summon-turn.txt"
+frames = "timelines/summon-turn-frames.txt"
+boxes = true
+command = [
+    { seat = "Attacker", command = { Cast = { spell = 65, target = { None = {} }, second = { None = {} } } } },
+    { seat = "Attacker", at = 1200, command = { Defend = {} } },
+    { seat = "Attacker", at = 1200, command = { Wait = {} } },
+    { seat = "Defender", at = 1200, command = { Defend = {} } },
+]
+
+# E17 M5 T5b2: the sounds' waits (design §8.3). The sequences whose timelines change when the
+# battle waits for its samples, recorded again with the original playing its sounds (`sound`: an
+# audio device under Wine, the effects' volume above 0, xdd.dll's samples on the virtual clock,
+# the opening at the start sound's end): the Thunderbird's bolt and Life Drain (0x441374,
+# 0x440E8D), the Rust Dragon's acid (0x441577), Quicksand's and Land Mine's objects (0x5A04DD,
+# 0x5A06FF), the drawbridge (0x4672A5, 0x46742C) and a Tower's mine (0x59FC94). Each as its
+# silent sequence, the commands' times from the new turns.
+
+[[sequence]]
+id = "thunder-sound"
+sound = true
+scenario = "seq-thunder.toml"
+hot_seat = true
+seed = 110
+actions = [
+    "hex:110", "turn:1.0", "key:d", "turn:0.0", "roll:thunderbird", "click:678,322",
+]
+fail = ["thunderbird", "good_morale"]
+ms = 9000
+timeline = "timelines/thunder-sound.txt"
+frames = "timelines/thunder-sound-frames.txt"
+boxes = true
+command = [
+    { seat = "Attacker", command = { Move = { to = 109 } } },
+    { seat = "Defender", at = 2494, command = { Defend = {} } },
+    { seat = "Attacker", at = 2494, command = { Attack = { target = 1, from = 98 } } },
+]
+
+[[sequence]]
+id = "acid-sound"
+sound = true
+scenario = "seq-acid.toml"
+hot_seat = true
+seed = 55
+actions = ["roll:acid", "roll:poison", "click:634,322"]
+fail = ["acid", "poison", "good_morale"]
+ms = 14000
+timeline = "timelines/acid-sound.txt"
+frames = "timelines/acid-sound-frames.txt"
+boxes = true
+command = [{ seat = "Attacker", command = { Attack = { target = 1, from = 97 } } }]
+
+[[sequence]]
+id = "obstacles-sound"
+sound = true
+scenario = "seq-obstacles.toml"
+hot_seat = true
+seed = 517487719
+actions = [
+    "turn:1.0", "key:d", "turn:1.1", "key:d", "turn:0.0", "cast:0:146", "key:d",
+    "turn:1.0", "key:d", "turn:1.1", "key:d", "turn:0.0", "cast:1", "key:d",
+    "turn:1.0", "key:d", "turn:1.1", "key:d", "turn:0.0", "cast:2:63", "key:d",
+    "turn:1.0", "key:d", "turn:1.1", "key:d", "turn:0.0", "cast:3",
+]
+ms = 3000
+heroes = true
+screens = true
+timeline = "timelines/obstacles-sound.txt"
+frames = "timelines/obstacles-sound-frames.txt"
+boxes = true
+command = [
+    { seat = "Defender", at = 0, command = { Defend = {} } },
+    { seat = "Defender", at = 0, command = { Defend = {} } },
+    { seat = "Attacker", at = 0, command = { Cast = { spell = 13, target = { Hex = { hex = 146 } }, second = { None = {} } } } },
+    { seat = "Attacker", at = 1400, command = { Defend = {} } },
+    { seat = "Defender", at = 1400, command = { Defend = {} } },
+    { seat = "Defender", at = 1400, command = { Defend = {} } },
+    { seat = "Attacker", at = 1400, command = { Cast = { spell = 10, target = { None = {} }, second = { None = {} } } } },
+    { seat = "Attacker", at = 6412, command = { Defend = {} } },
+    { seat = "Defender", at = 7212, command = { Defend = {} } },
+    { seat = "Defender", at = 7212, command = { Defend = {} } },
+    { seat = "Attacker", at = 7212, command = { Cast = { spell = 12, target = { Hex = { hex = 63 } }, second = { None = {} } } } },
+    { seat = "Attacker", at = 8312, command = { Defend = {} } },
+    { seat = "Defender", at = 8312, command = { Defend = {} } },
+    { seat = "Defender", at = 8312, command = { Defend = {} } },
+    { seat = "Attacker", at = 8312, command = { Cast = { spell = 26, target = { None = {} }, second = { None = {} } } } },
+]
+
+[[sequence]]
+id = "gate-sound"
+sound = true
+scenario = "seq-gate.toml"
+hot_seat = true
+key = "Up"
+seed = 6
+fail = ["good_morale"]
+actions = [
+    "turn:0.1", "roll:wall_damage:1", "roll:wall_hit", "hex:29",
+    "turn:1.0", "hex:93", "turn:0.0", "key:d",
+    "turn:0.1", "roll:wall_damage:1", "roll:wall_hit", "hex:182",
+    "turn:1.0", "hex:100",
+]
+ms = 6000
+screens = true
+timeline = "timelines/gate-sound.txt"
+frames = "timelines/gate-sound-frames.txt"
+boxes = true
+command = [
+    { seat = "Attacker", command = { ShootWall = { part = 1 } } },
+    { seat = "Defender", at = 3977, command = { Move = { to = 93 } } },
+    { seat = "Attacker", at = 9909, command = { Defend = {} } },
+    { seat = "Attacker", at = 9909, command = { ShootWall = { part = 5 } } },
+    { seat = "Defender", at = 13986, command = { Move = { to = 100 } } },
+]
+
+[[sequence]]
+id = "gate-fortress-sound"
+sound = true
+scenario = "seq-gate-fortress.toml"
+hot_seat = true
+key = "Up"
+seed = 6
+fail = ["good_morale"]
+actions = [
+    "turn:0.1", "roll:wall_damage:1", "roll:wall_hit", "hex:29",
+    "turn:1.0", "hex:94", "turn:0.0", "key:d",
+    "turn:0.1", "roll:wall_damage:1", "roll:wall_hit", "hex:182",
+    "turn:1.0", "hex:93",
+]
+ms = 6000
+screens = true
+timeline = "timelines/gate-fortress-sound.txt"
+frames = "timelines/gate-fortress-sound-frames.txt"
+boxes = true
+command = [
+    { seat = "Attacker", command = { ShootWall = { part = 1 } } },
+    { seat = "Defender", at = 3977, command = { Move = { to = 94 } } },
+    { seat = "Attacker", at = 8673, command = { Defend = {} } },
+    { seat = "Attacker", at = 8673, command = { ShootWall = { part = 5 } } },
+    { seat = "Defender", at = 12750, command = { Move = { to = 93 } } },
+]
+
+[[sequence]]
+id = "mine-sound"
+sound = true
+scenario = "seq-mine.toml"
+hot_seat = true
+key = "Up"
+seed = 2
+fail = ["good_morale"]
+actions = [
+    "key:d", "turn:0.2", "roll:wall_damage:100", "roll:wall_hit", "hex:62",
+    "turn:0.0", "hex:79",
+]
+ms = 9500
+screens = true
+timeline = "timelines/mine-sound.txt"
+frames = "timelines/mine-sound-frames.txt"
+boxes = true
+command = [
+    { seat = "Defender", command = { Defend = {} } },
+    { seat = "Attacker", at = 0, command = { ShootWall = { part = 2 } } },
+    { seat = "Attacker", at = 3577, command = { Move = { to = 79 } } },
+]

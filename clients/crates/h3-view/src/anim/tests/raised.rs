@@ -211,6 +211,7 @@ fn play_raised_with(
         casts,
         bugs,
         siege: None,
+        lengths: None,
     };
     let commands: Vec<Command<'_>> = commands
         .iter()
@@ -615,6 +616,7 @@ fn creature_animations_without_their_looks_or_stacks() {
         casts: &casts,
         bugs: Bugs::Original,
         siege: None,
+        lengths: None,
     };
     let commands: Vec<Command<'_>> = commands
         .iter()
@@ -655,6 +657,7 @@ fn play_bare(
         casts,
         bugs: Bugs::Original,
         siege: None,
+        lengths: None,
     };
     let commands: Vec<Command<'_>> = commands
         .iter()

@@ -3223,6 +3223,74 @@ step); the viewer's timeline as recorded, its `end` at 3 730. Its record in the 
 20`): the tune (`Win Battle.mp3`, hot seat's human winner) alone in the mix, whole and once, 3 692
 ms after the music's start (the disk driver's pacing, as the effects'), then silence.
 
+### 8.3 The sounds' waits (M5 T5b2)
+
+**Read.** `wait_for_sample` 0x59A4C0 (ecx the milliseconds, 4 000 when negative; the WAV object
+and its sample handle): with the sound manager's driver (+0x3C) and 0x699290 clear, it loops while
+`AIL_sample_status` says the handle plays (4) and the game's clock is before the call's time plus
+the milliseconds, pumping messages (`pump_messages` 0x4F7FB0, `adventure_tick` 0x4ED490): no battle
+redraw, so the screen and its idle steps stand still; then it ends the sample and frees the WAV.
+`sample_wait` 0x599EC0 the same on a handle, ending nothing. `play_sample` 0x59A210 plays nothing
+without the driver or at the effects' volume 0 (0x698764), so nothing is waited for then. Every
+battle site but the start (0x46304B, 10 s, the window's since M2 T5b) passes −1. The sites and what
+each waits for, in its order:
+
+| Site | Waits for | Where |
+|---|---|---|
+| First Aid Tent 0x478D28 | `Regener` | after the heal's frames |
+| good morale 0x464B05; bad morale 0x464D1D, Fear 0x464F3D | `GoodMrle`; `BadMrle`, `Fear` | after the animation and line, before the redraw (good) |
+| Life Drain 0x440E8D | `DrainLif` | after animation 74 |
+| Death Stare 0x441178 | spell 79's sound | after the reaction |
+| the Thunderbird's bolt 0x441374 | `LightBlt` | after 49 over the marked stack |
+| the Rust Dragon's acid 0x441577 | spell 80's sound | after 81, before the reaction |
+| Fire Shield's return 0x440BAE | Fire Shield's sound | after the damage's line |
+| a one-target shot 0x43FDF9 | the shooter's shot sound (its handle) | after the line; an area shot none (0x4400EB) |
+| a creature's cast's end 0x4486E2 | its shot sound (its handle) | before it turns back |
+| the Archangel's raise 0x4485DE; the Pit Lord's 0x5A754E | `Resurect` | after the raise; after the line |
+| a resisted cast 0x5A2053 | `MagicRes` | after 78 |
+| Quicksand's and Land Mine's objects 0x5A04DD, 0x5A06FF | each object's sound | after its redraw |
+| a turret's shot 0x465F05 | its shot sound | after its standing redraw |
+| a wall shot 0x4464C2, 0x4464D3 | the shot's, then the landing's | after the end's redraw |
+| the drawbridge 0x4672A5, 0x46742C | its sound | after the three states |
+| a Tower's mine 0x59FC94 | the blast's | after 57 over the stack |
+
+Not built, as their effects are not drawn yet: the Wraiths' mana drain at a turn's start 0x4657CA
+(77, `ManaDrai`), regeneration 0x447097 (79), Poison's damage at a round's start 0x44730E (67),
+Death Blow 0x443B46 (73), Ice Bolt's explosion 0x5A0AFB (`IceRayEx`), the Familiars' channel
+0x5A2740 and 0x5A2750 (`MagChDrn`, `MagChFil`).
+
+**Built.** A cue returns itself; a site waits from now until the cue's start plus its sample's
+length or now plus 4 s, whichever comes first (`Player::wait_for`; `wait_last` for a stack's own
+sound by its handle). The lengths (`sound::Lengths`): a sample's `fact` frames at its rate,
+rounded up (*provisional*: on a sound card Miles' mixer ends it, perhaps a few ms later; the
+harness's samples end so). The timeline waits only with them: the window once its sound opened
+(not `--mute`, a device: the battle made again with the library's lengths, `Ground::play_sounds`),
+a sequence with `sound`; without, nothing changes (every capture before). A site waits on its own
+sample's handle: a handle another sample took meanwhile (its own done, or every channel of the
+category busy, `play_sample`'s turn) would have the original wait for that one; not built
+(*provisional*, no recorded case).
+
+**The harness** (the runbook's "Sound"): Wine's ALSA driver over ALSA's null sink, the effects'
+volume 5, the music's 0; `xdd.dll` plays a sample its length on the virtual clock; the opening at
+the start sound's end; the adventure map's sounds settled first; the main thread's reads alone.
+
+**Checked.** `machines` with sound: its silent timeline exactly (the heal's 1 881 ms within the
+animation's 2 100 at speed 0). The sequences whose timelines the waits change (the viewer's
+comparison over every sequence with the lengths: `thunder`, `acid`, `obstacles`, `gate`,
+`gate-fortress`, `mine`; and by a wall shot's landing alone `breach`, `tower`, `cyclops`, `moat`,
+`quake`, `through`, not captured again: the landing's wait is `gate-sound`'s, `gate-fortress-sound`'s
+and `mine-sound`'s) recorded again with sound (`*-sound`): the original's waits
+where the viewer's are, every timeline as recorded (`thunder-sound`: the Vampire Lords' reaction
+27 ms later, 7 287; `acid-sound` 72 ms, 8 472; `obstacles-sound` the Force Field's turn 3 012 ms
+later for Quicksand's objects; `gate-sound` and `gate-fortress-sound` the landing's 202 ms and the
+drawbridge's; `mine-sound` 202 ms), their frames as the silent ones' (`obstacles-sound` all 80
+exact; the others the same redraw artifacts at their new times). One more fix the recordings
+asked for: the deadline after a wait (no tick ran meanwhile: a command at the wait's end has its
+frames from there, `gate-sound`'s first step at 4 077, not on the old grid's 4 075), and a wall
+shot's landing among the battle's sounds (the window played none).
+
+
+
 ## 9. The string catalogue (M3 T4b-1)
 
 The user's decisions: every text the client shows comes from a key → string catalogue, easy to
@@ -3899,8 +3967,9 @@ and `push_seen`, `anim::Object::owner`, `Timeline::humans` and `screen`; the bin
   (`Live`: the engine's events, each with the side that alone sees it, `push_seen`): an object an
   event one side alone sees places is that side's (`Object::owner`) until an `ObstacleRevealed`
   shows it to both from the next frame drawn; the opening's are both sides' (`Live::obstacles`:
-  a Tower's mines). `Timeline::screen` names the screen's side at a time by the turn's stack's side
-  (*provisional*: Hypnotize's controller not followed, R3-1, M5 T5); without a human here every
+  a Tower's mines). `Timeline::screen` names the screen's side at a time by the acting side its
+  turn's start set (M5 T5b2: `Timeline::controllers`, the stack's controller, a hypnotized
+  stack's the other side; `Panels::with_controllers` the panel's alike); without a human here every
   object shows, as a record holds only what its viewer sees (`render --seat`, the Tower's still:
   the keep's turn, the defender's screen). The placing animations play on every screen: Land
   Mine's handler tests only whether the battle is hidden before its sample and each mine's
@@ -3918,6 +3987,13 @@ and `push_seen`, `anim::Object::owner`, `Timeline::humans` and `screen`; the bin
   Defend by its key, Wait by its button, a walk, the panel's colours the defender's on its turn;
   the Tower's siege in hot seat: its mines on the keep's and the towers' turns, none on the
   Catapult's.
+- **The panel by the turn's controller** (M5 T5b2, R3-1): `stack_activation` sets the acting side
+  +0x132C0 to the active stack's controller (installation.md §7.21), so a hypnotized stack's turn
+  shows its controller's panel (its colours, its hero's book) and its screen; a created stack's
+  turn its side's. Built: `Timeline::controllers` (Hypnotize's look by `SpellLook::original`),
+  `Timeline::screen`, `Panels::with_controllers`. Recorded: `hypnotize` (Orrin hypnotizes the
+  Archers: their turn Red's) all 44 frames exact; `summon-turn` (`summon`'s elementals' waited
+  turn after the Archers') all 30 exact.
 
 ## 10. The siege (M4)
 
