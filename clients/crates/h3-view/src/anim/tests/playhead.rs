@@ -6,6 +6,7 @@
 
 use alloc::collections::BTreeMap;
 use alloc::vec;
+use alloc::vec::Vec;
 
 use h3_protocol::wire::{Observation, Side};
 use h3_render::Bugs;
@@ -52,6 +53,13 @@ pub(crate) fn grows(
     let mut growing = Growing::new(snapshot, looks, stage, speed, seed).unwrap();
     let mut before = growing.timeline().clone();
     let mut head = Playhead::new(&before);
+    // The mouse entering a stack at each command (E17 M5 T8b2, R3-1's rest): a playhead carried
+    // along the timelines with the fidgets shows what each shows at once; an entry 1 ms after
+    // the playhead (the keys shown so far the same) or at it (then it starts over).
+    let stacks: Vec<u8> = snapshot.stacks.iter().map(|s| s.id).collect();
+    let mut entries: Vec<(u32, u8)> = Vec::new();
+    let mut fidgeted = before.clone();
+    let mut carried = Playhead::new(&fidgeted);
     for (i, command) in commands.iter().enumerate() {
         // A command given at a time (a player's) waited for at the end (E17 M5 T2b): before it,
         // the timeline waiting shows the whole battle's moments, a playhead's and at once.
@@ -92,6 +100,19 @@ pub(crate) fn grows(
                 Moment::at(whole, t),
                 "at {t} ms, command {i}"
             );
+        }
+        if let Some(&stack) = stacks.get(i % stacks.len().max(1)) {
+            carried.seek(&fidgeted, before.end);
+            entries.push((before.end + u32::from(i % 2 == 0), stack));
+            let mut entered = now.clone();
+            entered.enter(&entries, 1, &|_| 3);
+            carried.carry(&fidgeted, &entered);
+            for t in [before.end, before.end.midpoint(now.end), now.end] {
+                carried.seek(&entered, t);
+                let moment = Moment::at(&entered, t);
+                assert_eq!(carried.moment(&entered), moment, "at {t} ms, entered {i}");
+            }
+            fidgeted = entered;
         }
         before = now.clone();
     }

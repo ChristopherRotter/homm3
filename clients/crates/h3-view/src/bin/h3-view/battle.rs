@@ -1234,8 +1234,17 @@ impl<'g> Battle<'g> {
         if self.shown.entered.is_empty() && self.entered.is_none() {
             self.head.extend(self.played.timeline());
         } else {
+            // The playhead carried on from the timeline it showed (E17 M5 T8b2, R3-1's rest):
+            // the played one grown, then the mouse's fidgets in it.
+            let old = self.entered.take();
+            if old.is_none() {
+                self.head.extend(self.played.timeline());
+            }
             self.entered = self.entered(&self.shown);
-            self.head = Playhead::new(self.timeline());
+            let played = self.played.timeline();
+            let old = old.as_ref().unwrap_or(played);
+            self.head
+                .carry(old, self.entered.as_ref().unwrap_or(played));
         }
         self.panels = self.panel()?;
         self.load_clips();
@@ -1249,8 +1258,13 @@ impl<'g> Battle<'g> {
         let cut = self.shown.splice(from, tail);
         let entered = &self.shown.entered;
         if cut.entered[..] != entered[entered.len() - added..] {
+            // The playhead carried on, not played again from the start (E17 M5 T8b2, R3-1's rest).
+            let old = self.entered.take();
             self.entered = self.entered(&self.shown);
-            self.head = Playhead::new(self.timeline());
+            let played = self.played.timeline();
+            let old = old.as_ref().unwrap_or(played);
+            self.head
+                .carry(old, self.entered.as_ref().unwrap_or(played));
         }
         self.panels = self.panel()?;
         Ok(())
