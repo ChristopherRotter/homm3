@@ -21,7 +21,7 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   `net` and `connect`, the server's TLS stack the user's choice). **Next: M5 T6b** (the window
   over a server and the record that opens mid-battle: needs the original data staged; big, so
   propose a cut to the user first, e.g. the window playing a seat, then the mid-battle record
-  with a restart's re-join and `remote_turn`; QUEUE). Open PR: T6a's (branch
+  with a restart's re-join and `remote_turn`; QUEUE). Open PR: T6a's #592 (branch
   `claude/optimistic-mayer-bo0pv5`; check it first). The inbox's CLT-Q30 task (`h3-bink` as
   BINKW32's float DCT) and the user's Demons note (T5a's dissolve, to re-investigate) wait for a
   free slot.
@@ -52,7 +52,7 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
 
 ## Recent sessions
 
-- **2026-10-30, E17 M5 T6a (done; its PR open: check it first).** No original data in the
+- **2026-10-30, E17 M5 T6a (done; #592 open: check it first).** No original data in the
   session; the user chose the server's stack (blocking only on the I/O thread) and cut T6: the
   part without original content now. Built `h3_view::remote` (the welcome's checks, the pins,
   join or create, the record fetched and grown, the content check), the binary's `net` (the I/O
