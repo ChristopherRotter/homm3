@@ -45,6 +45,12 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   timeline shown is `Growing::waiting`'s copy, so a command starts a fresh playhead
   (`Battle::command`); presses and the battle's keys count only while it waits, at or past the
   timeline's end (`Battle::takes`).
+- The mouse's state is followed on from the last turn start (E17 M5 T8a, R3-1:
+  `pointer::Follower` caches each turn's observation, legal commands and facing;
+  `track::follow_on` resumes from a `Mark`): every growth of the timeline goes through
+  `Battle::follow`, and every change of `turned` in place (a re-served turn, the book's aim)
+  calls `Follower::touch`, or the cached turns go stale; `pointer::shown` (the whole re-follow)
+  stays the tests' reference.
 - The spell book (E17 M5 T3a) is a modal dialog: the battle behind it stands still, so the
   window's `next_frame` returns at once while it is open (scanning the idle steps for a change
   never ends: the window hung). Its hero comes from the side to act's own observation

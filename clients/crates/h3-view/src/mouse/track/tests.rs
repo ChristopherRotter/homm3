@@ -11,7 +11,7 @@ use alloc::vec::Vec;
 use h3_protocol::wire::{Command, Observation, Side};
 use h3_render::Bugs;
 
-use super::{Input, Look, Shown, Start, Turn, follow, spell_frame};
+use super::{Input, Lens, Look, Shown, Start, Turn, follow, follow_on, spell_frame};
 use crate::battle_log::Logged;
 use crate::mouse::aim::{Aim, Area, Target};
 use crate::mouse::tests::{battle, centre, layout};
@@ -47,8 +47,38 @@ fn legal() -> Legal {
     ])
 }
 
+/// The mouse followed through the battle, checked gone on from the marks of shorter follows too.
 fn run(log: &[(u32, Logged)], starts: &[Start], turns: &[Turn<'_>], inputs: &[Input]) -> Shown {
-    follow(log, starts, turns, inputs, &layout(), &name)
+    let whole = follow(log, starts, turns, inputs, &layout(), &name);
+    resumes((log, starts, turns), inputs, &whole);
+    whole
+}
+
+/// E17 M5 T8a (R3-1): a follow of the battle before each turn's start (its log cut there, its
+/// turns with it) or whole, with each number of the inputs, gone on from its mark to the whole
+/// battle and inputs, shows what the whole follow shows; where it goes on, the whole's lists end
+/// with what it adds.
+fn resumes(
+    (log, starts, turns): (&[(u32, Logged)], &[Start], &[Turn<'_>]),
+    inputs: &[Input],
+    whole: &Shown,
+) {
+    let l = layout();
+    let is_turn = |(_, e): &(u32, Logged)| matches!(e, Logged::Turn(_));
+    let cuts = (0..log.len()).filter(|&i| is_turn(&log[i]));
+    for cut in cuts.chain([log.len()]) {
+        let started = 1 + log[..cut].iter().filter(|e| is_turn(e)).count();
+        let some = &turns[..started.min(turns.len())];
+        for n in 0..=inputs.len() {
+            let (from, mut shown, mark) =
+                follow_on(None, (&log[..cut], starts, some), &inputs[..n], &l, &name);
+            assert_eq!(from, Lens::default());
+            let (from, tail, _) = follow_on(mark, (log, starts, turns), inputs, &l, &name);
+            assert!(whole.ends_with(from, &tail), "log cut at {cut}, {n} inputs");
+            shown.splice(from, tail);
+            assert_eq!(shown, *whole, "log cut at {cut}, {n} inputs");
+        }
+    }
 }
 
 #[test]
@@ -159,13 +189,11 @@ fn an_item_writes_its_hint_only_as_the_mouse_enters_it() {
         (500, Logged::Action),
         (900, Logged::Turn(2)),
     ];
-    let shown = follow(
+    let shown = run(
         &log,
         &[Start { unmarks: true }, Start::default()],
         &turns,
         &inputs,
-        &layout(),
-        &name,
     );
     assert_eq!(
         shown.log,
@@ -957,4 +985,71 @@ fn the_client_forgets_the_hovered_item_over_the_battlefield() {
     let mut fixed = common.to_vec();
     fixed.push((400, status("Empty", false)));
     assert_eq!(shown(Bugs::Fixed), fixed);
+}
+
+#[test]
+fn a_mark_holds_only_where_the_follow_went_the_same() {
+    // E17 M5 T8a (R3-1): the mark before the second turn's start (an input after it waits);
+    // a follow goes on from it while the log has its entry there, the inputs before it are the
+    // same and the next comes no earlier than the round's start taken before the turn's. Else
+    // it follows from the opening.
+    let (o, legal) = (battle(), legal());
+    let mut next = battle();
+    next.active = Some(2);
+    let none = Legal::default();
+    let turn = |observation, legal| Turn {
+        field: Field {
+            observation,
+            legal,
+            facing: &Facing::Sides,
+            bugs: Bugs::Fixed,
+        },
+        human: true,
+    };
+    let turns = [turn(&o, &legal), turn(&next, &none)];
+    let starts = [Start { unmarks: true }];
+    let log = [
+        (100, Logged::Action),
+        (300, Logged::Round),
+        (500, Logged::Turn(2)),
+    ];
+    let mut inputs = vec![
+        Input::Move {
+            at: 50,
+            to: centre(90),
+        },
+        Input::Act { at: 100 },
+        Input::Move {
+            at: 600,
+            to: centre(87),
+        },
+    ];
+    let l = layout();
+    let follow = |log: &[(u32, Logged)], inputs: &[Input], mark| {
+        follow_on(mark, (log, &starts, &turns), inputs, &l, &name)
+    };
+    let (_, whole, mark) = follow(&log, &inputs, None);
+    let mark = mark.unwrap();
+    assert_eq!(mark.turn(), 1);
+    assert!(!whole.ends_with(Lens::default(), &Shown::default()));
+    // A move at the round's start goes on from the mark, taken before the turn's start.
+    inputs.insert(2, Input::Move { at: 300, to: PARK });
+    let (from, tail, again) = follow(&log, &inputs, Some(mark.clone()));
+    assert_ne!(from, Lens::default());
+    let mut shown = whole.clone();
+    shown.splice(from, tail);
+    assert_eq!(shown, follow(&log, &inputs, None).1);
+    assert_eq!(again.unwrap().turn(), 1);
+    // Refused: a move before the round's start, another first move, another turn's start.
+    let mut earlier = inputs.clone();
+    earlier[2] = Input::Move { at: 299, to: PARK };
+    let mut other = inputs.clone();
+    other[0] = Input::Move { at: 50, to: PARK };
+    let mut moved = log.clone();
+    moved[2].0 = 400;
+    for (log, inputs) in [(&log, &earlier), (&log, &other), (&moved, &inputs)] {
+        let (from, tail, _) = follow(log, inputs, Some(mark.clone()));
+        assert_eq!(from, Lens::default());
+        assert_eq!(tail, follow(log, inputs, None).1);
+    }
 }

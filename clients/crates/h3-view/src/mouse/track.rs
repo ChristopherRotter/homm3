@@ -187,6 +187,66 @@ impl Shown {
     pub fn aimed(&self, t: u32) -> Option<u8> {
         last(&self.aimed, t).copied().flatten()
     }
+
+    /// How long each of its lists is.
+    fn lens(&self) -> Lens {
+        Lens([
+            self.frames.len(),
+            self.points.len(),
+            self.marked.len(),
+            self.entered.len(),
+            self.log.len(),
+            self.spell.len(),
+            self.area.len(),
+            self.aimed.len(),
+        ])
+    }
+
+    /// Whether its lists from `from` on are `tail`'s (E17 M5 T8a, R3-1: [`follow_on`]'s).
+    #[must_use]
+    pub fn ends_with(&self, from: Lens, tail: &Self) -> bool {
+        let [a, b, c, d, e, f, g, h] = from.0;
+        self.frames.get(a..) == Some(&tail.frames)
+            && self.points.get(b..) == Some(&tail.points)
+            && self.marked.get(c..) == Some(&tail.marked)
+            && self.entered.get(d..) == Some(&tail.entered)
+            && self.log.get(e..) == Some(&tail.log)
+            && self.spell.get(f..) == Some(&tail.spell)
+            && self.area.get(g..) == Some(&tail.area)
+            && self.aimed.get(h..) == Some(&tail.aimed)
+    }
+
+    /// Its lists cut at `from`, `tail`'s put after them (E17 M5 T8a, R3-1: [`follow_on`]'s):
+    /// what was cut.
+    pub fn splice(&mut self, from: Lens, tail: Self) -> Self {
+        fn cut<T>(list: &mut Vec<T>, at: usize, mut tail: Vec<T>) -> Vec<T> {
+            let gone = list.split_off(at.min(list.len()));
+            list.append(&mut tail);
+            gone
+        }
+        let [a, b, c, d, e, f, g, h] = from.0;
+        Self {
+            frames: cut(&mut self.frames, a, tail.frames),
+            points: cut(&mut self.points, b, tail.points),
+            marked: cut(&mut self.marked, c, tail.marked),
+            entered: cut(&mut self.entered, d, tail.entered),
+            log: cut(&mut self.log, e, tail.log),
+            spell: cut(&mut self.spell, f, tail.spell),
+            area: cut(&mut self.area, g, tail.area),
+            aimed: cut(&mut self.aimed, h, tail.aimed),
+        }
+    }
+}
+
+/// How long each of a [`Shown`]'s lists is (E17 M5 T8a, R3-1): where what a follow gone on from
+/// a [`Mark`] shows goes.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct Lens([usize; 8]);
+
+impl Lens {
+    fn plus(self, other: Self) -> Self {
+        Self(core::array::from_fn(|k| self.0[k] + other.0[k]))
+    }
 }
 
 /// The spell cursor's frame at `t` when set at `since`: one frame on at each point of the
@@ -206,6 +266,7 @@ fn last<T>(changes: &[(u32, T)], t: u32) -> Option<&T> {
 }
 
 /// The battle's mouse fields (the manager's +0x132CC to +0x132E0, the acting stacks' targets).
+#[derive(Debug, Clone)]
 struct Handler<'l> {
     layout: &'l BattleLayout,
     /// Where the mouse is.
@@ -482,31 +543,72 @@ pub fn follow(
     layout: &BattleLayout,
     name: &dyn Fn(&Hint, &Observation) -> String,
 ) -> Shown {
-    let mut h = Handler {
-        layout,
-        point: None,
-        hex: None,
-        kind: Kind::Nothing,
-        hint: Hint::Empty,
-        written: None,
-        frame: None,
-        marked: None,
-        aims: BTreeMap::new(),
-        busy: false,
-        aiming: None,
-        book: false,
-        spell_since: None,
-        area: BTreeSet::new(),
-        hovered: None,
-        items: false,
-        bugs: turns.first().map_or(Bugs::Fixed, |t| t.field.bugs),
-        shown: Shown::default(),
-    };
-    let mut at = Cursor::default();
-    if turns.first().is_some_and(|t| !t.human) {
-        h.set_frame(0, layout.mouse.panel_frame);
+    follow_on(None, (log, starts, turns), inputs, layout, name).1
+}
+
+/// Where [`follow_on`] stood before a turn's start it took (E17 M5 T8a, R3-1, *provisional*: the
+/// window's mouse goes on from there instead of following the battle again from its opening, a
+/// move paying for the inputs since): the handler's fields, its places in the log, the actions,
+/// the turns and the inputs, how long what it showed was by then, and what a later follow must
+/// find for it to hold.
+#[derive(Debug, Clone)]
+pub struct Mark<'l> {
+    h: Handler<'l>,
+    lens: Lens,
+    i: usize,
+    j: usize,
+    at: Cursor,
+    /// The log's entry it stands before: the turn's start.
+    entry: (u32, Logged),
+    /// The inputs taken by then.
+    inputs: Vec<Input>,
+    /// The earliest time the next input may have: the log's entries taken since the last input
+    /// then still come before it (an action's start only before a later one).
+    floor: u32,
+}
+
+impl Mark<'_> {
+    /// The turn whose start it stands before (0 the opening's): the follow read the turns before
+    /// it only.
+    #[must_use]
+    pub const fn turn(&self) -> usize {
+        self.at.turn + 1
     }
-    let (mut i, mut j) = (0, 0);
+
+    /// Whether a follow of `log` and `inputs` reaches it as the one that made it did: the log's
+    /// entry it stands before at its place (the log before it never changes: a growing timeline
+    /// adds after its last command's end, `crate::anim::Growing`), the inputs before it the same
+    /// and the next one not before its floor.
+    fn holds(&self, log: &[(u32, Logged)], inputs: &[Input]) -> bool {
+        log.get(self.i) == Some(&self.entry)
+            && inputs.get(..self.j) == Some(self.inputs.as_slice())
+            && inputs.get(self.j).is_none_or(|n| n.at() >= self.floor)
+    }
+}
+
+/// [`follow`] gone on from `mark` when it holds, else from the opening (E17 M5 T8a, R3-1,
+/// *provisional*): where the lists returned go in what the follow that made `mark` showed (cut
+/// there: [`Shown::splice`]), and the mark before the last turn's start whose place the next
+/// input, coming after the last of `inputs`, keeps. The caller keeps `turns` before the mark's
+/// turn as they were when it was made (the log, the actions before it never change).
+#[must_use]
+pub fn follow_on<'l>(
+    mark: Option<Mark<'l>>,
+    (log, starts, turns): (&[(u32, Logged)], &[Start], &[Turn<'_>]),
+    inputs: &[Input],
+    layout: &'l BattleLayout,
+    name: &dyn Fn(&Hint, &Observation) -> String,
+) -> (Lens, Shown, Option<Mark<'l>>) {
+    let resumed = mark.filter(|m| m.holds(log, inputs));
+    let (mut h, from, (mut i, mut j), mut at, mut floor) = match &resumed {
+        Some(m) => (m.h.clone(), m.lens, (m.i, m.j), m.at, m.floor),
+        None => {
+            let h = Handler::new(layout, turns);
+            (h, Lens::default(), (0, 0), Cursor::default(), 0)
+        }
+    };
+    let last = inputs.last().map_or(0, Input::at);
+    let mut marked: Option<Mark<'l>> = None;
     loop {
         let input = inputs.get(j);
         if let Some((t, entry)) = log.get(i) {
@@ -514,6 +616,24 @@ pub fn follow(
                 *t < input.at() || (*t == input.at() && !matches!(entry, Logged::Action))
             });
             if first {
+                if matches!(entry, Logged::Turn(_)) && (input.is_some() || floor <= last) {
+                    // The handler without what it showed, which stays the caller's.
+                    let shown = core::mem::take(&mut h.shown);
+                    let state = h.clone();
+                    let lens = from.plus(shown.lens());
+                    h.shown = shown;
+                    marked = Some(Mark {
+                        h: state,
+                        lens,
+                        i,
+                        j,
+                        at,
+                        entry: (*t, entry.clone()),
+                        inputs: Vec::new(),
+                        floor,
+                    });
+                }
+                floor = floor.max(t.saturating_add(u32::from(matches!(entry, Logged::Action))));
                 i += 1;
                 h.entry(*t, entry, starts, turns, &mut at, name);
                 continue;
@@ -521,6 +641,7 @@ pub fn follow(
         }
         let Some(input) = input else { break };
         j += 1;
+        floor = 0;
         match *input {
             Input::Aim {
                 at: now,
@@ -611,7 +732,47 @@ pub fn follow(
             }
         }
     }
-    h.shown
+    // The mark gone on from where it was taken again is the same: its inputs kept.
+    let mark = match marked {
+        Some(m) if resumed.as_ref().is_some_and(|r| (r.i, r.j) == (m.i, m.j)) => resumed,
+        Some(mut m) => {
+            m.inputs = inputs.get(..m.j).unwrap_or_default().to_vec();
+            Some(m)
+        }
+        None => resumed,
+    };
+    (from, h.shown, mark)
+}
+
+impl<'l> Handler<'l> {
+    /// The handler at the battle's opening, `turns` its turns: the computer's first shows the
+    /// pointer.
+    fn new(layout: &'l BattleLayout, turns: &[Turn<'_>]) -> Self {
+        let mut h = Self {
+            layout,
+            point: None,
+            hex: None,
+            kind: Kind::Nothing,
+            hint: Hint::Empty,
+            written: None,
+            frame: None,
+            marked: None,
+            aims: BTreeMap::new(),
+            busy: false,
+            aiming: None,
+            book: false,
+            spell_since: None,
+            area: BTreeSet::new(),
+            hovered: None,
+            items: false,
+            bugs: turns.first().map_or(Bugs::Fixed, |t| t.field.bugs),
+            shown: Shown::default(),
+        };
+        if turns.first().is_some_and(|t| !t.human) {
+            h.set_frame(0, layout.mouse.panel_frame);
+        }
+        h
+    }
 }
 
 /// Where [`follow`] is in the battle's actions and turns.

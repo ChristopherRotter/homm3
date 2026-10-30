@@ -11,7 +11,7 @@ use h3_view::anim::Timeline;
 use h3_view::auto::Auto;
 use h3_view::layout::BattleLayout;
 use h3_view::mouse::aim::Aim;
-use h3_view::mouse::track::{self, Input, Shown, Start, Turn};
+use h3_view::mouse::track::{self, Input, Lens, Shown, Start, Turn};
 use h3_view::mouse::{self, CATAPULT, Facing, Field, Hint, Legal, Spot, WALL_EXEMPT};
 use h3_view::record::Record;
 use h3_view::tables::Tables;
@@ -341,37 +341,38 @@ pub fn shown(
     (layout, catalogue): (&BattleLayout, &Catalogue),
     (tables, bugs): (&Tables, Bugs),
 ) -> Shown {
+    let name =
+        |hint: &Hint, observation: &Observation| hint_text(record, catalogue, hint, observation);
+    followed(
+        record,
+        (timeline, turned),
+        inputs,
+        (layout, &name),
+        (tables, bugs),
+    )
+}
+
+/// A hint's words.
+type Name<'a> = &'a dyn Fn(&Hint, &Observation) -> String;
+
+/// [`shown`] with the hints in `name`'s words: the battle followed from its opening, every turn
+/// read again (what [`Follower`] goes on from without).
+fn followed(
+    record: &Record,
+    (timeline, turned): (&Timeline, &[Turned]),
+    inputs: &[Input],
+    (layout, name): (&BattleLayout, Name<'_>),
+    (tables, bugs): (&Tables, Bugs),
+) -> Shown {
     // The turns: the opening's, then each one the log starts, paired with the engine's battle
     // whose acting stack it is.
-    let snapshot = record.first_snapshot();
-    let mut times = vec![(0, snapshot.and_then(|o| o.active))];
-    times.extend(timeline.log.iter().filter_map(|(t, l)| match l {
-        h3_view::battle_log::Logged::Turn(stack) => Some((*t, Some(*stack))),
-        _ => None,
-    }));
+    let times = times(record, timeline);
     let mut battles: Vec<(Observation, Legal, Facing)> = Vec::new();
     let mut next = 0;
     for &(t, stack) in &times {
-        let found = (next..turned.len()).find(|&i| turned[i].observation.active == stack);
-        let (observation, legal) = match found {
-            Some(i) => {
-                next = i + 1;
-                let turn = &turned[i];
-                let legal = legal(
-                    &record.header.manifest,
-                    tables,
-                    &turn.observation,
-                    (&turn.commands, &turn.aims),
-                );
-                (turn.observation.clone(), legal)
-            }
-            None => {
-                let Some(mut observation) = snapshot.cloned() else {
-                    continue;
-                };
-                observation.active = stack;
-                (observation, Legal::default())
-            }
+        let found = pair(turned, &mut next, stack);
+        let Some((observation, legal)) = battle_of(record, tables, turned, (found, stack)) else {
+            continue;
         };
         battles.push((observation, legal, facing(timeline, t)));
     }
@@ -391,14 +392,193 @@ pub fn shown(
             human: human(observation) && !auto.from_start(k),
         })
         .collect();
-    let starts: Vec<Start> = timeline
+    track::follow(
+        &timeline.log,
+        &actions(timeline),
+        &turns,
+        inputs,
+        layout,
+        name,
+    )
+}
+
+/// The turns the mouse reads in `timeline`: the opening's (its acting stack the record's
+/// snapshot's), then each one the log starts, by its start and its acting stack.
+fn times(record: &Record, timeline: &Timeline) -> Vec<(u32, Option<u8>)> {
+    let snapshot = record.first_snapshot();
+    let mut times = vec![(0, snapshot.and_then(|o| o.active))];
+    times.extend(timeline.log.iter().filter_map(|(t, l)| match l {
+        h3_view::battle_log::Logged::Turn(stack) => Some((*t, Some(*stack))),
+        _ => None,
+    }));
+    times
+}
+
+/// The engine's battle (of `turned`) the turn whose acting stack is `stack` pairs with: the first
+/// from `next` on with it (`next` then after it).
+fn pair(turned: &[Turned], next: &mut usize, stack: Option<u8>) -> Option<usize> {
+    let found = (*next..turned.len()).find(|&i| turned[i].observation.active == stack);
+    if let Some(i) = found {
+        *next = i + 1;
+    }
+    found
+}
+
+/// The battle and the legal commands of the turn whose acting stack is `stack`, paired with
+/// `turned`'s `found`: that battle's, else the opening's with none (none without a snapshot).
+fn battle_of(
+    record: &Record,
+    tables: &Tables,
+    turned: &[Turned],
+    (found, stack): (Option<usize>, Option<u8>),
+) -> Option<(Observation, Legal)> {
+    if let Some(turn) = found.and_then(|i| turned.get(i)) {
+        let legal = legal(
+            &record.header.manifest,
+            tables,
+            &turn.observation,
+            (&turn.commands, &turn.aims),
+        );
+        return Some((turn.observation.clone(), legal));
+    }
+    let mut observation = record.first_snapshot()?.clone();
+    observation.active = stack;
+    Some((observation, Legal::default()))
+}
+
+/// The actions' starts as the mouse sees them.
+fn actions(timeline: &Timeline) -> Vec<Start> {
+    timeline
         .actions
         .iter()
         .map(|a| Start { unmarks: a.unmarks })
-        .collect();
-    let name =
-        |hint: &Hint, observation: &Observation| hint_text(record, catalogue, hint, observation);
-    track::follow(&timeline.log, &starts, &turns, inputs, layout, &name)
+        .collect()
+}
+
+/// The mouse over a battle as it grows (E17 M5 T8a, R3-1, *provisional*; the window's): what
+/// [`shown`] shows, each turn's battle, legal commands and facing read once as the turn comes
+/// (again only when its engine's battle changed in place, or, its start not final yet, when the
+/// timeline grew: a turn's facing at its start never changes after), and the mouse followed on
+/// from its last mark ([`track::follow_on`]): a move pays for the inputs since the last turn's
+/// start, not for the battle so far.
+#[derive(Debug, Default)]
+pub struct Follower<'l> {
+    /// Each turn read, and whether the timeline was final at its start then.
+    turns: Vec<(TurnRead, bool)>,
+    /// The turns' starts (Auto Combat's, [`Auto::of`]).
+    starts: Vec<u32>,
+    /// The actions' starts.
+    actions: Vec<Start>,
+    /// The lowest index of the engine's battles changed in place since the turns were read.
+    touched: Option<usize>,
+    mark: Option<track::Mark<'l>>,
+}
+
+/// A turn as [`Follower`] read it.
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct TurnRead {
+    /// Its start, its acting stack and the engine's battle paired with it (an index of
+    /// `turned`; none: the opening's stands for it).
+    key: (u32, Option<u8>, Option<usize>),
+    observation: Observation,
+    legal: Legal,
+    facing: Facing,
+    /// A human on this computer plays it (Auto Combat aside).
+    human: bool,
+}
+
+impl<'l> Follower<'l> {
+    /// The engine's battle `index` changed in place (E17 M5 T3b: an aim the book added; T6b1: a
+    /// turn served again): the turn paired with it is read again.
+    pub fn touch(&mut self, index: usize) {
+        self.touched = Some(self.touched.map_or(index, |t| t.min(index)));
+    }
+
+    /// Reads `timeline`'s turns paired with the engine's battles `turned` (the assets `tables`):
+    /// those new, those whose battle was touched and, when the timeline `grew` (final before
+    /// `settled`), those whose start was not final. The mark goes when a turn before its own
+    /// changed.
+    pub fn read(
+        &mut self,
+        record: &Record,
+        (timeline, turned): (&Timeline, &[Turned]),
+        tables: &Tables,
+        (settled, grew): (u32, bool),
+    ) {
+        if !grew && self.touched.is_none() {
+            return;
+        }
+        let touched = self.touched.take().unwrap_or(usize::MAX);
+        let times = times(record, timeline);
+        let (mut next, mut k, mut changed) = (0, 0, usize::MAX);
+        for &(t, stack) in &times {
+            let found = pair(turned, &mut next, stack);
+            let key = (t, stack, found);
+            let kept = self.turns.get(k).is_some_and(|(r, fixed)| {
+                r.key == key && found.is_none_or(|i| i < touched) && (*fixed || !grew)
+            });
+            if !kept {
+                let Some((observation, legal)) = battle_of(record, tables, turned, (found, stack))
+                else {
+                    continue;
+                };
+                let read = TurnRead {
+                    key,
+                    human: human(&observation),
+                    observation,
+                    legal,
+                    facing: facing(timeline, t),
+                };
+                if self.turns.get(k).is_none_or(|(r, _)| *r != read) {
+                    changed = changed.min(k);
+                }
+                let entry = (read, t < settled);
+                match self.turns.get_mut(k) {
+                    Some(slot) => *slot = entry,
+                    None => self.turns.push(entry),
+                }
+            }
+            k += 1;
+        }
+        if k < self.turns.len() {
+            self.turns.truncate(k);
+            changed = changed.min(k);
+        }
+        self.starts = times.iter().map(|&(t, _)| t).collect();
+        if grew {
+            self.actions = actions(timeline);
+        }
+        if self.mark.as_ref().is_some_and(|m| changed < m.turn()) {
+            self.mark = None;
+        }
+    }
+
+    /// What the mouse shows through `timeline` by `inputs` (as [`shown`]'s, the hints in `name`'s
+    /// words, the turns as last read): where in what the last call showed (cut there,
+    /// [`Shown::splice`]) the lists returned go.
+    pub fn shown(
+        &mut self,
+        timeline: &Timeline,
+        inputs: &[Input],
+        (layout, name, bugs): (&'l BattleLayout, Name<'_>, Bugs),
+    ) -> (Lens, Shown) {
+        let auto = Auto::of(inputs, &self.starts);
+        let turns: Vec<Turn<'_>> = (self.turns.iter().enumerate())
+            .map(|(k, (r, _))| Turn {
+                field: Field {
+                    observation: &r.observation,
+                    legal: &r.legal,
+                    facing: &r.facing,
+                    bugs,
+                },
+                human: r.human && !auto.from_start(k),
+            })
+            .collect();
+        let log = (&timeline.log[..], &self.actions[..], &turns[..]);
+        let (from, shown, mark) = track::follow_on(self.mark.take(), log, inputs, layout, name);
+        self.mark = mark;
+        (from, shown)
+    }
 }
 
 /// When Auto Combat plays `timeline`'s turns (the opening's, then each one started) by the mouse's
@@ -491,6 +671,162 @@ mod tests {
     fn layout() -> BattleLayout {
         let path = concat!(env!("CARGO_MANIFEST_DIR"), "/../../layouts/battle.toml");
         parse_battle(&std::fs::read_to_string(path).unwrap()).unwrap()
+    }
+
+    /// The window's mouse step by step (E17 M5 T8a, R3-1).
+    struct Steps<'l> {
+        record: &'l Record,
+        tables: &'l Tables,
+        layout: &'l BattleLayout,
+        follower: Follower<'l>,
+        shown: Shown,
+        checked: usize,
+    }
+
+    impl Steps<'_> {
+        /// The follower's lists after `inputs` over `timeline` (final before `settled`; `grew`
+        /// since the last step) and the engine's battles `turned`, put in place of the last ones
+        /// from where they go, are the whole follow's; they changed as the whole follow's did.
+        fn check(
+            &mut self,
+            (timeline, settled, grew): (&Timeline, u32, bool),
+            turned: &[Turned],
+            inputs: &[Input],
+        ) {
+            let name = |hint: &Hint, _: &Observation| format!("{hint:?}");
+            let read = (timeline, turned);
+            (self.follower).read(self.record, read, self.tables, (settled, grew));
+            let words = (self.layout, &name as _, Bugs::Fixed);
+            let (from, tail) = self.follower.shown(timeline, inputs, words);
+            let words = (self.layout, &name as _);
+            let whole = followed(self.record, read, inputs, words, (self.tables, Bugs::Fixed));
+            let same = self.shown.ends_with(from, &tail);
+            assert_eq!(same, self.shown == whole, "step {}", self.checked);
+            self.shown.splice(from, tail);
+            assert_eq!(self.shown, whole, "step {}", self.checked);
+            self.checked += 1;
+        }
+    }
+
+    #[test]
+    fn the_window_s_mouse_goes_on_as_the_whole_follow_shows() {
+        // E17 M5 T8a (R3-1): `scenarios/battle.toml` in hot seat, grown a command at a time as the
+        // window grows it (`Battle::command`: every side's events, the turn after each, the
+        // timeline waiting for the next); the mouse over hexes, the panel and its log while each
+        // turn waits, while each action plays and at each turn's start, the spell book opened and
+        // closed, a seek back's inputs gone, a turn's legal commands changed in place: at every
+        // step the follower's lists are the whole follow's (every turn read again; 70 turns).
+        use h3_view::anim::{Casts, Command as Given, Growing, Look, Speed};
+        let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+        let tables = crate::assets::load(&dir.join("assets"), crate::assets::ALL).unwrap();
+        let layout = layout();
+        let (scenario, packs) = (dir.join("scenarios/battle.toml"), dir.join("../packs"));
+        let (ruleset, mut setup) = crate::scenario::battle(&scenario, &packs, 1).unwrap();
+        setup.human = [true, true];
+        let mut live = crate::live::Live::new(&ruleset, setup, 1, [true, true]).unwrap();
+        let record = h3_view::record::parse(&live.record().unwrap()).unwrap();
+        let snapshot = record.first_snapshot().unwrap();
+        // Every creature's DEF groups, four frames each (the looks' numbers do not matter here).
+        let look = Look {
+            frames: (0..24).map(|g| (g, 4)).collect(),
+            times: [3000, 500, 500, 100],
+            ..Look::default()
+        };
+        let looks = (snapshot.stacks.iter())
+            .map(|s| (s.creature, look.clone()))
+            .collect();
+        let (magic, casts) = (std::collections::BTreeMap::new(), Casts::default());
+        let stage = crate::motion::stage(&record, &tables, &layout, (&magic, &casts, None));
+        let mut growing = Growing::new(snapshot, &looks, stage, Speed::new(2), Some(1)).unwrap();
+        let mut turned: Vec<Turned> = live.turn().into_iter().collect();
+        let mut timeline = growing.waiting();
+        let mut steps = Steps {
+            record: &record,
+            tables: &tables,
+            layout: &layout,
+            follower: Follower::default(),
+            shown: Shown::default(),
+            checked: 0,
+        };
+        steps.check((&timeline, growing.timeline().end, true), &turned, &[]);
+        let hexes = [40, 57, 75, 90, 110, 128, 150].map(|h| hex_point(&layout, h));
+        let points: Vec<[i32; 2]> = hexes
+            .into_iter()
+            .chain([PARK, [700, 570], [400, 580]])
+            .collect();
+        let mut point = points.iter().copied().cycle();
+        let mut inputs: Vec<Input> = Vec::new();
+        let mut press = 0;
+        for c in 0.. {
+            let start = growing.timeline().turns.last().map_or(0, |&(t, _)| t);
+            let end = growing.timeline().end;
+            let waits = (&timeline, end, false);
+            // While the action plays, at the turn's start, while the turn waits.
+            let mut times: Vec<u32> = (1..=3)
+                .map(|m| press + 7 * m)
+                .filter(|&t| t < start)
+                .collect();
+            times.push(start);
+            times.extend((0..4).map(|m| end + 33 * m));
+            for at in times {
+                let to = point.next().unwrap();
+                inputs.push(Input::Move { at, to });
+                steps.check(waits, &turned, &inputs);
+            }
+            let mut now = end + 33 * 4;
+            if c % 3 == 1 {
+                let book = [
+                    Input::Book { at: now },
+                    Input::Move {
+                        at: now + 5,
+                        to: book_place(2),
+                    },
+                    Input::Cancel { at: now + 20 },
+                ];
+                for input in book {
+                    inputs.push(input);
+                    steps.check(waits, &turned, &inputs);
+                }
+                now += 30;
+            }
+            if c % 5 == 2 {
+                // A seek back to the turn's start, then a move from there.
+                inputs.retain(|i| i.at() <= start);
+                steps.check(waits, &turned, &inputs);
+                let to = point.next().unwrap();
+                inputs.push(Input::Move { at: start, to });
+                steps.check(waits, &turned, &inputs);
+            }
+            if c % 4 == 3
+                && let Some(turn) = turned.last_mut()
+            {
+                // The turn's battle changed in place (as the book's aim changes it).
+                turn.commands.pop();
+                steps.follower.touch(turned.len() - 1);
+                steps.check(waits, &turned, &inputs);
+            }
+            press = now;
+            inputs.push(Input::Act { at: press });
+            // The first commands defend: a longer battle, its rounds' starts among its turns.
+            let choice = live.choice().unwrap();
+            let choice = if c < 48 { Command::Defend {} } else { choice };
+            let played = live.play(choice).unwrap();
+            let (events, seen): (Vec<_>, Vec<_>) = played.events.into_iter().unzip();
+            let given = Given {
+                at: Some(press.max(end)),
+                events: &events,
+            };
+            growing.push_seen(&given, false, &seen);
+            turned.extend(live.turn());
+            if live.over() {
+                let end = growing.finish();
+                steps.check((&end, u32::MAX, true), &turned, &inputs);
+                break;
+            }
+            timeline = growing.waiting();
+            steps.check((&timeline, growing.timeline().end, true), &turned, &inputs);
+        }
+        assert!(steps.checked > 600, "{}", steps.checked);
     }
 
     #[test]
