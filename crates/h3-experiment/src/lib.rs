@@ -1167,6 +1167,10 @@ pub fn build_only(
                 .into_iter()
                 .map(|tile| (*level, tile))
                 .collect(),
+            MapObject::Owned(o) => covered(&o.template, o.tile)
+                .into_iter()
+                .map(|tile| (*level, tile))
+                .collect(),
             MapObject::Ground(_) => vec![],
         })
         .collect();
@@ -1224,6 +1228,7 @@ pub fn build_only(
         }),
         level_limit: spec.map.level_limit,
         banned_skills,
+        events: Vec::new(),
     };
     Ok((map, text))
 }
@@ -2864,7 +2869,8 @@ mod tests {
                 | MapObject::Ground(_)
                 | MapObject::Plain(_)
                 | MapObject::Town(_)
-                | MapObject::Reward(_) => None,
+                | MapObject::Reward(_)
+                | MapObject::Owned(_) => None,
             })
             .collect();
         // The encounter's hero, its `also` heroes, then the opponent beside the hero.

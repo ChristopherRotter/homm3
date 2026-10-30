@@ -610,6 +610,7 @@ impl Situation {
             underground: None,
             level_limit: 0,
             banned_skills: vec![],
+            events: Vec::new(),
         };
         let extras = Extras {
             tiles: given.into_values().collect(),

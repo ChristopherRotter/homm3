@@ -437,6 +437,7 @@ mod tests {
             }),
             level_limit: 12,
             banned_skills: vec![3, 27],
+            events: Vec::new(),
         }
     }
 
