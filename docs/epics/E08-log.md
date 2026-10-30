@@ -9347,18 +9347,18 @@ inboxes told.
 Red's reads before any hero moves, E9-1, E9-3, E9-4, E9-5, the treasury; Blue's E9-2, E9-3b; day 2
 Red's E9-4, E9-5, E9-2r; Blue's treasury).
 
-**The runs** (Easy, hot seat, under Wine): four. The first stopped at E9-2r's first battle: the key
+**The runs** (Easy, hot seat, under Wine): five. The first stopped at E9-2r's first battle: the key
 `a` left auto combat off (both sides human), and the first `auto again` pressed it without end; the
 second whole (the mine's messages as GENRLTXT:4); the third recorded (`experiments/results/
-E08-batch-9a.md`); the fourth recorded as `-run2.md`. Every reading the same in all four but the
-draws (the Troglodytes' counts) and the starting bonus.
+E08-batch-9a.md`); the fourth recorded as `-run2.md`; the fifth on the harness merged with
+`master` (#605, #606: two instances, the Gold bonus), not recorded. Every reading the same in the
+last four but the draws (the Troglodytes' counts, A's resource) and the starting bonus.
 
 **What the runs showed** (for T80; not scored here): **E9-1** each mine one stack of Troglodytes at
-the start (A 126, 163, 105, 101; B 163, 116, 192, 187), A's drawn resource gems in the first three
-runs, crystal in the fourth; the question ADVEVENT 84; A fought as **three stacks** of Troglodytes
-(42 × 3; 55, 54, 54; 35 × 3; 34, 34, 33), B as **two**, the second **Infernal Troglodytes** (82 +
-81; 58 + 58; 96 + 96; 94 + 93): the reading seeded by
-the entrance, not VCMI's single stack; the opening subterranean; ADVEVENT 85 then the drawn mine's
+the start (A 126, 163, 105, 101, 161; B 163, 116, 192, 187, 159), A's drawn resource gems but in
+the fourth run (crystal); the question ADVEVENT 84; A fought as **three stacks** of Troglodytes
+(42 × 3; 55, 54, 54; 35 × 3; 34, 34, 33; 54, 54, 53), B as **two**, the second **Infernal
+Troglodytes** (82 + 81; 58 + 58; 96 + 96; 94 + 93; 80 + 79): the reading seeded by the entrance, not VCMI's single stack; the opening subterranean; ADVEVENT 85 then the drawn mine's
 message (MINEEVNT 5, the Gem Pond's, or 4, the Crystal Cavern's; 6, the Gold Mine's); the records Red's, guards empty. The
 first battle's messages also hold GENRLTXT 7, the townless player's warning. **E9-2** Blue's own
 visit opens the army dialog titled GENRLTXT 710 (Leave Guards), the mine's army upper and empty;

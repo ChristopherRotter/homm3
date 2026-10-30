@@ -22,7 +22,7 @@ Moved to `TRAPS.md`: forks without deep copies, RNG seeds server-only, template 
 
 ### 2026-10-30 — increment 9, round 3: T79a, batch E9a's harness and runs
 
-Baseline ef32f96 (#603 merged; the setup's baseline: light gates). Original data staged at the start, every MP3 with it. The user's cut (decision 207): T79 in two by batch. The harness's mine records, tile words, the boat dialog, Leave Guards, the battle's sides, `auto again` (auto combat is refused when both sides are human: an owned mine's guards are their owner's), `MINEEVNT` named; the recipe `E08-batch-9a`; four runs, two recorded. The harness check passed; the client and map-client inboxes told. Pull request: `adventure/e08-t79a`.
+Baseline ef32f96 (#603 merged; the setup's baseline: light gates). Original data staged at the start, every MP3 with it. The user's cut (decision 207): T79 in two by batch. The harness's mine records, tile words, the boat dialog, Leave Guards, the battle's sides, `auto again` (auto combat is refused when both sides are human: an owned mine's guards are their owner's), `MINEEVNT` named; the recipe `E08-batch-9a`; five runs, two recorded (the last on the harness merged with #605, #606). The harness check passed; the client and map-client inboxes told. Pull request: `adventure/e08-t79a`.
 
 ### 2026-10-30 — increment 9, round 2: T78, batch E9's maps and specs
 
