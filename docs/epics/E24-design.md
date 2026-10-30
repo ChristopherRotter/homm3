@@ -2348,4 +2348,51 @@ status bar compared, `masks.toml`'s `hinted`).
   ones included). A still's hint: the panel's at its parked pointer. After a walk the costs are no
   longer the hero's: the arrow over the tiles they gave (the engine's from M4).
 - **Not built:** another player's turn (0x40DEB0's), the chat's edit, a debug flag +0x3D, a
-  campaign hero's class text, the hints' 58 cases (T6a2), the clicks (T6b).
+  campaign hero's class text, the hints' 55 cases (T6a2a: §4.11; T6a2b), the clicks (T6b).
+
+### 4.11 The map hint's visit marks (M3 T6a2a)
+
+Read in the sandbox (`scripts/exe.py`, the cases of switch 0x40B20E; M3 T6a2 cut with the user,
+2026-10-30, by what runs the hint: T6a2a the 35 classes whose case is inline and shows what was
+visited, T6a2b the 20 others: owners, contents and the seven sub-functions their cases call).
+Every one of the 35 starts as a class
+without a case: its name (`object_names` 0x6A79EC) into the message buffer; on a tile that is
+not its object's entrance (+0xD bit 0x10) nothing more. On the entrance it appends, each by
+" %s" (0x66034C) or a space (0x660330) and the text, in this order:
+
+- **The bonus** (XtraInfo.txt's record n, `xtrainfo_load` 0x405D80 into `xtra_info` 0x69127C,
+  28 records) when the viewing player (`viewing_player` 0x4CEA20, 0 to 7) knows the kind: its
+  bit in the game's `kinds_visited` +0x4E344 + k (structs.toml). Class (k, n): Buoy 11 (0, 0),
+  Swan Pond 14 (1, 1), Faerie Ring 28 (2, 2), Garden of Revelation 32 (4, 4), Learning Stone 100
+  (5, 5), Library 41 (6, 6), Marletto Tower 23 (7, 7), Mercenary Camp 51 (8, 8), School of Magic
+  47 (9, 9), School of War 107 (10, 10), Star Axis 61 (11, 11), Fountain of Youth 31 (13, 13),
+  Hill Fort 35 (14, 14), Magic Spring 48 (15, 15), Mermaid 52 (16, 16), Rally Flag 64 (17, 17),
+  Idol of Fortune 38 (22, 22), Temple 96 (23, 23), University 104 (24, 24), Magic Well 49 (25,
+  25), Oasis 56 (26, 26), Watering Hole 110 (27, 27); the Fountain of Fortune 30 (n 3) by its
+  own word instead: bit 5 + `shown_player` (0x69778C, 0 to 7).
+- **The mark** (GENRLTXT's record 353 visited, 354 not visited), by what the class keeps:
+  - with a selected hero only (the screen player's +0x4, `game_screen_player` 0x4CE9B0), by its
+    `status_flags` +0x105: Magic Well bit 0, Stables 94 bit 1, Buoy 2, Swan Pond 3, Idol bits 4
+    or 25, Fountain of Fortune bits 5, 27, 28 or 29, Watering Hole 6, Oasis 7, Temple 8 or 26,
+    Faerie Ring 13, Fountain of Youth 14, Mermaid 15, Rally Flag 16, Sirens 92 bit 20; by the bit
+    (word & 0x1F) of its per-object field: Learning Stone +0x57, Marletto +0x5B, Garden +0x5F,
+    Mercenary Camp +0x63, Star Axis +0x67, Library +0x6F, Arena 4 +0x73, School of Magic +0x77,
+    School of War +0x7B; by that bit of the screen player's record: Corpse 22 +0xC0, Lean To 39
+    +0xC4, Magic Spring +0xBC (and its word's bit 6 clear, else not visited); the Pyramid 63 by
+    its word's bit 5 + the hero's owner (+0x22, 0 to 7; else not visited).
+  - without one too: the Mystical Garden 55 by the bit (word & 0x1F) of the screen player's
+    +0xB8 and its word's bit 10 clear; the Obelisk 57 by the viewing player's bit in the game's
+    +0x4E3E9 + its word (a signed byte); the Wagon 105 and Warrior's Tomb 108 by the word's bit
+    5 + `current_player` (0x69CCA8, 0 to 7; else not visited); the Water Wheel 109 and Windmill
+    112 only when that bit is set: visited when what is left is none (the wheel's word & 0x1F
+    times 500 in 16 bits, the mill's bits 13 to 16), else not visited.
+  - none: Hill Fort, University.
+
+The four players are one in a human's turn of a single-player game (the comparisons'); their
+differences matter in the hot seat (M5). **Built:** the live part's `[hover]` `visits`, per map
+object whether the viewer knows its bonus and its mark (visited, not visited or none), which the
+harness derives from memory by the rules above (`h3mem.Mem.visits`) and the engine gives from M4
+(for the hero selected when it is read: a selection changed by a click, T6b, reads it again);
+`Hint::Visits` composes the name, the bonus (`map-bonus.<n>`) and the mark (`map.hint.visited`,
+`map.hint.not-visited`) with `map.hint.more` (0x66034C) between. A situation's `visits` writes
+them into the original for a comparison (`h3map.stage`: the same rules inverted).
