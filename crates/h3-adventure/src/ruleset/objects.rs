@@ -170,23 +170,23 @@ pub enum ObjectKind {
     /// Pandora's Box (ADV-PIK-013, E08 T61a): the map's reward record behind a question.
     PandoraBox,
     /// An event (ADV-OBJ-007, E08 T61a): the map's reward record, fired by a step onto its tile;
-    /// never visited through [`ObjectKind::effect`] (design §12).
+    /// never visited through [`ObjectKind::effect`] (increment 7's design note §12).
     Event,
     /// The Pyramid (ADV-TCH-008, E08 T61a).
     Pyramid(Pyramid),
-    /// A message (E08 T72, design §5: the Ocean Bottle, ADV-PIK-017): its visit tells the
-    /// visitor's owner which object's message it read (the map's text is the client's; E08
-    /// T74a).
+    /// A message (E08 T72, increment 8's design note §5: the Ocean Bottle, ADV-PIK-017): its visit
+    /// tells the visitor's owner which object's message it read (the map's text is the client's;
+    /// E08 T74a).
     Message {
         /// It leaves the map at its visit (the Ocean Bottle; the Sign, a later increment's, stays).
         leaves: bool,
     },
-    /// A ground of the sea (E08 T72, design §5: Favorable Winds): lies on its picture's tiles,
-    /// never visited, no battlefield; a boat's step from a tile it tops costs the part's
-    /// `sea_ground` share of its price (ADV-SEA-004, T73).
+    /// A ground of the sea (E08 T72, increment 8's design note §5: Favorable Winds): lies on its
+    /// picture's tiles, never visited, no battlefield; a boat's step from a tile it tops costs the
+    /// part's `sea_ground` share of its price (ADV-SEA-004, T73).
     SeaGround,
-    /// A hole (E08 T72, design §5): lies on its picture's tiles, never visited, blocks nothing;
-    /// no landing onto a tile it lies on (ADV-SEA-003, T73).
+    /// A hole (E08 T72, increment 8's design note §5): lies on its picture's tiles, never visited,
+    /// blocks nothing; no landing onto a tile it lies on (ADV-SEA-003, T73).
     Hole,
 }
 

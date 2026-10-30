@@ -587,9 +587,10 @@ const XL_KITS: [KitSpec; 8] = [
     (&[], &[]),
 ];
 
-/// The duel's heroes' custom experience, in the map's order (E08 T31, design §14): each a little
-/// below the threshold of level 2 (1 000), so that its first battle gives it a level-up, but red's
-/// underground hero's, 4 570: levels 2 to 4 at load (GAM-SET-002), 30 below level 5.
+/// The duel's heroes' custom experience, in the map's order (E08 T31, increment 4's design note
+/// §14): each a little below the threshold of level 2 (1 000), so that its first battle gives it a
+/// level-up, but red's underground hero's, 4 570: levels 2 to 4 at load (GAM-SET-002), 30 below
+/// level 5.
 const DUEL_EXPERIENCE: [u32; 4] = [970, 950, 4_570, 930];
 /// The XL map's heroes' (E08 T31): the duel's, then each a little below level 2 again.
 const XL_EXPERIENCE: [u32; 8] = [970, 950, 4_570, 930, 980, 940, 960, 920];

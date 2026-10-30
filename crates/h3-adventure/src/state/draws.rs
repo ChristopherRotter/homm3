@@ -22,9 +22,9 @@ use super::{MapObject, pick};
 use crate::ruleset::{AdventureRuleset, Chest, Find, FindContent, ObjectKind, Turn};
 use crate::setup::{Bans, Holds};
 
-/// What the build drew for an object of increment 7's kinds (E08 T61b; design §9), beside what the
-/// map put in it ([`MapObject::holds`]); a chest's gold and a find's resources are its
-/// [`MapObject::contents`]. The visits that read it come with T62.
+/// What the build drew for an object of increment 7's kinds (E08 T61b; increment 7's design note
+/// §9), beside what the map put in it ([`MapObject::holds`]); a chest's gold and a find's resources
+/// are its [`MapObject::contents`]. The visits that read it come with T62.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub enum Resolved {
     /// Nothing drawn: every other kind, a gift of one price or none, a chest of gold, a find of
@@ -273,13 +273,13 @@ fn kind_of<'p>(part: &'p AdventureRuleset, object: &MapObject) -> Option<&'p Obj
         .map(|ty| &ty.kind)
 }
 
-/// Draws what the objects hold that the map leaves to chance (design §9), in two walks in object
-/// order: each random artifact's artifact (ADV-OBJ-006); then each other object's draws in its
-/// own shape: a chest (ADV-PIK-005), a gift with several prices (ADV-TCH-003), a Shrine without
-/// the map's spell (ADV-TCH-004), a Witch Hut (ADV-TCH-005, `ADV-QUIRK-21` for an RoE map's),
-/// a Scholar (ADV-TCH-006), a University (ADV-TCH-007), a find (ADV-PIK-009 to -012) and the
-/// Pyramid (ADV-TCH-008). The random artifacts' marks are shared by the random artifacts, the
-/// chests and the finds.
+/// Draws what the objects hold that the map leaves to chance (increment 7's design note §9), in two
+/// walks in object order: each random artifact's artifact (ADV-OBJ-006); then each other object's
+/// draws in its own shape: a chest (ADV-PIK-005), a gift with several prices (ADV-TCH-003), a
+/// Shrine without the map's spell (ADV-TCH-004), a Witch Hut (ADV-TCH-005, `ADV-QUIRK-21` for an
+/// RoE map's), a Scholar (ADV-TCH-006), a University (ADV-TCH-007), a find (ADV-PIK-009 to -012)
+/// and the Pyramid (ADV-TCH-008). The random artifacts' marks are shared by the random artifacts,
+/// the chests and the finds.
 pub(super) fn resolve_rewards(
     core: &Ruleset,
     part: &AdventureRuleset,
@@ -450,7 +450,8 @@ fn university_draw(skills: &[SkillId], offers: u8, draws: &mut Rng) -> Vec<Skill
 /// find's resources drawn too when they are what a full backpack turns it into (the Wagon); an
 /// amount between the entry's bounds, then one of its resources; since E08 T72 a fixed entry's
 /// resources, with an artifact of its classes from the pool beside them if it has one (the sea's
-/// finds, ADV-PIK-014 to -016: one draw of 0 to 99 for each, design §11); or nothing.
+/// finds, ADV-PIK-014 to -016: one draw of 0 to 99 for each, increment 8's design note §11); or
+/// nothing.
 // rule: ADV-PIK-009, ADV-PIK-010, ADV-PIK-011, ADV-PIK-012, ADV-PIK-016
 fn find_draw(
     find: &Find,

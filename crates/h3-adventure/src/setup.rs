@@ -123,8 +123,8 @@ pub struct ObjectSetup {
     /// What it is among a battle's surroundings (GAM-BAT-011, E08 T54): the map's class, for the
     /// battlefield picture's variant ([`crate::AdventureState::background`]).
     pub scenery: Scenery,
-    /// What the map puts in an object of increment 7's kinds (E08 T61a; design §7): exactly
-    /// the shape its type's kind takes ([`Holds`]), nothing for every other object.
+    /// What the map puts in an object of increment 7's kinds (E08 T61a; increment 7's design note
+    /// §7): exactly the shape its type's kind takes ([`Holds`]), nothing for every other object.
     pub holds: Holds,
 }
 
@@ -156,9 +156,9 @@ pub enum Holds {
     Event(Box<EventSetup>),
 }
 
-/// A reward record (ADV-RWD-001, E08 T61a; survey `E08-rewards.md` §7.1, design §7): what a
-/// Pandora's Box or an event gives, as the map stores it, every part optional. One per object,
-/// with no bound on their number (A-19 not reproduced, E08 decision 133).
+/// A reward record (ADV-RWD-001, E08 T61a; survey `E08-rewards.md` §7.1, increment 7's design note
+/// §7): what a Pandora's Box or an event gives, as the map stores it, every part optional. One per
+/// object, with no bound on their number (A-19 not reproduced, E08 decision 133).
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct RewardRecord {
     /// The hero's half (HER-CHG-003; `h3_heroes::grant`): its skills of the ruleset at Basic to

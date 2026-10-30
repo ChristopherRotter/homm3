@@ -1,5 +1,6 @@
-//! Tests of the rewards' hero changes and the battle bonuses (E08 T60a; design §1, §2): primary
-//! skills gained, a skill raised to a level, a bonus with its once-mark, the bonuses cleared.
+//! Tests of the rewards' hero changes and the battle bonuses (E08 T60a; increment 7's design note
+//! §1, §2): primary skills gained, a skill raised to a level, a bonus with its once-mark, the
+//! bonuses cleared.
 
 use std::string::ToString;
 

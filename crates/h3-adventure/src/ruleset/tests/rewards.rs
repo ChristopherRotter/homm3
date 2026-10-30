@@ -1,5 +1,5 @@
-//! Increment 7's kinds in the ruleset part (E08 T61a; design §8): their parameters compiled,
-//! every check, the references and the hash.
+//! Increment 7's kinds in the ruleset part (E08 T61a; increment 7's design note §8): their
+//! parameters compiled, every check, the references and the hash.
 
 use h3_content::{ArtifactClass, SecondarySkillDef};
 

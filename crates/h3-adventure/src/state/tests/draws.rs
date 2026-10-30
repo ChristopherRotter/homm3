@@ -1,6 +1,7 @@
-//! Tests of the draws when the game is built (E08 T61b; design §9): the random artifacts' pool and
-//! its marks, the chests, the gifts' prices, the Shrines' marks, the Witch Huts (`ADV-QUIRK-21`),
-//! the Scholars, the Universities, the finds and the Pyramid, the bans, and the static map's hash.
+//! Tests of the draws when the game is built (E08 T61b; increment 7's design note §9): the random
+//! artifacts' pool and its marks, the chests, the gifts' prices, the Shrines' marks, the Witch Huts
+//! (`ADV-QUIRK-21`), the Scholars, the Universities, the finds and the Pyramid, the bans, and the
+//! static map's hash.
 
 use std::collections::BTreeSet;
 use std::format;
@@ -715,8 +716,9 @@ fn a_find_holds_what_its_table_draws() {
 // covers: ADV-PIK-015
 #[test]
 fn a_sea_find_holds_its_fixed_entry_with_the_artifact_beside_it() {
-    // E08 T72 (design §11): the Sea Chest holds nothing (20 %), 1 500 gold (70 %), or 1 000 gold
-    // and a treasure artifact (10 %), one draw of 0 to 99 and the artifact from the pool.
+    // E08 T72 (increment 8's design note §11): the Sea Chest holds nothing (20 %), 1 500 gold (70
+    // %), or 1 000 gold and a treasure artifact (10 %), one draw of 0 to 99 and the artifact from
+    // the pool.
     let rules = rules(true);
     let mut seen = [0; 3];
     for (resolved, contents) in outcomes(&rules, "t:sea_chest", &Holds::Nothing, &Bans::default()) {

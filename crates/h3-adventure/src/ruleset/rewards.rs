@@ -132,9 +132,9 @@ pub enum FindContent {
         resources: Vec<ResourceId>,
     },
     /// These resources, and beside them an artifact drawn among these classes as one pool if any
-    /// (E08 T72, design §5: the sea's finds, ADV-PIK-014, -015; Flotsam's 5 wood and 200 gold, the
-    /// Sea Chest's 1 000 gold and a treasure artifact): given together, the artifact through the
-    /// full backpack's turn.
+    /// (E08 T72, increment 8's design note §5: the sea's finds, ADV-PIK-014, -015; Flotsam's 5 wood
+    /// and 200 gold, the Sea Chest's 1 000 gold and a treasure artifact): given together, the
+    /// artifact through the full backpack's turn.
     Fixed {
         /// The resources, sorted by resource: distinct, at least one.
         resources: Resources,

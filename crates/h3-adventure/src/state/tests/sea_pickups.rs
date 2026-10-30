@@ -1,8 +1,9 @@
-//! Tests of the sea's pickups (E08 T74a; design §11; ADV-PIK-014 to -018): Flotsam's, the Sea
-//! Chest's and the Shipwreck Survivor's visits from a boat (their contents, the full backpack's
-//! turn and loss under `ADV-QUIRK-22`), each leaving the map; the Ocean Bottle's message read by
-//! its visitor's owner alone, then leaving; and that only a boat takes a pickup on water. Batch
-//! E8's rows as sources: E8-6 and E8-8 (the visits, a full backpack's chest and survivor).
+//! Tests of the sea's pickups (E08 T74a; increment 8's design note §11; ADV-PIK-014 to -018):
+//! Flotsam's, the Sea Chest's and the Shipwreck Survivor's visits from a boat (their contents, the
+//! full backpack's turn and loss under `ADV-QUIRK-22`), each leaving the map; the Ocean Bottle's
+//! message read by its visitor's owner alone, then leaving; and that only a boat takes a pickup on
+//! water. Batch E8's rows as sources: E8-6 and E8-8 (the visits, a full backpack's chest and
+//! survivor).
 
 use std::sync::Arc;
 use std::vec;
@@ -33,6 +34,11 @@ const ROWS: [&str; 3] = ["g~~~~~~g", "gb~~~~~g", "gggggggg"];
 
 /// The started state of [`ROWS`] with one object of type `k` on [`AT`], red's hero 1 on `at`.
 fn sea(rules: &Rules, k: &str, at: Pos) -> AdventureState {
+    seated(rules, k, at, true)
+}
+
+/// [`sea`], red counting as human when `human` (a computer player's otherwise).
+fn seated(rules: &Rules, k: &str, at: Pos, human: bool) -> AdventureState {
     let mut setup = coasted(
         &ROWS,
         vec![
@@ -44,12 +50,18 @@ fn sea(rules: &Rules, k: &str, at: Pos) -> AdventureState {
         anchor: AT,
         ..object(rules, 0, k, Holds::Nothing)
     });
+    setup.seats[0].human = human;
     started(rules, &setup).unwrap()
 }
 
 /// [`sea`] with red's hero 1 in the boat at (1, 1), its points 1 500.
 fn afloat(rules: &Rules, k: &str) -> AdventureState {
-    let mut state = sea(rules, k, p(0, 1));
+    afloat_as(rules, k, true)
+}
+
+/// [`afloat`], red counting as human when `human`.
+fn afloat_as(rules: &Rules, k: &str, human: bool) -> AdventureState {
+    let mut state = seated(rules, k, p(0, 1), human);
     state.put_aboard(HERO, 0);
     let hero = &mut state.heroes[0];
     (hero.movement, hero.max_movement) = (1500, 1500);
@@ -199,6 +211,12 @@ fn a_bottle_s_message_is_read_by_its_visitor_s_owner_alone_and_the_bottle_leaves
         vec![read("t:bottle"), removed(type_of(&rules, "t:bottle"))]
     );
     assert!(state.is_removed(0));
+    // A computer player's hero reads and takes it as a human's (`ADV-QUIRK-30`, A-27 not
+    // reproduced: the original's computer leaves it, 0x4A9AFF).
+    let mut computer = afloat_as(&rules, "t:bottle", false);
+    let (_, by_computer) = step(&rules, &mut computer, &[], &[AT]).unwrap();
+    assert_eq!(told(&by_computer), told(&events));
+    assert!(computer.is_removed(0));
     // Red is told it as it is; blue nothing of the message, only the bottle's leaving.
     assert_eq!(read("t:bottle").project(RED), Some(read("t:bottle")));
     let projected: Vec<_> = events.iter().filter_map(|e| e.project(BLUE)).collect();

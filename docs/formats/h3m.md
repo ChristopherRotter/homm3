@@ -169,7 +169,7 @@ content and draws nothing; it rejects what the current increment cannot represen
   (`Subclass`); classes 12, 58, 60 and 76 ignore it. A resource body's amount (76, 79) is the
   pile's fixed amount (0 is none: drawn when the game is built; gold counts in hundreds, the type
   multiplies), which the setup bounds at 0x7FFFF; its message's text is presentation. Every other
-  class is a blocker. Since v12 (E08 T61a, increment 7; design §7 of `docs/epics/E08-design.md`
+  class is a blocker. Since v12 (E08 T61a, increment 7; increment 7's design note §7 in `docs/epics/E08-log.md`
   until T61a, then `E08-log.md`) 31 more classes, each to one type: 101 → `base:treasure_chest`,
   5 → `base:artifact` (its subclass the artifact), 65–69 → `base:random_artifact`,
   `_treasure_artifact`, `_minor_artifact`, `_major_artifact`, `_relic_artifact`, 93 →
@@ -227,7 +227,7 @@ content and draws nothing; it rejects what the current increment cannot represen
   `H3ab_spr.lod`, read 2026-10-15; the original places every object on its `.msk`'s rectangle,
   0x514610, 0x505B20; VCMI `ObjectTemplate::readMsk` the same), else 1 × 1 (the original's
   `default.msk`).
-- **The sea** (v14, E08 T72, design §4 of `docs/epics/E08-design.md`): a boat (class 8) is no object
+- **The sea** (v14, E08 T72, increment 8's design note §4 in `docs/epics/E08-log.md`): a boat (class 8) is no object
   but one of the map's boats (`MapSetup::boats`, ADV-SEA-001): its template's one visitable tile
   (else `BoatTile`) and its subclass 0–2 as its type (else `Subclass`), no body (the original's
   loader reads none); the setup refuses a boat off water, on a tile an object blocks or is
