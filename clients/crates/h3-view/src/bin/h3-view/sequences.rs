@@ -858,11 +858,22 @@ pub(crate) fn draw_frames(
     let mut batch = Batch::default();
     for name in &names {
         // A clip from the video archives (E17 M5 T4b2b), every other asset from the LODs.
+        let clip = name.ends_with(".BIK");
         let bytes = match interface.videos {
-            Some(videos) if name.ends_with(".BIK") => videos.read(name)?,
+            Some(videos) if clip => videos.read(name)?,
             _ => lookup(archives, name)?,
         };
-        batch.add(name, &bytes).map_err(|e| e.to_string())?;
+        // A clip that does not decode fails the comparison (E17 M5 T8b2, R2b's leftover): the
+        // original showed it, so a bare slot would only differ in pixels without saying why
+        // (the window leaves the slot bare, T8b1).
+        batch.add(name, &bytes).map_err(|e| {
+            let e = crate::connect::printable(&e.to_string());
+            if clip {
+                format!("the result window's clip, which a comparison needs: {e}")
+            } else {
+                e
+            }
+        })?;
     }
     for (frame, list) in &lists {
         // Compared with the original's captures: its drawing bugs reproduced (E17 M3 T4a).
