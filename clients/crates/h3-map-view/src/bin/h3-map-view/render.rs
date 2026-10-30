@@ -315,7 +315,8 @@ const RANDOM_DWELLINGS: [u32; 3] = [216, 217, 218];
 /// (T2a), move hero's and next hero's states as the original last set them, `[move, next]`, 1
 /// enabled; `pointer`
 /// (T2a), where the parked mouse is, returned; the table `[hover]` (E24 M3 T6a1, design §4.10),
-/// the mouse-over's facts ([`Facts::read`]). Each key is optional (`defs` and `classes`
+/// the mouse-over's facts ([`Facts::read`]); `realm` (E24 M3 T6b2, design §4.14), the kingdom's
+/// window as the original would build it, a `status` of kind 2. Each key is optional (`defs` and `classes`
 /// together); other keys are left. The file's `cycles`, `frames` and `viewer` override
 /// `--cycles`, `--at` and `--viewer`: the comparisons draw the original's.
 pub fn read_live(
@@ -593,6 +594,16 @@ pub fn read_live(
         live.kingdom.selection = Some(
             Status::read(value).ok_or_else(|| failed("`selection` is not a `status`'s table"))?,
         );
+    }
+    if let Some(value) = table.get("realm") {
+        // The kingdom's window as the original would build it (E24 M3 T6b2, design §4.14: what
+        // a click on the status window shows).
+        let Some(Status::Kingdom(realm)) = Status::read(value) else {
+            return Err(failed(
+                "`realm` is not { kind = 2, halls = [4], allies = [colours], enemies = [colours] }",
+            ));
+        };
+        live.kingdom.realm = Some(realm);
     }
     if let Some(value) = table.get("chosen") {
         // What choosing each hero and town shows (E24 M3 T6b1).

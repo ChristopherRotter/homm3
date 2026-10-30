@@ -199,6 +199,33 @@ both: the comparisons are exact); (b) the client draws the hint again after such
 mouse's item's), the original's behind `--bugs original` for the comparisons; (c) an option.
 **Recommendation:** (b): the empty bar is a redraw artifact (the edit was never meant to show),
 and a player clicking through the lists loses the hint of the slot under the mouse. **Blocked:**
+nothing; built as the original's. (E24 M3 T6b2: the underground's button and key update the whole
+screen, which draws every item too: the same empty bar after each, recorded in `underground`.)
+
+#### MCL-Q23 — A press on the status window lost when the window is built again (E24 M3 T6b2, a reading)
+
+The status window's click fires at the left button's release, wherever it is, from the window's
+item that took the press (E24 design §4.14). A window built anew in between (a kind asked for a
+time ending at a redraw: the kingdom's or the date's 3 000 ms after a click; a hero's choice by a
+key) drops the old window's items and the press with them: the release then does nothing. Built
+and recorded in `status-click` (a press held across the kingdom's end at 4 700 ms, released at
+4 900: nothing). **Options:** (a) the original's (built, for both); (b) the client keeps the
+press across the window's rebuild (the release clicks the new window), the original's behind
+`--bugs original` for the comparisons; (c) an option. **Recommendation:** (b): a click that
+silently does nothing because a timer ran out under the mouse reads as a missed click. **Blocked:**
+nothing; built as the original's.
+
+#### MCL-Q24 — A hotkey's release during a minimap drag leaves its button pressed (E24 M3 T6b2, a reading)
+
+While the mouse holds the minimap down, its own loop takes every message but the mouse's moves and
+the release, and drops them (E24 design §4.14). A panel button's hotkey pressed before the drag
+(its button drawn pressed) and released during it loses its key up: the button stays drawn pressed
+and its command is lost, until that key is pressed and released again. Built by the reading (the
+timeline keeps the key's button pressed), not recorded (`minimap-drag` presses and releases H both
+during the drag: both dropped, no button pressed). **Options:** (a) the original's (built, for
+both); (b) the client releases a hotkey's button when its key up comes during the drag (without
+its command, as a release off a button), the original's behind `--bugs original`; (c) an option.
+**Recommendation:** (b): a button stuck in its pressed picture is a visible defect. **Blocked:**
 nothing; built as the original's.
 
 ## Answered

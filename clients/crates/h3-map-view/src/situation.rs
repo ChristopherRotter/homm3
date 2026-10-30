@@ -8,7 +8,9 @@
 //! one replaces an earlier on its tile), objects (E24 M1 T4a: a copy's objects with its tiles,
 //! and objects given by their template's DEF, its line of the game's `Objects.txt`), the heroes
 //! of up to eight colours and the boats without a hero (E24 M1 T5a: each with the facing the
-//! harness turns it to), the view's top-left and the rectangles left unexplored. The surface only. A situation that names a shipped map whole (`map`, E24 M1 T4b)
+//! harness turns it to), the view's top-left and the rectangles left unexplored. The view on the
+//! surface; since E24 M3 T6b2 an underground level of terrains alone. A situation that names a
+//! shipped map whole (`map`, E24 M1 T4b)
 //! is the harness's alone: it loads that map, this module does not read it.
 
 use alloc::collections::BTreeMap;
@@ -22,7 +24,7 @@ use h3_map::RawMap;
 use h3_map::model::{Mission, Stack};
 use h3_map::writer::{
     AnyObject, Extras, GivenTile, Hero, Map, MapObject, ObjectTemplate, Patch, Player, RiverKind,
-    Road, RoadKind, Terrain, Town, TownBuildings,
+    Road, RoadKind, Terrain, Town, TownBuildings, Underground,
 };
 use serde::Deserialize;
 
@@ -37,6 +39,11 @@ pub struct Situation {
     /// Rectangles of other terrains, as the writer takes them (corners inclusive).
     #[serde(default)]
     pub patches: Vec<PatchSpec>,
+    /// The underground level (E24 M3 T6b2, design §4.14: the underground's button and the
+    /// minimap's level), its terrain and patches as the writer takes them, no objects; none: the
+    /// surface only. The harness explores both levels but `hidden`'s rectangles on the surface.
+    #[serde(default)]
+    pub underground: Option<UndergroundSpec>,
     /// Straight roads along a row, as the writer takes them.
     #[serde(default)]
     pub roads: Vec<RoadSpec>,
@@ -223,6 +230,28 @@ pub struct PatchSpec {
     pub from: [u8; 2],
     /// Its bottom-right tile.
     pub to: [u8; 2],
+}
+
+impl PatchSpec {
+    /// The writer's patch.
+    fn writer(&self) -> Patch {
+        Patch {
+            terrain: self.terrain.writer(),
+            from: (self.from[0], self.from[1]),
+            to: (self.to[0], self.to[1]),
+        }
+    }
+}
+
+/// The underground level of a situation (E24 M3 T6b2): a base terrain and rectangles of others.
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct UndergroundSpec {
+    /// The terrain of every tile no patch covers.
+    pub terrain: Ground,
+    /// Rectangles of other terrains (corners inclusive).
+    #[serde(default)]
+    pub patches: Vec<PatchSpec>,
 }
 
 /// A road along a row.
@@ -632,15 +661,7 @@ impl Situation {
             description: String::new(),
             size: self.size,
             terrain: self.terrain.writer(),
-            patches: self
-                .patches
-                .iter()
-                .map(|p| Patch {
-                    terrain: p.terrain.writer(),
-                    from: (p.from[0], p.from[1]),
-                    to: (p.to[0], p.to[1]),
-                })
-                .collect(),
+            patches: self.patches.iter().map(PatchSpec::writer).collect(),
             roads: self
                 .roads
                 .iter()
@@ -653,7 +674,11 @@ impl Situation {
                 .collect(),
             players,
             objects: heroes,
-            underground: None,
+            underground: self.underground.as_ref().map(|u| Underground {
+                terrain: u.terrain.writer(),
+                patches: u.patches.iter().map(PatchSpec::writer).collect(),
+                objects: Vec::new(),
+            }),
             level_limit: 0,
             banned_skills: vec![],
             events: Vec::new(),

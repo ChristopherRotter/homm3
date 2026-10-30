@@ -79,8 +79,8 @@ radar = "radar.def"
 terrain = [8, 9]
 owned = [53]
 blocking = [134]
-other = {{ frame = 1, scale = 0x3F800000 }}
-sizes = [{{ size = 36, columns = [4], rows = [4], radar = {{ frame = 4, scale = 0x40800000 }} }}]
+other = {{ frame = 1, scale = 0x3F800000, click = 0x3F800000 }}
+sizes = [{{ size = 36, columns = [4], rows = [4], radar = {{ frame = 4, scale = 0x40800000, click = 0x40800000 }} }}]
 
 [map.lists]
 portraits = ["hps000kn.pcx"]
@@ -97,6 +97,7 @@ skills = {{ top = 99, bottom = [0, 0, 1, 1] }}
 thousands = 10000
 halls = [11, 12, 13]
 forts = [7, 8, 9]
+asked = 3000
 
 [map.status.date]
 day = "newday.def"

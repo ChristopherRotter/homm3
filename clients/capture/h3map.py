@@ -225,7 +225,8 @@ def to_shipped(game, timeout=120.0):
     """From the start to a shipped map's adventure screen (a single scenario, as
     h3drive.to_scenario), closing the messages its first day shows (a timed event's: E24 M1 T4b's
     Divided Loyalties) by their OK. The screen is `adventure`: `adventure_map`'s probes hold the
-    level button greyed, as a map without an underground shows it."""
+    level button greyed, as a map without an underground shows it (since E24 M3 T6b2 a writer's map
+    with an underground starts this way too: no message closes then)."""
     game.wait("main_menu", 90)
     game.click(640, 75, 1.0)  # New Game
     game.wait("new_game_menu")
@@ -517,13 +518,19 @@ def stage(situation_path, out):
     start = sit.get("explored") == "start"
     if start and hidden:
         raise ValueError(f"{situation_path}: `hidden` with the start's explored tiles")
-    game = started(map_path, out / "run", shipped="map" in sit)
+    # A map with an underground shows the level button enabled (E24 M3 T6b2): `adventure`'s wait.
+    game = started(map_path, out / "run", shipped="map" in sit or "underground" in sit)
     try:
         mem = game_mem(game)
         turn = arrange(game, mem, sit)
         lists(game, mem, sit)
         if not start:
             mem.write_explored(vz, hidden_test(hidden), mem.current_player())
+            # E24 M3 T6b2: a situation's underground level explored whole (`hidden` is the
+            # surface's).
+            for z in range(mem.levels()):
+                if z != vz:
+                    mem.write_explored(z, lambda x, y: True, mem.current_player())
         set_view(game, mem, vx, vy, vz)
         show_path(game, mem, sit, (vx, vy, vz))
         # What choosing each hero and town shows (E24 M3 T6b1; design §4.13), when the situation
@@ -708,6 +715,11 @@ def live_part(mem, sit, turn, k, k_rivers, kingdom=None):
             "kingdom": kingdom_toml(kingdom or mem.kingdom(mem.current_player())),
             "status": status_toml(mem, mem.current_player()),
             **({"selection": mem.selection} if getattr(mem, "selection", None) else {}),
+            # The kingdom's window as memory would build it (E24 M3 T6b2, design §4.14): what a
+            # click on the status window shows.
+            "realm": "{ " + ", ".join(f"{key} = {value}" for key, value
+                                      in {"kind": 2, **mem.realm(mem.current_player())}.items())
+                     + " }",
             "buttons": mem.buttons(),
             "pointer": mem.cursor()[2:],
             "situation": json.dumps(situation_digest(sit))}

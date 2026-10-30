@@ -173,6 +173,10 @@ fn live_kingdom(text: &str) -> (Kingdom, Option<Buttons>) {
     let mut kingdom = Kingdom::read(&table["kingdom"]).unwrap();
     kingdom.status = table.get("status").map(|s| Status::read(s).unwrap());
     kingdom.selection = table.get("selection").map(|s| Status::read(s).unwrap());
+    kingdom.realm = table.get("realm").map(|s| match Status::read(s).unwrap() {
+        Status::Kingdom(realm) => realm,
+        other => panic!("`realm` is {other:?}"),
+    });
     let flags: Vec<i64> = table["buttons"]
         .as_array()
         .unwrap()
@@ -337,7 +341,10 @@ fn the_walks_frames_are_m2_t3bs() {
             "hover-teach",
             "hover-quests",
             "choose-lists",
-            "press-buttons"
+            "press-buttons",
+            "underground",
+            "minimap-drag",
+            "status-click"
         ]
     );
 }
@@ -577,10 +584,15 @@ fn what_it_cannot_play_yet() {
     );
     let mut parked = over.clone();
     parked.pointer = PARK;
-    let later = BTreeMap::from([(5, vec![Action::Click([700, 100])])]);
+    let later = BTreeMap::from([(5, vec![Action::Click([771, 228])])]);
     assert_eq!(
-        play(rules(Bugs::Fixed), &parked, &later, 10),
-        Err((5, Unplayable::Panel([700, 100])))
+        play(rules(Bugs::Fixed), &parked, &later, 10).map(|s| s.len()),
+        Ok(11)
+    );
+    let over_later = BTreeMap::from([(5, vec![Action::Pointer([300, 300])])]);
+    assert_eq!(
+        play(rules(Bugs::Fixed), &parked, &over_later, 10),
+        Err((5, Unplayable::OverView([300, 300])))
     );
     assert_eq!(
         Unplayable::OverView([1, 2]).to_string(),
@@ -1994,16 +2006,16 @@ fn a_hold_and_what_it_drops() {
     );
     l.run(5, &[Action::Release([695, 185])]).unwrap();
     assert_eq!((l.held, l.drawn().pressed.len()), (None, 0));
-    // Clicked at once on a list's arrow: its command; on the minimap refused, on the status
-    // window and on no item nothing.
+    // Clicked at once on a list's arrow: its command; on the minimap its loop at once over
+    // (E24 M3 T6b2), on the status window its click (no kingdom's window known: nothing built),
+    // on no item nothing.
     l.run(6, &[Action::Click([641, 380])]).unwrap();
     assert_eq!(l.kingdom.tops[0], 1);
-    assert_eq!(
-        l.run(7, &[Action::Click([700, 100])]),
-        Err(Unplayable::Panel([700, 100]))
-    );
+    l.run(7, &[Action::Click([700, 100])]).unwrap();
+    assert!(!l.dragging);
     l.run(8, &[Action::Click([700, 480]), Action::Click([700, 2])])
         .unwrap();
+    assert_eq!((l.asked, l.status_held), (2, false));
     // Each list's arrows held at its ends: the up one at the top, the down one past the end.
     let mut l = Loop::start(r, &start).unwrap();
     l.scroll_list(false, true);
@@ -2135,4 +2147,270 @@ fn a_choice_with_the_facts_and_the_sound() {
     );
     l.run(2, &[Action::Press([695, 212])]).unwrap();
     assert_eq!(l.take_cues(), [(2, Cue::Effect("button.wav".into()))]);
+}
+
+/// A start on `seq-underground` (E24 M3 T6b2): a map of two levels, Red's first hero selected,
+/// its status window the hero's and the kingdom's window known; the view at (0, 0, 0).
+fn underground_start() -> Start {
+    let situation = include_str!("../../../../map/situations/seq-underground.toml");
+    let mut start = start(situation, 1);
+    start.levels = 2;
+    let hero = Hero {
+        at: Pos { x: 10, y: 12, z: 0 },
+        facing: Direction::East,
+    };
+    (start.hero, start.heroes, start.index) = (Some(hero), vec![hero], Some(0));
+    start.kingdom = Kingdom {
+        heroes: vec![KingdomHero {
+            movable: true,
+            portrait: 2,
+            points: 1500,
+            ..KingdomHero::default()
+        }],
+        selected: Selected::Hero(0),
+        status: Some(Status::Hero(crate::live::HeroStatus {
+            hero: 2,
+            own_name: false,
+            skills: [1, 2, 3, 4],
+            morale: 0,
+            luck: 0,
+            army: [None; 7],
+        })),
+        realm: Some(KingdomStatus {
+            halls: [0, 1, 0, 0],
+            allies: vec![0],
+            enemies: vec![1],
+        }),
+        ..Kingdom::default()
+    };
+    start
+}
+
+#[test]
+fn the_underground_s_button_and_key() {
+    let r = rules(Bugs::Original);
+    let start = underground_start();
+    let mut l = Loop::start(r.clone(), &start).unwrap();
+    l.lifted = true;
+    // The button clicked: the other level at the same corner, the hero put back, the whole
+    // screen updated (the hint hidden, the status window built again: the same), no sound.
+    l.run(1, &[Action::Press([727, 212])]).unwrap();
+    assert_eq!(l.drawn().pressed, [4]);
+    l.run(2, &[Action::Release([727, 212])]).unwrap();
+    assert_eq!(l.view, ViewAt { x: 0, y: 0, z: 1 });
+    assert_eq!((l.drawn().view.z, l.drawn().minimap.view.z), (1, 1));
+    assert!(!l.lifted && l.drawn().pressed.is_empty());
+    assert_eq!(l.drawn().hint, Hint::Empty);
+    assert_eq!(l.kingdom.status, start.kingdom.status);
+    // Its key: pressed by U, clicked by its release; back to the surface.
+    l.run(3, &[Action::Key(Hotkey::Underground)]).unwrap();
+    assert_eq!(l.drawn().pressed, [4]);
+    l.run(4, &[Action::KeyUp(Hotkey::Underground)]).unwrap();
+    assert_eq!(l.view.z, 0);
+    // A map of one level: the command does nothing (its button disabled takes nothing).
+    let mut one = start.clone();
+    one.levels = 1;
+    let mut l = Loop::start(r, &one).unwrap();
+    l.underground(1);
+    assert_eq!(l.view.z, 0);
+    l.run(2, &[Action::Key(Hotkey::Underground)]).unwrap();
+    assert!(l.drawn().pressed.is_empty());
+}
+
+#[test]
+fn the_minimap_s_click_and_its_loop() {
+    let r = rules(Bugs::Original);
+    let start = underground_start();
+    let mut l = Loop::start(r.clone(), &start).unwrap();
+    l.lifted = true;
+    let corner = |l: &Loop| [l.view.x, l.view.y];
+    // A press: the tile under it (4 pixels a tile on 36 tiles) less the view's middle, drawn with
+    // the minimap and the objects' step when due; the hero put back.
+    l.run(200, &[Action::Press([650, 50])]).unwrap();
+    assert_eq!(corner(&l), [5 - 9, 6 - 8]);
+    assert!(l.dragging && !l.lifted);
+    assert_eq!((l.drawn().view, l.drawn().minimap.view), (l.view, l.view));
+    let stepped = l.steps;
+    // Moves: inside, past the right and bottom edges (held at the edge: the last tile), past the
+    // top-left corner (the first).
+    l.run(201, &[Action::Pointer([700, 100])]).unwrap();
+    assert_eq!(corner(&l), [17 - 9, 18 - 8]);
+    l.run(202, &[Action::Pointer([790, 200])]).unwrap();
+    assert_eq!(corner(&l), [35 - 9, 35 - 8]);
+    l.run(203, &[Action::Pointer([600, 20])]).unwrap();
+    assert_eq!(corner(&l), [-9, -8]);
+    // While held, nothing else: no idle redraw, keys, steps, scrolls and the edge dropped.
+    let drawn = l.drawn().clone();
+    l.run(
+        600,
+        &[
+            Action::Key(Hotkey::NextHero),
+            Action::Step(Direction::North),
+            Action::Scroll(Direction::South),
+            Action::Press([727, 212]),
+        ],
+    )
+    .unwrap();
+    assert_eq!((l.drawn(), l.steps, l.keyed.len()), (&drawn, stepped, 0));
+    // Released where it was: no move, no redraw, then the loop's next turn redraws as due.
+    l.run(601, &[Action::Release([600, 20])]).unwrap();
+    assert!(!l.dragging);
+    assert!(l.steps > stepped);
+    // Released at another point: its move drawn first.
+    l.run(700, &[Action::Press([650, 50])]).unwrap();
+    l.run(701, &[Action::Release([740, 90])]).unwrap();
+    assert_eq!((corner(&l), l.dragging), ([27 - 9, 16 - 8], false));
+    // A click: pressed and released at once.
+    l.run(800, &[Action::Click([773, 169])]).unwrap();
+    assert_eq!((corner(&l), l.dragging), ([26, 27], false));
+    // On the underground the minimap's level follows the view.
+    l.underground(900);
+    l.run(901, &[Action::Click([630, 26])]).unwrap();
+    assert_eq!(l.drawn().minimap.view, ViewAt { x: -9, y: -8, z: 1 });
+    // A map of 108 tiles divides by 1.3333 (not the box's 1.33): its last pixel the last tile.
+    let mut big = start.clone();
+    big.size = 108;
+    let mut l = Loop::start(r.clone(), &big).unwrap();
+    l.run(1, &[Action::Press([773, 169])]).unwrap();
+    assert_eq!(corner(&l), [107 - 9, 107 - 8]);
+    l.run(2, &[Action::Pointer([700, 120])]).unwrap();
+    assert_eq!(corner(&l), [52 - 9, 70 - 8]);
+    // Without the layout's minimap, no loop.
+    let mut bare = r;
+    bare.panels = PanelItems::default();
+    let mut l = Loop::start(bare, &start).unwrap();
+    l.minimap_press(1, [650, 50]);
+    assert!(!l.dragging);
+    l.dragging = true;
+    l.drag(2, Action::Pointer([660, 60]));
+    assert_eq!(corner(&l), [0, 0]);
+}
+
+#[test]
+fn the_status_window_s_click() {
+    let r = rules(Bugs::Original);
+    let mut start = underground_start();
+    start.sound = None;
+    let hero = start.kingdom.status.clone();
+    let realm = start.kingdom.realm.clone().map(Status::Kingdom);
+    let mut l = Loop::start(r.clone(), &start).unwrap();
+    // Pressed on the window, released elsewhere: its click, the kingdom's for 3 000 ms.
+    l.run(1, &[Action::Press([700, 480])]).unwrap();
+    assert!(l.status_held);
+    l.run(2, &[Action::Pointer([700, 580])]).unwrap();
+    l.run(3, &[Action::Release([700, 580])]).unwrap();
+    assert_eq!((l.asked, l.end, l.status_held), (2, 3003, false));
+    assert_eq!((&l.kingdom.status, &l.kingdom.selection), (&realm, &hero));
+    assert_eq!(l.drawn().kingdom.status, realm);
+    // The kingdom's gives the date's (built at its first frame), the date's the hero's.
+    l.run(4, &[Action::Click([700, 480])]).unwrap();
+    assert_eq!((l.asked, l.end), (1, 3004));
+    assert_eq!(
+        l.kingdom.status,
+        Some(Status::Date(DateStatus { frame: 0 }))
+    );
+    l.run(5, &[Action::Click([700, 480])]).unwrap();
+    assert_eq!((l.asked, &l.kingdom.status), (0, &hero));
+    // The selection's while the kingdom's shows: the date's.
+    l.kingdom.status.clone_from(&realm);
+    l.run(6, &[Action::Click([700, 480])]).unwrap();
+    assert_eq!(l.asked, 1);
+    // A press the window built again drops: its release does nothing.
+    l.run(7, &[Action::Click([700, 480])]).unwrap();
+    assert_eq!(l.asked, 0);
+    l.run(8, &[Action::Click([700, 480])]).unwrap();
+    assert_eq!(l.asked, 2);
+    l.run(3000, &[Action::Press([700, 480])]).unwrap();
+    for t in 3001..=3200 {
+        l.run(t, &[]).unwrap();
+    }
+    assert_eq!(
+        (l.asked, l.status_held, &l.kingdom.status),
+        (0, false, &hero)
+    );
+    l.run(3201, &[Action::Release([700, 480])]).unwrap();
+    assert_eq!(l.asked, 0);
+    // Outside the window's picture (the area around it), or with no window known: nothing held.
+    l.run(3300, &[Action::Press([608, 392])]).unwrap();
+    assert!(!l.status_held);
+    let mut none = start.clone();
+    none.kingdom.status = None;
+    let mut l = Loop::start(r, &none).unwrap();
+    l.run(1, &[Action::Press([700, 480])]).unwrap();
+    assert!(!l.status_held);
+}
+
+/// The recorded sequences of the underground, the minimap and the status window (E24 M3 T6b2):
+/// their timelines and live parts at 0, on `seq-underground`.
+const CLICKING: [(&str, &str, &str); 3] = [
+    (
+        "underground",
+        include_str!("../../../../map/timelines/underground.txt"),
+        include_str!("../../../../map/timelines/underground-live.toml"),
+    ),
+    (
+        "minimap-drag",
+        include_str!("../../../../map/timelines/minimap-drag.txt"),
+        include_str!("../../../../map/timelines/minimap-drag-live.toml"),
+    ),
+    (
+        "status-click",
+        include_str!("../../../../map/timelines/status-click.txt"),
+        include_str!("../../../../map/timelines/status-click-live.toml"),
+    ),
+];
+
+#[test]
+fn replays_the_recorded_clicks() {
+    let situation = include_str!("../../../../map/situations/seq-underground.toml");
+    let sequences = Sequences::parse(SEQUENCES).unwrap();
+    for (id, timeline, live) in CLICKING {
+        let sequence = sequences.get(id).unwrap();
+        let mut start = start(situation, sequence.scroll_speed().unwrap());
+        start.levels = 2;
+        (start.kingdom, start.buttons) = live_kingdom(live);
+        assert!(start.kingdom.realm.is_some(), "{id}");
+        // The selected hero by the mouse-over's facts, as the binary's `selected_in` finds it.
+        let (heroes, _) = live_heroes(live);
+        let table: toml::Table = live.parse().unwrap();
+        let objects = table["anchors"].as_array().unwrap().len();
+        let facts =
+            crate::hover::Facts::read(&table["hover"], objects, heroes.len(), 36, 2).unwrap();
+        let Selected::Hero(slot) = start.kingdom.selected else {
+            panic!("{id}: no hero selected at 0");
+        };
+        let selected = facts
+            .heroes
+            .iter()
+            .position(|h| h.0 == facts.hero_list[slot].0)
+            .unwrap();
+        let hero = Hero {
+            at: heroes[selected].at,
+            facing: Direction::ALL[usize::from(heroes[selected].facing.number())],
+        };
+        start.heroes = heroes
+            .iter()
+            .map(|h| Hero {
+                at: h.at,
+                facing: Direction::ALL[usize::from(h.facing.number())],
+            })
+            .collect();
+        start.index = start.heroes.iter().position(|h| h.at == hero.at);
+        start.hero = Some(hero);
+        start.points = sequence.points(timeline).unwrap();
+        start.paths = sequence.paths(timeline).unwrap();
+        let states = play(
+            rules(Bugs::Original),
+            &start,
+            &sequence.actions().unwrap(),
+            sequence.ms,
+        )
+        .unwrap();
+        let got = lines(&states, &BTreeMap::new());
+        let want = without_screens(timeline);
+        for (n, (g, w)) in got.iter().zip(&want).enumerate() {
+            assert_eq!(g, w, "{id}: line {n}");
+        }
+        assert_eq!(got.len(), want.len(), "{id}");
+    }
 }

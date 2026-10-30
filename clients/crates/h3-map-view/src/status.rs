@@ -153,6 +153,9 @@ pub struct StatusArt {
     pub forts: Vec<u32>,
     /// The date's window (E24 M3 T5b2): its pictures and their timing.
     pub date: DateArt,
+    /// How long a click on the window asks the kingdom's or the date's window for, ms (3 000:
+    /// `adventure_command` 0x40A030; E24 M3 T6b2, design §4.14).
+    pub asked: u32,
 }
 
 /// The date's window's pictures and timing (the tables' `[map.status.date]`; E24 M3 T5b2, design

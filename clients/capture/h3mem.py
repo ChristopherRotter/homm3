@@ -1044,23 +1044,27 @@ class Mem:
             # picture's kind the game's date gives.
             return {"kind": kind, "frame": items[STATUS_DATE_DEF][0][0]}
         if kind == 2:
-            # The kingdom's (E24 M3 T5b2): the towns by their halls (villages, Town Halls, City
-            # Halls, Capitols), the players alive of the shown player's team (itself among them)
-            # and the others, each by colour.
-            halls = [0, 0, 0, 0]
-            for index in self.town_list(colour):
-                record = self.u32(self.game() + TOWNS) + TOWN_SIZE * index
-                built = struct.unpack("<Q", self.read(record + TOWN_EVERY_BUILT, 8))[0]
-                hall = next((3 - i for i, b in enumerate(HALL_BITS) if built >> b & 1), 0)
-                halls[hall] += 1
-            out = self.read(self.game() + OUT_OF_GAME, 8)
-            teams = struct.unpack("<8b", self.read(self.game() + TEAMS, 8))
-            shown = self.i32(SHOWN_PLAYER)
-            alive = [p for p in range(8) if out[p] == 0]
-            allies = [p for p in alive if shown >= 0 and teams[p] == teams[shown]]
-            return {"kind": kind, "halls": halls, "allies": allies,
-                    "enemies": [p for p in alive if p not in allies]}
+            return {"kind": kind, **self.realm(colour)}
         return {"kind": kind}
+
+    def realm(self, colour):
+        """The kingdom's status window as the game would build it now (E24 M3 T5b2, since T6b2
+        on its own: what a click on the window shows): the towns of `colour` by their halls
+        (villages, Town Halls, City Halls, Capitols), the players alive of the shown player's team
+        (itself among them) and the others, each by colour."""
+        halls = [0, 0, 0, 0]
+        for index in self.town_list(colour):
+            record = self.u32(self.game() + TOWNS) + TOWN_SIZE * index
+            built = struct.unpack("<Q", self.read(record + TOWN_EVERY_BUILT, 8))[0]
+            hall = next((3 - i for i, b in enumerate(HALL_BITS) if built >> b & 1), 0)
+            halls[hall] += 1
+        out = self.read(self.game() + OUT_OF_GAME, 8)
+        teams = struct.unpack("<8b", self.read(self.game() + TEAMS, 8))
+        shown = self.i32(SHOWN_PLAYER)
+        alive = [p for p in range(8) if out[p] == 0]
+        allies = [p for p in alive if shown >= 0 and teams[p] == teams[shown]]
+        return {"halls": halls, "allies": allies,
+                "enemies": [p for p in alive if p not in allies]}
 
     def ask_status(self, kind, end, rebuild=False):
         """Asks the status window for a kind until the clock time `end` (E24 M3 T5b2; design

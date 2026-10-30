@@ -1,0 +1,20 @@
+# The underground's button and key, the minimap's click and drag, the status window's click (E24
+# M3 T6b2; clients/map/sequences.toml `underground`, `minimap-drag`, `status-click`; E24 design
+# §4.14): a map of two levels (the writer's underground, terrains alone: patches of lava and rough
+# on subterranean, which the minimap shows), Red's two heroes and a town with a fort on the surface,
+# the first hero selected by the turn's start (its status window the hero's; the kingdom's window,
+# the live part's `realm`, counts the town).
+size = 36
+terrain = "grass"
+patches = [{ terrain = "dirt", from = [20, 4], to = [30, 12] }]
+underground = { terrain = "subterranean", patches = [
+    { terrain = "lava", from = [2, 2], to = [12, 10] },
+    { terrain = "rough", from = [18, 20], to = [30, 30] },
+] }
+heroes = [
+    { at = [10, 12], class = 2 },
+    { at = [26, 26], class = 4 },
+    { at = [30, 6], owner = 1 },
+]
+towns = [{ at = [6, 26], faction = 0, owner = 0, buildings = "fort" }]
+view = [0, 0, 0]

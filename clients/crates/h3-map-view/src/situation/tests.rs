@@ -90,6 +90,35 @@ fn a_plain_map_with_two_heroes() {
 }
 
 #[test]
+fn an_underground_of_terrains() {
+    // E24 M3 T6b2 (design §4.14): the writer's second level, its terrain and patches, no objects.
+    let text = r#"
+size = 36
+terrain = "grass"
+underground = { terrain = "subterranean", patches = [{ terrain = "lava", from = [2, 2], to = [3, 3] }] }
+heroes = [{ at = [34, 34], class = 2 }, { at = [34, 1], owner = 1 }]
+view = [0, 0, 0]
+"#;
+    let (map, _) = Situation::parse(text)
+        .unwrap()
+        .build(&BTreeMap::new(), &[])
+        .unwrap();
+    let under = map.underground.unwrap();
+    assert_eq!(
+        (under.terrain, under.patches.len()),
+        (Terrain::Subterranean, 1)
+    );
+    assert!(under.objects.is_empty());
+    let art = art(text);
+    assert_eq!(art.levels, 2);
+    assert_eq!(art.tile(2, 3, 1).unwrap().terrain.code, 7);
+    assert_eq!(art.tile(5, 5, 1).unwrap().terrain.code, 6);
+    assert_eq!(art.tile(5, 5, 0).unwrap().terrain.code, 2);
+    // Without one, one level.
+    assert_eq!(self::art(PLAIN).levels, 1);
+}
+
+#[test]
 fn patches_roads_copies_and_tiles_in_order() {
     let drawn = art(r#"
 size = 36

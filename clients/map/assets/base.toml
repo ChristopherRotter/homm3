@@ -205,6 +205,9 @@ skills = { top = 99, bottom = [0, 0, 1, 1] }
 thousands = 10000
 halls = [11, 12, 13]
 forts = [7, 8, 9]
+# A click on the window asks the kingdom's or the date's for this long, ms (adventure_command's
+# 0x40A030, E24 M3 T6b2; design §4.14).
+asked = 3000
 
 # What a tile records of its objects (E24 M2 T5, moved out of the sounds' table at M3 T3a; design §4.4,
 # rules/surveys/E08-objects.md §2.5: tile_refresh_object 0x505610): the topmost object whose
@@ -227,19 +230,21 @@ hole = 124
 # owner's colour (the switch 0x412FF0's cases 0 to 4) and those whose blocked tiles take the
 # terrain's blocked colour (case 5, table 0x413670); by the map's size each tile's pixels (the
 # columns' and rows' counters, 0x413198) and the box, radar.def's frame and the scale of the view's
-# corner (an f32 by its bits: 4.0, 2.0, 1.33, 1.0; 0x4132C5); another size draws no tile.
+# corner (an f32 by its bits: 4.0, 2.0, 1.33, 1.0; 0x4132C5); another size draws no tile. A click's
+# point less the area's corner is divided by `click` for its tile (minimap_click 0x40A11C, E24 M3
+# T6b2: 4.0, 2.0, 1.3333, else 1.0).
 [map.minimap]
 radar = "radar.def"
 terrain = [8, 9]
 owned = [17, 20, 33, 42, 53, 87, 98]
 blocking = [116, 118, 119, 121, 123, 126, 128, 131, 133, 134, 135, 137, 148, 149, 152, 153, 154,
             155, 158, 159, 160]
-other = { frame = 1, scale = 0x3F800000 }
+other = { frame = 1, scale = 0x3F800000, click = 0x3F800000 }
 sizes = [
-  { size = 36, columns = [4], rows = [4], radar = { frame = 4, scale = 0x40800000 } },
-  { size = 72, columns = [2], rows = [2], radar = { frame = 3, scale = 0x40000000 } },
-  { size = 108, columns = [2, 1, 1], rows = [1, 1, 2], radar = { frame = 2, scale = 0x3FAA3D71 } },
-  { size = 144, columns = [1], rows = [1], radar = { frame = 1, scale = 0x3F800000 } },
+  { size = 36, columns = [4], rows = [4], radar = { frame = 4, scale = 0x40800000, click = 0x40800000 } },
+  { size = 72, columns = [2], rows = [2], radar = { frame = 3, scale = 0x40000000, click = 0x40000000 } },
+  { size = 108, columns = [2, 1, 1], rows = [1, 1, 2], radar = { frame = 2, scale = 0x3FAA3D71, click = 0x3FAAA993 } },
+  { size = 144, columns = [1], rows = [1], radar = { frame = 1, scale = 0x3F800000, click = 0x3F800000 } },
 ]
 
 # The map's sounds (E24 M2 T5; design §3.11): the ambient loops by the original's index
