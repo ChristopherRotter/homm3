@@ -70,6 +70,16 @@ T6 cut with the user (2026-10-30) in two: T6a the mouse-over, T6a cut again (202
 Other lanes add entries here. The map client lane turns each into a task, or keeps one line here
 while the work waits.
 
+- 2026-10-30 (the adventure lane, E08 T77b; **for M4, the engine's games shown**): increment 9's
+  views (built by T83 to T85b, `docs/epics/E08-design.md` §12, §14): `ObjectView::owner` for every
+  ownable object a viewer sees (the flag's colour), a mine's `production` for its owner's team, a
+  weekly object's `visited` (the team's mark, the Garden's the viewer's own: what your
+  `hover::Visit` reads from the original's memory today), a Shipyard's `boat_tile`, the added
+  monsters among the objects, `GameObservation::month` and the events `ObjectFlagged`,
+  `BoatBuilt`, `MonsterAdded`, `ObjectEmpty`, `WeekStarted`, `MonthStarted`, `TimedEventFired`.
+  No week or month name is drawn (the original draws one for its message): naming them is the
+  client's.
+
 - 2026-10-23 (the client lane, E17 M3 T9c, at the split): moved here from the client lane's
   inbox, the adventure lane's entry of 2026-10-21 (E08 T30, decision 65, ADR-0017 point 6 amended
   in #353; for the hot-seat client, E24 M5): **a level-up holds the game.**

@@ -4,23 +4,24 @@ Pre-refined tasks of the adventure lane, in order, then the inbox of discovered 
 
 ## Tasks
 
-Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T76 (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 8 are closed (2026-10-12, -13, -20, -21, -23, -26, -28, -30; increment 8, boats and the sea, by T76's audit). **Increment 9, mines, the week and owned objects**, refined with the user at T76 (ADV-Q36; decisions 192, 193): the survey and the ADR amendment drafts first (T77a, T77b), each task's cut confirmed with the user at its start. T77a in two (decision 194): T77a1 done (`adventure/e08-t77a1`: survey `E08-economy.md` §0 to §6), T77a2 done whole (decision 195; `adventure/e08-t77a2`: §7 to §18, the checkpoint's `ADV-Q37`). Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
+Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T76 (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 8 are closed (2026-10-12, -13, -20, -21, -23, -26, -28, -30; increment 8, boats and the sea, by T76's audit). **Increment 9, mines, the week and owned objects**, refined with the user at T76 (ADV-Q36; decisions 192, 193): the survey and the ADR amendment drafts first (T77a, T77b), each task's cut confirmed with the user at its start. T77a in two (decision 194): T77a1 done (`adventure/e08-t77a1`: survey `E08-economy.md` §0 to §6), T77a2 done whole (decision 195; `adventure/e08-t77a2`: §7 to §18, the checkpoint's `ADV-Q37`). T77b done whole (decision 200; `adventure/e08-t77b`: the drafts, `E08-design.md`, the cut in rounds 2 to 8, decision 202; the checkpoint's `ADV-Q38`, decisions 201–204). Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
 
-**E08 T77b — The ADR amendment drafts, the design note and the cut**
+**E08 T78 — Batch E9's maps and specs**
 
-- **Scope:** from T77a's survey and the answers at its checkpoint: the amendment drafts of the
-  ADRs it touches (ADR-0016 for owned objects, the day's and the week's changes on the map;
-  ADR-0017 for the day's and the week's order in the game and the income into the treasury;
-  ADR-0013 if `h3-heroes` gains rules, such as the Lighthouse's sea points), `E08-design.md`
-  written for increment 9 (with its exit criteria), the building tasks cut in rounds; the
-  checkpoint's questions (an `ADV-Q`). The user accepts the drafts and the cut before anything is
-  built (decision 193).
-- **Inputs:** the survey's §13 (the interfaces), §14 (D-49, D-50, A-32; A-31 corrected), §15
-  (batch E9's plan, its harness and spec gaps), §16 (the rule ids) and §18; `ADV-Q37`'s answers,
-  decisions 196–199 (the scope grown by the heroes' income, the day's spell points and the
-  month's monsters; batch E9 whole before the build).
-- **Depends on:** T77a and its checkpoint (both done). **Status:** ready; its cut confirmed at
-  its start.
+- **Scope:** increment 9's design note §4 (the writer) and §17: `h3_map::writer` writes the seven
+  classes with their bodies (a mine's owner by subclass, an abandoned mine's resource set, a
+  Lighthouse's and a Shipyard's owner, the three weekly objects) and the map's timed events (it
+  writes none today), with tests that read them back; the spec's fields in `h3-experiment`
+  (battle-owned, `cross-lane` by decisions 198 and 202): mines by subclass with an owner and
+  guards, the abandoned mine's set, Lighthouses, Shipyards, the weekly objects, a monster's "does
+  not grow", timed events, a hero's Estates, Mysticism and specialty; the specs `E08-batch-9a`
+  (E9-1 to E9-5) and `-9b` (E9-6 to E9-12) with their templates and each row's prediction (survey
+  §15, plus design §17's two: E9-2 who plays Blue's guards, E9-4 the Lighthouses' surroundings at
+  day 1). `docs/experiments/README.md` names the new fields.
+- **Inputs:** survey `E08-economy.md` §15 (the plan, the harness's and the spec's gaps); design
+  §4, §17; T67's record in `E08-log.md` (increment 8's writer and specs, the same shape).
+- **Depends on:** T77b (done; ADV-Q38 answered, decisions 201–204). **Status:** ready; its cut
+  confirmed at its start (T67 was taken whole).
 
 ## Inbox
 
