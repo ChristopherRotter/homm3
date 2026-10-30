@@ -451,10 +451,16 @@ def set_view(game, mem, vx, vy, vz):
     game.move(*h3adv.PARK)
 
 
+# A point over the minimap (E24 M3 T7a): another item than the parked button.
+MINIMAP_POINT = (700, 80)
+
+
 def show_path(game, mem, sit, view):
     """The path a situation's hero shows (E24 M1 T5b2; design §2.10): the hero selected (the hero
     list centres the view on it), the view set again, the path's tile clicked once (as
-    `h3adv.walk`'s first click), the mouse parked; checked to show an arrow on that tile."""
+    `h3adv.walk`'s first click), the mouse parked; checked to show an arrow on that tile; since M3
+    T7a the mouse over the minimap and parked again, so that the status bar shows the parked
+    button's hint."""
     for hero in sit.get("heroes", []):
         if "path" not in hero:
             continue
@@ -466,6 +472,14 @@ def show_path(game, mem, sit, view):
         game.move(*h3adv.PARK)
         h3adv.wait_for(lambda: [tx, ty, view[2]] in [a[:3] for a in mem.path_arrows()],
                        lambda: f"the path to {(tx, ty)} shown ({mem.path_arrows()})")
+        # The status bar (E24 M3 T7a, the hint compared): the staging's redraws (the selection's
+        # lists, MCL-Q22; the path's) leave it empty with the parked button the item looked at
+        # last, so a move back to the parking alone shows no text (`path-objects`, `path-edge`).
+        # Over the minimap and back, the parked button's hint shows, as in every other still.
+        game.move(*MINIMAP_POINT)
+        time.sleep(0.5)
+        game.move(*h3adv.PARK)
+        time.sleep(0.5)
 
 
 def write_map(situation_path, sit, map_path):
