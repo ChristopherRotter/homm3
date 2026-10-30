@@ -849,7 +849,7 @@ numeric  = "integer"
 id       = "GAM-BAT-010"
 title    = "A battle on the map: the game's difficulty and which sides count as human"
 context  = "game"
-status   = "implemented"
+status   = "verified"
 summary  = "When the game builds a battle's setup (GAM-BAT-001) it passes the game's difficulty (the setup's, kept by the adventure state) and, per side, whether its player counts as human (`BattleSetup.human`): the player's flag of the game's setup (`PlayerSetup.human`), false for a side without a player (a monster, guards). A map's import sets the flag from the map's player kinds: a colour a human may play is human, a computer-only colour is not; whoever seats the players (an env, the server) may change it before the game is built, and an agent counts as whatever the setup says (ADV-Q27). The flag decides no one's commands; the battle reads it for the original's computer's choices and, with BAT-QUIRK-27 (faithful), the bad-morale let-off of a side without a human player (BAT-MOR-004), which before E08 T54 reached every side of a game's battle. It is hashed with the players (game state hash v14). Other readers of the original's flag (a computer player's starting resources, GAM-RES-002; its loose formation, ADV-QUIRK-8; its tactics flag, GAM-BAT-009) wait for E10's computer players. E08 T54: `PlayerSetup::human`, `GameState::human`, `start_battle`; `h3_map`'s import `players`."
 numeric  = "integer"
 quirks   = ["BAT-QUIRK-27"]
@@ -863,6 +863,13 @@ quirks   = ["BAT-QUIRK-27"]
   kind       = "design"
   ref        = "E08 decision 123 (the battle seam's facts first) and the user at ADV-Q27 (E08 decision 124, T54's start): the flag of the game's setup, the import's default from the map's player kinds, a session may change it"
   confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-9a.md E9-1, E9-2 (stamp bfafdcac, the capture harness, Complete 4.0 Heroes3.exe under Wine without HD, hot seat, Easy, 2026-10-30): the battle's per-side human flag (+0x54A4) 1 for Red's hero, 0 for an abandoned mine's Troglodytes (no player), 1 for Blue's guards of its own mine (a human player's side)"
+  retrieved  = "2026-10-30"
+  confidence = "high"
+  note       = "E08 T80 (survey E08-economy.md §19); an owned mine's guards with their owner's flag are built by E08 T84 (design E08-design.md §13)."
 
 [[rule]]
 id       = "GAM-BAT-011"

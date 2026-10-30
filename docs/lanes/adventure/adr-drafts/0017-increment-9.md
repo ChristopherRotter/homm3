@@ -2,6 +2,7 @@
 
 - Status: Proposed (E08 T77b, 2026-10-30); accepted by the user at ADV-Q38 (E08 decisions
   201–204) with decision 201's two changes written in, applied by T81 with batch E9's outcome
+  (folded in by E08 T80: D-47 confirmed, E9-2 the owner's guards; survey §19)
 - Amends: ADR-0017 points 1, 3, 4, 6, 8, 10 and 11, and its consequences
 - Sources: survey `docs/rules/surveys/E08-economy.md` §2 to §5 (T77a1), §7 to §13 (T77a2); the
   answers at ADV-Q36 and ADV-Q37 (the epic's decisions 192, 193, 196–199); the working detail in
@@ -104,16 +105,16 @@ later weeks' from the game's: a game's build draws nothing from the game's strea
 
 > **Increment 9's battles** (GAM-BAT-001 amended): a mine's guards defend on the mine's entrance.
 > A neutral mine's single stack is a wandering monster's defender (split as a monster's,
-> `ADV-QUIRK-6`'s draws; D-47 as batch E9 decides); any other guards defend as an army without a
-> hero: a neutral mine's played by the neutral seat, an owned mine's by its **owner**, who answers
-> outside its turn as a hero battle's defender (the original names the owner the defending side's;
-> whether it hands that player the control was not read: batch E9's E9-2 records it). The battle
+> `ADV-QUIRK-6`'s draws; D-47, confirmed by batch E9's E9-1); any other guards defend as an army
+> without a hero: a neutral mine's played by the neutral seat, an owned mine's by its **owner**,
+> who answers outside its turn as a hero battle's defender (the original hands its human owner
+> the guards' side, each stack waiting for its order: batch E9's E9-2). The battle
 > terrain is the mine type's when it has one (the subterranean of the crystal, gold and abandoned
 > mines), else the tile's. The guards' survivors stay on the mine; a win flags it for the
 > attacker.
 
-*Agent's call:* the owner plays its mine's guards (a side with an owner is its owner's, as a
-hero's), not the neutral seat; E9-2 checks it in hot seat.
+*Agent's call, confirmed by batch E9 (E08 T80):* the owner plays its mine's guards (a side with
+an owner is its owner's, as a hero's), not the neutral seat; E9-2 showed it in hot seat.
 
 ## Consequences: appended
 
@@ -136,4 +137,4 @@ hero's), not the neutral seat; E9-2 checks it in hot seat.
 >   turn start; the month's kind; the streams of the setup's and the day's draws; Leave Guards as
 >   a kept army dialog, the boat offer; the env's `BuildBoat`; a mine's guards in battle, an owned
 >   mine's played by its owner. Drafted in E08 T77b (survey `E08-economy.md`), batch E9's outcome
->   folded in.
+>   folded in (E08 T80).
