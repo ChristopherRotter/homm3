@@ -2319,7 +2319,10 @@ panel's Surrender and Retreat (`battle_buttons` 0x474FA1 to 0x475151); the book'
   20 and each picture row's height and its caption's (+ 20 between rows) with pictures; rounded
   up to 64, at least 128; the text's top 30 + (box − that sum) / 2 (C division). The place: when
   x is −1 or x + width ≥ 799, (800 − width) / 2; when y is −1 or y + height ≥ 599,
-  (600 − height) / 2.
+  (600 − height) / 2. *The client's* (T8b2, R5a-3): a word wider than 578 starts the text's
+  width at 578, not at the word's, and the box is at most 768 × 576, so a server's long name
+  cannot make a box past the screen of unbounded frame items (their ids would wrap round into
+  the text's and the buttons'); no text of the game reaches either.
 - **The picture slot** (0x4F4EB0, type 9 a spell): the DEF `spellScr.def`, its frame the spell's
   number, its caption the spell's name; the slot's size the DEF's width and height + 2 (85 × 63);
   the caption's width the widest of 50, the picture's and its words' (each 2 + its glyphs in
@@ -2353,7 +2356,9 @@ panel's Surrender and Retreat (`battle_buttons` 0x474FA1 to 0x475151); the book'
   hidden (a choice's mark). The cursor: the default one's frame 0 (`mouse_set_cursor(0, 0)` at
   0x4F74AC), the one before restored at the end.
 - **Its input** (the modal loop 0x602520 with 0x4F08D0, then 0x4F0FC0): the input queue emptied
-  as it opens; the battle stands still behind it; a button's command (its click: released over
+  as it opens (the client: the presses and key-downs of the window's pass it opens in, after the
+  input that opened it, are dropped; the key-ups, moves and Quit kept); the battle stands still
+  behind it; a button's command (its click: released over
   it, or its hotkey released) of id 0x7800 to 0x7806 closes the box, the window manager's +0x38
   that id (0x7802 the picture chosen in styles 7 and 10). A style-1 box has no hotkey but Enter.
 - **Retreat** (2002, `R`): style 2 with GENRLTXT 29 ("Are you sure you want to retreat?"); OK
@@ -2382,7 +2387,9 @@ panel's Surrender and Retreat (`battle_buttons` 0x474FA1 to 0x475151); the book'
   single quotes. `h3_formats::text` keeps the doubled quotes: the client's catalogue makes each
   run one when it reads a table's field (`text::pack`, not the executable's own strings).
 - **Built:** `h3_render::text`'s `widest_word`, `widest_line`, `wrapped_width` and
-  `blit::draw_image_keyed_in_clipped`; `h3_view::message` (`layout`: the record's layout, the
+  `blit::draw_image_keyed_in_clipped` (T8b2, R5a: in `line_count` and `wrapped_width` a second
+  line with no place to break, a space wider than the width or a width of 0, would send the
+  executable's loop back to the text's start for ever: it ends at its first glyph); `h3_view::message` (`layout`: the record's layout, the
   frame's tiles and pieces, the text, the buttons, one picture and its caption as `ui` items in
   the executable's order, the pieces in the viewing player's colours through `Shown::players`;
   `Open`: a press, a move off and back, a release over the button, a key down and up, as the
@@ -2397,7 +2404,8 @@ panel's Surrender and Retreat (`battle_buttons` 0x474FA1 to 0x475151); the book'
   book, "affects no one" over the battle; the battle and the book standing still behind it, the
   default cursor's frame 0), the window's keys and mouse while it is open (every key but the
   viewer's own goes to it: Escape is Cancel's, never the window's), unattended runs' `--leave
-  retreat|surrender` (the button clicked, the question shown 400 ms, its OK clicked); the stills'
+  retreat|surrender` (the button clicked, the question shown 400 ms, its OK clicked; a notice's
+  box too: the 400 ms by the window's clock, which the box does not hold); the stills'
   actions `key:r`, `key:s`, a box's `key:` and `click:` (`spellbook::still`). *Provisional:* the
   viewing player taken as the attacker's when a human plays it here, else the defender's (the
   client knows no adventure map's turn; the executable falls back on the game's highest human
