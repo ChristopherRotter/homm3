@@ -3422,6 +3422,38 @@ next); CLT-Q34 answered (a), copy both.
   elementals (speed 6), the engine's with the Swordsmen (5): the battle lane's inbox.
 - **Found:** review items 43 to 47; no question.
 
+### M5 T6a — The connection, headless (2026-10-30)
+
+On `claude/optimistic-mayer-bo0pv5` (the session's branch; the lane inferred from its paths), the
+user present at the start, no original data in the session. Asked at the start: the dependency
+(the server's stack, the I/O thread alone blocking: the user's yes) and the cut (the user: the
+infrastructure that needs no original content now; the window and the record that opens
+mid-battle, T6b, with the original data).
+
+- **Built** (design §11.1): the client workspace's dependencies (`tungstenite` 0.30, `rustls`
+  0.23 without defaults, `rustls-graviola` 0.4, `rustls-native-certs` 0.8, `ed25519-dalek` 3,
+  `getrandom` 0.3: the engine's versions; `cargo deny` as the engine's), the binary's only.
+  `h3_view::remote` (pure): `Client` (the hello, the welcome's checks, the pin, `join`,
+  `create`, the record fetched at `Joined` and grown, `command`, `turn`, `over`), `Note`,
+  `Fault`, `number`, `content`, `Pins`. The binary's `net` (the I/O thread, `Connection`,
+  `os_roots`, `verify`, `nonce`) and `connect` (`h3-view connect`: the session, the plain
+  player, `--create`, `--drop`).
+- **Tested:** `remote` 13 tests at 100 % of lines and regions; `connect` 6 over loopback against
+  a host of `h3-protocol`'s `Connection` and `Session` on threads (plain and TLS with the server
+  tests' certificate: a battle against the host's bot to its end; two seats over `wss://`, the
+  defender dropping after its first command and re-joining mid-battle; a changed key, a wrong
+  token, a bad address and pins file; no packs `Absent`), twenty runs in a row passing.
+- **Run against `h3-server`** (built from `master`, a duel offer with and without the server's
+  bot): the key pinned, a game created and played to its end against the bot (content `Same`);
+  two headless players on one created game, the defender taking the free seat without a token
+  and dropping after 2 commands, re-joining by the token the server handed it: the battle had
+  ended meanwhile, its record holding the end and then the re-join's snapshot (12 messages),
+  the attacker's the end (13).
+- **Not built (T6b):** the window over a server, a re-join after a server restart (the headless
+  session ends on a closed connection; `remote` starts every connection's record afresh), the
+  record that opens mid-battle drawn (R2-8, R1-3), `remote_turn`.
+- **Found:** review items 48 to 51; no question.
+
 ## Accepted review lists (M1 to M4)
 
 M1 and M2 moved from the epic file on 2026-10-20 (less start-up reading), unchanged; M3 at its
