@@ -95,12 +95,17 @@ commands:
           --cues writes each cue played with the clock's millisecond. Every key goes through a
           table of commands (E24 M2 T4a, provisional): F2 switches the music, F3 the effects, F5
           pauses, F6 shows the next frame while paused, F7 restarts, F8 turns vsync on or off, F9
-          the cursor's kind, F11 fullscreen, Esc quits (the battle window's own keys too). A
-          user's file (--keys, else keys.toml in the working directory when there is one; its
-          [map] table, the battle window's [battle]) overrides the defaults command by command,
-          e.g. `[map]` then `pause = [\"Space\"]`, `quit = [\"Escape\", \"Ctrl+F12\"]` (the
-          commands: scroll-north ... scroll-north-west, hero-north ... hero-north-west, music,
-          effects, pause, frame, restart, vsync, cursor, fullscreen, quit; [] unbinds one).
+          the cursor's kind, F11 fullscreen, Esc quits (the battle window's own keys too); the
+          panels' hotkeys are the original's letters (E24 M3 T6b1), Space chooses the selected
+          hero again and visits what it stands on (T6b3). A user's file (--keys, else keys.toml
+          in the working directory when there is one; its [map] table, the battle window's
+          [battle]) overrides the defaults command by command, e.g. `[map]` then `pause =
+          [\"P\"]`, `quit = [\"Escape\", \"Ctrl+F12\"]` (the commands: scroll-north ...
+          scroll-north-west, hero-north ... hero-north-west, kingdom-overview, underground,
+          quest-log, sleep, wake, move-hero, cast-spell, adventure-options, system-options,
+          next-hero, end-turn, visit, music, effects, pause, frame, restart, vsync, cursor,
+          fullscreen, quit; [] unbinds one). Without the window's focus the effects are held
+          and the music fades out, both coming back with it (T6b3).
           --bugs defaults to fixed; original reproduces the original's bugs (the drawing's as for
           render, the edge zones, MCL-Q8's ambient loops sharing a bit, MCL-Q12's music kept on
           the wrong terrain).

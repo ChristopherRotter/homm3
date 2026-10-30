@@ -529,3 +529,129 @@ fn the_queue_waits_for_a_track_being_decoded() {
     assert_eq!(q.heard_at(), 30);
     assert_eq!(line(&s.heard), join(fade_in("slow", 0).into_iter().take(3)));
 }
+
+/// E24 M3 T6b3: the focus lost while a track plays whole: the stub fades it out from where it
+/// is (its place kept), then nothing; regained, it fades in again there.
+#[test]
+fn the_focus_lost_fades_the_track_out_and_regained_back_in() {
+    let mut m = playing_a(200);
+    assert!(m.active());
+    m.focus(false);
+    assert!(!m.active());
+    let runs = m.advance(150, &tracks);
+    assert_eq!(line(&runs), join(fade_out("A", 200)));
+    assert_eq!(
+        (m.place("A"), m.playing(), m.pending()),
+        (Some(200), None, None)
+    );
+    // Only a change counts.
+    m.focus(false);
+    assert!(m.advance(50, &tracks).is_empty());
+    m.focus(true);
+    assert_eq!(m.pending(), Some("A"));
+    let runs = m.advance(100, &tracks);
+    let mut want = fade_in("A", 200);
+    want.push(("A", 290, 10, FULL));
+    assert_eq!(line(&runs), join(want));
+}
+
+/// The stub waits for the fade-in's end (the thread holds the lock through it).
+#[test]
+fn the_focus_lost_during_a_fade_in_fades_out_after_it() {
+    let mut m = playing_a(30);
+    m.focus(false);
+    let runs = m.advance(60 + 90 + 10, &tracks);
+    let mut want: Vec<_> = fade_in("A", 0).into_iter().skip(3).collect();
+    want.extend(fade_out("A", 90));
+    assert_eq!(line(&runs), join(want));
+    assert_eq!(m.place("A"), Some(90));
+}
+
+/// Regained during the fade-out: the fade runs to its end, then the track fades in where it
+/// began.
+#[test]
+fn the_focus_regained_during_the_fade_out_brings_the_track_back() {
+    let mut m = playing_a(200);
+    m.focus(false);
+    let _ = m.advance(40, &tracks);
+    m.focus(true);
+    let runs = m.advance(50 + 90, &tracks);
+    let mut want: Vec<_> = fade_out("A", 200).into_iter().skip(4).collect();
+    want.extend(fade_in("A", 200));
+    assert_eq!(line(&runs), join(want));
+}
+
+/// A track asked for without the focus opens but never starts: silence, its place its own; with
+/// the focus again it fades in there. A stream already fading out for another track is faded by
+/// its own thread: the stub has nothing left.
+#[test]
+fn a_track_opened_without_the_focus_waits_for_it() {
+    let mut m = playing_a(200);
+    m.request("B");
+    let _ = m.advance(30, &tracks);
+    m.focus(false);
+    let runs = m.advance(60 + 100, &tracks);
+    assert_eq!(line(&runs), join(fade_out("A", 200).into_iter().skip(3)));
+    assert_eq!(m.playing(), Some("B"));
+    // Asked for again meanwhile: B's held stream closed (its place kept), C opened, held too.
+    assert_eq!(m.request("B"), Request::Taken);
+    assert_eq!(m.request("C"), Request::Taken);
+    assert!(m.advance(50, &tracks).is_empty());
+    assert_eq!((m.playing(), m.place("B")), (Some("C"), Some(0)));
+    m.focus(true);
+    let runs = m.advance(95, &tracks);
+    let mut want = fade_in("C", 0);
+    want.push(("C", 90, 5, FULL));
+    assert_eq!(line(&runs), join(want));
+}
+
+/// Lost while a track is being decoded: decoded without the focus, it is held; nothing to
+/// regain without a track ever opened.
+#[test]
+fn the_focus_and_a_track_being_decoded() {
+    let mut m = Music::new(RATE, Bugs::Fixed);
+    m.focus(false);
+    m.focus(true);
+    assert_eq!(m.pending(), None);
+    m.request("slow");
+    let _ = m.advance(10, &tracks);
+    m.focus(false);
+    let ready = |name: &str| match name {
+        "slow" => Track::Frames(400),
+        other => tracks(other),
+    };
+    assert!(m.advance(100, &ready).is_empty());
+    assert_eq!(m.playing(), Some("slow"));
+    m.focus(true);
+    let runs = m.advance(20, &ready);
+    assert_eq!(line(&runs), join(fade_in("slow", 0).into_iter().take(2)));
+    // A missing track asked for again with the focus: nothing.
+    let mut gone = Music::new(RATE, Bugs::Fixed);
+    gone.request("gone");
+    let _ = gone.advance(10, &tracks);
+    gone.focus(false);
+    gone.focus(true);
+    assert!(gone.advance(100, &tracks).is_empty());
+}
+
+/// The queue: a change of the focus takes back what is queued (the track at the whole) and
+/// queues the fade from the frames heard; the same focus again changes nothing.
+#[test]
+fn the_queue_follows_the_focus() {
+    let (mut q, mut s) = (Queue::new(RATE, Bugs::Fixed), Device::default());
+    cue(&mut q, &mut s, "A");
+    run(&mut q, &mut s, 200, 20);
+    assert!(!q.focus(true, s.queued(), &tracks));
+    assert!(q.focus(false, s.queued(), &tracks));
+    s.queue.clear();
+    run(&mut q, &mut s, 200, 20);
+    assert!(q.focus(true, s.queued(), &tracks));
+    s.queue.clear();
+    run(&mut q, &mut s, 100, 20);
+    let mut want = fade_in("A", 0);
+    want.push(("A", 90, 110, FULL));
+    want.extend(fade_out("A", 200));
+    want.extend(fade_in("A", 200));
+    want.push(("A", 290, 10, FULL));
+    assert_eq!(line(&s.heard), join(want));
+}

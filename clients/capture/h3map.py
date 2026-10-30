@@ -916,15 +916,18 @@ INPUTS = ("keydown", "keyup", "pointer", "click", "press", "release")
 # The keys a sequence may press (M2 T6a, the reviewer's R3-7: xdotool only warns about a name it
 # does not know and exits 0, so a typo recorded a sequence without its input): the eight
 # direction keys, as `h3_map_view::sequence`'s DIRECTION_KEYS, with or without `ctrl+`; since
-# E24 M3 T6b1 the panels' buttons' hotkeys (`h3_map_view::timeline::Hotkey`'s letters).
+# E24 M3 T6b1 the panels' buttons' hotkeys (`h3_map_view::timeline::Hotkey`'s letters); since
+# T6b3 Space (`space`: the selected hero chosen again, its tile visited).
 DIRECTION_KEYS = ("Up", "Prior", "Right", "Next", "Down", "End", "Left", "Home")
 HOTKEYS = ("k", "u", "q", "z", "w", "m", "c", "a", "o", "h", "e")
+OTHER_KEYS = ("space",)
 
 
 def known_key(name):
     """Whether `name` is a key a sequence may press: a direction key, `ctrl+` before it or not,
-    or a hotkey's letter."""
-    return name.removeprefix("ctrl+") in DIRECTION_KEYS or name in HOTKEYS
+    a hotkey's letter or Space."""
+    return (name.removeprefix("ctrl+") in DIRECTION_KEYS or name in HOTKEYS
+            or name in OTHER_KEYS)
 
 
 def sequence_inputs(entry):
@@ -955,7 +958,7 @@ def sequence_inputs(entry):
         kind, value, t = kinds[0], i[kinds[0]], i["at"]
         if kind in ("keydown", "keyup") and not known_key(value):
             raise ValueError(f"{entry['id']}: the key `{value}` at {t}: not one of {DIRECTION_KEYS} "
-                             f"(with `ctrl+` or not) or {HOTKEYS}")
+                             f"(with `ctrl+` or not), {HOTKEYS} or {OTHER_KEYS}")
         if not last <= t <= entry["ms"]:
             raise ValueError(f"{entry['id']}: an input at {t}: out of order or outside 1 to "
                              f"{entry['ms']}")
@@ -1022,7 +1025,7 @@ def sequence(entry, out):
         kept.mkdir(parents=True)
         # Keys a killed run left down stay down on the display (M2 T6a, the reviewer's R3-4):
         # Control would turn the walks' keys into scrolls.
-        h3drive.run("xdotool", "keyup", "ctrl", *DIRECTION_KEYS)
+        h3drive.run("xdotool", "keyup", "ctrl", *DIRECTION_KEYS, *OTHER_KEYS)
         # The objects' phases fixed (T1b): the load gives each a random one (design §1.6), and
         # where an object's frames repeat a picture the screen's changed box at a redraw moved
         # with it from run to run (the frame steps too: below). The live part at 0 reads them.

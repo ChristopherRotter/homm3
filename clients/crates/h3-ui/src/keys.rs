@@ -205,7 +205,7 @@ impl<C: Command> Keys<C> {
 
     /// The defaults with a user's file over them: a TOML file of the viewers' tables
     /// ([`VIEWERS`]), this viewer's ([`Command::TABLE`]) of commands by their names, each with the
-    /// list of its chords (`[map]`, then `pause = ["F5", "Space"]`); a command the table leaves
+    /// list of its chords (`[map]`, then `pause = ["F5", "P"]`); a command the table leaves
     /// out keeps its default keys, an empty list unbinds it; a file without the viewer's table is
     /// the defaults.
     ///

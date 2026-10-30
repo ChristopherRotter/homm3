@@ -166,6 +166,60 @@ pub enum Action {
     Key(Hotkey),
     /// A panel button's hotkey released: the button it pressed clicks.
     KeyUp(Hotkey),
+    /// Space (E24 M3 T6b3, design §4.15): the selected hero chosen again when it stands on its
+    /// tile (the view centred on it), then the object it stands on visited.
+    Visit,
+    /// Another key released (a direction key's, Space's; E24 M3 T6b3): a message in the input
+    /// queue (`input_key_message` 0x4EC0E0, kind 2) that does nothing on the map.
+    Up,
+}
+
+impl Action {
+    /// The input messages it is (`input_key_message` 0x4EC0E0, `input_mouse_message` 0x4EC290;
+    /// design §4.15): a click two, a button's down and up; everything else one (*provisional*: a
+    /// scroll's Control key, its own down and up, is not counted).
+    #[must_use]
+    pub const fn messages(self) -> usize {
+        match self {
+            Self::Click(_) => 2,
+            _ => 1,
+        }
+    }
+
+    /// Whether its message ends a path's walk after the step under way (`hero_move_loop`
+    /// 0x407FA7: a key down, kind 1; the left button's or the right one's down, 8 and 0x20; a
+    /// control's, 0x200).
+    #[must_use]
+    pub const fn ends_walk(self) -> bool {
+        matches!(
+            self,
+            Self::Step(_)
+                | Self::Scroll(_)
+                | Self::Click(_)
+                | Self::Press(_)
+                | Self::Key(_)
+                | Self::Visit
+        )
+    }
+}
+
+/// The input manager's ring holds 64 messages, of which 63 wait: the 64th written drops the
+/// oldest (`input_key_message` 0x4EC1D9, `input_mouse_message` 0x4EC3F1; design §3.4, §4.15).
+pub const QUEUED: usize = 63;
+
+/// The actions waiting kept to the ring's [`QUEUED`] messages, the oldest dropped (a click's down
+/// before its up).
+fn keep_ring(queued: &mut Vec<Action>) {
+    let mut n: usize = queued.iter().map(|a| a.messages()).sum();
+    while n > QUEUED {
+        // More than the ring holds: never empty.
+        if let Some(Action::Click(at)) = queued.first().copied() {
+            queued[0] = Action::Release(at);
+        } else {
+            queued.remove(0);
+        }
+        n -= 1;
+    }
 }
 
 /// A panel button's hotkey (the dialog's +0x48, scan codes `adventure_dialog_create` 0x401510
@@ -266,6 +320,9 @@ pub enum Unplayable {
     /// A button's command that opens a dialog or is the engine's action (M4, M5), by the
     /// button's id.
     Command(u16),
+    /// Space with the selected hero on an object's entrance (E24 M3 T6b3): its visit is the
+    /// engine's (M4, M5).
+    Visit([i32; 3]),
 }
 
 impl fmt::Display for Unplayable {
@@ -277,6 +334,9 @@ impl fmt::Display for Unplayable {
                 write!(f, "no path given from the selected hero to ({x}, {y}, {z})")
             }
             Self::Command(id) => write!(f, "button {id}'s command (a dialog or the engine's)"),
+            Self::Visit([x, y, z]) => {
+                write!(f, "a visit of the object at ({x}, {y}, {z}) (the engine's)")
+            }
         }
     }
 }
@@ -999,11 +1059,16 @@ impl Loop {
             match &mut self.moving {
                 Some(moving) => {
                     // During a walk the mouse's point is read at once (GetCursorPos); the message
-                    // waits.
-                    if let Action::Pointer(at) | Action::Click(at) = action {
+                    // waits in the input ring, the oldest dropped past its 63 (design §4.15).
+                    if let Action::Pointer(at)
+                    | Action::Click(at)
+                    | Action::Press(at)
+                    | Action::Release(at) = action
+                    {
                         self.pointer = at;
                     }
                     moving.queued.push(action);
+                    keep_ring(&mut moving.queued);
                 }
                 None => {
                     self.act(t, action, true)?;
@@ -1095,6 +1160,8 @@ impl Loop {
             }
             Action::Key(key) => self.key(t, key),
             Action::KeyUp(key) => self.key_up(t, key)?,
+            Action::Visit => self.visit(t)?,
+            Action::Up => {}
         }
         Ok(())
     }
@@ -1466,6 +1533,58 @@ impl Loop {
         if let Some((i, chosen)) = next.and_then(|i| Some((i, self.chosen_hero(i)?.clone()))) {
             self.choose_hero(t, i, chosen);
         }
+    }
+
+    /// Space (`adventure_key_down`'s case of scan code 57, 0x408CC4; design §4.15): nothing
+    /// without a selected hero. A hero standing on its tile (+0x20C clear) is chosen again: move
+    /// hero disabled (0x408D06), a path shown cleared with the view drawn and shown and the
+    /// objects' step when due (0x408D31 to 0x408D6F), then `hero_select` with 0, 0, 1 (0x408D83:
+    /// [`Loop::reselect`]). A hero lifted (after a step, a walk, a choice) is not. Then the
+    /// object on the hero's tile is visited when the tile is an entrance (map_item +0xD bit 0x10,
+    /// its class not 3: `visit_and_update` 0x4AAAA0 at 0x408E65): the engine's (M4, M5).
+    fn visit(&mut self, t: u32) -> Result<(), Unplayable> {
+        if self.hero.is_none() {
+            return Ok(());
+        }
+        if !self.lifted {
+            self.buttons.move_hero = false;
+            if !self.path.is_empty() {
+                let path = core::mem::take(&mut self.path);
+                self.draw(t);
+                self.step_objects(t);
+                self.path = path;
+            }
+            self.reselect(t);
+        }
+        // The hero's tile as the hero's lift leaves it (`hero_select`: the object under it, its
+        // own class and entrance gone; observed in memory). Without the mouse-over's facts it
+        // is not known: nothing (*provisional*).
+        let (Some(hover), Some(selection)) = (&self.hover, self.selection()) else {
+            return Ok(());
+        };
+        let at = [
+            i32::from(selection.at.x),
+            i32::from(selection.at.y),
+            i32::from(selection.at.z),
+        ];
+        match hover.current(at, Some(selection)) {
+            Some(tile) if tile.entrance && tile.class != 3 => self.unbuilt(Unplayable::Visit(at)),
+            _ => Ok(()),
+        }
+    }
+
+    /// The selected hero chosen again (`hero_select` 0x417B20 with 0, 0, 1, as
+    /// [`Loop::choose_hero`] but with what it shows now): put back on its tile and lifted, the
+    /// view centred on it, the lists, the status window and the minimap ([`Loop::lift`]); its
+    /// path made again from its destination (0x417FE2: the arrows it shows, *provisional*: the
+    /// engine's path from M4; move hero by its green arrows); the view drawn and the whole screen
+    /// shown; the mouse's move posted (0x418146).
+    fn reselect(&mut self, t: u32) {
+        self.lifted = false;
+        self.lift(t, true);
+        self.buttons.move_hero = self.green();
+        self.draw(t);
+        self.look_again();
     }
 
     /// What choosing the kingdom's hero `i` shows, when the live part gives it and its index
@@ -1900,17 +2019,21 @@ impl Loop {
             self.draw_slot();
             if !moving.key {
                 // The messages' kinds 1, 8, 0x20 and 0x200 end the walk (0x407FA7): a key-down,
-                // Ctrl's too (M2 T6a, the reviewer's R1-1), and a button; the loop reads up to the
-                // first of them, the rest stays in the queue for the main loop (R1-2). A key
-                // without a binding (Ctrl alone, M3's hotkeys) is no action yet: the adapter's
+                // Ctrl's too (M2 T6a, the reviewer's R1-1), a hotkey's and Space's (E24 M3 T6b3),
+                // and a button's down; the loop reads up to the first of them, taken and not
+                // handled, the rest stays in the queue for the main loop (R1-2): a click's up
+                // among them. A key without a binding (Ctrl alone) is no action: the adapter's
                 // keys only.
-                let ends = moving.queued.iter().position(|a| {
-                    matches!(a, Action::Step(_) | Action::Scroll(_) | Action::Click(_))
-                });
+                let ends = moving.queued.iter().position(|a| a.ends_walk());
                 match ends {
                     Some(i) => {
                         moving.rest.clear();
-                        moving.queued.drain(..=i);
+                        if let Some(Action::Click(at)) = moving.queued.get(i).copied() {
+                            moving.queued.drain(..i);
+                            moving.queued[0] = Action::Release(at);
+                        } else {
+                            moving.queued.drain(..=i);
+                        }
                     }
                     None => moving.queued.clear(),
                 }

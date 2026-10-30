@@ -3,8 +3,8 @@
 Status: **refined** (2026-10-23, T0, with the user); **M1 closed** (2026-10-24, T6b: the
 reviewers, the review list accepted by the user); **M2 refined** (2026-10-26, M2 T0, with the
 user); **M2 closed** (2026-10-28, T6b2c: the user's hand test, the review list accepted at
-T6b2a); **M3 refined** (2026-10-28, M3 T0, with the user); M3 T1a built (2026-10-28, the
-common crate `h3-ui`); next M3 T1b (`docs/lanes/map-client/QUEUE.md`).
+T6b2a); **M3 refined** (2026-10-28, M3 T0, with the user); M3 T1a to T6b3 built (2026-10-28 to
+2026-10-30); next M3 T7, M3's closure (`docs/lanes/map-client/QUEUE.md`).
 Lane: map-client (`docs/lanes/map-client/HANDOFF.md`: the autonomy contract, the user's asset
 notes). Opened 2026-10-23 when the user split the client lane at E17 M3's closure (CLT-Q18).
 Decisions so far live here (no ADR of its own yet; ADR-0020 and ADR-0024 bind it as they bind
@@ -201,8 +201,10 @@ viewers share.
   the status window's (**done** 2026-10-30: the command 4, `minimap_click` 0x40A0C0 whole with
   its loop, the items' press and release and the status window's click 0x409FD8 read and built;
   the situation's underground; three new sequences exact with the status bar; MCL-Q23, MCL-Q24;
-  the log), and T6b3, the keys during a walk and the sound without the focus; T7, M3's closure. A task that grows is cut at a
-  seam agreed with the user.
+  the log), and T6b3, the keys during a walk and the sound without the focus (kept whole by the
+  user; **done** 2026-10-30: Space, the input ring and the walk's end, the focus's loss and return
+  read whole and built; four new sequences exact with the status bar; MCL-Q25, MCL-Q26; the log);
+  T7, M3's closure. A task that grows is cut at a seam agreed with the user.
 - **Exit:** every situation and sequence as recorded on the whole screen (no `panels` mask
   left, or each difference an `MCL-Q<n>`); the view-only clicks, the hints and the cursor in the
   window; `h3-ui` the only copy of what both viewers share; M3's review list accepted; a hand
@@ -431,3 +433,12 @@ M1's review lists (three reviewers, T6b; the list accepted) and M2's (accepted a
   underground in a recording (the harness reads the view's level's heroes). The original's lost
   press on a rebuilt status window: MCL-Q23; a hotkey's release eaten by the minimap's loop:
   MCL-Q24.
+- **M3 T6b3, the keys during a walk, the sound without the focus** (*provisional*, design §4.15):
+  the key table's `visit` (Space) and every map key's release an action of its own (`Up`: a
+  message in the ring that does nothing); the ring's count (a click two messages, everything else
+  one: a scroll's Control key and a button's move before it not counted); a visit Space would
+  make (the hero on an object's entrance) refused in a recording, nothing live (the engine's); the
+  window's effects held (their streams unbound, `h3_sdl::Audio::hold`) and the music faded by the
+  model without the focus. Not built: the window's wait for a music fade at the focus's loss
+  (MCL-Q26), the system's cursor without the focus (the window keeps its own), the videos. Nothing
+  stops the steps a held key queued, Space included: MCL-Q25.

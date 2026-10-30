@@ -344,7 +344,11 @@ fn the_walks_frames_are_m2_t3bs() {
             "press-buttons",
             "underground",
             "minimap-drag",
-            "status-click"
+            "status-click",
+            "walk-queue",
+            "walk-stop-key",
+            "walk-stop-press",
+            "walk-stop-space"
         ]
     );
 }
@@ -922,6 +926,195 @@ fn a_click_a_key_or_a_scroll_stops_the_paths_walk_after_its_step() {
         assert_eq!(s.cursor.at, now, "{stop:?}");
         assert!(s.cursor.shown);
     }
+}
+
+/// E24 M3 T6b3: a button's press, a hotkey's and Space's key downs stop the walk too, taken and
+/// not handled: no button pressed, no hero chosen again; a click's up waits behind (its down
+/// taken) and does nothing.
+#[test]
+fn a_press_a_hotkey_or_space_stops_the_paths_walk_too() {
+    for stop in [
+        Action::Press([700, 400]),
+        Action::Key(Hotkey::NextHero),
+        Action::Visit,
+    ] {
+        let mut l = walking(2, vec![east()]);
+        l.run(1, &[Action::Click(tile(21, 17))]).unwrap();
+        l.run(2, &[Action::Click(tile(21, 17))]).unwrap();
+        l.run(3, &[Action::Pointer([700, 400]), stop]).unwrap();
+        l.run(4, &[Action::Release([700, 400])]).unwrap();
+        for t in 5..=152 {
+            l.run(t, &[]).unwrap();
+        }
+        let s = l.state(152);
+        assert_eq!(s.hero.unwrap().at, Pos { x: 18, y: 17, z: 0 }, "{stop:?}");
+        assert_eq!(s.arrows.len(), 3, "{stop:?}");
+        assert!(s.drawn.pressed.is_empty() && s.cursor.shown, "{stop:?}");
+        assert_eq!((s.view.x, s.view.y), (9, 9), "{stop:?}");
+    }
+    // A click stopping it leaves its up, taken after the walk (nothing held: nothing).
+    let mut l = walking(2, vec![east()]);
+    l.run(1, &[Action::Click(tile(21, 17))]).unwrap();
+    l.run(2, &[Action::Click(tile(21, 17))]).unwrap();
+    l.run(3, &[Action::Pointer(PARK), Action::Click(PARK), Action::Up])
+        .unwrap();
+    for t in 4..=152 {
+        l.run(t, &[]).unwrap();
+    }
+    assert_eq!(l.state(152).hero.unwrap().at, Pos { x: 18, y: 17, z: 0 });
+}
+
+/// E24 M3 T6b3, design §4.15: the input ring keeps the last 63 messages, the oldest dropped (a
+/// click's down before its up); what counts and what ends a path's walk.
+#[test]
+fn the_input_ring_keeps_the_last_63_messages() {
+    let mut q: Vec<Action> = (0..70)
+        .map(|i| {
+            if i % 2 == 0 {
+                Action::Step(Direction::East)
+            } else {
+                Action::Up
+            }
+        })
+        .collect();
+    keep_ring(&mut q);
+    assert_eq!((q.len(), q[0]), (QUEUED, Action::Up));
+    let mut q = vec![Action::Click([1, 2])];
+    q.extend([Action::Up; 62]);
+    keep_ring(&mut q);
+    assert_eq!((q.len(), q[0]), (63, Action::Release([1, 2])));
+    keep_ring(&mut Vec::new());
+    assert_eq!(
+        (
+            Action::Click([0, 0]).messages(),
+            Action::Press([0, 0]).messages()
+        ),
+        (2, 1)
+    );
+    for a in [
+        Action::Step(Direction::East),
+        Action::Scroll(Direction::East),
+        Action::Click([0, 0]),
+        Action::Press([0, 0]),
+        Action::Key(Hotkey::NextHero),
+        Action::Visit,
+    ] {
+        assert!(a.ends_walk(), "{a:?}");
+    }
+    for a in [
+        Action::Pointer([0, 0]),
+        Action::Release([0, 0]),
+        Action::KeyUp(Hotkey::NextHero),
+        Action::Up,
+    ] {
+        assert!(!a.ends_walk(), "{a:?}");
+    }
+}
+
+/// A key's step east, then during it 80 key messages (east and west pressed and released by
+/// turns): the ring keeps the last 63, whose 31 key downs step after it, west first.
+#[test]
+fn the_steps_queued_during_a_step_are_the_rings() {
+    let mut l = walking(2, Vec::new());
+    l.run(1, &[Action::Step(Direction::East)]).unwrap();
+    let burst: Vec<Action> = (0..20)
+        .flat_map(|_| {
+            [
+                Action::Step(Direction::East),
+                Action::Up,
+                Action::Step(Direction::West),
+                Action::Up,
+            ]
+        })
+        .collect();
+    l.run(2, &burst).unwrap();
+    let mut facings = Vec::new();
+    for t in 3..=1 + 32 * 150 + 10 {
+        l.run(t, &[]).unwrap();
+        let hero = l.state(t).hero.unwrap();
+        if facings.last() != Some(&(hero.at.x, hero.facing)) && t > 151 {
+            facings.push((hero.at.x, hero.facing));
+        }
+    }
+    assert_eq!(facings.len(), 31);
+    assert_eq!(facings[0], (17, Direction::West));
+    assert_eq!(facings[30], (17, Direction::West));
+    assert!(l.state(1 + 32 * 150 + 10).cursor.shown);
+}
+
+/// Space (E24 M3 T6b3, design §4.15): a hero standing on its tile (after a scroll) chosen again,
+/// the view centred on it and lifted; with a path shown, the path kept (made again from its
+/// destination) and move hero by it; a lifted hero, or none selected, nothing.
+#[test]
+fn space_chooses_a_standing_hero_again() {
+    let mut l = walking(2, vec![east()]);
+    l.run(1, &[Action::Scroll(Direction::East)]).unwrap();
+    assert_eq!(l.state(1).view.x, 10);
+    l.run(2, &[Action::Visit, Action::Up]).unwrap();
+    let s = l.state(2);
+    assert_eq!((s.view.x, s.view.y), (8, 9));
+    assert!(s.drawn.lifted.is_some() && !s.buttons.move_hero);
+    // Lifted: nothing.
+    l.run(3, &[Action::Visit]).unwrap();
+    assert_eq!(l.state(3), {
+        let mut same = l.state(2);
+        same.t = 3;
+        same
+    });
+    // A path shown, the hero put back by a scroll: the path kept, move hero by it.
+    l.run(4, &[Action::Click(tile(21, 17))]).unwrap();
+    l.run(5, &[Action::Scroll(Direction::West)]).unwrap();
+    let s = l.state(5);
+    assert!(s.drawn.lifted.is_none() && s.view.x == 6 && s.arrows.len() == 4);
+    l.run(6, &[Action::Visit]).unwrap();
+    let s = l.state(6);
+    assert_eq!((s.view.x, s.arrows.len(), s.drawn.path.len()), (8, 4, 4));
+    assert!(s.buttons.move_hero && s.drawn.lifted.is_some());
+    // No hero selected.
+    let mut l = looped(Bugs::Fixed, 1);
+    let before = l.state(0);
+    l.run(1, &[Action::Visit]).unwrap();
+    assert_eq!(l.state(1).view, before.view);
+}
+
+/// Space with the hero on an object's entrance: its visit is the engine's, refused in a
+/// recording, nothing live; on a tile the lift leaves plain, nothing.
+#[test]
+fn space_on_an_entrance_visits_it() {
+    let (_, _, hover) = hover::tests::fixture(false);
+    let heroes = [[4, 3], [7, 3], [3, 2]];
+    let door = (0..8)
+        .flat_map(|y| (0..8).map(move |x| [x, y, 0]))
+        .find(|&[x, y, z]| {
+            !heroes.contains(&[x, y])
+                && hover
+                    .current([x, y, z], None)
+                    .is_some_and(|t| t.entrance && t.class != 3)
+        })
+        .unwrap();
+    let at = Pos {
+        x: u8::try_from(door[0]).unwrap(),
+        y: u8::try_from(door[1]).unwrap(),
+        z: 0,
+    };
+    for live in [false, true] {
+        let mut l = hovering(live, Bugs::Fixed);
+        l.run(1, &[Action::Visit]).unwrap();
+        l.hero = Some(Hero {
+            at,
+            facing: Direction::South,
+        });
+        let got = l.run(2, &[Action::Visit]);
+        if live {
+            assert_eq!(got, Ok(()));
+        } else {
+            assert_eq!(got, Err(Unplayable::Visit(door)));
+        }
+    }
+    assert_eq!(
+        Unplayable::Visit([1, 2, 0]).to_string(),
+        "a visit of the object at (1, 2, 0) (the engine's)"
+    );
 }
 
 #[test]
@@ -2375,6 +2568,82 @@ fn replays_the_recorded_clicks() {
         let table: toml::Table = live.parse().unwrap();
         let objects = table["anchors"].as_array().unwrap().len();
         let facts = hover::Facts::read(&table["hover"], objects, heroes.len(), 36, 2).unwrap();
+        let Selected::Hero(slot) = start.kingdom.selected else {
+            panic!("{id}: no hero selected at 0");
+        };
+        let selected = facts
+            .heroes
+            .iter()
+            .position(|h| h.0 == facts.hero_list[slot].0)
+            .unwrap();
+        let hero = Hero {
+            at: heroes[selected].at,
+            facing: Direction::ALL[usize::from(heroes[selected].facing.number())],
+        };
+        start.heroes = heroes
+            .iter()
+            .map(|h| Hero {
+                at: h.at,
+                facing: Direction::ALL[usize::from(h.facing.number())],
+            })
+            .collect();
+        start.index = start.heroes.iter().position(|h| h.at == hero.at);
+        start.hero = Some(hero);
+        start.points = sequence.points(timeline).unwrap();
+        start.paths = sequence.paths(timeline).unwrap();
+        let states = play(
+            rules(Bugs::Original),
+            &start,
+            &sequence.actions().unwrap(),
+            sequence.ms,
+        )
+        .unwrap();
+        let got = lines(&states, &BTreeMap::new());
+        let want = without_screens(timeline);
+        for (n, (g, w)) in got.iter().zip(&want).enumerate() {
+            assert_eq!(g, w, "{id}: line {n}");
+        }
+        assert_eq!(got.len(), want.len(), "{id}");
+    }
+}
+
+/// E24 M3 T6b3's sequences on `seq-walk`: their timelines and kept live parts.
+const WALKING: [(&str, &str, &str); 4] = [
+    (
+        "walk-queue",
+        include_str!("../../../../map/timelines/walk-queue.txt"),
+        include_str!("../../../../map/timelines/walk-queue-live.toml"),
+    ),
+    (
+        "walk-stop-key",
+        include_str!("../../../../map/timelines/walk-stop-key.txt"),
+        include_str!("../../../../map/timelines/walk-stop-key-live.toml"),
+    ),
+    (
+        "walk-stop-press",
+        include_str!("../../../../map/timelines/walk-stop-press.txt"),
+        include_str!("../../../../map/timelines/walk-stop-press-live.toml"),
+    ),
+    (
+        "walk-stop-space",
+        include_str!("../../../../map/timelines/walk-stop-space.txt"),
+        include_str!("../../../../map/timelines/walk-stop-space-live.toml"),
+    ),
+];
+
+#[test]
+fn replays_the_recorded_keys_during_walks() {
+    let situation = include_str!("../../../../map/situations/seq-walk.toml");
+    let sequences = Sequences::parse(SEQUENCES).unwrap();
+    for (id, timeline, live) in WALKING {
+        let sequence = sequences.get(id).unwrap();
+        let mut start = start(situation, sequence.scroll_speed().unwrap());
+        (start.kingdom, start.buttons) = live_kingdom(live);
+        // The selected hero by the mouse-over's facts, as the binary's `selected_in` finds it.
+        let (heroes, _) = live_heroes(live);
+        let table: toml::Table = live.parse().unwrap();
+        let objects = table["anchors"].as_array().unwrap().len();
+        let facts = hover::Facts::read(&table["hover"], objects, heroes.len(), 36, 1).unwrap();
         let Selected::Hero(slot) = start.kingdom.selected else {
             panic!("{id}: no hero selected at 0");
         };

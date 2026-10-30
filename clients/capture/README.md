@@ -839,7 +839,9 @@ point: the pointer moved there, then the left button down or up alone, `xdotool 
 own loop, the map standing still; a button left down at the end is released) and the panels'
 hotkeys by their letters (`keydown`/`keyup` of `k`, `u`, `q`, `z`, `w`, `m`, `c`, `a`, `o`, `h`,
 `e`: the key down presses the button, the key up clicks it; a dialog's button left down is only
-released after the sequence's end). A situation's `choose = true` has `choose_each` choose each of
+released after the sequence's end). Since E24 M3 T6b3 Space (`keydown`/`keyup` of `space`: the
+selected hero chosen again, its tile visited; design §4.15); several inputs may share a
+millisecond, each its own message in the game's input ring of 63 (`walk-queue`: 82 during a step). A situation's `choose = true` has `choose_each` choose each of
 Red's heroes and towns from their lists once the path is shown, reading each one's status window
 (`status_toml`), a hero's path and tile, a town's place, then choose the staging's selection
 again, scroll the lists back to their first slots and set the view again (the path checked to be

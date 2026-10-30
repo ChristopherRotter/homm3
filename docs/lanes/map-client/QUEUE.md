@@ -24,22 +24,8 @@ T5 cut with the user (2026-10-29): T5a the resource bar's amounts, the date and 
 and a town's, and T5b2, the date's and the kingdom's (kept whole by the user; both done: the
 epic's log); the other kinds (another player's turn, a resource found, a text) are M4's (the
 epic's "Later"). T6 cut with the user (2026-10-30): T6a the mouse-over, cut into T6a1, T6a2a and
-T6a2b (all done: the epic's log), and T6b, cut with the user (2026-10-30) into T6b1 and T6b2
-(both done: the epic's log) and T6b3 (below).
-
-### E24 M3 T6b3 — the keys during a walk, the sound without the focus
-
-- **Scope:** MCL-Q10's keys during a walk (Space's cancel of the queued steps, the input ring's
-  bound of 63 messages); the sound without the focus (`QUEUE-ARCHIVE.md` 2026-10-27, E24 M2 T6a2:
-  the rest read, `h3_map_view::music`'s fade without a pending track, the window by
-  `Window::focused()`). Recorded: a walk with Space. Found at T6b2: a path's walk ends on a
-  left button's press and on any key down (0x407FA7: the kinds 8 and 1), but `Loop::carry_on`
-  takes only `Step`, `Scroll` and `Click` as the end: `Press` and `Key` (the hotkeys) belong
-  there too, the release (0x10) dropped.
-- **Acceptance:** the new sequence as recorded, every frame, the status bar compared; the focus's
-  sound by a test and in the window; the Definition of Done.
-- **Depends on:** T6b1 (done: the key table's additions). **Status:** ready (T6b1's #605 merged;
-  T6b2's pull request touches the same `timeline.rs`: start from it once merged).
+T6a2b (all done: the epic's log), and T6b, cut with the user (2026-10-30) into T6b1, T6b2 and
+T6b3 (kept whole by the user; all done: the epic's log).
 
 ### E24 M3 T7 — M3's closure
 
@@ -49,7 +35,8 @@ T6a2b (all done: the epic's log), and T6b, cut with the user (2026-10-30) into T
   hand test (`clients/out/win/`, a `.cmd` with the checks on screen and a notes file); M3
   archived; M4 refined with the user.
 - **Acceptance:** the review list accepted; the hand test passed; M3 archived; M4's tasks queued.
-- **Depends on:** T1a to T6b3 (T6a2b too). **Status:** waiting (the user, at its checkpoint).
+- **Depends on:** T1a to T6b3 (all done). **Status:** ready (the user, at its checkpoint; its
+  reviewers also take MCL-Q25's and MCL-Q26's answers if given).
 
 ## Inbox
 

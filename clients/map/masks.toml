@@ -22,5 +22,5 @@ hinted = [
     "hover-panels", "hover-map", "hover-sail", "hover-visits-a", "hover-visited-a",
     "hover-visits-b", "hover-visited-b", "hover-owners", "hover-banks", "hover-teach",
     "hover-quests", "choose-lists", "press-buttons", "underground", "minimap-drag",
-    "status-click",
+    "status-click", "walk-queue", "walk-stop-key", "walk-stop-press", "walk-stop-space",
 ]

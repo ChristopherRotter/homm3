@@ -2626,3 +2626,68 @@ sequences on the new situation `seq-underground` (a writer's map of two levels):
   the harness explores it whole and waits for the screen `adventure`, whose probes take the
   underground's button enabled). Not built: the minimap's right click (its help text: M4, M5), a
   hero or town of the other level in a recording (the harness reads the view's level's heroes).
+
+### 4.15 The keys during a walk, the input ring, Space, the sound without the focus (M3 T6b3)
+
+Read in the sandbox (T6b3 taken whole by the user, 2026-10-30), checked by four sequences on
+`seq-walk` (`walk-queue`, `walk-stop-key`, `walk-stop-press`, `walk-stop-space`: every line and
+frame as recorded, the status bar compared) and by the hero's tile read in the running original.
+
+- **The input ring** (`input_key_message` 0x4EC0E0, `input_mouse_message` 0x4EC290, read whole):
+  every WM_KEYDOWN (kind 1, a repeat's too), WM_KEYUP (2), WM_MOUSEMOVE (4, each one, none
+  merged), the left button's down (8) and up (0x10), the right one's (0x20, 0x40) is a 32-byte
+  message in a ring of 64; a write that meets the read index moves it on (0x4EC1D9, 0x4EC3F1): the
+  63 newest wait, the oldest dropped. Nothing reads it during a key's step or a walk's frames
+  (their waits only pump the window's messages, §3.7), so what comes meanwhile waits there. Recorded
+  (`walk-queue`): a step east, and during it 80 key messages (east and west pressed and released by
+  turns) and Space's two: the ring kept the last 63, whose 30 key downs (east first) stepped one
+  after another, Space last.
+- **Space** (`adventure_key_down`'s case for the scan code 57, 0x408CC4): nothing without a
+  selected hero or on another player's turn. A hero standing on its tile (+0x20C clear: at a
+  turn's start, after a scroll) is chosen again: move hero disabled (0x408D06, as `hero_select`'s
+  own), a path shown cleared and the view drawn and shown with the objects' step when due (0x408D31
+  to 0x408D6F), then `hero_select` with 0, 0, 1 (0x408D83): lifted, the view centred, the path made
+  again from its destination (shown as before), the status window built. A lifted hero (after a
+  step, a walk, a choice) is not. Then the hero's tile (0x408D88): an entrance (map_item +0xD bit
+  0x10) whose class is not 3 is visited (`visit_and_update` 0x4AAAA0: `visit_object` 0x4A84F0,
+  then the lists, the buttons, the status window, the resource bar, the minimap and the music
+  asked again when faded; read at its calls). Observed in memory (`seq-walk`): a standing hero's
+  tile is class 34 with the entrance bit (its own), and once `hero_select` lifts it the tile shows
+  what lies under it (class 0, no bit on grass): Space visits the object a hero stands on, never
+  the hero itself. **Space does not cancel the steps queued** (MCL-Q10's premise; MCL-Q25): it is a
+  message like the others, handled after them; during a path's walk it ends the walk like any key.
+- **A path's walk ended** (0x407FA7, §3.7): by any key's down (a hotkey's, Space's, Ctrl's), a
+  button's down (the left's or the right's) or a control's message, taken and not handled: a
+  hotkey's button is not pressed (its key's up then finds it released and does nothing,
+  0x4564D6), Space chooses nothing, a press holds no button (its up, left behind, goes to an item
+  holding none: nothing). Recorded: `walk-stop-key` (H; the Down key behind it stepping after the
+  walk), `walk-stop-press`, `walk-stop-space`.
+- **The focus** (`window_procedure` 0x4F7C00 at WM_ACTIVATEAPP, 0x4F7DE8 to 0x4F7EB6, read whole):
+  `app_active` from wParam; **lost** (0x4F7E5E): 0x699614 set when the music stream plays
+  unfaded (+0x8C), `sound_focus_lost` 0x599C40 (read whole: with the digital driver up, +0x84 1
+  since 0x599A00, and +0x3C its handle; under +0x90 each effect sample's status kept in 0x6A3258
+  as "it played" (Miles' 4) and the sample stopped, `AIL_stop_sample`; then, holding the music
+  thread's lock +0xA8 (so it waits for a thread fading or fading in, up to about 1.8 s of the
+  window's procedure: MCL-Q26) and +0x90, a stream playing has a thread of the stub 0x59A830
+  started, which runs `music_stop_fade` alone once the lock is free: the place kept, faded out,
+  paused), the videos paused (0x5977A0), the system's cursor shown and the game's hidden
+  (0x50DA20 with 1), 0x699609 set. **Regained** after a loss (0x4F7E09): `music_resume` 0x59AC00
+  (the track opened last asked for again: a thread fades the stream out if needed, opens it where
+  its fade began and fades it in), the effects (0x599B90, read whole: `AIL_resume_sample` on each
+  sample that played and stands stopped, Miles' 8; the flags cleared), the videos, the game's
+  cursor shown and the system's hidden, 0x699609 cleared. A track opened without the focus is not
+  started (`music_thread` 0x59AA15); an effect asked for meanwhile plays (`play_sample` reads no
+  focus).
+- **Built** (*provisional*): `timeline::Action`'s `Visit` (Space) and `Up` (another key's
+  release: a message doing nothing), `Action::messages` (a click two, everything else one: a
+  scroll's Control key and a button's move before it not counted) and `ends_walk`, the ring
+  (`QUEUED`, 63: the actions waiting during a walk, the oldest dropped, a click's down first), the
+  walk ended by a press, a hotkey and Space (a click's up left behind), `Loop::visit` and
+  `reselect`, the visit refused in a recording (`Unplayable::Visit`, the engine's) when the tile
+  the lift leaves is an entrance by the mouse-over's facts (without them nothing); the key table's
+  `visit` (Space), every map key's release an `Up`; `h3_ui::music`'s focus (`Music::focus`,
+  `Queue::focus`: the stub's fade once the lock is free, a stream opened without the focus held
+  silent, `music_resume`'s request); the window's sound following `Window::focused()` (the effects'
+  streams held where they are, `h3_sdl::Audio::hold`; a cue meanwhile plays). Not built: the
+  window's procedure waiting for a fade (MCL-Q26), the cursor without the focus (the system's
+  arrow, the game's hidden: the window keeps its own), the videos.

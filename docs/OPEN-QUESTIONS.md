@@ -237,6 +237,32 @@ its command, as a release off a button), the original's behind `--bugs original`
 **Recommendation:** (b): a button stuck in its pressed picture is a visible defect. **Blocked:**
 nothing; built as the original's.
 
+#### MCL-Q25 — Nothing stops the steps a held key queued: Space does not (E24 M3 T6b3, a reading and a recording)
+
+MCL-Q10 (answered: keep the original's for now) rested on "Space cancels the queued steps". It
+does not (E24 design §4.15): Space is a message like the others, handled after the steps queued
+before it (it then chooses a standing hero again, or visits what the hero stands on); during a
+path's walk any key ends the walk, but a key's steps are no walk. Nothing else empties the queue
+between a key's steps. With the input ring's bound now built (63 messages, as the original's,
+recorded in `walk-queue`), a direction key held walks the hero on after its release for up to 63
+steps (the system's repeats are key downs only; about 9 s at hero speed 2), its points
+permitting. **Options:** (a) the client drops a key's repeat while a step waits (the hero stops
+at most a step after the release), the original's queue behind `--bugs original` for the
+comparisons; (b) keep the original's (built); (c) an option. **Recommendation:** (a): the user
+saw the walk-on as an inconvenience, and the original offers no way out of it. **Blocked:**
+nothing; built as the original's.
+
+#### MCL-Q26 — Losing the focus during a music change freezes the original's window (E24 M3 T6b3, a reading)
+
+On losing the focus the window's procedure takes the music thread's lock before it starts the
+fade-out (E24 design §4.15), and a thread holds that lock through its fade-out and fade-in: a
+switch away during a terrain music change waits up to about 1.8 s, the game's window not
+answering meanwhile. The sound's order is built as the original's (the fade-out once the lock is
+free); the wait is not: the client's window cannot block its loop on the music. **Options:** (a)
+the client's: no wait (built); (b) reproduce the wait (the window's input held for the lock's
+time). **Recommendation:** (a): an unanswering window is a defect, and the sound is the same.
+**Blocked:** nothing.
+
 ## Answered
 
 Answered questions are history, kept out of the start-of-session reading. Read one only when a doc, a code comment or a queue entry cites its id (`git grep '<id>' -- docs`). The id's prefix says where it is; when a question is answered, move its entry from "Open" above to the **top** of that file (each lane edits only its own file, so lanes working at once never touch the same lines):
