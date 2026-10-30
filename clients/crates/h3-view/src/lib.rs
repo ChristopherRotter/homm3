@@ -9,7 +9,8 @@
 //! table, `h3_ui::keys`); [`mouse`] is what the
 //! mouse shows over the battle (the cursor's kind, the status line's hint, the stack it marks);
 //! [`sound`] is what a battle's opening plays; [`battle_log`] the battle log's lines composed from
-//! the string catalogue (`h3_ui::text`). What both viewers share is the common crate `h3-ui`'s
+//! the string catalogue (`h3_ui::text`); [`remote`] is the client's side of a game on a server
+//! (the welcome's checks, the join, the record it grows), its I/O the binary's. What both viewers share is the common crate `h3-ui`'s
 //! (E24 M3 T1a: the clock in the window, the game's mouse cursor, the dialog items, the string
 //! catalogue, the key table, the music). The adapters (the real-asset gate, the headless renderer,
 //! the window through `h3-sdl`) are the binary's modules, not this library.
@@ -49,6 +50,7 @@ pub mod mouse;
 pub mod panel;
 pub mod ray;
 pub mod record;
+pub mod remote;
 pub mod result;
 pub mod scene;
 pub mod siege;

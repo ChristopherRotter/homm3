@@ -35,10 +35,13 @@ const PURE: [(&str, &[&str]); 4] = [
 /// readers only the adapters use; M2 T1: the capture harness's map writer `h3-map` and the
 /// ruleset's type `h3-content-battle`; M2 T5a: the platform adapter `h3-sdl`, the window; T5b:
 /// `nanomp3`, the music; M3 T7b-2b-2a: `h3-content` and `h3-contracts`, a hero's battle effects
-/// and the skills behind them for the original's map).
+/// and the skills behind them for the original's map; M5 T6a: the connection's I/O thread, the
+/// WebSocket with TLS, the welcome's signature and the hello's nonce).
 const BINARY_ONLY: [(&str, &[&str]); 1] = [(
     "h3-view",
     &[
+        "ed25519-dalek",
+        "getrandom",
         "h3-battle",
         "h3-content",
         "h3-content-battle",
@@ -49,6 +52,10 @@ const BINARY_ONLY: [(&str, &[&str]); 1] = [(
         "h3-pack-battle",
         "h3-sdl",
         "nanomp3",
+        "rustls",
+        "rustls-graviola",
+        "rustls-native-certs",
+        "tungstenite",
     ],
 )];
 
