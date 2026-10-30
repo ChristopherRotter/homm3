@@ -88,6 +88,27 @@ pub struct Situation {
     /// maps have none, each player its own), each from 0 to 7.
     #[serde(default)]
     pub teams: Option<[u8; 8]>,
+    /// What the viewer knows of objects, which the harness writes into the game after the view
+    /// is set (E24 M3 T6a2a, design §4.11): the hint over a map object of a class with visit
+    /// marks shows them (the viewer takes them from the live part's `[hover]`, not from here).
+    #[serde(default)]
+    pub visits: Vec<VisitSpec>,
+}
+
+/// What the viewer knows of the object anchored on a tile (E24 M3 T6a2a): whether Red knows its
+/// kind's bonus, and whether it was visited (by the selected hero, where the class keeps it so)
+/// or as the new game left it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct VisitSpec {
+    /// The object's anchor.
+    pub at: [u8; 2],
+    /// Red knows its kind's bonus.
+    #[serde(default)]
+    pub known: bool,
+    /// Visited or not; none as the new game left it.
+    #[serde(default)]
+    pub visited: Option<bool>,
 }
 
 /// What a situation selects (E24 M3 T4a): Red's hero standing on a tile (after its walk) or Red's
@@ -699,6 +720,18 @@ impl Situation {
             && teams.iter().any(|&t| t > 7)
         {
             return Err(format!("the teams {teams:?}: one past 7"));
+        }
+        // The visit marks (E24 M3 T6a2a): each of an object the situation gives, once.
+        for (i, v) in self.visits.iter().enumerate() {
+            if !self.objects.iter().any(|o| o.at == v.at) {
+                return Err(format!(
+                    "the visits at {:?}: no object anchored there",
+                    v.at
+                ));
+            }
+            if self.visits[..i].iter().any(|w| w.at == v.at) {
+                return Err(format!("the visits at {:?}: given twice", v.at));
+            }
         }
         // The status window's (E24 M3 T5b1): Red's towns' garrisons and garrison heroes, of
         // Red's; seven slots at most; a silo with chosen buildings.

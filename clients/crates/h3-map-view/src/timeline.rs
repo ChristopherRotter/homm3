@@ -176,9 +176,9 @@ impl fmt::Display for Unplayable {
 }
 
 /// The numbers the loop runs by: the tables' (`[map]`, its heroes' standing groups, `[map.walk]`),
-/// the layout's (the frame, the view's rectangle and tile, `[scroll]`, `[cursor]`) and whether the
-/// original's bugs are reproduced (the edge zones of MCL-Q6, the cursor's even x: E17 design §9.9;
-/// for the comparisons only).
+/// the layout's (the frame, the view's rectangle, origin and tile, `[scroll]`, `[cursor]`) and
+/// whether the original's bugs are reproduced (the edge zones of MCL-Q6, the cursor's even x: E17
+/// design §9.9; the mouse's tile 8 pixels off, MCL-Q18; for the comparisons only).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Rules {
     /// A palette step's time (200 ms).
@@ -198,6 +198,9 @@ pub struct Rules {
     pub view: [i32; 4],
     /// A tile's side (32): a step's slide, and the mouse's tile.
     pub tile: i32,
+    /// Where the view's tile (vx, vy) has its top-left corner on the screen (0, 8): the client's
+    /// mouse's tile (MCL-Q18).
+    pub origin: [i32; 2],
     /// The view's middle tile (9, 8): the tile the map's first and last column and row stop at,
     /// and the one a step centres the hero on (`hero_walk_animation` 0x48041D, `hero_select`
     /// 0x417E44).
@@ -234,6 +237,7 @@ impl Rules {
             frame: layout.frame.map(side),
             view: layout.view.clip,
             tile: layout.view.tile,
+            origin: layout.view.origin,
             middle: layout.scroll.middle,
             edge: layout.scroll.edge,
             arrow: layout.cursor.arrow,
@@ -324,11 +328,8 @@ impl Rules {
         (left..right).contains(&x) && (top..bottom).contains(&y)
     }
 
-    /// The tile under a point of the view as the original finds it (`view_mouse_tile` 0x40DEB0,
-    /// `adventure_mouse_move` 0x40E3D2): the view's corner plus the point's x and y divided by a
-    /// tile's side ([`Rules::column_at`]). The tiles are drawn 8 pixels lower (§1.2) and the point
-    /// is the screen's (E24 M3 T6a1, observed: design §4.10), so a drawn row's last 8 pixels give
-    /// the tile below.
+    /// The tile under a point of the view: the view's corner plus the view's column and row under
+    /// it ([`Rules::column_at`]).
     #[must_use]
     pub fn tile_at(&self, view: ViewAt, point: [i32; 2]) -> [i32; 3] {
         let [column, row] = self.column_at(point);
@@ -339,11 +340,25 @@ impl Rules {
         ]
     }
 
-    /// The view's column and row under a point (the manager's +0xEC, +0xF0): its x and y divided
-    /// by a tile's side.
+    /// The view's column and row under a point (the manager's +0xEC, +0xF0): the drawn tile's,
+    /// the point less the view's origin divided by a tile's side. The original's (`view_mouse_tile`
+    /// 0x40DEB0, `adventure_mouse_move` 0x40E3D2) divide the screen's point itself, though the
+    /// tiles are drawn 8 pixels lower (§1.2; E24 M3 T6a1, observed: design §4.10), so a drawn
+    /// row's last 8 pixels give the tile below: the client's fix, the original's under
+    /// [`Bugs::Original`] (MCL-Q18).
     #[must_use]
     pub fn column_at(&self, [x, y]: [i32; 2]) -> [i32; 2] {
-        [x / self.tile.max(1), y / self.tile.max(1)]
+        let side = self.tile.max(1);
+        match self.bugs {
+            Bugs::Fixed => {
+                let [ox, oy] = self.origin;
+                [
+                    x.saturating_sub(ox).div_euclid(side),
+                    y.saturating_sub(oy).div_euclid(side),
+                ]
+            }
+            Bugs::Original => [x / side, y / side],
+        }
     }
 }
 

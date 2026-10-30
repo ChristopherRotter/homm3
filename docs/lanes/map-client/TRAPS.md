@@ -59,7 +59,13 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   last table: a key written after it belongs to it.
 - **The status bar's hint is compared only in `masks.toml`'s `hinted`** (M3 T6a1): a new
   situation or sequence recorded with the hint goes into that list; the others keep it masked
-  (their digests and recorded screens without it) until T6a2 captures everything again.
+  (their digests and recorded screens without it) until T7 captures everything again (moved from
+  T6a2 at its cut).
+- **The visit marks' facts check themselves** (M3 T6a2a, design §4.11): a situation's `visits`
+  are written by `h3mem.VISIT_RULES` inverted and the live part's `[hover]` `visits` read back by
+  the same rules, so a wrong rule agrees with itself; only the original's status bar (a sequence
+  in `hinted`) tells. They are the selected hero's as staged: a sequence that selects another
+  (T6b's clicks) needs them read again.
 - **One game at a time:** `h3mem.Mem()` takes the first game process it finds, so a `still --keep` game left running makes the next still read it (T5a); stop it first (`wineserver -k` with `h3drive.env()`). At a human player's turn start the selected hero is off its tile until the view moves: find heroes by their records (`Mem.hero_on`).
 - **Driving the window under Xvfb** (M2 T4b1): `xdotool click --window <id>` sends a synthetic
   event that SDL ignores; move the pointer with `mousemove --window` and click with a plain

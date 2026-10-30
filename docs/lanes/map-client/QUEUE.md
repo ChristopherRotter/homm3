@@ -25,22 +25,24 @@ and a town's, and T5b2, the date's and the kingdom's (kept whole by the user; bo
 epic's log); the other kinds (another player's turn, a resource found, a text) are M4's (the
 epic's "Later").
 
-### E24 M3 T6a2 — the map hint's own cases
+### E24 M3 T6a2b — the map hint's owners and contents
 
-T6 cut with the user (2026-10-30) in two: T6a the mouse-over, T6b the clicks, the keys during a
-walk and the sound without the focus; T6a cut again (2026-10-30): T6a1 (done: the epic's log), and
-T6a2.
+T6 cut with the user (2026-10-30) in two: T6a the mouse-over, T6a cut again (2026-10-30): T6a1
+(done: the epic's log) and T6a2, cut with the user (2026-10-30) by what runs the hint: T6a2a, the
+35 classes of the visit marks (done: the epic's log, design §4.11), and T6a2b.
 
-- **Scope:** `map_hint` 0x40B150's 58 cases of their own (`hover::OWN_CASES` but 0, 3, 26, 36,
-  34, 54, 98; switch 0x40B20E): the visited marks (the viewing player's, a selected hero's), the
-  owners, the contents (a resource's amount, an artifact's or spell's name, a dwelling's
-  creatures, a keymaster's colour, ...), each one's facts in `[hover]` (`h3mem.Mem.hover`) and its
-  keys; the sub-functions it calls (`scripts/exe.py callees 0x40B150`). Then the status
-  bar's hint unmasked everywhere (`masks.toml`'s `hint` into `panels`, `hinted` gone): every
-  situation and sequence captured again (`set`, `frames`), as M3's closure would.
-- **Acceptance:** new sequences with the pointer over every class with a case, each exact; every
-  situation and sequence exact with the status bar compared; the Definition of Done.
-- **Depends on:** T6a1 (done). **Status:** ready.
+- **Scope:** `map_hint` 0x40B150's other 20 cases (switch 0x40B20E): the Border Guard and Gate
+  (9, 212) and the Keymaster's Tent (10: a colour's name 0x6A7520, a key's mark by the game's
+  +0x4E364), the dwellings (17, 20: the owner's colour, CrGen1 0x6914FC and CrGen4 0x691354), the
+  Lighthouse (42, its owner), the mine (53, 0x40D670), the resource (79, its name 0x6A5E64), the
+  creature banks (16, 24, 25, 84, 85: 0x40D3F0), the Seer's Hut (83, 0x5741B0), the Shrines (88 to
+  90, 0x40D8D0), the Tree of Knowledge (102, 0x40DB00), the Witch Hut (113, 0x40DCC0), the Quest
+  Guard (215, 0x573040): their facts in `[hover]` (`h3mem.Mem.hover`), keys and families; read the
+  sub-functions first (`scripts/exe.py fn`; each cited address a map entry). Situations with each
+  class and sequences over them, as T6a2a's (`hover-visits-*`).
+- **Acceptance:** new sequences with the pointer over every class of the 20, each exact with the
+  status bar compared; the Definition of Done.
+- **Depends on:** T6a2a (done). **Status:** ready.
 
 ### E24 M3 T6b — the clicks, the keys during a walk, the sound without the focus
 
@@ -55,12 +57,13 @@ T6a2.
 
 ### E24 M3 T7 — M3's closure
 
-- **Scope:** fresh reviewers (one per area), their fixes; every situation and sequence recorded
-  again; the review list with the user; the window cross-built for the user's machine and a
+- **Scope:** fresh reviewers (one per area), their fixes; the status bar's hint unmasked everywhere
+  (`masks.toml`'s `hint` into `panels`, `hinted` gone; moved here from T6a2 at its cut) and every
+  situation and sequence recorded again; the review list with the user; the window cross-built for the user's machine and a
   hand test (`clients/out/win/`, a `.cmd` with the checks on screen and a notes file); M3
   archived; M4 refined with the user.
 - **Acceptance:** the review list accepted; the hand test passed; M3 archived; M4's tasks queued.
-- **Depends on:** T1a to T6b (T6a2 too). **Status:** waiting (the user, at its checkpoint).
+- **Depends on:** T1a to T6b (T6a2b too). **Status:** waiting (the user, at its checkpoint).
 
 ## Inbox
 

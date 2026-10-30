@@ -17,9 +17,10 @@
 //! and boats standing on it); what only the game knows (a monster's count, a town's name, which
 //! towns and garrisons hold an army, which tiles a monster guards, the selected hero's reach and
 //! day points, the players' teams) is the live part's [`Facts`]: a comparison's from the
-//! original's memory, the engine's from M4. The hint's cases of the classes that have one of
-//! their own (visits, owners, contents; [`OWN_CASES`]) are T6a2's: until then such a class shows
-//! its plain name.
+//! original's memory, the engine's from M4. Of the classes with a hint of their own
+//! ([`OWN_CASES`]) those that show what was visited are T6a2a's ([`VISITS`]: what the viewer knows
+//! of each object, the facts' [`Visit`]s; design §4.11); the owners' and contents' (T6a2b) show
+//! their plain name until then.
 
 use alloc::collections::BTreeMap;
 use alloc::string::String;
@@ -108,6 +109,21 @@ pub struct Facts {
     pub reach: BTreeMap<(i32, i32), u32>,
     /// The selected hero's movement points a day (its record's +0x49): the days a path takes.
     pub day_points: i32,
+    /// Per map object, what the viewer knows of it (E24 M3 T6a2a, design §4.11): none known for
+    /// a live part written before.
+    pub visits: Vec<Visit>,
+}
+
+/// What the viewer knows of a map object (E24 M3 T6a2a, design §4.11): the hint's bonus and mark
+/// of the classes of [`VISITS`], the original's by its rules (`h3mem.Mem.visits`), the engine's
+/// from M4. The mark of a class kept by a hero is the selected hero's.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct Visit {
+    /// The viewing player knows what its kind gives (the hint shows the bonus).
+    pub known: bool,
+    /// Visited or not; none when the hint shows no mark (no hero selected for a class a hero
+    /// keeps, a Water Wheel or Windmill the player has not visited).
+    pub visited: Option<bool>,
 }
 
 /// The live part's `[hover]` table as it is written.
@@ -124,6 +140,8 @@ struct Written {
     guarded: Vec<String>,
     reach: Vec<(i32, i32, u32)>,
     day_points: i32,
+    #[serde(default)]
+    visits: Vec<(u8, i8)>,
 }
 
 impl Facts {
@@ -132,8 +150,10 @@ impl Facts {
     /// per object, 0 or 1), `towns` (`[[name, type], ...]` by the game's town index),
     /// `hero_ids` (`[[index, own name], ...]`, one per live hero), `hero_list` (`[[index,
     /// class, own name], ...]`), `town_list` (town indices), `teams` (eight), `guarded` (a
-    /// string per row of every level in turn, `1` guarded) and `reach` (`[[x, y, cost], ...]`
-    /// of the selected hero's level) with `day_points`. None when a part is missing or wrong.
+    /// string per row of every level in turn, `1` guarded), `reach` (`[[x, y, cost], ...]`
+    /// of the selected hero's level) with `day_points` and `visits` (`[[known, mark], ...]`, one
+    /// per object: known 0 or 1, the mark -1 none, 0 not visited, 1 visited; left out none
+    /// known). None when a part is missing or wrong.
     #[must_use]
     pub fn read(
         value: &toml::Value,
@@ -146,6 +166,7 @@ impl Facts {
         let flag = |n: u8| (n < 2).then_some(n == 1);
         let fits = w.words.len() == objects
             && w.armed.len() == objects
+            && (w.visits.is_empty() || w.visits.len() == objects)
             && w.hero_ids.len() == heroes
             && w.guarded.len() == size.saturating_mul(levels)
             && w.guarded.iter().all(|r| r.len() == size);
@@ -189,6 +210,19 @@ impl Facts {
             guarded,
             reach: w.reach.into_iter().map(|(x, y, c)| ((x, y), c)).collect(),
             day_points: w.day_points,
+            visits: w
+                .visits
+                .into_iter()
+                .map(|(known, mark)| {
+                    Some(Visit {
+                        known: flag(known)?,
+                        visited: match mark {
+                            -1 => None,
+                            m => Some(flag(u8::try_from(m).ok()?)?),
+                        },
+                    })
+                })
+                .collect::<Option<_>>()?,
         })
     }
 }
@@ -227,8 +261,8 @@ pub const GROUNDS: [u32; 10] = [21, 46, 222, 224, 225, 226, 227, 228, 229, 231];
 
 /// The classes whose hint is a case of the original's own (0x40B150's switch, table 0x40D314):
 /// every other class below 232 shows its name (`object_names` 0x6A79EC). T6a1 builds those of
-/// 0, 3, 26 and 36 (the special ground), 34 (a hero), 54 (a monster) and 98 (a town); the rest
-/// show their name too until T6a2.
+/// 0, 3, 26 and 36 (the special ground), 34 (a hero), 54 (a monster) and 98 (a town), T6a2a
+/// those of [`VISITS`]; the rest (owners, contents) show their name too until T6a2b.
 pub const OWN_CASES: [u32; 62] = [
     0, 3, 4, 9, 10, 11, 14, 16, 17, 20, 22, 23, 24, 25, 26, 28, 30, 31, 32, 34, 35, 36, 38, 39, 41,
     42, 47, 48, 49, 51, 52, 53, 54, 55, 56, 57, 61, 63, 64, 79, 83, 84, 85, 88, 89, 90, 92, 94, 96,
@@ -237,6 +271,42 @@ pub const OWN_CASES: [u32; 62] = [
 
 /// The object classes the original names (`OBJNAMES.TXT`'s records).
 pub const CLASSES: u32 = 232;
+
+/// The classes whose hint on their entrance shows what the viewer knows of them (E24 M3 T6a2a,
+/// design §4.11): the bonus of a kind the viewing player knows ([`BONUSES`]), then the mark,
+/// visited or not ([`Visit`]).
+pub const VISITS: [u32; 35] = [
+    4, 11, 14, 22, 23, 28, 30, 31, 32, 35, 38, 39, 41, 47, 48, 49, 51, 52, 55, 56, 57, 61, 63, 64,
+    92, 94, 96, 100, 104, 105, 107, 108, 109, 110, 112,
+];
+
+/// The bonus each class of [`VISITS`] that has one shows (XtraInfo.txt's record, `xtra_info`
+/// 0x69127C: the catalogue's `map-bonus.<n>`).
+pub const BONUSES: [(u32, u8); 23] = [
+    (11, 0),
+    (14, 1),
+    (28, 2),
+    (30, 3),
+    (32, 4),
+    (100, 5),
+    (41, 6),
+    (23, 7),
+    (51, 8),
+    (47, 9),
+    (107, 10),
+    (61, 11),
+    (31, 13),
+    (35, 14),
+    (48, 15),
+    (52, 16),
+    (64, 17),
+    (38, 22),
+    (96, 23),
+    (104, 24),
+    (49, 25),
+    (56, 26),
+    (110, 27),
+];
 
 /// The status bar's hint: what its text shows, its words the catalogue's.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
@@ -271,14 +341,28 @@ pub enum Hint {
         /// Its count.
         count: u32,
     },
+    /// An object class's name with what the viewer knows of it (E24 M3 T6a2a): its bonus
+    /// (`map-bonus.<n>`) and its mark (`map.hint.visited`, `map.hint.not-visited`), each after
+    /// `map.hint.more`.
+    Visits {
+        /// Its class.
+        class: u32,
+        /// Its bonus's record, when the viewing player knows it.
+        bonus: Option<u8>,
+        /// Its mark.
+        visited: Option<bool>,
+    },
 }
 
 /// The catalogue's keys the hints show texts by (the families `map-hint`, `object`, `hero`,
 /// `hero-class`, `town-name`, `town-type` and `creature` besides).
-pub const KEYS: [&str; 12] = [
+pub const KEYS: [&str; 15] = [
     "map.hint.hero",
     "map.hint.town",
     "map.hint.monster",
+    "map.hint.more",
+    "map.hint.visited",
+    "map.hint.not-visited",
     "map.army.0",
     "map.army.1",
     "map.army.2",
@@ -338,6 +422,27 @@ impl Hint {
                     .text("size", &plain(&alloc::format!("map.army.{size}")))
                     .text("creature", &creature);
                 texts.text("map.hint.monster", &args)
+            }
+            Self::Visits {
+                class,
+                bonus,
+                visited,
+            } => {
+                let more =
+                    |text: String| texts.text("map.hint.more", &Args::new().text("text", &text));
+                let mut hint = Self::Object(class).text(names, texts);
+                if let Some(n) = bonus {
+                    hint.push_str(&more(plain(&alloc::format!("map-bonus.{n}"))));
+                }
+                if let Some(visited) = visited {
+                    let key = if visited {
+                        "map.hint.visited"
+                    } else {
+                        "map.hint.not-visited"
+                    };
+                    hint.push_str(&more(plain(key)));
+                }
+                hint
             }
         }
     }
@@ -623,7 +728,31 @@ impl Hover {
                 count: tile.word.unwrap_or(0) & COUNT,
             },
             MONSTER => Hint::Empty,
+            class if tile.entrance && VISITS.contains(&class) => self.visits(class, &tile),
             class => Hint::Object(class),
+        }
+    }
+
+    /// The hint of an entrance of a class of [`VISITS`] (design §4.11): its name, the bonus the
+    /// viewer knows and the mark ([`Facts::visits`] of its object); its name alone with neither.
+    fn visits(&self, class: u32, tile: &Tile) -> Hint {
+        let visit = tile
+            .object
+            .and_then(|o| self.facts.visits.get(o))
+            .copied()
+            .unwrap_or_default();
+        let bonus = BONUSES
+            .iter()
+            .find(|(c, _)| *c == class)
+            .map(|&(_, n)| n)
+            .filter(|_| visit.known);
+        if bonus.is_none() && visit.visited.is_none() {
+            return Hint::Object(class);
+        }
+        Hint::Visits {
+            class,
+            bonus,
+            visited: visit.visited,
         }
     }
 

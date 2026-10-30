@@ -117,6 +117,32 @@ MAP_TEMPLATES, TEMPLATE_RECORD, TEMPLATE_CLASS = 0x4, 0x44, 0x38
 HERO_CLASS_FIELD, HERO_ID, HERO_FACING, HERO_STATUS, IN_BOAT = 0x30, 0x1A, 0x47, 0x105, 1 << 18
 BOATS, BOAT_RECORD, BOAT_FACING, BOAT_COLOUR = 0x4E3BC, 0x28, 0x1B, 0x1C
 HERO_OBJECT, BOAT_OBJECT, ENTRANCE = 34, 8, 0x10
+# The map hint's visit marks (E24 M3 T6a2a; E24 design §4.11, structs.toml): per class the kind
+# whose bit of the viewing player in the game's kinds_visited (u8[28] +0x4E344) shows its bonus
+# ("word": the object's word's bit 5 + the shown player, 0x69778C; None no bonus) and its mark's
+# rule: ("flags", mask) the selected hero's status +0x105 has a bit of the mask; ("hero", offset)
+# the bit (word & 0x1F) of the selected hero's u32 there; ("player", offset, bit) the bit (word &
+# 0x1F) of the player's u32 there and, with a bit, that bit of the word clear; ("owner",) the
+# word's bit 5 + the selected hero's owner; those with a selected hero only; ("garden",) as
+# ("player", 0xB8, 10) without one; ("obelisk",) the viewing player's bit of the game's u8 at
+# +0x4E3E9 + the word; ("current",) the word's bit 5 + the current player (always a mark);
+# ("left", mask) that bit set, then visited when the word's bits of the mask are clear (none
+# without the bit); None no mark.
+KINDS_VISITED, OBELISKS_VISITED, SHOWN_PLAYER = 0x4E344, 0x4E3E9, 0x69778C
+VISIT_RULES = {
+    4: (None, ("hero", 0x73)), 11: (0, ("flags", 1 << 2)), 14: (1, ("flags", 1 << 3)),
+    22: (None, ("player", 0xC0, None)), 23: (7, ("hero", 0x5B)), 28: (2, ("flags", 1 << 13)),
+    30: ("word", ("flags", 1 << 5 | 1 << 27 | 1 << 28 | 1 << 29)), 31: (13, ("flags", 1 << 14)),
+    32: (4, ("hero", 0x5F)), 35: (14, None), 38: (22, ("flags", 1 << 4 | 1 << 25)),
+    39: (None, ("player", 0xC4, None)), 41: (6, ("hero", 0x6F)), 47: (9, ("hero", 0x77)),
+    48: (15, ("player", 0xBC, 6)), 49: (25, ("flags", 1)), 51: (8, ("hero", 0x63)),
+    52: (16, ("flags", 1 << 15)), 55: (None, ("garden",)), 56: (26, ("flags", 1 << 7)),
+    57: (None, ("obelisk",)), 61: (11, ("hero", 0x67)), 63: (None, ("owner",)),
+    64: (17, ("flags", 1 << 16)), 92: (None, ("flags", 1 << 20)), 94: (None, ("flags", 1 << 1)),
+    96: (23, ("flags", 1 << 8 | 1 << 26)), 100: (5, ("hero", 0x57)), 104: (24, None),
+    105: (None, ("current",)), 107: (10, ("hero", 0x7B)), 108: (None, ("current",)),
+    109: (None, ("left", 0x1F)), 110: (27, ("flags", 1 << 6)), 112: (None, ("left", 0xF << 13)),
+}
 # The palette tick's next time (palette_tick_time 0x6989B4: the tick 0x4ED490 rotates once the
 # clock reaches it and sets it to now + 200 on the map). The adventure map's idle step redraws
 # the view once the clock reaches FRAME_DEADLINE (0x408A88; design §1.6).
@@ -1332,7 +1358,7 @@ class Mem:
 
         begin, end = struct.unpack("<II", self.read(game + TOWNS, 8))
         town_records = [begin + TOWN_SIZE * i for i in range((end - begin) // TOWN_SIZE)]
-        words, armed = [], []
+        words, armed, marks = [], [], {}
         for x, y, level, template, _ in self.map_objects():
             at = entrance_cell(templates, side, x, y, template)
             if at is None:
@@ -1349,6 +1375,7 @@ class Mem:
                 word, = struct.unpack("<I", self.read(first + BOAT_RECORD * word + 0x14, 4))
             words.append(word if word != 0xFFFFFFFF else -1)
             cls = classes[template][1]
+            marks[len(words) - 1] = (cls, word)
             defended = False
             if cls == 98 and word < len(town_records):
                 town = town_records[word]
@@ -1385,9 +1412,141 @@ class Mem:
         selected = struct.unpack_from("<i", player, 0x4)[0]
         day_points = self.i32(hero_record(selected) + 0x49) if selected >= 0 else 0
         reach = [[x, y, cost] for (x, y), cost in sorted((reach or {}).items())]
+        state = self.visit_state(colour)
+        visits = [self.visit(*marks[i], state) if i in marks else [0, -1]
+                  for i in range(len(words))]
         return {"words": words, "armed": armed, "towns": towns, "hero_ids": hero_ids,
                 "hero_list": hero_list, "town_list": town_list, "teams": teams,
-                "guarded": guarded, "reach": reach, "day_points": day_points}
+                "guarded": guarded, "reach": reach, "day_points": day_points, "visits": visits}
+
+    def visit_state(self, colour):
+        """What the visit marks read for the viewing player `colour` (E24 M3 T6a2a; design
+        §4.11): {"viewer", "shown", "current", "kinds", "player", "hero"} (the shown and the
+        current player as their low 16 bits read signed, the player's record and the selected
+        hero's, None without one)."""
+        game = self.game()
+        player = self.read(game + PLAYERS + PLAYER_SIZE * colour, PLAYER_SIZE)
+        selected = struct.unpack_from("<i", player, 0x4)[0]
+        return {"viewer": colour,
+                "shown": struct.unpack("<h", self.read(SHOWN_PLAYER, 2))[0],
+                "current": struct.unpack("<h", self.read(CURRENT_PLAYER, 2))[0],
+                "kinds": self.read(game + KINDS_VISITED, 28), "player": player,
+                "hero": (self.read(game + HEROES + HERO_SIZE * selected, HERO_SIZE)
+                         if selected >= 0 else None)}
+
+    def visit(self, cls, word, state):
+        """[known, mark] of an object of class `cls` whose entrance tile's word is `word` (E24 M3
+        T6a2a; design §4.11, `VISIT_RULES`): known 0 or 1, the mark -1 none, 0 not visited, 1
+        visited; [0, -1] for a class without visit marks."""
+        if cls not in VISIT_RULES:
+            return [0, -1]
+        kind, rule = VISIT_RULES[cls]
+
+        def bit(n):
+            return 0 <= n < 8 and (word >> 5 & 0xFF) >> n & 1
+
+        def u32(raw, offset):
+            return struct.unpack_from("<I", raw, offset)[0]
+
+        viewer, hero, player = state["viewer"], state["hero"], state["player"]
+        if kind == "word":
+            known = bit(state["shown"])
+        else:
+            known = kind is not None and 0 <= viewer < 8 and state["kinds"][kind] >> viewer & 1
+        mark = None
+        if rule is None:
+            pass
+        elif rule[0] in ("flags", "hero", "player", "owner"):
+            if hero is not None:
+                if rule[0] == "flags":
+                    mark = u32(hero, HERO_STATUS) & rule[1] != 0
+                elif rule[0] == "hero":
+                    mark = u32(hero, rule[1]) >> (word & 0x1F) & 1
+                elif rule[0] == "player":
+                    mark = (u32(player, rule[1]) >> (word & 0x1F) & 1
+                            and (rule[2] is None or not word >> rule[2] & 1))
+                else:
+                    mark = bit(struct.unpack_from("<b", hero, 0x22)[0])
+        elif rule[0] == "garden":
+            mark = u32(player, 0xB8) >> (word & 0x1F) & 1 and not word >> 10 & 1
+        elif rule[0] == "obelisk":
+            raw = struct.unpack("<b", self.read(self.game() + OBELISKS_VISITED + word, 1))[0]
+            mark = 0 <= viewer < 8 and raw >> viewer & 1
+        elif rule[0] == "current":
+            mark = bit(state["current"])
+        elif bit(state["current"]):
+            mark = word & rule[1] == 0
+        return [int(bool(known)), -1 if mark is None else int(bool(mark))]
+
+    def write_visit(self, colour, x, y, known, visited):
+        """Writes into the game that the viewing player `colour` knows the bonus of the object
+        anchored on (x, y) of the surface (`known`) and that it was visited or not (`visited`,
+        None leaves it), by `VISIT_RULES` inverted (E24 M3 T6a2a; design §4.11): its kind's bit
+        or its word's, the selected hero's or the player's field, the word's bits (on its first
+        entrance tile, the one the hint reads). A visited Water Wheel or Windmill has nothing
+        left, one not visited 1 of the mask's lowest bits."""
+        game = self.game()
+        side = self.i32(game + MAP_SIDE)
+        templates = self.template_bytes()
+        classes = self.map_templates()
+        found = [(t, level) for ox, oy, level, t, _ in self.map_objects()
+                 if (ox, oy, level) == (x, y, 0)]
+        if len(found) != 1:
+            raise RuntimeError(f"no single object anchored on {(x, y)}")
+        template, level = found[0]
+        cls = classes[template][1]
+        if cls not in VISIT_RULES:
+            raise RuntimeError(f"the object on {(x, y)} (class {cls}) has no visit marks")
+        at = entrance_cell(templates, side, x, y, template)
+        tile = self.u32(game + TILES) + TILE_SIZE * ((level * side + at[1]) * side + at[0])
+        word = self.u32(tile)
+        kind, rule = VISIT_RULES[cls]
+        state = self.visit_state(colour)
+
+        def set_bit(address, n, on=True):
+            value = self.u32(address)
+            value = value | 1 << n if on else value & ~(1 << n)
+            self.write_u32(address, value)
+
+        player = game + PLAYERS + PLAYER_SIZE * colour
+        selected = self.i32(player + 0x4)
+        hero = game + HEROES + HERO_SIZE * selected
+        if known and kind == "word":
+            word |= 1 << 5 + state["shown"]
+        elif known and kind is not None:
+            set_bit(game + KINDS_VISITED + kind, colour)
+        elif known:
+            raise RuntimeError(f"class {cls} shows no bonus")
+        if visited is not None:
+            if rule is None:
+                raise RuntimeError(f"class {cls} shows no mark")
+            if rule[0] in ("flags", "hero", "player", "owner") and selected < 0:
+                raise RuntimeError(f"class {cls}'s mark needs a selected hero")
+            if rule[0] == "flags":
+                status = self.u32(hero + HERO_STATUS)
+                low = rule[1] & -rule[1]
+                self.write_u32(hero + HERO_STATUS,
+                               status | low if visited else status & ~rule[1])
+            elif rule[0] == "hero":
+                set_bit(hero + rule[1], word & 0x1F, visited)
+            elif rule[0] in ("player", "garden"):
+                offset, clear = (rule[1], rule[2]) if rule[0] == "player" else (0xB8, 10)
+                set_bit(player + offset, word & 0x1F, visited)
+                if clear is not None:
+                    word &= ~(1 << clear)
+            elif rule[0] == "owner":
+                owner = struct.unpack("<b", self.read(hero + 0x22, 1))[0]
+                word = word | 1 << 5 + owner if visited else word & ~(1 << 5 + owner)
+            elif rule[0] == "obelisk":
+                set_bit(game + OBELISKS_VISITED + word, colour, visited)
+            elif rule[0] == "current":
+                n = 5 + state["current"]
+                word = word | 1 << n if visited else word & ~(1 << n)
+            else:
+                word |= 1 << 5 + state["current"]
+                low = rule[1] & -rule[1]
+                word = word & ~rule[1] if visited else (word & ~rule[1]) | low
+        self.write_u32(tile, word)
 
     def write_bytes(self, address, data):
         """Writes `data` into the game (E24 M1 T5a: a hero's or boat's facing before a still)."""

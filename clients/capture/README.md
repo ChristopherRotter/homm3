@@ -736,7 +736,11 @@ the pointer, so before a sequence's 0 `look_over_view` moves the pointer over ea
 inputs visit and reads that tile's node (`Mem.node_cost`), then over the kingdom overview's button
 and back to the parking (the status bar's hint as before) and writes the manager's +0xEC and
 +0xF0 -1; a still reads none. The status bar's hint is compared only for the items
-`map/masks.toml`'s `hinted` lists (`panel_rects`): add a new item recorded with it there.
+`map/masks.toml`'s `hinted` lists (`panel_rects`): add a new item recorded with it there. Since
+M3 T6a2a (design §4.11) `[hover]` holds `visits` too, per object what the viewer knows of it
+(`Mem.visit` by `h3mem.VISIT_RULES`, the reading's rules; for the hero selected as read), and a
+situation's `visits` (per object anchored on `at`: `known`, `visited`) are written after the view
+is set (`Mem.write_visit`: the rules inverted, on the object's first entrance tile).
 
 **Options and inputs** (E24 M2 T1a2, design §3.4): a sequence's `scroll_speed` (0 to 2) and
 `hero_speed` (1 to 4), the values the original holds, are written into its settings once the

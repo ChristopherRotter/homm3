@@ -23,8 +23,9 @@ use crate::files;
 /// each keyed by its original id (`hero.12`, `town-name.37`: [`status::hero_key`],
 /// [`status::town_key`]); since T6a1 the hints' (design §4.10): a panel item's, an object class's,
 /// a hero class's, a town type's and a creature's names (`map-hint.7`, `object.54`,
-/// `hero-class.2`, `town-type.0`, `creature.13`).
-pub const FAMILIES: [&str; 7] = [
+/// `hero-class.2`, `town-type.0`, `creature.13`); since T6a2a an object's bonus (`map-bonus.3`,
+/// design §4.11).
+pub const FAMILIES: [&str; 8] = [
     "hero",
     "town-name",
     "map-hint",
@@ -32,6 +33,7 @@ pub const FAMILIES: [&str; 7] = [
     "hero-class",
     "town-type",
     "creature",
+    "map-bonus",
 ];
 
 /// The committed key catalogue (`clients/text/keys.toml`).

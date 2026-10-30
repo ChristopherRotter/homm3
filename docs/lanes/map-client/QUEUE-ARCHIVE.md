@@ -4,6 +4,27 @@ Finished history and informational notices moved out of `QUEUE.md` on 2026-10-24
 
 ## Notices from other lanes and finished items, newest first
 
+- 2026-10-30 (this lane, E24 M3 T6a2a): the agent proposed cutting T6a2 by what runs the hint;
+  the user agreed: T6a2a, the 35 classes of the visit marks (done: the log's "M3 T6a2a"), and
+  T6a2b, the 20 of the owners and contents (queued); the recapture with the hint unmasked moved
+  to T7. MCL-Q17 to MCL-Q19 answered at its start. T6a2's entry as it was:
+
+  ### E24 M3 T6a2 — the map hint's own cases
+
+  T6 cut with the user (2026-10-30) in two: T6a the mouse-over, T6b the clicks, the keys during a
+  walk and the sound without the focus; T6a cut again (2026-10-30): T6a1 (done: the epic's log), and
+  T6a2.
+
+  - **Scope:** `map_hint` 0x40B150's 58 cases of their own (`hover::OWN_CASES` but 0, 3, 26, 36,
+    34, 54, 98; switch 0x40B20E): the visited marks (the viewing player's, a selected hero's), the
+    owners, the contents (a resource's amount, an artifact's or spell's name, a dwelling's
+    creatures, a keymaster's colour, ...), each one's facts in `[hover]` (`h3mem.Mem.hover`) and its
+    keys; the sub-functions it calls (`scripts/exe.py callees 0x40B150`). Then the status
+    bar's hint unmasked everywhere (`masks.toml`'s `hint` into `panels`, `hinted` gone): every
+    situation and sequence captured again (`set`, `frames`), as M3's closure would.
+  - **Acceptance:** new sequences with the pointer over every class with a case, each exact; every
+    situation and sequence exact with the status bar compared; the Definition of Done.
+  - **Depends on:** T6a1 (done). **Status:** ready.
 - 2026-10-29 (this lane, E24 M3 T5b2): the agent proposed cutting T5b2 into the windows as stills
   and over time; the user kept it whole. Done: the log's "M3 T5b2" (the date's and the kingdom's
   windows, the chooser at every view's draw, a timed kind's end, the rebuilds). MCL-Q16 answered

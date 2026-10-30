@@ -322,7 +322,11 @@ fn the_walks_frames_are_m2_t3bs() {
             "walk-points",
             "walk-sail",
             "hover-map",
-            "hover-sail"
+            "hover-sail",
+            "hover-visits-a",
+            "hover-visited-a",
+            "hover-visits-b",
+            "hover-visited-b"
         ]
     );
 }
@@ -1711,6 +1715,22 @@ fn the_mouse_over_the_map_and_the_panels() {
     // The hero list's first slot: hero A.
     l.run(10, &[Action::Pointer([641, 228])]).unwrap();
     assert_eq!(shown(&l, 10).1, a);
+}
+
+#[test]
+fn the_tile_under_the_mouse_is_the_drawn_ones() {
+    // A drawn row's last 8 pixels (MCL-Q18): the client's row, the original's the one below.
+    let view = ViewAt { x: 3, y: 4, z: 1 };
+    let fixed = rules(Bugs::Fixed);
+    let original = rules(Bugs::Original);
+    assert_eq!(fixed.column_at([368, 100]), [11, 2]);
+    assert_eq!(original.column_at([368, 100]), [11, 3]);
+    assert_eq!(fixed.tile_at(view, [368, 100]), [14, 6, 1]);
+    assert_eq!(original.tile_at(view, [368, 100]), [14, 7, 1]);
+    // The view's first drawn row starts at its origin's y (8).
+    assert_eq!(fixed.column_at([0, 8]), [0, 0]);
+    assert_eq!(fixed.column_at([31, 39]), [0, 0]);
+    assert_eq!(fixed.column_at([32, 40]), [1, 1]);
 }
 
 #[test]

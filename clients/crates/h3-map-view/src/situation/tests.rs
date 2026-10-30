@@ -838,6 +838,24 @@ fn the_status_windows_writes() {
         asked("teams = [0, 1, 0, 2, 3, 4, 5, 8]"),
         Err("the teams [0, 1, 0, 2, 3, 4, 5, 8]: one past 7".to_string())
     );
+    // E24 M3 T6a2a (design §4.11): the visit marks, each of an object given, once.
+    let pond = "objects = [{ def = \"avccast0.def\", at = [5, 5] }]";
+    assert_eq!(
+        asked(&format!(
+            "{pond}\nvisits = [{{ at = [5, 5], known = true, visited = false }}]"
+        )),
+        Ok(())
+    );
+    assert_eq!(
+        asked(&format!("{pond}\nvisits = [{{ at = [6, 5] }}]")),
+        Err("the visits at [6, 5]: no object anchored there".to_string())
+    );
+    assert_eq!(
+        asked(&format!(
+            "{pond}\nvisits = [{{ at = [5, 5] }}, {{ at = [5, 5] }}]"
+        )),
+        Err("the visits at [5, 5]: given twice".to_string())
+    );
 }
 
 fn theirs_with_silo() -> Situation {
