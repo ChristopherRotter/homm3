@@ -4,6 +4,21 @@ Finished history and informational notices moved out of `QUEUE.md` on 2026-10-24
 
 ## Notices from other lanes and finished items, newest first
 
+- 2026-10-30 (E17 M5 T7 done, kept whole by the user; the entry verbatim):
+
+### E17 M5 T7 — accounts
+
+- **Scope:** the account's key from the login and the password (argon2id with the server lane's
+  parameters, the seed as Ed25519's secret key; the test vector in `NOTES.md`, "The live
+  client"), derived once per device and cached (never the password); the login signed only for
+  the address dialed, a registration's display name; seats by account (joined without a token,
+  re-taken after a drop); `Rekey` after a password change; the goodbyes `Rekeyed`,
+  `CommandLimit`, `Abandoned`. Its dependencies (argon2, Ed25519): asked of the user at the task.
+- **Acceptance:** the test vector reproduced; a battle played logged in on a local `h3-server`,
+  the seat re-taken after a drop; the Definition of Done.
+- **Depends on:** T6b2 (done 2026-10-30); the user's choice of the dependencies. **Status:**
+  ready (T6a's `remote` keeps the welcome's challenge out until the login needs it).
+
 - 2026-10-30 (E17 M5 T6b2 done: T6 done; the entry verbatim):
 
 ### E17 M5 T6b2 — the record that opens mid-battle

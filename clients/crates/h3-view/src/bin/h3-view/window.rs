@@ -144,7 +144,8 @@ fn sides(name: &str) -> Option<[bool; 2]> {
 impl Options {
     /// Parses `(<scenario.toml | record.jsonl> | --server <ws://… | wss://…> (--game <id> |
     /// --create <offer>) --seat attacker|defender [--token <t>] [--name <display>]
-    /// [--pins <file>] [--drop <n>]) [--seed <n>] [--speed <0-2>] [--packs <dir>]
+    /// [--pins <file>] [--drop <n>] [--login <login> [--register <display>] [--accounts <file>]])
+    /// [--seed <n>] [--speed <0-2>] [--packs <dir>]
     /// [--install <dir>] [--human attacker|defender|both] [--keys <file>] [--scale <n>] [--vsync]
     /// [--drawn-cursor] [--fullscreen] [--from <ms>] [--mute] [--check <s> | --measure <s>]
     /// [--leave retreat|surrender] [--auto <turn>]`.
@@ -203,7 +204,7 @@ impl Options {
                     auto = Some(turn.max(1));
                 }
                 "--server" | "--game" | "--create" | "--seat" | "--token" | "--name" | "--pins"
-                | "--drop" => {
+                | "--drop" | "--login" | "--register" | "--accounts" => {
                     let v = value()?;
                     if arg == "--server" {
                         server.insert(0, v);
@@ -283,6 +284,7 @@ fn online_server(args: &[String]) -> Result<crate::online::Server, String> {
         name: options.name,
         pins: options.pins,
         drop: options.drop,
+        account: options.account,
     })
 }
 

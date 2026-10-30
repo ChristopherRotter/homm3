@@ -1,6 +1,7 @@
 //! `h3-view`: the client's command line (E17). An adapter: it reads files, measures time, prints
 //! and opens the window (through `h3-sdl`); what it computes comes from the pure crates.
 
+mod account;
 mod aims;
 mod assets;
 mod audio;
@@ -123,7 +124,10 @@ commands:
           window, the battle checked against the bot's at once; --leave makes the human side
           retreat or surrender through its question at its first turn it may; --auto switches
           Auto Combat on at the human's turn of that number (from 1) and stops it by a press
-          two commands later.
+          two commands later. Instead of a scenario or a record, --server <ws://… | wss://…>
+          with `connect`'s --game or --create, --seat attacker|defender and its other options
+          (--token, --name, --pins, --drop, --login, --register, --accounts) plays that seat
+          of a game on a server.
   situation <scenario.toml> [--packs <dir>] [--install <dir>] [--out <file.h3m>]
           writes the original's map for a scenario's battle, for the capture harness
           (clients/capture/README.md): Red's hero (human) just west of Blue's (computer) on the
@@ -180,7 +184,23 @@ commands:
           absent), plays the seat with a plain player (it shoots or strikes if it may, else walks
           toward the enemy) until the game ends, and writes the seat's record (default
           clients/out/connect/g<id>-<seat>.jsonl). --drop drops the connection after <n> commands
-          and re-joins by the token.
+          and re-joins by the token. --login logs in to the account <login> once welcomed, by
+          its key kept in the accounts file (--accounts, default accounts.txt in the working
+          directory; `account` derives it), registering it first with --register's display name;
+          the seat is then the account's: taken without a token, and again after a drop by
+          logging in. After a password change the account is re-keyed at the server first. A
+          goodbye after which the seat is not taken again (the account re-keyed elsewhere, a void
+          or abandoned game, the seat taken by another connection) ends the session.
+  account <login> [--change] [--accounts <file>] [--pins <file>]
+          derives the key of the account <login> (lowercased) from the password read from
+          standard input (a line, shown as typed), as every client does (Argon2id, 64 MiB, 3
+          passes, salted with the login; the result as Ed25519's secret key), and keeps it in
+          <file> (default accounts.txt in the working directory; secret: it logs in as the
+          account), never the password; prints its public key. Run it again after the account
+          was re-keyed on another device. --change: a password change (the current password
+          first unless its key is kept here, then the new one): the key so far stays due at
+          every server in the pins file (default pins.txt), where `connect` and `window
+          --server` re-key the account at their next login.
   help    show this message
 ";
 
@@ -190,6 +210,10 @@ fn main() -> ExitCode {
         None => help(),
         Some((command, rest)) => match command.as_str() {
             "help" | "--help" | "-h" => help(),
+            "account" => match account::Options::parse(rest) {
+                Ok(options) => account::run(&options),
+                Err(message) => usage_error(&message),
+            },
             "connect" => match connect::Options::parse(rest) {
                 Ok(options) => connect::run(&options),
                 Err(message) => usage_error(&message),

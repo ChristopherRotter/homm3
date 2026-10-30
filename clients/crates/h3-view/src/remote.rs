@@ -21,6 +21,12 @@
 //!   ([`Client::turn`]).
 //! - **The content check** ([`content`]): the game's manifest against the one the client compiles
 //!   from the packs and the profile it names.
+//! - **The login** (E17 M5 T7, [`Client::login`]): once welcomed, signed for the address dialed
+//!   (the welcome's id, checked above) and the welcome's challenge, by the account's key; after a
+//!   password change, by the earlier key still due at this server ([`Accounts`]), then `Rekey`
+//!   to the account's key, or by the account's key when the server holds the earlier one no more.
+//!   A seat taken logged in is the account's: joined without a token, taken again after a drop by
+//!   logging in and joining. A goodbye after which a seat is not taken again: [`farewell`].
 
 use alloc::boxed::Box;
 use alloc::string::String;
@@ -37,10 +43,12 @@ use h3_protocol::wire::{
 
 use crate::record::{self, Record, RecordError};
 
+mod accounts;
 mod seen;
 #[cfg(test)]
 mod tests;
 
+pub use accounts::{Accounts, SEED_BYTES};
 pub use seen::seen;
 
 /// Where a connection stands.
@@ -50,6 +58,8 @@ enum Phase {
     Greeting,
     /// Welcomed, no game joined.
     Lobby,
+    /// A login sent at this step, its answer awaited (E17 M5 T7).
+    LoggingIn(Step),
     /// A game asked for, to take this seat in.
     Creating(Seat),
     /// A join sent for this game and seat.
@@ -60,6 +70,42 @@ enum Phase {
     Playing,
     /// The server said goodbye.
     Closed,
+}
+
+/// A login's step (E17 M5 T7).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Step {
+    /// By an earlier key of the account, still due at this server.
+    Old,
+    /// The re-key from it to the account's key.
+    Rekey,
+    /// By the account's key.
+    Key,
+}
+
+/// An account a connection logs in to (E17 M5 T7): its login name, its public key, the public key
+/// of an earlier one still due at this server (a password changed since: [`Accounts::due`]), and
+/// the display name a registration asks for. The adapter holds the keys: [`Client::login`] has it
+/// sign.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Login<'a> {
+    /// The login name ([`account::is_login_name`]).
+    pub login: &'a str,
+    /// The account's public key.
+    pub key: [u8; KEY_BYTES],
+    /// An earlier key's, still due at this server.
+    pub old: Option<[u8; KEY_BYTES]>,
+    /// The display name to register the account with; none to log in to it.
+    pub display: Option<&'a str>,
+}
+
+/// Which of a login's keys signs (E17 M5 T7).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Signer {
+    /// The account's key.
+    Key,
+    /// The earlier key due at this server.
+    Old,
 }
 
 /// The client's side of one connection.
@@ -83,6 +129,13 @@ pub struct Client {
     last: u32,
     /// The answers to this connection's queries, by their sequence numbers (E17 M5 T6b1).
     answers: Vec<(u32, Vec<Target>)>,
+    /// The welcome's challenge, which a login signs (E17 M5 T7).
+    challenge: Option<[u8; CHALLENGE_BYTES]>,
+    /// A login's messages still to send (E17 M5 T7): after one by an earlier key, the re-key and
+    /// the login by the account's key, one of which follows.
+    later: Vec<ClientMessage>,
+    /// The account's display name once logged in (E17 M5 T7).
+    account: Option<String>,
 }
 
 /// What a message from the server did.
@@ -106,6 +159,14 @@ pub enum Note {
     Grew,
     /// The server's last message: the connection closes.
     Goodbye(GoodbyeReason),
+    /// Logged in (E17 M5 T7): the account's display name on this server. A game may be joined.
+    LoggedIn(String),
+    /// The account re-keyed on this server from the earlier key due here to its key (E17 M5 T7):
+    /// the earlier key is due here no more.
+    Rekeyed,
+    /// The server holds not the earlier key due here (E17 M5 T7: re-keyed from another device, or
+    /// never registered there): due here no more; the login by the account's key follows.
+    OldKeyRefused,
     /// A message this client does not act on (a lobby's answer, a pong, the rejection of a
     /// connection without a seat).
     Other(Box<ServerMessage>),
@@ -189,7 +250,59 @@ impl Client {
             record: None,
             last: 0,
             answers: Vec::new(),
+            challenge: None,
+            later: Vec::new(),
+            account: None,
         }
+    }
+
+    /// Logs in to `login`'s account (E17 M5 T7) once welcomed and before a login or a game; none
+    /// otherwise. `sign` signs by one of its keys: the login's bytes
+    /// (`account::login_message`: the address dialed, which the welcome's id is, the welcome's
+    /// challenge, the login name, a registration's display name) by the account's key; with an
+    /// earlier key due here, the login by that one (no registration), then the re-key's bytes
+    /// (`account::rekey_message`) by both, and the login by the account's key held in case the
+    /// server refuses the earlier one. The first message.
+    pub fn login(
+        &mut self,
+        login: &Login<'_>,
+        sign: impl Fn(Signer, &[u8]) -> [u8; SIGNATURE_BYTES],
+    ) -> Option<ClientMessage> {
+        let challenge = self
+            .challenge
+            .filter(|_| self.phase == Phase::Lobby && self.account.is_none())?;
+        let address = self.address.clone();
+        let by = |seq, signer, key: &[u8; KEY_BYTES], display: Option<&str>| {
+            let signed = account::login_message(&address, &challenge, login.login, display);
+            ClientMessage::Login {
+                seq,
+                login: String::from(login.login),
+                key: account::to_hex(key),
+                signature: account::to_hex(&sign(signer, &signed)),
+                display: display.map(String::from),
+            }
+        };
+        let Some(old) = login.old else {
+            self.phase = Phase::LoggingIn(Step::Key);
+            return Some(by(self.next_seq(), Signer::Key, &login.key, login.display));
+        };
+        let first = by(self.next_seq(), Signer::Old, &old, None);
+        let rekeyed = account::rekey_message(&address, &challenge, login.login, &login.key);
+        let rekey = ClientMessage::Rekey {
+            seq: self.next_seq(),
+            key: account::to_hex(&login.key),
+            by_old: account::to_hex(&sign(Signer::Old, &rekeyed)),
+            by_new: account::to_hex(&sign(Signer::Key, &rekeyed)),
+        };
+        let current = by(self.next_seq(), Signer::Key, &login.key, login.display);
+        self.later = vec![rekey, current];
+        self.phase = Phase::LoggingIn(Step::Old);
+        Some(first)
+    }
+
+    /// The account's display name on this server once logged in (E17 M5 T7).
+    pub fn account(&self) -> Option<&str> {
+        self.account.as_deref()
     }
 
     /// The hello: this protocol version, the program `client`, the player's display name `name`,
@@ -329,6 +442,12 @@ impl Client {
                 verify,
             ),
             (Phase::Greeting, m) => Err(out_of_place(&m)),
+            (Phase::LoggingIn(step), ServerMessage::Account { display, .. }) => {
+                Ok(self.logged_in(step, display))
+            }
+            (Phase::LoggingIn(step), ServerMessage::Refused { reason }) => {
+                Ok(self.login_refused(step, reason))
+            }
             (
                 Phase::Joining(game, seat),
                 ServerMessage::Joined {
@@ -414,8 +533,45 @@ impl Client {
             }
         }
         self.phase = Phase::Lobby;
+        self.challenge = Some(challenge);
         notes.push(Note::Welcomed(server));
         Ok(notes)
+    }
+
+    /// A login's answer at `step` (E17 M5 T7): logged in as `display`; by an earlier key, the
+    /// re-key follows.
+    fn logged_in(&mut self, step: Step, display: String) -> Vec<Note> {
+        self.account = Some(display.clone());
+        match step {
+            Step::Old => {
+                self.phase = Phase::LoggingIn(Step::Rekey);
+                let rekey = self.later.drain(..).next();
+                rekey.map(Note::Send).into_iter().collect()
+            }
+            Step::Rekey => {
+                self.phase = Phase::Lobby;
+                vec![Note::Rekeyed, Note::LoggedIn(display)]
+            }
+            Step::Key => {
+                self.phase = Phase::Lobby;
+                vec![Note::LoggedIn(display)]
+            }
+        }
+    }
+
+    /// A login refused at `step` for `reason` (E17 M5 T7): by an earlier key the server does not
+    /// hold, the login by the account's key follows; else no login (by an earlier key accepted and
+    /// its re-key refused, the connection stays logged in by that one).
+    fn login_refused(&mut self, step: Step, reason: Refusal) -> Vec<Note> {
+        let current = self.later.pop();
+        self.later.clear();
+        if (step, reason) == (Step::Old, Refusal::BadLogin) {
+            self.phase = Phase::LoggingIn(Step::Key);
+            let send = current.map(Note::Send);
+            return core::iter::once(Note::OldKeyRefused).chain(send).collect();
+        }
+        self.phase = Phase::Lobby;
+        vec![Note::Refused(reason)]
     }
 
     /// The record `text` the server sent for the joined `game` and `seat`, its last message's
@@ -501,6 +657,28 @@ pub fn number(message: &ServerMessage) -> Option<u32> {
         | ServerMessage::SpectatorsSet { n, .. }
         | ServerMessage::Rating { n, .. } => Some(*n),
         ServerMessage::Rejected { n, .. } => (*n > 0).then_some(*n),
+        _ => None,
+    }
+}
+
+/// Why a seat is not taken again after the server's goodbye `reason` (E17 M5 T7, *provisional*):
+/// the account re-keyed elsewhere, a void game, an abandoned one, the seat taken by another
+/// connection, another protocol version; none when the adapter dials again (a drop, a shutdown: a
+/// restart's).
+pub const fn farewell(reason: GoodbyeReason) -> Option<&'static str> {
+    match reason {
+        GoodbyeReason::Rekeyed => Some(
+            "the account was re-keyed on another connection: the key kept here is an earlier \
+             one (`h3-view account <login>` with the new password)",
+        ),
+        GoodbyeReason::CommandLimit => {
+            Some("the game is void: it reached the server's limit of commands without an end")
+        }
+        GoodbyeReason::Abandoned => {
+            Some("the game is gone: it had not started and none of its seats was held")
+        }
+        GoodbyeReason::Replaced => Some("another connection took the seat"),
+        GoodbyeReason::Protocol => Some("the server speaks another protocol version"),
         _ => None,
     }
 }
@@ -619,6 +797,12 @@ impl Pins {
             text.push('\n');
         }
         text
+    }
+
+    /// The addresses pinned, in order: the servers this client knows (E17 M5 T7: a password
+    /// change re-keys the account at each).
+    pub fn addresses(&self) -> impl Iterator<Item = &str> {
+        self.0.iter().map(|(address, _)| address.as_str())
     }
 
     /// The key pinned for `address`.

@@ -13,26 +13,13 @@ the user; T3 cut in two, T3a done 2026-10-27, T3b 2026-10-28; T4 cut in three, T
 2026-10-28, T4b cut in two, T4b1 done 2026-10-28, T4b2 and T4c1 done 2026-10-28, T4c2a and
 T4c2b 2026-10-29: T4 done; T5 cut in two, T5a done 2026-10-29, T5b cut in two, T5b1 and T5b2
 done 2026-10-29: T5 done; T6 cut in two by the user, T6a done 2026-10-30, T6b cut in two by
-the user, T6b1 and T6b2 done 2026-10-30). The original files: stage them from the user's `original-data/install/` (one large file per staging call; the
+the user, T6b1 and T6b2 done 2026-10-30; T7 kept whole by the user, done 2026-10-30). The original files: stage them from the user's `original-data/install/` (one large file per staging call; the
 user's computer must be online); never from the installation. The captures need the five DLLs,
 `Heroes3.snd`, `H3ab_ahd.snd` and `H3ab_ahd.vid` too; the harness's runbook:
 `clients/capture/README.md`. The client's gates: `clients/scripts/check.sh` (the full local
 check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gate` from
 `clients/`. An asset fix gets its mechanism (ADR-0020 point 6: the entry's flag, the
 `faithful`/`fixed` profile) with the first one a task finds.
-
-### E17 M5 T7 — accounts
-
-- **Scope:** the account's key from the login and the password (argon2id with the server lane's
-  parameters, the seed as Ed25519's secret key; the test vector in `NOTES.md`, "The live
-  client"), derived once per device and cached (never the password); the login signed only for
-  the address dialed, a registration's display name; seats by account (joined without a token,
-  re-taken after a drop); `Rekey` after a password change; the goodbyes `Rekeyed`,
-  `CommandLimit`, `Abandoned`. Its dependencies (argon2, Ed25519): asked of the user at the task.
-- **Acceptance:** the test vector reproduced; a battle played logged in on a local `h3-server`,
-  the seat re-taken after a drop; the Definition of Done.
-- **Depends on:** T6b2 (done 2026-10-30); the user's choice of the dependencies. **Status:**
-  ready (T6a's `remote` keeps the welcome's challenge out until the login needs it).
 
 ### E17 M5 T8 — M5's closure
 
@@ -42,7 +29,7 @@ check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gat
   refined with the user (the ladders, the pause, the server browser; HD; graphics options).
 - **Acceptance:** the review list accepted; every capture as recorded or its difference listed;
   the next milestone's tasks in this queue; M5 done.
-- **Depends on:** T1 to T7. **Status:** waiting (the user, at its checkpoint).
+- **Depends on:** T1 to T7 (done 2026-10-30). **Status:** ready (the user, at its checkpoint).
 
 ## Inbox
 

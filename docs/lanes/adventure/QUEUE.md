@@ -4,42 +4,7 @@ Pre-refined tasks of the adventure lane, in order, then the inbox of discovered 
 
 ## Tasks
 
-Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T76 (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 8 are closed (2026-10-12, -13, -20, -21, -23, -26, -28, -30; increment 8, boats and the sea, by T76's audit). **Increment 9, mines, the week and owned objects**, refined with the user at T76 (ADV-Q36; decisions 192, 193): the survey and the ADR amendment drafts first (T77a, T77b), each task's cut confirmed with the user at its start. T77a in two (decision 194): T77a1 done (`adventure/e08-t77a1`: survey `E08-economy.md` §0 to §6). Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
-
-**E08 T77a — The mines, week and owned objects survey** (in two, decision 194: T77a1 points 1 to 4 and the census done, survey §0 to §6; **T77a2** point 5, the mines' income of point 2, points 6 and 7 next, §7 on)
-
-- **Scope** (decisions 192, 193): a survey `docs/rules/surveys/E08-economy.md` (as T17a, T24a,
-  T34a, T44a, T55a and T66a): the original's rules by code reading (`docs/exe/README.md`; read so
-  far: `visit_mine` 0x4A39A0 and the owned objects' code by T77a1 (the survey's Sources), `tile_object_owner` 0x40FD20 with the owned objects'
-  record tables, `new_day` 0x4C7FE0 and `new_day_week_events` 0x4C8780 in part,
-  `covered_view_new_week` 0x4CA840; `town_gold_income` 0x5BF600 is a town's, E09) with VCMI 1.7.5
-  and the wiki, and a census of the 160 shipped maps (T76's counts in `E08-log.md`, T76). (1)
-  **Flagging:** which classes a visit flags, what it costs or asks, a guarded owned object, a hero
-  standing on an owned object's entrance, an owned object of a player out of the game, the owner
-  at load (the map's owner fields), what another player sees (ADR-0016 point 6). (2) **Mines** (53
-  subclasses 0 to 6; the abandoned mine 53.7 and 220): their guards, the Leave Guards dialog, the
-  abandoned mine's guards and its resource; **the day's income** and its order at the day's
-  start. (3) **Lighthouses** (42): the bonus to the owner's heroes at sea, its stacking, when it is
-  read (the turn start's sea points, HER-ADV-009). (4) **Shipyards** (87): where the boat appears,
-  its price, when it is refused (a boat or a hero on the tile), what the boat's record gets
-  (ADV-SEA-001). (5) **The week:** its order (the day, the week, the month), the Windmill (112), the
-  Water Wheel (109) and the Mystical Garden (55) (what each gives, who, how often, the reset), the
-  monsters' weekly growth (the "does not grow" flag), the map's timed events (decision 127's
-  agent's call). (6) The commands, decisions, events, the observation, replays and benchmarks it
-  changes; **batch E9's plan** on the client lane's harness (decision 193's agent's call). (7) The
-  proposed rule ids, quirk candidates and disputes; a fresh agent's second reading of the deciding
-  code; the checkpoint's questions (an `ADV-Q`).
-- **Not in it** (decision 192): dwellings and random dwellings, the Refugee Camp and the hire
-  dialog, garrisons (item 10); the teleporters; towns' income and the week's creature (E09); a
-  computer player's flags (E10); simultaneous play.
-- **T77a2** (decision 194: what the day's start does): the day's, week's and month's order
-  (`new_day` 0x4C7FE0, `new_day_week_events` 0x4C8780, read in part), the mines' income
-  (`mine_daily_income` 0x678288, survey §3.5) and its order, point 5 whole, then points 6 and
-  7: the survey's §7 on, with T77a1's inputs (§6: D-47, D-48, A-29 to A-31, the open points,
-  among them the Shipyard's use without a visit, §5.3, for the second reading) and the
-  checkpoint's `ADV-Q37`.
-- **Depends on:** T76 (done). **Status:** T77a2 ready, its cut confirmed at its start; a user
-  checkpoint at its end (decision 193).
+Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T76 (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 8 are closed (2026-10-12, -13, -20, -21, -23, -26, -28, -30; increment 8, boats and the sea, by T76's audit). **Increment 9, mines, the week and owned objects**, refined with the user at T76 (ADV-Q36; decisions 192, 193): the survey and the ADR amendment drafts first (T77a, T77b), each task's cut confirmed with the user at its start. T77a in two (decision 194): T77a1 done (`adventure/e08-t77a1`: survey `E08-economy.md` §0 to §6), T77a2 done whole (decision 195; `adventure/e08-t77a2`: §7 to §18, the checkpoint's `ADV-Q37`). Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
 
 **E08 T77b — The ADR amendment drafts, the design note and the cut**
 
@@ -50,7 +15,12 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
   written for increment 9 (with its exit criteria), the building tasks cut in rounds; the
   checkpoint's questions (an `ADV-Q`). The user accepts the drafts and the cut before anything is
   built (decision 193).
-- **Depends on:** T77a and its checkpoint. **Status:** waiting; its cut confirmed at its start.
+- **Inputs:** the survey's §13 (the interfaces), §14 (D-49, D-50, A-32; A-31 corrected), §15
+  (batch E9's plan, its harness and spec gaps), §16 (the rule ids) and §18; `ADV-Q37`'s answers,
+  decisions 196–199 (the scope grown by the heroes' income, the day's spell points and the
+  month's monsters; batch E9 whole before the build).
+- **Depends on:** T77a and its checkpoint (both done). **Status:** ready; its cut confirmed at
+  its start.
 
 ## Inbox
 

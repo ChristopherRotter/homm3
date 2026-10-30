@@ -7,9 +7,13 @@
 //! protocol's `Query`): the aims need them, as no engine runs here. A dropped connection is dialed
 //! again (at most once a second, until the server answers) and the seat re-joined by its token;
 //! the record fetched then extends the one before, so the battle keeps its timeline, or a
-//! restarted server's opens afresh at the re-join's snapshot: a new timeline (E17 M5 T6b2). The content check compiles the packs the game names here: the same
-//! ruleset gives the window its own previews, another or none a visible note. An adapter: the
-//! socket, the pins file, the clock.
+//! restarted server's opens afresh at the re-join's snapshot: a new timeline (E17 M5 T6b2). With
+//! an account (E17 M5 T7, [`crate::account`]), each connection logs in once welcomed and joins
+//! without a token (the seat is the account's); a goodbye after which the seat is not taken again
+//! (`h3_view::remote::farewell`: the account re-keyed elsewhere, a void or abandoned game, the
+//! seat taken by another connection) ends the run. The content check compiles the packs the game
+//! names here: the same ruleset gives the window its own previews, another or none a visible
+//! note. An adapter: the socket, the pins and accounts files, the clock.
 
 use std::path::{Path, PathBuf};
 use std::time::Duration;
@@ -18,10 +22,11 @@ use h3_content_battle::BattleRuleset;
 use h3_protocol::map;
 use h3_protocol::wire::{Command, Query, Seat, ServerMessage, Target};
 use h3_view::record::Record;
-use h3_view::remote::{Client, Content, Note, Pins, Rejoined, rejoined};
+use h3_view::remote::{self, Client, Content, Note, Pins, Rejoined, rejoined};
 use rustls::RootCertStore;
 
-use crate::connect::{Game, PROGRAM, hex, read_pins, write};
+use crate::account::Account;
+use crate::connect::{self, Game, PROGRAM, hex, read_pins, write};
 use crate::net::{self, Connection, Incoming};
 
 /// The least time between two dials of a dropped connection, in milliseconds.
@@ -44,6 +49,8 @@ pub struct Server {
     pub pins: PathBuf,
     /// Drops the connection after this many commands sent and re-joins (a test of the re-join).
     pub drop: Option<u32>,
+    /// The account logged in to (E17 M5 T7); none: anonymous.
+    pub account: Option<Account>,
 }
 
 /// The seat's connection and what it gathered (the module's text).
@@ -135,7 +142,7 @@ impl Online {
         let manifest = &online.record().ok_or("the record")?.header.manifest;
         let ruleset = crate::scenario::ruleset(packs, manifest).ok();
         let own = ruleset.as_ref().map(map::manifest);
-        online.content = h3_view::remote::content(manifest, own.as_ref());
+        online.content = remote::content(manifest, own.as_ref());
         online.ruleset = ruleset;
         online.lines.push(format!("content: {:?}", online.content));
         Ok(online)
@@ -221,14 +228,22 @@ impl Online {
                 Note::Welcomed(server) => {
                     self.lines.push(format!("welcomed by {server}"));
                     self.down = false;
-                    let (seat, token) = (self.server.seat, self.token.clone());
-                    let ask = match (&self.server.game, self.joined) {
-                        (_, Some(game)) | (&Game::Join(game), None) => {
-                            self.client.join(game, seat, token)
-                        }
-                        (Game::Create(offer), None) => self.client.create(offer, seat),
+                    let ask = match &self.server.account {
+                        Some(account) => account.login(&mut self.client, &self.server.address)?,
+                        None => self.join()?,
                     };
-                    self.send_raw(ask.ok_or("the join after the welcome")?);
+                    self.send_raw(ask);
+                }
+                Note::LoggedIn(display) => {
+                    self.lines.push(format!("logged in as {display}"));
+                    let ask = self.join()?;
+                    self.send_raw(ask);
+                }
+                Note::Rekeyed | Note::OldKeyRefused => {
+                    self.lines.push(connect::rekeyed(&note));
+                    if let Some(account) = &self.server.account {
+                        account.done(&self.server.address)?;
+                    }
                 }
                 Note::Created(game) => self.lines.push(format!("created game {game}")),
                 Note::Joined(game, seat) => {
@@ -237,7 +252,12 @@ impl Online {
                 }
                 Note::Refused(reason) => return Err(format!("refused: {reason:?}")),
                 Note::Opened | Note::Grew => self.take()?,
-                Note::Goodbye(reason) => self.lines.push(format!("goodbye: {reason:?}")),
+                Note::Goodbye(reason) => {
+                    self.lines.push(format!("goodbye: {reason:?}"));
+                    if let Some(why) = remote::farewell(reason).filter(|_| !self.over()) {
+                        return Err(why.to_owned());
+                    }
+                }
                 Note::Other(_) => {}
             }
         }
@@ -245,6 +265,13 @@ impl Online {
             self.token = Some(token.to_owned());
         }
         Ok(())
+    }
+
+    /// The join once welcomed (and logged in, with an account): the game joined before, or the
+    /// server's game, or a new one of its offer.
+    fn join(&mut self) -> Result<h3_protocol::wire::ClientMessage, String> {
+        let (game, seat) = (&self.server.game, self.server.seat);
+        connect::join(&mut self.client, game, self.joined, seat, &self.token)
     }
 
     /// The connection's record taken as the seat's: at the first opening as it is; at a
