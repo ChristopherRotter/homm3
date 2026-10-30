@@ -23,7 +23,7 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   `online`, `Battle`'s `Fight`; T6b2 done, kept whole by the user: the record that opens
   mid-battle, design §11.3, `anim::lies`, `scene::living`, the moat by fixed rows,
   `remote::rejoined`, `Battle::afresh`: T6 done). **Next: M5 T7** (accounts: the dependencies
-  the user's at the task; QUEUE). Open PR: T6b2's (branch `client/e17-m5-t6b2`; check it
+  the user's at the task; QUEUE). Open PR: T6b2's #597 (branch `client/e17-m5-t6b2`; check it
   first). The inbox's CLT-Q30 task (`h3-bink` as BINKW32's float DCT) and the user's Demons
   note (T5a's dissolve, to re-investigate) wait for a free slot.
   Workspace `clients/` (`clients/README.md`), gates `clients/scripts/check.sh`; ADR-0020 (+ drafts
@@ -53,7 +53,7 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
 
 ## Recent sessions
 
-- **2026-10-30, E17 M5 T6b2 (done; PR open: check it first).** The original data staged;
+- **2026-10-30, E17 M5 T6b2 (done; #597 open: check it first).** The original data staged;
   the agent's cut into T6b2a/b declined by the user (kept whole); the VM restarted ~10 minutes
   in (CI's green `master` the baseline). Built the record that opens mid-battle (R2-8, R1-3) and
   the restart's new timeline (design §11.3); checked against the recorded `raise` cut after its
