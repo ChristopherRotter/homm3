@@ -23,7 +23,7 @@ adventure).
 
 | File | What it does |
 |---|---|
-| `setup.sh [copy]` | Installs 32-bit Wine, Xvfb, xdotool, xset, ImageMagick and mingw-w64; makes the run directory `original-data/wine/game` from the copy (default `original-data/install`), its `VIDEO.VID` the user's `original-data/battle-videos.vid` (the result window's clips, E17 M5 T4b2b; an empty archive without it); builds `xdd.dll` and `binkprobe.exe`; writes the game's settings (no intro, no grid, no sound, full screen, a hero's path shown before it walks, auto combat playing the creatures, the spell book's page turns without their videos) into the Wine prefix (`$WINEPREFIX`, default `~/.wine-h3`, in a directory the shell's user owns). |
+| `setup.sh [copy]` | Installs 32-bit Wine, Xvfb, xdotool, xset, ImageMagick and mingw-w64; makes the run directory `original-data/wine/game` from the copy (default `original-data/install`), its `VIDEO.VID` the user's `original-data/battle-videos.vid` (the result window's clips, E17 M5 T4b2b; an empty archive without it, and it says which); builds `xdd.dll` and `binkprobe.exe`; writes the game's settings (no intro, no grid, no sound, full screen, a hero's path shown before it walks, auto combat playing the creatures, the spell book's page turns without their videos) into the Wine prefix (`$WINEPREFIX`, default `~/.wine-h3`, in a directory the shell's user owns). |
 | `xdd.c`, `xdd.def` | Our `xdd.dll`: forwards the GOG executable's `DirectDrawCreate` to Wine's ddraw, the **virtual clock** (BINKW32.DLL's too) and the **forced rolls** (below). |
 | `binkprobe.c` | Our `binkprobe.exe` (E17 M5 T4b2b): the game's `BINKW32.DLL` run on a video archive's clips as a black box, its clock ours: every frame as the DLL copies it (5-6-5, YUY2, …), the result window's playback by the millisecond (below, "The clips"). |
 | `h3drive.py` | The driver: starts the game, the recipes (fixed coordinates, screens by probes), the clock, dumps; the commands `battle`, `set`, `learn`, `shot`, `sequence`, `sequences`, `frames`. |
@@ -863,17 +863,24 @@ folder's `clock/`), it runs in real time until a command arrives in `ctl`, one l
 three numbers, below; since E17 M5 T4b2b an eighth, 1 when `BINKW32.DLL`'s own `timeGetTime`
 import points at the same clock: the result window's clip plays on the virtual clock, its reads
 not counted as the game's; since E17 M5 T5b2 a ninth, the Miles imports hooked in a `sound`
-run, below). A game that keeps reading a stopped clock is idle at that time: `Game.clock` waits
-for 20 reads (with sound the main thread's, growing over three acknowledgements), `Game.settled`
-for two equal dumps (Wine may draw a moment later).
+run, below; since E17 M5 T8b1 a tenth, the sample calls the hooks could not follow, below).
+`Game.ack(need=True)`, which every check reads once, fails on an ack of fewer fields: a stale
+`xdd.dll` (rerun `setup.sh`, which builds it). A game that keeps reading a stopped clock is idle
+at that time: `Game.clock` waits for 20 reads (with sound the main thread's, growing over three
+acknowledgements in a row, counted again from none when they go back), `Game.settled` for two
+equal dumps (Wine may draw a moment later).
 
 ## The clips
 
 E17 M5 T4b2b (`docs/epics/E17-design.md` §7.21): the run directory's `VIDEO.VID` is the user's
 `battle-videos.vid`, so the result window plays its clip (`result-retreat`, `result-surrender`,
 `end`, `defended`): frame 0 from the window's opening, frame k from ⌊1000 (k + 2) / 15⌋ ms, a loop's
-first at the start's last decode. `binkprobe.exe` (beside the game; Wine's prefix as the
-harness's) runs the DLL alone, its clock ours:
+first at the start's last decode. Since E17 M5 T8b1 (R7-2) `setup.sh` says which archive it
+copied, a battle capture fails at its start when the ack's eighth field is not 1 (the clip's
+clock not the virtual one), and one that reaches the result window (decided, or a side retreated
+or surrendered: `sequence` always, `capture` when it reads the stacks, every `set` run) fails when
+the run's `Data/VIDEO.VID` is the empty stand-in (`check_clips`). `binkprobe.exe` (beside the
+game; Wine's prefix as the harness's) runs the DLL alone, its clock ours:
 
 ```
 cd original-data/wine/game
@@ -904,15 +911,23 @@ manager's driver; `play_sample` plays nothing at the effects' volume 0). A seque
   points ALSA at its null sink (`ALSA_CONFIG_PATH`: the system's `alsa.conf` and the run's
   `clock/null.conf`), so Miles opens its digital driver in a sandbox without a sound card, and
   sets `H3SOUND`;
-- `xdd.dll` (its 6.) hooks the nine Miles imports that load, start, end, pause, resume, serve and
-  ask after a sample: a sample plays its WAV's `fact` frames at its rate on the virtual clock (the
-  null sink mixes faster than real time; the game reads only the hooks' answers), each start
-  appended to `clock/sounds` as `<time> <channel> <length ms> <loops>`; the ack's ninth field
-  counts the imports hooked (9);
+- `xdd.dll` (its 6.) hooks the nine Miles imports that load a sample (`AIL_set_sample_file`),
+  set its loop count, start, end, initialise (`AIL_init_sample`), pause, resume, serve and ask
+  after one: a sample plays its WAV's `fact` frames at its rate times its loops on the virtual
+  clock (the null sink mixes faster than real time; the game reads only the hooks' answers; a
+  paused one answers stopped, 8, as Miles does), each start appended to `clock/sounds` as
+  `<time> <channel> <length ms> <loops>` (the channel: the game's sample handle numbered in the
+  order the hooks first saw it, in any hooked call, its file set as a rule); the ack's ninth
+  field counts the imports hooked (9), its tenth the calls the hooks could not follow (a file not
+  read as a RIFF WAVE with a `fmt ` rate and a `fact` count, the chunks walked as `h3-assets`'
+  `wav.rs` walks them; a handle past the table's 32): a sound run fails when it is not 0;
 - the adventure map's sounds play out first, the clock running (`sounds_settled`: hot seat's new
-  day waits for its samples, and a key pressed meanwhile is lost once the clock stops);
+  day waits for its samples, and a key pressed meanwhile is lost once the clock stops; a sample's
+  end is its start plus its length times its loops, one looping until ended counted once);
 - the opening is the start sound's end (`after_start_sound`): the battle shows its battlefield,
-  waits while `BATTLE0n` plays, then starts its clocks (0x463093), the viewer's time 0;
+  waits while `BATTLE0n` plays, then starts its clocks (0x463093), the viewer's time 0; the start
+  sound is the last sample logged since the step into the battle that still plays at the show
+  (a run fails without one, or when it loops until ended);
 - the game's sound thread reads the clock and holds the sound manager's lock in real time, so only
   the main thread's reads count and `Game.clock` takes the game for idle only once they grow over
   three acknowledgements in a row (with 20 reads of any thread, `machines`' heal was read before
@@ -1073,7 +1088,8 @@ design §7.1.
   `morale` in `states.jsonl` show it. Since E17 M5 T8a the battle recipes (`capture`,
   `sequence`) set every player's bonus to Gold in the advanced options (`h3drive.gold_bonus`;
   `to_scenario` and `h3adv.to_hot_seat` take `gold`, off for the adventure batches and the map's
-  stills, which keep the random bonus).
+  stills, which keep the random bonus). The choice is not checked afterwards (E17 M5 T8b1,
+  R7-8: no probe of the Gold picture, no address of the bonuses read).
 - An XWD file's colour map holds bytes the X server leaves unset: compare pixels, never files.
 - The menus run in real time; only the battle runs on the stepped clock. Two runs still agree:
   the battle's setup does not depend on the clock (observed: the obstacles follow the tile).
@@ -1083,7 +1099,10 @@ design §7.1.
   for `setup.sh` (one setup at a time: both boot on `:98`) and for `h3drive.py`; each run ends
   the games of its own prefix only, and `h3mem.game_pid` reads only its own prefix's game (at
   first it took the first `Heroes3.exe` found, the other instance's: reads and writes went to
-  the wrong game). Give each instance other ids (`clients/out/<kind>/<id>` and
+  the wrong game). Since E17 M5 T8b1 (R7-3, R7-4) both refuse `H3_RUN` without `WINEPREFIX`
+  (the default prefix is the other instance's: its game ended, its drive D: moved), `setup.sh`
+  makes both paths absolute, `Game.start` fails unless the prefix's `dosdevices/d:` is the run
+  directory, and the display's Xvfb is matched by its whole number. Give each instance other ids (`clients/out/<kind>/<id>` and
   `kept/` are per id), leave `drawn --record` to after both, and rerun a `CHANGED` alone before
   believing it (two games load both cores: the trap of a build beside a capture).
 - A click at the frozen clock acts at once and the computer's reply too (the AI acts in the same
