@@ -1,9 +1,9 @@
 # The Shrines', Trees of Knowledge's and Witch Huts' hints of the map hint (E24 M3 T6a2b;
 # clients/map/sequences.toml `hover-teach`; E24 design §4.12): Red's selected hero at (17, 1), in
 # the view from (0, 0), eight Shrines of the three levels and a visited Keymaster's Tent in the
-# first row, five Trees in the second, five Witch Huts in the third: nothing known, the kind
-# known, visited (the spell, the price, the skill), the selected hero's own (the spell known, the
-# Tree visited, the skill learned); Blue's hero far off.
+# first row, five Trees in the second, five Witch Huts in the third: the kind known (a kind's bit,
+# so every object of the kind shows its bonus), visited (the spell, the price, the skill), the
+# selected hero's own (the spell known, the Tree visited, the skill learned); Blue's hero far off.
 size = 36
 terrain = "grass"
 heroes = [

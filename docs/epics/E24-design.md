@@ -2396,3 +2396,64 @@ harness derives from memory by the rules above (`h3mem.Mem.visits`) and the engi
 `Hint::Visits` composes the name, the bonus (`map-bonus.<n>`) and the mark (`map.hint.visited`,
 `map.hint.not-visited`) with `map.hint.more` (0x66034C) between. A situation's `visits` writes
 them into the original for a comparison (`h3map.stage`: the same rules inverted).
+
+### 4.12 The map hint's owners and contents (M3 T6a2b)
+
+Read in the sandbox (kept whole by the user, 2026-10-30): the other 20 cases of switch 0x40B20E and
+the sub-functions they call. Each starts with a name; the separators the sub-functions take are a
+space (0x660330), so every part after the name is " %s" (`map.hint.more`).
+
+- **Border Guard and Gate** (9, 212; 0x40B2FD) and **Keymaster's Tent** (10, 0x40B328): "%s %s"
+  (0x660344) with the colour's name (`keymaster_colour_names` 0x6A7520, TentColr.txt by
+  `tentcolr_load` 0x5B9880; the tile's +0x22 subclass) and the class's; a Tent on its entrance
+  its mark (GENRLTXT 353/354) by the viewing player's bit of the game's u8[8] +0x4E364 + colour.
+- **Dwellings** (17, 20; 0x40B587, 0x40B5CA): the dwelling record's (game +0x4E39C, 0x5C bytes, by
+  the word) name by its +1 (CrGen1, CrGen4), with an owner (+0x57) "%s - %s" (0x66033C) and its
+  "Owned by" text (`player_owned_names` 0x6A5898, ARRAYTXT 23-30); no entrance test.
+- **Lighthouse** (42, 0x40BEA2): its name, on its entrance with an owner (game +0x4E38C, 0x40
+  bytes, +0) " - %s" (0x660334). **Resource** (79, 0x40C785): `resource_names` 0x6A5E64
+  (RESTYPES, `restypes_load` 0x5B9310) by its subclass.
+- **Mine** (53, `mine_hint_text` 0x40D670, the viewing player): the name (`mine_names` 0x6A74D0,
+  MineName by the record's +1; its +2 set the eighth, an abandoned mine's), then with an owner its
+  "Owned by" text; where the owner is of the viewer's team (game +0x1F879) "(" (0x660354), the
+  resource's name and ")"; with guards (the record's army +4) `army_description_text` 0x40ABE0
+  without its details: GENRLTXT 203, the size word of the total count in form 2 (ARRAYTXT 176 +
+  3 n) and the only creature's plural, or GENRLTXT 44 for several (the stacks merged by creature,
+  `army_add_stack` 0x44ACE0). No entrance test.
+- **Creature banks** (`creature_bank_hint` 0x40D3F0, the shown player; 16 its subclass, 85 kind 7,
+  24 kind 8, 84 kind 9, 25 kind 10): the kind's name (CrBanks.txt's record 2 + 4 k, the table at
+  `creature_bank_kinds_pointer` 0x67029C), then GENRLTXT 354 unless the word's bit 5 + player;
+  visited, GENRLTXT 353 once looted (bit 25) or its army (game +0x4E3DC, 0x6C bytes, by bits
+  13-24) empty, else "(" and the guards as a mine's and ")". No entrance test.
+- **Shrines** (88-90, `shrine_hint` 0x40D8D0), **Tree of Knowledge** (102, 0x40DB00), **Witch Hut**
+  (113, 0x40DCC0), the current player: the name; on the entrance, once the word's bit 5 +
+  player: a Shrine's "(Learn %s)" (GENRLTXT 356) with its spell (bits 13-22, signed) and, when
+  the selected hero has it (+0x430 + spell), GENRLTXT 355; a Tree's price (`tree_price_names`
+  0x6A64D8, ARRAYTXT 202-204 by bits 13-15; each text begins with a space: MCL-Q20); a Witch Hut
+  with a skill (bits 13-19 not all set) "(Learn %s)" (GENRLTXT 357) with it and, when the hero
+  has it (+0xC9 + skill), GENRLTXT 358. Else, once the kind is known (kinds_visited 19-21, 18,
+  12 by the current player), its XtraInfo row. A Tree then shows the selected hero's mark by its
+  +0x6B bit (word & 0x1F).
+- **Seer's Hut** (83, `seer_hut_hint` 0x5741B0; its 19-byte record at game +0x1FBD4 by the word,
+  the viewing player) and **Quest Guard** (215, `quest_guard_hint` 0x573040; 5 bytes at +0x1FBE4,
+  the shown player): a Seer's Hut not visited (its +4 bit) its name, visited GENRLTXT 348 with
+  the seer's name (SeerHut.txt 50 + its +0x11); a Quest Guard its name; then, visited and with a
+  quest (+0), a space and the quest's text: its vtable (`quest_vtables` 0x64174C + 0x3C x type,
+  `quest_create` 0x573240) +0x1C, SeerHut.txt's "rollover" record 5 x type in the column of the
+  quest's +4 (seer 1-3, guard 4-6) by its variant +0x38, formatted with the level (+0x40), the
+  primary skills above 0 ("%s %i", PRISKILL), the hero's name (+0x44, +0x40 to be), the monster's
+  plural (+0x48), the artifacts' names (+0x44's vector), the creatures ("%d %s", the singular for
+  one; +0x54's types, +0x44's counts), the resources above 0 ("%d %s"), or the colour's name
+  (PlColors) in lower case (0x6172B6); a list joined by ", " and GENRLTXT 142 before its last
+  (`list_join` 0x56C960).
+
+The players again are one in the comparisons (§4.11). **Built:** `hover::contents`: the live part's
+`[hover]` contents (`mines`, `banks`, `shrines`, `trees`, `witch_huts`, `quests`: sparse rows by
+object; the Tent's mark a `visits` rule), `Hint`'s variants (`Keymaster`, `Dwelling`,
+`Lighthouse`, `Resource`, `Mine`, `Bank`, `Teaches`, `Quest`; `Hint` no longer `Copy`), the
+catalogue's keys and families (`clients/text/keys.toml`); the harness's `Mem.contents`,
+`Mem.quest`, `Mem.write_content` (a situation's `visits` with `hero` and `guards`) and the Quest
+Log's state as shown (`Mem.item_states`: the harness's writes do not run `quest_log_state`); the
+writer's quests (`Extras::quests`, a situation object's `quest`). An object whose data names
+nothing (a colour or resource past its table, a defeat-hero quest without its hero) shows nothing
+there (MCL-Q21).
