@@ -1775,6 +1775,28 @@ struct Live {
 }
 
 impl Live {
+    /// The snapshot's stack `s` in `look`, standing as the setup faces its side; `turret` a
+    /// siege's turret's record.
+    fn of(s: &Stack, look: &Look, casts: &Casts, turret: Option<u8>) -> Self {
+        Self {
+            side: s.side,
+            hex: s.hex,
+            count: s.count,
+            flies: s.flies,
+            two_hex: s.two_hex,
+            defending: s.defending,
+            war_machine: s.war_machine,
+            right: s.side == Side::Attacker,
+            boxless: false,
+            look: look.clone(),
+            spells: s.effects.iter().map(|e| e.spell).collect(),
+            defense: s.defense,
+            frightens: casts.frighteners.contains(&s.creature),
+            shielded: casts.shielded.contains(&s.creature),
+            turret,
+        }
+    }
+
     /// It faces the way its side does at the setup.
     fn at_home(&self) -> bool {
         self.right == (self.side == Side::Attacker)
@@ -1919,18 +1941,50 @@ impl<'a> Growing<'a> {
         // machines in `battle_war_machine_stacks`' order (E17 M3 T3b). A siege's turrets are the
         // defender's last (E17 M4 T2b): off the field, their shooters drawn by the town's records
         // (`crate::siege`), never fidgeting.
-        let mut living: Vec<&Stack> = snapshot.stacks.iter().filter(|s| s.alive).collect();
-        living.sort_by_key(|s| {
+        // A record that opens mid-battle (E17 M5 T6b2, R2-8): every stack of the snapshot holds
+        // its record, a dead one's too, and the stacks the battle made come after the war
+        // machines by id (the order they were made in, 0x47A12B: a killed one's record taken
+        // again by the id the engine reuses); the dead lie among the corpses from the start,
+        // those gone without a corpse are not drawn.
+        let mut all: Vec<&Stack> = snapshot.stacks.iter().collect();
+        all.sort_by_key(|s| {
             (
                 s.side == Side::Defender,
+                made_in_battle(s),
                 s.war_machine,
                 setup_order(s.slot),
                 s.id,
             )
         });
-        for s in living {
-            let look = looks.get(&s.creature).ok_or(AnimError::Look(s.creature))?;
+        let mut gone = Vec::new();
+        let (mut corpses, mut lying) = (BTreeMap::new(), BTreeMap::new());
+        for s in all {
             let side = usize::from(s.side == Side::Defender);
+            let record = records[side];
+            records[side] += 1;
+            if !s.alive && !lies(s) {
+                gone.push((s.id, (s.side, record)));
+                continue;
+            }
+            let look = looks.get(&s.creature).ok_or(AnimError::Look(s.creature))?;
+            if !s.alive {
+                let live = Live::of(s, look, stage.casts, None);
+                let death = stage.groups.death;
+                let last = look.count(death).saturating_sub(1);
+                let pose = Pose {
+                    layer: CORPSE,
+                    ..Player::posed(&live, death, last, s.hex)
+                };
+                members.push(Member {
+                    stack: s.id,
+                    side: s.side,
+                    record,
+                    start: pose,
+                });
+                corpses.insert(s.id, live);
+                lying.insert(s.id, pose);
+                continue;
+            }
             let start = Pose {
                 mirrored: s.side == Side::Defender,
                 ..still(standing, s.hex)
@@ -1938,10 +1992,9 @@ impl<'a> Growing<'a> {
             members.push(Member {
                 stack: s.id,
                 side: s.side,
-                record: records[side],
+                record,
                 start,
             });
-            records[side] += 1;
             let frames = look.count(stage.groups.mouse_over);
             let turret = turret_record(s.hex).filter(|_| s.hex >= FIELD_HEXES);
             if frames > 0 && turret.is_none() {
@@ -1954,26 +2007,7 @@ impl<'a> Growing<'a> {
                     base: start,
                 });
             }
-            stacks.insert(
-                s.id,
-                Live {
-                    side: s.side,
-                    hex: s.hex,
-                    count: s.count,
-                    flies: s.flies,
-                    two_hex: s.two_hex,
-                    defending: s.defending,
-                    war_machine: s.war_machine,
-                    right: s.side == Side::Attacker,
-                    boxless: false,
-                    look: look.clone(),
-                    spells: s.effects.iter().map(|e| e.spell).collect(),
-                    defense: s.defense,
-                    frightens: stage.casts.frighteners.contains(&s.creature),
-                    shielded: stage.casts.shielded.contains(&s.creature),
-                    turret,
-                },
-            );
+            stacks.insert(s.id, Live::of(s, look, stage.casts, turret));
         }
         let grid = speed.scale(TICK).max(1);
         let mut player = Player {
@@ -2022,8 +2056,8 @@ impl<'a> Growing<'a> {
             kept: None,
             fields: Vec::new(),
             field_kept: None,
-            corpses: BTreeMap::new(),
-            lying: BTreeMap::new(),
+            corpses,
+            lying,
             draws: chain::Draws::new(&stage.casts.rays),
             siege: None,
             turret_keys: Vec::new(),
@@ -2037,9 +2071,9 @@ impl<'a> Growing<'a> {
             created: Vec::new(),
             summoned: BTreeSet::new(),
             vanished: Vec::new(),
-            records: members
-                .iter()
+            records: (members.iter())
                 .map(|m| (m.stack, (m.side, m.record)))
+                .chain(gone)
                 .collect(),
             next_record: records,
             looks: looks.clone(),
@@ -2415,6 +2449,20 @@ fn calms(events: &[Event], bugs: Bugs) -> (bool, bool) {
 /// stacks` 0x463600: the Catapult, the Ballista, the First Aid Tent, the Ammo Cart, then the
 /// turrets; the engine's slots are 16 + its kind, BAT-WAR-001: the Ballista 16, the Ammo Cart 17,
 /// the tent 18, the Catapult 19, the turrets 20 to 22); any other slot after them, by itself.
+/// Whether the snapshot's stack `s` lies among the corpses (E17 M5 T6b2, R2-8): dead, with its
+/// corpse left (`corpse` not 65 535: a sacrificed or summoned stack's dissolved, `stack_death`
+/// 0x4442C5).
+#[must_use]
+pub fn lies(s: &Stack) -> bool {
+    !s.alive && s.corpse != u16::MAX
+}
+
+/// Whether the battle made the snapshot's stack `s` (summoned, cloned or raised from a corpse): its
+/// record follows the side's setup's (E17 M5 T6b2).
+const fn made_in_battle(s: &Stack) -> bool {
+    s.created || s.raised || s.slot == u8::MAX
+}
+
 fn setup_order(slot: u8) -> (usize, u8) {
     const ORDER: [u8; 4] = [19, 16, 18, 17];
     let at = ORDER.iter().position(|&s| s == slot);

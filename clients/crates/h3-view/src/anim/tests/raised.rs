@@ -16,8 +16,9 @@ use super::{
     moved, screenless, snapshot, spots_of, struck, tables, until,
 };
 use crate::anim::{
-    BOLT, CHAIN_START, Caster, Casts, Command, Explosion, LIGHTNING_BOLT, Logged, Look, MagicLook,
-    RAISE, SACRIFICED, SHIELD_RETURN, Sound, Speed, SpellLook, Stage, Timeline, unrolled,
+    BOLT, CHAIN_START, Caster, Casts, Command, Explosion, Key, LIGHTNING_BOLT, Logged, Look,
+    MagicLook, Pose, RAISE, SACRIFICED, SHIELD_RETURN, Sound, Speed, SpellLook, Stage, Timeline,
+    unrolled,
 };
 
 const RAISE_LINES: &str = include_str!("../../../../../situations/timelines/raise.txt");
@@ -476,6 +477,103 @@ fn rays_take_the_kept_draws_first() {
     );
     assert_eq!(own.beams.len(), 1);
     assert_ne!(own.beams[0].ticks, kept.beams[0].ticks);
+}
+
+/// `stack` dead, its corpse the `order`th of the battle (none left: 65 535).
+fn dead(mut stack: h3_protocol::wire::Stack, order: u16) -> h3_protocol::wire::Stack {
+    (stack.alive, stack.count, stack.corpse) = (false, 0, order);
+    stack
+}
+
+#[test]
+fn a_record_opening_mid_battle_lays_its_dead_and_raises_them_as_recorded() {
+    // E17 M5 T6b2 (R2-8): `seq-raise.toml` opened after both deaths, as a seat's record opens
+    // after a server's restart: the Pikeman and the Skeleton among the corpses (killed first and
+    // second), the Swordsmen's turn; the raises at their recorded times. From the first raise on
+    // every pose and count is the whole sequence's, which plays as the original recorded it.
+    let units = |pikeman, skeleton| {
+        vec![
+            pikeman,
+            skeleton,
+            at(2, Side::Attacker, SWORDSMAN, 137, false),
+            at(3, Side::Defender, GRAND_ELF, 49, false),
+            at(4, Side::Defender, MARKSMAN, 151, false),
+        ]
+    };
+    let alive = |id, creature, hex| counted(at(id, Side::Attacker, creature, hex, false), 1);
+    let whole_opening = snapshot(units(alive(0, PIKEMAN, 35), alive(1, SKELETON, 86)));
+    let mut cut = snapshot(units(
+        dead(alive(0, PIKEMAN, 35), 1),
+        dead(alive(1, SKELETON, 86), 2),
+    ));
+    cut.active = Some(2);
+    let shot = flags(true, false, false);
+    let raises = [
+        (Some(2633), vec![cast(RESURRECTION, 0), raised(0, 1)]),
+        (Some(5533), defend(2, 0)),
+        (
+            Some(5533),
+            vec![
+                Event::Defended { stack: 0 },
+                Event::RoundStarted { round: 2 },
+                Event::TurnStarted { stack: 3 },
+            ],
+        ),
+        (Some(5533), defend(3, 4)),
+        (Some(5533), defend(4, 2)),
+        (Some(5533), vec![cast(ANIMATE_DEAD, 1), raised(1, 1)]),
+    ];
+    let mut commands = vec![
+        (
+            Some(0),
+            vec![struck(3, 0, 1, shot), Event::TurnStarted { stack: 4 }],
+        ),
+        (
+            Some(1112),
+            vec![struck(4, 1, 1, shot), Event::TurnStarted { stack: 2 }],
+        ),
+    ];
+    commands.extend(raises.iter().cloned());
+    let whole = play_raised(&whole_opening, &commands, &raise_casts());
+    let opened = play_raised(&cut, &raises, &raise_casts());
+    // The corpses lie from the start in their death's last frame, each keeping its record.
+    let records: Vec<(u8, u8)> = opened.members.iter().map(|m| (m.stack, m.record)).collect();
+    assert_eq!(records, [(0, 0), (1, 1), (2, 2), (3, 0), (4, 1)]);
+    // The frames run on the timeline's own deadline, which the whole sequence's earlier redraws
+    // moved on (0x698998), so their times shift: from the first raise's first frame on, each
+    // stack takes the same poses for the same spans as in the whole sequence.
+    let first = |t: &Timeline| {
+        (t.keys.iter())
+            .find(|k| k.stack == 0 && k.drawn > 2633)
+            .map(|k| k.drawn)
+            .unwrap()
+    };
+    let start = opened.at(0);
+    assert!(start[&0].dead() && start[&1].dead());
+    assert_eq!(start[&0], whole.at(first(&whole) - 1)[&0]);
+    assert_eq!(start[&1], whole.at(first(&whole))[&1]);
+    let poses = |t: &Timeline, stack: u8| -> Vec<(Pose, u32)> {
+        let from = first(t);
+        let keys: Vec<&Key> = (t.keys.iter())
+            .filter(|k| k.stack == stack && k.drawn >= from)
+            .collect();
+        (keys.iter().zip(keys.iter().skip(1)))
+            .map(|(k, next)| (k.pose, next.drawn - k.drawn))
+            .collect()
+    };
+    for stack in 0..5 {
+        assert_eq!(poses(&opened, stack), poses(&whole, stack), "stack {stack}");
+    }
+    // The counts the boxes show at the end: the timeline's changes over its snapshot's.
+    let shown = |t: &Timeline, o: &Observation| -> Vec<u32> {
+        let changed = t.counts(t.end);
+        (o.stacks.iter())
+            .map(|s| changed.get(&s.id).copied().unwrap_or(s.count))
+            .collect()
+    };
+    assert_eq!(shown(&opened, &cut), shown(&whole, &whole_opening));
+    assert!(opened.at(opened.end)[&1].holds_hex());
+    assert_eq!(opened.counts(opened.end).get(&0), Some(&1));
 }
 
 #[test]
