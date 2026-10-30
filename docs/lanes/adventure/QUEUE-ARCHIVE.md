@@ -16,6 +16,43 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
 
 ## Notices from other lanes and finished items, newest first
 
+- 2026-10-30 (T77a2 done, whole: decision 195; T77a done): the T77a entry as it stood in the "Tasks" text:
+
+  **E08 T77a — The mines, week and owned objects survey** (in two, decision 194: T77a1 points 1 to 4 and the census done, survey §0 to §6; **T77a2** point 5, the mines' income of point 2, points 6 and 7 next, §7 on)
+
+  - **Scope** (decisions 192, 193): a survey `docs/rules/surveys/E08-economy.md` (as T17a, T24a,
+    T34a, T44a, T55a and T66a): the original's rules by code reading (`docs/exe/README.md`; read so
+    far: `visit_mine` 0x4A39A0 and the owned objects' code by T77a1 (the survey's Sources), `tile_object_owner` 0x40FD20 with the owned objects'
+    record tables, `new_day` 0x4C7FE0 and `new_day_week_events` 0x4C8780 in part,
+    `covered_view_new_week` 0x4CA840; `town_gold_income` 0x5BF600 is a town's, E09) with VCMI 1.7.5
+    and the wiki, and a census of the 160 shipped maps (T76's counts in `E08-log.md`, T76). (1)
+    **Flagging:** which classes a visit flags, what it costs or asks, a guarded owned object, a hero
+    standing on an owned object's entrance, an owned object of a player out of the game, the owner
+    at load (the map's owner fields), what another player sees (ADR-0016 point 6). (2) **Mines** (53
+    subclasses 0 to 6; the abandoned mine 53.7 and 220): their guards, the Leave Guards dialog, the
+    abandoned mine's guards and its resource; **the day's income** and its order at the day's
+    start. (3) **Lighthouses** (42): the bonus to the owner's heroes at sea, its stacking, when it is
+    read (the turn start's sea points, HER-ADV-009). (4) **Shipyards** (87): where the boat appears,
+    its price, when it is refused (a boat or a hero on the tile), what the boat's record gets
+    (ADV-SEA-001). (5) **The week:** its order (the day, the week, the month), the Windmill (112), the
+    Water Wheel (109) and the Mystical Garden (55) (what each gives, who, how often, the reset), the
+    monsters' weekly growth (the "does not grow" flag), the map's timed events (decision 127's
+    agent's call). (6) The commands, decisions, events, the observation, replays and benchmarks it
+    changes; **batch E9's plan** on the client lane's harness (decision 193's agent's call). (7) The
+    proposed rule ids, quirk candidates and disputes; a fresh agent's second reading of the deciding
+    code; the checkpoint's questions (an `ADV-Q`).
+  - **Not in it** (decision 192): dwellings and random dwellings, the Refugee Camp and the hire
+    dialog, garrisons (item 10); the teleporters; towns' income and the week's creature (E09); a
+    computer player's flags (E10); simultaneous play.
+  - **T77a2** (decision 194: what the day's start does): the day's, week's and month's order
+    (`new_day` 0x4C7FE0, `new_day_week_events` 0x4C8780, read in part), the mines' income
+    (`mine_daily_income` 0x678288, survey §3.5) and its order, point 5 whole, then points 6 and
+    7: the survey's §7 on, with T77a1's inputs (§6: D-47, D-48, A-29 to A-31, the open points,
+    among them the Shipyard's use without a visit, §5.3, for the second reading) and the
+    checkpoint's `ADV-Q37`.
+  - **Depends on:** T76 (done). **Status:** T77a2 ready, its cut confirmed at its start; a user
+    checkpoint at its end (decision 193).
+
 - 2026-10-30 (T76 done, increment 8 closed; T77a and T77b queued): the chronicle of increment 8's rounds as it stood in the "Tasks" text:
 
   Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T65 (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 7 are closed (2026-10-12, -13, -20, -21, -23, -26, -28; increment 7, rewards on the map, by T65's audit). **Increment 8, boats and the sea**, refined with the user at T65 (ADV-Q31; decisions 158, 159): the survey and the ADR amendment drafts first (T66a, T66b), each task's cut confirmed with the user at its start. T66a in two (decision 160): T66a1 done (`adventure/e08-t66a1`, #550: survey `E08-sea.md` §0 to §6), T66a2 done (`adventure/e08-t66a2`, decision 161: whole; §7 to §14, the checkpoint's ADV-Q32); T66b done (`adventure/e08-t66b`, decision 169: whole; the drafts, `E08-design.md` and the cut in eight rounds, ADV-Q33 accepted: decisions 170–173). Round 2: T67 done (`adventure/e08-t67`, decision 174: whole; the writer's sea objects, the spec's bottles and a monster's own tile, `cross-lane`; the specs E8a, its water map and E8b with their templates). Round 3: T68 in two by batch (decision 175): T68a done (`adventure/e08-t68a`: the harness's boat reads and steps, E8a and its water map run and recorded), T68b done (`adventure/e08-t68b`, decision 176: whole; the sea pickups' reads, E8b run four times, two recorded); T69 done (`adventure/e08-t69`, decision 177: whole with a re-read; batch E8 scored, D-45 reverted, D-46 to batch E8c: decision 179); T69b done (`adventure/e08-t69b`, decision 180: whole; batch E8c run and scored, D-46 confirmed, survey §16). Round 4: T70 done (`shared/e08-t70`, `cross-lane`, decision 181: whole; the three ADRs applied, the effect kinds, the packs and the glossary). Round 5: T71 done (`adventure/e08-t71`, decision 182: with the inbox's property case; HER-ADV-009), T72 done (`adventure/e08-t72`, `cross-lane`, decision 183: whole; the import, kinds, state and views; the AI lane's bots tables' fingerprint). Round 6: T73 in two (decision 184): T73a done (`adventure/e08-t73a`: the boat's moves, prices, conversion and events; ADV-SEA-002 to -005), T73b done (`adventure/e08-t73b`, decision 185: whole; the boat's reach, the walker's boat test, the property; ADV-STUB-11 closed). Round 7: T74 in two (decision 186): T74a done (`adventure/e08-t74a`: the sea's pickups' visits from a boat, ADV-PIK-017, -018; `random-play-duel-36` re-baselined), T74b done (`adventure/e08-t74b`, decision 187: whole, no `cross-lane`; the battle at sea, a beaten hero leaving with its boat, ADV-SEA-006; the env needs no encoding change); the security doc's increment 8 in `shared/e08-security` (decision 188). Round 8: T75 in two (decision 189): T75a done (`adventure/e08-t75a`: the sea map `e08-sea-36.h3m`, three random and eight scripted replays, `random-play-sea-36`; its benches README row in `shared/e08-t75a-benches`), T75b done (`adventure/e08-t75b`, decision 190: whole; the properties at sea, the passage's D-46 fix they found, the sea XL `e08-sea-144.h3m` with `reach-sea-xl-144` and `fork-sea-xl-144`, the census; its benches README rows in `shared/e08-t75b-benches`). Next: **T76** (the audit against increment 8's exit criteria, increment 8 closed, increment 9 refined; design §18), its cut confirmed with the user at its start. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
