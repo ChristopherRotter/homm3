@@ -15,6 +15,7 @@ use h3_map::RawMap;
 use h3_map::model::{Body, Buildings, Pos};
 
 use crate::art::{CELLS, MapArt, TemplateArt};
+use crate::hover::{Facts, Hint};
 use crate::minimap::Shown;
 use crate::tables::{self, TownArt};
 
@@ -50,6 +51,13 @@ pub struct Live {
     /// selection and each step's end draw it again, a step's frames do not); none: at the view
     /// and with the heroes where they stand (a still).
     pub minimap: Option<Shown>,
+    /// The game's facts the mouse-over reads (E24 M3 T6a1, design §4.10: the `[hover]` table of
+    /// a comparison's live part, from the original's memory; the engine's from M4); none: the
+    /// cursor over the map is the arrow and the hints of the map and of the lists' slots empty.
+    pub hover: Option<Facts>,
+    /// The status bar's hint as a timeline last set it (E24 M3 T6a1); none: the panels' hint at
+    /// the pointer (a still).
+    pub hint: Option<Hint>,
 }
 
 /// What the adventure screen's panels show of the viewing player's kingdom (E24 M3 T2a, design
@@ -877,6 +885,8 @@ impl Live {
             kingdom,
             buttons: None,
             minimap: None,
+            hover: None,
+            hint: None,
         }
     }
 }

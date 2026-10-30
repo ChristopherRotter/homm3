@@ -235,6 +235,8 @@ fn start(situation: &str, speed: usize) -> Start {
         points: Vec::new(),
         buttons: None,
         asked: None,
+        hover: None,
+        levels: 1,
     }
 }
 
@@ -340,6 +342,8 @@ fn looped(bugs: Bugs, speed: usize) -> Loop {
         points: Vec::new(),
         buttons: None,
         asked: None,
+        hover: None,
+        levels: 1,
     };
     Loop::start(rules(bugs), &start).unwrap()
 }
@@ -537,6 +541,8 @@ fn what_it_cannot_play_yet() {
         points: Vec::new(),
         buttons: None,
         asked: None,
+        hover: None,
+        levels: 1,
     };
     assert_eq!(
         Loop::start(rules(Bugs::Fixed), &over),
@@ -658,6 +664,8 @@ fn walking(speed: usize, paths: Vec<Vec<Arrow>>) -> Loop {
         points: Vec::new(),
         buttons: None,
         asked: None,
+        hover: None,
+        levels: 1,
     };
     Loop::start(rules(Bugs::Fixed), &start).unwrap()
 }
@@ -1059,6 +1067,8 @@ fn live(pointer: [i32; 2], hero: bool, path: Vec<Arrow>) -> Start {
         points: Vec::new(),
         buttons: None,
         asked: None,
+        hover: None,
+        levels: 1,
     }
 }
 
@@ -1101,7 +1111,13 @@ fn live_a_click_the_loop_cannot_play_only_moves_the_pointer() {
         l.run(1, &[Action::Click([700, 2])]).unwrap();
         l.run(2, &[Action::Click(tile(21, 19))]).unwrap();
         let s = l.state(2);
-        assert_eq!(s.drawn, before, "{hero}");
+        // The status bar's hint follows the pointer (E24 M3 T6a1): (700, 2) lies on no item.
+        assert_eq!(s.drawn.hint, Hint::Empty, "{hero}");
+        let drawn = Draw {
+            hint: before.hint,
+            ..s.drawn.clone()
+        };
+        assert_eq!(drawn, before, "{hero}");
         assert!(s.arrows.is_empty() && s.cursor.shown, "{hero}");
         // The path's destination: shown with a hero, nothing without.
         l.run(3, &[Action::Click(tile(21, 17))]).unwrap();

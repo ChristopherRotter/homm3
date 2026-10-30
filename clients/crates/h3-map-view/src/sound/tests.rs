@@ -327,6 +327,8 @@ pub(crate) fn map_with(
         kingdom: crate::live::Kingdom::default(),
         buttons: None,
         minimap: None,
+        hover: None,
+        hint: None,
     };
     (art, live, shapes)
 }

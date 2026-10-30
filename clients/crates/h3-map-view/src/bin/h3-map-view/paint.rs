@@ -23,6 +23,7 @@ use h3_map_view::art::MapArt;
 use h3_map_view::batch::{self, Batch};
 use h3_map_view::compose::{self, ComposeError, Composer, FORMAT};
 use h3_map_view::damage::History;
+use h3_map_view::hover::Hover;
 use h3_map_view::layout::{AdventureLayout, CursorArt};
 use h3_map_view::live::{Buttons, Facing, Lifted, Live, Moment, Walking};
 use h3_map_view::minimap::Shown;
@@ -143,6 +144,8 @@ pub fn for_sequence<'a>(
         buttons: painter.live.buttons,
         // The status window's kind the recording asked at 0 (E24 M3 T5b2).
         asked: sequence.asked()?,
+        hover: painter.hover()?,
+        levels: painter.art.levels,
     };
     Ok(Setup {
         painter,
@@ -214,6 +217,8 @@ pub fn for_situation<'a>(
         points: Vec::new(),
         buttons: painter.live.buttons,
         asked: None,
+        hover: painter.hover()?,
+        levels: painter.art.levels,
     };
     Ok(Setup {
         painter,
@@ -390,6 +395,26 @@ impl<'a> Painter<'a> {
         )))
     }
 
+    /// The map's mouse-over from 0 (E24 M3 T6a1; design §4.10): its tiles from every level's draw
+    /// lists, the live part's facts; none without them.
+    fn hover(&self) -> Result<Option<Arc<Hover>>, String> {
+        if self.live.hover.is_none() {
+            return Ok(None);
+        }
+        let lists = (0..self.art.levels)
+            .map(|z| {
+                let z = u8::try_from(z).map_err(|_| format!("level {z}"))?;
+                DrawLists::build(&self.art, &self.live, &self.shapes, z).map_err(|e| e.to_string())
+            })
+            .collect::<Result<Vec<_>, String>>()?;
+        Ok(Hover::new(
+            &self.art,
+            &self.live,
+            &self.assets.tables.records,
+            &lists,
+        ))
+    }
+
     /// Decodes the named assets not decoded yet.
     fn add(&mut self, names: impl IntoIterator<Item = String>) -> Result<(), String> {
         for name in names {
@@ -461,6 +486,8 @@ impl<'a> Painter<'a> {
             self.live.kingdom.clone_from(&draw.kingdom);
         }
         self.live.buttons = Some(buttons);
+        // The status bar's hint as last shown (E24 M3 T6a1).
+        self.live.hint = Some(draw.hint);
         let assets = self.assets;
         let z = draw.view.z;
         let index = self
