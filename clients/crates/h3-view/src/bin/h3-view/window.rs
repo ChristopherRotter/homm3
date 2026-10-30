@@ -617,6 +617,8 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
         let mut grew = false;
         // The spell book opened, closed or changed (E17 M5 T3a).
         let mut book_changed = false;
+        // The box open as the pass starts, to tell one that opens in it (E17 M5 T8b2).
+        let box_before = box_shown(&battle);
         // The result window opens at the battle's end (E17 M5 T4b1).
         let ms = clock.ms(win.ticks_ns());
         if battle.open_result(ms) {
@@ -671,7 +673,8 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
             continue 'run;
         }
         if let Some(p) = presser.as_mut() {
-            grew |= p.press(&mut battle, &mut inputs, clock.ms(win.ticks_ns()))?;
+            let ticks = win.ticks_ns();
+            grew |= p.press(&mut battle, &mut inputs, clock.ms(ticks), ticks / 1_000_000)?;
         }
         // The key that stopped Auto Combat acts on the turn it stops at, a human's: there the
         // battle hands it to its key handler (0x474625; E17 M5 T4c1); a computer's drops it.
@@ -701,7 +704,18 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                 stopped_by = None;
             }
         }
+        // The input queue is emptied as a box opens (the modal loop 0x602520; design §7.19): the
+        // presses and key-downs that come with the input that opened it, or after the box opened
+        // in this pass, are dropped; the key-ups (no key stays held), the moves and Quit go on.
+        let mut last_box = box_before;
+        let mut emptied = false;
         for event in win.wait(timeout) {
+            let shown_box = box_shown(&battle);
+            emptied |= shown_box.is_some() && shown_box != last_box;
+            last_box = shown_box;
+            if emptied && matches!(event, Event::Key(_) | Event::Click { down: true, .. }) {
+                continue;
+            }
             let now = win.ticks_ns();
             let at = clock.ms(now);
             match event {
@@ -1288,6 +1302,15 @@ fn book_did(
     }
 }
 
+/// The open box as the window tells one from another (E17 M5 T8b2): its buttons' places, none
+/// while no box is open. A box that gives way to another (the surrender refused) has others.
+fn box_shown(battle: &Battle<'_>) -> Option<[Option<[i32; 2]>; 3]> {
+    use h3_view::message::{NO, OK, YES};
+    battle
+        .message_open()
+        .then(|| [OK, YES, NO].map(|id| battle.message_button(id)))
+}
+
 /// What a message box `did` at `at` (E17 M5 T4a): a change to draw, or the command its OK gave
 /// (Retreat, Surrender); whether the battle took a command.
 fn message_did(
@@ -1329,8 +1352,12 @@ struct Presser {
     /// The panel button the human side leaves by (E17 M5 T4a: `--leave`), until it left or was
     /// told it cannot pay.
     leave: Option<u16>,
-    /// When the message box it opened showed.
-    asked: Option<u32>,
+    /// When the open message box showed, in the window's milliseconds (`win.ticks_ns`): a
+    /// notice's box holds the battle's clock (E17 M5 T8b2, R5a-1).
+    asked: Option<u64>,
+    /// Whether the open box is the leaving's (its question, or the refusal after it), not a
+    /// notice's.
+    asking: bool,
     /// Whether the battle was the bot's at once when the side asked to leave, and the command
     /// it left by.
     before_leaving: Option<bool>,
@@ -1345,19 +1372,21 @@ struct Presser {
 
 impl Presser {
     /// At `now`, [`PRESS_AFTER_MS`] after a human's turn started, presses the bot's choice: the
-    /// mouse moved where it gives it, then its press; whether a command was given.
+    /// mouse moved where it gives it, then its press; whether a command was given. `wall` is the
+    /// window's milliseconds, which an open box's OK is timed by.
     fn press(
         &mut self,
         battle: &mut Battle<'_>,
         inputs: &mut Vec<Input>,
         now: u32,
+        wall: u64,
     ) -> Result<bool, String> {
         // The result window stays until the run's end (E17 M5 T4b1: its frames read back too).
         if battle.result_open() {
             return Ok(false);
         }
         if battle.message_open() {
-            return self.answer(battle, inputs, now);
+            return self.answer(battle, inputs, now, wall);
         }
         // Auto Combat stopped by a press two commands after it was switched on (E17 M5 T4c1).
         if let Some((on, None)) = self.switched
@@ -1400,7 +1429,7 @@ impl Presser {
             }
             let before = battle.as_the_bot_fights();
             if battle.ask_leave(now, id) {
-                self.asked = Some(now);
+                (self.asked, self.asking) = (Some(wall), true);
                 self.before_leaving = Some(before.unwrap_or(Ok(false))?);
                 return Ok(true);
             }
@@ -1433,17 +1462,19 @@ impl Presser {
 }
 
 impl Presser {
-    /// The open message box's OK clicked [`PRESS_AFTER_MS`] after it showed (E17 M5 T4a): the
-    /// command it gives, or the box it gives way to (a surrender the side cannot pay, which
-    /// ends the leaving); whether a command was given or the screen changed.
+    /// The open message box's OK clicked [`PRESS_AFTER_MS`] after it showed (E17 M5 T4a), timed
+    /// by the window's clock `wall` (a notice's box holds the battle's at `now`): the command it
+    /// gives, or the box it gives way to (a surrender the side cannot pay, which ends the
+    /// leaving); whether a command was given or the screen changed.
     fn answer(
         &mut self,
         battle: &mut Battle<'_>,
         inputs: &mut Vec<Input>,
         now: u32,
+        wall: u64,
     ) -> Result<bool, String> {
-        let asked = *self.asked.get_or_insert(now);
-        if now < asked.saturating_add(PRESS_AFTER_MS) {
+        let asked = *self.asked.get_or_insert(wall);
+        if wall < asked.saturating_add(u64::from(PRESS_AFTER_MS)) {
             return Ok(false);
         }
         let ok = battle
@@ -1452,10 +1483,12 @@ impl Presser {
             .ok_or("the message box has no OK")?;
         let _ = battle.message_press(ok);
         let did = battle.message_release();
-        self.asked = battle.message_open().then_some(now);
-        if !battle.message_open() && did != MessageDid::Give(Command::Retreat {}) {
+        self.asked = battle.message_open().then_some(wall);
+        // A notice's box closed leaves the leaving to come (E17 M5 T8b2).
+        if self.asking && !battle.message_open() && did != MessageDid::Give(Command::Retreat {}) {
             self.leave = None;
         }
+        self.asking &= battle.message_open();
         match did {
             MessageDid::Give(command) => {
                 self.left = Some(command);

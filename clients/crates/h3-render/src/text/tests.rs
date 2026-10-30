@@ -338,3 +338,24 @@ fn a_message_box_measures_its_text_as_the_executable() {
     assert_eq!(wrapped_width(&f, b"xxxxxxx", 5), 2);
     assert_eq!(wrapped_width(&f, b"x xxxxxxxx", 3), 2);
 }
+
+#[test]
+fn a_line_with_no_place_to_break_ends_every_measure() {
+    // A space wider than the width (a crafted font; the game's are narrow): a line starting with
+    // it has no place where it fits. The first goes back to the text's start as the executable
+    // (the result unchanged where the executable's ends: the text's first line here); a second
+    // would loop for ever there: it ends at its space.
+    let mut f = font();
+    f.glyphs[usize::from(b' ')] = glyph(0, 9, 0, &[0; 9]);
+    assert_eq!(line_count(&f, b" x", 5, Bugs::Original), 2);
+    assert_eq!(wrapped_width(&f, b" x", 5), 1);
+    // After a newline (or a double space): back to the text's start once, then on.
+    assert_eq!(line_count(&f, b"x\n x", 5, Bugs::Original), 5);
+    assert_eq!(line_count(&f, b"x\n x", 5, Bugs::Fixed), 3);
+    assert_eq!(wrapped_width(&f, b"x\n x", 5), 9);
+    assert_eq!(line_count(&f, b"xx  xx", 5, Bugs::Original), 5);
+    assert_eq!(wrapped_width(&f, b"xx  xx", 5), 9);
+    // A width of 0: no glyph fits anywhere.
+    assert_eq!(line_count(&font(), b"xx", 0, Bugs::Original), 2);
+    assert_eq!(wrapped_width(&font(), b"xx", 0), 0);
+}

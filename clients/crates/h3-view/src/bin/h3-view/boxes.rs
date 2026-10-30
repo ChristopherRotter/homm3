@@ -218,4 +218,70 @@ mod tests {
         assert!(affects_someone_only(39) && affects_someone_only(63) && !affects_someone_only(40));
         assert!(!affects_someone_only(20) && !affects_someone_only(59));
     }
+
+    #[test]
+    fn the_terms_name_the_other_side_s_hero() {
+        // E17 M5 T8b2 (R5a-5): the attacker's view names the defender's hero, the defender's the
+        // attacker's (Orrin's book situation, the hero types renamed); the retreat as the engine
+        // lists it.
+        use h3_protocol::wire::Hero;
+        let pack = r#"{ "battle": { "surrender": { "ask": "{{hero}}: {{price}}" } },
+            "hero": { "orrin": "Orrin", "crag_hack": "Crag Hack" } }"#;
+        let c = Catalogue {
+            packs: vec![h3_ui::text::pack::Pack::from_json("en", pack).unwrap()],
+        };
+        let (_, mut own, _) = crate::spellbook::tests::opening();
+        let types = ["orrin", "crag_hack", "nobody"].map(String::from);
+        let hero = own.sides[0].hero.unwrap();
+        own.sides[0].hero = Some(Hero {
+            hero_type: 0,
+            ..hero
+        });
+        own.sides[1].hero = Some(Hero {
+            hero_type: 1,
+            ..hero
+        });
+        let o = own.own_hero.as_mut().unwrap();
+        (o.surrender_price, o.funds) = (Some(300), 200);
+        let legal = [Command::Defend {}, Command::Retreat {}];
+        let named = |name: &str| Some((300, 200, name.to_owned()));
+        let attacker = Leave::of(&own, &legal, &types, &c);
+        assert_eq!(
+            attacker,
+            Leave {
+                retreat: true,
+                surrender: named("Crag Hack"),
+            }
+        );
+        let asked = attacker.ask(&c, h3_view::panel::SURRENDER).unwrap();
+        assert_eq!(asked.0, "Crag Hack: 300");
+        own.viewer = Side::Defender;
+        let defender = Leave::of(&own, &legal[..1], &types, &c);
+        assert_eq!(
+            defender,
+            Leave {
+                retreat: false,
+                surrender: named("Orrin"),
+            }
+        );
+        assert_eq!(defender.ask(&c, h3_view::panel::RETREAT), None);
+        // A hero type no pack names: its key; one the manifest lacks or none facing it: no name.
+        for (hero_type, name) in [(2, "hero.nobody"), (3, "")] {
+            own.sides[0].hero = Some(Hero { hero_type, ..hero });
+            assert_eq!(Leave::of(&own, &[], &types, &c).surrender, named(name));
+        }
+        own.sides[0].hero = None;
+        assert_eq!(Leave::of(&own, &[], &types, &c).surrender, named(""));
+        // Not priced (or no own hero): no surrender.
+        own.own_hero.as_mut().unwrap().surrender_price = None;
+        assert_eq!(Leave::of(&own, &legal, &types, &c).surrender, None);
+        own.own_hero = None;
+        assert_eq!(
+            Leave::of(&own, &legal, &types, &c),
+            Leave {
+                retreat: true,
+                surrender: None
+            }
+        );
+    }
 }
