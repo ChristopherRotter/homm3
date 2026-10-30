@@ -447,11 +447,11 @@ fn sequences(options: &Options) -> Result<usize, String> {
             let sources = crate::results::Sources {
                 manifest: &record.header.manifest,
                 tables: &tables,
-                ruleset: &ruleset,
+                ruleset: Some(&ruleset),
                 catalogue: &catalogue,
                 layout: &layout,
             };
-            let result = outcome.and_then(|o| {
+            let result = outcome.map(|o| {
                 crate::results::window(
                     &sources,
                     snapshot,
@@ -612,6 +612,9 @@ pub(crate) fn draw_frames(
     };
     // The frames' times are read forward (E17 M5 T1a; one earlier than the last starts over).
     let mut head = Playhead::new(timeline);
+    // The battle behind the result window, its moment before the end read once (E17 M5 T8b2,
+    // R5b-9), as the window's (`h3_view::result::Behind`).
+    let mut behind = h3_view::result::Behind::default();
     for frame in &kept.frame {
         // While the spell book is open the battle behind it stands as it was when the book opened
         // (E17 M5 T3a: the dialog's modal loop runs no idle step; the original's frames are the
@@ -630,8 +633,7 @@ pub(crate) fn draw_frames(
         head.seek(timeline, at);
         let mut moment = head.moment(timeline);
         if let Some(end) = ended {
-            let before = scene::Moment::at(timeline, end.saturating_sub(1));
-            h3_view::result::behind(&mut moment, &before);
+            behind.show(&mut moment, end, |t| scene::Moment::at(timeline, t));
         }
         moment.walls = interface.walls.or(moment.walls);
         moment.marked = match interface.shown {

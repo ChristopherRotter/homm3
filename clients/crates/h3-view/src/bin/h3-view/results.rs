@@ -5,6 +5,8 @@
 //! AI values) and the catalogue. Shared by the window's battle (`crate::battle`) and the capture
 //! set's stills and sequences (`crate::spellbook`, `crate::sequences`).
 
+use std::collections::BTreeMap;
+
 use h3_content::{CreatureTypeId, Ruleset};
 use h3_content_battle::BattleRuleset;
 use h3_contracts::{Army, BattleOutcome, BattleResult, BattleSide, StackOrigin, StackRecord};
@@ -23,8 +25,10 @@ pub struct Sources<'a> {
     pub manifest: &'a Manifest,
     /// The asset tables.
     pub tables: &'a Tables,
-    /// The battle's ruleset.
-    pub ruleset: &'a BattleRuleset,
+    /// The battle's ruleset when its creatures' hit points and AI values are the battle's: a
+    /// battle fought here's, a server's game's compiled here when the content check finds it the
+    /// same (E17 M5 T8b2, R5b-2); none: the window reads no creature's values ([`window`]).
+    pub ruleset: Option<&'a BattleRuleset>,
     /// The catalogue.
     pub catalogue: &'a Catalogue,
     /// The battle's layout.
@@ -35,47 +39,84 @@ pub struct Sources<'a> {
 /// ended as `outcome`, shown as `battle_end` 0x477470 shows it: the winner's side when its player
 /// is a human here (`opening`'s sides' `human`), else the other one; its background in the
 /// colours of `player` (the viewing player's); with the tune it plays, which picks its clip too
-/// (E17 M5 T4b2b, [`tune`]). None when a hero's or creature's entry is missing.
+/// (E17 M5 T4b2b, [`tune`]). The winner is [`result::winner`]'s: none after a side retreated or
+/// surrendered against an opponent without army survivors (BAT-END-001; [`survivors`]).
+///
+/// Always a window (E17 M5 T8b2, R5b-1 and R5b-5): what the client lacks is drawn empty. A hero
+/// whose type the manifest does not name is still a hero (its +500 counts, the text names it) with
+/// an empty name and no portrait; a hero type without a portrait in the tables has none; a side
+/// without a hero and without a creature to show (no record but the arrow towers) shows no face.
+/// Without the ruleset's values (`sources.ruleset` none: a server's game whose content differs
+/// or that the packs here do not compile) the experience is 0 and a side without a hero shows no
+/// creature (*provisional*: the server's values are not known here).
 pub fn window(
     sources: &Sources<'_>,
     opening: &Observation,
     outcome: &BattleOutcome,
     player: u8,
-) -> Option<(MessageBox, Tune)> {
-    let winner = outcome.result.winner().map(BattleSide::index);
+) -> (MessageBox, Tune) {
+    let values = sources.ruleset.map(|ruleset| {
+        let core: &Ruleset = ruleset;
+        move |c: CreatureTypeId| {
+            (
+                ruleset.creature(c).map_or(0, |t| t.hit_points),
+                core.creature(c).map_or(0, |t| t.ai_value),
+            )
+        }
+    });
+    built(sources, values, opening, outcome, player)
+}
+
+/// [`window`] with each creature's hit points and AI value by `values` (none: not known).
+fn built(
+    sources: &Sources<'_>,
+    values: Option<impl Fn(CreatureTypeId) -> (u32, u32)>,
+    opening: &Observation,
+    outcome: &BattleOutcome,
+    player: u8,
+) -> (MessageBox, Tune) {
     let gave_up = match outcome.result {
         BattleResult::Retreat(_) => Some(GaveUp::Retreat),
         BattleResult::Surrender(_) => Some(GaveUp::Surrender),
         BattleResult::Victory(_) | BattleResult::Draw => None,
     };
+    let winner = result::winner(
+        outcome.result.winner().map(BattleSide::index),
+        gave_up.is_some(),
+        survivors(&outcome.stacks),
+    );
     let human = [0, 1].map(|i| opening.sides.get(i).is_some_and(|s| s.human));
     let shown = result::shown_side(winner, human);
     let won = winner == Some(shown);
     let town = opening.siege.is_some();
-    let names: [Option<String>; 2] = [0, 1].map(|i| hero_name(sources, opening, i));
-    let core: &Ruleset = sources.ruleset;
-    let hit_points = |c: CreatureTypeId| sources.ruleset.creature(c).map_or(0, |t| t.hit_points);
-    let experience = if won {
-        let loser = 1 - shown;
-        experience(
-            outcome.stacks.get(loser).map_or(&[], Vec::as_slice),
-            hit_points,
-            (
-                names[loser].is_some(),
-                gave_up.is_some(),
-                town && shown == 0,
-            ),
-        )
-    } else {
-        0
+    let catalogue = sources.catalogue;
+    let heroes = [0, 1].map(|i| hero_key(sources, opening, i));
+    // A hero's name: its type's (a map's own name for a hero is not read); empty when the
+    // manifest names no such type.
+    let names = heroes.map(|hero| {
+        hero.map(|key| {
+            key.map_or_else(String::new, |key| {
+                catalogue.text(&format!("hero.{key}"), &Args::new())
+            })
+        })
+    });
+    let stacks = |i: usize| outcome.stacks.get(i).map_or(&[][..], Vec::as_slice);
+    let experience = match &values {
+        Some(values) if won => {
+            let loser = 1 - shown;
+            experience(
+                stacks(loser),
+                |c| values(c).0,
+                (
+                    names[loser].is_some(),
+                    gave_up.is_some(),
+                    town && shown == 0,
+                ),
+            )
+        }
+        _ => 0,
     };
-    let text = result::text(
-        sources.catalogue,
-        won,
-        gave_up,
-        names[shown].as_deref(),
-        experience,
-    );
+    let text = result::text(catalogue, won, gave_up, names[shown].as_deref(), experience);
     let original = |c: CreatureTypeId| {
         let key = sources.manifest.keys.creatures.get(usize::from(c.raw()))?;
         sources
@@ -84,41 +125,47 @@ pub fn window(
             .get(key)
             .map(|e| u32::from(e.original))
     };
-    let ai_value = |c: CreatureTypeId| core.creature(c).map_or(0, |t| t.ai_value);
-    let mut sides = Vec::with_capacity(2);
-    for (index, name) in names.into_iter().enumerate() {
-        let stacks = outcome.stacks.get(index).map_or(&[][..], Vec::as_slice);
-        let face = match name {
-            Some(name) => Face::Hero {
+    let face = |index: usize| match heroes[index] {
+        // Its type's large portrait (*provisional*: the hero's own portrait, its +0x34 the
+        // executable reads, is its type's unless a map sets another, which the client does not
+        // know).
+        Some(key) => Face::Hero {
+            name: names[index].clone().unwrap_or_default(),
+            portrait: key.and_then(|key| sources.tables.heroes.get(key)?.portrait.clone()),
+        },
+        None => {
+            let found = values
+                .as_ref()
+                .and_then(|values| strongest(stacks(index), original, |c| values(c).1));
+            let Some((creature, several)) = found else {
+                return Face::Creature {
+                    name: String::new(),
+                    original: None,
+                };
+            };
+            let count = if several { 2 } else { 1 };
+            let name = sources
+                .manifest
+                .keys
+                .creatures
+                .get(usize::from(creature.raw()))
+                .map_or_else(String::new, |key| {
+                    catalogue.text(&format!("creature.{key}"), &Args::new().count(count))
+                });
+            Face::Creature {
                 name,
-                portrait: hero_portrait(sources, opening, index)?,
-            },
-            None => {
-                let (creature, several) = strongest(stacks, original, ai_value)?;
-                let key = sources
-                    .manifest
-                    .keys
-                    .creatures
-                    .get(usize::from(creature.raw()))?;
-                let count = if several { 2 } else { 1 };
-                Face::Creature {
-                    name: sources
-                        .catalogue
-                        .text(&format!("creature.{key}"), &Args::new().count(count)),
-                    original: original(creature)?,
-                }
+                original: original(creature),
             }
-        };
-        sides.push(Side {
-            face,
-            victorious: winner == Some(index),
-            losses: losses(stacks, original),
-        });
-    }
-    let sides: [Side; 2] = sides.try_into().ok()?;
-    let texts = Texts::of(sources.catalogue, text);
+        }
+    };
+    let sides = [0, 1].map(|index| Side {
+        face: face(index),
+        victorious: winner == Some(index),
+        losses: losses(stacks(index), original),
+    });
+    let texts = Texts::of(catalogue, text);
     let window = result::layout(&sources.layout.result, &texts, &sides, player);
-    Some((window, tune(won, shown, town, gave_up)))
+    (window, tune(won, shown, town, gave_up))
 }
 
 /// The window's tune, and so its clip (`h3_view::clip::of`), by the branches that pick its text
@@ -137,29 +184,15 @@ pub fn tune(won: bool, shown: usize, town: bool, gave_up: Option<GaveUp>) -> Tun
     }
 }
 
-/// The hero type's key of side `index`'s hero, if it has one.
-fn hero_key<'a>(sources: &Sources<'a>, opening: &Observation, index: usize) -> Option<&'a str> {
+/// Side `index`'s hero, if it has one: its type's key (none: the manifest names no such type).
+fn hero_key<'a>(
+    sources: &Sources<'a>,
+    opening: &Observation,
+    index: usize,
+) -> Option<Option<&'a str>> {
     let hero = opening.sides.get(index)?.hero.as_ref()?;
-    sources
-        .manifest
-        .keys
-        .hero_types
-        .get(usize::from(hero.hero_type))
-        .map(String::as_str)
-}
-
-/// Side `index`'s hero's name: its type's (a map's own name for a hero is not read).
-fn hero_name(sources: &Sources<'_>, opening: &Observation, index: usize) -> Option<String> {
-    let key = hero_key(sources, opening, index)?;
-    Some(sources.catalogue.text(&format!("hero.{key}"), &Args::new()))
-}
-
-/// Side `index`'s hero's large portrait: its type's (*provisional*: the hero's own portrait, its
-/// +0x34 the executable reads, is its type's unless a map sets another, which the client does not
-/// know).
-fn hero_portrait(sources: &Sources<'_>, opening: &Observation, index: usize) -> Option<String> {
-    let key = hero_key(sources, opening, index)?;
-    sources.tables.heroes.get(key)?.portrait.clone()
+    let keys = &sources.manifest.keys.hero_types;
+    Some(keys.get(usize::from(hero.hero_type)).map(String::as_str))
 }
 
 /// The records the window reads of a side: its first 20 (the executable's loops run over 20 of a
@@ -249,12 +282,21 @@ pub fn experience(
     u32::try_from(points.max(0)).unwrap_or(u32::MAX)
 }
 
+/// Whether each side has army survivors at the battle's end, from its records (`stacks`): an army
+/// stack or one raised from corpses alive (BAT-END-001; what the engine's `survivors` hold, which
+/// a served outcome leaves empty: [`served`]).
+#[must_use]
+pub fn survivors(stacks: &[Vec<StackRecord>; 2]) -> [bool; 2] {
+    stacks.each_ref().map(|side| {
+        side.iter()
+            .any(|s| s.end > 0 && matches!(s.origin, StackOrigin::Army(_) | StackOrigin::Raised(_)))
+    })
+}
+
 /// The outcome of a battle on a server as a seat's record shows it (E17 M5 T6b1; no engine runs
 /// here): the game's end `result` (a forfeit the other side's victory; a void game a draw), and
-/// each side's stacks in id order as the battle `end` (the seat's, `h3_view::remote::seen`) shows
-/// them: where each came from, its creatures at the `opening` (or when the battle created it) and
-/// at the end. What the result window reads only (*provisional*: the survivors, the heroes'
-/// outcomes and the surrender's cost are left empty).
+/// each side's records ([`records`]). What the result window reads only (*provisional*: the
+/// survivors, the heroes' outcomes and the surrender's cost are left empty).
 pub fn served(
     opening: &Observation,
     end: &Observation,
@@ -272,6 +314,29 @@ pub fn served(
         Outcome::Forfeit { side: s } => BattleResult::Victory(side(s).opponent()),
         Outcome::Draw {} | Outcome::NoShow {} | Outcome::Unverified {} => BattleResult::Draw,
     };
+    BattleOutcome {
+        result,
+        survivors: [Army::default(), Army::default()],
+        war_machines: [Vec::new(), Vec::new()],
+        stacks: records(opening, end),
+        surrender_cost: None,
+        heroes: [None, None],
+        rounds: end.round,
+    }
+}
+
+/// Each side's records as a seat's record shows the battle's `end` (the seat's,
+/// `h3_view::remote::seen`), its stacks in id order: where each came from, its creatures at the
+/// `opening` (the first of its stacks with its id and creature; else its `base_count`: when the
+/// battle created it) and at the end (none when it is dead).
+pub fn records(opening: &Observation, end: &Observation) -> [Vec<StackRecord>; 2] {
+    use h3_protocol::wire::Side as Wire;
+    // The opening's counts by id and creature, read once (E17 M5 T8b2, R5b-1: a hostile record's
+    // many stacks cost no search per stack).
+    let mut started = BTreeMap::new();
+    for s in &opening.stacks {
+        started.entry((s.id, s.creature)).or_insert(s.count);
+    }
     let mut stacks: [Vec<StackRecord>; 2] = [Vec::new(), Vec::new()];
     for stack in &end.stacks {
         let origin = if stack.war_machine {
@@ -283,11 +348,10 @@ pub fn served(
         } else {
             StackOrigin::Army(stack.slot)
         };
-        let start = opening
-            .stacks
-            .iter()
-            .find(|s| s.id == stack.id && s.creature == stack.creature)
-            .map_or(stack.base_count, |s| s.count);
+        let start = started
+            .get(&(stack.id, stack.creature))
+            .copied()
+            .unwrap_or(stack.base_count);
         stacks[usize::from(stack.side == Wire::Defender)].push(StackRecord {
             origin,
             creature: CreatureTypeId::from_raw(stack.creature),
@@ -295,21 +359,503 @@ pub fn served(
             end: if stack.alive { stack.count } else { 0 },
         });
     }
-    BattleOutcome {
-        result,
-        survivors: [Army::default(), Army::default()],
-        war_machines: [Vec::new(), Vec::new()],
-        stacks,
-        surrender_cost: None,
-        heroes: [None, None],
-        rounds: end.round,
-    }
+    stacks
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use h3_kernel::Handle;
+    use h3_protocol::wire::{Hero, KeyTables, Seat, Siege};
+    use h3_ui::text::pack::Pack;
+    use h3_ui::ui::Item;
+    use h3_view::result::{
+        ATTACKER_NAME, ATTACKER_PORTRAIT, DEFENDER_NAME, DEFENDER_PORTRAIT, TEXT,
+    };
+    use std::path::Path;
+
+    /// The asset tables: Orrin's portrait, Sandro none; the Pikeman, the Dragon and the arrow
+    /// tower, the Ghost none.
+    const TABLE: &str = r#"
+[table]
+id = "t"
+depends = []
+
+[battle]
+groups = { moving = 0, mouse_over = 1, standing = 2, hit = 3, defend = 4, death = 5, strike = [11, 12, 13], shoot = [14, 15, 16], breath = [17, 18, 19], move_start = 20, move_end = 21, turn_left = [7, 10], turn_right = [9, 8] }
+hero_groups = { standing = 0, idle = 1, defeat = 2, victory = 3, cast = 4 }
+flags = ["CmFlagL.def", "CmFlagR.def"]
+magic = []
+heal_sound = "Regener"
+
+[[hero]]
+key = "orrin"
+original = 0
+def = "CH00.DEF"
+portrait = "HPL000Kn.pcx"
+
+[[hero]]
+key = "sandro"
+original = 1
+def = "CH01.DEF"
+
+[[creature]]
+key = "pikeman"
+original = 0
+def = "CPKMAN.DEF"
+times = [9000, 575, 500, 115]
+
+[[creature]]
+key = "dragon"
+original = 26
+def = "CBDRGN.DEF"
+times = [9000, 575, 500, 115]
+
+[[creature]]
+key = "tower"
+original = 149
+def = "CTOWER.DEF"
+times = [9000, 575, 500, 115]
+"#;
+
+    const PACK: &str = r#"{
+    "result": { "experience": " {{hero}} +{{experience}}" },
+    "hero": { "t:orrin": "Orrin", "t:sandro": "Sandro" },
+    "creature": {
+        "t:pikeman_one": "Pikeman", "t:pikeman_other": "Pikemen",
+        "t:dragon_one": "Dragon", "t:dragon_other": "Dragons"
+    }
+}"#;
+
+    const PIKEMAN: u16 = 0;
+    const DRAGON: u16 = 1;
+    const TOWER: u16 = 2;
+    const GHOST: u16 = 3;
+
+    /// What the window is made from: the opening of the synthetic duel (its two stacks, no
+    /// heroes), the manifest with the tables' keys and the Ghost's, which they lack.
+    struct Fixture {
+        manifest: Manifest,
+        tables: Tables,
+        catalogue: Catalogue,
+        layout: BattleLayout,
+        opening: Observation,
+    }
+
+    fn fixture() -> Fixture {
+        let root = Path::new(env!("CARGO_MANIFEST_DIR"));
+        let text = crate::scenario::record_of(
+            &root.join("../../../packs/synthetic/scenarios/duel.toml"),
+            &root.join("../../../packs"),
+            1,
+            Seat::Spectator,
+        )
+        .unwrap();
+        let record = h3_view::record::parse(&text).unwrap();
+        let list = |keys: &[&str]| keys.iter().map(|k| (*k).to_string()).collect();
+        let mut manifest = record.header.manifest.clone();
+        manifest.keys = KeyTables {
+            creatures: list(&["t:pikeman", "t:dragon", "t:tower", "t:ghost"]),
+            hero_types: list(&["t:orrin", "t:sandro"]),
+            ..KeyTables::default()
+        };
+        let layout = root.join("../../layouts/battle.toml");
+        Fixture {
+            manifest,
+            tables: h3_view::tables::load(&[h3_view::tables::parse(TABLE).unwrap()], "t").unwrap(),
+            catalogue: Catalogue {
+                packs: vec![Pack::from_json("en", PACK).unwrap()],
+            },
+            layout: h3_view::layout::parse_battle(&std::fs::read_to_string(layout).unwrap())
+                .unwrap(),
+            opening: record.first_snapshot().unwrap().clone(),
+        }
+    }
+
+    /// A hero of type `hero_type`.
+    fn hero(hero_type: u16) -> Hero {
+        Hero {
+            hero_type,
+            attack: 0,
+            defense: 0,
+            power: 0,
+            knowledge: 0,
+            mana: 0,
+            max_mana: 0,
+            casts: 0,
+            commands_ballista: false,
+            commands_tent: false,
+            commands_catapult: false,
+            spell_book: false,
+            sex: None,
+        }
+    }
+
+    /// The opening with each side's hero (by type) and whether a human plays it.
+    fn opening(f: &Fixture, heroes: [Option<u16>; 2], human: [bool; 2]) -> Observation {
+        let mut opening = f.opening.clone();
+        for (i, side) in opening.sides.iter_mut().enumerate() {
+            side.hero = heroes[i].map(hero);
+            side.human = human[i];
+        }
+        opening
+    }
+
+    fn outcome(result: BattleResult, stacks: [Vec<StackRecord>; 2]) -> BattleOutcome {
+        BattleOutcome {
+            result,
+            survivors: [Army::default(), Army::default()],
+            war_machines: [Vec::new(), Vec::new()],
+            stacks,
+            surrender_cost: None,
+            heroes: [None, None],
+            rounds: 1,
+        }
+    }
+
+    /// Each creature's hit points and AI value: the tower's the highest.
+    fn values(c: CreatureTypeId) -> (u32, u32) {
+        match c.raw() {
+            PIKEMAN => (10, 100),
+            DRAGON => (180, 5000),
+            TOWER => (1, 9999),
+            _ => (0, 0),
+        }
+    }
+
+    /// The window `f` builds of `opening` and `outcome` with the creatures' values or without.
+    fn shown(
+        f: &Fixture,
+        opening: &Observation,
+        outcome: &BattleOutcome,
+        known: bool,
+    ) -> (MessageBox, Tune) {
+        let sources = Sources {
+            manifest: &f.manifest,
+            tables: &f.tables,
+            ruleset: None,
+            catalogue: &f.catalogue,
+            layout: &f.layout,
+        };
+        let values = known.then_some(values);
+        built(&sources, values, opening, outcome, 0)
+    }
+
+    fn text(window: &MessageBox, id: u16) -> &str {
+        window.shown.texts.get(&id).map_or("", String::as_str)
+    }
+
+    /// A portrait: a picture's name, or a DEF item's DEF, frame and mirror.
+    fn portrait(window: &MessageBox, id: u16) -> (Option<&str>, u32, bool) {
+        match window.dialog.item(id) {
+            Some(Item::Picture(p)) => (Some(p.picture.as_str()), 0, false),
+            Some(Item::Def(d)) => (d.def.as_deref(), d.frame, d.mirrored),
+            _ => panic!("no portrait {id}"),
+        }
+    }
+
+    /// The two sides' words.
+    fn words(window: &MessageBox) -> [&str; 2] {
+        [text(window, 0x103), text(window, 0x104)]
+    }
+
+    #[test]
+    fn a_side_without_a_hero_shows_its_strongest_creature() {
+        // R5b-7: plural by its records, dead ones counted, the towers not; `TwCrPort.def` at the
+        // creature's original id + 2, the defender's mirrored.
+        let f = fixture();
+        let defender = vec![
+            record(StackOrigin::Army(0), PIKEMAN, 10, 0),
+            record(StackOrigin::Army(1), DRAGON, 2, 0),
+            record(StackOrigin::WarMachine, TOWER, 1, 1),
+        ];
+        let attacker = vec![record(StackOrigin::Army(0), PIKEMAN, 5, 5)];
+        let won = outcome(
+            BattleResult::Victory(BattleSide::Attacker),
+            [attacker.clone(), defender.clone()],
+        );
+        let (window, tune) = shown(&f, &opening(&f, [Some(0), None], [true, false]), &won, true);
+        assert_eq!(text(&window, DEFENDER_NAME), "Dragons");
+        assert_eq!(
+            portrait(&window, DEFENDER_PORTRAIT),
+            (Some("TwCrPort.def"), 28, true)
+        );
+        assert_eq!(
+            portrait(&window, ATTACKER_PORTRAIT),
+            (Some("HPL000Kn.pcx"), 0, false)
+        );
+        assert_eq!(words(&window), ["result.victorious", "result.defeated"]);
+        // 10 × 10 + 2 × 180; the tower gives nothing, no hero 500.
+        assert_eq!(text(&window, TEXT), "result.won Orrin +460");
+        assert_eq!(tune, Tune::Win);
+        // One record but the tower: singular. The attacker's own creature is not mirrored.
+        let alone = outcome(
+            BattleResult::Victory(BattleSide::Attacker),
+            [attacker, defender[1..].to_vec()],
+        );
+        let (window, _) = shown(&f, &opening(&f, [None, None], [true, false]), &alone, true);
+        assert_eq!(text(&window, DEFENDER_NAME), "Dragon");
+        assert_eq!(text(&window, ATTACKER_NAME), "Pikeman");
+        assert_eq!(
+            portrait(&window, ATTACKER_PORTRAIT),
+            (Some("TwCrPort.def"), 2, false)
+        );
+        // Without a hero the text names none.
+        assert_eq!(text(&window, TEXT), "result.won");
+    }
+
+    #[test]
+    fn what_the_client_lacks_is_drawn_empty() {
+        // R5b-1 and R5b-5: always a window.
+        let f = fixture();
+        let stacks = [
+            vec![record(StackOrigin::Army(0), GHOST, 3, 3)],
+            vec![
+                record(StackOrigin::WarMachine, TOWER, 1, 0),
+                record(StackOrigin::Army(0), PIKEMAN, 10, 4),
+            ],
+        ];
+        let won = outcome(BattleResult::Victory(BattleSide::Attacker), stacks.clone());
+        // A creature the tables lack: its name, no portrait.
+        let (window, _) = shown(&f, &opening(&f, [None, Some(1)], [true, false]), &won, true);
+        assert_eq!(text(&window, ATTACKER_NAME), "creature.t:ghost");
+        assert_eq!(portrait(&window, ATTACKER_PORTRAIT), (None, 0, false));
+        // A hero type without a portrait: its name, no portrait.
+        assert_eq!(text(&window, DEFENDER_NAME), "Sandro");
+        assert_eq!(portrait(&window, DEFENDER_PORTRAIT), (None, 0, true));
+        // A hero type the manifest does not name: still a hero, its 500 counted (6 × 10 + 500).
+        let (window, _) = shown(
+            &f,
+            &opening(&f, [Some(0), Some(7)], [true, false]),
+            &won,
+            true,
+        );
+        assert_eq!(text(&window, DEFENDER_NAME), "");
+        assert_eq!(portrait(&window, DEFENDER_PORTRAIT), (None, 0, true));
+        assert_eq!(text(&window, TEXT), "result.won Orrin +560");
+        // No creature to show (the towers only): no face; a creature the manifest does not name:
+        // no name.
+        let towers = outcome(
+            BattleResult::Victory(BattleSide::Attacker),
+            [
+                vec![record(StackOrigin::Army(0), 9, 1, 1)],
+                stacks[1][..1].to_vec(),
+            ],
+        );
+        let (window, _) = shown(&f, &opening(&f, [None, None], [true, false]), &towers, true);
+        assert_eq!(text(&window, DEFENDER_NAME), "");
+        assert_eq!(portrait(&window, DEFENDER_PORTRAIT), (None, 0, true));
+        assert_eq!(text(&window, ATTACKER_NAME), "");
+        // Without the creatures' values (R5b-2): no experience, no strongest creature.
+        let (window, _) = shown(
+            &f,
+            &opening(&f, [Some(0), None], [true, false]),
+            &won,
+            false,
+        );
+        assert_eq!(text(&window, TEXT), "result.won Orrin +0");
+        assert_eq!(text(&window, DEFENDER_NAME), "");
+        assert_eq!(portrait(&window, DEFENDER_PORTRAIT), (None, 0, true));
+    }
+
+    #[test]
+    fn the_experience_is_the_shown_winner_s_and_a_town_s_for_its_attacker() {
+        let f = fixture();
+        let stacks = [
+            vec![record(StackOrigin::Army(0), PIKEMAN, 5, 0)],
+            vec![record(StackOrigin::Army(0), PIKEMAN, 10, 4)],
+        ];
+        let heroes = [Some(0), Some(1)];
+        let attacker_won = outcome(BattleResult::Victory(BattleSide::Attacker), stacks.clone());
+        let defender_won = outcome(BattleResult::Victory(BattleSide::Defender), stacks);
+        let mut town = opening(&f, heroes, [true, true]);
+        town.siege = Some(Siege {
+            faction: 0,
+            fort: 1,
+            moat: 0,
+            gate_open: false,
+            walls: Vec::new(),
+            moat_hexes: Vec::new(),
+            parts: Vec::new(),
+        });
+        // 6 × 10 + the hero's 500, 500 more for the attacker at a town.
+        let field = opening(&f, heroes, [true, true]);
+        let (window, _) = shown(&f, &field, &attacker_won, true);
+        assert_eq!(text(&window, TEXT), "result.won Orrin +560");
+        let (window, tune) = shown(&f, &town, &attacker_won, true);
+        assert_eq!(text(&window, TEXT), "result.won Orrin +1060");
+        assert_eq!(tune, Tune::Win);
+        // The town's defender won: no town's 500 (5 × 10 + 500).
+        let (window, tune) = shown(&f, &town, &defender_won, true);
+        assert_eq!(text(&window, TEXT), "result.won Sandro +550");
+        assert_eq!(tune, Tune::DefendCastle);
+        // The shown side lost (the winner's player not a human here): no experience.
+        let (window, tune) = shown(&f, &opening(&f, heroes, [false, true]), &attacker_won, true);
+        assert_eq!(text(&window, TEXT), "result.lost");
+        assert_eq!(words(&window), ["result.victorious", "result.defeated"]);
+        assert_eq!(tune, Tune::Lose);
+    }
+
+    #[test]
+    fn a_side_that_gave_up_against_created_stacks_only_leaves_no_winner() {
+        // R5b-3, BAT-END-001: both defeated, the defender's view, no experience.
+        let f = fixture();
+        let attacker = vec![record(StackOrigin::Army(0), PIKEMAN, 5, 5)];
+        let created = vec![
+            record(StackOrigin::Army(0), PIKEMAN, 10, 0),
+            record(StackOrigin::Created, DRAGON, 1, 1),
+        ];
+        let human = opening(&f, [Some(0), Some(1)], [true, true]);
+        let fled = outcome(
+            BattleResult::Retreat(BattleSide::Attacker),
+            [attacker.clone(), created.clone()],
+        );
+        let (window, tune) = shown(&f, &human, &fled, true);
+        assert_eq!(words(&window), ["result.defeated", "result.defeated"]);
+        assert_eq!(text(&window, TEXT), "result.lost.fled");
+        assert_eq!(tune, Tune::Retreat);
+        // A raised stack is an army survivor.
+        let mut raised = created;
+        raised[1].origin = StackOrigin::Raised(1);
+        let fled = outcome(
+            BattleResult::Retreat(BattleSide::Attacker),
+            [attacker, raised],
+        );
+        let (window, tune) = shown(&f, &human, &fled, true);
+        assert_eq!(words(&window), ["result.defeated", "result.victorious"]);
+        assert_eq!(text(&window, TEXT), "result.won.fled Sandro +0");
+        assert_eq!(tune, Tune::Win);
+    }
+
+    #[test]
+    fn a_served_outcome_is_read_from_the_record_s_opening_and_end() {
+        use h3_protocol::wire::{Outcome, Side as Wire};
+        let f = fixture();
+        let mut opening = f.opening.clone();
+        let (a, d) = (opening.stacks[0].clone(), opening.stacks[1].clone());
+        assert_eq!((a.side, d.side), (Wire::Attacker, Wire::Defender));
+        assert!(a.id != d.id && a.creature != d.creature && a.alive);
+        // A hostile record's repeated stack: the first counts.
+        let mut again = a.clone();
+        again.count = 99;
+        opening.stacks.push(again);
+        let mut end = opening.clone();
+        end.round = 4;
+        let mut stacks = vec![a.clone(), d.clone()];
+        stacks[0].count = 3;
+        // Dead: its end 0 whatever its count; another creature than the opening's under its id:
+        // its start its base count.
+        stacks[1].alive = false;
+        stacks[1].creature = a.creature;
+        stacks[1].base_count = 17;
+        for (id, side, flags, slot) in [
+            (5, Wire::Attacker, (false, false, true), 255),
+            (6, Wire::Defender, (true, false, false), 16),
+            (7, Wire::Defender, (false, true, false), 2),
+        ] {
+            let mut s = a.clone();
+            s.id = id;
+            s.side = side;
+            (s.war_machine, s.raised, s.created) = flags;
+            s.slot = slot;
+            s.base_count = 4;
+            s.count = 2;
+            stacks.push(s);
+        }
+        end.stacks = stacks;
+        let read = served(
+            &opening,
+            &end,
+            Outcome::Victory {
+                side: Wire::Attacker,
+            },
+        );
+        let creature = |s: &h3_protocol::wire::Stack| Handle::from_raw(s.creature);
+        assert_eq!(
+            read.stacks,
+            [
+                vec![
+                    StackRecord {
+                        origin: StackOrigin::Army(a.slot),
+                        creature: creature(&a),
+                        start: a.count,
+                        end: 3,
+                    },
+                    StackRecord {
+                        origin: StackOrigin::Created,
+                        creature: creature(&a),
+                        start: 4,
+                        end: 2,
+                    },
+                ],
+                vec![
+                    StackRecord {
+                        origin: StackOrigin::Army(d.slot),
+                        creature: creature(&a),
+                        start: 17,
+                        end: 0,
+                    },
+                    StackRecord {
+                        origin: StackOrigin::WarMachine,
+                        creature: creature(&a),
+                        start: 4,
+                        end: 2,
+                    },
+                    StackRecord {
+                        origin: StackOrigin::Raised(2),
+                        creature: creature(&a),
+                        start: 4,
+                        end: 2,
+                    },
+                ],
+            ]
+        );
+        assert_eq!(read.rounds, 4);
+        assert_eq!(survivors(&read.stacks), [true, true]);
+        assert_eq!(read.result, BattleResult::Victory(BattleSide::Attacker));
+        let result = |outcome| served(&opening, &end, outcome).result;
+        assert_eq!(
+            result(Outcome::Forfeit {
+                side: Wire::Attacker
+            }),
+            BattleResult::Victory(BattleSide::Defender)
+        );
+        assert_eq!(
+            result(Outcome::Retreat {
+                side: Wire::Defender
+            }),
+            BattleResult::Retreat(BattleSide::Defender)
+        );
+        assert_eq!(
+            result(Outcome::Surrender {
+                side: Wire::Attacker
+            }),
+            BattleResult::Surrender(BattleSide::Attacker)
+        );
+        for drawn in [Outcome::Draw {}, Outcome::NoShow {}, Outcome::Unverified {}] {
+            assert_eq!(result(drawn), BattleResult::Draw);
+        }
+    }
+
+    #[test]
+    fn survivors_are_army_or_raised_stacks_alive() {
+        let side = |origin, end| vec![record(origin, PIKEMAN, 5, end)];
+        assert_eq!(
+            survivors(&[
+                side(StackOrigin::Army(0), 1),
+                side(StackOrigin::Raised(0), 1)
+            ]),
+            [true, true]
+        );
+        assert_eq!(
+            survivors(&[side(StackOrigin::Army(0), 0), side(StackOrigin::Created, 1)]),
+            [false, false]
+        );
+        assert_eq!(
+            survivors(&[side(StackOrigin::WarMachine, 1), Vec::new()]),
+            [false, false]
+        );
+    }
 
     fn record(origin: StackOrigin, creature: u16, start: u32, end: u32) -> StackRecord {
         StackRecord {
@@ -330,7 +876,8 @@ mod tests {
                 Seat::Defender
             }
         };
-        for human in [[true, true], [true, false], [false, true], [false, false]] {
+        let pairs = [[true, true], [true, false], [false, true], [false, false]];
+        for (human, survivors) in pairs.into_iter().flat_map(|h| pairs.map(|s| (h, s))) {
             for town in [false, true] {
                 for winner in [None, Some(0), Some(1)] {
                     for gave_up in [None, Some(GaveUp::Retreat), Some(GaveUp::Surrender)] {
@@ -345,12 +892,13 @@ mod tests {
                             }
                         };
                         let gave_up = winner.and(gave_up);
-                        let shown = result::shown_side(winner, human);
-                        let won = winner == Some(shown);
+                        let named = result::winner(winner, gave_up.is_some(), survivors);
+                        let shown = result::shown_side(named, human);
+                        let won = named == Some(shown);
                         assert_eq!(
                             tune(won, shown, town, gave_up),
-                            h3_view::sound::end_tune(outcome, human, town),
-                            "{human:?} {town} {winner:?} {gave_up:?}"
+                            h3_view::sound::end_tune(outcome, human, town, survivors),
+                            "{human:?} {survivors:?} {town} {winner:?} {gave_up:?}"
                         );
                     }
                 }
