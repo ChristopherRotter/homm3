@@ -358,3 +358,90 @@ inputs = [
     { at = 700, pointer = [80, 336] }, { at = 800, pointer = [496, 112] },
     { at = 900, pointer = [700, 300] },
 ]
+
+# The map hint's visit marks (E24 M3 T6a2a; E24 design §4.11), the status bar's hint compared
+# (`masks.toml`'s `hinted`): Red's selected hero with 1000 points, the pointer over the entrance
+# of each object of the 35 classes whose hint shows a bonus or a mark, then over a body (the
+# Library's, the University's: the entrance's hint), then the parking. `hover-visits-*` as the new
+# game leaves them (nothing known: the marks of the selected hero's not visited, the Wagon's and
+# the Warrior's Tomb's too, the Water Wheel's and the Windmill's none), `hover-visited-*` with
+# every one known and visited (the situations' `visits`; the second Water Wheel and Windmill not
+# visited, something left).
+
+[[sequence]]
+id = "hover-visits-a"
+situation = "hover-visits-a"
+ms = 2100
+points = 1000
+why = "the map hint over the first 18 visit-mark classes, nothing visited"
+inputs = [
+    { at = 100, pointer = [80, 152] }, { at = 200, pointer = [176, 152] },
+    { at = 300, pointer = [272, 152] }, { at = 400, pointer = [368, 152] },
+    { at = 500, pointer = [432, 152] }, { at = 600, pointer = [528, 152] },
+    { at = 700, pointer = [80, 280] }, { at = 800, pointer = [144, 280] },
+    { at = 900, pointer = [240, 280] }, { at = 1000, pointer = [304, 280] },
+    { at = 1100, pointer = [400, 280] }, { at = 1200, pointer = [528, 280] },
+    { at = 1300, pointer = [48, 408] }, { at = 1400, pointer = [144, 408] },
+    { at = 1500, pointer = [208, 408] }, { at = 1600, pointer = [304, 408] },
+    { at = 1700, pointer = [432, 408] }, { at = 1800, pointer = [560, 408] },
+    { at = 1900, pointer = [496, 248] }, { at = 2000, pointer = [700, 300] },
+]
+
+[[sequence]]
+id = "hover-visited-a"
+situation = "hover-visited-a"
+ms = 2100
+points = 1000
+why = "the map hint over the first 18 visit-mark classes, every bonus known and object visited"
+inputs = [
+    { at = 100, pointer = [80, 152] }, { at = 200, pointer = [176, 152] },
+    { at = 300, pointer = [272, 152] }, { at = 400, pointer = [368, 152] },
+    { at = 500, pointer = [432, 152] }, { at = 600, pointer = [528, 152] },
+    { at = 700, pointer = [80, 280] }, { at = 800, pointer = [144, 280] },
+    { at = 900, pointer = [240, 280] }, { at = 1000, pointer = [304, 280] },
+    { at = 1100, pointer = [400, 280] }, { at = 1200, pointer = [528, 280] },
+    { at = 1300, pointer = [48, 408] }, { at = 1400, pointer = [144, 408] },
+    { at = 1500, pointer = [208, 408] }, { at = 1600, pointer = [304, 408] },
+    { at = 1700, pointer = [432, 408] }, { at = 1800, pointer = [560, 408] },
+    { at = 1900, pointer = [496, 248] }, { at = 2000, pointer = [700, 300] },
+]
+
+[[sequence]]
+id = "hover-visits-b"
+situation = "hover-visits-b"
+ms = 2200
+points = 1000
+why = "the map hint over the other 17 visit-mark classes, nothing visited"
+inputs = [
+    { at = 100, pointer = [80, 120] }, { at = 200, pointer = [144, 120] },
+    { at = 300, pointer = [240, 120] }, { at = 400, pointer = [336, 120] },
+    { at = 500, pointer = [432, 120] }, { at = 600, pointer = [496, 120] },
+    { at = 700, pointer = [80, 216] }, { at = 800, pointer = [208, 216] },
+    { at = 900, pointer = [304, 216] }, { at = 1000, pointer = [432, 216] },
+    { at = 1100, pointer = [560, 216] }, { at = 1200, pointer = [144, 312] },
+    { at = 1300, pointer = [304, 312] }, { at = 1400, pointer = [368, 312] },
+    { at = 1500, pointer = [528, 312] }, { at = 1600, pointer = [80, 408] },
+    { at = 1700, pointer = [112, 536] }, { at = 1800, pointer = [208, 536] },
+    { at = 1900, pointer = [336, 536] }, { at = 2000, pointer = [176, 184] },
+    { at = 2100, pointer = [700, 300] },
+]
+
+[[sequence]]
+id = "hover-visited-b"
+situation = "hover-visited-b"
+ms = 2200
+points = 1000
+why = "the map hint over the other 17 visit-mark classes, every bonus known and object visited"
+inputs = [
+    { at = 100, pointer = [80, 120] }, { at = 200, pointer = [144, 120] },
+    { at = 300, pointer = [240, 120] }, { at = 400, pointer = [336, 120] },
+    { at = 500, pointer = [432, 120] }, { at = 600, pointer = [496, 120] },
+    { at = 700, pointer = [80, 216] }, { at = 800, pointer = [208, 216] },
+    { at = 900, pointer = [304, 216] }, { at = 1000, pointer = [432, 216] },
+    { at = 1100, pointer = [560, 216] }, { at = 1200, pointer = [144, 312] },
+    { at = 1300, pointer = [304, 312] }, { at = 1400, pointer = [368, 312] },
+    { at = 1500, pointer = [528, 312] }, { at = 1600, pointer = [80, 408] },
+    { at = 1700, pointer = [112, 536] }, { at = 1800, pointer = [208, 536] },
+    { at = 1900, pointer = [336, 536] }, { at = 2000, pointer = [176, 184] },
+    { at = 2100, pointer = [700, 300] },
+]

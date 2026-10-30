@@ -537,6 +537,11 @@ def stage(situation_path, out):
         # then the kind asked, built by the next view draw.
         if "teams" in sit:
             mem.write_bytes(mem.game() + h3mem.TEAMS, bytes(sit["teams"]))
+        # The visit marks a situation gives (E24 M3 T6a2a; design §4.11), for the hero selected
+        # as staged: the hint reads them at each change of the tile under the pointer.
+        for visit in sit.get("visits", []):
+            mem.write_visit(mem.current_player(), *visit["at"], visit.get("known", False),
+                            visit.get("visited"))
         if "status" in sit:
             ask_status(mem, sit["status"], max(mem.map_due()) + STATUS_LONG)
             h3adv.wait_for(lambda: mem.status_shown() == sit["status"],

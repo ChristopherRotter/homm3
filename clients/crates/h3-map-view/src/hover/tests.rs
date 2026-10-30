@@ -163,6 +163,105 @@ fn the_facts_read_from_the_live_parts_table() {
     }
 }
 
+/// The facts of [`visits_fixture`]'s five objects, `visits` their `[hover]` line.
+fn visit_facts(visits: &str) -> String {
+    let guarded = ["\"00000000\""; 8].join(", ");
+    alloc::format!(
+        "words = [0, 0, 1, 2, 3]\narmed = [0, 0, 0, 0, 0]\ntowns = []\nhero_ids = []\n\
+         hero_list = []\ntown_list = []\nteams = [0, 1, 2, 3, 4, 5, 6, 7]\n\
+         guarded = [{guarded}]\nreach = []\nday_points = 0\n{visits}\n"
+    )
+}
+
+/// An 8 × 8 map with a Swan Pond (entrance (4, 1), body (3, 1)), a Hill Fort (6, 1), a Wagon
+/// (3, 5), a Water Wheel (5, 5) and an Arena (6, 6), the facts' `visits` line `visits`.
+fn visits_fixture(visits: &str) -> Arc<Hover> {
+    let objects = [
+        (template(0, 14, 0, &[(1, 0)], &[(0, 0)]), (4, 1)),
+        (template(1, 35, 0, &[], &[(0, 0)]), (6, 1)),
+        (template(2, 105, 0, &[], &[(0, 0)]), (3, 5)),
+        (template(3, 109, 0, &[], &[(0, 0)]), (5, 5)),
+        (template(4, 4, 0, &[], &[(0, 0)]), (6, 6)),
+    ];
+    let (art, mut live, shapes) = map_with(&objects, &[0]);
+    let value: toml::Value = toml::from_str(&visit_facts(visits)).unwrap();
+    live.hover = Some(Facts::read(&value, 5, 0, 8, 1).unwrap());
+    let lists = [DrawLists::build(&art, &live, &shapes, 0).unwrap()];
+    Hover::new(&art, &live, &tables().records, &lists).unwrap()
+}
+
+#[test]
+fn the_visits_read_from_the_live_parts_table() {
+    let read = |visits: &str| {
+        let value: toml::Value = toml::from_str(&visit_facts(visits)).unwrap();
+        Facts::read(&value, 5, 0, 8, 1)
+    };
+    let f = read("visits = [[1, 1], [1, -1], [0, 0], [0, -1], [1, -1]]").unwrap();
+    assert_eq!(
+        f.visits[..3],
+        [
+            Visit {
+                known: true,
+                visited: Some(true)
+            },
+            Visit {
+                known: true,
+                visited: None
+            },
+            Visit {
+                known: false,
+                visited: Some(false)
+            },
+        ]
+    );
+    // Left out (a live part written before T6a2a): none known.
+    assert!(read("").unwrap().visits.is_empty());
+    // One per object; known 0 or 1, the mark -1, 0 or 1.
+    for wrong in [
+        "visits = [[1, 1]]",
+        "visits = [[2, 1], [1, -1], [0, 0], [0, -1], [1, -1]]",
+        "visits = [[1, 2], [1, -1], [0, 0], [0, -1], [1, -1]]",
+        "visits = [[1, -2], [1, -1], [0, 0], [0, -1], [1, -1]]",
+    ] {
+        assert!(read(wrong).is_none(), "{wrong}");
+    }
+}
+
+#[test]
+fn the_hint_of_a_visited_object() {
+    let h = visits_fixture("visits = [[1, 1], [1, -1], [0, 0], [0, -1], [1, -1]]");
+    let hint = |x, y| h.hint(at(x, y), false, None);
+    // Known and visited, on the entrance and on the body (the entrance's hint).
+    let pond = Hint::Visits {
+        class: 14,
+        bonus: Some(1),
+        visited: Some(true),
+    };
+    assert_eq!((hint(4, 1), hint(3, 1)), (pond, pond));
+    // Known without a mark; a mark without a bonus; neither; known with no bonus to show.
+    assert_eq!(
+        hint(6, 1),
+        Hint::Visits {
+            class: 35,
+            bonus: Some(14),
+            visited: None
+        }
+    );
+    assert_eq!(
+        hint(3, 5),
+        Hint::Visits {
+            class: 105,
+            bonus: None,
+            visited: Some(false)
+        }
+    );
+    assert_eq!(hint(5, 5), Hint::Object(109));
+    assert_eq!(hint(6, 6), Hint::Object(4));
+    // A live part without them: the names.
+    let h = visits_fixture("");
+    assert_eq!(h.hint(at(4, 1), false, None), Hint::Object(14));
+}
+
 #[test]
 fn the_tiles_are_the_maps_with_the_heroes_and_boats_on_them() {
     let (_, _, h) = fixture(false);
@@ -461,8 +560,10 @@ fn texts() -> Catalogue {
         r#""town-name": { "5": "Arcton" }, "town-type": { "0": "Castle" }, "#,
         r#""creature": { "13_one": "Archangel", "13_other": "Archangels" }, "#,
         r#""map": { "hint": { "hero": "{{name}} the {{class}}", "town": "{{name}}, {{type}}", "#,
-        r#""monster": "{{size}} {{creature}}" }, "#,
-        r#""army": { "0": "A few", "1": "Several", "8": "A Legion of" } } }"#,
+        r#""monster": "{{size}} {{creature}}", "more": " {{text}}", "visited": "(seen)", "#,
+        r#""not-visited": "(unseen)" }, "#,
+        r#""army": { "0": "A few", "1": "Several", "8": "A Legion of" } } , "#,
+        r#""map-bonus": { "1": "(bonus)" } }"#,
     );
     Catalogue {
         packs: vec![Pack::from_json("en", json).unwrap()],
@@ -491,6 +592,17 @@ fn a_hints_text() {
     assert_eq!(text(monster(13, 5)), "Several Archangels");
     assert_eq!(text(monster(13, 1000)), "A Legion of Archangels");
     assert_eq!(text(monster(151, 1)), "A few ");
+    let visits = |bonus, visited| Hint::Visits {
+        class: 46,
+        bonus,
+        visited,
+    };
+    assert_eq!(
+        text(visits(Some(1), Some(true))),
+        "Magic Plains (bonus) (seen)"
+    );
+    assert_eq!(text(visits(None, Some(false))), "Magic Plains (unseen)");
+    assert_eq!(text(visits(Some(1), None)), "Magic Plains (bonus)");
 }
 
 pub(crate) fn kingdom() -> Kingdom {

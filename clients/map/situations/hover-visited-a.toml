@@ -1,0 +1,52 @@
+# The visit marks of the map hint (E24 M3 T6a2a; clients/map/sequences.toml `hover-visited-a`; E24
+# design §4.11): Red's selected hero at (17, 2), 18 objects of the classes whose hint shows a bonus
+# or a mark in three rows, in the view from (0, 0); Blue's hero far off.
+# Every object known and visited by the rules the original reads (`visits`, the harness's
+# writes): the bonuses and the visited marks; the Hill Fort known only.
+size = 36
+terrain = "grass"
+heroes = [
+    { at = [17, 2], class = 2 },
+    { at = [34, 34], owner = 1 },
+]
+objects = [
+    { def = "AVSarna0.def", at = [3, 4] },  # Arena (4)
+    { def = "AVSclvg0.def", at = [6, 4] },  # Swan Pond (14)
+    { def = "AVXskds0.def", at = [8, 4] },  # Corpse (22)
+    { def = "AvSMarl.def", at = [11, 4] },  # Marletto Tower (23)
+    { def = "AVSring0.def", at = [14, 4] },  # Faerie Ring (28)
+    { def = "AVSfntn0.def", at = [16, 4] },  # Fountain of Fortune (30)
+    { def = "AVXfyth0.def", at = [2, 8] },  # Fountain of Youth (31)
+    { def = "AVSgrdn0.def", at = [4, 8] },  # Garden of Revelation (32)
+    { def = "AVXhilg0.def", at = [7, 8] },  # Hill Fort (35)
+    { def = "AVSidol0.def", at = [9, 8] },  # Idol of Fortune (38)
+    { def = "AVMlean0.def", at = [12, 8] },  # Lean To (39)
+    { def = "AVSlibr0.def", at = [17, 8] },  # Library (41)
+    { def = "AVSschm0.def", at = [1, 12] },  # School of Magic (47)
+    { def = "AVXmags0.def", at = [4, 12] },  # Magic Spring (48)
+    { def = "AVXwelg0.def", at = [6, 12] },  # Magic Well (49)
+    { def = "AVSmerc0.def", at = [10, 12] },  # Mercenary Camp (51)
+    { def = "AVTmyst0.def", at = [14, 12] },  # Mystical Garden (55)
+    { def = "AVXosis0.def", at = [17, 12] },  # Oasis (56)
+]
+visits = [
+    { at = [3, 4], visited = true },
+    { at = [6, 4], known = true, visited = true },
+    { at = [8, 4], visited = true },
+    { at = [11, 4], known = true, visited = true },
+    { at = [14, 4], known = true, visited = true },
+    { at = [16, 4], known = true, visited = true },
+    { at = [2, 8], known = true, visited = true },
+    { at = [4, 8], known = true, visited = true },
+    { at = [7, 8], known = true },
+    { at = [9, 8], known = true, visited = true },
+    { at = [12, 8], visited = true },
+    { at = [17, 8], known = true, visited = true },
+    { at = [1, 12], known = true, visited = true },
+    { at = [4, 12], known = true, visited = true },
+    { at = [6, 12], known = true, visited = true },
+    { at = [10, 12], known = true, visited = true },
+    { at = [14, 12], visited = true },
+    { at = [17, 12], known = true, visited = true },
+]
+view = [0, 0, 0]

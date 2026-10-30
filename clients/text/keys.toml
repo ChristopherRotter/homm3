@@ -837,6 +837,32 @@ id = "map.hint.monster"
 args = { size = "text", creature = "text" }
 original = [{ at = "EXE:0x660344", printf = ["size", "creature"] }]
 
+# What a map object's hint adds on its entrance (E24 M3 T6a2a; docs/epics/E24-design.md §4.11):
+# its bonus, once the viewing player knows its kind, then its mark, each by the executable's " %s"
+# (0x66034C); the bonus XtraInfo.txt's record per class (`xtra_info` 0x69127C as `xtrainfo_load`
+# 0x405D80 loads its 28 records, `map-bonus.<n>`), the marks GENRLTXT's records 353 and 354. Only
+# the map viewer lists them.
+[[key]]
+id = "map.hint.more"
+args = { text = "text" }
+original = [{ at = "EXE:0x66034C", printf = ["text"] }]
+
+[[key]]
+id = "map.hint.visited"
+original = [{ at = "GENRLTXT:353" }]
+
+[[key]]
+id = "map.hint.not-visited"
+original = [{ at = "GENRLTXT:354" }]
+
+[[family]]
+id = "map-bonus"
+table = "XTRAINFO"
+first = 0
+count = 28
+column = 0
+optional = true
+
 # The size words of a count, the form a monster's hint takes (`creature_quantity_word` 0x44ADE0
 # with form 1: below 5, 10, 20, 50, 100, 250, 500 and 1000, else the ninth; ARRAYTXT.TXT's records
 # 174 + 3 n + 1 as `arraytxt_load` loads them to 0x6A5BB8).
