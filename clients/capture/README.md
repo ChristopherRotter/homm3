@@ -1180,3 +1180,8 @@ design §7.1.
   until their timeout, saying so on stderr (`came after an unreadable display`, with the
   dump's header), and a timeout names the fault; a whole `set` passed at once (8 minutes).
   Elsewhere `xwd_bytes` still stops after five tries (`Unreadable`, with the last fault).
+- A game can crash on the new-game screen (E17 M5 T8b1, once in 37 sequences: a page fault in
+  `rumour_pick_text` 0x4CCF8C, a null read, the first silent run after three sound runs in its
+  prefix): Wine's crash dialog then fills the display (a dump of depth 24), and the screen's
+  timeout names the crash from the run's `wine.log` (`Game.crash_note`). Run it again; the rerun
+  passed.

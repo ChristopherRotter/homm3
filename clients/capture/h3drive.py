@@ -395,7 +395,21 @@ class Game:
         except Unreadable as err:
             bad = f"none: {err}"
         also = f"; {fault}" if fault else ""
-        raise TimeoutError(f"the screen `{name}` did not appear (the display: {bad}{also})")
+        raise TimeoutError(f"the screen `{name}` did not appear (the display: {bad}{also})"
+                           f"{self.crash_note()}")
+
+    def crash_note(self):
+        """The game's crash, if Wine logged one, for a timeout's message (E17 M5 T8b1: a crash
+        in `rumour_pick_text` 0x4CCF8C on the new-game screen left Wine's crash dialog, which the
+        timeout named only as a display of depth 24)."""
+        try:
+            text = (self.out / "wine.log").read_text(errors="replace")
+        except OSError:
+            return ""
+        for line in text.splitlines():
+            if "Unhandled" in line:
+                return f"; the game crashed: {line.strip()} (its log: {self.out / 'wine.log'})"
+        return ""
 
     # -- input --------------------------------------------------------------------------------
     def click(self, x, y, settle=0.3):
@@ -500,7 +514,8 @@ class Game:
                 return t
         bad = self.out / f"not-{names[0]}.xwd"
         self.dump(bad)
-        raise TimeoutError(f"the screen `{name}` did not appear within {limit_ms} ms (the display: {bad})")
+        raise TimeoutError(f"the screen `{name}` did not appear within {limit_ms} ms (the display: "
+                           f"{bad}){self.crash_note()}")
 
 
 # -- recipes: the common uses, by fixed coordinates (the menus never move) --------------------
