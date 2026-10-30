@@ -25,9 +25,11 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   `remote::rejoined`, `Battle::afresh`: T6 done; T7 done, kept whole by the user: accounts,
   design §11.4, `argon2` the engine's and the password from standard input (the user's
   choices), `h3-view account`, `remote::Accounts`, `Client::login` with the re-key,
-  `remote::farewell`). **M5 T8** (M5's closure) in progress, cut by the user into concurrent
-  fractions (two capture agents, one reviewer or fixer; log, "M5 T8a"): T8a on branch
-  `client/e17-m5-t8a` (no PR yet). The inbox's CLT-Q30 task (`h3-bink` as BINKW32's float DCT) and the user's Demons
+  `remote::farewell`). **M5 T8** (M5's closure) cut by the user into concurrent fractions (two
+  capture agents on the harness's two instances, one reviewer or fixer; QUEUE): **T8a done**
+  (PR from `client/e17-m5-t8a`; check it first): reviewers R1, R3, R4 fixed, all stills and
+  sequences 0 to 27 as recorded. **Next: T8b** (QUEUE: sequences 28 to 64, reviewers R2, R4b,
+  R5a–c, R6, R7 and their fixers), then T8c at the user's checkpoint (review items 1 to 72+). The inbox's CLT-Q30 task (`h3-bink` as BINKW32's float DCT) and the user's Demons
   note (T5a's dissolve, to re-investigate) wait for a free slot.
   Workspace `clients/` (`clients/README.md`), gates `clients/scripts/check.sh`; ADR-0020 (+ drafts
   in `adr-drafts/`), ADR-0024; the harness `clients/capture/README.md`; design §3–§11; records in
@@ -56,11 +58,12 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
 
 ## Recent sessions
 
-- **2026-10-30, E17 M5 T8a (in progress).** The original data staged; the VM restarted ~10
-  minutes in. The user's cut: three concurrent sub-agents, each a fraction (about half a
-  context). Done: the harness's two instances, the recipes' bonus Gold (pushed), reviewer R1
-  (the network and accounts: R1-1 to R1-9, the log). Running: fixer F1b, captures C1 (stills,
-  sequences 0–9) and C2 (10–21). Next: their results, F1a (R1-1, 3, 5, 7), reviewers R2 on.
+- **2026-10-30, E17 M5 T8a (done; its PR open: check it first).** The original data staged;
+  the VM restarted ~10 minutes in. The user's cut: three concurrent sub-agents, each a fraction
+  of about half a context. Built the harness's two instances (one fault found by a capture
+  agent: `h3mem.game_pid` read the other instance's game; fixed, the void ids redone) and the
+  recipes' bonus Gold; reviewers R1, R3, R4 and their fixers (log); 91 stills and sequences 0
+  to 27 as recorded; `drawn` all 156 the same with the fixes; `check.sh` green. Items 65–72.
 
 - **2026-10-30, E17 M5 T7 (done; #600 merged).** The original data staged; the
   user chose `argon2` (the engine's), the password from standard input shown as typed, and kept

@@ -3599,10 +3599,34 @@ in; the baseline had passed (`verify-once clients`: CI's fingerprint, the light 
   (`looks`, `controllers`, the growing path, a turned two-hex click); R3-7 (unsure) a dissolve's
   kept moment carries another open dissolve. Checked fine: the playhead against a full rescan,
   `extend`'s appends, input gating, the click's side in hot seat, determinism.
-- **In progress:** fixer F3a (R3-2 to R3-7); captures C1' (instance 1: the void ids, sequences
-  0 to 9's rest) and C2 (instance 2: sequences 10 to 21). Next: R3-1, reviewers R2 (the
-  decoder), R4 (the book and the aim), R5 (the dialogs), R6 (the effects and sounds), R7 (the
-  harness); captures from sequence 22 on.
+- **Fixed** (fixers F3a, F3b): R3-2 `result::Behind` (read once for its time); R3-3 `extend`
+  returns when nothing it reads grew or moved; R3-4 the bot's commands counted since a human's
+  last; R3-5 the docs; R3-6 the tests (`looks`, `controllers`, the window's growing path, 504
+  turned two-hex clicks all legal); R3-7 `dissolve: None` on the kept moment; R3-1
+  `pointer::Follower` (each turn's observation, legal commands and facing kept as it arrives,
+  `touch` on a change in place) and `track::follow_on` (from a `Mark` at a turn start, refused
+  when what it stands on changed): 72 `Timeline::at` calls a mouse move at the end of
+  `battle.toml`'s hot seat before, none after; a test compares it with the whole re-follow at
+  all 620 steps (TRAPS.md). Left: an entered stack clones the timeline.
+- **Reviewer R4, the spell book** (T3a): R4-1 a spell missing from the manifest closed the
+  whole book; R4-2 the client's copy of the cost untested (equal to `mana::cost` and
+  `mastery_at` today); R4-3 a still's second `key:c` did nothing; R4-4 a spell of no known
+  school hidden everywhere, `1 << i` past 8 schools. **Fixed** (F4): skipped; tests (and the
+  school levels capped at Expert); the hero cloned at each opening; `book.schools` four distinct
+  names, a spell of no known school on the tab of all schools.
+- **Captured** (sub-agents C1 to C4, the two instances side by side, about 1.5 to 2 loads):
+  **all 91 stills and sequences 0 to 27 as recorded** (C1's void ids again on instance 1: all
+  13 as recorded; `luck`, `morale` and `strike`, which needed reruns at M4, as recorded at their
+  first run: the bonus Gold); `kept/` unchanged throughout (the as-recorded runs rewrite the same
+  numbers).
+- **Checked:** the release viewer with every fix, `drawn` over all 156 items: all the same (no
+  fix changed a frame); `clients/scripts/check.sh` all gates (a first run found two regions of
+  `Fault::NotDialed`'s new text uncovered, its error branches: the text built first).
+- **The sub-agents' sizes** (their reported tokens): reviewers 116 000 to 202 000, fixers
+  131 000 to 277 000, capture agents 68 000 to 118 000; the smaller slices (about 1 400 lines a
+  reviewer) came out nearer the half.
+- **Next (T8b, QUEUE):** sequences 28 to 64; reviewers R2, R4b, R5a to R5c, R6, R7 and their
+  fixers; R1's and R3-1's leftovers; then T8c with the user.
 
 ## Accepted review lists (M1 to M4)
 

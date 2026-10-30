@@ -259,7 +259,9 @@ the stacks created mid-battle.
   `h3-server`, headless and in two windows to the result window, seats re-taken by account
   after drops, every frame exact.
 - **T8, M5's closure:** a fresh reviewer, the recipes' starting bonus set to Gold (M4's item 15),
-  every capture afresh, the review list, the next milestone refined.
+  every capture afresh, the review list, the next milestone refined. Cut by the user into
+  concurrent fractions (QUEUE); **T8a done:** the harness's two instances, the bonus Gold,
+  reviewers R1, R3, R4 and their fixes, all stills and sequences 0 to 27 as recorded.
 - **Exit:** a battle played to its end in the window, in hot seat and on a server; the new
   screens (the book, the aim, the dialogs, the created stacks) pass against the original, or each
   difference is a listed fix or a classified quirk.
