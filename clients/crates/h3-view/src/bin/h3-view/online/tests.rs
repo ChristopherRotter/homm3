@@ -8,7 +8,7 @@ use h3_protocol::wire::{Seat, ServerMessage};
 use h3_view::remote::Content;
 
 use super::*;
-use crate::connect::tests::{host, player, repo, scratch, test_roots, whole};
+use crate::connect::tests::{host, player, repo, restartable, scratch, test_roots, whole};
 use crate::connect::{self, Options, plain};
 
 /// The window's seat at `address`, its pins in `dir`.
@@ -106,4 +106,49 @@ fn a_refusal_and_a_silent_server_end_the_opening() {
     assert!(refused.starts_with("refused"), "{refused}");
     let closed = server("ws://127.0.0.1:1", Seat::Attacker, &dir);
     assert!(Online::open(closed, &packs, test_roots, Duration::from_secs(10)).is_err());
+}
+
+#[test]
+fn a_restarted_server_s_record_opens_afresh_and_the_seat_plays_on() {
+    // E17 M5 T6b2: the host restarts its game after the seat's second command; the window's
+    // seat dials again, re-joins by its token, and its record opens afresh at the re-join's
+    // snapshot, mid-battle: a new timeline, played to the end.
+    let greedy = || SeatKind::Bot(Box::new(crate::bot::Greedy));
+    let (address, _, restart) = restartable([player("attacker"), greedy()], false);
+    let dir = scratch("online-restart");
+    let packs = repo().join("packs");
+    let seat = server(&address, Seat::Attacker, &dir);
+    let mut online = Online::open(seat, &packs, test_roots, Duration::from_secs(10)).unwrap();
+    let opening = online.record().unwrap().messages[0].clone();
+    let width = online.record().unwrap().header.manifest.field.width;
+    let mut now = 0;
+    let mut sent = 0;
+    while sent < 2 {
+        assert!(now < 60_000, "no turn: {:?}", online.lines);
+        online.poll(now).unwrap();
+        if let Some((legal, _)) = online.turn() {
+            online
+                .send(plain(legal, online.seat(), width).unwrap())
+                .unwrap();
+            sent += 1;
+        }
+        std::thread::sleep(Duration::from_millis(2));
+        now += 2;
+    }
+    restart.restart([player("attacker"), greedy()]);
+    while online.timelines() == 0 {
+        assert!(now < 60_000, "no new timeline: {:?}", online.lines);
+        online.poll(now).unwrap();
+        std::thread::sleep(Duration::from_millis(2));
+        now += 2;
+    }
+    let record = online.record().unwrap();
+    assert_eq!(record.header.first, 1);
+    let afresh = &record.messages[0];
+    assert!(matches!(afresh, ServerMessage::Snapshot { n: 1, .. }));
+    assert_ne!(afresh, &opening);
+    assert!(online.lines.iter().any(|l| l.contains("opens afresh")));
+    play(&mut online);
+    assert_eq!(online.timelines(), 1);
+    whole(online.record().unwrap());
 }

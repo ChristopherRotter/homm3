@@ -4,6 +4,21 @@ Finished history and informational notices moved out of `QUEUE.md` on 2026-10-24
 
 ## Notices from other lanes and finished items, newest first
 
+- 2026-10-30 (E17 M5 T6b2 done: T6 done; the entry verbatim):
+
+### E17 M5 T6b2 — the record that opens mid-battle
+
+- **Scope:** a record that opens mid-battle (R2-8: the snapshot's dead stacks as corpses, a raise
+  of one drawn, the box by the timeline's living set; M4 T3a's R1-3: the moat's strip by the
+  fixed moat rows, 0x63BCE8 and 0x63BCF4, not the record's moat) for a join mid-battle and a
+  re-join after a server restart (the numbering afresh: a new timeline); the window re-dialing
+  until a restarted server answers. The detail: `QUEUE-ARCHIVE.md`, 2026-10-23 (T9b). Where
+  T6b1 stops (design §11.2): `online::Online::take` refuses a fetched record that does not extend
+  the one taken; `Ground::load` keeps the record's first snapshot as the opening.
+- **Acceptance:** a join mid-battle; a server restart and a re-join; the mid-battle record drawn
+  against the original where it has a reference; the Definition of Done.
+- **Depends on:** T6b1 (done 2026-10-30); the original data staged. **Status:** ready.
+
 - 2026-10-29 (E17 M5 T5b2 done: T5 done; the entry verbatim):
 
 ### E17 M5 T5 — what a played battle shows

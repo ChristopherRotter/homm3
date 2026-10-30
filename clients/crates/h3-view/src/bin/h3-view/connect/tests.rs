@@ -11,10 +11,12 @@ use std::sync::{Arc, Mutex, PoisonError};
 use std::time::Duration;
 
 use ed25519_dalek::{Signer as _, SigningKey};
+use h3_battle::BattleSetup;
+use h3_content_battle::BattleRuleset;
 use h3_protocol::account::{KEY_BYTES, SIGNATURE_BYTES};
 use h3_protocol::codec::DEFAULT_MAX_CLIENT_FRAME;
 use h3_protocol::connection::{Connection as Gate, Host, Received, Signer};
-use h3_protocol::session::{ConnId, SeatKind, Session};
+use h3_protocol::session::{ConnId, Entry, SeatKind, Session};
 use h3_protocol::wire::{Outcome, Seat, ServerMessage};
 use rustls::pki_types::{CertificateDer, PrivateKeyDer, PrivatePkcs8KeyDer};
 use rustls::{RootCertStore, ServerConfig, ServerConnection, StreamOwned};
@@ -82,10 +84,35 @@ impl Signer for Key {
     }
 }
 
-/// What the host's connections share: the game and each connection's gate and queue.
+/// What the host's connections share: the game and each connection's gate and queue; the
+/// game's journal and how often it restarted (E17 M5 T6b2: a connection of an earlier run
+/// closes).
 struct Shared {
     session: Session<'static>,
     gates: BTreeMap<u64, (Gate, Sender<(String, bool)>)>,
+    journal: Vec<Entry>,
+    run: u32,
+}
+
+/// A host's game, restarted as `h3-server` restarts one (E17 M5 T6b2): every connection closed,
+/// the game restored from its journal (`Session::restore`), its seats re-taken by their tokens.
+pub(crate) struct Restart {
+    shared: Arc<Mutex<Shared>>,
+    ruleset: &'static BattleRuleset,
+    setup: BattleSetup,
+}
+
+impl Restart {
+    /// Restarts the game with `seats`.
+    pub(crate) fn restart(&self, seats: [SeatKind; 2]) {
+        let mut shared = lock(&self.shared);
+        let drained: Vec<Entry> = shared.session.drain_entries().collect();
+        shared.journal.extend(drained);
+        let config = config(self.setup.clone(), 1);
+        shared.session = Session::restore(self.ruleset, config, seats, &shared.journal).unwrap();
+        shared.gates.clear();
+        shared.run += 1;
+    }
 }
 
 /// A connection's socket, plain or behind TLS.
@@ -95,14 +122,27 @@ impl<S: Read + Write + Send> Stream for S {}
 /// A host of `duel.toml`'s battle (seed 1) with `seats`, its address (`wss://localhost:…` with
 /// `tls`, `ws://127.0.0.1:…` without) and its key.
 pub(crate) fn host(seats: [SeatKind; 2], tls: bool) -> (String, [u8; KEY_BYTES]) {
+    let (address, key, _) = restartable(seats, tls);
+    (address, key)
+}
+
+/// As [`host`], the game restartable (E17 M5 T6b2).
+pub(crate) fn restartable(seats: [SeatKind; 2], tls: bool) -> (String, [u8; KEY_BYTES], Restart) {
     let packs = repo().join("packs");
     let (ruleset, setup) = battle(&packs.join("synthetic/scenarios/duel.toml"), &packs, 1).unwrap();
-    let ruleset = Box::leak(Box::new(ruleset));
-    let session = Session::new(ruleset, config(setup, 1), seats).unwrap();
+    let ruleset: &'static BattleRuleset = Box::leak(Box::new(ruleset));
+    let session = Session::new(ruleset, config(setup.clone(), 1), seats).unwrap();
     let shared = Arc::new(Mutex::new(Shared {
         session,
         gates: BTreeMap::new(),
+        journal: Vec::new(),
+        run: 0,
     }));
+    let restart = Restart {
+        shared: shared.clone(),
+        ruleset,
+        setup,
+    };
     let listener = TcpListener::bind("127.0.0.1:0").unwrap();
     let port = listener.local_addr().unwrap().port();
     let address = if tls {
@@ -134,7 +174,7 @@ pub(crate) fn host(seats: [SeatKind; 2], tls: bool) -> (String, [u8; KEY_BYTES])
             }
         })
         .unwrap();
-    (address, public)
+    (address, public, restart)
 }
 
 /// One connection numbered `n`, until either side closes it.
@@ -161,7 +201,11 @@ fn connection(
         .unwrap();
     let (queue, queued) = mpsc::channel();
     let gate = Gate::new(DEFAULT_MAX_CLIENT_FRAME, [n as u8; 32], true);
-    lock(shared).gates.insert(n, (gate, queue));
+    let run = {
+        let mut shared = lock(shared);
+        shared.gates.insert(n, (gate, queue));
+        shared.run
+    };
     let host = Host {
         program: "loopback host",
         id,
@@ -169,6 +213,10 @@ fn connection(
         signer: key,
     };
     loop {
+        // The game restarted: its connections close, as a server's that stopped.
+        if lock(shared).run != run {
+            return;
+        }
         while let Ok((frame, close)) = queued.try_recv() {
             if socket.send(Message::text(frame)).is_err() {
                 return gone(shared, n);
@@ -195,7 +243,7 @@ fn lock(shared: &Mutex<Shared>) -> std::sync::MutexGuard<'_, Shared> {
 
 /// The client's `frame` on connection `n`, as the server's host takes it.
 fn receive(shared: &mut Shared, n: u64, frame: &[u8], host: &Host<'_>) {
-    let Shared { session, gates } = shared;
+    let Shared { session, gates, .. } = shared;
     let Some((gate, _)) = gates.get_mut(&n) else {
         return;
     };

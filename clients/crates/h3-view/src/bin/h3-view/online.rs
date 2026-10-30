@@ -5,9 +5,9 @@
 //! ([`Online::poll`]) and never waits. A turn the server asks the seat to play asks the server's
 //! rules for the targets of each spell the seat may cast and of its active stack's own cast (the
 //! protocol's `Query`): the aims need them, as no engine runs here. A dropped connection is dialed
-//! again (at most once a second) and the seat re-joined by its token; the record fetched then
-//! extends the one before, so the battle keeps its timeline (one that does not, a restarted
-//! server's, is T6b2's). The content check compiles the packs the game names here: the same
+//! again (at most once a second, until the server answers) and the seat re-joined by its token;
+//! the record fetched then extends the one before, so the battle keeps its timeline, or a
+//! restarted server's opens afresh at the re-join's snapshot: a new timeline (E17 M5 T6b2). The content check compiles the packs the game names here: the same
 //! ruleset gives the window its own previews, another or none a visible note. An adapter: the
 //! socket, the pins file, the clock.
 
@@ -18,7 +18,7 @@ use h3_content_battle::BattleRuleset;
 use h3_protocol::map;
 use h3_protocol::wire::{Command, Query, Seat, ServerMessage, Target};
 use h3_view::record::Record;
-use h3_view::remote::{Client, Content, Note, Pins};
+use h3_view::remote::{Client, Content, Note, Pins, Rejoined, rejoined};
 use rustls::RootCertStore;
 
 use crate::connect::{Game, PROGRAM, hex, read_pins, write};
@@ -77,6 +77,10 @@ pub struct Online {
     queries: Vec<(Option<u16>, u32)>,
     /// How often the seat was re-joined.
     pub rejoined: u32,
+    /// How often its record opened afresh ([`Online::timelines`]).
+    timelines: u32,
+    /// The connection dropped and no server welcomed the seat since.
+    down: bool,
     /// What happened, a line each.
     pub lines: Vec<String>,
 }
@@ -116,6 +120,8 @@ impl Online {
             queried: None,
             queries: Vec::new(),
             rejoined: 0,
+            timelines: 0,
+            down: false,
             lines: Vec::new(),
         };
         while online.record.is_none() {
@@ -156,8 +162,13 @@ impl Online {
                         self.connection = None;
                         break;
                     }
-                    self.lines
-                        .push(format!("the connection dropped ({why}): re-joining"));
+                    // Dialed again until the server answers (E17 M5 T6b2: a restart's
+                    // downtime), the drop said once.
+                    if !self.down {
+                        self.lines
+                            .push(format!("the connection dropped ({why}): re-joining"));
+                        self.down = true;
+                    }
                     self.connection = None;
                 }
             }
@@ -209,6 +220,7 @@ impl Online {
                 }
                 Note::Welcomed(server) => {
                     self.lines.push(format!("welcomed by {server}"));
+                    self.down = false;
                     let (seat, token) = (self.server.seat, self.token.clone());
                     let ask = match (&self.server.game, self.joined) {
                         (_, Some(game)) | (&Game::Join(game), None) => {
@@ -236,30 +248,45 @@ impl Online {
     }
 
     /// The connection's record taken as the seat's: at the first opening as it is; at a
-    /// re-join's, only when it extends the one taken (the same game and seat, every message
-    /// taken first: a server restarted numbers afresh, T6b2's). A command answered, the next
-    /// turn may be played.
+    /// re-join's, the one taken with what it adds when its numbers go on, else (E17 M5 T6b2) as
+    /// a new timeline: a restarted server's restored game numbers afresh from the re-join's
+    /// snapshot ([`Online::timelines`]). Another game's or seat's ends the run. A command
+    /// answered, the next turn may be played.
     fn take(&mut self) -> Result<(), String> {
         let Some(record) = self.client.record() else {
             return Ok(());
         };
-        if let Some(taken) = &self.record
-            && (record.header != taken.header || !record.messages.starts_with(&taken.messages))
-        {
-            return Err(
-                "the record fetched at the re-join does not extend the one before".to_owned(),
-            );
-        }
+        let taken = match self.record.as_ref().map(|taken| rejoined(taken, record)) {
+            None => record.clone(),
+            Some(Rejoined::Extends(merged)) => *merged,
+            Some(Rejoined::Afresh) => {
+                self.timelines += 1;
+                self.lines.push(format!(
+                    "the record opens afresh at message {}: a new timeline",
+                    record.header.first
+                ));
+                (self.queried, self.asked) = (None, false);
+                self.queries.clear();
+                record.clone()
+            }
+            Some(Rejoined::Other) => {
+                return Err("the record fetched at the re-join is another game's".to_owned());
+            }
+        };
         if matches!(
             record.messages.last(),
             Some(ServerMessage::Accepted { .. } | ServerMessage::Rejected { .. })
         ) {
             self.asked = false;
         }
-        if self.taken() <= record.messages.len() {
-            self.record = Some(record.clone());
-        }
+        self.record = Some(taken);
         Ok(())
+    }
+
+    /// How often the seat's record opened afresh (E17 M5 T6b2: a server's restart): each a new
+    /// timeline, which the window's battle starts again from.
+    pub const fn timelines(&self) -> u32 {
+        self.timelines
     }
 
     fn send_raw(&self, message: h3_protocol::wire::ClientMessage) {

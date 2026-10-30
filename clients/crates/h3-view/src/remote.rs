@@ -539,6 +539,43 @@ pub fn content(game: &Manifest, own: Option<&Manifest>) -> Content {
     }
 }
 
+/// How a record fetched at a re-join stands to the one taken before it (E17 M5 T6b2).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Rejoined {
+    /// Its numbers go on from the one taken (the same server's: a drop): the one taken with what
+    /// the fetched one adds. The server's bound may have let the fetched one's start go, so it
+    /// may start after the taken one's first message; where both hold a message, it is the same.
+    Extends(Box<Record>),
+    /// The same game's and seat's, its numbers afresh or past a gap: a restarted server's
+    /// restored game, opened at the re-join's snapshot (`docs/lanes/client/NOTES.md`, "The live
+    /// client", 2026-10-11), or one whose bound let go of what was taken. A new timeline.
+    Afresh,
+    /// Another game's, seat's or content's.
+    Other,
+}
+
+/// How `fetched`, the record fetched at a re-join, stands to `taken`, the one taken before.
+pub fn rejoined(taken: &Record, fetched: &Record) -> Rejoined {
+    let (t, f) = (&taken.header, &fetched.header);
+    if (t.format, t.game, t.seat, &t.manifest) != (f.format, f.game, f.seat, &f.manifest) {
+        return Rejoined::Other;
+    }
+    let end = |r: &Record| u64::from(r.header.first) + r.messages.len() as u64;
+    let skip = f.first.checked_sub(t.first).map(usize::try_from);
+    if let Some(Ok(skip)) = skip
+        && u64::from(f.first) <= end(taken)
+        && end(fetched) >= end(taken)
+    {
+        let both = taken.messages.len() - skip;
+        if fetched.messages[..both] == taken.messages[skip..] {
+            let mut merged = taken.clone();
+            merged.messages.extend_from_slice(&fetched.messages[both..]);
+            return Rejoined::Extends(Box::new(merged));
+        }
+    }
+    Rejoined::Afresh
+}
+
 /// The servers' keys pinned by address (ADR-0021 point 1: a bookmark is an address and a key), as
 /// the adapter keeps them in a file: a line per address, the address and the key as lowercase hex
 /// separated by a space, in the addresses' order; blank lines and lines starting with `#` are

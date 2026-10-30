@@ -3,7 +3,6 @@
 //! from a record's [`Siege`] and the town's tables ([`crate::tables::Town`]). The scene
 //! ([`crate::scene`]) places what this module lists among its own draws.
 
-use alloc::collections::BTreeSet;
 use alloc::string::String;
 use alloc::vec::Vec;
 
@@ -87,6 +86,12 @@ const STRIP: i32 = 44;
 /// The moat's strip over a stack: its rows of the hex box, from and to (`moat_over_stack`
 /// 0x495A4E to 0x495A5D: 36 to 41).
 const MOAT_ROWS: [i32; 2] = [36, 42];
+/// Each row's moat hex (`moat_hexes` 0x63BCE8): the moat drawn over a stack is by these fixed
+/// rows, not the record's moat, which leaves out the bridges while the gate is open (E17 M5
+/// T6b2, R1-3: a record that opens with the gate open).
+const MOAT_HEXES: [u8; 11] = [11, 28, 44, 61, 77, 95, 111, 129, 146, 164, 181];
+/// The Fortress's second moat row (`moat_hexes_fortress` 0x63BCF4).
+const FORTRESS_MOAT_HEXES: [u8; 11] = [10, 27, 43, 60, 76, 94, 110, 128, 145, 163, 180];
 
 /// A turret: the keep, the lower tower or the upper tower (the manager's records +0x13D78,
 /// +0x13D9C, +0x13DC0).
@@ -197,8 +202,9 @@ pub struct SiegeLook<'t> {
     /// mines: no moat pictures) nor a Stronghold's in a game under RoE or AB rules (the record's
     /// moat absent).
     moat: bool,
-    /// The moat's hexes now (the record's: the bridge only while the gate is closed).
-    moat_hexes: BTreeSet<u8>,
+    /// The Fortress flag (+0x53A9): the moat's second row (0x63BCF4) besides its first, found as
+    /// the record's moat holding one of its hexes.
+    fortress: bool,
     /// The keep's, the lower tower's and the upper tower's shooter, where its record is set up.
     shooters: [Option<Shooter>; 3],
     width: u8,
@@ -283,7 +289,10 @@ impl<'t> SiegeLook<'t> {
             town,
             walls: context.walls,
             moat,
-            moat_hexes: siege.moat_hexes.iter().copied().collect(),
+            fortress: siege
+                .moat_hexes
+                .iter()
+                .any(|h| FORTRESS_MOAT_HEXES.contains(h)),
             shooters,
             width,
         }))
@@ -414,7 +423,8 @@ impl<'t> SiegeLook<'t> {
     /// for a flier between its hexes (`pass` past the last: `draw_battle_stack` draws it by
     /// itself, off its hexes, so no `draw_hex_stack`; E17 M4 T3a, R1-2); else
     /// the moat's strip at the stack's hex and at a two-hex stack's other hex (its position + 1
-    /// facing right, − 1 facing left) when it is a moat hex (`moat_over_stack` 0x495A10: the
+    /// facing right, − 1 facing left) when it is its row's moat hex, the Fortress's second row's
+    /// too ([`MOAT_HEXES`]; E17 M5 T6b2, R1-3) (`moat_over_stack` 0x495A10: the
     /// moat picture's pixels at the hex's columns L to L + 43 and its box's rows 36 to 41, inside
     /// the battlefield), then the count box again (`box`).
     pub fn over_stack(
@@ -438,9 +448,14 @@ impl<'t> SiegeLook<'t> {
             }
         });
         let [fw, fh] = layout.mouse.field;
+        // Both hexes are tried against the stack's own row's moat hexes (0x494FFE, 0x495039).
+        let rows = [MOAT_HEXES, FORTRESS_MOAT_HEXES];
+        let moat_hexes: Vec<u8> = (rows.iter().take(1 + usize::from(self.fortress)))
+            .filter_map(|r| r.get(usize::from(row)).copied())
+            .collect();
         let mut list = Vec::new();
         for h in core::iter::once(hex).chain(other) {
-            if !self.moat_hexes.contains(&h) {
+            if !moat_hexes.contains(&h) {
                 continue;
             }
             let [x, y] = layout.hex_box(h / self.width, h % self.width);

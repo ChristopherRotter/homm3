@@ -765,3 +765,68 @@ fn a_query_is_numbered_and_its_answer_kept() {
     client.receive(answer, verify).unwrap();
     assert_eq!(client.answer(seq), Some(&[Target::Stack { stack: 1 }][..]));
 }
+
+#[test]
+fn a_record_fetched_at_a_re_join_extends_the_one_taken_or_opens_afresh() {
+    // E17 M5 T6b2: the same server's numbers go on; a restarted one's start afresh.
+    let taken = Record {
+        header: header(7, Seat::Attacker, 1),
+        messages: vec![snapshot(1), your_turn(2)],
+    };
+    let at = |first: u32, messages: Vec<ServerMessage>| Record {
+        header: header(7, Seat::Attacker, first),
+        messages,
+    };
+    // Every message again and the re-join's snapshot: what it adds joins the one taken.
+    let whole = at(1, vec![snapshot(1), your_turn(2), snapshot(3)]);
+    let merged = Record {
+        messages: vec![snapshot(1), your_turn(2), snapshot(3)],
+        ..taken.clone()
+    };
+    assert_eq!(
+        rejoined(&taken, &whole),
+        Rejoined::Extends(Box::new(merged.clone()))
+    );
+    // Its start let go by the server's bound: the overlap holds, the start is kept.
+    let bounded = at(2, vec![your_turn(2), snapshot(3)]);
+    assert_eq!(
+        rejoined(&taken, &bounded),
+        Rejoined::Extends(Box::new(merged.clone()))
+    );
+    let right_after = at(3, vec![snapshot(3)]);
+    assert_eq!(
+        rejoined(&taken, &right_after),
+        Rejoined::Extends(Box::new(merged))
+    );
+    // Numbered afresh (a restart): another first snapshot under the same numbers; past a gap;
+    // shorter than the one taken.
+    let mut later = observation();
+    later.round = 4;
+    let restarted = at(
+        1,
+        vec![
+            ServerMessage::Snapshot {
+                n: 1,
+                observation: later,
+            },
+            your_turn(2),
+            your_turn(3),
+        ],
+    );
+    assert_eq!(rejoined(&taken, &restarted), Rejoined::Afresh);
+    assert_eq!(
+        rejoined(&taken, &at(4, vec![snapshot(4)])),
+        Rejoined::Afresh
+    );
+    assert_eq!(
+        rejoined(&taken, &at(1, vec![snapshot(1)])),
+        Rejoined::Afresh
+    );
+    // Another game's or seat's.
+    let other = |game, seat| Record {
+        header: header(game, seat, 1),
+        messages: vec![snapshot(1), your_turn(2), snapshot(3)],
+    };
+    assert_eq!(rejoined(&taken, &other(8, Seat::Attacker)), Rejoined::Other);
+    assert_eq!(rejoined(&taken, &other(7, Seat::Defender)), Rejoined::Other);
+}

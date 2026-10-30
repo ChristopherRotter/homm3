@@ -1608,3 +1608,72 @@ fn created_stacks_are_drawn_and_a_dissolve_measures_its_stacks() {
     assert!(fails(&ghost, &nothing, DissolveArea::Stacks(vec![5])));
     assert!(fails(&nothing, &ghost, DissolveArea::Stacks(vec![5])));
 }
+
+#[test]
+fn a_record_opening_mid_battle_boxes_a_raised_corpse_and_lays_corpses_as_they_died() {
+    // E17 M5 T6b2 (R2-8): whether a stack lives is the timeline's: a corpse of the snapshot
+    // raised since shows its box and takes its hex; two corpses on one hex lie in the order they
+    // died (the hex's corpse list, 0x4948C7), whatever their ids; a stack gone without a corpse
+    // is not drawn.
+    let dead = |mut s: Stack, order: u16| {
+        (s.alive, s.count, s.corpse) = (false, 0, order);
+        s
+    };
+    let at = hex(4, 5);
+    let mut o = observation();
+    o.active = None;
+    o.stacks = vec![
+        dead(stack(0, Side::Attacker, 0, at, false), 2),
+        dead(stack(1, Side::Attacker, 1, at, false), 1),
+        dead(stack(2, Side::Defender, 0, hex(6, 8), false), 3),
+        dead(stack(3, Side::Defender, 1, hex(7, 2), false), u16::MAX),
+    ];
+    let pose = |hex: u8, mirrored: bool, layer: u8| Pose {
+        group: if layer == 1 { 5 } else { 2 },
+        frame: 0,
+        hex,
+        offset: [0, 0],
+        mirrored,
+        layer,
+        boxless: false,
+    };
+    let moment = Moment {
+        poses: [
+            (0, pose(at, false, 1)),
+            (1, pose(at, false, 1)),
+            (2, pose(hex(6, 8), true, STANDING)),
+        ]
+        .into_iter()
+        .collect(),
+        counts: [(2, 7)].into_iter().collect(),
+        ..Moment::default()
+    };
+    let t = tables();
+    let layout = layout();
+    let list = battle_at(&o, &moment, &keys(), &t, &layout).unwrap();
+    let def = |key: &str| t.creatures[key].def.clone();
+    let creatures: Vec<(String, u32)> = (list.iter())
+        .filter_map(|d| match d {
+            Draw::Creature { def, group, .. } => Some((def.clone(), *group)),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(
+        creatures,
+        [
+            (def("base:dragon"), 5),
+            (def("base:pikeman"), 5),
+            (def("base:pikeman"), 2)
+        ]
+    );
+    let boxes: Vec<(u8, u32)> = (list.iter())
+        .filter_map(|d| match d {
+            Draw::CountBox { stack, count, .. } => Some((*stack, *count)),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(boxes, [(2, 7)]);
+    // The raised stack takes its hex from the boxes; the corpses take none.
+    let taken = taken(&o, &moment, &t);
+    assert!(taken.contains(&hex(6, 8)) && !taken.contains(&at));
+}

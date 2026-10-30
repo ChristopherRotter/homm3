@@ -1045,8 +1045,12 @@ fn a_creature_without_numbers_is_an_error() {
         err.to_string(),
         "no animation numbers for creature handle 99"
     );
-    // A dead stack needs none and is not in the timeline.
+    // A dead stack lies among the corpses and needs them too (E17 M5 T6b2); one gone without a
+    // corpse needs none and is not in the timeline.
     o.stacks[0].alive = false;
+    let err = timeline(&o, &[], &looks(), stage, Speed::default()).unwrap_err();
+    assert_eq!(err, AnimError::Look(99));
+    o.stacks[0].corpse = u16::MAX;
     let t = timeline(&o, &[], &looks(), stage, Speed::default()).unwrap();
     assert!(t.members.is_empty());
     assert_eq!((t.lines(), t.end), (String::new(), 0));

@@ -17,7 +17,7 @@ use h3_render::recolour::Effect;
 
 use crate::anim::{
     BATTLEFIELD, Blast, DRAWBRIDGE_RECT, Dissolve, DissolveArea, Field, GONE, Magic, Object, Pose,
-    Projectile, Ray, Spot, Timeline, TurretPose,
+    Projectile, Ray, Spot, Timeline, TurretPose, lies,
 };
 use crate::auto::Auto;
 use crate::hero::{FLAG_START, HeroPose};
@@ -1182,9 +1182,14 @@ fn drawn(
     // A stack gone without a corpse (`anim::GONE`, E17 M3 T9d) is not drawn, nor one off the
     // field: a siege's turrets (their shooters are the town's, `draw_hex_stack` 0x494F4F).
     let cells = u16::from(width) * u16::from(height);
-    let stacks = observation
-        .stacks
-        .iter()
+    // The corpses on a hex in the order they died (E17 M5 T6b2, R2-8: the hex's corpse list,
+    // 0x4948C7): those of a record that opens mid-battle by the snapshot's order of death first,
+    // then the timeline's by id (*provisional*: a stack raised and killed again keeps its first
+    // place). Only the order within a hex's pass changes.
+    let mut ordered: Vec<&Stack> = observation.stacks.iter().collect();
+    ordered.sort_by_key(|s| if lies(s) { s.corpse } else { u16::MAX });
+    let stacks = ordered
+        .into_iter()
         .filter(|s| u16::from(pose_of(s, moment, tables).hex) < cells)
         .filter(|s| match moment.poses.get(&s.id) {
             Some(pose) => pose.layer != GONE,
@@ -1319,6 +1324,16 @@ fn pose_of(stack: &Stack, moment: &Moment, tables: &Tables) -> Pose {
     })
 }
 
+/// Whether `stack` lives at `moment`, by the timeline's living set (E17 M5 T6b2, R2-8): the pose
+/// the timeline holds for it says (among the corpses or gone: dead; a raise's end stands it up),
+/// else the snapshot's flag.
+fn living(stack: &Stack, moment: &Moment) -> bool {
+    moment
+        .poses
+        .get(&stack.id)
+        .map_or(stack.alive, |p| !p.dead())
+}
+
 /// The hexes a count box cannot take at `moment` (0x43E605): a living stack's (each of its
 /// poses' hexes) while it holds them (not dead since, its box not hidden: E17 M3 T5a), and the
 /// blocked ones.
@@ -1334,7 +1349,7 @@ fn taken(observation: &Observation, moment: &Moment, tables: &Tables) -> BTreeSe
     if let Some(s) = &observation.siege {
         taken.extend(moment.walls.unwrap_or_else(|| Walls::of(s)).blocking(s));
     }
-    for s in observation.stacks.iter().filter(|s| s.alive) {
+    for s in observation.stacks.iter().filter(|s| living(s, moment)) {
         let pose = pose_of(s, moment, tables);
         if !pose.holds_hex() {
             continue;
@@ -1449,8 +1464,10 @@ fn count_box(
     layout: &BattleLayout,
 ) -> Option<Draw> {
     // A stack among the corpses shows none, even standing as a raise lifts it (E17 M3 T7c-3,
-    // `raise`: its dead bit is cleared only at the raise's end, 0x5A7867).
-    if !stack.alive || stack.war_machine || !sprite.boxed || !pose.holds_hex() {
+    // `raise`: its dead bit is cleared only at the raise's end, 0x5A7867, its poses till then
+    // the corpses' pass). Whether it lives is its pose's, the timeline's (E17 M5 T6b2, R2-8: a
+    // corpse of a record that opens mid-battle raised shows its box), not the snapshot's flag.
+    if stack.war_machine || !sprite.boxed || !pose.holds_hex() {
         return None;
     }
     let right = !pose.mirrored;

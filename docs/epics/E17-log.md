@@ -3478,6 +3478,39 @@ the record that opens mid-battle with a restart's re-join).
   restart's re-join (a new timeline), re-dialing until a restarted server answers.
 - **Found:** review items 52 to 55; no question.
 
+### M5 T6b2 — The record that opens mid-battle and a server's restart (2026-10-30)
+
+On `client/e17-m5-t6b2`, the user present at the start, the original data staged (the device link
+dropped later, as expected). The agent proposed a cut (T6b2a the drawing, T6b2b the restart); the
+user kept T6b2 whole. The VM restarted about 10 minutes in and its baseline check died: CI's
+green `master` (819f41d) stood in.
+
+- **Built** (design §11.3): `anim::lies` and the corpses at the opening in `Growing::new` (every
+  snapshot stack's record, the made ones after the war machines, `Live::of`); `scene::living`
+  (the box and the taken hexes by the timeline's pose), the corpses on a hex by their death's
+  order; `SiegeLook::over_stack` by the fixed moat rows (`MOAT_HEXES`, `FORTRESS_MOAT_HEXES`);
+  `remote::rejoined` (`Rejoined::Extends`, `Afresh`, `Other`); the binary's `Online::take` by
+  it, `Online::timelines`, the drop said once while re-dialing; `Battle::open`, `afresh`,
+  `opened_afresh`, `seat_opening`, the fidget frames by the battle's own opening; the window's
+  new timeline and its start at the record's end; `motion::looks` with the corpses; the test
+  host's `restartable` (`Session::restore` from its journal).
+- **Tested:** `seq-raise` cut after its deaths against the whole recorded sequence (the same
+  poses for the same spans from the first raise on, the same counts); a scene with a raised
+  corpse's box, two corpses on a hex by their order, a stack gone; the moat's strip over hex 95
+  with a record opened gate open, the Fortress's second row; `rejoined`'s cases; `online` over
+  loopback through a restart of its host. The library at 100 %.
+- **Run against `h3-server`** (`master`'s, under Xvfb, `--check`): two windows on
+  `situations/seq-raise.toml`, the server stopped after the defender's two kills and started
+  again 2 s later: both re-dialed through the refusals (5 dials), opened a new timeline at the
+  restored game's snapshot, the attacker cast Resurrection on the Pikeman's corpse first
+  (`A cast 38 stack 0`), both played to the result window, 759 and 687 frames exact; with
+  `record_bytes` 16 KiB a window joining the attacker's seat by its token after another left:
+  its record held the last 8 of the game's 15 commands, the corpses drawn (screenshot), 415
+  frames exact.
+- **Gates:** `clients/scripts/check.sh` all passed (100 % lines and regions); the scoped verify
+  with the original data passed every step it runs.
+- **Found:** review items 56 to 60; no question.
+
 ## Accepted review lists (M1 to M4)
 
 M1 and M2 moved from the epic file on 2026-10-20 (less start-up reading), unchanged; M3 at its
