@@ -9235,5 +9235,8 @@ object's, one a week for whoever comes first**, never once per player, said plai
 marks kept as hint data. The cut, the env's `BuildBoat` `cross-lane` in T85b and the other agent's
 calls as recommended. **T77b done**; T78 is ready.
 
-**Verify:** no code changed; `check-docs` and `scripts/exe.py cited` (every cited address mapped)
-passed; the scoped verify below.
+**Verify:** no code changed. The scoped `cargo xtask verify --scope adventure --summary
+--with-original-data` passed every step it runs (deny and ffi-smoke skipped by the scope; the
+sandbox's VM restarted before it, killing the setup's baseline run, so the scoped run stands in);
+`scripts/exe.py cited`: every cited address mapped. CI's full verify on the pull request is the
+record.
