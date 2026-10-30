@@ -227,6 +227,32 @@ only Red's); the battle log's entries read as empty strings this way. Batches 4a
   Clover Field's eight). A hero (`at`) or an opponent monster (its own `at`, below) may stand on
   water: the original gives a hero placed there no boat (D-44); a hero "in a boat" is one beside
   an empty boat that boards it in play.
+  **Increment 9's objects** (E08 T78, batch E9; survey `docs/rules/surveys/E08-economy.md` §15,
+  increment 9's design note §4; on the surface): `[[map.ownable]]` an ownable object by its
+  `picture` and `at`, with its `owner` (`red`, `blue`, `tan` or `neutral`, the default; a colour
+  that owns one plays): a mine (class 53, the subclass its resource), each entered at the tile
+  west of `at`, its row blocked from two columns west of `at` to `at` (the grass sawmill `AVMsawg0`
+  three columns west, its top row's two east tiles too; the ore pit `AVMore0` and the gem pond
+  `AVMgems0` also the row above): the sawmill, `AVMore0`, the alchemist's lab `AVMalch0`, the
+  sulfur dune `AVMsulf0`, the crystal cavern `AVMcrys0`, `AVMgems0`, the gold mine `AVMgold0`;
+  the abandoned mine `AVXabnd0` (53.7) or SoD's grass one `AVXamGr` (220.7, which the game loads as
+  53.7), shaped as a mine, always neutral, with `resources` (at least one by name: the game draws
+  one when the map loads); the Lighthouse `AVXlths0` (the tile `at`, blocked and visited from a
+  neighbour); the Shipyard `AVXshyd0` (three tiles on `at`'s row, entered at the middle one, land
+  only; its boat tile is the first clear water tile of the twelve around its entrance, survey
+  §5.1). The format holds no guards for a mine: they are left in play (Leave Guards), an
+  abandoned mine's Troglodytes drawn when the game starts. `[[map.object]]` takes the weekly
+  objects: the Windmill `AVMwndd0` (it blocks only its entrance, the tile west of `at`), the Water
+  Wheel `AVMwwhl0` (two rows of three ending on `at`, entered at `at`), the Mystical Garden
+  `AVTmyst0` (three tiles, entered at the tile west of `at`). `[[map.monster]]` a wandering monster
+  of no encounter: `creature`, `count`, `at` (any terrain), `level`, `grows` (false, the default:
+  the map's "does not grow" flag, as every encounter's monster), `disposition`, `flees`.
+  `[[map.timed_event]]` the map's timed events, in the order the game fires them on a day: `day`
+  (the game's day it first fires on, 1 or later; the file stores the day before), `interval` (0,
+  the default: once), `players` by colour, `human` (true, the default), `computer`, `resources =
+  { gold = -500 }`, `message`, `name`. A hero's Estates and Mysticism are its `skills`, a resource
+  specialty its `type`'s (`specialty = "resource crystal"` checks it), the income artifacts its
+  `artifacts`. The template lists none of these: the procedures say where they are.
 - `[[encounter]]`: `id` (also the hero's name in the game), `title`, `questions`, `level` (E08
   T22a1: 1 puts the encounter's heroes and opponent on the underground; the template says so),
   `procedure`

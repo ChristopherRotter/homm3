@@ -7,8 +7,9 @@ use h3_formats::exe;
 use h3_formats::lod::LodArchive;
 use h3_formats::text::{TextTable, decode_windows_1252};
 use h3_map::writer::{
-    ARTIFACT_OBJECT, ARTIFACT_SLOTS, EVENT_OBJECT, GROUND_OBJECTS, ObjectTemplate, PANDORA_OBJECT,
-    PLAIN_OBJECTS, RANDOM_ARTIFACT_OBJECTS, SCROLL_OBJECT, SHRINE_OBJECTS, SIGN_OBJECTS,
+    ABANDONED_MINE_OBJECT, ARTIFACT_OBJECT, ARTIFACT_SLOTS, EVENT_OBJECT, GROUND_OBJECTS,
+    LIGHTHOUSE_OBJECT, MINE_OBJECT, ObjectTemplate, PANDORA_OBJECT, PLAIN_OBJECTS,
+    RANDOM_ARTIFACT_OBJECTS, SCROLL_OBJECT, SHIPYARD_OBJECT, SHRINE_OBJECTS, SIGN_OBJECTS,
     TOWN_OBJECT, WITCH_HUT_OBJECT,
 };
 
@@ -91,6 +92,21 @@ pub struct Tables {
     /// Templates of the objects that hand a visiting hero something, with a body (`Objects.txt`,
     /// the classes of [`is_reward`]; E08 T56), in the file's order.
     pub rewards: Vec<ObjectTemplate>,
+    /// Templates of the ownable objects (`Objects.txt`, the classes of [`is_ownable`]; E08 T78), in
+    /// the file's order.
+    pub ownables: Vec<ObjectTemplate>,
+}
+
+/// Whether the writer's ownable objects take this class (E08 T78): a mine and the abandoned mine
+/// (53), SoD's abandoned mine (220), a Lighthouse (42), a Shipyard (87).
+pub fn is_ownable(class: u32) -> bool {
+    [
+        MINE_OBJECT,
+        ABANDONED_MINE_OBJECT,
+        LIGHTHOUSE_OBJECT,
+        SHIPYARD_OBJECT,
+    ]
+    .contains(&class)
 }
 
 /// Whether the writer's reward objects take this class (E08 T56): an artifact (5), a random
@@ -237,6 +253,11 @@ impl Tables {
             .filter(|t| is_reward(t.class))
             .cloned()
             .collect();
+        let ownables = templates
+            .iter()
+            .filter(|t| is_ownable(t.class))
+            .cloned()
+            .collect();
         Ok(Self {
             creatures: names(creatures),
             heroes,
@@ -254,6 +275,7 @@ impl Tables {
             plains,
             towns,
             rewards,
+            ownables,
         })
     }
 
@@ -328,7 +350,8 @@ mod tests {
              AVTmerc0.def {mask} 79 1 5 0\nAVA0079.def {mask} 5 79 4 0\nbroken line\n\
              AVXcf0.def {mask} 222 0 0 1\nAVXcg5.def {mask} 223 0 0 1\n\
              AVCstrx0.def {mask} 98 6 1 0\nAVCranx0.def {mask} 77 0 1 0\n\
-             AVXmaps0.def {mask} 13 1 0 0\n"
+             AVXmaps0.def {mask} 13 1 0 0\nAVMsawg0.def {mask} 53 0 0 0\n\
+             AVXlths0.def {mask} 42 0 0 0\n"
         );
         let (heroes, creatures) = (table(&["Orrin"]), table(&["Pikeman"]));
         let (skills, spells) = (table(&["Archery"]), table(&["Combat Spells", "Bless"]));
@@ -363,6 +386,13 @@ mod tests {
         // The Cartographers (E08 T32a).
         let plains: Vec<_> = t.plains.iter().map(|p| (p.def.as_str(), p.class)).collect();
         assert_eq!(plains, [("AVXmaps0.def", 13)]);
+        // A mine and a Lighthouse (E08 T78).
+        let ownables: Vec<_> = t
+            .ownables
+            .iter()
+            .map(|o| (o.def.as_str(), o.class))
+            .collect();
+        assert_eq!(ownables, [("AVMsawg0.def", 53), ("AVXlths0.def", 42)]);
         // Towns of a fixed faction only (E04c T5b), not the random town (77).
         assert_eq!(ids(&t.towns), [(6, "AVCstrx0.def".to_owned())]);
         assert_eq!(t.spells, ["Bless"]);
