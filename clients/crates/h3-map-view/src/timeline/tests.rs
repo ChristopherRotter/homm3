@@ -985,7 +985,10 @@ fn the_input_ring_keeps_the_last_63_messages() {
     assert_eq!((q.len(), q[0]), (63, Action::Release([1, 2])));
     keep_ring(&mut Vec::new());
     assert_eq!(
-        (Action::Click([0, 0]).messages(), Action::Press([0, 0]).messages()),
+        (
+            Action::Click([0, 0]).messages(),
+            Action::Press([0, 0]).messages()
+        ),
         (2, 1)
     );
     for a in [
@@ -1072,6 +1075,46 @@ fn space_chooses_a_standing_hero_again() {
     let before = l.state(0);
     l.run(1, &[Action::Visit]).unwrap();
     assert_eq!(l.state(1).view, before.view);
+}
+
+/// Space with the hero on an object's entrance: its visit is the engine's, refused in a
+/// recording, nothing live; on a tile the lift leaves plain, nothing.
+#[test]
+fn space_on_an_entrance_visits_it() {
+    let (_, _, hover) = hover::tests::fixture(false);
+    let heroes = [[4, 3], [7, 3], [3, 2]];
+    let door = (0..8)
+        .flat_map(|y| (0..8).map(move |x| [x, y, 0]))
+        .find(|&[x, y, z]| {
+            !heroes.contains(&[x, y])
+                && hover
+                    .current([x, y, z], None)
+                    .is_some_and(|t| t.entrance && t.class != 3)
+        })
+        .unwrap();
+    let at = Pos {
+        x: u8::try_from(door[0]).unwrap(),
+        y: u8::try_from(door[1]).unwrap(),
+        z: 0,
+    };
+    for live in [false, true] {
+        let mut l = hovering(live, Bugs::Fixed);
+        l.run(1, &[Action::Visit]).unwrap();
+        l.hero = Some(Hero {
+            at,
+            facing: Direction::South,
+        });
+        let got = l.run(2, &[Action::Visit]);
+        if live {
+            assert_eq!(got, Ok(()));
+        } else {
+            assert_eq!(got, Err(Unplayable::Visit(door)));
+        }
+    }
+    assert_eq!(
+        Unplayable::Visit([1, 2, 0]).to_string(),
+        "a visit of the object at (1, 2, 0) (the engine's)"
+    );
 }
 
 #[test]
@@ -2525,6 +2568,82 @@ fn replays_the_recorded_clicks() {
         let table: toml::Table = live.parse().unwrap();
         let objects = table["anchors"].as_array().unwrap().len();
         let facts = hover::Facts::read(&table["hover"], objects, heroes.len(), 36, 2).unwrap();
+        let Selected::Hero(slot) = start.kingdom.selected else {
+            panic!("{id}: no hero selected at 0");
+        };
+        let selected = facts
+            .heroes
+            .iter()
+            .position(|h| h.0 == facts.hero_list[slot].0)
+            .unwrap();
+        let hero = Hero {
+            at: heroes[selected].at,
+            facing: Direction::ALL[usize::from(heroes[selected].facing.number())],
+        };
+        start.heroes = heroes
+            .iter()
+            .map(|h| Hero {
+                at: h.at,
+                facing: Direction::ALL[usize::from(h.facing.number())],
+            })
+            .collect();
+        start.index = start.heroes.iter().position(|h| h.at == hero.at);
+        start.hero = Some(hero);
+        start.points = sequence.points(timeline).unwrap();
+        start.paths = sequence.paths(timeline).unwrap();
+        let states = play(
+            rules(Bugs::Original),
+            &start,
+            &sequence.actions().unwrap(),
+            sequence.ms,
+        )
+        .unwrap();
+        let got = lines(&states, &BTreeMap::new());
+        let want = without_screens(timeline);
+        for (n, (g, w)) in got.iter().zip(&want).enumerate() {
+            assert_eq!(g, w, "{id}: line {n}");
+        }
+        assert_eq!(got.len(), want.len(), "{id}");
+    }
+}
+
+/// E24 M3 T6b3's sequences on `seq-walk`: their timelines and kept live parts.
+const WALKING: [(&str, &str, &str); 4] = [
+    (
+        "walk-queue",
+        include_str!("../../../../map/timelines/walk-queue.txt"),
+        include_str!("../../../../map/timelines/walk-queue-live.toml"),
+    ),
+    (
+        "walk-stop-key",
+        include_str!("../../../../map/timelines/walk-stop-key.txt"),
+        include_str!("../../../../map/timelines/walk-stop-key-live.toml"),
+    ),
+    (
+        "walk-stop-press",
+        include_str!("../../../../map/timelines/walk-stop-press.txt"),
+        include_str!("../../../../map/timelines/walk-stop-press-live.toml"),
+    ),
+    (
+        "walk-stop-space",
+        include_str!("../../../../map/timelines/walk-stop-space.txt"),
+        include_str!("../../../../map/timelines/walk-stop-space-live.toml"),
+    ),
+];
+
+#[test]
+fn replays_the_recorded_keys_during_walks() {
+    let situation = include_str!("../../../../map/situations/seq-walk.toml");
+    let sequences = Sequences::parse(SEQUENCES).unwrap();
+    for (id, timeline, live) in WALKING {
+        let sequence = sequences.get(id).unwrap();
+        let mut start = start(situation, sequence.scroll_speed().unwrap());
+        (start.kingdom, start.buttons) = live_kingdom(live);
+        // The selected hero by the mouse-over's facts, as the binary's `selected_in` finds it.
+        let (heroes, _) = live_heroes(live);
+        let table: toml::Table = live.parse().unwrap();
+        let objects = table["anchors"].as_array().unwrap().len();
+        let facts = hover::Facts::read(&table["hover"], objects, heroes.len(), 36, 1).unwrap();
         let Selected::Hero(slot) = start.kingdom.selected else {
             panic!("{id}: no hero selected at 0");
         };

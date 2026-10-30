@@ -73,6 +73,15 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   millisecond redraws. A list's redraw (a choice, an arrow, Next Hero, a lift that centres, a walk
   that ends unable to move) leaves the status bar empty on screen with the hint in memory
   (MCL-Q22): only another item's hint shows a text again.
+- **After a walk the mouse-over has no reach** (M3 T6b3): the facts' reach is the staged hero's
+  tile's (the engine's from M4), so the viewer's cursor over the view is then the arrow, where the
+  original's is the tile's; a click that starts a walk records that frame even hidden (its
+  `cursor` line). A sequence walks a path again only from the staged tile: `walk-stopped`'s first
+  run, which clicked the destination again after each walk it ended, became three sequences.
+- **The input ring counts messages, not actions** (M3 T6b3, design §4.15): a click two, every
+  other action one; a scroll's Control key's own down and up and a button's move before it are not
+  counted, so a sequence that fills the ring uses keys without Ctrl (`walk-queue`). The ring holds
+  only what waits during a step, a walk's frames or a wait: nothing else bounds the actions.
 - **The minimap and the status window hold the mouse their own ways** (M3 T6b2, design §4.14):
   while the mouse holds the minimap down only its moves (each drawn, the corner moved or not) and
   its release reach the timeline (`Loop::drag`), the idle step stopped; a press on the status

@@ -540,7 +540,10 @@ fn the_focus_lost_fades_the_track_out_and_regained_back_in() {
     assert!(!m.active());
     let runs = m.advance(150, &tracks);
     assert_eq!(line(&runs), join(fade_out("A", 200)));
-    assert_eq!((m.place("A"), m.playing(), m.pending()), (Some(200), None, None));
+    assert_eq!(
+        (m.place("A"), m.playing(), m.pending()),
+        (Some(200), None, None)
+    );
     // Only a change counts.
     m.focus(false);
     assert!(m.advance(50, &tracks).is_empty());

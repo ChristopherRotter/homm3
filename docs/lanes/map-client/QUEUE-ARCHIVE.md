@@ -16,6 +16,23 @@ Finished history and informational notices moved out of `QUEUE.md` on 2026-10-24
   both optional), a recipe's `gold = true`; `h3mem.player`'s `income` and `gardens`,
   `h3mem.monster`'s `sixteenths` and `word`. The harness check passed.
 
+- 2026-10-30 (this lane, E24 M3 T6b3): kept whole by the user. Done: the log's "M3 T6b3".
+  Its entry as it was:
+
+  ### E24 M3 T6b3 — the keys during a walk, the sound without the focus
+
+  - **Scope:** MCL-Q10's keys during a walk (Space's cancel of the queued steps, the input ring's
+    bound of 63 messages); the sound without the focus (`QUEUE-ARCHIVE.md` 2026-10-27, E24 M2 T6a2:
+    the rest read, `h3_map_view::music`'s fade without a pending track, the window by
+    `Window::focused()`). Recorded: a walk with Space. Found at T6b2: a path's walk ends on a
+    left button's press and on any key down (0x407FA7: the kinds 8 and 1), but `Loop::carry_on`
+    takes only `Step`, `Scroll` and `Click` as the end: `Press` and `Key` (the hotkeys) belong
+    there too, the release (0x10) dropped.
+  - **Acceptance:** the new sequence as recorded, every frame, the status bar compared; the focus's
+    sound by a test and in the window; the Definition of Done.
+  - **Depends on:** T6b1 (done: the key table's additions). **Status:** ready (T6b1's #605 merged;
+    T6b2's pull request touches the same `timeline.rs`: start from it once merged).
+
 - 2026-10-30 (this lane, E24 M3 T6b2): taken whole as the user's T6b cut left it. Done: the
   log's "M3 T6b2". Its entry as it was:
 

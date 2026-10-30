@@ -196,10 +196,8 @@ impl Music {
             self.stop = matches!(self.stream, Stream::Opening | Stream::Playing { .. });
             return;
         }
-        if let Stream::Held { at, .. } = self.stream {
-            if let Some(name) = &self.playing {
-                self.places.insert(name.clone(), at);
-            }
+        if let (Stream::Held { at, .. }, Some(name)) = (&self.stream, &self.playing) {
+            self.places.insert(name.clone(), *at);
             self.stream = Stream::Closed;
         }
         if let Some(name) = &self.playing {
@@ -326,7 +324,10 @@ impl Music {
                         Track::Missing | Track::Frames(0) => Stream::Closed,
                         // Started only with the focus (0x59AA15); else held, and a stub
                         // waiting finds nothing to fade.
-                        Track::Frames(len) if !self.active => Stream::Held { len, at: place(len) },
+                        Track::Frames(len) if !self.active => Stream::Held {
+                            len,
+                            at: place(len),
+                        },
                         Track::Frames(len) => Stream::Playing {
                             len,
                             at: place(len),

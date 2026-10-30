@@ -204,15 +204,14 @@ impl Sequence {
             last = input.at;
             let action = if let Some(name) = &input.keydown {
                 down.push(name);
-                Some(match (key(name), hotkey(name)) {
+                match (key(name), hotkey(name)) {
                     (Some((true, direction)), _) => Action::Scroll(direction),
                     (Some((false, direction)), _) => Action::Step(direction),
                     (None, Some(hotkey)) => Action::Key(hotkey),
-                    (None, None) if name == SPACE => Action::Visit,
-                    (None, None) => {
-                        return Err(failed(&format!("`{name}`: no key of the map's")));
-                    }
-                })
+                    (None, None) => (name == SPACE)
+                        .then_some(Action::Visit)
+                        .ok_or_else(|| failed(&format!("`{name}`: no key of the map's")))?,
+                }
             } else if let Some(name) = &input.keyup {
                 let Some(at) = down.iter().position(|d| d == name) else {
                     return Err(failed(&format!("`{name}` released, never pressed")));
@@ -220,18 +219,17 @@ impl Sequence {
                 down.remove(at);
                 // Another key's release is a message that does nothing (E24 M3 T6b3: it counts
                 // in the input ring).
-                Some(hotkey(name).map_or(Action::Up, Action::KeyUp))
+                hotkey(name).map_or(Action::Up, Action::KeyUp)
             } else {
+                // Exactly one kind (above): a release when none of the others.
                 input
                     .pointer
                     .map(Action::Pointer)
                     .or(input.click.map(Action::Click))
                     .or(input.press.map(Action::Press))
-                    .or(input.release.map(Action::Release))
+                    .unwrap_or_else(|| Action::Release(input.release.unwrap_or_default()))
             };
-            if let Some(action) = action {
-                actions.entry(input.at).or_default().push(action);
-            }
+            actions.entry(input.at).or_default().push(action);
         }
         Ok(actions)
     }

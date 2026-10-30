@@ -132,7 +132,10 @@ fn every_command_has_a_name_and_the_maps_its_action() {
     // window's own none.
     assert_eq!(Command::Visit.action(), Some(Action::Visit));
     assert_eq!(Command::Hero(Direction::North).release(), Some(Action::Up));
-    assert_eq!(Command::Scroll(Direction::North).release(), Some(Action::Up));
+    assert_eq!(
+        Command::Scroll(Direction::North).release(),
+        Some(Action::Up)
+    );
     assert_eq!(Command::Visit.release(), Some(Action::Up));
     assert_eq!(Command::Window(Window::Pause).release(), None);
 }

@@ -212,12 +212,11 @@ pub const QUEUED: usize = 63;
 fn keep_ring(queued: &mut Vec<Action>) {
     let mut n: usize = queued.iter().map(|a| a.messages()).sum();
     while n > QUEUED {
-        match queued.first().copied() {
-            Some(Action::Click(at)) => queued[0] = Action::Release(at),
-            Some(_) => {
-                queued.remove(0);
-            }
-            None => break,
+        // More than the ring holds: never empty.
+        if let Some(Action::Click(at)) = queued.first().copied() {
+            queued[0] = Action::Release(at);
+        } else {
+            queued.remove(0);
         }
         n -= 1;
     }
