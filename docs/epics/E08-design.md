@@ -114,9 +114,7 @@ kinds, the two parameters, the core creature's abilities, the packs and the gap-
   seven resources as `(ResourceId, i32)` pairs without zeros, and `message: u16`, the event's
   index in the list (the text is the client's). None is refused; an event for no player that
   plays is kept and never fires.
-- **The writer** (`h3_map::writer`, for batch E9 and the fixtures, T78): the seven classes with
-  their bodies (a mine's owner, an abandoned mine's set, a Lighthouse's and a Shipyard's owner,
-  the weekly objects' empty bodies) and the map's timed events (it writes none today).
+- **The writer:** built by T78 (`E08-log.md`, T78).
 
 ### 5. The kinds and the part (`h3-adventure`, `h3-pack-adventure`; adventure ruleset part v14)
 
@@ -395,10 +393,7 @@ added to the survey's rows: **E9-2** records whether Blue (human) is asked to pl
 side when Red attacks them (§13's call); **E9-4** records whether the tiles around Red's two
 Lighthouses owned at load are explored on day 1 (A-33: the reading says not).
 
-- **The writer and the specs** (T78): §4's writer; the spec (`h3-experiment`, battle-owned,
-  `cross-lane`): mines by subclass with an owner and guards, the abandoned mine's set,
-  Lighthouses, Shipyards, the three weekly objects, a monster's "does not grow", timed events, a
-  hero's Estates, Mysticism and specialty; the specs `E08-batch-9a` and `-9b` with their templates.
+- **The writer and the specs:** built by T78 (`E08-log.md`, T78).
 - **The harness** (T79; common, CLT-Q18: this lane builds it with its check and tells the client
   and map-client lanes' inboxes): reads of the mine records (game +0x4E38C: owner, resource,
   guards), a player's income +0x108 and the Garden mask +0xB8, the date's three words

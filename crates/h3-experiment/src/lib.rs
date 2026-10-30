@@ -20,11 +20,12 @@ use std::fmt::Write as _;
 
 use h3_map::model::{Rewards, Stack};
 use h3_map::writer::{
-    ARMY_SLOTS, ARTIFACT_OBJECT, ARTIFACT_SLOTS, EVENT_OBJECT, Event, Format, Ground, Guards, Hero,
-    HeroArtifacts, Map, MapObject, Message, Monster, ObjectTemplate, PANDORA_OBJECT, PLAYERS,
-    Patch, Pile, Plain, Player, RANDOM_ARTIFACT_OBJECTS, RewardBody, RewardObject, Road, RoadKind,
-    SCROLL_OBJECT, SHRINE_OBJECTS, SIGN_OBJECTS, Terrain, Town, TownBuildings, Treasure,
-    Underground, WITCH_HUT_OBJECT,
+    ABANDONED_MINE_OBJECT, ABANDONED_MINE_SUBCLASS, ARMY_SLOTS, ARTIFACT_OBJECT, ARTIFACT_SLOTS,
+    EVENT_OBJECT, Event, Format, Ground, Guards, Hero, HeroArtifacts, MINE_OBJECT, Map, MapObject,
+    Message, Monster, ObjectTemplate, OwnedBody, OwnedObject, PANDORA_OBJECT, PLAYERS, Patch, Pile,
+    Plain, Player, RANDOM_ARTIFACT_OBJECTS, RewardBody, RewardObject, Road, RoadKind,
+    SCROLL_OBJECT, SHRINE_OBJECTS, SIGN_OBJECTS, Terrain, TimedEvent, Town, TownBuildings,
+    Treasure, Underground, WITCH_HUT_OBJECT,
 };
 use serde::Deserialize;
 
@@ -260,6 +261,18 @@ pub struct MapSpec {
     /// Ocean Bottles (`[[map.bottle]]`, E08 T67: batch E8's row E8-9).
     #[serde(default)]
     pub bottle: Vec<BottleSpec>,
+    /// Ownable objects (`[[map.ownable]]`, E08 T78: batch E9): mines, abandoned mines,
+    /// Lighthouses and Shipyards with their owners.
+    #[serde(default)]
+    pub ownable: Vec<OwnableSpec>,
+    /// Wandering monsters of no encounter (`[[map.monster]]`, E08 T78: batch E9's growing
+    /// monsters).
+    #[serde(default)]
+    pub monster: Vec<MonsterSpec>,
+    /// The map's timed events (`[[map.timed_event]]`, E08 T78: batch E9's row E9-11), in the order
+    /// the game fires them on a day.
+    #[serde(default)]
+    pub timed_event: Vec<TimedEventSpec>,
 }
 
 /// Where copies of an object stand (E08 T56): the first on `at`, then `columns` × `rows` of them
@@ -441,6 +454,89 @@ pub struct BottleSpec {
     pub text: String,
 }
 
+/// An ownable object by its picture (E08 T78: batch E9; increment 9's design note §4), on the
+/// surface: a mine, an abandoned mine, a Lighthouse or a Shipyard. No hero, monster, pile or town
+/// may stand on a tile it blocks or is visited from. The file holds no guards for a mine: an
+/// abandoned mine's Troglodytes are drawn when the game starts, other guards are left in play
+/// (Leave Guards; survey `docs/rules/surveys/E08-economy.md` §2.1, §3.3, §3.4).
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct OwnableSpec {
+    /// The picture's name in `Objects.txt` (`AVMsawg0` or `AVMsawg0.def`, any case), which names
+    /// the class and subclass ([`Tables::ownables`]): a mine's (class 53) subclass is its
+    /// resource, 7 the abandoned mine (also SoD's class 220); a Lighthouse (42), a Shipyard (87).
+    pub picture: String,
+    /// The object's position, `[column, row]`: the picture's bottom-right tile.
+    pub at: [u8; 2],
+    /// "red", "blue", "tan" or "neutral" (the default); an abandoned mine is neutral.
+    #[serde(default = "neutral")]
+    pub owner: String,
+    /// An abandoned mine's resources by name ([`RESOURCES`]), at least one: the game draws one of
+    /// them when the map loads (survey §3.4). Only for an abandoned mine.
+    #[serde(default)]
+    pub resources: Vec<String>,
+}
+
+fn neutral() -> String {
+    "neutral".into()
+}
+
+/// A wandering monster that is no encounter's opponent (E08 T78: batch E9's rows E9-9 and E9-10,
+/// the weekly growth).
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct MonsterSpec {
+    /// The creature by name.
+    pub creature: String,
+    /// The number of creatures, at least one.
+    pub count: u16,
+    /// Its tile, `[column, row]`, of any terrain.
+    pub at: [u8; 2],
+    /// The level: 0 the surface (the default), 1 the underground.
+    #[serde(default)]
+    pub level: u8,
+    /// It grows every week (survey §10.1); false (the default, as every encounter's monster): the
+    /// map's "does not grow" flag is set.
+    #[serde(default)]
+    pub grows: bool,
+    /// As [`Opponent::disposition`]; none: savage, it never joins.
+    #[serde(default)]
+    pub disposition: Option<String>,
+    /// As [`Opponent::flees`].
+    #[serde(default)]
+    pub flees: bool,
+}
+
+/// A timed event of the map (E08 T78: batch E9's row E9-11; survey
+/// `docs/rules/surveys/E08-economy.md` §11): on its days, at its players' turn start, it gives or
+/// takes resources.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct TimedEventSpec {
+    /// The editor's name (the game never shows it); empty by default.
+    #[serde(default)]
+    pub name: String,
+    /// The text the game shows when it fires; empty by default.
+    #[serde(default)]
+    pub message: String,
+    /// The game's day it first fires on, 1 or later (the file stores the day before).
+    pub day: u16,
+    /// It fires again every `interval` days; 0 (the default): once.
+    #[serde(default)]
+    pub interval: u16,
+    /// The colours it fires for ([`COLOURS`]).
+    pub players: Vec<String>,
+    /// It fires for a human player (true, the default).
+    #[serde(default = "yes")]
+    pub human: bool,
+    /// It fires for a computer player.
+    #[serde(default)]
+    pub computer: bool,
+    /// Resources by name ([`RESOURCES`]); negative takes.
+    #[serde(default)]
+    pub resources: BTreeMap<String, i32>,
+}
+
 /// A reward record: what a box or an event gives (E08 T56; negative resources, mana, morale or
 /// luck take).
 #[derive(Debug, Clone, Default, Deserialize)]
@@ -502,7 +598,7 @@ pub struct MapTownSpec {
     pub entrance: [u8; 2],
     /// Faction ([`FACTIONS`]).
     pub faction: String,
-    /// "blue" (the default), "tan" or "neutral".
+    /// "blue" (the default), "tan", "neutral" or (E08 T78) "red".
     #[serde(default = "blue")]
     pub owner: String,
     /// Built buildings by name, as a [`TownSpec`]'s.
@@ -927,6 +1023,15 @@ pub fn build_only(
             .into_iter()
             .map(|r| (0, r)),
     );
+    // Increment 9's ownable objects (E08 T78), on the surface.
+    let mut owners_per_player = [0usize; PLAYERS];
+    for o in &spec.map.ownable {
+        let owned = ownable(o, tables, size)?;
+        if let OwnedBody::Owner(Some(owner)) = owned.body {
+            owners_per_player[usize::from(owner)] += 1;
+        }
+        objects.push((0, MapObject::Owned(owned)));
+    }
     let mut used_types = Vec::new();
     let mut heroes_per_player = [0usize; PLAYERS];
     let mut towns_per_player = [0usize; PLAYERS];
@@ -1082,6 +1187,11 @@ pub fn build_only(
                 at: None,
             }) => {
                 let entrance = (x, y.saturating_sub(1));
+                if t.owner == "red" {
+                    return Err(ctx(
+                        "a town's owner is blue, tan or neutral, not `red`".into()
+                    ));
+                }
                 let (town, mut summary) = town_object(t, tables, entrance, size).map_err(ctx)?;
                 if let Some(owner) = town.owner {
                     towns_per_player[usize::from(owner)] += 1;
@@ -1150,6 +1260,15 @@ pub fn build_only(
         }
         objects.push((0, MapObject::Town(town)));
     }
+    for m in &spec.map.monster {
+        if m.level >= levels {
+            return Err(format!(
+                "the monster at {:?} on level {}: no such level (`[map.underground]` adds level 1)",
+                m.at, m.level
+            ));
+        }
+        objects.push((m.level, map_monster(m, tables, size)?));
+    }
     // Heroes and monsters stand on grounds; two grounds may overlap (the game takes the last). A
     // plain object counts with every tile it covers.
     let mut tiles: Vec<(u8, (u8, u8))> = objects
@@ -1164,6 +1283,10 @@ pub fn build_only(
                 .map(|tile| (*level, tile))
                 .collect(),
             MapObject::Reward(r) => covered(&r.template, r.tile)
+                .into_iter()
+                .map(|tile| (*level, tile))
+                .collect(),
+            MapObject::Owned(o) => covered(&o.template, o.tile)
                 .into_iter()
                 .map(|tile| (*level, tile))
                 .collect(),
@@ -1183,7 +1306,8 @@ pub fn build_only(
         computer: true,
         towns: 1,
     });
-    if heroes_per_player[1] > 0 || towns_per_player[1] > 0 {
+    let holds = |p: usize| towns_per_player[p] > 0 || owners_per_player[p] > 0;
+    if heroes_per_player[1] > 0 || holds(1) {
         players[1] = Some(Player {
             human: true,
             computer: true,
@@ -1192,7 +1316,7 @@ pub fn build_only(
     }
     // Tan, the computer's only (E23 T7, batch 4b): hot seat makes the named players human, Red
     // and Blue, and leaves Tan to the computer.
-    if heroes_per_player[2] > 0 || towns_per_player[2] > 0 {
+    if heroes_per_player[2] > 0 || holds(2) {
         players[2] = Some(Player {
             human: false,
             computer: true,
@@ -1224,6 +1348,7 @@ pub fn build_only(
         }),
         level_limit: spec.map.level_limit,
         banned_skills,
+        events: timed_events(&spec.map.timed_event)?,
     };
     Ok((map, text))
 }
@@ -1406,12 +1531,14 @@ fn town_object(
         .map(|(_, template)| template.clone())
         .ok_or_else(|| format!("no town template for {}", t.faction))?;
     let owner = match t.owner.as_str() {
+        // A map town's only (E08 T78: batch E9b's players keep a town past the seventh day).
+        "red" => Some(0),
         "blue" => Some(1),
         "tan" => Some(2),
         "neutral" => None,
         other => {
             return Err(format!(
-                "a town's owner is blue, tan or neutral, not `{other}`"
+                "a town's owner is red, blue, tan or neutral, not `{other}`"
             ));
         }
     };
@@ -1449,6 +1576,7 @@ fn town_object(
         garrison[slot] = Some((creature as u16, *count));
     }
     let owner_name = match owner {
+        Some(0) => "Red",
         Some(1) => "Blue",
         Some(_) => "Tan (the computer's)",
         None => "Neutral",
@@ -1688,6 +1816,138 @@ fn monster(
         fixed_count: true,
         treasure,
     })
+}
+
+/// An ownable object by its picture (E08 T78).
+fn ownable(o: &OwnableSpec, tables: &Tables, size: u8) -> Result<OwnedObject, String> {
+    let ctx = |e: String| format!("the ownable `{}` at {:?}: {e}", o.picture, o.at);
+    let name = o.picture.to_ascii_lowercase();
+    let name = name.strip_suffix(".def").unwrap_or(&name);
+    let template = tables
+        .ownables
+        .iter()
+        .find(|t| t.def.to_ascii_lowercase().strip_suffix(".def") == Some(name))
+        .cloned()
+        .ok_or_else(|| ctx("no such picture of an ownable object".into()))?;
+    let [x, y] = o.at;
+    if x >= size || y >= size {
+        return Err(ctx("off the map".into()));
+    }
+    let abandoned = template.subclass == ABANDONED_MINE_SUBCLASS
+        && matches!(template.class, MINE_OBJECT | ABANDONED_MINE_OBJECT);
+    let body = if abandoned {
+        if o.owner != "neutral" {
+            return Err(ctx("an abandoned mine has no owner".into()));
+        }
+        if o.resources.is_empty() {
+            return Err(ctx(
+                "an abandoned mine needs `resources`, at least one".into()
+            ));
+        }
+        let mut set = 0u8;
+        for name in &o.resources {
+            let r = RESOURCES
+                .iter()
+                .position(|r| r == name)
+                .ok_or_else(|| ctx(format!("unknown resource `{name}`")))?;
+            set |= 1 << r;
+        }
+        OwnedBody::Resources(set)
+    } else {
+        if !o.resources.is_empty() {
+            return Err(ctx("`resources` is an abandoned mine's".into()));
+        }
+        let owner = match o.owner.as_str() {
+            "neutral" => None,
+            colour => Some(
+                ["red", "blue", "tan"]
+                    .iter()
+                    .position(|c| *c == colour)
+                    .ok_or_else(|| ctx(format!("owner `{colour}` (red, blue, tan or neutral)")))?
+                    as u8,
+            ),
+        };
+        OwnedBody::Owner(owner)
+    };
+    Ok(OwnedObject {
+        tile: (x, y),
+        template,
+        body,
+    })
+}
+
+/// A wandering monster of no encounter (E08 T78).
+fn map_monster(m: &MonsterSpec, tables: &Tables, size: u8) -> Result<MapObject, String> {
+    let ctx = |e: String| format!("the monster at {:?}: {e}", m.at);
+    let id = lookup(&tables.creatures, &m.creature, "creature").map_err(ctx)?;
+    let template = tables
+        .monsters
+        .iter()
+        .find(|(c, _)| *c == id as u32)
+        .map(|(_, t)| t.clone())
+        .ok_or_else(|| ctx(format!("no wandering-monster template for {}", m.creature)))?;
+    if m.count == 0 {
+        return Err(ctx("a monster needs at least one creature".into()));
+    }
+    let disposition = m
+        .disposition
+        .as_deref()
+        .map(|d| {
+            DISPOSITIONS
+                .iter()
+                .position(|n| n.eq_ignore_ascii_case(d.trim()))
+                .ok_or_else(|| ctx(format!("unknown disposition `{d}`")))
+        })
+        .transpose()?;
+    let [x, y] = m.at;
+    if x >= size || y >= size {
+        return Err(ctx("off the map".into()));
+    }
+    Ok(MapObject::Monster(Monster {
+        tile: (x, y),
+        template,
+        count: m.count,
+        // Savage unless given: it never joins.
+        disposition: disposition.map_or(4, |d| d as u8),
+        never_flees: !m.flees,
+        fixed_count: !m.grows,
+        treasure: None,
+    }))
+}
+
+/// The map's timed events in the spec's order (E08 T78).
+fn timed_events(specs: &[TimedEventSpec]) -> Result<Vec<TimedEvent>, String> {
+    specs
+        .iter()
+        .enumerate()
+        .map(|(i, e)| {
+            let ctx = |err: String| format!("timed event {} (`{}`): {err}", i + 1, e.name);
+            if e.day == 0 {
+                return Err(ctx("`day` is the game's day, 1 or later".into()));
+            }
+            if e.players.is_empty() {
+                return Err(ctx("no `players`".into()));
+            }
+            let mut players = 0u8;
+            for colour in &e.players {
+                let c = COLOURS
+                    .iter()
+                    .position(|c| c.eq_ignore_ascii_case(colour.trim()))
+                    .ok_or_else(|| ctx(format!("unknown colour `{colour}`")))?;
+                players |= 1 << c;
+            }
+            Ok(TimedEvent {
+                name: e.name.clone(),
+                message: e.message.clone(),
+                resources: resources(&e.resources).map_err(ctx)?,
+                players,
+                human: e.human,
+                computer: e.computer,
+                first_day: e.day - 1,
+                interval: e.interval,
+            })
+        })
+        .collect()
 }
 
 /// A monster's treasure (E08 T56).
@@ -2196,6 +2456,9 @@ mod tests {
                  010000000000000000000000000000000000000000000000 100000000 100000000 8 1 0 0",
                 "AVAflot0.def 011111111111111111111111111111111111111111111111 \
                  100000000000000000000000000000000000000000000000 100000000 100000000 29 0 0 0",
+                // A Windmill (E08 T78).
+                "AVMwndd0.def 101111111111111111111111111111111111111111111111 \
+                 010000000000000000000000000000000000000000000000 111111111 011111111 112 0 0 0",
             ]
             .map(|line| ObjectTemplate::from_objects_txt(line).expect("template"))
             .to_vec(),
@@ -2229,6 +2492,24 @@ mod tests {
                 // The Ocean Bottle (E08 T67).
                 "AVXbttl0.def 011111111111111111111111111111111111111111111111 \
                  100000000000000000000000000000000000000000000000 100000000 100000000 59 0 0 0",
+            ]
+            .map(|line| ObjectTemplate::from_objects_txt(line).expect("template"))
+            .to_vec(),
+            // E08 T78: the game's lines of a grass sawmill, a crystal cavern, the abandoned mine
+            // and SoD's grass one, a Lighthouse and a Shipyard.
+            ownables: [
+                "AVMsawg0.def 000011110011111111111111111111111111111111111111 \
+                 010000000000000000000000000000000000000000000000 111111111 000010100 53 0 0 0",
+                "AVMcrys0.def 000111111111111111111111111111111111111111111111 \
+                 010000000000000000000000000000000000000000000000 111111111 000000100 53 4 0 0",
+                "AVXabnd0.def 000111111111111111111111111111111111111111111111 \
+                 010000000000000000000000000000000000000000000000 111111111 000000001 53 7 0 0",
+                "AVXamGr.def 000111111111111111111111111111111111111111111111 \
+                 010000000000000000000000000000000000000000000000 111111111 000000100 220 7 0 0",
+                "AVXlths0.def 011111111111111111111111111111111111111111111111 \
+                 100000000000000000000000000000000000000000000000 111111111 010111111 42 0 0 0",
+                "AVXshyd0.def 000111111111111111111111111111111111111111111111 \
+                 010000000000000000000000000000000000000000000000 011111111 011111111 87 0 0 0",
             ]
             .map(|line| ObjectTemplate::from_objects_txt(line).expect("template"))
             .to_vec(),
@@ -2380,6 +2661,19 @@ mod tests {
         let bad = spec.replace("entrance = [24, 20]", "entrance = [2, 20]");
         let error = build(&parse(&bad).expect("spec"), &tables(), "t.h3m").expect_err("bad");
         assert!(error.starts_with("the town at [2, 20]: "), "{error}");
+        // E08 T78: a map town may be Red's (batch E9b), not an unknown colour.
+        let red = spec.replace("owner = \"tan\"", "owner = \"red\"");
+        let (map, _) = build(&parse(&red).expect("spec"), &tables(), "t.h3m").expect("build");
+        let MapObject::Town(town) = map.objects.last().expect("objects") else {
+            panic!("not a town");
+        };
+        assert_eq!(town.owner, Some(0));
+        let pink = spec.replace("owner = \"tan\"", "owner = \"pink\"");
+        let error = build(&parse(&pink).expect("spec"), &tables(), "t.h3m").expect_err("pink");
+        assert!(
+            error.contains("red, blue, tan or neutral, not `pink`"),
+            "{error}"
+        );
     }
 
     #[test]
@@ -2864,7 +3158,8 @@ mod tests {
                 | MapObject::Ground(_)
                 | MapObject::Plain(_)
                 | MapObject::Town(_)
-                | MapObject::Reward(_) => None,
+                | MapObject::Reward(_)
+                | MapObject::Owned(_) => None,
             })
             .collect();
         // The encounter's hero, its `also` heroes, then the opponent beside the hero.
@@ -3608,5 +3903,251 @@ mod tests {
             + "\n        specialty = \"resource gold\"\n        defaults = true\n";
         let err = build(&parse(&spec).expect("spec"), &t, "s.h3m").expect_err("hero with at");
         assert!(err.contains("`at` with a monster only"), "{err}");
+    }
+
+    /// Increment 9's objects (E08 T78): a Red sawmill, a Blue crystal cavern (Blue has no hero),
+    /// two abandoned mines, a Lighthouse and a Shipyard, a Windmill, two monsters (one growing)
+    /// and three timed events.
+    const ECONOMY: &str = r#"
+        [map]
+        name = "Economy"
+        description = "d"
+        terrain = "grass"
+
+        [[map.ownable]]
+        picture = "AVMsawg0"
+        at = [8, 4]
+        owner = "red"
+
+        [[map.ownable]]
+        picture = "avmcrys0.def"
+        at = [14, 4]
+        owner = "blue"
+
+        [[map.ownable]]
+        picture = "AVXabnd0"
+        at = [8, 10]
+        resources = ["wood", "gold"]
+
+        [[map.ownable]]
+        picture = "AVXamGr"
+        at = [14, 10]
+        resources = ["crystal"]
+
+        [[map.ownable]]
+        picture = "AVXlths0"
+        at = [20, 10]
+        owner = "red"
+
+        [[map.ownable]]
+        picture = "AVXshyd0"
+        at = [26, 10]
+
+        [[map.object]]
+        picture = "AVMwndd0"
+        at = [8, 16]
+
+        [[map.monster]]
+        creature = "Pikeman"
+        count = 43
+        at = [20, 20]
+        grows = true
+
+        [[map.monster]]
+        creature = "Pikeman"
+        count = 43
+        at = [24, 20]
+
+        [[map.timed_event]]
+        name = "Take"
+        day = 1
+        players = ["red"]
+        resources = { gold = -99999 }
+
+        [[map.timed_event]]
+        message = "Gift"
+        day = 1
+        players = ["red", "blue"]
+        resources = { gold = 300, wood = 1 }
+
+        [[map.timed_event]]
+        day = 2
+        interval = 2
+        players = ["red"]
+        human = false
+        computer = true
+        resources = { gold = -500 }
+
+        [[encounter]]
+        id = "E1"
+        title = "The visits"
+        [encounter.hero]
+        type = "Orrin"
+        specialty = "skill Archery"
+        at = [4, 30]
+        primary = [1, 1, 1, 1]
+        skills = [["Armorer", 1]]
+        army = [["Pikeman", 10]]
+    "#;
+
+    #[test]
+    fn builds_increment_9_s_objects() {
+        let spec = parse(ECONOMY).expect("spec");
+        let (map, _) = build(&spec, &tables(), "e.h3m").expect("build");
+        // Blue plays: it owns the crystal cavern.
+        assert!(map.players[1].is_some() && map.players[2].is_none());
+        let owned: Vec<(u32, u32, (u8, u8), OwnedBody)> = map
+            .objects
+            .iter()
+            .filter_map(|o| match o {
+                MapObject::Owned(o) => {
+                    Some((o.template.class, o.template.subclass, o.tile, o.body))
+                }
+                _ => None,
+            })
+            .collect();
+        assert_eq!(
+            owned,
+            [
+                (53, 0, (8, 4), OwnedBody::Owner(Some(0))),
+                (53, 4, (14, 4), OwnedBody::Owner(Some(1))),
+                (53, 7, (8, 10), OwnedBody::Resources(0b100_0001)),
+                (220, 7, (14, 10), OwnedBody::Resources(0b1_0000)),
+                (42, 0, (20, 10), OwnedBody::Owner(Some(0))),
+                (87, 0, (26, 10), OwnedBody::Owner(None)),
+            ]
+        );
+        let monsters: Vec<((u8, u8), u16, bool, u8)> = map
+            .objects
+            .iter()
+            .filter_map(|o| match o {
+                MapObject::Monster(m) => Some((m.tile, m.count, m.fixed_count, m.disposition)),
+                _ => None,
+            })
+            .collect();
+        assert_eq!(
+            monsters,
+            [((20, 20), 43, false, 4), ((24, 20), 43, true, 4)]
+        );
+        assert!(
+            map.objects
+                .iter()
+                .any(|o| matches!(o, MapObject::Plain(p) if p.template.class == 112))
+        );
+        let gold = |g| [0, 0, 0, 0, 0, 0, g];
+        assert_eq!(
+            map.events,
+            [
+                TimedEvent {
+                    name: "Take".into(),
+                    message: String::new(),
+                    resources: gold(-99_999),
+                    players: 1,
+                    human: true,
+                    computer: false,
+                    first_day: 0,
+                    interval: 0,
+                },
+                TimedEvent {
+                    name: String::new(),
+                    message: "Gift".into(),
+                    resources: [1, 0, 0, 0, 0, 0, 300],
+                    players: 0b11,
+                    human: true,
+                    computer: false,
+                    first_day: 0,
+                    interval: 0,
+                },
+                TimedEvent {
+                    name: String::new(),
+                    message: String::new(),
+                    resources: gold(-500),
+                    players: 1,
+                    human: false,
+                    computer: true,
+                    first_day: 1,
+                    interval: 2,
+                },
+            ]
+        );
+        let bytes = h3_map::writer::write(&map).expect("writes");
+        let raw = h3_map::parse(&bytes, &h3_map::Limits::default()).expect("reads back");
+        assert_eq!(raw.objects.len(), map.objects.len());
+        assert_eq!(raw.events.len(), 3);
+    }
+
+    #[test]
+    fn rejects_mistakes_in_increment_9_s_objects() {
+        let t = tables();
+        let fails = |from: &str, to: &str| {
+            assert!(ECONOMY.contains(from), "{from}");
+            let spec = parse(&ECONOMY.replacen(from, to, 1)).expect("spec");
+            build(&spec, &t, "e.h3m").expect_err(to)
+        };
+        assert!(
+            fails("picture = \"AVXshyd0\"", "picture = \"AVXshyd9\"")
+                .contains("the ownable `AVXshyd9` at [26, 10]: no such picture")
+        );
+        assert!(fails("at = [26, 10]", "at = [36, 10]").contains("off the map"));
+        assert!(fails("owner = \"red\"", "owner = \"pink\"").contains("owner `pink`"));
+        assert!(
+            fails("resources = [\"crystal\"]", "resources = []")
+                .contains("an abandoned mine needs `resources`")
+        );
+        assert!(
+            fails("resources = [\"crystal\"]", "resources = [\"mithril\"]")
+                .contains("unknown resource `mithril`")
+        );
+        assert!(
+            fails(
+                "resources = [\"crystal\"]",
+                "resources = [\"gold\"]\n        owner = \"red\""
+            )
+            .contains("an abandoned mine has no owner")
+        );
+        assert!(
+            fails(
+                "owner = \"blue\"",
+                "owner = \"blue\"\n        resources = [\"gold\"]"
+            )
+            .contains("`resources` is an abandoned mine's")
+        );
+        // A hero on the sawmill's entrance (one column west of its position, the bottom row).
+        assert!(fails("at = [4, 30]", "at = [7, 4]").contains("two objects on the tile (7, 4)"));
+        assert!(
+            fails(
+                "count = 43\n        at = [20, 20]",
+                "count = 0\n        at = [20, 20]"
+            )
+            .contains("the monster at [20, 20]: a monster needs at least one creature")
+        );
+        assert!(fails("creature = \"Pikeman\"", "creature = \"Imp\"").contains("Imp"));
+        assert!(
+            fails("creature = \"Pikeman\"", "creature = \"Archangel\"")
+                .contains("no wandering-monster template for Archangel")
+        );
+        assert!(fails("at = [24, 20]", "at = [24, 36]").contains("the monster at [24, 36]: off"));
+        assert!(
+            fails("at = [24, 20]", "at = [24, 20]\n        level = 1").contains("no such level")
+        );
+        assert!(
+            fails(
+                "at = [24, 20]",
+                "at = [24, 20]\n        disposition = \"shy\""
+            )
+            .contains("unknown disposition `shy`")
+        );
+        assert!(
+            fails("day = 2", "day = 0").contains("timed event 3 (``): `day` is the game's day")
+        );
+        assert!(
+            fails("players = [\"red\", \"blue\"]", "players = [\"mauve\"]")
+                .contains("unknown colour `mauve`")
+        );
+        assert!(fails("players = [\"red\", \"blue\"]", "players = []").contains("no `players`"));
+        assert!(
+            fails("gold = -99999", "jewels = 1")
+                .contains("timed event 1 (`Take`): unknown resource")
+        );
     }
 }

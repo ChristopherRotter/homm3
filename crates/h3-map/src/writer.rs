@@ -28,12 +28,23 @@
 //! objects: empty boats, Flotsam, the Sea Chest, the Shipwreck Survivor and holes as [`Plain`]
 //! objects, an Ocean Bottle (or a sign) with its text ([`RewardBody::Sign`]); Favorable Winds is a
 //! special ground ([`GROUND_OBJECTS`]), and a hero or a monster may stand on water.
+//!
+//! Since E08 T78 (batch E9's maps, increment 9's design note §4) it writes the ownable objects
+//! with their bodies ([`OwnedObject`]: the seven mines, the Lighthouse and the Shipyard with their
+//! owners, the abandoned mine with the resources it may draw), the weekly objects (the Windmill,
+//! the Water Wheel, the Mystical Garden) as [`Plain`] objects and the map's timed events
+//! ([`TimedEvent`]).
 
+mod economy;
 mod extras;
 mod rewards;
 
 use std::fmt;
 
+pub use economy::{
+    ABANDONED_MINE_OBJECT, ABANDONED_MINE_SUBCLASS, LIGHTHOUSE_OBJECT, MINE_OBJECT, OwnedBody,
+    OwnedObject, SHIPYARD_OBJECT, TimedEvent,
+};
 pub use extras::{AnyObject, Extras, GivenTile, RiverKind};
 pub use rewards::{
     ARTIFACT_OBJECT, EVENT_OBJECT, Event, Message, PANDORA_OBJECT, RANDOM_ARTIFACT_OBJECTS,
@@ -214,9 +225,11 @@ pub const GROUND_OBJECTS: [u32; 12] = [21, 46, 222, 223, 224, 225, 226, 227, 228
 /// subclass the boat's type 0 to 2, `AVXboat0` to `AVXboat2`, its one visitable tile on water),
 /// Flotsam (29), the Sea Chest (82), the Shipwreck Survivor (86) and holes (124). A hero stands
 /// in no boat a map writes: one placed on water has none (survey §2), so a hero "in a boat" is a
-/// hero beside an empty boat that boards it in the game.
-pub const PLAIN_OBJECTS: [u32; 17] = [
-    8, 13, 22, 29, 63, 82, 86, 100, 101, 104, 105, 108, 124, 135, 137, 155, 212,
+/// hero beside an empty boat that boards it in the game. Since E08 T78 increment 9's weekly
+/// objects (batch E9; survey `docs/rules/surveys/E08-economy.md` §9): the Mystical Garden (55),
+/// the Water Wheel (109) and the Windmill (112).
+pub const PLAIN_OBJECTS: [u32; 20] = [
+    8, 13, 22, 29, 55, 63, 82, 86, 100, 101, 104, 105, 108, 109, 112, 124, 135, 137, 155, 212,
 ];
 /// Object class of a town of a fixed faction (subclass = faction, `TOWNTYPE.TXT` order: Castle 0
 /// … Conflux 8; E04c T5b).
@@ -600,6 +613,9 @@ pub enum MapObject {
     /// An object that hands a visiting hero something, with its body (E08 T56; since E08 T67 an
     /// Ocean Bottle's or a sign's message).
     Reward(RewardObject),
+    /// An ownable object with its body (E08 T78): a mine, an abandoned mine, a Lighthouse, a
+    /// Shipyard.
+    Owned(OwnedObject),
 }
 
 /// A rectangle of tiles with a terrain of its own (E08 T10a: movement experiments).
@@ -693,6 +709,9 @@ pub struct Map {
     /// The secondary skills the map bans, by their codes (0 Pathfinding … 27 First Aid, below
     /// [`SKILL_COUNT`]; E08 T36b): no level-up offers one the hero does not know (HER-LVL-003).
     pub banned_skills: Vec<u8>,
+    /// The map's timed events (E08 T78), in the list's order: the order the game fires them in
+    /// on a day (GAM-CAL-004, survey `docs/rules/surveys/E08-economy.md` §11).
+    pub events: Vec<TimedEvent>,
 }
 
 impl Map {
@@ -821,6 +840,7 @@ fn write_all(map: &Map, extras: &Extras, format: Format) -> Result<Vec<u8>, Writ
             MapObject::Ground(_) | MapObject::Plain(_) => {} // no body
             MapObject::Town(town) => write_town(&mut out, town, identifier),
             MapObject::Reward(reward) => rewards::write_body(&mut out, &reward.body)?,
+            MapObject::Owned(owned) => economy::write_body(&mut out, owned.body),
         }
     }
     for (index, object) in extras.objects.iter().enumerate() {
@@ -832,7 +852,7 @@ fn write_all(map: &Map, extras: &Extras, format: Format) -> Result<Vec<u8>, Writ
         let identifier = len32(placed + index).saturating_add(1);
         extras::write_empty_body(&mut out, object, identifier, extras.quests.get(&index));
     }
-    out.u32(0); // no timed events
+    economy::write_events(&mut out, &map.events)?;
     Ok(out.0)
 }
 
@@ -902,6 +922,7 @@ fn validate(map: &Map, codes: &Codes) -> Result<(), WriteError> {
             MapObject::Plain(plain) => plain.tile,
             MapObject::Town(town) => town.tile,
             MapObject::Reward(reward) => reward.tile,
+            MapObject::Owned(owned) => owned.tile,
         };
         if x >= map.size || y >= map.size {
             return Err(out_of_range(
@@ -917,7 +938,11 @@ fn validate(map: &Map, codes: &Codes) -> Result<(), WriteError> {
             MapObject::Plain(plain) => validate_plain(plain)?,
             MapObject::Town(town) => validate_town(map, town, codes)?,
             MapObject::Reward(reward) => rewards::validate(reward, codes)?,
+            MapObject::Owned(owned) => economy::validate(map, owned, codes)?,
         }
+    }
+    for event in &map.events {
+        economy::validate_event(event, codes)?;
     }
     Ok(())
 }
@@ -1182,6 +1207,7 @@ fn object_template(object: &MapObject) -> ObjectTemplate {
         MapObject::Plain(plain) => plain.template.clone(),
         MapObject::Town(town) => town.template.clone(),
         MapObject::Reward(reward) => reward.template.clone(),
+        MapObject::Owned(owned) => owned.template.clone(),
     }
 }
 
@@ -1208,6 +1234,7 @@ fn position(object: &MapObject) -> (u8, u8) {
         MapObject::Plain(plain) => plain.tile,
         MapObject::Town(town) => town.tile,
         MapObject::Reward(reward) => reward.tile,
+        MapObject::Owned(owned) => owned.tile,
     }
 }
 
@@ -1466,6 +1493,7 @@ mod tests {
             underground: None,
             level_limit: 0,
             banned_skills: Vec::new(),
+            events: Vec::new(),
         }
     }
 

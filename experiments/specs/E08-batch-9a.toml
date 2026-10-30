@@ -1,0 +1,400 @@
+# Experiment batch E9a (E08 T78; decisions 193, 198, 201, 202): rows E9-1 to E9-5 of increment 9's
+# plan (survey docs/rules/surveys/E08-economy.md §15; docs/epics/E08-design.md §17), the visits of
+# mines, Lighthouses and Shipyards, in SoD on Easy, hot seat, two days. Batch E9b
+# (`E08-batch-9b`) is the day's start. Build: docs/experiments/README.md. Predictions are for the
+# agent who evaluates the results; the template never shows them.
+#
+# | row  | settles                                     | the reading (faithful)                      | the other source(s)                    |
+# | E9-1 | D-47: a neutral abandoned mine's guards      | split as a monster's (ADV-MON-009), seeded  | VCMI: one stack, never split           |
+# |      |                                             | by the entrance: 3 stacks; 2, the second    |                                        |
+# |      |                                             | Infernal Troglodytes                        |                                        |
+# | E9-2 | §3.2, §3.3: an owned mine's guards           | the owned mine's question; one stack as     | consensus (the subterranean field: the |
+# |      |                                             | left; the cavern on the subterranean field, | wiki and VCMI); who plays the guards:  |
+# |      |                                             | the sawmill on grass                        | recorded (design §13, §17)             |
+# | E9-3 | §2.3, §2.4, §3.1: flagging and Leave Guards  | Red's; the dialog; Blue's without a         | consensus                              |
+# |      |                                             | question (no guards); +2 wood to Blue       |                                        |
+# | E9-4 | §4: Lighthouses; A-33                       | sea points 2 500; their tiles not explored  | VCMI and the engine: radius 3 explored |
+# |      |                                             | at day 1                                    | at the start                           |
+# | E9-5 | §5.2, §5.3: a Shipyard's offer, its refusal, | 1 000 gold, 10 wood, a type-1 boat on       | consensus (VCMI and the wiki: the use  |
+# |      | its use without a visit                     | (31, 50); refused with a hero on it; the    | without a visit)                       |
+# |      |                                             | click opens the offer                       |                                        |
+#
+# **The pictures** (`Objects.txt`; docs/experiments/README.md, "Increment 9's objects"): a mine
+# blocks its row from two columns west of `at` to `at` and is entered at the middle tile from the
+# row below (from a tile beside it or below it; never from above, the original's per-class
+# settings); the grass sawmill blocks three columns west of `at` and its top row's two east tiles
+# too. The Lighthouse is the tile `at`. The Shipyard is three tiles on `at`'s row, entered at the
+# middle one from the row below; its boat tile is the first clear water tile of twelve offsets
+# from its entrance, (−2, 0) first (survey §5.1): here (31, 50), the lake's east edge.
+#
+# **The points.** A day's land points from the slowest speed (packs/base/adventure.toml
+# `land_points`): Angels and Archangels 2 000. Sea points 1 500 without
+# Navigation, +500 for each Lighthouse the hero's owner holds (survey §4). A step costs 100 on
+# grass, 141 diagonally; every route below is within the day's points with a margin (each leg
+# priced by a throwaway search over the written map; a target is within the explored tiles at its
+# click, the scouting radius being 5).
+#
+# **Boarding** without the Admiral's Hat leaves the hero 0 points (ADV-SEA-002; the original keeps
+# the land's maximum, A-28): no hero sails on the day it boards.
+#
+# **Estates is banned** (`banned_skills`): E9-1's and E9-2r's level-ups after their battles cannot
+# add its gold to Red's day 2 income. The scenario's information does not show the ban.
+#
+# The trap of the starting bonus: a hot-seat player's random starting bonus may give a hero an
+# artifact or a resource. The template asks for gold; anything the spec does not give goes under
+# "anything odd". The treasuries are compared within a player's turns, so the bonus cancels out.
+
+[map]
+name = "E08 batch E9a"
+description = "Engine-generated experiment map (E08, batch E9a): mines, Lighthouses and Shipyards: an abandoned mine's Troglodytes, an owned mine's guards, flagging and Leave Guards, Lighthouses at sea, a Shipyard's boat. Hot seat, Red and Blue human, difficulty Easy; follow the results template."
+size = 72
+terrain = "grass"
+difficulty = "easy"
+banned_skills = ["Estates"]
+instructions = [
+    "Copy `E08-batch-9a.h3m` into `D:\\Heroes3\\HoMM 3 Complete\\Maps`.",
+    "Use the HD launcher with plain HD (HD+ off).",
+    "Start the map in hot seat: *New Game → Multiplayer → Hot Seat*, two players, Red and Blue both human, difficulty **Easy**. If the scenario's options let you, set both players' starting bonus to gold. Before you start it, compare the stamp at the start of the map's description with the stamp above. Save right away (save 1), and at the start of each later turn (save 2 Blue's day 1, save 3 Red's day 2, save 4 Blue's day 2).",
+    "Most records are the game's memory: the mine and Lighthouse records (game +0x4E38C, 0x40 bytes each: owner +0x0, resource +0x1, abandoned +0x2, the guards' creature types +0x4 and counts +0x20, the entrance +0x3C; survey §2.1), a Shipyard's tile word (owner, boat tile), the boats' records (game +0x4E3BC, `docs/exe/structs.toml` \"boat\"), a hero's tile, movement points (+0x4D) and day's maximum (+0x49), the players' treasuries, the explored tiles, a battle's terrain, special field and stacks at its opening and its sides' owners and controllers (`battle_manager`). The capture harness reads them (`clients/capture/batches/E08-batch-9a.toml`, E08 T79). Played by hand, read the screens instead and leave the memory-only lines empty.",
+    "Tiles are (column, row) from 0 at the top left. A walk: click the target once (the path's marks show), then again (the hero goes). A visit: walk to the tile named, then click the object's entrance from there (twice).",
+    "Each battle by auto combat; a tactics phase is ended at once (its Start button). A level-up's dialog after a battle: take the left skill.",
+    "Order: day 1, Red's turn: E9-4's first reads, E9-1, E9-3, E9-4 (boards), E9-5's visit and refusal; Red's treasury; end the turn. Blue's turn: Blue's treasury, E9-2 (Leave Guards), E9-3b; Blue's treasury; end the turn. Day 2, Red's turn: Red's treasury, E9-4's reads, E9-5's use without a visit, E9-2r's two battles; end the turn. Blue's turn: Blue's treasury. Then the map is done.",
+    "Fill in this file (anything unexpected goes into the encounter's last line) and keep it in the repo.",
+]
+
+# --- E9-1: two neutral abandoned mines (their Troglodytes drawn at the new game) ---------------
+
+[[map.ownable]]
+picture = "AVXabnd0"
+at = [9, 8]
+resources = ["crystal", "gems"]
+
+[[map.ownable]]
+picture = "AVXabnd0"
+at = [15, 8]
+resources = ["gold"]
+
+# --- E9-2: Blue's crystal cavern and sawmill, both on grass ------------------------------------
+
+[[map.ownable]]
+picture = "AVMcrys0"
+at = [8, 26]
+owner = "blue"
+
+[[map.ownable]]
+picture = "AVMsawg0"
+at = [14, 26]
+owner = "blue"
+
+# --- E9-3: a neutral unguarded sawmill --------------------------------------------------------
+
+[[map.ownable]]
+picture = "AVMsawg0"
+at = [42, 10]
+
+# --- E9-4: two Lighthouses of Red's, far from every hero; the sea and a boat -------------------
+
+[[map.ownable]]
+picture = "AVXlths0"
+at = [66, 6]
+owner = "red"
+
+[[map.ownable]]
+picture = "AVXlths0"
+at = [6, 66]
+owner = "red"
+
+[[map.patch]]
+terrain = "water"
+from = [56, 24]
+to = [71, 40]
+
+[[map.object]]
+picture = "AVXboat1"
+at = [57, 30]
+
+# --- E9-5: a lake and Red's Shipyard on its east shore -----------------------------------------
+
+[[map.patch]]
+terrain = "water"
+from = [20, 44]
+to = [31, 56]
+
+[[map.ownable]]
+picture = "AVXshyd0"
+at = [34, 50]
+owner = "red"
+
+[[encounter]]
+id = "E9-1"
+title = "A hero visits two neutral abandoned mines"
+questions = ["D-47", "ADV-MIN-002", "ADV-MON-009"]
+procedure = [
+    "Day 1, Red's turn: E9-1 stands at (11, 11) with six Archangels. Two abandoned mines stand north of it: A at (8, 8) (its entrance; the mine covers (7, 8) to (9, 8)) and B at (14, 8) (covering (13, 8) to (15, 8)). Read both mines' records (owner, resource, guards).",
+    "Walk to (7, 9), then click A's entrance (8, 8). Note the question; answer yes. At the battle's opening note the defending stacks (creature and count, by slot). Auto combat. Note the messages after the battle; read A's record again.",
+    "Walk to (13, 9), then click B's entrance (14, 8). As for A: the question (yes), the defending stacks, the messages, B's record.",
+]
+record = [
+    { field = "before: A's record (owner, resource, guards' creature and count by slot)" },
+    { field = "before: B's record (owner, resource, guards' creature and count by slot)" },
+    { field = "A: the question's text" },
+    { table = ["slot", "creature", "count"], rows = 7 },
+    { field = "A: the battle's result; the messages after it" },
+    { field = "after: A's record (owner, resource, guards)" },
+    { field = "B: the question's text" },
+    { table = ["slot", "creature", "count"], rows = 7 },
+    { field = "B: the battle's result; the messages after it" },
+    { field = "after: B's record (owner, resource, guards)" },
+    { field = "anything odd" },
+]
+predictions = """
+- **The code** (survey §3.2, §3.4; D-47): each mine's guards are one stack of Troglodytes, its
+  count c drawn at the new game from 100 to 200 (the records' slot 0; D-48: VCMI 100 to 199). A
+  neutral mine with one stack fights the wandering monster's battle (`monster_battle`): the split
+  of ADV-MON-009, its draws from the C runtime seeded by the tile (ADV-QUIRK-6). Six Archangels
+  (52 656) against at most 200 Troglodytes (11 800) give a ratio of at least 4.4: two stacks
+  before the draws (five Archangels after a loss still give 3.7). Seeded by the **entrance**:
+  **A (8, 8)** draws 100 then 87: **three stacks** of Troglodytes, c divided evenly (the first
+  c mod 3 one more), none upgraded; **B (14, 8)** draws 41 then 44: **two stacks**, the first
+  ⌈c/2⌉ Troglodytes, the second ⌊c/2⌋ **Infernal Troglodytes** (the middle stack n / 2 = 1
+  upgraded at a second draw of at most 50). The question is ADVEVENT 84 ("You come upon an
+  abandoned mine. … infested with Troglodytes. Do you wish to enter?"). A win: ADVEVENT 85 ("You
+  beat the Troglodytes …"), then the drawn resource's mine message (MINEEVNT; A crystal or gems,
+  B gold); the record's owner Red, its guards empty.
+- **Seeded by another tile** (other readings of the position): by the hero's tile before the
+  step, A from (7, 9) draws 24 then 68, two stacks none upgraded, and B from (13, 9) 33 then 57, two
+  stacks none upgraded; by the mine's position (`at`), A (9, 8) draws 95 then 80, three stacks none
+  upgraded, and B (15, 8) draws 4: **one stack** (no second draw), so B alone would look like
+  VCMI's: A's three stacks tell the split from it.
+- **VCMI** (`CGMine`, `startBattle`): **one stack** of c Troglodytes each, never split.
+"""
+[encounter.hero]
+type = "Edric"
+specialty = "creature Griffin"
+at = [11, 11]
+primary = [10, 10, 1, 1]
+army = [["Archangel", 6]]
+
+# --- E9-2: Blue leaves guards in its mines; Red attacks them on day 2 ---------------------------
+
+[[encounter]]
+id = "E9-2"
+title = "An owned mine's guards: Leave Guards, the question, the battle and its field"
+questions = ["ADV-MIN-002", "GAM-BAT-001"]
+procedure = [
+    "Day 1, Blue's turn: E9-2 stands at (10, 30) with two Angels, one Archangel and one Angel (three stacks). Blue owns the crystal cavern C (entrance (7, 26); it covers (6, 26) to (8, 26)) and the sawmill S (entrance (13, 26)). Walk to (7, 27), then click C's entrance (7, 26). Note the dialog that opens; move the two Angels (the hero's first stack) into the mine's army; close it. Read C's record.",
+    "Walk to (13, 27), then click S's entrance (13, 26). As for C: move the Archangel (the second stack) into the mine's army; close it. Read S's record. Walk to (15, 28) and end the turn there.",
+    "Day 2, Red's turn: E9-2r stands at (8, 31) with ten Angels. Walk to (7, 27), then click C's entrance (7, 26). Note the question; answer yes. At the battle's opening note the terrain, the special field, the defending stacks, the defending side's owner, and whether Blue is asked to play it: a hot-seat screen naming Blue, or the battle stopping for input at a guard's turn (memory: the side's human or computer controller). Auto combat (again at a stop). Note the messages after it; read C's record.",
+    "Walk to (11, 28), then to (13, 27) (a leg: the original draws no path onto a tile not yet explored), then click S's entrance (13, 26). As for C: the question (yes), the opening, who plays the guards, the messages, S's record.",
+]
+record = [
+    { field = "C: the dialog at Blue's visit (its title)" },
+    { field = "after Blue's day 1: C's record (owner, guards)" },
+    { field = "after Blue's day 1: S's record (owner, guards)" },
+    { field = "C, day 2: the question's text" },
+    { field = "C: terrain, special field" },
+    { field = "C: the defending stacks (creature, count, slot)" },
+    { field = "C: the defending side's owner; whether Blue plays it (how it showed)" },
+    { field = "C: the result; the messages; the record after" },
+    { field = "S, day 2: the question's text" },
+    { field = "S: terrain, special field" },
+    { field = "S: the defending stacks (creature, count, slot)" },
+    { field = "S: the defending side's owner; whether Blue plays it (how it showed)" },
+    { field = "S: the result; the messages; the record after" },
+    { field = "anything odd" },
+]
+predictions = """
+- **The code** (survey §3.1, §3.2, §3.3): Blue's visit of its own mine opens the army dialog
+  titled **Leave Guards** (GENRLTXT 710); the stack left is the record's army (slot as placed).
+  Red's visit: ADVEVENT 187 ("Unfortunately, it appears that the owner has left some guards. Do
+  you wish to fight them?"); yes: `adventure_battle` with the guards' army **as it is** (one stack,
+  2 Angels in C, 1 Archangel in S, **not split**), the defending side's owner **Blue**, no hero.
+  The field: **C (crystal) on the subterranean field** (terrain 6, `battle_setup_battlefield`),
+  whatever lies under it; **S on grass** (terrain 2), no special field. A win flags the mine for Red
+  with the mine's message (MINEEVNT); the record's guards empty.
+- **Who plays the guards** (design §13, §17): the reading passes Blue as the side's owner; whether
+  the hot-seat game hands that side to Blue (a human) or plays it by the computer was not read. The
+  engine's agent's call: played by Blue (`Defender::Garrison`); if the computer plays it, T84 gives
+  the side to the neutral seat (design §19).
+- **VCMI and the wiki:** the same question, the same unsplit army, the subterranean field for
+  the crystal, gold and abandoned mines (three sources agree on the field).
+"""
+[encounter.hero]
+type = "Sorsha"
+specialty = "creature Swordsman"
+owner = "blue"
+at = [10, 30]
+primary = [1, 1, 1, 1]
+army = [["Angel", 2], ["Archangel", 1], ["Angel", 1]]
+
+[[encounter.also]]
+type = "Tyris"
+specialty = "creature Cavalier"
+name = "E9-2r"
+at = [8, 31]
+primary = [5, 5, 1, 1]
+army = [["Angel", 10]]
+
+# --- E9-3: flagging, a second visit, another player's flag ------------------------------------
+
+[[encounter]]
+id = "E9-3"
+title = "A neutral unguarded sawmill: Red flags it, visits it again, Blue flags it"
+questions = ["ADV-OWN-001", "ADV-MIN-002"]
+procedure = [
+    "Day 1, Red's turn: E9-3 stands at (41, 14) with two Angels. The neutral sawmill N's entrance is (41, 10) (it covers (39, 10) to (42, 10) and (41, 9), (42, 9)). Walk to (41, 11), then click (41, 10). Note the message; read N's owner.",
+    "Click (41, 11) (one step south, off the entrance), then (41, 10) again. Note what opens; close it without moving anything. Walk to (38, 13).",
+    "Day 1, Blue's turn: E9-3b stands at (45, 14) with two Angels. Walk to (41, 11), then click (41, 10). Note any question and the message; read N's owner.",
+    "Day 2: Blue's wood at its turn's start against its day 1 (E9-2's two mines produce too: see below).",
+]
+record = [
+    { field = "Red's first visit: the message; N's owner after" },
+    { field = "Red's second visit: what opens" },
+    { field = "Blue's visit: a question?; the message; N's owner after" },
+    { field = "anything odd" },
+]
+predictions = """
+- **The code** (survey §2.3, §2.4, §3.1): Red's first visit flags N (`set_mine_owner`, the
+  record's owner Red) with the sawmill's message (MINEEVNT: "You gain control of a Sawmill. It will
+  provide you with two units of wood per day."); the second visit (an own mine, a human) opens
+  **Leave Guards** and nothing else; Blue's visit of Red's mine without guards asks **nothing**
+  (step 2 needs guards; the survey's row said "after the question": corrected, no guards were
+  left) and flags it for Blue with the same message. The radius-3 reveal falls inside the visitor's
+  own sight (radius 5), so it shows nothing here (survey §2.3).
+- **Income** (with the treasuries below): Blue's day 2 start shows +4 wood (N and E9-2's sawmill,
+  2 each) and +1 crystal (E9-2's cavern); Red gets nothing from N.
+- **VCMI and the wiki:** the same flags; VCMI's own-mine visit shows the garrison exchange.
+"""
+[encounter.hero]
+type = "Valeska"
+specialty = "creature Archer"
+at = [41, 14]
+primary = [1, 1, 1, 1]
+army = [["Angel", 2]]
+
+[[encounter.also]]
+type = "Christian"
+specialty = "creature Ballista"
+owner = "blue"
+name = "E9-3b"
+at = [45, 14]
+primary = [1, 1, 1, 1]
+army = [["Angel", 2]]
+
+# --- E9-4: Lighthouses -------------------------------------------------------------------------
+
+[[encounter]]
+id = "E9-4"
+title = "Two Lighthouses of Red's at load: the sea points, their surroundings at day 1"
+questions = ["ADV-OWN-005", "HER-ADV-009", "A-33"]
+procedure = [
+    "Day 1, Red's turn, before any hero moves: Red owns two Lighthouses, at (66, 6) and (6, 66), far from every hero. Read whether these tiles are explored for Red: (66, 6), (66, 8), (66, 9), (68, 8), (66, 10), (6, 64), (6, 63), (6, 62). Read both Lighthouses' records (owner, resource).",
+    "E9-4 stands at (55, 30) with one Angel; an empty boat at (56, 30) on the sea east of it. Click the boat: E9-4 boards it. Read its movement points and day's maximum. End the turn (after the others).",
+    "Day 2, Red's turn: read E9-4's movement points and day's maximum.",
+]
+record = [
+    { table = ["tile", "explored for Red at day 1"], labels = ["(66, 6)", "(66, 8)", "(66, 9)", "(68, 8)", "(66, 10)", "(6, 64)", "(6, 63)", "(6, 62)"] },
+    { field = "the Lighthouses' records (owner, resource)" },
+    { field = "day 1 after boarding: E9-4's movement points and maximum" },
+    { field = "day 2 at the turn's start: E9-4's movement points and maximum" },
+    { field = "anything odd" },
+]
+predictions = """
+- **The code** (survey §4): each Lighthouse Red owns adds 500 to its heroes' sea maximum
+  (`count_owned_records` × 500), without Navigation's scaling: on day 2 in the boat **2 500**
+  points of **2 500** (1 500 + 2 × 500). The records: owner Red, resource 100. At boarding without
+  the Admiral's Hat: **0 points**, the maximum the land's **2 000** (A-28, `ADV-QUIRK-31`; the engine,
+  which does not reproduce A-28: 0 of 2 500).
+- **A-33** (survey §2.2): `setup_map_objects` case 42 sets the record's word with no owner call, so
+  a Lighthouse owned at load **reveals nothing**: none of the eight tiles explored at day 1
+  (no hero sees them).
+- **The engine** (design §6, ADV-QUIRK-34, A-33 not reproduced) and **VCMI** (`initFogOfWar`): the
+  radius-3 disk explored at the start: (66, 6), (66, 8), (66, 9), (68, 8), (6, 64), (6, 63)
+  explored; (66, 10) and (6, 62) not (distance 4). The sea points: VCMI and the wiki agree (500
+  each, cumulative).
+"""
+[encounter.hero]
+type = "Ingham"
+specialty = "creature Monk"
+at = [55, 30]
+primary = [1, 1, 1, 1]
+army = [["Angel", 1]]
+
+# --- E9-5: a Shipyard ---------------------------------------------------------------------------
+
+[[encounter]]
+id = "E9-5"
+title = "Red's Shipyard: a boat bought at a visit, the refusal with a hero on the boat tile, the use without a visit"
+questions = ["ADV-SHY-001", "ADV-SHY-002", "ADV-SHY-003"]
+procedure = [
+    "Day 1, Red's turn: the Shipyard Y covers (32, 50) to (34, 50), its entrance (33, 50); the lake lies west of it (columns 20 to 31). Read the three tiles' words (owner, boat tile; a hero on a tile: its +0x14) and Red's treasury.",
+    "E9-5 stands at (35, 53) with one Angel. Walk to (33, 51), then click Y's entrance (33, 50). Note what opens; build the boat. Note the treasury and the new boat's record (tile, type, facing, owner, captain).",
+    "Click (32, 51) (off the entrance), then click the boat on (31, 50): E9-5 boards it and stays there, on the boat tile (boarding leaves it no points).",
+    "Select E9-5b (at (40, 62), far away). Click Y's west tile (32, 50). Note what the cursor shows over it and what opens; close any dialog without building. Note the treasury and the three tiles' words.",
+    "Day 2, Red's turn, after the treasury's read: select E9-5; sail to (29, 50). Select E9-5b; click (32, 50) again. Note the cursor and what opens; build the boat. Note the treasury, the boats' records and the three tiles' words.",
+]
+record = [
+    { field = "before: the words of (32, 50), (33, 50), (34, 50); Red's treasury (wood, gold)" },
+    { field = "the visit: what opens" },
+    { field = "after building: Red's treasury; the boat's record" },
+    { field = "E9-5 on the boat tile, the click from E9-5b: the cursor; what opens; the treasury; the three words" },
+    { field = "day 2, the boat tile free, the click: the cursor; what opens" },
+    { field = "after building: Red's treasury; both boats' records; the three words" },
+    { field = "anything odd" },
+]
+predictions = """
+- **The code** (survey §5.1 to §5.3): the boat tile fixed at load, the first of the twelve offsets
+  that is clear water: (−2, 0) from (33, 50), **(31, 50)**. The visit of an own Shipyard: the boat
+  offer (the boat dialog); the build takes **1 000 gold and 10 wood**; the boat is a type-1 boat on
+  (31, 50), facing 2, owner Red, no captain. With E9-5 in its boat on (31, 50) the click from far
+  (cursor 6, click mode 8 over an own Shipyard's tile) runs `visit_shipyard` on the **clicked
+  tile's** word: **GENRLTXT 52** ("Cannot build another boat"), nothing paid. On day 2, the tile
+  free, the click opens **the offer** without a visit; the second boat as the first, another 1 000
+  and 10. The side tiles' words (their owner bytes after a flag) were not read (survey §5.3, §14):
+  the three words recorded settle what the click reads; the boat tile's bytes are the same in all
+  three (§5.1).
+- **VCMI and the wiki** agree on the price, the twelve tiles in this order and the refusal; both
+  allow the use without a visit (an own Shipyard's left tile).
+"""
+[encounter.hero]
+type = "Adela"
+specialty = "spell Bless"
+at = [35, 53]
+primary = [1, 1, 1, 1]
+army = [["Angel", 1]]
+
+[[encounter.also]]
+type = "Cuthbert"
+specialty = "spell Weakness"
+name = "E9-5b"
+at = [40, 62]
+primary = [1, 1, 1, 1]
+army = [["Pikeman", 1]]
+
+# --- The treasuries -------------------------------------------------------------------------------
+
+[[encounter]]
+id = "E9-0"
+title = "The treasuries (E9-1's and E9-3's income)"
+procedure = [
+    "Read each player's treasury (the seven resources) where the table says. E9-0 stands at (60, 64) and never moves.",
+]
+record = [
+    { table = ["when", "wood", "mercury", "ore", "sulfur", "crystal", "gems", "gold"], labels = ["Red, day 1, the turn's end", "Red, day 2, the turn's start", "Blue, day 1, the turn's start", "Blue, day 1, the turn's end", "Blue, day 2, the turn's start"] },
+    { field = "anything odd" },
+]
+predictions = """
+- **The code** (survey §7.1, §8.1, §8.3): no income on day 1; at day 2's start every player gets
+  its income at once. **Red:** +1 000 gold (B, a gold mine, if won) and +1 crystal or gems (A, as
+  drawn, if won); the Lighthouses and the Shipyard produce nothing; Estates is banned, so no
+  level-up adds gold. Day 1's end includes E9-5's first boat (−1 000 gold, −10 wood); its second
+  is bought after day 2's read. **Blue** (day 1's end against
+  day 2's start): +4 wood (E9-2's sawmill and N), +1 crystal (E9-2's cavern), nothing else.
+- **VCMI and the wiki:** the same amounts.
+"""
+[encounter.hero]
+type = "Loynis"
+specialty = "spell Prayer"
+at = [60, 64]
+primary = [1, 1, 1, 1]
+army = [["Pikeman", 1]]
