@@ -395,6 +395,7 @@ fields = [
   { offset = 0xA4, name = "hero_setup", type = "hero_setup[156]", summary = "per hero type the map file's placed hero (H3API heroSetup, H3SetupHero[156]): placed_heroes_setup (0x4CAE10) sets each hero up from it", confidence = "read", refs = ["rules/surveys/E08-progression.md §3.1"] },
   { offset = 0x1F458, name = "campaign_info", type = "bytes[0x7C]", summary = "H3API's campaignInfo (H3CmpInfo): +0x2 the scenario's index (campaignMapIndex), +0x4 the campaign (bigCampaignIndex), +0x3C the carried-over heroes (crossoverHeroes, walked by carried_heroes_setup 0x487290)", confidence = "inferred", refs = ["rules/surveys/E08-progression.md §3.1"] },
   { offset = 0x1F45C, name = "campaign_index", type = "i32", summary = "H3API's campaignInfo.bigCampaignIndex, the campaign's number (E08 T24a2a; T24a1 guessed a scenario): compared with 14 (with 0x69774C and hero 45) by the level-up's campaign branch and with 8 by a campaign case of the new game (called at 0x4C004D) and of placed_hero_setup", confidence = "inferred", refs = ["rules/surveys/E08-progression.md §2.3"] },
+  { offset = 0x1F636, name = "defeated", type = "u8[8]", summary = "per colour a flag set when the player is defeated (player_defeated 0x4F11A0)", confidence = "read", refs = ["rules/surveys/E08-economy.md §2.5"] },
   { offset = 0x1F698, name = "map_kind", type = "i32", summary = "H3API's mapKind, 0 RoE, 1 AB, 2 SoD: the game's version for the rules that test it (the siege's moat and its damage, the Tower's mines, the elementals' faction); restored by the saved-game loader (0x4BCDA0), the new game's setter not read", confidence = "inferred", refs = ["installation.md §7.27"] },
   { offset = 0x1F69D, name = "flagged_start", type = "u8", summary = "read by the end-turn button and the battle start; set, a human starts with 0x6779C8's resources (probably the tutorial)", confidence = "inferred", refs = ["rules/surveys/E08-objects.md §7.2"] },
   { offset = 0x1F6D8, name = "difficulty", type = "i8", summary = "the game's difficulty, 0 easy to 4 impossible: the starting resources' row", confidence = "read", refs = ["rules/surveys/E08-objects.md §7.2"] },
@@ -466,6 +467,7 @@ fields = [
   { offset = 0x34, name = "ai_type", type = "i32", summary = "3 for a human; a computer's drawn at a new game, random_between(0, 2)", confidence = "read", refs = ["rules/surveys/E08-objects.md §7.2"] },
   { offset = 0x3E, name = "town_count", type = "i8", summary = "the player's towns", confidence = "read", refs = ["installation.md §7.55"] },
   { offset = 0x40, name = "towns", type = "i8[]", summary = "the player's towns by index into game +0x21614, -1 none", confidence = "read", refs = ["installation.md §7.55"] },
+  { offset = 0x8C, name = "shipyards", type = "vector", summary = "the packed positions (u32) of the map Shipyards it owns, begin +0x90, end +0x94: set_shipyard_owner 0x4C6A30 removes a position from the old owner's and inserts it into the new owner's", confidence = "read", refs = ["rules/surveys/E08-economy.md §2.1"] },
   { offset = 0x9C, name = "resources", type = "i32[7]", summary = "wood, mercury, ore, sulfur, crystal, gems, gold (+0xB4)", confidence = "read", refs = ["rules/surveys/E08-objects.md §7.1"] },
   { offset = 0xB8, name = "mystical_gardens_visited", type = "u32", summary = "per Mystical Garden a bit (its index in the word's bits 0-4): the map hint's visited mark with the word's bit 10 clear (0x40C3DF; E24 M3 T6a2a); not read further", confidence = "read", refs = ["epics/E24-design.md §4.11"] },
   { offset = 0xBC, name = "magic_springs_visited", type = "u32", summary = "per Magic Spring a bit (its index in the word's bits 0-4): the map hint's visited mark with the word's bit 6 clear (0x40C09E; E24 M3 T6a2a); not read further", confidence = "read", refs = ["epics/E24-design.md §4.11"] },
@@ -724,6 +726,19 @@ fields = [
   { offset = 0x1C, name = "colour", type = "i8", summary = "its flag's colour abf0Nc (by type x 8 + colour, view_hero_piece 0x40FE30); -1 at its creation, the boarding hero's owner after (hero_boards_boat 0x4A10BD; E08 T66a1)", confidence = "read", refs = ["epics/E24-design.md §2.8"] },
   { offset = 0x20, name = "hero", type = "i32", summary = "the id (+0x1A) of the hero it carries or last carried (hero_boat 0x4CE900; set at boarding, kept at landing; E08 T66a1), -1 at its creation", confidence = "read", refs = ["epics/E24-design.md §2.8"] },
   { offset = 0x24, name = "aboard", type = "u8", summary = "1 with its hero aboard (hero_boat 0x4CE900)", confidence = "read", refs = ["epics/E24-design.md §2.8"] },
+]
+
+[[struct]]
+name = "mine_record"
+size = 0x40
+summary = "A mine's or Lighthouse's record (game +0x4E38C; the object's word is its index; appended by load_mine_body 0x501020 and load_abandoned_mine_body 0x501130; E08 T77a1)."
+refs = ["rules/surveys/E08-economy.md §2.1"]
+fields = [
+  { offset = 0x0, name = "owner", type = "i8", summary = "the owner colour, -1 none (set_mine_owner 0x4C66E0)", confidence = "read", refs = ["rules/surveys/E08-economy.md §2.1"] },
+  { offset = 0x1, name = "resource", type = "i8", summary = "what it produces: a mine's subclass 0-6, an abandoned mine's drawn resource, 100 for a Lighthouse (count_owned_records 0x4BAE70)", confidence = "read", refs = ["rules/surveys/E08-economy.md §2.1"] },
+  { offset = 0x2, name = "abandoned", type = "u8", summary = "1 for an abandoned mine: its Troglodytes at the new game, the subterranean battlefield", confidence = "read", refs = ["rules/surveys/E08-economy.md §3.4"] },
+  { offset = 0x4, name = "guards", type = "army", summary = "the guards: creature types +0x4 to +0x1F, counts +0x20 to +0x3B; a neutral single stack fights as slot 0 (visit_mine 0x4A39A0)", confidence = "read", refs = ["rules/surveys/E08-economy.md §3.2"] },
+  { offset = 0x3C, name = "entrance", type = "u8[3]", summary = "the entrance's column, row and level", confidence = "read", refs = ["rules/surveys/E08-economy.md §2.1"] },
 ]
 
 [[struct]]
