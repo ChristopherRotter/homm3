@@ -734,9 +734,12 @@ fn a_mine_one_side_alone_sees_shows_on_its_screen_only() {
     t.turns.push((10, 99));
     assert_eq!(t.screen(10), None);
     assert!(t.objects(10).contains_key(&61));
-    // No turn yet and no stack active at the start: no screen either.
+    // No turn yet and no stack active at the start: no screen either; nor one the battle did
+    // not start with.
     t.turns.clear();
     t.outlines = vec![(0, None)];
+    assert_eq!(t.screen(0), None);
+    t.outlines = vec![(0, Some(99))];
     assert_eq!(t.screen(0), None);
 }
 
