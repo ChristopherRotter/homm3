@@ -132,7 +132,8 @@ pub struct Shown {
     /// E17 M5 T3b), in order.
     pub area: Vec<(u32, Vec<u8>)>,
     /// The hex an aim's cursor took from a time on (0x688324: a click casts there; E17 M5 T3b),
-    /// none outside an aim or over a hex it does not take.
+    /// none outside an aim or over a hex it does not take; each change once (E17 M5 T8b2,
+    /// R4b-5).
     pub aimed: Vec<(u32, Option<u8>)>,
 }
 
@@ -398,7 +399,7 @@ impl Handler<'_> {
     /// The aim ends (a click's cast or a cancel: 0x5A3109, 0x5A31A3): no stack keeps an area's
     /// mark.
     fn end_aim(&mut self, now: u32) {
-        if self.aiming.take().is_some() {
+        if self.aiming.take().is_some_and(|a| a.last.is_some()) {
             self.shown.aimed.push((now, None));
         }
         self.set_area(now, BTreeSet::new());
@@ -431,16 +432,22 @@ impl Handler<'_> {
         field: Option<&Field<'_>>,
         name: &dyn Fn(&Hint, &Observation) -> String,
     ) {
-        if let (Some(aiming), Some(field)) = (&self.aiming, field) {
+        if let Some(field) = field
+            && let Some(mut aiming) = self.aiming.take()
+        {
             // The aim takes every move, the panel's points too (0x5A309D): the cursor again only
-            // over another hex than the one it last took (0x5A30C4).
+            // over another hex than the one it last took (0x5A30C4). The aim taken out while the
+            // cursor asks it, not copied; the hex taken kept only as it changes (E17 M5 T8b2,
+            // R4b-5).
             let hex = screen_hex(spot(self.layout, point, field.rects()));
             if aiming.last.map_or(-1, i32::from) != hex {
-                let aim = aiming.aim.clone();
-                let last = self.aim_at(now, (&aim, hex), field, name);
-                self.aiming = self.aiming.take().map(|a| Aiming { last, ..a });
-                self.shown.aimed.push((now, last));
+                let last = self.aim_at(now, (&aiming.aim, hex), field, name);
+                if last != aiming.last {
+                    self.shown.aimed.push((now, last));
+                }
+                aiming.last = last;
             }
+            self.aiming = Some(aiming);
             return;
         }
         let [width, height] = self.layout.mouse.field;

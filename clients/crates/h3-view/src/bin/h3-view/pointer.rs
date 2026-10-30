@@ -810,7 +810,7 @@ mod tests {
             // The first commands defend: a longer battle, its rounds' starts among its turns.
             let choice = live.choice().unwrap();
             let choice = if c < 48 { Command::Defend {} } else { choice };
-            let played = live.play(choice).unwrap();
+            let played = live.play(choice).unwrap().unwrap();
             let (events, seen): (Vec<_>, Vec<_>) = played.events.into_iter().unzip();
             let given = Given {
                 at: Some(press.max(end)),

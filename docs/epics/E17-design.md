@@ -2232,7 +2232,8 @@ binary's `aims` (the engine's part), the window's aim, the key F, the right butt
   record's +0 below 0) at an own stack, "%s can only be cast on hostile creatures" (172); a
   friendly one at an enemy, "... friendly creatures" (178); the creature's factor 0 (0x44A4D0):
   Resurrection, Animate Dead and Sacrifice "%s does not work on %s" (180), any other "%s are
-  immune to %s" (181), both with the plural name; else 24. Force Field and Fire Wall: 182.
+  immune to %s" (181), both with the plural name; else 24 (a target's hex in a side column too:
+  every test passes; E17 M5 T8b2, R4b-2). Force Field and Fire Wall: 182.
 - **The area's marks** (0x59F8A0): the stacks of the area (`area_stacks` 0x5A46F0: radius 2 for
   Inferno, else 1, the centre left out for Frost Ring; Berserk's by the mastery, 0x5A4810), each
   living stack the spell may affect (0x5A8090 above 0) given the mark +0x4F1 (0x43EFE0): newly
@@ -2283,10 +2284,14 @@ binary's `aims` (the engine's part), the window's aim, the key F, the right butt
   spell's page) and the aim. *Provisional:* the refusal's immunity (the client takes any refusal
   the engine makes that the other reasons do not explain for it), the area's marks of stacks the
   spell would not affect, Berserk's area in the side columns.
-- **Not modelled:** the aims of Force Field, Fire Wall, Teleport and Sacrifice (the book closes
-  on them and casts nothing); the message boxes (T4); the area's shading (an option off in the
-  harness); the Faerie Dragon's cast by the mouse (its cursor kind 20: once its side's hero has
-  cast, the key does nothing, as the original's, and the window gives no cast then).
+- **Not modelled:** the aims of Teleport and Sacrifice (the book closes on them and casts
+  nothing; a second target is the ruleset's, `aims::second_target`, by the original's number
+  only in a server's game of other content: E17 M5 T8b2, R4b-4); Force Field's and Fire Wall's
+  own aim (0x5A3250, not read): they take the common aim, a click casting at the hex it took
+  (*provisional*: no wall's shape shown, the refusal 24 instead of their 182; R4b-3); the
+  message boxes (T4); the area's shading (an option off in the harness); the Faerie Dragon's
+  cast by the mouse (its cursor kind 20: once its side's hero has cast, the key does nothing, as
+  the original's, and the window gives no cast then).
 
 ### 7.19 The message box, Retreat and Surrender (M5 T4a)
 

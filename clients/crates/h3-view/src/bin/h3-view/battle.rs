@@ -605,7 +605,8 @@ pub enum MessageDid {
 }
 
 /// The original's spells aimed at a second target too (Sacrifice, Teleport): their aims are not
-/// built (E17 M5 T3b).
+/// built (E17 M5 T3b). By number only where the battle's ruleset is not known (a server's game
+/// of other content; E17 M5 T8b2, R4b-4: [`crate::aims::second_target`]).
 const SECOND_TARGET: [u16; 2] = [40, 63];
 
 /// A cursor's look (E17 M5 T3a): its DEF, its frame and the frame's hot spot (the combat cursor
@@ -945,7 +946,8 @@ impl<'g> Battle<'g> {
 
     /// A human's `command`, pressed at `at` while the battle waits for it (E17 M5 T2b): sent
     /// from the side to act's seat, the session validating it, its action starting at `at` or at
-    /// the timeline's end if later; whether the battle took it (none waits: nothing).
+    /// the timeline's end if later; whether the battle took it (none waits, or the session
+    /// rejected it: nothing, the turn waits on as a server's does; E17 M5 T8b2, R4b-4).
     pub fn command(&mut self, at: u32, command: Command) -> Result<bool, String> {
         // A seat on a server sends it (E17 M5 T6b1): the battle idles on until the server's
         // answer and events come ([`Battle::poll`]); it takes no other meanwhile.
@@ -961,7 +963,9 @@ impl<'g> Battle<'g> {
         else {
             return Ok(false);
         };
-        let played = live.play(command)?;
+        let Some(played) = live.play(command)? else {
+            return Ok(false);
+        };
         let placeholder = Played::Finished(Box::default());
         if let Played::Waiting(growing, _) = std::mem::replace(&mut self.played, placeholder) {
             let at = at.max(growing.timeline().end);
@@ -1132,25 +1136,34 @@ impl<'g> Battle<'g> {
         };
         let observation = h3_view::remote::seen(snapshot, &events, timeline, timeline.end, cost);
         // The active stack's own cast, its drawn spell's (the Faerie Dragon's key F).
-        let aims = (observation.drawn)
+        let held = observation.stacks.iter().map(|s| s.id);
+        let mut aims: Vec<_> = (observation.drawn)
             .zip(online.targets(None))
             .and_then(|(spell, targets)| {
-                crate::aims::served(self.ground.previews(), (spell, 0, true), targets)
+                crate::aims::served(self.ground.previews(), (spell, 0, true), targets, held)
             })
             .into_iter()
             .collect();
-        let turn = crate::scenario::Turned {
-            observation,
-            commands: legal.to_vec(),
-            aims,
-        };
+        let legal = legal.to_vec();
         drop(online);
         let commands = (self.record.messages.iter())
             .filter(|m| matches!(m, ServerMessage::Events { .. }))
             .count();
         if self.served_events == Some(commands) {
-            self.turned.pop();
+            // The same turn served again (the seat dialed again, E17 M5 T6b2; a command the
+            // server rejected): the hero's aim under way keeps its spell's (E17 M5 T8b2: else a
+            // press cast nothing while the window aims).
+            let again = self.turned.pop();
+            if let (Some(again), Some((spell, false))) = (again, self.aiming) {
+                let aimed = again.aims.into_iter();
+                aims.extend(aimed.filter(|a| a.spell == spell && !a.creature));
+            }
         }
+        let turn = crate::scenario::Turned {
+            observation,
+            commands: legal,
+            aims,
+        };
         self.follower.touch(self.turned.len());
         self.turned.push(turn);
         (self.served, self.served_events) = (index, Some(commands));
@@ -1193,22 +1206,32 @@ impl<'g> Battle<'g> {
         }
     }
 
+    /// Whether `spell` (its original number `original`) is cast at a second target too
+    /// (Teleport, Sacrifice; their aims not built): the battle's ruleset's answer (E17 M5 T8b2,
+    /// R4b-4: a spell the asset tables do not know took the common aim, a cast the session
+    /// rejects); by the number where it is not known (a server's game of other content).
+    fn second_target(&self, spell: u16, original: Option<u16>) -> bool {
+        match self.ground.previews() {
+            Some(ruleset) => crate::aims::second_target(ruleset, spell),
+            None => original.is_some_and(|o| SECOND_TARGET.contains(&o)),
+        }
+    }
+
     /// The side to act's hero's aim of `spell` now (E17 M5 T3b): the engine's; on a server from
     /// the server's targets, at the hero's mastery its own view shows (E17 M5 T6b1).
     fn hero_aim(&self, spell: u16) -> Option<mouse::aim::Aim> {
         match self.fight.as_ref()? {
             Fight::Here(live) => live.hero_aim(spell),
             Fight::Server(online) => {
-                let mastery = self
-                    .own_view()?
-                    .own_hero?
-                    .spell_book
-                    .iter()
+                let own = self.own_view()?;
+                let mastery = (own.own_hero.as_ref()?.spell_book.iter())
                     .find(|b| b.spell == spell)
                     .map_or(0, |b| b.mastery);
                 let online = online.borrow();
                 let targets = online.targets(Some(spell))?;
-                crate::aims::served(self.ground.previews(), (spell, mastery, false), targets)
+                let held = own.stacks.iter().map(|s| s.id);
+                let aimed = (spell, mastery, false);
+                crate::aims::served(self.ground.previews(), aimed, targets, held)
             }
         }
     }
@@ -1515,7 +1538,7 @@ impl<'g> Battle<'g> {
                 let keys = &self.record.header.manifest.keys.spells;
                 let original =
                     motion::spell_entry_in(keys, &self.ground.tables, spell).map(|e| e.original);
-                let second = original.is_some_and(|o| SECOND_TARGET.contains(&o));
+                let second = self.second_target(spell, original);
                 let aim = self.hero_aim(spell);
                 if aim.is_none()
                     && original.is_some_and(|o| crate::boxes::affects_someone_only(u32::from(o)))
@@ -2079,7 +2102,7 @@ impl<'g> Battle<'g> {
                 let cast = castable.iter().find_map(|&spell| {
                     let original = motion::spell_entry_in(keys, &self.ground.tables, spell)?;
                     let target = *online.targets(Some(spell))?.first()?;
-                    (!SECOND_TARGET.contains(&original.original)).then_some(Command::Cast {
+                    (!self.second_target(spell, Some(original.original))).then_some(Command::Cast {
                         spell,
                         target,
                         second: h3_protocol::wire::Target::None {},

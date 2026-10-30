@@ -632,13 +632,7 @@ fn a_hero_s_aim_follows_the_mouse() {
     assert_eq!(shown.entered, [(100, 1), (300, 1)]);
     assert_eq!(
         shown.aimed,
-        [
-            (100, Some(90)),
-            (200, None),
-            (260, None),
-            (300, Some(90)),
-            (320, None)
-        ]
+        [(100, Some(90)), (200, None), (300, Some(90)), (320, None)]
     );
     let mouse = &layout().mouse;
     assert_eq!(shown.look(150, mouse), Some(Look::Spell(0)));
@@ -808,6 +802,51 @@ fn an_aim_at_an_empty_hex_marks_nothing() {
     assert_eq!(shown.entered, [(1, 1)]);
     assert_eq!(shown.aimed, [(3, Some(87))]);
     assert_eq!(shown.spell, [(3, Some(3))]);
+}
+
+#[test]
+fn a_press_reads_the_move_made_at_its_time() {
+    // E17 M5 T8b2 (R4b-1): the window follows a pass's moves before its press, which casts at the
+    // hex the cursor took at the press's time: a move off the target in the press's millisecond
+    // leaves nothing to cast at (the window gives no `Act`); a move onto it then casts, and the
+    // aim ends with the press.
+    let o = battle();
+    let mut legal = legal();
+    legal.aims = vec![arrow(false)];
+    let field = Field {
+        observation: &o,
+        legal: &legal,
+        facing: &Facing::Sides,
+        bugs: Bugs::Fixed,
+    };
+    let turns = [Turn { field, human: true }];
+    let to = |at, hex: u8| Input::Move {
+        at,
+        to: centre(hex),
+    };
+    let moved = vec![
+        Input::Move { at: 0, to: PARK },
+        Input::Aim {
+            at: 0,
+            spell: 7,
+            creature: false,
+        },
+        to(10, 90),
+        to(20, 91),
+    ];
+    let shown = run(&[], &[], &turns, &moved);
+    assert_eq!(shown.aimed(10), Some(90));
+    assert_eq!(shown.aimed(20), None);
+    let mut pressed = moved;
+    pressed.extend([to(30, 90), Input::Act { at: 30 }]);
+    let log = [(30, Logged::Action)];
+    let shown = run(&log, &[Start { unmarks: true }], &turns, &pressed);
+    assert_eq!(
+        shown.aimed,
+        [(10, Some(90)), (20, None), (30, Some(90)), (30, None)]
+    );
+    assert_eq!(shown.aimed(30), None);
+    assert_eq!(shown.spell.last(), Some(&(30, None)));
 }
 
 #[test]
