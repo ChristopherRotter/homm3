@@ -8545,3 +8545,8 @@ original data staged from the user's computer.
   marked only on maps with boats; the sea XL's layout (one level, small islands so that random
   play boards); the reach workload's 56 days.
 - **Versions:** none.
+- **Gates:** the scoped verify with the original data passed every step it runs (coverage,
+  determinism with the 32 replays, `bench-check` with the thirteen workloads, the 160 maps,
+  `exe.py check`); `clippy -p h3-cli -p h3-map -p h3-adventure --all-targets` clean, `cargo test
+  -p h3-cli` passed (the scope builds no `h3-cli`), `cargo check --workspace --all-targets` clean;
+  `every_step_keeps_the_commands_invariants` and `view.rs`' properties at 600 cases passed.
