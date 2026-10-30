@@ -21,12 +21,13 @@ rm -rf "$out"
 "$view" video --out "$out" "$@" > /dev/null
 "$view" video --out "$out" "${samples[@]}" > /dev/null
 mkdir -p "$out/ffmpeg"
+status=0
 for file in "$out"/*.bik "$out"/*.BIK; do
     [ -e "$file" ] || continue
     stem=$(basename "${file%.*}")
-    python3 -I scripts/bink-reference.py "$file" "$out/ffmpeg/$stem.yuv"
+    # A packet FFmpeg refuses fails the check; the comparison still runs.
+    python3 -I scripts/bink-reference.py "$file" "$out/ffmpeg/$stem.yuv" || status=1
 done
-status=0
 "$view" video --out "$out" --reference "$out/ffmpeg" "$@" || status=1
 "$view" video --out "$out" --reference "$out/ffmpeg" "${samples[@]}" || status=1
 exit $status

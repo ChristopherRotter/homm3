@@ -10,6 +10,11 @@ so the block grid's rows below the picture (the chroma's rows 60 to 63 in the ga
 clips) hold another frame's pixels, which motion vectors copy into the picture: three of the
 game's ten clips then differ in a few pixels (E17-log, M5 T4b2a).
 
+A packet FFmpeg refuses (an empty one, one its decoder fails on) is named on standard error and
+skipped, as the `ffmpeg` command line goes on past it; the frames decoded are still written, and
+the exit status is then 1; a file FFmpeg cannot open is named and fails the same way (E17 M5
+T8b2, the leftover of review R2b).
+
     python3 -I clients/scripts/bink-reference.py <in.bik> <out.yuv>
 """
 
@@ -32,15 +37,36 @@ def picture(frame):
 def main():
     if len(sys.argv) != 3:
         sys.exit("usage: bink-reference.py <in.bik> <out.yuv>")
-    container = av.open(sys.argv[1])
+    try:
+        container = av.open(sys.argv[1])
+    except av.error.FFmpegError as e:
+        sys.exit(f"{sys.argv[1]}: FFmpeg refused the file: {e}")
     stream = container.streams.video[0]
     stream.thread_type = "NONE"
+    refused = 0
     with open(sys.argv[2], "wb") as out:
-        for packet in container.demux(stream):
-            for frame in packet.decode():
-                out.write(picture(frame))
-                del frame
+        packets = container.demux(stream)
+        n = 0
+        while True:
+            try:
+                packet = next(packets)
+            except StopIteration:
+                break
+            except av.error.FFmpegError as e:
+                print(f"{sys.argv[1]}: the demuxer stopped at packet {n}: {e}", file=sys.stderr)
+                refused += 1
+                break
+            try:
+                for frame in packet.decode():
+                    out.write(picture(frame))
+                    del frame
+            except av.error.FFmpegError as e:
+                print(f"{sys.argv[1]}: packet {n}: FFmpeg refused it: {e}", file=sys.stderr)
+                refused += 1
+            n += 1
     container.close()
+    if refused:
+        sys.exit(1)
 
 
 if __name__ == "__main__":
