@@ -691,11 +691,11 @@ pub enum AdventureEventKind {
         /// The word of its count now ([`crate::MonsterParams::count_word`]).
         count_word: u8,
     },
-    /// A hero boarded an empty boat (ADV-SEA-002, E08 T73; design §12): the boat is no longer an
-    /// empty one on the tile, the hero is in it there (its step came before as
+    /// A hero boarded an empty boat (ADV-SEA-002, E08 T73; increment 8's design note §12): the boat
+    /// is no longer an empty one on the tile, the hero is in it there (its step came before as
     /// [`Self::HeroStepped`]). Seen by the players that see heroes on the tile, as they see the
-    /// empty boat there (ADV-FOG-008). Named by the boat's type and tile, never its index
-    /// (ADR-0016 point 6), owner or captain.
+    /// empty boat there (ADV-FOG-008). Named by the boat's type and tile, never its index (ADR-0016
+    /// point 6), owner or captain.
     Boarded {
         /// The hero.
         hero: HeroId,
@@ -704,8 +704,8 @@ pub enum AdventureEventKind {
         /// The boat's tile, where the hero stands.
         at: Pos,
     },
-    /// A hero in a boat landed (ADV-SEA-003, E08 T73; design §12): its boat lies empty on the
-    /// water tile it left, facing the landing's way (its step came before as
+    /// A hero in a boat landed (ADV-SEA-003, E08 T73; increment 8's design note §12): its boat lies
+    /// empty on the water tile it left, facing the landing's way (its step came before as
     /// [`Self::HeroStepped`], which tells the landing tile to those that see it). Seen by the
     /// players that see heroes on the water tile, as they then see the empty boat there
     /// (ADV-FOG-008); never the boat's index, owner or captain.
@@ -719,10 +719,10 @@ pub enum AdventureEventKind {
         /// The boat's facing, in the original's order of eight directions from up, clockwise.
         facing: u8,
     },
-    /// A hero read an object's message (the Ocean Bottle, ADV-PIK-017, E08 T74a; design §12): the
-    /// map's text, or a default one when it has none, is the client's to show, found by the
-    /// object's type and anchor (never its index, ADR-0016 point 6). Seen by the hero's owner
-    /// alone; a bottle's leaving follows as [`Self::ObjectRemoved`].
+    /// A hero read an object's message (the Ocean Bottle, ADV-PIK-017, E08 T74a; increment 8's
+    /// design note §12): the map's text, or a default one when it has none, is the client's to
+    /// show, found by the object's type and anchor (never its index, ADR-0016 point 6). Seen by the
+    /// hero's owner alone; a bottle's leaving follows as [`Self::ObjectRemoved`].
     MessageRead {
         /// The hero.
         hero: HeroId,
@@ -731,11 +731,11 @@ pub enum AdventureEventKind {
         /// Its anchor.
         anchor: Pos,
     },
-    /// A boat left the map with its hero (ADV-SEA-006, E08 T74b; design §13): a battle took a
-    /// hero in a boat off the map, and its boat with it (the hero's removal came before as
-    /// [`Self::HeroRemoved`], at the same tile). Seen by the players that see heroes on the tile,
-    /// as they saw the hero in its boat there (ADV-FOG-006, ADV-FOG-008); never the boat's index,
-    /// owner or captain.
+    /// A boat left the map with its hero (ADV-SEA-006, E08 T74b; increment 8's design note §13): a
+    /// battle took a hero in a boat off the map, and its boat with it (the hero's removal came
+    /// before as [`Self::HeroRemoved`], at the same tile). Seen by the players that see heroes on
+    /// the tile, as they saw the hero in its boat there (ADV-FOG-006, ADV-FOG-008); never the
+    /// boat's index, owner or captain.
     BoatRemoved {
         /// The hero.
         hero: HeroId,

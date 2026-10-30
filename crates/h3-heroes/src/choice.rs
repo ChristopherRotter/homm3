@@ -108,7 +108,7 @@ pub struct ArmyWorth {
 
 impl ArmyWorth {
     /// The flag-clear path's: 1 000 and 500 whatever the army (0x5246C4): the levels at load and
-    /// an unowned hero's default (design §8, §13).
+    /// an unowned hero's default (increment 4's design note §8, §13).
     pub const SETUP: Self = Self {
         army: 1000,
         shooters: 500,

@@ -4,10 +4,10 @@
 //! what it visits. One place for `MoveHero` and the reachable-tiles query, so that a later
 //! compromise for the unexplored tiles (`ADV-QUIRK-15`, ADR-0016 point 4) changes one row here. A
 //! walking hero's steps keep their own checks (`check_step` and the walking search), whose rows
-//! this table repeats for walking. Since E08 T73 (increment 8, design §7) the table has a fourth
-//! column, a hero in a boat ([`Mode::Sail`]), and the rows of boats: boarding an empty boat, a
-//! hero in a boat, a landing onto a free coastal tile, and a water tile an object is visited from
-//! closed to a flight (D-46).
+//! this table repeats for walking. Since E08 T73 (increment 8, increment 8's design note §7) the
+//! table has a fourth column, a hero in a boat ([`Mode::Sail`]), and the rows of boats: boarding an
+//! empty boat, a hero in a boat, a landing onto a free coastal tile, and a water tile an object is
+//! visited from closed to a flight (D-46).
 
 use h3_contracts::{HeroId, PlayerId};
 use h3_heroes::Movement;
@@ -229,8 +229,8 @@ impl AdventureState {
 
     /// What a step of `player`'s hero in the boat `boat` allows from the water tile `from` onto
     /// `pos`, whose tile is `tile` as it stands now and on which the hero at index `hero` stands,
-    /// if one does (design §7's last column; ADV-SEA-003 to -005, E08 T73). Every entry is a stop,
-    /// never a pass:
+    /// if one does (increment 8's design note §7's last column; ADV-SEA-003 to -005, E08 T73).
+    /// Every entry is a stop, never a pass:
     ///
     /// - land: a landing ([`Meets::Land`]) onto a free coastal tile ([`Self::free_coast`], D-42),
     ///   else [`AdventureCommandError::Landing`] (a hero on land among them: a boat never reaches

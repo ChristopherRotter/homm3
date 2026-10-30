@@ -1,13 +1,13 @@
-//! The sea XL map committed under `fixtures/maps/` (E08 T75b, design §15): SoD, 144 × 144, one
-//! level of sea with sixteen islands; eight heroes, four red and four blue, each on its island's
-//! east coast beside a boat with a source of sea points, and seven more boats beside other
-//! islands (fifteen, as Myth and Legend's, the shipped maps' most: survey `E08-sea.md` §1); the
-//! sea's four pickups and Favorable Winds between the islands. Written by [`crate::writer`] as the
-//! sea map (`sea_map.rs`, whose templates and helpers it takes); played by the boats' benchmarks
-//! (`benches/adventure/`: `reach-sea-xl-144`, the reachable-tiles query of the heroes in boats,
-//! and `fork-sea-xl-144`). The tests check that the committed file reads to the map written here
-//! and imports with its boats (it is rewritten when `H3_WRITE_FIXTURES` is set), and that the map
-//! plays: its heroes board, sail and land, and a fork evolves as its parent.
+//! The sea XL map committed under `fixtures/maps/` (E08 T75b, increment 8's design note §15): SoD,
+//! 144 × 144, one level of sea with sixteen islands; eight heroes, four red and four blue, each on
+//! its island's east coast beside a boat with a source of sea points, and seven more boats beside
+//! other islands (fifteen, as Myth and Legend's, the shipped maps' most: survey `E08-sea.md` §1);
+//! the sea's four pickups and Favorable Winds between the islands. Written by [`crate::writer`] as
+//! the sea map (`sea_map.rs`, whose templates and helpers it takes); played by the boats'
+//! benchmarks (`benches/adventure/`: `reach-sea-xl-144`, the reachable-tiles query of the heroes in
+//! boats, and `fork-sea-xl-144`). The tests check that the committed file reads to the map written
+//! here and imports with its boats (it is rewritten when `H3_WRITE_FIXTURES` is set), and that the
+//! map plays: its heroes board, sail and land, and a fork evolves as its parent.
 
 use std::path::PathBuf;
 

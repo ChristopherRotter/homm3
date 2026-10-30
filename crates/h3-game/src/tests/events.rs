@@ -1,8 +1,8 @@
 //! Tests of what the game applies of events (E08 T62b2; ADR-0017 point 10): an event's record
 //! through `MoveHero`, its firing told to its visitor's owner alone, a guarded event's battle at
-//! once and its record after a win; and the hidden-event property (design §12): two games that
-//! differ by an event give every player the same observation, legal commands, legal moves and
-//! events until it fires.
+//! once and its record after a win; and the hidden-event property (increment 7's design note §12):
+//! two games that differ by an event give every player the same observation, legal commands, legal
+//! moves and events until it fires.
 
 use std::boxed::Box;
 
@@ -232,11 +232,11 @@ proptest! {
 
     /// An event anywhere a hero may stand, of any colours and flags, guarded or not, for a blue
     /// that counts as human or not: until it fires, every player's observation, legal commands,
-    /// legal moves and told events are those of the game without it (design §12; ADV-FOG-007,
-    /// ADV-MOV-011). Since E08 T64b in both games a wandering monster of any disposition in half
-    /// the cases, which guards the event's tile when it stands beside it: the event waits for the
-    /// guard's visit (its offers answered, its battle and levels given; GAM-DEC-007) and shows
-    /// nothing while it is held.
+    /// legal moves and told events are those of the game without it (increment 7's design note §12;
+    /// ADV-FOG-007, ADV-MOV-011). Since E08 T64b in both games a wandering monster of any
+    /// disposition in half the cases, which guards the event's tile when it stands beside it: the
+    /// event waits for the guard's visit (its offers answered, its battle and levels given;
+    /// GAM-DEC-007) and shows nothing while it is held.
     // covers: ADV-FOG-007, ADV-MOV-011, ADV-OBJ-007, ADV-MON-006, GAM-DEC-007
     #[test]
     fn a_hidden_event_changes_nothing_a_player_sees_until_it_fires(

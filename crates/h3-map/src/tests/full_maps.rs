@@ -1,12 +1,12 @@
-//! Decision 133's maps (E08 T64b; design §10 and §16): SoD, 144 × 144 with an underground (the
-//! XL map's 41 472 tiles), a Pandora's Box on every tile no hero stands on, and the same map with
-//! a Learning Stone on every such tile; written by [`crate::writer`] with the original's templates
-//! and committed under `fixtures/maps/` for the fork benchmarks (`benches/adventure/`:
-//! `fork-boxes-xl-144`, `fork-stones-xl-144`). The tests check that the committed files read to
-//! the maps written here (they rewrite them when `H3_WRITE_FIXTURES` is set), and that each map
-//! builds, plays a few hundred steps of random play with visits and forks: the engine's state of
-//! visits and removals has no original limit (decision 133: neither A-17's 32 marks per class nor
-//! A-19's 400 shared records), and a fork stays one reference count of it.
+//! Decision 133's maps (E08 T64b; increment 7's design note §10 and §16): SoD, 144 × 144 with an
+//! underground (the XL map's 41 472 tiles), a Pandora's Box on every tile no hero stands on, and
+//! the same map with a Learning Stone on every such tile; written by [`crate::writer`] with the
+//! original's templates and committed under `fixtures/maps/` for the fork benchmarks
+//! (`benches/adventure/`: `fork-boxes-xl-144`, `fork-stones-xl-144`). The tests check that the
+//! committed files read to the maps written here (they rewrite them when `H3_WRITE_FIXTURES` is
+//! set), and that each map builds, plays a few hundred steps of random play with visits and forks:
+//! the engine's state of visits and removals has no original limit (decision 133: neither A-17's 32
+//! marks per class nor A-19's 400 shared records), and a fork stays one reference count of it.
 
 use std::path::PathBuf;
 
@@ -181,9 +181,10 @@ fn the_full_maps_are_committed_as_written() {
     }
 }
 
-/// Decision 133's test (design §16): each full map builds, plays 300 steps of random play that
-/// visit (its boxes opened and gone, its stones' marks in the visits' block), and forks: a fork
-/// playing on leaves its parent as it was, and evolves as the parent does under the same steps.
+/// Decision 133's test (increment 7's design note §16): each full map builds, plays 300 steps of
+/// random play that visit (its boxes opened and gone, its stones' marks in the visits' block), and
+/// forks: a fork playing on leaves its parent as it was, and evolves as the parent does under the
+/// same steps.
 // covers: ADV-PIK-013, ADV-TCH-001, ADV-VIS-006
 #[test]
 fn a_map_full_of_boxes_or_stones_builds_plays_and_forks() {

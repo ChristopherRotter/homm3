@@ -262,7 +262,7 @@ fn the_writer_s_reward_objects_read_back_and_import() {
         .collect();
     assert_eq!(classes, [22, 63, 100, 101, 104, 105, 108]);
     // The static layer imports and validates; since E08 T61a the whole map too, the monster's
-    // artifact with it, each object typed with what it holds (design §7).
+    // artifact with it, each object typed with what it holds (increment 7's design note §7).
     static_layer_validates(&m, &SOD);
     let setup = import(&m, &SOD).unwrap();
     setup.validate(&SOD).unwrap();

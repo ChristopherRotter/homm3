@@ -249,7 +249,7 @@ A candidate becomes an entry here only once it is confirmed for SoD (by an exper
 
 ### ADV-QUIRK-21 — An RoE map's Witch Hut teaches only 14 skills
 - Class: fix-optional (the user, 2026-10-26, ADV-Q28, A-21; the epic's decision 130)
-- Context / rules affected: adventure, the Witch Hut's skill drawn at the build (ADV-TCH-005, E08 design §8, §9; E08 T61b)
+- Context / rules affected: adventure, the Witch Hut's skill drawn at the build (ADV-TCH-005, increment 7's design note §8, §9; E08 T61b)
 - Original behavior: an RoE map's file holds no Witch Hut mask, and the load (0x5034BD) gives every such hut the fixed mask 0xEFBF, the editor's default (every skill but Leadership and Necromancy, 0x0FFFEFBF) cut to 16 bits: the skills 0 to 15 but Leadership and Necromancy, so an RoE hut never teaches Water Magic, Earth Magic, Scholar, Tactics, Artillery, Learning, Offense, Armorer, Intelligence, Sorcery, Resistance or First Aid (survey `E08-rewards.md` §9, D-33).
 - Intended/expected behavior: every skill but Leadership and Necromancy, the editor's default and VCMI's 26.
 - Impact: gameplay: 191 huts on the shipped RoE maps draw from 14 skills instead of 26.
@@ -329,20 +329,20 @@ A candidate becomes an entry here only once it is confirmed for SoD (by an exper
 - Class: exploit-fix (no flag: the engine keeps no bound of the original's on visits' state, E08 decision 133; A-17)
 - Context / rules affected: adventure, ADV-TCH-001 to ADV-TCH-003 (the once-per-hero gifts' marks, E08 T62a)
 - Original behavior: at a new game each of the ten once-per-hero classes numbers its objects from 0 in the walk's order and the hero holds one u32 of marks per class; a visit tests and sets the bit `1 << number`, and the x86 shift counts mod 32 (the Tree masks its number to 5 bits outright, 0x4C1E6D), so the 33rd object of a class shares the first one's bit: a hero who visited one is refused by the other (survey `E08-rewards.md` §6.1, §9).
-- Intended/expected behavior: a mark per object, by its index in the static map (`h3_adventure::Visits`, design §10), with no bound on how many objects of a class a map holds or a hero marks.
+- Intended/expected behavior: a mark per object, by its index in the static map (`h3_adventure::Visits`, increment 7's design note §10), with no bound on how many objects of a class a map holds or a hero marks.
 - Impact: unreachable on the shipped maps (at most 30 of a class, 30 Learning Stones in Back For Revenge; the wiki reads 32 as the editor's limit); a made map with more would refuse the later ones.
 - Community status: the wiki (Learning stone): "There can be up to 32 learning stones in any map"; VCMI keeps a set of visitors per object.
 - Sources: code reading (E08 T55a2, survey §6.1).
 - Flag: none (always fixed)
 - Defaults: fixed in every profile
-- Regression test: `crates/h3-adventure/src/state/tests/rewards.rs`, `a_once_per_hero_gift_gives_once_and_marks_the_hero` (the mark per object and hero); the design's measurement of marks on every object, E08 T55b (design §10)
+- Regression test: `crates/h3-adventure/src/state/tests/rewards.rs`, `a_once_per_hero_gift_gives_once_and_marks_the_hero` (the mark per object and hero); the design's measurement of marks on every object, E08 T55b (increment 7's design note §10)
 - Decided by / date: the user 2026-10-26 (ADV-Q28; decision 133); built and recorded by E08 T62a
 
 ### ADV-QUIRK-28 — A 401st box or event reads the first one's reward record
 - Class: exploit-fix (no flag: the engine keeps no bound of the original's on visits' state, E08 decision 133; A-19)
 - Context / rules affected: adventure, ADV-RWD-001 (the reward record), ADV-PIK-013 (Pandora's Box), ADV-OBJ-007 (events)
 - Original behavior: Pandora's Boxes and events append their 228-byte reward records to one list of the map (+0x50), at most 400; a 401st is not stored and its tile's word keeps the index 0, so it gives the first record (survey `E08-rewards.md` §7.1, §9).
-- Intended/expected behavior: a record per object (`Holds::Record`, `EventSetup::record` on the object, design §7), with no bound on how many boxes or events a map holds.
+- Intended/expected behavior: a record per object (`Holds::Record`, `EventSetup::record` on the object, increment 7's design note §7), with no bound on how many boxes or events a map holds.
 - Impact: unreachable on the shipped maps (at most 99 records, Myth and Legend); a made map with more would repeat the first record.
 - Community status: not documented; VCMI keeps the rewards on each object.
 - Sources: code reading (E08 T55a3, survey §7.1).
@@ -355,7 +355,7 @@ A candidate becomes an entry here only once it is confirmed for SoD (by an exper
 - Class: exploit-fix (no flag: state-corrupting, fixed in every profile; `AGENTS.md`; A-26)
 - Context / rules affected: adventure, ADV-OBJ-007 (events), ADV-MOV-011 (the move), ADV-MON-006 (the guard's visit)
 - Original behavior: a step onto an event's tile that a monster guards flags the event (0x4811A3), lets the guard visit first (`after_step_guard_check` 0x48169D: the join or flight offers, or the battle with its levels) and then fires the event on the step's flag alone (`event_fire` at 0x481741), whatever the guard's visit ended in: a hero beaten by the guard, or that retreated, is already in the heroes' pool with owner −1 (0x4DA2B5) and still receives the event: its guards fight the pooled hero, or its record is granted to it, the resources added to "player −1", outside the player table (`give_resource` 0x4E3612) (survey `E08-rewards.md` §8.5, §9).
-- Intended/expected behavior: the guard visits first, then the event fires only for a hero still on its tile once the guard's visit is over (its offers answered, its battle and levels given), and stays otherwise (design §12). The wait across the guard's decisions is a rest of the visit (GAM-DEC-007, E08 T63b: `AdventureOutcome::event_after`, `AdventureState::fire_held_event`); from T62b2 to T63b an event on a tile a monster guards did not fire at all (`ADV-STUB-10`).
+- Intended/expected behavior: the guard visits first, then the event fires only for a hero still on its tile once the guard's visit is over (its offers answered, its battle and levels given), and stays otherwise (increment 7's design note §12). The wait across the guard's decisions is a rest of the visit (GAM-DEC-007, E08 T63b: `AdventureOutcome::event_after`, `AdventureState::fire_held_event`); from T62b2 to T63b an event on a tile a monster guards did not fire at all (`ADV-STUB-10`).
 - Impact: state-corrupting (writes outside the player table, gives a pooled hero a record); reachable on any map with an event inside a guard's 3 × 3 block.
 - Community status: not documented (survey §7.6: neither VCMI's `CGEvent` nor the wiki speaks of an event on a guarded tile).
 - Sources: code reading (E08 T62b1's opening reading, survey §8.5).
@@ -363,6 +363,19 @@ A candidate becomes an entry here only once it is confirmed for SoD (by an exper
 - Defaults: fixed in every profile
 - Regression test: `crates/h3-adventure/src/state/tests/events.rs`, `an_event_on_a_guarded_tile_fires_after_the_guards_visit` (gone, off its tile or another player's hero: nothing) and `a_flyer_stopped_on_a_guarded_event_meets_its_guard`; `crates/h3-game/src/tests/events.rs`, `an_event_on_a_guarded_tile_fires_once_the_guards_visit_is_over`
 - Decided by / date: the agent's classification at E08 T62b1's opening reading (state-corrupting: `AGENTS.md`), recorded in decision 151's cut; recorded by E08 T62b2, the fire after the guard's visit built by E08 T63b
+
+### ADV-QUIRK-30 — A computer player's hero leaves an Ocean Bottle on the map
+- Class: harmless, not reproduced (no flag; E08 decision 166; A-27, revisited with E10's computer players)
+- Context / rules affected: adventure, ADV-PIK-017 (the Ocean Bottle)
+- Original behavior: `visit_object`'s cases 59 (the Ocean Bottle) and 91 (the Sign) return at once when the visit is not a human's (0x4A9AFF, 0x4A9FC5): a computer player's hero that steps toward a bottle reads nothing and the bottle stays on the map, where a human's reads it and the bottle leaves (survey `E08-sea.md` §8.5, §10).
+- Intended/expected behavior: every visitor reads a bottle and takes it off the map, a computer player's hero as a human's (ADV-PIK-017; increment 8's design note §11).
+- Impact: harmless (a bottle gives nothing; only who sees it go differs) and unreachable until E10's computer players move heroes.
+- Community status: not documented (survey §8.6: neither the wiki nor VCMI's `CGSignBottle` as read speaks of a computer's visit).
+- Sources: code reading (survey §8.5, §10).
+- Flag: none (not reproduced)
+- Defaults: the engine's rule in every profile
+- Regression test: `crates/h3-adventure/src/state/tests/sea_pickups.rs`, `a_bottle_s_message_is_read_by_its_visitor_s_owner_alone_and_the_bottle_leaves` (red as a computer player reads and takes it as red as a human does)
+- Decided by / date: the user 2026-10-28 (ADV-Q32; decision 166: not reproduced, no flag); recorded by E08 T76 (T74a built the visit and cited the id without the entry)
 
 ### ADV-QUIRK-31 — Boarding or landing without the Admiral's Hat keeps the old surface's maximum
 - Class: harmless, not reproduced (no flag; E08 decision 166; A-28)

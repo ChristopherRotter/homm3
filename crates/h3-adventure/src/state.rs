@@ -999,11 +999,12 @@ pub struct AdventureState {
     seats: [Seat; MAX_PLAYERS as usize],
     /// The armies battles left on objects, by object index (E08 T20a2a): a monster's survivors
     /// (ADV-MON-010, E08 T20b), a guarded object's (E08 T21b). Since E08 T61b a persistent
-    /// two-level table (design §10): a fork shares it, a write copies at most three small tables,
-    /// so an army left on every object of the XL map costs a write no more than one does.
+    /// two-level table (increment 7's design note §10): a fork shares it, a write copies at most
+    /// three small tables, so an army left on every object of the XL map costs a write no more than
+    /// one does.
     army_left: Table<Vec<ArmyStack>>,
-    /// What visits left on the objects (E08 T61b; [`Visits`], design §10): none until a visit
-    /// writes it (E08 T62), then one block the forks share, as [`Self::flags`].
+    /// What visits left on the objects (E08 T61b; [`Visits`], increment 7's design note §10): none
+    /// until a visit writes it (E08 T62), then one block the forks share, as [`Self::flags`].
     visits: Option<Arc<Visits>>,
     /// The boats (ADR-0016 point 1, ADV-SEA-001; E08 T72): none for a map without boats, so a
     /// fork costs nothing more (`bench-check`).
@@ -1289,14 +1290,15 @@ impl AdventureState {
     /// ([`AdventureOutcome::event_after`], E08 T63b, `ADV-QUIRK-29`). The hero's start is no step:
     /// a hero that starts on an event does not fire it.
     ///
-    /// Boats (E08 T73; ADV-SEA-002 to -005, design §7 and §8): a step onto an empty boat's tile
-    /// boards it ([`Self::board`]), priced by the hero's mode on land, from a stop node, the
-    /// walk ending there with no guard test; a hero in a boat sails ([`Mode::Sail`]): each step
-    /// is a stop priced as a boat's ([`Pricing::sail`]) and tested for a guard (a water monster
-    /// attacks at once) and for an event on water as a walker's, a step onto a free coastal tile
-    /// lands ([`Self::land`]), the walk ending there and the tile's guards visiting after the
-    /// landing; an object or a hero in a boat is visited from the boat's tile. The drop after a
-    /// step is [`Pricing::left_by`]'s; a boarding's and a landing's conversion follows it (D-41).
+    /// Boats (E08 T73; ADV-SEA-002 to -005, increment 8's design note §7 and §8): a step onto an
+    /// empty boat's tile boards it ([`Self::board`]), priced by the hero's mode on land, from a
+    /// stop node, the walk ending there with no guard test; a hero in a boat sails
+    /// ([`Mode::Sail`]): each step is a stop priced as a boat's ([`Pricing::sail`]) and tested for
+    /// a guard (a water monster attacks at once) and for an event on water as a walker's, a step
+    /// onto a free coastal tile lands ([`Self::land`]), the walk ending there and the tile's guards
+    /// visiting after the landing; an object or a hero in a boat is visited from the boat's tile.
+    /// The drop after a step is [`Pricing::left_by`]'s; a boarding's and a landing's conversion
+    /// follows it (D-41).
     // rule: ADV-MOV-006, ADV-MOV-007, ADV-MOV-009, ADV-MOV-010, ADV-FOG-003
     // rule: ADV-OBJ-003, ADV-MON-006, GAM-MET-001, ADV-MOV-011, ADV-OBJ-007
     // rule: ADV-SEA-002, ADV-SEA-003, ADV-SEA-004, ADV-SEA-005
@@ -1585,14 +1587,14 @@ impl AdventureState {
     }
 
     /// Where a battle at `pos` is fought when `boats` of its two sides' heroes are in boats
-    /// (GAM-BAT-001, E08 T74b; survey `E08-sea.md` §7.1, design §13): with one, on the part's sea
-    /// terrain and its deck; with both (2 or more), on the sea terrain and its two boats. This
-    /// comes first, before the underground: the original's `battle_setup_battlefield` (0x4643B0)
-    /// tests either side's hero for the in-boat bit after a siege only (water and the ship flag;
-    /// its picture with both the boats', batch E8's E8-11 and E8-12). A special ground on the tile
-    /// then replaces the battlefield and keeps the sea terrain, as on land (ADV-GRD-001; none lies
-    /// on water in the shipped maps). With no hero in a boat, or without the part's battle
-    /// terrains, [`Self::battle_ground`].
+    /// (GAM-BAT-001, E08 T74b; survey `E08-sea.md` §7.1, increment 8's design note §13): with one,
+    /// on the part's sea terrain and its deck; with both (2 or more), on the sea terrain and its
+    /// two boats. This comes first, before the underground: the original's
+    /// `battle_setup_battlefield` (0x4643B0) tests either side's hero for the in-boat bit after a
+    /// siege only (water and the ship flag; its picture with both the boats', batch E8's E8-11 and
+    /// E8-12). A special ground on the tile then replaces the battlefield and keeps the sea
+    /// terrain, as on land (ADV-GRD-001; none lies on water in the shipped maps). With no hero in a
+    /// boat, or without the part's battle terrains, [`Self::battle_ground`].
     // rule: GAM-BAT-001
     pub fn sea_battle_ground(
         &self,
@@ -2305,7 +2307,8 @@ impl AdventureState {
         self.army_left.get(index).map(Vec::as_slice)
     }
 
-    /// What visits left on the objects (E08 T61b, design §10): none until a visit writes it.
+    /// What visits left on the objects (E08 T61b, increment 7's design note §10): none until a
+    /// visit writes it.
     pub fn visits(&self) -> Option<&Visits> {
         self.visits.as_deref()
     }
