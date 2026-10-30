@@ -24,12 +24,32 @@ check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gat
 ### E17 M5 T8 — M5's closure
 
 - **Scope:** a fresh reviewer, the battle recipes' starting bonus set to Gold (M4's review item
-  15: `to_scenario` and hot seat leave the scenario list's bonus random, which gave a hero an
-  artifact for one run at M4 T3b-2), every capture afresh, the review list, the next milestone
-  refined with the user (the ladders, the pause, the server browser; HD; graphics options).
+  15), every capture afresh, the review list, the next milestone refined with the user (the
+  ladders, the pause, the server browser; HD; graphics options).
+- **The user's cut (2026-10-30):** concurrent sub-agents, two capturing (one per harness
+  instance: the runbook's "Two instances") and one reviewing or fixing, each given a fraction
+  of about half a context; the runner keeps only their reports. **T8a done** (log, "M5 T8a"):
+  the two instances, the bonus Gold, reviewers R1 (network, accounts), R3 (the play core), R4
+  (the spell book) and their fixes; all 91 stills and sequences 0 to 27 as recorded.
+- **T8b, the rest in fractions** (the order free; the ids of `sequences.toml`):
+  - captures: sequences 28 to 64 (`raise` to `mine-sound`; `raise` and `sacrifice` have seeds
+    searched, the six `-sound` ones run with sound), about 12 a capture agent;
+  - reviewers, read-only, about 1 500 lines each, then their fixer: R2 `h3-bink` and the clip
+    (`clip.rs`, `video.rs`, `h3_assets::vid`); R4b the hero's aim (`mouse/aim.rs`, its
+    `battle.rs` calls); R5a the message box (`message.rs`, `boxes.rs`); R5b the result window
+    (`result.rs`, `results.rs`); R5c Auto Combat and the tactics phase (`auto.rs`,
+    `tactics.rs`); R6 the dissolves, the palette effects, the sounds' waits (`anim/created.rs`,
+    `h3_render::recolour`, `anim`'s waits); R7 the harness's M5 additions (`clients/capture/`,
+    `xdd.c`);
+  - leftovers: an entered stack clones the timeline (R3-1's rest); the name lookup's time limit
+    and `RecordError::Line`'s raw text (R1's rest);
+  - then, the captures idle: `drawn` with the fixed viewer (`--record` for what a fix changed
+    and the captures confirmed), `check.sh`.
+- **T8c (the user's checkpoint):** the review list (items 1 to 72 and T8b's), the next
+  milestone refined; M5 done.
 - **Acceptance:** the review list accepted; every capture as recorded or its difference listed;
   the next milestone's tasks in this queue; M5 done.
-- **Depends on:** T1 to T7 (done 2026-10-30). **Status:** ready (the user, at its checkpoint).
+- **Depends on:** T1 to T7 (done 2026-10-30). **Status:** T8a done; T8b ready.
 
 ## Inbox
 

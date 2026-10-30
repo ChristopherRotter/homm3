@@ -219,11 +219,11 @@ impl fmt::Display for Fault {
             Self::NotDialed(id) => {
                 // The server's text, its control characters (a terminal's escapes) as `?` (E17
                 // M5 review R1-9, as the adapter's `connect::printable`).
-                write!(f, "the welcome names ")?;
-                for c in id.chars() {
-                    fmt::Write::write_char(f, if c.is_control() { '?' } else { c })?;
-                }
-                write!(f, ", not the address dialed")
+                let shown: String = id
+                    .chars()
+                    .map(|c| if c.is_control() { '?' } else { c })
+                    .collect();
+                write!(f, "the welcome names {shown}, not the address dialed")
             }
             Self::Malformed => write!(f, "the welcome's key, challenge or signature is malformed"),
             Self::Signature => write!(f, "the welcome's signature does not verify"),
