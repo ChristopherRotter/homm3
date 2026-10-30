@@ -3277,7 +3277,9 @@ the start sound's end; the adventure map's sounds settled first; the main thread
 **Checked.** `machines` with sound: its silent timeline exactly (the heal's 1 881 ms within the
 animation's 2 100 at speed 0). The sequences whose timelines the waits change (the viewer's
 comparison over every sequence with the lengths: `thunder`, `acid`, `obstacles`, `gate`,
-`gate-fortress`, `mine`; no other) recorded again with sound (`*-sound`): the original's waits
+`gate-fortress`, `mine`; and by a wall shot's landing alone `breach`, `tower`, `cyclops`, `moat`,
+`quake`, `through`, not captured again: the landing's wait is `gate-sound`'s, `gate-fortress-sound`'s
+and `mine-sound`'s) recorded again with sound (`*-sound`): the original's waits
 where the viewer's are, every timeline as recorded (`thunder-sound`: the Vampire Lords' reaction
 27 ms later, 7 287; `acid-sound` 72 ms, 8 472; `obstacles-sound` the Force Field's turn 3 012 ms
 later for Quicksand's objects; `gate-sound` and `gate-fortress-sound` the landing's 202 ms and the

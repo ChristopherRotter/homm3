@@ -3409,7 +3409,9 @@ next); CLT-Q34 answered (a), copy both.
   main thread for idle (`machines`' heal read a millisecond late, three causes ruled out first).
 - **Recorded:** `machines` with sound: its silent timeline exactly. The viewer's comparison over
   every sequence with the lengths named the sequences the waits change (`thunder`, `acid`,
-  `obstacles`, `gate`, `gate-fortress`, `mine`); each recorded again with sound (`*-sound`), the
+  `obstacles`, `gate`, `gate-fortress`, `mine`; with the landing's sound added, `breach`,
+  `tower`, `cyclops`, `moat`, `quake`, `through` by a wall shot's landing alone, not captured
+  again); the six recorded again with sound (`*-sound`), the
   commands' times from the new turns: every timeline as recorded (the turns after a wait 27 ms
   to 3 012 ms later), after two fixes they asked for (the deadline's grid after a wait; a wall
   shot's landing among the battle's sounds); their frames as the silent ones' (`obstacles-sound`
