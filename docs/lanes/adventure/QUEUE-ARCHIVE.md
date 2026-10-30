@@ -16,6 +16,24 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
 
 ## Notices from other lanes and finished items, newest first
 
+- 2026-10-30 (T77b done, whole: decision 200; ADV-Q38 answered, decisions 201–204; T78 queued): the T77b entry as it stood in the "Tasks" text:
+
+  **E08 T77b — The ADR amendment drafts, the design note and the cut**
+
+  - **Scope:** from T77a's survey and the answers at its checkpoint: the amendment drafts of the
+    ADRs it touches (ADR-0016 for owned objects, the day's and the week's changes on the map;
+    ADR-0017 for the day's and the week's order in the game and the income into the treasury;
+    ADR-0013 if `h3-heroes` gains rules, such as the Lighthouse's sea points), `E08-design.md`
+    written for increment 9 (with its exit criteria), the building tasks cut in rounds; the
+    checkpoint's questions (an `ADV-Q`). The user accepts the drafts and the cut before anything is
+    built (decision 193).
+  - **Inputs:** the survey's §13 (the interfaces), §14 (D-49, D-50, A-32; A-31 corrected), §15
+    (batch E9's plan, its harness and spec gaps), §16 (the rule ids) and §18; `ADV-Q37`'s answers,
+    decisions 196–199 (the scope grown by the heroes' income, the day's spell points and the
+    month's monsters; batch E9 whole before the build).
+  - **Depends on:** T77a and its checkpoint (both done). **Status:** ready; its cut confirmed at
+    its start.
+
 - 2026-10-30 (T77a2 done, whole: decision 195; T77a done): the T77a entry as it stood in the "Tasks" text:
 
   **E08 T77a — The mines, week and owned objects survey** (in two, decision 194: T77a1 points 1 to 4 and the census done, survey §0 to §6; **T77a2** point 5, the mines' income of point 2, points 6 and 7 next, §7 on)

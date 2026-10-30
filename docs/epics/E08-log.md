@@ -9182,3 +9182,61 @@ increment, the week's creature with E09; batch E9 whole before the build; the re
 passed every step it runs but `check-exe-map`, which failed on one address cited after the run
 began; mapped, `check-exe-map` and `check-docs` passed (the steps the change touches; no code
 changed). CI's full verify on the pull request is the record.
+
+### Increment 9, round 1: T77b, the ADR amendment drafts, the design note and the cut (2026-10-30, `adventure/e08-t77b`)
+
+Baseline: `master` at 56976c7 (#599 merged; CI on `master` green at d2d4c70, its run on 56976c7, a
+docs-only merge, under way). Original data staged at the start (the executable, the five DLLs,
+the four LODs, the sounds and videos, `maps.tar`, `extracted.tar`; the computer went offline
+after). The user's cut at the start (decision 200): **whole** (recommended was two parts by what
+runs the rule, the visits then the day's start; not chosen either: two parts by crate).
+
+**The drafts** (`docs/lanes/adventure/adr-drafts/*-increment-9.md`): ADR-0013 points 3 (the kinds
+`daily_resource`, `mana_regain`, `extra_mana_regain`, `full_mana`; the base regain and the
+specialists' bonus), 13.6 (the Lighthouses' input to the sea points) and a new point 16 (the
+heroes' income, each worn copy counting; the day's spell points; every hero of the store);
+ADR-0016 points 1 (the owners, a mine's guards, the weekly contents, the monsters' fractions,
+objects added in play, the Shipyard's boat tile), 3 (Leave Guards; no revisit), 4 (the seven
+kinds, flagging, the week's and the month's steps, the import's refusals), 5 (the flag's reveal,
+A-33 not reproduced), 6 (owners public, a mine's production its owner's team's, the weekly marks);
+ADR-0017 points 1 (`BuildBoat`, the setup's owners and timed events), 3 (the day's start in the
+original's order from day 2, the timed events at each turn start, the month's kind), 4 (the
+setup's and the day's draws), 6 (the kept army dialog, the boat offer), 8 (the env's
+`BuildBoat`), 10 (the income as the game's step), 11 (a mine's guards in battle, an owned mine's
+played by its owner).
+
+**The design note** `E08-design.md` written for increment 9: part A (§1 the data, §2 the
+derivations, §3 ids), part B (§4 the import, §5 the kinds and parameters, §6 the state, §7 the
+owned objects' visits, §8 `BuildBoat`, §9 the weekly visits, §10 the week's step, §11 the month's
+step, §12 information), part C (§13 the mines' battles, §14 the game, §15 the env, replays,
+fixtures, properties and benchmarks, §16 versions, ids and quirks, §17 batch E9, §18 the cut and
+the exit criteria, §19 risks).
+
+**A reading of its own** (`Heroes3.exe`, `scripts/exe.py`): `hero_gold_income` 0x4E4390 and
+`hero_mana_regained` 0x4E3F40 keep the specialists' factor 1 + 0.05 × level in the x87 register
+(only the 0.05 is a single, 0x63EAE4), so the Estates and Mysticism specialists' products equal
+the exact ones at every level: no Q-0005 term (the survey's "in f32" read as the constant's
+width). The Mysticism specialist's growth and its `+ 1` run only with the skill (0x4E3F5F); the
+three mana artifacts count once each (`hero_wears_artifact`). The census of the packs: the
+thirteen resource and gold specialists (eleven in `base`, Gelare and Grindan in `ab`) are the
+heroes whose specialty the packs leave empty today.
+
+**The cut** (§18; decision 202): seven rounds, batch E9 first and before the `shared/` task
+(T78 the maps and specs; T79 the harness and runs + T80 the scoring; T81 `shared/`; T82
+`h3-heroes` + T83 the import, kinds and state; T84 the visits; T85 the day's start, in two; T86
+the replays and gates + T87 the audit). T78 queued.
+
+**The checkpoint** (ADV-Q38, asked interactively with the four files sent to the user; decisions
+201–204): the drafts and the design accepted as written with two changes, written in: the
+Crystal Dragons' crystal is an **innate creature ability**, a closed kind of the core creature
+beside its growth and flags (`weekly_resource`; the user chose the core over the battle part's
+abilities), not the adventure part's parameter proposed; a weekly object's contents are **the
+object's, one a week for whoever comes first**, never once per player, said plainly, the visited
+marks kept as hint data. The cut, the env's `BuildBoat` `cross-lane` in T85b and the other agent's
+calls as recommended. **T77b done**; T78 is ready.
+
+**Verify:** no code changed. The scoped `cargo xtask verify --scope adventure --summary
+--with-original-data` passed every step it runs (deny and ffi-smoke skipped by the scope; the
+sandbox's VM restarted before it, killing the setup's baseline run, so the scoped run stands in);
+`scripts/exe.py cited`: every cited address mapped. CI's full verify on the pull request is the
+record.

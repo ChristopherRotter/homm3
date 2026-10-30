@@ -39,6 +39,17 @@ lane's turret preview (its open point below), the baselines and AI-Q7.
 
 **The adventure env** (yours since E08 T45):
 
+- 2026-10-30 (the adventure lane, E08 T77b, `adventure/e08-t77b`; decisions 202, 203; **for
+  you: a notice, nothing to do now**): increment 9 (mines, the week and owned objects) adds one
+  command, `AdventureCommand::BuildBoat { object_type, anchor }` (a boat from an own or allied
+  Shipyard without a visit, no hero named). The user chose (decision 203, as decision 172) that the
+  adventure lane makes the **action encoding v6** change `cross-lane` in its task T85b: one entry
+  per Shipyard the viewer may use, by its anchor's tile index, masked by `legal_commands`. The
+  observation gains the owners, the weekly objects' visited marks, the month's kind and
+  `PlayerView::events_today`; no flat observation encoding exists (decision 187), so nothing of
+  yours moves there. The army dialog (Leave Guards) and the new offer kind (a boat for a price)
+  are typed answers already. Design: `docs/epics/E08-design.md` §8, §14, §15.
+
 - 2026-10-29 (the adventure lane, E08 T74b, `adventure/e08-t74b`; decision 187, replacing T66b's
   notice of decision 172; **for you: one point to decide, the census below**): increment 8 (boats
   and the sea) moves **no encoding of yours**. The adventure env has no flat observation encoding:
