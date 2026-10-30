@@ -2582,8 +2582,11 @@ under Wine (`clients/capture/binkprobe.c`) and, where that stalled, read in its 
   record file's window never opens the result window), not at the first frame that shows it; a
   clip that cannot be read or decoded, or whose frames would pass `clip::BUDGET` (64 MiB, about
   ten times `defendloop`'s), leaves the slot bare as a missing one does (a warning on standard
-  error). The sequences tool still fails on such a clip (a comparison wants it). `h3-bink`
-  refuses an empty video packet (`Invalid`), which FFmpeg's `avcodec_send_packet` refuses too.
+  error). The sequences tool still fails on such a clip, kept so at T8b2 and naming the clip (a
+  comparison needs the clip the original showed: a bare slot would only differ in pixels without
+  saying why). `h3-bink` refuses an empty video packet (`Invalid`), which FFmpeg's
+  `avcodec_send_packet` refuses too; `bink-reference.py` names a packet or file FFmpeg refuses,
+  goes on past a packet as the `ffmpeg` command line does and exits 1 (T8b2).
 
 ### 7.22 Auto Combat (M5 T4c1)
 

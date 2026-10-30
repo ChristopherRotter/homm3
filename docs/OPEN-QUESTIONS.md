@@ -125,6 +125,20 @@ leave out either way (nothing created). **Recommendation:** (b): the log should 
 summon that did not happen. **Built:** as the original's (the line written). **Blocked:**
 nothing.
 
+#### CLT-Q35 — The result window's text when no side wins after a retreat (E17 M5 T8b2)
+
+**Context.** When a side retreats or surrenders and the other has no army survivors left (only
+stacks the battle created), the original names no winner (BAT-END-001): both sides "Defeated",
+the window shows the defender's view and gives no experience (`docs/epics/E17-design.md` §7.20;
+`h3_view::result::winner`, built at T8b2 from review R5b-3). Its text (0x470AB4 to 0x470CFF)
+then follows the defender's view with the gave-up flags, which are either side's (0x6985A3,
+0x697744): after the **attacker** retreated it reads that the **defender's** hero fled (or
+surrendered). Rare: the defender must be left with created stacks only. Read, not observed.
+**Options:** (a) copy it; (b) fix it in the client (the shown side's text by whether that side
+gave up: "fled" or "surrendered" only for the side that did, else its army fell), the original's
+for the comparisons only (`Bugs::Original`, as the cursor's x). **Recommendation:** (b): the
+window should not say a hero fled who did not. **Built:** as the original's. **Blocked:** nothing.
+
 ### Map client lane (`MCL-Q<n>`)
 
 #### MCL-Q13 — A monster's head under the Dragon Utopia (E24 M3 T2b1; the user, 2026-10-28)
