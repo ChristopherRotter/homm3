@@ -9071,3 +9071,48 @@ increment 7's decision 139), so the ADRs are applied once with the disputes' ver
 - **Not in increment 8** (decision 168): Shipyards and Lighthouses (item 9), Whirlpools, Buoys,
   Mermaids, Sirens, the Derelict Ship and the Shipwreck (item 10), Summon Boat and Scuttle Boat, the
   computer player's boats (E10).
+
+### Increment 9, round 1: T77a1, the survey's visits: flagging, mines, Lighthouses, Shipyards (2026-10-30, `adventure/e08-t77a1`)
+
+Baseline: `master` at 283bfbd (#593 merged; CI's full verify green there; the setup's baseline
+ran only the light gates, the engine code verified there). The executable, the four LODs, the
+sound and video archives, the five DLLs, `maps.tar` and `extracted.tar` staged at the start (the
+user's computer went offline soon after, as announced). At its start the user cut T77a in two by
+what runs the rule (decision 194, `AskUserQuestion`; not chosen: the queue's sketch, three parts,
+whole): T77a1 what a visit does, T77a2 what the day's start does with the rest.
+
+**The survey** `docs/rules/surveys/E08-economy.md` §0 to §6:
+
+- **The census** (§1) of the 160 shipped maps with a throwaway example (deleted): the owned
+  classes by subclass, owners at load (60 mines, 1 Shipyard; no Lighthouse; no colour that does not
+  play), the abandoned mines' resource sets (wood never, none empty), entrances (none on water or
+  rock, none shared, no hero on one), monsters beside entrances, the Shipyards' boat tiles by the
+  original's rule (none for two, both on Hoard), flag all mines on 4 maps; for T77a2 the timed
+  events and the non-growing monsters.
+- **The reading** (§2 to §5): the mine records shared with Lighthouses (`mine_record`), class 220
+  loaded as 53 (`object_class_values`), the Shipyard's word; the owner at load (`setup_map_objects`
+  cases 42, 53, 87), the two owner setters (radius-3 reveal for the team, the Shipyards' list per
+  player), who flags what by team, a player's defeat (`player_defeated`: objects neutral, a mine's
+  guards kept), a hero on an entrance, what a viewer sees (`mine_hint_text`: production for the
+  owner's team only, guards for all); `visit_mine` whole (the questions, a neutral single stack as
+  a wandering monster, any other as an army, the subterranean field for crystal, gold and abandoned
+  mines, Leave Guards); the abandoned mine's resource (at load) and 100 to 200 Troglodytes (at the
+  new game); the income table; the Lighthouse's visit and +500 per owned one (`count_owned_records`)
+  and the Castle building's bonus without an owner test; the Shipyard's boat tile fixed at load
+  (`shipyard_boat_tiles`, twelve offsets), its visit (the flag, the refusals, 1 000 gold and 10 wood,
+  a type-1 boat), its use without a visit (the cursor and `hero_move_loop`'s case 7 read; the click
+  between them not traced).
+- **VCMI 1.7.5 and the wiki** compared at each point; disputes **D-47** (a neutral mine's single
+  guard stack split as a wandering monster; VCMI one stack: a batch E9 row proposed) and **D-48**
+  (100 to 200 Troglodytes; VCMI 100 to 199); quirk candidates **A-29** (a single guard stack
+  outside slot 0 after a defeat), **A-30** (the Castle's Lighthouse building for every hero, E09),
+  **A-31** (an abandoned mine without a resource gives resource 8: refused at the import); the
+  Shipyard's tile fixed at load agrees with VCMI's search on every shipped map (no dispute).
+- **The address map:** 25 new entries (16 functions, 7 sites, 2 tables) and `visit_mine` read;
+  `structs.toml`'s `mine_record`, player +0x8C (the Shipyards' list), game +0x1F636 (defeated).
+
+**Verify:** the scoped `cargo xtask verify --scope adventure --summary --with-original-data` passed every
+step it runs (fmt, clippy, check-arch, check-rules, check-stubs, check-docs, check-exe-map,
+clients-lock, check-lane, test, coverage, determinism, bench-check, doc-drift, original-data;
+deny and ffi-smoke skipped by the scope; exit 2, its normal result); no code changed. CI's full
+verify on the pull request is the record.
