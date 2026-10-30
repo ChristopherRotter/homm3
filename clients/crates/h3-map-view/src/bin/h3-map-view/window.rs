@@ -1072,7 +1072,8 @@ mod tests {
     fn the_keys_bound_are_the_adapters() {
         let known: Vec<&str> = Key::ALL.iter().map(|k| k.name()).collect();
         assert_eq!(Keys::original().check(&known), Ok(()));
-        let keys = Keys::with_file("[map]\npause = [\"Space\"]\nquit = [\"Ctrl+F12\"]").unwrap();
+        let keys = Keys::with_file("[map]\npause = [\"Space\"]\nvisit = []\nquit = [\"Ctrl+F12\"]")
+            .unwrap();
         assert_eq!(keys.check(&known), Ok(()));
         assert_eq!(
             keys.command((), true, "F12"),
