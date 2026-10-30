@@ -2008,3 +2008,51 @@ first; the baseline (`verify-once.sh clients`) green.
   100 % (`h3-map-view`), clippy, fmt; `check.sh`; the scoped verify with original data.
 - **Questions:** MCL-Q23 (a status window's press lost to its rebuild, recorded), MCL-Q24 (a
   hotkey's release eaten by the minimap's loop, read); MCL-Q22 noted for the underground's update.
+
+### M3 T6b3 — the keys during a walk, the input ring, Space, the sound without the focus (2026-10-30)
+
+On `map-client/e24-m3-t6b3`, the user present (T6b3 kept whole: the agent's cut into the keys and
+the sound declined). `master` at 1597854 (#609 merged). The original data staged from the user's
+repo folder first; the VM restarted during the baseline (files kept, jobs gone): CI's green run on
+`master` the starting point.
+
+- **The reading** (design §4.15; map entries `adventure_key_down` 0x408C40's Space,
+  `input_mouse_message` 0x4EC290 read whole, `window_procedure` 0x4F7C00's WM_ACTIVATEAPP whole,
+  `sound_focus_lost` 0x599C40 read whole, new `sound_focus_regained` 0x599B90,
+  `sound_digital_start` 0x5997D0 (inferred), `videos_pause` 0x5977A0, `mouse_system_cursor`
+  0x50DA20, `focus_lost` 0x699609, `music_at_focus_loss` 0x699614, `effects_played` 0x6A3258):
+  the ring of 63 messages (every key down and up, every move, every button); Space (a standing
+  hero chosen again, then the tile it stands on visited when an entrance); a path's walk ended by
+  any key's or button's down, taken and not handled; the focus's loss (the effects stopped as they
+  were, the music faded by the stub thread once the lock is free) and return (the effects resumed,
+  the music asked for again).
+- **Observed** (the running original's memory, `seq-walk`): a standing hero's tile is class 34 with
+  the entrance bit; once lifted (by Space's `hero_select`, by a step) the tile shows what lies
+  under it (grass: class 0, no bit).
+- **Built:** `timeline::Action::Visit` and `Up`, `Action::messages` and `ends_walk`, `QUEUED` and
+  the ring (`keep_ring`), the walk ended by a press, a hotkey or Space (a click's up left behind),
+  the mouse's point read at once for a press or release during a walk, `Loop::visit` and
+  `reselect`, `Unplayable::Visit`; the key table's `visit` (Space) and every map key's release an
+  `Up`; the sequences' `space` and every key's release an action; `h3_ui::music`'s focus
+  (`Music::focus`, `Queue::focus`, `Stream::Held`); the window's sound following
+  `Window::focused()` (`Player::focus`, `h3_sdl::Audio::hold`); the window's help (the panels'
+  hotkeys, Space, its example rebinding pause to P: Space is the map's now). The harness: `space`
+  among the keys a sequence may press. The sequences `walk-queue`, `walk-stop-key`,
+  `walk-stop-press`, `walk-stop-space` (in `masks.toml`'s `hinted`).
+- **Checked:** `walk-queue` (102 frames), `walk-stop-key` (10), `walk-stop-press` (9),
+  `walk-stop-space` (7) exact with the status bar compared, each timeline as recorded line for line
+  (also by the unit tests). The first run's `walk-stopped` (three walks ended in turn, each
+  restarted by a click on the destination) recorded the original's hidden cursor over the clicked
+  tile, which the viewer has no reach for after a walk (the known gap): split into the three short
+  sequences, each walking from the staged tile (TRAPS). `drawn`: every earlier situation and
+  sequence the same, `drawn --record` (128 frames of the 4 new sequences). The window under Xvfb
+  with SDL's disk audio on `seq-walk` and `objects-flat`, the focus moved to an `xclock` window
+  and back: the music faded out over 0.9 s to silence, the ambient loops held at once, both back
+  at the return (the loops at once, the music faded in); unit tests (the ring, the walk's end by
+  each, the queued steps, Space standing, lifted, with a path and on an entrance; the music's
+  focus in every state, the queue following it; the keys' table and the sequences' actions);
+  coverage 100 % (`h3-map-view`, `h3-ui`), clippy, fmt; `check.sh`; the scoped verify with
+  original data.
+- **Questions:** MCL-Q25 (nothing stops a held key's queued steps, Space included: MCL-Q10's
+  premise; recorded), MCL-Q26 (the original's window waits for a music fade at the focus's loss;
+  read, not reproduced).

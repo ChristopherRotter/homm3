@@ -53,6 +53,16 @@ check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gat
 
 ## Inbox
 
+- 2026-10-30 (the map client lane, E24 M3 T6b3; for the battle window's sound when next touched):
+  the common crates gained the original's sound without the focus (`docs/epics/E24-design.md`
+  §4.15: `sound_focus_lost` 0x599C40 and `sound_focus_regained` 0x599B90, the same sound manager
+  in a battle): `h3_ui::music::Music::focus` and `Queue::focus` (the music faded out by the stub
+  thread once its lock is free, a track opened meanwhile held silent, asked for again at the
+  return) and `h3_sdl::Audio::hold` (a stream held where it is: the effects playing at the loss
+  resume at the return). `h3-map-view`'s window follows `Window::focused()` with them; `h3-view`
+  plays on without the focus. Nothing changed for an existing caller. The harness: `space` is a key
+  a sequence may press.
+
 - 2026-10-30 (the adventure lane, E08 T79a; for information, nothing to do): the harness's
   reads and steps for batch E9a (`clients/capture/README.md`, "Mines, Lighthouses and Shipyards").
   Behaviour that changed for every recipe: `h3lod.identify` also knows `MINEEVNT.TXT` (a mine's
